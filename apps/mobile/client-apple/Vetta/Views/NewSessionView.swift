@@ -9,7 +9,6 @@ struct NewSessionView: View {
 	@State private var projectCwd: String?
 	/// `nil` keeps the desktop's default model.
 	@State private var modelKey: String?
-	@State private var sending = false
 	@State private var draft = PromptDraft()
 
 	private var projects: [RemoteProjectSummary] { model.projects.filter { !$0.isConversation } }
@@ -20,6 +19,13 @@ struct NewSessionView: View {
 			.navigationBarTitleDisplayMode(.inline)
 			.toolbarBackground(.hidden, for: .navigationBar)
 			.toolbar(.hidden, for: .tabBar)
+		.onAppear {
+			guard let start = router.failedStart else { return }
+			router.failedStart = nil
+			draft = start.draft
+			projectCwd = start.projectCwd
+			modelKey = start.modelKey
+		}
 		.task(id: model.online) {
 			guard model.online else { return }
 			await model.refreshProjects()
@@ -53,7 +59,7 @@ struct NewSessionView: View {
 		.contentShape(Rectangle())
 		.onTapGesture { dismissKeyboard() }
 		.safeAreaInset(edge: .bottom, spacing: 0) {
-			ChatInputBar(draft: $draft, placeholder: L10n.Chat.composerPlaceholder, disabled: !model.online || sending, busy: sending) { sent in
+			ChatInputBar(draft: $draft, placeholder: L10n.Chat.composerPlaceholder, disabled: !model.online) { sent in
 				send(sent)
 			}
 		}
@@ -101,18 +107,23 @@ struct NewSessionView: View {
 		.accessibilityIdentifier("newSession.location")
 	}
 
+	/// Opens the chat at once; the desktop creates the session behind it.
 	private func send(_ sent: PromptDraft) {
-		sending = true
-		Task {
-			defer { sending = false }
-			guard let id = await model.sendPrompt(nil, sent.text, projectCwd: projectCwd, modelKey: modelKey, attachments: sent.attachments) else {
-				// Keep what was typed so a failed send is not lost.
-				draft = sent
-				return
-			}
-			router.openSession(id)
-		}
+		let start = NewSessionStart(draft: sent, projectCwd: projectCwd, modelKey: modelKey)
+		var localId = ""
+		guard let id = model.startSession(sent.text, projectCwd: projectCwd, modelKey: modelKey, attachments: sent.attachments, onFailure: { [router] in
+			router.returnToNewSession(start, from: localId)
+		}) else { return }
+		localId = id
+		router.openSession(id)
 	}
+}
+
+/// New Session's choices, kept to put back if starting the session fails.
+struct NewSessionStart {
+	var draft: PromptDraft
+	var projectCwd: String?
+	var modelKey: String?
 }
 
 /// A picker's label on New Session: icon, current choice, chevron.

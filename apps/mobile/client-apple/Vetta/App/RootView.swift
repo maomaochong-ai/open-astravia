@@ -23,6 +23,18 @@ final class Router {
 		workPath = [.newSession]
 	}
 
+	/// What New Session had when its start failed, put back when it reopens.
+	var failedStart: NewSessionStart?
+
+	/// Back to New Session with what was typed, unless the user already left `sessionId`'s chat.
+	func returnToNewSession(_ start: NewSessionStart, from sessionId: String) {
+		guard workPath == [.session(sessionId)] else { return }
+		failedStart = start
+		var transaction = Transaction()
+		transaction.disablesAnimations = true
+		withTransaction(transaction) { workPath = [.newSession] }
+	}
+
 	/// Swaps New Session for the chat it just started, so Back goes to the list.
 	func openSession(_ sessionId: String) {
 		var transaction = Transaction()

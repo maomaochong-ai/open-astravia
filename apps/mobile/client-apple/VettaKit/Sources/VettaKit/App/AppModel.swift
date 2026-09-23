@@ -71,6 +71,9 @@ public final class AppModel {
 	/// Models a new session may start with; see `loadNewSessionModels`.
 	public private(set) var newSessionModels: [RemoteModelOption] = []
 	public private(set) var transcripts: [String: TranscriptState] = [:]
+	/// Sessions opened by `startSession`: the local id the chat opened on → the desktop's id.
+	public private(set) var startedSessions: [String: String] = [:]
+	public private(set) var startingSessions: Set<String> = []
 	public private(set) var preferences: Preferences = .defaults
 	public private(set) var pairing: PairingPhase = .idle
 	public var lastError: String?
@@ -424,47 +427,107 @@ public final class AppModel {
 		let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
 		guard !trimmed.isEmpty else { return nil }
 		do {
-			let manager = try requireManager()
 			var target = sessionId
 			if target == nil {
-				let payload: JSONValue? = projectCwd.map { ["projectCwd": .string($0)] }
-				let created = try await manager.request(.sessionCreate, payload: payload)
-				guard let session = RemoteAPI.readSessionSummary(created?["session"]) else {
-					throw RemoteRequestError("session.create returned no session")
-				}
-				target = session.id
-				sessions = [session] + sessions.filter { $0.id != session.id }
-				dispatch(session.id, .history(entries: [], state: RemoteSessionState(status: .idle)))
+				let created = try await createSession(projectCwd: projectCwd)
 				// A failed switch is reported; the prompt still goes out on the default model.
-				if let modelKey { await configure(session.id, modelKey: modelKey) }
+				if let modelKey { await configure(created, modelKey: modelKey) }
+				target = created
 			}
 			guard let target else { return sessionId }
-			var uploadIds: [JSONValue] = []
-			for attachment in attachments {
-				let uploaded = try await manager.request(.sessionUpload, payload: attachment.json, sessionId: target)
-				guard let uploadId = uploaded?["uploadId"]?.stringValue else {
-					throw RemoteRequestError("session.upload returned no uploadId")
-				}
-				uploadIds.append(.string(uploadId))
-			}
-			let now = WallClock.nowMs()
-			dispatch(target, .localUser(text: trimmed, at: now, attachments: attachments.map { TranscriptAttachment(kind: $0.kind, name: $0.name) }))
-			dispatch(target, .state(RemoteSessionState(status: .running)))
-			let title = currentTitle(target, fallback: trimmed)
-			patchSession(target) {
-				$0.status = .running
-				$0.preview = trimmed
-				$0.updatedAt = now
-				$0.title = title
-			}
-			var payload: [String: JSONValue] = ["text": .string(trimmed)]
-			if !uploadIds.isEmpty { payload["attachments"] = .array(uploadIds) }
-			_ = try await manager.request(.sessionPrompt, payload: .object(payload), sessionId: target)
+			try await deliver(target, trimmed, attachments: attachments, echo: true)
 			return target
 		} catch {
 			reportError(error)
 			return nil
 		}
+	}
+
+	/// Starts a session without waiting on the desktop. The chat opens on the
+	/// returned local id with the prompt already in it, while the session is
+	/// created, switched to `modelKey` and sent the attachments and the prompt in
+	/// the background; `resolve` then maps the local id to the desktop's.
+	/// `onFailure` runs when the prompt did not go out. Nil when there is no text.
+	public func startSession(
+		_ text: String,
+		projectCwd: String? = nil,
+		modelKey: String? = nil,
+		attachments: [PromptAttachment] = [],
+		onFailure: @escaping @MainActor () -> Void = {}
+	) -> String? {
+		let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+		guard !trimmed.isEmpty else { return nil }
+		let localId = "local-session-\(UUID().uuidString)"
+		// Assigned rather than dispatched: a local id has nothing to cache.
+		var transcript = TranscriptReducer.reduce(.empty, .history(entries: [], state: RemoteSessionState(status: .running)))
+		transcript = TranscriptReducer.reduce(transcript, .localUser(
+			text: trimmed,
+			at: WallClock.nowMs(),
+			attachments: attachments.map { TranscriptAttachment(kind: $0.kind, name: $0.name) }
+		))
+		transcripts[localId] = transcript
+		startingSessions.insert(localId)
+		Task {
+			defer { startingSessions.remove(localId) }
+			do {
+				let target = try await createSession(projectCwd: projectCwd)
+				// Hand the chat over before anything is sent, so the desktop's events land in it.
+				transcripts[target] = transcripts.removeValue(forKey: localId)
+				startedSessions[localId] = target
+				if let modelKey { await configure(target, modelKey: modelKey) }
+				try await deliver(target, trimmed, attachments: attachments, echo: false)
+			} catch {
+				transcripts[localId] = nil
+				reportError(error)
+				onFailure()
+			}
+		}
+		return localId
+	}
+
+	/// The desktop's id for a session started with `startSession`, or `sessionId` itself.
+	public func resolve(_ sessionId: String) -> String { startedSessions[sessionId] ?? sessionId }
+
+	/// Whether the first prompt of a session started with `startSession` is still on its way.
+	public func isStarting(_ sessionId: String) -> Bool { startingSessions.contains(sessionId) }
+
+	private func createSession(projectCwd: String?) async throws -> String {
+		let payload: JSONValue? = projectCwd.map { ["projectCwd": .string($0)] }
+		let created = try await requireManager().request(.sessionCreate, payload: payload)
+		guard let session = RemoteAPI.readSessionSummary(created?["session"]) else {
+			throw RemoteRequestError("session.create returned no session")
+		}
+		sessions = [session] + sessions.filter { $0.id != session.id }
+		dispatch(session.id, .history(entries: [], state: RemoteSessionState(status: .idle)))
+		return session.id
+	}
+
+	/// Uploads the attachments, then sends the prompt; `echo` shows it in the chat first.
+	private func deliver(_ target: String, _ text: String, attachments: [PromptAttachment], echo: Bool) async throws {
+		let manager = try requireManager()
+		var uploadIds: [JSONValue] = []
+		for attachment in attachments {
+			let uploaded = try await manager.request(.sessionUpload, payload: attachment.json, sessionId: target)
+			guard let uploadId = uploaded?["uploadId"]?.stringValue else {
+				throw RemoteRequestError("session.upload returned no uploadId")
+			}
+			uploadIds.append(.string(uploadId))
+		}
+		let now = WallClock.nowMs()
+		if echo {
+			dispatch(target, .localUser(text: text, at: now, attachments: attachments.map { TranscriptAttachment(kind: $0.kind, name: $0.name) }))
+		}
+		dispatch(target, .state(RemoteSessionState(status: .running)))
+		let title = currentTitle(target, fallback: text)
+		patchSession(target) {
+			$0.status = .running
+			$0.preview = text
+			$0.updatedAt = now
+			$0.title = title
+		}
+		var payload: [String: JSONValue] = ["text": .string(text)]
+		if !uploadIds.isEmpty { payload["attachments"] = .array(uploadIds) }
+		_ = try await manager.request(.sessionPrompt, payload: .object(payload), sessionId: target)
 	}
 
 	public func respond(_ sessionId: String, requestId: String, answers: [RemoteQuestionAnswer], cancelled: Bool = false) async {

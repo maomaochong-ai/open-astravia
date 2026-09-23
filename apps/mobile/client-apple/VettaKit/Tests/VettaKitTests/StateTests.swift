@@ -456,6 +456,48 @@ import Testing
 		#expect(model.transcript("s2").sessionState.modelKey == "zai/glm-5")
 	}
 
+	@Test func startsASessionAtOnceAndHandsTheChatOverToTheDesktopsId() async throws {
+		let log = RequestLog()
+		let desktop = scriptedDesktop(recording: log)
+		let model = AppModel(platform: .memory(createTransport: desktop.createTransport))
+		model.start()
+		let invite = PairingURI.build(RemotePairingInvite(pairingId: "pair-1234567890abcdef", mobileSecret: "secret-1234567890abcdef", desktopIdentityKey: desktop.identityKey, desktopName: "MacBook Pro", lanEndpoints: ["192.168.1.20:43117"]))
+		#expect(await model.pairWithCode(invite))
+		#expect(await eventually { model.sessions.map(\.id) == ["s1"] })
+
+		var failed = false
+		let photo = PromptAttachment(kind: .image, name: "photo-1.jpg", mimeType: "image/jpeg", data: Data([1]))
+		let localId = try #require(model.startSession("你好", modelKey: "zai/glm-5", attachments: [photo]) { failed = true })
+		// Nothing has reached the desktop yet, and the chat already shows the prompt.
+		#expect(model.isStarting(localId))
+		#expect(model.resolve(localId) == localId)
+		#expect(model.transcript(localId).items.count == 1)
+		#expect(model.transcript(localId).sessionState.status == .running)
+
+		#expect(await eventually { !model.isStarting(localId) })
+		#expect(!failed)
+		#expect(model.resolve(localId) == "s2")
+		#expect(model.transcripts[localId] == nil)
+		let order = log.entries.map(\.method).filter { [.sessionCreate, .sessionConfigure, .sessionUpload, .sessionPrompt].contains($0) }
+		#expect(order == [.sessionCreate, .sessionConfigure, .sessionUpload, .sessionPrompt])
+		#expect(await eventually {
+			model.transcript("s2").items.filter { if case .user = $0 { true } else { false } }.count == 1
+		}, "the prompt shows once, not again when the desktop echoes it")
+		#expect(model.startSession("   ") == nil)
+	}
+
+	@Test func aStartThatCannotReachTheDesktopReportsBack() async throws {
+		let desktop = scriptedDesktop()
+		let model = AppModel(platform: .memory(createTransport: desktop.createTransport))
+		model.start()
+		var failed = false
+		let localId = try #require(model.startSession("你好") { failed = true })
+		#expect(await eventually { failed })
+		#expect(!model.isStarting(localId))
+		#expect(model.transcripts[localId] == nil)
+		#expect(model.lastError != nil)
+	}
+
 	@Test func reportsOfflineInsteadOfSendingAndHonoursLiveThinking() async {
 		let desktop = scriptedDesktop()
 		let model = AppModel(platform: .memory(createTransport: desktop.createTransport))

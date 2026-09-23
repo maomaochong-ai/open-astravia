@@ -18,7 +18,11 @@ struct SessionView: View {
 	@Environment(AppModel.self) private var model
 	@State private var draft = PromptDraft()
 
-	private var transcript: TranscriptState { model.transcript(sessionId) }
+	/// The desktop's id; a chat opened by New Session starts on a local one.
+	private var id: String { model.resolve(sessionId) }
+	/// The first prompt of a new session is still on its way to the desktop.
+	private var starting: Bool { model.isStarting(sessionId) }
+	private var transcript: TranscriptState { model.transcript(id) }
 
 	private var rows: [ChatRow] {
 		var rows: [ChatRow] = []
@@ -45,7 +49,7 @@ struct SessionView: View {
 						rowView(row)
 					}
 					if rows.isEmpty {
-						Text(transcript.loaded ? (model.session(sessionId)?.title ?? "") : L10n.Chat.loadingHistory)
+						Text(transcript.loaded ? (model.session(id)?.title ?? "") : L10n.Chat.loadingHistory)
 							.font(.system(size: 13))
 							.foregroundStyle(Theme.dim)
 							.frame(maxWidth: .infinity)
@@ -72,21 +76,21 @@ struct SessionView: View {
 			if let request = transcript.pendingQuestion {
 				QuestionPanel(
 					request: request,
-					onSubmit: { answers in Task { await model.respond(sessionId, requestId: request.requestId, answers: answers) } },
-					onCancel: { Task { await model.respond(sessionId, requestId: request.requestId, answers: [], cancelled: true) } }
+					onSubmit: { answers in Task { await model.respond(id, requestId: request.requestId, answers: answers) } },
+					onCancel: { Task { await model.respond(id, requestId: request.requestId, answers: [], cancelled: true) } }
 				)
 				.id(request.requestId)
 			} else {
 				ChatInputBar(
 					draft: $draft,
 					placeholder: L10n.Chat.composerPlaceholder,
-					disabled: !model.online,
+					disabled: !model.online || starting,
 					busy: active,
-					onStop: { Task { await model.abort(sessionId) } },
+					onStop: { if !starting { Task { await model.abort(id) } } },
 					onSend: { sent in
 						Task {
 							// Keep what was typed so a failed send is not lost.
-							if await model.sendPrompt(sessionId, sent.text, attachments: sent.attachments) == nil { draft = sent }
+							if await model.sendPrompt(id, sent.text, attachments: sent.attachments) == nil { draft = sent }
 						}
 					}
 				)
@@ -98,18 +102,21 @@ struct SessionView: View {
 		.toolbar(.hidden, for: .tabBar)
 		.toolbar {
 			ToolbarItem(placement: .principal) {
-				ModelMenu(sessionId: sessionId, busy: active)
+				ModelMenu(sessionId: id, busy: active || starting)
 			}
 			ToolbarItem(placement: .topBarTrailing) {
-				Button { Task { await model.resync(sessionId) } } label: {
+				Button { Task { await model.resync(id) } } label: {
 					Image(systemName: "arrow.counterclockwise")
 				}
+				.disabled(starting)
 				.accessibilityLabel(L10n.Chat.resync)
 			}
 		}
-		.task(id: sessionId) {
-			await model.openSession(sessionId)
-			await model.loadModels(sessionId)
+		// A new session's history is fetched once its prompt is out; earlier, it would replace the prompt.
+		.task(id: "\(id) \(starting)") {
+			guard !starting else { return }
+			await model.openSession(id)
+			await model.loadModels(id)
 		}
 	}
 
@@ -187,7 +194,12 @@ private struct ModelMenu: View {
 	}
 
 	private var title: String {
-		let title = model.session(sessionId)?.title.trimmingCharacters(in: .whitespaces) ?? ""
+		guard let session = model.session(sessionId) else {
+			// A session New Session is still starting is titled by its prompt.
+			if case let .user(_, text, _, _)? = model.transcript(sessionId).items.first { return text }
+			return L10n.Home.untitled
+		}
+		let title = session.title.trimmingCharacters(in: .whitespaces)
 		return title.isEmpty ? L10n.Home.untitled : title
 	}
 
