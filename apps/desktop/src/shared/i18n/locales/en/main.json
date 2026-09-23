@@ -102,5 +102,8 @@
 	},
 	"terminal": {
 		"remoteOutputDropped": "[remote output too fast; {{bytes}} bytes omitted]"
+	},
+	"markdown": {
+		"previewTitle": "HTML preview · closes after 30 seconds"
 	}
 }

@@ -102,5 +102,8 @@
 	},
 	"terminal": {
 		"remoteOutputDropped": "[远端输出过快，已省略 {{bytes}} 字节]"
+	},
+	"markdown": {
+		"previewTitle": "HTML 预览 · 30 秒后自动关闭"
 	}
 }

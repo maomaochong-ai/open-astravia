@@ -1,17 +1,51 @@
 {
+	"annotations": {
+		"title": "问答批注",
+		"ask": "问问 AI",
+		"history": "查看问答批注",
+		"messageMenu": "消息更多操作",
+		"saved": "查看 {{count}} 条问答批注",
+		"close": "关闭批注",
+		"contextHint": "参考截至此处的文字对话，单独讨论，不影响主对话。问答自动保存。",
+		"source": "回到原消息",
+		"sourceUnavailable": "原消息不在当前分支中，仍可查看已保存的批注。",
+		"question": "你的问题",
+		"send": "提问",
+		"cancel": "停止回答",
+		"answering": "正在回答…关闭面板后仍会继续并保存。",
+		"loading": "正在读取批注…",
+		"search": "搜索批注中的问题和回答",
+		"empty": "没有找到问答批注。可选中消息文字，右键选择「问问 AI」。",
+		"error": "操作未完成，输入仍保留。请重试，或检查模型设置后重新提问。",
+		"reload": "重新读取",
+		"retry": "重新回答这个问题",
+		"length": "回答已达到本次长度上限，可以继续追问。",
+		"status": {
+			"failed": "回答失败，问题和已收到的内容已保存。可检查模型设置后重试。",
+			"cancelled": "回答已停止，已收到的内容已保存。",
+			"interrupted": "上次回答被中断，可以重新回答这个问题。"
+		}
+	},
 	"markdown": {
 		"preview": "预览",
 		"source": "源码",
-		"run": "运行 JavaScript",
+		"run": "在独立窗口运行",
 		"stop": "停止",
 		"waiting": "生成完成后显示预览。",
 		"paused": "预览已停止，重新运行将从头加载页面。",
 		"tooLarge": "内容过大，暂不生成预览。仍可查看和复制源码。",
 		"failed": "无法渲染此内容，已保留源码。",
-		"staticHtml": "当前为静态预览。运行 JavaScript 可启用交互；外部资源不可用。",
-		"running": "交互预览运行中，30 秒后自动停止。",
+		"staticHtml": "静态预览。可在独立窗口运行 JavaScript；外部资源不可用。",
+		"running": "已打开独立交互预览，30 秒后自动关闭。",
 		"svg": "SVG 预览",
-		"html": "HTML 预览"
+		"html": "HTML 预览",
+		"loading": "正在生成预览…",
+		"retry": "重试",
+		"enlarge": "放大",
+		"save": "另存为",
+		"diagram": "图表",
+		"imageFailed": "图片加载失败。",
+		"actionFailed": "操作失败，请重试。"
 	},
 	"activityPanel": {
 		"tabs": {

@@ -17,6 +17,7 @@ import {
 import { CopyButton } from "./MessageActions";
 import { projectUserMessage } from "./userMessageProjection";
 import { UserMessage } from "./UserMessage";
+import { AnnotationMessageMenu } from "../annotations/AnnotationMenus";
 
 export interface SessionUserMessageProps {
 	message: ConversationUserMessageViewModel;
@@ -90,7 +91,7 @@ export function SessionUserMessage({
 				{hasActions ? (
 					<MessageLayout.Footer asChild>
 						<div
-							className={`flex-col items-end gap-0.5 transition-opacity duration-150 ${actionsVisible || edit.pending || history.canSwitch ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"}`}
+							className={`flex-col items-end gap-0.5 transition-opacity duration-150 focus-within:pointer-events-auto focus-within:opacity-100 ${actionsVisible || edit.pending || history.canSwitch ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"}`}
 						>
 							{hasPrimaryActions ? (
 								<div className="flex h-6 items-center justify-end gap-1 whitespace-nowrap">
@@ -105,15 +106,12 @@ export function SessionUserMessage({
 										</UserMessagePrimitive.Action>
 									) : null}
 									{history.forkAvailable ? (
-										<UserMessagePrimitive.Action
-											onClick={history.onFork}
-											title={labels.fork}
-											aria-label={labels.fork}
-										>
+										<UserMessagePrimitive.Action onClick={history.onFork} title={labels.fork} aria-label={labels.fork}>
 											<span className="icon-[solar--branching-paths-up-linear] h-3.5 w-3.5" />
 										</UserMessagePrimitive.Action>
 									) : null}
 									{canCopy ? <CopyButton getText={() => projection.copyText} onCopy={copyMessage} /> : null}
+									<AnnotationMessageMenu message={message} />
 								</div>
 							) : null}
 							{hasMeta ? (
