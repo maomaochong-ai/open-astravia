@@ -73,6 +73,16 @@ struct RootView: View {
 		.onChange(of: model.paired) { _, paired in
 			if !paired { router.workPath.removeAll() }
 		}
+		#if DEBUG
+		// Screenshots of a chat without driving the UI: `-VettaOpenSession <id>` opens it once paired.
+		.task(id: model.sessionsLoaded) {
+			let arguments = ProcessInfo.processInfo.arguments
+			guard model.sessionsLoaded, router.workPath.isEmpty,
+			      let index = arguments.firstIndex(of: "-VettaOpenSession"), index + 1 < arguments.count
+			else { return }
+			router.openSession(arguments[index + 1])
+		}
+		#endif
 		.onOpenURL { url in
 			guard url.scheme == PairingURI.scheme, url.host == PairingURI.host else { return }
 			Task {
