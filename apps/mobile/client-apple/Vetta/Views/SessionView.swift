@@ -139,40 +139,19 @@ struct SessionView: View {
 }
 
 /// The chat's title: what the session is about, with the model and thinking
-/// level underneath. Tapping it switches either one on the desktop.
+/// level underneath. Tapping it opens the model sheet, which switches either
+/// one on the desktop.
 private struct ModelMenu: View {
 	let sessionId: String
 	var busy: Bool
 	@Environment(AppModel.self) private var model
+	@State private var picking = false
 
 	var body: some View {
 		let state = model.transcript(sessionId).sessionState
 		let options = model.models[sessionId] ?? []
 		let current = options.first { $0.key == state.modelKey }
-		Menu {
-			if !options.isEmpty {
-				Picker(L10n.Chat.model, selection: Binding(
-					get: { state.modelKey ?? "" },
-					set: { key in Task { await model.configure(sessionId, modelKey: key) } }
-				)) {
-					ForEach(options) { option in
-						Text(option.name).tag(option.key)
-					}
-				}
-				.pickerStyle(.inline)
-			}
-			if let levels = current?.thinkingLevels, !levels.isEmpty {
-				Picker(L10n.Chat.thinkingLevel, selection: Binding(
-					get: { state.thinkingLevel ?? "" },
-					set: { level in Task { await model.configure(sessionId, thinkingLevel: level) } }
-				)) {
-					ForEach(levels, id: \.self) { level in
-						Text(L10n.Chat.level(level)).tag(level)
-					}
-				}
-				.pickerStyle(.inline)
-			}
-		} label: {
+		Button { picking = true } label: {
 			VStack(spacing: 1) {
 				Text(title).font(.headline).lineLimit(1)
 				HStack(spacing: 4) {
@@ -191,6 +170,20 @@ private struct ModelMenu: View {
 		// Switching mid-turn would change the model under a running reply.
 		.disabled(options.isEmpty || busy || !model.online)
 		.accessibilityIdentifier("chat.modelMenu")
+		.sheet(isPresented: $picking) {
+			ModelSheet(options: options, choice: ModelChoice(modelKey: state.modelKey, thinkingLevel: state.thinkingLevel)) { next in
+				apply(next, over: state)
+			}
+		}
+	}
+
+	/// Sends what changed. A new model is sent with the level the sheet kept for it,
+	/// so the desktop does not fall back to that model's default under the sheet.
+	private func apply(_ next: ModelChoice, over state: RemoteSessionState) {
+		let modelChanged = next.modelKey != state.modelKey
+		let modelKey = modelChanged ? next.modelKey : nil
+		let level = modelChanged || next.thinkingLevel != state.thinkingLevel ? next.thinkingLevel : nil
+		Task { await model.configure(sessionId, modelKey: modelKey, thinkingLevel: level) }
 	}
 
 	private var title: String {

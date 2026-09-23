@@ -7,8 +7,9 @@ struct NewSessionView: View {
 	@Environment(Router.self) private var router
 	/// `nil` starts in the desktop's conversations.
 	@State private var projectCwd: String?
-	/// `nil` keeps the desktop's default model.
-	@State private var modelKey: String?
+	/// Empty keeps the desktop's default model and thinking level.
+	@State private var modelChoice = ModelChoice()
+	@State private var pickingModel = false
 	@State private var draft = PromptDraft()
 
 	private var projects: [RemoteProjectSummary] { model.projects.filter { !$0.isConversation } }
@@ -24,7 +25,7 @@ struct NewSessionView: View {
 			router.failedStart = nil
 			draft = start.draft
 			projectCwd = start.projectCwd
-			modelKey = start.modelKey
+			modelChoice = start.modelChoice
 		}
 		.task(id: model.online) {
 			guard model.online else { return }
@@ -68,22 +69,20 @@ struct NewSessionView: View {
 
 	private var modelMenu: some View {
 		let options = model.newSessionModels
-		let current = options.first { $0.key == modelKey }
-		return Menu {
-			Picker(L10n.Chat.model, selection: $modelKey) {
-				Text(L10n.NewSession.defaultModel).tag(String?.none)
-				ForEach(options) { option in
-					Text(option.name).tag(Optional(option.key))
-				}
-			}
-		} label: {
-			MenuChip(symbol: "cpu", text: current?.name ?? L10n.NewSession.defaultModel)
+		let name = options.first { $0.key == modelChoice.modelKey }?.name ?? L10n.NewSession.defaultModel
+		let text = modelChoice.thinkingLevel.map { "\(name) · \(L10n.Chat.level($0))" } ?? name
+		return Button { pickingModel = true } label: {
+			MenuChip(symbol: "cpu", text: text)
 		}
 		.buttonStyle(.glass)
-		.disabled(!model.online || options.isEmpty)
+		// A kept list can still be browsed offline; the sheet waits for one that is on its way.
+		.disabled(!model.online && options.isEmpty)
 		.accessibilityLabel(L10n.Chat.model)
-		.accessibilityValue(current?.name ?? L10n.NewSession.defaultModel)
+		.accessibilityValue(text)
 		.accessibilityIdentifier("newSession.model")
+		.sheet(isPresented: $pickingModel) {
+			ModelSheet(options: options, choice: modelChoice, offersDefault: true) { modelChoice = $0 }
+		}
 	}
 
 	private var locationMenu: some View {
@@ -110,11 +109,16 @@ struct NewSessionView: View {
 
 	/// Opens the chat at once; the desktop creates the session behind it.
 	private func send(_ sent: PromptDraft) {
-		let start = NewSessionStart(draft: sent, projectCwd: projectCwd, modelKey: modelKey)
+		let start = NewSessionStart(draft: sent, projectCwd: projectCwd, modelChoice: modelChoice)
 		var localId = ""
-		guard let id = model.startSession(sent.text, projectCwd: projectCwd, modelKey: modelKey, attachments: sent.attachments, onFailure: { [router] in
-			router.returnToNewSession(start, from: localId)
-		}) else { return }
+		guard let id = model.startSession(
+			sent.text,
+			projectCwd: projectCwd,
+			modelKey: modelChoice.modelKey,
+			thinkingLevel: modelChoice.thinkingLevel,
+			attachments: sent.attachments,
+			onFailure: { [router] in router.returnToNewSession(start, from: localId) }
+		) else { return }
 		localId = id
 		router.openSession(id)
 	}
@@ -124,7 +128,7 @@ struct NewSessionView: View {
 struct NewSessionStart {
 	var draft: PromptDraft
 	var projectCwd: String?
-	var modelKey: String?
+	var modelChoice: ModelChoice
 }
 
 /// A picker's label on New Session: icon, current choice, chevron.

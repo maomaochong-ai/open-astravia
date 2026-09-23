@@ -523,6 +523,23 @@
         }
       }
     },
+    "chat.modelsLoading": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading models…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在读取模型…"
+          }
+        }
+      }
+    },
     "chat.questionMultiHint": {
       "extractionState": "manual",
       "localizations": {
@@ -1036,6 +1053,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "%lld天前"
+          }
+        }
+      }
+    },
+    "common.done": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Done"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "完成"
           }
         }
       }
@@ -1837,6 +1871,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "默认模型"
+          }
+        }
+      }
+    },
+    "newSession.defaultModelHint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Whatever the desktop uses by default"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "跟随电脑上的默认模型"
           }
         }
       }

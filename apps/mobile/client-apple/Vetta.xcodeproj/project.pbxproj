@@ -18,6 +18,7 @@
 		572D00AEA0B23590C52BE28A /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A611A3DDE7F1EC89CAD12F7F /* SettingsView.swift */; };
 		5A35CD748B1B06EF47F0A3F2 /* VettaKit in Frameworks */ = {isa = PBXBuildFile; productRef = 96AFB1AF04EBBFA603F4F91B /* VettaKit */; };
 		8CB51BACBD63840B98FE330F /* QuestionPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1571266B7208052D80E40A95 /* QuestionPanel.swift */; };
+		97373277B2BCFF1BA7983CE2 /* ModelSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0D2A6C73F7E73DC53077670 /* ModelSheet.swift */; };
 		97E3DC8E241B2B6E710580AC /* PairView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5FE60E74C2993F10053947E /* PairView.swift */; };
 		99925AFD6476F200F1186F5D /* NewSessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14FB7C60CF7BBB386D64B42C /* NewSessionView.swift */; };
 		9DCE8FDC840EEA9E47EB30E9 /* WorkView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E04996995A41DB38DEA90AA /* WorkView.swift */; };
@@ -65,6 +66,7 @@
 		CC87D827140BB66CD638FD48 /* Vetta.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Vetta.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E33BB88AA6F56D2A00716432 /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
 		E7F30E48D0595CE66EF6B8A3 /* MarkdownView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownView.swift; sourceTree = "<group>"; };
+		F0D2A6C73F7E73DC53077670 /* ModelSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelSheet.swift; sourceTree = "<group>"; };
 		FCD68BBF1201238A0B705D2E /* AttachmentSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttachmentSheet.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -176,6 +178,7 @@
 				4AC44E052FBB4B681994D40B /* ChatViews.swift */,
 				0CAE0C2229A7C06685973CFD /* Common.swift */,
 				E7F30E48D0595CE66EF6B8A3 /* MarkdownView.swift */,
+				F0D2A6C73F7E73DC53077670 /* ModelSheet.swift */,
 				1571266B7208052D80E40A95 /* QuestionPanel.swift */,
 			);
 			path = Components;
@@ -305,6 +308,7 @@
 				3CBF8329E208C7686DE10D15 /* Common.swift in Sources */,
 				BF4B6DCEF9D362F781317F6E /* KeychainStore.swift in Sources */,
 				1751F6BEC22BE28DE42676E2 /* MarkdownView.swift in Sources */,
+				97373277B2BCFF1BA7983CE2 /* ModelSheet.swift in Sources */,
 				99925AFD6476F200F1186F5D /* NewSessionView.swift in Sources */,
 				97E3DC8E241B2B6E710580AC /* PairView.swift in Sources */,
 				EEEE28142A335ED424B968FA /* QRScannerView.swift in Sources */,

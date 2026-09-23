@@ -455,10 +455,10 @@ public final class AppModel {
 
 	/// Sends a prompt; with no session a new one is created first, in `projectCwd`
 	/// or, without one, in the desktop's conversations. Attachments are uploaded one
-	/// per request first. `modelKey` switches a newly created session before the prompt.
+	/// per request first. `modelKey` and `thinkingLevel` configure a newly created session before the prompt.
 	/// Returns the session that received it, or nil when nothing was sent.
 	@discardableResult
-	public func sendPrompt(_ sessionId: String?, _ text: String, projectCwd: String? = nil, modelKey: String? = nil, attachments: [PromptAttachment] = []) async -> String? {
+	public func sendPrompt(_ sessionId: String?, _ text: String, projectCwd: String? = nil, modelKey: String? = nil, thinkingLevel: String? = nil, attachments: [PromptAttachment] = []) async -> String? {
 		let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
 		guard !trimmed.isEmpty else { return nil }
 		do {
@@ -466,7 +466,7 @@ public final class AppModel {
 			if target == nil {
 				let created = try await createSession(projectCwd: projectCwd)
 				// A failed switch is reported; the prompt still goes out on the default model.
-				if let modelKey { await configure(created, modelKey: modelKey) }
+				await configure(created, modelKey: modelKey, thinkingLevel: thinkingLevel)
 				target = created
 			}
 			guard let target else { return sessionId }
@@ -480,13 +480,14 @@ public final class AppModel {
 
 	/// Starts a session without waiting on the desktop. The chat opens on the
 	/// returned local id with the prompt already in it, while the session is
-	/// created, switched to `modelKey` and sent the attachments and the prompt in
+	/// created, switched to `modelKey` and `thinkingLevel` and sent the attachments and the prompt in
 	/// the background; `resolve` then maps the local id to the desktop's.
 	/// `onFailure` runs when the prompt did not go out. Nil when there is no text.
 	public func startSession(
 		_ text: String,
 		projectCwd: String? = nil,
 		modelKey: String? = nil,
+		thinkingLevel: String? = nil,
 		attachments: [PromptAttachment] = [],
 		onFailure: @escaping @MainActor () -> Void = {}
 	) -> String? {
@@ -509,7 +510,7 @@ public final class AppModel {
 				// Hand the chat over before anything is sent, so the desktop's events land in it.
 				transcripts[target] = transcripts.removeValue(forKey: localId)
 				startedSessions[localId] = target
-				if let modelKey { await configure(target, modelKey: modelKey) }
+				await configure(target, modelKey: modelKey, thinkingLevel: thinkingLevel)
 				try await deliver(target, trimmed, attachments: attachments, echo: false)
 			} catch {
 				transcripts[localId] = nil

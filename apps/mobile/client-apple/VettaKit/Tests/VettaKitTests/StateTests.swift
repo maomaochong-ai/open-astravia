@@ -449,11 +449,15 @@ import Testing
 		#expect(model.newSessionModels.map(\.key) == ["anthropic/claude-fable-5-1", "zai/glm-5"])
 		#expect(log.entries.last { $0.method == .modelList }?.sessionId == "s1", "borrowed from the most recent session")
 
-		#expect(await model.sendPrompt(nil, "你好", modelKey: "zai/glm-5") == "s2")
+		#expect(await model.sendPrompt(nil, "你好", modelKey: "zai/glm-5", thinkingLevel: "max") == "s2")
 		let order = log.entries.map(\.method).filter { [.sessionCreate, .sessionConfigure, .sessionPrompt].contains($0) }
-		#expect(order == [.sessionCreate, .sessionConfigure, .sessionPrompt])
+		#expect(order == [.sessionCreate, .sessionConfigure, .sessionPrompt], "model and level go out in one configure")
 		#expect(log.entries.first { $0.method == .sessionConfigure }?.sessionId == "s2")
 		#expect(model.transcript("s2").sessionState.modelKey == "zai/glm-5")
+		#expect(model.transcript("s2").sessionState.thinkingLevel == "max")
+
+		#expect(await model.sendPrompt(nil, "再来", projectCwd: "/code/vetta") != nil)
+		#expect(log.entries.count { $0.method == .sessionConfigure } == 1, "no choice leaves the desktop's defaults untouched")
 	}
 
 	@Test func readiesNewSessionModelsFromAnOpenSessionAndKeepsThemAcrossLaunches() async throws {

@@ -24,6 +24,7 @@ public enum L10n {
 		public static var close: String { tr("common.close") }
 		public static var cancel: String { tr("common.cancel") }
 		public static var confirm: String { tr("common.confirm") }
+		public static var done: String { tr("common.done") }
 		public static var retry: String { tr("common.retry") }
 		public static var offline: String { tr("common.offline") }
 		public static var connecting: String { tr("common.connecting") }
@@ -95,6 +96,7 @@ public enum L10n {
 		public static var greeting: String { tr("newSession.greeting") }
 		public static var subtitle: String { tr("newSession.subtitle") }
 		public static var defaultModel: String { tr("newSession.defaultModel") }
+		public static var defaultModelHint: String { tr("newSession.defaultModelHint") }
 		public static var offline: String { tr("newSession.offline") }
 		public static var location: String { tr("newSession.location") }
 	}
@@ -145,6 +147,7 @@ public enum L10n {
 		public static func attachTooMany(_ n: Int) -> String { tr("chat.attachTooMany \(n)") }
 		public static func removeAttachment(_ name: String) -> String { tr("chat.removeAttachment \(name)") }
 		public static var model: String { tr("chat.model") }
+		public static var modelsLoading: String { tr("chat.modelsLoading") }
 		public static var thinkingLevel: String { tr("chat.thinkingLevel") }
 
 		/// Known provider effort values get a name; anything else shows as the desktop sent it.
