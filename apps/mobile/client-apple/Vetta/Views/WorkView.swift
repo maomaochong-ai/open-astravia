@@ -63,6 +63,8 @@ struct WorkView: View {
 					SessionRow(session: session, conversationCwd: model.conversationCwd)
 				}
 				.accessibilityIdentifier("session.\(session.id)")
+				// Rows are told apart by spacing alone, no hairlines between them.
+				.listRowSeparator(.hidden)
 			}
 		}
 		.listStyle(.plain)
@@ -236,7 +238,6 @@ private struct SessionRow: View {
 			}
 			.padding(.top, 2)
 		}
-		.padding(.vertical, 4)
-		.alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
+		.padding(.vertical, 10)
 	}
 }
