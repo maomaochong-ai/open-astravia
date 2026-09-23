@@ -46,7 +46,7 @@ struct ChatInputBar: View {
 			HStack(alignment: .bottom, spacing: 8) {
 				// Plain glass circle at the field's height: .buttonStyle(.glass) pads it larger.
 				Button { attaching = true } label: {
-					Image(systemName: "paperclip")
+					Image(systemName: "command")
 						.font(.system(size: 19, weight: .medium))
 						.foregroundStyle(disabled ? .tertiary : .primary)
 						.frame(width: Self.barHeight, height: Self.barHeight)
@@ -63,7 +63,9 @@ struct ChatInputBar: View {
 			// The glow takes over the bottom while listening; the bar fades out under it.
 			.opacity(dictation.listening ? 0.15 : 1)
 		}
-		.padding(.bottom, 8)
+		// Sits low over the home indicator; with the keyboard up it keeps a small gap above it.
+		.padding(.bottom, focused ? 8 : -10)
+		.animation(.snappy, value: focused)
 		.overlay(alignment: .bottom) {
 			if dictation.listening {
 				DictationGlow(transcript: dictation.transcript, level: dictation.level, cancelArmed: cancelArmed)
