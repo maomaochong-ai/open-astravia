@@ -152,6 +152,9 @@ async function streamReply(deviceId: string, sessionId: string, text: string, no
 	emitAll(deviceId, "session.input", { kind: "question", request }, sessionId);
 	if (session) session.status = "waiting_input";
 	emitAll(deviceId, "session.state", { status: "waiting_input", ...modelState(sessionId), pendingQuestion: request }, sessionId);
+	// Like an older desktop: the turn goes on reporting usage as plain "running" while it waits.
+	await delay(40);
+	emitAll(deviceId, "session.state", { status: "running", contextPercent: 40, ...modelState(sessionId) }, sessionId);
 }
 
 function handleRequest(deviceId: string, connection: Connection, request: { requestId: string; method: string; sessionId?: string; payload?: any }): void {

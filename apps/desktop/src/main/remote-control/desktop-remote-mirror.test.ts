@@ -316,6 +316,15 @@ describe("DesktopRemoteMirror", () => {
 		expect(emitted.map((event) => event.name)).toEqual(["session.input", "session.state"]);
 		expect(emitted[1]?.payload).toMatchObject({ status: "waiting_input", pendingQuestion: { requestId: "q1" } });
 
+		// The turn keeps reporting usage while it waits; that must not tell the phone the question is gone.
+		runtime.emit("rt-work", { type: "usage.update", contextPercent: 40 } as never);
+		await flush();
+		expect(emitted[2]).toMatchObject({
+			name: "session.state",
+			payload: { status: "waiting_input", contextPercent: 40, pendingQuestion: { requestId: "q1" } },
+		});
+		emitted.splice(2);
+
 		await request(
 			"session.respond",
 			{ requestId: "q1", cancelled: false, answers: [{ question: "覆盖旧文件？", answers: ["是"] }] },
@@ -333,6 +342,7 @@ describe("DesktopRemoteMirror", () => {
 			"session.state",
 		]);
 		expect(emitted[2]?.payload).toEqual({ kind: "resolved", requestId: "q1" });
+		expect(emitted[3]?.payload).not.toHaveProperty("pendingQuestion");
 
 		await request("session.abort", undefined, key);
 		expect(runtime.aborted).toEqual(["rt-work"]);

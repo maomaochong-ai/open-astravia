@@ -275,10 +275,11 @@ public final class AppModel {
 			if let key = desktopKey { platform.cache.saveSessions(key, list) }
 		case .sessionState:
 			guard let sessionId else { return }
-			let state = RemoteAPI.readSessionState(event.payload)
-			dispatch(sessionId, .state(state))
+			dispatch(sessionId, .state(RemoteAPI.readSessionState(event.payload)))
+			// The reducer keeps a pending question over a plain "running"; the list follows it.
+			let status = transcript(sessionId).sessionState.status
 			patchSession(sessionId) {
-				$0.status = state.status
+				$0.status = status
 				$0.updatedAt = WallClock.nowMs()
 			}
 		case .sessionMessage:

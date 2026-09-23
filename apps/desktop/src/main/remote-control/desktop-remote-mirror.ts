@@ -930,7 +930,21 @@ export class DesktopRemoteMirror {
 	}
 
 	private async emitState(key: string, payload: RemoteSessionState): Promise<void> {
-		await this.options.emit("session.state", payload, key);
+		await this.options.emit("session.state", this.withPendingQuestion(key, payload), key);
+	}
+
+	/**
+	 * The turn keeps producing events (usage, retries) while it waits on an
+	 * AskUserQuestion; a plain "running" would tell the phone the question is
+	 * gone. As long as it is pending, the session is waiting on the user.
+	 */
+	private withPendingQuestion(key: string, payload: RemoteSessionState): RemoteSessionState {
+		if (payload.status !== "running" && payload.status !== "thinking") return payload;
+		const pending = this.options.questions.listPendingQuestions().find((request) => {
+			const path = this.options.runtime.getSessionPath(request.sessionId);
+			return path !== undefined && keyForPath(path) === key;
+		});
+		return pending ? { ...payload, status: "waiting_input", pendingQuestion: toRemoteQuestion(pending) } : payload;
 	}
 }
 

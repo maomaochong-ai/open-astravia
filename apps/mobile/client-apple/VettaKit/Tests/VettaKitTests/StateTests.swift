@@ -94,6 +94,20 @@ import Testing
 		#expect(run([.questionResolved(requestId: "other")], from: asked).pendingQuestion?.requestId == "q1")
 	}
 
+	@Test func keepsAPendingQuestionWhileTheTurnReportsRunning() {
+		let request = RemoteQuestionRequest(requestId: "q1", questions: [RemoteQuestionItem(question: "继续？", header: "确认", options: [RemoteQuestionOption(label: "是", description: "")], multiSelect: false)])
+		let asked = run([.state(RemoteSessionState(status: .running)), .question(request)])
+		let usage = run([.state(RemoteSessionState(status: .running, contextPercent: 40))], from: asked)
+		#expect(usage.pendingQuestion?.requestId == "q1", "usage updates arrive while the turn waits on the answer")
+		#expect(usage.sessionState.status == .waitingInput)
+		#expect(usage.sessionState.contextPercent == 40)
+		let aborted = run([.state(RemoteSessionState(status: .aborted))], from: usage)
+		#expect(aborted.pendingQuestion == nil, "the end of the turn retires the question")
+		let answered = run([.questionResolved(requestId: "q1"), .state(RemoteSessionState(status: .running))], from: usage)
+		#expect(answered.pendingQuestion == nil)
+		#expect(answered.sessionState.status == .running)
+	}
+
 	@Test func marksTheTranscriptStaleOnResync() {
 		let state = run([.message(.user(text: "hi", at: 1)), .state(RemoteSessionState(status: .running)), .resync])
 		#expect(state.items.isEmpty)

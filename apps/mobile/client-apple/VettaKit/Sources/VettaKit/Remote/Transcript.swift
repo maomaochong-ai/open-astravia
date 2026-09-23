@@ -119,7 +119,15 @@ public enum TranscriptReducer {
 		case let .state(sessionState):
 			let finished = !sessionState.status.isActive
 			next.sessionState = sessionState
-			next.pendingQuestion = sessionState.pendingQuestion ?? (sessionState.status == .waitingInput ? state.pendingQuestion : nil)
+			// Only an answer or the end of the turn retires a question: the turn keeps
+			// reporting "running" (usage, retries) while it waits, and older desktops
+			// send that without the question.
+			let question = sessionState.pendingQuestion ?? (finished ? nil : state.pendingQuestion)
+			next.pendingQuestion = question
+			if let question {
+				next.sessionState.status = .waitingInput
+				next.sessionState.pendingQuestion = question
+			}
 			if finished { next.items = finalizeStreaming(state.items, sessionState) }
 			return next
 		case let .question(request):
