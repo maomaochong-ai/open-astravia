@@ -65,8 +65,8 @@ struct WorkView: View {
 					SessionRow(session: session, conversationCwd: model.conversationCwd)
 				}
 				.accessibilityIdentifier("session.\(session.id)")
-				// Rows are told apart by spacing alone, no hairlines between them.
-				.listRowSeparator(.hidden)
+				// The filter bar above has no line under it, so the first row has none on top either.
+				.listRowSeparator(session.id == rows.first?.id ? .hidden : .automatic, edges: .top)
 				// Swiping right; delete asks first since it removes the session on the desktop too.
 				.swipeActions(edge: .leading, allowsFullSwipe: false) {
 					Button {
@@ -350,6 +350,8 @@ private struct SessionRow: View {
 				.foregroundStyle(.secondary)
 				.padding(.top, 2)
 			}
+			// Like Mail, the line starts under the text and leaves the avatar column clear.
+			.alignmentGuide(.listRowSeparatorLeading) { $0[.leading] }
 		}
 		.padding(.vertical, 10)
 	}
