@@ -3,7 +3,12 @@ import type { JSX } from "react";
 import ReactMarkdown from "react-markdown";
 import type { Components, Options } from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { DefaultCodeBlock } from "./CodeBlock";
+import { BuiltinCodeBlock, Formula } from "./builtin-renderers";
+import { richRemarkPlugins } from "./rich-syntax";
+import { SvgPreview } from "./SvgPreview";
+import { defaultRichContentLabels } from "./rich-labels";
+import type { MarkdownLabels } from "./rich-labels";
+export type { MarkdownLabels } from "./rich-labels";
 import {
 	MarkdownTable,
 	MarkdownTableBody,
@@ -32,18 +37,12 @@ import { splitStableMarkdownBlocks } from "./stable-blocks";
 const LINK_BADGE_CLASS =
 	"inline-flex max-w-full items-center gap-1 rounded-md border border-primary/25 bg-primary/10 px-1.5 py-px align-middle text-[13px] font-medium text-primary no-underline transition-colors hover:bg-primary/20";
 
-const remarkPlugins = [remarkGfm];
+const remarkPlugins = [remarkGfm, ...richRemarkPlugins];
 
 const MarkdownCodeLiveContext = createContext(false);
 
 function cn(...parts: Array<string | false | null | undefined>): string {
 	return parts.filter(Boolean).join(" ");
-}
-
-export interface MarkdownLabels {
-	copy: string;
-	copied: string;
-	/** 表格工具条：复制成 GFM 表格 / CSV。 */
 }
 
 export interface MarkdownContentProps {
@@ -195,11 +194,14 @@ export const MarkdownContent = memo(function MarkdownContent({
 			code: function MarkdownCode({ className: codeClassName, children }) {
 				const live = useContext(MarkdownCodeLiveContext);
 				const raw = String(children);
+				if (codeClassName?.includes("math-inline") || codeClassName?.includes("math-display")) {
+					return <Formula source={raw.replace(/\n$/, "")} display={codeClassName.includes("math-display")} live={live} />;
+				}
 				const isBlock = (codeClassName?.startsWith("language-") ?? false) || raw.includes("\n");
 				if (isBlock) {
 					const lang = codeClassName?.replace("language-", "") ?? "";
 					const code = raw.replace(/\n$/, "");
-					const CodeBlock = definitionRef.current.codeBlock ?? DefaultCodeBlock;
+					const CodeBlock = definitionRef.current.codeBlock ?? BuiltinCodeBlock;
 					return <CodeBlock lang={lang} code={code} theme={theme} labels={labelsRef.current} live={live} />;
 				}
 				return <code className="rounded bg-muted px-1 py-0.5 text-[13px] text-foreground">{children}</code>;
@@ -262,6 +264,11 @@ export const MarkdownContent = memo(function MarkdownContent({
 				);
 			},
 			strong: ({ children }) => <strong className="font-semibold text-foreground">{children}</strong>,
+			"vetta-svg": ({ node }: { node?: HastElement }) => {
+				const source = node?.properties?.source;
+				const rich = labelsRef.current.rich ?? defaultRichContentLabels;
+				return typeof source === "string" ? <SvgPreview source={source} label={rich.svg} failed={rich.failed} live /> : null;
+			},
 			em: ({ children }) => <em className="italic">{children}</em>,
 			// 行内 token：与输入框里的胶囊同款（半透明主题色底 + 描边，align-middle 对齐正文）。
 			[INLINE_TOKEN_TAG]: ({ node }: { node?: HastElement }) => {

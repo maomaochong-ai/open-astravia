@@ -43,7 +43,7 @@ export function rehypeStreamingChunks() {
 						const tag = child.tagName;
 						// 表格也当字面量：单元格文字被拆成片段再逐步增长会反复触发列宽重算，
 						// 流式期表格会抖动。
-						visit(child, inCode || tag === "code" || tag === "pre" || tag === "table");
+						visit(child, inCode || tag === "code" || tag === "pre" || tag === "table" || tag === "vetta-svg");
 					}
 				}
 			}
