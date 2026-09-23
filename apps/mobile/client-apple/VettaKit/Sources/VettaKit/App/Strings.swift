@@ -93,7 +93,6 @@ public enum L10n {
 	public enum NewSession {
 		public static var title: String { tr("newSession.title") }
 		public static var greeting: String { tr("newSession.greeting") }
-		public static var placeholder: String { tr("newSession.placeholder") }
 		public static var offline: String { tr("newSession.offline") }
 		public static var location: String { tr("newSession.location") }
 	}
@@ -131,6 +130,16 @@ public enum L10n {
 		public static var attach: String { tr("chat.attach") }
 		public static var attachPhotos: String { tr("chat.attachPhotos") }
 		public static var attachFiles: String { tr("chat.attachFiles") }
+		public static var attachCamera: String { tr("chat.attachCamera") }
+		public static var attachBrowse: String { tr("chat.attachBrowse") }
+		public static var attachFilesHint: String { tr("chat.attachFilesHint") }
+		public static var cameraUnavailable: String { tr("chat.cameraUnavailable") }
+		public static func attachAdd(_ n: Int) -> String { tr("chat.attachAdd \(n)") }
+		public static var dictationHint: String { tr("chat.dictationHint") }
+		public static var dictationCancel: String { tr("chat.dictationCancel") }
+		public static var dictationListening: String { tr("chat.dictationListening") }
+		public static var dictationDenied: String { tr("chat.dictationDenied") }
+		public static var dictationUnavailable: String { tr("chat.dictationUnavailable") }
 		public static func attachTooLarge(_ name: String) -> String { tr("chat.attachTooLarge \(name)") }
 		public static func attachTooMany(_ n: Int) -> String { tr("chat.attachTooMany \(n)") }
 		public static func removeAttachment(_ name: String) -> String { tr("chat.removeAttachment \(name)") }

@@ -53,7 +53,9 @@ targets:
           - CFBundleURLName: com.openvetta.mobile.pair
             CFBundleURLSchemes:
               - vetta
-        NSCameraUsageDescription: Vetta uses the camera to scan the QR code on your computer to pair.
+        NSCameraUsageDescription: Vetta uses the camera to scan the pairing code on your computer and to take photos you send.
+        NSMicrophoneUsageDescription: Vetta uses the microphone while you hold the message field to dictate.
+        NSSpeechRecognitionUsageDescription: Vetta turns what you say into text for your message.
         NSLocalNetworkUsageDescription: Vetta needs local network access to connect directly to your computer on the same Wi-Fi.
         NSBonjourServices:
           - _vetta._tcp

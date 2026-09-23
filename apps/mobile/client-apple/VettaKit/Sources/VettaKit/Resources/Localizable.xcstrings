@@ -18,6 +18,57 @@
         }
       }
     },
+    "chat.attachAdd %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add %lld"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "添加 %lld"
+          }
+        }
+      }
+    },
+    "chat.attachBrowse": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Browse Files"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "浏览文件"
+          }
+        }
+      }
+    },
+    "chat.attachCamera": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Camera"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "拍照"
+          }
+        }
+      }
+    },
     "chat.attachFiles": {
       "extractionState": "manual",
       "localizations": {
@@ -35,6 +86,23 @@
         }
       }
     },
+    "chat.attachFilesHint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pick documents from the Files app. Each file must be under 700 KB."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "从「文件」App 选择文档，单个文件不能超过 700 KB。"
+          }
+        }
+      }
+    },
     "chat.attachPhotos": {
       "extractionState": "manual",
       "localizations": {
@@ -47,7 +115,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "照片"
+            "value": "相册"
           }
         }
       }
@@ -98,6 +166,23 @@
         }
       }
     },
+    "chat.cameraUnavailable": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No camera is available on this device."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这台设备没有可用的相机。"
+          }
+        }
+      }
+    },
     "chat.compacted": {
       "extractionState": "manual",
       "localizations": {
@@ -138,13 +223,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Follow up, or send more instructions..."
+            "value": "Tell Vetta what to do, or hold to talk…"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "继续追问，或向电脑下发补充指令..."
+            "value": "指示 Vetta 或按住说话…"
           }
         }
       }
@@ -179,6 +264,91 @@
           "stringUnit": {
             "state": "translated",
             "value": "复制"
+          }
+        }
+      }
+    },
+    "chat.dictationCancel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Release to cancel"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "松手取消"
+          }
+        }
+      }
+    },
+    "chat.dictationDenied": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allow the microphone and speech recognition for Vetta in Settings to dictate."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "需要在「设置」中允许 Vetta 使用麦克风和语音识别才能听写。"
+          }
+        }
+      }
+    },
+    "chat.dictationHint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Release to insert, slide up to cancel"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "松手填入，上移取消"
+          }
+        }
+      }
+    },
+    "chat.dictationListening": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Listening…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在听…"
+          }
+        }
+      }
+    },
+    "chat.dictationUnavailable": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dictation isn't available right now."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暂时无法使用听写。"
           }
         }
       }
@@ -1718,23 +1888,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "电脑离线，重新连上后才能开始新会话。"
-          }
-        }
-      }
-    },
-    "newSession.placeholder": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Describe the task…"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "描述要做的事…"
           }
         }
       }

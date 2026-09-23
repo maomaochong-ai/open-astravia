@@ -45,9 +45,13 @@
 		<string>_vetta._tcp</string>
 	</array>
 	<key>NSCameraUsageDescription</key>
-	<string>Vetta uses the camera to scan the QR code on your computer to pair.</string>
+	<string>Vetta uses the camera to scan the pairing code on your computer and to take photos you send.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Vetta needs local network access to connect directly to your computer on the same Wi-Fi.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Vetta uses the microphone while you hold the message field to dictate.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Vetta turns what you say into text for your message.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

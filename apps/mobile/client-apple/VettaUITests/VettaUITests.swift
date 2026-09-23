@@ -52,10 +52,10 @@ final class VettaUITests: XCTestCase {
 	}
 
 	/// A brand-new phone paired with the harness desktop, on Work with its sessions listed.
-	@MainActor private func launchPaired() throws -> XCUIApplication {
+	@MainActor private func launchPaired(_ extra: [String] = []) throws -> XCUIApplication {
 		let invite = try XCTUnwrap(invite, "run through scripts/ui-test.sh to provide a desktop")
 		let app = XCUIApplication()
-		app.launchArguments = ["-VettaEphemeralStorage", "-VettaPairURI", invite, "-VettaUITestAttachments"] + chinese
+		app.launchArguments = ["-VettaEphemeralStorage", "-VettaPairURI", invite, "-VettaUITestAttachments"] + extra + chinese
 		app.launch()
 		if !app.buttons["session.s-report"].waitForExistence(timeout: 15) {
 			shot(app, "fail-home")
@@ -159,15 +159,26 @@ final class VettaUITests: XCTestCase {
 		XCTAssertTrue(app.staticTexts["想让电脑做点什么？"].waitForExistence(timeout: 5))
 		XCTAssertFalse(app.tabBars.buttons["工作"].isHittable, "New Session hides the tab bar like a chat")
 		pick(app, "newSession.location", "vetta")
-		// Attach a picture and a file, write two lines (Return adds a line), then send.
+		// The attach button opens a half sheet: Photos first, then Camera and Files in the glass tabs.
 		app.buttons["composer.attach"].tap()
-		app.buttons["composer.attach.sample"].tap()
+		let photosTab = app.buttons["attach.tab.photos"]
+		XCTAssertTrue(photosTab.waitForExistence(timeout: 5))
+		XCTAssertTrue(photosTab.isSelected, "Photos is the first tab shown")
+		shot(app, "6a-attach-photos")
+		settledTap(app.buttons["attach.tab.camera"])
+		XCTAssertTrue(app.descendants(matching: .any)["attach.noCamera"].waitForExistence(timeout: 5), "the simulator has no camera")
+		settledTap(app.buttons["attach.tab.files"])
+		XCTAssertTrue(app.buttons["attach.browse"].waitForExistence(timeout: 5))
+		settledTap(app.buttons["composer.attach.sample"])
+		XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "composer.attachment").firstMatch.waitForExistence(timeout: 5))
 		XCTAssertEqual(app.descendants(matching: .any).matching(identifier: "composer.attachment").count, 2)
+		// Send appears once there is text; Return adds a line instead of sending.
+		XCTAssertFalse(app.buttons["composer.send"].exists, "nothing to send yet")
 		let field = composerField(app)
 		XCTAssertTrue(field.waitForExistence(timeout: 5))
 		field.tap()
 		field.typeText("帮我检查一下构建\n顺便看看附件")
-		XCTAssertTrue(app.buttons["composer.send"].isEnabled, "Return adds a line instead of sending")
+		XCTAssertTrue(app.buttons["composer.send"].waitForExistence(timeout: 3), "Return adds a line instead of sending")
 		shot(app, "6-new-session")
 		app.buttons["composer.send"].tap()
 
@@ -205,6 +216,33 @@ final class VettaUITests: XCTestCase {
 		app.buttons["question.submit"].tap()
 		XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS '你的选择：继续；测试、设计'")).firstMatch.waitForExistence(timeout: 10))
 		XCTAssertTrue(composerField(app).waitForExistence(timeout: 5), "the composer comes back once answered")
+	}
+
+	@MainActor func testHoldingTheEmptyFieldDictatesIntoIt() throws {
+		let app = try launchPaired(["-VettaUITestDictation", "帮我看看构建"])
+		// An idle session: while one is running the field's button is Stop, not Send.
+		app.buttons["session.s-docs"].tap()
+		let field = composerField(app)
+		XCTAssertTrue(field.waitForExistence(timeout: 10))
+		XCTAssertEqual(field.placeholderValue, "指示 Vetta 或按住说话…")
+		let attach = app.buttons["composer.attach"].frame
+		let box = app.descendants(matching: .any)["composer.box"].frame
+		XCTAssertEqual(attach.height, box.height, accuracy: 0.5, "the attach button and a one-line field are the same height")
+		XCTAssertEqual(attach.midY, box.midY, accuracy: 0.5)
+		// Hold, slide up, let go: nothing is kept.
+		let start = field.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+		start.press(forDuration: 1.2, thenDragTo: start.withOffset(CGVector(dx: 0, dy: -160)))
+		sleep(1)
+		XCTAssertFalse(app.buttons["composer.send"].exists, "sliding up cancels the dictation")
+		// Hold and let go: the words land in the field, unsent.
+		field.press(forDuration: 1.5)
+		XCTAssertTrue(app.buttons["composer.send"].waitForExistence(timeout: 3), "the dictated words fill the field")
+		XCTAssertEqual(field.value as? String, "帮我看看构建")
+		XCTAssertFalse(app.staticTexts["帮我看看构建"].exists, "dictation never sends by itself")
+		shot(app, "5d-dictated")
+		// A tap on the empty field still starts typing.
+		field.tap()
+		XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 3))
 	}
 
 	@MainActor func testSettingsShowsTheComputerAndUnpairs() throws {

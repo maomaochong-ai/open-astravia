@@ -47,7 +47,7 @@ struct NewSessionView: View {
 		.safeAreaInset(edge: .bottom, spacing: 0) {
 			VStack(alignment: .leading, spacing: 8) {
 				locationMenu.padding(.horizontal, 16)
-				ChatInputBar(draft: $draft, placeholder: L10n.NewSession.placeholder, disabled: !model.online || sending, busy: sending) { sent in
+				ChatInputBar(draft: $draft, placeholder: L10n.Chat.composerPlaceholder, disabled: !model.online || sending, busy: sending) { sent in
 					send(sent)
 				}
 			}

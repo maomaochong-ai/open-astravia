@@ -1,11 +1,11 @@
-import PhotosUI
 import SwiftUI
-import UniformTypeIdentifiers
 import VettaKit
 
-/// The composer shared by New Session and the chat: a tall multi-line field
-/// (Return adds a line, the keyboard's mic dictates), pictures from Photos,
-/// files from Files, and one send / stop button.
+/// The composer shared by New Session and the chat, laid out like Telegram:
+/// a round attach button, then the message field that grows with its text
+/// (Return adds a line). Send appears inside the field once there is something
+/// to send. Holding the empty field dictates; letting go puts the words in the
+/// field without sending them.
 struct ChatInputBar: View {
 	@Binding var draft: PromptDraft
 	var placeholder: String
@@ -14,111 +14,181 @@ struct ChatInputBar: View {
 	var onStop: (() -> Void)?
 	var onSend: (PromptDraft) -> Void
 
-	@State private var photoItems: [PhotosPickerItem] = []
-	@State private var pickingPhotos = false
-	@State private var pickingFiles = false
-	@State private var attachError: String?
+	@State private var attaching = false
+	@State private var dictation = SpeechDictation()
+	@State private var press = HoldToTalk()
+	@State private var cancelArmed = false
+	@State private var holdTimer: Task<Void, Never>?
+	@State private var notice: String?
 	@FocusState private var focused: Bool
 
+	/// The attach button and a one-line field share this height.
+	private static let barHeight: CGFloat = 44
+
 	private var canSend: Bool { draft.canSend && !disabled }
+	private var holdToTalk: Bool { draft.text.isEmpty && !disabled }
 
 	var body: some View {
-		VStack(alignment: .leading, spacing: 10) {
+		VStack(alignment: .leading, spacing: 8) {
 			if !draft.attachments.isEmpty {
 				AttachmentStrip(attachments: draft.attachments) { id in
 					withAnimation(.snappy) { draft.remove(id) }
 				}
+				.padding(.horizontal, 16)
 			}
-			TextField(placeholder, text: $draft.text, axis: .vertical)
-				.font(.body)
-				.lineLimit(3 ... 8)
-				.focused($focused)
-				.disabled(disabled)
-				.accessibilityIdentifier("composer.field")
-			HStack(spacing: 12) {
-				Menu {
-					Button { pickingPhotos = true } label: {
-						Label(L10n.Chat.attachPhotos, systemImage: "photo.on.rectangle")
-					}
-					Button { pickingFiles = true } label: {
-						Label(L10n.Chat.attachFiles, systemImage: "doc")
-					}
-					#if DEBUG
-					// The Photos and Files pickers run out of process; UI tests attach through here.
-					if ProcessInfo.processInfo.arguments.contains("-VettaUITestAttachments") {
-						Button(action: addSamples) {
-							Label(L10n.Chat.attach, systemImage: "ladybug")
-						}
-						.accessibilityIdentifier("composer.attach.sample")
-					}
-					#endif
-				} label: {
-					Image(systemName: "plus")
-						.font(.system(size: 17, weight: .semibold))
-						.frame(width: 34, height: 34)
+			if let notice {
+				Text(notice)
+					.font(.caption)
+					.foregroundStyle(Theme.red)
+					.padding(.horizontal, 20)
+					.transition(.opacity)
+			}
+			HStack(alignment: .bottom, spacing: 8) {
+				// Plain glass circle at the field's height: .buttonStyle(.glass) pads it larger.
+				Button { attaching = true } label: {
+					Image(systemName: "paperclip")
+						.font(.system(size: 19, weight: .medium))
+						.foregroundStyle(disabled ? .tertiary : .primary)
+						.frame(width: Self.barHeight, height: Self.barHeight)
+						.glassEffect(.regular.interactive(), in: .circle)
 				}
-				.buttonStyle(.glass)
-				.buttonBorderShape(.circle)
+				.buttonStyle(.plain)
 				.disabled(disabled)
 				.accessibilityLabel(L10n.Chat.attach)
 				.accessibilityIdentifier("composer.attach")
-				if let attachError {
-					Text(attachError)
-						.font(.caption)
-						.foregroundStyle(Theme.red)
-						.lineLimit(2)
-						.transition(.opacity)
-				}
-				Spacer(minLength: 0)
-				sendButton
+
+				field
+			}
+			.padding(.horizontal, 12)
+			// The glow takes over the bottom while listening; the bar fades out under it.
+			.opacity(dictation.listening ? 0.15 : 1)
+		}
+		.padding(.bottom, 8)
+		.overlay(alignment: .bottom) {
+			if dictation.listening {
+				DictationGlow(transcript: dictation.transcript, level: dictation.level, cancelArmed: cancelArmed)
+					.allowsHitTesting(false)
+					.transition(.opacity)
 			}
 		}
-		.padding(.horizontal, 16)
-		.padding(.top, 14)
-		.padding(.bottom, 10)
-		.glassEffect(.regular.interactive(), in: .rect(cornerRadius: 26))
-		.contentShape(Rectangle())
-		.onTapGesture { focused = true }
-		.padding(.horizontal, 12)
-		.padding(.bottom, 8)
-		.photosPicker(isPresented: $pickingPhotos, selection: $photoItems, maxSelectionCount: PromptDraft.maxAttachments, matching: .images)
-		.onChange(of: photoItems) { _, items in
-			guard !items.isEmpty else { return }
-			photoItems = []
-			Task { await addPhotos(items) }
-		}
-		.fileImporter(isPresented: $pickingFiles, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
-			if case let .success(urls) = result { addFiles(urls) }
+		.animation(.easeInOut(duration: 0.2), value: dictation.listening)
+		.sheet(isPresented: $attaching) {
+			AttachmentSheet(draft: $draft)
 		}
 	}
 
+	private var field: some View {
+		HStack(alignment: .bottom, spacing: 6) {
+			TextField(placeholder, text: $draft.text, axis: .vertical)
+				.font(.body)
+				.lineLimit(1 ... 6)
+				.focused($focused)
+				.disabled(disabled)
+				.padding(.leading, 16)
+				.padding(.vertical, 11)
+				.accessibilityIdentifier("composer.field")
+				.overlay {
+					// On an empty field a hold dictates; a tap still starts typing.
+					if holdToTalk {
+						Color.clear
+							.contentShape(Rectangle())
+							.gesture(holdGesture)
+							.accessibilityHidden(true)
+					}
+				}
+			trailingButton
+		}
+		.padding(.trailing, 5)
+		.frame(minHeight: Self.barHeight)
+		.glassEffect(.regular.interactive(), in: .rect(cornerRadius: 22))
+		.accessibilityElement(children: .contain)
+		.accessibilityIdentifier("composer.box")
+	}
+
 	@ViewBuilder
-	private var sendButton: some View {
+	private var trailingButton: some View {
 		if busy, let onStop {
 			Button(action: onStop) {
 				Image(systemName: "stop.fill")
-					.font(.system(size: 14, weight: .bold))
+					.font(.system(size: 13, weight: .bold))
 					.foregroundStyle(Theme.pillInk)
 					.frame(width: 34, height: 34)
+					.background(Theme.pill, in: .circle)
 			}
-			.buttonStyle(.glassProminent)
-			.buttonBorderShape(.circle)
-			.tint(Theme.pill)
+			.buttonStyle(.plain)
+			.padding(.bottom, 5)
 			.accessibilityLabel(L10n.Chat.stop)
 			.accessibilityIdentifier("composer.stop")
-		} else {
+		} else if canSend {
 			Button(action: submit) {
 				Image(systemName: "arrow.up")
 					.font(.system(size: 16, weight: .bold))
-					.foregroundStyle(canSend ? Theme.pillInk : Theme.faint)
+					.foregroundStyle(.white)
 					.frame(width: 34, height: 34)
+					.background(Theme.green, in: .circle)
 			}
-			.buttonStyle(.glassProminent)
-			.buttonBorderShape(.circle)
-			.tint(canSend ? Theme.pill : Theme.card2)
-			.disabled(!canSend)
+			.buttonStyle(.plain)
+			.padding(.bottom, 5)
+			.transition(.scale.combined(with: .opacity))
 			.accessibilityLabel(L10n.Chat.send)
 			.accessibilityIdentifier("composer.send")
+		}
+	}
+
+	private var holdGesture: some Gesture {
+		DragGesture(minimumDistance: 0, coordinateSpace: .global)
+			.onChanged { value in
+				let now = Date.timeIntervalSinceReferenceDate
+				if press.phase == .idle {
+					_ = press.began(at: now)
+					// Holding still sends no drag events, so a timer checks once the hold is long enough.
+					holdTimer = Task {
+						try? await Task.sleep(for: .seconds(HoldToTalk.holdDelay))
+						guard !Task.isCancelled else { return }
+						handle(press.moved(dx: 0, dy: 0, at: Date.timeIntervalSinceReferenceDate))
+					}
+					return
+				}
+				handle(press.moved(dx: value.translation.width, dy: value.translation.height, at: now))
+			}
+			.onEnded { _ in
+				holdTimer?.cancel()
+				handle(press.ended(at: Date.timeIntervalSinceReferenceDate))
+			}
+	}
+
+	private func handle(_ action: HoldToTalk.Action) {
+		switch action {
+		case .none:
+			return
+		case .focus:
+			focused = true
+		case .startListening:
+			focused = false
+			cancelArmed = false
+			withAnimation { notice = nil }
+			UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+			Task {
+				await dictation.start()
+				switch dictation.failure {
+				case .denied?: withAnimation { notice = L10n.Chat.dictationDenied }
+				case .unavailable?: withAnimation { notice = L10n.Chat.dictationUnavailable }
+				case nil: break
+				}
+			}
+		case let .cancelArmed(armed):
+			withAnimation(.snappy) { cancelArmed = armed }
+			UISelectionFeedbackGenerator().selectionChanged()
+		case let .finish(insert):
+			Task {
+				if insert {
+					let heard = await dictation.stop()
+					withAnimation(.snappy) { draft.insertDictation(heard) }
+				} else {
+					dictation.cancel()
+				}
+				cancelArmed = false
+			}
 		}
 	}
 
@@ -126,61 +196,50 @@ struct ChatInputBar: View {
 		guard canSend else { return }
 		let sent = draft
 		draft.clear()
-		attachError = nil
+		notice = nil
 		onSend(sent)
 	}
+}
 
-	private func add(_ attachment: PromptAttachment) {
-		do {
-			try draft.add(attachment)
-		} catch let error as PromptAttachmentError {
-			withAnimation { attachError = describe(error) }
-		} catch {}
-	}
+/// What the user is saying, shown over the bottom of the screen on a blue glow
+/// that swells with their voice; grey while letting go would cancel.
+private struct DictationGlow: View {
+	var transcript: String
+	var level: Double
+	var cancelArmed: Bool
 
-	private func describe(_ error: PromptAttachmentError) -> String {
-		switch error {
-		case let .tooLarge(name): L10n.Chat.attachTooLarge(name)
-		case .tooMany: L10n.Chat.attachTooMany(PromptDraft.maxAttachments)
-		}
-	}
-
-	private func addPhotos(_ items: [PhotosPickerItem]) async {
-		attachError = nil
-		for (index, item) in items.enumerated() {
-			guard let data = try? await item.loadTransferable(type: Data.self),
-			      let jpeg = ImageDownscaler.jpeg(from: data, maxBytes: PromptDraft.maxAttachmentBytes)
-			else { continue }
-			add(PromptAttachment(kind: .image, name: "photo-\(index + 1).jpg", mimeType: "image/jpeg", data: jpeg))
-		}
-	}
-
-	#if DEBUG
-	private func addSamples() {
-		let image = UIGraphicsImageRenderer(size: CGSize(width: 64, height: 64)).image { context in
-			UIColor.systemGreen.setFill()
-			context.fill(CGRect(x: 0, y: 0, width: 64, height: 64))
-		}
-		if let jpeg = image.jpegData(compressionQuality: 0.8) {
-			add(PromptAttachment(kind: .image, name: "photo-sample.jpg", mimeType: "image/jpeg", data: jpeg))
-		}
-		add(PromptAttachment(kind: .file, name: "notes.txt", mimeType: "text/plain", data: Data("hello".utf8)))
-	}
-	#endif
-
-	private func addFiles(_ urls: [URL]) {
-		attachError = nil
-		for url in urls {
-			let scoped = url.startAccessingSecurityScopedResource()
-			defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-			guard let data = try? Data(contentsOf: url) else { continue }
-			let type = UTType(filenameExtension: url.pathExtension)
-			if type?.conforms(to: .image) == true, let jpeg = ImageDownscaler.jpeg(from: data, maxBytes: PromptDraft.maxAttachmentBytes) {
-				add(PromptAttachment(kind: .image, name: url.deletingPathExtension().lastPathComponent + ".jpg", mimeType: "image/jpeg", data: jpeg))
-			} else {
-				add(PromptAttachment(kind: .file, name: url.lastPathComponent, mimeType: type?.preferredMIMEType ?? "application/octet-stream", data: data))
+	var body: some View {
+		let tint = cancelArmed ? Color.gray : Color(red: 0.08, green: 0.47, blue: 1)
+		ZStack(alignment: .bottom) {
+			EllipticalGradient(
+				colors: [tint, tint.opacity(0.85), tint.opacity(0.45), tint.opacity(0)],
+				center: .bottom,
+				startRadiusFraction: 0,
+				endRadiusFraction: 0.85 + 0.12 * level
+			)
+			.scaleEffect(x: 1.4, y: 1, anchor: .bottom)
+			.animation(.easeOut(duration: 0.15), value: level)
+			VStack(spacing: 14) {
+				Text(cancelArmed ? L10n.Chat.dictationCancel : L10n.Chat.dictationHint)
+					.font(.subheadline.weight(.medium))
+					.foregroundStyle(.white.opacity(0.85))
+				Text(transcript.isEmpty ? L10n.Chat.dictationListening : transcript)
+					.font(.title3.weight(.semibold))
+					.foregroundStyle(.white)
+					.multilineTextAlignment(.center)
+					.lineLimit(4)
+					.truncationMode(.head)
+					.contentTransition(.opacity)
+					.accessibilityIdentifier("dictation.transcript")
 			}
+			.padding(.horizontal, 28)
+			.padding(.bottom, 120)
 		}
+		.frame(maxWidth: .infinity)
+		.frame(height: 380)
+		.padding(.bottom, -48)
+		.accessibilityElement(children: .contain)
+		.accessibilityIdentifier("dictation.glow")
 	}
 }
 
@@ -239,7 +298,12 @@ private struct AttachmentStrip: View {
 enum ImageDownscaler {
 	/// Re-encodes a picture as JPEG, shrinking it until it fits `maxBytes`.
 	static func jpeg(from data: Data, maxBytes: Int) -> Data? {
-		guard var image = UIImage(data: data) else { return nil }
+		guard let image = UIImage(data: data) else { return nil }
+		return jpeg(from: image, maxBytes: maxBytes)
+	}
+
+	static func jpeg(from source: UIImage, maxBytes: Int) -> Data? {
+		var image = source
 		var longest: CGFloat = 2048
 		for _ in 0 ..< 6 {
 			image = resized(image, longest: longest)

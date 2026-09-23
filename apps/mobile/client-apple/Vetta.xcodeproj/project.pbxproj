@@ -25,7 +25,9 @@
 		A4C727247A724BC396D2EF75 /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = A13EF44F614DFAF09BEA92D8 /* InfoPlist.xcstrings */; };
 		B3E19125E863C30778ACE155 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71BB21C509A581D37A42B7FC /* RootView.swift */; };
 		BF4B6DCEF9D362F781317F6E /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E33BB88AA6F56D2A00716432 /* KeychainStore.swift */; };
+		E0A26C37CCE910520B415EDC /* SpeechDictation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A223D846ECA782112079EA4 /* SpeechDictation.swift */; };
 		EEEE28142A335ED424B968FA /* QRScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4351D91117ED64F564EE2106 /* QRScannerView.swift */; };
+		F8A4F125175E25DE8AD46037 /* AttachmentSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCD68BBF1201238A0B705D2E /* AttachmentSheet.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -51,6 +53,7 @@
 		8754BC022E2DA6BE46766DE0 /* VettaUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VettaUITests.swift; sourceTree = "<group>"; };
 		966CF05AA64EAAE95B6C18D2 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		9958F311B813AAB23E9A6D69 /* VettaApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VettaApp.swift; sourceTree = "<group>"; };
+		9A223D846ECA782112079EA4 /* SpeechDictation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechDictation.swift; sourceTree = "<group>"; };
 		A13EF44F614DFAF09BEA92D8 /* InfoPlist.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = InfoPlist.xcstrings; sourceTree = "<group>"; };
 		A5FE60E74C2993F10053947E /* PairView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairView.swift; sourceTree = "<group>"; };
 		A611A3DDE7F1EC89CAD12F7F /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
@@ -61,6 +64,7 @@
 		CC87D827140BB66CD638FD48 /* Vetta.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Vetta.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E33BB88AA6F56D2A00716432 /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
 		E7F30E48D0595CE66EF6B8A3 /* MarkdownView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownView.swift; sourceTree = "<group>"; };
+		FCD68BBF1201238A0B705D2E /* AttachmentSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttachmentSheet.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -80,6 +84,7 @@
 			children = (
 				E33BB88AA6F56D2A00716432 /* KeychainStore.swift */,
 				4351D91117ED64F564EE2106 /* QRScannerView.swift */,
+				9A223D846ECA782112079EA4 /* SpeechDictation.swift */,
 			);
 			path = Platform;
 			sourceTree = "<group>";
@@ -156,6 +161,7 @@
 		FB55CFA84732B5320643FC02 /* Components */ = {
 			isa = PBXGroup;
 			children = (
+				FCD68BBF1201238A0B705D2E /* AttachmentSheet.swift */,
 				BC4528B8445F4DFE1B3DAC95 /* ChatInputBar.swift */,
 				4AC44E052FBB4B681994D40B /* ChatViews.swift */,
 				0CAE0C2229A7C06685973CFD /* Common.swift */,
@@ -285,6 +291,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F8A4F125175E25DE8AD46037 /* AttachmentSheet.swift in Sources */,
 				553F60767299442FEB0D3C01 /* ChatInputBar.swift in Sources */,
 				9FE91382A8C78D491B30D92F /* ChatViews.swift in Sources */,
 				3CBF8329E208C7686DE10D15 /* Common.swift in Sources */,
@@ -297,6 +304,7 @@
 				B3E19125E863C30778ACE155 /* RootView.swift in Sources */,
 				1C3ED9E212F22BF40A83A827 /* SessionView.swift in Sources */,
 				572D00AEA0B23590C52BE28A /* SettingsView.swift in Sources */,
+				E0A26C37CCE910520B415EDC /* SpeechDictation.swift in Sources */,
 				31B8554CEA1268D8C84793F6 /* Theme.swift in Sources */,
 				3D463C9C2C3233BBCDE99B95 /* VettaApp.swift in Sources */,
 				9DCE8FDC840EEA9E47EB30E9 /* WorkView.swift in Sources */,
