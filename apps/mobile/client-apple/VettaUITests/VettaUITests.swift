@@ -6,7 +6,7 @@ import XCTest
 /// pairing guide and scanner are checked. The app is pinned to Simplified Chinese because
 /// the assertions read its copy; it otherwise follows the system language.
 final class VettaUITests: XCTestCase {
-	private var shotDirectory: String? { ProcessInfo.processInfo.environment["VETTA_UITEST_SHOTS"] }
+	private var shotDirectory: String? { ProcessInfo.processInfo.environment["VETTA_UITEST_SHOTS"].flatMap { $0.isEmpty ? nil : $0 } }
 	private var invite: String? { ProcessInfo.processInfo.environment["VETTA_UITEST_INVITE"] }
 	private var appearance: String { ProcessInfo.processInfo.environment["VETTA_UITEST_APPEARANCE"] ?? "dark" }
 
@@ -59,7 +59,6 @@ final class VettaUITests: XCTestCase {
 		XCTAssertTrue(app.buttons["session.s-build"].exists)
 		XCTAssertTrue(app.buttons["session.s-docs"].exists)
 		XCTAssertFalse(app.buttons["link.status.compact"].exists, "the small title waits until the large one scrolls away")
-		sleep(1)
 		shot(app, "3-home")
 
 		// Status filter: only the running session is in progress.
@@ -75,7 +74,6 @@ final class VettaUITests: XCTestCase {
 		pick(app, "filter.project", "docs")
 		XCTAssertTrue(app.buttons["session.s-docs"].waitForExistence(timeout: 5))
 		XCTAssertFalse(app.buttons["session.s-build"].exists)
-		sleep(1)
 		shot(app, "4-filtered")
 		pick(app, "filter.kind", "所有类型")
 		XCTAssertFalse(app.buttons["filter.project"].waitForExistence(timeout: 2), "leaving projects drops the project chip")
@@ -84,7 +82,6 @@ final class VettaUITests: XCTestCase {
 		report.tap()
 		XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS 'web_search'")).firstMatch.waitForExistence(timeout: 10))
 		XCTAssertFalse(app.tabBars.buttons["工作"].isHittable, "the chat page hides the tab bar")
-		sleep(1)
 		shot(app, "5-history")
 		app.navigationBars.buttons.element(boundBy: 0).tap()
 
@@ -96,13 +93,11 @@ final class VettaUITests: XCTestCase {
 		XCTAssertTrue(field.waitForExistence(timeout: 5))
 		field.tap()
 		field.typeText("帮我检查一下构建")
-		sleep(1)
 		shot(app, "6-new-session")
 		app.buttons["composer.send"].tap()
 
 		let option = app.buttons["question.option.继续"]
 		XCTAssertTrue(option.waitForExistence(timeout: 15), "the desktop's question should reach the phone")
-		sleep(1)
 		shot(app, "7-question")
 
 		// Back lands on Work, where the session waiting on us sits on top.
@@ -111,7 +106,6 @@ final class VettaUITests: XCTestCase {
 		XCTAssertTrue(first.waitForExistence(timeout: 5))
 		XCTAssertTrue(first.staticTexts["待你决策"].exists, "a session waiting on the user is pinned to the top")
 		XCTAssertTrue(first.staticTexts["vetta"].exists, "it was started in the chosen project")
-		sleep(1)
 		shot(app, "8-waiting")
 		first.tap()
 		XCTAssertTrue(option.waitForExistence(timeout: 10))
@@ -124,12 +118,10 @@ final class VettaUITests: XCTestCase {
 		app.swipeDown()
 		app.swipeUp()
 		XCTAssertTrue(app.buttons["link.status.compact"].waitForExistence(timeout: 5))
-		sleep(1)
 		shot(app, "9-collapsed")
 		app.swipeDown()
 
 		app.tabBars.buttons["设置"].tap()
-		sleep(1)
 		shot(app, "10-settings")
 	}
 
@@ -143,14 +135,15 @@ final class VettaUITests: XCTestCase {
 		item.tap()
 	}
 
+	/// Screenshots are for reviewing the design; only runs that save them wait for animations to settle.
 	@MainActor private func shot(_ app: XCUIApplication, _ name: String) {
+		guard let directory = shotDirectory else { return }
+		Thread.sleep(forTimeInterval: 0.6)
 		let screenshot = app.screenshot()
 		let attachment = XCTAttachment(screenshot: screenshot)
 		attachment.name = name
 		attachment.lifetime = .keepAlways
 		add(attachment)
-		if let directory = shotDirectory {
-			try? screenshot.pngRepresentation.write(to: URL(fileURLWithPath: directory).appendingPathComponent("\(appearance)-\(name).png"))
-		}
+		try? screenshot.pngRepresentation.write(to: URL(fileURLWithPath: directory).appendingPathComponent("\(appearance)-\(name).png"))
 	}
 }

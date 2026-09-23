@@ -40,8 +40,10 @@ open Vetta.xcodeproj
 cd apps/mobile/client-apple
 (cd VettaKit && swift test --no-parallel)   # 单元测试：加密兼容、协议、连接、双通道、配对、转写、缓存、AppModel
 scripts/interop.sh                          # 与 apps/desktop 的真实 LAN 服务器和假中继对跑（需 bun install）
-scripts/ui-test.sh "iPhone 17"              # 模拟器上跑 UI 测试，深浅色各截一套图到 build/ui-shots
+scripts/ui-test.sh                          # 模拟器（默认 iPhone 17 Pro）上跑 UI 测试，深浅色各截一套图到 build/ui-shots
 ```
+
+UI 测试只构建一次，再按外观各跑一遍。改界面时用 `scripts/ui-test.sh --fast` 只跑深色、不截图，配合 `--only <测试方法名>` 只跑一个用例；提交前再完整跑一次，确认深浅两套截图。
 
 `scripts/interop-desktop.ts` 也可以单独运行，作为模拟器调试用的"桌面端"：它打印配对链接，把链接通过 Debug 启动参数交给 App 即可跳过系统的"在 Vetta 中打开"确认：
 
