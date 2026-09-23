@@ -23,15 +23,18 @@ enum Theme {
 	static let red = dynamic(light: 0xDC2626, dark: 0xF0524F)
 	static let avatarInk = Color(red: 8 / 255, green: 17 / 255, blue: 11 / 255)
 
-	private static func dynamic(light: UInt32, dark: UInt32) -> Color {
-		Color(uiColor: UIColor { traits in
+	/// UIKit resolves the colour on SwiftUI's render thread on device, so the
+	/// provider must not inherit the module's main-actor isolation: a main-actor
+	/// closure traps there (EXC_BREAKPOINT on com.apple.SwiftUI.AsyncRenderer).
+	private nonisolated static func dynamic(light: UInt32, dark: UInt32) -> Color {
+		Color(uiColor: UIColor { @Sendable traits in
 			UIColor(rgb: traits.userInterfaceStyle == .dark ? dark : light)
 		})
 	}
 }
 
 extension UIColor {
-	convenience init(rgb: UInt32) {
+	nonisolated convenience init(rgb: UInt32) {
 		self.init(
 			red: CGFloat((rgb >> 16) & 0xFF) / 255,
 			green: CGFloat((rgb >> 8) & 0xFF) / 255,

@@ -70,7 +70,7 @@ struct WorkView: View {
 		.listStyle(.plain)
 		// The inset shrinks whenever the bar collapses, including when it comes back
 		// collapsed without any scrolling (after a push from New Session).
-		.onScrollGeometryChange(for: CGFloat.self) { $0.contentInsets.top } action: { _, inset in
+		.onScrollGeometryChange(for: CGFloat.self, of: Self.topInset) { _, inset in
 			expandedInset = max(expandedInset, inset)
 			setCollapsed(inset < expandedInset - 12)
 		}
@@ -82,7 +82,13 @@ struct WorkView: View {
 		.refreshable { await model.refreshSessions() }
 	}
 
-	private func setCollapsed(_ collapsed: Bool) {
+	/// SwiftUI calls this on its render thread on device, so it must not inherit the
+	/// view's main-actor isolation: a main-actor closure traps there (EXC_BREAKPOINT).
+	private nonisolated static func topInset(_ geometry: ScrollGeometry) -> CGFloat {
+		geometry.contentInsets.top
+	}
+
+		private func setCollapsed(_ collapsed: Bool) {
 		guard collapsed != titleCollapsed else { return }
 		withAnimation(.easeInOut(duration: 0.15)) { titleCollapsed = collapsed }
 	}
