@@ -245,7 +245,7 @@ private struct TroubleshootSheet: View {
 				Text(L10n.Pair.troubleshootTitle).font(.system(size: 18, weight: .semibold)).foregroundStyle(Theme.ink)
 				ForEach(Array(L10n.Pair.troubleshootItems.enumerated()), id: \.offset) { index, item in
 					HStack(alignment: .firstTextBaseline, spacing: 12) {
-						Text("\(index + 1)").font(.mono(13)).foregroundStyle(Theme.green)
+						Text("\(index + 1)").font(.mono(13)).foregroundStyle(Theme.dim)
 						Text(item).font(.system(size: 14)).lineSpacing(5).foregroundStyle(Theme.ink2)
 					}
 				}
@@ -256,7 +256,7 @@ private struct TroubleshootSheet: View {
 	}
 }
 
-/// Viewfinder with green corner brackets and a sweeping scan line.
+/// Viewfinder with white corner brackets and a sweeping scan line.
 struct ScanFrame<Content: View>: View {
 	var active: Bool
 	@ViewBuilder var content: Content
@@ -265,16 +265,16 @@ struct ScanFrame<Content: View>: View {
 	var body: some View {
 		ZStack {
 			content.frame(width: size, height: size)
-			Corners().stroke(Theme.green, style: StrokeStyle(lineWidth: 3, lineCap: .round)).padding(10)
+			Corners().stroke(.white, style: StrokeStyle(lineWidth: 3, lineCap: .round)).padding(10)
 			if active {
 				TimelineView(.animation) { context in
 					let period = 3.6
 					let phase = context.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: period) / period
 					let eased = 0.5 - 0.5 * cos(phase * 2 * .pi)
 					Capsule()
-						.fill(Theme.green.opacity(0.85))
+						.fill(.white.opacity(0.85))
 						.frame(height: 2)
-						.shadow(color: Theme.green.opacity(0.8), radius: 8)
+						.shadow(color: .white.opacity(0.6), radius: 8)
 						.padding(.horizontal, 24)
 						.offset(y: -size / 2 + 20 + (size - 40) * eased)
 				}

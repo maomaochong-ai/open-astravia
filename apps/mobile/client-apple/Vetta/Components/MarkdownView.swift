@@ -55,7 +55,7 @@ struct MarkdownView: View {
 			.overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(Theme.line, lineWidth: 1))
 		case let .quote(content):
 			HStack(spacing: 10) {
-				Rectangle().fill(Theme.green).frame(width: 2)
+				Rectangle().fill(Theme.faint).frame(width: 2)
 				Self.body(content)
 			}
 			.padding(.horizontal, 12)
@@ -78,7 +78,7 @@ struct MarkdownView: View {
 			.fixedSize(horizontal: false, vertical: true)
 	}
 
-	/// Inline Markdown with the design's inline-code treatment (green mono on a soft chip).
+	/// Inline Markdown with the design's inline-code treatment (mono on a soft chip).
 	static func inline(_ content: String) -> AttributedString {
 		var attributed = (try? AttributedString(
 			markdown: content,
@@ -87,11 +87,12 @@ struct MarkdownView: View {
 		for run in attributed.runs {
 			if run.inlinePresentationIntent?.contains(.code) == true {
 				attributed[run.range].font = .mono(13)
-				attributed[run.range].foregroundColor = Theme.green
+				attributed[run.range].foregroundColor = Theme.ink
 				attributed[run.range].backgroundColor = Theme.card2
 			}
 			if run.link != nil {
-				attributed[run.range].foregroundColor = Theme.green
+				attributed[run.range].foregroundColor = Theme.ink
+				attributed[run.range].underlineStyle = .single
 			}
 		}
 		return attributed

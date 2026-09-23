@@ -123,9 +123,9 @@ struct ChatInputBar: View {
 			Button(action: submit) {
 				Image(systemName: "arrow.up")
 					.font(.system(size: 16, weight: .bold))
-					.foregroundStyle(.white)
+					.foregroundStyle(Theme.pillInk)
 					.frame(width: 34, height: 34)
-					.background(Theme.green, in: .circle)
+					.background(Theme.pill, in: .circle)
 			}
 			.buttonStyle(.plain)
 			.padding(.bottom, 5)

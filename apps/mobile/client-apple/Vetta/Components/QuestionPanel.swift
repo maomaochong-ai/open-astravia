@@ -123,7 +123,7 @@ struct QuestionPanel: View {
 		} label: {
 			HStack(alignment: .top, spacing: 10) {
 				Image(systemName: marker(active: active, multi: multi))
-					.foregroundStyle(active ? Theme.green : .secondary)
+					.foregroundStyle(active ? Theme.ink : .secondary)
 				VStack(alignment: .leading, spacing: 2) {
 					Text(option.label).font(.subheadline.weight(.semibold))
 					if !option.description.isEmpty {
@@ -133,8 +133,8 @@ struct QuestionPanel: View {
 				Spacer(minLength: 0)
 			}
 			.padding(12)
-			.background(active ? Theme.greenSoft : Theme.card2.opacity(0.6), in: .rect(cornerRadius: 14))
-			.overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(active ? Theme.green : .clear, lineWidth: 1))
+			.background(active ? Theme.ink.opacity(0.08) : Theme.card2.opacity(0.6), in: .rect(cornerRadius: 14))
+			.overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(active ? Theme.ink : .clear, lineWidth: 1))
 			.contentShape(Rectangle())
 		}
 		.buttonStyle(.plain)
@@ -152,7 +152,7 @@ struct QuestionPanel: View {
 			} label: {
 				HStack(spacing: 10) {
 					Image(systemName: active ? marker(active: true, multi: multi) : "pencil")
-						.foregroundStyle(active ? Theme.green : .secondary)
+						.foregroundStyle(active ? Theme.ink : .secondary)
 					Text(L10n.Chat.questionOther).font(.subheadline)
 					Spacer(minLength: 0)
 				}
@@ -173,7 +173,7 @@ struct QuestionPanel: View {
 		.padding(12)
 		.overlay(
 			RoundedRectangle(cornerRadius: 14, style: .continuous)
-				.stroke(active ? Theme.green : Color.secondary.opacity(0.4), style: StrokeStyle(lineWidth: 1, dash: active ? [] : [4, 3]))
+				.stroke(active ? Theme.ink : Color.secondary.opacity(0.4), style: StrokeStyle(lineWidth: 1, dash: active ? [] : [4, 3]))
 		)
 	}
 

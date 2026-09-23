@@ -35,7 +35,7 @@ struct SettingsView: View {
 					set: { value in model.setPreferences { $0.haptics = value } }
 				))
 			}
-			.tint(Theme.green)
+			.tint(Theme.switchOn)
 
 			if model.paired {
 				Section {
@@ -64,9 +64,9 @@ struct SettingsView: View {
 				HStack(spacing: 14) {
 					Image(systemName: "laptopcomputer")
 						.font(.system(size: 26, weight: .medium))
-						.foregroundStyle(.white)
+						.foregroundStyle(Theme.pillInk)
 						.frame(width: 56, height: 56)
-						.background(Theme.green.gradient, in: .rect(cornerRadius: 14))
+						.background(Theme.pill.gradient, in: .rect(cornerRadius: 14))
 					VStack(alignment: .leading, spacing: 2) {
 						Text(desktop.desktopName)
 							.font(.title3.weight(.semibold))
@@ -84,13 +84,13 @@ struct SettingsView: View {
 					LabeledContent(L10n.Settings.load, value: load)
 				}
 				Button(L10n.Settings.rescan) { router.showPairing = true }
-					.foregroundStyle(Theme.green)
+					.foregroundStyle(Theme.ink)
 					.accessibilityIdentifier("settings.rescan")
 			} else {
 				Button { router.showPairing = true } label: {
 					Label(L10n.Settings.scanToConnect, systemImage: "qrcode.viewfinder")
 				}
-				.foregroundStyle(Theme.green)
+				.foregroundStyle(Theme.ink)
 				.accessibilityIdentifier("settings.scan")
 			}
 		}
