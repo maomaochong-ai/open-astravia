@@ -119,6 +119,11 @@ public enum TranscriptReducer {
 		case let .state(sessionState):
 			let finished = !sessionState.status.isActive
 			next.sessionState = sessionState
+			// Most state events (completed, error, usage) leave the model out; keep what is known.
+			next.sessionState.model = sessionState.model ?? state.sessionState.model
+			next.sessionState.modelKey = sessionState.modelKey ?? state.sessionState.modelKey
+			next.sessionState.thinkingLevel = sessionState.thinkingLevel ?? state.sessionState.thinkingLevel
+			next.sessionState.contextPercent = sessionState.contextPercent ?? state.sessionState.contextPercent
 			// Only an answer or the end of the turn retires a question: the turn keeps
 			// reporting "running" (usage, retries) while it waits, and older desktops
 			// send that without the question.

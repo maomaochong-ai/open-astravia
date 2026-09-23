@@ -94,6 +94,21 @@ import Testing
 		#expect(run([.questionResolved(requestId: "other")], from: asked).pendingQuestion?.requestId == "q1")
 	}
 
+	@Test func keepsTheModelWhenAStateEventLeavesItOut() {
+		let configured = run([.state(RemoteSessionState(status: .idle, model: "GLM 5", modelKey: "zai/glm-5", thinkingLevel: "max"))])
+		let later = run([
+			.state(RemoteSessionState(status: .running, contextPercent: 30)),
+			.state(RemoteSessionState(status: .completed)),
+		], from: configured)
+		#expect(later.sessionState.model == "GLM 5")
+		#expect(later.sessionState.modelKey == "zai/glm-5")
+		#expect(later.sessionState.thinkingLevel == "max")
+		#expect(later.sessionState.contextPercent == 30)
+		#expect(later.sessionState.status == .completed)
+		let switched = run([.state(RemoteSessionState(status: .idle, modelKey: "anthropic/claude-fable-5-1", thinkingLevel: "high"))], from: later)
+		#expect(switched.sessionState.modelKey == "anthropic/claude-fable-5-1")
+	}
+
 	@Test func showsAFailureEvenWhenTheTurnWroteNothing() {
 		let failed = run([
 			.localUser(text: "这是个什么项目", at: 1),

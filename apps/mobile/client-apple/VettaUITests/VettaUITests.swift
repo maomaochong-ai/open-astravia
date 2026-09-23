@@ -126,6 +126,7 @@ final class VettaUITests: XCTestCase {
 		XCTAssertTrue(waitForLabel(failure, containing: "×2"), "the retry that fails the same way adds to the count: \(failure.label)")
 		XCTAssertEqual(app.descendants(matching: .any).matching(identifier: "turn.error").count, 1, "retries merge into one line")
 		XCTAssertTrue(app.buttons["composer.send"].waitForExistence(timeout: 5))
+		XCTAssertTrue(modelMenu.label.contains("GLM 5 · 最高"), "a failed turn keeps showing the chosen model: \(modelMenu.label)")
 		shot(app, "5c-error")
 		app.navigationBars.buttons.element(boundBy: 0).tap()
 
