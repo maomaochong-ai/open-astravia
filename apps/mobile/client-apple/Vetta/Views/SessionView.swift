@@ -71,7 +71,9 @@ struct SessionView: View {
 			}
 		}
 		.background(Theme.page)
-		.safeAreaInset(edge: .bottom) {
+		// A bar, not a plain inset: the conversation fades out under the composer like it
+		// does under the title, instead of running into it.
+		.safeAreaBar(edge: .bottom) {
 			// While the agent waits on an answer, the question takes the composer's place.
 			if let request = transcript.pendingQuestion {
 				QuestionPanel(
