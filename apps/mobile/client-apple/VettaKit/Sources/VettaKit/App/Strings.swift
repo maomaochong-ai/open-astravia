@@ -39,23 +39,29 @@ public enum L10n {
 		public static var notConnected: String { tr("common.notConnected") }
 	}
 
+	public enum Tab {
+		public static var work: String { tr("tab.work") }
+	}
+
 	public enum Home {
 		public static var title: String { tr("home.title") }
-		public static var subtitle: String { tr("home.subtitle") }
-		public static var processing: String { tr("home.processing") }
-		public static var done: String { tr("home.done") }
-		public static var remoteDesktop: String { tr("home.remoteDesktop") }
-		public static var remoteDesktopHint: String { tr("home.remoteDesktopHint") }
-		public static var sshTerminal: String { tr("home.sshTerminal") }
-		public static var sshTerminalHint: String { tr("home.sshTerminalHint") }
-		public static var searchPlaceholder: String { tr("home.searchPlaceholder") }
-		public static var filterAll: String { tr("home.filterAll") }
-		public static func filterProcessing(_ n: Int) -> String { tr("home.filterProcessing \(n)") }
-		public static var filterDone: String { tr("home.filterDone") }
-		public static var composerPlaceholder: String { tr("home.composerPlaceholder") }
+		public static var filterStatus: String { tr("home.filterStatus") }
+		public static var filterKind: String { tr("home.filterKind") }
+		public static var filterProject: String { tr("home.filterProject") }
+		public static var statusAll: String { tr("home.statusAll") }
+		public static var groupWaiting: String { tr("home.groupWaiting") }
+		public static var groupProcessing: String { tr("home.groupProcessing") }
+		public static var groupDone: String { tr("home.groupDone") }
+		public static var kindAll: String { tr("home.kindAll") }
+		public static var kindConversation: String { tr("home.kindConversation") }
+		public static var kindProject: String { tr("home.kindProject") }
+		public static var projectAll: String { tr("home.projectAll") }
+		public static var conversation: String { tr("home.conversation") }
 		public static var empty: String { tr("home.empty") }
+		public static var emptyDescription: String { tr("home.emptyDescription") }
 		public static var emptyFiltered: String { tr("home.emptyFiltered") }
-		public static var offlineBanner: String { tr("home.offlineBanner") }
+		public static var emptyFilteredDescription: String { tr("home.emptyFilteredDescription") }
+		public static var clearFilters: String { tr("home.clearFilters") }
 		public static var statusRunning: String { tr("home.statusRunning") }
 		public static var statusThinking: String { tr("home.statusThinking") }
 		public static var statusWaiting: String { tr("home.statusWaiting") }
@@ -66,6 +72,31 @@ public enum L10n {
 		public static var unpairedTitle: String { tr("home.unpairedTitle") }
 		public static var unpairedDescription: String { tr("home.unpairedDescription") }
 		public static var unpairedScan: String { tr("home.unpairedScan") }
+
+		public static func group(_ group: SessionStatusGroup) -> String {
+			switch group {
+			case .waiting: groupWaiting
+			case .processing: groupProcessing
+			case .done: groupDone
+			}
+		}
+	}
+
+	public enum Link {
+		public static var status: String { tr("link.status") }
+		public static var connected: String { tr("link.connected") }
+		public static var connecting: String { tr("link.connecting") }
+		public static func reconnecting(_ attempt: Int) -> String { tr("link.reconnecting \(attempt)") }
+		public static var reconnect: String { tr("link.reconnect") }
+		public static func latency(_ ms: Int) -> String { tr("link.latency \(ms)") }
+	}
+
+	public enum NewSession {
+		public static var title: String { tr("newSession.title") }
+		public static var greeting: String { tr("newSession.greeting") }
+		public static var placeholder: String { tr("newSession.placeholder") }
+		public static var offline: String { tr("newSession.offline") }
+		public static var location: String { tr("newSession.location") }
 	}
 
 	public enum Chat {

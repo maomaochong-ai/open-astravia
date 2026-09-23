@@ -632,36 +632,36 @@
         }
       }
     },
-    "home.composerPlaceholder": {
+    "home.clearFilters": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Send your computer a new task or question..."
+            "value": "Clear Filters"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "向电脑发个新任务或提问..."
+            "value": "清除筛选"
           }
         }
       }
     },
-    "home.done": {
+    "home.conversation": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "finished"
+            "value": "Conversation"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "个已办结"
+            "value": "对话"
           }
         }
       }
@@ -672,13 +672,30 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "No chats yet. Try sending your computer a task."
+            "value": "No Sessions Yet"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "还没有对话。给电脑发个任务试试。"
+            "value": "还没有会话"
+          }
+        }
+      }
+    },
+    "home.emptyDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sessions from your computer show up here. Start one from New Session."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "电脑上的会话会显示在这里，也可以从“新会话”开始一个。"
           }
         }
       }
@@ -689,183 +706,200 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "No matching chats"
+            "value": "No Matching Sessions"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "没有匹配的对话"
+            "value": "没有符合条件的会话"
           }
         }
       }
     },
-    "home.filterAll": {
+    "home.emptyFilteredDescription": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "All"
+            "value": "Try a different filter."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "全部"
+            "value": "换个筛选条件试试。"
           }
         }
       }
     },
-    "home.filterDone": {
+    "home.filterKind": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Finished"
+            "value": "Type"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "已办结"
+            "value": "类型"
           }
         }
       }
     },
-    "home.filterProcessing %lld": {
+    "home.filterProject": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "In progress (%lld)"
+            "value": "Project"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "处理中 (%lld)"
+            "value": "项目"
           }
         }
       }
     },
-    "home.offlineBanner": {
+    "home.filterStatus": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Computer offline. Showing the last synced content."
+            "value": "Status"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "电脑离线，显示的是上次同步的内容"
+            "value": "状态"
           }
         }
       }
     },
-    "home.processing": {
+    "home.groupDone": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "in progress"
+            "value": "Done"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "个处理中"
+            "value": "已完成"
           }
         }
       }
     },
-    "home.remoteDesktop": {
+    "home.groupProcessing": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Remote Desktop"
+            "value": "In Progress"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "远程桌面"
+            "value": "处理中"
           }
         }
       }
     },
-    "home.remoteDesktopHint": {
+    "home.groupWaiting": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Low-latency mirroring"
+            "value": "Needs You"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "低延迟同屏"
+            "value": "待你决策"
           }
         }
       }
     },
-    "home.searchPlaceholder": {
+    "home.kindAll": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Search chats or tasks..."
+            "value": "All Types"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "搜索对话或任务..."
+            "value": "所有类型"
           }
         }
       }
     },
-    "home.sshTerminal": {
+    "home.kindConversation": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "SSH Terminal"
+            "value": "Conversations"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "SSH终端"
+            "value": "对话"
           }
         }
       }
     },
-    "home.sshTerminalHint": {
+    "home.kindProject": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Command-line debugging"
+            "value": "Projects"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "命令行调试"
+            "value": "项目"
+          }
+        }
+      }
+    },
+    "home.projectAll": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All Projects"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "所有项目"
           }
         }
       }
@@ -883,6 +917,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "已停止"
+          }
+        }
+      }
+    },
+    "home.statusAll": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "所有"
           }
         }
       }
@@ -961,30 +1012,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Needs your input"
+            "value": "Needs you"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "需要你确认"
-          }
-        }
-      }
-    },
-    "home.subtitle": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Check progress from your phone, no need to stay at your desk"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "手机随时查看进度，不用守在电脑前"
+            "value": "待你决策"
           }
         }
       }
@@ -995,13 +1029,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "What your computer is doing"
+            "value": "My Work"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "电脑正在做的事"
+            "value": "我的工作"
           }
         }
       }
@@ -1012,13 +1046,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Open Vetta Desktop on your computer and click “Connect Phone” in the top-right corner. Once paired, your computer's sessions show up here."
+            "value": "Open Vetta Desktop on your computer and click “Connect Phone” in the top-right corner, then scan the code. You can also scan from Settings."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "打开电脑上的 Vetta Desktop，点击右上角「手机扫码连接」，扫码配对后电脑上的会话会显示在这里。"
+            "value": "打开电脑上的 Vetta Desktop，点击右上角「手机扫码连接」后扫码配对；之后也可以在设置里重新扫码。"
           }
         }
       }
@@ -1029,13 +1063,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Scan to pair"
+            "value": "Scan to Connect"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "扫码配对"
+            "value": "扫码连接"
           }
         }
       }
@@ -1046,13 +1080,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Connect your computer"
+            "value": "No Computer Connected"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "连接你的电脑"
+            "value": "还没有连接电脑"
           }
         }
       }
@@ -1070,6 +1104,205 @@
           "stringUnit": {
             "state": "translated",
             "value": "未命名对话"
+          }
+        }
+      }
+    },
+    "link.connected": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connected"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已连接"
+          }
+        }
+      }
+    },
+    "link.connecting": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connecting…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在连接…"
+          }
+        }
+      }
+    },
+    "link.latency %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld ms"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld ms"
+          }
+        }
+      }
+    },
+    "link.reconnect": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reconnect"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新连接"
+          }
+        }
+      }
+    },
+    "link.reconnecting %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Reconnecting (attempt %lld)"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Reconnecting (attempt %lld)"
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在重新连接（第 %lld 次）"
+          }
+        }
+      }
+    },
+    "link.status": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connection status"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "连接状态"
+          }
+        }
+      }
+    },
+    "newSession.greeting": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What should your computer work on?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "想让电脑做点什么？"
+          }
+        }
+      }
+    },
+    "newSession.location": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start in"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "开始位置"
+          }
+        }
+      }
+    },
+    "newSession.offline": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your computer is offline. You can start once it reconnects."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "电脑离线，重新连上后才能开始新会话。"
+          }
+        }
+      }
+    },
+    "newSession.placeholder": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Describe the task…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "描述要做的事…"
+          }
+        }
+      }
+    },
+    "newSession.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New Session"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新会话"
           }
         }
       }
@@ -2051,6 +2284,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "云端中继"
+          }
+        }
+      }
+    },
+    "tab.work": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Work"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "工作"
           }
         }
       }

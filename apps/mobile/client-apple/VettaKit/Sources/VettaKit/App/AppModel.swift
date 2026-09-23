@@ -88,8 +88,6 @@ public final class AppModel {
 
 	public var online: Bool { link.isUsable }
 
-	public var processingCount: Int { sessions.filter { $0.status.isActive }.count }
-
 	public var conversationCwd: String? { projects.first(where: \.isConversation)?.cwd }
 
 	public func count(_ group: SessionStatusGroup) -> Int {

@@ -57,12 +57,14 @@ import Testing
 	@Test func resolvesEachLanguage() {
 		defer { L10n.pin(language: nil) }
 		L10n.pin(language: "zh-Hans")
-		#expect(L10n.Home.title == "电脑正在做的事")
-		#expect(L10n.Home.filterProcessing(2) == "处理中 (2)")
+		#expect(L10n.Home.title == "我的工作")
+		#expect(L10n.Home.group(.waiting) == "待你决策")
+		#expect(L10n.Link.reconnecting(3) == "正在重新连接（第 3 次）")
 		#expect(L10n.Pair.troubleshootItems.count == 4)
 		L10n.pin(language: "en")
-		#expect(L10n.Home.title == "What your computer is doing")
-		#expect(L10n.Home.filterProcessing(2) == "In progress (2)")
+		#expect(L10n.Home.title == "My Work")
+		#expect(L10n.Home.group(.processing) == "In Progress")
+		#expect(L10n.Link.latency(42) == "42 ms")
 		#expect(L10n.Settings.loadValue(1) == "1 task running")
 		#expect(L10n.Settings.loadValue(3) == "3 tasks running")
 	}

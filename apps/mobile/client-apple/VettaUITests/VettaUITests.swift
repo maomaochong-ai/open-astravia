@@ -3,7 +3,7 @@ import XCTest
 /// Drives the real app. The end-to-end flow needs the interop harness
 /// (`scripts/ui-test.sh` starts it and passes the invite through the
 /// `VETTA_UITEST_INVITE` environment variable); without it only the first-run
-/// pairing guide and screen are checked. The app is pinned to Simplified Chinese because
+/// pairing guide and scanner are checked. The app is pinned to Simplified Chinese because
 /// the assertions read its copy; it otherwise follows the system language.
 final class VettaUITests: XCTestCase {
 	private var shotDirectory: String? { ProcessInfo.processInfo.environment["VETTA_UITEST_SHOTS"] }
@@ -21,9 +21,9 @@ final class VettaUITests: XCTestCase {
 		app.launchArguments = ["-VettaEphemeralStorage"] + chinese
 		app.launch()
 		let pair = app.buttons["home.pair"]
-		XCTAssertTrue(pair.waitForExistence(timeout: 10), "an unpaired home should guide to pairing")
-		XCTAssertTrue(app.staticTexts["连接你的电脑"].exists)
-		XCTAssertFalse(app.staticTexts["电脑正在做的事"].exists, "an unpaired home shows nothing but the guide")
+		XCTAssertTrue(pair.waitForExistence(timeout: 10), "an unpaired Work tab should guide to pairing")
+		XCTAssertTrue(app.staticTexts["还没有连接电脑"].exists)
+		XCTAssertFalse(app.buttons["filter.status"].exists, "an unpaired Work tab shows nothing but the guide")
 		shot(app, "0-guide")
 
 		pair.tap()
@@ -31,7 +31,10 @@ final class VettaUITests: XCTestCase {
 		app.buttons["pair.close"].tap()
 		XCTAssertTrue(pair.waitForExistence(timeout: 5), "closing the scanner returns to the guide")
 
-		pair.tap()
+		app.tabBars.buttons["新会话"].tap()
+		XCTAssertTrue(app.buttons["home.pair"].waitForExistence(timeout: 5), "New Session guides to pairing too")
+
+		app.buttons["home.pair"].tap()
 		XCTAssertTrue(app.staticTexts["对准电脑端的二维码"].waitForExistence(timeout: 10))
 		XCTAssertTrue(app.buttons["pair.manual"].exists)
 		shot(app, "1-pair")
@@ -48,42 +51,96 @@ final class VettaUITests: XCTestCase {
 		app.launchArguments = ["-VettaEphemeralStorage", "-VettaPairURI", invite] + chinese
 		app.launch()
 
-		let history = app.buttons["session.s-report"]
-		if !history.waitForExistence(timeout: 15) {
+		let report = app.buttons["session.s-report"]
+		if !report.waitForExistence(timeout: 15) {
 			shot(app, "fail-home")
-			XCTFail("home should list the desktop's sessions")
+			XCTFail("Work should list the desktop's sessions")
 		}
-		XCTAssertTrue(app.staticTexts["电脑正在做的事"].exists)
+		XCTAssertTrue(app.buttons["session.s-build"].exists)
+		XCTAssertTrue(app.buttons["session.s-docs"].exists)
+		XCTAssertFalse(app.buttons["link.status.compact"].exists, "the small title waits until the large one scrolls away")
 		sleep(1)
 		shot(app, "3-home")
 
-		history.tap()
-		XCTAssertTrue(app.staticTexts["web_search: jira week 38"].waitForExistence(timeout: 10) || app.staticTexts.containing(NSPredicate(format: "label CONTAINS 'web_search'")).firstMatch.waitForExistence(timeout: 5))
+		// Status filter: only the running session is in progress.
+		pick(app, "filter.status", "处理中")
+		XCTAssertTrue(app.buttons["session.s-build"].waitForExistence(timeout: 5))
+		XCTAssertFalse(app.buttons["session.s-report"].exists)
+		pick(app, "filter.status", "所有")
+		// Kind filter: choosing projects opens a third chip for one project.
+		XCTAssertFalse(app.buttons["filter.project"].exists)
+		pick(app, "filter.kind", "项目")
+		XCTAssertTrue(app.buttons["filter.project"].waitForExistence(timeout: 5))
+		XCTAssertFalse(app.buttons["session.s-report"].exists, "conversations are not projects")
+		pick(app, "filter.project", "docs")
+		XCTAssertTrue(app.buttons["session.s-docs"].waitForExistence(timeout: 5))
+		XCTAssertFalse(app.buttons["session.s-build"].exists)
 		sleep(1)
-		shot(app, "4-history")
+		shot(app, "4-filtered")
+		pick(app, "filter.kind", "所有类型")
+		XCTAssertFalse(app.buttons["filter.project"].waitForExistence(timeout: 2), "leaving projects drops the project chip")
+		XCTAssertTrue(app.buttons["session.s-report"].waitForExistence(timeout: 5))
+
+		report.tap()
+		XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS 'web_search'")).firstMatch.waitForExistence(timeout: 10))
+		XCTAssertFalse(app.tabBars.buttons["工作"].isHittable, "the chat page hides the tab bar")
+		sleep(1)
+		shot(app, "5-history")
 		app.navigationBars.buttons.element(boundBy: 0).tap()
 
+		// New Session: start in a project and land straight in its chat.
+		app.tabBars.buttons["新会话"].tap()
+		XCTAssertTrue(app.staticTexts["想让电脑做点什么？"].waitForExistence(timeout: 5))
+		pick(app, "newSession.location", "vetta")
 		let field = app.textFields["composer.field"]
 		XCTAssertTrue(field.waitForExistence(timeout: 5))
 		field.tap()
 		field.typeText("帮我检查一下构建")
+		sleep(1)
+		shot(app, "6-new-session")
 		app.buttons["composer.send"].tap()
 
 		let option = app.buttons["question.option.继续"]
 		XCTAssertTrue(option.waitForExistence(timeout: 15), "the desktop's question should reach the phone")
 		sleep(1)
-		shot(app, "5-question")
+		shot(app, "7-question")
+
+		// Back lands on Work, where the session waiting on us sits on top.
+		app.navigationBars.buttons.element(boundBy: 0).tap()
+		let first = app.cells.element(boundBy: 1)
+		XCTAssertTrue(first.waitForExistence(timeout: 5))
+		XCTAssertTrue(first.staticTexts["待你决策"].exists, "a session waiting on the user is pinned to the top")
+		XCTAssertTrue(first.staticTexts["vetta"].exists, "it was started in the chosen project")
+		sleep(1)
+		shot(app, "8-waiting")
+		first.tap()
+		XCTAssertTrue(option.waitForExistence(timeout: 10))
 		option.tap()
 		app.buttons["question.submit"].tap()
 		XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS '已按你的选择继续'")).firstMatch.waitForExistence(timeout: 10))
-		sleep(1)
-		shot(app, "6-answered")
-
 		app.navigationBars.buttons.element(boundBy: 0).tap()
-		app.buttons["home.settings"].tap()
-		XCTAssertTrue(app.staticTexts["连接与偏好"].waitForExistence(timeout: 5))
+
+		// Scrolling the large title away hands over to the small one with the link icon.
+		app.swipeDown()
+		app.swipeUp()
+		XCTAssertTrue(app.buttons["link.status.compact"].waitForExistence(timeout: 5))
 		sleep(1)
-		shot(app, "7-settings")
+		shot(app, "9-collapsed")
+		app.swipeDown()
+
+		app.tabBars.buttons["设置"].tap()
+		sleep(1)
+		shot(app, "10-settings")
+	}
+
+	/// Opens a menu chip and chooses the option whose label starts with `option`.
+	@MainActor private func pick(_ app: XCUIApplication, _ menu: String, _ option: String) {
+		let chip = app.buttons[menu]
+		XCTAssertTrue(chip.waitForExistence(timeout: 5), "\(menu) should be on screen")
+		chip.tap()
+		let item = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", option)).firstMatch
+		XCTAssertTrue(item.waitForExistence(timeout: 5), "\(menu) should offer \(option)")
+		item.tap()
 	}
 
 	@MainActor private func shot(_ app: XCUIApplication, _ name: String) {

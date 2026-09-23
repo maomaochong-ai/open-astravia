@@ -63,6 +63,22 @@ type Summary = Record<string, unknown> & { id: string };
 const sessions: Summary[] = [
 	{ id: "s-report", projectCwd: "/conversations", projectName: "对话", title: "整理上周周报", preview: "把 Jira 里的工单按模块汇总", updatedAt: Date.now() - 3_600_000, status: "completed", live: false },
 	{ id: "s-build", projectCwd: "/Users/dev/vetta", projectName: "vetta", title: "修复桌面端打包脚本", preview: "electron-builder 签名失败", updatedAt: Date.now() - 120_000, status: "running", live: true },
+	{ id: "s-docs", projectCwd: "/Users/dev/docs", projectName: "docs", title: "更新安装文档", preview: "链接检查失败：3 个外链 404", updatedAt: Date.now() - 86_400_000, status: "error", live: false },
+	...["整理会议纪要", "翻译发布公告", "排查内存占用", "清理旧分支", "生成月度报表", "核对依赖许可证"].map((title, index) => ({
+		id: `s-old-${index}`,
+		projectCwd: index % 2 ? "/Users/dev/vetta" : "/conversations",
+		projectName: index % 2 ? "vetta" : "对话",
+		title,
+		preview: "已完成，结果已同步到电脑。",
+		updatedAt: Date.now() - (2 + index) * 86_400_000,
+		status: "completed",
+		live: false,
+	})),
+];
+const conversationCwd = "/conversations";
+const projects = [
+	{ cwd: "/Users/dev/vetta", name: "vetta" },
+	{ cwd: "/Users/dev/docs", name: "docs" },
 ];
 const histories = new Map<string, unknown[]>([
 	["s-report", [
@@ -128,8 +144,19 @@ function handleRequest(deviceId: string, connection: Connection, request: { requ
 		case "session.list":
 			ok({ sessions });
 			return;
+		case "project.list": {
+			const count = (cwd: string) => sessions.filter((entry) => entry.projectCwd === cwd).length;
+			ok({
+				projects: [
+					{ cwd: conversationCwd, name: "对话", kind: "conversation", sessionCount: count(conversationCwd) },
+					...projects.map((project) => ({ ...project, kind: "project", sessionCount: count(project.cwd) })),
+				],
+			});
+			return;
+		}
 		case "session.create": {
-			const session = { id: `s-${rc.randomToken(6)}`, projectCwd: "/conversations", projectName: "对话", title: "", updatedAt: Date.now(), status: "idle", live: true };
+			const project = projects.find((entry) => entry.cwd === request.payload?.projectCwd);
+			const session = { id: `s-${rc.randomToken(6)}`, projectCwd: project?.cwd ?? conversationCwd, projectName: project?.name ?? "对话", title: "", updatedAt: Date.now(), status: "idle", live: true };
 			sessions.unshift(session);
 			histories.set(session.id, []);
 			ok({ session });

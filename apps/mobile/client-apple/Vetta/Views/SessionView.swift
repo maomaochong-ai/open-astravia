@@ -76,6 +76,8 @@ struct SessionView: View {
 			)
 		}
 		.navigationBarTitleDisplayMode(.inline)
+		// The composer takes the bottom edge; a tab bar under it would stack two glass bars.
+		.toolbar(.hidden, for: .tabBar)
 		.toolbar {
 			ToolbarItem(placement: .principal) {
 				TitleWithStatus(title: L10n.Chat.assistant, subtitle: subtitle, online: model.online)
