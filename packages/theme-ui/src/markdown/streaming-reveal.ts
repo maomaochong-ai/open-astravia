@@ -123,31 +123,65 @@ export function snapToTokenBoundary(text: string, index: number): number {
 }
 
 /**
- * `end` 之前若有未闭合的行内语法（链接 `[…](…)`、行内代码、`**` 加粗），返回它的起点；否则返回 `end`。
- * 只看当前行：这几种语法跨行本就不成立。
+ * Temporarily hold incomplete inline syntax on the current line. This is a
+ * presentation heuristic, not a Markdown parser; timeout and final flush preserve source.
  */
 export function holdBackUnclosedInline(text: string, end: number): number {
 	const lineStart = text.lastIndexOf("\n", end - 1) + 1;
 	let hold = end;
 	let backtickStart = -1;
+	let backtickLength = 0;
+	let mathStart = -1;
+	let mathLength = 0;
+	let mathCloser: string | null = null;
 	let strongStart = -1;
 	let linkStart = -1;
 	let linkTextClosed = false;
+	let destinationDepth = 0;
 	for (let index = lineStart; index < end; index++) {
 		const char = text[index];
 		if (char === "\\") {
+			const next = text[index + 1];
+			if (backtickStart === -1 && !linkTextClosed) {
+				if (mathStart !== -1 && next === mathCloser) {
+					mathStart = -1;
+					mathCloser = null;
+				} else if (mathStart === -1 && (next === "(" || next === "[")) {
+					mathStart = index;
+					mathLength = 0;
+					mathCloser = next === "(" ? ")" : "]";
+				}
+			}
 			index += 1;
 			continue;
 		}
-		if (backtickStart !== -1) {
-			if (char === "`") backtickStart = -1;
-			continue;
-		}
 		if (char === "`") {
-			backtickStart = index;
+			let length = 1;
+			while (index + length < end && text[index + length] === "`") length++;
+			if (backtickStart !== -1) {
+				if (length === backtickLength) backtickStart = -1;
+			} else if (mathStart === -1) {
+				backtickStart = index;
+				backtickLength = length;
+			}
+			index += length - 1;
 			continue;
 		}
-		if (char === "*" && text[index + 1] === "*") {
+		if (backtickStart !== -1) continue;
+		if (char === "$" && !linkTextClosed) {
+			let length = 1;
+			while (index + length < end && text[index + length] === "$") length++;
+			if (mathStart !== -1) {
+				if (length === mathLength) mathStart = -1;
+			} else {
+				mathStart = index;
+				mathLength = length;
+			}
+			index += length - 1;
+			continue;
+		}
+		if (mathStart !== -1) continue;
+		if (char === "*" && index + 1 < end && text[index + 1] === "*") {
 			strongStart = strongStart === -1 ? index : -1;
 			index += 1;
 			continue;
@@ -158,8 +192,10 @@ export function holdBackUnclosedInline(text: string, end: number): number {
 		}
 		if (!linkTextClosed) {
 			if (char === "]") {
+				if (index + 1 === end) continue;
 				if (text[index + 1] === "(") {
 					linkTextClosed = true;
+					destinationDepth = 1;
 					index += 1;
 				} else {
 					// `[…]` 后面不是 `(`：不是链接，从下一个字符重新找。
@@ -168,14 +204,19 @@ export function holdBackUnclosedInline(text: string, end: number): number {
 			}
 			continue;
 		}
-		if (char === ")") {
+		if (char === "(") destinationDepth++;
+		if (char === ")" && --destinationDepth === 0) {
 			linkStart = -1;
 			linkTextClosed = false;
 		}
 	}
 	// `[` 后面紧跟着文本末尾时也可能是链接开头；`]` 刚到、`(` 未到的瞬间同样先扣着。
-	if (linkStart !== -1 && (linkTextClosed || end - linkStart < HOLD_MAX_CHARS)) hold = Math.min(hold, linkStart);
+	if (linkStart !== -1 && (linkTextClosed || end - linkStart < HOLD_MAX_CHARS)) {
+		const start = text[linkStart - 1] === "!" ? linkStart - 1 : linkStart;
+		hold = Math.min(hold, start);
+	}
 	if (backtickStart !== -1) hold = Math.min(hold, backtickStart);
+	if (mathStart !== -1) hold = Math.min(hold, mathStart);
 	if (strongStart !== -1) hold = Math.min(hold, strongStart);
 	return hold;
 }
@@ -234,6 +275,14 @@ export function planReveal(input: RevealPlanInput): RevealStep | null {
 	if (heldMs < HOLD_MAX_MS) {
 		const safe = holdBackUnclosedInline(text, end);
 		if (safe < end && end - safe < HOLD_MAX_CHARS) {
+			// The closing delimiter may already have arrived beyond this tick's character
+			// budget. Reveal the complete inline construct instead of timing out into raw markup.
+			const lookahead = text.slice(safe, safe + HOLD_MAX_CHARS).split("\n", 1)[0] ?? "";
+			for (let candidate = end - safe + 1; candidate <= lookahead.length; candidate++) {
+				if (holdBackUnclosedInline(lookahead, candidate) === candidate) {
+					return { end: safe + candidate, held: false };
+				}
+			}
 			end = Math.max(safe, revealed);
 			held = true;
 		}

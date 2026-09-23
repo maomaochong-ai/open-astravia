@@ -1,13 +1,19 @@
+import { createMarkdownHostFixture } from "./markdown-host.fixture";
+import type { ComponentProps } from "react";
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { MarkdownContent } from "@vetta-org/theme-ui/markdown";
+import { MarkdownContent, MarkdownHostProvider } from "@vetta-org/theme-ui/markdown";
 import { MarkdownPreviewView } from "@vetta-org/theme-ui/activity";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderFormula } from "../../../../../../../../packages/theme-ui/src/markdown/math-render";
-import { RichCodeBlock } from "../../../../../../../../packages/theme-ui/src/markdown/RichCodeBlock";
+import { RichCodeBlock as RichCodeBlockView } from "../../../../../../../../packages/theme-ui/src/markdown/RichCodeBlock";
 import { useRenderSnapshot } from "../../../../../../../../packages/theme-ui/src/markdown/use-render-snapshot";
 
+const { host, close } = createMarkdownHostFixture();
+function RichCodeBlock(props: ComponentProps<typeof RichCodeBlockView>) { return <MarkdownHostProvider host={host}><RichCodeBlockView {...props} /></MarkdownHostProvider>; }
+
 const environment = {
+	host,
 	theme: "dark" as const,
 	labels: { copy: "Copy", copied: "Copied" },
 	getFileIconClass: () => "",
@@ -38,6 +44,7 @@ class FormulaWorker {
 }
 
 beforeEach(() => {
+	vi.clearAllMocks();
 	vi.stubGlobal("Worker", FormulaWorker);
 	Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: vi.fn(async () => {}) } });
 });
@@ -62,9 +69,9 @@ describe("Markdown rich content user flows", () => {
 		view.rerender(<MarkdownContent {...environment} text={text} />);
 		await screen.findByTitle("HTML preview");
 		fireEvent.click(screen.getByRole("button", { name: "Run JavaScript" }));
-		expect(screen.getByTitle("HTML preview").getAttribute("sandbox")).toBe("allow-scripts");
+		expect(screen.getByTitle("HTML preview").getAttribute("sandbox")).toBe("");
 		view.rerender(<MarkdownContent {...environment} text={text} onOpenFile={() => undefined} />);
-		expect(screen.getByTitle("HTML preview").getAttribute("sandbox")).toBe("allow-scripts");
+		expect(screen.getByTitle("HTML preview").getAttribute("sandbox")).toBe("");
 	});
 
 	it("keeps a full raw HTML page with blank lines in one preview", async () => {
@@ -80,6 +87,7 @@ describe("Markdown rich content user flows", () => {
 		const view = render(
 			<MarkdownContent {...environment} text={"Inline $x^2$\n\n$$\n\\frac{a}{b}\n$$\n\n`$literal$`"} />,
 		);
+		await act(async () => { await vi.dynamicImportSettled(); });
 		await waitFor(() => expect(view.container.querySelectorAll("math").length).toBe(2));
 		expect(screen.getByText("$literal$").tagName).toBe("CODE");
 		view.rerender(<MarkdownContent {...environment} text={"$\\invalidCommand$"} />);
@@ -87,6 +95,16 @@ describe("Markdown rich content user flows", () => {
 		expect(screen.getByText("\\invalidCommand")).toBeTruthy();
 		view.rerender(<MarkdownContent {...environment} text="$y^3$" />);
 		await waitFor(() => expect(view.container.querySelector("math")).not.toBeNull());
+	});
+
+	it("supports TeX delimiters without changing code or currency and copies the formula", async () => {
+		const text = String.raw`Inline \(x^2\), display \[\frac{1}{2}\], cost $5 and $10. Code ` + "`\\(literal\\)`";
+		const view = render(<MarkdownContent {...environment} text={text} />);
+		await waitFor(() => expect(view.container.querySelectorAll("math")).toHaveLength(2));
+		expect(view.container.textContent).toContain("cost $5 and $10");
+		expect(screen.getByText("\\(literal\\)").tagName).toBe("CODE");
+		fireEvent.click(screen.getAllByRole("button", { name: "Copy" })[0]);
+		await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalledWith("x^2"));
 	});
 
 	it("previews SVG without inserting model markup into the host, then shows and copies its original source", async () => {
@@ -120,15 +138,17 @@ describe("Markdown rich content user flows", () => {
 		expect(await screen.findByTitle("HTML preview")).toBeTruthy();
 	});
 
-	it("waits for generation, runs only on request, and stops when source changes or the document is hidden", () => {
+	it("waits for generation, runs only on request, and stops when source changes or the document is hidden", async () => {
 		const code = '<button onclick="this.textContent=42">Run</button>';
 		const view = render(<RichCodeBlock {...environment} lang="html" code={code} live />);
 		expect(screen.queryByTitle("HTML preview")).toBeNull();
 		view.rerender(<RichCodeBlock {...environment} lang="html" code={code} />);
 		expect(screen.getByTitle("HTML preview").getAttribute("sandbox")).toBe("");
 		fireEvent.click(screen.getByRole("button", { name: "Run JavaScript" }));
-		expect(screen.getByTitle("HTML preview").getAttribute("sandbox")).toBe("allow-scripts");
+		expect(screen.getByTitle("HTML preview").getAttribute("sandbox")).toBe("");
+		await waitFor(() => expect(host.openHtml).toHaveBeenCalledWith(code));
 		view.rerender(<RichCodeBlock {...environment} lang="html" code={`${code}<p>New</p>`} />);
+		expect(close).toHaveBeenCalled();
 		expect(screen.getByTitle("HTML preview").getAttribute("sandbox")).toBe("");
 		fireEvent.click(screen.getByRole("button", { name: "Run JavaScript" }));
 		Object.defineProperty(document, "hidden", { configurable: true, value: true });
@@ -168,7 +188,7 @@ describe("Markdown rich content user flows", () => {
 		expect(screen.queryByTitle("HTML preview")).toBeNull();
 		act(() => intersect?.([{ isIntersecting: true }]));
 		fireEvent.click(screen.getByRole("button", { name: "Run JavaScript" }));
-		expect(screen.getByTitle("HTML preview").getAttribute("sandbox")).toBe("allow-scripts");
+		expect(screen.getByTitle("HTML preview").getAttribute("sandbox")).toBe("");
 		act(() => intersect?.([{ isIntersecting: false }]));
 		expect(screen.queryByTitle("HTML preview")).toBeNull();
 		act(() => intersect?.([{ isIntersecting: true }]));

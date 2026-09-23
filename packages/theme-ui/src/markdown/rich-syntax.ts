@@ -1,4 +1,5 @@
 import remarkMath from "remark-math";
+import { remarkMathAliases } from "./math-syntax";
 
 interface MarkdownNode {
 	type: string;
@@ -18,6 +19,19 @@ export function remarkRichMarkup() {
 			if (!children) return;
 			for (let index = 0; index < children.length; index++) {
 				const node = children[index];
+				if (node.type === "inlineMath") {
+					const start = node.position?.start.offset;
+					const end = node.position?.end.offset;
+					const raw = start === undefined || end === undefined ? "" : markdown.slice(start, end);
+					// Single-dollar delimiters follow the common no-whitespace/no-following-digit rule.
+					if (
+						/^\$(?!\$)/.test(raw) &&
+						(/^\$\s|\s\$$/.test(raw) || /\d/.test(markdown[end ?? markdown.length] ?? ""))
+					) {
+						children[index] = { type: "text", value: raw, position: node.position };
+						continue;
+					}
+				}
 				if (node.type !== "html") {
 					visit(node);
 					continue;
@@ -76,4 +90,4 @@ export function remarkRichMarkup() {
 	};
 }
 
-export const richRemarkPlugins = [remarkMath, remarkRichMarkup];
+export const richRemarkPlugins = [remarkMath, remarkMathAliases, remarkRichMarkup];

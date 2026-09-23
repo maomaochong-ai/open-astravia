@@ -15,7 +15,7 @@ const { chromium } = playwrightRequire("playwright");
 const markdown = join(repo, "packages/theme-ui/src/markdown");
 
 test(
-	"real browser: isolated HTML interaction, blocked escape/network, inert SVG and bundled formula worker",
+	"real browser: static HTML, blocked escape/network, inert SVG and bundled formula worker",
 	{ timeout: 60_000 },
 	async () => {
 		const directory = await mkdtemp(join(tmpdir(), "vetta-markdown-test-"));
@@ -79,28 +79,26 @@ test(
 		document.querySelector('#result').textContent=blocked && !window.vetta ? 'Isolated' : 'Escaped';
 		fetch('https://blocked.example/request').catch(()=>{});
 		</script><img src="https://blocked.example/image"><iframe src="https://blocked.example/frame"></iframe>`;
-			async function mount(scripts) {
+			async function mount() {
 				await page.evaluate(
-					({ document, scripts }) => {
+					({ document }) => {
 						document = String(document);
 						window.document.querySelector("#preview")?.remove();
 						const frame = window.document.createElement("iframe");
 						frame.id = "preview";
-						frame.sandbox = scripts ? "allow-scripts" : "";
+						frame.sandbox = "";
 						frame.srcdoc = document;
 						window.document.body.append(frame);
 					},
-					{ document: createPreviewDocument(source, scripts), scripts },
+					{ document: createPreviewDocument(source) },
 				);
 				return page.frameLocator("#preview").frameLocator("iframe").first();
 			}
-			let frame = await mount(false);
+			const frame = await mount();
 			await frame.locator("h1").waitFor({ state: "attached" });
 			assert.equal(await frame.locator("#result").textContent(), "");
-			frame = await mount(true);
-			await frame.locator("#result").filter({ hasText: "Isolated" }).waitFor();
 			await frame.locator("button").click();
-			assert.equal(await frame.locator("button").textContent(), "Clicked");
+			assert.equal(await frame.locator("button").textContent(), "Click");
 			assert.equal(await page.locator("#host").textContent(), "Host");
 			await frame.locator("html").evaluate(() => {
 				location.href = "https://blocked.example/escape";
@@ -124,6 +122,21 @@ test(
 				svg,
 			);
 			assert.equal(await page.locator("#host").textContent(), "Host");
+			const imageModule = await transformWithEsbuild(
+				await readFile(join(repo, "apps/desktop/src/renderer/shared/lib/markdown-images.ts"), "utf8"),
+				"markdown-images.ts", { loader: "ts" },
+			);
+			const imageModuleUrl = `data:text/javascript;base64,${Buffer.from(imageModule.code).toString("base64")}`;
+			const imageResult = await page.evaluate(async ({ moduleUrl, source }) => {
+				const { imageAsPng } = await import(moduleUrl);
+				const png = await imageAsPng(source);
+				let rejected = false;
+				try { await imageAsPng('data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="5000" height="5000"/>')); }
+				catch { rejected = true; }
+				return { png, rejected };
+			}, { moduleUrl: imageModuleUrl, source: svg });
+			assert.match(imageResult.png, /^data:image\/png;base64,/);
+			assert.equal(imageResult.rejected, true);
 			const html = await page.evaluate(async () => {
 				const { requestFormula } = await import("/math-client.js");
 				return new Promise((resolve) => requestFormula("\\frac{1}{2}", true, resolve));

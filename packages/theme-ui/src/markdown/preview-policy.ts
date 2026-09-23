@@ -2,10 +2,10 @@ export const MAX_PREVIEW_LENGTH = 256_000;
 export const MARKDOWN_PREVIEW_FRAME_NAME = "vetta-markdown-preview";
 
 /** No same-origin, popups, forms, downloads, navigation of ancestors or host bridge. */
-export function createPreviewDocument(source: string, scripts: boolean): string {
+export function createPreviewDocument(source: string): string {
 	const policy = [
 		"default-src 'none'",
-		`script-src ${scripts ? "'unsafe-inline'" : "'none'"}`,
+		"script-src 'none'",
 		"style-src 'unsafe-inline'",
 		"img-src data: blob:",
 		"font-src data:",
@@ -25,7 +25,7 @@ export function createPreviewDocument(source: string, scripts: boolean): string 
 		.replaceAll("<", "&lt;")
 		.replaceAll(">", "&gt;");
 	const outerPolicy = policy.replace("frame-src 'none'", "frame-src about:");
-	return `<!doctype html><meta http-equiv="Content-Security-Policy" content="${outerPolicy}"><style>html,body,iframe{margin:0;width:100%;height:100%;border:0}body{overflow:hidden}</style><iframe title="HTML" sandbox="${scripts ? "allow-scripts" : ""}" referrerpolicy="no-referrer" srcdoc="${escaped}"></iframe>`;
+	return `<!doctype html><meta http-equiv="Content-Security-Policy" content="${outerPolicy}"><style>html,body,iframe{margin:0;width:100%;height:100%;border:0}body{overflow:hidden}</style><iframe title="HTML" sandbox="" referrerpolicy="no-referrer" srcdoc="${escaped}"></iframe>`;
 }
 
 export function svgImageSource(source: string): string | null {

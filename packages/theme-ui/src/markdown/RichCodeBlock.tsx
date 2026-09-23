@@ -1,3 +1,4 @@
+import { useMarkdownHost } from "./host";
 import { Button } from "@vetta-org/ui";
 import { memo, useEffect, useMemo, useState } from "react";
 import { CodeBlock } from "./CodeBlock";
@@ -10,6 +11,8 @@ import { useRichVisibility } from "./use-rich-visibility";
 /** Product recipe; source/copy retain the existing CodeBlock primitives. */
 export const RichCodeBlock = memo(function RichCodeBlock(props: MarkdownCodeBlockProps) {
 	const { code, lang, live = false } = props;
+	const host = useMarkdownHost();
+	const [failed, setFailed] = useState(false);
 	const labels = props.labels.rich ?? defaultRichContentLabels;
 	const svg = lang.toLowerCase() === "svg";
 	const { ref, active } = useRichVisibility<HTMLDivElement>();
@@ -26,16 +29,26 @@ export const RichCodeBlock = memo(function RichCodeBlock(props: MarkdownCodeBloc
 	}, [active, live, showSource, code, runSource]);
 	useEffect(() => {
 		if (!running) return;
-		// Cooperative previews get a bounded lifetime; this is not a CPU sandbox for synchronous infinite loops.
+		// Main owns the hard timeout; this timer only updates the local controls.
 		const timeout = setTimeout(() => {
 			setRunSource(null);
 			setPaused(true);
 		}, 30_000);
 		return () => clearTimeout(timeout);
 	}, [running]);
+	useEffect(() => {
+		if (!running || !host) return;
+		let cancelled = false;
+		let stop: (() => void) | undefined;
+		setFailed(false);
+		void host.openHtml(code).then((close) => {
+			if (cancelled) close(); else stop = close;
+		}, () => { if (!cancelled) { setFailed(true); setRunSource(null); } });
+		return () => { cancelled = true; stop?.(); };
+	}, [running, code, host]);
 	const srcDoc = useMemo(
-		() => (active && !svg && !live && !oversized && !showSource ? createPreviewDocument(code, running) : ""),
-		[active, svg, live, oversized, showSource, code, running],
+		() => (active && !svg && !live && !oversized && !showSource ? createPreviewDocument(code) : ""),
+		[active, svg, live, oversized, showSource, code],
 	);
 	return (
 		<CodeBlock.Root {...props}>
@@ -47,7 +60,7 @@ export const RichCodeBlock = memo(function RichCodeBlock(props: MarkdownCodeBloc
 							<Button variant="ghost" size="sm" aria-pressed={showSource} onClick={() => setShowSource(!showSource)}>
 								{showSource ? labels.preview : labels.source}
 							</Button>
-							{!svg && !showSource && !live && !oversized && (
+							{host && !svg && !showSource && !live && !oversized && (
 								<Button
 									variant="ghost"
 									size="sm"
@@ -82,15 +95,15 @@ export const RichCodeBlock = memo(function RichCodeBlock(props: MarkdownCodeBloc
 						) : (
 							<>
 								<p className="px-3 py-2 text-[12px] text-muted-foreground">
-									{running ? labels.running : paused ? labels.paused : labels.staticHtml}
+									{failed ? labels.failed : running ? labels.running : paused ? labels.paused : labels.staticHtml}
 								</p>
 								{srcDoc ? (
 									<iframe
-										key={running ? "running" : "static"}
+										key="static"
 										name={MARKDOWN_PREVIEW_FRAME_NAME}
 										title={labels.html}
 										srcDoc={srcDoc}
-										sandbox={running ? "allow-scripts" : ""}
+										sandbox=""
 										referrerPolicy="no-referrer"
 										allow="camera 'none'; microphone 'none'; geolocation 'none'; clipboard-read 'none'; clipboard-write 'none'"
 										className="h-80 w-full border-0 bg-background"

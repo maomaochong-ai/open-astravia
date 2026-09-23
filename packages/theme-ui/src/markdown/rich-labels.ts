@@ -11,6 +11,13 @@ export interface RichContentLabels {
 	running: string;
 	svg: string;
 	html: string;
+	loading?: string;
+	retry?: string;
+	enlarge?: string;
+	save?: string;
+	diagram?: string;
+	imageFailed?: string;
+	actionFailed?: string;
 }
 
 export const defaultRichContentLabels: RichContentLabels = {
@@ -26,6 +33,13 @@ export const defaultRichContentLabels: RichContentLabels = {
 	running: "Interactive preview. Automatically stops after 30 seconds.",
 	svg: "SVG preview",
 	html: "HTML preview",
+	loading: "Loading preview…",
+	retry: "Retry",
+	enlarge: "Enlarge",
+	save: "Save",
+	diagram: "Diagram",
+	imageFailed: "Could not load image.",
+	actionFailed: "Could not complete this action. Try again.",
 };
 
 export interface MarkdownLabels {

@@ -1,3 +1,6 @@
+import { MarkdownHostProvider } from "./host";
+import type { MarkdownHost } from "./host";
+import { MarkdownImage } from "./MarkdownImage";
 import { createContext, memo, useContext, useMemo, useRef } from "react";
 import type { JSX } from "react";
 import ReactMarkdown from "react-markdown";
@@ -19,6 +22,8 @@ import {
 } from "../shared/MarkdownTable";
 import { SkillTypeIcon } from "../skills/skill-icon";
 import { InlineTokenChip } from "./InlineTokenChip";
+import { WebsiteIcon } from "./WebsiteIcon";
+import { useRenderSnapshot } from "./use-render-snapshot";
 import { chatUrlTransform, classifyMarkdownLink, normalizeLocalFileLinksInMarkdown } from "./markdown-link";
 import { useStreamingDisplayText, rehypeStreamingChunks } from "./streaming";
 import {
@@ -46,6 +51,7 @@ function cn(...parts: Array<string | false | null | undefined>): string {
 }
 
 export interface MarkdownContentProps {
+	host?: MarkdownHost;
 	definition?: MarkdownDefinition;
 	text: string;
 	isStreamingTail?: boolean;
@@ -151,12 +157,30 @@ export const MarkdownContent = memo(function MarkdownContent({
 	onOpenUrl,
 	inlineTokens,
 	definition: definitionOverride,
+	host,
 }: MarkdownContentProps): JSX.Element {
 	const inheritedDefinition = useMarkdownDefinition();
 	const definition = definitionOverride ?? inheritedDefinition;
 	const definitionRef = useRef(definition);
 	definitionRef.current = definition;
 	const { displayText, animateChunks } = useStreamingDisplayText(text, isStreamingTail);
+	const chunkedRef = useRef(false);
+	if (animateChunks) chunkedRef.current = true;
+	const frozenBlocksRef = useRef(false);
+	if (isStreamingTail && !inlineTokens) frozenBlocksRef.current = true;
+	const splitDocuments = frozenBlocksRef.current && !inlineTokens;
+	const candidateSplit = useMemo(
+		() => splitDocuments ? splitStableMarkdownBlocks(displayText) : null,
+		[displayText, splitDocuments],
+	);
+	// Keep small replies responsive; bound full parsing of long tails without splitting
+	// paragraphs/lists/reference definitions into semantically different documents.
+	const tailLength = (candidateSplit?.tail ?? displayText).length;
+	const renderInterval = tailLength >= 50000 ? 400 : tailLength >= 12000 ? 200 : 0;
+	const previousText = useRef(displayText);
+	const replaced = !displayText.startsWith(previousText.current);
+	previousText.current = displayText;
+	const renderText = useRenderSnapshot(displayText, true, isStreamingTail && renderInterval > 0 && !replaced, renderInterval);
 
 	const labelsRef = useRef(labels);
 	const getFileIconClassRef = useRef(getFileIconClass);
@@ -191,11 +215,12 @@ export const MarkdownContent = memo(function MarkdownContent({
 				</ol>
 			),
 			li: ({ children }) => <li>{children}</li>,
+			img: ({ src, alt, title }) => <MarkdownImage src={src} alt={alt} title={title} labels={labelsRef.current} />,
 			code: function MarkdownCode({ className: codeClassName, children }) {
 				const live = useContext(MarkdownCodeLiveContext);
 				const raw = String(children);
 				if (codeClassName?.includes("math-inline") || codeClassName?.includes("math-display")) {
-					return <Formula source={raw.replace(/\n$/, "")} display={codeClassName.includes("math-display")} live={live} />;
+					return <Formula source={raw.replace(/\n$/, "")} display={codeClassName.includes("math-display")} live={live} labels={labelsRef.current} />;
 				}
 				const isBlock = (codeClassName?.startsWith("language-") ?? false) || raw.includes("\n");
 				if (isBlock) {
@@ -250,7 +275,7 @@ export const MarkdownContent = memo(function MarkdownContent({
 								onOpenUrlRef.current(kind.url);
 							}}
 						>
-							<span className="icon-[mdi--web] h-3.5 w-3.5 shrink-0" />
+							<WebsiteIcon href={kind.url} />
 							<span className="truncate">{children}</span>
 						</a>
 					);
@@ -350,20 +375,19 @@ export const MarkdownContent = memo(function MarkdownContent({
 
 	// 分段 span 一旦挂上就保留到实例卸载：结束时若把 rehype 插件撤掉，整个尾块会重建 DOM，
 	// 表现为回复结尾「卡一下」。「最新短语略暗」只挂在包裹类上，撤掉包裹类就恢复全亮，DOM 不动。
-	const chunkedRef = useRef(false);
-	if (animateChunks) chunkedRef.current = true;
 	// 切块一旦启用就保持到实例卸载：流式结束时 `animateChunks` 要等 settle 才关，若此刻把
 	// 已冻结块并回单一文档，已上屏的节点会整段重挂并再包成 `.streaming-chunk` 重放淡入。
 	// 稳定块只按已闭合的顶层围栏切分，分块与整篇渲染结果一致，因此结束后不需要再合并。
-	const frozenBlocksRef = useRef(false);
-	if (isStreamingTail && !inlineTokens) frozenBlocksRef.current = true;
-	const split = frozenBlocksRef.current && !inlineTokens ? splitStableMarkdownBlocks(displayText) : null;
+	const split = useMemo(
+		() => renderText === displayText ? candidateSplit : splitDocuments ? splitStableMarkdownBlocks(renderText) : null,
+		[renderText, displayText, candidateSplit, splitDocuments],
+	);
 	const committed = split?.committed ?? [];
-	const tail = split ? split.tail : displayText;
+	const tail = split ? split.tail : renderText;
 	const showTail = !split || tail.length > 0 || committed.length === 0;
 
 	return (
-		<div className={cn("markdown-body break-words", animateChunks && "markdown-streaming-tail", className)}>
+		<MarkdownHostProvider host={host}><div className={cn("markdown-body break-words", animateChunks && "markdown-streaming-tail", className)}>
 			{committed.map((block, index) => (
 				<MarkdownDocument
 					key={`committed-${index}`}
@@ -385,6 +409,6 @@ export const MarkdownContent = memo(function MarkdownContent({
 					text={tail}
 				/>
 			) : null}
-		</div>
+		</div></MarkdownHostProvider>
 	);
 });

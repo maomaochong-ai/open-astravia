@@ -92,6 +92,26 @@ describe("snapToTokenBoundary", () => {
 });
 
 describe("holdBackUnclosedInline", () => {
+	test("holds inline math and matching backtick runs without interpreting their content as links", () => {
+		for (const text of ["Value $x + y", "Value $$x + y", "Use ``a`b"]) {
+			expect(holdBackUnclosedInline(text, text.length)).toBe(text.indexOf(" ") + 1);
+		}
+		for (const text of ["Value $x + y$", "Value $$x + y$$", "Use ``a`b``", "Cost \\$5", "Use `[$x]` now"]) {
+			expect(holdBackUnclosedInline(text, text.length)).toBe(text.length);
+		}
+	});
+
+	test("keeps nested link destinations and a just-arrived closing bracket pending", () => {
+		for (const text of [
+			"See [page]",
+			"See [page](https://example.test/a(b)",
+			"See ![image](https://example.test/a(b)",
+		]) {
+			expect(holdBackUnclosedInline(text, text.length)).toBe(4);
+		}
+		const text = "See [page](https://example.test/a(b)) now";
+		expect(holdBackUnclosedInline(text, text.length)).toBe(text.length);
+	});
 	test("holds an open link until its url closes", () => {
 		const text = "See [report](/tmp/report.md) now";
 		expect(holdBackUnclosedInline(text, "See [rep".length)).toBe("See ".length);
@@ -123,6 +143,24 @@ describe("holdBackUnclosedInline", () => {
 
 describe("planReveal", () => {
 	const base = { final: false, ratePerMs: 0.1, elapsedMs: 100, stalled: false, heldMs: 0 };
+
+	test("reveals an already complete inline construct atomically even when its closing token exceeds the character budget", () => {
+		for (const text of [
+			"See [page](https://example.test/a(b))",
+			"See $x + y$",
+			"See **bold words**",
+			"See ``a`b``",
+		]) {
+			expect(planReveal({ ...base, text, revealed: 4, ratePerMs: 0.02 })?.end).toBe(text.length);
+		}
+	});
+
+	test("does not use an unrelated next line as an inline closing delimiter", () => {
+		expect(planReveal({ ...base, text: "See [broken\nNext paragraph", revealed: 4, ratePerMs: 0.02 })).toEqual({
+			end: 4,
+			held: true,
+		});
+	});
 
 	test("returns null when everything is already shown", () => {
 		expect(planReveal({ ...base, text: "done", revealed: 4 })).toBeNull();
@@ -165,4 +203,16 @@ describe("planReveal", () => {
 		expect(released?.held).toBe(false);
 		expect(released?.end).toBeGreaterThan("See ".length);
 	});
+});
+
+describe("TeX delimiter streaming", () => {
+	test.each([String.raw`before \(x^2`, String.raw`before \[x^2`])("holds unclosed formula %s", (text) => {
+		expect(holdBackUnclosedInline(text, text.length)).toBe(7);
+	});
+	test.each([String.raw`before \(x^2\) after`, String.raw`before \[x^2\] after`, String.raw`before \\(literal`])(
+		"releases complete or escaped formula %s",
+		(text) => {
+			expect(holdBackUnclosedInline(text, text.length)).toBe(text.length);
+		},
+	);
 });
