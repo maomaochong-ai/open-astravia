@@ -47,8 +47,8 @@ import { stopSessionBackgroundWork } from "../agent-runtime/stop-session-work.js
 import { agentTeamSessionService } from "../agent-teams/team-session-service.js";
 import { stopMonitoringRuntimeSession } from "../app-monitor/app-monitor-service.js";
 import { onConversationListChanged } from "../conversations/conversation-list-events.js";
-import { assertOrdinaryConversationPath } from "../conversations/conversation-ownership-guard.js";
 import { getDesktopConversationService } from "../conversations/desktop-conversation-service.js";
+import { createDesktopSessionCommands } from "../conversations/desktop-session-commands.js";
 import { desktopSessionSearch } from "../conversations/desktop-session-search.js";
 import {
 	collectRunningInteractiveSessionIds,
@@ -85,7 +85,7 @@ import {
 } from "../plugins/system-prompt-operations.js";
 import { getSharedRuntime } from "../runtime.js";
 import { assertSandboxAvailableForMode } from "../sandbox/capability.js";
-import { getDesktopSchedulerServiceIfReady } from "../scheduler/scheduler-service.js";
+import { notifyAutomationSessionsDeleted } from "../scheduler/session-deletion.js";
 import {
 	DEFAULT_CONVERSATION_CWD,
 	DEFAULT_CONVERSATION_SESSION_DIR,
@@ -381,13 +381,6 @@ function assertMcpAppSender(sender: WebContents, expected: WebContents): void {
 	if (sender !== expected || sender.isDestroyed()) throw new Error("Untrusted MCP App IPC sender");
 }
 
-/** 会话被删除后通知自动化：解绑并暂停相关任务、清理执行记录（ADR-0127）。失败不影响删除本身。 */
-function notifyAutomationSessionsDeleted(isDeleted: (sessionPath: string) => boolean): void {
-	void getDesktopSchedulerServiceIfReady()
-		?.handleSessionsDeleted(isDeleted)
-		.catch((error) => sessionLog.error("failed to update automations after session deletion", error));
-}
-
 export function registerSessionIpc(webContents: WebContents): () => void {
 	const resolveDefaultExecutionMode = async (): Promise<SessionExecutionMode> => {
 		const config = await readDesktopConfig();
@@ -395,6 +388,10 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 	};
 
 	const runtime = getSharedRuntime();
+	const sessionCommands = createDesktopSessionCommands({
+		runtime,
+		onSessionsDeleted: notifyAutomationSessionsDeleted,
+	});
 	const pluginRuntimeSource = getDesktopCodingAgentPluginRuntimeSource();
 	const conversationService = getDesktopConversationService();
 	const questionBroker = getDesktopUserQuestionBroker();
@@ -1219,17 +1216,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 
 	ipcMain.handle(CHANNELS.DELETE, async (_event, sessionPath: unknown) => {
 		assertNonEmptyString(sessionPath, "sessionPath");
-		await assertOrdinaryConversationPath(sessionPath);
-		// ADR-0007: 「对话」项目下的 session cwd 是独立子目录；删除 session 时
-		// 连带回收子目录里的产物。读 header 先取 cwd，再 delete，最后 rm 子目录。
-		const cwdFromHeader = await readSessionCwdFromHeader(sessionPath);
-		await runtime.deleteSession(sessionPath);
-		notifyAutomationSessionsDeleted((path) => path === sessionPath);
-		if (cwdFromHeader && isConversationSubCwd(cwdFromHeader)) {
-			await rm(resolve(cwdFromHeader), { recursive: true, force: true }).catch((err) => {
-				sessionLog.error("failed to remove conversation sub cwd", cwdFromHeader, err);
-			});
-		}
+		await sessionCommands.delete(sessionPath);
 	});
 
 	ipcMain.handle(CHANNELS.DELETE_ALL_FOR_CWD, async (_event, cwd: unknown) => {
@@ -1254,8 +1241,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 	ipcMain.handle(CHANNELS.RENAME, async (_event, sessionPath: unknown, name: unknown) => {
 		assertNonEmptyString(sessionPath, "sessionPath");
 		assertNonEmptyString(name, "name");
-		await assertOrdinaryConversationPath(sessionPath);
-		await runtime.renameSession(sessionPath, name);
+		await sessionCommands.rename(sessionPath, name);
 	});
 
 	ipcMain.handle(
