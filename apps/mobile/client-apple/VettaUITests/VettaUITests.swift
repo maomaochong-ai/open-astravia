@@ -65,6 +65,10 @@ final class VettaUITests: XCTestCase {
 		XCTAssertTrue(app.buttons["session.s-build"].exists)
 		XCTAssertTrue(app.buttons["session.s-docs"].exists)
 		XCTAssertFalse(app.buttons["link.status.compact"].exists, "the small title waits until the large one scrolls away")
+		// Pull to refresh at the top: the refresh control grows the inset for a moment, which must not collapse the title.
+		app.buttons["session.s-report"].swipeDown(velocity: .fast)
+		sleep(2)
+		XCTAssertFalse(app.buttons["link.status.compact"].exists, "back at the top after a refresh, only the large title shows")
 		shot(app, "3-home")
 
 		// Status filter: only the running session is in progress.
@@ -118,7 +122,8 @@ final class VettaUITests: XCTestCase {
 		XCTAssertEqual(status.label, "等待模型响应")
 		let failure = app.descendants(matching: .any)["turn.error"]
 		XCTAssertTrue(failure.waitForExistence(timeout: 10), "the failure shows without reopening the chat")
-		XCTAssertTrue(failure.label.contains("Connection error.") && failure.label.contains("×2"), failure.label)
+		XCTAssertTrue(waitForLabel(failure, containing: "Connection error."), failure.label)
+		XCTAssertTrue(waitForLabel(failure, containing: "×2"), "the retry that fails the same way adds to the count: \(failure.label)")
 		XCTAssertEqual(app.descendants(matching: .any).matching(identifier: "turn.error").count, 1, "retries merge into one line")
 		XCTAssertTrue(app.buttons["composer.send"].waitForExistence(timeout: 5))
 		shot(app, "5c-error")
@@ -228,6 +233,8 @@ final class VettaUITests: XCTestCase {
 		chip.tap()
 		let item = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", option)).firstMatch
 		XCTAssertTrue(item.waitForExistence(timeout: 5), "\(menu) should offer \(option)")
+		// A tap while the menu is still opening only highlights the item.
+		Thread.sleep(forTimeInterval: 0.8)
 		item.tap()
 	}
 

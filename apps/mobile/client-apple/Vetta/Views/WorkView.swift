@@ -5,10 +5,8 @@ struct WorkView: View {
 	@Environment(AppModel.self) private var model
 	@Environment(Router.self) private var router
 	@State private var filter = SessionFilter()
-	/// True once the large title has gone and the small centred one takes over.
+	/// True once the list has scrolled past the large title and the small centred one takes over.
 	@State private var titleCollapsed = false
-	/// The list's top inset with the large title showing; it shrinks when the title collapses.
-	@State private var expandedInset: CGFloat = 0
 
 	var body: some View {
 		Group {
@@ -68,11 +66,8 @@ struct WorkView: View {
 			}
 		}
 		.listStyle(.plain)
-		// The inset shrinks whenever the bar collapses, including when it comes back
-		// collapsed without any scrolling (after a push from New Session).
-		.onScrollGeometryChange(for: CGFloat.self, of: Self.topInset) { _, inset in
-			expandedInset = max(expandedInset, inset)
-			setCollapsed(inset < expandedInset - 12)
+		.onScrollGeometryChange(for: Bool.self, of: Self.scrolledPastTitle) { _, collapsed in
+			withAnimation(.easeInOut(duration: 0.15)) { titleCollapsed = collapsed }
 		}
 		.overlay {
 			if rows.isEmpty, model.sessionsLoaded || LinkIndicator(model.link) == .offline {
@@ -82,15 +77,12 @@ struct WorkView: View {
 		.refreshable { await model.refreshSessions() }
 	}
 
+	/// Only how far the content moved counts: the top inset itself changes with
+	/// pull-to-refresh and transitions, and must not collapse the title at the top.
 	/// SwiftUI calls this on its render thread on device, so it must not inherit the
 	/// view's main-actor isolation: a main-actor closure traps there (EXC_BREAKPOINT).
-	private nonisolated static func topInset(_ geometry: ScrollGeometry) -> CGFloat {
-		geometry.contentInsets.top
-	}
-
-		private func setCollapsed(_ collapsed: Bool) {
-		guard collapsed != titleCollapsed else { return }
-		withAnimation(.easeInOut(duration: 0.15)) { titleCollapsed = collapsed }
+	private nonisolated static func scrolledPastTitle(_ geometry: ScrollGeometry) -> Bool {
+		geometry.contentOffset.y + geometry.contentInsets.top > 40
 	}
 
 	@ViewBuilder
