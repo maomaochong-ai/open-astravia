@@ -36,8 +36,15 @@ describe("remote protocol v2", () => {
 		);
 	});
 
-	it("accepts the upload and model requests", () => {
-		for (const method of ["session.upload", "model.list", "session.configure"]) {
+	it("accepts the upload, model and session management requests", () => {
+		for (const method of [
+			"session.upload",
+			"model.list",
+			"session.configure",
+			"session.rename",
+			"session.pin",
+			"session.delete",
+		]) {
 			expect(decodeRemoteFrame({ type: "request", requestId: "r1", method, sessionId: "s1" })).toMatchObject({
 				method,
 			});

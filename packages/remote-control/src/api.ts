@@ -26,6 +26,8 @@ export interface RemoteSessionSummary {
 	readonly status: RemoteSessionStatus;
 	/** True when the desktop currently holds a live runtime instance for it. */
 	readonly live: boolean;
+	/** Set while the session is pinned (the desktop sidebar's pin); newer pins sort first. */
+	readonly pinnedAt?: number;
 }
 
 export interface RemoteSessionState {
@@ -167,6 +169,9 @@ export interface RemoteRequestPayloads {
 	};
 	readonly "model.list": undefined;
 	readonly "session.configure": { readonly modelKey?: string; readonly thinkingLevel?: string };
+	readonly "session.rename": { readonly title: string };
+	readonly "session.pin": { readonly pinned: boolean };
+	readonly "session.delete": undefined;
 	readonly "session.respond": {
 		readonly requestId: string;
 		readonly cancelled: boolean;
@@ -190,6 +195,9 @@ export interface RemoteResponsePayloads {
 	readonly "session.upload": { readonly uploadId: string };
 	readonly "model.list": { readonly models: readonly RemoteModelOption[] };
 	readonly "session.configure": { readonly state: RemoteSessionState };
+	readonly "session.rename": { readonly session: RemoteSessionSummary };
+	readonly "session.pin": { readonly session: RemoteSessionSummary };
+	readonly "session.delete": { readonly deleted: true };
 	readonly "session.respond": { readonly responded: true };
 	readonly "session.abort": { readonly aborted: true };
 	readonly "session.resume": { readonly resumed: true };
@@ -256,6 +264,7 @@ export function readSessionSummary(value: unknown): RemoteSessionSummary | undef
 		updatedAt: num(value.updatedAt) ?? 0,
 		status: readSessionStatus(value.status),
 		live: value.live === true,
+		pinnedAt: num(value.pinnedAt),
 	};
 }
 

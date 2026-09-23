@@ -128,7 +128,16 @@ function harness() {
 		[PROJECT_PATH, "rt-work"],
 	]);
 	for (const [path, id] of sessionIds) runtime.paths.set(id, path);
+	const names = new Map<string, string>();
+	const deleted = new Set<string>();
+	const pins = new Map<string, number>();
+	const pinListeners = new Set<() => void>();
+	const catalogListeners = new Set<() => void>();
 	const entries = (cwd: string): DesktopSessionHistoryInfo[] =>
+		listedEntries(cwd)
+			.filter((entry) => !deleted.has(entry.path))
+			.map((entry) => (names.has(entry.path) ? { ...entry, name: names.get(entry.path) } : entry));
+	const listedEntries = (cwd: string): DesktopSessionHistoryInfo[] =>
 		cwd === CONVERSATION_CWD
 			? [
 					{
@@ -193,12 +202,35 @@ function harness() {
 			uploads.push({ sessionKey, kind: upload.kind, name: upload.name, bytes: upload.bytes.byteLength });
 			return `/uploads/${uploads.length}/${upload.name}`;
 		},
+		sessionCommands: {
+			rename: async (path, name) => void names.set(path, name),
+			delete: async (path) => void deleted.add(path),
+		},
+		pins: {
+			list: () => pins,
+			set: (path, pinned) => {
+				if (pinned) pins.set(path, pins.size + 1);
+				else pins.delete(path);
+				for (const listener of pinListeners) listener();
+			},
+			onChanged: (listener) => {
+				pinListeners.add(listener);
+				return () => pinListeners.delete(listener);
+			},
+		},
+		onCatalogChanged: (listener) => {
+			catalogListeners.add(listener);
+			return () => catalogListeners.delete(listener);
+		},
 		coalesceMs: 5,
 		listRefreshMs: 5,
 	});
 	const request = (method: RemoteRequest["method"], payload?: unknown, sessionId?: string) =>
 		mirror.handleRequest({ type: "request", requestId: "r", method, payload, sessionId });
-	return { runtime, broker, emitted, prompts, uploads, mirror, request };
+	const changeCatalog = () => {
+		for (const listener of catalogListeners) listener();
+	};
+	return { runtime, broker, emitted, prompts, uploads, mirror, request, names, deleted, pins, changeCatalog };
 }
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 15));
@@ -451,6 +483,66 @@ describe("DesktopRemoteMirror", () => {
 		runtime.streaming.add("rt-chat");
 		await expect(request("session.prompt", { text: "again" }, key)).rejects.toMatchObject({ code: "busy" });
 		await expect(request("session.open", undefined, "nope")).rejects.toMatchObject({ code: "not_found" });
+		mirror.stop();
+	});
+
+	it("renames a session the way the sidebar does and returns the new title", async () => {
+		const { mirror, request, names } = harness();
+		await mirror.start();
+		await request("session.list");
+		const key = keyForPath(PROJECT_PATH);
+		const renamed = (await request("session.rename", { title: "  修登录页  " }, key)) as {
+			session: { title: string };
+		};
+		expect(names.get(PROJECT_PATH)).toBe("修登录页");
+		expect(renamed.session.title).toBe("修登录页");
+		await expect(request("session.rename", { title: "   " }, key)).rejects.toMatchObject({ code: "invalid_frame" });
+		mirror.stop();
+	});
+
+	it("pins and unpins through the desktop's pins and keeps pinned sessions listed", async () => {
+		const { mirror, request, emitted } = harness();
+		await mirror.start();
+		await request("session.list");
+		const key = keyForPath(PROJECT_PATH);
+		const pinned = (await request("session.pin", { pinned: true }, key)) as { session: { pinnedAt?: number } };
+		expect(pinned.session.pinnedAt).toBe(1);
+		await flush();
+		expect(emitted.some((event) => event.name === "session.list")).toBe(true);
+		const unpinned = (await request("session.pin", { pinned: false }, key)) as { session: { pinnedAt?: number } };
+		expect(unpinned.session.pinnedAt).toBeUndefined();
+		mirror.stop();
+	});
+
+	it("tells the phone when the desktop pins, renames or deletes a session", async () => {
+		const { mirror, request, emitted, pins, changeCatalog } = harness();
+		await mirror.start();
+		await request("session.list");
+		pins.set(CONVERSATION_PATH, 7);
+		changeCatalog();
+		await flush();
+		const lists = emitted.filter((event) => event.name === "session.list");
+		expect(lists).toHaveLength(1);
+		const sessions = (lists[0]?.payload as { sessions: Array<{ id: string; pinnedAt?: number }> }).sessions;
+		expect(sessions.find((session) => session.id === keyForPath(CONVERSATION_PATH))?.pinnedAt).toBe(7);
+		mirror.stop();
+	});
+
+	it("deletes an idle session and forgets it, but refuses one mid-turn", async () => {
+		const { mirror, request, runtime, deleted } = harness();
+		await mirror.start();
+		await request("session.list");
+		const chat = keyForPath(CONVERSATION_PATH);
+		await request("session.open", undefined, chat);
+		runtime.streaming.add("rt-chat");
+		await expect(request("session.delete", undefined, chat)).rejects.toMatchObject({ code: "busy" });
+		expect(deleted.size).toBe(0);
+		runtime.streaming.delete("rt-chat");
+		expect(await request("session.delete", undefined, chat)).toEqual({ deleted: true });
+		expect([...deleted]).toEqual([CONVERSATION_PATH]);
+		await expect(request("session.open", undefined, chat)).rejects.toMatchObject({ code: "not_found" });
+		const list = (await request("session.list")) as { sessions: Array<{ id: string }> };
+		expect(list.sessions.map((session) => session.id)).toEqual([keyForPath(PROJECT_PATH)]);
 		mirror.stop();
 	});
 

@@ -30,9 +30,21 @@ describe("remote api payload readers", () => {
 				updatedAt: 5,
 				status: "running",
 				live: true,
+				pinnedAt: undefined,
 			},
 		]);
 		expect(readSessionSummaries(undefined)).toEqual([]);
+	});
+
+	it("reads the pin time only when it is a number", () => {
+		const [pinned, unpinned] = readSessionSummaries({
+			sessions: [
+				{ id: "a", projectCwd: "/p", pinnedAt: 42 },
+				{ id: "b", projectCwd: "/p", pinnedAt: "yesterday" },
+			],
+		});
+		expect(pinned?.pinnedAt).toBe(42);
+		expect(unpinned?.pinnedAt).toBeUndefined();
 	});
 
 	it("normalizes unknown statuses to idle and parses nested question requests", () => {

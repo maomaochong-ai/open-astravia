@@ -28,6 +28,7 @@ import type {
 	DesktopConversationService,
 	DesktopConversationSession,
 } from "../conversations/desktop-conversation-service.js";
+import type { DesktopSessionCommands } from "../conversations/desktop-session-commands.js";
 import type { DesktopUserQuestionBroker } from "../conversations/user-question-broker.js";
 import { getAppLogger } from "../logger.js";
 import { RemoteOperationError } from "./remote-error-mapping.js";
@@ -75,6 +76,13 @@ export type RemoteMirrorQuestions = Pick<
 	"listPendingQuestions" | "answer" | "onQuestionAsked" | "onQuestionResolved"
 >;
 
+/** The desktop's session pins (sidebar 置顶), shared with the phone. */
+export interface RemoteMirrorPins {
+	list(): ReadonlyMap<string, number>;
+	set(sessionPath: string, pinned: boolean): void;
+	onChanged(listener: () => void): () => void;
+}
+
 export interface RemoteMirrorProject {
 	readonly cwd: string;
 	readonly name: string;
@@ -91,6 +99,11 @@ export interface DesktopRemoteMirrorOptions {
 	readonly emit: (name: RemoteEventName, payload?: unknown, sessionId?: string) => Promise<void>;
 	readonly deviceStatus: () => RemoteDeviceStatus;
 	readonly saveUpload: RemoteUploadWriter;
+	/** Rename and delete exactly as the sidebar does, cleanup included. */
+	readonly sessionCommands: Pick<DesktopSessionCommands, "rename" | "delete">;
+	readonly pins: RemoteMirrorPins;
+	/** Sessions were created, renamed or deleted on the desktop. */
+	readonly onCatalogChanged?: (listener: () => void) => () => void;
 	readonly hardware?: () => { cpu?: string; ram?: string };
 	/** Streamed text is batched at this interval so a long answer costs tens of frames, not thousands. */
 	readonly coalesceMs?: number;
@@ -134,6 +147,7 @@ const MAX_LIST = 80;
 /** An upload the phone never referenced in a prompt is forgotten after this long. */
 const UPLOAD_TTL_MS = 30 * 60 * 1000;
 const MAX_PENDING_UPLOADS = 32;
+const MAX_TITLE_LENGTH = 200;
 
 /**
  * Presents the desktop's conversations to paired phones as a live mirror:
@@ -172,6 +186,9 @@ export class DesktopRemoteMirror {
 			this.options.questions.onQuestionResolved(({ requestId, sessionId }) => {
 				void this.handleQuestionResolved(requestId, sessionId);
 			}),
+			// Pins, renames and deletes made on the desktop reach the phone's list too.
+			this.options.pins.onChanged(() => this.scheduleListRefresh()),
+			this.options.onCatalogChanged?.(() => this.scheduleListRefresh()) ?? (() => undefined),
 		);
 		// Turns already in flight when the first phone arrives must be visible
 		// too: open them (the runtime dedupes by path) and subscribe.
@@ -248,6 +265,29 @@ export class DesktopRemoteMirror {
 				await this.emitState(handle.key, state);
 				return { state };
 			}
+			case "session.rename": {
+				const handle = this.requireHandle(request.sessionId);
+				const payload = asRecord(request.payload);
+				const title = typeof payload.title === "string" ? payload.title.trim().slice(0, MAX_TITLE_LENGTH) : "";
+				if (!title) throw new RemoteOperationError("invalid_frame", "title is required");
+				await this.options.sessionCommands.rename(handle.path, title);
+				return { session: await this.summaryFor(handle) };
+			}
+			case "session.pin": {
+				const handle = this.requireHandle(request.sessionId);
+				this.options.pins.set(handle.path, asRecord(request.payload).pinned === true);
+				return { session: await this.summaryFor(handle) };
+			}
+			case "session.delete": {
+				const handle = this.requireHandle(request.sessionId);
+				if (this.isRunning(handle)) {
+					throw new RemoteOperationError("busy", "Finish or stop the current turn before deleting", true);
+				}
+				await this.options.sessionCommands.delete(handle.path);
+				this.forget(handle);
+				this.scheduleListRefresh();
+				return { deleted: true };
+			}
 			case "session.respond": {
 				this.requireHandle(request.sessionId);
 				const payload = asRecord(request.payload);
@@ -311,6 +351,7 @@ export class DesktopRemoteMirror {
 		];
 		const running = new Set(this.options.runtime.getRunningSessionPaths());
 		const waiting = this.pendingQuestionPaths();
+		const pins = this.options.pins.list();
 		const summaries: RemoteSessionSummary[] = [];
 		for (const root of roots) {
 			let entries: DesktopSessionHistoryInfo[];
@@ -323,11 +364,12 @@ export class DesktopRemoteMirror {
 			for (const entry of entries) {
 				if (!entry.access.readHistory) continue;
 				const handle = this.registerHandle(entry.path, entry.cwd, root);
-				summaries.push(this.summarize(handle, entry, running, waiting));
+				summaries.push(this.summarize(handle, entry, running, waiting, pins.get(entry.path)));
 			}
 		}
 		summaries.sort((a, b) => b.updatedAt - a.updatedAt);
-		const sessions = summaries.slice(0, MAX_LIST);
+		// Pinned sessions stay listed however old they are; the phone keeps them on top.
+		const sessions = summaries.filter((session, index) => index < MAX_LIST || session.pinnedAt !== undefined);
 		this.summariesCache = { at: this.now(), sessions };
 		return sessions;
 	}
@@ -337,6 +379,7 @@ export class DesktopRemoteMirror {
 		entry: DesktopSessionHistoryInfo,
 		running: Set<string>,
 		waiting: Set<string>,
+		pinnedAt: number | undefined,
 	): RemoteSessionSummary {
 		const tracked = handle.sessionId ? this.tracked.get(handle.sessionId) : undefined;
 		return {
@@ -348,6 +391,7 @@ export class DesktopRemoteMirror {
 			updatedAt: entry.modifiedAt,
 			status: waiting.has(handle.path) ? "waiting_input" : running.has(handle.path) ? "running" : "idle",
 			live: tracked !== undefined || running.has(handle.path),
+			...(pinnedAt === undefined ? {} : { pinnedAt }),
 		};
 	}
 
@@ -394,6 +438,21 @@ export class DesktopRemoteMirror {
 		this.summariesCache = undefined;
 		await this.listSessions();
 		return this.handlesByPath.get(path);
+	}
+
+	private isRunning(handle: SessionHandle): boolean {
+		if (this.options.runtime.getRunningSessionPaths().includes(handle.path)) return true;
+		return handle.sessionId !== undefined && this.options.runtime.getState(handle.sessionId).isStreaming;
+	}
+
+	/** Drops everything the mirror kept for a session that no longer exists. */
+	private forget(handle: SessionHandle): void {
+		const tracked = handle.sessionId ? this.tracked.get(handle.sessionId) : undefined;
+		if (tracked) this.untrack(tracked, true);
+		this.handles.delete(handle.key);
+		this.handlesByPath.delete(handle.path);
+		for (const [id, upload] of this.uploads) if (upload.sessionKey === handle.key) this.uploads.delete(id);
+		this.summariesCache = undefined;
 	}
 
 	private requireHandle(key: string | undefined): SessionHandle {

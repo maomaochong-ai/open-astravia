@@ -49,7 +49,14 @@ describe("remote control JSON Schema", () => {
 	});
 
 	it("lists the same request methods the TypeScript and Swift readers accept", () => {
-		for (const method of ["session.upload", "model.list", "session.configure"]) {
+		for (const method of [
+			"session.upload",
+			"model.list",
+			"session.configure",
+			"session.rename",
+			"session.pin",
+			"session.delete",
+		]) {
 			expect(validate({ type: "request", requestId: "r1", method, sessionId: "s1", payload: {} })).toBe(true);
 		}
 	});

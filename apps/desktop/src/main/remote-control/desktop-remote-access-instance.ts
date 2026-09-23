@@ -1,13 +1,17 @@
 import { basename } from "node:path";
 import { DEFAULT_CONVERSATION_CWD, readDesktopConfig, writeDesktopConfig } from "../config/desktop-config-store.js";
+import { onConversationListChanged } from "../conversations/conversation-list-events.js";
 import { getDesktopConversationService } from "../conversations/desktop-conversation-service.js";
+import { createDesktopSessionCommands } from "../conversations/desktop-session-commands.js";
 import { isConversationCwd } from "../conversations/session-paths.js";
+import { listSessionPins, onSessionPinsChanged, pinSession } from "../conversations/session-pins-store.js";
 import { getDesktopUserQuestionBroker } from "../conversations/user-question-broker.js";
 import { getDesktopCredentialVault } from "../credentials/desktop-credential-vault.js";
 import { mainT } from "../i18n/index.js";
 import { notify } from "../notifications/index.js";
 import { getDesktopProjectService } from "../projects/project-service-instance.js";
 import { getSharedRuntime } from "../runtime.js";
+import { notifyAutomationSessionsDeleted } from "../scheduler/session-deletion.js";
 import { desktopDeviceId, desktopDisplayName, desktopHardware, formatOsLabel } from "./desktop-host-info.js";
 import { DesktopRemoteAccessManager } from "./desktop-remote-access-manager.js";
 import { DesktopRemoteMirror } from "./desktop-remote-mirror.js";
@@ -55,6 +59,16 @@ export function getDesktopRemoteAccessManager(defaultRelayBaseUrl?: string): Des
 				emit,
 				deviceStatus,
 				saveUpload: saveRemoteUpload,
+				sessionCommands: createDesktopSessionCommands({
+					runtime: getSharedRuntime(),
+					onSessionsDeleted: notifyAutomationSessionsDeleted,
+				}),
+				pins: {
+					list: () => listSessionPins(),
+					set: (path, pinned) => void pinSession({ path, pinned }),
+					onChanged: (listener) => onSessionPinsChanged(() => listener()),
+				},
+				onCatalogChanged: (listener) => onConversationListChanged(() => listener()),
 				hardware: desktopHardware,
 			}),
 	});
