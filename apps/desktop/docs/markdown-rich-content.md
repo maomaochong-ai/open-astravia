@@ -29,4 +29,4 @@ node --test apps/desktop/scripts/markdown-preview.node-test.mjs
 
 第二条命令使用 Playwright 的独立无头 Chromium 与临时构建，不连接真实 Vetta 实例。需已安装该版本的 Playwright Chromium；可用 `VETTA_TEST_BROWSER` 选择已安装的浏览器通道。
 
-扩展合同见 [消息列表与内容扩展](message-feed-extensions.md)，实现取舍见 [ADR-0128](../../../docs/adr/0128-markdown-rich-content-rendering.md)。
+扩展合同见 [消息列表与内容扩展](message-feed-extensions.md)，实现取舍见 [ADR-0131](../../../docs/adr/0131-markdown-rich-content-rendering.md)。
