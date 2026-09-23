@@ -18,6 +18,7 @@
 		5A35CD748B1B06EF47F0A3F2 /* VettaKit in Frameworks */ = {isa = PBXBuildFile; productRef = 96AFB1AF04EBBFA603F4F91B /* VettaKit */; };
 		97E3DC8E241B2B6E710580AC /* PairView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5FE60E74C2993F10053947E /* PairView.swift */; };
 		9FE91382A8C78D491B30D92F /* ChatViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AC44E052FBB4B681994D40B /* ChatViews.swift */; };
+		A4C727247A724BC396D2EF75 /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = A13EF44F614DFAF09BEA92D8 /* InfoPlist.xcstrings */; };
 		AC4E28755EFF19DCF3DC5B3C /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A9C645FF840047E4C04ED92 /* HomeView.swift */; };
 		B3E19125E863C30778ACE155 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71BB21C509A581D37A42B7FC /* RootView.swift */; };
 		BF4B6DCEF9D362F781317F6E /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E33BB88AA6F56D2A00716432 /* KeychainStore.swift */; };
@@ -45,6 +46,7 @@
 		8754BC022E2DA6BE46766DE0 /* VettaUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VettaUITests.swift; sourceTree = "<group>"; };
 		966CF05AA64EAAE95B6C18D2 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		9958F311B813AAB23E9A6D69 /* VettaApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VettaApp.swift; sourceTree = "<group>"; };
+		A13EF44F614DFAF09BEA92D8 /* InfoPlist.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = InfoPlist.xcstrings; sourceTree = "<group>"; };
 		A5FE60E74C2993F10053947E /* PairView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairView.swift; sourceTree = "<group>"; };
 		A611A3DDE7F1EC89CAD12F7F /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		B43B0EEECDDBB2807AA280EF /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -159,6 +161,7 @@
 			children = (
 				B43B0EEECDDBB2807AA280EF /* Assets.xcassets */,
 				CA39B1C0456D27FC25D9A90B /* Info.plist */,
+				A13EF44F614DFAF09BEA92D8 /* InfoPlist.xcstrings */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -225,10 +228,11 @@
 				};
 			};
 			buildConfigurationList = 09D187BC3B2C4D8ACB45B805 /* Build configuration list for PBXProject "Vetta" */;
-			developmentRegion = "zh-Hans";
+			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				Base,
+				en,
 				"zh-Hans",
 			);
 			mainGroup = D1E8B01CF6C70D7BA2D2900D;
@@ -253,6 +257,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				29BC275076D8A1DC3A573BBB /* Assets.xcassets in Resources */,
+				A4C727247A724BC396D2EF75 /* InfoPlist.xcstrings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

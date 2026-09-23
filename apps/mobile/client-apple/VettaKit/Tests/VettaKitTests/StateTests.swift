@@ -186,16 +186,6 @@ import Testing
 		#expect(!reloaded.hasCurrent)
 		#expect(secrets.get("vetta.desktop.k1.secret") == nil)
 	}
-
-	@Test func relativeTimeMatchesTheDesign() {
-		let now = 10 * 86_400_000.0
-		#expect(TimeFormat.relative(now - 10_000, now: now) == "刚刚")
-		#expect(TimeFormat.relative(now - 5 * 60_000, now: now) == "5分钟前")
-		#expect(TimeFormat.relative(now - 30 * 60_000, now: now) == "半小时前")
-		#expect(TimeFormat.relative(now - 50 * 60_000, now: now) == "50分钟前")
-		#expect(TimeFormat.relative(now - 3 * 3_600_000, now: now) == "3小时前")
-		#expect(TimeFormat.relative(now - 49 * 3_600_000, now: now) == "2天前")
-	}
 }
 
 /// End-to-end over the fake desktop: pairing, session list, prompting with

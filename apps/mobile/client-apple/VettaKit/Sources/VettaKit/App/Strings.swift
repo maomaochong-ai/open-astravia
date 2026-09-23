@@ -1,141 +1,157 @@
 import Foundation
 
-/// All user-visible copy. Chinese is the source of truth (it is what the design
-/// specifies); other locales can be layered on later by mapping these keys.
+/// All user-visible copy. The text lives in `Resources/Localizable.xcstrings`
+/// (English and Simplified Chinese) and follows the system language; every
+/// accessor here is only a key into that catalog.
 public enum L10n {
 	public static let appName = "Vetta"
 
+	/// Where lookups resolve, and the locale that picks plural forms. Tests pin
+	/// one language with `pin(language:)`.
+	static var bundle = Bundle.module
+	static var locale = Locale.current
+
+	/// Forces one `.lproj` (e.g. "en", "zh-Hans"); `nil` goes back to the system language.
+	static func pin(language: String?) {
+		bundle = language
+			.flatMap { Bundle.module.path(forResource: $0, ofType: "lproj") }
+			.flatMap(Bundle.init(path:)) ?? .module
+		locale = language.map(Locale.init(identifier:)) ?? .current
+	}
+
 	public enum Common {
-		public static let back = "返回"
-		public static let close = "关闭"
-		public static let cancel = "取消"
-		public static let confirm = "确认"
-		public static let retry = "重试"
-		public static let comingSoon = "即将推出"
-		public static let offline = "电脑离线"
-		public static let connecting = "连接中"
-		public static let online = "已安全连接"
-		public static let justNow = "刚刚"
-		public static func minutesAgo(_ n: Int) -> String { "\(n)分钟前" }
-		public static func hoursAgo(_ n: Int) -> String { "\(n)小时前" }
-		public static let halfHourAgo = "半小时前"
-		public static func daysAgo(_ n: Int) -> String { "\(n)天前" }
-		public static let today = "今天"
-		public static let unknownError = "出了点问题，请稍后再试"
-		public static let notConnected = "电脑当前不在线，重新连上后再试"
+		public static var back: String { tr("common.back") }
+		public static var close: String { tr("common.close") }
+		public static var cancel: String { tr("common.cancel") }
+		public static var confirm: String { tr("common.confirm") }
+		public static var retry: String { tr("common.retry") }
+		public static var comingSoon: String { tr("common.comingSoon") }
+		public static var offline: String { tr("common.offline") }
+		public static var connecting: String { tr("common.connecting") }
+		public static var online: String { tr("common.online") }
+		public static var justNow: String { tr("common.justNow") }
+		public static func minutesAgo(_ n: Int) -> String { tr("common.minutesAgo \(n)") }
+		public static func hoursAgo(_ n: Int) -> String { tr("common.hoursAgo \(n)") }
+		public static var halfHourAgo: String { tr("common.halfHourAgo") }
+		public static func daysAgo(_ n: Int) -> String { tr("common.daysAgo \(n)") }
+		public static var today: String { tr("common.today") }
+		public static var unknownError: String { tr("common.unknownError") }
+		public static var notConnected: String { tr("common.notConnected") }
 	}
 
 	public enum Home {
-		public static let title = "电脑正在做的事"
-		public static let subtitle = "手机随时查看进度，不用守在电脑前"
-		public static let processing = "个处理中"
-		public static let done = "个已办结"
-		public static let remoteDesktop = "远程桌面"
-		public static let remoteDesktopHint = "低延迟同屏"
-		public static let sshTerminal = "SSH终端"
-		public static let sshTerminalHint = "命令行调试"
-		public static let searchPlaceholder = "搜索对话或任务..."
-		public static let filterAll = "全部"
-		public static func filterProcessing(_ n: Int) -> String { "处理中 (\(n))" }
-		public static let filterDone = "已办结"
-		public static let composerPlaceholder = "向电脑发个新任务或提问..."
-		public static let empty = "还没有对话。给电脑发个任务试试。"
-		public static let emptyFiltered = "没有匹配的对话"
-		public static let offlineBanner = "电脑离线，显示的是上次同步的内容"
-		public static let statusRunning = "进行中"
-		public static let statusThinking = "思考中"
-		public static let statusWaiting = "需要你确认"
-		public static let statusDone = "已完成"
-		public static let statusError = "出错"
-		public static let statusAborted = "已停止"
-		public static let untitled = "未命名对话"
+		public static var title: String { tr("home.title") }
+		public static var subtitle: String { tr("home.subtitle") }
+		public static var processing: String { tr("home.processing") }
+		public static var done: String { tr("home.done") }
+		public static var remoteDesktop: String { tr("home.remoteDesktop") }
+		public static var remoteDesktopHint: String { tr("home.remoteDesktopHint") }
+		public static var sshTerminal: String { tr("home.sshTerminal") }
+		public static var sshTerminalHint: String { tr("home.sshTerminalHint") }
+		public static var searchPlaceholder: String { tr("home.searchPlaceholder") }
+		public static var filterAll: String { tr("home.filterAll") }
+		public static func filterProcessing(_ n: Int) -> String { tr("home.filterProcessing \(n)") }
+		public static var filterDone: String { tr("home.filterDone") }
+		public static var composerPlaceholder: String { tr("home.composerPlaceholder") }
+		public static var empty: String { tr("home.empty") }
+		public static var emptyFiltered: String { tr("home.emptyFiltered") }
+		public static var offlineBanner: String { tr("home.offlineBanner") }
+		public static var statusRunning: String { tr("home.statusRunning") }
+		public static var statusThinking: String { tr("home.statusThinking") }
+		public static var statusWaiting: String { tr("home.statusWaiting") }
+		public static var statusDone: String { tr("home.statusDone") }
+		public static var statusError: String { tr("home.statusError") }
+		public static var statusAborted: String { tr("home.statusAborted") }
+		public static var untitled: String { tr("home.untitled") }
 	}
 
 	public enum Chat {
 		public static let assistant = "Vetta Assistant"
-		public static let composerPlaceholder = "继续追问，或向电脑下发补充指令..."
-		public static let thinking = "思考过程"
-		public static let thinkingLive = "正在思考"
-		public static let toolDone = "已完成"
-		public static let toolFailed = "失败"
-		public static let toolRunning = "执行中"
-		public static let toolGenerating = "准备中"
-		public static let stop = "停止"
-		public static let send = "发送"
-		public static let resync = "重新同步"
-		public static let summaryDone = "已完成全部检索与汇总"
-		public static let summaryRunning = "正在处理"
-		public static let questionTitle = "需要你确认"
-		public static let questionSkip = "暂不回答"
-		public static let questionSubmit = "提交"
-		public static let loadingHistory = "正在读取对话..."
-		public static let errorPrefix = "出错："
-		public static let compacted = "上下文已压缩"
+		public static var composerPlaceholder: String { tr("chat.composerPlaceholder") }
+		public static var thinking: String { tr("chat.thinking") }
+		public static var thinkingLive: String { tr("chat.thinkingLive") }
+		public static var toolDone: String { tr("chat.toolDone") }
+		public static var toolFailed: String { tr("chat.toolFailed") }
+		public static var toolRunning: String { tr("chat.toolRunning") }
+		public static var toolGenerating: String { tr("chat.toolGenerating") }
+		public static var stop: String { tr("chat.stop") }
+		public static var send: String { tr("chat.send") }
+		public static var resync: String { tr("chat.resync") }
+		public static var summaryDone: String { tr("chat.summaryDone") }
+		public static var summaryRunning: String { tr("chat.summaryRunning") }
+		public static var questionTitle: String { tr("chat.questionTitle") }
+		public static var questionSkip: String { tr("chat.questionSkip") }
+		public static var questionSubmit: String { tr("chat.questionSubmit") }
+		public static var loadingHistory: String { tr("chat.loadingHistory") }
+		public static var errorPrefix: String { tr("chat.errorPrefix") }
+		public static var compacted: String { tr("chat.compacted") }
 	}
 
 	public enum Settings {
-		public static let title = "设置"
-		public static let heading = "连接与偏好"
-		public static let subheading = "管理与电脑的同步状态及手机操作权限"
-		public static let myComputer = "我的电脑"
-		public static let rescan = "重新扫码"
-		public static let connectionState = "连接状态"
-		public static func excellent(_ ms: Int) -> String { "极佳 (\(ms)ms)" }
-		public static func good(_ ms: Int) -> String { "良好 (\(ms)ms)" }
-		public static func fair(_ ms: Int) -> String { "一般 (\(ms)ms)" }
-		public static let offline = "离线"
-		public static let viaLan = "局域网直连"
-		public static let viaRelay = "云端中继"
-		public static let load = "电脑负荷"
-		public static func loadValue(_ n: Int) -> String { "\(n) 个任务处理中" }
-		public static let loadIdle = "空闲"
-		public static let confirmPolicy = "手机确认策略"
-		public static let confirmPolicyHint = "当电脑在改动重要文件时，何时提醒你在手机上确认"
-		public static let policyMajor = "只在重大变动"
-		public static let policyImportant = "重要操作确认"
-		public static let policyAuto = "全自动执行"
-		public static let liveThinking = "实时看到电脑思考"
-		public static let liveThinkingHint = "电脑打字或分析时，文字在手机上同步跳动"
-		public static let haptics = "任务做完震动提醒"
-		public static let hapticsHint = "电脑办结长任务或需要你确认时通知"
-		public static let biometric = "面容 / 指纹解锁确认"
-		public static let biometricHint = "批准删除重要文件时使用生物识别验证"
-		public static let unpair = "解除配对"
-		public static let unpairHint = "删除这台电脑的连接凭据和本机缓存"
-		public static let unpairConfirm = "解除与这台电脑的配对？手机上缓存的对话会一起删除。"
-		public static let noComputer = "尚未连接电脑"
+		public static var title: String { tr("settings.title") }
+		public static var heading: String { tr("settings.heading") }
+		public static var subheading: String { tr("settings.subheading") }
+		public static var myComputer: String { tr("settings.myComputer") }
+		public static var rescan: String { tr("settings.rescan") }
+		public static var connectionState: String { tr("settings.connectionState") }
+		public static func excellent(_ ms: Int) -> String { tr("settings.excellent \(ms)") }
+		public static func good(_ ms: Int) -> String { tr("settings.good \(ms)") }
+		public static func fair(_ ms: Int) -> String { tr("settings.fair \(ms)") }
+		public static var offline: String { tr("settings.offline") }
+		public static var viaLan: String { tr("settings.viaLan") }
+		public static var viaRelay: String { tr("settings.viaRelay") }
+		public static var load: String { tr("settings.load") }
+		public static func loadValue(_ n: Int) -> String { tr("settings.loadValue \(n)") }
+		public static var loadIdle: String { tr("settings.loadIdle") }
+		public static var confirmPolicy: String { tr("settings.confirmPolicy") }
+		public static var confirmPolicyHint: String { tr("settings.confirmPolicyHint") }
+		public static var policyMajor: String { tr("settings.policyMajor") }
+		public static var policyImportant: String { tr("settings.policyImportant") }
+		public static var policyAuto: String { tr("settings.policyAuto") }
+		public static var liveThinking: String { tr("settings.liveThinking") }
+		public static var liveThinkingHint: String { tr("settings.liveThinkingHint") }
+		public static var haptics: String { tr("settings.haptics") }
+		public static var hapticsHint: String { tr("settings.hapticsHint") }
+		public static var biometric: String { tr("settings.biometric") }
+		public static var biometricHint: String { tr("settings.biometricHint") }
+		public static var unpair: String { tr("settings.unpair") }
+		public static var unpairHint: String { tr("settings.unpairHint") }
+		public static var unpairConfirm: String { tr("settings.unpairConfirm") }
+		public static var noComputer: String { tr("settings.noComputer") }
 	}
 
 	public enum Pair {
-		public static let title = "连接电脑"
-		public static let scanHint = "对准电脑端的二维码"
-		public static let scanDescription = "打开电脑上的 Vetta Desktop，点击右上角「手机扫码连接」即可快速绑定"
-		public static let listening = "正在监听局域网中的 Vetta 节点..."
-		public static let manual = "手动输入配对码或 IP"
-		public static let troubleshoot = "扫码无法识别？查看排查指引"
-		public static let cameraDenied = "需要相机权限才能扫码"
-		public static let cameraUnavailable = "这台设备没有可用的相机"
-		public static let grantCamera = "允许使用相机"
-		public static let invalidCode = "这不是 Vetta 的配对码"
-		public static let connecting = "正在连接电脑..."
-		public static let waitingApproval = "在电脑上核对验证码并点击「允许」"
-		public static let verificationCode = "验证码"
-		public static let codeHint = "两边显示的数字一致才是你的电脑"
-		public static let manualTitle = "手动连接"
-		public static let manualHint = "输入电脑端显示的 IP 和端口，例如 192.168.1.20:43117"
-		public static let manualPlaceholder = "IP:端口"
-		public static let manualInvalid = "请输入形如 192.168.1.20:43117 的地址"
-		public static let connect = "连接"
-		public static let rejected = "电脑拒绝了这次配对"
-		public static let unauthorized = "电脑不认识这部手机，请重新扫码"
-		public static let failed = "连不上电脑，请检查是否在同一 Wi-Fi"
-		public static let troubleshootTitle = "排查指引"
-		public static let troubleshootItems = [
-			"手机和电脑要在同一个 Wi-Fi 下，访客网络通常会隔离设备。",
-			"iPhone 首次连接会询问「本地网络」权限，请选择允许；拒绝后可到 设置 → Vetta 里重新打开。",
-			"Mac 第一次开启手机连接时会弹出防火墙提示，请点「允许」。",
-			"电脑端二维码里带有局域网地址和云端中继地址，局域网连不上时会自动改走中继。",
-		]
+		public static var title: String { tr("pair.title") }
+		public static var scanHint: String { tr("pair.scanHint") }
+		public static var scanDescription: String { tr("pair.scanDescription") }
+		public static var listening: String { tr("pair.listening") }
+		public static var manual: String { tr("pair.manual") }
+		public static var troubleshoot: String { tr("pair.troubleshoot") }
+		public static var cameraDenied: String { tr("pair.cameraDenied") }
+		public static var cameraUnavailable: String { tr("pair.cameraUnavailable") }
+		public static var grantCamera: String { tr("pair.grantCamera") }
+		public static var invalidCode: String { tr("pair.invalidCode") }
+		public static var connecting: String { tr("pair.connecting") }
+		public static var waitingApproval: String { tr("pair.waitingApproval") }
+		public static var verificationCode: String { tr("pair.verificationCode") }
+		public static var codeHint: String { tr("pair.codeHint") }
+		public static var manualTitle: String { tr("pair.manualTitle") }
+		public static var manualHint: String { tr("pair.manualHint") }
+		public static var manualPlaceholder: String { tr("pair.manualPlaceholder") }
+		public static var manualInvalid: String { tr("pair.manualInvalid") }
+		public static var connect: String { tr("pair.connect") }
+		public static var rejected: String { tr("pair.rejected") }
+		public static var unauthorized: String { tr("pair.unauthorized") }
+		public static var failed: String { tr("pair.failed") }
+		public static var troubleshootTitle: String { tr("pair.troubleshootTitle") }
+		public static var troubleshootItems: [String] {
+			[
+				tr("pair.troubleshoot.sameWifi"),
+				tr("pair.troubleshoot.localNetwork"),
+				tr("pair.troubleshoot.firewall"),
+				tr("pair.troubleshoot.relay"),
+			]
+		}
 
 		public static func describe(_ failure: PairingFailure) -> String {
 			switch failure {
@@ -147,6 +163,10 @@ public enum L10n {
 			}
 		}
 	}
+}
+
+private func tr(_ key: String.LocalizationValue) -> String {
+	String(localized: key, bundle: L10n.bundle, locale: L10n.locale)
 }
 
 public enum TimeFormat {

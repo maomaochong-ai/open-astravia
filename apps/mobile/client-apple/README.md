@@ -8,7 +8,7 @@ Vetta 手机端的 iOS 原生客户端（Swift 6 + SwiftUI，iOS 26 起，Liquid
 
 | 路径 | 内容 |
 | --- | --- |
-| `VettaKit/` | Swift Package，平台无关的全部逻辑：协议帧与校验、加密、连接状态机、事件日志、配对链接、载荷解析（`Protocol/`）；双通道管理、配对流程、配对存储、转写归约、SQLite 缓存、WebSocket 传输（`Remote/`）；应用状态 `AppModel` 与文案（`App/`）。可在 macOS 上直接 `swift test`。 |
+| `VettaKit/` | Swift Package，平台无关的全部逻辑：协议帧与校验、加密、连接状态机、事件日志、配对链接、载荷解析（`Protocol/`）；双通道管理、配对流程、配对存储、转写归约、SQLite 缓存、WebSocket 传输（`Remote/`）；应用状态 `AppModel` 与文案键 `L10n`（`App/`），中英文译文在 `Resources/Localizable.xcstrings`，跟随系统语言、其他语言回落英文。可在 macOS 上直接 `swift test`。 |
 | `Vetta/` | iOS App：SwiftUI 界面、钥匙串、相机扫码。 |
 | `VettaUITests/` | XCUITest，驱动真实 App 走完整流程并截图。 |
 | `scripts/` | 与桌面端真实实现对跑的 interop 夹具、UI 测试脚本、加密测试向量生成。 |

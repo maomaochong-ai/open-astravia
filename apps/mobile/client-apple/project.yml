@@ -4,7 +4,7 @@ options:
   deploymentTarget:
     iOS: "26.0"
   createIntermediateGroups: true
-  developmentLanguage: zh-Hans
+  developmentLanguage: en
 settings:
   base:
     SWIFT_VERSION: "6.0"
@@ -38,7 +38,7 @@ targets:
       path: Vetta/Resources/Info.plist
       properties:
         CFBundleDisplayName: Vetta
-        CFBundleDevelopmentRegion: zh-Hans
+        CFBundleDevelopmentRegion: en
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSRequiresIPhoneOS: true
@@ -53,8 +53,8 @@ targets:
           - CFBundleURLName: com.openvetta.mobile.pair
             CFBundleURLSchemes:
               - vetta
-        NSCameraUsageDescription: Vetta 需要使用相机扫描电脑端的二维码来完成配对。
-        NSLocalNetworkUsageDescription: Vetta 需要访问本地网络，才能在同一 Wi-Fi 下直接连接你的电脑。
+        NSCameraUsageDescription: Vetta uses the camera to scan the QR code on your computer to pair.
+        NSLocalNetworkUsageDescription: Vetta needs local network access to connect directly to your computer on the same Wi-Fi.
         NSBonjourServices:
           - _vetta._tcp
         NSAppTransportSecurity:

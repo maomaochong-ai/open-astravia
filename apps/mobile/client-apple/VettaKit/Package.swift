@@ -5,13 +5,13 @@ let isolation: [SwiftSetting] = [.defaultIsolation(MainActor.self)]
 
 let package = Package(
 	name: "VettaKit",
-	defaultLocalization: "zh-Hans",
+	defaultLocalization: "en",
 	platforms: [.iOS(.v26), .macOS(.v26)],
 	products: [
 		.library(name: "VettaKit", targets: ["VettaKit"]),
 	],
 	targets: [
-		.target(name: "VettaKit", swiftSettings: isolation, linkerSettings: [.linkedLibrary("sqlite3")]),
+		.target(name: "VettaKit", resources: [.process("Resources")], swiftSettings: isolation, linkerSettings: [.linkedLibrary("sqlite3")]),
 		.testTarget(name: "VettaKitTests", dependencies: ["VettaKit"], swiftSettings: isolation),
 	]
 )

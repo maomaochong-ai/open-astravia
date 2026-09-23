@@ -3,11 +3,14 @@ import XCTest
 /// Drives the real app. The end-to-end flow needs the interop harness
 /// (`scripts/ui-test.sh` starts it and passes the invite through the
 /// `VETTA_UITEST_INVITE` environment variable); without it only the first-run
-/// pairing screen is checked.
+/// pairing screen is checked. The app is pinned to Simplified Chinese because
+/// the assertions read its copy; it otherwise follows the system language.
 final class VettaUITests: XCTestCase {
 	private var shotDirectory: String? { ProcessInfo.processInfo.environment["VETTA_UITEST_SHOTS"] }
 	private var invite: String? { ProcessInfo.processInfo.environment["VETTA_UITEST_INVITE"] }
 	private var appearance: String { ProcessInfo.processInfo.environment["VETTA_UITEST_APPEARANCE"] ?? "dark" }
+
+	private let chinese = ["-AppleLanguages", "(zh-Hans)", "-AppleLocale", "zh_CN"]
 
 	override func setUp() {
 		continueAfterFailure = false
@@ -15,7 +18,7 @@ final class VettaUITests: XCTestCase {
 
 	@MainActor func testShowsThePairingScreenOnFirstLaunch() {
 		let app = XCUIApplication()
-		app.launchArguments = ["-VettaEphemeralStorage"]
+		app.launchArguments = ["-VettaEphemeralStorage"] + chinese
 		app.launch()
 		XCTAssertTrue(app.staticTexts["对准电脑端的二维码"].waitForExistence(timeout: 10))
 		XCTAssertTrue(app.buttons["pair.manual"].exists)
@@ -30,7 +33,7 @@ final class VettaUITests: XCTestCase {
 	@MainActor func testMirrorsADesktopSessionEndToEnd() throws {
 		let invite = try XCTUnwrap(invite, "run through scripts/ui-test.sh to provide a desktop")
 		let app = XCUIApplication()
-		app.launchArguments = ["-VettaEphemeralStorage", "-VettaPairURI", invite]
+		app.launchArguments = ["-VettaEphemeralStorage", "-VettaPairURI", invite] + chinese
 		app.launch()
 
 		let history = app.buttons["session.s-report"]

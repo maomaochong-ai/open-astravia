@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
-	<string>zh-Hans</string>
+	<string>en</string>
 	<key>CFBundleDisplayName</key>
 	<string>Vetta</string>
 	<key>CFBundleExecutable</key>
@@ -45,9 +45,9 @@
 		<string>_vetta._tcp</string>
 	</array>
 	<key>NSCameraUsageDescription</key>
-	<string>Vetta 需要使用相机扫描电脑端的二维码来完成配对。</string>
+	<string>Vetta uses the camera to scan the QR code on your computer to pair.</string>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>Vetta 需要访问本地网络，才能在同一 Wi-Fi 下直接连接你的电脑。</string>
+	<string>Vetta needs local network access to connect directly to your computer on the same Wi-Fi.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
