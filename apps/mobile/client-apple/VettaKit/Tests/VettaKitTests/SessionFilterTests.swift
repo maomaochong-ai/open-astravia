@@ -80,4 +80,17 @@ import Testing
 		#expect(SessionFilter(kind: .conversation).apply(sessions, conversationCwd: nil).isEmpty)
 		#expect(SessionFilter(kind: .project).apply(sessions, conversationCwd: nil).count == sessions.count)
 	}
+
+	@Test func scopeSetsKindAndProjectTogether() {
+		var filter = SessionFilter(status: .waiting)
+		#expect(filter.scope == .all)
+		filter.scope = .project("/a")
+		#expect(filter == SessionFilter(status: .waiting, kind: .project, projectCwd: "/a"))
+		#expect(filter.scope == .project("/a"))
+		filter.scope = .conversations
+		#expect(filter == SessionFilter(status: .waiting, kind: .conversation), "leaving a project drops its path")
+		filter.scope = .all
+		#expect(filter == SessionFilter(status: .waiting))
+		#expect(SessionFilter(kind: .project).scope == .all, "every project is not one the picker offers")
+	}
 }

@@ -1,7 +1,7 @@
 import SwiftUI
 import VettaKit
 
-/// A project in search results.
+/// A project in Home's search results.
 struct ProjectRow: View {
 	var project: ProjectDigest
 
@@ -17,7 +17,7 @@ struct ProjectRow: View {
 					.font(.headline)
 					.foregroundStyle(Theme.ink)
 					.lineLimit(1)
-				Text(detail)
+				Text(Self.detail(project))
 					.font(.subheadline)
 					.foregroundStyle(Theme.dim)
 					.lineLimit(1)
@@ -26,7 +26,8 @@ struct ProjectRow: View {
 		.padding(.vertical, 4)
 	}
 
-	private var detail: String {
+	/// Its session count, and when it was last active if the phone has seen a session of it.
+	static func detail(_ project: ProjectDigest) -> String {
 		let count = L10n.Home.sessionCount(project.sessionCount)
 		guard project.updatedAt > 0 else { return count }
 		return "\(count) · \(L10n.Home.updated(TimeFormat.relative(project.updatedAt)))"

@@ -11,6 +11,7 @@ struct NewSessionView: View {
 	/// Empty keeps the desktop's default model and thinking level.
 	@State private var modelChoice = ModelChoice()
 	@State private var pickingModel = false
+	@State private var pickingProject = false
 	@State private var draft = PromptDraft()
 	@State private var pageWidth: CGFloat = 0
 
@@ -18,7 +19,6 @@ struct NewSessionView: View {
 		_projectCwd = State(initialValue: projectCwd)
 	}
 
-	private var projects: [RemoteProjectSummary] { model.projects.filter { !$0.isConversation } }
 	private var offline: Bool { LinkIndicator(model.link) == .offline }
 
 	var body: some View {
@@ -138,24 +138,25 @@ struct NewSessionView: View {
 	}
 
 	private var locationMenu: some View {
-		Menu {
-			Picker(L10n.NewSession.location, selection: $projectCwd) {
-				Label(L10n.Home.conversation, systemImage: "bubble.left").tag(String?.none)
-				if !projects.isEmpty {
-					Section(L10n.Home.kindProject) {
-						ForEach(projects, id: \.cwd) { project in
-							Label(project.name, systemImage: "folder").tag(Optional(project.cwd))
-						}
-					}
-				}
-			}
-		} label: {
-			let project = projects.first { $0.cwd == projectCwd }
-			MenuChip(symbol: project == nil ? "bubble.left" : "folder", text: project?.name ?? L10n.Home.conversation)
+		let name = projectCwd.map(projectName) ?? L10n.Home.conversation
+		return Button { pickingProject = true } label: {
+			MenuChip(symbol: projectCwd == nil ? "bubble.left" : "folder", text: name)
 		}
 		.buttonStyle(.glass)
 		.accessibilityLabel(L10n.NewSession.location)
+		.accessibilityValue(name)
 		.accessibilityIdentifier("newSession.location")
+		.sheet(isPresented: $pickingProject) {
+			ProjectSheet(selection: projectCwd.map(ProjectScope.project) ?? .conversations) { scope in
+				if case let .project(cwd) = scope { projectCwd = cwd } else { projectCwd = nil }
+			}
+		}
+	}
+
+	private func projectName(_ cwd: String) -> String {
+		model.projects.first { $0.cwd == cwd }?.name
+			?? model.sessions.first { $0.projectCwd == cwd }?.projectName
+			?? URL(fileURLWithPath: cwd).lastPathComponent
 	}
 
 	/// Opens the chat at once; the desktop creates the session behind it.

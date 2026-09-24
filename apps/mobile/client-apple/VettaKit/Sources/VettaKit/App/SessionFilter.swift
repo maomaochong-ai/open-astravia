@@ -18,6 +18,12 @@ public enum SessionKind: Sendable {
 	case conversation, project
 }
 
+/// What the project picker chooses: every session, the desktop's conversations, or one project.
+public enum ProjectScope: Hashable, Sendable {
+	case all, conversations
+	case project(String)
+}
+
 /// What the work list shows: a status group, a kind, and within projects one project.
 public struct SessionFilter: Equatable, Sendable {
 	public var status: SessionStatusGroup?
@@ -32,6 +38,26 @@ public struct SessionFilter: Equatable, Sendable {
 		self.status = status
 		self.kind = kind
 		self.projectCwd = kind == .project ? projectCwd : nil
+	}
+
+	/// The kind and project as one choice, as the project picker sets them.
+	public var scope: ProjectScope {
+		get {
+			switch kind {
+			case nil: .all
+			case .conversation: .conversations
+			case .project: projectCwd.map(ProjectScope.project) ?? .all
+			}
+		}
+		set {
+			switch newValue {
+			case .all: kind = nil
+			case .conversations: kind = .conversation
+			case let .project(cwd):
+				kind = .project
+				projectCwd = cwd
+			}
+		}
 	}
 
 	/// Anything narrowed down; the default state shows every session.

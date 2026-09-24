@@ -71,6 +71,8 @@ public enum L10n {
 		public static var unpairedScan: String { tr("home.unpairedScan") }
 		public static var search: String { tr("home.search") }
 		public static var taskBoard: String { tr("home.taskBoard") }
+		public static var pickProject: String { tr("home.pickProject") }
+		public static var allSessions: String { tr("home.allSessions") }
 		public static var searchPlaceholder: String { tr("home.searchPlaceholder") }
 		public static func sessionCount(_ n: Int) -> String { tr("home.sessionCount \(n)") }
 		public static func updated(_ time: String) -> String { tr("home.updated \(time)") }

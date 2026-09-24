@@ -1302,6 +1302,23 @@
         }
       }
     },
+    "home.allSessions": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All Sessions"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全部会话"
+          }
+        }
+      }
+    },
     "home.clearFilters": {
       "extractionState": "manual",
       "localizations": {
@@ -1587,6 +1604,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "电脑上打开的项目会显示在这里。"
+          }
+        }
+      }
+    },
+    "home.pickProject": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose Project"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择项目"
           }
         }
       }

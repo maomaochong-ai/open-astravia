@@ -29,6 +29,7 @@
 		BF4B6DCEF9D362F781317F6E /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E33BB88AA6F56D2A00716432 /* KeychainStore.swift */; };
 		CF3AFE89F12B4B288CEED3B3 /* HomeDrawer.swift in Sources */ = {isa = PBXBuildFile; fileRef = F48CB4F31FE51D7DCA191DCA /* HomeDrawer.swift */; };
 		E0A26C37CCE910520B415EDC /* SpeechDictation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A223D846ECA782112079EA4 /* SpeechDictation.swift */; };
+		E2D1C7C3925271D4EA7A0D18 /* ProjectSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE556B5F31422EA43BDF8294 /* ProjectSheet.swift */; };
 		E514FC31900005AF9F3DC10A /* ProjectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5B834FE35ABAA6C5DE654BC /* ProjectView.swift */; };
 		EEEE28142A335ED424B968FA /* QRScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4351D91117ED64F564EE2106 /* QRScannerView.swift */; };
 		F28E4179CBE02483F7D37374 /* ProjectRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4BD5077EC35B7196CE6FE34 /* ProjectRow.swift */; };
@@ -64,6 +65,7 @@
 		A5B834FE35ABAA6C5DE654BC /* ProjectView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectView.swift; sourceTree = "<group>"; };
 		A5FE60E74C2993F10053947E /* PairView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairView.swift; sourceTree = "<group>"; };
 		A611A3DDE7F1EC89CAD12F7F /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		AE556B5F31422EA43BDF8294 /* ProjectSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectSheet.swift; sourceTree = "<group>"; };
 		B43B0EEECDDBB2807AA280EF /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B4DC1B7D2C79A79205B17759 /* VettaKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = VettaKit; path = VettaKit; sourceTree = SOURCE_ROOT; };
 		BC4528B8445F4DFE1B3DAC95 /* ChatInputBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatInputBar.swift; sourceTree = "<group>"; };
@@ -190,6 +192,7 @@
 				E7F30E48D0595CE66EF6B8A3 /* MarkdownView.swift */,
 				F0D2A6C73F7E73DC53077670 /* ModelSheet.swift */,
 				F4BD5077EC35B7196CE6FE34 /* ProjectRow.swift */,
+				AE556B5F31422EA43BDF8294 /* ProjectSheet.swift */,
 				1571266B7208052D80E40A95 /* QuestionPanel.swift */,
 				DDD1656ECA9BA0A1442B19A3 /* SessionCards.swift */,
 			);
@@ -326,6 +329,7 @@
 				99925AFD6476F200F1186F5D /* NewSessionView.swift in Sources */,
 				97E3DC8E241B2B6E710580AC /* PairView.swift in Sources */,
 				F28E4179CBE02483F7D37374 /* ProjectRow.swift in Sources */,
+				E2D1C7C3925271D4EA7A0D18 /* ProjectSheet.swift in Sources */,
 				E514FC31900005AF9F3DC10A /* ProjectView.swift in Sources */,
 				EEEE28142A335ED424B968FA /* QRScannerView.swift in Sources */,
 				8CB51BACBD63840B98FE330F /* QuestionPanel.swift in Sources */,
