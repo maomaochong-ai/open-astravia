@@ -362,8 +362,12 @@ struct NewSessionButton: View {
 @Observable
 final class ScrollDepth {
 	var offset: CGFloat = 0
-	/// Where the filter header is and where it pins, in global coordinates.
+	/// Where the filter header is, in global coordinates.
 	var headerY: CGFloat = .infinity
+	/// Where a section header pins, in global coordinates: the scroll view's top inset, which
+	/// counts every bar laid over the list. The lists run under those bars from the top of the
+	/// screen, so the inset is the position; their layout frame starts below the bars and
+	/// adding it would count them twice.
 	var pinTop: CGFloat = 0
 
 	var pinned: Bool { headerY <= pinTop + 1 }
@@ -375,9 +379,8 @@ final class ScrollDepth {
 		min(max(geometry.contentOffset.y + geometry.contentInsets.top, 0), glowHeight).rounded()
 	}
 
-	/// The top of the list's visible content: where a section header pins.
-	nonisolated static func contentTop(_ proxy: GeometryProxy) -> CGFloat {
-		(proxy.frame(in: .global).minY + proxy.safeAreaInsets.top).rounded()
+	nonisolated static func insetTop(_ geometry: ScrollGeometry) -> CGFloat {
+		geometry.contentInsets.top.rounded()
 	}
 
 	nonisolated static func top(_ proxy: GeometryProxy) -> CGFloat {
@@ -391,7 +394,7 @@ extension View {
 	/// Feeds `depth` from the list this is applied to.
 	func trackScrollDepth(_ depth: ScrollDepth) -> some View {
 		onScrollGeometryChange(for: CGFloat.self, of: ScrollDepth.read) { _, offset in depth.offset = offset }
-			.onGeometryChange(for: CGFloat.self, of: ScrollDepth.contentTop) { depth.pinTop = $0 }
+			.onScrollGeometryChange(for: CGFloat.self, of: ScrollDepth.insetTop) { _, inset in depth.pinTop = inset }
 	}
 
 	/// A status filter as a list's sticky section header. Once pinned, the page
