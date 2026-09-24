@@ -33,8 +33,6 @@ struct SessionCard: View {
 				.font(.body.weight(.medium))
 				.foregroundStyle(Theme.ink)
 				.lineLimit(1)
-				// The project gives way first.
-				.layoutPriority(1)
 			Spacer(minLength: 8)
 			if let project {
 				HStack(spacing: 4) {
@@ -46,6 +44,8 @@ struct SessionCard: View {
 				.padding(.horizontal, 8)
 				.padding(.vertical, 4)
 				.background(Theme.faint.opacity(0.16), in: .capsule)
+				// Always whole; the title is what gives way.
+				.fixedSize()
 			}
 			if let status {
 				status.font(.footnote.weight(.bold))
