@@ -375,7 +375,7 @@ extension View {
 	}
 }
 
-/// The floating Liquid Glass button that starts a session.
+/// The floating Liquid Glass button that starts a session, tinted white with black ink in both appearances.
 struct NewSessionButton: View {
 	var action: () -> Void
 
@@ -383,13 +383,13 @@ struct NewSessionButton: View {
 		Button(action: action) {
 			Label(L10n.NewSession.title, systemImage: "plus")
 				.font(.headline)
-				.foregroundStyle(Theme.ink)
+				.foregroundStyle(.black)
 				.padding(.horizontal, 30)
 				.frame(height: 56)
 				.contentShape(.capsule)
 		}
 		.buttonStyle(.plain)
-		.glassEffect(.regular.interactive(), in: .capsule)
+		.glassEffect(.regular.tint(.white).interactive(), in: .capsule)
 		.padding(.bottom, 4)
 		.accessibilityIdentifier("home.newSession")
 	}
