@@ -1989,23 +1989,6 @@
         }
       }
     },
-    "newSession.connecting": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Connecting to your computer…"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "正在连接电脑…"
-          }
-        }
-      }
-    },
     "newSession.defaultModel": {
       "extractionState": "manual",
       "localizations": {
@@ -2070,23 +2053,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "开始位置"
-          }
-        }
-      }
-    },
-    "newSession.offline": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Your computer is offline. You can start once it reconnects."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "电脑离线，重新连上后才能开始新会话。"
           }
         }
       }

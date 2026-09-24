@@ -73,12 +73,11 @@ struct NewSessionView: View {
 				.font(.title.weight(.semibold))
 				.multilineTextAlignment(.center)
 				.padding(.top, 22)
-			subtitle
+			Text(L10n.NewSession.subtitle)
 				.font(.subheadline)
 				.foregroundStyle(.secondary)
 				.multilineTextAlignment(.center)
 				.padding(.top, 8)
-				.animation(.snappy, value: LinkIndicator(model.link))
 			locationMenu
 				.padding(.top, 28)
 			Spacer()
@@ -87,34 +86,22 @@ struct NewSessionView: View {
 		.frame(maxWidth: .infinity)
 		.contentShape(Rectangle())
 		.onTapGesture { dismissKeyboard() }
+		// Until the desktop answers, the link pill stands where the composer goes: it spins
+		// while connecting and, once the link has failed, offers a reconnect.
 		.safeAreaInset(edge: .bottom, spacing: 0) {
-			ChatInputBar(draft: $draft, placeholder: L10n.Chat.composerPlaceholder, sendDisabled: !model.online) { sent in
-				send(sent)
+			Group {
+				if model.online {
+					ChatInputBar(draft: $draft, placeholder: L10n.Chat.composerPlaceholder) { sent in
+						send(sent)
+					}
+				} else {
+					LinkPill()
+						.frame(maxWidth: .infinity)
+						.padding(.bottom, 8)
+				}
 			}
+			.animation(.snappy, value: model.online)
 		}
-	}
-
-	/// Says the phone is still reaching the desktop, so a send button that waits does not look stuck.
-	@ViewBuilder
-	private var subtitle: some View {
-		switch LinkIndicator(model.link) {
-		case .online:
-			Text(L10n.NewSession.subtitle)
-		case .connecting:
-			connecting(L10n.NewSession.connecting)
-		case let .reconnecting(attempt):
-			connecting(L10n.Link.reconnecting(attempt))
-		case .offline:
-			Text(L10n.NewSession.offline)
-		}
-	}
-
-	private func connecting(_ text: String) -> some View {
-		HStack(spacing: 6) {
-			ProgressView().controlSize(.mini)
-			Text(text)
-		}
-		.accessibilityElement(children: .combine)
 	}
 
 	private var modelMenu: some View {
