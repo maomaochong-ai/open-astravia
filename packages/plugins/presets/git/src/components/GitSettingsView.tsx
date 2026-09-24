@@ -1,8 +1,10 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
 import { Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Switch } from "@vetta-org/ui";
 import { useCallback, useEffect, useState } from "react";
-import { getAiApi } from "../git/runtime";
+import { getAiApi, getGitCommand } from "../git/runtime";
 import { DEFAULT_SETTINGS, type GitSettings, loadSettings, saveSettings } from "../git/settings";
+import { isGitAvailable } from "../git/tab-visibility";
+import { RefreshIcon } from "./icons";
 
 /** Sentinel for "follow the host's default model" in the picker. */
 const FOLLOW_DEFAULT = "__default__";
@@ -28,6 +30,36 @@ function SettingRow({
 	);
 }
 
+/** 本机没有 git 时的提示条：配置照常可改，但面板要装好 git 才能用。 */
+function NoGitBanner({ onRecheck }: { onRecheck: () => Promise<void> }): JSX.Element {
+	const { t } = useTranslation();
+	const [busy, setBusy] = useState(false);
+	return (
+		<div
+			role="status"
+			className="flex items-start gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3.5 py-2.5 text-[12px] leading-relaxed"
+		>
+			<div className="min-w-0 flex-1">
+				<div className="font-medium text-foreground">{t("noGit.title")}</div>
+				<div className="mt-0.5 text-muted-foreground">{t("noGit.settingsHint")}</div>
+			</div>
+			<Button
+				type="button"
+				size="sm"
+				variant="outline"
+				disabled={busy}
+				onClick={() => {
+					setBusy(true);
+					void onRecheck().finally(() => setBusy(false));
+				}}
+			>
+				<RefreshIcon className={`h-3.5 w-3.5 ${busy ? "animate-spin" : ""}`} />
+				{busy ? t("noGit.checking") : t("noGit.recheck")}
+			</Button>
+		</div>
+	);
+}
+
 /**
  * The plugin's configuration page, registered as an off-sidebar workspace view
  * (Settings → Extensions). The host has no declarative settings schema since
@@ -41,6 +73,15 @@ export function GitSettingsView(): JSX.Element {
 	const [settings, setSettings] = useState<GitSettings | null>(null);
 	const [saved, setSaved] = useState(false);
 	const [models, setModels] = useState<Array<{ modelKey: string; name: string }>>([]);
+	const [gitAvailable, setGitAvailable] = useState(true);
+
+	const checkGit = useCallback(async () => {
+		setGitAvailable(await isGitAvailable(getGitCommand()));
+	}, []);
+
+	useEffect(() => {
+		void checkGit();
+	}, [checkGit]);
 
 	useEffect(() => {
 		let alive = true;
@@ -88,6 +129,8 @@ export function GitSettingsView(): JSX.Element {
 				<h1 className="text-[15px] font-semibold text-foreground">{t("settings.title")}</h1>
 				<p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">{t("settings.tagline")}</p>
 			</div>
+
+			{!gitAvailable && <NoGitBanner onRecheck={checkGit} />}
 
 			<div className="flex flex-col">
 				<div className="border-b border-border py-3">

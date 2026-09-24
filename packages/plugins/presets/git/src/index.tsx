@@ -17,7 +17,7 @@ import {
 	setStorageApi,
 	setUiApi,
 } from "./git/runtime";
-import { CHANGES_TAB_ID, isInsideGitWorkTree } from "./git/tab-visibility";
+import { CHANGES_TAB_ID, probeGitTab } from "./git/tab-visibility";
 
 export default definePlugin({
 	activate(ctx) {
@@ -59,12 +59,13 @@ export default definePlugin({
 				const { cwd } = event.conversation;
 				if (!cwd) return;
 				latestCwd = cwd;
-				void isInsideGitWorkTree(ctx.command, cwd).then((inRepo) => {
+				void probeGitTab(ctx.command, ctx.fs, cwd).then((probe) => {
 					// 探测是异步的，期间可能已切走——切走后再写就会写到别人的 cwd 上。
 					if (latestCwd !== cwd) return;
 					// 必须显式带上 cwd：不带时宿主拿「前台工作区」当作用域，而会话切换回放
 					// 时前台未必已经就绪，那次写入会被直接丢弃，标签卡也就永远不上栏。
-					if (!inRepo) {
+					// 仓库目录但本机没装 git 时也上栏，面板里给出安装引导。
+					if (probe === "not-repo") {
 						ctx.ui.setActivityTabVisible(CHANGES_TAB_ID, false, { cwd });
 						return;
 					}

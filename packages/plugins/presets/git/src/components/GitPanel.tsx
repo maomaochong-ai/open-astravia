@@ -3,12 +3,14 @@ import { Button } from "@vetta-org/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { countChanges, parseStatus } from "../git/parseStatus";
 import { initRepo, resolveRepoRoot, statusPorcelain } from "../git/run";
-import { onRefreshSignal } from "../git/runtime";
+import { getGitCommand, onRefreshSignal } from "../git/runtime";
+import { isGitAvailable } from "../git/tab-visibility";
 import type { StatusGroups } from "../git/types";
 import { GitChanges } from "./GitChanges";
 import { GraphView } from "./graph/GraphView";
 import { GitIcon, GraphIcon, RefreshIcon } from "./icons";
 import { InitRepoCta } from "./InitRepoCta";
+import { NoGitCta } from "./NoGitCta";
 
 type ViewTab = "changes" | "graph";
 
@@ -16,6 +18,7 @@ type State =
 	| { kind: "loading" }
 	| { kind: "no-cwd" }
 	| { kind: "not-repo" }
+	| { kind: "no-git" }
 	| { kind: "ready"; root: string; groups: StatusGroups }
 	| { kind: "error"; message: string };
 
@@ -37,7 +40,10 @@ export function GitPanel(): JSX.Element {
 			const root = await resolveRepoRoot(cwd);
 			if (id !== loadIdRef.current) return;
 			if (!root) {
-				setState({ kind: "not-repo" });
+				// rev-parse 失败既可能是「不是仓库」，也可能是没装 git；后者给安装引导而不是「初始化仓库」。
+				const available = await isGitAvailable(getGitCommand(), cwd);
+				if (id !== loadIdRef.current) return;
+				setState({ kind: available ? "not-repo" : "no-git" });
 				return;
 			}
 			const raw = await statusPorcelain(root);
@@ -114,6 +120,7 @@ export function GitPanel(): JSX.Element {
 			{state.kind === "no-cwd" && <div className="px-3 py-4 text-[12px] text-muted-foreground">{t("state.noCwd")}</div>}
 			{state.kind === "error" && <div className="px-3 py-4 text-[12px] text-rose-500">{state.message}</div>}
 			{state.kind === "not-repo" && <InitRepoCta onInit={handleInit} />}
+			{state.kind === "no-git" && <NoGitCta onRecheck={load} />}
 			{state.kind === "ready" &&
 				(view === "graph" ? (
 					<GraphView root={state.root} reloadToken={graphReloadToken} />
