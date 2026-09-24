@@ -3,7 +3,7 @@ import Foundation
 /// The model and thinking level picked in the model sheet, which New Session
 /// and the chat title share. `nil` model is the desktop's default; `nil` level
 /// leaves the model's own.
-public struct ModelChoice: Equatable, Sendable {
+public struct ModelChoice: Equatable, Codable, Sendable {
 	public var modelKey: String?
 	public var thinkingLevel: String?
 
@@ -17,6 +17,17 @@ public struct ModelChoice: Equatable, Sendable {
 	public func levels(in options: [RemoteModelOption]) -> [String] {
 		guard let modelKey else { return [] }
 		return options.first { $0.key == modelKey }?.thinkingLevels ?? []
+	}
+
+	/// What of this choice the desktop still offers: a model it no longer lists falls
+	/// back to its default, a level the model lacks to the model's own. An empty list
+	/// is not known yet and keeps everything.
+	public func available(in options: [RemoteModelOption]) -> ModelChoice {
+		guard let modelKey, !options.isEmpty else { return self }
+		guard options.contains(where: { $0.key == modelKey }) else { return ModelChoice() }
+		var choice = self
+		if let level = thinkingLevel, !levels(in: options).contains(level) { choice.thinkingLevel = nil }
+		return choice
 	}
 
 	/// Switches model, keeping the level only where the new model offers it.

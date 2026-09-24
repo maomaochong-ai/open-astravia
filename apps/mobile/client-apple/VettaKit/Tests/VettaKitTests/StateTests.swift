@@ -474,6 +474,32 @@ import Testing
 		#expect(log.entries.count { $0.method == .sessionConfigure } == 1, "no choice leaves the desktop's defaults untouched")
 	}
 
+	@Test func remembersTheLastUsedModelPerDesktopAcrossLaunches() async throws {
+		let desktop = scriptedDesktop()
+		let settings = MemoryKeyValueStore()
+		let platform = AppPlatform(settings: settings, secrets: MemoryKeyValueStore(), cache: MemorySessionCache(), createTransport: desktop.createTransport, deviceName: "Phone")
+		let model = AppModel(platform: platform)
+		model.start()
+		let invite = PairingURI.build(RemotePairingInvite(pairingId: "pair-1234567890abcdef", mobileSecret: "secret-1234567890abcdef", desktopIdentityKey: desktop.identityKey, desktopName: "MacBook Pro", lanEndpoints: ["192.168.1.20:43117"]))
+		#expect(await model.pairWithCode(invite))
+		#expect(await eventually { model.sessions.map(\.id) == ["s1"] })
+		#expect(model.lastModelChoice == ModelChoice(), "nothing used yet: the desktop's default")
+
+		#expect(model.startSession("你好", modelKey: "zai/glm-5", thinkingLevel: "max") != nil)
+		#expect(model.lastModelChoice == ModelChoice(modelKey: "zai/glm-5", thinkingLevel: "max"), "remembered as soon as it is used")
+
+		#expect(await model.configure("s1", modelKey: "anthropic/claude-fable-5-1"))
+		#expect(model.lastModelChoice.modelKey == "anthropic/claude-fable-5-1", "switching in a chat counts as using it")
+
+		model.setActive(false)
+		let relaunched = AppModel(platform: platform)
+		relaunched.start()
+		#expect(relaunched.lastModelChoice == model.lastModelChoice)
+		relaunched.unpair()
+		#expect(relaunched.lastModelChoice == ModelChoice())
+		#expect(settings.get("vetta.lastModel.\(desktop.identityKey)") == nil)
+	}
+
 	@Test func readiesNewSessionModelsFromAnOpenSessionAndKeepsThemAcrossLaunches() async throws {
 		let log = RequestLog()
 		let open: JSONValue = ["id": "s0", "projectCwd": "/conv", "projectName": "对话", "title": "开着的", "updatedAt": 500, "status": "idle", "live": true]

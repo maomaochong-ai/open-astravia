@@ -37,11 +37,18 @@ struct NewSessionView: View {
 			}
 		}
 		.onAppear {
-			guard let start = router.failedStart else { return }
+			guard let start = router.failedStart else {
+				modelChoice = model.lastModelChoice.available(in: model.newSessionModels)
+				return
+			}
 			router.failedStart = nil
 			draft = start.draft
 			projectCwd = start.projectCwd
 			modelChoice = start.modelChoice
+		}
+		// A remembered model the desktop has since dropped falls back to its default.
+		.onChange(of: model.newSessionModels) { _, options in
+			modelChoice = modelChoice.available(in: options)
 		}
 		.task(id: model.online) {
 			guard model.online else { return }

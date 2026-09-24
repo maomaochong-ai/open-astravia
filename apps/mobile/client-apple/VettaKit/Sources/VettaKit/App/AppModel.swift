@@ -57,6 +57,7 @@ public final class AppModel {
 	static let deviceIdKey = "vetta.device.id"
 	static let projectsKeyPrefix = "vetta.projects."
 	static let modelsKeyPrefix = "vetta.models."
+	static let lastModelKeyPrefix = "vetta.lastModel."
 
 	public private(set) var ready = false
 	public private(set) var paired = false
@@ -71,6 +72,9 @@ public final class AppModel {
 	public private(set) var models: [String: [RemoteModelOption]] = [:]
 	/// Models a new session may start with, kept across launches; see `loadNewSessionModels`.
 	public private(set) var newSessionModels: [RemoteModelOption] = []
+	/// The model and level last used on this desktop, to start or switch a session;
+	/// New Session starts on it. Kept across launches.
+	public private(set) var lastModelChoice = ModelChoice()
 	public private(set) var transcripts: [String: TranscriptState] = [:]
 	/// Sessions opened by `startSession`: the local id the chat opened on → the desktop's id.
 	public private(set) var startedSessions: [String: String] = [:]
@@ -161,6 +165,7 @@ public final class AppModel {
 			platform.cache.clearDesktop(key)
 			platform.settings.remove(Self.projectsKeyPrefix + key)
 			platform.settings.remove(Self.modelsKeyPrefix + key)
+			platform.settings.remove(Self.lastModelKeyPrefix + key)
 		}
 		desktopKey = nil
 		paired = false
@@ -170,6 +175,7 @@ public final class AppModel {
 		projects = []
 		models = [:]
 		newSessionModels = []
+		lastModelChoice = ModelChoice()
 		transcripts = [:]
 		link = .offline
 	}
@@ -210,6 +216,8 @@ public final class AppModel {
 		projects = loadProjects(key)
 		models = [:]
 		newSessionModels = cachedNewSessionModels(key)
+		lastModelChoice = platform.settings.get(Self.lastModelKeyPrefix + key)
+			.flatMap { try? JSONDecoder().decode(ModelChoice.self, from: Data($0.utf8)) } ?? ModelChoice()
 		transcripts = [:]
 		link = .offline
 		var options = ChannelManagerOptions(desktop: record, link: identity, createTransport: platform.createTransport)
@@ -436,7 +444,16 @@ public final class AppModel {
 		return (try? JSONDecoder().decode([RemoteModelOption].self, from: Data(text.utf8))) ?? []
 	}
 
-	/// Switches the session's model and/or thinking level on the desktop.
+	private func rememberModel(_ choice: ModelChoice) {
+		guard choice != lastModelChoice else { return }
+		lastModelChoice = choice
+		if let key = desktopKey, let data = try? JSONEncoder().encode(choice), let text = String(data: data, encoding: .utf8) {
+			platform.settings.set(Self.lastModelKeyPrefix + key, text)
+		}
+	}
+
+	/// Switches the session's model and/or thinking level on the desktop, and
+	/// remembers where it landed for the next New Session.
 	@discardableResult
 	public func configure(_ sessionId: String, modelKey: String? = nil, thinkingLevel: String? = nil) async -> Bool {
 		var payload: [String: JSONValue] = [:]
@@ -445,7 +462,9 @@ public final class AppModel {
 		guard !payload.isEmpty else { return false }
 		do {
 			let result = try await requireManager().request(.sessionConfigure, payload: .object(payload), sessionId: sessionId)
-			dispatch(sessionId, .state(RemoteAPI.readSessionState(result?["state"])))
+			let state = RemoteAPI.readSessionState(result?["state"])
+			dispatch(sessionId, .state(state))
+			rememberModel(ModelChoice(modelKey: state.modelKey ?? modelKey, thinkingLevel: state.thinkingLevel ?? thinkingLevel))
 			return true
 		} catch {
 			reportError(error)
@@ -464,6 +483,7 @@ public final class AppModel {
 		do {
 			var target = sessionId
 			if target == nil {
+				rememberModel(ModelChoice(modelKey: modelKey, thinkingLevel: thinkingLevel))
 				let created = try await createSession(projectCwd: projectCwd)
 				// A failed switch is reported; the prompt still goes out on the default model.
 				await configure(created, modelKey: modelKey, thinkingLevel: thinkingLevel)
@@ -503,6 +523,7 @@ public final class AppModel {
 		))
 		transcripts[localId] = transcript
 		startingSessions.insert(localId)
+		rememberModel(ModelChoice(modelKey: modelKey, thinkingLevel: thinkingLevel))
 		Task {
 			defer { startingSessions.remove(localId) }
 			do {

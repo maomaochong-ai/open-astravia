@@ -25,6 +25,15 @@ import Testing
 		#expect(choice == ModelChoice(), "the default model's levels are unknown")
 	}
 
+	@Test func fallsBackWhereTheDesktopNoLongerOffersTheRememberedChoice() {
+		let kept = ModelChoice(modelKey: "zai/glm", thinkingLevel: "max")
+		#expect(kept.available(in: options) == kept)
+		#expect(kept.available(in: []) == kept, "an unknown list keeps the choice until it arrives")
+		#expect(ModelChoice(modelKey: "gone/model", thinkingLevel: "high").available(in: options) == ModelChoice())
+		#expect(ModelChoice(modelKey: "zai/glm", thinkingLevel: "low").available(in: options) == ModelChoice(modelKey: "zai/glm"))
+		#expect(ModelChoice().available(in: options) == ModelChoice())
+	}
+
 	@Test func groupsByProviderInTheDesktopsOrder() {
 		let groups = ModelChoice.groups(options)
 		#expect(groups.map(\.provider) == ["anthropic", "zai"])
