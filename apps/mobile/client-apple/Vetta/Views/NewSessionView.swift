@@ -235,10 +235,26 @@ private struct WelcomeBackdrop: View {
 				.opacity(lit ? (colorScheme == .dark ? 1 : 0.35) : 0)
 				.animation(.easeOut(duration: 0.8), value: lit)
 		}
-		.onAppear {
+		// On a cold start the main thread is busy for a while after the first frame (loading the
+		// pairing, warming the keyboard); an animation begun then plays out unseen and the light
+		// just pops in. Wait for the frames to flow before lighting up.
+		.task {
+			if !reduceMotion { await Self.steadyFrames() }
 			var transaction = Transaction()
 			transaction.disablesAnimations = reduceMotion
 			withTransaction(transaction) { lit = true }
+		}
+	}
+
+	/// Returns once a few short sleeps in a row come back on time, or after two seconds at most.
+	private static func steadyFrames() async {
+		let clock = ContinuousClock()
+		let deadline = clock.now + .seconds(2)
+		var onTime = 0
+		while onTime < 3, clock.now < deadline {
+			let start = clock.now
+			try? await Task.sleep(for: .milliseconds(16))
+			onTime = clock.now - start < .milliseconds(40) ? onTime + 1 : 0
 		}
 	}
 }
