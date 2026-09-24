@@ -155,11 +155,10 @@ export function MessageListView({
 	sessionUsagesRef.current = sessionUsages;
 	const itemContent = useCallback(
 		(index: number, message: ChatConversationItem) => {
+			const modelSwitchLabel = modelSwitchLabels.get(message.id);
 			return (
 				<MessageRow message={message} isLast={index === messages.length - 1}>
-					{modelSwitchLabels.has(message.id) && (
-						<ModelSwitchBoundary label={modelSwitchLabels.get(message.id) as string} />
-					)}
+					{modelSwitchLabel && <ModelSwitchBoundary {...modelSwitchLabel} />}
 					<MessageItem
 						message={message}
 						isTailMessage={message.id === tailMessageId}

@@ -3,6 +3,7 @@ import type { ChatConversationItem } from "@shared/store/atoms";
 import type { ActivityWorkspace } from "@shared/workspace/activity-workspace";
 import type { ReactNode } from "react";
 import type { MessageListScrollModel } from "../../hooks/useMessageListScrollModel";
+import type { ModelSwitchLabel } from "./message-list-derived";
 import type { AssistantFoldData, BlockSegment } from "./messageBlockModel";
 import type { WorkSegment } from "./progressGroupModel";
 
@@ -25,7 +26,7 @@ export interface MessageListProps {
 export interface MessageListModel {
 	isStreaming: boolean;
 	messages: readonly ChatConversationItem[];
-	modelSwitchLabels: Map<string, string>;
+	modelSwitchLabels: Map<string, ModelSwitchLabel>;
 	scroll: MessageListScrollModel;
 	tailMessageId: string | null;
 	participantsById: ReadonlyMap<string, ConversationParticipantViewModel>;

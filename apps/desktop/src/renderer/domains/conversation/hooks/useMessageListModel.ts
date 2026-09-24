@@ -1,5 +1,6 @@
 import { useModelOptions } from "@shared/components/ModelSelect/useModelOptions";
 import { useMemo, useRef } from "react";
+import type { ModelSwitchLabel } from "../components/message-list/message-list-derived";
 import { collectModelSwitchLabels, userModelSwitchFingerprint } from "../components/message-list/message-list-derived";
 import type { MessageListModel, MessageListProps } from "../components/message-list/types";
 import type { MessageListScrollModel } from "./useMessageListScrollModel";
@@ -18,7 +19,7 @@ export function useMessageListModel(
 	const modelSwitchCacheRef = useRef<{
 		fingerprint: string;
 		modelNames: ReadonlyMap<string, string>;
-		labels: Map<string, string>;
+		labels: Map<string, ModelSwitchLabel>;
 	}>({ fingerprint: "", modelNames: new Map(), labels: new Map() });
 	const modelSwitchCache = modelSwitchCacheRef.current;
 	if (modelSwitchCache.fingerprint !== modelSwitchFingerprint || modelSwitchCache.modelNames !== modelNames) {

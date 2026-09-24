@@ -2,7 +2,7 @@
 
 import { cleanup, render, screen } from "@testing-library/react";
 import type { Usage } from "@vetta/ai";
-import { createConversationAgentMessage } from "@shared/conversation";
+import { createConversationAgentMessage, createConversationUserMessage } from "@shared/conversation";
 import userEvent from "@testing-library/user-event";
 import { type ComponentProps, Fragment, type ReactNode, useEffect } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -97,7 +97,7 @@ vi.mock("./MessageItem", () => ({
 			</div>
 		);
 	},
-	ModelSwitchBoundary: () => null,
+	ModelSwitchBoundary: ({ from, to }: { from: string; to: string }) => <div>{`${from} → ${to}`}</div>,
 }));
 vi.mock("./MessageListFooter", () => ({ MessageListFooter: () => null }));
 vi.mock("./MessageTimeline", () => ({
@@ -321,6 +321,17 @@ describe("MessageListView virtualization", () => {
 
 		expect(captured.virtuosoProps?.increaseViewportBy).toEqual({ top: 320, bottom: 80 });
 		expect(captured.virtuosoProps?.minOverscanItemCount).toBeUndefined();
+	});
+
+	it("在切换模型的用户消息前显示来源和目标模型", () => {
+		const viewProps = props(true);
+		viewProps.model.messages = [
+			createConversationUserMessage({ id: "u1", text: "first", model: { provider: "openai", id: "gpt-4" } }),
+			createConversationUserMessage({ id: "u2", text: "second", model: { provider: "openai", id: "gpt-5" } }),
+		];
+		viewProps.model.modelSwitchLabels = new Map([["u2", { from: "GPT-4", to: "GPT-5" }]]);
+		render(<MessageListView {...viewProps} />);
+		expect(screen.getByText("GPT-4 → GPT-5")).toBeTruthy();
 	});
 
 	it("把时间线的消息索引交给统一滚动模型", async () => {

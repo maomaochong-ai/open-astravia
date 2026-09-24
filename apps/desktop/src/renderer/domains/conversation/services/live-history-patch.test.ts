@@ -99,7 +99,7 @@ describe("patchLiveMessagesWithCanonical", () => {
 		);
 
 		const labels = collectModelSwitchLabels(patched!, new Map([["openai/gpt-5", "GPT-5"]]));
-		expect(labels.get("live-u2")).toBe("GPT-5");
+		expect(labels.get("live-u2")).toEqual({ from: "openai/gpt-4", to: "GPT-5" });
 		expect(labels.size).toBe(1);
 	});
 

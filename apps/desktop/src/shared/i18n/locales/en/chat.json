@@ -766,7 +766,7 @@
 			"unavailable": "Not reported"
 		},
 		"compactionBoundary": "Context compacted",
-		"modelSwitched": "Switched model to {{name}}",
+		"modelSwitched": "Switched model from {{from}} to {{to}}",
 		"compactionIndicator": "Compacting context...",
 		"retryIndicator": "Reconnecting ({{attempt}}/{{maxAttempts}})",
 		"retryReason": "Last request failed: {{reason}}",
