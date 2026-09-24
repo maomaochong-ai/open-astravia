@@ -46,15 +46,16 @@ import Testing
 		#expect(TaskBoard.cards(sessions, conversationCwd: "/conv").map(\.cwd) == ["/new", "/old"])
 	}
 
-	@Test func activeCardListsOnlyWaitingAndRunningWaitingFirst() {
+	@Test func activeCardListsWaitingThenRunningThenFillsUpWithTheNewestOthers() {
 		let sessions = [
 			session("done", cwd: "/a", at: 100),
 			session("run", .running, cwd: "/a", at: 50),
 			session("wait", .waitingInput, cwd: "/a", at: 10),
 			session("error", .error, cwd: "/a", at: 60),
+			session("old", cwd: "/a", at: 1),
 		]
 		let card = TaskBoard.cards(sessions, conversationCwd: "/conv")[0]
-		#expect(card.sessions.map(\.id) == ["wait", "run"])
+		#expect(card.sessions.map(\.id) == ["wait", "run", "done"])
 		#expect(card.waiting == 1)
 		#expect(card.running == 1)
 		#expect(card.updatedAt == 100)
@@ -71,7 +72,7 @@ import Testing
 	@Test func capsActiveSessionsAndCountsTheRest() {
 		let sessions = (1 ... 8).map { session("r\($0)", .running, cwd: "/a", at: Double($0)) }
 		let card = TaskBoard.cards(sessions, conversationCwd: "/conv")[0]
-		#expect(card.sessions.count == TaskBoard.activeLimit)
+		#expect(card.sessions.count == TaskBoard.activeLimit, "enough active ones leave no room for finished ones")
 		#expect(card.sessions.first?.id == "r8")
 		#expect(card.hidden == 3)
 	}

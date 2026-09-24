@@ -1,13 +1,14 @@
 import Foundation
 
 /// One card on the task board: a project, or the desktop's conversations, with the
-/// sessions worth a look. While any of them waits or runs the card lists those;
-/// otherwise its newest few.
+/// sessions worth a look: every one that waits or runs, then its newest finished ones
+/// until there are at least a few.
 public struct TaskBoardCard: Identifiable, Equatable, Sendable {
 	public var cwd: String
 	public var name: String
 	public var isConversation: Bool
-	/// Waiting and running sessions first, most recent first within each; capped.
+	/// Waiting and running sessions first, most recent first within each and capped, then
+	/// the newest others up to `TaskBoard.recentLimit` in all.
 	public var sessions: [RemoteSessionSummary]
 	/// Waiting or running sessions left off the card by the cap.
 	public var hidden: Int
@@ -30,7 +31,7 @@ public struct TaskBoardCard: Identifiable, Equatable, Sendable {
 public enum TaskBoard {
 	/// Projects with nothing waiting or running beyond these are left to Home's list.
 	public static let doneProjectLimit = 6
-	/// Sessions an all-done card lists.
+	/// Sessions a card lists at least, when it has that many.
 	public static let recentLimit = 3
 	/// Waiting or running sessions a card lists before it points to the rest.
 	public static let activeLimit = 5
@@ -77,7 +78,8 @@ public enum TaskBoard {
 			cwd: cwd,
 			name: sessions[0].projectName,
 			isConversation: isConversation,
-			sessions: active.isEmpty ? Array(newest.prefix(recentLimit)) : Array(active.prefix(activeLimit)),
+			// Short of `recentLimit`, the newest finished ones fill the card up.
+			sessions: Array(active.prefix(activeLimit)) + newest.filter { !active.contains($0) }.prefix(max(recentLimit - active.count, 0)),
 			hidden: max(active.count - activeLimit, 0),
 			waiting: waiting.count,
 			running: running.count,
