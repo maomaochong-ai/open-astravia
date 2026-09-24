@@ -1,9 +1,10 @@
 import SwiftUI
 import VettaKit
 
-/// The drawer over the slot: every session under a status filter that sticks to the top. The link pill and Close stay at the top;
-/// New Session, Search and Settings float at the bottom, and Search opens its field there.
-/// Only there once a desktop is paired.
+/// The drawer over the slot: the Vetta title and Close stay at the top, then a short list of
+/// ways in (New Session, the task board) and every session under a status filter that sticks
+/// to the top. The link pill, Search and Settings float at the bottom, and Search opens its
+/// field there. Only there once a desktop is paired.
 struct HomeView: View {
 	@Environment(AppModel.self) private var model
 	@Environment(Router.self) private var router
@@ -14,7 +15,7 @@ struct HomeView: View {
 	@State private var deleting: RemoteSessionSummary?
 	@State private var depth = ScrollDepth()
 
-	/// Searching folds the top bar away and lists matching projects, from the first tap until cancelled.
+	/// Searching folds the top bar and the ways in away and lists matching projects, from the first tap until cancelled.
 	private var searching: Bool { searchActive || !query.isEmpty }
 
 	private var rows: [RemoteSessionSummary] {
@@ -24,8 +25,12 @@ struct HomeView: View {
 	var body: some View {
 		let rows = rows
 		List {
-			if searching {
-				Section { projectResults }
+			Section {
+				if searching {
+					projectResults
+				} else {
+					entries
+				}
 			}
 			Section {
 				SessionCardRows(rows: rows, deleting: $deleting)
@@ -57,7 +62,10 @@ struct HomeView: View {
 
 	private var topBar: some View {
 		HStack {
-			LinkPill()
+			Text(L10n.appName)
+				.font(.title.bold())
+				.foregroundStyle(Theme.ink)
+				.accessibilityAddTraits(.isHeader)
 			Spacer()
 			GlassCircleButton(symbol: "xmark", size: 48, label: L10n.Common.close, identifier: "home.close") {
 				router.closeDrawer()
@@ -76,8 +84,8 @@ struct HomeView: View {
 				.padding(.bottom, 4)
 				.transition(.opacity)
 		} else {
-			HStack(alignment: .bottom, spacing: 12) {
-				NewSessionButton { router.startNewSession() }
+			HStack(spacing: 12) {
+				LinkPill()
 				Spacer()
 				Group {
 					GlassCircleButton(symbol: "magnifyingglass", size: 56, label: L10n.Home.search, identifier: "home.search") {
@@ -89,11 +97,21 @@ struct HomeView: View {
 						router.path.append(.settings)
 					}
 				}
-				.padding(.bottom, 4)
 			}
+			.padding(.bottom, 4)
 			.padding(.horizontal, 16)
 			.transition(.opacity)
 		}
+	}
+
+	/// Ways in, as plain icon-and-label rows.
+	@ViewBuilder
+	private var entries: some View {
+		EntryRow(symbol: "square.and.pencil", title: L10n.NewSession.title, identifier: "home.newSession") {
+			router.startNewSession()
+		}
+		// Only the way in for now; the board itself comes later.
+		EntryRow(symbol: "rectangle.3.group", title: L10n.Home.taskBoard, identifier: "home.taskBoard") {}
 	}
 
 	/// Projects whose name matches, above the matching sessions.
@@ -142,5 +160,33 @@ struct HomeView: View {
 			}
 		}
 		.bareRow(top: 24)
+	}
+}
+
+/// One of Home's ways in: an icon and a label, no background.
+private struct EntryRow: View {
+	var symbol: String
+	var title: String
+	var identifier: String
+	var action: () -> Void
+
+	var body: some View {
+		Button(action: action) {
+			HStack(spacing: 14) {
+				Image(systemName: symbol)
+					.font(.title3)
+					.frame(width: 28)
+				Text(title)
+					.font(.body.weight(.medium))
+				Spacer(minLength: 0)
+			}
+			.foregroundStyle(Theme.ink)
+			.padding(.horizontal, 20)
+			.padding(.vertical, 12)
+			.contentShape(.rect)
+		}
+		.buttonStyle(.plain)
+		.accessibilityIdentifier(identifier)
+		.bareRow()
 	}
 }

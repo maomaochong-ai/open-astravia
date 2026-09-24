@@ -47,7 +47,7 @@ struct UnpairedView: View {
 	}
 }
 
-/// Home's top-left capsule: the computer and how the phone reaches it, always shown.
+/// Home's bottom-left capsule: the computer and how the phone reaches it, always shown.
 /// Tapping explains the link and offers a reconnect; unpaired, it opens pairing.
 struct LinkPill: View {
 	@Environment(AppModel.self) private var model
