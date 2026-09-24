@@ -194,6 +194,9 @@ export default defineConfig({
 	},
 	test: {
 		environment: "node",
+		// Git Bash loopback tests launch real processes; 24 parallel Windows workers
+		// can delay a single SSH round trip past the default test timeout.
+		maxWorkers: process.platform === "win32" ? 8 : undefined,
 		// .tsx 用于 renderer 组件测试；这类文件各自用 `@vitest-environment jsdom` docblock
 		// 声明 DOM 环境，其余测试继续跑在 node 环境里。
 		include: ["src/**/*.test.{ts,tsx}", "scripts/**/*.test.ts"],

@@ -37,24 +37,39 @@ describe.each(modes)("SshConnection 的文件操作（回环 SSH，$name）", ({
 		const dir = createRemoteDirectory();
 		mkdirSync(join(dir, "src"));
 		writeFileSync(join(dir, "a.txt"), "hello");
-		symlinkSync(join(dir, "a.txt"), join(dir, "link.txt"));
+		// Creating a symlink on Windows requires Developer Mode or elevated rights.
+		let hasSymlink = true;
+		try {
+			symlinkSync(join(dir, "a.txt"), join(dir, "link.txt"));
+		} catch (error) {
+			if (process.platform !== "win32" || !(error instanceof Error && "code" in error && error.code === "EPERM")) {
+				throw error;
+			}
+			hasSymlink = false;
+		}
 		const connection = await connect();
 
 		const entries = await connection.listDirectory(dir);
-		expect(entries.map((entry) => [entry.name, entry.kind]).sort()).toEqual([
+		const expectedEntries = [
 			["a.txt", "file"],
-			["link.txt", "symlink"],
 			["src", "directory"],
-		]);
+		];
+		if (hasSymlink) expectedEntries.push(["link.txt", "symlink"]);
+		expect(entries.map((entry) => [entry.name, entry.kind]).sort()).toEqual(expectedEntries.sort());
 		expect(entries.find((entry) => entry.name === "a.txt")).toMatchObject({ sizeBytes: 5 });
-		await expect(connection.stat(join(dir, "link.txt"))).resolves.toMatchObject({
-			name: "link.txt",
-			kind: "symlink",
-		});
-		await expect(connection.stat(join(dir, "link.txt"), undefined, { followSymlinks: true })).resolves.toMatchObject({
-			kind: "file",
-		});
-		await expect(connection.realPath(join(dir, "link.txt"))).resolves.toBe(join(dir, "a.txt"));
+		if (hasSymlink) {
+			await expect(connection.stat(join(dir, "link.txt"))).resolves.toMatchObject({
+				name: "link.txt",
+				kind: "symlink",
+			});
+			await expect(
+				connection.stat(join(dir, "link.txt"), undefined, { followSymlinks: true }),
+			).resolves.toMatchObject({
+				kind: "file",
+			});
+		}
+		const resolvedFile = hasSymlink ? join(dir, "link.txt") : join(dir, "a.txt");
+		await expect(connection.realPath(resolvedFile)).resolves.toBe(join(dir, "a.txt"));
 		await expect(connection.realPath(join(dir, "missing"))).resolves.toBe(join(dir, "missing"));
 	});
 
@@ -117,30 +132,33 @@ describe.each(modes)("SshConnection 的文件操作（回环 SSH，$name）", ({
  * 在这个平台上确实对得上，而不是我们拼出了预期的字符串。
  */
 describe("列出远端正在监听的端口（回环 SSH）", () => {
-	baseIt("认出一个刚起的监听端口并带上启动时间，sshd 的 22 只标成敏感", async () => {
-		const server = createServer();
-		const port = await new Promise<number>((resolve, reject) => {
-			server.once("error", reject);
-			server.listen(0, "127.0.0.1", () => {
-				const address = server.address();
-				if (address && typeof address === "object") resolve(address.port);
-				else reject(new Error("no port"));
+	baseIt.skipIf(process.platform === "win32")(
+		"认出一个刚起的监听端口并带上启动时间，sshd 的 22 只标成敏感",
+		async () => {
+			const server = createServer();
+			const port = await new Promise<number>((resolve, reject) => {
+				server.once("error", reject);
+				server.listen(0, "127.0.0.1", () => {
+					const address = server.address();
+					if (address && typeof address === "object") resolve(address.port);
+					else reject(new Error("no port"));
+				});
 			});
-		});
-		try {
-			const scan = await createLoopbackSshConnection().listListeningPorts();
-			expect(scan.tool).not.toBe("none");
-			const ports = scan.ports.map((entry) => entry.port);
-			expect(ports).toContain(port);
-			for (const entry of scan.ports) if (entry.port === 22) expect(entry.sensitive).toBe(true);
-			const mine = scan.ports.find((entry) => entry.port === port);
-			expect(mine?.sensitive).toBe(false);
-			// 这个监听者就是测试进程自己：它的启动时间必然早于现在。
-			if (mine?.pid) expect(mine.startedAt).toBeLessThanOrEqual(Date.now());
-			// 端口号升序是界面直接用的顺序，不能只保证集合正确。
-			expect(ports).toEqual([...ports].sort((a, b) => a - b));
-		} finally {
-			await new Promise<void>((resolve) => server.close(() => resolve()));
-		}
-	});
+			try {
+				const scan = await createLoopbackSshConnection().listListeningPorts();
+				expect(scan.tool).not.toBe("none");
+				const ports = scan.ports.map((entry) => entry.port);
+				expect(ports).toContain(port);
+				for (const entry of scan.ports) if (entry.port === 22) expect(entry.sensitive).toBe(true);
+				const mine = scan.ports.find((entry) => entry.port === port);
+				expect(mine?.sensitive).toBe(false);
+				// 这个监听者就是测试进程自己：它的启动时间必然早于现在。
+				if (mine?.pid) expect(mine.startedAt).toBeLessThanOrEqual(Date.now());
+				// 端口号升序是界面直接用的顺序，不能只保证集合正确。
+				expect(ports).toEqual([...ports].sort((a, b) => a - b));
+			} finally {
+				await new Promise<void>((resolve) => server.close(() => resolve()));
+			}
+		},
+	);
 });

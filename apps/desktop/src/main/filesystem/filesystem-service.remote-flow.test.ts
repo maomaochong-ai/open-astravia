@@ -10,7 +10,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createLoopbackSshConnection } from "@vetta/ssh-transport/testing";
+import { createLoopbackSshConnection, formatLoopbackProjectUri } from "@vetta/ssh-transport/testing";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const connection = createLoopbackSshConnection();
@@ -35,7 +35,7 @@ describe("远程项目的文件树：用户在面板里的一串常见操作", (
 		writeFileSync(join(remoteRoot, "node_modules/pkg/index.js"), "");
 		writeFileSync(join(remoteRoot, "logo.png"), PNG_1X1);
 		writeFileSync(join(remoteRoot, "LICENSE"), "MIT\n");
-		root = `ssh://build-01${remoteRoot}`;
+		root = formatLoopbackProjectUri("build-01", remoteRoot);
 		service.allowProjectRoot(root);
 	});
 
@@ -54,7 +54,7 @@ describe("远程项目的文件树：用户在面板里的一串常见操作", (
 
 		await service.deleteFilesystemPath(`${root}/docs`);
 		expect(existsSync(join(remoteRoot, "docs"))).toBe(false);
-	});
+	}, 20_000);
 
 	it("无扩展名的文本、图片都能预览，呈现判断与本地项目同一套", async () => {
 		await expect(service.readTextPreviewFile(`${root}/LICENSE`)).resolves.toMatchObject({
@@ -83,7 +83,8 @@ describe("远程项目的文件树：用户在面板里的一串常见操作", (
 		chmodSync(join(remoteRoot, "run.sh"), 0o755);
 		await service.writeFilesystemFile(`${root}/run.sh`, "new");
 		expect(readFileSync(join(remoteRoot, "run.sh"), "utf8")).toBe("new");
-		expect(statSync(join(remoteRoot, "run.sh")).mode & 0o777).toBe(0o755);
+		// Windows does not expose POSIX executable bits through node:fs stat.
+		if (process.platform !== "win32") expect(statSync(join(remoteRoot, "run.sh")).mode & 0o777).toBe(0o755);
 	});
 
 	it("插件文件能力用的授权检查认得远程路径：项目内放行，项目外拒绝", async () => {
