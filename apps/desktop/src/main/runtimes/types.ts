@@ -24,9 +24,34 @@ export interface RuntimeStatus {
 	supported: boolean;
 }
 
+/** Git 缺失时给用户的安装方式，按平台决定。 */
+export type GitInstallGuide =
+	/** macOS：调起系统的命令行开发者工具安装窗口。 */
+	| { kind: "xcode-clt" }
+	/** Windows：下载 MinGit 到 ~/.vetta/runtimes，只在 Vetta 内生效。 */
+	| { kind: "managed-download"; version: string }
+	/** Linux：给出发行版的包管理器命令；识别不出发行版时为 null。 */
+	| { kind: "package-manager"; command: string | null }
+	/** 其余情况只能引导用户去官网下载。 */
+	| { kind: "manual" };
+
+/**
+ * Git 的对外状态。与 node/python 相反，系统 git 优先：它带着用户自己的
+ * 配置与凭据；托管 MinGit 只在系统没有 git 时兜底（ADR-0134）。
+ */
+export interface GitToolStatus {
+	available: boolean;
+	/** 实际生效的来源（可用时）。 */
+	source?: RuntimeSource;
+	version?: string;
+	executablePath?: string;
+	install: GitInstallGuide;
+}
+
 export interface RuntimesStatus {
 	node: RuntimeStatus;
 	python: RuntimeStatus;
+	git: GitToolStatus;
 	/** 注入到 bash 子进程的镜像源(展示用)。 */
 	mirrors: { npmRegistry: string; pipIndexUrl: string };
 }

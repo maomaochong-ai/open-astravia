@@ -6,6 +6,7 @@ import type {
 	PluginCommandRunResult,
 } from "../../preload/api-types/plugins.js";
 import { getAppLogger } from "../logger.js";
+import { getRuntimeManager } from "../runtimes/manager.js";
 import { createPluginCommandEnvironment } from "./command-environment.js";
 import { spawnCrossPlatformCommand } from "./command-launcher.js";
 import { listPlugins } from "./plugin-catalog.js";
@@ -94,6 +95,11 @@ export async function runPluginCommand(
 			timeoutMs: timeout,
 			maxBufferBytes: MAX_BUFFER_BYTES,
 		});
+	}
+
+	// macOS 没装命令行工具时，/usr/bin/git 一执行就弹系统安装框；插件按「没装 git」处理即可。
+	if (file === "git" && getRuntimeManager().shouldBlockGitCommand()) {
+		throw new Error(`Command failed to start: ${file} (ENOENT)`);
 	}
 
 	let child: ChildProcess;

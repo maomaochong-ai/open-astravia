@@ -234,6 +234,7 @@ export function createSystemApi(
 			getStatus: () => ipc.invoke("vetta:runtimes:get-status"),
 			reinstall: (type) => ipc.invoke("vetta:runtimes:reinstall", type),
 			redetect: () => ipc.invoke("vetta:runtimes:redetect"),
+			installGit: () => ipc.invoke("vetta:runtimes:install-git"),
 		},
 		settings: {
 			getServerUrl: () => ipc.invoke("vetta:settings:get-server-url"),

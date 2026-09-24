@@ -5,6 +5,7 @@ import { delimiter, join } from "node:path";
 import { atomicWriteJSON } from "@vetta/toolkit/atomic-write";
 import { getAppLogger } from "../logger.js";
 import { downloadToFile } from "./download.js";
+import { GitToolManager } from "./git-tool.js";
 import {
 	binDirsFor,
 	executablePathFor,
@@ -24,7 +25,7 @@ import {
 	vendorRuntimeDir,
 } from "./paths.js";
 import { installRuntimeArchive, installRuntimeDirectory } from "./runtime-archive-installer.js";
-import type { RuntimeRegistryData, RuntimeStatus, RuntimesStatus } from "./types.js";
+import type { GitToolStatus, RuntimeRegistryData, RuntimeStatus, RuntimesStatus } from "./types.js";
 
 const log = getAppLogger("runtimes");
 
@@ -46,6 +47,7 @@ function parseVersion(raw: string): string | undefined {
 
 export class RuntimeManager {
 	private data: RuntimeRegistryData = emptyRegistry();
+	private readonly git = new GitToolManager();
 
 	private loadRegistry(): void {
 		try {
@@ -546,6 +548,11 @@ export class RuntimeManager {
 			}
 		}
 		this.saveRegistry();
+		try {
+			this.git.detect();
+		} catch (err) {
+			log.warn("detect git failed", err);
+		}
 	}
 
 	/**
@@ -597,6 +604,8 @@ export class RuntimeManager {
 			// best-effort
 		}
 
+		this.git.applyEnv();
+
 		log.info("runtime env applied", {
 			node: this.isReady("node"),
 			python: this.isReady("python"),
@@ -624,6 +633,7 @@ export class RuntimeManager {
 		return {
 			node: this.statusFor("node"),
 			python: this.statusFor("python"),
+			git: this.git.getStatus(),
 			mirrors: {
 				npmRegistry: RUNTIME_MANIFEST.mirrors.npmRegistry,
 				pipIndexUrl: RUNTIME_MANIFEST.mirrors.pipIndexUrl,
@@ -651,7 +661,18 @@ export class RuntimeManager {
 	redetect(): RuntimesStatus {
 		for (const type of RUNTIME_TYPES) this.detectSystem(type);
 		this.saveRegistry();
+		this.git.detect();
 		return this.getStatus();
+	}
+
+	/** 插件调用 git 前的宿主检查，见 GitToolManager.shouldBlockGitCommand。 */
+	shouldBlockGitCommand(): boolean {
+		return this.git.shouldBlockGitCommand();
+	}
+
+	/** 面板「安装 Git」：macOS 调起系统安装窗口，Windows 装托管 MinGit。 */
+	installGit(): Promise<GitToolStatus> {
+		return this.git.install();
 	}
 }
 

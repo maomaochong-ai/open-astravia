@@ -1,4 +1,4 @@
-import type { RuntimeStatus, RuntimesStatus, RuntimeType } from "../../main/runtimes/types.js";
+import type { GitToolStatus, RuntimeStatus, RuntimesStatus, RuntimeType } from "../../main/runtimes/types.js";
 import type { UserMessageClipboardPasteResult, UserMessageClipboardWriteRequest } from "../../shared/clipboard.js";
 
 export interface DesktopShellApi {
@@ -102,4 +102,6 @@ export interface DesktopRuntimesApi {
 	reinstall(type: RuntimeType): Promise<RuntimeStatus>;
 	/** 重新探测系统已装运行时。 */
 	redetect(): Promise<RuntimesStatus>;
+	/** macOS 调起系统安装窗口后立即返回；Windows 下载托管 MinGit 后返回。 */
+	installGit(): Promise<GitToolStatus>;
 }

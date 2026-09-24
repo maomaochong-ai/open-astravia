@@ -126,6 +126,7 @@ export const SETTINGS_SECTIONS = [
 	},
 	{ tab: "mcp", id: "mcp-json", title: "编辑 JSON", titleKey: "section_mcp-json" },
 	{ tab: "environment", id: "environment-runtime", title: "运行时", titleKey: "section_environment-runtime" },
+	{ tab: "environment", id: "environment-tools", title: "开发工具", titleKey: "section_environment-tools" },
 	{ tab: "environment", id: "environment-mirrors", title: "镜像源", titleKey: "section_environment-mirrors" },
 	{ tab: "permissions", id: "permissions-system", title: "系统权限", titleKey: "section_permissions-system" },
 	{ tab: "im", id: "imbridge-basics", title: "基础", titleKey: "section_imbridge-basics" },

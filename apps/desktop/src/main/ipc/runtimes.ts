@@ -6,6 +6,7 @@ export const RUNTIMES_CHANNELS = {
 	GET_STATUS: "vetta:runtimes:get-status",
 	REINSTALL: "vetta:runtimes:reinstall",
 	REDETECT: "vetta:runtimes:redetect",
+	INSTALL_GIT: "vetta:runtimes:install-git",
 } as const;
 
 export function registerRuntimesIpc(): () => void {
@@ -24,9 +25,14 @@ export function registerRuntimesIpc(): () => void {
 		return getRuntimeManager().redetect();
 	});
 
+	ipcMain.handle(RUNTIMES_CHANNELS.INSTALL_GIT, () => {
+		return getRuntimeManager().installGit();
+	});
+
 	return () => {
 		ipcMain.removeHandler(RUNTIMES_CHANNELS.GET_STATUS);
 		ipcMain.removeHandler(RUNTIMES_CHANNELS.REINSTALL);
 		ipcMain.removeHandler(RUNTIMES_CHANNELS.REDETECT);
+		ipcMain.removeHandler(RUNTIMES_CHANNELS.INSTALL_GIT);
 	};
 }

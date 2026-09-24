@@ -10,9 +10,16 @@ export interface PlatformEntry {
 	archive: "tar.gz" | "zip";
 }
 
+/** MinGit 归档不带顶层目录，下载后按 sha256 校验。 */
+export interface GitPlatformEntry {
+	filename: string;
+	sha256: string;
+}
+
 export interface RuntimeManifest {
 	node: { version: string; sources: string[]; platforms: Record<string, PlatformEntry> };
 	python: { version: string; release: string; sources: string[]; platforms: Record<string, PlatformEntry> };
+	git: { version: string; tag: string; sources: string[]; platforms: Record<string, GitPlatformEntry> };
 	mirrors: { npmRegistry: string; pipIndexUrl: string; pipTrustedHost: string };
 }
 
@@ -120,4 +127,23 @@ export function vendorRuntimeDir(type: RuntimeType): string {
 	const entry = platformEntry(type);
 	if (!entry) return join(vendorDir(), type, "missing");
 	return join(vendorDir(), type, entry.dir);
+}
+
+/** 当前平台的托管 Git 条目；只有 Windows 提供，其余平台返回 undefined。 */
+export function gitPlatformEntry(): GitPlatformEntry | undefined {
+	return RUNTIME_MANIFEST.git.platforms[currentPlatformTag()];
+}
+
+/** 托管 Git 安装目录：~/.vetta/runtimes/git/<version>/ */
+export function gitInstallDir(version: string = RUNTIME_MANIFEST.git.version): string {
+	return join(runtimesDir(), "git", version);
+}
+
+/** MinGit 的 `cmd` 目录只放 git 入口，不会把 mingw64 下的 GNU 工具暴露到 PATH。 */
+export function gitBinDir(version: string = RUNTIME_MANIFEST.git.version): string {
+	return join(gitInstallDir(version), "cmd");
+}
+
+export function gitExecutablePath(version: string = RUNTIME_MANIFEST.git.version): string {
+	return join(gitBinDir(version), "git.exe");
 }

@@ -1,12 +1,14 @@
 import type { EventEmitter as EventEmitterType } from "node:events";
 import type { PassThrough as PassThroughType } from "node:stream";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { spawnCrossPlatformCommand } from "./command-launcher.js";
 import { runPluginCommand } from "./command-runner.js";
 import { spawnPluginCommand } from "./command-spawner.js";
 
 const pluginState = vi.hoisted(() => ({
 	trustLevel: "local" as "community" | "local" | "official",
 	grantedPermissions: ["agent.command.run", "agent.command.spawn"],
+	gitBlocked: false,
 }));
 
 vi.mock("electron", () => ({ webContents: { getAllWebContents: () => [] } }));
@@ -37,6 +39,9 @@ vi.mock("./command-launcher.js", async () => {
 		}),
 	};
 });
+vi.mock("../runtimes/manager.js", () => ({
+	getRuntimeManager: () => ({ shouldBlockGitCommand: () => pluginState.gitBlocked }),
+}));
 vi.mock("./plugin-catalog.js", () => ({
 	listPlugins: () => [
 		{
@@ -45,8 +50,8 @@ vi.mock("./plugin-catalog.js", () => ({
 			trustLevel: pluginState.trustLevel,
 			permissions: ["agent.command.run", "agent.command.spawn"],
 			grantedPermissions: pluginState.grantedPermissions,
-			declaredCommands: ["node"],
-			grantedCommandNames: ["node"],
+			declaredCommands: ["node", "git"],
+			grantedCommandNames: ["node", "git"],
 		},
 	],
 }));
@@ -55,6 +60,8 @@ describe("plugin command permissions", () => {
 	beforeEach(() => {
 		pluginState.trustLevel = "local";
 		pluginState.grantedPermissions = ["agent.command.run", "agent.command.spawn"];
+		pluginState.gitBlocked = false;
+		vi.mocked(spawnCrossPlatformCommand).mockClear();
 	});
 
 	it.each(["local", "community"] as const)("allows %s plugins with explicit grants", async (trustLevel) => {
@@ -70,5 +77,21 @@ describe("plugin command permissions", () => {
 		await expect(runPluginCommand("command-test", "node", [], undefined)).rejects.toThrow(
 			"Plugin permission denied: agent.command.run",
 		);
+	});
+
+	it("reports git as missing without spawning the macOS install prompt", async () => {
+		pluginState.gitBlocked = true;
+
+		await expect(runPluginCommand("command-test", "git", ["--version"], undefined)).rejects.toThrow(
+			"Command failed to start: git (ENOENT)",
+		);
+		expect(spawnCrossPlatformCommand).not.toHaveBeenCalled();
+	});
+
+	it("runs git normally when the host has it", async () => {
+		await expect(runPluginCommand("command-test", "git", ["--version"], undefined)).resolves.toMatchObject({
+			exitCode: 0,
+		});
+		expect(spawnCrossPlatformCommand).toHaveBeenCalledOnce();
 	});
 });
