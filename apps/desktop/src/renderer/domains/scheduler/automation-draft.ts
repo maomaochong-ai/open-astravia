@@ -75,8 +75,26 @@ export function automationDraftFrom(
 	};
 }
 
+const DERIVED_NAME_MAX = 40;
+
+/** 标题选填：留空时取任务内容的首个非空行（去掉开头的技能 token），过长截断。 */
+export function automationDraftName(draft: AutomationDraft): string {
+	const name = draft.name.trim();
+	if (name) return name;
+	const { skill, body } = splitLeadingSkillToken(draft.prompt.trim());
+	const firstLine =
+		body
+			.split(/\r?\n/)
+			.map((line) => line.trim())
+			.find(Boolean) ??
+		skill?.name ??
+		"";
+	const chars = Array.from(firstLine);
+	return chars.length > DERIVED_NAME_MAX ? `${chars.slice(0, DERIVED_NAME_MAX).join("")}…` : firstLine;
+}
+
 export function canSubmitAutomationDraft(draft: AutomationDraft): boolean {
-	if (!draft.name.trim() || !draft.prompt.trim() || !draft.projectCwd) return false;
+	if (!automationDraftName(draft) || !draft.prompt.trim() || !draft.projectCwd) return false;
 	if (draft.schedule.kind === "custom" && draft.schedule.cron.trim().split(/\s+/).length !== 5) return false;
 	if (draft.schedule.kind === "weekly" && draft.schedule.weekdays.length === 0) return false;
 	if (draft.schedule.kind === "monthly" && draft.schedule.days.length === 0) return false;
@@ -86,7 +104,7 @@ export function canSubmitAutomationDraft(draft: AutomationDraft): boolean {
 
 export function automationDraftToInput(draft: AutomationDraft): AutomationTaskInput {
 	return {
-		name: draft.name.trim(),
+		name: automationDraftName(draft),
 		prompt: draft.prompt.trim(),
 		schedule: draft.schedule,
 		runTarget:
