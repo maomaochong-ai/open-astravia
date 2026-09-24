@@ -272,7 +272,10 @@ final class ScrollDepth {
 	/// adding it would count them twice.
 	var pinTop: CGFloat = 0
 
-	var pinned: Bool { headerY <= pinTop + 1 }
+	/// Only once the list has scrolled: at rest the inset can already count a large title the
+	/// header sits right under (a page pushed from another large-title page), and the fade
+	/// would then cover that title.
+	var pinned: Bool { offset > 0 && headerY <= pinTop + 1 }
 
 	// These run on SwiftUI's render thread on device, so they must stay nonisolated.
 
