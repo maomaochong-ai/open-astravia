@@ -731,6 +731,18 @@ if (!gotSingleLock) {
 		// 真正启动，没有手机时桌面端零负担。
 		const remoteAccessManager = getDesktopRemoteAccessManager(
 			process.env.VETTA_REMOTE_RELAY_BASE_URL ?? DEFAULT_REMOTE_RELAY_BASE_URL,
+			process.env.VETTA_REMOTE_DESKTOP_SIGNALING_URL && process.env.VETTA_REMOTE_DESKTOP_PAIRING_TOKEN
+				? undefined
+				: {
+						start: ({ relayBaseUrl, pairingId, desktopSecret }) =>
+							startDesktopRemoteDesktopHost({
+								signalingTarget: `${relayBaseUrl}/v2/desktop/${pairingId}/host#pairing=${encodeURIComponent(desktopSecret)}`,
+								inputEnabled: process.env.VETTA_REMOTE_DESKTOP_INPUT_ENABLED === "true",
+								appRoot,
+								isPackaged: app.isPackaged,
+								devServerUrl: process.env.VETTA_DESKTOP_DEV_URL,
+							}),
+					},
 		);
 
 		// Register IPC handlers

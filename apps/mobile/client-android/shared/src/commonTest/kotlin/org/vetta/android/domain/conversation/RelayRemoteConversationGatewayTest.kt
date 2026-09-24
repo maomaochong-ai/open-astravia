@@ -4,6 +4,8 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -31,10 +33,10 @@ class RelayRemoteConversationGatewayTest {
             val gateway =
                 RelayRemoteConversationGateway(
                     scope = backgroundScope,
-                    transportFactory = { transport },
+                    transportFactory = { _, _ -> transport },
                     now = { 1_000L },
                 )
-            gateway.connect("fake-relay")
+            gateway.connect(transport.target)
 
             val device = gateway.devices.value.single()
             assertEquals("Windows 11", device.osLabel)
@@ -61,8 +63,8 @@ class RelayRemoteConversationGatewayTest {
     fun streamMapsToolAndUserInputEventsWithoutDroppingTheTurn() =
         runTest {
             val transport = FakeGatewayTransport(richEvents = true)
-            val gateway = RelayRemoteConversationGateway(scope = backgroundScope, transportFactory = { transport }, now = { 1_000L })
-            gateway.connect("fake-relay")
+            val gateway = RelayRemoteConversationGateway(scope = backgroundScope, transportFactory = { _, _ -> transport }, now = { 1_000L })
+            gateway.connect(transport.target)
             val events = mutableListOf<ChatStreamEvent>()
             gateway.stream("local", "desktop-1", null, listOf(ChatMessage(ChatRole.User, "hello"))).collect { events += it }
             assertEquals(
@@ -95,8 +97,8 @@ class RelayRemoteConversationGatewayTest {
     fun terminalRemoteErrorKeepsTheDesktopErrorCategory() =
         runTest {
             val transport = FakeGatewayTransport(terminalErrorCode = "unauthorized")
-            val gateway = RelayRemoteConversationGateway(scope = backgroundScope, transportFactory = { transport }, now = { 1_000L })
-            gateway.connect("fake-relay")
+            val gateway = RelayRemoteConversationGateway(scope = backgroundScope, transportFactory = { _, _ -> transport }, now = { 1_000L })
+            gateway.connect(transport.target)
             val error = assertFailsWith<org.vetta.android.domain.remote.connection.RemoteRequestException> {
                 gateway.stream("local", "desktop-1", null, listOf(ChatMessage(ChatRole.User, "hello"))).collect { }
             }
@@ -107,14 +109,44 @@ class RelayRemoteConversationGatewayTest {
     fun transportRecoveryEndsTheTurnWithAnActionableError() =
         runTest {
             val transport = FakeGatewayTransport(disconnectOnPrompt = true)
-            val gateway = RelayRemoteConversationGateway(scope = backgroundScope, transportFactory = { transport }, now = { 1_000L })
-            gateway.connect("fake-relay")
+            val gateway = RelayRemoteConversationGateway(scope = backgroundScope, transportFactory = { _, _ -> transport }, now = { 1_000L })
+            gateway.connect(transport.target)
 
             val error = assertFailsWith<org.vetta.android.domain.remote.connection.RemoteRequestException> {
                 gateway.stream("local", "desktop-1", null, listOf(ChatMessage(ChatRole.User, "hello"))).collect { }
             }
 
             assertEquals(org.vetta.android.domain.remote.protocol.RemoteErrorCode.TransportClosed, error.remoteError.code)
+        }
+
+    @Test
+    fun relayReconnectsWhenDesktopReplacesTheInitialControlSocket() =
+        runTest {
+            val initial = FakeGatewayTransport()
+            val replacements = mutableListOf<FakeGatewayTransport>()
+            var first = true
+            val gateway =
+                RelayRemoteConversationGateway(
+                    scope = backgroundScope,
+                    transportFactory = { _, _ ->
+                        if (first) {
+                            first = false
+                            initial
+                        } else {
+                            FakeGatewayTransport().also { replacements += it }
+                        }
+                    },
+                    now = { 1_000L },
+                )
+
+            gateway.connect(initial.target)
+            initial.disconnect()
+            runCurrent()
+            advanceTimeBy(250)
+            runCurrent()
+
+            assertEquals(1, replacements.size)
+            assertEquals(org.vetta.android.domain.device.DeviceStatus.Online, gateway.devices.value.single().status)
         }
 }
 
@@ -123,18 +155,11 @@ private class FakeGatewayTransport(
     private val terminalErrorCode: String? = null,
     private val disconnectOnPrompt: Boolean = false,
 ) : RemoteTransport {
-    private val channel = Channel<RemoteFrame>(Channel.UNLIMITED)
-    override val incoming: Flow<RemoteFrame> = channel.receiveAsFlow()
-
-    override suspend fun connect() = Unit
-
-    override suspend fun send(frame: RemoteFrame) {
-        when (frame) {
-            is org.vetta.android.domain.remote.protocol.RemoteHello ->
-                channel.send(RemoteHelloAck(connectionId = frame.connectionId, peerDeviceId = "desktop-1"))
-            is RemoteRequest -> {
+    private val delegate =
+        org.vetta.android.domain.remote.connection.EncryptedDesktopTransport { frame ->
+            if (frame is RemoteRequest) {
                 if (frame.method == org.vetta.android.domain.remote.protocol.RemoteRequestMethod.DiagnosticsSnapshot) {
-                    channel.send(
+                    sendSession(
                         RemoteResponse(
                             requestId = frame.requestId,
                             success = true,
@@ -145,31 +170,31 @@ private class FakeGatewayTransport(
                             },
                         ),
                     )
-                    return
+                    return@EncryptedDesktopTransport
                 }
                 if (disconnectOnPrompt) {
-                    channel.close()
-                    return
+                    disconnect()
+                    return@EncryptedDesktopTransport
                 }
                 if (richEvents) {
-                    channel.send(RemoteEvent("tool-1", 1, RemoteEventName.SessionTool, "runtime-session-1", buildJsonObject {
+                    sendSession(RemoteEvent("tool-1", 1, RemoteEventName.SessionTool, "runtime-session-1", buildJsonObject {
                         put("phase", "started")
                         put("toolCallId", "call-1")
                         put("toolName", "read_file")
                         put("args", "{\"path\":\"README.md\"}")
                     }))
-                    channel.send(RemoteEvent("phase-1", 2, RemoteEventName.SessionTool, "runtime-session-1", buildJsonObject {
+                    sendSession(RemoteEvent("phase-1", 2, RemoteEventName.SessionTool, "runtime-session-1", buildJsonObject {
                         put("phase", "phase")
                         put("toolCallId", "call-1")
                         put("toolName", "read_file")
                         put("label", "读取文件内容")
                     }))
-                    channel.send(RemoteEvent("input-1", 3, RemoteEventName.SessionInput, "runtime-session-1", buildJsonObject {
+                    sendSession(RemoteEvent("input-1", 3, RemoteEventName.SessionInput, "runtime-session-1", buildJsonObject {
                         put("kind", "question")
                         put("requestId", "req-1")
                         put("questions", buildJsonArray { add(buildJsonObject { put("question", "继续吗？"); put("header", "确认"); put("options", buildJsonArray { add(buildJsonObject { put("label", "继续") }) }) }) })
                     }))
-                    channel.send(RemoteEvent("usage-1", 4, RemoteEventName.SessionState, "runtime-session-1", buildJsonObject {
+                    sendSession(RemoteEvent("usage-1", 4, RemoteEventName.SessionState, "runtime-session-1", buildJsonObject {
                         put("state", "usage")
                         put("input", 100)
                         put("output", 25)
@@ -177,14 +202,14 @@ private class FakeGatewayTransport(
                         put("contextPercent", 12)
                     }))
                 } else {
-                    channel.send(RemoteEvent("event-1", 1, RemoteEventName.SessionMessage, "runtime-session-1", buildJsonObject { put("text", "answer") }))
+                    sendSession(RemoteEvent("event-1", 1, RemoteEventName.SessionMessage, "runtime-session-1", buildJsonObject { put("text", "answer") }))
                 }
-                channel.send(RemoteEvent("state-1", if (richEvents) 5 else 2, RemoteEventName.SessionState, "runtime-session-1", buildJsonObject {
+                sendSession(RemoteEvent("state-1", if (richEvents) 5 else 2, RemoteEventName.SessionState, "runtime-session-1", buildJsonObject {
                     put("state", if (terminalErrorCode == null) "completed" else "error")
                     terminalErrorCode?.let { put("code", it) }
                     terminalErrorCode?.let { put("message", "Desktop model authentication failed") }
                 }))
-                channel.send(
+                sendSession(
                     RemoteResponse(
                         requestId = frame.requestId,
                         success = true,
@@ -194,11 +219,13 @@ private class FakeGatewayTransport(
                     ),
                 )
             }
-            else -> Unit
         }
-    }
 
-    override suspend fun close() {
-        channel.close()
-    }
+    val target: String get() = delegate.target
+    override val incoming = delegate.incoming
+    override suspend fun connect() = delegate.connect()
+    override suspend fun send(frame: RemoteFrame) = delegate.send(frame)
+    override suspend fun close() = delegate.close()
+
+    fun disconnect() = delegate.disconnect()
 }

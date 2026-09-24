@@ -1,3 +1,4 @@
+import type { RemoteConnection } from "@vetta/remote-control";
 import { generateIdentityKeyPair, parsePairingUri, type RemoteHello, toBase64Url } from "@vetta/remote-control";
 import { describe, expect, it } from "vitest";
 import type { DesktopConfig } from "../config/desktop-config-store.js";
@@ -36,6 +37,10 @@ function harness(initial?: DesktopConfig["remoteControl"]) {
 	const relayLinks: Array<{ options: DesktopRemoteRelayLinkOptions; started: boolean; stopped: boolean }> = [];
 	const notifications: string[] = [];
 	const mirrors: Array<{ started: boolean; stopped: boolean }> = [];
+	const desktopHosts: Array<{
+		options: { relayBaseUrl: string; pairingId: string; desktopSecret: string };
+		stopped: boolean;
+	}> = [];
 	const manager = new DesktopRemoteAccessManager({
 		store,
 		deviceId: "desktop-1",
@@ -58,6 +63,17 @@ function harness(initial?: DesktopConfig["remoteControl"]) {
 				},
 				handleRequest: async () => ({}),
 			} as unknown as DesktopRemoteMirror;
+		},
+		remoteDesktop: {
+			start: async (options) => {
+				const entry = { options, stopped: false };
+				desktopHosts.push(entry);
+				return {
+					stop: async () => {
+						entry.stopped = true;
+					},
+				};
+			},
 		},
 		createLanServer: (options) => {
 			const entry = { options, started: false, stopped: false, port: undefined as number | undefined };
@@ -92,7 +108,17 @@ function harness(initial?: DesktopConfig["remoteControl"]) {
 		inviteTtlMs: 60_000,
 		hubGraceMs: 5,
 	});
-	return { manager, store, vault, lanServers, relayLinks, notifications, mirrors, readConfig: () => config };
+	return {
+		manager,
+		store,
+		vault,
+		lanServers,
+		relayLinks,
+		notifications,
+		mirrors,
+		desktopHosts,
+		readConfig: () => config,
+	};
 }
 
 function hello(identityKey: string, deviceName = "iPhone"): RemoteHello {
@@ -213,5 +239,42 @@ describe("DesktopRemoteAccessManager", () => {
 		await manager.shutdown();
 		expect(lanServers[0]?.stopped).toBe(true);
 		expect(relayLinks[0]?.stopped).toBe(true);
+	});
+
+	it("starts the desktop screen host when a paired phone comes online", async () => {
+		const pairingId = "a".repeat(24);
+		const phoneKey = "k".repeat(43);
+		const { manager, relayLinks, store, desktopHosts } = harness({
+			cloudEnabled: true,
+			relayBaseUrl: "wss://relay.example",
+			devices: [
+				{
+					id: pairingId,
+					name: "iPhone",
+					mobileSecretHash: "h",
+					mobileIdentityKey: phoneKey,
+					createdAt: 1,
+				},
+			],
+		});
+		store.putRelaySecret(pairingId, "relay-secret");
+		await manager.restore();
+
+		const connection = {
+			onEvent: () => () => undefined,
+			getSnapshot: () => ({ state: "online", peerIdentityKey: phoneKey }),
+			close: async () => undefined,
+		} as unknown as RemoteConnection;
+		relayLinks[0]?.options.onConnection(connection);
+		await new Promise((resolve) => setTimeout(resolve, 0));
+
+		expect(desktopHosts).toHaveLength(1);
+		expect(desktopHosts[0]?.options).toEqual({
+			relayBaseUrl: "wss://relay.example",
+			pairingId,
+			desktopSecret: "relay-secret",
+		});
+		await manager.shutdown();
+		expect(desktopHosts[0]?.stopped).toBe(true);
 	});
 });

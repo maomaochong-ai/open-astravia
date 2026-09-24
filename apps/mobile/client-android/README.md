@@ -1,4 +1,4 @@
-> **已冻结**：本 Kotlin Multiplatform 客户端停留在远程协议 v1，自 ADR-0128 起桌面端只接受 v2（端到端加密），它已无法连接新版本 Vetta Desktop。iPhone 请使用 [`../client-apple`](../client-apple)。代码保留仅供参考，不再维护。
+本 Kotlin Multiplatform Android 客户端支持远程协议 v2：可以扫描 Desktop 的配对二维码，通过端到端加密的 Cloudflare 中继连接电脑。当前 Android 版本尚未实现局域网优先切换；二维码未包含中继地址时无法连接。
 
 This is a Kotlin Multiplatform project targeting Android.
 
@@ -26,7 +26,7 @@ Use the run button in your IDE's editor gutter, or run tests using Gradle tasks:
 
 ### Remote Desktop developer preview
 
-Run the Cloudflare relay locally, generate a pairing with `bun run --cwd ../remote-relay pair`, and paste the printed mobile target into the app's remote connection field. The device detail screen renders the peer-to-peer desktop stream; pointer, wheel, and hardware keyboard events use the WebRTC DataChannel rather than the relay.
+Run the Cloudflare relay and Desktop locally, then scan the v2 pairing QR code shown in Desktop settings. The device detail screen renders the peer-to-peer desktop stream; pointer, wheel, and hardware keyboard events use the WebRTC DataChannel rather than the control relay.
 
 ---
 

@@ -234,7 +234,7 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
         put("sdpMLineIndex", candidate.sdpMLineIndex)
     }
 
-    private fun sessionId(): String = Regex("/v1/desktop/([A-Za-z0-9_-]{24,128})/").find(target)?.groupValues?.get(1).orEmpty()
+    private fun sessionId(): String = Regex("/v2/desktop/([A-Za-z0-9_-]{16,128})/").find(target)?.groupValues?.get(1).orEmpty()
 
     private fun splitTarget(value: String): Pair<String, String> {
         val index = value.indexOf('#')

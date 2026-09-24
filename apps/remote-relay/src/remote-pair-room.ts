@@ -228,7 +228,9 @@ export class RemotePairRoom extends DurableObject<Env> {
 	}
 
 	private authenticatedSockets(role: RelayRole): WebSocket[] {
-		return this.ctx.getWebSockets(role).filter((socket) => readAttachment(socket).authenticated);
+		return this.ctx
+			.getWebSockets(role)
+			.filter((socket) => socket.readyState === WebSocket.OPEN && readAttachment(socket).authenticated);
 	}
 
 	private rejectSocket(socket: WebSocket, attachment: ConnectionAttachment, reason: string): void {

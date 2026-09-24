@@ -18,6 +18,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -43,6 +44,8 @@ import org.vetta.android.domain.remote.connection.RemoteConnectionEvent
 import org.vetta.android.domain.remote.connection.RemoteConnectionOptions
 import org.vetta.android.domain.remote.connection.RemoteConnectionState
 import org.vetta.android.domain.remote.connection.RemoteRequestException
+import org.vetta.android.domain.remote.parseMobileConnectionTarget
+import org.vetta.android.domain.remote.protocol.RemoteCrypto
 import org.vetta.android.domain.remote.protocol.RemoteCapabilities
 import org.vetta.android.domain.remote.protocol.RemoteRole
 import org.vetta.android.domain.remote.protocol.RemoteEventName
@@ -52,49 +55,95 @@ import org.vetta.android.domain.remote.protocol.RemoteRequestMethod
 
 class RelayRemoteConversationGateway(
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
-    private val transportFactory: (url: String) -> org.vetta.android.domain.remote.connection.RemoteTransport = { url ->
-        KtorWebSocketRemoteTransport(url, scope)
+    private val transportFactory: (url: String, pairingSecret: String) -> org.vetta.android.domain.remote.connection.RemoteTransport = { url, pairingSecret ->
+        KtorWebSocketRemoteTransport(url, pairingSecret, scope)
     },
     private val now: () -> Long = { kotlin.time.Clock.System.now().toEpochMilliseconds() },
 ) : RemoteConversationGateway {
     private val _devices = MutableStateFlow<List<DesktopDevice>>(emptyList())
     private var connection: RemoteConnection? = null
     private var connectionStateJob: Job? = null
+    private var reconnectJob: Job? = null
     private var metricsJob: Job? = null
+    private var connectionTarget: String? = null
+    private var connectedAtEpochMs: Long = 0L
+    private var latestDiagnostics: DeviceDiagnostics? = null
     private val remoteSessionIds = mutableMapOf<String, String>()
 
     override val devices: StateFlow<List<DesktopDevice>> = _devices
 
     override suspend fun connect(target: String): Boolean {
-        val url = normalizeRelayUrl(target)
+        val parsedTarget = parseMobileConnectionTarget(target) ?: return false
+        reconnectJob?.cancelAndJoin()
+        reconnectJob = null
+        connectionTarget = target
         val old = connection
         connectionStateJob?.cancel()
         connectionStateJob = null
         metricsJob?.cancel()
         metricsJob = null
         old?.close()
-        val next =
-            RemoteConnection(
-                transport = transportFactory(url),
-                options =
-                    RemoteConnectionOptions(
-                        role = RemoteRole.Mobile,
-                        deviceId = "mobile-${target.hashCode().toUInt().toString(16)}",
-                        deviceName = "Vetta Mobile",
-                        capabilities = RemoteCapabilities(chat = true, sessionRead = true),
-                        connectionId = "mobile-${kotlin.random.Random.nextLong().toULong().toString(16)}",
-                    ),
-                scope = scope,
-                logger = PlatformRemoteLogger,
-                now = now,
-        )
+        val next = createConnection(target, parsedTarget)
         connection = next
+        observeConnection(next)
+        next.connect()
+        waitUntilOnline(next)
+        val snapshot = next.snapshot()
+        connectedAtEpochMs = now()
+        val diagnostics = requestDiagnostics(next)
+        latestDiagnostics = diagnostics
+        _devices.value =
+            listOf(
+                DesktopDevice(
+                    id = snapshot.peerDeviceId ?: "desktop",
+                    name = snapshot.peerDeviceId ?: "Desktop",
+                    osLabel = diagnostics?.osLabel ?: "Desktop",
+                    host = target,
+                    status = DeviceStatus.Online,
+                    channel = ConnectChannel.Remote,
+                    latencyMs = next.snapshot().lastRttMs?.toIntOrNull(),
+                    connectedDuration = formatConnectionDuration(now() - connectedAtEpochMs),
+                    cpu = diagnostics?.cpu,
+                    ram = diagnostics?.ram,
+                ),
+            )
+        startMetrics(next)
+        return true
+    }
+
+    private fun createConnection(
+        target: String,
+        parsedTarget: org.vetta.android.domain.remote.MobileConnectionTarget,
+    ): RemoteConnection =
+        RemoteConnection(
+            transport = transportFactory(parsedTarget.url, parsedTarget.pairingSecret),
+            options =
+                RemoteConnectionOptions(
+                    role = RemoteRole.Mobile,
+                    deviceId = "mobile-${target.hashCode().toUInt().toString(16)}",
+                    deviceName = "Vetta Mobile",
+                    capabilities = RemoteCapabilities(chat = true, sessionRead = true),
+                    identity =
+                        RemoteCrypto.identityKeyPairFromSecret(
+                            RemoteCrypto.fromBase64Url(parsedTarget.identitySecret),
+                        ),
+                    expectedPeerIdentityKey = RemoteCrypto.decodePublicKey(parsedTarget.desktopIdentityKey),
+                    connectionId = "mobile-${kotlin.random.Random.nextLong().toULong().toString(16)}",
+                ),
+            scope = scope,
+            logger = PlatformRemoteLogger,
+            now = now,
+        )
+
+    private fun observeConnection(next: RemoteConnection) {
+        connectionStateJob?.cancel()
         connectionStateJob = scope.launch {
             next.state.collect { state ->
                 val status =
                     when (state) {
                         RemoteConnectionState.Online -> DeviceStatus.Online
                         RemoteConnectionState.Connecting,
+                        RemoteConnectionState.PendingApproval,
                         RemoteConnectionState.Reconnecting,
                         RemoteConnectionState.Recovering,
                         -> DeviceStatus.Connecting
@@ -104,31 +153,58 @@ class RelayRemoteConversationGateway(
                         -> DeviceStatus.Offline
                     }
                 _devices.updateStatus(status)
+                if (state == RemoteConnectionState.Reconnecting) scheduleReconnect(next)
             }
         }
-        next.connect()
-        waitUntilOnline(next)
-        val snapshot = next.snapshot()
-        val connectedAtEpochMs = now()
-        val diagnostics = requestDiagnostics(next)
-        _devices.value =
-            listOf(
-                DesktopDevice(
-                    id = snapshot.peerDeviceId ?: "desktop",
-                    name = snapshot.peerDeviceId ?: "Desktop",
-                    osLabel = diagnostics?.osLabel ?: "Desktop",
-                    host = url,
-                    status = DeviceStatus.Online,
-                    channel = ConnectChannel.Remote,
-                    latencyMs = next.snapshot().lastRttMs?.toIntOrNull(),
-                    connectedDuration = formatConnectionDuration(now() - connectedAtEpochMs),
-                    cpu = diagnostics?.cpu,
-                    ram = diagnostics?.ram,
-                ),
-            )
+    }
+
+    private fun scheduleReconnect(source: RemoteConnection) {
+        if (reconnectJob?.isActive == true || connectionTarget == null) return
+        reconnectJob = scope.launch {
+            var backoffMs = INITIAL_RECONNECT_DELAY_MS
+            while (isActive && connection === source) {
+                delay(backoffMs)
+                if (!isActive || connection !== source) return@launch
+                val target = connectionTarget ?: return@launch
+                val parsedTarget = parseMobileConnectionTarget(target) ?: return@launch
+                val replacement = createConnection(target, parsedTarget)
+                connection = replacement
+                observeConnection(replacement)
+                try {
+                    replacement.connect()
+                    waitUntilOnline(replacement)
+                    source.close()
+                    val diagnostics = requestDiagnostics(replacement) ?: latestDiagnostics
+                    latestDiagnostics = diagnostics
+                    _devices.update { devices ->
+                        devices.map { device ->
+                            val snapshot = replacement.snapshot()
+                            device.copy(
+                                id = snapshot.peerDeviceId ?: device.id,
+                                name = snapshot.peerDeviceId ?: device.name,
+                                status = DeviceStatus.Online,
+                                osLabel = diagnostics?.osLabel ?: device.osLabel,
+                                cpu = diagnostics?.cpu ?: device.cpu,
+                                ram = diagnostics?.ram ?: device.ram,
+                            )
+                        }
+                    }
+                    startMetrics(replacement)
+                    return@launch
+                } catch (_: Throwable) {
+                    replacement.close()
+                    if (connection === replacement) connection = source
+                    observeConnection(source)
+                    backoffMs = (backoffMs * 2).coerceAtMost(MAX_RECONNECT_DELAY_MS)
+                }
+            }
+        }
+    }
+
+    private fun startMetrics(next: RemoteConnection) {
+        metricsJob?.cancel()
         metricsJob = scope.launch {
             var nextDiagnosticsAt = now() + METRICS_DIAGNOSTICS_INTERVAL_MS
-            var latestDiagnostics = diagnostics
             while (isActive && connection === next) {
                 if (next.state.value == RemoteConnectionState.Online && now() >= nextDiagnosticsAt) {
                     requestDiagnostics(next)?.let { latestDiagnostics = it }
@@ -143,10 +219,12 @@ class RelayRemoteConversationGateway(
                 delay(METRICS_REFRESH_INTERVAL_MS)
             }
         }
-        return true
     }
 
     override suspend fun disconnect(deviceId: String) {
+        reconnectJob?.cancelAndJoin()
+        reconnectJob = null
+        connectionTarget = null
         connectionStateJob?.cancel()
         connectionStateJob = null
         metricsJob?.cancel()
@@ -291,7 +369,16 @@ class RelayRemoteConversationGateway(
     }
 
     private suspend fun waitUntilOnline(connection: RemoteConnection) {
-        kotlinx.coroutines.withTimeout(10_000) { connection.state.first { it == RemoteConnectionState.Online } }
+        kotlinx.coroutines.withTimeout(RECONNECT_CONNECT_TIMEOUT_MS) {
+            connection.state.first {
+                it == RemoteConnectionState.Online ||
+                    it == RemoteConnectionState.Failed ||
+                    it == RemoteConnectionState.Closed
+            }
+        }
+        check(connection.state.value == RemoteConnectionState.Online) {
+            "桌面连接未完成握手：${connection.state.value.name.lowercase()}"
+        }
     }
 
     private suspend fun requestDiagnostics(connection: RemoteConnection): DeviceDiagnostics? {
@@ -303,15 +390,6 @@ class RelayRemoteConversationGateway(
             if (error is CancellationException) throw error
             null
         }
-    }
-
-    private fun normalizeRelayUrl(target: String): String {
-        val value = target.trim()
-        if (value.startsWith("ws://") || value.startsWith("wss://")) return value
-        val separator = value.indexOf('#')
-        val host = if (separator >= 0) value.substring(0, separator) else value
-        val pairing = if (separator >= 0) value.substring(separator + 1) else "default"
-        return "ws://$host/relay/$pairing/mobile"
     }
 
     private fun MutableStateFlow<List<DesktopDevice>>.updateStatus(status: DeviceStatus) {
@@ -416,6 +494,9 @@ private fun String?.toRemoteErrorCode(): RemoteErrorCode =
 
 private const val METRICS_REFRESH_INTERVAL_MS = 1_000L
 private const val METRICS_DIAGNOSTICS_INTERVAL_MS = 5_000L
+private const val INITIAL_RECONNECT_DELAY_MS = 250L
+private const val MAX_RECONNECT_DELAY_MS = 10_000L
+private const val RECONNECT_CONNECT_TIMEOUT_MS = 10_000L
 
 private data class DeviceDiagnostics(
     val osLabel: String?,

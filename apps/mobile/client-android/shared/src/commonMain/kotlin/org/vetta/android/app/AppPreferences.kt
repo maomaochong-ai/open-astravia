@@ -52,10 +52,10 @@ class AppPreferences(
             if (value.isNullOrBlank()) settings.remove(KEY_LAST_MODEL) else settings[KEY_LAST_MODEL] = value
         }
 
-    var remoteResumeSecret: String?
-        get() = settings.getStringOrNull(KEY_REMOTE_RESUME)?.takeIf { it.isNotBlank() }
+    var remoteIdentitySecret: String?
+        get() = settings.getStringOrNull(KEY_REMOTE_IDENTITY)?.takeIf { it.isNotBlank() }
         set(value) {
-            if (value.isNullOrBlank()) settings.remove(KEY_REMOTE_RESUME) else settings[KEY_REMOTE_RESUME] = value
+            if (value.isNullOrBlank()) settings.remove(KEY_REMOTE_IDENTITY) else settings[KEY_REMOTE_IDENTITY] = value
         }
 
     var remotePairingId: String?
@@ -110,7 +110,7 @@ class AppPreferences(
         private const val KEY_CONFIRM_DELETE = "vetta.prefs.confirm_delete"
         private const val KEY_LAST_SESSION = "vetta.prefs.last_session"
         private const val KEY_LAST_MODEL = "vetta.prefs.last_model"
-        private const val KEY_REMOTE_RESUME = "vetta.prefs.remote_resume"
+        private const val KEY_REMOTE_IDENTITY = "vetta.prefs.remote_identity_v2"
         private const val KEY_REMOTE_PAIRING_ID = "vetta.prefs.remote_pairing_id"
     }
 }

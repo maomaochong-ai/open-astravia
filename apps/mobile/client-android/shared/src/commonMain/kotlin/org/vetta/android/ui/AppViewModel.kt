@@ -333,23 +333,22 @@ class AppViewModel(
         viewModelScope.launch {
             try {
                 val invite = org.vetta.android.domain.remote.parsePairingInvite(target)
-                val savedResume =
+                val identity =
                     invite?.let {
-                        container.preferences.remoteResumeSecret?.takeIf { secret ->
-                            container.preferences.remotePairingId == it.pairingId && secret.isNotBlank()
-                        }
+                        container.preferences.remoteIdentitySecret
+                            ?: newRemoteIdentitySecret().also { secret ->
+                                // The desktop may pin this key as soon as it receives hello.
+                                // Persist before dialing so a partial first attempt can retry.
+                                container.preferences.remoteIdentitySecret = secret
+                            }
                     }
-                val resume = invite?.let { savedResume ?: newRemoteResumeSecret() }
                 val candidateTargets =
                     if (invite == null) {
                         listOf(target)
                     } else {
-                        buildList {
-                            if (savedResume != null) {
-                                add(org.vetta.android.domain.remote.buildMobileResumeTarget(invite, savedResume))
-                            }
-                            add(org.vetta.android.domain.remote.buildMobileBootstrapTarget(invite, requireNotNull(resume)))
-                        }
+                        listOfNotNull(
+                            org.vetta.android.domain.remote.buildMobileRelayTarget(invite, requireNotNull(identity)),
+                        )
                     }
                 var connected = false
                 for (candidate in candidateTargets) {
@@ -360,9 +359,8 @@ class AppViewModel(
                 }
                 if (connected) {
                     _state.update { it.copy(mainAccessGranted = true) }
-                    if (invite != null && resume != null) {
+                    if (invite != null && identity != null) {
                         container.preferences.remotePairingId = invite.pairingId
-                        container.preferences.remoteResumeSecret = resume
                     }
                     val device = container.remoteConversationGateway.devices.value.firstOrNull()
                     if (device != null) openDeviceDetail(device.id)
@@ -384,10 +382,10 @@ class AppViewModel(
         }
     }
 
-    private fun newRemoteResumeSecret(): String =
-        buildString(43) {
-            repeat(43) { append("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_".random()) }
-        }
+    private fun newRemoteIdentitySecret(): String =
+        org.vetta.android.domain.remote.protocol.RemoteCrypto.toBase64Url(
+            org.vetta.android.domain.remote.protocol.RemoteCrypto.generateIdentityKeyPair().secretKey,
+        )
 
     fun disconnectDesktop(deviceId: String) {
         viewModelScope.launch {

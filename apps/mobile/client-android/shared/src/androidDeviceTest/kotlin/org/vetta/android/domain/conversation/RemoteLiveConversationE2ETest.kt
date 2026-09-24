@@ -13,14 +13,13 @@ import org.junit.runner.RunWith
 import org.vetta.android.core.model.ChatMessage
 import org.vetta.android.core.model.ChatRole
 import org.vetta.android.core.model.ChatStreamEvent
-import org.vetta.android.domain.remote.buildMobileBootstrapTarget
-import org.vetta.android.domain.remote.buildMobileResumeTarget
+import org.vetta.android.domain.remote.buildMobileRelayTarget
 import org.vetta.android.domain.remote.parsePairingInvite
+import org.vetta.android.domain.remote.protocol.RemoteCrypto
 import kotlin.test.assertContains
 import kotlin.test.assertNotNull
 
 private const val LIVE_INVITE_FILE_ARGUMENT = "vettaLiveInviteFile"
-private const val LIVE_CONNECTION_MODE_ARGUMENT = "vettaLiveConnectionMode"
 private const val EXPECTED_REPLY_MARKER = "VETTA_REMOTE_E2E_OK"
 
 /**
@@ -37,18 +36,11 @@ class RemoteLiveConversationE2ETest {
             assumeTrue("Live pairing invite was not provided", invitePath.isNotBlank())
 
             val invite = assertNotNull(parsePairingInvite(File(invitePath).readText().trim()))
-            val resumeSecret = "android-live-e2e-resume-secret-0000000000000000"
-            check(resumeSecret.length >= 32) {
-                "The live-test resume secret must satisfy the relay credential contract"
-            }
+            val identitySecret = RemoteCrypto.toBase64Url(RemoteCrypto.generateIdentityKeyPair().secretKey)
             val gateway = RelayRemoteConversationGateway()
             try {
                 withTimeout(30_000) {
-                    val target =
-                        when (InstrumentationRegistry.getArguments().getString(LIVE_CONNECTION_MODE_ARGUMENT)) {
-                            "resume" -> buildMobileResumeTarget(invite, resumeSecret)
-                            else -> buildMobileBootstrapTarget(invite, resumeSecret)
-                        }
+                    val target = requireNotNull(buildMobileRelayTarget(invite, identitySecret))
                     gateway.connect(target)
                 }
                 val events =

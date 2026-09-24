@@ -57,6 +57,7 @@ kotlin {
 
             implementation(libs.multiplatform.settings)
             implementation(libs.multiplatform.settings.no.arg)
+            implementation(libs.bouncycastle)
         }
         androidMain.dependencies {
             implementation(libs.compose.uiToolingPreview)

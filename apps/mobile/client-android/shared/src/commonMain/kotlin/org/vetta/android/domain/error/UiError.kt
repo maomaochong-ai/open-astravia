@@ -63,7 +63,9 @@ object ErrorMapper {
 
     private fun mapRemoteRequest(e: RemoteRequestException): UiError =
         when (e.remoteError.code) {
-            RemoteErrorCode.Unauthorized ->
+            RemoteErrorCode.Unauthorized,
+            RemoteErrorCode.ApprovalRejected,
+            ->
                 UiError(
                     title = "桌面模型认证失败",
                     message = "请在电脑端检查默认模型与 API Key 后重试",

@@ -21,6 +21,7 @@ import org.vetta.android.domain.remote.protocol.RemoteProtocol
 
 class KtorWebSocketRemoteTransport(
     private val url: String,
+    private val pairingSecret: String,
     private val scope: CoroutineScope,
     private val client: HttpClient = HttpClient(platformHttpClientEngine()) { install(WebSockets) },
 ) : RemoteTransport {
@@ -31,16 +32,13 @@ class KtorWebSocketRemoteTransport(
     override val incoming: Flow<RemoteFrame> = incomingChannel.receiveAsFlow()
 
     override suspend fun connect() {
-		val target = splitPairingTarget(url)
         val socket =
             client.webSocketSession {
-				url.takeFrom(target.url)
-				target.pairingToken?.let {
-                    headers.append(
-                        HttpHeaders.SecWebSocketProtocol,
-						listOfNotNull("vetta.remote.v1", "vetta.pairing.$it", target.resumeToken?.let { token -> "vetta.resume.$token" }).joinToString(", "),
-                    )
-                }
+                url.takeFrom(this@KtorWebSocketRemoteTransport.url)
+                headers.append(
+                    HttpHeaders.SecWebSocketProtocol,
+                    listOf("vetta.remote.v2", "vetta.pairing.$pairingSecret").joinToString(", "),
+                )
             }
         session = socket
         readerJob?.cancel()
@@ -48,7 +46,12 @@ class KtorWebSocketRemoteTransport(
             scope.launch {
                 try {
                     for (frame in socket.incoming) {
-                        if (frame is Frame.Text) incomingChannel.send(RemoteProtocol.decode(frame.readText()))
+                        if (frame is Frame.Text) {
+                            for (line in frame.readText().split('\n').filter(String::isNotBlank)) {
+                                if (line == "ping" || line == "pong") continue
+                                incomingChannel.send(RemoteProtocol.decode(line))
+                            }
+                        }
                     }
                 } finally {
                     incomingChannel.close()
@@ -67,19 +70,5 @@ class KtorWebSocketRemoteTransport(
         session?.close()
         session = null
         client.close()
-    }
-
-    private data class Target(val url: String, val pairingToken: String?, val resumeToken: String?)
-
-    private fun splitPairingTarget(target: String): Target {
-        val separator = target.indexOf('#')
-		if (separator < 0) return Target(target, null, null)
-		val fragment = target.substring(separator + 1)
-		if (!fragment.contains('=')) return Target(target.substring(0, separator), fragment.takeIf { it.isNotEmpty() }, null)
-		val values = fragment.split('&').mapNotNull {
-			val index = it.indexOf('=')
-			if (index <= 0) null else it.substring(0, index) to java.net.URLDecoder.decode(it.substring(index + 1), "UTF-8")
-		}.toMap()
-		return Target(target.substring(0, separator), values["pairing"], values["resume"])
     }
 }

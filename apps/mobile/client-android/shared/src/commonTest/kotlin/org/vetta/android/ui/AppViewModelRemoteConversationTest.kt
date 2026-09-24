@@ -26,8 +26,8 @@ import org.vetta.android.domain.conversation.RemoteConversationGateway
 import org.vetta.android.domain.device.ConnectChannel
 import org.vetta.android.domain.device.DesktopDevice
 import org.vetta.android.domain.device.DeviceStatus
-import org.vetta.android.domain.remote.buildMobileBootstrapTarget
-import org.vetta.android.domain.remote.buildMobileResumeTarget
+import org.vetta.android.domain.remote.buildMobileRelayTarget
+import org.vetta.android.domain.remote.parseMobileConnectionTarget
 import org.vetta.android.domain.remote.parsePairingInvite
 import org.vetta.android.domain.session.ConversationOrigin
 import org.vetta.android.domain.session.LocalMessage
@@ -330,30 +330,28 @@ class AppViewModelRemoteConversationTest {
             val gateway = FakeRemoteConversationGateway()
             val viewModel = AppViewModel(container(gateway))
             advanceUntilIdle()
-            val inviteText =
-                "vetta://pair?relay=https%3A%2F%2Frelay.example&pairingId=pairing_0123456789abcdefghijklmno&bootstrap=secret_0123456789abcdefghijklmnopqrstuvwxyz"
+            val inviteText = validV2Invite()
 
             viewModel.handlePairingInvite(inviteText)
             advanceUntilIdle()
 
             assertEquals(1, gateway.connectCalls)
-            assertTrue(gateway.connectTargets.single().startsWith("wss://relay.example/v1/relay/"))
+            assertTrue(gateway.connectTargets.single().startsWith("wss://relay.example/v2/relay/"))
             assertEquals(AppRoute.DeviceDetail("desktop-1"), viewModel.state.value.route)
             assertTrue(viewModel.state.value.mainAccessGranted)
             assertEquals(null, viewModel.state.value.globalError)
         }
 
     @Test
-    fun savedPairingUsesResumeCredentialBeforeBootstrapFallback() =
+    fun savedPairingReusesThePinnedMobileIdentity() =
         runTest(dispatcher) {
-            val gateway = FakeRemoteConversationGateway().apply { connectResults = listOf(false, true) }
+            val gateway = FakeRemoteConversationGateway()
             val preferences = AppPreferences(MapSettings())
-            val inviteText =
-                "vetta://pair?relay=https%3A%2F%2Frelay.example&pairingId=pairing_0123456789abcdefghijklmno&bootstrap=secret_0123456789abcdefghijklmnopqrstuvwxyz"
+            val inviteText = validV2Invite()
             val invite = requireNotNull(parsePairingInvite(inviteText))
-            val resume = "resume_0123456789abcdefghijklmnopqrstuvwxyz"
+            val identity = "HyYtNDtCSVBXXmVsc3qBiI-WnaSrsrnAx87V3OPq8fg"
             preferences.remotePairingId = invite.pairingId
-            preferences.remoteResumeSecret = resume
+            preferences.remoteIdentitySecret = identity
             val viewModel = AppViewModel(container(gateway, preferences))
             advanceUntilIdle()
 
@@ -361,33 +359,47 @@ class AppViewModelRemoteConversationTest {
             advanceUntilIdle()
 
             assertEquals(
-                listOf(
-                    buildMobileResumeTarget(invite, resume),
-                    buildMobileBootstrapTarget(invite, resume),
-                ),
+                listOf(buildMobileRelayTarget(invite, identity)),
                 gateway.connectTargets,
             )
             assertEquals(null, viewModel.state.value.globalError)
         }
 
     @Test
-    fun failedNewPairingDoesNotReplaceSavedResumeCredential() =
+    fun failedNewPairingDoesNotReplaceSavedIdentity() =
         runTest(dispatcher) {
             val gateway = FakeRemoteConversationGateway().apply { connectResults = listOf(false) }
             val preferences = AppPreferences(MapSettings())
+            val existingIdentity = "HyYtNDtCSVBXXmVsc3qBiI-WnaSrsrnAx87V3OPq8fg"
             preferences.remotePairingId = "existing-pairing"
-            preferences.remoteResumeSecret = "existing-resume"
+            preferences.remoteIdentitySecret = existingIdentity
             val viewModel = AppViewModel(container(gateway, preferences))
             advanceUntilIdle()
 
             viewModel.connectDesktop(
-                "vetta://pair?relay=https%3A%2F%2Frelay.example&pairingId=pairing_0123456789abcdefghijklmno&bootstrap=secret_0123456789abcdefghijklmnopqrstuvwxyz",
+                validV2Invite(),
             )
             advanceUntilIdle()
 
             assertEquals("existing-pairing", preferences.remotePairingId)
-            assertEquals("existing-resume", preferences.remoteResumeSecret)
+            assertEquals(existingIdentity, preferences.remoteIdentitySecret)
             assertEquals(Str.remoteConnectFailed, viewModel.state.value.globalError?.title)
+        }
+
+    @Test
+    fun firstPairingPersistsIdentityBeforeConnectingSoAPartialHandshakeCanRetry() =
+        runTest(dispatcher) {
+            val gateway = FakeRemoteConversationGateway().apply { connectResults = listOf(false) }
+            val preferences = AppPreferences(MapSettings())
+            val viewModel = AppViewModel(container(gateway, preferences))
+            advanceUntilIdle()
+
+            viewModel.connectDesktop(validV2Invite())
+            advanceUntilIdle()
+
+            val storedIdentity = requireNotNull(preferences.remoteIdentitySecret)
+            assertEquals(storedIdentity, requireNotNull(parseMobileConnectionTarget(gateway.connectTargets.single())).identitySecret)
+            assertEquals(null, preferences.remotePairingId)
         }
 
     private fun container(
@@ -400,6 +412,12 @@ class AppViewModelRemoteConversationTest {
             sessionStore = SettingsSessionStore(MapSettings()),
             remoteConversationGateway = gateway,
         )
+
+    private fun validV2Invite(): String =
+        "vetta://pair?v=2&id=pair-1234567890abcdef" +
+            "&s=secret-1234567890abcdefghijklmnop" +
+            "&k=V-U_7B2yLhcIrcj6dteUYQTZpeC-YvqqG-h-d--vWyI" +
+            "&n=Desktop&relay=https%3A%2F%2Frelay.example"
 }
 
 private data class StreamCall(

@@ -31,6 +31,14 @@ object RemoteProtocol {
         return frame
     }
 
+    fun encodeSession(frame: RemoteSessionFrame): String = encode(frame)
+
+    fun decodeSession(value: String): RemoteSessionFrame {
+        val frame = decode(value)
+        return frame as? RemoteSessionFrame
+            ?: throw RemoteProtocolException("Encrypted payload must contain a session frame")
+    }
+
     fun validate(frame: RemoteFrame) {
         when (frame) {
             is RemoteHello -> {
@@ -38,11 +46,29 @@ object RemoteProtocol {
                 requireText(frame.deviceId, "deviceId")
                 requireText(frame.deviceName, "deviceName")
                 requireText(frame.connectionId, "connectionId")
+                requirePublicKey(frame.identityKey, "identityKey")
+                requirePublicKey(frame.ephemeralKey, "ephemeralKey")
             }
             is RemoteHelloAck -> {
                 requireVersion(frame.protocolVersion)
                 requireText(frame.connectionId, "connectionId")
                 requireText(frame.peerDeviceId, "peerDeviceId")
+                requirePublicKey(frame.peerIdentityKey, "peerIdentityKey")
+                requirePublicKey(frame.peerEphemeralKey, "peerEphemeralKey")
+            }
+            is RemotePairingPending -> {
+                requireText(frame.connectionId, "connectionId")
+                requireText(frame.peerDeviceId, "peerDeviceId")
+                requirePublicKey(frame.peerIdentityKey, "peerIdentityKey")
+            }
+            is RemotePeerStatus -> Unit
+            is RemoteSealed -> {
+                if (runCatching { RemoteCrypto.fromBase64Url(frame.nonce) }.getOrNull()?.size != 24) {
+                    throw RemoteProtocolException("sealed nonce must be 24 bytes")
+                }
+                if (frame.ciphertext.isEmpty() || !frame.ciphertext.matches(BASE64_URL_PATTERN)) {
+                    throw RemoteProtocolException("sealed ciphertext must be base64url")
+                }
             }
             is RemoteRequest -> {
                 requireText(frame.requestId, "requestId")
@@ -87,4 +113,12 @@ object RemoteProtocol {
     private fun requirePositive(value: Long, field: String) {
         if (value < 1) throw RemoteProtocolException("$field must be positive")
     }
+
+    private fun requirePublicKey(value: String, field: String) {
+        runCatching { RemoteCrypto.decodePublicKey(value, field) }.getOrElse { error ->
+            throw RemoteProtocolException(error.message ?: "$field must be 32 bytes", error)
+        }
+    }
+
+    private val BASE64_URL_PATTERN = Regex("^[A-Za-z0-9_-]+$")
 }
