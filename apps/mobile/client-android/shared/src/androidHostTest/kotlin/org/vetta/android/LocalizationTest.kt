@@ -37,14 +37,23 @@ class LocalizationTest {
         assertTrue(mismatched.isEmpty(), "format arguments differ: $mismatched")
     }
 
+    /** Strings by name; a plural counts as its `other` form, which every language has. */
     private fun read(folder: String): Map<String, String> {
         val file = File(resources, "$folder/strings.xml")
         assertTrue(file.isFile, "missing $file")
-        val nodes = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(file).getElementsByTagName("string")
-        return (0 until nodes.length).associate { index ->
-            val element = nodes.item(index) as Element
+        val document = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(file)
+        val strings = document.getElementsByTagName("string")
+        val plurals = document.getElementsByTagName("plurals")
+        return (0 until strings.length).associate { index ->
+            val element = strings.item(index) as Element
             element.getAttribute("name") to element.textContent
-        }
+        } +
+            (0 until plurals.length).associate { index ->
+                val element = plurals.item(index) as Element
+                val items = element.getElementsByTagName("item")
+                val other = (0 until items.length).map { items.item(it) as Element }.firstOrNull { it.getAttribute("quantity") == "other" }
+                "plural:${element.getAttribute("name")}" to other?.textContent.orEmpty()
+            }
     }
 
     private fun placeholders(text: String): List<String> =
