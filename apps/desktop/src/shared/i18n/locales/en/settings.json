@@ -122,7 +122,10 @@
   "title": "Settings",
   "remote": {
     "title": "Remote access",
-    "description": "Connect your phone to this computer to watch what it is working on, continue conversations and answer its questions. Traffic is end-to-end encrypted, direct on the same Wi-Fi and relayed when you are away. With no phone connected, nothing here uses any resources.",
+    "description": "Use your phone to view and continue conversations on this computer, including questions waiting for you. Connection content is end-to-end encrypted.",
+    "actionFailed": "That action failed. Try again.",
+    "loadFailed": "Remote access status is temporarily unavailable. Try again shortly.",
+    "connectionFailed": "Phone connections are temporarily unavailable. Try again shortly.",
     "approvals": {
       "title": "Phones waiting for approval",
       "description": "A phone started pairing by typing this computer's address. Check that the code on the phone matches before allowing it.",
@@ -132,35 +135,32 @@
     },
     "devices": {
       "title": "Paired phones",
-      "description": "Each phone pairs on its own and can be removed on its own. Removing it also clears the conversations it cached.",
-      "empty": "No phone is paired yet. Generate a QR code below and scan it with Vetta on your phone.",
+      "description": "You can remove each phone separately. Removing one also clears its local conversation history.",
+      "empty": "No phone is paired yet. Scan the QR code below to add one.",
       "unnamed": "Phone",
-      "online": {
-        "lan": "Online · local network",
-        "relay": "Online · via relay"
-      },
+      "online": "Online",
       "lastSeen": "Last connected {{time}}",
       "neverSeen": "Never connected",
       "revoke": "Remove"
     },
     "pairing": {
       "title": "Add a phone",
-      "description": "The QR code works for the first phone that scans it and expires after 10 minutes.",
-      "create": "Generate QR code",
-      "cancel": "Discard QR code",
+      "description": "Scan the QR code below with Vetta on your phone. It expires after 10 minutes.",
+      "create": "Generate a new QR code",
+      "cancel": "Discard",
       "qrAlt": "Vetta phone pairing QR code",
       "qrHint": "Open Vetta on your phone and tap “Scan to connect” in the top right. About {{minutes}} minutes left.",
-      "empty": "Generate a QR code and scan it with your phone",
+      "generating": "Preparing QR code…",
+      "empty": "QR code unavailable",
+      "createFailed": "Could not generate a QR code. Try again.",
       "vaultUnavailable": "Secure credential storage is unavailable on this system, so pairing is not possible right now.",
-      "lanListening": "Local network port {{port}} is open; the phone must be on the same Wi-Fi as this computer.",
-      "lanIdle": "After pairing, a local network port opens so the phone can connect directly.",
-      "manualHint": "If scanning is inconvenient, choose “Enter code or IP manually” on the phone, type one of the addresses above, then come back here to compare the code. macOS may ask whether to allow incoming connections the first time; choose Allow."
+      "manualHint": "Can't scan? Choose “Enter manually” on your phone, enter any address below, then compare the verification code here.",
+      "permissionHint": "If your system asks whether to allow the connection, choose Allow."
     },
     "cloud": {
       "title": "Allow access away from home",
-      "description": "When not on the same Wi-Fi, the phone reaches this computer through the relay at {{relay}}. Turn this off to keep it local-network only.",
-      "unavailable": "No relay is configured, so the phone can only connect on the local network.",
-      "privacy": "The relay only sees encrypted data and never any conversation content; idle connections hibernate and cost nothing."
+      "description": "When enabled, your phone can connect away from this Wi-Fi. Turn it off to allow same-Wi-Fi connections only.",
+      "unavailable": "Access away from this Wi-Fi is currently unavailable."
     }
   },
   "general": "General",
