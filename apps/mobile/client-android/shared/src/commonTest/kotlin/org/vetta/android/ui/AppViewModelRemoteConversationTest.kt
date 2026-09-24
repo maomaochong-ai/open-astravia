@@ -26,9 +26,6 @@ import org.vetta.android.domain.conversation.RemoteConversationGateway
 import org.vetta.android.domain.device.ConnectChannel
 import org.vetta.android.domain.device.DesktopDevice
 import org.vetta.android.domain.device.DeviceStatus
-import org.vetta.android.domain.remote.buildMobileRelayTarget
-import org.vetta.android.domain.remote.parseMobileConnectionTarget
-import org.vetta.android.domain.remote.parsePairingInvite
 import org.vetta.android.domain.session.ConversationOrigin
 import org.vetta.android.domain.session.LocalMessage
 import org.vetta.android.domain.session.MessageStatus
@@ -196,6 +193,7 @@ class AppViewModelRemoteConversationTest {
                     preferences = AppPreferences(settings),
                     tokenStore = InMemoryTokenStore(),
                     sessionStore = store,
+                    mirror = unpairedMirror(),
                     remoteConversationGateway = FakeRemoteConversationGateway(),
                 )
             val viewModel = AppViewModel(container)
@@ -341,70 +339,10 @@ class AppViewModelRemoteConversationTest {
             advanceUntilIdle()
 
             assertEquals(1, gateway.connectCalls)
-            assertTrue(gateway.connectTargets.single().startsWith("wss://relay.example/v2/relay/"))
+            assertEquals(listOf(inviteText), gateway.connectTargets, "the scanned code goes to pairing as is")
             assertEquals(AppRoute.DeviceDetail("desktop-1"), viewModel.state.value.route)
             assertTrue(viewModel.state.value.mainAccessGranted)
             assertEquals(null, viewModel.state.value.globalError)
-        }
-
-    @Test
-    fun savedPairingReusesThePinnedMobileIdentity() =
-        runTest(dispatcher) {
-            val gateway = FakeRemoteConversationGateway()
-            val preferences = AppPreferences(MapSettings())
-            val inviteText = validV2Invite()
-            val invite = requireNotNull(parsePairingInvite(inviteText))
-            val identity = "HyYtNDtCSVBXXmVsc3qBiI-WnaSrsrnAx87V3OPq8fg"
-            preferences.remotePairingId = invite.pairingId
-            preferences.remoteIdentitySecret = identity
-            val viewModel = AppViewModel(container(gateway, preferences))
-            advanceUntilIdle()
-
-            viewModel.connectDesktop(inviteText)
-            advanceUntilIdle()
-
-            assertEquals(
-                listOf(buildMobileRelayTarget(invite, identity)),
-                gateway.connectTargets,
-            )
-            assertEquals(null, viewModel.state.value.globalError)
-        }
-
-    @Test
-    fun failedNewPairingDoesNotReplaceSavedIdentity() =
-        runTest(dispatcher) {
-            val gateway = FakeRemoteConversationGateway().apply { connectResults = listOf(false) }
-            val preferences = AppPreferences(MapSettings())
-            val existingIdentity = "HyYtNDtCSVBXXmVsc3qBiI-WnaSrsrnAx87V3OPq8fg"
-            preferences.remotePairingId = "existing-pairing"
-            preferences.remoteIdentitySecret = existingIdentity
-            val viewModel = AppViewModel(container(gateway, preferences))
-            advanceUntilIdle()
-
-            viewModel.connectDesktop(
-                validV2Invite(),
-            )
-            advanceUntilIdle()
-
-            assertEquals("existing-pairing", preferences.remotePairingId)
-            assertEquals(existingIdentity, preferences.remoteIdentitySecret)
-            assertEquals(uiText(Res.string.remote_connect_failed), viewModel.state.value.globalError?.title)
-        }
-
-    @Test
-    fun firstPairingPersistsIdentityBeforeConnectingSoAPartialHandshakeCanRetry() =
-        runTest(dispatcher) {
-            val gateway = FakeRemoteConversationGateway().apply { connectResults = listOf(false) }
-            val preferences = AppPreferences(MapSettings())
-            val viewModel = AppViewModel(container(gateway, preferences))
-            advanceUntilIdle()
-
-            viewModel.connectDesktop(validV2Invite())
-            advanceUntilIdle()
-
-            val storedIdentity = requireNotNull(preferences.remoteIdentitySecret)
-            assertEquals(storedIdentity, requireNotNull(parseMobileConnectionTarget(gateway.connectTargets.single())).identitySecret)
-            assertEquals(null, preferences.remotePairingId)
         }
 
     private fun container(
@@ -415,6 +353,7 @@ class AppViewModelRemoteConversationTest {
             preferences = preferences,
             tokenStore = InMemoryTokenStore(),
             sessionStore = SettingsSessionStore(MapSettings()),
+            mirror = unpairedMirror(),
             remoteConversationGateway = gateway,
         )
 

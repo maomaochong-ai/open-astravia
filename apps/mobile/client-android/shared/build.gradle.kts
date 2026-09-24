@@ -58,6 +58,7 @@ kotlin {
             implementation(libs.multiplatform.settings)
             implementation(libs.multiplatform.settings.no.arg)
             implementation(libs.bouncycastle)
+            implementation(libs.androidx.sqlite)
         }
         androidMain.dependencies {
             implementation(libs.compose.uiToolingPreview)
@@ -66,12 +67,17 @@ kotlin {
             implementation(libs.kotlinx.coroutines.android)
             implementation(libs.androidx.activity.compose)
             implementation(libs.androidx.core.ktx)
+            implementation(libs.androidx.sqlite.framework)
             implementation(libs.webrtc.android)
             implementation(libs.androidx.camera.camera2)
             implementation(libs.androidx.camera.lifecycle)
             implementation(libs.androidx.camera.mlkit.vision)
             implementation(libs.androidx.camera.view)
             implementation(libs.mlkit.barcode.scanning)
+        }
+        getByName("androidHostTest").dependencies {
+            // The JVM build of SQLite with desktop natives; the app itself uses Android's.
+            implementation(libs.androidx.sqlite.bundled.jvm)
         }
         getByName("androidDeviceTest").dependencies {
             implementation(libs.androidx.activity.compose)

@@ -1,6 +1,9 @@
 package org.vetta.android.ui.i18n
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
+import androidx.compose.runtime.produceState
+import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource
 import org.vetta.android.domain.device.SessionListItem
 import org.vetta.android.domain.session.nowEpochMs
@@ -51,3 +54,13 @@ fun sessionTitle(title: String?): String =
 @Composable
 fun SessionListItem.sourceText(): String =
     sourceLabel ?: stringResource(if (isCloud) Res.string.filter_cloud else Res.string.desktop_device)
+
+/** The wall clock, ticking every `intervalMs` while shown, for labels that age. */
+@Composable
+fun rememberClock(intervalMs: Long = 1_000): State<Long> =
+    produceState(nowEpochMs(), intervalMs) {
+        while (true) {
+            delay(intervalMs)
+            value = nowEpochMs()
+        }
+    }

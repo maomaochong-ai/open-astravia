@@ -24,11 +24,9 @@ class EncryptedDesktopTransport(
     override val incoming: Flow<RemoteFrame> = channel.receiveAsFlow()
     val receivedSessions = mutableListOf<RemoteSessionFrame>()
 
-    val target: String =
-        "wss://relay.example/v2/relay/pair-1234567890abcdef/mobile" +
-            "#pairing=secret-1234567890abcdefghijklmnop" +
-            "&identity=$MOBILE_IDENTITY_SECRET" +
-            "&peer=${RemoteCrypto.toBase64Url(desktopIdentity.publicKey)}"
+    /** What the phone needs to reach this desktop: its own identity and the desktop's public key. */
+    val mobileIdentity: RemoteIdentityKeyPair = pair(MOBILE_IDENTITY_SECRET)
+    val desktopIdentityKey: ByteArray = desktopIdentity.publicKey
 
     override suspend fun connect() = Unit
 

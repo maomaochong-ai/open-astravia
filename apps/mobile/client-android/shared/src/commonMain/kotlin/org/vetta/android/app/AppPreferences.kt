@@ -52,17 +52,12 @@ class AppPreferences(
             if (value.isNullOrBlank()) settings.remove(KEY_LAST_MODEL) else settings[KEY_LAST_MODEL] = value
         }
 
-    var remoteIdentitySecret: String?
+    /**
+     * The phone identity builds before the desktop mirror kept here; read once so
+     * [org.vetta.android.domain.remote.pairing.PairingStore] can adopt it.
+     */
+    val legacyRemoteIdentitySecret: String?
         get() = settings.getStringOrNull(KEY_REMOTE_IDENTITY)?.takeIf { it.isNotBlank() }
-        set(value) {
-            if (value.isNullOrBlank()) settings.remove(KEY_REMOTE_IDENTITY) else settings[KEY_REMOTE_IDENTITY] = value
-        }
-
-    var remotePairingId: String?
-        get() = settings.getStringOrNull(KEY_REMOTE_PAIRING_ID)?.takeIf { it.isNotBlank() }
-        set(value) {
-            if (value.isNullOrBlank()) settings.remove(KEY_REMOTE_PAIRING_ID) else settings[KEY_REMOTE_PAIRING_ID] = value
-        }
 
     fun setServerUrl(url: String) {
         val normalized = url.trim().trimEnd('/')
@@ -111,6 +106,5 @@ class AppPreferences(
         private const val KEY_LAST_SESSION = "vetta.prefs.last_session"
         private const val KEY_LAST_MODEL = "vetta.prefs.last_model"
         private const val KEY_REMOTE_IDENTITY = "vetta.prefs.remote_identity_v2"
-        private const val KEY_REMOTE_PAIRING_ID = "vetta.prefs.remote_pairing_id"
     }
 }

@@ -12,10 +12,8 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
-import org.vetta.android.domain.remote.parseMobileConnectionTarget
 import org.vetta.android.domain.remote.protocol.RemoteAck
 import org.vetta.android.domain.remote.protocol.RemoteCapabilities
-import org.vetta.android.domain.remote.protocol.RemoteCrypto
 import org.vetta.android.domain.remote.protocol.RemoteEvent
 import org.vetta.android.domain.remote.protocol.RemoteEventName
 import org.vetta.android.domain.remote.protocol.RemoteRequest
@@ -126,7 +124,6 @@ class RemoteConnectionTest {
         logger: RemoteLogger = NoopRemoteLogger,
         now: () -> Long = { 100L },
     ): RemoteConnection {
-        val target = requireNotNull(parseMobileConnectionTarget(transport.target))
         return RemoteConnection(
             transport = transport,
             options =
@@ -135,8 +132,8 @@ class RemoteConnectionTest {
                     deviceId = "phone-1",
                     deviceName = "Pixel",
                     capabilities = RemoteCapabilities(chat = true, sessionRead = true),
-                    identity = RemoteCrypto.identityKeyPairFromSecret(RemoteCrypto.fromBase64Url(target.identitySecret)),
-                    expectedPeerIdentityKey = RemoteCrypto.decodePublicKey(target.desktopIdentityKey),
+                    identity = transport.mobileIdentity,
+                    expectedPeerIdentityKey = transport.desktopIdentityKey,
                     connectionId = "connection-1",
                     requestTimeoutMs = 1_000,
                 ),

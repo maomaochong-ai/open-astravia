@@ -82,6 +82,8 @@ data class RemoteConnectionOptions(
     val expectedPeerIdentityKey: ByteArray,
     val connectionId: String,
     val requestTimeoutMs: Long = 30_000,
+    /** The last event this phone saw from the desktop; the handshake resumes after it. */
+    val resumeFrom: Long = 0,
     val randomBytes: (Int) -> ByteArray = RemoteCrypto::randomBytes,
 )
 
@@ -110,7 +112,7 @@ class RemoteConnection(
     private var keys: RemoteSessionKeys? = null
     private var peerDeviceId: String? = null
     private var peerIdentityKey: ByteArray? = null
-    private var lastEventSequence = 0L
+    private var lastEventSequence = options.resumeFrom
     private var lastAckSequence = 0L
     private var reconnectCount = 0
     private var lastRttMs: Long? = null

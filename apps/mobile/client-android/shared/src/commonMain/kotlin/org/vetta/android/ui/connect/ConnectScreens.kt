@@ -39,7 +39,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import org.vetta.android.domain.device.DesktopDevice
 import org.vetta.android.domain.device.DeviceStatus
-import org.vetta.android.domain.remote.remoteDesktopViewerTarget
 import org.vetta.android.ui.components.FilterChipRow
 import org.vetta.android.ui.components.EmptyState
 import org.vetta.android.ui.components.ListRow
@@ -87,6 +86,7 @@ import org.vetta.android.resources.start_conversation
 import org.vetta.android.resources.system_info
 import org.vetta.android.resources.use_cloud_ai
 import org.vetta.android.ui.i18n.durationLabel
+import org.vetta.android.ui.i18n.rememberClock
 import org.vetta.android.ui.theme.vettaExtra
 import org.vetta.android.ui.remote.RemoteDesktopSurface
 import org.vetta.android.ui.remote.PairingScannerButton
@@ -258,24 +258,28 @@ fun DeviceDetailScreen(
             }
             Spacer(Modifier.height(12.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Metric(stringResource(Res.string.duration), device.connectedDurationMs?.let { durationLabel(it) } ?: stringResource(Res.string.not_available))
+                val now by rememberClock()
+                Metric(
+                    stringResource(Res.string.duration),
+                    device.onlineSinceEpochMs?.let { durationLabel(now - it) } ?: stringResource(Res.string.not_available),
+                )
                 Metric(stringResource(Res.string.latency), device.latencyMs?.let { "${it}ms" } ?: stringResource(Res.string.not_available))
             }
             Spacer(Modifier.height(12.dp))
             PrimaryBlackButton(text = stringResource(Res.string.disconnect), onClick = onDisconnect)
 
-            val desktopTarget = remoteDesktopViewerTarget(device.host)
+            val viewerUrl = device.viewerUrl.takeIf { device.status == DeviceStatus.Online }
             AnimatedVisibility(
-                visible = desktopTarget != null,
+                visible = viewerUrl != null,
                 enter = fadeIn(),
                 exit = fadeOut(),
             ) {
-                desktopTarget?.let {
+                viewerUrl?.let {
                     Column {
                         Spacer(Modifier.height(20.dp))
                         SectionHeader(title = stringResource(Res.string.desktop_preview))
                         RemoteDesktopSurface(
-                            target = it.url,
+                            target = it,
                             modifier = Modifier.fillMaxWidth().height(180.dp).clip(RoundedCornerShape(8.dp)),
                         )
                     }

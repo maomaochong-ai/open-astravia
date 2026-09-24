@@ -10,6 +10,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.tooling.preview.Preview
+import org.vetta.android.app.AndroidAppContainer
 
 class MainActivity : ComponentActivity() {
     private var pendingPairingInvite by mutableStateOf<String?>(null)
@@ -19,8 +20,10 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         pendingPairingInvite = pairingInviteFrom(intent)
 
+        val container = AndroidAppContainer.get(this)
         setContent {
             App(
+                container = container,
                 pairingInvite = pendingPairingInvite,
                 onPairingInviteHandled = ::clearHandledPairingInvite,
             )

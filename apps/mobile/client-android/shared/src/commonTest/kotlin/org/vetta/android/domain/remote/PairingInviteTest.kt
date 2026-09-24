@@ -6,7 +6,7 @@ import kotlin.test.assertNull
 
 class PairingInviteTest {
     @Test
-    fun parsesDesktopV2InviteAndBuildsAuthenticatedRelayTarget() {
+    fun parsesDesktopV2InviteAndBuildsItsSocketUrls() {
         val invite = requireNotNull(parsePairingInvite(INVITE))
 
         assertEquals(2, invite.version)
@@ -15,13 +15,15 @@ class PairingInviteTest {
         assertEquals(listOf("192.168.1.20:43117"), invite.lanEndpoints)
         assertEquals("wss://relay.example", invite.relayBaseUrl)
 
-        val target = requireNotNull(buildMobileRelayTarget(invite, MOBILE_IDENTITY_SECRET))
         assertEquals(
             "wss://relay.example/v2/relay/pair-1234567890abcdef/mobile",
-            requireNotNull(parseMobileConnectionTarget(target)).url,
+            relayControlUrl(requireNotNull(invite.relayBaseUrl), invite.pairingId),
         )
-        assertEquals(invite.mobileSecret, requireNotNull(parseMobileConnectionTarget(target)).pairingSecret)
-        assertEquals(invite.desktopIdentityKey, requireNotNull(parseMobileConnectionTarget(target)).desktopIdentityKey)
+        assertEquals("ws://192.168.1.20:43117/v2/lan/pair-1234567890abcdef", lanControlUrl(invite.lanEndpoints.single(), invite.pairingId))
+        assertEquals(
+            "wss://relay.example/v2/desktop/pair-1234567890abcdef/viewer#pairing=secret-1234567890abcdef",
+            desktopViewerUrl(requireNotNull(invite.relayBaseUrl), invite.pairingId, invite.mobileSecret),
+        )
     }
 
     @Test
@@ -34,7 +36,6 @@ class PairingInviteTest {
 
     private companion object {
         const val DESKTOP_IDENTITY_PUBLIC = "V-U_7B2yLhcIrcj6dteUYQTZpeC-YvqqG-h-d--vWyI"
-        const val MOBILE_IDENTITY_SECRET = "HyYtNDtCSVBXXmVsc3qBiI-WnaSrsrnAx87V3OPq8fg"
         const val INVITE =
             "vetta://pair?v=2&id=pair-1234567890abcdef&s=secret-1234567890abcdef&k=$DESKTOP_IDENTITY_PUBLIC&n=Jane%27s+MacBook+Pro&lan=192.168.1.20%3A43117&relay=https%3A%2F%2Frelay.example%2F"
     }

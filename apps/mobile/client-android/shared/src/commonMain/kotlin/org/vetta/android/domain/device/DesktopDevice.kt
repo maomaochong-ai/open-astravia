@@ -20,9 +20,12 @@ data class DesktopDevice(
     val status: DeviceStatus,
     val channel: ConnectChannel = ConnectChannel.Lan,
     val latencyMs: Int? = null,
-    val connectedDurationMs: Long? = null,
+    /** When the current connection came up, for "connected for". */
+    val onlineSinceEpochMs: Long? = null,
     val cpu: String? = null,
     val ram: String? = null,
+    /** The relay's screen-sharing viewer for this desktop, when it is reachable that way. */
+    val viewerUrl: String? = null,
 )
 
 data class SessionListItem(

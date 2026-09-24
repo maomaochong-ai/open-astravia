@@ -17,13 +17,6 @@ data class PairingInvite(
     val relayBaseUrl: String?,
 )
 
-data class MobileConnectionTarget(
-    val url: String,
-    val pairingSecret: String,
-    val identitySecret: String,
-    val desktopIdentityKey: String,
-)
-
 fun parsePairingInvite(value: String): PairingInvite? = runCatching {
     val uri = URI(value.trim())
     if (!uri.scheme.equals("vetta", ignoreCase = true) || !uri.host.equals("pair", ignoreCase = true)) error("scheme")
@@ -49,31 +42,16 @@ fun parsePairingInvite(value: String): PairingInvite? = runCatching {
     )
 }.getOrNull()
 
-fun buildMobileRelayTarget(invite: PairingInvite, identitySecret: String): String? {
-    RemoteCrypto.identityKeyPairFromSecret(RemoteCrypto.fromBase64Url(identitySecret))
-    val relay = invite.relayBaseUrl ?: return null
-    val fragment =
-        listOf(
-            "pairing" to invite.mobileSecret,
-            "identity" to identitySecret,
-            "peer" to invite.desktopIdentityKey,
-        ).joinToString("&") { (key, value) -> "$key=${encode(value)}" }
-    return "$relay/v2/relay/${invite.pairingId}/mobile#$fragment"
-}
+/** The relay socket a phone opens for the pairing `pairingId`. */
+fun relayControlUrl(relayBaseUrl: String, pairingId: String): String =
+    "$relayBaseUrl/v2/relay/${encodePathSegment(pairingId)}/mobile"
 
-fun parseMobileConnectionTarget(value: String): MobileConnectionTarget? = runCatching {
-    val separator = value.indexOf('#')
-    if (separator <= 0) error("fragment")
-    val url = value.substring(0, separator)
-    val values = decodeQuery(value.substring(separator + 1))
-    val pairingSecret = values["pairing"].orEmpty()
-    val identitySecret = values["identity"].orEmpty()
-    val desktopIdentityKey = values["peer"].orEmpty()
-    if (!pairingSecret.matches(ID_PATTERN)) error("pairing secret")
-    RemoteCrypto.identityKeyPairFromSecret(RemoteCrypto.fromBase64Url(identitySecret))
-    RemoteCrypto.decodePublicKey(desktopIdentityKey, "desktop identity key")
-    MobileConnectionTarget(url, pairingSecret, identitySecret, desktopIdentityKey)
-}.getOrNull()
+/** The desktop's local-network socket for the pairing `pairingId`. */
+fun lanControlUrl(endpoint: String, pairingId: String): String = "ws://$endpoint/v2/lan/${encodePathSegment(pairingId)}"
+
+/** The relay's screen-sharing viewer for a paired desktop. */
+fun desktopViewerUrl(relayBaseUrl: String, pairingId: String, mobileSecret: String): String =
+    "$relayBaseUrl/v2/desktop/${encodePathSegment(pairingId)}/viewer#pairing=${encode(mobileSecret)}"
 
 fun normalizeRelayBaseUrl(value: String?): String? = runCatching {
     if (value.isNullOrBlank()) return null
@@ -106,6 +84,8 @@ private fun decodeQuery(query: String): Map<String, String> {
 }
 
 private fun encode(value: String): String = URLEncoder.encode(value, "UTF-8")
+
+private fun encodePathSegment(value: String): String = URLEncoder.encode(value, "UTF-8").replace("+", "%20")
 
 private fun decode(value: String): String = URLDecoder.decode(value, "UTF-8")
 
