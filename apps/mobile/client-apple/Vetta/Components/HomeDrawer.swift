@@ -35,14 +35,14 @@ struct HomeDrawer<Content: View, Drawer: View>: View {
 				.offset(x: progress * width * 0.25)
 				.allowsHitTesting(!open)
 				.accessibilityHidden(open)
-				.gesture(EdgePan(enabled: enabled && !open, onChange: { drag = max(0, $0) }, onEnd: settle))
+				.gesture(DrawerPan(opens: true, canBegin: { enabled && !router.drawerOpen }, onChange: { drag = max(0, $0) }, onEnd: settle))
 			if enabled {
 				drawer
 					.offset(x: (progress - 1) * width)
 					.allowsHitTesting(open)
 					.accessibilityHidden(!open)
 					.accessibilityAction(.escape) { router.closeDrawer() }
-					.gesture(DrawerPan(canBegin: { router.drawerOpen && router.path.isEmpty }, onChange: { drag = min(0, $0) }, onEnd: settle))
+					.gesture(DrawerPan(opens: false, canBegin: { router.drawerOpen && router.path.isEmpty }, onChange: { drag = min(0, $0) }, onEnd: settle))
 			}
 		}
 		.onGeometryChange(for: CGFloat.self, of: \.size.width) { width = $0 }
@@ -72,35 +72,16 @@ struct DrawerButton: View {
 	}
 }
 
-/// A drag from the screen's left edge.
-private struct EdgePan: UIGestureRecognizerRepresentable {
-	var enabled: Bool
-	var onChange: (CGFloat) -> Void
-	var onEnd: (CGFloat, CGFloat) -> Void
-
-	func makeUIGestureRecognizer(context: Context) -> UIScreenEdgePanGestureRecognizer {
-		let pan = UIScreenEdgePanGestureRecognizer()
-		pan.edges = .left
-		return pan
-	}
-
-	func updateUIGestureRecognizer(_ pan: UIScreenEdgePanGestureRecognizer, context: Context) {
-		pan.isEnabled = enabled
-	}
-
-	func handleUIGestureRecognizerAction(_ pan: UIScreenEdgePanGestureRecognizer, context: Context) {
-		if pan.state == .began { dismissKeyboard() }
-		follow(pan, onChange: onChange, onEnd: onEnd)
-	}
-}
-
-/// A leftward drag anywhere on Home's first page, except over a row that scrolls sideways.
+/// Opening: a rightward drag that starts at the screen's left edge.
+/// Closing: a leftward drag anywhere on Home's first page, except over a row that scrolls sideways.
+/// A plain pan rather than a screen-edge one, which never fires when attached from SwiftUI.
 private struct DrawerPan: UIGestureRecognizerRepresentable {
+	var opens: Bool
 	var canBegin: () -> Bool
 	var onChange: (CGFloat) -> Void
 	var onEnd: (CGFloat, CGFloat) -> Void
 
-	func makeCoordinator(converter: CoordinateSpaceConverter) -> Coordinator { Coordinator() }
+	func makeCoordinator(converter: CoordinateSpaceConverter) -> Coordinator { Coordinator(opens: opens) }
 
 	func makeUIGestureRecognizer(context: Context) -> UIPanGestureRecognizer {
 		let pan = UIPanGestureRecognizer()
@@ -113,16 +94,30 @@ private struct DrawerPan: UIGestureRecognizerRepresentable {
 	}
 
 	func handleUIGestureRecognizerAction(_ pan: UIPanGestureRecognizer, context: Context) {
-		follow(pan, onChange: onChange, onEnd: onEnd)
+		if opens, pan.state == .began { dismissKeyboard() }
+		let translation = pan.translation(in: pan.view).x
+		switch pan.state {
+		case .began, .changed: onChange(translation)
+		case .ended: onEnd(translation, pan.velocity(in: pan.view).x)
+		case .cancelled, .failed: onEnd(0, 0)
+		default: break
+		}
 	}
 
 	final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+		let opens: Bool
 		var canBegin: () -> Bool = { false }
+
+		init(opens: Bool) { self.opens = opens }
 
 		func gestureRecognizerShouldBegin(_ recognizer: UIGestureRecognizer) -> Bool {
 			guard canBegin(), let pan = recognizer as? UIPanGestureRecognizer, let view = pan.view else { return false }
 			let velocity = pan.velocity(in: view)
-			guard velocity.x < 0, abs(velocity.x) > abs(velocity.y) * 1.5 else { return false }
+			guard (velocity.x > 0) == opens, abs(velocity.x) > abs(velocity.y) * 1.5 else { return false }
+			if opens {
+				let start = pan.location(in: nil).x - pan.translation(in: nil).x
+				return start <= 24
+			}
 			// The recent projects carousel keeps its own sideways swipe.
 			var hit = view.hitTest(pan.location(in: view), with: nil)
 			while let current = hit, current !== view {
@@ -141,15 +136,5 @@ private struct DrawerPan: UIGestureRecognizerRepresentable {
 		private func scrollsSideways(_ scroll: UIScrollView) -> Bool {
 			scroll.contentSize.width > scroll.bounds.width + 1
 		}
-	}
-}
-
-private func follow(_ pan: UIPanGestureRecognizer, onChange: (CGFloat) -> Void, onEnd: (CGFloat, CGFloat) -> Void) {
-	let translation = pan.translation(in: pan.view).x
-	switch pan.state {
-	case .began, .changed: onChange(translation)
-	case .ended: onEnd(translation, pan.velocity(in: pan.view).x)
-	case .cancelled, .failed: onEnd(0, 0)
-	default: break
 	}
 }
