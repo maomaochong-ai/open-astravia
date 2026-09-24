@@ -49,7 +49,7 @@ object UnavailableRemoteConversationGateway : RemoteConversationGateway {
         messages: List<ChatMessage>,
     ): Flow<ChatStreamEvent> =
         kotlinx.coroutines.flow.flow {
-            throw RemoteConversationException("桌面连接已断开，请重新连接后再试")
+            throw RemoteConversationException("Desktop is not connected")
         }
 
     override fun resolvedRemoteSessionId(localSessionId: String): String? = null

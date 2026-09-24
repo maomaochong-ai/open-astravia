@@ -102,7 +102,7 @@ class RelayRemoteConversationGateway(
                     status = DeviceStatus.Online,
                     channel = ConnectChannel.Remote,
                     latencyMs = next.snapshot().lastRttMs?.toIntOrNull(),
-                    connectedDuration = formatConnectionDuration(now() - connectedAtEpochMs),
+                    connectedDurationMs = now() - connectedAtEpochMs,
                     cpu = diagnostics?.cpu,
                     ram = diagnostics?.ram,
                 ),
@@ -212,7 +212,7 @@ class RelayRemoteConversationGateway(
                 }
                 val latest = next.snapshot()
                 _devices.updateMetrics(
-                    connectedDuration = formatConnectionDuration(now() - connectedAtEpochMs),
+                    connectedDurationMs = now() - connectedAtEpochMs,
                     latencyMs = latest.lastRttMs?.toIntOrNull(),
                     diagnostics = latestDiagnostics,
                 )
@@ -242,9 +242,9 @@ class RelayRemoteConversationGateway(
         messages: List<ChatMessage>,
     ): Flow<ChatStreamEvent> =
         channelFlow {
-            val active = connection ?: throw RemoteConversationException("请先连接桌面设备")
+            val active = connection ?: throw RemoteConversationException("Desktop is not connected")
             if (active.state.value != RemoteConnectionState.Online) {
-                throw RemoteConversationException("桌面连接正在恢复，请稍后重试")
+                throw RemoteConversationException("Desktop link is recovering")
             }
             val terminal = CompletableDeferred<ChatStreamEvent.State>()
             var transportStateSent = false
@@ -254,7 +254,7 @@ class RelayRemoteConversationGateway(
                 send(
                     ChatStreamEvent.State(
                         value = "reconnecting",
-                        detail = "桌面连接正在恢复",
+                        detail = null,
                         detailCode = "transport_closed",
                     ),
                 )
@@ -273,7 +273,7 @@ class RelayRemoteConversationGateway(
                 terminal.complete(
                     ChatStreamEvent.State(
                         value = "error",
-                        detail = "桌面连接已断开，请重新连接后再试",
+                        detail = null,
                         detailCode = "transport_closed",
                     ),
                 )
@@ -319,7 +319,7 @@ class RelayRemoteConversationGateway(
                     throw RemoteRequestException(
                         RemoteError(
                             code = finalState.detailCode.toRemoteErrorCode(),
-                            message = finalState.detail ?: "桌面执行失败",
+                            message = finalState.detail ?: "Desktop run failed",
                             retryable = finalState.detailCode == "request_timeout" || finalState.detailCode == "busy",
                         ),
                     )
@@ -348,7 +348,7 @@ class RelayRemoteConversationGateway(
         answers: List<Pair<String, List<String>>>,
         cancelled: Boolean,
     ) {
-        val active = connection ?: throw RemoteConversationException("请先连接桌面设备")
+        val active = connection ?: throw RemoteConversationException("Desktop is not connected")
         val payload = buildJsonObject {
             put("requestId", requestId)
             put("cancelled", cancelled)
@@ -377,7 +377,7 @@ class RelayRemoteConversationGateway(
             }
         }
         check(connection.state.value == RemoteConnectionState.Online) {
-            "桌面连接未完成握手：${connection.state.value.name.lowercase()}"
+            "Desktop link did not finish its handshake: ${connection.state.value.name.lowercase()}"
         }
     }
 
@@ -402,14 +402,14 @@ class RelayRemoteConversationGateway(
     }
 
     private fun MutableStateFlow<List<DesktopDevice>>.updateMetrics(
-        connectedDuration: String,
+        connectedDurationMs: Long,
         latencyMs: Int?,
         diagnostics: DeviceDiagnostics?,
     ) {
         update { devices ->
             devices.map { device ->
                 device.copy(
-                    connectedDuration = connectedDuration,
+                    connectedDurationMs = connectedDurationMs,
                     latencyMs = latencyMs ?: device.latencyMs,
                     osLabel = diagnostics?.osLabel ?: device.osLabel,
                     cpu = diagnostics?.cpu ?: device.cpu,
@@ -514,15 +514,3 @@ private fun JsonElement?.toDeviceDiagnostics(): DeviceDiagnostics? {
 }
 
 private fun Long.toIntOrNull(): Int? = takeIf { it in 0..Int.MAX_VALUE.toLong() }?.toInt()
-
-private fun formatConnectionDuration(elapsedMs: Long): String {
-    val totalSeconds = (elapsedMs.coerceAtLeast(0) / 1_000).coerceAtLeast(1)
-    val hours = totalSeconds / 3_600
-    val minutes = (totalSeconds % 3_600) / 60
-    val seconds = totalSeconds % 60
-    return when {
-        hours > 0 -> "${hours}时${minutes}分"
-        minutes > 0 -> "${minutes}分${seconds}秒"
-        else -> "${seconds}秒"
-    }
-}

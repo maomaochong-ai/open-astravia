@@ -40,6 +40,30 @@ class SettingsSessionStoreTest {
         }
 
     @Test
+    fun legacyChineseDefaultTitleReadsAsUntitledAndIsReplacedByFirstPrompt() =
+        runBlocking {
+            val settings = MapSettings()
+            settings.putString(
+                "vetta.session.index",
+                """{"items":[{"id":"legacy","title":"新对话","createdAtEpochMs":1,"updatedAtEpochMs":2}]}""",
+            )
+            val store = SettingsSessionStore(settings)
+            assertEquals(SessionStore.DEFAULT_TITLE, store.getSession("legacy")?.title)
+
+            store.upsertMessage(
+                LocalMessage(
+                    id = "m1",
+                    sessionId = "legacy",
+                    role = ChatRole.User,
+                    content = "Summarize the release",
+                    status = MessageStatus.Complete,
+                    createdAtEpochMs = 3,
+                ),
+            )
+            assertEquals("Summarize the release", store.getSession("legacy")?.title)
+        }
+
+    @Test
     fun remoteMetadataPersistsAndLegacySessionsDefaultToCloud() =
         runBlocking {
             val settings = MapSettings()

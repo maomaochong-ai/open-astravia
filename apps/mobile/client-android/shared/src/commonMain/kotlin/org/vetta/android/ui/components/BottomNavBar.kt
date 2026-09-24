@@ -19,7 +19,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import org.vetta.android.ui.i18n.Str
+import org.jetbrains.compose.resources.stringResource
+import org.vetta.android.resources.Res
+import org.vetta.android.resources.tab_discover
+import org.vetta.android.resources.tab_home
+import org.vetta.android.resources.tab_me
+import org.vetta.android.resources.tab_sessions
 import org.vetta.android.ui.navigation.MainTab
 import org.vetta.android.ui.theme.vettaExtra
 
@@ -31,10 +36,10 @@ fun VettaBottomBar(
 ) {
     val items =
         listOf(
-            TabItem(MainTab.Home, Str.tabHome, Icons.Outlined.Home, Icons.Filled.Home),
-            TabItem(MainTab.Sessions, Str.tabSessions, Icons.Outlined.ChatBubbleOutline, Icons.Filled.ChatBubbleOutline),
-            TabItem(MainTab.Discover, Str.tabDiscover, Icons.Outlined.Explore, Icons.Filled.Explore),
-            TabItem(MainTab.Me, Str.tabMe, Icons.Outlined.PersonOutline, Icons.Filled.PersonOutline),
+            TabItem(MainTab.Home, stringResource(Res.string.tab_home), Icons.Outlined.Home, Icons.Filled.Home),
+            TabItem(MainTab.Sessions, stringResource(Res.string.tab_sessions), Icons.Outlined.ChatBubbleOutline, Icons.Filled.ChatBubbleOutline),
+            TabItem(MainTab.Discover, stringResource(Res.string.tab_discover), Icons.Outlined.Explore, Icons.Filled.Explore),
+            TabItem(MainTab.Me, stringResource(Res.string.tab_me), Icons.Outlined.PersonOutline, Icons.Filled.PersonOutline),
         )
     NavigationBar(
         modifier = modifier.fillMaxWidth(),

@@ -22,6 +22,7 @@ import org.vetta.android.domain.device.DesktopDevice
 import org.vetta.android.domain.device.DeviceStatus
 import org.vetta.android.domain.error.UiError
 import org.vetta.android.domain.error.UiErrorAction
+import org.vetta.android.ui.i18n.UiText
 import org.vetta.android.domain.session.LocalMessage
 import org.vetta.android.domain.session.MessageImage
 import org.vetta.android.domain.session.MessageStatus
@@ -30,7 +31,28 @@ import org.vetta.android.domain.session.ToolTrace
 import org.vetta.android.ui.chat.ChatScreen
 import org.vetta.android.ui.connect.DeviceDetailScreen
 import org.vetta.android.ui.connect.NewConversationScreen
-import org.vetta.android.ui.i18n.Str
+import org.vetta.android.resources.Res
+import org.vetta.android.resources.pending_desktop_question_title
+import org.vetta.android.resources.submit_answer
+import org.vetta.android.resources.tool_completed
+import org.vetta.android.resources.tool_read_file
+import org.vetta.android.resources.back
+import org.vetta.android.resources.channel_cloud
+import org.vetta.android.resources.connect_desktop
+import org.vetta.android.resources.copied
+import org.vetta.android.resources.copy
+import org.vetta.android.resources.device_connected
+import org.vetta.android.resources.disconnect
+import org.vetta.android.resources.generated_by_desktop
+import org.vetta.android.resources.no_available_desktop
+import org.vetta.android.resources.remove_attachment
+import org.vetta.android.resources.response_failed
+import org.vetta.android.resources.response_interrupted
+import org.vetta.android.resources.send
+import org.vetta.android.resources.show_tool_details
+import org.vetta.android.resources.start_conversation
+import org.vetta.android.resources.stop
+import org.vetta.android.resources.thinking
 import org.vetta.android.ui.navigation.ChatSurface
 import org.vetta.android.ui.theme.VettaTheme
 import kotlin.test.Test
@@ -117,15 +139,15 @@ class DesktopConversationScreenTest {
         }
         composeRule.onNodeWithText("状态", substring = true).assertExists()
         composeRule.onNodeWithText("查看文档").assertExists()
-        composeRule.onNodeWithContentDescription(Str.copy).performClick()
-        composeRule.onNodeWithContentDescription(Str.copied).assertIsDisplayed()
-        composeRule.onNodeWithText("读取文件 · README.md · 已完成 · 读取文件内容").assertIsDisplayed()
-        composeRule.onNodeWithContentDescription(Str.showToolDetails).performClick()
+        composeRule.onNodeWithContentDescription(str(Res.string.copy)).performClick()
+        composeRule.onNodeWithContentDescription(str(Res.string.copied)).assertIsDisplayed()
+        composeRule.onNodeWithText("${str(Res.string.tool_read_file)} · README.md · ${str(Res.string.tool_completed)} · 读取文件内容").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription(str(Res.string.show_tool_details)).performClick()
         composeRule.onNodeWithText("{\"path\":\"README.md\"}").assertIsDisplayed()
-        composeRule.onNodeWithText("需要你的确认").assertIsDisplayed()
+        composeRule.onNodeWithText(str(Res.string.pending_desktop_question_title)).assertIsDisplayed()
         composeRule.onNodeWithText("继续执行吗？").assertIsDisplayed()
-        composeRule.onNodeWithText("提交").assertIsDisplayed().assertIsEnabled()
-        composeRule.onNodeWithText("提交").performClick()
+        composeRule.onNodeWithText(str(Res.string.submit_answer)).assertIsDisplayed().assertIsEnabled()
+        composeRule.onNodeWithText(str(Res.string.submit_answer)).performClick()
         assertTrue(submitted)
     }
 
@@ -155,12 +177,12 @@ class DesktopConversationScreenTest {
         }
 
         composeRule.onNodeWithText("TEST-DESKTOP").assertIsDisplayed()
-        composeRule.onNodeWithText(Str.deviceConnected).assertIsDisplayed()
-        composeRule.onNodeWithText(Str.startConversation).performClick()
+        composeRule.onNodeWithText(str(Res.string.device_connected)).assertIsDisplayed()
+        composeRule.onNodeWithText(str(Res.string.start_conversation)).performClick()
         assertTrue(started)
-        composeRule.onNodeWithText(Str.disconnect).performClick()
+        composeRule.onNodeWithText(str(Res.string.disconnect)).performClick()
         assertTrue(disconnected)
-        composeRule.onNodeWithContentDescription(Str.back).performClick()
+        composeRule.onNodeWithContentDescription(str(Res.string.back)).performClick()
         assertTrue(backed)
     }
 
@@ -195,7 +217,7 @@ class DesktopConversationScreenTest {
             }
         }
 
-        composeRule.onNodeWithContentDescription(Str.send).assertIsEnabled().performClick()
+        composeRule.onNodeWithContentDescription(str(Res.string.send)).assertIsEnabled().performClick()
         assertTrue(sent)
     }
 
@@ -229,7 +251,7 @@ class DesktopConversationScreenTest {
             }
         }
 
-        composeRule.onAllNodesWithText(Str.generatedByDesktop).assertCountEquals(1)
+        composeRule.onAllNodesWithText(str(Res.string.generated_by_desktop)).assertCountEquals(1)
     }
 
     @Test
@@ -263,7 +285,7 @@ class DesktopConversationScreenTest {
             }
         }
 
-        composeRule.onNodeWithContentDescription(Str.stop).performClick()
+        composeRule.onNodeWithContentDescription(str(Res.string.stop)).performClick()
         assertTrue(stopped)
     }
 
@@ -298,7 +320,7 @@ class DesktopConversationScreenTest {
             }
         }
 
-        composeRule.onNodeWithText(Str.thinking).assertIsDisplayed()
+        composeRule.onNodeWithText(str(Res.string.thinking)).assertIsDisplayed()
     }
 
     @Test
@@ -342,7 +364,7 @@ class DesktopConversationScreenTest {
             }
         }
 
-        composeRule.onNodeWithContentDescription(Str.removeAttachment).performClick()
+        composeRule.onNodeWithContentDescription(str(Res.string.remove_attachment)).performClick()
         assertEquals(image.id, removedId)
     }
 
@@ -388,7 +410,7 @@ class DesktopConversationScreenTest {
         }
 
         composeRule.onAllNodesWithText(friendlyError).assertCountEquals(0)
-        composeRule.onNodeWithText(Str.responseInterrupted).assertIsDisplayed()
+        composeRule.onNodeWithText(str(Res.string.response_interrupted)).assertIsDisplayed()
     }
 
     @Test
@@ -418,8 +440,8 @@ class DesktopConversationScreenTest {
                     modelPickerOpen = false,
                     globalError =
                         UiError(
-                            title = "桌面执行失败",
-                            message = friendlyError,
+                            title = UiText.Raw("Desktop run failed"),
+                            message = UiText.Raw(friendlyError),
                             action = UiErrorAction.Retry,
                         ),
                     onDraftChange = {},
@@ -437,7 +459,7 @@ class DesktopConversationScreenTest {
             }
         }
 
-        composeRule.onNodeWithText(Str.responseFailed).assertIsDisplayed()
+        composeRule.onNodeWithText(str(Res.string.response_failed)).assertIsDisplayed()
         composeRule.onAllNodesWithText(friendlyError).assertCountEquals(1)
     }
 
@@ -467,7 +489,7 @@ class DesktopConversationScreenTest {
         }
 
         assertEquals(0, composeRule.onAllNodesWithText(device.host).fetchSemanticsNodes().size)
-        composeRule.onNodeWithText(Str.startConversation).performClick()
+        composeRule.onNodeWithText(str(Res.string.start_conversation)).performClick()
         assertTrue(startedDevice == device.id)
     }
 
@@ -488,8 +510,8 @@ class DesktopConversationScreenTest {
             }
         }
 
-        composeRule.onNodeWithText(Str.noAvailableDesktop).assertIsDisplayed()
-        composeRule.onNodeWithText(Str.connectDesktop).performClick()
+        composeRule.onNodeWithText(str(Res.string.no_available_desktop)).assertIsDisplayed()
+        composeRule.onNodeWithText(str(Res.string.connect_desktop)).performClick()
         assertTrue(connectRequested)
     }
 
@@ -501,7 +523,7 @@ class DesktopConversationScreenTest {
         composeRule.setContent {
             VettaTheme(ThemeMode.Light) {
                 ChatScreen(
-                    title = Str.channelCloud,
+                    title = str(Res.string.channel_cloud),
                     surface = ChatSurface.Cloud,
                     messages = emptyList(),
                     draft = "",

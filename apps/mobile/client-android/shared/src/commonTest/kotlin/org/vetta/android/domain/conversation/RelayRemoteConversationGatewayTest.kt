@@ -43,7 +43,7 @@ class RelayRemoteConversationGatewayTest {
             assertEquals("Test CPU", device.cpu)
             assertEquals("16 GB", device.ram)
             assertEquals(0, device.latencyMs)
-            assertEquals("1秒", device.connectedDuration)
+            assertEquals(0L, device.connectedDurationMs)
 
             val events = mutableListOf<ChatStreamEvent>()
             gateway

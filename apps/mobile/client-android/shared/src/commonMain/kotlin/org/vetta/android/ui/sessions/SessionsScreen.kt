@@ -39,7 +39,27 @@ import org.vetta.android.ui.components.ListRow
 import org.vetta.android.ui.components.VettaTextField
 import org.vetta.android.ui.components.VettaConfirmDialog
 import org.vetta.android.ui.components.VettaTextInputDialog
-import org.vetta.android.ui.i18n.Str
+import org.jetbrains.compose.resources.stringResource
+import org.vetta.android.resources.Res
+import org.vetta.android.resources.delete
+import org.vetta.android.resources.delete_session
+import org.vetta.android.resources.delete_session_confirm
+import org.vetta.android.resources.filter_all
+import org.vetta.android.resources.filter_cloud
+import org.vetta.android.resources.filter_desktop
+import org.vetta.android.resources.new_conversation
+import org.vetta.android.resources.no_sessions
+import org.vetta.android.resources.no_sessions_hint
+import org.vetta.android.resources.no_sessions_match
+import org.vetta.android.resources.rename
+import org.vetta.android.resources.rename_session
+import org.vetta.android.resources.search_sessions
+import org.vetta.android.resources.session_actions
+import org.vetta.android.resources.session_name
+import org.vetta.android.resources.sessions_title
+import org.vetta.android.ui.i18n.relativeTimeLabel
+import org.vetta.android.ui.i18n.sessionTitle
+import org.vetta.android.ui.i18n.sourceText
 import org.vetta.android.ui.theme.vettaExtra
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -60,7 +80,7 @@ fun SessionsScreen(
     var renameTarget by remember { mutableStateOf<SessionListItem?>(null) }
     var deleteTarget by remember { mutableStateOf<SessionListItem?>(null) }
     var renameTitle by remember { mutableStateOf("") }
-    val filters = listOf(Str.filterAll, Str.filterDesktop, Str.filterCloud)
+    val filters = listOf(stringResource(Res.string.filter_all), stringResource(Res.string.filter_desktop), stringResource(Res.string.filter_cloud))
     val filtered =
         sessions.filter { s ->
             val qOk = query.isBlank() || s.title.contains(query, ignoreCase = true)
@@ -77,7 +97,7 @@ fun SessionsScreen(
         containerColor = MaterialTheme.vettaExtra.pageBackground,
         topBar = {
             TopAppBar(
-                title = { Text(Str.sessionsTitle, style = MaterialTheme.typography.titleMedium) },
+                title = { Text(stringResource(Res.string.sessions_title), style = MaterialTheme.typography.titleMedium) },
                 colors =
                     TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.vettaExtra.pageBackground,
@@ -96,7 +116,7 @@ fun SessionsScreen(
                 onValueChange = onQueryChange,
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                placeholder = { Text(Str.searchSessions) },
+                placeholder = { Text(stringResource(Res.string.search_sessions)) },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
             )
             Spacer(Modifier.height(12.dp))
@@ -108,10 +128,10 @@ fun SessionsScreen(
             Spacer(Modifier.height(12.dp))
             if (filtered.isEmpty()) {
                 EmptyState(
-                    title = if (query.isBlank()) Str.noSessions else Str.noSessionsMatch,
-                    subtitle = if (query.isBlank()) Str.noSessionsHint else null,
+                    title = if (query.isBlank()) stringResource(Res.string.no_sessions) else stringResource(Res.string.no_sessions_match),
+                    subtitle = if (query.isBlank()) stringResource(Res.string.no_sessions_hint) else null,
                     icon = Icons.Default.ChatBubbleOutline,
-                    actionLabel = if (query.isBlank()) Str.newConversation else null,
+                    actionLabel = if (query.isBlank()) stringResource(Res.string.new_conversation) else null,
                     onAction = if (query.isBlank()) onNewConversation else null,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -119,14 +139,14 @@ fun SessionsScreen(
                 LazyColumn(Modifier.fillMaxSize()) {
                     itemsIndexed(filtered, key = { _, item -> item.id }) { index, item ->
                         ListRow(
-                            title = item.title,
-                            subtitle = "${item.sourceLabel} · ${item.timeLabel}",
+                            title = sessionTitle(item.title),
+                            subtitle = "${item.sourceText()} · ${relativeTimeLabel(item.updatedAtEpochMs)}",
                             trailing = {
                                 Box {
                                     IconButton(onClick = { openMenuSessionId = item.id }) {
                                         Icon(
                                             Icons.Default.MoreVert,
-                                            contentDescription = Str.sessionActions,
+                                            contentDescription = stringResource(Res.string.session_actions),
                                             tint = MaterialTheme.vettaExtra.secondaryText,
                                         )
                                     }
@@ -135,7 +155,7 @@ fun SessionsScreen(
                                         onDismissRequest = { openMenuSessionId = null },
                                     ) {
                                         DropdownMenuItem(
-                                            text = { Text(Str.rename) },
+                                            text = { Text(stringResource(Res.string.rename)) },
                                             leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
                                             onClick = {
                                                 openMenuSessionId = null
@@ -144,7 +164,7 @@ fun SessionsScreen(
                                             },
                                         )
                                         DropdownMenuItem(
-                                            text = { Text(Str.delete) },
+                                            text = { Text(stringResource(Res.string.delete)) },
                                             leadingIcon = { Icon(Icons.Default.DeleteOutline, contentDescription = null) },
                                             onClick = {
                                                 openMenuSessionId = null
@@ -170,9 +190,9 @@ fun SessionsScreen(
 
     renameTarget?.let { target ->
         VettaTextInputDialog(
-            title = Str.renameSession,
+            title = stringResource(Res.string.rename_session),
             value = renameTitle,
-            label = Str.sessionName,
+            label = stringResource(Res.string.session_name),
             onValueChange = { renameTitle = it },
             onConfirm = {
                 onRenameSession(target.id, renameTitle)
@@ -184,9 +204,9 @@ fun SessionsScreen(
 
     deleteTarget?.let { target ->
         VettaConfirmDialog(
-            title = Str.deleteSession,
-            message = Str.deleteSessionConfirm,
-            confirmLabel = Str.delete,
+            title = stringResource(Res.string.delete_session),
+            message = stringResource(Res.string.delete_session_confirm),
+            confirmLabel = stringResource(Res.string.delete),
             onConfirm = {
                 onDeleteSession(target.id)
                 deleteTarget = null

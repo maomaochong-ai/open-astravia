@@ -20,7 +20,7 @@ data class DesktopDevice(
     val status: DeviceStatus,
     val channel: ConnectChannel = ConnectChannel.Lan,
     val latencyMs: Int? = null,
-    val connectedDuration: String? = null,
+    val connectedDurationMs: Long? = null,
     val cpu: String? = null,
     val ram: String? = null,
 )
@@ -29,8 +29,9 @@ data class SessionListItem(
     val id: String,
     val title: String,
     val subtitle: String,
-    val sourceLabel: String,
-    val timeLabel: String,
+    /** Device or model name; null falls back to the kind's generic label. */
+    val sourceLabel: String?,
+    val updatedAtEpochMs: Long,
     val isCloud: Boolean,
     val favorite: Boolean = false,
 )

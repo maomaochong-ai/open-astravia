@@ -37,7 +37,23 @@ import org.vetta.android.domain.session.PendingQuestion
 import org.vetta.android.domain.session.ToolTrace
 import org.vetta.android.domain.session.SessionStore
 import org.vetta.android.domain.session.nowEpochMs
-import org.vetta.android.ui.i18n.Str
+import org.vetta.android.resources.Res
+import org.vetta.android.resources.desktop_session_missing_hint
+import org.vetta.android.resources.desktop_unavailable
+import org.vetta.android.resources.desktop_unavailable_hint
+import org.vetta.android.resources.error_desktop_failed_message
+import org.vetta.android.resources.error_desktop_failed_title
+import org.vetta.android.resources.error_relogin_title
+import org.vetta.android.resources.invalid_pairing_invite
+import org.vetta.android.resources.invalid_pairing_invite_hint
+import org.vetta.android.resources.no_models
+import org.vetta.android.resources.no_models_hint
+import org.vetta.android.resources.remote_connect_failed
+import org.vetta.android.resources.remote_connect_failed_hint
+import org.vetta.android.resources.session_expired
+import org.vetta.android.resources.signed_out
+import org.vetta.android.ui.i18n.UiText
+import org.vetta.android.ui.i18n.uiText
 import org.vetta.android.ui.navigation.AppRoute
 import org.vetta.android.ui.navigation.ChatSurface
 import org.vetta.android.ui.navigation.MainTab
@@ -137,7 +153,7 @@ class AppViewModel(
         viewModelScope.launch {
             container.unauthorizedEpoch.collect { epoch ->
                 if (epoch > 0) {
-                    forceLogout(keepLocalSessions = true, message = "登录已失效，请重新登录")
+                    forceLogout(keepLocalSessions = true, message = uiText(Res.string.session_expired))
                 }
             }
         }
@@ -172,8 +188,8 @@ class AppViewModel(
                             route = AppRoute.Login,
                             authError =
                                 UiError(
-                                    title = "需要重新登录",
-                                    message = "登录已失效，请重新登录",
+                                    title = uiText(Res.string.error_relogin_title),
+                                    message = uiText(Res.string.session_expired),
                                     action = UiErrorAction.None,
                                 ),
                         )
@@ -315,8 +331,8 @@ class AppViewModel(
                     route = AppRoute.Welcome,
                     globalError =
                         UiError(
-                            title = Str.invalidPairingInvite,
-                            message = Str.invalidPairingInviteHint,
+                            title = uiText(Res.string.invalid_pairing_invite),
+                            message = uiText(Res.string.invalid_pairing_invite_hint),
                             action = UiErrorAction.None,
                         ),
                 )
@@ -370,8 +386,8 @@ class AppViewModel(
                     it.copy(
                         globalError =
                             UiError(
-                                title = Str.remoteConnectFailed,
-                                message = Str.remoteConnectFailedHint,
+                                title = uiText(Res.string.remote_connect_failed),
+                                message = uiText(Res.string.remote_connect_failed_hint),
                                 action = UiErrorAction.None,
                             ),
                     )
@@ -435,7 +451,7 @@ class AppViewModel(
     }
 
     fun openCloudChat(sessionId: String? = null) {
-        openChat(sessionId = sessionId, surface = ChatSurface.Cloud, title = Str.channelCloud)
+        openChat(sessionId = sessionId, surface = ChatSurface.Cloud)
     }
 
     fun navigateBackFromSecondary() {
@@ -484,25 +500,14 @@ class AppViewModel(
                     },
                 sourceLabel =
                     if (s.origin == ConversationOrigin.Desktop) {
-                        remoteDevice?.name ?: Str.desktopDevice
+                        remoteDevice?.name
                     } else {
-                        s.modelName?.takeIf { it.isNotBlank() } ?: Str.filterCloud
+                        s.modelName?.takeIf { it.isNotBlank() }
                     },
-                timeLabel = relativeTime(s.updatedAtEpochMs),
+                updatedAtEpochMs = s.updatedAtEpochMs,
                 isCloud = s.origin == ConversationOrigin.Cloud,
             )
         }
-
-    private fun relativeTime(epochMs: Long): String {
-        val delta = (nowEpochMs() - epochMs).coerceAtLeast(0)
-        val minutes = delta / 60_000
-        return when {
-            minutes < 1 -> "刚刚"
-            minutes < 60 -> "${minutes} 分钟前"
-            minutes < 60 * 24 -> "${minutes / 60} 小时前"
-            else -> "${minutes / (60 * 24)} 天前"
-        }
-    }
 
     fun setLoginModeEmail(email: Boolean) {
         _state.update { it.copy(loginModeEmail = email) }
@@ -631,7 +636,7 @@ class AppViewModel(
         }
     }
 
-    private suspend fun forceLogout(keepLocalSessions: Boolean, message: String? = null) {
+    private suspend fun forceLogout(keepLocalSessions: Boolean, message: UiText? = null) {
         streamJob?.cancel()
         container.tokenStore.clear()
         if (!keepLocalSessions) {
@@ -659,7 +664,7 @@ class AppViewModel(
                 modelPickerOpen = false,
                 authError =
                     message?.let {
-                        UiError(title = "已退出", message = it, action = UiErrorAction.None)
+                        UiError(title = uiText(Res.string.signed_out), message = it, action = UiErrorAction.None)
                     },
             )
         }
@@ -719,8 +724,8 @@ class AppViewModel(
                     it.copy(
                         globalError =
                             UiError(
-                                title = Str.desktopUnavailable,
-                                message = Str.desktopUnavailableHint,
+                                title = uiText(Res.string.desktop_unavailable),
+                                message = uiText(Res.string.desktop_unavailable_hint),
                                 action = UiErrorAction.None,
                             ),
                     )
@@ -730,7 +735,7 @@ class AppViewModel(
             _state.update { it.copy(mainAccessGranted = true) }
             val session =
                 container.sessionStore.createSession(
-                    title = Str.conversationWith.replace("%s", device.name),
+                    title = device.name,
                     origin = ConversationOrigin.Desktop,
                     remoteDeviceId = deviceId,
                 )
@@ -795,8 +800,8 @@ class AppViewModel(
                         it.copy(
                             globalError =
                                 UiError(
-                                    title = Str.desktopUnavailable,
-                                    message = Str.desktopSessionMissingHint,
+                                    title = uiText(Res.string.desktop_unavailable),
+                                    message = uiText(Res.string.desktop_session_missing_hint),
                                     action = UiErrorAction.None,
                                 ),
                         )
@@ -969,7 +974,11 @@ class AppViewModel(
                                                 _state.update {
                                                     it.copy(
                                                         streamingStatus = null,
-                                                        globalError = UiError(title = "桌面执行失败", message = event.detail ?: "请在电脑端检查模型配置和运行日志后重试"),
+                                                        globalError =
+                                                            UiError(
+                                                                title = uiText(Res.string.error_desktop_failed_title),
+                                                                message = event.detail?.let(UiText::Raw) ?: uiText(Res.string.error_desktop_failed_message),
+                                                            ),
                                                     )
                                                 }
                                             "thinking", "running", "reconnecting" -> _state.update { it.copy(streamingStatus = event.value) }
@@ -992,7 +1001,7 @@ class AppViewModel(
                                             assistantMsg.copy(
                                                 content = assembled,
                                                 status = MessageStatus.Error,
-                                                errorMessage = ui.message,
+                                                errorMessage = ui.message.key,
                                                 toolEvents = toolEvents,
                                                 usage = usage,
                                                 contextPercent = contextPercent,
@@ -1030,7 +1039,7 @@ class AppViewModel(
                                         } else {
                                             MessageStatus.Error
                                         },
-                                    errorMessage = if (t is kotlinx.coroutines.CancellationException) null else ui.message,
+                                    errorMessage = if (t is kotlinx.coroutines.CancellationException) null else ui.message.key,
                                     usage = usage,
                                     contextPercent = contextPercent,
                                     pendingQuestion = null,
@@ -1220,8 +1229,8 @@ class AppViewModel(
             it.copy(
                 globalError =
                     UiError(
-                        title = Str.noModels,
-                        message = Str.noModelsHint,
+                        title = uiText(Res.string.no_models),
+                        message = uiText(Res.string.no_models_hint),
                         action = UiErrorAction.OpenPlan,
                     ),
             )

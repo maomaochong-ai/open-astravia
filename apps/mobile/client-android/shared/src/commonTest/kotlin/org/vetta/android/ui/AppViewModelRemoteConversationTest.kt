@@ -33,7 +33,12 @@ import org.vetta.android.domain.session.ConversationOrigin
 import org.vetta.android.domain.session.LocalMessage
 import org.vetta.android.domain.session.MessageStatus
 import org.vetta.android.domain.session.PendingQuestion
-import org.vetta.android.ui.i18n.Str
+import org.vetta.android.resources.Res
+import org.vetta.android.resources.desktop_unavailable
+import org.vetta.android.resources.invalid_pairing_invite
+import org.vetta.android.resources.invalid_pairing_invite_hint
+import org.vetta.android.resources.remote_connect_failed
+import org.vetta.android.ui.i18n.uiText
 import org.vetta.android.ui.navigation.AppRoute
 import org.vetta.android.ui.navigation.MainTab
 import kotlin.test.AfterTest
@@ -211,7 +216,7 @@ class AppViewModelRemoteConversationTest {
             advanceUntilIdle()
 
             assertTrue(container.sessionStore.sessions.value.isEmpty())
-            assertEquals("桌面设备不可用", viewModel.state.value.globalError?.title)
+            assertEquals(uiText(Res.string.desktop_unavailable), viewModel.state.value.globalError?.title)
         }
 
     @Test
@@ -305,7 +310,7 @@ class AppViewModelRemoteConversationTest {
             advanceUntilIdle()
 
             assertFalse(viewModel.state.value.remoteConnecting)
-            assertEquals(Str.remoteConnectFailed, viewModel.state.value.globalError?.title)
+            assertEquals(uiText(Res.string.remote_connect_failed), viewModel.state.value.globalError?.title)
         }
 
     @Test
@@ -320,8 +325,8 @@ class AppViewModelRemoteConversationTest {
 
             assertEquals(0, gateway.connectCalls)
             assertEquals(AppRoute.Welcome, viewModel.state.value.route)
-            assertEquals(Str.invalidPairingInvite, viewModel.state.value.globalError?.title)
-            assertEquals(Str.invalidPairingInviteHint, viewModel.state.value.globalError?.message)
+            assertEquals(uiText(Res.string.invalid_pairing_invite), viewModel.state.value.globalError?.title)
+            assertEquals(uiText(Res.string.invalid_pairing_invite_hint), viewModel.state.value.globalError?.message)
         }
 
     @Test
@@ -383,7 +388,7 @@ class AppViewModelRemoteConversationTest {
 
             assertEquals("existing-pairing", preferences.remotePairingId)
             assertEquals(existingIdentity, preferences.remoteIdentitySecret)
-            assertEquals(Str.remoteConnectFailed, viewModel.state.value.globalError?.title)
+            assertEquals(uiText(Res.string.remote_connect_failed), viewModel.state.value.globalError?.title)
         }
 
     @Test

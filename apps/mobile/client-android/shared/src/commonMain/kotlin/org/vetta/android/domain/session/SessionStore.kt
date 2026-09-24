@@ -30,6 +30,10 @@ interface SessionStore {
     suspend fun replaceMessages(sessionId: String, messages: List<LocalMessage>)
 
     companion object {
-        const val DEFAULT_TITLE = "新对话"
+        /** An untitled session; the screens show a localized "New chat". */
+        const val DEFAULT_TITLE = ""
+
+        /** What untitled sessions were stored as before titles were localized. */
+        internal const val LEGACY_DEFAULT_TITLE = "新对话"
     }
 }

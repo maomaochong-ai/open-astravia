@@ -51,7 +51,34 @@ import org.vetta.android.domain.error.UiError
 import org.vetta.android.ui.components.PrimaryBlackButton
 import org.vetta.android.ui.components.VettaTextField
 import org.vetta.android.ui.components.VettaErrorBanner
-import org.vetta.android.ui.i18n.Str
+import org.jetbrains.compose.resources.stringResource
+import org.vetta.android.resources.Res
+import org.vetta.android.resources.account
+import org.vetta.android.resources.back
+import org.vetta.android.resources.connecting_desktop
+import org.vetta.android.resources.email
+import org.vetta.android.resources.feature_cloud
+import org.vetta.android.resources.feature_cloud_desc
+import org.vetta.android.resources.feature_desktop
+import org.vetta.android.resources.feature_desktop_desc
+import org.vetta.android.resources.feature_secure
+import org.vetta.android.resources.feature_secure_desc
+import org.vetta.android.resources.feature_status
+import org.vetta.android.resources.feature_status_desc
+import org.vetta.android.resources.get_started
+import org.vetta.android.resources.hide_password
+import org.vetta.android.resources.logging_in
+import org.vetta.android.resources.login_action
+import org.vetta.android.resources.login_subtitle
+import org.vetta.android.resources.login_title
+import org.vetta.android.resources.password
+import org.vetta.android.resources.scan_pairing
+import org.vetta.android.resources.show_password
+import org.vetta.android.resources.skip_for_now
+import org.vetta.android.resources.use_account_login
+import org.vetta.android.resources.use_email_login
+import org.vetta.android.resources.welcome_subtitle
+import org.vetta.android.resources.welcome_title
 import org.vetta.android.ui.remote.PairingScannerButton
 import org.vetta.android.ui.theme.vettaExtra
 
@@ -73,33 +100,33 @@ fun WelcomeScreen(
                 .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.Center,
     ) {
-        Text(Str.welcomeTitle, style = MaterialTheme.typography.headlineSmall)
+        Text(stringResource(Res.string.welcome_title), style = MaterialTheme.typography.headlineSmall)
         Spacer(Modifier.height(12.dp))
         Text(
-            Str.welcomeSubtitle,
+            stringResource(Res.string.welcome_subtitle),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.vettaExtra.secondaryText,
         )
         Spacer(Modifier.height(28.dp))
-        FeatureRow(Icons.Default.Computer, Str.featureDesktop, Str.featureDesktopDesc)
-        FeatureRow(Icons.Default.Cloud, Str.featureCloud, Str.featureCloudDesc)
-        FeatureRow(Icons.Default.Schedule, Str.featureStatus, Str.featureStatusDesc)
-        FeatureRow(Icons.Default.Lock, Str.featureSecure, Str.featureSecureDesc)
+        FeatureRow(Icons.Default.Computer, stringResource(Res.string.feature_desktop), stringResource(Res.string.feature_desktop_desc))
+        FeatureRow(Icons.Default.Cloud, stringResource(Res.string.feature_cloud), stringResource(Res.string.feature_cloud_desc))
+        FeatureRow(Icons.Default.Schedule, stringResource(Res.string.feature_status), stringResource(Res.string.feature_status_desc))
+        FeatureRow(Icons.Default.Lock, stringResource(Res.string.feature_secure), stringResource(Res.string.feature_secure_desc))
         Spacer(Modifier.height(28.dp))
-        PrimaryBlackButton(text = Str.getStarted, onClick = onLogin)
+        PrimaryBlackButton(text = stringResource(Res.string.get_started), onClick = onLogin)
         Spacer(Modifier.height(10.dp))
         if (!connecting) {
             PairingScannerButton(
                 onScanned = onScanPairing,
                 modifier = Modifier.fillMaxWidth().height(48.dp),
-                label = Str.scanPairing,
+                label = stringResource(Res.string.scan_pairing),
             )
         }
         TextButton(
             onClick = onSkip,
             modifier = Modifier.align(Alignment.CenterHorizontally),
         ) {
-            Text(Str.skipForNow, color = MaterialTheme.vettaExtra.secondaryText)
+            Text(stringResource(Res.string.skip_for_now), color = MaterialTheme.vettaExtra.secondaryText)
         }
         if (error != null) {
             Spacer(Modifier.height(12.dp))
@@ -114,7 +141,7 @@ fun WelcomeScreen(
                 CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                 Spacer(Modifier.width(10.dp))
                 Text(
-                    Str.connectingDesktop,
+                    stringResource(Res.string.connecting_desktop),
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.vettaExtra.secondaryText,
                 )
@@ -166,10 +193,10 @@ fun LoginScreen(
         containerColor = MaterialTheme.vettaExtra.pageBackground,
         topBar = {
             TopAppBar(
-                title = { Text(Str.loginTitle, style = MaterialTheme.typography.titleMedium) },
+                title = { Text(stringResource(Res.string.login_title), style = MaterialTheme.typography.titleMedium) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = Str.back)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.back))
                     }
                 },
                 colors =
@@ -190,7 +217,7 @@ fun LoginScreen(
                 verticalArrangement = Arrangement.Top,
         ) {
             Text(
-                Str.loginSubtitle,
+                stringResource(Res.string.login_subtitle),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.vettaExtra.secondaryText,
             )
@@ -204,7 +231,7 @@ fun LoginScreen(
                 onValueChange = { account = it },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                label = { Text(if (loginModeEmail) Str.email else Str.account) },
+                label = { Text(if (loginModeEmail) stringResource(Res.string.email) else stringResource(Res.string.account)) },
                 keyboardOptions =
                     KeyboardOptions(
                         keyboardType = if (loginModeEmail) KeyboardType.Email else KeyboardType.Text,
@@ -217,7 +244,7 @@ fun LoginScreen(
                 onValueChange = { password = it },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                label = { Text(Str.password) },
+                label = { Text(stringResource(Res.string.password)) },
                 visualTransformation =
                     if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                 trailingIcon = {
@@ -225,7 +252,7 @@ fun LoginScreen(
                         Icon(
                             if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
                             contentDescription =
-                                if (passwordVisible) Str.hidePassword else Str.showPassword,
+                                if (passwordVisible) stringResource(Res.string.hide_password) else stringResource(Res.string.show_password),
                         )
                     }
                 },
@@ -245,7 +272,7 @@ fun LoginScreen(
             )
             Spacer(Modifier.height(20.dp))
             PrimaryBlackButton(
-                text = if (loading) Str.loggingIn else Str.loginAction,
+                text = if (loading) stringResource(Res.string.logging_in) else stringResource(Res.string.login_action),
                 onClick = { onLogin(account.trim(), password) },
                 enabled = !loading && account.isNotBlank() && password.isNotBlank(),
             )
@@ -253,7 +280,7 @@ fun LoginScreen(
                 onClick = { onToggleMode(!loginModeEmail) },
                 modifier = Modifier.align(Alignment.End),
             ) {
-                Text(if (loginModeEmail) Str.useAccountLogin else Str.useEmailLogin)
+                Text(if (loginModeEmail) stringResource(Res.string.use_account_login) else stringResource(Res.string.use_email_login))
             }
         }
     }

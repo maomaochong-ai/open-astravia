@@ -88,6 +88,10 @@ kotlin {
     }
 }
 
+compose.resources {
+    packageOfResClass = "org.vetta.android.resources"
+}
+
 dependencies {
     androidRuntimeClasspath(libs.compose.uiTooling)
 }

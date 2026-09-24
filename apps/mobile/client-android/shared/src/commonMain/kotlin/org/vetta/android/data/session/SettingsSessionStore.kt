@@ -106,7 +106,7 @@ class SettingsSessionStore(
                 dto = dto.copy(updatedAtEpochMs = nowEpochMs())
                 if (
                     message.role == ChatRole.User &&
-                    dto.title == SessionStore.DEFAULT_TITLE &&
+                    dto.untitled &&
                     message.content.isNotBlank()
                 ) {
                     dto = dto.copy(title = message.content.trim().take(40))
@@ -264,10 +264,13 @@ private data class MessageImageDto(
     val base64Data: String,
 )
 
+private val SessionDto.untitled: Boolean
+    get() = title.isBlank() || title == SessionStore.LEGACY_DEFAULT_TITLE
+
 private fun SessionDto.toDomain() =
     ChatSession(
         id = id,
-        title = title,
+        title = if (untitled) SessionStore.DEFAULT_TITLE else title,
         modelId = modelId,
         modelName = modelName,
         createdAtEpochMs = createdAtEpochMs,

@@ -38,7 +38,12 @@ import org.vetta.android.ui.connect.DeviceDetailScreen
 import org.vetta.android.ui.connect.DiscoverConnectScreen
 import org.vetta.android.ui.connect.NewConversationScreen
 import org.vetta.android.ui.home.HomeScreen
-import org.vetta.android.ui.i18n.Str
+import org.jetbrains.compose.resources.stringResource
+import org.vetta.android.resources.Res
+import org.vetta.android.resources.channel_cloud
+import org.vetta.android.resources.pair_desktop
+import org.vetta.android.resources.pending_desktop_question
+import org.vetta.android.ui.i18n.sessionTitle
 import org.vetta.android.ui.me.MeScreen
 import org.vetta.android.ui.me.PlanScreen
 import org.vetta.android.ui.me.SettingsScreen
@@ -243,10 +248,14 @@ fun RootApp(
                 val selected =
                     state.models.firstOrNull { it.id == state.selectedModelId }
                         ?: state.models.firstOrNull()
+                val session = sessions.firstOrNull { it.id == state.currentSessionId }
                 val title =
                     route.title.ifBlank {
-                        sessions.firstOrNull { it.id == state.currentSessionId }?.title
-                            ?: if (route.surface == ChatSurface.Cloud) Str.channelCloud else Str.pairDesktop
+                        when {
+                            session != null -> sessionTitle(session.title)
+                            route.surface == ChatSurface.Cloud -> stringResource(Res.string.channel_cloud)
+                            else -> stringResource(Res.string.pair_desktop)
+                        }
                     }
                 ChatScreen(
                     title = title,
@@ -340,7 +349,7 @@ private fun PendingQuestionNotice(
         tonalElevation = 3.dp,
     ) {
         TextButton(onClick = onOpen) {
-            Text(Str.pendingDesktopQuestion)
+            Text(stringResource(Res.string.pending_desktop_question))
         }
     }
 }

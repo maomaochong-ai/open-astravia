@@ -18,12 +18,12 @@ class ConversationRouter(
         when (session.origin) {
             ConversationOrigin.Cloud -> {
                 val modelId = selectedModelId ?: session.modelId
-                    ?: throw RemoteConversationException("当前没有可用的云端模型")
+                    ?: throw RemoteConversationException("No cloud model available")
                 cloudStream(modelId, messages)
             }
             ConversationOrigin.Desktop -> {
                 val deviceId = session.remoteDeviceId
-                    ?: throw RemoteConversationException("此会话缺少桌面设备信息，请重新创建")
+                    ?: throw RemoteConversationException("Session has no desktop device")
                 remoteGateway.stream(session.id, deviceId, session.remoteSessionId, messages)
             }
         }
