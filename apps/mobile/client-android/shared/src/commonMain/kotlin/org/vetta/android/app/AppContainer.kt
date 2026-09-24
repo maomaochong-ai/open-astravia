@@ -19,6 +19,8 @@ import org.vetta.android.domain.device.DesktopGateway
 import org.vetta.android.domain.device.MirrorDesktopGateway
 import org.vetta.android.domain.remote.connection.KtorWebSocketRemoteTransport
 import org.vetta.android.domain.remote.connection.PlatformRemoteLogger
+import org.vetta.android.domain.remote.pairing.SecretStore
+import org.vetta.android.domain.remote.pairing.SettingsSecretStore
 import org.vetta.android.domain.session.SessionStore
 import org.vetta.android.domain.session.nowEpochMs
 import org.vetta.android.domain.work.DesktopMirror
@@ -73,18 +75,19 @@ class AppContainer(
 
         /**
          * The desktop mirror's device side. The platform entry point passes a persistent
-         * [cache] and the device's name; previews fall back to memory.
+         * [cache], Keystore-backed [secrets] and the device's name; previews fall back to plain storage.
          */
         fun defaultMirrorPlatform(
             preferences: AppPreferences,
             scope: CoroutineScope,
             cache: SessionCache = MemorySessionCache(),
+            secrets: SecretStore = SettingsSecretStore(Settings()),
             deviceName: String = "Android",
             onTurnEnd: () -> Unit = {},
         ): MirrorPlatform =
             MirrorPlatform(
                 settings = Settings(),
-                secrets = Settings(),
+                secrets = secrets,
                 cache = cache,
                 createTransport = { url, pairingSecret -> KtorWebSocketRemoteTransport(url, pairingSecret, scope) },
                 deviceName = deviceName,

@@ -15,6 +15,7 @@ import kotlinx.coroutines.withTimeout
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.vetta.android.domain.remote.pairing.SettingsSecretStore
 import org.vetta.android.data.remote.MemorySessionCache
 import org.vetta.android.domain.remote.RemoteSessionStatus
 import org.vetta.android.domain.remote.TranscriptItem
@@ -50,7 +51,7 @@ class RemoteLiveConversationE2ETest {
                 DesktopMirror(
                     MirrorPlatform(
                         settings = MapSettings(),
-                        secrets = MapSettings(),
+                        secrets = SettingsSecretStore(MapSettings()),
                         cache = MemorySessionCache(),
                         createTransport = { url, secret -> KtorWebSocketRemoteTransport(url, secret, scope) },
                         deviceName = "Android live E2E",

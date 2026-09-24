@@ -51,7 +51,7 @@ data class StoredDesktop(
  */
 class PairingStore(
     private val settings: Settings,
-    private val secrets: Settings,
+    private val secrets: SecretStore,
 ) {
     private var identity: RemoteIdentityKeyPair? = null
     private var current: String? = null
@@ -65,14 +65,14 @@ class PairingStore(
      */
     fun load(legacyIdentitySecret: String? = null) {
         identity =
-            (secrets.getStringOrNull(IDENTITY_KEY) ?: legacyIdentitySecret)
+            (secrets.get(IDENTITY_KEY) ?: legacyIdentitySecret)
                 ?.let { secret ->
                     runCatching { RemoteCrypto.identityKeyPairFromSecret(RemoteCrypto.fromBase64Url(secret)) }
                         .getOrNull()
-                        ?.also { secrets[IDENTITY_KEY] = secret }
+                        ?.also { secrets.set(IDENTITY_KEY, secret) }
                 }
                 ?: RemoteCrypto.generateIdentityKeyPair().also {
-                    secrets[IDENTITY_KEY] = RemoteCrypto.toBase64Url(it.secretKey)
+                    secrets.set(IDENTITY_KEY, RemoteCrypto.toBase64Url(it.secretKey))
                 }
         desktops = settings.getStringOrNull(DESKTOPS_KEY)?.let(::parseDesktops).orEmpty()
         current = settings.getStringOrNull(CURRENT_KEY) ?: desktops.firstOrNull()?.desktopIdentityKey
@@ -82,7 +82,7 @@ class PairingStore(
 
     fun getCurrent(): DesktopRecord? {
         val stored = desktops.firstOrNull { it.desktopIdentityKey == current } ?: return null
-        val secret = secrets.getStringOrNull(secretKey(stored.desktopIdentityKey)) ?: return null
+        val secret = secrets.get(secretKey(stored.desktopIdentityKey)) ?: return null
         return stored.withSecret(secret)
     }
 
@@ -90,7 +90,7 @@ class PairingStore(
         get() = desktops.any { it.desktopIdentityKey == current }
 
     fun save(record: DesktopRecord) {
-        secrets[secretKey(record.desktopIdentityKey)] = record.mobileSecret
+        secrets.set(secretKey(record.desktopIdentityKey), record.mobileSecret)
         desktops = listOf(record.stored) + desktops.filterNot { it.desktopIdentityKey == record.desktopIdentityKey }
         current = record.desktopIdentityKey
         persist()

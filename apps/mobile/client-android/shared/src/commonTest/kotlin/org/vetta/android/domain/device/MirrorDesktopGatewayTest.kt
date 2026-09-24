@@ -5,6 +5,7 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import org.vetta.android.domain.remote.pairing.SettingsSecretStore
 import org.vetta.android.data.remote.MemorySessionCache
 import org.vetta.android.domain.remote.protocol.RemoteRequestMethod
 import org.vetta.android.domain.work.DesktopMirror
@@ -37,7 +38,7 @@ class MirrorDesktopGatewayTest {
             DesktopMirror(
                 MirrorPlatform(
                     settings = MapSettings(),
-                    secrets = MapSettings(),
+                    secrets = SettingsSecretStore(MapSettings()),
                     cache = MemorySessionCache(),
                     createTransport = desktop.createTransport,
                     deviceName = "Pixel",

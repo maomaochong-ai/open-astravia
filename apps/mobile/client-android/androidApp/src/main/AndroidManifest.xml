@@ -5,6 +5,8 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <!-- Hold-to-talk dictation in the composer. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- The short buzz when a desktop task finishes (a setting). -->
+    <uses-permission android:name="android.permission.VIBRATE" />
 
     <!-- Lets the app find the system speech recognizer (package visibility, Android 11+). -->
     <queries>

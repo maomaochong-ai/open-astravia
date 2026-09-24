@@ -10,6 +10,7 @@ import kotlinx.coroutines.launch
 import org.vetta.android.domain.remote.RemoteQuestionAnswer
 import org.vetta.android.domain.remote.RemoteSessionState
 import org.vetta.android.domain.work.DesktopMirror
+import org.vetta.android.domain.work.MirrorPreferences
 import org.vetta.android.domain.work.MirrorState
 import org.vetta.android.domain.work.ModelChoice
 import org.vetta.android.domain.work.PromptDraft
@@ -74,6 +75,16 @@ class WorkViewModel(private val mirror: DesktopMirror) : ViewModel(), WorkAction
 
     fun reconnect() {
         mirror.refreshLink()
+    }
+
+    fun setPreferences(update: (MirrorPreferences) -> MirrorPreferences) {
+        mirror.setPreferences(update)
+    }
+
+    /** Forgets the computer: its credential, and everything cached from it on this phone. */
+    fun unpair() {
+        mirror.unpair()
+        _drafts.value = emptyMap()
     }
 
     private var failedStart: NewSessionStart? = null

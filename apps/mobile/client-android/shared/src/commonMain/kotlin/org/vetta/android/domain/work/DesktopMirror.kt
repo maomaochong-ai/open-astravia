@@ -49,6 +49,7 @@ import org.vetta.android.domain.remote.pairing.PairingFlow
 import org.vetta.android.domain.remote.pairing.PairingFlowOptions
 import org.vetta.android.domain.remote.pairing.PairingPhase
 import org.vetta.android.domain.remote.pairing.PairingStore
+import org.vetta.android.domain.remote.pairing.SecretStore
 import org.vetta.android.domain.remote.pairing.StoredDesktop
 import org.vetta.android.domain.remote.protocol.RemoteCrypto
 import org.vetta.android.domain.remote.protocol.RemoteEvent
@@ -120,7 +121,7 @@ data class MirrorState(
 /** What the mirror needs from the device; tests swap in memory stores and a fake desktop. */
 class MirrorPlatform(
     val settings: Settings,
-    val secrets: Settings,
+    val secrets: SecretStore,
     val cache: SessionCache,
     val createTransport: RemoteTransportFactory,
     val deviceName: String,

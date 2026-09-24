@@ -290,6 +290,8 @@ class AppViewModel(
 
     fun openWorkSession(sessionId: String) = navigate(AppRoute.WorkSession(sessionId))
 
+    fun openWorkSettings() = navigate(AppRoute.WorkSettings)
+
     fun openWorkNewSession(projectCwd: String? = null, returnTo: String? = null) =
         navigate(AppRoute.WorkNewSession(projectCwd, returnTo))
 

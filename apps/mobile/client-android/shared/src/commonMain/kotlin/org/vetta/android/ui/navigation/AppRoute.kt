@@ -47,6 +47,9 @@ sealed class AppRoute {
      */
     data class WorkNewSession(val projectCwd: String? = null, val returnTo: String? = null) : AppRoute()
 
+    /** The paired computer, its link, and how the phone works with it. */
+    data object WorkSettings : AppRoute()
+
     /** One desktop session; `sessionId` may be the local id of one New Session is starting. */
     data class WorkSession(val sessionId: String) : AppRoute()
 

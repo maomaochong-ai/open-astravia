@@ -378,6 +378,25 @@
     <string name="work_kind_project">项目</string>
     <string name="work_project_all">所有项目</string>
     <string name="work_session_actions">会话操作</string>
+    <string name="work_settings_confirm_policy">手机确认策略</string>
+    <string name="work_settings_confirm_policy_hint">当电脑在改动重要文件时，何时提醒你在手机上确认</string>
+    <string name="work_settings_haptics">任务做完震动提醒</string>
+    <string name="work_settings_live_thinking">实时看到电脑思考</string>
+    <string name="work_settings_load">电脑负荷</string>
+    <string name="work_settings_load_idle">空闲</string>
+    <plurals name="work_settings_load_value">
+        <item quantity="other">%1$d 个任务处理中</item>
+    </plurals>
+    <string name="work_settings_online">已安全连接</string>
+    <string name="work_settings_policy_auto">全自动执行</string>
+    <string name="work_settings_policy_important">重要操作确认</string>
+    <string name="work_settings_policy_major">只在重大变动</string>
+    <string name="work_settings_rescan">重新扫码</string>
+    <string name="work_settings_scan">扫码连接电脑</string>
+    <string name="work_settings_title">电脑</string>
+    <string name="work_settings_unpair">解除配对</string>
+    <string name="work_settings_unpair_confirm">解除与这台电脑的配对？手机上缓存的对话会一起删除。</string>
+    <string name="work_settings_unpair_hint">删除这台电脑的连接凭据和手机上缓存的会话，之后需要重新扫码才能连接。</string>
     <string name="work_status_aborted">已停止</string>
     <string name="work_status_all">所有</string>
     <string name="work_status_done">已完成</string>

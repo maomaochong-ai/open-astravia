@@ -15,6 +15,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
+import org.vetta.android.domain.remote.pairing.SettingsSecretStore
 import org.vetta.android.data.remote.MemorySessionCache
 import org.vetta.android.domain.remote.RemoteSessionState
 import org.vetta.android.domain.remote.RemoteSessionStatus
@@ -74,7 +75,7 @@ class WorkViewModelTest {
         }
         val mirror =
             DesktopMirror(
-                MirrorPlatform(MapSettings(), MapSettings(), MemorySessionCache(), desktop.createTransport, "Pixel", { testScheduler.currentTime }),
+                MirrorPlatform(MapSettings(), SettingsSecretStore(MapSettings()), MemorySessionCache(), desktop.createTransport, "Pixel", { testScheduler.currentTime }),
                 backgroundScope,
             ).also { it.start() }
         assertTrue(mirror.pairWithCode(desktop.invite()))
@@ -140,7 +141,7 @@ class WorkViewModelTest {
             desktop.reachable = false
             val mirror =
                 DesktopMirror(
-                    MirrorPlatform(MapSettings(), MapSettings(), MemorySessionCache(), desktop.createTransport, "Pixel", { testScheduler.currentTime }),
+                    MirrorPlatform(MapSettings(), SettingsSecretStore(MapSettings()), MemorySessionCache(), desktop.createTransport, "Pixel", { testScheduler.currentTime }),
                     backgroundScope,
                 ).also { it.start() }
             val vm = WorkViewModel(mirror)
@@ -155,5 +156,18 @@ class WorkViewModelTest {
             assertEquals(start, vm.takeFailedStart())
             assertNull(vm.takeFailedStart(), "put back once, not every time New Session opens")
             assertNull(vm.startSession(start.copy(draft = PromptDraft("  "))) {})
+        }
+
+    @Test
+    fun unpairingForgetsTheComputerAndTheDrafts() =
+        runTest(dispatcher) {
+            val (_, vm) = paired()
+            vm.setDraft("s1", PromptDraft("写到一半"))
+            vm.setPreferences { it.copy(haptics = false) }
+            assertEquals(false, vm.state.value.preferences.haptics)
+
+            vm.unpair()
+            assertTrue(vm.drafts.value.isEmpty())
+            assertTrue(!vm.state.value.paired && vm.state.value.sessions.isEmpty())
         }
 }

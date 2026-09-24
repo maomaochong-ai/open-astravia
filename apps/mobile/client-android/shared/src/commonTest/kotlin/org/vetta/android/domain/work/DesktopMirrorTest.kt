@@ -22,6 +22,7 @@ import org.vetta.android.domain.remote.RemoteQuestionAnswer
 import org.vetta.android.domain.remote.RemoteSessionStatus
 import org.vetta.android.domain.remote.TranscriptAttachment
 import org.vetta.android.domain.remote.TranscriptItem
+import org.vetta.android.domain.remote.pairing.SettingsSecretStore
 import org.vetta.android.domain.remote.pairing.PairingStore
 import org.vetta.android.domain.remote.protocol.RemoteCrypto
 import org.vetta.android.domain.remote.protocol.RemoteErrorCode
@@ -50,7 +51,7 @@ class DesktopMirrorTest {
         DesktopMirror(
             MirrorPlatform(
                 settings = device.settings,
-                secrets = device.secrets,
+                secrets = SettingsSecretStore(device.secrets),
                 cache = device.cache,
                 createTransport = desktop.createTransport,
                 deviceName = "Pixel",

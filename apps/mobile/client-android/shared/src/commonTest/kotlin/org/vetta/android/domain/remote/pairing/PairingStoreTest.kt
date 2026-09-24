@@ -13,7 +13,7 @@ class PairingStoreTest {
     fun persistsSecretsApartAndRevokesCleanly() {
         val settings = MapSettings()
         val secrets = MapSettings()
-        val store = PairingStore(settings, secrets).apply { load() }
+        val store = PairingStore(settings, SettingsSecretStore(secrets)).apply { load() }
         val identity = store.getIdentity()
         assertFalse(store.hasCurrent)
 
@@ -22,7 +22,7 @@ class PairingStoreTest {
         assertEquals("s1", store.getCurrent()?.mobileSecret)
         store.update("k1") { it.copy(lastEventSequence = 7, lanEndpoints = listOf("b:2")) }
 
-        val reloaded = PairingStore(settings, secrets).apply { load() }
+        val reloaded = PairingStore(settings, SettingsSecretStore(secrets)).apply { load() }
         assertContentEquals(identity.publicKey, reloaded.getIdentity().publicKey)
         assertEquals(7L, reloaded.getCurrent()?.lastEventSequence)
         assertEquals(listOf("b:2"), reloaded.getCurrent()?.lanEndpoints)
@@ -36,17 +36,17 @@ class PairingStoreTest {
     fun adoptsALegacyIdentityOnlyWhenNoneIsStored() {
         val secrets = MapSettings()
         val legacy = "HyYtNDtCSVBXXmVsc3qBiI-WnaSrsrnAx87V3OPq8fg"
-        val store = PairingStore(MapSettings(), secrets).apply { load(legacyIdentitySecret = legacy) }
+        val store = PairingStore(MapSettings(), SettingsSecretStore(secrets)).apply { load(legacyIdentitySecret = legacy) }
         assertEquals(legacy, secrets.getStringOrNull(PairingStore.IDENTITY_KEY))
 
-        val other = PairingStore(MapSettings(), secrets).apply { load(legacyIdentitySecret = "not-a-key") }
+        val other = PairingStore(MapSettings(), SettingsSecretStore(secrets)).apply { load(legacyIdentitySecret = "not-a-key") }
         assertContentEquals(store.getIdentity().publicKey, other.getIdentity().publicKey)
     }
 
     @Test
     fun aCorruptLegacyIdentityIsReplacedByAFreshOne() {
         val secrets = MapSettings()
-        PairingStore(MapSettings(), secrets).load(legacyIdentitySecret = "not-a-key")
+        PairingStore(MapSettings(), SettingsSecretStore(secrets)).load(legacyIdentitySecret = "not-a-key")
         assertTrue(secrets.getStringOrNull(PairingStore.IDENTITY_KEY).orEmpty().length > 10)
     }
 }

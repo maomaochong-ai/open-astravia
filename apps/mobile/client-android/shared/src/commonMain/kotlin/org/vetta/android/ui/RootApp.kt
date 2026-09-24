@@ -59,6 +59,9 @@ import org.vetta.android.ui.navigation.hasInAppBackDestination
 import org.vetta.android.ui.sessions.SessionsScreen
 import org.vetta.android.ui.theme.VettaTheme
 import org.vetta.android.ui.work.NewSessionScreen
+import org.vetta.android.ui.work.WorkSettingsScreen
+import org.vetta.android.resources.work_settings_rescan
+import org.vetta.android.resources.work_settings_scan
 import org.vetta.android.ui.work.SessionScreen
 import org.vetta.android.resources.new_session_title
 import androidx.compose.material.icons.Icons
@@ -220,6 +223,7 @@ fun RootApp(
                                     onRefresh = work::refresh,
                                     onReconnect = work::reconnect,
                                     onNewSession = { vm.openWorkNewSession() },
+                                    onSettings = vm::openWorkSettings,
                                     pairing = {
                                         if (state.remoteConnecting) {
                                             CircularProgressIndicator()
@@ -354,6 +358,23 @@ fun RootApp(
                             enabled = !workState.isStarting(route.sessionId),
                             modifier = Modifier.testTag("chat.newSession"),
                         ) { Icon(Icons.Outlined.EditNote, contentDescription = stringResource(Res.string.new_session_title)) }
+                    },
+                )
+            AppRoute.WorkSettings ->
+                WorkSettingsScreen(
+                    state = workState,
+                    onPreferences = work::setPreferences,
+                    onUnpair = work::unpair,
+                    onBack = vm::navigateBackFromSecondary,
+                    pairing = {
+                        if (state.remoteConnecting) {
+                            CircularProgressIndicator(Modifier.padding(12.dp))
+                        } else {
+                            PairingScannerButton(
+                                onScanned = { vm.connectDesktop(it, openDetail = false) },
+                                label = stringResource(if (workState.paired) Res.string.work_settings_rescan else Res.string.work_settings_scan),
+                            )
+                        }
                     },
                 )
             is AppRoute.WorkNewSession -> {

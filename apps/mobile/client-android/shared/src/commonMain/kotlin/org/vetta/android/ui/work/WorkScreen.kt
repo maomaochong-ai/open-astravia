@@ -40,6 +40,7 @@ import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.outlined.LaptopChromebook
 import androidx.compose.material.icons.outlined.EditNote
 import androidx.compose.material.icons.outlined.PushPin
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -105,6 +106,7 @@ import org.vetta.android.resources.work_kind_conversation
 import org.vetta.android.resources.work_kind_project
 import org.vetta.android.resources.work_project_all
 import org.vetta.android.resources.work_status_all
+import org.vetta.android.resources.work_settings_title
 import org.vetta.android.resources.work_title
 import org.vetta.android.resources.work_unpaired_description
 import org.vetta.android.resources.work_unpaired_title
@@ -129,6 +131,7 @@ fun WorkScreen(
     onReconnect: () -> Unit,
     pairing: @Composable () -> Unit,
     onNewSession: () -> Unit = {},
+    onSettings: () -> Unit = {},
 ) {
     Scaffold(
         containerColor = MaterialTheme.vettaExtra.pageBackground,
@@ -144,6 +147,9 @@ fun WorkScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = onSettings, modifier = Modifier.testTag("work.settings")) {
+                        Icon(Icons.Outlined.Settings, contentDescription = stringResource(Res.string.work_settings_title))
+                    }
                     if (state.paired) {
                         IconButton(onClick = onNewSession, modifier = Modifier.testTag("work.newSession")) {
                             Icon(Icons.Outlined.EditNote, contentDescription = stringResource(Res.string.new_session_title))

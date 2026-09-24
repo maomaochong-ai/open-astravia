@@ -2,11 +2,15 @@ package org.vetta.android.app
 
 import android.content.Context
 import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import androidx.sqlite.driver.AndroidSQLiteDriver
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import org.vetta.android.data.remote.SqliteSessionCache
+import org.vetta.android.data.secure.KeystoreSecretStore
 import org.vetta.android.domain.work.DesktopMirror
 
 /**
@@ -32,10 +36,27 @@ object AndroidAppContainer {
                 preferences = preferences,
                 scope = scope,
                 cache = SqliteSessionCache(AndroidSQLiteDriver(), cachePath),
+                secrets = KeystoreSecretStore(context),
                 deviceName = Build.MODEL?.takeIf { it.isNotBlank() } ?: "Android",
+                onTurnEnd = { TurnEndHaptics.play(context) },
             )
         return AppContainer(preferences = preferences, scope = scope, mirror = DesktopMirror(platform, scope))
     }
 
     private const val CACHE_FILE = "vetta-cache.sqlite"
+}
+
+/** A short buzz when the desktop finishes a turn, if the phone can vibrate. */
+private object TurnEndHaptics {
+    fun play(context: Context) {
+        val vibrator =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                context.getSystemService(VibratorManager::class.java)?.defaultVibrator
+            } else {
+                @Suppress("DEPRECATION")
+                context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+            }
+        if (vibrator?.hasVibrator() != true) return
+        vibrator.vibrate(VibrationEffect.createOneShot(40, VibrationEffect.DEFAULT_AMPLITUDE))
+    }
 }

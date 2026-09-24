@@ -384,6 +384,26 @@
     <string name="work_kind_project">Projects</string>
     <string name="work_project_all">All Projects</string>
     <string name="work_session_actions">Session actions</string>
+    <string name="work_settings_confirm_policy">Phone approvals</string>
+    <string name="work_settings_confirm_policy_hint">When your computer changes important files, when to ask you to confirm on your phone</string>
+    <string name="work_settings_haptics">Vibrate when tasks finish</string>
+    <string name="work_settings_live_thinking">Watch the computer think live</string>
+    <string name="work_settings_load">Computer load</string>
+    <string name="work_settings_load_idle">Idle</string>
+    <plurals name="work_settings_load_value">
+        <item quantity="one">%1$d task running</item>
+        <item quantity="other">%1$d tasks running</item>
+    </plurals>
+    <string name="work_settings_online">Securely connected</string>
+    <string name="work_settings_policy_auto">Fully automatic</string>
+    <string name="work_settings_policy_important">Important actions</string>
+    <string name="work_settings_policy_major">Major changes only</string>
+    <string name="work_settings_rescan">Scan Again</string>
+    <string name="work_settings_scan">Scan to Connect a Computer</string>
+    <string name="work_settings_title">Computer</string>
+    <string name="work_settings_unpair">Unpair</string>
+    <string name="work_settings_unpair_confirm">Unpair from this computer? Chats cached on this phone will also be deleted.</string>
+    <string name="work_settings_unpair_hint">Removes this computer’s credentials and the sessions cached on this phone. You’ll need to scan again to reconnect.</string>
     <string name="work_status_aborted">Stopped</string>
     <string name="work_status_all">All</string>
     <string name="work_status_done">Done</string>
