@@ -1727,6 +1727,23 @@
         }
       }
     },
+    "home.recent": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recent"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最近"
+          }
+        }
+      }
+    },
     "home.searchPlaceholder": {
       "extractionState": "manual",
       "localizations": {

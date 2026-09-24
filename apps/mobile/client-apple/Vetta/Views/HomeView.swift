@@ -1,7 +1,7 @@
 import SwiftUI
 import VettaKit
 
-/// The root page: a greeting, search, the three most recent projects, then every
+/// The root page: a greeting, search, recent conversations and the three most recent projects, then every
 /// session under a status filter that sticks to the top. The link pill and Settings
 /// scroll away with the greeting, and New Session floats at the bottom, instead of a tab bar.
 struct HomeView: View {
@@ -122,10 +122,11 @@ struct HomeView: View {
 
 	@ViewBuilder
 	private var recentProjects: some View {
+		let conversations = ProjectDigest.conversations(model.sessions, conversationCwd: model.conversationCwd)
 		let projects = ProjectDigest.recent(model.sessions, conversationCwd: model.conversationCwd)
-		if !projects.isEmpty {
+		if conversations != nil || !projects.isEmpty {
 			HStack(alignment: .firstTextBaseline) {
-				Text(L10n.Home.kindProject)
+				Text(L10n.Home.recent)
 					.font(.title2.bold())
 					.foregroundStyle(Theme.ink)
 				Spacer()
@@ -142,7 +143,7 @@ struct HomeView: View {
 			}
 			.padding(.horizontal, 20)
 			.bareRow(top: 20, bottom: 12)
-			ProjectCarousel(projects: projects)
+			ProjectCarousel(conversations: conversations, projects: projects)
 				.bareRow(bottom: 12)
 		}
 	}

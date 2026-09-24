@@ -46,6 +46,21 @@ import Testing
 		#expect(card.sessionCount == 4)
 	}
 
+	@Test func conversationsCardSummarisesTheProjectlessChats() throws {
+		let sessions = [
+			session("c1", cwd: "/conv", at: 10),
+			session("c2", .waitingInput, cwd: "/conv", at: 5),
+			session("c3", cwd: "/conv", at: 30),
+			session("a1", cwd: "/a", name: "a", at: 99),
+		]
+		let card = try #require(ProjectDigest.conversations(sessions, conversationCwd: "/conv"))
+		#expect(card.recent.map(\.id) == ["c2", "c3"])
+		#expect(card.sessionCount == 3)
+		#expect(card.updatedAt == 30)
+		#expect(ProjectDigest.conversations(sessions, conversationCwd: nil) == nil)
+		#expect(ProjectDigest.conversations([sessions[3]], conversationCwd: "/conv") == nil, "no card without a chat")
+	}
+
 	@Test func allProjectsAddsDesktopProjectsWithoutSessionsAtTheEnd() {
 		let sessions = [session("a1", cwd: "/a", name: "a", at: 10)]
 		let projects = [

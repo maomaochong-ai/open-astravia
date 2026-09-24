@@ -36,21 +36,23 @@ struct ProjectsView: View {
 }
 
 /// One project's sessions, filtered by status; New Session starts in this project.
+/// With no project it lists the desktop's conversations instead.
 struct ProjectView: View {
-	let cwd: String
+	let cwd: String?
 	@Environment(AppModel.self) private var model
 	@Environment(Router.self) private var router
 	@State private var filter: SessionFilter
 	@State private var deleting: RemoteSessionSummary?
 	@State private var depth = ScrollDepth()
 
-	init(cwd: String) {
+	init(cwd: String?) {
 		self.cwd = cwd
-		_filter = State(initialValue: SessionFilter(kind: .project, projectCwd: cwd))
+		_filter = State(initialValue: cwd.map { SessionFilter(kind: .project, projectCwd: $0) } ?? SessionFilter(kind: .conversation))
 	}
 
 	private var name: String {
-		model.sessions.first { $0.projectCwd == cwd }?.projectName
+		guard let cwd else { return L10n.Home.conversation }
+		return model.sessions.first { $0.projectCwd == cwd }?.projectName
 			?? model.projects.first { $0.cwd == cwd }?.name
 			?? URL(fileURLWithPath: cwd).lastPathComponent
 	}

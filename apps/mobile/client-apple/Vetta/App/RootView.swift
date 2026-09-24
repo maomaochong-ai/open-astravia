@@ -6,6 +6,8 @@ enum Route: Hashable {
 	case newSession(projectCwd: String? = nil)
 	case session(String)
 	case project(String)
+	/// The desktop's project-less chats, on the same page a project gets.
+	case conversations
 	case projects
 	case settings
 }
@@ -63,6 +65,7 @@ struct RootView: View {
 					case let .newSession(projectCwd): NewSessionView(projectCwd: projectCwd)
 					case let .session(id): SessionView(sessionId: id)
 					case let .project(cwd): ProjectView(cwd: cwd)
+					case .conversations: ProjectView(cwd: nil)
 					case .projects: ProjectsView()
 					case .settings: SettingsView()
 					}

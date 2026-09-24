@@ -47,15 +47,7 @@ public struct ProjectDigest: Identifiable, Equatable, Sendable {
 		for session in sessions where session.projectCwd != conversationCwd {
 			grouped[session.projectCwd, default: []].append(session)
 		}
-		var digests = grouped.map { cwd, sessions in
-			ProjectDigest(
-				cwd: cwd,
-				name: sessions[0].projectName,
-				sessionCount: sessions.count,
-				updatedAt: sessions.map(\.updatedAt).max() ?? 0,
-				recent: Array(cardOrder(sessions).prefix(recentLimit))
-			)
-		}
+		var digests = grouped.map { cwd, sessions in digest(cwd, sessions, recentLimit: recentLimit) }
 		for project in projects where !project.isConversation && grouped[project.cwd] == nil {
 			digests.append(ProjectDigest(cwd: project.cwd, name: project.name, sessionCount: Int(project.sessionCount), updatedAt: 0, recent: []))
 		}
@@ -68,6 +60,24 @@ public struct ProjectDigest: Identifiable, Equatable, Sendable {
 	/// The projects on the home cards: the `limit` most recently active that have sessions.
 	public static func recent(_ sessions: [RemoteSessionSummary], conversationCwd: String?, limit: Int = 3) -> [ProjectDigest] {
 		Array(all(sessions, conversationCwd: conversationCwd).prefix(limit))
+	}
+
+	/// The desktop's project-less chats as one more card, ahead of the projects;
+	/// `nil` until the bucket is known or while it holds no session.
+	public static func conversations(_ sessions: [RemoteSessionSummary], conversationCwd: String?, recentLimit: Int = 2) -> ProjectDigest? {
+		guard let conversationCwd else { return nil }
+		let chats = sessions.filter { $0.projectCwd == conversationCwd }
+		return chats.isEmpty ? nil : digest(conversationCwd, chats, recentLimit: recentLimit)
+	}
+
+	private static func digest(_ cwd: String, _ sessions: [RemoteSessionSummary], recentLimit: Int) -> ProjectDigest {
+		ProjectDigest(
+			cwd: cwd,
+			name: sessions[0].projectName,
+			sessionCount: sessions.count,
+			updatedAt: sessions.map(\.updatedAt).max() ?? 0,
+			recent: Array(cardOrder(sessions).prefix(recentLimit))
+		)
 	}
 
 	/// Pins are left out: an old pinned session would hold a card's slot forever.

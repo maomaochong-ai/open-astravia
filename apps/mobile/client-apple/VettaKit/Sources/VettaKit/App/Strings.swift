@@ -70,6 +70,7 @@ public enum L10n {
 		public static var unpairedDescription: String { tr("home.unpairedDescription") }
 		public static var unpairedScan: String { tr("home.unpairedScan") }
 		public static var greetingPrompt: String { tr("home.greetingPrompt") }
+		public static var recent: String { tr("home.recent") }
 		public static var searchPlaceholder: String { tr("home.searchPlaceholder") }
 		public static func sessionCount(_ n: Int) -> String { tr("home.sessionCount \(n)") }
 		public static func updated(_ time: String) -> String { tr("home.updated \(time)") }
