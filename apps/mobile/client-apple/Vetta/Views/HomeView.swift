@@ -1,8 +1,7 @@
 import SwiftUI
 import VettaKit
 
-/// The drawer over the slot: recent conversations and the three most recent projects, then every
-/// session under a status filter that sticks to the top. The link pill and Close stay at the top;
+/// The drawer over the slot: every session under a status filter that sticks to the top. The link pill and Close stay at the top;
 /// New Session, Search and Settings float at the bottom, and Search opens its field there.
 /// Only there once a desktop is paired.
 struct HomeView: View {
@@ -15,7 +14,7 @@ struct HomeView: View {
 	@State private var deleting: RemoteSessionSummary?
 	@State private var depth = ScrollDepth()
 
-	/// Searching folds the recent cards and the top bar away, from the first tap until cancelled.
+	/// Searching folds the top bar away and lists matching projects, from the first tap until cancelled.
 	private var searching: Bool { searchActive || !query.isEmpty }
 
 	private var rows: [RemoteSessionSummary] {
@@ -25,12 +24,8 @@ struct HomeView: View {
 	var body: some View {
 		let rows = rows
 		List {
-			Section {
-				if searching {
-					projectResults
-				} else {
-					recentProjects
-				}
+			if searching {
+				Section { projectResults }
 			}
 			Section {
 				SessionCardRows(rows: rows, deleting: $deleting)
@@ -98,34 +93,6 @@ struct HomeView: View {
 			}
 			.padding(.horizontal, 16)
 			.transition(.opacity)
-		}
-	}
-
-	@ViewBuilder
-	private var recentProjects: some View {
-		let conversations = ProjectDigest.conversations(model.sessions, conversationCwd: model.conversationCwd)
-		let projects = ProjectDigest.recent(model.sessions, conversationCwd: model.conversationCwd)
-		if conversations != nil || !projects.isEmpty {
-			HStack(alignment: .firstTextBaseline) {
-				Text(L10n.Home.recent)
-					.font(.title2.bold())
-					.foregroundStyle(Theme.ink)
-				Spacer()
-				Button { router.path.append(.projects) } label: {
-					HStack(spacing: 4) {
-						Text(L10n.Home.projectAll)
-						Image(systemName: "chevron.right").font(.subheadline.weight(.semibold))
-					}
-					.font(.body)
-					.foregroundStyle(Theme.dim)
-				}
-				.buttonStyle(.plain)
-				.accessibilityIdentifier("home.allProjects")
-			}
-			.padding(.horizontal, 20)
-			.bareRow(top: 20, bottom: 12)
-			ProjectCarousel(conversations: conversations, projects: projects)
-				.bareRow(bottom: 12)
 		}
 	}
 

@@ -7,50 +7,21 @@ import Testing
 		RemoteSessionSummary(id: id, projectCwd: cwd, projectName: name, title: title ?? id, preview: preview, updatedAt: at, status: status, live: false, pinnedAt: pinnedAt)
 	}
 
-	@Test func picksTheThreeMostRecentlyActiveProjectsAndLeavesConversationsOut() {
+	@Test func listsProjectsMostRecentFirstAndLeavesConversationsOut() {
 		let sessions = [
 			session("chat", cwd: "/conv", at: 100),
 			session("a1", cwd: "/a", name: "a", at: 10),
 			session("b1", cwd: "/b", name: "b", at: 50),
-			session("c1", cwd: "/c", name: "c", at: 30),
-			session("d1", cwd: "/d", name: "d", at: 5),
 			session("a2", cwd: "/a", name: "a", at: 60),
 		]
-		let recent = ProjectDigest.recent(sessions, conversationCwd: "/conv")
-		#expect(recent.map(\.cwd) == ["/a", "/b", "/c"])
-		#expect(recent[0].sessionCount == 2)
-		#expect(recent[0].updatedAt == 60)
+		let all = ProjectDigest.all(sessions, conversationCwd: "/conv")
+		#expect(all.map(\.cwd) == ["/a", "/b"])
+		#expect(all[0].sessionCount == 2)
+		#expect(all[0].updatedAt == 60)
 	}
 
 	@Test func listsNothingUntilTheConversationBucketIsKnown() {
-		#expect(ProjectDigest.recent([session("x", cwd: "/conv", at: 1)], conversationCwd: nil).isEmpty)
-	}
-
-	@Test func cardListsWaitingSessionsFirstThenNewestAndIgnoresPins() {
-		let sessions = [
-			session("old-pinned", cwd: "/a", name: "a", at: 1, pinnedAt: 99),
-			session("new", .running, cwd: "/a", name: "a", at: 40),
-			session("ask", .waitingInput, cwd: "/a", name: "a", at: 10),
-			session("mid", cwd: "/a", name: "a", at: 20),
-		]
-		let card = ProjectDigest.recent(sessions, conversationCwd: "/conv")[0]
-		#expect(card.recent.map(\.id) == ["ask", "new"])
-		#expect(card.sessionCount == 4)
-	}
-
-	@Test func conversationsCardSummarisesTheProjectlessChats() throws {
-		let sessions = [
-			session("c1", cwd: "/conv", at: 10),
-			session("c2", .waitingInput, cwd: "/conv", at: 5),
-			session("c3", cwd: "/conv", at: 30),
-			session("a1", cwd: "/a", name: "a", at: 99),
-		]
-		let card = try #require(ProjectDigest.conversations(sessions, conversationCwd: "/conv"))
-		#expect(card.recent.map(\.id) == ["c2", "c3"])
-		#expect(card.sessionCount == 3)
-		#expect(card.updatedAt == 30)
-		#expect(ProjectDigest.conversations(sessions, conversationCwd: nil) == nil)
-		#expect(ProjectDigest.conversations([sessions[3]], conversationCwd: "/conv") == nil, "no card without a chat")
+		#expect(ProjectDigest.all([session("x", cwd: "/a", name: "a", at: 1)], conversationCwd: nil).isEmpty)
 	}
 
 	@Test func allProjectsAddsDesktopProjectsWithoutSessionsAtTheEnd() {
@@ -77,7 +48,7 @@ import Testing
 	}
 
 	@Test func projectSearchNeedsAQuery() {
-		let project = ProjectDigest(cwd: "/a", name: "智能助手工作流", sessionCount: 1, updatedAt: 1, recent: [])
+		let project = ProjectDigest(cwd: "/a", name: "智能助手工作流", sessionCount: 1, updatedAt: 1)
 		#expect(!HomeSearch.matches(project, ""))
 		#expect(HomeSearch.matches(project, "助手"))
 		#expect(!HomeSearch.matches(project, "客服"))

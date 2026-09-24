@@ -118,7 +118,7 @@ private struct DrawerPan: UIGestureRecognizerRepresentable {
 				let start = pan.location(in: nil).x - pan.translation(in: nil).x
 				return start <= 24
 			}
-			// The recent projects carousel keeps its own sideways swipe.
+			// A row that scrolls sideways, like the filter chips, keeps its own swipe.
 			var hit = view.hitTest(pan.location(in: view), with: nil)
 			while let current = hit, current !== view {
 				if let scroll = current as? UIScrollView, scrollsSideways(scroll) { return false }

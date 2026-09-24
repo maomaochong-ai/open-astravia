@@ -1,15 +1,13 @@
 import Foundation
 
-/// One project as the home cards and All Projects show it, worked out from the
-/// phone's session list: the desktop's project list carries no activity time.
+/// One project as the home search lists it, worked out from the phone's session
+/// list: the desktop's project list carries no activity time.
 public struct ProjectDigest: Identifiable, Equatable, Sendable {
 	public var cwd: String
 	public var name: String
 	public var sessionCount: Int
 	/// The newest session's `updatedAt`; 0 for a project with no session on the phone.
 	public var updatedAt: Double
-	/// The sessions a card lists: those waiting on the user first, then newest first.
-	public var recent: [RemoteSessionSummary]
 
 	public var id: String { cwd }
 
@@ -20,54 +18,22 @@ public struct ProjectDigest: Identifiable, Equatable, Sendable {
 	public static func all(
 		_ sessions: [RemoteSessionSummary],
 		projects: [RemoteProjectSummary] = [],
-		conversationCwd: String?,
-		recentLimit: Int = 2
+		conversationCwd: String?
 	) -> [ProjectDigest] {
 		guard let conversationCwd else { return [] }
 		var grouped: [String: [RemoteSessionSummary]] = [:]
 		for session in sessions where session.projectCwd != conversationCwd {
 			grouped[session.projectCwd, default: []].append(session)
 		}
-		var digests = grouped.map { cwd, sessions in digest(cwd, sessions, recentLimit: recentLimit) }
+		var digests = grouped.map { cwd, sessions in
+			ProjectDigest(cwd: cwd, name: sessions[0].projectName, sessionCount: sessions.count, updatedAt: sessions.map(\.updatedAt).max() ?? 0)
+		}
 		for project in projects where !project.isConversation && grouped[project.cwd] == nil {
-			digests.append(ProjectDigest(cwd: project.cwd, name: project.name, sessionCount: Int(project.sessionCount), updatedAt: 0, recent: []))
+			digests.append(ProjectDigest(cwd: project.cwd, name: project.name, sessionCount: Int(project.sessionCount), updatedAt: 0))
 		}
 		return digests.sorted { a, b in
 			if a.updatedAt != b.updatedAt { return a.updatedAt > b.updatedAt }
 			return a.name.localizedStandardCompare(b.name) == .orderedAscending
-		}
-	}
-
-	/// The projects on the home cards: the `limit` most recently active that have sessions.
-	public static func recent(_ sessions: [RemoteSessionSummary], conversationCwd: String?, limit: Int = 3) -> [ProjectDigest] {
-		Array(all(sessions, conversationCwd: conversationCwd).prefix(limit))
-	}
-
-	/// The desktop's project-less chats as one more card, ahead of the projects;
-	/// `nil` until the bucket is known or while it holds no session.
-	public static func conversations(_ sessions: [RemoteSessionSummary], conversationCwd: String?, recentLimit: Int = 2) -> ProjectDigest? {
-		guard let conversationCwd else { return nil }
-		let chats = sessions.filter { $0.projectCwd == conversationCwd }
-		return chats.isEmpty ? nil : digest(conversationCwd, chats, recentLimit: recentLimit)
-	}
-
-	private static func digest(_ cwd: String, _ sessions: [RemoteSessionSummary], recentLimit: Int) -> ProjectDigest {
-		ProjectDigest(
-			cwd: cwd,
-			name: sessions[0].projectName,
-			sessionCount: sessions.count,
-			updatedAt: sessions.map(\.updatedAt).max() ?? 0,
-			recent: Array(cardOrder(sessions).prefix(recentLimit))
-		)
-	}
-
-	/// Pins are left out: an old pinned session would hold a card's slot forever.
-	static func cardOrder(_ sessions: [RemoteSessionSummary]) -> [RemoteSessionSummary] {
-		sessions.sorted { a, b in
-			let aWaiting = a.status == .waitingInput
-			let bWaiting = b.status == .waitingInput
-			if aWaiting != bWaiting { return aWaiting }
-			return a.updatedAt > b.updatedAt
 		}
 	}
 }

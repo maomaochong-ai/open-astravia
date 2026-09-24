@@ -1591,23 +1591,6 @@
         }
       }
     },
-    "home.openProject": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Open project"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "打开项目"
-          }
-        }
-      }
-    },
     "home.projectAll": {
       "extractionState": "manual",
       "localizations": {
@@ -1621,23 +1604,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "所有项目"
-          }
-        }
-      }
-    },
-    "home.recent": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Recent"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "最近"
           }
         }
       }

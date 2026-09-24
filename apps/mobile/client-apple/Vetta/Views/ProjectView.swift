@@ -1,58 +1,22 @@
 import SwiftUI
 import VettaKit
 
-/// Every project, most recently active first; Home only shows three.
-struct ProjectsView: View {
-	@Environment(AppModel.self) private var model
-	@State private var query = ""
-
-	var body: some View {
-		let all = ProjectDigest.all(model.sessions, projects: model.projects, conversationCwd: model.conversationCwd)
-		let shown = query.trimmingCharacters(in: .whitespaces).isEmpty ? all : all.filter { HomeSearch.matches($0, query) }
-		List(shown) { project in
-			NavigationLink(value: Route.project(project.cwd)) {
-				ProjectRow(project: project)
-			}
-			.accessibilityIdentifier("projects.\(project.cwd)")
-		}
-		.listStyle(.plain)
-		.searchable(text: $query)
-		.navigationTitle(L10n.Home.projectAll)
-		.navigationBarTitleDisplayMode(.large)
-		.overlay {
-			if shown.isEmpty {
-				if all.isEmpty {
-					ContentUnavailableView(L10n.Home.noProjects, systemImage: projectSymbol, description: Text(L10n.Home.noProjectsDescription))
-				} else {
-					ContentUnavailableView.search(text: query)
-				}
-			}
-		}
-		// Brings in projects the phone has no session for yet.
-		.task(id: model.online) {
-			if model.online { await model.refreshProjects() }
-		}
-	}
-}
-
 /// One project's sessions, filtered by status; New Session starts in this project.
-/// With no project it lists the desktop's conversations instead.
 struct ProjectView: View {
-	let cwd: String?
+	let cwd: String
 	@Environment(AppModel.self) private var model
 	@Environment(Router.self) private var router
 	@State private var filter: SessionFilter
 	@State private var deleting: RemoteSessionSummary?
 	@State private var depth = ScrollDepth()
 
-	init(cwd: String?) {
+	init(cwd: String) {
 		self.cwd = cwd
-		_filter = State(initialValue: cwd.map { SessionFilter(kind: .project, projectCwd: $0) } ?? SessionFilter(kind: .conversation))
+		_filter = State(initialValue: SessionFilter(kind: .project, projectCwd: cwd))
 	}
 
 	private var name: String {
-		guard let cwd else { return L10n.Home.conversation }
-		return model.sessions.first { $0.projectCwd == cwd }?.projectName
+		model.sessions.first { $0.projectCwd == cwd }?.projectName
 			?? model.projects.first { $0.cwd == cwd }?.name
 			?? URL(fileURLWithPath: cwd).lastPathComponent
 	}
