@@ -183,10 +183,12 @@ struct GlassCircleButton: View {
 /// Vetta's face, drawn like the desktop's `BotAvatar` in its black-and-white
 /// theme: a rounded square with two round eyes cut out of it, so whatever is
 /// behind shows through them. Asleep, the eyes close to slits.
-/// Static on purpose; a tap blinks it once.
+/// Otherwise still: it can blink a few times as it appears, and a tap blinks it once.
 struct BotAvatar: View {
 	var size: CGFloat = 24
 	var asleep = false
+	/// How many times it blinks shortly after appearing, as a greeting.
+	var blinksOnAppear = 0
 	@State private var blinking = false
 
 	var body: some View {
@@ -213,12 +215,26 @@ struct BotAvatar: View {
 			.animation(.easeInOut(duration: 0.3), value: asleep)
 			.onTapGesture {
 				guard !asleep, !blinking else { return }
-				blinking = true
-				Task {
-					try? await Task.sleep(for: .milliseconds(160))
-					blinking = false
-				}
+				Task { try? await blink() }
+			}
+			.task {
+				guard blinksOnAppear > 0 else { return }
+				do {
+					try await Task.sleep(for: .milliseconds(700))
+					// Pairs of quick blinks with a rest between read as waking up, not a twitch.
+					for n in 0 ..< blinksOnAppear {
+						guard !asleep else { return }
+						try await blink()
+						try await Task.sleep(for: .milliseconds(n % 2 == 0 ? 180 : 1200))
+					}
+				} catch {}
 			}
 			.accessibilityHidden(true)
+	}
+
+	private func blink() async throws {
+		blinking = true
+		defer { blinking = false }
+		try await Task.sleep(for: .milliseconds(160))
 	}
 }

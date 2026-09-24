@@ -29,9 +29,8 @@ enum Theme {
 	static let yellow = dynamic(light: 0xE0A100, dark: 0xFACC15)
 	/// The bot avatar's face in the desktop's black-and-white theme; its eyes are cut out.
 	static let botFace = dynamic(light: 0x000000, dark: 0xE4E4E4)
-	/// The glow New Session fades into at the bottom of the screen.
-	static let dawn = dynamic(light: 0xD6E2FB, dark: 0x13235E)
-	static let dawnSide = dynamic(light: 0xE6DEFA, dark: 0x1C1A52)
+	/// The diffuse light New Session spreads behind the composer: white in dark, pale blue in light.
+	static let welcomeGlow = dynamic(light: 0xC4DAFF, dark: 0xFFFFFF)
 	/// The soft light at the top of Home and a project's page.
 	static let glow = dynamic(light: 0xFFFFFF, dark: 0x34373D)
 

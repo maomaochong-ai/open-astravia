@@ -68,7 +68,7 @@ struct NewSessionView: View {
 		VStack(spacing: 0) {
 			Spacer()
 			// Asleep only once the link has failed, not while the first connect is under way.
-			BotAvatar(size: 52, asleep: offline)
+			BotAvatar(size: 52, asleep: offline, blinksOnAppear: 3)
 			Text(L10n.NewSession.greeting)
 				.font(.title.weight(.semibold))
 				.multilineTextAlignment(.center)
@@ -199,24 +199,56 @@ private struct MenuChip: View {
 	}
 }
 
-/// The page fades from the plain background into a deep blue glow at the bottom,
-/// like dawn behind the composer. Static: nothing here needs to move.
+/// As the page opens, a soft light rises from behind the composer and spreads
+/// sideways like light off a matte wall, then holds still: white in dark mode,
+/// pale blue in light. Plain gradients only, so nothing is blurred per frame.
 private struct WelcomeBackdrop: View {
+	@Environment(\.colorScheme) private var colorScheme
+	@Environment(\.accessibilityReduceMotion) private var reduceMotion
+	@State private var lit = false
+
 	var body: some View {
-		let base = Color(uiColor: .systemBackground)
-		MeshGradient(
-			width: 3,
-			height: 3,
-			points: [
-				[0, 0], [0.5, 0], [1, 0],
-				[0, 0.5], [0.5, 0.55], [1, 0.5],
-				[0, 1], [0.5, 1], [1, 1],
-			],
-			colors: [
-				base, base, base,
-				base, base, base,
-				Theme.dawnSide, Theme.dawn, Theme.dawn,
-			]
+		// Full-strength white would glare in the dark; pale blue is already soft.
+		let strength = colorScheme == .dark ? 0.26 : 0.9
+		GeometryReader { proxy in
+			let w = proxy.size.width
+			let h = proxy.size.height
+			ZStack {
+				Color(uiColor: .systemBackground)
+				// A faint wash that reaches furthest up the page.
+				lobe(strength * 0.45, width: w * 1.8, height: h * 0.9)
+					.position(x: w / 2, y: h)
+					.opacity(lit ? 1 : 0)
+					.animation(.easeOut(duration: 2.2).delay(0.4), value: lit)
+				// The core, rising from under the composer.
+				lobe(strength, width: w * 1.3, height: h * 0.5)
+					.scaleEffect(x: lit ? 1 : 0.45, y: lit ? 1 : 0.3, anchor: .bottom)
+					.position(x: w / 2, y: h)
+					.opacity(lit ? 1 : 0)
+					.animation(.easeOut(duration: 1.4), value: lit)
+				// Two side lobes drift out of the core, so the light diffuses rather than just fades in.
+				ForEach([-1.0, 1.0], id: \.self) { side in
+					lobe(strength * 0.7, width: w * 0.95, height: h * 0.36)
+						.position(x: w / 2 + side * w * (lit ? 0.36 : 0.08), y: h * 0.98)
+						.opacity(lit ? 1 : 0)
+						.animation(.easeOut(duration: 1.8).delay(side < 0 ? 0.25 : 0.35), value: lit)
+				}
+			}
+		}
+		.onAppear {
+			var transaction = Transaction()
+			transaction.disablesAnimations = reduceMotion
+			withTransaction(transaction) { lit = true }
+		}
+	}
+
+	private func lobe(_ opacity: Double, width: CGFloat, height: CGFloat) -> some View {
+		EllipticalGradient(
+			colors: [Theme.welcomeGlow.opacity(opacity), Theme.welcomeGlow.opacity(opacity * 0.4), Theme.welcomeGlow.opacity(0)],
+			center: .center,
+			startRadiusFraction: 0,
+			endRadiusFraction: 0.5
 		)
+		.frame(width: width, height: height)
 	}
 }
