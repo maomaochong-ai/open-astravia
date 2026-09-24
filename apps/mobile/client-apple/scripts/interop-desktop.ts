@@ -147,6 +147,18 @@ async function failReply(deviceId: string, sessionId: string, text: string): Pro
 	emitAll(deviceId, "session.state", { status: "completed" }, sessionId);
 }
 
+const longReply = [
+	"\n\n## 进度说明\n\n",
+	"打包脚本失败的原因已经定位：签名步骤读取的证书名称和钥匙串里的不一致，electron-builder 找不到身份后直接退出，日志里只留下一行 **code signing failed**。",
+	"\n\n我按下面的顺序处理：\n\n",
+	"1. 读取钥匙串里的有效身份，确认 `Developer ID Application` 证书仍在有效期内\n",
+	"2. 把 `CSC_NAME` 改成证书的完整名称，并去掉多余的引号\n",
+	"3. 重新运行打包，确认公证与装订都通过\n\n",
+	"> 注意：CI 上的证书是另一份，需要同步更新密钥库里的名称，否则夜间构建还会失败。\n\n",
+	"```bash\nsecurity find-identity -v -p codesigning\nbun run dist:mac\n```\n\n",
+	"整个过程大约需要五分钟。完成后我会把新的安装包路径和校验和一起发给你，你可以直接在测试机上安装验证。",
+].join("");
+
 async function streamReply(deviceId: string, sessionId: string, text: string, note = ""): Promise<void> {
 	const turn = recordTurn(sessionId, text);
 	const session = sessions.find((entry) => entry.id === sessionId);
@@ -163,6 +175,18 @@ async function streamReply(deviceId: string, sessionId: string, text: string, no
 		await delay(40);
 		turn.text += chunk;
 		emitAll(deviceId, "session.message", { kind: "assistant_delta", text: chunk }, sessionId);
+	}
+	// `VETTA_INTEROP_LONG_REPLY=1` follows up with a long answer in uneven bursts, as a real
+	// model over a real network sends it, to watch how the phone paces and fades it in.
+	if (process.env.VETTA_INTEROP_LONG_REPLY === "1") {
+		let rest = longReply;
+		while (rest.length > 0) {
+			await delay(40 + Math.random() * 360);
+			const chunk = rest.slice(0, 4 + Math.floor(Math.random() * 90));
+			rest = rest.slice(chunk.length);
+			turn.text += chunk;
+			emitAll(deviceId, "session.message", { kind: "assistant_delta", text: chunk }, sessionId);
+		}
 	}
 	const request = {
 		requestId: `q-${Date.now()}`,
