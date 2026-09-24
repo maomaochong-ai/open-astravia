@@ -10,6 +10,7 @@ import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Rule
 import org.junit.runner.RunWith
+import org.vetta.android.app.APP_VERSION
 import org.vetta.android.app.ThemeMode
 import org.vetta.android.core.model.User
 import org.vetta.android.ui.auth.WelcomeScreen
@@ -138,7 +139,7 @@ class EntryAndProfileScreenTest {
         }
 
         composeRule.onNodeWithText(str(Res.string.about_vetta)).assertIsDisplayed()
-        composeRule.onNodeWithText(str(Res.string.version_number)).assertIsDisplayed()
+        composeRule.onNodeWithText(str(Res.string.version_number, APP_VERSION)).assertIsDisplayed()
         composeRule.onNodeWithText(str(Res.string.about_description)).assertIsDisplayed()
     }
 
