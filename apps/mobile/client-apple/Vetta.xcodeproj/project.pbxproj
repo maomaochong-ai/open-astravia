@@ -17,6 +17,7 @@
 		553F60767299442FEB0D3C01 /* ChatInputBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC4528B8445F4DFE1B3DAC95 /* ChatInputBar.swift */; };
 		572D00AEA0B23590C52BE28A /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A611A3DDE7F1EC89CAD12F7F /* SettingsView.swift */; };
 		5A35CD748B1B06EF47F0A3F2 /* VettaKit in Frameworks */ = {isa = PBXBuildFile; productRef = 96AFB1AF04EBBFA603F4F91B /* VettaKit */; };
+		63581B8EDAF81E8D93112759 /* KeyboardWarmup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 673796C16D0A139458E920DF /* KeyboardWarmup.swift */; };
 		8CB51BACBD63840B98FE330F /* QuestionPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1571266B7208052D80E40A95 /* QuestionPanel.swift */; };
 		97373277B2BCFF1BA7983CE2 /* ModelSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0D2A6C73F7E73DC53077670 /* ModelSheet.swift */; };
 		97E3DC8E241B2B6E710580AC /* PairView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5FE60E74C2993F10053947E /* PairView.swift */; };
@@ -55,6 +56,7 @@
 		4351D91117ED64F564EE2106 /* QRScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRScannerView.swift; sourceTree = "<group>"; };
 		4A9C645FF840047E4C04ED92 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		4AC44E052FBB4B681994D40B /* ChatViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatViews.swift; sourceTree = "<group>"; };
+		673796C16D0A139458E920DF /* KeyboardWarmup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardWarmup.swift; sourceTree = "<group>"; };
 		7040E8A21BCC88B0A703712D /* SessionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionView.swift; sourceTree = "<group>"; };
 		71BB21C509A581D37A42B7FC /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		7CE6378E652FA83EE0F754E0 /* VettaUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = VettaUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -98,6 +100,7 @@
 			isa = PBXGroup;
 			children = (
 				91E9CDFB90F37D5D32E27EAA /* DictationHaptics.swift */,
+				673796C16D0A139458E920DF /* KeyboardWarmup.swift */,
 				E33BB88AA6F56D2A00716432 /* KeychainStore.swift */,
 				4351D91117ED64F564EE2106 /* QRScannerView.swift */,
 				9A223D846ECA782112079EA4 /* SpeechDictation.swift */,
@@ -327,6 +330,7 @@
 				F494F9F8C20C1CF24913E95E /* DictationHaptics.swift in Sources */,
 				CF3AFE89F12B4B288CEED3B3 /* HomeDrawer.swift in Sources */,
 				AC4E28755EFF19DCF3DC5B3C /* HomeView.swift in Sources */,
+				63581B8EDAF81E8D93112759 /* KeyboardWarmup.swift in Sources */,
 				BF4B6DCEF9D362F781317F6E /* KeychainStore.swift in Sources */,
 				1751F6BEC22BE28DE42676E2 /* MarkdownView.swift in Sources */,
 				97373277B2BCFF1BA7983CE2 /* ModelSheet.swift in Sources */,

@@ -13,6 +13,8 @@ struct VettaApp: App {
 				.environment(model)
 				.onAppear {
 					model.start()
+					// After the first frame, so warming the keyboard does not hold up launch.
+					Task { KeyboardWarmup.run() }
 					#if DEBUG
 					// UI tests and simulator demos pair without the system "open in Vetta?" prompt.
 					if let index = ProcessInfo.processInfo.arguments.firstIndex(of: "-VettaPairURI"),
