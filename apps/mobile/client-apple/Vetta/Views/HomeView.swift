@@ -1,7 +1,7 @@
 import SwiftUI
 import VettaKit
 
-/// The drawer over the slot: a greeting, search, recent conversations and the three most recent projects, then every
+/// The drawer over the slot: search, recent conversations and the three most recent projects, then every
 /// session under a status filter that sticks to the top. The link pill and Close stay at the top,
 /// New Session and Settings float at the bottom. Only there once a desktop is paired.
 struct HomeView: View {
@@ -25,7 +25,6 @@ struct HomeView: View {
 		let rows = rows
 		List {
 			Section {
-				if !searching { greeting }
 				searchField
 				if searching {
 					projectResults
@@ -50,7 +49,7 @@ struct HomeView: View {
 		.animation(.snappy, value: searching)
 		.refreshable { await model.refreshSessions() }
 		.sessionDeleteDialog($deleting, model: model)
-		// The title only names the page for Back and VoiceOver; the greeting stands in for it.
+		// The title only names the page for Back and VoiceOver.
 		.navigationTitle(L10n.Home.title)
 		.toolbarVisibility(.hidden, for: .navigationBar)
 		.safeAreaBar(edge: .top) {
@@ -88,25 +87,6 @@ struct HomeView: View {
 			.padding(.bottom, 4)
 		}
 		.padding(.horizontal, 16)
-	}
-
-	private var greeting: some View {
-		// The part of the day only needs a look now and then.
-		TimelineView(.periodic(from: .now, by: 300)) { context in
-			VStack(alignment: .leading, spacing: 2) {
-				Text(L10n.Home.greeting(DayPart(context.date)))
-					.font(.system(size: 34, weight: .bold))
-				Text(L10n.Home.greetingPrompt)
-					.font(.system(size: 34, weight: .semibold))
-			}
-			.foregroundStyle(Theme.ink)
-			.frame(maxWidth: .infinity, alignment: .leading)
-			.accessibilityElement(children: .combine)
-			.accessibilityAddTraits(.isHeader)
-		}
-		.padding(.horizontal, 20)
-		.bareRow(top: 8, bottom: 16)
-		.transition(.opacity)
 	}
 
 	private var searchField: some View {

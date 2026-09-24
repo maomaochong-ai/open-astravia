@@ -7,14 +7,6 @@ import Testing
 		RemoteSessionSummary(id: id, projectCwd: cwd, projectName: name, title: title ?? id, preview: preview, updatedAt: at, status: status, live: false, pinnedAt: pinnedAt)
 	}
 
-	@Test func splitsTheDayIntoFiveParts() {
-		#expect([5, 10].map(DayPart.init(hour:)) == [.morning, .morning])
-		#expect([11, 12].map(DayPart.init(hour:)) == [.noon, .noon])
-		#expect([13, 17].map(DayPart.init(hour:)) == [.afternoon, .afternoon])
-		#expect([18, 22].map(DayPart.init(hour:)) == [.evening, .evening])
-		#expect([23, 0, 4].map(DayPart.init(hour:)) == [.lateNight, .lateNight, .lateNight])
-	}
-
 	@Test func picksTheThreeMostRecentlyActiveProjectsAndLeavesConversationsOut() {
 		let sessions = [
 			session("chat", cwd: "/conv", at: 100),

@@ -1,24 +1,5 @@
 import Foundation
 
-/// The part of the day the home greeting speaks to, by the phone's local hour.
-public enum DayPart: CaseIterable, Sendable {
-	case morning, noon, afternoon, evening, lateNight
-
-	public init(hour: Int) {
-		switch hour {
-		case 5 ..< 11: self = .morning
-		case 11 ..< 13: self = .noon
-		case 13 ..< 18: self = .afternoon
-		case 18 ..< 23: self = .evening
-		default: self = .lateNight
-		}
-	}
-
-	public init(_ date: Date, calendar: Calendar = .current) {
-		self.init(hour: calendar.component(.hour, from: date))
-	}
-}
-
 /// One project as the home cards and All Projects show it, worked out from the
 /// phone's session list: the desktop's project list carries no activity time.
 public struct ProjectDigest: Identifiable, Equatable, Sendable {
