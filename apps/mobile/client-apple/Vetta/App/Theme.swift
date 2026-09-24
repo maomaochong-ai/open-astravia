@@ -32,6 +32,8 @@ enum Theme {
 	/// The glow New Session fades into at the bottom of the screen.
 	static let dawn = dynamic(light: 0xD6E2FB, dark: 0x13235E)
 	static let dawnSide = dynamic(light: 0xE6DEFA, dark: 0x1C1A52)
+	/// The soft light at the top of Home and a project's page.
+	static let glow = dynamic(light: 0xFFFFFF, dark: 0x34373D)
 
 	/// UIKit resolves the colour on SwiftUI's render thread on device, so the
 	/// provider must not inherit the module's main-actor isolation: a main-actor

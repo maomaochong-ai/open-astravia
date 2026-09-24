@@ -1455,6 +1455,108 @@
         }
       }
     },
+    "home.greeting.afternoon": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Good afternoon,"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下午好，"
+          }
+        }
+      }
+    },
+    "home.greeting.evening": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Good evening,"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "晚上好，"
+          }
+        }
+      }
+    },
+    "home.greeting.lateNight": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Up late,"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "夜深了，"
+          }
+        }
+      }
+    },
+    "home.greeting.morning": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Good morning,"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "早上好，"
+          }
+        }
+      }
+    },
+    "home.greeting.noon": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Good noon,"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "中午好，"
+          }
+        }
+      }
+    },
+    "home.greetingPrompt": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What shall we do with Vetta today?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今天跟 Vetta 做什么？"
+          }
+        }
+      }
+    },
     "home.groupDone": {
       "extractionState": "manual",
       "localizations": {
@@ -1557,6 +1659,57 @@
         }
       }
     },
+    "home.noProjects": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Projects Yet"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "还没有项目"
+          }
+        }
+      }
+    },
+    "home.noProjectsDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Projects you open on your computer show up here."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "电脑上打开的项目会显示在这里。"
+          }
+        }
+      }
+    },
+    "home.openProject": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open project"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打开项目"
+          }
+        }
+      }
+    },
     "home.projectAll": {
       "extractionState": "manual",
       "localizations": {
@@ -1570,6 +1723,52 @@
           "stringUnit": {
             "state": "translated",
             "value": "所有项目"
+          }
+        }
+      }
+    },
+    "home.searchPlaceholder": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search projects, sessions, or content…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "搜索项目、会话或内容…"
+          }
+        }
+      }
+    },
+    "home.sessionCount %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld session"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld sessions"
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld个会话"
           }
         }
       }
@@ -1688,7 +1887,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "待你决策"
+            "value": "待处理"
           }
         }
       }
@@ -1774,6 +1973,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "未命名对话"
+          }
+        }
+      }
+    },
+    "home.updated %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Updated %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更新于 %@"
           }
         }
       }
@@ -2937,23 +3153,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "云端中继"
-          }
-        }
-      }
-    },
-    "tab.work": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Work"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "工作"
           }
         }
       }

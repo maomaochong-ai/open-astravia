@@ -40,10 +40,6 @@ public enum L10n {
 		public static var notConnected: String { tr("common.notConnected") }
 	}
 
-	public enum Tab {
-		public static var work: String { tr("tab.work") }
-	}
-
 	public enum Home {
 		public static var title: String { tr("home.title") }
 		public static var filterStatus: String { tr("home.filterStatus") }
@@ -73,6 +69,23 @@ public enum L10n {
 		public static var unpairedTitle: String { tr("home.unpairedTitle") }
 		public static var unpairedDescription: String { tr("home.unpairedDescription") }
 		public static var unpairedScan: String { tr("home.unpairedScan") }
+		public static var greetingPrompt: String { tr("home.greetingPrompt") }
+		public static var searchPlaceholder: String { tr("home.searchPlaceholder") }
+		public static func sessionCount(_ n: Int) -> String { tr("home.sessionCount \(n)") }
+		public static func updated(_ time: String) -> String { tr("home.updated \(time)") }
+		public static var openProject: String { tr("home.openProject") }
+		public static var noProjects: String { tr("home.noProjects") }
+		public static var noProjectsDescription: String { tr("home.noProjectsDescription") }
+
+		public static func greeting(_ part: DayPart) -> String {
+			switch part {
+			case .morning: tr("home.greeting.morning")
+			case .noon: tr("home.greeting.noon")
+			case .afternoon: tr("home.greeting.afternoon")
+			case .evening: tr("home.greeting.evening")
+			case .lateNight: tr("home.greeting.lateNight")
+			}
+		}
 
 		public static func group(_ group: SessionStatusGroup) -> String {
 			switch group {

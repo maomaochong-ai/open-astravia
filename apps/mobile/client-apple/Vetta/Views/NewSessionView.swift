@@ -23,7 +23,6 @@ struct NewSessionView: View {
 			.background { WelcomeBackdrop().ignoresSafeArea() }
 			.navigationBarTitleDisplayMode(.inline)
 			.toolbarBackground(.hidden, for: .navigationBar)
-			.toolbar(.hidden, for: .tabBar)
 		.onAppear {
 			guard let start = router.failedStart else { return }
 			router.failedStart = nil

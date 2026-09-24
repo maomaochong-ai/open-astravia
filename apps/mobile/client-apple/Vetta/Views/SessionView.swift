@@ -111,7 +111,6 @@ struct SessionView: View {
 		.animation(.snappy, value: transcript.pendingQuestion?.requestId)
 		.navigationBarTitleDisplayMode(.inline)
 		// The composer takes the bottom edge; a tab bar under it would stack two glass bars.
-		.toolbar(.hidden, for: .tabBar)
 		.toolbar {
 			// Beside Back rather than centred, so a long title gets the width the buttons leave.
 			ToolbarItem(placement: .topBarLeading) {

@@ -5,28 +5,25 @@ enum Route: Hashable {
 	/// `projectCwd` is chosen up front; `nil` starts in the desktop's conversations.
 	case newSession(projectCwd: String? = nil)
 	case session(String)
+	case project(String)
+	case projects
+	case settings
 }
 
-enum AppTab: Hashable {
-	case work, settings
-}
-
-/// Navigation state shared by every screen.
+/// Navigation state shared by every screen: one stack with Home at its root.
 @Observable
 final class Router {
-	var tab = AppTab.work
-	var workPath: [Route] = []
+	var path: [Route] = []
 	/// The pairing screen, opened on purpose from an empty state or Settings.
 	var showPairing = false
 
 	func startNewSession() {
-		tab = .work
-		workPath = [.newSession()]
+		path = [.newSession()]
 	}
 
-	/// New Session in the chat's own project, over the chat so Back returns to it.
+	/// New Session in a project, over the current page so Back returns to it.
 	func startNewSession(in projectCwd: String?) {
-		workPath.append(.newSession(projectCwd: projectCwd))
+		path.append(.newSession(projectCwd: projectCwd))
 	}
 
 	/// What New Session had when its start failed, put back when it reopens.
@@ -34,21 +31,23 @@ final class Router {
 
 	/// Back to New Session with what was typed, unless the user already left `sessionId`'s chat.
 	func returnToNewSession(_ start: NewSessionStart, from sessionId: String) {
-		guard workPath == [.session(sessionId)] else { return }
+		guard path.last == .session(sessionId) else { return }
 		failedStart = start
-		var transaction = Transaction()
-		transaction.disablesAnimations = true
-		withTransaction(transaction) { workPath = [.newSession()] }
+		withoutAnimation { path[path.count - 1] = .newSession() }
 	}
 
-	/// Swaps New Session for the chat it just started, so Back goes to the list.
+	/// Swaps New Session for the chat it just started, so Back goes to the page New Session was opened from.
 	func openSession(_ sessionId: String) {
+		withoutAnimation {
+			if case .newSession = path.last { path.removeLast() }
+			path.append(.session(sessionId))
+		}
+	}
+
+	private func withoutAnimation(_ change: () -> Void) {
 		var transaction = Transaction()
 		transaction.disablesAnimations = true
-		withTransaction(transaction) {
-			tab = .work
-			workPath = [.session(sessionId)]
-		}
+		withTransaction(transaction, change)
 	}
 }
 
@@ -57,27 +56,17 @@ struct RootView: View {
 	@State private var router = Router()
 
 	var body: some View {
-		TabView(selection: $router.tab) {
-			Tab(L10n.Tab.work, systemImage: "tray.full", value: AppTab.work) {
-				NavigationStack(path: $router.workPath) {
-					WorkView()
-						.navigationDestination(for: Route.self) { route in
-							switch route {
-							case let .newSession(projectCwd): NewSessionView(projectCwd: projectCwd)
-							case let .session(id): SessionView(sessionId: id)
-							}
-						}
+		NavigationStack(path: $router.path) {
+			HomeView()
+				.navigationDestination(for: Route.self) { route in
+					switch route {
+					case let .newSession(projectCwd): NewSessionView(projectCwd: projectCwd)
+					case let .session(id): SessionView(sessionId: id)
+					case let .project(cwd): ProjectView(cwd: cwd)
+					case .projects: ProjectsView()
+					case .settings: SettingsView()
+					}
 				}
-			}
-			.badge(model.count(.waiting))
-			.accessibilityIdentifier("tab.work")
-
-			Tab(L10n.Settings.title, systemImage: "gearshape", value: AppTab.settings) {
-				NavigationStack {
-					SettingsView()
-				}
-			}
-			.accessibilityIdentifier("tab.settings")
 		}
 		.tint(Theme.ink)
 		.environment(router)
@@ -92,14 +81,14 @@ struct RootView: View {
 			Button(L10n.Common.confirm, role: .cancel) { model.clearError() }
 		}
 		.onChange(of: model.paired) { _, paired in
-			if !paired { router.workPath.removeAll() }
+			if !paired { router.path.removeAll() }
 		}
 		#if DEBUG
 		// Screenshots of a chat without driving the UI: `-VettaOpenSession <id>` opens it once paired;
 		// `-VettaOpenSession new` opens New Session.
 		.task(id: model.sessionsLoaded) {
 			let arguments = ProcessInfo.processInfo.arguments
-			guard model.sessionsLoaded, router.workPath.isEmpty,
+			guard model.sessionsLoaded, router.path.isEmpty,
 			      let index = arguments.firstIndex(of: "-VettaOpenSession"), index + 1 < arguments.count
 			else { return }
 			let target = arguments[index + 1]
