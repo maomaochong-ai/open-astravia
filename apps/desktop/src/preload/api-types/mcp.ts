@@ -3,6 +3,8 @@ export interface McpServerCommonConfigData {
 	autoApprove?: string[];
 	startupTimeout?: number;
 	debug?: boolean;
+	/** Connection ownership for global MCP config. Project config always remains workspace-scoped. */
+	resourceScope?: "application" | "workspace";
 	/** 仅 UI 展示用的可读名（mcp.json 里的 key 仍是真实 name）。 */
 	displayName?: string;
 	/** 仅 UI 展示用的描述。 */

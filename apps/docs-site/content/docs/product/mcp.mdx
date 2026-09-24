@@ -7,6 +7,8 @@ MCP 让 Agent 调用外部工具与数据源。在桌面端，MCP 通过侧栏 *
 
 配置文件：`~/.vetta/agent/mcp.json`（全局）。OAuth 凭证可能额外保存在 `~/.vetta/agent/mcp-auth/`。
 
+全局 MCP 连接会在应用启动后预热并跨会话复用。项目 `.vetta/mcp.json` 中的连接、引用 `${PROJECT_ROOT}` 的全局连接，以及设置了 `"resourceScope": "workspace"` 的全局连接仍按工作区隔离，并可使用当前工作区的 MCP roots。依赖 `roots/list`、但配置文本里没有 `${PROJECT_ROOT}` 的全局连接，应在高级 JSON 配置中显式设置 `resourceScope` 为 `workspace`。
+
 ## 添加推荐 / 发现中的 MCP
 
 发现列表中的推荐连接器来自内置预设与市场数据。当前代码中标记为可在发现列表展示的内置示例包括（以你安装的客户端版本为准）：

@@ -13,6 +13,7 @@ const McpServerCommonConfigProperties = {
 	autoApprove: Type.Optional(Type.Array(Type.Unknown())),
 	startupTimeout: Type.Optional(Type.Number()),
 	debug: Type.Optional(Type.Boolean()),
+	resourceScope: Type.Optional(Type.Union([Type.Literal("application"), Type.Literal("workspace")])),
 	displayName: Type.Optional(Type.Unknown()),
 	description: Type.Optional(Type.Unknown()),
 	protocolMode: Type.Optional(Type.Union([Type.Literal("legacy"), Type.Literal("modern"), Type.Literal("auto")])),
@@ -109,6 +110,12 @@ function validateServerConfig(name: string, value: unknown): void {
 	}
 	if (value.debug !== undefined && !Value.Check(Type.Boolean(), value.debug)) {
 		throw new Error(`Invalid server config for '${name}': 'debug' must be a boolean`);
+	}
+	if (
+		value.resourceScope !== undefined &&
+		!Value.Check(Type.Union([Type.Literal("application"), Type.Literal("workspace")]), value.resourceScope)
+	) {
+		throw new Error(`Invalid server config for '${name}': 'resourceScope' must be "application" or "workspace"`);
 	}
 	if (
 		value.protocolMode !== undefined &&

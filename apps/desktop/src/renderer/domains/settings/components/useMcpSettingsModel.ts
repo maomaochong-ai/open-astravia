@@ -51,6 +51,7 @@ export interface McpServerFormState {
 	autoApprove: string;
 	startupTimeout: string;
 	debug: boolean;
+	resourceScope?: "application" | "workspace";
 }
 
 export interface McpSettingsModel {
@@ -120,6 +121,7 @@ export const emptyMcpServer: McpServerFormState = {
 	autoApprove: "",
 	startupTimeout: "",
 	debug: false,
+	resourceScope: undefined,
 };
 
 export function isHttpMcpServerConfigData(config: McpServerConfigData): config is McpHttpServerConfigData {
@@ -683,6 +685,7 @@ function serverToForm(name: string, server: McpServerConfigData): McpServerFormS
 		autoApprove: server.autoApprove?.join(", ") ?? "",
 		startupTimeout: server.startupTimeout != null ? String(server.startupTimeout) : "",
 		debug: server.debug ?? false,
+		resourceScope: server.resourceScope,
 	};
 	if (isHttpMcpServerConfigData(server)) {
 		return {
@@ -721,6 +724,7 @@ function formToServer(form: McpServerFormState): McpServerConfigData {
 		if (autoApprove && autoApprove.length > 0) config.autoApprove = autoApprove;
 		if (startupTimeout && !Number.isNaN(startupTimeout)) config.startupTimeout = startupTimeout;
 		if (form.debug) config.debug = true;
+		if (form.resourceScope) config.resourceScope = form.resourceScope;
 		return config;
 	}
 
@@ -740,6 +744,7 @@ function formToServer(form: McpServerFormState): McpServerConfigData {
 	if (autoApprove && autoApprove.length > 0) config.autoApprove = autoApprove;
 	if (startupTimeout && !Number.isNaN(startupTimeout)) config.startupTimeout = startupTimeout;
 	if (form.debug) config.debug = true;
+	if (form.resourceScope) config.resourceScope = form.resourceScope;
 	return config;
 }
 
@@ -768,6 +773,7 @@ function mergeMarketServer(existing: McpServerConfigData | undefined, next: McpS
 	const localOnly = {
 		...(existing.disabled === undefined ? {} : { disabled: existing.disabled }),
 		...(existing.autoApprove === undefined ? {} : { autoApprove: [...existing.autoApprove] }),
+		...(existing.resourceScope === undefined ? {} : { resourceScope: existing.resourceScope }),
 	};
 	if (isHttpMcpServerConfigData(existing) && isHttpMcpServerConfigData(next)) {
 		const headers = { ...existing.headers, ...next.headers };

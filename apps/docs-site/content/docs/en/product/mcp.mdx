@@ -14,6 +14,8 @@ MCP connects Vetta to external tools and data sources through a declared server.
 
 Add a connector from **Capabilities → Add capability → Add MCP manually**, or install one from a trusted capability source.
 
+Global MCP connections are prewarmed after application startup and reused across sessions. Servers from a project's `.vetta/mcp.json`, global servers that reference `${PROJECT_ROOT}`, and global servers with `"resourceScope": "workspace"` stay isolated per workspace and can use that workspace's MCP roots. If a global server depends on `roots/list` without referencing `${PROJECT_ROOT}` in its configuration, set `resourceScope` to `workspace` in the advanced JSON configuration.
+
 ## Configure the smallest useful server
 
 Keep the command, URL, and environment explicit. Credential references should point to protected configuration or environment variables; never paste a token into a task, project file, or committed MCP configuration.

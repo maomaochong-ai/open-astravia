@@ -300,6 +300,10 @@ export class McpServerSupervisor {
 
 	private async startServer(name: string, config: McpServerConfig, publish = true): Promise<ManagedMcpServer> {
 		this.log(`Initializing server: ${name}`);
+		const startedAt = Date.now();
+		let handshakeMs = 0;
+		let toolsMs = 0;
+		let resourcesMs = 0;
 		const server = createManagedServer(name, config, "starting");
 		if (publish) this.servers.set(name, server);
 
@@ -316,23 +320,30 @@ export class McpServerSupervisor {
 				clientInfo: this.clientInfo,
 				capabilities: buildClientCapabilities(this.interactionHandlers, this.clientCapabilities),
 			});
+			handshakeMs = Date.now() - startedAt;
 			server.serverInfo = result.serverInfo;
 			server.pid = client.getPid();
 
 			if (result.capabilities?.tools) {
+				const toolsStartedAt = Date.now();
 				try {
 					server.tools = (await client.listTools()).tools;
 					this.log(`Server ${name} provides ${server.tools.length} tools`);
 				} catch (error) {
 					this.log(`Failed to list tools for ${name}: ${getErrorMessage(error)}`);
+				} finally {
+					toolsMs = Date.now() - toolsStartedAt;
 				}
 			}
 			if (result.capabilities?.resources) {
+				const resourcesStartedAt = Date.now();
 				try {
 					server.resources = (await client.listResources()).resources;
 					this.log(`Server ${name} provides ${server.resources.length} resources`);
 				} catch (error) {
 					this.log(`Failed to list resources for ${name}: ${getErrorMessage(error)}`);
+				} finally {
+					resourcesMs = Date.now() - resourcesStartedAt;
 				}
 			}
 
@@ -343,6 +354,9 @@ export class McpServerSupervisor {
 				return server;
 			}
 			this.log(`Server ${name} is ready`);
+			this.log(
+				`MCP server startup timing name=${name} handshakeMs=${handshakeMs} toolsMs=${toolsMs} resourcesMs=${resourcesMs} totalMs=${Date.now() - startedAt}`,
+			);
 		} catch (error) {
 			const failedClient = server.client;
 			if (failedClient) {

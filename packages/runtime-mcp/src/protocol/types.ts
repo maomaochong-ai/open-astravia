@@ -40,6 +40,8 @@ export interface McpServerCommonConfig {
 	autoApprove?: string[];
 	startupTimeout?: number;
 	debug?: boolean;
+	/** Connection ownership. Global entries default to application unless they reference PROJECT_ROOT. */
+	resourceScope?: "application" | "workspace";
 	displayName?: string;
 	description?: string;
 	/** Selects the wire protocol strategy; legacy remains the compatibility default. */

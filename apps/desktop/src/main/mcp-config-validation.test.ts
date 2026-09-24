@@ -2,6 +2,25 @@ import { describe, expect, it } from "vitest";
 import { validateMcpConfig } from "./mcp-config-validation";
 
 describe("validateMcpConfig managed runtime environment", () => {
+	it("accepts known MCP resource ownership scopes and rejects unknown values", () => {
+		expect(
+			validateMcpConfig({
+				mcpServers: {
+					shared: { command: "server", resourceScope: "application" },
+					rooted: { command: "server", resourceScope: "workspace" },
+				},
+			}),
+		).toMatchObject({
+			mcpServers: {
+				shared: { resourceScope: "application" },
+				rooted: { resourceScope: "workspace" },
+			},
+		});
+		expect(() =>
+			validateMcpConfig({ mcpServers: { invalid: { command: "server", resourceScope: "session" } } }),
+		).toThrow(/resourceScope/);
+	});
+
 	it("accepts string overrides only for a managed HTTP runtime", () => {
 		expect(
 			validateMcpConfig({

@@ -21,6 +21,15 @@ describe("createDesktopMcpInteractionHandlers", () => {
 		});
 	});
 
+	it("does not bind application-scoped MCP connections to a workspace root", () => {
+		const handlers = createDesktopMcpInteractionHandlers({
+			projectRoot: process.cwd(),
+			resourceScope: "application",
+		});
+
+		expect(handlers.roots).toBeUndefined();
+	});
+
 	it("does not advertise sampling until an approved host policy is injected", () => {
 		const withoutPolicy = createDesktopMcpInteractionHandlers({ projectRoot: process.cwd() });
 		expect(withoutPolicy.sampling).toBeUndefined();
