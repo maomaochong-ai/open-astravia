@@ -1,9 +1,10 @@
 import SwiftUI
 import VettaKit
 
-/// The drawer over the slot: search, recent conversations and the three most recent projects, then every
-/// session under a status filter that sticks to the top. The link pill and Close stay at the top,
-/// New Session and Settings float at the bottom. Only there once a desktop is paired.
+/// The drawer over the slot: recent conversations and the three most recent projects, then every
+/// session under a status filter that sticks to the top. The link pill and Close stay at the top;
+/// New Session, Search and Settings float at the bottom, and Search opens its field there.
+/// Only there once a desktop is paired.
 struct HomeView: View {
 	@Environment(AppModel.self) private var model
 	@Environment(Router.self) private var router
@@ -14,7 +15,7 @@ struct HomeView: View {
 	@State private var deleting: RemoteSessionSummary?
 	@State private var depth = ScrollDepth()
 
-	/// Searching folds everything around the search bar away, from the first tap until cancelled.
+	/// Searching folds the recent cards and the top bar away, from the first tap until cancelled.
 	private var searching: Bool { searchActive || !query.isEmpty }
 
 	private var rows: [RemoteSessionSummary] {
@@ -25,7 +26,6 @@ struct HomeView: View {
 		let rows = rows
 		List {
 			Section {
-				searchField
 				if searching {
 					projectResults
 				} else {
@@ -57,11 +57,7 @@ struct HomeView: View {
 				topBar.transition(.move(edge: .top).combined(with: .opacity))
 			}
 		}
-		.safeAreaBar(edge: .bottom) {
-			if !searching {
-				bottomBar.transition(.move(edge: .bottom).combined(with: .opacity))
-			}
-		}
+		.safeAreaBar(edge: .bottom) { bottomBar }
 	}
 
 	private var topBar: some View {
@@ -77,24 +73,32 @@ struct HomeView: View {
 		.padding(.bottom, 8)
 	}
 
+	@ViewBuilder
 	private var bottomBar: some View {
-		HStack(alignment: .bottom) {
-			NewSessionButton { router.startNewSession() }
-			Spacer()
-			GlassCircleButton(symbol: "gearshape", size: 56, label: L10n.Settings.title, identifier: "home.settings") {
-				router.path.append(.settings)
+		if searching {
+			NativeSearchBar(text: $query, active: $searchActive.animation(.snappy), placeholder: L10n.Home.searchPlaceholder, focused: true)
+				.padding(.horizontal, 8)
+				.padding(.bottom, 4)
+				.transition(.opacity)
+		} else {
+			HStack(alignment: .bottom, spacing: 12) {
+				NewSessionButton { router.startNewSession() }
+				Spacer()
+				Group {
+					GlassCircleButton(symbol: "magnifyingglass", size: 56, label: L10n.Home.search, identifier: "home.search") {
+						withAnimation(.snappy) { searchActive = true }
+					}
+					// Nothing to search until there is a session.
+					.disabled(model.sessions.isEmpty)
+					GlassCircleButton(symbol: "gearshape", size: 56, label: L10n.Settings.title, identifier: "home.settings") {
+						router.path.append(.settings)
+					}
+				}
+				.padding(.bottom, 4)
 			}
-			.padding(.bottom, 4)
+			.padding(.horizontal, 16)
+			.transition(.opacity)
 		}
-		.padding(.horizontal, 16)
-	}
-
-	private var searchField: some View {
-		NativeSearchBar(text: $query, active: $searchActive.animation(.snappy), placeholder: L10n.Home.searchPlaceholder)
-			// Nothing to search until there is a session.
-			.disabled(model.sessions.isEmpty)
-			.padding(.horizontal, 8)
-			.bareRow(bottom: 4)
 	}
 
 	@ViewBuilder

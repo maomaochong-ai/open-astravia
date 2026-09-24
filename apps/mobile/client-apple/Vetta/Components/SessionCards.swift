@@ -488,6 +488,8 @@ struct NativeSearchBar: UIViewRepresentable {
 	/// True from the first tap until Cancel, or until the keyboard goes away with nothing typed.
 	@Binding var active: Bool
 	var placeholder: String
+	/// Takes the keyboard as soon as it appears.
+	var focused = false
 
 	func makeUIView(context: Context) -> UISearchBar {
 		let bar = UISearchBar()
@@ -497,6 +499,7 @@ struct NativeSearchBar: UIViewRepresentable {
 		bar.delegate = context.coordinator
 		bar.accessibilityIdentifier = "home.search"
 		bar.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+		if focused { DispatchQueue.main.async { bar.becomeFirstResponder() } }
 		return bar
 	}
 
