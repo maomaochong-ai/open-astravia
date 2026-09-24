@@ -114,4 +114,36 @@ describe("Copilot Claude via Anthropic Messages", () => {
 		const headers = mockState.constructorOpts!.defaultHeaders as Record<string, string>;
 		expect(headers["anthropic-beta"]).toContain("interleaved-thinking-2025-05-14");
 	});
+
+	it("sets the vision header only when the selected model accepts images", async () => {
+		const imageContext: Context = {
+			messages: [
+				{
+					role: "user",
+					content: [
+						{ type: "text", text: "inspect" },
+						{ type: "image", data: "ZmFrZQ==", mimeType: "image/png" },
+					],
+					timestamp: 1,
+				},
+			],
+		};
+		const { streamAnthropic } = await import("../src/providers/anthropic.js");
+
+		const textOnlyStream = streamAnthropic({ ...model, input: ["text"] }, imageContext, {
+			apiKey: "tid_copilot_session_test_token",
+		});
+		for await (const event of textOnlyStream) {
+			if (event.type === "error") break;
+		}
+		expect(mockState.constructorOpts!.defaultHeaders).not.toHaveProperty("Copilot-Vision-Request");
+
+		const visionStream = streamAnthropic(model, imageContext, {
+			apiKey: "tid_copilot_session_test_token",
+		});
+		for await (const event of visionStream) {
+			if (event.type === "error") break;
+		}
+		expect(mockState.constructorOpts!.defaultHeaders).toMatchObject({ "Copilot-Vision-Request": "true" });
+	});
 });

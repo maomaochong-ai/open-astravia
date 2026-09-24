@@ -1,126 +1,181 @@
 import { SELF } from "cloudflare:test";
-import { encodeRemoteFrame, parseRemoteFrame, type RemoteFrame } from "@vetta/remote-control";
+import {
+	encodeRemoteFrame,
+	generateIdentityKeyPair,
+	PAIRING_PROTOCOL_PREFIX,
+	PEER_HASH_PROTOCOL_PREFIX,
+	parseRemoteFrame,
+	REMOTE_WEBSOCKET_PROTOCOL,
+	type RemoteFrame,
+	type RemoteHello,
+	sha256Hex,
+	toBase64Url,
+} from "@vetta/remote-control";
 import {
 	encodeRemoteDesktopSignal,
 	parseRemoteDesktopSignal,
 	REMOTE_DESKTOP_WEBSOCKET_PROTOCOL,
 } from "@vetta/remote-desktop/protocol";
 import { describe, expect, it } from "vitest";
-import { PAIRING_PROTOCOL_PREFIX, REMOTE_WEBSOCKET_PROTOCOL } from "../src/auth.js";
 
-const pairingId = "pairing_0123456789abcdefghijklmno";
-const pairingSecret = "secret_0123456789abcdefghijklmnopqrstuvwxyz";
+const desktopSecret = "desktop_secret_0123456789abcdefghijklmnopqrstuv";
+const mobileSecret = "mobile_secret_0123456789abcdefghijklmnopqrstuvwx";
+const mobileHash = sha256Hex(mobileSecret);
+const nonce = "A".repeat(32);
 
-describe("remote relay Worker", () => {
-	it("exposes a non-cacheable health endpoint", async () => {
+describe("remote relay Worker (protocol v2)", () => {
+	it("exposes a non-cacheable v2 health endpoint and no v1 route", async () => {
 		const response = await SELF.fetch("https://relay.test/health");
-
 		expect(response.status).toBe(200);
 		expect(response.headers.get("Cache-Control")).toBe("no-store");
-		expect(await response.json()).toEqual({ status: "ok", protocolVersion: 1 });
-	});
+		expect(await response.json()).toEqual({ status: "ok", protocolVersion: 2 });
 
-	it("rejects missing credentials and prevents a mobile client from creating a room", async () => {
-		const missing = await SELF.fetch(`https://relay.test/v1/relay/${pairingId}/desktop`, {
+		const legacy = await SELF.fetch("https://relay.test/v1/relay/pairing_0123456789abcdefghijklmno/desktop", {
 			headers: { Upgrade: "websocket", "Sec-WebSocket-Protocol": REMOTE_WEBSOCKET_PROTOCOL },
 		});
-		const mobileFirst = await upgrade("mobile", pairingSecret);
+		expect(legacy.status).toBe(404);
+	});
 
+	it("rejects missing protocols, phones before the desktop, and desktops without a peer hash", async () => {
+		const room = "room_auth_0123456789abcdef";
+		const missing = await SELF.fetch(`https://relay.test/v2/relay/${room}/desktop`, {
+			headers: { Upgrade: "websocket", "Sec-WebSocket-Protocol": REMOTE_WEBSOCKET_PROTOCOL },
+		});
 		expect(missing.status).toBe(401);
+
+		const mobileFirst = await upgrade("mobile", mobileSecret, room);
 		expect(mobileFirst.response.status).toBe(401);
 		expect(mobileFirst.socket).toBeNull();
+
+		const desktopWithoutPeer = await upgrade("desktop", desktopSecret, room);
+		expect(desktopWithoutPeer.response.status).toBe(401);
+
+		const desktop = await requireSocket(await upgrade("desktop", desktopSecret, room, mobileHash));
+		const wrongMobile = await upgrade("mobile", `${mobileSecret}wrong`, room);
+		expect(wrongMobile.response.status).toBe(401);
+		const otherDesktop = await upgrade("desktop", `${desktopSecret}other`, room, mobileHash);
+		expect(otherDesktop.response.status).toBe(401);
+		desktop.close(1000, "test complete");
 	});
 
-	it("authorizes one desktop and mobile then forwards validated frames", async () => {
-		const desktop = await requireSocket(await upgrade("desktop", pairingSecret));
-		const wrongMobile = await upgrade("mobile", `${pairingSecret}wrong`);
-		expect(wrongMobile.response.status).toBe(401);
-
-		const mobile = await requireSocket(await upgrade("mobile", pairingSecret));
+	it("acknowledges both sides with the peer's keys and forwards only sealed frames", async () => {
+		const room = "room_pair_0123456789abcdef";
+		const desktop = await requireSocket(await upgrade("desktop", desktopSecret, room, mobileHash));
+		const mobile = await requireSocket(await upgrade("mobile", mobileSecret, room));
+		const desktopHello = hello("desktop", "desktop-1", "desktop-connection");
+		const mobileHello = hello("mobile", "phone-1", "mobile-connection");
 		const desktopAck = nextFrame(desktop);
 		const mobileAck = nextFrame(mobile);
-		desktop.send(encodeRemoteFrame(hello("desktop", "desktop-1", "desktop-connection")));
-		mobile.send(encodeRemoteFrame(hello("mobile", "phone-1", "mobile-connection")));
+		desktop.send(encodeRemoteFrame(desktopHello));
+		mobile.send(encodeRemoteFrame(mobileHello));
 
-		await expect(desktopAck).resolves.toMatchObject({
+		await expect(desktopAck).resolves.toEqual({
 			type: "hello_ack",
+			protocolVersion: 2,
 			connectionId: "desktop-connection",
 			peerDeviceId: "phone-1",
+			peerIdentityKey: mobileHello.identityKey,
+			peerEphemeralKey: mobileHello.ephemeralKey,
 		});
-		await expect(mobileAck).resolves.toMatchObject({
+		await expect(mobileAck).resolves.toEqual({
 			type: "hello_ack",
+			protocolVersion: 2,
 			connectionId: "mobile-connection",
 			peerDeviceId: "desktop-1",
+			peerIdentityKey: desktopHello.identityKey,
+			peerEphemeralKey: desktopHello.ephemeralKey,
 		});
 
-		const forwarded = nextFrame(desktop);
-		mobile.send(
-			encodeRemoteFrame({
-				type: "request",
-				requestId: "request-1",
-				method: "session.prompt",
-				sessionId: "session-1",
-				payload: { text: "not logged by relay" },
-			}),
-		);
-		await expect(forwarded).resolves.toEqual({
-			type: "request",
-			requestId: "request-1",
-			method: "session.prompt",
-			sessionId: "session-1",
-			payload: { text: "not logged by relay" },
-		});
+		const toDesktop = nextFrame(desktop);
+		mobile.send(encodeRemoteFrame({ type: "sealed", nonce, ciphertext: "from-mobile" }));
+		await expect(toDesktop).resolves.toEqual({ type: "sealed", nonce, ciphertext: "from-mobile" });
+		const toMobile = nextFrame(mobile);
+		desktop.send(encodeRemoteFrame({ type: "sealed", nonce, ciphertext: "from-desktop" }));
+		await expect(toMobile).resolves.toEqual({ type: "sealed", nonce, ciphertext: "from-desktop" });
 
+		const closed = nextClose(mobile);
+		mobile.send(encodeRemoteFrame({ type: "request", requestId: "r1", method: "session.list" }));
+		await expect(closed).resolves.toMatchObject({ code: 4002 });
 		desktop.close(1000, "test complete");
-		mobile.close(1000, "test complete");
 	});
 
-	it("accepts a hello followed by a request in one WebSocket message", async () => {
-		const roomId = "batched_handshake_abcdefghijkl";
-		const desktop = await requireSocket(await upgrade("desktop", pairingSecret, roomId));
-		const mobile = await requireSocket(await upgrade("mobile", pairingSecret, roomId));
-		const response = nextFrame(mobile);
-		const helloFrame = hello("mobile", "phone-batched", "mobile-batched");
-		const requestFrame: RemoteFrame = {
-			type: "request",
-			requestId: "request-batched",
-			method: "diagnostics.snapshot",
-		};
-		mobile.send(`${encodeRemoteFrame(helloFrame)}${encodeRemoteFrame(requestFrame)}`);
+	it("reports the peer offline instead of closing, and re-acks the desktop when the phone returns", async () => {
+		const room = "room_resume_0123456789abcd";
+		const desktop = await requireSocket(await upgrade("desktop", desktopSecret, room, mobileHash));
+		desktop.send(encodeRemoteFrame(hello("desktop", "desktop-2", "desktop-connection-2")));
 
-		await expect(response).resolves.toMatchObject({
-			type: "response",
-			requestId: "request-batched",
-			success: false,
-			error: { code: "transport_closed" },
+		const offline = nextFrame(desktop);
+		desktop.send(encodeRemoteFrame({ type: "sealed", nonce, ciphertext: "nobody-home" }));
+		await expect(offline).resolves.toEqual({ type: "peer_status", online: false });
+
+		const firstMobile = await requireSocket(await upgrade("mobile", mobileSecret, room));
+		const firstAck = nextFrame(desktop);
+		const firstHello = hello("mobile", "phone-2", "mobile-connection-a");
+		firstMobile.send(encodeRemoteFrame(firstHello));
+		await expect(firstAck).resolves.toMatchObject({ type: "hello_ack", peerEphemeralKey: firstHello.ephemeralKey });
+
+		const gone = nextFrame(desktop);
+		firstMobile.close(1000, "phone left");
+		await expect(gone).resolves.toEqual({ type: "peer_status", online: false });
+
+		const secondMobile = await requireSocket(await upgrade("mobile", mobileSecret, room));
+		const secondAck = nextFrame(desktop);
+		const secondHello = hello("mobile", "phone-2", "mobile-connection-b");
+		secondMobile.send(encodeRemoteFrame(secondHello));
+		await expect(secondAck).resolves.toMatchObject({
+			type: "hello_ack",
+			connectionId: "desktop-connection-2",
+			peerEphemeralKey: secondHello.ephemeralKey,
 		});
-
 		desktop.close(1000, "test complete");
-		mobile.close(1000, "test complete");
+		secondMobile.close(1000, "test complete");
 	});
 
-	it("closes a client that sends malformed protocol data", async () => {
-		const roomId = "pairing_invalid_frame_abcdefghijkl";
-		const desktop = await requireSocket(await upgrade("desktop", pairingSecret, roomId));
-		const mobile = await requireSocket(await upgrade("mobile", pairingSecret, roomId));
+	it("survives both peers closing together and accepts a fresh pair", async () => {
+		const room = "room_close_race_0123456789";
+		const desktop = await requireSocket(await upgrade("desktop", desktopSecret, room, mobileHash));
+		const mobile = await requireSocket(await upgrade("mobile", mobileSecret, room));
 		const desktopAck = nextFrame(desktop);
 		const mobileAck = nextFrame(mobile);
-		desktop.send(encodeRemoteFrame(hello("desktop", "desktop-2", "desktop-connection-2")));
-		mobile.send(encodeRemoteFrame(hello("mobile", "phone-2", "mobile-connection-2")));
+		desktop.send(encodeRemoteFrame(hello("desktop", "desktop-race", "desktop-connection-race")));
+		mobile.send(encodeRemoteFrame(hello("mobile", "phone-race", "mobile-connection-race")));
 		await Promise.all([desktopAck, mobileAck]);
 
-		const close = nextClose(mobile);
-		mobile.send('{"type":"request","requestId":"bad","method":"shell.exec"}\n');
+		desktop.close(1000, "desktop left");
+		mobile.close(1000, "phone left");
 
-		await expect(close).resolves.toMatchObject({ code: 4002 });
+		const replacementDesktop = await requireSocket(await upgrade("desktop", desktopSecret, room, mobileHash));
+		const replacementMobile = await requireSocket(await upgrade("mobile", mobileSecret, room));
+		const replacementDesktopAck = nextFrame(replacementDesktop);
+		const replacementMobileAck = nextFrame(replacementMobile);
+		replacementDesktop.send(encodeRemoteFrame(hello("desktop", "desktop-race", "desktop-connection-replacement")));
+		replacementMobile.send(encodeRemoteFrame(hello("mobile", "phone-race", "mobile-connection-replacement")));
+		await Promise.all([replacementDesktopAck, replacementMobileAck]);
+		replacementDesktop.close(1000, "test complete");
+		replacementMobile.close(1000, "test complete");
+	});
+
+	it("lets the registered desktop rotate the phone credential and rejects v1 hellos", async () => {
+		const room = "room_rotate_0123456789abcd";
+		const firstDesktop = await requireSocket(await upgrade("desktop", desktopSecret, room, mobileHash));
+		firstDesktop.close(1000, "re-register");
+		const rotatedSecret = "rotated_secret_0123456789abcdefghijklmnopqrstu";
+		const desktop = await requireSocket(await upgrade("desktop", desktopSecret, room, sha256Hex(rotatedSecret)));
+		expect((await upgrade("mobile", mobileSecret, room)).response.status).toBe(401);
+		const mobile = await requireSocket(await upgrade("mobile", rotatedSecret, room));
+
+		const closed = nextClose(mobile);
+		mobile.send(`${JSON.stringify({ ...hello("mobile", "phone-3", "mobile-connection-3"), protocolVersion: 1 })}\n`);
+		await expect(closed).resolves.toMatchObject({ code: 4002 });
 		desktop.close(1000, "test complete");
 	});
 
 	it("keeps WebRTC signaling separate and never relays input or media through the Worker", async () => {
-		const roomId = "desktop_signaling_abcdefghijklmnop";
-		const host = await requireSocket(await upgradeDesktop("host", pairingSecret, roomId));
+		const room = "room_signal_0123456789abcd";
+		const control = await requireSocket(await upgrade("desktop", desktopSecret, room, mobileHash));
+		const host = await requireSocket(await upgradeDesktop("host", desktopSecret, room));
 		const peerReady = nextDesktopSignal(host);
-		const viewer = await requireSocket(await upgradeDesktop("viewer", pairingSecret, roomId));
+		const viewer = await requireSocket(await upgradeDesktop("viewer", mobileSecret, room));
 		await expect(peerReady).resolves.toEqual({ type: "peer_ready", protocolVersion: 1 });
 		const offer = {
 			type: "offer",
@@ -136,37 +191,37 @@ describe("remote relay Worker", () => {
 		viewer.send(JSON.stringify({ type: "pointer.move", sequence: 1, x: 0.5, y: 0.5 }));
 		await expect(closed).resolves.toMatchObject({ code: 4002 });
 		host.close(1000, "test complete");
+		control.close(1000, "test complete");
 	});
 
-	it("rejects clients that forge the relay-owned peer-ready event", async () => {
-		const roomId = "desktop_ready_forgery_abcdefghijkl";
-		const host = await requireSocket(await upgradeDesktop("host", pairingSecret, roomId));
-		const closed = nextClose(host);
-
-		host.send(encodeRemoteDesktopSignal({ type: "peer_ready", protocolVersion: 1 }));
-
-		await expect(closed).resolves.toMatchObject({ code: 4002 });
+	it("rejects a WebRTC viewer whose secret is not the registered phone credential", async () => {
+		const room = "room_viewer_0123456789abcd";
+		const control = await requireSocket(await upgrade("desktop", desktopSecret, room, mobileHash));
+		const rejected = await upgradeDesktop("viewer", `${mobileSecret}nope`, room);
+		expect(rejected.response.status).toBe(401);
+		control.close(1000, "test complete");
 	});
 });
 
-function hello(role: "mobile" | "desktop", deviceId: string, connectionId: string): RemoteFrame {
+function hello(role: "mobile" | "desktop", deviceId: string, connectionId: string): RemoteHello {
 	return {
 		type: "hello",
-		protocolVersion: 1,
+		protocolVersion: 2,
 		role,
 		deviceId,
 		deviceName: deviceId,
 		capabilities: { chat: true, sessionRead: true },
 		connectionId,
+		identityKey: toBase64Url(generateIdentityKeyPair().publicKey),
+		ephemeralKey: toBase64Url(generateIdentityKeyPair().publicKey),
 	};
 }
 
-async function upgrade(role: "mobile" | "desktop", secret: string, roomId = pairingId) {
-	const response = await SELF.fetch(`https://relay.test/v1/relay/${roomId}/${role}`, {
-		headers: {
-			Upgrade: "websocket",
-			"Sec-WebSocket-Protocol": `${REMOTE_WEBSOCKET_PROTOCOL}, ${PAIRING_PROTOCOL_PREFIX}${secret}`,
-		},
+async function upgrade(role: "mobile" | "desktop", secret: string, roomId: string, peerHash?: string) {
+	const protocols = [REMOTE_WEBSOCKET_PROTOCOL, `${PAIRING_PROTOCOL_PREFIX}${secret}`];
+	if (peerHash) protocols.push(`${PEER_HASH_PROTOCOL_PREFIX}${peerHash}`);
+	const response = await SELF.fetch(`https://relay.test/v2/relay/${roomId}/${role}`, {
+		headers: { Upgrade: "websocket", "Sec-WebSocket-Protocol": protocols.join(", ") },
 	});
 	const socket = response.webSocket;
 	socket?.accept();
@@ -174,7 +229,7 @@ async function upgrade(role: "mobile" | "desktop", secret: string, roomId = pair
 }
 
 async function upgradeDesktop(role: "host" | "viewer", secret: string, roomId: string) {
-	const response = await SELF.fetch(`https://relay.test/v1/desktop/${roomId}/${role}`, {
+	const response = await SELF.fetch(`https://relay.test/v2/desktop/${roomId}/${role}`, {
 		headers: {
 			Upgrade: "websocket",
 			"Sec-WebSocket-Protocol": `${REMOTE_DESKTOP_WEBSOCKET_PROTOCOL}, ${PAIRING_PROTOCOL_PREFIX}${secret}`,

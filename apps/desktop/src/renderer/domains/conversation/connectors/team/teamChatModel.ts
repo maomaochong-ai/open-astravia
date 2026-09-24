@@ -38,6 +38,7 @@ export interface TeamChatLabels {
 }
 
 export interface TeamChatViewModel {
+	readonly teamId: string;
 	readonly feedKey: string;
 	readonly title: string;
 	readonly status: TeamChatStatus;
@@ -81,6 +82,7 @@ export interface TeamChatViewModel {
 /** Input-area slice kept independent from the high-frequency Team feed. */
 export type TeamComposerViewModel = Pick<
 	TeamChatViewModel,
+	| "teamId"
 	| "activeSessionId"
 	| "attachments"
 	| "canSend"
@@ -346,7 +348,7 @@ export function reduceTeamStreamState(state: TeamStreamState, event: DesktopTeam
 		delete next[event.messageId];
 		return next;
 	}
-	if (event.type === "desktop.team-context-usage") return state;
+	if (event.type === "desktop.team-context-usage" || event.type === "desktop.team-model-request-started") return state;
 	const current = state[event.messageId];
 	if (current?.message.phase === "completed" || current?.message.phase === "aborted") return state;
 	if (event.type === "desktop.team-tool-execution" || event.type === "conversation.tool-execution") {

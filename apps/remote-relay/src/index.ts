@@ -1,5 +1,6 @@
+import { REMOTE_PROTOCOL_VERSION } from "@vetta/remote-control";
 import { REMOTE_DESKTOP_WEBSOCKET_PROTOCOL } from "@vetta/remote-desktop/protocol";
-import { pairingSecretFromHeaders, parseRelayRoute, sha256 } from "./auth.js";
+import { pairingSecretFromHeaders, parseDesktopRoute, parseRelayRoute, sha256 } from "./auth.js";
 import { relayInfo, relayWarn } from "./relay-log.js";
 import { RemoteDesktopRoom } from "./remote-desktop-room.js";
 import { RemotePairRoom } from "./remote-pair-room.js";
@@ -20,7 +21,7 @@ export default {
 	async fetch(request: Request, env: Env): Promise<Response> {
 		const url = new URL(request.url);
 		if (request.method === "GET" && url.pathname === "/health") {
-			return json({ status: "ok", protocolVersion: 1 });
+			return json({ status: "ok", protocolVersion: REMOTE_PROTOCOL_VERSION });
 		}
 		const controlRoute = parseRelayRoute(url.pathname);
 		const desktopRoute = parseDesktopRoute(url.pathname);
@@ -35,27 +36,29 @@ export default {
 			relayWarn("upgrade_rejected", { role: route.role, reason: "missing_pairing_protocol" });
 			return json({ error: "unauthorized" }, 401);
 		}
-		const [credentialHash, bootstrapHash, resumeHash, pairingHash] = await Promise.all([
+		const [credentialHash, pairingHash] = await Promise.all([
 			sha256(credentials.pairingSecret),
-			credentials.bootstrapSecret ? sha256(credentials.bootstrapSecret) : Promise.resolve(undefined),
-			credentials.resumeSecret ? sha256(credentials.resumeSecret) : Promise.resolve(undefined),
 			sha256(route.pairingId),
 		]);
 		const roomTag = pairingHash.slice(0, 12);
 		const namespace = desktopRoute ? env.REMOTE_DESKTOP_ROOM : env.REMOTE_PAIR_ROOM;
-		let preauthorizedViewer = false;
-		if (desktopRoute?.role === "viewer") {
+		// WebRTC signaling has no credentials of its own: the pair room, which
+		// the desktop registered over the control channel, vouches for both roles.
+		let preauthorized: "mobile" | "desktop" | undefined;
+		if (desktopRoute) {
+			const relayRole = desktopRoute.role === "viewer" ? "mobile" : "desktop";
 			const authStub = env.REMOTE_PAIR_ROOM.get(env.REMOTE_PAIR_ROOM.idFromName(route.pairingId));
 			const authResponse = await authStub.fetch(
 				new Request("https://remote-pair-room.internal/authorize", {
 					method: "POST",
-					headers: {
-						"X-Vetta-Relay-Role": "mobile",
-						"X-Vetta-Credential-Hash": credentialHash,
-					},
+					headers: { "X-Vetta-Relay-Role": relayRole, "X-Vetta-Credential-Hash": credentialHash },
 				}),
 			);
-			preauthorizedViewer = authResponse.ok;
+			if (!authResponse.ok) {
+				relayWarn("upgrade_rejected", { role: route.role, reason: "not_registered_or_invalid" });
+				return json({ error: "unauthorized" }, 401);
+			}
+			preauthorized = relayRole;
 		}
 		const id = namespace.idFromName(route.pairingId);
 		const stub = namespace.get(id);
@@ -64,9 +67,8 @@ export default {
 				Upgrade: "websocket",
 				...(desktopRoute ? { "X-Vetta-Desktop-Role": desktopRoute.role } : { "X-Vetta-Relay-Role": route.role }),
 				"X-Vetta-Credential-Hash": credentialHash,
-				...(resumeHash ? { "X-Vetta-Resume-Hash": resumeHash } : {}),
-				...(bootstrapHash ? { "X-Vetta-Bootstrap-Hash": bootstrapHash } : {}),
-				...(preauthorizedViewer ? { "X-Vetta-Preauthorized": "mobile" } : {}),
+				...(credentials.peerCredentialHash ? { "X-Vetta-Peer-Hash": credentials.peerCredentialHash } : {}),
+				...(preauthorized ? { "X-Vetta-Preauthorized": preauthorized } : {}),
 				"X-Vetta-Room-Tag": roomTag,
 			},
 		});
@@ -81,12 +83,4 @@ function json(body: unknown, status = 200): Response {
 		status,
 		headers: { ...securityHeaders, "Content-Type": "application/json; charset=utf-8" },
 	});
-}
-
-function parseDesktopRoute(
-	pathname: string,
-): { readonly pairingId: string; readonly role: "host" | "viewer" } | undefined {
-	const match = /^\/v1\/desktop\/([A-Za-z0-9_-]{24,128})\/(host|viewer)$/.exec(pathname);
-	if (!match?.[1] || (match[2] !== "host" && match[2] !== "viewer")) return undefined;
-	return { pairingId: match[1], role: match[2] };
 }

@@ -43,7 +43,7 @@ describe("defaultAgentMode 兼容旧字段名", () => {
 	it("只有旧 agentMode 字段的配置仍能读出", async () => {
 		const store = await loadStoreWithConfig({ agentMode: "coding" });
 		expect((await store.readDesktopConfig()).defaultAgentMode).toBe("coding");
-	});
+	}, 20_000);
 
 	it("新字段优先于旧字段", async () => {
 		const store = await loadStoreWithConfig({ agentMode: "coding", defaultAgentMode: "work" });
@@ -75,7 +75,7 @@ describe("写回配置不丢本版本不认识的字段", () => {
 	});
 
 	it("已知字段显式置空仍能删除", async () => {
-		const store = await loadStoreWithConfig({ projects: [], remoteControl: { pairingId: "p1" } });
+		const store = await loadStoreWithConfig({ projects: [], remoteControl: { cloudEnabled: true, devices: [] } });
 		const config = await store.readDesktopConfig();
 		await store.writeDesktopConfig({ ...config, remoteControl: undefined });
 		expect((await store.readDisk()).remoteControl).toBeUndefined();

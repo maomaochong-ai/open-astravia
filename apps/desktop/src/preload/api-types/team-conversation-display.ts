@@ -63,6 +63,16 @@ export interface DesktopTeamContextUsageEvent {
 	readonly isCompacting?: boolean;
 }
 
+/** Authoritative boundary: the member Runtime has started the provider request. */
+export interface DesktopTeamModelRequestStartedEvent {
+	readonly type: "desktop.team-model-request-started";
+	readonly conversationId: string;
+	readonly memberId: string;
+	readonly runtimeSessionId: string;
+	readonly requestId: string;
+	readonly timestamp: number;
+}
+
 /** Desktop display delta adapted from a neutral Runtime execution observation. */
 export interface DesktopTeamToolExecutionEvent {
 	readonly type: "desktop.team-tool-execution";
@@ -123,4 +133,5 @@ export type DesktopTeamSessionStreamEvent =
 	  })
 	| Exclude<TeamSessionStreamEvent, { type: "session-snapshot" | "session-updated" }>
 	| DesktopTeamToolExecutionEvent
-	| DesktopTeamContextUsageEvent;
+	| DesktopTeamContextUsageEvent
+	| DesktopTeamModelRequestStartedEvent;

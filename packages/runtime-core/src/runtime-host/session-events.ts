@@ -39,6 +39,9 @@ export function mapRuntimeSessionObservationEvent(
 ): SessionEvent {
 	const base = baseSessionEvent(sessionId, event.source, timestamp);
 	switch (event.type) {
+		case "model.request.started":
+			if (!context?.turnId) throw new Error("Model request observation requires Turn identity");
+			return { ...base, type: event.type, turnId: context.turnId, modelCallIndex: event.modelCallIndex };
 		case "lifecycle":
 			return { ...base, type: "session.lifecycle", phase: event.phase };
 		case "assistant.event":

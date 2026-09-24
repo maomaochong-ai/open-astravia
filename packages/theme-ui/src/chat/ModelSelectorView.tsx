@@ -16,6 +16,7 @@ import {
 import { ThemeSurface } from "../appearance/ThemeSurface";
 import { MultiplierTag } from "../shared/MultiplierTag";
 import { ProviderIcon } from "../shared/provider-icon";
+import { ModelSelectorTrigger } from "./ModelSelectorTrigger";
 
 /**
  * 模型选择器的视图层：搜索、按 provider 分组、推理档位子菜单、云端/默认/视觉徽章。
@@ -198,32 +199,14 @@ export function ModelSelectorView({
 		// 在长会话页面触发整棵 DOM 的同步样式重算。
 		<DropdownMenu open={open} modal={false} onOpenChange={handleOpenChange}>
 			<DropdownMenuTrigger asChild>
-				<button
-					type="button"
-					title={selectedOption?.displayName ?? labels.placeholder}
-					className={cn(
-						// 输入卡 @container：窄宽缩短模型名、藏推理档，避免工具栏换行
-						"flex min-w-0 max-w-[5.5rem] items-center gap-1 rounded-full border border-transparent px-1.5 py-0.5 text-[11px] text-foreground transition-colors focus:outline-none focus-visible:outline-none data-[state=open]:bg-accent/60 data-[state=open]:text-foreground @[22rem]:max-w-[9rem] @[28rem]:max-w-[13rem]",
-						className,
-						classNames?.trigger,
-					)}
-				>
-					{selectedOption && (
-						<ProviderIcon
-							symbol={groups.find((g) => g.provider === selectedOption.provider)?.icon}
-							className="h-3 w-3 shrink-0"
-						/>
-					)}
-					<span className="min-w-0 flex-1 truncate text-left">
-						{selectedOption?.displayName ?? labels.placeholder}
-					</span>
-					{currentLevel && (
-						<span className="hidden shrink-0 rounded bg-muted/70 px-1 text-[9px] leading-[14px] text-muted-foreground @[28rem]:inline">
-							{labels.levelLabel(currentLevel)}
-						</span>
-					)}
-					<span className="icon-[solar--alt-arrow-down-linear] h-2.5 w-2.5 shrink-0" />
-				</button>
+				<ModelSelectorTrigger
+					label={selectedOption?.displayName ?? labels.placeholder}
+					icon={
+						selectedOption ? groups.find((group) => group.provider === selectedOption.provider)?.icon : undefined
+					}
+					reasoningLabel={currentLevel ? labels.levelLabel(currentLevel) : undefined}
+					className={cn(className, classNames?.trigger)}
+				/>
 			</DropdownMenuTrigger>
 			<AnimatePresence>
 				{open && (

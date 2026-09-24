@@ -1,7 +1,7 @@
 import { useAgentAvatarResolver } from "@shared/agent-teams/agent-avatar";
 import { ModelSelect } from "@shared/components/ModelSelect";
 import { useModelOptions } from "@shared/components/ModelSelect/useModelOptions";
-import type { TeamMemberModelPreference, TeamMemberModelSelection } from "../../../../shared/agent-team-member-model";
+import { useTeamMemberModels } from "@shared/agent-teams/useTeamMemberModels";
 import { resolveReasoning } from "@shared/components/ModelSelect/resolveReasoning";
 import { DEFAULT_TEAM_AUTOMATIC_RETRIES } from "@vetta/agent-team";
 import type { AgentProfile, TeamDefinition, TeamMemberAssignment } from "@vetta/agent-team";
@@ -75,34 +75,10 @@ export function TeamSettingsSheet({
 	const [assignmentAgentId, setAssignmentAgentId] = useState<string>();
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState<string>();
-	const [memberModels, setMemberModels] = useState<Readonly<Record<string, TeamMemberModelPreference>>>({});
-	const [modelSaving, setModelSaving] = useState<string>();
-	const [modelError, setModelError] = useState<string>();
+	const { state: modelState, select: setMemberModel, reload: reloadModels } = useTeamMemberModels(team.id, open);
+	const memberModels = modelState?.models ?? {};
+	const modelError = modelState?.error;
 	const { options: modelOptions } = useModelOptions();
-
-	useEffect(() => {
-		if (!open) return;
-		let active = true;
-		setMemberModels({});
-		void window.vetta.agentTeams.listMemberModels(team.id).then((models) => {
-			if (active) setMemberModels(models);
-		}).catch((cause: unknown) => {
-			if (active) setModelError(cause instanceof Error ? cause.message : String(cause));
-		});
-		return () => { active = false; };
-	}, [open, team.id]);
-
-	async function setMemberModel(memberId: string, selection: TeamMemberModelSelection | null): Promise<void> {
-		setModelSaving(memberId);
-		setModelError(undefined);
-		try {
-			setMemberModels(await window.vetta.agentTeams.setMemberModel(team.id, memberId, selection));
-		} catch (cause) {
-			setModelError(cause instanceof Error ? cause.message : String(cause));
-		} finally {
-			setModelSaving(undefined);
-		}
-	}
 
 	// 团队被外部保存（改名、拉拢成员）后重新起草，避免抽屉里留着旧修订。
 	useEffect(() => setDraft(assemblyDraftFromTeam(team)), [team]);
@@ -224,7 +200,13 @@ export function TeamSettingsSheet({
 										{error}
 									</p>
 								)}
-								{modelError && <p aria-live="polite" className="rounded-lg bg-destructive/10 px-3 py-2 text-[12px] text-destructive">{modelError}</p>}
+								<p className="text-[12px] text-muted-foreground">{t("models.scopeHint")}</p>
+								{modelError && (
+									<div role="alert">
+										<p>{modelError}</p>
+										<Button variant="ghost" onClick={() => void reloadModels()}>{t("models.retry")}</Button>
+									</div>
+								)}
 							</div>
 						</DetailDrawerEnter>
 
@@ -393,12 +375,13 @@ export function TeamSettingsSheet({
 														void setMemberModel(memberId, value ? { modelKey: value, ...(defaultReasoning ? { reasoning: defaultReasoning } : {}) } : null);
 													}}
 													allowClear
-													disabled={modelSaving === memberId}
-													placeholder={selectedModel ?? t("settings.memberModelInherit")}
+													clearLabel={t("settings.memberModelInherit")}
+													disabled={!modelState?.models || modelState.loading || modelState.saving}
+													placeholder={!modelState?.models ? t("models.loading") : selectedModel ?? t("settings.memberModelInherit")}
 													triggerClassName="w-full justify-between"
 													reasoning={selectedModel ? { value: memberModels[memberId]?.reasoning, onChange: (reasoning) => void setMemberModel(memberId, { modelKey: selectedModel, reasoning }) } : undefined}
 												/>
-												<span className="text-[11px] text-muted-foreground/70">{selectedModel ? t("settings.memberModelFixedHint") : t("settings.memberModelInheritHint")}</span>
+												<span className="text-[11px] text-muted-foreground/70">{!modelState?.models ? t("models.loading") : selectedModel ? t("settings.memberModelFixedHint") : t("settings.memberModelInheritHint")}</span>
 												{modelUnavailable ? <span role="status" className="text-[11px] text-destructive">{t("settings.memberModelUnavailable", { model: selectedModel })}</span> : null}
 											</div> : null}
 										</li>

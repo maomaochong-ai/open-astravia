@@ -1,0 +1,89 @@
+name: Vetta
+options:
+  bundleIdPrefix: com.openvetta
+  deploymentTarget:
+    iOS: "26.0"
+  createIntermediateGroups: true
+  developmentLanguage: en
+configFiles:
+  Debug: Config/Signing.xcconfig
+  Release: Config/Signing.xcconfig
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+    SWIFT_APPROACHABLE_CONCURRENCY: YES
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+    CODE_SIGN_STYLE: Automatic
+packages:
+  VettaKit:
+    path: VettaKit
+targets:
+  Vetta:
+    type: application
+    platform: iOS
+    sources:
+      - path: Vetta
+    dependencies:
+      - package: VettaKit
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.openvetta.mobile
+        PRODUCT_NAME: Vetta
+        TARGETED_DEVICE_FAMILY: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        INFOPLIST_FILE: Vetta/Resources/Info.plist
+        ENABLE_PREVIEWS: YES
+    info:
+      path: Vetta/Resources/Info.plist
+      properties:
+        CFBundleDisplayName: Vetta
+        CFBundleDevelopmentRegion: en
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSRequiresIPhoneOS: true
+        ITSAppUsesNonExemptEncryption: false
+        UILaunchScreen:
+          UIColorName: LaunchBackground
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        CFBundleURLTypes:
+          - CFBundleURLName: com.openvetta.mobile.pair
+            CFBundleURLSchemes:
+              - vetta
+        NSCameraUsageDescription: Vetta uses the camera to scan the pairing code on your computer and to take photos you send.
+        NSPhotoLibraryUsageDescription: Vetta shows your latest photos in the attach sheet so you can send one with a tap.
+        NSMicrophoneUsageDescription: Vetta uses the microphone while you hold the message field to dictate.
+        NSSpeechRecognitionUsageDescription: Vetta turns what you say into text for your message.
+        NSLocalNetworkUsageDescription: Vetta needs local network access to connect directly to your computer on the same Wi-Fi.
+        NSBonjourServices:
+          - _vetta._tcp
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+  VettaUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: VettaUITests
+    dependencies:
+      - target: Vetta
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.openvetta.mobile.uitests
+        TEST_TARGET_NAME: Vetta
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_DEFAULT_ACTOR_ISOLATION: nonisolated
+schemes:
+  Vetta:
+    build:
+      targets:
+        Vetta: all
+        VettaUITests: [test]
+    test:
+      targets:
+        - VettaUITests
+      gatherCoverageData: false

@@ -288,6 +288,12 @@ describe("MessageListView virtualization", () => {
 		const { rerender } = render(<MessageListView {...waiting} />);
 
 		expect(screen.getByTestId("full-message").getAttribute("data-pending-label")).toBe("团队正在加载");
+		waiting.pendingLabel = "正在创建会话";
+		waiting.model.messages = [
+			createConversationAgentMessage({ id: "waiting-message", phase: "streaming", text: "", blocks: [] }),
+		];
+		rerender(<MessageListView {...waiting} />);
+		expect(screen.getByTestId("full-message").getAttribute("data-pending-label")).toBe("正在创建会话");
 
 		const streaming = props(true, true);
 		streaming.pendingLabel = "等待模型响应";

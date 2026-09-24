@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-import { useEffect, useRef, type JSX } from "react";
+import { useEffect, useRef, type JSX, type ReactNode } from "react";
 
 export interface MessageSelectionContextMenuViewLabels {
 	addToInput: string;
@@ -7,6 +7,7 @@ export interface MessageSelectionContextMenuViewLabels {
 }
 
 export interface MessageSelectionContextMenuViewProps {
+	children?: ReactNode;
 	labels: MessageSelectionContextMenuViewLabels;
 	onAddToInput: () => void;
 	onClose: () => void;
@@ -19,6 +20,7 @@ const menuItemClass =
 	"flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] font-medium text-foreground transition-colors hover:bg-accent";
 
 export function MessageSelectionContextMenuView({
+	children,
 	labels,
 	onAddToInput,
 	onClose,
@@ -61,6 +63,7 @@ export function MessageSelectionContextMenuView({
 				<span className="icon-[solar--text-field-focus-linear] h-3.5 w-3.5" />
 				{labels.addToInput}
 			</button>
+			{children}
 		</motion.div>
 	);
 }

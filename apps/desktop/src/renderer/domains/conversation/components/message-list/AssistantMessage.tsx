@@ -89,6 +89,7 @@ export const AssistantMessage = memo(function AssistantMessage({
 		return {
 			processing: t("messageList.assistantMessage.processing"),
 			waiting: t("messageList.assistantMessage.waiting"),
+			preparing: t("messageList.assistantMessage.preparing"),
 			predicting: t("messageList.assistantMessage.predicting"),
 			streamingFold: (elapsed: number) =>
 				t("messageList.assistantFoldTip.streaming", {
@@ -121,11 +122,12 @@ export const AssistantMessage = memo(function AssistantMessage({
 			? toolCallPresentations.get(segment.block.toolCallId)
 			: undefined;
 	const isAwaitingFirstActivity = isCurrentlyStreaming && !hasBlocks && (message.text?.length ?? 0) === 0;
+	const awaitingLabel = pendingLabel ?? (message.modelRequestStartedAt === undefined ? labels.preparing : labels.waiting);
 	const fold = isCurrentlyStreaming
 		? {
 				kind: "streaming" as const,
 				count: message.blocks.length,
-				startedAt: message.startedAt ?? message.timestamp,
+				startedAt: (isAwaitingFirstActivity ? message.modelRequestStartedAt : undefined) ?? message.startedAt ?? message.timestamp,
 				waitingForFirstActivity: isAwaitingFirstActivity,
 			}
 		: foldData
@@ -174,7 +176,7 @@ export const AssistantMessage = memo(function AssistantMessage({
 						{isCurrentlyStreaming ? (
 							<Message.Status className="flex">
 								<AssistantMessagePrimitive.StreamingStatus
-									label={isAwaitingFirstActivity ? (pendingLabel ?? labels.waiting) : labels.processing}
+									label={isAwaitingFirstActivity ? awaitingLabel : labels.processing}
 								/>
 							</Message.Status>
 						) : null}

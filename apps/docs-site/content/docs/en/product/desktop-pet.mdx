@@ -16,6 +16,12 @@ Open **Settings → Vetta Vivi**.
 
 Hold the pet to drag it. When the pointer is over the pet image, scroll to adjust the current animation size; different animations may remember their own size. Transparent areas outside the image try to pass mouse events through so they do not block work.
 
+## Session status feedback
+
+Vetta Vivi follows the current session through thinking, working, waiting for input, success, error, and paused states. It keeps the waiting state while you answer a question, review a plan, grant a permission, or finish MCP setup. Success appears briefly before the pet returns to idle, while an error remains visible until the next turn starts.
+
+To avoid flashing through several animations in a few seconds, rapid changes are coalesced to the latest state and each displayed state remains visible for about 3 seconds. Disabling automatic idle animations does not disable session status feedback.
+
 ## Speech-bubble styles
 
 Choose an appearance under **Speech-bubble style**. It applies immediately to the pet window. Built-in styles include ordinary bubbles and seasonal styles for Lunar New Year, the Dragon Boat Festival, the Mid-Autumn Festival, Christmas, and others shown by the client.

@@ -1,6 +1,7 @@
 import { createContext, useContext } from "react";
 import type { ComponentType, ReactNode } from "react";
 import type { Components, ExtraProps, Options } from "react-markdown";
+import type { MarkdownLabels } from "./rich-labels";
 
 export type MarkdownElementProps = ExtraProps & { children?: ReactNode };
 
@@ -8,7 +9,7 @@ export interface MarkdownCodeBlockProps {
 	code: string;
 	lang: string;
 	theme: "light" | "dark";
-	labels: { copy: string; copied: string };
+	labels: MarkdownLabels;
 	/** 流式尾块：代码仍可能增长时跳过 Shiki，只显示等宽纯文本。 */
 	live?: boolean;
 }

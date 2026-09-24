@@ -1,9 +1,17 @@
+import { MarkdownHostProvider } from "./host";
+import type { MarkdownHost } from "./host";
+import { MarkdownImage } from "./MarkdownImage";
 import { createContext, memo, useContext, useMemo, useRef } from "react";
 import type { JSX } from "react";
 import ReactMarkdown from "react-markdown";
 import type { Components, Options } from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { DefaultCodeBlock } from "./CodeBlock";
+import { BuiltinCodeBlock, Formula } from "./builtin-renderers";
+import { richRemarkPlugins } from "./rich-syntax";
+import { SvgPreview } from "./SvgPreview";
+import { defaultRichContentLabels } from "./rich-labels";
+import type { MarkdownLabels } from "./rich-labels";
+export type { MarkdownLabels } from "./rich-labels";
 import {
 	MarkdownTable,
 	MarkdownTableBody,
@@ -14,6 +22,8 @@ import {
 } from "../shared/MarkdownTable";
 import { SkillTypeIcon } from "../skills/skill-icon";
 import { InlineTokenChip } from "./InlineTokenChip";
+import { WebsiteIcon } from "./WebsiteIcon";
+import { useRenderSnapshot } from "./use-render-snapshot";
 import { chatUrlTransform, classifyMarkdownLink, normalizeLocalFileLinksInMarkdown } from "./markdown-link";
 import { useStreamingDisplayText, rehypeStreamingChunks } from "./streaming";
 import {
@@ -32,7 +42,7 @@ import { splitStableMarkdownBlocks } from "./stable-blocks";
 const LINK_BADGE_CLASS =
 	"inline-flex max-w-full items-center gap-1 rounded-md border border-primary/25 bg-primary/10 px-1.5 py-px align-middle text-[13px] font-medium text-primary no-underline transition-colors hover:bg-primary/20";
 
-const remarkPlugins = [remarkGfm];
+const remarkPlugins = [remarkGfm, ...richRemarkPlugins];
 
 const MarkdownCodeLiveContext = createContext(false);
 
@@ -40,13 +50,8 @@ function cn(...parts: Array<string | false | null | undefined>): string {
 	return parts.filter(Boolean).join(" ");
 }
 
-export interface MarkdownLabels {
-	copy: string;
-	copied: string;
-	/** 表格工具条：复制成 GFM 表格 / CSV。 */
-}
-
 export interface MarkdownContentProps {
+	host?: MarkdownHost;
 	definition?: MarkdownDefinition;
 	text: string;
 	isStreamingTail?: boolean;
@@ -152,12 +157,30 @@ export const MarkdownContent = memo(function MarkdownContent({
 	onOpenUrl,
 	inlineTokens,
 	definition: definitionOverride,
+	host,
 }: MarkdownContentProps): JSX.Element {
 	const inheritedDefinition = useMarkdownDefinition();
 	const definition = definitionOverride ?? inheritedDefinition;
 	const definitionRef = useRef(definition);
 	definitionRef.current = definition;
 	const { displayText, animateChunks } = useStreamingDisplayText(text, isStreamingTail);
+	const chunkedRef = useRef(false);
+	if (animateChunks) chunkedRef.current = true;
+	const frozenBlocksRef = useRef(false);
+	if (isStreamingTail && !inlineTokens) frozenBlocksRef.current = true;
+	const splitDocuments = frozenBlocksRef.current && !inlineTokens;
+	const candidateSplit = useMemo(
+		() => splitDocuments ? splitStableMarkdownBlocks(displayText) : null,
+		[displayText, splitDocuments],
+	);
+	// Keep small replies responsive; bound full parsing of long tails without splitting
+	// paragraphs/lists/reference definitions into semantically different documents.
+	const tailLength = (candidateSplit?.tail ?? displayText).length;
+	const renderInterval = tailLength >= 50000 ? 400 : tailLength >= 12000 ? 200 : 0;
+	const previousText = useRef(displayText);
+	const replaced = !displayText.startsWith(previousText.current);
+	previousText.current = displayText;
+	const renderText = useRenderSnapshot(displayText, true, isStreamingTail && renderInterval > 0 && !replaced, renderInterval);
 
 	const labelsRef = useRef(labels);
 	const getFileIconClassRef = useRef(getFileIconClass);
@@ -192,14 +215,18 @@ export const MarkdownContent = memo(function MarkdownContent({
 				</ol>
 			),
 			li: ({ children }) => <li>{children}</li>,
+			img: ({ src, alt, title }) => <MarkdownImage src={src} alt={alt} title={title} labels={labelsRef.current} />,
 			code: function MarkdownCode({ className: codeClassName, children }) {
 				const live = useContext(MarkdownCodeLiveContext);
 				const raw = String(children);
+				if (codeClassName?.includes("math-inline") || codeClassName?.includes("math-display")) {
+					return <Formula source={raw.replace(/\n$/, "")} display={codeClassName.includes("math-display")} live={live} labels={labelsRef.current} />;
+				}
 				const isBlock = (codeClassName?.startsWith("language-") ?? false) || raw.includes("\n");
 				if (isBlock) {
 					const lang = codeClassName?.replace("language-", "") ?? "";
 					const code = raw.replace(/\n$/, "");
-					const CodeBlock = definitionRef.current.codeBlock ?? DefaultCodeBlock;
+					const CodeBlock = definitionRef.current.codeBlock ?? BuiltinCodeBlock;
 					return <CodeBlock lang={lang} code={code} theme={theme} labels={labelsRef.current} live={live} />;
 				}
 				return <code className="rounded bg-muted px-1 py-0.5 text-[13px] text-foreground">{children}</code>;
@@ -248,7 +275,7 @@ export const MarkdownContent = memo(function MarkdownContent({
 								onOpenUrlRef.current(kind.url);
 							}}
 						>
-							<span className="icon-[mdi--web] h-3.5 w-3.5 shrink-0" />
+							<WebsiteIcon href={kind.url} />
 							<span className="truncate">{children}</span>
 						</a>
 					);
@@ -262,6 +289,11 @@ export const MarkdownContent = memo(function MarkdownContent({
 				);
 			},
 			strong: ({ children }) => <strong className="font-semibold text-foreground">{children}</strong>,
+			"vetta-svg": ({ node }: { node?: HastElement }) => {
+				const source = node?.properties?.source;
+				const rich = labelsRef.current.rich ?? defaultRichContentLabels;
+				return typeof source === "string" ? <SvgPreview source={source} label={rich.svg} failed={rich.failed} live /> : null;
+			},
 			em: ({ children }) => <em className="italic">{children}</em>,
 			// 行内 token：与输入框里的胶囊同款（半透明主题色底 + 描边，align-middle 对齐正文）。
 			[INLINE_TOKEN_TAG]: ({ node }: { node?: HastElement }) => {
@@ -343,20 +375,19 @@ export const MarkdownContent = memo(function MarkdownContent({
 
 	// 分段 span 一旦挂上就保留到实例卸载：结束时若把 rehype 插件撤掉，整个尾块会重建 DOM，
 	// 表现为回复结尾「卡一下」。「最新短语略暗」只挂在包裹类上，撤掉包裹类就恢复全亮，DOM 不动。
-	const chunkedRef = useRef(false);
-	if (animateChunks) chunkedRef.current = true;
 	// 切块一旦启用就保持到实例卸载：流式结束时 `animateChunks` 要等 settle 才关，若此刻把
 	// 已冻结块并回单一文档，已上屏的节点会整段重挂并再包成 `.streaming-chunk` 重放淡入。
 	// 稳定块只按已闭合的顶层围栏切分，分块与整篇渲染结果一致，因此结束后不需要再合并。
-	const frozenBlocksRef = useRef(false);
-	if (isStreamingTail && !inlineTokens) frozenBlocksRef.current = true;
-	const split = frozenBlocksRef.current && !inlineTokens ? splitStableMarkdownBlocks(displayText) : null;
+	const split = useMemo(
+		() => renderText === displayText ? candidateSplit : splitDocuments ? splitStableMarkdownBlocks(renderText) : null,
+		[renderText, displayText, candidateSplit, splitDocuments],
+	);
 	const committed = split?.committed ?? [];
-	const tail = split ? split.tail : displayText;
+	const tail = split ? split.tail : renderText;
 	const showTail = !split || tail.length > 0 || committed.length === 0;
 
 	return (
-		<div className={cn("markdown-body break-words", animateChunks && "markdown-streaming-tail", className)}>
+		<MarkdownHostProvider host={host}><div className={cn("markdown-body break-words", animateChunks && "markdown-streaming-tail", className)}>
 			{committed.map((block, index) => (
 				<MarkdownDocument
 					key={`committed-${index}`}
@@ -378,6 +409,6 @@ export const MarkdownContent = memo(function MarkdownContent({
 					text={tail}
 				/>
 			) : null}
-		</div>
+		</div></MarkdownHostProvider>
 	);
 });

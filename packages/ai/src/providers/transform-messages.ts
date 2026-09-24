@@ -1,5 +1,7 @@
 import type { Api, AssistantMessage, Message, Model, ToolCall, ToolResultMessage } from "../types.js";
 
+const UNSUPPORTED_IMAGE_INPUT_NOTICE = "Image content omitted because the current model does not support image input.";
+
 /**
  * Normalize tool call ID for cross-provider compatibility.
  * OpenAI Responses API generates IDs that are 450+ chars with special characters like `|`.
@@ -15,16 +17,43 @@ export function transformMessages<TApi extends Api>(
 
 	// First pass: transform messages (thinking blocks, tool call ID normalization)
 	const transformed = messages.map((msg) => {
-		// User messages pass through unchanged
+		// Project multimodal history to the selected model's declared input types.
+		// Keep the stored conversation untouched so switching back to a vision model
+		// can still replay the original images.
 		if (msg.role === "user") {
+			if (!model.input.includes("image") && Array.isArray(msg.content)) {
+				const textContent = msg.content.filter((item) => item.type !== "image");
+				if (textContent.length !== msg.content.length) {
+					return {
+						...msg,
+						content:
+							textContent.length > 0
+								? textContent
+								: [{ type: "text" as const, text: UNSUPPORTED_IMAGE_INPUT_NOTICE }],
+					};
+				}
+			}
 			return msg;
 		}
 
-		// Handle toolResult messages - normalize toolCallId if we have a mapping
+		// Handle toolResult messages - normalize toolCallId and omit unsupported images.
 		if (msg.role === "toolResult") {
 			const normalizedId = toolCallIdMap.get(msg.toolCallId);
-			if (normalizedId && normalizedId !== msg.toolCallId) {
-				return { ...msg, toolCallId: normalizedId };
+			const hasUnsupportedImages =
+				!model.input.includes("image") && msg.content.some((item) => item.type === "image");
+			if ((normalizedId && normalizedId !== msg.toolCallId) || hasUnsupportedImages) {
+				return {
+					...msg,
+					...(normalizedId && normalizedId !== msg.toolCallId ? { toolCallId: normalizedId } : {}),
+					...(hasUnsupportedImages
+						? {
+								content: [
+									...msg.content.filter((item) => item.type !== "image"),
+									{ type: "text" as const, text: UNSUPPORTED_IMAGE_INPUT_NOTICE },
+								],
+							}
+						: {}),
+				};
 			}
 			return msg;
 		}

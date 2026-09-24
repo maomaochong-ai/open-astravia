@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer, webUtils } from "electron";
+import { createMarkdownApi } from "./apis/markdown.js";
 import "./telemetry.js";
 import type { DesktopApi } from "./api.js";
 import { createAbilitiesApi } from "./apis/abilities.js";
@@ -12,6 +13,7 @@ import { createConversationTagsApi } from "./apis/conversation-tags.js";
 import { createDownloadsApi } from "./apis/downloads.js";
 import { createI18nApi } from "./apis/i18n.js";
 import { createImApi } from "./apis/im.js";
+import { createMessageAnnotationsApi } from "./apis/message-annotations.js";
 import { createNotificationApi } from "./apis/notification.js";
 import { createPetApi } from "./apis/pet.js";
 import { createPluginsApi } from "./apis/plugins.js";
@@ -21,6 +23,7 @@ import { createRemotePairingApi } from "./apis/remote-pairing.js";
 import { createRuntimeConfigurationApi } from "./apis/runtime-configuration.js";
 import { createSchedulerApi } from "./apis/scheduler.js";
 import { createSessionApi } from "./apis/session.js";
+import { createSessionPinsApi } from "./apis/session-pins.js";
 import { createSpeechInputApi } from "./apis/speech-input.js";
 import { createSshApi } from "./apis/ssh.js";
 import { createSystemApi } from "./apis/system.js";
@@ -38,7 +41,9 @@ for (const eventName of ["keydown", "mousedown", "mousemove", "touchstart", "whe
 }
 
 const rawApi: Omit<DesktopApi, "hostAccess"> = {
+	...createMessageAnnotationsApi(ipcRenderer),
 	...createAbilitiesApi(ipcRenderer),
+	...createMarkdownApi(ipcRenderer),
 	...createAgentTeamsApi(ipcRenderer),
 	...createActionApprovalApi(ipcRenderer),
 	...createAppLifecycleApi(ipcRenderer),
@@ -55,6 +60,7 @@ const rawApi: Omit<DesktopApi, "hostAccess"> = {
 	...createThemesApi(ipcRenderer),
 	...createPetApi(ipcRenderer),
 	...createConversationTagsApi(ipcRenderer),
+	...createSessionPinsApi(ipcRenderer),
 	...createProjectApi(ipcRenderer),
 	...createSshApi(ipcRenderer),
 	...createTerminalApi(ipcRenderer),

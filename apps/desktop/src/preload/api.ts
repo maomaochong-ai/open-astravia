@@ -1,3 +1,5 @@
+import type { DesktopMarkdownApi } from "../shared/markdown-ipc.js";
+import type { MessageAnnotationsApi } from "../shared/message-annotations.js";
 import type { DesktopAbilitiesApi } from "./api-types/abilities.js";
 import type { DesktopActionApprovalApi } from "./api-types/action-approval.js";
 import type { DesktopAgentTeamsApi } from "./api-types/agent-teams.js";
@@ -27,6 +29,7 @@ import type { RemotePairingApi } from "./api-types/remote-pairing.js";
 import type { DesktopRuntimeConfigurationApi } from "./api-types/runtime-configuration.js";
 import type { DesktopSchedulerApi } from "./api-types/scheduler.js";
 import type { DesktopSessionApi } from "./api-types/session.js";
+import type { DesktopSessionPinsApi } from "./api-types/session-pins.js";
 import type { DesktopSkillsApi } from "./api-types/skills.js";
 import type { DesktopSpeechInputApi } from "./api-types/speech-input.js";
 import type { DesktopSshApi } from "./api-types/ssh.js";
@@ -91,6 +94,8 @@ export interface DesktopHostAccessApi {
 }
 
 export interface DesktopApi {
+	markdown: DesktopMarkdownApi;
+	messageAnnotations: MessageAnnotationsApi;
 	hostAccess: DesktopHostAccessApi;
 	abilities: DesktopAbilitiesApi;
 	agentTeams: DesktopAgentTeamsApi;
@@ -136,6 +141,7 @@ export interface DesktopApi {
 	plugins: DesktopPluginsApi;
 	pet: DesktopPetApi;
 	conversationTags: DesktopConversationTagsApi;
+	sessionPins: DesktopSessionPinsApi;
 	quickPanel: DesktopQuickPanelApi;
 	runtimeConfiguration: DesktopRuntimeConfigurationApi;
 	appshot: DesktopAppshotApi;

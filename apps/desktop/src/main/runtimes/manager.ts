@@ -4,6 +4,8 @@ import { chmod } from "node:fs/promises";
 import { delimiter, join } from "node:path";
 import { atomicWriteJSON } from "@vetta/toolkit/atomic-write";
 import { getAppLogger } from "../logger.js";
+import { downloadToFile } from "./download.js";
+import { GitToolManager } from "./git-tool.js";
 import {
 	binDirsFor,
 	executablePathFor,
@@ -23,7 +25,7 @@ import {
 	vendorRuntimeDir,
 } from "./paths.js";
 import { installRuntimeArchive, installRuntimeDirectory } from "./runtime-archive-installer.js";
-import type { RuntimeRegistryData, RuntimeStatus, RuntimesStatus } from "./types.js";
+import type { GitToolStatus, RuntimeRegistryData, RuntimeStatus, RuntimesStatus } from "./types.js";
 
 const log = getAppLogger("runtimes");
 
@@ -45,6 +47,7 @@ function parseVersion(raw: string): string | undefined {
 
 export class RuntimeManager {
 	private data: RuntimeRegistryData = emptyRegistry();
+	private readonly git = new GitToolManager();
 
 	private loadRegistry(): void {
 		try {
@@ -189,7 +192,7 @@ export class RuntimeManager {
 		for (const url of urls) {
 			try {
 				log.info(`downloading ${type} from ${url}`);
-				await this.fetchToFile(url, tmpFile);
+				await downloadToFile(url, tmpFile);
 				await this.installArchive(type, tmpFile, entry, version);
 				rmSync(tmpFile, { force: true });
 				return true;
@@ -198,18 +201,6 @@ export class RuntimeManager {
 			}
 		}
 		return false;
-	}
-
-	private async fetchToFile(url: string, dest: string): Promise<void> {
-		const controller = new AbortController();
-		const timer = setTimeout(() => controller.abort(), 180_000);
-		try {
-			const res = await fetch(url, { signal: controller.signal, redirect: "follow" });
-			if (!res.ok) throw new Error(`HTTP ${res.status}`);
-			writeFileSync(dest, Buffer.from(await res.arrayBuffer()));
-		} finally {
-			clearTimeout(timer);
-		}
 	}
 
 	private isReady(type: RuntimeType): boolean {
@@ -557,6 +548,11 @@ export class RuntimeManager {
 			}
 		}
 		this.saveRegistry();
+		try {
+			this.git.detect();
+		} catch (err) {
+			log.warn("detect git failed", err);
+		}
 	}
 
 	/**
@@ -608,6 +604,8 @@ export class RuntimeManager {
 			// best-effort
 		}
 
+		this.git.applyEnv();
+
 		log.info("runtime env applied", {
 			node: this.isReady("node"),
 			python: this.isReady("python"),
@@ -635,6 +633,7 @@ export class RuntimeManager {
 		return {
 			node: this.statusFor("node"),
 			python: this.statusFor("python"),
+			git: this.git.getStatus(),
 			mirrors: {
 				npmRegistry: RUNTIME_MANIFEST.mirrors.npmRegistry,
 				pipIndexUrl: RUNTIME_MANIFEST.mirrors.pipIndexUrl,
@@ -662,7 +661,18 @@ export class RuntimeManager {
 	redetect(): RuntimesStatus {
 		for (const type of RUNTIME_TYPES) this.detectSystem(type);
 		this.saveRegistry();
+		this.git.detect();
 		return this.getStatus();
+	}
+
+	/** 插件调用 git 前的宿主检查，见 GitToolManager.shouldBlockGitCommand。 */
+	shouldBlockGitCommand(): boolean {
+		return this.git.shouldBlockGitCommand();
+	}
+
+	/** 面板「安装 Git」：macOS 调起系统安装窗口，Windows 装托管 MinGit。 */
+	installGit(): Promise<GitToolStatus> {
+		return this.git.install();
 	}
 }
 

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import type { PetActionId } from "../../../../shared/pet-actions";
 
-export const PET_APP_PRESENTATION_MIN_HOLD_MS = 2_000;
+export const PET_APP_PRESENTATION_MIN_HOLD_MS = 3_000;
 
 export type PetAppActionUpdate = { type: "set"; actionId: PetActionId } | { type: "random" };
 

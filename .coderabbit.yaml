@@ -38,7 +38,7 @@ reviews:
     - "!**/*.{png,jpg,jpeg,webp,gif,svg,webm,mp4,onnx,woff,woff2,ttf,ico}"
     - "!**/*.generated.ts"
     - "!apps/docs-site/docs-coverage.json"
-    - "!apps/mobile/gradle/wrapper/**"
+    - "!apps/mobile/client-android/gradle/wrapper/**"
 
   path_instructions:
     - path: "**"

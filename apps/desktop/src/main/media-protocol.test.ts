@@ -1,7 +1,7 @@
 import { mkdtempSync, realpathSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createLoopbackSshConnection } from "@vetta/ssh-transport/testing";
+import { createLoopbackSshConnection, formatLoopbackProjectUri } from "@vetta/ssh-transport/testing";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("electron", () => ({ protocol: { handle: () => undefined } }));
@@ -45,7 +45,7 @@ describe("媒体协议", () => {
 	it("远程项目：图片与视频从远端按范围取回，内容与远端文件逐字节一致", async () => {
 		const remoteRoot = realpathSync(mkdtempSync(join(tmpdir(), "vetta-media-remote-")));
 		const bytes = createMedia(remoteRoot, "clip.mp4");
-		const root = `ssh://build-01${remoteRoot}`;
+		const root = formatLoopbackProjectUri("build-01", remoteRoot);
 		allowProjectRoot(root);
 
 		const full = await handleMediaRequest(new Request(mediaUrl(`${root}/clip.mp4`)));
@@ -64,11 +64,10 @@ describe("媒体协议", () => {
 
 	it("远程项目之外的远端路径被拒绝，不存在的文件是 404", async () => {
 		const remoteRoot = realpathSync(mkdtempSync(join(tmpdir(), "vetta-media-remote-")));
-		allowProjectRoot(`ssh://build-01${remoteRoot}`);
+		const root = formatLoopbackProjectUri("build-01", remoteRoot);
+		allowProjectRoot(root);
 
 		expect((await handleMediaRequest(new Request(mediaUrl("ssh://build-01/etc/passwd")))).status).toBe(403);
-		expect((await handleMediaRequest(new Request(mediaUrl(`ssh://build-01${remoteRoot}/missing.png`)))).status).toBe(
-			404,
-		);
+		expect((await handleMediaRequest(new Request(mediaUrl(`${root}/missing.png`)))).status).toBe(404);
 	});
 });

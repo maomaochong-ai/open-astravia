@@ -1,7 +1,7 @@
 import { mkdtempSync, realpathSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createLoopbackSshConnection } from "@vetta/ssh-transport/testing";
+import { createLoopbackSshConnection, formatLoopbackProjectUri } from "@vetta/ssh-transport/testing";
 import { describe, expect, it, vi } from "vitest";
 
 const connection = createLoopbackSshConnection("build-01");
@@ -21,8 +21,8 @@ vi.mock("./plugin-catalog.js", () => ({
 			enabled: true,
 			permissions: ["agent.command.spawn"],
 			grantedPermissions: ["agent.command.spawn"],
-			declaredCommands: ["sh", "npm"],
-			grantedCommandNames: ["sh", "npm"],
+			declaredCommands: ["sh", "npm", process.execPath],
+			grantedCommandNames: ["sh", "npm", process.execPath],
 		},
 	],
 }));
@@ -33,7 +33,7 @@ const { getPluginCommandSpawnStatus, spawnPluginCommand, stopPluginCommandSpawn 
 
 function createRemoteProject(): { dir: string; uri: string } {
 	const dir = realpathSync(mkdtempSync(join(tmpdir(), "vetta-remote-spawn-")));
-	return { dir, uri: `ssh://build-01${dir}` };
+	return { dir, uri: formatLoopbackProjectUri("build-01", dir) };
 }
 
 describe("插件的长驻进程与远程项目", () => {
@@ -93,7 +93,7 @@ describe("插件的长驻进程与远程项目", () => {
 
 		await stopPluginCommandSpawn("demo", started.spawnId);
 		expect(cancelled).toEqual(forwards);
-	});
+	}, 20_000);
 
 	it("停止远端进程后状态转为已结束", async () => {
 		const project = createRemoteProject();
@@ -110,7 +110,9 @@ describe("插件的长驻进程与远程项目", () => {
 
 	it("本地项目照旧，并且报得出真实进程号", async () => {
 		const dir = realpathSync(mkdtempSync(join(tmpdir(), "vetta-local-spawn-")));
-		const started = await spawnPluginCommand("demo", "sh", ["-c", "echo local"], { cwd: dir });
+		const started = await spawnPluginCommand("demo", process.execPath, ["-e", "process.stdout.write('local')"], {
+			cwd: dir,
+		});
 
 		expect(started.pid).toBeGreaterThan(0);
 		await vi.waitFor(

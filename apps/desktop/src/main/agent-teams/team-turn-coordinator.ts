@@ -19,9 +19,9 @@ import {
 	validateTeamMessageMentions,
 } from "@vetta/agent-team";
 import type { PromptAttachmentRef, RuntimeHost } from "@vetta/runtime-core";
+import { resolveTeamMemberModel } from "../../shared/agent-team-member-model.js";
 import { stopSessionBackgroundWork } from "../agent-runtime/stop-session-work.js";
 import { getAppLogger } from "../logger.js";
-import { resolveTeamMemberModel } from "./resolve-team-member-model.js";
 import type { TeamCollaborationState, TeamCollaborationStore } from "./team-collaboration-store.js";
 import { planTeamInitiatorContinuation } from "./team-initiator-continuation.js";
 import type { TeamMemberAttemptRunner } from "./team-member-attempt-runner.js";

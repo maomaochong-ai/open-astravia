@@ -343,6 +343,40 @@ describe("affected package selection", () => {
 		expect(createImpactTestPlan(["packages/action-rpc/src/rpc.ts"]).fallbackChanged).toBe(true);
 	});
 
+	it("uses explicit host component tests for shared model selector UI", () => {
+		const plan = createImpactTestPlan([
+			"apps/desktop/src/renderer/domains/conversation/connectors/team/TeamModelSelector.tsx",
+			"packages/theme-ui/src/chat/ModelConfiguration.tsx",
+			"packages/theme-ui/src/chat/ModelSelectorTrigger.tsx",
+			"packages/theme-ui/src/chat/ModelSelectorView.tsx",
+		]);
+		expect(plan.fallbackChanged).toBe(false);
+		expect(plan.targets).toMatchObject([
+			{
+				key: "desktop",
+				directTests: [
+					"src/renderer/domains/conversation/components/ModelSelectorView.test.tsx",
+					"src/renderer/domains/conversation/connectors/team/TeamModelSelector.test.tsx",
+				],
+				relatedSources: [],
+				full: false,
+			},
+		]);
+	});
+
+	it("keeps unmapped source files inside workspaces with package tests on the targeted path", () => {
+		const plan = createImpactTestPlan(["packages/theme-ui/src/chat/UnmappedView.tsx"], () => true);
+		expect(plan.fallbackChanged).toBe(false);
+		expect(plan.targets).toMatchObject([
+			{
+				key: "theme-ui",
+				directTests: [],
+				relatedSources: ["src/chat/UnmappedView.tsx"],
+				full: false,
+			},
+		]);
+	});
+
 	it("runs quality tests for scripts while documentation-only changes need no package tests", () => {
 		const quality = createImpactTestPlan(["scripts/quality/test-impact.mjs"]);
 		expect(quality).toMatchObject({ runQuality: true, fallbackChanged: false, targets: [] });
@@ -374,7 +408,7 @@ describe("CI unit test coverage", () => {
 	const workflow = readFileSync(join(repoRoot, ".github/workflows/quality.yml"), "utf8");
 	const imGatewayWorkflow = readFileSync(join(repoRoot, ".github/workflows/im-gateway.yml"), "utf8");
 	const kotlinWorkflow = readFileSync(join(repoRoot, ".github/workflows/kotlin.yml"), "utf8");
-	const mobileWorkflow = readFileSync(join(repoRoot, ".github/workflows/mobile.yml"), "utf8");
+	const appleWorkflow = readFileSync(join(repoRoot, ".github/workflows/mobile-apple.yml"), "utf8");
 	const rootManifest = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8"));
 
 	it("runs affected workspace tests on Linux, macOS, and Windows with complete Git history", () => {
@@ -405,22 +439,21 @@ describe("CI unit test coverage", () => {
 	});
 
 	it("builds the Android app and runs host tests when Kotlin changes", () => {
-		expect(kotlinWorkflow).toContain('      - "apps/kotlin/**"');
+		expect(kotlinWorkflow).toContain('      - "apps/mobile/client-android/**"');
 		expect(kotlinWorkflow).toContain(":shared:testAndroidHostTest");
 		expect(kotlinWorkflow).toContain(":androidApp:assembleDebug");
 	});
 
-	it("typechecks and exports the Expo app when Mobile changes", () => {
-		expect(mobileWorkflow).toContain('      - "apps/mobile/**"');
-		expect(mobileWorkflow).toContain("bun run --cwd apps/mobile typecheck");
-		expect(mobileWorkflow).toContain("bun run --cwd apps/mobile lint");
-		expect(mobileWorkflow).toContain("bun run --cwd apps/mobile export:web");
-		expect(rootManifest.scripts["check:types"]).toContain("bun run --cwd apps/mobile typecheck");
-		expect(rootManifest.scripts.check).toContain("bun run --cwd apps/mobile lint");
+	it("tests VettaKit, the desktop interop and the iOS build when the Apple client or the protocol changes", () => {
+		expect(appleWorkflow).toContain('      - "apps/mobile/client-apple/**"');
+		expect(appleWorkflow).toContain('      - "packages/remote-control/**"');
+		expect(appleWorkflow).toContain("swift test --no-parallel");
+		expect(appleWorkflow).toContain("scripts/interop.sh");
+		expect(appleWorkflow).toContain("xcodebuild build");
 	});
 
 	it("limits path-filtered app checks to branch pushes", () => {
-		for (const appWorkflow of [imGatewayWorkflow, kotlinWorkflow, mobileWorkflow]) {
+		for (const appWorkflow of [imGatewayWorkflow, kotlinWorkflow, appleWorkflow]) {
 			expect(appWorkflow).toMatch(/push:\r?\n {4}branches:\r?\n {6}- "\*\*"\r?\n {4}paths:/);
 		}
 	});

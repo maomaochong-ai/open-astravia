@@ -110,6 +110,8 @@ export class AgentTeamSessionService {
 	private readonly warmingSessions = new Map<string, Promise<unknown>>();
 	/** Per-member readiness lets the first addressed member proceed without waiting for siblings. */
 	private readonly warmingMemberRuntimes = new Map<string, Promise<void>>();
+	/** Defer sibling work until the leader has completed its first visible response block. */
+	private readonly scheduledRemainingWarmups = new Set<string>();
 	private readonly extensions: AgentTeamExtensionRegistry;
 	private readonly repository: LegacyTeamSessionRepository;
 	private readonly readDocument: () => Promise<AgentTeamDocument>;
@@ -154,6 +156,7 @@ export class AgentTeamSessionService {
 			getSession: (sessionId) => this.sessionState.get(sessionId),
 			observe: (session) => this.observations(session),
 			onRunningChanged: (sessionId, running) => this.publishRunningChanged(sessionId, running),
+			onFirstResponseBlockCompleted: (sessionId) => this.scheduleRemainingMemberWarmup(sessionId),
 		});
 		this.turnCoordinator = new TeamTurnCoordinator({
 			runtime: () => this.getRuntime(),
@@ -196,6 +199,8 @@ export class AgentTeamSessionService {
 			eventHub: this.eventHub,
 			runtime: () => this.getRuntime(),
 			readDocument: () => this.readDocument(),
+			ensureMemberRuntime: (sessionId, memberId, document) =>
+				this.ensureMemberRuntimeForAttempt(sessionId, memberId, document),
 			runtimeManager: this.runtimeManager,
 			sessionState: this.sessionState,
 			settleAttempt: (session, workItem, attempt, terminal, resultMessageId) =>
@@ -471,6 +476,7 @@ export class AgentTeamSessionService {
 		workspace: TeamSessionWorkspace,
 		options: TeamSessionCreationOptions = {},
 	): Promise<TeamSessionDocument> {
+		const startedAt = Date.now();
 		const { cwd } = workspace;
 		const id = options.sessionId ?? crypto.randomUUID();
 		const now = Date.now();
@@ -482,6 +488,7 @@ export class AgentTeamSessionService {
 			id,
 			executionMode,
 		);
+		const coordinationReadyMs = Date.now() - startedAt;
 		const session: TeamSessionDocument = {
 			schemaVersion: 1,
 			revision: 0,
@@ -507,12 +514,18 @@ export class AgentTeamSessionService {
 		};
 		try {
 			await ensureTeamConversationBinding(session, this.legacyMigrationPort());
+			const bindingReadyMs = Date.now() - startedAt;
 			await this.persist(session);
+			const recordReadyMs = Date.now() - startedAt;
 			this.sessionState.set(session);
-			void this.warmup(id, team, document).catch((error: unknown) => {
-				log.warn("team runtime warmup failed", { teamId: team.id, teamSessionId: id, error: errorMessage(error) });
+			this.startLeaderWarmup(id, team, document);
+			log.info("team session record created", {
+				teamId: team.id,
+				teamSessionId: id,
+				coordinationReadyMs,
+				bindingReadyMs,
+				recordReadyMs,
 			});
-			log.info("team session record created", { teamId: team.id, teamSessionId: id });
 			return session;
 		} catch (error) {
 			await this.getRuntime()
@@ -522,7 +535,7 @@ export class AgentTeamSessionService {
 		}
 	}
 
-	/** Eager background preparation: leader first, remaining members in parallel. */
+	/** Full background preparation, started after the first public response block. */
 	async warmup(
 		sessionId: string,
 		team: AgentTeamDocument["teams"][number],
@@ -538,21 +551,70 @@ export class AgentTeamSessionService {
 		try {
 			await warming;
 		} catch (error) {
-			await this.sessionState.coordinateLoaded(sessionId, async (session) => {
-				const next: TeamSessionDocument = {
-					...session,
-					revision: session.revision + 1,
-					updatedAt: Date.now(),
-					runtimeStatus: "failed",
-				};
-				await this.persist(next);
-				this.publishSessionUpdated(next);
-			});
+			await this.markRuntimeWarmupFailed(sessionId);
 			throw error;
 		} finally {
 			if (this.warmingSessions.get(`runtime:${sessionId}`) === warming)
 				this.warmingSessions.delete(`runtime:${sessionId}`);
 		}
+	}
+
+	private startLeaderWarmup(
+		sessionId: string,
+		team: AgentTeamDocument["teams"][number],
+		document: AgentTeamDocument,
+	): void {
+		const leader = team.members.find((member) => member.id === team.leaderMemberId);
+		if (!leader) {
+			log.warn("team leader missing during runtime warmup", { teamId: team.id, teamSessionId: sessionId });
+			return;
+		}
+		void this.warmMemberRuntime(sessionId, leader, team, document).catch((error: unknown) => {
+			log.warn("team leader runtime warmup failed", {
+				teamId: team.id,
+				teamSessionId: sessionId,
+				error: errorMessage(error),
+			});
+			void this.markRuntimeWarmupFailed(sessionId).catch((statusError: unknown) => {
+				log.error("failed to persist team runtime warmup failure", {
+					teamId: team.id,
+					teamSessionId: sessionId,
+					error: errorMessage(statusError),
+				});
+			});
+		});
+	}
+
+	private scheduleRemainingMemberWarmup(sessionId: string): void {
+		if (this.scheduledRemainingWarmups.has(sessionId)) return;
+		this.scheduledRemainingWarmups.add(sessionId);
+		setTimeout(() => {
+			void (async () => {
+				const session = this.sessionState.get(sessionId);
+				if (!session || session.runtimeStatus === "ready") return;
+				const document = await this.readDocument();
+				const team = document.teams.find((candidate) => candidate.id === session.teamId);
+				if (!team) throw new Error(`Agent team not found: ${session.teamId}`);
+				await this.warmup(sessionId, team, document);
+			})()
+				.catch((error: unknown) => {
+					log.warn("team runtime warmup failed", { teamSessionId: sessionId, error: errorMessage(error) });
+				})
+				.finally(() => this.scheduledRemainingWarmups.delete(sessionId));
+		}, 0);
+	}
+
+	private async markRuntimeWarmupFailed(sessionId: string): Promise<void> {
+		await this.sessionState.coordinateLoaded(sessionId, async (session) => {
+			const next: TeamSessionDocument = {
+				...session,
+				revision: session.revision + 1,
+				updatedAt: Date.now(),
+				runtimeStatus: "failed",
+			};
+			await this.persist(next);
+			this.publishSessionUpdated(next);
+		});
 	}
 
 	private async warmupInternal(
@@ -612,6 +674,7 @@ export class AgentTeamSessionService {
 		team: AgentTeamDocument["teams"][number],
 		document: AgentTeamDocument,
 	): Promise<void> {
+		const startedAt = Date.now();
 		const current = this.sessionState.get(sessionId);
 		if (!current) throw new Error(`Team session is not loaded: ${sessionId}`);
 		if (current.memberRuntime[member.id]) return;
@@ -625,6 +688,7 @@ export class AgentTeamSessionService {
 			current.cwd,
 			current.executionMode ?? "full-access",
 		);
+		const runtimeReadyMs = Date.now() - startedAt;
 		let adopted = false;
 		try {
 			await this.sessionState.coordinateLoaded(sessionId, async (session) => {
@@ -644,6 +708,12 @@ export class AgentTeamSessionService {
 				await this.persist(next);
 				adopted = true;
 				this.publishSessionUpdated(next);
+				log.info("team member runtime ready", {
+					teamSessionId: sessionId,
+					memberId: member.id,
+					runtimeReadyMs,
+					persistedMs: Date.now() - startedAt,
+				});
 			});
 		} finally {
 			if (!adopted) await this.getRuntime().disposeSession(runtimeState.sessionId);
@@ -881,11 +951,17 @@ export class AgentTeamSessionService {
 	}
 
 	async send(sessionId: string, input: SendTeamMessageInput): Promise<TeamSessionDocument> {
+		const startedAt = Date.now();
 		// A newly created Team exposes its coordination Conversation before member
 		// Runtimes finish warming. Admission must wait for that preparation instead
 		// of enqueueing against an incomplete roster and then losing the request.
 		const session = await this.read(sessionId);
 		await this.waitForMemberRuntimeWarmup(session, input.targetMemberIds ?? []);
+		log.info("team send preparation completed", {
+			teamSessionId: sessionId,
+			requestId: input.requestId,
+			leaderReadyMs: Date.now() - startedAt,
+		});
 		this.scheduleAutoTitle(this.sessionState.get(sessionId) ?? session, input);
 		return this.turnCoordinator.send(sessionId, input);
 	}
@@ -968,19 +1044,21 @@ export class AgentTeamSessionService {
 			return this.warmMemberRuntime(session.id, member, team, document);
 		});
 
-		// Keep the remaining members warming in the background, but only hold
-		// admission for the members this request actually addresses. This removes
-		// unrelated provider/plugin initialization from the first visible reply.
-		if (!this.warmingSessions.has(`runtime:${session.id}`)) {
-			void this.warmup(session.id, team, document).catch((error: unknown) => {
-				log.warn("team runtime warmup failed", {
-					teamId: team.id,
-					teamSessionId: session.id,
-					error: errorMessage(error),
-				});
-			});
-		}
 		await Promise.all(targetWarmups);
+	}
+
+	private async ensureMemberRuntimeForAttempt(
+		sessionId: string,
+		memberId: string,
+		document: AgentTeamDocument,
+	): Promise<void> {
+		const session = this.sessionState.get(sessionId) ?? (await this.read(sessionId));
+		if (session.memberRuntime[memberId]) return;
+		const team = document.teams.find((candidate) => candidate.id === session.teamId);
+		if (!team) throw new Error(`Agent team not found: ${session.teamId}`);
+		const member = team.members.find((candidate) => candidate.id === memberId);
+		if (!member) throw new Error(`Team member not found: ${memberId}`);
+		await this.warmMemberRuntime(sessionId, member, team, document);
 	}
 
 	abort(sessionId: string): Promise<void> {

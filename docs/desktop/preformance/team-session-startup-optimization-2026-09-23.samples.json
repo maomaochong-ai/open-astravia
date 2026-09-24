@@ -1,0 +1,50 @@
+{
+  "environment": {
+    "platform": "Windows",
+    "node": "22.21.1",
+    "bun": "1.3.14",
+    "skills": 40,
+    "filesPerSkill": 21,
+    "teamMembers": 4,
+    "provider": "local HTTP fixture"
+  },
+  "originalConcurrentWarmup": [
+    { "createMs": 1143.4, "leaderReadyMs": 3605.9, "modelRequestStartedMs": 3884.8, "allMembersReadyMs": 4008.4 },
+    { "createMs": 1033.7, "leaderReadyMs": 4226.6, "modelRequestStartedMs": 4582.7, "allMembersReadyMs": 4654.9 },
+    { "createMs": 1318.3, "leaderReadyMs": 3973.6, "modelRequestStartedMs": 4360.2, "allMembersReadyMs": 4418.3 },
+    { "createMs": 1106.5, "leaderReadyMs": 3812.4, "modelRequestStartedMs": 4135.9, "allMembersReadyMs": 4192.8 },
+    { "createMs": 1152.9, "leaderReadyMs": 3925.7, "modelRequestStartedMs": 4302.7, "allMembersReadyMs": 4386.3 }
+  ],
+  "ordinaryConversation": [
+    { "createMs": 551.1, "modelRequestStartedMs": 682.4, "providerRequestReceivedMs": 704.4, "firstResponseEventMs": 710.2, "firstTextDeltaMs": 711.0, "promptCompletedMs": 730.2, "requestBytes": 60653 },
+    { "createMs": 572.1, "modelRequestStartedMs": 722.3, "providerRequestReceivedMs": 742.8, "firstResponseEventMs": 744.7, "firstTextDeltaMs": 745.1, "promptCompletedMs": 764.9, "requestBytes": 60654 },
+    { "createMs": 517.3, "modelRequestStartedMs": 643.1, "providerRequestReceivedMs": 655.6, "firstResponseEventMs": 657.4, "firstTextDeltaMs": 657.8, "promptCompletedMs": 674.2, "requestBytes": 60654 },
+    { "createMs": 475.3, "modelRequestStartedMs": 601.0, "providerRequestReceivedMs": 605.3, "firstResponseEventMs": 607.2, "firstTextDeltaMs": 607.5, "promptCompletedMs": 620.0, "requestBytes": 60654 },
+    { "createMs": 457.3, "modelRequestStartedMs": 597.7, "providerRequestReceivedMs": 606.9, "firstResponseEventMs": 608.3, "firstTextDeltaMs": 608.5, "promptCompletedMs": 622.5, "requestBytes": 60654 }
+  ],
+  "requestBoundaryWarmup": [
+    { "createMs": 248.6, "leaderReadyMs": 771.4, "modelRequestStartedMs": 920.2, "providerRequestReceivedMs": 1452.4, "firstResponseEventMs": 1459.5, "firstTextDeltaMs": 1460.4, "promptCompletedMs": 1490.4, "allMembersReadyMs": 2056.9, "requestBytes": 60653 },
+    { "createMs": 211.5, "leaderReadyMs": 715.1, "modelRequestStartedMs": 848.3, "providerRequestReceivedMs": 1383.8, "firstResponseEventMs": 1385.9, "firstTextDeltaMs": 1386.6, "promptCompletedMs": 1415.2, "allMembersReadyMs": 1935.3, "requestBytes": 60654 },
+    { "createMs": 185.4, "leaderReadyMs": 662.2, "modelRequestStartedMs": 787.1, "providerRequestReceivedMs": 1291.3, "firstResponseEventMs": 1293.0, "firstTextDeltaMs": 1293.3, "promptCompletedMs": 1317.7, "allMembersReadyMs": 1874.0, "requestBytes": 60654 },
+    { "createMs": 194.2, "leaderReadyMs": 703.7, "modelRequestStartedMs": 821.0, "providerRequestReceivedMs": 1328.2, "firstResponseEventMs": 1329.8, "firstTextDeltaMs": 1330.1, "promptCompletedMs": 1352.6, "allMembersReadyMs": 1891.9, "requestBytes": 60654 },
+    { "createMs": 219.7, "leaderReadyMs": 698.7, "modelRequestStartedMs": 874.5, "providerRequestReceivedMs": 1483.2, "firstResponseEventMs": 1485.8, "firstTextDeltaMs": 1486.3, "promptCompletedMs": 1516.1, "allMembersReadyMs": 2037.8, "requestBytes": 60654 }
+  ],
+  "afterResponsePriority": [
+    { "createMs": 212.6, "leaderReadyMs": 689.1, "modelRequestStartedMs": 817.6, "providerRequestReceivedMs": 842.2, "firstResponseEventMs": 848.9, "firstTextDeltaMs": 849.6, "promptCompletedMs": 866.8, "allMembersReadyMs": 1785.1, "requestBytes": 60653 },
+    { "createMs": 180.2, "leaderReadyMs": 616.8, "modelRequestStartedMs": 721.3, "providerRequestReceivedMs": 730.9, "firstResponseEventMs": 733.5, "firstTextDeltaMs": 734.1, "promptCompletedMs": 748.9, "allMembersReadyMs": 1656.7, "requestBytes": 60654 },
+    { "createMs": 185.3, "leaderReadyMs": 628.3, "modelRequestStartedMs": 748.0, "providerRequestReceivedMs": 755.1, "firstResponseEventMs": 756.7, "firstTextDeltaMs": 756.9, "promptCompletedMs": 772.7, "allMembersReadyMs": 1659.2, "requestBytes": 60654 },
+    { "createMs": 191.6, "leaderReadyMs": 740.2, "modelRequestStartedMs": 879.6, "providerRequestReceivedMs": 897.9, "firstResponseEventMs": 899.0, "firstTextDeltaMs": 899.2, "promptCompletedMs": 918.1, "allMembersReadyMs": 1874.0, "requestBytes": 60654 },
+    { "createMs": 176.2, "leaderReadyMs": 619.8, "modelRequestStartedMs": 732.3, "providerRequestReceivedMs": 744.2, "firstResponseEventMs": 745.5, "firstTextDeltaMs": 745.7, "promptCompletedMs": 760.5, "allMembersReadyMs": 1641.4, "requestBytes": 60654 }
+  ],
+  "syntheticMcpDelay": {
+    "withoutDelay": { "createMs": 185.6, "leaderReadyMs": 643.0, "modelRequestStartedMs": 779.0, "firstTextDeltaMs": 809.2 },
+    "with10000MsDelayBeforeResourceManager": { "createMs": 10218.6, "leaderReadyMs": 10736.8, "modelRequestStartedMs": 10891.5, "firstTextDeltaMs": 10920.8 },
+    "with10000MsApplicationPrewarmAfterResourceManager": [
+      { "prewarmMs": 10007.3, "createMs": 218.5, "leaderReadyMs": 761.2, "modelRequestStartedMs": 917.4, "providerRequestReceivedMs": 942.8, "firstTextDeltaMs": 951.0 },
+      { "prewarmMs": 10007.3, "createMs": 201.7, "leaderReadyMs": 783.6, "modelRequestStartedMs": 924.6, "providerRequestReceivedMs": 930.2, "firstTextDeltaMs": 931.7 },
+      { "prewarmMs": 10007.3, "createMs": 180.7, "leaderReadyMs": 685.0, "modelRequestStartedMs": 831.9, "providerRequestReceivedMs": 846.1, "firstTextDeltaMs": 848.1 },
+      { "prewarmMs": 10007.3, "createMs": 304.9, "leaderReadyMs": 951.0, "modelRequestStartedMs": 1128.2, "providerRequestReceivedMs": 1143.8, "firstTextDeltaMs": 1146.1 },
+      { "prewarmMs": 10007.3, "createMs": 182.8, "leaderReadyMs": 749.3, "modelRequestStartedMs": 892.3, "providerRequestReceivedMs": 897.4, "firstTextDeltaMs": 899.1 }
+    ]
+  }
+}

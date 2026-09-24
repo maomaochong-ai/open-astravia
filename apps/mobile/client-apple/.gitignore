@@ -1,0 +1,8 @@
+build/
+VettaKit/.build/
+VettaKit/.swiftpm/
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+DerivedData/
+.DS_Store
+Config/Local.xcconfig

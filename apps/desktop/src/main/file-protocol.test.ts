@@ -1,7 +1,7 @@
 import { mkdtempSync, realpathSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createLoopbackSshConnection } from "@vetta/ssh-transport/testing";
+import { createLoopbackSshConnection, formatLoopbackProjectUri } from "@vetta/ssh-transport/testing";
 import { describe, expect, it, vi } from "vitest";
 import { createLocalFileUrl } from "../shared/file-protocol.js";
 
@@ -23,9 +23,10 @@ describe("vetta-file 协议", () => {
 		// 没有任何提示——两个协议的能力不对称本身就是个陷阱。
 		const remoteRoot = realpathSync(mkdtempSync(join(tmpdir(), "vetta-file-remote-")));
 		writeFileSync(join(remoteRoot, "shot.png"), PNG);
-		allowProjectRoot(`ssh://build-01${remoteRoot}`);
+		const root = formatLoopbackProjectUri("build-01", remoteRoot);
+		allowProjectRoot(root);
 
-		const response = await handleFileRequest(new Request(createLocalFileUrl(`ssh://build-01${remoteRoot}/shot.png`)));
+		const response = await handleFileRequest(new Request(createLocalFileUrl(`${root}/shot.png`)));
 
 		expect(response.status).toBe(200);
 		expect(response.headers.get("Content-Type")).toBe("image/png");

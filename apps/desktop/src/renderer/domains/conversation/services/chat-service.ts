@@ -866,6 +866,7 @@ function activateAssistantTurn(
 		...last,
 		phase: "streaming",
 		startedAt,
+		modelRequestStartedAt: restorePendingTools ? last.modelRequestStartedAt : undefined,
 		timestamp: last.timestamp ?? startedAt,
 		endedAt: undefined,
 		durationSeconds: undefined,

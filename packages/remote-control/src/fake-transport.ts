@@ -39,10 +39,11 @@ export class FakeTransport implements RemoteTransport {
 		peer.handlers.onFrame(frame);
 	}
 
-	async close(): Promise<void> {
+	async close(reason = "fake transport closed"): Promise<void> {
 		if (!this.connected) return;
 		this.connected = false;
-		this.handlers?.onClose("fake transport closed");
+		this.handlers?.onClose(reason);
+		this.peer?.forceDisconnect(reason);
 	}
 
 	forceDisconnect(reason = "fake transport disconnected"): void {

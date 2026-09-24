@@ -51,6 +51,41 @@ describe("FileMcpConfigSource", () => {
 		});
 	});
 
+	it("filters global and project servers before merging while preserving project overrides", async () => {
+		const fixture = await createFixture();
+		await writeJson(fixture.globalConfigPath, {
+			mcpServers: {
+				application: { command: "application" },
+				workspace: { command: "global-workspace" },
+			},
+		});
+		await writeJson(fixture.projectConfigPath, {
+			mcpServers: {
+				workspace: { command: "project-workspace" },
+				project: { command: "project" },
+			},
+		});
+		const source = new FileMcpConfigSource({
+			...fixture,
+			projectRoot: fixture.root,
+			includeServer: ({ origin, name }) => origin === "project" || name === "workspace",
+		});
+
+		expect(source.loadGlobal()).toEqual({ mcpServers: { workspace: { command: "global-workspace" } } });
+		expect(source.loadProject()).toEqual({
+			mcpServers: {
+				workspace: { command: "project-workspace" },
+				project: { command: "project" },
+			},
+		});
+		expect(source.loadMerged()).toEqual({
+			mcpServers: {
+				workspace: { command: "project-workspace" },
+				project: { command: "project" },
+			},
+		});
+	});
+
 	it("keeps project field overrides shallow and preserves global-only servers", async () => {
 		const fixture = await createFixture();
 		await writeJson(fixture.globalConfigPath, {
@@ -87,6 +122,12 @@ describe("FileMcpConfigSource", () => {
 		);
 		expect(() => parseMcpConfig({ mcpServers: { invalid: { command: "node", startupTimeout: "fast" } } })).toThrow(
 			"'startupTimeout' must be a number",
+		);
+		expect(parseMcpConfig({ mcpServers: { shared: { command: "node", resourceScope: "application" } } })).toEqual({
+			mcpServers: { shared: { command: "node", resourceScope: "application" } },
+		});
+		expect(() => parseMcpConfig({ mcpServers: { invalid: { command: "node", resourceScope: "session" } } })).toThrow(
+			'\'resourceScope\' must be "application" or "workspace"',
 		);
 	});
 

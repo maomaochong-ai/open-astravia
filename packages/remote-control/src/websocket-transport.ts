@@ -8,45 +8,80 @@ export interface RemoteWebSocket {
 	onclose: ((event: { reason?: string }) => void) | null;
 	onmessage: ((event: { data: unknown }) => void) | null;
 	send(data: string): void;
-	close(): void;
+	close(code?: number, reason?: string): void;
 }
 
 export type RemoteWebSocketFactory = (url: string, protocols?: readonly string[]) => RemoteWebSocket;
 
-export const REMOTE_WEBSOCKET_PROTOCOL = "vetta.remote.v1";
+export const REMOTE_WEBSOCKET_PROTOCOL = "vetta.remote.v2";
+/** Carries the pairing secret; kept out of the URL so proxies and logs never see it. */
 export const PAIRING_PROTOCOL_PREFIX = "vetta.pairing.";
-export const BOOTSTRAP_PROTOCOL_PREFIX = "vetta.bootstrap.";
-export const RESUME_PROTOCOL_PREFIX = "vetta.resume.";
+/** Declares a manual pairing that must be approved at the desktop instead of presenting a secret. */
+export const MANUAL_PAIRING_PROTOCOL = "vetta.manual";
+/**
+ * Offered by the desktop when it registers a relay room: the SHA-256 hex of
+ * the phone's secret, so the relay can admit the phone without ever holding
+ * the secret itself.
+ */
+export const PEER_HASH_PROTOCOL_PREFIX = "vetta.peer.";
+/** Close code used by an endpoint that rejected the peer at the protocol level. */
+export const REMOTE_CLOSE_CODE_REJECTED = 4003;
+const WEBSOCKET_OPEN = 1;
+
+export interface WebSocketRemoteTransportOptions {
+	readonly pairingSecret?: string;
+	readonly manual?: boolean;
+	readonly peerCredentialHash?: string;
+	readonly createSocket?: RemoteWebSocketFactory;
+	/**
+	 * Sends the text `ping` at this interval while open. Relays and the desktop
+	 * LAN server answer `pong` without waking any frame handling, which keeps a
+	 * hibernating Durable Object asleep and NAT mappings alive.
+	 */
+	readonly keepaliveIntervalMs?: number;
+}
+
+/** Application-level keepalive texts; never parsed as frames. */
+export const KEEPALIVE_PING = "ping";
+export const KEEPALIVE_PONG = "pong";
 
 /** WebSocket adapter with no dependency on DOM, Electron, or a specific runtime. */
 export class WebSocketRemoteTransport implements RemoteTransport {
 	private socket: RemoteWebSocket | undefined;
 	private handlers: RemoteTransportHandlers | undefined;
+	private keepalive: ReturnType<typeof setInterval> | undefined;
+	private readonly createSocket: RemoteWebSocketFactory;
 
 	constructor(
 		private readonly url: string,
-		private readonly createSocket: RemoteWebSocketFactory = defaultWebSocketFactory,
-	) {}
+		private readonly options: WebSocketRemoteTransportOptions = {},
+	) {
+		this.createSocket = options.createSocket ?? defaultWebSocketFactory;
+	}
+
+	/** Wraps a socket an acceptor already holds open (the desktop LAN server). */
+	static fromOpenSocket(socket: RemoteWebSocket): WebSocketRemoteTransport {
+		const transport = new WebSocketRemoteTransport("", { createSocket: () => socket });
+		transport.socket = socket;
+		return transport;
+	}
 
 	async connect(handlers: RemoteTransportHandlers): Promise<void> {
 		this.handlers = handlers;
-		const { url, pairingToken, bootstrapToken, resumeToken } = splitPairingTarget(this.url);
-		const protocols = pairingToken
-			? [
-					REMOTE_WEBSOCKET_PROTOCOL,
-					`${PAIRING_PROTOCOL_PREFIX}${pairingToken}`,
-					...(bootstrapToken ? [`${BOOTSTRAP_PROTOCOL_PREFIX}${bootstrapToken}`] : []),
-					...(resumeToken ? [`${RESUME_PROTOCOL_PREFIX}${resumeToken}`] : []),
-				]
-			: undefined;
-		const socket = this.createSocket(url, protocols);
+		const socket = this.socket ?? this.createSocket(this.url, buildProtocols(this.options));
 		this.socket = socket;
 		socket.onmessage = (event) => this.handleMessage(event.data);
-		socket.onclose = (event) => this.handlers?.onClose(event.reason);
-		await new Promise<void>((resolve, reject) => {
-			socket.onopen = () => resolve();
-			socket.onerror = () => reject(new Error("remote websocket connection failed"));
-		});
+		socket.onclose = (event) => {
+			this.stopKeepalive();
+			this.handlers?.onClose(event.reason);
+		};
+		if (socket.readyState !== WEBSOCKET_OPEN) {
+			await new Promise<void>((resolve, reject) => {
+				socket.onopen = () => resolve();
+				socket.onerror = () => reject(new Error("remote websocket connection failed"));
+			});
+		}
+		this.startKeepalive(socket);
 	}
 
 	async send(frame: RemoteFrame): Promise<void> {
@@ -54,9 +89,13 @@ export class WebSocketRemoteTransport implements RemoteTransport {
 		this.socket.send(encodeRemoteFrame(frame));
 	}
 
-	async close(): Promise<void> {
-		this.socket?.close();
+	async close(reason?: string): Promise<void> {
+		this.stopKeepalive();
+		const socket = this.socket;
 		this.socket = undefined;
+		if (!socket) return;
+		if (reason) socket.close(REMOTE_CLOSE_CODE_REJECTED, reason.slice(0, 120));
+		else socket.close();
 	}
 
 	private handleMessage(data: unknown): void {
@@ -65,6 +104,7 @@ export class WebSocketRemoteTransport implements RemoteTransport {
 			return;
 		}
 		for (const line of data.split("\n").filter(Boolean)) {
+			if (line === KEEPALIVE_PONG || line === KEEPALIVE_PING) continue;
 			try {
 				this.handlers?.onFrame(parseRemoteFrame(line));
 			} catch {
@@ -73,25 +113,62 @@ export class WebSocketRemoteTransport implements RemoteTransport {
 			}
 		}
 	}
+
+	private startKeepalive(socket: RemoteWebSocket): void {
+		const interval = this.options.keepaliveIntervalMs;
+		if (!interval || interval <= 0) return;
+		this.stopKeepalive();
+		this.keepalive = setInterval(() => {
+			if (socket.readyState !== WEBSOCKET_OPEN) return;
+			try {
+				socket.send(KEEPALIVE_PING);
+			} catch {
+				// A failing send surfaces through onclose; nothing to do here.
+			}
+		}, interval);
+		(this.keepalive as { unref?: () => void }).unref?.();
+	}
+
+	private stopKeepalive(): void {
+		if (this.keepalive) clearInterval(this.keepalive);
+		this.keepalive = undefined;
+	}
 }
 
-export function splitPairingTarget(target: string): {
-	readonly url: string;
-	readonly pairingToken?: string;
-	readonly bootstrapToken?: string;
-	readonly resumeToken?: string;
-} {
-	const separator = target.indexOf("#");
-	if (separator < 0) return { url: target };
-	const fragment = target.slice(separator + 1);
-	const url = target.slice(0, separator);
-	if (!fragment) return { url };
-	if (!fragment.includes("=")) return { url, pairingToken: fragment };
-	const values = new URLSearchParams(fragment);
-	const pairingToken = values.get("pairing") ?? undefined;
-	const bootstrapToken = values.get("bootstrap") ?? undefined;
-	const resumeToken = values.get("resume") ?? undefined;
-	return { url, pairingToken, bootstrapToken, resumeToken };
+export function buildProtocols(
+	options: Pick<WebSocketRemoteTransportOptions, "pairingSecret" | "manual" | "peerCredentialHash">,
+): string[] {
+	const protocols = [REMOTE_WEBSOCKET_PROTOCOL];
+	if (options.pairingSecret) protocols.push(`${PAIRING_PROTOCOL_PREFIX}${options.pairingSecret}`);
+	else if (options.manual) protocols.push(MANUAL_PAIRING_PROTOCOL);
+	if (options.peerCredentialHash) protocols.push(`${PEER_HASH_PROTOCOL_PREFIX}${options.peerCredentialHash}`);
+	return protocols;
+}
+
+export interface OfferedProtocols {
+	readonly remote: boolean;
+	readonly pairingSecret?: string;
+	readonly manual: boolean;
+	readonly peerCredentialHash?: string;
+}
+
+/** Parses the `Sec-WebSocket-Protocol` offer on the accepting side. */
+export function parseOfferedProtocols(header: string | readonly string[] | null | undefined): OfferedProtocols {
+	const raw: readonly string[] = typeof header === "string" ? header.split(",") : (header ?? []);
+	const entries = raw.map((entry) => entry.trim()).filter(Boolean);
+	let pairingSecret: string | undefined;
+	let peerCredentialHash: string | undefined;
+	let manual = false;
+	let remote = false;
+	for (const entry of entries) {
+		if (entry === REMOTE_WEBSOCKET_PROTOCOL) remote = true;
+		else if (entry === MANUAL_PAIRING_PROTOCOL) manual = true;
+		else if (entry.startsWith(PAIRING_PROTOCOL_PREFIX))
+			pairingSecret = entry.slice(PAIRING_PROTOCOL_PREFIX.length) || undefined;
+		else if (entry.startsWith(PEER_HASH_PROTOCOL_PREFIX))
+			peerCredentialHash = entry.slice(PEER_HASH_PROTOCOL_PREFIX.length) || undefined;
+	}
+	return { remote, pairingSecret, manual, peerCredentialHash };
 }
 
 function defaultWebSocketFactory(url: string, protocols?: readonly string[]): RemoteWebSocket {

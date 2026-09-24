@@ -28,6 +28,19 @@
 			"win32-x64": { "filename": "cpython-3.13.12+20260203-x86_64-pc-windows-msvc-install_only.tar.gz", "dir": "python", "archive": "tar.gz" }
 		}
 	},
+	"git": {
+		"$comment": "MinGit 只给 Windows 做可选的托管安装，系统 git 始终优先（ADR-0134）。tag 与 sha256 取自 git-for-windows 官方 release 说明。",
+		"version": "2.55.0.5",
+		"tag": "v2.55.0.windows.5",
+		"sources": [
+			"https://registry.npmmirror.com/-/binary/git-for-windows/{tag}/{filename}",
+			"https://github.com/git-for-windows/git/releases/download/{tag}/{filename}"
+		],
+		"platforms": {
+			"win32-x64": { "filename": "MinGit-2.55.0.5-64-bit.zip", "sha256": "56d7b226b7693196cfc71fef26568f536c4a021ab6c37ff2db4287bed908e96e" },
+			"win32-arm64": { "filename": "MinGit-2.55.0.5-arm64.zip", "sha256": "05843f9d6e60306c3ab886799e2c67200caab921571f10512df3493049179ddb" }
+		}
+	},
 	"mirrors": {
 		"npmRegistry": "https://registry.npmmirror.com/",
 		"pipIndexUrl": "https://pypi.tuna.tsinghua.edu.cn/simple",

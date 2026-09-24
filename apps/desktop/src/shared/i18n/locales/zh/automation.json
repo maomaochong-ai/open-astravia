@@ -30,7 +30,7 @@
 	},
 	"form": {
 		"name": "任务标题",
-		"namePlaceholder": "任务标题",
+		"namePlaceholder": "任务标题（选填）",
 		"promptPlaceholder": "描述任务，告诉Vetta要做什么（输入 / 选择技能）",
 		"runTarget": "运行于",
 		"runMode": {

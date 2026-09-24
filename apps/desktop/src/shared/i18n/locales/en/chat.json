@@ -1,4 +1,52 @@
 {
+	"annotations": {
+		"title": "Q&A notes",
+		"ask": "Ask AI",
+		"history": "View Q&A notes",
+		"messageMenu": "More message actions",
+		"saved": "View {{count}} Q&A notes",
+		"close": "Close note",
+		"contextHint": "Uses the text conversation up to this message. This separate discussion does not affect the main conversation. Q&A is saved automatically.",
+		"source": "Back to source message",
+		"sourceUnavailable": "The source message is not in the current branch. Saved notes are still available.",
+		"question": "Your question",
+		"send": "Ask",
+		"cancel": "Stop answering",
+		"answering": "Answering… It will continue and save if you close this panel.",
+		"loading": "Loading notes…",
+		"search": "Search questions and answers",
+		"empty": "No Q&A notes found. Select message text and choose Ask AI from the context menu.",
+		"error": "The action could not finish. Your input is preserved. Try again, or check your model settings before asking again.",
+		"reload": "Reload",
+		"retry": "Answer this question again",
+		"length": "This answer reached its length limit. You can ask a follow-up question.",
+		"status": {
+			"failed": "The answer failed. Your question and any received text were saved. Check your model settings and retry.",
+			"cancelled": "Answering stopped. Any received text was saved.",
+			"interrupted": "The previous answer was interrupted. You can retry this question."
+		}
+	},
+	"markdown": {
+		"preview": "Preview",
+		"source": "Source",
+		"run": "Run in separate window",
+		"stop": "Stop",
+		"waiting": "Preview will appear when generation finishes.",
+		"paused": "Preview stopped. Run again to restart the page.",
+		"tooLarge": "This content is too large to preview. You can still view and copy its source.",
+		"failed": "Could not render this content. Its source is shown instead.",
+		"staticHtml": "Static preview. Run JavaScript in a separate window; external resources are unavailable.",
+		"running": "Interactive preview opened in a separate window. Closes after 30 seconds.",
+		"svg": "SVG preview",
+		"html": "HTML preview",
+		"loading": "Preparing preview…",
+		"retry": "Retry",
+		"enlarge": "Enlarge",
+		"save": "Save as",
+		"diagram": "Diagram",
+		"imageFailed": "Could not load image.",
+		"actionFailed": "Action failed. Please retry."
+	},
 	"activityPanel": {
 		"tabs": {
 			"file": "Files",
@@ -646,7 +694,9 @@
 		"assistantMessage": {
 			"predicting": "Vetta is predicting…",
 			"processing": "Processing…",
-			"waiting": "Waiting for model response"
+			"waiting": "Waiting for model response",
+			"preparing": "Preparing request",
+			"creatingSession": "Creating conversation"
 		},
 		"duration": {
 			"seconds": "{{seconds}}s",

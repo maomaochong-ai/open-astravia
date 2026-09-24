@@ -26,7 +26,7 @@ export interface ModelSelectorScope {
 	readonly onReasoningSelect: (reasoning: string) => void;
 }
 
-function persistSelectedModel(key: string): void {
+export function persistSelectedModel(key: string): void {
 	try {
 		localStorage.setItem(SELECTED_MODEL_STORAGE_KEY, key);
 	} catch {

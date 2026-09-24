@@ -47,8 +47,8 @@ import { stopSessionBackgroundWork } from "../agent-runtime/stop-session-work.js
 import { agentTeamSessionService } from "../agent-teams/team-session-service.js";
 import { stopMonitoringRuntimeSession } from "../app-monitor/app-monitor-service.js";
 import { onConversationListChanged } from "../conversations/conversation-list-events.js";
-import { assertOrdinaryConversationPath } from "../conversations/conversation-ownership-guard.js";
 import { getDesktopConversationService } from "../conversations/desktop-conversation-service.js";
+import { createDesktopSessionCommands } from "../conversations/desktop-session-commands.js";
 import { desktopSessionSearch } from "../conversations/desktop-session-search.js";
 import {
 	collectRunningInteractiveSessionIds,
@@ -70,9 +70,9 @@ import { type DebugRequestData, writeDebugRequest } from "../debug-writer.js";
 import { getAppLogger } from "../logger.js";
 import { getDesktopMcpAppRegistry } from "../mcp/mcp-app-runtime.js";
 import { getDesktopMcpTaskCoordinator, getDesktopMcpTaskRegistry } from "../mcp/mcp-task-runtime.js";
+import { forgetMessageAnnotations } from "../message-annotations/host.js";
 import { notify } from "../notifications/index.js";
-import { createPetBubbleCommand } from "../pet/pet-bubble-command.js";
-import { mapSessionEventToPetPresentation } from "../pet/session-event-action-policy.js";
+import { PetSessionPresentationController } from "../pet/pet-session-presentation-controller.js";
 import { sendPetCommandToWindow } from "../pet-window.js";
 import { setDesktopPluginHookInvoker } from "../plugins/coding-agent-hook-invocation.js";
 import { listPlugins, pluginAgentContributionService } from "../plugins/plugin-catalog.js";
@@ -85,7 +85,7 @@ import {
 } from "../plugins/system-prompt-operations.js";
 import { getSharedRuntime } from "../runtime.js";
 import { assertSandboxAvailableForMode } from "../sandbox/capability.js";
-import { getDesktopSchedulerServiceIfReady } from "../scheduler/scheduler-service.js";
+import { notifyAutomationSessionsDeleted } from "../scheduler/session-deletion.js";
 import {
 	DEFAULT_CONVERSATION_CWD,
 	DEFAULT_CONVERSATION_SESSION_DIR,
@@ -381,13 +381,6 @@ function assertMcpAppSender(sender: WebContents, expected: WebContents): void {
 	if (sender !== expected || sender.isDestroyed()) throw new Error("Untrusted MCP App IPC sender");
 }
 
-/** 会话被删除后通知自动化：解绑并暂停相关任务、清理执行记录（ADR-0127）。失败不影响删除本身。 */
-function notifyAutomationSessionsDeleted(isDeleted: (sessionPath: string) => boolean): void {
-	void getDesktopSchedulerServiceIfReady()
-		?.handleSessionsDeleted(isDeleted)
-		.catch((error) => sessionLog.error("failed to update automations after session deletion", error));
-}
-
 export function registerSessionIpc(webContents: WebContents): () => void {
 	const resolveDefaultExecutionMode = async (): Promise<SessionExecutionMode> => {
 		const config = await readDesktopConfig();
@@ -395,6 +388,11 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 	};
 
 	const runtime = getSharedRuntime();
+	const sessionCommands = createDesktopSessionCommands({
+		runtime,
+		onSessionsDeleted: notifyAutomationSessionsDeleted,
+		forgetAnnotations: forgetMessageAnnotations,
+	});
 	const pluginRuntimeSource = getDesktopCodingAgentPluginRuntimeSource();
 	const conversationService = getDesktopConversationService();
 	const questionBroker = getDesktopUserQuestionBroker();
@@ -403,6 +401,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 	const mcpTaskCoordinator = getDesktopMcpTaskCoordinator();
 	const mcpAppRegistry = getDesktopMcpAppRegistry();
 	const sandboxAuthorizationBroker = getDesktopSandboxAuthorizationBroker();
+	const petPresentationController = new PetSessionPresentationController({ send: sendPetCommandToWindow });
 	const unsubscribeConversationListChanged = onConversationListChanged((event) => {
 		broadcastToAllWindows(CHANNELS.SESSIONS_CHANGED, event);
 	});
@@ -436,45 +435,25 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		// lifecycle 各自独立。agent_end 时按累积状态判定该不该通知。
 		let lastStopReason: string | undefined;
 		let aborted = false;
-		let lastPetActionId: string | undefined;
-		let hasFinalPetBody = false;
 		const unsubscribe = runtime.subscribe(sessionId, (ev: SessionEvent) => {
-			const petPresentation = mapSessionEventToPetPresentation(ev);
-			const petActionId = petPresentation?.actionId;
-			if (petActionId && petActionId !== lastPetActionId) {
-				lastPetActionId = petActionId;
-				sendPetCommandToWindow({ type: "set-action", actionId: petActionId, source: "app" });
-			}
-			const petBubble = petPresentation?.bubble;
-			const isRedundantGenericCompletion =
-				ev.type === "session.lifecycle" && ev.phase === "agent_end" && hasFinalPetBody;
-			if (petBubble && !isRedundantGenericCompletion) {
-				const command = createPetBubbleCommand(petBubble, sessionId);
-				if (command) sendPetCommandToWindow(command);
-			}
+			petPresentationController.handleSessionEvent(ev);
 
 			if (ev.type === "message.final") {
-				if (petBubble?.body) hasFinalPetBody = true;
 				const sr = (ev.message as unknown as { stopReason?: unknown }).stopReason;
 				if (typeof sr === "string") lastStopReason = sr;
 			} else if (ev.channel === "assistant" && (ev.type === "done" || ev.type === "error")) {
-				if (petBubble?.body) hasFinalPetBody = true;
 				lastStopReason = ev.type === "done" ? ev.message.stopReason : "error";
 			} else if (ev.channel !== "assistant" && ev.type === "error") {
 				lastStopReason = "error";
 			} else if (ev.type === "session.lifecycle") {
-				if (ev.phase === "agent_start") {
-					hasFinalPetBody = false;
-				} else if (ev.phase === "aborted") {
+				if (ev.phase === "aborted") {
 					aborted = true;
-					hasFinalPetBody = false;
 				} else if (ev.phase === "agent_end") {
 					const wasAborted = aborted || lastStopReason === "aborted";
 					const outcome = lastStopReason === "error" ? "error" : "completed";
 					const sessionPath = runtime.getSessionPath(sessionId);
 					lastStopReason = undefined;
 					aborted = false;
-					hasFinalPetBody = false;
 					// 中断不通知；正常完成 / 出错才通知（见 CONTEXT.md「agent 完成通知」）。
 					if (!wasAborted && sessionPath) {
 						void notify({ type: "agent-turn-complete", sessionPath, cwd, outcome });
@@ -500,6 +479,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		debugSeqMap.delete(sessionId);
 		turnStartMap.delete(sessionId);
 		detachNotificationSub(sessionId);
+		petPresentationController.forgetSession(sessionId);
 		stopMonitoringRuntimeSession(sessionId);
 	};
 
@@ -535,9 +515,11 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		if (webContents.isDestroyed()) return Promise.resolve(CANCELLED_QUESTION);
 		return new Promise<CodingAgentQuestionResult>((resolve) => {
 			const sessionPath = runtime.getSessionPath(request.sessionId);
+			const waitingKey = `question:${request.requestId}`;
 			const finish = (result: CodingAgentQuestionResult): void => {
 				questionMap.delete(request.requestId);
 				if (signal) signal.removeEventListener("abort", onAbort);
+				petPresentationController.endWaiting(request.sessionId, waitingKey);
 				// 问答结束（提交/取消/中断）后清掉「待答」标记并广播。
 				if (sessionPath) setPendingQuestion(sessionPath, false);
 				resolve(result);
@@ -549,6 +531,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 			}
 			if (signal) signal.addEventListener("abort", onAbort, { once: true });
 			questionMap.set(request.requestId, finish);
+			petPresentationController.beginWaiting(request.sessionId, waitingKey, "notice.waiting.question");
 			webContents.send(CHANNELS.QUESTION_REQUEST, request);
 			// 广播「待答」给所有窗口（侧栏 + 快捷面板）。
 			if (sessionPath) setPendingQuestion(sessionPath, true);
@@ -581,6 +564,11 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 				planReviewBroker.respond(request.requestId, undefined);
 				return;
 			}
+			petPresentationController.beginWaiting(
+				request.sessionId,
+				`plan-review:${request.requestId}`,
+				"notice.waiting.planReview",
+			);
 			webContents.send(CHANNELS.PLAN_REVIEW_REQUEST, request);
 			const sessionPath = runtime.getSessionPath(request.sessionId);
 			const cwd = sessionCwdMap.get(request.sessionId);
@@ -588,6 +576,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 			if (sessionPath && cwd) void notify({ type: "agent-question-pending", sessionPath, cwd });
 		},
 		resolved: (event) => {
+			petPresentationController.endWaiting(event.sessionId, `plan-review:${event.requestId}`);
 			const sessionPath = runtime.getSessionPath(event.sessionId);
 			if (sessionPath) setPendingQuestion(sessionPath, false);
 			if (!webContents.isDestroyed()) webContents.send(CHANNELS.PLAN_REVIEW_RESOLVED, event);
@@ -597,9 +586,11 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 	const unregisterMcpElicitationHandler = mcpElicitationBroker.setInteractiveHandler((request, signal) => {
 		if (webContents.isDestroyed()) return Promise.resolve({ action: "cancel" });
 		return new Promise<DesktopMcpElicitationResponse>((resolve) => {
+			const waitingKey = `mcp-elicitation:${request.requestId}`;
 			const finish = (result: DesktopMcpElicitationResponse): void => {
 				mcpElicitationMap.delete(request.requestId);
 				signal?.removeEventListener("abort", onAbort);
+				petPresentationController.endWaiting(request.sessionId, waitingKey);
 				resolve(result);
 			};
 			const onAbort = (): void => finish({ action: "cancel" });
@@ -609,6 +600,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 			}
 			signal?.addEventListener("abort", onAbort, { once: true });
 			mcpElicitationMap.set(request.requestId, finish);
+			petPresentationController.beginWaiting(request.sessionId, waitingKey, "notice.waiting.mcp");
 			webContents.send(CHANNELS.MCP_ELICITATION_REQUEST, request);
 		});
 	});
@@ -625,9 +617,11 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 	): Promise<CodingAgentSandboxAuthorizationDecision> => {
 		if (webContents.isDestroyed()) return Promise.resolve("deny");
 		return new Promise<CodingAgentSandboxAuthorizationDecision>((resolve) => {
+			const waitingKey = `sandbox:${request.requestId}`;
 			const finish = (decision: CodingAgentSandboxAuthorizationDecision): void => {
 				sandboxGrantMap.delete(request.requestId);
 				if (signal) signal.removeEventListener("abort", onAbort);
+				petPresentationController.endWaiting(request.sessionId, waitingKey);
 				resolve(decision);
 			};
 			const onAbort = (): void => finish("deny");
@@ -637,6 +631,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 			}
 			if (signal) signal.addEventListener("abort", onAbort, { once: true });
 			sandboxGrantMap.set(request.requestId, finish);
+			petPresentationController.beginWaiting(request.sessionId, waitingKey, "notice.waiting.permission");
 			webContents.send(CHANNELS.SANDBOX_GRANT_REQUEST, request);
 		});
 	};
@@ -1219,17 +1214,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 
 	ipcMain.handle(CHANNELS.DELETE, async (_event, sessionPath: unknown) => {
 		assertNonEmptyString(sessionPath, "sessionPath");
-		await assertOrdinaryConversationPath(sessionPath);
-		// ADR-0007: 「对话」项目下的 session cwd 是独立子目录；删除 session 时
-		// 连带回收子目录里的产物。读 header 先取 cwd，再 delete，最后 rm 子目录。
-		const cwdFromHeader = await readSessionCwdFromHeader(sessionPath);
-		await runtime.deleteSession(sessionPath);
-		notifyAutomationSessionsDeleted((path) => path === sessionPath);
-		if (cwdFromHeader && isConversationSubCwd(cwdFromHeader)) {
-			await rm(resolve(cwdFromHeader), { recursive: true, force: true }).catch((err) => {
-				sessionLog.error("failed to remove conversation sub cwd", cwdFromHeader, err);
-			});
-		}
+		await sessionCommands.delete(sessionPath);
 	});
 
 	ipcMain.handle(CHANNELS.DELETE_ALL_FOR_CWD, async (_event, cwd: unknown) => {
@@ -1239,6 +1224,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 			listSessions: (target) => listSessionHistory(target),
 			deleteSession: async (sessionPath) => {
 				await runtime.deleteSession(sessionPath);
+				await forgetMessageAnnotations(sessionPath);
 				purged.add(sessionPath);
 			},
 			// 分片目录是新会话的落点；`<项目>/.vetta/sessions` 是存量兼容位置，随项目目录
@@ -1254,8 +1240,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 	ipcMain.handle(CHANNELS.RENAME, async (_event, sessionPath: unknown, name: unknown) => {
 		assertNonEmptyString(sessionPath, "sessionPath");
 		assertNonEmptyString(name, "name");
-		await assertOrdinaryConversationPath(sessionPath);
-		await runtime.renameSession(sessionPath, name);
+		await sessionCommands.rename(sessionPath, name);
 	});
 
 	ipcMain.handle(
@@ -1817,6 +1802,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 			unsubscribe();
 		}
 		notificationSubs.clear();
+		petPresentationController.dispose();
 		for (const unsubscribe of subscriptionMap.values()) {
 			unsubscribe();
 		}

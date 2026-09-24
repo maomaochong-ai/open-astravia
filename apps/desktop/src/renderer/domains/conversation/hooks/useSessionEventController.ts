@@ -236,6 +236,23 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 				return;
 			}
 			// ── Lifecycle ──
+			if (event.type === "model.request.started") {
+				setChatMessages((previous) => {
+					const tail = previous.at(-1);
+					// Later tool-loop calls must not reactivate a completed message or reset its duration.
+					if (
+						tail?.kind === "agent" &&
+						(tail.modelRequestStartedAt !== undefined || tail.blocks.length > 0 || tail.text)
+					)
+						return previous;
+					const messages = startAssistantTurn(previous, event.timestamp);
+					const last = messages.at(-1);
+					if (last?.kind !== "agent" || last.endedAt !== undefined || last.modelRequestStartedAt !== undefined)
+						return messages;
+					return [...messages.slice(0, -1), { ...last, modelRequestStartedAt: event.timestamp }];
+				});
+				return;
+			}
 			if (event.type === "session.lifecycle") {
 				if (event.phase === "agent_start") {
 					// 新一轮开始：让上一轮的输入预测生成（若仍在飞）回填时作废。

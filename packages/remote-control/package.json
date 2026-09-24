@@ -22,5 +22,10 @@
 		"ajv": "^8.20.0",
 		"@types/node": "^22.10.5",
 		"typescript": "^5.9.2"
+	},
+	"dependencies": {
+		"@noble/ciphers": "1.3.0",
+		"@noble/curves": "1.9.7",
+		"@noble/hashes": "1.8.0"
 	}
 }

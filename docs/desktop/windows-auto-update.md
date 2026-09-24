@@ -695,7 +695,7 @@ install failed
 - [ ] workflow_dispatch 三平台只构建演练已通过，且没有改动 stable。
 - [ ] `desktop-production` environment 的审核与允许分支已配置。
 - [ ] macOS 当前是明确接受的未签名阶段，或签名/公证校验已经通过。
-- [ ] Windows build job 的 `verify:updates:windows` 通过（Inno 预检只在 Windows runner 上跑）。
+- [ ] 在 Windows 机器上手动跑过 `verify:updates:windows`（Inno 预检只能在 Windows 上跑，发布流水线已不再执行）。
 - [ ] 失败回滚策略、上一版本清单和诊断负责人已明确。
 
 ## 14. 关键实现文件

@@ -10,6 +10,11 @@ export interface FileMcpConfigSourceOptions {
 	readonly projectConfigPath: string;
 	readonly projectRoot: string;
 	readonly environment?: Readonly<Record<string, string | undefined>>;
+	readonly includeServer?: (input: {
+		readonly origin: "global" | "project";
+		readonly name: string;
+		readonly config: McpServerConfig;
+	}) => boolean;
 }
 
 /** File-backed MCP config adapter with no product-specific path resolution. */
@@ -21,11 +26,11 @@ export class FileMcpConfigSource implements McpConfigSource {
 	}
 
 	loadGlobal(): McpConfig | null {
-		return this.loadConfigFromPath(this.options.globalConfigPath);
+		return this.filterConfig(this.loadConfigFromPath(this.options.globalConfigPath), "global");
 	}
 
 	loadProject(): McpConfig | null {
-		return this.loadConfigFromPath(this.options.projectConfigPath);
+		return this.filterConfig(this.loadConfigFromPath(this.options.projectConfigPath), "project");
 	}
 
 	loadMerged(): McpConfig {
@@ -70,6 +75,17 @@ export class FileMcpConfigSource implements McpConfigSource {
 		} catch (error) {
 			throw new Error(`Failed to load MCP config from ${path}: ${(error as Error).message}`);
 		}
+	}
+
+	private filterConfig(config: McpConfig | null, origin: "global" | "project"): McpConfig | null {
+		if (!config || !this.options.includeServer) return config;
+		return {
+			mcpServers: Object.fromEntries(
+				Object.entries(config.mcpServers).filter(([name, serverConfig]) =>
+					this.options.includeServer?.({ origin, name, config: serverConfig }),
+				),
+			),
+		};
 	}
 
 	private mergeConfigs(globalConfig: McpConfig, projectConfig: McpConfig): McpConfig {

@@ -14,15 +14,23 @@ export interface UserQuestionResolvedEvent {
 }
 
 type UserQuestionResolvedListener = (event: UserQuestionResolvedEvent) => void;
+type UserQuestionAskedListener = (request: CodingAgentQuestionFunctionRequest) => void;
 
 const CANCELLED_QUESTION: CodingAgentQuestionResult = { cancelled: true, answers: [] };
+
+interface PendingQuestion {
+	readonly request: CodingAgentQuestionFunctionRequest;
+	/** Settles the question from outside the handler race (a paired phone answering by requestId). */
+	readonly answer: (result: CodingAgentQuestionResult) => void;
+}
 
 export class DesktopUserQuestionBroker {
 	private interactiveHandler: UserQuestionHandler | undefined;
 	private readonly debugHandlers = new Map<string, UserQuestionHandler>();
 	private readonly remoteHandlers = new Map<string, UserQuestionHandler>();
-	private readonly pendingQuestions = new Map<string, CodingAgentQuestionFunctionRequest>();
+	private readonly pendingQuestions = new Map<string, PendingQuestion>();
 	private readonly resolvedListeners = new Set<UserQuestionResolvedListener>();
+	private readonly askedListeners = new Set<UserQuestionAskedListener>();
 
 	readonly handle: UserQuestionHandler = async (request, signal) => {
 		if (signal?.aborted) return CANCELLED_QUESTION;
@@ -33,20 +41,30 @@ export class DesktopUserQuestionBroker {
 		].filter((handler): handler is UserQuestionHandler => handler !== undefined);
 		if (handlers.length === 0) return CANCELLED_QUESTION;
 
-		this.pendingQuestions.set(request.requestId, request);
-		const controllers = handlers.length > 1 ? handlers.map(() => new AbortController()) : undefined;
+		// Every question also races an external answer slot so a paired phone
+		// can settle it by requestId without having been registered up front.
+		let answerExternally: (result: CodingAgentQuestionResult) => void = () => undefined;
+		const external = new Promise<CodingAgentQuestionResult>((resolve) => {
+			answerExternally = resolve;
+		});
+		const pending: PendingQuestion = { request, answer: answerExternally };
+		this.pendingQuestions.set(request.requestId, pending);
+		const controllers = handlers.map(() => new AbortController());
 		const abortHandlers = (): void => {
-			for (const controller of controllers ?? []) controller.abort();
+			for (const controller of controllers) controller.abort();
 		};
-		if (signal && controllers) signal.addEventListener("abort", abortHandlers, { once: true });
+		if (signal) signal.addEventListener("abort", abortHandlers, { once: true });
+		for (const listener of this.askedListeners) listener(request);
 
 		try {
-			if (!controllers) return await handlers[0](request, signal);
-			return await Promise.race(handlers.map((handler, index) => handler(request, controllers[index].signal)));
+			return await Promise.race([
+				...handlers.map((handler, index) => handler(request, controllers[index].signal)),
+				external,
+			]);
 		} finally {
-			if (signal && controllers) signal.removeEventListener("abort", abortHandlers);
+			if (signal) signal.removeEventListener("abort", abortHandlers);
 			abortHandlers();
-			if (this.pendingQuestions.get(request.requestId) === request) {
+			if (this.pendingQuestions.get(request.requestId) === pending) {
 				this.pendingQuestions.delete(request.requestId);
 			}
 			const event = { requestId: request.requestId, sessionId: request.sessionId };
@@ -54,12 +72,26 @@ export class DesktopUserQuestionBroker {
 		}
 	};
 
+	/** Settles a pending question from outside the handler race; false when it is unknown or already settled. */
+	answer(requestId: string, result: CodingAgentQuestionResult): boolean {
+		const pending = this.pendingQuestions.get(requestId);
+		if (!pending) return false;
+		this.pendingQuestions.delete(requestId);
+		pending.answer(result);
+		return true;
+	}
+
+	onQuestionAsked(listener: UserQuestionAskedListener): () => void {
+		this.askedListeners.add(listener);
+		return () => this.askedListeners.delete(listener);
+	}
+
 	isAvailable(): boolean {
 		return this.interactiveHandler !== undefined || this.debugHandlers.size > 0 || this.remoteHandlers.size > 0;
 	}
 
 	listPendingQuestions(): CodingAgentQuestionFunctionRequest[] {
-		return [...this.pendingQuestions.values()];
+		return [...this.pendingQuestions.values()].map((pending) => pending.request);
 	}
 
 	registerRemoteHandler(sessionId: string, handler: UserQuestionHandler): () => void {

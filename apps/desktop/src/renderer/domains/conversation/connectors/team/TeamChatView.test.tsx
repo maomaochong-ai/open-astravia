@@ -55,6 +55,7 @@ function actions(): TeamChatActions {
 
 function model(): TeamChatViewModel {
 	return {
+		teamId: "team-1",
 		feedKey: "team-session",
 		title: "Team",
 		status: "streaming",

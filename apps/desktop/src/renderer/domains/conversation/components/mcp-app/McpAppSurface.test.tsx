@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import type { DesktopApi, DesktopMcpAppSurface } from "@preload/api";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { McpAppSurface } from "./McpAppSurface";
 
@@ -38,6 +38,7 @@ describe("McpAppSurface", () => {
 		const target = (frame as HTMLIFrameElement).contentWindow;
 		expect(target).not.toBeNull();
 		const post = vi.spyOn(target as Window, "postMessage");
+		await act(async () => {});
 
 		window.dispatchEvent(
 			new MessageEvent("message", {
@@ -55,7 +56,7 @@ describe("McpAppSurface", () => {
 				data: { jsonrpc: "2.0", method: "ui/notifications/sandbox-proxy-ready" },
 			}),
 		);
-		await waitFor(() => expect(post).toHaveBeenCalled());
+		await waitFor(() => expect(post).toHaveBeenCalled(), { timeout: 5_000 });
 		expect(post.mock.calls[0]?.[0]).toMatchObject({ method: "ui/notifications/sandbox-resource-ready" });
 	});
 });

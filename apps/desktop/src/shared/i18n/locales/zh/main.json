@@ -49,7 +49,14 @@
 		"turnComplete": "已完成回答",
 		"turnError": "本轮回答出错",
 		"questionPending": "有问题待确认，点击查看",
-		"sessionFallback": "新会话"
+		"sessionFallback": "新会话",
+		"remoteDeviceConnectedTitle": "手机已连接",
+		"remoteDeviceConnected": "{{device}} 已连接到这台电脑。不是你操作的？到「远程连接」里解除配对。",
+		"remotePairingRequestTitle": "有手机请求配对",
+		"remotePairingRequest": "{{device}} 想连接这台电脑，验证码 {{code}}。点击核对并放行。"
+	},
+	"remote": {
+		"conversationProject": "对话"
 	},
 	"pet": {
 		"openDevTools": "打开桌宠开发者工具"
@@ -95,5 +102,8 @@
 	},
 	"terminal": {
 		"remoteOutputDropped": "[远端输出过快，已省略 {{bytes}} 字节]"
+	},
+	"markdown": {
+		"previewTitle": "HTML 预览 · 30 秒后自动关闭"
 	}
 }

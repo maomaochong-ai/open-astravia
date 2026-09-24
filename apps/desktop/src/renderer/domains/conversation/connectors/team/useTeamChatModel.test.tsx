@@ -161,7 +161,7 @@ describe("useTeamChatModel streaming flow", () => {
 		});
 	});
 
-	it("distinguishes target runtime loading from waiting for the model response", async () => {
+	it("switches to waiting for the model only after the real request-start event", async () => {
 		let resolveSend: ((value: DesktopTeamSessionSnapshot) => void) | undefined;
 		vi.mocked(window.vetta.agentTeams.sendMessage).mockReturnValueOnce(
 			new Promise((resolve) => {
@@ -201,6 +201,18 @@ describe("useTeamChatModel streaming flow", () => {
 						},
 					},
 				},
+			});
+		});
+		expect(result.current.model.pendingLabel).toBe("chat.teamLoading");
+
+		act(() => {
+			streamListener?.({
+				type: "desktop.team-model-request-started",
+				conversationId: baseSession.id,
+				memberId: leader.id,
+				runtimeSessionId: "leader-runtime",
+				requestId,
+				timestamp: 2,
 			});
 		});
 		await waitFor(() => expect(result.current.model.pendingLabel).toBe("chat.waitingModel"));
@@ -898,6 +910,36 @@ describe("useTeamChatModel streaming flow", () => {
 			document,
 		});
 		expect(takeTeamSessionHandoff(baseSession.id)).toBeUndefined();
+	});
+
+	it("does not await Team history bootstrap before sending a staged first message", async () => {
+		let releaseBootstrap: (() => void) | undefined;
+		vi.mocked(loadTeamChatBootstrap).mockReturnValueOnce(
+			new Promise((resolve) => {
+				releaseBootstrap = () => resolve({ document, sessions: [] });
+			}),
+		);
+		stageTeamSessionHandoff({
+			sessionId: baseSession.id,
+			document,
+			requestId: "bootstrap-independent-request",
+			text: "hello",
+			memberMentions: [],
+			attachments: [],
+			timestamp: Date.now(),
+			executionMode: "full-access",
+		});
+
+		const { unmount } = renderHook(() => useTeamChatModel(team.id, baseSession.id));
+		await waitFor(() => expect(loadTeamChatBootstrap).toHaveBeenCalled());
+		await waitFor(() =>
+			expect(window.vetta.agentTeams.sendMessage).toHaveBeenCalledWith(
+				baseSession.id,
+				expect.objectContaining({ requestId: "bootstrap-independent-request" }),
+			),
+		);
+		await act(async () => releaseBootstrap?.());
+		unmount();
 	});
 
 	it("persists the new-session composer model instead of the global default so delegated tasks inherit it", async () => {

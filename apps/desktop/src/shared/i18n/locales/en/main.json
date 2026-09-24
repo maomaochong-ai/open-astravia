@@ -49,7 +49,14 @@
 		"turnComplete": "Response completed",
 		"turnError": "Response failed",
 		"questionPending": "A question needs your confirmation. Click to view.",
-		"sessionFallback": "New Session"
+		"sessionFallback": "New Session",
+		"remoteDeviceConnectedTitle": "Phone connected",
+		"remoteDeviceConnected": "{{device}} connected to this computer. Not you? Remove it under Remote access.",
+		"remotePairingRequestTitle": "A phone wants to pair",
+		"remotePairingRequest": "{{device}} is asking to connect, code {{code}}. Click to verify and allow."
+	},
+	"remote": {
+		"conversationProject": "Conversations"
 	},
 	"pet": {
 		"openDevTools": "Open Pet DevTools"
@@ -95,5 +102,8 @@
 	},
 	"terminal": {
 		"remoteOutputDropped": "[remote output too fast; {{bytes}} bytes omitted]"
+	},
+	"markdown": {
+		"previewTitle": "HTML preview · closes after 30 seconds"
 	}
 }

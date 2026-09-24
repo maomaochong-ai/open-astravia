@@ -375,7 +375,6 @@ tag v<version>
   -> 读取签名凭据，打开 VETTA_REQUIRE_MAC_SIGNATURE=1
   -> 清理上一轮的 release/（复用工作目录的 runner 才会有残留）
   -> dist:mac:<arch>
-  -> verify:updates:mac
   -> latest-mac.yml 改名为 latest-mac-<arch>.yml
   -> 上传 artifact
 （arm64 与 x64 是两个独立 job，各自在匹配架构的托管 runner 上并行）

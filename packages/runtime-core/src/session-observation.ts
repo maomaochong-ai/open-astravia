@@ -27,6 +27,7 @@ interface RuntimeSessionObservationBase {
 export type RuntimeSessionObservationEvent = RuntimeSessionObservationBase &
 	(
 		| { readonly type: "lifecycle"; readonly phase: RuntimeSessionLifecyclePhase }
+		| { readonly type: "model.request.started"; readonly modelCallIndex: number }
 		| {
 				readonly type: "assistant.event";
 				readonly modelCallIndex: number;

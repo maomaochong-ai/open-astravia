@@ -28,14 +28,27 @@ export type AppNotification =
 			type: "agent-question-pending";
 			sessionPath: string;
 			cwd: string;
+	  }
+	| {
+			/** 一部已配对手机刚连上本机；即使二维码被偷拍，用户也能立刻察觉。 */
+			type: "remote-device-connected";
+			deviceName: string;
+	  }
+	| {
+			/** 手机手动输入 IP 发起配对，等用户在设置里比对验证码后放行。 */
+			type: "remote-pairing-request";
+			deviceName: string;
+			code: string;
 	  };
 
 /** 点击通知后推给渲染端的路由意图（按 type 分流）。 */
-export type NotificationNavigatePayload = {
-	type: "agent-turn-complete" | "agent-question-pending";
-	sessionPath: string;
-	cwd: string;
-};
+export type NotificationNavigatePayload =
+	| {
+			type: "agent-turn-complete" | "agent-question-pending";
+			sessionPath: string;
+			cwd: string;
+	  }
+	| { type: "remote-settings" };
 
 interface NotificationDescriptor {
 	title: string;
@@ -78,6 +91,10 @@ function shouldSuppress(n: AppNotification): boolean {
 			const focused = win?.isFocused() ?? false;
 			return focused && foregroundSessionPath === n.sessionPath;
 		}
+		case "remote-device-connected":
+		case "remote-pairing-request":
+			// 安全提示永远弹：它的意义就是让用户知道有设备接入。
+			return false;
 	}
 }
 
@@ -100,6 +117,20 @@ async function buildDescriptor(n: AppNotification): Promise<NotificationDescript
 				navigate: { type: "agent-question-pending", sessionPath: n.sessionPath, cwd: n.cwd },
 			};
 		}
+		case "remote-device-connected":
+			return {
+				title: mainT("notification.remoteDeviceConnectedTitle"),
+				body: mainT("notification.remoteDeviceConnected", { device: n.deviceName }),
+				coalesceKey: `remote-device:${n.deviceName}`,
+				navigate: { type: "remote-settings" },
+			};
+		case "remote-pairing-request":
+			return {
+				title: mainT("notification.remotePairingRequestTitle"),
+				body: mainT("notification.remotePairingRequest", { device: n.deviceName, code: n.code }),
+				coalesceKey: "remote-pairing-request",
+				navigate: { type: "remote-settings" },
+			};
 	}
 }
 

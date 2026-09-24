@@ -8,7 +8,7 @@ import { usePreviewNav } from "../components/FilePreviewView";
 import { downloadItem, getExtension, IMAGE_EXTENSIONS } from "../components/PreviewContent";
 
 function isImage(item: FilePreviewItem): boolean {
-	return IMAGE_EXTENSIONS.has(getExtension(item.name));
+	return item.kind === "image" || IMAGE_EXTENSIONS.has(getExtension(item.name));
 }
 
 export type FilePreviewDialogModel = FilePreviewDialogViewProps;

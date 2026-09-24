@@ -523,6 +523,7 @@ export class TurnPipeline {
 						})),
 					);
 				},
+				reportObservation: (observation) => this.publishObservation(state.sessionId, turnId, observation),
 				checkpoint: async (request, checkpointSignal) =>
 					await this.prepareContextCheckpoint({
 						turnId,

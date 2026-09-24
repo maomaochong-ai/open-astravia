@@ -65,19 +65,20 @@ function mapStatus(letter: string): ChangeCode {
 	}
 }
 
-/** Parse `git show --name-status` (tab-separated) into the changed files of a commit. */
+/** NUL-delimited names preserve tabs, newlines and quoted paths verbatim. */
 export function parseNameStatus(raw: string): ChangeEntry[] {
+	if (raw && !raw.endsWith("\0")) throw new Error("Truncated git name-status output");
 	const out: ChangeEntry[] = [];
-	for (const line of raw.split("\n")) {
-		if (!line.trim()) continue;
-		const cols = line.split("\t");
-		const letter = cols[0]?.[0];
-		if (!letter) continue;
-		if ((letter === "R" || letter === "C") && cols.length >= 3) {
-			out.push({ path: cols[2], origPath: cols[1], code: "R" });
-		} else if (cols.length >= 2) {
-			out.push({ path: cols[1], code: mapStatus(letter) });
-		}
+	const fields = raw.split("\0");
+	for (let i = 0; i < fields.length - 1; ) {
+		const status = fields[i++].trim();
+		const first = fields[i++];
+		if (!/^[ACDMRTUXB]\d*$/.test(status) || !first) throw new Error("Invalid git name-status output");
+		if (status[0] === "R" || status[0] === "C") {
+			const path = fields[i++];
+			if (!path) throw new Error("Missing destination in git name-status output");
+			out.push({ path, origPath: first, code: "R" });
+		} else out.push({ path: first, code: mapStatus(status[0]) });
 	}
 	return out;
 }

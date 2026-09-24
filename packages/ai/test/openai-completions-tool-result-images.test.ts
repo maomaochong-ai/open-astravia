@@ -50,7 +50,7 @@ function buildToolResult(toolCallId: string, timestamp: number): ToolResultMessa
 }
 
 describe("openai-completions convertMessages", () => {
-	it("forwards user images when image capability metadata is missing", () => {
+	it("omits user images for a text-only model", () => {
 		const baseModel = getModel("openai", "gpt-4o-mini");
 		const model: Model<"openai-completions"> = {
 			...baseModel,
@@ -76,10 +76,7 @@ describe("openai-completions convertMessages", () => {
 
 		expect(messages[0]).toEqual({
 			role: "user",
-			content: [
-				{ type: "text", text: "inspect" },
-				{ type: "image_url", image_url: { url: "data:image/png;base64,ZmFrZQ==" } },
-			],
+			content: [{ type: "text", text: "inspect" }],
 		});
 	});
 
@@ -129,7 +126,7 @@ describe("openai-completions convertMessages", () => {
 		expect(imageParts.length).toBe(2);
 	});
 
-	it("forwards tool-result images when image capability metadata is missing", () => {
+	it("omits tool-result images for a text-only model", () => {
 		const baseModel = getModel("openai", "gpt-4o-mini");
 		const model: Model<"openai-completions"> = {
 			...baseModel,
@@ -156,12 +153,12 @@ describe("openai-completions convertMessages", () => {
 
 		const messages = convertMessages(model, context, compat);
 
-		expect(messages.map((message) => message.role)).toEqual(["user", "assistant", "tool", "user"]);
-		const imageMessage = messages.at(-1);
-		expect(imageMessage?.role).toBe("user");
-		expect(imageMessage?.content).toEqual([
-			{ type: "text", text: "Attached image(s) from tool result:" },
-			{ type: "image_url", image_url: { url: "data:image/png;base64,ZmFrZQ==" } },
-		]);
+		expect(messages.map((message) => message.role)).toEqual(["user", "assistant", "tool"]);
+		expect(messages.at(-1)).toEqual({
+			role: "tool",
+			content:
+				"Read image file [image/png]\nImage content omitted because the current model does not support image input.",
+			tool_call_id: "tool-1",
+		});
 	});
 });

@@ -3,6 +3,21 @@ import { describe, expect, it, vi } from "vitest";
 import { createAgentTeamsApi } from "./agent-teams.js";
 
 describe("createAgentTeamsApi", () => {
+	it("subscribes to scoped model changes and removes the listener on disposal", () => {
+		const on = vi.fn();
+		const removeListener = vi.fn();
+		const api = createAgentTeamsApi({ on, removeListener } as unknown as IpcRenderer).agentTeams;
+		const listener = vi.fn();
+		const dispose = api.onMemberModelsChanged(listener);
+		const [channel, handler] = on.mock.calls[0]!;
+		expect(channel).toBe("vetta:agent-teams:member-models-changed");
+		handler({}, "team");
+		handler({}, { teamId: "invalid" });
+		expect(listener.mock.calls).toEqual([["team"]]);
+		dispose();
+		expect(removeListener).toHaveBeenCalledWith(channel, handler);
+	});
+
 	it("forwards team configuration and session operations to their dedicated channels", async () => {
 		const invoke = vi.fn(async () => undefined);
 		const api = createAgentTeamsApi({ invoke } as unknown as IpcRenderer).agentTeams;

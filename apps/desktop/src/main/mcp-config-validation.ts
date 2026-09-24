@@ -6,6 +6,7 @@ const COMMON_SERVER_KEYS = new Set([
 	"autoApprove",
 	"startupTimeout",
 	"debug",
+	"resourceScope",
 	"displayName",
 	"description",
 	"icon",
@@ -69,6 +70,13 @@ function assertCommonServerConfig(server: Record<string, unknown>, path: string)
 		throw new Error(`Invalid ${path}.startupTimeout`);
 	}
 	assertOptionalBoolean(server.debug, `${path}.debug`);
+	if (
+		server.resourceScope !== undefined &&
+		server.resourceScope !== "application" &&
+		server.resourceScope !== "workspace"
+	) {
+		throw new Error(`Invalid ${path}.resourceScope`);
+	}
 	assertOptionalString(server.displayName, `${path}.displayName`);
 	assertOptionalString(server.description, `${path}.description`);
 	assertOptionalString(server.icon, `${path}.icon`);

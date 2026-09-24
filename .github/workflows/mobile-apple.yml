@@ -1,0 +1,50 @@
+name: mobile-apple
+
+on:
+  push:
+    branches:
+      - "**"
+    paths:
+      - "apps/mobile/client-apple/**"
+      - "packages/remote-control/**"
+      - "apps/desktop/src/main/remote-control/desktop-remote-lan-server.ts"
+      - ".github/workflows/mobile-apple.yml"
+  pull_request:
+    paths:
+      - "apps/mobile/client-apple/**"
+      - "packages/remote-control/**"
+      - "apps/desktop/src/main/remote-control/desktop-remote-lan-server.ts"
+      - ".github/workflows/mobile-apple.yml"
+
+jobs:
+  build-test:
+    name: VettaKit tests + desktop interop + iOS build
+    runs-on: macos-26
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: apps/mobile/client-apple
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Install dependencies
+        uses: ./.github/actions/install-bun-dependencies
+
+      - name: Test VettaKit
+        working-directory: apps/mobile/client-apple/VettaKit
+        run: swift test --no-parallel
+
+      - name: Interop with the desktop LAN server and relay
+        run: scripts/interop.sh
+
+      - name: Build iOS app for the simulator
+        run: |
+          brew install xcodegen
+          xcodegen generate
+          xcodebuild build -project Vetta.xcodeproj -scheme Vetta -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO -quiet

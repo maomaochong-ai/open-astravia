@@ -42,7 +42,8 @@ vi.mock("@vetta-org/theme-ui/chat", () => ({
 vi.mock("./useTeamChatModel", () => ({
 	useTeamChatModel: () => ({
 		model: {
-			feedKey: "session-1",
+			teamId: "team-1",
+		feedKey: "session-1",
 			members: [
 				{
 					id: "member-1",

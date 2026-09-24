@@ -38,6 +38,29 @@ const CONTRACT_DIRECTORY_PATTERN = /(?:^|\/)(?:contracts?|runtime-contracts)(?:\
 const PACKAGE_CONFIG_PATTERN =
 	/(?:^|\/)(?:package\.json|vitest\.config\.[cm]?[jt]s|vite\.config\.[cm]?[jt]s|tsconfig(?:\.[^.]+)?\.json)$/i;
 
+/**
+ * Keep narrowly reviewed source-to-test mappings here when Vitest's dependency
+ * graph is unavailable or substantially broader than the component contract.
+ * Every mapped test must directly render the source through a public host path.
+ */
+const MODEL_SELECTOR_VIEW_TEST = "src/renderer/domains/conversation/components/ModelSelectorView.test.tsx";
+const TEAM_MODEL_SELECTOR_TEST = "src/renderer/domains/conversation/connectors/team/TeamModelSelector.test.tsx";
+const desktopTests = (...tests) => ({ workspaceKey: "desktop", tests });
+const EXPLICIT_SOURCE_TESTS = new Map([
+	[
+		"apps/desktop/src/renderer/domains/conversation/connectors/team/TeamModelSelector.tsx",
+		desktopTests(TEAM_MODEL_SELECTOR_TEST),
+	],
+	[
+		"packages/theme-ui/src/chat/ModelSelectorTrigger.tsx",
+		desktopTests(MODEL_SELECTOR_VIEW_TEST, TEAM_MODEL_SELECTOR_TEST),
+	],
+	["packages/theme-ui/src/chat/ModelSelectorView.tsx", desktopTests(MODEL_SELECTOR_VIEW_TEST)],
+	["packages/theme-ui/src/chat/ModelConfiguration.tsx", desktopTests(TEAM_MODEL_SELECTOR_TEST)],
+	["packages/theme-ui/src/chat/InlineModelPicker.tsx", desktopTests(TEAM_MODEL_SELECTOR_TEST)],
+	["packages/theme-ui/src/chat/ReasoningStepSlider.tsx", desktopTests(TEAM_MODEL_SELECTOR_TEST)],
+]);
+
 function workspaceForFile(file) {
 	return [...WORKSPACE_PACKAGES]
 		.sort((left, right) => right.dir.length - left.dir.length)
@@ -61,6 +84,22 @@ function staticVitestArgs(testScript) {
 		.split(/\s+/)
 		.filter(Boolean)
 		.filter((arg) => arg !== "--run");
+}
+
+function targetForWorkspace(grouped, workspace) {
+	let target = grouped.get(workspace.key);
+	if (target) return target;
+	target = {
+		key: workspace.key,
+		dir: workspace.dir,
+		packageName: workspace.name,
+		testScript: workspace.scripts.test,
+		directTests: [],
+		relatedSources: [],
+		full: !supportsTargetedVitest(workspace.scripts.test),
+	};
+	grouped.set(workspace.key, target);
+	return target;
 }
 
 export function parseImpactArgs(args, root = repoRoot) {
@@ -87,10 +126,6 @@ export function createImpactTestPlan(files, pathExists = (file) => existsSync(jo
 		const workspace = workspaceForFile(file);
 		if (!workspace) continue;
 		const relativeFile = file.slice(workspace.dir.length + 1);
-		if (!workspace.scripts.test) {
-			fallbackReasons.push(`${workspace.key} has no direct test entry point`);
-			continue;
-		}
 		if (!pathExists(file)) {
 			fallbackReasons.push(`${file} was deleted`);
 			continue;
@@ -103,19 +138,23 @@ export function createImpactTestPlan(files, pathExists = (file) => existsSync(jo
 			fallbackReasons.push(`${file} may affect package consumers or test configuration`);
 			continue;
 		}
-		let target = grouped.get(workspace.key);
-		if (!target) {
-			target = {
-				key: workspace.key,
-				dir: workspace.dir,
-				packageName: workspace.name,
-				testScript: workspace.scripts.test,
-				directTests: [],
-				relatedSources: [],
-				full: !supportsTargetedVitest(workspace.scripts.test),
-			};
-			grouped.set(workspace.key, target);
+		const mapped = EXPLICIT_SOURCE_TESTS.get(file);
+		if (mapped) {
+			const testWorkspace = WORKSPACE_PACKAGES.find((candidate) => candidate.key === mapped.workspaceKey);
+			const missingTests = mapped.tests.filter((test) => !pathExists(`${testWorkspace?.dir ?? ""}/${test}`));
+			if (!testWorkspace?.scripts.test || missingTests.length > 0) {
+				fallbackReasons.push(`${file} has an invalid explicit test mapping`);
+				continue;
+			}
+			const target = targetForWorkspace(grouped, testWorkspace);
+			target.directTests.push(...mapped.tests);
+			continue;
 		}
+		if (!workspace.scripts.test) {
+			fallbackReasons.push(`${workspace.key} has no direct test entry point`);
+			continue;
+		}
+		const target = targetForWorkspace(grouped, workspace);
 		if (target.full) continue;
 		if (!CODE_FILE_PATTERN.test(relativeFile)) {
 			target.full = true;
@@ -130,7 +169,13 @@ export function createImpactTestPlan(files, pathExists = (file) => existsSync(jo
 		fallbackChanged: fallbackReasons.length > 0,
 		fallbackReasons,
 		runQuality,
-		targets: [...grouped.values()].sort((left, right) => left.key.localeCompare(right.key)),
+		targets: [...grouped.values()]
+			.map((target) => ({
+				...target,
+				directTests: [...new Set(target.directTests)].sort(),
+				relatedSources: [...new Set(target.relatedSources)].sort(),
+			}))
+			.sort((left, right) => left.key.localeCompare(right.key)),
 	};
 }
 

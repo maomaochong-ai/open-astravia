@@ -48,6 +48,8 @@ export interface ConversationAgentMessageViewModel extends ConversationMessageVi
 	blocks: ContentBlock[];
 	usages?: Usage[];
 	startedAt?: number;
+	/** Live provider invocation boundary, distinct from the optimistic send time. */
+	modelRequestStartedAt?: number;
 	endedAt?: number;
 	durationSeconds?: number;
 }

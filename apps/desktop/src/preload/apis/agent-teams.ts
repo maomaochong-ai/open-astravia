@@ -4,6 +4,7 @@ import { subscribeById } from "./helper.js";
 
 const STREAM_EVENT = "vetta:agent-teams:stream-event";
 const CHANGED_EVENT = "vetta:agent-teams:changed";
+const MEMBER_MODELS_CHANGED_EVENT = "vetta:agent-teams:member-models-changed";
 
 export function createAgentTeamsApi(ipc: IpcRenderer): Pick<DesktopApi, "agentTeams"> {
 	return {
@@ -14,6 +15,15 @@ export function createAgentTeamsApi(ipc: IpcRenderer): Pick<DesktopApi, "agentTe
 				ipc.on(CHANGED_EVENT, handler);
 				return () => {
 					ipc.removeListener(CHANGED_EVENT, handler);
+				};
+			},
+			onMemberModelsChanged: (listener) => {
+				const handler = (_event: unknown, teamId: unknown): void => {
+					if (typeof teamId === "string") listener(teamId);
+				};
+				ipc.on(MEMBER_MODELS_CHANGED_EVENT, handler);
+				return () => {
+					ipc.removeListener(MEMBER_MODELS_CHANGED_EVENT, handler);
 				};
 			},
 			listBlueprints: () => ipc.invoke("vetta:agent-teams:list-blueprints"),

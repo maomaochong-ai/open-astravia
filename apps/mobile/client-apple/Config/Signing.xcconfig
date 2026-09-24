@@ -1,0 +1,5 @@
+// Shared by every configuration. Signing is personal, so it lives in
+// Local.xcconfig next to this file, which git ignores; copy
+// Local.xcconfig.example to start one. Without it the project still builds
+// for the simulator.
+#include? "Local.xcconfig"

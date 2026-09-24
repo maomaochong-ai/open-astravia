@@ -5,10 +5,12 @@ import { type MouseEvent, type RefObject, useCallback, useRef, useState } from "
 import { useTranslation } from "react-i18next";
 
 const CONTEXT_MENU_WIDTH = 180;
-const CONTEXT_MENU_HEIGHT = 80;
+const CONTEXT_MENU_HEIGHT = 120;
 const CONTEXT_MENU_VIEWPORT_GAP = 8;
 
 interface MessageSelectionMenuState {
+	entryId?: string;
+	origin?: HTMLElement;
 	selectedText: string;
 	x: number;
 	y: number;
@@ -38,6 +40,8 @@ function readSelectedTextInContainer(container: HTMLElement | null): string {
 }
 
 export interface MessageSelectionContextMenuModel {
+	selection: MessageSelectionMenuState | null;
+	close: () => void;
 	containerRef: RefObject<HTMLDivElement | null>;
 	contextMenu: MessageSelectionContextMenuViewProps | null;
 	onContextMenuCapture: (event: MouseEvent<HTMLDivElement>) => void;
@@ -62,7 +66,15 @@ export function useMessageSelectionContextMenu(): MessageSelectionContextMenuMod
 		event.preventDefault();
 		event.stopPropagation();
 		const position = clampPosition(event.clientX, event.clientY);
-		setMenuState({ selectedText, ...position });
+		const selection = window.getSelection();
+		const anchor = selection?.anchorNode?.parentElement?.closest<HTMLElement>("[data-entry-id]");
+		const focus = selection?.focusNode?.parentElement?.closest<HTMLElement>("[data-entry-id]");
+		setMenuState({
+			selectedText,
+			...position,
+			entryId: anchor && anchor === focus ? anchor.dataset.entryId : undefined,
+			origin: anchor ?? undefined,
+		});
 	}, []);
 
 	const handleCopy = useCallback(() => {
@@ -98,6 +110,8 @@ export function useMessageSelectionContextMenu(): MessageSelectionContextMenuMod
 		: null;
 
 	return {
+		selection: menuState,
+		close: closeContextMenu,
 		containerRef,
 		contextMenu,
 		onContextMenuCapture,

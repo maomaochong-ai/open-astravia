@@ -121,7 +121,7 @@ export function usePreviewBodyModel(
 		};
 	}
 
-	const content = <TextPreviewRenderer content={state.content} extension={state.extension} />;
+	const content = <TextPreviewRenderer content={state.content} extension={state.extension} sourcePath={item.path ?? item.url} />;
 
 	return {
 		state: { status: "content", content },

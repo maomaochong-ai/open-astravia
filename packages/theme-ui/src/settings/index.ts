@@ -54,6 +54,13 @@ export type {
 } from "./BuiltinMcpSectionView";
 export { BuiltinMcpSectionView } from "./BuiltinMcpSectionView";
 export type {
+	EnvironmentGitInstallGuideView,
+	EnvironmentGitRowViewProps,
+	EnvironmentGitStatusView,
+	EnvironmentGitViewLabels,
+} from "./EnvironmentGitRowView";
+export { EnvironmentGitRowView } from "./EnvironmentGitRowView";
+export type {
 	EnvironmentRuntimeKindView,
 	EnvironmentRuntimeStatusView,
 	EnvironmentSettingsViewLabels,

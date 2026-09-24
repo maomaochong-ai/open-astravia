@@ -6,6 +6,121 @@ import type { DesktopTeamSessionStreamEvent } from "../../preload/api-types/team
 import { TeamSessionEventHub } from "./team-session-event-hub.js";
 
 describe("TeamSessionEventHub active replay", () => {
+	it("publishes the actual model request boundary and defers sibling warmup until a response block completes", () => {
+		let sessionListener: ((event: SessionEvent) => void) | undefined;
+		const onFirstResponseBlockCompleted = vi.fn();
+		const runtime = {
+			subscribe: vi.fn((_sessionId: string, listener: (event: SessionEvent) => void) => {
+				sessionListener = listener;
+				return () => undefined;
+			}),
+		} as unknown as RuntimeHost;
+		const session = {
+			id: "team-session",
+			memberRuntime: { leader: { sessionId: "leader-runtime", sessionPath: "C:/sessions/leader.jsonl" } },
+		} as unknown as TeamSessionDocument;
+		const hub = new TeamSessionEventHub({
+			runtime: () => runtime,
+			getSession: () => session,
+			observe: () => undefined,
+			onFirstResponseBlockCompleted,
+		});
+		const events: DesktopTeamSessionStreamEvent[] = [];
+		hub.addSubscriber(session.id, (event) => events.push(event));
+		hub.beginTurn("leader-runtime", {
+			teamSessionId: session.id,
+			memberId: "leader",
+			requestId: "public-request",
+			turnId: "runtime-turn",
+			messageId: "leader-result",
+			author: { kind: "agent", id: "leader" },
+			workItemId: "work-item",
+			attemptId: "attempt",
+			startedAt: 1,
+			seq: 0,
+			text: "",
+			rawAssistantStream: false,
+			toolExecutionEvents: [],
+		});
+		hub.attach(session);
+
+		sessionListener?.({
+			schemaVersion: 1,
+			channel: "runtime",
+			sessionId: "leader-runtime",
+			eventId: "model-request",
+			timestamp: 42,
+			source: "agent",
+			sequence: 1,
+			type: "model.request.started",
+			turnId: "runtime-turn",
+			modelCallIndex: 0,
+		} as SessionEvent);
+
+		expect(events).toContainEqual({
+			type: "desktop.team-model-request-started",
+			conversationId: "team-session",
+			memberId: "leader",
+			runtimeSessionId: "leader-runtime",
+			requestId: "public-request",
+			timestamp: 42,
+		});
+		expect(onFirstResponseBlockCompleted).not.toHaveBeenCalled();
+
+		const emptyPartial = createAssistantMessage({ api: "openai-responses", provider: "test", model: "fixture" });
+		sessionListener?.({
+			schemaVersion: 1,
+			channel: "assistant",
+			sessionId: "leader-runtime",
+			eventId: "response-start",
+			timestamp: 43,
+			source: "agent",
+			sequence: 2,
+			turnId: "runtime-turn",
+			modelCallIndex: 0,
+			type: "start",
+			partial: emptyPartial,
+		} as SessionEvent);
+		expect(onFirstResponseBlockCompleted).not.toHaveBeenCalled();
+
+		const textPartial = { ...emptyPartial, content: [{ type: "text" as const, text: "Ready" }] };
+		for (const [sequence, delta] of ["Re", "ady"].entries()) {
+			sessionListener?.({
+				schemaVersion: 1,
+				channel: "assistant",
+				sessionId: "leader-runtime",
+				eventId: `response-text-${sequence}`,
+				timestamp: 44 + sequence,
+				source: "agent",
+				sequence: 3 + sequence,
+				turnId: "runtime-turn",
+				modelCallIndex: 0,
+				type: "text_delta",
+				contentIndex: 0,
+				delta,
+				partial: textPartial,
+			} as SessionEvent);
+		}
+		expect(onFirstResponseBlockCompleted).not.toHaveBeenCalled();
+		sessionListener?.({
+			schemaVersion: 1,
+			channel: "assistant",
+			sessionId: "leader-runtime",
+			eventId: "response-text-end",
+			timestamp: 46,
+			source: "agent",
+			sequence: 5,
+			turnId: "runtime-turn",
+			modelCallIndex: 0,
+			type: "text_end",
+			contentIndex: 0,
+			content: "Ready",
+			partial: textPartial,
+		} as SessionEvent);
+		expect(onFirstResponseBlockCompleted).toHaveBeenCalledTimes(1);
+		expect(onFirstResponseBlockCompleted).toHaveBeenCalledWith("team-session", "leader");
+	});
+
 	it("publishes one running transition for the first member turn and one idle transition after the last", () => {
 		const runningChanges: Array<{ teamSessionId: string; running: boolean }> = [];
 		const hub = new TeamSessionEventHub({
@@ -42,6 +157,60 @@ describe("TeamSessionEventHub active replay", () => {
 			{ teamSessionId: "team-session", running: true },
 			{ teamSessionId: "team-session", running: false },
 		]);
+	});
+
+	it("releases deferred warmup when a compatibility stream publishes its final message", () => {
+		let sessionListener: ((event: SessionEvent) => void) | undefined;
+		const onFirstResponseBlockCompleted = vi.fn();
+		const runtime = {
+			subscribe: vi.fn((_sessionId: string, listener: (event: SessionEvent) => void) => {
+				sessionListener = listener;
+				return () => undefined;
+			}),
+		} as unknown as RuntimeHost;
+		const session = {
+			id: "team-session",
+			memberRuntime: { leader: { sessionId: "leader-runtime", sessionPath: "C:/sessions/leader.jsonl" } },
+		} as unknown as TeamSessionDocument;
+		const hub = new TeamSessionEventHub({
+			runtime: () => runtime,
+			getSession: () => session,
+			observe: () => undefined,
+			onFirstResponseBlockCompleted,
+		});
+		hub.beginTurn("leader-runtime", {
+			teamSessionId: session.id,
+			memberId: "leader",
+			requestId: "request",
+			turnId: "runtime-turn",
+			messageId: "leader-result",
+			author: { kind: "agent", id: "leader" },
+			workItemId: "work-item",
+			attemptId: "attempt",
+			startedAt: 1,
+			seq: 0,
+			text: "",
+			rawAssistantStream: false,
+			toolExecutionEvents: [],
+		});
+		hub.attach(session);
+
+		sessionListener?.({
+			schemaVersion: 1,
+			channel: "runtime",
+			sessionId: "leader-runtime",
+			eventId: "message-final",
+			timestamp: 2,
+			source: "agent",
+			type: "message.final",
+			message: {
+				...createAssistantMessage({ api: "openai-responses", provider: "test", model: "fixture" }),
+				content: [{ type: "text", text: "Ready" }],
+			},
+		} as SessionEvent);
+
+		expect(onFirstResponseBlockCompleted).toHaveBeenCalledOnce();
+		expect(onFirstResponseBlockCompleted).toHaveBeenCalledWith("team-session", "leader");
 	});
 
 	it("reconstructs the active message and every tool lifecycle event after resubscription", () => {

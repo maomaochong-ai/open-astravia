@@ -53,11 +53,11 @@ export interface DesktopConfig {
 	shortcuts?: ShortcutsConfig;
 	quickPanel?: QuickPanelConfig;
 	appshot?: AppshotConfig;
-	remoteControl?: {
-		relayBaseUrl?: string;
-		pairingId?: string;
-		inputEnabled?: boolean;
-	};
+	/**
+	 * 手机遥控本机的配置（ADR-0128）。设备列表为空时桌面端不开端口、不连中继，
+	 * 移动端相关逻辑完全不加载。
+	 */
+	remoteControl?: RemoteControlConfig;
 	/**
 	 * 可作为远程项目宿主的 SSH 主机（ADR-0124）。
 	 *
@@ -68,6 +68,26 @@ export interface DesktopConfig {
 	 * {@link writeDesktopConfig} 会忽略这个字段。
 	 */
 	sshHosts?: SshHost[];
+}
+
+export interface RemoteControlDeviceRecord {
+	/** 配对 id，也是中继房间名与局域网路径段。 */
+	id: string;
+	name: string;
+	/** 手机长期凭据的 SHA-256 hex；明文只在首次绑定前留在凭据库里。 */
+	mobileSecretHash: string;
+	/** 首次成功握手后钉住的手机身份公钥（base64url）；未钉住表示邀请尚未被领取。 */
+	mobileIdentityKey?: string;
+	createdAt: number;
+	lastSeenAt?: number;
+}
+
+export interface RemoteControlConfig {
+	relayBaseUrl?: string;
+	/** 是否让已配对手机通过云端中继在外网访问；关闭时只保留局域网。 */
+	cloudEnabled: boolean;
+	lanPort?: number;
+	devices: RemoteControlDeviceRecord[];
 }
 
 export type AppshotGesture = "both-shift" | "both-mod" | "both-alt";
@@ -307,13 +327,40 @@ export async function writeSshHosts(hosts: readonly SshHost[]): Promise<void> {
 	writeSshHostsSync(hosts);
 }
 
-function normalizeRemoteControl(value: unknown): DesktopConfig["remoteControl"] {
+export function normalizeRemoteControl(value: unknown): DesktopConfig["remoteControl"] {
 	if (typeof value !== "object" || value === null) return undefined;
 	const input = value as Record<string, unknown>;
+	const devices = Array.isArray(input.devices)
+		? input.devices.flatMap((entry): RemoteControlDeviceRecord[] => {
+				if (typeof entry !== "object" || entry === null) return [];
+				const record = entry as Record<string, unknown>;
+				if (typeof record.id !== "string" || !record.id || typeof record.mobileSecretHash !== "string") return [];
+				return [
+					{
+						id: record.id,
+						name: typeof record.name === "string" && record.name ? record.name : record.id,
+						mobileSecretHash: record.mobileSecretHash,
+						mobileIdentityKey:
+							typeof record.mobileIdentityKey === "string" ? record.mobileIdentityKey : undefined,
+						createdAt: typeof record.createdAt === "number" ? record.createdAt : 0,
+						lastSeenAt: typeof record.lastSeenAt === "number" ? record.lastSeenAt : undefined,
+					},
+				];
+			})
+		: [];
+	const lanPort =
+		typeof input.lanPort === "number" &&
+		Number.isInteger(input.lanPort) &&
+		input.lanPort > 0 &&
+		input.lanPort < 65_536
+			? input.lanPort
+			: undefined;
+	// 旧版单设备配对（pairingId/inputEnabled）已随协议 v1 一起作废，直接丢弃。
 	return {
 		relayBaseUrl: typeof input.relayBaseUrl === "string" ? input.relayBaseUrl : undefined,
-		pairingId: typeof input.pairingId === "string" ? input.pairingId : undefined,
-		inputEnabled: input.inputEnabled === true,
+		cloudEnabled: input.cloudEnabled !== false,
+		lanPort,
+		devices,
 	};
 }
 

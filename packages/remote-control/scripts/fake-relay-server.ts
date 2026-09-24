@@ -1,4 +1,5 @@
 import { encodeRemoteFrame, parseRemoteFrame } from "../src/protocol.ts";
+import { KEEPALIVE_PING, KEEPALIVE_PONG } from "../src/websocket-transport.ts";
 import type { RemoteHello, RemoteFrame, RemoteRole } from "../src/types.ts";
 
 type ClientRole = Exclude<RemoteRole, "relay">;
@@ -17,7 +18,7 @@ const server = Bun.serve<{ pairingId: string; role: ClientRole }>({
 	fetch(request, server) {
 		const url = new URL(request.url);
 		if (url.pathname === "/health") return Response.json({ ok: true, rooms: rooms.size });
-		const match = /^\/relay\/([^/]+)\/(mobile|desktop)$/.exec(url.pathname);
+		const match = /^\/v2\/relay\/([^/]+)\/(mobile|desktop)$/.exec(url.pathname);
 		if (!match) return new Response("Not Found", { status: 404 });
 		const upgraded = server.upgrade(request, {
 			data: { pairingId: decodeURIComponent(match[1]), role: match[2] as ClientRole },
@@ -35,6 +36,11 @@ const server = Bun.serve<{ pairingId: string; role: ClientRole }>({
 		message(socket, message) {
 			if (typeof message !== "string") return closeInvalid(socket, "only text frames are supported");
 			for (const line of message.split("\n").filter(Boolean)) {
+				// The Cloudflare relay answers keepalives without waking the room; do the same.
+				if (line === KEEPALIVE_PING) {
+					socket.send(KEEPALIVE_PONG);
+					continue;
+				}
 				let frame: RemoteFrame;
 				try {
 					frame = parseRemoteFrame(line);
@@ -47,8 +53,12 @@ const server = Bun.serve<{ pairingId: string; role: ClientRole }>({
 					acknowledge(socket.data.pairingId);
 					continue;
 				}
+				if (frame.type !== "sealed") return closeInvalid(socket, "only sealed frames cross the relay");
 				const peer = peerFor(socket);
-				if (!peer?.data.hello) return closeInvalid(socket, "relay peer is offline");
+				if (!peer?.data.hello) {
+					socket.send(encodeRemoteFrame({ type: "peer_status", online: false }));
+					continue;
+				}
 				peer.send(encodeRemoteFrame(frame));
 			}
 		},
@@ -56,7 +66,7 @@ const server = Bun.serve<{ pairingId: string; role: ClientRole }>({
 			const room = rooms.get(socket.data.pairingId);
 			if (!room || room[socket.data.role] !== socket) return;
 			delete room[socket.data.role];
-			peerFor(socket)?.close(1011, "relay peer disconnected");
+			peerFor(socket)?.send(encodeRemoteFrame({ type: "peer_status", online: false }));
 			if (!room.mobile && !room.desktop) rooms.delete(socket.data.pairingId);
 		},
 	},
@@ -77,17 +87,21 @@ function acknowledge(pairingId: string): void {
 	mobile.send(
 		encodeRemoteFrame({
 			type: "hello_ack",
-			protocolVersion: 1,
+			protocolVersion: 2,
 			connectionId: mobile.data.hello.connectionId,
 			peerDeviceId: desktop.data.hello.deviceId,
+			peerIdentityKey: desktop.data.hello.identityKey,
+			peerEphemeralKey: desktop.data.hello.ephemeralKey,
 		}),
 	);
 	desktop.send(
 		encodeRemoteFrame({
 			type: "hello_ack",
-			protocolVersion: 1,
+			protocolVersion: 2,
 			connectionId: desktop.data.hello.connectionId,
 			peerDeviceId: mobile.data.hello.deviceId,
+			peerIdentityKey: mobile.data.hello.identityKey,
+			peerEphemeralKey: mobile.data.hello.ephemeralKey,
 		}),
 	);
 }

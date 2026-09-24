@@ -69,6 +69,7 @@ import type {
 import type { CodingAgentSessionInitializationTimeline } from "../session-initialization/initialization-timeline.js";
 import type { CodingAgentSubagentRuntime } from "../subagent/runtime.js";
 import type { CodingToolsRuntimeComposition } from "../tool-surface/runtime-tools-composition.js";
+import { AdmittedPromptResources } from "./admitted-prompt-resources.js";
 import { CodingAgentContinuationOrchestrator } from "./continuation-orchestrator.js";
 import { createEcosystemHookTurnObserver } from "./ecosystem-hook-turn-observer.js";
 import type { CodingAgentImageSettingsSnapshotRouter } from "./image-settings-snapshot-router.js";
@@ -490,7 +491,7 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 	return {
 		capabilityDefinition,
 		async refreshConfigurationResources(signal) {
-			await rawResourceSource?.refreshSkillsIfChanged(signal);
+			await promptSources.admittedResources?.refresh(signal);
 			options.modelRuntime.refreshAvailableModels();
 		},
 		promptAdapter,
@@ -508,11 +509,8 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 			const sessionId = options.session.readSessionId();
 			const operationId = `${sessionId}:extension-context-preview`;
 			const signal = new AbortController().signal;
-			// Initialization has just loaded the Session resource generation and applied
-			// plugin Skill paths. Bind-free acquisition preserves that committed snapshot
-			// for the extension-context baseline without immediately repeating the
-			// Turn-admission filesystem freshness scan. A real Turn still binds normally
-			// and therefore observes resource changes made after initialization.
+			// Preview uses the same admission as a Turn. Admission refreshes resources
+			// once, then every binder consumes that materialized generation.
 			const initialSnapshotLease = await acquireSnapshot();
 			try {
 				const admittedComposer = initialSnapshotLease.snapshot.modelCallFrameComposer;
@@ -550,12 +548,13 @@ async function createPromptRuntime(options: CodingAgentTurnCapabilitySessionAsse
 					runtimeSkillPaths: readPluginSkillPaths(options.activation.readAgentPlugins()),
 				});
 	const rawResourceSource = options.prompt.resourceSource ?? factorySources?.resourceSource;
-	const resourceSource = rawResourceSource
-		? selectAgentSkillSource(rawResourceSource, () => options.agentConfiguration.readAdmitted())
+	const admittedResources = rawResourceSource ? new AdmittedPromptResources(rawResourceSource) : undefined;
+	const resourceSource = admittedResources
+		? selectAgentSkillSource(admittedResources.source, () => options.agentConfiguration.readAdmitted())
 		: undefined;
 	const settingsSource = options.prompt.settingsSource ?? factorySources?.settingsSource;
 	if (options.prompt.systemPromptOptionsResolver || !resourceSource || !settingsSource)
-		return { rawResourceSource, resourceSource, runtime: undefined };
+		return { rawResourceSource, admittedResources, resourceSource, runtime: undefined };
 	const memoryRuntime = options.memoryRuntime;
 	const runtime = new CodingAgentPromptRuntime({
 		cwd: options.session.cwd,
@@ -568,7 +567,7 @@ async function createPromptRuntime(options: CodingAgentTurnCapabilitySessionAsse
 		readAgentPlugins: options.activation.readAgentPlugins,
 		workspaceFacts: options.prompt.workspaceFacts,
 	});
-	return { runtime, rawResourceSource, resourceSource };
+	return { runtime, rawResourceSource, admittedResources, resourceSource };
 }
 
 function readPluginSkillPaths(agentPlugins: AgentPluginRuntimeConfig | undefined): string[] {

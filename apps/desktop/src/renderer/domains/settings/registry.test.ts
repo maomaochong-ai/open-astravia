@@ -13,10 +13,10 @@ function visibleKeys(context: Partial<SettingsTabVisibilityContext>): string[] {
 }
 
 describe("设置标签可见性", () => {
-	it("远程连接仅在 Windows 上出现", () => {
+	it("远程连接在所有平台上出现", () => {
 		expect(visibleKeys({ isWindows: true })).toContain("remote");
-		expect(visibleKeys({ isMac: true })).not.toContain("remote");
-		expect(visibleKeys({})).not.toContain("remote");
+		expect(visibleKeys({ isMac: true })).toContain("remote");
+		expect(visibleKeys({})).toContain("remote");
 	});
 
 	it("macOnly 标签仅在 Mac 上出现", () => {

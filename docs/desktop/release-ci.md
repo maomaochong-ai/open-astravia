@@ -13,19 +13,19 @@
 | --- | --- |
 | `quality` | 重新检查；通过后开始构建 |
 | `build <platform>` | 重做失败平台的构建；已经成功的平台不重打 |
-| `verify <platform>` | 下载该平台的构建检查点，重跑安装包检查和 packaged E2E；不编译、签名或公证 |
-| `publish R2` / `publish GitHub Release` | 使用验收通过的制品继续发布，不重新构建 |
+| `publish R2` / `publish GitHub Release` | 使用已上传的平台制品继续发布，不重新构建 |
 | `verify published r2/github feed` | 只读取线上更新源，不重新上传或构建 |
 
-构建矩阵和验收矩阵均关闭 fail-fast，避免一个平台失败取消其他平台。
-验收矩阵等待构建矩阵全部成功；发布等待所有平台验收通过。
-单个平台内部的编译和各安装格式生成仍是一个构建任务，其中失败时会重跑该平台；尚不支持单个安装格式续做。安装包、hash/blockmap、
-Linux 实际安装、Windows 补充格式、macOS 签名公证检查和 packaged E2E 均保留。
+构建矩阵关闭 fail-fast，避免一个平台失败取消其他平台；发布等待所有平台构建成功。
+单个平台内部的编译和各安装格式生成是一个构建任务，其中失败时会重跑该平台；尚不支持单个安装格式续做。
 
-构建成功后立即上传 `release-build-<platform>` 检查点，里面是 `release/` 的 tar，
-保留可执行权限、符号链接、Windows 验证清单及签名校验要求。
-验收成功后才上传 `desktop-<platform>`，发布任务只消费后者。
-检查点和发布制品保留 30 天（仍受仓库保留策略限制），只在同一次运行内恢复，
+发布流水线不再单独跑平台验收（安装包实装、Windows 补充格式解包、packaged E2E）：
+那一段要把未压缩的应用连同安装包一起存成 1 GB 以上的检查点再下载回来，
+成本远高于它拦下的问题。packaged E2E 由 PR 上的 `desktop-packaged` 覆盖；
+R2 发布前仍由 `verify-update-artifacts` 检查更新清单与 macOS 签名公证，发布后仍校验公开 feed。
+
+每个平台构建成功后直接上传 `desktop-<platform>`（只含安装包、blockmap 与 `latest*.yml`），发布任务只消费它。
+制品保留 30 天（仍受仓库保留策略限制），只在同一次运行内使用，
 不跨提交、版本、租户或发布配置混用。制品过期或被删除后，需要重跑相应上游构建。
 显式重跑全部任务会覆盖该运行同名制品；它仍然会全量构建。
 
@@ -56,8 +56,7 @@ electron-builder 的附加工具在真正打包时补齐；预热缓存与完整
 定时与手动入口仍会校验实际默认分支。第一次预热和新依赖版本仍需下载；缓存可能因配额或闲置被驱逐。
 
 这是下载复用与恢复粒度优化。正式 workspace 构建继续 `--force`，不启用 Turbo Remote Cache，
-不跨版本复用签名产物。拆分增加一次检查点上传/下载和验收 runner 启动，
-换取验收失败时省去整个平台的编译、打包与公证；实际耗时需用新工作流运行数据衡量。
+不跨版本复用签名产物。
 
 GitHub 说明：[重跑工作流](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/re-run-workflows-and-jobs)、
 [缓存作用域](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching)。

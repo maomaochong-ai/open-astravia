@@ -1,4 +1,4 @@
-import { basename } from "node:path";
+import { basename, join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { CONFIG_DIR_NAME, VERSION } from "@vetta/coding-agent/config";
 import type { McpServerConfig } from "@vetta/runtime-mcp";
@@ -9,23 +9,25 @@ import {
 	type McpServerInteractionHandlers,
 	type McpServerSupervisor,
 } from "@vetta/runtime-mcp";
-import { createMcpClient, createNodeMcpSupervisor } from "@vetta/runtime-node/mcp";
+import { createMcpClient, createNodeMcpSupervisor, FileMcpConfigSource } from "@vetta/runtime-node/mcp";
 import { isSshProjectUri } from "@vetta/ssh-transport";
 import { ensureOpenMarketplaceManagedMcpRuntime } from "../abilities/open-marketplace/open-marketplace-mcp-runtime-host.js";
 import { getDesktopMcpElicitationBroker } from "../conversations/mcp-elicitation-broker.js";
 import { getAppLogger } from "../logger.js";
+import { type DesktopMcpResourceScope, resolveDesktopMcpServerResourceScope } from "./mcp-resource-scope.js";
 
 export interface DesktopMcpSupervisorOptions {
 	readonly projectRoot: string;
 	readonly agentDir: string;
 	readonly debug: boolean;
 	readonly dynamicOnly?: boolean;
+	readonly resourceScope?: DesktopMcpResourceScope;
 	/** Sampling stays unavailable unless the product composition injects an approved model policy. */
 	readonly samplingHandler?: McpServerInteractionHandlers["sampling"];
 }
 
 export function createDesktopMcpInteractionHandlers(
-	options: Pick<DesktopMcpSupervisorOptions, "projectRoot" | "samplingHandler">,
+	options: Pick<DesktopMcpSupervisorOptions, "projectRoot" | "resourceScope" | "samplingHandler">,
 	onDiagnostic: (message: string) => void = () => undefined,
 ): McpServerInteractionHandlers {
 	const elicitationBroker = getDesktopMcpElicitationBroker();
@@ -35,7 +37,9 @@ export function createDesktopMcpInteractionHandlers(
 			onDiagnostic(`interaction completed method=elicitation/create action=${result.action}`);
 			return result;
 		},
-		roots: async () => ({ roots: resolveMcpRoots(options.projectRoot) }),
+		...(options.resourceScope === "application"
+			? {}
+			: { roots: async () => ({ roots: resolveMcpRoots(options.projectRoot) }) }),
 		...(options.samplingHandler ? { sampling: options.samplingHandler } : {}),
 	};
 }
@@ -69,10 +73,24 @@ export function createDesktopMcpSupervisor(options: DesktopMcpSupervisorOptions)
 			return;
 		}
 		const isFailure = /failed|error|exit|timeout|invalid|unauthorized/i.test(message);
-		if (isFailure) log.warn(message);
+		if (message.startsWith("MCP server startup timing ")) log.info(message);
+		else if (isFailure) log.warn(message);
 		else if (options.debug) log.debug(message);
 	};
 	const interactionHandlers = createDesktopMcpInteractionHandlers(options, writeDiagnostic);
+	const configSource = options.dynamicOnly
+		? EMPTY_MCP_CONFIG_SOURCE
+		: new FileMcpConfigSource({
+				globalConfigPath: join(options.agentDir, "mcp.json"),
+				projectConfigPath: join(options.projectRoot, CONFIG_DIR_NAME, "mcp.json"),
+				projectRoot: options.projectRoot,
+				...(options.resourceScope
+					? {
+							includeServer: ({ origin, config }: { origin: "global" | "project"; config: McpServerConfig }) =>
+								resolveDesktopMcpServerResourceScope(origin, config) === options.resourceScope,
+						}
+					: {}),
+			});
 	return createNodeMcpSupervisor({
 		projectRoot: options.projectRoot,
 		agentDir: options.agentDir,
@@ -80,8 +98,8 @@ export function createDesktopMcpSupervisor(options: DesktopMcpSupervisorOptions)
 		projectConfigDirectoryName: CONFIG_DIR_NAME,
 		debug: options.debug,
 		enabled: true,
-		configSource: options.dynamicOnly ? EMPTY_MCP_CONFIG_SOURCE : undefined,
-		includeBuiltinServers: !options.dynamicOnly,
+		configSource,
+		includeBuiltinServers: !options.dynamicOnly && options.resourceScope !== "workspace",
 		clientFactory: (name, config, clientOptions) => {
 			const runtimeId = config.type === "http" ? managedRuntimeId(config) : undefined;
 			const resolvedConfig: McpServerConfig =

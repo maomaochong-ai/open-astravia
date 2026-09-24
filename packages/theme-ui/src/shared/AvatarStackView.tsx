@@ -22,24 +22,24 @@ export function AvatarStackView({
 			data-avatar-stack="true"
 		>
 			{visibleAvatarUrls.map((avatarUrl, index) => (
-				<img
+				<span
 					key={`${avatarUrl}:${index}`}
-					src={avatarUrl}
-					alt=""
 					className={cn(
-						"h-4 w-4 shrink-0 rounded-full object-cover ring-1 ring-border",
+						"relative h-4 w-4 shrink-0 rounded-full ring-1 ring-border",
 						index > 0 && "-ml-1.5",
 					)}
-				/>
-			))}
-			{hiddenAvatarCount > 0 ? (
-				<span
-					className="-ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-muted px-1 text-[9px] tabular-nums text-muted-foreground ring-1 ring-background"
-					data-avatar-overflow={hiddenAvatarCount}
 				>
-					+{hiddenAvatarCount}
+					<img src={avatarUrl} alt="" className="h-4 w-4 rounded-full object-cover" />
+					{index === MAX_VISIBLE_AVATARS - 1 && hiddenAvatarCount > 0 ? (
+						<span
+							className="absolute inset-0 inline-flex items-center justify-center rounded-full bg-background/60 text-[9px] tabular-nums text-foreground"
+							data-avatar-overflow={hiddenAvatarCount}
+						>
+							+{hiddenAvatarCount}
+						</span>
+					) : null}
 				</span>
-			) : null}
+			))}
 		</span>
 	);
 }

@@ -1,4 +1,10 @@
 import type { JSX, ReactNode } from "react";
+import {
+	type EnvironmentGitRowViewProps,
+	EnvironmentGitRowView,
+	type EnvironmentGitStatusView,
+	type EnvironmentGitViewLabels,
+} from "./EnvironmentGitRowView";
 import { SettingRow, SettingSection, type SettingSectionMeta } from "./SettingChrome";
 
 export type EnvironmentRuntimeKindView = "node" | "python";
@@ -14,6 +20,7 @@ export interface EnvironmentSettingsViewLabels {
 	readonly fetch: string;
 	readonly fetchAgain: string;
 	readonly fetching: string;
+	readonly git: EnvironmentGitViewLabels;
 	readonly loading: string;
 	readonly notReady: string;
 	readonly npmRegistry: string;
@@ -26,6 +33,7 @@ export interface EnvironmentSettingsViewLabels {
 	readonly sections: {
 		readonly mirrors: string;
 		readonly runtime: string;
+		readonly tools: string;
 	};
 	readonly title: string;
 }
@@ -33,6 +41,8 @@ export interface EnvironmentSettingsViewLabels {
 export interface EnvironmentSettingsViewProps {
 	readonly busy: EnvironmentRuntimeKindView | null;
 	readonly error: string | null;
+	/** Git 行的交互状态与回调；状态与文案分别来自 status.git 与 labels.git。 */
+	readonly git: Omit<EnvironmentGitRowViewProps, "labels" | "status">;
 	readonly headerAction?: ReactNode;
 	readonly labels: EnvironmentSettingsViewLabels;
 	readonly mirrors?: {
@@ -41,10 +51,12 @@ export interface EnvironmentSettingsViewProps {
 	} | null;
 	readonly onReinstall: (kind: EnvironmentRuntimeKindView) => void;
 	readonly runtimeSection: SettingSectionMeta;
+	readonly toolsSection: SettingSectionMeta;
 	readonly mirrorsSection: SettingSectionMeta;
 	readonly status: {
 		readonly node: EnvironmentRuntimeStatusView;
 		readonly python: EnvironmentRuntimeStatusView;
+		readonly git: EnvironmentGitStatusView;
 	} | null;
 }
 
@@ -116,6 +128,7 @@ function RuntimeCard({
 export function EnvironmentSettingsView({
 	busy,
 	error,
+	git,
 	headerAction,
 	labels,
 	mirrors,
@@ -123,6 +136,7 @@ export function EnvironmentSettingsView({
 	onReinstall,
 	runtimeSection,
 	status,
+	toolsSection,
 }: EnvironmentSettingsViewProps): JSX.Element {
 	return (
 		<div className="mx-auto w-full max-w-[680px] px-8 pt-2 pb-4">
@@ -158,6 +172,14 @@ export function EnvironmentSettingsView({
 							onReinstall={() => onReinstall("python")}
 						/>
 					</>
+				) : (
+					<div className="px-5 py-4 text-[12px] text-muted-foreground">{labels.loading}</div>
+				)}
+			</SettingSection>
+
+			<SettingSection title={labels.sections.tools} section={toolsSection}>
+				{status ? (
+					<EnvironmentGitRowView {...git} labels={labels.git} status={status.git} />
 				) : (
 					<div className="px-5 py-4 text-[12px] text-muted-foreground">{labels.loading}</div>
 				)}

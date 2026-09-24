@@ -24,6 +24,7 @@ export function MessageRow(props: MessageRowProps) {
 export function DefaultMessageRow({ message, isLast, children }: MessageRowProps) {
 	return (
 		<div
+			tabIndex={-1}
 			data-entry-id={message.entryId ?? message.id}
 			className={isLast && message.kind === "user" ? "pb-9" : "pb-5"}
 		>

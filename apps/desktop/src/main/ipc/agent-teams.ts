@@ -170,16 +170,18 @@ export function registerAgentTeamsIpc(
 	const subscriptions = new Map<string, () => void>();
 	// 插件重铺预设后必须推给渲染进程：那一份文档是它自己缓存的，没有这条广播，侧边栏要等到下次
 	// 重启 App 才跟上新的智能体与团队。
-	const unsubscribePresets = store.onPluginPresetsApplied(() => {
+	const broadcastChanged = (channel: string, teamId?: string): void => {
 		for (const contents of webContents.getAllWebContents()) {
 			if (contents.isDestroyed()) continue;
 			try {
-				contents.send(CHANGED_EVENT);
+				if (teamId) contents.send(channel, teamId);
+				else contents.send(channel);
 			} catch {
 				// ignore gone frames
 			}
 		}
-	});
+	};
+	const unsubscribePresets = store.onPluginPresetsApplied(() => broadcastChanged(CHANGED_EVENT));
 	ipcMain.handle(CHANNELS.LIST, () => store.read());
 	// 让用户挑一张本地图片当头像：主进程复制进头像目录，只把渲染进程能加载的 URL 交回去。
 	ipcMain.handle(CHANNELS.UPLOAD_AVATAR, async () => {
@@ -225,7 +227,13 @@ export function registerAgentTeamsIpc(
 		const id = requiredString(teamId, "teamId");
 		const team = (await store.read()).teams.find((candidate) => candidate.id === id);
 		if (!team) throw new Error("Team not found");
-		return memberModels.set(team, requiredString(memberId, "memberId"), parseTeamMemberModelSelection(value));
+		const models = await memberModels.set(
+			team,
+			requiredString(memberId, "memberId"),
+			parseTeamMemberModelSelection(value),
+		);
+		broadcastChanged("vetta:agent-teams:member-models-changed", id);
+		return models;
 	});
 	ipcMain.handle(CHANNELS.CREATE_SESSION, async (_event, teamId: unknown) => {
 		const document = await store.read();
@@ -240,6 +248,7 @@ export function registerAgentTeamsIpc(
 		);
 	});
 	ipcMain.handle(CHANNELS.CREATE_SESSION_RECORD, async (_event, teamId: unknown, options: unknown) => {
+		const startedAt = Date.now();
 		const document = await store.read();
 		const parsedTeamId = requiredString(teamId, "teamId");
 		const team = document.teams.find((candidate) => candidate.id === parsedTeamId);
@@ -247,11 +256,12 @@ export function registerAgentTeamsIpc(
 		const parsedOptions = parseCreateSessionRecordOptions(options);
 		const sessionId = parsedOptions?.sessionId ?? randomUUID();
 		const workspace = await resolveTeamSessionWorkspace(parsedTeamId, sessionId, parsedOptions?.workspace);
+		const workspaceReadyMs = Date.now() - startedAt;
 		const sessionOptions = {
 			sessionId,
 			...(parsedOptions?.executionMode ? { executionMode: parsedOptions.executionMode } : {}),
 		};
-		return await withDisplayProjection(
+		const projected = await withDisplayProjection(
 			sessions.snapshot(
 				await (sessions.createRecord
 					? sessions.createRecord(team, document, workspace, sessionOptions)
@@ -259,10 +269,24 @@ export function registerAgentTeamsIpc(
 			),
 			displayProjection,
 		);
+		log.info("team create-session-record completed", {
+			teamSessionId: sessionId,
+			workspaceReadyMs,
+			elapsedMs: Date.now() - startedAt,
+		});
+		return projected;
 	});
-	ipcMain.handle(CHANNELS.LIST_SESSIONS, (_event, teamId: unknown) =>
-		sessions.listSessions(requiredString(teamId, "teamId")),
-	);
+	ipcMain.handle(CHANNELS.LIST_SESSIONS, async (_event, teamId: unknown) => {
+		const startedAt = Date.now();
+		const parsedTeamId = requiredString(teamId, "teamId");
+		const listed = await sessions.listSessions(parsedTeamId);
+		log.info("team list-sessions completed", {
+			teamId: parsedTeamId,
+			elapsedMs: Date.now() - startedAt,
+			sessionCount: listed.length,
+		});
+		return listed;
+	});
 	ipcMain.handle(CHANNELS.LIST_SIDEBAR_CONVERSATIONS, () =>
 		(dependencies.listSidebarConversations ?? listTeamSidebarConversations)(),
 	);
@@ -371,6 +395,14 @@ export function registerAgentTeamsIpc(
 		log.info("team stream subscription started", { teamSessionId: sessionId, subscriptionId });
 		let sendQueue = Promise.resolve();
 		const subscription = sessions.subscribe(sessionId, (payload) => {
+			if (payload.type === "desktop.team-model-request-started") {
+				log.info("team model request started", {
+					teamSessionId: sessionId,
+					requestId: payload.requestId,
+					memberId: payload.memberId,
+					ipcQueueDelayMs: Date.now() - payload.timestamp,
+				});
+			}
 			sendQueue = sendQueue
 				.then(async () => {
 					if (event.sender.isDestroyed()) return;

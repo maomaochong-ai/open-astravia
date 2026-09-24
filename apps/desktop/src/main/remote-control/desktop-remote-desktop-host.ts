@@ -147,5 +147,5 @@ export async function stopDesktopRemoteDesktopHost(): Promise<void> {
 }
 
 function remoteDesktopSessionId(target: string): string | undefined {
-	return /\/v1\/desktop\/([A-Za-z0-9_-]{24,128})\/host(?:#|$)/.exec(target)?.[1];
+	return /\/v2\/desktop\/([A-Za-z0-9_-]{16,128})\/host(?:#|$)/.exec(target)?.[1];
 }

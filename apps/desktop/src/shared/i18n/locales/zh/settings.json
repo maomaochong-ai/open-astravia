@@ -122,23 +122,45 @@
   "title": "设置",
   "remote": {
     "title": "远程连接",
-    "description": "让手机安全连接这台电脑。屏幕画面和输入通过点对点 WebRTC 传输，中继只负责配对与信令。",
-    "pairingTitle": "手机配对",
-    "pairingDescription": "生成新的二维码会撤销旧配对；二维码仅用于首次绑定。",
-    "relayConfigured": "安全中继已配置",
-    "create": "生成二维码",
-    "creating": "生成中",
-    "qrAlt": "Vetta 手机配对二维码",
-    "qrHint": "在手机端打开远程连接并扫描。完成首次连接后，此二维码将不能绑定其他设备。",
-    "empty": "生成二维码后即可在手机上扫描",
-    "inputTitle": "允许远程输入",
-    "inputDescription": "允许已配对手机控制鼠标和键盘。macOS 还需要在系统设置中授予辅助功能权限。",
-    "revoke": "撤销配对",
-    "status": {
-      "idle": "未配对",
-      "ready": "等待手机",
-      "connected": "已连接",
-      "error": "需要检查"
+    "description": "用手机查看并继续这台电脑上的对话，也可以回答等待处理的问题。连接内容会端到端加密。",
+    "actionFailed": "操作失败，请重试。",
+    "loadFailed": "暂时无法加载远程连接状态，请稍后重试。",
+    "connectionFailed": "手机连接暂时不可用，请稍后重试。",
+    "approvals": {
+      "title": "等待你放行的手机",
+      "description": "有手机通过手动输入地址发起了配对。核对手机屏幕上的验证码与下方一致后再放行。",
+      "hint": "手机上显示的验证码应与右侧相同",
+      "allow": "允许这台手机",
+      "deny": "拒绝"
+    },
+    "devices": {
+      "title": "已配对的手机",
+      "description": "每部手机都可单独解除配对。解除后，该手机上的本地会话记录会清除。",
+      "empty": "还没有配对的手机。请扫描下方二维码添加。",
+      "unnamed": "手机",
+      "online": "在线",
+      "lastSeen": "上次连接 {{time}}",
+      "neverSeen": "尚未连接过",
+      "revoke": "解除配对"
+    },
+    "pairing": {
+      "title": "添加手机",
+      "description": "用手机上的 Vetta 扫描下方二维码。二维码将在 10 分钟后失效。",
+      "create": "生成新二维码",
+      "cancel": "作废",
+      "qrAlt": "Vetta 手机配对二维码",
+      "qrHint": "打开手机上的 Vetta，点击右上角「扫码连接电脑」。还剩约 {{minutes}} 分钟。",
+      "generating": "正在准备二维码…",
+      "empty": "二维码不可用",
+      "createFailed": "二维码生成失败，请重试。",
+      "vaultUnavailable": "当前系统无法使用安全凭据存储，暂时不能配对。",
+      "manualHint": "无法扫码？在手机上选择「手动输入」，填写以下任一地址；连接后请在这里核对验证码。",
+      "permissionHint": "如果系统询问是否允许连接，请选择允许。"
+    },
+    "cloud": {
+      "title": "允许在外网访问",
+      "description": "开启后，不在同一 Wi-Fi 时也能连接；关闭后只能在同一 Wi-Fi 下使用。",
+      "unavailable": "当前无法从外网连接，只能在同一 Wi-Fi 下使用。"
     }
   },
   "general": "常规",
@@ -331,7 +353,11 @@
   },
   "runtimeConfiguration": {
     "applyLabel": "生效时间",
-	"provider": { "local": "本地", "remote": "远程", "unavailable": "不可用" },
+    "provider": {
+      "local": "本地",
+      "remote": "远程",
+      "unavailable": "不可用"
+    },
     "secretConfigured": "已安全保存；输入新值可替换",
     "secretPlaceholder": "输入后按回车或移开焦点保存",
     "apply": {
@@ -359,28 +385,93 @@
       }
     },
     "fields": {
-      "enabled": { "title": "自动压缩", "description": "在上下文接近模型上限时自动整理长对话；关闭后仍可手动压缩。" },
-      "reserveTokens": { "title": "剩余空间阈值（tokens）", "description": "剩余可用上下文少于这个数值，且已用上下文达到压缩阈值时，自动压缩。" },
-      "contextThresholdPercent": { "title": "上下文压缩阈值（%）", "description": "已用上下文达到这个比例，且剩余空间也低于上面的 token 阈值时，自动压缩。" },
-      "keepRecentTokens": { "title": "压缩后保留的最近对话（tokens）", "description": "每次压缩时，最近约这么多 token 的对话保留原文；更早的内容整理成摘要。数值越大，保留的近期细节越多。" },
-      "autoResize": { "title": "自动缩放", "description": "在图片超出限制时自动缩放和压缩。" },
-      "blockImages": { "title": "阻止图片", "description": "阻止图片进入模型上下文。" },
+      "enabled": {
+        "title": "自动压缩",
+        "description": "在上下文接近模型上限时自动整理长对话；关闭后仍可手动压缩。"
+      },
+      "reserveTokens": {
+        "title": "剩余空间阈值（tokens）",
+        "description": "剩余可用上下文少于这个数值，且已用上下文达到压缩阈值时，自动压缩。"
+      },
+      "contextThresholdPercent": {
+        "title": "上下文压缩阈值（%）",
+        "description": "已用上下文达到这个比例，且剩余空间也低于上面的 token 阈值时，自动压缩。"
+      },
+      "keepRecentTokens": {
+        "title": "压缩后保留的最近对话（tokens）",
+        "description": "每次压缩时，最近约这么多 token 的对话保留原文；更早的内容整理成摘要。数值越大，保留的近期细节越多。"
+      },
+      "autoResize": {
+        "title": "自动缩放",
+        "description": "在图片超出限制时自动缩放和压缩。"
+      },
+      "blockImages": {
+        "title": "阻止图片",
+        "description": "阻止图片进入模型上下文。"
+      },
       "resize": {
-        "maxWidth": { "title": "最大宽度", "description": "缩放后图片允许的最大宽度（像素）。" },
-        "maxHeight": { "title": "最大高度", "description": "缩放后图片允许的最大高度（像素）。" },
-        "maxInputPixels": { "title": "最大输入像素数", "description": "解码前允许处理的最大像素总数。" },
-        "maxInputEdge": { "title": "最大输入边长", "description": "解码前允许处理的最大单边长度（像素）。" },
-        "maxBytes": { "title": "最大图片字节数", "description": "规范化后单张图片允许的最大体积。" },
-        "jpegQuality": { "title": "JPEG 质量", "description": "转码为 JPEG 时使用的压缩质量（1–100）。" }
+        "maxWidth": {
+          "title": "最大宽度",
+          "description": "缩放后图片允许的最大宽度（像素）。"
+        },
+        "maxHeight": {
+          "title": "最大高度",
+          "description": "缩放后图片允许的最大高度（像素）。"
+        },
+        "maxInputPixels": {
+          "title": "最大输入像素数",
+          "description": "解码前允许处理的最大像素总数。"
+        },
+        "maxInputEdge": {
+          "title": "最大输入边长",
+          "description": "解码前允许处理的最大单边长度（像素）。"
+        },
+        "maxBytes": {
+          "title": "最大图片字节数",
+          "description": "规范化后单张图片允许的最大体积。"
+        },
+        "jpegQuality": {
+          "title": "JPEG 质量",
+          "description": "转码为 JPEG 时使用的压缩质量（1–100）。"
+        }
       },
       "requestBudget": {
-        "highWatermarkBytes": { "title": "请求高水位", "description": "图片总量超过此值时启动预算压缩。" },
-        "lowWatermarkBytes": { "title": "请求低水位", "description": "预算压缩尝试达到的图片总量。" }
+        "highWatermarkBytes": {
+          "title": "请求高水位",
+          "description": "图片总量超过此值时启动预算压缩。"
+        },
+        "lowWatermarkBytes": {
+          "title": "请求低水位",
+          "description": "预算压缩尝试达到的图片总量。"
+        }
       },
-      "defaultProviderId": { "title": "默认 Provider", "description": "下一次识别使用的 OCR Provider；远程 Provider 会按远程策略处理。" },
-      "remoteProviderPolicy": { "title": "远程识别策略", "description": "控制远程 Provider 是否可以处理图片。", "options": { "never": "禁止远程", "ask": "首次使用时询问", "allowed": "允许已选择的远程 Provider" } },
-      "cacheResults": { "title": "缓存识别结果", "description": "缓存新产生的 OCR 结果；关闭不会删除已有记录。" },
-      "defaultOutput": { "title": "默认输出粒度", "description": "选择纯文本、行、词或文档树；Provider 不支持时会降级。", "options": { "text": "纯文本", "line": "按行", "word": "按词", "document-tree": "文档树" } }
+      "defaultProviderId": {
+        "title": "默认 Provider",
+        "description": "下一次识别使用的 OCR Provider；远程 Provider 会按远程策略处理。"
+      },
+      "remoteProviderPolicy": {
+        "title": "远程识别策略",
+        "description": "控制远程 Provider 是否可以处理图片。",
+        "options": {
+          "never": "禁止远程",
+          "ask": "首次使用时询问",
+          "allowed": "允许已选择的远程 Provider"
+        }
+      },
+      "cacheResults": {
+        "title": "缓存识别结果",
+        "description": "缓存新产生的 OCR 结果；关闭不会删除已有记录。"
+      },
+      "defaultOutput": {
+        "title": "默认输出粒度",
+        "description": "选择纯文本、行、词或文档树；Provider 不支持时会降级。",
+        "options": {
+          "text": "纯文本",
+          "line": "按行",
+          "word": "按词",
+          "document-tree": "文档树"
+        }
+      }
     }
   },
   "environmentSettings": {
@@ -396,6 +487,25 @@
   },
   "environmentNodeDesc": "运行 JavaScript / TypeScript 工具与 npm 包",
   "environmentPythonDesc": "运行 Python 脚本与 pip 包",
+  "environmentGit": {
+    "description": "Git 面板和 Agent 执行 git 命令都依赖它",
+    "missing": "未安装",
+    "installing": "安装中…",
+    "managedSuffix": "Vetta 专用",
+    "installXcode": "安装",
+    "installManaged": "为 Vetta 安装",
+    "redetect": "重新检测",
+    "detecting": "检测中…",
+    "xcodeHint": "点「安装」会打开系统的「命令行开发者工具」安装窗口，装好后回到这里点「重新检测」。",
+    "xcodeLaunched": "已打开系统安装窗口。安装完成后点「重新检测」。",
+    "managedHint": "「为 Vetta 安装」只在 Vetta 内生效，不修改系统环境。想在终端或其他软件里也能用 Git，请",
+    "download": "下载 Git 安装包",
+    "packageManagerHint": "在终端运行下面的命令安装，装好后点「重新检测」。",
+    "packageManagerFallback": "请用系统的包管理器安装 git，装好后点「重新检测」。也可以",
+    "manualHint": "请安装 Git，装好后点「重新检测」。",
+    "copy": "复制",
+    "copied": "已复制"
+  },
   "platformNotSupported": "当前平台不支持",
   "ready": "已就绪",
   "fetching": "获取中…",
@@ -838,7 +948,17 @@
   "accountType": "账号类型",
   "premium": "高级版",
   "free": "免费版",
-  "usageStats": "使用统计",
+  "usageStats": {
+    "streak": "连续使用",
+    "days": "{{count}} 天",
+    "unitTokens": "Token",
+    "unitRequests": "请求",
+    "range": {
+      "7d": "7 天",
+      "30d": "30 天",
+      "all": "累计"
+    }
+  },
   "messagesThisMonth": "本月消息数",
   "storageUsed": "已用存储",
   "addKnowledgeBase": "添加知识库",
@@ -1021,17 +1141,6 @@
   },
   "saveFailed": "保存失败",
   "pleaseLogin": "请先登录",
-  "usageStats": {
-    "streak": "连续使用",
-    "days": "{{count}} 天",
-    "unitTokens": "Token",
-    "unitRequests": "请求",
-    "range": {
-      "7d": "7 天",
-      "30d": "30 天",
-      "all": "累计"
-    }
-  },
   "tokenActivity": {
     "title": "Token 活动",
     "daily": "每日",
@@ -1097,8 +1206,7 @@
   "tabPet": "Vetta Vivi",
   "tabPermissions": "权限管理",
   "tabRemote": "远程连接",
-  "section_remote-pairing": "手机配对",
-  "section_remote-permissions": "控制权限",
+  "section_remote-pairing": "添加手机",
   "section_general-basics": "基础",
   "section_general-network": "网络代理",
   "section_general-app": "应用",
@@ -1154,6 +1262,7 @@
   "section_mcp-server-list-builtin": "已添加的 MCP",
   "section_mcp-json": "编辑 JSON",
   "section_environment-runtime": "运行时",
+  "section_environment-tools": "开发工具",
   "section_environment-mirrors": "镜像源",
   "section_permissions-system": "系统权限",
   "section_imbridge-basics": "基础",
@@ -1810,7 +1919,7 @@
   "unbindError": "解绑失败",
   "bindDone": "完成",
   "bindGenerating": "正在生成二维码…",
-  "bindFailed": "绑定失败",
+  "bindFailed": "启动配对失败",
   "retry": "重试",
   "bindSuccessTitle": "绑定成功",
   "bindSuccessDesc": "即将自动关闭…",
@@ -1893,7 +2002,6 @@
   "imWhatsappBind": "开始绑定",
   "imWhatsappLogout": "解除绑定",
   "bindStarted": "二维码配对已启动",
-  "bindFailed": "启动配对失败",
   "saveModelFailed": "保存模型失败",
   "setModelOk": "已设为 {{provider}} / {{model}}",
   "clearedModel": "已清除模型设定",
@@ -2124,5 +2232,7 @@
   "sshPromptRemember": "记住它（加密保存在本机，下次自动填）",
   "sshPromptSubmit": "继续连接",
   "sshPromptAccept": "确认并连接",
-  "sshPromptReject": "取消连接"
+  "sshPromptReject": "取消连接",
+  "section_remote-devices": "已配对的手机",
+  "section_remote-cloud": "外网访问"
 }

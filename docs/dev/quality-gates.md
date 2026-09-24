@@ -51,13 +51,13 @@ knip.config.ts                 Knip（可选）
 | `build` / `build:all` | 由 Turborepo 按 workspace manifest 构建库或完整 Desktop 依赖图；Preset 仍走专用制品流程 |
 | `build:desktop` / `build:cli` / `build:docs` / `build:preset` | 构建指定产品或制品，依赖包由任务图自动补齐 |
 | `check:lint` / `check:lint:fix` | 对显式源码根执行 Biome 只读检查 / 写回，避免扫描无关目录 |
-| `check:types` | 并行执行根 `tsgo`、CLI 显式 `tsgo`、带持久增量缓存的 desktop `tsc`、docs check 与 Expo Mobile `tsc` |
+| `check:types` | 并行执行根 `tsgo`、CLI 显式 `tsgo`、带持久增量缓存的 desktop `tsc`、docs check |
 | `check:types:build-surfaces` | 使用 CLI build config 验证上游 workspace `dist/*.d.ts` 的真实消费面；要求先生成当前声明 |
 | `check:guards` | 并行执行私钥、冲突标记、包边界等全量守卫 |
 | `check:staged` | 仅 staged Biome |
 | `check:precommit` | husky 使用的快路径 |
 | `check:quick` | 变更文件 Biome + 全量 guards；Biome 配置变化时自动回退全量 Biome |
-| `check` | 并行 lint + types + guards + Expo Mobile lint（只读） |
+| `check` | 并行 lint + types + guards（只读） |
 | `fix` | Biome 全量格式化与安全修复 |
 | `vitest` | 用 Node 启动仓库 Vitest；等价于 `bun scripts/quality/run-vitest.mjs` |
 | `test:quality` | 质量脚本定向测试 |
@@ -151,7 +151,7 @@ Desktop build task 显式依赖 `@vetta-org/plugin-vite`。开发前置构建读
 
 `test:changed` 会从根 workspace 和各包 `package.json#scripts.test` 自动发现可测包，并按全部 workspace manifest 自动计算下游依赖闭包；没有测试脚本的上游包发生变化时，其可测消费者也会进入计划。测试启动前，`test-pkg.mjs` 会让 Turbo 构建所选测试消费的 workspace 依赖，确保干净 checkout 中指向 `dist` 的包导出可被解析，同时不会构建 Desktop、Docs 或 Remote Relay 这些叶子应用本身。`package.json`、`bun.lock`、根 TypeScript/Biome 配置和 `scripts/quality/**` 变化会触发全部 workspace 测试；无效基线会直接失败，不会静默跳过。
 
-`test:impact` 面向本地短反馈循环：显式测试文件直接运行，普通源码交给 Vitest 的 `related` 依赖图选择；若没有关联测试则回退包测试。公共入口、包/测试配置、删除文件、无测试 workspace 和根配置会自动转交 `test:changed`，因此精确模式不会把无法证明安全的范围当作“无需测试”。不传文件时它仍使用完整 Git 差异。CI 继续使用 `test:changed`，保证跨包、跨平台门禁不因本地加速而收窄。
+`test:impact` 面向本地短反馈循环：显式测试文件直接运行，普通源码交给 Vitest 的 `related` 依赖图选择；若没有关联测试则只回退对应包的测试。拥有测试文件的 workspace 应声明包级 `test` 入口，让未显式映射的源码保持在包内选择范围。共享 UI 的跨宿主行为，或 Vitest 的依赖图明显大于组件合同时，只要已有宿主组件测试从公开入口直接覆盖该源码，就可以在脚本中登记窄范围的源码到测试映射。未登记的无测试 workspace、公共入口、包/测试配置、删除文件和根配置仍会自动转交 `test:changed`，因此精确模式不会把无法证明安全的范围当作“无需测试”。不传文件时它仍使用完整 Git 差异。CI 继续使用 `test:changed`，保证跨包、跨平台门禁不因本地加速而收窄。
 
 `check:quick` 复用同一套 Git 变更选择器，因此不带路径时不会漏掉未暂存或未跟踪文件；`check:quick -- <file...>` 可限制为本次任务实际修改的文件。删除文件会从 Biome 输入中排除；修改任意 `biome.json` / `biome.jsonc` 或根 `.editorconfig` 时，会自动回退为全仓 Biome，避免配置影响未被检查。它不做类型检查，不能替代任务结束时的完整 `check`。
 
@@ -173,7 +173,7 @@ workspace 包声明解析。因此，上游源码修改但 `dist/*.d.ts` 尚未�
 
 `.github/workflows/quality.yml` 负责通用 TypeScript 质量门禁：冻结依赖安装、`bun run check`、质量脚本测试、Runtime 合同检查，并在 Ubuntu、macOS 与 Windows 上顺序运行受影响 workspace 及其可测下游。各平台按操作系统、架构和锁文件复用 Bun 下载缓存，但每次都由冻结锁文件重新生成根 `node_modules`；不得跨 Runner 恢复 `node_modules`，以免 Windows 上 Bun 的依赖链接和类型解析失真。单元测试 Job 会确保真实 `ripgrep` 可用，仅在 Runner 未预装时才安装，用于验证 Runtime Node 的 `grep` / `glob` 进程合同。完整 Git 历史用于计算 PR base；根配置、锁文件或质量脚本变化会在三个平台运行全部 workspace 测试。同一 PR 或分支的新提交会取消旧运行，任一平台失败后也会停止仍在排队或执行的同矩阵任务；成功运行仍完整覆盖三个平台。
 
-非 Bun workspace 由独立的 path-filtered workflow 覆盖：`.github/workflows/im-gateway.yml` 对 Go Gateway 执行 tidy、vet、build、test、接口纪律和 golangci-lint；`.github/workflows/kotlin.yml` 对 Kotlin Mobile 执行 Android host tests 和 debug APK 构建。Expo Mobile 是 Bun workspace，另由 `.github/workflows/mobile.yml` 在相关路径变化时执行类型检查和 Web 导出。这些 path-filtered workflow 只在分支 push 或 PR 中对应目录或 workflow 自身变化时运行，不响应 tag push。
+非 Bun workspace 由独立的 path-filtered workflow 覆盖：`.github/workflows/im-gateway.yml` 对 Go Gateway 执行 tidy、vet、build、test、接口纪律和 golangci-lint；`.github/workflows/kotlin.yml` 对 `apps/mobile/client-android` 执行 Android host tests 和 debug APK 构建；`.github/workflows/mobile-apple.yml` 对 `apps/mobile/client-apple` 执行 VettaKit 单元测试、与桌面端真实 LAN 服务器的 interop 测试和 iOS 模拟器构建，协议包 `packages/remote-control` 变化时同样触发。这些 path-filtered workflow 只在分支 push 或 PR 中对应目录或 workflow 自身变化时运行，不响应 tag push。
 
 Desktop 生产边界由独立的 `.github/workflows/desktop-packaged.yml` 负责：它始终运行打包合同检查，涉及 Desktop 主进程、preload、打包脚本、原生依赖、远程控制或锁文件的变更才会启动 Windows、macOS、Linux runners，构建 unpacked packaged 应用并运行 Electron 启动与 updater E2E；无关变更不会构建 Desktop。上述 workflow 都使用只读检查，不会自动修复候选提交。
 

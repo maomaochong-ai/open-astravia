@@ -10,10 +10,16 @@ export async function capturePromptResourceSource(
 	signal?: AbortSignal,
 ): Promise<CodingAgentPromptResourceSource> {
 	await source.refreshContextResourcesIfChanged(signal);
+	await source.refreshSkillsIfChanged(signal);
+	return snapshotPromptResourceSource(source);
+}
+
+/** Capture already materialized resources without repeating filesystem validation. */
+export function snapshotPromptResourceSource(source: CodingAgentPromptResourceSource): CodingAgentPromptResourceSource {
 	const agentsFiles = source
 		.getAgentsFiles()
 		.agentsFiles.map((file) => Object.freeze({ path: file.path, content: file.content }));
-	const skills = await capturePromptSkills(source, signal);
+	const skills = Object.freeze(source.getSkills().skills.map(captureSkill));
 	const systemPrompt = source.getSystemPrompt();
 	const appendSystemPrompt = Object.freeze([...source.getAppendSystemPrompt()]);
 

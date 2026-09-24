@@ -1,10 +1,10 @@
-export const REMOTE_WEBSOCKET_PROTOCOL = "vetta.remote.v1";
-export const PAIRING_PROTOCOL_PREFIX = "vetta.pairing.";
-export const BOOTSTRAP_PROTOCOL_PREFIX = "vetta.bootstrap.";
-export const RESUME_PROTOCOL_PREFIX = "vetta.resume.";
+import { parseOfferedProtocols, REMOTE_WEBSOCKET_PROTOCOL } from "@vetta/remote-control";
 
-const pairingIdPattern = /^[A-Za-z0-9_-]{24,128}$/;
+export { REMOTE_WEBSOCKET_PROTOCOL };
+
+const pairingIdPattern = /^[A-Za-z0-9_-]{16,128}$/;
 const pairingSecretPattern = /^[A-Za-z0-9_-]{32,256}$/;
+const sha256HexPattern = /^[0-9a-f]{64}$/;
 
 export type RelayRole = "mobile" | "desktop";
 
@@ -14,7 +14,7 @@ export interface RelayRoute {
 }
 
 export function parseRelayRoute(pathname: string): RelayRoute | undefined {
-	const match = /^\/v1\/relay\/([^/]+)\/(mobile|desktop)$/.exec(pathname);
+	const match = /^\/v2\/relay\/([^/]+)\/(mobile|desktop)$/.exec(pathname);
 	if (!match) return undefined;
 	const pairingId = match[1];
 	const role = match[2];
@@ -24,33 +24,44 @@ export function parseRelayRoute(pathname: string): RelayRoute | undefined {
 	return { pairingId, role };
 }
 
-export interface PairingCredentials {
-	readonly pairingSecret: string;
-	readonly bootstrapSecret?: string;
-	readonly resumeSecret?: string;
+export function parseDesktopRoute(
+	pathname: string,
+): { readonly pairingId: string; readonly role: "host" | "viewer" } | undefined {
+	const match = /^\/v2\/desktop\/([^/]+)\/(host|viewer)$/.exec(pathname);
+	if (!match) return undefined;
+	const pairingId = match[1];
+	if (!pairingId || !pairingIdPattern.test(pairingId) || (match[2] !== "host" && match[2] !== "viewer"))
+		return undefined;
+	return { pairingId, role: match[2] };
 }
 
+export interface PairingCredentials {
+	readonly pairingSecret: string;
+	/** SHA-256 hex of the phone's secret, offered by the desktop when it registers the room. */
+	readonly peerCredentialHash?: string;
+}
+
+/**
+ * Reads credentials from the `Sec-WebSocket-Protocol` offer. Secrets never
+ * appear in the URL, so proxies and logs only ever see the pairing id.
+ */
 export function pairingSecretFromHeaders(
 	headers: Headers,
 	requiredProtocol = REMOTE_WEBSOCKET_PROTOCOL,
 ): PairingCredentials | undefined {
-	const protocols = headers
-		.get("Sec-WebSocket-Protocol")
-		?.split(",")
+	const header = headers.get("Sec-WebSocket-Protocol");
+	const offered = parseOfferedProtocols(header);
+	const protocols = (header ?? "")
+		.split(",")
 		.map((value) => value.trim())
 		.filter(Boolean);
-	if (!protocols?.includes(requiredProtocol)) return undefined;
-	const pairingProtocol = protocols.find((value) => value.startsWith(PAIRING_PROTOCOL_PREFIX));
-	const secret = pairingProtocol?.slice(PAIRING_PROTOCOL_PREFIX.length);
+	if (!protocols.includes(requiredProtocol)) return undefined;
+	const secret = offered.pairingSecret;
 	if (!secret || !pairingSecretPattern.test(secret)) return undefined;
-	const bootstrapProtocol = protocols.find((value) => value.startsWith(BOOTSTRAP_PROTOCOL_PREFIX));
-	const bootstrapSecret = bootstrapProtocol?.slice(BOOTSTRAP_PROTOCOL_PREFIX.length);
-	const resumeProtocol = protocols.find((value) => value.startsWith(RESUME_PROTOCOL_PREFIX));
-	const resumeSecret = resumeProtocol?.slice(RESUME_PROTOCOL_PREFIX.length);
+	const peerCredentialHash = offered.peerCredentialHash;
 	return {
 		pairingSecret: secret,
-		...(bootstrapSecret && pairingSecretPattern.test(bootstrapSecret) ? { bootstrapSecret } : {}),
-		...(resumeSecret && pairingSecretPattern.test(resumeSecret) ? { resumeSecret } : {}),
+		...(peerCredentialHash && sha256HexPattern.test(peerCredentialHash) ? { peerCredentialHash } : {}),
 	};
 }
 
