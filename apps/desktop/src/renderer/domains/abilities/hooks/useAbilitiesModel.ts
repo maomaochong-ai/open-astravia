@@ -6,7 +6,12 @@ import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { usePluginTextResolver } from "../../plugins/runtime/plugin-i18n";
 import { useMcpSettingsModel } from "../../settings/components/useMcpSettingsModel";
-import { isAbilityListedInDiscover, queryAbilityCatalog } from "../lib/ability-catalog-query";
+import {
+	countAbilitiesByType,
+	filterAbilityCatalog,
+	isAbilityListedInDiscover,
+	queryAbilityCatalog,
+} from "../lib/ability-catalog-query";
 import { localizeMarketAbility } from "../lib/ability-presentation";
 import {
 	buildBundleAbilities,
@@ -18,7 +23,15 @@ import {
 import { decorateAbilityConflicts } from "../lib/decorate-ability-conflicts";
 import { groupAbilities } from "../lib/group-abilities";
 import { withLocalAbilityPresentation } from "../lib/local-ability-presentation";
-import type { AbilitiesModel, AbilityBannerIcon, AbilityGroup, AbilityItem, AbilityScope } from "../types";
+import {
+	type AbilitiesModel,
+	type AbilityBannerIcon,
+	type AbilityFilter,
+	type AbilityGroup,
+	type AbilityItem,
+	type AbilityScope,
+	EMPTY_ABILITY_FILTER,
+} from "../types";
 import { useAbilityActions } from "./useAbilityActions";
 import { useAbilityData } from "./useAbilityData";
 
@@ -35,6 +48,7 @@ export function useAbilitiesModel(options: UseAbilitiesModelOptions = {}): Abili
 	const { t, i18n } = useTranslation("settings");
 	const [scope, setScope] = useState<AbilityScope>(options.initialScope ?? "discover");
 	const [searchQuery, setSearchQuery] = useState(options.initialSearchQuery ?? "");
+	const [filter, setFilter] = useState<AbilityFilter>(EMPTY_ABILITY_FILTER);
 	const [visiblePages, setVisiblePages] = useState(1);
 
 	const data = useAbilityData();
@@ -101,22 +115,39 @@ export function useAbilitiesModel(options: UseAbilitiesModelOptions = {}): Abili
 
 	const changeScope = useCallback((nextScope: AbilityScope) => {
 		setScope(nextScope);
+		// 「个人」没有来源维度：切换分区时清掉来源，类型筛选跨分区保留。
+		setFilter((current) => (current.provenance === "all" ? current : { ...current, provenance: "all" }));
 		setVisiblePages(1);
 	}, []);
 	const changeSearchQuery = useCallback((value: string) => {
 		setSearchQuery(value);
 		setVisiblePages(1);
 	}, []);
+	const changeFilter = useCallback((next: AbilityFilter) => {
+		setFilter(next);
+		setVisiblePages(1);
+	}, []);
+
+	// 类型计数不受类型筛选本身影响，否则勾掉一个类型后它的数量就归零、无从判断要不要再勾回来。
+	const typeCounts = useMemo(
+		() =>
+			countAbilitiesByType(
+				filterAbilityCatalog(allItems, { scope, keyword: searchQuery, provenance: filter.provenance }),
+			),
+		[allItems, scope, searchQuery, filter.provenance],
+	);
 
 	const catalogPage = useMemo(
 		() =>
 			queryAbilityCatalog(allItems, {
 				scope,
 				keyword: searchQuery,
+				types: filter.types,
+				provenance: filter.provenance,
 				page: 1,
 				pageSize: visiblePages * ABILITY_PAGE_SIZE,
 			}),
-		[allItems, scope, searchQuery, visiblePages],
+		[allItems, scope, searchQuery, filter, visiblePages],
 	);
 	const items = catalogPage.items;
 
@@ -160,6 +191,9 @@ export function useAbilitiesModel(options: UseAbilitiesModelOptions = {}): Abili
 		setScope: changeScope,
 		searchQuery,
 		setSearchQuery: changeSearchQuery,
+		filter,
+		setFilter: changeFilter,
+		typeCounts,
 		items,
 		totalItems: catalogPage.total,
 		hasMore: items.length < catalogPage.total,

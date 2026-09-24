@@ -10,12 +10,14 @@ import {
 	ABILITY_CATEGORY_CONNECTORS,
 	ABILITY_CATEGORY_UNCATEGORIZED,
 	ABILITY_CATEGORY_VETTA_BUILTIN,
+	EMPTY_ABILITY_FILTER,
 	ENABLE_ABILITY_CATEGORIES,
 	type AbilitiesModel,
 	type AbilityScope,
 } from "../types";
 import { AbilitiesBanner } from "./AbilitiesBanner";
 import { AbilityCard } from "./AbilityCard";
+import { AbilityFilterPopover, countActiveAbilityFilters } from "./AbilityFilterPopover";
 import { AbilityMcpDialogs } from "./AbilityMcpDialogs";
 import { AddAbilityMenu } from "./AddAbilityMenu";
 import { MarketplaceSourcesDialog } from "./MarketplaceSourcesDialog";
@@ -36,6 +38,8 @@ export function AbilitiesPageView({
 	const skillFileInputRef = useRef<HTMLInputElement>(null);
 	const pluginFileInputRef = useRef<HTMLInputElement>(null);
 	const [sourcesDialogOpen, setSourcesDialogOpen] = useState(false);
+	const isPublic = model.scope === "discover" || (model.scope as string) === "public";
+	const filtered = countActiveAbilityFilters(model.filter) > 0;
 
 	return (
 		<div className="relative flex h-full w-full flex-1 flex-col overflow-hidden">
@@ -97,6 +101,12 @@ export function AbilitiesPageView({
 									className="h-8 w-full rounded-lg bg-secondary pl-8 pr-3 text-[12px] text-foreground placeholder:text-muted-foreground/40 transition-colors hover:bg-accent focus:bg-accent focus:outline-none"
 								/>
 							</div>
+							<AbilityFilterPopover
+								filter={model.filter}
+								counts={model.typeCounts}
+								showProvenance={isPublic}
+								onChange={model.setFilter}
+							/>
 							<AddAbilityMenu
 								importing={model.importing}
 								onImportSkill={() => {
@@ -154,16 +164,25 @@ export function AbilitiesPageView({
 								<span className="icon-[solar--magic-stick-3-linear] h-10 w-10 text-muted-foreground/50" />
 								<div>
 									<p className="text-[13px] font-semibold text-foreground">
-										{model.searchQuery
+										{model.searchQuery || filtered
 											? t("empty.noMatch")
-											: model.scope === "discover" || (model.scope as string) === "public"
+											: isPublic
 												? t("empty.discover")
 												: t("empty.mine")}
 									</p>
 									<p className="mt-1 text-[11px] text-muted-foreground/60">
-										{model.searchQuery ? t("empty.noMatchHint") : t("empty.hint")}
+										{filtered
+											? t("empty.filteredHint")
+											: model.searchQuery
+												? t("empty.noMatchHint")
+												: t("empty.hint")}
 									</p>
 								</div>
+								{filtered && (
+									<Button variant="secondary" size="sm" onClick={() => model.setFilter(EMPTY_ABILITY_FILTER)}>
+										{t("filter.reset")}
+									</Button>
+								)}
 							</div>
 						) : (
 							<div className="flex flex-col gap-6">

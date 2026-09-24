@@ -333,3 +333,63 @@ it("renders abilities in a flat grid by default when ENABLE_ABILITY_CATEGORIES i
 	expect(screen.getByText("Skill B")).toBeTruthy();
 	view.unmount();
 });
+
+it("filters the list by type through the filter popover and clears it from the empty state", async () => {
+	const repository = "https://github.com/example/filter";
+	const source: MarketplaceSource = {
+		id: "filter-source", name: "Filter", type: "github", repository,
+		archiveUrl: `${repository}/archive/main.zip`, ref: "main",
+		enabled: true, builtin: false, autoUpdate: false, priority: 100,
+		createdAt: "2026-09-24T00:00:00.000Z", updatedAt: "2026-09-24T00:00:00.000Z",
+	};
+	const origin = { kind: "github-marketplace" as const, sourceId: source.id, marketplace: "filter", marketplaceVersion: "1", repository };
+	const base = { description: "", icon: "", version: "1.0.0", configVersion: 1, author: "", license: "", category: "General", tags: [], detail: {}, origin };
+	const snapshot: OpenMarketplaceSourceSnapshot = {
+		source, sourceId: source.id, marketplaceVersion: "1", repository, syncedAt: source.updatedAt, stale: false,
+		abilities: [
+			{ ...base, type: "skill", slug: "skill-a", name: "Skill A", config: {} },
+			{ ...base, type: "skill", slug: "skill-b", name: "Skill B", config: {} },
+			{ ...base, type: "mcp", slug: "mcp-a", name: "Mcp A", config: { mcp: { type: "http", url: "https://example.com/mcp" } } },
+		],
+	};
+	const catalog: OpenMarketplaceCatalog = { sources: [source], snapshots: [snapshot], abilities: snapshot.abilities, failedSourceIds: [] };
+	Object.defineProperty(window, "vetta", { configurable: true, value: {
+		abilities: {
+			getLedger: async () => ({}), listLocalPresentations: async () => ({}), getOpenMcpSetupStatus: async () => ({}),
+			listOpenMarketplaces: async () => structuredClone(catalog), refreshOpenMarketplaces: async () => structuredClone(catalog),
+			onOpenMarketplacesUpdated: () => () => undefined,
+		},
+		skills: { getMarketManifest: async () => ({}), list: async () => [] },
+		plugins: { listAll: async () => [] },
+		mcp: { get: async () => ({ mcpServers: {} }) },
+	} });
+	initI18n();
+	await i18n.changeLanguage("en");
+	const user = userEvent.setup();
+
+	const { result } = renderHook(() => useAbilitiesModel());
+	await waitFor(() => expect(result.current.refreshing).toBe(false));
+	await waitFor(() => expect(result.current.typeCounts).toMatchObject({ skill: 2, mcp: 1, plugin: 0 }));
+
+	const view = render(<AbilitiesPageView model={result.current} />);
+	await user.click(screen.getByRole("button", { name: "Filter" }));
+	expect(screen.getByRole("checkbox", { name: /Plugin/ }).hasAttribute("disabled")).toBe(true);
+	await user.click(screen.getByRole("checkbox", { name: /MCP/ }));
+	await waitFor(() => expect(result.current.items.map((item) => item.title)).toEqual(["Mcp A"]));
+	// 类型计数不随类型筛选变化，勾掉之后仍知道其它类型有多少。
+	expect(result.current.typeCounts).toMatchObject({ skill: 2, mcp: 1 });
+	await user.keyboard("{Escape}");
+
+	act(() => result.current.setFilter({ types: ["mcp"], provenance: "market" }));
+	act(() => result.current.setScope("mine"));
+	expect(result.current.filter).toEqual({ types: ["mcp"], provenance: "all" });
+
+	act(() => result.current.setScope("discover"));
+	act(() => result.current.setSearchQuery("Skill"));
+	view.rerender(<AbilitiesPageView model={result.current} />);
+	expect(result.current.items).toHaveLength(0);
+	expect(screen.getByText("Nothing matches the current filters. Try clearing them")).toBeTruthy();
+	await user.click(screen.getByRole("button", { name: "Clear filters" }));
+	await waitFor(() => expect(result.current.items.map((item) => item.title).sort()).toEqual(["Skill A", "Skill B"]));
+	view.unmount();
+});

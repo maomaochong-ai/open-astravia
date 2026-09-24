@@ -1,7 +1,7 @@
 import type { TFunction } from "i18next";
 import { describe, expect, it } from "vitest";
 import type { PluginAbility, SkillAbility } from "../types";
-import { queryAbilityCatalog } from "./ability-catalog-query";
+import { countAbilitiesByType, filterAbilityCatalog, queryAbilityCatalog } from "./ability-catalog-query";
 import { buildMcpAbilities } from "./build-ability-items";
 
 function ability(index: number, overrides: Partial<SkillAbility> = {}): SkillAbility {
@@ -285,5 +285,56 @@ describe("queryAbilityCatalog", () => {
 
 		expect(before.items.map((item) => item.id)).toEqual([popular.id, other.id]);
 		expect(after.items.map((item) => item.id)).toEqual([popular.id, other.id]);
+	});
+
+	it("filters by several types at once and treats an empty type list as no filter", () => {
+		const skill = ability(1);
+		const plugin = pluginAbility(2);
+		const scene = { ...ability(3), id: "scene:ability-003", type: "scene" as const };
+
+		const both = queryAbilityCatalog([skill, plugin, scene], {
+			scope: "discover",
+			types: ["skill", "plugin"],
+			page: 1,
+			pageSize: 60,
+		});
+		const none = queryAbilityCatalog([skill, plugin, scene], { scope: "discover", types: [], page: 1, pageSize: 60 });
+
+		expect(both.items.map((item) => item.id).sort()).toEqual([plugin.id, skill.id].sort());
+		expect(none.total).toBe(3);
+	});
+
+	it("filters discover by provenance while keeping builtins outside the page window", () => {
+		const market = Array.from({ length: 70 }, (_, index) => ability(index, { downloadCount: 1000 - index }));
+		const builtin = Array.from({ length: 3 }, (_, index) =>
+			ability(500 + index, {
+				catalogSource: { kind: "builtin", id: "builtin" },
+				isBuiltin: true,
+				fromMarket: false,
+				installed: true,
+			}),
+		);
+		const all = [...market, ...builtin];
+
+		const onlyMarket = queryAbilityCatalog(all, { scope: "discover", provenance: "market", page: 1, pageSize: 60 });
+		const onlyBuiltin = queryAbilityCatalog(all, { scope: "discover", provenance: "builtin", page: 1, pageSize: 60 });
+		const unfiltered = queryAbilityCatalog(all, { scope: "discover", provenance: "all", page: 1, pageSize: 60 });
+
+		expect(onlyMarket).toMatchObject({ total: 70 });
+		expect(onlyMarket.items.some((item) => item.isBuiltin)).toBe(false);
+		expect(onlyBuiltin.items.map((item) => item.id)).toEqual(builtin.map((item) => item.id));
+		expect(unfiltered.total).toBe(73);
+	});
+
+	it("counts filtered abilities per type", () => {
+		const items = [ability(1), ability(2), pluginAbility(3), ability(4, { title: "hidden", searchTerms: ["other"] })];
+
+		const counts = countAbilitiesByType(filterAbilityCatalog(items, { scope: "discover", keyword: "ability" }));
+
+		expect(counts).toEqual({ skill: 2, scene: 0, mcp: 0, plugin: 0, bundle: 0 });
+		expect(countAbilitiesByType(filterAbilityCatalog(items, { scope: "discover" }))).toMatchObject({
+			skill: 3,
+			plugin: 1,
+		});
 	});
 });
