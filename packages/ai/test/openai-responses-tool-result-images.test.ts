@@ -16,7 +16,7 @@ const model: Model<"openai-responses"> = {
 };
 
 describe("openai-responses tool-result images", () => {
-	it("forwards user images when image capability metadata is missing", () => {
+	it("omits user images for a text-only model", () => {
 		const context: Context = {
 			messages: [
 				{
@@ -33,19 +33,12 @@ describe("openai-responses tool-result images", () => {
 		expect(convertResponsesMessages(model, context, new Set())).toEqual([
 			{
 				role: "user",
-				content: [
-					{ type: "input_text", text: "inspect" },
-					{
-						type: "input_image",
-						detail: "auto",
-						image_url: "data:image/png;base64,ZmFrZQ==",
-					},
-				],
+				content: [{ type: "input_text", text: "inspect" }],
 			},
 		]);
 	});
 
-	it("forwards tool-result images when image capability metadata is missing", () => {
+	it("omits tool-result images for a text-only model", () => {
 		const context: Context = {
 			messages: [
 				{
@@ -66,18 +59,8 @@ describe("openai-responses tool-result images", () => {
 			{
 				type: "function_call_output",
 				call_id: "call-1",
-				output: "Read image file [image/png]",
-			},
-			{
-				role: "user",
-				content: [
-					{ type: "input_text", text: "Attached image(s) from tool result:" },
-					{
-						type: "input_image",
-						detail: "auto",
-						image_url: "data:image/png;base64,ZmFrZQ==",
-					},
-				],
+				output:
+					"Read image file [image/png]\nImage content omitted because the current model does not support image input.",
 			},
 		]);
 	});

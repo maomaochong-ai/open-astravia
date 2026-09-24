@@ -57,7 +57,7 @@ describe("Amazon Bedrock message conversion", () => {
 		]);
 	});
 
-	it("forwards tool-result images when image capability metadata is missing", () => {
+	it("omits tool-result images for a text-only model", () => {
 		const converted = convertBedrockMessages(
 			{
 				messages: [
@@ -83,7 +83,7 @@ describe("Amazon Bedrock message conversion", () => {
 				toolUseId: "call-1",
 				content: [
 					{ text: "Read image file [image/png]" },
-					{ image: { format: "png", source: { bytes: new Uint8Array([102, 97, 107, 101]) } } },
+					{ text: "Image content omitted because the current model does not support image input." },
 				],
 				status: "success",
 			},

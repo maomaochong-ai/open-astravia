@@ -44,6 +44,7 @@
 
 ### Fixed
 
+- 请求会按模型声明的 `input` 类型投影图片内容：仅文本模型不再收到用户消息或工具结果中的图片，视觉模型继续保留图片；切换模型时不会改写原始会话历史。
 - Google 与 Vertex 默认请求不再经过会丢弃 5xx 响应体的 SDK 重试包装；显式 Provider 重试移到适配器边界，最终错误会保留 HTTP 状态、供应商错误码和具体消息。统一错误归一化同时补齐 OpenAI、Anthropic、Bedrock、Codex 与 Gemini CLI 的嵌套响应体和供应商错误码。
 
 - 模型运行合同保留 `reasoningLevels` / `defaultReasoningLevel`；统一按模型声明或 API 预设读取档位，Azure 与 Codex Responses 的 simple stream 不再按旧模型名称白名单把 `xhigh` 降为 `high`。
