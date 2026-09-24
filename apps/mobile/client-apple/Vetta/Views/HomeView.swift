@@ -113,7 +113,7 @@ struct HomeView: View {
 				router.startNewSession()
 			}
 			EntryRow(symbol: "square.stack.3d.up", title: L10n.Home.taskBoard, identifier: "home.taskBoard") {
-				router.path.append(.board)
+				router.openBoard()
 			}
 		}
 		.bareRow()

@@ -1,9 +1,31 @@
 import SwiftUI
 import VettaKit
 
+/// The task board as a sheet over whatever is showing, with its own stack for a project's page.
+/// Opening a session or starting one puts the sheet away (`Router.fill`).
+struct TaskBoardSheet: View {
+	@Environment(Router.self) private var router
+
+	var body: some View {
+		NavigationStack {
+			TaskBoardView()
+				.navigationDestination(for: Route.self) { route in
+					if case let .project(cwd) = route { ProjectView(cwd: cwd) }
+				}
+				.toolbar {
+					ToolbarItem(placement: .topBarTrailing) {
+						Button(L10n.Common.close, systemImage: "xmark") { router.showBoard = false }
+							.accessibilityIdentifier("board.close")
+					}
+				}
+		}
+		.presentationDragIndicator(.visible)
+	}
+}
+
 /// Every project with work under way, and the most recent ones, as a two-column waterfall
 /// of cards ranked by `TaskBoard`: what waits on the user first, then what runs, then the rest.
-struct TaskBoardView: View {
+private struct TaskBoardView: View {
 	@Environment(AppModel.self) private var model
 	@Environment(Router.self) private var router
 	@State private var deleting: RemoteSessionSummary?
@@ -69,7 +91,7 @@ struct TaskBoardView: View {
 
 	/// Older projects are left to Home's list, which filters by project.
 	private var allSessions: some View {
-		Button { router.path.removeAll() } label: {
+		Button { router.showAllSessions() } label: {
 			HStack(spacing: 4) {
 				Text(L10n.Home.allSessions)
 				Image(systemName: "chevron.right").font(.caption.weight(.semibold))
@@ -129,7 +151,7 @@ private struct BoardCard: View {
 		if card.isConversation {
 			label.accessibilityAddTraits(.isHeader)
 		} else {
-			Button { router.path.append(.project(card.cwd)) } label: { label.contentShape(.rect) }
+			NavigationLink(value: Route.project(card.cwd)) { label.contentShape(.rect) }
 				.buttonStyle(.plain)
 		}
 	}
@@ -162,7 +184,7 @@ private struct BoardCard: View {
 		if card.isConversation {
 			text
 		} else {
-			Button { router.path.append(.project(card.cwd)) } label: { text }
+			NavigationLink(value: Route.project(card.cwd)) { text }
 				.buttonStyle(.plain)
 		}
 	}

@@ -12,7 +12,6 @@ enum Slot: Hashable {
 enum Route: Hashable {
 	case project(String)
 	case settings
-	case board
 }
 
 /// Navigation state shared by every screen: the session in the root slot, and
@@ -25,6 +24,8 @@ final class Router {
 	var drawerOpen = false
 	/// The pairing screen, opened on purpose from an empty state or Settings.
 	var showPairing = false
+	/// The task board, a sheet over whatever is showing.
+	var showBoard = false
 
 	/// What New Session had when its start failed, put back when it reopens.
 	var failedStart: NewSessionStart?
@@ -38,9 +39,15 @@ final class Router {
 		withAnimation(.snappy) { drawerOpen = false }
 	}
 
-	/// Home opened straight on the task board, in one slide rather than a slide and a push.
 	func openBoard() {
-		withoutAnimation { path = [.board] }
+		dismissKeyboard()
+		showBoard = true
+	}
+
+	/// From the board to Home's whole list.
+	func showAllSessions() {
+		showBoard = false
+		withoutAnimation { path.removeAll() }
 		openDrawer()
 	}
 
@@ -67,12 +74,14 @@ final class Router {
 			slot = .newSession()
 			path.removeAll()
 			drawerOpen = false
+			showBoard = false
 		}
 	}
 
 	/// The slot changes at once, under the drawer as it slides away.
 	private func fill(_ next: Slot) {
 		withoutAnimation { slot = next }
+		showBoard = false
 		closeDrawer()
 	}
 
@@ -104,7 +113,6 @@ struct RootView: View {
 						switch route {
 						case let .project(cwd): ProjectView(cwd: cwd)
 						case .settings: SettingsView()
-						case .board: TaskBoardView()
 						}
 					}
 			}
@@ -113,6 +121,10 @@ struct RootView: View {
 		.environment(router)
 		.sheet(isPresented: $router.showPairing, onDismiss: { model.cancelPairing() }) {
 			PairView()
+				.environment(router)
+		}
+		.sheet(isPresented: $router.showBoard) {
+			TaskBoardSheet()
 				.environment(router)
 		}
 		// Content fades out under every bar, as on iOS 26; iOS 27 otherwise draws a hard edge.
