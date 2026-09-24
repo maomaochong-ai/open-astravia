@@ -4,7 +4,8 @@ import VettaKit
 /// The project icon, the same on cards, rows and session tags.
 let projectSymbol = "folder.badge.gearshape"
 
-/// A session as Home and a project's page list it: when, what, and the tags worth a look.
+/// A session as Home and a project's page list it, in two lines: the tags worth a look
+/// with the time at the far right, then the title. A plain row, no card around it.
 struct SessionCard: View {
 	var session: RemoteSessionSummary
 	var conversationCwd: String?
@@ -12,43 +13,26 @@ struct SessionCard: View {
 	var showsProject = true
 
 	var body: some View {
-		let waiting = session.status == .waitingInput
 		VStack(alignment: .leading, spacing: 8) {
-			HStack {
+			HStack(spacing: 8) {
+				ForEach(tags, id: \.self) { SessionTag(kind: $0) }
+				Spacer(minLength: 0)
 				Text(TimeFormat.relative(session.updatedAt))
 					.font(.subheadline)
 					.foregroundStyle(Theme.dim)
-				Spacer(minLength: 0)
-				Image(systemName: "chevron.right")
-					.font(.footnote.weight(.semibold))
-					.foregroundStyle(Theme.faint)
+					.fixedSize()
 			}
+			// As tall with no tag as with one, so rows keep one height.
+			.frame(minHeight: 26)
 			Text(session.title.trimmingCharacters(in: .whitespaces).isEmpty ? L10n.Home.untitled : session.title)
 				.font(.headline)
 				.foregroundStyle(Theme.ink)
 				.lineLimit(1)
-			let tags = tags
-			if !tags.isEmpty {
-				HStack(spacing: 8) {
-					ForEach(tags, id: \.self) { SessionTag(kind: $0) }
-				}
-				.padding(.top, 2)
-			}
 		}
-		.padding(.horizontal, 18)
-		.padding(.vertical, 16)
+		.padding(.horizontal, 20)
+		.padding(.vertical, 14)
 		.frame(maxWidth: .infinity, alignment: .leading)
-		.background {
-			// Waiting on the user warms the whole card, not just its tag.
-			RoundedRectangle(cornerRadius: 22, style: .continuous)
-				.fill(Theme.card)
-				.overlay {
-					if waiting {
-						RoundedRectangle(cornerRadius: 22, style: .continuous).fill(Theme.yellow.opacity(0.09))
-					}
-				}
-		}
-		.contentShape(.rect(cornerRadius: 22))
+		.contentShape(.rect)
 		.accessibilityElement(children: .combine)
 	}
 
@@ -328,9 +312,11 @@ struct SessionCardRows: View {
 			}
 			.buttonStyle(.plain)
 			.accessibilityIdentifier("session.\(session.id)")
-			.listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
-			.listRowSeparator(.hidden)
-			.listRowBackground(Color.clear)
+			.listRowInsets(EdgeInsets())
+			.listRowSeparatorTint(Theme.line)
+			.alignmentGuide(.listRowSeparatorLeading) { _ in 20 }
+			// Waiting on the user warms the whole row, not just its tag.
+			.listRowBackground(session.status == .waitingInput ? Theme.yellow.opacity(0.09) : Color.clear)
 			// Swiping right; delete asks first since it removes the session on the desktop too.
 			.swipeActions(edge: .leading, allowsFullSwipe: false) {
 				Button {
