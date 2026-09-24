@@ -9,10 +9,14 @@ import type { ConversationMessageStreamEvent } from "@vetta/runtime-core/convers
 import type {
 	DesktopTeamActiveStreamEvent,
 	DesktopTeamContextUsageEvent,
+	DesktopTeamModelRequestStartedEvent,
 	DesktopTeamSessionStreamEvent,
 	DesktopTeamToolExecutionEvent,
 } from "../../preload/api-types/team-conversation-display.js";
+import { getAppLogger } from "../logger.js";
 import { isPublicAssistantPart, publicAssistantMessage } from "./team-public-message.js";
+
+const log = getAppLogger("agent-team-stream");
 
 export interface ActiveTeamMemberTurn {
 	readonly teamSessionId: string;
@@ -37,6 +41,7 @@ interface TeamRuntimeStreamHost {
 	readonly getSession: (teamSessionId: string) => TeamSessionDocument | undefined;
 	readonly observe: (session: TeamSessionDocument) => TeamObservationPublisher | undefined;
 	readonly onRunningChanged?: (teamSessionId: string, running: boolean) => void;
+	readonly onFirstResponseBlockCompleted?: (teamSessionId: string, memberId: string) => void;
 }
 
 /** Owns Team subscribers, active member turns, and member Runtime stream subscriptions. */
@@ -47,6 +52,8 @@ export class TeamSessionEventHub {
 	>();
 	private readonly subscribers = new Map<string, Set<(event: DesktopTeamSessionStreamEvent) => void>>();
 	private readonly activeMemberTurns = new Map<string, ActiveTeamMemberTurn>();
+	private readonly turnsWithCompletedResponseBlock = new WeakSet<ActiveTeamMemberTurn>();
+	private readonly turnsWithFirstPublicEvent = new WeakSet<ActiveTeamMemberTurn>();
 
 	constructor(private readonly host: TeamRuntimeStreamHost) {}
 
@@ -134,6 +141,22 @@ export class TeamSessionEventHub {
 			const runtime = this.host.runtime();
 			const unsubscribeEvents = runtime.subscribe(runtimeState.sessionId, (event) => {
 				const active = this.activeMemberTurns.get(runtimeState.sessionId);
+				if (event.type === "model.request.started" && active) {
+					log.info("team model request started", {
+						teamSessionId: active.teamSessionId,
+						requestId: active.requestId,
+						memberId: active.memberId,
+						memberTurnElapsedMs: Date.now() - active.startedAt,
+					});
+					this.publish({
+						type: "desktop.team-model-request-started",
+						conversationId: active.teamSessionId,
+						memberId: active.memberId,
+						runtimeSessionId: runtimeState.sessionId,
+						requestId: active.requestId,
+						timestamp: event.timestamp,
+					} satisfies DesktopTeamModelRequestStartedEvent);
+				}
 				if (!active) {
 					if (
 						event.type === "usage.update" ||
@@ -151,9 +174,25 @@ export class TeamSessionEventHub {
 					active.rawAssistantStream = true;
 					const projected = projectPublicAssistantEvent(event);
 					if (projected) {
+						if (!this.turnsWithFirstPublicEvent.has(active)) {
+							this.turnsWithFirstPublicEvent.add(active);
+							log.info("team first public response event", {
+								teamSessionId: active.teamSessionId,
+								requestId: active.requestId,
+								memberId: active.memberId,
+								memberTurnElapsedMs: Date.now() - active.startedAt,
+							});
+						}
 						if (projected.type === "text_delta") active.text += projected.delta;
 						if ("partial" in projected) active.latestPublicPartial = projected.partial;
 						this.publishMemberMessageEvent(active, projected, event.timestamp);
+					}
+					if (
+						(isResponseBlockCompleted(projected) || event.type === "done" || event.type === "error") &&
+						!this.turnsWithCompletedResponseBlock.has(active)
+					) {
+						this.turnsWithCompletedResponseBlock.add(active);
+						this.host.onFirstResponseBlockCompleted?.(active.teamSessionId, active.memberId);
 					}
 					return;
 				}
@@ -173,6 +212,10 @@ export class TeamSessionEventHub {
 						event: { type: "text_delta", contentIndex: 0, delta: event.delta, partial },
 					} satisfies ConversationMessageStreamEvent;
 					this.publish(envelope);
+				}
+				if (event.type === "message.final" && !this.turnsWithCompletedResponseBlock.has(active)) {
+					this.turnsWithCompletedResponseBlock.add(active);
+					this.host.onFirstResponseBlockCompleted?.(active.teamSessionId, active.memberId);
 				}
 			});
 			let unsubscribeExecution = () => {};
@@ -402,6 +445,10 @@ function projectPublicAssistantEvent(event: AssistantMessageEvent): AssistantMes
 	const partial = publicAssistantMessage(event.partial);
 	const contentIndex = event.partial.content.slice(0, event.contentIndex).filter(isPublicAssistantPart).length;
 	return { ...event, contentIndex, partial };
+}
+
+function isResponseBlockCompleted(event: AssistantMessageEvent | undefined): boolean {
+	return event?.type === "text_end" || event?.type === "toolcall_end";
 }
 
 function compatibilityPublicAssistantMessage(text: string, timestamp: number): AssistantMessage {

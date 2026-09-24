@@ -45,6 +45,11 @@ export interface TeamMemberAttemptRunnerOptions {
 	readonly sessionState: TeamSessionStateRepository;
 	readonly runtime: () => RuntimeHost;
 	readonly readDocument: () => Promise<AgentTeamDocument>;
+	readonly ensureMemberRuntime: (
+		teamSessionId: string,
+		memberId: string,
+		document: AgentTeamDocument,
+	) => Promise<void>;
 	readonly observations: (session: TeamSessionDocument) => TeamObservationPublisher | undefined;
 	readonly publishSessionUpdated: (session: TeamSessionDocument) => void;
 	readonly settleAttempt: (
@@ -70,6 +75,7 @@ export class TeamMemberAttemptRunner {
 			mode = "initial",
 		} = input;
 		const document = await this.options.readDocument();
+		await this.options.ensureMemberRuntime(input.teamSessionId, memberId, document);
 		const configuredSession = await this.options.sessionState.coordinateLoaded(input.teamSessionId, (current) =>
 			this.options.runtimeManager.ensureMemberConfiguration(current, document, memberId),
 		);

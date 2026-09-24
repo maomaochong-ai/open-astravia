@@ -69,6 +69,21 @@ describe("会话级工作模式固化", () => {
 		expect(resolved.config).not.toHaveProperty("automaticRetry");
 	});
 
+	it("允许内部会话显式跳过 Agent Skill 初始化", async () => {
+		const root = await createTemporaryRoot();
+		const resolved = await resolveDesktopSessionConfig(
+			{ cwd: root, includeAgentSkills: false },
+			"other",
+			"interactive",
+		);
+
+		expect(resolved.includeAgentSkills).toBe(false);
+		expect(
+			parseCodingAgentRuntimeSessionConfiguration(resolved.config.agent?.sessionConfiguration).includeAgentSkills,
+		).toBe(false);
+		expect(resolved.config).not.toHaveProperty("includeAgentSkills");
+	});
+
 	it("改默认值只影响新会话，已有会话保持创建时的模式", async () => {
 		const root = await createTemporaryRoot();
 

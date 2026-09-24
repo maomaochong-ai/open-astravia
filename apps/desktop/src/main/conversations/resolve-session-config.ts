@@ -84,7 +84,7 @@ export async function resolveDesktopSessionConfig(
 	const scenario: ConversationScenario = config?.scenario ?? (isConversation ? "conversation" : "project");
 	const desktopConfig = await readDesktopConfig();
 	const enableBackgroundTasks = source === "interactive" && scenario !== "batch";
-	const includeAgentSkills = desktopConfig.experimental?.agentSkills !== false;
+	const includeAgentSkills = config?.includeAgentSkills ?? desktopConfig.experimental?.agentSkills !== false;
 	const appendSystemPrompt =
 		isConversation && desktopConfig.experimental?.vettaCli === true
 			? config?.appendSystemPrompt

@@ -262,7 +262,7 @@ describe("AgentTeamSessionService streaming contract", () => {
 		]);
 	});
 
-	it("returns the session record before warming the leader first and the remaining members in parallel", async () => {
+	it("returns the session record after starting only the leader runtime", async () => {
 		const document = createAgentTeamFixture();
 		const team = document.teams[0];
 		if (!team) throw new Error("built-in Agent Team fixture is missing");
@@ -305,7 +305,14 @@ describe("AgentTeamSessionService streaming contract", () => {
 		expect(record.workspaceId).toBe("project:workspace");
 		expect(record.cwd).toBe("C:/workspace");
 		expect(record.memberRuntime).toEqual({});
-		await vi.waitFor(() => expect(createSession).toHaveBeenCalledTimes(team.members.length + 1));
+		expect(createSession.mock.calls[0]?.[0]).toMatchObject({
+			includeAgentSkills: false,
+			agentConfiguration: {
+				template: null,
+				overrides: { plugins: [] },
+			},
+		});
+		await vi.waitFor(() => expect(createSession).toHaveBeenCalledTimes(2));
 		expect(JSON.stringify(createSession.mock.calls[1]?.[0])).toContain(team.leaderMemberId);
 		const coordinator = (
 			service as unknown as {
@@ -330,24 +337,19 @@ describe("AgentTeamSessionService streaming contract", () => {
 		expect(runtime.selectSessionModel).toHaveBeenCalledWith(record.id, "openai/test", "if-changed");
 	});
 
-	it("admits a leader message without waiting for unrelated member runtimes", async () => {
+	it("admits a leader message without starting unrelated member runtimes before the model request", async () => {
 		const document = createAgentTeamFixture();
 		const team = document.teams[0];
 		if (!team) throw new Error("built-in Agent Team fixture is missing");
 		let releaseLeader: (() => void) | undefined;
-		let releaseSibling: (() => void) | undefined;
 		const leaderGate = new Promise<void>((resolve) => {
 			releaseLeader = resolve;
-		});
-		const siblingGate = new Promise<void>((resolve) => {
-			releaseSibling = resolve;
 		});
 		let memberSequence = 0;
 		const createSession = vi.fn(async (config?: SessionConfig) => {
 			if (config?.sessionId) return { sessionId: config.sessionId };
 			memberSequence += 1;
 			if (memberSequence === 1) await leaderGate;
-			if (memberSequence === 2) await siblingGate;
 			return { sessionId: `member-runtime-${memberSequence}` };
 		});
 		const runtime = {
@@ -376,8 +378,189 @@ describe("AgentTeamSessionService streaming contract", () => {
 		await vi.waitFor(() =>
 			expect(admitted).toHaveBeenCalledWith(record.id, expect.objectContaining({ requestId: "leader-first" })),
 		);
-		releaseSibling?.();
+		expect(createSession).toHaveBeenCalledTimes(2);
 		await send;
+	});
+
+	it("warms deferred members only after the first leader response block completes", async () => {
+		const document = createAgentTeamFixture();
+		const team = document.teams[0];
+		if (!team) throw new Error("built-in Agent Team fixture is missing");
+		let sessionListener: ((event: SessionEvent) => void) | undefined;
+		let memberSequence = 0;
+		const createSession = vi.fn(async (config?: SessionConfig) => ({
+			sessionId: config?.sessionId ?? `member-runtime-${++memberSequence}`,
+		}));
+		const runtime = {
+			createSession,
+			getSessionPath: (sessionId: string) => `C:/runtime/${sessionId}.jsonl`,
+			disposeSession: vi.fn(async () => undefined),
+			subscribe: vi.fn((_sessionId: string, listener: (event: SessionEvent) => void) => {
+				sessionListener = listener;
+				return () => undefined;
+			}),
+			appendSessionMetadataEntry: vi.fn(async () => undefined),
+			readSessionDocument: () => ({ entries: [], activeLeafId: null, revision: 0 }),
+		} as unknown as RuntimeHost;
+		const service = new AgentTeamSessionService({ runtime, readDocument: async () => document });
+		const record = await service.createRecord(team, document, {
+			kind: "project",
+			id: "project:workspace",
+			cwd: "C:/workspace",
+		});
+		await vi.waitFor(() => expect(createSession).toHaveBeenCalledTimes(2));
+		await vi.waitFor(async () => {
+			expect((await service.read(record.id)).memberRuntime[team.leaderMemberId]).toBeDefined();
+		});
+		const warmed = await service.read(record.id);
+		const leaderRuntime = warmed.memberRuntime[team.leaderMemberId];
+		if (!leaderRuntime) throw new Error("leader runtime did not warm");
+		const eventHub = (
+			service as unknown as {
+				readonly eventHub: {
+					beginTurn: (runtimeSessionId: string, active: Record<string, unknown>) => void;
+					attach: (session: TeamSessionDocument) => void;
+				};
+			}
+		).eventHub;
+		eventHub.beginTurn(leaderRuntime.sessionId, {
+			teamSessionId: record.id,
+			memberId: team.leaderMemberId,
+			requestId: "leader-request",
+			turnId: "leader-turn",
+			messageId: "leader-message",
+			author: { kind: "agent", id: team.leaderMemberId },
+			workItemId: "leader-work-item",
+			attemptId: "leader-attempt",
+			startedAt: 1,
+			seq: 0,
+			text: "",
+			rawAssistantStream: false,
+			toolExecutionEvents: [],
+		});
+		eventHub.attach(warmed);
+
+		sessionListener?.({
+			schemaVersion: 1,
+			channel: "runtime",
+			sessionId: leaderRuntime.sessionId,
+			eventId: "request-started",
+			timestamp: 2,
+			source: "agent",
+			type: "model.request.started",
+			turnId: "leader-turn",
+			modelCallIndex: 0,
+		} as SessionEvent);
+		expect(createSession).toHaveBeenCalledTimes(2);
+
+		const emptyPartial = createAssistantMessage({ api: "openai-responses", provider: "test", model: "fixture" });
+		sessionListener?.({
+			schemaVersion: 1,
+			channel: "assistant",
+			sessionId: leaderRuntime.sessionId,
+			eventId: "response-started",
+			timestamp: 3,
+			source: "agent",
+			turnId: "leader-turn",
+			modelCallIndex: 0,
+			type: "start",
+			partial: emptyPartial,
+		} as SessionEvent);
+		expect(createSession).toHaveBeenCalledTimes(2);
+
+		sessionListener?.({
+			schemaVersion: 1,
+			channel: "assistant",
+			sessionId: leaderRuntime.sessionId,
+			eventId: "response-text",
+			timestamp: 4,
+			source: "agent",
+			turnId: "leader-turn",
+			modelCallIndex: 0,
+			type: "text_delta",
+			contentIndex: 0,
+			delta: "Ready",
+			partial: { ...emptyPartial, content: [{ type: "text", text: "Ready" }] },
+		} as SessionEvent);
+		expect(createSession).toHaveBeenCalledTimes(2);
+		sessionListener?.({
+			schemaVersion: 1,
+			channel: "assistant",
+			sessionId: leaderRuntime.sessionId,
+			eventId: "response-text-end",
+			timestamp: 5,
+			source: "agent",
+			turnId: "leader-turn",
+			modelCallIndex: 0,
+			type: "text_end",
+			contentIndex: 0,
+			content: "Ready",
+			partial: { ...emptyPartial, content: [{ type: "text", text: "Ready" }] },
+		} as SessionEvent);
+		await vi.waitFor(() => expect(createSession).toHaveBeenCalledTimes(team.members.length + 1));
+	});
+
+	it("prepares a deferred member before a fast delegation configures it", async () => {
+		const document = createAgentTeamFixture();
+		const team = document.teams[0];
+		if (!team) throw new Error("built-in Agent Team fixture is missing");
+		const deferredMember = team.members.find((member) => member.id !== team.leaderMemberId);
+		if (!deferredMember) throw new Error("built-in Agent Team fixture needs a non-leader member");
+		let memberSequence = 0;
+		const createSession = vi.fn(async (config?: SessionConfig) => ({
+			sessionId: config?.sessionId ?? `member-runtime-${++memberSequence}`,
+		}));
+		const runtime = {
+			createSession,
+			getSessionPath: (sessionId: string) => `C:/runtime/${sessionId}.jsonl`,
+			disposeSession: vi.fn(async () => undefined),
+			subscribe: () => () => undefined,
+			appendSessionMetadataEntry: vi.fn(async () => undefined),
+			readSessionDocument: () => ({ entries: [], activeLeafId: null, revision: 0 }),
+		} as unknown as RuntimeHost;
+		const service = new AgentTeamSessionService({ runtime, readDocument: async () => document });
+		const record = await service.createRecord(team, document, {
+			kind: "project",
+			id: "project:workspace",
+			cwd: "C:/workspace",
+		});
+		await vi.waitFor(() => expect(createSession).toHaveBeenCalledTimes(2));
+
+		const internals = service as unknown as {
+			readonly memberAttemptRunner: {
+				run: (input: {
+					readonly teamSessionId: string;
+					readonly memberId: string;
+					readonly promptText: string;
+					readonly requestId: string;
+					readonly sourceTurnId: string;
+					readonly createdByParticipantId: string;
+				}) => Promise<TeamSessionDocument>;
+			};
+			readonly runtimeManager: {
+				ensureMemberConfiguration: (...args: unknown[]) => Promise<TeamSessionDocument>;
+			};
+		};
+		vi.spyOn(internals.runtimeManager, "ensureMemberConfiguration").mockRejectedValue(
+			new Error("stop after runtime readiness"),
+		);
+
+		await expect(
+			internals.memberAttemptRunner.run({
+				teamSessionId: record.id,
+				memberId: deferredMember.id,
+				promptText: "delegated task",
+				requestId: "delegated-request",
+				sourceTurnId: "leader-turn",
+				createdByParticipantId: team.leaderMemberId,
+			}),
+		).rejects.toThrow("stop after runtime readiness");
+		expect(createSession).toHaveBeenCalledTimes(3);
+		await expect(service.read(record.id)).resolves.toMatchObject({
+			memberRuntime: {
+				[deferredMember.id]: { sessionId: "member-runtime-2" },
+			},
+		});
 	});
 
 	it("names a new Team session with its selected model and retries using the first task", async () => {

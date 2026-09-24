@@ -230,6 +230,7 @@ export function useNewSessionTeamDraft({
 
 	const send = useCallback(async () => {
 		if (!teamId || sendingRef.current || (!draft.trim() && attachments.length === 0)) return;
+		const sendStartedAt = Date.now();
 		sendingRef.current = true;
 		setError(null);
 		const requestId = crypto.randomUUID();
@@ -269,6 +270,11 @@ export function useNewSessionTeamDraft({
 				...(input.reasoning ? { reasoning: input.reasoning } : {}),
 				executionMode,
 				...(projectCwd ? { workspace: { kind: "project", path: projectCwd } as const } : {}),
+			});
+			console.info("[agent-team] new-session handoff staged", {
+				teamSessionId: sessionId,
+				requestId,
+				preNavigationMs: Date.now() - sendStartedAt,
 			});
 			// Project preparation may take long enough for the user to continue
 			// typing. Clear only the exact snapshot that was handed off.

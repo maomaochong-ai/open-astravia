@@ -248,6 +248,7 @@ export function registerAgentTeamsIpc(
 		);
 	});
 	ipcMain.handle(CHANNELS.CREATE_SESSION_RECORD, async (_event, teamId: unknown, options: unknown) => {
+		const startedAt = Date.now();
 		const document = await store.read();
 		const parsedTeamId = requiredString(teamId, "teamId");
 		const team = document.teams.find((candidate) => candidate.id === parsedTeamId);
@@ -255,11 +256,12 @@ export function registerAgentTeamsIpc(
 		const parsedOptions = parseCreateSessionRecordOptions(options);
 		const sessionId = parsedOptions?.sessionId ?? randomUUID();
 		const workspace = await resolveTeamSessionWorkspace(parsedTeamId, sessionId, parsedOptions?.workspace);
+		const workspaceReadyMs = Date.now() - startedAt;
 		const sessionOptions = {
 			sessionId,
 			...(parsedOptions?.executionMode ? { executionMode: parsedOptions.executionMode } : {}),
 		};
-		return await withDisplayProjection(
+		const projected = await withDisplayProjection(
 			sessions.snapshot(
 				await (sessions.createRecord
 					? sessions.createRecord(team, document, workspace, sessionOptions)
@@ -267,10 +269,24 @@ export function registerAgentTeamsIpc(
 			),
 			displayProjection,
 		);
+		log.info("team create-session-record completed", {
+			teamSessionId: sessionId,
+			workspaceReadyMs,
+			elapsedMs: Date.now() - startedAt,
+		});
+		return projected;
 	});
-	ipcMain.handle(CHANNELS.LIST_SESSIONS, (_event, teamId: unknown) =>
-		sessions.listSessions(requiredString(teamId, "teamId")),
-	);
+	ipcMain.handle(CHANNELS.LIST_SESSIONS, async (_event, teamId: unknown) => {
+		const startedAt = Date.now();
+		const parsedTeamId = requiredString(teamId, "teamId");
+		const listed = await sessions.listSessions(parsedTeamId);
+		log.info("team list-sessions completed", {
+			teamId: parsedTeamId,
+			elapsedMs: Date.now() - startedAt,
+			sessionCount: listed.length,
+		});
+		return listed;
+	});
 	ipcMain.handle(CHANNELS.LIST_SIDEBAR_CONVERSATIONS, () =>
 		(dependencies.listSidebarConversations ?? listTeamSidebarConversations)(),
 	);
@@ -379,6 +395,14 @@ export function registerAgentTeamsIpc(
 		log.info("team stream subscription started", { teamSessionId: sessionId, subscriptionId });
 		let sendQueue = Promise.resolve();
 		const subscription = sessions.subscribe(sessionId, (payload) => {
+			if (payload.type === "desktop.team-model-request-started") {
+				log.info("team model request started", {
+					teamSessionId: sessionId,
+					requestId: payload.requestId,
+					memberId: payload.memberId,
+					ipcQueueDelayMs: Date.now() - payload.timestamp,
+				});
+			}
 			sendQueue = sendQueue
 				.then(async () => {
 					if (event.sender.isDestroyed()) return;

@@ -123,6 +123,13 @@ export class TeamRuntimeManager {
 			{
 				cwd,
 				executionMode,
+				// The coordination Runtime is a durable ledger. It uses a session
+				// extension for titles, but never needs Agent or plugin skills.
+				includeAgentSkills: false,
+				agentConfiguration: {
+					template: null,
+					overrides: { plugins: [] },
+				},
 				...(sessionPath ? { sessionPath } : {}),
 				...(sessionId ? { sessionId } : {}),
 			},

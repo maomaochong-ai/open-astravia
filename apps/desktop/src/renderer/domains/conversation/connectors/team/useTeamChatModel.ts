@@ -95,6 +95,7 @@ export function useTeamChatModel(
 	>({});
 	const [failedMemberIds, setFailedMemberIds] = useState<ReadonlySet<string>>(() => new Set());
 	const [pending, setPending] = useState<TeamPendingRequest>();
+	const [modelRequestedIds, setModelRequestedIds] = useState<ReadonlySet<string>>(() => new Set());
 	const [streams, setStreams] = useState<TeamStreamState>({});
 	const [status, setStatus] = useState<TeamChatStatus>("loading");
 	const [, startTeamTransition] = useTransition();
@@ -255,9 +256,19 @@ export function useTeamChatModel(
 					setStatus("sending");
 					await waitForCommittedPaint();
 					if (cancelled) return;
+					console.info("[agent-team] new-session bootstrap started", {
+						teamSessionId: handoff.sessionId,
+						requestId: handoff.requestId,
+						fromNewSessionElapsedMs: Date.now() - handoff.timestamp,
+					});
 					void loadTeamChatBootstrap(teamId)
 						.then((bootstrap) => {
 							if (cancelled) return;
+							console.info("[agent-team] new-session bootstrap completed", {
+								teamSessionId: handoff.sessionId,
+								requestId: handoff.requestId,
+								fromNewSessionElapsedMs: Date.now() - handoff.timestamp,
+							});
 							applyBootstrap(bootstrap);
 						})
 						.catch((cause: unknown) => {
@@ -351,6 +362,16 @@ export function useTeamChatModel(
 					? event.teamSessionId
 					: event.conversationId;
 			if (!mounted || eventSessionId !== session.id) return;
+			if (event.type === "desktop.team-model-request-started") {
+				console.info("[agent-team] model request event received", {
+					teamSessionId: session.id,
+					requestId: event.requestId,
+					eventDeliveryMs: Date.now() - event.timestamp,
+				});
+				setModelRequestedIds((current) =>
+					current.has(event.requestId) ? current : new Set([...current, event.requestId]),
+				);
+			}
 			// session-updated 用快照的 messages 把已落盘的 turn 从流里裁掉。这个裁剪
 			// 必须和快照的采纳同进同退：快照因版本过旧被拒时若照裁不误，这条回复就从
 			// 流和快照两边同时消失（页面重进才恢复）。
@@ -523,24 +544,14 @@ export function useTeamChatModel(
 		[routeHandoff, team?.leaderMemberId],
 	);
 	const visiblePending = pending ?? stagedPending;
-	const fallbackPendingTargetId = session?.leaderMemberId ?? visiblePending?.leaderMemberId ?? team?.leaderMemberId;
-	const pendingTargetMemberIds =
-		visiblePending?.targetMemberIds && visiblePending.targetMemberIds.length > 0
-			? visiblePending.targetMemberIds
-			: fallbackPendingTargetId
-				? [fallbackPendingTargetId]
-				: [];
 	const pendingHasVisibleStream = visiblePending
 		? Object.values(streams).some(
 				(turn) => turn.message.turnId === visiblePending.requestId && turn.message.phase === "streaming",
 			)
 		: false;
-	const pendingTargetsReady =
-		pendingTargetMemberIds.length > 0 &&
-		pendingTargetMemberIds.every((memberId) => Boolean(memberRuntimeIds[memberId]));
 	const pendingLabel =
 		visiblePending && !pendingHasVisibleStream
-			? t(pendingTargetsReady ? "chat.waitingModel" : "chat.teamLoading")
+			? t(modelRequestedIds.has(visiblePending.requestId) ? "chat.waitingModel" : "chat.teamLoading")
 			: undefined;
 	const feedItems = useMemo(
 		() =>
@@ -673,6 +684,12 @@ export function useTeamChatModel(
 			};
 			pendingRef.current = nextPending;
 			inFlightRequestIds.current.add(requestId);
+			setModelRequestedIds((current) => {
+				if (!current.has(requestId)) return current;
+				const next = new Set(current);
+				next.delete(requestId);
+				return next;
+			});
 			setPending(nextPending);
 			setStatus("sending");
 			setError(undefined);
@@ -696,7 +713,7 @@ export function useTeamChatModel(
 			setSelectedMemberIds([]);
 			updateAttachments(() => []);
 			const startedAt = Date.now();
-			console.info("[agent-team] send-message IPC started", {
+			console.info("[agent-team] send flow started", {
 				teamId,
 				teamSessionId: session?.id,
 				requestId,
@@ -704,6 +721,7 @@ export function useTeamChatModel(
 				attachmentCount: promptAttachments.length,
 				modelKey: requestModelKey,
 				reasoning: requestReasoning,
+				...(activeHandoff ? { fromNewSessionElapsedMs: startedAt - activeHandoff.timestamp } : {}),
 			});
 			let activeSessionId = session?.id;
 			try {
@@ -731,6 +749,13 @@ export function useTeamChatModel(
 				}
 				const readySession = session ?? loaded?.snapshot.session;
 				if (!readySession) throw new Error("Team session is still preparing");
+				if (activeHandoff) {
+					console.info("[agent-team] new-session record ready", {
+						teamSessionId: readySession.id,
+						requestId,
+						fromNewSessionElapsedMs: Date.now() - activeHandoff.timestamp,
+					});
+				}
 				activeSessionId = readySession.id;
 				if (activeHandoff && loaded) {
 					loadedSessionRef.current = { teamId, sessionId: readySession.id };
@@ -746,6 +771,11 @@ export function useTeamChatModel(
 					setStatus("ready");
 					return;
 				}
+				console.info("[agent-team] send-message IPC started", {
+					teamSessionId: readySession.id,
+					requestId,
+					fromNewSessionElapsedMs: activeHandoff ? Date.now() - activeHandoff.timestamp : undefined,
+				});
 				const next = await window.vetta.agentTeams.sendMessage(readySession.id, {
 					requestId,
 					text,
@@ -818,6 +848,12 @@ export function useTeamChatModel(
 				inFlightRequestIds.current.delete(requestId);
 				if (pendingRef.current?.requestId === requestId) pendingRef.current = undefined;
 				setPending((current) => (current?.requestId === requestId ? undefined : current));
+				setModelRequestedIds((current) => {
+					if (!current.has(requestId)) return current;
+					const next = new Set(current);
+					next.delete(requestId);
+					return next;
+				});
 				if (inFlightRequestIds.current.size > 0) setStatus("sending");
 			}
 		},
