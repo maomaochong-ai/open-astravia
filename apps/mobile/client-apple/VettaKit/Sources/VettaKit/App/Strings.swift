@@ -90,7 +90,6 @@ public enum L10n {
 		public static var emptyDescription: String { tr("board.emptyDescription") }
 		public static var stale: String { tr("board.stale") }
 		public static func more(_ n: Int) -> String { tr("board.more \(n)") }
-		public static var newHere: String { tr("board.newHere") }
 		public static var viewAll: String { tr("board.viewAll") }
 	}
 

@@ -52,23 +52,6 @@
         }
       }
     },
-    "board.newHere": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "New session in this project"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "在这个项目里新建会话"
-          }
-        }
-      }
-    },
     "board.stale": {
       "extractionState": "manual",
       "localizations": {

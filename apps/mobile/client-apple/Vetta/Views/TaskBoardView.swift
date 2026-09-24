@@ -86,7 +86,7 @@ struct TaskBoardView: View {
 }
 
 /// One project, or the conversations, on the board: its name, then its sessions,
-/// each opening its chat; a project's name opens its page, and + starts a session in it.
+/// each opening its chat; a project's name opens its page.
 private struct BoardCard: View {
 	@Environment(AppModel.self) private var model
 	@Environment(Router.self) private var router
@@ -96,25 +96,12 @@ private struct BoardCard: View {
 	var body: some View {
 		VStack(alignment: .leading, spacing: 6) {
 			header
-			VStack(spacing: 2) {
+			VStack(spacing: 6) {
 				ForEach(card.sessions) { session in
 					row(session)
 				}
 			}
-			HStack {
-				if card.hidden > 0 { more }
-				Spacer(minLength: 0)
-				Button { router.startNewSession(in: card.isConversation ? nil : card.cwd) } label: {
-					Image(systemName: "plus")
-						.font(.subheadline.weight(.semibold))
-						.foregroundStyle(Theme.ink2)
-						.frame(width: 32, height: 32)
-						.background(Theme.page.opacity(0.6), in: .circle)
-						.contentShape(.circle)
-				}
-				.buttonStyle(.plain)
-				.accessibilityLabel(card.isConversation ? L10n.NewSession.title : L10n.Board.newHere)
-			}
+			if card.hidden > 0 { more }
 		}
 		.padding(12)
 		.frame(maxWidth: .infinity, alignment: .leading)
@@ -149,28 +136,9 @@ private struct BoardCard: View {
 
 	private func row(_ session: RemoteSessionSummary) -> some View {
 		let status = StatusGlyph(status: session.status)
-		let title = session.title.trimmingCharacters(in: .whitespaces).isEmpty ? L10n.Home.untitled : session.title
+		let title = BoardSessionChip.title(session)
 		return Button { router.show(session.id) } label: {
-			HStack(alignment: .firstTextBaseline, spacing: 7) {
-				Group {
-					if let status {
-						status.font(.caption2.weight(.bold))
-					} else {
-						Circle().fill(Theme.faint).frame(width: 5, height: 5)
-					}
-				}
-				.frame(width: 14)
-				Text(title)
-					.font(.subheadline)
-					.foregroundStyle(Theme.ink2)
-					.lineLimit(2)
-					.multilineTextAlignment(.leading)
-				Spacer(minLength: 0)
-			}
-			.padding(.horizontal, 4)
-			.padding(.vertical, 6)
-			.background(session.status == .waitingInput ? Theme.yellow.opacity(0.12) : .clear, in: .rect(cornerRadius: 10, style: .continuous))
-			.contentShape(.rect)
+			BoardSessionChip(session: session, lineLimit: 2)
 		}
 		.buttonStyle(.plain)
 		.accessibilityLabel([title, status?.label].compactMap(\.self).joined(separator: ", "))
@@ -197,5 +165,44 @@ private struct BoardCard: View {
 			Button { router.path.append(.project(card.cwd)) } label: { text }
 				.buttonStyle(.plain)
 		}
+	}
+}
+
+/// A session on a board card, on its own tinted strip: status, then the title. Waiting
+/// sessions are warmed, as in Home's list. Only the label; callers make it a button.
+struct BoardSessionChip: View {
+	var session: RemoteSessionSummary
+	var lineLimit: Int
+
+	static func title(_ session: RemoteSessionSummary) -> String {
+		session.title.trimmingCharacters(in: .whitespaces).isEmpty ? L10n.Home.untitled : session.title
+	}
+
+	var body: some View {
+		HStack(alignment: .firstTextBaseline, spacing: 7) {
+			Group {
+				if let status = StatusGlyph(status: session.status) {
+					status.font(.caption2.weight(.bold))
+				} else {
+					Circle().fill(Theme.faint).frame(width: 5, height: 5)
+				}
+			}
+			.frame(width: 14)
+			Text(Self.title(session))
+				.font(.subheadline)
+				.foregroundStyle(Theme.ink)
+				.lineLimit(lineLimit)
+				.multilineTextAlignment(.leading)
+			Spacer(minLength: 0)
+		}
+		.padding(.horizontal, 8)
+		.padding(.vertical, 7)
+		.background(Theme.card, in: .rect(cornerRadius: 12, style: .continuous))
+		.overlay {
+			if session.status == .waitingInput {
+				RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Theme.yellow.opacity(0.12))
+			}
+		}
+		.contentShape(.rect(cornerRadius: 12, style: .continuous))
 	}
 }
