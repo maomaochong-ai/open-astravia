@@ -112,7 +112,8 @@ struct SessionView: View {
 		.navigationBarTitleDisplayMode(.inline)
 		// The composer takes the bottom edge; a tab bar under it would stack two glass bars.
 		.toolbar {
-			// Beside Back rather than centred, so a long title gets the width the buttons leave.
+			ToolbarItem(placement: .topBarLeading) { DrawerButton() }
+			// Beside the drawer button rather than centred, so a long title gets the width the buttons leave.
 			ToolbarItem(placement: .topBarLeading) {
 				ModelMenu(sessionId: id, busy: active || starting, pageWidth: pageWidth)
 			}
@@ -204,7 +205,7 @@ private struct ModelMenu: View {
 				.font(.caption)
 				.foregroundStyle(.secondary)
 			}
-			// A toolbar item only gets its ideal width; claim what Back and the two buttons leave.
+			// A toolbar item only gets its ideal width; claim what the drawer button and the two on the right leave.
 			.frame(width: max(120, pageWidth - 212), alignment: .leading)
 		}
 		.buttonStyle(.plain)

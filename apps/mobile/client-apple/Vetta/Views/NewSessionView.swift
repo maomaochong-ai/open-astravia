@@ -1,7 +1,8 @@
 import SwiftUI
 import VettaKit
 
-/// A blank page, pushed from Work, for starting a session in a conversation or a project.
+/// The root slot with no session in it: a blank page for starting one in a conversation or a project.
+/// Until a desktop is paired it only shows how to pair.
 struct NewSessionView: View {
 	@Environment(AppModel.self) private var model
 	@Environment(Router.self) private var router
@@ -19,10 +20,22 @@ struct NewSessionView: View {
 	private var projects: [RemoteProjectSummary] { model.projects.filter { !$0.isConversation } }
 
 	var body: some View {
-		welcome
-			.background { WelcomeBackdrop().ignoresSafeArea() }
-			.navigationBarTitleDisplayMode(.inline)
-			.toolbarBackground(.hidden, for: .navigationBar)
+		Group {
+			if model.paired {
+				welcome
+			} else {
+				UnpairedView()
+					.opacity(model.ready ? 1 : 0)
+			}
+		}
+		.background { WelcomeBackdrop().ignoresSafeArea() }
+		.navigationBarTitleDisplayMode(.inline)
+		.toolbarBackground(.hidden, for: .navigationBar)
+		.toolbar {
+			if model.paired {
+				ToolbarItem(placement: .topBarLeading) { DrawerButton() }
+			}
+		}
 		.onAppear {
 			guard let start = router.failedStart else { return }
 			router.failedStart = nil
@@ -123,7 +136,7 @@ struct NewSessionView: View {
 			onFailure: { [router] in router.returnToNewSession(start, from: localId) }
 		) else { return }
 		localId = id
-		router.openSession(id)
+		router.show(id)
 	}
 }
 

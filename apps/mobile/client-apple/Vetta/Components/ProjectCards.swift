@@ -31,7 +31,7 @@ struct ProjectCard: View {
 
 			VStack(spacing: 8) {
 				ForEach(project.recent) { session in
-					Button { router.path.append(.session(session.id)) } label: { row(session) }
+					Button { router.show(session.id) } label: { row(session) }
 						.buttonStyle(.plain)
 						.accessibilityIdentifier("project.session.\(session.id)")
 				}

@@ -29,6 +29,7 @@
 		B3E19125E863C30778ACE155 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71BB21C509A581D37A42B7FC /* RootView.swift */; };
 		BF4B6DCEF9D362F781317F6E /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E33BB88AA6F56D2A00716432 /* KeychainStore.swift */; };
 		C6E1E430D24E8B0827E542D9 /* ProjectsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B605F1DA9FBB2B5EE9FCEDF /* ProjectsView.swift */; };
+		CF3AFE89F12B4B288CEED3B3 /* HomeDrawer.swift in Sources */ = {isa = PBXBuildFile; fileRef = F48CB4F31FE51D7DCA191DCA /* HomeDrawer.swift */; };
 		E0A26C37CCE910520B415EDC /* SpeechDictation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A223D846ECA782112079EA4 /* SpeechDictation.swift */; };
 		EEEE28142A335ED424B968FA /* QRScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4351D91117ED64F564EE2106 /* QRScannerView.swift */; };
 		F8A4F125175E25DE8AD46037 /* AttachmentSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCD68BBF1201238A0B705D2E /* AttachmentSheet.swift */; };
@@ -73,6 +74,7 @@
 		E33BB88AA6F56D2A00716432 /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
 		E7F30E48D0595CE66EF6B8A3 /* MarkdownView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownView.swift; sourceTree = "<group>"; };
 		F0D2A6C73F7E73DC53077670 /* ModelSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelSheet.swift; sourceTree = "<group>"; };
+		F48CB4F31FE51D7DCA191DCA /* HomeDrawer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeDrawer.swift; sourceTree = "<group>"; };
 		FCD68BBF1201238A0B705D2E /* AttachmentSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttachmentSheet.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -184,6 +186,7 @@
 				BC4528B8445F4DFE1B3DAC95 /* ChatInputBar.swift */,
 				4AC44E052FBB4B681994D40B /* ChatViews.swift */,
 				0CAE0C2229A7C06685973CFD /* Common.swift */,
+				F48CB4F31FE51D7DCA191DCA /* HomeDrawer.swift */,
 				E7F30E48D0595CE66EF6B8A3 /* MarkdownView.swift */,
 				F0D2A6C73F7E73DC53077670 /* ModelSheet.swift */,
 				076F400ED9D7D41085047BD0 /* ProjectCards.swift */,
@@ -315,6 +318,7 @@
 				553F60767299442FEB0D3C01 /* ChatInputBar.swift in Sources */,
 				9FE91382A8C78D491B30D92F /* ChatViews.swift in Sources */,
 				3CBF8329E208C7686DE10D15 /* Common.swift in Sources */,
+				CF3AFE89F12B4B288CEED3B3 /* HomeDrawer.swift in Sources */,
 				AC4E28755EFF19DCF3DC5B3C /* HomeView.swift in Sources */,
 				BF4B6DCEF9D362F781317F6E /* KeychainStore.swift in Sources */,
 				1751F6BEC22BE28DE42676E2 /* MarkdownView.swift in Sources */,

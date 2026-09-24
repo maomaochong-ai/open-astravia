@@ -1,9 +1,9 @@
 import SwiftUI
 import VettaKit
 
-/// The root page: a greeting, search, recent conversations and the three most recent projects, then every
-/// session under a status filter that sticks to the top. The link pill and Settings
-/// scroll away with the greeting, and New Session floats at the bottom, instead of a tab bar.
+/// The drawer over the slot: a greeting, search, recent conversations and the three most recent projects, then every
+/// session under a status filter that sticks to the top. The link pill and Close stay at the top,
+/// New Session and Settings float at the bottom. Only there once a desktop is paired.
 struct HomeView: View {
 	@Environment(AppModel.self) private var model
 	@Environment(Router.self) private var router
@@ -14,7 +14,7 @@ struct HomeView: View {
 	@State private var deleting: RemoteSessionSummary?
 	@State private var depth = ScrollDepth()
 
-	/// Searching folds everything above the search bar away, from the first tap until cancelled.
+	/// Searching folds everything around the search bar away, from the first tap until cancelled.
 	private var searching: Bool { searchActive || !query.isEmpty }
 
 	private var rows: [RemoteSessionSummary] {
@@ -22,33 +22,22 @@ struct HomeView: View {
 	}
 
 	var body: some View {
-		let rows = model.paired ? rows : []
+		let rows = rows
 		List {
 			Section {
-				if !searching {
-					topBar
-					greeting
-				}
-				if model.paired {
-					searchField
-					if searching {
-						projectResults
-					} else {
-						recentProjects
-					}
+				if !searching { greeting }
+				searchField
+				if searching {
+					projectResults
 				} else {
-					UnpairedView()
-						.opacity(model.ready ? 1 : 0)
-						.bareRow(top: 40)
+					recentProjects
 				}
 			}
-			if model.paired {
-				Section {
-					SessionCardRows(rows: rows, deleting: $deleting)
-					if rows.isEmpty { emptyState }
-				} header: {
-					FilterBar(filter: $filter).pinnedFilterHeader(depth)
-				}
+			Section {
+				SessionCardRows(rows: rows, deleting: $deleting)
+				if rows.isEmpty { emptyState }
+			} header: {
+				FilterBar(filter: $filter).pinnedFilterHeader(depth)
 			}
 		}
 		.listStyle(.plain)
@@ -64,10 +53,14 @@ struct HomeView: View {
 		// The title only names the page for Back and VoiceOver; the greeting stands in for it.
 		.navigationTitle(L10n.Home.title)
 		.toolbarVisibility(.hidden, for: .navigationBar)
+		.safeAreaBar(edge: .top) {
+			if !searching {
+				topBar.transition(.move(edge: .top).combined(with: .opacity))
+			}
+		}
 		.safeAreaBar(edge: .bottom) {
-			if model.paired, !searching {
-				NewSessionButton { router.startNewSession() }
-					.transition(.move(edge: .bottom).combined(with: .opacity))
+			if !searching {
+				bottomBar.transition(.move(edge: .bottom).combined(with: .opacity))
 			}
 		}
 	}
@@ -76,21 +69,25 @@ struct HomeView: View {
 		HStack {
 			LinkPill()
 			Spacer()
-			Button { router.path.append(.settings) } label: {
-				Image(systemName: "gearshape")
-					.font(.title3.weight(.medium))
-					.foregroundStyle(Theme.ink)
-					.frame(width: 48, height: 48)
-					.contentShape(.circle)
+			GlassCircleButton(symbol: "xmark", size: 48, label: L10n.Common.close, identifier: "home.close") {
+				router.closeDrawer()
 			}
-			.buttonStyle(.plain)
-			.glassEffect(.regular.interactive(), in: .circle)
-			.accessibilityLabel(L10n.Settings.title)
-			.accessibilityIdentifier("home.settings")
 		}
 		.padding(.horizontal, 16)
-		.bareRow(top: 4, bottom: 16)
-		.transition(.opacity)
+		.padding(.top, 4)
+		.padding(.bottom, 8)
+	}
+
+	private var bottomBar: some View {
+		HStack(alignment: .bottom) {
+			NewSessionButton { router.startNewSession() }
+			Spacer()
+			GlassCircleButton(symbol: "gearshape", size: 56, label: L10n.Settings.title, identifier: "home.settings") {
+				router.path.append(.settings)
+			}
+			.padding(.bottom, 4)
+		}
+		.padding(.horizontal, 16)
 	}
 
 	private var greeting: some View {
@@ -108,7 +105,7 @@ struct HomeView: View {
 			.accessibilityAddTraits(.isHeader)
 		}
 		.padding(.horizontal, 20)
-		.bareRow(bottom: 16)
+		.bareRow(top: 8, bottom: 16)
 		.transition(.opacity)
 	}
 
@@ -177,7 +174,7 @@ struct HomeView: View {
 		Group {
 			if model.sessions.isEmpty {
 				if model.sessionsLoaded || LinkIndicator(model.link) == .offline {
-					// New Session is the floating button right below.
+					// New Session is the floating button at the bottom.
 					ContentUnavailableView(L10n.Home.empty, systemImage: "tray", description: Text(L10n.Home.emptyDescription))
 				}
 			} else if !query.trimmingCharacters(in: .whitespaces).isEmpty {

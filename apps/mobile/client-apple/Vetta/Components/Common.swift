@@ -28,7 +28,7 @@ struct Pill: View {
 	}
 }
 
-/// Shown on Home until a desktop is paired.
+/// Shown in place of New Session until a desktop is paired.
 struct UnpairedView: View {
 	@Environment(Router.self) private var router
 
@@ -149,6 +149,29 @@ struct LinkPill: View {
 		case let .link(.reconnecting(attempt)): L10n.Link.reconnecting(attempt)
 		case .link(.offline): L10n.Common.offline
 		}
+	}
+}
+
+/// A round Liquid Glass button holding one symbol, as Home's Close and Settings.
+struct GlassCircleButton: View {
+	var symbol: String
+	var size: CGFloat
+	var label: String
+	var identifier: String
+	var action: () -> Void
+
+	var body: some View {
+		Button(action: action) {
+			Image(systemName: symbol)
+				.font(.title3.weight(.medium))
+				.foregroundStyle(Theme.ink)
+				.frame(width: size, height: size)
+				.contentShape(.circle)
+		}
+		.buttonStyle(.plain)
+		.glassEffect(.regular.interactive(), in: .circle)
+		.accessibilityLabel(label)
+		.accessibilityIdentifier(identifier)
 	}
 }
 

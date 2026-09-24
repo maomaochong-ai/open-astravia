@@ -323,7 +323,7 @@ struct SessionCardRows: View {
 
 	var body: some View {
 		ForEach(rows) { session in
-			Button { router.path.append(.session(session.id)) } label: {
+			Button { router.show(session.id) } label: {
 				SessionCard(session: session, conversationCwd: model.conversationCwd, showsProject: showsProject)
 			}
 			.buttonStyle(.plain)
