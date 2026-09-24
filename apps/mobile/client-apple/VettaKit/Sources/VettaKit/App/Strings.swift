@@ -84,6 +84,16 @@ public enum L10n {
 		}
 	}
 
+	/// The task board and its summary on New Session.
+	public enum Board {
+		public static var empty: String { tr("board.empty") }
+		public static var emptyDescription: String { tr("board.emptyDescription") }
+		public static var stale: String { tr("board.stale") }
+		public static func more(_ n: Int) -> String { tr("board.more \(n)") }
+		public static var newHere: String { tr("board.newHere") }
+		public static var viewAll: String { tr("board.viewAll") }
+	}
+
 	public enum Link {
 		public static var status: String { tr("link.status") }
 		public static var connected: String { tr("link.connected") }

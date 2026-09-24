@@ -12,6 +12,7 @@ enum Slot: Hashable {
 enum Route: Hashable {
 	case project(String)
 	case settings
+	case board
 }
 
 /// Navigation state shared by every screen: the session in the root slot, and
@@ -97,6 +98,7 @@ struct RootView: View {
 						switch route {
 						case let .project(cwd): ProjectView(cwd: cwd)
 						case .settings: SettingsView()
+						case .board: TaskBoardView()
 						}
 					}
 			}

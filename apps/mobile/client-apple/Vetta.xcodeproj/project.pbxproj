@@ -15,6 +15,7 @@
 		3CBF8329E208C7686DE10D15 /* Common.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CAE0C2229A7C06685973CFD /* Common.swift */; };
 		3D463C9C2C3233BBCDE99B95 /* VettaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9958F311B813AAB23E9A6D69 /* VettaApp.swift */; };
 		553F60767299442FEB0D3C01 /* ChatInputBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC4528B8445F4DFE1B3DAC95 /* ChatInputBar.swift */; };
+		557A05454FD9578BF19AECC7 /* TaskBoardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D2A6611E2835A451FE4B4D4 /* TaskBoardView.swift */; };
 		572D00AEA0B23590C52BE28A /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A611A3DDE7F1EC89CAD12F7F /* SettingsView.swift */; };
 		5A35CD748B1B06EF47F0A3F2 /* VettaKit in Frameworks */ = {isa = PBXBuildFile; productRef = 96AFB1AF04EBBFA603F4F91B /* VettaKit */; };
 		63581B8EDAF81E8D93112759 /* KeyboardWarmup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 673796C16D0A139458E920DF /* KeyboardWarmup.swift */; };
@@ -57,6 +58,7 @@
 		4A9C645FF840047E4C04ED92 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		4AC44E052FBB4B681994D40B /* ChatViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatViews.swift; sourceTree = "<group>"; };
 		673796C16D0A139458E920DF /* KeyboardWarmup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardWarmup.swift; sourceTree = "<group>"; };
+		6D2A6611E2835A451FE4B4D4 /* TaskBoardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskBoardView.swift; sourceTree = "<group>"; };
 		7040E8A21BCC88B0A703712D /* SessionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionView.swift; sourceTree = "<group>"; };
 		71BB21C509A581D37A42B7FC /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		7CE6378E652FA83EE0F754E0 /* VettaUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = VettaUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -147,6 +149,7 @@
 				A5B834FE35ABAA6C5DE654BC /* ProjectView.swift */,
 				7040E8A21BCC88B0A703712D /* SessionView.swift */,
 				A611A3DDE7F1EC89CAD12F7F /* SettingsView.swift */,
+				6D2A6611E2835A451FE4B4D4 /* TaskBoardView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -346,6 +349,7 @@
 				1C3ED9E212F22BF40A83A827 /* SessionView.swift in Sources */,
 				572D00AEA0B23590C52BE28A /* SettingsView.swift in Sources */,
 				E0A26C37CCE910520B415EDC /* SpeechDictation.swift in Sources */,
+				557A05454FD9578BF19AECC7 /* TaskBoardView.swift in Sources */,
 				31B8554CEA1268D8C84793F6 /* Theme.swift in Sources */,
 				3D463C9C2C3233BBCDE99B95 /* VettaApp.swift in Sources */,
 			);

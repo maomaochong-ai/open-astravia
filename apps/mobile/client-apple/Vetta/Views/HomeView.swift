@@ -112,8 +112,9 @@ struct HomeView: View {
 			EntryRow(symbol: "square.and.pencil", title: L10n.NewSession.title, identifier: "home.newSession") {
 				router.startNewSession()
 			}
-			// Only the way in for now; the board itself comes later.
-			EntryRow(symbol: "square.stack.3d.up", title: L10n.Home.taskBoard, identifier: "home.taskBoard") {}
+			EntryRow(symbol: "square.stack.3d.up", title: L10n.Home.taskBoard, identifier: "home.taskBoard") {
+				router.path.append(.board)
+			}
 		}
 		.bareRow()
 	}
