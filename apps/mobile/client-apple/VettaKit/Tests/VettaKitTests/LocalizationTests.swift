@@ -60,7 +60,7 @@ import Testing
 		defer { L10n.pin(language: nil) }
 		L10n.pin(language: "zh-Hans")
 		#expect(L10n.Home.title == "我的工作")
-		#expect(L10n.Home.group(.waiting) == "待你决策")
+		#expect(L10n.Home.group(.waiting) == "待确认")
 		#expect(L10n.Link.reconnecting(3) == "正在重新连接（第 3 次）")
 		#expect(L10n.Chat.attachTooLarge("周报.pdf") == "周报.pdf 太大了，单个附件不能超过 700 KB。")
 		#expect(L10n.Chat.level("max") == "最高")

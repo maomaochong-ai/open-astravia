@@ -70,12 +70,6 @@ import Testing
 		#expect(!filter.isActive, "clearing the kind also drops the project")
 	}
 
-	@Test func listsTheProjectsThatHaveSessionsWithTheirCounts() {
-		let projects = SessionFilter.projects(in: sessions, conversationCwd: "/conv")
-		#expect(projects.map(\.name) == ["app", "web"])
-		#expect(projects.map(\.count) == [3, 3])
-	}
-
 	@Test func treatsEverySessionAsAProjectUntilTheConversationBucketIsKnown() {
 		#expect(SessionFilter(kind: .conversation).apply(sessions, conversationCwd: nil).isEmpty)
 		#expect(SessionFilter(kind: .project).apply(sessions, conversationCwd: nil).count == sessions.count)

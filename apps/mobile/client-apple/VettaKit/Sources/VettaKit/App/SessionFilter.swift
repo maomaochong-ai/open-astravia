@@ -95,21 +95,4 @@ public struct SessionFilter: Equatable, Sendable {
 			return a.updatedAt > b.updatedAt
 		}
 	}
-
-	/// The projects that have sessions, for the project filter, with their counts.
-	public static func projects(in sessions: [RemoteSessionSummary], conversationCwd: String?) -> [(cwd: String, name: String, count: Int)] {
-		var order: [String] = []
-		var names: [String: String] = [:]
-		var counts: [String: Int] = [:]
-		for session in sessions where session.projectCwd != conversationCwd {
-			if counts[session.projectCwd] == nil {
-				order.append(session.projectCwd)
-				names[session.projectCwd] = session.projectName
-			}
-			counts[session.projectCwd, default: 0] += 1
-		}
-		return order
-			.map { (cwd: $0, name: names[$0] ?? $0, count: counts[$0] ?? 0) }
-			.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
-	}
 }

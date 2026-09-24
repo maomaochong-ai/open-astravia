@@ -1421,40 +1421,6 @@
         }
       }
     },
-    "home.filterKind": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Type"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "类型"
-          }
-        }
-      }
-    },
-    "home.filterProject": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Project"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "项目"
-          }
-        }
-      }
-    },
     "home.filterStatus": {
       "extractionState": "manual",
       "localizations": {
@@ -1484,7 +1450,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "已完成"
+            "value": "完成"
           }
         }
       }
@@ -1518,41 +1484,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "待你决策"
-          }
-        }
-      }
-    },
-    "home.kindAll": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "All Types"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "所有类型"
-          }
-        }
-      }
-    },
-    "home.kindConversation": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Conversations"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "对话"
+            "value": "待确认"
           }
         }
       }
@@ -1621,23 +1553,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "选择项目"
-          }
-        }
-      }
-    },
-    "home.projectAll": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "All Projects"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "所有项目"
           }
         }
       }
@@ -1837,6 +1752,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "任务看板"
+          }
+        }
+      }
+    },
+    "home.tasks": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tasks"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "任务"
           }
         }
       }

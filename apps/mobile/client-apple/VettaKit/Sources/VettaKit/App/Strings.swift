@@ -43,16 +43,11 @@ public enum L10n {
 	public enum Home {
 		public static var title: String { tr("home.title") }
 		public static var filterStatus: String { tr("home.filterStatus") }
-		public static var filterKind: String { tr("home.filterKind") }
-		public static var filterProject: String { tr("home.filterProject") }
 		public static var statusAll: String { tr("home.statusAll") }
 		public static var groupWaiting: String { tr("home.groupWaiting") }
 		public static var groupProcessing: String { tr("home.groupProcessing") }
 		public static var groupDone: String { tr("home.groupDone") }
-		public static var kindAll: String { tr("home.kindAll") }
-		public static var kindConversation: String { tr("home.kindConversation") }
 		public static var kindProject: String { tr("home.kindProject") }
-		public static var projectAll: String { tr("home.projectAll") }
 		public static var conversation: String { tr("home.conversation") }
 		public static var empty: String { tr("home.empty") }
 		public static var emptyDescription: String { tr("home.emptyDescription") }
@@ -71,6 +66,7 @@ public enum L10n {
 		public static var unpairedScan: String { tr("home.unpairedScan") }
 		public static var search: String { tr("home.search") }
 		public static var taskBoard: String { tr("home.taskBoard") }
+		public static var tasks: String { tr("home.tasks") }
 		public static var pickProject: String { tr("home.pickProject") }
 		public static var allSessions: String { tr("home.allSessions") }
 		public static var searchPlaceholder: String { tr("home.searchPlaceholder") }

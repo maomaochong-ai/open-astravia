@@ -43,7 +43,7 @@ struct ProjectView: View {
 					.bareRow(top: 24)
 				}
 			} header: {
-				FilterBar(filter: $filter, showsKind: false).pinnedFilterHeader(depth)
+				FilterBar(filter: $filter, showsProject: false).pinnedFilterHeader(depth)
 			}
 		}
 		.listStyle(.plain)

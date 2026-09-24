@@ -102,180 +102,82 @@ struct StatusGlyph: View {
 	}
 }
 
-/// Mail-style category row: one coloured segment per status, the chosen one
-/// spelled out, then on Home menu chips for kind and project.
+/// The list's header: "Tasks", then a status menu and, on Home, the project sheet.
+/// Each icon fills in while it narrows the list, so a filtered list never passes for the whole.
 struct FilterBar: View {
 	@Environment(AppModel.self) private var model
 	@Binding var filter: SessionFilter
 	/// Off on a project's page, which only filters by status.
-	var showsKind = true
+	var showsProject = true
+	@State private var pickingProject = false
 
 	var body: some View {
-		let projects = SessionFilter.projects(in: model.sessions, conversationCwd: model.conversationCwd)
-		ScrollView(.horizontal) {
-			HStack(spacing: 8) {
-				if filter.status != nil || (showsKind && filter.isActive) {
-					Button {
-						withAnimation(.snappy) {
-							if showsKind { filter = SessionFilter() } else { filter.status = nil }
-						}
-					} label: {
-						Image(systemName: "xmark")
-							.font(.subheadline.weight(.bold))
-							.foregroundStyle(Theme.ink2)
-							.frame(width: FilterMetrics.height, height: FilterMetrics.height)
-							.background(Theme.card2, in: .circle)
+		HStack(spacing: 10) {
+			Text(L10n.Home.tasks)
+				.font(.headline)
+				.foregroundStyle(Theme.ink)
+				.accessibilityAddTraits(.isHeader)
+			Spacer()
+			Menu {
+				Picker(L10n.Home.filterStatus, selection: $filter.status.animation(.snappy)) {
+					Label(L10n.Home.statusAll, systemImage: "tray").tag(SessionStatusGroup?.none)
+					ForEach(SessionStatusGroup.allCases, id: \.self) { group in
+						Label(title(group), systemImage: Self.symbol(group)).tag(Optional(group))
 					}
-					.buttonStyle(.plain)
-					.accessibilityLabel(L10n.Home.clearFilters)
-					.accessibilityIdentifier("filter.clearChip")
-					.transition(.move(edge: .leading).combined(with: .opacity))
 				}
-				StatusSegment(
-					title: L10n.Home.statusAll, symbol: "tray.fill", tint: Theme.pill, ink: Theme.pillInk,
-					selected: filter.status == nil, alwaysNamed: true, identifier: "filter.status.all"
-				) { filter.status = nil }
-				ForEach(SessionStatusGroup.allCases, id: \.self) { group in
-					let look = Self.look(group)
-					StatusSegment(
-						title: L10n.Home.group(group), symbol: look.symbol, tint: look.tint, ink: look.ink,
-						count: group == .waiting ? model.count(.waiting) : 0,
-						selected: filter.status == group, identifier: "filter.status.\(group)"
-					) { filter.status = group }
+			} label: {
+				FilterIcon(symbol: "line.3.horizontal.decrease", active: filter.status != nil)
+			}
+			.buttonStyle(.plain)
+			.accessibilityLabel(L10n.Home.filterStatus)
+			.accessibilityValue(filter.status.map(L10n.Home.group) ?? L10n.Home.statusAll)
+			.accessibilityIdentifier("filter.status")
+			if showsProject {
+				Button { pickingProject = true } label: {
+					FilterIcon(symbol: "folder", active: filter.scope != .all)
 				}
-				if showsKind {
-					FilterChip(
-						title: kindTitle,
-						sizedFor: [L10n.Home.kindAll, L10n.Home.kindConversation, L10n.Home.kindProject],
-						active: filter.kind != nil,
-						identifier: "filter.kind"
-					) {
-						Picker(L10n.Home.filterKind, selection: $filter.kind.animation(.snappy)) {
-							Text(L10n.Home.kindAll).tag(SessionKind?.none)
-							Text(L10n.Home.kindConversation).tag(Optional(SessionKind.conversation))
-							Text(L10n.Home.kindProject).tag(Optional(SessionKind.project))
-						}
-					}
-					if filter.kind == .project {
-						FilterChip(
-							title: projects.first { $0.cwd == filter.projectCwd }?.name ?? L10n.Home.projectAll,
-							sizedFor: [L10n.Home.projectAll] + projects.map(\.name),
-							active: filter.projectCwd != nil,
-							identifier: "filter.project"
-						) {
-							Picker(L10n.Home.filterProject, selection: $filter.projectCwd.animation(.snappy)) {
-								Text(L10n.Home.projectAll).tag(String?.none)
-								ForEach(projects, id: \.cwd) { project in
-									Text("\(project.name)  \(project.count)").tag(Optional(project.cwd))
-								}
-							}
-						}
-						.transition(.move(edge: .leading).combined(with: .opacity))
+				.buttonStyle(.plain)
+				.accessibilityLabel(L10n.Home.pickProject)
+				.accessibilityIdentifier("filter.project")
+				.sheet(isPresented: $pickingProject) {
+					ProjectSheet(selection: filter.scope, offersAll: true) { scope in
+						withAnimation(.snappy) { filter.scope = scope }
 					}
 				}
 			}
-			.padding(.horizontal, 16)
 		}
-		.scrollIndicators(.hidden)
-		.scrollClipDisabled()
+		.padding(.horizontal, 20)
 		.sensoryFeedback(.selection, trigger: filter)
 	}
 
-	/// Same colours and glyphs as the session tags, so a segment reads as "sessions like these".
-	private static func look(_ group: SessionStatusGroup) -> (symbol: String, tint: Color, ink: Color) {
+	/// Waiting sessions carry their count, as the one group that needs the user.
+	private func title(_ group: SessionStatusGroup) -> String {
+		let count = group == .waiting ? model.count(.waiting) : 0
+		return count > 0 ? "\(L10n.Home.group(group))  \(count)" : L10n.Home.group(group)
+	}
+
+	private static func symbol(_ group: SessionStatusGroup) -> String {
 		switch group {
-		case .waiting: ("questionmark", Theme.yellow, .black)
-		case .processing: ("arrow.triangle.2.circlepath", Theme.blue, .white)
-		case .done: ("checkmark", Theme.green, .white)
-		}
-	}
-
-	private var kindTitle: String {
-		switch filter.kind {
-		case nil: L10n.Home.kindAll
-		case .conversation: L10n.Home.kindConversation
-		case .project: L10n.Home.kindProject
+		case .waiting: "questionmark.circle"
+		case .processing: "arrow.triangle.2.circlepath"
+		case .done: "checkmark.circle"
 		}
 	}
 }
 
-private enum FilterMetrics {
-	static let height: CGFloat = 44
-}
-
-/// A status category: an icon in its colour on grey, or filled with its colour and named when chosen.
-private struct StatusSegment: View {
-	var title: String
+/// One of the header's filter icons: plain while it lets everything through, filled while it narrows.
+private struct FilterIcon: View {
 	var symbol: String
-	var tint: Color
-	var ink: Color
-	var count = 0
-	var selected: Bool
-	/// "All" keeps its name either way, as in the design.
-	var alwaysNamed = false
-	var identifier: String
-	var select: () -> Void
-
-	var body: some View {
-		let named = selected || alwaysNamed
-		Button {
-			withAnimation(.snappy) { select() }
-		} label: {
-			HStack(spacing: 6) {
-				Image(systemName: symbol).fontWeight(.bold)
-				if named {
-					Text(title).lineLimit(1)
-				} else if count > 0 {
-					Text("\(count)").monospacedDigit()
-				}
-			}
-			.font(.subheadline.weight(.semibold))
-			.foregroundStyle(selected ? ink : alwaysNamed ? Theme.ink2 : tint)
-			.padding(.horizontal, named ? 18 : 0)
-			.frame(minWidth: 64, minHeight: FilterMetrics.height)
-			.background(selected ? tint : Theme.card2, in: .capsule)
-			.contentShape(.capsule)
-		}
-		.buttonStyle(.plain)
-		.accessibilityLabel(title)
-		.accessibilityValue(count > 0 ? "\(count)" : "")
-		.accessibilityAddTraits(selected ? .isSelected : [])
-		.accessibilityIdentifier(identifier)
-	}
-}
-
-/// A menu chip whose width fits its widest option, not the current one: on iOS 26
-/// the closing menu shrinks back into the label's old frame, so a label that
-/// resized on selection would jump once the menu had gone.
-private struct FilterChip<Content: View>: View {
-	var title: String
-	var sizedFor: [String]
 	var active: Bool
-	var identifier: String
-	@ViewBuilder var content: () -> Content
 
 	var body: some View {
-		Menu {
-			content()
-		} label: {
-			HStack(spacing: 5) {
-				ZStack(alignment: .leading) {
-					ForEach(Array(Set(sizedFor)), id: \.self) { Text($0).hidden() }
-					Text(title)
-				}
-				.lineLimit(1)
-				.frame(maxWidth: 160, alignment: .leading)
-				Image(systemName: "chevron.down").font(.caption2.weight(.bold))
-			}
-			.font(.subheadline.weight(.semibold))
+		Image(systemName: symbol)
+			.font(.body.weight(.semibold))
 			.foregroundStyle(active ? Theme.pillInk : Theme.ink2)
-			.padding(.horizontal, 18)
-			.frame(minHeight: FilterMetrics.height)
-			.background(active ? Theme.pill : Theme.card2, in: .capsule)
-			.contentShape(.capsule)
-		}
-		.buttonStyle(.plain)
-		.accessibilityIdentifier(identifier)
+			.frame(width: 38, height: 38)
+			.background(active ? Theme.pill : Theme.card2, in: .circle)
+			.contentShape(.circle)
+			.animation(.snappy, value: active)
 	}
 }
 
