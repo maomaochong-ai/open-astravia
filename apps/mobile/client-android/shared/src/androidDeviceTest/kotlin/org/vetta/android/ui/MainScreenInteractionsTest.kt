@@ -14,6 +14,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Rule
 import org.junit.runner.RunWith
 import org.vetta.android.app.ThemeMode
+import org.vetta.android.domain.session.nowEpochMs
 import org.vetta.android.domain.device.SessionListItem
 import org.vetta.android.domain.device.ConnectChannel
 import org.vetta.android.domain.device.DesktopDevice
@@ -21,7 +22,32 @@ import org.vetta.android.domain.device.DeviceStatus
 import org.vetta.android.ui.connect.DiscoverConnectScreen
 import org.vetta.android.ui.connect.NewConversationScreen
 import org.vetta.android.ui.home.HomeScreen
-import org.vetta.android.ui.i18n.Str
+import org.vetta.android.resources.Res
+import org.vetta.android.resources.about_vetta
+import org.vetta.android.resources.auto_resume
+import org.vetta.android.resources.channel_cloud
+import org.vetta.android.resources.clear_local_data
+import org.vetta.android.resources.clear_local_data_action
+import org.vetta.android.resources.clear_local_data_title
+import org.vetta.android.resources.confirm_delete_session
+import org.vetta.android.resources.connect_action
+import org.vetta.android.resources.connect_title
+import org.vetta.android.resources.delete
+import org.vetta.android.resources.delete_session_confirm
+import org.vetta.android.resources.filter_cloud
+import org.vetta.android.resources.filter_desktop
+import org.vetta.android.resources.lan_address_hint
+import org.vetta.android.resources.new_conversation
+import org.vetta.android.resources.no_devices_hint
+import org.vetta.android.resources.page_motion
+import org.vetta.android.resources.rename
+import org.vetta.android.resources.save
+import org.vetta.android.resources.scan_desktop
+import org.vetta.android.resources.session_actions
+import org.vetta.android.resources.session_name
+import org.vetta.android.resources.start_conversation
+import org.vetta.android.resources.theme_dark
+import org.vetta.android.resources.use_cloud_ai
 import org.vetta.android.ui.me.SettingsScreen
 import org.vetta.android.ui.sessions.SessionsScreen
 import org.vetta.android.ui.theme.VettaTheme
@@ -52,8 +78,8 @@ class MainScreenInteractionsTest {
             }
         }
 
-        composeRule.onNodeWithText(Str.noDevicesHint).assertIsDisplayed()
-        composeRule.onNodeWithText(Str.connectTitle).performClick()
+        composeRule.onNodeWithText(str(Res.string.no_devices_hint)).assertIsDisplayed()
+        composeRule.onNodeWithText(str(Res.string.connect_title)).performClick()
         assertTrue(opened)
     }
 
@@ -105,8 +131,8 @@ class MainScreenInteractionsTest {
             }
         }
 
-        composeRule.onNodeWithText(Str.newConversation).performClick()
-        composeRule.onNodeWithText(Str.useCloudAi).performClick()
+        composeRule.onNodeWithText(str(Res.string.new_conversation)).performClick()
+        composeRule.onNodeWithText(str(Res.string.use_cloud_ai)).performClick()
         assertEquals(listOf("new", "cloud"), opened)
     }
 
@@ -118,8 +144,8 @@ class MainScreenInteractionsTest {
                 id = "session-1",
                 title = "项目检查",
                 subtitle = "",
-                sourceLabel = Str.filterDesktop,
-                timeLabel = "刚刚",
+                sourceLabel = str(Res.string.filter_desktop),
+                updatedAtEpochMs = nowEpochMs(),
                 isCloud = false,
             )
         composeRule.setContent {
@@ -161,7 +187,7 @@ class MainScreenInteractionsTest {
             }
         }
 
-        composeRule.onNodeWithText(Str.newConversation).performClick()
+        composeRule.onNodeWithText(str(Res.string.new_conversation)).performClick()
         assertTrue(opened)
     }
 
@@ -172,8 +198,8 @@ class MainScreenInteractionsTest {
                 id = "session-manage",
                 title = "旧标题",
                 subtitle = "",
-                sourceLabel = Str.filterCloud,
-                timeLabel = "刚刚",
+                sourceLabel = str(Res.string.filter_cloud),
+                updatedAtEpochMs = nowEpochMs(),
                 isCloud = true,
             )
         var renamed: Pair<String, String>? = null
@@ -194,17 +220,17 @@ class MainScreenInteractionsTest {
             }
         }
 
-        composeRule.onNodeWithContentDescription(Str.sessionActions).performClick()
-        composeRule.onNodeWithText(Str.rename).performClick()
-        composeRule.onNodeWithText(Str.sessionName).performTextClearance()
-        composeRule.onNodeWithText(Str.sessionName).performTextInput("新标题")
-        composeRule.onNodeWithText(Str.save).performClick()
+        composeRule.onNodeWithContentDescription(str(Res.string.session_actions)).performClick()
+        composeRule.onNodeWithText(str(Res.string.rename)).performClick()
+        composeRule.onNodeWithText(str(Res.string.session_name)).performTextClearance()
+        composeRule.onNodeWithText(str(Res.string.session_name)).performTextInput("新标题")
+        composeRule.onNodeWithText(str(Res.string.save)).performClick()
         assertEquals(item.id to "新标题", renamed)
 
-        composeRule.onNodeWithContentDescription(Str.sessionActions).performClick()
-        composeRule.onNodeWithText(Str.delete).performClick()
-        composeRule.onNodeWithText(Str.deleteSessionConfirm).assertIsDisplayed()
-        composeRule.onNodeWithText(Str.delete).performClick()
+        composeRule.onNodeWithContentDescription(str(Res.string.session_actions)).performClick()
+        composeRule.onNodeWithText(str(Res.string.delete)).performClick()
+        composeRule.onNodeWithText(str(Res.string.delete_session_confirm)).assertIsDisplayed()
+        composeRule.onNodeWithText(str(Res.string.delete)).performClick()
         assertEquals(item.id, deletedId)
     }
 
@@ -215,8 +241,8 @@ class MainScreenInteractionsTest {
                 id = "session-direct-delete",
                 title = "无需确认",
                 subtitle = "",
-                sourceLabel = Str.filterDesktop,
-                timeLabel = "刚刚",
+                sourceLabel = str(Res.string.filter_desktop),
+                updatedAtEpochMs = nowEpochMs(),
                 isCloud = false,
             )
         var deletedId: String? = null
@@ -237,10 +263,10 @@ class MainScreenInteractionsTest {
             }
         }
 
-        composeRule.onNodeWithContentDescription(Str.sessionActions).performClick()
-        composeRule.onNodeWithText(Str.delete).performClick()
+        composeRule.onNodeWithContentDescription(str(Res.string.session_actions)).performClick()
+        composeRule.onNodeWithText(str(Res.string.delete)).performClick()
         assertEquals(item.id, deletedId)
-        assertEquals(0, composeRule.onAllNodesWithText(Str.deleteSessionConfirm).fetchSemanticsNodes().size)
+        assertEquals(0, composeRule.onAllNodesWithText(str(Res.string.delete_session_confirm)).fetchSemanticsNodes().size)
     }
 
     @Test
@@ -260,7 +286,7 @@ class MainScreenInteractionsTest {
             }
         }
 
-        composeRule.onNodeWithText(Str.startConversation).performClick()
+        composeRule.onNodeWithText(str(Res.string.start_conversation)).performClick()
         assertTrue(started)
     }
 
@@ -285,7 +311,7 @@ class MainScreenInteractionsTest {
             }
         }
 
-        composeRule.onNodeWithText(Str.themeDark).performClick()
+        composeRule.onNodeWithText(str(Res.string.theme_dark)).performClick()
         assertEquals(ThemeMode.Dark, selected)
     }
 
@@ -310,9 +336,9 @@ class MainScreenInteractionsTest {
             }
         }
 
-        composeRule.onNodeWithText(Str.autoResume).performClick()
-        composeRule.onNodeWithText(Str.pageMotion).performClick()
-        composeRule.onNodeWithText(Str.confirmDeleteSession).performClick()
+        composeRule.onNodeWithText(str(Res.string.auto_resume)).performClick()
+        composeRule.onNodeWithText(str(Res.string.page_motion)).performClick()
+        composeRule.onNodeWithText(str(Res.string.confirm_delete_session)).performClick()
 
         assertEquals(listOf(false, false, false), values)
     }
@@ -338,9 +364,9 @@ class MainScreenInteractionsTest {
             }
         }
 
-        composeRule.onNodeWithText(Str.clearLocalData).performClick()
-        composeRule.onNodeWithText(Str.clearLocalDataTitle).assertIsDisplayed()
-        composeRule.onNodeWithText(Str.clearLocalDataAction).performClick()
+        composeRule.onNodeWithText(str(Res.string.clear_local_data)).performClick()
+        composeRule.onNodeWithText(str(Res.string.clear_local_data_title)).assertIsDisplayed()
+        composeRule.onNodeWithText(str(Res.string.clear_local_data_action)).performClick()
         assertTrue(cleared)
     }
 
@@ -365,7 +391,7 @@ class MainScreenInteractionsTest {
             }
         }
 
-        composeRule.onNodeWithText(Str.aboutVetta).performClick()
+        composeRule.onNodeWithText(str(Res.string.about_vetta)).performClick()
         assertTrue(opened)
     }
 
@@ -388,7 +414,7 @@ class MainScreenInteractionsTest {
             }
         }
 
-        composeRule.onNodeWithText(Str.filterCloud).performClick()
+        composeRule.onNodeWithText(str(Res.string.filter_cloud)).performClick()
         assertEquals(2, selected)
     }
 
@@ -417,7 +443,7 @@ class MainScreenInteractionsTest {
         }
 
         assertEquals(0, composeRule.onAllNodesWithText(device.host).fetchSemanticsNodes().size)
-        composeRule.onNodeWithText(Str.scanDesktop).assertIsDisplayed()
+        composeRule.onNodeWithText(str(Res.string.scan_desktop)).assertIsDisplayed()
     }
 
     @Test
@@ -438,12 +464,12 @@ class MainScreenInteractionsTest {
             }
         }
 
-        composeRule.onNodeWithText(Str.lanAddressHint).performTextInput("192.168.1.8")
-        composeRule.onNodeWithText(Str.connectAction).performClick()
+        composeRule.onNodeWithText(str(Res.string.lan_address_hint)).performTextInput("192.168.1.8")
+        composeRule.onNodeWithText(str(Res.string.connect_action)).performClick()
         assertEquals("192.168.1.8", manualHost)
 
-        composeRule.onNodeWithText(Str.channelCloud).performClick()
-        composeRule.onNodeWithText(Str.useCloudAi).performClick()
+        composeRule.onNodeWithText(str(Res.string.channel_cloud)).performClick()
+        composeRule.onNodeWithText(str(Res.string.use_cloud_ai)).performClick()
         assertTrue(cloudOpened)
     }
 }

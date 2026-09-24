@@ -2,6 +2,7 @@ package org.vetta.android.ui
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.AnimatedVisibility
@@ -16,6 +17,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -24,7 +26,10 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.CreationExtras
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -38,7 +43,11 @@ import org.vetta.android.ui.connect.DeviceDetailScreen
 import org.vetta.android.ui.connect.DiscoverConnectScreen
 import org.vetta.android.ui.connect.NewConversationScreen
 import org.vetta.android.ui.home.HomeScreen
-import org.vetta.android.ui.i18n.Str
+import org.jetbrains.compose.resources.stringResource
+import org.vetta.android.resources.Res
+import org.vetta.android.resources.channel_cloud
+import org.vetta.android.resources.pair_desktop
+import org.vetta.android.ui.i18n.sessionTitle
 import org.vetta.android.ui.me.MeScreen
 import org.vetta.android.ui.me.PlanScreen
 import org.vetta.android.ui.me.SettingsScreen
@@ -50,12 +59,44 @@ import org.vetta.android.ui.navigation.PlatformBackHandler
 import org.vetta.android.ui.navigation.hasInAppBackDestination
 import org.vetta.android.ui.sessions.SessionsScreen
 import org.vetta.android.ui.theme.VettaTheme
+import org.vetta.android.ui.work.NewSessionScreen
+import org.vetta.android.ui.work.WorkSettingsScreen
+import org.vetta.android.resources.work_settings_rescan
+import org.vetta.android.resources.work_settings_scan
+import org.vetta.android.ui.work.SessionScreen
+import org.vetta.android.resources.new_session_title
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.EditNote
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.ui.platform.testTag
+import org.vetta.android.ui.work.WorkScreen
+import org.vetta.android.ui.work.WorkViewModel
+import org.vetta.android.domain.work.PromptDraft
+import org.vetta.android.domain.work.SessionStatusGroup
+import org.vetta.android.ui.remote.PairingScannerButton
+import org.vetta.android.domain.remote.pairing.PairingPhase
+import org.vetta.android.ui.components.VettaInfoDialog
+import org.vetta.android.ui.i18n.resolve
+import org.vetta.android.ui.work.PairingActions
+import org.vetta.android.ui.work.PairingApprovalDialog
+import org.vetta.android.resources.work_unpaired_scan
 import kotlin.reflect.KClass
 
 val LocalAppContainer =
     staticCompositionLocalOf<AppContainer> {
         error("AppContainer not provided")
     }
+
+private class WorkViewModelFactory(
+    private val container: AppContainer,
+) : ViewModelProvider.Factory {
+    @Suppress("UNCHECKED_CAST")
+    override fun <T : ViewModel> create(
+        modelClass: KClass<T>,
+        extras: CreationExtras,
+    ): T = WorkViewModel(container.mirror) as T
+}
 
 private class AppViewModelFactory(
     private val container: AppContainer,
@@ -77,11 +118,30 @@ fun RootApp(
         viewModel(factory = remember(container) { AppViewModelFactory(container) })
     val state by vm.state.collectAsState()
     val sessions by vm.sessions.collectAsState()
+    val work: WorkViewModel = viewModel(factory = remember(container) { WorkViewModelFactory(container) })
+    val workState by work.state.collectAsState()
+    val workDrafts by work.drafts.collectAsState()
+    val workFilter by work.filter.collectAsState()
 
     PlatformBackHandler(
         enabled = state.route.hasInAppBackDestination(),
         onBack = vm::handleSystemBack,
     )
+
+    // The desktop link rests in the background and reconnects at once when the app returns.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, container) {
+        val observer =
+            LifecycleEventObserver { _, event ->
+                when (event) {
+                    Lifecycle.Event.ON_START -> container.mirror.setActive(true)
+                    Lifecycle.Event.ON_STOP -> container.mirror.setActive(false)
+                    else -> Unit
+                }
+            }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     LaunchedEffect(pairingInvite, state.bootstrapped) {
         if (pairingInvite != null && state.bootstrapped) {
@@ -133,6 +193,7 @@ fun RootApp(
                         VettaBottomBar(
                             selected = state.mainTab,
                             onSelect = vm::selectMainTab,
+                            workBadge = workState.count(SessionStatusGroup.Waiting),
                         )
                     },
                 ) { padding ->
@@ -153,16 +214,29 @@ fun RootApp(
                                     onOpenDevice = vm::openDeviceDetail,
                                     onOpenDevices = { vm.selectMainTab(MainTab.Discover) },
                                     onOpenSessions = { vm.selectMainTab(MainTab.Sessions) },
-                                    onOpenSession = { id ->
-                                        val item = vm.sessionListItems().firstOrNull { it.id == id }
-                                        vm.openChat(
-                                            sessionId = id,
-                                            surface = if (item?.isCloud == false) ChatSurface.Desktop else ChatSurface.Cloud,
-                                            title = item?.title.orEmpty(),
-                                        )
-                                    },
+                                    onOpenSession = vm::openStoredSession,
                                     onNewConversation = { vm.openNewConversation(0) },
                                     onUseCloudAi = vm::openCloudConversation,
+                                )
+                            MainTab.Work ->
+                                WorkScreen(
+                                    state = workState,
+                                    filter = workFilter,
+                                    onFilterChange = work::setFilter,
+                                    actions = work,
+                                    onOpenSession = vm::openWorkSession,
+                                    onRefresh = work::refresh,
+                                    onReconnect = work::reconnect,
+                                    onNewSession = { vm.openWorkNewSession() },
+                                    onSettings = vm::openWorkSettings,
+                                    pairing = {
+                                        PairingActions(connecting = state.remoteConnecting, onManual = vm::connectDesktopManually) {
+                                            PairingScannerButton(
+                                                onScanned = { vm.connectDesktop(it, openDetail = false) },
+                                                label = stringResource(Res.string.work_unpaired_scan),
+                                            )
+                                        }
+                                    },
                                 )
                             MainTab.Sessions ->
                                 SessionsScreen(
@@ -175,13 +249,7 @@ fun RootApp(
                                     onRenameSession = vm::renameSession,
                                     onDeleteSession = vm::deleteSession,
                                     confirmBeforeDelete = state.confirmBeforeDelete,
-                                    onOpenSession = { item ->
-                                        vm.openChat(
-                                            sessionId = item.id,
-                                            surface = if (item.isCloud) ChatSurface.Cloud else ChatSurface.Desktop,
-                                            title = item.title,
-                                        )
-                                    },
+                                    onOpenSession = { item -> vm.openStoredSession(item.id) },
                                 )
                             MainTab.Discover ->
                                 DiscoverConnectScreen(
@@ -221,7 +289,7 @@ fun RootApp(
                         device = device,
                         onBack = vm::navigateBackFromSecondary,
                         onDisconnect = { vm.disconnectDesktop(device.id) },
-                        onNewChat = { vm.startDesktopConversation(device.id) },
+                        onNewChat = vm::startDesktopConversation,
                     )
                 }
             }
@@ -231,9 +299,7 @@ fun RootApp(
                     channelIndex = state.newConversationChannelIndex,
                     onChannelChange = vm::setNewConversationChannel,
                     onBack = vm::navigateBackFromSecondary,
-                    onStartDesktop = { deviceId ->
-                        vm.startDesktopConversation(deviceId)
-                    },
+                    onStartDesktop = { vm.startDesktopConversation() },
                     onStartCloud = {
                         vm.openCloudConversation()
                     },
@@ -243,10 +309,14 @@ fun RootApp(
                 val selected =
                     state.models.firstOrNull { it.id == state.selectedModelId }
                         ?: state.models.firstOrNull()
+                val session = sessions.firstOrNull { it.id == state.currentSessionId }
                 val title =
                     route.title.ifBlank {
-                        sessions.firstOrNull { it.id == state.currentSessionId }?.title
-                            ?: if (route.surface == ChatSurface.Cloud) Str.channelCloud else Str.pairDesktop
+                        when {
+                            session != null -> sessionTitle(session.title)
+                            route.surface == ChatSurface.Cloud -> stringResource(Res.string.channel_cloud)
+                            else -> stringResource(Res.string.pair_desktop)
+                        }
                     }
                 ChatScreen(
                     title = title,
@@ -271,10 +341,66 @@ fun RootApp(
                     onDismissError = vm::clearGlobalError,
                     onImagesPicked = vm::addPendingImages,
                     onRemovePendingImage = vm::removePendingImage,
-                    pendingQuestion = state.pendingQuestion?.takeIf { it.sessionId == state.currentSessionId },
-                    questionSubmitting = state.isQuestionSubmitting,
-                    onToggleQuestionOption = vm::toggleQuestionOption,
-                    onSubmitQuestion = vm::submitQuestion,
+                )
+            }
+            is AppRoute.WorkSession ->
+                SessionScreen(
+                    sessionId = route.sessionId,
+                    state = workState,
+                    draft = workDrafts[route.sessionId] ?: PromptDraft(),
+                    actions = work,
+                    onBack = vm::navigateBackFromSecondary,
+                    headerActions = {
+                        // New Session in the chat's own project, over the chat so Back returns to it.
+                        val id = workState.resolve(route.sessionId)
+                        IconButton(
+                            onClick = {
+                                val cwd = workState.session(id)?.projectCwd?.takeIf { it != workState.conversationCwd }
+                                vm.openWorkNewSession(cwd, returnTo = id)
+                            },
+                            enabled = !workState.isStarting(route.sessionId),
+                            modifier = Modifier.testTag("chat.newSession"),
+                        ) { Icon(Icons.Outlined.EditNote, contentDescription = stringResource(Res.string.new_session_title)) }
+                    },
+                )
+            AppRoute.WorkSettings ->
+                WorkSettingsScreen(
+                    state = workState,
+                    onPreferences = work::setPreferences,
+                    onUnpair = work::unpair,
+                    onBack = vm::navigateBackFromSecondary,
+                    pairing = {
+                        PairingActions(
+                            connecting = state.remoteConnecting,
+                            onManual = vm::connectDesktopManually,
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        ) {
+                            PairingScannerButton(
+                                onScanned = { vm.connectDesktop(it, openDetail = false) },
+                                label = stringResource(if (workState.paired) Res.string.work_settings_rescan else Res.string.work_settings_scan),
+                            )
+                        }
+                    },
+                )
+            is AppRoute.WorkNewSession -> {
+                val restored = remember(route) { work.takeFailedStart() }
+                NewSessionScreen(
+                    state = workState,
+                    draft = workDrafts[WorkViewModel.NEW_SESSION_DRAFT] ?: PromptDraft(),
+                    onDraftChange = { work.setDraft(WorkViewModel.NEW_SESSION_DRAFT, it) },
+                    initialProjectCwd = route.projectCwd,
+                    restored = restored,
+                    onPrepare = work::prepareNewSession,
+                    onStart = { start ->
+                        var started = ""
+                        work.startSession(start) { vm.returnToNewSession(started, start.projectCwd) }?.let { id ->
+                            started = id
+                            // The chat takes New Session's place, so Back goes to the list.
+                            vm.openWorkSession(id)
+                        }
+                    },
+                    onBack = vm::handleSystemBack,
+                    onClearError = work::clearError,
                 )
             }
             AppRoute.Plan ->
@@ -303,44 +429,14 @@ fun RootApp(
                 AboutScreen(onBack = vm::navigateBackFromSecondary)
             }
             }
-            val pending = state.pendingQuestion
-            val currentChatHasPending = state.route is AppRoute.Chat && pending?.sessionId == state.currentSessionId
-            AnimatedVisibility(
-                visible = pending != null && !currentChatHasPending,
-                modifier = Modifier.align(Alignment.TopCenter),
-                enter = fadeIn(tween(200)) + slideInVertically(tween(200)) { -it },
-                exit = fadeOut(tween(180)) + slideOutVertically(tween(180)) { -it },
-            ) {
-                PendingQuestionNotice(
-                    onOpen = {
-                        pending?.let { question ->
-                            val session = sessions.firstOrNull { it.id == question.sessionId }
-                            vm.openChat(
-                                sessionId = question.sessionId,
-                                surface = ChatSurface.Desktop,
-                                title = session?.title.orEmpty(),
-                            )
-                        }
-                    },
-                )
+            // Pairing runs from several pages; its approval step and its failure show above all of them.
+            (workState.pairing as? PairingPhase.AwaitingApproval)?.let { waiting ->
+                PairingApprovalDialog(verificationCode = waiting.verificationCode, onCancel = work::cancelPairing)
+            }
+            state.pairingError?.let { error ->
+                VettaInfoDialog(title = error.title.resolve(), message = error.message.resolve(), onDismiss = vm::clearPairingError)
             }
         }
     }
 }
 
-@Composable
-private fun PendingQuestionNotice(
-    modifier: Modifier = Modifier,
-    onOpen: () -> Unit,
-) {
-    Surface(
-        modifier = modifier.padding(top = 12.dp, start = 16.dp, end = 16.dp),
-        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.secondaryContainer,
-        tonalElevation = 3.dp,
-    ) {
-        TextButton(onClick = onOpen) {
-            Text(Str.pendingDesktopQuestion)
-        }
-    }
-}

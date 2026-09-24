@@ -127,7 +127,7 @@ async function produceAnthropicStream(
 			model.provider === "github-copilot"
 				? buildCopilotDynamicHeaders({
 						messages: context.messages,
-						hasImages: hasCopilotVisionInput(context.messages),
+						hasImages: model.input.includes("image") && hasCopilotVisionInput(context.messages),
 					})
 				: undefined;
 		const { client, isOAuthToken } = createAnthropicClient(

@@ -72,8 +72,7 @@ import { getDesktopMcpAppRegistry } from "../mcp/mcp-app-runtime.js";
 import { getDesktopMcpTaskCoordinator, getDesktopMcpTaskRegistry } from "../mcp/mcp-task-runtime.js";
 import { forgetMessageAnnotations } from "../message-annotations/host.js";
 import { notify } from "../notifications/index.js";
-import { createPetBubbleCommand } from "../pet/pet-bubble-command.js";
-import { mapSessionEventToPetPresentation } from "../pet/session-event-action-policy.js";
+import { PetSessionPresentationController } from "../pet/pet-session-presentation-controller.js";
 import { sendPetCommandToWindow } from "../pet-window.js";
 import { setDesktopPluginHookInvoker } from "../plugins/coding-agent-hook-invocation.js";
 import { listPlugins, pluginAgentContributionService } from "../plugins/plugin-catalog.js";
@@ -402,6 +401,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 	const mcpTaskCoordinator = getDesktopMcpTaskCoordinator();
 	const mcpAppRegistry = getDesktopMcpAppRegistry();
 	const sandboxAuthorizationBroker = getDesktopSandboxAuthorizationBroker();
+	const petPresentationController = new PetSessionPresentationController({ send: sendPetCommandToWindow });
 	const unsubscribeConversationListChanged = onConversationListChanged((event) => {
 		broadcastToAllWindows(CHANNELS.SESSIONS_CHANGED, event);
 	});
@@ -435,45 +435,25 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		// lifecycle 各自独立。agent_end 时按累积状态判定该不该通知。
 		let lastStopReason: string | undefined;
 		let aborted = false;
-		let lastPetActionId: string | undefined;
-		let hasFinalPetBody = false;
 		const unsubscribe = runtime.subscribe(sessionId, (ev: SessionEvent) => {
-			const petPresentation = mapSessionEventToPetPresentation(ev);
-			const petActionId = petPresentation?.actionId;
-			if (petActionId && petActionId !== lastPetActionId) {
-				lastPetActionId = petActionId;
-				sendPetCommandToWindow({ type: "set-action", actionId: petActionId, source: "app" });
-			}
-			const petBubble = petPresentation?.bubble;
-			const isRedundantGenericCompletion =
-				ev.type === "session.lifecycle" && ev.phase === "agent_end" && hasFinalPetBody;
-			if (petBubble && !isRedundantGenericCompletion) {
-				const command = createPetBubbleCommand(petBubble, sessionId);
-				if (command) sendPetCommandToWindow(command);
-			}
+			petPresentationController.handleSessionEvent(ev);
 
 			if (ev.type === "message.final") {
-				if (petBubble?.body) hasFinalPetBody = true;
 				const sr = (ev.message as unknown as { stopReason?: unknown }).stopReason;
 				if (typeof sr === "string") lastStopReason = sr;
 			} else if (ev.channel === "assistant" && (ev.type === "done" || ev.type === "error")) {
-				if (petBubble?.body) hasFinalPetBody = true;
 				lastStopReason = ev.type === "done" ? ev.message.stopReason : "error";
 			} else if (ev.channel !== "assistant" && ev.type === "error") {
 				lastStopReason = "error";
 			} else if (ev.type === "session.lifecycle") {
-				if (ev.phase === "agent_start") {
-					hasFinalPetBody = false;
-				} else if (ev.phase === "aborted") {
+				if (ev.phase === "aborted") {
 					aborted = true;
-					hasFinalPetBody = false;
 				} else if (ev.phase === "agent_end") {
 					const wasAborted = aborted || lastStopReason === "aborted";
 					const outcome = lastStopReason === "error" ? "error" : "completed";
 					const sessionPath = runtime.getSessionPath(sessionId);
 					lastStopReason = undefined;
 					aborted = false;
-					hasFinalPetBody = false;
 					// 中断不通知；正常完成 / 出错才通知（见 CONTEXT.md「agent 完成通知」）。
 					if (!wasAborted && sessionPath) {
 						void notify({ type: "agent-turn-complete", sessionPath, cwd, outcome });
@@ -499,6 +479,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		debugSeqMap.delete(sessionId);
 		turnStartMap.delete(sessionId);
 		detachNotificationSub(sessionId);
+		petPresentationController.forgetSession(sessionId);
 		stopMonitoringRuntimeSession(sessionId);
 	};
 
@@ -534,9 +515,11 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		if (webContents.isDestroyed()) return Promise.resolve(CANCELLED_QUESTION);
 		return new Promise<CodingAgentQuestionResult>((resolve) => {
 			const sessionPath = runtime.getSessionPath(request.sessionId);
+			const waitingKey = `question:${request.requestId}`;
 			const finish = (result: CodingAgentQuestionResult): void => {
 				questionMap.delete(request.requestId);
 				if (signal) signal.removeEventListener("abort", onAbort);
+				petPresentationController.endWaiting(request.sessionId, waitingKey);
 				// 问答结束（提交/取消/中断）后清掉「待答」标记并广播。
 				if (sessionPath) setPendingQuestion(sessionPath, false);
 				resolve(result);
@@ -548,6 +531,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 			}
 			if (signal) signal.addEventListener("abort", onAbort, { once: true });
 			questionMap.set(request.requestId, finish);
+			petPresentationController.beginWaiting(request.sessionId, waitingKey, "notice.waiting.question");
 			webContents.send(CHANNELS.QUESTION_REQUEST, request);
 			// 广播「待答」给所有窗口（侧栏 + 快捷面板）。
 			if (sessionPath) setPendingQuestion(sessionPath, true);
@@ -580,6 +564,11 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 				planReviewBroker.respond(request.requestId, undefined);
 				return;
 			}
+			petPresentationController.beginWaiting(
+				request.sessionId,
+				`plan-review:${request.requestId}`,
+				"notice.waiting.planReview",
+			);
 			webContents.send(CHANNELS.PLAN_REVIEW_REQUEST, request);
 			const sessionPath = runtime.getSessionPath(request.sessionId);
 			const cwd = sessionCwdMap.get(request.sessionId);
@@ -587,6 +576,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 			if (sessionPath && cwd) void notify({ type: "agent-question-pending", sessionPath, cwd });
 		},
 		resolved: (event) => {
+			petPresentationController.endWaiting(event.sessionId, `plan-review:${event.requestId}`);
 			const sessionPath = runtime.getSessionPath(event.sessionId);
 			if (sessionPath) setPendingQuestion(sessionPath, false);
 			if (!webContents.isDestroyed()) webContents.send(CHANNELS.PLAN_REVIEW_RESOLVED, event);
@@ -596,9 +586,11 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 	const unregisterMcpElicitationHandler = mcpElicitationBroker.setInteractiveHandler((request, signal) => {
 		if (webContents.isDestroyed()) return Promise.resolve({ action: "cancel" });
 		return new Promise<DesktopMcpElicitationResponse>((resolve) => {
+			const waitingKey = `mcp-elicitation:${request.requestId}`;
 			const finish = (result: DesktopMcpElicitationResponse): void => {
 				mcpElicitationMap.delete(request.requestId);
 				signal?.removeEventListener("abort", onAbort);
+				petPresentationController.endWaiting(request.sessionId, waitingKey);
 				resolve(result);
 			};
 			const onAbort = (): void => finish({ action: "cancel" });
@@ -608,6 +600,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 			}
 			signal?.addEventListener("abort", onAbort, { once: true });
 			mcpElicitationMap.set(request.requestId, finish);
+			petPresentationController.beginWaiting(request.sessionId, waitingKey, "notice.waiting.mcp");
 			webContents.send(CHANNELS.MCP_ELICITATION_REQUEST, request);
 		});
 	});
@@ -624,9 +617,11 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 	): Promise<CodingAgentSandboxAuthorizationDecision> => {
 		if (webContents.isDestroyed()) return Promise.resolve("deny");
 		return new Promise<CodingAgentSandboxAuthorizationDecision>((resolve) => {
+			const waitingKey = `sandbox:${request.requestId}`;
 			const finish = (decision: CodingAgentSandboxAuthorizationDecision): void => {
 				sandboxGrantMap.delete(request.requestId);
 				if (signal) signal.removeEventListener("abort", onAbort);
+				petPresentationController.endWaiting(request.sessionId, waitingKey);
 				resolve(decision);
 			};
 			const onAbort = (): void => finish("deny");
@@ -636,6 +631,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 			}
 			if (signal) signal.addEventListener("abort", onAbort, { once: true });
 			sandboxGrantMap.set(request.requestId, finish);
+			petPresentationController.beginWaiting(request.sessionId, waitingKey, "notice.waiting.permission");
 			webContents.send(CHANNELS.SANDBOX_GRANT_REQUEST, request);
 		});
 	};
@@ -1806,6 +1802,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 			unsubscribe();
 		}
 		notificationSubs.clear();
+		petPresentationController.dispose();
 		for (const unsubscribe of subscriptionMap.values()) {
 			unsubscribe();
 		}

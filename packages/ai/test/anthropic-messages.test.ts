@@ -18,7 +18,7 @@ const model: Model<"anthropic-messages"> = {
 };
 
 describe("Anthropic message conversion", () => {
-	it("forwards user images when image capability metadata is missing", () => {
+	it("omits user images for a text-only model", () => {
 		const converted = convertMessages(
 			[
 				{
@@ -36,10 +36,7 @@ describe("Anthropic message conversion", () => {
 
 		expect(converted[0]).toMatchObject({
 			role: "user",
-			content: [
-				{ type: "text", text: "inspect" },
-				{ type: "image", source: { type: "base64", media_type: "image/png", data: "ZmFrZQ==" } },
-			],
+			content: [{ type: "text", text: "inspect" }],
 		});
 	});
 
@@ -75,7 +72,7 @@ describe("Anthropic message conversion", () => {
 		});
 	});
 
-	it("forwards tool-result images when image capability metadata is missing", () => {
+	it("omits tool-result images for a text-only model", () => {
 		const converted = convertMessages(
 			[
 				{
@@ -100,13 +97,8 @@ describe("Anthropic message conversion", () => {
 				{
 					type: "tool_result",
 					tool_use_id: "call-1",
-					content: [
-						{ type: "text", text: "Read image file [image/png]" },
-						{
-							type: "image",
-							source: { type: "base64", media_type: "image/png", data: "ZmFrZQ==" },
-						},
-					],
+					content:
+						"Read image file [image/png]\nImage content omitted because the current model does not support image input.",
 				},
 			],
 		});

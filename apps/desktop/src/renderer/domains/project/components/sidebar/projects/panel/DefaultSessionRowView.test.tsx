@@ -150,7 +150,24 @@ describe("DefaultSessionRowView leading icon", () => {
 		);
 	});
 
-	it("bounds a large avatar collection to three faces and one overflow marker", () => {
+	it("shows three members directly and overlays the remaining count on the third avatar", () => {
+		const threeAvatars = Array.from({ length: 3 }, (_, index) => `/avatar-${index}.webp`);
+		const view = render(<DefaultSessionRowView {...props({ trailingAvatarUrls: threeAvatars })} />);
+		const stack = view.container.querySelector('[data-avatar-stack="true"]');
+
+		expect(stack?.querySelectorAll("img")).toHaveLength(3);
+		expect(stack?.querySelector('[data-avatar-overflow]')).toBeNull();
+		view.rerender(<DefaultSessionRowView {...props({ trailingAvatarUrls: [...threeAvatars, "/avatar-3.webp"] })} />);
+
+		const overflow = view.container.querySelector('[data-avatar-overflow="1"]');
+		expect(view.container.querySelectorAll('[data-avatar-stack="true"] img')).toHaveLength(3);
+		expect(view.container.querySelectorAll('[data-avatar-stack="true"] img')[2]?.getAttribute("src")).toBe("/avatar-2.webp");
+		expect(overflow?.textContent).toBe("+1");
+		expect(overflow?.parentElement?.querySelector("img")?.getAttribute("src")).toBe("/avatar-2.webp");
+		expect(overflow?.className).toContain("bg-background/60");
+	});
+
+	it("bounds a large avatar collection to three faces with an overlaid overflow marker", () => {
 		const avatarUrls = Array.from({ length: 32 }, (_, index) => `/avatar-${index}.webp`);
 		const view = render(<DefaultSessionRowView {...props({ trailingAvatarUrls: avatarUrls })} />);
 

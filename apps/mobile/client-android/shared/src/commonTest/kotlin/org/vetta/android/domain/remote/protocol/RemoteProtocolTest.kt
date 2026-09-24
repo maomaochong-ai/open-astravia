@@ -17,6 +17,8 @@ class RemoteProtocolTest {
                 deviceName = "Pixel",
                 capabilities = RemoteCapabilities(chat = true, sessionRead = true),
                 connectionId = "connection-1",
+                identityKey = KEY,
+                ephemeralKey = KEY,
             )
 
         val encoded = RemoteProtocol.encode(hello)
@@ -24,6 +26,7 @@ class RemoteProtocolTest {
 
         assertEquals(hello, assertIs<RemoteHello>(decoded))
         assertEquals(true, encoded.contains("\"type\":\"hello\""))
+        assertEquals(true, encoded.contains("\"protocolVersion\":2"))
     }
 
     @Test
@@ -50,5 +53,21 @@ class RemoteProtocolTest {
                 """{"type":"event","eventId":"event-1","sequence":0,"name":"session.message"}""",
             )
         }
+    }
+
+    @Test
+    fun rejectsV1AndHandshakeFramesInsideEncryption() {
+        assertFailsWith<RemoteProtocolException> {
+            RemoteProtocol.decode(
+                """{"type":"hello","protocolVersion":1,"role":"mobile","deviceId":"p","deviceName":"Pixel","capabilities":{"chat":true,"sessionRead":true},"connectionId":"c","identityKey":"$KEY","ephemeralKey":"$KEY"}""",
+            )
+        }
+        assertFailsWith<RemoteProtocolException> {
+            RemoteProtocol.decodeSession(RemoteProtocol.encode(RemotePeerStatus(true)))
+        }
+    }
+
+    private companion object {
+        const val KEY = "5XxpXrLGE8G-VOthU0PoK2qVT4hAmqOtH6c50AQfGiY"
     }
 }

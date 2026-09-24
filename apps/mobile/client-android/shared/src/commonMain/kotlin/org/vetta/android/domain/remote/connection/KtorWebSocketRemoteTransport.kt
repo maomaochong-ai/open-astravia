@@ -15,12 +15,19 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import org.vetta.android.core.net.platformHttpClientEngine
 import org.vetta.android.domain.remote.protocol.RemoteFrame
 import org.vetta.android.domain.remote.protocol.RemoteProtocol
 
+/**
+ * One WebSocket to the desktop or the relay. The subprotocol header carries the
+ * pairing secret; without one ([pairingSecret] null) the socket asks for a
+ * manual pairing, which the desktop only accepts on its `/v2/lan/pair` path.
+ */
 class KtorWebSocketRemoteTransport(
     private val url: String,
+    private val pairingSecret: String?,
     private val scope: CoroutineScope,
     private val client: HttpClient = HttpClient(platformHttpClientEngine()) { install(WebSockets) },
 ) : RemoteTransport {
@@ -30,17 +37,17 @@ class KtorWebSocketRemoteTransport(
 
     override val incoming: Flow<RemoteFrame> = incomingChannel.receiveAsFlow()
 
+    override var closeReason: String? = null
+        private set
+
     override suspend fun connect() {
-		val target = splitPairingTarget(url)
         val socket =
             client.webSocketSession {
-				url.takeFrom(target.url)
-				target.pairingToken?.let {
-                    headers.append(
-                        HttpHeaders.SecWebSocketProtocol,
-						listOfNotNull("vetta.remote.v1", "vetta.pairing.$it", target.resumeToken?.let { token -> "vetta.resume.$token" }).joinToString(", "),
-                    )
-                }
+                url.takeFrom(this@KtorWebSocketRemoteTransport.url)
+                headers.append(
+                    HttpHeaders.SecWebSocketProtocol,
+                    listOf(PROTOCOL, pairingSecret?.let { "$PAIRING_PREFIX$it" } ?: MANUAL).joinToString(", "),
+                )
             }
         session = socket
         readerJob?.cancel()
@@ -48,8 +55,15 @@ class KtorWebSocketRemoteTransport(
             scope.launch {
                 try {
                     for (frame in socket.incoming) {
-                        if (frame is Frame.Text) incomingChannel.send(RemoteProtocol.decode(frame.readText()))
+                        if (frame is Frame.Text) {
+                            for (line in frame.readText().split('\n').filter(String::isNotBlank)) {
+                                if (line == "ping" || line == "pong") continue
+                                incomingChannel.send(RemoteProtocol.decode(line))
+                            }
+                        }
                     }
+                    // Recorded before `incoming` ends, so whoever sees the end can read it.
+                    closeReason = withTimeoutOrNull(CLOSE_REASON_WAIT_MS) { socket.closeReason.await() }?.message
                 } finally {
                     incomingChannel.close()
                 }
@@ -69,17 +83,10 @@ class KtorWebSocketRemoteTransport(
         client.close()
     }
 
-    private data class Target(val url: String, val pairingToken: String?, val resumeToken: String?)
-
-    private fun splitPairingTarget(target: String): Target {
-        val separator = target.indexOf('#')
-		if (separator < 0) return Target(target, null, null)
-		val fragment = target.substring(separator + 1)
-		if (!fragment.contains('=')) return Target(target.substring(0, separator), fragment.takeIf { it.isNotEmpty() }, null)
-		val values = fragment.split('&').mapNotNull {
-			val index = it.indexOf('=')
-			if (index <= 0) null else it.substring(0, index) to java.net.URLDecoder.decode(it.substring(index + 1), "UTF-8")
-		}.toMap()
-		return Target(target.substring(0, separator), values["pairing"], values["resume"])
+    private companion object {
+        const val PROTOCOL = "vetta.remote.v2"
+        const val PAIRING_PREFIX = "vetta.pairing."
+        const val MANUAL = "vetta.manual"
+        const val CLOSE_REASON_WAIT_MS = 500L
     }
 }

@@ -6,7 +6,7 @@ import {
 	normalizePetVideoSize,
 	normalizePetVideoSizeForWindow,
 } from "../../../../shared/pet-config";
-import type { PetBridge } from "../../../../shared/pet-ipc";
+import type { PetActivityState, PetBridge } from "../../../../shared/pet-ipc";
 import { PetDebugOverlay } from "./PetDebugOverlay";
 import { PetSpeechBubble } from "./PetSpeechBubble";
 import { PetVideoSurface } from "./PetVideoSurface";
@@ -44,6 +44,7 @@ declare global {
 export function PetApp(): JSX.Element {
 	const videos = useMemo(() => getVideoMap(), []);
 	const [actionId, setActionId] = useState<PetActionId | undefined>(() => getInitialAction(videos));
+	const [activityState, setActivityState] = useState<PetActivityState>("idle");
 	const [bubbleStyle, setBubbleStyle] = useState(getInitialBubbleStyle);
 	const [autoMode, setAutoMode] = useState(getInitialAutoMode);
 	const [debugFrame, setDebugFrame] = useState(getInitialDebugFrame);
@@ -58,6 +59,7 @@ export function PetApp(): JSX.Element {
 	const videoRef = useRef<HTMLDivElement>(null);
 	const autoModeRef = useRef(autoMode);
 	const appActionIdRef = useRef<PetActionId | undefined>(undefined);
+	const appActivityStateRef = useRef<PetActivityState>("idle");
 	const userOverrideUntilRef = useRef(0);
 	const userOverrideTimerRef = useRef<number | undefined>(undefined);
 	const { bubble, hideBubble, showBubble } = usePetBubble();
@@ -79,8 +81,17 @@ export function PetApp(): JSX.Element {
 	};
 	const isUserOverrideActive = () => Date.now() < userOverrideUntilRef.current;
 	const applyAutomaticAction = () => {
-		if (!autoModeRef.current) return;
-		setActionId((current) => appActionIdRef.current ?? pickNextAction(videos, current));
+		if (appActionIdRef.current && appActivityStateRef.current !== "idle") {
+			setActivityState(appActivityStateRef.current);
+			setActionId(appActionIdRef.current);
+			return;
+		}
+		setActivityState("idle");
+		if (!autoModeRef.current) {
+			if (appActionIdRef.current) setActionId(appActionIdRef.current);
+			return;
+		}
+		setActionId((current) => pickNextAction(videos, current));
 	};
 	const canApplyAppAction = useCallback(() => autoModeRef.current && !isUserOverrideActive(), []);
 	const applyAppAction = useCallback(
@@ -138,16 +149,13 @@ export function PetApp(): JSX.Element {
 	}, [clearPresentationThrottle]);
 
 	useEffect(() => {
-		if (!autoMode || !actionId || playbackPaused) return;
+		if (activityState !== "idle" || !autoMode || !actionId || playbackPaused) return;
 		const timer = window.setTimeout(() => {
 			if (isUserOverrideActive()) return;
-			if (appActionIdRef.current === actionId) {
-				appActionIdRef.current = undefined;
-			}
-			applyAutomaticAction();
+			setActionId((current) => pickNextAction(videos, current));
 		}, getActionDuration(actionId));
 		return () => window.clearTimeout(timer);
-	}, [actionId, autoMode, playbackPaused, videos]);
+	}, [actionId, activityState, autoMode, playbackPaused, videos]);
 
 	useEffect(() => {
 		setFailedVideoSrc(undefined);
@@ -156,6 +164,20 @@ export function PetApp(): JSX.Element {
 
 	useEffect(() => {
 		return window.vettaPet?.onCommand((command) => {
+			if (command.type === "set-state") {
+				appActivityStateRef.current = command.state;
+				appActionIdRef.current = command.actionId;
+				if (command.state === "waiting_input" || command.state === "error") {
+					clearUserOverrideTimer();
+					userOverrideUntilRef.current = 0;
+					clearPresentationThrottle();
+				}
+				if (!isUserOverrideActive()) {
+					setActivityState(command.state);
+					setActionId(command.actionId);
+				}
+				return;
+			}
 			if (command.type === "show-bubble") {
 				const input = getShowPetBubbleInput(command);
 				if (input) showBubble(input);
@@ -227,7 +249,7 @@ export function PetApp(): JSX.Element {
 			setActionId((current) => pickNextAction(videos, current));
 			scheduleUserActionRelease(command.holdMs);
 		});
-	}, [hideBubble, queueAppAction, showBubble, videos]);
+	}, [clearPresentationThrottle, hideBubble, queueAppAction, showBubble, videos]);
 
 	const speechBubble = (
 		<PetSpeechBubble
@@ -241,6 +263,7 @@ export function PetApp(): JSX.Element {
 		<div
 			ref={shellRef}
 			className="inline-flex flex-col items-center overflow-hidden bg-transparent"
+			data-state={activityState}
 			onPointerDown={handlePointerDown}
 			onPointerMove={handlePointerMove}
 			onPointerLeave={handlePointerLeave}

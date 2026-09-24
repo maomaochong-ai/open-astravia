@@ -343,6 +343,40 @@ describe("affected package selection", () => {
 		expect(createImpactTestPlan(["packages/action-rpc/src/rpc.ts"]).fallbackChanged).toBe(true);
 	});
 
+	it("uses explicit host component tests for shared model selector UI", () => {
+		const plan = createImpactTestPlan([
+			"apps/desktop/src/renderer/domains/conversation/connectors/team/TeamModelSelector.tsx",
+			"packages/theme-ui/src/chat/ModelConfiguration.tsx",
+			"packages/theme-ui/src/chat/ModelSelectorTrigger.tsx",
+			"packages/theme-ui/src/chat/ModelSelectorView.tsx",
+		]);
+		expect(plan.fallbackChanged).toBe(false);
+		expect(plan.targets).toMatchObject([
+			{
+				key: "desktop",
+				directTests: [
+					"src/renderer/domains/conversation/components/ModelSelectorView.test.tsx",
+					"src/renderer/domains/conversation/connectors/team/TeamModelSelector.test.tsx",
+				],
+				relatedSources: [],
+				full: false,
+			},
+		]);
+	});
+
+	it("keeps unmapped source files inside workspaces with package tests on the targeted path", () => {
+		const plan = createImpactTestPlan(["packages/theme-ui/src/chat/UnmappedView.tsx"], () => true);
+		expect(plan.fallbackChanged).toBe(false);
+		expect(plan.targets).toMatchObject([
+			{
+				key: "theme-ui",
+				directTests: [],
+				relatedSources: ["src/chat/UnmappedView.tsx"],
+				full: false,
+			},
+		]);
+	});
+
 	it("runs quality tests for scripts while documentation-only changes need no package tests", () => {
 		const quality = createImpactTestPlan(["scripts/quality/test-impact.mjs"]);
 		expect(quality).toMatchObject({ runQuality: true, fallbackChanged: false, targets: [] });

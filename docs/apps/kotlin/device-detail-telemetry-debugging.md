@@ -19,23 +19,27 @@
 
 ## 2. 数据流和责任边界
 
+> 以下为当前结构。第 3 节起记录的是排查当时的代码（`RelayRemoteConversationGateway` 自持连接），该类已由桌面镜像取代。
+
 ```text
 Desktop diagnostics()
   └─ diagnostics.snapshot response
-       └─ RemoteConnection 记录 request RTT
-            └─ RelayRemoteConversationGateway 更新 DesktopDevice
-                 └─ AppViewModel 收集 devices StateFlow
-                      └─ DeviceDetailScreen 渲染指标和系统信息
+       └─ DesktopLink 每 30 秒采样一次，记录 request RTT 与诊断字段
+            └─ DesktopMirror.state.link（LinkSnapshot）
+                 └─ MirrorDesktopGateway 派生 DesktopDevice
+                      └─ AppViewModel 收集 devices StateFlow
+                           └─ DeviceDetailScreen 渲染指标和系统信息
 ```
 
 涉及的主要源码：
 
 - `apps/desktop/src/main/remote-control/desktop-conversation-remote-operations.ts`
-- `apps/mobile/client-android/shared/src/commonMain/kotlin/org/vetta/android/domain/remote/connection/RemoteConnection.kt`
-- `apps/mobile/client-android/shared/src/commonMain/kotlin/org/vetta/android/domain/conversation/RelayRemoteConversationGateway.kt`
+- `apps/mobile/client-android/shared/src/commonMain/kotlin/org/vetta/android/domain/remote/link/DesktopLink.kt`
+- `apps/mobile/client-android/shared/src/commonMain/kotlin/org/vetta/android/domain/work/DesktopMirror.kt`
+- `apps/mobile/client-android/shared/src/commonMain/kotlin/org/vetta/android/domain/device/DesktopGateway.kt`
 - `apps/mobile/client-android/shared/src/commonMain/kotlin/org/vetta/android/ui/connect/ConnectScreens.kt`
 
-`device.host` 是控制 Relay 目标，同时用于推导 WebRTC viewer 地址。它是连接配置，不是系统信息，不能直接出现在系统信息卡片中。
+`DesktopDevice.viewerUrl` 是 WebRTC viewer 地址，含配对凭据，只用于桌面预览，不能出现在系统信息卡片中。连接时长由 `onlineSinceEpochMs` 在界面按秒计算。
 
 ## 3. 第一次源码定位
 
@@ -162,7 +166,7 @@ $apk = "C:\develop\yiyun\vetta\open-vetta\apps\kotlin\androidApp\build\outputs\a
 & $adb shell monkey -p org.vetta.android -c android.intent.category.LAUNCHER 1
 ```
 
-`install -r` 保留 SharedPreferences，但远程连接对象只存在于进程内。重启 APP 后看到欢迎页或“未连接”不代表数据被清空；进入主界面后仍需重新发起控制连接。
+`install -r` 保留 SharedPreferences 与配对记录。重启 APP 后桌面镜像会用保存的配对自动重连，短暂显示“正在连接”属正常；只有解除配对或电脑端撤销后才需要重新扫码。
 
 ### 7.2 截图和 UI 树
 

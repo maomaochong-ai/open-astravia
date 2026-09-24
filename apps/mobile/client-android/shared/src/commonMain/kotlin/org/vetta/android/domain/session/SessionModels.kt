@@ -3,7 +3,6 @@ package org.vetta.android.domain.session
 import org.vetta.android.core.model.ChatContentPart
 import org.vetta.android.core.model.ChatMessage
 import org.vetta.android.core.model.ChatRole
-import org.vetta.android.core.model.ChatQuestion
 import org.vetta.android.core.model.TokenUsage
 
 enum class MessageStatus {
@@ -54,8 +53,6 @@ data class LocalMessage(
     val toolEvents: List<ToolTrace> = emptyList(),
     val usage: TokenUsage? = null,
     val contextPercent: Int? = null,
-    /** 待用户回答的问题属于这条 assistant 消息，持久化后可在切换/重启后继续处理。 */
-    val pendingQuestion: PendingQuestion? = null,
 ) {
     fun toChatMessage(): ChatMessage {
         val parts = mutableListOf<ChatContentPart>()
@@ -82,13 +79,6 @@ data class ToolTrace(
     val arguments: String? = null,
     val result: String? = null,
     val phaseLabel: String? = null,
-)
-
-data class PendingQuestion(
-    val sessionId: String = "",
-    val requestId: String,
-    val questions: List<ChatQuestion>,
-    val selections: Map<String, List<String>> = emptyMap(),
 )
 
 expect fun nowEpochMs(): Long

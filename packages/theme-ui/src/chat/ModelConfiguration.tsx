@@ -1,9 +1,11 @@
 import { Button, Popover, PopoverContent, PopoverTrigger } from "@vetta-org/ui";
 import type { JSX, ReactNode } from "react";
 import { useEffect, useId, useRef, useState } from "react";
+import { ModelSelectorTrigger } from "./ModelSelectorTrigger";
 
 export function ModelConfigurationPopover({
 	triggerLabel,
+	triggerIcon,
 	title,
 	open,
 	onOpenChange,
@@ -11,6 +13,7 @@ export function ModelConfigurationPopover({
 	children,
 }: {
 	readonly triggerLabel: string;
+	readonly triggerIcon?: string;
 	readonly title: string;
 	readonly open: boolean;
 	readonly onOpenChange: (open: boolean) => void;
@@ -20,14 +23,7 @@ export function ModelConfigurationPopover({
 	return (
 		<Popover open={open} onOpenChange={onOpenChange}>
 			<PopoverTrigger asChild>
-				<Button
-					variant="ghost"
-					className="h-7 min-w-0 max-w-52 gap-1 rounded-full px-2 text-[11px]"
-					title={triggerLabel}
-				>
-					<span className="truncate">{triggerLabel}</span>
-					<span aria-hidden="true" className="icon-[solar--alt-arrow-down-linear] size-3 shrink-0" />
-				</Button>
+				<ModelSelectorTrigger label={triggerLabel} icon={triggerIcon} />
 			</PopoverTrigger>
 			<PopoverContent
 				align="end"

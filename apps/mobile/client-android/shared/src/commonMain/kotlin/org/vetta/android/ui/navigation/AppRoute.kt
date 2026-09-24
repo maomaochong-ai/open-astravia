@@ -4,6 +4,8 @@ import org.vetta.android.domain.device.ConnectChannel
 
 enum class MainTab {
     Home,
+    /** The paired desktop's sessions. */
+    Work,
     Sessions,
     Discover,
     Me,
@@ -38,6 +40,18 @@ sealed class AppRoute {
         val title: String = "",
         val deviceId: String? = null,
     ) : AppRoute()
+
+    /**
+     * A blank page for starting a desktop session, in `projectCwd` or the desktop's
+     * conversations. `returnTo` is the chat it was opened from, where Back goes.
+     */
+    data class WorkNewSession(val projectCwd: String? = null, val returnTo: String? = null) : AppRoute()
+
+    /** The paired computer, its link, and how the phone works with it. */
+    data object WorkSettings : AppRoute()
+
+    /** One desktop session; `sessionId` may be the local id of one New Session is starting. */
+    data class WorkSession(val sessionId: String) : AppRoute()
 
     data object Plan : AppRoute()
 

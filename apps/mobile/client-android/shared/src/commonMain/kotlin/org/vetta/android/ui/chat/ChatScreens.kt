@@ -86,12 +86,52 @@ import org.vetta.android.domain.error.UiErrorAction
 import org.vetta.android.domain.session.LocalMessage
 import org.vetta.android.domain.session.MessageImage
 import org.vetta.android.domain.session.MessageStatus
-import org.vetta.android.domain.session.PendingQuestion
 import org.vetta.android.domain.session.ToolTrace
 import org.vetta.android.ui.components.EmptyState
 import org.vetta.android.ui.components.ListRow
 import org.vetta.android.ui.components.VettaErrorBanner
-import org.vetta.android.ui.i18n.Str
+import org.jetbrains.compose.resources.stringResource
+import org.vetta.android.resources.Res
+import org.vetta.android.resources.attach
+import org.vetta.android.resources.back
+import org.vetta.android.resources.background_work
+import org.vetta.android.resources.channel_cloud
+import org.vetta.android.resources.chat_placeholder
+import org.vetta.android.resources.compacting
+import org.vetta.android.resources.context_used
+import org.vetta.android.resources.context_window
+import org.vetta.android.resources.generated_by_desktop
+import org.vetta.android.resources.hide_tool_details
+import org.vetta.android.resources.image_placeholder
+import org.vetta.android.resources.new_content
+import org.vetta.android.resources.no_models
+import org.vetta.android.resources.no_models_hint
+import org.vetta.android.resources.no_sessions_hint
+import org.vetta.android.resources.pair_desktop
+import org.vetta.android.resources.preparing
+import org.vetta.android.resources.reconnecting
+import org.vetta.android.resources.remove_attachment
+import org.vetta.android.resources.response_failed
+import org.vetta.android.resources.response_interrupted
+import org.vetta.android.resources.response_stopped
+import org.vetta.android.resources.retrying
+import org.vetta.android.resources.select_model
+import org.vetta.android.resources.send
+import org.vetta.android.resources.show_tool_details
+import org.vetta.android.resources.stop
+import org.vetta.android.resources.streaming
+import org.vetta.android.resources.thinking
+import org.vetta.android.resources.tokens_used
+import org.vetta.android.resources.tool_answer
+import org.vetta.android.resources.tool_arguments
+import org.vetta.android.resources.tool_cancelled
+import org.vetta.android.resources.tool_completed
+import org.vetta.android.resources.tool_duration
+import org.vetta.android.resources.tool_incomplete
+import org.vetta.android.resources.tool_preparing
+import org.vetta.android.resources.tool_result
+import org.vetta.android.resources.tool_running
+import org.vetta.android.resources.use_cloud_ai
 import org.vetta.android.ui.media.imageBitmapFromBase64
 import org.vetta.android.ui.media.rememberImagePicker
 import org.vetta.android.ui.navigation.ChatSurface
@@ -122,10 +162,6 @@ fun ChatScreen(
     onDismissError: () -> Unit,
     onImagesPicked: (List<MessageImage>) -> Unit,
     onRemovePendingImage: (String) -> Unit,
-    pendingQuestion: PendingQuestion? = null,
-    questionSubmitting: Boolean = false,
-    onToggleQuestionOption: (String, String) -> Unit = { _, _ -> },
-    onSubmitQuestion: () -> Unit = {},
 ) {
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
@@ -156,9 +192,12 @@ fun ChatScreen(
         }
     }
 
+    // A desktop conversation an earlier build kept here is history only: desktop
+    // sessions continue on the desktop's own session page.
+    val readOnly = surface == ChatSurface.Desktop
     val canSend =
         !isStreaming &&
-            (surface == ChatSurface.Desktop || selectedModel != null) &&
+            selectedModel != null &&
             (draft.isNotBlank() || pendingImages.isNotEmpty())
 
     Scaffold(
@@ -172,9 +211,9 @@ fun ChatScreen(
                             if (isStreaming) {
                                 streamingStatusLabel(streamingStatus)
                             } else if (surface == ChatSurface.Desktop) {
-                                Str.generatedByDesktop
+                                stringResource(Res.string.generated_by_desktop)
                             } else {
-                                selectedModel?.name ?: Str.channelCloud
+                                selectedModel?.name ?: stringResource(Res.string.channel_cloud)
                             },
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.vettaExtra.secondaryText,
@@ -183,14 +222,14 @@ fun ChatScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = Str.back)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.back))
                     }
                 },
                 actions = {
                     if (surface == ChatSurface.Cloud) {
                         TextButton(onClick = onOpenModelPicker) {
                             Text(
-                                selectedModel?.name ?: Str.selectModel,
+                                selectedModel?.name ?: stringResource(Res.string.select_model),
                                 maxLines = 1,
                                 style = MaterialTheme.typography.labelLarge,
                             )
@@ -225,29 +264,17 @@ fun ChatScreen(
                         onRemove = onRemovePendingImage,
                     )
                 }
-                AnimatedVisibility(
-                    visible = pendingQuestion != null,
-                    enter = fadeIn(tween(200)) + expandVertically(tween(200)),
-                    exit = fadeOut(tween(180)) + shrinkVertically(tween(180)),
-                ) {
-                    pendingQuestion?.let {
-                        QuestionPrompt(
-                            pending = it,
-                            submitting = questionSubmitting,
-                            onToggle = onToggleQuestionOption,
-                            onSubmit = onSubmitQuestion,
-                        )
-                    }
+                if (!readOnly) {
+                    InputDock(
+                        value = draft,
+                        isStreaming = isStreaming,
+                        sendEnabled = canSend,
+                        onValueChange = onDraftChange,
+                        onSend = onSend,
+                        onStop = onStop,
+                        onAttach = launchPicker,
+                    )
                 }
-                InputDock(
-                    value = draft,
-                    isStreaming = isStreaming,
-                    sendEnabled = canSend,
-                    onValueChange = onDraftChange,
-                    onSend = onSend,
-                    onStop = onStop,
-                    onAttach = launchPicker,
-                )
             }
         },
     ) { padding ->
@@ -263,8 +290,8 @@ fun ChatScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     EmptyState(
-                        title = if (surface == ChatSurface.Cloud) Str.useCloudAi else Str.pairDesktop,
-                        subtitle = Str.noSessionsHint,
+                        title = if (surface == ChatSurface.Cloud) stringResource(Res.string.use_cloud_ai) else stringResource(Res.string.pair_desktop),
+                        subtitle = stringResource(Res.string.no_sessions_hint),
                     )
                 }
             } else {
@@ -287,7 +314,7 @@ fun ChatScreen(
                         },
                         modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 8.dp),
                     ) {
-                        Text(Str.newContent)
+                        Text(stringResource(Res.string.new_content))
                     }
                 }
             }
@@ -300,16 +327,17 @@ fun ChatScreen(
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         ) {
             Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                Text(Str.selectModel, style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(Res.string.select_model), style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(12.dp))
                 if (models.isEmpty()) {
-                    EmptyState(title = Str.noModels, subtitle = Str.noModelsHint)
+                    EmptyState(title = stringResource(Res.string.no_models), subtitle = stringResource(Res.string.no_models_hint))
                 } else {
                     models.forEachIndexed { index, model ->
                         val selected = model.id == selectedModel?.id
+                        val contextLabel = model.contextWindow?.let { stringResource(Res.string.context_window, it.toString()) }
                         val meta =
                             buildString {
-                                if (model.contextWindow != null) append("上下文 ${model.contextWindow}")
+                                if (contextLabel != null) append(contextLabel)
                                 if (model.tags.isNotEmpty()) {
                                     if (isNotEmpty()) append(" · ")
                                     append(model.tags.take(3).joinToString(" / "))
@@ -349,7 +377,7 @@ private fun PendingImageRow(
                 if (bmp != null) {
                     Image(
                         bitmap = bmp,
-                        contentDescription = image.fileName ?: Str.attach,
+                        contentDescription = image.fileName ?: stringResource(Res.string.attach),
                         modifier =
                             Modifier
                                 .size(72.dp)
@@ -363,7 +391,7 @@ private fun PendingImageRow(
                         color = MaterialTheme.colorScheme.surfaceVariant,
                     ) {
                         Box(contentAlignment = Alignment.Center) {
-                            Text(Str.imagePlaceholder, style = MaterialTheme.typography.labelSmall)
+                            Text(stringResource(Res.string.image_placeholder), style = MaterialTheme.typography.labelSmall)
                         }
                     }
                 }
@@ -376,7 +404,7 @@ private fun PendingImageRow(
                 ) {
                     Icon(
                         Icons.Default.Close,
-                        contentDescription = Str.removeAttachment,
+                        contentDescription = stringResource(Res.string.remove_attachment),
                         modifier = Modifier.size(16.dp),
                     )
                 }
@@ -403,7 +431,7 @@ private fun MessageBubble(message: LocalMessage) {
                         if (bmp != null) {
                             Image(
                                 bitmap = bmp,
-                                contentDescription = image.fileName ?: Str.attach,
+                                contentDescription = image.fileName ?: stringResource(Res.string.attach),
                                 modifier =
                                     Modifier
                                         .size(120.dp)
@@ -458,14 +486,14 @@ private fun MessageBubble(message: LocalMessage) {
                     }
                     message.content.isBlank() && message.status == MessageStatus.Error -> {
                         Text(
-                            Str.responseFailed,
+                            stringResource(Res.string.response_failed),
                             modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
                             style = MaterialTheme.typography.bodyLarge,
                         )
                     }
                     message.content.isBlank() && message.status == MessageStatus.Aborted -> {
                         Text(
-                            Str.responseStopped,
+                            stringResource(Res.string.response_stopped),
                             modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
                             style = MaterialTheme.typography.bodyLarge,
                         )
@@ -489,9 +517,9 @@ private fun MessageBubble(message: LocalMessage) {
                 val usage = message.usage
                 Text(
                     text = buildString {
-                        append(Str.tokensUsed)
+                        append(stringResource(Res.string.tokens_used))
                         usage.totalTokens?.let { append(" $it") }
-                        message.contextPercent?.let { append(" · ${Str.contextUsed} $it%") }
+                        message.contextPercent?.let { append(" · ${stringResource(Res.string.context_used)} $it%") }
                     },
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.vettaExtra.secondaryText,
@@ -500,7 +528,7 @@ private fun MessageBubble(message: LocalMessage) {
             }
             if (message.status == MessageStatus.Error && message.content.isNotBlank() && !message.errorMessage.isNullOrBlank()) {
                 Text(
-                    Str.responseInterrupted,
+                    stringResource(Res.string.response_interrupted),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.vettaExtra.secondaryText,
                     modifier = Modifier.padding(top = 4.dp, start = 4.dp, end = 4.dp),
@@ -529,16 +557,17 @@ private fun ToolTraceRow(tool: ToolTrace) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             val presentation = presentTool(tool.toolName, tool.arguments)
+            val presentationLabel = stringResource(presentation.label)
             Icon(
                 imageVector = toolIcon(tool.toolName),
-                contentDescription = presentation.label,
+                contentDescription = presentationLabel,
                 tint = toolTint(tool.phase),
                 modifier = Modifier.size(18.dp),
             )
             Spacer(Modifier.width(8.dp))
             Text(
                 text = buildString {
-                    append(presentation.label)
+                    append(presentationLabel)
                     presentation.summary?.let {
                         append(" · ")
                         append(it)
@@ -557,7 +586,7 @@ private fun ToolTraceRow(tool: ToolTrace) {
             if (hasDetail) {
                 Icon(
                     imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                    contentDescription = if (expanded) Str.hideToolDetails else Str.showToolDetails,
+                    contentDescription = if (expanded) stringResource(Res.string.hide_tool_details) else stringResource(Res.string.show_tool_details),
                     tint = MaterialTheme.vettaExtra.secondaryText,
                 )
             }
@@ -571,16 +600,16 @@ private fun ToolTraceRow(tool: ToolTrace) {
                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                ToolDetailSection(Str.toolArguments, tool.arguments)
-                ToolDetailSection(Str.toolResult, tool.result)
+                ToolDetailSection(stringResource(Res.string.tool_arguments), tool.arguments)
+                ToolDetailSection(stringResource(Res.string.tool_result), tool.result)
                 parseToolQuestionResolution(tool.toolName, tool.result)?.let { resolution ->
                     Text(
                         text =
                             if (resolution.cancelled) {
-                                Str.toolCancelled
+                                stringResource(Res.string.tool_cancelled)
                             } else {
                                 buildString {
-                                    append(Str.toolAnswer)
+                                    append(stringResource(Res.string.tool_answer))
                                     val selected = resolution.answers.flatMap { it.second }
                                     if (selected.isNotEmpty()) {
                                         append(": ")
@@ -597,7 +626,7 @@ private fun ToolTraceRow(tool: ToolTrace) {
                 }
                 tool.durationMs?.let { duration ->
                     Text(
-                        text = "${Str.toolDuration} ${duration}ms",
+                        text = "${stringResource(Res.string.tool_duration)} ${duration}ms",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.vettaExtra.secondaryText,
                     )
@@ -643,70 +672,27 @@ private fun toolTint(phase: String) =
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
 
+@Composable
 private fun toolPhaseLabel(phase: String): String =
     when (phase) {
-        "generating", "arguments" -> Str.toolPreparing
-        "started", "updated", "phase" -> Str.toolRunning
-        "completed" -> Str.toolCompleted
-        "failed" -> Str.toolIncomplete
+        "generating", "arguments" -> stringResource(Res.string.tool_preparing)
+        "started", "updated", "phase" -> stringResource(Res.string.tool_running)
+        "completed" -> stringResource(Res.string.tool_completed)
+        "failed" -> stringResource(Res.string.tool_incomplete)
         else -> phase
     }
 
+@Composable
 private fun streamingStatusLabel(status: String?): String =
     when (status) {
-        "thinking" -> Str.thinking
-        "reconnecting" -> Str.reconnecting
-        "retrying" -> Str.retrying
-        "compacting" -> Str.compacting
-        "preparing" -> Str.preparing
-        "background" -> Str.backgroundWork
-        else -> Str.streaming
+        "thinking" -> stringResource(Res.string.thinking)
+        "reconnecting" -> stringResource(Res.string.reconnecting)
+        "retrying" -> stringResource(Res.string.retrying)
+        "compacting" -> stringResource(Res.string.compacting)
+        "preparing" -> stringResource(Res.string.preparing)
+        "background" -> stringResource(Res.string.background_work)
+        else -> stringResource(Res.string.streaming)
     }
-
-@Composable
-private fun QuestionPrompt(
-    pending: PendingQuestion,
-    submitting: Boolean,
-    onToggle: (String, String) -> Unit,
-    onSubmit: () -> Unit,
-) {
-    Column(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.46f))
-                .padding(horizontal = 12.dp, vertical = 10.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Text(Str.pendingDesktopQuestionTitle, style = MaterialTheme.typography.titleSmall)
-        pending.questions.forEach { question ->
-            if (question.header.isNotBlank()) {
-                Text(question.header, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.vettaExtra.secondaryText)
-            }
-            Text(question.question, style = MaterialTheme.typography.bodyMedium)
-            question.options.forEach { option ->
-                val selected = option.label in pending.selections[question.question].orEmpty()
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    if (question.multiSelect) {
-                        Checkbox(checked = selected, enabled = !submitting, onCheckedChange = { onToggle(question.question, option.label) })
-                    } else {
-                        RadioButton(selected = selected, enabled = !submitting, onClick = { onToggle(question.question, option.label) })
-                    }
-                    Column {
-                        Text(option.label, style = MaterialTheme.typography.bodyMedium)
-                        if (option.description.isNotBlank()) Text(option.description, style = MaterialTheme.typography.labelSmall)
-                    }
-                }
-            }
-        }
-        Button(onClick = onSubmit, enabled = !submitting && pending.questions.all { pending.selections[it.question].orEmpty().isNotEmpty() }) {
-            Text(if (submitting) Str.submittingAnswer else Str.submitAnswer)
-        }
-    }
-}
 
 @Composable
 private fun InputDock(
@@ -727,7 +713,7 @@ private fun InputDock(
             verticalAlignment = Alignment.Bottom,
         ) {
             IconButton(onClick = onAttach, enabled = !isStreaming) {
-                Icon(Icons.Default.AttachFile, contentDescription = Str.attach)
+                Icon(Icons.Default.AttachFile, contentDescription = stringResource(Res.string.attach))
             }
             Box(
                 modifier =
@@ -740,7 +726,7 @@ private fun InputDock(
             ) {
                 if (value.isEmpty()) {
                     Text(
-                        Str.chatPlaceholder,
+                        stringResource(Res.string.chat_placeholder),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         style = MaterialTheme.typography.bodyLarge,
                     )
@@ -760,11 +746,11 @@ private fun InputDock(
             Spacer(Modifier.width(4.dp))
             if (isStreaming) {
                 FilledIconButton(onClick = onStop) {
-                    Icon(Icons.Default.Stop, contentDescription = Str.stop)
+                    Icon(Icons.Default.Stop, contentDescription = stringResource(Res.string.stop))
                 }
             } else {
                 FilledIconButton(onClick = onSend, enabled = sendEnabled) {
-                    Icon(Icons.AutoMirrored.Filled.Send, contentDescription = Str.send)
+                    Icon(Icons.AutoMirrored.Filled.Send, contentDescription = stringResource(Res.string.send))
                 }
             }
         }

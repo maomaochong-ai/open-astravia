@@ -1,9 +1,10 @@
 package org.vetta.android.domain.remote.connection
 
-import kotlinx.coroutines.channels.Channel
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertIs
+import kotlin.test.assertTrue
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
@@ -15,104 +16,76 @@ import org.vetta.android.domain.remote.protocol.RemoteAck
 import org.vetta.android.domain.remote.protocol.RemoteCapabilities
 import org.vetta.android.domain.remote.protocol.RemoteEvent
 import org.vetta.android.domain.remote.protocol.RemoteEventName
-import org.vetta.android.domain.remote.protocol.RemoteFrame
-import org.vetta.android.domain.remote.protocol.RemoteHello
-import org.vetta.android.domain.remote.protocol.RemoteHelloAck
 import org.vetta.android.domain.remote.protocol.RemoteRequest
 import org.vetta.android.domain.remote.protocol.RemoteRequestMethod
 import org.vetta.android.domain.remote.protocol.RemoteResponse
 import org.vetta.android.domain.remote.protocol.RemoteResume
 import org.vetta.android.domain.remote.protocol.RemoteRole
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
-import kotlin.test.assertIs
-import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class RemoteConnectionTest {
     @Test
-    fun handshakeAndRequestResponseBecomeObservable() =
+    fun encryptedHandshakeAndRequestResponseBecomeObservable() =
         runTest {
-            val transport = FakeRemoteTransport()
             var now = 100L
-            val connection = connection(transport = transport, now = { now }, scope = backgroundScope)
+            val transport =
+                EncryptedDesktopTransport { frame ->
+                    if (frame is RemoteRequest) {
+                        now = 125L
+                        sendSession(RemoteResponse(frame.requestId, success = true, payload = JsonPrimitive("ok")))
+                    }
+                }
+            val connection = connection(transport, backgroundScope, now = { now })
 
             connection.connect()
-            runCurrent()
-            assertIs<RemoteHello>(transport.sent.single())
-            transport.receive(RemoteHelloAck(connectionId = "connection-1", peerDeviceId = "desktop-1"))
             runCurrent()
             assertEquals(RemoteConnectionState.Online, connection.state.value)
 
-            var response: JsonPrimitive? = null
-            val requestJob =
-                launch {
-                    response =
-                        connection.request(
-                            RemoteRequestMethod.SessionPrompt,
-                            buildJsonObject { put("text", "hello") },
-                            "session-1",
-                        ) as JsonPrimitive
-                }
-            runCurrent()
-            val request = assertIs<RemoteRequest>(transport.sent.last())
-            now = 125L
-            transport.receive(
-                RemoteResponse(
-                    requestId = request.requestId,
-                    success = true,
-                    payload = JsonPrimitive("ok"),
-                ),
-            )
-            requestJob.join()
+            val response = connection.request(RemoteRequestMethod.SessionPrompt, buildJsonObject { put("text", "hello") })
 
-            assertEquals("ok", response?.content)
+            assertEquals("ok", assertIs<JsonPrimitive>(response).content)
             assertEquals(25L, connection.snapshot().lastRttMs)
             assertEquals(0, connection.snapshot().pendingRequestCount)
+            assertTrue(transport.receivedSessions.first() is RemoteResume)
+            assertTrue(transport.receivedSessions.any { it is RemoteRequest })
         }
 
     @Test
-    fun eventGapRequestsResumeAndDuplicateIsIgnored() =
+    fun eventGapRequestsEncryptedResumeAndDuplicateIsIgnored() =
         runTest {
-            val transport = FakeRemoteTransport()
-            val connection = connection(transport = transport, scope = backgroundScope)
+            val transport = EncryptedDesktopTransport()
+            val connection = connection(transport, backgroundScope)
             connection.connect()
             runCurrent()
-            transport.receive(RemoteHelloAck(connectionId = "connection-1", peerDeviceId = "desktop-1"))
-            transport.receive(event(sequence = 1, id = "event-1"))
-            runCurrent()
-            assertIs<RemoteAck>(transport.sent.last())
 
-            transport.receive(event(sequence = 3, id = "event-3"))
+            transport.sendSession(event(sequence = 1, id = "event-1"))
+            runCurrent()
+            assertIs<RemoteAck>(transport.receivedSessions.last())
+
+            transport.sendSession(event(sequence = 3, id = "event-3"))
             runCurrent()
             assertEquals(RemoteConnectionState.Recovering, connection.state.value)
-            assertEquals(1L, assertIs<RemoteResume>(transport.sent.last()).lastEventSequence)
+            assertEquals(1L, assertIs<RemoteResume>(transport.receivedSessions.last()).lastEventSequence)
 
-            val sentBeforeDuplicate = transport.sent.size
-            transport.receive(event(sequence = 1, id = "event-1-copy"))
+            val sentBeforeDuplicate = transport.receivedSessions.size
+            transport.sendSession(event(sequence = 1, id = "event-1-copy"))
             runCurrent()
-            assertEquals(sentBeforeDuplicate, transport.sent.size)
+            assertEquals(sentBeforeDuplicate, transport.receivedSessions.size)
             assertEquals(1L, connection.snapshot().lastEventSequence)
         }
 
     @Test
     fun transportCloseRejectsPendingRequests() =
         runTest {
-            val transport = FakeRemoteTransport()
-            val connection = connection(transport = transport, scope = backgroundScope)
+            val transport = EncryptedDesktopTransport()
+            val connection = connection(transport, backgroundScope)
             connection.connect()
-            runCurrent()
-            transport.receive(RemoteHelloAck(connectionId = "connection-1", peerDeviceId = "desktop-1"))
             runCurrent()
 
             var failure: Throwable? = null
             val requestJob =
                 launch {
-                    failure =
-                        runCatching {
-                            connection.request(RemoteRequestMethod.DiagnosticsSnapshot)
-                        }.exceptionOrNull()
+                    failure = runCatching { connection.request(RemoteRequestMethod.DiagnosticsSnapshot) }.exceptionOrNull()
                 }
             runCurrent()
             transport.disconnect()
@@ -125,15 +98,14 @@ class RemoteConnectionTest {
         }
 
     @Test
-    fun metadataLogsNeverContainPayloadText() =
+    fun encryptedPayloadTextNeverAppearsInMetadataLogs() =
         runTest {
             val logger = RecordingLogger()
-            val transport = FakeRemoteTransport()
-            val connection = connection(transport, backgroundScope, logger = logger)
+            val transport = EncryptedDesktopTransport()
+            val connection = connection(transport, backgroundScope, logger)
             connection.connect()
             runCurrent()
-            transport.receive(RemoteHelloAck(connectionId = "connection-1", peerDeviceId = "desktop-1"))
-            transport.receive(
+            transport.sendSession(
                 RemoteEvent(
                     eventId = "event-1",
                     sequence = 1,
@@ -147,12 +119,12 @@ class RemoteConnectionTest {
         }
 
     private fun connection(
-        transport: FakeRemoteTransport,
+        transport: EncryptedDesktopTransport,
         scope: kotlinx.coroutines.CoroutineScope,
         logger: RemoteLogger = NoopRemoteLogger,
         now: () -> Long = { 100L },
-    ) =
-        RemoteConnection(
+    ): RemoteConnection {
+        return RemoteConnection(
             transport = transport,
             options =
                 RemoteConnectionOptions(
@@ -160,6 +132,8 @@ class RemoteConnectionTest {
                     deviceId = "phone-1",
                     deviceName = "Pixel",
                     capabilities = RemoteCapabilities(chat = true, sessionRead = true),
+                    identity = transport.mobileIdentity,
+                    expectedPeerIdentityKey = transport.desktopIdentityKey,
                     connectionId = "connection-1",
                     requestTimeoutMs = 1_000,
                 ),
@@ -167,37 +141,10 @@ class RemoteConnectionTest {
             logger = logger,
             now = now,
         )
+    }
 
     private fun event(sequence: Long, id: String) =
-        RemoteEvent(
-            eventId = id,
-            sequence = sequence,
-            name = RemoteEventName.SessionState,
-        )
-}
-
-private class FakeRemoteTransport : RemoteTransport {
-    private val channel = Channel<RemoteFrame>(Channel.UNLIMITED)
-    override val incoming: Flow<RemoteFrame> = channel.receiveAsFlow()
-    val sent = mutableListOf<RemoteFrame>()
-
-    override suspend fun connect() = Unit
-
-    override suspend fun send(frame: RemoteFrame) {
-        sent += frame
-    }
-
-    override suspend fun close() {
-        channel.close()
-    }
-
-    suspend fun receive(frame: RemoteFrame) {
-        channel.send(frame)
-    }
-
-    fun disconnect() {
-        channel.close()
-    }
+        RemoteEvent(eventId = id, sequence = sequence, name = RemoteEventName.SessionState)
 }
 
 private class RecordingLogger : RemoteLogger {

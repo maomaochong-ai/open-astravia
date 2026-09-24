@@ -49,7 +49,13 @@ import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import org.vetta.android.domain.remote.connection.PlatformRemoteLogger
 import org.vetta.android.ui.components.SecondaryOutlineButton
-import org.vetta.android.ui.i18n.Str
+import org.jetbrains.compose.resources.stringResource
+import org.vetta.android.resources.Res
+import org.vetta.android.resources.align_pairing_qr
+import org.vetta.android.resources.camera_permission_required
+import org.vetta.android.resources.camera_unavailable
+import org.vetta.android.resources.close_scanner
+import org.vetta.android.resources.scan_pairing_qr
 
 @Composable
 actual fun PairingScannerButton(
@@ -58,13 +64,14 @@ actual fun PairingScannerButton(
     label: String?,
 ) {
     val context = LocalContext.current
+    val permissionRequired = stringResource(Res.string.camera_permission_required)
     var scanning by remember { mutableStateOf(false) }
     val permissionLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             if (granted) {
                 scanning = true
             } else {
-                Toast.makeText(context, Str.cameraPermissionRequired, Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, permissionRequired, Toast.LENGTH_SHORT).show()
                 PlatformRemoteLogger.warn("pairing camera permission denied")
             }
         }
@@ -78,7 +85,7 @@ actual fun PairingScannerButton(
     }
     if (label == null) {
         IconButton(modifier = modifier, onClick = openScanner) {
-            Icon(Icons.Default.QrCodeScanner, contentDescription = Str.scanPairingQr)
+            Icon(Icons.Default.QrCodeScanner, contentDescription = stringResource(Res.string.scan_pairing_qr))
         }
     } else {
         SecondaryOutlineButton(
@@ -105,6 +112,7 @@ actual fun PairingScannerButton(
 @Composable
 private fun PairingScannerDialog(onDismiss: () -> Unit, onScanned: (String) -> Unit) {
     val context = LocalContext.current
+    val cameraUnavailable = stringResource(Res.string.camera_unavailable)
     val lifecycleOwner = LocalLifecycleOwner.current
     val executor = remember(context) { ContextCompat.getMainExecutor(context) }
     val scanner = rememberBarcodeScanner()
@@ -130,7 +138,7 @@ private fun PairingScannerDialog(onDismiss: () -> Unit, onScanned: (String) -> U
             controller.setImageAnalysisAnalyzer(executor, analyzer)
             controller.bindToLifecycle(lifecycleOwner)
         }.onFailure { error ->
-            Toast.makeText(context, Str.cameraUnavailable, Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, cameraUnavailable, Toast.LENGTH_SHORT).show()
             PlatformRemoteLogger.warn(
                 "pairing camera initialization failed",
                 mapOf("error" to (error.message ?: error::class.simpleName)),
@@ -169,13 +177,13 @@ private fun PairingScannerDialog(onDismiss: () -> Unit, onScanned: (String) -> U
                         .size(252.dp)
                         .border(2.dp, Color.White.copy(alpha = 0.9f), RoundedCornerShape(8.dp)),
                 )
-                Text(Str.alignPairingQr, color = Color.White, style = MaterialTheme.typography.bodyMedium)
+                Text(stringResource(Res.string.align_pairing_qr), color = Color.White, style = MaterialTheme.typography.bodyMedium)
             }
             IconButton(
                 modifier = Modifier.align(Alignment.TopEnd).padding(top = 42.dp, end = 16.dp),
                 onClick = onDismiss,
             ) {
-                Icon(Icons.Default.Close, contentDescription = Str.closeScanner, tint = Color.White)
+                Icon(Icons.Default.Close, contentDescription = stringResource(Res.string.close_scanner), tint = Color.White)
             }
         }
     }

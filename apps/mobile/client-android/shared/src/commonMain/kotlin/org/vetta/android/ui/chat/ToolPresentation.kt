@@ -6,11 +6,20 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import org.vetta.android.ui.i18n.Str
+import org.jetbrains.compose.resources.StringResource
+import org.vetta.android.resources.Res
+import org.vetta.android.resources.tool_action
+import org.vetta.android.resources.tool_ask_question
+import org.vetta.android.resources.tool_edit_file
+import org.vetta.android.resources.tool_integration
+import org.vetta.android.resources.tool_read_file
+import org.vetta.android.resources.tool_run_command
+import org.vetta.android.resources.tool_search_files
+import org.vetta.android.resources.tool_write_file
 
 /** The small, user-facing projection shown in a tool trace header. */
 data class ToolPresentation(
-    val label: String,
+    val label: StringResource,
     val summary: String? = null,
 )
 
@@ -25,15 +34,15 @@ fun presentTool(toolName: String, arguments: String?): ToolPresentation {
     val args = arguments?.let(::parseArguments)
     val label =
         when {
-            toolName.startsWith("mcp_") -> Str.toolIntegration
-            toolName == "read" || toolName == "read_file" -> Str.toolReadFile
-            toolName == "write" || toolName == "write_file" -> Str.toolWriteFile
-            toolName == "edit" || toolName == "edit_file" -> Str.toolEditFile
-            toolName == "bash" || toolName == "shell" -> Str.toolRunCommand
-            toolName == "ask_user_question" -> Str.toolAskQuestion
+            toolName.startsWith("mcp_") -> Res.string.tool_integration
+            toolName == "read" || toolName == "read_file" -> Res.string.tool_read_file
+            toolName == "write" || toolName == "write_file" -> Res.string.tool_write_file
+            toolName == "edit" || toolName == "edit_file" -> Res.string.tool_edit_file
+            toolName == "bash" || toolName == "shell" -> Res.string.tool_run_command
+            toolName == "ask_user_question" -> Res.string.tool_ask_question
             toolName == "grep" || toolName == "find" || toolName == "ls" || toolName == "dir_tree" || toolName == "tree" ->
-                Str.toolSearchFiles
-            else -> Str.toolAction
+                Res.string.tool_search_files
+            else -> Res.string.tool_action
         }
     val summary =
         when {

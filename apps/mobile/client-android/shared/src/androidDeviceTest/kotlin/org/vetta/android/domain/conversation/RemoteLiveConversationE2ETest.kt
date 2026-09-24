@@ -2,25 +2,32 @@ package org.vetta.android.domain.conversation
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.russhwolf.settings.MapSettings
 import java.io.File
-import kotlinx.coroutines.flow.filterIsInstance
-import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.vetta.android.core.model.ChatMessage
-import org.vetta.android.core.model.ChatRole
-import org.vetta.android.core.model.ChatStreamEvent
-import org.vetta.android.domain.remote.buildMobileBootstrapTarget
-import org.vetta.android.domain.remote.buildMobileResumeTarget
+import org.vetta.android.domain.remote.pairing.SettingsSecretStore
+import org.vetta.android.data.remote.MemorySessionCache
+import org.vetta.android.domain.remote.RemoteSessionStatus
+import org.vetta.android.domain.remote.TranscriptItem
+import org.vetta.android.domain.remote.connection.KtorWebSocketRemoteTransport
 import org.vetta.android.domain.remote.parsePairingInvite
+import org.vetta.android.domain.session.nowEpochMs
+import org.vetta.android.domain.work.DesktopMirror
+import org.vetta.android.domain.work.MirrorPlatform
 import kotlin.test.assertContains
 import kotlin.test.assertNotNull
 
 private const val LIVE_INVITE_FILE_ARGUMENT = "vettaLiveInviteFile"
-private const val LIVE_CONNECTION_MODE_ARGUMENT = "vettaLiveConnectionMode"
 private const val EXPECTED_REPLY_MARKER = "VETTA_REMOTE_E2E_OK"
 
 /**
@@ -36,41 +43,49 @@ class RemoteLiveConversationE2ETest {
                 InstrumentationRegistry.getArguments().getString(LIVE_INVITE_FILE_ARGUMENT).orEmpty()
             assumeTrue("Live pairing invite was not provided", invitePath.isNotBlank())
 
-            val invite = assertNotNull(parsePairingInvite(File(invitePath).readText().trim()))
-            val resumeSecret = "android-live-e2e-resume-secret-0000000000000000"
-            check(resumeSecret.length >= 32) {
-                "The live-test resume secret must satisfy the relay credential contract"
-            }
-            val gateway = RelayRemoteConversationGateway()
+            val invite = File(invitePath).readText().trim()
+            assertNotNull(parsePairingInvite(invite))
+            // The mirror is confined to one thread, as in the app.
+            val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+            val mirror =
+                DesktopMirror(
+                    MirrorPlatform(
+                        settings = MapSettings(),
+                        secrets = SettingsSecretStore(MapSettings()),
+                        cache = MemorySessionCache(),
+                        createTransport = { url, secret -> KtorWebSocketRemoteTransport(url, secret, scope) },
+                        deviceName = "Android live E2E",
+                        now = ::nowEpochMs,
+                    ),
+                    scope,
+                )
             try {
-                withTimeout(30_000) {
-                    val target =
-                        when (InstrumentationRegistry.getArguments().getString(LIVE_CONNECTION_MODE_ARGUMENT)) {
-                            "resume" -> buildMobileResumeTarget(invite, resumeSecret)
-                            else -> buildMobileBootstrapTarget(invite, resumeSecret)
+                withContext(Dispatchers.Main) {
+                    mirror.start()
+                    check(mirror.pairWithCode(invite)) { "pairing failed" }
+                    withTimeout(30_000) { mirror.state.first { it.online } }
+                    val sessionId =
+                        checkNotNull(mirror.sendPrompt(null, "这是一次远程链路验收。不要调用任何工具，仅回复：$EXPECTED_REPLY_MARKER")) {
+                            "the prompt did not go out"
                         }
-                    gateway.connect(target)
+                    val finished =
+                        withTimeout(180_000) {
+                            mirror.state.first {
+                                val status = it.transcript(sessionId).sessionState.status
+                                status == RemoteSessionStatus.Completed || status == RemoteSessionStatus.Error
+                            }
+                        }
+                    val answer =
+                        finished
+                            .transcript(sessionId)
+                            .items
+                            .filterIsInstance<TranscriptItem.Assistant>()
+                            .joinToString("") { it.turn.text }
+                    assertContains(answer, EXPECTED_REPLY_MARKER)
                 }
-                val events =
-                    withTimeout(180_000) {
-                        gateway
-                            .stream(
-                                localSessionId = "android-live-e2e",
-                                deviceId = gateway.devices.value.single().id,
-                                remoteSessionId = null,
-                                messages =
-                                    listOf(
-                                        ChatMessage(
-                                            ChatRole.User,
-                                            "这是一次远程链路验收。不要调用任何工具，仅回复：$EXPECTED_REPLY_MARKER",
-                                        ),
-                                    ),
-                            ).toList()
-                    }
-                val answer = events.filterIsInstance<ChatStreamEvent.Delta>().joinToString("") { it.text }
-                assertContains(answer, EXPECTED_REPLY_MARKER)
             } finally {
-                gateway.disconnect(gateway.devices.value.firstOrNull()?.id.orEmpty())
+                withContext(Dispatchers.Main) { mirror.unpair() }
+                scope.cancel()
             }
         }
 }

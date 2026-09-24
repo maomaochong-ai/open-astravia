@@ -2,7 +2,7 @@ import { readCodingAgentBackgroundTasksObservation } from "@vetta/coding-agent/s
 import type { SessionEvent } from "@vetta/runtime-core";
 import type { BackgroundCommandSnapshot } from "@vetta/runtime-tools";
 import { getPetActionsByGroup, type PetActionGroupId, type PetActionId } from "../../shared/pet-actions.js";
-import type { PetBubbleNotice } from "../../shared/pet-ipc.js";
+import type { PetActivityState, PetBubbleNotice } from "../../shared/pet-ipc.js";
 
 type SessionLifecyclePhase = Extract<SessionEvent, { type: "session.lifecycle" }>["phase"];
 interface BackgroundTasksEvent {
@@ -15,11 +15,13 @@ interface PetActionIntent {
 }
 
 interface PetPresentationIntent {
+	readonly state?: PetActivityState;
 	readonly action?: PetActionIntent;
 	readonly bubble?: PetBubbleNotice;
 }
 
 export interface PetPresentation {
+	readonly state?: PetActivityState;
 	readonly actionId?: PetActionId;
 	readonly bubble?: PetBubbleNotice;
 }
@@ -39,8 +41,19 @@ const DEFAULT_ACTION_BY_GROUP = {
 	feedback: "stoat_stand_lift_barbell_one_hand_fast",
 } satisfies Record<PetActionGroupId, PetActionId>;
 
+const ACTION_BY_STATE = {
+	idle: "stoat_spin_color_hula_hoop",
+	thinking: "stoat_work_laptop_typing_desk_cushion",
+	working: "stoat_work_laptop_typing_desk_cushion",
+	waiting_input: "stoat_sit_cushion_drink_tea_slow",
+	success: "stoat_stand_lift_barbell_one_hand_fast",
+	error: "stoat_wave_backflip_smoke_fade_exit",
+	paused: "stoat_sleep_lie_on_cushion",
+} satisfies Record<PetActivityState, PetActionId>;
+
 const LIFECYCLE_INTENTS: Partial<Record<SessionLifecyclePhase, PetPresentationIntent>> = {
 	agent_start: {
+		state: "thinking",
 		action: { groupId: "working" },
 		bubble: {
 			kind: "status",
@@ -51,6 +64,7 @@ const LIFECYCLE_INTENTS: Partial<Record<SessionLifecyclePhase, PetPresentationIn
 		},
 	},
 	agent_end: {
+		state: "success",
 		action: { groupId: "feedback", actionId: "stoat_stand_lift_barbell_one_hand_fast" },
 		bubble: {
 			kind: "success",
@@ -60,6 +74,7 @@ const LIFECYCLE_INTENTS: Partial<Record<SessionLifecyclePhase, PetPresentationIn
 		},
 	},
 	aborted: {
+		state: "paused",
 		action: { groupId: "resting", actionId: "stoat_sleep_lie_on_cushion" },
 		bubble: { kind: "warning", messageKey: "notice.lifecycle.paused", ttlMs: 4_000, dedupeKey: "session-status" },
 	},
@@ -67,6 +82,7 @@ const LIFECYCLE_INTENTS: Partial<Record<SessionLifecyclePhase, PetPresentationIn
 
 const EVENT_TYPE_INTENTS: Partial<Record<SessionEvent["type"], PetPresentationIntent>> = {
 	"compaction.start": {
+		state: "thinking",
 		action: { groupId: "resting" },
 		bubble: {
 			kind: "status",
@@ -77,6 +93,7 @@ const EVENT_TYPE_INTENTS: Partial<Record<SessionEvent["type"], PetPresentationIn
 		},
 	},
 	error: {
+		state: "error",
 		action: { groupId: "feedback", actionId: "stoat_wave_backflip_smoke_fade_exit" },
 		bubble: {
 			kind: "error",
@@ -147,6 +164,7 @@ const BACKGROUND_TASK_INTENTS: readonly {
 }[] = [
 	{
 		intent: {
+			state: "working",
 			action: { groupId: "working" },
 			bubble: { kind: "status", messageKey: "notice.background.running", ttlMs: 3_000, dedupeKey: "background" },
 		},
@@ -154,6 +172,7 @@ const BACKGROUND_TASK_INTENTS: readonly {
 	},
 	{
 		intent: {
+			state: "error",
 			action: { groupId: "feedback", actionId: "stoat_wave_backflip_smoke_fade_exit" },
 			bubble: {
 				kind: "error",
@@ -167,6 +186,7 @@ const BACKGROUND_TASK_INTENTS: readonly {
 	},
 	{
 		intent: {
+			state: "success",
 			action: { groupId: "feedback", actionId: "stoat_stand_lift_barbell_one_hand_fast" },
 			bubble: {
 				kind: "success",
@@ -196,6 +216,7 @@ const sessionPetActionRules: readonly SessionPetActionRule[] = [
 		resolve: (event) =>
 			event.type === "tool.start"
 				? {
+						state: "working",
 						action: { groupId: "working" },
 						bubble: getToolBubbleNotice(event),
 					}
@@ -232,6 +253,7 @@ const sessionPetActionRules: readonly SessionPetActionRule[] = [
 		resolve: (event) =>
 			event.type === "tool.phase"
 				? {
+						state: "working",
 						action: { groupId: "working" },
 						bubble: {
 							kind: "tool",
@@ -248,6 +270,7 @@ const sessionPetActionRules: readonly SessionPetActionRule[] = [
 		resolve: (event) =>
 			event.type === "tool.end"
 				? {
+						state: event.isError ? "error" : "working",
 						action: { groupId: event.isError ? "feedback" : "working" },
 						bubble: {
 							kind: event.isError ? "error" : "success",
@@ -265,6 +288,7 @@ const sessionPetActionRules: readonly SessionPetActionRule[] = [
 		resolve: (event) =>
 			event.type === "retry.start"
 				? {
+						state: "working",
 						action: { groupId: "working" },
 						bubble: {
 							kind: "warning",
@@ -276,6 +300,13 @@ const sessionPetActionRules: readonly SessionPetActionRule[] = [
 							dedupeKey: "session-status",
 						},
 					}
+				: null,
+	},
+	{
+		name: "thinking-phase",
+		resolve: (event) =>
+			(event.type === "session.lifecycle" && event.phase === "turn_start") || event.type === "model.request.started"
+				? { state: "thinking", action: { groupId: "working" } }
 				: null,
 	},
 	{
@@ -297,8 +328,20 @@ function resolvePetActionIntent(intent: PetActionIntent): PetActionId {
 
 function resolvePetPresentationIntent(intent: PetPresentationIntent): PetPresentation {
 	return {
-		actionId: intent.action ? resolvePetActionIntent(intent.action) : undefined,
-		bubble: intent.bubble,
+		...(intent.state ? { state: intent.state } : {}),
+		...(intent.action ? { actionId: resolvePetActionIntent(intent.action) } : {}),
+		...(intent.bubble ? { bubble: intent.bubble } : {}),
+	};
+}
+
+export function createPetStatePresentation(
+	state: PetActivityState,
+	bubble?: PetBubbleNotice,
+): PetPresentation & { state: PetActivityState; actionId: PetActionId } {
+	return {
+		state,
+		actionId: ACTION_BY_STATE[state],
+		...(bubble ? { bubble } : {}),
 	};
 }
 

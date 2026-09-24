@@ -56,7 +56,7 @@ $adb = "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe"
 从仓库根目录进入移动端：
 
 ```powershell
-Set-Location "C:\develop\yiyun\vetta\open-vetta\apps\kotlin"
+Set-Location "C:\develop\yiyun\vetta\open-vetta\apps\mobile\client-android"
 .\gradlew.bat :androidApp:assembleDebug --no-daemon
 ```
 
@@ -64,7 +64,7 @@ Set-Location "C:\develop\yiyun\vetta\open-vetta\apps\kotlin"
 
 ```powershell
 $repo = "C:\develop\yiyun\vetta\open-vetta"
-$apk = "$repo\apps\kotlin\androidApp\build\outputs\apk\debug\androidApp-debug.apk"
+$apk = "$repo\apps\mobile\client-android\androidApp\build\outputs\apk\debug\androidApp-debug.apk"
 & $adb install -r $apk
 & $adb shell am force-stop org.vetta.android
 & $adb shell monkey -p org.vetta.android -c android.intent.category.LAUNCHER 1
@@ -87,7 +87,7 @@ $serial = "你的真机序列号"
 
 ```powershell
 .\gradlew.bat :shared:assembleAndroidTest --no-daemon
-$testApk = "$repo\apps\kotlin\shared\build\outputs\apk\androidTest\shared-androidTest.apk"
+$testApk = "$repo\apps\mobile\client-android\shared\build\outputs\apk\androidTest\shared-androidTest.apk"
 & $adb -s $serial install -r $testApk
 & $adb -s $serial shell am instrument -w -r `
   -e class 'org.vetta.android.ui.EntryAndProfileScreenTest,org.vetta.android.ui.MainScreenInteractionsTest,org.vetta.android.ui.DesktopConversationScreenTest' `
@@ -102,7 +102,7 @@ $testApk = "$repo\apps\kotlin\shared\build\outputs\apk\androidTest\shared-androi
 & $adb -s $serial shell pm clear org.vetta.android
 ```
 
-清空数据会移除登录状态、Resume Secret 和本地配对信息。
+清空数据会移除登录状态、手机身份密钥和本地配对信息。
 
 ## 4. 启动 Desktop
 
@@ -120,7 +120,7 @@ bun run verify:ui:status
 
 1. 打开设置 → 远程连接。
 2. 确认页面显示“安全中继已配置”。中继地址由 Desktop 的开发配置决定，不在用户界面暴露。
-3. 点击生成二维码。第一次建立中继连接可能需要约 30 秒，按钮恢复为“生成二维码”且页面出现二维码后再继续。
+3. 打开页面后等待二维码自动出现；第一次建立中继连接可能需要约 30 秒。
 4. 保持 Desktop 进程和二维码页面运行，不要重复生成二维码。
 
 重新生成二维码会撤销旧配对。Worker 或 Desktop 代码更新后，必须重启 Desktop 并重新生成二维码。
@@ -139,7 +139,7 @@ bun run verify:ui:stop
 4. 扫描成功后 App 会直接建立连接并打开设备详情，不需要再输入服务器地址或点击第二次确认。
 5. 确认页面显示“已连接”、电脑名、连接时长、延迟、桌面预览和系统信息。
 
-邀请 URI 是一次性 bootstrap，后续连接使用手机保存的 Resume Secret。不要截图、复制或公开二维码。
+邀请 URI 携带一次性配对凭据。首次连接后，Desktop 会锁定手机生成的 v2 身份密钥；旧的 v1 配对信息不能沿用。不要截图、复制或公开二维码。
 
 ### ADB 深链接自动化
 
@@ -228,4 +228,4 @@ native WebRTC ICE state state=CONNECTED
 & $adb -s $serial exec-out screencap -p > .ai/remote-control/real-device-screen.png
 ```
 
-不要把包含二维码、Pairing Secret、Resume Secret 或完整 WebSocket 目标的日志公开。
+不要把包含二维码、Pairing Secret、手机身份私钥或完整 WebSocket 目标的日志公开。

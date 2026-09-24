@@ -35,7 +35,20 @@ import org.vetta.android.ui.components.EmptyState
 import org.vetta.android.ui.components.PrimaryBlackButton
 import org.vetta.android.ui.components.SectionHeader
 import org.vetta.android.ui.components.ListRow
-import org.vetta.android.ui.i18n.Str
+import org.jetbrains.compose.resources.stringResource
+import org.vetta.android.resources.Res
+import org.vetta.android.resources.back
+import org.vetta.android.resources.channel_cloud
+import org.vetta.android.resources.connect_desktop
+import org.vetta.android.resources.feature_cloud_desc
+import org.vetta.android.resources.new_conversation
+import org.vetta.android.resources.no_available_desktop
+import org.vetta.android.resources.no_available_desktop_hint
+import org.vetta.android.resources.offline
+import org.vetta.android.resources.online
+import org.vetta.android.resources.pair_desktop
+import org.vetta.android.resources.select_device
+import org.vetta.android.resources.start_conversation
 import org.vetta.android.ui.theme.vettaExtra
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -52,16 +65,16 @@ fun NewConversationScreen(
     var selectedDeviceId by remember(devices) {
         mutableStateOf(devices.firstOrNull { it.status == DeviceStatus.Online }?.id)
     }
-    val channels = listOf(Str.pairDesktop, Str.channelCloud)
+    val channels = listOf(stringResource(Res.string.pair_desktop), stringResource(Res.string.channel_cloud))
 
     Scaffold(
         containerColor = MaterialTheme.vettaExtra.pageBackground,
         topBar = {
             TopAppBar(
-                title = { Text(Str.newConversation, style = MaterialTheme.typography.titleMedium) },
+                title = { Text(stringResource(Res.string.new_conversation), style = MaterialTheme.typography.titleMedium) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = Str.back)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.back))
                     }
                 },
                 colors =
@@ -83,20 +96,20 @@ fun NewConversationScreen(
 
             if (channelIndex == 1) {
                 Text(
-                    Str.featureCloudDesc,
+                    stringResource(Res.string.feature_cloud_desc),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.vettaExtra.secondaryText,
                 )
                 Spacer(Modifier.height(20.dp))
-                PrimaryBlackButton(text = Str.startConversation, onClick = onStartCloud)
+                PrimaryBlackButton(text = stringResource(Res.string.start_conversation), onClick = onStartCloud)
             } else {
-                SectionHeader(title = Str.selectDevice)
+                SectionHeader(title = stringResource(Res.string.select_device))
                 if (devices.none { it.status == DeviceStatus.Online }) {
                     EmptyState(
-                        title = Str.noAvailableDesktop,
-                        subtitle = Str.noAvailableDesktopHint,
+                        title = stringResource(Res.string.no_available_desktop),
+                        subtitle = stringResource(Res.string.no_available_desktop_hint),
                         icon = Icons.Default.Computer,
-                        actionLabel = Str.connectDesktop,
+                        actionLabel = stringResource(Res.string.connect_desktop),
                         onAction = onConnectDesktop,
                         modifier = Modifier.fillMaxWidth().heightIn(min = 320.dp),
                     )
@@ -105,7 +118,7 @@ fun NewConversationScreen(
                         val selected = device.id == selectedDeviceId
                         ListRow(
                             title = device.name,
-                            subtitle = if (device.status == DeviceStatus.Online) Str.online else Str.offline,
+                            subtitle = if (device.status == DeviceStatus.Online) stringResource(Res.string.online) else stringResource(Res.string.offline),
                             leading = { Icon(Icons.Default.Computer, contentDescription = null) },
                             trailing = {
                                 if (selected) {
@@ -125,7 +138,7 @@ fun NewConversationScreen(
 
                     Spacer(Modifier.height(20.dp))
                     PrimaryBlackButton(
-                        text = Str.startConversation,
+                        text = stringResource(Res.string.start_conversation),
                         enabled = selectedDeviceId != null,
                         onClick = {
                             val id = selectedDeviceId ?: return@PrimaryBlackButton

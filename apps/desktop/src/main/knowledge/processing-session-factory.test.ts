@@ -1,5 +1,6 @@
 import type { CodingAgentModelRuntime } from "@vetta/coding-agent/host-services";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createDesktopPromptRuntimeSources } from "../agent-runtime/resource-runtime.js";
 import { createDesktopKnowledgeProcessingSessionFactory } from "./processing-session-factory.js";
 
 const factoryMocks = vi.hoisted(() => ({
@@ -15,6 +16,7 @@ const factoryMocks = vi.hoisted(() => ({
 			readonly createConversationPersistence: (context: { readonly conversationDir: string }) => unknown;
 			readonly createToolEnvironment: (...args: never[]) => unknown;
 			readonly createSessionExecutionEnvironment: (...args: never[]) => unknown;
+			readonly createPromptRuntimeSources: (...args: never[]) => unknown;
 			readonly codingToolResultPolicy: unknown;
 			readonly knowledgeRuntime: unknown;
 			readonly resolveWorkspaceFacts: (cwd: string) => string | undefined;
@@ -81,6 +83,7 @@ describe("createDesktopKnowledgeProcessingSessionFactory", () => {
 			createConversationPersistence: expect.any(Function),
 			createToolEnvironment: factoryMocks.createDesktopCodingAgentToolEnvironment,
 			createSessionExecutionEnvironment: factoryMocks.createDesktopCodingAgentSessionExecutionEnvironment,
+			createPromptRuntimeSources: createDesktopPromptRuntimeSources,
 			codingToolResultPolicy: factoryMocks.codingToolResultPolicy,
 			modelInputImageProcessor: factoryMocks.nodeModelInputImageProcessor,
 			knowledgeRuntime: factoryMocks.knowledgeRuntime,

@@ -34,7 +34,19 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.VisualTransformation
 import org.vetta.android.domain.error.UiError
 import org.vetta.android.domain.error.UiErrorAction
-import org.vetta.android.ui.i18n.Str
+import org.jetbrains.compose.resources.stringResource
+import org.vetta.android.resources.Res
+import org.vetta.android.resources.action_open_plan
+import org.vetta.android.resources.action_open_settings
+import org.vetta.android.resources.action_relogin
+import org.vetta.android.resources.action_retry
+import org.vetta.android.resources.cancel
+import org.vetta.android.resources.close
+import org.vetta.android.resources.loading
+import org.vetta.android.resources.remaining
+import org.vetta.android.resources.reset_at
+import org.vetta.android.resources.save
+import org.vetta.android.ui.i18n.resolve
 import org.vetta.android.ui.theme.vettaExtra
 
 /** 统一输入层级、边框和高度，避免各页面自行拼接 Material 输入框。 */
@@ -89,7 +101,7 @@ fun VettaConfirmDialog(
             TextButton(onClick = onConfirm) { Text(confirmLabel) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(Str.cancel) }
+            TextButton(onClick = onDismiss) { Text(stringResource(Res.string.cancel)) }
         },
     )
 }
@@ -114,7 +126,7 @@ fun VettaChoiceDialog(
         dismissButton = {
             Column(horizontalAlignment = Alignment.End) {
                 TextButton(onClick = onSecondary) { Text(secondaryLabel) }
-                TextButton(onClick = onDismiss) { Text(Str.cancel) }
+                TextButton(onClick = onDismiss) { Text(stringResource(Res.string.cancel)) }
             }
         },
     )
@@ -131,7 +143,7 @@ fun VettaInfoDialog(
         title = { Text(title) },
         text = { Text(message) },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text(Str.close) }
+            TextButton(onClick = onDismiss) { Text(stringResource(Res.string.close)) }
         },
     )
 }
@@ -158,10 +170,10 @@ fun VettaTextInputDialog(
             )
         },
         confirmButton = {
-            TextButton(onClick = onConfirm, enabled = value.isNotBlank()) { Text(Str.save) }
+            TextButton(onClick = onConfirm, enabled = value.isNotBlank()) { Text(stringResource(Res.string.save)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(Str.cancel) }
+            TextButton(onClick = onDismiss) { Text(stringResource(Res.string.cancel)) }
         },
     )
 }
@@ -181,23 +193,23 @@ fun VettaErrorBanner(
         border = BorderStroke(1.dp, MaterialTheme.vettaExtra.border),
     ) {
         Column(Modifier.padding(14.dp)) {
-            Text(error.title, style = MaterialTheme.typography.titleSmall)
+            Text(error.title.resolve(), style = MaterialTheme.typography.titleSmall)
             Spacer(Modifier.height(4.dp))
-            Text(error.message, style = MaterialTheme.typography.bodyMedium)
+            Text(error.message.resolve(), style = MaterialTheme.typography.bodyMedium)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 if (onDismiss != null) {
-                    TextButton(onClick = onDismiss) { Text(Str.close) }
+                    TextButton(onClick = onDismiss) { Text(stringResource(Res.string.close)) }
                 }
                 val actionLabel =
                     when (error.action) {
-                        UiErrorAction.Retry -> Str.actionRetry
-                        UiErrorAction.OpenPlan -> Str.actionOpenPlan
-                        UiErrorAction.ReLogin -> Str.actionRelogin
-                        UiErrorAction.OpenSettings -> Str.actionOpenSettings
+                        UiErrorAction.Retry -> stringResource(Res.string.action_retry)
+                        UiErrorAction.OpenPlan -> stringResource(Res.string.action_open_plan)
+                        UiErrorAction.ReLogin -> stringResource(Res.string.action_relogin)
+                        UiErrorAction.OpenSettings -> stringResource(Res.string.action_open_settings)
                         UiErrorAction.None -> null
                     }
                 if (actionLabel != null && onAction != null) {
@@ -232,7 +244,7 @@ fun QuotaMeter(
         ) {
             Text(label, style = MaterialTheme.typography.labelLarge)
             Text(
-                "${Str.remaining} ${formatQuota(remaining)} / ${formatQuota(limit)}",
+                "${stringResource(Res.string.remaining)} ${formatQuota(remaining)} / ${formatQuota(limit)}",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -245,7 +257,7 @@ fun QuotaMeter(
         if (!resetAt.isNullOrBlank()) {
             Spacer(Modifier.height(4.dp))
             Text(
-                "${Str.resetAt}：$resetAt",
+                "${stringResource(Res.string.reset_at)}：$resetAt",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -262,7 +274,7 @@ fun LoadingBlock(modifier: Modifier = Modifier) {
     ) {
         CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
         Spacer(Modifier.width(12.dp))
-        Text(Str.loading, style = MaterialTheme.typography.bodyMedium)
+        Text(stringResource(Res.string.loading), style = MaterialTheme.typography.bodyMedium)
     }
 }
 

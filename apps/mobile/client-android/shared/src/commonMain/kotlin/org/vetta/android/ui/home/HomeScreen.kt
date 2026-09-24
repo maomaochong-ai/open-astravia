@@ -36,7 +36,23 @@ import org.vetta.android.ui.components.StatusDot
 import org.vetta.android.ui.components.ListRow
 import org.vetta.android.ui.components.VettaListGroup
 import org.vetta.android.ui.components.EmptyState
-import org.vetta.android.ui.i18n.Str
+import org.jetbrains.compose.resources.stringResource
+import org.vetta.android.resources.Res
+import org.vetta.android.resources.connect_title
+import org.vetta.android.resources.connected
+import org.vetta.android.resources.disconnected
+import org.vetta.android.resources.my_devices
+import org.vetta.android.resources.new_conversation
+import org.vetta.android.resources.no_devices_hint
+import org.vetta.android.resources.no_sessions_hint
+import org.vetta.android.resources.quick_start
+import org.vetta.android.resources.recent_sessions
+import org.vetta.android.resources.tab_home
+import org.vetta.android.resources.use_cloud_ai
+import org.vetta.android.resources.view_all
+import org.vetta.android.ui.i18n.relativeTimeLabel
+import org.vetta.android.ui.i18n.sessionTitle
+import org.vetta.android.ui.i18n.sourceText
 import org.vetta.android.ui.theme.vettaExtra
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -55,7 +71,7 @@ fun HomeScreen(
         containerColor = MaterialTheme.vettaExtra.pageBackground,
         topBar = {
             TopAppBar(
-                title = { Text(Str.tabHome, style = MaterialTheme.typography.titleMedium) },
+                title = { Text(stringResource(Res.string.tab_home), style = MaterialTheme.typography.titleMedium) },
                 colors =
                     TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.vettaExtra.pageBackground,
@@ -70,13 +86,13 @@ fun HomeScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp, vertical = 8.dp),
         ) {
-            SectionHeader(title = Str.myDevices)
+            SectionHeader(title = stringResource(Res.string.my_devices))
             if (primaryDevice != null) {
                 VettaListGroup {
                     ListRow(
                         title = primaryDevice.name,
                         subtitle =
-                            "${if (primaryDevice.status == DeviceStatus.Online) Str.connected else Str.disconnected} · " +
+                            "${if (primaryDevice.status == DeviceStatus.Online) stringResource(Res.string.connected) else stringResource(Res.string.disconnected)} · " +
                                 primaryDevice.osLabel,
                         leading = { Icon(Icons.Default.Computer, contentDescription = null, modifier = Modifier.size(24.dp)) },
                         trailing = {
@@ -94,10 +110,10 @@ fun HomeScreen(
                 }
             } else {
                 EmptyState(
-                    title = Str.disconnected,
-                    subtitle = Str.noDevicesHint,
+                    title = stringResource(Res.string.disconnected),
+                    subtitle = stringResource(Res.string.no_devices_hint),
                     icon = Icons.Default.Computer,
-                    actionLabel = Str.connectTitle,
+                    actionLabel = stringResource(Res.string.connect_title),
                     onAction = onOpenDevices,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -105,13 +121,13 @@ fun HomeScreen(
 
             Spacer(Modifier.height(20.dp))
             SectionHeader(
-                title = Str.recentSessions,
-                action = Str.viewAll,
+                title = stringResource(Res.string.recent_sessions),
+                action = stringResource(Res.string.view_all),
                 onAction = onOpenSessions,
             )
             if (recentSessions.isEmpty()) {
                 Text(
-                    Str.noSessionsHint,
+                    stringResource(Res.string.no_sessions_hint),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.vettaExtra.secondaryText,
                     modifier = Modifier.padding(vertical = 12.dp),
@@ -127,11 +143,11 @@ fun HomeScreen(
             }
 
             Spacer(Modifier.height(20.dp))
-            SectionHeader(title = Str.quickStart)
+            SectionHeader(title = stringResource(Res.string.quick_start))
             Spacer(Modifier.height(4.dp))
-            PrimaryBlackButton(text = Str.newConversation, onClick = onNewConversation)
+            PrimaryBlackButton(text = stringResource(Res.string.new_conversation), onClick = onNewConversation)
             Spacer(Modifier.height(10.dp))
-            SecondaryOutlineButton(text = Str.useCloudAi, onClick = onUseCloudAi)
+            SecondaryOutlineButton(text = stringResource(Res.string.use_cloud_ai), onClick = onUseCloudAi)
             Spacer(Modifier.height(24.dp))
         }
     }
@@ -144,8 +160,8 @@ private fun SessionMiniRow(
     showDivider: Boolean,
 ) {
     ListRow(
-        title = item.title,
-        subtitle = "${item.sourceLabel} · ${item.timeLabel}",
+        title = sessionTitle(item.title),
+        subtitle = "${item.sourceText()} · ${relativeTimeLabel(item.updatedAtEpochMs)}",
         leading = { StatusDot(online = !item.isCloud) },
         trailing = {
             Icon(

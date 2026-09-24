@@ -3,6 +3,17 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.CAMERA" />
+    <!-- Hold-to-talk dictation in the composer. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- The short buzz when a desktop task finishes (a setting). -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+    <!-- Lets the app find the system speech recognizer (package visibility, Android 11+). -->
+    <queries>
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
+    </queries>
     <!-- 读取相册图片附件（API 32 及以下；33+ 由系统选择器授权） -->
     <uses-permission
         android:name="android.permission.READ_EXTERNAL_STORAGE"
@@ -36,6 +47,17 @@
                     android:scheme="vetta" />
             </intent-filter>
         </activity>
+
+        <!-- Hands the system camera a file to write a composer photo into. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.attachments"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/attachment_paths" />
+        </provider>
     </application>
 
 </manifest>

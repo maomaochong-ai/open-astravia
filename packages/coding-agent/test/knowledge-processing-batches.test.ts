@@ -22,6 +22,7 @@ import {
 	createCodingAgentRuntimeComposition,
 	createTestConversationPersistence,
 } from "./fixtures/conversation-persistence.js";
+import { createTestPromptRuntimeSources } from "./fixtures/prompt-runtime-sources.js";
 
 describe("Knowledge processing batches", () => {
 	const directories: string[] = [];
@@ -53,6 +54,7 @@ describe("Knowledge processing batches", () => {
 			createConversationPersistence: createTestConversationPersistence,
 			createToolEnvironment: createCodingAgentNodeToolEnvironment,
 			createSessionExecutionEnvironment: createCodingAgentNodeSessionExecutionEnvironment,
+			createPromptRuntimeSources: createTestPromptRuntimeSources,
 			knowledgeRuntime: createTestKnowledgeRuntime(root),
 			createSessionId: () => `knowledge-batch-${nextSessionId++}`,
 			createComposition: createBatchComposition(requests, disposeComposition),

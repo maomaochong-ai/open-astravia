@@ -7,12 +7,14 @@ import type { CodingAgentRuntimeModelSource } from "../src/adapters/runtime-core
 import { createKnowledgeProcessingSessionFactory } from "../src/composition/index.js";
 import type { KnowledgeProcessingSessionFactoryOptions } from "../src/composition/knowledge-processing-session.js";
 import type { CodingAgentRuntimeCompositionOptions } from "../src/composition/runtime-composition.js";
+import { createCodingAgentRuntimeComposition as createProductionComposition } from "../src/composition/runtime-composition.js";
 import { createCodingAgentNodeSessionExecutionEnvironment } from "../src/host/tool-environment/node/node-session-execution-environment.js";
 import { createCodingAgentNodeToolEnvironment } from "../src/host/tool-environment/node/node-tool-environment.js";
 import {
 	createCodingAgentRuntimeComposition,
 	createTestConversationPersistence,
 } from "./fixtures/conversation-persistence.js";
+import { createTestPromptRuntimeSources } from "./fixtures/prompt-runtime-sources.js";
 
 describe("Knowledge processing session", () => {
 	const directories: string[] = [];
@@ -23,7 +25,7 @@ describe("Knowledge processing session", () => {
 		}
 	});
 
-	it("preserves model refresh, locked todos, injected writer, usage, and disposal", async () => {
+	it("processes a knowledge batch with the host prompt, locked todos, writer, usage, and disposal", async () => {
 		const cwd = await createTemporaryDirectory("greenfield-kb-cwd-");
 		const conversationDir = await createTemporaryDirectory("greenfield-kb-sessions-");
 		const knowledgeDirectory = await createTemporaryDirectory("greenfield-kb-root-");
@@ -94,6 +96,7 @@ describe("Knowledge processing session", () => {
 			createConversationPersistence: createTestConversationPersistence,
 			createToolEnvironment: createCodingAgentNodeToolEnvironment,
 			createSessionExecutionEnvironment: createCodingAgentNodeSessionExecutionEnvironment,
+			createPromptRuntimeSources: createTestPromptRuntimeSources,
 			knowledgeRuntime: createTestKnowledgeRuntime(knowledgeDirectory),
 			resolveWorkspaceFacts: (root) => `# Workspace\n\n- ${root}`,
 			createSessionId: () => "knowledge-session",
@@ -143,6 +146,7 @@ describe("Knowledge processing session", () => {
 		expect(observedModels).toEqual([TARGET_MODEL, TARGET_MODEL, TARGET_MODEL]);
 		expect(observedWorkspaceFacts).toBe(`# Workspace\n\n- ${cwd}`);
 		expect(observedReasoning).toEqual(["high", "high", "high"]);
+		expect(observedFrames[0]).toContain("Base prompt");
 		expect(observedFrames[0]).toContain("knowledge instructions");
 		expect(observedFrames[0]).toContain('"name":"kb_write_page"');
 		expect(observedFrames[1]).toContain("locked by scene");
@@ -193,6 +197,7 @@ describe("Knowledge processing session", () => {
 			createConversationPersistence: createTestConversationPersistence,
 			createToolEnvironment: createCodingAgentNodeToolEnvironment,
 			createSessionExecutionEnvironment: createCodingAgentNodeSessionExecutionEnvironment,
+			createPromptRuntimeSources: createTestPromptRuntimeSources,
 			knowledgeRuntime: createTestKnowledgeRuntime(cwd),
 			createComposition: (options) =>
 				createCodingAgentRuntimeComposition({
@@ -253,12 +258,8 @@ function createRecordedComposition(options: {
 }): NonNullable<KnowledgeProcessingSessionFactoryOptions["createComposition"]> {
 	return async (compositionOptions) => {
 		options.onCompositionOptions?.(compositionOptions);
-		const composition = await createCodingAgentRuntimeComposition({
+		const composition = await createProductionComposition({
 			...compositionOptions,
-			resolveSystemPromptOptions: () => ({
-				customPrompt: "Base prompt",
-				scenario: "kb-processing",
-			}),
 			streamFn: (model, context, streamOptions) => {
 				options.onFrame(model, context, streamOptions);
 				return new RecordedAssistantStream(options.readResponse());

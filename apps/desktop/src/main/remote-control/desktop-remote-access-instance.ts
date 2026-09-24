@@ -14,6 +14,7 @@ import { getDesktopProjectService } from "../projects/project-service-instance.j
 import { getSharedRuntime } from "../runtime.js";
 import { notifyAutomationSessionsDeleted } from "../scheduler/session-deletion.js";
 import { desktopDeviceId, desktopDisplayName, desktopHardware, formatOsLabel } from "./desktop-host-info.js";
+import type { DesktopRemoteDesktopController } from "./desktop-remote-access-manager.js";
 import { DesktopRemoteAccessManager } from "./desktop-remote-access-manager.js";
 import { DesktopRemoteMirror } from "./desktop-remote-mirror.js";
 import { RemoteDeviceStore } from "./remote-device-store.js";
@@ -26,7 +27,10 @@ let manager: DesktopRemoteAccessManager | undefined;
  * it is cheap and side-effect free; `restore()` decides whether anything
  * actually starts based on whether phones are paired.
  */
-export function getDesktopRemoteAccessManager(defaultRelayBaseUrl?: string): DesktopRemoteAccessManager {
+export function getDesktopRemoteAccessManager(
+	defaultRelayBaseUrl?: string,
+	remoteDesktop?: DesktopRemoteDesktopController,
+): DesktopRemoteAccessManager {
 	manager ??= new DesktopRemoteAccessManager({
 		store: new RemoteDeviceStore({
 			readConfig: readDesktopConfig,
@@ -37,6 +41,7 @@ export function getDesktopRemoteAccessManager(defaultRelayBaseUrl?: string): Des
 		deviceId: desktopDeviceId(),
 		deviceName: desktopDisplayName(),
 		osLabel: formatOsLabel(),
+		remoteDesktop,
 		runningSessionCount: () => getSharedRuntime().getRunningSessionPaths().length,
 		notifications: {
 			deviceConnected: ({ name }) => void notify({ type: "remote-device-connected", deviceName: name }),

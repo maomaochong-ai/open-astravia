@@ -131,6 +131,30 @@ describe("remote relay Worker (protocol v2)", () => {
 		secondMobile.close(1000, "test complete");
 	});
 
+	it("survives both peers closing together and accepts a fresh pair", async () => {
+		const room = "room_close_race_0123456789";
+		const desktop = await requireSocket(await upgrade("desktop", desktopSecret, room, mobileHash));
+		const mobile = await requireSocket(await upgrade("mobile", mobileSecret, room));
+		const desktopAck = nextFrame(desktop);
+		const mobileAck = nextFrame(mobile);
+		desktop.send(encodeRemoteFrame(hello("desktop", "desktop-race", "desktop-connection-race")));
+		mobile.send(encodeRemoteFrame(hello("mobile", "phone-race", "mobile-connection-race")));
+		await Promise.all([desktopAck, mobileAck]);
+
+		desktop.close(1000, "desktop left");
+		mobile.close(1000, "phone left");
+
+		const replacementDesktop = await requireSocket(await upgrade("desktop", desktopSecret, room, mobileHash));
+		const replacementMobile = await requireSocket(await upgrade("mobile", mobileSecret, room));
+		const replacementDesktopAck = nextFrame(replacementDesktop);
+		const replacementMobileAck = nextFrame(replacementMobile);
+		replacementDesktop.send(encodeRemoteFrame(hello("desktop", "desktop-race", "desktop-connection-replacement")));
+		replacementMobile.send(encodeRemoteFrame(hello("mobile", "phone-race", "mobile-connection-replacement")));
+		await Promise.all([replacementDesktopAck, replacementMobileAck]);
+		replacementDesktop.close(1000, "test complete");
+		replacementMobile.close(1000, "test complete");
+	});
+
 	it("lets the registered desktop rotate the phone credential and rejects v1 hellos", async () => {
 		const room = "room_rotate_0123456789abcd";
 		const firstDesktop = await requireSocket(await upgrade("desktop", desktopSecret, room, mobileHash));

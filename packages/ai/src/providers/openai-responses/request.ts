@@ -22,7 +22,7 @@ export function createOpenAIResponsesClient(
 			headers,
 			buildCopilotDynamicHeaders({
 				messages: context.messages,
-				hasImages: hasCopilotVisionInput(context.messages),
+				hasImages: model.input.includes("image") && hasCopilotVisionInput(context.messages),
 			}),
 		);
 	}

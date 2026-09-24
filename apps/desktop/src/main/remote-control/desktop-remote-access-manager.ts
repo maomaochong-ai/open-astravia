@@ -12,6 +12,7 @@ import {
 } from "@vetta/remote-control";
 import type { RemoteControlConfig, RemoteControlDeviceRecord } from "../config/desktop-config-store.js";
 import { getAppLogger } from "../logger.js";
+import type { DesktopRemoteDesktopHostHandle } from "./desktop-remote-desktop-host.js";
 import { DesktopRemoteDeviceHub, type RemoteChannel } from "./desktop-remote-device-hub.js";
 import { DesktopRemoteLanServer, type LanAcceptedLink, type LanDeviceCredential } from "./desktop-remote-lan-server.js";
 import type { DesktopRemoteMirror } from "./desktop-remote-mirror.js";
@@ -60,6 +61,14 @@ export interface RemoteAccessNotifications {
 	pairingRequested(request: { readonly deviceName: string; readonly code: string }): void;
 }
 
+export interface DesktopRemoteDesktopController {
+	start(options: {
+		readonly relayBaseUrl: string;
+		readonly pairingId: string;
+		readonly desktopSecret: string;
+	}): Promise<Pick<DesktopRemoteDesktopHostHandle, "stop">>;
+}
+
 export interface DesktopRemoteAccessManagerOptions {
 	readonly store: RemoteDeviceStore;
 	readonly createMirror: (
@@ -67,6 +76,7 @@ export interface DesktopRemoteAccessManagerOptions {
 		deviceStatus: () => RemoteDeviceStatus,
 	) => DesktopRemoteMirror;
 	readonly notifications: RemoteAccessNotifications;
+	readonly remoteDesktop?: DesktopRemoteDesktopController;
 	readonly deviceId: string;
 	readonly deviceName: string;
 	readonly osLabel?: string;
@@ -111,6 +121,8 @@ export class DesktopRemoteAccessManager {
 	private identityCache: RemoteIdentityKeyPair | undefined;
 	private lanServer: Pick<DesktopRemoteLanServer, "start" | "stop" | "listeningPort"> | undefined;
 	private readonly relayLinks = new Map<string, Pick<DesktopRemoteRelayLink, "start" | "stop">>();
+	private readonly desktopHosts = new Map<string, Pick<DesktopRemoteDesktopHostHandle, "stop">>();
+	private readonly desktopHostStarts = new Set<string>();
 	private readonly approvals = new Map<string, PendingApproval>();
 	private readonly lanLinks = new Map<string, Set<() => void>>();
 	private invite:
@@ -182,6 +194,9 @@ export class DesktopRemoteAccessManager {
 		this.mirror = undefined;
 		for (const link of this.relayLinks.values()) await link.stop();
 		this.relayLinks.clear();
+		for (const host of this.desktopHosts.values()) await host.stop().catch(() => undefined);
+		this.desktopHosts.clear();
+		this.desktopHostStarts.clear();
 		await this.lanServer?.stop();
 		this.lanServer = undefined;
 	}
@@ -229,6 +244,12 @@ export class DesktopRemoteAccessManager {
 			this.invite = undefined;
 		}
 		await this.hub.drop(id);
+		await this.desktopHosts
+			.get(id)
+			?.stop()
+			.catch(() => undefined);
+		this.desktopHosts.delete(id);
+		this.desktopHostStarts.delete(id);
 		await this.relayLinks.get(id)?.stop();
 		this.relayLinks.delete(id);
 		await this.options.store.removeDevice(id);
@@ -477,13 +498,38 @@ export class DesktopRemoteAccessManager {
 				log.warn("remote mirror failed to start", { error: describe(error) });
 			}
 		}
+		void this.startDesktopHost(deviceId);
 	}
 
 	private handleDeviceOffline(): void {
 		if (this.hub.hasOnlineDevices()) return;
 		this.mirror?.stop();
 		this.mirror = undefined;
+		for (const [deviceId, host] of this.desktopHosts) {
+			void host.stop().finally(() => this.desktopHosts.delete(deviceId));
+		}
 		log.info("remote mirror stopped: no phone online");
+	}
+
+	private async startDesktopHost(deviceId: string): Promise<void> {
+		const controller = this.options.remoteDesktop;
+		const relayBaseUrl = this.config.relayBaseUrl;
+		const desktopSecret = this.options.store.relaySecret(deviceId);
+		if (!controller || !this.config.cloudEnabled || !relayBaseUrl || !desktopSecret) return;
+		if (this.desktopHosts.has(deviceId) || this.desktopHostStarts.has(deviceId)) return;
+		this.desktopHostStarts.add(deviceId);
+		try {
+			const host = await controller.start({ relayBaseUrl, pairingId: deviceId, desktopSecret });
+			if (!this.hub.isOnline(deviceId)) {
+				await host.stop();
+				return;
+			}
+			this.desktopHosts.set(deviceId, host);
+		} catch (error) {
+			log.warn("remote desktop host failed to start", { deviceId: deviceId.slice(0, 6), error: describe(error) });
+		} finally {
+			this.desktopHostStarts.delete(deviceId);
+		}
 	}
 
 	private requireMirror(): DesktopRemoteMirror {

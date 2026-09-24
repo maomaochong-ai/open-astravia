@@ -27,6 +27,71 @@ function makeCopilotClaudeModel(): Model<"anthropic-messages"> {
 }
 
 describe("OpenAI to Anthropic session migration for Copilot Claude", () => {
+	it("projects image content according to the selected model without mutating history", () => {
+		const model: Model<"anthropic-messages"> = { ...makeCopilotClaudeModel(), input: ["text"] };
+		const messages: Message[] = [
+			{
+				role: "user",
+				content: [
+					{ type: "text", text: "inspect" },
+					{ type: "image", data: "ZmFrZQ==", mimeType: "image/png" },
+				],
+				timestamp: 1,
+			},
+			{
+				role: "toolResult",
+				toolCallId: "call-1",
+				toolName: "read",
+				content: [{ type: "image", data: "ZmFrZQ==", mimeType: "image/png" }],
+				isError: false,
+				timestamp: 2,
+			},
+		];
+
+		const result = transformMessages(messages, model, anthropicNormalizeToolCallId);
+
+		expect(result[0]).toMatchObject({ role: "user", content: [{ type: "text", text: "inspect" }] });
+		expect(result[1]).toMatchObject({
+			role: "toolResult",
+			content: [
+				{
+					type: "text",
+					text: "Image content omitted because the current model does not support image input.",
+				},
+			],
+		});
+		expect(messages[0]).toMatchObject({
+			content: [
+				{ type: "text", text: "inspect" },
+				{ type: "image", data: "ZmFrZQ==", mimeType: "image/png" },
+			],
+		});
+		expect(messages[1]).toMatchObject({ content: [{ type: "image" }] });
+
+		const visionResult = transformMessages(messages, makeCopilotClaudeModel(), anthropicNormalizeToolCallId);
+		expect(visionResult[0]).toMatchObject({ content: [{ type: "text" }, { type: "image" }] });
+		expect(visionResult[1]).toMatchObject({ content: [{ type: "image" }] });
+
+		const imageOnlyResult = transformMessages(
+			[
+				{
+					role: "user",
+					content: [{ type: "image", data: "ZmFrZQ==", mimeType: "image/png" }],
+					timestamp: 3,
+				},
+			],
+			model,
+		);
+		expect(imageOnlyResult[0]).toMatchObject({
+			content: [
+				{
+					type: "text",
+					text: "Image content omitted because the current model does not support image input.",
+				},
+			],
+		});
+	});
+
 	it("converts thinking blocks to plain text when source model differs", () => {
 		const model = makeCopilotClaudeModel();
 		const messages: Message[] = [

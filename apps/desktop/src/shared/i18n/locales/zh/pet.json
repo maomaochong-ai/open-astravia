@@ -93,8 +93,15 @@
 	"notice": {
 		"lifecycle": {
 			"started": "我来处理这个",
+			"resumed": "我继续处理",
 			"completed": "搞定了",
 			"paused": "已暂停，等你继续"
+		},
+		"waiting": {
+			"question": "有个问题需要你回答",
+			"planReview": "计划准备好了，等你确认",
+			"mcp": "需要你确认外部服务的请求",
+			"permission": "需要你确认这次权限"
 		},
 		"context": {
 			"compacting": "我整理一下上下文"

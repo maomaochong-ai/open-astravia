@@ -1,4 +1,6 @@
-> **已冻结**：本 Kotlin Multiplatform 客户端停留在远程协议 v1，自 ADR-0128 起桌面端只接受 v2（端到端加密），它已无法连接新版本 Vetta Desktop。iPhone 请使用 [`../client-apple`](../client-apple)。代码保留仅供参考，不再维护。
+本 Kotlin Multiplatform Android 客户端支持远程协议 v2：可以扫描 Desktop 的配对二维码，或手动输入电脑的局域网地址并核对 6 位验证码完成配对。连接端到端加密，优先走局域网直连，连不上时经 Cloudflare 中继转发；走中继期间在前台会定期重试局域网，连通后自动切回。
+
+桌面侧的状态由 `domain/work/DesktopMirror`（对应 iPhone 端 `VettaKit` 的 `AppModel`）统一持有：配对记录（`domain/remote/pairing`）、唯一的桌面连接与断线重连（`domain/remote/link/DesktopLink`，对应 `ChannelManager`）、会话列表与聊天记录的离线缓存（`data/remote/SessionCache`，SQLite 存 JSON）。协议载荷解析、会话记录归并、按轮合并、筛选排序等纯逻辑按 `VettaKit` 逐文件移植，单元测试在 `commonTest` 中对应 iPhone 端用例；主机测试用 `commonTest` 里的 `FakeDesktop` 走真实的 v2 握手与加密。
 
 This is a Kotlin Multiplatform project targeting Android.
 
@@ -26,7 +28,7 @@ Use the run button in your IDE's editor gutter, or run tests using Gradle tasks:
 
 ### Remote Desktop developer preview
 
-Run the Cloudflare relay locally, generate a pairing with `bun run --cwd ../remote-relay pair`, and paste the printed mobile target into the app's remote connection field. The device detail screen renders the peer-to-peer desktop stream; pointer, wheel, and hardware keyboard events use the WebRTC DataChannel rather than the relay.
+Run the Cloudflare relay and Desktop locally, then scan the v2 pairing QR code shown in Desktop settings. The device detail screen renders the peer-to-peer desktop stream; pointer, wheel, and hardware keyboard events use the WebRTC DataChannel rather than the control relay.
 
 ---
 

@@ -154,6 +154,9 @@ export function TeamModelSelector({
 			.filter(Boolean)
 			.join(" · "),
 	}));
+	const triggerModelKey =
+		viewGroups.length === 1 ? viewGroups[0]?.key : model.members.length === 0 ? model.modelKey : undefined;
+	const triggerProvider = triggerModelKey?.split("/")[0];
 	const defaultLevel = reasoningFor(model.modelKey ?? undefined, model.reasoning);
 	const selectedMember =
 		target?.kind === "member" ? model.members.find((member) => member.id === target.id) : undefined;
@@ -177,6 +180,7 @@ export function TeamModelSelector({
 	return (
 		<ModelConfigurationPopover
 			triggerLabel={triggerLabel}
+			triggerIcon={triggerProvider ? iconFor(triggerProvider) : undefined}
 			title={t("models.title")}
 			open={open}
 			onOpenChange={(next) => {
@@ -202,9 +206,7 @@ export function TeamModelSelector({
 							? t("models.memberScopeHint")
 							: t("models.defaultHint", { count: model.members.length - fixedCount })
 					}
-					status={
-						state?.loading ? t("models.loading") : state?.saving || defaultSaving ? t("models.saving") : undefined
-					}
+					status={state?.loading ? t("models.loading") : undefined}
 					backLabel={t("models.back")}
 					onBack={back}
 					groups={[...grouped].map(([provider, models]) => ({

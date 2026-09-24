@@ -41,7 +41,11 @@ import com.mikepenz.markdown.m3.markdownColor
 import com.mikepenz.markdown.m3.markdownTypography
 import com.mikepenz.markdown.model.rememberMarkdownState
 import kotlinx.coroutines.delay
-import org.vetta.android.ui.i18n.Str
+import org.jetbrains.compose.resources.stringResource
+import org.vetta.android.resources.Res
+import org.vetta.android.resources.code
+import org.vetta.android.resources.copied
+import org.vetta.android.resources.copy
 
 /**
  * Shared Markdown boundary for assistant text and tool details.
@@ -144,7 +148,7 @@ fun CodeBlockChrome(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = language?.ifBlank { Str.code } ?: Str.code,
+                    text = language?.ifBlank { stringResource(Res.string.code) } ?: stringResource(Res.string.code),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f),
@@ -157,7 +161,7 @@ fun CodeBlockChrome(
                 ) {
                     Icon(
                         imageVector = if (copied) Icons.Default.Check else Icons.Default.ContentCopy,
-                        contentDescription = if (copied) Str.copied else Str.copy,
+                        contentDescription = if (copied) stringResource(Res.string.copied) else stringResource(Res.string.copy),
                     )
                 }
             }

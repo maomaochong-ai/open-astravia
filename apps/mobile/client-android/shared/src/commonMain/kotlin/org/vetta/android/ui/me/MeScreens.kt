@@ -53,7 +53,59 @@ import org.vetta.android.ui.components.VettaListGroup
 import org.vetta.android.ui.components.VettaConfirmDialog
 import org.vetta.android.ui.components.VettaChoiceDialog
 import org.vetta.android.ui.components.VettaInfoDialog
-import org.vetta.android.ui.i18n.Str
+import org.jetbrains.compose.resources.stringResource
+import org.vetta.android.app.APP_VERSION
+import org.vetta.android.resources.Res
+import org.vetta.android.resources.about_description
+import org.vetta.android.resources.about_section
+import org.vetta.android.resources.about_us
+import org.vetta.android.resources.about_vetta
+import org.vetta.android.resources.account_and_devices
+import org.vetta.android.resources.action_retry
+import org.vetta.android.resources.app_name
+import org.vetta.android.resources.appearance
+import org.vetta.android.resources.appearance_hint
+import org.vetta.android.resources.auto_resume
+import org.vetta.android.resources.auto_resume_hint
+import org.vetta.android.resources.back
+import org.vetta.android.resources.behavior
+import org.vetta.android.resources.clear_local_data
+import org.vetta.android.resources.clear_local_data_action
+import org.vetta.android.resources.clear_local_data_hint
+import org.vetta.android.resources.clear_local_data_message
+import org.vetta.android.resources.clear_local_data_title
+import org.vetta.android.resources.confirm_delete_session
+import org.vetta.android.resources.confirm_delete_session_hint
+import org.vetta.android.resources.confirm_logout
+import org.vetta.android.resources.connected_devices
+import org.vetta.android.resources.data_section
+import org.vetta.android.resources.general_settings
+import org.vetta.android.resources.get_started
+import org.vetta.android.resources.loading
+import org.vetta.android.resources.login_to_view_plan
+import org.vetta.android.resources.logout
+import org.vetta.android.resources.logout_and_clear
+import org.vetta.android.resources.logout_confirm
+import org.vetta.android.resources.me
+import org.vetta.android.resources.not_logged_in
+import org.vetta.android.resources.open_source_licenses
+import org.vetta.android.resources.open_source_licenses_body
+import org.vetta.android.resources.page_motion
+import org.vetta.android.resources.page_motion_hint
+import org.vetta.android.resources.plan
+import org.vetta.android.resources.plan_active
+import org.vetta.android.resources.plan_disabled
+import org.vetta.android.resources.plan_inactive
+import org.vetta.android.resources.privacy_policy
+import org.vetta.android.resources.privacy_policy_body
+import org.vetta.android.resources.settings
+import org.vetta.android.resources.theme_dark
+import org.vetta.android.resources.theme_light
+import org.vetta.android.resources.theme_system
+import org.vetta.android.resources.version_number
+import org.vetta.android.resources.window5h
+import org.vetta.android.resources.window_month
+import org.vetta.android.resources.window_week
 import org.vetta.android.ui.theme.vettaExtra
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -70,14 +122,14 @@ fun MeScreen(
     onLogout: (clearLocal: Boolean) -> Unit,
 ) {
     var confirmLogout by remember { mutableStateOf(false) }
-    val name = user?.nickname?.ifBlank { user.username } ?: Str.notLoggedIn
+    val name = user?.nickname?.ifBlank { user.username } ?: stringResource(Res.string.not_logged_in)
     val contact = user?.email ?: user?.phone ?: ""
 
     Scaffold(
         containerColor = MaterialTheme.vettaExtra.pageBackground,
         topBar = {
             TopAppBar(
-                title = { Text(Str.me, style = MaterialTheme.typography.titleMedium) },
+                title = { Text(stringResource(Res.string.me), style = MaterialTheme.typography.titleMedium) },
                 colors =
                     TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.vettaExtra.pageBackground,
@@ -108,19 +160,19 @@ fun MeScreen(
             }
 
             Spacer(Modifier.height(20.dp))
-            SectionHeader(title = Str.accountAndDevices)
+            SectionHeader(title = stringResource(Res.string.account_and_devices))
             VettaListGroup {
-                ProfileRow(Icons.Default.Devices, Str.connectedDevices, "$onlineDeviceCount", onOpenDevices, showDivider = false)
+                ProfileRow(Icons.Default.Devices, stringResource(Res.string.connected_devices), "$onlineDeviceCount", onOpenDevices, showDivider = false)
             }
 
             Spacer(Modifier.height(16.dp))
-            SectionHeader(title = Str.settings)
+            SectionHeader(title = stringResource(Res.string.settings))
             VettaListGroup {
-                ProfileRow(Icons.Default.Settings, Str.generalSettings, null, onOpenSettings, showDivider = false)
+                ProfileRow(Icons.Default.Settings, stringResource(Res.string.general_settings), null, onOpenSettings, showDivider = false)
             }
 
             Spacer(Modifier.height(16.dp))
-            SectionHeader(title = Str.plan)
+            SectionHeader(title = stringResource(Res.string.plan))
             VettaListGroup(modifier = Modifier.clickable(onClick = onOpenPlan)) {
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 14.dp),
@@ -128,10 +180,10 @@ fun MeScreen(
                 ) {
                     Text(
                         when {
-                            subscription == null -> if (user == null) Str.loginToViewPlan else Str.loading
-                            !subscription.goEnabled -> Str.planDisabled
-                            !subscription.active -> Str.planInactive
-                            else -> "${Str.planActive} · ${subscription.tierName ?: ""}"
+                            subscription == null -> if (user == null) stringResource(Res.string.login_to_view_plan) else stringResource(Res.string.loading)
+                            !subscription.goEnabled -> stringResource(Res.string.plan_disabled)
+                            !subscription.active -> stringResource(Res.string.plan_inactive)
+                            else -> "${stringResource(Res.string.plan_active)} · ${subscription.tierName ?: ""}"
                         },
                         style = MaterialTheme.typography.bodyLarge,
                         modifier = Modifier.weight(1f),
@@ -154,16 +206,16 @@ fun MeScreen(
             }
 
             Spacer(Modifier.height(16.dp))
-            SectionHeader(title = Str.aboutSection)
+            SectionHeader(title = stringResource(Res.string.about_section))
             VettaListGroup {
-                ProfileRow(Icons.Default.Info, Str.aboutUs, Str.versionNumber.removePrefix("版本 "), onOpenAbout, showDivider = false)
+                ProfileRow(Icons.Default.Info, stringResource(Res.string.about_us), APP_VERSION, onOpenAbout, showDivider = false)
             }
 
             Spacer(Modifier.height(20.dp))
             if (user == null) {
-                PrimaryBlackButton(text = Str.getStarted, onClick = onLogin)
+                PrimaryBlackButton(text = stringResource(Res.string.get_started), onClick = onLogin)
             } else {
-                PrimaryBlackButton(text = Str.logout, onClick = { confirmLogout = true })
+                PrimaryBlackButton(text = stringResource(Res.string.logout), onClick = { confirmLogout = true })
             }
             Spacer(Modifier.height(24.dp))
         }
@@ -171,14 +223,14 @@ fun MeScreen(
 
     if (confirmLogout) {
         VettaChoiceDialog(
-            title = Str.logout,
-            message = Str.logoutConfirm,
-            primaryLabel = Str.confirmLogout,
+            title = stringResource(Res.string.logout),
+            message = stringResource(Res.string.logout_confirm),
+            primaryLabel = stringResource(Res.string.confirm_logout),
             onPrimary = {
                 confirmLogout = false
                 onLogout(false)
             },
-            secondaryLabel = Str.logoutAndClear,
+            secondaryLabel = stringResource(Res.string.logout_and_clear),
             onSecondary = {
                 confirmLogout = false
                 onLogout(true)
@@ -269,16 +321,16 @@ fun PlanScreen(
         containerColor = MaterialTheme.vettaExtra.pageBackground,
         topBar = {
             TopAppBar(
-                title = { Text(Str.plan, style = MaterialTheme.typography.titleMedium) },
+                title = { Text(stringResource(Res.string.plan), style = MaterialTheme.typography.titleMedium) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = Str.back)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.back))
                     }
                 },
                 actions = {
                     if (loggedIn) {
                         IconButton(onClick = onRefresh) {
-                            Icon(Icons.Default.Refresh, contentDescription = Str.actionRetry)
+                            Icon(Icons.Default.Refresh, contentDescription = stringResource(Res.string.action_retry))
                         }
                     }
                 },
@@ -297,8 +349,8 @@ fun PlanScreen(
         ) {
             if (!loggedIn) {
                 EmptyState(
-                    title = Str.loginToViewPlan,
-                    actionLabel = Str.getStarted,
+                    title = stringResource(Res.string.login_to_view_plan),
+                    actionLabel = stringResource(Res.string.get_started),
                     onAction = onLogin,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -307,10 +359,10 @@ fun PlanScreen(
             VettaListGroup {
                 Text(
                     when {
-                        subscription == null -> Str.loading
-                        !subscription.goEnabled -> Str.planDisabled
-                        !subscription.active -> Str.planInactive
-                        else -> Str.planActive
+                        subscription == null -> stringResource(Res.string.loading)
+                        !subscription.goEnabled -> stringResource(Res.string.plan_disabled)
+                        !subscription.active -> stringResource(Res.string.plan_inactive)
+                        else -> stringResource(Res.string.plan_active)
                     },
                     style = MaterialTheme.typography.titleMedium,
                 )
@@ -333,9 +385,9 @@ fun PlanScreen(
                     QuotaMeter(
                         label =
                             when (w.kind) {
-                                "5h" -> Str.window5h
-                                "week" -> Str.windowWeek
-                                "month" -> Str.windowMonth
+                                "5h" -> stringResource(Res.string.window5h)
+                                "week" -> stringResource(Res.string.window_week)
+                                "month" -> stringResource(Res.string.window_month)
                                 else -> w.kind
                             },
                         limit = w.limit,
@@ -369,10 +421,10 @@ fun SettingsScreen(
         containerColor = MaterialTheme.vettaExtra.pageBackground,
         topBar = {
             TopAppBar(
-                title = { Text(Str.settings, style = MaterialTheme.typography.titleMedium) },
+                title = { Text(stringResource(Res.string.settings), style = MaterialTheme.typography.titleMedium) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = Str.back)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.back))
                     }
                 },
                 colors =
@@ -388,9 +440,9 @@ fun SettingsScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 40.dp),
         ) {
-            SectionHeader(title = Str.appearance)
+            SectionHeader(title = stringResource(Res.string.appearance))
             Text(
-                Str.appearanceHint,
+                stringResource(Res.string.appearance_hint),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.vettaExtra.secondaryText,
                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
@@ -399,18 +451,18 @@ fun SettingsScreen(
             ThemeModeSelector(themeMode = themeMode, onThemeMode = onThemeMode)
 
             Spacer(Modifier.height(28.dp))
-            SectionHeader(title = Str.behavior)
+            SectionHeader(title = stringResource(Res.string.behavior))
             VettaListGroup {
                 PreferenceSwitchRow(
-                    title = Str.autoResume,
-                    subtitle = Str.autoResumeHint,
+                    title = stringResource(Res.string.auto_resume),
+                    subtitle = stringResource(Res.string.auto_resume_hint),
                     checked = autoResumeLastSession,
                     onCheckedChange = onAutoResumeLastSession,
                     showDivider = true,
                 )
                 PreferenceSwitchRow(
-                    title = Str.pageMotion,
-                    subtitle = Str.pageMotionHint,
+                    title = stringResource(Res.string.page_motion),
+                    subtitle = stringResource(Res.string.page_motion_hint),
                     checked = motionEnabled,
                     onCheckedChange = onMotionEnabled,
                     showDivider = false,
@@ -418,19 +470,19 @@ fun SettingsScreen(
             }
 
             Spacer(Modifier.height(28.dp))
-            SectionHeader(title = Str.dataSection)
+            SectionHeader(title = stringResource(Res.string.data_section))
             VettaListGroup {
                 ProfileRow(
                     Icons.Default.DeleteSweep,
-                    Str.clearLocalData,
+                    stringResource(Res.string.clear_local_data),
                     null,
                     onClick = { confirmClearLocalData = true },
                     showDivider = true,
-                    subtitle = Str.clearLocalDataHint,
+                    subtitle = stringResource(Res.string.clear_local_data_hint),
                 )
                 PreferenceSwitchRow(
-                    title = Str.confirmDeleteSession,
-                    subtitle = Str.confirmDeleteSessionHint,
+                    title = stringResource(Res.string.confirm_delete_session),
+                    subtitle = stringResource(Res.string.confirm_delete_session_hint),
                     checked = confirmBeforeDelete,
                     onCheckedChange = onConfirmBeforeDelete,
                     showDivider = false,
@@ -438,18 +490,18 @@ fun SettingsScreen(
             }
 
             Spacer(Modifier.height(28.dp))
-            SectionHeader(title = Str.aboutSection)
+            SectionHeader(title = stringResource(Res.string.about_section))
             VettaListGroup {
-                ProfileRow(Icons.Default.Info, Str.aboutVetta, Str.versionNumber.removePrefix("版本 "), onOpenAbout, showDivider = false)
+                ProfileRow(Icons.Default.Info, stringResource(Res.string.about_vetta), APP_VERSION, onOpenAbout, showDivider = false)
             }
         }
     }
 
     if (confirmClearLocalData) {
         VettaConfirmDialog(
-            title = Str.clearLocalDataTitle,
-            message = Str.clearLocalDataMessage,
-            confirmLabel = Str.clearLocalDataAction,
+            title = stringResource(Res.string.clear_local_data_title),
+            message = stringResource(Res.string.clear_local_data_message),
+            confirmLabel = stringResource(Res.string.clear_local_data_action),
             onConfirm = {
                 confirmClearLocalData = false
                 onClearLocalData()
@@ -466,9 +518,9 @@ private fun ThemeModeSelector(
 ) {
     val modes =
         listOf(
-            org.vetta.android.app.ThemeMode.System to Str.themeSystem,
-            org.vetta.android.app.ThemeMode.Light to Str.themeLight,
-            org.vetta.android.app.ThemeMode.Dark to Str.themeDark,
+            org.vetta.android.app.ThemeMode.System to stringResource(Res.string.theme_system),
+            org.vetta.android.app.ThemeMode.Light to stringResource(Res.string.theme_light),
+            org.vetta.android.app.ThemeMode.Dark to stringResource(Res.string.theme_dark),
         )
     androidx.compose.foundation.layout.Row(
         modifier = Modifier.fillMaxWidth(),
@@ -533,10 +585,10 @@ fun AboutScreen(onBack: () -> Unit) {
         containerColor = MaterialTheme.vettaExtra.pageBackground,
         topBar = {
             TopAppBar(
-                title = { Text(Str.aboutVetta, style = MaterialTheme.typography.titleMedium) },
+                title = { Text(stringResource(Res.string.about_vetta), style = MaterialTheme.typography.titleMedium) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = Str.back)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.back))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.vettaExtra.pageBackground),
@@ -551,25 +603,25 @@ fun AboutScreen(onBack: () -> Unit) {
                 .padding(start = 24.dp, top = 36.dp, end = 24.dp, bottom = 40.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            BoxAvatar(Str.appName)
+            BoxAvatar(stringResource(Res.string.app_name))
             Spacer(Modifier.height(16.dp))
-            Text(Str.appName, style = MaterialTheme.typography.headlineSmall)
+            Text(stringResource(Res.string.app_name), style = MaterialTheme.typography.headlineSmall)
             Spacer(Modifier.height(8.dp))
-            Text(Str.versionNumber, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.vettaExtra.secondaryText)
+            Text(stringResource(Res.string.version_number, APP_VERSION), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.vettaExtra.secondaryText)
             Spacer(Modifier.height(24.dp))
-            Text(Str.aboutDescription, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.vettaExtra.secondaryText)
+            Text(stringResource(Res.string.about_description), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.vettaExtra.secondaryText)
             Spacer(Modifier.height(28.dp))
             VettaListGroup {
                 ProfileRow(
                     Icons.Default.Info,
-                    Str.openSourceLicenses,
+                    stringResource(Res.string.open_source_licenses),
                     null,
                     onClick = { openDocument = AboutDocument.Licenses },
                     showDivider = true,
                 )
                 ProfileRow(
                     Icons.Default.Info,
-                    Str.privacyPolicy,
+                    stringResource(Res.string.privacy_policy),
                     null,
                     onClick = { openDocument = AboutDocument.Privacy },
                     showDivider = false,
@@ -579,8 +631,8 @@ fun AboutScreen(onBack: () -> Unit) {
     }
 
     openDocument?.let { document ->
-        val title = if (document == AboutDocument.Licenses) Str.openSourceLicenses else Str.privacyPolicy
-        val body = if (document == AboutDocument.Licenses) Str.openSourceLicensesBody else Str.privacyPolicyBody
+        val title = if (document == AboutDocument.Licenses) stringResource(Res.string.open_source_licenses) else stringResource(Res.string.privacy_policy)
+        val body = if (document == AboutDocument.Licenses) stringResource(Res.string.open_source_licenses_body) else stringResource(Res.string.privacy_policy_body)
         VettaInfoDialog(
             title = title,
             message = body,

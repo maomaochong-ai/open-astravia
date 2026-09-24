@@ -144,7 +144,7 @@ Desktop 主进程部分目录还有更细规则；修改对应目录时必须继
 - 不通过删除功能、降低类型安全或降级依赖来消除类型错误。依赖升级会扩大任务范围时，先说明影响并征得用户同意。
 - 快捷键必须进入现有可配置 keybinding 对象，不得在业务逻辑中写死按键组合。
 - `apps/desktop` 中所有用户可见文案必须走 i18n，包括 label、按钮、placeholder、菜单、通知、title 和 aria 属性。
-- 移动端（`apps/mobile/client-apple`、`apps/mobile/client-android`）同样必须走 i18n：所有用户可见文案同时提供英文与简体中文、跟随系统语言，其他语言回落英文；视图、错误提示和系统权限说明里都不得写死任何语言的字面量。iOS 文案在 `VettaKit` 的 `L10n`（键）与 `Resources/Localizable.xcstrings`（译文）里成对新增，Info.plist 权限说明走 `Vetta/Resources/InfoPlist.xcstrings`；Android 走 `res/values/strings.xml` 与 `res/values-zh-rCN/strings.xml`。
+- 移动端（`apps/mobile/client-apple`、`apps/mobile/client-android`）同样必须走 i18n：所有用户可见文案同时提供英文与简体中文、跟随系统语言，其他语言回落英文；视图、错误提示和系统权限说明里都不得写死任何语言的字面量。iOS 文案在 `VettaKit` 的 `L10n`（键）与 `Resources/Localizable.xcstrings`（译文）里成对新增，Info.plist 权限说明走 `Vetta/Resources/InfoPlist.xcstrings`；Android 走 Compose Multiplatform 资源 `shared/src/commonMain/composeResources/values/strings.xml`（英文）与 `values-zh-rCN/strings.xml`（中文），非界面代码用 `UiText` 传递文案、由界面解析。
 - UI 修改遵循现有设计系统和组件模式；交互行为变化应优先抽取可测试的纯逻辑，不默认挂载大型 React 树。
 
 ## AI 与安全边界

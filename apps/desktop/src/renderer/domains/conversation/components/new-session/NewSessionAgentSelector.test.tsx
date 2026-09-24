@@ -58,7 +58,7 @@ describe("NewSessionAgentSelector", () => {
 		const optionStack = option.querySelector('[data-avatar-stack="true"]');
 		expect(optionStack).not.toBeNull();
 		expect(optionStack?.querySelectorAll("img")).toHaveLength(3);
-		expect(optionStack?.querySelector('[data-avatar-overflow="1"]')).not.toBeNull();
+		expect(optionStack?.querySelector('[data-avatar-overflow="1"]')?.textContent).toBe("+1");
 
 		await user.click(option);
 		expect(onSelect).toHaveBeenCalledWith(teamTargetKey(team.id));
@@ -66,7 +66,7 @@ describe("NewSessionAgentSelector", () => {
 		const selectedTrigger = screen.getByRole("button", { name: "newSession.agentSelector.switchTitle" });
 		expect(within(selectedTrigger).getByText(team.name)).toBeDefined();
 		expect(selectedTrigger.querySelectorAll("img")).toHaveLength(3);
-		expect(selectedTrigger.querySelector('[data-avatar-overflow="1"]')).not.toBeNull();
+		expect(selectedTrigger.querySelector('[data-avatar-overflow="1"]')?.textContent).toBe("+1");
 	});
 
 	it("picks a single agent and shows only that agent's avatar on the trigger", async () => {

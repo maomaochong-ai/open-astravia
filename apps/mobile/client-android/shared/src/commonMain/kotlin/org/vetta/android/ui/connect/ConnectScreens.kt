@@ -39,7 +39,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import org.vetta.android.domain.device.DesktopDevice
 import org.vetta.android.domain.device.DeviceStatus
-import org.vetta.android.domain.remote.remoteDesktopViewerTarget
 import org.vetta.android.ui.components.FilterChipRow
 import org.vetta.android.ui.components.EmptyState
 import org.vetta.android.ui.components.ListRow
@@ -49,7 +48,45 @@ import org.vetta.android.ui.components.StatusChip
 import org.vetta.android.ui.components.StatusDot
 import org.vetta.android.ui.components.VettaTextField
 import org.vetta.android.ui.components.VettaListGroup
-import org.vetta.android.ui.i18n.Str
+import org.jetbrains.compose.resources.stringResource
+import org.vetta.android.resources.Res
+import org.vetta.android.resources.back
+import org.vetta.android.resources.channel_cloud
+import org.vetta.android.resources.channel_lan
+import org.vetta.android.resources.channel_remote
+import org.vetta.android.resources.connect_action
+import org.vetta.android.resources.connected_desktop
+import org.vetta.android.resources.connecting_desktop
+import org.vetta.android.resources.desktop_preview
+import org.vetta.android.resources.device_connected
+import org.vetta.android.resources.disconnect
+import org.vetta.android.resources.disconnected
+import org.vetta.android.resources.discover_subtitle
+import org.vetta.android.resources.discover_title
+import org.vetta.android.resources.duration
+import org.vetta.android.resources.feature_cloud_desc
+import org.vetta.android.resources.lan_address_hint
+import org.vetta.android.resources.lan_desktop
+import org.vetta.android.resources.lan_devices
+import org.vetta.android.resources.latency
+import org.vetta.android.resources.manual_connect
+import org.vetta.android.resources.memory
+import org.vetta.android.resources.no_devices_hint
+import org.vetta.android.resources.no_remote_devices
+import org.vetta.android.resources.no_remote_devices_hint
+import org.vetta.android.resources.not_available
+import org.vetta.android.resources.offline
+import org.vetta.android.resources.online
+import org.vetta.android.resources.operating_system
+import org.vetta.android.resources.processor
+import org.vetta.android.resources.remote_desktop
+import org.vetta.android.resources.remote_desktop_section
+import org.vetta.android.resources.scan_desktop
+import org.vetta.android.resources.start_conversation
+import org.vetta.android.resources.system_info
+import org.vetta.android.resources.use_cloud_ai
+import org.vetta.android.ui.i18n.durationLabel
+import org.vetta.android.ui.i18n.rememberClock
 import org.vetta.android.ui.theme.vettaExtra
 import org.vetta.android.ui.remote.RemoteDesktopSurface
 import org.vetta.android.ui.remote.PairingScannerButton
@@ -65,13 +102,13 @@ fun DiscoverConnectScreen(
     onUseCloud: () -> Unit,
 ) {
     var host by remember { mutableStateOf("") }
-    val channels = listOf(Str.channelLan, Str.channelRemote, Str.channelCloud)
+    val channels = listOf(stringResource(Res.string.channel_lan), stringResource(Res.string.channel_remote), stringResource(Res.string.channel_cloud))
 
     Scaffold(
         containerColor = MaterialTheme.vettaExtra.pageBackground,
         topBar = {
             TopAppBar(
-                title = { Text(Str.discoverTitle, style = MaterialTheme.typography.titleMedium) },
+                title = { Text(stringResource(Res.string.discover_title), style = MaterialTheme.typography.titleMedium) },
                 colors =
                     TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.vettaExtra.pageBackground,
@@ -87,7 +124,7 @@ fun DiscoverConnectScreen(
                 .padding(horizontal = 16.dp),
         ) {
             Text(
-                Str.discoverSubtitle,
+                stringResource(Res.string.discover_subtitle),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.vettaExtra.secondaryText,
             )
@@ -97,38 +134,38 @@ fun DiscoverConnectScreen(
 
             when (channelIndex) {
                 2 -> {
-                    SectionHeader(title = Str.channelCloud)
+                    SectionHeader(title = stringResource(Res.string.channel_cloud))
                     Text(
-                        Str.featureCloudDesc,
+                        stringResource(Res.string.feature_cloud_desc),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.vettaExtra.secondaryText,
                         modifier = Modifier.padding(horizontal = 4.dp),
                     )
                     Spacer(Modifier.height(18.dp))
-                    PrimaryBlackButton(text = Str.useCloudAi, onClick = onUseCloud)
+                    PrimaryBlackButton(text = stringResource(Res.string.use_cloud_ai), onClick = onUseCloud)
                 }
                 else -> {
                     val remote = channelIndex == 1
                     SectionHeader(
                         title =
                             if (remote) {
-                                if (devices.isEmpty()) Str.remoteDesktopSection else Str.connectedDesktop
+                                if (devices.isEmpty()) stringResource(Res.string.remote_desktop_section) else stringResource(Res.string.connected_desktop)
                             } else {
-                                Str.lanDevices
+                                stringResource(Res.string.lan_devices)
                             },
                     )
                     if (remote) {
                         PairingScannerButton(
                             onScanned = onConnectManual,
                             modifier = Modifier.fillMaxWidth().height(48.dp),
-                            label = Str.scanDesktop,
+                            label = stringResource(Res.string.scan_desktop),
                         )
                         Spacer(Modifier.height(12.dp))
                     }
                     if (devices.isEmpty()) {
                         EmptyState(
-                            title = if (remote) Str.noRemoteDevices else Str.disconnected,
-                            subtitle = if (remote) Str.noRemoteDevicesHint else Str.noDevicesHint,
+                            title = if (remote) stringResource(Res.string.no_remote_devices) else stringResource(Res.string.disconnected),
+                            subtitle = if (remote) stringResource(Res.string.no_remote_devices_hint) else stringResource(Res.string.no_devices_hint),
                             icon = Icons.Default.Computer,
                             modifier = Modifier.fillMaxWidth(),
                         )
@@ -137,8 +174,8 @@ fun DiscoverConnectScreen(
                         ListRow(
                             title = device.name,
                             subtitle =
-                                "${if (remote) Str.remoteDesktop else Str.lanDesktop} · " +
-                                    if (device.status == DeviceStatus.Online) Str.online else Str.offline,
+                                "${if (remote) stringResource(Res.string.remote_desktop) else stringResource(Res.string.lan_desktop)} · " +
+                                    if (device.status == DeviceStatus.Online) stringResource(Res.string.online) else stringResource(Res.string.offline),
                             leading = { Icon(Icons.Default.Computer, contentDescription = null) },
                             trailing = {
                                 StatusDot(online = device.status == DeviceStatus.Online)
@@ -151,21 +188,21 @@ fun DiscoverConnectScreen(
                     }
                     Spacer(Modifier.height(22.dp))
                     if (!remote) {
-                        SectionHeader(title = Str.manualConnect)
+                        SectionHeader(title = stringResource(Res.string.manual_connect))
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             VettaTextField(
                                 value = host,
                                 onValueChange = { host = it },
                                 modifier = Modifier.weight(1f),
                                 singleLine = true,
-                                placeholder = { Text(Str.lanAddressHint) },
+                                placeholder = { Text(stringResource(Res.string.lan_address_hint)) },
                             )
                             Spacer(Modifier.width(6.dp))
                             PairingScannerButton(onScanned = { value -> host = value })
                         }
                         Spacer(Modifier.height(10.dp))
                         PrimaryBlackButton(
-                            text = Str.connectAction,
+                            text = stringResource(Res.string.connect_action),
                             onClick = { onConnectManual(host.trim()) },
                             enabled = host.isNotBlank(),
                         )
@@ -187,9 +224,9 @@ fun DeviceDetailScreen(
 ) {
     val statusLabel =
         when (device.status) {
-            DeviceStatus.Online -> Str.deviceConnected
-            DeviceStatus.Connecting -> Str.connectingDesktop
-            DeviceStatus.Offline -> Str.disconnected
+            DeviceStatus.Online -> stringResource(Res.string.device_connected)
+            DeviceStatus.Connecting -> stringResource(Res.string.connecting_desktop)
+            DeviceStatus.Offline -> stringResource(Res.string.disconnected)
         }
     Scaffold(
         containerColor = MaterialTheme.vettaExtra.pageBackground,
@@ -198,7 +235,7 @@ fun DeviceDetailScreen(
                 title = { Text(device.name, style = MaterialTheme.typography.titleMedium) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = Str.back)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.back))
                     }
                 },
                 colors =
@@ -221,24 +258,28 @@ fun DeviceDetailScreen(
             }
             Spacer(Modifier.height(12.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Metric(Str.duration, device.connectedDuration ?: Str.notAvailable)
-                Metric(Str.latency, device.latencyMs?.let { "${it}ms" } ?: Str.notAvailable)
+                val now by rememberClock()
+                Metric(
+                    stringResource(Res.string.duration),
+                    device.onlineSinceEpochMs?.let { durationLabel(now - it) } ?: stringResource(Res.string.not_available),
+                )
+                Metric(stringResource(Res.string.latency), device.latencyMs?.let { "${it}ms" } ?: stringResource(Res.string.not_available))
             }
             Spacer(Modifier.height(12.dp))
-            PrimaryBlackButton(text = Str.disconnect, onClick = onDisconnect)
+            PrimaryBlackButton(text = stringResource(Res.string.disconnect), onClick = onDisconnect)
 
-            val desktopTarget = remoteDesktopViewerTarget(device.host)
+            val viewerUrl = device.viewerUrl.takeIf { device.status == DeviceStatus.Online }
             AnimatedVisibility(
-                visible = desktopTarget != null,
+                visible = viewerUrl != null,
                 enter = fadeIn(),
                 exit = fadeOut(),
             ) {
-                desktopTarget?.let {
+                viewerUrl?.let {
                     Column {
                         Spacer(Modifier.height(20.dp))
-                        SectionHeader(title = Str.desktopPreview)
+                        SectionHeader(title = stringResource(Res.string.desktop_preview))
                         RemoteDesktopSurface(
-                            target = it.url,
+                            target = it,
                             modifier = Modifier.fillMaxWidth().height(180.dp).clip(RoundedCornerShape(8.dp)),
                         )
                     }
@@ -246,16 +287,16 @@ fun DeviceDetailScreen(
             }
 
             Spacer(Modifier.height(20.dp))
-            SectionHeader(title = Str.systemInfo)
+            SectionHeader(title = stringResource(Res.string.system_info))
             VettaListGroup {
-                SystemInfoRow(Str.operatingSystem, device.osLabel)
-                SystemInfoRow(Str.processor, device.cpu)
-                SystemInfoRow(Str.memory, device.ram)
+                SystemInfoRow(stringResource(Res.string.operating_system), device.osLabel)
+                SystemInfoRow(stringResource(Res.string.processor), device.cpu)
+                SystemInfoRow(stringResource(Res.string.memory), device.ram)
             }
 
             Spacer(Modifier.height(20.dp))
             PrimaryBlackButton(
-                text = Str.startConversation,
+                text = stringResource(Res.string.start_conversation),
                 onClick = onNewChat,
                 enabled = device.status == DeviceStatus.Online,
             )
@@ -280,6 +321,6 @@ private fun SystemInfoRow(label: String, value: String?) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.vettaExtra.secondaryText)
-        Text(value ?: Str.notAvailable, style = MaterialTheme.typography.bodySmall)
+        Text(value ?: stringResource(Res.string.not_available), style = MaterialTheme.typography.bodySmall)
     }
 }

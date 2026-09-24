@@ -44,6 +44,7 @@ class AppViewModelSessionPendingTest {
                     preferences = AppPreferences(MapSettings()),
                     tokenStore = InMemoryTokenStore(),
                     sessionStore = SettingsSessionStore(MapSettings()),
+                    mirror = unpairedMirror(),
                 )
             val vm = AppViewModel(container)
             advanceUntilIdle()
@@ -82,6 +83,7 @@ class AppViewModelSessionPendingTest {
                     preferences = AppPreferences(MapSettings()),
                     tokenStore = InMemoryTokenStore(),
                     sessionStore = SettingsSessionStore(MapSettings()),
+                    mirror = unpairedMirror(),
                 )
             val vm = AppViewModel(container)
             advanceUntilIdle()
@@ -112,6 +114,7 @@ class AppViewModelSessionPendingTest {
                     preferences = AppPreferences(MapSettings()),
                     tokenStore = InMemoryTokenStore(),
                     sessionStore = SettingsSessionStore(MapSettings()),
+                    mirror = unpairedMirror(),
                 )
             val vm = AppViewModel(container)
             advanceUntilIdle()
@@ -136,6 +139,7 @@ class AppViewModelSessionPendingTest {
                     preferences = AppPreferences(MapSettings()),
                     tokenStore = InMemoryTokenStore(),
                     sessionStore = SettingsSessionStore(MapSettings()),
+                    mirror = unpairedMirror(),
                 )
             val vm = AppViewModel(container)
             advanceUntilIdle()
