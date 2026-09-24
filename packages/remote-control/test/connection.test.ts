@@ -362,4 +362,21 @@ describe("RemoteConnection through a relay", () => {
 		expect(phone.getSnapshot().state).toBe("online");
 		expect(phone.getSnapshot().lastEventSequence).toBe(6);
 	});
+
+	it("resyncs a phone that resumes past a journal the desktop lost on restart", async () => {
+		const relay = new FakeRelay();
+		// The phone kept sequence 40 from before the restart; the new journal starts at 0.
+		const { phone, host } = relayPair(relay, { journal: new RemoteEventJournal(), resumeFrom: 40 });
+		const names: string[] = [];
+		phone.onEvent((event) => {
+			if (event.type === "remote-event") names.push(event.event.name);
+		});
+		await host.connect();
+		await phone.connect();
+		await settle(10);
+		await host.emitEvent("session.message", { kind: "assistant_delta", text: "hi" }, "s1");
+		await settle(10);
+		expect(names).toEqual(["session.resync", "session.message"]);
+		expect(phone.getSnapshot().lastEventSequence).toBe(2);
+	});
 });

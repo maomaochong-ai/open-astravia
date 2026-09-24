@@ -55,7 +55,10 @@ export class RemoteEventJournal implements RemoteEventJournalPort {
 
 	replay(afterSequence: number): readonly RemoteEvent[] | undefined {
 		this.evict();
-		if (afterSequence >= this.sequence) return [];
+		// Ahead of anything recorded here: this journal was recreated (the endpoint
+		// restarted), and the peer would drop every new event as already seen.
+		if (afterSequence > this.sequence) return undefined;
+		if (afterSequence === this.sequence) return [];
 		if (afterSequence < this.oldestKeptSequence) return undefined;
 		return this.entries.filter((entry) => entry.event.sequence > afterSequence).map((entry) => entry.event);
 	}

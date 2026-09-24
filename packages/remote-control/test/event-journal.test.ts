@@ -22,6 +22,12 @@ describe("RemoteEventJournal", () => {
 		expect(journal.replay(1)).toBeUndefined();
 	});
 
+	it("reports a lost tail when the peer has seen more than this journal ever held", () => {
+		const journal = new RemoteEventJournal();
+		journal.remember(event(journal.nextSequence()));
+		expect(journal.replay(40)).toBeUndefined();
+	});
+
 	it("reports an evicted tail when the peer is too far behind by count", () => {
 		const journal = new RemoteEventJournal({ capacity: 3 });
 		for (let index = 0; index < 6; index += 1) journal.remember(event(journal.nextSequence()));
