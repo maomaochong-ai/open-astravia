@@ -19,6 +19,7 @@ import org.vetta.android.domain.device.DesktopGateway
 import org.vetta.android.domain.device.MirrorDesktopGateway
 import org.vetta.android.domain.remote.connection.KtorWebSocketRemoteTransport
 import org.vetta.android.domain.remote.connection.PlatformRemoteLogger
+import org.vetta.android.domain.remote.link.P2pRemoteTransportFactory
 import org.vetta.android.domain.remote.pairing.SecretStore
 import org.vetta.android.domain.remote.pairing.SettingsSecretStore
 import org.vetta.android.domain.session.SessionStore
@@ -84,12 +85,14 @@ class AppContainer(
             secrets: SecretStore = SettingsSecretStore(Settings()),
             deviceName: String = "Android",
             onTurnEnd: () -> Unit = {},
+            createP2pTransport: P2pRemoteTransportFactory? = null,
         ): MirrorPlatform =
             MirrorPlatform(
                 settings = Settings(),
                 secrets = secrets,
                 cache = cache,
                 createTransport = { url, pairingSecret -> KtorWebSocketRemoteTransport(url, pairingSecret, scope) },
+                createP2pTransport = createP2pTransport,
                 deviceName = deviceName,
                 now = ::nowEpochMs,
                 onTurnEnd = onTurnEnd,

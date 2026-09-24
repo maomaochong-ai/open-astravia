@@ -66,6 +66,7 @@ import org.vetta.android.resources.link_reconnecting
 import org.vetta.android.resources.link_status
 import org.vetta.android.resources.link_unauthorized
 import org.vetta.android.resources.link_via_lan
+import org.vetta.android.resources.link_via_p2p
 import org.vetta.android.resources.link_via_relay
 import org.vetta.android.resources.work_status_aborted
 import org.vetta.android.resources.work_status_done
@@ -150,7 +151,14 @@ fun describe(indicator: LinkIndicator): String =
 @Composable
 fun linkDetail(link: LinkSnapshot): String? {
     val channel = link.channel ?: return null
-    val via = stringResource(if (channel == LinkChannel.Lan) Res.string.link_via_lan else Res.string.link_via_relay)
+    val via =
+        stringResource(
+            when (channel) {
+                LinkChannel.P2p -> Res.string.link_via_p2p
+                LinkChannel.Lan -> Res.string.link_via_lan
+                LinkChannel.Relay -> Res.string.link_via_relay
+            },
+        )
     val rtt = link.rttMs?.takeIf { it > 0 } ?: return via
     return "$via · ${stringResource(Res.string.link_latency, rtt.toInt())}"
 }

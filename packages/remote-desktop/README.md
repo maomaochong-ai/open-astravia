@@ -2,7 +2,7 @@
 
 Platform-neutral contracts and browser WebRTC orchestration for Vetta screen viewing and remote input.
 
-This package is deliberately separate from `@vetta/remote-control`: chat/session traffic remains replayable request/event protocol traffic, while desktop media uses WebRTC and input uses an ordered DataChannel.
+This package is deliberately separate from `@vetta/remote-control`: desktop media uses WebRTC, input uses the ordered `vetta-input-v1` DataChannel, and the optional reliable `vetta-control-v2` DataChannel carries opaque application text. The application runs the replayable, end-to-end encrypted remote-control protocol over that text channel without exposing its frames to this package.
 
 Relay-backed hosts start with `waitForPeerReady: true`. The relay emits the validated, relay-owned `peer_ready` event only after both signaling sockets are online; the host then creates its offer. This prevents the one-shot offer from being lost when the Desktop starts before the mobile viewer.
 

@@ -6,6 +6,9 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -26,12 +29,16 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 @Composable
 actual fun RemoteDesktopSurface(target: String, modifier: Modifier) {
     val context = LocalContext.current
-    val session = remember(target) { NativeRemoteDesktopSession(context.applicationContext, target) }
+    NativeRemoteDesktopSessions.configure(context.applicationContext)
+    val sessions = remember(target) { NativeRemoteDesktopSessions.observe(target) }
+    val observed by sessions.collectAsState()
+    val fallback = remember(target) { NativeRemoteDesktopSessions.session(target) }
+    val session = observed ?: fallback
     val focusRequester = remember { FocusRequester() }
     var size = remember { IntSize.Zero }
     DisposableEffect(session) {
         session.start()
-        onDispose { session.stop() }
+        onDispose { session.pauseRenderer() }
     }
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(session, lifecycleOwner) {
@@ -85,7 +92,9 @@ actual fun RemoteDesktopSurface(target: String, modifier: Modifier) {
                 )
             },
     ) {
-        AndroidView(modifier = Modifier.matchParentSize(), factory = { session.createRenderer() })
+        key(session) {
+            AndroidView(modifier = Modifier.matchParentSize(), factory = { session.createRenderer() })
+        }
     }
 }
 

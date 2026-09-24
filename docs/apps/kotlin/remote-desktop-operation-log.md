@@ -10,7 +10,7 @@
 - 手机和电脑可能不在同一网络。
 - Worker 不能安全地承载屏幕像素、键盘内容或完整 Agent 权限。
 
-最终采用的边界是：Cloudflare Durable Object 做配对、鉴权、在线状态和信令转发；Desktop 和 Android 主动连出；WebRTC 负责屏幕和输入；控制/对话继续走版本化远程协议。
+最初采用的边界是：Cloudflare Durable Object 做配对、鉴权、在线状态和信令转发；Desktop 和 Android 主动连出；WebRTC 负责屏幕和输入；控制/对话继续走版本化远程协议。ADR-0135 后，版本化远程协议会在 WebRTC 建立后迁移到可靠控制 DataChannel，中继只保留引导与失败回退职责。
 
 这个边界让 Worker 不接触屏幕内容，也避免把 Electron IPC 或 Android 内部对象直接暴露到公网。
 

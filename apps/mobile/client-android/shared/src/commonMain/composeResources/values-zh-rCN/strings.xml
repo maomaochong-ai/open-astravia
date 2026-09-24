@@ -204,6 +204,7 @@
     <string name="link_status">连接状态</string>
     <string name="link_unauthorized">电脑不认识这部手机，请重新扫码</string>
     <string name="link_via_lan">局域网直连</string>
+    <string name="link_via_p2p">P2P 直连</string>
     <string name="link_via_relay">云端中继</string>
     <string name="loading">加载中…</string>
     <string name="logging_in">正在登录…</string>

@@ -12,6 +12,7 @@ import kotlinx.coroutines.SupervisorJob
 import org.vetta.android.data.remote.SqliteSessionCache
 import org.vetta.android.data.secure.KeystoreSecretStore
 import org.vetta.android.domain.work.DesktopMirror
+import org.vetta.android.ui.remote.NativeRemoteDesktopSessions
 
 /**
  * The process-wide container. One per process, not per activity: the desktop
@@ -28,6 +29,7 @@ object AndroidAppContainer {
         }
 
     private fun create(context: Context): AppContainer {
+        NativeRemoteDesktopSessions.configure(context)
         val preferences = AppPreferences()
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
         val cachePath = context.getDatabasePath(CACHE_FILE).also { it.parentFile?.mkdirs() }.path
@@ -39,6 +41,7 @@ object AndroidAppContainer {
                 secrets = KeystoreSecretStore(context),
                 deviceName = Build.MODEL?.takeIf { it.isNotBlank() } ?: "Android",
                 onTurnEnd = { TurnEndHaptics.play(context) },
+                createP2pTransport = NativeRemoteDesktopSessions::transport,
             )
         return AppContainer(preferences = preferences, scope = scope, mirror = DesktopMirror(platform, scope))
     }

@@ -209,6 +209,7 @@
     <string name="link_status">Connection status</string>
     <string name="link_unauthorized">Your computer doesn’t recognize this phone. Please scan again.</string>
     <string name="link_via_lan">Direct over LAN</string>
+    <string name="link_via_p2p">Direct over P2P</string>
     <string name="link_via_relay">Cloud relay</string>
     <string name="loading">Loading…</string>
     <string name="logging_in">Signing in…</string>

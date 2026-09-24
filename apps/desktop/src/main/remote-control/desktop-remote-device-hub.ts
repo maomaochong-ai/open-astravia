@@ -2,7 +2,7 @@ import type { RemoteConnection, RemoteError, RemoteEvent, RemoteEventName, Remot
 import { RemoteEventJournal } from "@vetta/remote-control";
 import { getAppLogger } from "../logger.js";
 
-export type RemoteChannel = "lan" | "relay";
+export type RemoteChannel = "p2p" | "lan" | "relay";
 
 export interface RemoteDeviceLink {
 	readonly channel: RemoteChannel;
@@ -40,10 +40,9 @@ interface DeviceEntry {
 const log = getAppLogger("remote-hub");
 
 /**
- * Fans events out to every live link of a paired phone and routes its requests
- * back. One journal per device keeps the event sequence continuous across a
- * LAN link and a relay link, so a phone that switches channels mid-turn only
- * receives the frames it missed. Nothing here runs until a link is attached.
+ * Routes events through the best live link of a paired phone and accepts
+ * requests from any link. One journal per device keeps the event sequence
+ * continuous across P2P, LAN and relay switches.
  */
 export class DesktopRemoteDeviceHub {
 	private readonly devices = new Map<string, DeviceEntry>();
@@ -126,7 +125,7 @@ export class DesktopRemoteDeviceHub {
 		return this.onlineDeviceIds().length > 0;
 	}
 
-	/** Sequences one event for a device and delivers it on every live link. */
+	/** Sequences one event for a device and delivers it on its best live link. */
 	async emit(deviceId: string, name: RemoteEventName, payload?: unknown, sessionId?: string): Promise<RemoteEvent> {
 		const entry = this.entry(deviceId);
 		const sequence = entry.journal.nextSequence();
@@ -139,10 +138,13 @@ export class DesktopRemoteDeviceHub {
 			payload,
 		};
 		entry.journal.remember(event);
-		for (const link of entry.links) {
-			await link.connection.deliverEvent(event).catch((error: unknown) => {
+		for (const link of preferredOnlineLinks(entry.links)) {
+			try {
+				await link.connection.deliverEvent(event);
+				break;
+			} catch (error) {
 				log.debug("remote event delivery failed", { deviceId, channel: link.channel, error: describe(error) });
-			});
+			}
 		}
 		return event;
 	}
@@ -208,6 +210,14 @@ export class DesktopRemoteDeviceHub {
 		}
 		return entry;
 	}
+}
+
+const CHANNEL_PRIORITY: Readonly<Record<RemoteChannel, number>> = { p2p: 0, lan: 1, relay: 2 };
+
+function preferredOnlineLinks(links: ReadonlySet<RemoteDeviceLink>): RemoteDeviceLink[] {
+	return [...links]
+		.filter((link) => link.connection.getSnapshot().state === "online")
+		.sort((left, right) => CHANNEL_PRIORITY[left.channel] - CHANNEL_PRIORITY[right.channel]);
 }
 
 function describe(error: unknown): string {

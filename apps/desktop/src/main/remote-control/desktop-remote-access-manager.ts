@@ -1,6 +1,7 @@
 import {
 	buildPairingUri,
-	type RemoteConnection,
+	decodePublicKey,
+	RemoteConnection,
 	type RemoteDevicePaired,
 	type RemoteDeviceStatus,
 	type RemoteHello,
@@ -66,7 +67,7 @@ export interface DesktopRemoteDesktopController {
 		readonly relayBaseUrl: string;
 		readonly pairingId: string;
 		readonly desktopSecret: string;
-	}): Promise<Pick<DesktopRemoteDesktopHostHandle, "stop">>;
+	}): Promise<DesktopRemoteDesktopHostHandle>;
 }
 
 export interface DesktopRemoteAccessManagerOptions {
@@ -121,7 +122,7 @@ export class DesktopRemoteAccessManager {
 	private identityCache: RemoteIdentityKeyPair | undefined;
 	private lanServer: Pick<DesktopRemoteLanServer, "start" | "stop" | "listeningPort"> | undefined;
 	private readonly relayLinks = new Map<string, Pick<DesktopRemoteRelayLink, "start" | "stop">>();
-	private readonly desktopHosts = new Map<string, Pick<DesktopRemoteDesktopHostHandle, "stop">>();
+	private readonly desktopHosts = new Map<string, DesktopRemoteDesktopHostHandle>();
 	private readonly desktopHostStarts = new Set<string>();
 	private readonly approvals = new Map<string, PendingApproval>();
 	private readonly lanLinks = new Map<string, Set<() => void>>();
@@ -524,7 +525,56 @@ export class DesktopRemoteAccessManager {
 				await host.stop();
 				return;
 			}
+			const device = this.config.devices.find((entry) => entry.id === deviceId);
+			if (!device?.mobileIdentityKey) {
+				await host.stop();
+				return;
+			}
+			const connection = new RemoteConnection(host.controlTransport, {
+				role: "desktop",
+				handshake: "accept",
+				deviceId: this.options.deviceId,
+				deviceName: this.options.deviceName,
+				capabilities: { chat: true, sessionRead: true },
+				identity: this.identity(),
+				expectedPeerIdentityKey: decodePublicKey(device.mobileIdentityKey),
+				journal: this.hub.journalFor(deviceId),
+				onHello: () => ({ kind: "approve" }),
+				logger: {
+					debug: (message, fields) => log.debug(message, fields),
+					info: (message, fields) => log.info(message, fields),
+					warn: (message, fields) => log.warn(message, fields),
+				},
+			});
 			this.desktopHosts.set(deviceId, host);
+			const detach = this.hub.attach(deviceId, { channel: "p2p", connection });
+			let released = false;
+			const release = (): void => {
+				if (released) return;
+				released = true;
+				unsubscribe();
+				detach();
+				if (this.desktopHosts.get(deviceId) === host) this.desktopHosts.delete(deviceId);
+				void host.stop().finally(() => {
+					if (this.hub.onlineChannels(deviceId).some((activeChannel) => activeChannel !== "p2p")) {
+						void this.startDesktopHost(deviceId);
+					}
+				});
+			};
+			const unsubscribe = connection.onEvent((event) => {
+				if (
+					event.type === "state" &&
+					(event.state === "closed" || event.state === "failed" || event.state === "reconnecting")
+				) {
+					release();
+				}
+			});
+			try {
+				await connection.connect();
+			} catch (error) {
+				release();
+				throw error;
+			}
 		} catch (error) {
 			log.warn("remote desktop host failed to start", { deviceId: deviceId.slice(0, 6), error: describe(error) });
 		} finally {

@@ -21,7 +21,7 @@ Only `hello`, `hello_ack`, `pairing_pending` and `peer_status` travel in clear; 
 - Android or Electron UI
 - WebSocket, Cloudflare, process, filesystem, or credential implementations
 - Coding Agent execution semantics
-- WebRTC screen or input transport
+- WebRTC screen or input transport; applications may adapt an opaque reliable DataChannel to `RemoteTransport`
 
 The language-neutral v2 contract is published in `schemas/remote-frame.schema.json`. The desktop, the Expo app and the Cloudflare relay all import this package directly; the schema remains as a drift check for any non-TypeScript implementation.
 
