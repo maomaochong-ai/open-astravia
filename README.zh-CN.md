@@ -176,3 +176,13 @@ Open Vetta 建立在广泛的开源生态之上，包括 pi、Codex CLI、MCP、
 本项目采用 [Apache-2.0](LICENSE) 许可。
 
 - **友情链接：** [LINUX DO](https://linux.do/) - 一个面向技术爱好者的中文社区，本项目链接并认可 LINUX DO，欢迎佬友交流和反馈。
+
+## Star 趋势
+
+<a href="https://www.star-history.com/?repos=open-vetta%2Fopen-vetta%2Copenvetta%2Fopen-vetta&type=timeline&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=open-vetta/open-vetta%2Copenvetta/open-vetta&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=open-vetta/open-vetta%2Copenvetta/open-vetta&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=open-vetta/open-vetta%2Copenvetta/open-vetta&type=date&legend=top-left" />
+ </picture>
+</a>
