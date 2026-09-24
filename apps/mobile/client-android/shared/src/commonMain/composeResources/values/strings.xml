@@ -28,6 +28,18 @@
     <string name="channel_cloud">Cloud AI</string>
     <string name="channel_lan">Local network</string>
     <string name="channel_remote">Remote</string>
+    <string name="chat_attach">Add attachment</string>
+    <string name="chat_attach_camera">Camera</string>
+    <string name="chat_attach_files">Files</string>
+    <string name="chat_attach_files_hint">Documents from your phone, up to 700 KB each</string>
+    <string name="chat_attach_photos">Photos</string>
+    <string name="chat_attach_too_large">%1$s is too large. Each attachment must be under 700 KB.</string>
+    <plurals name="chat_attach_too_many">
+        <item quantity="one">You can attach up to %1$d file.</item>
+        <item quantity="other">You can attach up to %1$d files.</item>
+    </plurals>
+    <string name="chat_camera_denied">Allow camera access for Vetta in Settings to take a photo.</string>
+    <string name="chat_camera_unavailable">No camera is available on this device.</string>
     <string name="chat_compacted">Context compacted</string>
     <string name="chat_compacting">Compacting context</string>
     <string name="chat_composer_placeholder">Tell Vetta what to do…</string>
@@ -52,6 +64,7 @@
     <string name="chat_question_submit">Submit</string>
     <string name="chat_question_tab">Question %1$d</string>
     <string name="chat_question_title">Vetta needs your choice</string>
+    <string name="chat_remove_attachment">Remove %1$s</string>
     <string name="chat_resync">Refresh</string>
     <string name="chat_retrying">Retrying (%1$d/%2$d)</string>
     <plurals name="chat_steps_done">

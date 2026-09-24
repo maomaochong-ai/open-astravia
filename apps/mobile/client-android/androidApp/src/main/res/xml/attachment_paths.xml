@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Where the system camera writes a photo for the composer; the app reads it back and deletes it. -->
+<paths>
+    <cache-path name="camera" path="camera/" />
+</paths>

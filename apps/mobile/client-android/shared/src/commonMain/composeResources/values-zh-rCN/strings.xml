@@ -28,6 +28,17 @@
     <string name="channel_cloud">云端 AI</string>
     <string name="channel_lan">局域网</string>
     <string name="channel_remote">远程连接</string>
+    <string name="chat_attach">添加附件</string>
+    <string name="chat_attach_camera">拍照</string>
+    <string name="chat_attach_files">文件</string>
+    <string name="chat_attach_files_hint">从手机里选取文件，单个不超过 700 KB</string>
+    <string name="chat_attach_photos">相册</string>
+    <string name="chat_attach_too_large">%1$s 太大了，单个附件不能超过 700 KB。</string>
+    <plurals name="chat_attach_too_many">
+        <item quantity="other">最多只能添加 %1$d 个附件。</item>
+    </plurals>
+    <string name="chat_camera_denied">需要在「设置」中允许 Vetta 使用相机才能拍照。</string>
+    <string name="chat_camera_unavailable">这台设备没有可用的相机。</string>
     <string name="chat_compacted">上下文已压缩</string>
     <string name="chat_compacting">正在压缩上下文</string>
     <string name="chat_composer_placeholder">指示 Vetta…</string>
@@ -52,6 +63,7 @@
     <string name="chat_question_submit">提交</string>
     <string name="chat_question_tab">问题 %1$d</string>
     <string name="chat_question_title">Vetta 需要你的选择</string>
+    <string name="chat_remove_attachment">移除 %1$s</string>
     <string name="chat_resync">刷新</string>
     <string name="chat_retrying">正在重试（%1$d/%2$d）</string>
     <plurals name="chat_steps_done">

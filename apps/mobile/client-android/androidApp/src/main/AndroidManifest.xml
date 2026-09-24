@@ -36,6 +36,17 @@
                     android:scheme="vetta" />
             </intent-filter>
         </activity>
+
+        <!-- Hands the system camera a file to write a composer photo into. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.attachments"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/attachment_paths" />
+        </provider>
     </application>
 
 </manifest>
