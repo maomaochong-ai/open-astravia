@@ -158,6 +158,10 @@ struct SessionView: View {
 			await model.openSession(id)
 			await model.loadModels(id)
 		}
+		// A resync (the desktop restarted) empties every transcript; refetch the one on screen.
+		.onChange(of: transcript.stale) { _, stale in
+			if stale, !starting { Task { await model.openSession(id) } }
+		}
 	}
 
 	@ViewBuilder
