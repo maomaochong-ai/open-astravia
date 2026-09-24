@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		04032F6FE25AFFC90FF24235 /* BoardSummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2E57343C2D36E3BE44AE2C2 /* BoardSummary.swift */; };
 		1751F6BEC22BE28DE42676E2 /* MarkdownView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7F30E48D0595CE66EF6B8A3 /* MarkdownView.swift */; };
 		1C3ED9E212F22BF40A83A827 /* SessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7040E8A21BCC88B0A703712D /* SessionView.swift */; };
 		27D72F0CEFD735EE582C685D /* VettaUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8754BC022E2DA6BE46766DE0 /* VettaUITests.swift */; };
@@ -75,6 +76,7 @@
 		B43B0EEECDDBB2807AA280EF /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B4DC1B7D2C79A79205B17759 /* VettaKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = VettaKit; path = VettaKit; sourceTree = SOURCE_ROOT; };
 		BC4528B8445F4DFE1B3DAC95 /* ChatInputBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatInputBar.swift; sourceTree = "<group>"; };
+		C2E57343C2D36E3BE44AE2C2 /* BoardSummary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardSummary.swift; sourceTree = "<group>"; };
 		CA39B1C0456D27FC25D9A90B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		CC87D827140BB66CD638FD48 /* Vetta.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Vetta.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		DDD1656ECA9BA0A1442B19A3 /* SessionCards.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionCards.swift; sourceTree = "<group>"; };
@@ -194,6 +196,7 @@
 			isa = PBXGroup;
 			children = (
 				FCD68BBF1201238A0B705D2E /* AttachmentSheet.swift */,
+				C2E57343C2D36E3BE44AE2C2 /* BoardSummary.swift */,
 				BC4528B8445F4DFE1B3DAC95 /* ChatInputBar.swift */,
 				4AC44E052FBB4B681994D40B /* ChatViews.swift */,
 				0CAE0C2229A7C06685973CFD /* Common.swift */,
@@ -327,6 +330,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F8A4F125175E25DE8AD46037 /* AttachmentSheet.swift in Sources */,
+				04032F6FE25AFFC90FF24235 /* BoardSummary.swift in Sources */,
 				553F60767299442FEB0D3C01 /* ChatInputBar.swift in Sources */,
 				9FE91382A8C78D491B30D92F /* ChatViews.swift in Sources */,
 				3CBF8329E208C7686DE10D15 /* Common.swift in Sources */,

@@ -2131,13 +2131,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Let's get started"
+            "value": "Hello"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "让我们开始吧"
+            "value": "你好"
           }
         }
       }
@@ -2165,13 +2165,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "I can help with your work. What can I do for you?"
+            "value": "What shall we build?"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "我可以帮你处理工作，有什么可以帮助你的？"
+            "value": "今天想做点什么？"
           }
         }
       }

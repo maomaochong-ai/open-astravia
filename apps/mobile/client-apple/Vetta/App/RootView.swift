@@ -38,6 +38,12 @@ final class Router {
 		withAnimation(.snappy) { drawerOpen = false }
 	}
 
+	/// Home opened straight on the task board, in one slide rather than a slide and a push.
+	func openBoard() {
+		withoutAnimation { path = [.board] }
+		openDrawer()
+	}
+
 	/// A blank New Session in the slot, starting in `projectCwd`.
 	func startNewSession(in projectCwd: String? = nil) {
 		fill(.newSession(projectCwd: projectCwd))
