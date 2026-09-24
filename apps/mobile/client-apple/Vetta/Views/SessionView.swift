@@ -21,6 +21,8 @@ struct SessionView: View {
 	@State private var pageWidth: CGFloat = 0
 	@State private var renaming = false
 	@State private var newTitle = ""
+	/// Whether the conversation keeps the newest line in view; off while the user reads further up.
+	@State private var following = true
 
 	/// The desktop's id; a chat opened by New Session starts on a local one.
 	private var id: String { model.resolve(sessionId) }
@@ -75,8 +77,24 @@ struct SessionView: View {
 			}
 			.defaultScrollAnchor(.bottom)
 			.scrollDismissesKeyboard(.interactively)
-			.onChange(of: scrollKey) {
-				withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo("bottom", anchor: .bottom) }
+			// Where the user leaves the conversation decides whether it keeps following.
+			// Only the user's own scrolling counts: a follow's animation also ends in `.idle`,
+			// possibly just as a burst lands further below.
+			.onScrollPhaseChange { old, phase, context in
+				switch phase {
+				case .interacting:
+					following = false
+				case .idle where old == .interacting || old == .decelerating:
+					let geometry = context.geometry
+					following = geometry.contentSize.height - geometry.visibleRect.maxY < 80
+				default:
+					break
+				}
+			}
+			.onChange(of: scrollKey) { follow(proxy) }
+			// The reply grows a little on every frame as it fades in; glide along with it.
+			.onScrollGeometryChange(for: CGFloat.self, of: \.contentSize.height) { old, new in
+				if new > old { follow(proxy) }
 			}
 		}
 		.background(Theme.page)
@@ -100,6 +118,7 @@ struct SessionView: View {
 					busy: active,
 					onStop: { if !starting { Task { await model.abort(id) } } },
 					onSend: { sent in
+						following = true
 						Task {
 							// Keep what was typed so a failed send is not lost.
 							if await model.sendPrompt(id, sent.text, attachments: sent.attachments) == nil { draft = sent }
@@ -162,6 +181,11 @@ struct SessionView: View {
 		.onChange(of: transcript.stale) { _, stale in
 			if stale, !starting { Task { await model.openSession(id) } }
 		}
+	}
+
+	private func follow(_ proxy: ScrollViewProxy) {
+		guard following else { return }
+		withAnimation(.smooth(duration: 0.35)) { proxy.scrollTo("bottom", anchor: .bottom) }
 	}
 
 	@ViewBuilder
