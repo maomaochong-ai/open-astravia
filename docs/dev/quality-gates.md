@@ -151,7 +151,7 @@ Desktop build task 显式依赖 `@vetta-org/plugin-vite`。开发前置构建读
 
 `test:changed` 会从根 workspace 和各包 `package.json#scripts.test` 自动发现可测包，并按全部 workspace manifest 自动计算下游依赖闭包；没有测试脚本的上游包发生变化时，其可测消费者也会进入计划。测试启动前，`test-pkg.mjs` 会让 Turbo 构建所选测试消费的 workspace 依赖，确保干净 checkout 中指向 `dist` 的包导出可被解析，同时不会构建 Desktop、Docs 或 Remote Relay 这些叶子应用本身。`package.json`、`bun.lock`、根 TypeScript/Biome 配置和 `scripts/quality/**` 变化会触发全部 workspace 测试；无效基线会直接失败，不会静默跳过。
 
-`test:impact` 面向本地短反馈循环：显式测试文件直接运行，普通源码交给 Vitest 的 `related` 依赖图选择；若没有关联测试则回退包测试。共享 UI 没有自己的浏览器测试运行时，或 Vitest 的依赖图明显大于组件合同时，只要已有宿主组件测试从公开入口直接覆盖该源码，就可以在脚本中登记窄范围的源码到测试映射。未登记的无测试 workspace、公共入口、包/测试配置、删除文件和根配置仍会自动转交 `test:changed`，因此精确模式不会把无法证明安全的范围当作“无需测试”。不传文件时它仍使用完整 Git 差异。CI 继续使用 `test:changed`，保证跨包、跨平台门禁不因本地加速而收窄。
+`test:impact` 面向本地短反馈循环：显式测试文件直接运行，普通源码交给 Vitest 的 `related` 依赖图选择；若没有关联测试则只回退对应包的测试。拥有测试文件的 workspace 应声明包级 `test` 入口，让未显式映射的源码保持在包内选择范围。共享 UI 的跨宿主行为，或 Vitest 的依赖图明显大于组件合同时，只要已有宿主组件测试从公开入口直接覆盖该源码，就可以在脚本中登记窄范围的源码到测试映射。未登记的无测试 workspace、公共入口、包/测试配置、删除文件和根配置仍会自动转交 `test:changed`，因此精确模式不会把无法证明安全的范围当作“无需测试”。不传文件时它仍使用完整 Git 差异。CI 继续使用 `test:changed`，保证跨包、跨平台门禁不因本地加速而收窄。
 
 `check:quick` 复用同一套 Git 变更选择器，因此不带路径时不会漏掉未暂存或未跟踪文件；`check:quick -- <file...>` 可限制为本次任务实际修改的文件。删除文件会从 Biome 输入中排除；修改任意 `biome.json` / `biome.jsonc` 或根 `.editorconfig` 时，会自动回退为全仓 Biome，避免配置影响未被检查。它不做类型检查，不能替代任务结束时的完整 `check`。
 

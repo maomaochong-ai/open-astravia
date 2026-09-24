@@ -364,10 +364,17 @@ describe("affected package selection", () => {
 		]);
 	});
 
-	it("keeps unmapped source files in workspaces without tests on the conservative path", () => {
+	it("keeps unmapped source files inside workspaces with package tests on the targeted path", () => {
 		const plan = createImpactTestPlan(["packages/theme-ui/src/chat/UnmappedView.tsx"], () => true);
-		expect(plan.fallbackChanged).toBe(true);
-		expect(plan.fallbackReasons).toContain("theme-ui has no direct test entry point");
+		expect(plan.fallbackChanged).toBe(false);
+		expect(plan.targets).toMatchObject([
+			{
+				key: "theme-ui",
+				directTests: [],
+				relatedSources: ["src/chat/UnmappedView.tsx"],
+				full: false,
+			},
+		]);
 	});
 
 	it("runs quality tests for scripts while documentation-only changes need no package tests", () => {

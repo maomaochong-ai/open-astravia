@@ -130,6 +130,7 @@
 	},
 	"scripts": {
 		"check": "tsgo --noEmit -p tsconfig.json",
+		"test": "bun ../../scripts/quality/run-vitest.mjs --run",
 		"verify:purity": "bun ./scripts/verify-purity.mjs",
 		"verify:eligible": "bun ./scripts/eligible-inventory.mjs"
 	},
