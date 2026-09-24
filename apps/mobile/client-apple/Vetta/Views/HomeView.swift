@@ -9,13 +9,13 @@ struct HomeView: View {
 	@Environment(Router.self) private var router
 	@State private var filter = SessionFilter()
 	@State private var query = ""
-	@FocusState private var searchFocused: Bool
+	@State private var searchActive = false
 	/// The session whose delete is waiting on confirmation.
 	@State private var deleting: RemoteSessionSummary?
 	@State private var depth = ScrollDepth()
 
 	/// Searching folds the greeting and the project cards away, from the first tap until cancelled.
-	private var searching: Bool { searchFocused || !query.isEmpty }
+	private var searching: Bool { searchActive || !query.isEmpty }
 
 	private var rows: [RemoteSessionSummary] {
 		filter.apply(model.sessions, conversationCwd: model.conversationCwd).filter { HomeSearch.matches($0, query) }
@@ -105,46 +105,11 @@ struct HomeView: View {
 	}
 
 	private var searchField: some View {
-		HStack(spacing: 12) {
-			HStack(spacing: 10) {
-				Image(systemName: "magnifyingglass")
-					.font(.title3)
-					.foregroundStyle(Theme.dim)
-				TextField(L10n.Home.searchPlaceholder, text: $query)
-					.font(.body)
-					.focused($searchFocused)
-					.submitLabel(.search)
-					.autocorrectionDisabled()
-					.accessibilityIdentifier("home.search")
-				if !query.isEmpty {
-					Button { query = "" } label: {
-						Image(systemName: "xmark.circle.fill").foregroundStyle(Theme.faint)
-					}
-					.buttonStyle(.plain)
-					.accessibilityLabel(L10n.Home.clearFilters)
-				}
-			}
-			.padding(.horizontal, 18)
-			.frame(height: 54)
-			.background(Theme.card.opacity(0.7), in: .capsule)
-			.overlay { Capsule().strokeBorder(Theme.line) }
-			.contentShape(.capsule)
-			.onTapGesture { searchFocused = true }
-			if searching {
-				Button(L10n.Common.cancel) {
-					query = ""
-					searchFocused = false
-				}
-				.buttonStyle(.plain)
-				.foregroundStyle(Theme.ink)
-				.transition(.move(edge: .trailing).combined(with: .opacity))
-				.accessibilityIdentifier("home.searchCancel")
-			}
-		}
-		// Nothing to search until there is a session.
-		.disabled(model.sessions.isEmpty)
-		.padding(.horizontal, 16)
-		.bareRow(bottom: 8)
+		NativeSearchBar(text: $query, active: $searchActive.animation(.snappy), placeholder: L10n.Home.searchPlaceholder)
+			// Nothing to search until there is a session.
+			.disabled(model.sessions.isEmpty)
+			.padding(.horizontal, 8)
+			.bareRow(bottom: 4)
 	}
 
 	@ViewBuilder

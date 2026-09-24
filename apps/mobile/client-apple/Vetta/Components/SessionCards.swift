@@ -424,3 +424,64 @@ struct GlowBackdrop: View {
 			.ignoresSafeArea()
 	}
 }
+
+/// UIKit's own search bar, for a search field that sits inside the page rather than in a navigation bar.
+struct NativeSearchBar: UIViewRepresentable {
+	@Binding var text: String
+	/// True from the first tap until Cancel, or until the keyboard goes away with nothing typed.
+	@Binding var active: Bool
+	var placeholder: String
+
+	func makeUIView(context: Context) -> UISearchBar {
+		let bar = UISearchBar()
+		bar.searchBarStyle = .minimal
+		bar.autocorrectionType = .no
+		bar.returnKeyType = .search
+		bar.delegate = context.coordinator
+		bar.accessibilityIdentifier = "home.search"
+		bar.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+		return bar
+	}
+
+	func updateUIView(_ bar: UISearchBar, context: Context) {
+		context.coordinator.parent = self
+		if bar.text != text { bar.text = text }
+		bar.placeholder = placeholder
+		if bar.showsCancelButton != active { bar.setShowsCancelButton(active, animated: true) }
+		if !active, bar.isFirstResponder { bar.resignFirstResponder() }
+	}
+
+	func sizeThatFits(_ proposal: ProposedViewSize, uiView: UISearchBar, context: Context) -> CGSize? {
+		CGSize(width: proposal.width ?? 320, height: uiView.intrinsicContentSize.height)
+	}
+
+	func makeCoordinator() -> Coordinator { Coordinator(parent: self) }
+
+	final class Coordinator: NSObject, UISearchBarDelegate {
+		var parent: NativeSearchBar
+
+		init(parent: NativeSearchBar) { self.parent = parent }
+
+		func searchBarTextDidBeginEditing(_ searchBar: UISearchBar) {
+			parent.active = true
+		}
+
+		func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+			parent.text = searchText
+		}
+
+		func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+			searchBar.resignFirstResponder()
+		}
+
+		func searchBarTextDidEndEditing(_ searchBar: UISearchBar) {
+			if parent.text.isEmpty { parent.active = false }
+		}
+
+		func searchBarCancelButtonClicked(_ searchBar: UISearchBar) {
+			parent.text = ""
+			parent.active = false
+			searchBar.resignFirstResponder()
+		}
+	}
+}
