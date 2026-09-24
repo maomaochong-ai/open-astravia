@@ -33,6 +33,7 @@
 		E514FC31900005AF9F3DC10A /* ProjectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5B834FE35ABAA6C5DE654BC /* ProjectView.swift */; };
 		EEEE28142A335ED424B968FA /* QRScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4351D91117ED64F564EE2106 /* QRScannerView.swift */; };
 		F28E4179CBE02483F7D37374 /* ProjectRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4BD5077EC35B7196CE6FE34 /* ProjectRow.swift */; };
+		F494F9F8C20C1CF24913E95E /* DictationHaptics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91E9CDFB90F37D5D32E27EAA /* DictationHaptics.swift */; };
 		F8A4F125175E25DE8AD46037 /* AttachmentSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCD68BBF1201238A0B705D2E /* AttachmentSheet.swift */; };
 /* End PBXBuildFile section */
 
@@ -58,6 +59,7 @@
 		71BB21C509A581D37A42B7FC /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		7CE6378E652FA83EE0F754E0 /* VettaUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = VettaUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		8754BC022E2DA6BE46766DE0 /* VettaUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VettaUITests.swift; sourceTree = "<group>"; };
+		91E9CDFB90F37D5D32E27EAA /* DictationHaptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationHaptics.swift; sourceTree = "<group>"; };
 		966CF05AA64EAAE95B6C18D2 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		9958F311B813AAB23E9A6D69 /* VettaApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VettaApp.swift; sourceTree = "<group>"; };
 		9A223D846ECA782112079EA4 /* SpeechDictation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechDictation.swift; sourceTree = "<group>"; };
@@ -95,6 +97,7 @@
 		2E921D2E6EE93050053FBA5C /* Platform */ = {
 			isa = PBXGroup;
 			children = (
+				91E9CDFB90F37D5D32E27EAA /* DictationHaptics.swift */,
 				E33BB88AA6F56D2A00716432 /* KeychainStore.swift */,
 				4351D91117ED64F564EE2106 /* QRScannerView.swift */,
 				9A223D846ECA782112079EA4 /* SpeechDictation.swift */,
@@ -321,6 +324,7 @@
 				553F60767299442FEB0D3C01 /* ChatInputBar.swift in Sources */,
 				9FE91382A8C78D491B30D92F /* ChatViews.swift in Sources */,
 				3CBF8329E208C7686DE10D15 /* Common.swift in Sources */,
+				F494F9F8C20C1CF24913E95E /* DictationHaptics.swift in Sources */,
 				CF3AFE89F12B4B288CEED3B3 /* HomeDrawer.swift in Sources */,
 				AC4E28755EFF19DCF3DC5B3C /* HomeView.swift in Sources */,
 				BF4B6DCEF9D362F781317F6E /* KeychainStore.swift in Sources */,

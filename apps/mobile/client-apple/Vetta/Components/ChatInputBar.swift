@@ -20,6 +20,7 @@ struct ChatInputBar: View {
 	@State private var press = HoldToTalk()
 	@State private var cancelArmed = false
 	@State private var holdTimer: Task<Void, Never>?
+	@State private var haptics = DictationHaptics()
 	@State private var notice: String?
 	@FocusState private var focused: Bool
 
@@ -140,10 +141,13 @@ struct ChatInputBar: View {
 			.onChanged { value in
 				let now = Date.timeIntervalSinceReferenceDate
 				if press.phase == .idle {
-					_ = press.began(at: now)
+					// Count from when the finger landed: the first event can arrive well after that.
+					let landed = min(now, value.time.timeIntervalSinceReferenceDate)
+					_ = press.began(at: landed)
+					haptics.prepare()
 					// Holding still sends no drag events, so a timer checks once the hold is long enough.
 					holdTimer = Task {
-						try? await Task.sleep(for: .seconds(HoldToTalk.holdDelay))
+						try? await Task.sleep(for: .seconds(max(0, landed + HoldToTalk.holdDelay - now)))
 						guard !Task.isCancelled else { return }
 						handle(press.moved(dx: 0, dy: 0, at: Date.timeIntervalSinceReferenceDate))
 					}
@@ -167,7 +171,7 @@ struct ChatInputBar: View {
 			focused = false
 			cancelArmed = false
 			withAnimation { notice = nil }
-			UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+			haptics.play()
 			Task {
 				await dictation.start()
 				switch dictation.failure {

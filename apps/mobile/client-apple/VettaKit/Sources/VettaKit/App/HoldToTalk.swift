@@ -5,7 +5,7 @@ import Foundation
 /// either inserts what was heard or throws it away.
 public struct HoldToTalk: Equatable, Sendable {
 	/// Long enough that a tap to type is still a tap, short enough that talking feels immediate.
-	public static let holdDelay: TimeInterval = 0.2
+	public static let holdDelay: TimeInterval = 0.15
 	/// Moving further than this before the hold registers is a scroll or swipe, not a press.
 	public static let slop: Double = 12
 	/// Sliding up this far while listening arms cancel.
