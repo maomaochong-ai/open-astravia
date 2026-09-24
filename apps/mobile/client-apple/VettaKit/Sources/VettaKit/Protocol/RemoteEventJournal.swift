@@ -42,7 +42,10 @@ public final class RemoteEventJournal {
 	/// Events newer than `afterSequence`, or nil when they have already been evicted.
 	public func replay(after afterSequence: Int) -> [RemoteEvent]? {
 		evict()
-		if afterSequence >= sequence { return [] }
+		// Ahead of anything recorded here: this journal was recreated (the app
+		// restarted), and the peer would drop every new event as already seen.
+		if afterSequence > sequence { return nil }
+		if afterSequence == sequence { return [] }
 		if afterSequence < oldestKeptSequence { return nil }
 		return entries.filter { $0.event.sequence > afterSequence }.map(\.event)
 	}

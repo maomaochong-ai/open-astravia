@@ -216,4 +216,11 @@ enum Vectors {
 		clock = 10 * 60_000
 		#expect(journal.replay(after: 4) == nil)
 	}
+
+	@Test func signalsALostTailWhenThePeerIsAheadOfAFreshJournal() {
+		let journal = RemoteEventJournal()
+		let sequence = journal.nextSequence()
+		journal.remember(RemoteEvent(eventId: "e\(sequence)", sequence: sequence, name: .sessionState))
+		#expect(journal.replay(after: 40) == nil)
+	}
 }
