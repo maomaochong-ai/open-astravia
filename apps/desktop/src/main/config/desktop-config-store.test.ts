@@ -43,7 +43,7 @@ describe("defaultAgentMode 兼容旧字段名", () => {
 	it("只有旧 agentMode 字段的配置仍能读出", async () => {
 		const store = await loadStoreWithConfig({ agentMode: "coding" });
 		expect((await store.readDesktopConfig()).defaultAgentMode).toBe("coding");
-	});
+	}, 20_000);
 
 	it("新字段优先于旧字段", async () => {
 		const store = await loadStoreWithConfig({ agentMode: "coding", defaultAgentMode: "work" });

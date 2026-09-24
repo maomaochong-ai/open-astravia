@@ -1,5 +1,5 @@
 import { FakeTransport, generateIdentityKeyPair, RemoteConnection } from "@vetta/remote-control";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { DesktopRemoteDeviceHub } from "./desktop-remote-device-hub.js";
 
 const capabilities = { chat: true, sessionRead: true } as const;
@@ -99,30 +99,37 @@ describe("DesktopRemoteDeviceHub", () => {
 		await settle();
 		expect(events).toEqual(["online"]);
 
-		// Phone drops LAN and shows up on relay within the grace window.
-		await lan.phone.close();
-		await settle();
-		const relay = link(hub, "device-1", "relay");
-		await relay.desktop.connect();
-		await relay.phone.connect();
-		await settle();
-		await new Promise((resolve) => setTimeout(resolve, 40));
-		expect(events).toEqual(["online"]);
-		expect(hub.isOnline("device-1")).toBe(true);
+		vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+		try {
+			// Phone drops LAN and shows up on relay before the grace timer expires.
+			await lan.phone.close();
+			const relay = link(hub, "device-1", "relay");
+			await relay.desktop.connect();
+			await relay.phone.connect();
+			await vi.advanceTimersByTimeAsync(0);
+			expect(relay.desktop.getSnapshot().state).toBe("online");
+			await vi.advanceTimersByTimeAsync(20);
+			expect(events).toEqual(["online"]);
+			expect(hub.isOnline("device-1")).toBe(true);
 
-		// Events emitted meanwhile continue the same sequence for the new link.
-		const seen: number[] = [];
-		relay.phone.onEvent((event) => {
-			if (event.type === "remote-event") seen.push(event.event.sequence);
-		});
-		await hub.emit("device-1", "session.state", { status: "idle" }, "s1");
-		await settle();
-		expect(seen).toEqual([1]);
+			// Events emitted meanwhile continue the same sequence for the new link.
+			const seen: number[] = [];
+			relay.phone.onEvent((event) => {
+				if (event.type === "remote-event") seen.push(event.event.sequence);
+			});
+			await hub.emit("device-1", "session.state", { status: "idle" }, "s1");
+			await vi.advanceTimersByTimeAsync(0);
+			expect(seen).toEqual([1]);
 
-		await relay.desktop.close();
-		await new Promise((resolve) => setTimeout(resolve, 60));
-		expect(events).toEqual(["online", "offline"]);
-		expect(hub.isOnline("device-1")).toBe(false);
+			await relay.desktop.close();
+			await vi.advanceTimersByTimeAsync(19);
+			expect(events).toEqual(["online"]);
+			await vi.advanceTimersByTimeAsync(1);
+			expect(events).toEqual(["online", "offline"]);
+			expect(hub.isOnline("device-1")).toBe(false);
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it("answers a failing request with the mapped protocol error", async () => {
