@@ -1,11 +1,11 @@
 import SwiftUI
 import VettaKit
 
-/// The project icon, on project rows.
+/// The project icon, on project rows and session badges.
 let projectSymbol = "folder.badge.gearshape"
 
-/// A session as Home and a project's page list it, on one line: a status glyph while it
-/// needs a look, a pin, the title, then the project and the time in grey at the far right.
+/// A session as Home and a project's page list it, on one line: a pin, the title, then at
+/// the far right its project as a badge and a status glyph while it needs a look.
 /// Conversations name no project, and a project's own page leaves it out.
 struct SessionCard: View {
 	var session: RemoteSessionSummary
@@ -24,10 +24,6 @@ struct SessionCard: View {
 	var body: some View {
 		let status = StatusGlyph(status: session.status)
 		HStack(spacing: 8) {
-			// A fixed slot, empty for a finished session, so the titles line up.
-			Color.clear
-				.frame(width: 18, height: 18)
-				.overlay { status.font(.footnote.weight(.bold)) }
 			if session.pinned {
 				Image(systemName: "pin.fill")
 					.font(.caption)
@@ -41,18 +37,21 @@ struct SessionCard: View {
 				.layoutPriority(1)
 			Spacer(minLength: 8)
 			if let project {
-				Text(project)
-					.font(.subheadline)
-					.foregroundStyle(Theme.dim)
-					.lineLimit(1)
+				HStack(spacing: 4) {
+					Image(systemName: projectSymbol).font(.caption2.weight(.semibold))
+					Text(project).lineLimit(1)
+				}
+				.font(.caption.weight(.medium))
+				.foregroundStyle(Theme.ink2)
+				.padding(.horizontal, 8)
+				.padding(.vertical, 4)
+				.background(Theme.faint.opacity(0.16), in: .capsule)
 			}
-			Text(TimeFormat.relative(session.updatedAt))
-				.font(.subheadline)
-				.foregroundStyle(Theme.dim)
-				.fixedSize()
+			if let status {
+				status.font(.footnote.weight(.bold))
+			}
 		}
-		.padding(.leading, 12)
-		.padding(.trailing, 20)
+		.padding(.horizontal, 20)
 		.padding(.vertical, 13)
 		.frame(maxWidth: .infinity, alignment: .leading)
 		.contentShape(.rect)
@@ -65,7 +64,6 @@ struct SessionCard: View {
 		if let status { parts.append(status.label) }
 		if session.pinned { parts.append(L10n.Session.pinned) }
 		if let project { parts.append(project) }
-		parts.append(TimeFormat.relative(session.updatedAt))
 		return parts.joined(separator: ", ")
 	}
 }
