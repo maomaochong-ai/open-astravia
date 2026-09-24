@@ -4,6 +4,7 @@ import { chmod } from "node:fs/promises";
 import { delimiter, join } from "node:path";
 import { atomicWriteJSON } from "@vetta/toolkit/atomic-write";
 import { getAppLogger } from "../logger.js";
+import { downloadToFile } from "./download.js";
 import {
 	binDirsFor,
 	executablePathFor,
@@ -189,7 +190,7 @@ export class RuntimeManager {
 		for (const url of urls) {
 			try {
 				log.info(`downloading ${type} from ${url}`);
-				await this.fetchToFile(url, tmpFile);
+				await downloadToFile(url, tmpFile);
 				await this.installArchive(type, tmpFile, entry, version);
 				rmSync(tmpFile, { force: true });
 				return true;
@@ -198,18 +199,6 @@ export class RuntimeManager {
 			}
 		}
 		return false;
-	}
-
-	private async fetchToFile(url: string, dest: string): Promise<void> {
-		const controller = new AbortController();
-		const timer = setTimeout(() => controller.abort(), 180_000);
-		try {
-			const res = await fetch(url, { signal: controller.signal, redirect: "follow" });
-			if (!res.ok) throw new Error(`HTTP ${res.status}`);
-			writeFileSync(dest, Buffer.from(await res.arrayBuffer()));
-		} finally {
-			clearTimeout(timer);
-		}
 	}
 
 	private isReady(type: RuntimeType): boolean {
