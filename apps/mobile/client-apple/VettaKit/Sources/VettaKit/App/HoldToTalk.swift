@@ -4,8 +4,10 @@ import Foundation
 /// starts dictation, sliding up while listening arms cancel, and letting go
 /// either inserts what was heard or throws it away.
 public struct HoldToTalk: Equatable, Sendable {
-	/// Long enough that a tap to type is still a tap, short enough that talking feels immediate.
-	public static let holdDelay: TimeInterval = 0.15
+	/// Short enough that talking feels immediate; a slow tap that outlasts it is caught by `quickRelease`.
+	public static let holdDelay: TimeInterval = 0.1
+	/// Letting go this soon after listening started was a slow tap, not speech: type instead.
+	public static let quickRelease: TimeInterval = 0.2
 	/// Moving further than this before the hold registers is a scroll or swipe, not a press.
 	public static let slop: Double = 12
 	/// Sliding up this far while listening arms cancel.
@@ -27,9 +29,12 @@ public struct HoldToTalk: Equatable, Sendable {
 		case cancelArmed(Bool)
 		/// Released while listening: insert the transcript unless cancel was armed.
 		case finish(insert: Bool)
+		/// Released right after listening started: drop the dictation and start typing.
+		case cancelAndFocus
 	}
 
 	public private(set) var phase: Phase = .idle
+	private var listeningSince: TimeInterval = 0
 
 	public init() {}
 
@@ -48,6 +53,7 @@ public struct HoldToTalk: Equatable, Sendable {
 			}
 			guard time - since >= Self.holdDelay else { return .none }
 			phase = .listening(cancelArmed: false)
+			listeningSince = time
 			return .startListening
 		case let .listening(armed):
 			let nowArmed = dy < -Self.cancelDistance
@@ -65,6 +71,7 @@ public struct HoldToTalk: Equatable, Sendable {
 		case let .pressing(since):
 			return time - since < Self.holdDelay ? .focus : .none
 		case let .listening(armed):
+			if !armed, time - listeningSince < Self.quickRelease { return .cancelAndFocus }
 			return .finish(insert: !armed)
 		case .idle, .abandoned:
 			return .none

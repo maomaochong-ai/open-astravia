@@ -6,16 +6,16 @@ import Testing
 	@Test func aQuickTapStartsTyping() {
 		var press = HoldToTalk()
 		#expect(press.began(at: 0) == .none)
-		#expect(press.moved(dx: 1, dy: 1, at: 0.08) == .none)
-		#expect(press.ended(at: 0.12) == .focus)
+		#expect(press.moved(dx: 1, dy: 1, at: 0.05) == .none)
+		#expect(press.ended(at: 0.08) == .focus)
 		#expect(press.phase == .idle)
 	}
 
 	@Test func holdingListensAndReleasingInserts() {
 		var press = HoldToTalk()
 		_ = press.began(at: 0)
-		#expect(press.moved(dx: 0, dy: 0, at: 0.14) == .none)
-		#expect(press.moved(dx: 0, dy: 0, at: 0.15) == .startListening, "a timer tick while holding still starts dictation")
+		#expect(press.moved(dx: 0, dy: 0, at: 0.09) == .none)
+		#expect(press.moved(dx: 0, dy: 0, at: 0.1) == .startListening, "a timer tick while holding still starts dictation")
 		#expect(press.moved(dx: 3, dy: -20, at: 1) == .none, "small drift while talking changes nothing")
 		#expect(press.ended(at: 2) == .finish(insert: true))
 	}
@@ -29,6 +29,14 @@ import Testing
 		#expect(press.moved(dx: 0, dy: -10, at: 1.2) == .cancelArmed(false))
 		_ = press.moved(dx: 0, dy: -100, at: 1.3)
 		#expect(press.ended(at: 1.5) == .finish(insert: false))
+	}
+
+	@Test func aSlowTapThatJustOutlastsTheHoldStillStartsTyping() {
+		var press = HoldToTalk()
+		_ = press.began(at: 0)
+		#expect(press.moved(dx: 0, dy: 0, at: 0.1) == .startListening)
+		#expect(press.ended(at: 0.25) == .cancelAndFocus)
+		#expect(press.phase == .idle)
 	}
 
 	@Test func movingAwayBeforeTheHoldIsNotAPress() {

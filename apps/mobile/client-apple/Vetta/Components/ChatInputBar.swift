@@ -183,6 +183,10 @@ struct ChatInputBar: View {
 		case let .cancelArmed(armed):
 			withAnimation(.snappy) { cancelArmed = armed }
 			UISelectionFeedbackGenerator().selectionChanged()
+		case .cancelAndFocus:
+			dictation.cancel()
+			cancelArmed = false
+			focused = true
 		case let .finish(insert):
 			Task {
 				if insert {
