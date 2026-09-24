@@ -279,7 +279,7 @@ private struct FilterChip<Content: View>: View {
 	}
 }
 
-/// The session cards of a list, with the swipe that pins or deletes; the
+/// The session cards of a list, with the long-press menu that pins or deletes; the
 /// delete confirmation hangs off the list through `sessionDeleteDialog`.
 struct SessionCardRows: View {
 	@Environment(AppModel.self) private var model
@@ -299,20 +299,14 @@ struct SessionCardRows: View {
 			.listRowSeparator(.hidden)
 			// Waiting on the user warms the whole row, not just its tag.
 			.listRowBackground(session.status == .waitingInput ? Theme.yellow.opacity(0.09) : Color.clear)
-			// Swiping right; delete asks first since it removes the session on the desktop too.
-			.swipeActions(edge: .leading, allowsFullSwipe: false) {
-				Button {
+			// A long press; delete asks first since it removes the session on the desktop too.
+			.contextMenu {
+				Button(session.pinned ? L10n.Session.unpin : L10n.Session.pin, systemImage: session.pinned ? "pin.slash" : "pin") {
 					Task { await model.setPinned(session.id, !session.pinned) }
-				} label: {
-					Label(session.pinned ? L10n.Session.unpin : L10n.Session.pin, systemImage: session.pinned ? "pin.slash.fill" : "pin.fill")
 				}
-				.tint(Theme.yellow)
-				Button {
+				Button(L10n.Session.delete, systemImage: "trash", role: .destructive) {
 					deleting = session
-				} label: {
-					Label(L10n.Session.delete, systemImage: "trash.fill")
 				}
-				.tint(Theme.red)
 			}
 		}
 	}
