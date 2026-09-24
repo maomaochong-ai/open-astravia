@@ -14,6 +14,9 @@ const TREE_DEFAULT_WIDTH = 220;
 const TREE_MIN_WIDTH = 160;
 const TREE_MAX_WIDTH = 360;
 
+/** 当前挂载中的文件 tab 数；内嵌预览是全局的，只有全部离场才收起。 */
+let mountedFileTabs = 0;
+
 export interface FileTabContentModel {
 	showTree: boolean;
 	showPreview: boolean;
@@ -71,7 +74,18 @@ export function useFileTabContentModel(): FileTabContentModel {
 		if (!showPreview) setTreeCollapsed(false);
 	}, [showPreview]);
 
-	useEffect(() => () => closePreview(), [closePreview]);
+	// 文件 tab 离场时收起预览。不能在卸载清理里直接关：从关闭态点开聊天里的文件时，预览
+	// 在 tab 挂载前就已写入，挂载后若紧接一次卸载再挂载（StrictMode 的双调用、面板子树重挂），
+	// 同步关闭会把刚写入的预览清掉，只剩目录树。推迟到微任务，届时仍无文件 tab 在场才关。
+	useEffect(() => {
+		mountedFileTabs += 1;
+		return () => {
+			mountedFileTabs -= 1;
+			queueMicrotask(() => {
+				if (mountedFileTabs === 0) closePreview();
+			});
+		};
+	}, [closePreview]);
 
 	return {
 		showTree: !showPreview || !treeCollapsed,
