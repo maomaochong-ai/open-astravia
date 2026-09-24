@@ -12,6 +12,7 @@ import org.vetta.android.domain.work.DesktopMirror
 import org.vetta.android.domain.work.MirrorState
 import org.vetta.android.domain.work.ModelChoice
 import org.vetta.android.domain.work.PromptDraft
+import org.vetta.android.domain.work.SessionFilter
 
 /** What the desktop screens can ask for; the view model runs each on the mirror. */
 interface WorkActions {
@@ -47,6 +48,22 @@ class WorkViewModel(private val mirror: DesktopMirror) : ViewModel(), WorkAction
 
     private val _drafts = MutableStateFlow<Map<String, PromptDraft>>(emptyMap())
     val drafts: StateFlow<Map<String, PromptDraft>> = _drafts.asStateFlow()
+
+    private val _filter = MutableStateFlow(SessionFilter())
+    val filter: StateFlow<SessionFilter> = _filter.asStateFlow()
+
+    fun setFilter(filter: SessionFilter) {
+        _filter.value = filter
+    }
+
+    /** Pull to refresh: the session list, then the projects it is filtered by. */
+    suspend fun refresh() {
+        mirror.refreshSessions()
+    }
+
+    fun reconnect() {
+        mirror.refreshLink()
+    }
 
     override fun open(sessionId: String) {
         viewModelScope.launch {

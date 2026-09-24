@@ -92,7 +92,9 @@
     <string name="copied">已复制</string>
     <string name="copy">复制</string>
     <string name="data_section">数据</string>
-    <string name="days_ago">%1$d 天前</string>
+    <plurals name="days_ago">
+        <item quantity="other">%1$d天前</item>
+    </plurals>
     <string name="delete">删除</string>
     <string name="delete_session">删除会话</string>
     <string name="delete_session_confirm">删除后无法恢复，确定删除这个会话？</string>
@@ -166,11 +168,14 @@
     <string name="generated_by_cloud">由云端 AI 生成</string>
     <string name="generated_by_desktop">由 Desktop 生成</string>
     <string name="get_started">登录</string>
+    <string name="half_hour_ago">半小时前</string>
     <string name="help_feedback">帮助与反馈</string>
     <string name="hide_password">隐藏密码</string>
     <string name="hide_tool_details">收起执行详情</string>
     <string name="host_placeholder">输入 IP 地址或主机名</string>
-    <string name="hours_ago">%1$d 小时前</string>
+    <plurals name="hours_ago">
+        <item quantity="other">%1$d小时前</item>
+    </plurals>
     <string name="how_to_connect">如何在 Desktop 启用连接？</string>
     <string name="image_placeholder">图片</string>
     <string name="invalid_pairing_invite">配对码无效</string>
@@ -180,6 +185,18 @@
     <string name="lan_desktop">局域网 Desktop</string>
     <string name="lan_devices">局域网设备</string>
     <string name="latency">延迟</string>
+    <string name="link_connected">已连接</string>
+    <string name="link_connecting">正在连接…</string>
+    <string name="link_latency">%1$d ms</string>
+    <string name="link_offline">电脑离线</string>
+    <string name="link_reconnect">重新连接</string>
+    <plurals name="link_reconnecting">
+        <item quantity="other">正在重新连接（第 %1$d 次）</item>
+    </plurals>
+    <string name="link_status">连接状态</string>
+    <string name="link_unauthorized">电脑不认识这部手机，请重新扫码</string>
+    <string name="link_via_lan">局域网直连</string>
+    <string name="link_via_relay">云端中继</string>
     <string name="loading">加载中…</string>
     <string name="logging_in">正在登录…</string>
     <string name="login_action">登录</string>
@@ -193,7 +210,9 @@
     <string name="manual_connect">手动连接</string>
     <string name="me">我的</string>
     <string name="memory">内存</string>
-    <string name="minutes_ago">%1$d 分钟前</string>
+    <plurals name="minutes_ago">
+        <item quantity="other">%1$d分钟前</item>
+    </plurals>
     <string name="model">模型</string>
     <string name="my_devices">我的设备</string>
     <string name="new_content">有新内容</string>
@@ -295,6 +314,7 @@
     <string name="tab_home">首页</string>
     <string name="tab_me">我的</string>
     <string name="tab_sessions">会话</string>
+    <string name="tab_work">工作</string>
     <string name="terminal">终端</string>
     <string name="theme_dark">深色</string>
     <string name="theme_light">浅色</string>
@@ -330,7 +350,35 @@
     <string name="window5h">5 小时</string>
     <string name="window_month">本月</string>
     <string name="window_week">本周</string>
+    <string name="work_clear_filters">清除筛选</string>
+    <string name="work_conversation">对话</string>
+    <string name="work_empty">还没有会话</string>
+    <string name="work_empty_description">电脑上的会话会显示在这里。</string>
+    <string name="work_empty_filtered">没有符合条件的会话</string>
+    <string name="work_empty_filtered_description">换个筛选条件试试。</string>
     <string name="work_error_not_connected">电脑当前不在线，重新连上后再试</string>
     <string name="work_error_unknown">出了点问题，请稍后再试</string>
+    <string name="work_filter_kind">类型</string>
+    <string name="work_filter_project">项目</string>
+    <string name="work_filter_status">状态</string>
+    <string name="work_group_done">已完成</string>
+    <string name="work_group_processing">处理中</string>
+    <string name="work_group_waiting">待你决策</string>
+    <string name="work_kind_all">所有类型</string>
+    <string name="work_kind_conversation">对话</string>
+    <string name="work_kind_project">项目</string>
+    <string name="work_project_all">所有项目</string>
+    <string name="work_session_actions">会话操作</string>
+    <string name="work_status_aborted">已停止</string>
+    <string name="work_status_all">所有</string>
+    <string name="work_status_done">已完成</string>
+    <string name="work_status_error">出错</string>
+    <string name="work_status_running">进行中</string>
+    <string name="work_status_thinking">思考中</string>
+    <string name="work_status_waiting">待你决策</string>
+    <string name="work_title">我的工作</string>
+    <string name="work_unpaired_description">打开电脑上的 Vetta Desktop，点击右上角「手机扫码连接」后扫码配对。</string>
+    <string name="work_unpaired_scan">扫码连接</string>
+    <string name="work_unpaired_title">还没有连接电脑</string>
     <string name="work_untitled">未命名对话</string>
 </resources>

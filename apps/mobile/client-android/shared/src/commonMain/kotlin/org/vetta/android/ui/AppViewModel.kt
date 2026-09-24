@@ -312,6 +312,8 @@ class AppViewModel(
 
     fun openDeviceDetail(deviceId: String) = navigate(AppRoute.DeviceDetail(deviceId))
 
+    fun openWorkSession(sessionId: String) = navigate(AppRoute.WorkSession(sessionId))
+
     fun openNewConversation(channelIndex: Int = 0) {
         _state.update { it.copy(newConversationChannelIndex = channelIndex) }
         navigate(AppRoute.NewConversation())
@@ -344,7 +346,8 @@ class AppViewModel(
         connectDesktop(target)
     }
 
-    fun connectDesktop(target: String) {
+    /** Pairs with the desktop in a scanned code; `openDetail` shows the device once it is connected. */
+    fun connectDesktop(target: String, openDetail: Boolean = true) {
         if (_state.value.remoteConnecting) return
         _state.update { it.copy(remoteConnecting = true, globalError = null) }
         viewModelScope.launch {
@@ -360,7 +363,7 @@ class AppViewModel(
                 if (connected) {
                     _state.update { it.copy(mainAccessGranted = true) }
                     val device = container.remoteConversationGateway.devices.value.firstOrNull()
-                    if (device != null) openDeviceDetail(device.id)
+                    if (openDetail && device != null) openDeviceDetail(device.id)
                     return@launch
                 }
                 _state.update {

@@ -59,12 +59,30 @@ import org.vetta.android.ui.navigation.PlatformBackHandler
 import org.vetta.android.ui.navigation.hasInAppBackDestination
 import org.vetta.android.ui.sessions.SessionsScreen
 import org.vetta.android.ui.theme.VettaTheme
+import org.vetta.android.ui.work.SessionScreen
+import org.vetta.android.ui.work.WorkScreen
+import org.vetta.android.ui.work.WorkViewModel
+import org.vetta.android.domain.work.PromptDraft
+import org.vetta.android.domain.work.SessionStatusGroup
+import org.vetta.android.ui.remote.PairingScannerButton
+import org.vetta.android.resources.work_unpaired_scan
+import androidx.compose.material3.CircularProgressIndicator
 import kotlin.reflect.KClass
 
 val LocalAppContainer =
     staticCompositionLocalOf<AppContainer> {
         error("AppContainer not provided")
     }
+
+private class WorkViewModelFactory(
+    private val container: AppContainer,
+) : ViewModelProvider.Factory {
+    @Suppress("UNCHECKED_CAST")
+    override fun <T : ViewModel> create(
+        modelClass: KClass<T>,
+        extras: CreationExtras,
+    ): T = WorkViewModel(container.mirror) as T
+}
 
 private class AppViewModelFactory(
     private val container: AppContainer,
@@ -86,6 +104,10 @@ fun RootApp(
         viewModel(factory = remember(container) { AppViewModelFactory(container) })
     val state by vm.state.collectAsState()
     val sessions by vm.sessions.collectAsState()
+    val work: WorkViewModel = viewModel(factory = remember(container) { WorkViewModelFactory(container) })
+    val workState by work.state.collectAsState()
+    val workDrafts by work.drafts.collectAsState()
+    val workFilter by work.filter.collectAsState()
 
     PlatformBackHandler(
         enabled = state.route.hasInAppBackDestination(),
@@ -157,6 +179,7 @@ fun RootApp(
                         VettaBottomBar(
                             selected = state.mainTab,
                             onSelect = vm::selectMainTab,
+                            workBadge = workState.count(SessionStatusGroup.Waiting),
                         )
                     },
                 ) { padding ->
@@ -187,6 +210,26 @@ fun RootApp(
                                     },
                                     onNewConversation = { vm.openNewConversation(0) },
                                     onUseCloudAi = vm::openCloudConversation,
+                                )
+                            MainTab.Work ->
+                                WorkScreen(
+                                    state = workState,
+                                    filter = workFilter,
+                                    onFilterChange = work::setFilter,
+                                    actions = work,
+                                    onOpenSession = vm::openWorkSession,
+                                    onRefresh = work::refresh,
+                                    onReconnect = work::reconnect,
+                                    pairing = {
+                                        if (state.remoteConnecting) {
+                                            CircularProgressIndicator()
+                                        } else {
+                                            PairingScannerButton(
+                                                onScanned = { vm.connectDesktop(it, openDetail = false) },
+                                                label = stringResource(Res.string.work_unpaired_scan),
+                                            )
+                                        }
+                                    },
                                 )
                             MainTab.Sessions ->
                                 SessionsScreen(
@@ -305,6 +348,14 @@ fun RootApp(
                     onSubmitQuestion = vm::submitQuestion,
                 )
             }
+            is AppRoute.WorkSession ->
+                SessionScreen(
+                    sessionId = route.sessionId,
+                    state = workState,
+                    draft = workDrafts[route.sessionId] ?: PromptDraft(),
+                    actions = work,
+                    onBack = vm::navigateBackFromSecondary,
+                )
             AppRoute.Plan ->
                 PlanScreen(
                     subscription = state.subscription,

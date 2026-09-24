@@ -5,11 +5,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChatBubbleOutline
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Inbox
 import androidx.compose.material.icons.filled.PersonOutline
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Inbox
 import androidx.compose.material.icons.outlined.PersonOutline
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -25,6 +29,7 @@ import org.vetta.android.resources.tab_discover
 import org.vetta.android.resources.tab_home
 import org.vetta.android.resources.tab_me
 import org.vetta.android.resources.tab_sessions
+import org.vetta.android.resources.tab_work
 import org.vetta.android.ui.navigation.MainTab
 import org.vetta.android.ui.theme.vettaExtra
 
@@ -33,10 +38,13 @@ fun VettaBottomBar(
     selected: MainTab,
     onSelect: (MainTab) -> Unit,
     modifier: Modifier = Modifier,
+    /** Desktop sessions waiting on the user, shown on the Work tab. */
+    workBadge: Int = 0,
 ) {
     val items =
         listOf(
             TabItem(MainTab.Home, stringResource(Res.string.tab_home), Icons.Outlined.Home, Icons.Filled.Home),
+            TabItem(MainTab.Work, stringResource(Res.string.tab_work), Icons.Outlined.Inbox, Icons.Filled.Inbox),
             TabItem(MainTab.Sessions, stringResource(Res.string.tab_sessions), Icons.Outlined.ChatBubbleOutline, Icons.Filled.ChatBubbleOutline),
             TabItem(MainTab.Discover, stringResource(Res.string.tab_discover), Icons.Outlined.Explore, Icons.Filled.Explore),
             TabItem(MainTab.Me, stringResource(Res.string.tab_me), Icons.Outlined.PersonOutline, Icons.Filled.PersonOutline),
@@ -52,10 +60,16 @@ fun VettaBottomBar(
                 selected = selectedTab,
                 onClick = { onSelect(item.tab) },
                 icon = {
-                    Icon(
-                        imageVector = if (selectedTab) item.selectedIcon else item.icon,
-                        contentDescription = item.label,
-                    )
+                    BadgedBox(
+                        badge = {
+                            if (item.tab == MainTab.Work && workBadge > 0) Badge { Text("$workBadge") }
+                        },
+                    ) {
+                        Icon(
+                            imageVector = if (selectedTab) item.selectedIcon else item.icon,
+                            contentDescription = item.label,
+                        )
+                    }
                 },
                 label = {
                     Text(item.label, style = MaterialTheme.typography.labelSmall)
