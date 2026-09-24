@@ -38,11 +38,13 @@ import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.QuestionMark
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.outlined.LaptopChromebook
+import androidx.compose.material.icons.outlined.EditNote
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -80,6 +82,7 @@ import org.vetta.android.domain.work.SessionFilter
 import org.vetta.android.domain.work.SessionKind
 import org.vetta.android.domain.work.SessionStatusGroup
 import org.vetta.android.resources.Res
+import org.vetta.android.resources.new_session_title
 import org.vetta.android.resources.session_delete
 import org.vetta.android.resources.session_delete_message
 import org.vetta.android.resources.session_delete_title
@@ -125,7 +128,7 @@ fun WorkScreen(
     onRefresh: suspend () -> Unit,
     onReconnect: () -> Unit,
     pairing: @Composable () -> Unit,
-    headerActions: @Composable () -> Unit = {},
+    onNewSession: () -> Unit = {},
 ) {
     Scaffold(
         containerColor = MaterialTheme.vettaExtra.pageBackground,
@@ -140,7 +143,13 @@ fun WorkScreen(
                         }
                     }
                 },
-                actions = { if (state.paired) headerActions() },
+                actions = {
+                    if (state.paired) {
+                        IconButton(onClick = onNewSession, modifier = Modifier.testTag("work.newSession")) {
+                            Icon(Icons.Outlined.EditNote, contentDescription = stringResource(Res.string.new_session_title))
+                        }
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.vettaExtra.pageBackground),
             )
         },
@@ -157,7 +166,7 @@ fun WorkScreen(
                     )
                 }
             } else {
-                SessionList(state, filter, onFilterChange, actions, onOpenSession, onRefresh)
+                SessionList(state, filter, onFilterChange, actions, onOpenSession, onRefresh, onNewSession)
             }
         }
     }
@@ -173,6 +182,7 @@ private fun SessionList(
     actions: WorkActions,
     onOpenSession: (String) -> Unit,
     onRefresh: suspend () -> Unit,
+    onNewSession: () -> Unit,
 ) {
     val rows = remember(state.sessions, filter, state.conversationCwd) { filter.apply(state.sessions, state.conversationCwd) }
     val scope = rememberCoroutineScope()
@@ -208,7 +218,9 @@ private fun SessionList(
             if (rows.isEmpty() && (state.sessionsLoaded || LinkIndicator.of(state.link) == LinkIndicator.Offline)) {
                 item(key = "empty") {
                     if (state.sessions.isEmpty()) {
-                        WorkEmptyState(Icons.Filled.Inbox, stringResource(Res.string.work_empty), stringResource(Res.string.work_empty_description))
+                        WorkEmptyState(Icons.Filled.Inbox, stringResource(Res.string.work_empty), stringResource(Res.string.work_empty_description)) {
+                            TextButton(onClick = onNewSession) { Text(stringResource(Res.string.new_session_title)) }
+                        }
                     } else {
                         WorkEmptyState(
                             Icons.Filled.FilterList,

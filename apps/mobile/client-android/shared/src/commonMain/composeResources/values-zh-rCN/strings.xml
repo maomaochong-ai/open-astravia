@@ -219,6 +219,11 @@
     <string name="new_conversation">新建对话</string>
     <string name="new_session_default_model">默认模型</string>
     <string name="new_session_default_model_hint">跟随电脑上的默认模型</string>
+    <string name="new_session_greeting">让我们开始吧</string>
+    <string name="new_session_location">开始位置</string>
+    <string name="new_session_offline">电脑离线，重新连上后才能开始新会话。</string>
+    <string name="new_session_subtitle">我可以帮你处理工作，有什么可以帮助你的？</string>
+    <string name="new_session_title">新会话</string>
     <string name="no_available_desktop">还没有可用的 Desktop</string>
     <string name="no_available_desktop_hint">连接一台在线 Desktop 后即可开始对话</string>
     <string name="no_devices_hint">连接 Desktop 后，可以在手机上继续工作</string>
@@ -353,7 +358,7 @@
     <string name="work_clear_filters">清除筛选</string>
     <string name="work_conversation">对话</string>
     <string name="work_empty">还没有会话</string>
-    <string name="work_empty_description">电脑上的会话会显示在这里。</string>
+    <string name="work_empty_description">电脑上的会话会显示在这里，也可以从“新会话”开始一个。</string>
     <string name="work_empty_filtered">没有符合条件的会话</string>
     <string name="work_empty_filtered_description">换个筛选条件试试。</string>
     <string name="work_error_not_connected">电脑当前不在线，重新连上后再试</string>

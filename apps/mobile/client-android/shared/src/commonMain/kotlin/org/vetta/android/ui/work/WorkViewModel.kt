@@ -14,6 +14,13 @@ import org.vetta.android.domain.work.ModelChoice
 import org.vetta.android.domain.work.PromptDraft
 import org.vetta.android.domain.work.SessionFilter
 
+/** New Session's choices, kept to put back if starting the session fails. */
+data class NewSessionStart(
+    val draft: PromptDraft,
+    val projectCwd: String?,
+    val modelChoice: ModelChoice,
+)
+
 /** What the desktop screens can ask for; the view model runs each on the mirror. */
 interface WorkActions {
     fun open(sessionId: String)
@@ -63,6 +70,43 @@ class WorkViewModel(private val mirror: DesktopMirror) : ViewModel(), WorkAction
 
     fun reconnect() {
         mirror.refreshLink()
+    }
+
+    private var failedStart: NewSessionStart? = null
+
+    /** What New Session had when its start failed, once; it opens again with it. */
+    fun takeFailedStart(): NewSessionStart? = failedStart.also { failedStart = null }
+
+    /** Readies New Session: the projects to start in and the models to start with. */
+    suspend fun prepareNewSession() {
+        mirror.refreshProjects()
+        mirror.loadNewSessionModels()
+    }
+
+    /**
+     * Opens the chat at once on a local id while the desktop creates the session
+     * behind it; `onFailure` runs when the prompt did not go out. Null when there is no text.
+     */
+    fun startSession(start: NewSessionStart, onFailure: () -> Unit): String? {
+        val id =
+            mirror.startSession(
+                text = start.draft.text,
+                projectCwd = start.projectCwd,
+                modelKey = start.modelChoice.modelKey,
+                thinkingLevel = start.modelChoice.thinkingLevel,
+                attachments = start.draft.attachments,
+                onFailure = {
+                    failedStart = start
+                    onFailure()
+                },
+            ) ?: return null
+        setDraft(NEW_SESSION_DRAFT, PromptDraft())
+        return id
+    }
+
+    companion object {
+        /** New Session's composer draft, kept like a chat's. */
+        const val NEW_SESSION_DRAFT = "new-session"
     }
 
     override fun open(sessionId: String) {

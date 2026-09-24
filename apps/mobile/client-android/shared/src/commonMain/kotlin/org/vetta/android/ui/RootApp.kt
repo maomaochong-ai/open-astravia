@@ -59,7 +59,14 @@ import org.vetta.android.ui.navigation.PlatformBackHandler
 import org.vetta.android.ui.navigation.hasInAppBackDestination
 import org.vetta.android.ui.sessions.SessionsScreen
 import org.vetta.android.ui.theme.VettaTheme
+import org.vetta.android.ui.work.NewSessionScreen
 import org.vetta.android.ui.work.SessionScreen
+import org.vetta.android.resources.new_session_title
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.EditNote
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.ui.platform.testTag
 import org.vetta.android.ui.work.WorkScreen
 import org.vetta.android.ui.work.WorkViewModel
 import org.vetta.android.domain.work.PromptDraft
@@ -220,6 +227,7 @@ fun RootApp(
                                     onOpenSession = vm::openWorkSession,
                                     onRefresh = work::refresh,
                                     onReconnect = work::reconnect,
+                                    onNewSession = { vm.openWorkNewSession() },
                                     pairing = {
                                         if (state.remoteConnecting) {
                                             CircularProgressIndicator()
@@ -355,7 +363,40 @@ fun RootApp(
                     draft = workDrafts[route.sessionId] ?: PromptDraft(),
                     actions = work,
                     onBack = vm::navigateBackFromSecondary,
+                    headerActions = {
+                        // New Session in the chat's own project, over the chat so Back returns to it.
+                        val id = workState.resolve(route.sessionId)
+                        IconButton(
+                            onClick = {
+                                val cwd = workState.session(id)?.projectCwd?.takeIf { it != workState.conversationCwd }
+                                vm.openWorkNewSession(cwd, returnTo = id)
+                            },
+                            enabled = !workState.isStarting(route.sessionId),
+                            modifier = Modifier.testTag("chat.newSession"),
+                        ) { Icon(Icons.Outlined.EditNote, contentDescription = stringResource(Res.string.new_session_title)) }
+                    },
                 )
+            is AppRoute.WorkNewSession -> {
+                val restored = remember(route) { work.takeFailedStart() }
+                NewSessionScreen(
+                    state = workState,
+                    draft = workDrafts[WorkViewModel.NEW_SESSION_DRAFT] ?: PromptDraft(),
+                    onDraftChange = { work.setDraft(WorkViewModel.NEW_SESSION_DRAFT, it) },
+                    initialProjectCwd = route.projectCwd,
+                    restored = restored,
+                    onPrepare = work::prepareNewSession,
+                    onStart = { start ->
+                        var started = ""
+                        work.startSession(start) { vm.returnToNewSession(started, start.projectCwd) }?.let { id ->
+                            started = id
+                            // The chat takes New Session's place, so Back goes to the list.
+                            vm.openWorkSession(id)
+                        }
+                    },
+                    onBack = vm::handleSystemBack,
+                    onClearError = work::clearError,
+                )
+            }
             AppRoute.Plan ->
                 PlanScreen(
                     subscription = state.subscription,

@@ -132,4 +132,28 @@ class WorkViewModelTest {
             assertEquals(1, desktop.requests.count { it.method == RemoteRequestMethod.SessionPrompt })
             assertTrue((desktop.requests.first { it.method == RemoteRequestMethod.SessionPrompt }.payload as JsonObject)["attachments"] !is JsonArray)
         }
+
+    @Test
+    fun aStartThatFailsIsKeptOnceForNewSessionToPutBack() =
+        runTest(dispatcher) {
+            val desktop = FakeDesktop(backgroundScope)
+            desktop.reachable = false
+            val mirror =
+                DesktopMirror(
+                    MirrorPlatform(MapSettings(), MapSettings(), MemorySessionCache(), desktop.createTransport, "Pixel", { testScheduler.currentTime }),
+                    backgroundScope,
+                ).also { it.start() }
+            val vm = WorkViewModel(mirror)
+            vm.setDraft(WorkViewModel.NEW_SESSION_DRAFT, PromptDraft("你好"))
+            val start = NewSessionStart(PromptDraft("你好"), "/code/vetta", ModelChoice("zai/glm-5", "max"))
+            var failed = false
+
+            val localId = vm.startSession(start) { failed = true }
+            assertTrue(localId != null)
+            assertNull(vm.drafts.value[WorkViewModel.NEW_SESSION_DRAFT], "New Session's composer clears once the chat opens")
+            assertTrue(eventually { failed })
+            assertEquals(start, vm.takeFailedStart())
+            assertNull(vm.takeFailedStart(), "put back once, not every time New Session opens")
+            assertNull(vm.startSession(start.copy(draft = PromptDraft("  "))) {})
+        }
 }

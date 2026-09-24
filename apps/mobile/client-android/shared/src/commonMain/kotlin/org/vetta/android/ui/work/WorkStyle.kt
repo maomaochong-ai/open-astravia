@@ -20,6 +20,9 @@ data class WorkColors(
     /** Inverted surface for the user's own bubble and primary pills. */
     val pill: Color,
     val pillInk: Color,
+    /** The glow New Session fades into at the bottom of the screen. */
+    val dawn: Color,
+    val dawnSide: Color,
 )
 
 private val Light =
@@ -33,6 +36,8 @@ private val Light =
         card2 = Color(0xFFF0F1F3),
         pill = Color(0xFF0B0C0E),
         pillInk = Color(0xFFFFFFFF),
+        dawn = Color(0xFFD6E2FB),
+        dawnSide = Color(0xFFE6DEFA),
     )
 
 private val Dark =
@@ -46,6 +51,8 @@ private val Dark =
         card2 = Color(0xFF1C1F23),
         pill = Color(0xFFF4F5F6),
         pillInk = Color(0xFF0A0B0D),
+        dawn = Color(0xFF13235E),
+        dawnSide = Color(0xFF1C1A52),
     )
 
 /** Follows the theme actually in use (which may differ from the system setting). */

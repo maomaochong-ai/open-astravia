@@ -58,4 +58,38 @@ class AppViewModelWorkTest {
             vm.handleSystemBack()
             assertEquals(AppRoute.Main(MainTab.Work), vm.state.value.route)
         }
+
+    @Test
+    fun newSessionFromAChatReturnsToItAndAFailedStartReturnsToNewSession() =
+        runTest(dispatcher) {
+            val vm =
+                AppViewModel(
+                    AppContainer(
+                        preferences = AppPreferences(MapSettings()),
+                        tokenStore = InMemoryTokenStore(),
+                        sessionStore = SettingsSessionStore(MapSettings()),
+                        mirror = unpairedMirror(),
+                    ),
+                )
+            advanceUntilIdle()
+            vm.skipWelcome()
+            vm.selectMainTab(MainTab.Work)
+
+            vm.openWorkSession("s1")
+            vm.openWorkNewSession("/code/vetta", returnTo = "s1")
+            vm.handleSystemBack()
+            assertEquals(AppRoute.WorkSession("s1"), vm.state.value.route, "Back from New Session returns to the chat it came from")
+
+            vm.openWorkNewSession()
+            vm.handleSystemBack()
+            assertEquals(AppRoute.Main(MainTab.Work), vm.state.value.route)
+
+            vm.openWorkSession("local-1")
+            vm.returnToNewSession("local-1", "/code/vetta")
+            assertEquals(AppRoute.WorkNewSession("/code/vetta"), vm.state.value.route)
+
+            vm.openWorkSession("s2")
+            vm.returnToNewSession("local-1", null)
+            assertEquals(AppRoute.WorkSession("s2"), vm.state.value.route, "a user who already left that chat stays where they are")
+        }
 }

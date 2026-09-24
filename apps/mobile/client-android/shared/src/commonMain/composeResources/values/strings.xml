@@ -224,6 +224,11 @@
     <string name="new_conversation">New conversation</string>
     <string name="new_session_default_model">Default model</string>
     <string name="new_session_default_model_hint">Whatever the desktop uses by default</string>
+    <string name="new_session_greeting">Let’s get started</string>
+    <string name="new_session_location">Start in</string>
+    <string name="new_session_offline">Your computer is offline. You can start once it reconnects.</string>
+    <string name="new_session_subtitle">I can help with your work. What can I do for you?</string>
+    <string name="new_session_title">New Session</string>
     <string name="no_available_desktop">No Desktop available yet</string>
     <string name="no_available_desktop_hint">Connect an online Desktop to start a conversation</string>
     <string name="no_devices_hint">Connect Desktop to keep working on your phone</string>
@@ -358,7 +363,7 @@
     <string name="work_clear_filters">Clear Filters</string>
     <string name="work_conversation">Conversation</string>
     <string name="work_empty">No Sessions Yet</string>
-    <string name="work_empty_description">Sessions from your computer show up here.</string>
+    <string name="work_empty_description">Sessions from your computer show up here. Start one from New Session.</string>
     <string name="work_empty_filtered">No Matching Sessions</string>
     <string name="work_empty_filtered_description">Try a different filter.</string>
     <string name="work_error_not_connected">Your computer is offline. Try again once it reconnects.</string>

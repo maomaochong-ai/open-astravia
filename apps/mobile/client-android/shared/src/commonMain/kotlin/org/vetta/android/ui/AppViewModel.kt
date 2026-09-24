@@ -314,6 +314,14 @@ class AppViewModel(
 
     fun openWorkSession(sessionId: String) = navigate(AppRoute.WorkSession(sessionId))
 
+    fun openWorkNewSession(projectCwd: String? = null, returnTo: String? = null) =
+        navigate(AppRoute.WorkNewSession(projectCwd, returnTo))
+
+    /** Back to New Session with what was typed, unless the user already left `sessionId`'s chat. */
+    fun returnToNewSession(sessionId: String, projectCwd: String?) {
+        if (_state.value.route == AppRoute.WorkSession(sessionId)) navigate(AppRoute.WorkNewSession(projectCwd))
+    }
+
     fun openNewConversation(channelIndex: Int = 0) {
         _state.update { it.copy(newConversationChannelIndex = channelIndex) }
         navigate(AppRoute.NewConversation())
@@ -447,8 +455,9 @@ class AppViewModel(
             setModelPicker(false)
             return
         }
-        when (_state.value.route) {
+        when (val route = _state.value.route) {
             AppRoute.Login -> openWelcome()
+            is AppRoute.WorkNewSession -> route.returnTo?.let(::openWorkSession) ?: navigateBackFromSecondary()
             AppRoute.Boot,
             AppRoute.Welcome,
             is AppRoute.Main,

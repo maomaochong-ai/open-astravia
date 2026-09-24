@@ -32,6 +32,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
@@ -57,12 +58,13 @@ fun Composer(
     enabled: Boolean = true,
     busy: Boolean = false,
     onStop: () -> Unit = {},
+    containerColor: Color = MaterialTheme.vettaExtra.pageBackground,
 ) {
     val colors = MaterialTheme.workColors
     Column(
         modifier
             .fillMaxWidth()
-            .background(MaterialTheme.vettaExtra.pageBackground)
+            .background(containerColor)
             .navigationBarsPadding()
             .imePadding()
             .padding(horizontal = 12.dp, vertical = 8.dp),
