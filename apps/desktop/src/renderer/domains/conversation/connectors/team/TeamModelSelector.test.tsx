@@ -6,6 +6,7 @@ import { createStore, Provider } from "jotai";
 import { useState } from "react";
 import { I18nextProvider } from "react-i18next";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { getProviderIcon } from "@vetta-org/theme-ui/shared";
 import { localModelsConfigAtom, teamMemberModelsAtom } from "@shared/store/atoms";
 import type {
 	TeamMemberModelPreference,
@@ -25,6 +26,7 @@ await i18n.init({
 const config = {
 	providers: {
 		provider: {
+			icon: "deepseek",
 			models: [
 				{ id: "a", name: "Model A", reasoning: true, reasoningLevels: ["low", "high"], defaultReasoningLevel: "low" },
 				{ id: "b", name: "Model B", reasoning: true, reasoningLevels: ["low", "high"], defaultReasoningLevel: "high" },
@@ -150,6 +152,33 @@ async function openPanel() {
 }
 
 describe("team model configuration", () => {
+	it("shows the available provider icon while choosing a shared model", async () => {
+		saved = {};
+		mount();
+		const user = userEvent.setup();
+		const trigger = await screen.findByRole("button", { name: "Model A" });
+		expect(within(trigger).getByRole("presentation", { hidden: true }).getAttribute("src")).toBe(
+			getProviderIcon("deepseek"),
+		);
+
+		await user.click(trigger);
+		await user.click(screen.getByRole("button", { name: "会话默认" }));
+		const modelList = screen.getByRole("group", { name: "模型" });
+		expect(within(modelList).getByRole("presentation", { hidden: true }).getAttribute("src")).toBe(
+			getProviderIcon("deepseek"),
+		);
+		await user.click(screen.getByRole("button", { name: "Model B" }));
+		await user.click(screen.getByRole("button", { name: "返回团队模型" }));
+		const updatedTrigger = screen.getByRole("button", { name: "Model B" });
+		expect(within(updatedTrigger).getByRole("presentation", { hidden: true })).toBeTruthy();
+	});
+
+	it("does not imply one provider icon when members use different models", async () => {
+		mount();
+		const trigger = await screen.findByRole("button", { name: "按成员配置" });
+		expect(within(trigger).queryByRole("presentation", { hidden: true })).toBeNull();
+	});
+
 	it("keeps the composer model trigger concise for shared and per-member selections", async () => {
 		saved = {};
 		mount();
@@ -169,7 +198,8 @@ describe("team model configuration", () => {
 		);
 		mount(teamMembers);
 		const user = await openPanel();
-		expect(screen.getByRole("button", { name: "按成员配置" })).toBeTruthy();
+		const trigger = screen.getByRole("button", { name: "按成员配置" });
+		expect(within(trigger).getByRole("presentation", { hidden: true })).toBeTruthy();
 		expect(screen.getAllByRole("region")).toHaveLength(1);
 		expect(screen.getAllByRole("img")).toHaveLength(5);
 		expect(screen.queryByRole("group", { name: "Member 0" })).toBeNull();
@@ -215,7 +245,7 @@ describe("team model configuration", () => {
 		expect(screen.getByRole("group", { name: "负责人" })).toBeTruthy();
 	});
 
-	it("shows pending saves, prevents conflicting selections, and keeps back navigation available", async () => {
+	it("keeps pending saves quiet, prevents conflicting selections, and keeps back navigation available", async () => {
 		mount();
 		const user = await openPanel();
 		let finish!: (models: Readonly<Record<string, TeamMemberModelPreference>>) => void;
@@ -227,7 +257,7 @@ describe("team model configuration", () => {
 		);
 		await user.click(screen.getByRole("button", { name: "负责人的模型" }));
 		await user.click(screen.getByRole("button", { name: "Model C" }));
-		expect(screen.getByRole("status").textContent).toContain("正在保存");
+		expect(screen.queryByText("正在保存")).toBeNull();
 		expect((screen.getByRole("button", { name: "Model A" }) as HTMLButtonElement).disabled).toBe(true);
 		await user.click(screen.getByRole("button", { name: "返回团队模型" }));
 		expect(screen.getAllByRole("region")).toHaveLength(2);
@@ -390,7 +420,7 @@ describe("team model configuration", () => {
 		expect(screen.getByRole("group", { name: "模型" }).className).toContain("overflow-y-auto");
 
 		await user.click(screen.getByRole("button", { name: "低" }));
-		expect(within(dialog).getByRole("status").textContent).toContain("正在保存");
+		expect(within(dialog).queryByText("正在保存")).toBeNull();
 		expect(slider.getAttribute("aria-valuetext")).toBe("低");
 		expect(slider.closest('[data-slot="slider"]')?.className).toContain("data-[disabled]:opacity-100");
 		expect(screen.getByRole("button", { name: "高" }).className).toContain("disabled:opacity-100");
