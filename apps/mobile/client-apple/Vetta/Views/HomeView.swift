@@ -42,7 +42,7 @@ struct HomeView: View {
 		.listStyle(.plain)
 		.scrollContentBackground(.hidden)
 		.scrollDismissesKeyboard(.immediately)
-		.background { GlowBackdrop(depth: depth) }
+		.background { Theme.page.ignoresSafeArea() }
 		.trackScrollDepth(depth)
 		// Pinning moves the row to the top; let it travel there.
 		.animation(.snappy, value: rows.map(\.id))
@@ -63,7 +63,7 @@ struct HomeView: View {
 	private var topBar: some View {
 		HStack {
 			Text(L10n.appName)
-				.font(.title.bold())
+				.font(.title3.bold())
 				.foregroundStyle(Theme.ink)
 				.accessibilityAddTraits(.isHeader)
 			Spacer()
@@ -104,14 +104,16 @@ struct HomeView: View {
 		}
 	}
 
-	/// Ways in, as plain icon-and-label rows.
-	@ViewBuilder
+	/// Ways in, as plain icon-and-label rows. One list row, so they sit closer than list rows can.
 	private var entries: some View {
-		EntryRow(symbol: "square.and.pencil", title: L10n.NewSession.title, identifier: "home.newSession") {
-			router.startNewSession()
+		VStack(spacing: 0) {
+			EntryRow(symbol: "square.and.pencil", title: L10n.NewSession.title, identifier: "home.newSession") {
+				router.startNewSession()
+			}
+			// Only the way in for now; the board itself comes later.
+			EntryRow(symbol: "square.stack.3d.up", title: L10n.Home.taskBoard, identifier: "home.taskBoard") {}
 		}
-		// Only the way in for now; the board itself comes later.
-		EntryRow(symbol: "rectangle.3.group", title: L10n.Home.taskBoard, identifier: "home.taskBoard") {}
+		.bareRow(bottom: 8)
 	}
 
 	/// Projects whose name matches, above the matching sessions.
@@ -182,11 +184,10 @@ private struct EntryRow: View {
 			}
 			.foregroundStyle(Theme.ink)
 			.padding(.horizontal, 20)
-			.padding(.vertical, 12)
+			.padding(.vertical, 8)
 			.contentShape(.rect)
 		}
 		.buttonStyle(.plain)
 		.accessibilityIdentifier(identifier)
-		.bareRow()
 	}
 }
