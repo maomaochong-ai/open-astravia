@@ -41,7 +41,12 @@
     <string name="chat_camera_unavailable">这台设备没有可用的相机。</string>
     <string name="chat_compacted">上下文已压缩</string>
     <string name="chat_compacting">正在压缩上下文</string>
-    <string name="chat_composer_placeholder">指示 Vetta…</string>
+    <string name="chat_composer_placeholder">指示 Vetta 或按住说话…</string>
+    <string name="chat_dictation_cancel">松手取消</string>
+    <string name="chat_dictation_denied">需要在「设置」中允许 Vetta 使用麦克风才能听写。</string>
+    <string name="chat_dictation_hint">松手填入，上移取消</string>
+    <string name="chat_dictation_listening">正在听…</string>
+    <string name="chat_dictation_unavailable">暂时无法使用听写。</string>
     <string name="chat_duration_ms">%1$d ms</string>
     <string name="chat_level_high">高</string>
     <string name="chat_level_low">低</string>

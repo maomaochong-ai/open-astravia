@@ -42,7 +42,12 @@
     <string name="chat_camera_unavailable">No camera is available on this device.</string>
     <string name="chat_compacted">Context compacted</string>
     <string name="chat_compacting">Compacting context</string>
-    <string name="chat_composer_placeholder">Tell Vetta what to do…</string>
+    <string name="chat_composer_placeholder">Tell Vetta what to do, or hold to talk…</string>
+    <string name="chat_dictation_cancel">Release to cancel</string>
+    <string name="chat_dictation_denied">Allow the microphone for Vetta in Settings to dictate.</string>
+    <string name="chat_dictation_hint">Release to insert, slide up to cancel</string>
+    <string name="chat_dictation_listening">Listening…</string>
+    <string name="chat_dictation_unavailable">Dictation isn’t available right now.</string>
     <string name="chat_duration_ms">%1$d ms</string>
     <string name="chat_level_high">High</string>
     <string name="chat_level_low">Low</string>
