@@ -1,120 +1,105 @@
 import SwiftUI
 import VettaKit
 
-/// The project icon, the same on cards, rows and session tags.
+/// The project icon, on project rows.
 let projectSymbol = "folder.badge.gearshape"
 
-/// A session as Home and a project's page list it, in two lines: the tags worth a look
-/// with the time at the far right, then the title. A plain row, no card around it.
+/// A session as Home and a project's page list it, on one line: a status glyph while it
+/// needs a look, a pin, the title, then the project and the time in grey at the far right.
+/// Conversations name no project, and a project's own page leaves it out.
 struct SessionCard: View {
 	var session: RemoteSessionSummary
 	var conversationCwd: String?
 	/// Off on a project's page, where every session is in that project.
 	var showsProject = true
 
+	private var title: String {
+		session.title.trimmingCharacters(in: .whitespaces).isEmpty ? L10n.Home.untitled : session.title
+	}
+
+	private var project: String? {
+		showsProject && session.projectCwd != conversationCwd ? session.projectName : nil
+	}
+
 	var body: some View {
-		VStack(alignment: .leading, spacing: 8) {
-			HStack(spacing: 8) {
-				ForEach(tags, id: \.self) { SessionTag(kind: $0) }
-				Spacer(minLength: 0)
-				Text(TimeFormat.relative(session.updatedAt))
-					.font(.subheadline)
-					.foregroundStyle(Theme.dim)
-					.fixedSize()
+		let status = StatusGlyph(status: session.status)
+		HStack(spacing: 8) {
+			// A fixed slot, empty for a finished session, so the titles line up.
+			Color.clear
+				.frame(width: 18, height: 18)
+				.overlay { status.font(.footnote.weight(.bold)) }
+			if session.pinned {
+				Image(systemName: "pin.fill")
+					.font(.caption)
+					.foregroundStyle(Theme.yellow)
 			}
-			// As tall with no tag as with one, so rows keep one height.
-			.frame(minHeight: 26)
-			Text(session.title.trimmingCharacters(in: .whitespaces).isEmpty ? L10n.Home.untitled : session.title)
-				.font(.headline)
+			Text(title)
+				.font(.body.weight(.medium))
 				.foregroundStyle(Theme.ink)
 				.lineLimit(1)
+				// The project gives way first.
+				.layoutPriority(1)
+			Spacer(minLength: 8)
+			if let project {
+				Text(project)
+					.font(.subheadline)
+					.foregroundStyle(Theme.dim)
+					.lineLimit(1)
+			}
+			Text(TimeFormat.relative(session.updatedAt))
+				.font(.subheadline)
+				.foregroundStyle(Theme.dim)
+				.fixedSize()
 		}
-		.padding(.horizontal, 20)
-		.padding(.vertical, 14)
+		.padding(.leading, 12)
+		.padding(.trailing, 20)
+		.padding(.vertical, 13)
 		.frame(maxWidth: .infinity, alignment: .leading)
 		.contentShape(.rect)
-		.accessibilityElement(children: .combine)
+		.accessibilityElement(children: .ignore)
+		.accessibilityLabel(accessibilityText(status))
 	}
 
-	private var tags: [SessionTag.Kind] {
-		var tags: [SessionTag.Kind] = []
-		switch session.status {
-		case .waitingInput: tags.append(.waiting)
-		case .running: tags.append(.running)
-		case .thinking: tags.append(.thinking)
-		case .error: tags.append(.error)
-		case .idle, .completed, .aborted: break
-		}
-		if session.pinned { tags.append(.pinned) }
-		if showsProject {
-			tags.append(session.projectCwd == conversationCwd ? .conversation : .project(session.projectName))
-		}
-		return tags
+	private func accessibilityText(_ status: StatusGlyph?) -> String {
+		var parts = [title]
+		if let status { parts.append(status.label) }
+		if session.pinned { parts.append(L10n.Session.pinned) }
+		if let project { parts.append(project) }
+		parts.append(TimeFormat.relative(session.updatedAt))
+		return parts.joined(separator: ", ")
 	}
 }
 
-/// A capsule under a session's title.
-struct SessionTag: View {
-	enum Kind: Hashable {
-		case waiting, running, thinking, error, pinned, conversation
-		case project(String)
-	}
-
-	var kind: Kind
-
-	var body: some View {
-		let look = look
-		HStack(spacing: 5) {
-			StatusGlyph(kind: kind, symbol: look.symbol)
-				.font(.footnote.weight(.bold))
-			Text(look.text).lineLimit(1)
-		}
-		.font(.subheadline.weight(look.tint == nil ? .regular : .semibold))
-		.foregroundStyle(look.tint ?? Theme.ink2)
-		.padding(.horizontal, 10)
-		.padding(.vertical, 5)
-		.background((look.tint ?? Theme.faint).opacity(0.16), in: .capsule)
-	}
-
-	private var look: (symbol: String, text: String, tint: Color?) {
-		switch kind {
-		case .waiting: ("questionmark", L10n.Home.statusWaiting, Theme.yellow)
-		case .running: ("arrow.triangle.2.circlepath", L10n.Home.statusRunning, Theme.blue)
-		case .thinking: ("arrow.triangle.2.circlepath", L10n.Home.statusThinking, Theme.blue)
-		case .error: ("exclamationmark", L10n.Home.statusError, Theme.red)
-		case .pinned: ("pin.fill", L10n.Session.pinned, Theme.yellow)
-		case .conversation: ("bubble.left", L10n.Home.conversation, nil)
-		case let .project(name): (projectSymbol, name, nil)
-		}
-	}
-}
-
-/// A status symbol that moves while the state it names is live: working turns, waiting breathes.
+/// A session's state as a coloured symbol, only while it needs a look; it moves while the
+/// state is live: working turns, waiting breathes.
 struct StatusGlyph: View {
-	var kind: SessionTag.Kind
-	var symbol: String
+	let status: RemoteSessionStatus
 
-	init(kind: SessionTag.Kind, symbol: String) {
-		self.kind = kind
-		self.symbol = symbol
+	/// `nil` for a finished or idle session, which needs no mark.
+	init?(status: RemoteSessionStatus) {
+		switch status {
+		case .waitingInput, .running, .thinking, .error: self.status = status
+		case .idle, .completed, .aborted: return nil
+		}
 	}
 
-	init(status: RemoteSessionStatus) {
+	var label: String {
 		switch status {
-		case .waitingInput: self.init(kind: .waiting, symbol: "questionmark")
-		case .running: self.init(kind: .running, symbol: "arrow.triangle.2.circlepath")
-		case .thinking: self.init(kind: .thinking, symbol: "arrow.triangle.2.circlepath")
-		case .error: self.init(kind: .error, symbol: "exclamationmark")
-		case .idle, .completed, .aborted: self.init(kind: .conversation, symbol: "checkmark")
+		case .waitingInput: L10n.Home.statusWaiting
+		case .running: L10n.Home.statusRunning
+		case .thinking: L10n.Home.statusThinking
+		default: L10n.Home.statusError
 		}
 	}
 
 	var body: some View {
-		let image = Image(systemName: symbol)
-		switch kind {
-		case .running, .thinking: image.symbolEffect(.rotate, options: .repeat(.continuous))
-		case .waiting: image.symbolEffect(.breathe, options: .repeat(.continuous))
-		default: image
+		switch status {
+		case .waitingInput:
+			Image(systemName: "questionmark").foregroundStyle(Theme.yellow).symbolEffect(.breathe, options: .repeat(.continuous))
+		case .running, .thinking:
+			Image(systemName: "arrow.triangle.2.circlepath").foregroundStyle(Theme.blue).symbolEffect(.rotate, options: .repeat(.continuous))
+		default:
+			Image(systemName: "exclamationmark").foregroundStyle(Theme.red)
 		}
 	}
 }
@@ -313,8 +298,7 @@ struct SessionCardRows: View {
 			.buttonStyle(.plain)
 			.accessibilityIdentifier("session.\(session.id)")
 			.listRowInsets(EdgeInsets())
-			.listRowSeparatorTint(Theme.line)
-			.alignmentGuide(.listRowSeparatorLeading) { _ in 20 }
+			.listRowSeparator(.hidden)
 			// Waiting on the user warms the whole row, not just its tag.
 			.listRowBackground(session.status == .waitingInput ? Theme.yellow.opacity(0.09) : Color.clear)
 			// Swiping right; delete asks first since it removes the session on the desktop too.
