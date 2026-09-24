@@ -129,3 +129,28 @@ private struct LevelPicker: View {
 		.animation(.snappy, value: selected)
 	}
 }
+
+/// A page's title with the model and thinking level under it, as the chat and New Session
+/// show it at the top; tapping it opens the model sheet.
+struct ModelTitle: View {
+	var title: String
+	var detail: String
+	var online: Bool
+	/// The chevron, while there is a list to pick from.
+	var picks: Bool
+
+	var body: some View {
+		VStack(alignment: .leading, spacing: 1) {
+			Text(title).font(.headline).lineLimit(1)
+			HStack(spacing: 4) {
+				Circle().fill(online ? Theme.green : Color.secondary).frame(width: 6, height: 6)
+				Text(detail).lineLimit(1)
+				if picks {
+					Image(systemName: "chevron.down").font(.caption2.weight(.semibold))
+				}
+			}
+			.font(.caption)
+			.foregroundStyle(.secondary)
+		}
+	}
+}

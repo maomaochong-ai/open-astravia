@@ -193,18 +193,7 @@ private struct ModelMenu: View {
 		let options = model.models[sessionId] ?? []
 		let current = options.first { $0.key == state.modelKey }
 		Button { picking = true } label: {
-			VStack(alignment: .leading, spacing: 1) {
-				Text(title).font(.headline).lineLimit(1)
-				HStack(spacing: 4) {
-					Circle().fill(model.online ? Theme.green : Color.secondary).frame(width: 6, height: 6)
-					Text(detail(state: state, current: current)).lineLimit(1)
-					if !options.isEmpty {
-						Image(systemName: "chevron.down").font(.caption2.weight(.semibold))
-					}
-				}
-				.font(.caption)
-				.foregroundStyle(.secondary)
-			}
+			ModelTitle(title: title, detail: detail(state: state, current: current), online: model.online, picks: !options.isEmpty)
 			// A toolbar item only gets its ideal width; claim what the drawer button and the two on the right leave.
 			.frame(width: max(120, pageWidth - 212), alignment: .leading)
 		}

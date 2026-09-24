@@ -12,6 +12,7 @@ struct NewSessionView: View {
 	@State private var modelChoice = ModelChoice()
 	@State private var pickingModel = false
 	@State private var draft = PromptDraft()
+	@State private var pageWidth: CGFloat = 0
 
 	init(projectCwd: String? = nil) {
 		_projectCwd = State(initialValue: projectCwd)
@@ -29,11 +30,15 @@ struct NewSessionView: View {
 			}
 		}
 		.background { WelcomeBackdrop().ignoresSafeArea() }
+		.onGeometryChange(for: CGFloat.self, of: \.size.width) { pageWidth = $0 }
 		.navigationBarTitleDisplayMode(.inline)
 		.toolbarBackground(.hidden, for: .navigationBar)
 		.toolbar {
 			if model.paired {
 				ToolbarItem(placement: .topBarLeading) { DrawerButton() }
+				// Where the chat keeps its model, so both pages switch it in the same place.
+				ToolbarItem(placement: .topBarLeading) { modelMenu }
+					.sharedBackgroundVisibility(.hidden)
 			}
 		}
 		.onAppear {
@@ -72,11 +77,8 @@ struct NewSessionView: View {
 				.multilineTextAlignment(.center)
 				.padding(.top, 8)
 				.contentTransition(.opacity)
-			HStack(spacing: 10) {
-				modelMenu
-				locationMenu
-			}
-			.padding(.top, 28)
+			locationMenu
+				.padding(.top, 28)
 			Spacer()
 		}
 		.padding(.horizontal, 24)
@@ -95,9 +97,11 @@ struct NewSessionView: View {
 		let name = options.first { $0.key == modelChoice.modelKey }?.name ?? L10n.NewSession.defaultModel
 		let text = modelChoice.thinkingLevel.map { "\(name) · \(L10n.Chat.level($0))" } ?? name
 		return Button { pickingModel = true } label: {
-			MenuChip(symbol: "cpu", text: text)
+			ModelTitle(title: L10n.NewSession.title, detail: text, online: model.online, picks: !options.isEmpty)
+				// A toolbar item only gets its ideal width; claim what the drawer button leaves.
+				.frame(width: max(120, pageWidth - 110), alignment: .leading)
 		}
-		.buttonStyle(.glass)
+		.buttonStyle(.plain)
 		// A kept list can still be browsed offline; the sheet waits for one that is on its way.
 		.disabled(!model.online && options.isEmpty)
 		.accessibilityLabel(L10n.Chat.model)
