@@ -203,13 +203,10 @@ export function ModelConfigurationOverview({
 			</div>
 			<div id={contentId} className="space-y-3">
 				{defaultInUse ? (
-					<section
-						aria-label={defaultGroup?.label}
-						className="overflow-hidden rounded-lg border border-border bg-muted/20"
-					>
+					<section aria-label={defaultGroup?.label}>
 						<Button
 							variant="ghost"
-							className="h-auto w-full justify-between gap-3 rounded-none px-3 py-2.5 text-left text-foreground"
+							className="h-auto w-full justify-between gap-3 rounded-none px-1 py-1.5 text-left text-foreground"
 							disabled={disabled}
 							aria-label={defaultLabel}
 							aria-description={`${defaultModelLabel}. ${defaultHint}`}
@@ -228,7 +225,7 @@ export function ModelConfigurationOverview({
 								className="icon-[solar--alt-arrow-right-linear] size-4 shrink-0 text-muted-foreground"
 							/>
 						</Button>
-						<div className="space-y-1.5 px-3 pb-2.5">
+						<div className="space-y-1.5 px-1 pb-1">
 							{defaultGroup ? (expanded ? memberRows(defaultGroup) : avatarSummary(defaultGroup)) : null}
 							<p className="text-[11px] text-muted-foreground">{defaultHint}</p>
 							{defaultUnavailable ? (
