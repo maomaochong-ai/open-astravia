@@ -18,9 +18,11 @@ class FakeResizeObserver {
 describe("PetApp widget layout", () => {
 	beforeEach(() => {
 		vi.stubGlobal("ResizeObserver", FakeResizeObserver);
+		window.history.replaceState({}, "", "/");
 	});
 
 	afterEach(() => {
+		vi.useRealTimers();
 		vi.unstubAllGlobals();
 		delete window.vettaPet;
 	});
@@ -74,5 +76,23 @@ describe("PetApp widget layout", () => {
 		expect(root?.className).toContain("flex-col");
 		expect(root?.className).not.toContain("fixed");
 		expect(root?.className).not.toContain("inset-0");
+	});
+
+	it("applies session state even when idle auto switching is disabled", () => {
+		window.history.replaceState({}, "", "?autoMode=false");
+		const bridge = installPetBridge();
+		const { container } = render(<PetApp />);
+		const root = container.firstElementChild as HTMLElement;
+
+		expect(root.dataset.state).toBe("idle");
+		act(() =>
+			bridge.dispatch({
+				type: "set-state",
+				state: "working",
+				actionId: "stoat_work_laptop_typing_desk_cushion",
+			}),
+		);
+
+		expect(root.dataset.state).toBe("working");
 	});
 });

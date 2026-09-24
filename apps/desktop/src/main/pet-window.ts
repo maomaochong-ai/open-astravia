@@ -55,6 +55,8 @@ const petPreloadPath = join(resDir, "preload/pet.js");
 const PET_SCREEN_EDGE_MARGIN = 24;
 
 let petWindow: BrowserWindow | null = null;
+let petWindowReady = false;
+let latestPetStateCommand: Extract<PetCommand, { type: "set-state" }> | undefined;
 let petConfig: PetConfig = DEFAULT_PET_CONFIG;
 let persistSizeTimer: ReturnType<typeof setTimeout> | undefined;
 let windowMoveSession: PetWindowMoveSession | undefined;
@@ -280,7 +282,9 @@ function sendPetCommand(win: BrowserWindow, command: PetCommand): void {
 }
 
 export function sendPetCommandToWindow(command: PetCommand): void {
+	if (command.type === "set-state") latestPetStateCommand = command;
 	if (!petWindow || petWindow.isDestroyed()) return;
+	if (command.type === "set-state" && !petWindowReady) return;
 	sendPetCommand(petWindow, command);
 }
 
@@ -515,6 +519,7 @@ export function createPetWindow(): BrowserWindow {
 			preload: petPreloadPath,
 		},
 	});
+	petWindowReady = false;
 
 	isMousePassthroughEnabled = false;
 	setPetMousePassthrough(true);
@@ -560,7 +565,9 @@ export function createPetWindow(): BrowserWindow {
 	});
 	petWindow.webContents.on("did-finish-load", () => {
 		if (!petWindow || petWindow.isDestroyed()) return;
+		petWindowReady = true;
 		sendPetContentOffset(petWindow, petContentOffset, true);
+		if (latestPetStateCommand) sendPetCommand(petWindow, latestPetStateCommand);
 		petWindowCreatedListener?.();
 		log.info("did-finish-load", {
 			url: petWindow.webContents.getURL(),
@@ -580,6 +587,7 @@ export function createPetWindow(): BrowserWindow {
 		windowMoveSession = undefined;
 		windowResizeSession = undefined;
 		isMousePassthroughEnabled = false;
+		petWindowReady = false;
 		petWindow = null;
 		log.info("closed");
 	});

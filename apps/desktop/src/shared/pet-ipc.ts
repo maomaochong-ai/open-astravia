@@ -20,6 +20,7 @@ export type PetResizeCorner = "top-left" | "top-right" | "bottom-left" | "bottom
 export type PetCommandSource = "app" | "user" | "config";
 export type PetBubblePriority = "normal" | "high";
 export type PetBubbleKind = "status" | "tool" | "success" | "warning" | "error";
+export type PetActivityState = "idle" | "thinking" | "working" | "waiting_input" | "success" | "error" | "paused";
 
 export interface PetBubbleNotice {
 	readonly kind?: PetBubbleKind;
@@ -72,6 +73,12 @@ export type PetContentBounds = {
 };
 
 export type PetCommand =
+	| {
+			type: "set-state";
+			state: PetActivityState;
+			actionId: PetActionId;
+			sessionId?: string;
+	  }
 	| {
 			type: "set-action";
 			actionId: PetActionId;
