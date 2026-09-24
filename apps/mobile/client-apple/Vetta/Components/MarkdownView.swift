@@ -1,14 +1,24 @@
 import SwiftUI
 import VettaKit
 
+/// Opacity of a rendered character by its distance from the end of the text
+/// (0 is the last one), for a reply that is still fading in; `span` bounds how
+/// far from the end anything is still translucent.
+struct FadeTail {
+	var span: Int
+	var opacity: (Int) -> Double
+}
+
 /// Block-level Markdown for assistant replies: headings, lists, fenced code,
 /// quotes, rules and tables, with inline styling from Foundation's parser.
 struct MarkdownView: View {
 	var text: String
+	/// The newest characters of a streaming reply, fading in.
+	var fade: FadeTail?
 
 	var body: some View {
 		VStack(alignment: .leading, spacing: 10) {
-			ForEach(Array(MarkdownBlock.parse(text).enumerated()), id: \.offset) { _, block in
+			ForEach(Array(RenderedBlock.render(MarkdownBlock.parse(text), fade: fade).enumerated()), id: \.offset) { _, block in
 				view(for: block)
 			}
 		}
@@ -16,10 +26,10 @@ struct MarkdownView: View {
 	}
 
 	@ViewBuilder
-	private func view(for block: MarkdownBlock) -> some View {
+	private func view(for block: RenderedBlock) -> some View {
 		switch block {
 		case let .heading(level, content):
-			Text(Self.inline(content))
+			Text(content)
 				.font(.system(size: level == 1 ? 20 : level == 2 ? 18 : 16, weight: level <= 2 ? .bold : .semibold))
 				.foregroundStyle(Theme.ink)
 		case let .paragraph(content):
@@ -28,8 +38,8 @@ struct MarkdownView: View {
 			VStack(alignment: .leading, spacing: 4) {
 				ForEach(Array(items.enumerated()), id: \.offset) { _, item in
 					HStack(alignment: .firstTextBaseline, spacing: 8) {
-						Text("•").font(.system(size: 15)).foregroundStyle(Theme.dim)
-						Self.body(item)
+						Text("•").font(.system(size: 15)).foregroundStyle(Theme.dim).opacity(item.markerOpacity)
+						Self.body(item.text)
 					}
 				}
 			}
@@ -37,7 +47,7 @@ struct MarkdownView: View {
 			VStack(alignment: .leading, spacing: 4) {
 				ForEach(Array(items.enumerated()), id: \.offset) { _, item in
 					HStack(alignment: .firstTextBaseline, spacing: 8) {
-						Text("\(item.number).").font(.system(size: 15)).foregroundStyle(Theme.dim).monospacedDigit()
+						Text("\(item.number).").font(.system(size: 15)).foregroundStyle(Theme.dim).monospacedDigit().opacity(item.markerOpacity)
 						Self.body(item.text)
 					}
 				}
@@ -69,8 +79,8 @@ struct MarkdownView: View {
 		}
 	}
 
-	static func body(_ content: String) -> some View {
-		Text(inline(content))
+	static func body(_ content: AttributedString) -> some View {
+		Text(content)
 			.font(.system(size: 15))
 			.foregroundStyle(Theme.ink)
 			.lineSpacing(5)
@@ -78,8 +88,13 @@ struct MarkdownView: View {
 			.fixedSize(horizontal: false, vertical: true)
 	}
 
+	/// Parsed inline Markdown by source. A streaming reply is laid out again on
+	/// every frame, and all but its last block are unchanged, so they come from here.
+	private static var inlineCache: [String: AttributedString] = [:]
+
 	/// Inline Markdown with the design's inline-code treatment (mono on a soft chip).
 	static func inline(_ content: String) -> AttributedString {
+		if let cached = inlineCache[content] { return cached }
 		var attributed = (try? AttributedString(
 			markdown: content,
 			options: AttributedString.MarkdownParsingOptions(interpretedSyntax: .inlineOnlyPreservingWhitespace)
@@ -95,7 +110,76 @@ struct MarkdownView: View {
 				attributed[run.range].underlineStyle = .single
 			}
 		}
+		if inlineCache.count > 512 { inlineCache.removeAll(keepingCapacity: true) }
+		inlineCache[content] = attributed
 		return attributed
+	}
+}
+
+/// A Markdown block with its text parsed and, near the end of a streaming
+/// reply, the fading characters made translucent.
+private enum RenderedBlock {
+	struct Item {
+		var number = 0
+		var text: AttributedString
+		var markerOpacity = 1.0
+	}
+
+	case heading(Int, AttributedString)
+	case paragraph(AttributedString)
+	case bullets([Item])
+	case ordered([Item])
+	case code(AttributedString)
+	case quote(AttributedString)
+	case rule
+	case table(header: [String], rows: [[String]])
+
+	/// Walks the blocks from the end, so each text knows how far it sits from the last character.
+	static func render(_ blocks: [MarkdownBlock], fade: FadeTail?) -> [RenderedBlock] {
+		var distance = 0
+		func faded(_ source: AttributedString) -> AttributedString {
+			var text = source
+			let count = text.characters.count
+			defer { distance += count }
+			guard let fade, distance < fade.span, count > 0 else { return text }
+			var index = text.characters.endIndex
+			var fromEnd = distance
+			while index > text.characters.startIndex, fromEnd < fade.span {
+				let previous = text.characters.index(before: index)
+				let opacity = fade.opacity(fromEnd)
+				if opacity < 1 {
+					let range = previous ..< index
+					let base = text[range].foregroundColor ?? Theme.ink
+					text[range].foregroundColor = base.opacity(opacity)
+					if let background = text[range].backgroundColor { text[range].backgroundColor = background.opacity(opacity) }
+				}
+				index = previous
+				fromEnd += 1
+			}
+			return text
+		}
+		func item(_ source: String, number: Int = 0) -> Item {
+			let text = faded(MarkdownView.inline(source))
+			// The marker belongs to the item's first character.
+			let markerOpacity = fade.map { distance - 1 < $0.span ? $0.opacity(distance - 1) : 1 } ?? 1
+			return Item(number: number, text: text, markerOpacity: markerOpacity)
+		}
+		var rendered: [RenderedBlock] = []
+		for block in blocks.reversed() {
+			switch block {
+			case let .heading(level, content): rendered.append(.heading(level, faded(MarkdownView.inline(content))))
+			case let .paragraph(content): rendered.append(.paragraph(faded(MarkdownView.inline(content))))
+			case let .bullets(items): rendered.append(.bullets(items.reversed().map { item($0) }.reversed()))
+			case let .ordered(items): rendered.append(.ordered(items.reversed().map { item($0.text, number: $0.number) }.reversed()))
+			case let .code(content): rendered.append(.code(faded(AttributedString(content))))
+			case let .quote(content): rendered.append(.quote(faded(MarkdownView.inline(content))))
+			case .rule: rendered.append(.rule)
+			case let .table(header, rows):
+				distance += (header + rows.flatMap(\.self)).reduce(0) { $0 + $1.count }
+				rendered.append(.table(header: header, rows: rows))
+			}
+		}
+		return rendered.reversed()
 	}
 }
 

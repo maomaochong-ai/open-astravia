@@ -206,10 +206,11 @@ struct AgentTurnView: View {
 					Text(TimeFormat.relative(at)).font(.caption).foregroundStyle(.secondary)
 				}
 				if turn.streaming {
-					ProgressView().controlSize(.mini)
 					Text(note ?? (turn.segments.isEmpty ? L10n.Chat.waitingModel : L10n.Chat.working))
 						.font(.caption)
 						.foregroundStyle(.secondary)
+						.shimmer()
+						.transition(.opacity)
 						.accessibilityIdentifier("turn.status")
 				}
 			}
@@ -222,7 +223,7 @@ struct AgentTurnView: View {
 						activity: turn.activity
 					)
 				case let .text(_, text):
-					MarkdownView(text: text)
+					StreamingMarkdown(text: text, live: turn.streaming && index == turn.segments.count - 1)
 				case let .error(_, message, count):
 					HStack(alignment: .firstTextBaseline, spacing: 6) {
 						Label(message, systemImage: "exclamationmark.triangle.fill")
@@ -258,9 +259,13 @@ struct AgentTurnView: View {
 						.contentTransition(.symbolEffect(.replace))
 				}
 				.buttonStyle(.plain)
+				.transition(.opacity.combined(with: .offset(y: 4)))
 				.accessibilityIdentifier("turn.copy")
 			}
 		}
+		// Blocks, the status line and the copy button ease in instead of popping.
+		.animation(.easeOut(duration: 0.3), value: turn.segments.map(\.id))
+		.animation(.easeOut(duration: 0.35), value: turn.streaming)
 		.padding(.bottom, 20)
 		.frame(maxWidth: .infinity, alignment: .leading)
 		.accessibilityElement(children: .contain)
@@ -304,6 +309,7 @@ struct WorkGroupView: View {
 					}
 					Text(title)
 						.lineLimit(1)
+						.shimmer(live)
 						.frame(maxWidth: .infinity, alignment: .leading)
 					Image(systemName: "chevron.right")
 						.font(.caption.weight(.semibold))
@@ -336,4 +342,93 @@ struct WorkGroupView: View {
 		}
 		.background(Theme.card2.opacity(0.6), in: .rect(cornerRadius: 14))
 	}
+}
+
+/// A reply's text as it streams in: shown at an even pace, each new character
+/// fading in (see `StreamReveal`), while the view keeps drawing frames only
+/// until the text has caught up and settled. Text that was already there when
+/// the chat opened is shown at once.
+struct StreamingMarkdown: View {
+	var text: String
+	var live: Bool
+	@State private var clock = RevealClock()
+	@Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+	var body: some View {
+		let target = text.count
+		if reduceMotion || !clock.started && !live {
+			MarkdownView(text: text)
+		} else {
+			TimelineView(.animation(minimumInterval: 1.0 / 60, paused: clock.idle && !clock.behind(target))) { context in
+				let reveal = clock.advance(to: context.date.timeIntervalSinceReferenceDate, target: target)
+				MarkdownView(
+					text: reveal.shown == target ? text : String(text.prefix(reveal.shown)),
+					// A fade lasts `fade` seconds and the head moves at most `backlog / catchUp` per second.
+					fade: FadeTail(span: 160) { reveal.opacity(at: reveal.shown - 1 - $0) }
+				)
+			}
+		}
+	}
+}
+
+/// Holds a `StreamReveal` across frames. Advancing is not observed, so frames
+/// do not invalidate the view; only `idle` is, flipped after a frame so the
+/// timeline pauses once there is nothing left to animate.
+@Observable
+final class RevealClock {
+	@ObservationIgnored private(set) var started = false
+	@ObservationIgnored private var reveal: StreamReveal?
+	var idle = false
+
+	func behind(_ target: Int) -> Bool {
+		reveal.map { $0.animating(toward: target) } ?? true
+	}
+
+	func advance(to time: Double, target: Int) -> StreamReveal {
+		// Only the last few characters of text already on screen fade in, not the whole reply again.
+		var next = reveal ?? StreamReveal(shown: max(0, target - 24), at: time)
+		started = true
+		next.advance(to: time, target: target)
+		reveal = next
+		let settled = !next.animating(toward: target)
+		if settled != idle { Task { @MainActor in self.idle = settled } }
+		return next
+	}
+}
+
+/// A soft band of light sweeping across a status line while the agent works.
+struct Shimmer: ViewModifier {
+	var active: Bool
+	@State private var phase: CGFloat = -1
+	@Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+	func body(content: Content) -> some View {
+		if active, !reduceMotion {
+			content
+				.mask {
+					GeometryReader { geometry in
+						LinearGradient(
+							stops: [
+								.init(color: .black.opacity(0.45), location: 0),
+								.init(color: .black, location: 0.5),
+								.init(color: .black.opacity(0.45), location: 1),
+							],
+							startPoint: .leading,
+							endPoint: .trailing
+						)
+						.frame(width: geometry.size.width * 3)
+						.offset(x: phase * geometry.size.width - geometry.size.width)
+					}
+				}
+				.onAppear {
+					withAnimation(.linear(duration: 1.6).repeatForever(autoreverses: false)) { phase = 1 }
+				}
+		} else {
+			content
+		}
+	}
+}
+
+extension View {
+	func shimmer(_ active: Bool = true) -> some View { modifier(Shimmer(active: active)) }
 }
