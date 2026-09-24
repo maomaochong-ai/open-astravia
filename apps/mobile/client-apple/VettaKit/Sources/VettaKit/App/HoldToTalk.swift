@@ -68,8 +68,10 @@ public struct HoldToTalk: Equatable, Sendable {
 	public mutating func ended(at time: TimeInterval) -> Action {
 		defer { phase = .idle }
 		switch phase {
-		case let .pressing(since):
-			return time - since < Self.holdDelay ? .focus : .none
+		case .pressing:
+			// Never reached listening, so it was a tap, even if it outlasted the hold
+			// before the timer got round to noticing.
+			return .focus
 		case let .listening(armed):
 			if !armed, time - listeningSince < Self.quickRelease { return .cancelAndFocus }
 			return .finish(insert: !armed)

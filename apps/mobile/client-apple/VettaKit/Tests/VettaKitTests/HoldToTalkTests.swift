@@ -31,6 +31,13 @@ import Testing
 		#expect(press.ended(at: 1.5) == .finish(insert: false))
 	}
 
+	@Test func aTapReleasedBeforeTheHoldTimerFiresStillStartsTyping() {
+		var press = HoldToTalk()
+		_ = press.began(at: 0)
+		// Past the hold, but the timer that turns it into listening has not run yet.
+		#expect(press.ended(at: 0.13) == .focus)
+	}
+
 	@Test func aSlowTapThatJustOutlastsTheHoldStillStartsTyping() {
 		var press = HoldToTalk()
 		_ = press.began(at: 0)
