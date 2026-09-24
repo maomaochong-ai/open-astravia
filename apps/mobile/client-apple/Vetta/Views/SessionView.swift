@@ -96,7 +96,7 @@ struct SessionView: View {
 				ChatInputBar(
 					draft: $draft,
 					placeholder: L10n.Chat.composerPlaceholder,
-					disabled: !model.online || starting,
+					sendDisabled: !model.online || starting,
 					busy: active,
 					onStop: { if !starting { Task { await model.abort(id) } } },
 					onSend: { sent in

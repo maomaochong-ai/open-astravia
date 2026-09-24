@@ -9,7 +9,8 @@ import VettaKit
 struct ChatInputBar: View {
 	@Binding var draft: PromptDraft
 	var placeholder: String
-	var disabled = false
+	/// Only sending waits on the link; typing, attaching and dictating never do.
+	var sendDisabled = false
 	var busy = false
 	var onStop: (() -> Void)?
 	var onSend: (PromptDraft) -> Void
@@ -25,8 +26,8 @@ struct ChatInputBar: View {
 	/// The attach button and a one-line field share this height.
 	private static let barHeight: CGFloat = 44
 
-	private var canSend: Bool { draft.canSend && !disabled }
-	private var holdToTalk: Bool { draft.text.isEmpty && !disabled }
+	private var canSend: Bool { draft.canSend && !sendDisabled }
+	private var holdToTalk: Bool { draft.text.isEmpty }
 
 	var body: some View {
 		VStack(alignment: .leading, spacing: 8) {
@@ -48,12 +49,10 @@ struct ChatInputBar: View {
 				Button { attaching = true } label: {
 					Image(systemName: "command")
 						.font(.system(size: 19, weight: .medium))
-						.foregroundStyle(disabled ? .tertiary : .primary)
 						.frame(width: Self.barHeight, height: Self.barHeight)
 						.glassEffect(.regular.interactive(), in: .circle)
 				}
 				.buttonStyle(.plain)
-				.disabled(disabled)
 				.accessibilityLabel(L10n.Chat.attach)
 				.accessibilityIdentifier("composer.attach")
 
@@ -85,7 +84,6 @@ struct ChatInputBar: View {
 				.font(.body)
 				.lineLimit(1 ... 6)
 				.focused($focused)
-				.disabled(disabled)
 				.padding(.leading, 16)
 				.padding(.vertical, 11)
 				.accessibilityIdentifier("composer.field")

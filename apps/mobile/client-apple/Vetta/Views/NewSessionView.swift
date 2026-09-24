@@ -19,6 +19,7 @@ struct NewSessionView: View {
 	}
 
 	private var projects: [RemoteProjectSummary] { model.projects.filter { !$0.isConversation } }
+	private var offline: Bool { LinkIndicator(model.link) == .offline }
 
 	var body: some View {
 		Group {
@@ -66,12 +67,13 @@ struct NewSessionView: View {
 	private var welcome: some View {
 		VStack(spacing: 0) {
 			Spacer()
-			BotAvatar(size: 52, asleep: !model.online)
+			// Asleep only once the link has failed, not while the first connect is under way.
+			BotAvatar(size: 52, asleep: offline)
 			Text(L10n.NewSession.greeting)
 				.font(.title.weight(.semibold))
 				.multilineTextAlignment(.center)
 				.padding(.top, 22)
-			Text(model.online ? L10n.NewSession.subtitle : L10n.NewSession.offline)
+			Text(offline ? L10n.NewSession.offline : L10n.NewSession.subtitle)
 				.font(.subheadline)
 				.foregroundStyle(.secondary)
 				.multilineTextAlignment(.center)
@@ -86,7 +88,7 @@ struct NewSessionView: View {
 		.contentShape(Rectangle())
 		.onTapGesture { dismissKeyboard() }
 		.safeAreaInset(edge: .bottom, spacing: 0) {
-			ChatInputBar(draft: $draft, placeholder: L10n.Chat.composerPlaceholder, disabled: !model.online) { sent in
+			ChatInputBar(draft: $draft, placeholder: L10n.Chat.composerPlaceholder, sendDisabled: !model.online) { sent in
 				send(sent)
 			}
 		}
@@ -129,7 +131,6 @@ struct NewSessionView: View {
 			MenuChip(symbol: project == nil ? "bubble.left" : "folder", text: project?.name ?? L10n.Home.conversation)
 		}
 		.buttonStyle(.glass)
-		.disabled(!model.online)
 		.accessibilityLabel(L10n.NewSession.location)
 		.accessibilityIdentifier("newSession.location")
 	}
