@@ -26,7 +26,7 @@ Desktop diagnostics()
   └─ diagnostics.snapshot response
        └─ DesktopLink 每 30 秒采样一次，记录 request RTT 与诊断字段
             └─ DesktopMirror.state.link（LinkSnapshot）
-                 └─ MirrorConversationGateway 派生 DesktopDevice
+                 └─ MirrorDesktopGateway 派生 DesktopDevice
                       └─ AppViewModel 收集 devices StateFlow
                            └─ DeviceDetailScreen 渲染指标和系统信息
 ```
@@ -36,7 +36,7 @@ Desktop diagnostics()
 - `apps/desktop/src/main/remote-control/desktop-conversation-remote-operations.ts`
 - `apps/mobile/client-android/shared/src/commonMain/kotlin/org/vetta/android/domain/remote/link/DesktopLink.kt`
 - `apps/mobile/client-android/shared/src/commonMain/kotlin/org/vetta/android/domain/work/DesktopMirror.kt`
-- `apps/mobile/client-android/shared/src/commonMain/kotlin/org/vetta/android/domain/conversation/MirrorConversationGateway.kt`
+- `apps/mobile/client-android/shared/src/commonMain/kotlin/org/vetta/android/domain/device/DesktopGateway.kt`
 - `apps/mobile/client-android/shared/src/commonMain/kotlin/org/vetta/android/ui/connect/ConnectScreens.kt`
 
 `DesktopDevice.viewerUrl` 是 WebRTC viewer 地址，含配对凭据，只用于桌面预览，不能出现在系统信息卡片中。连接时长由 `onlineSinceEpochMs` 在界面按秒计算。

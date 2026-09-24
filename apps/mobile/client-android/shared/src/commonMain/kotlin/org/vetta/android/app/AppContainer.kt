@@ -15,8 +15,8 @@ import org.vetta.android.data.remote.MemorySessionCache
 import org.vetta.android.data.remote.SessionCache
 import org.vetta.android.data.session.SettingsSessionStore
 import org.vetta.android.domain.conversation.ConversationRouter
-import org.vetta.android.domain.conversation.MirrorConversationGateway
-import org.vetta.android.domain.conversation.RemoteConversationGateway
+import org.vetta.android.domain.device.DesktopGateway
+import org.vetta.android.domain.device.MirrorDesktopGateway
 import org.vetta.android.domain.remote.connection.KtorWebSocketRemoteTransport
 import org.vetta.android.domain.remote.connection.PlatformRemoteLogger
 import org.vetta.android.domain.session.SessionStore
@@ -34,7 +34,7 @@ class AppContainer(
     val sessionStore: SessionStore = SettingsSessionStore(),
     val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
     val mirror: DesktopMirror = DesktopMirror(defaultMirrorPlatform(preferences, scope), scope),
-    val remoteConversationGateway: RemoteConversationGateway = MirrorConversationGateway(mirror, scope),
+    val desktopGateway: DesktopGateway = MirrorDesktopGateway(mirror, scope),
 ) {
     private val unauthorizedSignal = MutableStateFlow(0L)
     val unauthorizedEpoch: StateFlow<Long> = unauthorizedSignal.asStateFlow()
@@ -44,11 +44,7 @@ class AppContainer(
     val client: VettaClient
         get() = clientRef
 
-    val conversationRouter =
-        ConversationRouter(
-            cloudStream = { modelId, messages -> client.chat.stream(modelId, messages) },
-            remoteGateway = remoteConversationGateway,
-        )
+    val conversationRouter = ConversationRouter(cloudStream = { modelId, messages -> client.chat.stream(modelId, messages) })
 
     fun notifyUnauthorized() {
         unauthorizedSignal.value = unauthorizedSignal.value + 1

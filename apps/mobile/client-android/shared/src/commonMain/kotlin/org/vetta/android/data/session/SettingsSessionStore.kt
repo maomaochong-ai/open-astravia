@@ -10,15 +10,12 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.Serializable
 import org.vetta.android.core.model.ChatRole
-import org.vetta.android.core.model.ChatQuestion
-import org.vetta.android.core.model.ChatQuestionOption
 import org.vetta.android.core.model.TokenUsage
 import org.vetta.android.core.net.VettaJson
 import org.vetta.android.domain.session.ChatSession
 import org.vetta.android.domain.session.ConversationOrigin
 import org.vetta.android.domain.session.LocalMessage
 import org.vetta.android.domain.session.MessageStatus
-import org.vetta.android.domain.session.PendingQuestion
 import org.vetta.android.domain.session.SessionStore
 import org.vetta.android.domain.session.nowEpochMs
 import kotlin.random.Random
@@ -212,7 +209,6 @@ private data class MessageDto(
     val toolEvents: List<ToolTraceDto> = emptyList(),
     val usage: TokenUsageDto? = null,
     val contextPercent: Int? = null,
-    val pendingQuestion: PendingQuestionDto? = null,
 )
 
 @Serializable
@@ -232,28 +228,6 @@ private data class TokenUsageDto(
     val promptTokens: Int? = null,
     val completionTokens: Int? = null,
     val totalTokens: Int? = null,
-)
-
-@Serializable
-private data class PendingQuestionDto(
-    val sessionId: String = "",
-    val requestId: String,
-    val questions: List<QuestionDto> = emptyList(),
-    val selections: Map<String, List<String>> = emptyMap(),
-)
-
-@Serializable
-private data class QuestionDto(
-    val question: String,
-    val header: String = "",
-    val options: List<QuestionOptionDto> = emptyList(),
-    val multiSelect: Boolean = false,
-)
-
-@Serializable
-private data class QuestionOptionDto(
-    val label: String,
-    val description: String = "",
 )
 
 @Serializable
@@ -327,7 +301,6 @@ private fun MessageDto.toDomain() =
         },
         usage = usage?.let { TokenUsage(it.promptTokens, it.completionTokens, it.totalTokens) },
         contextPercent = contextPercent,
-        pendingQuestion = pendingQuestion?.toDomain(),
     )
 
 private fun LocalMessage.toDto() =
@@ -362,37 +335,6 @@ private fun LocalMessage.toDto() =
         },
         usage = usage?.let { TokenUsageDto(it.promptTokens, it.completionTokens, it.totalTokens) },
         contextPercent = contextPercent,
-        pendingQuestion = pendingQuestion?.toDto(),
     )
 
-private fun PendingQuestionDto.toDomain() =
-    PendingQuestion(
-        sessionId = sessionId,
-        requestId = requestId,
-        questions =
-            questions.map {
-                ChatQuestion(
-                    question = it.question,
-                    header = it.header,
-                    options = it.options.map { option -> ChatQuestionOption(option.label, option.description) },
-                    multiSelect = it.multiSelect,
-                )
-            },
-        selections = selections,
-    )
 
-private fun PendingQuestion.toDto() =
-    PendingQuestionDto(
-        sessionId = sessionId,
-        requestId = requestId,
-        questions =
-            questions.map {
-                QuestionDto(
-                    question = it.question,
-                    header = it.header,
-                    options = it.options.map { option -> QuestionOptionDto(option.label, option.description) },
-                    multiSelect = it.multiSelect,
-                )
-            },
-        selections = selections,
-    )

@@ -1,22 +1,8 @@
 package org.vetta.android.domain.error
 
 import org.vetta.android.core.error.VettaException
-import org.vetta.android.domain.conversation.RemoteConversationException
-import org.vetta.android.domain.remote.connection.RemoteRequestException
-import org.vetta.android.domain.remote.protocol.RemoteErrorCode
 import org.vetta.android.resources.Res
 import org.vetta.android.resources.error_client_message
-import org.vetta.android.resources.error_desktop_auth_message
-import org.vetta.android.resources.error_desktop_auth_title
-import org.vetta.android.resources.error_desktop_busy_title
-import org.vetta.android.resources.error_desktop_failed_message
-import org.vetta.android.resources.error_desktop_failed_title
-import org.vetta.android.resources.error_desktop_link_message
-import org.vetta.android.resources.error_desktop_link_title
-import org.vetta.android.resources.error_desktop_not_found_message
-import org.vetta.android.resources.error_desktop_not_found_title
-import org.vetta.android.resources.error_desktop_unavailable_message
-import org.vetta.android.resources.error_desktop_unavailable_title
 import org.vetta.android.resources.error_generic
 import org.vetta.android.resources.error_generic_message
 import org.vetta.android.resources.error_login_failed_message
@@ -85,56 +71,10 @@ object ErrorMapper {
                     action = UiErrorAction.Retry,
                 )
             is VettaException.Api -> mapApi(e)
-            is RemoteConversationException ->
-                UiError(
-                    title = uiText(Res.string.error_desktop_unavailable_title),
-                    message = uiText(Res.string.error_desktop_unavailable_message),
-                    action = UiErrorAction.Retry,
-                )
-            is RemoteRequestException -> mapRemoteRequest(e)
             else ->
                 UiError(
                     title = uiText(Res.string.error_generic),
                     message = uiText(Res.string.error_generic_message),
-                    action = UiErrorAction.Retry,
-                )
-        }
-
-    private fun mapRemoteRequest(e: RemoteRequestException): UiError =
-        when (e.remoteError.code) {
-            RemoteErrorCode.Unauthorized,
-            RemoteErrorCode.ApprovalRejected,
-            ->
-                UiError(
-                    title = uiText(Res.string.error_desktop_auth_title),
-                    message = uiText(Res.string.error_desktop_auth_message),
-                )
-            RemoteErrorCode.NotFound ->
-                UiError(
-                    title = uiText(Res.string.error_desktop_not_found_title),
-                    message = uiText(Res.string.error_desktop_not_found_message),
-                )
-            RemoteErrorCode.Busy ->
-                UiError(
-                    title = uiText(Res.string.error_desktop_busy_title),
-                    message = uiText(Res.string.error_try_later),
-                    action = UiErrorAction.Retry,
-                )
-            RemoteErrorCode.RequestTimeout,
-            RemoteErrorCode.TransportClosed,
-            ->
-                UiError(
-                    title = uiText(Res.string.error_desktop_link_title),
-                    message = uiText(Res.string.error_desktop_link_message),
-                    action = UiErrorAction.Retry,
-                )
-            RemoteErrorCode.InvalidFrame,
-            RemoteErrorCode.UnsupportedVersion,
-            RemoteErrorCode.InternalError,
-            ->
-                UiError(
-                    title = uiText(Res.string.error_desktop_failed_title),
-                    message = uiText(Res.string.error_desktop_failed_message),
                     action = UiErrorAction.Retry,
                 )
         }

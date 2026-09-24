@@ -9,19 +9,15 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.filterIsInstance
-import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.vetta.android.core.model.ChatMessage
-import org.vetta.android.core.model.ChatRole
-import org.vetta.android.core.model.ChatStreamEvent
 import org.vetta.android.data.remote.MemorySessionCache
-import org.vetta.android.domain.device.DeviceStatus
+import org.vetta.android.domain.remote.RemoteSessionStatus
+import org.vetta.android.domain.remote.TranscriptItem
 import org.vetta.android.domain.remote.connection.KtorWebSocketRemoteTransport
 import org.vetta.android.domain.remote.parsePairingInvite
 import org.vetta.android.domain.session.nowEpochMs
@@ -48,6 +44,7 @@ class RemoteLiveConversationE2ETest {
 
             val invite = File(invitePath).readText().trim()
             assertNotNull(parsePairingInvite(invite))
+            // The mirror is confined to one thread, as in the app.
             val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
             val mirror =
                 DesktopMirror(
@@ -61,35 +58,32 @@ class RemoteLiveConversationE2ETest {
                     ),
                     scope,
                 )
-            withContext(Dispatchers.Main) { mirror.start() }
-            val gateway = MirrorConversationGateway(mirror, scope)
             try {
-                withTimeout(30_000) {
-                    check(withContext(Dispatchers.Main) { gateway.connect(invite) }) { "pairing failed" }
-                    gateway.devices.first { it.singleOrNull()?.status == DeviceStatus.Online }
-                }
-                val events =
-                    withTimeout(180_000) {
-                        withContext(Dispatchers.Main) {
-                            gateway
-                                .stream(
-                                    localSessionId = "android-live-e2e",
-                                    deviceId = gateway.devices.value.single().id,
-                                    remoteSessionId = null,
-                                    messages =
-                                        listOf(
-                                            ChatMessage(
-                                                ChatRole.User,
-                                                "这是一次远程链路验收。不要调用任何工具，仅回复：$EXPECTED_REPLY_MARKER",
-                                            ),
-                                        ),
-                                ).toList()
+                withContext(Dispatchers.Main) {
+                    mirror.start()
+                    check(mirror.pairWithCode(invite)) { "pairing failed" }
+                    withTimeout(30_000) { mirror.state.first { it.online } }
+                    val sessionId =
+                        checkNotNull(mirror.sendPrompt(null, "这是一次远程链路验收。不要调用任何工具，仅回复：$EXPECTED_REPLY_MARKER")) {
+                            "the prompt did not go out"
                         }
-                    }
-                val answer = events.filterIsInstance<ChatStreamEvent.Delta>().joinToString("") { it.text }
-                assertContains(answer, EXPECTED_REPLY_MARKER)
+                    val finished =
+                        withTimeout(180_000) {
+                            mirror.state.first {
+                                val status = it.transcript(sessionId).sessionState.status
+                                status == RemoteSessionStatus.Completed || status == RemoteSessionStatus.Error
+                            }
+                        }
+                    val answer =
+                        finished
+                            .transcript(sessionId)
+                            .items
+                            .filterIsInstance<TranscriptItem.Assistant>()
+                            .joinToString("") { it.turn.text }
+                    assertContains(answer, EXPECTED_REPLY_MARKER)
+                }
             } finally {
-                withContext(Dispatchers.Main) { gateway.disconnect(gateway.devices.value.firstOrNull()?.id.orEmpty()) }
+                withContext(Dispatchers.Main) { mirror.unpair() }
                 scope.cancel()
             }
         }

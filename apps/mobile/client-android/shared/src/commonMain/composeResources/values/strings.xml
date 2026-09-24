@@ -89,7 +89,6 @@
     <string name="context_used">Context</string>
     <string name="context_window">Context %1$s</string>
     <string name="conversation_context">Conversation context</string>
-    <string name="conversation_with">Conversation with %1$s</string>
     <string name="copied">Copied</string>
     <string name="copy">Copy</string>
     <string name="data_section">Data</string>
@@ -102,9 +101,6 @@
     <string name="delete_session_confirm">This can’t be undone. Delete this session?</string>
     <string name="desktop_device">Desktop</string>
     <string name="desktop_preview">Desktop preview</string>
-    <string name="desktop_session_missing_hint">This session isn’t linked to a desktop. Start a new one</string>
-    <string name="desktop_unavailable">Desktop unavailable</string>
-    <string name="desktop_unavailable_hint">This device can’t be found. Go back to the device list and try again</string>
     <string name="device_connected">Connected</string>
     <string name="disconnect">Disconnect</string>
     <string name="disconnected">Not connected</string>
@@ -117,18 +113,6 @@
     <string name="email">Email</string>
     <string name="enter_lan_address">Enter computer address</string>
     <string name="error_client_message">The request couldn’t be completed. Check your input and try again</string>
-    <string name="error_desktop_auth_message">Check the default model and API key on your computer, then try again</string>
-    <string name="error_desktop_auth_title">Desktop model sign-in failed</string>
-    <string name="error_desktop_busy_title">Desktop is busy with another request</string>
-    <string name="error_desktop_disconnected">The desktop connection dropped. Reconnect and try again</string>
-    <string name="error_desktop_failed_message">Check the model settings and logs on your computer, then try again</string>
-    <string name="error_desktop_failed_title">Desktop run failed</string>
-    <string name="error_desktop_link_message">Check the connection on your computer and try again</string>
-    <string name="error_desktop_link_title">Desktop connection temporarily unavailable</string>
-    <string name="error_desktop_not_found_message">The session or model no longer exists. Start a new conversation</string>
-    <string name="error_desktop_not_found_title">Desktop session unavailable</string>
-    <string name="error_desktop_unavailable_message">Make sure Desktop is online and try again</string>
-    <string name="error_desktop_unavailable_title">Desktop connection unavailable</string>
     <string name="error_generic">Something went wrong</string>
     <string name="error_generic_message">The action couldn’t be completed. Try again later</string>
     <string name="error_login_failed_message">Incorrect account or password</string>
@@ -254,8 +238,6 @@
     <string name="page_motion_hint">Use light transitions between pages</string>
     <string name="pair_desktop">Connect to Desktop</string>
     <string name="password">Password</string>
-    <string name="pending_desktop_question">Desktop is waiting for your choice</string>
-    <string name="pending_desktop_question_title">Your confirmation is needed</string>
     <string name="plan">Plan and usage</string>
     <string name="plan_active">Active</string>
     <string name="plan_default">Default plan</string>
@@ -317,8 +299,6 @@
     <string name="start_conversation">Start conversation</string>
     <string name="stop">Stop</string>
     <string name="streaming">Replying</string>
-    <string name="submit_answer">Submit</string>
-    <string name="submitting_answer">Submitting…</string>
     <string name="system_info">System info</string>
     <string name="tab_discover">Discover</string>
     <string name="tab_home">Home</string>

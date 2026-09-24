@@ -46,7 +46,6 @@ import org.jetbrains.compose.resources.stringResource
 import org.vetta.android.resources.Res
 import org.vetta.android.resources.channel_cloud
 import org.vetta.android.resources.pair_desktop
-import org.vetta.android.resources.pending_desktop_question
 import org.vetta.android.ui.i18n.sessionTitle
 import org.vetta.android.ui.me.MeScreen
 import org.vetta.android.ui.me.PlanScreen
@@ -207,14 +206,7 @@ fun RootApp(
                                     onOpenDevice = vm::openDeviceDetail,
                                     onOpenDevices = { vm.selectMainTab(MainTab.Discover) },
                                     onOpenSessions = { vm.selectMainTab(MainTab.Sessions) },
-                                    onOpenSession = { id ->
-                                        val item = vm.sessionListItems().firstOrNull { it.id == id }
-                                        vm.openChat(
-                                            sessionId = id,
-                                            surface = if (item?.isCloud == false) ChatSurface.Desktop else ChatSurface.Cloud,
-                                            title = item?.title.orEmpty(),
-                                        )
-                                    },
+                                    onOpenSession = vm::openStoredSession,
                                     onNewConversation = { vm.openNewConversation(0) },
                                     onUseCloudAi = vm::openCloudConversation,
                                 )
@@ -250,13 +242,7 @@ fun RootApp(
                                     onRenameSession = vm::renameSession,
                                     onDeleteSession = vm::deleteSession,
                                     confirmBeforeDelete = state.confirmBeforeDelete,
-                                    onOpenSession = { item ->
-                                        vm.openChat(
-                                            sessionId = item.id,
-                                            surface = if (item.isCloud) ChatSurface.Cloud else ChatSurface.Desktop,
-                                            title = item.title,
-                                        )
-                                    },
+                                    onOpenSession = { item -> vm.openStoredSession(item.id) },
                                 )
                             MainTab.Discover ->
                                 DiscoverConnectScreen(
@@ -296,7 +282,7 @@ fun RootApp(
                         device = device,
                         onBack = vm::navigateBackFromSecondary,
                         onDisconnect = { vm.disconnectDesktop(device.id) },
-                        onNewChat = { vm.startDesktopConversation(device.id) },
+                        onNewChat = vm::startDesktopConversation,
                     )
                 }
             }
@@ -306,9 +292,7 @@ fun RootApp(
                     channelIndex = state.newConversationChannelIndex,
                     onChannelChange = vm::setNewConversationChannel,
                     onBack = vm::navigateBackFromSecondary,
-                    onStartDesktop = { deviceId ->
-                        vm.startDesktopConversation(deviceId)
-                    },
+                    onStartDesktop = { vm.startDesktopConversation() },
                     onStartCloud = {
                         vm.openCloudConversation()
                     },
@@ -350,10 +334,6 @@ fun RootApp(
                     onDismissError = vm::clearGlobalError,
                     onImagesPicked = vm::addPendingImages,
                     onRemovePendingImage = vm::removePendingImage,
-                    pendingQuestion = state.pendingQuestion?.takeIf { it.sessionId == state.currentSessionId },
-                    questionSubmitting = state.isQuestionSubmitting,
-                    onToggleQuestionOption = vm::toggleQuestionOption,
-                    onSubmitQuestion = vm::submitQuestion,
                 )
             }
             is AppRoute.WorkSession ->
@@ -423,44 +403,7 @@ fun RootApp(
                 AboutScreen(onBack = vm::navigateBackFromSecondary)
             }
             }
-            val pending = state.pendingQuestion
-            val currentChatHasPending = state.route is AppRoute.Chat && pending?.sessionId == state.currentSessionId
-            AnimatedVisibility(
-                visible = pending != null && !currentChatHasPending,
-                modifier = Modifier.align(Alignment.TopCenter),
-                enter = fadeIn(tween(200)) + slideInVertically(tween(200)) { -it },
-                exit = fadeOut(tween(180)) + slideOutVertically(tween(180)) { -it },
-            ) {
-                PendingQuestionNotice(
-                    onOpen = {
-                        pending?.let { question ->
-                            val session = sessions.firstOrNull { it.id == question.sessionId }
-                            vm.openChat(
-                                sessionId = question.sessionId,
-                                surface = ChatSurface.Desktop,
-                                title = session?.title.orEmpty(),
-                            )
-                        }
-                    },
-                )
-            }
         }
     }
 }
 
-@Composable
-private fun PendingQuestionNotice(
-    modifier: Modifier = Modifier,
-    onOpen: () -> Unit,
-) {
-    Surface(
-        modifier = modifier.padding(top = 12.dp, start = 16.dp, end = 16.dp),
-        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.secondaryContainer,
-        tonalElevation = 3.dp,
-    ) {
-        TextButton(onClick = onOpen) {
-            Text(stringResource(Res.string.pending_desktop_question))
-        }
-    }
-}

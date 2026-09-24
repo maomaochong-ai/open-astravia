@@ -33,16 +33,10 @@ import org.vetta.android.domain.session.ConversationOrigin
 import org.vetta.android.domain.session.LocalMessage
 import org.vetta.android.domain.session.MessageImage
 import org.vetta.android.domain.session.MessageStatus
-import org.vetta.android.domain.session.PendingQuestion
 import org.vetta.android.domain.session.ToolTrace
 import org.vetta.android.domain.session.SessionStore
 import org.vetta.android.domain.session.nowEpochMs
 import org.vetta.android.resources.Res
-import org.vetta.android.resources.desktop_session_missing_hint
-import org.vetta.android.resources.desktop_unavailable
-import org.vetta.android.resources.desktop_unavailable_hint
-import org.vetta.android.resources.error_desktop_failed_message
-import org.vetta.android.resources.error_desktop_failed_title
 import org.vetta.android.resources.error_relogin_title
 import org.vetta.android.resources.invalid_pairing_invite
 import org.vetta.android.resources.invalid_pairing_invite_hint
@@ -93,8 +87,6 @@ data class AppUiState(
     val discoverChannelIndex: Int = 0,
     val newConversationChannelIndex: Int = 0,
     val devices: List<DesktopDevice> = emptyList(),
-    val pendingQuestion: PendingQuestion? = null,
-    val isQuestionSubmitting: Boolean = false,
 )
 
 private data class PreferenceSnapshot(
@@ -158,7 +150,7 @@ class AppViewModel(
             }
         }
         viewModelScope.launch {
-            container.remoteConversationGateway.devices.collect { devices ->
+            container.desktopGateway.devices.collect { devices ->
                 _state.update { it.copy(devices = devices) }
             }
         }
@@ -173,7 +165,6 @@ class AppViewModel(
                 _state.update {
                     it.copy(bootstrapped = true, route = AppRoute.Welcome)
                 }
-                restorePendingQuestion()
                 return@launch
             }
             when (val refresh = container.client.auth.refresh()) {
@@ -236,7 +227,6 @@ class AppViewModel(
                     catalogLoading = false,
                 )
             }
-            restorePendingQuestion()
             if (routeSession != null) {
                 // 保留 last session 引用，进入主页后用户可从最近会话打开
             }
@@ -267,20 +257,6 @@ class AppViewModel(
                 globalError = null,
                 authError = null,
             )
-        }
-        restorePendingQuestion()
-    }
-
-    /** 从本地消息恢复尚未回答的问题，让重启后仍能从主壳进入正确会话。 */
-    private fun restorePendingQuestion() {
-        viewModelScope.launch {
-            var pending: PendingQuestion? = null
-            for (session in container.sessionStore.sessions.value) {
-                if (session.origin != ConversationOrigin.Desktop) continue
-                pending = container.sessionStore.getMessages(session.id).asReversed().firstNotNullOfOrNull { it.pendingQuestion }
-                if (pending != null) break
-            }
-            if (pending != null) _state.update { it.copy(pendingQuestion = pending) }
         }
     }
 
@@ -362,7 +338,7 @@ class AppViewModel(
             try {
                 val connected =
                     try {
-                        container.remoteConversationGateway.connect(target)
+                        container.desktopGateway.connect(target)
                     } catch (error: kotlinx.coroutines.CancellationException) {
                         throw error
                     } catch (_: Throwable) {
@@ -370,7 +346,7 @@ class AppViewModel(
                     }
                 if (connected) {
                     _state.update { it.copy(mainAccessGranted = true) }
-                    val device = container.remoteConversationGateway.devices.value.firstOrNull()
+                    val device = container.desktopGateway.devices.value.firstOrNull()
                     if (openDetail && device != null) openDeviceDetail(device.id)
                     return@launch
                 }
@@ -392,7 +368,7 @@ class AppViewModel(
 
     fun disconnectDesktop(deviceId: String) {
         viewModelScope.launch {
-            runCatching { container.remoteConversationGateway.disconnect(deviceId) }
+            runCatching { container.desktopGateway.disconnect(deviceId) }
             navigateBackFromSecondary()
         }
     }
@@ -578,7 +554,6 @@ class AppViewModel(
                     messages = emptyList(),
                     draft = "",
                     pendingImages = emptyList(),
-                    pendingQuestion = null,
                     isStreaming = false,
                     streamingStatus = null,
                     modelPickerOpen = false,
@@ -646,7 +621,6 @@ class AppViewModel(
                 pendingImages = emptyList(),
                 isStreaming = false,
                 streamingStatus = null,
-                pendingQuestion = null,
                 route = AppRoute.Login,
                 mainTab = MainTab.Home,
                 modelPickerOpen = false,
@@ -704,35 +678,26 @@ class AppViewModel(
         }
     }
 
-    fun startDesktopConversation(deviceId: String) {
+    /** A new desktop session starts on the desktop's own New Session page. */
+    fun startDesktopConversation() {
+        _state.update { it.copy(mainAccessGranted = true, mainTab = MainTab.Work) }
+        openWorkNewSession()
+    }
+
+    /**
+     * Opens a session kept on this phone. A desktop conversation an earlier build
+     * started opens as the desktop's own session when the desktop's id is known;
+     * otherwise its local history is shown read-only.
+     */
+    fun openStoredSession(sessionId: String) {
         viewModelScope.launch {
-            val device = _state.value.devices.firstOrNull { it.id == deviceId }
-            if (device == null) {
-                _state.update {
-                    it.copy(
-                        globalError =
-                            UiError(
-                                title = uiText(Res.string.desktop_unavailable),
-                                message = uiText(Res.string.desktop_unavailable_hint),
-                                action = UiErrorAction.None,
-                            ),
-                    )
-                }
-                return@launch
+            val session = container.sessionStore.getSession(sessionId) ?: return@launch
+            val remoteId = session.remoteSessionId
+            when {
+                session.origin == ConversationOrigin.Desktop && remoteId != null -> openWorkSession(remoteId)
+                session.origin == ConversationOrigin.Desktop -> openChat(sessionId, ChatSurface.Desktop, session.title)
+                else -> openChat(sessionId, ChatSurface.Cloud, session.title)
             }
-            _state.update { it.copy(mainAccessGranted = true) }
-            val session =
-                container.sessionStore.createSession(
-                    title = device.name,
-                    origin = ConversationOrigin.Desktop,
-                    remoteDeviceId = deviceId,
-                )
-            openChat(
-                sessionId = session.id,
-                surface = ChatSurface.Desktop,
-                title = session.title,
-                deviceId = deviceId,
-            )
         }
     }
 
@@ -748,9 +713,6 @@ class AppViewModel(
             }
             if (_state.value.currentSessionId == sessionId) {
                 navigateBackFromSecondary()
-            }
-            _state.update { state ->
-                state.copy(pendingQuestion = state.pendingQuestion?.takeIf { it.sessionId != sessionId })
             }
         }
     }
@@ -772,51 +734,22 @@ class AppViewModel(
             val model = currentModel()
             var sessionId = _state.value.currentSessionId
             if (sessionId == null) {
-                val route = _state.value.route as? AppRoute.Chat
-                val origin =
-                    if (route?.surface == ChatSurface.Desktop) {
-                        ConversationOrigin.Desktop
-                    } else {
-                        ConversationOrigin.Cloud
-                    }
-                if (origin == ConversationOrigin.Cloud && model == null) {
+                if (model == null) {
                     showNoModelError()
                     return@launch
                 }
-                if (origin == ConversationOrigin.Desktop && route?.deviceId == null) {
-                    _state.update {
-                        it.copy(
-                            globalError =
-                                UiError(
-                                    title = uiText(Res.string.desktop_unavailable),
-                                    message = uiText(Res.string.desktop_session_missing_hint),
-                                    action = UiErrorAction.None,
-                                ),
-                        )
-                    }
-                    return@launch
-                }
-                val session =
-                    container.sessionStore.createSession(
-                        modelId = model?.id,
-                        modelName = model?.name,
-                        origin = origin,
-                        remoteDeviceId = route?.deviceId,
-                    )
+                val session = container.sessionStore.createSession(modelId = model.id, modelName = model.name)
                 sessionId = session.id
                 container.preferences.lastSessionId = sessionId
                 attachSession(sessionId)
-                val surface =
-                    (_state.value.route as? AppRoute.Chat)?.surface ?: ChatSurface.Cloud
                 _state.update {
                     it.copy(
                         currentSessionId = sessionId,
                         route =
                             AppRoute.Chat(
                                 sessionId = sessionId,
-                                surface = surface,
+                                surface = ChatSurface.Cloud,
                                 title = (_state.value.route as? AppRoute.Chat)?.title.orEmpty(),
-                                deviceId = (_state.value.route as? AppRoute.Chat)?.deviceId,
                             ),
                     )
                 }
@@ -824,7 +757,9 @@ class AppViewModel(
 
             val sid = sessionId
             val session = container.sessionStore.getSession(sid) ?: return@launch
-            if (session.origin == ConversationOrigin.Cloud && model == null && session.modelId == null) {
+            // Desktop conversations continue on the desktop's own session page.
+            if (session.origin == ConversationOrigin.Desktop) return@launch
+            if (model == null && session.modelId == null) {
                 showNoModelError()
                 return@launch
             }
@@ -868,10 +803,6 @@ class AppViewModel(
             streamJob =
                 viewModelScope.launch {
                     var assembled = ""
-                    var toolEvents = emptyList<ToolTrace>()
-                    var usage: TokenUsage? = null
-                    var contextPercent: Int? = null
-                    var pendingQuestion: PendingQuestion? = null
                     var hasPublishedDelta = false
                     var pendingPersist: Job? = null
 
@@ -880,10 +811,6 @@ class AppViewModel(
                             assistantMsg.copy(
                                 content = assembled,
                                 status = status,
-                                toolEvents = toolEvents,
-                                usage = usage,
-                                contextPercent = contextPercent,
-                                pendingQuestion = pendingQuestion,
                             ),
                         )
                     }
@@ -921,96 +848,31 @@ class AppViewModel(
                                             schedulePersist()
                                         }
                                     }
-                                    is ChatStreamEvent.Tool -> {
-                                        flushPendingPersist()
-                                        // A response to a pending question may resume with a tool event.
-                                        // The tool event is the durable boundary that clears the prompt.
-                                        pendingQuestion = null
-                                        toolEvents = mergeToolTrace(
-                                            toolEvents,
-                                            ToolTrace(
-                                                phase = event.phase,
-                                                toolCallId = event.toolCallId,
-                                                toolName = event.toolName,
-                                                detail = event.detail,
-                                                durationMs = event.durationMs,
-                                                arguments = event.arguments,
-                                                result = event.result,
-                                                phaseLabel = event.phaseLabel,
-                                            ),
-                                        )
-                                        persistAssistant()
-                                    }
-                                    is ChatStreamEvent.UserInputRequired -> {
-                                        flushPendingPersist()
-                                        container.conversationRouter.resolvedRemoteSessionId(session.id)?.let { remoteId ->
-                                            container.sessionStore.updateSession(session.copy(remoteSessionId = remoteId))
-                                        }
-                                        pendingQuestion = PendingQuestion(sid, event.requestId, event.questions)
-                                        persistAssistant()
-                                        _state.update { it.copy(pendingQuestion = pendingQuestion) }
-                                    }
-                                    is ChatStreamEvent.State -> {
-                                        when (event.value) {
-                                            "usage" -> {
-                                                flushPendingPersist()
-                                                usage = event.usage
-                                                contextPercent = event.contextPercent
-                                                persistAssistant()
-                                            }
-                                            "error" ->
-                                                _state.update {
-                                                    it.copy(
-                                                        streamingStatus = null,
-                                                        globalError =
-                                                            UiError(
-                                                                title = uiText(Res.string.error_desktop_failed_title),
-                                                                message = event.detail?.let(UiText::Raw) ?: uiText(Res.string.error_desktop_failed_message),
-                                                            ),
-                                                    )
-                                                }
-                                            "thinking", "running", "reconnecting" -> _state.update { it.copy(streamingStatus = event.value) }
-                                            "retrying", "compacting", "preparing", "background" -> _state.update { it.copy(streamingStatus = event.value) }
-                                            "completed", "aborted" -> _state.update { it.copy(streamingStatus = null) }
-                                        }
-                                    }
                                     is ChatStreamEvent.Finished -> Unit
                                     ChatStreamEvent.Done -> {
                                         flushPendingPersist()
-                                        pendingQuestion = null
                                         persistAssistant(MessageStatus.Complete)
-                                        _state.update { it.copy(pendingQuestion = null, streamingStatus = null) }
+                                        _state.update { it.copy(streamingStatus = null) }
                                     }
                                     is ChatStreamEvent.Error -> {
                                         flushPendingPersist()
-                                        pendingQuestion = null
                                         val ui = ErrorMapper.from(event.exception)
                                         container.sessionStore.upsertMessage(
                                             assistantMsg.copy(
                                                 content = assembled,
                                                 status = MessageStatus.Error,
                                                 errorMessage = ui.message.key,
-                                                toolEvents = toolEvents,
-                                                usage = usage,
-                                                contextPercent = contextPercent,
                                             ),
                                         )
                                         _state.update { it.copy(globalError = ui) }
                                     }
                                 }
                             }
-                        if (session.origin == ConversationOrigin.Desktop && session.remoteSessionId == null) {
-                            container.conversationRouter.resolvedRemoteSessionId(session.id)?.let { remoteId ->
-                                container.sessionStore.updateSession(session.copy(remoteSessionId = remoteId))
-                            }
-                        }
                         // 正常结束后若仍 streaming 则 complete
                         val latest =
                             container.sessionStore.getMessages(sid).firstOrNull { it.id == assistantId }
                         if (latest?.status == MessageStatus.Streaming) {
-                            container.sessionStore.upsertMessage(
-                                latest.copy(status = MessageStatus.Complete, pendingQuestion = null),
-                            )
+                            container.sessionStore.upsertMessage(latest.copy(status = MessageStatus.Complete))
                         }
                     } catch (t: Throwable) {
                         pendingPersist?.cancelAndJoin()
@@ -1028,9 +890,6 @@ class AppViewModel(
                                             MessageStatus.Error
                                         },
                                     errorMessage = if (t is kotlinx.coroutines.CancellationException) null else ui.message.key,
-                                    usage = usage,
-                                    contextPercent = contextPercent,
-                                    pendingQuestion = null,
                                 ),
                             )
                         }
@@ -1045,85 +904,19 @@ class AppViewModel(
         }
     }
 
-    fun toggleQuestionOption(question: String, label: String) {
-        val pending = _state.value.pendingQuestion ?: return
-        val item = pending.questions.firstOrNull { it.question == question } ?: return
-        val current = pending.selections[question].orEmpty()
-        val next = if (label in current) current - label else if (item.multiSelect) current + label else listOf(label)
-        val updated = pending.copy(selections = pending.selections + (question to next))
-        _state.update { it.copy(pendingQuestion = updated) }
-        viewModelScope.launch {
-            val message = container.sessionStore.getMessages(pending.sessionId).lastOrNull { it.pendingQuestion?.requestId == pending.requestId }
-            if (message != null) container.sessionStore.upsertMessage(message.copy(pendingQuestion = updated))
-        }
-    }
-
-    private fun mergeToolTrace(existing: List<ToolTrace>, next: ToolTrace): List<ToolTrace> {
-        val index = existing.indexOfFirst { it.toolCallId == next.toolCallId }
-        if (index < 0) return existing + next
-        return existing.toMutableList().also {
-            val previous = it[index]
-            it[index] =
-                next.copy(
-                    detail = next.detail ?: previous.detail,
-                    durationMs = next.durationMs ?: previous.durationMs,
-                    arguments = next.arguments ?: previous.arguments,
-                    result = next.result ?: previous.result,
-                    phaseLabel = next.phaseLabel ?: previous.phaseLabel,
-                )
-        }
-    }
-
-    fun submitQuestion() {
-        val pending = _state.value.pendingQuestion ?: return
-        if (_state.value.isQuestionSubmitting) return
-        val sessionId = pending.sessionId.ifBlank { _state.value.currentSessionId ?: return }
-        _state.update { it.copy(isQuestionSubmitting = true) }
-        viewModelScope.launch {
-            try {
-                val session = container.sessionStore.getSession(sessionId) ?: return@launch
-                runCatching {
-                    container.remoteConversationGateway.respond(
-                        localSessionId = session.id,
-                        deviceId = session.remoteDeviceId.orEmpty(),
-                        remoteSessionId = session.remoteSessionId,
-                        requestId = pending.requestId,
-                        answers = pending.selections.map { it.key to it.value },
-                    )
-                }.onSuccess {
-                    val message = container.sessionStore.getMessages(session.id).lastOrNull { it.pendingQuestion?.requestId == pending.requestId }
-                    if (message != null) container.sessionStore.upsertMessage(message.copy(pendingQuestion = null))
-                    _state.update { state -> state.copy(pendingQuestion = state.pendingQuestion?.takeIf { it.requestId != pending.requestId }) }
-                }
-                    .onFailure { error -> _state.update { it.copy(globalError = ErrorMapper.from(error)) } }
-            } finally {
-                _state.update { it.copy(isQuestionSubmitting = false) }
-            }
-        }
-    }
-
     fun stopStreaming() {
         streamJob?.cancel()
         streamJob = null
         val sid = _state.value.currentSessionId ?: return
         viewModelScope.launch {
-            container.sessionStore.getSession(sid)?.let { session ->
-                runCatching { container.conversationRouter.abort(session) }
-            }
             val streaming =
                 container.sessionStore.getMessages(sid).lastOrNull {
                     it.role == ChatRole.Assistant && it.status == MessageStatus.Streaming
                 }
             if (streaming != null) {
-                container.sessionStore.upsertMessage(streaming.copy(status = MessageStatus.Aborted, pendingQuestion = null))
+                container.sessionStore.upsertMessage(streaming.copy(status = MessageStatus.Aborted))
             }
-            _state.update { state ->
-                state.copy(
-                    isStreaming = false,
-                    streamingStatus = null,
-                    pendingQuestion = state.pendingQuestion?.takeIf { it.sessionId != sid },
-                )
-            }
+            _state.update { it.copy(isStreaming = false, streamingStatus = null) }
         }
     }
 
@@ -1189,15 +982,7 @@ class AppViewModel(
         messagesCollectJob =
             viewModelScope.launch {
                 container.sessionStore.observeMessages(sessionId).collect { list ->
-                    val persistedPending = list.asReversed().firstNotNullOfOrNull { message ->
-                        message.pendingQuestion?.takeIf { it.sessionId == sessionId }
-                    }
-                    _state.update { state ->
-                        state.copy(
-                            messages = list,
-                            pendingQuestion = persistedPending ?: state.pendingQuestion?.takeIf { it.sessionId != sessionId },
-                        )
-                    }
+                    _state.update { it.copy(messages = list) }
                 }
             }
     }

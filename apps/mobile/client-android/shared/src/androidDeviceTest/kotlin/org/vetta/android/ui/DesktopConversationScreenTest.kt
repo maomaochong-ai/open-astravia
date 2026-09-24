@@ -6,6 +6,7 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -15,8 +16,6 @@ import org.junit.runner.RunWith
 import org.vetta.android.app.ThemeMode
 import org.vetta.android.core.model.LlmModel
 import org.vetta.android.core.model.ChatRole
-import org.vetta.android.core.model.ChatQuestion
-import org.vetta.android.core.model.ChatQuestionOption
 import org.vetta.android.domain.device.ConnectChannel
 import org.vetta.android.domain.device.DesktopDevice
 import org.vetta.android.domain.device.DeviceStatus
@@ -26,14 +25,11 @@ import org.vetta.android.ui.i18n.UiText
 import org.vetta.android.domain.session.LocalMessage
 import org.vetta.android.domain.session.MessageImage
 import org.vetta.android.domain.session.MessageStatus
-import org.vetta.android.domain.session.PendingQuestion
 import org.vetta.android.domain.session.ToolTrace
 import org.vetta.android.ui.chat.ChatScreen
 import org.vetta.android.ui.connect.DeviceDetailScreen
 import org.vetta.android.ui.connect.NewConversationScreen
 import org.vetta.android.resources.Res
-import org.vetta.android.resources.pending_desktop_question_title
-import org.vetta.android.resources.submit_answer
 import org.vetta.android.resources.tool_completed
 import org.vetta.android.resources.tool_read_file
 import org.vetta.android.resources.back
@@ -61,12 +57,15 @@ import kotlin.test.assertTrue
 
 @RunWith(AndroidJUnit4::class)
 class DesktopConversationScreenTest {
+    private companion object {
+        val CLOUD_MODEL = LlmModel(id = "cloud-1", modelId = "cloud-1", name = "Cloud Model", providerName = "vetta")
+    }
+
     @get:Rule
     val composeRule = createAndroidComposeRule<ComponentActivity>()
 
     @Test
-    fun desktopChatRendersMarkdownToolsAndPendingQuestion() {
-        var submitted = false
+    fun earlierDesktopChatShowsItsHistoryReadOnly() {
         composeRule.setContent {
             VettaTheme(ThemeMode.Light) {
                 ChatScreen(
@@ -122,13 +121,6 @@ class DesktopConversationScreenTest {
                     onDismissError = {},
                     onImagesPicked = {},
                     onRemovePendingImage = {},
-                    pendingQuestion = PendingQuestion(
-                        requestId = "request-1",
-                        questions = listOf(ChatQuestion("继续执行吗？", "确认", listOf(ChatQuestionOption("继续")))),
-                        selections = mapOf("继续执行吗？" to listOf("继续")),
-                    ),
-                    onToggleQuestionOption = { _, _ -> },
-                    onSubmitQuestion = { submitted = true },
                 )
             }
         }
@@ -144,11 +136,9 @@ class DesktopConversationScreenTest {
         composeRule.onNodeWithText("${str(Res.string.tool_read_file)} · README.md · ${str(Res.string.tool_completed)} · 读取文件内容").assertIsDisplayed()
         composeRule.onNodeWithContentDescription(str(Res.string.show_tool_details)).performClick()
         composeRule.onNodeWithText("{\"path\":\"README.md\"}").assertIsDisplayed()
-        composeRule.onNodeWithText(str(Res.string.pending_desktop_question_title)).assertIsDisplayed()
-        composeRule.onNodeWithText("继续执行吗？").assertIsDisplayed()
-        composeRule.onNodeWithText(str(Res.string.submit_answer)).assertIsDisplayed().assertIsEnabled()
-        composeRule.onNodeWithText(str(Res.string.submit_answer)).performClick()
-        assertTrue(submitted)
+        // Desktop sessions continue on the desktop's own session page; this one only shows its history.
+        composeRule.onAllNodesWithContentDescription(str(Res.string.send)).assertCountEquals(0)
+        composeRule.onAllNodesWithContentDescription(str(Res.string.stop)).assertCountEquals(0)
     }
 
     @Test
@@ -184,41 +174,6 @@ class DesktopConversationScreenTest {
         assertTrue(disconnected)
         composeRule.onNodeWithContentDescription(str(Res.string.back)).performClick()
         assertTrue(backed)
-    }
-
-    @Test
-    fun desktopChatEnablesSendWithoutCloudModel() {
-        var sent = false
-        composeRule.setContent {
-            VettaTheme(ThemeMode.Light) {
-                ChatScreen(
-                    title = "TEST-DESKTOP",
-                    surface = ChatSurface.Desktop,
-                    messages = emptyList(),
-                    draft = "hello",
-                    pendingImages = emptyList(),
-                    isStreaming = false,
-                    models = emptyList(),
-                    selectedModel = null,
-                    modelPickerOpen = false,
-                    globalError = null,
-                    onDraftChange = {},
-                    onSend = { sent = true },
-                    onStop = {},
-                    onBack = {},
-                    onOpenModelPicker = {},
-                    onCloseModelPicker = {},
-                    onSelectModel = {},
-                    onErrorAction = {},
-                    onDismissError = {},
-                    onImagesPicked = {},
-                    onRemovePendingImage = {},
-                )
-            }
-        }
-
-        composeRule.onNodeWithContentDescription(str(Res.string.send)).assertIsEnabled().performClick()
-        assertTrue(sent)
     }
 
     @Test
@@ -261,13 +216,13 @@ class DesktopConversationScreenTest {
             VettaTheme(ThemeMode.Light) {
                 ChatScreen(
                     title = "TEST-DESKTOP",
-                    surface = ChatSurface.Desktop,
+                    surface = ChatSurface.Cloud,
                     messages = emptyList(),
                     draft = "",
                     pendingImages = emptyList(),
                     isStreaming = true,
                     models = emptyList(),
-                    selectedModel = null,
+                    selectedModel = CLOUD_MODEL,
                     modelPickerOpen = false,
                     globalError = null,
                     onDraftChange = {},
@@ -331,7 +286,7 @@ class DesktopConversationScreenTest {
             VettaTheme(ThemeMode.Light) {
                 ChatScreen(
                     title = "TEST-DESKTOP",
-                    surface = ChatSurface.Desktop,
+                    surface = ChatSurface.Cloud,
                     messages = listOf(
                         LocalMessage(
                             id = "message-1",
@@ -346,7 +301,7 @@ class DesktopConversationScreenTest {
                     pendingImages = listOf(image),
                     isStreaming = false,
                     models = emptyList(),
-                    selectedModel = null,
+                    selectedModel = CLOUD_MODEL,
                     modelPickerOpen = false,
                     globalError = null,
                     onDraftChange = {},

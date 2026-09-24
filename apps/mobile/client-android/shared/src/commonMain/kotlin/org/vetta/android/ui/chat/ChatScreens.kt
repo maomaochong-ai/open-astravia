@@ -86,7 +86,6 @@ import org.vetta.android.domain.error.UiErrorAction
 import org.vetta.android.domain.session.LocalMessage
 import org.vetta.android.domain.session.MessageImage
 import org.vetta.android.domain.session.MessageStatus
-import org.vetta.android.domain.session.PendingQuestion
 import org.vetta.android.domain.session.ToolTrace
 import org.vetta.android.ui.components.EmptyState
 import org.vetta.android.ui.components.ListRow
@@ -109,7 +108,6 @@ import org.vetta.android.resources.no_models
 import org.vetta.android.resources.no_models_hint
 import org.vetta.android.resources.no_sessions_hint
 import org.vetta.android.resources.pair_desktop
-import org.vetta.android.resources.pending_desktop_question_title
 import org.vetta.android.resources.preparing
 import org.vetta.android.resources.reconnecting
 import org.vetta.android.resources.remove_attachment
@@ -122,8 +120,6 @@ import org.vetta.android.resources.send
 import org.vetta.android.resources.show_tool_details
 import org.vetta.android.resources.stop
 import org.vetta.android.resources.streaming
-import org.vetta.android.resources.submit_answer
-import org.vetta.android.resources.submitting_answer
 import org.vetta.android.resources.thinking
 import org.vetta.android.resources.tokens_used
 import org.vetta.android.resources.tool_answer
@@ -166,10 +162,6 @@ fun ChatScreen(
     onDismissError: () -> Unit,
     onImagesPicked: (List<MessageImage>) -> Unit,
     onRemovePendingImage: (String) -> Unit,
-    pendingQuestion: PendingQuestion? = null,
-    questionSubmitting: Boolean = false,
-    onToggleQuestionOption: (String, String) -> Unit = { _, _ -> },
-    onSubmitQuestion: () -> Unit = {},
 ) {
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
@@ -200,9 +192,12 @@ fun ChatScreen(
         }
     }
 
+    // A desktop conversation an earlier build kept here is history only: desktop
+    // sessions continue on the desktop's own session page.
+    val readOnly = surface == ChatSurface.Desktop
     val canSend =
         !isStreaming &&
-            (surface == ChatSurface.Desktop || selectedModel != null) &&
+            selectedModel != null &&
             (draft.isNotBlank() || pendingImages.isNotEmpty())
 
     Scaffold(
@@ -269,29 +264,17 @@ fun ChatScreen(
                         onRemove = onRemovePendingImage,
                     )
                 }
-                AnimatedVisibility(
-                    visible = pendingQuestion != null,
-                    enter = fadeIn(tween(200)) + expandVertically(tween(200)),
-                    exit = fadeOut(tween(180)) + shrinkVertically(tween(180)),
-                ) {
-                    pendingQuestion?.let {
-                        QuestionPrompt(
-                            pending = it,
-                            submitting = questionSubmitting,
-                            onToggle = onToggleQuestionOption,
-                            onSubmit = onSubmitQuestion,
-                        )
-                    }
+                if (!readOnly) {
+                    InputDock(
+                        value = draft,
+                        isStreaming = isStreaming,
+                        sendEnabled = canSend,
+                        onValueChange = onDraftChange,
+                        onSend = onSend,
+                        onStop = onStop,
+                        onAttach = launchPicker,
+                    )
                 }
-                InputDock(
-                    value = draft,
-                    isStreaming = isStreaming,
-                    sendEnabled = canSend,
-                    onValueChange = onDraftChange,
-                    onSend = onSend,
-                    onStop = onStop,
-                    onAttach = launchPicker,
-                )
             }
         },
     ) { padding ->
@@ -710,51 +693,6 @@ private fun streamingStatusLabel(status: String?): String =
         "background" -> stringResource(Res.string.background_work)
         else -> stringResource(Res.string.streaming)
     }
-
-@Composable
-private fun QuestionPrompt(
-    pending: PendingQuestion,
-    submitting: Boolean,
-    onToggle: (String, String) -> Unit,
-    onSubmit: () -> Unit,
-) {
-    Column(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.46f))
-                .padding(horizontal = 12.dp, vertical = 10.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Text(stringResource(Res.string.pending_desktop_question_title), style = MaterialTheme.typography.titleSmall)
-        pending.questions.forEach { question ->
-            if (question.header.isNotBlank()) {
-                Text(question.header, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.vettaExtra.secondaryText)
-            }
-            Text(question.question, style = MaterialTheme.typography.bodyMedium)
-            question.options.forEach { option ->
-                val selected = option.label in pending.selections[question.question].orEmpty()
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    if (question.multiSelect) {
-                        Checkbox(checked = selected, enabled = !submitting, onCheckedChange = { onToggle(question.question, option.label) })
-                    } else {
-                        RadioButton(selected = selected, enabled = !submitting, onClick = { onToggle(question.question, option.label) })
-                    }
-                    Column {
-                        Text(option.label, style = MaterialTheme.typography.bodyMedium)
-                        if (option.description.isNotBlank()) Text(option.description, style = MaterialTheme.typography.labelSmall)
-                    }
-                }
-            }
-        }
-        Button(onClick = onSubmit, enabled = !submitting && pending.questions.all { pending.selections[it.question].orEmpty().isNotEmpty() }) {
-            Text(if (submitting) stringResource(Res.string.submitting_answer) else stringResource(Res.string.submit_answer))
-        }
-    }
-}
 
 @Composable
 private fun InputDock(

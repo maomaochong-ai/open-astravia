@@ -4,12 +4,9 @@ import com.russhwolf.settings.MapSettings
 import com.russhwolf.settings.set
 import kotlinx.coroutines.runBlocking
 import org.vetta.android.core.model.ChatRole
-import org.vetta.android.core.model.ChatQuestion
-import org.vetta.android.core.model.ChatQuestionOption
 import org.vetta.android.domain.session.LocalMessage
 import org.vetta.android.domain.session.ConversationOrigin
 import org.vetta.android.domain.session.MessageStatus
-import org.vetta.android.domain.session.PendingQuestion
 import org.vetta.android.domain.session.SessionStore
 import org.vetta.android.domain.session.ToolTrace
 import kotlin.test.Test
@@ -86,40 +83,6 @@ class SettingsSessionStoreTest {
             val legacy = SettingsSessionStore(settings).getSession("legacy")
             assertEquals(ConversationOrigin.Cloud, legacy?.origin)
             assertEquals(null, legacy?.remoteDeviceId)
-        }
-
-    @Test
-    fun pendingQuestionPersistsWithAssistantMessage() =
-        runBlocking {
-            val settings = MapSettings()
-            val firstStore = SettingsSessionStore(settings)
-            val session = firstStore.createSession(origin = ConversationOrigin.Desktop)
-            val pending =
-                PendingQuestion(
-                    sessionId = session.id,
-                    requestId = "request-1",
-                    questions =
-                        listOf(
-                            ChatQuestion(
-                                question = "继续吗？",
-                                options = listOf(ChatQuestionOption("继续", "继续执行当前任务")),
-                            ),
-                        ),
-                )
-            firstStore.upsertMessage(
-                LocalMessage(
-                    id = "assistant-1",
-                    sessionId = session.id,
-                    role = ChatRole.Assistant,
-                    content = "",
-                    status = MessageStatus.Streaming,
-                    createdAtEpochMs = 1,
-                    pendingQuestion = pending,
-                ),
-            )
-
-            val restored = SettingsSessionStore(settings).getMessages(session.id).single().pendingQuestion
-            assertEquals(pending, restored)
         }
 
     @Test
