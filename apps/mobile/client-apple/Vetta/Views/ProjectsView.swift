@@ -77,17 +77,13 @@ struct ProjectView: View {
 					.bareRow(top: 24)
 				}
 			} header: {
-				FilterBar(filter: $filter, showsKind: false)
-					.padding(.vertical, 10)
-					.frame(maxWidth: .infinity)
-					.background(Theme.page)
-					.listRowInsets(EdgeInsets())
+				FilterBar(filter: $filter, showsKind: false).pinnedFilterHeader(depth)
 			}
 		}
 		.listStyle(.plain)
 		.scrollContentBackground(.hidden)
 		.background { GlowBackdrop(depth: depth) }
-		.onScrollGeometryChange(for: CGFloat.self, of: ScrollDepth.read) { _, offset in depth.offset = offset }
+		.trackScrollDepth(depth)
 		.animation(.snappy, value: rows.map(\.id))
 		.refreshable { await model.refreshSessions() }
 		.sessionDeleteDialog($deleting, model: model)

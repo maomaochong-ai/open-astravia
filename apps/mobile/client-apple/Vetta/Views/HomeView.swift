@@ -2,8 +2,8 @@ import SwiftUI
 import VettaKit
 
 /// The root page: a greeting, search, the three most recent projects, then every
-/// session under a status filter that sticks to the top. Settings and New Session
-/// hang off the corners instead of a tab bar.
+/// session under a status filter that sticks to the top. The link pill and Settings
+/// scroll away with the greeting, and New Session floats at the bottom, instead of a tab bar.
 struct HomeView: View {
 	@Environment(AppModel.self) private var model
 	@Environment(Router.self) private var router
@@ -14,7 +14,7 @@ struct HomeView: View {
 	@State private var deleting: RemoteSessionSummary?
 	@State private var depth = ScrollDepth()
 
-	/// Searching folds the greeting and the project cards away, from the first tap until cancelled.
+	/// Searching folds everything above the search bar away, from the first tap until cancelled.
 	private var searching: Bool { searchActive || !query.isEmpty }
 
 	private var rows: [RemoteSessionSummary] {
@@ -25,7 +25,10 @@ struct HomeView: View {
 		let rows = model.paired ? rows : []
 		List {
 			Section {
-				if !searching { greeting }
+				if !searching {
+					topBar
+					greeting
+				}
 				if model.paired {
 					searchField
 					if searching {
@@ -44,11 +47,7 @@ struct HomeView: View {
 					SessionCardRows(rows: rows, deleting: $deleting)
 					if rows.isEmpty { emptyState }
 				} header: {
-					FilterBar(filter: $filter)
-						.padding(.vertical, 10)
-						.frame(maxWidth: .infinity)
-						.background(Theme.page)
-						.listRowInsets(EdgeInsets())
+					FilterBar(filter: $filter).pinnedFilterHeader(depth)
 				}
 			}
 		}
@@ -56,7 +55,7 @@ struct HomeView: View {
 		.scrollContentBackground(.hidden)
 		.scrollDismissesKeyboard(.immediately)
 		.background { GlowBackdrop(depth: depth) }
-		.onScrollGeometryChange(for: CGFloat.self, of: ScrollDepth.read) { _, offset in depth.offset = offset }
+		.trackScrollDepth(depth)
 		// Pinning moves the row to the top; let it travel there.
 		.animation(.snappy, value: rows.map(\.id))
 		.animation(.snappy, value: searching)
@@ -64,25 +63,34 @@ struct HomeView: View {
 		.sessionDeleteDialog($deleting, model: model)
 		// The title only names the page for Back and VoiceOver; the greeting stands in for it.
 		.navigationTitle(L10n.Home.title)
-		.navigationBarTitleDisplayMode(.inline)
-		.toolbar {
-			ToolbarItem(placement: .topBarLeading) { LinkPill() }
-				.sharedBackgroundVisibility(.hidden)
-			ToolbarItem(placement: .principal) { Color.clear.frame(width: 1, height: 1) }
-			ToolbarItem(placement: .topBarTrailing) {
-				Button { router.path.append(.settings) } label: {
-					Image(systemName: "gearshape")
-				}
-				.accessibilityLabel(L10n.Settings.title)
-				.accessibilityIdentifier("home.settings")
-			}
-		}
+		.toolbarVisibility(.hidden, for: .navigationBar)
 		.safeAreaBar(edge: .bottom) {
 			if model.paired, !searching {
 				NewSessionButton { router.startNewSession() }
 					.transition(.move(edge: .bottom).combined(with: .opacity))
 			}
 		}
+	}
+
+	private var topBar: some View {
+		HStack {
+			LinkPill()
+			Spacer()
+			Button { router.path.append(.settings) } label: {
+				Image(systemName: "gearshape")
+					.font(.title3.weight(.medium))
+					.foregroundStyle(Theme.ink)
+					.frame(width: 48, height: 48)
+					.contentShape(.circle)
+			}
+			.buttonStyle(.plain)
+			.glassEffect(.regular.interactive(), in: .circle)
+			.accessibilityLabel(L10n.Settings.title)
+			.accessibilityIdentifier("home.settings")
+		}
+		.padding(.horizontal, 16)
+		.bareRow(top: 4, bottom: 16)
+		.transition(.opacity)
 	}
 
 	private var greeting: some View {
@@ -100,7 +108,7 @@ struct HomeView: View {
 			.accessibilityAddTraits(.isHeader)
 		}
 		.padding(.horizontal, 20)
-		.bareRow(top: 8, bottom: 20)
+		.bareRow(bottom: 16)
 		.transition(.opacity)
 	}
 

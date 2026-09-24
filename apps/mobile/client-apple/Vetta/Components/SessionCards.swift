@@ -395,18 +395,75 @@ struct NewSessionButton: View {
 	}
 }
 
-/// How far a list has scrolled, read only by the backdrop so scrolling redraws nothing else.
+/// Scroll-driven state read only by the backdrop and the pinned filter's fade,
+/// so scrolling redraws nothing else.
 @Observable
 final class ScrollDepth {
 	var offset: CGFloat = 0
+	/// Where the filter header is and where it pins, in global coordinates.
+	var headerY: CGFloat = .infinity
+	var pinTop: CGFloat = 0
+
+	var pinned: Bool { headerY <= pinTop + 1 }
+
+	// These run on SwiftUI's render thread on device, so they must stay nonisolated.
 
 	/// Past the glow nothing changes; whole points are enough for a gradient.
-	/// Runs on SwiftUI's render thread on device, so it must stay nonisolated.
 	nonisolated static func read(_ geometry: ScrollGeometry) -> CGFloat {
 		min(max(geometry.contentOffset.y + geometry.contentInsets.top, 0), glowHeight).rounded()
 	}
 
+	/// The top of the list's visible content: where a section header pins.
+	nonisolated static func contentTop(_ proxy: GeometryProxy) -> CGFloat {
+		(proxy.frame(in: .global).minY + proxy.safeAreaInsets.top).rounded()
+	}
+
+	nonisolated static func top(_ proxy: GeometryProxy) -> CGFloat {
+		proxy.frame(in: .global).minY.rounded()
+	}
+
 	nonisolated static let glowHeight: CGFloat = 420
+}
+
+extension View {
+	/// Feeds `depth` from the list this is applied to.
+	func trackScrollDepth(_ depth: ScrollDepth) -> some View {
+		onScrollGeometryChange(for: CGFloat.self, of: ScrollDepth.read) { _, offset in depth.offset = offset }
+			.onGeometryChange(for: CGFloat.self, of: ScrollDepth.contentTop) { depth.pinTop = $0 }
+	}
+
+	/// A status filter as a list's sticky section header. Once pinned, the page
+	/// colour behind it fades out downward so the cards slide away under it;
+	/// before that it has no background at all.
+	func pinnedFilterHeader(_ depth: ScrollDepth) -> some View {
+		padding(.vertical, 10)
+			.frame(maxWidth: .infinity)
+			.background { PinnedFade(depth: depth) }
+			.onGeometryChange(for: CGFloat.self, of: ScrollDepth.top) { depth.headerY = $0 }
+			.listRowInsets(EdgeInsets())
+	}
+}
+
+private struct PinnedFade: View {
+	var depth: ScrollDepth
+
+	var body: some View {
+		LinearGradient(
+			stops: [
+				.init(color: Theme.page, location: 0),
+				.init(color: Theme.page, location: 0.55),
+				.init(color: Theme.page.opacity(0), location: 1),
+			],
+			startPoint: .top,
+			endPoint: .bottom
+		)
+		// Up over the status bar, and down past the chips for the fade.
+		.padding(.top, -depth.pinTop)
+		.padding(.bottom, -40)
+		.opacity(depth.pinned ? 1 : 0)
+		.animation(.easeOut(duration: 0.15), value: depth.pinned)
+		.allowsHitTesting(false)
+	}
 }
 
 /// The page colour with a soft static light at the top that scrolls away with the content.
