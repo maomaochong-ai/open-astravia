@@ -2006,6 +2006,23 @@
         }
       }
     },
+    "newSession.connecting": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connecting to your computer…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在连接电脑…"
+          }
+        }
+      }
+    },
     "newSession.defaultModel": {
       "extractionState": "manual",
       "localizations": {

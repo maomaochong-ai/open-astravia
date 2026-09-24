@@ -101,6 +101,7 @@ public enum L10n {
 		public static var defaultModel: String { tr("newSession.defaultModel") }
 		public static var defaultModelHint: String { tr("newSession.defaultModelHint") }
 		public static var offline: String { tr("newSession.offline") }
+		public static var connecting: String { tr("newSession.connecting") }
 		public static var location: String { tr("newSession.location") }
 	}
 
