@@ -81,6 +81,8 @@ struct NewSessionView: View {
 			// Typing is about the new session; the board steps aside for the keyboard.
 			if !keyboardUp {
 				BoardSummary(cards: cards, avatarAsleep: offline)
+					// Clear of the composer, which has no top margin of its own.
+					.padding(.bottom, 14)
 					.transition(.opacity)
 			}
 		}
