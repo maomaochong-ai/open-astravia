@@ -75,14 +75,14 @@ struct NewSessionView: View {
 					.padding(.bottom, 18)
 			}
 			greeting
+			locationMenu
+				.padding(.top, 18)
 			Spacer(minLength: 16)
 			// Typing is about the new session; the board steps aside for the keyboard.
 			if !keyboardUp {
 				BoardSummary(cards: cards, avatarAsleep: offline)
 					.transition(.opacity)
 			}
-			locationMenu
-				.padding(.top, 16)
 		}
 		.padding(.horizontal, 24)
 		.padding(.top, 12)

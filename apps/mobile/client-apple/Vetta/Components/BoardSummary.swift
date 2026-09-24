@@ -2,8 +2,8 @@ import SwiftUI
 import VettaKit
 
 /// The task board in brief on New Session, laid out unevenly: the top card tall on the
-/// left; on the right the second card over a pill with the totals that opens the board.
-/// Each card opens the session it shows. Draws nothing while the board is empty.
+/// left with its first sessions; on the right the second card over a pill with the totals
+/// that opens the board. Each session shown opens its chat. Draws nothing while the board is empty.
 struct BoardSummary: View {
 	@Environment(AppModel.self) private var model
 	@Environment(Router.self) private var router
@@ -26,11 +26,11 @@ struct BoardSummary: View {
 				// The height is fixed, so reading the width costs no layout pass of its own.
 				GeometryReader { proxy in
 					HStack(alignment: .top, spacing: Self.spacing) {
-						SummaryCard(card: first, titleLines: 4)
+						SummaryCard(card: first, rows: 3)
 							.frame(maxWidth: .infinity, maxHeight: .infinity)
 						VStack(spacing: Self.spacing) {
 							if cards.count > 1 {
-								SummaryCard(card: cards[1], titleLines: 2)
+								SummaryCard(card: cards[1], rows: 0)
 									.frame(maxHeight: .infinity)
 							}
 							totals.frame(maxHeight: cards.count > 1 ? 52 : .infinity)
@@ -75,42 +75,60 @@ struct BoardSummary: View {
 	}
 }
 
-/// A board card in brief: where it is, its most pressing session's title, and a round
-/// status badge in the corner. Opens that session.
+/// A board card in brief: where it is, then either its first few sessions, each opening
+/// its chat, or, where there is no room for a list, the most pressing one's title with the
+/// whole card opening it; a round status badge sits in the corner.
 private struct SummaryCard: View {
 	@Environment(Router.self) private var router
 	var card: TaskBoardCard
-	var titleLines: Int
+	/// Sessions listed; 0 shows only the most pressing one's title.
+	var rows: Int
 
 	private var lead: RemoteSessionSummary? { card.sessions.first }
 
 	var body: some View {
-		Button { if let lead { router.show(lead.id) } } label: {
-			VStack(alignment: .leading, spacing: 6) {
-				Text(card.isConversation ? L10n.Home.conversation : card.name)
-					.font(.caption.weight(.medium))
-					.foregroundStyle(Theme.dim)
-					.lineLimit(1)
-				Text(title)
-					.font(.body.weight(.medium))
-					.foregroundStyle(Theme.ink)
-					.lineLimit(titleLines)
-					.multilineTextAlignment(.leading)
-				Spacer(minLength: 0)
-				badge
+		if rows > 0 {
+			content {
+				VStack(spacing: 5) {
+					ForEach(card.sessions.prefix(rows)) { session in
+						Button { router.show(session.id) } label: {
+							BoardSessionChip(session: session, lineLimit: 1)
+						}
+						.buttonStyle(.plain)
+						.accessibilityLabel(BoardSessionChip.title(session))
+					}
+				}
 			}
-			.padding(14)
-			.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-			.background(Theme.card2, in: .rect(cornerRadius: 22, style: .continuous))
-			.contentShape(.rect(cornerRadius: 22, style: .continuous))
+			.accessibilityElement(children: .contain)
+		} else {
+			Button { if let lead { router.show(lead.id) } } label: {
+				content {
+					Text(lead.map(BoardSessionChip.title) ?? L10n.Home.untitled)
+						.font(.body.weight(.medium))
+						.foregroundStyle(Theme.ink)
+						.lineLimit(2)
+						.multilineTextAlignment(.leading)
+				}
+				.contentShape(.rect(cornerRadius: 22, style: .continuous))
+			}
+			.buttonStyle(.plain)
+			.accessibilityIdentifier("newSession.boardCard")
 		}
-		.buttonStyle(.plain)
-		.accessibilityIdentifier("newSession.boardCard")
 	}
 
-	private var title: String {
-		guard let lead, !lead.title.trimmingCharacters(in: .whitespaces).isEmpty else { return L10n.Home.untitled }
-		return lead.title
+	private func content(@ViewBuilder _ body: () -> some View) -> some View {
+		VStack(alignment: .leading, spacing: 8) {
+			Text(card.isConversation ? L10n.Home.conversation : card.name)
+				.font(.caption.weight(.medium))
+				.foregroundStyle(Theme.dim)
+				.lineLimit(1)
+			body()
+			Spacer(minLength: 0)
+			badge
+		}
+		.padding(14)
+		.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+		.background(Theme.card2, in: .rect(cornerRadius: 22, style: .continuous))
 	}
 
 	@ViewBuilder
