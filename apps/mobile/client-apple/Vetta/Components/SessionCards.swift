@@ -115,7 +115,7 @@ struct FilterBar: View {
 		HStack(spacing: 10) {
 			Text(L10n.Home.tasks)
 				.font(.headline)
-				.foregroundStyle(Theme.ink)
+				.foregroundStyle(Theme.dim)
 				.accessibilityAddTraits(.isHeader)
 			Spacer()
 			Menu {

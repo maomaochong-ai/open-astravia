@@ -40,6 +40,8 @@ struct HomeView: View {
 			}
 		}
 		.listStyle(.plain)
+		// The ways in lead straight into the list's header.
+		.listSectionSpacing(0)
 		.scrollContentBackground(.hidden)
 		.scrollDismissesKeyboard(.immediately)
 		.background { Theme.page.ignoresSafeArea() }
@@ -113,7 +115,7 @@ struct HomeView: View {
 			// Only the way in for now; the board itself comes later.
 			EntryRow(symbol: "square.stack.3d.up", title: L10n.Home.taskBoard, identifier: "home.taskBoard") {}
 		}
-		.bareRow(bottom: 8)
+		.bareRow()
 	}
 
 	/// Projects whose name matches, above the matching sessions.
