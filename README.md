@@ -208,10 +208,10 @@ Licensed under [Apache-2.0](LICENSE).
 
 ## Star History
 
-<a href="https://www.star-history.com/?repos=open-vetta%2Fopen-vetta%2Copenvetta%2Fopen-vetta&type=timeline&legend=top-left">
+<a href="https://www.star-history.com/?repos=openvetta%2Fopen-vetta&type=date&legend=top-left">
  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=open-vetta/open-vetta%2Copenvetta/open-vetta&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=open-vetta/open-vetta%2Copenvetta/open-vetta&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=open-vetta/open-vetta%2Copenvetta/open-vetta&type=date&legend=top-left" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=openvetta/open-vetta&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=openvetta/open-vetta&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=openvetta/open-vetta&type=date&legend=top-left" />
  </picture>
 </a>
