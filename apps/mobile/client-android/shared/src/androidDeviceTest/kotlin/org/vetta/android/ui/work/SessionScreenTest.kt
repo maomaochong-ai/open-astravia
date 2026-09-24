@@ -5,6 +5,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -18,7 +19,11 @@ import org.junit.runner.RunWith
 import org.vetta.android.app.ThemeMode
 import org.vetta.android.domain.remote.AssistantTurn
 import org.vetta.android.domain.remote.RemoteModelOption
+import org.vetta.android.domain.remote.RemoteQuestionAnswer
 import org.vetta.android.domain.remote.RemoteSessionState
+import org.vetta.android.domain.remote.RemoteQuestionRequest
+import org.vetta.android.domain.remote.RemoteQuestionOption
+import org.vetta.android.domain.remote.RemoteQuestionItem
 import org.vetta.android.domain.remote.RemoteSessionStatus
 import org.vetta.android.domain.remote.RemoteSessionSummary
 import org.vetta.android.domain.remote.ToolCard
@@ -31,6 +36,7 @@ import org.vetta.android.domain.work.MirrorState
 import org.vetta.android.domain.work.ModelChoice
 import org.vetta.android.domain.work.PromptDraft
 import org.vetta.android.resources.Res
+import org.vetta.android.resources.chat_question_title
 import org.vetta.android.resources.chat_model
 import org.vetta.android.resources.chat_steps_done
 import org.vetta.android.ui.str
@@ -81,6 +87,10 @@ class SessionScreenTest {
 
         override fun setDraft(sessionId: String, draft: PromptDraft) {
             drafts = drafts + (sessionId to draft)
+        }
+
+        override fun respond(sessionId: String, requestId: String, answers: List<RemoteQuestionAnswer>, cancelled: Boolean) {
+            calls += "respond $sessionId $requestId ${answers.joinToString { it.question + "=" + it.answers.joinToString("+") }} $cancelled"
         }
 
         override fun clearError() = Unit
@@ -180,5 +190,52 @@ class SessionScreenTest {
         composeRule.onNodeWithTag("modelSheet.level.max").performClick()
         assertEquals("configure s1 zai/glm-5 max", actions.calls.last())
         composeRule.onNodeWithText(str(Res.string.chat_model)).assertIsDisplayed()
+    }
+
+    private val question =
+        RemoteQuestionRequest(
+            "q1",
+            listOf(
+                RemoteQuestionItem("继续吗？", "确认", listOf(RemoteQuestionOption("继续", ""), RemoteQuestionOption("先停下", "")), false),
+                RemoteQuestionItem("通知谁？", "通知", listOf(RemoteQuestionOption("产品", ""), RemoteQuestionOption("测试", "")), true),
+            ),
+        )
+
+    private fun asking(): MirrorState {
+        val base = state(RemoteSessionStatus.WaitingInput, finishedTurn)
+        val transcript = base.transcript("s1")
+        return base.copy(transcripts = mapOf("s1" to transcript.copy(pendingQuestion = question)))
+    }
+
+    @Test
+    fun answersEveryQuestionInTurnThenSubmits() {
+        val actions = RecordingActions()
+        composeRule.setContent {
+            VettaTheme(ThemeMode.Light) { SessionScreen("s1", asking(), PromptDraft(), actions, onBack = {}) }
+        }
+        composeRule.onNodeWithTag("composer.field").assertDoesNotExist()
+        composeRule.onNodeWithText(str(Res.string.chat_question_title)).assertIsDisplayed()
+        composeRule.onNodeWithTag("question.next").assertIsNotEnabled()
+        composeRule.onNodeWithTag("question.option.继续").performClick()
+        composeRule.onNodeWithTag("question.next").performClick()
+
+        composeRule.onNodeWithText("通知谁？").assertIsDisplayed()
+        composeRule.onNodeWithTag("question.option.测试").performClick()
+        composeRule.onNodeWithTag("question.other").performClick()
+        composeRule.onNodeWithTag("question.otherField").performTextInput("设计")
+        composeRule.onNodeWithTag("question.submit").performClick()
+        assertEquals("respond s1 q1 继续吗？=继续, 通知谁？=测试+设计 false", actions.calls.last())
+    }
+
+    @Test
+    fun cancelsTheQuestion() {
+        val actions = RecordingActions()
+        composeRule.setContent {
+            VettaTheme(ThemeMode.Light) { SessionScreen("s1", asking(), PromptDraft(), actions, onBack = {}) }
+        }
+        composeRule.onNodeWithTag("question.tab.1").performClick()
+        composeRule.onNodeWithText("通知谁？").assertIsDisplayed()
+        composeRule.onNodeWithTag("question.cancel").performClick()
+        assertEquals("respond s1 q1  true", actions.calls.last())
     }
 }

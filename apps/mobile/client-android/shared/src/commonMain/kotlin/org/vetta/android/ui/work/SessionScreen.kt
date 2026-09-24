@@ -88,8 +88,6 @@ fun SessionScreen(
     actions: WorkActions,
     onBack: () -> Unit,
     headerActions: @Composable () -> Unit = {},
-    /** Takes the composer's place, e.g. while the agent waits on an answer. */
-    bottomOverride: (@Composable (sessionId: String) -> Unit)? = null,
 ) {
     // The desktop's id; a chat opened by New Session starts on a local one.
     val id = state.resolve(sessionId)
@@ -145,8 +143,14 @@ fun SessionScreen(
             )
         },
         bottomBar = {
-            if (bottomOverride != null) {
-                bottomOverride(id)
+            // While the agent waits on an answer, the question takes the composer's place.
+            val question = transcript.pendingQuestion
+            if (question != null) {
+                QuestionPanel(
+                    request = question,
+                    onSubmit = { answers -> actions.respond(id, question.requestId, answers) },
+                    onCancel = { actions.respond(id, question.requestId, emptyList(), cancelled = true) },
+                )
             } else {
                 Composer(
                     draft = draft,

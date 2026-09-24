@@ -45,6 +45,13 @@
     <string name="chat_models_loading">Loading models…</string>
     <string name="chat_more">More</string>
     <string name="chat_placeholder">Message…</string>
+    <string name="chat_question_multi_hint">Multiple choice</string>
+    <string name="chat_question_next">Next</string>
+    <string name="chat_question_other">Other (custom input)</string>
+    <string name="chat_question_other_placeholder">Type your answer…</string>
+    <string name="chat_question_submit">Submit</string>
+    <string name="chat_question_tab">Question %1$d</string>
+    <string name="chat_question_title">Vetta needs your choice</string>
     <string name="chat_resync">Refresh</string>
     <string name="chat_retrying">Retrying (%1$d/%2$d)</string>
     <plurals name="chat_steps_done">

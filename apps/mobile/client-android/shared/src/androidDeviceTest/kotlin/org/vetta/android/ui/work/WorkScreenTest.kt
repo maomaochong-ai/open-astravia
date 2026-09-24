@@ -19,6 +19,7 @@ import org.junit.Rule
 import org.junit.runner.RunWith
 import org.vetta.android.app.ThemeMode
 import org.vetta.android.domain.remote.RemoteProjectSummary
+import org.vetta.android.domain.remote.RemoteQuestionAnswer
 import org.vetta.android.domain.remote.RemoteSessionState
 import org.vetta.android.domain.remote.RemoteSessionStatus
 import org.vetta.android.domain.remote.RemoteSessionSummary
@@ -68,6 +69,10 @@ class WorkScreenTest {
         override fun configure(sessionId: String, next: ModelChoice, current: RemoteSessionState) = Unit
 
         override fun setDraft(sessionId: String, draft: PromptDraft) = Unit
+
+        override fun respond(sessionId: String, requestId: String, answers: List<RemoteQuestionAnswer>, cancelled: Boolean) {
+            calls += "respond $sessionId $requestId ${answers.joinToString { it.question + "=" + it.answers.joinToString("+") }} $cancelled"
+        }
 
         override fun clearError() = Unit
     }

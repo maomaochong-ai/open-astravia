@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import org.vetta.android.domain.remote.RemoteQuestionAnswer
 import org.vetta.android.domain.remote.RemoteSessionState
 import org.vetta.android.domain.work.DesktopMirror
 import org.vetta.android.domain.work.MirrorState
@@ -41,6 +42,9 @@ interface WorkActions {
     fun configure(sessionId: String, next: ModelChoice, current: RemoteSessionState)
 
     fun setDraft(sessionId: String, draft: PromptDraft)
+
+    /** Answers the question the desktop is waiting on, or cancels it. */
+    fun respond(sessionId: String, requestId: String, answers: List<RemoteQuestionAnswer>, cancelled: Boolean = false)
 
     fun clearError()
 }
@@ -159,6 +163,10 @@ class WorkViewModel(private val mirror: DesktopMirror) : ViewModel(), WorkAction
 
     override fun setDraft(sessionId: String, draft: PromptDraft) {
         _drafts.update { if (draft.text.isEmpty() && draft.attachments.isEmpty()) it - sessionId else it + (sessionId to draft) }
+    }
+
+    override fun respond(sessionId: String, requestId: String, answers: List<RemoteQuestionAnswer>, cancelled: Boolean) {
+        viewModelScope.launch { mirror.respond(sessionId, requestId, answers, cancelled) }
     }
 
     override fun clearError() {
