@@ -108,7 +108,6 @@ final class SpeechDictation {
 private nonisolated final class SpeechEngine: @unchecked Sendable {
 	private let audio = AVAudioEngine()
 	private let request = SFSpeechAudioBufferRecognitionRequest()
-	private let player = AVAudioPlayerNode()
 	private var task: SFSpeechRecognitionTask?
 
 	static func authorize() async -> Bool {
@@ -124,8 +123,9 @@ private nonisolated final class SpeechEngine: @unchecked Sendable {
 			throw SpeechUnavailable()
 		}
 		let session = AVAudioSession.sharedInstance()
-		// Play-and-record so the start chime can sound; recording alone silences all output.
-		try session.setCategory(.playAndRecord, mode: .default, options: [.duckOthers, .defaultToSpeaker, .allowBluetoothA2DP])
+		try session.setCategory(.record, mode: .measurement, options: .duckOthers)
+		// Recording otherwise mutes the start cue's sound and vibration before they finish.
+		try session.setAllowHapticsAndSystemSoundsDuringRecording(true)
 		try session.setActive(true, options: .notifyOthersOnDeactivation)
 		request.shouldReportPartialResults = true
 		if recognizer.supportsOnDeviceRecognition { request.requiresOnDeviceRecognition = true }
@@ -140,13 +140,8 @@ private nonisolated final class SpeechEngine: @unchecked Sendable {
 			guard let result else { return }
 			onText(result.bestTranscription.formattedString, result.isFinal)
 		}
-		let chime = Self.chime()
-		audio.attach(player)
-		audio.connect(player, to: audio.mainMixerNode, format: chime.format)
 		audio.prepare()
 		try audio.start()
-		player.scheduleBuffer(chime)
-		player.play()
 	}
 
 	/// Stop feeding audio; the recognizer delivers its final result shortly after.
@@ -161,32 +156,6 @@ private nonisolated final class SpeechEngine: @unchecked Sendable {
 		task?.cancel()
 		task = nil
 		try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
-	}
-
-	/// A short bell-like cue for "listening": two soft tones a fifth apart, the
-	/// second overlapping the first, each with a quick attack and a ringing decay.
-	private static func chime() -> AVAudioPCMBuffer {
-		let rate = 44_100.0
-		let format = AVAudioFormat(standardFormatWithSampleRate: rate, channels: 1)!
-		let length = AVAudioFrameCount(rate * 0.32)
-		let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: length)!
-		buffer.frameLength = length
-		let samples = buffer.floatChannelData![0]
-		// A5 then E6: bright but not piercing.
-		let notes: [(frequency: Double, start: Double, gain: Double)] = [(880, 0, 0.22), (1318.5, 0.075, 0.2)]
-		for index in 0 ..< Int(length) {
-			let time = Double(index) / rate
-			var value = 0.0
-			for note in notes where time >= note.start {
-				let t = time - note.start
-				let envelope = min(1, t / 0.004) * exp(-t / 0.07)
-				let phase = 2 * Double.pi * note.frequency * t
-				// A little of the octave above gives it a bell's shimmer instead of a bare beep.
-				value += note.gain * envelope * (sin(phase) + 0.18 * sin(2 * phase))
-			}
-			samples[index] = Float(value)
-		}
-		return buffer
 	}
 
 	private static func loudness(_ buffer: AVAudioPCMBuffer) -> Double {
