@@ -45,6 +45,7 @@ import kotlin.random.Random
 
 /** Opens a socket to `url`, authenticated with the pairing's secret; null asks for a manual pairing. */
 typealias RemoteTransportFactory = (url: String, pairingSecret: String?) -> RemoteTransport
+typealias P2pRemoteTransportFactory = (target: String) -> RemoteTransport
 
 data class DesktopLinkOptions(
     val desktop: DesktopRecord,
@@ -52,6 +53,8 @@ data class DesktopLinkOptions(
     val deviceId: String,
     val deviceName: String,
     val createTransport: RemoteTransportFactory,
+    val createP2pTransport: P2pRemoteTransportFactory? = null,
+    val p2pTarget: String? = null,
     val now: () -> Long,
     val onSequence: (Long) -> Unit = {},
     val onLanEndpoints: (List<String>) -> Unit = {},
@@ -60,6 +63,8 @@ data class DesktopLinkOptions(
     val relayTimeoutMs: Long = 8_000,
     /** While on the relay in the foreground, how often the local network is tried again. */
     val lanProbeIntervalMs: Long = 20_000,
+    val p2pTimeoutMs: Long = 12_000,
+    val p2pProbeIntervalMs: Long = 20_000,
     val requestTimeoutMs: Long = 30_000,
     val maxBackoffMs: Long = 30_000,
     val rttSampleIntervalMs: Long = 30_000,
@@ -74,8 +79,9 @@ data class DesktopLinkOptions(
  * connections so a reconnect never replays or drops an event.
  *
  * The desktop's local-network addresses are raced first and the relay is the
- * fallback. While on the relay in the foreground the local network is probed
- * again periodically, and the link moves back to it silently once it answers.
+ * bootstrap fallback. Once either is online, the link upgrades to the WebRTC
+ * control DataChannel. A failed P2P link falls back and is retried in the
+ * foreground.
  *
  * Every member must be used from [scope], which has to be confined to one
  * thread at a time; the state is not otherwise synchronised.
@@ -109,6 +115,7 @@ class DesktopLink(
     private var reconnectJob: Job? = null
     private var rttJob: Job? = null
     private var probeJob: Job? = null
+    private var p2pJob: Job? = null
     private var backoffMs = INITIAL_BACKOFF_MS
     private var reconnectAttempt = 0
 
@@ -129,6 +136,10 @@ class DesktopLink(
         backoffMs = INITIAL_BACKOFF_MS
         if (_snapshot.value.status == LinkStatus.Online) {
             if (active?.channel == LinkChannel.Relay) launchProbe()
+            if (active?.channel != LinkChannel.P2p) {
+                clearP2pProbe()
+                launchP2pProbe()
+            }
             return
         }
         launchAttempt()
@@ -136,7 +147,13 @@ class DesktopLink(
 
     fun setForeground(value: Boolean) {
         foreground = value
-        if (!value) clearProbe() else if (active?.channel == LinkChannel.Relay && probeJob?.isActive != true) scheduleProbe()
+        if (!value) {
+            clearProbe()
+            clearP2pProbe()
+        } else {
+            if (active?.channel == LinkChannel.Relay && probeJob?.isActive != true) scheduleProbe()
+            if (active != null && active?.channel != LinkChannel.P2p) launchP2pProbe()
+        }
     }
 
     fun stop() {
@@ -146,6 +163,7 @@ class DesktopLink(
         attemptJob?.cancel()
         attemptJob = null
         clearProbe()
+        clearP2pProbe()
         stopRttSampling()
         active?.let(::dispose)
         active = null
@@ -209,7 +227,13 @@ class DesktopLink(
     /** Tries every local-network address at once; the first to come online wins. */
     private suspend fun raceLan(current: Int): Candidate? {
         if (lanEndpoints.isEmpty()) return null
-        val candidates = lanEndpoints.map { buildCandidate(LinkChannel.Lan, lanControlUrl(it, options.desktop.pairingId)) }
+        val candidates =
+            lanEndpoints.map {
+                buildCandidate(
+                    LinkChannel.Lan,
+                    options.createTransport(lanControlUrl(it, options.desktop.pairingId), options.desktop.mobileSecret),
+                )
+            }
         var winner: Candidate? = null
         try {
             winner =
@@ -272,7 +296,11 @@ class DesktopLink(
 
     private suspend fun connectRelay(current: Int): Candidate? {
         val relay = options.desktop.relayBaseUrl?.takeIf(String::isNotEmpty) ?: return null
-        val candidate = buildCandidate(LinkChannel.Relay, relayControlUrl(relay, options.desktop.pairingId))
+        val candidate =
+            buildCandidate(
+                LinkChannel.Relay,
+                options.createTransport(relayControlUrl(relay, options.desktop.pairingId), options.desktop.mobileSecret),
+            )
         var adopted = false
         try {
             adopted = waitOnline(candidate, options.relayTimeoutMs) && current == generation
@@ -282,10 +310,10 @@ class DesktopLink(
         }
     }
 
-    private fun buildCandidate(channel: LinkChannel, url: String): Candidate {
+    private fun buildCandidate(channel: LinkChannel, transport: RemoteTransport): Candidate {
         val connection =
             RemoteConnection(
-                transport = options.createTransport(url, options.desktop.mobileSecret),
+                transport = transport,
                 options =
                     RemoteConnectionOptions(
                         role = RemoteRole.Mobile,
@@ -314,6 +342,39 @@ class DesktopLink(
                 connection.state.collect { state -> onConnectionState(candidate, state) }
             }
         return candidate
+    }
+
+    /** Upgrades an established bootstrap link to the WebRTC control DataChannel. */
+    private fun launchP2pProbe() {
+        if (!running || !foreground || active == null || active?.channel == LinkChannel.P2p || p2pJob?.isActive == true) return
+        val factory = options.createP2pTransport ?: return
+        val target = options.p2pTarget ?: return
+        val current = generation
+        p2pJob =
+            scope.launch {
+                val candidate = buildCandidate(LinkChannel.P2p, factory(target))
+                var adopted = false
+                try {
+                    adopted = waitOnline(candidate, options.p2pTimeoutMs) && running && foreground && current == generation && active != null
+                    if (adopted) {
+                        p2pJob = null
+                        adopt(candidate)
+                        return@launch
+                    }
+                    dispose(candidate)
+                    delay(options.p2pProbeIntervalMs)
+                    p2pJob = null
+                    launchP2pProbe()
+                } finally {
+                    if (!adopted) dispose(candidate)
+                }
+            }
+    }
+
+    private fun clearP2pProbe() {
+        val job = p2pJob
+        p2pJob = null
+        job?.cancel()
     }
 
     private suspend fun onConnectionEvent(candidate: Candidate, event: RemoteConnectionEvent) {
@@ -391,12 +452,14 @@ class DesktopLink(
             return
         }
         startRttSampling()
+        if (candidate.channel != LinkChannel.P2p) launchP2pProbe()
     }
 
     private fun dropActive(candidate: Candidate, reason: String) {
         if (active !== candidate) return
         active = null
         clearProbe()
+        clearP2pProbe()
         stopRttSampling()
         dispose(candidate)
         publish(_snapshot.value.copy(status = LinkStatus.Offline, channel = null, peerOnline = false, lastError = reason, onlineSince = null))

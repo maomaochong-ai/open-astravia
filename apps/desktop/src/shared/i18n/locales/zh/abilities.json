@@ -27,6 +27,17 @@
 	"search": {
 		"placeholder": "搜索能力"
 	},
+	"filter": {
+		"trigger": "筛选",
+		"type": "类型",
+		"provenance": "来源",
+		"provenanceOption": {
+			"all": "全部",
+			"market": "市场",
+			"builtin": "内置"
+		},
+		"reset": "清除筛选"
+	},
 	"status": {
 		"setupRequired": "需要配置",
 		"disabled": "已禁用",
@@ -92,7 +103,8 @@
 		"noMatchHint": "试试换个关键词",
 		"discover": "暂时没有公开的能力",
 		"mine": "还没有个人能力",
-		"hint": "稍后刷新，或通过上方「添加能力」导入"
+		"hint": "稍后刷新，或通过上方「添加能力」导入",
+		"filteredHint": "当前筛选下没有能力，试试清除筛选"
 	},
 	"error": {
 		"sourcesFailed": "以下 GitHub 来源同步失败（如有缓存则继续显示）：{{names}}",

@@ -9,6 +9,7 @@ enum class LinkStatus {
 }
 
 enum class LinkChannel {
+    P2p,
     Lan,
     Relay,
 }

@@ -233,7 +233,7 @@ Get-CimInstance Win32_Process |
 
 ### Desktop 重启后状态为“正在连接”，预览仍有画面
 
-控制 WebSocket 和 WebRTC 媒体是两条独立链路。Desktop 主进程重启后，手机控制通道可能处于 `Reconnecting`，但旧媒体会话仍显示最后一帧或短暂继续传输。此时 CPU/内存不会刷新，因为遥测 Job 只在控制通道 `Online` 时请求诊断。
+引导控制 WebSocket 与 WebRTC 会话仍有独立生命周期；WebRTC 会话内同时承载媒体、输入和可靠控制 DataChannel。Desktop 主进程重启后，手机控制链路可能处于 `Reconnecting`，但旧媒体会话仍显示最后一帧。此时 CPU/内存不会刷新，因为遥测 Job 只在控制链路 `Online` 时请求诊断。
 
 验收新 Desktop 诊断时应主动断开并重新连接控制通道，不能只看预览。
 

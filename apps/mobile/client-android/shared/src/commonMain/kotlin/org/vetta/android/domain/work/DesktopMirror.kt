@@ -43,6 +43,7 @@ import org.vetta.android.domain.remote.link.DesktopLink
 import org.vetta.android.domain.remote.link.DesktopLinkOptions
 import org.vetta.android.domain.remote.link.LinkOfflineException
 import org.vetta.android.domain.remote.link.LinkSnapshot
+import org.vetta.android.domain.remote.link.P2pRemoteTransportFactory
 import org.vetta.android.domain.remote.link.RemoteTransportFactory
 import org.vetta.android.domain.remote.pairing.DesktopRecord
 import org.vetta.android.domain.remote.pairing.PairingFlow
@@ -132,6 +133,7 @@ class MirrorPlatform(
     val configureLink: (DesktopLinkOptions) -> DesktopLinkOptions = { it },
     val configurePairing: (PairingFlowOptions) -> PairingFlowOptions = { it },
     val logger: RemoteLogger = NoopRemoteLogger,
+    val createP2pTransport: P2pRemoteTransportFactory? = null,
 )
 
 /**
@@ -294,6 +296,8 @@ class DesktopMirror(
                 deviceId = deviceId,
                 deviceName = platform.deviceName,
                 createTransport = platform.createTransport,
+                createP2pTransport = platform.createP2pTransport,
+                p2pTarget = record.relayBaseUrl?.let { desktopViewerUrl(it, record.pairingId, record.mobileSecret) },
                 now = platform.now,
                 onSequence = { sequence ->
                     pairingStore.update(key) { it.copy(lastEventSequence = sequence, lastSeenAt = platform.now()) }

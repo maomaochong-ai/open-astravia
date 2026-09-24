@@ -1,4 +1,5 @@
-import type { AbilityItem, AbilityScope } from "../types";
+import type { AbilityType } from "@shared/lib/api";
+import type { AbilityItem, AbilityProvenanceFilter, AbilityScope } from "../types";
 import { isMarketAbilityListed } from "./merge-ability-catalogs";
 
 export interface AbilityCatalogQuery {
@@ -7,9 +8,13 @@ export interface AbilityCatalogQuery {
 	category?: string;
 	types?: AbilityItem["type"][];
 	sourceIds?: string[];
+	/** 来源维度：`market` 只留市场条目，`builtin` 只留随 App 分发的内置能力；缺省不限。 */
+	provenance?: AbilityProvenanceFilter;
 	page: number;
 	pageSize: number;
 }
+
+export type AbilityCatalogFilter = Omit<AbilityCatalogQuery, "page" | "pageSize">;
 
 export interface AbilityCatalogPage {
 	items: AbilityItem[];
@@ -65,20 +70,34 @@ export function isAbilityListedInPersonal(item: AbilityItem): boolean {
 	return isUniversalSkill(item) || isManuallyInstalledAbility(item);
 }
 
-export function queryAbilityCatalog(items: AbilityItem[], query: AbilityCatalogQuery): AbilityCatalogPage {
-	const keyword = query.keyword?.trim().toLowerCase() ?? "";
-	const types = query.types ? new Set(query.types) : null;
-	const sourceIds = query.sourceIds ? new Set(query.sourceIds) : null;
-	const page = Number.isInteger(query.page) && query.page > 0 ? query.page : 1;
-	const pageSize = Number.isInteger(query.pageSize) && query.pageSize > 0 ? query.pageSize : 60;
-	const isPublic = query.scope === "discover" || (query.scope as string) === "public";
-	const filtered = items
+/** 按分区、关键词与各筛选维度过滤并排序，不分页。 */
+export function filterAbilityCatalog(items: AbilityItem[], filter: AbilityCatalogFilter): AbilityItem[] {
+	const keyword = filter.keyword?.trim().toLowerCase() ?? "";
+	const types = filter.types?.length ? new Set(filter.types) : null;
+	const sourceIds = filter.sourceIds ? new Set(filter.sourceIds) : null;
+	const provenance = filter.provenance && filter.provenance !== "all" ? filter.provenance : null;
+	const isPublic = filter.scope === "discover" || (filter.scope as string) === "public";
+	return items
 		.filter((item) => (isPublic ? isAbilityListedInDiscover(item) : isAbilityListedInPersonal(item)))
 		.filter((item) => !keyword || item.searchTerms.some((term) => term.toLowerCase().includes(keyword)))
-		.filter((item) => !query.category || item.category === query.category)
+		.filter((item) => !filter.category || item.category === filter.category)
 		.filter((item) => !types || types.has(item.type))
 		.filter((item) => !sourceIds || sourceIds.has(sourceId(item)))
+		.filter((item) => !provenance || (provenance === "builtin") === item.isBuiltin)
 		.sort(compareAbilities);
+}
+
+/** 按 type 计数，筛选面板用它给每个类型标数量。 */
+export function countAbilitiesByType(items: AbilityItem[]): Record<AbilityType, number> {
+	const counts: Record<AbilityType, number> = { skill: 0, scene: 0, mcp: 0, plugin: 0, bundle: 0 };
+	for (const item of items) counts[item.type] += 1;
+	return counts;
+}
+
+export function queryAbilityCatalog(items: AbilityItem[], query: AbilityCatalogQuery): AbilityCatalogPage {
+	const page = Number.isInteger(query.page) && query.page > 0 ? query.page : 1;
+	const pageSize = Number.isInteger(query.pageSize) && query.pageSize > 0 ? query.pageSize : 60;
+	const filtered = filterAbilityCatalog(items, query);
 	// 内置能力随 App 分发、数量有限，整组返回不参与分页：它们 downloadCount 为 0 会排在最后，
 	// 若按扁平列表切片，「Vetta 内置」分组只会出现零星几条，分组计数也跟着显示成已加载数。
 	const builtin = filtered.filter((item) => item.isBuiltin);

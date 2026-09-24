@@ -29,6 +29,17 @@ export type AbilityCatalogSource =
 	| { kind: "server"; id: "server" }
 	| { kind: "github"; id: string; name: string; repository: string };
 
+/** 来源筛选：全部 / 市场条目 / 随 App 分发的内置能力。只在「公开」分区生效。 */
+export type AbilityProvenanceFilter = "all" | "market" | "builtin";
+
+/** 能力列表的筛选条件；`types` 为空表示不限类型。 */
+export interface AbilityFilter {
+	types: AbilityType[];
+	provenance: AbilityProvenanceFilter;
+}
+
+export const EMPTY_ABILITY_FILTER: AbilityFilter = { types: [], provenance: "all" };
+
 /** 分组 key：无分类的条目归到这一组。 */
 export const ABILITY_CATEGORY_UNCATEGORIZED = "__uncategorized__";
 
@@ -195,9 +206,13 @@ export interface AbilitiesModel {
 	setScope: (scope: AbilityScope) => void;
 	searchQuery: string;
 	setSearchQuery: (value: string) => void;
-	/** 经 scope + 搜索过滤后的结果。 */
+	filter: AbilityFilter;
+	setFilter: (filter: AbilityFilter) => void;
+	/** 经 scope + 搜索 + 来源过滤、未按类型过滤时各 type 的数量。 */
+	typeCounts: Record<AbilityType, number>;
+	/** 经 scope + 搜索 + 筛选过滤后的结果。 */
 	items: AbilityItem[];
-	/** 经 scope + 搜索过滤后的总数；items 只包含当前已展开的本地分页。 */
+	/** 经 scope + 搜索 + 筛选过滤后的总数；items 只包含当前已展开的本地分页。 */
 	totalItems: number;
 	hasMore: boolean;
 	loadMore: () => void;

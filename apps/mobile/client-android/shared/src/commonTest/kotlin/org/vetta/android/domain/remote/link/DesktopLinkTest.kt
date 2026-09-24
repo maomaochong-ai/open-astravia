@@ -2,6 +2,8 @@ package org.vetta.android.domain.remote.link
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
@@ -11,9 +13,11 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import org.vetta.android.domain.remote.connection.RemoteTransport
 import org.vetta.android.domain.remote.pairing.DesktopRecord
 import org.vetta.android.domain.remote.protocol.RemoteCrypto
 import org.vetta.android.domain.remote.protocol.RemoteEventName
+import org.vetta.android.domain.remote.protocol.RemoteFrame
 import org.vetta.android.domain.remote.protocol.RemoteRequestMethod
 import org.vetta.android.domain.work.FakeDesktop
 import org.vetta.android.domain.work.eventually
@@ -38,12 +42,15 @@ class LinkIndicatorTest {
     }
 }
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class DesktopLinkTest {
     private fun TestScope.link(
         desktop: FakeDesktop,
         lastEventSequence: Long = 0,
         relay: String? = "wss://relay.example",
         lan: List<String> = emptyList(),
+        p2p: Boolean = false,
+        p2pFactory: P2pRemoteTransportFactory? = null,
         onSequence: (Long) -> Unit = {},
     ): DesktopLink =
         DesktopLink(
@@ -62,6 +69,8 @@ class DesktopLinkTest {
                 deviceId = "phone-1",
                 deviceName = "Pixel",
                 createTransport = desktop.createTransport,
+                createP2pTransport = p2pFactory ?: if (p2p) ({ desktop.createTransport("webrtc-control", FakeDesktop.MOBILE_SECRET) }) else null,
+                p2pTarget = if (p2p) "wss://relay.example/v2/desktop/${FakeDesktop.PAIRING_ID}/viewer" else null,
                 now = { testScheduler.currentTime },
                 onSequence = onSequence,
             ),
@@ -187,6 +196,47 @@ class DesktopLinkTest {
         }
 
     @Test
+    fun upgradesTheBootstrapConnectionToP2pAndUsesItForRequests() =
+        runTest {
+            val desktop = FakeDesktop(backgroundScope)
+            val link = link(desktop, p2p = true)
+            link.start()
+            assertTrue(eventually { link.snapshot.value.channel == LinkChannel.P2p })
+            assertTrue(link.snapshot.value.isUsable)
+            assertTrue(desktop.opened.any { it.startsWith("wss://") }, "the relay bootstraps WebRTC")
+            assertTrue(desktop.opened.contains("webrtc-control"), "the encrypted control session moves to WebRTC")
+            assertEquals(1, desktop.openSockets, "the bootstrap control socket is closed after the upgrade")
+
+            link.request(RemoteRequestMethod.SessionList)
+            assertEquals(RemoteRequestMethod.SessionList, desktop.requests.last().method)
+        }
+
+    @Test
+    fun fallsBackToTheRelayWhenP2pDropsAndRetriesTheUpgrade() =
+        runTest {
+            val desktop = FakeDesktop(backgroundScope)
+            var p2pAvailable = true
+            val link =
+                link(
+                    desktop,
+                    p2p = true,
+                    p2pFactory = {
+                        if (p2pAvailable) desktop.createTransport("webrtc-control", FakeDesktop.MOBILE_SECRET) else ClosedTransport()
+                    },
+                )
+            link.start()
+            assertTrue(eventually { link.snapshot.value.channel == LinkChannel.P2p })
+
+            p2pAvailable = false
+            desktop.dropConnections()
+            assertTrue(eventually { link.snapshot.value.channel == LinkChannel.Relay }, "relay keeps control available after ICE loss")
+
+            p2pAvailable = true
+            link.refresh()
+            assertTrue(eventually { link.snapshot.value.channel == LinkChannel.P2p }, "a later WebRTC session restores P2P")
+        }
+
+    @Test
     fun returningToTheForegroundProbesTheLocalNetworkAtOnce() =
         runTest {
             val desktop = FakeDesktop(backgroundScope)
@@ -227,4 +277,14 @@ class DesktopLinkTest {
     private fun CoroutineScope.launchCollect(link: DesktopLink, onSequence: (Long) -> Unit) {
         launch(start = CoroutineStart.UNDISPATCHED) { link.events.collect { onSequence(it.sequence) } }
     }
+}
+
+private class ClosedTransport : RemoteTransport {
+    override val incoming = emptyFlow<RemoteFrame>()
+
+    override suspend fun connect() = Unit
+
+    override suspend fun send(frame: RemoteFrame) = Unit
+
+    override suspend fun close() = Unit
 }

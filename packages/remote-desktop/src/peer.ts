@@ -11,11 +11,26 @@ export interface RemoteDesktopHostStartOptions {
 	readonly waitForPeerReady?: boolean;
 }
 
+/**
+ * A reliable ordered text channel that applications may use alongside screen
+ * media. This package deliberately treats its payload as opaque text so the
+ * remote-control protocol keeps ownership of validation and encryption.
+ */
+export interface RemoteDesktopTextChannelHandlers {
+	onOpen?(): void;
+	onMessage(message: string): void;
+	onClose?(reason?: string): void;
+}
+
+export const REMOTE_DESKTOP_CONTROL_CHANNEL = "vetta-control-v2";
+const MAX_CONTROL_MESSAGE_CHARS = 1_500_000;
+
 export class RemoteDesktopHost {
 	private readonly peer: RTCPeerConnection;
 	private readonly logger;
 	private readonly pendingIce: RTCIceCandidateInit[] = [];
 	private inputChannel: RTCDataChannel | undefined;
+	private controlChannel: RTCDataChannel | undefined;
 	private lastInputSequence = 0;
 	private closed = false;
 	private started = false;
@@ -27,6 +42,7 @@ export class RemoteDesktopHost {
 		private readonly options: RemoteDesktopPeerOptions,
 		private readonly sendSignal: RemoteDesktopSignalSender,
 		private readonly onInput: (message: RemoteInputMessage) => void | Promise<void>,
+		private readonly control?: RemoteDesktopTextChannelHandlers,
 	) {
 		this.logger = options.logger ?? NOOP_REMOTE_DESKTOP_LOGGER;
 		this.peer = createPeer(options);
@@ -56,6 +72,10 @@ export class RemoteDesktopHost {
 		for (const track of stream.getTracks()) this.peer.addTrack(track, stream);
 		this.inputChannel = this.peer.createDataChannel("vetta-input-v1", { ordered: true });
 		this.configureInputChannel(this.inputChannel);
+		if (this.control) {
+			this.controlChannel = this.peer.createDataChannel(REMOTE_DESKTOP_CONTROL_CHANNEL, { ordered: true });
+			this.configureControlChannel(this.controlChannel);
+		}
 		this.started = true;
 		if (startOptions.waitForPeerReady !== true || this.peerReady) await this.negotiate();
 	}
@@ -84,6 +104,7 @@ export class RemoteDesktopHost {
 		if (this.closed) return;
 		this.closed = true;
 		this.inputChannel?.close();
+		this.controlChannel?.close();
 		for (const sender of this.peer.getSenders()) sender.track?.stop();
 		this.peer.close();
 		void this.sendSignal({
@@ -96,6 +117,27 @@ export class RemoteDesktopHost {
 
 	get connectionState(): RTCPeerConnectionState {
 		return this.peer.connectionState;
+	}
+
+	sendControl(message: string): void {
+		if (!this.controlChannel || this.controlChannel.readyState !== "open") {
+			throw new Error("remote control channel is not open");
+		}
+		this.controlChannel.send(message);
+	}
+
+	private configureControlChannel(channel: RTCDataChannel): void {
+		channel.onopen = () => this.control?.onOpen?.();
+		channel.onclose = () => this.control?.onClose?.("data channel closed");
+		channel.onerror = () => this.control?.onClose?.("data channel failed");
+		channel.onmessage = (event) => {
+			if (typeof event.data !== "string" || event.data.length > MAX_CONTROL_MESSAGE_CHARS) {
+				this.logger.warn("remote desktop invalid control payload rejected", { sessionId: this.options.sessionId });
+				channel.close();
+				return;
+			}
+			this.control?.onMessage(event.data);
+		};
 	}
 
 	private configureInputChannel(channel: RTCDataChannel): void {

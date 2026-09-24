@@ -1,9 +1,11 @@
 import { randomUUID } from "node:crypto";
+import type { RemoteTransport } from "@vetta/remote-control";
 import { decodeRemoteInputMessage } from "@vetta/remote-desktop";
 import { BrowserWindow, desktopCapturer, ipcMain, session, webContents } from "electron";
 import { getAppLogger } from "../logger.js";
 import { registerRemoteDesktopVideoPermission } from "../speech-input/media-permissions.js";
 import { resolveDesktopRemoteDesktopHostPaths } from "./desktop-remote-desktop-host-paths.js";
+import { RendererDataChannelTransport } from "./renderer-data-channel-transport.js";
 import { createSystemInputAdapter } from "./system-input.js";
 
 export interface DesktopRemoteDesktopHostOptions {
@@ -19,6 +21,7 @@ export interface DesktopRemoteDesktopHostOptions {
 export interface DesktopRemoteDesktopHostHandle {
 	readonly sessionId: string;
 	readonly inputSupported: boolean;
+	readonly controlTransport: RemoteTransport;
 	revokeInput(): void;
 	grantInput(): void;
 	stop(): Promise<void>;
@@ -49,6 +52,14 @@ export async function startDesktopRemoteDesktopHost(
 		},
 	});
 	const unregisterVideoPermission = registerRemoteDesktopVideoPermission(window.webContents.id);
+	const controlTransport = new RendererDataChannelTransport({
+		send(message) {
+			if (!window.isDestroyed()) window.webContents.send("vetta:remote-desktop:control-send", message);
+		},
+		close() {
+			if (!window.isDestroyed()) window.webContents.send("vetta:remote-desktop:control-close");
+		},
+	});
 	window.webContents.on("console-message", (_event, level, message) => {
 		const fields = { sessionId, level };
 		if (level >= 2) log.warn(`renderer: ${message}`, fields);
@@ -63,6 +74,25 @@ export async function startDesktopRemoteDesktopHost(
 		}
 	};
 	ipcMain.on("vetta:remote-desktop:input", onInput);
+	const onControlOpen = (event: Electron.IpcMainEvent): void => {
+		if (event.sender.id === window.webContents.id) controlTransport.handleOpen();
+	};
+	const onControlMessage = (event: Electron.IpcMainEvent, message: unknown): void => {
+		if (event.sender.id === window.webContents.id) controlTransport.handleMessage(message);
+	};
+	const onControlClose = (event: Electron.IpcMainEvent, reason?: string): void => {
+		if (event.sender.id === window.webContents.id) {
+			controlTransport.handleClose(typeof reason === "string" ? reason.slice(0, 256) : undefined);
+		}
+	};
+	ipcMain.on("vetta:remote-desktop:control-open", onControlOpen);
+	ipcMain.on("vetta:remote-desktop:control-message", onControlMessage);
+	ipcMain.on("vetta:remote-desktop:control-close", onControlClose);
+	const removeControlListeners = (): void => {
+		ipcMain.removeListener("vetta:remote-desktop:control-open", onControlOpen);
+		ipcMain.removeListener("vetta:remote-desktop:control-message", onControlMessage);
+		ipcMain.removeListener("vetta:remote-desktop:control-close", onControlClose);
+	};
 	let displayMediaHandlerInstalled = false;
 	try {
 		// Electron supplies the first physical display to getDisplayMedia in the
@@ -113,6 +143,7 @@ export async function startDesktopRemoteDesktopHost(
 		input.setEnabled(false);
 		unregisterVideoPermission();
 		ipcMain.removeListener("vetta:remote-desktop:input", onInput);
+		removeControlListeners();
 		if (displayMediaHandlerInstalled) session.defaultSession.setDisplayMediaRequestHandler(null);
 		if (!window.isDestroyed()) window.destroy();
 		throw error;
@@ -122,6 +153,7 @@ export async function startDesktopRemoteDesktopHost(
 	const handle: DesktopRemoteDesktopHostHandle = {
 		sessionId,
 		inputSupported: input.supported,
+		controlTransport,
 		revokeInput() {
 			input.setEnabled(false);
 		},
@@ -133,6 +165,8 @@ export async function startDesktopRemoteDesktopHost(
 			unregisterVideoPermission();
 			session.defaultSession.setDisplayMediaRequestHandler(null);
 			ipcMain.removeListener("vetta:remote-desktop:input", onInput);
+			removeControlListeners();
+			await controlTransport.close("remote desktop host stopped");
 			if (!window.isDestroyed()) window.destroy();
 			activeHost = undefined;
 			log.info("remote desktop host stopped", { sessionId });

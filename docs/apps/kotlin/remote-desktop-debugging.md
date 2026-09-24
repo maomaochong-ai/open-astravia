@@ -3,18 +3,19 @@
 ## 1. 数据流和责任边界
 
 ```text
-手机控制通道
-  └─ Cloudflare Relay /v2/relay（端到端加密）
-       └─ Desktop Connector、设备列表、对话请求
+手机引导控制通道
+  └─ 局域网 / Cloudflare Relay /v2/relay（端到端加密）
+       └─ 配对、在线发现、WebRTC 启动与失败回退
 
 手机 WebRTC viewer                         Desktop WebRTC host
   └─ /v2/desktop/:pairingId/viewer   ←→   /v2/desktop/:pairingId/host
        └─ SDP / ICE 信令经过 Worker 转发
        └─ 屏幕像素点对点传输，不经过 Worker
        └─ 输入事件通过 WebRTC DataChannel 发送
+       └─ 对话、状态和诊断通过可靠的控制 DataChannel 发送
 ```
 
-控制通道在线只证明手机和 Desktop 的远程协议已经连接，不能证明 WebRTC 已收到视频帧。
+控制链路显示 P2P 只证明控制 DataChannel 已完成远程协议握手，不能证明 WebRTC 已收到视频帧；显示局域网或中继则表示 P2P 尚未建立或已回退。
 
 ## 2. 黑屏的判定方法
 

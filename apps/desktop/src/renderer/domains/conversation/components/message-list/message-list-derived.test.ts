@@ -17,7 +17,7 @@ describe("message-list-derived", () => {
 		expect(collectModelSwitchLabels([user, firstTail], names).size).toBe(0);
 	});
 
-	it("records a switch banner on the user message that changed models", () => {
+	it("records both model names on the user message that changed models", () => {
 		const first = createConversationUserMessage({
 			id: "u1",
 			text: "a",
@@ -28,8 +28,26 @@ describe("message-list-derived", () => {
 			text: "b",
 			model: { provider: "openai", id: "gpt-5" },
 		});
-		const labels = collectModelSwitchLabels([first, second], new Map([["openai/gpt-5", "GPT-5"]]));
-		expect(labels.get("u2")).toBe("GPT-5");
+		const labels = collectModelSwitchLabels(
+			[first, second],
+			new Map([
+				["openai/gpt-4", "GPT-4"],
+				["openai/gpt-5", "GPT-5"],
+			]),
+		);
+		expect(labels.get("u2")).toEqual({ from: "GPT-4", to: "GPT-5" });
+		expect(labels.has("u1")).toBe(false);
+	});
+
+	it("uses the last known model across missing history and falls back to model keys", () => {
+		const messages = [
+			createConversationUserMessage({ id: "u1", text: "a", model: { provider: "openai", id: "gpt-4" } }),
+			createConversationUserMessage({ id: "u2", text: "b" }),
+			createConversationUserMessage({ id: "u3", text: "c", model: { provider: "openai", id: "gpt-4" } }),
+			createConversationUserMessage({ id: "u4", text: "d", model: { provider: "other", id: "new" } }),
+		];
+		const labels = collectModelSwitchLabels(messages, new Map([["openai/gpt-4", "GPT-4"]]));
+		expect([...labels]).toEqual([["u4", { from: "GPT-4", to: "other/new" }]]);
 	});
 
 	it("collects agent usages in transcript order", () => {

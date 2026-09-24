@@ -14,18 +14,26 @@ export function userModelSwitchFingerprint(messages: readonly ChatConversationIt
 export function collectModelSwitchLabels(
 	messages: readonly ChatConversationItem[],
 	modelNames: ReadonlyMap<string, string>,
-): Map<string, string> {
-	const switches = new Map<string, string>();
+): Map<string, ModelSwitchLabel> {
+	const switches = new Map<string, ModelSwitchLabel>();
 	let previousKey: string | null = null;
 	for (const message of messages) {
 		if (message.kind !== "user") continue;
 		const key = message.model ? `${message.model.provider}/${message.model.id}` : null;
 		if (key && previousKey && key !== previousKey) {
-			switches.set(message.id, modelNames.get(key) ?? key);
+			switches.set(message.id, {
+				from: modelNames.get(previousKey) ?? previousKey,
+				to: modelNames.get(key) ?? key,
+			});
 		}
 		if (key) previousKey = key;
 	}
 	return switches;
+}
+
+export interface ModelSwitchLabel {
+	readonly from: string;
+	readonly to: string;
 }
 
 export function collectAgentUsages(messages: readonly ChatConversationItem[]): readonly Usage[] {

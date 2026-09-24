@@ -8,7 +8,7 @@ async function settle(rounds = 8) {
 	for (let index = 0; index < rounds; index += 1) await tick();
 }
 
-function link(hub: DesktopRemoteDeviceHub, deviceId: string, channel: "lan" | "relay") {
+function link(hub: DesktopRemoteDeviceHub, deviceId: string, channel: "p2p" | "lan" | "relay") {
 	const phoneTransport = new FakeTransport();
 	const desktopTransport = new FakeTransport();
 	phoneTransport.connectPeer(desktopTransport);
@@ -37,7 +37,7 @@ function link(hub: DesktopRemoteDeviceHub, deviceId: string, channel: "lan" | "r
 }
 
 describe("DesktopRemoteDeviceHub", () => {
-	it("fans one sequenced event out to every link of a device and routes requests back", async () => {
+	it("delivers through the best link without duplicating events and routes requests back", async () => {
 		const online: string[] = [];
 		const hub = new DesktopRemoteDeviceHub(
 			{
@@ -49,10 +49,12 @@ describe("DesktopRemoteDeviceHub", () => {
 		);
 		const lan = link(hub, "device-1", "lan");
 		const relay = link(hub, "device-1", "relay");
+		const p2p = link(hub, "device-1", "p2p");
 		const seen: Array<[string, number]> = [];
 		for (const [name, phone] of [
 			["lan", lan.phone],
 			["relay", relay.phone],
+			["p2p", p2p.phone],
 		] as const) {
 			phone.onEvent((event) => {
 				if (event.type === "remote-event") seen.push([name, event.event.sequence]);
@@ -62,24 +64,87 @@ describe("DesktopRemoteDeviceHub", () => {
 		await relay.desktop.connect();
 		await lan.phone.connect();
 		await relay.phone.connect();
+		await p2p.desktop.connect();
+		await p2p.phone.connect();
 		await settle();
 
 		expect(online).toEqual(["device-1"]);
-		expect(hub.onlineChannels("device-1").sort()).toEqual(["lan", "relay"]);
+		expect(hub.onlineChannels("device-1").sort()).toEqual(["lan", "p2p", "relay"]);
 
 		await hub.emit("device-1", "session.state", { status: "running" }, "s1");
 		await hub.broadcast("session.list", { sessions: [] });
 		await settle();
-		expect(seen.sort()).toEqual([
-			["lan", 1],
-			["lan", 2],
-			["relay", 1],
-			["relay", 2],
+		expect(seen).toEqual([
+			["p2p", 1],
+			["p2p", 2],
 		]);
 		await expect(relay.phone.request("session.list")).resolves.toEqual({
 			deviceId: "device-1",
 			method: "session.list",
 		});
+	});
+
+	it("falls back from P2P to LAN and then relay while keeping the sequence", async () => {
+		const hub = new DesktopRemoteDeviceHub(
+			{
+				handleRequest: async () => ({}),
+				toRemoteError: () => ({ code: "internal_error", message: "boom", retryable: false }),
+			},
+			{ offlineGraceMs: 10 },
+		);
+		const relay = link(hub, "device-1", "relay");
+		const lan = link(hub, "device-1", "lan");
+		const p2p = link(hub, "device-1", "p2p");
+		const seen: string[] = [];
+		for (const [name, phone] of [
+			["relay", relay.phone],
+			["lan", lan.phone],
+			["p2p", p2p.phone],
+		] as const) {
+			phone.onEvent((event) => {
+				if (event.type === "remote-event") seen.push(`${name}:${event.event.sequence}`);
+			});
+		}
+		for (const item of [relay, lan, p2p]) {
+			await item.desktop.connect();
+			await item.phone.connect();
+		}
+		await settle();
+		await hub.emit("device-1", "session.list", {});
+		await p2p.phone.close();
+		await settle();
+		await hub.emit("device-1", "session.list", {});
+		await lan.phone.close();
+		await settle();
+		await hub.emit("device-1", "session.list", {});
+		await settle();
+		expect(seen.map((item) => item.split(":")[0])).toEqual(["p2p", "lan", "relay"]);
+		expect(seen.map((item) => Number(item.split(":")[1]))).toEqual(
+			[...seen.map((item) => Number(item.split(":")[1]))].sort((left, right) => left - right),
+		);
+	});
+
+	it("uses the next online channel when delivery on P2P fails", async () => {
+		const hub = new DesktopRemoteDeviceHub({
+			handleRequest: async () => ({}),
+			toRemoteError: () => ({ code: "internal_error", message: "boom", retryable: false }),
+		});
+		const p2pDeliver = vi.fn(async () => {
+			throw new Error("ICE failed");
+		});
+		const relayDeliver = vi.fn(async () => undefined);
+		const connection = (deliverEvent: typeof relayDeliver) =>
+			({
+				onEvent: () => () => undefined,
+				getSnapshot: () => ({ state: "online" }),
+				deliverEvent,
+			}) as unknown as RemoteConnection;
+		hub.attach("device-1", { channel: "p2p", connection: connection(p2pDeliver) });
+		hub.attach("device-1", { channel: "relay", connection: connection(relayDeliver) });
+
+		await hub.emit("device-1", "session.list", {});
+		expect(p2pDeliver).toHaveBeenCalledOnce();
+		expect(relayDeliver).toHaveBeenCalledOnce();
 	});
 
 	it("keeps a device online across a channel switch and reports offline after the grace period", async () => {

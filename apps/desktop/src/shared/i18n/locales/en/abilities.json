@@ -27,6 +27,17 @@
 	"search": {
 		"placeholder": "Search abilities"
 	},
+	"filter": {
+		"trigger": "Filter",
+		"type": "Type",
+		"provenance": "Source",
+		"provenanceOption": {
+			"all": "All",
+			"market": "Marketplace",
+			"builtin": "Built-in"
+		},
+		"reset": "Clear filters"
+	},
 	"status": {
 		"setupRequired": "Setup required",
 		"disabled": "Disabled",
@@ -92,7 +103,8 @@
 		"noMatchHint": "Try a different keyword",
 		"discover": "No public abilities yet",
 		"mine": "No personal abilities added yet",
-		"hint": "Refresh later, or import one via \"Add ability\" above"
+		"hint": "Refresh later, or import one via \"Add ability\" above",
+		"filteredHint": "Nothing matches the current filters. Try clearing them"
 	},
 	"error": {
 		"sourcesFailed": "GitHub sources failed to sync (cached content remains available): {{names}}",

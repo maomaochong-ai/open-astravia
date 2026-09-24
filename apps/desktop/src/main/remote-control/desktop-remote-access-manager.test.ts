@@ -1,4 +1,4 @@
-import type { RemoteConnection } from "@vetta/remote-control";
+import type { RemoteConnection, RemoteTransportHandlers } from "@vetta/remote-control";
 import { generateIdentityKeyPair, parsePairingUri, type RemoteHello, toBase64Url } from "@vetta/remote-control";
 import { describe, expect, it } from "vitest";
 import type { DesktopConfig } from "../config/desktop-config-store.js";
@@ -40,6 +40,7 @@ function harness(initial?: DesktopConfig["remoteControl"]) {
 	const desktopHosts: Array<{
 		options: { relayBaseUrl: string; pairingId: string; desktopSecret: string };
 		stopped: boolean;
+		controlHandlers?: RemoteTransportHandlers;
 	}> = [];
 	const manager = new DesktopRemoteAccessManager({
 		store,
@@ -66,9 +67,22 @@ function harness(initial?: DesktopConfig["remoteControl"]) {
 		},
 		remoteDesktop: {
 			start: async (options) => {
-				const entry = { options, stopped: false };
+				const entry: (typeof desktopHosts)[number] = { options, stopped: false };
 				desktopHosts.push(entry);
+				let handlers: RemoteTransportHandlers | undefined;
 				return {
+					sessionId: options.pairingId,
+					inputSupported: true,
+					controlTransport: {
+						connect: async (next: RemoteTransportHandlers) => {
+							handlers = next;
+							entry.controlHandlers = next;
+						},
+						send: async () => undefined,
+						close: async () => handlers?.onClose("test stopped"),
+					},
+					revokeInput: () => undefined,
+					grantInput: () => undefined,
 					stop: async () => {
 						entry.stopped = true;
 					},
@@ -274,7 +288,12 @@ describe("DesktopRemoteAccessManager", () => {
 			pairingId,
 			desktopSecret: "relay-secret",
 		});
-		await manager.shutdown();
+		desktopHosts[0]?.controlHandlers?.onClose("ICE failed");
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		await new Promise((resolve) => setTimeout(resolve, 0));
 		expect(desktopHosts[0]?.stopped).toBe(true);
+		expect(desktopHosts).toHaveLength(2);
+		await manager.shutdown();
+		expect(desktopHosts[1]?.stopped).toBe(true);
 	});
 });

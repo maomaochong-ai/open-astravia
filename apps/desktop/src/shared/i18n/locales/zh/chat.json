@@ -766,7 +766,7 @@
 			"unavailable": "未上报"
 		},
 		"compactionBoundary": "上下文已压缩",
-		"modelSwitched": "切换了模型 {{name}}",
+		"modelSwitched": "模型已从 {{from}} 切换为 {{to}}",
 		"compactionIndicator": "正在压缩上下文...",
 		"retryIndicator": "正在重新连接（{{attempt}}/{{maxAttempts}}）",
 		"retryReason": "上次请求失败：{{reason}}",

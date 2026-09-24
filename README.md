@@ -205,3 +205,13 @@ Open Vetta builds on work from the wider open-source ecosystem, including pi, Co
 Licensed under [Apache-2.0](LICENSE).
 
 - **Friends & Links:** [LINUX DO](https://linux.do/) - A Chinese community for technology enthusiasts. This project is linked with and endorsed by LINUX DO.
+
+## Star History
+
+<a href="https://www.star-history.com/?repos=open-vetta%2Fopen-vetta%2Copenvetta%2Fopen-vetta&type=timeline&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=open-vetta/open-vetta%2Copenvetta/open-vetta&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=open-vetta/open-vetta%2Copenvetta/open-vetta&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=open-vetta/open-vetta%2Copenvetta/open-vetta&type=date&legend=top-left" />
+ </picture>
+</a>

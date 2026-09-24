@@ -10,10 +10,16 @@ import io.ktor.http.takeFrom
 import io.ktor.websocket.Frame
 import io.ktor.websocket.readText
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -24,6 +30,9 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.put
 import org.vetta.android.domain.remote.connection.PlatformRemoteLogger
+import org.vetta.android.domain.remote.connection.RemoteTransport
+import org.vetta.android.domain.remote.protocol.RemoteFrame
+import org.vetta.android.domain.remote.protocol.RemoteProtocol
 import org.webrtc.DataChannel
 import org.webrtc.EglBase
 import org.webrtc.IceCandidate
@@ -39,6 +48,8 @@ import org.webrtc.VideoTrack
 
 private const val PROTOCOL_VERSION = 1
 private const val INPUT_CHANNEL = "vetta-input-v1"
+private const val CONTROL_CHANNEL = "vetta-control-v2"
+private const val MAX_CONTROL_MESSAGE_BYTES = 1_500_000
 
 class NativeRemoteDesktopSession(private val context: Context, private val target: String) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -50,12 +61,25 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
     private var signalingJob: Job? = null
     private var signaling: DefaultClientWebSocketSession? = null
     private var inputChannel: DataChannel? = null
+    private var controlChannel: DataChannel? = null
+    private var controlTransport: NativeRemoteControlTransport? = null
     private var sequence = 1L
     private var renderer: SurfaceViewRenderer? = null
     private var remoteVideoTrack: VideoTrack? = null
     private var stopped = false
     private var remoteDescriptionSet = false
     private val pendingCandidates = mutableListOf<IceCandidate>()
+
+    val isStopped: Boolean
+        get() = stopped
+
+    fun createControlTransport(): RemoteTransport {
+        check(controlTransport == null) { "remote desktop control transport already claimed" }
+        return NativeRemoteControlTransport(this).also { transport ->
+            controlTransport = transport
+            controlChannel?.let(transport::bind)
+        }
+    }
 
     fun createRenderer(): SurfaceViewRenderer = SurfaceViewRenderer(context).also {
         renderer = it
@@ -77,15 +101,18 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
         signalingJob?.cancel()
         signalingJob = null
         inputChannel?.dispose()
+        controlChannel?.dispose()
         peerConnection?.dispose()
         factory?.dispose()
         signaling?.cancel()
         renderer?.let { remoteVideoTrack?.removeSink(it) }
         remoteVideoTrack = null
         renderer?.release()
+        renderer = null
         eglBase.release()
         client.close()
         scope.cancel()
+        controlTransport?.channelClosed("remote desktop session stopped")
     }
 
     fun pauseRenderer() = renderer?.pauseVideo()
@@ -147,6 +174,9 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
             for (frame in socket.incoming) if (frame is Frame.Text) handleSignal(frame.readText())
         } catch (error: Throwable) {
             if (!stopped) PlatformRemoteLogger.warn("native WebRTC session failed", mapOf("error" to (error.message ?: error::class.simpleName)))
+        } finally {
+            controlTransport?.channelClosed("remote desktop signaling closed")
+            if (!stopped) stop()
         }
     }
 
@@ -159,6 +189,9 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
             override fun onSignalingChange(state: PeerConnection.SignalingState) = Unit
             override fun onIceConnectionChange(state: PeerConnection.IceConnectionState) {
                 PlatformRemoteLogger.info("native WebRTC ICE state", mapOf("state" to state.name))
+                if (state == PeerConnection.IceConnectionState.FAILED || state == PeerConnection.IceConnectionState.CLOSED) {
+                    controlTransport?.channelClosed("WebRTC ICE ${state.name.lowercase()}")
+                }
             }
             override fun onIceConnectionReceivingChange(receiving: Boolean) = Unit
             override fun onIceGatheringChange(state: PeerConnection.IceGatheringState) = Unit
@@ -166,7 +199,16 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
             override fun onIceCandidatesRemoved(candidates: Array<out IceCandidate>) = Unit
             override fun onAddStream(stream: MediaStream) = Unit
             override fun onRemoveStream(stream: MediaStream) = Unit
-            override fun onDataChannel(channel: DataChannel) { if (channel.label() == INPUT_CHANNEL) inputChannel = channel }
+            override fun onDataChannel(channel: DataChannel) {
+                when (channel.label()) {
+                    INPUT_CHANNEL -> inputChannel = channel
+                    CONTROL_CHANNEL -> {
+                        controlChannel = channel
+                        controlTransport?.bind(channel)
+                    }
+                    else -> channel.close()
+                }
+            }
             override fun onRenegotiationNeeded() = Unit
             override fun onAddTrack(receiver: RtpReceiver, streams: Array<out MediaStream>) {
                 val track = receiver.track() as? VideoTrack ?: return
@@ -249,5 +291,121 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
         override fun onSetSuccess() = Unit
         override fun onCreateFailure(error: String) { PlatformRemoteLogger.warn("native WebRTC SDP create failed", mapOf("error" to error)) }
         override fun onSetFailure(error: String) { PlatformRemoteLogger.warn("native WebRTC SDP set failed", mapOf("error" to error)) }
+    }
+
+    private class NativeRemoteControlTransport(
+        private val owner: NativeRemoteDesktopSession,
+    ) : RemoteTransport {
+        private val incomingChannel = Channel<RemoteFrame>(Channel.UNLIMITED)
+        private val ready = CompletableDeferred<DataChannel>()
+        private var channel: DataChannel? = null
+        private var closed = false
+
+        override val incoming: Flow<RemoteFrame> = incomingChannel.receiveAsFlow()
+        override var closeReason: String? = null
+            private set
+
+        override suspend fun connect() {
+            owner.start()
+            ready.await()
+        }
+
+        override suspend fun send(frame: RemoteFrame) {
+            val active = ready.await()
+            check(active.state() == DataChannel.State.OPEN) { "remote control data channel is not open" }
+            val bytes = RemoteProtocol.encode(frame).toByteArray(Charsets.UTF_8)
+            check(active.send(DataChannel.Buffer(java.nio.ByteBuffer.wrap(bytes), false))) {
+                "remote control data channel rejected the frame"
+            }
+        }
+
+        override suspend fun close() {
+            channel?.close()
+            channelClosed("remote control data channel closed")
+            owner.stop()
+        }
+
+        fun bind(next: DataChannel) {
+            if (channel != null) {
+                next.close()
+                return
+            }
+            channel = next
+            next.registerObserver(object : DataChannel.Observer {
+                override fun onBufferedAmountChange(previousAmount: Long) = Unit
+
+                override fun onStateChange() {
+                    when (next.state()) {
+                        DataChannel.State.OPEN -> ready.complete(next)
+                        DataChannel.State.CLOSING, DataChannel.State.CLOSED -> channelClosed("remote control data channel closed")
+                        else -> Unit
+                    }
+                }
+
+                override fun onMessage(buffer: DataChannel.Buffer) {
+                    if (buffer.binary || buffer.data.remaining() > MAX_CONTROL_MESSAGE_BYTES) {
+                        next.close()
+                        channelClosed("invalid remote control data channel payload")
+                        return
+                    }
+                    val data = ByteArray(buffer.data.remaining())
+                    buffer.data.get(data)
+                    val frame = runCatching { RemoteProtocol.decode(data.toString(Charsets.UTF_8)) }.getOrElse {
+                        next.close()
+                        channelClosed("invalid remote control data channel frame")
+                        return
+                    }
+                    incomingChannel.trySend(frame)
+                }
+            })
+            if (next.state() == DataChannel.State.OPEN) ready.complete(next)
+        }
+
+        fun channelClosed(reason: String) {
+            if (closed) return
+            closed = true
+            closeReason = reason
+            if (!ready.isCompleted) ready.completeExceptionally(IllegalStateException(reason))
+            incomingChannel.close()
+        }
+    }
+}
+
+/** One WebRTC session per desktop target, shared by the process link and the Compose renderer. */
+object NativeRemoteDesktopSessions {
+    private var applicationContext: Context? = null
+    private val sessions = mutableMapOf<String, MutableStateFlow<NativeRemoteDesktopSession?>>()
+
+    fun configure(context: Context) {
+        applicationContext = context.applicationContext
+    }
+
+    fun observe(target: String): StateFlow<NativeRemoteDesktopSession?> = synchronized(this) {
+        sessions.getOrPut(target) { MutableStateFlow(null) }
+    }
+
+    fun session(target: String): NativeRemoteDesktopSession = synchronized(this) {
+        val slot = sessions.getOrPut(target) { MutableStateFlow(null) }
+        val current = slot.value
+        if (current != null && !current.isStopped) return@synchronized current
+        NativeRemoteDesktopSession(requireNotNull(applicationContext) { "native remote desktop sessions are not configured" }, target)
+            .also { slot.value = it }
+    }
+
+    fun transport(target: String): RemoteTransport = synchronized(this) {
+        val slot = sessions.getOrPut(target) { MutableStateFlow(null) }
+        val previous = slot.value
+        val next = if (previous == null || previous.isStopped) {
+            NativeRemoteDesktopSession(requireNotNull(applicationContext) { "native remote desktop sessions are not configured" }, target)
+                .also { slot.value = it }
+        } else {
+            previous
+        }
+        runCatching { next.createControlTransport() }.getOrElse {
+            next.stop()
+            NativeRemoteDesktopSession(requireNotNull(applicationContext), target)
+                .also { slot.value = it }
+                .createControlTransport()
+        }
     }
 }
