@@ -208,6 +208,13 @@ class DesktopMirror(
         return true
     }
 
+    /** Pairs with the desktop at `host:port` on the local network, approved on the desktop. */
+    suspend fun pairManually(endpoint: String): Boolean {
+        val record = startFlow().pairManually(endpoint) ?: return false
+        finishPairing(record)
+        return true
+    }
+
     fun cancelPairing() {
         flow?.cancel()
         flow = null

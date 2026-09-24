@@ -36,14 +36,19 @@ import org.vetta.android.domain.session.MessageStatus
 import org.vetta.android.domain.session.ToolTrace
 import org.vetta.android.domain.session.SessionStore
 import org.vetta.android.domain.session.nowEpochMs
+import org.vetta.android.domain.device.PairingResult
+import org.vetta.android.domain.remote.pairing.PairingFailure
 import org.vetta.android.resources.Res
+import org.vetta.android.resources.pair_failed_rejected
+import org.vetta.android.resources.pair_failed_unauthorized
+import org.vetta.android.resources.pair_failed_unreachable
+import org.vetta.android.resources.pair_manual_invalid
 import org.vetta.android.resources.error_relogin_title
 import org.vetta.android.resources.invalid_pairing_invite
 import org.vetta.android.resources.invalid_pairing_invite_hint
 import org.vetta.android.resources.no_models
 import org.vetta.android.resources.no_models_hint
 import org.vetta.android.resources.remote_connect_failed
-import org.vetta.android.resources.remote_connect_failed_hint
 import org.vetta.android.resources.session_expired
 import org.vetta.android.resources.signed_out
 import org.vetta.android.ui.i18n.UiText
@@ -77,6 +82,8 @@ data class AppUiState(
     val modelPickerOpen: Boolean = false,
     val remoteConnecting: Boolean = false,
     val globalError: UiError? = null,
+    /** A pairing started outside Welcome that failed; Welcome shows it as [globalError]. */
+    val pairingError: UiError? = null,
     val authError: UiError? = null,
     val authLoading: Boolean = false,
     val loginModeEmail: Boolean = true,
@@ -334,38 +341,61 @@ class AppViewModel(
 
     /** Pairs with the desktop in a scanned code; `openDetail` shows the device once it is connected. */
     fun connectDesktop(target: String, openDetail: Boolean = true) {
+        pair(openDetail) { container.desktopGateway.connect(target) }
+    }
+
+    /** Pairs with the desktop at a typed `host:port`; the computer shows a code to allow. */
+    fun connectDesktopManually(endpoint: String) {
+        pair(openDetail = false) { container.desktopGateway.connectManually(endpoint) }
+    }
+
+    private fun pair(openDetail: Boolean, connect: suspend () -> PairingResult) {
         if (_state.value.remoteConnecting) return
-        _state.update { it.copy(remoteConnecting = true, globalError = null) }
+        _state.update { it.copy(remoteConnecting = true, globalError = null, pairingError = null) }
         viewModelScope.launch {
             try {
-                val connected =
+                val result =
                     try {
-                        container.desktopGateway.connect(target)
+                        connect()
                     } catch (error: kotlinx.coroutines.CancellationException) {
                         throw error
                     } catch (_: Throwable) {
-                        false
+                        PairingResult.Failed(PairingFailure.Unreachable)
                     }
-                if (connected) {
-                    _state.update { it.copy(mainAccessGranted = true) }
-                    val device = container.desktopGateway.devices.value.firstOrNull()
-                    if (openDetail && device != null) openDeviceDetail(device.id)
-                    return@launch
-                }
-                _state.update {
-                    it.copy(
-                        globalError =
-                            UiError(
-                                title = uiText(Res.string.remote_connect_failed),
-                                message = uiText(Res.string.remote_connect_failed_hint),
-                                action = UiErrorAction.None,
-                            ),
-                    )
+                when (result) {
+                    PairingResult.Paired -> {
+                        _state.update { it.copy(mainAccessGranted = true) }
+                        val device = container.desktopGateway.devices.value.firstOrNull()
+                        if (openDetail && device != null) openDeviceDetail(device.id)
+                    }
+                    PairingResult.Cancelled -> Unit
+                    is PairingResult.Failed -> {
+                        val error = pairingError(result.reason)
+                        _state.update { if (it.route == AppRoute.Welcome) it.copy(globalError = error) else it.copy(pairingError = error) }
+                    }
                 }
             } finally {
                 _state.update { it.copy(remoteConnecting = false) }
             }
         }
+    }
+
+    private fun pairingError(reason: PairingFailure): UiError =
+        if (reason == PairingFailure.InvalidCode) {
+            UiError(title = uiText(Res.string.invalid_pairing_invite), message = uiText(Res.string.invalid_pairing_invite_hint), action = UiErrorAction.None)
+        } else {
+            val message =
+                when (reason) {
+                    PairingFailure.Rejected -> Res.string.pair_failed_rejected
+                    PairingFailure.Unauthorized -> Res.string.pair_failed_unauthorized
+                    PairingFailure.InvalidEndpoint -> Res.string.pair_manual_invalid
+                    else -> Res.string.pair_failed_unreachable
+                }
+            UiError(title = uiText(Res.string.remote_connect_failed), message = uiText(message), action = UiErrorAction.None)
+        }
+
+    fun clearPairingError() {
+        _state.update { it.copy(pairingError = null) }
     }
 
     fun disconnectDesktop(deviceId: String) {

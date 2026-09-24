@@ -19,10 +19,14 @@ import org.vetta.android.domain.device.ConnectChannel
 import org.vetta.android.domain.device.DesktopDevice
 import org.vetta.android.domain.device.DesktopGateway
 import org.vetta.android.domain.device.DeviceStatus
+import org.vetta.android.domain.device.PairingResult
+import org.vetta.android.domain.remote.pairing.PairingFailure
 import org.vetta.android.domain.session.ConversationOrigin
 import org.vetta.android.resources.Res
 import org.vetta.android.resources.invalid_pairing_invite
 import org.vetta.android.resources.invalid_pairing_invite_hint
+import org.vetta.android.resources.pair_failed_rejected
+import org.vetta.android.resources.pair_failed_unreachable
 import org.vetta.android.resources.remote_connect_failed
 import org.vetta.android.ui.i18n.uiText
 import org.vetta.android.ui.navigation.AppRoute
@@ -136,7 +140,7 @@ class AppViewModelDesktopTest {
     fun pairingConnectionIsSingleFlightAndSurfacesFailure() =
         runTest(dispatcher) {
             val gateway = FakeDesktopGateway()
-            val pendingConnection = CompletableDeferred<Boolean>()
+            val pendingConnection = CompletableDeferred<PairingResult>()
             gateway.pendingConnection = pendingConnection
             val viewModel = AppViewModel(container(gateway))
             advanceUntilIdle()
@@ -148,11 +152,35 @@ class AppViewModelDesktopTest {
             assertTrue(viewModel.state.value.remoteConnecting)
             assertEquals(1, gateway.connectCalls)
 
-            pendingConnection.complete(false)
+            pendingConnection.complete(PairingResult.Failed(PairingFailure.Unreachable))
             advanceUntilIdle()
 
             assertFalse(viewModel.state.value.remoteConnecting)
             assertEquals(uiText(Res.string.remote_connect_failed), viewModel.state.value.globalError?.title)
+            assertEquals(uiText(Res.string.pair_failed_unreachable), viewModel.state.value.globalError?.message)
+        }
+
+    @Test
+    fun aManualPairingOutsideWelcomeReportsWhyItFailedOrNothingWhenCancelled() =
+        runTest(dispatcher) {
+            val gateway = FakeDesktopGateway()
+            val viewModel = AppViewModel(container(gateway))
+            advanceUntilIdle()
+            viewModel.skipWelcome()
+
+            gateway.pendingConnection = CompletableDeferred(PairingResult.Failed(PairingFailure.Rejected))
+            viewModel.connectDesktopManually("192.168.1.20:43117")
+            advanceUntilIdle()
+            assertEquals(listOf("192.168.1.20:43117"), gateway.manualEndpoints)
+            assertEquals(uiText(Res.string.pair_failed_rejected), viewModel.state.value.pairingError?.message)
+            assertEquals(null, viewModel.state.value.globalError, "a failed pairing is not a page error")
+
+            viewModel.clearPairingError()
+            gateway.pendingConnection = CompletableDeferred(PairingResult.Cancelled)
+            viewModel.connectDesktopManually("192.168.1.20:43117")
+            advanceUntilIdle()
+            assertEquals(null, viewModel.state.value.pairingError, "cancelling is not a failure")
+            assertFalse(viewModel.state.value.remoteConnecting)
         }
 
     @Test
@@ -219,14 +247,20 @@ private class FakeDesktopGateway : DesktopGateway {
                 ),
             ),
         )
-    var pendingConnection: CompletableDeferred<Boolean>? = null
+    var pendingConnection: CompletableDeferred<PairingResult>? = null
     var connectCalls = 0
     val connectTargets = mutableListOf<String>()
+    val manualEndpoints = mutableListOf<String>()
 
-    override suspend fun connect(target: String): Boolean {
+    override suspend fun connect(target: String): PairingResult {
         connectTargets += target
         connectCalls += 1
-        return pendingConnection?.await() ?: true
+        return pendingConnection?.await() ?: PairingResult.Paired
+    }
+
+    override suspend fun connectManually(endpoint: String): PairingResult {
+        manualEndpoints += endpoint
+        return pendingConnection?.await() ?: PairingResult.Paired
     }
 
     override suspend fun disconnect(deviceId: String) {

@@ -15,13 +15,19 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import org.vetta.android.core.net.platformHttpClientEngine
 import org.vetta.android.domain.remote.protocol.RemoteFrame
 import org.vetta.android.domain.remote.protocol.RemoteProtocol
 
+/**
+ * One WebSocket to the desktop or the relay. The subprotocol header carries the
+ * pairing secret; without one ([pairingSecret] null) the socket asks for a
+ * manual pairing, which the desktop only accepts on its `/v2/lan/pair` path.
+ */
 class KtorWebSocketRemoteTransport(
     private val url: String,
-    private val pairingSecret: String,
+    private val pairingSecret: String?,
     private val scope: CoroutineScope,
     private val client: HttpClient = HttpClient(platformHttpClientEngine()) { install(WebSockets) },
 ) : RemoteTransport {
@@ -31,13 +37,16 @@ class KtorWebSocketRemoteTransport(
 
     override val incoming: Flow<RemoteFrame> = incomingChannel.receiveAsFlow()
 
+    override var closeReason: String? = null
+        private set
+
     override suspend fun connect() {
         val socket =
             client.webSocketSession {
                 url.takeFrom(this@KtorWebSocketRemoteTransport.url)
                 headers.append(
                     HttpHeaders.SecWebSocketProtocol,
-                    listOf("vetta.remote.v2", "vetta.pairing.$pairingSecret").joinToString(", "),
+                    listOf(PROTOCOL, pairingSecret?.let { "$PAIRING_PREFIX$it" } ?: MANUAL).joinToString(", "),
                 )
             }
         session = socket
@@ -53,6 +62,8 @@ class KtorWebSocketRemoteTransport(
                             }
                         }
                     }
+                    // Recorded before `incoming` ends, so whoever sees the end can read it.
+                    closeReason = withTimeoutOrNull(CLOSE_REASON_WAIT_MS) { socket.closeReason.await() }?.message
                 } finally {
                     incomingChannel.close()
                 }
@@ -70,5 +81,12 @@ class KtorWebSocketRemoteTransport(
         session?.close()
         session = null
         client.close()
+    }
+
+    private companion object {
+        const val PROTOCOL = "vetta.remote.v2"
+        const val PAIRING_PREFIX = "vetta.pairing."
+        const val MANUAL = "vetta.manual"
+        const val CLOSE_REASON_WAIT_MS = 500L
     }
 }

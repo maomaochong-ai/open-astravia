@@ -6,6 +6,13 @@ import org.vetta.android.domain.remote.protocol.RemoteFrame
 interface RemoteTransport {
     val incoming: Flow<RemoteFrame>
 
+    /**
+     * Why the other side closed the socket, once `incoming` has ended. The
+     * desktop explains a declined or unknown pairing only this way.
+     */
+    val closeReason: String?
+        get() = null
+
     suspend fun connect()
 
     suspend fun send(frame: RemoteFrame)

@@ -255,7 +255,19 @@
     <string name="operating_system">操作系统</string>
     <string name="page_motion">页面过渡动画</string>
     <string name="page_motion_hint">使用轻量过渡，让页面切换更自然</string>
+    <string name="pair_code_hint">两边显示的数字一致，才是你的电脑</string>
+    <string name="pair_connect">连接</string>
     <string name="pair_desktop">对接 Desktop</string>
+    <string name="pair_failed_rejected">电脑拒绝了这次配对</string>
+    <string name="pair_failed_unauthorized">电脑不认识这部手机，请重新扫码</string>
+    <string name="pair_failed_unreachable">连不上电脑，请确认两者在同一 Wi-Fi，或电脑在线</string>
+    <string name="pair_manual">手动输入地址</string>
+    <string name="pair_manual_hint">输入电脑端显示的 IP 和端口，例如 192.168.1.20:43117</string>
+    <string name="pair_manual_invalid">请输入形如 192.168.1.20:43117 的地址</string>
+    <string name="pair_manual_placeholder">IP:端口</string>
+    <string name="pair_manual_title">手动连接</string>
+    <string name="pair_verification_code">验证码</string>
+    <string name="pair_waiting_approval">在电脑上核对验证码并点击「允许」</string>
     <string name="password">密码</string>
     <string name="plan">套餐与额度</string>
     <string name="plan_active">使用中</string>
@@ -275,7 +287,6 @@
     <string name="reconnecting">正在恢复连接</string>
     <string name="remaining">剩余</string>
     <string name="remote_connect_failed">无法连接桌面</string>
-    <string name="remote_connect_failed_hint">请重新扫描配对码，并确认 Desktop 仍处于在线状态</string>
     <string name="remote_desktop">远程 Desktop</string>
     <string name="remote_desktop_section">远程 Desktop</string>
     <string name="remove_attachment">移除图片</string>

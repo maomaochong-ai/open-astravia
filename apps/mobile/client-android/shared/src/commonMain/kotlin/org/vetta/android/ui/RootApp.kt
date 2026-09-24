@@ -2,6 +2,7 @@ package org.vetta.android.ui
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.AnimatedVisibility
@@ -74,8 +75,12 @@ import org.vetta.android.ui.work.WorkViewModel
 import org.vetta.android.domain.work.PromptDraft
 import org.vetta.android.domain.work.SessionStatusGroup
 import org.vetta.android.ui.remote.PairingScannerButton
+import org.vetta.android.domain.remote.pairing.PairingPhase
+import org.vetta.android.ui.components.VettaInfoDialog
+import org.vetta.android.ui.i18n.resolve
+import org.vetta.android.ui.work.PairingActions
+import org.vetta.android.ui.work.PairingApprovalDialog
 import org.vetta.android.resources.work_unpaired_scan
-import androidx.compose.material3.CircularProgressIndicator
 import kotlin.reflect.KClass
 
 val LocalAppContainer =
@@ -225,9 +230,7 @@ fun RootApp(
                                     onNewSession = { vm.openWorkNewSession() },
                                     onSettings = vm::openWorkSettings,
                                     pairing = {
-                                        if (state.remoteConnecting) {
-                                            CircularProgressIndicator()
-                                        } else {
+                                        PairingActions(connecting = state.remoteConnecting, onManual = vm::connectDesktopManually) {
                                             PairingScannerButton(
                                                 onScanned = { vm.connectDesktop(it, openDetail = false) },
                                                 label = stringResource(Res.string.work_unpaired_scan),
@@ -367,9 +370,11 @@ fun RootApp(
                     onUnpair = work::unpair,
                     onBack = vm::navigateBackFromSecondary,
                     pairing = {
-                        if (state.remoteConnecting) {
-                            CircularProgressIndicator(Modifier.padding(12.dp))
-                        } else {
+                        PairingActions(
+                            connecting = state.remoteConnecting,
+                            onManual = vm::connectDesktopManually,
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        ) {
                             PairingScannerButton(
                                 onScanned = { vm.connectDesktop(it, openDetail = false) },
                                 label = stringResource(if (workState.paired) Res.string.work_settings_rescan else Res.string.work_settings_scan),
@@ -423,6 +428,13 @@ fun RootApp(
             AppRoute.About ->
                 AboutScreen(onBack = vm::navigateBackFromSecondary)
             }
+            }
+            // Pairing runs from several pages; its approval step and its failure show above all of them.
+            (workState.pairing as? PairingPhase.AwaitingApproval)?.let { waiting ->
+                PairingApprovalDialog(verificationCode = waiting.verificationCode, onCancel = work::cancelPairing)
+            }
+            state.pairingError?.let { error ->
+                VettaInfoDialog(title = error.title.resolve(), message = error.message.resolve(), onDismiss = vm::clearPairingError)
             }
         }
     }

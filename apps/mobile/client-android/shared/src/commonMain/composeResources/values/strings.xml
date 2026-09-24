@@ -261,7 +261,19 @@
     <string name="operating_system">Operating system</string>
     <string name="page_motion">Page transitions</string>
     <string name="page_motion_hint">Use light transitions between pages</string>
+    <string name="pair_code_hint">It’s your computer only if both screens show the same digits</string>
+    <string name="pair_connect">Connect</string>
     <string name="pair_desktop">Connect to Desktop</string>
+    <string name="pair_failed_rejected">Your computer declined this pairing</string>
+    <string name="pair_failed_unauthorized">Your computer doesn’t recognize this phone. Please scan again.</string>
+    <string name="pair_failed_unreachable">Can’t reach your computer. Make sure both are on the same Wi-Fi, or that the computer is online.</string>
+    <string name="pair_manual">Enter Address Manually</string>
+    <string name="pair_manual_hint">Enter the IP and port shown on your computer, e.g. 192.168.1.20:43117</string>
+    <string name="pair_manual_invalid">Enter an address like 192.168.1.20:43117</string>
+    <string name="pair_manual_placeholder">IP:port</string>
+    <string name="pair_manual_title">Manual Connection</string>
+    <string name="pair_verification_code">Verification code</string>
+    <string name="pair_waiting_approval">Check the code on your computer and click “Allow”</string>
     <string name="password">Password</string>
     <string name="plan">Plan and usage</string>
     <string name="plan_active">Active</string>
@@ -281,7 +293,6 @@
     <string name="reconnecting">Reconnecting</string>
     <string name="remaining">Remaining</string>
     <string name="remote_connect_failed">Couldn’t connect to Desktop</string>
-    <string name="remote_connect_failed_hint">Scan the pairing code again and make sure Desktop is still online</string>
     <string name="remote_desktop">Remote Desktop</string>
     <string name="remote_desktop_section">Remote Desktop</string>
     <string name="remove_attachment">Remove image</string>

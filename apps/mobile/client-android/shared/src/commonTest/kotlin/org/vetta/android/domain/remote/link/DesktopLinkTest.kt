@@ -4,6 +4,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
@@ -37,7 +39,13 @@ class LinkIndicatorTest {
 }
 
 class DesktopLinkTest {
-    private fun TestScope.link(desktop: FakeDesktop, lastEventSequence: Long = 0, relay: String? = "wss://relay.example", onSequence: (Long) -> Unit = {}): DesktopLink =
+    private fun TestScope.link(
+        desktop: FakeDesktop,
+        lastEventSequence: Long = 0,
+        relay: String? = "wss://relay.example",
+        lan: List<String> = emptyList(),
+        onSequence: (Long) -> Unit = {},
+    ): DesktopLink =
         DesktopLink(
             DesktopLinkOptions(
                 desktop =
@@ -46,7 +54,7 @@ class DesktopLinkTest {
                         desktopName = "MacBook Pro",
                         pairingId = FakeDesktop.PAIRING_ID,
                         mobileSecret = FakeDesktop.MOBILE_SECRET,
-                        lanEndpoints = emptyList(),
+                        lanEndpoints = lan,
                         relayBaseUrl = relay,
                         lastEventSequence = lastEventSequence,
                     ),
@@ -131,7 +139,70 @@ class DesktopLinkTest {
             val link = link(FakeDesktop(backgroundScope), relay = null)
             link.start()
             assertFailsWith<LinkOfflineException> { link.request(RemoteRequestMethod.SessionList) }
-            assertTrue(eventually { link.snapshot.value.lastError == "unreachable" }, "a desktop without a relay cannot be reached yet")
+            assertTrue(eventually { link.snapshot.value.lastError == "unreachable" }, "a desktop with neither an address nor a relay cannot be reached")
+        }
+
+    @Test
+    fun prefersTheLocalNetworkAndFallsBackToTheRelay() =
+        runTest {
+            val desktop = FakeDesktop(backgroundScope)
+            val near = link(desktop, lan = listOf(FakeDesktop.LAN_ENDPOINT))
+            near.start()
+            assertTrue(eventually { near.snapshot.value.isUsable })
+            assertEquals(LinkChannel.Lan, near.snapshot.value.channel)
+            assertTrue(desktop.opened.none { it.startsWith("wss://") }, "the relay is not needed on the same network")
+            near.stop()
+
+            desktop.lanReachable = false
+            val away = link(desktop, lan = listOf(FakeDesktop.LAN_ENDPOINT))
+            away.start()
+            assertTrue(eventually { away.snapshot.value.isUsable })
+            assertEquals(LinkChannel.Relay, away.snapshot.value.channel)
+        }
+
+    @Test
+    fun movesBackToTheLocalNetworkOnceItAnswersAgain() =
+        runTest {
+            val desktop = FakeDesktop(backgroundScope)
+            desktop.lanReachable = false
+            val link = link(desktop, lan = listOf(FakeDesktop.LAN_ENDPOINT))
+            val events = mutableListOf<Long>()
+            backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) { link.events.collect { events += it.sequence } }
+            link.start()
+            assertTrue(eventually { link.snapshot.value.isUsable })
+            assertEquals(LinkChannel.Relay, link.snapshot.value.channel)
+            val onlineSince = link.snapshot.value.onlineSince
+            desktop.emit(RemoteEventName.SessionList, buildJsonObject {})
+
+            desktop.lanReachable = true
+            assertTrue(eventually(timeoutMs = 30_000) { link.snapshot.value.channel == LinkChannel.Lan }, "the periodic probe finds the local network")
+            assertTrue(link.snapshot.value.isUsable)
+            assertEquals(onlineSince, link.snapshot.value.onlineSince, "a silent switch, not a reconnect")
+            assertEquals(1, desktop.openSockets, "the relay socket is closed")
+
+            desktop.emit(RemoteEventName.SessionList, buildJsonObject {})
+            assertTrue(eventually { events.size == 2 })
+            assertEquals(listOf(1L, 2L), events, "nothing is replayed or lost in the switch")
+            link.request(RemoteRequestMethod.SessionList)
+        }
+
+    @Test
+    fun returningToTheForegroundProbesTheLocalNetworkAtOnce() =
+        runTest {
+            val desktop = FakeDesktop(backgroundScope)
+            desktop.lanReachable = false
+            val link = link(desktop, lan = listOf(FakeDesktop.LAN_ENDPOINT))
+            link.start()
+            assertTrue(eventually { link.snapshot.value.isUsable })
+            link.setForeground(false)
+
+            desktop.lanReachable = true
+            advanceTimeBy(60_000)
+            runCurrent()
+            assertEquals(LinkChannel.Relay, link.snapshot.value.channel, "no probing in the background")
+
+            link.refresh()
+            assertTrue(eventually(timeoutMs = 3_000) { link.snapshot.value.channel == LinkChannel.Lan })
         }
 
     @Test

@@ -79,7 +79,11 @@ data class RemoteConnectionOptions(
     val deviceName: String,
     val capabilities: RemoteCapabilities,
     val identity: RemoteIdentityKeyPair,
-    val expectedPeerIdentityKey: ByteArray,
+    /**
+     * The desktop's pinned identity key. Null only for a manual pairing, where the
+     * key is learnt from the desktop and the person compares the verification code.
+     */
+    val expectedPeerIdentityKey: ByteArray?,
     val connectionId: String,
     val requestTimeoutMs: Long = 30_000,
     /** The last event this phone saw from the desktop; the handshake resumes after it. */
@@ -253,7 +257,7 @@ class RemoteConnection(
         if (frame.connectionId != options.connectionId) return
         val currentEphemeral = ephemeral ?: return
         val peerIdentity = RemoteCrypto.decodePublicKey(frame.peerIdentityKey, "peerIdentityKey")
-        if (!RemoteCrypto.bytesEqual(options.expectedPeerIdentityKey, peerIdentity)) {
+        if (!matchesExpectedPeer(peerIdentity)) {
             protocolFailure("Peer identity does not match the paired desktop")
             return
         }
@@ -281,7 +285,7 @@ class RemoteConnection(
     private suspend fun handlePairingPending(frame: RemotePairingPending) {
         if (frame.connectionId != options.connectionId) return
         val peerIdentity = RemoteCrypto.decodePublicKey(frame.peerIdentityKey, "peerIdentityKey")
-        if (!RemoteCrypto.bytesEqual(options.expectedPeerIdentityKey, peerIdentity)) {
+        if (!matchesExpectedPeer(peerIdentity)) {
             protocolFailure("Pairing response came from an unexpected desktop")
             return
         }
@@ -289,6 +293,9 @@ class RemoteConnection(
         peerDeviceId = frame.peerDeviceId
         _state.value = RemoteConnectionState.PendingApproval
     }
+
+    private fun matchesExpectedPeer(peerIdentity: ByteArray): Boolean =
+        options.expectedPeerIdentityKey?.let { RemoteCrypto.bytesEqual(it, peerIdentity) } ?: true
 
     private suspend fun handleSealed(frame: RemoteSealed) {
         val sessionKeys = keys

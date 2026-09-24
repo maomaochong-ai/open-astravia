@@ -1,9 +1,12 @@
 package org.vetta.android.domain.remote.link
 
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelChildren
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -13,6 +16,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.JsonElement
@@ -26,6 +30,7 @@ import org.vetta.android.domain.remote.connection.RemoteConnectionOptions
 import org.vetta.android.domain.remote.connection.RemoteConnectionState
 import org.vetta.android.domain.remote.connection.RemoteLogger
 import org.vetta.android.domain.remote.connection.RemoteTransport
+import org.vetta.android.domain.remote.lanControlUrl
 import org.vetta.android.domain.remote.pairing.DesktopRecord
 import org.vetta.android.domain.remote.relayControlUrl
 import org.vetta.android.domain.remote.protocol.RemoteCapabilities
@@ -38,8 +43,8 @@ import org.vetta.android.domain.remote.protocol.RemoteRequestMethod
 import org.vetta.android.domain.remote.protocol.RemoteRole
 import kotlin.random.Random
 
-/** Opens a socket to `url`, authenticated with the pairing's secret. */
-typealias RemoteTransportFactory = (url: String, pairingSecret: String) -> RemoteTransport
+/** Opens a socket to `url`, authenticated with the pairing's secret; null asks for a manual pairing. */
+typealias RemoteTransportFactory = (url: String, pairingSecret: String?) -> RemoteTransport
 
 data class DesktopLinkOptions(
     val desktop: DesktopRecord,
@@ -50,7 +55,11 @@ data class DesktopLinkOptions(
     val now: () -> Long,
     val onSequence: (Long) -> Unit = {},
     val onLanEndpoints: (List<String>) -> Unit = {},
+    /** How long each local-network address gets before the relay is tried. */
+    val lanBudgetMs: Long = 1_500,
     val relayTimeoutMs: Long = 8_000,
+    /** While on the relay in the foreground, how often the local network is tried again. */
+    val lanProbeIntervalMs: Long = 20_000,
     val requestTimeoutMs: Long = 30_000,
     val maxBackoffMs: Long = 30_000,
     val rttSampleIntervalMs: Long = 30_000,
@@ -63,6 +72,10 @@ data class DesktopLinkOptions(
  * One logical link to one desktop (port of the iOS `ChannelManager.swift`):
  * connects, reconnects with backoff, and keeps the event sequence across
  * connections so a reconnect never replays or drops an event.
+ *
+ * The desktop's local-network addresses are raced first and the relay is the
+ * fallback. While on the relay in the foreground the local network is probed
+ * again periodically, and the link moves back to it silently once it answers.
  *
  * Every member must be used from [scope], which has to be confined to one
  * thread at a time; the state is not otherwise synchronised.
@@ -95,6 +108,7 @@ class DesktopLink(
     private var attemptJob: Job? = null
     private var reconnectJob: Job? = null
     private var rttJob: Job? = null
+    private var probeJob: Job? = null
     private var backoffMs = INITIAL_BACKOFF_MS
     private var reconnectAttempt = 0
 
@@ -113,12 +127,16 @@ class DesktopLink(
         if (!running) return
         clearReconnect()
         backoffMs = INITIAL_BACKOFF_MS
-        if (_snapshot.value.status == LinkStatus.Online) return
+        if (_snapshot.value.status == LinkStatus.Online) {
+            if (active?.channel == LinkChannel.Relay) launchProbe()
+            return
+        }
         launchAttempt()
     }
 
     fun setForeground(value: Boolean) {
         foreground = value
+        if (!value) clearProbe() else if (active?.channel == LinkChannel.Relay && probeJob?.isActive != true) scheduleProbe()
     }
 
     fun stop() {
@@ -127,6 +145,7 @@ class DesktopLink(
         clearReconnect()
         attemptJob?.cancel()
         attemptJob = null
+        clearProbe()
         stopRttSampling()
         active?.let(::dispose)
         active = null
@@ -165,6 +184,15 @@ class DesktopLink(
         if (!running) return
         val current = generation
         publish(_snapshot.value.copy(status = LinkStatus.Connecting, channel = null, reconnectAttempt = reconnectAttempt))
+        val lan = raceLan(current)
+        if (current != generation) {
+            lan?.let(::dispose)
+            return
+        }
+        if (lan != null) {
+            adopt(lan)
+            return
+        }
         val relay = connectRelay(current)
         if (current != generation) {
             relay?.let(::dispose)
@@ -172,9 +200,74 @@ class DesktopLink(
         }
         if (relay != null) {
             adopt(relay)
+            scheduleProbe()
             return
         }
         scheduleReconnect("unreachable")
+    }
+
+    /** Tries every local-network address at once; the first to come online wins. */
+    private suspend fun raceLan(current: Int): Candidate? {
+        if (lanEndpoints.isEmpty()) return null
+        val candidates = lanEndpoints.map { buildCandidate(LinkChannel.Lan, lanControlUrl(it, options.desktop.pairingId)) }
+        var winner: Candidate? = null
+        try {
+            winner =
+                coroutineScope {
+                    val first = CompletableDeferred<Candidate?>()
+                    val racers =
+                        candidates.map { candidate ->
+                            launch { if (waitOnline(candidate, options.lanBudgetMs)) first.complete(candidate) }
+                        }
+                    launch {
+                        racers.joinAll()
+                        first.complete(null)
+                    }
+                    first.await().also { coroutineContext.cancelChildren() }
+                }?.takeIf { current == generation }
+            return winner
+        } finally {
+            candidates.filter { it !== winner }.forEach(::dispose)
+        }
+    }
+
+    /** Probes the local network now, unless a probe or an attempt is already under way. */
+    private fun launchProbe() {
+        if (attemptJob?.isActive == true) return
+        clearProbe()
+        probeJob = scope.launch { probeLan() }
+    }
+
+    private fun scheduleProbe() {
+        clearProbe()
+        if (!foreground || !running || lanEndpoints.isEmpty()) return
+        probeJob =
+            scope.launch {
+                delay(options.lanProbeIntervalMs)
+                probeLan()
+            }
+    }
+
+    /** On the relay: tries the local network again and moves over when it answers. */
+    private suspend fun probeLan() {
+        if (!running || active?.channel != LinkChannel.Relay) return
+        val current = generation
+        val lan = raceLan(current)
+        if (lan != null && running && current == generation && active?.channel == LinkChannel.Relay) {
+            adopt(lan)
+            return
+        }
+        lan?.let(::dispose)
+        if (active?.channel == LinkChannel.Relay) {
+            // A fresh job, so that clearing the old one does not cancel the new schedule.
+            scope.launch { scheduleProbe() }
+        }
+    }
+
+    private fun clearProbe() {
+        val job = probeJob
+        probeJob = null
+        job?.cancel()
     }
 
     private suspend fun connectRelay(current: Int): Candidate? {
@@ -276,15 +369,19 @@ class DesktopLink(
         backoffMs = INITIAL_BACKOFF_MS
         reconnectAttempt = 0
         clearReconnect()
+        if (candidate.channel == LinkChannel.Lan) clearProbe()
         previous?.let(::dispose)
+        val current = _snapshot.value
         publish(
             LinkSnapshot(
                 status = LinkStatus.Online,
                 channel = candidate.channel,
                 peerOnline = true,
-                desktop = _snapshot.value.desktop,
-                diagnostics = _snapshot.value.diagnostics,
-                onlineSince = options.now(),
+                desktop = current.desktop,
+                diagnostics = current.diagnostics,
+                // Moving from the relay to the local network continues the same session.
+                rttMs = if (previous != null) current.rttMs else null,
+                onlineSince = current.onlineSince?.takeIf { previous != null } ?: options.now(),
             ),
         )
         // The connection may have dropped between coming online and being adopted.
@@ -299,6 +396,7 @@ class DesktopLink(
     private fun dropActive(candidate: Candidate, reason: String) {
         if (active !== candidate) return
         active = null
+        clearProbe()
         stopRttSampling()
         dispose(candidate)
         publish(_snapshot.value.copy(status = LinkStatus.Offline, channel = null, peerOnline = false, lastError = reason, onlineSince = null))
@@ -314,6 +412,7 @@ class DesktopLink(
                 if (status.lanEndpoints.isNotEmpty() && status.lanEndpoints != lanEndpoints) {
                     lanEndpoints = status.lanEndpoints
                     options.onLanEndpoints(status.lanEndpoints)
+                    if (active?.channel == LinkChannel.Relay && probeJob?.isActive != true) scheduleProbe()
                 }
                 publish(_snapshot.value.copy(desktop = status))
             }

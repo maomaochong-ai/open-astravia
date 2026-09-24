@@ -81,6 +81,11 @@ class WorkViewModel(private val mirror: DesktopMirror) : ViewModel(), WorkAction
         mirror.setPreferences(update)
     }
 
+    /** Stops a pairing that waits for the computer's approval. */
+    fun cancelPairing() {
+        mirror.cancelPairing()
+    }
+
     /** Forgets the computer: its credential, and everything cached from it on this phone. */
     fun unpair() {
         mirror.unpair()

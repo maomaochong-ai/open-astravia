@@ -556,6 +556,26 @@ class DesktopMirrorTest {
         }
 
     @Test
+    fun aManualPairingIsKeptAndConnectsOverTheLocalNetwork() =
+        runTest {
+            val desktop = scriptedDesktop()
+            val device = Device()
+            val mirror = mirror(desktop, device)
+            val pairing = async { mirror.pairManually(FakeDesktop.LAN_ENDPOINT) }
+            assertTrue(eventually { mirror.state.value.pairing is org.vetta.android.domain.remote.pairing.PairingPhase.AwaitingApproval })
+
+            desktop.approveManual()
+            assertTrue(pairing.await())
+            assertTrue(eventually { mirror.state.value.online })
+            assertEquals(org.vetta.android.domain.remote.link.LinkChannel.Lan, mirror.state.value.link.channel)
+            assertEquals(org.vetta.android.domain.remote.pairing.PairingPhase.Idle, mirror.state.value.pairing)
+
+            val relaunched = mirror(desktop, device)
+            assertTrue(eventually { relaunched.state.value.online }, "the credential from the desktop is kept")
+            assertEquals(FakeDesktop.MOBILE_SECRET, desktop.secrets.last())
+        }
+
+    @Test
     fun pairingWithAnUnusableCodeReportsWhy() =
         runTest {
             val desktop = scriptedDesktop()
