@@ -431,7 +431,7 @@ class DesktopLink(
         reconnectAttempt = 0
         clearReconnect()
         if (candidate.channel == LinkChannel.Lan) clearProbe()
-        previous?.let(::dispose)
+        previous?.let(::retire)
         val current = _snapshot.value
         publish(
             LinkSnapshot(
@@ -548,6 +548,24 @@ class DesktopLink(
         rttJob = null
     }
 
+    /**
+     * Lets a channel that a better one replaced finish the requests already sent on it,
+     * then closes it. Closing at once would fail them although the desktop may already
+     * have acted on them, so they cannot simply be sent again on the new channel.
+     */
+    private fun retire(candidate: Candidate) {
+        if (candidate.disposed) return
+        candidate.disposed = true
+        candidate.jobs.forEach(Job::cancel)
+        candidate.jobs.clear()
+        scope.launch {
+            withTimeoutOrNull(RETIRE_WAIT_MS) {
+                while (candidate.connection.snapshot().pendingRequestCount > 0) delay(RETIRE_POLL_MS)
+            }
+            candidate.connection.close()
+        }
+    }
+
     private fun dispose(candidate: Candidate) {
         if (candidate.disposed) return
         candidate.disposed = true
@@ -568,6 +586,8 @@ class DesktopLink(
         const val UNAUTHORIZED = "unauthorized"
 
         private const val INITIAL_BACKOFF_MS = 1_000L
+        private const val RETIRE_WAIT_MS = 10_000L
+        private const val RETIRE_POLL_MS = 50L
         private const val EVENT_BUFFER = 256
         private val TERMINAL =
             setOf(RemoteConnectionState.Failed, RemoteConnectionState.Reconnecting, RemoteConnectionState.Closed)

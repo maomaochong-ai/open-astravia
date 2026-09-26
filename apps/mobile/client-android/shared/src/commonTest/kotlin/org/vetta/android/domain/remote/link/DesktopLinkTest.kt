@@ -3,6 +3,7 @@ package org.vetta.android.domain.remote.link
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
@@ -234,6 +235,35 @@ class DesktopLinkTest {
             p2pAvailable = true
             link.refresh()
             assertTrue(eventually { link.snapshot.value.channel == LinkChannel.P2p }, "a later WebRTC session restores P2P")
+        }
+
+    @Test
+    fun aRequestInFlightFinishesOnTheOldChannelWhenABetterOneTakesOver() =
+        runTest {
+            val desktop = FakeDesktop(backgroundScope)
+            val held = mutableListOf<String>()
+            desktop.handler = { request -> if (request.method == RemoteRequestMethod.SessionList) held += request.requestId else respond(request.requestId, buildJsonObject {}) }
+            var p2pAvailable = false
+            val link =
+                link(
+                    desktop,
+                    p2p = true,
+                    p2pFactory = {
+                        if (p2pAvailable) desktop.createTransport("webrtc-control", FakeDesktop.MOBILE_SECRET) else ClosedTransport()
+                    },
+                )
+            link.start()
+            assertTrue(eventually { link.snapshot.value.channel == LinkChannel.Relay })
+            val answer = async { link.request(RemoteRequestMethod.SessionList) }
+            assertTrue(eventually { held.isNotEmpty() })
+
+            p2pAvailable = true
+            link.refresh()
+            assertTrue(eventually { link.snapshot.value.channel == LinkChannel.P2p })
+            // The desktop may already have acted on it; its answer still arrives over the relay.
+            desktop.respond(held.single(), buildJsonObject { put("sessions", buildJsonArray {}) })
+            assertEquals(buildJsonObject { put("sessions", buildJsonArray {}) }, answer.await())
+            assertTrue(eventually { desktop.openSockets == 1 }, "the relay closes once nothing is left on it")
         }
 
     @Test
