@@ -4,6 +4,8 @@ All notable changes to `@astravia/desktop-app` are documented in this file.
 
 ## [Unreleased]
 
+## [0.55.37] - 2026-09-26
+
 ### Added
 
 - **对话框 @数据库表 直接注入 schema（dbx 风格 per-message 上下文）**：参考 dbx-main AiAssistant 的 `@schema.table` mention 机制，Astravia 对话框的 `@` 选择面板新增 **Database Tab**，支持浏览已连接数据库 → 选择表 → 输入 `@connection.table` 纯文本 mention。发送时 renderer 从文本解析 mention → main 侧 runTurn 拉取各表 schema → 拼成结构化文本追加到本轮 prompt 上下文（`数据库表 @conn.users 的结构如下：\n- id: INTEGER PRIMARY KEY\n- name: TEXT ...`）。与已有的 scope 面板会话级注入互补：scope 管持久背景知识（system prompt），@mention 管单次对话意图。**connectionAiAccess guard 同时生效**——被关闭 AI 访问的 prod 连接即使被 @mention 也会在 per-message 路径被跳过。涉及：theme-ui AtPanelView.tsx 加 tab UI、useAtPanelModel.ts 重构按 tab 切换数据源、新建 db-mentions/parse.ts 移植 dbx 解析逻辑（18 条单测）、useSessionManager.sendMessage 解析 metadata、desktop-conversation-service.runTurn per-message schema 注入、export guardConnectionAiAccess 供消费。
