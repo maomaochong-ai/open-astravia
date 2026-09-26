@@ -182,21 +182,24 @@
 
 			function getTopTargets(count) {
 				const tw = theater.offsetWidth;
-				const titleTop = titleEl.offsetTop;
-				const targetY = titleTop - ICON_SIZE / 2;
+				const theaterRect = theater.getBoundingClientRect();
+				const titleRect = titleEl.getBoundingClientRect();
+				// 图标目标 Y：标题顶部相对于剧场容器的位置 - 图标半径
+				const targetY = titleRect.top - theaterRect.top - ICON_SIZE / 2;
 				const totalW = count * 64;
 				const startX = (tw - totalW) / 2;
 				const targets = [];
 				for (let i = 0; i < count; i++) targets.push({ x: startX + i * 64 + 32, y: targetY });
-				// 随机打乱顺序
 				for (let i = targets.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [targets[i], targets[j]] = [targets[j], targets[i]]; }
 				return targets;
 			}
 
 			function getBottomTargets(count) {
 				const tw = theater.offsetWidth;
-				const footerTop = footerEl.offsetTop;
-				const targetY = footerTop - ICON_SIZE / 2;
+				const theaterRect = theater.getBoundingClientRect();
+				const footerRect = footerEl.getBoundingClientRect();
+				// 图标目标 Y：页脚顶部相对于剧场容器的位置 - 图标半径
+				const targetY = footerRect.top - theaterRect.top - ICON_SIZE / 2;
 				const totalW = count * 64;
 				const startX = (tw - totalW) / 2;
 				const targets = [];
@@ -249,8 +252,13 @@
 
 			window.addEventListener("load", () => {
 				const topTargets = getTopTargets(topIconsRemaining.length);
+				console.log("Theater height:", theater.offsetHeight);
+				console.log("Title offsetTop:", titleEl.offsetTop);
+				console.log("Title getBoundingClientRect:", titleEl.getBoundingClientRect());
+				console.log("Top targets:", topTargets);
 				for (let i = 0; i < topIconsRemaining.length; i++) anims.push(new FallingIcon(topIconsRemaining[i], topTargets[i].x, topTargets[i].y, 200 + i * STAGGER));
 				const bottomTargets = getBottomTargets(bottomCount);
+				console.log("Bottom targets:", bottomTargets);
 				for (let i = 0; i < bottomIcons.length; i++) {
 					const icon = bottomIcons[i];
 					bottomContainer.appendChild(icon);
