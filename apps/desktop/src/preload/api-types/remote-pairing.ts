@@ -44,4 +44,6 @@ export interface RemotePairingApi {
 	approve(id: string, allow: boolean): Promise<RemotePairingState>;
 	revokeDevice(id: string): Promise<RemotePairingState>;
 	renameDevice(id: string, name: string): Promise<RemotePairingState>;
+	/** Called with the new state whenever it changes; returns the unsubscribe. */
+	onStateChanged(listener: (state: RemotePairingState) => void): () => void;
 }

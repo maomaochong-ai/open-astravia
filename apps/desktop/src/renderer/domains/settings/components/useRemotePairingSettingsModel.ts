@@ -11,8 +11,8 @@ const EMPTY_STATE: RemotePairingState = {
 	vaultAvailable: true,
 };
 
-/** Polls only while this page is mounted; the main process pushes nothing otherwise. */
-const REFRESH_MS = 1_000;
+/** How often the QR code's "expires in N minutes" is recounted while one is shown. */
+const COUNTDOWN_MS = 15_000;
 
 type RemotePairingFailure = "action" | "create" | "load" | "qr";
 
@@ -91,6 +91,16 @@ export function useRemotePairingSettingsModel(): RemotePairingSettingsModel {
 	const [busy, setBusy] = useState(false);
 	const [failure, setFailure] = useState<RemotePairingFailure>();
 
+	// Only the countdown needs the clock; the state itself is pushed.
+	const [now, setNow] = useState(() => Date.now());
+	const hasInvite = state.invite !== undefined;
+	useEffect(() => {
+		if (!hasInvite) return;
+		setNow(Date.now());
+		const timer = window.setInterval(() => setNow(Date.now()), COUNTDOWN_MS);
+		return () => window.clearInterval(timer);
+	}, [hasInvite]);
+
 	const apply = useCallback((next: RemotePairingState): void => {
 		setState(next);
 		setFailure(undefined);
@@ -98,19 +108,12 @@ export function useRemotePairingSettingsModel(): RemotePairingSettingsModel {
 
 	useEffect(() => {
 		let cancelled = false;
-		let timer: number | undefined;
-
-		const sync = async (): Promise<void> => {
-			try {
-				const next = await window.vetta.remotePairing.getState();
-				if (!cancelled) {
-					setState(next);
-					setFailure((current) => (current === "load" ? undefined : current));
-				}
-			} catch {
-				if (!cancelled) setFailure("load");
-			}
-		};
+		// The desktop pushes every change: a phone coming or going, an invite or approval appearing.
+		const unsubscribe = window.vetta.remotePairing.onStateChanged((next) => {
+			if (cancelled) return;
+			setState(next);
+			setFailure((current) => (current === "load" ? undefined : current));
+		});
 
 		const initialize = async (): Promise<void> => {
 			try {
@@ -123,17 +126,14 @@ export function useRemotePairingSettingsModel(): RemotePairingSettingsModel {
 			} catch {
 				if (!cancelled) setFailure("create");
 			} finally {
-				if (!cancelled) {
-					setInitializing(false);
-					timer = window.setInterval(() => void sync(), REFRESH_MS);
-				}
+				if (!cancelled) setInitializing(false);
 			}
 		};
 
 		void initialize();
 		return () => {
 			cancelled = true;
-			if (timer !== undefined) window.clearInterval(timer);
+			unsubscribe();
 		};
 	}, [apply]);
 
@@ -197,7 +197,7 @@ export function useRemotePairingSettingsModel(): RemotePairingSettingsModel {
 				cancel: t("remote.pairing.cancel"),
 				qrAlt: t("remote.pairing.qrAlt"),
 				qrHint: t("remote.pairing.qrHint", {
-					minutes: state.invite ? Math.max(0, Math.round((state.invite.expiresAt - Date.now()) / 60_000)) : 0,
+					minutes: state.invite ? Math.max(0, Math.round((state.invite.expiresAt - now) / 60_000)) : 0,
 				}),
 				generating: t("remote.pairing.generating"),
 				empty: t("remote.pairing.empty"),
@@ -211,7 +211,7 @@ export function useRemotePairingSettingsModel(): RemotePairingSettingsModel {
 				unavailable: t("remote.cloud.unavailable"),
 			},
 		}),
-		[state.invite, t],
+		[state.invite, now, t],
 	);
 
 	const devices = useMemo(

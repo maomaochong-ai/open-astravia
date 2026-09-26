@@ -19,6 +19,8 @@ export interface RemoteDeviceHubHandlers {
 	readonly onDeviceOffline?: (deviceId: string) => void;
 	/** A link on this device just completed its handshake (also fires for extra links). */
 	readonly onLinkOnline?: (deviceId: string, link: RemoteDeviceLink) => void;
+	/** Anything about a device's links changed: one came or went, or the device went offline. */
+	readonly onLinksChanged?: (deviceId: string) => void;
 }
 
 export interface RemoteDeviceHubOptions {
@@ -71,6 +73,7 @@ export class DesktopRemoteDeviceHub {
 				if (event.state === "online") this.markLinkOnline(deviceId, entry, link);
 				else if (event.state === "closed" || event.state === "failed") this.detach(deviceId, link);
 				else if (event.state === "reconnecting") this.reevaluate(deviceId, entry);
+				this.handlers.onLinksChanged?.(deviceId);
 			}
 		});
 		entry.unsubscribes.set(link, unsubscribe);
@@ -85,6 +88,7 @@ export class DesktopRemoteDeviceHub {
 		entry.unsubscribes.get(link)?.();
 		entry.unsubscribes.delete(link);
 		this.reevaluate(deviceId, entry);
+		this.handlers.onLinksChanged?.(deviceId);
 	}
 
 	/** Closes every link of a device and forgets its journal (revocation). */
@@ -99,6 +103,7 @@ export class DesktopRemoteDeviceHub {
 		const wasOnline = entry.online;
 		this.devices.delete(deviceId);
 		if (wasOnline) this.handlers.onDeviceOffline?.(deviceId);
+		this.handlers.onLinksChanged?.(deviceId);
 	}
 
 	async dropAll(): Promise<void> {
@@ -189,6 +194,7 @@ export class DesktopRemoteDeviceHub {
 			if (stillOnline || !entry.online) return;
 			entry.online = false;
 			this.handlers.onDeviceOffline?.(deviceId);
+			this.handlers.onLinksChanged?.(deviceId);
 		}, this.offlineGraceMs);
 		entry.offlineTimer.unref?.();
 	}

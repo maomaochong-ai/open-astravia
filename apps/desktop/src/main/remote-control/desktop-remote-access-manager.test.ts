@@ -3,7 +3,7 @@ import { generateIdentityKeyPair, parsePairingUri, type RemoteHello, toBase64Url
 import { describe, expect, it, vi } from "vitest";
 import type { DesktopConfig } from "../config/desktop-config-store.js";
 import type { CredentialRef } from "../credentials/credential-vault.js";
-import { DesktopRemoteAccessManager } from "./desktop-remote-access-manager.js";
+import { DesktopRemoteAccessManager, type RemoteAccessState } from "./desktop-remote-access-manager.js";
 import type { DesktopRemoteLanServerOptions } from "./desktop-remote-lan-server.js";
 import type { DesktopRemoteMirror } from "./desktop-remote-mirror.js";
 import type { DesktopRemoteRelayLinkOptions } from "./desktop-remote-relay-link.js";
@@ -220,6 +220,24 @@ describe("DesktopRemoteAccessManager", () => {
 			hello(toBase64Url(generateIdentityKeyPair().publicKey), "iPhone"),
 		);
 		await vi.waitFor(() => expect(readConfig().remoteControl?.devices).toHaveLength(2));
+	});
+
+	it("tells the settings page what changed instead of being asked", async () => {
+		const { manager } = harness();
+		const states: RemoteAccessState[] = [];
+		const stop = manager.onStateChanged((state) => states.push(state));
+		const created = await manager.createInvite();
+		await vi.waitFor(() => expect(states.at(-1)?.invite?.pairingId).toBe(created.invite?.pairingId));
+		const count = states.length;
+
+		// Nothing new: nothing is sent.
+		await manager.renameDevice(created.devices[0]?.id ?? "", "");
+		await new Promise((resolve) => setTimeout(resolve, 5));
+		expect(states).toHaveLength(count);
+
+		await manager.cancelInvite();
+		await vi.waitFor(() => expect(states.at(-1)).toMatchObject({ invite: undefined, devices: [] }));
+		stop();
 	});
 
 	it("revoking the last phone tears every transport down again", async () => {

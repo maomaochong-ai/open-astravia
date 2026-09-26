@@ -1,4 +1,4 @@
-import { ipcMain } from "electron";
+import { BrowserWindow, ipcMain } from "electron";
 import type { DesktopRemoteAccessManager } from "../remote-control/desktop-remote-access-manager.js";
 
 const CHANNELS = {
@@ -10,6 +10,9 @@ const CHANNELS = {
 	REVOKE_DEVICE: "vetta:remote-pairing:revoke-device",
 	RENAME_DEVICE: "vetta:remote-pairing:rename-device",
 } as const;
+
+/** Pushed to every window whenever the pairing state changes. */
+const STATE_CHANGED = "vetta:remote-pairing:state-changed";
 
 function asString(value: unknown): string {
 	return typeof value === "string" ? value : "";
@@ -27,7 +30,13 @@ export function registerRemotePairingIpc(manager: DesktopRemoteAccessManager): (
 	ipcMain.handle(CHANNELS.RENAME_DEVICE, (_event, id: unknown, name: unknown) =>
 		manager.renameDevice(asString(id), asString(name)),
 	);
+	const stopPushing = manager.onStateChanged((state) => {
+		for (const window of BrowserWindow.getAllWindows()) {
+			if (!window.isDestroyed()) window.webContents.send(STATE_CHANGED, state);
+		}
+	});
 	return () => {
+		stopPushing();
 		for (const channel of Object.values(CHANNELS)) ipcMain.removeHandler(channel);
 	};
 }

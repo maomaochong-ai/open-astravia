@@ -60,6 +60,7 @@ function installRemotePairing(options: {
 	const initial = options.initial ?? BASE_STATE;
 	const createInvite = vi.fn(options.createInvite ?? (async () => inviteState()));
 	const steady = async () => initial;
+	const listeners = new Set<(state: RemotePairingState) => void>();
 	Object.defineProperty(window, "vetta", {
 		configurable: true,
 		value: {
@@ -71,10 +72,18 @@ function installRemotePairing(options: {
 				approve: vi.fn(steady),
 				revokeDevice: vi.fn(steady),
 				renameDevice: vi.fn(steady),
+				onStateChanged: (listener: (state: RemotePairingState) => void) => {
+					listeners.add(listener);
+					return () => listeners.delete(listener);
+				},
 			},
 		},
 	});
-	return { createInvite };
+	/** What the main process sends when the pairing state changes. */
+	const push = (state: RemotePairingState) => {
+		for (const listener of listeners) listener(state);
+	};
+	return { createInvite, push };
 }
 
 afterEach(() => {
@@ -124,5 +133,15 @@ describe("远程连接设置", () => {
 
 		await screen.findByRole("img", { name: "remote.pairing.qrAlt" });
 		expect(createInvite).toHaveBeenCalledTimes(2);
+	});
+
+	it("电脑上的变化由主进程推送过来，手机上线离线无需轮询也会立刻显示", async () => {
+		const device = { id: "d1", name: "Pixel", claimed: true, online: false, channels: [], createdAt: 1, lastSeenAt: 2 };
+		const { push } = installRemotePairing({ initial: { ...inviteState(), devices: [device] } });
+		render(<RemotePairingSettings />);
+		expect(await screen.findByText(/remote\.devices\.lastSeen/)).toBeTruthy();
+
+		act(() => push({ ...inviteState(), devices: [{ ...device, online: true, channels: ["lan"] }] }));
+		expect(await screen.findByText(/remote\.devices\.online/)).toBeTruthy();
 	});
 });

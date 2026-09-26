@@ -118,7 +118,7 @@ const MANUAL_LINK_LINGER_MS = 3_000;
 export class DesktopRemoteAccessManager {
 	private readonly hub: DesktopRemoteDeviceHub;
 	private mirror: DesktopRemoteMirror | undefined;
-	private config: RemoteControlConfig = { cloudEnabled: true, devices: [] };
+	private currentConfig: RemoteControlConfig = { cloudEnabled: true, devices: [] };
 	private identityCache: RemoteIdentityKeyPair | undefined;
 	private lanServer: Pick<DesktopRemoteLanServer, "start" | "stop" | "listeningPort"> | undefined;
 	private readonly relayLinks = new Map<string, Pick<DesktopRemoteRelayLink, "start" | "stop">>();
@@ -126,10 +126,13 @@ export class DesktopRemoteAccessManager {
 	private readonly desktopHostStarts = new Set<string>();
 	private readonly approvals = new Map<string, PendingApproval>();
 	private readonly lanLinks = new Map<string, Set<() => void>>();
-	private invite:
+	private currentInvite:
 		| { readonly pairingId: string; readonly expiresAt: number; timer: ReturnType<typeof setTimeout> }
 		| undefined;
-	private lastError: string | undefined;
+	private currentError: string | undefined;
+	private readonly stateListeners = new Set<(state: RemoteAccessState) => void>();
+	private stateNotice: ReturnType<typeof setTimeout> | undefined;
+	private lastNotified: string | undefined;
 	private readonly now: () => number;
 	private readonly inviteTtlMs: number;
 
@@ -143,12 +146,64 @@ export class DesktopRemoteAccessManager {
 				onLinkOnline: (deviceId, link) => void this.handleLinkOnline(deviceId, link.channel, link.connection),
 				onDeviceOnline: (deviceId, link) => void this.handleDeviceOnline(deviceId, link.channel),
 				onDeviceOffline: () => this.handleDeviceOffline(),
+				onLinksChanged: () => this.stateChanged(),
 			},
 			{ offlineGraceMs: options.hubGraceMs },
 		);
 	}
 
 	// ---- public state ----
+
+	/**
+	 * Tells the settings page about every change as it happens (a phone coming or going,
+	 * a channel switching, an invite or approval appearing) instead of it asking every
+	 * second. Changes are gathered for a tick and only a different state is sent.
+	 */
+	onStateChanged(listener: (state: RemoteAccessState) => void): () => void {
+		this.stateListeners.add(listener);
+		return () => this.stateListeners.delete(listener);
+	}
+
+	private stateChanged(): void {
+		if (this.stateNotice || this.stateListeners.size === 0) return;
+		this.stateNotice = setTimeout(() => {
+			this.stateNotice = undefined;
+			const state = this.getState();
+			const serialized = JSON.stringify(state);
+			if (serialized === this.lastNotified) return;
+			this.lastNotified = serialized;
+			for (const listener of this.stateListeners) listener(state);
+		}, 0);
+		this.stateNotice.unref?.();
+	}
+
+	// Every change to what the settings page shows passes through these.
+	private get config(): RemoteControlConfig {
+		return this.currentConfig;
+	}
+
+	private set config(value: RemoteControlConfig) {
+		this.currentConfig = value;
+		this.stateChanged();
+	}
+
+	private get invite() {
+		return this.currentInvite;
+	}
+
+	private set invite(value) {
+		this.currentInvite = value;
+		this.stateChanged();
+	}
+
+	private get lastError(): string | undefined {
+		return this.currentError;
+	}
+
+	private set lastError(value: string | undefined) {
+		this.currentError = value;
+		this.stateChanged();
+	}
 
 	getState(): RemoteAccessState {
 		const port = this.lanServer?.listeningPort;
@@ -281,6 +336,7 @@ export class DesktopRemoteAccessManager {
 		if (approval) {
 			this.approvals.delete(id);
 			approval.resolve(allow);
+			this.stateChanged();
 		}
 		return this.getState();
 	}
@@ -412,10 +468,12 @@ export class DesktopRemoteAccessManager {
 		return new Promise<boolean>((resolve) => {
 			const approval: PendingApproval = { id: connectionId, hello, code, requestedAt: this.now(), resolve };
 			this.approvals.set(connectionId, approval);
+			this.stateChanged();
 			this.options.notifications.pairingRequested({ deviceName: hello.deviceName, code });
 			const timer = setTimeout(() => {
 				if (this.approvals.get(connectionId) === approval) {
 					this.approvals.delete(connectionId);
+					this.stateChanged();
 					resolve(false);
 				}
 			}, 5 * 60_000);

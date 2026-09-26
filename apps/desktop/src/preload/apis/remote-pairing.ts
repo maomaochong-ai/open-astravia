@@ -1,7 +1,9 @@
 import type { IpcRenderer } from "electron";
-import type { RemotePairingApi } from "../api-types/remote-pairing.js";
+import type { RemotePairingApi, RemotePairingState } from "../api-types/remote-pairing.js";
 
-export function createRemotePairingApi(ipc: Pick<IpcRenderer, "invoke">): RemotePairingApi {
+const STATE_CHANGED = "vetta:remote-pairing:state-changed";
+
+export function createRemotePairingApi(ipc: Pick<IpcRenderer, "invoke" | "on" | "removeListener">): RemotePairingApi {
 	return {
 		getState: () => ipc.invoke("vetta:remote-pairing:get-state"),
 		createInvite: () => ipc.invoke("vetta:remote-pairing:create-invite"),
@@ -10,5 +12,12 @@ export function createRemotePairingApi(ipc: Pick<IpcRenderer, "invoke">): Remote
 		approve: (id, allow) => ipc.invoke("vetta:remote-pairing:approve", id, allow),
 		revokeDevice: (id) => ipc.invoke("vetta:remote-pairing:revoke-device", id),
 		renameDevice: (id, name) => ipc.invoke("vetta:remote-pairing:rename-device", id, name),
+		onStateChanged: (listener) => {
+			const handler = (_event: unknown, state: RemotePairingState): void => listener(state);
+			ipc.on(STATE_CHANGED, handler);
+			return () => {
+				ipc.removeListener(STATE_CHANGED, handler);
+			};
+		},
 	};
 }
