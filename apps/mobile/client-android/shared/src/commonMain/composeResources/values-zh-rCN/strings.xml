@@ -163,6 +163,10 @@
     <string name="session_rename_title">重命名会话</string>
     <string name="session_unpin">取消置顶</string>
     <string name="settings_title">设置</string>
+    <plurals name="share_skipped">
+        <item quantity="other">有 %1$d 项没能加入：可能文件太大，或者一条消息最多只能带 %2$d 个附件。</item>
+    </plurals>
+    <string name="share_title">已分享到 Vetta</string>
     <string name="stop">停止</string>
     <string name="theme_dark">深色</string>
     <string name="theme_light">浅色</string>

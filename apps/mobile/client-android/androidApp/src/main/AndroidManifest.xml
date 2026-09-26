@@ -47,6 +47,17 @@
                     android:host="pair"
                     android:scheme="vetta" />
             </intent-filter>
+            <!-- Text, pictures and files shared from other apps start a session. -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
         </activity>
 
         <!-- Hands the system camera a file to write a composer photo into. -->

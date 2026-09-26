@@ -39,13 +39,18 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.CreationExtras
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlin.reflect.KClass
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import org.vetta.android.app.AppContainer
+import org.vetta.android.domain.work.IncomingShare
 import org.vetta.android.domain.work.MirrorState
 import org.vetta.android.domain.work.PromptDraft
 import org.vetta.android.resources.Res
 import org.vetta.android.resources.new_session_title
+import org.vetta.android.resources.share_skipped
+import org.vetta.android.resources.share_title
 import org.vetta.android.ui.board.TaskBoardSheet
+import org.vetta.android.ui.components.VettaInfoDialog
 import org.vetta.android.ui.design.VettaMotion
 import org.vetta.android.ui.home.HomeScreen
 import org.vetta.android.ui.home.ProjectScreen
@@ -96,6 +101,8 @@ fun RootApp(
     container: AppContainer = LocalAppContainer.current,
     pairingInvite: String? = null,
     onPairingInviteHandled: () -> Unit = {},
+    incomingShare: IncomingShare? = null,
+    onShareHandled: () -> Unit = {},
 ) {
     val vm: AppViewModel = viewModel(factory = remember(container) { AppViewModelFactory(container) })
     val state by vm.state.collectAsState()
@@ -139,6 +146,17 @@ fun RootApp(
         }
     }
 
+    // Something shared from another app starts a session: New Session opens with it in the composer.
+    var shareSkipped by remember { mutableStateOf(0) }
+    LaunchedEffect(incomingShare) {
+        val share = incomingShare ?: return@LaunchedEffect
+        val (draft, skipped) = share.into(work.drafts.value[WorkViewModel.NEW_SESSION_DRAFT] ?: PromptDraft())
+        work.setDraft(WorkViewModel.NEW_SESSION_DRAFT, draft)
+        vm.startNewSession()
+        shareSkipped = skipped
+        onShareHandled()
+    }
+
     // The chat in the slot was deleted, here or on the desktop.
     val sessionIds = workState.sessions.map { it.id }
     var knownIds by remember { mutableStateOf(sessionIds) }
@@ -165,6 +183,13 @@ fun RootApp(
                 exit = slideOutVertically(VettaMotion.snappy(IntOffset.VisibilityThreshold)) { it / 3 } + fadeOut(VettaMotion.snappy()),
             ) {
                 RemoteDesktopScreen(workState, viewerUrl, onClose = vm::closeRemote)
+            }
+            if (shareSkipped > 0) {
+                VettaInfoDialog(
+                    title = stringResource(Res.string.share_title),
+                    message = pluralStringResource(Res.plurals.share_skipped, shareSkipped, shareSkipped, PromptDraft.MAX_ATTACHMENTS),
+                    onDismiss = { shareSkipped = 0 },
+                )
             }
             if (state.showBoard) {
                 TaskBoardSheet(

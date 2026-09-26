@@ -171,6 +171,11 @@
     <string name="session_rename_title">Rename Session</string>
     <string name="session_unpin">Unpin</string>
     <string name="settings_title">Settings</string>
+    <plurals name="share_skipped">
+        <item quantity="one">%1$d item couldn’t be added: it may be too large, or a message holds at most %2$d attachments.</item>
+        <item quantity="other">%1$d items couldn’t be added: they may be too large, or a message holds at most %2$d attachments.</item>
+    </plurals>
+    <string name="share_title">Shared to Vetta</string>
     <string name="stop">Stop</string>
     <string name="theme_dark">Dark</string>
     <string name="theme_light">Light</string>
