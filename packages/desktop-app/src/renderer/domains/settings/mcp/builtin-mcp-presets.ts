@@ -275,6 +275,7 @@ export const BUILTIN_MCP_PRESETS: readonly BuiltinMcpPreset[] = [
 	{
 		id: "dbx",
 		name: "dbx",
+		iconUrl: "solar:database-bold",
 		displayNameKey: "mcpPresets.dbx.displayName",
 		descriptionKey: "mcpPresets.dbx.description",
 		// 随包分发的 dbx-mcp 原生二进制（resources/dbx-mcp/<platform>/dbx-mcp.exe）。

@@ -198,8 +198,10 @@ export function useMcpSettingsModel(): McpSettingsModel {
 	}, []);
 
 	const closeSecretsDialog = useCallback(() => {
-		// 授权进行中不允许关掉，避免中途丢状态
-		if (secretsDialogAuthorizing) return;
+		// 无条件清状态：Dialog 关闭必须总能被触发（叉号 / Esc / backdrop 点按）。
+		// 早期版本在这里加了 `if (secretsDialogAuthorizing) return` 的守卫，
+		// 导致 OAuth 浏览器授权进行中点叉号无效——表现为"关不掉"。
+		// authorizeOAuth 内部有自己的 try/catch 处理 Dialog unmount 后的结果。
 		setSecretsDialogPreset(null);
 		setSecretsDialogInitial(undefined);
 		setSecretsDialogTargetName(null);
@@ -207,7 +209,7 @@ export function useMcpSettingsModel(): McpSettingsModel {
 		setSecretsDialogError(null);
 		setSecretsDialogAuthorizing(false);
 		pendingAbilityInstallRef.current = undefined;
-	}, [secretsDialogAuthorizing]);
+	}, []);
 
 	const writeBuiltinPreset = useCallback(
 		async (preset: BuiltinMcpPreset, secretValues?: Record<string, string>, options?: McpAbilityInstallOptions) => {

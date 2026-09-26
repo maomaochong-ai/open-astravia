@@ -90,6 +90,18 @@ describe("resolveCategoryLabel", () => {
 		expect(resolveCategoryLabel("设计", { "ja-JP": "デザイン" }, "en")).toBe("设计");
 		expect(resolveCategoryLabel("设计", undefined, "en")).toBe("设计");
 	});
+
+	it("zh 界面命中客户端 fallback 字典（服务端缺 category_i18n）", () => {
+		// 服务端只给了规范名 Development，未给 zh 译名——客户端兜底应译为「开发」
+		expect(resolveCategoryLabel("Development", undefined, "zh")).toBe("开发");
+		expect(resolveCategoryLabel("Documents", undefined, "zh")).toBe("文档");
+		expect(resolveCategoryLabel("Design", undefined, "zh")).toBe("设计");
+	});
+
+	it("fallback 字典也按 locale 解析；未知分类原样返回", () => {
+		expect(resolveCategoryLabel("Development", undefined, "en")).toBe("Development");
+		expect(resolveCategoryLabel("UnknownCategory", undefined, "zh")).toBe("UnknownCategory");
+	});
 });
 
 describe("localizeMarketAbility", () => {

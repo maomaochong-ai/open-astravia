@@ -72,7 +72,6 @@ export function DatabaseConnectionForm({
 			<DialogContent className="max-w-[min(38rem,calc(100%-2rem))] max-h-[min(42rem,calc(100dvh-2rem))] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden">
 				<DialogHeader className="shrink-0">
 					<DialogTitle>{t("databaseAddConnection")}</DialogTitle>
-					<DialogDescription>{t("databaseEngineNote")}</DialogDescription>
 				</DialogHeader>
 
 				<div className="grid min-h-0 grid-cols-2 gap-3 overflow-y-auto pr-1">

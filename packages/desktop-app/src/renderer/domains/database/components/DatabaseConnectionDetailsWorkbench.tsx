@@ -75,8 +75,6 @@ export function DatabaseConnectionDetailsWorkbench({
 						) : null}
 					</DatabaseNotice>
 				) : null}
-
-				<DatabaseNotice tone="info" icon="icon-[lucide--shield-check]" title={t("databaseEngineNote")} />
 			</div>
 		</div>
 	);

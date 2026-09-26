@@ -387,14 +387,14 @@ export function TabBar<T extends string>({
 								// （浅黑/深白）。inline 优先级最高，杜绝回退。激活态无 border 宽度，不受影响。
 								style={{ borderColor: "color-mix(in oklab, var(--border) 70%, transparent)" }}
 								className={cn(
-									"relative flex w-full select-none items-center gap-1.5 whitespace-nowrap text-[11px] font-medium leading-none",
+									"relative flex w-full select-none items-center gap-1.5 whitespace-nowrap text-[11px] leading-none",
 									isPanel
 										? cn(
-												"h-6 rounded-md px-3 transition-colors",
+												"h-6 rounded-t-md px-3 transition-colors",
 												onReorder != null && "cursor-grab active:cursor-grabbing",
 												active
-													? "bg-primary/10 text-primary"
-													: "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+													? "text-primary"
+													: "text-muted-foreground hover:bg-muted/40 hover:text-foreground",
 											)
 										: cn(
 												"rounded-t-lg",
@@ -405,6 +405,20 @@ export function TabBar<T extends string>({
 											)
 								)}
 							>
+								{active && isPanel && (
+									// Panel 模式激活胶囊（Dock Pill）：用 layoutId 共享布局在 tab 间平滑滑动。
+									// 只顶部两角带圆角、底部直角贴紧下面的面板，避免圆角造成"缺口"感。
+									// spring 参数与非 panel 顶部 tab 的激活指示器保持一致（视觉节奏统一）。
+									<motion.span
+										layoutId={`tabbar-pill-${layoutId}`}
+										className="absolute inset-0 rounded-t-md bg-primary/15"
+										transition={
+											suppressLayoutAnimation
+												? { duration: 0 }
+												: { type: "spring", stiffness: 480, damping: 36, mass: 0.8 }
+											}
+									/>
+								)}
 								{active && !isPanel && (
 									// 激活指示器：用 layoutId 共享布局在页签间平滑滑动。borderColor 仍 inline 钉死
 									// 防 v4 currentColor 回退（闪烁根因是边框色、与此动画无关，已修复）。

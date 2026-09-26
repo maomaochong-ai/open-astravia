@@ -107,14 +107,14 @@ describe("queryAbilityCatalog", () => {
 
 		const page = queryAbilityCatalog(presets, { scope: "discover", page: 1, pageSize: 60 });
 
-		expect(page.items.map((item) => item.slug).sort()).toEqual(["figma", "github", "notion"]);
-		// 全部归入「连接」分组，且带得到相对路径图标
+		expect(page.items.map((item) => item.slug).sort()).toEqual(["dbx", "figma", "github", "notion"]);
+		// 全部归入「连接」分组；figma/github/notion 用图片图标，dbx 用 Solar Icon
 		expect(page.items.every((item) => item.category === ABILITY_CATEGORY_CONNECTORS)).toBe(true);
-		expect(page.items.map((item) => item.icon).sort()).toEqual([
-			"./mcp/figma.png",
-			"./mcp/github.png",
-			"./mcp/notion.png",
-		]);
+		const iconBySlug = Object.fromEntries(page.items.map((item) => [item.slug, item.icon]));
+		expect(iconBySlug.figma).toBe("./mcp/figma.png");
+		expect(iconBySlug.github).toBe("./mcp/github.png");
+		expect(iconBySlug.notion).toBe("./mcp/notion.png");
+		expect(iconBySlug.dbx).toBe("solar:database-bold");
 	});
 
 	it("keeps discover ordering stable when installation state changes", () => {

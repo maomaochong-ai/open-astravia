@@ -68,7 +68,48 @@ export function pickLocaleValue<T>(map: Record<string, T> | undefined, locale: s
 }
 
 /**
- * 分类展示名：`i18n[locale] ?? 规范名`，与 `raw.detail` 的取值口径一致。
+ * 分类兜底字典：服务端 catalog 未提供 `category_i18n[locale]` 时的客户端翻译。
+ * 键是服务端 `AbilityCategory.Name`（分组 key），值是各语言展示名。
+ * 补这个表的原因：线上能力目录的分类由运营/服务端录入，偶尔只给了英文名。
+ * 客户端兜底后，用户界面语言 = zh 时不会再看到混杂英文的分类标题。
+ */
+const CATEGORY_FALLBACK_I18N: Record<string, Record<string, string>> = {
+	Development: { zh: "开发", en: "Development" },
+	Documents: { zh: "文档", en: "Documents" },
+	Design: { zh: "设计", en: "Design" },
+	Productivity: { zh: "效率工具", en: "Productivity" },
+	Marketing: { zh: "市场营销", en: "Marketing" },
+	Research: { zh: "研究", en: "Research" },
+	Education: { zh: "教育", en: "Education" },
+	Writing: { zh: "写作", en: "Writing" },
+	Workflow: { zh: "工作流", en: "Workflow" },
+	Data: { zh: "数据", en: "Data" },
+	Database: { zh: "数据库", en: "Database" },
+	Finance: { zh: "财务", en: "Finance" },
+	HR: { zh: "人力资源", en: "HR" },
+	Legal: { zh: "法务", en: "Legal" },
+	Sales: { zh: "销售", en: "Sales" },
+	Customer: { zh: "客户服务", en: "Customer" },
+	Analytics: { zh: "分析", en: "Analytics" },
+	Communication: { zh: "沟通", en: "Communication" },
+	Media: { zh: "媒体", en: "Media" },
+	Image: { zh: "图像", en: "Image" },
+	Video: { zh: "视频", en: "Video" },
+	Audio: { zh: "音频", en: "Audio" },
+	Translation: { zh: "翻译", en: "Translation" },
+	Code: { zh: "代码", en: "Code" },
+	DevOps: { zh: "运维", en: "DevOps" },
+	Security: { zh: "安全", en: "Security" },
+	Testing: { zh: "测试", en: "Testing" },
+	Infrastructure: { zh: "基础设施", en: "Infrastructure" },
+	AI: { zh: "AI", en: "AI" },
+	Automation: { zh: "自动化", en: "Automation" },
+	Other: { zh: "其他", en: "Other" },
+};
+
+/**
+ * 分类展示名：服务端 `i18n[locale]` → 客户端兜底字典 → 原规范名。
+ * 与 `raw.detail` 的取值口径一致；兜底字典让服务端缺翻译时界面语言仍保持一致。
  *
  * 规范名（服务端 `AbilityCategory.Name`）同时是分组与筛选的 key，不参与翻译；
  * 界面上看到的永远是这里解析出来的展示名。
@@ -78,7 +119,14 @@ export function resolveCategoryLabel(
 	i18n: Record<string, string> | undefined,
 	locale: string,
 ): string {
-	return pickLocaleValue(i18n, locale)?.trim() || category;
+	const serverLabel = pickLocaleValue(i18n, locale)?.trim();
+	if (serverLabel) return serverLabel;
+	const fallback = CATEGORY_FALLBACK_I18N[category];
+	if (fallback) {
+		const fallbackLabel = pickLocaleValue(fallback, locale)?.trim();
+		if (fallbackLabel) return fallbackLabel;
+	}
+	return category;
 }
 
 export interface AbilityDetailContent {
