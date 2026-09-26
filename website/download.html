@@ -194,36 +194,41 @@
 
 				// 精确计算 theater 内各元素的绝对坐标
 				const titleRect = titleEl.getBoundingClientRect();
-				const tTop = titleRect.top - tRect.top;           // 标题在 theater 内的 Y
-				const tLeft = titleRect.left - tRect.left;       // 标题在 theater 内的 X
-				const tW = titleRect.width; tH = titleRect.height;
+				const tTop = titleRect.top - tRect.top;
+				const tLeft = titleRect.left - tRect.left;
+				const tW = titleRect.width;
 
 				const dRect = descEl.getBoundingClientRect();
 				const dTop = dRect.top - tRect.top;
 				const dLeft = dRect.left - tRect.left;
-				const dW = dRect.width; dH = dRect.height;
+				const dW = dRect.width;
+
+				const pEl = document.getElementById("dlPrimary");
+				const pRect = pEl.getBoundingClientRect();
+				const pTop = pRect.top - tRect.top;
+				const pLeft = pRect.left - tRect.left;
+				const pW = pRect.width;
 
 				const fRect = footerEl.getBoundingClientRect();
 				const fTop = fRect.top - tRect.top;
 
-				// 目标点：图标中心落在 (cx, cy)
-				// 布局：2 个砸标题上方，4 个砸描述上方，1 个砸按钮附近，1 个砸页脚横线
-				const GAP = 14; // 图标底距文字顶的间距
+				// 图标底边贴住文字顶 → 图标中心 Y = 文字顶 - ICON/2
+				// 因为图标 margin-top = -ICON/2，所以 top 值直接就是图标中心 Y
 				const titleZone = [
-					{ x: tLeft + tW * 0.25, y: tTop - ICON / 2 - GAP },
-					{ x: tLeft + tW * 0.75, y: tTop - ICON / 2 - GAP },
+					{ x: tLeft + tW * 0.25, y: tTop - ICON / 2 },
+					{ x: tLeft + tW * 0.75, y: tTop - ICON / 2 },
 				];
 				const descZone = [
-					{ x: dLeft + dW * 0.15, y: dTop - ICON / 2 - GAP },
-					{ x: dLeft + dW * 0.4,  y: dTop - ICON / 2 - GAP },
-					{ x: dLeft + dW * 0.62, y: dTop - ICON / 2 - GAP },
-					{ x: dLeft + dW * 0.88, y: dTop - ICON / 2 - GAP },
+					{ x: dLeft + dW * 0.15, y: dTop - ICON / 2 },
+					{ x: dLeft + dW * 0.4,  y: dTop - ICON / 2 },
+					{ x: dLeft + dW * 0.62, y: dTop - ICON / 2 },
+					{ x: dLeft + dW * 0.88, y: dTop - ICON / 2 },
 				];
 				const midZone = [
-					{ x: tRect.width * 0.72, y: tTop + tH + dH + 80 }, // 按钮右侧
+					{ x: pLeft + pW * 0.9, y: pTop - ICON / 2 }, // 砸下载按钮顶
 				];
 				const footZone = [
-					{ x: 80, y: fTop - ICON / 2 }, // 页脚横线上
+					{ x: 100, y: fTop - ICON / 2 }, // 砸页脚横线
 				];
 
 				const zones = [
