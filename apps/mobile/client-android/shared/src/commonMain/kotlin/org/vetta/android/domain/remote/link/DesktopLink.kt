@@ -30,6 +30,7 @@ import org.vetta.android.domain.remote.connection.RemoteConnectionOptions
 import org.vetta.android.domain.remote.connection.RemoteConnectionState
 import org.vetta.android.domain.remote.connection.RemoteLogger
 import org.vetta.android.domain.remote.connection.RemoteTransport
+import org.vetta.android.domain.remote.connection.UnknownPairingException
 import org.vetta.android.domain.remote.lanControlUrl
 import org.vetta.android.domain.remote.pairing.DesktopRecord
 import org.vetta.android.domain.remote.relayControlUrl
@@ -94,6 +95,9 @@ class DesktopLink(
         val jobs = mutableListOf<Job>()
         var disposed = false
         var unauthorized = false
+
+        /** The desktop's local server answered that it does not know this pairing. */
+        var unknownPairing = false
     }
 
     private val _snapshot = MutableStateFlow(LinkSnapshot.Offline)
@@ -109,6 +113,7 @@ class DesktopLink(
     private var lanEndpoints = options.desktop.lanEndpoints
     private var active: Candidate? = null
     private var generation = 0
+    private var lanForgotPairing = false
     private var running = false
     private var foreground = true
     private var attemptJob: Job? = null
@@ -221,7 +226,10 @@ class DesktopLink(
             scheduleProbe()
             return
         }
-        scheduleReconnect("unreachable")
+        // The local server no longer knows this phone and the relay cannot reach the desktop
+        // either: most likely unpaired there. Only a hint, since another computer may now hold
+        // the old address; a desktop reached over the relay still knows the pairing.
+        scheduleReconnect(if (lanForgotPairing) UNKNOWN_PAIRING else "unreachable")
     }
 
     /** Tries every local-network address at once; the first to come online wins. */
@@ -251,6 +259,7 @@ class DesktopLink(
                 }?.takeIf { current == generation }
             return winner
         } finally {
+            lanForgotPairing = winner == null && candidates.any { it.unknownPairing }
             candidates.filter { it !== winner }.forEach(::dispose)
         }
     }
@@ -413,8 +422,13 @@ class DesktopLink(
                     candidate.connection.connect()
                 } catch (error: CancellationException) {
                     throw error
-                } catch (_: Throwable) {
+                } catch (error: Throwable) {
                     // The connection reports the failure through its state.
+                    if (generateSequence(error) { it.cause }.any { it is UnknownPairingException }) candidate.unknownPairing = true
+                    options.logger.info(
+                        "remote link attempt failed",
+                        mapOf("channel" to candidate.channel.name, "unknownPairing" to candidate.unknownPairing, "error" to (error.message ?: error::class.simpleName)),
+                    )
                 }
             }
         val reached =
@@ -584,6 +598,7 @@ class DesktopLink(
     companion object {
         /** `lastError` when the desktop no longer accepts this phone's pairing. */
         const val UNAUTHORIZED = "unauthorized"
+        const val UNKNOWN_PAIRING = "unknown_pairing"
 
         private const val INITIAL_BACKOFF_MS = 1_000L
         private const val RETIRE_WAIT_MS = 10_000L

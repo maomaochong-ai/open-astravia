@@ -193,4 +193,8 @@ class WorkViewModel(private val mirror: DesktopMirror) : ViewModel(), WorkAction
     override fun clearError() {
         mirror.clearError()
     }
+
+    fun dismissRevoked() = mirror.dismissRevoked()
+
+    fun forgetRevoked() = mirror.forgetRevoked()
 }

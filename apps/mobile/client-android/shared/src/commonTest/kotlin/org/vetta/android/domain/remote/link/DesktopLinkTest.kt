@@ -267,6 +267,25 @@ class DesktopLinkTest {
         }
 
     @Test
+    fun aLocalServerThatForgotThePairingIsReportedWhenNothingElseReachesTheDesktop() =
+        runTest {
+            val desktop = FakeDesktop(backgroundScope).apply { forgotPairing = true }
+            val link = link(desktop, relay = null, lan = listOf("192.168.1.20:43117"))
+            link.start()
+            assertTrue(eventually { link.snapshot.value.lastError == DesktopLink.UNKNOWN_PAIRING })
+        }
+
+    @Test
+    fun aDesktopStillReachedOverTheRelayKnowsThePairing() =
+        runTest {
+            val desktop = FakeDesktop(backgroundScope).apply { forgotPairing = true }
+            val link = link(desktop, lan = listOf("192.168.1.20:43117"))
+            link.start()
+            assertTrue(eventually { link.snapshot.value.channel == LinkChannel.Relay })
+            assertTrue(link.snapshot.value.lastError != DesktopLink.UNKNOWN_PAIRING, "another computer may hold the old address")
+        }
+
+    @Test
     fun returningToTheForegroundProbesTheLocalNetworkAtOnce() =
         runTest {
             val desktop = FakeDesktop(backgroundScope)

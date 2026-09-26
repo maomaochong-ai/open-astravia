@@ -43,12 +43,20 @@ class KtorWebSocketRemoteTransport(
 
     override suspend fun connect() {
         val socket =
-            client.webSocketSession {
-                url.takeFrom(this@KtorWebSocketRemoteTransport.url)
-                headers.append(
-                    HttpHeaders.SecWebSocketProtocol,
-                    listOf(PROTOCOL, pairingSecret?.let { "$PAIRING_PREFIX$it" } ?: MANUAL).joinToString(", "),
-                )
+            try {
+                client.webSocketSession {
+                    url.takeFrom(this@KtorWebSocketRemoteTransport.url)
+                    headers.append(
+                        HttpHeaders.SecWebSocketProtocol,
+                        listOf(PROTOCOL, pairingSecret?.let { "$PAIRING_PREFIX$it" } ?: MANUAL).joinToString(", "),
+                    )
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Throwable) {
+                // The desktop's local server answers 404 for a pairing it does not have.
+                if (generateSequence(error) { it.cause }.any { NOT_FOUND.containsMatchIn(it.message.orEmpty()) }) throw UnknownPairingException(error)
+                throw error
             }
         session = socket
         readerJob?.cancel()
@@ -94,5 +102,9 @@ class KtorWebSocketRemoteTransport(
         const val PAIRING_PREFIX = "vetta.pairing."
         const val MANUAL = "vetta.manual"
         const val CLOSE_REASON_WAIT_MS = 500L
+        val NOT_FOUND = Regex("\\b404\\b")
     }
 }
+
+/** The desktop reached over the local network does not know this phone's pairing. */
+class UnknownPairingException(cause: Throwable) : IllegalStateException("the desktop does not know this pairing", cause)

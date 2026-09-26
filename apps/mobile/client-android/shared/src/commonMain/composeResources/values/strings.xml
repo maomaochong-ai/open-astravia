@@ -169,6 +169,14 @@
     <string name="remote_keyboard">Keyboard</string>
     <string name="remote_keyboard_hint">Types English letters, digits and spaces</string>
     <string name="remote_rotate">Rotate</string>
+    <string name="revoked_forget">Clear and Scan Again</string>
+    <string name="revoked_message">“%1$s” unpaired this phone. The sessions cached on this phone were cleared; your sessions on the computer stay. Scan again to keep using it.</string>
+    <string name="revoked_not_now">Not Now</string>
+    <string name="revoked_scan">Scan Again</string>
+    <string name="revoked_suspected_message">“%1$s” no longer recognizes this phone’s pairing; it was probably unpaired on the computer. Clearing removes the sessions cached on this phone (not those on the computer) and you’ll scan again.</string>
+    <string name="revoked_suspected_title">Unpaired on the computer?</string>
+    <string name="revoked_this_computer">This computer</string>
+    <string name="revoked_title">Unpaired on the computer</string>
     <string name="save">Save</string>
     <string name="send">Send</string>
     <string name="session_delete">Delete</string>

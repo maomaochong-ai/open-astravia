@@ -115,6 +115,7 @@ data class RemoteResponse(
 enum class RemoteEventName {
     @SerialName("device.status") DeviceStatus,
     @SerialName("device.paired") DevicePaired,
+    @SerialName("device.revoked") DeviceRevoked,
     @SerialName("session.list") SessionList,
     @SerialName("session.state") SessionState,
     @SerialName("session.message") SessionMessage,

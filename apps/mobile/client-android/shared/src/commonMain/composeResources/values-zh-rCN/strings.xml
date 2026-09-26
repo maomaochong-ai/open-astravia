@@ -161,6 +161,14 @@
     <string name="remote_keyboard">键盘</string>
     <string name="remote_keyboard_hint">可输入英文字母、数字和空格</string>
     <string name="remote_rotate">旋转屏幕</string>
+    <string name="revoked_forget">清除并重新扫码</string>
+    <string name="revoked_message">「%1$s」解除了与这部手机的配对，手机上缓存的会话已清除，电脑上的会话不受影响。要继续使用，请重新扫码。</string>
+    <string name="revoked_not_now">暂不</string>
+    <string name="revoked_scan">重新扫码</string>
+    <string name="revoked_suspected_message">「%1$s」不再认得这部手机的配对，可能已在电脑上解除。清除后会删除手机上缓存的会话（电脑上的不受影响），需要重新扫码。</string>
+    <string name="revoked_suspected_title">这台电脑可能已解除配对</string>
+    <string name="revoked_this_computer">这台电脑</string>
+    <string name="revoked_title">已在电脑上解除配对</string>
     <string name="save">保存</string>
     <string name="send">发送</string>
     <string name="session_delete">删除</string>

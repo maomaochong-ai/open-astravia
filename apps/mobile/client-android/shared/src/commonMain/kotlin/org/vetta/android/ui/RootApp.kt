@@ -53,10 +53,20 @@ import org.vetta.android.domain.work.LaunchTarget
 import org.vetta.android.domain.work.MirrorState
 import org.vetta.android.domain.work.PromptDraft
 import org.vetta.android.resources.Res
+import org.vetta.android.resources.close
 import org.vetta.android.resources.new_session_title
+import org.vetta.android.resources.revoked_forget
+import org.vetta.android.resources.revoked_message
+import org.vetta.android.resources.revoked_not_now
+import org.vetta.android.resources.revoked_scan
+import org.vetta.android.resources.revoked_suspected_message
+import org.vetta.android.resources.revoked_suspected_title
+import org.vetta.android.resources.revoked_this_computer
+import org.vetta.android.resources.revoked_title
 import org.vetta.android.resources.share_skipped
 import org.vetta.android.resources.share_title
 import org.vetta.android.ui.board.TaskBoardSheet
+import org.vetta.android.ui.components.VettaConfirmDialog
 import org.vetta.android.ui.components.VettaInfoDialog
 import org.vetta.android.ui.design.VettaMotion
 import org.vetta.android.ui.home.HomeScreen
@@ -235,6 +245,34 @@ fun RootApp(
                     exit = slideOutVertically(VettaMotion.snappy(IntOffset.VisibilityThreshold)) { it / 3 } + fadeOut(VettaMotion.snappy()),
                 ) {
                     RemoteDesktopScreen(workState, viewerUrl, onClose = vm::closeRemote)
+                }
+                workState.revoked?.let { notice ->
+                    val name = notice.desktopName.ifBlank { stringResource(Res.string.revoked_this_computer) }
+                    if (notice.certain) {
+                        VettaConfirmDialog(
+                            title = stringResource(Res.string.revoked_title),
+                            message = stringResource(Res.string.revoked_message, name),
+                            confirmLabel = stringResource(Res.string.revoked_scan),
+                            onConfirm = {
+                                work.dismissRevoked()
+                                vm.openPairing()
+                            },
+                            onDismiss = work::dismissRevoked,
+                            dismissLabel = stringResource(Res.string.close),
+                        )
+                    } else {
+                        VettaConfirmDialog(
+                            title = stringResource(Res.string.revoked_suspected_title),
+                            message = stringResource(Res.string.revoked_suspected_message, name),
+                            confirmLabel = stringResource(Res.string.revoked_forget),
+                            onConfirm = {
+                                work.forgetRevoked()
+                                vm.openPairing()
+                            },
+                            onDismiss = work::dismissRevoked,
+                            dismissLabel = stringResource(Res.string.revoked_not_now),
+                        )
+                    }
                 }
                 if (shareSkipped > 0) {
                     VettaInfoDialog(

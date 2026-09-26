@@ -601,6 +601,71 @@ class DesktopMirrorTest {
         }
 
     @Test
+    fun forgetsTheComputerWhenItSaysThisPhoneWasUnpaired() =
+        runTest {
+            val desktop = scriptedDesktop()
+            val mirror = mirror(desktop)
+            assertTrue(mirror.pairWithCode(desktop.invite()))
+            assertTrue(eventually { mirror.state.value.sessions.isNotEmpty() })
+
+            desktop.emit(RemoteEventName.DeviceRevoked, buildJsonObject {})
+            assertTrue(eventually { !mirror.state.value.paired })
+            assertEquals(RevokedNotice("MacBook Pro", certain = true), mirror.state.value.revoked)
+            assertTrue(mirror.state.value.sessions.isEmpty(), "what was cached from it goes, as unpairing here would do")
+            mirror.dismissRevoked()
+            assertNull(mirror.state.value.revoked)
+        }
+
+    @Test
+    fun asksBeforeForgettingAComputerThatOnlySeemsToHaveUnpairedThisPhone() =
+        runTest {
+            val desktop = scriptedDesktop()
+            val mirror = mirror(desktop)
+            assertTrue(mirror.pairWithCode(desktop.invite(relay = "wss://relay.example", lan = listOf("192.168.1.20:43117"))))
+            assertTrue(eventually { mirror.state.value.online })
+
+            desktop.forgotPairing = true
+            desktop.reachable = false
+            desktop.dropConnections()
+            assertTrue(eventually(timeoutMs = 10_000) { mirror.state.value.revoked != null })
+            assertEquals(RevokedNotice("MacBook Pro", certain = false), mirror.state.value.revoked)
+            assertTrue(mirror.state.value.paired, "nothing is cleared until the user agrees")
+
+            mirror.forgetRevoked()
+            assertFalse(mirror.state.value.paired)
+            assertNull(mirror.state.value.revoked)
+        }
+
+    @Test
+    fun aSuspectedUnpairingIsDroppedOnceTheComputerAnswersOrThePhonePairsAgain() =
+        runTest {
+            val desktop = scriptedDesktop()
+            val mirror = mirror(desktop)
+            assertTrue(mirror.pairWithCode(desktop.invite(relay = "wss://relay.example", lan = listOf("192.168.1.20:43117"))))
+            assertTrue(eventually { mirror.state.value.online })
+            desktop.forgotPairing = true
+            desktop.reachable = false
+            desktop.dropConnections()
+            assertTrue(eventually(timeoutMs = 10_000) { mirror.state.value.revoked != null })
+
+            // The relay reaches the desktop again with this pairing: it was not unpaired after all.
+            desktop.reachable = true
+            mirror.refreshLink()
+            assertTrue(eventually(timeoutMs = 10_000) { mirror.state.value.online })
+            assertNull(mirror.state.value.revoked)
+            assertTrue(mirror.state.value.paired)
+
+            // A notice about one pairing never outlives a new one, whose "clear" would wipe it.
+            desktop.reachable = false
+            desktop.dropConnections()
+            assertTrue(eventually(timeoutMs = 10_000) { !mirror.state.value.online })
+            desktop.forgotPairing = false
+            desktop.reachable = true
+            assertTrue(mirror.pairWithCode(desktop.invite()))
+            assertNull(mirror.state.value.revoked)
+        }
+
+    @Test
     fun aManualPairingIsKeptAndConnectsOverTheLocalNetwork() =
         runTest {
             val desktop = scriptedDesktop()

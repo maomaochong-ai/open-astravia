@@ -78,6 +78,9 @@ enum class MirrorError {
     Unknown,
 }
 
+/** The computer let this phone go: for certain (it said so), or seemingly (it no longer knows the pairing). */
+data class RevokedNotice(val desktopName: String, val certain: Boolean)
+
 /** The phone's whole view of the paired desktop. */
 data class MirrorState(
     val ready: Boolean = false,
@@ -104,6 +107,8 @@ data class MirrorState(
     val preferences: MirrorPreferences = MirrorPreferences(),
     val pairing: PairingPhase = PairingPhase.Idle,
     val lastError: MirrorError? = null,
+    /** The computer unpaired this phone, or seems to have; the user is told once. */
+    val revoked: RevokedNotice? = null,
 ) {
     val online: Boolean
         get() = link.isUsable
@@ -167,6 +172,7 @@ class DesktopMirror(
     private val transcriptSaves = mutableMapOf<String, Job>()
     private var unsavedSequence: Pair<String, Long>? = null
     private var sequenceSave: Job? = null
+    private var revokedAsked = false
     private var active = true
     private var newSessionModelsLoad: Deferred<Unit>? = null
 
@@ -275,6 +281,9 @@ class DesktopMirror(
 
     private fun finishPairing(record: DesktopRecord) {
         pairingStore.save(record)
+        // A notice was about the pairing this one replaces: clearing from it would wipe this one.
+        revokedAsked = false
+        mutate { it.copy(revoked = null) }
         attachLink(record)
         mutate { it.copy(pairing = PairingPhase.Idle) }
     }
@@ -326,6 +335,9 @@ class DesktopMirror(
                         val wasOnline = _state.value.link.isUsable
                         mutate { it.copy(link = snapshot) }
                         if (!wasOnline && snapshot.isUsable) scope.launch { refreshSessions() }
+                        if (snapshot.lastError == DesktopLink.UNKNOWN_PAIRING) suspectRevoked()
+                        // The desktop answered with this pairing after all: it was not unpaired.
+                        if (snapshot.isUsable && _state.value.revoked?.certain == false) dismissRevoked()
                     }
                 },
                 scope.launch { next.events.collect(::handleEvent) },
@@ -404,6 +416,7 @@ class DesktopMirror(
     private fun handleEvent(event: RemoteEvent) {
         val sessionId = event.sessionId
         when (event.name) {
+            RemoteEventName.DeviceRevoked -> onRevoked()
             RemoteEventName.SessionList -> keepSessions(RemoteApi.readSessionSummaries(event.payload))
             RemoteEventName.SessionState -> {
                 if (sessionId == null) return
@@ -446,6 +459,38 @@ class DesktopMirror(
             }
             else -> Unit
         }
+    }
+
+    /**
+     * The computer unpaired this phone over the encrypted link, so it is certain: what was
+     * cached from it goes at once, as unpairing here would do, and the user is told why.
+     */
+    private fun onRevoked() {
+        val name = _state.value.desktop?.desktopName.orEmpty()
+        scope.launch {
+            unpair()
+            mutate { it.copy(revoked = RevokedNotice(name, certain = true)) }
+        }
+    }
+
+    /**
+     * The computer's local server no longer knows this phone and the relay cannot reach it:
+     * probably unpaired there, but another computer may now hold the old address. The user
+     * decides, and is asked once per launch.
+     */
+    private fun suspectRevoked() {
+        if (revokedAsked || _state.value.revoked != null) return
+        revokedAsked = true
+        mutate { it.copy(revoked = RevokedNotice(_state.value.desktop?.desktopName.orEmpty(), certain = false)) }
+    }
+
+    /** The notice was read; a suspected unpairing is left as it is. */
+    fun dismissRevoked() = mutate { it.copy(revoked = null) }
+
+    /** The user agrees the computer let this phone go: forget it as unpairing here would. */
+    fun forgetRevoked() {
+        unpair()
+        dismissRevoked()
     }
 
     // Actions
