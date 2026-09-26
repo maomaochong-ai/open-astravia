@@ -207,8 +207,8 @@
 			class FallingIcon {
 				constructor(el, tx, ty, delay) {
 					this.el = el; this.tx = tx; this.ty = ty; this.delay = delay;
-					// 从 theater 顶部以上随机高度掉落
-					this.y = -60 - Math.random() * 260;
+					// 从 theater 顶部内部开始（overflow:hidden 会裁掉 theater 外的元素）
+					this.y = 40 + Math.random() * 60;
 					this.vy = 0;
 					this.rot = (Math.random() - 0.5) * 30;
 					this.vRot = (Math.random() - 0.5) * 4;
@@ -216,7 +216,7 @@
 					this.bounce = 0;
 					this.maxBounce = 2 + Math.floor(Math.random() * 2);
 					this.landed = false; this.settled = false; this.start = 0;
-					// 绝对定位：left/top 是 theater 内坐标
+					el.style.opacity = "1";
 					el.style.left = `${tx}px`;
 					el.style.top = `${this.y}px`;
 					el.style.marginLeft = `${-ICON / 2}px`;
@@ -262,14 +262,12 @@
 
 			const anims = [];
 			function loop(time) { for (const a of anims) a.update(time); requestAnimationFrame(loop); }
-
-			window.addEventListener("load", () => {
+			function start() {
 				const theaterRect = theater.getBoundingClientRect();
 				const tr = titleEl.getBoundingClientRect();
 				const dr = descEl.getBoundingClientRect();
 				const fr = footerEl.getBoundingClientRect();
 
-				// 目标区域转换为 theater 内坐标
 				const titleBand = {
 					left: tr.left - theaterRect.left - 30,
 					right: tr.right - theaterRect.left + 30,
@@ -308,7 +306,12 @@
 				}
 
 				requestAnimationFrame(loop);
-			});
+			}
+			if (document.readyState === "loading") {
+				document.addEventListener("DOMContentLoaded", start);
+			} else {
+				start();
+			}
 
 			const toggle = document.getElementById("dlOthersToggle");
 			const others = document.getElementById("dlOthers");
