@@ -173,54 +173,69 @@
 			const titleEl = document.getElementById("dlTitle");
 			const descEl = document.getElementById("dlDesc");
 			const theater = document.querySelector(".download-theater");
+			const footerEl = document.getElementById("footer");
 			const topIcons = Array.from(document.querySelectorAll("#dlPlatforms .dl-platform-icon"));
 			const bottomContainer = document.getElementById("dlPlatformsBottom");
 
-			// 固定布局：8 个图标目标位置（相对于 theater 中心）
-			const TARGETS = [
-				{ x: -90,  y: -45, zone: "title"  },
-				{ x: +100, y: -35, zone: "title"  },
-				{ x: -170, y: +20, zone: "desc"   },
-				{ x: -55,  y: +45, zone: "desc"   },
-				{ x: +65,  y: +35, zone: "desc"   },
-				{ x: +180, y: +15, zone: "desc"   },
-				{ x: +130, y: +125, zone: "none"  },
-				{ x: -210, y: +310, zone: "bottom"},
-			];
-
-			// 给目标元素加 shake class（一次冲击）
+			// 冲击式 shake：先猛晃 → 反弹 → 归位
 			function shake(el, intensity) {
 				if (!el || el.dataset.shaking) return;
 				el.dataset.shaking = "1";
-				// 先猛晃一下
 				el.style.transition = "transform 90ms cubic-bezier(0.34, 1.56, 0.64, 1)";
 				el.style.transform = `rotate(${intensity}deg) scale(1.03)`;
-				setTimeout(() => {
-					el.style.transform = `rotate(${-intensity * 0.6}deg) scale(0.995)`;
-				}, 90);
-				setTimeout(() => {
-					el.style.transform = `rotate(${intensity * 0.25}deg) scale(1.005)`;
-				}, 180);
-				setTimeout(() => {
-					el.style.transition = "transform 220ms ease-out";
-					el.style.transform = "rotate(0deg) scale(1)";
-				}, 270);
-				setTimeout(() => {
-					el.dataset.shaking = "";
-					el.style.transition = "";
-					el.style.transform = "";
-				}, 500);
+				setTimeout(() => { el.style.transform = `rotate(${-intensity * 0.6}deg) scale(0.995)`; }, 90);
+				setTimeout(() => { el.style.transform = `rotate(${intensity * 0.25}deg) scale(1.005)`; }, 180);
+				setTimeout(() => { el.style.transition = "transform 220ms ease-out"; el.style.transform = "rotate(0deg) scale(1)"; }, 270);
+				setTimeout(() => { el.dataset.shaking = ""; el.style.transition = ""; el.style.transform = ""; }, 500);
 			}
 
 			function start() {
-				const rect = theater.getBoundingClientRect();
-				const cx = rect.width / 2;
-				const cy = rect.height / 2;
+				const tRect = theater.getBoundingClientRect();
+
+				// 精确计算 theater 内各元素的绝对坐标
+				const titleRect = titleEl.getBoundingClientRect();
+				const tTop = titleRect.top - tRect.top;           // 标题在 theater 内的 Y
+				const tLeft = titleRect.left - tRect.left;       // 标题在 theater 内的 X
+				const tW = titleRect.width; tH = titleRect.height;
+
+				const dRect = descEl.getBoundingClientRect();
+				const dTop = dRect.top - tRect.top;
+				const dLeft = dRect.left - tRect.left;
+				const dW = dRect.width; dH = dRect.height;
+
+				const fRect = footerEl.getBoundingClientRect();
+				const fTop = fRect.top - tRect.top;
+
+				// 目标点：图标中心落在 (cx, cy)
+				// 布局：2 个砸标题上方，4 个砸描述上方，1 个砸按钮附近，1 个砸页脚横线
+				const GAP = 14; // 图标底距文字顶的间距
+				const titleZone = [
+					{ x: tLeft + tW * 0.25, y: tTop - ICON / 2 - GAP },
+					{ x: tLeft + tW * 0.75, y: tTop - ICON / 2 - GAP },
+				];
+				const descZone = [
+					{ x: dLeft + dW * 0.15, y: dTop - ICON / 2 - GAP },
+					{ x: dLeft + dW * 0.4,  y: dTop - ICON / 2 - GAP },
+					{ x: dLeft + dW * 0.62, y: dTop - ICON / 2 - GAP },
+					{ x: dLeft + dW * 0.88, y: dTop - ICON / 2 - GAP },
+				];
+				const midZone = [
+					{ x: tRect.width * 0.72, y: tTop + tH + dH + 80 }, // 按钮右侧
+				];
+				const footZone = [
+					{ x: 80, y: fTop - ICON / 2 }, // 页脚横线上
+				];
+
+				const zones = [
+					...titleZone.map(p => ({ ...p, zone: "title" })),
+					...descZone.map(p => ({ ...p, zone: "desc" })),
+					...midZone.map(p => ({ ...p, zone: "none" })),
+					...footZone.map(p => ({ ...p, zone: "footer" })),
+				];
 
 				topIcons.forEach((el, i) => {
-					const t = TARGETS[i] || TARGETS[0];
-					const tx = cx + t.x;
-					const ty = cy + t.y;
+					const z = zones[i] || zones[0];
+					const tx = z.x, ty = z.y;
 
 					// 重置
 					el.style.cssText = "";
@@ -233,22 +248,21 @@
 					el.style.transform = `scale(0.25) rotate(${(Math.random() - 0.5) * 30}deg)`;
 					bottomContainer.contains(el) && bottomContainer.removeChild(el);
 
-					const delay = 60 + i * 85;
-					const fallDur = 600 + Math.round(Math.random() * 100);
+					const delay = 50 + i * 70;
+					const fallDur = 620 + Math.round(Math.random() * 80);
 
 					requestAnimationFrame(() => {
 						setTimeout(() => {
 							el.style.opacity = "1";
-							// CSS 弹簧过冲：cubic-bezier(0.34, 1.56, 0.64, 1)
-							el.style.transition = `top ${fallDur}ms cubic-bezier(0.34, 1.56, 0.64, 1), transform ${fallDur}ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 200ms ease-out`;
+							el.style.transition = `top ${fallDur}ms cubic-bezier(0.34, 1.56, 0.64, 1), transform ${fallDur}ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 150ms ease-out`;
 							el.style.top = `${ty}px`;
-							el.style.transform = `scale(1) rotate(${(Math.random() - 0.5) * 14}deg)`;
+							el.style.transform = `scale(1) rotate(${(Math.random() - 0.5) * 10}deg)`;
 
-							// 落地瞬间触发文字 shake（比 fallDur 早 20ms，等最后一帧到目标）
+							// 落地瞬间 shake 对应文字
 							setTimeout(() => {
-								if (t.zone === "title") shake(titleEl, 3.5);
-								else if (t.zone === "desc") shake(descEl, 2.2);
-							}, fallDur - 20);
+								if (z.zone === "title") shake(titleEl, 3.2);
+								else if (z.zone === "desc") shake(descEl, 2.0);
+							}, fallDur - 30);
 						}, delay);
 					});
 				});
