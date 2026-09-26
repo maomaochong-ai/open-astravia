@@ -57,8 +57,21 @@ function unsupportedInputAdapter(reason: string): SystemInputAdapter {
 	};
 }
 
-function createWindowsInputAdapter(): SystemInputAdapter {
-	// Loaded lazily so Linux/macOS builds do not resolve the native DLL binding.
+/**
+ * koffi registers named types process-wide, so defining `INPUT` or `CGPoint` a second
+ * time throws. The host builds a new adapter each time it restarts; the bindings are
+ * loaded once and shared.
+ */
+function once<T>(load: () => T): () => T {
+	let loaded: { readonly value: T } | undefined;
+	return () => {
+		loaded ??= { value: load() };
+		return loaded.value;
+	};
+}
+
+// Loaded lazily so Linux/macOS builds do not resolve the native DLL binding.
+const windowsInput = once(() => {
 	const koffi = createRequire(import.meta.url)("koffi") as typeof Koffi;
 	const user32 = koffi.load("user32.dll");
 	const MOUSEINPUT = koffi.struct({
@@ -89,7 +102,11 @@ function createWindowsInputAdapter(): SystemInputAdapter {
 	const SetCursorPos = user32.func("int __stdcall SetCursorPos(int, int)");
 	const GetSystemMetrics = user32.func("int __stdcall GetSystemMetrics(int)");
 	const MapVirtualKey = user32.func("uint32 __stdcall MapVirtualKeyW(uint32, uint32)");
+	return { SendInput, SetCursorPos, GetSystemMetrics, MapVirtualKey, inputSize: koffi.sizeof(INPUT) };
+});
 
+function createWindowsInputAdapter(): SystemInputAdapter {
+	const { SendInput, SetCursorPos, GetSystemMetrics, MapVirtualKey, inputSize } = windowsInput();
 	let enabled = true;
 	return {
 		supported: true,
@@ -111,7 +128,7 @@ function createWindowsInputAdapter(): SystemInputAdapter {
 					SendInput(
 						1,
 						{ type: 0, u: { mi: { dx: 0, dy: 0, mouseData: 0, dwFlags: flags, time: 0, dwExtraInfo: 0 } } },
-						koffi.sizeof(INPUT),
+						inputSize,
 					);
 				}
 				return;
@@ -125,7 +142,7 @@ function createWindowsInputAdapter(): SystemInputAdapter {
 							mi: { dx: 0, dy: 0, mouseData: message.deltaY >>> 0, dwFlags: 0x0800, time: 0, dwExtraInfo: 0 },
 						},
 					},
-					koffi.sizeof(INPUT),
+					inputSize,
 				);
 				return;
 			}
@@ -137,18 +154,14 @@ function createWindowsInputAdapter(): SystemInputAdapter {
 				SendInput(
 					1,
 					{ type: 1, u: { ki: { wVk: 0, wScan: scan, dwFlags: flags, time: 0, dwExtraInfo: 0 } } },
-					koffi.sizeof(INPUT),
+					inputSize,
 				);
 			}
 		},
 	};
 }
 
-function createMacInputAdapter(): SystemInputAdapter {
-	if (!systemPreferences.isTrustedAccessibilityClient(false)) {
-		log.warn("macOS accessibility permission is required for remote input");
-		return unsupportedInputAdapter("accessibility_permission_required");
-	}
+const macInput = once(() => {
 	const koffi = createRequire(import.meta.url)("koffi") as typeof Koffi;
 	const coreGraphics = koffi.load("/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics");
 	const coreFoundation = koffi.load("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation");
@@ -163,6 +176,33 @@ function createMacInputAdapter(): SystemInputAdapter {
 	const CGDisplayPixelsWide = coreGraphics.func("size_t CGDisplayPixelsWide(uint32)");
 	const CGDisplayPixelsHigh = coreGraphics.func("size_t CGDisplayPixelsHigh(uint32)");
 	const CFRelease = coreFoundation.func("void CFRelease(void *)");
+	return {
+		CGEventCreateMouseEvent,
+		CGEventCreateKeyboardEvent,
+		CGEventCreateScrollWheelEvent,
+		CGEventPost,
+		CGMainDisplayID,
+		CGDisplayPixelsWide,
+		CGDisplayPixelsHigh,
+		CFRelease,
+	};
+});
+
+function createMacInputAdapter(): SystemInputAdapter {
+	if (!systemPreferences.isTrustedAccessibilityClient(false)) {
+		log.warn("macOS accessibility permission is required for remote input");
+		return unsupportedInputAdapter("accessibility_permission_required");
+	}
+	const {
+		CGEventCreateMouseEvent,
+		CGEventCreateKeyboardEvent,
+		CGEventCreateScrollWheelEvent,
+		CGEventPost,
+		CGMainDisplayID,
+		CGDisplayPixelsWide,
+		CGDisplayPixelsHigh,
+		CFRelease,
+	} = macInput();
 	let enabled = true;
 	const post = (event: unknown): void => {
 		if (!event) return;

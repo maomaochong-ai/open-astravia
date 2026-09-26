@@ -9,6 +9,13 @@ describe("createSystemInputAdapter", () => {
 		if (process.platform === "linux" && !process.env.DISPLAY) expect(adapter.supported).toBe(false);
 	});
 
+	it("still controls the machine when the host restarts and builds a new adapter", () => {
+		const first = createSystemInputAdapter({ enabled: false });
+		const second = createSystemInputAdapter({ enabled: false });
+		expect(second.supported).toBe(first.supported);
+		if (process.platform === "win32") expect(second.supported).toBe(true);
+	});
+
 	it("does not claim support on a platform without a native adapter", () => {
 		const adapter = createSystemInputAdapter({ enabled: true });
 		if (process.platform !== "win32" && process.platform !== "darwin" && process.platform !== "linux") {
