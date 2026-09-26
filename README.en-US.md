@@ -419,7 +419,7 @@ astravia/
   <table width="100%">
     <tr>
       <td align="center"><img src="docs/assets/community/qq-group.png" width="220" alt="QQ group" /><p>QQ Group</p></td>
-      <td align="center"><img src="docs/assets/community/wechat-group.png" width="220" alt="WeChat group" /><p>WeChat Group</p></td>
+      <td align="center"><img src="docs/assets/community/wechat-group.jpg" width="220" alt="WeChat group" /><p>WeChat Group</p></td>
     </tr>
   </table>
   <p>Scan the QR code to join, share feedback, ask questions and get the latest updates.</p>

@@ -418,7 +418,7 @@ astravia/
   <table width="100%">
     <tr>
       <td align="center"><img src="docs/assets/community/qq-group.png" width="220" alt="QQ 群" /><p>QQ 群</p></td>
-      <td align="center"><img src="docs/assets/community/wechat-group.png" width="220" alt="微信群" /><p>微信群</p></td>
+      <td align="center"><img src="docs/assets/community/wechat-group.jpg" width="220" alt="微信群" /><p>微信群</p></td>
     </tr>
   </table>
   <p>扫码加入社群，交流使用经验、反馈问题、获取最新动态。</p>
