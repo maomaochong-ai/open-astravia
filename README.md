@@ -1,9 +1,7 @@
 <div align="center">
   <img src="docs/assets/banner.png" width="128" alt="Astravia" />
   <h3>Astravia · 星轨</h3>
-  <p><strong>本地优先的开源 AI 桌面助手</strong></p>
-  <p>编码 · 文档 · 数据 · 自动化 · 设计 — 一个应用全包</p>
-  <p>无云端 · 无账号 · 无遥测 — 数据与密钥始终留在你的本机</p>
+  <p><strong>本地优先的开源 AI 桌面助手</strong> — 编码、文档、数据、自动化、设计，一个应用全包；无云端、无账号、无遥测，数据与密钥始终留在你的本机</p>
   <p><b>简体中文</b> · <a href="README.en-US.md">English</a></p>
 </div>
 
@@ -224,7 +222,7 @@ astravia/
 ## 加入社群
 
 <div align="center">
-  <table>
+  <table width="100%">
     <tr>
       <td align="center"><img src="docs/assets/community/qq-group.png" width="220" alt="QQ 群" /><p>QQ 群</p></td>
       <td align="center"><img src="docs/assets/community/wechat-group.png" width="220" alt="微信群" /><p>微信群</p></td>

@@ -1,9 +1,7 @@
 <div align="center">
   <img src="docs/assets/banner.png" width="128" alt="Astravia" />
   <h3>Astravia</h3>
-  <p><strong>A local-first open-source AI desktop assistant</strong></p>
-  <p>Coding · Documents · Data · Automation · Design — one app for all of it</p>
-  <p>No cloud · No account · No telemetry — your data and keys never leave your machine</p>
+  <p><strong>A local-first open-source AI desktop assistant</strong> — coding, documents, data, automation, design, all in one app. No cloud, no account, no telemetry. Your data and keys never leave your machine.</p>
   <p><a href="README.md">简体中文</a> · <b>English</b></p>
 </div>
 
@@ -225,7 +223,7 @@ astravia/
 ## Join the Community
 
 <div align="center">
-  <table>
+  <table width="100%">
     <tr>
       <td align="center"><img src="docs/assets/community/qq-group.png" width="220" alt="QQ group" /><p>QQ Group</p></td>
       <td align="center"><img src="docs/assets/community/wechat-group.png" width="220" alt="WeChat group" /><p>WeChat Group</p></td>
