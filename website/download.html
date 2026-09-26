@@ -33,6 +33,8 @@
 
 		* { margin: 0; padding: 0; box-sizing: border-box; }
 
+		html { scroll-behavior: auto; }
+
 		body {
 			font-family: var(--font-sans);
 			background: var(--bg);
@@ -50,6 +52,7 @@
 			backdrop-filter: blur(16px) saturate(1.4);
 			border-bottom: 1px solid transparent;
 			transition: border-color 0.2s var(--ease);
+			will-change: border-color;
 		}
 		.nav.is-scrolled { border-bottom-color: var(--line); }
 		.nav__inner {
@@ -119,7 +122,7 @@
 		}
 		.btn--ghost:hover { color: var(--ink); border-color: var(--muted); }
 
-		/* 下载剧场 — 光束背景 */
+		/* 下载剧场 */
 		.download-theater {
 			position: relative;
 			min-height: calc(100vh - 60px);
@@ -128,7 +131,7 @@
 			align-items: center;
 			justify-content: center;
 			overflow: hidden;
-			padding: 48px 24px;
+			padding: 48px 24px 80px;
 		}
 		.download-theater-beams {
 			position: absolute;
@@ -139,33 +142,64 @@
 		.download-theater-haze {
 			position: absolute;
 			inset: 0;
-			background: radial-gradient(ellipse at 50% 20%, rgba(124, 138, 255, 0.08) 0%, transparent 60%);
+			background: radial-gradient(ellipse at 50% 30%, rgba(124, 138, 255, 0.06) 0%, transparent 55%);
 		}
 		.download-theater-beam {
 			position: absolute;
 			width: 1px;
-			background: linear-gradient(to bottom, transparent, rgba(124, 138, 255, 0.15), transparent);
+			background: linear-gradient(to bottom, transparent, rgba(124, 138, 255, 0.12), transparent);
 		}
-		.download-theater-beam--a { left: 20%; top: 0; height: 100%; }
-		.download-theater-beam--b { left: 50%; top: 0; height: 100%; }
-		.download-theater-beam--c { left: 80%; top: 0; height: 100%; }
+		.download-theater-beam--a { left: 25%; height: 100%; }
+		.download-theater-beam--b { left: 50%; height: 100%; }
+		.download-theater-beam--c { left: 75%; height: 100%; }
 
-		/* 下载图标 */
-		.dl__icon-wrap {
+		/* 掉落的平台图标 */
+		.dl-platforms {
 			position: relative;
 			z-index: 10;
-			width: 72px;
-			height: 72px;
 			display: flex;
 			align-items: center;
 			justify-content: center;
-			border-radius: 50%;
-			background: var(--accent);
-			color: var(--bg);
-			margin-bottom: 20px;
-			box-shadow: 0 0 60px -12px rgba(124, 138, 255, 0.5);
+			gap: 16px;
+			margin-bottom: 24px;
+			height: 56px;
 		}
-		.dl__icon-wrap svg { width: 36px; height: 36px; }
+		.dl-platform-icon {
+			width: 52px;
+			height: 52px;
+			border-radius: 50%;
+			background: var(--elev);
+			border: 1px solid var(--line);
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			opacity: 0;
+			transform: translateY(-80px) scale(0.6);
+		}
+		.dl-platform-icon img {
+			width: 28px;
+			height: 28px;
+			object-fit: contain;
+		}
+		.dl-platform-icon.is-rec {
+			border-color: var(--accent);
+			box-shadow: 0 0 20px -4px rgba(124, 138, 255, 0.4);
+		}
+		.dl-platform-icon.fall {
+			animation: platform-fall 0.6s var(--ease) forwards;
+		}
+		.dl-platform-icon:nth-child(1) { animation-delay: 0.1s; }
+		.dl-platform-icon:nth-child(2) { animation-delay: 0.2s; }
+		.dl-platform-icon:nth-child(3) { animation-delay: 0.3s; }
+		.dl-platform-icon:nth-child(4) { animation-delay: 0.4s; }
+		.dl-platform-icon:nth-child(5) { animation-delay: 0.5s; }
+
+		@keyframes platform-fall {
+			0% { opacity: 0; transform: translateY(-80px) scale(0.6); }
+			60% { opacity: 1; transform: translateY(6px) scale(1.05); }
+			80% { transform: translateY(-3px) scale(0.98); }
+			100% { opacity: 1; transform: translateY(0) scale(1); }
+		}
 
 		/* 标题 */
 		.dl__title {
@@ -174,7 +208,7 @@
 			font-size: clamp(40px, 6vw, 64px);
 			font-weight: 700;
 			letter-spacing: -0.02em;
-			text-shadow: 0 0 40px color-mix(in srgb, var(--accent) 35%, transparent);
+			text-shadow: 0 0 40px color-mix(in srgb, var(--accent) 30%, transparent);
 			margin-bottom: 12px;
 		}
 
@@ -182,154 +216,136 @@
 		.dl__desc {
 			position: relative;
 			z-index: 10;
-			max-width: 520px;
-			font-size: 16px;
+			max-width: 480px;
+			font-size: 15px;
 			line-height: 1.7;
 			color: var(--muted);
 			margin-bottom: 40px;
-		}
-
-		/* 下载卡片容器 */
-		.dl__cards {
-			position: relative;
-			z-index: 10;
-			display: grid;
-			grid-template-columns: repeat(3, 1fr);
-			gap: 16px;
-			max-width: 720px;
-			width: 100%;
-		}
-
-		/* 下载卡片 */
-		.dl-card {
-			position: relative;
-			display: flex;
-			flex-direction: column;
-			align-items: center;
-			gap: 14px;
-			padding: 28px 20px 24px;
-			background: var(--elev);
-			border: 1px solid var(--line);
-			border-radius: 18px;
-			text-decoration: none;
-			color: var(--ink);
-			transition:
-				border-color 0.2s var(--ease),
-				box-shadow 0.2s var(--ease),
-				transform 0.2s var(--ease);
-		}
-
-		.dl-card:hover {
-			border-color: var(--accent);
-			box-shadow: 0 8px 32px -12px rgba(124, 138, 255, 0.2);
-			transform: translateY(-3px);
-		}
-
-		.dl-card:focus-visible {
-			outline: 2px solid var(--accent);
-			outline-offset: 2px;
-		}
-
-		.dl-card--coming {
-			opacity: 0.45;
-			cursor: default;
-			pointer-events: none;
-		}
-
-		.dl-card-icon {
-			flex: none;
-			width: 48px;
-			height: 48px;
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			color: var(--accent);
-			background: var(--tint);
-			border: 1px solid var(--line);
-			border-radius: 14px;
-			transition:
-				color 0.2s var(--ease),
-				background-color 0.2s var(--ease);
-		}
-
-		.dl-card-icon img {
-			width: 28px;
-			height: 28px;
-			object-fit: contain;
-		}
-
-		.dl-card:hover .dl-card-icon {
-			background: var(--accent-soft);
-			color: var(--accent);
-		}
-
-		.dl-card-body {
-			flex: 1;
-			min-width: 0;
 			text-align: center;
 		}
 
-		.dl-card-label {
-			display: block;
-			font-size: 16px;
-			font-weight: 700;
-			line-height: 1.3;
-			letter-spacing: -0.01em;
-		}
-
-		.dl-card-desc {
-			display: block;
-			font-size: 12px;
-			color: var(--muted);
-			margin-top: 4px;
-		}
-
-		.dl-card-action {
+		/* 主下载按钮 — 复刻 Vetta */
+		.dl__primary-wrap {
+			position: relative;
+			z-index: 10;
 			display: flex;
+			flex-direction: column;
+			align-items: center;
+			gap: 10px;
+		}
+		.dl__primary {
+			display: inline-flex;
+			align-items: center;
+			gap: 10px;
+			padding: 12px 24px;
+			background: var(--elev);
+			border: 2px solid var(--accent);
+			border-radius: 999px;
+			font-size: 14px;
+			font-weight: 600;
+			text-decoration: none;
+			color: var(--ink);
+			transition:
+				background 0.15s var(--ease),
+				transform 0.15s var(--ease),
+				box-shadow 0.15s var(--ease);
+			box-shadow: 0 0 0 2px var(--bg), 0 0 24px -6px rgba(124, 138, 255, 0.3);
+			letter-spacing: 0.02em;
+			text-transform: uppercase;
+			min-width: 260px;
+			justify-content: center;
+		}
+		.dl__primary:hover {
+			background: var(--tint);
+			transform: translateY(-1px);
+			box-shadow: 0 0 0 2px var(--bg), 0 0 32px -6px rgba(124, 138, 255, 0.5);
+		}
+		.dl__primary svg { flex: none; }
+		.dl__primary[aria-disabled="true"] {
+			opacity: 0.4;
+			pointer-events: none;
+			cursor: default;
+		}
+		.dl__version {
+			font-size: 13px;
+			color: var(--faint);
+			font-family: var(--font-mono);
+		}
+
+		/* 其他版本切换 */
+		.dl__others-toggle {
+			position: relative;
+			z-index: 10;
+			margin-top: 24px;
+			background: none;
+			border: none;
+			color: var(--muted);
+			font-size: 14px;
+			cursor: pointer;
+			display: inline-flex;
 			align-items: center;
 			gap: 6px;
-			font-size: 13px;
-			font-weight: 600;
+			font-family: var(--font-sans);
+			transition: color 0.15s var(--ease);
+		}
+		.dl__others-toggle:hover { color: var(--ink); }
+		.dl__others-toggle svg {
+			transition: transform 0.2s var(--ease);
+		}
+		.dl__others-toggle.is-open svg { transform: rotate(180deg); }
+
+		/* 其他版本面板 */
+		.dl__others {
+			position: relative;
+			z-index: 10;
+			margin-top: 12px;
+			background: var(--elev);
+			border: 1px solid var(--line);
+			border-radius: 14px;
+			overflow: hidden;
+			max-height: 0;
+			opacity: 0;
+			transition: max-height 0.35s var(--ease), opacity 0.2s var(--ease);
+		}
+		.dl__others.is-open {
+			max-height: 260px;
+			opacity: 1;
+		}
+		.dl__others-list {
+			list-style: none;
+			margin: 0;
+			padding: 6px 0;
+		}
+		.dl__others-item {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			padding: 10px 20px;
+			text-decoration: none;
+			color: var(--ink);
+			transition: background 0.12s var(--ease);
+		}
+		.dl__others-item:hover { background: var(--tint); }
+		.dl__others-item span { font-size: 14px; display: inline-flex; align-items: center; gap: 8px; }
+		.dl__others-item small { font-size: 12px; color: var(--faint); font-family: var(--font-mono); }
+		.dl-rec {
+			font-size: 11px;
 			color: var(--accent);
-			transition:
-				color 0.15s var(--ease),
-				gap 0.15s var(--ease);
-		}
-
-		.dl-card:hover .dl-card-action {
-			gap: 8px;
-		}
-
-		.dl-card-action svg {
-			flex: none;
-			transition: transform 0.15s var(--ease);
-		}
-
-		.dl-card:hover .dl-card-action svg {
-			transform: translateY(1px);
-		}
-
-		.dl-card-badge {
-			position: absolute;
-			top: -6px;
-			left: 50%;
-			transform: translateX(-50%) translateY(-100%);
-			padding: 3px 10px;
-			font-size: 10.5px;
-			font-family: var(--font-mono);
 			font-weight: 600;
-			letter-spacing: 0.04em;
-			color: var(--faint);
-			background: var(--tint);
-			border: 1px solid var(--line-strong);
+			padding: 1px 6px;
+			background: var(--accent-soft);
 			border-radius: 999px;
-			white-space: nowrap;
+		}
+		.dl__others-item.is-disabled {
+			opacity: 0.4;
+			cursor: default;
+			pointer-events: none;
 		}
 
 		/* 页脚 */
 		.footer {
 			border-top: 1px solid var(--line);
-			padding: 32px 0 24px;
+			padding: 24px 0;
 		}
 		.footer .container {
 			max-width: 1120px;
@@ -341,8 +357,6 @@
 			justify-content: space-between;
 			gap: 12px;
 			flex-wrap: wrap;
-			padding-top: 16px;
-			border-top: 1px solid var(--line);
 		}
 		.footer__bottom p {
 			font-family: var(--font-mono);
@@ -367,10 +381,10 @@
 		/* 移动适配 */
 		@media (max-width: 560px) {
 			.dl__title { font-size: 36px; }
-			.dl__cards {
-				grid-template-columns: 1fr;
-				max-width: 340px;
-			}
+			.dl__primary { min-width: auto; width: 100%; max-width: 300px; font-size: 13px; }
+			.dl-platforms { gap: 10px; }
+			.dl-platform-icon { width: 44px; height: 44px; }
+			.dl-platform-icon img { width: 24px; height: 24px; }
 		}
 	</style>
 </head>
@@ -378,12 +392,12 @@
 	<!-- 导航 -->
 	<header class="nav" id="nav">
 		<div class="nav__inner">
-			<a class="nav__brand" href="/">
-				<img src="/favicon.png" width="26" height="26" alt="" />
+			<a class="nav__brand" href="/#top">
+				<img src="/banner.png" width="26" height="26" alt="" />
 				<span>Astravia</span>
 			</a>
 			<nav class="nav__links" aria-label="主导航">
-				<a href="/">首页</a>
+				<a href="/#top">首页</a>
 				<a href="/#products">能力</a>
 				<a href="/#models">模型</a>
 				<a href="/#ecosystem">生态</a>
@@ -391,7 +405,7 @@
 				<a href="/download" class="is-active">下载</a>
 			</nav>
 			<div class="nav__actions">
-				<button class="theme-toggle is-dark" id="themeToggle" type="button" aria-label="切换到浅色模式" aria-pressed="true">
+				<button class="theme-toggle is-dark" id="themeToggle" type="button" aria-label="切换主题">
 					<svg class="icon-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z" /></svg>
 					<svg class="icon-sun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" /></svg>
 				</button>
@@ -412,48 +426,56 @@
 			<span class="download-theater-beam download-theater-beam--c"></span>
 		</div>
 
-		<div class="dl__icon-wrap" aria-hidden="true">
-			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-				<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-				<polyline points="7 10 12 15 17 10"/>
-				<line x1="12" y1="15" x2="12" y2="3"/>
-			</svg>
+		<!-- 平台图标（掉落动画） -->
+		<div class="dl-platforms" id="dlPlatforms" aria-hidden="true">
+			<div class="dl-platform-icon" data-platform="macos">
+				<img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238e9199' stroke-width='1.5'%3E%3Cpath d='M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.55-.67 1.05-1.57.9-2.5'/%3E%3C/svg%3E" alt="" width="28" height="28" />
+			</div>
+			<div class="dl-platform-icon" data-platform="windows">
+				<img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238e9199' stroke-width='1.5'%3E%3Crect x='2' y='3' width='9' height='9' rx='1.5'/%3E%3Crect x='13' y='3' width='9' height='9' rx='1.5'/%3E%3Crect x='2' y='14' width='9' height='9' rx='1.5'/%3E%3Crect x='13' y='14' width='9' height='9' rx='1.5'/%3E%3C/svg%3E" alt="" width="28" height="28" />
+			</div>
+			<div class="dl-platform-icon" data-platform="linux">
+				<img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238e9199' stroke-width='1.5'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M2 12h20'/%3E%3Cpath d='M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z'/%3E%3C/svg%3E" alt="" width="28" height="28" />
+			</div>
 		</div>
 
 		<h1 class="dl__title">下载</h1>
-		<p class="dl__desc">我们会检测你的设备并推荐合适的版本。点击即可下载，或通过下方选择其他平台。</p>
+		<p class="dl__desc">我们会检测你的设备并推荐合适的版本。点击即可下载，或通过箭头选择其他平台。</p>
 
-		<div class="dl__cards">
-			<a class="dl-card" href="https://dl.astravia.dev/app/v0.55.37/Astravia-0.55.37-arm64.dmg" target="_blank" rel="noopener">
-				<img class="dl-card-icon" src="/icon-apple.svg" width="32" height="32" alt="" aria-hidden="true" />
-				<div class="dl-card-body">
-					<span class="dl-card-label">macOS</span>
-					<span class="dl-card-desc">12+ · Apple Silicon & Intel</span>
-				</div>
-				<span class="dl-card-action" aria-hidden="true">
-					下载
-					<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v12m0 0 5-5m-5 5-5-5" /><path d="M4 20h16" /></svg>
-				</span>
+		<div class="dl__primary-wrap">
+			<a class="dl__primary" id="dlPrimary" href="#" target="_blank" rel="noopener">
+				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v12m0 0 5-5m-5 5-5-5" /><path d="M4 20h16" /></svg>
+				<span id="dlPrimaryText">MAC ARM64 (APPLE SILICON)</span>
 			</a>
-			<a class="dl-card" href="https://dl.astravia.dev/app/v0.55.37/Astravia-0.55.37-win-x64.exe" target="_blank" rel="noopener">
-				<img class="dl-card-icon" src="/icon-windows.svg" width="32" height="32" alt="" aria-hidden="true" />
-				<div class="dl-card-body">
-					<span class="dl-card-label">Windows</span>
-					<span class="dl-card-desc">10+ · x64</span>
-				</div>
-				<span class="dl-card-action" aria-hidden="true">
-					下载
-					<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v12m0 0 5-5m-5 5-5-5" /><path d="M4 20h16" /></svg>
-				</span>
-			</a>
-			<div class="dl-card dl-card--coming" aria-disabled="true">
-				<img class="dl-card-icon" src="/icon-linux.svg" width="32" height="32" alt="" aria-hidden="true" />
-				<div class="dl-card-body">
-					<span class="dl-card-label">Linux</span>
-					<span class="dl-card-desc">主流发行版 · AppImage</span>
-				</div>
-				<span class="dl-card-badge">即将推出</span>
-			</div>
+			<p class="dl__version" id="dlPrimaryVersion">v0.55.37 · DMG</p>
+		</div>
+
+		<button class="dl__others-toggle" id="dlOthersToggle" type="button">
+			其他版本
+			<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+		</button>
+
+		<div class="dl__others" id="dlOthers">
+			<ul class="dl__others-list">
+				<li>
+					<a class="dl__others-item" href="https://dl.astravia.dev/app/v0.55.37/Astravia-0.55.37-arm64.dmg" target="_blank" rel="noopener">
+						<span>Mac Arm64 (Apple Silicon)<span class="dl-rec">推荐</span></span>
+						<small>v0.55.37</small>
+					</a>
+				</li>
+				<li>
+					<a class="dl__others-item" href="https://dl.astravia.dev/app/v0.55.37/Astravia-0.55.37.dmg" target="_blank" rel="noopener">
+						<span>Mac x64 (Intel)</span>
+						<small>v0.55.37</small>
+					</a>
+				</li>
+				<li>
+					<a class="dl__others-item" href="https://dl.astravia.dev/app/v0.55.37/Astravia-0.55.37-win-x64.exe" target="_blank" rel="noopener">
+						<span>Windows x64</span>
+						<small>v0.55.37</small>
+					</a>
+				</li>
+			</ul>
 		</div>
 	</div>
 
@@ -476,11 +498,13 @@
 			const yearEl = document.getElementById("year");
 			if (yearEl) yearEl.textContent = new Date().getFullYear();
 
+			// 滚动导航底边线
 			const nav = document.getElementById("nav");
 			window.addEventListener("scroll", () => {
 				nav.classList.toggle("is-scrolled", window.scrollY > 8);
 			}, { passive: true });
 
+			// 主题切换
 			const THEME_KEY = "astravia-theme";
 			const themeToggle = document.getElementById("themeToggle");
 			const root = document.documentElement;
@@ -500,6 +524,63 @@
 				applyTheme(next);
 				localStorage.setItem(THEME_KEY, next);
 			});
+
+			// 平台检测
+			const ua = navigator.userAgent;
+			const isMac = /Mac/i.test(ua) && !/iPhone|iPad|iPod/i.test(ua);
+			const isWin = /Win/i.test(ua);
+			const isArm = /ARM|arm64|aarch64/i.test(ua);
+
+			const dlPrimary = document.getElementById("dlPrimary");
+			const dlPrimaryText = document.getElementById("dlPrimaryText");
+			const dlPrimaryVersion = document.getElementById("dlPrimaryVersion");
+
+			let detectedPlatform = "macos";
+			if (isMac && isArm) {
+				detectedPlatform = "macos";
+				dlPrimary.href = "https://dl.astravia.dev/app/v0.55.37/Astravia-0.55.37-arm64.dmg";
+				dlPrimaryText.textContent = "MAC ARM64 (APPLE SILICON)";
+				dlPrimaryVersion.textContent = "v0.55.37 · DMG";
+			} else if (isMac) {
+				detectedPlatform = "macos";
+				dlPrimary.href = "https://dl.astravia.dev/app/v0.55.37/Astravia-0.55.37.dmg";
+				dlPrimaryText.textContent = "MAC X64 (INTEL)";
+				dlPrimaryVersion.textContent = "v0.55.37 · DMG";
+			} else if (isWin) {
+				detectedPlatform = "windows";
+				dlPrimary.href = "https://dl.astravia.dev/app/v0.55.37/Astravia-0.55.37-win-x64.exe";
+				dlPrimaryText.textContent = "WINDOWS X64";
+				dlPrimaryVersion.textContent = "v0.55.37 · EXE";
+			} else {
+				detectedPlatform = "linux";
+				dlPrimary.setAttribute("aria-disabled", "true");
+				dlPrimary.removeAttribute("href");
+				dlPrimaryText.textContent = "LINUX (APPIMAGE)";
+				dlPrimaryVersion.textContent = "即将推出";
+			}
+
+			// 高亮推荐平台图标
+			const platforms = document.querySelectorAll(".dl-platform-icon");
+			platforms.forEach((icon) => {
+				if (icon.dataset.platform === detectedPlatform) {
+					icon.classList.add("is-rec");
+				}
+			});
+
+			// 掉落动画
+			requestAnimationFrame(() => {
+				for (const icon of platforms) icon.classList.add("fall");
+			});
+
+			// 展开/收起其他版本
+			const toggle = document.getElementById("dlOthersToggle");
+			const others = document.getElementById("dlOthers");
+			if (toggle && others) {
+				toggle.addEventListener("click", () => {
+					const isOpen = others.classList.toggle("is-open");
+					toggle.classList.toggle("is-open", isOpen);
+				});
+			}
 		})();
 	</script>
 </body>

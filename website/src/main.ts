@@ -143,6 +143,23 @@ function initActiveNav() {
 	}
 }
 
+/* 平滑滚动修复闪烁 */
+function initSmoothScroll() {
+	const links = document.querySelectorAll<HTMLAnchorElement>('.nav__links a[href^="#"]');
+	for (const link of links) {
+		link.addEventListener("click", (event) => {
+			const href = link.getAttribute("href");
+			if (!href || href === "#") return;
+			const target = document.querySelector<HTMLElement>(href);
+			if (!target) return;
+			event.preventDefault();
+			target.scrollIntoView({ behavior: "smooth", block: "start" });
+			// 更新 URL 但不触发跳转
+			history.pushState(null, "", href);
+		});
+	}
+}
+
 /* 页脚年份 */
 function initYear() {
 	const year = document.querySelector<HTMLElement>("#year");
@@ -232,6 +249,7 @@ initNavScroll();
 initNavToggle();
 initReveal();
 initActiveNav();
+initSmoothScroll();
 initYear();
 initThemeToggle();
 
