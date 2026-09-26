@@ -343,7 +343,7 @@ code {
 	width: 34px;
 	height: 34px;
 	padding: 0;
-	border-radius: 8px;
+	border-radius: 999px;
 	border: 1px solid var(--line);
 	background: transparent;
 	color: var(--muted);
@@ -379,8 +379,8 @@ code {
 }
 
 .nav__download {
-	font-size: 14px;
-	padding: 8px 15px;
+	padding: 7px 14px;
+	font-size: 13.5px;
 }
 
 .nav__toggle {
@@ -2780,4 +2780,336 @@ html.theme-transition *::after {
 		fill 0.3s var(--ease),
 		/* biome-ignore lint/complexity/noImportantStyles: 需覆盖全站既有 transition 声明 */
 		stroke 0.3s var(--ease) !important;
+}
+
+/* ============================================================
+   下载区域 — 星座连线动画
+   ============================================================ */
+.download-theater {
+	position: relative;
+	min-height: 60vh;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	overflow: hidden;
+	padding: 60px 24px 80px;
+}
+.download-theater-beams {
+	position: absolute;
+	inset: 0;
+	overflow: hidden;
+	pointer-events: none;
+}
+.download-theater-haze {
+	position: absolute;
+	inset: 0;
+	background: radial-gradient(ellipse at 50% 30%, var(--accent-soft) 0%, transparent 55%);
+}
+/* 星云粒子 — 用 box-shadow 多重投影模拟 */
+.download-theater-haze::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	background: transparent;
+	box-shadow:
+		120px 80px 0 1px rgba(124, 138, 255, 0.08),
+		340px 160px 0 1.5px rgba(124, 138, 255, 0.06),
+		560px 60px 0 1px rgba(124, 138, 255, 0.1),
+		780px 200px 0 2px rgba(124, 138, 255, 0.05),
+		200px 300px 0 1px rgba(124, 138, 255, 0.07),
+		450px 280px 0 1.5px rgba(124, 138, 255, 0.09),
+		680px 320px 0 1px rgba(124, 138, 255, 0.06),
+		900px 120px 0 2px rgba(124, 138, 255, 0.04),
+		100px 400px 0 1px rgba(124, 138, 255, 0.08),
+		300px 450px 0 1.5px rgba(124, 138, 255, 0.05),
+		520px 380px 0 1px rgba(124, 138, 255, 0.07),
+		740px 420px 0 2px rgba(124, 138, 255, 0.06),
+		160px 520px 0 1px rgba(124, 138, 255, 0.09),
+		400px 560px 0 1.5px rgba(124, 138, 255, 0.04),
+		620px 500px 0 1px rgba(124, 138, 255, 0.08),
+		840px 540px 0 2px rgba(124, 138, 255, 0.05),
+		80px 250px 0 1px rgba(178, 140, 255, 0.06),
+		500px 150px 0 1.5px rgba(178, 140, 255, 0.07),
+		720px 90px 0 1px rgba(178, 140, 255, 0.05),
+		250px 180px 0 2px rgba(178, 140, 255, 0.04);
+	animation: nebula-twinkle 4s ease-in-out infinite alternate;
+}
+@keyframes nebula-twinkle {
+	0% {
+		opacity: 0.6;
+	}
+	100% {
+		opacity: 1;
+	}
+}
+.download-theater-beam {
+	position: absolute;
+	width: 1px;
+	background: linear-gradient(to bottom, transparent, color-mix(in srgb, var(--accent) 12%, transparent), transparent);
+}
+.download-theater-beam--a {
+	left: 25%;
+	height: 100%;
+}
+.download-theater-beam--b {
+	left: 50%;
+	height: 100%;
+}
+.download-theater-beam--c {
+	left: 75%;
+	height: 100%;
+}
+.dl-content {
+	position: relative;
+	z-index: 20;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+}
+.dl__title {
+	font-size: clamp(36px, 5vw, 52px);
+	font-weight: 700;
+	letter-spacing: -0.02em;
+	margin-bottom: 10px;
+	text-shadow: 0 0 40px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+.dl__desc {
+	max-width: 480px;
+	font-size: 15px;
+	line-height: 1.7;
+	color: var(--muted);
+	margin-bottom: 32px;
+	text-align: center;
+}
+.dl__primary-wrap {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 10px;
+}
+.dl__primary {
+	display: inline-flex;
+	align-items: center;
+	gap: 10px;
+	padding: 12px 24px;
+	background: var(--elev);
+	border: 2px solid var(--accent);
+	border-radius: 999px;
+	font-size: 14px;
+	font-weight: 600;
+	text-decoration: none;
+	color: var(--ink);
+	box-shadow:
+		0 0 0 2px var(--bg),
+		0 0 24px -6px rgba(124, 138, 255, 0.3);
+	letter-spacing: 0.02em;
+	text-transform: uppercase;
+	min-width: 260px;
+	justify-content: center;
+}
+.dl__primary:hover {
+	background: var(--tint);
+	transform: translateY(-1px);
+}
+.dl__primary svg {
+	flex: none;
+}
+.dl__primary[aria-disabled="true"] {
+	opacity: 0.4;
+	pointer-events: none;
+}
+.dl__version {
+	font-size: 13px;
+	color: var(--faint);
+	font-family: var(--font-mono);
+}
+.dl__others-toggle {
+	margin-top: 20px;
+	background: none;
+	border: none;
+	color: var(--muted);
+	font-size: 14px;
+	cursor: pointer;
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	font-family: var(--font-sans);
+}
+.dl__others-toggle:hover {
+	color: var(--ink);
+}
+.dl__others-toggle svg {
+	transition: transform 0.2s var(--ease);
+}
+.dl__others-toggle.is-open svg {
+	transform: rotate(180deg);
+}
+.dl__others {
+	margin-top: 10px;
+	background: var(--elev);
+	border: 1px solid var(--line);
+	border-radius: 14px;
+	overflow: hidden;
+	max-height: 0;
+	opacity: 0;
+	transition:
+		max-height 0.35s var(--ease),
+		opacity 0.2s var(--ease);
+}
+.dl__others.is-open {
+	max-height: 260px;
+	opacity: 1;
+}
+.dl__others-list {
+	list-style: none;
+	margin: 0;
+	padding: 6px 0;
+}
+.dl__others-item {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 10px 20px;
+	text-decoration: none;
+	color: var(--ink);
+}
+.dl__others-item:hover {
+	background: var(--tint);
+}
+.dl__others-item span {
+	font-size: 14px;
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+}
+.dl__others-item small {
+	font-size: 12px;
+	color: var(--faint);
+	font-family: var(--font-mono);
+}
+.dl-rec {
+	font-size: 11px;
+	color: var(--accent);
+	font-weight: 600;
+	padding: 1px 6px;
+	background: var(--accent-soft);
+	border-radius: 999px;
+}
+.dl__others-item.is-disabled {
+	opacity: 0.4;
+	cursor: default;
+	pointer-events: none;
+}
+.dl-platforms {
+	position: absolute;
+	z-index: 30;
+	pointer-events: none;
+	overflow: visible;
+	width: 100%;
+	height: 100%;
+	top: 0;
+	left: 0;
+}
+.dl-platform-icon {
+	position: absolute;
+	width: 52px;
+	height: 52px;
+	border-radius: 50%;
+	background: var(--elev);
+	border: 1px solid var(--line);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	overflow: hidden;
+	opacity: 0;
+	pointer-events: auto;
+	will-change: transform, opacity;
+	cursor: pointer;
+}
+.dl-platform-icon img {
+	width: 28px;
+	height: 28px;
+	object-fit: contain;
+	display: block;
+}
+.dl-platform-icon .icon-glow {
+	position: absolute;
+	inset: -4px;
+	border-radius: 50%;
+	background: radial-gradient(circle, rgba(124, 138, 255, 0.2) 0%, transparent 70%);
+	opacity: 0;
+	transition: opacity 0.4s ease;
+	pointer-events: none;
+}
+.dl-platform-icon.is-rec {
+	border-color: var(--accent);
+	box-shadow: 0 0 20px -4px rgba(124, 138, 255, 0.4);
+}
+.dl-platform-icon:hover {
+	border-color: var(--accent);
+	box-shadow: 0 0 16px -4px rgba(124, 138, 255, 0.5);
+	z-index: 50;
+}
+.dl-platform-icon.is-breathe .icon-glow {
+	opacity: 1;
+}
+.dl-platforms-bottom {
+	position: absolute;
+	bottom: 20px;
+	left: 0;
+	right: 0;
+	height: 60px;
+	z-index: 25;
+	pointer-events: none;
+	display: flex;
+	justify-content: space-around;
+	align-items: center;
+	padding: 0 40px;
+}
+.dl-platforms-bottom .dl-platform-icon {
+	position: relative;
+	opacity: 0.5;
+	cursor: default;
+}
+.dl-constellation-svg {
+	position: absolute;
+	inset: 0;
+	z-index: 29;
+	pointer-events: none;
+	overflow: visible;
+}
+.dl-constellation-line {
+	stroke: rgba(124, 138, 255, 0.35);
+	stroke-width: 1;
+	fill: none;
+	filter: url(#constellation-glow);
+	opacity: 0;
+	transition: opacity 0.6s ease;
+}
+.dl-constellation-line.is-visible {
+	opacity: 1;
+}
+.dl-constellation-line.is-fade {
+	opacity: 0;
+}
+@media (max-width: 560px) {
+	.dl__title {
+		font-size: 32px;
+	}
+	.dl__primary {
+		min-width: auto;
+		width: 100%;
+		max-width: 300px;
+		font-size: 13px;
+	}
+	.dl-platform-icon {
+		width: 44px;
+		height: 44px;
+		border-radius: 10px;
+	}
+	.dl-platform-icon img {
+		width: 24px;
+		height: 24px;
+	}
 }

@@ -90,7 +90,7 @@
 				<a href="#models" data-nav="models">模型</a>
 				<a href="#ecosystem" data-nav="ecosystem">生态</a>
 				<a href="#privacy" data-nav="privacy">隐私</a>
-				<a href="/download" data-nav="download">下载</a>
+				<a href="#download" data-nav="download">下载</a>
 			</nav>
 			<div class="nav__actions">
 				<button class="theme-toggle" id="themeToggle" type="button" aria-label="切换到深色模式" aria-pressed="false">
@@ -127,7 +127,6 @@
 					<div class="hero__cta">
 					<a class="btn btn--primary btn--lg" href="https://dl.astravia.dev/app/v0.0.1/Astravia-0.0.1-arm64.dmg" target="_blank" rel="noopener">
 							下载星轨
-							<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4" /><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" /></svg>
 						</a>
 						<a class="btn btn--ghost btn--lg" href="https://github.com/maomaochong-ai/astravia" target="_blank" rel="noopener">在 GitHub 查看源码</a>
 					</div>
@@ -620,6 +619,54 @@
 		</section>
 	</main>
 
+	<!-- ================= 下载 ================= -->
+	<section class="section" id="download">
+		<div class="container">
+			<header class="section__head reveal">
+				<p class="section__kicker">DOWNLOAD · 下载</p>
+				<h2 class="section__title">获取星轨。</h2>
+				<p class="section__lead">macOS / Windows / Linux 免费下载，双击即用，无需注册。</p>
+			</header>
+			<div class="download-embed" id="downloadEmbed">
+				<div class="download-theater">
+					<div class="download-theater-beams" aria-hidden="true"><div class="download-theater-haze"></div><span class="download-theater-beam download-theater-beam--a"></span><span class="download-theater-beam download-theater-beam--b"></span><span class="download-theater-beam download-theater-beam--c"></span></div>
+					<div class="dl-platforms" id="dlPlatforms" aria-hidden="true">
+						<div class="dl-platform-icon" data-p="ollama"><div class="icon-glow"></div><img src="/download/ollama.webp" alt="" width="28" height="28" /></div>
+						<div class="dl-platform-icon" data-p="kimi"><div class="icon-glow"></div><img src="/download/kimi.webp" alt="" width="28" height="28" /></div>
+						<div class="dl-platform-icon" data-p="grok"><div class="icon-glow"></div><img src="/download/grok.webp" alt="" width="28" height="28" /></div>
+						<div class="dl-platform-icon" data-p="mistral"><div class="icon-glow"></div><img src="/download/mistral.webp" alt="" width="28" height="28" /></div>
+						<div class="dl-platform-icon" data-p="minimax"><div class="icon-glow"></div><img src="/download/minimax.webp" alt="" width="28" height="28" /></div>
+						<div class="dl-platform-icon" data-p="doubao"><div class="icon-glow"></div><img src="/download/doubao.webp" alt="" width="28" height="28" /></div>
+						<div class="dl-platform-icon" data-p="zai"><div class="icon-glow"></div><img src="/download/zai.webp" alt="" width="28" height="28" /></div>
+						<div class="dl-platform-icon" data-p="openai"><div class="icon-glow"></div><img src="/download/openai.webp" alt="" width="28" height="28" /></div>
+					</div>
+					<svg class="dl-constellation-svg" id="dlConstellationSVG" aria-hidden="true">
+						<defs>
+							<filter id="constellation-glow" x="-50%" y="-50%" width="200%" height="200%">
+								<feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur" />
+								<feMerge>
+									<feMergeNode in="blur" />
+									<feMergeNode in="SourceGraphic" />
+								</feMerge>
+							</filter>
+						</defs>
+					</svg>
+					<div class="dl-content">
+						<h2 class="dl__title" id="dlTitle">下载</h2>
+						<p class="dl__desc" id="dlDesc">我们会检测你的设备并推荐合适的版本。点击即可下载，或通过下方选择其他平台。</p>
+						<div class="dl__primary-wrap">
+							<a class="dl__primary" id="dlPrimary" href="https://dl.astravia.dev/app/v0.0.1/Astravia-0.0.1-arm64.dmg" target="_blank" rel="noopener"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><span id="dlPrimaryText">MAC ARM64 (APPLE SILICON)</span></a>
+							<p class="dl__version" id="dlPrimaryVersion">v0.0.1 · DMG</p>
+						</div>
+						<button class="dl__others-toggle" id="dlOthersToggle" type="button">其他版本<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>
+						<div class="dl__others" id="dlOthers"><ul class="dl__others-list"><li><a class="dl__others-item" href="https://dl.astravia.dev/app/v0.0.1/Astravia-0.0.1-arm64.dmg" target="_blank" rel="noopener"><span>Mac Arm64 (Apple Silicon)<span class="dl-rec">推荐</span></span><small>v0.0.1</small></a></li><li><a class="dl__others-item" href="https://dl.astravia.dev/app/v0.0.1/Astravia-0.0.1.dmg" target="_blank" rel="noopener"><span>Mac x64 (Intel)</span><small>v0.0.1</small></a></li><li><a class="dl__others-item" href="https://dl.astravia.dev/app/v0.0.1/Astravia-0.0.1-win-x64.exe" target="_blank" rel="noopener"><span>Windows x64</span><small>v0.0.1</small></a></li></ul></div>
+					</div>
+					<div class="dl-platforms-bottom" id="dlPlatformsBottom" aria-hidden="true"></div>
+				</div>
+			</div>
+		</div>
+	</section>
+
 	<!-- ================= 页脚 ================= -->
 	<footer class="footer">
 		<div class="container">
@@ -631,18 +678,6 @@
 						<span>Astravia</span>
 					</a>
 					<p class="footer__brand-desc">本地优先的开源 AI 桌面助手——编码、文档、数据、自动化，一个应用全包。</p>
-					<div class="footer__socials">
-						<a class="footer__social-icon" href="https://github.com/maomaochong-ai/astravia" target="_blank" rel="noopener" aria-label="GitHub">
-							<svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-								<path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8 8 0 0 0 16 8c0-4.42-3.58-8-8-8Z" />
-							</svg>
-						</a>
-						<a class="footer__social-icon" href="mailto:contact@astravia.dev" aria-label="邮箱">
-							<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-								<rect x="2" y="4" width="20" height="16" rx="2" /><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
-							</svg>
-						</a>
-					</div>
 				</div>
 
 				<!-- 中间：分栏导航 -->
@@ -653,7 +688,7 @@
 							<li><a href="#products">能力</a></li>
 							<li><a href="#models">模型</a></li>
 							<li><a href="#ecosystem">生态</a></li>
-							<li><a href="/download">下载</a></li>
+							<li><a href="#download">下载</a></li>
 						</ul>
 					</div>
 					<div class="footer__link-group">

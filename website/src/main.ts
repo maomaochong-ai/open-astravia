@@ -257,3 +257,162 @@ initFaq();
 initDownload();
 
 initStory();
+
+/* 下载底部基座装饰 */
+function initConstellation() {
+	const ICON = 48;
+	const GAP = 10;
+	const theater = document.querySelector<HTMLElement>(".download-theater");
+	const topIcons = Array.from(document.querySelectorAll<HTMLElement>("#dlPlatforms .dl-platform-icon"));
+	const svgEl = document.getElementById("dlConstellationSVG");
+	const pEl = document.getElementById("dlPrimary");
+	const toggle = document.getElementById("dlOthersToggle");
+	const others = document.getElementById("dlOthers");
+	if (!theater || topIcons.length === 0) return;
+
+	// 隐藏 SVG 连线（纯装饰不需要）
+	if (svgEl) svgEl.style.display = "none";
+
+	function calcPositions() {
+		if (!pEl) return [];
+		const tRect = theater.getBoundingClientRect();
+		const pRect = pEl.getBoundingClientRect();
+		const othersRect = others?.getBoundingClientRect();
+
+		// 基座位置：其他版本按钮下方 24px
+		const baseY = (othersRect ? othersRect.bottom : pRect.bottom) - tRect.top + 24;
+		const totalWidth = topIcons.length * ICON + (topIcons.length - 1) * GAP;
+		const startX = (tRect.width - totalWidth) / 2;
+
+		const positions: Array<{ x: number; y: number }> = [];
+		for (let i = 0; i < topIcons.length; i++) {
+			positions.push({
+				x: startX + i * (ICON + GAP) + ICON / 2,
+				y: baseY,
+			});
+		}
+		return positions;
+	}
+
+	function start() {
+		const positions = calcPositions();
+		if (positions.length === 0) return;
+
+		topIcons.forEach((el, i) => {
+			const tx = positions[i].x - ICON / 2;
+			const ty = positions[i].y - ICON / 2;
+
+			// 从下方升起
+			const sy = ty + 60 + Math.random() * 40;
+
+			el.style.cssText = "";
+			el.style.opacity = "0";
+			el.style.position = "absolute";
+			el.style.left = `${tx}px`;
+			el.style.top = `${sy}px`;
+			el.style.width = `${ICON}px`;
+			el.style.height = `${ICON}px`;
+			el.style.transform = `scale(0.8)`;
+
+			const delay = i * 60;
+			const riseDur = 400 + Math.round(Math.random() * 100);
+
+			requestAnimationFrame(() => {
+				setTimeout(() => {
+					el.style.opacity = "0.4";
+					el.style.transition = `top ${riseDur}ms cubic-bezier(0.16,1,0.3,1), transform ${riseDur}ms cubic-bezier(0.16,1,0.3,1), opacity 200ms ease`;
+					el.style.top = `${ty}px`;
+					el.style.transform = `scale(1)`;
+				}, delay);
+			});
+
+			// hover 效果
+			el.addEventListener("mouseenter", () => {
+				el.style.transition = "transform 0.2s var(--ease), opacity 0.2s ease, box-shadow 0.2s ease";
+				el.style.transform = `translateY(-4px) scale(1.08)`;
+				el.style.opacity = "0.7";
+				el.style.borderColor = "var(--accent)";
+			});
+			el.addEventListener("mouseleave", () => {
+				el.style.transition = "transform 0.3s ease, opacity 0.3s ease, box-shadow 0.3s ease";
+				el.style.transform = `scale(1)`;
+				el.style.opacity = "0.4";
+				el.style.borderColor = "";
+			});
+		});
+	}
+
+	// 平台检测高亮
+	const ua = navigator.userAgent;
+	const isMac = /Mac/i.test(ua) && !/iPhone|iPad|iPod/i.test(ua);
+	const isWin = /Win/i.test(ua);
+	const iconMap: Record<string, string> = { macos: "ollama", windows: "kimi", linux: "grok" };
+	const platform = isMac && /ARM|arm64|aarch64/i.test(ua) ? "macos" : isMac ? "macos" : isWin ? "windows" : "linux";
+	document.querySelectorAll(".dl-platform-icon").forEach((el) => {
+		if (el.dataset.p === iconMap[platform]) {
+			el.style.opacity = "0.6";
+			el.style.borderColor = "var(--accent)";
+		}
+	});
+
+	// 下载链接
+	const dlPrimary = document.getElementById("dlPrimary") as HTMLAnchorElement;
+	const dlPrimaryText = document.getElementById("dlPrimaryText");
+	const dlPrimaryVersion = document.getElementById("dlPrimaryVersion");
+	if (isMac && /ARM|arm64|aarch64/i.test(ua)) {
+		dlPrimary.href = "https://dl.astravia.dev/app/v0.0.1/Astravia-0.0.1-arm64.dmg";
+		dlPrimaryText!.textContent = "MAC ARM64 (APPLE SILICON)";
+		dlPrimaryVersion!.textContent = "v0.0.1 · DMG";
+	} else if (isMac) {
+		dlPrimary.href = "https://dl.astravia.dev/app/v0.0.1/Astravia-0.0.1.dmg";
+		dlPrimaryText!.textContent = "MAC X64 (INTEL)";
+		dlPrimaryVersion!.textContent = "v0.0.1 · DMG";
+	} else if (isWin) {
+		dlPrimary.href = "https://dl.astravia.dev/app/v0.0.1/Astravia-0.0.1-win-x64.exe";
+		dlPrimaryText!.textContent = "WINDOWS X64";
+		dlPrimaryVersion!.textContent = "v0.0.1 · EXE";
+	} else {
+		dlPrimary.setAttribute("aria-disabled", "true");
+		dlPrimary.removeAttribute("href");
+		dlPrimaryText!.textContent = "LINUX";
+		dlPrimaryVersion!.textContent = "即将推出";
+	}
+
+	// 其他版本展开/收起 + 实时跟随定位
+	if (toggle && others) {
+		toggle.addEventListener("click", () => {
+			const o = others.classList.toggle("is-open");
+			toggle.classList.toggle("is-open", o);
+		});
+		// 监听 others 尺寸变化，实时更新图标位置
+		const resizeObserver = new ResizeObserver(() => {
+			const positions = calcPositions();
+			topIcons.forEach((el, i) => {
+				if (positions[i]) {
+					const ty = positions[i].y - ICON / 2;
+					// 无过渡，直接跟随
+					el.style.transition = "none";
+					el.style.top = `${ty}px`;
+				}
+			});
+		});
+		resizeObserver.observe(others);
+	}
+
+	// IntersectionObserver 触发
+	const observer = new IntersectionObserver(
+		(entries) => {
+			for (const entry of entries) {
+				if (entry.isIntersecting) {
+					start();
+					observer.unobserve(entry.target);
+					break;
+				}
+			}
+		},
+		{ threshold: 0.15 },
+	);
+	observer.observe(theater);
+}
+
+initConstellation();

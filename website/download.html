@@ -32,13 +32,45 @@
 		.download-theater { position:relative; min-height:calc(100vh - 60px); display:flex; flex-direction:column; align-items:center; justify-content:center; overflow:hidden; padding:80px 24px 120px; }
 		.download-theater-beams { position:absolute; inset:0; overflow:hidden; pointer-events:none; }
 		.download-theater-haze { position:absolute; inset:0; background:radial-gradient(ellipse at 50% 30%,rgba(124,138,255,0.06) 0%,transparent 55%); }
+		.download-theater-haze::after {
+			content: "";
+			position: absolute;
+			inset: 0;
+			background: transparent;
+			box-shadow:
+				120px 80px 0 1px rgba(124,138,255,0.08),
+				340px 160px 0 1.5px rgba(124,138,255,0.06),
+				560px 60px 0 1px rgba(124,138,255,0.1),
+				780px 200px 0 2px rgba(124,138,255,0.05),
+				200px 300px 0 1px rgba(124,138,255,0.07),
+				450px 280px 0 1.5px rgba(124,138,255,0.09),
+				680px 320px 0 1px rgba(124,138,255,0.06),
+				900px 120px 0 2px rgba(124,138,255,0.04),
+				100px 400px 0 1px rgba(124,138,255,0.08),
+				300px 450px 0 1.5px rgba(124,138,255,0.05),
+				520px 380px 0 1px rgba(124,138,255,0.07),
+				740px 420px 0 2px rgba(124,138,255,0.06),
+				160px 520px 0 1px rgba(124,138,255,0.09),
+				400px 560px 0 1.5px rgba(124,138,255,0.04),
+				620px 500px 0 1px rgba(124,138,255,0.08),
+				840px 540px 0 2px rgba(124,138,255,0.05),
+				80px 250px 0 1px rgba(178,140,255,0.06),
+				500px 150px 0 1.5px rgba(178,140,255,0.07),
+				720px 90px 0 1px rgba(178,140,255,0.05),
+				250px 180px 0 2px rgba(178,140,255,0.04);
+			animation: nebula-twinkle 4s ease-in-out infinite alternate;
+		}
+		@keyframes nebula-twinkle {
+			0% { opacity: 0.6; }
+			100% { opacity: 1; }
+		}
 		.download-theater-beam { position:absolute; width:1px; background:linear-gradient(to bottom,transparent,rgba(124,138,255,0.12),transparent); }
 		.download-theater-beam--a { left:25%; height:100%; }
 		.download-theater-beam--b { left:50%; height:100%; }
 		.download-theater-beam--c { left:75%; height:100%; }
 		.dl-content { position:relative; z-index:20; display:flex; flex-direction:column; align-items:center; }
-		.dl__title { font-size:clamp(44px,6vw,64px); font-weight:700; letter-spacing:-0.02em; text-shadow:0 0 40px color-mix(in srgb,var(--accent) 30%,transparent); margin-bottom:12px; transition:transform 0.15s ease-out; }
-		.dl__desc { max-width:480px; font-size:15px; line-height:1.7; color:var(--muted); margin-bottom:40px; text-align:center; transition:transform 0.15s ease-out; }
+		.dl__title { font-size:clamp(44px,6vw,64px); font-weight:700; letter-spacing:-0.02em; text-shadow:0 0 40px color-mix(in srgb,var(--accent) 30%,transparent); margin-bottom:12px; }
+		.dl__desc { max-width:480px; font-size:15px; line-height:1.7; color:var(--muted); margin-bottom:40px; text-align:center; }
 		.dl__primary-wrap { display:flex; flex-direction:column; align-items:center; gap:10px; }
 		.dl__primary { display:inline-flex; align-items:center; gap:10px; padding:12px 24px; background:var(--elev); border:2px solid var(--accent); border-radius:999px; font-size:14px; font-weight:600; text-decoration:none; color:var(--ink); box-shadow:0 0 0 2px var(--bg),0 0 24px -6px rgba(124,138,255,0.3); letter-spacing:0.02em; text-transform:uppercase; min-width:260px; justify-content:center; }
 		.dl__primary:hover { background:var(--tint); transform:translateY(-1px); }
@@ -60,11 +92,17 @@
 		.dl__others-item.is-disabled { opacity:0.4; cursor:default; pointer-events:none; }
 		.dl-platforms { position:absolute; z-index:30; pointer-events:none; overflow:visible; width:100%; height:100%; top:0; left:0; }
 		.dl-platform-icon { position:absolute; width:52px; height:52px; border-radius:50%; background:var(--elev); border:1px solid var(--line); display:flex; align-items:center; justify-content:center; overflow:hidden; opacity:0; pointer-events:auto; will-change:transform,opacity; cursor:pointer; }
-		.dl-platform-icon img { width:30px; height:30px; object-fit:contain; }
+		.dl-platform-icon img { width:28px; height:28px; object-fit:contain; display:block; }
+		.dl-platform-icon .icon-glow { position:absolute; inset:-4px; border-radius:50%; background:radial-gradient(circle,rgba(124,138,255,0.2) 0%,transparent 70%); opacity:0; transition:opacity 0.4s ease; pointer-events:none; }
 		.dl-platform-icon.is-rec { border-color:var(--accent); box-shadow:0 0 20px -4px rgba(124,138,255,0.4); }
 		.dl-platform-icon:hover { border-color:var(--accent); box-shadow:0 0 16px -4px rgba(124,138,255,0.5); z-index:50; }
+		.dl-platform-icon.is-breathe .icon-glow { opacity:1; }
 		.dl-platforms-bottom { position:absolute; bottom:20px; left:0; right:0; height:60px; z-index:25; pointer-events:none; display:flex; justify-content:space-around; align-items:center; padding:0 40px; }
 		.dl-platforms-bottom .dl-platform-icon { position:relative; opacity:0.5; cursor:default; }
+		.dl-constellation-svg { position:absolute; inset:0; z-index:29; pointer-events:none; overflow:visible; }
+		.dl-constellation-line { stroke:rgba(124,138,255,0.35); stroke-width:1; fill:none; filter:url(#constellation-glow); opacity:0; transition:opacity 0.6s ease; }
+		.dl-constellation-line.is-visible { opacity:1; }
+		.dl-constellation-line.is-fade { opacity:0; }
 		.footer { border-top:1px solid var(--line); padding:56px 0 32px; }
 		.footer .container { max-width:1120px; margin:0 auto; padding:0 24px; }
 		.footer__grid { display:grid; grid-template-columns:280px 1fr; gap:64px; align-items:start; }
@@ -82,7 +120,7 @@
 		.footer__link-group a:hover { color:var(--ink); }
 		.footer__bottom { display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; border-top:1px solid var(--line); padding-top:20px; margin-top:48px; }
 		.footer__bottom p { font-family:var(--font-mono); font-size:12px; color:var(--faint); margin:0; }
-		@media (max-width:560px) { .dl__title { font-size:36px; } .dl__primary { min-width:auto; width:100%; max-width:300px; font-size:13px; } .dl-platform-icon { width:44px; height:44px; } .dl-platform-icon img { width:26px; height:26px; } .footer__grid { grid-template-columns:1fr; gap:40px; } .footer__links { grid-template-columns:repeat(2,1fr); gap:24px; } .footer__bottom { flex-direction:column; } }
+		@media (max-width:560px) { .dl__title { font-size:36px; } .dl__primary { min-width:auto; width:100%; max-width:300px; font-size:13px; } .dl-platform-icon { width:44px; height:44px; border-radius:10px; } .dl-platform-icon img { width:24px; height:24px; } .footer__grid { grid-template-columns:1fr; gap:40px; } .footer__links { grid-template-columns:repeat(2,1fr); gap:24px; } .footer__bottom { flex-direction:column; } }
 	</style>
 </head>
 <body>
@@ -108,15 +146,26 @@
 	<div class="download-theater">
 		<div class="download-theater-beams" aria-hidden="true"><div class="download-theater-haze"></div><span class="download-theater-beam download-theater-beam--a"></span><span class="download-theater-beam download-theater-beam--b"></span><span class="download-theater-beam download-theater-beam--c"></span></div>
 		<div class="dl-platforms" id="dlPlatforms" aria-hidden="true">
-			<div class="dl-platform-icon" data-p="ollama"><img src="/ollama.webp" alt="" width="30" height="30" /></div>
-			<div class="dl-platform-icon" data-p="kimi"><img src="/kimi.webp" alt="" width="30" height="30" /></div>
-			<div class="dl-platform-icon" data-p="grok"><img src="/grok.webp" alt="" width="30" height="30" /></div>
-			<div class="dl-platform-icon" data-p="mistral"><img src="/mistral.webp" alt="" width="30" height="30" /></div>
-			<div class="dl-platform-icon" data-p="minimax"><img src="/minimax.webp" alt="" width="30" height="30" /></div>
-			<div class="dl-platform-icon" data-p="doubao"><img src="/doubao.webp" alt="" width="30" height="30" /></div>
-			<div class="dl-platform-icon" data-p="zai"><img src="/zai.webp" alt="" width="30" height="30" /></div>
-			<div class="dl-platform-icon" data-p="openai"><img src="/openai.webp" alt="" width="30" height="30" /></div>
+			<div class="dl-platform-icon" data-p="ollama"><div class="icon-glow"></div><img src="/download/ollama.webp" alt="" width="28" height="28" /></div>
+			<div class="dl-platform-icon" data-p="kimi"><div class="icon-glow"></div><img src="/download/kimi.webp" alt="" width="28" height="28" /></div>
+			<div class="dl-platform-icon" data-p="grok"><div class="icon-glow"></div><img src="/download/grok.webp" alt="" width="28" height="28" /></div>
+			<div class="dl-platform-icon" data-p="mistral"><div class="icon-glow"></div><img src="/download/mistral.webp" alt="" width="28" height="28" /></div>
+			<div class="dl-platform-icon" data-p="minimax"><div class="icon-glow"></div><img src="/download/minimax.webp" alt="" width="28" height="28" /></div>
+			<div class="dl-platform-icon" data-p="doubao"><div class="icon-glow"></div><img src="/download/doubao.webp" alt="" width="28" height="28" /></div>
+			<div class="dl-platform-icon" data-p="zai"><div class="icon-glow"></div><img src="/download/zai.webp" alt="" width="28" height="28" /></div>
+			<div class="dl-platform-icon" data-p="openai"><div class="icon-glow"></div><img src="/download/openai.webp" alt="" width="28" height="28" /></div>
 		</div>
+		<svg class="dl-constellation-svg" id="dlConstellationSVG" aria-hidden="true">
+			<defs>
+				<filter id="constellation-glow" x="-50%" y="-50%" width="200%" height="200%">
+					<feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur" />
+					<feMerge>
+						<feMergeNode in="blur" />
+						<feMergeNode in="SourceGraphic" />
+					</feMerge>
+				</filter>
+			</defs>
+		</svg>
 		<div class="dl-content">
 			<h1 class="dl__title" id="dlTitle">下载</h1>
 			<p class="dl__desc" id="dlDesc">我们会检测你的设备并推荐合适的版本。点击即可下载，或通过下方选择其他平台。</p>
@@ -133,7 +182,7 @@
 	<footer class="footer" id="footer">
 		<div class="container">
 			<div class="footer__grid">
-				<div class="footer__brand-col"><a class="footer__brand" href="/#top"><img src="/favicon.png" width="24" height="24" alt="" /><span>Astravia</span></a><p class="footer__brand-desc">本地优先的开源 AI 桌面助手——编码、文档、数据、自动化，一个应用全包。</p><div class="footer__socials"><a class="footer__social-icon" href="https://github.com/maomaochong-ai/astravia" target="_blank" rel="noopener" aria-label="GitHub"><svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8 8 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg></a><a class="footer__social-icon" href="mailto:contact@astravia.dev" aria-label="邮箱"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg></a></div></div>
+				<div class="footer__brand-col"><a class="footer__brand" href="/#top"><img src="/favicon.png" width="24" height="24" alt="" /><span>Astravia</span></a><p class="footer__brand-desc">本地优先的开源 AI 桌面助手——编码、文档、数据、自动化，一个应用全包。</p></div></div>
 				<nav class="footer__links" aria-label="页脚导航"><div class="footer__link-group"><p class="footer__link-heading">产品</p><ul><li><a href="/#products">能力</a></li><li><a href="/#models">模型</a></li><li><a href="/#ecosystem">生态</a></li><li><a href="/download">下载</a></li></ul></div><div class="footer__link-group"><p class="footer__link-heading">资源</p><ul><li><a href="https://github.com/maomaochong-ai/astravia" target="_blank" rel="noopener">开源</a></li><li><a href="https://github.com/maomaochong-ai/astravia/issues" target="_blank" rel="noopener">Issues</a></li><li><a href="https://github.com/maomaochong-ai/astravia/releases" target="_blank" rel="noopener">更新日志</a></li></ul></div><div class="footer__link-group"><p class="footer__link-heading">关于</p><ul><li><a href="/#privacy">隐私</a></li><li><a href="https://github.com/maomaochong-ai/astravia/blob/main/LICENSE" target="_blank" rel="noopener">Apache-2.0</a></li></ul></div></nav>
 			</div>
 			<div class="footer__bottom"><p>© <span id="year">2026</span> Astravia · Apache-2.0</p></div>
@@ -152,9 +201,9 @@
 			applyTheme(root.dataset.theme);
 			themeToggle.addEventListener("click", () => { const next = root.dataset.theme === "dark" ? "light" : "dark"; applyTheme(next); localStorage.setItem("astravia-theme", next); });
 
-			const ua = navigator.userAgent;
-			const isMac = /Mac/i.test(ua) && !/iPhone|iPad|iPod/i.test(ua);
-			const isWin = /Win/i.test(ua);
+			const _ua = navigator.userAgent;
+			const _isMac = /Mac/i.test(ua) && !/iPhone|iPad|iPod/i.test(ua);
+			const _isWin = /Win/i.test(ua);
 			const isArm = /ARM|arm64|aarch64/i.test(ua);
 			const dlPrimary = document.getElementById("dlPrimary");
 			const dlPrimaryText = document.getElementById("dlPrimaryText");
@@ -168,110 +217,135 @@
 			const iconMap = { macos: "ollama", windows: "kimi", linux: "grok" };
 			document.querySelectorAll(".dl-platform-icon").forEach(el => { if (el.dataset.p === iconMap[platform]) el.classList.add("is-rec"); });
 
-			// === 图标动画：CSS 弹簧下落 + 冲击式文字 shake ===
-			const ICON = 52;
-			const titleEl = document.getElementById("dlTitle");
-			const descEl = document.getElementById("dlDesc");
+			// === 底部基座装饰：图标在按钮下方水平排列 ===
+			const ICON = 48;
+			const GAP = 10;
 			const theater = document.querySelector(".download-theater");
-			const footerEl = document.getElementById("footer");
 			const topIcons = Array.from(document.querySelectorAll("#dlPlatforms .dl-platform-icon"));
-			const bottomContainer = document.getElementById("dlPlatformsBottom");
+			const svgEl = document.getElementById("dlConstellationSVG");
+			const pEl = document.getElementById("dlPrimary");
+			const toggle = document.getElementById("dlOthersToggle");
+			const others = document.getElementById("dlOthers");
 
-			// 冲击式 shake：先猛晃 → 反弹 → 归位
-			function shake(el, intensity) {
-				if (!el || el.dataset.shaking) return;
-				el.dataset.shaking = "1";
-				el.style.transition = "transform 90ms cubic-bezier(0.34, 1.56, 0.64, 1)";
-				el.style.transform = `rotate(${intensity}deg) scale(1.03)`;
-				setTimeout(() => { el.style.transform = `rotate(${-intensity * 0.6}deg) scale(0.995)`; }, 90);
-				setTimeout(() => { el.style.transform = `rotate(${intensity * 0.25}deg) scale(1.005)`; }, 180);
-				setTimeout(() => { el.style.transition = "transform 220ms ease-out"; el.style.transform = "rotate(0deg) scale(1)"; }, 270);
-				setTimeout(() => { el.dataset.shaking = ""; el.style.transition = ""; el.style.transform = ""; }, 500);
+			if (svgEl) svgEl.style.display = "none";
+
+			function calcPositions() {
+				if (!pEl) return [];
+				const tRect = theater.getBoundingClientRect();
+				const pRect = pEl.getBoundingClientRect();
+				const othersRect = others?.getBoundingClientRect();
+				const baseY = (othersRect ? othersRect.bottom : pRect.bottom) - tRect.top + 24;
+				const totalWidth = topIcons.length * ICON + (topIcons.length - 1) * GAP;
+				const startX = (tRect.width - totalWidth) / 2;
+				const positions = [];
+				for (let i = 0; i < topIcons.length; i++) {
+					positions.push({
+						x: startX + i * (ICON + GAP) + ICON / 2,
+						y: baseY,
+					});
+				}
+				return positions;
 			}
 
 			function start() {
-				const tRect = theater.getBoundingClientRect();
-
-				// 精确计算 theater 内各元素的绝对坐标
-				const titleRect = titleEl.getBoundingClientRect();
-				const tTop = titleRect.top - tRect.top;
-				const tLeft = titleRect.left - tRect.left;
-				const tW = titleRect.width;
-
-				const dRect = descEl.getBoundingClientRect();
-				const dTop = dRect.top - tRect.top;
-				const dLeft = dRect.left - tRect.left;
-				const dW = dRect.width;
-
-				const pEl = document.getElementById("dlPrimary");
-				const pRect = pEl.getBoundingClientRect();
-				const pTop = pRect.top - tRect.top;
-				const pLeft = pRect.left - tRect.left;
-				const pW = pRect.width;
-
-				const fRect = footerEl.getBoundingClientRect();
-				const fTop = fRect.top - tRect.top;
-
-				// 图标落在目标物两侧外侧，不遮挡文字
-				// 标题 zone：标题左右外侧，Y 贴住标题顶
-				const titleZone = [
-					{ x: tLeft - ICON / 2 - 12,  y: tTop - ICON / 2 },
-					{ x: tLeft + tW + ICON / 2 + 12, y: tTop - ICON / 2 },
-				];
-				// 描述 zone：描述上方，均匀分布在描述宽度内
-				const descZone = [
-					{ x: dLeft + dW * 0.15, y: dTop - ICON / 2 },
-					{ x: dLeft + dW * 0.4,  y: dTop - ICON / 2 },
-					{ x: dLeft + dW * 0.62, y: dTop - ICON / 2 },
-					{ x: dLeft + dW * 0.88, y: dTop - ICON / 2 },
-				];
-				const midZone = [
-					{ x: pLeft + pW + ICON / 2 + 12, y: pTop - ICON / 2 }, // 下载按钮右侧
-				];
-				const footZone = [
-					{ x: 100, y: fTop - ICON / 2 }, // 页脚横线
-				];
-
-				const zones = [
-					...titleZone.map(p => ({ ...p, zone: "title" })),
-					...descZone.map(p => ({ ...p, zone: "desc" })),
-					...midZone.map(p => ({ ...p, zone: "none" })),
-					...footZone.map(p => ({ ...p, zone: "footer" })),
-				];
+				const positions = calcPositions();
+				if (positions.length === 0) return;
 
 				topIcons.forEach((el, i) => {
-					const z = zones[i] || zones[0];
-					const tx = z.x, ty = z.y;
+					const tx = positions[i].x - ICON / 2;
+					const ty = positions[i].y - ICON / 2;
+					const sy = ty + 60 + Math.random() * 40;
 
-					// 重置
 					el.style.cssText = "";
 					el.style.opacity = "0";
 					el.style.position = "absolute";
 					el.style.left = `${tx}px`;
-					el.style.top = "20px";
-					el.style.marginLeft = `${-ICON / 2}px`;
-					el.style.marginTop = `${-ICON / 2}px`;
-					el.style.transform = `scale(0.25) rotate(${(Math.random() - 0.5) * 30}deg)`;
-					bottomContainer.contains(el) && bottomContainer.removeChild(el);
+					el.style.top = `${sy}px`;
+					el.style.width = `${ICON}px`;
+					el.style.height = `${ICON}px`;
+					el.style.transform = `scale(0.8)`;
 
-					const delay = 50 + i * 70;
-					const fallDur = 620 + Math.round(Math.random() * 80);
+					const delay = i * 60;
+					const riseDur = 400 + Math.round(Math.random() * 100);
 
 					requestAnimationFrame(() => {
 						setTimeout(() => {
-							el.style.opacity = "1";
-							el.style.transition = `top ${fallDur}ms cubic-bezier(0.34, 1.56, 0.64, 1), transform ${fallDur}ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 150ms ease-out`;
+							el.style.opacity = "0.4";
+							el.style.transition = `top ${riseDur}ms cubic-bezier(0.16,1,0.3,1), transform ${riseDur}ms cubic-bezier(0.16,1,0.3,1), opacity 200ms ease`;
 							el.style.top = `${ty}px`;
-							el.style.transform = `scale(1) rotate(${(Math.random() - 0.5) * 10}deg)`;
-
-							// 落地瞬间 shake 对应文字
-							setTimeout(() => {
-								if (z.zone === "title") shake(titleEl, 3.2);
-								else if (z.zone === "desc") shake(descEl, 2.0);
-							}, fallDur - 30);
+							el.style.transform = `scale(1)`;
 						}, delay);
 					});
+
+					el.addEventListener("mouseenter", () => {
+						el.style.transition = "transform 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease";
+						el.style.transform = `translateY(-4px) scale(1.08)`;
+						el.style.opacity = "0.7";
+						el.style.borderColor = "var(--accent)";
+					});
+					el.addEventListener("mouseleave", () => {
+						el.style.transition = "transform 0.3s ease, opacity 0.3s ease, box-shadow 0.3s ease";
+						el.style.transform = `scale(1)`;
+						el.style.opacity = "0.4";
+						el.style.borderColor = "";
+					});
 				});
+			}
+
+			// 平台检测高亮
+			const ua = navigator.userAgent;
+			const isMac = /Mac/i.test(ua) && !/iPhone|iPad|iPod/i.test(ua);
+			const isWin = /Win/i.test(ua);
+			const iconMap = { macos: "ollama", windows: "kimi", linux: "grok" };
+			const platform = isMac && /ARM|arm64|aarch64/i.test(ua) ? "macos" : isMac ? "macos" : isWin ? "windows" : "linux";
+			document.querySelectorAll(".dl-platform-icon").forEach((el) => {
+				if (el.dataset.p === iconMap[platform]) {
+					el.style.opacity = "0.6";
+					el.style.borderColor = "var(--accent)";
+				}
+			});
+
+			// 下载链接
+			const dlPrimary = document.getElementById("dlPrimary");
+			const dlPrimaryText = document.getElementById("dlPrimaryText");
+			const dlPrimaryVersion = document.getElementById("dlPrimaryVersion");
+			if (isMac && /ARM|arm64|aarch64/i.test(ua)) {
+				dlPrimary.href = "https://dl.astravia.dev/app/v0.0.1/Astravia-0.0.1-arm64.dmg";
+				dlPrimaryText.textContent = "MAC ARM64 (APPLE SILICON)";
+				dlPrimaryVersion.textContent = "v0.0.1 · DMG";
+			} else if (isMac) {
+				dlPrimary.href = "https://dl.astravia.dev/app/v0.0.1/Astravia-0.0.1.dmg";
+				dlPrimaryText.textContent = "MAC X64 (INTEL)";
+				dlPrimaryVersion.textContent = "v0.0.1 · DMG";
+			} else if (isWin) {
+				dlPrimary.href = "https://dl.astravia.dev/app/v0.0.1/Astravia-0.0.1-win-x64.exe";
+				dlPrimaryText.textContent = "WINDOWS X64";
+				dlPrimaryVersion.textContent = "v0.0.1 · EXE";
+			} else {
+				dlPrimary.setAttribute("aria-disabled", "true");
+				dlPrimary.removeAttribute("href");
+				dlPrimaryText.textContent = "LINUX";
+				dlPrimaryVersion.textContent = "即将推出";
+			}
+
+			// 展开/收起 + 实时跟随定位
+			if (toggle && others) {
+				toggle.addEventListener("click", () => {
+					const o = others.classList.toggle("is-open");
+					toggle.classList.toggle("is-open", o);
+				});
+				// 监听 others 尺寸变化，实时更新图标位置
+				const resizeObserver = new ResizeObserver(() => {
+					const positions = calcPositions();
+					topIcons.forEach((el, i) => {
+						if (positions[i]) {
+							const ty = positions[i].y - ICON / 2;
+							el.style.transition = "none";
+							el.style.top = `${ty}px`;
+						}
+					});
+				});
+				resizeObserver.observe(others);
 			}
 
 			if (document.readyState === "loading") {

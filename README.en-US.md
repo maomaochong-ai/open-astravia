@@ -1,6 +1,7 @@
 <div align="center">
-  <img src="docs/assets/banner.png" width="160" alt="Astravia" />
-  <p><strong>Astravia</strong> — A local-first open-source AI desktop assistant</p>
+  <img src="docs/assets/banner.png" width="128" alt="Astravia" />
+  <h3>Astravia</h3>
+  <p><strong>A local-first open-source AI desktop assistant</strong></p>
   <p>Coding · Documents · Data · Automation · Design — one app for all of it</p>
   <p>No cloud · No account · No telemetry — your data and keys never leave your machine</p>
   <p><a href="README.md">简体中文</a> · <b>English</b></p>
@@ -8,67 +9,42 @@
 
 ---
 
-## Overview
-
-Astravia is an AI agent application that runs on your desktop. The agent core — coding, documents, automation, creative work — and the desktop product are one, built around a single principle: **you work locally, so your data stays local**.
-
-- **No cloud**: no login, no registration, no subscription. Bring your own model keys (BYOK); requests go straight to the provider, and keys live only in your OS keychain.
-- **No telemetry**: no crash reports, no usage statistics; every outbound request is explicitly triggered by your configuration.
-- **Data on your machine**: sessions, workspaces, the knowledge base and database connections live under `~/.astravia` by default, and don't leave your machine.
-
 <p align="center">
-  <img src="website/public/screenshot.png" alt="Astravia dark theme" width="900" />
+  <img src="docs/assets/screenshot-main.png" alt="Astravia dark theme" width="860" />
 </p>
 
 ## Quick Start
 
-1. Download the installer for your platform from [Releases](../../releases) (macOS / Windows / Linux).
-2. In Settings, pick a model provider and enter your own key.
-3. Create a project and start a conversation: write code, tidy up documents, work on files.
-4. When you need data, add a database connection (pick a file for SQLite; fill in server info for PostgreSQL / MySQL), then query in the Database tab — or just ask the AI to run the query.
-5. Hand repetitive work to batch and scheduled tasks, and get notified via Feishu / DingTalk bots when they finish.
+1. **Download the installer** from [GitHub Releases](https://github.com/maomaochong-ai/astravia/releases) — macOS (Apple Silicon / Intel) or Windows x64
+2. **Configure a model**: pick a provider in Settings and enter your own key (Claude, OpenAI, DeepSeek, Kimi, Gemini, Grok, Qwen…)
+3. **Start using it**: write code, tidy documents, work on files, query databases, run batch and scheduled tasks
 
-## Core Capabilities
+## Features at a Glance
 
-Every capability is part of the app, on equal footing — nothing requires installing an extra client or leaning on an external service.
+### 🤖 Conversation & Workspace
+Message stream, tool-call progress and generated artifacts on one screen. Files preview in-app (PDF, Word, PPT, spreadsheets, images, audio, video, SVG). Scanned PDFs OCR'd offline. Built-in coding-agent reads/writes project files, runs commands and takes screenshots.
 
-### Conversation & Workspace
+### 🗄️ Database Workbench
+40+ database engines (PostgreSQL, MySQL, SQLite, SQL Server, Oracle, Doris, OceanBase…). SQL workbench with multi-tab queries, history, CSV/JSON export and data editing. The AI queries tables for you. Write operations need graded authorization — `prod` connections are read-only by default. The engine is [dbx](https://github.com/t8y2/dbx) (Apache-2.0), shipped with the app.
 
-Message stream, tool-call progress and generated artifacts on one screen; sessions organized by project in the sidebar; the activity panel shows tool calls and progress in real time. Files preview in-app (PDF, Word, PPT, spreadsheets, images, audio, video, SVG), and scanned PDFs can be OCR'd offline.
+### ⚡ Batch Tasks & Scheduling
+One prompt across many directories. Built-in cron scheduler, quiet from the tray, with run history and retry.
 
-### Database
+### 🔔 Notifications & Remote Control
+Batch / scheduled completion or failure pushed to Feishu / DingTalk bots (credentials stored encrypted). Remote-control your local agent from Feishu IM (Telegram and DingTalk planned).
 
-Built-in connection management and a SQL workbench: table browsing, multiple query tabs, history, CSV/JSON export and data editing. The AI can query for you — table schemas are injected on demand (the switch is off by default) and results come back as tables. Write operations need graded authorization, `prod` connections are read-only by default, and row limits and timeouts are configurable. The engine is a self-built binary based on [dbx](https://github.com/t8y2/dbx) (Apache-2.0), shipped with the app, supporting 40+ database types.
+### 🌱 Ecosystem
+Install skills, MCP servers, plugins and themes from any GitHub repository. Turn local documents into a searchable knowledge base — everything stays on your machine. Plugins must declare capabilities in `plugin.json`, granted individually by the host and re-checked at runtime.
 
-### Batch Tasks
+### 🎨 UI Design Workspace
+Mockups on an infinite canvas where frames are real, runnable interfaces. One color system across the whole design. Export as render images or read-only share packages.
 
-One prompt across many directories; tasks are organized as "projects + tasks", each runnable and retryable, with progress visible live.
-
-### Scheduling
-
-A built-in cron scheduler; tasks run quietly from the tray, with execution history.
-
-### Notifications & Remote Control
-
-Batch / scheduled completion or failure pushed to Feishu / DingTalk bots (credentials stored encrypted); remote-control your local agent from IM on your phone — Feishu first (Telegram and DingTalk planned), powered by the embedded `im-gateway` sidecar which starts and stops with the app.
-
-### Ecosystem
-
-The marketplace installs skills, MCP servers, plugins and bundles from any GitHub repository (search runs against a local snapshot); skills turn a way of working into a reusable capability; MCP tools become visible to the agent automatically; plugins enable and disable on demand; themes swap the whole look; local documents are processed into a searchable knowledge base the agent can cite — all of it stays on your machine.
-
-### UI Design Workspace
-
-Mockups on an infinite canvas where frames are real, runnable interfaces; a design shares one color system, and frames export as render images or read-only share packages.
-
-### Desktop Integration
-
-A global hotkey summons the quick panel; on macOS, Appshot captures the frontmost window (screenshot, title, on-screen text) in one gesture and hands it to the agent; environment settings configure Node / Python runtimes; tray residency, auto-update and a bilingual UI round it out.
+### 🖥️ Desktop Integration
+A global hotkey summons the quick panel. On macOS, Appshot captures the frontmost window (screenshot, title, on-screen text) in one gesture. Configure Node / Python runtimes. Tray residency, auto-update, bilingual UI.
 
 ## Plugin System
 
-Plugins are not an afterthought — the design canvas, content creation, Git, charts and the file previewers are themselves plugins, and the same extension points are open to third parties.
-
-A plugin can extend the interface (activity tabs, file previews, message cards, shortcuts…) and the agent itself (inject system prompts, skills, tools and MCP servers, take over new-session entry). Every capability must be declared in `plugin.json`, granted individually by the host and re-checked at runtime; bundled and third-party plugins share the same API.
+Plugins are not an afterthought — the design canvas, content creation, Git, charts and file previewers are themselves plugins. The same extension points are open to third parties. A plugin can extend the interface (activity tabs, file previews, message cards, shortcuts…) and the agent (system prompts, skills, tools, MCP servers, session entry).
 
 ```tsx
 import { definePlugin } from "@astravia-org/plugin-sdk";
@@ -80,63 +56,37 @@ export default definePlugin({
 });
 ```
 
-**Bundled plugins**: astravia-ui-design (UI design canvas), content-creation (content creation), plugin-workbench (build plugins through conversation), git (Git changes), image-gen (image generation), chart-renderer (data charting), office-viewer (document preview), media-viewer (media preview), svg-viewer (SVG preview), astravia-actions (official action pack).
-
-A few example plugins under `packages/plugins/externals` are not shipped with the app.
-
-## Architecture
-
-Monorepo with four layers and strictly one-way dependencies: **app → runtime-\* → coding-agent / agent / ai**. The core libraries know nothing about the host, so the same kernel runs in the Electron desktop app and in a terminal CLI.
-
-```
-astravia/
-├── packages/
-│   ├── ai · agent · coding-agent · ecosystem-adapter   # multi-provider LLM, agent loop, coding agent, ecosystem adapter
-│   ├── runtime-core · runtime-tools · runtime-storage  # host-shared adaptation layer
-│   │   └── runtime-mcp · runtime-telemetry             # MCP manager bindings; telemetry is disk-only
-│   ├── desktop-app · cli-app · im-gateway              # Electron host, CLI, IM sidecar (Go)
-│   ├── ui · theme-ui · theme-sdk                       # UI primitives and theming
-│   ├── plugins · skill-presets · themes                # ecosystem presets
-│   └── capability-sdk · capability-runtime             # capabilities and permissions
-├── docs/                                               # architecture docs and ADRs
-└── scripts/                                            # build, release and quality guards
-```
+**Bundled plugins**: astravia-ui-design, content-creation, plugin-workbench, git, image-gen, chart-renderer, office-viewer, media-viewer, svg-viewer, astravia-actions.
 
 ## Model Configuration
 
-The app ships with a preset provider catalog — `baseUrl` and API type only, **no keys at all**:
-
-| Item | What it does |
-| --- | --- |
-| Providers | Claude, OpenAI, DeepSeek, Z.ai, Kimi, Gemini, Grok, Qwen |
-| Model sync | Once you add your own key, the app pulls the models available to your account and syncs every 12 hours |
-| Metadata | Pricing and capability metadata come from [models.dev](https://models.dev), with a bundled snapshot as fallback |
-| Request path | Requests go straight to the provider — never proxied, never billed by the app |
-| Custom endpoints | OpenAI-compatible endpoints work too (Ollama / vLLM / LM Studio local inference) |
+- Preset providers ship with baseUrl and API type only — **no keys at all**: Claude, OpenAI, DeepSeek, Z.ai, Kimi, Gemini, Grok, Qwen
+- Once you add your own key, models available to your account sync every 12 hours
+- Requests go straight to the provider — never proxied, never billed by the app
+- OpenAI-compatible endpoints work too (Ollama / vLLM / LM Studio)
+- Pricing and capability metadata from [models.dev](https://models.dev), with a bundled snapshot as fallback
 
 ## Network Behavior
 
-Outbound requests happen only in the cases below, and every one of them is driven by your configuration:
-
 | Scenario | When it happens |
 | --- | --- |
-| LLM inference | The provider you configured; nothing happens without a key |
-| Model metadata | The public `models.dev` catalog; falls back to a bundled snapshot |
-| Marketplace | GitHub repositories you added; nothing happens with no sources |
-| Automatic updates | The update source is decided by app configuration (based on electron-updater); no config means no checks |
-| MCP / plugins / webhooks / IM | Decided by the extensions you installed and the credentials you entered; nothing happens when you install nothing |
+| LLM inference | The provider you configured; nothing without a key |
+| Model metadata | `models.dev` public catalog; falls back to a bundled snapshot |
+| Marketplace | GitHub repos you added; nothing with no sources |
+| Automatic updates | Decided by app configuration (electron-updater) |
+| MCP / plugins / IM | Decided by extensions and credentials you installed |
 
 **No telemetry. No crash reporting. No usage statistics.**
 
-## Installation
+## Build from Source
 
-Download the installer from [Releases](../../releases), built by the `.github/workflows/desktop-release.yml` workflow. Building from source requires **Bun 1.3+** and **Node 20+**:
+Requires **Bun 1.3+** and **Node 20+**:
 
 ```bash
 bun install
 bun run build
 bun run build:desktop     # desktop app
-bun run build:cli         # optional: CLI wrapper
+bun run build:cli         # optional CLI wrapper
 ```
 
 IM sidecar (Go, optional): `cd packages/im-gateway && make build`.
@@ -145,35 +95,55 @@ IM sidecar (Go, optional): `cd packages/im-gateway && make build`.
 
 ```bash
 bun run check              # Biome + typecheck + architecture guards (required before a PR)
-bun run check:quick        # fast feedback on changed files only
+bun run check:quick        # fast feedback on changed files
 bun run test:unit          # core library unit tests
-bun run test:pkg ai        # single-package tests; test:pkg --list shows all
 bun run test:changed       # only packages touched by your diff
 ```
 
-Conventions: **Bun** is the package manager everywhere; no `any` in TypeScript unless genuinely necessary; all user-facing copy goes through i18n; commit messages are written in Chinese, referencing issues with `fixes #N` / `closes #N`. Full rules in [AGENTS.md](AGENTS.md). Versions follow a lockstep strategy across all packages, with each package maintaining its own `packages/*/CHANGELOG.md`.
+Conventions: **Bun** everywhere; no `any` in TypeScript unless genuinely necessary; all user-facing copy goes through i18n; commit messages in Chinese referencing issues (`fixes #N` / `closes #N`). Full rules in [AGENTS.md](AGENTS.md).
+
+## Architecture
+
+Monorepo with four layers and strictly one-way dependencies: **app → runtime-* → coding-agent / agent / ai**. The core libraries know nothing about the host — the same kernel runs in the Electron desktop app and in a terminal CLI.
+
+```
+astravia/
+├── packages/
+│   ├── ai · agent · coding-agent · ecosystem-adapter   # multi-provider LLM, agent loop, coding agent
+│   ├── runtime-core · runtime-tools · runtime-storage  # host-shared adaptation layer
+│   │   └── runtime-mcp · runtime-telemetry
+│   ├── desktop-app · cli-app · im-gateway              # Electron host, CLI, IM sidecar (Go)
+│   ├── ui · theme-ui · theme-sdk
+│   ├── plugins · skill-presets · themes
+│   └── capability-sdk · capability-runtime
+├── docs/   scripts/
+```
 
 ## Join the Community
 
 <div align="center">
-  <img src="docs/assets/community/qq-group.png" width="240" alt="QQ group QR code" />
-  <p>Scan the QR code to join our QQ group: share feedback, ask questions, and get the latest updates.</p>
+  <table>
+    <tr>
+      <td align="center"><img src="docs/assets/community/qq-group.png" width="220" alt="QQ group" /><p>QQ Group</p></td>
+      <td align="center"><img src="docs/assets/community/wechat-group.png" width="220" alt="WeChat group" /><p>WeChat Group</p></td>
+    </tr>
+  </table>
+  <p>Scan the QR code to join, share feedback, ask questions and get the latest updates.</p>
 </div>
 
 ## Credits
 
 | Project | Used for | License |
 | --- | --- | --- |
-| pi · Mario Zechner | `ai`, `agent`, `coding-agent` and `ecosystem-adapter` were rewritten and iterated on top of it | MIT |
-| Codex CLI · OpenAI | The execution sandbox design draws on theirs; on Windows we ship their sandbox host binary directly | Apache-2.0 |
-| bubblewrap | The Linux sandbox backend | LGPL-2.0+ |
-| PP-OCRv5 · PaddlePaddle | Detection and recognition models for offline PDF OCR | Apache-2.0 |
-| dbx | The database engine (dbx-mcp), forked and built under our own org | Apache-2.0 |
-| python-build-standalone · Astral / Node.js | Distribution sources for portable runtimes | See upstream / MIT |
-| Cowart | `plugins/externals/cowart-astravia` is adapted from it and not shipped with the app | See upstream |
+| pi · Mario Zechner | `ai`, `agent`, `coding-agent`, `ecosystem-adapter` were rewritten and iterated on top of it | MIT |
+| Codex CLI · OpenAI | Execution sandbox design draws on theirs | Apache-2.0 |
+| bubblewrap | Linux sandbox backend | LGPL-2.0+ |
+| PP-OCRv5 · PaddlePaddle | Offline PDF OCR | Apache-2.0 |
+| dbx | Database engine | Apache-2.0 |
+| python-build-standalone / Node.js | Portable runtimes | See upstream |
 
-Thanks also to the [Model Context Protocol](https://modelcontextprotocol.io) specification and the public model catalog at [models.dev](https://models.dev). The full third-party inventory and original copyright notices live in [NOTICE](NOTICE).
+Thanks also to the [Model Context Protocol](https://modelcontextprotocol.io) specification and [models.dev](https://models.dev). Full third-party inventory in [NOTICE](NOTICE).
 
 ## License
 
-[Apache-2.0](LICENSE).
+[Apache-2.0](LICENSE)
