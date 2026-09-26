@@ -427,19 +427,18 @@ astravia/
 ## 致谢
 
 <table width="100%">
-<colgroup><col width="25%"><col width="50%"><col width="25%"></colgroup>
 <thead><tr><th>项目</th><th>用途</th><th>许可</th></tr></thead>
 <tbody>
-<tr><td>pi · Mario Zechner</td><td>ai / agent / coding-agent 在其基础上重写与迭代</td><td>MIT</td></tr>
-<tr><td>Codex CLI · OpenAI</td><td>执行沙箱方案借鉴其设计</td><td>Apache-2.0</td></tr>
-<tr><td>bubblewrap</td><td>Linux 沙箱后端</td><td>LGPL-2.0+</td></tr>
-<tr><td>PP-OCRv5 · PaddlePaddle</td><td>离线 PDF OCR</td><td>Apache-2.0</td></tr>
-<tr><td>dbx</td><td>数据库引擎</td><td>Apache-2.0</td></tr>
-<tr><td>python-build-standalone / Node.js</td><td>便携运行时</td><td>见原仓库</td></tr>
+<tr><td><a href="https://github.com/badlogic/pi-mono">pi</a> · Mario Zechner</td><td><code>ai</code>、<code>agent</code>、<code>coding-agent</code>、<code>ecosystem-adapter</code> 源自该项目，已重写与扩展；Agent 循环、Provider 抽象、扩展机制均脱胎于此</td><td>MIT</td></tr>
+<tr><td><a href="https://github.com/openai/codex">Codex CLI</a> · OpenAI</td><td>执行沙箱方案借鉴其设计；Windows 沙箱宿主机二进制随应用分发</td><td>Apache-2.0</td></tr>
+<tr><td><a href="https://github.com/containers/bubblewrap">bubblewrap</a></td><td>Linux 沙箱后端 <code>bwrap</code>，随 Linux 安装包分发</td><td>LGPL-2.0+</td></tr>
+<tr><td><a href="https://github.com/PaddlePaddle/PaddleOCR">PP-OCRv5</a> · PaddlePaddle</td><td>离线 PDF OCR 检测与识别模型（<code>ppocrv5_det.onnx</code> / <code>ppocrv5_rec.onnx</code>）</td><td>Apache-2.0</td></tr>
+<tr><td><a href="https://github.com/astral-sh/python-build-standalone">python-build-standalone</a></td><td>便携 Python 运行时，按需下载分发</td><td>PSF / 混合</td></tr>
+<tr><td><a href="https://nodejs.org">Node.js</a></td><td>便携 Node 运行时，按需下载分发</td><td>MIT</td></tr>
 </tbody>
 </table>
 
-感谢 [Model Context Protocol](https://modelcontextprotocol.io) 规范与 [models.dev](https://models.dev) 公共模型目录。第三方完整清单见 [NOTICE](NOTICE)。
+感谢 [Model Context Protocol](https://modelcontextprotocol.io) 规范、[models.dev](https://models.dev) 公共模型目录，以及 Electron、React、Vite、Tailwind CSS、shadcn/ui、Bun 等开源项目。完整第三方清单见 [NOTICE](NOTICE)。
 
 ## 许可
 

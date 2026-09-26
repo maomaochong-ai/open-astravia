@@ -428,19 +428,18 @@ astravia/
 ## Credits
 
 <table width="100%">
-<colgroup><col width="25%"><col width="50%"><col width="25%"></colgroup>
 <thead><tr><th>Project</th><th>Used for</th><th>License</th></tr></thead>
 <tbody>
-<tr><td>pi · Mario Zechner</td><td><code>ai</code>, <code>agent</code>, <code>coding-agent</code>, <code>ecosystem-adapter</code> were rewritten and iterated on top of it</td><td>MIT</td></tr>
-<tr><td>Codex CLI · OpenAI</td><td>Execution sandbox design draws on theirs</td><td>Apache-2.0</td></tr>
-<tr><td>bubblewrap</td><td>Linux sandbox backend</td><td>LGPL-2.0+</td></tr>
-<tr><td>PP-OCRv5 · PaddlePaddle</td><td>Offline PDF OCR</td><td>Apache-2.0</td></tr>
-<tr><td>dbx</td><td>Database engine</td><td>Apache-2.0</td></tr>
-<tr><td>python-build-standalone / Node.js</td><td>Portable runtimes</td><td>See upstream</td></tr>
+<tr><td><a href="https://github.com/badlogic/pi-mono">pi</a> · Mario Zechner</td><td><code>ai</code>, <code>agent</code>, <code>coding-agent</code>, <code>ecosystem-adapter</code> are derived from this project and have been rewritten and extended. The agent loop, provider abstraction and extension mechanism all originate here.</td><td>MIT</td></tr>
+<tr><td><a href="https://github.com/openai/codex">Codex CLI</a> · OpenAI</td><td>Execution sandbox design draws on this project; the Windows sandbox host binary is distributed with the app.</td><td>Apache-2.0</td></tr>
+<tr><td><a href="https://github.com/containers/bubblewrap">bubblewrap</a></td><td>Linux sandbox backend <code>bwrap</code>, shipped with the Linux installer.</td><td>LGPL-2.0+</td></tr>
+<tr><td><a href="https://github.com/PaddlePaddle/PaddleOCR">PP-OCRv5</a> · PaddlePaddle</td><td>Offline PDF OCR detection + recognition models (<code>ppocrv5_det.onnx</code> / <code>ppocrv5_rec.onnx</code>).</td><td>Apache-2.0</td></tr>
+<tr><td><a href="https://github.com/astral-sh/python-build-standalone">python-build-standalone</a></td><td>Portable Python runtime, downloaded and provisioned on demand.</td><td>PSF / mixed</td></tr>
+<tr><td><a href="https://nodejs.org">Node.js</a></td><td>Portable Node runtime, downloaded and provisioned on demand.</td><td>MIT</td></tr>
 </tbody>
 </table>
 
-Thanks also to the [Model Context Protocol](https://modelcontextprotocol.io) specification and [models.dev](https://models.dev). Full third-party inventory in [NOTICE](NOTICE).
+Thanks also to the [Model Context Protocol](https://modelcontextprotocol.io) specification, the [models.dev](https://models.dev) catalog, and the Electron, React, Vite, Tailwind CSS, shadcn/ui and Bun projects. Full third-party inventory in [NOTICE](NOTICE).
 
 ## License
 
