@@ -4,6 +4,13 @@ import com.russhwolf.settings.Settings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import org.vetta.android.core.nowEpochMs
 import org.vetta.android.data.remote.MemorySessionCache
 import org.vetta.android.data.remote.SessionCache
@@ -24,6 +31,25 @@ class AppContainer(
     val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
     val mirror: DesktopMirror = DesktopMirror(defaultMirrorPlatform(preferences, scope), scope),
 ) {
+    private val _visible = MutableStateFlow(false)
+
+    /** Whether the app is on screen; notifications are only for when it is not. */
+    val visible: StateFlow<Boolean> = _visible.asStateFlow()
+
+    init {
+        // The link rests in the background unless the user asked to be told about sessions there.
+        scope.launch {
+            combine(_visible, preferences.backgroundLink, mirror.state.map { it.paired }.distinctUntilChanged()) { shown, background, paired ->
+                shown || (background && paired)
+            }.distinctUntilChanged().collect(mirror::setActive)
+        }
+    }
+
+    /** The app came on screen or went out of sight. */
+    fun setVisible(value: Boolean) {
+        _visible.value = value
+    }
+
     companion object {
         fun createDefault(): AppContainer = AppContainer()
 

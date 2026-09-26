@@ -11,6 +11,14 @@ class AppPreferencesTest {
     }
 
     @Test
+    fun backgroundLinkIsOffUntilChosenAndPersists() {
+        val settings = MapSettings()
+        assertEquals(false, AppPreferences(settings).backgroundLink.value)
+        AppPreferences(settings).setBackgroundLink(true)
+        assertEquals(true, AppPreferences(settings).backgroundLink.value)
+    }
+
+    @Test
     fun themeChoicePersists() {
         val settings = MapSettings()
         AppPreferences(settings).setThemeMode(ThemeMode.Dark)

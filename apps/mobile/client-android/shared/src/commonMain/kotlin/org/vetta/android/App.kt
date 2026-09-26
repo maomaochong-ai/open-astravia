@@ -17,6 +17,8 @@ fun App(
     onPairingInviteHandled: () -> Unit = {},
     incomingShare: IncomingShare? = null,
     onShareHandled: () -> Unit = {},
+    openSession: String? = null,
+    onOpenSessionHandled: () -> Unit = {},
 ) {
     CompositionLocalProvider(LocalAppContainer provides container) {
         RootApp(
@@ -25,6 +27,8 @@ fun App(
             onPairingInviteHandled = onPairingInviteHandled,
             incomingShare = incomingShare,
             onShareHandled = onShareHandled,
+            openSession = openSession,
+            onOpenSessionHandled = onOpenSessionHandled,
         )
     }
 }

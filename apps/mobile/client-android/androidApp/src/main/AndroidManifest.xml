@@ -7,6 +7,10 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <!-- The short buzz when a desktop task finishes (a setting). -->
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Session notifications and the ongoing notice while the desktop link is kept up in the background (a setting). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_REMOTE_MESSAGING" />
 
     <!-- Lets the app find the system speech recognizer (package visibility, Android 11+). -->
     <queries>
@@ -59,6 +63,12 @@
                 <data android:mimeType="*/*" />
             </intent-filter>
         </activity>
+
+        <!-- Keeps the desktop link up in the background so session notifications can arrive. -->
+        <service
+            android:name="org.vetta.android.app.LinkService"
+            android:exported="false"
+            android:foregroundServiceType="remoteMessaging" />
 
         <!-- Hands the system camera a file to write a composer photo into. -->
         <provider

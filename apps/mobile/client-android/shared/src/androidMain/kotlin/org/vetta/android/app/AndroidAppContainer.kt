@@ -9,6 +9,10 @@ import androidx.sqlite.driver.AndroidSQLiteDriver
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import org.vetta.android.data.remote.SqliteSessionCache
 import org.vetta.android.data.secure.KeystoreSecretStore
 import org.vetta.android.domain.work.DesktopMirror
@@ -43,7 +47,28 @@ object AndroidAppContainer {
                 onTurnEnd = { TurnEndHaptics.play(context) },
                 createP2pTransport = NativeRemoteDesktopSessions::transport,
             )
-        return AppContainer(preferences = preferences, scope = scope, mirror = DesktopMirror(platform, scope))
+        val container = AppContainer(preferences = preferences, scope = scope, mirror = DesktopMirror(platform, scope))
+        // Started here too, for when the link service brings the process back without a screen.
+        container.mirror.start()
+        SessionNotifier.watch(context, container, scope)
+        // The link service runs while the user wants news in the background and a desktop is
+        // paired; it is started while the app is on screen, which Android requires.
+        scope.launch {
+            combine(preferences.backgroundLink, container.mirror.state.map { it.paired }, container.visible) { wanted, paired, visible ->
+                when {
+                    !wanted || !paired -> false
+                    visible -> true
+                    else -> null
+                }
+            }.distinctUntilChanged().collect { run ->
+                when (run) {
+                    true -> LinkService.start(context)
+                    false -> LinkService.stop(context)
+                    null -> Unit
+                }
+            }
+        }
+        return container
     }
 
     private const val CACHE_FILE = "vetta-cache.sqlite"

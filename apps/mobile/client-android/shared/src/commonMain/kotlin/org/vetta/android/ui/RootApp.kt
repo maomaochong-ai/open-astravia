@@ -112,6 +112,9 @@ fun RootApp(
     onPairingInviteHandled: () -> Unit = {},
     incomingShare: IncomingShare? = null,
     onShareHandled: () -> Unit = {},
+    /** A session a notification was tapped for. */
+    openSession: String? = null,
+    onOpenSessionHandled: () -> Unit = {},
 ) {
     val vm: AppViewModel = viewModel(factory = remember(container) { AppViewModelFactory(container) })
     val state by vm.state.collectAsState()
@@ -135,14 +138,14 @@ fun RootApp(
         },
     )
 
-    // The desktop link rests in the background and reconnects at once when the app returns.
+    // The desktop link rests in the background (unless kept up for notifications) and reconnects at once when the app returns.
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner, container) {
         val observer =
             LifecycleEventObserver { _, event ->
                 when (event) {
-                    Lifecycle.Event.ON_START -> container.mirror.setActive(true)
-                    Lifecycle.Event.ON_STOP -> container.mirror.setActive(false)
+                    Lifecycle.Event.ON_START -> container.setVisible(true)
+                    Lifecycle.Event.ON_STOP -> container.setVisible(false)
                     else -> Unit
                 }
             }
@@ -154,6 +157,13 @@ fun RootApp(
         if (pairingInvite != null) {
             vm.handlePairingInvite(pairingInvite)
             onPairingInviteHandled()
+        }
+    }
+
+    LaunchedEffect(openSession) {
+        if (openSession != null) {
+            vm.show(openSession)
+            onOpenSessionHandled()
         }
     }
 
@@ -358,6 +368,8 @@ private fun HomeStack(state: AppUiState, workState: MirrorState, vm: AppViewMode
                     onUnpair = work::unpair,
                     onPair = vm::openPairing,
                     onBack = vm::pop,
+                    backgroundLink = state.backgroundLink,
+                    onBackgroundLink = vm::setBackgroundLink,
                     onOpenRemote = viewerUrl?.let { vm::openRemote },
                 )
         }

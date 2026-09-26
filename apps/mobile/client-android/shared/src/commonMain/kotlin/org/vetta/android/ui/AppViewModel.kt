@@ -46,6 +46,8 @@ data class AppUiState(
     /** The computer's screen, full size over everything. */
     val showRemote: Boolean = false,
     val themeMode: ThemeMode = ThemeMode.Light,
+    /** Keeping the desktop link up in the background to notify about sessions. */
+    val backgroundLink: Boolean = false,
     /** A pairing is under way. */
     val remoteConnecting: Boolean = false,
     /** Why the last pairing failed, shown on the pairing sheet until the next attempt. */
@@ -70,6 +72,9 @@ class AppViewModel(
         viewModelScope.launch {
             container.preferences.themeMode.collect { mode -> _state.update { it.copy(themeMode = mode) } }
         }
+        viewModelScope.launch {
+            container.preferences.backgroundLink.collect { on -> _state.update { it.copy(backgroundLink = on) } }
+        }
         // Unpaired: nothing of the old desktop stays on screen.
         viewModelScope.launch {
             container.mirror.state.map { it.paired }.distinctUntilChanged().collect { paired -> if (!paired) reset() }
@@ -78,6 +83,8 @@ class AppViewModel(
     }
 
     fun setThemeMode(mode: ThemeMode) = container.preferences.setThemeMode(mode)
+
+    fun setBackgroundLink(enabled: Boolean) = container.preferences.setBackgroundLink(enabled)
 
     // Drawer and slot
 

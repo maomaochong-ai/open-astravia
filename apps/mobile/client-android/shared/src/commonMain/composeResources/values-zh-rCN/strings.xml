@@ -124,6 +124,13 @@
     <string name="new_session_location">开始位置</string>
     <string name="new_session_subtitle">今天想做点什么？</string>
     <string name="new_session_title">新会话</string>
+    <string name="notify_channel_link">后台连接</string>
+    <string name="notify_channel_sessions">会话进展</string>
+    <string name="notify_failed">出错停止</string>
+    <string name="notify_finished">已完成</string>
+    <string name="notify_link_text">会话需要你时会通知你。</string>
+    <string name="notify_link_title">已连接到 %1$s</string>
+    <string name="notify_needs_you">等你决策</string>
     <string name="pair_code_hint">两边显示的数字一致，才是你的电脑</string>
     <string name="pair_connect">连接</string>
     <string name="pair_connecting">正在连接电脑…</string>
@@ -162,6 +169,9 @@
     <string name="session_rename">重命名</string>
     <string name="session_rename_title">重命名会话</string>
     <string name="session_unpin">取消置顶</string>
+    <string name="settings_background_link">后台保持连接</string>
+    <string name="settings_background_link_denied">需要先在系统设置里允许 Vetta 发送通知。</string>
+    <string name="settings_background_link_hint">关掉 App 后，会话需要你决策、完成或出错时也会通知你。保持连接期间通知栏会常驻一条提示，耗电会略有增加。</string>
     <string name="settings_title">设置</string>
     <plurals name="share_skipped">
         <item quantity="other">有 %1$d 项没能加入：可能文件太大，或者一条消息最多只能带 %2$d 个附件。</item>

@@ -132,6 +132,13 @@
     <string name="new_session_location">Start in</string>
     <string name="new_session_subtitle">What shall we build?</string>
     <string name="new_session_title">New Session</string>
+    <string name="notify_channel_link">Background connection</string>
+    <string name="notify_channel_sessions">Session updates</string>
+    <string name="notify_failed">Stopped on an error</string>
+    <string name="notify_finished">Finished</string>
+    <string name="notify_link_text">You’ll be notified when a session needs you.</string>
+    <string name="notify_link_title">Connected to %1$s</string>
+    <string name="notify_needs_you">Needs your decision</string>
     <string name="pair_code_hint">It’s your computer only if both screens show the same digits</string>
     <string name="pair_connect">Connect</string>
     <string name="pair_connecting">Connecting to your computer…</string>
@@ -170,6 +177,9 @@
     <string name="session_rename">Rename</string>
     <string name="session_rename_title">Rename Session</string>
     <string name="session_unpin">Unpin</string>
+    <string name="settings_background_link">Stay connected in the background</string>
+    <string name="settings_background_link_denied">Allow notifications for Vetta in the system settings to use this.</string>
+    <string name="settings_background_link_hint">Get notified when a session needs you, finishes or fails, even with Vetta closed. A small notification stays while connected, and it uses a little more battery.</string>
     <string name="settings_title">Settings</string>
     <plurals name="share_skipped">
         <item quantity="one">%1$d item couldn’t be added: it may be too large, or a message holds at most %2$d attachments.</item>

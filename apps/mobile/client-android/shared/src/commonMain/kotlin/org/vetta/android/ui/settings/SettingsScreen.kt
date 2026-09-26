@@ -56,6 +56,9 @@ import org.vetta.android.resources.back
 import org.vetta.android.resources.latency
 import org.vetta.android.resources.link_latency
 import org.vetta.android.resources.remote_control
+import org.vetta.android.resources.settings_background_link
+import org.vetta.android.resources.settings_background_link_denied
+import org.vetta.android.resources.settings_background_link_hint
 import org.vetta.android.resources.settings_title
 import org.vetta.android.resources.theme_dark
 import org.vetta.android.resources.theme_light
@@ -99,6 +102,8 @@ fun SettingsScreen(
     onUnpair: () -> Unit,
     onPair: () -> Unit,
     onBack: () -> Unit,
+    backgroundLink: Boolean = false,
+    onBackgroundLink: (Boolean) -> Unit = {},
     /** Opens the computer's screen; null where it cannot be reached that way. */
     onOpenRemote: (() -> Unit)? = null,
 ) {
@@ -180,6 +185,24 @@ fun SettingsScreen(
                 Divider()
                 Toggle(stringResource(Res.string.work_settings_haptics), preferences.haptics, "settings.haptics") { on ->
                     onPreferences { it.copy(haptics = on) }
+                }
+            }
+
+            // Notifications need the permission first; turning it on asks for it.
+            var denied by remember { mutableStateOf(false) }
+            val access =
+                rememberNotificationAccess { granted ->
+                    denied = !granted
+                    if (granted) onBackgroundLink(true)
+                }
+            Titled(
+                null,
+                footer = stringResource(if (denied) Res.string.settings_background_link_denied else Res.string.settings_background_link_hint),
+            ) {
+                Section {
+                    Toggle(stringResource(Res.string.settings_background_link), backgroundLink && access.granted, "settings.backgroundLink") { on ->
+                        if (on) access.request() else onBackgroundLink(false)
+                    }
                 }
             }
 
