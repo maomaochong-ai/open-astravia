@@ -287,12 +287,12 @@
 			const BOUNCE = 0.45;
 			const STAGGER = 100;
 
-			// 计算顶部图标水平位置（水平排列在标题上方）
+			// 计算顶部图标水平位置（水平排列在标题上方，落在标题文字上）
 			function getTopPositions(count) {
 				const theaterRect = theater.getBoundingClientRect();
 				const titleRect = titleEl.getBoundingClientRect();
-				// 图标目标位置：标题上方 30-50px 处
-				const centerY = titleRect.top - theaterRect.top - 35;
+				// 图标目标位置：标题文字的顶部边缘（图标底部接触文字顶部）
+				const targetY = titleRect.top - theaterRect.top - ICON_SIZE / 2 + 5;
 				const totalWidth = count * 68;
 				const startX = (theaterRect.width - totalWidth) / 2;
 
@@ -300,7 +300,7 @@
 				for (let i = 0; i < count; i++) {
 					positions.push({
 						x: startX + i * 68 + (Math.random() - 0.5) * 10,
-						y: centerY + (Math.random() - 0.5) * 8,
+						y: targetY + (Math.random() - 0.5) * 6,
 					});
 				}
 				for (let i = positions.length - 1; i > 0; i--) {
@@ -310,12 +310,12 @@
 				return positions;
 			}
 
-			// 计算底部图标水平位置（页脚顶部横线处）
+			// 计算底部图标水平位置（落在页脚顶部横线上）
 			function getBottomPositions(count) {
 				const theaterRect = theater.getBoundingClientRect();
 				const footerRect = footerEl.getBoundingClientRect();
-				// 图标目标位置：页脚顶部横线处
-				const footerLineY = footerRect.top - theaterRect.top - ICON_SIZE / 2;
+				// 图标目标位置：页脚顶部横线（图标底部接触横线）
+				const footerLineY = footerRect.top - theaterRect.top - ICON_SIZE / 2 + 2;
 				const totalWidth = count * 68;
 				const startX = (theaterRect.width - totalWidth) / 2;
 
@@ -323,7 +323,7 @@
 				for (let i = 0; i < count; i++) {
 					positions.push({
 						x: startX + i * 68 + (Math.random() - 0.5) * 15,
-						y: footerLineY + (Math.random() - 0.5) * 5,
+						y: footerLineY + (Math.random() - 0.5) * 3,
 					});
 				}
 				return positions;
