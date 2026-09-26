@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="align_pairing_qr">Fit the QR code inside the frame</string>
+    <string name="app_name">Vetta</string>
     <string name="appearance">Appearance</string>
     <string name="back">Back</string>
     <string name="camera_permission_required">Camera access is needed to scan</string>
@@ -77,6 +78,19 @@
     </plurals>
     <string name="desktop_preview">Desktop preview</string>
     <string name="half_hour_ago">Half an hour ago</string>
+    <string name="home_all_sessions">All Sessions</string>
+    <string name="home_filter_status">Status</string>
+    <string name="home_no_results">No Results for “%1$s”</string>
+    <string name="home_no_results_hint">Check the spelling or try a new search.</string>
+    <string name="home_pick_project">Choose Project</string>
+    <string name="home_search">Search</string>
+    <string name="home_search_placeholder">Search projects, sessions, or content…</string>
+    <plurals name="home_session_count">
+        <item quantity="one">%1$d session</item>
+        <item quantity="other">%1$d sessions</item>
+    </plurals>
+    <string name="home_tasks">Tasks</string>
+    <string name="home_updated">Updated %1$s</string>
     <plurals name="hours_ago">
         <item quantity="one">%1$d hour ago</item>
         <item quantity="other">%1$d hours ago</item>
@@ -112,6 +126,7 @@
     <string name="new_session_title">New Session</string>
     <string name="pair_code_hint">It’s your computer only if both screens show the same digits</string>
     <string name="pair_connect">Connect</string>
+    <string name="pair_connecting">Connecting to your computer…</string>
     <string name="pair_failed_rejected">Your computer declined this pairing</string>
     <string name="pair_failed_unauthorized">Your computer doesn’t recognize this phone. Please scan again.</string>
     <string name="pair_failed_unreachable">Can’t reach your computer. Make sure both are on the same Wi-Fi, or that the computer is online.</string>
@@ -120,11 +135,17 @@
     <string name="pair_manual_invalid">Enter an address like 192.168.1.20:43117</string>
     <string name="pair_manual_placeholder">IP:port</string>
     <string name="pair_manual_title">Manual Connection</string>
+    <string name="pair_scan">Scan QR Code</string>
+    <string name="pair_scan_hint">Scan the QR code on your computer</string>
+    <string name="pair_title">Connect Computer</string>
+    <string name="pair_troubleshoot">QR code not working? See troubleshooting</string>
+    <string name="pair_troubleshoot_firewall">The first time you enable phone connections, macOS shows a firewall prompt. Click “Allow”.</string>
+    <string name="pair_troubleshoot_relay">The QR code carries both a LAN address and a cloud relay address. If the LAN is unreachable, the relay is used automatically.</string>
+    <string name="pair_troubleshoot_same_wifi">Your phone and computer must be on the same Wi-Fi. Guest networks usually isolate devices.</string>
     <string name="pair_verification_code">Verification code</string>
     <string name="pair_waiting_approval">Check the code on your computer and click “Allow”</string>
     <string name="remote_connect_failed">Couldn’t connect to Desktop</string>
     <string name="save">Save</string>
-    <string name="scan_pairing_qr">Scan pairing QR code</string>
     <string name="send">Send</string>
     <string name="session_delete">Delete</string>
     <string name="session_delete_message">It is deleted on your computer too and cannot be restored.</string>
@@ -135,6 +156,7 @@
     <string name="session_rename">Rename</string>
     <string name="session_rename_title">Rename Session</string>
     <string name="session_unpin">Unpin</string>
+    <string name="settings_title">Settings</string>
     <string name="stop">Stop</string>
     <string name="theme_dark">Dark</string>
     <string name="theme_light">Light</string>
@@ -156,15 +178,10 @@
     <string name="work_empty_filtered_description">Try a different filter.</string>
     <string name="work_error_not_connected">Your computer is offline. Try again once it reconnects.</string>
     <string name="work_error_unknown">Something went wrong. Please try again later.</string>
-    <string name="work_filter_kind">Type</string>
-    <string name="work_filter_project">Project</string>
     <string name="work_group_done">Done</string>
     <string name="work_group_processing">In Progress</string>
     <string name="work_group_waiting">Needs You</string>
-    <string name="work_kind_all">All Types</string>
-    <string name="work_kind_conversation">Conversations</string>
     <string name="work_kind_project">Projects</string>
-    <string name="work_project_all">All Projects</string>
     <string name="work_settings_confirm_policy">Phone approvals</string>
     <string name="work_settings_confirm_policy_hint">When your computer changes important files, when to ask you to confirm on your phone</string>
     <string name="work_settings_haptics">Vibrate when tasks finish</string>
@@ -181,13 +198,10 @@
     <string name="work_settings_policy_major">Major changes only</string>
     <string name="work_settings_rescan">Scan Again</string>
     <string name="work_settings_scan">Scan to Connect a Computer</string>
-    <string name="work_settings_title">Computer</string>
     <string name="work_settings_unpair">Unpair</string>
     <string name="work_settings_unpair_confirm">Unpair from this computer? Chats cached on this phone will also be deleted.</string>
     <string name="work_settings_unpair_hint">Removes this computer’s credentials and the sessions cached on this phone. You’ll need to scan again to reconnect.</string>
-    <string name="work_status_aborted">Stopped</string>
     <string name="work_status_all">All</string>
-    <string name="work_status_done">Done</string>
     <string name="work_status_error">Error</string>
     <string name="work_status_running">Running</string>
     <string name="work_status_thinking">Thinking</string>

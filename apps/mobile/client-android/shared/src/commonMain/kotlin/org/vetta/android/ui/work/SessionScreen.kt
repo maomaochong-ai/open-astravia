@@ -16,7 +16,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PushPin
@@ -58,7 +57,6 @@ import org.vetta.android.domain.work.MirrorState
 import org.vetta.android.domain.work.ModelChoice
 import org.vetta.android.domain.work.PromptDraft
 import org.vetta.android.resources.Res
-import org.vetta.android.resources.back
 import org.vetta.android.resources.chat_compacted
 import org.vetta.android.resources.chat_composer_placeholder
 import org.vetta.android.resources.chat_loading_history
@@ -72,6 +70,7 @@ import org.vetta.android.resources.session_rename
 import org.vetta.android.resources.session_rename_title
 import org.vetta.android.resources.session_unpin
 import org.vetta.android.ui.components.VettaTextInputDialog
+import org.vetta.android.ui.shell.DrawerButton
 import org.vetta.android.ui.theme.vettaExtra
 
 /**
@@ -86,7 +85,7 @@ fun SessionScreen(
     state: MirrorState,
     draft: PromptDraft,
     actions: WorkActions,
-    onBack: () -> Unit,
+    onOpenHome: () -> Unit,
     headerActions: @Composable () -> Unit = {},
 ) {
     // The desktop's id; a chat opened by New Session starts on a local one.
@@ -115,11 +114,7 @@ fun SessionScreen(
         containerColor = MaterialTheme.vettaExtra.pageBackground,
         topBar = {
             TopAppBar(
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.back))
-                    }
-                },
+                navigationIcon = { DrawerButton(onOpenHome) },
                 title = {
                     ModelTitle(
                         sessionId = id,

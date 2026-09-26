@@ -1,11 +1,10 @@
 package org.vetta.android.ui.remote
 
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
 
+/**
+ * The camera QR scanner for pairing: returns what opens it, asking for the camera first
+ * if need be. It covers the screen while open and hands back the first code it reads.
+ */
 @Composable
-expect fun PairingScannerButton(
-    onScanned: (String) -> Unit,
-    modifier: Modifier = Modifier,
-    label: String? = null,
-)
+expect fun rememberPairingScanner(onScanned: (String) -> Unit): () -> Unit

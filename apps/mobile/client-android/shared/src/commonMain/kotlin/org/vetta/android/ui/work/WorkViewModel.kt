@@ -73,6 +73,11 @@ class WorkViewModel(private val mirror: DesktopMirror) : ViewModel(), WorkAction
         mirror.refreshSessions()
     }
 
+    /** The desktop's projects, including those the phone has no session for yet. */
+    suspend fun refreshProjects() {
+        mirror.refreshProjects()
+    }
+
     fun reconnect() {
         mirror.refreshLink()
     }

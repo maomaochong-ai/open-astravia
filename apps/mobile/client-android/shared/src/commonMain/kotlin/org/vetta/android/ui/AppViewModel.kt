@@ -6,6 +6,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.vetta.android.app.AppContainer
@@ -23,20 +25,33 @@ import org.vetta.android.resources.pair_manual_invalid
 import org.vetta.android.resources.remote_connect_failed
 import org.vetta.android.ui.i18n.UiText
 import org.vetta.android.ui.i18n.uiText
-import org.vetta.android.ui.navigation.AppRoute
+import org.vetta.android.ui.navigation.HomePage
+import org.vetta.android.ui.navigation.Slot
 
 /** Why a pairing failed, worded for the phone's language. */
 data class PairingError(val title: UiText, val message: UiText)
 
+/**
+ * Navigation as the iPhone app's `Router` has it: one session in the root slot, and
+ * Home as a drawer over it with its own stack of pages, kept while the drawer is shut
+ * so it reopens where it was left. Pairing is a sheet over whatever is showing.
+ */
 data class AppUiState(
-    val route: AppRoute = AppRoute.Work,
+    val slot: Slot = Slot.NewSession(),
+    val drawerOpen: Boolean = false,
+    val homePath: List<HomePage> = emptyList(),
+    val showPairing: Boolean = false,
     val themeMode: ThemeMode = ThemeMode.Light,
-    /** A pairing is under way; the pairing buttons give way to a spinner. */
+    /** A pairing is under way. */
     val remoteConnecting: Boolean = false,
+    /** Why the last pairing failed, shown on the pairing sheet until the next attempt. */
     val pairingError: PairingError? = null,
-)
+) {
+    /** Whether Back has somewhere to go inside the app; otherwise it leaves. */
+    val backEnabled: Boolean
+        get() = drawerOpen || slot is Slot.Session
+}
 
-/** Where the app is, its theme, and pairing with a desktop. */
 class AppViewModel(
     private val container: AppContainer,
 ) : ViewModel() {
@@ -47,41 +62,70 @@ class AppViewModel(
         viewModelScope.launch {
             container.preferences.themeMode.collect { mode -> _state.update { it.copy(themeMode = mode) } }
         }
+        // Unpaired: nothing of the old desktop stays on screen.
+        viewModelScope.launch {
+            container.mirror.state.map { it.paired }.distinctUntilChanged().collect { paired -> if (!paired) reset() }
+        }
         container.mirror.start()
     }
 
     fun setThemeMode(mode: ThemeMode) = container.preferences.setThemeMode(mode)
 
-    fun openWorkSession(sessionId: String) = navigate(AppRoute.WorkSession(sessionId))
+    // Drawer and slot
 
-    fun openWorkSettings() = navigate(AppRoute.WorkSettings)
+    fun openDrawer() = _state.update { it.copy(drawerOpen = true) }
 
-    fun openWorkNewSession(projectCwd: String? = null, returnTo: String? = null) =
-        navigate(AppRoute.WorkNewSession(projectCwd, returnTo))
+    fun closeDrawer() = _state.update { it.copy(drawerOpen = false) }
+
+    /** A blank New Session in the slot, starting in `projectCwd`. */
+    fun startNewSession(projectCwd: String? = null) = fill(Slot.NewSession(projectCwd))
+
+    /** Puts `sessionId`'s chat in the slot. */
+    fun show(sessionId: String) = fill(Slot.Session(sessionId))
 
     /** Back to New Session with what was typed, unless the user already left `sessionId`'s chat. */
     fun returnToNewSession(sessionId: String, projectCwd: String?) {
-        if (_state.value.route == AppRoute.WorkSession(sessionId)) navigate(AppRoute.WorkNewSession(projectCwd))
+        if (_state.value.slot == Slot.Session(sessionId)) _state.update { it.copy(slot = Slot.NewSession(projectCwd)) }
     }
 
-    fun navigateBack() = navigate(AppRoute.Work)
+    /** The slot changes at once, under the drawer as it slides away. */
+    private fun fill(next: Slot) = _state.update { it.copy(slot = next, drawerOpen = false) }
 
-    fun handleSystemBack() {
-        when (val route = _state.value.route) {
-            AppRoute.Work -> Unit
-            is AppRoute.WorkNewSession -> route.returnTo?.let(::openWorkSession) ?: navigateBack()
-            else -> navigateBack()
+    fun push(page: HomePage) = _state.update { it.copy(homePath = it.homePath + page, drawerOpen = true) }
+
+    fun pop() = _state.update { it.copy(homePath = it.homePath.dropLast(1)) }
+
+    /**
+     * Back walks Home's pages, then shuts the drawer; from a chat it opens Home, the
+     * chat's parent. From Home's first page and from New Session it leaves the app.
+     */
+    fun handleBack() {
+        val state = _state.value
+        when {
+            state.drawerOpen && state.homePath.isNotEmpty() -> pop()
+            state.drawerOpen -> closeDrawer()
+            state.slot is Slot.Session -> openDrawer()
         }
     }
 
-    private fun navigate(route: AppRoute) {
-        _state.update { it.copy(route = route) }
+    private fun reset() =
+        _state.update { it.copy(slot = Slot.NewSession(), homePath = emptyList(), drawerOpen = false) }
+
+    // Pairing
+
+    fun openPairing() = _state.update { it.copy(showPairing = true, pairingError = null) }
+
+    /** Closing the sheet stops a pairing still under way. */
+    fun closePairing() {
+        container.mirror.cancelPairing()
+        _state.update { it.copy(showPairing = false, pairingError = null) }
     }
 
     /** A `vetta://pair` link from outside the app: checked before anything goes on the network. */
     fun handlePairingInvite(target: String) {
+        _state.update { it.copy(showPairing = true) }
         if (parsePairingInvite(target) == null) {
-            _state.update { it.copy(pairingError = PairingError(uiText(Res.string.invalid_pairing_invite), uiText(Res.string.invalid_pairing_invite_hint))) }
+            _state.update { it.copy(pairingError = pairingError(PairingFailure.InvalidCode)) }
             return
         }
         connectDesktop(target)
@@ -93,7 +137,7 @@ class AppViewModel(
     /** Pairs with the desktop at a typed `host:port`; the computer shows a code to allow. */
     fun connectDesktopManually(endpoint: String) = pair { container.mirror.pairManually(endpoint) }
 
-    /** One pairing at a time; a failure is reported, a cancelled one is not. */
+    /** One pairing at a time; success closes the sheet, a failure says why, a cancelled one says nothing. */
     private fun pair(connect: suspend () -> Boolean) {
         if (_state.value.remoteConnecting) return
         _state.update { it.copy(remoteConnecting = true, pairingError = null) }
@@ -108,16 +152,17 @@ class AppViewModel(
                         _state.update { it.copy(pairingError = pairingError(PairingFailure.Unreachable)) }
                         return@launch
                     }
-                val failure = (container.mirror.state.value.pairing as? PairingPhase.Failed)?.reason
-                if (!paired && failure != null) _state.update { it.copy(pairingError = pairingError(failure)) }
+                if (paired) {
+                    container.mirror.refreshLink()
+                    _state.update { it.copy(showPairing = false) }
+                } else {
+                    val failure = (container.mirror.state.value.pairing as? PairingPhase.Failed)?.reason
+                    if (failure != null) _state.update { it.copy(pairingError = pairingError(failure)) }
+                }
             } finally {
                 _state.update { it.copy(remoteConnecting = false) }
             }
         }
-    }
-
-    fun clearPairingError() {
-        _state.update { it.copy(pairingError = null) }
     }
 
     companion object {

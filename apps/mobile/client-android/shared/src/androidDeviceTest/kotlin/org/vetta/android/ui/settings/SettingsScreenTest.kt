@@ -1,7 +1,6 @@
-package org.vetta.android.ui.work
+package org.vetta.android.ui.settings
 
 import androidx.activity.ComponentActivity
-import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -38,7 +37,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 @RunWith(AndroidJUnit4::class)
-class WorkSettingsScreenTest {
+class SettingsScreenTest {
     @get:Rule
     val composeRule = createAndroidComposeRule<ComponentActivity>()
 
@@ -62,7 +61,7 @@ class WorkSettingsScreenTest {
         var state by mutableStateOf(paired)
         composeRule.setContent {
             VettaTheme(ThemeMode.Light) {
-                WorkSettingsScreen(state, ThemeMode.Light, {}, { update -> state = state.copy(preferences = update(state.preferences)) }, {}, {}, pairing = { Text("SCAN") })
+                SettingsScreen(state, ThemeMode.Light, {}, { update -> state = state.copy(preferences = update(state.preferences)) }, onUnpair = {}, onPair = {}, onBack = {})
             }
         }
         composeRule.onNodeWithText("MacBook Pro").assertIsDisplayed()
@@ -83,7 +82,7 @@ class WorkSettingsScreenTest {
         var unpaired = 0
         composeRule.setContent {
             VettaTheme(ThemeMode.Light) {
-                WorkSettingsScreen(paired, ThemeMode.Light, {}, {}, { unpaired += 1 }, {}, pairing = {})
+                SettingsScreen(paired, ThemeMode.Light, {}, {}, onUnpair = { unpaired += 1 }, onPair = {}, onBack = {})
             }
         }
         composeRule.onNodeWithTag("settings.unpair").performScrollTo().performClick()
@@ -95,12 +94,14 @@ class WorkSettingsScreenTest {
 
     @Test
     fun offersOnlyPairingWhenNoComputerIsPaired() {
+        var pairing = 0
         composeRule.setContent {
             VettaTheme(ThemeMode.Light) {
-                WorkSettingsScreen(MirrorState(ready = true), ThemeMode.Light, {}, {}, {}, {}, pairing = { Text("SCAN") })
+                SettingsScreen(MirrorState(ready = true), ThemeMode.Light, {}, {}, onUnpair = {}, onPair = { pairing += 1 }, onBack = {})
             }
         }
-        composeRule.onNodeWithText("SCAN").assertIsDisplayed()
+        composeRule.onNodeWithTag("settings.scan").performClick()
+        assertEquals(1, pairing)
         composeRule.onAllNodesWithTag("settings.unpair").assertCountEquals(0)
         composeRule.onAllNodesWithTag("settings.computer").assertCountEquals(0)
     }

@@ -136,7 +136,7 @@ class SessionScreenTest {
         val actions = RecordingActions()
         composeRule.setContent {
             VettaTheme(ThemeMode.Light) {
-                SessionScreen("s1", state(RemoteSessionStatus.Completed, finishedTurn), PromptDraft(), actions, onBack = {})
+                SessionScreen("s1", state(RemoteSessionStatus.Completed, finishedTurn), PromptDraft(), actions, onOpenHome = {})
             }
         }
         composeRule.onNodeWithText("整理周报").assertIsDisplayed()
@@ -163,7 +163,7 @@ class SessionScreenTest {
             }
         composeRule.setContent {
             VettaTheme(ThemeMode.Light) {
-                SessionScreen("s1", current, typed, typing, onBack = {})
+                SessionScreen("s1", current, typed, typing, onOpenHome = {})
             }
         }
         composeRule.onNodeWithTag("composer.field").performTextInput("再写一份月报")
@@ -181,7 +181,7 @@ class SessionScreenTest {
         val actions = RecordingActions()
         composeRule.setContent {
             VettaTheme(ThemeMode.Light) {
-                SessionScreen("s1", state(RemoteSessionStatus.Completed, finishedTurn), PromptDraft(), actions, onBack = {})
+                SessionScreen("s1", state(RemoteSessionStatus.Completed, finishedTurn), PromptDraft(), actions, onOpenHome = {})
             }
         }
         composeRule.onNodeWithTag("chat.modelMenu").performClick()
@@ -211,7 +211,7 @@ class SessionScreenTest {
     fun answersEveryQuestionInTurnThenSubmits() {
         val actions = RecordingActions()
         composeRule.setContent {
-            VettaTheme(ThemeMode.Light) { SessionScreen("s1", asking(), PromptDraft(), actions, onBack = {}) }
+            VettaTheme(ThemeMode.Light) { SessionScreen("s1", asking(), PromptDraft(), actions, onOpenHome = {}) }
         }
         composeRule.onNodeWithTag("composer.field").assertDoesNotExist()
         composeRule.onNodeWithText(str(Res.string.chat_question_title)).assertIsDisplayed()
@@ -231,7 +231,7 @@ class SessionScreenTest {
     fun cancelsTheQuestion() {
         val actions = RecordingActions()
         composeRule.setContent {
-            VettaTheme(ThemeMode.Light) { SessionScreen("s1", asking(), PromptDraft(), actions, onBack = {}) }
+            VettaTheme(ThemeMode.Light) { SessionScreen("s1", asking(), PromptDraft(), actions, onOpenHome = {}) }
         }
         composeRule.onNodeWithTag("question.tab.1").performClick()
         composeRule.onNodeWithText("通知谁？").assertIsDisplayed()

@@ -11,13 +11,13 @@ import kotlinx.coroutines.test.setMain
 import org.vetta.android.app.AppContainer
 import org.vetta.android.app.AppPreferences
 import org.vetta.android.app.ThemeMode
+import org.vetta.android.domain.remote.pairing.PairingFailure
 import org.vetta.android.resources.Res
 import org.vetta.android.resources.invalid_pairing_invite
 import org.vetta.android.resources.pair_failed_rejected
-import org.vetta.android.domain.remote.pairing.PairingFailure
 import org.vetta.android.ui.i18n.UiText
-import org.vetta.android.ui.navigation.AppRoute
-import org.vetta.android.ui.navigation.hasInAppBackDestination
+import org.vetta.android.ui.navigation.HomePage
+import org.vetta.android.ui.navigation.Slot
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -43,41 +43,72 @@ class AppViewModelWorkTest {
         AppViewModel(AppContainer(preferences = preferences, mirror = unpairedMirror()))
 
     @Test
-    fun theAppOpensOnTheDesktopsSessionsWhereBackEnds() =
+    fun theAppOpensOnNewSessionWhereBackLeaves() =
         runTest(dispatcher) {
             val vm = viewModel()
             advanceUntilIdle()
-            assertEquals(AppRoute.Work, vm.state.value.route)
-            assertFalse(vm.state.value.route.hasInAppBackDestination())
-
-            vm.openWorkSession("s1")
-            assertTrue(vm.state.value.route.hasInAppBackDestination())
-            vm.handleSystemBack()
-            assertEquals(AppRoute.Work, vm.state.value.route)
+            assertEquals(Slot.NewSession(), vm.state.value.slot)
+            assertFalse(vm.state.value.drawerOpen)
+            assertFalse(vm.state.value.backEnabled)
         }
 
     @Test
-    fun newSessionFromAChatReturnsToItAndAFailedStartReturnsToNewSession() =
+    fun openingASessionFillsTheSlotAndPutsHomeAway() =
         runTest(dispatcher) {
             val vm = viewModel()
             advanceUntilIdle()
+            vm.openDrawer()
+            vm.show("s1")
+            assertEquals(Slot.Session("s1"), vm.state.value.slot)
+            assertFalse(vm.state.value.drawerOpen)
+        }
 
-            vm.openWorkSession("s1")
-            vm.openWorkNewSession("/code/vetta", returnTo = "s1")
-            vm.handleSystemBack()
-            assertEquals(AppRoute.WorkSession("s1"), vm.state.value.route, "Back from New Session returns to the chat it came from")
+    @Test
+    fun backFromAChatOpensHomeThenShutsIt() =
+        runTest(dispatcher) {
+            val vm = viewModel()
+            advanceUntilIdle()
+            vm.show("s1")
+            assertTrue(vm.state.value.backEnabled)
 
-            vm.openWorkNewSession()
-            vm.handleSystemBack()
-            assertEquals(AppRoute.Work, vm.state.value.route)
+            vm.handleBack()
+            assertTrue(vm.state.value.drawerOpen, "Home is the chat's parent")
+            vm.handleBack()
+            assertFalse(vm.state.value.drawerOpen)
+            assertEquals(Slot.Session("s1"), vm.state.value.slot, "the chat is still there under Home")
+        }
 
-            vm.openWorkSession("local-1")
+    @Test
+    fun homesPagesStackAndBackWalksThemBeforeShuttingHome() =
+        runTest(dispatcher) {
+            val vm = viewModel()
+            advanceUntilIdle()
+            vm.push(HomePage.Project("/code/app"))
+            vm.push(HomePage.Settings)
+            assertTrue(vm.state.value.drawerOpen)
+            assertEquals(listOf(HomePage.Project("/code/app"), HomePage.Settings), vm.state.value.homePath)
+
+            vm.handleBack()
+            assertEquals(listOf<HomePage>(HomePage.Project("/code/app")), vm.state.value.homePath)
+            vm.closeDrawer()
+            assertEquals(listOf<HomePage>(HomePage.Project("/code/app")), vm.state.value.homePath, "Home reopens where it was left")
+        }
+
+    @Test
+    fun newSessionInAProjectAndAFailedStartReturnsToNewSession() =
+        runTest(dispatcher) {
+            val vm = viewModel()
+            advanceUntilIdle()
+            vm.startNewSession("/code/vetta")
+            assertEquals(Slot.NewSession("/code/vetta"), vm.state.value.slot)
+
+            vm.show("local-1")
             vm.returnToNewSession("local-1", "/code/vetta")
-            assertEquals(AppRoute.WorkNewSession("/code/vetta"), vm.state.value.route)
+            assertEquals(Slot.NewSession("/code/vetta"), vm.state.value.slot)
 
-            vm.openWorkSession("s2")
+            vm.show("s2")
             vm.returnToNewSession("local-1", null)
-            assertEquals(AppRoute.WorkSession("s2"), vm.state.value.route, "a user who already left that chat stays where they are")
+            assertEquals(Slot.Session("s2"), vm.state.value.slot, "a user who already left that chat stays where they are")
         }
 
     @Test
@@ -92,16 +123,19 @@ class AppViewModelWorkTest {
         }
 
     @Test
-    fun anInvalidPairingLinkIsRejectedBeforeAnyNetworkAccess() =
+    fun anInvalidPairingLinkOpensPairingWithTheReasonAndNoNetworkAccess() =
         runTest(dispatcher) {
             val vm = viewModel()
             advanceUntilIdle()
             vm.handlePairingInvite("vetta://pair?nonsense")
             advanceUntilIdle()
+            assertTrue(vm.state.value.showPairing)
             assertEquals(UiText.Resource(Res.string.invalid_pairing_invite), vm.state.value.pairingError?.title)
             assertFalse(vm.state.value.remoteConnecting)
-            vm.clearPairingError()
-            assertEquals(null, vm.state.value.pairingError)
+
+            vm.closePairing()
+            assertFalse(vm.state.value.showPairing)
+            assertEquals(null, vm.state.value.pairingError, "the next attempt starts clean")
         }
 
     @Test

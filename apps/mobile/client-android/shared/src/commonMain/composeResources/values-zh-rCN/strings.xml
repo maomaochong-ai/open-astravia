@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="align_pairing_qr">将二维码置于取景框内</string>
+    <string name="app_name">Vetta</string>
     <string name="appearance">外观</string>
     <string name="back">返回</string>
     <string name="camera_permission_required">需要相机权限才能扫码</string>
@@ -74,6 +75,18 @@
     </plurals>
     <string name="desktop_preview">桌面预览</string>
     <string name="half_hour_ago">半小时前</string>
+    <string name="home_all_sessions">全部会话</string>
+    <string name="home_filter_status">状态</string>
+    <string name="home_no_results">没有“%1$s”的相关结果</string>
+    <string name="home_no_results_hint">检查拼写或换个关键词试试。</string>
+    <string name="home_pick_project">选择项目</string>
+    <string name="home_search">搜索</string>
+    <string name="home_search_placeholder">搜索项目、会话或内容…</string>
+    <plurals name="home_session_count">
+        <item quantity="other">%1$d 个会话</item>
+    </plurals>
+    <string name="home_tasks">任务</string>
+    <string name="home_updated">更新于 %1$s</string>
     <plurals name="hours_ago">
         <item quantity="other">%1$d小时前</item>
     </plurals>
@@ -106,6 +119,7 @@
     <string name="new_session_title">新会话</string>
     <string name="pair_code_hint">两边显示的数字一致，才是你的电脑</string>
     <string name="pair_connect">连接</string>
+    <string name="pair_connecting">正在连接电脑…</string>
     <string name="pair_failed_rejected">电脑拒绝了这次配对</string>
     <string name="pair_failed_unauthorized">电脑不认识这部手机，请重新扫码</string>
     <string name="pair_failed_unreachable">连不上电脑，请确认两者在同一 Wi-Fi，或电脑在线</string>
@@ -114,11 +128,17 @@
     <string name="pair_manual_invalid">请输入形如 192.168.1.20:43117 的地址</string>
     <string name="pair_manual_placeholder">IP:端口</string>
     <string name="pair_manual_title">手动连接</string>
+    <string name="pair_scan">扫描二维码</string>
+    <string name="pair_scan_hint">扫描电脑上的二维码</string>
+    <string name="pair_title">连接电脑</string>
+    <string name="pair_troubleshoot">扫码无法识别？查看排查指引</string>
+    <string name="pair_troubleshoot_firewall">Mac 第一次开启手机连接时会弹出防火墙提示，请点「允许」。</string>
+    <string name="pair_troubleshoot_relay">电脑端二维码里带有局域网地址和云端中继地址，局域网连不上时会自动改走中继。</string>
+    <string name="pair_troubleshoot_same_wifi">手机和电脑要在同一个 Wi-Fi 下，访客网络通常会隔离设备。</string>
     <string name="pair_verification_code">验证码</string>
     <string name="pair_waiting_approval">在电脑上核对验证码并点击「允许」</string>
     <string name="remote_connect_failed">无法连接桌面</string>
     <string name="save">保存</string>
-    <string name="scan_pairing_qr">扫描配对二维码</string>
     <string name="send">发送</string>
     <string name="session_delete">删除</string>
     <string name="session_delete_message">电脑上的这个会话也会一并删除，无法恢复。</string>
@@ -129,6 +149,7 @@
     <string name="session_rename">重命名</string>
     <string name="session_rename_title">重命名会话</string>
     <string name="session_unpin">取消置顶</string>
+    <string name="settings_title">设置</string>
     <string name="stop">停止</string>
     <string name="theme_dark">深色</string>
     <string name="theme_light">浅色</string>
@@ -150,15 +171,10 @@
     <string name="work_empty_filtered_description">换个筛选条件试试。</string>
     <string name="work_error_not_connected">电脑当前不在线，重新连上后再试</string>
     <string name="work_error_unknown">出了点问题，请稍后再试</string>
-    <string name="work_filter_kind">类型</string>
-    <string name="work_filter_project">项目</string>
     <string name="work_group_done">已完成</string>
     <string name="work_group_processing">处理中</string>
     <string name="work_group_waiting">待你决策</string>
-    <string name="work_kind_all">所有类型</string>
-    <string name="work_kind_conversation">对话</string>
     <string name="work_kind_project">项目</string>
-    <string name="work_project_all">所有项目</string>
     <string name="work_settings_confirm_policy">手机确认策略</string>
     <string name="work_settings_confirm_policy_hint">当电脑在改动重要文件时，何时提醒你在手机上确认</string>
     <string name="work_settings_haptics">任务做完震动提醒</string>
@@ -174,13 +190,10 @@
     <string name="work_settings_policy_major">只在重大变动</string>
     <string name="work_settings_rescan">重新扫码</string>
     <string name="work_settings_scan">扫码连接电脑</string>
-    <string name="work_settings_title">电脑</string>
     <string name="work_settings_unpair">解除配对</string>
     <string name="work_settings_unpair_confirm">解除与这台电脑的配对？手机上缓存的对话会一起删除。</string>
     <string name="work_settings_unpair_hint">删除这台电脑的连接凭据和手机上缓存的会话，之后需要重新扫码才能连接。</string>
-    <string name="work_status_aborted">已停止</string>
     <string name="work_status_all">所有</string>
-    <string name="work_status_done">已完成</string>
     <string name="work_status_error">出错</string>
     <string name="work_status_running">进行中</string>
     <string name="work_status_thinking">思考中</string>
