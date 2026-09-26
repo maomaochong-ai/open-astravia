@@ -146,6 +146,19 @@ function createWindowsInputAdapter(): SystemInputAdapter {
 				);
 				return;
 			}
+			if (message.type === "text") {
+				// KEYEVENTF_UNICODE types each UTF-16 unit whatever the keyboard layout or input method.
+				for (const unit of utf16Units(message.text)) {
+					for (const flags of [0x0004, 0x0004 | 0x0002]) {
+						SendInput(
+							1,
+							{ type: 1, u: { ki: { wVk: 0, wScan: unit, dwFlags: flags, time: 0, dwExtraInfo: 0 } } },
+							inputSize,
+						);
+					}
+				}
+				return;
+			}
 			if (message.type === "key") {
 				const key = virtualKey(message.code);
 				if (!key) return;
@@ -176,7 +189,11 @@ const macInput = once(() => {
 	const CGDisplayPixelsWide = coreGraphics.func("size_t CGDisplayPixelsWide(uint32)");
 	const CGDisplayPixelsHigh = coreGraphics.func("size_t CGDisplayPixelsHigh(uint32)");
 	const CFRelease = coreFoundation.func("void CFRelease(void *)");
+	const CGEventKeyboardSetUnicodeString = coreGraphics.func(
+		"void CGEventKeyboardSetUnicodeString(void *, unsigned long, const uint16_t *)",
+	);
 	return {
+		CGEventKeyboardSetUnicodeString,
 		CGEventCreateMouseEvent,
 		CGEventCreateKeyboardEvent,
 		CGEventCreateScrollWheelEvent,
@@ -194,6 +211,7 @@ function createMacInputAdapter(): SystemInputAdapter {
 		return unsupportedInputAdapter("accessibility_permission_required");
 	}
 	const {
+		CGEventKeyboardSetUnicodeString,
 		CGEventCreateMouseEvent,
 		CGEventCreateKeyboardEvent,
 		CGEventCreateScrollWheelEvent,
@@ -236,6 +254,20 @@ function createMacInputAdapter(): SystemInputAdapter {
 			}
 			if (message.type === "pointer.scroll") {
 				post(CGEventCreateScrollWheelEvent(null, 0, 2, Math.round(-message.deltaY), Math.round(-message.deltaX)));
+				return;
+			}
+			if (message.type === "text") {
+				// A key event carries at most 20 UTF-16 units of text; longer text goes in pieces.
+				const units = utf16Units(message.text);
+				for (let start = 0; start < units.length; start += 20) {
+					const piece = Uint16Array.from(units.slice(start, start + 20));
+					for (const down of [true, false]) {
+						const event = CGEventCreateKeyboardEvent(null, 0, down);
+						if (!event) continue;
+						CGEventKeyboardSetUnicodeString(event, piece.length, piece);
+						post(event);
+					}
+				}
 				return;
 			}
 			if (message.type === "key") {
@@ -302,6 +334,10 @@ function createLinuxX11InputAdapter(): SystemInputAdapter {
 			XFlush(display);
 		},
 	};
+}
+
+function utf16Units(text: string): number[] {
+	return Array.from({ length: text.length }, (_, index) => text.charCodeAt(index));
 }
 
 function macMouseButton(button: "left" | "middle" | "right"): number {

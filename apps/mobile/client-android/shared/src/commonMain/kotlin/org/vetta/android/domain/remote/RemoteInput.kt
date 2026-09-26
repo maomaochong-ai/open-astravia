@@ -6,24 +6,60 @@ import kotlin.math.min
 /** A key to press on the desktop, with Shift held around it for a capital. */
 data class RemoteKeyStroke(val code: String, val shift: Boolean = false)
 
+/** One piece of what was typed on the phone, as the desktop receives it. */
+sealed interface RemoteTyping {
+    /** A key pressed by its position on a US layout, which every desktop version understands. */
+    data class Key(val stroke: RemoteKeyStroke) : RemoteTyping
+
+    /** Text typed as-is (punctuation, Chinese, emoji), for desktops that accept typed text. */
+    data class Text(val text: String) : RemoteTyping
+}
+
 /**
- * Typed text as the desktop's key codes. The desktop presses keys by their position on
- * a US layout and knows letters, digits, space and a few control keys, so only those
- * characters can be typed; anything else is left out.
+ * Typed text as what the desktop is sent. Letters, digits, space, Tab and Enter go as key
+ * presses, so they work on any desktop; everything else printable goes as runs of text.
+ * Other control characters are left out: the desktop would read them as keys the phone
+ * never showed.
  */
 object RemoteKeys {
-    fun supports(char: Char): Boolean = char in 'a'..'z' || char in 'A'..'Z' || char in '0'..'9' || char == ' ' || char == '\n'
+    /** The most text one message carries, the desktop's own limit. */
+    const val MAX_TEXT = 256
 
-    fun strokes(text: String): List<RemoteKeyStroke> =
-        text.mapNotNull { char ->
-            when (char) {
-                in 'a'..'z' -> RemoteKeyStroke("Key${char.uppercaseChar()}")
-                in 'A'..'Z' -> RemoteKeyStroke("Key$char", shift = true)
-                in '0'..'9' -> RemoteKeyStroke("Digit$char")
-                ' ' -> RemoteKeyStroke("Space")
-                '\n' -> RemoteKeyStroke("Enter")
-                else -> null
+    fun typing(text: String): List<RemoteTyping> {
+        val out = mutableListOf<RemoteTyping>()
+        val run = StringBuilder()
+        fun flush() {
+            if (run.isNotEmpty()) out += RemoteTyping.Text(run.toString())
+            run.clear()
+        }
+        for (char in text) {
+            val key = key(char)
+            when {
+                key != null -> {
+                    flush()
+                    out += RemoteTyping.Key(key)
+                }
+                char.isISOControl() -> Unit
+                else -> {
+                    // Never split a surrogate pair across two messages.
+                    if (run.length >= MAX_TEXT - 1 && !char.isLowSurrogate()) flush()
+                    run.append(char)
+                }
             }
+        }
+        flush()
+        return out
+    }
+
+    private fun key(char: Char): RemoteKeyStroke? =
+        when (char) {
+            in 'a'..'z' -> RemoteKeyStroke("Key${char.uppercaseChar()}")
+            in 'A'..'Z' -> RemoteKeyStroke("Key$char", shift = true)
+            in '0'..'9' -> RemoteKeyStroke("Digit$char")
+            ' ' -> RemoteKeyStroke("Space")
+            '\t' -> RemoteKeyStroke("Tab")
+            '\n' -> RemoteKeyStroke("Enter")
+            else -> null
         }
 }
 

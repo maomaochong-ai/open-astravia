@@ -30,6 +30,23 @@ describe("remote desktop protocol", () => {
 		).toThrow("unsupported field: text");
 	});
 
+	it("carries typed text in any language but no control characters", () => {
+		expect(decodeRemoteInputMessage({ type: "text", sequence: 2, text: "你好, world!" })).toEqual({
+			type: "text",
+			sequence: 2,
+			text: "你好, world!",
+		});
+		expect(() => decodeRemoteInputMessage({ type: "text", sequence: 2, text: "a\u001b[2J" })).toThrow(
+			"control characters",
+		);
+		expect(() => decodeRemoteInputMessage({ type: "text", sequence: 2, text: "" })).toThrow(
+			RemoteDesktopProtocolError,
+		);
+		expect(() => decodeRemoteInputMessage({ type: "text", sequence: 2, text: "x".repeat(257) })).toThrow(
+			RemoteDesktopProtocolError,
+		);
+	});
+
 	it("bounds SDP and validates protocol versions", () => {
 		expect(() =>
 			decodeRemoteDesktopSignal({ type: "offer", protocolVersion: 2, sessionId: "session", sdp: "v=0" }),

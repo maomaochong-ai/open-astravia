@@ -7,7 +7,7 @@ import kotlin.test.assertTrue
 
 class RemoteInputTest {
     @Test
-    fun typesLettersDigitsAndSpaceHoldingShiftForCapitals() {
+    fun lettersDigitsAndSpacesAreKeyPresses() {
         assertEquals(
             listOf(
                 RemoteKeyStroke("KeyH", shift = true),
@@ -15,17 +15,34 @@ class RemoteInputTest {
                 RemoteKeyStroke("Space"),
                 RemoteKeyStroke("Digit4"),
                 RemoteKeyStroke("Digit2"),
+                RemoteKeyStroke("Tab"),
                 RemoteKeyStroke("Enter"),
-            ),
-            RemoteKeys.strokes("Hi 42\n"),
+            ).map(RemoteTyping::Key),
+            RemoteKeys.typing("Hi 42\t\n"),
         )
     }
 
     @Test
-    fun leavesOutWhatTheDesktopCannotType() {
-        assertEquals(listOf(RemoteKeyStroke("KeyA"), RemoteKeyStroke("KeyB")), RemoteKeys.strokes("a,中b!"))
-        assertFalse(RemoteKeys.supports('.'))
-        assertTrue(RemoteKeys.supports('Z'))
+    fun punctuationAndOtherLanguagesGoAsTextRuns() {
+        assertEquals(
+            listOf(
+                RemoteTyping.Key(RemoteKeyStroke("KeyA")),
+                RemoteTyping.Text(",中文"),
+                RemoteTyping.Key(RemoteKeyStroke("KeyB")),
+                RemoteTyping.Text("!😀"),
+            ),
+            RemoteKeys.typing("a,中文b!😀"),
+        )
+        assertEquals(listOf(RemoteTyping.Text("。")), RemoteKeys.typing("\u001b。\u0007"), "control characters are dropped")
+    }
+
+    @Test
+    fun longTextIsSplitWithinTheDesktopsLimitButNotInsideAnEmoji() {
+        val text = "中".repeat(RemoteKeys.MAX_TEXT - 1) + "😀" + "。"
+        val runs = RemoteKeys.typing(text).map { (it as RemoteTyping.Text).text }
+        assertEquals(text, runs.joinToString(""))
+        assertTrue(runs.all { it.length <= RemoteKeys.MAX_TEXT })
+        assertTrue(runs.none { it.first().isLowSurrogate() || it.last().isHighSurrogate() })
     }
 
     @Test

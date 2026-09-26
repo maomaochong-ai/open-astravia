@@ -175,6 +175,15 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
         })
     }
 
+    /** Types text as-is; desktops before this message ignore it. */
+    fun sendText(text: String) {
+        sendInput(buildJsonObject {
+            put("type", "text")
+            put("sequence", sequence++)
+            put("text", text)
+        })
+    }
+
     private fun sendInput(payload: JsonObject) {
         val channel = inputChannel ?: return
         if (channel.state() != DataChannel.State.OPEN) return

@@ -52,6 +52,9 @@ export function encodeRemoteDesktopSignal(signal: RemoteDesktopSignal): string {
 	return JSON.stringify(signal);
 }
 
+/** The most text one input message carries; the phone sends what was typed at once. */
+const MAX_TYPED_TEXT = 256;
+
 export function parseRemoteInputMessage(value: string): RemoteInputMessage {
 	return decodeRemoteInputMessage(parseJson(value, "input message"));
 }
@@ -98,6 +101,12 @@ export function decodeRemoteInputMessage(value: unknown): RemoteInputMessage {
 			modifiers: modifiers(input.modifiers),
 		};
 	}
+	if (type === "text") {
+		const typed = text(input.text, "text", MAX_TYPED_TEXT);
+		// Control characters would reach the desktop as keys the phone cannot see (Escape, Ctrl+...).
+		if (/\p{Cc}/u.test(typed)) throw new RemoteDesktopProtocolError("text must not contain control characters");
+		return { type, sequence, text: typed };
+	}
 	if (type === "heartbeat") {
 		return { type, sequence, sentAt: integer(input.sentAt, "sentAt", 0, Number.MAX_SAFE_INTEGER) };
 	}
@@ -143,6 +152,7 @@ function inputFields(value: unknown): readonly string[] {
 	if (type === "pointer.button") return ["type", "sequence", "x", "y", "button", "action"];
 	if (type === "pointer.scroll") return ["type", "sequence", "deltaX", "deltaY"];
 	if (type === "key") return ["type", "sequence", "code", "action", "modifiers"];
+	if (type === "text") return ["type", "sequence", "text"];
 	if (type === "heartbeat") return ["type", "sequence", "sentAt"];
 	return ["type", "sequence"];
 }

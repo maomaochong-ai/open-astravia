@@ -53,6 +53,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import org.vetta.android.domain.remote.RemoteKeyStroke
 import org.vetta.android.domain.remote.RemoteKeys
+import org.vetta.android.domain.remote.RemoteTyping
 import org.vetta.android.domain.remote.RemoteViewport
 import org.vetta.android.domain.remote.WheelNotches
 import kotlin.math.abs
@@ -182,11 +183,17 @@ actual fun RemoteDesktopSurface(
                 )
             }
         }
-        RemoteKeyboard(keyboardOpen, onKeyboardClosed) { stroke ->
-            if (stroke.shift) session.sendKey("ShiftLeft", "down")
-            session.sendKey(stroke.code, "down")
-            session.sendKey(stroke.code, "up")
-            if (stroke.shift) session.sendKey("ShiftLeft", "up")
+        RemoteKeyboard(keyboardOpen, onKeyboardClosed) { typing ->
+            when (typing) {
+                is RemoteTyping.Text -> session.sendText(typing.text)
+                is RemoteTyping.Key -> {
+                    val stroke = typing.stroke
+                    if (stroke.shift) session.sendKey("ShiftLeft", "down")
+                    session.sendKey(stroke.code, "down")
+                    session.sendKey(stroke.code, "up")
+                    if (stroke.shift) session.sendKey("ShiftLeft", "up")
+                }
+            }
         }
     }
 }
@@ -264,12 +271,14 @@ private suspend fun AwaitPointerEventScope.twoFingers(
 }
 
 /**
- * A hidden text field that holds the phone's keyboard while it types on the desktop: every
- * character typed becomes key presses, deleting presses Backspace and the keyboard's action
- * key presses Enter. A single invisible character keeps Backspace working on an empty field.
+ * A hidden text field that holds the phone's keyboard while it types on the desktop: what is
+ * typed is sent once the keyboard commits it, so a word being composed (pinyin, say) reaches
+ * the desktop as the characters picked, not the letters spelled. Deleting presses Backspace
+ * and the keyboard's action key presses Enter. A single invisible character keeps Backspace
+ * working on an empty field.
  */
 @Composable
-private fun RemoteKeyboard(open: Boolean, onClosed: () -> Unit, onStroke: (RemoteKeyStroke) -> Unit) {
+private fun RemoteKeyboard(open: Boolean, onClosed: () -> Unit, onType: (RemoteTyping) -> Unit) {
     val focus = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
     var value by remember { mutableStateOf(TextFieldValue(SENTINEL, TextRange(SENTINEL.length))) }
@@ -288,14 +297,21 @@ private fun RemoteKeyboard(open: Boolean, onClosed: () -> Unit, onStroke: (Remot
         value = value,
         onValueChange = { next ->
             val text = next.text
-            when {
-                text.length > SENTINEL.length -> RemoteKeys.strokes(text.removePrefix(SENTINEL)).forEach(onStroke)
-                text.length < SENTINEL.length -> onStroke(RemoteKeyStroke("Backspace"))
-            }
-            value = TextFieldValue(SENTINEL, TextRange(SENTINEL.length))
+            value =
+                when {
+                    // Still composing: the keyboard owns the text until it commits.
+                    next.composition != null && text.startsWith(SENTINEL) -> next
+                    else -> {
+                        when {
+                            text.length > SENTINEL.length -> RemoteKeys.typing(text.removePrefix(SENTINEL)).forEach(onType)
+                            text.length < SENTINEL.length -> onType(RemoteTyping.Key(RemoteKeyStroke("Backspace")))
+                        }
+                        TextFieldValue(SENTINEL, TextRange(SENTINEL.length))
+                    }
+                }
         },
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii, imeAction = ImeAction.Send, autoCorrectEnabled = false),
-        keyboardActions = KeyboardActions(onSend = { onStroke(RemoteKeyStroke("Enter")) }),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Send, autoCorrectEnabled = false),
+        keyboardActions = KeyboardActions(onSend = { onType(RemoteTyping.Key(RemoteKeyStroke("Enter"))) }),
         modifier =
             Modifier
                 .size(1.dp)
