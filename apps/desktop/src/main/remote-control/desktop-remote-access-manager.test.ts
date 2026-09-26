@@ -1,6 +1,6 @@
 import type { RemoteConnection, RemoteTransportHandlers } from "@vetta/remote-control";
 import { generateIdentityKeyPair, parsePairingUri, type RemoteHello, toBase64Url } from "@vetta/remote-control";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { DesktopConfig } from "../config/desktop-config-store.js";
 import type { CredentialRef } from "../credentials/credential-vault.js";
 import { DesktopRemoteAccessManager } from "./desktop-remote-access-manager.js";
@@ -188,6 +188,38 @@ describe("DesktopRemoteAccessManager", () => {
 		// The relay link restarts with the pinned key so nobody else can take the room.
 		expect(relayLinks[0]?.stopped).toBe(true);
 		expect(relayLinks[1]?.options.mobileIdentityKey).toBe(phoneKey);
+	});
+
+	it("a phone that scans again replaces its earlier pairing instead of adding another", async () => {
+		const phoneKey = toBase64Url(generateIdentityKeyPair().publicKey);
+		const oldId = "o".repeat(24);
+		const { manager, lanServers, readConfig, store, vault } = harness({
+			cloudEnabled: true,
+			devices: [{ id: oldId, name: "Pixel", mobileSecretHash: "h", mobileIdentityKey: phoneKey, createdAt: 1 }],
+		});
+		store.putRelaySecret(oldId, "old-relay-secret");
+		await manager.restore();
+		const state = await manager.createInvite();
+		const invite = parsePairingUri(state.invite?.inviteUri ?? "");
+		const fresh = readConfig().remoteControl?.devices.find((device) => device.id === invite.pairingId);
+		lanServers[0]?.options.onDeviceHello(
+			{ id: invite.pairingId, mobileSecretHash: fresh?.mobileSecretHash ?? "" },
+			hello(phoneKey, "Pixel"),
+		);
+		await vi.waitFor(() =>
+			expect(readConfig().remoteControl?.devices.map((device) => device.id)).toEqual([invite.pairingId]),
+		);
+		expect([...vault.keys()].filter((name) => name.includes(oldId))).toEqual([]);
+
+		// Another phone keeps its own pairing.
+		const other = await manager.createInvite();
+		const otherInvite = parsePairingUri(other.invite?.inviteUri ?? "");
+		const otherRecord = readConfig().remoteControl?.devices.find((device) => device.id === otherInvite.pairingId);
+		lanServers[0]?.options.onDeviceHello(
+			{ id: otherInvite.pairingId, mobileSecretHash: otherRecord?.mobileSecretHash ?? "" },
+			hello(toBase64Url(generateIdentityKeyPair().publicKey), "iPhone"),
+		);
+		await vi.waitFor(() => expect(readConfig().remoteControl?.devices).toHaveLength(2));
 	});
 
 	it("revoking the last phone tears every transport down again", async () => {

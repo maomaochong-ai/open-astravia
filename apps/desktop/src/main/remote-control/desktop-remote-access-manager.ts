@@ -388,6 +388,24 @@ export class DesktopRemoteAccessManager {
 			await this.reconcile();
 		}
 		log.info("remote device claimed", { pairingId: deviceId.slice(0, 6) });
+		await this.forgetEarlierPairings(deviceId, identityKey);
+	}
+
+	/**
+	 * A phone that pairs again (scanning a new code, or pairing by address) replaces the
+	 * pairing it had: without this each scan left another record that never came online
+	 * again but kept its credentials. Phones are told apart by their pinned identity key.
+	 */
+	private async forgetEarlierPairings(keepId: string, identityKey: string): Promise<void> {
+		const earlier = this.config.devices.filter(
+			(device) => device.id !== keepId && device.mobileIdentityKey === identityKey,
+		);
+		for (const device of earlier) await this.revokeDevice(device.id);
+		if (earlier.length > 0)
+			log.info("remote device replaced earlier pairings", {
+				pairingId: keepId.slice(0, 6),
+				replaced: earlier.length,
+			});
 	}
 
 	private requestApproval(hello: RemoteHello, code: string, connectionId: string): Promise<boolean> {
@@ -449,6 +467,7 @@ export class DesktopRemoteAccessManager {
 			lastSeenAt: this.now(),
 		});
 		this.config = await this.options.store.read();
+		await this.forgetEarlierPairings(pairingId, peerIdentityKey);
 		await this.reconcile();
 		const port = this.lanServer?.listeningPort;
 		const paired: RemoteDevicePaired = {
