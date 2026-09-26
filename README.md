@@ -10,8 +10,8 @@
 <p align="center">
   <table width="100%">
     <tr>
-      <td align="center"><img src="docs/assets/screenshot-main.png" alt="Astravia 深色主题" width="100%" /></td>
-      <td align="center"><img src="docs/assets/capabilities.png" alt="能力页" width="100%" /></td>
+      <td align="center"><img src="docs/assets/screenshot-main.png" alt="Astravia 深色主题" width="100%" /><p><em>主界面：对话、工作区、文件预览同屏可见</em></p></td>
+      <td align="center"><img src="docs/assets/capabilities.png" alt="能力页" width="100%" /><p><em>能力中心：所有扩展点随需启用，权限逐条授权</em></p></td>
     </tr>
   </table>
 </p>

@@ -10,8 +10,8 @@
 <p align="center">
   <table width="100%">
     <tr>
-      <td align="center"><img src="docs/assets/screenshot-main.png" alt="Astravia dark theme" width="100%" /></td>
-      <td align="center"><img src="docs/assets/capabilities.png" alt="Capabilities page" width="100%" /></td>
+      <td align="center"><img src="docs/assets/screenshot-main.png" alt="Astravia dark theme" width="100%" /><p><em>Main view: conversation, workspace and file preview on one screen</em></p></td>
+      <td align="center"><img src="docs/assets/capabilities.png" alt="Capabilities page" width="100%" /><p><em>Capabilities center: enable extensions on demand, permissions granted one by one</em></p></td>
     </tr>
   </table>
 </p>
