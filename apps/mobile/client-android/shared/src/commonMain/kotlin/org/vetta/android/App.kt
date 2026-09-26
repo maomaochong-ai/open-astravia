@@ -6,6 +6,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.tooling.preview.Preview
 import org.vetta.android.app.AppContainer
 import org.vetta.android.domain.work.IncomingShare
+import org.vetta.android.domain.work.LaunchTarget
 import org.vetta.android.ui.LocalAppContainer
 import org.vetta.android.ui.RootApp
 
@@ -19,6 +20,8 @@ fun App(
     onShareHandled: () -> Unit = {},
     openSession: String? = null,
     onOpenSessionHandled: () -> Unit = {},
+    launchTarget: LaunchTarget? = null,
+    onLaunchTargetHandled: () -> Unit = {},
 ) {
     CompositionLocalProvider(LocalAppContainer provides container) {
         RootApp(
@@ -29,6 +32,8 @@ fun App(
             onShareHandled = onShareHandled,
             openSession = openSession,
             onOpenSessionHandled = onOpenSessionHandled,
+            launchTarget = launchTarget,
+            onLaunchTargetHandled = onLaunchTargetHandled,
         )
     }
 }

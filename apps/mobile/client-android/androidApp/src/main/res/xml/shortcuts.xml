@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Long-pressing the app icon offers these; each opens MainActivity with its action (LaunchTarget). -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="new_session"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_new_session"
+        android:shortcutShortLabel="@string/shortcut_new_session">
+        <intent
+            android:action="org.vetta.android.action.NEW_SESSION"
+            android:targetClass="org.vetta.android.MainActivity"
+            android:targetPackage="org.vetta.android" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="task_board"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_task_board"
+        android:shortcutShortLabel="@string/shortcut_task_board">
+        <intent
+            android:action="org.vetta.android.action.TASK_BOARD"
+            android:targetClass="org.vetta.android.MainActivity"
+            android:targetPackage="org.vetta.android" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="remote_control"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_remote_control"
+        android:shortcutShortLabel="@string/shortcut_remote_control">
+        <intent
+            android:action="org.vetta.android.action.REMOTE_CONTROL"
+            android:targetClass="org.vetta.android.MainActivity"
+            android:targetPackage="org.vetta.android" />
+    </shortcut>
+</shortcuts>

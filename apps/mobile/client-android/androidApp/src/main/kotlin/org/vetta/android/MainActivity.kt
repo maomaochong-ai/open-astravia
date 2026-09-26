@@ -15,6 +15,7 @@ import kotlinx.coroutines.launch
 import org.vetta.android.app.AndroidAppContainer
 import org.vetta.android.app.SessionNotifier
 import org.vetta.android.domain.work.IncomingShare
+import org.vetta.android.domain.work.LaunchTarget
 import org.vetta.android.ui.work.isShareIntent
 import org.vetta.android.ui.work.readShare
 
@@ -22,6 +23,7 @@ class MainActivity : ComponentActivity() {
     private var pendingPairingInvite by mutableStateOf<String?>(null)
     private var pendingShare by mutableStateOf<IncomingShare?>(null)
     private var pendingSession by mutableStateOf<String?>(null)
+    private var pendingLaunch by mutableStateOf<LaunchTarget?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -30,6 +32,8 @@ class MainActivity : ComponentActivity() {
         // A share is read once; a recreated activity must not add it to the draft again.
         if (savedInstanceState == null) takeShare(intent)
         pendingSession = intent.getStringExtra(SessionNotifier.EXTRA_SESSION_ID)
+        // A recreated activity has already gone where the shortcut asked.
+        if (savedInstanceState == null) pendingLaunch = LaunchTarget.fromAction(intent.action)
 
         val container = AndroidAppContainer.get(this)
         setContent {
@@ -44,6 +48,8 @@ class MainActivity : ComponentActivity() {
                     pendingSession = null
                     intent.removeExtra(SessionNotifier.EXTRA_SESSION_ID)
                 },
+                launchTarget = pendingLaunch,
+                onLaunchTargetHandled = { pendingLaunch = null },
             )
         }
     }
@@ -54,6 +60,7 @@ class MainActivity : ComponentActivity() {
         pendingPairingInvite = pairingInviteFrom(intent)
         takeShare(intent)
         intent.getStringExtra(SessionNotifier.EXTRA_SESSION_ID)?.let { pendingSession = it }
+        LaunchTarget.fromAction(intent.action)?.let { pendingLaunch = it }
     }
 
     /** Reads what another app shared, off the main thread, and hands it to the app once. */

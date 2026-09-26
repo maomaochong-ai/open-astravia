@@ -49,6 +49,7 @@ import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import org.vetta.android.app.AppContainer
 import org.vetta.android.domain.work.IncomingShare
+import org.vetta.android.domain.work.LaunchTarget
 import org.vetta.android.domain.work.MirrorState
 import org.vetta.android.domain.work.PromptDraft
 import org.vetta.android.resources.Res
@@ -115,6 +116,9 @@ fun RootApp(
     /** A session a notification was tapped for. */
     openSession: String? = null,
     onOpenSessionHandled: () -> Unit = {},
+    /** Where a home screen shortcut or the quick settings tile asked to open. */
+    launchTarget: LaunchTarget? = null,
+    onLaunchTargetHandled: () -> Unit = {},
 ) {
     val vm: AppViewModel = viewModel(factory = remember(container) { AppViewModelFactory(container) })
     val state by vm.state.collectAsState()
@@ -165,6 +169,21 @@ fun RootApp(
             vm.show(openSession)
             onOpenSessionHandled()
         }
+    }
+
+    LaunchedEffect(launchTarget) {
+        when (launchTarget) {
+            null -> return@LaunchedEffect
+            LaunchTarget.NewSession -> vm.startNewSession()
+            LaunchTarget.TaskBoard -> vm.openBoard()
+            // Without a paired computer there is no screen to show: pairing comes first.
+            LaunchTarget.RemoteControl ->
+                when {
+                    viewerUrl != null -> vm.openRemote()
+                    !workState.paired -> vm.openPairing()
+                }
+        }
+        onLaunchTargetHandled()
     }
 
     // Something shared from another app starts a session: New Session opens with it in the composer.
