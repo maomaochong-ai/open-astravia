@@ -30,7 +30,6 @@
 			--font-sans: "Hanken Grotesk", Inter, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", sans-serif;
 			--font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Menlo, Consolas, monospace;
 		}
-
 		* { margin: 0; padding: 0; box-sizing: border-box; }
 		html { scroll-behavior: auto; }
 		body {
@@ -128,8 +127,8 @@
 			flex-direction: column;
 			align-items: center;
 			justify-content: center;
-			overflow: hidden;
-			padding: 80px 24px;
+			overflow: visible;
+			padding: 80px 24px 120px;
 		}
 		.download-theater-beams {
 			position: absolute;
@@ -151,13 +150,13 @@
 		.download-theater-beam--b { left: 50%; height: 100%; }
 		.download-theater-beam--c { left: 75%; height: 100%; }
 
-		/* 平台图标 — 绝对定位，覆盖整个区域 */
+		/* 平台图标 — 绝对定位覆盖整个剧场 */
 		.dl-platforms {
 			position: absolute;
-			z-index: 10;
+			z-index: 30;
 			inset: 0;
 			pointer-events: none;
-			overflow: hidden;
+			overflow: visible;
 		}
 		.dl-platform-icon {
 			position: absolute;
@@ -174,6 +173,12 @@
 			pointer-events: auto;
 			will-change: transform, opacity;
 			transition: border-color 0.2s var(--ease), box-shadow 0.2s var(--ease);
+			cursor: pointer;
+		}
+		.dl-platform-icon:hover {
+			border-color: var(--accent);
+			box-shadow: 0 0 16px -4px rgba(124, 138, 255, 0.5);
+			z-index: 50;
 		}
 		.dl-platform-icon img {
 			width: 28px;
@@ -202,6 +207,7 @@
 			letter-spacing: -0.02em;
 			text-shadow: 0 0 40px color-mix(in srgb, var(--accent) 30%, transparent);
 			margin-bottom: 12px;
+			transition: transform 0.1s ease-out;
 		}
 
 		/* 描述 */
@@ -212,6 +218,7 @@
 			color: var(--muted);
 			margin-bottom: 40px;
 			text-align: center;
+			transition: transform 0.1s ease-out;
 		}
 
 		/* 主下载按钮 */
@@ -372,7 +379,6 @@
 	</style>
 </head>
 <body>
-	<!-- 导航 -->
 	<header class="nav" id="nav">
 		<div class="nav__inner">
 			<a class="nav__brand" href="/#top">
@@ -400,7 +406,6 @@
 		</div>
 	</header>
 
-	<!-- 下载剧场 -->
 	<div class="download-theater">
 		<div class="download-theater-beams" aria-hidden="true">
 			<div class="download-theater-haze"></div>
@@ -409,7 +414,6 @@
 			<span class="download-theater-beam download-theater-beam--c"></span>
 		</div>
 
-		<!-- 平台图标 — 从顶部散落 -->
 		<div class="dl-platforms" id="dlPlatforms" aria-hidden="true">
 			<div class="dl-platform-icon" data-platform="ollama"><img src="/ollama.webp" alt="" width="28" height="28" /></div>
 			<div class="dl-platform-icon" data-platform="kimi"><img src="/kimi.webp" alt="" width="28" height="28" /></div>
@@ -421,11 +425,9 @@
 			<div class="dl-platform-icon" data-platform="openai"><img src="/openai.webp" alt="" width="28" height="28" /></div>
 		</div>
 
-		<!-- 内容层 -->
 		<div class="dl-content">
-			<h1 class="dl__title">下载</h1>
-			<p class="dl__desc">我们会检测你的设备并推荐合适的版本。点击即可下载，或通过下方选择其他平台。</p>
-
+			<h1 class="dl__title" id="dlTitle">下载</h1>
+			<p class="dl__desc" id="dlDesc">我们会检测你的设备并推荐合适的版本。点击即可下载，或通过下方选择其他平台。</p>
 			<div class="dl__primary-wrap">
 				<a class="dl__primary" id="dlPrimary" href="#" target="_blank" rel="noopener">
 					<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -433,39 +435,21 @@
 				</a>
 				<p class="dl__version" id="dlPrimaryVersion">v0.55.37 · DMG</p>
 			</div>
-
 			<button class="dl__others-toggle" id="dlOthersToggle" type="button">
 				其他版本
 				<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
 			</button>
-
 			<div class="dl__others" id="dlOthers">
 				<ul class="dl__others-list">
-					<li>
-						<a class="dl__others-item" href="https://dl.astravia.dev/app/v0.55.37/Astravia-0.55.37-arm64.dmg" target="_blank" rel="noopener">
-							<span>Mac Arm64 (Apple Silicon)<span class="dl-rec">推荐</span></span>
-							<small>v0.55.37</small>
-						</a>
-					</li>
-					<li>
-						<a class="dl__others-item" href="https://dl.astravia.dev/app/v0.55.37/Astravia-0.55.37.dmg" target="_blank" rel="noopener">
-							<span>Mac x64 (Intel)</span>
-							<small>v0.55.37</small>
-						</a>
-					</li>
-					<li>
-						<a class="dl__others-item" href="https://dl.astravia.dev/app/v0.55.37/Astravia-0.55.37-win-x64.exe" target="_blank" rel="noopener">
-							<span>Windows x64</span>
-							<small>v0.55.37</small>
-						</a>
-					</li>
+					<li><a class="dl__others-item" href="https://dl.astravia.dev/app/v0.55.37/Astravia-0.55.37-arm64.dmg" target="_blank" rel="noopener"><span>Mac Arm64 (Apple Silicon)<span class="dl-rec">推荐</span></span><small>v0.55.37</small></a></li>
+					<li><a class="dl__others-item" href="https://dl.astravia.dev/app/v0.55.37/Astravia-0.55.37.dmg" target="_blank" rel="noopener"><span>Mac x64 (Intel)</span><small>v0.55.37</small></a></li>
+					<li><a class="dl__others-item" href="https://dl.astravia.dev/app/v0.55.37/Astravia-0.55.37-win-x64.exe" target="_blank" rel="noopener"><span>Windows x64</span><small>v0.55.37</small></a></li>
 				</ul>
 			</div>
 		</div>
 	</div>
 
-	<!-- 页脚 -->
-	<footer class="footer">
+	<footer class="footer" id="footer">
 		<div class="container">
 			<div class="footer__grid">
 				<div class="footer__brand-col">
@@ -476,14 +460,10 @@
 					<p class="footer__brand-desc">本地优先的开源 AI 桌面助手——编码、文档、数据、自动化，一个应用全包。</p>
 					<div class="footer__socials">
 						<a class="footer__social-icon" href="https://github.com/maomaochong-ai/astravia" target="_blank" rel="noopener" aria-label="GitHub">
-							<svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-								<path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8 8 0 0 0 16 8c0-4.42-3.58-8-8-8Z" />
-							</svg>
+							<svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8 8 0 0 0 16 8c0-4.42-3.58-8-8-8Z" /></svg>
 						</a>
 						<a class="footer__social-icon" href="mailto:contact@astravia.dev" aria-label="邮箱">
-							<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-								<rect x="2" y="4" width="20" height="16" rx="2" /><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
-							</svg>
+							<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2" /><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" /></svg>
 						</a>
 					</div>
 				</div>
@@ -526,14 +506,11 @@
 			if (yearEl) yearEl.textContent = new Date().getFullYear();
 
 			const nav = document.getElementById("nav");
-			window.addEventListener("scroll", () => {
-				nav.classList.toggle("is-scrolled", window.scrollY > 8);
-			}, { passive: true });
+			window.addEventListener("scroll", () => nav.classList.toggle("is-scrolled", window.scrollY > 8), { passive: true });
 
 			const THEME_KEY = "astravia-theme";
 			const themeToggle = document.getElementById("themeToggle");
 			const root = document.documentElement;
-
 			function applyTheme(theme) {
 				root.dataset.theme = theme;
 				themeToggle.classList.toggle("is-light", theme === "light");
@@ -541,9 +518,7 @@
 				themeToggle.setAttribute("aria-pressed", String(theme === "dark"));
 				themeToggle.setAttribute("aria-label", theme === "dark" ? "切换到浅色模式" : "切换到深色模式");
 			}
-
 			applyTheme(root.dataset.theme);
-
 			themeToggle.addEventListener("click", () => {
 				const next = root.dataset.theme === "dark" ? "light" : "dark";
 				applyTheme(next);
@@ -555,11 +530,10 @@
 			const isMac = /Mac/i.test(ua) && !/iPhone|iPad|iPod/i.test(ua);
 			const isWin = /Win/i.test(ua);
 			const isArm = /ARM|arm64|aarch64/i.test(ua);
-
 			const dlPrimary = document.getElementById("dlPrimary");
 			const dlPrimaryText = document.getElementById("dlPrimaryText");
 			const dlPrimaryVersion = document.getElementById("dlPrimaryVersion");
-
+			let detectedPlatform = "macos";
 			if (isMac && isArm) {
 				dlPrimary.href = "https://dl.astravia.dev/app/v0.55.37/Astravia-0.55.37-arm64.dmg";
 				dlPrimaryText.textContent = "MAC ARM64 (APPLE SILICON)";
@@ -569,6 +543,7 @@
 				dlPrimaryText.textContent = "MAC X64 (INTEL)";
 				dlPrimaryVersion.textContent = "v0.55.37 · DMG";
 			} else if (isWin) {
+				detectedPlatform = "windows";
 				dlPrimary.href = "https://dl.astravia.dev/app/v0.55.37/Astravia-0.55.37-win-x64.exe";
 				dlPrimaryText.textContent = "WINDOWS X64";
 				dlPrimaryVersion.textContent = "v0.55.37 · EXE";
@@ -579,104 +554,197 @@
 				dlPrimaryVersion.textContent = "即将推出";
 			}
 
-			// 高亮推荐平台图标
-			const platforms = document.querySelectorAll(".dl-platform-icon");
-			platforms.forEach((icon) => {
-				if (icon.dataset.platform === (isMac ? "ollama" : isWin ? "kimi" : "grok")) {
-					icon.classList.add("is-rec");
-				}
+			// 高亮推荐图标
+			const platformMap = { macos: "ollama", windows: "kimi", linux: "grok" };
+			document.querySelectorAll(".dl-platform-icon").forEach((icon) => {
+				if (icon.dataset.platform === platformMap[detectedPlatform]) icon.classList.add("is-rec");
 			});
 
-			// 散落动画 — 从顶部掉落，散落在标题和文字周围
+			// === 物理掉落动画系统 ===
 			const theater = document.querySelector(".download-theater");
-			const theaterRect = theater.getBoundingClientRect();
-			const FALL_DURATION = 1200;
-			const STAGGER = 80;
+			const titleEl = document.getElementById("dlTitle");
+			const descEl = document.getElementById("dlDesc");
+			const footerEl = document.getElementById("footer");
+			const platforms = document.querySelectorAll(".dl-platform-icon");
 
-			function easeOutBounce(t) {
-				const n1 = 7.5625;
-				const d1 = 2.75;
-				if (t < 1 / d1) return n1 * t * t;
-				if (t < 2 / d1) { t -= 1.5 / d1; return n1 * t * t + 0.75; }
-				if (t < 2.5 / d1) { t -= 2.25 / d1; return n1 * t * t + 0.9375; }
-				t -= 2.625 / d1;
-				return n1 * t * t + 0.984375;
+			// 碰撞区域定义（相对于剧场容器）
+			function getZones() {
+				const theaterRect = theater.getBoundingClientRect();
+				const titleRect = titleEl.getBoundingClientRect();
+				const descRect = descEl.getBoundingClientRect();
+				const footerRect = footerEl.getBoundingClientRect();
+
+				return {
+					theaterCenter: { x: theaterRect.width / 2, y: theaterRect.height / 2 },
+					title: {
+						x: titleRect.left + titleRect.width / 2 - theaterRect.left,
+						y: titleRect.top + titleRect.height / 2 - theaterRect.top,
+						w: titleRect.width + 40,
+						h: titleRect.height + 20,
+					},
+					desc: {
+						x: descRect.left + descRect.width / 2 - theaterRect.left,
+						y: descRect.top + descRect.height / 2 - theaterRect.top,
+						w: descRect.width + 60,
+						h: descRect.height + 30,
+					},
+					footerLine: {
+						y: footerRect.top - theaterRect.top,
+					},
+				};
 			}
 
-			function animateFall(icon, index, _total) {
-				const theaterW = theaterRect.width;
-				const theaterH = theaterRect.height;
+			const _zones = getZones();
+			const ICON_SIZE = 48;
+			const GRAVITY = 0.35;
+			const BOUNCE_DAMPING = 0.55;
+			const ROTATION_DAMPING = 0.7;
+			const FRICTION = 0.98;
 
-				// 目标散落区域：覆盖整个剧场中心区域
-				const targetX = (Math.random() - 0.5) * theaterW * 0.7; // 水平散布 ±35%
-				const targetY = (Math.random() - 0.5) * theaterH * 0.5; // 垂直散布 ±25%
+			class FallingIcon {
+				constructor(el, index) {
+					this.el = el;
+					this.index = index;
+					this.reset();
+				}
 
-				// 起始位置：视口顶部上方
-				const startX = targetX + (Math.random() - 0.5) * 100;
-				const startY = -theaterH * 0.5 - Math.random() * 200;
-				const startRotate = (Math.random() - 0.5) * 120;
+				reset() {
+					const zones = getZones();
+					const theaterW = zones.theaterCenter.x * 2;
 
-				const startTime = performance.now() + index * STAGGER;
+					// 随机选择落点类型
+					const zoneRoll = Math.random();
+					let targetX, targetY;
 
-				// 跷跷板摇摆参数
-				const swingAmplitude = 8 + Math.random() * 12; // 摇摆幅度 8-20px
-				const swingSpeed = 1.5 + Math.random() * 2; // 摇摆速度
-				const swingPhase = Math.random() * Math.PI * 2; // 随机相位
-
-				function step(now) {
-					const elapsed = now - startTime;
-					if (elapsed < 0) { requestAnimationFrame(step); return; }
-
-					const progress = Math.min(elapsed / FALL_DURATION, 1);
-					const eased = easeOutBounce(progress);
-
-					const currentX = startX + (targetX - startX) * eased;
-					const currentY = startY + (targetY - startY) * eased;
-					const currentRotate = startRotate * (1 - eased);
-					const currentScale = 0.3 + 0.7 * eased;
-
-					// 跷跷板摇摆（落地后持续微幅摇摆）
-					const swing = progress >= 0.95
-						? Math.sin((now - startTime) * 0.003 * swingSpeed + swingPhase) * swingAmplitude * (1 - progress)
-						: 0;
-
-					icon.style.opacity = String(progress > 0.05 ? 1 : 0);
-					icon.style.transform = `translate(${currentX + swing}px, ${currentY}px) scale(${currentScale}) rotate(${currentRotate + swing * 0.3}deg)`;
-
-					if (progress < 1) {
-						requestAnimationFrame(step);
+					if (zoneRoll < 0.3) {
+						// 30% 概率落在标题上
+						const zone = zones.title;
+						targetX = zone.x + (Math.random() - 0.5) * zone.w;
+						targetY = zone.y - zone.h / 2 - ICON_SIZE / 2;
+					} else if (zoneRoll < 0.7) {
+						// 40% 概率落在描述文字区域
+						const zone = zones.desc;
+						targetX = zone.x + (Math.random() - 0.5) * zone.w;
+						targetY = zone.y + (Math.random() - 0.5) * zone.h * 0.8;
+					} else if (zoneRoll < 0.9) {
+						// 20% 概率落在页脚横线附近
+						targetX = (Math.random() - 0.5) * theaterW * 0.8;
+						targetY = zones.footerLine.y - ICON_SIZE / 2;
 					} else {
-						// 落地后进入静止摇摆状态
-						settleSwing(icon, targetX, targetY, swingAmplitude, swingSpeed, swingPhase);
+						// 10% 概率落在剧场底部
+						targetX = (Math.random() - 0.5) * theaterW * 0.6;
+						targetY = zones.theaterCenter.y * 1.2;
+					}
+
+					this.x = targetX;
+					this.y = targetY;
+					this.startX = targetX + (Math.random() - 0.5) * 150;
+					this.startY = -100 - Math.random() * 300;
+					this.vx = (Math.random() - 0.5) * 2;
+					this.vy = 0;
+					this.rotation = (Math.random() - 0.5) * 60;
+					this.vRotation = (Math.random() - 0.5) * 8;
+					this.scale = 0.4;
+					this.bounces = 0;
+					this.maxBounces = 3 + Math.floor(Math.random() * 3);
+					this.landed = false;
+					this.settleTime = 0;
+
+					this.el.style.left = "50%";
+					this.el.style.top = "50%";
+					this.el.style.marginLeft = `${-ICON_SIZE / 2}px`;
+					this.el.style.marginTop = `${-ICON_SIZE / 2}px`;
+				}
+
+				update(time, _dt) {
+					if (!this.landed) {
+						// 重力加速
+						this.vy += GRAVITY;
+						this.x += this.vx;
+						this.y += this.vy;
+						this.rotation += this.vRotation;
+
+						// 碰撞检测
+						if (this.y >= this.targetY) {
+							this.y = this.targetY;
+							this.vy = -this.vy * BOUNCE_DAMPING;
+							this.vRotation = -this.vRotation * ROTATION_DAMPING;
+							this.vx *= FRICTION;
+							this.bounces++;
+
+							// 触发文字倾斜效果
+							this.triggerTilt();
+
+							if (this.bounces >= this.maxBounces || Math.abs(this.vy) < 0.5) {
+								this.landed = true;
+								this.vy = 0;
+								this.vRotation = 0;
+								this.settleTime = time;
+							}
+						}
+
+						// 缩放渐入
+						this.scale = Math.min(1, this.scale + 0.02);
+					} else {
+						// 落地后缓慢静止
+						const settleElapsed = time - this.settleTime;
+						const settleDecay = Math.max(0, 1 - settleElapsed / 1500);
+						this.rotation *= (1 - 0.02 * settleDecay);
+						this.x += (this.targetX - this.x) * 0.02 * settleDecay;
+					}
+
+					this.el.style.opacity = "1";
+					this.el.style.transform = `translate(${this.x}px, ${this.y}px) scale(${this.scale}) rotate(${this.rotation}deg)`;
+				}
+
+				triggerTilt() {
+					// 根据落点让对应文字产生左右倾斜
+					if (this.targetY < 150) {
+						// 标题区域
+						titleEl.style.transform = `rotate(${(Math.random() - 0.5) * 3}deg)`;
+						setTimeout(() => { titleEl.style.transform = "rotate(0deg)"; }, 200);
+					} else {
+						// 描述区域
+						descEl.style.transform = `rotate(${(Math.random() - 0.5) * 2}deg)`;
+						setTimeout(() => { descEl.style.transform = "rotate(0deg)"; }, 250);
 					}
 				}
 
-				requestAnimationFrame(step);
+				start() {
+					this.el.classList.add("fall");
+				}
 			}
 
-			function settleSwing(icon, targetX, targetY, amplitude, speed, phase) {
-				const settleDuration = 2000; // 2秒后完全静止
-				const startTime = performance.now();
+			// 创建掉落图标实例
+			const fallingIcons = Array.from(platforms).map((el, i) => {
+				const icon = new FallingIcon(el, i);
+				return icon;
+			});
 
-				function sway(now) {
-					const elapsed = now - startTime;
-					const decay = Math.max(0, 1 - elapsed / settleDuration); // 衰减到0
-					const sway = Math.sin(now * 0.002 * speed + phase) * amplitude * decay * 0.3;
+			// 动画循环
+			let lastTime = 0;
+			let started = false;
+			function animate(time) {
+				if (!started) {
+					started = true;
+					lastTime = time;
+				}
+				const dt = Math.min(time - lastTime, 32);
+				lastTime = time;
 
-					icon.style.transform = `translate(${targetX + sway}px, ${targetY}px) scale(1) rotate(${sway * 0.5}deg)`;
-
-					if (decay > 0.01) {
-						requestAnimationFrame(sway);
+				for (const icon of fallingIcons) {
+					if (time > icon.index * 120) {
+						icon.update(time, dt);
 					}
 				}
 
-				requestAnimationFrame(sway);
+				requestAnimationFrame(animate);
 			}
 
-			// 依次触发每个图标掉落
-			for (let i = 0; i < platforms.length; i++) {
-				animateFall(platforms[i], i, platforms.length);
-			}
+			// 延迟启动动画
+			setTimeout(() => {
+				requestAnimationFrame(animate);
+			}, 300);
 
 			// 展开/收起其他版本
 			const toggle = document.getElementById("dlOthersToggle");
