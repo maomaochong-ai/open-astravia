@@ -114,10 +114,17 @@ fun NewSessionScreen(
     onRefreshProjects: suspend () -> Unit = {},
 ) {
     var projectCwd by rememberSaveable { mutableStateOf(restored?.projectCwd ?: initialProjectCwd) }
-    // Empty keeps the desktop's default model and thinking level.
-    var modelKey by rememberSaveable { mutableStateOf(restored?.modelChoice?.modelKey) }
-    var thinkingLevel by rememberSaveable { mutableStateOf(restored?.modelChoice?.thinkingLevel) }
+    // Starts on what was used last on this desktop; empty keeps the desktop's default model and level.
+    val initial = restored?.modelChoice ?: state.lastModelChoice.available(state.newSessionModels)
+    var modelKey by rememberSaveable { mutableStateOf(initial.modelKey) }
+    var thinkingLevel by rememberSaveable { mutableStateOf(initial.thinkingLevel) }
     val choice = ModelChoice(modelKey, thinkingLevel)
+    // A remembered model the desktop has since dropped falls back to its default.
+    LaunchedEffect(state.newSessionModels) {
+        val kept = ModelChoice(modelKey, thinkingLevel).available(state.newSessionModels)
+        modelKey = kept.modelKey
+        thinkingLevel = kept.thinkingLevel
+    }
     val offline = LinkIndicator.of(state.link) == LinkIndicator.Offline
     val cards = remember(state.sessions, state.conversationCwd) { TaskBoard.cards(state.sessions, state.conversationCwd) }
     val keyboardUp = WindowInsets.isImeVisible

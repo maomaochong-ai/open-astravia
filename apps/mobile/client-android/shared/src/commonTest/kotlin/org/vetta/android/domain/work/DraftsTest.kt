@@ -137,6 +137,16 @@ class ModelChoiceTest {
     }
 
     @Test
+    fun keepsOnlyWhatTheDesktopStillOffers() {
+        val kept = ModelChoice("zai/glm", "max")
+        assertEquals(kept, kept.available(options))
+        assertEquals(kept, kept.available(emptyList()), "an unknown list keeps the choice until it arrives")
+        assertEquals(ModelChoice(), ModelChoice("gone/model", "high").available(options))
+        assertEquals(ModelChoice("zai/glm"), ModelChoice("zai/glm", "low").available(options))
+        assertEquals(ModelChoice(), ModelChoice().available(options))
+    }
+
+    @Test
     fun groupsByProviderInTheDesktopsOrder() {
         val groups = ModelChoice.groups(options)
         assertEquals(listOf("anthropic", "zai"), groups.map { it.provider })

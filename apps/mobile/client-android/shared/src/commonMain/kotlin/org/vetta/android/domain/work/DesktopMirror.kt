@@ -92,6 +92,11 @@ data class MirrorState(
     val models: Map<String, List<RemoteModelOption>> = emptyMap(),
     /** Models a new session may start with, kept across launches; see [DesktopMirror.loadNewSessionModels]. */
     val newSessionModels: List<RemoteModelOption> = emptyList(),
+    /**
+     * The model and level last used on this desktop, to start or switch a session;
+     * New Session starts on it. Kept across launches.
+     */
+    val lastModelChoice: ModelChoice = ModelChoice(),
     val transcripts: Map<String, TranscriptState> = emptyMap(),
     /** Sessions opened by [DesktopMirror.startSession]: the local id the chat opened on → the desktop's id. */
     val startedSessions: Map<String, String> = emptyMap(),
@@ -231,6 +236,7 @@ class DesktopMirror(
             platform.cache.clearDesktop(key)
             platform.settings.remove(PROJECTS_KEY_PREFIX + key)
             platform.settings.remove(MODELS_KEY_PREFIX + key)
+            platform.settings.remove(LAST_MODEL_KEY_PREFIX + key)
         }
         desktopKey = null
         mutate {
@@ -242,6 +248,7 @@ class DesktopMirror(
                 projects = emptyList(),
                 models = emptyMap(),
                 newSessionModels = emptyList(),
+                lastModelChoice = ModelChoice(),
                 transcripts = emptyMap(),
                 link = LinkSnapshot.Offline,
             )
@@ -285,6 +292,10 @@ class DesktopMirror(
                 projects = loadList(PROJECTS_KEY_PREFIX + key, RemoteProjectSummary.serializer()),
                 models = emptyMap(),
                 newSessionModels = loadList(MODELS_KEY_PREFIX + key, RemoteModelOption.serializer()),
+                lastModelChoice =
+                    platform.settings.getStringOrNull(LAST_MODEL_KEY_PREFIX + key)
+                        ?.let { runCatching { json.decodeFromString(ModelChoice.serializer(), it) }.getOrNull() }
+                        ?: ModelChoice(),
                 transcripts = emptyMap(),
                 link = LinkSnapshot.Offline,
             )
@@ -505,7 +516,16 @@ class DesktopMirror(
         desktopKey?.let { saveList(MODELS_KEY_PREFIX + it, RemoteModelOption.serializer(), options) }
     }
 
-    /** Switches the session's model and/or thinking level on the desktop. */
+    private fun rememberModel(choice: ModelChoice) {
+        if (choice == _state.value.lastModelChoice) return
+        mutate { it.copy(lastModelChoice = choice) }
+        desktopKey?.let { platform.settings[LAST_MODEL_KEY_PREFIX + it] = json.encodeToString(ModelChoice.serializer(), choice) }
+    }
+
+    /**
+     * Switches the session's model and/or thinking level on the desktop, and remembers
+     * where it landed for the next New Session.
+     */
     suspend fun configure(sessionId: String, modelKey: String? = null, thinkingLevel: String? = null): Boolean {
         if (modelKey == null && thinkingLevel == null) return false
         val payload =
@@ -515,7 +535,9 @@ class DesktopMirror(
             }
         return try {
             val result = requireLink().request(RemoteRequestMethod.SessionConfigure, payload, sessionId)
-            dispatch(sessionId, TranscriptAction.State(RemoteApi.readSessionState((result as? JsonObject)?.get("state"))))
+            val state = RemoteApi.readSessionState((result as? JsonObject)?.get("state"))
+            dispatch(sessionId, TranscriptAction.State(state))
+            rememberModel(ModelChoice(state.modelKey ?: modelKey, state.thinkingLevel ?: thinkingLevel))
             true
         } catch (error: Throwable) {
             reportError(error)
@@ -539,6 +561,7 @@ class DesktopMirror(
         val trimmed = text.trim()
         if (trimmed.isEmpty()) return null
         return try {
+            if (sessionId == null) rememberModel(ModelChoice(modelKey, thinkingLevel))
             val target =
                 sessionId ?: createSession(projectCwd).also { created ->
                     // A failed switch is reported; the prompt still goes out on the default model.
@@ -575,6 +598,7 @@ class DesktopMirror(
         var transcript = reducer.reduce(TranscriptState.Empty, TranscriptAction.History(emptyList(), RemoteSessionState(RemoteSessionStatus.Running)))
         transcript = reducer.reduce(transcript, TranscriptAction.LocalUser(trimmed, platform.now(), attachments.map { it.toTranscript() }))
         mutate { it.copy(transcripts = it.transcripts + (localId to transcript), startingSessions = it.startingSessions + localId) }
+        rememberModel(ModelChoice(modelKey, thinkingLevel))
         scope.launch {
             try {
                 val target = createSession(projectCwd)
@@ -750,6 +774,7 @@ class DesktopMirror(
         const val DEVICE_ID_KEY = "vetta.device.id"
         const val PROJECTS_KEY_PREFIX = "vetta.projects."
         const val MODELS_KEY_PREFIX = "vetta.models."
+        const val LAST_MODEL_KEY_PREFIX = "vetta.lastModel."
 
         private const val SESSION_LIST_LIMIT = 200
         private const val TRANSCRIPT_SAVE_DELAY_MS = 400L

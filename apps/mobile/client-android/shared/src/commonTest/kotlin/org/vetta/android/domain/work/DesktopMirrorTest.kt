@@ -385,6 +385,30 @@ class DesktopMirrorTest {
         }
 
     @Test
+    fun remembersTheLastUsedModelPerDesktopAcrossLaunches() =
+        runTest {
+            val desktop = scriptedDesktop()
+            val device = Device()
+            val mirror = mirror(desktop, device)
+            assertTrue(mirror.pairWithCode(desktop.invite()))
+            assertTrue(eventually { mirror.state.value.sessions.map { it.id } == listOf("s1") })
+            assertEquals(ModelChoice(), mirror.state.value.lastModelChoice, "nothing used yet: the desktop's default")
+
+            assertNotNull(mirror.startSession("你好", modelKey = "zai/glm-5", thinkingLevel = "max"))
+            assertEquals(ModelChoice("zai/glm-5", "max"), mirror.state.value.lastModelChoice, "remembered as soon as it is used")
+
+            assertTrue(mirror.configure("s1", modelKey = "anthropic/claude-fable-5-1"))
+            assertEquals("anthropic/claude-fable-5-1", mirror.state.value.lastModelChoice.modelKey, "switching in a chat counts as using it")
+
+            mirror.setActive(false)
+            val relaunched = mirror(desktop, device)
+            assertEquals(mirror.state.value.lastModelChoice, relaunched.state.value.lastModelChoice)
+            relaunched.unpair()
+            assertEquals(ModelChoice(), relaunched.state.value.lastModelChoice)
+            assertNull(device.settings.getStringOrNull(DesktopMirror.LAST_MODEL_KEY_PREFIX + desktop.identityKey))
+        }
+
+    @Test
     fun readiesNewSessionModelsFromAnOpenSessionAndKeepsThemAcrossLaunches() =
         runTest {
             val desktop = scriptedDesktop(moreSessions = listOf(session("s0", "开着的", 500, live = true)))
