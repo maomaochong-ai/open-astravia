@@ -28,7 +28,7 @@ Use the run button in your IDE's editor gutter, or run tests using Gradle tasks:
 
 ### Remote Desktop developer preview
 
-Run the Cloudflare relay and Desktop locally, then scan the v2 pairing QR code shown in Desktop settings. The device detail screen renders the peer-to-peer desktop stream; pointer, wheel, hardware keyboard, chat, status, and diagnostics use WebRTC DataChannels after bootstrap.
+Run the Cloudflare relay and Desktop locally, then scan the v2 pairing QR code shown in Desktop settings. The computer settings page renders the peer-to-peer desktop stream; pointer, wheel, hardware keyboard, chat, status, and diagnostics use WebRTC DataChannels after bootstrap.
 
 ---
 

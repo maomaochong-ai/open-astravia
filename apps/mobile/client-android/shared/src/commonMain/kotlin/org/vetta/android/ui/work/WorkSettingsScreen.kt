@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -45,14 +46,22 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
+import org.vetta.android.app.APP_VERSION
+import org.vetta.android.app.ThemeMode
 import org.vetta.android.domain.remote.link.LinkIndicator
 import org.vetta.android.domain.work.ConfirmPolicy
 import org.vetta.android.domain.work.MirrorPreferences
 import org.vetta.android.domain.work.MirrorState
 import org.vetta.android.resources.Res
+import org.vetta.android.resources.appearance
 import org.vetta.android.resources.back
+import org.vetta.android.resources.desktop_preview
 import org.vetta.android.resources.latency
 import org.vetta.android.resources.link_latency
+import org.vetta.android.resources.theme_dark
+import org.vetta.android.resources.theme_light
+import org.vetta.android.resources.theme_system
+import org.vetta.android.resources.version_number
 import org.vetta.android.resources.work_settings_confirm_policy
 import org.vetta.android.resources.work_settings_confirm_policy_hint
 import org.vetta.android.resources.work_settings_haptics
@@ -69,21 +78,26 @@ import org.vetta.android.resources.work_settings_unpair
 import org.vetta.android.resources.work_settings_unpair_confirm
 import org.vetta.android.resources.work_settings_unpair_hint
 import org.vetta.android.ui.components.VettaConfirmDialog
+import org.vetta.android.ui.remote.RemoteDesktopSurface
 import org.vetta.android.ui.theme.vettaExtra
 
 /**
  * The paired computer and how the phone works with it, grouped like system
  * settings: the computer and its link, when to confirm on the phone, what the
- * chat shows, and unpairing. `pairing` is the scan button (to pair, or pair again).
+ * chat shows, the app's appearance, and unpairing. `pairing` is the scan button (to
+ * pair, or pair again); `viewerUrl` is the desktop's screen, shown while it is online.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WorkSettingsScreen(
     state: MirrorState,
+    themeMode: ThemeMode,
+    onThemeMode: (ThemeMode) -> Unit,
     onPreferences: ((MirrorPreferences) -> MirrorPreferences) -> Unit,
     onUnpair: () -> Unit,
     onBack: () -> Unit,
     pairing: @Composable () -> Unit,
+    viewerUrl: String? = null,
 ) {
     var confirmUnpair by remember { mutableStateOf(false) }
     val preferences = state.preferences
@@ -131,6 +145,16 @@ fun WorkSettingsScreen(
                 Box(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp)) { pairing() }
             }
 
+            viewerUrl?.takeIf { state.online }?.let { target ->
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Footnote(stringResource(Res.string.desktop_preview))
+                    RemoteDesktopSurface(
+                        target = target,
+                        modifier = Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(16.dp)).testTag("settings.remote"),
+                    )
+                }
+            }
+
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Group {
                     Text(
@@ -143,20 +167,8 @@ fun WorkSettingsScreen(
                         ConfirmPolicy.Important to Res.string.work_settings_policy_important,
                         ConfirmPolicy.Auto to Res.string.work_settings_policy_auto,
                     ).forEach { (policy, label) ->
-                        val chosen = preferences.confirmPolicy == policy
-                        Row(
-                            Modifier
-                                .fillMaxWidth()
-                                .clickable { onPreferences { it.copy(confirmPolicy = policy) } }
-                                .semantics {
-                                    role = Role.RadioButton
-                                    selected = chosen
-                                }.padding(horizontal = 16.dp, vertical = 12.dp)
-                                .testTag("settings.policy.${policy.name.lowercase()}"),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(stringResource(label), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-                            if (chosen) Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Choice(stringResource(label), chosen = preferences.confirmPolicy == policy, tag = "settings.policy.${policy.name.lowercase()}") {
+                            onPreferences { it.copy(confirmPolicy = policy) }
                         }
                     }
                 }
@@ -173,6 +185,20 @@ fun WorkSettingsScreen(
                 }
             }
 
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Footnote(stringResource(Res.string.appearance))
+                Group {
+                    listOf(
+                        ThemeMode.System to Res.string.theme_system,
+                        ThemeMode.Light to Res.string.theme_light,
+                        ThemeMode.Dark to Res.string.theme_dark,
+                    ).forEachIndexed { index, (mode, label) ->
+                        if (index > 0) Divider()
+                        Choice(stringResource(label), chosen = themeMode == mode, tag = "settings.theme.${mode.name.lowercase()}") { onThemeMode(mode) }
+                    }
+                }
+            }
+
             if (state.paired) {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Group {
@@ -183,6 +209,7 @@ fun WorkSettingsScreen(
                     Footnote(stringResource(Res.string.work_settings_unpair_hint))
                 }
             }
+            Footnote(stringResource(Res.string.version_number, APP_VERSION))
         }
     }
     if (confirmUnpair) {
@@ -239,4 +266,23 @@ private fun Toggle(label: String, on: Boolean, tag: String, onChange: (Boolean) 
 @Composable
 private fun Footnote(text: String) {
     Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.vettaExtra.secondaryText, modifier = Modifier.padding(horizontal = 16.dp))
+}
+
+/** One option of a single choice, ticked while chosen. */
+@Composable
+private fun Choice(label: String, chosen: Boolean, tag: String, onChoose: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onChoose)
+            .semantics {
+                role = Role.RadioButton
+                selected = chosen
+            }.padding(horizontal = 16.dp, vertical = 12.dp)
+            .testTag(tag),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+        if (chosen) Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+    }
 }

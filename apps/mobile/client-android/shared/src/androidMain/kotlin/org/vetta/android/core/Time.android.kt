@@ -1,3 +1,3 @@
-package org.vetta.android.domain.session
+package org.vetta.android.core
 
 actual fun nowEpochMs(): Long = System.currentTimeMillis()

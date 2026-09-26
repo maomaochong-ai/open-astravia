@@ -62,7 +62,7 @@ class WorkSettingsScreenTest {
         var state by mutableStateOf(paired)
         composeRule.setContent {
             VettaTheme(ThemeMode.Light) {
-                WorkSettingsScreen(state, { update -> state = state.copy(preferences = update(state.preferences)) }, {}, {}, pairing = { Text("SCAN") })
+                WorkSettingsScreen(state, ThemeMode.Light, {}, { update -> state = state.copy(preferences = update(state.preferences)) }, {}, {}, pairing = { Text("SCAN") })
             }
         }
         composeRule.onNodeWithText("MacBook Pro").assertIsDisplayed()
@@ -83,7 +83,7 @@ class WorkSettingsScreenTest {
         var unpaired = 0
         composeRule.setContent {
             VettaTheme(ThemeMode.Light) {
-                WorkSettingsScreen(paired, {}, { unpaired += 1 }, {}, pairing = {})
+                WorkSettingsScreen(paired, ThemeMode.Light, {}, {}, { unpaired += 1 }, {}, pairing = {})
             }
         }
         composeRule.onNodeWithTag("settings.unpair").performScrollTo().performClick()
@@ -97,7 +97,7 @@ class WorkSettingsScreenTest {
     fun offersOnlyPairingWhenNoComputerIsPaired() {
         composeRule.setContent {
             VettaTheme(ThemeMode.Light) {
-                WorkSettingsScreen(MirrorState(ready = true), {}, {}, {}, pairing = { Text("SCAN") })
+                WorkSettingsScreen(MirrorState(ready = true), ThemeMode.Light, {}, {}, {}, {}, pairing = { Text("SCAN") })
             }
         }
         composeRule.onNodeWithText("SCAN").assertIsDisplayed()

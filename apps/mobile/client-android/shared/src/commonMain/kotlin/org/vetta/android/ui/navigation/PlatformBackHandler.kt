@@ -8,11 +8,4 @@ expect fun PlatformBackHandler(
     onBack: () -> Unit,
 )
 
-fun AppRoute.hasInAppBackDestination(): Boolean =
-    when (this) {
-        AppRoute.Boot,
-        AppRoute.Welcome,
-        is AppRoute.Main,
-        -> false
-        else -> true
-    }
+fun AppRoute.hasInAppBackDestination(): Boolean = this != AppRoute.Work
