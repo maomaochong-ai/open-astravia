@@ -21,25 +21,25 @@
 
 ## 核心能力
 
-### 🤖 对话与工作区
+### 对话与工作区
 消息流、工具调用、生成结果同屏可见；文件在应用内直接预览（PDF、Word、PPT、表格、图片、音视频、SVG）；扫描版 PDF 离线 OCR。内置 coding-agent 可读写工程文件、运行命令、截图。
 
-### 🗄️ 数据库工作台
+### 数据库工作台
 内置 40+ 数据库连接（PostgreSQL、MySQL、SQLite、SQL Server、Oracle、Doris、OceanBase…），SQL 工作台多标签查询、历史记录、CSV/JSON 导出；AI 可在对话中直接查数；写操作分级授权，prod 连接默认只读。dbx（Apache-2.0）随应用分发，无需额外安装。
 
-### ⚡ 批量任务 & 定时调度
+### 批量任务 & 定时调度
 一个 Prompt 对多目录批量执行；内置 Cron 调度，托盘后台运行，历史可查、可重试。
 
-### 🔔 通知与远程控制
+### 通知与远程控制
 批量 / 定时任务完成或异常推送飞书、钉钉机器人（凭据本地加密）；飞书 IM 遥控本机 Agent（Telegram、钉钉规划中）。
 
-### 🌱 扩展生态
+### 扩展生态
 从 GitHub 仓库安装 Skill、MCP Server、插件与主题；本地文档加工成可检索知识库，全程不出本机。插件权限系统：每项能力必须声明权限，宿主单独授权、运行时校验。
 
-### 🎨 UI 设计工作区
+### UI 设计工作区
 无限画布上的设计稿即真实可运行界面，共享色彩系统，可导出渲染图或只读分享包。
 
-### 🖥️ 桌面集成
+### 桌面集成
 全局快捷键唤起快捷面板；macOS Appshot 手势截图 + 屏上文字交给 Agent；Node / Python 运行时配置；托盘常驻；electron-updater 自动更新；中英双语界面。
 
 ## 插件系统
@@ -104,20 +104,42 @@ bun run test:changed       # 只跑受改动影响的包
 
 ## 架构
 
-Monorepo 分四层，依赖单向向下：**应用 → runtime-* → coding-agent / agent / ai**。核心库不感知宿主，同一套内核既能跑在 Electron 桌面端，也能跑在终端 CLI。
+Monorepo，**依赖单向向下**：宿主应用 → runtime 适配层 → AI/Agent 内核。核心库不感知宿主，同一套内核既能跑在 Electron 桌面端，也能跑在终端 CLI。
 
 ```
 astravia/
 ├── packages/
-│   ├── ai · agent · coding-agent · ecosystem-adapter   # 多 Provider LLM、Agent 循环、编码智能体
-│   ├── runtime-core · runtime-tools · runtime-storage  # 宿主共享适配层
-│   │   └── runtime-mcp · runtime-telemetry
-│   ├── desktop-app · cli-app · im-gateway              # Electron 宿主、CLI、IM 旁路（Go）
-│   ├── ui · theme-ui · theme-sdk
-│   ├── plugins · skill-presets · themes
-│   └── capability-sdk · capability-runtime
-├── docs/   scripts/
+│   ├── ai                     — 多 Provider LLM 适配（Claude / OpenAI / DeepSeek / Kimi / ...）
+│   ├── agent                  — Agent 循环、会话管理、工具调度
+│   ├── coding-agent           — 编码智能体：读写工程文件、执行命令、截图
+│   ├── ecosystem-adapter      — 能力市场、插件与 Skill 的运行时适配
+│   ├── runtime-core           — 宿主共享适配层：配置目录、凭据存储、事件总线
+│   ├── runtime-tools          — 宿主共享适配层：文件系统、命令执行、网络请求
+│   ├── runtime-storage        — 宿主共享适配层：会话持久化、工作区索引
+│   ├── runtime-mcp            — MCP Server 生命周期管理
+│   ├── runtime-telemetry      — 遥测（仅落盘，不发送）
+│   ├── desktop-app            — Electron 桌面宿主（macOS / Windows 原生签名）
+│   ├── cli-app                — 终端 CLI 宿主
+│   ├── im-gateway             — Go 实现的 IM 旁路网关（飞书，随应用启停）
+│   ├── ui                     — React 组件原语
+│   ├── theme-ui               — 主题化 UI 组件
+│   ├── theme-sdk              — 主题开发 SDK（颜色令牌、组件覆盖点）
+│   ├── plugins                — 预装插件集合（UI 设计、内容创作、Git、图表、预览…）
+│   ├── skill-presets          — 预装 Skill 预设
+│   ├── themes                 — 预装主题
+│   ├── capability-sdk         — 能力与权限定义 SDK
+│   ├── capability-runtime     — 能力运行时（权限校验、能力编排）
+│   ├── action-rpc             — Agent ↔ Desktop 间的 RPC 协议
+│   └── toolkit                — 开发辅助工具集
+├── docs/                      — 架构文档与 ADR
+└── scripts/                   — 构建、发布、质量守卫
 ```
+
+**依赖关系**：
+- `desktop-app` / `cli-app` → `runtime-*` → `coding-agent` / `agent` / `ai`
+- `ai` ← `agent` ← `coding-agent`（Agent 持有 LLM 调用能力）
+- `runtime-*` 不依赖 AI 层，`capability-*` 跨层提供权限定义
+- `plugins` / `skill-presets` / `themes` 是纯粹的资源包，无业务依赖
 
 ## 加入社群
 

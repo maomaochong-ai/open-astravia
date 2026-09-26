@@ -21,25 +21,25 @@
 
 ## Features at a Glance
 
-### 🤖 Conversation & Workspace
+### Conversation & Workspace
 Message stream, tool-call progress and generated artifacts on one screen. Files preview in-app (PDF, Word, PPT, spreadsheets, images, audio, video, SVG). Scanned PDFs OCR'd offline. Built-in coding-agent reads/writes project files, runs commands and takes screenshots.
 
-### 🗄️ Database Workbench
+### Database Workbench
 40+ database engines (PostgreSQL, MySQL, SQLite, SQL Server, Oracle, Doris, OceanBase…). SQL workbench with multi-tab queries, history, CSV/JSON export and data editing. The AI queries tables for you. Write operations need graded authorization — `prod` connections are read-only by default. The engine is [dbx](https://github.com/t8y2/dbx) (Apache-2.0), shipped with the app.
 
-### ⚡ Batch Tasks & Scheduling
+### Batch Tasks & Scheduling
 One prompt across many directories. Built-in cron scheduler, quiet from the tray, with run history and retry.
 
-### 🔔 Notifications & Remote Control
+### Notifications & Remote Control
 Batch / scheduled completion or failure pushed to Feishu / DingTalk bots (credentials stored encrypted). Remote-control your local agent from Feishu IM (Telegram and DingTalk planned).
 
-### 🌱 Ecosystem
+### Ecosystem
 Install skills, MCP servers, plugins and themes from any GitHub repository. Turn local documents into a searchable knowledge base — everything stays on your machine. Plugins must declare capabilities in `plugin.json`, granted individually by the host and re-checked at runtime.
 
-### 🎨 UI Design Workspace
+### UI Design Workspace
 Mockups on an infinite canvas where frames are real, runnable interfaces. One color system across the whole design. Export as render images or read-only share packages.
 
-### 🖥️ Desktop Integration
+### Desktop Integration
 A global hotkey summons the quick panel. On macOS, Appshot captures the frontmost window (screenshot, title, on-screen text) in one gesture. Configure Node / Python runtimes. Tray residency, auto-update, bilingual UI.
 
 ## Plugin System
@@ -104,20 +104,42 @@ Conventions: **Bun** everywhere; no `any` in TypeScript unless genuinely necessa
 
 ## Architecture
 
-Monorepo with four layers and strictly one-way dependencies: **app → runtime-* → coding-agent / agent / ai**. The core libraries know nothing about the host — the same kernel runs in the Electron desktop app and in a terminal CLI.
+Monorepo. **Dependencies flow strictly downward**: host apps → runtime adapters → AI/agent kernel. Core libraries have no awareness of the host — the same kernel runs in the Electron desktop app and in a terminal CLI.
 
 ```
 astravia/
 ├── packages/
-│   ├── ai · agent · coding-agent · ecosystem-adapter   # multi-provider LLM, agent loop, coding agent
-│   ├── runtime-core · runtime-tools · runtime-storage  # host-shared adaptation layer
-│   │   └── runtime-mcp · runtime-telemetry
-│   ├── desktop-app · cli-app · im-gateway              # Electron host, CLI, IM sidecar (Go)
-│   ├── ui · theme-ui · theme-sdk
-│   ├── plugins · skill-presets · themes
-│   └── capability-sdk · capability-runtime
-├── docs/   scripts/
+│   ├── ai                     — Multi-provider LLM adapters (Claude / OpenAI / DeepSeek / Kimi / ...)
+│   ├── agent                  — Agent loop, session management, tool dispatch
+│   ├── coding-agent           — Coding agent: reads/writes project files, runs commands, takes screenshots
+│   ├── ecosystem-adapter      — Runtime adapter for marketplace, plugins and skills
+│   ├── runtime-core           — Host-shared adapter layer: config dir, credential store, event bus
+│   ├── runtime-tools          — Host-shared adapter layer: filesystem, command execution, network
+│   ├── runtime-storage        — Host-shared adapter layer: session persistence, workspace index
+│   ├── runtime-mcp            — MCP server lifecycle management
+│   ├── runtime-telemetry      — Telemetry (disk-only, never sent)
+│   ├── desktop-app            — Electron desktop host (macOS / Windows native signed)
+│   ├── cli-app                — Terminal CLI host
+│   ├── im-gateway             — Go IM sidecar (Feishu, starts and stops with the app)
+│   ├── ui                     — React component primitives
+│   ├── theme-ui               — Themed UI components
+│   ├── theme-sdk              — Theme SDK (color tokens, component override points)
+│   ├── plugins                — Bundled plugins (UI design, content creation, Git, charts, preview…)
+│   ├── skill-presets          — Bundled skill presets
+│   ├── themes                 — Bundled themes
+│   ├── capability-sdk         — Capability and permission definition SDK
+│   ├── capability-runtime     — Capability runtime (permission checks, capability orchestration)
+│   ├── action-rpc             — Agent ↔ Desktop RPC protocol
+│   └── toolkit                — Dev utilities
+├── docs/                      — Architecture docs and ADRs
+└── scripts/                   — Build, release and quality guards
 ```
+
+**Dependency direction**:
+- `desktop-app` / `cli-app` → `runtime-*` → `coding-agent` / `agent` / `ai`
+- `ai` ← `agent` ← `coding-agent` (Agent holds LLM calling capability)
+- `runtime-*` has no dependency on the AI layer; `capability-*` spans layers for permission definitions
+- `plugins` / `skill-presets` / `themes` are pure resource bundles with no runtime dependency
 
 ## Join the Community
 
