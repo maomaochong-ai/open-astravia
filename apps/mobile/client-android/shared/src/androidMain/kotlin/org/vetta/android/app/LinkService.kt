@@ -1,5 +1,6 @@
 package org.vetta.android.app
 
+import android.app.Notification
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -25,15 +26,21 @@ class LinkService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // Android allows only a few seconds to go foreground, and the localized notice can take
+        // longer to load on a cold start: a plain one goes up at once, the real one replaces it.
+        if (!goForeground(SessionNotifier.plainLinkNotification(this))) {
+            stopSelf()
+            return START_NOT_STICKY
+        }
         val container = AndroidAppContainer.get(this)
         val name = container.mirror.state.value.desktop?.desktopName.orEmpty()
-        scope.launch {
-            val notification = SessionNotifier.linkNotification(this@LinkService, name)
-            val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) ServiceInfo.FOREGROUND_SERVICE_TYPE_REMOTE_MESSAGING else 0
-            runCatching { ServiceCompat.startForeground(this@LinkService, SessionNotifier.LINK_NOTIFICATION_ID, notification, type) }
-                .onFailure { stopSelf() }
-        }
+        scope.launch { goForeground(SessionNotifier.linkNotification(this@LinkService, name)) }
         return START_STICKY
+    }
+
+    private fun goForeground(notification: Notification): Boolean {
+        val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) ServiceInfo.FOREGROUND_SERVICE_TYPE_REMOTE_MESSAGING else 0
+        return runCatching { ServiceCompat.startForeground(this, SessionNotifier.LINK_NOTIFICATION_ID, notification, type) }.isSuccess
     }
 
     override fun onDestroy() {

@@ -94,6 +94,28 @@ object SessionNotifier {
             .build()
     }
 
+    /**
+     * The ongoing notice before its localized text is loaded: the app's name only. Its
+     * channel is made here too, under the app's name until [linkNotification] names it.
+     */
+    fun plainLinkNotification(context: Context): Notification {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val manager = context.getSystemService(NotificationManager::class.java)
+            if (manager != null && manager.getNotificationChannel(CHANNEL_LINK) == null) {
+                val label = context.applicationInfo.loadLabel(context.packageManager)
+                manager.createNotificationChannel(NotificationChannel(CHANNEL_LINK, label, NotificationManager.IMPORTANCE_MIN).apply { setShowBadge(false) })
+            }
+        }
+        return NotificationCompat.Builder(context, CHANNEL_LINK)
+            .setSmallIcon(R.drawable.ic_stat_vetta)
+            .setContentTitle(context.applicationInfo.loadLabel(context.packageManager))
+            .setOngoing(true)
+            .setSilent(true)
+            .setPriority(NotificationCompat.PRIORITY_MIN)
+            .setContentIntent(openSession(context, null))
+            .build()
+    }
+
     fun allowed(context: Context): Boolean =
         Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
