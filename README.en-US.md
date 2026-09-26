@@ -68,39 +68,97 @@ export default definePlugin({
 
 ## Network Behavior
 
-| Scenario | When it happens |
-| --- | --- |
-| LLM inference | The provider you configured; nothing without a key |
-| Model metadata | `models.dev` public catalog; falls back to a bundled snapshot |
-| Marketplace | GitHub repos you added; nothing with no sources |
-| Automatic updates | Decided by app configuration (electron-updater) |
-| MCP / plugins / IM | Decided by extensions and credentials you installed |
+The app **never initiates a network call on its own** — every outbound request is triggered by your explicit configuration or action. The table below lists every possible network scenario:
 
-**No telemetry. No crash reporting. No usage statistics.**
+<table width="100%">
+<colgroup><col width="15%"><col width="35%"><col width="50%"></colgroup>
+<thead><tr><th>Scenario</th><th>When it happens</th><th>What exactly is sent</th></tr></thead>
+<tbody>
+<tr><td>LLM inference</td><td>You configured a provider and entered your API key in Settings</td><td>Requests go straight to the provider (Claude / OpenAI / DeepSeek / Kimi / Gemini / Grok / Qwen) — the app never proxies, relays or bills you. Nothing happens without a key.</td></tr>
+<tr><td>Model metadata</td><td>At startup + every 12 hours in the background</td><td>Pulls pricing and capability metadata from <code>models.dev</code>. If the network fails, falls back to a bundled snapshot — no breakage.</td></tr>
+<tr><td>Marketplace</td><td>You added GitHub repos as sources in Settings</td><td>Fetches Releases from the repos you specified, indexes skills / MCP servers / plugins / themes. Nothing happens with zero sources.</td></tr>
+<tr><td>Automatic updates</td><td>Update source is decided by app configuration (electron-updater)</td><td>By default checks <code>latest.yml</code> / <code>latest-mac.yml</code> on Cloudflare R2. No update source configured → no checks. Only delta packages are downloaded.</td></tr>
+<tr><td>MCP servers</td><td>You installed an MCP server in Settings</td><td>Spawns the process on demand (stdio or HTTP), connects to remote services with your credentials. Nothing happens with no MCP installed.</td></tr>
+<tr><td>Plugins</td><td>You installed a third-party plugin in the app</td><td>Plugins can declare their own network behavior (webhooks, API calls etc.), checked at runtime by the host. Bundled plugins make no outbound network calls.</td></tr>
+<tr><td>IM remote control</td><td>You enabled a Feishu bot and entered credentials in Settings</td><td>The embedded <code>im-gateway</code> Go sidecar connects to Feishu WebSocket. Nothing happens when disabled. Telegram / DingTalk planned.</td></tr>
+<tr><td>OCR models</td><td>One-time download at first install build</td><td>PP-OCRv5 detection + recognition models (~100MB) are downloaded to <code>resources/ocr-models</code> and then run fully offline.</td></tr>
+<tr><td>Build-time downloads</td><td>Running <code>bun run build</code> during development</td><td>Portable Python / Node.js runtimes from <code>python-build-standalone</code>; the dbx database engine binary from GitHub Releases.</td></tr>
+</tbody>
+</table>
 
-## Build from Source
+**No telemetry. No crash reporting. No usage statistics. Any outbound request always comes from the provider you configured, the extensions you installed, or the download you triggered.**
 
-Requires **Bun 1.3+** and **Node 20+**:
+## How to Develop
+
+### Prerequisites
+
+- **Bun 1.3+** (package manager — the monorepo uses Bun everywhere; npm / pnpm are not accepted)
+- **Node 20+** (needed for Vite builds)
+- **Go 1.22+** (only required for building `im-gateway`, optional)
+- macOS or Windows desktop (only required for building `desktop-app`, optional)
+
+### One-time Setup
 
 ```bash
+# 1. Clone
+git clone git@github.com:maomaochong-ai/astravia.git
+cd astravia
+
+# 2. Install all dependencies (monorepo workspaces handled automatically)
 bun install
-bun run build
-bun run build:desktop     # desktop app
-bun run build:cli         # optional CLI wrapper
+
+# 3. (Optional) Build native modules required by the desktop app
+bun run build:desktop
 ```
 
-IM sidecar (Go, optional): `cd packages/im-gateway && make build`.
-
-## Contributing
+### Daily Development
 
 ```bash
-bun run check              # Biome + typecheck + architecture guards (required before a PR)
-bun run check:quick        # fast feedback on changed files
-bun run test:unit          # core library unit tests
-bun run test:changed       # only packages touched by your diff
+# Desktop app dev mode (hot reload + DevTools)
+bun run dev
+
+# Terminal CLI dev mode
+bun run dev:cli
+
+# Run unit tests for one package only
+bun run test:pkg ai          # test:pkg --list to see all packages
 ```
 
-Conventions: **Bun** everywhere; no `any` in TypeScript unless genuinely necessary; all user-facing copy goes through i18n; commit messages in Chinese referencing issues (`fixes #N` / `closes #N`). Full rules in [AGENTS.md](AGENTS.md).
+### Before Submitting
+
+```bash
+# Full quality gate (required before opening a PR; blocks commit on failure)
+bun run check
+#   Includes: Biome lint + TypeScript typecheck + architecture guard (one-way deps)
+#             + secret key detection + conflict marker detection
+
+# Fast feedback on changed files (saves time)
+bun run check:quick
+
+# Only unit-test packages touched by your diff
+bun run test:changed
+```
+
+### Commit Conventions
+
+- **Bun everywhere for package management**: no `package-lock.json` / `pnpm-lock.yaml`
+- **No unnecessary `any` in TypeScript**: must fix all type errors to pass `check`
+- **User-facing copy must go through i18n**: hard-coding Chinese / English strings in components is a violation
+- **Commit messages in Chinese**, referencing issues (`fixes #N` / `closes #N`). Prefix with `feat:` / `fix:` / `docs:` / `refactor:` / `chore:`
+- Full rules in [AGENTS.md](AGENTS.md)
+
+### Optional Module Builds
+
+```bash
+# CLI wrapper
+bun run build:cli
+
+# IM sidecar (Go, independent Makefile)
+cd packages/im-gateway && make build
+
+# OCR models (auto-downloaded on first build)
+bun run prepare:ocr-models
+```
 
 ## Architecture
 

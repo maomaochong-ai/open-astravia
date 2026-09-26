@@ -68,39 +68,96 @@ export default definePlugin({
 
 ## 网络行为
 
-| 场景 | 触发条件 |
-| --- | --- |
-| LLM 推理 | 你配置的服务商；不配 Key 即不发生 |
-| 模型元数据 | `models.dev` 公共目录；失败回退随包快照 |
-| 能力市场 | 你添加的 GitHub 仓库；不加来源即不发生 |
-| 自动更新 | 更新源由应用配置决定（基于 electron-updater） |
-| MCP / 插件 / IM | 由你安装的扩展与填写的凭据决定 |
+应用**从不主动发起网络请求**——每次出站调用都由你明确的配置或操作触发。下表列出所有可能的网络场景：
 
-**没有遥测，没有崩溃上报，没有使用统计。**
+<table width="100%">
+<colgroup><col width="15%"><col width="35%"><col width="50%"></colgroup>
+<thead><tr><th>场景</th><th>触发条件</th><th>具体行为</th></tr></thead>
+<tbody>
+<tr><td>LLM 推理</td><td>你在设置中配置了模型服务商并填入 Key</td><td>请求直发服务商（Claude / OpenAI / DeepSeek / Kimi / Gemini / Grok / Qwen），应用不代理、不转发、不计费。未配置 Key 即完全不发生。</td></tr>
+<tr><td>模型元数据</td><td>启动时 + 每 12 小时后台同步</td><td>从 <code>models.dev</code> 拉取价格与能力元数据；网络失败则回退随包内置的快照文件，不影响使用。</td></tr>
+<tr><td>能力市场</td><td>你在设置中添加了 GitHub 仓库作为来源</td><td>拉取你指定的仓库 Release，索引 Skill / MCP / 插件 / 主题。未添加任何来源即完全不发生。</td></tr>
+<tr><td>自动更新</td><td>更新源由应用配置决定（基于 electron-updater）</td><td>默认从 Cloudflare R2 拉取 <code>latest.yml</code> / <code>latest-mac.yml</code> 检查版本；未配置更新源即不检查。仅下载增量包。</td></tr>
+<tr><td>MCP Server</td><td>你在设置中安装了 MCP Server</td><td>按需拉起进程（stdio / http 两种模式），通过你填写的凭据连接远端服务。未安装即完全不发生。</td></tr>
+<tr><td>插件</td><td>你在应用内安装了第三方插件</td><td>插件可声明自己的网络行为（Webhook、API 调用等），由宿主运行时校验权限。预装插件无出站网络。</td></tr>
+<tr><td>IM 远程控制</td><td>你在设置中启用了飞书机器人并填写凭据</td><td>内嵌 <code>im-gateway</code> Go 边车连接飞书 WebSocket；未启用即不运行。Telegram / 钉钉规划中。</td></tr>
+<tr><td>OCR 模型</td><td>首次安装构建时一次性下载</td><td>PP-OCRv5 检测与识别模型（~100MB）下载到本地 <code>resources/ocr-models</code>，之后完全离线。</td></tr>
+<tr><td>构建期下载</td><td>开发时执行 <code>bun run build</code></td><td>便携 Python / Node.js 运行时从 <code>python-build-standalone</code> 拉取；dbx 数据库引擎二进制从 GitHub Releases 拉取。</td></tr>
+</tbody>
+</table>
 
-## 从源码构建
+**没有遥测，没有崩溃上报，没有使用统计。任何时候出站请求都只来自你配置的服务商、你安装的扩展、你主动触发的下载。**
 
-需要 **Bun 1.3+** 与 **Node 20+**：
+## 如何开发
+
+### 环境要求
+
+- **Bun 1.3+**（包管理器，monorepo 全部使用 Bun，不接受 npm / pnpm）
+- **Node 20+**（Vite 构建时需要）
+- **Go 1.22+**（仅构建 `im-gateway` 可选）
+- macOS 或 Windows 桌面（仅构建 `desktop-app` 可选）
+
+### 一次性准备
 
 ```bash
+# 1. 克隆仓库
+git clone git@github.com:maomaochong-ai/astravia.git
+cd astravia
+
+# 2. 安装所有依赖（monorepo workspace 自动处理）
 bun install
-bun run build
-bun run build:desktop     # 桌面应用
-bun run build:cli         # 可选：CLI 封装
+
+# 3. （可选）只构建桌面应用需要的原生模块
+bun run build:desktop    # 构建桌面宿主
 ```
 
-IM 旁路网关（Go，可选）：`cd packages/im-gateway && make build`。
-
-## 参与开发
+### 日常开发
 
 ```bash
-bun run check              # Biome + 类型检查 + 架构守卫（开 PR 前必跑）
-bun run check:quick        # 改动文件快速反馈
-bun run test:unit          # 核心库单元测试
-bun run test:changed       # 只跑受改动影响的包
+# 启动桌面应用开发模式（热重载 + DevTools）
+bun run dev
+
+# 终端 CLI 开发模式
+bun run dev:cli
+
+# 只跑某个包的单元测试
+bun run test:pkg ai          # test:pkg --list 查看全部包
 ```
 
-约定：包管理统一用 **Bun**；TypeScript 禁止无必要 `any`；用户可见文案必须走 i18n；提交信息用中文（`fixes #N` / `closes #N`）。完整规范见 [AGENTS.md](AGENTS.md)。
+### 提交前检查
+
+```bash
+# 完整质量守卫（开 PR 前必跑，失败无法 commit）
+bun run check
+#   包含：Biome lint + TypeScript 类型检查 + 架构守卫（单向依赖）+ 私钥检测 + 冲突标记检测
+
+# 改动文件的快速反馈（节省时间）
+bun run check:quick
+
+# 只跑受改动影响的包的单元测试
+bun run test:changed
+```
+
+### 提交约定
+
+- **包管理统一用 Bun**：禁止 `package-lock.json` / `pnpm-lock.yaml` 出现
+- **TypeScript 禁止无必要 `any`**：所有类型错误必须修复才能通过 check
+- **用户可见文案必须走 i18n**：直接写中文 / 英文到组件里是违规的
+- **提交信息用中文**：`fixes #N` / `closes #N` 关联工单；`feat:` / `fix:` / `docs:` / `refactor:` / `chore:` 开头
+- 完整规范见 [AGENTS.md](AGENTS.md)
+
+### 可选模块构建
+
+```bash
+# CLI 封装
+bun run build:cli
+
+# IM 旁路网关（Go，独立 Makefile）
+cd packages/im-gateway && make build
+
+# OCR 模型（首次构建会自动下载）
+bun run prepare:ocr-models
+```
 
 ## 架构
 
