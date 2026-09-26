@@ -3,6 +3,7 @@ package org.vetta.android.domain.work
 import com.russhwolf.settings.MapSettings
 import kotlinx.coroutines.async
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -663,6 +664,33 @@ class DesktopMirrorTest {
             desktop.reachable = true
             assertTrue(mirror.pairWithCode(desktop.invite()))
             assertNull(mirror.state.value.revoked)
+        }
+
+    @Test
+    fun opensTheCachedChatOfflineEvenAfterEventsForItArrived() =
+        runTest {
+            val desktop = scriptedDesktop()
+            val device = Device()
+            val mirror = mirror(desktop, device)
+            assertTrue(mirror.pairWithCode(desktop.invite()))
+            assertTrue(eventually { mirror.state.value.online })
+            mirror.openSession("s1")
+            desktop.emit(RemoteEventName.SessionMessage, buildJsonObject { put("kind", "user"); put("text", "在电脑上问的"); put("at", 7) }, "s1")
+            assertTrue(eventually { mirror.state.value.transcript("s1").items.isNotEmpty() })
+            advanceTimeBy(1_000)
+            mirror.setActive(false)
+
+            // Next launch: an event for the chat arrives before it is opened, then the link goes.
+            val relaunched = mirror(desktop, device)
+            assertTrue(eventually { relaunched.state.value.online })
+            desktop.emit(RemoteEventName.SessionState, buildJsonObject { put("status", "idle") }, "s1")
+            assertTrue(eventually { relaunched.state.value.transcripts["s1"] != null })
+            desktop.reachable = false
+            desktop.dropConnections()
+            assertTrue(eventually { !relaunched.state.value.online })
+
+            relaunched.openSession("s1")
+            assertTrue(relaunched.state.value.transcript("s1").items.isNotEmpty(), "the phone's copy, not an endless loading")
         }
 
     @Test

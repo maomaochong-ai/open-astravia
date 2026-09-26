@@ -526,7 +526,8 @@ class DesktopMirror(
 
     suspend fun openSession(sessionId: String) {
         val key = desktopKey
-        if (_state.value.transcripts[sessionId] == null && key != null) {
+        // Events for a chat never opened leave only a partial one: the cached copy is fuller.
+        if (_state.value.transcripts[sessionId]?.loaded != true && key != null) {
             platform.cache.loadTranscript(key, sessionId)?.let { cached ->
                 val restored = TranscriptState.Empty.copy(items = cached, loaded = true, stale = true)
                 mutate { it.copy(transcripts = it.transcripts + (sessionId to restored)) }
