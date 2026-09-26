@@ -174,7 +174,6 @@
 			align-items: center;
 			justify-content: center;
 			opacity: 0;
-			transform: translateY(-120px) scale(0.3) rotate(-15deg);
 			will-change: transform, opacity;
 		}
 		.dl-platform-icon img {
@@ -188,44 +187,6 @@
 		}
 		.dl-platform-icon.fall {
 			opacity: 1;
-			animation: platform-fall 0.7s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
-		}
-		/* 每个图标依次掉落，间隔 80ms */
-		.dl-platform-icon:nth-child(1) { animation-delay: 0.05s; }
-		.dl-platform-icon:nth-child(2) { animation-delay: 0.13s; }
-		.dl-platform-icon:nth-child(3) { animation-delay: 0.21s; }
-		.dl-platform-icon:nth-child(4) { animation-delay: 0.29s; }
-		.dl-platform-icon:nth-child(5) { animation-delay: 0.37s; }
-
-		/* 掉落动画：下落 → 触底回弹 → 二次回弹 → 静止 */
-		@keyframes platform-fall {
-			0% {
-				opacity: 0;
-				transform: translateY(-120px) scale(0.3) rotate(-15deg);
-			}
-			15% {
-				opacity: 1;
-			}
-			50% {
-				/* 触底 — 压缩回弹 */
-				transform: translateY(8px) scale(1.08, 0.92) rotate(3deg);
-			}
-			65% {
-				/* 第一次回弹 */
-				transform: translateY(-12px) scale(0.95, 1.05) rotate(-2deg);
-			}
-			78% {
-				/* 第二次回弹（更小） */
-				transform: translateY(4px) scale(1.02, 0.98) rotate(1deg);
-			}
-			88% {
-				/* 微小回弹 */
-				transform: translateY(-2px) scale(0.99, 1.01) rotate(0deg);
-			}
-			100% {
-				opacity: 1;
-				transform: translateY(0) scale(1) rotate(0deg);
-			}
 		}
 
 		/* 标题 */
@@ -600,10 +561,63 @@
 				}
 			});
 
-			// 掉落动画
-			requestAnimationFrame(() => {
-				for (const icon of platforms) icon.classList.add("fall");
-			});
+			// 掉落动画 — 从视口顶部掉落，带弹跳和随机散落
+			const FALL_DURATION = 800; // ms
+			const STAGGER = 80; // ms 间隔
+
+			function easeOutBounce(t) {
+				const n1 = 7.5625;
+				const d1 = 2.75;
+				if (t < 1 / d1) return n1 * t * t;
+				if (t < 2 / d1) {
+					t -= 1.5 / d1;
+					return n1 * t * t + 0.75;
+				}
+				if (t < 2.5 / d1) {
+					t -= 2.25 / d1;
+					return n1 * t * t + 0.9375;
+				}
+				t -= 2.625 / d1;
+				return n1 * t * t + 0.984375;
+			}
+
+			function animateFall(icon, delay) {
+				const startX = (Math.random() - 0.5) * 200; // 随机水平偏移 ±100px
+				const startY = -window.innerHeight; // 从视口顶部上方开始
+				const endX = (Math.random() - 0.5) * 40; // 最终散落位置 ±20px
+				const startRotate = (Math.random() - 0.5) * 60; // 随机初始旋转 ±30°
+				const startTime = performance.now() + delay;
+
+				function step(now) {
+					const elapsed = now - startTime;
+					if (elapsed < 0) {
+						requestAnimationFrame(step);
+						return;
+					}
+
+					const progress = Math.min(elapsed / FALL_DURATION, 1);
+					const eased = easeOutBounce(progress);
+
+					const currentX = startX + (endX - startX) * eased;
+					const currentY = startY + (-startY) * eased;
+					const currentRotate = startRotate * (1 - eased);
+					const currentScale = 0.3 + 0.7 * eased;
+
+					icon.style.opacity = String(progress > 0.05 ? 1 : 0);
+					icon.style.transform = `translate(${currentX}px, ${currentY}px) scale(${currentScale}) rotate(${currentRotate}deg)`;
+
+					if (progress < 1) {
+						requestAnimationFrame(step);
+					}
+				}
+
+				requestAnimationFrame(step);
+			}
+
+			// 依次触发每个图标掉落
+			for (let i = 0; i < platforms.length; i++) {
+				animateFall(platforms[i], i * STAGGER);
+			}
 
 			// 展开/收起其他版本
 			const toggle = document.getElementById("dlOthersToggle");
