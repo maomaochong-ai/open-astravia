@@ -1,88 +1,88 @@
 <div align="center">
   <img src="docs/assets/banner.png" width="160" alt="Astravia" />
-  <p><strong>Astravia（星轨）</strong> — 本地优先的开源 AI 桌面助手：编码、文档、数据、自动化，一个应用全包。</p>
-  <p>无云端、无账号、无遥测，数据与密钥始终留在你的本机。</p>
+  <p><strong>Astravia（星轨）</strong> — 本地优先的开源 AI 桌面助手</p>
+  <p>编码 · 文档 · 数据 · 自动化 · 设计 — 一个应用全包</p>
+  <p>无云端 · 无账号 · 无遥测 — 数据与密钥始终留在你的本机</p>
   <p><b>简体中文</b> · <a href="README.en-US.md">English</a></p>
 </div>
 
 ---
 
-## 目录
+## 概览
 
-- [特性](#特性)
-- [快速上手](#快速上手)
-- [功能总览](#功能总览)
-- [插件系统](#插件系统)
-- [架构](#架构)
-- [模型配置](#模型配置)
-- [网络行为](#网络行为)
-- [安装](#安装)
-- [参与开发](#参与开发)
-- [加入社群](#加入社群)
-- [致谢](#致谢)
-- [许可](#许可)
+Astravia 是一款运行在你本机桌面上的 AI 代理应用。Agent 内核（编码、文档、自动化、创意）与桌面产品形态合为一体，围绕一个原则：**你在本机工作，数据就留在本机**。
 
-## 特性
+- **没有云端**：不登录、不注册、不订阅。模型密钥（BYOK）由你配置，请求直连服务商，密钥只存本机钥匙串
+- **没有遥测**：不收集崩溃报告与使用统计，任何出站请求都由你的配置明确触发
+- **数据在本机**：会话、工作区、知识库、数据库连接默认都在 `~/.astravia`，不离开你的机器
 
-Astravia 是一款开源 AI 桌面代理：Agent 内核（编码、文档、自动化、创意）加上桌面产品形态，围绕一个原则——**你在本机工作，数据就留在本机**。
-
-- **没有云端**：无登录、无账号、无订阅。模型密钥（BYOK）由你配置，请求直连服务商，密钥只存本机钥匙串。
-- **没有遥测**：不收集崩溃报告与使用统计；任何出站请求都由你的配置明确触发（见[网络行为](#网络行为)）。
-- **数据在本机**：会话、工作区、知识库、数据库连接默认都在 `~/.astravia`，不离开你的机器。
+<p align="center">
+  <img src="docs/assets/screenshot-main.png" alt="Astravia 主界面" width="900" />
+</p>
 
 ## 快速上手
 
-1. 从 [Releases](../../releases) 下载安装包（macOS / Windows / Linux）。
-2. 设置中选择模型服务商，填入你自己的 Key。
-3. 新建项目开始对话：写代码、整理文档、处理文件。
-4. 要查数据时添加数据库连接（SQLite 选个文件，PostgreSQL / MySQL 填连接信息），在「数据库」标签页写 SQL，或直接让 AI 查。
-5. 重复性工作交给批量任务与定时任务，完成时通过飞书 / 钉钉机器人收到通知。
+1. 从 [Releases](../../releases) 下载安装包（macOS / Windows / Linux）
+2. 设置中选择模型服务商，填入你自己的 Key
+3. 新建项目开始对话：写代码、整理文档、处理文件
+4. 查数据时添加数据库连接（SQLite 选文件，PostgreSQL / MySQL 填连接信息），在「数据库」标签页写 SQL，或直接让 AI 查
+5. 重复性工作交给批量任务与定时任务，完成时通过飞书 / 钉钉机器人收到通知
 
-## 功能总览
+## 核心能力
 
 所有能力都是应用的一部分，彼此并列——不需要额外安装客户端，也不依赖外部服务。
 
-| 能力 | 说明 |
-| --- | --- |
-| **对话与工作区** | 消息流、工具调用过程、生成结果同屏可见；会话按项目组织在侧边栏；活动面板实时展示工具调用与进度。文件在应用内直接预览（PDF、Word、PPT、表格、图片、音视频、SVG），扫描版 PDF 可离线 OCR。 |
-| **数据库** | 内置连接管理与 SQL 工作台：表浏览、多标签查询、历史记录、CSV/JSON 导出与数据编辑。AI 可在对话中直接查数——表结构按需注入（开关默认关），描述需求即得表格结果。写操作分级授权，`prod` 连接默认只读，行数与超时上限可配。引擎基于 dbx（Apache-2.0）自建二进制随应用分发，支持 40 余种数据库（SQLite、PostgreSQL、MySQL、SQL Server、Oracle、MongoDB、Redis、ClickHouse、DuckDB、Snowflake、BigQuery 等）。 |
-| **批量任务** | 一个 Prompt 对多个目录批量执行；任务按「项目 + 任务」组织，可运行、可重试，进度实时可见。 |
-| **定时调度** | 内置 Cron 调度，任务在托盘后台执行，执行历史可查。 |
-| **通知与远程控制** | 批量 / 定时任务完成或异常推送飞书、钉钉机器人（凭据本地加密）；手机 IM 可遥控本机 Agent，目前接入飞书（Telegram、钉钉规划中），由内嵌 `im-gateway` 边车实现，随应用启停。 |
-| **扩展生态** | 能力市场从任意 GitHub 仓库安装 Skill、MCP Server、插件与能力包（搜索在本地快照完成）；Skill 把做事方法固化成技能；MCP 接入后工具对 Agent 自动可见；插件按需启用；主题整体替换；本地文档加工成可检索知识库供 Agent 引用，全程不出本机。 |
-| **UI 设计工作区** | 无限画布上的设计稿是真实可运行的界面；整份设计共享一套色彩系统，画框可导出渲染图或只读分享包。 |
-| **桌面集成** | 全局快捷键唤起快捷面板；macOS Appshot 一个手势把前台窗口（截图、标题、屏上文字）交给 Agent；环境设置配置 Node / Python 运行时；托盘常驻、自动更新、中英双语界面。 |
+### 对话与工作区
+
+消息流、工具调用过程、生成结果同屏可见；会话按项目组织在侧边栏；活动面板实时展示工具调用与进度。文件在应用内直接预览（PDF、Word、PPT、表格、图片、音视频、SVG），扫描版 PDF 可离线 OCR。
+
+### 数据库
+
+内置连接管理与 SQL 工作台：表浏览、多标签查询、历史记录、CSV/JSON 导出与数据编辑。AI 可在对话中直接查数——表结构按需注入（开关默认关），描述需求即得表格结果。写操作分级授权，`prod` 连接默认只读，行数与超时上限可配。引擎基于 dbx（Apache-2.0）自建二进制随应用分发，支持 40 余种数据库。
+
+### 批量任务
+
+一个 Prompt 对多个目录批量执行；任务按「项目 + 任务」组织，可运行、可重试，进度实时可见。
+
+### 定时调度
+
+内置 Cron 调度，任务在托盘后台执行，执行历史可查。
+
+### 通知与远程控制
+
+批量 / 定时任务完成或异常推送飞书、钉钉机器人（凭据本地加密）；手机 IM 可遥控本机 Agent，目前接入飞书（Telegram、钉钉规划中），由内嵌 `im-gateway` 边车实现，随应用启停。
+
+### 扩展生态
+
+能力市场从任意 GitHub 仓库安装 Skill、MCP Server、插件与能力包（搜索在本地快照完成）；Skill 把做事方法固化成技能；MCP 接入后工具对 Agent 自动可见；插件按需启用；主题整体替换；本地文档加工成可检索知识库供 Agent 引用，全程不出本机。
+
+### UI 设计工作区
+
+无限画布上的设计稿是真实可运行的界面；整份设计共享一套色彩系统，画框可导出渲染图或只读分享包。
+
+### 桌面集成
+
+全局快捷键唤起快捷面板；macOS Appshot 一个手势把前台窗口（截图、标题、屏上文字）交给 Agent；环境设置配置 Node / Python 运行时；托盘常驻、自动更新、中英双语界面。
 
 ## 插件系统
 
-插件不是边角功能——设计画布、内容创作、Git、图表、文件预览这些工作区形态本身就是插件写出来的，同一套扩展点对第三方完全开放。插件既能扩展界面（活动面板、文件预览、消息卡片、快捷键…），也能扩展 Agent 本身（注入系统提示词、技能、工具与 MCP Server、接管新会话引导）。每项能力必须在 `plugin.json` 显式声明权限，由宿主单独授权、运行时再校验；预装与第三方插件走同一套 API。
+插件不是边角功能——设计画布、内容创作、Git、图表、文件预览这些工作区形态本身就是插件写出来的，同一套扩展点对第三方完全开放。
+
+插件既能扩展界面（活动面板、文件预览、消息卡片、快捷键…），也能扩展 Agent 本身（注入系统提示词、技能、工具与 MCP Server、接管新会话引导）。每项能力必须在 `plugin.json` 显式声明权限，由宿主单独授权、运行时再校验；预装与第三方插件走同一套 API。
 
 ```tsx
 import { definePlugin } from "@astravia-org/plugin-sdk";
 
 export default definePlugin({
-	activate(ctx) {
-		ctx.ui.registerActivityTab({ id: "my-tab", label: "我的面板", component: MyPanel });
-	},
+  activate(ctx) {
+    ctx.ui.registerActivityTab({ id: "my-tab", label: "我的面板", component: MyPanel });
+  },
 });
 ```
 
-内置插件：
+**内置插件**：astravia-ui-design（UI 设计画布）、content-creation（内容创作）、plugin-workbench（用对话构建插件）、git（Git 变更）、image-gen（图像生成）、chart-renderer（数据图表）、office-viewer（文档预览）、media-viewer（媒体预览）、svg-viewer（SVG 预览）、astravia-actions（官方动作集）。
 
-| 插件 | 说明 |
-| --- | --- |
-| [astravia-ui-design](packages/plugins/presets/astravia-ui-design) | UI 设计画布 |
-| [content-creation](packages/plugins/presets/content-creation) | 内容创作 |
-| [plugin-workbench](packages/plugins/presets/plugin-workbench) | 用对话构建插件 |
-| [git](packages/plugins/presets/git) | Git 变更 |
-| [image-gen](packages/plugins/presets/image-gen) | 图像生成 |
-| [chart-renderer](packages/plugins/presets/chart-renderer) | 数据图表化 |
-| [office-viewer](packages/plugins/presets/office-viewer) | 文档预览 |
-| [media-viewer](packages/plugins/presets/media-viewer) | 媒体预览 |
-| [svg-viewer](packages/plugins/presets/svg-viewer) | SVG 预览 |
-| [astravia-actions](packages/plugins/presets/astravia-actions) | 官方动作集 |
-
-`packages/plugins/externals` 下另有几个示例插件不随应用打包。
+`packages/plugins/externals` 下另有示例插件不随应用打包。
 
 ## 架构
 
@@ -126,7 +126,7 @@ astravia/
 | 自动更新 | 更新源由应用配置决定（基于 electron-updater）；不配即不检查 |
 | MCP / 插件 / Webhook / IM | 由你安装的扩展与填写的凭据决定；不装即不发生 |
 
-没有遥测，没有崩溃上报，没有使用统计。
+**没有遥测，没有崩溃上报，没有使用统计。**
 
 ## 安装
 
@@ -161,8 +161,6 @@ bun run test:changed       # 只跑受改动影响的包
 </div>
 
 ## 致谢
-
-本项目离不开以下开源项目：
 
 | 项目 | 用途 | 许可 |
 | --- | --- | --- |
