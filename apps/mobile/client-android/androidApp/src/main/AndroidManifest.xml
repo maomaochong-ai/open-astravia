@@ -67,6 +67,18 @@
             </intent-filter>
         </activity>
 
+        <!-- A quick settings tile that opens a new session. -->
+        <service
+            android:name=".NewSessionTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_stat_vetta"
+            android:label="@string/app_name"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
         <!-- Keeps the desktop link up in the background so session notifications can arrive. -->
         <service
             android:name="org.vetta.android.app.LinkService"
