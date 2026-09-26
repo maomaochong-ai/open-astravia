@@ -17,7 +17,7 @@ Astravia 是一款运行在你本机桌面上的 AI 代理应用。Agent 内核�
 - **数据在本机**：会话、工作区、知识库、数据库连接默认都在 `~/.astravia`，不离开你的机器
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/sikongyue/astravia/main/docs/assets/screenshot-main.png" alt="Astravia 主界面" width="900" />
+  <img src="https://raw.githubusercontent.com/maomaochong-ai/astravia/main/docs/assets/screenshot-main.png" alt="Astravia 主界面" width="900" />
 </p>
 
 ## 快速上手
