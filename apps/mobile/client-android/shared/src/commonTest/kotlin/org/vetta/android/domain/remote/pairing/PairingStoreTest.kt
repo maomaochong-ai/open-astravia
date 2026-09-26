@@ -33,6 +33,17 @@ class PairingStoreTest {
     }
 
     @Test
+    fun unpairingOneComputerDoesNotSwitchToAnotherStoredOne() {
+        val settings = MapSettings()
+        val store = PairingStore(settings, SettingsSecretStore(MapSettings())).also { it.load() }
+        store.save(DesktopRecord("old", "Old", "p0", "s0", emptyList(), pairedAt = 1, lastSeenAt = 1))
+        store.save(DesktopRecord("new", "New", "p1", "s1", emptyList(), pairedAt = 2, lastSeenAt = 2))
+        store.revoke("new")
+        assertNull(store.getCurrent(), "an older pairing does not quietly take over")
+        assertNull(PairingStore(settings, SettingsSecretStore(MapSettings())).apply { load() }.getCurrent(), "not on the next launch either")
+    }
+
+    @Test
     fun adoptsALegacyIdentityOnlyWhenNoneIsStored() {
         val secrets = MapSettings()
         val legacy = "HyYtNDtCSVBXXmVsc3qBiI-WnaSrsrnAx87V3OPq8fg"

@@ -58,6 +58,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.jetbrains.compose.resources.stringResource
 import org.vetta.android.domain.remote.pairing.PairingPhase
+import org.vetta.android.domain.work.UnlinkReason
 import org.vetta.android.resources.Res
 import org.vetta.android.resources.cancel
 import org.vetta.android.resources.pair_code_hint
@@ -72,6 +73,11 @@ import org.vetta.android.resources.pair_troubleshoot_relay
 import org.vetta.android.resources.pair_troubleshoot_same_wifi
 import org.vetta.android.resources.pair_verification_code
 import org.vetta.android.resources.pair_waiting_approval
+import org.vetta.android.resources.unlinked_description
+import org.vetta.android.resources.unlinked_this_computer
+import org.vetta.android.resources.unlinked_title_computer
+import org.vetta.android.resources.unlinked_title_here
+import org.vetta.android.resources.unlinked_view_sessions
 import org.vetta.android.resources.work_unpaired_description
 import org.vetta.android.resources.work_unpaired_scan
 import org.vetta.android.resources.work_unpaired_title
@@ -295,6 +301,50 @@ fun UnpairedView(onPair: () -> Unit, modifier: Modifier = Modifier) {
             onClick = onPair,
             modifier = Modifier.padding(top = 28.dp),
             tag = "home.pair",
+        )
+    }
+}
+
+/**
+ * New Session after an unpairing: nothing can start without a computer, but nothing was
+ * taken away either. Says so, and leads to the earlier sessions or to pairing again.
+ */
+@Composable
+fun UnlinkedView(desktopName: String, reason: UnlinkReason, onPair: () -> Unit, onOpenHome: () -> Unit, modifier: Modifier = Modifier) {
+    val name = desktopName.ifBlank { stringResource(Res.string.unlinked_this_computer) }
+    Column(
+        modifier.fillMaxSize().padding(horizontal = 32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        BotAvatar(size = 56.dp, asleep = true)
+        Text(
+            stringResource(if (reason == UnlinkReason.UnpairedOnComputer) Res.string.unlinked_title_computer else Res.string.unlinked_title_here, name),
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(top = 24.dp),
+        )
+        Text(
+            stringResource(Res.string.unlinked_description),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(top = 8.dp),
+        )
+        GlassCapsuleButton(
+            text = stringResource(Res.string.work_unpaired_scan),
+            icon = Icons.Filled.QrCodeScanner,
+            prominent = true,
+            onClick = onPair,
+            modifier = Modifier.padding(top = 28.dp),
+            tag = "unlinked.pair",
+        )
+        GlassCapsuleButton(
+            text = stringResource(Res.string.unlinked_view_sessions),
+            onClick = onOpenHome,
+            modifier = Modifier.padding(top = 12.dp),
+            tag = "unlinked.sessions",
         )
     }
 }

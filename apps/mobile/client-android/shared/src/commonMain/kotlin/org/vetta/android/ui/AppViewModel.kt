@@ -75,9 +75,10 @@ class AppViewModel(
         viewModelScope.launch {
             container.preferences.backgroundLink.collect { on -> _state.update { it.copy(backgroundLink = on) } }
         }
-        // Unpaired: nothing of the old desktop stays on screen.
+        // Nothing left to show (never paired): back to the start. An unpairing keeps the
+        // sessions readable, so the screen the user is on stays.
         viewModelScope.launch {
-            container.mirror.state.map { it.paired }.distinctUntilChanged().collect { paired -> if (!paired) reset() }
+            container.mirror.state.map { it.paired || it.unlinked != null }.distinctUntilChanged().collect { shown -> if (!shown) reset() }
         }
         container.mirror.start()
     }

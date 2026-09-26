@@ -153,6 +153,16 @@ class FakeDesktop(private val scope: CoroutineScope) {
         sockets.filter { it.online }.forEach { it.sendSession(event) }
     }
 
+    /**
+     * Removes the phone as the desktop does: tells it, then drops the pairing's journal, so a
+     * later pairing starts a fresh sequence instead of hearing the removal again.
+     */
+    suspend fun revoke() {
+        emit(RemoteEventName.DeviceRevoked, buildJsonObject {})
+        journal.clear()
+        sequence = 0
+    }
+
     /** Journals an event without delivering it, as if the phone was away when it happened. */
     fun journalWhileAway(name: RemoteEventName, payload: JsonObject, sessionId: String? = null) {
         sequence += 1

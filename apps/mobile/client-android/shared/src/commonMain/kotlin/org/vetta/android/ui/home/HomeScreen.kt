@@ -265,7 +265,7 @@ fun HomeScreen(
             onStartSearch = { searchActive = true },
             onEndSearch = ::endSearch,
             canSearch = state.sessions.isNotEmpty(),
-            pill = { LinkPill(state.paired, state.link, onReconnect, onPair) },
+            pill = { LinkPill(state.paired, state.link, onReconnect, onPair, unlinked = state.unlinked) },
             onOpenSettings = onOpenSettings,
             modifier = Modifier.align(Alignment.BottomCenter),
         )

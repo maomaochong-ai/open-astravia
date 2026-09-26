@@ -78,8 +78,19 @@ enum class MirrorError {
     Unknown,
 }
 
-/** The computer let this phone go: for certain (it said so), or seemingly (it no longer knows the pairing). */
-data class RevokedNotice(val desktopName: String, val certain: Boolean)
+/** Why the phone no longer syncs with the computer whose sessions it still shows. */
+@Serializable
+enum class UnlinkReason {
+    /** Unpaired from the phone's settings. */
+    @SerialName("here") UnpairedHere,
+
+    /** The computer removed this phone. */
+    @SerialName("computer") UnpairedOnComputer,
+}
+
+/** The computer an unpairing left behind, kept so its sessions stay readable across launches. */
+@Serializable
+private data class UnlinkedDesktop(val desktop: StoredDesktop, val reason: UnlinkReason)
 
 /** The phone's whole view of the paired desktop. */
 data class MirrorState(
@@ -107,8 +118,11 @@ data class MirrorState(
     val preferences: MirrorPreferences = MirrorPreferences(),
     val pairing: PairingPhase = PairingPhase.Idle,
     val lastError: MirrorError? = null,
-    /** The computer unpaired this phone, or seems to have; the user is told once. */
-    val revoked: RevokedNotice? = null,
+    /**
+     * Set after an unpairing: the phone no longer syncs with [desktop], but everything it
+     * had from it stays readable. Pairing with that computer again carries on from there.
+     */
+    val unlinked: UnlinkReason? = null,
 ) {
     val online: Boolean
         get() = link.isUsable
@@ -172,7 +186,6 @@ class DesktopMirror(
     private val transcriptSaves = mutableMapOf<String, Job>()
     private var unsavedSequence: Pair<String, Long>? = null
     private var sequenceSave: Job? = null
-    private var revokedAsked = false
     private var active = true
     private var newSessionModelsLoad: Deferred<Unit>? = null
 
@@ -192,7 +205,7 @@ class DesktopMirror(
         deviceId = platform.settings.getStringOrNull(DEVICE_ID_KEY)
             ?: "mobile-${RemoteCrypto.toBase64Url(RemoteCrypto.randomBytes(8))}".also { platform.settings[DEVICE_ID_KEY] = it }
         mutate { it.copy(preferences = decodePreferences(platform.settings.getStringOrNull(PREFERENCES_KEY))) }
-        pairingStore.getCurrent()?.let(::attachLink)
+        pairingStore.getCurrent()?.let(::attachLink) ?: restoreUnlinked()
         mutate { it.copy(ready = true) }
     }
 
@@ -237,29 +250,48 @@ class DesktopMirror(
         mutate { it.copy(pairing = PairingPhase.Idle) }
     }
 
-    fun unpair() {
-        val key = desktopKey
+    /** Unpairs from the phone's settings: it stops syncing, and keeps what it has. */
+    fun unpair() = unlink(UnlinkReason.UnpairedHere)
+
+    /**
+     * Ends the pairing, from either side, without taking anything away: the sessions and
+     * chats the phone has stay on screen and across launches, read-only. Only the pairing's
+     * credentials go. Pairing with the same computer again resumes syncing them.
+     */
+    private fun unlink(reason: UnlinkReason) {
+        val key = desktopKey ?: return
+        val desktop = _state.value.desktop
         detachLink()
-        if (key != null) {
-            pairingStore.revoke(key)
-            platform.cache.clearDesktop(key)
-            platform.settings.remove(PROJECTS_KEY_PREFIX + key)
-            platform.settings.remove(MODELS_KEY_PREFIX + key)
-            platform.settings.remove(LAST_MODEL_KEY_PREFIX + key)
+        pairingStore.revoke(key)
+        if (desktop != null) {
+            platform.settings[UNLINKED_KEY] = json.encodeToString(UnlinkedDesktop.serializer(), UnlinkedDesktop(desktop, reason))
         }
-        desktopKey = null
         mutate {
             it.copy(
                 paired = false,
-                desktop = null,
-                sessions = emptyList(),
-                sessionsLoaded = false,
-                projects = emptyList(),
+                unlinked = reason,
                 models = emptyMap(),
-                newSessionModels = emptyList(),
-                lastModelChoice = ModelChoice(),
-                transcripts = emptyMap(),
                 link = LinkSnapshot.Offline,
+            )
+        }
+    }
+
+    /** At launch without a pairing: the computer an earlier unpairing left, still readable. */
+    private fun restoreUnlinked() {
+        val saved =
+            platform.settings.getStringOrNull(UNLINKED_KEY)
+                ?.let { runCatching { json.decodeFromString(UnlinkedDesktop.serializer(), it) }.getOrNull() }
+                ?: return
+        val key = saved.desktop.desktopIdentityKey
+        desktopKey = key
+        val cached = platform.cache.loadSessions(key)
+        mutate {
+            it.copy(
+                desktop = saved.desktop,
+                unlinked = saved.reason,
+                sessions = cached,
+                sessionsLoaded = cached.isNotEmpty(),
+                projects = loadList(PROJECTS_KEY_PREFIX + key, RemoteProjectSummary.serializer()),
             )
         }
     }
@@ -281,9 +313,7 @@ class DesktopMirror(
 
     private fun finishPairing(record: DesktopRecord) {
         pairingStore.save(record)
-        // A notice was about the pairing this one replaces: clearing from it would wipe this one.
-        revokedAsked = false
-        mutate { it.copy(revoked = null) }
+        platform.settings.remove(UNLINKED_KEY)
         attachLink(record)
         mutate { it.copy(pairing = PairingPhase.Idle) }
     }
@@ -298,6 +328,7 @@ class DesktopMirror(
         mutate {
             it.copy(
                 paired = true,
+                unlinked = null,
                 desktop = record.stored,
                 sessions = cached,
                 sessionsLoaded = cached.isNotEmpty(),
@@ -335,9 +366,6 @@ class DesktopMirror(
                         val wasOnline = _state.value.link.isUsable
                         mutate { it.copy(link = snapshot) }
                         if (!wasOnline && snapshot.isUsable) scope.launch { refreshSessions() }
-                        if (snapshot.lastError == DesktopLink.UNKNOWN_PAIRING) suspectRevoked()
-                        // The desktop answered with this pairing after all: it was not unpaired.
-                        if (snapshot.isUsable && _state.value.revoked?.certain == false) dismissRevoked()
                     }
                 },
                 scope.launch { next.events.collect(::handleEvent) },
@@ -461,36 +489,10 @@ class DesktopMirror(
         }
     }
 
-    /**
-     * The computer unpaired this phone over the encrypted link, so it is certain: what was
-     * cached from it goes at once, as unpairing here would do, and the user is told why.
-     */
+    /** The computer removed this phone: it stops syncing, and keeps what it has. */
     private fun onRevoked() {
-        val name = _state.value.desktop?.desktopName.orEmpty()
-        scope.launch {
-            unpair()
-            mutate { it.copy(revoked = RevokedNotice(name, certain = true)) }
-        }
-    }
-
-    /**
-     * The computer's local server no longer knows this phone and the relay cannot reach it:
-     * probably unpaired there, but another computer may now hold the old address. The user
-     * decides, and is asked once per launch.
-     */
-    private fun suspectRevoked() {
-        if (revokedAsked || _state.value.revoked != null) return
-        revokedAsked = true
-        mutate { it.copy(revoked = RevokedNotice(_state.value.desktop?.desktopName.orEmpty(), certain = false)) }
-    }
-
-    /** The notice was read; a suspected unpairing is left as it is. */
-    fun dismissRevoked() = mutate { it.copy(revoked = null) }
-
-    /** The user agrees the computer let this phone go: forget it as unpairing here would. */
-    fun forgetRevoked() {
-        unpair()
-        dismissRevoked()
+        // Detaching the link cancels the collector delivering this event, so it runs apart.
+        scope.launch { unlink(UnlinkReason.UnpairedOnComputer) }
     }
 
     // Actions
@@ -850,6 +852,9 @@ class DesktopMirror(
     companion object {
         const val PREFERENCES_KEY = "vetta.preferences"
         const val DEVICE_ID_KEY = "vetta.device.id"
+
+        /** The computer the last unpairing left, whose sessions stay readable. */
+        const val UNLINKED_KEY = "vetta.unlinkedDesktop"
         const val PROJECTS_KEY_PREFIX = "vetta.projects."
         const val MODELS_KEY_PREFIX = "vetta.models."
         const val LAST_MODEL_KEY_PREFIX = "vetta.lastModel."

@@ -197,7 +197,7 @@ fun NewSessionScreen(
                     )
                 } else {
                     Box(Modifier.fillMaxWidth().navigationBarsPadding().padding(bottom = 12.dp), contentAlignment = Alignment.Center) {
-                        LinkPill(state.paired, state.link, onReconnect, onPair)
+                        LinkPill(state.paired, state.link, onReconnect, onPair, unlinked = state.unlinked)
                     }
                 }
             }

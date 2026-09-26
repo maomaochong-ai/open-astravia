@@ -46,10 +46,13 @@ import org.jetbrains.compose.resources.stringResource
 import org.vetta.android.domain.remote.link.DesktopLink
 import org.vetta.android.domain.remote.link.LinkIndicator
 import org.vetta.android.domain.remote.link.LinkSnapshot
+import org.vetta.android.domain.work.UnlinkReason
 import org.vetta.android.resources.Res
 import org.vetta.android.resources.link_reconnect
 import org.vetta.android.resources.link_status
 import org.vetta.android.resources.link_unauthorized
+import org.vetta.android.resources.link_unknown_pairing
+import org.vetta.android.resources.unlinked_pill
 import org.vetta.android.resources.work_unpaired_title
 import org.vetta.android.ui.design.GlassCapsuleButton
 import org.vetta.android.ui.design.VettaMotion
@@ -79,6 +82,8 @@ fun LinkPill(
     onReconnect: () -> Unit,
     onPair: () -> Unit,
     modifier: Modifier = Modifier,
+    /** Set after an unpairing: the sessions shown no longer sync. */
+    unlinked: UnlinkReason? = null,
 ) {
     val colors = MaterialTheme.workColors
     val phase: PillPhase = if (paired) PillPhase.Link(LinkIndicator.of(link)) else PillPhase.Unpaired
@@ -103,7 +108,12 @@ fun LinkPill(
         VettaMotion.snappy(),
         label = "pill ink",
     )
-    val description = if (phase is PillPhase.Link) describe(phase.indicator) else stringResource(Res.string.work_unpaired_title)
+    val description =
+        when {
+            phase is PillPhase.Link -> describe(phase.indicator)
+            unlinked != null -> stringResource(Res.string.unlinked_pill)
+            else -> stringResource(Res.string.work_unpaired_title)
+        }
     val label = stringResource(Res.string.link_status)
     Box(modifier) {
         Row(
@@ -143,6 +153,10 @@ fun LinkPill(
                     if (online) linkDetail(link)?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                     if (link.lastError == DesktopLink.UNAUTHORIZED) {
                         Text(stringResource(Res.string.link_unauthorized), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    // The computer no longer knows this pairing: most likely unpaired there.
+                    if (offline && link.lastError == DesktopLink.UNKNOWN_PAIRING) {
+                        Text(stringResource(Res.string.link_unknown_pairing), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
                 if (offline) {

@@ -119,6 +119,7 @@
     </plurals>
     <string name="link_status">Connection status</string>
     <string name="link_unauthorized">Your computer doesn’t recognize this phone. Please scan again.</string>
+    <string name="link_unknown_pairing">The computer may have unpaired this phone. Scan again to resume syncing; nothing on this phone is removed.</string>
     <string name="link_via_lan">Direct over LAN</string>
     <string name="link_via_p2p">Direct over P2P</string>
     <string name="link_via_relay">Cloud relay</string>
@@ -169,14 +170,6 @@
     <string name="remote_keyboard">Keyboard</string>
     <string name="remote_keyboard_hint">Types English letters, digits and spaces</string>
     <string name="remote_rotate">Rotate</string>
-    <string name="revoked_forget">Clear and Scan Again</string>
-    <string name="revoked_message">“%1$s” unpaired this phone. The sessions cached on this phone were cleared; your sessions on the computer stay. Scan again to keep using it.</string>
-    <string name="revoked_not_now">Not Now</string>
-    <string name="revoked_scan">Scan Again</string>
-    <string name="revoked_suspected_message">“%1$s” no longer recognizes this phone’s pairing; it was probably unpaired on the computer. Clearing removes the sessions cached on this phone (not those on the computer) and you’ll scan again.</string>
-    <string name="revoked_suspected_title">Unpaired on the computer?</string>
-    <string name="revoked_this_computer">This computer</string>
-    <string name="revoked_title">Unpaired on the computer</string>
     <string name="save">Save</string>
     <string name="send">Send</string>
     <string name="session_delete">Delete</string>
@@ -210,6 +203,14 @@
     <string name="tool_run_command">Run command</string>
     <string name="tool_search_files">Search</string>
     <string name="tool_write_file">Write file</string>
+    <string name="unlinked_description">Your earlier sessions are all still on this phone to read, but they won’t update. Scan this computer again to carry on syncing them.</string>
+    <string name="unlinked_not_cached">This chat wasn’t kept on this phone. Scan the computer again to see it.</string>
+    <string name="unlinked_pill">Unpaired</string>
+    <string name="unlinked_readonly">Unpaired from the computer, so this chat won’t update.</string>
+    <string name="unlinked_this_computer">this computer</string>
+    <string name="unlinked_title_computer">“%1$s” unpaired this phone</string>
+    <string name="unlinked_title_here">Unpaired from “%1$s”</string>
+    <string name="unlinked_view_sessions">View Earlier Sessions</string>
     <string name="version_number">Version %1$s</string>
     <string name="work_clear_filters">Clear Filters</string>
     <string name="work_conversation">Conversation</string>
@@ -240,8 +241,8 @@
     <string name="work_settings_rescan">Scan Again</string>
     <string name="work_settings_scan">Scan to Connect a Computer</string>
     <string name="work_settings_unpair">Unpair</string>
-    <string name="work_settings_unpair_confirm">Unpair from this computer? Only the sessions cached on this phone are cleared; your sessions on the computer stay.</string>
-    <string name="work_settings_unpair_hint">Removes this computer’s credentials and the sessions cached on this phone; the sessions on the computer stay. You’ll need to scan again to reconnect.</string>
+    <string name="work_settings_unpair_confirm">Unpair from this computer? Your sessions stay on this phone to read but won’t update; scan again to carry on syncing.</string>
+    <string name="work_settings_unpair_hint">Removes this computer’s credentials. Your sessions stay on this phone to read but won’t update; you’ll need to scan again to reconnect.</string>
     <string name="work_status_all">All</string>
     <string name="work_status_error">Error</string>
     <string name="work_status_running">Running</string>

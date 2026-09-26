@@ -20,7 +20,6 @@ fun VettaConfirmDialog(
     confirmLabel: String,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
-    dismissLabel: String = stringResource(Res.string.cancel),
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -30,7 +29,7 @@ fun VettaConfirmDialog(
             TextButton(onClick = onConfirm) { Text(confirmLabel) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(dismissLabel) }
+            TextButton(onClick = onDismiss) { Text(stringResource(Res.string.cancel)) }
         },
     )
 }

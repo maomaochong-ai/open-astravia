@@ -159,7 +159,7 @@ class WorkViewModelTest {
         }
 
     @Test
-    fun unpairingForgetsTheComputerAndTheDrafts() =
+    fun unpairingKeepsTheSessionsAndTheDrafts() =
         runTest(dispatcher) {
             val (_, vm) = paired()
             vm.setDraft("s1", PromptDraft("写到一半"))
@@ -167,7 +167,7 @@ class WorkViewModelTest {
             assertEquals(false, vm.state.value.preferences.haptics)
 
             vm.unpair()
-            assertTrue(vm.drafts.value.isEmpty())
-            assertTrue(!vm.state.value.paired && vm.state.value.sessions.isEmpty())
+            assertEquals(PromptDraft("写到一半"), vm.drafts.value["s1"], "nothing typed is lost")
+            assertTrue(!vm.state.value.paired && vm.state.value.sessions.isNotEmpty())
         }
 }

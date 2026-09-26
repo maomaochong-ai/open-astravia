@@ -12,12 +12,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.interaction.DragInteraction
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -77,7 +79,11 @@ import org.vetta.android.resources.session_pin
 import org.vetta.android.resources.session_rename
 import org.vetta.android.resources.session_rename_title
 import org.vetta.android.resources.session_unpin
+import org.vetta.android.resources.unlinked_not_cached
+import org.vetta.android.resources.unlinked_readonly
+import org.vetta.android.resources.work_unpaired_scan
 import org.vetta.android.ui.components.VettaTextInputDialog
+import org.vetta.android.ui.design.GlassCapsuleButton
 import org.vetta.android.ui.design.GlassCircleButton
 import org.vetta.android.ui.design.VettaMotion
 import org.vetta.android.ui.design.edgeFade
@@ -97,6 +103,8 @@ fun SessionScreen(
     actions: WorkActions,
     onOpenHome: () -> Unit,
     headerActions: @Composable () -> Unit = {},
+    /** Pairs again, offered while the chat is read-only after an unpairing. */
+    onPair: () -> Unit = {},
 ) {
     // The desktop's id; a chat opened by New Session starts on a local one.
     val id = state.resolve(sessionId)
@@ -192,7 +200,12 @@ fun SessionScreen(
                 if (blocks.isEmpty()) {
                     item(key = "empty") {
                         Text(
-                            if (transcript.loaded) workSessionTitle(state.session(id)?.title) else stringResource(Res.string.chat_loading_history),
+                            when {
+                                transcript.loaded -> workSessionTitle(state.session(id)?.title)
+                                // Unpaired and never kept on the phone: it will not load, so say so.
+                                state.unlinked != null -> stringResource(Res.string.unlinked_not_cached)
+                                else -> stringResource(Res.string.chat_loading_history)
+                            },
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.vettaExtra.secondaryText,
                             modifier = Modifier.fillMaxWidth().padding(vertical = 64.dp),
@@ -211,7 +224,10 @@ fun SessionScreen(
             transitionSpec = { (fadeIn(VettaMotion.snappy()) togetherWith fadeOut(VettaMotion.snappy())).using(SizeTransform(clip = false)) },
             label = "composer or question",
         ) { question ->
-            if (question != null) {
+            if (state.unlinked != null) {
+                // After an unpairing the chat stays readable; say why it cannot go on here.
+                UnlinkedBar(onPair)
+            } else if (question != null) {
                 QuestionPanel(
                     request = question,
                     onSubmit = { answers -> actions.respond(id, question.requestId, answers) },
@@ -383,4 +399,25 @@ private suspend fun LazyListState.followToBottom() {
     if ((layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0) < count - 1) scrollToItem(count - 1)
     val gap = distanceToBottom()
     if (gap > 0f && gap < Float.MAX_VALUE) animateScrollBy(gap, VettaMotion.smooth())
+}
+
+@Composable
+private fun UnlinkedBar(onPair: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .testTag("chat.unlinked"),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text(
+            stringResource(Res.string.unlinked_readonly),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.vettaExtra.secondaryText,
+            modifier = Modifier.weight(1f),
+        )
+        GlassCapsuleButton(text = stringResource(Res.string.work_unpaired_scan), onClick = onPair, height = 40.dp, tag = "chat.unlinked.pair")
+    }
 }

@@ -1,6 +1,12 @@
 package org.vetta.android.domain.work
 
 import com.russhwolf.settings.MapSettings
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
 import kotlinx.coroutines.async
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
@@ -23,18 +29,13 @@ import org.vetta.android.domain.remote.RemoteQuestionAnswer
 import org.vetta.android.domain.remote.RemoteSessionStatus
 import org.vetta.android.domain.remote.TranscriptAttachment
 import org.vetta.android.domain.remote.TranscriptItem
-import org.vetta.android.domain.remote.pairing.SettingsSecretStore
+import org.vetta.android.domain.remote.link.DesktopLink
 import org.vetta.android.domain.remote.pairing.PairingStore
+import org.vetta.android.domain.remote.pairing.SettingsSecretStore
 import org.vetta.android.domain.remote.protocol.RemoteCrypto
 import org.vetta.android.domain.remote.protocol.RemoteErrorCode
 import org.vetta.android.domain.remote.protocol.RemoteEventName
 import org.vetta.android.domain.remote.protocol.RemoteRequestMethod
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertNotNull
-import kotlin.test.assertNull
-import kotlin.test.assertTrue
 
 /**
  * End to end over the fake desktop: pairing, the session list, prompting with
@@ -277,7 +278,8 @@ class DesktopMirrorTest {
 
             mirror.unpair()
             assertFalse(mirror.state.value.paired)
-            assertTrue(mirror.state.value.sessions.isEmpty())
+            assertEquals(UnlinkReason.UnpairedHere, mirror.state.value.unlinked)
+            assertTrue(mirror.state.value.sessions.isNotEmpty(), "unpairing takes nothing off the phone")
             assertFalse(mirror.state.value.link.isUsable)
             assertTrue(eventually { desktop.openSockets == 0 }, "unpairing closes the link")
         }
@@ -302,8 +304,7 @@ class DesktopMirrorTest {
             val relaunched = mirror(desktop, device)
             assertEquals("/conv", relaunched.state.value.conversationCwd, "the project list survives a relaunch before the link is up")
             relaunched.unpair()
-            assertTrue(relaunched.state.value.projects.isEmpty())
-            assertNull(device.settings.getStringOrNull(DesktopMirror.PROJECTS_KEY_PREFIX + desktop.identityKey))
+            assertEquals("/conv", relaunched.state.value.conversationCwd, "the earlier sessions still read by project after unpairing")
         }
 
     @Test
@@ -405,8 +406,7 @@ class DesktopMirrorTest {
             val relaunched = mirror(desktop, device)
             assertEquals(mirror.state.value.lastModelChoice, relaunched.state.value.lastModelChoice)
             relaunched.unpair()
-            assertEquals(ModelChoice(), relaunched.state.value.lastModelChoice)
-            assertNull(device.settings.getStringOrNull(DesktopMirror.LAST_MODEL_KEY_PREFIX + desktop.identityKey))
+            assertNotNull(device.settings.getStringOrNull(DesktopMirror.LAST_MODEL_KEY_PREFIX + desktop.identityKey), "kept for when this computer is paired again")
         }
 
     @Test
@@ -436,8 +436,7 @@ class DesktopMirrorTest {
             val relaunched = mirror(desktop, device)
             assertEquals(keys, relaunched.state.value.newSessionModels.map { it.key }, "shown at once on the next launch")
             relaunched.unpair()
-            assertTrue(relaunched.state.value.newSessionModels.isEmpty())
-            assertNull(device.settings.getStringOrNull(DesktopMirror.MODELS_KEY_PREFIX + desktop.identityKey))
+            assertNotNull(device.settings.getStringOrNull(DesktopMirror.MODELS_KEY_PREFIX + desktop.identityKey), "kept for when this computer is paired again")
         }
 
     @Test
@@ -602,68 +601,40 @@ class DesktopMirrorTest {
         }
 
     @Test
-    fun forgetsTheComputerWhenItSaysThisPhoneWasUnpaired() =
+    fun keepsEverythingReadableWhenTheComputerUnpairsThisPhoneAndSyncsAgainOnPairing() =
         runTest {
             val desktop = scriptedDesktop()
-            val mirror = mirror(desktop)
+            val device = Device()
+            val mirror = mirror(desktop, device)
             assertTrue(mirror.pairWithCode(desktop.invite()))
             assertTrue(eventually { mirror.state.value.sessions.isNotEmpty() })
+            mirror.openSession("s1")
+            desktop.emit(RemoteEventName.SessionMessage, buildJsonObject { put("kind", "user"); put("text", "在电脑上问的"); put("at", 7) }, "s1")
+            assertTrue(eventually { mirror.state.value.transcript("s1").items.isNotEmpty() })
+            val sessions = mirror.state.value.sessions.map { it.id }
 
-            desktop.emit(RemoteEventName.DeviceRevoked, buildJsonObject {})
+            desktop.revoke()
             assertTrue(eventually { !mirror.state.value.paired })
-            assertEquals(RevokedNotice("MacBook Pro", certain = true), mirror.state.value.revoked)
-            assertTrue(mirror.state.value.sessions.isEmpty(), "what was cached from it goes, as unpairing here would do")
-            mirror.dismissRevoked()
-            assertNull(mirror.state.value.revoked)
-        }
+            assertEquals(UnlinkReason.UnpairedOnComputer, mirror.state.value.unlinked)
+            assertEquals(sessions, mirror.state.value.sessions.map { it.id }, "nothing disappears from the phone")
+            assertTrue(mirror.state.value.transcript("s1").items.isNotEmpty())
+            assertEquals("MacBook Pro", mirror.state.value.desktop?.desktopName)
 
-    @Test
-    fun asksBeforeForgettingAComputerThatOnlySeemsToHaveUnpairedThisPhone() =
-        runTest {
-            val desktop = scriptedDesktop()
-            val mirror = mirror(desktop)
-            assertTrue(mirror.pairWithCode(desktop.invite(relay = "wss://relay.example", lan = listOf("192.168.1.20:43117"))))
-            assertTrue(eventually { mirror.state.value.online })
+            // Still there after a relaunch, and the chats still open from the phone's copy.
+            advanceTimeBy(1_000) // the chat is written to the cache a moment after it changes
+            mirror.setActive(false)
+            val relaunched = mirror(desktop, device)
+            assertFalse(relaunched.state.value.paired)
+            assertEquals(UnlinkReason.UnpairedOnComputer, relaunched.state.value.unlinked)
+            assertEquals(sessions, relaunched.state.value.sessions.map { it.id })
+            relaunched.openSession("s1")
+            assertTrue(eventually { relaunched.state.value.transcript("s1").items.isNotEmpty() })
 
-            desktop.forgotPairing = true
-            desktop.reachable = false
-            desktop.dropConnections()
-            assertTrue(eventually(timeoutMs = 10_000) { mirror.state.value.revoked != null })
-            assertEquals(RevokedNotice("MacBook Pro", certain = false), mirror.state.value.revoked)
-            assertTrue(mirror.state.value.paired, "nothing is cleared until the user agrees")
-
-            mirror.forgetRevoked()
-            assertFalse(mirror.state.value.paired)
-            assertNull(mirror.state.value.revoked)
-        }
-
-    @Test
-    fun aSuspectedUnpairingIsDroppedOnceTheComputerAnswersOrThePhonePairsAgain() =
-        runTest {
-            val desktop = scriptedDesktop()
-            val mirror = mirror(desktop)
-            assertTrue(mirror.pairWithCode(desktop.invite(relay = "wss://relay.example", lan = listOf("192.168.1.20:43117"))))
-            assertTrue(eventually { mirror.state.value.online })
-            desktop.forgotPairing = true
-            desktop.reachable = false
-            desktop.dropConnections()
-            assertTrue(eventually(timeoutMs = 10_000) { mirror.state.value.revoked != null })
-
-            // The relay reaches the desktop again with this pairing: it was not unpaired after all.
-            desktop.reachable = true
-            mirror.refreshLink()
-            assertTrue(eventually(timeoutMs = 10_000) { mirror.state.value.online })
-            assertNull(mirror.state.value.revoked)
-            assertTrue(mirror.state.value.paired)
-
-            // A notice about one pairing never outlives a new one, whose "clear" would wipe it.
-            desktop.reachable = false
-            desktop.dropConnections()
-            assertTrue(eventually(timeoutMs = 10_000) { !mirror.state.value.online })
-            desktop.forgotPairing = false
-            desktop.reachable = true
-            assertTrue(mirror.pairWithCode(desktop.invite()))
-            assertNull(mirror.state.value.revoked)
+            // Pairing with the same computer again carries on syncing the same sessions.
+            assertTrue(relaunched.pairWithCode(desktop.invite()))
+            assertNull(relaunched.state.value.unlinked)
+            assertTrue(eventually { relaunched.state.value.online })
+            assertEquals(sessions, relaunched.state.value.sessions.map { it.id })
         }
 
     @Test
@@ -691,6 +662,24 @@ class DesktopMirrorTest {
 
             relaunched.openSession("s1")
             assertTrue(relaunched.state.value.transcript("s1").items.isNotEmpty(), "the phone's copy, not an endless loading")
+        }
+
+    @Test
+    fun aComputerThatOnlySeemsToHaveUnpairedThisPhoneChangesNothing() =
+        runTest {
+            val desktop = scriptedDesktop()
+            val mirror = mirror(desktop)
+            assertTrue(mirror.pairWithCode(desktop.invite(relay = "wss://relay.example", lan = listOf("192.168.1.20:43117"))))
+            assertTrue(eventually { mirror.state.value.online })
+            val sessions = mirror.state.value.sessions
+
+            desktop.forgotPairing = true
+            desktop.reachable = false
+            desktop.dropConnections()
+            assertTrue(eventually(timeoutMs = 10_000) { mirror.state.value.link.lastError == DesktopLink.UNKNOWN_PAIRING }, "shown as a hint on the link")
+            assertTrue(mirror.state.value.paired, "another computer may hold the old address: the pairing stays")
+            assertNull(mirror.state.value.unlinked)
+            assertEquals(sessions, mirror.state.value.sessions)
         }
 
     @Test

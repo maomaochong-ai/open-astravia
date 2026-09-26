@@ -112,6 +112,7 @@
     </plurals>
     <string name="link_status">连接状态</string>
     <string name="link_unauthorized">电脑不认识这部手机，请重新扫码</string>
+    <string name="link_unknown_pairing">电脑可能已解除与这部手机的配对。重新扫码即可恢复同步，手机上的记录不受影响。</string>
     <string name="link_via_lan">局域网直连</string>
     <string name="link_via_p2p">P2P 直连</string>
     <string name="link_via_relay">云端中继</string>
@@ -161,14 +162,6 @@
     <string name="remote_keyboard">键盘</string>
     <string name="remote_keyboard_hint">可输入英文字母、数字和空格</string>
     <string name="remote_rotate">旋转屏幕</string>
-    <string name="revoked_forget">清除并重新扫码</string>
-    <string name="revoked_message">「%1$s」解除了与这部手机的配对，手机上缓存的会话已清除，电脑上的会话不受影响。要继续使用，请重新扫码。</string>
-    <string name="revoked_not_now">暂不</string>
-    <string name="revoked_scan">重新扫码</string>
-    <string name="revoked_suspected_message">「%1$s」不再认得这部手机的配对，可能已在电脑上解除。清除后会删除手机上缓存的会话（电脑上的不受影响），需要重新扫码。</string>
-    <string name="revoked_suspected_title">这台电脑可能已解除配对</string>
-    <string name="revoked_this_computer">这台电脑</string>
-    <string name="revoked_title">已在电脑上解除配对</string>
     <string name="save">保存</string>
     <string name="send">发送</string>
     <string name="session_delete">删除</string>
@@ -201,6 +194,14 @@
     <string name="tool_run_command">执行命令</string>
     <string name="tool_search_files">查找内容</string>
     <string name="tool_write_file">写入文件</string>
+    <string name="unlinked_description">之前的会话都还在手机上，可以随时查看，只是不会再更新。重新扫码连接这台电脑后，会接着同步。</string>
+    <string name="unlinked_not_cached">这段会话没有保存在手机上，重新扫码连接电脑后即可查看。</string>
+    <string name="unlinked_pill">已解除配对</string>
+    <string name="unlinked_readonly">已与电脑解除配对，这里的内容不会再更新。</string>
+    <string name="unlinked_this_computer">这台电脑</string>
+    <string name="unlinked_title_computer">「%1$s」已解除与这部手机的配对</string>
+    <string name="unlinked_title_here">已与「%1$s」解除配对</string>
+    <string name="unlinked_view_sessions">查看之前的会话</string>
     <string name="version_number">版本 %1$s</string>
     <string name="work_clear_filters">清除筛选</string>
     <string name="work_conversation">对话</string>
@@ -230,8 +231,8 @@
     <string name="work_settings_rescan">重新扫码</string>
     <string name="work_settings_scan">扫码连接电脑</string>
     <string name="work_settings_unpair">解除配对</string>
-    <string name="work_settings_unpair_confirm">解除与这台电脑的配对？只会清除这部手机上缓存的会话，电脑上的会话不受影响。</string>
-    <string name="work_settings_unpair_hint">删除这台电脑的连接凭据和手机上缓存的会话，电脑上的会话不受影响。之后需要重新扫码才能连接。</string>
+    <string name="work_settings_unpair_confirm">解除与这台电脑的配对？手机上的会话会保留、可以继续查看，只是不再更新；重新扫码后会接着同步。</string>
+    <string name="work_settings_unpair_hint">删除这台电脑的连接凭据。手机上的会话会保留，只是不再更新；之后需要重新扫码才能连接。</string>
     <string name="work_status_all">所有</string>
     <string name="work_status_error">出错</string>
     <string name="work_status_running">进行中</string>

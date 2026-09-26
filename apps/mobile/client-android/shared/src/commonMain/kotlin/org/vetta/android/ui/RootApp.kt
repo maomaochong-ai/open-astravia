@@ -53,20 +53,10 @@ import org.vetta.android.domain.work.LaunchTarget
 import org.vetta.android.domain.work.MirrorState
 import org.vetta.android.domain.work.PromptDraft
 import org.vetta.android.resources.Res
-import org.vetta.android.resources.close
 import org.vetta.android.resources.new_session_title
-import org.vetta.android.resources.revoked_forget
-import org.vetta.android.resources.revoked_message
-import org.vetta.android.resources.revoked_not_now
-import org.vetta.android.resources.revoked_scan
-import org.vetta.android.resources.revoked_suspected_message
-import org.vetta.android.resources.revoked_suspected_title
-import org.vetta.android.resources.revoked_this_computer
-import org.vetta.android.resources.revoked_title
 import org.vetta.android.resources.share_skipped
 import org.vetta.android.resources.share_title
 import org.vetta.android.ui.board.TaskBoardSheet
-import org.vetta.android.ui.components.VettaConfirmDialog
 import org.vetta.android.ui.components.VettaInfoDialog
 import org.vetta.android.ui.design.VettaMotion
 import org.vetta.android.ui.home.HomeScreen
@@ -78,6 +68,7 @@ import org.vetta.android.ui.navigation.HomePage
 import org.vetta.android.ui.navigation.PlatformBackHandler
 import org.vetta.android.ui.navigation.Slot
 import org.vetta.android.ui.pairing.PairingSheet
+import org.vetta.android.ui.pairing.UnlinkedView
 import org.vetta.android.ui.pairing.UnpairedView
 import org.vetta.android.ui.remote.RemoteDesktopScreen
 import org.vetta.android.ui.settings.SettingsScreen
@@ -135,7 +126,8 @@ fun RootApp(
     val work: WorkViewModel = viewModel(factory = remember(container) { WorkViewModelFactory(container) })
     val workState by work.state.collectAsState()
     // The desktop's screen, where the pairing has a relay to reach it through.
-    val viewerUrl = remember(workState.desktop) { container.mirror.viewerUrl() }
+    // Only while paired: after an unpairing the computer's screen is out of reach.
+    val viewerUrl = remember(workState.desktop, workState.paired) { container.mirror.viewerUrl() }
 
     // Home stays beside the slot once the window is wide enough; set as the window is measured.
     var beside by remember { mutableStateOf(false) }
@@ -218,7 +210,9 @@ fun RootApp(
 
     VettaTheme(themeMode = state.themeMode) {
         BoxWithConstraints(Modifier.fillMaxSize().background(MaterialTheme.vettaExtra.pageBackground)) {
-            val wide = maxWidth >= HomeBesideMinWidth && workState.paired
+            // After an unpairing the sessions stay readable, so Home keeps its place.
+            val hasSessions = workState.paired || workState.unlinked != null
+            val wide = maxWidth >= HomeBesideMinWidth && hasSessions
             LaunchedEffect(wide) { beside = wide }
             CompositionLocalProvider(LocalHomeBeside provides wide) {
                 if (wide) {
@@ -231,7 +225,7 @@ fun RootApp(
                 } else {
                     HomeDrawer(
                         open = state.drawerOpen,
-                        enabled = workState.paired,
+                        enabled = hasSessions,
                         onOpenChange = { if (it) vm.openDrawer() else vm.closeDrawer() },
                         closableByDrag = state.homePath.isEmpty(),
                         backProgress = backProgress,
@@ -245,34 +239,6 @@ fun RootApp(
                     exit = slideOutVertically(VettaMotion.snappy(IntOffset.VisibilityThreshold)) { it / 3 } + fadeOut(VettaMotion.snappy()),
                 ) {
                     RemoteDesktopScreen(workState, viewerUrl, onClose = vm::closeRemote)
-                }
-                workState.revoked?.let { notice ->
-                    val name = notice.desktopName.ifBlank { stringResource(Res.string.revoked_this_computer) }
-                    if (notice.certain) {
-                        VettaConfirmDialog(
-                            title = stringResource(Res.string.revoked_title),
-                            message = stringResource(Res.string.revoked_message, name),
-                            confirmLabel = stringResource(Res.string.revoked_scan),
-                            onConfirm = {
-                                work.dismissRevoked()
-                                vm.openPairing()
-                            },
-                            onDismiss = work::dismissRevoked,
-                            dismissLabel = stringResource(Res.string.close),
-                        )
-                    } else {
-                        VettaConfirmDialog(
-                            title = stringResource(Res.string.revoked_suspected_title),
-                            message = stringResource(Res.string.revoked_suspected_message, name),
-                            confirmLabel = stringResource(Res.string.revoked_forget),
-                            onConfirm = {
-                                work.forgetRevoked()
-                                vm.openPairing()
-                            },
-                            onDismiss = work::dismissRevoked,
-                            dismissLabel = stringResource(Res.string.revoked_not_now),
-                        )
-                    }
                 }
                 if (shareSkipped > 0) {
                     VettaInfoDialog(
@@ -317,7 +283,11 @@ private fun SlotContent(slot: Slot, workState: MirrorState, vm: AppViewModel, wo
         when (slot) {
             is Slot.NewSession ->
                 if (!workState.paired) {
-                    if (workState.ready) UnpairedView(onPair = vm::openPairing)
+                    val unlinked = workState.unlinked
+                    when {
+                        unlinked != null -> UnlinkedView(workState.desktop?.desktopName.orEmpty(), unlinked, onPair = vm::openPairing, onOpenHome = vm::openDrawer)
+                        workState.ready -> UnpairedView(onPair = vm::openPairing)
+                    }
                 } else {
                     val restored = remember { work.takeFailedStart() }
                     NewSessionScreen(
@@ -350,6 +320,7 @@ private fun SlotContent(slot: Slot, workState: MirrorState, vm: AppViewModel, wo
                     draft = drafts[slot.sessionId] ?: PromptDraft(),
                     actions = work,
                     onOpenHome = vm::openDrawer,
+                    onPair = vm::openPairing,
                     headerActions = {
                         // New Session in the chat's own project.
                         val id = workState.resolve(slot.sessionId)

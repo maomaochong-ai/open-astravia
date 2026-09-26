@@ -92,10 +92,8 @@ class WorkViewModel(private val mirror: DesktopMirror) : ViewModel(), WorkAction
     }
 
     /** Forgets the computer: its credential, and everything cached from it on this phone. */
-    fun unpair() {
-        mirror.unpair()
-        _drafts.value = emptyMap()
-    }
+    /** Unpairs; what was being typed stays too, for when this computer is paired again. */
+    fun unpair() = mirror.unpair()
 
     private var failedStart: NewSessionStart? = null
 
@@ -193,8 +191,4 @@ class WorkViewModel(private val mirror: DesktopMirror) : ViewModel(), WorkAction
     override fun clearError() {
         mirror.clearError()
     }
-
-    fun dismissRevoked() = mirror.dismissRevoked()
-
-    fun forgetRevoked() = mirror.forgetRevoked()
 }
