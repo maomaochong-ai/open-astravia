@@ -153,20 +153,20 @@
 		.download-theater-beam--b { left: 50%; height: 100%; }
 		.download-theater-beam--c { left: 75%; height: 100%; }
 
-		/* 掉落的平台图标 */
+		/* 掉落的平台图标 — 完全复刻 Vetta 动画 */
 		.dl-platforms {
 			position: relative;
 			z-index: 10;
 			display: flex;
 			align-items: center;
 			justify-content: center;
-			gap: 16px;
-			margin-bottom: 24px;
-			height: 56px;
+			gap: 20px;
+			margin-bottom: 28px;
+			height: 72px;
 		}
 		.dl-platform-icon {
-			width: 52px;
-			height: 52px;
+			width: 56px;
+			height: 56px;
 			border-radius: 50%;
 			background: var(--elev);
 			border: 1px solid var(--line);
@@ -174,31 +174,58 @@
 			align-items: center;
 			justify-content: center;
 			opacity: 0;
-			transform: translateY(-80px) scale(0.6);
+			transform: translateY(-120px) scale(0.3) rotate(-15deg);
+			will-change: transform, opacity;
 		}
 		.dl-platform-icon img {
-			width: 28px;
-			height: 28px;
+			width: 30px;
+			height: 30px;
 			object-fit: contain;
 		}
 		.dl-platform-icon.is-rec {
 			border-color: var(--accent);
-			box-shadow: 0 0 20px -4px rgba(124, 138, 255, 0.4);
+			box-shadow: 0 0 24px -4px rgba(124, 138, 255, 0.45);
 		}
 		.dl-platform-icon.fall {
-			animation: platform-fall 0.6s var(--ease) forwards;
+			opacity: 1;
+			animation: platform-fall 0.7s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
 		}
-		.dl-platform-icon:nth-child(1) { animation-delay: 0.1s; }
-		.dl-platform-icon:nth-child(2) { animation-delay: 0.2s; }
-		.dl-platform-icon:nth-child(3) { animation-delay: 0.3s; }
-		.dl-platform-icon:nth-child(4) { animation-delay: 0.4s; }
-		.dl-platform-icon:nth-child(5) { animation-delay: 0.5s; }
+		/* 每个图标依次掉落，间隔 80ms */
+		.dl-platform-icon:nth-child(1) { animation-delay: 0.05s; }
+		.dl-platform-icon:nth-child(2) { animation-delay: 0.13s; }
+		.dl-platform-icon:nth-child(3) { animation-delay: 0.21s; }
+		.dl-platform-icon:nth-child(4) { animation-delay: 0.29s; }
+		.dl-platform-icon:nth-child(5) { animation-delay: 0.37s; }
 
+		/* 掉落动画：下落 → 触底回弹 → 二次回弹 → 静止 */
 		@keyframes platform-fall {
-			0% { opacity: 0; transform: translateY(-80px) scale(0.6); }
-			60% { opacity: 1; transform: translateY(6px) scale(1.05); }
-			80% { transform: translateY(-3px) scale(0.98); }
-			100% { opacity: 1; transform: translateY(0) scale(1); }
+			0% {
+				opacity: 0;
+				transform: translateY(-120px) scale(0.3) rotate(-15deg);
+			}
+			15% {
+				opacity: 1;
+			}
+			50% {
+				/* 触底 — 压缩回弹 */
+				transform: translateY(8px) scale(1.08, 0.92) rotate(3deg);
+			}
+			65% {
+				/* 第一次回弹 */
+				transform: translateY(-12px) scale(0.95, 1.05) rotate(-2deg);
+			}
+			78% {
+				/* 第二次回弹（更小） */
+				transform: translateY(4px) scale(1.02, 0.98) rotate(1deg);
+			}
+			88% {
+				/* 微小回弹 */
+				transform: translateY(-2px) scale(0.99, 1.01) rotate(0deg);
+			}
+			100% {
+				opacity: 1;
+				transform: translateY(0) scale(1) rotate(0deg);
+			}
 		}
 
 		/* 标题 */
@@ -429,19 +456,19 @@
 		<!-- 平台图标（掉落动画） -->
 		<div class="dl-platforms" id="dlPlatforms" aria-hidden="true">
 			<div class="dl-platform-icon" data-platform="macos">
-				<img src="/ollama.webp" alt="" width="32" height="32" />
+				<img src="/ollama.webp" alt="" width="30" height="30" />
 			</div>
 			<div class="dl-platform-icon" data-platform="windows">
-				<img src="/kimi.webp" alt="" width="32" height="32" />
+				<img src="/kimi.webp" alt="" width="30" height="30" />
 			</div>
 			<div class="dl-platform-icon" data-platform="linux">
-				<img src="/grok.webp" alt="" width="32" height="32" />
+				<img src="/grok.webp" alt="" width="30" height="30" />
 			</div>
 			<div class="dl-platform-icon" data-platform="other1">
-				<img src="/mistral.webp" alt="" width="32" height="32" />
+				<img src="/mistral.webp" alt="" width="30" height="30" />
 			</div>
 			<div class="dl-platform-icon" data-platform="other2">
-				<img src="/minimax.webp" alt="" width="32" height="32" />
+				<img src="/minimax.webp" alt="" width="30" height="30" />
 			</div>
 		</div>
 
