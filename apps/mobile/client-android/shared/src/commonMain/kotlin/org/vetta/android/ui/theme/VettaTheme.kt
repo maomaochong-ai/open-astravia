@@ -2,12 +2,14 @@ package org.vetta.android.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
@@ -206,12 +208,12 @@ fun VettaTheme(
         }
     val extra = if (dark) DarkExtra else LightExtra
     androidx.compose.runtime.CompositionLocalProvider(LocalVettaExtra provides extra) {
-        MaterialTheme(
-            colorScheme = if (dark) DarkScheme else LightScheme,
-            typography = VettaTypography,
-            shapes = VettaShapes,
-            content = content,
-        )
+        val scheme = if (dark) DarkScheme else LightScheme
+        SystemBarsAppearance(dark)
+        MaterialTheme(colorScheme = scheme, typography = VettaTypography, shapes = VettaShapes) {
+            // Text and icons outside a Surface take the page's ink, so they follow the theme too.
+            CompositionLocalProvider(LocalContentColor provides scheme.onBackground, content = content)
+        }
     }
 }
 
