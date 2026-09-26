@@ -4,8 +4,9 @@ import { getAstraviaHomePath } from "@astravia/action-rpc";
 import { atomicWriteJSON } from "@astravia/toolkit/atomic-write";
 import { BrowserWindow, net } from "electron";
 import { getAppLogger } from "../../logger.js";
+import { getDesktopModelCredentialStore } from "../model-credential-store.js";
 import { getDesktopModelSettingsService } from "../model-settings-host.js";
-import type { ModelDefinition, ModelsConfig } from "../model-settings-service.js";
+import type { ModelDefinition, ModelsConfig, ProviderConfig } from "../model-settings-service.js";
 import { getPresetProvider, PRESET_PROVIDERS, type PresetProviderDef } from "./catalog.js";
 import { type PresetError, toPresetError } from "./errors.js";
 import { fetchPresetModels, type PresetModelsResult } from "./fetch.js";
@@ -25,6 +26,19 @@ const FETCH_TIMEOUT_MS = 15_000;
 const CATALOG_PATH = join(getAstraviaHomePath(), "agent", "models-dev-cache.json");
 /** 后台同步间隔:12 小时。上游模型目录变动没那么快,再密就是白烧流量。 */
 const AUTO_SYNC_INTERVAL_MS = 12 * 60 * 60 * 1000;
+
+/**
+ * 从 provider 配置中解析 apiKey:优先 credential vault(credentialRef),
+ * 回退到 models.json 明文 apiKey(legacy 兼容)。
+ */
+function resolveApiKey(provider: ProviderConfig | undefined): string | undefined {
+	if (!provider) return undefined;
+	if (provider.credentialRef) {
+		const key = getDesktopModelCredentialStore().get(provider.credentialRef);
+		if (key?.trim()) return key.trim();
+	}
+	return provider.apiKey?.trim();
+}
 
 /** 下发给渲染层的预设目录条目(内置,不含 key)。 */
 export interface PresetProviderInfo {
@@ -209,7 +223,7 @@ export async function refreshPresetModels(providerId: string, apiKey?: string): 
 	let key = apiKey?.trim();
 	if (!key) {
 		const config = await getDesktopModelSettingsService().getConfig();
-		key = config.providers[providerId]?.apiKey?.trim();
+		key = resolveApiKey(config.providers[providerId]);
 	}
 	if (!key) return { models: [], error: { code: "missing-key" } };
 
@@ -234,7 +248,7 @@ function adoptedPresetIds(config: ModelsConfig): string[] {
 	return Object.entries(config.providers)
 		.filter(([id, provider]) => {
 			if (provider.source !== "template") return false;
-			if (!provider.apiKey?.trim()) return false;
+			if (!resolveApiKey(provider)) return false;
 			return Boolean(getPresetProvider(provider.templateId ?? id));
 		})
 		.map(([id]) => id);
@@ -255,7 +269,7 @@ export async function syncAdoptedPresets(): Promise<void> {
 	const results = await Promise.all(
 		ids.map(async (id) => {
 			const templateId = config.providers[id]?.templateId ?? id;
-			const result = await refreshPresetModels(templateId, config.providers[id]?.apiKey);
+			const result = await refreshPresetModels(templateId, resolveApiKey(config.providers[id]));
 			return { id, result };
 		}),
 	);
