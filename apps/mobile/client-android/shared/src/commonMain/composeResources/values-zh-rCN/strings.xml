@@ -131,6 +131,9 @@
     <string name="notify_link_text">会话需要你时会通知你。</string>
     <string name="notify_link_title">已连接到 %1$s</string>
     <string name="notify_needs_you">等你决策</string>
+    <string name="notify_reply">回复</string>
+    <string name="notify_reply_failed">回答没能送到电脑，点此在 Vetta 里作答。</string>
+    <string name="notify_reply_hint">你的回答</string>
     <string name="pair_code_hint">两边显示的数字一致，才是你的电脑</string>
     <string name="pair_connect">连接</string>
     <string name="pair_connecting">正在连接电脑…</string>

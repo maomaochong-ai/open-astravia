@@ -11,6 +11,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.app.RemoteInput
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -19,8 +20,10 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.getString
 import org.vetta.android.core.nowEpochMs
-import org.vetta.android.domain.work.DesktopMirror
+import org.vetta.android.domain.remote.RemoteQuestionRequest
+import org.vetta.android.domain.remote.connection.PlatformRemoteLogger
 import org.vetta.android.domain.work.HeldAlert
+import org.vetta.android.domain.work.QuickReply
 import org.vetta.android.domain.work.SessionAlert
 import org.vetta.android.domain.work.SessionAlerts
 import org.vetta.android.resources.Res
@@ -31,6 +34,9 @@ import org.vetta.android.resources.notify_finished
 import org.vetta.android.resources.notify_link_text
 import org.vetta.android.resources.notify_link_title
 import org.vetta.android.resources.notify_needs_you
+import org.vetta.android.resources.notify_reply
+import org.vetta.android.resources.notify_reply_failed
+import org.vetta.android.resources.notify_reply_hint
 import org.vetta.android.resources.work_untitled
 import org.vetta.android.shared.R
 
@@ -48,9 +54,17 @@ object SessionNotifier {
     private const val CHANNEL_LINK = "link"
     const val LINK_NOTIFICATION_ID = 1
 
+    /** The key a typed reply arrives under. */
+    const val KEY_REPLY = "org.vetta.android.reply"
+    private const val TYPED = QuickReply.MAX_CHOICES
+
     fun watch(context: Context, container: AppContainer, scope: CoroutineScope) {
         // News that came while the app still counted as on screen, in case it was already leaving.
         val held = mutableListOf<HeldAlert>()
+        suspend fun announce(alert: SessionAlert) {
+            val question = (alert as? SessionAlert.NeedsYou)?.let { container.mirror.state.value.transcript(it.sessionId).pendingQuestion }
+            post(context, alert, question)
+        }
         scope.launch {
             var last = container.mirror.state.value.sessions
             container.mirror.state.map { it.sessions }.distinctUntilChanged().collect { sessions ->
@@ -59,21 +73,21 @@ object SessionNotifier {
                 if (container.visible.value) {
                     held += alerts.map { HeldAlert(it, nowEpochMs()) }
                 } else {
-                    alerts.forEach { post(context, it) }
+                    alerts.forEach { announce(it) }
                 }
             }
         }
         scope.launch {
             container.visible.drop(1).collect { shown ->
                 if (!shown) {
-                    SessionAlerts.dueOnLeaving(held.toList(), container.mirror.state.value.sessions, nowEpochMs()).forEach { post(context, it) }
+                    SessionAlerts.dueOnLeaving(held.toList(), container.mirror.state.value.sessions, nowEpochMs()).forEach { announce(it) }
                 }
                 held.clear()
             }
         }
     }
 
-    private suspend fun post(context: Context, alert: SessionAlert) {
+    private suspend fun post(context: Context, alert: SessionAlert, question: RemoteQuestionRequest?) {
         if (!allowed(context)) return
         ensureChannels(context)
         val text =
@@ -84,18 +98,67 @@ object SessionNotifier {
                     is SessionAlert.Failed -> Res.string.notify_failed
                 },
             )
-        val notification =
+        val prompt = question?.let(QuickReply::prompt)
+        val builder =
             NotificationCompat.Builder(context, CHANNEL_SESSIONS)
                 .setSmallIcon(R.drawable.ic_stat_vetta)
                 .setContentTitle(alert.title.ifEmpty { getString(Res.string.work_untitled) })
-                .setContentText(text)
+                .setContentText(prompt ?: text)
                 .setAutoCancel(true)
                 .setCategory(if (alert is SessionAlert.NeedsYou) NotificationCompat.CATEGORY_REMINDER else NotificationCompat.CATEGORY_STATUS)
                 .setPriority(if (alert is SessionAlert.NeedsYou) NotificationCompat.PRIORITY_HIGH else NotificationCompat.PRIORITY_DEFAULT)
                 .setContentIntent(openSession(context, alert.sessionId))
-                .build()
+        if (prompt != null) builder.setStyle(NotificationCompat.BigTextStyle().bigText(prompt))
+        if (question != null && QuickReply.canReply(question)) {
+            // Buttons for the options that fit, then a typed reply, answered without opening the app.
+            QuickReply.choices(question).forEachIndexed { index, label ->
+                builder.addAction(0, label, reply(context, alert.sessionId, question.requestId, index, label))
+            }
+            if (QuickReply.choices(question).size < QuickReply.MAX_CHOICES) {
+                val input = RemoteInput.Builder(KEY_REPLY).setLabel(getString(Res.string.notify_reply_hint)).build()
+                builder.addAction(
+                    NotificationCompat.Action.Builder(0, getString(Res.string.notify_reply), reply(context, alert.sessionId, question.requestId, TYPED, null))
+                        .addRemoteInput(input)
+                        .setAllowGeneratedReplies(false)
+                        .build(),
+                )
+            }
+        }
         // One notification per session: a newer state replaces the older one.
-        runCatching { NotificationManagerCompat.from(context).notify(alert.sessionId.hashCode(), notification) }
+        runCatching { NotificationManagerCompat.from(context).notify(alert.sessionId.hashCode(), builder.build()) }
+            .onFailure { PlatformRemoteLogger.warn("session notification failed", mapOf("error" to (it.message ?: it::class.simpleName))) }
+    }
+
+    /** After an answer from the notification: gone when it arrived, a way back into the app when not. */
+    suspend fun replied(context: Context, sessionId: String, title: String, delivered: Boolean) {
+        val manager = NotificationManagerCompat.from(context)
+        if (delivered) {
+            manager.cancel(sessionId.hashCode())
+            return
+        }
+        if (!allowed(context)) return
+        ensureChannels(context)
+        val notification =
+            NotificationCompat.Builder(context, CHANNEL_SESSIONS)
+                .setSmallIcon(R.drawable.ic_stat_vetta)
+                .setContentTitle(title.ifEmpty { getString(Res.string.work_untitled) })
+                .setContentText(getString(Res.string.notify_reply_failed))
+                .setAutoCancel(true)
+                .setOnlyAlertOnce(true)
+                .setContentIntent(openSession(context, sessionId))
+                .build()
+        runCatching { manager.notify(sessionId.hashCode(), notification) }
+    }
+
+    private fun reply(context: Context, sessionId: String, requestId: String, slot: Int, answer: String?): PendingIntent {
+        val intent =
+            Intent(context, QuestionReplyReceiver::class.java)
+                .putExtra(EXTRA_SESSION_ID, sessionId)
+                .putExtra(QuestionReplyReceiver.EXTRA_REQUEST_ID, requestId)
+                .apply { if (answer != null) putExtra(QuestionReplyReceiver.EXTRA_ANSWER, answer) }
+        // A typed reply needs a mutable intent for the system to add the text to.
+        val mutability = if (answer == null) PendingIntent.FLAG_MUTABLE else PendingIntent.FLAG_IMMUTABLE
+        return PendingIntent.getBroadcast(context, 31 * sessionId.hashCode() + slot, intent, PendingIntent.FLAG_UPDATE_CURRENT or mutability)
     }
 
     /** The ongoing notice while the link is kept up in the background. */

@@ -685,8 +685,9 @@ class DesktopMirror(
         current.request(RemoteRequestMethod.SessionPrompt, payload, target)
     }
 
-    suspend fun respond(sessionId: String, requestId: String, answers: List<RemoteQuestionAnswer>, cancelled: Boolean = false) {
-        try {
+    /** Answers the desktop's question; false when it could not be delivered. */
+    suspend fun respond(sessionId: String, requestId: String, answers: List<RemoteQuestionAnswer>, cancelled: Boolean = false): Boolean {
+        return try {
             val payload =
                 buildJsonObject {
                     put("requestId", requestId)
@@ -696,8 +697,10 @@ class DesktopMirror(
             requireLink().request(RemoteRequestMethod.SessionRespond, payload, sessionId)
             dispatch(sessionId, TranscriptAction.QuestionResolved(requestId))
             patchSession(sessionId) { it.copy(status = RemoteSessionStatus.Running) }
+            true
         } catch (error: Throwable) {
             reportError(error)
+            false
         }
     }
 

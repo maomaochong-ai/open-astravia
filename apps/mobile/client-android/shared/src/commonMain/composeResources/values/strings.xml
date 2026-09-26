@@ -139,6 +139,9 @@
     <string name="notify_link_text">You’ll be notified when a session needs you.</string>
     <string name="notify_link_title">Connected to %1$s</string>
     <string name="notify_needs_you">Needs your decision</string>
+    <string name="notify_reply">Reply</string>
+    <string name="notify_reply_failed">Your answer didn’t reach the computer. Tap to answer in Vetta.</string>
+    <string name="notify_reply_hint">Your answer</string>
     <string name="pair_code_hint">It’s your computer only if both screens show the same digits</string>
     <string name="pair_connect">Connect</string>
     <string name="pair_connecting">Connecting to your computer…</string>

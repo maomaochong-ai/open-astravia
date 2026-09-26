@@ -70,6 +70,11 @@
             android:exported="false"
             android:foregroundServiceType="remoteMessaging" />
 
+        <!-- Answers a desktop question from a session notification's buttons or typed reply. -->
+        <receiver
+            android:name="org.vetta.android.app.QuestionReplyReceiver"
+            android:exported="false" />
+
         <!-- Hands the system camera a file to write a composer photo into. -->
         <provider
             android:name="androidx.core.content.FileProvider"
