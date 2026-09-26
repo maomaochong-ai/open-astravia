@@ -8,6 +8,12 @@ export default defineConfig({
 	build: {
 		outDir: "dist",
 		emptyOutDir: true,
+		rollupOptions: {
+			input: {
+				main: "index.html",
+				download: "download.html",
+			},
+		},
 	},
 	preview: {
 		port: 4173,

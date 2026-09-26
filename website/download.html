@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>下载 — 星轨 Astravia</title>
+	<meta name="description" content="下载星轨 Astravia — 本地优先的开源 AI 桌面助手。" />
+	<meta name="theme-color" content="#08080a" />
+	<link rel="icon" href="/favicon.png" type="image/png" />
+	<script>
+		(() => {
+			const stored = localStorage.getItem("astravia-theme");
+			document.documentElement.dataset.theme = stored || "dark";
+		})();
+	</script>
+	<style>
+		/* 下载页专用样式 — 复刻 Vetta 下载页 */
+		:root {
+			--bg: #08080a;
+			--elev: #101014;
+			--tint: #0c0c0f;
+			--line: #1e1e24;
+			--line-strong: #2b2b33;
+			--ink: #e9e9ec;
+			--muted: #8e9199;
+			--faint: #565964;
+			--accent: #7c8aff;
+			--accent-deep: #5e6ad2;
+			--accent-soft: rgba(124, 138, 255, 0.13);
+			--ease: cubic-bezier(0.16, 1, 0.3, 1);
+			--font-sans: "Hanken Grotesk", Inter, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text",
+				"PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+			--font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Menlo, Consolas, monospace;
+		}
+
+		* { margin: 0; padding: 0; box-sizing: border-box; }
+
+		body {
+			font-family: var(--font-sans);
+			background: var(--bg);
+			color: var(--ink);
+			min-height: 100vh;
+			overflow-x: hidden;
+		}
+
+		/* 导航 */
+		.nav {
+			position: fixed;
+			inset: 0 0 auto;
+			z-index: 100;
+			background: rgba(8, 8, 10, 0.78);
+			backdrop-filter: blur(16px) saturate(1.4);
+			border-bottom: 1px solid transparent;
+			transition: border-color 0.2s var(--ease);
+		}
+		.nav.is-scrolled { border-bottom-color: var(--line); }
+		.nav__inner {
+			display: flex;
+			align-items: center;
+			gap: 24px;
+			height: 60px;
+			max-width: 1120px;
+			margin: 0 auto;
+			padding: 0 24px;
+		}
+		.nav__brand {
+			display: inline-flex;
+			align-items: center;
+			gap: 9px;
+			font-weight: 700;
+			font-size: 16px;
+			text-decoration: none;
+			color: var(--accent);
+			margin-right: auto;
+		}
+		.nav__brand img { border-radius: 6px; }
+		.nav__links { display: flex; gap: 2px; align-items: center; }
+		.nav__links a {
+			text-decoration: none;
+			font-size: 14px;
+			font-weight: 500;
+			color: var(--muted);
+			padding: 6px 11px;
+			border-radius: 7px;
+			transition: color 0.15s var(--ease), background-color 0.15s var(--ease);
+		}
+		.nav__links a:hover { color: var(--ink); }
+		.nav__links a.is-active { color: var(--ink); background: var(--elev); }
+		.nav__actions { display: flex; align-items: center; gap: 10px; }
+		.theme-toggle {
+			flex: 0 0 auto;
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			width: 34px;
+			height: 34px;
+			padding: 0;
+			border-radius: 8px;
+			border: 1px solid var(--line);
+			background: transparent;
+			color: var(--muted);
+			cursor: pointer;
+			transition: transform 0.15s var(--ease), border-color 0.15s var(--ease), color 0.15s var(--ease);
+		}
+		.theme-toggle:hover { color: var(--ink); border-color: var(--muted); }
+		.theme-toggle svg { display: none; }
+		.theme-toggle.is-light .icon-sun, .theme-toggle.is-dark .icon-moon { display: block; }
+		.btn--ghost {
+			display: inline-flex;
+			align-items: center;
+			gap: 8px;
+			padding: 7px 12px;
+			border-radius: 999px;
+			font-size: 13.5px;
+			font-weight: 600;
+			text-decoration: none;
+			color: var(--accent);
+			background: var(--elev);
+			border: 1px solid var(--line);
+			transition: color 0.15s var(--ease), border-color 0.15s var(--ease);
+		}
+		.btn--ghost:hover { color: var(--ink); border-color: var(--muted); }
+
+		/* 下载剧场 — 光束背景 */
+		.download-theater {
+			position: relative;
+			min-height: calc(100vh - 60px);
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			justify-content: center;
+			overflow: hidden;
+			padding: 48px 24px;
+		}
+		.download-theater-beams {
+			position: absolute;
+			inset: 0;
+			overflow: hidden;
+			pointer-events: none;
+		}
+		.download-theater-haze {
+			position: absolute;
+			inset: 0;
+			background: radial-gradient(ellipse at 50% 20%, rgba(124, 138, 255, 0.08) 0%, transparent 60%);
+		}
+		.download-theater-beam {
+			position: absolute;
+			width: 1px;
+			background: linear-gradient(to bottom, transparent, rgba(124, 138, 255, 0.15), transparent);
+		}
+		.download-theater-beam--a { left: 20%; top: 0; height: 100%; }
+		.download-theater-beam--b { left: 50%; top: 0; height: 100%; }
+		.download-theater-beam--c { left: 80%; top: 0; height: 100%; }
+
+		/* 下载图标 */
+		.dl__icon-wrap {
+			position: relative;
+			z-index: 10;
+			width: 72px;
+			height: 72px;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			border-radius: 50%;
+			background: var(--accent);
+			color: var(--bg);
+			margin-bottom: 20px;
+			box-shadow: 0 0 60px -12px rgba(124, 138, 255, 0.5);
+		}
+		.dl__icon-wrap svg { width: 36px; height: 36px; }
+
+		/* 标题 */
+		.dl__title {
+			position: relative;
+			z-index: 10;
+			font-size: clamp(40px, 6vw, 64px);
+			font-weight: 700;
+			letter-spacing: -0.02em;
+			text-shadow: 0 0 40px color-mix(in srgb, var(--accent) 35%, transparent);
+			margin-bottom: 12px;
+		}
+
+		/* 描述 */
+		.dl__desc {
+			position: relative;
+			z-index: 10;
+			max-width: 520px;
+			font-size: 16px;
+			line-height: 1.7;
+			color: var(--muted);
+			margin-bottom: 40px;
+		}
+
+		/* 主下载按钮 */
+		.dl__primary-wrap {
+			position: relative;
+			z-index: 10;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			gap: 8px;
+		}
+		.dl__primary {
+			display: inline-flex;
+			align-items: center;
+			gap: 10px;
+			padding: 14px 32px;
+			background: var(--accent);
+			color: var(--bg);
+			border-radius: 999px;
+			font-size: 16px;
+			font-weight: 600;
+			text-decoration: none;
+			transition: background 0.15s var(--ease), transform 0.15s var(--ease), box-shadow 0.15s var(--ease);
+			box-shadow: 0 4px 24px -8px rgba(124, 138, 255, 0.5);
+			min-width: 280px;
+			justify-content: center;
+		}
+		.dl__primary:hover {
+			background: var(--accent-deep);
+			transform: translateY(-1px);
+			box-shadow: 0 8px 32px -12px rgba(124, 138, 255, 0.6);
+		}
+		.dl__primary svg { flex: none; }
+		.dl__primary[aria-disabled="true"] {
+			opacity: 0.5;
+			pointer-events: none;
+			cursor: default;
+		}
+		.dl__version {
+			font-size: 13px;
+			color: var(--faint);
+			font-family: var(--font-mono);
+		}
+
+		/* 其他版本切换 */
+		.dl__others-toggle {
+			position: relative;
+			z-index: 10;
+			margin-top: 24px;
+			background: none;
+			border: none;
+			color: var(--muted);
+			font-size: 14px;
+			cursor: pointer;
+			display: inline-flex;
+			align-items: center;
+			gap: 6px;
+			font-family: var(--font-sans);
+			transition: color 0.15s var(--ease);
+		}
+		.dl__others-toggle:hover { color: var(--ink); }
+		.dl__others-toggle svg {
+			transition: transform 0.2s var(--ease);
+		}
+		.dl__others-toggle.is-open svg { transform: rotate(180deg); }
+
+		/* 其他版本面板 */
+		.dl__others {
+			position: relative;
+			z-index: 10;
+			margin-top: 12px;
+			background: var(--elev);
+			border: 1px solid var(--line);
+			border-radius: 14px;
+			overflow: hidden;
+			max-height: 0;
+			opacity: 0;
+			transition: max-height 0.35s var(--ease), opacity 0.2s var(--ease);
+		}
+		.dl__others.is-open {
+			max-height: 220px;
+			opacity: 1;
+		}
+		.dl__others-list {
+			list-style: none;
+			margin: 0;
+			padding: 6px 0;
+		}
+		.dl__others-item {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			padding: 10px 20px;
+			text-decoration: none;
+			color: var(--ink);
+			transition: background 0.12s var(--ease);
+		}
+		.dl__others-item:hover { background: var(--tint); }
+		.dl__others-item span { font-size: 14px; display: inline-flex; align-items: center; gap: 8px; }
+		.dl__others-item small { font-size: 12px; color: var(--faint); font-family: var(--font-mono); }
+		.dl-rec {
+			font-size: 11px;
+			color: var(--accent);
+			font-weight: 600;
+			padding: 1px 6px;
+			background: var(--accent-soft);
+			border-radius: 999px;
+		}
+		.dl__others-item.is-disabled {
+			opacity: 0.45;
+			cursor: default;
+			pointer-events: none;
+		}
+
+		/* 页脚 */
+		.footer {
+			border-top: 1px solid var(--line);
+			padding: 32px 0 24px;
+		}
+		.footer .container {
+			max-width: 1120px;
+			margin: 0 auto;
+			padding: 0 24px;
+		}
+		.footer__bottom {
+			display: flex;
+			justify-content: space-between;
+			gap: 12px;
+			flex-wrap: wrap;
+			padding-top: 16px;
+			border-top: 1px solid var(--line);
+		}
+		.footer__bottom p {
+			font-family: var(--font-mono);
+			font-size: 12px;
+			color: var(--faint);
+			margin: 0;
+		}
+		.footer__links {
+			display: inline-flex;
+			align-items: center;
+			gap: 8px;
+		}
+		.footer__links a {
+			color: var(--faint);
+			text-decoration: none;
+			font-family: var(--font-mono);
+			font-size: 12px;
+			transition: color 0.18s;
+		}
+		.footer__links a:hover { color: var(--ink); }
+
+		/* 主题过渡 */
+		.theme-transition, .theme-transition * { transition-duration: 0.15s; }
+
+		/* 移动适配 */
+		@media (max-width: 560px) {
+			.dl__title { font-size: 36px; }
+			.dl__primary { min-width: auto; width: 100%; max-width: 300px; }
+		}
+	</style>
+</head>
+<body>
+	<!-- 导航 -->
+	<header class="nav" id="nav">
+		<div class="nav__inner">
+			<a class="nav__brand" href="/">
+				<img src="/favicon.png" width="26" height="26" alt="" />
+				<span>Astravia</span>
+			</a>
+			<nav class="nav__links" aria-label="主导航">
+				<a href="/">首页</a>
+				<a href="/#products">能力</a>
+				<a href="/#models">模型</a>
+				<a href="/#ecosystem">生态</a>
+				<a href="/#privacy">隐私</a>
+				<a href="/download" class="is-active">下载</a>
+			</nav>
+			<div class="nav__actions">
+				<button class="theme-toggle is-dark" id="themeToggle" type="button" aria-label="切换到浅色模式" aria-pressed="true">
+					<svg class="icon-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z" /></svg>
+					<svg class="icon-sun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" /></svg>
+				</button>
+				<a class="btn--ghost" href="https://github.com/maomaochong-ai/astravia" target="_blank" rel="noopener">
+					<svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8 8 0 0 0 16 8c0-4.42-3.58-8-8-8Z" fill="currentColor" /></svg>
+					<span>GitHub</span>
+				</a>
+			</div>
+		</div>
+	</header>
+
+	<!-- 下载剧场 -->
+	<div class="download-theater">
+		<div class="download-theater-beams" aria-hidden="true">
+			<div class="download-theater-haze"></div>
+			<span class="download-theater-beam download-theater-beam--a"></span>
+			<span class="download-theater-beam download-theater-beam--b"></span>
+			<span class="download-theater-beam download-theater-beam--c"></span>
+		</div>
+
+		<div class="dl__icon-wrap" aria-hidden="true">
+			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+				<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+				<polyline points="7 10 12 15 17 10"/>
+				<line x1="12" y1="15" x2="12" y2="3"/>
+			</svg>
+		</div>
+
+		<h1 class="dl__title">下载</h1>
+		<p class="dl__desc">我们会检测你的设备并推荐合适的版本。点击即可下载，或通过箭头选择其他平台。</p>
+
+		<div class="dl__primary-wrap">
+			<a class="dl__primary" id="dlPrimary" href="#" target="_blank" rel="noopener">
+				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+				<span id="dlPrimaryText">下载 macOS 版</span>
+			</a>
+			<p class="dl__version" id="dlPrimaryVersion">v0.55.37 · DMG</p>
+		</div>
+
+		<button class="dl__others-toggle" id="dlOthersToggle" type="button">
+			其他版本
+			<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+		</button>
+
+		<div class="dl__others" id="dlOthers">
+			<ul class="dl__others-list">
+				<li>
+					<a class="dl__others-item" href="https://dl.astravia.dev/app/v0.55.37/Astravia-0.55.37-arm64.dmg" target="_blank" rel="noopener">
+						<span>Mac Arm64 (Apple Silicon)<span class="dl-rec">推荐</span></span>
+						<small>v0.55.37</small>
+					</a>
+				</li>
+				<li>
+					<a class="dl__others-item" href="https://dl.astravia.dev/app/v0.55.37/Astravia-0.55.37-x64.dmg" target="_blank" rel="noopener">
+						<span>Mac x64 (Intel)</span>
+						<small>v0.55.37</small>
+					</a>
+				</li>
+				<li>
+					<a class="dl__others-item" href="https://dl.astravia.dev/app/v0.55.37/Astravia-0.55.37-win-x64.exe" target="_blank" rel="noopener">
+						<span>Windows x64</span>
+						<small>v0.55.37</small>
+					</a>
+				</li>
+				<li>
+					<span class="dl__others-item is-disabled">
+						<span>Linux x64 (AppImage)</span>
+						<small>即将推出</small>
+					</span>
+				</li>
+			</ul>
+		</div>
+	</div>
+
+	<!-- 页脚 -->
+	<footer class="footer">
+		<div class="container">
+			<div class="footer__bottom">
+				<p>© <span id="year">2026</span> Astravia · Apache-2.0</p>
+				<p class="footer__links">
+					<a href="https://github.com/maomaochong-ai/astravia/issues" target="_blank" rel="noopener">Issues</a>
+					<span aria-hidden="true">·</span>
+					<a href="/#top">返回顶部 ↑</a>
+				</p>
+			</div>
+		</div>
+	</footer>
+
+	<script>
+		(() => {
+			// 年份
+			const yearEl = document.getElementById("year");
+			if (yearEl) yearEl.textContent = new Date().getFullYear();
+
+			// 平台检测
+			const ua = navigator.userAgent;
+			const isMac = /Mac/i.test(ua) && !/iPhone|iPad|iPod/i.test(ua);
+			const isWin = /Win/i.test(ua);
+			const isArm = /ARM|arm64|aarch64/i.test(ua);
+
+			const dlPrimary = document.getElementById("dlPrimary");
+			const dlPrimaryText = document.getElementById("dlPrimaryText");
+			const dlPrimaryVersion = document.getElementById("dlPrimaryVersion");
+
+			if (isMac && isArm) {
+				dlPrimary.href = "https://dl.astravia.dev/app/v0.55.37/Astravia-0.55.37-arm64.dmg";
+				dlPrimaryText.textContent = "下载 Mac Arm64 版";
+				dlPrimaryVersion.textContent = "v0.55.37 · DMG";
+			} else if (isMac) {
+				dlPrimary.href = "https://dl.astravia.dev/app/v0.55.37/Astravia-0.55.37-x64.dmg";
+				dlPrimaryText.textContent = "下载 Mac x64 版";
+				dlPrimaryVersion.textContent = "v0.55.37 · DMG";
+			} else if (isWin) {
+				dlPrimary.href = "https://dl.astravia.dev/app/v0.55.37/Astravia-0.55.37-win-x64.exe";
+				dlPrimaryText.textContent = "下载 Windows 版";
+				dlPrimaryVersion.textContent = "v0.55.37 · EXE";
+			} else {
+				dlPrimary.setAttribute("aria-disabled", "true");
+				dlPrimary.removeAttribute("href");
+				dlPrimaryText.textContent = "Linux 即将推出";
+				dlPrimaryVersion.textContent = "敬请期待";
+			}
+
+			// 展开/收起其他版本
+			const toggle = document.getElementById("dlOthersToggle");
+			const others = document.getElementById("dlOthers");
+			if (toggle && others) {
+				toggle.addEventListener("click", () => {
+					const isOpen = others.classList.toggle("is-open");
+					toggle.classList.toggle("is-open", isOpen);
+				});
+			}
+
+			// 主题切换
+			const THEME_KEY = "astravia-theme";
+			const themeToggle = document.getElementById("themeToggle");
+			const root = document.documentElement;
+
+			function applyTheme(theme) {
+				root.dataset.theme = theme;
+				themeToggle.classList.toggle("is-light", theme === "light");
+				themeToggle.classList.toggle("is-dark", theme === "dark");
+				themeToggle.setAttribute("aria-pressed", String(theme === "dark"));
+				themeToggle.setAttribute("aria-label", theme === "dark" ? "切换到浅色模式" : "切换到深色模式");
+			}
+
+			applyTheme(root.dataset.theme);
+
+			themeToggle.addEventListener("click", () => {
+				const next = root.dataset.theme === "dark" ? "light" : "dark";
+				applyTheme(next);
+				localStorage.setItem(THEME_KEY, next);
+			});
+
+			// 滚动导航底边线
+			const nav = document.getElementById("nav");
+			window.addEventListener("scroll", () => {
+				nav.classList.toggle("is-scrolled", window.scrollY > 8);
+			}, { passive: true });
+		})();
+	</script>
+</body>
+</html>
