@@ -2225,9 +2225,8 @@ code {
 
 .dl-card-badge {
 	position: absolute;
-	top: -6px;
-	left: 50%;
-	transform: translateX(-50%) translateY(-100%);
+	top: 12px;
+	right: 12px;
 	padding: 3px 10px;
 	font-size: 10.5px;
 	font-family: var(--font-mono);
