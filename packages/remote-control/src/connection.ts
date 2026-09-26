@@ -80,6 +80,8 @@ export class RemoteConnection {
 	 * legitimately overtake our `hello_ack`; hold a few instead of failing.
 	 */
 	private readonly earlySealed: RemoteSealed[] = [];
+	/** The peer's connection id of the handshake this acceptor last took part in. */
+	private handshakeConnectionId: string | undefined;
 
 	constructor(
 		private readonly transport: RemoteTransport,
@@ -238,8 +240,9 @@ export class RemoteConnection {
 		}
 		switch (safeFrame.type) {
 			case "hello":
-				if (this.handshake === "accept" && this.state !== "online") void this.handleInboundHello(safeFrame);
-				else this.protocolViolation("unexpected hello");
+				if (this.handshake !== "accept") this.protocolViolation("unexpected hello");
+				else if (this.state !== "online") void this.handleInboundHello(safeFrame);
+				else this.handlePeerRestart(safeFrame);
 				return;
 			case "hello_ack":
 				if (this.handshake === "initiate") this.handleHelloAck(safeFrame);
@@ -273,7 +276,31 @@ export class RemoteConnection {
 		}
 	}
 
+	/**
+	 * A transport that outlives one peer connection (the remote desktop's data channel
+	 * stays with the host while the phone rebuilds its WebRTC link) can carry a fresh
+	 * hello while this side is online. That is the peer starting over, not an attack
+	 * surface: the same pinned identity is required, so the session re-keys in place.
+	 * A repeated hello for the connection already agreed on is ignored.
+	 */
+	private handlePeerRestart(hello: RemoteHello): void {
+		if (hello.connectionId === this.handshakeConnectionId) {
+			this.logger.debug("remote duplicate hello ignored", { connectionId: this.connectionId });
+			return;
+		}
+		this.logger.info("remote peer restarted its connection", {
+			connectionId: this.connectionId,
+			peerConnectionId: hello.connectionId,
+		});
+		this.rejectPending("remote peer reconnected");
+		this.reconnectCount += 1;
+		this.keys = undefined;
+		this.ephemeral = generateIdentityKeyPair(this.randomBytes);
+		void this.handleInboundHello(hello);
+	}
+
 	private async handleInboundHello(hello: RemoteHello): Promise<void> {
+		this.handshakeConnectionId = hello.connectionId;
 		let peerIdentityKey: Uint8Array;
 		try {
 			peerIdentityKey = decodePublicKey(hello.identityKey, "identityKey");

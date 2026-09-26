@@ -185,6 +185,70 @@ describe("RemoteConnection over a direct link (LAN)", () => {
 		expect(host.getSnapshot().state).toBe("failed");
 		expect(host.getSnapshot().lastErrorCode).toBe("invalid_frame");
 	});
+
+	it("re-keys in place when the phone starts over on a transport the desktop keeps open", async () => {
+		const desktopIdentity = generateIdentityKeyPair();
+		const mobileIdentity = generateIdentityKeyPair();
+		const desktopTransport = new FakeTransport();
+		const firstTransport = new FakeTransport();
+		firstTransport.connectPeer(desktopTransport);
+		const host = desktop(desktopTransport, {
+			identity: desktopIdentity,
+			expectedPeerIdentityKey: mobileIdentity.publicKey,
+		});
+		host.onEvent((event) => {
+			if (event.type === "remote-request") void host.respond(event.request.requestId, { success: true, payload: 1 });
+		});
+		await host.connect();
+		await mobile(firstTransport, {
+			identity: mobileIdentity,
+			expectedPeerIdentityKey: desktopIdentity.publicKey,
+		}).connect();
+		await settle();
+		expect(host.getSnapshot().state).toBe("online");
+		const hostEvents = collect(host);
+
+		// The phone rebuilds its link: a new connection arrives on the same desktop transport.
+		const secondTransport = new FakeTransport();
+		secondTransport.connectPeer(desktopTransport);
+		const phone = mobile(secondTransport, {
+			identity: mobileIdentity,
+			expectedPeerIdentityKey: desktopIdentity.publicKey,
+		});
+		await phone.connect();
+		await settle();
+
+		expect(phone.getSnapshot().state).toBe("online");
+		expect(host.getSnapshot().state).toBe("online");
+		expect(hostEvents.some((event) => event.type === "state" && event.state !== "online")).toBe(false);
+		await expect(phone.request("session.list")).resolves.toBe(1);
+	});
+
+	it("still refuses a different identity that sends a hello while online", async () => {
+		const desktopIdentity = generateIdentityKeyPair();
+		const mobileIdentity = generateIdentityKeyPair();
+		const desktopTransport = new FakeTransport();
+		const firstTransport = new FakeTransport();
+		firstTransport.connectPeer(desktopTransport);
+		const host = desktop(desktopTransport, {
+			identity: desktopIdentity,
+			expectedPeerIdentityKey: mobileIdentity.publicKey,
+		});
+		await host.connect();
+		await mobile(firstTransport, {
+			identity: mobileIdentity,
+			expectedPeerIdentityKey: desktopIdentity.publicKey,
+		}).connect();
+		await settle();
+
+		const intruderTransport = new FakeTransport();
+		intruderTransport.connectPeer(desktopTransport);
+		await mobile(intruderTransport, { expectedPeerIdentityKey: desktopIdentity.publicKey }).connect();
+		await settle();
+
+		expect(host.getSnapshot().state).toBe("failed");
+		expect(host.getSnapshot().lastErrorCode).toBe("unauthorized");
+	});
 });
 
 describe("RemoteConnection through a relay", () => {
