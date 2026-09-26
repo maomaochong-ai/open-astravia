@@ -129,9 +129,9 @@
 			display: flex;
 			flex-direction: column;
 			align-items: center;
-			justify-content: center;
+			justify-content: flex-start;
 			overflow: hidden;
-			padding: 48px 24px 80px;
+			padding: 100px 24px 80px;
 		}
 		.download-theater-beams {
 			position: absolute;
@@ -153,20 +153,19 @@
 		.download-theater-beam--b { left: 50%; height: 100%; }
 		.download-theater-beam--c { left: 75%; height: 100%; }
 
-		/* 掉落的平台图标 — 完全复刻 Vetta 动画 */
+		/* 平台图标容器 — 弧形散落布局 */
 		.dl-platforms {
 			position: relative;
 			z-index: 10;
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			gap: 20px;
-			margin-bottom: 28px;
-			height: 72px;
+			width: 100%;
+			max-width: 700px;
+			height: 280px;
+			margin-bottom: 0;
 		}
 		.dl-platform-icon {
-			width: 56px;
-			height: 56px;
+			position: absolute;
+			width: 52px;
+			height: 52px;
 			border-radius: 50%;
 			background: var(--elev);
 			border: 1px solid var(--line);
@@ -176,30 +175,32 @@
 			overflow: hidden;
 			opacity: 0;
 			will-change: transform, opacity;
+			transition: border-color 0.2s var(--ease), box-shadow 0.2s var(--ease);
 		}
 		.dl-platform-icon img {
-			width: 34px;
-			height: 34px;
+			width: 30px;
+			height: 30px;
 			object-fit: contain;
 			border-radius: 50%;
 		}
 		.dl-platform-icon.is-rec {
 			border-color: var(--accent);
-			box-shadow: 0 0 24px -4px rgba(124, 138, 255, 0.45);
+			box-shadow: 0 0 20px -4px rgba(124, 138, 255, 0.4);
 		}
 		.dl-platform-icon.fall {
 			opacity: 1;
 		}
 
-		/* 标题 */
+		/* 标题 — 位于图标下方 */
 		.dl__title {
 			position: relative;
 			z-index: 10;
-			font-size: clamp(40px, 6vw, 64px);
+			font-size: clamp(44px, 6vw, 64px);
 			font-weight: 700;
 			letter-spacing: -0.02em;
 			text-shadow: 0 0 40px color-mix(in srgb, var(--accent) 30%, transparent);
 			margin-bottom: 12px;
+			margin-top: -20px;
 		}
 
 		/* 描述 */
@@ -214,7 +215,7 @@
 			text-align: center;
 		}
 
-		/* 主下载按钮 — 复刻 Vetta */
+		/* 主下载按钮 */
 		.dl__primary-wrap {
 			position: relative;
 			z-index: 10;
@@ -436,25 +437,17 @@
 			color: var(--faint);
 			margin: 0;
 		}
-		@media (max-width: 560px) {
-			.footer__grid {
-				grid-template-columns: 1fr;
-				gap: 40px;
-			}
-			.footer__links {
-				grid-template-columns: repeat(2, 1fr);
-				gap: 24px;
-			}
-			.footer__bottom { flex-direction: column; }
-		}
 
 		/* 移动适配 */
 		@media (max-width: 560px) {
 			.dl__title { font-size: 36px; }
 			.dl__primary { min-width: auto; width: 100%; max-width: 300px; font-size: 13px; }
-			.dl-platforms { gap: 10px; }
+			.dl-platforms { max-width: 100%; height: 220px; }
 			.dl-platform-icon { width: 44px; height: 44px; }
-			.dl-platform-icon img { width: 24px; height: 24px; }
+			.dl-platform-icon img { width: 26px; height: 26px; }
+			.footer__grid { grid-template-columns: 1fr; gap: 40px; }
+			.footer__links { grid-template-columns: repeat(2, 1fr); gap: 24px; }
+			.footer__bottom { flex-direction: column; }
 		}
 	</style>
 </head>
@@ -463,7 +456,7 @@
 	<header class="nav" id="nav">
 		<div class="nav__inner">
 			<a class="nav__brand" href="/#top">
-				<img src="/banner.png" width="26" height="26" alt="" />
+				<img src="/favicon.png" width="26" height="26" alt="" />
 				<span>Astravia</span>
 			</a>
 			<nav class="nav__links" aria-label="主导航">
@@ -496,31 +489,24 @@
 			<span class="download-theater-beam download-theater-beam--c"></span>
 		</div>
 
-		<!-- 平台图标（掉落动画） -->
+		<!-- 平台图标 — 弧形散落布局 -->
 		<div class="dl-platforms" id="dlPlatforms" aria-hidden="true">
-			<div class="dl-platform-icon" data-platform="macos">
-				<img src="/ollama.webp" alt="" width="30" height="30" />
-			</div>
-			<div class="dl-platform-icon" data-platform="windows">
-				<img src="/kimi.webp" alt="" width="30" height="30" />
-			</div>
-			<div class="dl-platform-icon" data-platform="linux">
-				<img src="/grok.webp" alt="" width="30" height="30" />
-			</div>
-			<div class="dl-platform-icon" data-platform="other1">
-				<img src="/mistral.webp" alt="" width="30" height="30" />
-			</div>
-			<div class="dl-platform-icon" data-platform="other2">
-				<img src="/minimax.webp" alt="" width="30" height="30" />
-			</div>
+			<div class="dl-platform-icon" data-platform="ollama"><img src="/ollama.webp" alt="" width="30" height="30" /></div>
+			<div class="dl-platform-icon" data-platform="kimi"><img src="/kimi.webp" alt="" width="30" height="30" /></div>
+			<div class="dl-platform-icon" data-platform="grok"><img src="/grok.webp" alt="" width="30" height="30" /></div>
+			<div class="dl-platform-icon" data-platform="mistral"><img src="/mistral.webp" alt="" width="30" height="30" /></div>
+			<div class="dl-platform-icon" data-platform="minimax"><img src="/minimax.webp" alt="" width="30" height="30" /></div>
+			<div class="dl-platform-icon" data-platform="doubao"><img src="/doubao.webp" alt="" width="30" height="30" /></div>
+			<div class="dl-platform-icon" data-platform="zai"><img src="/zai.webp" alt="" width="30" height="30" /></div>
+			<div class="dl-platform-icon" data-platform="openai"><img src="/openai.webp" alt="" width="30" height="30" /></div>
 		</div>
 
 		<h1 class="dl__title">下载</h1>
-		<p class="dl__desc">我们会检测你的设备并推荐合适的版本。点击即可下载，或通过箭头选择其他平台。</p>
+		<p class="dl__desc">我们会检测你的设备并推荐合适的版本。点击即可下载，或通过下方选择其他平台。</p>
 
 		<div class="dl__primary-wrap">
 			<a class="dl__primary" id="dlPrimary" href="#" target="_blank" rel="noopener">
-				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v12m0 0 5-5m-5 5-5-5" /><path d="M4 20h16" /></svg>
+				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
 				<span id="dlPrimaryText">MAC ARM64 (APPLE SILICON)</span>
 			</a>
 			<p class="dl__version" id="dlPrimaryVersion">v0.55.37 · DMG</p>
@@ -559,7 +545,6 @@
 	<footer class="footer">
 		<div class="container">
 			<div class="footer__grid">
-				<!-- 左侧：品牌 + 介绍 + 社交 -->
 				<div class="footer__brand-col">
 					<a class="footer__brand" href="/#top">
 						<img src="/favicon.png" width="24" height="24" alt="" />
@@ -579,8 +564,6 @@
 						</a>
 					</div>
 				</div>
-
-				<!-- 中间：分栏导航 -->
 				<nav class="footer__links" aria-label="页脚导航">
 					<div class="footer__link-group">
 						<p class="footer__link-heading">产品</p>
@@ -608,8 +591,6 @@
 					</div>
 				</nav>
 			</div>
-
-			<!-- 底部：版权 -->
 			<div class="footer__bottom">
 				<p>© <span id="year">2026</span> Astravia · Apache-2.0</p>
 			</div>
@@ -621,13 +602,11 @@
 			const yearEl = document.getElementById("year");
 			if (yearEl) yearEl.textContent = new Date().getFullYear();
 
-			// 滚动导航底边线
 			const nav = document.getElementById("nav");
 			window.addEventListener("scroll", () => {
 				nav.classList.toggle("is-scrolled", window.scrollY > 8);
 			}, { passive: true });
 
-			// 主题切换
 			const THEME_KEY = "astravia-theme";
 			const themeToggle = document.getElementById("themeToggle");
 			const root = document.documentElement;
@@ -690,9 +669,9 @@
 				}
 			});
 
-			// 掉落动画 — 从视口顶部掉落，带弹跳和随机散落
-			const FALL_DURATION = 800; // ms
-			const STAGGER = 80; // ms 间隔
+			// 弧形散落动画 — 复刻 Vetta 设计
+			const FALL_DURATION = 900;
+			const STAGGER = 60;
 
 			function easeOutBounce(t) {
 				const n1 = 7.5625;
@@ -710,12 +689,24 @@
 				return n1 * t * t + 0.984375;
 			}
 
-			function animateFall(icon, delay) {
-				const startX = (Math.random() - 0.5) * 200; // 随机水平偏移 ±100px
-				const startY = -window.innerHeight; // 从视口顶部上方开始
-				const endX = (Math.random() - 0.5) * 40; // 最终散落位置 ±20px
-				const startRotate = (Math.random() - 0.5) * 60; // 随机初始旋转 ±30°
-				const startTime = performance.now() + delay;
+			function animateFall(icon, index, total) {
+				// 弧形布局参数
+				const arcRadius = 260; // 弧形半径
+				const arcAngle = Math.PI * 0.75; // 弧形跨度 135°
+				const startAngle = Math.PI / 2 + arcAngle / 2; // 从左上方开始
+				const angleStep = arcAngle / (total - 1); // 每个图标的角度间隔
+				const angle = startAngle - index * angleStep; // 当前图标角度
+
+				// 目标位置（弧形排列）
+				const targetX = Math.cos(angle) * arcRadius;
+				const targetY = Math.sin(angle) * arcRadius * 0.55; // 压扁弧形
+
+				// 起始位置（从上方随机位置掉落）
+				const startX = targetX + (Math.random() - 0.5) * 120;
+				const startY = -150 - Math.random() * 200;
+				const startRotate = (Math.random() - 0.5) * 90;
+
+				const startTime = performance.now() + index * STAGGER;
 
 				function step(now) {
 					const elapsed = now - startTime;
@@ -727,10 +718,10 @@
 					const progress = Math.min(elapsed / FALL_DURATION, 1);
 					const eased = easeOutBounce(progress);
 
-					const currentX = startX + (endX - startX) * eased;
-					const currentY = startY + (-startY) * eased;
+					const currentX = startX + (targetX - startX) * eased;
+					const currentY = startY + (targetY - startY) * eased;
 					const currentRotate = startRotate * (1 - eased);
-					const currentScale = 0.3 + 0.7 * eased;
+					const currentScale = 0.4 + 0.6 * eased;
 
 					icon.style.opacity = String(progress > 0.05 ? 1 : 0);
 					icon.style.transform = `translate(${currentX}px, ${currentY}px) scale(${currentScale}) rotate(${currentRotate}deg)`;
@@ -743,9 +734,17 @@
 				requestAnimationFrame(step);
 			}
 
+			// 计算容器中心，定位图标
+			const container = document.getElementById("dlPlatforms");
+			const centerX = container.offsetWidth / 2;
+			const centerY = container.offsetHeight / 2;
+
 			// 依次触发每个图标掉落
 			for (let i = 0; i < platforms.length; i++) {
-				animateFall(platforms[i], i * STAGGER);
+				// 设置初始位置为容器中心
+				platforms[i].style.left = `${centerX - 26}px`;
+				platforms[i].style.top = `${centerY - 26}px`;
+				animateFall(platforms[i], i, platforms.length);
 			}
 
 			// 展开/收起其他版本
