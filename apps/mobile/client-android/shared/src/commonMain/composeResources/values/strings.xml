@@ -4,6 +4,13 @@
     <string name="app_name">Vetta</string>
     <string name="appearance">Appearance</string>
     <string name="back">Back</string>
+    <string name="board_empty">No tasks yet</string>
+    <string name="board_empty_description">Sessions you start show up here, grouped by project.</string>
+    <plurals name="board_more">
+        <item quantity="one">%1$d more</item>
+        <item quantity="other">%1$d more</item>
+    </plurals>
+    <string name="board_stale">Showing the last synced state</string>
     <string name="camera_permission_required">Camera access is needed to scan</string>
     <string name="camera_unavailable">The camera isn’t available right now. Try again later</string>
     <string name="cancel">Cancel</string>
@@ -89,6 +96,7 @@
         <item quantity="one">%1$d session</item>
         <item quantity="other">%1$d sessions</item>
     </plurals>
+    <string name="home_task_board">Task Board</string>
     <string name="home_tasks">Tasks</string>
     <string name="home_updated">Updated %1$s</string>
     <plurals name="hours_ago">

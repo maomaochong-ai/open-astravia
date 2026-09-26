@@ -35,6 +35,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.Cancel
+import androidx.compose.material.icons.outlined.Dashboard
 import androidx.compose.material.icons.outlined.EditNote
 import androidx.compose.material.icons.outlined.FilterAltOff
 import androidx.compose.material.icons.outlined.Inbox
@@ -88,6 +89,7 @@ import org.vetta.android.resources.home_no_results
 import org.vetta.android.resources.home_no_results_hint
 import org.vetta.android.resources.home_search
 import org.vetta.android.resources.home_search_placeholder
+import org.vetta.android.resources.home_task_board
 import org.vetta.android.resources.new_session_title
 import org.vetta.android.resources.settings_title
 import org.vetta.android.resources.work_clear_filters
@@ -422,6 +424,10 @@ private fun SearchField(query: String, onQueryChange: (String) -> Unit, onCancel
         }
     }
 }
+
+/** Home's way to the task board. */
+@Composable
+fun taskBoardEntry(onClick: () -> Unit) = HomeEntry(Icons.Outlined.Dashboard, stringResource(Res.string.home_task_board), "home.taskBoard", onClick)
 
 /** Home's standard way in: a blank New Session. */
 @Composable

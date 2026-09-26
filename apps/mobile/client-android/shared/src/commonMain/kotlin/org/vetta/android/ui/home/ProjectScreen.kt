@@ -68,6 +68,8 @@ fun ProjectScreen(
     onOpenSession: (String) -> Unit,
     onNewSession: () -> Unit,
     onRefresh: suspend () -> Unit,
+    /** Off inside a sheet, which has no system bars to keep clear of and its own background. */
+    edgeToEdge: Boolean = true,
 ) {
     var status by rememberSaveable { mutableStateOf<SessionStatusGroup?>(null) }
     val filter = SessionFilter(status, SessionKind.Project, cwd)
@@ -82,8 +84,8 @@ fun ProjectScreen(
     val page = MaterialTheme.vettaExtra.pageBackground
     val listState = rememberLazyListState()
 
-    Box(Modifier.fillMaxSize().background(page).testTag("project.$cwd")) {
-        Column(Modifier.fillMaxSize().statusBarsPadding()) {
+    Box(Modifier.fillMaxSize().then(if (edgeToEdge) Modifier.background(page) else Modifier).testTag("project.$cwd")) {
+        Column(Modifier.fillMaxSize().then(if (edgeToEdge) Modifier.statusBarsPadding() else Modifier)) {
             Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
                 GlassCircleButton(Icons.AutoMirrored.Filled.ArrowBack, stringResource(Res.string.back), onClick = onBack, size = 44.dp, tag = "project.back")
             }

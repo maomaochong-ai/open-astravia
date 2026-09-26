@@ -41,6 +41,8 @@ data class AppUiState(
     val drawerOpen: Boolean = false,
     val homePath: List<HomePage> = emptyList(),
     val showPairing: Boolean = false,
+    /** The task board, a sheet over whatever is showing. */
+    val showBoard: Boolean = false,
     val themeMode: ThemeMode = ThemeMode.Light,
     /** A pairing is under way. */
     val remoteConnecting: Boolean = false,
@@ -88,8 +90,15 @@ class AppViewModel(
         if (_state.value.slot == Slot.Session(sessionId)) _state.update { it.copy(slot = Slot.NewSession(projectCwd)) }
     }
 
-    /** The slot changes at once, under the drawer as it slides away. */
-    private fun fill(next: Slot) = _state.update { it.copy(slot = next, drawerOpen = false) }
+    /** The slot changes at once, under the drawer as it slides away; the board makes way too. */
+    private fun fill(next: Slot) = _state.update { it.copy(slot = next, drawerOpen = false, showBoard = false) }
+
+    fun openBoard() = _state.update { it.copy(showBoard = true) }
+
+    fun closeBoard() = _state.update { it.copy(showBoard = false) }
+
+    /** From the board to Home's whole list. */
+    fun showAllSessions() = _state.update { it.copy(showBoard = false, homePath = emptyList(), drawerOpen = true) }
 
     fun push(page: HomePage) = _state.update { it.copy(homePath = it.homePath + page, drawerOpen = true) }
 
@@ -109,7 +118,7 @@ class AppViewModel(
     }
 
     private fun reset() =
-        _state.update { it.copy(slot = Slot.NewSession(), homePath = emptyList(), drawerOpen = false) }
+        _state.update { it.copy(slot = Slot.NewSession(), homePath = emptyList(), drawerOpen = false, showBoard = false) }
 
     // Pairing
 

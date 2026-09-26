@@ -45,6 +45,8 @@ import org.vetta.android.ui.design.VettaMotion
 import org.vetta.android.ui.home.HomeScreen
 import org.vetta.android.ui.home.ProjectScreen
 import org.vetta.android.ui.home.newSessionEntry
+import org.vetta.android.ui.home.taskBoardEntry
+import org.vetta.android.ui.board.TaskBoardSheet
 import org.vetta.android.ui.navigation.HomePage
 import org.vetta.android.ui.navigation.PlatformBackHandler
 import org.vetta.android.ui.navigation.Slot
@@ -150,6 +152,17 @@ fun RootApp(
                 content = { SlotContent(state.slot, workState, vm, work) },
                 drawer = { HomeStack(state, workState, vm, work, container) },
             )
+            if (state.showBoard) {
+                TaskBoardSheet(
+                    state = workState,
+                    actions = work,
+                    onOpenSession = vm::show,
+                    onNewSession = vm::startNewSession,
+                    onShowAllSessions = vm::showAllSessions,
+                    onRefresh = work::refresh,
+                    onDismiss = vm::closeBoard,
+                )
+            }
             if (state.showPairing) {
                 PairingSheet(
                     phase = workState.pairing,
@@ -242,7 +255,7 @@ private fun HomeStack(state: AppUiState, workState: MirrorState, vm: AppViewMode
                     filter = filter,
                     onFilterChange = work::setFilter,
                     actions = work,
-                    entries = listOf(newSessionEntry { vm.startNewSession() }),
+                    entries = listOf(newSessionEntry { vm.startNewSession() }, taskBoardEntry(vm::openBoard)),
                     onClose = vm::closeDrawer,
                     onOpenSession = vm::show,
                     onOpenProject = { vm.push(HomePage.Project(it)) },

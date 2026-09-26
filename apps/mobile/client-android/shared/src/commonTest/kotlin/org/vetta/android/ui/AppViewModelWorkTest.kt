@@ -112,6 +112,25 @@ class AppViewModelWorkTest {
         }
 
     @Test
+    fun theBoardMakesWayForTheSessionItOpensAndLeadsToHomesWholeList() =
+        runTest(dispatcher) {
+            val vm = viewModel()
+            advanceUntilIdle()
+            vm.openBoard()
+            vm.show("s1")
+            assertFalse(vm.state.value.showBoard)
+            assertEquals(Slot.Session("s1"), vm.state.value.slot)
+
+            vm.push(HomePage.Settings)
+            vm.closeDrawer()
+            vm.openBoard()
+            vm.showAllSessions()
+            assertFalse(vm.state.value.showBoard)
+            assertTrue(vm.state.value.drawerOpen)
+            assertEquals(emptyList(), vm.state.value.homePath, "all sessions is Home's own list, not the page left open")
+        }
+
+    @Test
     fun theThemeChoiceIsKept() =
         runTest(dispatcher) {
             val preferences = AppPreferences(MapSettings())
