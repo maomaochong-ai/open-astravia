@@ -8,11 +8,12 @@
 ---
 
 <p align="center">
-  <img src="docs/assets/screenshot-main.png" alt="Astravia 深色主题" width="860" />
-</p>
-
-<p align="center">
-  <img src="docs/assets/capabilities.png" alt="能力页" width="860" />
+  <table width="100%">
+    <tr>
+      <td align="center"><img src="docs/assets/screenshot-main.png" alt="Astravia 深色主题" width="100%" /></td>
+      <td align="center"><img src="docs/assets/capabilities.png" alt="能力页" width="100%" /></td>
+    </tr>
+  </table>
 </p>
 
 ## 快速上手

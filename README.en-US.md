@@ -8,11 +8,12 @@
 ---
 
 <p align="center">
-  <img src="docs/assets/screenshot-main.png" alt="Astravia dark theme" width="860" />
-</p>
-
-<p align="center">
-  <img src="docs/assets/capabilities.png" alt="Capabilities page" width="860" />
+  <table width="100%">
+    <tr>
+      <td align="center"><img src="docs/assets/screenshot-main.png" alt="Astravia dark theme" width="100%" /></td>
+      <td align="center"><img src="docs/assets/capabilities.png" alt="Capabilities page" width="100%" /></td>
+    </tr>
+  </table>
 </p>
 
 ## Quick Start
