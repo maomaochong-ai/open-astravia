@@ -42,6 +42,31 @@ object SessionAlerts {
         }
     }
 
+    /**
+     * How long before the app leaves the screen an alert still counts as unseen. Android
+     * reports the app gone only once the launcher settles, which can take seconds, so news
+     * that arrives just after the user leaves looks as if it came while they were looking.
+     */
+    const val LEAVE_GRACE_MS = 15_000L
+
+    /**
+     * The alerts raised while the app still counted as on screen that are worth posting as it
+     * leaves: recent ones only, the newest per session, and a question only while it still
+     * waits for an answer.
+     */
+    fun dueOnLeaving(held: List<HeldAlert>, sessions: List<RemoteSessionSummary>, now: Long): List<SessionAlert> =
+        held
+            .filter { now - it.at <= LEAVE_GRACE_MS }
+            .associateBy { it.alert.sessionId }
+            .values
+            .map { it.alert }
+            .filter { alert ->
+                alert !is SessionAlert.NeedsYou || sessions.firstOrNull { it.id == alert.sessionId }?.status == RemoteSessionStatus.WaitingInput
+            }
+
     private fun RemoteSessionStatus.running(): Boolean =
         this == RemoteSessionStatus.Running || this == RemoteSessionStatus.Thinking || this == RemoteSessionStatus.WaitingInput
 }
+
+/** An alert raised while the app counted as on screen, and when. */
+data class HeldAlert(val alert: SessionAlert, val at: Long)

@@ -14,10 +14,13 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.getString
+import org.vetta.android.core.nowEpochMs
 import org.vetta.android.domain.work.DesktopMirror
+import org.vetta.android.domain.work.HeldAlert
 import org.vetta.android.domain.work.SessionAlert
 import org.vetta.android.domain.work.SessionAlerts
 import org.vetta.android.resources.Res
@@ -34,7 +37,8 @@ import org.vetta.android.shared.R
 /**
  * Tells the user about sessions while the app is out of sight: a session that starts
  * waiting on them, and one whose turn finishes or fails. Tapping one opens its chat.
- * Nothing is posted while the app is on screen, where the list already shows it.
+ * Nothing is posted while the app is on screen, where the list already shows it, except
+ * what arrived in the moments before it left.
  */
 object SessionNotifier {
     /** The intent extra naming the session a notification opens. */
@@ -45,12 +49,26 @@ object SessionNotifier {
     const val LINK_NOTIFICATION_ID = 1
 
     fun watch(context: Context, container: AppContainer, scope: CoroutineScope) {
+        // News that came while the app still counted as on screen, in case it was already leaving.
+        val held = mutableListOf<HeldAlert>()
         scope.launch {
             var last = container.mirror.state.value.sessions
             container.mirror.state.map { it.sessions }.distinctUntilChanged().collect { sessions ->
                 val alerts = SessionAlerts.between(last, sessions)
                 last = sessions
-                if (!container.visible.value) alerts.forEach { post(context, it) }
+                if (container.visible.value) {
+                    held += alerts.map { HeldAlert(it, nowEpochMs()) }
+                } else {
+                    alerts.forEach { post(context, it) }
+                }
+            }
+        }
+        scope.launch {
+            container.visible.drop(1).collect { shown ->
+                if (!shown) {
+                    SessionAlerts.dueOnLeaving(held.toList(), container.mirror.state.value.sessions, nowEpochMs()).forEach { post(context, it) }
+                }
+                held.clear()
             }
         }
     }

@@ -44,4 +44,23 @@ class SessionAlertsTest {
         assertTrue(SessionAlerts.between(listOf(session("a", RemoteSessionStatus.Idle)), listOf(session("a", RemoteSessionStatus.Completed))).isEmpty(), "nothing was running")
         assertTrue(SessionAlerts.between(listOf(session("a", RemoteSessionStatus.Running)), listOf(session("a", RemoteSessionStatus.Running, "改名"))).isEmpty())
     }
+
+    @Test
+    fun newsFromJustBeforeLeavingIsPostedOnceTheAppIsGone() {
+        val waiting = session("ask", RemoteSessionStatus.WaitingInput)
+        val answered = session("answered", RemoteSessionStatus.Running)
+        val held =
+            listOf(
+                HeldAlert(SessionAlert.Finished("old", "t"), at = 0),
+                HeldAlert(SessionAlert.NeedsYou("ask", "t"), at = 90_000),
+                HeldAlert(SessionAlert.NeedsYou("answered", "t"), at = 95_000),
+                HeldAlert(SessionAlert.Failed("done", "t"), at = 96_000),
+                HeldAlert(SessionAlert.Finished("done", "t"), at = 99_000),
+            )
+        assertEquals(
+            listOf(SessionAlert.NeedsYou("ask", "t"), SessionAlert.Finished("done", "t")),
+            SessionAlerts.dueOnLeaving(held, listOf(waiting, answered), now = 100_000),
+            "too old, already answered, and superseded news are left out",
+        )
+    }
 }
