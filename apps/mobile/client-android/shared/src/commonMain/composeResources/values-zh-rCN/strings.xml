@@ -56,6 +56,7 @@
     <string name="chat_remove_attachment">移除 %1$s</string>
     <string name="chat_resync">刷新</string>
     <string name="chat_retrying">正在重试（%1$d/%2$d）</string>
+    <string name="chat_scroll_to_bottom">回到最新</string>
     <plurals name="chat_steps_done">
         <item quantity="other">完成了 %1$d 步操作</item>
     </plurals>

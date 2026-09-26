@@ -58,6 +58,7 @@
     <string name="chat_remove_attachment">Remove %1$s</string>
     <string name="chat_resync">Refresh</string>
     <string name="chat_retrying">Retrying (%1$d/%2$d)</string>
+    <string name="chat_scroll_to_bottom">Jump to the latest</string>
     <plurals name="chat_steps_done">
         <item quantity="one">Completed %1$d step</item>
         <item quantity="other">Completed %1$d steps</item>

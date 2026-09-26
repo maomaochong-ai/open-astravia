@@ -13,6 +13,9 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeDown
+import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Rule
 import org.junit.runner.RunWith
@@ -170,10 +173,42 @@ class SessionScreenTest {
         composeRule.onNodeWithTag("composer.send").performClick()
         assertEquals("send s1 再写一份月报", actions.calls.last())
 
+        // The bare test activity pans for the keyboard, which the app itself does not.
+        Espresso.closeSoftKeyboard()
         current = state(RemoteSessionStatus.Running, finishedTurn)
         composeRule.onNodeWithTag("composer.stop").performClick()
         assertEquals("stop s1", actions.calls.last())
         composeRule.onNodeWithTag("turn.status").assertIsDisplayed()
+    }
+
+    @Test
+    fun readingHistoryIsNotInterruptedAndTheButtonReturnsToTheLatest() {
+        val history =
+            (1..30).flatMap { n ->
+                listOf(
+                    TranscriptItem.User("u$n", "问题 $n", n * 1_000L),
+                    TranscriptItem.Assistant(AssistantTurn("a$n", "回答 $n\n\n第二段 $n", "", emptyList(), false, n * 1_000L + 500)),
+                )
+            }
+        var current by mutableStateOf(state(RemoteSessionStatus.Running, history))
+        composeRule.setContent {
+            VettaTheme(ThemeMode.Light) {
+                SessionScreen("s1", current, PromptDraft(), RecordingActions(), onOpenHome = {})
+            }
+        }
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("问题 30").assertIsDisplayed()
+
+        // The user reads further up; a new reply must not pull them back down.
+        composeRule.onNodeWithTag("chat.list").performTouchInput { swipeDown(durationMillis = 300) }
+        composeRule.waitForIdle()
+        current = state(RemoteSessionStatus.Running, history + TranscriptItem.Assistant(AssistantTurn("a31", "新的回复", "", emptyList(), false, 40_000)))
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("新的回复").assertDoesNotExist()
+
+        composeRule.onNodeWithTag("chat.toBottom").performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("新的回复").assertIsDisplayed()
     }
 
     @Test
