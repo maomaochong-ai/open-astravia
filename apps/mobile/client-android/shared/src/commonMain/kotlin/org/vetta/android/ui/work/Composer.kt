@@ -124,6 +124,7 @@ fun Composer(
     val focus = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
     val haptics = LocalHapticFeedback.current
+    val cue = rememberDictationCue()
     val press = remember { HoldToTalk() }
     var sheet by remember { mutableStateOf(false) }
     var notice by remember { mutableStateOf<ComposerNotice?>(null) }
@@ -164,12 +165,19 @@ fun Composer(
                 keyboard?.hide()
                 cancelArmed = false
                 notice = null
-                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                cue()
                 scope.launch { dictation.start()?.let { notice = ComposerNotice.Dictation(it) } }
             }
             is HoldToTalk.Action.CancelArmed -> {
                 cancelArmed = action.armed
                 haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+            }
+            // Let go right after listening started: a slow tap, so type instead.
+            HoldToTalk.Action.CancelAndFocus -> {
+                dictation.cancel()
+                cancelArmed = false
+                focus.requestFocus()
+                keyboard?.show()
             }
             is HoldToTalk.Action.Finish ->
                 scope.launch {
