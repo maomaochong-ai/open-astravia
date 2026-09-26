@@ -45,7 +45,9 @@ async function main() {
 		cwd: projectRoot,
 		env: {
 			...process.env,
-			ASTRAVIA_CONFIG_DIR: process.env.ASTRAVIA_CONFIG_DIR ?? ".astravia",
+			// dev 模式用独立配置目录 .astravia-dev，避免和正式发布版 ~/.astravia 混用
+			// （dev 配的 apiKey / models.json 不应污染正式版）
+			ASTRAVIA_CONFIG_DIR: process.env.ASTRAVIA_CONFIG_DIR ?? ".astravia-dev",
 			ASTRAVIA_DESKTOP_DEV_URL: rendererUrl,
 		},
 		stdio: "inherit",
