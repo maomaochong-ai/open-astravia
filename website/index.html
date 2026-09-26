@@ -4,10 +4,7 @@
 	<meta charset="UTF-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 	<title>星轨 Astravia — 本地优先的开源 AI 桌面助手</title>
-	<meta
-		name="description"
-		content="星轨 Astravia 是本地优先的开源 AI 桌面助手：编码、文档、数据、自动化，一个应用全包。无云端、无账号、无遥测，数据与密钥始终留在本机。macOS / Windows 免费下载。"
-	/>
+	<meta name="description" content="星轨 Astravia 是本地优先的开源 AI 桌面助手：编码、文档、数据、自动化，一个应用全包。无云端、无账号、无遥测，数据与密钥始终留在本机。macOS / Windows 免费下载。" />
 	<meta property="og:title" content="星轨 Astravia — 本地优先的开源 AI 桌面助手" />
 	<meta property="og:description" content="无云端、无账号、无遥测。编码、文档、数据、自动化，一个应用全包。" />
 	<meta property="og:type" content="website" />
@@ -16,15 +13,73 @@
 	<meta name="theme-color" content="#fbfbfd" />
 	<link rel="icon" href="/favicon.png" type="image/png" />
 	<link rel="apple-touch-icon" href="/favicon.png" />
+	<!-- 关键 CSS 内联，防止刷新闪烁 -->
+	<style>
+		:root {
+			--bg: #fbfbfd;
+			--elev: #fff;
+			--tint: #f5f5f7;
+			--line: #e5e5ea;
+			--line-strong: #d1d1d6;
+			--ink: #1d1d1f;
+			--muted: #6e6e73;
+			--faint: #8e8e93;
+			--accent: #0071e3;
+			--accent-deep: #005bb5;
+			--accent-soft: rgba(0, 113, 227, 0.08);
+			--ease: cubic-bezier(0.16, 1, 0.3, 1);
+			--font-sans: "Hanken Grotesk", Inter, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+			--font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Menlo, Consolas, monospace;
+		}
+		:root[data-theme="dark"] {
+			--bg: #08080a;
+			--elev: #101014;
+			--tint: #0c0c0f;
+			--line: #1e1e24;
+			--line-strong: #2b2b33;
+			--ink: #e9e9ec;
+			--muted: #8e9199;
+			--faint: #565964;
+			--accent: #7c8aff;
+			--accent-deep: #5e6ad2;
+			--accent-soft: rgba(124, 138, 255, 0.13);
+		}
+		*, ::before, ::after { box-sizing: border-box; }
+		body {
+			margin: 0;
+			font-family: var(--font-sans);
+			background: var(--bg);
+			color: var(--ink);
+			-webkit-font-smoothing: antialiased;
+		}
+		.nav { position: fixed; inset: 0 0 auto; z-index: 100; background: rgba(251, 251, 253, 0.78); backdrop-filter: blur(16px) saturate(1.4); border-bottom: 1px solid transparent; transition: border-color 0.2s var(--ease); }
+		:root[data-theme="dark"] .nav { background: rgba(8, 8, 10, 0.78); }
+		.nav.is-scrolled { border-bottom-color: var(--line); }
+		.nav__inner { display: flex; align-items: center; gap: 24px; height: 60px; max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+		.nav__brand { display: inline-flex; align-items: center; gap: 9px; font-weight: 700; font-size: 16px; text-decoration: none; color: var(--accent); margin-right: auto; }
+		.nav__brand img { border-radius: 6px; }
+		.nav__links { display: flex; gap: 2px; align-items: center; }
+		.nav__links a { text-decoration: none; font-size: 14px; font-weight: 500; color: var(--muted); padding: 6px 11px; border-radius: 7px; transition: color 0.15s var(--ease), background-color 0.15s var(--ease); }
+		.nav__links a:hover { color: var(--ink); }
+		.nav__links a.is-active { color: var(--ink); background: var(--elev); }
+		.nav__actions { display: flex; align-items: center; gap: 10px; }
+		.theme-toggle { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; padding: 0; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--muted); cursor: pointer; }
+		.theme-toggle svg { display: none; }
+		.theme-toggle.is-light .icon-sun, .theme-toggle.is-dark .icon-moon { display: block; }
+		.btn--ghost, .btn--primary { display: inline-flex; align-items: center; gap: 8px; border-radius: 999px; font-size: 14px; font-weight: 600; text-decoration: none; border: 1px solid transparent; cursor: pointer; white-space: nowrap; }
+		.btn--ghost { padding: 7px 12px; color: var(--accent); background: var(--elev); border-color: var(--line); }
+		.btn--primary { padding: 8px 15px; background: var(--accent); color: #fff; }
+		.container { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+		.reveal { opacity: 0; transform: translateY(16px); transition: opacity 0.6s var(--ease), transform 0.6s var(--ease); }
+		.reveal.is-visible { opacity: 1; transform: none; }
+	</style>
 	<script>
 		(() => {
-			// 浅色为默认主题（Apple 纸感风）；仅当用户手动切换过暗色时才覆盖。
 			const stored = localStorage.getItem("astravia-theme");
 			document.documentElement.dataset.theme = stored === "dark" ? "dark" : "light";
 		})();
 	</script>
 	<script type="module" src="/src/main.ts"></script>
-	<noscript><style>.reveal{opacity:1;transform:none}</style></noscript>
 </head>
 <body>
 	<!-- ================= 导航 ================= -->
