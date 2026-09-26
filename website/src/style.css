@@ -2167,6 +2167,11 @@ code {
 		background-color 0.2s var(--ease);
 }
 
+.dl-card-icon svg {
+	width: 28px;
+	height: 28px;
+}
+
 .dl-card:hover .dl-card-icon {
 	background: var(--accent-soft);
 	color: var(--accent);
@@ -2220,9 +2225,10 @@ code {
 
 .dl-card-badge {
 	position: absolute;
-	top: 12px;
-	right: 12px;
-	padding: 3px 8px;
+	top: -6px;
+	left: 50%;
+	transform: translateX(-50%) translateY(-100%);
+	padding: 3px 10px;
 	font-size: 10.5px;
 	font-family: var(--font-mono);
 	font-weight: 600;
