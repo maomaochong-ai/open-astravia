@@ -180,12 +180,31 @@
 			const BOUNCE = 0.45;
 			const STAGGER = 100;
 
+			// 图标分配：5 个在标题上方，8 个在描述文字区域，剩余在页脚横线
+			const titleCount = 5;
+			const descCount = 8;
+			const totalCount = topIcons.length;
+			const bottomCount = totalCount - titleCount - descCount;
+
 			function getTopTargets(count) {
 				const tw = theater.offsetWidth;
 				const theaterRect = theater.getBoundingClientRect();
 				const titleRect = titleEl.getBoundingClientRect();
-				// 图标目标 Y：标题顶部相对于剧场容器的位置 - 图标半径
 				const targetY = titleRect.top - theaterRect.top - ICON_SIZE / 2;
+				const totalW = count * 64;
+				const startX = (tw - totalW) / 2;
+				const targets = [];
+				for (let i = 0; i < count; i++) targets.push({ x: startX + i * 64 + 32, y: targetY });
+				for (let i = targets.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [targets[i], targets[j]] = [targets[j], targets[i]]; }
+				return targets;
+			}
+
+			function getDescTargets(count) {
+				const tw = theater.offsetWidth;
+				const theaterRect = theater.getBoundingClientRect();
+				const descRect = descEl.getBoundingClientRect();
+				// 图标落在描述文字上方
+				const targetY = descRect.top - theaterRect.top - ICON_SIZE / 2;
 				const totalW = count * 64;
 				const startX = (tw - totalW) / 2;
 				const targets = [];
@@ -198,7 +217,6 @@
 				const tw = theater.offsetWidth;
 				const theaterRect = theater.getBoundingClientRect();
 				const footerRect = footerEl.getBoundingClientRect();
-				// 图标目标 Y：页脚顶部相对于剧场容器的位置 - 图标半径
 				const targetY = footerRect.top - theaterRect.top - ICON_SIZE / 2;
 				const totalW = count * 64;
 				const startX = (tw - totalW) / 2;
@@ -210,12 +228,16 @@
 			class FallingIcon {
 				constructor(el, tx, ty, delay) {
 					this.el = el; this.tx = tx; this.ty = ty; this.delay = delay;
-					this.y = -ICON_SIZE - Math.random() * 300;
+					// 从页面顶部上方开始
+					this.y = -80 - Math.random() * 200;
 					this.vy = 0; this.rot = (Math.random() - 0.5) * 40; this.vRot = (Math.random() - 0.5) * 5;
 					this.scale = 0.3; this.bounce = 0; this.maxBounce = 2 + Math.floor(Math.random() * 2);
 					this.landed = false; this.settled = false; this.start = 0;
-					el.style.left = `${tx}px`; el.style.top = "0";
-					el.style.marginLeft = `${-ICON_SIZE / 2}px`; el.style.marginTop = `${-ICON_SIZE / 2}px`;
+					// 初始位置：X 固定，Y 在视口外
+					el.style.left = `${tx}px`;
+					el.style.top = `${this.y}px`;
+					el.style.marginLeft = `${-ICON_SIZE / 2}px`;
+					el.style.marginTop = `${-ICON_SIZE / 2}px`;
 				}
 				update(time) {
 					if (time < this.delay) return;
@@ -225,9 +247,14 @@
 						this.vy += GRAVITY; this.y += this.vy; this.rot += this.vRot;
 						if (this.y >= this.ty) {
 							this.y = this.ty; this.vy = -this.vy * BOUNCE; this.vRot *= -0.5; this.bounce++;
-							const tilt = (Math.random() - 0.5) * (this.ty < 100 ? 3 : 2);
-							if (this.ty < 100) { titleEl.style.transform = `rotate(${tilt}deg)`; setTimeout(() => { titleEl.style.transform = ""; }, 200); }
-							else { descEl.style.transform = `rotate(${tilt}deg)`; setTimeout(() => { descEl.style.transform = ""; }, 250); }
+							const tilt = (Math.random() - 0.5) * 3;
+							if (this.ty < 150) {
+								titleEl.style.transform = `rotate(${tilt}deg)`;
+								setTimeout(() => { titleEl.style.transform = ""; }, 200);
+							} else if (this.ty < 350) {
+								descEl.style.transform = `rotate(${tilt}deg)`;
+								setTimeout(() => { descEl.style.transform = ""; }, 250);
+							}
 							if (this.bounce >= this.maxBounce || Math.abs(this.vy) < 0.5) { this.landed = true; this.vy = 0; this.vRot = 0; }
 						}
 						this.scale = Math.min(1, 0.3 + 0.7 * Math.min(elapsed / 400, 1));
@@ -241,30 +268,37 @@
 				}
 			}
 
-			const bottomCount = 3;
-			const _topCount = topIcons.length - bottomCount;
 			const allIcons = Array.from(topIcons);
-			const bottomIcons = allIcons.splice(0, bottomCount);
-			const topIconsRemaining = allIcons;
 			const anims = [];
 
 			function loop(time) { for (const a of anims) a.update(time); requestAnimationFrame(loop); }
 
 			window.addEventListener("load", () => {
-				const topTargets = getTopTargets(topIconsRemaining.length);
-				console.log("Theater height:", theater.offsetHeight);
-				console.log("Title offsetTop:", titleEl.offsetTop);
-				console.log("Title getBoundingClientRect:", titleEl.getBoundingClientRect());
-				console.log("Top targets:", topTargets);
-				for (let i = 0; i < topIconsRemaining.length; i++) anims.push(new FallingIcon(topIconsRemaining[i], topTargets[i].x, topTargets[i].y, 200 + i * STAGGER));
-				const bottomTargets = getBottomTargets(bottomCount);
-				console.log("Bottom targets:", bottomTargets);
-				for (let i = 0; i < bottomIcons.length; i++) {
-					const icon = bottomIcons[i];
-					bottomContainer.appendChild(icon);
-					icon.style.position = "relative";
-					anims.push(new FallingIcon(icon, bottomTargets[i].x, bottomTargets[i].y, 400 + i * STAGGER + topIconsRemaining.length * STAGGER));
+				// 重新计算目标位置（确保 DOM 布局完成）
+				const titleTargets = getTopTargets(titleCount);
+				const descTargets = getDescTargets(descCount);
+				const bottomTargets = getBottomTargets(bottomCount > 0 ? bottomCount : 0);
+
+				// 标题上方图标
+				for (let i = 0; i < titleCount && i < allIcons.length; i++) {
+					anims.push(new FallingIcon(allIcons[i], titleTargets[i].x, titleTargets[i].y, 200 + i * STAGGER));
 				}
+
+				// 描述文字上方图标
+				for (let i = 0; i < descCount && (titleCount + i) < allIcons.length; i++) {
+					anims.push(new FallingIcon(allIcons[titleCount + i], descTargets[i].x, descTargets[i].y, 400 + (titleCount + i) * STAGGER));
+				}
+
+				// 页脚横线图标
+				if (bottomCount > 0) {
+					for (let i = 0; i < bottomCount && (titleCount + descCount + i) < allIcons.length; i++) {
+						const icon = allIcons[titleCount + descCount + i];
+						bottomContainer.appendChild(icon);
+						icon.style.position = "relative";
+						anims.push(new FallingIcon(icon, bottomTargets[i].x, bottomTargets[i].y, 600 + (titleCount + descCount + i) * STAGGER));
+					}
+				}
+
 				requestAnimationFrame(loop);
 			});
 
