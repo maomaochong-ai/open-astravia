@@ -106,4 +106,17 @@ class SessionFilterTest {
         assertTrue(SessionFilter(kind = SessionKind.Conversation).apply(sessions, conversationCwd = null).isEmpty())
         assertEquals(sessions.size, SessionFilter(kind = SessionKind.Project).apply(sessions, conversationCwd = null).size)
     }
+
+    @Test
+    fun scopeSetsKindAndProjectTogether() {
+        var filter = SessionFilter(status = SessionStatusGroup.Waiting)
+        assertEquals(ProjectScope.All, filter.scope)
+        filter = filter.withScope(ProjectScope.Project("/a"))
+        assertEquals(SessionFilter(SessionStatusGroup.Waiting, SessionKind.Project, "/a"), filter)
+        assertEquals(ProjectScope.Project("/a"), filter.scope)
+        filter = filter.withScope(ProjectScope.Conversations)
+        assertEquals(SessionFilter(SessionStatusGroup.Waiting, SessionKind.Conversation), filter, "leaving a project drops its path")
+        assertEquals(SessionFilter(SessionStatusGroup.Waiting), filter.withScope(ProjectScope.All))
+        assertEquals(ProjectScope.All, SessionFilter(kind = SessionKind.Project).scope, "every project is not one the picker offers")
+    }
 }

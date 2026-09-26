@@ -32,6 +32,15 @@ enum class SessionKind {
     Project,
 }
 
+/** What the project picker chooses: every session, the desktop's conversations, or one project. */
+sealed interface ProjectScope {
+    data object All : ProjectScope
+
+    data object Conversations : ProjectScope
+
+    data class Project(val cwd: String) : ProjectScope
+}
+
 /** A project that has sessions, for the project filter. */
 data class ProjectFilterOption(val cwd: String, val name: String, val count: Int)
 
@@ -52,6 +61,22 @@ class SessionFilter(
     fun withKind(kind: SessionKind?): SessionFilter = SessionFilter(status, kind, if (kind == SessionKind.Project) projectCwd else null)
 
     fun withProject(projectCwd: String?): SessionFilter = SessionFilter(status, kind, projectCwd)
+
+    /** The kind and project as one choice, as the project picker sets them. */
+    val scope: ProjectScope
+        get() =
+            when (kind) {
+                null -> ProjectScope.All
+                SessionKind.Conversation -> ProjectScope.Conversations
+                SessionKind.Project -> projectCwd?.let(ProjectScope::Project) ?: ProjectScope.All
+            }
+
+    fun withScope(scope: ProjectScope): SessionFilter =
+        when (scope) {
+            ProjectScope.All -> SessionFilter(status)
+            ProjectScope.Conversations -> SessionFilter(status, SessionKind.Conversation)
+            is ProjectScope.Project -> SessionFilter(status, SessionKind.Project, scope.cwd)
+        }
 
     /** Anything narrowed down; the default state shows every session. */
     val isActive: Boolean
