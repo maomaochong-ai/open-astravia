@@ -229,87 +229,115 @@
 							<!-- SVG Mockup: 应用界面 -->
 							<div class="story__app-mockup">
 								<svg viewBox="0 0 556 470" fill="none" xmlns="http://www.w3.org/2000/svg" class="story__svg">
-									<!-- 侧边栏 -->
-									<rect x="0" y="0" width="120" height="470" fill="#101014" rx="0"/>
-									<text x="16" y="28" fill="#e9e9ec" font-size="11" font-family="IBM Plex Mono">Astravia</text>
-									<rect x="12" y="48" width="96" height="28" rx="6" fill="#1e1e24"/>
-									<text x="24" y="67" fill="#7c8aff" font-size="10" font-family="Hanken Grotesk">新会话</text>
-									<rect x="12" y="84" width="96" height="24" rx="4"/>
-									<text x="24" y="100" fill="#8e9199" font-size="10" font-family="Hanken Grotesk">自动化</text>
-									<rect x="12" y="116" width="96" height="24" rx="4"/>
-									<text x="24" y="132" fill="#8e9199" font-size="10" font-family="Hanken Grotesk">批量任务</text>
-									<rect x="12" y="148" width="96" height="24" rx="4"/>
-									<text x="24" y="164" fill="#8e9199" font-size="10" font-family="Hanken Grotesk">知识库</text>
+									<!-- 背景网格 -->
+									<defs>
+										<pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+											<path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(124,138,255,0.03)" stroke-width="1"/>
+										</pattern>
+									</defs>
+									<rect width="556" height="470" fill="url(#grid)"/>
 
-									<!-- 主内容区背景 -->
-									<rect x="120" y="0" width="436" height="470" fill="#08080a"/>
+									<!-- 窗口容器 -->
+									<rect x="40" y="20" width="476" height="430" rx="12" fill="#0c0c0f" stroke="#1e1e24" stroke-width="1"/>
+
+									<!-- 窗口标题栏 -->
+									<rect x="40" y="20" width="476" height="40" rx="12" fill="#101014"/>
+									<rect x="40" y="48" width="476" height="12" fill="#101014"/>
+									<circle cx="56" cy="40" r="4" fill="#2b2b33"/>
+									<circle cx="70" cy="40" r="4" fill="#2b2b33"/>
+									<circle cx="84" cy="40" r="4" fill="#2b2b33"/>
+									<text x="160" y="45" fill="#565964" font-size="11" font-family="IBM Plex Mono">星轨 Astravia · 会话工作区</text>
+
+									<!-- 侧边栏 -->
+									<rect x="40" y="60" width="100" height="390" fill="#101014"/>
+									<text x="56" y="90" fill="#e9e9ec" font-size="12" font-weight="600" font-family="Hanken Grotesk">Astravia</text>
+
+									<!-- 侧边栏导航项 -->
+									<rect class="story__sidebar-nav" x="48" y="108" width="84" height="28" rx="6" fill="#1e1e24"/>
+									<text class="story__sidebar-text" x="60" y="127" fill="#7c8aff" font-size="11" font-weight="500" font-family="Hanken Grotesk">新会话</text>
+
+									<rect class="story__sidebar-nav" x="48" y="144" width="84" height="24" rx="4" fill="transparent"/>
+									<text class="story__sidebar-text" x="60" y="160" fill="#8e9199" font-size="11" font-family="Hanken Grotesk">自动化</text>
+
+									<rect class="story__sidebar-nav" x="48" y="176" width="84" height="24" rx="4" fill="transparent"/>
+									<text class="story__sidebar-text" x="60" y="192" fill="#8e9199" font-size="11" font-family="Hanken Grotesk">批量任务</text>
+
+									<rect class="story__sidebar-nav" x="48" y="208" width="84" height="24" rx="4" fill="transparent"/>
+									<text class="story__sidebar-text" x="60" y="224" fill="#8e9199" font-size="11" font-family="Hanken Grotesk">知识库</text>
+
+									<!-- 主内容区 -->
+									<rect x="140" y="60" width="376" height="390" fill="#08080a"/>
 
 									<!-- 消息区域 -->
-									<g class="story__svg-messages">
-										<!-- 用户消息气泡 -->
-										<g class="story__svg-msg-user" data-step="0">
-											<rect x="136" y="20" width="280" height="40" rx="12" fill="#1e1e24"/>
-											<text x="152" y="45" fill="#e9e9ec" font-size="11" font-family="Hanken Grotesk">帮我写一个 Python 脚本读取 CSV</text>
-										</g>
-										<!-- AI 思考中 -->
-										<g class="story__svg-msg-assistant" data-step="1" style="opacity:0">
-											<rect x="136" y="76" width="260" height="56" rx="12" fill="#101014" stroke="#2b2b33" stroke-width="1"/>
-											<circle cx="152" cy="92" r="4" fill="#7c8aff" opacity="0.8">
-												<animate attributeName="opacity" values="0.8;0.3;0.8" dur="1.5s" repeatCount="indefinite"/>
-											</circle>
-											<circle cx="168" cy="92" r="4" fill="#7c8aff" opacity="0.5">
-												<animate attributeName="opacity" values="0.5;0.2;0.5" dur="1.5s" repeatCount="indefinite" begin="0.2s"/>
-											</circle>
-											<circle cx="184" cy="92" r="4" fill="#7c8aff" opacity="0.3">
-												<animate attributeName="opacity" values="0.3;0.1;0.3" dur="1.5s" repeatCount="indefinite" begin="0.4s"/>
-											</circle>
-											<text x="152" y="116" fill="#565964" font-size="9" font-family="IBM Plex Mono">思考中...</text>
-										</g>
-										<!-- 工具调用 -->
-										<g class="story__svg-msg-tool" data-step="2" style="opacity:0">
-											<rect x="136" y="148" width="300" height="48" rx="8" fill="#0c0c0f" stroke="#1e1e24" stroke-width="1"/>
-											<rect x="148" y="158" width="16" height="16" rx="4" fill="#5e6ad2"/>
-											<text x="172" y="170" fill="#8e9199" font-size="9" font-family="IBM Plex Mono">write_file</text>
-											<text x="172" y="184" fill="#565964" font-size="8" font-family="IBM Plex Mono">script.py · 2.1s</text>
-											<rect x="400" y="162" width="24" height="16" rx="8" fill="#7fd6a2" opacity="0.2"/>
-											<text x="406" y="173" fill="#7fd6a2" font-size="8" font-family="IBM Plex Mono">✓</text>
-										</g>
-										<!-- 完整结果 -->
-										<g class="story__svg-msg-result" data-step="3" style="opacity:0">
-											<rect x="136" y="212" width="320" height="64" rx="12" fill="#101014" stroke="#2b2b33" stroke-width="1"/>
-											<text x="152" y="234" fill="#e9e9ec" font-size="11" font-family="Hanken Grotesk">已创建 script.py，包含以下功能：</text>
-											<rect x="148" y="244" width="296" height="20" rx="4" fill="#0b0b0e"/>
-											<text x="156" y="258" fill="#7fd6a2" font-size="9" font-family="IBM Plex Mono">import pandas as pd</text>
-										</g>
+									<!-- 用户消息 -->
+									<g class="story__svg-msg-user" data-step="0">
+										<rect x="160" y="84" width="240" height="36" rx="10" fill="#1e1e24"/>
+										<text x="176" y="107" fill="#e9e9ec" font-size="11" font-family="Hanken Grotesk">帮我写一个 Python 脚本读取 CSV</text>
+									</g>
+
+									<!-- AI 思考中 -->
+									<g class="story__svg-msg-assistant" data-step="1" style="opacity:0">
+										<rect x="160" y="132" width="200" height="44" rx="10" fill="#101014" stroke="#1e1e24" stroke-width="1"/>
+										<circle cx="176" cy="148" r="3" fill="#7c8aff">
+											<animate attributeName="opacity" values="1;0.3;1" dur="1.2s" repeatCount="indefinite"/>
+										</circle>
+										<circle cx="188" cy="148" r="3" fill="#7c8aff">
+											<animate attributeName="opacity" values="0.3;1;0.3" dur="1.2s" repeatCount="indefinite" begin="0.15s"/>
+										</circle>
+										<circle cx="200" cy="148" r="3" fill="#7c8aff">
+											<animate attributeName="opacity" values="1;0.3;1" dur="1.2s" repeatCount="indefinite" begin="0.3s"/>
+										</circle>
+										<text x="176" y="166" fill="#565964" font-size="9" font-family="IBM Plex Mono">思考中...</text>
+									</g>
+
+									<!-- 工具调用卡片 -->
+									<g class="story__svg-msg-tool" data-step="2" style="opacity:0">
+										<rect x="160" y="188" width="260" height="44" rx="8" fill="#0c0c0f" stroke="#1e1e24" stroke-width="1"/>
+										<!-- 工具图标 -->
+										<rect x="172" y="200" width="14" height="14" rx="3" fill="#5e6ad2"/>
+										<!-- 工具名称 -->
+										<text x="194" y="210" fill="#e9e9ec" font-size="10" font-weight="500" font-family="IBM Plex Mono">write_file</text>
+										<text x="194" y="222" fill="#565964" font-size="8" font-family="IBM Plex Mono">script.py · 2.1s</text>
+										<!-- 成功标记 -->
+										<circle cx="400" cy="210" r="8" fill="#1a2e1a"/>
+										<text x="396" y="214" fill="#7fd6a2" font-size="10" font-family="Hanken Grotesk">✓</text>
+									</g>
+
+									<!-- 完整结果 -->
+									<g class="story__svg-msg-result" data-step="3" style="opacity:0">
+										<rect x="160" y="244" width="280" height="56" rx="10" fill="#101014" stroke="#1e1e24" stroke-width="1"/>
+										<text x="176" y="264" fill="#e9e9ec" font-size="11" font-family="Hanken Grotesk">已创建 script.py，包含以下功能：</text>
+										<rect x="172" y="272" width="256" height="18" rx="3" fill="#0b0b0e"/>
+										<text x="180" y="285" fill="#7fd6a2" font-size="9" font-family="IBM Plex Mono">import pandas as pd</text>
 									</g>
 
 									<!-- 输入栏 -->
 									<g class="story__svg-inputbar">
-										<rect x="136" y="420" width="400" height="36" rx="18" fill="#101014" stroke="#1e1e24" stroke-width="1"/>
-										<text x="156" y="443" fill="#565964" font-size="10" font-family="Hanken Grotesk">向 Astravia 提问...</text>
+										<rect x="160" y="400" width="340" height="36" rx="18" fill="#101014" stroke="#1e1e24" stroke-width="1"/>
+										<text x="180" y="423" fill="#565964" font-size="11" font-family="Hanken Grotesk">向 Astravia 提问...</text>
 										<!-- 发送按钮 -->
-										<circle cx="516" cy="438" r="12" fill="#7c8aff"/>
-										<path d="M512 434l8 4-8 4" stroke="#08080a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+										<circle cx="480" cy="418" r="12" fill="#7c8aff"/>
+										<path d="M476 414l8 4-8 4" stroke="#08080a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
 									</g>
 
 									<!-- 步骤高亮覆盖层 -->
 									<g class="story__svg-highlight" data-step="0">
-										<rect x="130" y="414" width="412" height="48" rx="22" fill="none" stroke="#7c8aff" stroke-width="2" stroke-dasharray="4 4" opacity="0.6">
-											<animate attributeName="opacity" values="0.6;0.2;0.6" dur="2s" repeatCount="indefinite"/>
+										<rect x="154" y="394" width="352" height="48" rx="22" fill="none" stroke="#7c8aff" stroke-width="1.5" stroke-dasharray="4 4" opacity="0.5">
+											<animate attributeName="opacity" values="0.5;0.15;0.5" dur="2s" repeatCount="indefinite"/>
 										</rect>
 									</g>
 									<g class="story__svg-highlight" data-step="1" style="opacity:0">
-										<rect x="130" y="70" width="272" height="68" rx="16" fill="none" stroke="#7c8aff" stroke-width="2" stroke-dasharray="4 4" opacity="0.6"/>
+										<rect x="154" y="126" width="212" height="56" rx="14" fill="none" stroke="#7c8aff" stroke-width="1.5" stroke-dasharray="4 4" opacity="0.5"/>
 									</g>
 									<g class="story__svg-highlight" data-step="2" style="opacity:0">
-										<rect x="130" y="142" width="312" height="60" rx="12" fill="none" stroke="#7c8aff" stroke-width="2" stroke-dasharray="4 4" opacity="0.6"/>
+										<rect x="154" y="182" width="272" height="56" rx="12" fill="none" stroke="#7c8aff" stroke-width="1.5" stroke-dasharray="4 4" opacity="0.5"/>
 									</g>
 									<g class="story__svg-highlight" data-step="3" style="opacity:0">
-										<rect x="130" y="206" width="332" height="76" rx="16" fill="none" stroke="#7c8aff" stroke-width="2" stroke-dasharray="4 4" opacity="0.6"/>
+										<rect x="154" y="238" width="292" height="68" rx="14" fill="none" stroke="#7c8aff" stroke-width="1.5" stroke-dasharray="4 4" opacity="0.5"/>
 									</g>
 									<g class="story__svg-highlight" data-step="4" style="opacity:0">
-										<rect x="130" y="414" width="412" height="48" rx="22" fill="none" stroke="#7c8aff" stroke-width="2" stroke-dasharray="4 4" opacity="0.6">
-											<animate attributeName="opacity" values="0.6;0.2;0.6" dur="2s" repeatCount="indefinite"/>
+										<rect x="154" y="394" width="352" height="48" rx="22" fill="none" stroke="#7c8aff" stroke-width="1.5" stroke-dasharray="4 4" opacity="0.5">
+											<animate attributeName="opacity" values="0.5;0.15;0.5" dur="2s" repeatCount="indefinite"/>
 										</rect>
 									</g>
 								</svg>

@@ -21,7 +21,11 @@ export function initStory() {
 	const msgTool = svg.querySelector<SVGElement>("[data-step='2']");
 	const msgResult = svg.querySelector<SVGElement>("[data-step='3']");
 	const highlights = Array.from(svg.querySelectorAll<SVGElement>("[data-step]"));
-	const inputbar = svg.querySelector<SVGElement>(".story__svg-inputbar");
+	const sidebarNavs = Array.from(svg.querySelectorAll<SVGElement>(".story__sidebar-nav"));
+	const sidebarTexts = Array.from(svg.querySelectorAll<SVGTextElement>(".story__sidebar-text"));
+
+	// 步骤 → 侧边栏导航项映射（0=新会话，1=新会话，2=批量任务，3=新会话，4=知识库）
+	const navByStep = [0, 0, 2, 0, 3];
 
 	// CSS scroll-timeline 支持检测
 	const hasScrollTimeline = "ScrollTimeline" in window;
@@ -98,6 +102,7 @@ export function initStory() {
 			});
 		};
 		window.addEventListener("scroll", onScroll, { passive: true });
+		window.addEventListener("resize", onScroll);
 		onScroll();
 	} else {
 		// Fallback: 纯 JS 驱动
@@ -157,15 +162,30 @@ export function initStory() {
 			dots[i].setAttribute("aria-current", isActive ? "step" : "false");
 			copies[i].classList.toggle("is-active", isActive);
 		}
+		// 更新 SVG 侧边栏高亮
+		const activeNavIndex = navByStep[index];
+		sidebarNavs.forEach((nav, i) => {
+			if (i === activeNavIndex) {
+				nav.setAttribute("fill", "#1e1e24");
+				sidebarTexts[i].setAttribute("fill", "#7c8aff");
+				sidebarTexts[i].setAttribute("font-weight", "500");
+			} else {
+				nav.setAttribute("fill", "transparent");
+				sidebarTexts[i].setAttribute("fill", "#8e9199");
+				sidebarTexts[i].setAttribute("font-weight", "400");
+			}
+		});
 	}
 
-	// 点击步骤点：平滑滚动
+	// 点击步骤点：平滑滚动到对应位置
 	for (const dot of dots) {
 		dot.addEventListener("click", () => {
 			const index = Number(dot.dataset.storyDot ?? 0);
 			const rect = section.getBoundingClientRect();
 			const target = window.scrollY + rect.top + (index / (stepCount - 1)) * rect.height - window.innerHeight * 0.5;
 			window.scrollTo({ top: Math.max(0, target), behavior: reduceMotion ? "auto" : "smooth" });
+			// 点击后立即更新 UI
+			updateUI(index);
 		});
 	}
 }

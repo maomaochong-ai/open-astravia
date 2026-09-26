@@ -124,6 +124,106 @@ export default definePlugin({
 });
 ```
 
+### Full example: chart-renderer
+
+This is the actual bundled chart plugin that ships with Astravia. It does two things: registers a `render_chart` JS tool (which the agent invokes to produce a Chart.js chart), and renders a chart card below the message bubble.
+
+**Step 1 — Layout**
+
+```
+chart-renderer/
+├── plugin.json
+├── package.json        # deps: chart.js, react-chartjs-2
+├── vite.config.ts      # astraviaPluginFederation({ name: "chart_renderer", entry: "./src/index.tsx" })
+├── src/index.tsx       # definePlugin({ activate })
+├── src/ChartCard.tsx   # the actual chart-card React component
+├── src/ToolChartSlot.tsx
+├── locales/{zh,en}.json
+├── skills/chart-renderer/SKILL.md   # tells the agent when to invoke this tool
+└── icon.png
+```
+
+**Step 2 — plugin.json**
+
+```json
+{
+  "id": "chart-renderer",
+  "name": "%plugin.name%",
+  "runtime": "module-federation",
+  "entry": "dist/mf-manifest.json",
+  "permissions": [
+    "ui.slot.tool-call",
+    "agent.tools.register",
+    "agent.toolHandler.execute",
+    "agent.skills.control"
+  ],
+  "agent": { "skillPaths": ["skills/"] }
+}
+```
+
+Key point: `permissions` declares only the 4 actually used — the host prompts the user for each one at install time. `skillPaths` lets the host merge SKILL.md into the agent's skill library.
+
+**Step 3 — src/index.tsx (entry)**
+
+```tsx
+import { definePlugin } from "@astravia-org/plugin-sdk";
+import { ToolChartSlot } from "./ToolChartSlot";
+
+const parameters = {
+  type: "object",
+  properties: {
+    type: { type: "string", enum: ["line","bar","pie","doughnut"] },
+    data: { type: "object", description: "Standard Chart.js data (labels + datasets)" },
+    title: { type: "string" },
+    height: { type: "number", description: "Suggest 220–520" },
+  },
+  required: ["type", "data"],
+};
+
+export default definePlugin({
+  activate(ctx) {
+    // 1. Register a UI slot — when agent invokes render_chart, the host renders ToolChartSlot
+    ctx.ui.registerToolCallSlot({
+      id: "render-chart-tool-ui",
+      toolName: "render_chart",
+      component: ToolChartSlot,
+    });
+
+    // 2. Register the JS tool itself — the agent can now call it
+    ctx.agent.registerTool({
+      id: "chart-renderer",
+      name: "render_chart",
+      label: "Render Chart",
+      description: "Render an interactive Chart.js chart below the message",
+      parameters,
+      timeoutMs: 10_000,
+      handler: async ({ trigger }) => {
+        const { type, data, title, height = 300 } = trigger.input ?? {};
+        if (!type || !data) return { ok: false, retryable: true, error: "missing type or data" };
+        return { ok: true, rendered: true, summary: `Rendered ${title ?? "chart"}` };
+      },
+    });
+  },
+});
+```
+
+How the two extension points cooperate: **`registerTool`** teaches the agent that this capability exists and how to invoke it. **`registerToolCallSlot`** tells the host "when this tool is called, render this React component". The handler never touches DOM — it returns structured data, and the host renders ToolChartSlot.
+
+**Step 4 — Build & package**
+
+```bash
+bun install
+bun run build          # Output: dist/mf-manifest.json + remoteEntry.js + style.css
+zip -r chart-renderer.zip .   # Zip the whole directory
+```
+
+**Step 5 — Install into Astravia**
+
+- Dev/debug: `bun run dev` to start the desktop app, drag the zip into **Settings → Plugins → Install local plugin**
+- End users: put the zip on a GitHub Release, paste the repo URL in the plugin marketplace, the host fetches, verifies and installs.
+
+Source lives at `packages/plugins/presets/chart-renderer/` inside the main Astravia repo — open it up and follow along.
+
 ### Build & install
 
 ```bash

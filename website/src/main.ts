@@ -274,7 +274,7 @@ function initConstellation() {
 	if (svgEl) svgEl.style.display = "none";
 
 	function calcPositions() {
-		if (!pEl) return [];
+		if (!pEl || !theater) return [];
 		const tRect = theater.getBoundingClientRect();
 		const pRect = pEl.getBoundingClientRect();
 		const othersRect = others?.getBoundingClientRect();
@@ -349,9 +349,10 @@ function initConstellation() {
 	const iconMap: Record<string, string> = { macos: "ollama", windows: "kimi", linux: "grok" };
 	const platform = isMac && /ARM|arm64|aarch64/i.test(ua) ? "macos" : isMac ? "macos" : isWin ? "windows" : "linux";
 	document.querySelectorAll(".dl-platform-icon").forEach((el) => {
-		if (el.dataset.p === iconMap[platform]) {
-			el.style.opacity = "0.6";
-			el.style.borderColor = "var(--accent)";
+		const htmlEl = el as HTMLElement;
+		if (htmlEl.dataset.p === iconMap[platform]) {
+			htmlEl.style.opacity = "0.6";
+			htmlEl.style.borderColor = "var(--accent)";
 		}
 	});
 

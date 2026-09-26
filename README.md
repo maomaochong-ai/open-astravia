@@ -124,6 +124,106 @@ export default definePlugin({
 });
 ```
 
+### 完整实例：chart-renderer
+
+这就是随 Astravia 应用分发的内置图表插件。它做两件事：注册一个 `render_chart` 的 JS 工具（Agent 调用时生成 Chart.js 图表），并在消息气泡下方渲染图表卡片。
+
+**Step 1 — 目录**
+
+```
+chart-renderer/
+├── plugin.json
+├── package.json        # dependencies: chart.js, react-chartjs-2
+├── vite.config.ts      # astraviaPluginFederation({ name: "chart_renderer", entry: "./src/index.tsx" })
+├── src/index.tsx       # definePlugin({ activate })
+├── src/ChartCard.tsx   # 实际的图表卡片 React 组件
+├── src/ToolChartSlot.tsx
+├── locales/{zh,en}.json
+├── skills/chart-renderer/SKILL.md   # 告诉 Agent 什么时候该调用这个工具
+└── icon.png
+```
+
+**Step 2 — plugin.json**
+
+```json
+{
+  "id": "chart-renderer",
+  "name": "%plugin.name%",
+  "runtime": "module-federation",
+  "entry": "dist/mf-manifest.json",
+  "permissions": [
+    "ui.slot.tool-call",
+    "agent.tools.register",
+    "agent.toolHandler.execute",
+    "agent.skills.control"
+  ],
+  "agent": { "skillPaths": ["skills/"] }
+}
+```
+
+重点：`permissions` 只声明实际用到的 4 项，宿主安装时逐条弹窗；`skillPaths` 让 Agent 把插件打包的 SKILL.md 合入自己的技能库。
+
+**Step 3 — src/index.tsx（入口）**
+
+```tsx
+import { definePlugin } from "@astravia-org/plugin-sdk";
+import { ToolChartSlot } from "./ToolChartSlot";
+
+const parameters = {
+  type: "object",
+  properties: {
+    type: { type: "string", enum: ["line","bar","pie","doughnut"], description: "Chart.js 图表类型" },
+    data: { type: "object", description: "标准 Chart.js data（labels + datasets）" },
+    title: { type: "string" },
+    height: { type: "number", description: "建议 220–520" },
+  },
+  required: ["type", "data"],
+};
+
+export default definePlugin({
+  activate(ctx) {
+    // 1. 注册工具调用的 UI 插槽 — Agent 调用 render_chart 时，用 ToolChartSlot 组件渲染卡片
+    ctx.ui.registerToolCallSlot({
+      id: "render-chart-tool-ui",
+      toolName: "render_chart",
+      component: ToolChartSlot,
+    });
+
+    // 2. 注册 JS 工具 — Agent 可以调用它
+    ctx.agent.registerTool({
+      id: "chart-renderer",
+      name: "render_chart",
+      label: "渲染图表",
+      description: "在对话消息下方渲染一个交互式 Chart.js 图表",
+      parameters,
+      timeoutMs: 10_000,
+      handler: async ({ trigger }) => {
+        const { type, data, title, height = 300 } = trigger.input ?? {};
+        if (!type || !data) return { ok: false, retryable: true, error: "缺少 type 或 data" };
+        return { ok: true, rendered: true, summary: `已渲染 ${title ?? "图表"}` };
+      },
+    });
+  },
+});
+```
+
+注意两个扩展点的配合：**`registerTool`** 让 Agent 知道有这个能力并会调它，**`registerToolCallSlot`** 告诉宿主"这个工具被调用时，用哪个 React 组件来展示结果"。工具 handler 本身不渲染 UI，只返回结构化数据，UI 渲染由宿主调用 ToolChartSlot 完成。
+
+**Step 4 — 构建打包**
+
+```bash
+bun install
+bun run build          # 产物 dist/mf-manifest.json + remoteEntry.js + style.css
+zip -r chart-renderer.zip .   # 整个目录打包
+```
+
+**Step 5 — 安装到 Astravia**
+
+- 开发调试：`bun run dev` 启动桌面应用，把 zip 拖进「设置 → 插件 → 安装本地插件」
+- 分发给用户：把 zip 放到 GitHub Release，在插件市场填仓库 URL，宿主自动拉取 + 校验 + 安装
+
+源码位置：`packages/plugins/presets/chart-renderer/`，与 Astravia 主仓库同构，可直接对照。
+
 ### 构建与安装
 
 ```bash
