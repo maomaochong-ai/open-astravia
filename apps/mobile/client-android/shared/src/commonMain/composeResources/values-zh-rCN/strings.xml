@@ -10,6 +10,7 @@
         <item quantity="other">还有 %1$d 条</item>
     </plurals>
     <string name="board_stale">显示的是上次同步的状态</string>
+    <string name="board_view_all">查看全部</string>
     <string name="camera_permission_required">需要相机权限才能扫码</string>
     <string name="camera_unavailable">相机暂时不可用，请稍后重试</string>
     <string name="cancel">取消</string>
@@ -119,10 +120,9 @@
     </plurals>
     <string name="new_session_default_model">默认模型</string>
     <string name="new_session_default_model_hint">跟随电脑上的默认模型</string>
-    <string name="new_session_greeting">让我们开始吧</string>
+    <string name="new_session_greeting">你好</string>
     <string name="new_session_location">开始位置</string>
-    <string name="new_session_offline">电脑离线，重新连上后才能开始新会话。</string>
-    <string name="new_session_subtitle">我可以帮你处理工作，有什么可以帮助你的？</string>
+    <string name="new_session_subtitle">今天想做点什么？</string>
     <string name="new_session_title">新会话</string>
     <string name="pair_code_hint">两边显示的数字一致，才是你的电脑</string>
     <string name="pair_connect">连接</string>

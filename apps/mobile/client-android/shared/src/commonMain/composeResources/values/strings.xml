@@ -11,6 +11,7 @@
         <item quantity="other">%1$d more</item>
     </plurals>
     <string name="board_stale">Showing the last synced state</string>
+    <string name="board_view_all">View all</string>
     <string name="camera_permission_required">Camera access is needed to scan</string>
     <string name="camera_unavailable">The camera isn’t available right now. Try again later</string>
     <string name="cancel">Cancel</string>
@@ -127,10 +128,9 @@
     </plurals>
     <string name="new_session_default_model">Default model</string>
     <string name="new_session_default_model_hint">Whatever the desktop uses by default</string>
-    <string name="new_session_greeting">Let’s get started</string>
+    <string name="new_session_greeting">Hello</string>
     <string name="new_session_location">Start in</string>
-    <string name="new_session_offline">Your computer is offline. You can start once it reconnects.</string>
-    <string name="new_session_subtitle">I can help with your work. What can I do for you?</string>
+    <string name="new_session_subtitle">What shall we build?</string>
     <string name="new_session_title">New Session</string>
     <string name="pair_code_hint">It’s your computer only if both screens show the same digits</string>
     <string name="pair_connect">Connect</string>

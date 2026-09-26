@@ -206,6 +206,11 @@ private fun SlotContent(slot: Slot, workState: MirrorState, vm: AppViewModel, wo
                         },
                         onOpenHome = vm::openDrawer,
                         onClearError = work::clearError,
+                        onOpenBoard = vm::openBoard,
+                        onOpenSession = vm::show,
+                        onReconnect = work::reconnect,
+                        onPair = vm::openPairing,
+                        onRefreshProjects = work::refreshProjects,
                     )
                 }
             is Slot.Session ->
