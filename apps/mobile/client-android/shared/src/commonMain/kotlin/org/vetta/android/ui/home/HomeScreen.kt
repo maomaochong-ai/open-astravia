@@ -57,6 +57,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -167,7 +168,8 @@ fun HomeScreen(
         Modifier
             .fillMaxSize()
             .background(MaterialTheme.vettaExtra.pageBackground)
-            // A soft light at the top that scrolls away with the list.
+            // A soft light at the top that scrolls away with the list, kept within the page.
+            .clipToBounds()
             .drawBehind {
                 val scrolled = if (listState.firstVisibleItemIndex == 0) listState.firstVisibleItemScrollOffset.toFloat() else size.height
                 val radius = 420.dp.toPx()

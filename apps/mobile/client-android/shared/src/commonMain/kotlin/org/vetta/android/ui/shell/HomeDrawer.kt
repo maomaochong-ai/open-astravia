@@ -107,7 +107,8 @@ fun HomeDrawer(
                     }
                 },
         ) {
-            Box(Modifier.fillMaxSize().graphicsLayer { translationX = progress.value * width * 0.25f }) { content() }
+            // Clipped, so nothing a page draws past its own edge shows on the other side.
+            Box(Modifier.fillMaxSize().graphicsLayer { translationX = progress.value * width * 0.25f; clip = true }) { content() }
             // The page behind dims as the drawer comes over it, and takes no touches meanwhile.
             if (covered) {
                 Box(
@@ -143,7 +144,7 @@ fun HomeDrawer(
                         },
                     ),
             ) {
-                Box(Modifier.fillMaxSize().graphicsLayer { translationX = (progress.value - 1f) * width }) { drawer() }
+                Box(Modifier.fillMaxSize().graphicsLayer { translationX = (progress.value - 1f) * width; clip = true }) { drawer() }
             }
         }
     }
