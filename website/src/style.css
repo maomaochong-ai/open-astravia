@@ -667,6 +667,17 @@ code {
 	height: auto;
 }
 
+/* 深浅主题截图切换 */
+.hero__screenshot--light {
+	display: none;
+}
+:root[data-theme="light"] .hero__screenshot--dark {
+	display: none;
+}
+:root[data-theme="light"] .hero__screenshot--light {
+	display: block;
+}
+
 .hero__caption {
 	font-family: var(--font-mono);
 	font-size: 11.5px;
@@ -980,13 +991,10 @@ code {
 	flex-direction: column;
 	gap: 0;
 	position: relative;
+	min-height: 220px;
 }
 
 .story__copy-item {
-	position: absolute;
-	top: 0;
-	left: 0;
-	right: 0;
 	opacity: 0;
 	visibility: hidden;
 	transform: translateY(8px);
@@ -994,16 +1002,20 @@ code {
 		opacity 0.35s var(--ease),
 		transform 0.35s var(--ease),
 		visibility 0s linear 0.35s;
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
 }
 
 .story__copy-item.is-active {
-	position: relative;
 	opacity: 1;
 	visibility: visible;
 	transform: none;
 	transition:
 		opacity 0.35s var(--ease),
 		transform 0.35s var(--ease);
+	position: relative;
 }
 
 .story__step-num {
