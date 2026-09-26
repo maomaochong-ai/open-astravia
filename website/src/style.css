@@ -2107,35 +2107,8 @@ code {
 	justify-content: center;
 }
 
-.dl-notes {
-	max-width: 620px;
-	margin: 0 auto;
-	text-align: left;
-}
+/* ---------------- 开源 ---------------- */
 
-.dl-notes ul {
-	list-style: none;
-	margin: 0;
-	padding: 0;
-	display: grid;
-	gap: 6px;
-}
-
-.dl-notes li {
-	font-size: 13.5px;
-	color: var(--muted);
-	position: relative;
-	padding-left: 18px;
-}
-
-.dl-notes li::before {
-	content: "→";
-	position: absolute;
-	left: 0;
-	color: var(--accent);
-}
-
-/* 下载卡片（重构版） */
 .dl__cards {
 	display: grid;
 	grid-template-columns: repeat(3, 1fr);
