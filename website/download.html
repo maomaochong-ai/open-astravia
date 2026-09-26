@@ -168,137 +168,143 @@
 			const iconMap = { macos: "ollama", windows: "kimi", linux: "grok" };
 			document.querySelectorAll(".dl-platform-icon").forEach(el => { if (el.dataset.p === iconMap[platform]) el.classList.add("is-rec"); });
 
-			// === 掉落动画 ===
+			// === 掉落动画（有机散落） ===
 			const titleEl = document.getElementById("dlTitle");
 			const descEl = document.getElementById("dlDesc");
 			const theater = document.querySelector(".download-theater");
 			const footerEl = document.getElementById("footer");
-			const topIcons = document.querySelectorAll("#dlPlatforms .dl-platform-icon");
+			const topIcons = Array.from(document.querySelectorAll("#dlPlatforms .dl-platform-icon"));
 			const bottomContainer = document.getElementById("dlPlatformsBottom");
-			const ICON_SIZE = 52;
-			const GRAVITY = 0.5;
-			const BOUNCE = 0.45;
-			const STAGGER = 100;
+			const ICON = 52;
 
-			// 图标分配：2 个落在标题文字上，7 个落在描述文字上，剩余落在页脚顶部横线上
-			const titleCount = 2;
-			const descCount = 7;
-			const totalCount = topIcons.length;
-			const bottomCount = totalCount - titleCount - descCount;
+			// 分配：标题周围 2 个，描述周围 7 个，页脚横线 1 个
+			const titleCount = 2, descCount = 7, bottomCount = topIcons.length - titleCount - descCount;
 
-			function getTopTargets(count) {
-				const tw = theater.offsetWidth;
-				const theaterRect = theater.getBoundingClientRect();
-				const titleRect = titleEl.getBoundingClientRect();
-				// 图标中心落在标题文字中心
-				const targetY = titleRect.top + titleRect.height / 2 - theaterRect.top - ICON_SIZE / 2;
-				const totalW = count * 64;
-				const startX = (tw - totalW) / 2;
-				const targets = [];
-				for (let i = 0; i < count; i++) targets.push({ x: startX + i * 64 + 32, y: targetY });
-				for (let i = targets.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [targets[i], targets[j]] = [targets[j], targets[i]]; }
-				return targets;
-			}
-
-			function getDescTargets(count) {
-				const tw = theater.offsetWidth;
-				const theaterRect = theater.getBoundingClientRect();
-				const descRect = descEl.getBoundingClientRect();
-				// 图标中心落在描述文字中心
-				const targetY = descRect.top + descRect.height / 2 - theaterRect.top - ICON_SIZE / 2;
-				const totalW = count * 64;
-				const startX = (tw - totalW) / 2;
-				const targets = [];
-				for (let i = 0; i < count; i++) targets.push({ x: startX + i * 64 + 32, y: targetY });
-				for (let i = targets.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [targets[i], targets[j]] = [targets[j], targets[i]]; }
-				return targets;
-			}
-
-			function getBottomTargets(count) {
-				const tw = theater.offsetWidth;
-				const theaterRect = theater.getBoundingClientRect();
-				const footerRect = footerEl.getBoundingClientRect();
-				// 图标中心落在页脚顶部横线（border-top）
-				const targetY = footerRect.top - theaterRect.top - ICON_SIZE / 2;
-				const totalW = count * 64;
-				const startX = (tw - totalW) / 2;
-				const targets = [];
-				for (let i = 0; i < count; i++) targets.push({ x: startX + i * 64 + 32, y: targetY });
-				return targets;
+			// 在矩形区域内生成 n 个散落点（带边距和最小间距）
+			function scatterInRect(n, rect, padding = 24) {
+				const x0 = rect.left + padding, x1 = rect.right - padding;
+				const y0 = rect.top + padding, y1 = rect.bottom - padding;
+				const pts = [];
+				const minDist = ICON * 0.9;
+				let tries = 0;
+				while (pts.length < n && tries < n * 80) {
+					tries++;
+					const x = x0 + Math.random() * (x1 - x0);
+					const y = y0 + Math.random() * (y1 - y0);
+					if (pts.every(p => Math.hypot(p.x - x, p.y - y) >= minDist)) pts.push({ x, y });
+				}
+				// 兜底：均匀填充
+				while (pts.length < n) {
+					const i = pts.length;
+					pts.push({
+						x: x0 + (i + 0.5) * (x1 - x0) / Math.max(n, 1),
+						y: y0 + Math.random() * (y1 - y0),
+					});
+				}
+				return pts;
 			}
 
 			class FallingIcon {
 				constructor(el, tx, ty, delay) {
 					this.el = el; this.tx = tx; this.ty = ty; this.delay = delay;
-					// 从页面顶部上方开始
-					this.y = -80 - Math.random() * 200;
-					this.vy = 0; this.rot = (Math.random() - 0.5) * 40; this.vRot = (Math.random() - 0.5) * 5;
-					this.scale = 0.3; this.bounce = 0; this.maxBounce = 2 + Math.floor(Math.random() * 2);
+					// 从 theater 顶部以上随机高度掉落
+					this.y = -60 - Math.random() * 260;
+					this.vy = 0;
+					this.rot = (Math.random() - 0.5) * 30;
+					this.vRot = (Math.random() - 0.5) * 4;
+					this.scale = 0.25;
+					this.bounce = 0;
+					this.maxBounce = 2 + Math.floor(Math.random() * 2);
 					this.landed = false; this.settled = false; this.start = 0;
-					// 初始位置：X 固定，Y 在视口外
+					// 绝对定位：left/top 是 theater 内坐标
 					el.style.left = `${tx}px`;
 					el.style.top = `${this.y}px`;
-					el.style.marginLeft = `${-ICON_SIZE / 2}px`;
-					el.style.marginTop = `${-ICON_SIZE / 2}px`;
+					el.style.marginLeft = `${-ICON / 2}px`;
+					el.style.marginTop = `${-ICON / 2}px`;
 				}
 				update(time) {
 					if (time < this.delay) return;
 					if (!this.start) this.start = time;
 					const elapsed = time - this.start - this.delay;
 					if (!this.landed) {
-						this.vy += GRAVITY; this.y += this.vy; this.rot += this.vRot;
+						this.vy += 0.45;
+						this.y += this.vy;
+						this.rot += this.vRot;
 						if (this.y >= this.ty) {
-							this.y = this.ty; this.vy = -this.vy * BOUNCE; this.vRot *= -0.5; this.bounce++;
-							const tilt = (Math.random() - 0.5) * 3;
-							if (this.ty < 220) {
+							this.y = this.ty;
+							this.vy = -this.vy * 0.4;
+							this.vRot *= -0.4;
+							this.bounce++;
+							// 微抖下方元素
+							if (this.ty < 260) {
+								const tilt = (Math.random() - 0.5) * 2.5;
 								titleEl.style.transform = `rotate(${tilt}deg)`;
-								setTimeout(() => { titleEl.style.transform = ""; }, 200);
-							} else if (this.ty < 420) {
+								setTimeout(() => { titleEl.style.transform = ""; }, 180);
+							} else if (this.ty < 480) {
+								const tilt = (Math.random() - 0.5) * 2.5;
 								descEl.style.transform = `rotate(${tilt}deg)`;
-								setTimeout(() => { descEl.style.transform = ""; }, 250);
+								setTimeout(() => { descEl.style.transform = ""; }, 220);
 							}
-							if (this.bounce >= this.maxBounce || Math.abs(this.vy) < 0.5) { this.landed = true; this.vy = 0; this.vRot = 0; }
+							if (this.bounce >= this.maxBounce || Math.abs(this.vy) < 0.4) {
+								this.landed = true; this.vy = 0; this.vRot = 0;
+							}
 						}
-						this.scale = Math.min(1, 0.3 + 0.7 * Math.min(elapsed / 400, 1));
+						this.scale = Math.min(1, 0.25 + 0.75 * Math.min(elapsed / 350, 1));
 					} else if (!this.settled) {
-						const decay = Math.max(0, 1 - (time - this.start - this.delay - 300) / 600);
-						this.rot *= (1 - 0.05 * decay);
-						if (decay < 0.01) this.settled = true;
+						const d = Math.max(0, 1 - (time - this.start - this.delay - 280) / 550);
+						this.rot *= (1 - 0.06 * d);
+						if (d < 0.01) this.settled = true;
 					}
 					this.el.style.opacity = "1";
 					this.el.style.transform = `translateY(${this.y}px) scale(${this.scale}) rotate(${this.rot}deg)`;
 				}
 			}
 
-			const allIcons = Array.from(topIcons);
 			const anims = [];
-
 			function loop(time) { for (const a of anims) a.update(time); requestAnimationFrame(loop); }
 
 			window.addEventListener("load", () => {
-				// 重新计算目标位置（确保 DOM 布局完成）
-				const titleTargets = getTopTargets(titleCount);
-				const descTargets = getDescTargets(descCount);
-				const bottomTargets = getBottomTargets(bottomCount > 0 ? bottomCount : 0);
+				const theaterRect = theater.getBoundingClientRect();
+				const tr = titleEl.getBoundingClientRect();
+				const dr = descEl.getBoundingClientRect();
+				const fr = footerEl.getBoundingClientRect();
 
-				// 标题上方图标
-				for (let i = 0; i < titleCount && i < allIcons.length; i++) {
-					anims.push(new FallingIcon(allIcons[i], titleTargets[i].x, titleTargets[i].y, 200 + i * STAGGER));
+				// 目标区域转换为 theater 内坐标
+				const titleBand = {
+					left: tr.left - theaterRect.left - 30,
+					right: tr.right - theaterRect.left + 30,
+					top: tr.top - theaterRect.top - 20,
+					bottom: tr.bottom - theaterRect.top + 20,
+				};
+				const descBand = {
+					left: dr.left - theaterRect.left - 20,
+					right: dr.right - theaterRect.left + 20,
+					top: dr.top - theaterRect.top - 20,
+					bottom: dr.bottom - theaterRect.top + 20,
+				};
+				const footerBand = {
+					left: 0,
+					right: theaterRect.width,
+					top: fr.top - theaterRect.top - ICON / 2,
+					bottom: fr.top - theaterRect.top + ICON / 2,
+				};
+
+				const titleTargets = scatterInRect(titleCount, titleBand, 18);
+				const descTargets = scatterInRect(descCount, descBand, 18);
+				const footerTargets = scatterInRect(bottomCount, footerBand, 36);
+
+				let idx = 0;
+				for (const t of titleTargets) {
+					anims.push(new FallingIcon(topIcons[idx++], t.x, t.y, 120 + Math.random() * 200));
 				}
-
-				// 描述文字上方图标
-				for (let i = 0; i < descCount && (titleCount + i) < allIcons.length; i++) {
-					anims.push(new FallingIcon(allIcons[titleCount + i], descTargets[i].x, descTargets[i].y, 400 + (titleCount + i) * STAGGER));
+				for (const t of descTargets) {
+					anims.push(new FallingIcon(topIcons[idx++], t.x, t.y, 380 + Math.random() * 260));
 				}
-
-				// 页脚横线图标
-				if (bottomCount > 0) {
-					for (let i = 0; i < bottomCount && (titleCount + descCount + i) < allIcons.length; i++) {
-						const icon = allIcons[titleCount + descCount + i];
-						bottomContainer.appendChild(icon);
-						icon.style.position = "relative";
-						anims.push(new FallingIcon(icon, bottomTargets[i].x, bottomTargets[i].y, 600 + (titleCount + descCount + i) * STAGGER));
-					}
+				for (const t of footerTargets) {
+					const icon = topIcons[idx++];
+					bottomContainer.appendChild(icon);
+					icon.style.position = "relative";
+					anims.push(new FallingIcon(icon, t.x, t.y, 700 + Math.random() * 300));
 				}
 
 				requestAnimationFrame(loop);
