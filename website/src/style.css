@@ -2135,6 +2135,109 @@ code {
 	color: var(--accent);
 }
 
+/* 下载卡片（重构版） */
+.dl__cards {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 14px;
+	max-width: 720px;
+	margin: 0 auto;
+}
+
+.dl-card {
+	display: flex;
+	align-items: center;
+	gap: 14px;
+	padding: 18px 20px;
+	background: var(--elev);
+	border: 1px solid var(--line);
+	border-radius: 14px;
+	text-decoration: none;
+	color: var(--ink);
+	transition:
+		border-color 0.18s var(--ease),
+		box-shadow 0.18s var(--ease),
+		transform 0.18s var(--ease);
+}
+
+.dl-card:hover {
+	border-color: var(--accent);
+	box-shadow: 0 4px 20px -8px rgba(124, 138, 255, 0.25);
+	transform: translateY(-2px);
+}
+
+.dl-card:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}
+
+.dl-card--coming {
+	opacity: 0.5;
+	cursor: default;
+	pointer-events: none;
+}
+
+.dl-card-icon {
+	flex: none;
+	width: 40px;
+	height: 40px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--muted);
+}
+
+.dl-card-body {
+	flex: 1;
+	min-width: 0;
+}
+
+.dl-card-label {
+	display: block;
+	font-size: 15px;
+	font-weight: 600;
+	line-height: 1.3;
+}
+
+.dl-card-desc {
+	display: block;
+	font-size: 12.5px;
+	color: var(--muted);
+	margin-top: 2px;
+}
+
+.dl-card-arrow {
+	flex: none;
+	width: 28px;
+	height: 28px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--muted);
+	transition:
+		color 0.15s var(--ease),
+		transform 0.15s var(--ease);
+}
+
+.dl-card:hover .dl-card-arrow {
+	color: var(--accent);
+	transform: translateX(2px);
+}
+
+.dl-card-badge {
+	flex: none;
+	padding: 4px 10px;
+	font-size: 11.5px;
+	font-family: var(--font-mono);
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	color: var(--faint);
+	background: var(--tint);
+	border: 1px solid var(--line-strong);
+	border-radius: 999px;
+	white-space: nowrap;
+}
+
 /* ---------------- 开源 ---------------- */
 
 .oss__grid {
@@ -2311,6 +2414,22 @@ code {
 	font-size: 12px;
 	color: var(--faint);
 	margin: 0;
+}
+
+.footer__links {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.footer__links a {
+	color: var(--faint);
+	text-decoration: none;
+	transition: color 0.18s ease;
+}
+
+.footer__links a:hover {
+	color: var(--ink);
 }
 
 /* ---------------- 滚动显现 ---------------- */
@@ -2493,6 +2612,11 @@ code {
 
 	.dl-tabs {
 		max-width: 100%;
+	}
+
+	.dl__cards {
+		grid-template-columns: 1fr;
+		max-width: 340px;
 	}
 
 	.hero__title {

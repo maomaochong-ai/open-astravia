@@ -530,48 +530,40 @@
 
 
 				<div class="dl reveal">
-					<p class="dl__detect" id="dlDetect" hidden>
-						<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
-						<span id="dlDetectText">已自动识别你的系统</span>
-					</p>
-					<div class="dl-panel">
-						<div class="dl-tabs" role="tablist" aria-label="选择操作系统">
-							<button class="dl-tab is-active" id="dlTabMacos" type="button" role="tab" aria-selected="true" aria-controls="dlPaneMacos" data-os="macos">
-								<svg width="15" height="15" viewBox="0 0 26 26" fill="none" aria-hidden="true"><path d="M21.7 18.1c-.6 1.4-1.3 2.6-2.4 3.8-.9 1-1.9 2-3.2 2-1.4 0-1.8-.8-3.4-.8-1.6 0-2.2.8-3.5.8-1.3.1-2.3-1-3.2-2-1.7-1.9-3-4.3-3.4-6.9-.4-2.8.3-5.5 1.7-7.2 1-1.3 2.5-2.1 4-2.2 1.4 0 2.7.9 3.5.9.8 0 2-1.1 3.7-1 1.1 0 2.2.5 3 1.3-2.6 1.5-2 4.9.2 6.2ZM15.6 3.1c0 .4 0 .8-.1 1.2-.4 1.7-1.8 3-3.4 3.3 0-.5 0-1 .1-1.5.3-1.6 1.7-2.9 3.4-3Z" fill="currentColor" /></svg>
-								macOS
-							</button>
-							<button class="dl-tab" id="dlTabWindows" type="button" role="tab" aria-selected="false" aria-controls="dlPaneWindows" data-os="windows" tabindex="-1">
-								<svg width="15" height="15" viewBox="0 0 26 26" fill="none" aria-hidden="true"><path d="M3.5 4.6 12 3.2v9H3.5V4.6Zm9.9-.7 9.1-1.6v10.3h-9.1V3.9Zm-9.9 11.2H12V22L3.5 20.7v-5.6Zm9.9 0h9.1v8.7l-9.1-1.6v-7.1Z" fill="currentColor" /></svg>
-								Windows
-							</button>
-							<button class="dl-tab" id="dlTabLinux" type="button" role="tab" aria-selected="false" aria-controls="dlPaneLinux" data-os="linux" tabindex="-1">
-								<svg width="15" height="15" viewBox="0 0 26 26" fill="none" aria-hidden="true"><path d="M13 2.5c-1.4 0-2.6.7-3.2 1.8-.6-.2-1.2-.1-1.7.2-.5.3-.8.9-1 1.6-.9.4-1.4 1.2-1.5 2.1-.3.1-.6.3-.9.6-.4.4-.6.9-.6 1.5 0 1.7.8 2.8 1.9 3.4-.6 1.6-.4 3.6.7 5.4 1 1.7 2.7 3 4.7 3.5l.2 2.4h3l.2-2.4c2-.5 3.7-1.8 4.7-3.5 1.1-1.8 1.3-3.8.7-5.4 1.1-.6 1.9-1.7 1.9-3.4 0-.6-.2-1.1-.6-1.5-.3-.3-.6-.5-.9-.6-.1-.9-.6-1.7-1.5-2.1-.2-.7-.5-1.3-1-1.6-.5-.3-1.1-.4-1.7-.2-.6-1.1-1.8-1.8-3.2-1.8Z" fill="currentColor" /></svg>
-								Linux
-							</button>
-						</div>
-						<div class="dl-panes">
-							<div class="dl-pane is-active" id="dlPaneMacos" role="tabpanel" aria-labelledby="dlTabMacos">
-								<p class="dl-pane__platform">macOS</p>
-								<p class="dl-pane__note">macOS 12+ · Apple Silicon &amp; Intel</p>
-								<a class="btn btn--primary btn--lg dl-pane__cta" href="https://dl.astravia.dev/app/v0.55.37/Astravia-0.55.37-arm64.dmg" target="_blank" rel="noopener">
-									下载 macOS 版
-									<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v12m0 0 5-5m-5 5-5-5" /><path d="M4 20h16" /></svg>
-								</a>
+					<div class="dl__cards">
+						<a class="dl-card" href="https://dl.astravia.dev/app/v0.55.37/Astravia-0.55.37-arm64.dmg" target="_blank" rel="noopener">
+							<span class="dl-card-icon" aria-hidden="true">
+								<svg width="24" height="24" viewBox="0 0 26 26" fill="none"><path d="M21.7 18.1c-.6 1.4-1.3 2.6-2.4 3.8-.9 1-1.9 2-3.2 2-1.4 0-1.8-.8-3.4-.8-1.6 0-2.2.8-3.5.8-1.3.1-2.3-1-3.2-2-1.7-1.9-3-4.3-3.4-6.9-.4-2.8.3-5.5 1.7-7.2 1-1.3 2.5-2.1 4-2.2 1.4 0 2.7.9 3.5.9.8 0 2-1.1 3.7-1 1.1 0 2.2.5 3 1.3-2.6 1.5-2 4.9.2 6.2ZM15.6 3.1c0 .4 0 .8-.1 1.2-.4 1.7-1.8 3-3.4 3.3 0-.5 0-1 .1-1.5.3-1.6 1.7-2.9 3.4-3Z" fill="currentColor" /></svg>
+							</span>
+							<div class="dl-card-body">
+								<span class="dl-card-label">macOS</span>
+								<span class="dl-card-desc">12+ · Apple Silicon & Intel</span>
 							</div>
-							<div class="dl-pane" id="dlPaneWindows" role="tabpanel" aria-labelledby="dlTabWindows" hidden>
-								<p class="dl-pane__platform">Windows</p>
-								<p class="dl-pane__note">Windows 10+ · x64</p>
-								<a class="btn btn--primary btn--lg dl-pane__cta" href="https://dl.astravia.dev/app/v0.55.37/Astravia-0.55.37-win-x64.exe" target="_blank" rel="noopener">
-									下载 Windows 版
-									<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v12m0 0 5-5m-5 5-5-5" /><path d="M4 20h16" /></svg>
-								</a>
+							<span class="dl-card-arrow" aria-hidden="true">
+								<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v12m0 0 5-5m-5 5-5-5" /><path d="M4 20h16" /></svg>
+							</span>
+						</a>
+						<a class="dl-card" href="https://dl.astravia.dev/app/v0.55.37/Astravia-0.55.37-win-x64.exe" target="_blank" rel="noopener">
+							<span class="dl-card-icon" aria-hidden="true">
+								<svg width="24" height="24" viewBox="0 0 26 26" fill="none"><path d="M3.5 4.6 12 3.2v9H3.5V4.6Zm9.9-.7 9.1-1.6v10.3h-9.1V3.9Zm-9.9 11.2H12V22L3.5 20.7v-5.6Zm9.9 0h9.1v8.7l-9.1-1.6v-7.1Z" fill="currentColor" /></svg>
+							</span>
+							<div class="dl-card-body">
+								<span class="dl-card-label">Windows</span>
+								<span class="dl-card-desc">10+ · x64</span>
 							</div>
-							<div class="dl-pane" id="dlPaneLinux" role="tabpanel" aria-labelledby="dlTabLinux" hidden>
-								<p class="dl-pane__platform">Linux</p>
-								<p class="dl-pane__note">主流发行版 · AppImage</p>
-								<p class="dl-pane__file">即将推出</p>
-								<span class="btn btn--primary btn--lg dl-pane__cta" aria-disabled="true">即将推出</span>
+							<span class="dl-card-arrow" aria-hidden="true">
+								<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v12m0 0 5-5m-5 5-5-5" /><path d="M4 20h16" /></svg>
+							</span>
+						</a>
+						<div class="dl-card dl-card--coming" aria-disabled="true">
+							<span class="dl-card-icon" aria-hidden="true">
+								<svg width="24" height="24" viewBox="0 0 26 26" fill="none"><path d="M13 2.5c-1.4 0-2.6.7-3.2 1.8-.6-.2-1.2-.1-1.7.2-.5.3-.8.9-1 1.6-.9.4-1.4 1.2-1.5 2.1-.3.1-.6.3-.9.6-.4.4-.6.9-.6 1.5 0 1.7.8 2.8 1.9 3.4-.6 1.6-.4 3.6.7 5.4 1 1.7 2.7 3 4.7 3.5l.2 2.4h3l.2-2.4c2-.5 3.7-1.8 4.7-3.5 1.1-1.8 1.3-3.8.7-5.4 1.1-.6 1.9-1.7 1.9-3.4 0-.6-.2-1.1-.6-1.5-.3-.3-.6-.5-.9-.6-.1-.9-.6-1.7-1.5-2.1-.2-.7-.5-1.3-1-1.6-.5-.3-1.1-.4-1.7-.2-.6-1.1-1.8-1.8-3.2-1.8Z" fill="currentColor" /></svg>
+							</span>
+							<div class="dl-card-body">
+								<span class="dl-card-label">Linux</span>
+								<span class="dl-card-desc">主流发行版 · AppImage</span>
 							</div>
+							<span class="dl-card-badge">即将推出</span>
 						</div>
 					</div>
 				</div>
