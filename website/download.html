@@ -168,7 +168,7 @@
 			const iconMap = { macos: "ollama", windows: "kimi", linux: "grok" };
 			document.querySelectorAll(".dl-platform-icon").forEach(el => { if (el.dataset.p === iconMap[platform]) el.classList.add("is-rec"); });
 
-			// === 掉落动画（有机散落） ===
+			// === 掉落动画 ===
 			const titleEl = document.getElementById("dlTitle");
 			const descEl = document.getElementById("dlDesc");
 			const theater = document.querySelector(".download-theater");
@@ -176,30 +176,44 @@
 			const topIcons = Array.from(document.querySelectorAll("#dlPlatforms .dl-platform-icon"));
 			const bottomContainer = document.getElementById("dlPlatformsBottom");
 			const ICON = 52;
+			const GAP = ICON + 10; // 图标间最小净间距
 
-			// 分配：标题周围 2 个，描述周围 7 个，页脚横线 1 个
-			const titleCount = 2, descCount = 7, bottomCount = topIcons.length - titleCount - descCount;
+			// 按实际图标数自适应分配：标题上方 ~35%，描述上方 ~55%，底部 ~10%
+			const total = topIcons.length;
+			const titleCount = Math.max(1, Math.round(total * 0.35));
+			const descCount = Math.max(1, Math.round(total * 0.55));
+			const bottomCount = Math.max(0, total - titleCount - descCount);
 
-			// 在矩形区域内生成 n 个散落点（带边距和最小间距）
-			function scatterInRect(n, rect, padding = 24) {
+			// 在矩形内生成 n 个不重叠散点（带 padding）
+			function scatterInRect(n, rect, padding) {
+				const W = rect.right - rect.left, H = rect.bottom - rect.top;
+				if (W <= padding * 2 || H <= padding * 2 || n <= 0) return [];
 				const x0 = rect.left + padding, x1 = rect.right - padding;
 				const y0 = rect.top + padding, y1 = rect.bottom - padding;
 				const pts = [];
-				const minDist = ICON * 0.9;
+				const minDist = GAP;
 				let tries = 0;
-				while (pts.length < n && tries < n * 80) {
+				const maxTries = n * 200;
+				while (pts.length < n && tries < maxTries) {
 					tries++;
 					const x = x0 + Math.random() * (x1 - x0);
 					const y = y0 + Math.random() * (y1 - y0);
 					if (pts.every(p => Math.hypot(p.x - x, p.y - y) >= minDist)) pts.push({ x, y });
 				}
-				// 兜底：均匀填充
-				while (pts.length < n) {
-					const i = pts.length;
-					pts.push({
-						x: x0 + (i + 0.5) * (x1 - x0) / Math.max(n, 1),
-						y: y0 + Math.random() * (y1 - y0),
-					});
+				// 网格兜底：用正交网格填充剩余位置，保证不重叠
+				if (pts.length < n) {
+					const cols = Math.ceil((x1 - x0) / (minDist * 0.8));
+					const rows = Math.ceil((y1 - y0) / (minDist * 0.8));
+					const cells = [];
+					for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+						cells.push({ x: x0 + (c + 0.5) * (x1 - x0) / cols, y: y0 + (r + 0.5) * (y1 - y0) / rows });
+					}
+					for (const cell of cells) {
+						if (pts.length >= n) break;
+						if (pts.every(p => Math.hypot(p.x - cell.x, p.y - cell.y) >= minDist)) pts.push(cell);
+					}
+					// 最终兜底：哪怕重叠也填上
+					while (pts.length < n) pts.push({ x: x0 + Math.random() * (x1 - x0), y: y0 + Math.random() * (y1 - y0) });
 				}
 				return pts;
 			}
@@ -207,8 +221,7 @@
 			class FallingIcon {
 				constructor(el, tx, ty, delay) {
 					this.el = el; this.tx = tx; this.ty = ty; this.delay = delay;
-					// 从 theater 顶部内部开始（overflow:hidden 会裁掉 theater 外的元素）
-					this.y = 40 + Math.random() * 60;
+					this.y = 60 + Math.random() * 50;
 					this.vy = 0;
 					this.rot = (Math.random() - 0.5) * 30;
 					this.vRot = (Math.random() - 0.5) * 4;
@@ -217,6 +230,7 @@
 					this.maxBounce = 2 + Math.floor(Math.random() * 2);
 					this.landed = false; this.settled = false; this.start = 0;
 					el.style.opacity = "1";
+					el.style.transform = "";
 					el.style.left = `${tx}px`;
 					el.style.top = `${this.y}px`;
 					el.style.marginLeft = `${-ICON / 2}px`;
@@ -235,16 +249,6 @@
 							this.vy = -this.vy * 0.4;
 							this.vRot *= -0.4;
 							this.bounce++;
-							// 微抖下方元素
-							if (this.ty < 260) {
-								const tilt = (Math.random() - 0.5) * 2.5;
-								titleEl.style.transform = `rotate(${tilt}deg)`;
-								setTimeout(() => { titleEl.style.transform = ""; }, 180);
-							} else if (this.ty < 480) {
-								const tilt = (Math.random() - 0.5) * 2.5;
-								descEl.style.transform = `rotate(${tilt}deg)`;
-								setTimeout(() => { descEl.style.transform = ""; }, 220);
-							}
 							if (this.bounce >= this.maxBounce || Math.abs(this.vy) < 0.4) {
 								this.landed = true; this.vy = 0; this.vRot = 0;
 							}
@@ -252,10 +256,9 @@
 						this.scale = Math.min(1, 0.25 + 0.75 * Math.min(elapsed / 350, 1));
 					} else if (!this.settled) {
 						const d = Math.max(0, 1 - (time - this.start - this.delay - 280) / 550);
-						this.rot *= (1 - 0.06 * d);
+						this.rot *= (1 - 0.08 * d);
 						if (d < 0.01) this.settled = true;
 					}
-					this.el.style.opacity = "1";
 					this.el.style.transform = `translateY(${this.y}px) scale(${this.scale}) rotate(${this.rot}deg)`;
 				}
 			}
@@ -263,46 +266,60 @@
 			const anims = [];
 			function loop(time) { for (const a of anims) a.update(time); requestAnimationFrame(loop); }
 			function start() {
+				// 先把所有图标重置为 theater 内绝对定位状态
+				topIcons.forEach(el => {
+					el.style.opacity = "0";
+					el.style.position = "absolute";
+					el.style.transform = "";
+					el.style.top = "0"; el.style.left = "0";
+					el.style.marginTop = `${-ICON / 2}px`;
+					el.style.marginLeft = `${-ICON / 2}px`;
+					bottomContainer.contains(el) && bottomContainer.removeChild(el);
+				});
+
 				const theaterRect = theater.getBoundingClientRect();
 				const tr = titleEl.getBoundingClientRect();
 				const dr = descEl.getBoundingClientRect();
 				const fr = footerEl.getBoundingClientRect();
 
+				// theater 内坐标
 				const titleBand = {
-					left: tr.left - theaterRect.left - 30,
-					right: tr.right - theaterRect.left + 30,
-					top: tr.top - theaterRect.top - 20,
-					bottom: tr.bottom - theaterRect.top + 20,
+					left: tr.left - theaterRect.left - 40,
+					right: tr.right - theaterRect.left + 40,
+					top: tr.top - theaterRect.top - ICON - 10,
+					bottom: tr.bottom - theaterRect.top + ICON + 10,
 				};
 				const descBand = {
-					left: dr.left - theaterRect.left - 20,
-					right: dr.right - theaterRect.left + 20,
-					top: dr.top - theaterRect.top - 20,
-					bottom: dr.bottom - theaterRect.top + 20,
+					left: dr.left - theaterRect.left - 40,
+					right: dr.right - theaterRect.left + 40,
+					top: dr.top - theaterRect.top - ICON - 10,
+					bottom: dr.bottom - theaterRect.top + ICON + 10,
 				};
 				const footerBand = {
-					left: 0,
-					right: theaterRect.width,
+					left: 40, right: theaterRect.width - 40,
 					top: fr.top - theaterRect.top - ICON / 2,
 					bottom: fr.top - theaterRect.top + ICON / 2,
 				};
 
-				const titleTargets = scatterInRect(titleCount, titleBand, 18);
-				const descTargets = scatterInRect(descCount, descBand, 18);
-				const footerTargets = scatterInRect(bottomCount, footerBand, 36);
+				const titleTargets = scatterInRect(titleCount, titleBand, 22);
+				const descTargets = scatterInRect(descCount, descBand, 22);
+				const footerTargets = scatterInRect(bottomCount, footerBand, 22);
 
 				let idx = 0;
 				for (const t of titleTargets) {
-					anims.push(new FallingIcon(topIcons[idx++], t.x, t.y, 120 + Math.random() * 200));
+					if (idx >= topIcons.length) break;
+					anims.push(new FallingIcon(topIcons[idx++], t.x, t.y, 100 + Math.random() * 200));
 				}
 				for (const t of descTargets) {
-					anims.push(new FallingIcon(topIcons[idx++], t.x, t.y, 380 + Math.random() * 260));
+					if (idx >= topIcons.length) break;
+					anims.push(new FallingIcon(topIcons[idx++], t.x, t.y, 350 + Math.random() * 250));
 				}
 				for (const t of footerTargets) {
+					if (idx >= topIcons.length) break;
 					const icon = topIcons[idx++];
 					bottomContainer.appendChild(icon);
-					icon.style.position = "relative";
-					anims.push(new FallingIcon(icon, t.x, t.y, 700 + Math.random() * 300));
+					icon.style.position = "absolute";
+					anims.push(new FallingIcon(icon, t.x, t.y, 650 + Math.random() * 300));
 				}
 
 				requestAnimationFrame(loop);
