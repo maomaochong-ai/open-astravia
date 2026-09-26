@@ -109,6 +109,8 @@ export interface RemoteResponse {
 export type RemoteEventName =
 	| "device.status"
 	| "device.paired"
+	/** The desktop removed this phone's pairing; sent just before the link closes. */
+	| "device.revoked"
 	| "session.list"
 	| "session.state"
 	| "session.message"

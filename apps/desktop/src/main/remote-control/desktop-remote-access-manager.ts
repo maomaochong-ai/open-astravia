@@ -299,6 +299,9 @@ export class DesktopRemoteAccessManager {
 			clearTimeout(this.invite.timer);
 			this.invite = undefined;
 		}
+		// A phone that is connected hears it at once and clears what it cached; one that is
+		// not finds out when this desktop's local server no longer knows its pairing.
+		if (this.hub.isOnline(id)) await this.hub.emit(id, "device.revoked").catch(() => undefined);
 		await this.hub.drop(id);
 		await this.desktopHosts
 			.get(id)

@@ -37,6 +37,7 @@ const requestMethods = new Set([
 const eventNames = new Set([
 	"device.status",
 	"device.paired",
+	"device.revoked",
 	"session.list",
 	"session.state",
 	"session.message",

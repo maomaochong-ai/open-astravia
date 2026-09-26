@@ -135,7 +135,7 @@
     },
     "devices": {
       "title": "Paired phones",
-      "description": "You can remove each phone separately. Removing one also clears its local conversation history.",
+      "description": "You can remove each phone separately. A removed phone can no longer connect and clears its cached sessions once it hears about it; the sessions on this computer stay.",
       "empty": "No phone is paired yet. Scan the QR code below to add one.",
       "unnamed": "Phone",
       "online": "Online",

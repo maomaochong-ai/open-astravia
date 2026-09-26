@@ -305,6 +305,34 @@ describe("DesktopRemoteAccessManager", () => {
 		expect(relayLinks[0]?.stopped).toBe(true);
 	});
 
+	it("tells a connected phone it was unpaired before closing its link", async () => {
+		const pairingId = "a".repeat(24);
+		const phoneKey = "k".repeat(43);
+		const { manager, relayLinks, store } = harness({
+			cloudEnabled: true,
+			devices: [{ id: pairingId, name: "Pixel", mobileSecretHash: "h", mobileIdentityKey: phoneKey, createdAt: 1 }],
+		});
+		store.putRelaySecret(pairingId, "relay-secret");
+		await manager.restore();
+		const wire: string[] = [];
+		const connection = {
+			onEvent: () => () => undefined,
+			getSnapshot: () => ({ state: "online", peerIdentityKey: phoneKey }),
+			deliverEvent: async (event: { name: string }) => {
+				wire.push(event.name);
+			},
+			close: async () => {
+				wire.push("closed");
+			},
+		} as unknown as RemoteConnection;
+		relayLinks[0]?.options.onConnection(connection);
+		await new Promise((resolve) => setTimeout(resolve, 0));
+
+		await manager.revokeDevice(pairingId);
+		expect(wire.slice(wire.indexOf("device.revoked"))).toEqual(["device.revoked", "closed"]);
+		await manager.shutdown();
+	});
+
 	it("starts the desktop screen host when a paired phone comes online", async () => {
 		const pairingId = "a".repeat(24);
 		const phoneKey = "k".repeat(43);
