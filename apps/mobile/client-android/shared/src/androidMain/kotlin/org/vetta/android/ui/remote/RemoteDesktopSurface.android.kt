@@ -8,10 +8,13 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -36,8 +39,12 @@ actual fun RemoteDesktopSurface(target: String, modifier: Modifier) {
     NativeRemoteDesktopSessions.configure(context.applicationContext)
     val sessions = remember(target) { NativeRemoteDesktopSessions.observe(target) }
     val observed by sessions.collectAsState()
-    val fallback = remember(target) { NativeRemoteDesktopSessions.session(target) }
-    val session = observed ?: fallback
+    // The link's own session when it is live; once one stops (the P2P channel closed), a new
+    // one takes over the picture, since a stopped session has released its video.
+    var session by remember(target) { mutableStateOf(observed?.takeUnless { it.isStopped } ?: NativeRemoteDesktopSessions.session(target)) }
+    LaunchedEffect(observed) { observed?.takeUnless { it.isStopped }?.let { session = it } }
+    val stopped by session.stoppedState.collectAsState()
+    LaunchedEffect(session, stopped) { if (stopped) session = NativeRemoteDesktopSessions.session(target) }
     val focusRequester = remember { FocusRequester() }
     var size = remember { IntSize.Zero }
     DisposableEffect(session) {

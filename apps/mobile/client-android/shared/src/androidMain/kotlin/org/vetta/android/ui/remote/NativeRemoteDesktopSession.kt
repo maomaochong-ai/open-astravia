@@ -68,12 +68,20 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
     private var sequence = 1L
     private var renderer: SurfaceViewRenderer? = null
     private var remoteVideoTrack: VideoTrack? = null
-    private var stopped = false
+    private val _stopped = MutableStateFlow(false)
+    private var stopped: Boolean
+        get() = _stopped.value
+        set(value) {
+            _stopped.value = value
+        }
     private var remoteDescriptionSet = false
     private val pendingCandidates = mutableListOf<IceCandidate>()
 
     val isStopped: Boolean
         get() = stopped
+
+    /** True once the session has ended and released its video; a viewer then needs a new one. */
+    val stoppedState: StateFlow<Boolean> = _stopped
 
     private val _frameSize = MutableStateFlow<IntSize?>(null)
 
@@ -89,6 +97,8 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
     }
 
     fun createRenderer(): SurfaceViewRenderer = SurfaceViewRenderer(context).also {
+        // A stopped session has released its EGL context; a blank view stands in until the viewer moves on.
+        if (stopped) return@also
         renderer = it
         it.init(
             eglBase.eglBaseContext,
