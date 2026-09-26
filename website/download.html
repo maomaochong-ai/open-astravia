@@ -310,14 +310,21 @@
 				}
 			}
 
-			const targets = getTargets(icons.length);
-			const anims = Array.from(icons).map((el, i) => new Icon(el, targets[i].x, targets[i].y, i * STAGGER));
+			const anims = [];
 
 			function loop(time) {
 				for (const a of anims) a.update(time);
 				requestAnimationFrame(loop);
 			}
-			requestAnimationFrame(loop);
+
+			// 延迟启动，确保 DOM 布局完成后再计算位置
+			window.addEventListener("load", () => {
+				const targets = getTargets(icons.length);
+				for (let i = 0; i < icons.length; i++) {
+					anims.push(new Icon(icons[i], targets[i].x, targets[i].y, 300 + i * STAGGER));
+				}
+				requestAnimationFrame(loop);
+			});
 
 			// 其他版本切换
 			const toggle = document.getElementById("dlOthersToggle");
