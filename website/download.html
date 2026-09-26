@@ -8,106 +8,153 @@
 	<meta name="theme-color" content="#08080a" />
 	<link rel="icon" href="/favicon.png" type="image/png" />
 	<script>
-		(() => {
-			const stored = localStorage.getItem("astravia-theme");
-			document.documentElement.dataset.theme = stored || "dark";
-		})();
+		(() => { document.documentElement.dataset.theme = localStorage.getItem("astravia-theme") || "dark"; })();
 	</script>
 	<style>
 		:root {
 			--bg: #08080a; --elev: #101014; --tint: #0c0c0f; --line: #1e1e24;
 			--line-strong: #2b2b33; --ink: #e9e9ec; --muted: #8e9199; --faint: #565964;
-			--accent: #7c8aff; --accent-deep: #5e6ad2; --accent-soft: rgba(124, 138, 255, 0.13);
-			--ease: cubic-bezier(0.16, 1, 0.3, 1);
-			--font-sans: "Hanken Grotesk", Inter, -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
-			--font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", "Cascadia Code", monospace;
+			--accent: #7c8aff; --accent-deep: #5e6ad2; --accent-soft: rgba(124,138,255,0.13);
+			--ease: cubic-bezier(0.16,1,0.3,1);
+			--font-sans: "Hanken Grotesk",Inter,-apple-system,BlinkMacSystemFont,sans-serif;
+			--font-mono: "IBM Plex Mono",ui-monospace,monospace;
 		}
-		* { margin: 0; padding: 0; box-sizing: border-box; }
-		html { scroll-behavior: auto; }
-		body { font-family: var(--font-sans); background: var(--bg); color: var(--ink); min-height: 100vh; overflow-x: hidden; }
+		* { margin:0; padding:0; box-sizing:border-box; }
+		html { scroll-behavior:auto; }
+		body { font-family:var(--font-sans); background:var(--bg); color:var(--ink); min-height:100vh; overflow-x:hidden; }
 
-		.nav { position: fixed; inset: 0 0 auto; z-index: 100; background: rgba(8,8,10,0.78); backdrop-filter: blur(16px) saturate(1.4); border-bottom: 1px solid transparent; transition: border-color 0.2s var(--ease); }
-		.nav.is-scrolled { border-bottom-color: var(--line); }
-		.nav__inner { display: flex; align-items: center; gap: 24px; height: 60px; max-width: 1120px; margin: 0 auto; padding: 0 24px; }
-		.nav__brand { display: inline-flex; align-items: center; gap: 9px; font-weight: 700; font-size: 16px; text-decoration: none; color: var(--accent); margin-right: auto; }
-		.nav__brand img { border-radius: 6px; }
-		.nav__links { display: flex; gap: 2px; align-items: center; }
-		.nav__links a { text-decoration: none; font-size: 14px; font-weight: 500; color: var(--muted); padding: 6px 11px; border-radius: 7px; transition: color 0.15s var(--ease), background-color 0.15s var(--ease); }
-		.nav__links a:hover { color: var(--ink); }
-		.nav__links a.is-active { color: var(--ink); background: var(--elev); }
-		.nav__actions { display: flex; align-items: center; gap: 10px; }
-		.theme-toggle { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; padding: 0; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--muted); cursor: pointer; }
-		.theme-toggle:hover { color: var(--ink); border-color: var(--muted); }
-		.theme-toggle svg { display: none; }
-		.theme-toggle.is-light .icon-sun, .theme-toggle.is-dark .icon-moon { display: block; }
-		.btn--ghost { display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px; border-radius: 999px; font-size: 13.5px; font-weight: 600; text-decoration: none; color: var(--accent); background: var(--elev); border: 1px solid var(--line); }
-		.btn--ghost:hover { color: var(--ink); border-color: var(--muted); }
+		.nav { position:fixed; inset:0 0 auto; z-index:100; background:rgba(8,8,10,0.78); backdrop-filter:blur(16px) saturate(1.4); border-bottom:1px solid transparent; transition:border-color 0.2s var(--ease); }
+		.nav.is-scrolled { border-bottom-color:var(--line); }
+		.nav__inner { display:flex; align-items:center; gap:24px; height:60px; max-width:1120px; margin:0 auto; padding:0 24px; }
+		.nav__brand { display:inline-flex; align-items:center; gap:9px; font-weight:700; font-size:16px; text-decoration:none; color:var(--accent); margin-right:auto; }
+		.nav__brand img { border-radius:6px; }
+		.nav__links { display:flex; gap:2px; align-items:center; }
+		.nav__links a { text-decoration:none; font-size:14px; font-weight:500; color:var(--muted); padding:6px 11px; border-radius:7px; transition:color 0.15s var(--ease),background-color 0.15s var(--ease); }
+		.nav__links a:hover { color:var(--ink); }
+		.nav__links a.is-active { color:var(--ink); background:var(--elev); }
+		.nav__actions { display:flex; align-items:center; gap:10px; }
+		.theme-toggle { flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; padding:0; border-radius:8px; border:1px solid var(--line); background:transparent; color:var(--muted); cursor:pointer; }
+		.theme-toggle:hover { color:var(--ink); border-color:var(--muted); }
+		.theme-toggle svg { display:none; }
+		.theme-toggle.is-light .icon-sun, .theme-toggle.is-dark .icon-moon { display:block; }
+		.btn--ghost { display:inline-flex; align-items:center; gap:8px; padding:7px 12px; border-radius:999px; font-size:13.5px; font-weight:600; text-decoration:none; color:var(--accent); background:var(--elev); border:1px solid var(--line); }
+		.btn--ghost:hover { color:var(--ink); border-color:var(--muted); }
 
-		.download-theater { position: relative; min-height: calc(100vh - 60px); display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; padding: 80px 24px 100px; }
-		.download-theater-beams { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
-		.download-theater-haze { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 30%, rgba(124,138,255,0.06) 0%, transparent 55%); }
-		.download-theater-beam { position: absolute; width: 1px; background: linear-gradient(to bottom, transparent, rgba(124,138,255,0.12), transparent); }
-		.download-theater-beam--a { left: 25%; height: 100%; }
-		.download-theater-beam--b { left: 50%; height: 100%; }
-		.download-theater-beam--c { left: 75%; height: 100%; }
+		/* 下载剧场 */
+		.download-theater {
+			position:relative;
+			min-height:calc(100vh - 60px);
+			display:flex;
+			flex-direction:column;
+			align-items:center;
+			justify-content:center;
+			overflow:hidden;
+			padding:80px 24px 120px;
+		}
+		.download-theater-beams { position:absolute; inset:0; overflow:hidden; pointer-events:none; }
+		.download-theater-haze { position:absolute; inset:0; background:radial-gradient(ellipse at 50% 30%,rgba(124,138,255,0.06) 0%,transparent 55%); }
+		.download-theater-beam { position:absolute; width:1px; background:linear-gradient(to bottom,transparent,rgba(124,138,255,0.12),transparent); }
+		.download-theater-beam--a { left:25%; height:100%; }
+		.download-theater-beam--b { left:50%; height:100%; }
+		.download-theater-beam--c { left:75%; height:100%; }
 
-		/* 掉落图标 */
-		.dl-platforms { position: absolute; inset: 0; pointer-events: none; overflow: visible; z-index: 30; }
-		.dl-platform-icon { position: absolute; width: 52px; height: 52px; border-radius: 50%; background: var(--elev); border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; overflow: hidden; opacity: 0; pointer-events: auto; will-change: transform, opacity; }
-		.dl-platform-icon img { width: 30px; height: 30px; object-fit: contain; }
-		.dl-platform-icon.is-rec { border-color: var(--accent); box-shadow: 0 0 20px -4px rgba(124,138,255,0.4); }
-		.dl-platform-icon:hover { border-color: var(--accent); box-shadow: 0 0 16px -4px rgba(124,138,255,0.5); z-index: 50; }
+		/* 内容层 */
+		.dl-content { position:relative; z-index:20; display:flex; flex-direction:column; align-items:center; }
+		.dl__title { font-size:clamp(44px,6vw,64px); font-weight:700; letter-spacing:-0.02em; text-shadow:0 0 40px color-mix(in srgb,var(--accent) 30%,transparent); margin-bottom:12px; transition:transform 0.15s ease-out; }
+		.dl__desc { max-width:480px; font-size:15px; line-height:1.7; color:var(--muted); margin-bottom:40px; text-align:center; transition:transform 0.15s ease-out; }
 
-		.dl-content { position: relative; z-index: 20; display: flex; flex-direction: column; align-items: center; }
-		.dl__title { font-size: clamp(44px, 6vw, 64px); font-weight: 700; letter-spacing: -0.02em; text-shadow: 0 0 40px color-mix(in srgb, var(--accent) 30%, transparent); margin-bottom: 12px; transition: transform 0.15s ease-out; }
-		.dl__desc { max-width: 480px; font-size: 15px; line-height: 1.7; color: var(--muted); margin-bottom: 40px; text-align: center; transition: transform 0.15s ease-out; }
+		.dl__primary-wrap { display:flex; flex-direction:column; align-items:center; gap:10px; }
+		.dl__primary { display:inline-flex; align-items:center; gap:10px; padding:12px 24px; background:var(--elev); border:2px solid var(--accent); border-radius:999px; font-size:14px; font-weight:600; text-decoration:none; color:var(--ink); box-shadow:0 0 0 2px var(--bg),0 0 24px -6px rgba(124,138,255,0.3); letter-spacing:0.02em; text-transform:uppercase; min-width:260px; justify-content:center; }
+		.dl__primary:hover { background:var(--tint); transform:translateY(-1px); }
+		.dl__primary svg { flex:none; }
+		.dl__primary[aria-disabled="true"] { opacity:0.4; pointer-events:none; }
+		.dl__version { font-size:13px; color:var(--faint); font-family:var(--font-mono); }
+		.dl__others-toggle { margin-top:24px; background:none; border:none; color:var(--muted); font-size:14px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; font-family:var(--font-sans); }
+		.dl__others-toggle:hover { color:var(--ink); }
+		.dl__others-toggle svg { transition:transform 0.2s var(--ease); }
+		.dl__others-toggle.is-open svg { transform:rotate(180deg); }
+		.dl__others { margin-top:12px; background:var(--elev); border:1px solid var(--line); border-radius:14px; overflow:hidden; max-height:0; opacity:0; transition:max-height 0.35s var(--ease),opacity 0.2s var(--ease); }
+		.dl__others.is-open { max-height:260px; opacity:1; }
+		.dl__others-list { list-style:none; margin:0; padding:6px 0; }
+		.dl__others-item { display:flex; align-items:center; justify-content:space-between; padding:10px 20px; text-decoration:none; color:var(--ink); }
+		.dl__others-item:hover { background:var(--tint); }
+		.dl__others-item span { font-size:14px; display:inline-flex; align-items:center; gap:8px; }
+		.dl__others-item small { font-size:12px; color:var(--faint); font-family:var(--font-mono); }
+		.dl-rec { font-size:11px; color:var(--accent); font-weight:600; padding:1px 6px; background:var(--accent-soft); border-radius:999px; }
+		.dl__others-item.is-disabled { opacity:0.4; cursor:default; pointer-events:none; }
 
-		.dl__primary-wrap { display: flex; flex-direction: column; align-items: center; gap: 10px; }
-		.dl__primary { display: inline-flex; align-items: center; gap: 10px; padding: 12px 24px; background: var(--elev); border: 2px solid var(--accent); border-radius: 999px; font-size: 14px; font-weight: 600; text-decoration: none; color: var(--ink); box-shadow: 0 0 0 2px var(--bg), 0 0 24px -6px rgba(124,138,255,0.3); letter-spacing: 0.02em; text-transform: uppercase; min-width: 260px; justify-content: center; }
-		.dl__primary:hover { background: var(--tint); transform: translateY(-1px); }
-		.dl__primary svg { flex: none; }
-		.dl__primary[aria-disabled="true"] { opacity: 0.4; pointer-events: none; }
-		.dl__version { font-size: 13px; color: var(--faint); font-family: var(--font-mono); }
-		.dl__others-toggle { margin-top: 24px; background: none; border: none; color: var(--muted); font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-sans); }
-		.dl__others-toggle:hover { color: var(--ink); }
-		.dl__others-toggle svg { transition: transform 0.2s var(--ease); }
-		.dl__others-toggle.is-open svg { transform: rotate(180deg); }
-		.dl__others { margin-top: 12px; background: var(--elev); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; max-height: 0; opacity: 0; transition: max-height 0.35s var(--ease), opacity 0.2s var(--ease); }
-		.dl__others.is-open { max-height: 260px; opacity: 1; }
-		.dl__others-list { list-style: none; margin: 0; padding: 6px 0; }
-		.dl__others-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 20px; text-decoration: none; color: var(--ink); }
-		.dl__others-item:hover { background: var(--tint); }
-		.dl__others-item span { font-size: 14px; display: inline-flex; align-items: center; gap: 8px; }
-		.dl__others-item small { font-size: 12px; color: var(--faint); font-family: var(--font-mono); }
-		.dl-rec { font-size: 11px; color: var(--accent); font-weight: 600; padding: 1px 6px; background: var(--accent-soft); border-radius: 999px; }
-		.dl__others-item.is-disabled { opacity: 0.4; cursor: default; pointer-events: none; }
+		/* 掉落图标容器 */
+		.dl-platforms {
+			position:absolute;
+			z-index:30;
+			pointer-events:none;
+			overflow:visible;
+			width:100%;
+			height:100%;
+			top:0; left:0;
+		}
+		.dl-platform-icon {
+			position:absolute;
+			width:52px; height:52px;
+			border-radius:50%;
+			background:var(--elev);
+			border:1px solid var(--line);
+			display:flex; align-items:center; justify-content:center;
+			overflow:hidden;
+			opacity:0;
+			pointer-events:auto;
+			will-change:transform,opacity;
+			cursor:pointer;
+		}
+		.dl-platform-icon img { width:30px; height:30px; object-fit:contain; }
+		.dl-platform-icon.is-rec { border-color:var(--accent); box-shadow:0 0 20px -4px rgba(124,138,255,0.4); }
+		.dl-platform-icon:hover { border-color:var(--accent); box-shadow:0 0 16px -4px rgba(124,138,255,0.5); z-index:50; }
 
-		.footer { border-top: 1px solid var(--line); padding: 56px 0 32px; }
-		.footer .container { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
-		.footer__grid { display: grid; grid-template-columns: 280px 1fr; gap: 64px; align-items: start; }
-		.footer__brand-col { display: flex; flex-direction: column; gap: 16px; }
-		.footer__brand { display: inline-flex; align-items: center; gap: 9px; font-weight: 700; font-size: 16px; text-decoration: none; color: var(--ink); }
-		.footer__brand img { border-radius: 6px; }
-		.footer__brand-desc { font-size: 13.5px; line-height: 1.6; color: var(--muted); margin: 0; max-width: 260px; }
-		.footer__socials { display: flex; gap: 8px; margin-top: 4px; }
-		.footer__social-icon { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line); color: var(--muted); text-decoration: none; }
-		.footer__social-icon:hover { color: var(--ink); border-color: var(--muted); transform: translateY(-2px); }
-		.footer__links { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; }
-		.footer__link-heading { font-size: 13px; font-weight: 600; color: var(--ink); margin: 0 0 16px; }
-		.footer__link-group ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
-		.footer__link-group a { font-size: 13.5px; color: var(--muted); text-decoration: none; }
-		.footer__link-group a:hover { color: var(--ink); }
-		.footer__bottom { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; border-top: 1px solid var(--line); padding-top: 20px; margin-top: 48px; }
-		.footer__bottom p { font-family: var(--font-mono); font-size: 12px; color: var(--faint); margin: 0; }
+		/* 底部图标 */
+		.dl-platforms-bottom {
+			position:absolute;
+			bottom:20px; left:0; right:0;
+			height:60px;
+			z-index:25;
+			pointer-events:none;
+			display:flex;
+			justify-content:space-around;
+			align-items:center;
+			padding:0 40px;
+		}
+		.dl-platforms-bottom .dl-platform-icon {
+			position:relative;
+			opacity:0.5;
+			cursor:default;
+		}
 
-		@media (max-width: 560px) {
-			.dl__title { font-size: 36px; }
-			.dl__primary { min-width: auto; width: 100%; max-width: 300px; font-size: 13px; }
-			.dl-platform-icon { width: 44px; height: 44px; }
-			.dl-platform-icon img { width: 26px; height: 26px; }
-			.footer__grid { grid-template-columns: 1fr; gap: 40px; }
-			.footer__links { grid-template-columns: repeat(2, 1fr); gap: 24px; }
-			.footer__bottom { flex-direction: column; }
+		/* 页脚 */
+		.footer { border-top:1px solid var(--line); padding:56px 0 32px; }
+		.footer .container { max-width:1120px; margin:0 auto; padding:0 24px; }
+		.footer__grid { display:grid; grid-template-columns:280px 1fr; gap:64px; align-items:start; }
+		.footer__brand-col { display:flex; flex-direction:column; gap:16px; }
+		.footer__brand { display:inline-flex; align-items:center; gap:9px; font-weight:700; font-size:16px; text-decoration:none; color:var(--ink); }
+		.footer__brand img { border-radius:6px; }
+		.footer__brand-desc { font-size:13.5px; line-height:1.6; color:var(--muted); margin:0; max-width:260px; }
+		.footer__socials { display:flex; gap:8px; margin-top:4px; }
+		.footer__social-icon { display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; border-radius:50%; border:1px solid var(--line); color:var(--muted); text-decoration:none; }
+		.footer__social-icon:hover { color:var(--ink); border-color:var(--muted); transform:translateY(-2px); }
+		.footer__links { display:grid; grid-template-columns:repeat(3,1fr); gap:32px; }
+		.footer__link-heading { font-size:13px; font-weight:600; color:var(--ink); margin:0 0 16px; }
+		.footer__link-group ul { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:10px; }
+		.footer__link-group a { font-size:13.5px; color:var(--muted); text-decoration:none; }
+		.footer__link-group a:hover { color:var(--ink); }
+		.footer__bottom { display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; border-top:1px solid var(--line); padding-top:20px; margin-top:48px; }
+		.footer__bottom p { font-family:var(--font-mono); font-size:12px; color:var(--faint); margin:0; }
+
+		@media (max-width:560px) {
+			.dl__title { font-size:36px; }
+			.dl__primary { min-width:auto; width:100%; max-width:300px; font-size:13px; }
+			.dl-platform-icon { width:44px; height:44px; }
+			.dl-platform-icon img { width:26px; height:26px; }
+			.footer__grid { grid-template-columns:1fr; gap:40px; }
+			.footer__links { grid-template-columns:repeat(2,1fr); gap:24px; }
+			.footer__bottom { flex-direction:column; }
 		}
 	</style>
 </head>
@@ -120,7 +167,7 @@
 			</nav>
 			<div class="nav__actions">
 				<button class="theme-toggle is-dark" id="themeToggle" type="button" aria-label="切换主题">
-					<svg class="icon-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z" /></svg>
+					<svg class="icon-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/></svg>
 					<svg class="icon-sun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
 				</button>
 				<a class="btn--ghost" href="https://github.com/maomaochong-ai/astravia" target="_blank" rel="noopener">
@@ -139,6 +186,7 @@
 			<span class="download-theater-beam download-theater-beam--c"></span>
 		</div>
 
+		<!-- 顶部掉落图标 -->
 		<div class="dl-platforms" id="dlPlatforms" aria-hidden="true">
 			<div class="dl-platform-icon" data-p="ollama"><img src="/ollama.webp" alt="" width="30" height="30" /></div>
 			<div class="dl-platform-icon" data-p="kimi"><img src="/kimi.webp" alt="" width="30" height="30" /></div>
@@ -150,6 +198,7 @@
 			<div class="dl-platform-icon" data-p="openai"><img src="/openai.webp" alt="" width="30" height="30" /></div>
 		</div>
 
+		<!-- 内容层 -->
 		<div class="dl-content">
 			<h1 class="dl__title" id="dlTitle">下载</h1>
 			<p class="dl__desc" id="dlDesc">我们会检测你的设备并推荐合适的版本。点击即可下载，或通过下方选择其他平台。</p>
@@ -169,6 +218,9 @@
 				</ul>
 			</div>
 		</div>
+
+		<!-- 底部图标 -->
+		<div class="dl-platforms-bottom" id="dlPlatformsBottom" aria-hidden="true"></div>
 	</div>
 
 	<footer class="footer" id="footer">
@@ -220,66 +272,66 @@
 			else if (isWin) { platform = "windows"; dlPrimary.href = "https://dl.astravia.dev/app/v0.55.37/Astravia-0.55.37-win-x64.exe"; dlPrimaryText.textContent = "WINDOWS X64"; dlPrimaryVersion.textContent = "v0.55.37 · EXE"; }
 			else { platform = "linux"; dlPrimary.setAttribute("aria-disabled", "true"); dlPrimary.removeAttribute("href"); dlPrimaryText.textContent = "LINUX"; dlPrimaryVersion.textContent = "即将推出"; }
 
-			// 高亮推荐图标
 			const iconMap = { macos: "ollama", windows: "kimi", linux: "grok" };
-			document.querySelectorAll(".dl-platform-icon").forEach((el) => { if (el.dataset.p === iconMap[platform]) el.classList.add("is-rec"); });
+			document.querySelectorAll(".dl-platform-icon").forEach(el => { if (el.dataset.p === iconMap[platform]) el.classList.add("is-rec"); });
 
 			// === 掉落动画 ===
 			const titleEl = document.getElementById("dlTitle");
 			const descEl = document.getElementById("dlDesc");
 			const theater = document.querySelector(".download-theater");
-			const icons = document.querySelectorAll(".dl-platform-icon");
+			const topIcons = document.querySelectorAll("#dlPlatforms .dl-platform-icon");
+			const bottomContainer = document.getElementById("dlPlatformsBottom");
 			const ICON_SIZE = 52;
-			const GRAVITY = 0.45;
-			const BOUNCE = 0.5;
-			const STAGGER = 80;
+			const GRAVITY = 0.5;
+			const BOUNCE = 0.45;
+			const STAGGER = 100;
 
-			function _easeOutBounce(t) {
-				const n1 = 7.5625, d1 = 2.75;
-				if (t < 1/d1) return n1*t*t;
-				if (t < 2/d1) { t-=1.5/d1; return n1*t*t+0.75; }
-				if (t < 2.5/d1) { t-=2.25/d1; return n1*t*t+0.9375; }
-				t -= 2.625/d1; return n1*t*t+0.984375;
-			}
-
-			// 计算弧形目标位置（围绕标题上方）
-			function getTargets(count) {
-				const rect = theater.getBoundingClientRect();
-				const cx = rect.width / 2;
+			// 计算顶部图标水平位置（水平排列穿过标题）
+			function getTopPositions(count) {
+				const theaterRect = theater.getBoundingClientRect();
 				const titleRect = titleEl.getBoundingClientRect();
-				const titleTop = titleRect.top - rect.top;
-				const radius = 180 + Math.random() * 40;
-				const angleSpan = Math.PI * 0.6;
+				const centerY = titleRect.top - theaterRect.top + titleRect.height / 2 - ICON_SIZE / 2;
+				const totalWidth = count * 68; // 图标宽度 + 间距
+				const startX = (theaterRect.width - totalWidth) / 2;
 
-				const targets = [];
+				const positions = [];
 				for (let i = 0; i < count; i++) {
-					const t = count === 1 ? 0.5 : i / (count - 1);
-					const angle = Math.PI / 2 + angleSpan / 2 - t * angleSpan;
-					const rx = (Math.random() - 0.5) * 20;
-					const ry = (Math.random() - 0.5) * 15;
-					targets.push({
-						x: cx + Math.cos(angle) * radius + rx,
-						y: titleTop - 20 - Math.sin(angle) * radius * 0.4 + ry,
+					positions.push({
+						x: startX + i * 68 + (Math.random() - 0.5) * 10,
+						y: centerY + (Math.random() - 0.5) * 10,
 					});
 				}
-				// 随机打乱
-				for (let i = targets.length - 1; i > 0; i--) {
+				// 随机打乱顺序
+				for (let i = positions.length - 1; i > 0; i--) {
 					const j = Math.floor(Math.random() * (i + 1));
-					[targets[i], targets[j]] = [targets[j], targets[i]];
+					[positions[i], positions[j]] = [positions[j], positions[i]];
 				}
-				return targets;
+				return positions;
 			}
 
-			class Icon {
+			// 计算底部图标水平位置
+			function getBottomPositions(count) {
+				const theaterRect = theater.getBoundingClientRect();
+				const spacing = theaterRect.width / (count + 1);
+				const positions = [];
+				for (let i = 0; i < count; i++) {
+					positions.push({
+						x: spacing * (i + 1) - ICON_SIZE / 2,
+						y: theaterRect.height - 80,
+					});
+				}
+				return positions;
+			}
+
+			class FallingIcon {
 				constructor(el, tx, ty, delay) {
 					this.el = el; this.tx = tx; this.ty = ty; this.delay = delay;
-					this.x = tx + (Math.random() - 0.5) * 160;
-					this.y = -60 - Math.random() * 250;
-					this.vy = 0; this.rot = (Math.random() - 0.5) * 80; this.vRot = (Math.random() - 0.5) * 12;
+					this.x = tx + (Math.random() - 0.5) * 300; // 水平随机偏移
+					this.y = -ICON_SIZE - Math.random() * 300; // 从视口上方开始
+					this.vy = 0; this.rot = (Math.random() - 0.5) * 60; this.vRot = (Math.random() - 0.5) * 8;
 					this.scale = 0.3; this.bounce = 0; this.maxBounce = 2 + Math.floor(Math.random() * 2);
 					this.landed = false; this.settled = false; this.start = 0;
-					el.style.left = "50%"; el.style.top = "50%";
-					el.style.marginLeft = `${-ICON_SIZE / 2}px`; el.style.marginTop = `${-ICON_SIZE / 2}px`;
+					el.style.left = "0"; el.style.top = "0";
 				}
 				update(time) {
 					if (time < this.delay) return;
@@ -288,27 +340,38 @@
 					if (!this.landed) {
 						this.vy += GRAVITY; this.y += this.vy; this.rot += this.vRot;
 						if (this.y >= this.ty) {
-							this.y = this.ty; this.vy = -this.vy * BOUNCE; this.vRot *= -0.6; this.bounce++;
-							const tilt = (Math.random() - 0.5) * (this.ty < 150 ? 3 : 2);
-							if (this.ty < 150) {
+							this.y = this.ty; this.vy = -this.vy * BOUNCE; this.vRot *= -0.5; this.bounce++;
+							// 文字倾斜
+							const tilt = (Math.random() - 0.5) * (this.ty < 100 ? 4 : 2.5);
+							if (this.ty < 100) {
 								titleEl.style.transform = `rotate(${tilt}deg)`;
-								setTimeout(() => { titleEl.style.transform = ""; }, 250);
+								setTimeout(() => { titleEl.style.transform = ""; }, 200);
 							} else {
 								descEl.style.transform = `rotate(${tilt}deg)`;
-								setTimeout(() => { descEl.style.transform = ""; }, 300);
+								setTimeout(() => { descEl.style.transform = ""; }, 250);
 							}
-							if (this.bounce >= this.maxBounce || Math.abs(this.vy) < 0.3) { this.landed = true; this.vy = 0; this.vRot = 0; }
+							if (this.bounce >= this.maxBounce || Math.abs(this.vy) < 0.5) { this.landed = true; this.vy = 0; this.vRot = 0; }
 						}
-						this.scale = Math.min(1, 0.3 + 0.7 * Math.min(elapsed / 500, 1));
+						this.scale = Math.min(1, 0.3 + 0.7 * Math.min(elapsed / 400, 1));
 					} else if (!this.settled) {
-						const decay = Math.max(0, 1 - (time - this.start - this.delay - 400) / 800);
-						this.rot *= (1 - 0.04 * decay);
+						const decay = Math.max(0, 1 - (time - this.start - this.delay - 300) / 600);
+						this.rot *= (1 - 0.05 * decay);
 						if (decay < 0.01) this.settled = true;
 					}
 					this.el.style.opacity = "1";
 					this.el.style.transform = `translate(${this.x}px, ${this.y}px) scale(${this.scale}) rotate(${this.rot}deg)`;
 				}
 			}
+
+			// 分离顶部和底部图标
+			const bottomCount = 3;
+			const topCount = topIcons.length - bottomCount;
+			const _topTargets = getTopPositions(topCount);
+			const _bottomTargets = getBottomPositions(bottomCount);
+
+			const allIcons = Array.from(topIcons);
+			const bottomIcons = allIcons.splice(0, bottomCount);
+			const topIconsRemaining = allIcons;
 
 			const anims = [];
 
@@ -317,11 +380,19 @@
 				requestAnimationFrame(loop);
 			}
 
-			// 延迟启动，确保 DOM 布局完成后再计算位置
 			window.addEventListener("load", () => {
-				const targets = getTargets(icons.length);
-				for (let i = 0; i < icons.length; i++) {
-					anims.push(new Icon(icons[i], targets[i].x, targets[i].y, 300 + i * STAGGER));
+				// 顶部图标
+				const finalTopTargets = getTopPositions(topIconsRemaining.length);
+				for (let i = 0; i < topIconsRemaining.length; i++) {
+					anims.push(new FallingIcon(topIconsRemaining[i], finalTopTargets[i].x, finalTopTargets[i].y, 200 + i * STAGGER));
+				}
+				// 底部图标
+				const finalBottomTargets = getBottomPositions(bottomCount);
+				for (let i = 0; i < bottomIcons.length; i++) {
+					const icon = bottomIcons[i];
+					bottomContainer.appendChild(icon);
+					icon.style.position = "relative";
+					anims.push(new FallingIcon(icon, finalBottomTargets[i].x, finalBottomTargets[i].y, 400 + i * STAGGER + topIconsRemaining.length * STAGGER));
 				}
 				requestAnimationFrame(loop);
 			});
