@@ -180,9 +180,9 @@
 			const BOUNCE = 0.45;
 			const STAGGER = 100;
 
-			// 图标分配：5 个在标题上方，8 个在描述文字区域，剩余在页脚横线
-			const titleCount = 5;
-			const descCount = 8;
+			// 图标分配：2 个落在标题文字上，7 个落在描述文字上，剩余落在页脚顶部横线上
+			const titleCount = 2;
+			const descCount = 7;
 			const totalCount = topIcons.length;
 			const bottomCount = totalCount - titleCount - descCount;
 
@@ -190,7 +190,8 @@
 				const tw = theater.offsetWidth;
 				const theaterRect = theater.getBoundingClientRect();
 				const titleRect = titleEl.getBoundingClientRect();
-				const targetY = titleRect.top - theaterRect.top - ICON_SIZE / 2;
+				// 图标中心落在标题文字中心
+				const targetY = titleRect.top + titleRect.height / 2 - theaterRect.top - ICON_SIZE / 2;
 				const totalW = count * 64;
 				const startX = (tw - totalW) / 2;
 				const targets = [];
@@ -203,8 +204,8 @@
 				const tw = theater.offsetWidth;
 				const theaterRect = theater.getBoundingClientRect();
 				const descRect = descEl.getBoundingClientRect();
-				// 图标落在描述文字上方
-				const targetY = descRect.top - theaterRect.top - ICON_SIZE / 2;
+				// 图标中心落在描述文字中心
+				const targetY = descRect.top + descRect.height / 2 - theaterRect.top - ICON_SIZE / 2;
 				const totalW = count * 64;
 				const startX = (tw - totalW) / 2;
 				const targets = [];
@@ -217,6 +218,7 @@
 				const tw = theater.offsetWidth;
 				const theaterRect = theater.getBoundingClientRect();
 				const footerRect = footerEl.getBoundingClientRect();
+				// 图标中心落在页脚顶部横线（border-top）
 				const targetY = footerRect.top - theaterRect.top - ICON_SIZE / 2;
 				const totalW = count * 64;
 				const startX = (tw - totalW) / 2;
@@ -248,10 +250,10 @@
 						if (this.y >= this.ty) {
 							this.y = this.ty; this.vy = -this.vy * BOUNCE; this.vRot *= -0.5; this.bounce++;
 							const tilt = (Math.random() - 0.5) * 3;
-							if (this.ty < 150) {
+							if (this.ty < 220) {
 								titleEl.style.transform = `rotate(${tilt}deg)`;
 								setTimeout(() => { titleEl.style.transform = ""; }, 200);
-							} else if (this.ty < 350) {
+							} else if (this.ty < 420) {
 								descEl.style.transform = `rotate(${tilt}deg)`;
 								setTimeout(() => { descEl.style.transform = ""; }, 250);
 							}
