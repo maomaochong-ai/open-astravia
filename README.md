@@ -11,6 +11,10 @@
   <img src="docs/assets/screenshot-main.png" alt="Astravia 深色主题" width="860" />
 </p>
 
+<p align="center">
+  <img src="docs/assets/capabilities.png" alt="能力页" width="860" />
+</p>
+
 ## 快速上手
 
 1. **下载安装包**：从 [GitHub Releases](https://github.com/maomaochong-ai/astravia/releases) 获取 macOS（Apple Silicon / Intel）或 Windows x64 安装包

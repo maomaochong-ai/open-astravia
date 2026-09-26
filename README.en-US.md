@@ -11,6 +11,10 @@
   <img src="docs/assets/screenshot-main.png" alt="Astravia dark theme" width="860" />
 </p>
 
+<p align="center">
+  <img src="docs/assets/capabilities.png" alt="Capabilities page" width="860" />
+</p>
+
 ## Quick Start
 
 1. **Download the installer** from [GitHub Releases](https://github.com/maomaochong-ai/astravia/releases) — macOS (Apple Silicon / Intel) or Windows x64

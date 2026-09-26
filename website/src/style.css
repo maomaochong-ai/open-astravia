@@ -949,562 +949,103 @@ code {
 	color: var(--faint);
 }
 
-/* 窗口应用壳：左侧栏 + 主区 */
-.story__app {
+/* SVG Mockup：应用界面 */
+.story__app-mockup {
 	display: flex;
 	align-items: stretch;
 	height: 470px;
-}
-
-.story__app-nav {
-	width: 116px;
-	flex-shrink: 0;
-	display: flex;
-	flex-direction: column;
-	gap: 4px;
-	padding: 14px 10px;
-	border-right: 1px solid var(--line);
-	background: var(--elev);
-}
-
-.story__app-brand {
-	margin: 0 0 14px 8px;
-	font-family: var(--font-mono);
-	font-size: 12px;
-	font-weight: 700;
-	letter-spacing: 0.02em;
-	color: var(--ink);
-}
-
-.story__app-nav nav {
-	display: flex;
-	flex-direction: column;
-	gap: 2px;
-}
-
-.story__app-nav button {
-	position: relative;
-	appearance: none;
-	border: 0;
-	background: transparent;
-	font: inherit;
-	font-size: 12.5px;
-	color: var(--muted);
-	text-align: left;
-	padding: 7px 10px;
-	border-radius: 8px;
-	cursor: default;
-}
-
-.story__app-nav button::before {
-	content: "";
-	position: absolute;
-	left: -10px;
-	top: 22%;
-	bottom: 22%;
-	width: 2px;
-	border-radius: 2px;
-	background: transparent;
-}
-
-.story__app-nav button.is-active {
-	color: var(--ink);
-	font-weight: 600;
-	background: var(--accent-soft);
-}
-
-.story__app-nav button.is-active::before {
-	background: var(--accent);
-}
-
-.story__screen {
-	position: relative;
-	flex: 1;
 	overflow: hidden;
 }
 
-.story__screen-item {
-	position: absolute;
-	inset: 0;
-	display: flex;
-	flex-direction: column;
-	padding: 22px 24px;
-	opacity: 0;
-	visibility: hidden;
-	transform: translateY(12px);
-	transition:
-		opacity 0.45s var(--ease),
-		transform 0.45s var(--ease),
-		visibility 0s linear 0.45s;
+.story__svg {
+	width: 100%;
+	height: 100%;
 }
 
-.story__screen-item.is-active {
+/* SVG 元素动画 */
+.story__svg [data-step="0"],
+.story__svg [data-step="1"],
+.story__svg [data-step="2"],
+.story__svg [data-step="3"] {
+	transition: opacity 0.3s ease;
+}
+
+.story__svg-highlight {
+	transition: opacity 0.3s ease;
+}
+
+/* ---------------- 故事：步骤切换 ---------------- */
+.story__copy {
+	display: flex;
+	flex-direction: column;
+	gap: 0;
+	position: relative;
+}
+
+.story__copy-item {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	opacity: 0;
+	visibility: hidden;
+	transform: translateY(8px);
+	transition:
+		opacity 0.35s var(--ease),
+		transform 0.35s var(--ease),
+		visibility 0s linear 0.35s;
+}
+
+.story__copy-item.is-active {
+	position: relative;
 	opacity: 1;
 	visibility: visible;
 	transform: none;
 	transition:
-		opacity 0.45s var(--ease),
-		transform 0.45s var(--ease);
+		opacity 0.35s var(--ease),
+		transform 0.35s var(--ease);
 }
 
-/* 屏内 UI：会话消息流 */
-.story__thread {
-	flex: 1;
-	display: flex;
-	flex-direction: column;
-	gap: 10px;
-}
-
-.story__msg {
-	max-width: 92%;
-	margin: 0;
-	font-size: 13.5px;
-	line-height: 1.7;
-	border-radius: 12px;
-	padding: 10px 14px;
-}
-
-.story__msg p {
-	margin: 0;
-}
-
-.story__msg--user {
-	align-self: flex-end;
-	background: var(--accent-soft);
-	border: 1px solid rgba(124, 138, 255, 0.28);
-	color: var(--ink);
-}
-
-.story__msg--assistant {
-	align-self: flex-start;
-	background: var(--elev);
-	border: 1px solid var(--line);
-	color: var(--muted);
-}
-
-.story__attachments {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 8px;
-}
-
-.story__attachment {
-	font-family: var(--font-mono);
-	font-size: 12px;
-	color: var(--muted);
-	border: 1px solid var(--line);
-	border-radius: 999px;
-	padding: 3px 11px;
-	background: var(--elev);
-}
-
-/* 屏内 UI：输入栏 */
-.story__composer {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	margin-top: 14px;
-	padding: 9px 12px;
-	border: 1px solid var(--line-strong);
-	border-radius: 10px;
-	background: var(--elev);
-}
-
-.story__composer-chip {
+.story__step-num {
 	font-family: var(--font-mono);
 	font-size: 11.5px;
-	color: var(--muted);
-	border: 1px solid var(--line);
-	border-radius: 999px;
-	padding: 2px 9px;
-	flex-shrink: 0;
-}
-
-.story__composer-chip--mode {
+	letter-spacing: 0.12em;
 	color: var(--accent);
-	border-color: rgba(124, 138, 255, 0.35);
+	margin: 0 0 8px;
 }
 
-.story__composer-input {
-	flex: 1;
-	font-size: 12.5px;
-	color: var(--faint);
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-}
-
-.story__composer-input::after {
-	content: "";
-	display: inline-block;
-	width: 7px;
-	height: 13px;
-	margin-left: 3px;
-	vertical-align: -2px;
-	background: var(--accent);
-	animation: story-caret 1.1s steps(2, start) infinite;
-}
-
-/* 屏内 UI：消息内计划列表 */
-.story__plan {
-	list-style: none;
-	margin: 10px 0 0;
-	padding: 0;
-	display: flex;
-	flex-direction: column;
-	gap: 8px;
-}
-
-.story__plan li {
-	display: flex;
-	align-items: center;
-	gap: 9px;
-	font-size: 13px;
-	color: var(--muted);
-}
-
-.story__plan li span {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	width: 17px;
-	height: 17px;
-	border-radius: 50%;
-	flex-shrink: 0;
-	font-size: 10px;
-	color: var(--bg);
-	background: var(--grad);
-}
-
-.story__task-name,
-.story__kb-head b {
-	font-size: 13.5px;
-	color: var(--ink);
-}
-
-.story__plan li b {
-	font-weight: 500;
-}
-
-.story__plan li.is-done {
-	color: var(--ink);
-}
-
-.story__plan li.is-active b {
-	color: var(--ink);
-}
-
-/* 屏内 UI：批量任务 / 知识库页面 */
-.story__page {
-	flex: 1;
-	display: flex;
-	flex-direction: column;
-	gap: 12px;
-}
-
-.story__page-title {
-	margin: 0;
-	font-family: var(--font-mono);
-	font-size: 12px;
-	letter-spacing: 0.1em;
-	color: var(--faint);
-}
-
-.story__task-card,
-.story__kb-card {
-	border: 1px solid var(--line-strong);
-	border-radius: 10px;
-	background: var(--elev);
-	padding: 14px 16px;
-}
-
-.story__task-head,
-.story__kb-head {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	margin-bottom: 10px;
-}
-
-.story__task-count,
-.story__kb-count {
-	font-family: var(--font-mono);
-	font-size: 11.5px;
-	color: var(--faint);
-}
-
-.story__task-list,
-.story__kb-list {
-	list-style: none;
-	margin: 0;
-	padding: 0;
-	display: flex;
-	flex-direction: column;
-	gap: 8px;
-}
-
-.story__task-list li,
-.story__kb-list li {
-	display: flex;
-	align-items: center;
-	gap: 10px;
-	font-size: 13px;
-	color: var(--muted);
-	border: 1px solid var(--line);
-	border-radius: 8px;
-	padding: 9px 12px;
-	background: var(--code-bg);
-}
-
-.story__task-list li.is-done,
-.story__kb-list li.is-done {
-	color: var(--ink);
-}
-
-.story__task-icon,
-.story__kb-icon {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	width: 17px;
-	height: 17px;
-	border-radius: 50%;
-	flex-shrink: 0;
-	font-size: 10px;
-	color: var(--bg);
-	background: var(--grad);
-}
-
-.story__task-time {
-	margin-left: auto;
-	font-family: var(--font-mono);
-	font-size: 11px;
-	color: var(--faint);
-}
-
-.story__task-bar {
-	margin-left: auto;
-	width: 64px;
-	height: 3px;
-	border-radius: 3px;
-	overflow: hidden;
-	background: var(--line);
-}
-
-.story__task-bar i {
-	display: block;
-	height: 100%;
-	background: #7fd6a2;
-	transform: scaleX(0);
-	transform-origin: left;
-}
-
-.story__kb-state {
-	margin-left: auto;
-	font-family: var(--font-mono);
-	font-size: 11px;
-	color: #7fd6a2;
-}
-
-.story__kb-note {
-	margin: 0;
-	font-family: var(--font-mono);
-	font-size: 11.5px;
-	color: var(--faint);
-}
-
-/* 屏内 UI：交付卡片 */
-.story__delivery {
-	border: 1px solid var(--line-strong);
-	border-radius: 10px;
-	background: var(--code-bg);
-	padding: 14px 16px;
-}
-
-.story__delivery-title {
-	margin: 0 0 10px;
-	font-size: 13px;
+.story__step-title {
+	font-size: 20px;
 	font-weight: 600;
 	color: var(--ink);
+	margin: 0 0 8px;
 }
 
-.story__delivery-files {
-	display: flex;
-	flex-direction: column;
-	gap: 6px;
-	margin: 0 0 10px;
+.story__step-desc {
+	font-size: 13.5px;
+	line-height: 1.7;
+	color: var(--muted);
+	margin: 0 0 12px;
 }
 
-.story__file {
-	display: flex;
+.story__step-tag {
+	display: inline-flex;
 	align-items: center;
 	gap: 8px;
-	font-family: var(--font-mono);
 	font-size: 12px;
-	color: var(--muted);
-}
-
-.story__file::before {
-	content: "▸";
-	font-size: 10px;
-	color: var(--accent);
-}
-
-.story__delivery-note {
-	margin: 0;
-	font-family: var(--font-mono);
-	font-size: 11.5px;
 	color: var(--faint);
 }
 
-/* 屏内通用元素：运行中 spinner */
-.story__spinner {
-	display: inline-block;
-	width: 14px;
-	height: 14px;
-	flex-shrink: 0;
+.story__step-tick {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 20px;
+	height: 20px;
 	border-radius: 50%;
-	border: 1.5px solid rgba(127, 214, 162, 0.35);
-	border-top-color: #7fd6a2;
-	animation: story-spin 0.9s linear infinite;
-}
-
-.story__plan li.is-active .story__spinner {
-	border-color: rgba(124, 138, 255, 0.35);
-	border-top-color: var(--accent);
-}
-
-/* ---------------- 屏内动效 ---------------- */
-/* 切屏时内容依次浮现；状态徽章弹出、进度条推进，全部是真实界面元素的流转 */
-.story__screen-item.is-active .story__msg,
-.story__screen-item.is-active .story__attachments,
-.story__screen-item.is-active .story__plan li,
-.story__screen-item.is-active .story__task-list li,
-.story__screen-item.is-active .story__kb-list li {
-	animation: story-rise 0.45s var(--ease) backwards;
-}
-
-.story__screen-item.is-active .story__msg:nth-of-type(2) {
-	animation-delay: 0.05s;
-}
-
-.story__screen-item.is-active .story__attachments {
-	animation-delay: 0.1s;
-}
-
-.story__screen-item.is-active .story__plan li:nth-of-type(2) {
-	animation-delay: 0.05s;
-}
-
-.story__screen-item.is-active .story__plan li:nth-of-type(3) {
-	animation-delay: 0.1s;
-}
-
-.story__screen-item.is-active .story__plan li:nth-of-type(4) {
-	animation-delay: 0.15s;
-}
-
-.story__screen-item.is-active .story__task-list li:nth-of-type(2) {
-	animation-delay: 0.05s;
-}
-
-.story__screen-item.is-active .story__task-list li:nth-of-type(3) {
-	animation-delay: 0.1s;
-}
-
-.story__screen-item.is-active .story__task-list li:nth-of-type(4) {
-	animation-delay: 0.15s;
-}
-
-.story__screen-item.is-active .story__kb-list li:nth-of-type(2) {
-	animation-delay: 0.05s;
-}
-
-.story__screen-item.is-active .story__kb-list li:nth-of-type(3) {
-	animation-delay: 0.1s;
-}
-
-/* 交付卡片：标题 → 文件行 → 说明 */
-.story__screen-item.is-active .story__delivery-title {
-	animation: story-rise 0.45s var(--ease) backwards;
-}
-
-.story__screen-item.is-active .story__file {
-	animation: story-rise 0.45s var(--ease) backwards;
-}
-
-.story__screen-item.is-active .story__file:nth-of-type(2) {
-	animation-delay: 0.06s;
-}
-
-.story__screen-item.is-active .story__file:nth-of-type(3) {
-	animation-delay: 0.12s;
-}
-
-.story__screen-item.is-active .story__delivery-note {
-	animation: story-rise 0.45s var(--ease) 0.18s backwards;
-}
-
-/* ✓ 徽章弹出（spinner 除外） */
-.story__screen-item.is-active .story__plan li span:not(.story__spinner),
-.story__screen-item.is-active .story__task-list li .story__task-icon,
-.story__screen-item.is-active .story__kb-list li .story__kb-icon {
-	animation: story-pop 0.3s var(--ease) backwards;
-}
-
-.story__screen-item.is-active .story__plan li:nth-of-type(2) span:not(.story__spinner),
-.story__screen-item.is-active .story__task-list li:nth-of-type(2) .story__task-icon {
-	animation-delay: 0.05s;
-}
-
-.story__screen-item.is-active .story__plan li:nth-of-type(3) span:not(.story__spinner),
-.story__screen-item.is-active .story__task-list li:nth-of-type(3) .story__task-icon {
-	animation-delay: 0.1s;
-}
-
-.story__screen-item.is-active .story__plan li:nth-of-type(4) span:not(.story__spinner),
-.story__screen-item.is-active .story__task-list li:nth-of-type(4) .story__task-icon {
-	animation-delay: 0.15s;
-}
-
-/* 批量任务进度条：进入该屏 0.5s 后推进至完成 */
-.story__screen-item.is-active .story__task-list li.is-running .story__task-bar i {
-	animation: story-progress 2.2s var(--ease) 0.5s both;
-}
-
-@keyframes story-rise {
-	from {
-		opacity: 0;
-		transform: translateY(8px);
-	}
-}
-
-@keyframes story-pop {
-	from {
-		opacity: 0;
-		transform: scale(0.85);
-	}
-}
-
-@keyframes story-progress {
-	from {
-		transform: scaleX(0);
-	}
-	to {
-		transform: scaleX(1);
-	}
-}
-
-@keyframes story-spin {
-	to {
-		transform: rotate(360deg);
-	}
-}
-
-@keyframes story-caret {
-	50% {
-		opacity: 0;
-	}
+	background: var(--accent-soft);
+	color: var(--accent);
+	font-size: 11px;
 }
 
 /* ---------------- 通用区块 ---------------- */
@@ -2528,8 +2069,8 @@ code {
 		min-height: 320px;
 	}
 
-	.story__app {
-		height: 400px;
+	.story__app-mockup {
+		height: 360px;
 	}
 	.cards {
 		grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2592,16 +2133,8 @@ code {
 		gap: 18px;
 	}
 
-	.story__app {
+	.story__app-mockup {
 		height: 360px;
-	}
-
-	.story__app-nav {
-		display: none;
-	}
-
-	.story__screen-item {
-		padding: 20px 18px;
 	}
 
 	.story__chat-msg {
@@ -2716,16 +2249,6 @@ code {
 	.story__rail-fill {
 		transform: translateX(-50%) scaleY(1);
 	}
-
-	.story__screen-item:not(:first-child) {
-		display: none;
-	}
-
-	.story__screen-item.is-active {
-		opacity: 1;
-		visibility: visible;
-		transform: none;
-	}
 }
 
 /* ---------------- 打印 / PDF 导出 ---------------- */
@@ -2757,14 +2280,6 @@ code {
 	}
 	.story__rail-fill {
 		transform: translateX(-50%) scaleY(1);
-	}
-	.story__screen-item:not(:first-child) {
-		display: none;
-	}
-	.story__screen-item.is-active {
-		opacity: 1;
-		visibility: visible;
-		transform: none;
 	}
 }
 
