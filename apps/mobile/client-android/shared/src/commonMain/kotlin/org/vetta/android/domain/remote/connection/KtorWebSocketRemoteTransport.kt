@@ -9,6 +9,7 @@ import io.ktor.http.takeFrom
 import io.ktor.websocket.Frame
 import io.ktor.websocket.close
 import io.ktor.websocket.readText
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -64,6 +65,11 @@ class KtorWebSocketRemoteTransport(
                     }
                     // Recorded before `incoming` ends, so whoever sees the end can read it.
                     closeReason = withTimeoutOrNull(CLOSE_REASON_WAIT_MS) { socket.closeReason.await() }?.message
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (error: Throwable) {
+                    // A dropped network fails the read; that is this link closing, not a crash.
+                    closeReason = error.message ?: "remote websocket failed"
                 } finally {
                     incomingChannel.close()
                 }
