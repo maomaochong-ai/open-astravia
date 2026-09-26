@@ -2,6 +2,7 @@ import type { InputSegment } from "@shared/lib/input-tokens";
 import { $getSelection, $isRangeSelection, $nodesOfType, type LexicalEditor, type LexicalNode } from "lexical";
 import {
 	$createConnectorTokenNode,
+	$createDbTableTokenNode,
 	$createFileTokenNode,
 	$createImageTokenNode,
 	$createSkillTokenNode,
@@ -65,6 +66,16 @@ export function insertImageToken(path: string, options?: InsertTokenOptions): vo
 	insert(() => [$createImageTokenNode(path)], options);
 }
 
+/** 行内插入数据库表 token（显示为 chip，点 ✕ 可移除）。 */
+export function insertDbTableToken(
+	connection: string,
+	table: string,
+	scope?: string,
+	options?: InsertTokenOptions,
+): void {
+	insert(() => [$createDbTableTokenNode(connection, table, scope)], options);
+}
+
 /** 从文本流里移除某张图片的 token（上方缩略图行的 × 按钮）。 */
 export function removeImageToken(path: string): void {
 	current?.update(() => {
@@ -103,8 +114,9 @@ export function removeSelection(): void {
 }
 
 /** 在光标处插入纯文本（右键粘贴）。选区非空时替换选区。 */
-export function insertPlainText(text: string): void {
+export function insertPlainText(text: string, options?: InsertTokenOptions): void {
 	current?.update(() => {
+		if (options?.replaceTrigger) $removeTriggerBeforeCaret();
 		const selection = $getSelection();
 		if ($isRangeSelection(selection)) selection.insertText(text);
 	});

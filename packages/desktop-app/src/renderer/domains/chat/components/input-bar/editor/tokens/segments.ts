@@ -13,10 +13,12 @@ import {
 } from "lexical";
 import {
 	$createConnectorTokenNode,
+	$createDbTableTokenNode,
 	$createFileTokenNode,
 	$createImageTokenNode,
 	$createSkillTokenNode,
 	$isConnectorTokenNode,
+	$isDbTableTokenNode,
 	$isFileTokenNode,
 	$isImageTokenNode,
 	$isSkillTokenNode,
@@ -47,6 +49,15 @@ function collect(node: LexicalNode, out: InputSegment[]): void {
 	}
 	if ($isImageTokenNode(node)) {
 		out.push({ kind: "image", path: node.getPath() });
+		return;
+	}
+	if ($isDbTableTokenNode(node)) {
+		out.push({
+			kind: "db-table",
+			connection: node.getConnection(),
+			table: node.getTable(),
+			scope: node.getScope(),
+		});
 		return;
 	}
 	if ($isLineBreakNode(node)) {
@@ -85,6 +96,8 @@ function segmentNodes(segment: InputSegment): LexicalNode[] {
 			return [$createFileTokenNode(segment.path, segment.isDirectory ?? false)];
 		case "image":
 			return [$createImageTokenNode(segment.path)];
+		case "db-table":
+			return [$createDbTableTokenNode(segment.connection, segment.table, segment.scope)];
 		case "text": {
 			const nodes: LexicalNode[] = [];
 			const lines = segment.text.split("\n");

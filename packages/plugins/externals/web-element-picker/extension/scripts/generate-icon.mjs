@@ -1,4 +1,5 @@
 // 程序化生成扩展图标（零依赖 PNG 编码器 + 256px 矢量感绘制 + 双线性缩放到 16/32/48/128）。
+// 设计语言：与内核 design token 统一（--wep-accent #6366f1 → --wep-violet #8b5cf6 135° 对角渐变）。
 // 用法：bun extension/scripts/generate-icon.mjs
 import { deflateSync } from "node:zlib";
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -104,13 +105,19 @@ function vline(x, y0, y1, r, g, b, a) {
 	for (let y = y0; y <= y1; y++) blend(x, y, r, g, b, a);
 }
 
-// 背景圆角方块 + 纵向渐变（#0A84FF → #5E5CE6）
+// ── 内核设计 token 对齐 ──
+// 135° 对角渐变：#6366f1 (indigo-500) → #8b5cf6 (violet-500)
+// 从左上角 (0,0) 到右下角 (S-1, S-1)
+const C1 = [99, 102, 241]; // #6366f1 (indigo-500, --wep-accent)
+const C2 = [139, 92, 246]; // #8b5cf6 (violet-500, --wep-violet)
 for (let y = 0; y < S; y++) {
-	const t = y / S;
-	const r = Math.round(10 + (94 - 10) * t);
-	const g = Math.round(132 + (92 - 132) * t);
-	const b = Math.round(255 + (230 - 255) * t);
-	hline(y, 0, S - 1, r, g, b, 255);
+	for (let x = 0; x < S; x++) {
+		const t = (x + y) / (2 * (S - 1));
+		const r = Math.round(C1[0] + (C2[0] - C1[0]) * t);
+		const g = Math.round(C1[1] + (C2[1] - C1[1]) * t);
+		const b = Math.round(C1[2] + (C2[2] - C1[2]) * t);
+		blend(x, y, r, g, b, 255);
+	}
 }
 // 裁成圆角（mask）：外圈透明度按距离场渐变
 const MARGIN = 20;
@@ -133,40 +140,37 @@ for (let y = 0; y < S; y++) {
 	}
 }
 
-// 中央白色卡片（圆角矩形）
-roundRect(64, 72, 192, 200, 18, 255, 255, 255, 255);
-// 卡片顶栏（导航条，深蓝）
-roundRect(76, 84, 180, 102, 9, 10, 90, 200, 255);
-// 顶栏左侧三个小圆点
-for (const dx of [84, 94, 104]) {
-	roundRect(dx, 89, dx + 6, 97, 3, 255, 255, 255, 235);
-}
-// 内容区三条浅蓝线条
-for (const dy of [118, 138, 158]) {
-	roundRect(76, dy, 168, dy + 10, 5, 74, 157, 255, 255);
-}
-roundRect(76, 178, 148, 186, 4, 74, 157, 255, 220);
-
-// 四角准星（元素选择框角标，白色粗 L 型）
-const W = 13;
-const L = 56;
-const cxs = [40, S - 40 - L];
-const cys = [48, S - 48 - L];
+// ── 四角准星（签名视觉：元素选择框角标，粗白线 L 型）──
+const W = 14;
+const L = 60;
+const cxs = [36, S - 36 - L];
+const cys = [44, S - 44 - L];
 for (const cx of cxs) {
 	for (const cy of cys) {
 		cover(cx, cy, cx + L, cy + W, 255, 255, 255, 255);
 		cover(cx, cy, cx + W, cy + L, 255, 255, 255, 255);
 	}
 }
-// 准星加投影描边（深蓝半透明，突出层次）
+// 准星内层（更亮的白色，形成双层效果）
+const W2 = 8;
+const L2 = 50;
+const offset = 3;
 for (const cx of cxs) {
 	for (const cy of cys) {
-		cover(cx - 3, cy - 3, cx + L + 3, cy - 1, 10, 60, 160, 90);
-		cover(cx - 3, cy - 3, cx - 1, cy + L + 3, 10, 60, 160, 90);
+		cover(cx + offset, cy + offset, cx + offset + L2, cy + offset + W2, 255, 255, 255, 230);
+		cover(cx + offset, cy + offset, cx + offset + W2, cy + offset + L2, 255, 255, 255, 230);
 	}
 }
 
-// ─── 缩放 + 输出 ───
+// ── 中央瞄准点（小十字线 + 圆环，强化"瞄准"语义）──
+// 十字线
+cover(124, 116, 132, 140, 255, 255, 255, 255); // 竖线
+cover(116, 124, 140, 132, 255, 255, 255, 255); // 横线
+// 中心圆点
+roundRect(122, 122, 134, 134, 6, 255, 255, 255, 255);
+roundRect(124, 124, 132, 132, 4, 99, 102, 241, 255); // 内核 accent 色填充
+
+// ── 缩放 + 输出 ──
 function sample(u, v) {
 	const x = Math.min(S - 1, Math.max(0, Math.floor(u)));
 	const y = Math.min(S - 1, Math.max(0, Math.floor(v)));

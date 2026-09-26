@@ -2,7 +2,7 @@ import { copyFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { findTestDbxMcpBinaryPath } from "../mcp/dbx-mcp-test-path.js";
 import { databaseService, parseDescribeColumns, parseTableList } from "./database-service.js";
 import { disposeDbxMcpClient } from "./dbx-mcp-client.js";
@@ -324,4 +324,71 @@ describe.skipIf(!testDbxMcpAvailable)("confirmed-binding 单发写通道（真�
 			expect(JSON.stringify(list.data.rows)).not.toContain("confirmed_sneaky");
 		}
 	}, 30000);
+});
+
+describe("databaseService.removeConnection config 清理（Bug 1 回归：connectionEnv/prodWriteApproved 必须按 connectionName 而非 id 清理）", () => {
+	// vi.hoisted 在 vi.mock factory 被提升之前执行，解决 mock 引用 describe block 变量的问题
+	const { savedCalls } = vi.hoisted(() => ({
+		savedCalls: [] as Array<Record<string, unknown>>,
+	}));
+
+	beforeEach(() => {
+		savedCalls.length = 0;
+		vi.mock("../config/desktop-config-store.js", () => ({
+			readConfigSync: vi.fn(() => ({
+				database: {
+					connectionEnv: { "my-prod-conn": "prod", "other-conn": "dev" },
+					prodWriteApproved: { "my-prod-conn": true },
+				},
+			})),
+			writeDesktopConfig: vi.fn((cfg: Record<string, unknown>) => {
+				savedCalls.push(cfg);
+			}),
+		}));
+		vi.mock("./dbx-mcp-client.js", () => ({
+			getDbxMcpClient: vi.fn(() => ({
+				callTool: vi.fn(async () => ({
+					isError: false,
+					content: [{ type: "text", text: "Connection removed" }],
+				})),
+			})),
+			disposeDbxMcpClient: vi.fn(),
+		}));
+	});
+
+	afterEach(() => {
+		vi.resetModules();
+		vi.unstubAllGlobals();
+	});
+
+	it("按 connection name 清理 connectionEnv 与 prodWriteApproved", async () => {
+		const { databaseService } = await import("./database-service.js");
+		const result = await databaseService.removeConnection("my-prod-conn");
+		expect(result.ok).toBe(true);
+		// writeDesktopConfig 被调用过一次（串行化链最终落盘）
+		expect(savedCalls.length).toBeGreaterThan(0);
+		const lastConfig = savedCalls[savedCalls.length - 1] as { database?: Record<string, Record<string, unknown>> };
+		expect(lastConfig.database).toBeDefined();
+		const env = lastConfig.database?.connectionEnv ?? {};
+		const approved = lastConfig.database?.prodWriteApproved ?? {};
+		expect(env).not.toHaveProperty("my-prod-conn");
+		expect(approved).not.toHaveProperty("my-prod-conn");
+		// 其他连接标记未被误伤
+		expect(env["other-conn"]).toBe("dev");
+	});
+
+	it("（反例保护）如果参数被错误改回 id，清理永远命不中", async () => {
+		const { databaseService } = await import("./database-service.js");
+		const result = await databaseService.removeConnection("nonexistent-name");
+		// dbx mock 对任何 name 都返回 ok；config 清理对不存在 key 是幂等 delete，不会报错。
+		expect(result.ok).toBe(true);
+		expect(savedCalls.length).toBeGreaterThan(0);
+		const lastConfig = savedCalls[savedCalls.length - 1] as { database?: Record<string, Record<string, unknown>> };
+		const env = lastConfig.database?.connectionEnv ?? {};
+		const approved = lastConfig.database?.prodWriteApproved ?? {};
+		// 原有条目都应该保留（因为不存在的 name 不匹配任何已有 key）
+		expect(env["my-prod-conn"]).toBe("prod");
+		expect(env["other-conn"]).toBe("dev");
+		expect(approved["my-prod-conn"]).toBe(true);
+	});
 });

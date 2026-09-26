@@ -54,6 +54,7 @@ function render(state: State): void {
 		"screenshot-saved": t("screenshotSaved"),
 		"screenshot-failed": t("screenshotFailed"),
 		"send-to-ai-copied": t("sendToAiHint"),
+		"mount-failed": t("errorMountFailed"),
 	}[state.notice ?? ""];
 	if (noticeText) {
 		notice.hidden = false;

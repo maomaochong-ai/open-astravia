@@ -17,7 +17,8 @@ export type InputSegment =
 	| { kind: "skill"; name: string }
 	| { kind: "connector"; name: string }
 	| { kind: "file"; path: string; isDirectory?: boolean }
-	| { kind: "image"; path: string };
+	| { kind: "image"; path: string }
+	| { kind: "db-table"; connection: string; scope?: string; table: string };
 
 /** 旧会话里以行首前缀承载的结构化引用（`/skill:name`）。 */
 export interface LegacyPromptRef {

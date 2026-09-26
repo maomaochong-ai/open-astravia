@@ -42,7 +42,8 @@ export type InlineTokenPiece =
 	| { kind: "skill"; name: string }
 	| { kind: "connector"; name: string }
 	| { kind: "file"; path: string; isDirectory?: boolean }
-	| { kind: "image"; path: string };
+	| { kind: "image"; path: string }
+	| { kind: "db-table"; connection: string; scope?: string; table: string };
 
 export interface InlineTokenSupport {
 	parse: (text: string) => InlineTokenPiece[];
@@ -90,15 +91,29 @@ function rehypeInlineTokens(parse: (text: string) => InlineTokenPiece[]) {
 							newChildren.push({ type: "text", value: piece.text } as HastText);
 							continue;
 						}
+						// db-table 没有通用 path/name 字段，分开处理属性
+						const tokenValue =
+							piece.kind === "skill" || piece.kind === "connector"
+								? piece.name
+								: piece.kind === "db-table"
+									? `${piece.connection}${piece.scope ? `.${piece.scope}` : ""}.${piece.table}`
+									: piece.path;
+						const properties: Record<string, unknown> = {
+							"data-token-kind": piece.kind,
+							"data-token-value": tokenValue,
+						};
+						if (piece.kind === "file") {
+							properties["data-token-directory"] = piece.isDirectory ? "true" : "false";
+						}
+						if (piece.kind === "db-table") {
+							properties["data-token-connection"] = piece.connection;
+							properties["data-token-scope"] = piece.scope ?? "";
+							properties["data-token-table"] = piece.table;
+						}
 						newChildren.push({
 							type: "element",
 							tagName: INLINE_TOKEN_TAG,
-							properties: {
-								"data-token-kind": piece.kind,
-								"data-token-value":
-									piece.kind === "skill" || piece.kind === "connector" ? piece.name : piece.path,
-								"data-token-directory": piece.kind === "file" && piece.isDirectory ? "true" : "false",
-							},
+							properties,
 							children: [],
 						});
 					}
@@ -590,6 +605,17 @@ export const TextBlockView = memo(function TextBlockView({
 								<span className={cn("icon-[solar--plug-circle-linear]", INLINE_TOKEN_ICON_CLASS)} />
 							)}
 							{connector?.label ?? value}
+						</span>
+					);
+				}
+				if (kind === "db-table") {
+					const scope = String(properties["data-token-scope"] ?? "");
+					const tableName = String(properties["data-token-table"] ?? "");
+					const display = scope ? `${scope}.${tableName}` : tableName;
+					return (
+						<span className={INLINE_TOKEN_CLASS} title={value}>
+							<span className={cn("icon-[solar--document-text-linear]", INLINE_TOKEN_ICON_CLASS)} />
+							{display}
 						</span>
 					);
 				}

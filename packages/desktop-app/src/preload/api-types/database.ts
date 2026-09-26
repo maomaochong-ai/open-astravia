@@ -65,6 +65,7 @@ export type DatabaseErrorCode =
 	| "INVALID_PARAMS"
 	| "DBX_NOT_RUNNING"
 	| "CONFIRM_MISMATCH"
+	| "CONNECTION_AI_ACCESS_DENIED"
 	| "UNKNOWN";
 
 /**
@@ -131,6 +132,45 @@ export interface DbTableScope {
 	readonly schema?: string;
 }
 
+/**
+ * 驱动类型 → catalog 组织方式映射（renderer / main 共用，只此一份）。
+ *
+ * 注意：dbType 是连接表单里的驱动类型标识（如 "postgres" / "mysql" / "sqlite"），
+ * 不是驱动 JDBC 类名；未识别类型一律按 flat 处理，避免破坏现有树。
+ */
+export function catalogFamilyOfType(dbType: string): DbCatalogFamily {
+	const t = dbType.toLowerCase();
+	if (
+		t === "postgres" ||
+		t === "postgresql" ||
+		t === "pg" ||
+		t === "pgsql" ||
+		t === "redshift" ||
+		t === "cockroachdb" ||
+		t === "cockroach" ||
+		t === "edb"
+	) {
+		return "schemas";
+	}
+	if (
+		t === "mysql" ||
+		t === "mariadb" ||
+		t === "tidb" ||
+		t === "doris" ||
+		t === "starrocks" ||
+		t === "oceanbase-mysql" ||
+		t === "mysql2"
+	) {
+		return "databases";
+	}
+	return "flat";
+}
+
+/** catalog 作用域 → 引擎 list_tables / describe_table 参数（kind 决定映射到 schema 还是 database 字段）。 */
+export function scopeToTableScope(scope: DbCatalogScope): DbTableScope {
+	return scope.kind === "schema" ? { schema: scope.name } : { database: scope.name };
+}
+
 /** 表级子对象种类（树深至表下：索引 / 约束 / 外键 / 触发器 / 分区）。 */
 export type DbTableObjectKind = "index" | "constraint" | "foreign-key" | "trigger" | "partition";
 
@@ -156,8 +196,8 @@ export interface DesktopDatabaseApi {
 	addConnection(params: DbAddConnectionParams): Promise<DatabaseResult<{ id: string; name: string }>>;
 	/** 测试连接：已保存连接或未保存的表单草稿。 */
 	testConnection(params: DbTestConnectionParams): Promise<DatabaseResult<DbConnectionTestResult>>;
-	/** 删除连接。 */
-	removeConnection(id: string): Promise<DatabaseResult<void>>;
+	/** 删除连接。参数为连接 name（dbx 按 name 删除，产品层 connectionEnv/prodWriteApproved 同样按 name 做 key）。 */
+	removeConnection(connectionName: string): Promise<DatabaseResult<void>>;
 	/** 列出连接下全部表（可选 catalog 作用域：schema / database）。 */
 	listTables(connectionName: string, scope?: DbTableScope): Promise<DatabaseResult<DbTableInfo[]>>;
 	/** 查看表结构（可选 catalog 作用域：schema / database）。 */

@@ -82,13 +82,18 @@ export function DatabaseConnectionsWorkspace(): JSX.Element {
 					try {
 						await open(cwd);
 						const effectiveCwd = getDefaultStore().get(activeSessionAtom)?.cwd;
-						if (effectiveCwd) setDatabaseTab(effectiveCwd);
+						setDatabaseTab(effectiveCwd ?? cwd);
 					} catch {
+						// 会话创建失败仍兜底：跳到聊天页 + 用默认 cwd 设 tab，避免面板打开但 tab 不对。
+						setDatabaseTab(cwd);
 						if (!hasActivityPanel) void navigate({ to: "/" });
 					}
 				})();
-			} else if (!hasActivityPanel) {
-				void navigate({ to: "/" });
+			} else {
+				// 最兜底：openSessionFnRef 未就绪 或 cwd 为空 —— 仍要把 tab 设好（面板已开），
+				// 否则用户看到「点了打开工作台但面板不是数据库」的虚假感。
+				if (cwd) setDatabaseTab(cwd);
+				if (!hasActivityPanel) void navigate({ to: "/" });
 			}
 		}
 		// 数据库工作台按推荐宽度展开，保留对话面板可见，避免占满全屏。
@@ -131,8 +136,6 @@ export function DatabaseConnectionsWorkspace(): JSX.Element {
 						<DbxToolAccessRow model={model} />
 						<SafetyModeRow model={model} />
 						<DatabaseLimitsRow model={model} />
-						<DatabaseNotice tone="info" icon="icon-[mdi--shield-alert-outline]" title={t("databaseCredentialRiskNote")} />
-						<DatabaseNotice tone="info" icon="icon-[mdi--shield-lock-outline]" title={t("databaseEngineNote")} />
 					</div>
 				</section>
 

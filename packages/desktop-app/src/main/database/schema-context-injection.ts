@@ -28,6 +28,38 @@ export const SCHEMA_CONTEXT_CHAR_LIMIT_PER_CONNECTION = 6_000;
 /** 缓存有效期：连接/schema 变更后最多延迟该时长生效。 */
 export const SCHEMA_CONTEXT_CACHE_TTL_MS = 60_000;
 
+/**
+ * 给 AI 的反循环指令——schema 注入后禁止它再调 describe/schema/listing 工具。
+ *
+ * 为什么是 exported constant：schema-context-injection.ts（system prompt 级注入）和
+ * desktop-conversation-service.ts（per-message @mention 注入）都要引用同一段指令，
+ * 不能各写各的（改一处忘另一处 → 指令矛盾）。
+ *
+ * 设计意图：
+ * - schema 已注入 → AI 不应再调 dbx_describe_table / dbx_get_schema_context / dbx_list_tables
+ * - 只剩 dbx_execute_query 跑 SELECT
+ * - 一次 2-3 条 SQL 就出最终答案，不要反复试
+ */
+export const DB_AI_ANTI_LOOP_DIRECTIVE_LINES: readonly string[] = [
+	"",
+	"## ⚠️ 工具使用纪律（重要——违反将导致调用爆炸）",
+	"",
+	"1. **Schema 已在上方完整提供**——你已经看到了所有连接的所有表的列结构。",
+	"   **绝对不要**调用 dbx_describe_table / dbx_get_schema_context / dbx_list_tables 来重新获取 schema！",
+	"2. **只会用到 dbx_execute_query**——用它跑 SELECT 查询来回答用户的数据分析问题。",
+	"   不要调用 dbx_open_table / dbx_execute_and_show / dbx_list_connections / dbx_add_connection / dbx_remove_connection / dbx_execute_redis_command。",
+	"3. **一次最多 2-3 条 SQL**——拿到结果后综合分析，直接给用户最终答案。",
+	"   不要对同一张表反复执行相似查询，不要为了检查数据跑 SELECT LIMIT 100 后再重复跑。",
+	"4. 遇到工具返回错误时，先自行分析错误原因（语法/连接名/类型），修正后再试一次——",
+	"   不是重试 10 次，更不是换着连接/表名瞎试。",
+];
+
+/** Per-message @mention 注入的精简版反循环指令（不重复完整纪律，只说核心）。 */
+export const DB_AI_PER_MESSAGE_ANTI_LOOP =
+	"⚠️ **工具纪律（重要）**：上方已提供这些表的完整 schema，" +
+	"**不要再调 dbx_describe_table / dbx_get_schema_context / dbx_list_tables 拉 schema**。" +
+	"只用 dbx_execute_query 跑 SELECT 查询。";
+
 /** 组装后的单个注入条目。 */
 export interface SchemaContextEntry {
 	connectionName: string;
@@ -38,7 +70,7 @@ export interface SchemaContextEntry {
 
 /** 注入所需的 IO（生产实现走 databaseService，测试可 mock）。 */
 export interface SchemaContextIo {
-	listConnections(): Promise<Array<{ name: string }>>;
+	listConnections(): Promise<Array<{ name: string; env?: "prod" | "dev" }>>;
 	/** 返回连接 schema 文本；失败时抛错（调用方静默跳过）。 */
 	getSchemaContext(connectionName: string): Promise<string>;
 	/** 返回单表 schema 文本（B2.10-W4-① 表级注入）；失败时抛错（调用方静默跳过）。 */
@@ -57,6 +89,9 @@ export interface SchemaContextRenderOptions {
 	readonly executeToolAvailable?: boolean;
 	/** 感知范围（B2.10-W4-①）：缺省 all（全部连接全表）。 */
 	readonly scope?: SchemaInjectionScopeConfig;
+	/** B3.1-①-C 连接级 AI 访问白名单 + 环境映射：用于在 schema 注入阶段就排除 AI 不可访问的连接。 */
+	readonly connectionAiAccess?: Record<string, boolean>;
+	readonly connectionEnv?: Record<string, "prod" | "dev">;
 }
 
 /** 组装可注入的 schema 提示词块（纯函数）。无条目时返回空串。 */
@@ -77,6 +112,12 @@ export function renderSchemaContextBlock(entries: SchemaContextEntry[], opts?: S
 	const executionLine = executeToolAvailable
 		? "执行查询请调用 dbx MCP 的 dbx_execute_query 工具，connection_name 必须使用上方列出的连接名；只允许只读 SELECT 查询。"
 		: "注意：数据库 AI 访问未开启（工作台「数据库」页的「AI 访问」开关关闭），dbx MCP 工具不可用，无法执行查询；不要调用 dbx_* 工具。如需执行 SQL，请告知用户先在工作台开启「AI 访问」。";
+
+	// 🛡️ Anti-loop directives：schema 已注入 → 禁止 AI 再调 describe/schema/listing 工具
+	// 之前没有这条，AI 拿到 schema 后仍然反复调 dbx_describe_table / dbx_get_schema_context / dbx_list_tables
+	// 拉取相同信息，导致工具调用爆炸（100+ 次）。现在明确禁止。
+	const antiLoopBlock = executeToolAvailable ? DB_AI_ANTI_LOOP_DIRECTIVE_LINES.join("\n") : "";
+
 	// B3.3 few-shot：从首个条目解析真实表名，注入只读 SELECT 示例，帮助自然语言转 SQL 生成。
 	return [
 		"## 数据库 Schema 上下文（AI 数据库感知已开启）",
@@ -86,6 +127,7 @@ export function renderSchemaContextBlock(entries: SchemaContextEntry[], opts?: S
 		...(exampleTable
 			? [`## 参考 SQL 示例（只读 SELECT，表名与语法可直接参考）\n${buildSqlExamples(exampleTable)}`]
 			: []),
+		...(antiLoopBlock ? [antiLoopBlock] : []),
 	].join("\n\n");
 }
 
@@ -144,6 +186,17 @@ function cachedTableSchema(io: SchemaContextIo, connectionName: string, table: s
 	});
 }
 
+/** B3.1-①-C 连接级 AI 访问生效判定（与 renderer 侧 aiAccessEffective 同口径）。 */
+function isAiAccessEnabledFor(
+	name: string,
+	env: "prod" | "dev" | undefined,
+	aiAccess: Record<string, boolean> | undefined,
+): boolean {
+	const explicit = aiAccess?.[name];
+	if (explicit !== undefined) return explicit;
+	return env !== "prod"; // prod 缺省关 / dev 缺省开
+}
+
 /**
  * 构建注入用的 schema 提示词块。
  * 失败（引擎未运行 / 无连接 / 单连接读 schema 失败）一律返回 undefined，不抛错。
@@ -154,11 +207,16 @@ export async function buildDatabaseSchemaPrompt(
 ): Promise<string | undefined> {
 	try {
 		const scope = opts?.scope;
+		const aiAccess = opts?.connectionAiAccess;
+		const envMap = opts?.connectionEnv;
+
 		// B2.10-W4-① 感知范围：tables = 仅白名单「连接.表」；connections = 仅白名单连接；其余 = 全部连接全表。
 		if (scope?.scope === "tables") {
 			if (scope.tables.length === 0) return undefined;
 			const entries: SchemaContextEntry[] = [];
 			for (const target of scope.tables) {
+				// B3.1-①-C：连接级 AI 访问白名单外的表也跳过（即使在 scope 表白名单里）。
+				if (!isAiAccessEnabledFor(target.connection, envMap?.[target.connection], aiAccess)) continue;
 				try {
 					const schema = await cachedTableSchema(io, target.connection, target.table);
 					if (schema.trim()) entries.push({ connectionName: target.connection, tableName: target.table, schema });
@@ -173,7 +231,13 @@ export async function buildDatabaseSchemaPrompt(
 		const connections = await io.listConnections();
 		if (connections.length === 0) return undefined;
 		const allow = scope?.scope === "connections" ? new Set(scope.connections) : null;
-		const targets = allow ? connections.filter((connection) => allow.has(connection.name)) : connections;
+		let targets = allow ? connections.filter((connection) => allow.has(connection.name)) : connections;
+		// B3.1-①-C：按连接级 AI 访问白名单进一步过滤。
+		// env 必须从 opts.connectionEnv（desktop-config）取，而非 DbConnection.env（dbx 引擎返回），
+		// 两者可能不同步（如用户在 dbx UI 改了 env 但没同步到 Astravia config）。
+		targets = targets.filter((connection) =>
+			isAiAccessEnabledFor(connection.name, envMap?.[connection.name], aiAccess),
+		);
 		if (targets.length === 0) return undefined;
 		const entries: SchemaContextEntry[] = [];
 		for (const connection of targets) {
@@ -195,7 +259,8 @@ export async function buildDatabaseSchemaPrompt(
 export const databaseSchemaContextIo: SchemaContextIo = {
 	async listConnections() {
 		const result = await databaseService.listConnections();
-		return result.ok ? result.data : [];
+		if (!result.ok) return [];
+		return result.data.map((c) => ({ name: c.name, env: c.env }));
 	},
 	async getSchemaContext(connectionName) {
 		const result = await databaseService.getSchemaContext(connectionName);

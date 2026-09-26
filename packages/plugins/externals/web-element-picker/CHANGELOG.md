@@ -24,6 +24,9 @@
 - 内核 mount 失败回滚：监听器/UI 清理并上报 `mount-failed`，避免“僵尸内核”吞点击；`applyLang` 重建受保护。
 - 扩展 popup 点「开始选择」无反馈：background 返回的失败原因（`no-inject` / `no-tab`）此前被丢弃，现显示明确错误提示（含中英文案），引导在普通网页上使用或刷新重试。
 - 扩展 popup 截图结果文案错位：截图成功/失败时误显示「已复制到剪贴板」「授权码无效或已过期」，现分别显示「截图已保存到下载目录」「截图保存失败，请重试」（新增中英文案）。
+- **内核选择历史（撤销栈）无界增长**：每次选择变化都 push 进 `state.history`，长时间连续选择/框选 session 下撤销链会无上限消耗内存。现引入 `HISTORY_LIMIT = 50` cap，每次 push 后自动截断到最近 50 步。
+- **内置版 in-page 导航产生孤儿事件监听器**：`injectKernel` 每次都执行完整 IIFE 重新定义 window.__WEP__，在 SPA 内部跳转（`did-navigate-in-page`）时 document 没变，旧监听器闭包捕获旧 state 变成孤儿（新 destroy() 无法移除），导致双重点击拦截 + 内存泄漏。现用 `window.__WEP_INJECTED__ = document.documentElement` 标记当前 document 是否已注入过内核：同 document 内跳过 IIFE 注入只调 mount/applySettings；整页导航后旧 marker 脱连自动重注入。
+- **浏览器扩展 mount-failed 事件静默丢失**：内核注入/初始化失败时 post({type:'mount-failed'}) 经 content → background relay，但 background 只处理 mounted/destroyed/selection-changed，mount-failed 被吞掉，popup 永远收不到失败通知，表现为「点了开始选择但无反馈」。现 background 处理 mount-failed 设 `wepNotice='mount-failed'`，popup 据此显示明确错误提示；同时 mounted 清 wepNotice 避免残留。
 
 ### Changed
 

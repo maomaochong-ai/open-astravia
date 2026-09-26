@@ -36,7 +36,7 @@ export function createDatabaseApi(ipcRenderer: IpcRenderer): Pick<DesktopApi, "d
 			listConnections: () => ipcRenderer.invoke(CHANNELS.LIST_CONNECTIONS),
 			addConnection: (params: DbAddConnectionParams) => ipcRenderer.invoke(CHANNELS.ADD_CONNECTION, params),
 			testConnection: (params: DbTestConnectionParams) => ipcRenderer.invoke(CHANNELS.TEST_CONNECTION, params),
-			removeConnection: (id: string) => ipcRenderer.invoke(CHANNELS.REMOVE_CONNECTION, id),
+			removeConnection: (connectionName: string) => ipcRenderer.invoke(CHANNELS.REMOVE_CONNECTION, connectionName),
 			listTables: (connectionName: string, scope?: DbTableScope) =>
 				ipcRenderer.invoke(CHANNELS.LIST_TABLES, connectionName, scope),
 			listCatalogScopes: (connectionName: string, family: DbCatalogFamily) =>

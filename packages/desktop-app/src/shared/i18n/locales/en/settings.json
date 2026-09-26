@@ -1353,6 +1353,7 @@
   "databaseConnectionFollowSidebar": "Follow sidebar selection (no fixed connection yet)",
   "databaseSubtitle": "Manage database connections shared by AI chat and the database tools.",
   "databaseSectionManagement": "Management",
+  "databaseAdminInfo": "Admin info",
   "databaseSectionGlobal": "General",
   "databaseSectionTooling": "Tool preferences",
   "databaseSectionToolingDescription": "Defaults applied when the workbench opens: result pagination, auto-refresh and object-tree visibility.",

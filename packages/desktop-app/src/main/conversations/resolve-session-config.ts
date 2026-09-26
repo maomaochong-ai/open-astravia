@@ -67,6 +67,9 @@ export async function resolveDesktopSessionConfig(
 					executeToolAvailable: dbxToolEnabled,
 					// B2.10-W4-① 感知范围：缺省 all（全部连接全表）；undefined 由注入层按 all 处理。
 					scope: database?.schemaInjectionScope,
+					// B3.1-①-C 连接级 AI 访问白名单 + 环境映射：在 schema 注入阶段就排除 AI 不可访问的连接。
+					connectionAiAccess: database?.connectionAiAccess,
+					connectionEnv: database?.connectionEnv,
 				})
 			: undefined;
 	// B2.10-W2：AI 访问未开启（缺省）时，若未注入 schema 块，补一条简短提示，避免模型臆造 dbx 工具名

@@ -44,10 +44,10 @@ export function pushQueryHistory(
 	return [next, ...rest].slice(0, QUERY_HISTORY_LIMIT);
 }
 
-/** 删除指定 id 的一条历史（对齐 dbx 历史面板单条删除）。返回新数组；id 不存在则原样返回。 */
+/** 删除指定 id 的一条历史（对齐 dbx 历史面板单条删除）。返回原引用（不修改入参），id 不存在时原样返回以避免不必要的持久化写入。 */
 export function removeQueryHistory(entries: readonly QueryHistoryEntry[], id: string): QueryHistoryEntry[] {
 	const next = entries.filter((entry) => entry.id !== id);
-	return next.length === entries.length ? [...entries] : next;
+	return next.length === entries.length ? (entries as QueryHistoryEntry[]) : next;
 }
 
 /** 读取历史：非法 JSON / 非数组 / 脏条目全部跳过，返回合法条目的最近 N 条。 */

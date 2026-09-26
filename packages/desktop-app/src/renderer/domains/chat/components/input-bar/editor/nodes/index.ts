@@ -1,5 +1,6 @@
 import type { Klass, LexicalNode } from "lexical";
 import { ConnectorTokenNode } from "./ConnectorTokenNode";
+import { DbTableTokenNode } from "./DbTableTokenNode";
 import { FileTokenNode } from "./FileTokenNode";
 import { ImageTokenNode } from "./ImageTokenNode";
 import { SkillTokenNode } from "./SkillTokenNode";
@@ -10,6 +11,7 @@ export const INPUT_EDITOR_NODES: ReadonlyArray<Klass<LexicalNode>> = [
 	ConnectorTokenNode,
 	FileTokenNode,
 	ImageTokenNode,
+	DbTableTokenNode,
 ];
 
 export {
@@ -17,6 +19,7 @@ export {
 	$isConnectorTokenNode,
 	ConnectorTokenNode,
 } from "./ConnectorTokenNode";
+export { $createDbTableTokenNode, $isDbTableTokenNode, DbTableTokenNode } from "./DbTableTokenNode";
 export { $createFileTokenNode, $isFileTokenNode, FileTokenNode } from "./FileTokenNode";
 export { $createImageTokenNode, $isImageTokenNode, ImageTokenNode } from "./ImageTokenNode";
 export { $createSkillTokenNode, $isSkillTokenNode, SkillTokenNode } from "./SkillTokenNode";

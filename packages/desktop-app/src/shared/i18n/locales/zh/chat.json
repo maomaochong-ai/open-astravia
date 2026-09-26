@@ -202,10 +202,15 @@
 		"emptyDirectory": "空目录",
 		"enterDirectory": "Tab 进入",
 		"goUp": "..",
-		"header": "引用文件",
+		"header": "引用",
 		"loading": "加载中...",
 		"noResults": "未找到匹配项",
-		"searchResults": "{{count}} 个结果"
+		"noConnections": "暂无数据库连接",
+		"searchResults": "{{count}} 个结果",
+		"tabDatabase": "数据库",
+		"tabFiles": "文件",
+		"tablesCount": "{{count}} 张表",
+		"connectionsCount": "{{count}} 个连接"
 	},
 	"backgroundTasksBadge": {
 		"runningTasksTooltip": "{{count}} 个后台任务运行中"

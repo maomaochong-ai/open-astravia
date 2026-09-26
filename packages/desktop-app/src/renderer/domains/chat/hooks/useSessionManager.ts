@@ -15,6 +15,7 @@ import {
 	recordInputActionsUsed,
 	recordInputContextUsed,
 } from "@shared/lib/app-monitor-events";
+import { parseDbTableMentions } from "@shared/lib/db-mentions/parse";
 import { deriveSkillNames, parseInputSegments } from "@shared/lib/input-tokens";
 import type { ActivityTabKey } from "@shared/lib/project-profile";
 import {
@@ -1328,6 +1329,22 @@ export function useSessionManager(): SessionManagerResult {
 					...promptReq.metadata,
 					databaseTable: { connection: dbConnection, table: dbTable },
 				};
+			}
+			// ─── @connection.table mention（dbx 风格 per-message schema 注入） ───
+			// 从用户纯文本里解析 @conn.table mentions——与 scope 面板的会话级注入互补：
+			// scope 管持久背景知识（system prompt），mention 管本轮对话意图。
+			if (!hasOverride && rawText.trim()) {
+				const mentions = parseDbTableMentions(rawText);
+				if (mentions.length > 0) {
+					promptReq.metadata = {
+						...promptReq.metadata,
+						databaseMentions: mentions.map((m) => ({
+							connection: m.connection,
+							scope: m.scope,
+							table: m.table,
+						})),
+					};
+				}
 			}
 			// Merge metadata and hidden instructions contributed by active plugin
 			// input actions.

@@ -63,9 +63,9 @@ export async function testConnection(params: DbTestConnectionParams): Promise<Db
 	return unwrapDatabaseResult(await window.astravia.database.testConnection(params));
 }
 
-/** 删除连接。 */
-export async function removeConnection(id: string): Promise<void> {
-	unwrapDatabaseResult(await window.astravia.database.removeConnection(id));
+/** 删除连接。参数为连接 name（与 dbx 工具参数 connection_name 对齐）。 */
+export async function removeConnection(connectionName: string): Promise<void> {
+	unwrapDatabaseResult(await window.astravia.database.removeConnection(connectionName));
 }
 
 /** 列出连接下全部表（可选 catalog 作用域：schema / database）。 */

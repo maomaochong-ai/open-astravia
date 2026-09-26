@@ -202,10 +202,15 @@
 		"emptyDirectory": "Empty directory",
 		"enterDirectory": "Tab to enter",
 		"goUp": "..",
-		"header": "Reference file",
+		"header": "Reference",
 		"loading": "Loading...",
 		"noResults": "No matches found",
-		"searchResults": "{{count}} results"
+		"noConnections": "No database connections",
+		"searchResults": "{{count}} results",
+		"tabDatabase": "Database",
+		"tabFiles": "Files",
+		"tablesCount": "{{count}} tables",
+		"connectionsCount": "{{count}} connections"
 	},
 	"backgroundTasksBadge": {
 		"runningTasksTooltip": "{{count}} background tasks running"

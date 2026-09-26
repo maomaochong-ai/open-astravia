@@ -1,3 +1,4 @@
+import { formatDbTableMention } from "@shared/lib/db-mentions";
 import type { InputSegment } from "./types";
 
 /** 不含空白与引号的名字可以裸写，其余一律加引号（中文名同样安全）。 */
@@ -45,6 +46,8 @@ function segmentToText(segment: InputSegment): string {
 		case "file":
 		case "image":
 			return pathTokenText(segment.path);
+		case "db-table":
+			return formatDbTableMention(segment.connection, segment.table, segment.scope);
 	}
 }
 

@@ -38,21 +38,55 @@ async function sendToTab(tabId: number, message: unknown): Promise<boolean> {
 	}
 }
 
-// ─── 截图：整页 captureVisibleTab + 下载 ───
-async function handleScreenshot(sender: { tab?: chrome.tabs.Tab }): Promise<void> {
+// ─── 截图：captureVisibleTab → Canvas 裁剪到选区 rect（内核传入） → 下载 ───
+async function handleScreenshot(
+	sender: { tab?: chrome.tabs.Tab },
+	rect?: { x: number; y: number; width: number; height: number },
+): Promise<void> {
 	const licensed = await isLicensed();
 	if (!licensed.ok) {
 		await chrome.storage.session.set({ wepNotice: "license-required" });
 		return;
 	}
 	try {
-		const dataUrl = await chrome.tabs.captureVisibleTab(sender.tab?.windowId, { format: "png" });
+		const fullDataUrl = await chrome.tabs.captureVisibleTab(sender.tab?.windowId, { format: "png" });
+		let dataUrl = fullDataUrl;
+		if (rect && rect.width > 0 && rect.height > 0) {
+			const cropped = await cropImage(fullDataUrl, rect);
+			if (cropped) dataUrl = cropped;
+		}
 		const filename = `wep-screenshot-${Date.now()}.png`;
 		await chrome.downloads.download({ url: dataUrl, filename, saveAs: false });
 		await chrome.storage.session.set({ wepNotice: "screenshot-saved" });
 	} catch (error) {
 		console.warn("[wep] screenshot failed:", error);
 		await chrome.storage.session.set({ wepNotice: "screenshot-failed" });
+	}
+}
+
+/** 在 Service Worker 中用 OffscreenCanvas 把全视口截图裁剪到选区 rect。 */
+async function cropImage(
+	dataUrl: string,
+	rect: { x: number; y: number; width: number; height: number },
+): Promise<string | null> {
+	try {
+		const response = await fetch(dataUrl);
+		const blob = await response.blob();
+		const img = await createImageBitmap(blob);
+		const canvas = new OffscreenCanvas(rect.width, rect.height);
+		const ctx = canvas.getContext("2d");
+		if (!ctx) return null;
+		ctx.drawImage(img, rect.x, rect.y, rect.width, rect.height, 0, 0, rect.width, rect.height);
+		const croppedBlob = await canvas.convertToBlob({ type: "image/png" });
+		// MV3 service worker 中 URL.createObjectURL 不可用，用 data URL 返回
+		const buffer = await croppedBlob.arrayBuffer();
+		const bytes = new Uint8Array(buffer);
+		let binary = "";
+		for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+		return `data:image/png;base64,${btoa(binary)}`;
+	} catch (error) {
+		console.warn("[wep] cropImage failed:", error);
+		return null;
 	}
 }
 
@@ -69,7 +103,12 @@ async function handleSendToAi(): Promise<void> {
 chrome.runtime.onMessage.addListener((message: unknown, sender, sendResponse) => {
 	const m = message as {
 		type?: string;
-		msg?: { type?: string; count?: number; text?: string };
+		msg?: {
+			type?: string;
+			count?: number;
+			text?: string;
+			rect?: { x: number; y: number; width: number; height: number };
+		};
 		settings?: { sharingan?: boolean; lang?: string };
 	};
 	const respond = (payload: unknown) => {
@@ -81,13 +120,16 @@ chrome.runtime.onMessage.addListener((message: unknown, sender, sendResponse) =>
 			const msg = m.msg;
 			void (async () => {
 				if (msg?.type === "mounted") {
-					await chrome.storage.session.set({ wepActive: true, wepCount: 0 });
+					await chrome.storage.session.set({ wepActive: true, wepCount: 0, wepNotice: null });
 				} else if (msg?.type === "destroyed") {
 					await chrome.storage.session.set({ wepActive: false, wepCount: 0 });
+				} else if (msg?.type === "mount-failed") {
+					// 内核注入/初始化失败：popup 据此显示明确错误提示（而不是永远没反馈）。
+					await chrome.storage.session.set({ wepActive: false, wepNotice: "mount-failed" });
 				} else if (msg?.type === "selection-changed") {
 					await chrome.storage.session.set({ wepCount: msg.count ?? 0 });
 				}
-				if (msg?.type === "screenshot") void handleScreenshot(sender);
+				if (msg?.type === "screenshot") void handleScreenshot(sender, msg.rect);
 				if (msg?.type === "send-to-ai") void handleSendToAi();
 			})();
 			return respond({ ok: true });
@@ -120,11 +162,19 @@ chrome.runtime.onMessage.addListener((message: unknown, sender, sendResponse) =>
 		case "wep-settings": {
 			void (async () => {
 				const settings = m.settings ?? {};
-				// 设置合并写回 session storage：popup 轮询 get-state 以此为唯一回流来源，
-				// 不写的话开关会被下一轮 render 重置回旧值（写轮眼模式无法切换）。
-				const current = await chrome.storage.session.get("wepSettings");
-				const merged = { ...(current.wepSettings ?? {}), ...settings };
-				await chrome.storage.session.set({ wepSettings: merged });
+				// 同时写 session（popup 轮询读）和 sync（content script 持久化读），
+				// 避免 popup 切换后页面刷新导致设置回退到旧值。
+				const session = await chrome.storage.session.get("wepSettings");
+				const sync = await chrome.storage.sync.get("wepSettings");
+				const merged = {
+					...((session.wepSettings as Record<string, unknown> | undefined) ?? {}),
+					...((sync.wepSettings as Record<string, unknown> | undefined) ?? {}),
+					...settings,
+				};
+				await Promise.all([
+					chrome.storage.session.set({ wepSettings: merged }),
+					chrome.storage.sync.set({ wepSettings: merged }),
+				]);
 				const tab = await activeTab();
 				if (tab?.id) {
 					await sendToTab(tab.id, {

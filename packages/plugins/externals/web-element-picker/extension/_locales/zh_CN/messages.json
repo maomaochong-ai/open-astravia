@@ -99,5 +99,9 @@
   "errorUnknown": {
     "message": "操作失败，请重试",
     "description": "操作失败通用提示"
+  },
+  "errorMountFailed": {
+    "message": "内核挂载失败，可能是页面结构不支持。请刷新页面后重试",
+    "description": "选择内核注入/初始化失败提示"
   }
 }

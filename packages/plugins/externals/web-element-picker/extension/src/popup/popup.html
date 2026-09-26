@@ -3,41 +3,33 @@
 <head>
 <meta charset="utf-8" />
 <style>
+  /* ── 与内核 design token 统一（kernel.ts） ── */
   :root {
-    color-scheme: light dark;
-    --bg: #f4f4f6;
-    --card: #ffffff;
-    --card-2: #f7f7f9;
-    --text: #1d1d1f;
-    --muted: #86868b;
-    --accent: #0a84ff;
-    --accent-2: #5e5ce6;
-    --danger: #ff3b30;
-    --ok: #30d158;
-    --border: rgba(0, 0, 0, 0.07);
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 10px 28px rgba(0, 0, 0, 0.07);
+    color-scheme: dark;
+    --wep-bg: #111827;
+    --wep-panel: #111827;
+    --wep-surface: #1f2937;
+    --wep-surface-2: #374151;
+    --wep-border: rgba(255, 255, 255, 0.1);
+    --wep-text: #f9fafb;
+    --wep-muted: #9ca3af;
+    --wep-dim: #6b7280;
+    --wep-accent: #6366f1;
+    --wep-accent-2: #4f46e5;
+    --wep-violet: #8b5cf6;
+    --wep-danger: #ef4444;
+    --wep-green: #34d399;
+    --wep-radius: 8px;
+    --wep-radius-lg: 12px;
+    --shadow-panel: 0 12px 40px rgba(0, 0, 0, 0.5);
   }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #17171a;
-      --card: #232327;
-      --card-2: #2c2c31;
-      --text: #f5f5f7;
-      --muted: #9a9aa0;
-      --accent: #0a84ff;
-      --accent-2: #5e5ce6;
-      --danger: #ff453a;
-      --ok: #32d74b;
-      --border: rgba(255, 255, 255, 0.09);
-      --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 10px 28px rgba(0, 0, 0, 0.38);
-    }
-  }
+
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     width: 320px;
-    font: 13px/1.5 -apple-system, "PingFang SC", "Segoe UI", system-ui, sans-serif;
-    background: var(--bg);
-    color: var(--text);
+    font: 13px/1.5 system-ui, -apple-system, "PingFang SC", "Segoe UI", sans-serif;
+    background: var(--wep-panel);
+    color: var(--wep-text);
     padding: 14px;
   }
 
@@ -47,62 +39,61 @@
   .brand-logo {
     flex: none; width: 32px; height: 32px; border-radius: 10px;
     display: flex; align-items: center; justify-content: center;
-    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    background: linear-gradient(135deg, var(--wep-accent), var(--wep-violet));
     color: #fff;
-    box-shadow: 0 4px 10px rgba(10, 132, 255, 0.3);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
   }
   .brand-logo svg { width: 18px; height: 18px; }
   .brand-text { min-width: 0; }
   .header h1 { font-size: 14px; font-weight: 700; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .version-chip {
-    flex: none; font-size: 11px; font-weight: 600; color: var(--muted);
-    background: var(--card); border: 1px solid var(--border);
+    flex: none; font-size: 11px; font-weight: 600; color: var(--wep-muted);
+    background: var(--wep-surface); border: 1px solid var(--wep-border);
     padding: 2px 9px; border-radius: 999px;
   }
 
   /* ─── 卡片容器 ─── */
   .card {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 14px;
+    background: var(--wep-surface);
+    border: 1px solid var(--wep-border);
+    border-radius: var(--wep-radius-lg);
     padding: 14px;
-    box-shadow: var(--shadow);
   }
   .card + .card { margin-top: 10px; }
 
   .card-title { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
-  .muted { color: var(--muted); }
+  .muted { color: var(--wep-muted); }
 
   /* ─── 激活状态行 ─── */
   .status-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
   .status-chip {
     display: inline-flex; align-items: center; gap: 5px;
     padding: 3px 10px; border-radius: 999px;
-    background: rgba(48, 209, 88, 0.14); color: var(--ok);
+    background: rgba(52, 211, 153, 0.14); color: var(--wep-green);
     font-size: 11px; font-weight: 700;
   }
   .status-chip::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
-  .status-meta { font-size: 11px; color: var(--muted); }
+  .status-meta { font-size: 11px; color: var(--wep-muted); }
 
   /* ─── 主按钮 ─── */
   .btn {
     display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-    border: none; border-radius: 10px; padding: 10px 14px;
+    border: none; border-radius: var(--wep-radius); padding: 10px 14px;
     font: inherit; font-weight: 600; cursor: pointer; width: 100%;
-    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    background: linear-gradient(135deg, var(--wep-accent), var(--wep-violet));
     color: #fff;
     transition: filter 0.15s ease, transform 0.05s ease;
   }
-  .btn:hover { filter: brightness(1.07); }
+  .btn:hover { filter: brightness(1.1); }
   .btn:active { transform: scale(0.98); }
   .btn:disabled { opacity: 0.45; cursor: not-allowed; }
-  .btn.stop { background: linear-gradient(135deg, var(--danger), #ff6b5e); }
+  .btn.stop { background: linear-gradient(135deg, var(--wep-danger), #f87171); }
   .btn svg { width: 15px; height: 15px; }
 
   .count-chip {
     display: inline-flex; align-items: center; gap: 5px;
     margin-top: 9px; padding: 3px 10px; border-radius: 999px;
-    background: rgba(10, 132, 255, 0.12); color: var(--accent);
+    background: rgba(99, 102, 241, 0.15); color: var(--wep-accent);
     font-size: 11px; font-weight: 700;
   }
 
@@ -110,54 +101,54 @@
   .setting-row {
     display: flex; align-items: center; justify-content: space-between; gap: 12px;
     margin-top: 12px; padding: 10px 12px;
-    background: var(--card-2); border: 1px solid var(--border);
-    border-radius: 12px;
+    background: var(--wep-surface-2); border: 1px solid var(--wep-border);
+    border-radius: var(--wep-radius);
   }
   .setting-text { min-width: 0; }
   .setting-label { font-size: 12.5px; font-weight: 600; }
-  .hint { font-size: 11px; color: var(--muted); margin-top: 2px; line-height: 1.45; }
+  .hint { font-size: 11px; color: var(--wep-muted); margin-top: 2px; line-height: 1.45; }
   .copy-hint {
     display: flex; align-items: flex-start; gap: 6px;
     margin-top: 12px; padding: 9px 11px;
-    background: var(--card-2); border: 1px solid var(--border);
-    border-radius: 10px;
-    font-size: 11px; color: var(--muted); line-height: 1.5;
+    background: var(--wep-surface-2); border: 1px solid var(--wep-border);
+    border-radius: var(--wep-radius);
+    font-size: 11px; color: var(--wep-muted); line-height: 1.5;
   }
-  .copy-hint svg { flex: none; width: 13px; height: 13px; margin-top: 1px; color: var(--accent); }
+  .copy-hint svg { flex: none; width: 13px; height: 13px; margin-top: 1px; color: var(--wep-accent); }
 
   /* ─── 开关（iOS 风格） ─── */
   .switch { position: relative; width: 40px; height: 24px; flex: none; }
   .switch input { opacity: 0; width: 0; height: 0; position: absolute; }
   .switch .track {
     position: absolute; inset: 0; border-radius: 999px;
-    background: rgba(120, 120, 128, 0.32);
+    background: var(--wep-dim);
     transition: background 0.2s ease;
   }
   .switch .track::after {
     content: ""; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px;
     border-radius: 50%; background: #fff;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
     transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   }
-  .switch input:checked + .track { background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
+  .switch input:checked + .track { background: linear-gradient(135deg, var(--wep-accent), var(--wep-violet)); }
   .switch input:checked + .track::after { transform: translateX(16px); }
 
   /* ─── 授权激活表单 ─── */
   input[type="text"] {
-    width: 100%; padding: 9px 12px; border-radius: 10px;
-    border: 1px solid var(--border); background: var(--card-2); color: var(--text);
+    width: 100%; padding: 9px 12px; border-radius: var(--wep-radius);
+    border: 1px solid var(--wep-border); background: var(--wep-surface-2); color: var(--wep-text);
     font: inherit; margin: 10px 0 8px;
     outline: none; transition: border-color 0.15s, box-shadow 0.15s;
   }
-  input[type="text"]:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.18); }
+  input[type="text"]:focus { border-color: var(--wep-accent); box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2); }
   .buy-row { display: flex; justify-content: center; margin-top: 10px; }
-  .link { color: var(--accent); text-decoration: none; font-weight: 600; }
+  .link { color: var(--wep-accent); text-decoration: none; font-weight: 600; }
   .link:hover { text-decoration: underline; }
 
-  .error { color: var(--danger); font-size: 12px; margin-top: 8px; }
-  .notice { color: var(--ok); font-size: 12px; margin-top: 8px; }
+  .error { color: var(--wep-danger); font-size: 12px; margin-top: 8px; }
+  .notice { color: var(--wep-green); font-size: 12px; margin-top: 8px; }
 
-  .footer { color: var(--muted); font-size: 11px; text-align: center; margin-top: 12px; }
+  .footer { color: var(--wep-dim); font-size: 11px; text-align: center; margin-top: 12px; }
 </style>
 </head>
 <body>
@@ -165,9 +156,10 @@
 <div class="header">
   <div class="brand">
     <div class="brand-logo" aria-hidden="true">
+      <!-- 瞄准器十字线（与 IconCrosshair、图标生成脚本统一视觉语言） -->
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" />
-        <circle cx="12" cy="12" r="3" />
+        <path d="M12 3v4M12 17v4M3 12h4M17 12h4" />
+        <circle cx="12" cy="12" r="2.5" />
       </svg>
     </div>
     <div class="brand-text">

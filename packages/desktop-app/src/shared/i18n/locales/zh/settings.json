@@ -1353,6 +1353,7 @@
   "databaseConnectionFollowSidebar": "跟随侧栏选择（尚未固定连接）",
   "databaseSubtitle": "管理数据库连接，AI 对话与数据库工具共用同一套连接。",
   "databaseSectionManagement": "管理",
+  "databaseAdminInfo": "管理信息",
   "databaseSectionGlobal": "全局配置",
   "databaseSectionTooling": "工具偏好",
   "databaseSectionToolingDescription": "工作台打开时应用的默认值：结果分页、自动刷新与对象树可见性。",

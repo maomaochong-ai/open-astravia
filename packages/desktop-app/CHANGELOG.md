@@ -4,6 +4,18 @@ All notable changes to `@astravia/desktop-app` are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **对话框 @数据库表 直接注入 schema（dbx 风格 per-message 上下文）**：参考 dbx-main AiAssistant 的 `@schema.table` mention 机制，Astravia 对话框的 `@` 选择面板新增 **Database Tab**，支持浏览已连接数据库 → 选择表 → 输入 `@connection.table` 纯文本 mention。发送时 renderer 从文本解析 mention → main 侧 runTurn 拉取各表 schema → 拼成结构化文本追加到本轮 prompt 上下文（`数据库表 @conn.users 的结构如下：\n- id: INTEGER PRIMARY KEY\n- name: TEXT ...`）。与已有的 scope 面板会话级注入互补：scope 管持久背景知识（system prompt），@mention 管单次对话意图。**connectionAiAccess guard 同时生效**——被关闭 AI 访问的 prod 连接即使被 @mention 也会在 per-message 路径被跳过。涉及：theme-ui AtPanelView.tsx 加 tab UI、useAtPanelModel.ts 重构按 tab 切换数据源、新建 db-mentions/parse.ts 移植 dbx 解析逻辑（18 条单测）、useSessionManager.sendMessage 解析 metadata、desktop-conversation-service.runTurn per-message schema 注入、export guardConnectionAiAccess 供消费。
+
+### Fixed
+
+- **删除数据库连接时，产品层环境标记（connectionEnv）与生产写授权（prodWriteApproved）未清理，形成悬空脏条目**：`databaseService.removeConnection` 参数名虽叫 `id` 但实际语义是连接 name（dbx_remove_connection 工具参数 `connection_name` 按 name 删除），且同文件 `addConnection` 用 name 写 connectionEnv、`listConnections` 用 name 查 connectionEnv，唯独 removeConnection 清理 desktop-config 时按 id 做 key，永远匹配不到 connectionEnv/prodWriteApproved（两者 key 都是连接 name，见 desktop-config-store 注释）。全链路重命名参数为 `connectionName`，覆盖 preload 类型、preload API、IPC handler、domain-providers capability、renderer 抽象层；清理操作现已正确命中。
+- **查询历史按不存在的 id 删除时，useDatabaseQueryModel 每一步都触发 localStorage 持久化写入**：`removeQueryHistory` 在 id 不存在时仍返回 `[...entries]` 新引用；而 `useDatabaseQueryModel.removeHistoryEntry` 以 `next !== prev` 比较决定是否调用 `saveQueryHistory`，两边一起导致「删除不存在的 id」每次都白跑一次 localStorage 写入。现返回原引用，相等即跳过持久化。
+- **「打开数据库工作台」按钮在兜底路径下静默跳到聊天页但 tab 不是 database**：openWorkbench 的 else 分支（openSessionFnRef 未就绪 或 cwd 为空 或会话创建抛错）只做了 `navigate('/')` 却漏掉了 `setDatabaseTab`，面板打开后 tab 停在默认 tab（不是数据库），用户看到「点了打开工作台但不是数据库」。现已在所有兜底路径都 setDatabaseTab(cwd 或 activeSession.cwd 或 defaultConversationCwd)，确保面板 tab 正确。
+- **数据库设置类操作（感知范围/写轮眼/安全模式/行数上限/查询超时/连接 AI 访问/工具偏好等 7 处）IPC 失败静默吞错**：全部用 `try { await window.astravia.config.set(...); setState } finally { setBusy(false) }` 结构，无 catch，IPC 通信断了（main 进程崩/窗口关闭/权限不够）时 reject 被空调用方静默吞掉——UI toggle 看起来成功了但刷新回旧值。现已统一加 catch log；失败时 state 不更新（config.set 失败在 setState 之前），UI 自然保持旧值，busy 正常清理。
+- **管理视角「连接 AI 访问」开关写入后工作台视角完全不生效——connectionAiAccess 是死写入**：renderer 侧 toggle + config 存储（desktop-config-store.ts 归一化）都对，但 main 进程零消费点。对比其他配置（prodWriteApproved/safetyMode → database-service.ts，rowLimit/queryTimeoutMs → database-service.ts，dbxToolEnabled → resolve-session-config.ts），connectionAiAccess 只在 config 层被读取归一化就没人用了。后果：① schema 注入链（buildDatabaseSchemaPrompt）不会按白名单过滤连接，即使管理视角 toggle 关闭 AI 访问的 prod 连接，schema 仍会被注入 system prompt；② AI agent 运行时调用 dbx 工具（executeQuery / listTables / describeTable / getSchemaContext）无拦截，白名单外的 prod 连接 AI 仍可读写。现已：database-service.ts 新增 `isConnectionAiAccessEnabled(name)` 口径函数 + `guardConnectionAiAccess(name)` 守卫；4 个 dbx 工具入口各加 guard（executeQuery / listTables / describeTable / getSchemaContext），拒绝时返回 `CONNECTION_AI_ACCESS_DENIED`；schema-context-injection.ts 的 buildDatabaseSchemaPrompt 在 scope.tables 和 connections 两条路径都加 AI 访问过滤（按同口径 `explicit ?? env 缺省（prod 关 / dev 开）`），resolve-session-config.ts 调用时传 connectionAiAccess + connectionEnv；preload api-types 新增 CONNECTION_AI_ACCESS_DENIED 错误码。
+
 ## [0.55.36] - 2026-09-13
 
 ### Fixed

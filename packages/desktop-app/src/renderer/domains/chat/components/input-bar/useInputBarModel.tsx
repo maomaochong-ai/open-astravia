@@ -27,12 +27,13 @@ import { isImagePath } from "@shared/lib/input-tokens";
 import { pathBasename, toAstraviaFileUrl } from "@shared/lib/utils";
 import { filePreviewAtom } from "@shared/store/file-preview-atoms";
 import type { InputBarContextMenuViewProps } from "@astravia/theme-ui/chat";
-import type { SelectedFile } from "../AtPanel";
+import type { AtPanelSelection, SelectedFile } from "../AtPanel";
 import type { ConnectorGridItem } from "../../hooks/useConnectorGrid";
 import { PANEL_REVEAL_MS } from "../command-panel/constants";
 import {
 	focusInputEditor,
 	insertConnectorToken,
+	insertDbTableToken,
 	insertFileToken,
 	insertImageToken,
 	insertPlainText,
@@ -289,7 +290,30 @@ export function useInputBarModel({
 	}, []);
 
 	const handleAtSelect = useCallback(
-		async (file: SelectedFile) => {
+		async (selection: AtPanelSelection) => {
+			// ─── 数据库表 token ───
+			if ("kind" in selection && selection.kind === "database-table") {
+				// 显示为 chip（图标 + 显示名 + ✕ 关闭按钮）。
+				// 选中后不关闭 AtPanel——用户可以继续 @ 多张表，手动关闭（Esc / 打字 / 点击外部）。
+				insertDbTableToken(
+					selection.connection,
+					selection.table,
+					selection.scope?.name,
+					{ replaceTrigger: true },
+				);
+				focusInputEditor();
+				return;
+			}
+
+			// ─── 数据库连接 mention（纯文本） ───
+			if ("kind" in selection && selection.kind === "database-connection") {
+				insertPlainText(`@${selection.connection}`, { replaceTrigger: true });
+				focusInputEditor();
+				return;
+			}
+
+			// ─── 文件系统对象（原有逻辑）——文件 token 是最终插入，选完关闭 ───
+			const file = selection as SelectedFile;
 			if (isImagePath(file.path)) {
 				insertImageToken(file.path, { replaceTrigger: true });
 			} else {

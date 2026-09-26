@@ -11,6 +11,11 @@
 /* Host design-system primitives live in @astravia/ui; re-exports under
    desktop-app no longer contain className literals for Tailwind to see. */
 @source "../../../ui/src/**/*.{ts,tsx}";
+/* Desktop app's own renderer source (vite root is src/renderer).
+   Tailwind v4 @source overrides the default root scan — without this,
+   iconify classes that only exist as runtime string literals in desktop-app
+   (e.g. AtPanel table icons, setup-wizard icon maps) are never emitted. */
+@source "./**/*.{ts,tsx}";
 
 /* 系统插件贡献的侧边栏图标。
  *

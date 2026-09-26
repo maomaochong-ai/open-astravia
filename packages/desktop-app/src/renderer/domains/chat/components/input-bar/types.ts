@@ -4,7 +4,7 @@ import type { AppshotAttachment } from "@shared/store/atoms";
 import type { TodoItem } from "@shared/store/todo-atoms";
 import type { ComponentProps, MouseEvent } from "react";
 import type { ConnectorGridItem } from "../../hooks/useConnectorGrid";
-import type { SelectedFile } from "../AtPanel";
+import type { AtPanelSelection } from "../AtPanel";
 import type { QuestionPanel } from "../QuestionPanel";
 import type { ActiveActionCapsule } from "./ActiveActionCapsules";
 import type { TriggerMatch } from "./editor/tokens/trigger";
@@ -140,7 +140,7 @@ export interface InputBarModel {
 		/** 面板里点连接器宫格：插入一个 `@mcp:名字` 行内 token。 */
 		handleConnectorSelect: (connector: ConnectorGridItem) => void;
 		handleAtClose: () => void;
-		handleAtSelect: (file: SelectedFile) => void;
+		handleAtSelect: (selection: AtPanelSelection) => void;
 		/** 从文本流里删掉该图片的 token（缩略图行的 × 按钮）。 */
 		removeImage: (path: string) => void;
 		openImagePreview: (index: number) => void;

@@ -316,6 +316,101 @@ describe("buildDatabaseSchemaPrompt", () => {
 		expect(prompt).toContain("连接「a」");
 		expect(prompt).toContain("连接「b」");
 	});
+
+	// ---- B3.1-①-C 连接级 AI 访问白名单 ----
+
+	it("prod 连接 connectionAiAccess[name]=false 时被排除", async () => {
+		const io = makeIo({
+			listConnections: vi.fn(async () => [
+				{ name: "prod-db", env: "prod" as const },
+				{ name: "dev-db", env: "dev" as const },
+			]),
+			getSchemaContext: vi.fn(async (name: string) => `${name} (id INTEGER)`),
+		});
+		const prompt = await buildDatabaseSchemaPrompt(io, {
+			connectionAiAccess: { "prod-db": false },
+			connectionEnv: { "prod-db": "prod", "dev-db": "dev" },
+		});
+		expect(prompt).toContain("连接「dev-db」");
+		expect(prompt).not.toContain("prod-db");
+		expect(io.getSchemaContext).toHaveBeenCalledTimes(1);
+		expect(io.getSchemaContext).toHaveBeenCalledWith("dev-db");
+	});
+
+	it("prod 连接无显式白名单时按 env 缺省排除（prod 关）", async () => {
+		const io = makeIo({
+			listConnections: vi.fn(async () => [
+				{ name: "prod-db", env: "prod" as const },
+				{ name: "dev-db", env: "dev" as const },
+			]),
+			getSchemaContext: vi.fn(async (name: string) => `${name} (id INTEGER)`),
+		});
+		// 不传 connectionAiAccess，只用 connectionEnv —— prod 缺省关 / dev 缺省开
+		const prompt = await buildDatabaseSchemaPrompt(io, {
+			connectionEnv: { "prod-db": "prod", "dev-db": "dev" },
+		});
+		expect(prompt).toContain("连接「dev-db」");
+		expect(prompt).not.toContain("prod-db");
+	});
+
+	it("dev 连接 connectionAiAccess[name]=false 时也被排除（显式优先于 env 缺省）", async () => {
+		const io = makeIo({
+			listConnections: vi.fn(async () => [{ name: "dev-db", env: "dev" as const }]),
+			getSchemaContext: vi.fn(async () => "dev-db (id INTEGER)"),
+		});
+		// dev 缺省应该开，但显式 false 优先
+		await expect(
+			buildDatabaseSchemaPrompt(io, {
+				connectionAiAccess: { "dev-db": false },
+				connectionEnv: { "dev-db": "dev" },
+			}),
+		).resolves.toBeUndefined();
+		expect(io.getSchemaContext).not.toHaveBeenCalled();
+	});
+
+	it("scope=tables 模式下 AI 白名单外的连接即使表在 scope 里也跳过", async () => {
+		const io = makeIo({
+			getTableSchemaContext: vi.fn(async (_connection: string, table: string) => `${table} (\n  id INTEGER\n)`),
+		});
+		const prompt = await buildDatabaseSchemaPrompt(io, {
+			scope: {
+				scope: "tables",
+				connections: [],
+				tables: [
+					{ connection: "blocked-prod", table: "users" },
+					{ connection: "allowed-dev", table: "orders" },
+				],
+			},
+			connectionAiAccess: { "blocked-prod": false },
+			connectionEnv: { "blocked-prod": "prod", "allowed-dev": "dev" },
+		});
+		expect(prompt).toContain("连接「allowed-dev」表「orders」");
+		expect(prompt).not.toContain("blocked-prod");
+		expect(prompt).not.toContain("users");
+		// 只有 allowed-dev 的表被拉，blocked-prod 的被 AI 白名单直接跳过
+		expect(io.getTableSchemaContext).toHaveBeenCalledTimes(1);
+		expect(io.getTableSchemaContext).toHaveBeenCalledWith("allowed-dev", "orders");
+	});
+
+	it("scope=connections 模式与 AI 白名单交集生效", async () => {
+		const io = makeIo({
+			listConnections: vi.fn(async () => [
+				{ name: "a", env: "dev" as const },
+				{ name: "b", env: "dev" as const },
+				{ name: "c", env: "prod" as const },
+			]),
+			getSchemaContext: vi.fn(async (name: string) => `${name} (id INTEGER)`),
+		});
+		// scope.connections 允许 a + b + c，但 AI 白名单只开 a + b（显式）+ prod c 缺省关
+		const prompt = await buildDatabaseSchemaPrompt(io, {
+			scope: { scope: "connections", connections: ["a", "b", "c"], tables: [] },
+			connectionAiAccess: { a: true, b: true },
+			connectionEnv: { a: "dev", b: "dev", c: "prod" },
+		});
+		expect(prompt).toContain("连接「a」");
+		expect(prompt).toContain("连接「b」");
+		expect(prompt).not.toContain("连接「c」");
+	});
 });
 
 describe("firstTableName", () => {

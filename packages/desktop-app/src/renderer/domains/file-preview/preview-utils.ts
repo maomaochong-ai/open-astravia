@@ -70,6 +70,8 @@ const TEXT_EXTENSIONS = new Set([
 	"properties",
 	"log",
 	"txt",
+	"csv",
+	"tsv",
 	"dockerfile",
 	"makefile",
 	"mk",

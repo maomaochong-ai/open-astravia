@@ -14,6 +14,7 @@ export function TokenChip({
 	iconNode,
 	label,
 	title,
+	dismiss,
 }: {
 	/** iconify 字体类；iconNode / iconUrl 都没给时用它。 */
 	icon?: string;
@@ -23,6 +24,8 @@ export function TokenChip({
 	iconNode?: ReactNode;
 	label: string;
 	title?: string;
+	/** 有值则渲染 ✕ 关闭按钮（点了调用）。数据库表 token 需要——其余 token 用 backspace 删除即可。 */
+	dismiss?: () => void;
 }): JSX.Element {
 	return (
 		<span
@@ -45,6 +48,20 @@ export function TokenChip({
 				<span className={`${icon} mr-1 inline-block h-3 w-3 align-[-0.15em]`} />
 			) : null}
 			{label}
+			{dismiss && (
+				<button
+					type="button"
+					onClick={(e) => {
+						e.stopPropagation();
+						dismiss();
+					}}
+					className="ml-1 inline-block h-3.5 w-3.5 align-[-0.1em] text-primary/60 hover:text-primary"
+					aria-label="移除"
+					tabIndex={-1}
+				>
+					✕
+				</button>
+			)}
 		</span>
 	);
 }

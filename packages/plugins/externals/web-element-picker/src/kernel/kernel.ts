@@ -39,6 +39,21 @@ const PREFIX = "[wep]";
 
 const PRO_BADGE = "PRO";
 
+/** 选择历史上限（撤销栈：保留最近 50 步，避免长时间操作 session 内存无界增长）。 */
+const HISTORY_LIMIT = 50;
+
+function pushHistory(): void {
+	if (!state) return;
+	state.history.push([...state.selected]);
+	if (state.history.length > HISTORY_LIMIT) state.history.splice(0, state.history.length - HISTORY_LIMIT);
+}
+
+/** 内核剪贴板统一兜底：优先走宿主桥（宿主接管剪贴板，见方案 §5.4）；内核直写为兜底。 */
+function writeClipboard(text: string, mime: string): void {
+	post({ type: "copy", text, mime });
+	void navigator.clipboard?.writeText(text).catch(() => undefined);
+}
+
 // ─── 宿主桥 adapter（二期：为三期浏览器扩展形态预留可注入桥）───
 //
 // 内核只依赖一个 `post()` 出口上报事件。默认实现是 console-message 桥
@@ -259,17 +274,17 @@ function reactChain(el: Element): string {
 	return names.join(" > ");
 }
 
-/** 元素可见文本（保留直接文本节点 + 叶子节点文本）。 */
+/** 元素可见文本（保留全部直接文本节点 + 叶子节点文本，最多取 12 段、上限 400 字符）。 */
 function elementText(el: Element): string {
 	const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
 	const chunks: string[] = [];
 	let node: Node | null;
-	while ((node = walker.nextNode())) {
+	while ((node = walker.nextNode()) && chunks.length < 12) {
 		const text = node.textContent?.trim();
 		if (text) chunks.push(text);
 	}
-	if (chunks.length === 0) return clampText(el.getAttribute("aria-label") ?? "");
-	return clampText(chunks.slice(0, 6).join(" "));
+	if (chunks.length === 0) return clampText(el.getAttribute("aria-label") ?? "", 400);
+	return clampText(chunks.join(" "), 400);
 }
 
 function buildContext(items: WepSelectedItem[], url: string): string {
@@ -320,8 +335,9 @@ const STYLE = `
 --wep-danger:#7f1d1d;--wep-danger-2:#991b1b;--wep-danger-text:#fecaca;--wep-green:#34d399;--wep-amber:#f59e0b;
 --wep-radius:8px;--wep-radius-sm:6px;--wep-fs-xs:11px;--wep-fs-sm:12px;--wep-fs-base:13px;
 }
-.wep-hover{position:fixed;border:1.5px dashed var(--wep-blue);background:rgba(59,130,246,.12);border-radius:2px;pointer-events:none;transition:all .08s ease;}
-.wep-selected{position:fixed;border:2px solid var(--wep-violet);background:rgba(139,92,246,.1);border-radius:2px;pointer-events:none;}
+.wep-hover{position:fixed;border:2px solid var(--wep-blue);background:rgba(59,130,246,.08);pointer-events:none;}
+.wep-hover-label{position:absolute;left:-2px;bottom:100%;margin-bottom:2px;padding:1px 6px;border-radius:4px;background:var(--wep-blue);color:#fff;font:600 10px/1.6 system-ui,sans-serif;white-space:nowrap;}
+.wep-selected{position:fixed;border:2px solid var(--wep-accent);background:rgba(99,102,241,.06);pointer-events:none;}
 .wep-marquee{position:fixed;border:1px solid var(--wep-blue);background:rgba(59,130,246,.16);border-radius:1px;pointer-events:none;}
 /* 收起态：状态胶囊 */
 .wep-cap{position:fixed;right:14px;bottom:14px;pointer-events:auto;display:none;align-items:center;gap:7px;background:var(--wep-bg);color:var(--wep-text);border:1px solid var(--wep-border);border-radius:999px;padding:7px 13px;font-size:var(--wep-fs-sm);box-shadow:0 8px 28px rgba(0,0,0,.4);cursor:pointer;z-index:2147483647;}
@@ -374,6 +390,7 @@ const STYLE = `
 interface WepUi {
 	root: HTMLDivElement;
 	hover: HTMLDivElement;
+	hoverLabel: HTMLDivElement;
 	selectedBoxes: Map<Element, HTMLDivElement>;
 	marquee: HTMLDivElement | null;
 	// 收起态：右下角状态胶囊。
@@ -424,6 +441,9 @@ function createUi(dict: WepDict): WepUi {
 	const hover = document.createElement("div");
 	hover.className = "wep-hover";
 	hover.style.display = "none";
+	const hoverLabel = document.createElement("div");
+	hoverLabel.className = "wep-hover-label";
+	hover.appendChild(hoverLabel);
 
 	// 收起态：右下角状态胶囊。
 	const cap = document.createElement("div");
@@ -532,6 +552,7 @@ function createUi(dict: WepDict): WepUi {
 	return {
 		root,
 		hover,
+		hoverLabel,
 		selectedBoxes: new Map<Element, HTMLDivElement>(),
 		marquee: null,
 		cap,
@@ -677,7 +698,7 @@ function renderItems(): void {
 /** 移除单个选中元素（可撤销）。 */
 function removeSelected(el: Element): void {
 	if (!state) return;
-	state.history.push([...state.selected]);
+	pushHistory();
 	state.selected = state.selected.filter((x) => x !== el);
 	updatePanel();
 }
@@ -694,6 +715,11 @@ function positionHover(el: Element): void {
 	state.ui.hover.style.top = `${rect.top}px`;
 	state.ui.hover.style.width = `${rect.width}px`;
 	state.ui.hover.style.height = `${rect.height}px`;
+	// 更新 tagName label，并在元素贴顶时翻到框下方（对齐 open-vetta makeOverlay label 翻转）
+	state.ui.hoverLabel.textContent = el.tagName.toLowerCase();
+	const flip = rect.top < 20;
+	state.ui.hoverLabel.style.bottom = flip ? "auto" : "100%";
+	state.ui.hoverLabel.style.top = flip ? "100%" : "auto";
 }
 
 function hoverElement(el: Element | null): void {
@@ -823,8 +849,7 @@ function copyMarkdown(): void {
 	const items = state.selected.map((el) => collectItem(el)).filter((i): i is WepSelectedItem => i !== null);
 	const text = buildMarkdown(items);
 	if (!text) return;
-	post({ type: "copy", text, mime: "text/markdown" });
-	void navigator.clipboard?.writeText(text).catch(() => undefined);
+	writeClipboard(text, "text/markdown");
 }
 
 /** 遍历文档样式表收集规则源码（跨域样式表静默跳过）。 */
@@ -927,9 +952,7 @@ function buildSharinganReport(): string {
 function copyContext(): void {
 	const text = state?.settings.sharingan ? buildSharinganReport() : buildSelectionContext();
 	if (!text) return;
-	// 优先走宿主桥（宿主接管剪贴板，见方案 §5.4）；内核直写为兜底。
-	post({ type: "copy", text, mime: "text/plain" });
-	void navigator.clipboard?.writeText(text).catch(() => undefined);
+	writeClipboard(text, "text/plain");
 }
 
 /** 复制选中元素可见文字（对齐「复制文字」：选中框里可见的准确文字）。 */
@@ -942,8 +965,7 @@ function copyText(): void {
 		})
 		.join("\n");
 	if (!items) return;
-	post({ type: "copy", text: items, mime: "text/plain" });
-	void navigator.clipboard?.writeText(items).catch(() => undefined);
+	writeClipboard(items, "text/plain");
 }
 
 function sendToAi(): void {
@@ -1056,7 +1078,7 @@ function onPointerUp(event: Event): void {
 	const bottom = Math.max(drag.startY, e.clientY);
 	const els = elementsInRect({ left, top, right, bottom });
 	if (els.length > 0) {
-		state.history.push([...state.selected]);
+		pushHistory();
 		state.selected = drag.add ? Array.from(new Set([...state.selected, ...els])) : els;
 		updatePanel();
 	}
@@ -1092,13 +1114,13 @@ function onClick(event: Event): void {
 	e.preventDefault();
 	e.stopPropagation();
 	if (e.shiftKey) {
-		state.history.push([...state.selected]);
+		pushHistory();
 		const index = state.selected.indexOf(target);
 		if (index >= 0) state.selected.splice(index, 1);
 		else state.selected.push(target);
 		updatePanel();
 	} else {
-		state.history.push([...state.selected]);
+		pushHistory();
 		state.selected = [target];
 		updatePanel();
 	}
@@ -1120,7 +1142,7 @@ function onKeyDown(event: Event): void {
 	}
 	if (e.key === "Escape") {
 		if (selected.length > 0) {
-			state.history.push([...selected]);
+			pushHistory();
 			selected.length = 0;
 			updatePanel();
 		} else {
@@ -1188,7 +1210,7 @@ function onKeyDown(event: Event): void {
 	}
 	if (next && next !== state.ui.root) {
 		e.preventDefault();
-		state.history.push([...selected]);
+		pushHistory();
 		state.selected = [next];
 		updatePanel();
 		hoverElement(next);
@@ -1234,7 +1256,7 @@ function bindPanel(): void {
 	ui.panel.querySelector('[data-action="settings"]')?.addEventListener("click", () => post({ type: "open-settings" }));
 	ui.clearAllBtn.addEventListener("click", () => {
 		if (!state || state.selected.length === 0) return;
-		state.history.push([...state.selected]);
+		pushHistory();
 		state.selected = [];
 		updatePanel();
 	});
@@ -1332,7 +1354,9 @@ function applyLang(lang: string): void {
 		console.warn("[wep] applyLang rebuild failed:", error);
 		return;
 	}
-	ui.root.remove();
+	// 用 replaceChild 原地替换：避免「新 root 已 append 但旧 root 还没 remove」的双 root 窗口。
+	// createUi 内部已经 appendChild 到 html，replaceChild 会先把 next.root 从 html 摘下再放对位置。
+	ui.root.parentElement?.replaceChild(next.root, ui.root);
 	ui.selectedBoxes.clear();
 	state.ui = next;
 	bindPanel();

@@ -352,20 +352,20 @@ export const databaseService = {
 		}
 	},
 
-	/** 删除连接。 */
-	async removeConnection(id: string): Promise<DatabaseResult<void>> {
+	/** 删除连接。参数为连接 name（dbx 按 name 删除，连接名全局唯一；产品层 connectionEnv/prodWriteApproved 同样按 name 做 key）。 */
+	async removeConnection(connectionName: string): Promise<DatabaseResult<void>> {
 		try {
 			const client = getDbxMcpClient();
-			// dbx 按 name 删除（连接名全局唯一）
-			const result = await client.callTool("dbx_remove_connection", { connection_name: id });
+			const result = await client.callTool("dbx_remove_connection", { connection_name: connectionName });
 			if (result.isError) return err(classifyError(textOf(result)));
 
 			// W4-② 同步清理产品层维护的环境标记与生产写授权,避免悬空条目(P4-4:串行化读写)。
+			// 注意 connectionEnv/prodWriteApproved 都是按连接 name 做 key（desktop-config-store 注释明确「连接名→值」）。
 			await mutateDesktopConfig((config) => {
 				const connectionEnv = { ...(config.database?.connectionEnv ?? {}) };
 				const prodWriteApproved = { ...(config.database?.prodWriteApproved ?? {}) };
-				delete connectionEnv[id];
-				delete prodWriteApproved[id];
+				delete connectionEnv[connectionName];
+				delete prodWriteApproved[connectionName];
 				return { ...config, database: { ...config.database, connectionEnv, prodWriteApproved } };
 			});
 			return ok(undefined);
@@ -377,6 +377,9 @@ export const databaseService = {
 	/** 列出连接下全部表（可选 catalog 作用域：schema / database）。 */
 	async listTables(connectionName: string, scope?: DbTableScope): Promise<DatabaseResult<DbTableInfo[]>> {
 		try {
+			// B3.1-①-C 连接级 AI 访问守卫：白名单外的连接不让 AI agent 调 dbx 工具。
+			const denied = guardConnectionAiAccess(connectionName);
+			if (denied) return denied;
 			const client = getDbxMcpClient();
 			const result = await client.callTool("dbx_list_tables", {
 				connection_name: connectionName,
@@ -399,6 +402,9 @@ export const databaseService = {
 		scope?: DbTableScope,
 	): Promise<DatabaseResult<DbColumnInfo[]>> {
 		try {
+			// B3.1-①-C 连接级 AI 访问守卫：白名单外的连接不让 AI agent 调 dbx 工具。
+			const denied = guardConnectionAiAccess(connectionName);
+			if (denied) return denied;
 			const client = getDbxMcpClient();
 			const result = await client.callTool("dbx_describe_table", {
 				connection_name: connectionName,
@@ -477,6 +483,16 @@ export const databaseService = {
 			const env = dbConfig?.connectionEnv?.[connectionName] ?? "dev";
 			const writeApproved = dbConfig?.prodWriteApproved?.[connectionName] === true;
 			const safetyMode = dbConfig?.safetyMode ?? "strict";
+			// B3.1-①-C 连接级 AI 访问守卫：白名单外的连接不让 AI agent 调 dbx 工具。
+			// 与 renderer 侧 aiAccessEffective 同口径：显式白名单 ?? env 缺省（prod 关 / dev 开）。
+			const explicitAi = dbConfig?.connectionAiAccess?.[connectionName];
+			const aiEnabled = explicitAi !== undefined ? explicitAi : env !== "prod";
+			if (!aiEnabled) {
+				return err({
+					code: "CONNECTION_AI_ACCESS_DENIED",
+					detail: `AI 未授权访问连接「${connectionName}」，请在数据库设置的「允许 AI 访问」开关中开启该连接的权限。`,
+				});
+			}
 			// P4-3:写审计判定与 maybeBlockWrite 同口径——按切分片段逐个判定,
 			// 避免 SELECT 1; UPDATE… 这类「首片段只读」多语句绕过 start/ok 审计。
 			const isWrite = splitStatements(sql).some(isWriteStatement);
@@ -553,6 +569,10 @@ export const databaseService = {
 	/** 获取连接 schema 上下文（供 AI 注入使用）。 */
 	async getSchemaContext(connectionName: string): Promise<DatabaseResult<string>> {
 		try {
+			// B3.1-①-C 连接级 AI 访问守卫：schema 注入层已在上游按白名单过滤连接，
+			// 这里再加一层防御（避免未来新增调用方直接调此方法绕过 schema-context-injection）。
+			const denied = guardConnectionAiAccess(connectionName);
+			if (denied) return denied;
 			const client = getDbxMcpClient();
 			const result = await client.callTool("dbx_get_schema_context", { connection_name: connectionName });
 			const text = textOf(result);
@@ -563,6 +583,28 @@ export const databaseService = {
 		}
 	},
 };
+
+/** B3.1-①-C 连接级「允许 AI 访问」生效判定（与 renderer 侧 aiAccessEffective 同口径）：
+ * 显式白名单 connectionAiAccess[name] ?? env 缺省（prod 关 / dev 开）。 */
+export function isConnectionAiAccessEnabled(connectionName: string): boolean {
+	const config = readConfigSync();
+	const dbConfig = config.database;
+	const explicit = dbConfig?.connectionAiAccess?.[connectionName];
+	if (explicit !== undefined) return explicit;
+	const env = dbConfig?.connectionEnv?.[connectionName] ?? "dev";
+	return env !== "prod";
+}
+
+/** 连接级 AI 访问守卫：白名单外的连接不让 AI agent 调用 dbx 工具。 */
+export function guardConnectionAiAccess(connectionName: string): DatabaseResult<never> | null {
+	if (!isConnectionAiAccessEnabled(connectionName)) {
+		return err({
+			code: "CONNECTION_AI_ACCESS_DENIED",
+			detail: `AI 未授权访问连接「${connectionName}」，请在数据库设置的「允许 AI 访问」开关中开启该连接的权限。`,
+		});
+	}
+	return null;
+}
 
 /** 把任意异常折算成稳定的 DatabaseError。 */
 function toDatabaseError(e: unknown): DatabaseError {

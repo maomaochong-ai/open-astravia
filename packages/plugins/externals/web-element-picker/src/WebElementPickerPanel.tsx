@@ -187,14 +187,32 @@ export function WebElementPickerPanel(): JSX.Element {
 		[ctx],
 	);
 
-	/** 注入内核 iife 并挂载（含持久化设置）。 */
+	/**
+	 * 注入内核 IIFE 并挂载（含持久化设置）。
+	 *
+	 * 关键防护：用 window.__WEP_INJECTED__（document.documentElement 引用）标记
+	 * 当前 document 是否已注入过内核。
+	 * - 同 document 内（SPA in-page 导航、destroy→mount 周期）：跳过 IIFE 注入，
+	 *   只调 mount() —— 避免重复执行 IIFE 产生孤儿事件监听器（旧监听器闭包
+	 *   捕获旧 state，destroy 无法移除新闭包里不存在的旧监听器）。
+	 * - 整页导航后：旧 marker 的 isConnected=false，自动重新注入 IIFE。
+	 */
 	const injectKernel = useCallback(
 		async (lang: string, sharinganOn: boolean) => {
 			const el = webviewRef.current;
 			if (!el) return;
 			try {
 				await el.executeJavaScript(
-					`(() => { ${kernelCode} window.__WEP__?.mount({ lang: ${JSON.stringify(lang)} }); window.__WEP__?.applySettings?.({ sharingan: ${sharinganOn} }); })()`,
+					`(function() {
+						var marker = window.__WEP_INJECTED__;
+						var sameDoc = marker && marker.ownerDocument === document && marker.isConnected;
+						if (!sameDoc) {
+							(function() { ${kernelCode} })();
+							window.__WEP_INJECTED__ = document.documentElement;
+						}
+						window.__WEP__?.mount({ lang: ${JSON.stringify(lang)} });
+						window.__WEP__?.applySettings?.({ sharingan: ${sharinganOn} });
+					})(); true`,
 					true,
 				);
 			} catch (error) {

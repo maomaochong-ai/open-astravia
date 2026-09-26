@@ -124,6 +124,7 @@ export interface DatabaseWorkspaceModel {
 		readonly setSchemaInjectionScopeKind: (scope: SchemaInjectionScopeKind) => void;
 		readonly toggleScopeConnection: (name: string) => void;
 		readonly toggleScopeTable: (connection: string, table: string) => void;
+		readonly clearScopeTables: () => void;
 		readonly loadConnectionTables: (connection: string) => Promise<void>;
 		readonly toggleDbxToolAccess: () => Promise<void>;
 		/** W4-② 显式授权/撤销生产写操作（授权前弹确认）。 */
@@ -465,6 +466,8 @@ export function useDatabaseWorkspaceModel(): DatabaseWorkspaceModel {
 			await window.astravia.config.set({ database: { schemaInjection: next } });
 			setSchemaInjection(next);
 			recordSettingsUsage({ tab: "database", action: next ? "enabled" : "disabled", target: "schema-injection" });
+		} catch (err) {
+			console.error("[database] toggleSchemaInjection persist failed:", err);
 		} finally {
 			setSchemaInjectionBusy(false);
 		}
@@ -483,6 +486,8 @@ export function useDatabaseWorkspaceModel(): DatabaseWorkspaceModel {
 						? `connections:${next.connections.length}`
 						: `tables:${next.tables.length}`;
 			recordSettingsUsage({ tab: "database", action: "changed", target: "schema-injection-scope", value: label });
+		} catch (err) {
+			console.error("[database] saveSchemaInjectionScope persist failed:", err);
 		} finally {
 			setSchemaInjectionScopeBusy(false);
 		}
@@ -517,6 +522,10 @@ export function useDatabaseWorkspaceModel(): DatabaseWorkspaceModel {
 		[saveSchemaInjectionScope, schemaInjectionScope],
 	);
 
+	const clearScopeTables = useCallback(() => {
+		void saveSchemaInjectionScope({ ...schemaInjectionScope, tables: [] });
+	}, [saveSchemaInjectionScope, schemaInjectionScope]);
+
 	const loadConnectionTables = useCallback(
 		async (connection: string) => {
 			if (connectionTables[connection] || loadingTablesFor) return;
@@ -540,6 +549,8 @@ export function useDatabaseWorkspaceModel(): DatabaseWorkspaceModel {
 			await window.astravia.config.set({ database: { dbxToolEnabled: next } });
 			setDbxToolEnabled(next);
 			recordSettingsUsage({ tab: "database", action: next ? "enabled" : "disabled", target: "dbx-tool-access" });
+		} catch (err) {
+			console.error("[database] toggleDbxToolAccess persist failed:", err);
 		} finally {
 			setDbxToolBusy(false);
 		}
@@ -562,6 +573,8 @@ export function useDatabaseWorkspaceModel(): DatabaseWorkspaceModel {
 						target: "prod-write-approved",
 						value: name,
 					});
+				} catch (err) {
+					console.error("[database] toggleProdWriteApproved persist failed:", err);
 				} finally {
 					setProdWriteApprovedBusy(false);
 				}
@@ -601,6 +614,8 @@ export function useDatabaseWorkspaceModel(): DatabaseWorkspaceModel {
 				await window.astravia.config.set({ database: { safetyMode: next } });
 				setSafetyMode(next);
 				recordSettingsUsage({ tab: "database", action: "changed", target: "dbx-safety-mode", value: next });
+			} catch (err) {
+				console.error("[database] toggleSafetyMode persist failed:", err);
 			} finally {
 				setSafetyModeBusy(false);
 			}
@@ -629,6 +644,8 @@ export function useDatabaseWorkspaceModel(): DatabaseWorkspaceModel {
 			await window.astravia.config.set({ database: { rowLimit: next } });
 			setRowLimit(next);
 			recordSettingsUsage({ tab: "database", action: "changed", target: "dbx-row-limit", value: String(next) });
+		} catch (err) {
+			console.error("[database] changeRowLimit persist failed:", err);
 		} finally {
 			setRowLimitBusy(false);
 		}
@@ -643,6 +660,8 @@ export function useDatabaseWorkspaceModel(): DatabaseWorkspaceModel {
 			await window.astravia.config.set({ database: { queryTimeoutMs: next * 1000 } });
 			setQueryTimeoutMs(next * 1000);
 			recordSettingsUsage({ tab: "database", action: "changed", target: "dbx-query-timeout", value: String(next) });
+		} catch (err) {
+			console.error("[database] changeQueryTimeout persist failed:", err);
 		} finally {
 			setQueryTimeoutBusy(false);
 		}
@@ -664,6 +683,8 @@ export function useDatabaseWorkspaceModel(): DatabaseWorkspaceModel {
 						.map(([k, v]) => `${k}=${String(v)}`)
 						.join(","),
 				});
+			} catch (err) {
+				console.error("[database] setToolPref persist failed:", err);
 			} finally {
 				setToolPrefsBusy(false);
 			}
@@ -689,6 +710,8 @@ export function useDatabaseWorkspaceModel(): DatabaseWorkspaceModel {
 						target: "dbx-connection-ai-access",
 						value: name,
 					});
+				} catch (err) {
+					console.error("[database] toggleConnectionAiAccess persist failed:", err);
 				} finally {
 					setConnectionAiAccessBusy(false);
 				}
@@ -754,6 +777,7 @@ export function useDatabaseWorkspaceModel(): DatabaseWorkspaceModel {
 			setSchemaInjectionScopeKind,
 			toggleScopeConnection,
 			toggleScopeTable,
+			clearScopeTables,
 			loadConnectionTables,
 			toggleDbxToolAccess,
 			toggleProdWriteApproved,

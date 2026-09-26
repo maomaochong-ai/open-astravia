@@ -6,12 +6,20 @@ import type {
 	SessionConfig,
 	SessionHistoryInfo,
 } from "../../../../runtime-core/src/index.js";
+import { catalogFamilyOfType } from "../../preload/api-types/database.js";
 import { monitorRuntimeSession } from "../app-monitor/app-monitor-service.js";
+import { databaseService, isConnectionAiAccessEnabled } from "../database/database-service.js";
 import { allowProjectRoot, readDesktopConfig } from "../ipc/fs.js";
 import { getAppLogger } from "../logger.js";
 import { getSharedRuntime } from "../runtime.js";
 import { assertSandboxAvailableForMode } from "../sandbox/capability.js";
 import { emitConversationListChanged } from "./conversation-list-events.js";
+import {
+	DB_AI_PER_MESSAGE_ANTI_LOOP,
+	type DbMentionRef,
+	extractDbMentions,
+	formatMentionedTableSchema,
+} from "./db-mention-schema.js";
 import {
 	type DesktopConversationSource,
 	type DesktopSessionKind,
@@ -251,8 +259,26 @@ export class DesktopConversationService {
 			options.timeoutMs,
 		);
 
+		// ─── Per-message @connection.table mention schema 注入 ───
+		// renderer 在 metadata.databaseMentions 里传递本轮 @mention 列表。
+		// 这里在发给 runtime 前拉取各表 schema，拼成隐藏上下文追加到 prompt text。
+		// 与 resolve-session-config 里的会话级 buildDatabaseSchemaPrompt 互补：
+		// scope 管持久背景（system prompt），mention 管本轮对话意图。
+		const mentions = extractDbMentions(options.prompt.metadata);
+		let effectivePrompt = options.prompt;
+		if (mentions.length > 0) {
+			const schemaBlocks = await buildMentionedTableSchemaBlocks(mentions);
+			if (schemaBlocks.length > 0) {
+				// 🛡️ 附带反循环指令——引用 DB_AI_PER_MESSAGE_ANTI_LOOP 常量，避免与 system prompt 版本漂移
+				effectivePrompt = {
+					...options.prompt,
+					text: `${options.prompt.text}\n\n${schemaBlocks.join("\n\n")}\n\n${DB_AI_PER_MESSAGE_ANTI_LOOP}`,
+				};
+			}
+		}
+
 		try {
-			await Promise.race([this.runtime.prompt(options.session.sessionId, options.prompt), cancellation]);
+			await Promise.race([this.runtime.prompt(options.session.sessionId, effectivePrompt), cancellation]);
 		} catch (error) {
 			emitConversationListChanged({
 				cwd: options.session.listCwd,
@@ -310,4 +336,93 @@ export function getDesktopConversationService(): DesktopConversationService {
 		sharedService = new DesktopConversationService(getSharedRuntime());
 	}
 	return sharedService;
+}
+
+// ─── Per-message @mention schema 注入辅助函数 ───
+
+/** 拉取所有 @mention 表的 schema，跳过被 AI access guard 拒绝的连接，并行拉取 */
+async function buildMentionedTableSchemaBlocks(mentions: DbMentionRef[]): Promise<string[]> {
+	// 先过 guard：白名单外的连接直接跳过（不浪费 IPC）
+	const allowed = mentions.filter((m) => {
+		if (!isConnectionAiAccessEnabled(m.connection)) {
+			log.info(`[@mention] 跳过连接「${m.connection}」的表「${m.table}」——AI 访问未授权`);
+			return false;
+		}
+		return true;
+	});
+	if (allowed.length === 0) return [];
+
+	// 预取连接列表以推断每个 connection 的 catalog family（scope kind）
+	let connectionTypes: Map<string, string> | null = null;
+	try {
+		const conns = await databaseService.listConnections();
+		if (conns.ok) {
+			connectionTypes = new Map(conns.data.map((c) => [c.name, c.type]));
+		}
+	} catch {
+		// listConnections 失败——仍尝试拉 schema（如果 mention 带了 scope 会透传），
+		// 只是无法判断引擎 family，scope 同时塞入 schema 和 database 让 describeTable 自行选择。
+		log.warn("[@mention] listConnections 失败，将以退化模式拉 schema（scope 同时塞 schema + database）");
+	}
+
+	// 并行拉取所有 schema——describeTable 慢不阻塞发送
+	const settled = await Promise.allSettled(
+		allowed.map(async (m) => {
+			// 根据 connection type + scope 构造 DbTableScope。
+			// 注意：connectionTypes 可能为 null（listConnections 失败），
+			// 此时我们不知道引擎是 flat 还是 PG/MySQL——但用户显式给了 m.scope 时
+			// 仍然透传下去（describeTable 自己能按引擎默认处理多余的字段），
+			// 不应该把用户信息丢掉。
+			let scope: { schema?: string; database?: string } | undefined;
+			if (connectionTypes) {
+				const connType = connectionTypes.get(m.connection);
+				if (connType) {
+					const family = catalogFamilyOfType(connType);
+					if (family !== "flat") {
+						if (!m.scope) {
+							// Bug 5: 非 flat 类型（PG/MySQL）但没传 scope → 描述表会用引擎默认
+							// scope（PG 默认 public / MySQL 默认连接当前库），可能拉错表结构。
+							// 显式跳过并 warn，比 silently 给用户错 schema 好。
+							log.warn(
+								`[@mention] 跳过 ${m.connection}.${m.table}——${family} 类型需要 scope，但 mention 里没带。` +
+									`请用 @conn.schema.table 格式。`,
+							);
+							return null;
+						}
+						scope = family === "schemas" ? { schema: m.scope } : { database: m.scope };
+					}
+				}
+			} else if (m.scope) {
+				// listConnections 失败 — 退化：同时塞 schema 和 database，
+				// 让 describeTable 按引擎自己的规则忽略多余字段。
+				// 总比丢掉用户显式给的 scope 信息好。
+				scope = { schema: m.scope, database: m.scope };
+			}
+			const result = await databaseService.describeTable(m.connection, m.table, scope);
+			if (!result.ok) {
+				log.warn(
+					`[@mention] describeTable 失败：${m.connection}${m.scope ? `.${m.scope}` : ""}.${m.table} → ${result.error.code}`,
+				);
+				return null;
+			}
+			if (result.data.length === 0) {
+				log.warn(`[@mention] describeTable 返回空列：${m.connection}${m.scope ? `.${m.scope}` : ""}.${m.table}`);
+				return null;
+			}
+			return formatMentionedTableSchema(m.connection, m.table, result.data, m.scope);
+		}),
+	);
+
+	const blocks: string[] = [];
+	for (let i = 0; i < settled.length; i++) {
+		const r = settled[i];
+		if (r.status === "rejected") {
+			log.warn(
+				`[@mention] describeTable 异常：${allowed[i].connection}.${allowed[i].table} → ${r.reason instanceof Error ? r.reason.message : String(r.reason)}`,
+			);
+			continue;
+		}
+		if (r.value) blocks.push(r.value);
+	}
+	return blocks;
 }

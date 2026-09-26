@@ -565,9 +565,9 @@ export function registerDesktopDomainProviders(registry: CapabilityRegistry): Di
 			},
 		}),
 		bindCapability(DOMAIN_DATABASE_CAPABILITIES.REMOVE_CONNECTION, {
-			execute: async ({ id }, context) => {
+			execute: async ({ id: connectionName }, context) => {
 				assertNotAborted(context.signal);
-				await unwrapDatabaseResult(await databaseService.removeConnection(id));
+				await unwrapDatabaseResult(await databaseService.removeConnection(connectionName));
 			},
 		}),
 	]);

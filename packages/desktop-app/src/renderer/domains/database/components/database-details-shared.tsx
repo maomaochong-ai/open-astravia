@@ -114,17 +114,20 @@ export function InfoItem({
 	);
 }
 
-/** 详情标题区（类型徽章 + 名称 + 状态胶囊 + 右侧动作），管理/工作台两视角共用。 */
+/** 详情标题区（类型徽章 + 名称 + 状态胶囊 + 右侧动作 + 可选 meta subtitle），管理/工作台两视角共用。
+ * meta 行用于 compact 展示基础连接信息（host/db/env），与 InfoSection 区分：头部一行带过，不用单独卡片。 */
 export function ConnectionIdentity({
 	connection,
 	status,
 	statusLabel,
 	actions,
+	meta,
 }: {
 	connection: DbConnection;
 	status: DatabaseConnectionTestStatus;
 	statusLabel: string;
 	actions?: ReactNode;
+	meta?: ReactNode;
 }): JSX.Element {
 	return (
 		<div className="flex flex-wrap items-start justify-between gap-3">
@@ -136,6 +139,7 @@ export function ConnectionIdentity({
 						<DatabaseBadge>{getDatabaseTypeMeta(connection.type).label}</DatabaseBadge>
 						<DatabaseStatusPill status={status} label={statusLabel} />
 					</div>
+					{meta ? <div className="mt-1.5">{meta}</div> : null}
 				</div>
 			</div>
 			{actions ? <div className="flex shrink-0 items-center gap-1.5">{actions}</div> : null}

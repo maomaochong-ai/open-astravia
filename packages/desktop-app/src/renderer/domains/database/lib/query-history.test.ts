@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { pushQueryHistory, QUERY_HISTORY_LIMIT, type QueryHistoryEntry } from "./query-history";
+import { pushQueryHistory, QUERY_HISTORY_LIMIT, type QueryHistoryEntry, removeQueryHistory } from "./query-history";
 
 function entry(id: string, connection: string, sql: string, at: number): QueryHistoryEntry {
 	return { id, connection, sql, at };
@@ -44,5 +44,21 @@ describe("pushQueryHistory", () => {
 		const snapshot = [...base];
 		pushQueryHistory(base, "conn-b", "SELECT 2", 2000);
 		expect(base).toEqual(snapshot);
+	});
+});
+
+describe("removeQueryHistory", () => {
+	test("removes the matching id and returns a new array", () => {
+		const base = [entry("a", "conn-a", "SELECT 1", 1000), entry("b", "conn-b", "SELECT 2", 900)];
+		const result = removeQueryHistory(base, "a");
+		expect(result).toHaveLength(1);
+		expect(result[0]?.id).toBe("b");
+		expect(result).not.toBe(base);
+	});
+
+	test("returns the ORIGINAL reference when id is not found — avoids unnecessary localStorage writes (Bug 2 回归)", () => {
+		const base = [entry("a", "conn-a", "SELECT 1", 1000)];
+		const result = removeQueryHistory(base, "missing");
+		expect(result).toBe(base);
 	});
 });

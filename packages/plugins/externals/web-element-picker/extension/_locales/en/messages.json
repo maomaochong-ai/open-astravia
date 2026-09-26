@@ -99,5 +99,9 @@
   "errorUnknown": {
     "message": "Operation failed, please retry",
     "description": "Generic operation failure"
+  },
+  "errorMountFailed": {
+    "message": "Kernel failed to mount. The page structure may not be supported. Please reload the page and try again",
+    "description": "Selection kernel injection/initialization failure notice"
   }
 }
