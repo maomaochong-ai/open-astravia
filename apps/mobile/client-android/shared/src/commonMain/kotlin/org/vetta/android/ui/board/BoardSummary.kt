@@ -29,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -76,11 +77,13 @@ fun BoardSummary(
             BotAvatar(size = 24.dp, asleep = avatarAsleep)
             Text(stringResource(Res.string.home_task_board), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
         }
-        BoxWithConstraints(Modifier.fillMaxWidth().height(196.dp)) {
+        // Large text needs a taller summary, and one row fewer once even that is not enough.
+        val fontScale = LocalDensity.current.fontScale
+        BoxWithConstraints(Modifier.fillMaxWidth().height(196.dp * fontScale.coerceIn(1f, 1.5f))) {
             val gap = 10.dp
             val side = (maxWidth - gap) * 0.44f
             Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
-                SummaryCard(first, rows = 3, onOpenSession = onOpenSession, modifier = Modifier.weight(1f).fillMaxHeight())
+                SummaryCard(first, rows = if (fontScale > 1.3f) 2 else 3, onOpenSession = onOpenSession, modifier = Modifier.weight(1f).fillMaxHeight())
                 Column(Modifier.width(side).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(gap)) {
                     cards.getOrNull(1)?.let { second ->
                         SummaryCard(second, rows = 0, onOpenSession = onOpenSession, modifier = Modifier.fillMaxWidth().weight(1f))
