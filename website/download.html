@@ -212,12 +212,13 @@
 				const fRect = footerEl.getBoundingClientRect();
 				const fTop = fRect.top - tRect.top;
 
-				// 图标底边贴住文字顶 → 图标中心 Y = 文字顶 - ICON/2
-				// 因为图标 margin-top = -ICON/2，所以 top 值直接就是图标中心 Y
+				// 图标落在目标物两侧外侧，不遮挡文字
+				// 标题 zone：标题左右外侧，Y 贴住标题顶
 				const titleZone = [
-					{ x: tLeft + tW * 0.25, y: tTop - ICON / 2 },
-					{ x: tLeft + tW * 0.75, y: tTop - ICON / 2 },
+					{ x: tLeft - ICON / 2 - 12,  y: tTop - ICON / 2 },
+					{ x: tLeft + tW + ICON / 2 + 12, y: tTop - ICON / 2 },
 				];
+				// 描述 zone：描述上方，均匀分布在描述宽度内
 				const descZone = [
 					{ x: dLeft + dW * 0.15, y: dTop - ICON / 2 },
 					{ x: dLeft + dW * 0.4,  y: dTop - ICON / 2 },
@@ -225,10 +226,10 @@
 					{ x: dLeft + dW * 0.88, y: dTop - ICON / 2 },
 				];
 				const midZone = [
-					{ x: pLeft + pW * 0.9, y: pTop - ICON / 2 }, // 砸下载按钮顶
+					{ x: pLeft + pW + ICON / 2 + 12, y: pTop - ICON / 2 }, // 下载按钮右侧
 				];
 				const footZone = [
-					{ x: 100, y: fTop - ICON / 2 }, // 砸页脚横线
+					{ x: 100, y: fTop - ICON / 2 }, // 页脚横线
 				];
 
 				const zones = [

@@ -41,11 +41,16 @@ export class DesktopModelCredentialStore implements ModelCredentialStore {
 		this.vault.remove(modelApiKeyRef(credentialRef));
 	}
 
-	syncToAuthStorage(authStorage: AuthStorage, providers: Record<string, { credentialRef?: string }>): void {
+	syncToAuthStorage(
+		authStorage: AuthStorage,
+		providers: Record<string, { credentialRef?: string; apiKey?: string }>,
+	): void {
 		const nextProviderIds = new Set<string>();
 		for (const [providerId, provider] of Object.entries(providers)) {
-			if (!provider.credentialRef) continue;
-			const apiKey = this.get(provider.credentialRef);
+			// 优先从 credential vault 读；没有 credentialRef 或 vault 为空时，回退到 models.json 明文 apiKey（legacy 兼容）
+			let apiKey: string | undefined;
+			if (provider.credentialRef) apiKey = this.get(provider.credentialRef);
+			if (!apiKey && provider.apiKey?.trim()) apiKey = provider.apiKey.trim();
 			if (!apiKey) continue;
 			authStorage.setRuntimeApiKey(providerId, apiKey);
 			nextProviderIds.add(providerId);
