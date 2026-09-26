@@ -60,18 +60,23 @@ export default definePlugin({
 
 ## 模型配置
 
-- 内置服务商预设：Claude、OpenAI、DeepSeek、Z.ai、Kimi、Gemini、Grok、Qwen — 预设只含 baseUrl 与 API 类型，**不含任何 Key**
-- 填入 Key 后立即同步该账号可用模型，之后每 12 小时后台同步
-- 请求直发服务商，应用不代理、不转发、不计费
-- 支持 OpenAI 兼容端点（Ollama / vLLM / LM Studio 本地推理）
-- 模型元数据由 [models.dev](https://models.dev) 补齐，随包带快照兜底
+<table width="100%">
+<colgroup><col width="30%"><col width="70%"></colgroup>
+<tbody>
+<tr><td>服务商预设</td><td>Claude、OpenAI、DeepSeek、Z.ai、Kimi、Gemini、Grok、Qwen — 预设只含 baseUrl 与 API 类型，<b>不含任何 Key</b></td></tr>
+<tr><td>Key 与模型同步</td><td>填入 Key 后立即拉取该账号可用模型，之后每 12 小时后台同步一次</td></tr>
+<tr><td>请求链路</td><td>直发服务商，应用不代理、不转发、不计费</td></tr>
+<tr><td>兼容端点</td><td>支持 OpenAI 兼容协议，可接 Ollama / vLLM / LM Studio 等本地推理服务</td></tr>
+<tr><td>元数据来源</td><td>价格与能力由 <a href="https://models.dev">models.dev</a> 补齐，随包带快照兜底，断网仍可使用</td></tr>
+</tbody>
+</table>
 
 ## 网络行为
 
-应用**从不主动发起网络请求**——每次出站调用都由你明确的配置或操作触发。下表列出所有可能的网络场景：
+应用从不主动发起网络请求——每次出站调用都由你明确的配置或操作触发。下表列出所有可能的网络场景：
 
 <table width="100%">
-<colgroup><col width="15%"><col width="35%"><col width="50%"></colgroup>
+<colgroup><col width="15%"><col width="30%"><col width="55%"></colgroup>
 <thead><tr><th>场景</th><th>触发条件</th><th>具体行为</th></tr></thead>
 <tbody>
 <tr><td>LLM 推理</td><td>你在设置中配置了模型服务商并填入 Key</td><td>请求直发服务商（Claude / OpenAI / DeepSeek / Kimi / Gemini / Grok / Qwen），应用不代理、不转发、不计费。未配置 Key 即完全不发生。</td></tr>
@@ -86,16 +91,20 @@ export default definePlugin({
 </tbody>
 </table>
 
-**没有遥测，没有崩溃上报，没有使用统计。任何时候出站请求都只来自你配置的服务商、你安装的扩展、你主动触发的下载。**
-
 ## 如何开发
 
 ### 环境要求
 
-- **Bun 1.3+**（包管理器，monorepo 全部使用 Bun，不接受 npm / pnpm）
-- **Node 20+**（Vite 构建时需要）
-- **Go 1.22+**（仅构建 `im-gateway` 可选）
-- macOS 或 Windows 桌面（仅构建 `desktop-app` 可选）
+<table width="100%">
+<colgroup><col width="20%"><col width="25%"><col width="55%"></colgroup>
+<thead><tr><th>依赖</th><th>版本</th><th>用途</th></tr></thead>
+<tbody>
+<tr><td>Bun</td><td>1.3+</td><td>包管理器与脚本 runner，monorepo 全部使用 Bun，不接受 npm / pnpm</td></tr>
+<tr><td>Node.js</td><td>20+</td><td>Vite 前端构建时需要</td></tr>
+<tr><td>Go</td><td>1.22+</td><td>仅构建 <code>im-gateway</code> 可选</td></tr>
+<tr><td>macOS / Windows</td><td>—</td><td>仅构建桌面宿主可选；Linux 开发者可以完整跑核心库与 CLI</td></tr>
+</tbody>
+</table>
 
 ### 一次性准备
 
@@ -108,7 +117,7 @@ cd astravia
 bun install
 
 # 3. （可选）只构建桌面应用需要的原生模块
-bun run build:desktop    # 构建桌面宿主
+bun run build:desktop
 ```
 
 ### 日常开发
@@ -140,11 +149,18 @@ bun run test:changed
 
 ### 提交约定
 
-- **包管理统一用 Bun**：禁止 `package-lock.json` / `pnpm-lock.yaml` 出现
-- **TypeScript 禁止无必要 `any`**：所有类型错误必须修复才能通过 check
-- **用户可见文案必须走 i18n**：直接写中文 / 英文到组件里是违规的
-- **提交信息用中文**：`fixes #N` / `closes #N` 关联工单；`feat:` / `fix:` / `docs:` / `refactor:` / `chore:` 开头
-- 完整规范见 [AGENTS.md](AGENTS.md)
+<table width="100%">
+<colgroup><col width="25%"><col width="75%"></colgroup>
+<thead><tr><th>约定</th><th>说明</th></tr></thead>
+<tbody>
+<tr><td>包管理</td><td>统一用 Bun；禁止出现 <code>package-lock.json</code> 或 <code>pnpm-lock.yaml</code></td></tr>
+<tr><td>TypeScript</td><td>禁止无必要 <code>any</code>；所有类型错误必须修复才能通过 <code>bun run check</code></td></tr>
+<tr><td>i18n</td><td>用户可见文案必须走 i18n，直接写中文 / 英文到组件里是违规的</td></tr>
+<tr><td>提交信息</td><td>中文，<code>feat:</code> / <code>fix:</code> / <code>docs:</code> / <code>refactor:</code> / <code>chore:</code> 开头；用 <code>fixes #N</code> / <code>closes #N</code> 关联工单</td></tr>
+</tbody>
+</table>
+
+完整规范见 [AGENTS.md](AGENTS.md)。
 
 ### 可选模块构建
 
@@ -192,11 +208,18 @@ astravia/
 └── scripts/                   — 构建、发布、质量守卫
 ```
 
-**依赖关系**：
-- `desktop-app` / `cli-app` → `runtime-*` → `coding-agent` / `agent` / `ai`
-- `ai` ← `agent` ← `coding-agent`（Agent 持有 LLM 调用能力）
-- `runtime-*` 不依赖 AI 层，`capability-*` 跨层提供权限定义
-- `plugins` / `skill-presets` / `themes` 是纯粹的资源包，无业务依赖
+**依赖方向**：
+
+<table width="100%">
+<colgroup><col width="40%"><col width="60%"></colgroup>
+<thead><tr><th>链路</th><th>说明</th></tr></thead>
+<tbody>
+<tr><td><code>desktop-app</code> / <code>cli-app</code> → <code>runtime-*</code> → <code>coding-agent</code> / <code>agent</code> / <code>ai</code></td><td>宿主不直接调用 AI 层，统一经 runtime 适配层注入</td></tr>
+<tr><td><code>ai</code> ← <code>agent</code> ← <code>coding-agent</code></td><td>上层包持有下层能力，coding-agent 是最上层的业务包</td></tr>
+<tr><td><code>runtime-*</code> 不依赖 AI 层</td><td>runtime 只适配宿主能力，capability-* 跨层提供权限定义</td></tr>
+<tr><td><code>plugins</code> / <code>skill-presets</code> / <code>themes</code></td><td>纯粹的资源包，无运行时依赖</td></tr>
+</tbody>
+</table>
 
 ## 加入社群
 
@@ -212,14 +235,18 @@ astravia/
 
 ## 致谢
 
-| 项目 | 用途 | 许可 |
-| --- | --- | --- |
-| pi · Mario Zechner | ai / agent / coding-agent 在其基础上重写与迭代 | MIT |
-| Codex CLI · OpenAI | 执行沙箱方案借鉴其设计 | Apache-2.0 |
-| bubblewrap | Linux 沙箱后端 | LGPL-2.0+ |
-| PP-OCRv5 · PaddlePaddle | 离线 PDF OCR | Apache-2.0 |
-| dbx | 数据库引擎 | Apache-2.0 |
-| python-build-standalone / Node.js | 便携运行时 | 见原仓库 |
+<table width="100%">
+<colgroup><col width="25%"><col width="50%"><col width="25%"></colgroup>
+<thead><tr><th>项目</th><th>用途</th><th>许可</th></tr></thead>
+<tbody>
+<tr><td>pi · Mario Zechner</td><td>ai / agent / coding-agent 在其基础上重写与迭代</td><td>MIT</td></tr>
+<tr><td>Codex CLI · OpenAI</td><td>执行沙箱方案借鉴其设计</td><td>Apache-2.0</td></tr>
+<tr><td>bubblewrap</td><td>Linux 沙箱后端</td><td>LGPL-2.0+</td></tr>
+<tr><td>PP-OCRv5 · PaddlePaddle</td><td>离线 PDF OCR</td><td>Apache-2.0</td></tr>
+<tr><td>dbx</td><td>数据库引擎</td><td>Apache-2.0</td></tr>
+<tr><td>python-build-standalone / Node.js</td><td>便携运行时</td><td>见原仓库</td></tr>
+</tbody>
+</table>
 
 感谢 [Model Context Protocol](https://modelcontextprotocol.io) 规范与 [models.dev](https://models.dev) 公共模型目录。第三方完整清单见 [NOTICE](NOTICE)。
 

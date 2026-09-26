@@ -25,7 +25,7 @@
 Message stream, tool-call progress and generated artifacts on one screen. Files preview in-app (PDF, Word, PPT, spreadsheets, images, audio, video, SVG). Scanned PDFs OCR'd offline. Built-in coding-agent reads/writes project files, runs commands and takes screenshots.
 
 ### Database Workbench
-40+ database engines (PostgreSQL, MySQL, SQLite, SQL Server, Oracle, Doris, OceanBase…). SQL workbench with multi-tab queries, history, CSV/JSON export and data editing. The AI queries tables for you. Write operations need graded authorization — `prod` connections are read-only by default. The engine is [dbx](https://github.com/t8y2/dbx) (Apache-2.0), shipped with the app.
+40+ database engines (PostgreSQL, MySQL, SQLite, SQL Server, Oracle, Doris, OceanBase…). SQL workbench with multi-tab queries, history, CSV/JSON export and data editing. The AI queries tables for you. Write operations need graded authorization — `prod` connections are read-only by default. The engine is dbx (Apache-2.0), shipped with the app.
 
 ### Batch Tasks & Scheduling
 One prompt across many directories. Built-in cron scheduler, quiet from the tray, with run history and retry.
@@ -60,18 +60,23 @@ export default definePlugin({
 
 ## Model Configuration
 
-- Preset providers ship with baseUrl and API type only — **no keys at all**: Claude, OpenAI, DeepSeek, Z.ai, Kimi, Gemini, Grok, Qwen
-- Once you add your own key, models available to your account sync every 12 hours
-- Requests go straight to the provider — never proxied, never billed by the app
-- OpenAI-compatible endpoints work too (Ollama / vLLM / LM Studio)
-- Pricing and capability metadata from [models.dev](https://models.dev), with a bundled snapshot as fallback
+<table width="100%">
+<colgroup><col width="30%"><col width="70%"></colgroup>
+<tbody>
+<tr><td>Preset providers</td><td>Claude, OpenAI, DeepSeek, Z.ai, Kimi, Gemini, Grok, Qwen — baseUrl and API type only, <b>no keys at all</b></td></tr>
+<tr><td>Key & model sync</td><td>Adding your key immediately pulls available models for your account; a background sync runs every 12 hours</td></tr>
+<tr><td>Request path</td><td>Straight to the provider — the app never proxies, relays or bills you</td></tr>
+<tr><td>Compatibility</td><td>OpenAI-compatible endpoints work too — Ollama / vLLM / LM Studio and other local runners</td></tr>
+<tr><td>Metadata source</td><td>Pricing and capability data from <a href="https://models.dev">models.dev</a>, with a bundled snapshot as fallback — the app keeps working offline</td></tr>
+</tbody>
+</table>
 
 ## Network Behavior
 
-The app **never initiates a network call on its own** — every outbound request is triggered by your explicit configuration or action. The table below lists every possible network scenario:
+The app never initiates a network call on its own — every outbound request is triggered by your explicit configuration or action. The table below lists every possible network scenario:
 
 <table width="100%">
-<colgroup><col width="15%"><col width="35%"><col width="50%"></colgroup>
+<colgroup><col width="15%"><col width="30%"><col width="55%"></colgroup>
 <thead><tr><th>Scenario</th><th>When it happens</th><th>What exactly is sent</th></tr></thead>
 <tbody>
 <tr><td>LLM inference</td><td>You configured a provider and entered your API key in Settings</td><td>Requests go straight to the provider (Claude / OpenAI / DeepSeek / Kimi / Gemini / Grok / Qwen) — the app never proxies, relays or bills you. Nothing happens without a key.</td></tr>
@@ -86,16 +91,20 @@ The app **never initiates a network call on its own** — every outbound request
 </tbody>
 </table>
 
-**No telemetry. No crash reporting. No usage statistics. Any outbound request always comes from the provider you configured, the extensions you installed, or the download you triggered.**
-
 ## How to Develop
 
 ### Prerequisites
 
-- **Bun 1.3+** (package manager — the monorepo uses Bun everywhere; npm / pnpm are not accepted)
-- **Node 20+** (needed for Vite builds)
-- **Go 1.22+** (only required for building `im-gateway`, optional)
-- macOS or Windows desktop (only required for building `desktop-app`, optional)
+<table width="100%">
+<colgroup><col width="20%"><col width="25%"><col width="55%"></colgroup>
+<thead><tr><th>Dependency</th><th>Version</th><th>Purpose</th></tr></thead>
+<tbody>
+<tr><td>Bun</td><td>1.3+</td><td>Package manager and script runner — the monorepo uses Bun everywhere; npm / pnpm are not accepted</td></tr>
+<tr><td>Node.js</td><td>20+</td><td>Needed for Vite frontend builds</td></tr>
+<tr><td>Go</td><td>1.22+</td><td>Only required for building <code>im-gateway</code>, optional</td></tr>
+<tr><td>macOS / Windows</td><td>—</td><td>Only required for building the desktop host; Linux devs can run the full core library and CLI</td></tr>
+</tbody>
+</table>
 
 ### One-time Setup
 
@@ -141,11 +150,18 @@ bun run test:changed
 
 ### Commit Conventions
 
-- **Bun everywhere for package management**: no `package-lock.json` / `pnpm-lock.yaml`
-- **No unnecessary `any` in TypeScript**: must fix all type errors to pass `check`
-- **User-facing copy must go through i18n**: hard-coding Chinese / English strings in components is a violation
-- **Commit messages in Chinese**, referencing issues (`fixes #N` / `closes #N`). Prefix with `feat:` / `fix:` / `docs:` / `refactor:` / `chore:`
-- Full rules in [AGENTS.md](AGENTS.md)
+<table width="100%">
+<colgroup><col width="25%"><col width="75%"></colgroup>
+<thead><tr><th>Rule</th><th>Detail</th></tr></thead>
+<tbody>
+<tr><td>Package manager</td><td>Bun only; no <code>package-lock.json</code> or <code>pnpm-lock.yaml</code></td></tr>
+<tr><td>TypeScript</td><td>No unnecessary <code>any</code>; all type errors must be fixed to pass <code>bun run check</code></td></tr>
+<tr><td>i18n</td><td>All user-facing copy must go through i18n; hard-coding strings in components is a violation</td></tr>
+<tr><td>Commit messages</td><td>In Chinese, prefixed with <code>feat:</code> / <code>fix:</code> / <code>docs:</code> / <code>refactor:</code> / <code>chore:</code>; reference issues with <code>fixes #N</code> / <code>closes #N</code></td></tr>
+</tbody>
+</table>
+
+Full rules in [AGENTS.md](AGENTS.md).
 
 ### Optional Module Builds
 
@@ -194,10 +210,17 @@ astravia/
 ```
 
 **Dependency direction**:
-- `desktop-app` / `cli-app` → `runtime-*` → `coding-agent` / `agent` / `ai`
-- `ai` ← `agent` ← `coding-agent` (Agent holds LLM calling capability)
-- `runtime-*` has no dependency on the AI layer; `capability-*` spans layers for permission definitions
-- `plugins` / `skill-presets` / `themes` are pure resource bundles with no runtime dependency
+
+<table width="100%">
+<colgroup><col width="40%"><col width="60%"></colgroup>
+<thead><tr><th>Chain</th><th>Detail</th></tr></thead>
+<tbody>
+<tr><td><code>desktop-app</code> / <code>cli-app</code> → <code>runtime-*</code> → <code>coding-agent</code> / <code>agent</code> / <code>ai</code></td><td>Hosts never call the AI layer directly — always injected through the runtime adapter layer</td></tr>
+<tr><td><code>ai</code> ← <code>agent</code> ← <code>coding-agent</code></td><td>Upper packages hold lower capabilities; coding-agent is the topmost business package</td></tr>
+<tr><td><code>runtime-*</code> has no dependency on the AI layer</td><td>Runtimes only adapt host capabilities; <code>capability-*</code> spans layers for permission definitions</td></tr>
+<tr><td><code>plugins</code> / <code>skill-presets</code> / <code>themes</code></td><td>Pure resource bundles with no runtime dependency</td></tr>
+</tbody>
+</table>
 
 ## Join the Community
 
@@ -213,14 +236,18 @@ astravia/
 
 ## Credits
 
-| Project | Used for | License |
-| --- | --- | --- |
-| pi · Mario Zechner | `ai`, `agent`, `coding-agent`, `ecosystem-adapter` were rewritten and iterated on top of it | MIT |
-| Codex CLI · OpenAI | Execution sandbox design draws on theirs | Apache-2.0 |
-| bubblewrap | Linux sandbox backend | LGPL-2.0+ |
-| PP-OCRv5 · PaddlePaddle | Offline PDF OCR | Apache-2.0 |
-| dbx | Database engine | Apache-2.0 |
-| python-build-standalone / Node.js | Portable runtimes | See upstream |
+<table width="100%">
+<colgroup><col width="25%"><col width="50%"><col width="25%"></colgroup>
+<thead><tr><th>Project</th><th>Used for</th><th>License</th></tr></thead>
+<tbody>
+<tr><td>pi · Mario Zechner</td><td><code>ai</code>, <code>agent</code>, <code>coding-agent</code>, <code>ecosystem-adapter</code> were rewritten and iterated on top of it</td><td>MIT</td></tr>
+<tr><td>Codex CLI · OpenAI</td><td>Execution sandbox design draws on theirs</td><td>Apache-2.0</td></tr>
+<tr><td>bubblewrap</td><td>Linux sandbox backend</td><td>LGPL-2.0+</td></tr>
+<tr><td>PP-OCRv5 · PaddlePaddle</td><td>Offline PDF OCR</td><td>Apache-2.0</td></tr>
+<tr><td>dbx</td><td>Database engine</td><td>Apache-2.0</td></tr>
+<tr><td>python-build-standalone / Node.js</td><td>Portable runtimes</td><td>See upstream</td></tr>
+</tbody>
+</table>
 
 Thanks also to the [Model Context Protocol](https://modelcontextprotocol.io) specification and [models.dev](https://models.dev). Full third-party inventory in [NOTICE](NOTICE).
 
