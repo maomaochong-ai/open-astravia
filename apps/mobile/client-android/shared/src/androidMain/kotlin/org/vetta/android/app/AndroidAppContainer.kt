@@ -13,9 +13,11 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import org.vetta.android.core.nowEpochMs
 import org.vetta.android.data.remote.SqliteSessionCache
 import org.vetta.android.data.secure.KeystoreSecretStore
 import org.vetta.android.domain.work.DesktopMirror
+import org.vetta.android.domain.work.WidgetSummary
 import org.vetta.android.ui.remote.NativeRemoteDesktopSessions
 
 /**
@@ -51,6 +53,16 @@ object AndroidAppContainer {
         // Started here too, for when the link service brings the process back without a screen.
         container.mirror.start()
         SessionNotifier.watch(context, container, scope)
+        // The home screen widget follows the counts; while offline it says since when.
+        scope.launch {
+            var lastOnline: Long? = null
+            container.mirror.state
+                .map { state ->
+                    if (state.online) lastOnline = nowEpochMs()
+                    WidgetSummary.of(state, lastOnline ?: state.desktop?.lastSeenAt?.takeIf { it > 0 })
+                }.distinctUntilChanged()
+                .collect { SessionsWidget.update(context, it) }
+        }
         // The link service runs while the user wants news in the background and a desktop is
         // paired; it is started while the app is on screen, which Android requires.
         scope.launch {

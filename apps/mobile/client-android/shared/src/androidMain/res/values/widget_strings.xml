@@ -1,0 +1,17 @@
+<resources>
+    <string name="widget_title" translatable="false">Vetta</string>
+    <string name="widget_description">Sessions waiting on you and in progress</string>
+    <string name="widget_unpaired">Not connected</string>
+    <string name="widget_unpaired_hint">Tap to pair with your computer</string>
+    <string name="widget_all_clear">All caught up</string>
+    <string name="widget_offline">Computer offline</string>
+    <string name="widget_updated">Updated %1$s</string>
+    <plurals name="widget_waiting">
+        <item quantity="one">%d waiting on you</item>
+        <item quantity="other">%d waiting on you</item>
+    </plurals>
+    <plurals name="widget_working">
+        <item quantity="one">%d in progress</item>
+        <item quantity="other">%d in progress</item>
+    </plurals>
+</resources>

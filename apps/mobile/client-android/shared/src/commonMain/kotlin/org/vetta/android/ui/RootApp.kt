@@ -175,7 +175,7 @@ fun RootApp(
         when (launchTarget) {
             null -> return@LaunchedEffect
             LaunchTarget.NewSession -> vm.startNewSession()
-            LaunchTarget.TaskBoard -> vm.openBoard()
+            LaunchTarget.TaskBoard -> if (workState.paired) vm.openBoard() else vm.openPairing()
             // Without a paired computer there is no screen to show: pairing comes first.
             LaunchTarget.RemoteControl ->
                 when {

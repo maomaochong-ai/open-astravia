@@ -1,0 +1,14 @@
+<resources>
+    <string name="widget_description">等你决策和进行中的会话</string>
+    <string name="widget_unpaired">还没连接电脑</string>
+    <string name="widget_unpaired_hint">点此扫码连接</string>
+    <string name="widget_all_clear">都处理完了</string>
+    <string name="widget_offline">电脑离线</string>
+    <string name="widget_updated">%1$s 更新</string>
+    <plurals name="widget_waiting">
+        <item quantity="other">%d 个等你决策</item>
+    </plurals>
+    <plurals name="widget_working">
+        <item quantity="other">%d 个进行中</item>
+    </plurals>
+</resources>

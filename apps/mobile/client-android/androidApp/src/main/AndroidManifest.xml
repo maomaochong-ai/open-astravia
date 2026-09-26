@@ -79,6 +79,19 @@
             </intent-filter>
         </service>
 
+        <!-- The home screen widget with the sessions waiting on the user and in progress. -->
+        <receiver
+            android:name="org.vetta.android.app.SessionsWidget"
+            android:exported="false"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_sessions_info" />
+        </receiver>
+
         <!-- Keeps the desktop link up in the background so session notifications can arrive. -->
         <service
             android:name="org.vetta.android.app.LinkService"
