@@ -1,6 +1,7 @@
 package org.vetta.android.ui.remote
 
 import android.content.Context
+import androidx.compose.ui.unit.IntSize
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.websocket.DefaultClientWebSocketSession
 import io.ktor.client.plugins.websocket.WebSockets
@@ -40,6 +41,7 @@ import org.webrtc.MediaConstraints
 import org.webrtc.MediaStream
 import org.webrtc.PeerConnection
 import org.webrtc.PeerConnectionFactory
+import org.webrtc.RendererCommon
 import org.webrtc.RtpReceiver
 import org.webrtc.SdpObserver
 import org.webrtc.SessionDescription
@@ -73,6 +75,11 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
     val isStopped: Boolean
         get() = stopped
 
+    private val _frameSize = MutableStateFlow<IntSize?>(null)
+
+    /** The stream's picture as shown, rotation applied; null until the first frame. */
+    val frameSize: StateFlow<IntSize?> = _frameSize
+
     fun createControlTransport(): RemoteTransport {
         check(controlTransport == null) { "remote desktop control transport already claimed" }
         return NativeRemoteControlTransport(this).also { transport ->
@@ -83,9 +90,19 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
 
     fun createRenderer(): SurfaceViewRenderer = SurfaceViewRenderer(context).also {
         renderer = it
-        it.init(eglBase.eglBaseContext, null)
+        it.init(
+            eglBase.eglBaseContext,
+            object : RendererCommon.RendererEvents {
+                override fun onFirstFrameRendered() = Unit
+
+                // Called on the render thread; a StateFlow may be set from any thread.
+                override fun onFrameResolutionChanged(width: Int, height: Int, rotation: Int) {
+                    _frameSize.value = if (rotation % 180 == 0) IntSize(width, height) else IntSize(height, width)
+                }
+            },
+        )
         it.setEnableHardwareScaler(true)
-        it.setScalingType(org.webrtc.RendererCommon.ScalingType.SCALE_ASPECT_FIT)
+        it.setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FIT)
         remoteVideoTrack?.addSink(it)
     }
 

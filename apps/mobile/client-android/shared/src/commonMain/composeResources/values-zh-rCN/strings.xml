@@ -81,7 +81,6 @@
     <plurals name="days_ago">
         <item quantity="other">%1$d天前</item>
     </plurals>
-    <string name="desktop_preview">桌面预览</string>
     <string name="half_hour_ago">半小时前</string>
     <string name="home_all_sessions">全部会话</string>
     <string name="home_filter_status">状态</string>
@@ -146,6 +145,9 @@
     <string name="pair_verification_code">验证码</string>
     <string name="pair_waiting_approval">在电脑上核对验证码并点击「允许」</string>
     <string name="remote_connect_failed">无法连接桌面</string>
+    <string name="remote_control">远程控制</string>
+    <string name="remote_control_hint">轻点即点击，拖动即移动指针。</string>
+    <string name="remote_control_offline">电脑在线时，这里会显示它的屏幕。</string>
     <string name="save">保存</string>
     <string name="send">发送</string>
     <string name="session_delete">删除</string>

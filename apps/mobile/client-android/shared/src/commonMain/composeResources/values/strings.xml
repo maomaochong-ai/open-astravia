@@ -85,7 +85,6 @@
         <item quantity="one">%1$d day ago</item>
         <item quantity="other">%1$d days ago</item>
     </plurals>
-    <string name="desktop_preview">Desktop preview</string>
     <string name="half_hour_ago">Half an hour ago</string>
     <string name="home_all_sessions">All Sessions</string>
     <string name="home_filter_status">Status</string>
@@ -154,6 +153,9 @@
     <string name="pair_verification_code">Verification code</string>
     <string name="pair_waiting_approval">Check the code on your computer and click “Allow”</string>
     <string name="remote_connect_failed">Couldn’t connect to Desktop</string>
+    <string name="remote_control">Remote Control</string>
+    <string name="remote_control_hint">Tap to click, drag to move the pointer.</string>
+    <string name="remote_control_offline">Your computer’s screen shows here once it is online.</string>
     <string name="save">Save</string>
     <string name="send">Send</string>
     <string name="session_delete">Delete</string>

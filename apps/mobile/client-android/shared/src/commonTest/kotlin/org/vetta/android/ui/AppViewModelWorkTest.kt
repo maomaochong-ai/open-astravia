@@ -131,6 +131,19 @@ class AppViewModelWorkTest {
         }
 
     @Test
+    fun backClosesTheComputersScreenFirst() =
+        runTest(dispatcher) {
+            val vm = viewModel()
+            advanceUntilIdle()
+            vm.openDrawer()
+            vm.openRemote()
+            assertTrue(vm.state.value.backEnabled)
+            vm.handleBack()
+            assertFalse(vm.state.value.showRemote)
+            assertTrue(vm.state.value.drawerOpen, "Home is still where the screen was opened from")
+        }
+
+    @Test
     fun theThemeChoiceIsKept() =
         runTest(dispatcher) {
             val preferences = AppPreferences(MapSettings())

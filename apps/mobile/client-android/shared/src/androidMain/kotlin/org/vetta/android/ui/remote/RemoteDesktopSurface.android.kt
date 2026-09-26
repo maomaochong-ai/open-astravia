@@ -4,12 +4,15 @@ import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -20,6 +23,7 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
@@ -52,48 +56,60 @@ actual fun RemoteDesktopSurface(target: String, modifier: Modifier) {
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
-    Box(
-        modifier
-            .onSizeChanged { size = it }
-            .focusRequester(focusRequester)
-            .focusable()
-            .onKeyEvent { event ->
-                val action = if (event.type == KeyEventType.KeyDown) "down" else "up"
-                session.sendKey(androidKeyCode(event.key.keyCode.toInt()), action)
-                true
+    val frame by session.frameSize.collectAsState()
+    // The screen stays on while the desktop is being watched.
+    val view = LocalView.current
+    DisposableEffect(view) {
+        view.keepScreenOn = true
+        onDispose { view.keepScreenOn = false }
+    }
+    // Sized to the stream's own shape, so a touch maps straight onto the desktop's screen
+    // instead of onto the bars the picture is fitted between.
+    Box(modifier, contentAlignment = Alignment.Center) {
+        Box(
+            Modifier
+                .then(frame?.takeIf { it.width > 0 && it.height > 0 }?.let { Modifier.aspectRatio(it.width.toFloat() / it.height) } ?: Modifier.fillMaxSize())
+                .onSizeChanged { size = it }
+                .focusRequester(focusRequester)
+                .focusable()
+                .onKeyEvent { event ->
+                    val action = if (event.type == KeyEventType.KeyDown) "down" else "up"
+                    session.sendKey(androidKeyCode(event.key.keyCode.toInt()), action)
+                    true
+                }
+                .pointerInput(session, size) {
+                    detectTapGestures(
+                        onPress = { offset ->
+                            focusRequester.requestFocus()
+                            val x = if (size.width == 0) .5f else offset.x / size.width
+                            val y = if (size.height == 0) .5f else offset.y / size.height
+                            session.sendPointer("pointer.button", x, y, "left", "down")
+                            tryAwaitRelease()
+                            session.sendPointer("pointer.button", x, y, "left", "up")
+                        },
+                    )
+                }
+                .pointerInput(session, size) {
+                    detectDragGestures(
+                        onDragStart = { offset ->
+                            focusRequester.requestFocus()
+                            val x = if (size.width == 0) .5f else offset.x / size.width
+                            val y = if (size.height == 0) .5f else offset.y / size.height
+                            session.sendPointer("pointer.button", x, y, "left", "down")
+                        },
+                        onDrag = { change, _ ->
+                            val x = if (size.width == 0) .5f else change.position.x / size.width
+                            val y = if (size.height == 0) .5f else change.position.y / size.height
+                            session.sendPointer("pointer.move", x, y)
+                        },
+                        onDragEnd = { session.sendPointer("pointer.button", .5f, .5f, "left", "up") },
+                        onDragCancel = { session.sendPointer("pointer.button", .5f, .5f, "left", "up") },
+                    )
+                },
+        ) {
+            key(session) {
+                AndroidView(modifier = Modifier.matchParentSize(), factory = { session.createRenderer() })
             }
-            .pointerInput(session, size) {
-                detectTapGestures(
-                    onPress = { offset ->
-                        focusRequester.requestFocus()
-                        val x = if (size.width == 0) .5f else offset.x / size.width
-                        val y = if (size.height == 0) .5f else offset.y / size.height
-                        session.sendPointer("pointer.button", x, y, "left", "down")
-                        tryAwaitRelease()
-                        session.sendPointer("pointer.button", x, y, "left", "up")
-                    },
-                )
-            }
-            .pointerInput(session, size) {
-                detectDragGestures(
-                    onDragStart = { offset ->
-                        focusRequester.requestFocus()
-                        val x = if (size.width == 0) .5f else offset.x / size.width
-                        val y = if (size.height == 0) .5f else offset.y / size.height
-                        session.sendPointer("pointer.button", x, y, "left", "down")
-                    },
-                    onDrag = { change, _ ->
-                        val x = if (size.width == 0) .5f else change.position.x / size.width
-                        val y = if (size.height == 0) .5f else change.position.y / size.height
-                        session.sendPointer("pointer.move", x, y)
-                    },
-                    onDragEnd = { session.sendPointer("pointer.button", .5f, .5f, "left", "up") },
-                    onDragCancel = { session.sendPointer("pointer.button", .5f, .5f, "left", "up") },
-                )
-            },
-    ) {
-        key(session) {
-            AndroidView(modifier = Modifier.matchParentSize(), factory = { session.createRenderer() })
         }
     }
 }

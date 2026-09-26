@@ -43,6 +43,8 @@ data class AppUiState(
     val showPairing: Boolean = false,
     /** The task board, a sheet over whatever is showing. */
     val showBoard: Boolean = false,
+    /** The computer's screen, full size over everything. */
+    val showRemote: Boolean = false,
     val themeMode: ThemeMode = ThemeMode.Light,
     /** A pairing is under way. */
     val remoteConnecting: Boolean = false,
@@ -51,7 +53,7 @@ data class AppUiState(
 ) {
     /** Whether Back has somewhere to go inside the app; otherwise it leaves. */
     val backEnabled: Boolean
-        get() = drawerOpen || slot is Slot.Session
+        get() = showRemote || drawerOpen || slot is Slot.Session
 }
 
 class AppViewModel(
@@ -95,6 +97,10 @@ class AppViewModel(
 
     fun openBoard() = _state.update { it.copy(showBoard = true) }
 
+    fun openRemote() = _state.update { it.copy(showRemote = true) }
+
+    fun closeRemote() = _state.update { it.copy(showRemote = false) }
+
     fun closeBoard() = _state.update { it.copy(showBoard = false) }
 
     /** From the board to Home's whole list. */
@@ -111,6 +117,7 @@ class AppViewModel(
     fun handleBack() {
         val state = _state.value
         when {
+            state.showRemote -> closeRemote()
             state.drawerOpen && state.homePath.isNotEmpty() -> pop()
             state.drawerOpen -> closeDrawer()
             state.slot is Slot.Session -> openDrawer()
@@ -118,7 +125,7 @@ class AppViewModel(
     }
 
     private fun reset() =
-        _state.update { it.copy(slot = Slot.NewSession(), homePath = emptyList(), drawerOpen = false, showBoard = false) }
+        _state.update { it.copy(slot = Slot.NewSession(), homePath = emptyList(), drawerOpen = false, showBoard = false, showRemote = false) }
 
     // Pairing
 

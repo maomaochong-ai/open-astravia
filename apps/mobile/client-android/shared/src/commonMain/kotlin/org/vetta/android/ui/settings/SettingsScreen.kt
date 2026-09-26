@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -54,9 +53,9 @@ import org.vetta.android.domain.work.MirrorState
 import org.vetta.android.resources.Res
 import org.vetta.android.resources.appearance
 import org.vetta.android.resources.back
-import org.vetta.android.resources.desktop_preview
 import org.vetta.android.resources.latency
 import org.vetta.android.resources.link_latency
+import org.vetta.android.resources.remote_control
 import org.vetta.android.resources.settings_title
 import org.vetta.android.resources.theme_dark
 import org.vetta.android.resources.theme_light
@@ -81,7 +80,6 @@ import org.vetta.android.resources.work_settings_unpair_hint
 import org.vetta.android.ui.components.VettaConfirmDialog
 import org.vetta.android.ui.design.GlassCircleButton
 import org.vetta.android.ui.design.springClickable
-import org.vetta.android.ui.remote.RemoteDesktopSurface
 import org.vetta.android.ui.theme.vettaExtra
 import org.vetta.android.ui.work.describe
 import org.vetta.android.ui.work.linkDetail
@@ -90,8 +88,7 @@ import org.vetta.android.ui.work.workColors
 /**
  * The paired computer and how the phone works with it (the iPhone's `SettingsView`),
  * grouped like system settings: the computer and its link, when to confirm on the phone,
- * what the chat shows, the app's appearance, and unpairing. `viewerUrl` is the desktop's
- * screen, shown while it is online.
+ * what the chat shows, the app's appearance, and unpairing; and the way to the computer's screen.
  */
 @Composable
 fun SettingsScreen(
@@ -102,7 +99,8 @@ fun SettingsScreen(
     onUnpair: () -> Unit,
     onPair: () -> Unit,
     onBack: () -> Unit,
-    viewerUrl: String? = null,
+    /** Opens the computer's screen; null where it cannot be reached that way. */
+    onOpenRemote: (() -> Unit)? = null,
 ) {
     var confirmUnpair by remember { mutableStateOf(false) }
     val preferences = state.preferences
@@ -154,12 +152,9 @@ fun SettingsScreen(
                 }
             }
 
-            viewerUrl?.takeIf { state.online }?.let { target ->
-                Titled(stringResource(Res.string.desktop_preview)) {
-                    RemoteDesktopSurface(
-                        target = target,
-                        modifier = Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(18.dp)).testTag("settings.remote"),
-                    )
+            if (onOpenRemote != null) {
+                Section {
+                    Action(stringResource(Res.string.remote_control), "settings.remote", onClick = onOpenRemote)
                 }
             }
 

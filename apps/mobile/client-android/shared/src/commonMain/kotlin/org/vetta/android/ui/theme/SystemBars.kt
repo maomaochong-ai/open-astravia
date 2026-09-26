@@ -8,3 +8,7 @@ import androidx.compose.runtime.Composable
  */
 @Composable
 expect fun SystemBarsAppearance(dark: Boolean)
+
+/** Light bar icons while this is shown, over a page that is always dark; the theme's return after. */
+@Composable
+expect fun LightSystemBarIcons()

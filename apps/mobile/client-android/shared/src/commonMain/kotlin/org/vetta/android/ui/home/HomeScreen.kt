@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.Cancel
 import androidx.compose.material.icons.outlined.Dashboard
+import androidx.compose.material.icons.outlined.DesktopWindows
 import androidx.compose.material.icons.outlined.EditNote
 import androidx.compose.material.icons.outlined.FilterAltOff
 import androidx.compose.material.icons.outlined.Inbox
@@ -57,12 +58,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
@@ -91,6 +92,7 @@ import org.vetta.android.resources.home_search
 import org.vetta.android.resources.home_search_placeholder
 import org.vetta.android.resources.home_task_board
 import org.vetta.android.resources.new_session_title
+import org.vetta.android.resources.remote_control
 import org.vetta.android.resources.settings_title
 import org.vetta.android.resources.work_clear_filters
 import org.vetta.android.resources.work_empty
@@ -424,6 +426,10 @@ private fun SearchField(query: String, onQueryChange: (String) -> Unit, onCancel
         }
     }
 }
+
+/** Home's way to the computer's screen. */
+@Composable
+fun remoteEntry(onClick: () -> Unit) = HomeEntry(Icons.Outlined.DesktopWindows, stringResource(Res.string.remote_control), "home.remote", onClick)
 
 /** Home's way to the task board. */
 @Composable

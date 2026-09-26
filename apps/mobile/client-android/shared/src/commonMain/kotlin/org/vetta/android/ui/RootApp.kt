@@ -1,11 +1,14 @@
 package org.vetta.android.ui
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -35,23 +38,26 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.CreationExtras
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlin.reflect.KClass
 import org.jetbrains.compose.resources.stringResource
 import org.vetta.android.app.AppContainer
 import org.vetta.android.domain.work.MirrorState
 import org.vetta.android.domain.work.PromptDraft
 import org.vetta.android.resources.Res
 import org.vetta.android.resources.new_session_title
+import org.vetta.android.ui.board.TaskBoardSheet
 import org.vetta.android.ui.design.VettaMotion
 import org.vetta.android.ui.home.HomeScreen
 import org.vetta.android.ui.home.ProjectScreen
 import org.vetta.android.ui.home.newSessionEntry
+import org.vetta.android.ui.home.remoteEntry
 import org.vetta.android.ui.home.taskBoardEntry
-import org.vetta.android.ui.board.TaskBoardSheet
 import org.vetta.android.ui.navigation.HomePage
 import org.vetta.android.ui.navigation.PlatformBackHandler
 import org.vetta.android.ui.navigation.Slot
 import org.vetta.android.ui.pairing.PairingSheet
 import org.vetta.android.ui.pairing.UnpairedView
+import org.vetta.android.ui.remote.RemoteDesktopScreen
 import org.vetta.android.ui.settings.SettingsScreen
 import org.vetta.android.ui.shell.HomeDrawer
 import org.vetta.android.ui.theme.VettaTheme
@@ -59,7 +65,6 @@ import org.vetta.android.ui.theme.vettaExtra
 import org.vetta.android.ui.work.NewSessionScreen
 import org.vetta.android.ui.work.SessionScreen
 import org.vetta.android.ui.work.WorkViewModel
-import kotlin.reflect.KClass
 
 val LocalAppContainer =
     staticCompositionLocalOf<AppContainer> {
@@ -96,10 +101,12 @@ fun RootApp(
     val state by vm.state.collectAsState()
     val work: WorkViewModel = viewModel(factory = remember(container) { WorkViewModelFactory(container) })
     val workState by work.state.collectAsState()
+    // The desktop's screen, where the pairing has a relay to reach it through.
+    val viewerUrl = remember(workState.desktop) { container.mirror.viewerUrl() }
 
     // A back swipe drags the drawer only where Back moves it: open from a chat, shut from Home's first page.
     var backProgress by remember { mutableStateOf<Float?>(null) }
-    val backMovesDrawer = (state.drawerOpen && state.homePath.isEmpty()) || (!state.drawerOpen && state.slot is Slot.Session)
+    val backMovesDrawer = !state.showRemote && (state.drawerOpen && state.homePath.isEmpty()) || (!state.drawerOpen && state.slot is Slot.Session)
     PlatformBackHandler(
         enabled = state.backEnabled,
         onProgress = { if (backMovesDrawer) backProgress = it },
@@ -150,8 +157,15 @@ fun RootApp(
                 closableByDrag = state.homePath.isEmpty(),
                 backProgress = backProgress,
                 content = { SlotContent(state.slot, workState, vm, work) },
-                drawer = { HomeStack(state, workState, vm, work, container) },
+                drawer = { HomeStack(state, workState, vm, work, viewerUrl) },
             )
+            AnimatedVisibility(
+                state.showRemote,
+                enter = slideInVertically(VettaMotion.snappy(IntOffset.VisibilityThreshold)) { it / 3 } + fadeIn(VettaMotion.snappy()),
+                exit = slideOutVertically(VettaMotion.snappy(IntOffset.VisibilityThreshold)) { it / 3 } + fadeOut(VettaMotion.snappy()),
+            ) {
+                RemoteDesktopScreen(workState, viewerUrl, onClose = vm::closeRemote)
+            }
             if (state.showBoard) {
                 TaskBoardSheet(
                     state = workState,
@@ -236,7 +250,7 @@ private fun SlotContent(slot: Slot, workState: MirrorState, vm: AppViewModel, wo
 
 /** Home and the pages pushed over it, sliding in from the right as a navigation stack does. */
 @Composable
-private fun HomeStack(state: AppUiState, workState: MirrorState, vm: AppViewModel, work: WorkViewModel, container: AppContainer) {
+private fun HomeStack(state: AppUiState, workState: MirrorState, vm: AppViewModel, work: WorkViewModel, viewerUrl: String?) {
     val filter by work.filter.collectAsState()
     AnimatedContent(
         targetState = state.homePath,
@@ -260,7 +274,12 @@ private fun HomeStack(state: AppUiState, workState: MirrorState, vm: AppViewMode
                     filter = filter,
                     onFilterChange = work::setFilter,
                     actions = work,
-                    entries = listOf(newSessionEntry { vm.startNewSession() }, taskBoardEntry(vm::openBoard)),
+                    entries =
+                        listOfNotNull(
+                            newSessionEntry { vm.startNewSession() },
+                            taskBoardEntry(vm::openBoard),
+                            viewerUrl?.let { remoteEntry(vm::openRemote) },
+                        ),
                     onClose = vm::closeDrawer,
                     onOpenSession = vm::show,
                     onOpenProject = { vm.push(HomePage.Project(it)) },
@@ -289,7 +308,7 @@ private fun HomeStack(state: AppUiState, workState: MirrorState, vm: AppViewMode
                     onUnpair = work::unpair,
                     onPair = vm::openPairing,
                     onBack = vm::pop,
-                    viewerUrl = remember(workState.desktop) { container.mirror.viewerUrl() },
+                    onOpenRemote = viewerUrl?.let { vm::openRemote },
                 )
         }
     }
