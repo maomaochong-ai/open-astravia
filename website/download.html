@@ -278,8 +278,8 @@
 					this.vy = 0; this.rot = (Math.random() - 0.5) * 80; this.vRot = (Math.random() - 0.5) * 12;
 					this.scale = 0.3; this.bounce = 0; this.maxBounce = 2 + Math.floor(Math.random() * 2);
 					this.landed = false; this.settled = false; this.start = 0;
-					el.style.left = `${this.x}px`; el.style.top = `${this.y}px`;
-					el.style.marginLeft = `${-ICON_SIZE/2}px`; el.style.marginTop = `${-ICON_SIZE/2}px`;
+					el.style.left = "50%"; el.style.top = "50%";
+					el.style.marginLeft = `${-ICON_SIZE / 2}px`; el.style.marginTop = `${-ICON_SIZE / 2}px`;
 				}
 				update(time) {
 					if (time < this.delay) return;
@@ -289,7 +289,6 @@
 						this.vy += GRAVITY; this.y += this.vy; this.rot += this.vRot;
 						if (this.y >= this.ty) {
 							this.y = this.ty; this.vy = -this.vy * BOUNCE; this.vRot *= -0.6; this.bounce++;
-							// 文字倾斜
 							const tilt = (Math.random() - 0.5) * (this.ty < 150 ? 3 : 2);
 							if (this.ty < 150) {
 								titleEl.style.transform = `rotate(${tilt}deg)`;
@@ -307,7 +306,7 @@
 						if (decay < 0.01) this.settled = true;
 					}
 					this.el.style.opacity = "1";
-					this.el.style.transform = `scale(${this.scale}) rotate(${this.rot}deg)`;
+					this.el.style.transform = `translate(${this.x}px, ${this.y}px) scale(${this.scale}) rotate(${this.rot}deg)`;
 				}
 			}
 
