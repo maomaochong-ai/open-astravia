@@ -253,7 +253,7 @@ jobs:
         run: bun run merge:updates:mac
 
       - name: Upload merged artifacts to Cloudflare R2
-        if: secrets.R2_ACCESS_KEY_ID != ''
+        continue-on-error: true
         working-directory: packages/desktop-app
         env:
           ASTRAVIA_R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
@@ -262,6 +262,10 @@ jobs:
           ASTRAVIA_R2_BUCKET: astravia-downloads
         shell: bash
         run: |
+          if [[ -z "${ASTRAVIA_R2_ACCESS_KEY_ID}" ]]; then
+            echo "R2 secrets not configured; skipping upload."
+            exit 0
+          fi
           VERSION="$(node -p "require('./package.json').version")"
           export ASTRAVIA_R2_PREFIX="app/v${VERSION}"
           export ASTRAVIA_UPDATE_URL="https://dl.astravia.dev/app/v${VERSION}"
