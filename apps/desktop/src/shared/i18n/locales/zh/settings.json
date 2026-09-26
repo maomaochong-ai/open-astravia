@@ -139,6 +139,12 @@
       "empty": "还没有配对的手机。请扫描下方二维码添加。",
       "unnamed": "手机",
       "online": "在线",
+      "onlineVia": "在线 · {{channel}}",
+      "channel": {
+        "p2p": "P2P 直连",
+        "lan": "局域网直连",
+        "relay": "云端中继"
+      },
       "lastSeen": "上次连接 {{time}}",
       "neverSeen": "尚未连接过",
       "revoke": "解除配对"

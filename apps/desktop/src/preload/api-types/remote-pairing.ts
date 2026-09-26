@@ -1,4 +1,4 @@
-export type RemotePairingChannel = "lan" | "relay";
+export type RemotePairingChannel = "p2p" | "lan" | "relay";
 
 export interface RemotePairingDevice {
 	id: string;

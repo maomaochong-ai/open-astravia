@@ -1,4 +1,4 @@
-import type { RemotePairingState } from "@preload/api-types/remote-pairing";
+import type { RemotePairingChannel, RemotePairingState } from "@preload/api-types/remote-pairing";
 import QRCode from "qrcode";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -81,6 +81,17 @@ export interface RemotePairingSettingsModel {
 		readonly revokeDevice: (id: string) => void;
 		readonly setCloudEnabled: (enabled: boolean) => void;
 	};
+}
+
+/** How a phone is connected, fastest first: the one it uses when several are up. */
+const CHANNEL_LABELS = {
+	p2p: "remote.devices.channel.p2p",
+	lan: "remote.devices.channel.lan",
+	relay: "remote.devices.channel.relay",
+} as const satisfies Record<RemotePairingChannel, string>;
+
+function bestChannel(channels: readonly RemotePairingChannel[]): RemotePairingChannel | undefined {
+	return (Object.keys(CHANNEL_LABELS) as RemotePairingChannel[]).find((channel) => channels.includes(channel));
 }
 
 export function useRemotePairingSettingsModel(): RemotePairingSettingsModel {
@@ -218,16 +229,21 @@ export function useRemotePairingSettingsModel(): RemotePairingSettingsModel {
 		() =>
 			state.devices
 				.filter((device) => device.claimed)
-				.map((device) => ({
-					id: device.id,
-					name: device.name || t("remote.devices.unnamed"),
-					online: device.online,
-					status: device.online
-						? t("remote.devices.online")
-						: device.lastSeenAt
-							? t("remote.devices.lastSeen", { time: new Date(device.lastSeenAt).toLocaleString() })
-							: t("remote.devices.neverSeen"),
-				})),
+				.map((device) => {
+					const channel = device.online ? bestChannel(device.channels) : undefined;
+					return {
+						id: device.id,
+						name: device.name || t("remote.devices.unnamed"),
+						online: device.online,
+						status: channel
+							? t("remote.devices.onlineVia", { channel: t(CHANNEL_LABELS[channel]) })
+							: device.online
+								? t("remote.devices.online")
+								: device.lastSeenAt
+									? t("remote.devices.lastSeen", { time: new Date(device.lastSeenAt).toLocaleString() })
+									: t("remote.devices.neverSeen"),
+					};
+				}),
 		[state.devices, t],
 	);
 

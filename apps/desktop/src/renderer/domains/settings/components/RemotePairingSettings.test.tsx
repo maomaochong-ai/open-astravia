@@ -142,6 +142,6 @@ describe("远程连接设置", () => {
 		expect(await screen.findByText(/remote\.devices\.lastSeen/)).toBeTruthy();
 
 		act(() => push({ ...inviteState(), devices: [{ ...device, online: true, channels: ["lan"] }] }));
-		expect(await screen.findByText(/remote\.devices\.online/)).toBeTruthy();
+		expect(await screen.findByText("remote.devices.onlineVia:remote.devices.channel.lan")).toBeTruthy();
 	});
 });

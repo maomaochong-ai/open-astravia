@@ -139,6 +139,12 @@
       "empty": "No phone is paired yet. Scan the QR code below to add one.",
       "unnamed": "Phone",
       "online": "Online",
+      "onlineVia": "Online · {{channel}}",
+      "channel": {
+        "p2p": "direct (P2P)",
+        "lan": "same Wi-Fi",
+        "relay": "via cloud relay"
+      },
       "lastSeen": "Last connected {{time}}",
       "neverSeen": "Never connected",
       "revoke": "Remove"
