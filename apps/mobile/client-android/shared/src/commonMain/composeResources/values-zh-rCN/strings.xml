@@ -146,8 +146,11 @@
     <string name="pair_waiting_approval">在电脑上核对验证码并点击「允许」</string>
     <string name="remote_connect_failed">无法连接桌面</string>
     <string name="remote_control">远程控制</string>
-    <string name="remote_control_hint">轻点即点击，拖动即移动指针。</string>
+    <string name="remote_control_hint">轻点点击 · 长按右键 · 拖动移动 · 双指缩放 · 双指上下滑动滚动</string>
     <string name="remote_control_offline">电脑在线时，这里会显示它的屏幕。</string>
+    <string name="remote_keyboard">键盘</string>
+    <string name="remote_keyboard_hint">可输入英文字母、数字和空格</string>
+    <string name="remote_rotate">旋转屏幕</string>
     <string name="save">保存</string>
     <string name="send">发送</string>
     <string name="session_delete">删除</string>

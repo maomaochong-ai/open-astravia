@@ -154,8 +154,11 @@
     <string name="pair_waiting_approval">Check the code on your computer and click “Allow”</string>
     <string name="remote_connect_failed">Couldn’t connect to Desktop</string>
     <string name="remote_control">Remote Control</string>
-    <string name="remote_control_hint">Tap to click, drag to move the pointer.</string>
+    <string name="remote_control_hint">Tap to click · hold to right-click · drag to move · pinch to zoom · two fingers to scroll</string>
     <string name="remote_control_offline">Your computer’s screen shows here once it is online.</string>
+    <string name="remote_keyboard">Keyboard</string>
+    <string name="remote_keyboard_hint">Types English letters, digits and spaces</string>
+    <string name="remote_rotate">Rotate</string>
     <string name="save">Save</string>
     <string name="send">Send</string>
     <string name="session_delete">Delete</string>
