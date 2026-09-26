@@ -45,13 +45,7 @@
 			--accent-soft: rgba(124, 138, 255, 0.13);
 		}
 		*, ::before, ::after { box-sizing: border-box; }
-		body {
-			margin: 0;
-			font-family: var(--font-sans);
-			background: var(--bg);
-			color: var(--ink);
-			-webkit-font-smoothing: antialiased;
-		}
+		body { margin: 0; font-family: var(--font-sans); background: var(--bg); color: var(--ink); -webkit-font-smoothing: antialiased; }
 		.nav { position: fixed; inset: 0 0 auto; z-index: 100; background: rgba(251, 251, 253, 0.78); backdrop-filter: blur(16px) saturate(1.4); border-bottom: 1px solid transparent; transition: border-color 0.2s var(--ease); }
 		:root[data-theme="dark"] .nav { background: rgba(8, 8, 10, 0.78); }
 		.nav.is-scrolled { border-bottom-color: var(--line); }
@@ -73,6 +67,8 @@
 		.reveal { opacity: 0; transform: translateY(16px); transition: opacity 0.6s var(--ease), transform 0.6s var(--ease); }
 		.reveal.is-visible { opacity: 1; transform: none; }
 	</style>
+	<!-- 外部 CSS（生产环境使用，开发环境由 Vite 注入） -->
+	<link rel="stylesheet" href="/src/style.css" />
 	<script>
 		(() => {
 			const stored = localStorage.getItem("astravia-theme");
