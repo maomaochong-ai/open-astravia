@@ -232,8 +232,8 @@
     <string name="work_settings_rescan">Scan Again</string>
     <string name="work_settings_scan">Scan to Connect a Computer</string>
     <string name="work_settings_unpair">Unpair</string>
-    <string name="work_settings_unpair_confirm">Unpair from this computer? Chats cached on this phone will also be deleted.</string>
-    <string name="work_settings_unpair_hint">Removes this computer’s credentials and the sessions cached on this phone. You’ll need to scan again to reconnect.</string>
+    <string name="work_settings_unpair_confirm">Unpair from this computer? Only the sessions cached on this phone are cleared; your sessions on the computer stay.</string>
+    <string name="work_settings_unpair_hint">Removes this computer’s credentials and the sessions cached on this phone; the sessions on the computer stay. You’ll need to scan again to reconnect.</string>
     <string name="work_status_all">All</string>
     <string name="work_status_error">Error</string>
     <string name="work_status_running">Running</string>

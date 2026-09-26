@@ -3044,13 +3044,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Unpair from this computer? Chats cached on this phone will also be deleted."
+            "value": "Unpair from this computer? Only the sessions cached on this phone are cleared; your sessions on the computer stay."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "解除与这台电脑的配对？手机上缓存的对话会一起删除。"
+            "value": "解除与这台电脑的配对？只会清除这部手机上缓存的会话，电脑上的会话不受影响。"
           }
         }
       }
@@ -3061,13 +3061,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Removes this computer's credentials and the sessions cached on this phone. You'll need to scan again to reconnect."
+            "value": "Removes this computer's credentials and the sessions cached on this phone; the sessions on the computer stay. You'll need to scan again to reconnect."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "删除这台电脑的连接凭据和手机上缓存的会话，之后需要重新扫码才能连接。"
+            "value": "删除这台电脑的连接凭据和手机上缓存的会话，电脑上的会话不受影响。之后需要重新扫码才能连接。"
           }
         }
       }

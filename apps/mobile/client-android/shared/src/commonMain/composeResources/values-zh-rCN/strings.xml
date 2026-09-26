@@ -222,8 +222,8 @@
     <string name="work_settings_rescan">重新扫码</string>
     <string name="work_settings_scan">扫码连接电脑</string>
     <string name="work_settings_unpair">解除配对</string>
-    <string name="work_settings_unpair_confirm">解除与这台电脑的配对？手机上缓存的对话会一起删除。</string>
-    <string name="work_settings_unpair_hint">删除这台电脑的连接凭据和手机上缓存的会话，之后需要重新扫码才能连接。</string>
+    <string name="work_settings_unpair_confirm">解除与这台电脑的配对？只会清除这部手机上缓存的会话，电脑上的会话不受影响。</string>
+    <string name="work_settings_unpair_hint">删除这台电脑的连接凭据和手机上缓存的会话，电脑上的会话不受影响。之后需要重新扫码才能连接。</string>
     <string name="work_status_all">所有</string>
     <string name="work_status_error">出错</string>
     <string name="work_status_running">进行中</string>
