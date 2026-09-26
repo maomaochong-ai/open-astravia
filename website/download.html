@@ -15,363 +15,96 @@
 	</script>
 	<style>
 		:root {
-			--bg: #08080a;
-			--elev: #101014;
-			--tint: #0c0c0f;
-			--line: #1e1e24;
-			--line-strong: #2b2b33;
-			--ink: #e9e9ec;
-			--muted: #8e9199;
-			--faint: #565964;
-			--accent: #7c8aff;
-			--accent-deep: #5e6ad2;
-			--accent-soft: rgba(124, 138, 255, 0.13);
+			--bg: #08080a; --elev: #101014; --tint: #0c0c0f; --line: #1e1e24;
+			--line-strong: #2b2b33; --ink: #e9e9ec; --muted: #8e9199; --faint: #565964;
+			--accent: #7c8aff; --accent-deep: #5e6ad2; --accent-soft: rgba(124, 138, 255, 0.13);
 			--ease: cubic-bezier(0.16, 1, 0.3, 1);
-			--font-sans: "Hanken Grotesk", Inter, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", sans-serif;
-			--font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Menlo, Consolas, monospace;
+			--font-sans: "Hanken Grotesk", Inter, -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+			--font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", "Cascadia Code", monospace;
 		}
 		* { margin: 0; padding: 0; box-sizing: border-box; }
 		html { scroll-behavior: auto; }
-		body {
-			font-family: var(--font-sans);
-			background: var(--bg);
-			color: var(--ink);
-			min-height: 100vh;
-			overflow-x: hidden;
-		}
+		body { font-family: var(--font-sans); background: var(--bg); color: var(--ink); min-height: 100vh; overflow-x: hidden; }
 
-		/* 导航 */
-		.nav {
-			position: fixed;
-			inset: 0 0 auto;
-			z-index: 100;
-			background: rgba(8, 8, 10, 0.78);
-			backdrop-filter: blur(16px) saturate(1.4);
-			border-bottom: 1px solid transparent;
-			transition: border-color 0.2s var(--ease);
-			will-change: border-color;
-		}
+		.nav { position: fixed; inset: 0 0 auto; z-index: 100; background: rgba(8,8,10,0.78); backdrop-filter: blur(16px) saturate(1.4); border-bottom: 1px solid transparent; transition: border-color 0.2s var(--ease); }
 		.nav.is-scrolled { border-bottom-color: var(--line); }
-		.nav__inner {
-			display: flex;
-			align-items: center;
-			gap: 24px;
-			height: 60px;
-			max-width: 1120px;
-			margin: 0 auto;
-			padding: 0 24px;
-		}
-		.nav__brand {
-			display: inline-flex;
-			align-items: center;
-			gap: 9px;
-			font-weight: 700;
-			font-size: 16px;
-			text-decoration: none;
-			color: var(--accent);
-			margin-right: auto;
-		}
+		.nav__inner { display: flex; align-items: center; gap: 24px; height: 60px; max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+		.nav__brand { display: inline-flex; align-items: center; gap: 9px; font-weight: 700; font-size: 16px; text-decoration: none; color: var(--accent); margin-right: auto; }
 		.nav__brand img { border-radius: 6px; }
 		.nav__links { display: flex; gap: 2px; align-items: center; }
-		.nav__links a {
-			text-decoration: none;
-			font-size: 14px;
-			font-weight: 500;
-			color: var(--muted);
-			padding: 6px 11px;
-			border-radius: 7px;
-			transition: color 0.15s var(--ease), background-color 0.15s var(--ease);
-		}
+		.nav__links a { text-decoration: none; font-size: 14px; font-weight: 500; color: var(--muted); padding: 6px 11px; border-radius: 7px; transition: color 0.15s var(--ease), background-color 0.15s var(--ease); }
 		.nav__links a:hover { color: var(--ink); }
 		.nav__links a.is-active { color: var(--ink); background: var(--elev); }
 		.nav__actions { display: flex; align-items: center; gap: 10px; }
-		.theme-toggle {
-			flex: 0 0 auto;
-			display: inline-flex;
-			align-items: center;
-			justify-content: center;
-			width: 34px;
-			height: 34px;
-			padding: 0;
-			border-radius: 8px;
-			border: 1px solid var(--line);
-			background: transparent;
-			color: var(--muted);
-			cursor: pointer;
-			transition: transform 0.15s var(--ease), border-color 0.15s var(--ease), color 0.15s var(--ease);
-		}
+		.theme-toggle { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; padding: 0; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--muted); cursor: pointer; }
 		.theme-toggle:hover { color: var(--ink); border-color: var(--muted); }
 		.theme-toggle svg { display: none; }
 		.theme-toggle.is-light .icon-sun, .theme-toggle.is-dark .icon-moon { display: block; }
-		.btn--ghost {
-			display: inline-flex;
-			align-items: center;
-			gap: 8px;
-			padding: 7px 12px;
-			border-radius: 999px;
-			font-size: 13.5px;
-			font-weight: 600;
-			text-decoration: none;
-			color: var(--accent);
-			background: var(--elev);
-			border: 1px solid var(--line);
-			transition: color 0.15s var(--ease), border-color 0.15s var(--ease);
-		}
+		.btn--ghost { display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px; border-radius: 999px; font-size: 13.5px; font-weight: 600; text-decoration: none; color: var(--accent); background: var(--elev); border: 1px solid var(--line); }
 		.btn--ghost:hover { color: var(--ink); border-color: var(--muted); }
 
-		/* 下载剧场 */
-		.download-theater {
-			position: relative;
-			min-height: calc(100vh - 60px);
-			display: flex;
-			flex-direction: column;
-			align-items: center;
-			justify-content: center;
-			overflow: visible;
-			padding: 80px 24px 120px;
-		}
-		.download-theater-beams {
-			position: absolute;
-			inset: 0;
-			overflow: hidden;
-			pointer-events: none;
-		}
-		.download-theater-haze {
-			position: absolute;
-			inset: 0;
-			background: radial-gradient(ellipse at 50% 30%, rgba(124, 138, 255, 0.06) 0%, transparent 55%);
-		}
-		.download-theater-beam {
-			position: absolute;
-			width: 1px;
-			background: linear-gradient(to bottom, transparent, rgba(124, 138, 255, 0.12), transparent);
-		}
+		.download-theater { position: relative; min-height: calc(100vh - 60px); display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; padding: 80px 24px 100px; }
+		.download-theater-beams { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+		.download-theater-haze { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 30%, rgba(124,138,255,0.06) 0%, transparent 55%); }
+		.download-theater-beam { position: absolute; width: 1px; background: linear-gradient(to bottom, transparent, rgba(124,138,255,0.12), transparent); }
 		.download-theater-beam--a { left: 25%; height: 100%; }
 		.download-theater-beam--b { left: 50%; height: 100%; }
 		.download-theater-beam--c { left: 75%; height: 100%; }
 
-		/* 平台图标 — 绝对定位覆盖整个剧场 */
-		.dl-platforms {
-			position: absolute;
-			z-index: 30;
-			inset: 0;
-			pointer-events: none;
-			overflow: visible;
-		}
-		.dl-platform-icon {
-			position: absolute;
-			width: 48px;
-			height: 48px;
-			border-radius: 50%;
-			background: var(--elev);
-			border: 1px solid var(--line);
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			overflow: hidden;
-			opacity: 0;
-			pointer-events: auto;
-			will-change: transform, opacity;
-			transition: border-color 0.2s var(--ease), box-shadow 0.2s var(--ease);
-			cursor: pointer;
-		}
-		.dl-platform-icon:hover {
-			border-color: var(--accent);
-			box-shadow: 0 0 16px -4px rgba(124, 138, 255, 0.5);
-			z-index: 50;
-		}
-		.dl-platform-icon img {
-			width: 28px;
-			height: 28px;
-			object-fit: contain;
-			border-radius: 50%;
-		}
-		.dl-platform-icon.is-rec {
-			border-color: var(--accent);
-			box-shadow: 0 0 20px -4px rgba(124, 138, 255, 0.4);
-		}
+		/* 掉落图标 */
+		.dl-platforms { position: absolute; inset: 0; pointer-events: none; overflow: visible; z-index: 30; }
+		.dl-platform-icon { position: absolute; width: 52px; height: 52px; border-radius: 50%; background: var(--elev); border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; overflow: hidden; opacity: 0; pointer-events: auto; will-change: transform, opacity; }
+		.dl-platform-icon img { width: 30px; height: 30px; object-fit: contain; }
+		.dl-platform-icon.is-rec { border-color: var(--accent); box-shadow: 0 0 20px -4px rgba(124,138,255,0.4); }
+		.dl-platform-icon:hover { border-color: var(--accent); box-shadow: 0 0 16px -4px rgba(124,138,255,0.5); z-index: 50; }
 
-		/* 内容层 */
-		.dl-content {
-			position: relative;
-			z-index: 20;
-			display: flex;
-			flex-direction: column;
-			align-items: center;
-		}
+		.dl-content { position: relative; z-index: 20; display: flex; flex-direction: column; align-items: center; }
+		.dl__title { font-size: clamp(44px, 6vw, 64px); font-weight: 700; letter-spacing: -0.02em; text-shadow: 0 0 40px color-mix(in srgb, var(--accent) 30%, transparent); margin-bottom: 12px; transition: transform 0.15s ease-out; }
+		.dl__desc { max-width: 480px; font-size: 15px; line-height: 1.7; color: var(--muted); margin-bottom: 40px; text-align: center; transition: transform 0.15s ease-out; }
 
-		/* 标题 */
-		.dl__title {
-			font-size: clamp(44px, 6vw, 64px);
-			font-weight: 700;
-			letter-spacing: -0.02em;
-			text-shadow: 0 0 40px color-mix(in srgb, var(--accent) 30%, transparent);
-			margin-bottom: 12px;
-			transition: transform 0.1s ease-out;
-		}
-
-		/* 描述 */
-		.dl__desc {
-			max-width: 480px;
-			font-size: 15px;
-			line-height: 1.7;
-			color: var(--muted);
-			margin-bottom: 40px;
-			text-align: center;
-			transition: transform 0.1s ease-out;
-		}
-
-		/* 主下载按钮 */
-		.dl__primary-wrap {
-			display: flex;
-			flex-direction: column;
-			align-items: center;
-			gap: 10px;
-		}
-		.dl__primary {
-			display: inline-flex;
-			align-items: center;
-			gap: 10px;
-			padding: 12px 24px;
-			background: var(--elev);
-			border: 2px solid var(--accent);
-			border-radius: 999px;
-			font-size: 14px;
-			font-weight: 600;
-			text-decoration: none;
-			color: var(--ink);
-			transition:
-				background 0.15s var(--ease),
-				transform 0.15s var(--ease),
-				box-shadow 0.15s var(--ease);
-			box-shadow: 0 0 0 2px var(--bg), 0 0 24px -6px rgba(124, 138, 255, 0.3);
-			letter-spacing: 0.02em;
-			text-transform: uppercase;
-			min-width: 260px;
-			justify-content: center;
-		}
-		.dl__primary:hover {
-			background: var(--tint);
-			transform: translateY(-1px);
-			box-shadow: 0 0 0 2px var(--bg), 0 0 32px -6px rgba(124, 138, 255, 0.5);
-		}
+		.dl__primary-wrap { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+		.dl__primary { display: inline-flex; align-items: center; gap: 10px; padding: 12px 24px; background: var(--elev); border: 2px solid var(--accent); border-radius: 999px; font-size: 14px; font-weight: 600; text-decoration: none; color: var(--ink); box-shadow: 0 0 0 2px var(--bg), 0 0 24px -6px rgba(124,138,255,0.3); letter-spacing: 0.02em; text-transform: uppercase; min-width: 260px; justify-content: center; }
+		.dl__primary:hover { background: var(--tint); transform: translateY(-1px); }
 		.dl__primary svg { flex: none; }
-		.dl__primary[aria-disabled="true"] {
-			opacity: 0.4;
-			pointer-events: none;
-			cursor: default;
-		}
-		.dl__version {
-			font-size: 13px;
-			color: var(--faint);
-			font-family: var(--font-mono);
-		}
-
-		/* 其他版本切换 */
-		.dl__others-toggle {
-			margin-top: 24px;
-			background: none;
-			border: none;
-			color: var(--muted);
-			font-size: 14px;
-			cursor: pointer;
-			display: inline-flex;
-			align-items: center;
-			gap: 6px;
-			font-family: var(--font-sans);
-			transition: color 0.15s var(--ease);
-		}
+		.dl__primary[aria-disabled="true"] { opacity: 0.4; pointer-events: none; }
+		.dl__version { font-size: 13px; color: var(--faint); font-family: var(--font-mono); }
+		.dl__others-toggle { margin-top: 24px; background: none; border: none; color: var(--muted); font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-sans); }
 		.dl__others-toggle:hover { color: var(--ink); }
 		.dl__others-toggle svg { transition: transform 0.2s var(--ease); }
 		.dl__others-toggle.is-open svg { transform: rotate(180deg); }
-
-		/* 其他版本面板 */
-		.dl__others {
-			margin-top: 12px;
-			background: var(--elev);
-			border: 1px solid var(--line);
-			border-radius: 14px;
-			overflow: hidden;
-			max-height: 0;
-			opacity: 0;
-			transition: max-height 0.35s var(--ease), opacity 0.2s var(--ease);
-		}
+		.dl__others { margin-top: 12px; background: var(--elev); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; max-height: 0; opacity: 0; transition: max-height 0.35s var(--ease), opacity 0.2s var(--ease); }
 		.dl__others.is-open { max-height: 260px; opacity: 1; }
 		.dl__others-list { list-style: none; margin: 0; padding: 6px 0; }
-		.dl__others-item {
-			display: flex;
-			align-items: center;
-			justify-content: space-between;
-			padding: 10px 20px;
-			text-decoration: none;
-			color: var(--ink);
-			transition: background 0.12s var(--ease);
-		}
+		.dl__others-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 20px; text-decoration: none; color: var(--ink); }
 		.dl__others-item:hover { background: var(--tint); }
 		.dl__others-item span { font-size: 14px; display: inline-flex; align-items: center; gap: 8px; }
 		.dl__others-item small { font-size: 12px; color: var(--faint); font-family: var(--font-mono); }
-		.dl-rec {
-			font-size: 11px;
-			color: var(--accent);
-			font-weight: 600;
-			padding: 1px 6px;
-			background: var(--accent-soft);
-			border-radius: 999px;
-		}
+		.dl-rec { font-size: 11px; color: var(--accent); font-weight: 600; padding: 1px 6px; background: var(--accent-soft); border-radius: 999px; }
 		.dl__others-item.is-disabled { opacity: 0.4; cursor: default; pointer-events: none; }
 
-		/* 页脚 — 与首页一致 */
 		.footer { border-top: 1px solid var(--line); padding: 56px 0 32px; }
 		.footer .container { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
 		.footer__grid { display: grid; grid-template-columns: 280px 1fr; gap: 64px; align-items: start; }
 		.footer__brand-col { display: flex; flex-direction: column; gap: 16px; }
-		.footer__brand {
-			display: inline-flex;
-			align-items: center;
-			gap: 9px;
-			font-weight: 700;
-			font-size: 16px;
-			text-decoration: none;
-			color: var(--ink);
-		}
+		.footer__brand { display: inline-flex; align-items: center; gap: 9px; font-weight: 700; font-size: 16px; text-decoration: none; color: var(--ink); }
 		.footer__brand img { border-radius: 6px; }
 		.footer__brand-desc { font-size: 13.5px; line-height: 1.6; color: var(--muted); margin: 0; max-width: 260px; }
 		.footer__socials { display: flex; gap: 8px; margin-top: 4px; }
-		.footer__social-icon {
-			display: inline-flex;
-			align-items: center;
-			justify-content: center;
-			width: 36px;
-			height: 36px;
-			border-radius: 50%;
-			border: 1px solid var(--line);
-			color: var(--muted);
-			text-decoration: none;
-			transition: color 0.15s var(--ease), border-color 0.15s var(--ease), transform 0.15s var(--ease);
-		}
+		.footer__social-icon { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line); color: var(--muted); text-decoration: none; }
 		.footer__social-icon:hover { color: var(--ink); border-color: var(--muted); transform: translateY(-2px); }
 		.footer__links { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; }
 		.footer__link-heading { font-size: 13px; font-weight: 600; color: var(--ink); margin: 0 0 16px; }
 		.footer__link-group ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
-		.footer__link-group a { font-size: 13.5px; color: var(--muted); text-decoration: none; transition: color 0.15s var(--ease); }
+		.footer__link-group a { font-size: 13.5px; color: var(--muted); text-decoration: none; }
 		.footer__link-group a:hover { color: var(--ink); }
-		.footer__bottom {
-			display: flex;
-			justify-content: space-between;
-			gap: 12px;
-			flex-wrap: wrap;
-			border-top: 1px solid var(--line);
-			padding-top: 20px;
-			margin-top: 48px;
-		}
+		.footer__bottom { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; border-top: 1px solid var(--line); padding-top: 20px; margin-top: 48px; }
 		.footer__bottom p { font-family: var(--font-mono); font-size: 12px; color: var(--faint); margin: 0; }
 
-		/* 移动适配 */
 		@media (max-width: 560px) {
 			.dl__title { font-size: 36px; }
 			.dl__primary { min-width: auto; width: 100%; max-width: 300px; font-size: 13px; }
-			.dl-platform-icon { width: 40px; height: 40px; }
-			.dl-platform-icon img { width: 24px; height: 24px; }
+			.dl-platform-icon { width: 44px; height: 44px; }
+			.dl-platform-icon img { width: 26px; height: 26px; }
 			.footer__grid { grid-template-columns: 1fr; gap: 40px; }
 			.footer__links { grid-template-columns: repeat(2, 1fr); gap: 24px; }
 			.footer__bottom { flex-direction: column; }
@@ -381,25 +114,17 @@
 <body>
 	<header class="nav" id="nav">
 		<div class="nav__inner">
-			<a class="nav__brand" href="/#top">
-				<img src="/favicon.png" width="26" height="26" alt="" />
-				<span>Astravia</span>
-			</a>
+			<a class="nav__brand" href="/#top"><img src="/favicon.png" width="26" height="26" alt="" /><span>Astravia</span></a>
 			<nav class="nav__links" aria-label="主导航">
-				<a href="/#top">首页</a>
-				<a href="/#products">能力</a>
-				<a href="/#models">模型</a>
-				<a href="/#ecosystem">生态</a>
-				<a href="/#privacy">隐私</a>
-				<a href="/download" class="is-active">下载</a>
+				<a href="/#top">首页</a><a href="/#products">能力</a><a href="/#models">模型</a><a href="/#ecosystem">生态</a><a href="/#privacy">隐私</a><a href="/download" class="is-active">下载</a>
 			</nav>
 			<div class="nav__actions">
 				<button class="theme-toggle is-dark" id="themeToggle" type="button" aria-label="切换主题">
 					<svg class="icon-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z" /></svg>
-					<svg class="icon-sun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" /></svg>
+					<svg class="icon-sun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
 				</button>
 				<a class="btn--ghost" href="https://github.com/maomaochong-ai/astravia" target="_blank" rel="noopener">
-					<svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8 8 0 0 0 16 8c0-4.42-3.58-8-8-8Z" fill="currentColor" /></svg>
+					<svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8 8 0 0 0 16 8c0-4.42-3.58-8-8-8Z" fill="currentColor"/></svg>
 					<span>GitHub</span>
 				</a>
 			</div>
@@ -415,14 +140,14 @@
 		</div>
 
 		<div class="dl-platforms" id="dlPlatforms" aria-hidden="true">
-			<div class="dl-platform-icon" data-platform="ollama"><img src="/ollama.webp" alt="" width="28" height="28" /></div>
-			<div class="dl-platform-icon" data-platform="kimi"><img src="/kimi.webp" alt="" width="28" height="28" /></div>
-			<div class="dl-platform-icon" data-platform="grok"><img src="/grok.webp" alt="" width="28" height="28" /></div>
-			<div class="dl-platform-icon" data-platform="mistral"><img src="/mistral.webp" alt="" width="28" height="28" /></div>
-			<div class="dl-platform-icon" data-platform="minimax"><img src="/minimax.webp" alt="" width="28" height="28" /></div>
-			<div class="dl-platform-icon" data-platform="doubao"><img src="/doubao.webp" alt="" width="28" height="28" /></div>
-			<div class="dl-platform-icon" data-platform="zai"><img src="/zai.webp" alt="" width="28" height="28" /></div>
-			<div class="dl-platform-icon" data-platform="openai"><img src="/openai.webp" alt="" width="28" height="28" /></div>
+			<div class="dl-platform-icon" data-p="ollama"><img src="/ollama.webp" alt="" width="30" height="30" /></div>
+			<div class="dl-platform-icon" data-p="kimi"><img src="/kimi.webp" alt="" width="30" height="30" /></div>
+			<div class="dl-platform-icon" data-p="grok"><img src="/grok.webp" alt="" width="30" height="30" /></div>
+			<div class="dl-platform-icon" data-p="mistral"><img src="/mistral.webp" alt="" width="30" height="30" /></div>
+			<div class="dl-platform-icon" data-p="minimax"><img src="/minimax.webp" alt="" width="30" height="30" /></div>
+			<div class="dl-platform-icon" data-p="doubao"><img src="/doubao.webp" alt="" width="30" height="30" /></div>
+			<div class="dl-platform-icon" data-p="zai"><img src="/zai.webp" alt="" width="30" height="30" /></div>
+			<div class="dl-platform-icon" data-p="openai"><img src="/openai.webp" alt="" width="30" height="30" /></div>
 		</div>
 
 		<div class="dl-content">
@@ -435,10 +160,7 @@
 				</a>
 				<p class="dl__version" id="dlPrimaryVersion">v0.55.37 · DMG</p>
 			</div>
-			<button class="dl__others-toggle" id="dlOthersToggle" type="button">
-				其他版本
-				<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-			</button>
+			<button class="dl__others-toggle" id="dlOthersToggle" type="button">其他版本<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>
 			<div class="dl__others" id="dlOthers">
 				<ul class="dl__others-list">
 					<li><a class="dl__others-item" href="https://dl.astravia.dev/app/v0.55.37/Astravia-0.55.37-arm64.dmg" target="_blank" rel="noopener"><span>Mac Arm64 (Apple Silicon)<span class="dl-rec">推荐</span></span><small>v0.55.37</small></a></li>
@@ -453,50 +175,20 @@
 		<div class="container">
 			<div class="footer__grid">
 				<div class="footer__brand-col">
-					<a class="footer__brand" href="/#top">
-						<img src="/favicon.png" width="24" height="24" alt="" />
-						<span>Astravia</span>
-					</a>
+					<a class="footer__brand" href="/#top"><img src="/favicon.png" width="24" height="24" alt="" /><span>Astravia</span></a>
 					<p class="footer__brand-desc">本地优先的开源 AI 桌面助手——编码、文档、数据、自动化，一个应用全包。</p>
 					<div class="footer__socials">
-						<a class="footer__social-icon" href="https://github.com/maomaochong-ai/astravia" target="_blank" rel="noopener" aria-label="GitHub">
-							<svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8 8 0 0 0 16 8c0-4.42-3.58-8-8-8Z" /></svg>
-						</a>
-						<a class="footer__social-icon" href="mailto:contact@astravia.dev" aria-label="邮箱">
-							<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2" /><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" /></svg>
-						</a>
+						<a class="footer__social-icon" href="https://github.com/maomaochong-ai/astravia" target="_blank" rel="noopener" aria-label="GitHub"><svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8 8 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg></a>
+						<a class="footer__social-icon" href="mailto:contact@astravia.dev" aria-label="邮箱"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg></a>
 					</div>
 				</div>
 				<nav class="footer__links" aria-label="页脚导航">
-					<div class="footer__link-group">
-						<p class="footer__link-heading">产品</p>
-						<ul>
-							<li><a href="/#products">能力</a></li>
-							<li><a href="/#models">模型</a></li>
-							<li><a href="/#ecosystem">生态</a></li>
-							<li><a href="/download">下载</a></li>
-						</ul>
-					</div>
-					<div class="footer__link-group">
-						<p class="footer__link-heading">资源</p>
-						<ul>
-							<li><a href="https://github.com/maomaochong-ai/astravia" target="_blank" rel="noopener">开源</a></li>
-							<li><a href="https://github.com/maomaochong-ai/astravia/issues" target="_blank" rel="noopener">Issues</a></li>
-							<li><a href="https://github.com/maomaochong-ai/astravia/releases" target="_blank" rel="noopener">更新日志</a></li>
-						</ul>
-					</div>
-					<div class="footer__link-group">
-						<p class="footer__link-heading">关于</p>
-						<ul>
-							<li><a href="/#privacy">隐私</a></li>
-							<li><a href="https://github.com/maomaochong-ai/astravia/blob/main/LICENSE" target="_blank" rel="noopener">Apache-2.0</a></li>
-						</ul>
-					</div>
+					<div class="footer__link-group"><p class="footer__link-heading">产品</p><ul><li><a href="/#products">能力</a></li><li><a href="/#models">模型</a></li><li><a href="/#ecosystem">生态</a></li><li><a href="/download">下载</a></li></ul></div>
+					<div class="footer__link-group"><p class="footer__link-heading">资源</p><ul><li><a href="https://github.com/maomaochong-ai/astravia" target="_blank" rel="noopener">开源</a></li><li><a href="https://github.com/maomaochong-ai/astravia/issues" target="_blank" rel="noopener">Issues</a></li><li><a href="https://github.com/maomaochong-ai/astravia/releases" target="_blank" rel="noopener">更新日志</a></li></ul></div>
+					<div class="footer__link-group"><p class="footer__link-heading">关于</p><ul><li><a href="/#privacy">隐私</a></li><li><a href="https://github.com/maomaochong-ai/astravia/blob/main/LICENSE" target="_blank" rel="noopener">Apache-2.0</a></li></ul></div>
 				</nav>
 			</div>
-			<div class="footer__bottom">
-				<p>© <span id="year">2026</span> Astravia · Apache-2.0</p>
-			</div>
+			<div class="footer__bottom"><p>© <span id="year">2026</span> Astravia · Apache-2.0</p></div>
 		</div>
 	</footer>
 
@@ -508,22 +200,11 @@
 			const nav = document.getElementById("nav");
 			window.addEventListener("scroll", () => nav.classList.toggle("is-scrolled", window.scrollY > 8), { passive: true });
 
-			const THEME_KEY = "astravia-theme";
 			const themeToggle = document.getElementById("themeToggle");
 			const root = document.documentElement;
-			function applyTheme(theme) {
-				root.dataset.theme = theme;
-				themeToggle.classList.toggle("is-light", theme === "light");
-				themeToggle.classList.toggle("is-dark", theme === "dark");
-				themeToggle.setAttribute("aria-pressed", String(theme === "dark"));
-				themeToggle.setAttribute("aria-label", theme === "dark" ? "切换到浅色模式" : "切换到深色模式");
-			}
+			function applyTheme(t) { root.dataset.theme = t; themeToggle.classList.toggle("is-light", t === "light"); themeToggle.classList.toggle("is-dark", t === "dark"); themeToggle.setAttribute("aria-pressed", String(t === "dark")); }
 			applyTheme(root.dataset.theme);
-			themeToggle.addEventListener("click", () => {
-				const next = root.dataset.theme === "dark" ? "light" : "dark";
-				applyTheme(next);
-				localStorage.setItem(THEME_KEY, next);
-			});
+			themeToggle.addEventListener("click", () => { const next = root.dataset.theme === "dark" ? "light" : "dark"; applyTheme(next); localStorage.setItem("astravia-theme", next); });
 
 			// 平台检测
 			const ua = navigator.userAgent;
@@ -533,228 +214,116 @@
 			const dlPrimary = document.getElementById("dlPrimary");
 			const dlPrimaryText = document.getElementById("dlPrimaryText");
 			const dlPrimaryVersion = document.getElementById("dlPrimaryVersion");
-			let detectedPlatform = "macos";
-			if (isMac && isArm) {
-				dlPrimary.href = "https://dl.astravia.dev/app/v0.55.37/Astravia-0.55.37-arm64.dmg";
-				dlPrimaryText.textContent = "MAC ARM64 (APPLE SILICON)";
-				dlPrimaryVersion.textContent = "v0.55.37 · DMG";
-			} else if (isMac) {
-				dlPrimary.href = "https://dl.astravia.dev/app/v0.55.37/Astravia-0.55.37.dmg";
-				dlPrimaryText.textContent = "MAC X64 (INTEL)";
-				dlPrimaryVersion.textContent = "v0.55.37 · DMG";
-			} else if (isWin) {
-				detectedPlatform = "windows";
-				dlPrimary.href = "https://dl.astravia.dev/app/v0.55.37/Astravia-0.55.37-win-x64.exe";
-				dlPrimaryText.textContent = "WINDOWS X64";
-				dlPrimaryVersion.textContent = "v0.55.37 · EXE";
-			} else {
-				dlPrimary.setAttribute("aria-disabled", "true");
-				dlPrimary.removeAttribute("href");
-				dlPrimaryText.textContent = "LINUX (APPIMAGE)";
-				dlPrimaryVersion.textContent = "即将推出";
-			}
+			let platform = "macos";
+			if (isMac && isArm) { dlPrimary.href = "https://dl.astravia.dev/app/v0.55.37/Astravia-0.55.37-arm64.dmg"; dlPrimaryText.textContent = "MAC ARM64 (APPLE SILICON)"; dlPrimaryVersion.textContent = "v0.55.37 · DMG"; }
+			else if (isMac) { dlPrimary.href = "https://dl.astravia.dev/app/v0.55.37/Astravia-0.55.37.dmg"; dlPrimaryText.textContent = "MAC X64 (INTEL)"; dlPrimaryVersion.textContent = "v0.55.37 · DMG"; }
+			else if (isWin) { platform = "windows"; dlPrimary.href = "https://dl.astravia.dev/app/v0.55.37/Astravia-0.55.37-win-x64.exe"; dlPrimaryText.textContent = "WINDOWS X64"; dlPrimaryVersion.textContent = "v0.55.37 · EXE"; }
+			else { platform = "linux"; dlPrimary.setAttribute("aria-disabled", "true"); dlPrimary.removeAttribute("href"); dlPrimaryText.textContent = "LINUX"; dlPrimaryVersion.textContent = "即将推出"; }
 
 			// 高亮推荐图标
-			const platformMap = { macos: "ollama", windows: "kimi", linux: "grok" };
-			document.querySelectorAll(".dl-platform-icon").forEach((icon) => {
-				if (icon.dataset.platform === platformMap[detectedPlatform]) icon.classList.add("is-rec");
-			});
+			const iconMap = { macos: "ollama", windows: "kimi", linux: "grok" };
+			document.querySelectorAll(".dl-platform-icon").forEach((el) => { if (el.dataset.p === iconMap[platform]) el.classList.add("is-rec"); });
 
-			// === 物理掉落动画系统 ===
-			const theater = document.querySelector(".download-theater");
+			// === 掉落动画 ===
 			const titleEl = document.getElementById("dlTitle");
 			const descEl = document.getElementById("dlDesc");
-			const footerEl = document.getElementById("footer");
-			const platforms = document.querySelectorAll(".dl-platform-icon");
+			const theater = document.querySelector(".download-theater");
+			const icons = document.querySelectorAll(".dl-platform-icon");
+			const ICON_SIZE = 52;
+			const GRAVITY = 0.45;
+			const BOUNCE = 0.5;
+			const STAGGER = 80;
 
-			// 碰撞区域定义（相对于剧场容器）
-			function getZones() {
-				const theaterRect = theater.getBoundingClientRect();
+			function _easeOutBounce(t) {
+				const n1 = 7.5625, d1 = 2.75;
+				if (t < 1/d1) return n1*t*t;
+				if (t < 2/d1) { t-=1.5/d1; return n1*t*t+0.75; }
+				if (t < 2.5/d1) { t-=2.25/d1; return n1*t*t+0.9375; }
+				t -= 2.625/d1; return n1*t*t+0.984375;
+			}
+
+			// 计算弧形目标位置（围绕标题上方）
+			function getTargets(count) {
+				const rect = theater.getBoundingClientRect();
+				const cx = rect.width / 2;
 				const titleRect = titleEl.getBoundingClientRect();
-				const descRect = descEl.getBoundingClientRect();
-				const footerRect = footerEl.getBoundingClientRect();
+				const titleTop = titleRect.top - rect.top;
+				const radius = 180 + Math.random() * 40;
+				const angleSpan = Math.PI * 0.6;
 
-				return {
-					theaterCenter: { x: theaterRect.width / 2, y: theaterRect.height / 2 },
-					title: {
-						x: titleRect.left + titleRect.width / 2 - theaterRect.left,
-						y: titleRect.top + titleRect.height / 2 - theaterRect.top,
-						w: titleRect.width + 40,
-						h: titleRect.height + 20,
-					},
-					desc: {
-						x: descRect.left + descRect.width / 2 - theaterRect.left,
-						y: descRect.top + descRect.height / 2 - theaterRect.top,
-						w: descRect.width + 60,
-						h: descRect.height + 30,
-					},
-					footerLine: {
-						y: footerRect.top - theaterRect.top,
-					},
-				};
+				const targets = [];
+				for (let i = 0; i < count; i++) {
+					const t = count === 1 ? 0.5 : i / (count - 1);
+					const angle = Math.PI / 2 + angleSpan / 2 - t * angleSpan;
+					const rx = (Math.random() - 0.5) * 20;
+					const ry = (Math.random() - 0.5) * 15;
+					targets.push({
+						x: cx + Math.cos(angle) * radius + rx,
+						y: titleTop - 20 - Math.sin(angle) * radius * 0.4 + ry,
+					});
+				}
+				// 随机打乱
+				for (let i = targets.length - 1; i > 0; i--) {
+					const j = Math.floor(Math.random() * (i + 1));
+					[targets[i], targets[j]] = [targets[j], targets[i]];
+				}
+				return targets;
 			}
 
-			const _zones = getZones();
-			const ICON_SIZE = 48;
-			const GRAVITY = 0.35;
-			const BOUNCE_DAMPING = 0.55;
-			const ROTATION_DAMPING = 0.7;
-			const FRICTION = 0.98;
-
-			class FallingIcon {
-				constructor(el, index) {
-					this.el = el;
-					this.index = index;
-					this.reset();
+			class Icon {
+				constructor(el, tx, ty, delay) {
+					this.el = el; this.tx = tx; this.ty = ty; this.delay = delay;
+					this.x = tx + (Math.random() - 0.5) * 160;
+					this.y = -60 - Math.random() * 250;
+					this.vy = 0; this.rot = (Math.random() - 0.5) * 80; this.vRot = (Math.random() - 0.5) * 12;
+					this.scale = 0.3; this.bounce = 0; this.maxBounce = 2 + Math.floor(Math.random() * 2);
+					this.landed = false; this.settled = false; this.start = 0;
+					el.style.left = `${this.x}px`; el.style.top = `${this.y}px`;
+					el.style.marginLeft = `${-ICON_SIZE/2}px`; el.style.marginTop = `${-ICON_SIZE/2}px`;
 				}
-
-				reset() {
-					const zones = getZones();
-					const theaterW = zones.theaterCenter.x * 2;
-
-					// 随机选择落点类型
-					const zoneRoll = Math.random();
-					let targetX, targetY;
-
-					if (zoneRoll < 0.3) {
-						// 30% 概率落在标题上
-						const zone = zones.title;
-						targetX = zone.x + (Math.random() - 0.5) * zone.w;
-						targetY = zone.y - zone.h / 2 - ICON_SIZE / 2;
-					} else if (zoneRoll < 0.7) {
-						// 40% 概率落在描述文字区域
-						const zone = zones.desc;
-						targetX = zone.x + (Math.random() - 0.5) * zone.w;
-						targetY = zone.y + (Math.random() - 0.5) * zone.h * 0.8;
-					} else if (zoneRoll < 0.9) {
-						// 20% 概率落在页脚横线附近
-						targetX = (Math.random() - 0.5) * theaterW * 0.8;
-						targetY = zones.footerLine.y - ICON_SIZE / 2;
-					} else {
-						// 10% 概率落在剧场底部
-						targetX = (Math.random() - 0.5) * theaterW * 0.6;
-						targetY = zones.theaterCenter.y * 1.2;
-					}
-
-					this.x = targetX;
-					this.y = targetY;
-					this.startX = targetX + (Math.random() - 0.5) * 150;
-					this.startY = -100 - Math.random() * 300;
-					this.vx = (Math.random() - 0.5) * 2;
-					this.vy = 0;
-					this.rotation = (Math.random() - 0.5) * 60;
-					this.vRotation = (Math.random() - 0.5) * 8;
-					this.scale = 0.4;
-					this.bounces = 0;
-					this.maxBounces = 3 + Math.floor(Math.random() * 3);
-					this.landed = false;
-					this.settleTime = 0;
-
-					this.el.style.left = "50%";
-					this.el.style.top = "50%";
-					this.el.style.marginLeft = `${-ICON_SIZE / 2}px`;
-					this.el.style.marginTop = `${-ICON_SIZE / 2}px`;
-				}
-
-				update(time, _dt) {
+				update(time) {
+					if (time < this.delay) return;
+					if (!this.start) this.start = time;
+					const elapsed = time - this.start - this.delay;
 					if (!this.landed) {
-						// 重力加速
-						this.vy += GRAVITY;
-						this.x += this.vx;
-						this.y += this.vy;
-						this.rotation += this.vRotation;
-
-						// 碰撞检测
-						if (this.y >= this.targetY) {
-							this.y = this.targetY;
-							this.vy = -this.vy * BOUNCE_DAMPING;
-							this.vRotation = -this.vRotation * ROTATION_DAMPING;
-							this.vx *= FRICTION;
-							this.bounces++;
-
-							// 触发文字倾斜效果
-							this.triggerTilt();
-
-							if (this.bounces >= this.maxBounces || Math.abs(this.vy) < 0.5) {
-								this.landed = true;
-								this.vy = 0;
-								this.vRotation = 0;
-								this.settleTime = time;
+						this.vy += GRAVITY; this.y += this.vy; this.rot += this.vRot;
+						if (this.y >= this.ty) {
+							this.y = this.ty; this.vy = -this.vy * BOUNCE; this.vRot *= -0.6; this.bounce++;
+							// 文字倾斜
+							const tilt = (Math.random() - 0.5) * (this.ty < 150 ? 3 : 2);
+							if (this.ty < 150) {
+								titleEl.style.transform = `rotate(${tilt}deg)`;
+								setTimeout(() => { titleEl.style.transform = ""; }, 250);
+							} else {
+								descEl.style.transform = `rotate(${tilt}deg)`;
+								setTimeout(() => { descEl.style.transform = ""; }, 300);
 							}
+							if (this.bounce >= this.maxBounce || Math.abs(this.vy) < 0.3) { this.landed = true; this.vy = 0; this.vRot = 0; }
 						}
-
-						// 缩放渐入
-						this.scale = Math.min(1, this.scale + 0.02);
-					} else {
-						// 落地后缓慢静止
-						const settleElapsed = time - this.settleTime;
-						const settleDecay = Math.max(0, 1 - settleElapsed / 1500);
-						this.rotation *= (1 - 0.02 * settleDecay);
-						this.x += (this.targetX - this.x) * 0.02 * settleDecay;
+						this.scale = Math.min(1, 0.3 + 0.7 * Math.min(elapsed / 500, 1));
+					} else if (!this.settled) {
+						const decay = Math.max(0, 1 - (time - this.start - this.delay - 400) / 800);
+						this.rot *= (1 - 0.04 * decay);
+						if (decay < 0.01) this.settled = true;
 					}
-
 					this.el.style.opacity = "1";
-					this.el.style.transform = `translate(${this.x}px, ${this.y}px) scale(${this.scale}) rotate(${this.rotation}deg)`;
-				}
-
-				triggerTilt() {
-					// 根据落点让对应文字产生左右倾斜
-					if (this.targetY < 150) {
-						// 标题区域
-						titleEl.style.transform = `rotate(${(Math.random() - 0.5) * 3}deg)`;
-						setTimeout(() => { titleEl.style.transform = "rotate(0deg)"; }, 200);
-					} else {
-						// 描述区域
-						descEl.style.transform = `rotate(${(Math.random() - 0.5) * 2}deg)`;
-						setTimeout(() => { descEl.style.transform = "rotate(0deg)"; }, 250);
-					}
-				}
-
-				start() {
-					this.el.classList.add("fall");
+					this.el.style.transform = `scale(${this.scale}) rotate(${this.rot}deg)`;
 				}
 			}
 
-			// 创建掉落图标实例
-			const fallingIcons = Array.from(platforms).map((el, i) => {
-				const icon = new FallingIcon(el, i);
-				return icon;
-			});
+			const targets = getTargets(icons.length);
+			const anims = Array.from(icons).map((el, i) => new Icon(el, targets[i].x, targets[i].y, i * STAGGER));
 
-			// 动画循环
-			let lastTime = 0;
-			let started = false;
-			function animate(time) {
-				if (!started) {
-					started = true;
-					lastTime = time;
-				}
-				const dt = Math.min(time - lastTime, 32);
-				lastTime = time;
-
-				for (const icon of fallingIcons) {
-					if (time > icon.index * 120) {
-						icon.update(time, dt);
-					}
-				}
-
-				requestAnimationFrame(animate);
+			function loop(time) {
+				for (const a of anims) a.update(time);
+				requestAnimationFrame(loop);
 			}
+			requestAnimationFrame(loop);
 
-			// 延迟启动动画
-			setTimeout(() => {
-				requestAnimationFrame(animate);
-			}, 300);
-
-			// 展开/收起其他版本
+			// 其他版本切换
 			const toggle = document.getElementById("dlOthersToggle");
 			const others = document.getElementById("dlOthers");
-			if (toggle && others) {
-				toggle.addEventListener("click", () => {
-					const isOpen = others.classList.toggle("is-open");
-					toggle.classList.toggle("is-open", isOpen);
-				});
-			}
+			if (toggle && others) toggle.addEventListener("click", () => { const o = others.classList.toggle("is-open"); toggle.classList.toggle("is-open", o); });
 		})();
 	</script>
 </body>
