@@ -125,7 +125,7 @@
 				<p class="dl__version" id="dlPrimaryVersion">v0.55.37 · DMG</p>
 			</div>
 			<button class="dl__others-toggle" id="dlOthersToggle" type="button">其他版本<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>
-			<div class="dl__others" id="dlOthers"><ul class="dl__others-list"><li><a class="dl__others-item" href="https://dl.astravia.dev/app/v0.55.37/Astravia-0.55.37-arm64.dmg" target="_blank" rel="noopener"><span>Mac Arm64 (Apple Silicon)<span class="dl-rec">推荐</span></span><small>v0.55.37</small></a></li><li><a class="dl__others-item" href="https://dl.astravia.dev/app/v0.55.37/Astravia-0.55.37-win-x64.exe" target="_blank" rel="noopener"><span>Windows x64</span><small>v0.55.37</small></a></li></ul></div>
+			<div class="dl__others" id="dlOthers"><ul class="dl__others-list"><li><a class="dl__others-item" href="https://dl.astravia.dev/app/v0.55.37/Astravia-0.55.37-arm64.dmg" target="_blank" rel="noopener"><span>Mac Arm64 (Apple Silicon)<span class="dl-rec">推荐</span></span><small>v0.55.37</small></a></li><li><a class="dl__others-item" href="https://dl.astravia.dev/app/v0.55.37/Astravia-0.55.37.dmg" target="_blank" rel="noopener"><span>Mac x64 (Intel)</span><small>v0.55.37</small></a></li><li><a class="dl__others-item" href="https://dl.astravia.dev/app/v0.55.37/Astravia-0.55.37-win-x64.exe" target="_blank" rel="noopener"><span>Windows x64</span><small>v0.55.37</small></a></li></ul></div>
 		</div>
 		<div class="dl-platforms-bottom" id="dlPlatformsBottom" aria-hidden="true"></div>
 	</div>
@@ -161,9 +161,9 @@
 			const dlPrimaryVersion = document.getElementById("dlPrimaryVersion");
 			let platform = "macos";
 			if (isMac && isArm) { dlPrimary.href = "https://dl.astravia.dev/app/v0.55.37/Astravia-0.55.37-arm64.dmg"; dlPrimaryText.textContent = "MAC ARM64 (APPLE SILICON)"; dlPrimaryVersion.textContent = "v0.55.37 · DMG"; }
-			else if (isMac) { dlPrimary.setAttribute("aria-disabled", "true"); dlPrimary.removeAttribute("href"); dlPrimaryText.textContent = "MAC X64 (INTEL)"; dlPrimaryVersion.textContent = "即将推出"; }
+			else if (isMac) { dlPrimary.href = "https://dl.astravia.dev/app/v0.55.37/Astravia-0.55.37.dmg"; dlPrimaryText.textContent = "MAC X64 (INTEL)"; dlPrimaryVersion.textContent = "v0.55.37 · DMG"; }
 			else if (isWin) { platform = "windows"; dlPrimary.href = "https://dl.astravia.dev/app/v0.55.37/Astravia-0.55.37-win-x64.exe"; dlPrimaryText.textContent = "WINDOWS X64"; dlPrimaryVersion.textContent = "v0.55.37 · EXE"; }
-			else { platform = "linux"; dlPrimary.setAttribute("aria-disabled", "true"); dlPrimary.removeAttribute("href"); dlPrimaryText.textContent = "LINUX"; dlPrimaryVersion.textContent = "即将推出"; }
+			else { dlPrimary.setAttribute("aria-disabled", "true"); dlPrimary.removeAttribute("href"); dlPrimaryText.textContent = "LINUX"; dlPrimaryVersion.textContent = "即将推出"; }
 
 			const iconMap = { macos: "ollama", windows: "kimi", linux: "grok" };
 			document.querySelectorAll(".dl-platform-icon").forEach(el => { if (el.dataset.p === iconMap[platform]) el.classList.add("is-rec"); });
