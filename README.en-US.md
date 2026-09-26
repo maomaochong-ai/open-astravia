@@ -17,8 +17,7 @@ Astravia is an AI agent application that runs on your desktop. The agent core â€
 - **Data on your machine**: sessions, workspaces, the knowledge base and database connections live under `~/.astravia` by default, and don't leave your machine.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/maomaochong-ai/astravia/main/docs/assets/screenshot-main.png" alt="Astravia dark theme" width="900" />
-  <img src="https://raw.githubusercontent.com/maomaochong-ai/astravia/main/docs/assets/screenshot-main-light.png" alt="Astravia light theme" width="900" />
+  <img src="website/public/screenshot.png" alt="Astravia dark theme" width="900" />
 </p>
 
 ## Quick Start
