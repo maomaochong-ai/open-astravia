@@ -22,6 +22,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -30,6 +31,7 @@ import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import org.vetta.android.resources.Res
 import org.vetta.android.resources.close
+import org.vetta.android.resources.sheet_handle
 import org.vetta.android.ui.theme.vettaExtra
 import org.vetta.android.ui.work.workColors
 
@@ -60,8 +62,10 @@ fun VettaSheet(
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
         containerColor = MaterialTheme.vettaExtra.pageBackground,
         dragHandle = {
+            val handle = stringResource(Res.string.sheet_handle)
             Box(
                 Modifier
+                    .semantics { contentDescription = handle }
                     .padding(top = 8.dp, bottom = 4.dp)
                     .size(width = 36.dp, height = 5.dp)
                     .clip(CircleShape)

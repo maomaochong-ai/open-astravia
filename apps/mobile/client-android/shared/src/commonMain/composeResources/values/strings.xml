@@ -189,6 +189,7 @@
         <item quantity="other">%1$d items couldn’t be added: they may be too large, or a message holds at most %2$d attachments.</item>
     </plurals>
     <string name="share_title">Shared to Vetta</string>
+    <string name="sheet_handle">Drag to resize or close</string>
     <string name="stop">Stop</string>
     <string name="theme_dark">Dark</string>
     <string name="theme_light">Light</string>

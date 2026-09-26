@@ -58,6 +58,9 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -241,7 +244,8 @@ fun Composer(
             ) {
                 Box(Modifier.weight(1f).heightIn(min = 36.dp).padding(vertical = 8.dp), contentAlignment = Alignment.CenterStart) {
                     if (draft.text.isEmpty()) {
-                        Text(placeholder, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.vettaExtra.secondaryText)
+                        // Read out as the field's own label instead, so a screen reader names the field.
+                        Text(placeholder, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.vettaExtra.secondaryText, modifier = Modifier.clearAndSetSemantics {})
                     }
                     BasicTextField(
                         value = draft.text,
@@ -250,7 +254,12 @@ fun Composer(
                         textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
                         cursorBrush = SolidColor(MaterialTheme.colorScheme.onSurface),
                         maxLines = 6,
-                        modifier = Modifier.fillMaxWidth().focusRequester(focus).testTag("composer.field"),
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .focusRequester(focus)
+                                .semantics { if (draft.text.isEmpty()) contentDescription = placeholder }
+                                .testTag("composer.field"),
                     )
                     // On an empty field a hold dictates; a tap still starts typing.
                     if (draft.text.isEmpty() && enabled) {
