@@ -580,6 +580,27 @@ class DesktopMirrorTest {
         }
 
     @Test
+    fun aStreamingReplyDoesNotRewriteThePairingForEveryEvent() =
+        runTest {
+            val desktop = scriptedDesktop()
+            val device = Device()
+            val mirror = mirror(desktop, device)
+            assertTrue(mirror.pairWithCode(desktop.invite()))
+            assertTrue(eventually { mirror.state.value.sessions.isNotEmpty() })
+            var writes = 0
+            device.settings.addStringOrNullListener(PairingStore.DESKTOPS_KEY) { writes += 1 }
+
+            repeat(200) { desktop.emit(RemoteEventName.SessionMessage, buildJsonObject { put("kind", "assistant_delta"); put("text", "字") }, "s1") }
+            assertTrue(eventually { mirror.state.value.transcript("s1").items.isNotEmpty() })
+            assertTrue(writes <= 1, "at most one save while the reply streams, not one per piece ($writes)")
+
+            // Leaving the app saves where the phone got to, so a relaunch resumes from there.
+            mirror.setActive(false)
+            val stored = PairingStore(device.settings, SettingsSecretStore(device.secrets)).also { it.load(null) }.getCurrent()
+            assertEquals(desktop.lastSequence, stored?.lastEventSequence)
+        }
+
+    @Test
     fun aManualPairingIsKeptAndConnectsOverTheLocalNetwork() =
         runTest {
             val desktop = scriptedDesktop()

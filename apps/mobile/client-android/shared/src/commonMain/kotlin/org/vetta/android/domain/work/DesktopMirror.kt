@@ -165,6 +165,8 @@ class DesktopMirror(
     private var desktopKey: String? = null
     private var flow: PairingFlow? = null
     private val transcriptSaves = mutableMapOf<String, Job>()
+    private var unsavedSequence: Pair<String, Long>? = null
+    private var sequenceSave: Job? = null
     private var active = true
     private var newSessionModelsLoad: Deferred<Unit>? = null
 
@@ -192,6 +194,7 @@ class DesktopMirror(
     fun setActive(value: Boolean) {
         val wasActive = active
         active = value
+        if (!value) saveProgress()
         link?.setForeground(value)
         if (value && !wasActive) link?.refresh()
     }
@@ -310,9 +313,7 @@ class DesktopMirror(
                 createP2pTransport = platform.createP2pTransport,
                 p2pTarget = record.relayBaseUrl?.let { desktopViewerUrl(it, record.pairingId, record.mobileSecret) },
                 now = platform.now,
-                onSequence = { sequence ->
-                    pairingStore.update(key) { it.copy(lastEventSequence = sequence, lastSeenAt = platform.now()) }
-                },
+                onSequence = { sequence -> keepSequence(key, sequence) },
                 onLanEndpoints = { endpoints -> pairingStore.update(key) { it.copy(lanEndpoints = endpoints) } },
                 logger = platform.logger,
             )
@@ -333,7 +334,35 @@ class DesktopMirror(
         next.start()
     }
 
+    /**
+     * Remembers the last event seen, for a relaunch to resume from. A streaming reply is
+     * hundreds of events, and saving the pairing for each one kept the main thread busy
+     * and made leaving the app wait for every write; it is saved at most every couple of
+     * seconds, and at once when the app leaves the screen. A relaunch that resumes a little
+     * early only sees a few events again, which are dropped as duplicates.
+     */
+    private fun keepSequence(key: String, sequence: Long) {
+        unsavedSequence = key to sequence
+        if (sequenceSave?.isActive == true) return
+        sequenceSave =
+            scope.launch {
+                delay(SEQUENCE_SAVE_DELAY_MS)
+                sequenceSave = null
+                saveProgress()
+            }
+    }
+
+    /** Saves where the phone got to in the desktop's events now, as the app leaves the screen. */
+    fun saveProgress() {
+        sequenceSave?.cancel()
+        sequenceSave = null
+        val (key, sequence) = unsavedSequence ?: return
+        unsavedSequence = null
+        pairingStore.update(key) { it.copy(lastEventSequence = sequence, lastSeenAt = platform.now()) }
+    }
+
     private fun detachLink() {
+        saveProgress()
         linkJobs.forEach(Job::cancel)
         linkJobs = emptyList()
         link?.stop()
@@ -778,6 +807,7 @@ class DesktopMirror(
 
         private const val SESSION_LIST_LIMIT = 200
         private const val TRANSCRIPT_SAVE_DELAY_MS = 400L
+        private const val SEQUENCE_SAVE_DELAY_MS = 2_000L
         private const val TITLE_FALLBACK_LENGTH = 60
         private val json = Json { ignoreUnknownKeys = true }
 

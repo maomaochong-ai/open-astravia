@@ -70,6 +70,11 @@ class FakeDesktop(private val scope: CoroutineScope) {
 
     private val journal = mutableListOf<RemoteEvent>()
     private var sequence = 0L
+
+    /** The last event this desktop sent. */
+    val lastSequence: Long
+        get() = sequence
+
     private val sockets = mutableListOf<Socket>()
     private val requestSockets = mutableMapOf<String, Socket>()
 

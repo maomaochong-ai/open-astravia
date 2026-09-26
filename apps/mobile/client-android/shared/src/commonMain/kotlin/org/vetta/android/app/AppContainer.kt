@@ -48,6 +48,7 @@ class AppContainer(
     /** The app came on screen or went out of sight. */
     fun setVisible(value: Boolean) {
         _visible.value = value
+        if (!value) mirror.saveProgress()
     }
 
     companion object {
