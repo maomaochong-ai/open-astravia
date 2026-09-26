@@ -32,9 +32,7 @@
 		}
 
 		* { margin: 0; padding: 0; box-sizing: border-box; }
-
 		html { scroll-behavior: auto; }
-
 		body {
 			font-family: var(--font-sans);
 			background: var(--bg);
@@ -129,9 +127,9 @@
 			display: flex;
 			flex-direction: column;
 			align-items: center;
-			justify-content: flex-start;
+			justify-content: center;
 			overflow: hidden;
-			padding: 100px 24px 80px;
+			padding: 80px 24px;
 		}
 		.download-theater-beams {
 			position: absolute;
@@ -153,19 +151,18 @@
 		.download-theater-beam--b { left: 50%; height: 100%; }
 		.download-theater-beam--c { left: 75%; height: 100%; }
 
-		/* 平台图标容器 — 弧形散落布局 */
+		/* 平台图标 — 绝对定位，覆盖整个区域 */
 		.dl-platforms {
-			position: relative;
+			position: absolute;
 			z-index: 10;
-			width: 100%;
-			max-width: 700px;
-			height: 280px;
-			margin-bottom: 0;
+			inset: 0;
+			pointer-events: none;
+			overflow: hidden;
 		}
 		.dl-platform-icon {
 			position: absolute;
-			width: 52px;
-			height: 52px;
+			width: 48px;
+			height: 48px;
 			border-radius: 50%;
 			background: var(--elev);
 			border: 1px solid var(--line);
@@ -174,12 +171,13 @@
 			justify-content: center;
 			overflow: hidden;
 			opacity: 0;
+			pointer-events: auto;
 			will-change: transform, opacity;
 			transition: border-color 0.2s var(--ease), box-shadow 0.2s var(--ease);
 		}
 		.dl-platform-icon img {
-			width: 30px;
-			height: 30px;
+			width: 28px;
+			height: 28px;
 			object-fit: contain;
 			border-radius: 50%;
 		}
@@ -187,26 +185,27 @@
 			border-color: var(--accent);
 			box-shadow: 0 0 20px -4px rgba(124, 138, 255, 0.4);
 		}
-		.dl-platform-icon.fall {
-			opacity: 1;
+
+		/* 内容层 */
+		.dl-content {
+			position: relative;
+			z-index: 20;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
 		}
 
-		/* 标题 — 位于图标下方 */
+		/* 标题 */
 		.dl__title {
-			position: relative;
-			z-index: 10;
 			font-size: clamp(44px, 6vw, 64px);
 			font-weight: 700;
 			letter-spacing: -0.02em;
 			text-shadow: 0 0 40px color-mix(in srgb, var(--accent) 30%, transparent);
 			margin-bottom: 12px;
-			margin-top: -20px;
 		}
 
 		/* 描述 */
 		.dl__desc {
-			position: relative;
-			z-index: 10;
 			max-width: 480px;
 			font-size: 15px;
 			line-height: 1.7;
@@ -217,8 +216,6 @@
 
 		/* 主下载按钮 */
 		.dl__primary-wrap {
-			position: relative;
-			z-index: 10;
 			display: flex;
 			flex-direction: column;
 			align-items: center;
@@ -265,8 +262,6 @@
 
 		/* 其他版本切换 */
 		.dl__others-toggle {
-			position: relative;
-			z-index: 10;
 			margin-top: 24px;
 			background: none;
 			border: none;
@@ -280,15 +275,11 @@
 			transition: color 0.15s var(--ease);
 		}
 		.dl__others-toggle:hover { color: var(--ink); }
-		.dl__others-toggle svg {
-			transition: transform 0.2s var(--ease);
-		}
+		.dl__others-toggle svg { transition: transform 0.2s var(--ease); }
 		.dl__others-toggle.is-open svg { transform: rotate(180deg); }
 
 		/* 其他版本面板 */
 		.dl__others {
-			position: relative;
-			z-index: 10;
 			margin-top: 12px;
 			background: var(--elev);
 			border: 1px solid var(--line);
@@ -298,15 +289,8 @@
 			opacity: 0;
 			transition: max-height 0.35s var(--ease), opacity 0.2s var(--ease);
 		}
-		.dl__others.is-open {
-			max-height: 260px;
-			opacity: 1;
-		}
-		.dl__others-list {
-			list-style: none;
-			margin: 0;
-			padding: 6px 0;
-		}
+		.dl__others.is-open { max-height: 260px; opacity: 1; }
+		.dl__others-list { list-style: none; margin: 0; padding: 6px 0; }
 		.dl__others-item {
 			display: flex;
 			align-items: center;
@@ -327,33 +311,13 @@
 			background: var(--accent-soft);
 			border-radius: 999px;
 		}
-		.dl__others-item.is-disabled {
-			opacity: 0.4;
-			cursor: default;
-			pointer-events: none;
-		}
+		.dl__others-item.is-disabled { opacity: 0.4; cursor: default; pointer-events: none; }
 
 		/* 页脚 — 与首页一致 */
-		.footer {
-			border-top: 1px solid var(--line);
-			padding: 56px 0 32px;
-		}
-		.footer .container {
-			max-width: 1120px;
-			margin: 0 auto;
-			padding: 0 24px;
-		}
-		.footer__grid {
-			display: grid;
-			grid-template-columns: 280px 1fr;
-			gap: 64px;
-			align-items: start;
-		}
-		.footer__brand-col {
-			display: flex;
-			flex-direction: column;
-			gap: 16px;
-		}
+		.footer { border-top: 1px solid var(--line); padding: 56px 0 32px; }
+		.footer .container { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+		.footer__grid { display: grid; grid-template-columns: 280px 1fr; gap: 64px; align-items: start; }
+		.footer__brand-col { display: flex; flex-direction: column; gap: 16px; }
 		.footer__brand {
 			display: inline-flex;
 			align-items: center;
@@ -364,18 +328,8 @@
 			color: var(--ink);
 		}
 		.footer__brand img { border-radius: 6px; }
-		.footer__brand-desc {
-			font-size: 13.5px;
-			line-height: 1.6;
-			color: var(--muted);
-			margin: 0;
-			max-width: 260px;
-		}
-		.footer__socials {
-			display: flex;
-			gap: 8px;
-			margin-top: 4px;
-		}
+		.footer__brand-desc { font-size: 13.5px; line-height: 1.6; color: var(--muted); margin: 0; max-width: 260px; }
+		.footer__socials { display: flex; gap: 8px; margin-top: 4px; }
 		.footer__social-icon {
 			display: inline-flex;
 			align-items: center;
@@ -386,41 +340,13 @@
 			border: 1px solid var(--line);
 			color: var(--muted);
 			text-decoration: none;
-			transition:
-				color 0.15s var(--ease),
-				border-color 0.15s var(--ease),
-				transform 0.15s var(--ease);
+			transition: color 0.15s var(--ease), border-color 0.15s var(--ease), transform 0.15s var(--ease);
 		}
-		.footer__social-icon:hover {
-			color: var(--ink);
-			border-color: var(--muted);
-			transform: translateY(-2px);
-		}
-		.footer__links {
-			display: grid;
-			grid-template-columns: repeat(3, 1fr);
-			gap: 32px;
-		}
-		.footer__link-heading {
-			font-size: 13px;
-			font-weight: 600;
-			color: var(--ink);
-			margin: 0 0 16px;
-		}
-		.footer__link-group ul {
-			list-style: none;
-			margin: 0;
-			padding: 0;
-			display: flex;
-			flex-direction: column;
-			gap: 10px;
-		}
-		.footer__link-group a {
-			font-size: 13.5px;
-			color: var(--muted);
-			text-decoration: none;
-			transition: color 0.15s var(--ease);
-		}
+		.footer__social-icon:hover { color: var(--ink); border-color: var(--muted); transform: translateY(-2px); }
+		.footer__links { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; }
+		.footer__link-heading { font-size: 13px; font-weight: 600; color: var(--ink); margin: 0 0 16px; }
+		.footer__link-group ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+		.footer__link-group a { font-size: 13.5px; color: var(--muted); text-decoration: none; transition: color 0.15s var(--ease); }
 		.footer__link-group a:hover { color: var(--ink); }
 		.footer__bottom {
 			display: flex;
@@ -431,20 +357,14 @@
 			padding-top: 20px;
 			margin-top: 48px;
 		}
-		.footer__bottom p {
-			font-family: var(--font-mono);
-			font-size: 12px;
-			color: var(--faint);
-			margin: 0;
-		}
+		.footer__bottom p { font-family: var(--font-mono); font-size: 12px; color: var(--faint); margin: 0; }
 
 		/* 移动适配 */
 		@media (max-width: 560px) {
 			.dl__title { font-size: 36px; }
 			.dl__primary { min-width: auto; width: 100%; max-width: 300px; font-size: 13px; }
-			.dl-platforms { max-width: 100%; height: 220px; }
-			.dl-platform-icon { width: 44px; height: 44px; }
-			.dl-platform-icon img { width: 26px; height: 26px; }
+			.dl-platform-icon { width: 40px; height: 40px; }
+			.dl-platform-icon img { width: 24px; height: 24px; }
 			.footer__grid { grid-template-columns: 1fr; gap: 40px; }
 			.footer__links { grid-template-columns: repeat(2, 1fr); gap: 24px; }
 			.footer__bottom { flex-direction: column; }
@@ -489,55 +409,58 @@
 			<span class="download-theater-beam download-theater-beam--c"></span>
 		</div>
 
-		<!-- 平台图标 — 弧形散落布局 -->
+		<!-- 平台图标 — 从顶部散落 -->
 		<div class="dl-platforms" id="dlPlatforms" aria-hidden="true">
-			<div class="dl-platform-icon" data-platform="ollama"><img src="/ollama.webp" alt="" width="30" height="30" /></div>
-			<div class="dl-platform-icon" data-platform="kimi"><img src="/kimi.webp" alt="" width="30" height="30" /></div>
-			<div class="dl-platform-icon" data-platform="grok"><img src="/grok.webp" alt="" width="30" height="30" /></div>
-			<div class="dl-platform-icon" data-platform="mistral"><img src="/mistral.webp" alt="" width="30" height="30" /></div>
-			<div class="dl-platform-icon" data-platform="minimax"><img src="/minimax.webp" alt="" width="30" height="30" /></div>
-			<div class="dl-platform-icon" data-platform="doubao"><img src="/doubao.webp" alt="" width="30" height="30" /></div>
-			<div class="dl-platform-icon" data-platform="zai"><img src="/zai.webp" alt="" width="30" height="30" /></div>
-			<div class="dl-platform-icon" data-platform="openai"><img src="/openai.webp" alt="" width="30" height="30" /></div>
+			<div class="dl-platform-icon" data-platform="ollama"><img src="/ollama.webp" alt="" width="28" height="28" /></div>
+			<div class="dl-platform-icon" data-platform="kimi"><img src="/kimi.webp" alt="" width="28" height="28" /></div>
+			<div class="dl-platform-icon" data-platform="grok"><img src="/grok.webp" alt="" width="28" height="28" /></div>
+			<div class="dl-platform-icon" data-platform="mistral"><img src="/mistral.webp" alt="" width="28" height="28" /></div>
+			<div class="dl-platform-icon" data-platform="minimax"><img src="/minimax.webp" alt="" width="28" height="28" /></div>
+			<div class="dl-platform-icon" data-platform="doubao"><img src="/doubao.webp" alt="" width="28" height="28" /></div>
+			<div class="dl-platform-icon" data-platform="zai"><img src="/zai.webp" alt="" width="28" height="28" /></div>
+			<div class="dl-platform-icon" data-platform="openai"><img src="/openai.webp" alt="" width="28" height="28" /></div>
 		</div>
 
-		<h1 class="dl__title">下载</h1>
-		<p class="dl__desc">我们会检测你的设备并推荐合适的版本。点击即可下载，或通过下方选择其他平台。</p>
+		<!-- 内容层 -->
+		<div class="dl-content">
+			<h1 class="dl__title">下载</h1>
+			<p class="dl__desc">我们会检测你的设备并推荐合适的版本。点击即可下载，或通过下方选择其他平台。</p>
 
-		<div class="dl__primary-wrap">
-			<a class="dl__primary" id="dlPrimary" href="#" target="_blank" rel="noopener">
-				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-				<span id="dlPrimaryText">MAC ARM64 (APPLE SILICON)</span>
-			</a>
-			<p class="dl__version" id="dlPrimaryVersion">v0.55.37 · DMG</p>
-		</div>
+			<div class="dl__primary-wrap">
+				<a class="dl__primary" id="dlPrimary" href="#" target="_blank" rel="noopener">
+					<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+					<span id="dlPrimaryText">MAC ARM64 (APPLE SILICON)</span>
+				</a>
+				<p class="dl__version" id="dlPrimaryVersion">v0.55.37 · DMG</p>
+			</div>
 
-		<button class="dl__others-toggle" id="dlOthersToggle" type="button">
-			其他版本
-			<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-		</button>
+			<button class="dl__others-toggle" id="dlOthersToggle" type="button">
+				其他版本
+				<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+			</button>
 
-		<div class="dl__others" id="dlOthers">
-			<ul class="dl__others-list">
-				<li>
-					<a class="dl__others-item" href="https://dl.astravia.dev/app/v0.55.37/Astravia-0.55.37-arm64.dmg" target="_blank" rel="noopener">
-						<span>Mac Arm64 (Apple Silicon)<span class="dl-rec">推荐</span></span>
-						<small>v0.55.37</small>
-					</a>
-				</li>
-				<li>
-					<a class="dl__others-item" href="https://dl.astravia.dev/app/v0.55.37/Astravia-0.55.37.dmg" target="_blank" rel="noopener">
-						<span>Mac x64 (Intel)</span>
-						<small>v0.55.37</small>
-					</a>
-				</li>
-				<li>
-					<a class="dl__others-item" href="https://dl.astravia.dev/app/v0.55.37/Astravia-0.55.37-win-x64.exe" target="_blank" rel="noopener">
-						<span>Windows x64</span>
-						<small>v0.55.37</small>
-					</a>
-				</li>
-			</ul>
+			<div class="dl__others" id="dlOthers">
+				<ul class="dl__others-list">
+					<li>
+						<a class="dl__others-item" href="https://dl.astravia.dev/app/v0.55.37/Astravia-0.55.37-arm64.dmg" target="_blank" rel="noopener">
+							<span>Mac Arm64 (Apple Silicon)<span class="dl-rec">推荐</span></span>
+							<small>v0.55.37</small>
+						</a>
+					</li>
+					<li>
+						<a class="dl__others-item" href="https://dl.astravia.dev/app/v0.55.37/Astravia-0.55.37.dmg" target="_blank" rel="noopener">
+							<span>Mac x64 (Intel)</span>
+							<small>v0.55.37</small>
+						</a>
+					</li>
+					<li>
+						<a class="dl__others-item" href="https://dl.astravia.dev/app/v0.55.37/Astravia-0.55.37-win-x64.exe" target="_blank" rel="noopener">
+							<span>Windows x64</span>
+							<small>v0.55.37</small>
+						</a>
+					</li>
+				</ul>
+			</div>
 		</div>
 	</div>
 
@@ -637,24 +560,19 @@
 			const dlPrimaryText = document.getElementById("dlPrimaryText");
 			const dlPrimaryVersion = document.getElementById("dlPrimaryVersion");
 
-			let detectedPlatform = "macos";
 			if (isMac && isArm) {
-				detectedPlatform = "macos";
 				dlPrimary.href = "https://dl.astravia.dev/app/v0.55.37/Astravia-0.55.37-arm64.dmg";
 				dlPrimaryText.textContent = "MAC ARM64 (APPLE SILICON)";
 				dlPrimaryVersion.textContent = "v0.55.37 · DMG";
 			} else if (isMac) {
-				detectedPlatform = "macos";
 				dlPrimary.href = "https://dl.astravia.dev/app/v0.55.37/Astravia-0.55.37.dmg";
 				dlPrimaryText.textContent = "MAC X64 (INTEL)";
 				dlPrimaryVersion.textContent = "v0.55.37 · DMG";
 			} else if (isWin) {
-				detectedPlatform = "windows";
 				dlPrimary.href = "https://dl.astravia.dev/app/v0.55.37/Astravia-0.55.37-win-x64.exe";
 				dlPrimaryText.textContent = "WINDOWS X64";
 				dlPrimaryVersion.textContent = "v0.55.37 · EXE";
 			} else {
-				detectedPlatform = "linux";
 				dlPrimary.setAttribute("aria-disabled", "true");
 				dlPrimary.removeAttribute("href");
 				dlPrimaryText.textContent = "LINUX (APPIMAGE)";
@@ -664,56 +582,50 @@
 			// 高亮推荐平台图标
 			const platforms = document.querySelectorAll(".dl-platform-icon");
 			platforms.forEach((icon) => {
-				if (icon.dataset.platform === detectedPlatform) {
+				if (icon.dataset.platform === (isMac ? "ollama" : isWin ? "kimi" : "grok")) {
 					icon.classList.add("is-rec");
 				}
 			});
 
-			// 弧形散落动画 — 复刻 Vetta 设计
-			const FALL_DURATION = 900;
-			const STAGGER = 60;
+			// 散落动画 — 从顶部掉落，散落在标题和文字周围
+			const theater = document.querySelector(".download-theater");
+			const theaterRect = theater.getBoundingClientRect();
+			const FALL_DURATION = 1200;
+			const STAGGER = 80;
 
 			function easeOutBounce(t) {
 				const n1 = 7.5625;
 				const d1 = 2.75;
 				if (t < 1 / d1) return n1 * t * t;
-				if (t < 2 / d1) {
-					t -= 1.5 / d1;
-					return n1 * t * t + 0.75;
-				}
-				if (t < 2.5 / d1) {
-					t -= 2.25 / d1;
-					return n1 * t * t + 0.9375;
-				}
+				if (t < 2 / d1) { t -= 1.5 / d1; return n1 * t * t + 0.75; }
+				if (t < 2.5 / d1) { t -= 2.25 / d1; return n1 * t * t + 0.9375; }
 				t -= 2.625 / d1;
 				return n1 * t * t + 0.984375;
 			}
 
-			function animateFall(icon, index, total) {
-				// 弧形布局参数
-				const arcRadius = 260; // 弧形半径
-				const arcAngle = Math.PI * 0.75; // 弧形跨度 135°
-				const startAngle = Math.PI / 2 + arcAngle / 2; // 从左上方开始
-				const angleStep = arcAngle / (total - 1); // 每个图标的角度间隔
-				const angle = startAngle - index * angleStep; // 当前图标角度
+			function animateFall(icon, index, _total) {
+				const theaterW = theaterRect.width;
+				const theaterH = theaterRect.height;
 
-				// 目标位置（弧形排列）
-				const targetX = Math.cos(angle) * arcRadius;
-				const targetY = Math.sin(angle) * arcRadius * 0.55; // 压扁弧形
+				// 目标散落区域：覆盖整个剧场中心区域
+				const targetX = (Math.random() - 0.5) * theaterW * 0.7; // 水平散布 ±35%
+				const targetY = (Math.random() - 0.5) * theaterH * 0.5; // 垂直散布 ±25%
 
-				// 起始位置（从上方随机位置掉落）
-				const startX = targetX + (Math.random() - 0.5) * 120;
-				const startY = -150 - Math.random() * 200;
-				const startRotate = (Math.random() - 0.5) * 90;
+				// 起始位置：视口顶部上方
+				const startX = targetX + (Math.random() - 0.5) * 100;
+				const startY = -theaterH * 0.5 - Math.random() * 200;
+				const startRotate = (Math.random() - 0.5) * 120;
 
 				const startTime = performance.now() + index * STAGGER;
 
+				// 跷跷板摇摆参数
+				const swingAmplitude = 8 + Math.random() * 12; // 摇摆幅度 8-20px
+				const swingSpeed = 1.5 + Math.random() * 2; // 摇摆速度
+				const swingPhase = Math.random() * Math.PI * 2; // 随机相位
+
 				function step(now) {
 					const elapsed = now - startTime;
-					if (elapsed < 0) {
-						requestAnimationFrame(step);
-						return;
-					}
+					if (elapsed < 0) { requestAnimationFrame(step); return; }
 
 					const progress = Math.min(elapsed / FALL_DURATION, 1);
 					const eased = easeOutBounce(progress);
@@ -721,29 +633,48 @@
 					const currentX = startX + (targetX - startX) * eased;
 					const currentY = startY + (targetY - startY) * eased;
 					const currentRotate = startRotate * (1 - eased);
-					const currentScale = 0.4 + 0.6 * eased;
+					const currentScale = 0.3 + 0.7 * eased;
+
+					// 跷跷板摇摆（落地后持续微幅摇摆）
+					const swing = progress >= 0.95
+						? Math.sin((now - startTime) * 0.003 * swingSpeed + swingPhase) * swingAmplitude * (1 - progress)
+						: 0;
 
 					icon.style.opacity = String(progress > 0.05 ? 1 : 0);
-					icon.style.transform = `translate(${currentX}px, ${currentY}px) scale(${currentScale}) rotate(${currentRotate}deg)`;
+					icon.style.transform = `translate(${currentX + swing}px, ${currentY}px) scale(${currentScale}) rotate(${currentRotate + swing * 0.3}deg)`;
 
 					if (progress < 1) {
 						requestAnimationFrame(step);
+					} else {
+						// 落地后进入静止摇摆状态
+						settleSwing(icon, targetX, targetY, swingAmplitude, swingSpeed, swingPhase);
 					}
 				}
 
 				requestAnimationFrame(step);
 			}
 
-			// 计算容器中心，定位图标
-			const container = document.getElementById("dlPlatforms");
-			const centerX = container.offsetWidth / 2;
-			const centerY = container.offsetHeight / 2;
+			function settleSwing(icon, targetX, targetY, amplitude, speed, phase) {
+				const settleDuration = 2000; // 2秒后完全静止
+				const startTime = performance.now();
+
+				function sway(now) {
+					const elapsed = now - startTime;
+					const decay = Math.max(0, 1 - elapsed / settleDuration); // 衰减到0
+					const sway = Math.sin(now * 0.002 * speed + phase) * amplitude * decay * 0.3;
+
+					icon.style.transform = `translate(${targetX + sway}px, ${targetY}px) scale(1) rotate(${sway * 0.5}deg)`;
+
+					if (decay > 0.01) {
+						requestAnimationFrame(sway);
+					}
+				}
+
+				requestAnimationFrame(sway);
+			}
 
 			// 依次触发每个图标掉落
 			for (let i = 0; i < platforms.length; i++) {
-				// 设置初始位置为容器中心
-				platforms[i].style.left = `${centerX - 26}px`;
-				platforms[i].style.top = `${centerY - 26}px`;
 				animateFall(platforms[i], i, platforms.length);
 			}
 
