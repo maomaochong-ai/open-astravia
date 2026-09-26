@@ -17,17 +17,27 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.vetta.android.app.ThemeMode
 
-/** 设计规范色板（设计图） */
-object VettaPalette {
-    val Black = Color(0xFF000000)
-    val Gray666 = Color(0xFF666666)
-    val GrayE5 = Color(0xFFE5E5E5)
-    val White = Color(0xFFFFFFFF)
-    val PageBg = Color(0xFFF7F7F8)
-    val CardBorder = Color(0xFFE8E8EA)
-    val Success = Color(0xFF1A7F37)
-    val Danger = Color(0xFFCF222E)
-    val ChipBg = Color(0xFFF0F0F2)
+/**
+ * The iPhone app's palette (`Theme.swift`), carried over from the Expo design: dark
+ * emphasises white, light emphasises black, and every surface has a light and a dark value.
+ */
+private object Palette {
+    val PageLight = Color(0xFFF4F5F7)
+    val PageDark = Color(0xFF0A0B0D)
+    val CardLight = Color(0xFFFFFFFF)
+    val CardDark = Color(0xFF15171A)
+    val Card2Light = Color(0xFFF0F1F3)
+    val Card2Dark = Color(0xFF1C1F23)
+    val LineLight = Color(0xFFE3E5E8)
+    val LineDark = Color(0xFF24272C)
+    val InkLight = Color(0xFF0B0C0E)
+    val InkDark = Color(0xFFF4F5F6)
+    val DimLight = Color(0xFF6B7077)
+    val DimDark = Color(0xFF8B9096)
+    val RedLight = Color(0xFFDC2626)
+    val RedDark = Color(0xFFF0524F)
+    val GreenLight = Color(0xFF16A34A)
+    val GreenDark = Color(0xFF22C55E)
 }
 
 @Immutable
@@ -39,56 +49,74 @@ data class VettaExtraColors(
     val success: Color,
 )
 
-val LocalVettaExtra =
-    staticCompositionLocalOf {
-        VettaExtraColors(
-            pageBackground = VettaPalette.PageBg,
-            secondaryText = VettaPalette.Gray666,
-            border = VettaPalette.CardBorder,
-            chipBackground = VettaPalette.ChipBg,
-            success = VettaPalette.Success,
-        )
-    }
+private val LightExtra =
+    VettaExtraColors(
+        pageBackground = Palette.PageLight,
+        secondaryText = Palette.DimLight,
+        border = Palette.LineLight,
+        chipBackground = Palette.Card2Light,
+        success = Palette.GreenLight,
+    )
+
+private val DarkExtra =
+    VettaExtraColors(
+        pageBackground = Palette.PageDark,
+        secondaryText = Palette.DimDark,
+        border = Palette.LineDark,
+        chipBackground = Palette.Card2Dark,
+        success = Palette.GreenDark,
+    )
+
+val LocalVettaExtra = staticCompositionLocalOf { LightExtra }
 
 private val LightScheme =
     lightColorScheme(
-        primary = VettaPalette.Black,
-        onPrimary = VettaPalette.White,
-        primaryContainer = VettaPalette.GrayE5,
-        onPrimaryContainer = VettaPalette.Black,
-        secondary = VettaPalette.Gray666,
-        onSecondary = VettaPalette.White,
-        secondaryContainer = VettaPalette.ChipBg,
-        onSecondaryContainer = VettaPalette.Black,
-        background = VettaPalette.PageBg,
-        onBackground = VettaPalette.Black,
-        surface = VettaPalette.White,
-        onSurface = VettaPalette.Black,
-        surfaceVariant = VettaPalette.ChipBg,
-        onSurfaceVariant = VettaPalette.Gray666,
-        outline = VettaPalette.GrayE5,
-        outlineVariant = VettaPalette.CardBorder,
-        error = VettaPalette.Danger,
-        onError = VettaPalette.White,
+        primary = Palette.InkLight,
+        onPrimary = Palette.CardLight,
+        primaryContainer = Palette.Card2Light,
+        onPrimaryContainer = Palette.InkLight,
+        secondary = Palette.DimLight,
+        onSecondary = Palette.CardLight,
+        secondaryContainer = Palette.Card2Light,
+        onSecondaryContainer = Palette.InkLight,
+        background = Palette.PageLight,
+        onBackground = Palette.InkLight,
+        surface = Palette.CardLight,
+        onSurface = Palette.InkLight,
+        surfaceVariant = Palette.Card2Light,
+        onSurfaceVariant = Palette.DimLight,
+        surfaceContainerLow = Palette.PageLight,
+        surfaceContainer = Palette.CardLight,
+        surfaceContainerHigh = Palette.CardLight,
+        outline = Palette.LineLight,
+        outlineVariant = Palette.LineLight,
+        error = Palette.RedLight,
+        onError = Palette.CardLight,
     )
 
 private val DarkScheme =
     darkColorScheme(
-        primary = VettaPalette.White,
-        onPrimary = VettaPalette.Black,
-        primaryContainer = Color(0xFF2C2C2E),
-        onPrimaryContainer = VettaPalette.White,
-        secondary = Color(0xFFAEAEB2),
-        onSecondary = VettaPalette.Black,
-        background = Color(0xFF000000),
-        onBackground = VettaPalette.White,
-        surface = Color(0xFF1C1C1E),
-        onSurface = VettaPalette.White,
-        surfaceVariant = Color(0xFF2C2C2E),
-        onSurfaceVariant = Color(0xFFAEAEB2),
-        outline = Color(0xFF3A3A3C),
-        error = Color(0xFFFF453A),
-        onError = VettaPalette.White,
+        primary = Palette.InkDark,
+        onPrimary = Palette.PageDark,
+        primaryContainer = Palette.Card2Dark,
+        onPrimaryContainer = Palette.InkDark,
+        secondary = Palette.DimDark,
+        onSecondary = Palette.PageDark,
+        secondaryContainer = Palette.Card2Dark,
+        onSecondaryContainer = Palette.InkDark,
+        background = Palette.PageDark,
+        onBackground = Palette.InkDark,
+        surface = Palette.CardDark,
+        onSurface = Palette.InkDark,
+        surfaceVariant = Palette.Card2Dark,
+        onSurfaceVariant = Palette.DimDark,
+        surfaceContainerLow = Palette.PageDark,
+        surfaceContainer = Palette.CardDark,
+        surfaceContainerHigh = Palette.Card2Dark,
+        outline = Palette.LineDark,
+        outlineVariant = Palette.LineDark,
+        error = Palette.RedDark,
+        onError = Palette.InkDark,
     )
 
 /** 设计规范：标题 17/20 Medium · 正文 14/20 Regular · 辅助 12/16 Regular */
@@ -176,24 +204,7 @@ fun VettaTheme(
             ThemeMode.Light -> false
             ThemeMode.Dark -> true
         }
-    val extra =
-        if (dark) {
-            VettaExtraColors(
-                pageBackground = Color(0xFF000000),
-                secondaryText = Color(0xFFAEAEB2),
-                border = Color(0xFF3A3A3C),
-                chipBackground = Color(0xFF2C2C2E),
-                success = Color(0xFF30D158),
-            )
-        } else {
-            VettaExtraColors(
-                pageBackground = VettaPalette.PageBg,
-                secondaryText = VettaPalette.Gray666,
-                border = VettaPalette.CardBorder,
-                chipBackground = VettaPalette.ChipBg,
-                success = VettaPalette.Success,
-            )
-        }
+    val extra = if (dark) DarkExtra else LightExtra
     androidx.compose.runtime.CompositionLocalProvider(LocalVettaExtra provides extra) {
         MaterialTheme(
             colorScheme = if (dark) DarkScheme else LightScheme,
