@@ -45,19 +45,107 @@
 ### 桌面集成
 全局快捷键唤起快捷面板；macOS Appshot 手势截图 + 屏上文字交给 Agent；Node / Python 运行时配置；托盘常驻；electron-updater 自动更新；中英双语界面。
 
-## 插件系统
+## 插件开发
 
-设计画布、内容创作、Git、图表、文件预览这些工作区形态本身就是插件。同一套扩展点对第三方开放，插件既能扩展界面（活动面板、文件预览、消息卡片、快捷键），也能扩展 Agent（系统提示词、技能、工具、MCP Server、会话引导）。
+Astravia 自身的设计画布、Git、图表、文件预览都是插件，同一套扩展点对第三方开放。插件用 Vite + Module Federation 构建成独立 bundle，宿主运行时按需加载、沙箱执行、权限校验。
+
+### 能扩展什么
+
+<table width="100%">
+<colgroup><col width="25%"><col width="75%"></colgroup>
+<thead><tr><th>域</th><th>可用扩展点</th></tr></thead>
+<tbody>
+<tr><td>界面 (ctx.ui)</td><td>全局悬浮面板、活动面板标签、文件预览器、消息卡片、工具调用插槽、快捷键、通知、文件浏览器工具栏与右键菜单</td></tr>
+<tr><td>Agent (ctx.agent)</td><td>注册 JS 工具（JSON Schema 入参）、动态系统提示词 provider、Skill 目录注入、MCP Server 随插件声明、Continuation provider（会话尾自动追问）</td></tr>
+<tr><td>宿主能力</td><td>文件读写 (ctx.fs)、命令执行 (ctx.command)、HTTP 请求 (ctx.network)、持久化存储 (ctx.storage)、设置页 (ctx.settings)、i18n (ctx.i18n)、官方 API（模型 / 提供商 / MCP / 批量 / 调度…）</td></tr>
+<tr><td>权限系统</td><td>每项能力都必须在 plugin.json 的 permissions 中声明，宿主安装时弹窗让用户逐条授权，运行时再次校验</td></tr>
+</tbody>
+</table>
+
+### 目录结构
+
+```
+my-plugin/
+├── plugin.json          ← 必须，声明元数据、权限、Agent 贡献路径
+├── package.json
+├── vite.config.ts       ← 用 @astravia-org/plugin-vite 的 astraviaPluginFederation
+├── src/
+│   ├── index.tsx        ← 入口，导出 definePlugin({ activate })
+│   └── style.css
+├── locales/zh.json      ← 可选，i18n 文案
+├── agent/
+│   └── skills/          ← 可选，随插件打包的 Skill
+├── mcp.json             ← 可选，随插件声明的 MCP Server
+└── icon.png             ← 可选，列表展示用
+```
+
+### plugin.json（最小示例）
+
+```json
+{
+  "id": "my-plugin",
+  "name": "My Plugin",
+  "version": "0.1.0",
+  "pluginApiVersion": "^1.0.0",
+  "runtime": "module-federation",
+  "entry": "dist/mf-manifest.json",
+  "moduleFederation": { "remoteName": "my_plugin", "expose": "./plugin" },
+  "permissions": ["ui.slot.global", "agent.tools.register", "fs.read"],
+  "agent": {
+    "skillPaths": ["agent/skills/"],
+    "mcpServers": {
+      "my-mcp": { "type": "stdio", "command": "node", "args": ["mcp.js"] }
+    }
+  }
+}
+```
+
+### 入口代码
 
 ```tsx
 import { definePlugin } from "@astravia-org/plugin-sdk";
 
 export default definePlugin({
   activate(ctx) {
+    // 扩展界面
     ctx.ui.registerActivityTab({ id: "my-tab", label: "我的面板", component: MyPanel });
+
+    // 扩展 Agent：注册一个 JS 工具
+    ctx.agent.registerTool({
+      id: "greet",
+      name: "greet_user",
+      description: "向用户打招呼",
+      parameters: { type: "object", properties: { name: { type: "string" } }, required: ["name"] },
+      handler: async ({ trigger }) => `Hello, ${trigger.input.name}!`,
+    });
   },
+
+  deactivate() { /* 可选，卸载时清理 */ },
 });
 ```
+
+### 构建与安装
+
+```bash
+# package.json
+{
+  "scripts": { "build": "vite build" },
+  "dependencies": { "@astravia-org/plugin-sdk": "latest" },
+  "devDependencies": { "@astravia-org/plugin-vite": "latest", "vite": "^7" }
+}
+
+# vite.config.ts
+import { astraviaPluginFederation } from "@astravia-org/plugin-vite";
+export default defineConfig({ plugins: [astraviaPluginFederation({ name: "my_plugin", entry: "./src/index.tsx" })] });
+```
+
+```bash
+bun install
+bun run build           # 产物：dist/mf-manifest.json + dist/remoteEntry.js + dist/style.css
+zip -r my-plugin.zip .  # 打包整个插件目录（含 plugin.json）
+```
+
+安装：在 Astravia 内「设置 → 插件 → 安装本地插件」选择 zip 即可。也可以把插件放到 GitHub Release，用仓库 URL 在应用内一键安装。
 
 **内置插件**：astravia-ui-design、content-creation、plugin-workbench、git、image-gen、chart-renderer、office-viewer、media-viewer、svg-viewer、astravia-actions。
 

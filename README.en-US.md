@@ -45,19 +45,107 @@ Mockups on an infinite canvas where frames are real, runnable interfaces. One co
 ### Desktop Integration
 A global hotkey summons the quick panel. On macOS, Appshot captures the frontmost window (screenshot, title, on-screen text) in one gesture. Configure Node / Python runtimes. Tray residency, auto-update, bilingual UI.
 
-## Plugin System
+## Plugin Development
 
-Plugins are not an afterthought — the design canvas, content creation, Git, charts and file previewers are themselves plugins. The same extension points are open to third parties. A plugin can extend the interface (activity tabs, file previews, message cards, shortcuts…) and the agent (system prompts, skills, tools, MCP servers, session entry).
+Astravia itself — the design canvas, Git, charts, file previewers — is all plugins. The same extension points are open to third parties. Plugins are built with Vite + Module Federation into isolated bundles; the host loads them on demand, runs them in a sandbox and validates permissions at runtime.
+
+### What you can extend
+
+<table width="100%">
+<colgroup><col width="25%"><col width="75%"></colgroup>
+<thead><tr><th>Domain</th><th>Extension points</th></tr></thead>
+<tbody>
+<tr><td>UI (ctx.ui)</td><td>Global floating panels, activity tabs, file previews, message cards, tool-call slots, keyboard shortcuts, notifications, file explorer toolbar and context menu</td></tr>
+<tr><td>Agent (ctx.agent)</td><td>Register JS tools (JSON Schema input), dynamic system-prompt providers, Skill directory injection, inline MCP servers, continuation provider (auto follow-up at session end)</td></tr>
+<tr><td>Host capabilities</td><td>File read/write (ctx.fs), command execution (ctx.command), HTTP requests (ctx.network), persistent storage (ctx.storage), settings page (ctx.settings), i18n (ctx.i18n), Official API (providers / models / MCP / batches / scheduler…)</td></tr>
+<tr><td>Permission model</td><td>Every capability must be declared in plugin.json permissions. The host shows a consent dialog on install and re-checks at runtime.</td></tr>
+</tbody>
+</table>
+
+### Directory layout
+
+```
+my-plugin/
+├── plugin.json          # required — metadata, permissions, agent contributions
+├── package.json
+├── vite.config.ts       # use @astravia-org/plugin-vite's astraviaPluginFederation
+├── src/
+│   ├── index.tsx        # entry, exports definePlugin({ activate })
+│   └── style.css
+├── locales/zh.json      # optional, i18n
+├── agent/
+│   └── skills/          # optional, bundled skills
+├── mcp.json             # optional, bundled MCP servers
+└── icon.png             # optional, list display
+```
+
+### plugin.json (minimal example)
+
+```json
+{
+  "id": "my-plugin",
+  "name": "My Plugin",
+  "version": "0.1.0",
+  "pluginApiVersion": "^1.0.0",
+  "runtime": "module-federation",
+  "entry": "dist/mf-manifest.json",
+  "moduleFederation": { "remoteName": "my_plugin", "expose": "./plugin" },
+  "permissions": ["ui.slot.global", "agent.tools.register", "fs.read"],
+  "agent": {
+    "skillPaths": ["agent/skills/"],
+    "mcpServers": {
+      "my-mcp": { "type": "stdio", "command": "node", "args": ["mcp.js"] }
+    }
+  }
+}
+```
+
+### Entry code
 
 ```tsx
 import { definePlugin } from "@astravia-org/plugin-sdk";
 
 export default definePlugin({
   activate(ctx) {
+    // Extend the UI
     ctx.ui.registerActivityTab({ id: "my-tab", label: "My Panel", component: MyPanel });
+
+    // Extend the agent: register a JS tool
+    ctx.agent.registerTool({
+      id: "greet",
+      name: "greet_user",
+      description: "Greet the user by name",
+      parameters: { type: "object", properties: { name: { type: "string" } }, required: ["name"] },
+      handler: async ({ trigger }) => `Hello, ${trigger.input.name}!`,
+    });
   },
+
+  deactivate() { /* optional, cleanup on uninstall */ },
 });
 ```
+
+### Build & install
+
+```bash
+# package.json
+{
+  "scripts": { "build": "vite build" },
+  "dependencies": { "@astravia-org/plugin-sdk": "latest" },
+  "devDependencies": { "@astravia-org/plugin-vite": "latest", "vite": "^7" }
+}
+
+# vite.config.ts
+import { astraviaPluginFederation } from "@astravia-org/plugin-vite";
+export default defineConfig({ plugins: [astraviaPluginFederation({ name: "my_plugin", entry: "./src/index.tsx" })] });
+```
+
+```bash
+bun install
+bun run build           # Output: dist/mf-manifest.json + dist/remoteEntry.js + dist/style.css
+zip -r my-plugin.zip .  # Zip the whole plugin directory (including plugin.json)
+```
+
+Install: go to **Settings → Plugins → Install local plugin** in Astravia and pick the zip. You can also ship plugins on GitHub Releases and install them with a repository URL.
 
 **Bundled plugins**: astravia-ui-design, content-creation, plugin-workbench, git, image-gen, chart-renderer, office-viewer, media-viewer, svg-viewer, astravia-actions.
 
