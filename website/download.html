@@ -168,162 +168,78 @@
 			const iconMap = { macos: "ollama", windows: "kimi", linux: "grok" };
 			document.querySelectorAll(".dl-platform-icon").forEach(el => { if (el.dataset.p === iconMap[platform]) el.classList.add("is-rec"); });
 
-			// === 掉落动画 ===
-			const titleEl = document.getElementById("dlTitle");
-			const descEl = document.getElementById("dlDesc");
-			const theater = document.querySelector(".download-theater");
-			const footerEl = document.getElementById("footer");
+			// === 图标下落动画（固定干净布局） ===
+			const ICON = 52;
+
+			// 8 个图标的目标位置（相对于 .download-theater 的中心坐标系）
+			// theater 中心大约在 y ≈ 340（标题 280 + 描述 340 + 按钮 420）
+			// 布局参考 Vetta：标题周围 2 个，描述周围 4 个，按钮周围 1 个，底部 1 个
+			const TARGETS = [
+				// --- 标题 "下载" 周围 ---
+				{ x: -80,  y: -40 },  // 标题左上
+				{ x: +90,  y: -30 },  // 标题右上
+
+				// --- 描述文字周围（覆盖在文字上/下）---
+				{ x: -160, y: +20 },  // 描述左
+				{ x: -50,  y: +40 },  // 描述中偏左
+				{ x: +60,  y: +30 },  // 描述中偏右
+				{ x: +170, y: +10 },  // 描述右
+
+				// --- 按钮附近 ---
+				{ x: +120, y: +120 }, // 按钮右下
+
+				// --- 底部横线 ---
+				{ x: -200, y: +300 }, // 页脚底部左侧
+			];
+
 			const topIcons = Array.from(document.querySelectorAll("#dlPlatforms .dl-platform-icon"));
 			const bottomContainer = document.getElementById("dlPlatformsBottom");
-			const ICON = 52;
-			const GAP = ICON + 10; // 图标间最小净间距
 
-			// 按实际图标数自适应分配：标题上方 ~35%，描述上方 ~55%，底部 ~10%
-			const total = topIcons.length;
-			const titleCount = Math.max(1, Math.round(total * 0.35));
-			const descCount = Math.max(1, Math.round(total * 0.55));
-			const bottomCount = Math.max(0, total - titleCount - descCount);
-
-			// 在矩形内生成 n 个不重叠散点（带 padding）
-			function scatterInRect(n, rect, padding) {
-				const W = rect.right - rect.left, H = rect.bottom - rect.top;
-				if (W <= padding * 2 || H <= padding * 2 || n <= 0) return [];
-				const x0 = rect.left + padding, x1 = rect.right - padding;
-				const y0 = rect.top + padding, y1 = rect.bottom - padding;
-				const pts = [];
-				const minDist = GAP;
-				let tries = 0;
-				const maxTries = n * 200;
-				while (pts.length < n && tries < maxTries) {
-					tries++;
-					const x = x0 + Math.random() * (x1 - x0);
-					const y = y0 + Math.random() * (y1 - y0);
-					if (pts.every(p => Math.hypot(p.x - x, p.y - y) >= minDist)) pts.push({ x, y });
-				}
-				// 网格兜底：用正交网格填充剩余位置，保证不重叠
-				if (pts.length < n) {
-					const cols = Math.ceil((x1 - x0) / (minDist * 0.8));
-					const rows = Math.ceil((y1 - y0) / (minDist * 0.8));
-					const cells = [];
-					for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
-						cells.push({ x: x0 + (c + 0.5) * (x1 - x0) / cols, y: y0 + (r + 0.5) * (y1 - y0) / rows });
-					}
-					for (const cell of cells) {
-						if (pts.length >= n) break;
-						if (pts.every(p => Math.hypot(p.x - cell.x, p.y - cell.y) >= minDist)) pts.push(cell);
-					}
-					// 最终兜底：哪怕重叠也填上
-					while (pts.length < n) pts.push({ x: x0 + Math.random() * (x1 - x0), y: y0 + Math.random() * (y1 - y0) });
-				}
-				return pts;
-			}
-
-			class FallingIcon {
-				constructor(el, tx, ty, delay) {
-					this.el = el; this.tx = tx; this.ty = ty; this.delay = delay;
-					this.y = 60 + Math.random() * 50;
-					this.vy = 0;
-					this.rot = (Math.random() - 0.5) * 30;
-					this.vRot = (Math.random() - 0.5) * 4;
-					this.scale = 0.25;
-					this.bounce = 0;
-					this.maxBounce = 2 + Math.floor(Math.random() * 2);
-					this.landed = false; this.settled = false; this.start = 0;
-					el.style.opacity = "1";
-					el.style.transform = "";
-					el.style.left = `${tx}px`;
-					el.style.top = `${this.y}px`;
-					el.style.marginLeft = `${-ICON / 2}px`;
-					el.style.marginTop = `${-ICON / 2}px`;
-				}
-				update(time) {
-					if (time < this.delay) return;
-					if (!this.start) this.start = time;
-					const elapsed = time - this.start - this.delay;
-					if (!this.landed) {
-						this.vy += 0.45;
-						this.y += this.vy;
-						this.rot += this.vRot;
-						if (this.y >= this.ty) {
-							this.y = this.ty;
-							this.vy = -this.vy * 0.4;
-							this.vRot *= -0.4;
-							this.bounce++;
-							if (this.bounce >= this.maxBounce || Math.abs(this.vy) < 0.4) {
-								this.landed = true; this.vy = 0; this.vRot = 0;
-							}
-						}
-						this.scale = Math.min(1, 0.25 + 0.75 * Math.min(elapsed / 350, 1));
-					} else if (!this.settled) {
-						const d = Math.max(0, 1 - (time - this.start - this.delay - 280) / 550);
-						this.rot *= (1 - 0.08 * d);
-						if (d < 0.01) this.settled = true;
-					}
-					this.el.style.transform = `translateY(${this.y}px) scale(${this.scale}) rotate(${this.rot}deg)`;
-				}
-			}
-
-			const anims = [];
-			function loop(time) { for (const a of anims) a.update(time); requestAnimationFrame(loop); }
 			function start() {
-				// 先把所有图标重置为 theater 内绝对定位状态
-				topIcons.forEach(el => {
+				const theater = document.querySelector(".download-theater");
+				const rect = theater.getBoundingClientRect();
+				const cx = rect.width / 2;
+				const cy = rect.height / 2;
+
+				topIcons.forEach((el, i) => {
+					const t = TARGETS[i] || { x: 0, y: 0 };
+					// 重置样式
 					el.style.opacity = "0";
 					el.style.position = "absolute";
+					el.style.transition = "none";
 					el.style.transform = "";
-					el.style.top = "0"; el.style.left = "0";
 					el.style.marginTop = `${-ICON / 2}px`;
 					el.style.marginLeft = `${-ICON / 2}px`;
 					bottomContainer.contains(el) && bottomContainer.removeChild(el);
+
+					// 目标绝对坐标（theater 内）
+					const tx = cx + t.x;
+					const ty = cy + t.y;
+
+					// 初始位置：theater 顶部上方 120px 处，随机水平抖动
+					const startY = 20 + Math.random() * 40;
+					const rot = (Math.random() - 0.5) * 20;
+					const delay = 80 + i * 90 + Math.random() * 120;
+
+					el.style.left = `${tx}px`;
+					el.style.top = `${startY}px`;
+					el.style.transform = `scale(0.3) rotate(${rot}deg)`;
+					el.style.opacity = "0";
+
+					// 触发 reflow 后加过渡
+					requestAnimationFrame(() => {
+						setTimeout(() => {
+							// 先快速显示
+							el.style.opacity = "1";
+							el.style.transition = `top ${600 + i * 40}ms cubic-bezier(0.22, 1, 0.36, 1), transform 500ms ease-out, opacity 300ms ease-out`;
+							// 下落到目标
+							el.style.top = `${ty}px`;
+							el.style.transform = `scale(1) rotate(${(Math.random() - 0.5) * 12}deg)`;
+						}, delay);
+					});
 				});
-
-				const theaterRect = theater.getBoundingClientRect();
-				const tr = titleEl.getBoundingClientRect();
-				const dr = descEl.getBoundingClientRect();
-				const fr = footerEl.getBoundingClientRect();
-
-				// theater 内坐标
-				const titleBand = {
-					left: tr.left - theaterRect.left - 40,
-					right: tr.right - theaterRect.left + 40,
-					top: tr.top - theaterRect.top - ICON - 10,
-					bottom: tr.bottom - theaterRect.top + ICON + 10,
-				};
-				const descBand = {
-					left: dr.left - theaterRect.left - 40,
-					right: dr.right - theaterRect.left + 40,
-					top: dr.top - theaterRect.top - ICON - 10,
-					bottom: dr.bottom - theaterRect.top + ICON + 10,
-				};
-				const footerBand = {
-					left: 40, right: theaterRect.width - 40,
-					top: fr.top - theaterRect.top - ICON / 2,
-					bottom: fr.top - theaterRect.top + ICON / 2,
-				};
-
-				const titleTargets = scatterInRect(titleCount, titleBand, 22);
-				const descTargets = scatterInRect(descCount, descBand, 22);
-				const footerTargets = scatterInRect(bottomCount, footerBand, 22);
-
-				let idx = 0;
-				for (const t of titleTargets) {
-					if (idx >= topIcons.length) break;
-					anims.push(new FallingIcon(topIcons[idx++], t.x, t.y, 100 + Math.random() * 200));
-				}
-				for (const t of descTargets) {
-					if (idx >= topIcons.length) break;
-					anims.push(new FallingIcon(topIcons[idx++], t.x, t.y, 350 + Math.random() * 250));
-				}
-				for (const t of footerTargets) {
-					if (idx >= topIcons.length) break;
-					const icon = topIcons[idx++];
-					bottomContainer.appendChild(icon);
-					icon.style.position = "absolute";
-					anims.push(new FallingIcon(icon, t.x, t.y, 650 + Math.random() * 300));
-				}
-
-				requestAnimationFrame(loop);
 			}
+
 			if (document.readyState === "loading") {
 				document.addEventListener("DOMContentLoaded", start);
 			} else {
