@@ -414,14 +414,25 @@ astravia/
 
 ## 加入社群
 
+<p align="center" style="color:#656d76;font-size:14px;margin-bottom:20px;">扫码加入，交流使用经验、反馈问题、获取最新动态</p>
+
 <div align="center">
-  <table width="100%">
+  <table width="100%" style="border-collapse:separate;border-spacing:16px 0;">
     <tr>
-      <td align="center"><img src="docs/assets/community/qq-group.png" width="220" alt="QQ 群" /><p>QQ 群</p></td>
-      <td align="center"><img src="docs/assets/community/wechat-group.jpg" width="220" alt="微信群" /><p>微信群</p></td>
+      <td align="center" style="border:1px solid #d0d7de;border-radius:12px;padding:20px 16px;background:#f6f8fa;vertical-align:top;">
+        <div style="display:inline-block;padding:3px 10px;border-radius:20px;background:#12b7f5;color:#fff;font-size:12px;font-weight:600;margin-bottom:12px;">QQ</div><br />
+        <img src="docs/assets/community/qq-group.png" width="200" alt="QQ 群" style="border-radius:6px;" /><br />
+        <p style="margin:12px 0 0 0;font-weight:600;font-size:15px;">QQ 官方群</p>
+        <p style="margin:4px 0 0 0;color:#656d76;font-size:13px;">日常交流 · 问题反馈</p>
+      </td>
+      <td align="center" style="border:1px solid #d0d7de;border-radius:12px;padding:20px 16px;background:#f6f8fa;vertical-align:top;">
+        <div style="display:inline-block;padding:3px 10px;border-radius:20px;background:#07c160;color:#fff;font-size:12px;font-weight:600;margin-bottom:12px;">微信</div><br />
+        <img src="docs/assets/community/wechat-group.jpg" width="200" alt="微信群" style="border-radius:6px;" /><br />
+        <p style="margin:12px 0 0 0;font-weight:600;font-size:15px;">微信官方群</p>
+        <p style="margin:4px 0 0 0;color:#656d76;font-size:13px;">版本更新 · 内测招募</p>
+      </td>
     </tr>
   </table>
-  <p>扫码加入社群，交流使用经验、反馈问题、获取最新动态。</p>
 </div>
 
 ## 致谢
