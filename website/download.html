@@ -173,13 +173,15 @@
 			display: flex;
 			align-items: center;
 			justify-content: center;
+			overflow: hidden;
 			opacity: 0;
 			will-change: transform, opacity;
 		}
 		.dl-platform-icon img {
-			width: 30px;
-			height: 30px;
+			width: 34px;
+			height: 34px;
 			object-fit: contain;
+			border-radius: 50%;
 		}
 		.dl-platform-icon.is-rec {
 			border-color: var(--accent);
@@ -330,21 +332,103 @@
 			pointer-events: none;
 		}
 
-		/* 页脚 */
+		/* 页脚 — 与首页一致 */
 		.footer {
 			border-top: 1px solid var(--line);
-			padding: 24px 0;
+			padding: 56px 0 32px;
 		}
 		.footer .container {
 			max-width: 1120px;
 			margin: 0 auto;
 			padding: 0 24px;
 		}
+		.footer__grid {
+			display: grid;
+			grid-template-columns: 280px 1fr;
+			gap: 64px;
+			align-items: start;
+		}
+		.footer__brand-col {
+			display: flex;
+			flex-direction: column;
+			gap: 16px;
+		}
+		.footer__brand {
+			display: inline-flex;
+			align-items: center;
+			gap: 9px;
+			font-weight: 700;
+			font-size: 16px;
+			text-decoration: none;
+			color: var(--ink);
+		}
+		.footer__brand img { border-radius: 6px; }
+		.footer__brand-desc {
+			font-size: 13.5px;
+			line-height: 1.6;
+			color: var(--muted);
+			margin: 0;
+			max-width: 260px;
+		}
+		.footer__socials {
+			display: flex;
+			gap: 8px;
+			margin-top: 4px;
+		}
+		.footer__social-icon {
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			width: 36px;
+			height: 36px;
+			border-radius: 50%;
+			border: 1px solid var(--line);
+			color: var(--muted);
+			text-decoration: none;
+			transition:
+				color 0.15s var(--ease),
+				border-color 0.15s var(--ease),
+				transform 0.15s var(--ease);
+		}
+		.footer__social-icon:hover {
+			color: var(--ink);
+			border-color: var(--muted);
+			transform: translateY(-2px);
+		}
+		.footer__links {
+			display: grid;
+			grid-template-columns: repeat(3, 1fr);
+			gap: 32px;
+		}
+		.footer__link-heading {
+			font-size: 13px;
+			font-weight: 600;
+			color: var(--ink);
+			margin: 0 0 16px;
+		}
+		.footer__link-group ul {
+			list-style: none;
+			margin: 0;
+			padding: 0;
+			display: flex;
+			flex-direction: column;
+			gap: 10px;
+		}
+		.footer__link-group a {
+			font-size: 13.5px;
+			color: var(--muted);
+			text-decoration: none;
+			transition: color 0.15s var(--ease);
+		}
+		.footer__link-group a:hover { color: var(--ink); }
 		.footer__bottom {
 			display: flex;
 			justify-content: space-between;
 			gap: 12px;
 			flex-wrap: wrap;
+			border-top: 1px solid var(--line);
+			padding-top: 20px;
+			margin-top: 48px;
 		}
 		.footer__bottom p {
 			font-family: var(--font-mono);
@@ -352,19 +436,17 @@
 			color: var(--faint);
 			margin: 0;
 		}
-		.footer__links {
-			display: inline-flex;
-			align-items: center;
-			gap: 8px;
+		@media (max-width: 560px) {
+			.footer__grid {
+				grid-template-columns: 1fr;
+				gap: 40px;
+			}
+			.footer__links {
+				grid-template-columns: repeat(2, 1fr);
+				gap: 24px;
+			}
+			.footer__bottom { flex-direction: column; }
 		}
-		.footer__links a {
-			color: var(--faint);
-			text-decoration: none;
-			font-family: var(--font-mono);
-			font-size: 12px;
-			transition: color 0.18s;
-		}
-		.footer__links a:hover { color: var(--ink); }
 
 		/* 移动适配 */
 		@media (max-width: 560px) {
@@ -476,13 +558,60 @@
 	<!-- 页脚 -->
 	<footer class="footer">
 		<div class="container">
+			<div class="footer__grid">
+				<!-- 左侧：品牌 + 介绍 + 社交 -->
+				<div class="footer__brand-col">
+					<a class="footer__brand" href="/#top">
+						<img src="/favicon.png" width="24" height="24" alt="" />
+						<span>Astravia</span>
+					</a>
+					<p class="footer__brand-desc">本地优先的开源 AI 桌面助手——编码、文档、数据、自动化，一个应用全包。</p>
+					<div class="footer__socials">
+						<a class="footer__social-icon" href="https://github.com/maomaochong-ai/astravia" target="_blank" rel="noopener" aria-label="GitHub">
+							<svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+								<path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8 8 0 0 0 16 8c0-4.42-3.58-8-8-8Z" />
+							</svg>
+						</a>
+						<a class="footer__social-icon" href="mailto:contact@astravia.dev" aria-label="邮箱">
+							<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+								<rect x="2" y="4" width="20" height="16" rx="2" /><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+							</svg>
+						</a>
+					</div>
+				</div>
+
+				<!-- 中间：分栏导航 -->
+				<nav class="footer__links" aria-label="页脚导航">
+					<div class="footer__link-group">
+						<p class="footer__link-heading">产品</p>
+						<ul>
+							<li><a href="/#products">能力</a></li>
+							<li><a href="/#models">模型</a></li>
+							<li><a href="/#ecosystem">生态</a></li>
+							<li><a href="/download">下载</a></li>
+						</ul>
+					</div>
+					<div class="footer__link-group">
+						<p class="footer__link-heading">资源</p>
+						<ul>
+							<li><a href="https://github.com/maomaochong-ai/astravia" target="_blank" rel="noopener">开源</a></li>
+							<li><a href="https://github.com/maomaochong-ai/astravia/issues" target="_blank" rel="noopener">Issues</a></li>
+							<li><a href="https://github.com/maomaochong-ai/astravia/releases" target="_blank" rel="noopener">更新日志</a></li>
+						</ul>
+					</div>
+					<div class="footer__link-group">
+						<p class="footer__link-heading">关于</p>
+						<ul>
+							<li><a href="/#privacy">隐私</a></li>
+							<li><a href="https://github.com/maomaochong-ai/astravia/blob/main/LICENSE" target="_blank" rel="noopener">Apache-2.0</a></li>
+						</ul>
+					</div>
+				</nav>
+			</div>
+
+			<!-- 底部：版权 -->
 			<div class="footer__bottom">
 				<p>© <span id="year">2026</span> Astravia · Apache-2.0</p>
-				<p class="footer__links">
-					<a href="https://github.com/maomaochong-ai/astravia/issues" target="_blank" rel="noopener">Issues</a>
-					<span aria-hidden="true">·</span>
-					<a href="/#top">返回顶部 ↑</a>
-				</p>
 			</div>
 		</div>
 	</footer>
