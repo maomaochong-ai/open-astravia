@@ -144,6 +144,22 @@ class AppViewModelWorkTest {
         }
 
     @Test
+    fun besideTheSlotBackOnlyClosesWhatIsOverHome() =
+        runTest(dispatcher) {
+            val vm = viewModel()
+            advanceUntilIdle()
+            vm.show("s1")
+            assertFalse(vm.state.value.backEnabledBeside, "a chat beside Home has nothing to go back to")
+            vm.push(HomePage.Settings)
+            vm.openRemote()
+            vm.handleBack(beside = true)
+            assertFalse(vm.state.value.showRemote)
+            vm.handleBack(beside = true)
+            assertEquals(emptyList(), vm.state.value.homePath)
+            assertEquals(Slot.Session("s1"), vm.state.value.slot)
+        }
+
+    @Test
     fun theThemeChoiceIsKept() =
         runTest(dispatcher) {
             val preferences = AppPreferences(MapSettings())

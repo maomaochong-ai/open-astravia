@@ -54,6 +54,10 @@ data class AppUiState(
     /** Whether Back has somewhere to go inside the app; otherwise it leaves. */
     val backEnabled: Boolean
         get() = showRemote || drawerOpen || slot is Slot.Session
+
+    /** The same while Home stays beside the slot, where only its pages and the remote screen go back. */
+    val backEnabledBeside: Boolean
+        get() = showRemote || homePath.isNotEmpty()
 }
 
 class AppViewModel(
@@ -114,8 +118,13 @@ class AppViewModel(
      * Back walks Home's pages, then shuts the drawer; from a chat it opens Home, the
      * chat's parent. From Home's first page and from New Session it leaves the app.
      */
-    fun handleBack() {
+    fun handleBack(beside: Boolean = false) {
         val state = _state.value
+        if (beside) {
+            // Home is not a drawer then: Back only closes what is over it.
+            if (state.showRemote) closeRemote() else if (state.homePath.isNotEmpty()) pop()
+            return
+        }
         when {
             state.showRemote -> closeRemote()
             state.drawerOpen && state.homePath.isNotEmpty() -> pop()

@@ -50,7 +50,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -128,6 +130,8 @@ fun NewSessionScreen(
     val offline = LinkIndicator.of(state.link) == LinkIndicator.Offline
     val cards = remember(state.sessions, state.conversationCwd) { TaskBoard.cards(state.sessions, state.conversationCwd) }
     val keyboardUp = WindowInsets.isImeVisible
+    // The board's summary needs the height of a phone held upright; sideways it would be crushed.
+    val tallEnough = with(LocalDensity.current) { LocalWindowInfo.current.containerSize.height.toDp() } >= SUMMARY_MIN_WINDOW_HEIGHT
     val focus = LocalFocusManager.current
 
     LaunchedEffect(restored) { restored?.let { onDraftChange(it.draft) } }
@@ -161,7 +165,7 @@ fun NewSessionScreen(
                 Spacer(Modifier.weight(1f))
                 // Typing is about the new session; the board steps aside for the keyboard.
                 AnimatedVisibility(
-                    !keyboardUp,
+                    !keyboardUp && tallEnough,
                     enter = fadeIn(VettaMotion.snappy()) + expandVertically(VettaMotion.snappy()),
                     exit = fadeOut(VettaMotion.snappy()) + shrinkVertically(VettaMotion.snappy()),
                 ) {
@@ -315,3 +319,6 @@ private fun WelcomeBackdrop() {
             },
     )
 }
+
+/** The window height below which New Session leaves the board's summary out. */
+private val SUMMARY_MIN_WINDOW_HEIGHT = 560.dp

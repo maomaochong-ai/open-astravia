@@ -107,6 +107,7 @@ import org.vetta.android.ui.design.VettaMotion
 import org.vetta.android.ui.design.edgeFade
 import org.vetta.android.ui.design.springClickable
 import org.vetta.android.ui.navigation.PlatformBackHandler
+import org.vetta.android.ui.shell.LocalHomeBeside
 import org.vetta.android.ui.theme.vettaExtra
 import org.vetta.android.ui.work.WorkActions
 import org.vetta.android.ui.work.workColors
@@ -137,6 +138,8 @@ fun HomeScreen(
     onRefreshProjects: suspend () -> Unit,
     onReconnect: () -> Unit,
     onPair: () -> Unit,
+    /** The session in the slot, marked in the list while Home stays beside it. */
+    selected: String? = null,
 ) {
     var query by rememberSaveable { mutableStateOf("") }
     var searchActive by rememberSaveable { mutableStateOf(false) }
@@ -196,7 +199,8 @@ fun HomeScreen(
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(1f).semantics { heading() },
                     )
-                    GlassCircleButton(Icons.Filled.Close, stringResource(Res.string.close), onClick = onClose, tag = "home.close")
+                    // Nothing to close while Home stays beside the slot.
+                    if (!LocalHomeBeside.current) GlassCircleButton(Icons.Filled.Close, stringResource(Res.string.close), onClick = onClose, tag = "home.close")
                 }
             }
             PullToRefreshBox(
@@ -242,6 +246,7 @@ fun HomeScreen(
                             actions = actions,
                             onOpen = { onOpenSession(session.id) },
                             onDelete = { deleting = session },
+                            selected = session.id == selected,
                             modifier = Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null, placementSpec = VettaMotion.snappy()),
                         )
                     }

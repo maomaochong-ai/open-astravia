@@ -113,6 +113,8 @@ fun SessionCard(
     onDelete: () -> Unit,
     modifier: Modifier = Modifier,
     showsProject: Boolean = true,
+    /** The session open beside the list. */
+    selected: Boolean = false,
 ) {
     val colors = MaterialTheme.workColors
     val haptics = LocalHapticFeedback.current
@@ -125,7 +127,11 @@ fun SessionCard(
     val deleteLabel = stringResource(Res.string.session_delete)
     // Waiting on the user warms the whole row, not just its glyph.
     val background by animateColorAsState(
-        if (session.status == RemoteSessionStatus.WaitingInput) colors.yellow.copy(alpha = 0.09f) else colors.yellow.copy(alpha = 0f),
+        when {
+            selected -> colors.card2
+            session.status == RemoteSessionStatus.WaitingInput -> colors.yellow.copy(alpha = 0.09f)
+            else -> colors.yellow.copy(alpha = 0f)
+        },
         VettaMotion.snappy(),
         label = "row warmth",
     )

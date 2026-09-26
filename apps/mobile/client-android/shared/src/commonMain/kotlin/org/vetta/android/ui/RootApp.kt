@@ -12,13 +12,19 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.EditNote
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -64,7 +70,10 @@ import org.vetta.android.ui.pairing.PairingSheet
 import org.vetta.android.ui.pairing.UnpairedView
 import org.vetta.android.ui.remote.RemoteDesktopScreen
 import org.vetta.android.ui.settings.SettingsScreen
+import org.vetta.android.ui.shell.HomeBesideMinWidth
+import org.vetta.android.ui.shell.HomeBesideWidth
 import org.vetta.android.ui.shell.HomeDrawer
+import org.vetta.android.ui.shell.LocalHomeBeside
 import org.vetta.android.ui.theme.VettaTheme
 import org.vetta.android.ui.theme.vettaExtra
 import org.vetta.android.ui.work.NewSessionScreen
@@ -111,16 +120,18 @@ fun RootApp(
     // The desktop's screen, where the pairing has a relay to reach it through.
     val viewerUrl = remember(workState.desktop) { container.mirror.viewerUrl() }
 
+    // Home stays beside the slot once the window is wide enough; set as the window is measured.
+    var beside by remember { mutableStateOf(false) }
     // A back swipe drags the drawer only where Back moves it: open from a chat, shut from Home's first page.
     var backProgress by remember { mutableStateOf<Float?>(null) }
-    val backMovesDrawer = !state.showRemote && (state.drawerOpen && state.homePath.isEmpty()) || (!state.drawerOpen && state.slot is Slot.Session)
+    val backMovesDrawer = !beside && !state.showRemote && ((state.drawerOpen && state.homePath.isEmpty()) || (!state.drawerOpen && state.slot is Slot.Session))
     PlatformBackHandler(
-        enabled = state.backEnabled,
+        enabled = if (beside) state.backEnabledBeside else state.backEnabled,
         onProgress = { if (backMovesDrawer) backProgress = it },
         onCancel = { backProgress = null },
         onBack = {
             backProgress = null
-            vm.handleBack()
+            vm.handleBack(beside)
         },
     )
 
@@ -167,51 +178,64 @@ fun RootApp(
     }
 
     VettaTheme(themeMode = state.themeMode) {
-        Box(Modifier.fillMaxSize().background(MaterialTheme.vettaExtra.pageBackground)) {
-            HomeDrawer(
-                open = state.drawerOpen,
-                enabled = workState.paired,
-                onOpenChange = { if (it) vm.openDrawer() else vm.closeDrawer() },
-                closableByDrag = state.homePath.isEmpty(),
-                backProgress = backProgress,
-                content = { SlotContent(state.slot, workState, vm, work) },
-                drawer = { HomeStack(state, workState, vm, work, viewerUrl) },
-            )
-            AnimatedVisibility(
-                state.showRemote,
-                enter = slideInVertically(VettaMotion.snappy(IntOffset.VisibilityThreshold)) { it / 3 } + fadeIn(VettaMotion.snappy()),
-                exit = slideOutVertically(VettaMotion.snappy(IntOffset.VisibilityThreshold)) { it / 3 } + fadeOut(VettaMotion.snappy()),
-            ) {
-                RemoteDesktopScreen(workState, viewerUrl, onClose = vm::closeRemote)
-            }
-            if (shareSkipped > 0) {
-                VettaInfoDialog(
-                    title = stringResource(Res.string.share_title),
-                    message = pluralStringResource(Res.plurals.share_skipped, shareSkipped, shareSkipped, PromptDraft.MAX_ATTACHMENTS),
-                    onDismiss = { shareSkipped = 0 },
-                )
-            }
-            if (state.showBoard) {
-                TaskBoardSheet(
-                    state = workState,
-                    actions = work,
-                    onOpenSession = vm::show,
-                    onNewSession = vm::startNewSession,
-                    onShowAllSessions = vm::showAllSessions,
-                    onRefresh = work::refresh,
-                    onDismiss = vm::closeBoard,
-                )
-            }
-            if (state.showPairing) {
-                PairingSheet(
-                    phase = workState.pairing,
-                    connecting = state.remoteConnecting,
-                    error = state.pairingError,
-                    onScanned = vm::connectDesktop,
-                    onManual = vm::connectDesktopManually,
-                    onCancelPairing = work::cancelPairing,
-                    onDismiss = vm::closePairing,
-                )
+        BoxWithConstraints(Modifier.fillMaxSize().background(MaterialTheme.vettaExtra.pageBackground)) {
+            val wide = maxWidth >= HomeBesideMinWidth && workState.paired
+            LaunchedEffect(wide) { beside = wide }
+            CompositionLocalProvider(LocalHomeBeside provides wide) {
+                if (wide) {
+                    // Wide enough for both: Home keeps its place on the left, the slot fills the rest.
+                    Row(Modifier.fillMaxSize()) {
+                        Box(Modifier.width(HomeBesideWidth).fillMaxHeight()) { HomeStack(state, workState, vm, work, viewerUrl) }
+                        VerticalDivider(color = MaterialTheme.vettaExtra.border)
+                        Box(Modifier.weight(1f).fillMaxHeight()) { SlotContent(state.slot, workState, vm, work) }
+                    }
+                } else {
+                    HomeDrawer(
+                        open = state.drawerOpen,
+                        enabled = workState.paired,
+                        onOpenChange = { if (it) vm.openDrawer() else vm.closeDrawer() },
+                        closableByDrag = state.homePath.isEmpty(),
+                        backProgress = backProgress,
+                        content = { SlotContent(state.slot, workState, vm, work) },
+                        drawer = { HomeStack(state, workState, vm, work, viewerUrl) },
+                    )
+                }
+                AnimatedVisibility(
+                    state.showRemote,
+                    enter = slideInVertically(VettaMotion.snappy(IntOffset.VisibilityThreshold)) { it / 3 } + fadeIn(VettaMotion.snappy()),
+                    exit = slideOutVertically(VettaMotion.snappy(IntOffset.VisibilityThreshold)) { it / 3 } + fadeOut(VettaMotion.snappy()),
+                ) {
+                    RemoteDesktopScreen(workState, viewerUrl, onClose = vm::closeRemote)
+                }
+                if (shareSkipped > 0) {
+                    VettaInfoDialog(
+                        title = stringResource(Res.string.share_title),
+                        message = pluralStringResource(Res.plurals.share_skipped, shareSkipped, shareSkipped, PromptDraft.MAX_ATTACHMENTS),
+                        onDismiss = { shareSkipped = 0 },
+                    )
+                }
+                if (state.showBoard) {
+                    TaskBoardSheet(
+                        state = workState,
+                        actions = work,
+                        onOpenSession = vm::show,
+                        onNewSession = vm::startNewSession,
+                        onShowAllSessions = vm::showAllSessions,
+                        onRefresh = work::refresh,
+                        onDismiss = vm::closeBoard,
+                    )
+                }
+                if (state.showPairing) {
+                    PairingSheet(
+                        phase = workState.pairing,
+                        connecting = state.remoteConnecting,
+                        error = state.pairingError,
+                        onScanned = vm::connectDesktop,
+                        onManual = vm::connectDesktopManually,
+                        onCancelPairing = work::cancelPairing,
+                        onDismiss = vm::closePairing,
+                    )
+                }
             }
         }
     }
@@ -313,6 +337,7 @@ private fun HomeStack(state: AppUiState, workState: MirrorState, vm: AppViewMode
                     onRefreshProjects = work::refreshProjects,
                     onReconnect = work::reconnect,
                     onPair = vm::openPairing,
+                    selected = (state.slot as? Slot.Session)?.let { workState.resolve(it.sessionId) }?.takeIf { LocalHomeBeside.current },
                 )
             is HomePage.Project ->
                 ProjectScreen(
