@@ -432,6 +432,10 @@ function createBrowserApi(_plugin: InstalledPlugin, capabilitySessionId: string)
 	const api = window.astravia.browser;
 
 	return {
+		/** 展示性跳转：只用于在系统浏览器里打开 URL。不走自动化能力模型，也不授予内容读取权限。 */
+		open(url) {
+			if (typeof window !== "undefined") window.open(url, "_blank", "noopener,noreferrer");
+		},
 		runtime: {
 			async status() {
 				return api.runtimeStatus(capabilitySessionId);
