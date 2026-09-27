@@ -16,14 +16,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Laptop
-import androidx.compose.material.icons.filled.QrCodeScanner
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -33,12 +28,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.role
-import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -76,7 +67,6 @@ import org.vetta.android.resources.work_settings_unpair_confirm
 import org.vetta.android.resources.work_settings_unpair_hint
 import org.vetta.android.ui.components.VettaConfirmDialog
 import org.vetta.android.ui.design.GlassCircleButton
-import org.vetta.android.ui.design.springClickable
 import org.vetta.android.ui.theme.vettaExtra
 import org.vetta.android.ui.work.describe
 import org.vetta.android.ui.work.linkDetail
@@ -234,87 +224,3 @@ private fun linkLine(state: MirrorState): String =
         LinkIndicator.Online -> listOfNotNull(stringResource(Res.string.work_settings_online), linkDetail(state.link.copy(rttMs = null))).joinToString(" · ")
         else -> describe(indicator)
     }
-
-/** A group of rows on one rounded card, like an iOS inset list section. */
-@Composable
-private fun Section(content: @Composable () -> Unit) {
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(MaterialTheme.colorScheme.surface)) { content() }
-}
-
-/** A section with a small title above and a footnote below. */
-@Composable
-private fun Titled(title: String?, footer: String? = null, content: @Composable () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        if (title != null) {
-            Text(title, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp))
-        }
-        content()
-        if (footer != null) {
-            Text(footer, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp))
-        }
-    }
-}
-
-@Composable
-private fun Divider() {
-    HorizontalDivider(Modifier.padding(start = 16.dp), color = MaterialTheme.vettaExtra.border)
-}
-
-@Composable
-private fun Value(label: String, value: String) {
-    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp)) {
-        Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-        Text(value, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-}
-
-@Composable
-private fun Action(label: String, tag: String, icon: Boolean = false, destructive: Boolean = false, onClick: () -> Unit) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .springClickable(pressedScale = 0.98f, highlight = RectangleShape, onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 14.dp)
-            .testTag(tag),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = if (destructive) Arrangement.Center else Arrangement.spacedBy(10.dp),
-    ) {
-        if (icon) Icon(Icons.Filled.QrCodeScanner, contentDescription = null, modifier = Modifier.size(20.dp))
-        Text(label, style = MaterialTheme.typography.bodyLarge, color = if (destructive) MaterialTheme.workColors.red else MaterialTheme.colorScheme.onSurface)
-    }
-}
-
-@Composable
-private fun Toggle(label: String, on: Boolean, tag: String, onChange: (Boolean) -> Unit) {
-    Row(
-        Modifier.fillMaxWidth().springClickable(pressedScale = 1f, role = Role.Switch) { onChange(!on) }.padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-        Switch(
-            checked = on,
-            onCheckedChange = onChange,
-            colors = SwitchDefaults.colors(checkedTrackColor = MaterialTheme.workColors.pill, checkedThumbColor = MaterialTheme.workColors.pillInk),
-            modifier = Modifier.testTag(tag),
-        )
-    }
-}
-
-/** One option of a single choice, ticked while chosen. */
-@Composable
-private fun Choice(label: String, chosen: Boolean, tag: String, onChoose: () -> Unit) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .springClickable(pressedScale = 0.98f, highlight = RectangleShape, role = Role.RadioButton, onClick = onChoose)
-            .semantics {
-                role = Role.RadioButton
-                selected = chosen
-            }.padding(horizontal = 16.dp, vertical = 14.dp)
-            .testTag(tag),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-        if (chosen) Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(20.dp))
-    }
-}
