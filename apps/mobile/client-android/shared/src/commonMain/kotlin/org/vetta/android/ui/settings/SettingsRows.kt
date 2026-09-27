@@ -60,8 +60,14 @@ internal fun Divider() {
 }
 
 @Composable
-internal fun Value(label: String, value: String) {
-    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp)) {
+internal fun Value(label: String, value: String, tag: String? = null, onClick: (() -> Unit)? = null) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .then(if (onClick != null) Modifier.springClickable(pressedScale = 0.98f, highlight = RectangleShape, onClick = onClick) else Modifier)
+            .padding(horizontal = 16.dp, vertical = 14.dp)
+            .then(if (tag != null) Modifier.testTag(tag) else Modifier),
+    ) {
         Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
         Text(value, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }

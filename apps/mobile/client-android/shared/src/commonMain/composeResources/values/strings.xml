@@ -134,6 +134,7 @@
     <string name="new_session_subtitle">What shall we build?</string>
     <string name="new_session_title">New Session</string>
     <string name="notify_channel_link">Background connection</string>
+    <string name="notify_channel_quiet">Session updates during quiet hours</string>
     <string name="notify_channel_sessions">Session updates</string>
     <string name="notify_failed">Stopped on an error</string>
     <string name="notify_finished">Finished</string>
@@ -143,6 +144,24 @@
     <string name="notify_reply">Reply</string>
     <string name="notify_reply_failed">Your answer didn’t reach the computer. Tap to answer in Vetta.</string>
     <string name="notify_reply_hint">Your answer</string>
+    <string name="notify_settings">Notifications</string>
+    <string name="notify_settings_failed">A session runs into an error</string>
+    <string name="notify_settings_finished">A session finishes</string>
+    <string name="notify_settings_kinds">Tell me when</string>
+    <string name="notify_settings_needs_link">Notifications arrive only while “Stay connected in the background” is on.</string>
+    <string name="notify_settings_needs_you">A session needs my decision</string>
+    <string name="notify_settings_projects">Projects</string>
+    <string name="notify_settings_projects_hint">Turn a project off to hear nothing from its sessions.</string>
+    <string name="notify_settings_quiet">Quiet hours</string>
+    <string name="notify_settings_quiet_from">From</string>
+    <string name="notify_settings_quiet_hint">Notifications during these hours still arrive, without sound or vibration, so nothing is missed in the morning.</string>
+    <string name="notify_settings_quiet_on">Use quiet hours</string>
+    <string name="notify_settings_quiet_to">To</string>
+    <string name="notify_settings_set_time">Set time</string>
+    <plurals name="notify_summary">
+        <item quantity="one">%1$d session has news</item>
+        <item quantity="other">%1$d sessions have news</item>
+    </plurals>
     <string name="pair_code_hint">It’s your computer only if both screens show the same digits</string>
     <string name="pair_connect">Connect</string>
     <string name="pair_connecting">Connecting to your computer…</string>

@@ -45,6 +45,7 @@ import org.vetta.android.resources.appearance
 import org.vetta.android.resources.back
 import org.vetta.android.resources.latency
 import org.vetta.android.resources.link_latency
+import org.vetta.android.resources.notify_settings
 import org.vetta.android.resources.remote_control
 import org.vetta.android.resources.settings_background_link
 import org.vetta.android.resources.settings_background_link_denied
@@ -90,6 +91,8 @@ fun SettingsScreen(
     onBackgroundLink: (Boolean) -> Unit = {},
     /** Opens the computer's screen; null where it cannot be reached that way. */
     onOpenRemote: (() -> Unit)? = null,
+    /** Opens the page choosing which session news becomes a notification. */
+    onOpenNotifications: () -> Unit = {},
 ) {
     var confirmUnpair by remember { mutableStateOf(false) }
     val preferences = state.preferences
@@ -172,6 +175,8 @@ fun SettingsScreen(
                     Toggle(stringResource(Res.string.settings_background_link), backgroundLink && access.granted, "settings.backgroundLink") { on ->
                         if (on) access.request() else onBackgroundLink(false)
                     }
+                    Divider()
+                    Action(stringResource(Res.string.notify_settings), "settings.notifications", onClick = onOpenNotifications)
                 }
             }
 

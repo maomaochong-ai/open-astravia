@@ -126,6 +126,7 @@
     <string name="new_session_subtitle">今天想做点什么？</string>
     <string name="new_session_title">新会话</string>
     <string name="notify_channel_link">后台连接</string>
+    <string name="notify_channel_quiet">会话动态（免打扰时段）</string>
     <string name="notify_channel_sessions">会话进展</string>
     <string name="notify_failed">出错停止</string>
     <string name="notify_finished">已完成</string>
@@ -135,6 +136,23 @@
     <string name="notify_reply">回复</string>
     <string name="notify_reply_failed">回答没能送到电脑，点此在 Vetta 里作答。</string>
     <string name="notify_reply_hint">你的回答</string>
+    <string name="notify_settings">通知</string>
+    <string name="notify_settings_failed">会话出错</string>
+    <string name="notify_settings_finished">会话完成</string>
+    <string name="notify_settings_kinds">以下情况通知我</string>
+    <string name="notify_settings_needs_link">需要开启「后台保持连接」才会收到通知。</string>
+    <string name="notify_settings_needs_you">会话等我决策</string>
+    <string name="notify_settings_projects">项目</string>
+    <string name="notify_settings_projects_hint">关掉某个项目，就不再收到它的会话通知。</string>
+    <string name="notify_settings_quiet">免打扰时段</string>
+    <string name="notify_settings_quiet_from">开始</string>
+    <string name="notify_settings_quiet_hint">这段时间的通知照常送达，只是不响铃不振动，醒来也不会错过。</string>
+    <string name="notify_settings_quiet_on">开启免打扰时段</string>
+    <string name="notify_settings_quiet_to">结束</string>
+    <string name="notify_settings_set_time">设置时间</string>
+    <plurals name="notify_summary">
+        <item quantity="other">%1$d 个会话有新动态</item>
+    </plurals>
     <string name="pair_code_hint">两边显示的数字一致，才是你的电脑</string>
     <string name="pair_connect">连接</string>
     <string name="pair_connecting">正在连接电脑…</string>

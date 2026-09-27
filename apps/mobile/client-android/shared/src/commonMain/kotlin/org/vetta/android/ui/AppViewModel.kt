@@ -15,6 +15,7 @@ import org.vetta.android.app.ThemeMode
 import org.vetta.android.domain.remote.pairing.PairingFailure
 import org.vetta.android.domain.remote.pairing.PairingPhase
 import org.vetta.android.domain.remote.parsePairingInvite
+import org.vetta.android.domain.work.NotificationPrefs
 import org.vetta.android.resources.Res
 import org.vetta.android.resources.invalid_pairing_invite
 import org.vetta.android.resources.invalid_pairing_invite_hint
@@ -48,6 +49,8 @@ data class AppUiState(
     val themeMode: ThemeMode = ThemeMode.Light,
     /** Keeping the desktop link up in the background to notify about sessions. */
     val backgroundLink: Boolean = false,
+    /** Which session news becomes a notification. */
+    val notifications: NotificationPrefs = NotificationPrefs(),
     /** A pairing is under way. */
     val remoteConnecting: Boolean = false,
     /** Why the last pairing failed, shown on the pairing sheet until the next attempt. */
@@ -75,6 +78,9 @@ class AppViewModel(
         viewModelScope.launch {
             container.preferences.backgroundLink.collect { on -> _state.update { it.copy(backgroundLink = on) } }
         }
+        viewModelScope.launch {
+            container.preferences.notifications.collect { prefs -> _state.update { it.copy(notifications = prefs) } }
+        }
         // Nothing left to show (never paired): back to the start. An unpairing keeps the
         // sessions readable, so the screen the user is on stays.
         viewModelScope.launch {
@@ -86,6 +92,8 @@ class AppViewModel(
     fun setThemeMode(mode: ThemeMode) = container.preferences.setThemeMode(mode)
 
     fun setBackgroundLink(enabled: Boolean) = container.preferences.setBackgroundLink(enabled)
+
+    fun setNotifications(update: (NotificationPrefs) -> NotificationPrefs) = container.preferences.setNotifications(update)
 
     // Drawer and slot
 

@@ -71,6 +71,7 @@ import org.vetta.android.ui.pairing.PairingSheet
 import org.vetta.android.ui.pairing.UnlinkedView
 import org.vetta.android.ui.pairing.UnpairedView
 import org.vetta.android.ui.remote.RemoteDesktopScreen
+import org.vetta.android.ui.settings.NotificationSettingsScreen
 import org.vetta.android.ui.settings.SettingsScreen
 import org.vetta.android.ui.shell.HomeBesideMinWidth
 import org.vetta.android.ui.shell.HomeBesideWidth
@@ -399,6 +400,15 @@ private fun HomeStack(state: AppUiState, workState: MirrorState, vm: AppViewMode
                     backgroundLink = state.backgroundLink,
                     onBackgroundLink = vm::setBackgroundLink,
                     onOpenRemote = viewerUrl?.let { vm::openRemote },
+                    onOpenNotifications = { vm.push(HomePage.Notifications) },
+                )
+            HomePage.Notifications ->
+                NotificationSettingsScreen(
+                    prefs = state.notifications,
+                    projects = workState.projects,
+                    backgroundLink = state.backgroundLink,
+                    onChange = vm::setNotifications,
+                    onBack = vm::pop,
                 )
         }
     }

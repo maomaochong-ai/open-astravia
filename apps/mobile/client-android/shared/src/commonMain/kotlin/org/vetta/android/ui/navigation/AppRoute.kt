@@ -14,4 +14,7 @@ sealed interface HomePage {
     data class Project(val cwd: String) : HomePage
 
     data object Settings : HomePage
+
+    /** Which session news becomes a notification; opened from Settings. */
+    data object Notifications : HomePage
 }
