@@ -202,6 +202,8 @@ jobs:
           ASTRAVIA_UPDATE_URL: ${{ vars.ASTRAVIA_UPDATE_URL }}
           ASTRAVIA_UPDATE_GITHUB_OWNER: ${{ github.repository_owner }}
           ASTRAVIA_UPDATE_GITHUB_REPO: ${{ github.event.repository.name }}
+          # dbx-mcp 当前只支持 win32-x64 / darwin-arm64 / darwin-x64，linux 跳过。
+          ASTRAVIA_SKIP_DBX_MCP: ${{ matrix.platform == 'linux' && '1' || '0' }}
         run: bun run ${{ matrix.command }}
 
       - name: Verify platform updater artifacts

@@ -74,8 +74,12 @@ const PLATFORMS = {
 const TARGET_PLATFORM = process.env.ASTRAVIA_VENDOR_PLATFORM ?? `${process.platform}-${process.arch}`;
 const platform = PLATFORMS[TARGET_PLATFORM];
 if (!platform) {
+	if (TARGET_PLATFORM.startsWith("linux")) {
+		console.log(`[dbx-mcp] linux not supported, skipping dbx-mcp fetch`);
+		process.exit(0);
+	}
 	console.error(
-		`[dbx-mcp] unsupported platform ${TARGET_PLATFORM}; supported: ${Object.keys(PLATFORMS).join(", ")} (linux 待 fork CI 接入)`,
+		`[dbx-mcp] unsupported platform ${TARGET_PLATFORM}; supported: ${Object.keys(PLATFORMS).join(", ")}`,
 	);
 	process.exit(1);
 }
