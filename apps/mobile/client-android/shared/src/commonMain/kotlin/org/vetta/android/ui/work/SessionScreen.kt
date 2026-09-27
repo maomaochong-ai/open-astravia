@@ -279,7 +279,9 @@ private fun ModelMenu(
     onChoose: (ModelChoice) -> Unit,
 ) {
     val sessionState = state.transcript(sessionId).sessionState
-    val options = state.models[sessionId].orEmpty()
+    // Every session reads the desktop's one registry: New Session's copy stands in until
+    // this chat's own list arrives, or when asking for it failed.
+    val options = state.models[sessionId]?.takeIf { it.isNotEmpty() } ?: state.newSessionModels
     val current = options.firstOrNull { it.key == sessionState.modelKey }
     var picking by remember { mutableStateOf(false) }
     // A session New Session is still starting is titled by its prompt.
@@ -308,8 +310,8 @@ private fun ModelMenu(
 @Composable
 private fun modelDetail(state: RemoteSessionState, current: RemoteModelOption?, desktopName: String?): String {
     val name = current?.name ?: state.model ?: desktopName.orEmpty()
-    val level = state.thinkingLevel
-    return if (level != null && current != null && current.thinkingLevels.isNotEmpty()) "$name · ${levelLabel(level)}" else name
+    val level = ModelChoice.shownLevel(state.thinkingLevel, current)
+    return if (level != null) "$name · ${levelLabel(level)}" else name
 }
 
 @Composable

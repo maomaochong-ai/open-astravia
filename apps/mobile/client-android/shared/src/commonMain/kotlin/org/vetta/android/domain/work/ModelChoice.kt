@@ -44,6 +44,13 @@ data class ModelChoice(
     }
 
     companion object {
+        /**
+         * The level a chat's title shows: the one the desktop reports, unless the model is
+         * known to have no thinking control. Not knowing the model (its list not loaded yet,
+         * or a request for it failed) is no reason to hide the level the desktop runs with.
+         */
+        fun shownLevel(level: String?, model: RemoteModelOption?): String? = level?.takeUnless { model != null && model.thinkingLevels.isEmpty() }
+
         /** Models by provider, providers in the order the desktop lists them. */
         fun groups(options: List<RemoteModelOption>): List<ModelGroup> =
             options.groupBy { it.provider }.map { (provider, models) -> ModelGroup(provider, models) }

@@ -121,6 +121,14 @@ class ModelChoiceTest {
         )
 
     @Test
+    fun theTitleShowsTheDesktopsLevelEvenBeforeTheModelListArrives() {
+        assertEquals("low", ModelChoice.shownLevel("low", null), "the list failed or is still loading")
+        assertEquals("low", ModelChoice.shownLevel("low", options[0]))
+        assertEquals(null, ModelChoice.shownLevel("off", options[2]), "a model without thinking control shows none")
+        assertEquals(null, ModelChoice.shownLevel(null, options[0]))
+    }
+
+    @Test
     fun offersTheChosenModelsLevelsAndNoneForTheDefault() {
         assertTrue(ModelChoice().levels(options).isEmpty())
         assertEquals(listOf("none", "high", "max"), ModelChoice("zai/glm").levels(options))
