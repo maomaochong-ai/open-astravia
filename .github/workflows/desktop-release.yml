@@ -201,13 +201,12 @@ jobs:
       - name: Build updater artifacts
         working-directory: packages/desktop-app
         env:
-          # provider=github：0.0.1 已在用户机器上的 build 就是 github，
-          # 保持一致才能让 0.0.1 → 0.0.2 自动更新不断链。
-          # publish job 会把同一批产物同步到 R2 的 app/v${VERSION}/ 和 app/latest/，
-          # 后续版本若要切 generic provider，URL 用版本无关的 app/latest/ 即可。
-          ASTRAVIA_UPDATE_PROVIDER: github
-          ASTRAVIA_UPDATE_GITHUB_OWNER: ${{ github.repository_owner }}
-          ASTRAVIA_UPDATE_GITHUB_REPO: ${{ github.event.repository.name }}
+          # provider=generic：直接从 Cloudflare R2 查更新元数据。
+          # URL 必须是版本无关的 app/latest/ —— 编译进 build 的 feed URL
+          # 永远指向 latest 指针目录，每次发版 publish job 自动覆盖 latest 内容。
+          # 版本特定归档在 app/v${VERSION}/ 里保留，供回滚和差异下载用。
+          ASTRAVIA_UPDATE_PROVIDER: generic
+          ASTRAVIA_UPDATE_URL: https://dl.astravia.dev/app/latest
           # dbx-mcp 当前只支持 win32-x64 / darwin-arm64 / darwin-x64，linux 跳过。
           ASTRAVIA_SKIP_DBX_MCP: ${{ matrix.platform == 'linux' && '1' || '0' }}
         run: bun run ${{ matrix.command }}
