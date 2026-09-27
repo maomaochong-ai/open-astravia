@@ -32,6 +32,7 @@ class AppContainer(
     val mirror: DesktopMirror = DesktopMirror(defaultMirrorPlatform(preferences, scope), scope),
 ) {
     private val _visible = MutableStateFlow(false)
+    private var screensOnView = 0
 
     /** Whether the app is on screen; notifications are only for when it is not. */
     val visible: StateFlow<Boolean> = _visible.asStateFlow()
@@ -45,10 +46,22 @@ class AppContainer(
         }
     }
 
-    /** The app came on screen or went out of sight. */
-    fun setVisible(value: Boolean) {
-        _visible.value = value
-        if (!value) mirror.saveProgress()
+    /**
+     * A screen of the app came into view. Counted, not flagged: a shortcut or a notification
+     * can open a second screen, which starts before the one it covers stops, and that stop
+     * must not make the app count as gone while the new screen is showing.
+     */
+    fun screenStarted() {
+        screensOnView += 1
+        _visible.value = true
+    }
+
+    /** A screen of the app went out of view; the app is out of sight once none is left. */
+    fun screenStopped() {
+        screensOnView = (screensOnView - 1).coerceAtLeast(0)
+        if (screensOnView > 0) return
+        _visible.value = false
+        mirror.saveProgress()
     }
 
     companion object {

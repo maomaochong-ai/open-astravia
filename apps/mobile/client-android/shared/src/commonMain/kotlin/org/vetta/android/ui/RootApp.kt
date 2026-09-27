@@ -150,8 +150,8 @@ fun RootApp(
         val observer =
             LifecycleEventObserver { _, event ->
                 when (event) {
-                    Lifecycle.Event.ON_START -> container.setVisible(true)
-                    Lifecycle.Event.ON_STOP -> container.setVisible(false)
+                    Lifecycle.Event.ON_START -> container.screenStarted()
+                    Lifecycle.Event.ON_STOP -> container.screenStopped()
                     else -> Unit
                 }
             }
