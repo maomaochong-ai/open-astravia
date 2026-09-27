@@ -2,6 +2,7 @@ package org.vetta.android.domain.work
 
 import com.russhwolf.settings.Settings
 import com.russhwolf.settings.set
+import kotlin.random.Random
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
@@ -13,9 +14,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.MapSerializer
+import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -36,9 +39,9 @@ import org.vetta.android.domain.remote.RemoteSessionSummary
 import org.vetta.android.domain.remote.TranscriptAction
 import org.vetta.android.domain.remote.TranscriptReducer
 import org.vetta.android.domain.remote.TranscriptState
-import org.vetta.android.domain.remote.desktopViewerUrl
 import org.vetta.android.domain.remote.connection.NoopRemoteLogger
 import org.vetta.android.domain.remote.connection.RemoteLogger
+import org.vetta.android.domain.remote.desktopViewerUrl
 import org.vetta.android.domain.remote.link.DesktopLink
 import org.vetta.android.domain.remote.link.DesktopLinkOptions
 import org.vetta.android.domain.remote.link.LinkOfflineException
@@ -56,7 +59,6 @@ import org.vetta.android.domain.remote.protocol.RemoteCrypto
 import org.vetta.android.domain.remote.protocol.RemoteEvent
 import org.vetta.android.domain.remote.protocol.RemoteEventName
 import org.vetta.android.domain.remote.protocol.RemoteRequestMethod
-import kotlin.random.Random
 
 @Serializable
 enum class ConfirmPolicy {
@@ -188,6 +190,7 @@ class DesktopMirror(
     private var sequenceSave: Job? = null
     private var active = true
     private var newSessionModelsLoad: Deferred<Unit>? = null
+    private var recentSync: Job? = null
 
     /** The link, for the few callers that speak the protocol directly. */
     val currentLink: DesktopLink?
@@ -505,12 +508,68 @@ class DesktopMirror(
             // Ready before New Session opens. Only when it is cheap or there is nothing yet:
             // borrowing a session that is not open makes the desktop load it.
             if (_state.value.newSessionModels.isEmpty() || list.any { it.live }) scope.launch { loadNewSessionModels() }
+            launchRecentSync()
             refreshProjects()
         } catch (_: LinkOfflineException) {
             // Offline: what was loaded or cached stays on screen.
         } catch (error: Throwable) {
             reportError(error)
         }
+    }
+
+    private fun launchRecentSync() {
+        if (recentSync?.isActive == true) return
+        recentSync = scope.launch { syncRecent() }
+    }
+
+    /**
+     * Keeps the whole chat of the most recent sessions on the phone, not only those opened
+     * here, so they read in full offline and after an unpairing. Runs in the background once
+     * the list is fresh, one session at a time, and fetches a session again only after it
+     * changed on the desktop. `session.history` reads the saved chat without loading the
+     * session on the desktop. Sessions still at work wait for their turn to end; one on
+     * screen keeps its own copy up to date.
+     */
+    private suspend fun syncRecent() {
+        val key = desktopKey ?: return
+        val syncedKey = SYNCED_KEY_PREFIX + key
+        val synced =
+            platform.settings.getStringOrNull(syncedKey)
+                ?.let { runCatching { json.decodeFromString(syncedSerializer, it) }.getOrNull() }
+                .orEmpty()
+                .toMutableMap()
+        val due =
+            _state.value.sessions
+                .sortedByDescending { it.updatedAt }
+                .take(RECENT_SYNC_LIMIT)
+                .filter { session ->
+                    SessionStatusGroup.of(session.status) != SessionStatusGroup.Processing &&
+                        session.status != RemoteSessionStatus.WaitingInput &&
+                        synced[session.id] != session.updatedAt &&
+                        _state.value.transcripts[session.id]?.let { it.loaded && !it.stale } != true
+                }
+        for (session in due) {
+            if (desktopKey != key) return
+            try {
+                val history = requireLink().request(RemoteRequestMethod.SessionHistory, sessionId = session.id)
+                val entries = RemoteApi.readTranscriptEntries(history)
+                val state = RemoteApi.readSessionState((history as? JsonObject)?.get("state"))
+                val items = reducer.reduce(TranscriptState.Empty, TranscriptAction.History(entries, state)).items
+                if (desktopKey != key) return
+                platform.cache.saveTranscript(key, session.id, items)
+                synced[session.id] = session.updatedAt
+            } catch (error: CancellationException) {
+                throw error
+            } catch (_: LinkOfflineException) {
+                break
+            } catch (error: Throwable) {
+                // One session that cannot be read does not stop the others.
+                platform.logger.info("recent session sync skipped", mapOf("error" to error::class.simpleName))
+            }
+        }
+        // Only sessions still listed are remembered, so the record does not grow forever.
+        val listed = _state.value.sessions.mapTo(HashSet()) { it.id }
+        platform.settings[syncedKey] = json.encodeToString(syncedSerializer, synced.filterKeys { it in listed })
     }
 
     suspend fun refreshProjects() {
@@ -857,9 +916,16 @@ class DesktopMirror(
         const val UNLINKED_KEY = "vetta.unlinkedDesktop"
         const val PROJECTS_KEY_PREFIX = "vetta.projects."
         const val MODELS_KEY_PREFIX = "vetta.models."
+
+        /** Per desktop: each session's `updatedAt` when its chat was last synced to the phone. */
+        const val SYNCED_KEY_PREFIX = "vetta.synced."
         const val LAST_MODEL_KEY_PREFIX = "vetta.lastModel."
 
         private const val SESSION_LIST_LIMIT = 200
+
+        /** How many of the most recent sessions keep their whole chat on the phone. */
+        const val RECENT_SYNC_LIMIT = 20
+        private val syncedSerializer = MapSerializer(String.serializer(), Long.serializer())
         private const val TRANSCRIPT_SAVE_DELAY_MS = 400L
         private const val SEQUENCE_SAVE_DELAY_MS = 2_000L
         private const val TITLE_FALLBACK_LENGTH = 60

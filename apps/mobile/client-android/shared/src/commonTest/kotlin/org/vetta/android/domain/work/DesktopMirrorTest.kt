@@ -683,6 +683,30 @@ class DesktopMirrorTest {
         }
 
     @Test
+    fun keepsTheRecentChatsOnThePhoneWithoutOpeningThem() =
+        runTest {
+            val desktop = scriptedDesktop(moreSessions = listOf(session("s3", "上周的方案", 900)))
+            val device = Device()
+            val mirror = mirror(desktop, device)
+            assertTrue(mirror.pairWithCode(desktop.invite()))
+            assertTrue(eventually { device.cache.loadTranscript(desktop.identityKey, "s1") != null && device.cache.loadTranscript(desktop.identityKey, "s3") != null })
+            assertTrue(desktop.requests.none { it.method == RemoteRequestMethod.SessionOpen }, "reading the saved chat does not load the session on the desktop")
+
+            // Nothing changed: nothing is fetched again.
+            val fetched = desktop.requests.count { it.method == RemoteRequestMethod.SessionHistory }
+            mirror.refreshSessions()
+            advanceTimeBy(1_000)
+            assertEquals(fetched, desktop.requests.count { it.method == RemoteRequestMethod.SessionHistory })
+
+            // Offline, a chat never opened here still reads in full.
+            desktop.reachable = false
+            desktop.dropConnections()
+            assertTrue(eventually { !mirror.state.value.online })
+            mirror.openSession("s3")
+            assertTrue(mirror.state.value.transcript("s3").items.isNotEmpty())
+        }
+
+    @Test
     fun aManualPairingIsKeptAndConnectsOverTheLocalNetwork() =
         runTest {
             val desktop = scriptedDesktop()
