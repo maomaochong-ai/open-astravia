@@ -144,8 +144,14 @@ export class DesktopRemoteAccessManager {
 			{
 				handleRequest: (_deviceId, request) => this.requireMirror().handleRequest(request),
 				toRemoteError,
-				onLinkOnline: (deviceId, link) => void this.handleLinkOnline(deviceId, link.channel, link.connection),
-				onDeviceOnline: (deviceId, link) => void this.handleDeviceOnline(deviceId, link.channel),
+				onLinkOnline: (deviceId, link) =>
+					void this.handleLinkOnline(deviceId, link.channel, link.connection).catch((error: unknown) =>
+						log.warn("remote link online handling failed", { error: describe(error) }),
+					),
+				onDeviceOnline: (deviceId, link) =>
+					void this.handleDeviceOnline(deviceId, link.channel).catch((error: unknown) =>
+						log.warn("remote device online handling failed", { error: describe(error) }),
+					),
 				onDeviceOffline: () => this.handleDeviceOffline(),
 				onLinksChanged: () => this.stateChanged(),
 			},
@@ -560,8 +566,13 @@ export class DesktopRemoteAccessManager {
 		if (!device) return;
 		const peerKey = connection.getSnapshot().peerIdentityKey;
 		if (!device.mobileIdentityKey && peerKey) await this.claim(deviceId, peerKey, undefined);
-		await this.options.store.patchDevice(deviceId, { lastSeenAt: this.now() });
-		this.config = await this.options.store.read();
+		// Only a "last seen" time: failing to save it must not keep the phone from being served.
+		try {
+			await this.options.store.patchDevice(deviceId, { lastSeenAt: this.now() });
+			this.config = await this.options.store.read();
+		} catch (error) {
+			log.warn("remote device last-seen save failed", { pairingId: deviceId.slice(0, 6), error: describe(error) });
+		}
 		await this.hub.emit(deviceId, "device.status", this.deviceStatus()).catch(() => undefined);
 		log.info("remote link online", { pairingId: deviceId.slice(0, 6), channel });
 		// The screen may have gone while this link was reconnecting; the phone never counted as

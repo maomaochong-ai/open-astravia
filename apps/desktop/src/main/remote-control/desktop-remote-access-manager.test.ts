@@ -20,9 +20,11 @@ function harness(initial?: DesktopConfig["remoteControl"], options: { hubGraceMs
 		remoteControl: initial,
 	} as unknown as DesktopConfig;
 	const vault = new Map<string, string>();
+	let writesFail = false;
 	const store = new RemoteDeviceStore({
 		readConfig: async () => structuredClone(config),
 		writeConfig: async (next) => {
+			if (writesFail) throw Object.assign(new Error("EPERM: operation not permitted, rename"), { code: "EPERM" });
 			config = structuredClone(next);
 		},
 		vault: {
@@ -132,6 +134,10 @@ function harness(initial?: DesktopConfig["remoteControl"], options: { hubGraceMs
 		mirrors,
 		desktopHosts,
 		readConfig: () => config,
+		/** Makes saving the desktop config fail, as a locked file on Windows does. */
+		failWrites: (fail: boolean) => {
+			writesFail = fail;
+		},
 	};
 }
 
@@ -385,6 +391,30 @@ describe("DesktopRemoteAccessManager", () => {
 		await settle();
 		expect(desktopHosts).toHaveLength(2);
 		expect(desktopHosts[1]?.stopped).toBe(false);
+		await manager.shutdown();
+	});
+
+	it("still serves a phone whose arrival cannot be saved", async () => {
+		const pairingId = "a".repeat(24);
+		const phoneKey = "k".repeat(43);
+		const { manager, relayLinks, store, failWrites } = harness({
+			cloudEnabled: true,
+			devices: [{ id: pairingId, name: "Pixel", mobileSecretHash: "h", mobileIdentityKey: phoneKey, createdAt: 1 }],
+		});
+		store.putRelaySecret(pairingId, "relay-secret");
+		await manager.restore();
+		failWrites(true);
+		const delivered: string[] = [];
+		const connection = {
+			onEvent: () => () => undefined,
+			getSnapshot: () => ({ state: "online", peerIdentityKey: phoneKey }),
+			deliverEvent: async (event: { name: string }) => {
+				delivered.push(event.name);
+			},
+			close: async () => undefined,
+		} as unknown as RemoteConnection;
+		relayLinks[0]?.options.onConnection(connection);
+		await vi.waitFor(() => expect(delivered).toContain("device.status"));
 		await manager.shutdown();
 	});
 
