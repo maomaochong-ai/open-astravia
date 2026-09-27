@@ -1,6 +1,62 @@
-import { closeSync, existsSync, fsyncSync, mkdirSync, openSync, renameSync, writeSync } from "node:fs";
-import { mkdir, open, rename } from "node:fs/promises";
+import { closeSync, existsSync, fsyncSync, mkdirSync, openSync, renameSync, rmSync, writeSync } from "node:fs";
+import { mkdir, open, rename, rm } from "node:fs/promises";
 import { dirname } from "node:path";
+
+/**
+ * On Windows a rename onto a file fails with EPERM, EACCES or EBUSY while anything
+ * holds that file open: an antivirus or indexer scanning what was just written, a
+ * reader mid-read. Such holds last moments, so the rename is tried again a few times.
+ */
+const RETRYABLE_RENAME_CODES = new Set(["EPERM", "EACCES", "EBUSY"]);
+const RENAME_ATTEMPTS = 10;
+const RENAME_BACKOFF_MS = 10;
+
+let tempSequence = 0;
+
+/** A temp name unique to this write, so concurrent writes to one path never share it. */
+function tempPathFor(path: string): string {
+	tempSequence += 1;
+	return `${path}.${process.pid}.${tempSequence}.tmp`;
+}
+
+function isRetryableRename(error: unknown): boolean {
+	const code = (error as NodeJS.ErrnoException | undefined)?.code;
+	return code !== undefined && RETRYABLE_RENAME_CODES.has(code);
+}
+
+function sleepSync(ms: number): void {
+	Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+function renameWithRetry(from: string, to: string): void {
+	for (let attempt = 1; ; attempt += 1) {
+		try {
+			renameSync(from, to);
+			return;
+		} catch (error) {
+			if (!isRetryableRename(error) || attempt >= RENAME_ATTEMPTS) {
+				rmSync(from, { force: true });
+				throw error;
+			}
+			sleepSync(attempt * RENAME_BACKOFF_MS);
+		}
+	}
+}
+
+async function renameWithRetryAsync(from: string, to: string): Promise<void> {
+	for (let attempt = 1; ; attempt += 1) {
+		try {
+			await rename(from, to);
+			return;
+		} catch (error) {
+			if (!isRetryableRename(error) || attempt >= RENAME_ATTEMPTS) {
+				await rm(from, { force: true });
+				throw error;
+			}
+			await new Promise((resolve) => setTimeout(resolve, attempt * RENAME_BACKOFF_MS));
+		}
+	}
+}
 
 /**
  * Atomically write a string to disk.
@@ -8,8 +64,9 @@ import { dirname } from "node:path";
  * Uses the standard write-temp → fsync → rename pattern. A crash, power loss,
  * or process kill at any point cannot leave a partial / corrupt target file:
  * either the rename has happened (new content) or it hasn't (old content).
- * The temporary file may be left behind on crash and is cleaned up by future
- * writes (the pid suffix avoids collisions across concurrent writers).
+ * The temporary file may be left behind on crash; each write uses its own
+ * (pid and sequence suffix), so concurrent writers never collide. A rename the
+ * platform refuses for a moment (see RETRYABLE_RENAME_CODES) is tried again.
  *
  * The parent directory is created if it does not exist.
  */
@@ -17,7 +74,7 @@ export function atomicWriteFile(path: string, data: string): void {
 	const dir = dirname(path);
 	if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
 
-	const tmpPath = `${path}.${process.pid}.tmp`;
+	const tmpPath = tempPathFor(path);
 	const fd = openSync(tmpPath, "w");
 	try {
 		writeSync(fd, data);
@@ -25,7 +82,7 @@ export function atomicWriteFile(path: string, data: string): void {
 	} finally {
 		closeSync(fd);
 	}
-	renameSync(tmpPath, path);
+	renameWithRetry(tmpPath, path);
 }
 
 /**
@@ -42,7 +99,7 @@ export async function atomicWriteFileAsync(path: string, data: string): Promise<
 	const dir = dirname(path);
 	await mkdir(dir, { recursive: true });
 
-	const tmpPath = `${path}.${process.pid}.tmp`;
+	const tmpPath = tempPathFor(path);
 	const file = await open(tmpPath, "w");
 	try {
 		await file.writeFile(data);
@@ -50,7 +107,7 @@ export async function atomicWriteFileAsync(path: string, data: string): Promise<
 	} finally {
 		await file.close();
 	}
-	await rename(tmpPath, path);
+	await renameWithRetryAsync(tmpPath, path);
 }
 
 export async function atomicWriteJSONAsync(path: string, value: unknown): Promise<void> {
