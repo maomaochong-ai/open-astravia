@@ -173,6 +173,7 @@ actual fun RemoteDesktopSurface(
                 AndroidView(
                     modifier = Modifier.matchParentSize(),
                     factory = { session.createRenderer() },
+                    onRelease = session::releaseRenderer,
                     // The picture zooms and pans on the view itself; a SurfaceView ignores Compose's layer transforms.
                     update = { renderer ->
                         renderer.scaleX = viewport.zoom

@@ -142,6 +142,17 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
         controlTransport?.channelClosed("remote desktop session stopped")
     }
 
+    /**
+     * The view showing the picture is gone (the screen closed or moved to another session):
+     * it stops taking frames and lets go of its EGL surface. Left attached, each closed
+     * screen kept a renderer decoding into nothing for as long as the session lived.
+     */
+    fun releaseRenderer(view: SurfaceViewRenderer) {
+        remoteVideoTrack?.removeSink(view)
+        if (renderer === view) renderer = null
+        view.release()
+    }
+
     fun pauseRenderer() = renderer?.pauseVideo()
 
     fun resumeRenderer() = renderer?.disableFpsReduction()
