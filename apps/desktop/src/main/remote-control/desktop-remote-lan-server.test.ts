@@ -88,7 +88,7 @@ describe("DesktopRemoteLanServer", () => {
 			journalFor: () => journal,
 		});
 		servers.push(server);
-		const port = await server.start(49_300 + Math.floor(Math.random() * 100));
+		const port = await server.start(0);
 
 		const { connection, identity } = phone(lanControlUrl(`127.0.0.1:${port}`, pairingId), {
 			pairingSecret: mobileSecret,
@@ -128,7 +128,7 @@ describe("DesktopRemoteLanServer", () => {
 			journalFor: () => new RemoteEventJournal(),
 		});
 		servers.push(server);
-		const port = await server.start(49_500 + Math.floor(Math.random() * 100));
+		const port = await server.start(0);
 		const { connection } = phone(lanControlUrl(`127.0.0.1:${port}`, pairingId), { pairingSecret: "wrong" });
 		await expect(connection.connect()).rejects.toThrow();
 		const unknown = phone(lanControlUrl(`127.0.0.1:${port}`, randomToken(24)), { pairingSecret: "right" });
@@ -155,7 +155,7 @@ describe("DesktopRemoteLanServer", () => {
 			journalFor: () => new RemoteEventJournal(),
 		});
 		servers.push(server);
-		const port = await server.start(49_700 + Math.floor(Math.random() * 100));
+		const port = await server.start(0);
 		const { connection } = phone(`ws://127.0.0.1:${port}${LAN_MANUAL_PATH}`, { manual: true });
 		await connection.connect();
 		await waitFor(() => connection.getSnapshot().state === "pending_approval");

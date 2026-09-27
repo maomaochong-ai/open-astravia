@@ -226,7 +226,8 @@ async function listenWithFallback(server: Server, preferredPort: number): Promis
 				server.once("listening", onListening);
 				server.listen(port, "0.0.0.0");
 			});
-			return port;
+			const address = server.address();
+			return typeof address === "object" && address !== null ? address.port : port;
 		} catch (error) {
 			lastError = error;
 			if (!isAddressInUse(error)) break;
