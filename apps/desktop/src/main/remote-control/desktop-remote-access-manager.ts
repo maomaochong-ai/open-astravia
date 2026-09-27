@@ -124,6 +124,7 @@ export class DesktopRemoteAccessManager {
 	private readonly relayLinks = new Map<string, Pick<DesktopRemoteRelayLink, "start" | "stop">>();
 	private readonly desktopHosts = new Map<string, DesktopRemoteDesktopHostHandle>();
 	private readonly desktopHostStarts = new Set<string>();
+	private readonly desktopHostStops = new Map<string, Promise<void>>();
 	private readonly approvals = new Map<string, PendingApproval>();
 	private readonly lanLinks = new Map<string, Set<() => void>>();
 	private currentInvite:
@@ -563,6 +564,9 @@ export class DesktopRemoteAccessManager {
 		this.config = await this.options.store.read();
 		await this.hub.emit(deviceId, "device.status", this.deviceStatus()).catch(() => undefined);
 		log.info("remote link online", { pairingId: deviceId.slice(0, 6), channel });
+		// The screen may have gone while this link was reconnecting; the phone never counted as
+		// offline (the grace period covers a brief absence), so nothing else would bring it back.
+		if (channel !== "p2p") void this.startDesktopHost(deviceId);
 	}
 
 	private async handleDeviceOnline(deviceId: string, channel: RemoteChannel): Promise<void> {
@@ -600,6 +604,8 @@ export class DesktopRemoteAccessManager {
 		if (this.desktopHosts.has(deviceId) || this.desktopHostStarts.has(deviceId)) return;
 		this.desktopHostStarts.add(deviceId);
 		try {
+			// A host still stopping would be handed back instead of a new one.
+			await this.desktopHostStops.get(deviceId)?.catch(() => undefined);
 			const host = await controller.start({ relayBaseUrl, pairingId: deviceId, desktopSecret });
 			if (!this.hub.isOnline(deviceId)) {
 				await host.stop();
@@ -635,7 +641,10 @@ export class DesktopRemoteAccessManager {
 				unsubscribe();
 				detach();
 				if (this.desktopHosts.get(deviceId) === host) this.desktopHosts.delete(deviceId);
-				void host.stop().finally(() => {
+				const stopped = host.stop();
+				this.desktopHostStops.set(deviceId, stopped);
+				void stopped.finally(() => {
+					if (this.desktopHostStops.get(deviceId) === stopped) this.desktopHostStops.delete(deviceId);
 					if (this.hub.onlineChannels(deviceId).some((activeChannel) => activeChannel !== "p2p")) {
 						void this.startDesktopHost(deviceId);
 					}

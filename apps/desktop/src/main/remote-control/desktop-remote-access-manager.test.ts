@@ -13,7 +13,7 @@ function key(ref: CredentialRef): string {
 	return `${ref.namespace}/${ref.ownerId}/${ref.name}`;
 }
 
-function harness(initial?: DesktopConfig["remoteControl"]) {
+function harness(initial?: DesktopConfig["remoteControl"], options: { hubGraceMs?: number } = {}) {
 	let config: DesktopConfig = {
 		projects: [],
 		archivedProjects: [],
@@ -120,7 +120,7 @@ function harness(initial?: DesktopConfig["remoteControl"]) {
 			};
 		},
 		inviteTtlMs: 60_000,
-		hubGraceMs: 5,
+		hubGraceMs: options.hubGraceMs ?? 5,
 	});
 	return {
 		manager,
@@ -330,6 +330,61 @@ describe("DesktopRemoteAccessManager", () => {
 
 		await manager.revokeDevice(pairingId);
 		expect(wire.slice(wire.indexOf("device.revoked"))).toEqual(["device.revoked", "closed"]);
+		await manager.shutdown();
+	});
+
+	it("brings the screen back when the phone reconnects after it went while the phone was briefly away", async () => {
+		const pairingId = "a".repeat(24);
+		const phoneKey = "k".repeat(43);
+		// The real grace period: a brief absence never counts as the phone going offline.
+		const { manager, relayLinks, store, desktopHosts } = harness(
+			{
+				cloudEnabled: true,
+				relayBaseUrl: "wss://relay.example",
+				devices: [
+					{ id: pairingId, name: "Pixel", mobileSecretHash: "h", mobileIdentityKey: phoneKey, createdAt: 1 },
+				],
+			},
+			{ hubGraceMs: 5_000 },
+		);
+		store.putRelaySecret(pairingId, "relay-secret");
+		await manager.restore();
+		const link = (initial: string) => {
+			let state = initial;
+			const connection = {
+				onEvent: () => () => undefined,
+				getSnapshot: () => ({ state, peerIdentityKey: phoneKey }),
+				deliverEvent: async () => undefined,
+				close: async () => undefined,
+			} as unknown as RemoteConnection;
+			return {
+				connection,
+				setState: (next: string) => {
+					state = next;
+				},
+			};
+		};
+		const settle = async () => {
+			for (let round = 0; round < 5; round += 1) await new Promise((resolve) => setTimeout(resolve, 0));
+		};
+		const first = link("online");
+		relayLinks[0]?.options.onConnection(first.connection);
+		await settle();
+		expect(desktopHosts).toHaveLength(1);
+
+		// The screen's channel drops just as the phone's other link is reconnecting: nothing to
+		// restart it on, and the phone never counted as offline (the grace period covers it).
+		first.setState("reconnecting");
+		desktopHosts[0]?.controlHandlers?.onClose("ICE failed");
+		await settle();
+		expect(desktopHosts[0]?.stopped).toBe(true);
+		expect(desktopHosts).toHaveLength(1);
+
+		// The phone's link is back: so is the screen.
+		relayLinks[0]?.options.onConnection(link("online").connection);
+		await settle();
+		expect(desktopHosts).toHaveLength(2);
+		expect(desktopHosts[1]?.stopped).toBe(false);
 		await manager.shutdown();
 	});
 
