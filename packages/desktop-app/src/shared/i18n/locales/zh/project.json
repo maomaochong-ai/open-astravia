@@ -151,6 +151,8 @@
 		"ready": "更新 {{version}} 已就绪，点击重启",
 		"checkFailed": "更新检查失败，点击重试",
 		"downloadProgress": "下载进度",
+		"bannerAvailable": "新版本 {{version}} 可用",
+		"bannerDownload": "下载",
 		"bannerReady": "新版本 {{version}} 已就绪",
 		"bannerRestart": "重启更新",
 		"bannerDismiss": "忽略"

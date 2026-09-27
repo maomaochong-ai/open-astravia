@@ -151,6 +151,8 @@
 		"ready": "Update {{version}} is ready — click to restart",
 		"checkFailed": "Update check failed, click to retry",
 		"downloadProgress": "Download progress",
+		"bannerAvailable": "New version {{version}} available",
+		"bannerDownload": "Download",
 		"bannerReady": "Version {{version}} is ready",
 		"bannerRestart": "Restart",
 		"bannerDismiss": "Dismiss"
