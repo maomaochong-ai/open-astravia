@@ -47,7 +47,6 @@ import org.jetbrains.compose.resources.stringResource
 import org.vetta.android.app.APP_VERSION
 import org.vetta.android.app.ThemeMode
 import org.vetta.android.domain.remote.link.LinkIndicator
-import org.vetta.android.domain.work.ConfirmPolicy
 import org.vetta.android.domain.work.MirrorPreferences
 import org.vetta.android.domain.work.MirrorState
 import org.vetta.android.resources.Res
@@ -64,17 +63,12 @@ import org.vetta.android.resources.theme_dark
 import org.vetta.android.resources.theme_light
 import org.vetta.android.resources.theme_system
 import org.vetta.android.resources.version_number
-import org.vetta.android.resources.work_settings_confirm_policy
-import org.vetta.android.resources.work_settings_confirm_policy_hint
 import org.vetta.android.resources.work_settings_haptics
 import org.vetta.android.resources.work_settings_live_thinking
 import org.vetta.android.resources.work_settings_load
 import org.vetta.android.resources.work_settings_load_idle
 import org.vetta.android.resources.work_settings_load_value
 import org.vetta.android.resources.work_settings_online
-import org.vetta.android.resources.work_settings_policy_auto
-import org.vetta.android.resources.work_settings_policy_important
-import org.vetta.android.resources.work_settings_policy_major
 import org.vetta.android.resources.work_settings_rescan
 import org.vetta.android.resources.work_settings_scan
 import org.vetta.android.resources.work_settings_unpair
@@ -160,21 +154,6 @@ fun SettingsScreen(
             if (onOpenRemote != null) {
                 Section {
                     Action(stringResource(Res.string.remote_control), "settings.remote", onClick = onOpenRemote)
-                }
-            }
-
-            Titled(stringResource(Res.string.work_settings_confirm_policy), footer = stringResource(Res.string.work_settings_confirm_policy_hint)) {
-                Section {
-                    listOf(
-                        ConfirmPolicy.Major to Res.string.work_settings_policy_major,
-                        ConfirmPolicy.Important to Res.string.work_settings_policy_important,
-                        ConfirmPolicy.Auto to Res.string.work_settings_policy_auto,
-                    ).forEachIndexed { index, (policy, label) ->
-                        if (index > 0) Divider()
-                        Choice(stringResource(label), chosen = preferences.confirmPolicy == policy, tag = "settings.policy.${policy.name.lowercase()}") {
-                            onPreferences { it.copy(confirmPolicy = policy) }
-                        }
-                    }
                 }
             }
 

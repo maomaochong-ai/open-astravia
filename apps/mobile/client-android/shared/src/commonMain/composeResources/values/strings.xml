@@ -224,8 +224,6 @@
     <string name="work_group_processing">In Progress</string>
     <string name="work_group_waiting">Needs You</string>
     <string name="work_kind_project">Projects</string>
-    <string name="work_settings_confirm_policy">Phone approvals</string>
-    <string name="work_settings_confirm_policy_hint">When your computer changes important files, when to ask you to confirm on your phone</string>
     <string name="work_settings_haptics">Vibrate when tasks finish</string>
     <string name="work_settings_live_thinking">Watch the computer think live</string>
     <string name="work_settings_load">Computer load</string>
@@ -235,9 +233,6 @@
         <item quantity="other">%1$d tasks running</item>
     </plurals>
     <string name="work_settings_online">Securely connected</string>
-    <string name="work_settings_policy_auto">Fully automatic</string>
-    <string name="work_settings_policy_important">Important actions</string>
-    <string name="work_settings_policy_major">Major changes only</string>
     <string name="work_settings_rescan">Scan Again</string>
     <string name="work_settings_scan">Scan to Connect a Computer</string>
     <string name="work_settings_unpair">Unpair</string>

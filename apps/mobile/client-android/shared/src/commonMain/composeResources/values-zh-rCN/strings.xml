@@ -215,8 +215,6 @@
     <string name="work_group_processing">处理中</string>
     <string name="work_group_waiting">待你决策</string>
     <string name="work_kind_project">项目</string>
-    <string name="work_settings_confirm_policy">手机确认策略</string>
-    <string name="work_settings_confirm_policy_hint">当电脑在改动重要文件时，何时提醒你在手机上确认</string>
     <string name="work_settings_haptics">任务做完震动提醒</string>
     <string name="work_settings_live_thinking">实时看到电脑思考</string>
     <string name="work_settings_load">电脑负荷</string>
@@ -225,9 +223,6 @@
         <item quantity="other">%1$d 个任务处理中</item>
     </plurals>
     <string name="work_settings_online">已安全连接</string>
-    <string name="work_settings_policy_auto">全自动执行</string>
-    <string name="work_settings_policy_important">重要操作确认</string>
-    <string name="work_settings_policy_major">只在重大变动</string>
     <string name="work_settings_rescan">重新扫码</string>
     <string name="work_settings_scan">扫码连接电脑</string>
     <string name="work_settings_unpair">解除配对</string>
