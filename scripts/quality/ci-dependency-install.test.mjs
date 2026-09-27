@@ -11,6 +11,22 @@ const workflowSources = readdirSync(workflowsDir)
 	.map((name) => ({ name, source: readFileSync(join(workflowsDir, name), "utf8") }));
 
 describe("CI dependency installation", () => {
+	it("uses a maintained Android SDK action without the removed tools package", () => {
+		const kotlinWorkflow = workflowSources.find(({ name }) => name === "kotlin.yml");
+		expect(kotlinWorkflow).toBeDefined();
+
+		const androidSetupSteps = [
+			...kotlinWorkflow.source.matchAll(
+				/- name: Set up Android SDK\s+uses: (?<action>\S+)\s+with:\s+packages: (?<packages>[^\r\n]+)/g,
+			),
+		].map(({ groups }) => groups);
+
+		expect(androidSetupSteps).toEqual([
+			{ action: "android-actions/setup-android@v4", packages: "platform-tools" },
+			{ action: "android-actions/setup-android@v4", packages: "platform-tools" },
+		]);
+	});
+
 	it("keeps frozen Bun installs behind the shared retry action", () => {
 		for (const workflow of workflowSources) {
 			expect(workflow.source, workflow.name).not.toContain("run: bun install --frozen-lockfile");
