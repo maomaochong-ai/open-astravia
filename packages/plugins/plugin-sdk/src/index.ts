@@ -210,6 +210,24 @@ export { interpolatePluginText, resolveCatalogKey, resolvePluginText } from "./i
 export type { PluginPermissionApi, AgentMode, PluginContext, PluginDefinition } from "./context.js";
 export { definePlugin } from "./context.js";
 
+// Browser Foundation Capability
+export type {
+	PluginBrowserAction,
+	PluginBrowserActionResult,
+	PluginBrowserApi,
+	PluginBrowserPageState,
+	PluginBrowserProfile,
+	PluginBrowserRuntimePhase,
+	PluginBrowserRuntimeStatus,
+	PluginBrowserScreenshot,
+	PluginBrowserSession,
+	PluginBrowserSessionOptions,
+	PluginBrowserSessionStatus,
+	PluginBrowserSnapshot,
+	PluginBrowserSource,
+	PluginBrowserTextContent,
+} from "./browser.js";
+
 // Host bridge (host-injected; plugins use hooks)
 export type { PluginHostBridge } from "./host-bridge.js";
 export { __setPluginHostBridge } from "./host-bridge.js";

@@ -367,6 +367,10 @@ export interface RegisteredWorkspaceView {
 	badge?: PluginNavBadge;
 	component: PluginWorkspaceViewContribution["component"];
 	navOrder: number;
+	/** 是否显示侧边栏导航入口。默认 true。false 时进 Settings → More Options。 */
+	sidebar: boolean;
+	/** 宿主是否对 sidebar icon 应用主题前景色蒙版。默认 true。 */
+	iconTint: boolean;
 }
 
 /** 已注册的插件工作区视图。侧边栏据此生成导航项，路由据此挂载整页组件。 */

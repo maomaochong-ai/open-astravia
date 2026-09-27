@@ -11,6 +11,7 @@ export type SettingsTabLabelKey =
 	| "tabShortcuts"
 	| "tabAppshot"
 	| "tabEnvironment"
+	| "tabBrowser"
 	| "tabPlugins"
 	| "tabKnowledge"
 	| "tabDatabase"
@@ -72,6 +73,12 @@ export const SETTINGS_TABS: readonly SettingsTabRegistration[] = [
 		labelKey: "tabPermissions",
 		icon: "icon-[mdi--shield-lock-outline]",
 		macOnly: true,
+	},
+	{
+		key: "browser",
+		label: "浏览器操作",
+		labelKey: "tabBrowser",
+		icon: "icon-[mdi--application-outline]",
 	},
 ] as const;
 

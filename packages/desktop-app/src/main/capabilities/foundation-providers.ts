@@ -11,6 +11,7 @@ import {
 	parseCapabilityJsonValue,
 } from "@astravia/capability-sdk";
 import { themeIdFromStorageCapabilityNamespace } from "@astravia/capability-sdk/internal/theme-adapter";
+import { getBrowserAutomationService } from "../browser-automation/index.js";
 import {
 	createFilesystemDirectory,
 	deleteFilesystemPath,
@@ -40,6 +41,7 @@ import {
 	removeThemeStorageValue,
 	setThemeStorageValue,
 } from "../themes/theme-data-store.js";
+import { registerDesktopBrowserProvider } from "./browser-provider.js";
 
 const FOUNDATION_STORAGE_PROVIDER_OWNER = "astravia.foundation.storage";
 const FOUNDATION_FILESYSTEM_PROVIDER_OWNER = "astravia.foundation.filesystem";
@@ -74,6 +76,7 @@ function assertNotAborted(signal: AbortSignal): void {
 }
 
 export function registerDesktopFoundationProviders(registry: CapabilityRegistry): Disposable {
+	const _browserRegistration = registerDesktopBrowserProvider(registry, getBrowserAutomationService());
 	const storageRegistration = registry.registerOwner(FOUNDATION_STORAGE_PROVIDER_OWNER, [
 		bindCapability(FOUNDATION_STORAGE_CAPABILITIES.GET_ALL, {
 			execute: async ({ namespace }, context) => {

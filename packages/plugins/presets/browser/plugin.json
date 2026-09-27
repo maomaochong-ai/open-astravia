@@ -1,0 +1,27 @@
+{
+	"id": "browser",
+	"name": "%plugin.name%",
+	"icon": "icon.png",
+	"version": "0.1.0",
+	"pluginApiVersion": "^1.1.0",
+	"runtime": "module-federation",
+	"entry": "dist/mf-manifest.json",
+	"moduleFederation": {
+		"remoteName": "browser",
+		"expose": "./plugin"
+	},
+	"styles": ["dist/style.css"],
+	"permissions": [
+		"ui.slot.workspace-view",
+		"browser.read",
+		"browser.runtime.manage",
+		"browser.interact",
+		"shell.openExternal"
+	],
+	"agent": {
+		"skillPaths": ["agent/skills/browser-use"]
+	},
+	"description": "%plugin.description%",
+	"author": "Astravia",
+	"defaultLocale": "zh"
+}

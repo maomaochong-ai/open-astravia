@@ -47,6 +47,10 @@ function createDesktopCapabilityHost(): DesktopCapabilityHost {
 			const plugin = listPlugins().find((candidate) => candidate.id === pluginId);
 			return plugin?.enabled === true && plugin.trustLevel === "official";
 		},
+		resolveBrowserAllowedHosts: (pluginId) => {
+			const plugin = listPlugins().find((candidate) => candidate.id === pluginId);
+			return plugin?.browser?.allowedHosts ?? [];
+		},
 	});
 	const themeAdapter = new ThemeCapabilityAdapter(access);
 	return {

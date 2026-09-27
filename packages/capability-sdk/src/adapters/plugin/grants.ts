@@ -19,6 +19,7 @@ import {
 	DOMAIN_WEBHOOK_CAPABILITIES,
 } from "../../domain.js";
 import {
+	FOUNDATION_BROWSER_CAPABILITIES,
 	FOUNDATION_FILESYSTEM_CAPABILITIES,
 	FOUNDATION_NETWORK_CAPABILITIES,
 	FOUNDATION_STORAGE_CAPABILITIES,
@@ -89,6 +90,28 @@ export function buildPluginCapabilityGrants(
 					createCapabilityGrant(FOUNDATION_STORAGE_CAPABILITIES.PUT_BLOB, {
 						constraints: storageConstraints,
 					}),
+				]
+			: []),
+		...(permissions.has(PLUGIN_CAPABILITY_PERMISSIONS.BROWSER_RUNTIME_MANAGE)
+			? [
+					createCapabilityGrant(FOUNDATION_BROWSER_CAPABILITIES.RUNTIME_STATUS),
+					createCapabilityGrant(FOUNDATION_BROWSER_CAPABILITIES.RUNTIME_INSTALL),
+				]
+			: []),
+		...(permissions.has(PLUGIN_CAPABILITY_PERMISSIONS.BROWSER_READ)
+			? [
+					createCapabilityGrant(FOUNDATION_BROWSER_CAPABILITIES.SNAPSHOT),
+					createCapabilityGrant(FOUNDATION_BROWSER_CAPABILITIES.READ_TEXT),
+					createCapabilityGrant(FOUNDATION_BROWSER_CAPABILITIES.SCREENSHOT),
+				]
+			: []),
+		...(permissions.has(PLUGIN_CAPABILITY_PERMISSIONS.BROWSER_INTERACT)
+			? [
+					createCapabilityGrant(FOUNDATION_BROWSER_CAPABILITIES.SESSION_CREATE),
+					createCapabilityGrant(FOUNDATION_BROWSER_CAPABILITIES.SESSION_GET),
+					createCapabilityGrant(FOUNDATION_BROWSER_CAPABILITIES.SESSION_CLOSE),
+					createCapabilityGrant(FOUNDATION_BROWSER_CAPABILITIES.NAVIGATE),
+					createCapabilityGrant(FOUNDATION_BROWSER_CAPABILITIES.ACT),
 				]
 			: []),
 		...(official ? buildOfficialDomainGrants() : []),

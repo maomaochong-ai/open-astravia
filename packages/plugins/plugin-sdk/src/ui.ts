@@ -48,6 +48,18 @@ export interface PluginWorkspaceViewContribution {
 	component: ComponentType<PluginWorkspaceViewProps>;
 	/** Sort hint among this plugin's own views (ascending). Defaults to 0. */
 	navOrder?: number;
+	/**
+	 * Whether to show a sidebar navigation entry for this view.
+	 * Defaults to `true`. Set `false` to hide from sidebar — the view remains
+	 * accessible via Settings → More Options or programmatic navigation.
+	 */
+	sidebar?: boolean;
+	/**
+	 * Whether the host should apply theme foreground tint to the sidebar icon.
+	 * Defaults to `true`. Set `false` for colored brand icons that should keep
+	 * their native palette (e.g. the browser preset's orange-purple plate).
+	 */
+	iconTint?: boolean;
 }
 
 /**

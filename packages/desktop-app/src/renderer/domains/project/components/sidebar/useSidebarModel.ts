@@ -250,14 +250,16 @@ export function useSidebarModel({
 			...PRIMARY_NAV_ITEMS.map((item) =>
 				toNavItem(item, t(item.labelKey), currentPath, "badgeKey" in item ? t(item.badgeKey) : undefined),
 			),
-			...sortWorkspaceViews(workspaceViews).map((view) =>
-				toWorkspaceNavItem(
-					view,
-					resolvePluginText(view.pluginId, view.label),
-					currentPath,
-					toNavBadgeText(view, resolvePluginText, t),
+			...sortWorkspaceViews(workspaceViews)
+				.filter((view) => view.sidebar)
+				.map((view) =>
+					toWorkspaceNavItem(
+						view,
+						resolvePluginText(view.pluginId, view.label),
+						currentPath,
+						toNavBadgeText(view, resolvePluginText, t),
+					),
 				),
-			),
 		],
 		[currentPath, resolvePluginText, t, workspaceViews],
 	);

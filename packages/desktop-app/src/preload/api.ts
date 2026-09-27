@@ -4,6 +4,7 @@ import type { DesktopAppLifecycleApi } from "./api-types/app-lifecycle.js";
 import type { DesktopAppMonitorApi } from "./api-types/app-monitor.js";
 import type { DesktopAppshotApi } from "./api-types/appshot.js";
 import type { DesktopBatchTasksApi } from "./api-types/batch-tasks.js";
+import type { DesktopBrowserApi } from "./api-types/browser.js";
 import type { DesktopConfigApi } from "./api-types/config.js";
 import type { DesktopDatabaseApi } from "./api-types/database.js";
 import type { DesktopDebugApi } from "./api-types/debug.js";
@@ -44,6 +45,7 @@ export type * from "./api-types/app-lifecycle.js";
 export type * from "./api-types/app-monitor.js";
 export type * from "./api-types/appshot.js";
 export type * from "./api-types/batch-tasks.js";
+export type * from "./api-types/browser.js";
 export type * from "./api-types/config.js";
 export type * from "./api-types/database.js";
 export type * from "./api-types/debug.js";
@@ -107,6 +109,7 @@ export interface DesktopApi {
 	pet: DesktopPetApi;
 	quickPanel: DesktopQuickPanelApi;
 	appshot: DesktopAppshotApi;
+	browser: DesktopBrowserApi;
 }
 
 declare global {

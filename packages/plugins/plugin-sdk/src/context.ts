@@ -1,5 +1,6 @@
 import type { PluginAgentApi } from "./agent.js";
 import type { PluginAppActionsApi } from "./app-actions.js";
+import type { PluginBrowserApi } from "./browser.js";
 import type { PluginCommandApi } from "./command.js";
 import type { PluginConversationApi } from "./conversation.js";
 import type { Disposable } from "./disposable.js";
@@ -39,6 +40,13 @@ export interface PluginContext {
 	storage: PluginStorageApi;
 	settings: PluginSettingsApi;
 	i18n: PluginI18nApi;
+	/**
+	 * 宿主 Foundation Capability：浏览器自动化。
+	 * 插件通过此 facade 调用宿主 BrowserAutomationService——不持有 shim、不派生 session。
+	 * 宿主可能未实现 —— 使用前先探测 `ctx.browser` 是否存在。
+	 * 权限声明见 manifest: `browser.read` / `browser.interact` / `browser.runtime.manage`。
+	 */
+	browser?: PluginBrowserApi;
 	/**
 	 * 离屏渲染截图（实验性）。宿主可能未实现 —— 使用前先探测 `ctx.capture` 是否存在。
 	 */

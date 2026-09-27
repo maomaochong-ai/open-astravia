@@ -51,6 +51,7 @@ export type SettingsTab =
 	| "appearance"
 	| "models"
 	| "mcp"
+	| "browser"
 	| "environment"
 	| "permissions"
 	| "im"

@@ -18,6 +18,8 @@ function view(overrides: Partial<RegisteredWorkspaceView>): RegisteredWorkspaceV
 		label: "Board",
 		component: () => null,
 		navOrder: 0,
+		sidebar: true,
+		iconTint: true,
 		...overrides,
 	};
 }

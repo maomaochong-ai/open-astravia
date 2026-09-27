@@ -4,6 +4,7 @@ import type {
 	PluginAgentToolHandler,
 	PluginAppActionHandler,
 	PluginAppActionReadyHandler,
+	PluginBrowserApi,
 	PluginCardRendererContribution,
 	PluginCodingAgentHookEventName,
 	PluginCodingAgentHookRegistration,
@@ -416,6 +417,78 @@ function createSettingsApi(
 		onChange(listener: (values: Record<string, unknown>) => void): Disposable {
 			listeners.add(listener);
 			return { dispose: () => listeners.delete(listener) };
+		},
+	};
+}
+
+/**
+ * 把 preload DesktopBrowserApi（window.astravia.browser）桥接成 plugin-sdk 的 PluginBrowserApi。
+ *
+ * 权限检查由 IPC handler 内的 adapter.session(sessionId, { permission }) 完成，
+ * 桥接层本身不再重复校验。
+ */
+function createBrowserApi(_plugin: InstalledPlugin, capabilitySessionId: string): PluginBrowserApi | undefined {
+	if (!window.astravia?.browser) return undefined;
+	const api = window.astravia.browser;
+
+	return {
+		runtime: {
+			async status() {
+				return api.runtimeStatus(capabilitySessionId);
+			},
+			async install(step) {
+				return api.installRuntime(capabilitySessionId, step);
+			},
+		},
+		sessions: {
+			async create(options) {
+				const s = await api.createSession(capabilitySessionId, options);
+				return {
+					id: s.id,
+					source: s.source,
+					profile: s.profile as unknown as PluginBrowserApi["sessions"]["create"] extends () => Promise<infer S>
+						? S extends { profile: infer P }
+							? P
+							: never
+						: never,
+					headed: s.headed,
+					status: "ready" as const,
+					createdAt: Date.now(),
+				};
+			},
+			async get(sessionId) {
+				const s = await api.getSession(capabilitySessionId, sessionId);
+				return {
+					id: s.id,
+					source: s.source,
+					profile: s.profile as unknown as PluginBrowserApi["sessions"]["get"] extends () => Promise<infer S>
+						? S extends { profile: infer P }
+							? P
+							: never
+						: never,
+					headed: s.headed,
+					status: "ready" as const,
+					createdAt: Date.now(),
+				};
+			},
+			async close(sessionId) {
+				await api.closeSession(capabilitySessionId, sessionId);
+			},
+		},
+		async navigate(sessionId, url) {
+			return api.navigate(capabilitySessionId, sessionId, url);
+		},
+		async snapshot(sessionId, options) {
+			return api.snapshot(capabilitySessionId, sessionId, options);
+		},
+		async readText(sessionId, options) {
+			return api.readText(capabilitySessionId, sessionId, options);
+		},
+		async screenshot(sessionId, options) {
+			return api.screenshot(capabilitySessionId, sessionId, options);
+		},
+		async act(sessionId, action, options) {
+			return api.act(capabilitySessionId, sessionId, action, options);
 		},
 	};
 }
@@ -845,6 +918,8 @@ function createContext(
 			badge: contribution.badge,
 			component: contribution.component,
 			navOrder: contribution.navOrder ?? 0,
+			sidebar: contribution.sidebar !== false,
+			iconTint: contribution.iconTint !== false,
 		};
 		workspaceViews.push(normalized);
 		onChanged();
@@ -1499,6 +1574,7 @@ function createContext(
 		storage: createStorageApi(plugin, capabilitySessionId),
 		settings: settingsApi,
 		i18n: createI18nApi(plugin),
+		browser: createBrowserApi(plugin, capabilitySessionId),
 		getAgentMode: () => getDefaultStore().get(agentModeAtom),
 		onAgentModeChanged: (listener) => {
 			const store = getDefaultStore();

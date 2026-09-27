@@ -17,6 +17,7 @@ import { type PluginShortcutMethods, pluginShortcutMethods } from "./domain/shor
 import { type PluginSkillMethods, pluginSkillMethods } from "./domain/skill.js";
 import { type PluginUpdaterMethods, pluginUpdaterMethods } from "./domain/updater.js";
 import { type PluginWebhookMethods, pluginWebhookMethods } from "./domain/webhook.js";
+import { type PluginBrowserMethods, pluginBrowserMethods } from "./foundation/browser.js";
 import { type PluginFilesystemMethods, pluginFilesystemMethods } from "./foundation/filesystem.js";
 import { type PluginNetworkMethods, pluginNetworkMethods } from "./foundation/network.js";
 import { type PluginStorageMethods, pluginStorageMethods } from "./foundation/storage.js";
@@ -30,7 +31,8 @@ import {
 } from "./types.js";
 
 export interface PluginCapabilityAdapter
-	extends PluginFilesystemMethods,
+	extends PluginBrowserMethods,
+		PluginFilesystemMethods,
 		PluginNetworkMethods,
 		PluginStorageMethods,
 		PluginAgentSettingsMethods,
@@ -54,6 +56,8 @@ export interface PluginCapabilityAdapter
 export class PluginCapabilityAdapter implements PluginCapabilitySessionAccess {
 	private readonly sessionIdByPlugin = new Map<string, string>();
 	private readonly sessions = new Map<string, PluginCapabilitySession>();
+	/** capability session → Set<browserSessionId>（ownership 跟踪）。 */
+	private readonly browserSessionOwners = new Map<string, Set<string>>();
 
 	constructor(
 		private readonly access: CapabilityAccessSessionFactory,
@@ -122,10 +126,38 @@ export class PluginCapabilityAdapter implements PluginCapabilitySessionAccess {
 		}
 		return session;
 	}
+
+	claimBrowserSession(sessionId: string, browserSessionId: string): void {
+		let owned = this.browserSessionOwners.get(sessionId);
+		if (!owned) {
+			owned = new Set<string>();
+			this.browserSessionOwners.set(sessionId, owned);
+		}
+		owned.add(browserSessionId);
+	}
+
+	releaseBrowserSession(sessionId: string, browserSessionId: string): void {
+		this.browserSessionOwners.get(sessionId)?.delete(browserSessionId);
+	}
+
+	assertBrowserSessionOwned(sessionId: string, browserSessionId: string): void {
+		const owned = this.browserSessionOwners.get(sessionId);
+		if (!owned?.has(browserSessionId)) {
+			throw new CapabilityError(
+				CAPABILITY_ERROR_CODES.ACCESS_DENIED,
+				"Browser session is not owned by this activation",
+			);
+		}
+	}
+
+	browserAllowedHosts(pluginId: string): readonly string[] {
+		return this.options.resolveBrowserAllowedHosts?.(pluginId) ?? [];
+	}
 }
 
 Object.assign(
 	PluginCapabilityAdapter.prototype,
+	pluginBrowserMethods,
 	pluginFilesystemMethods,
 	pluginNetworkMethods,
 	pluginStorageMethods,

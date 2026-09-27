@@ -193,7 +193,7 @@
     },
     "packages/desktop-app": {
       "name": "@astravia/desktop-app",
-      "version": "0.55.34",
+      "version": "0.0.1",
       "dependencies": {
         "@astravia-org/plugin-sdk": "workspace:*",
         "@astravia/action-rpc": "workspace:*",
@@ -382,7 +382,7 @@
     },
     "packages/plugins/externals/web-element-picker": {
       "name": "@astravia/plugin-web-element-picker",
-      "version": "0.2.4",
+      "version": "0.3.3",
       "dependencies": {
         "tslib": "^2.8.1",
       },
@@ -467,6 +467,24 @@
         "typescript": "^5.9.2",
         "vite": "^7.1.7",
         "vitest": "^3.2.4",
+      },
+    },
+    "packages/plugins/presets/browser": {
+      "name": "@astravia/plugin-browser",
+      "version": "0.1.0",
+      "devDependencies": {
+        "@astravia-org/plugin-sdk": "workspace:*",
+        "@astravia-org/plugin-vite": "workspace:*",
+        "@astravia/ui": "workspace:*",
+        "@tailwindcss/vite": "^4.1.12",
+        "@types/node": "^22.10.5",
+        "@types/react": "^19.1.1",
+        "@types/react-dom": "^19.1.1",
+        "react": "19.1.1",
+        "react-dom": "19.1.1",
+        "tailwindcss": "^4.1.12",
+        "typescript": "^5.9.2",
+        "vite": "^7.1.7",
       },
     },
     "packages/plugins/presets/chart-renderer": {
@@ -872,6 +890,8 @@
     "@astravia/plugin-astravia-actions": ["@astravia/plugin-astravia-actions@workspace:packages/plugins/presets/astravia-actions"],
 
     "@astravia/plugin-astravia-ui-design": ["@astravia/plugin-astravia-ui-design@workspace:packages/plugins/presets/astravia-ui-design"],
+
+    "@astravia/plugin-browser": ["@astravia/plugin-browser@workspace:packages/plugins/presets/browser"],
 
     "@astravia/plugin-chart-renderer": ["@astravia/plugin-chart-renderer@workspace:packages/plugins/presets/chart-renderer"],
 
@@ -4425,6 +4445,10 @@
 
     "@astravia/plugin-astravia-ui-design/react-dom": ["react-dom@19.1.1", "https://registry.npmmirror.com/react-dom/-/react-dom-19.1.1.tgz", { "dependencies": { "scheduler": "^0.26.0" }, "peerDependencies": { "react": "^19.1.1" } }, "sha512-Dlq/5LAZgF0Gaz6yiqZCf6VCcZs1ghAJyrsu84Q/GT0gV+mCxbfmKNoGRKBYMJ8IEdGPqu49YWXD02GCknEDkw=="],
 
+    "@astravia/plugin-browser/react": ["react@19.1.1", "https://registry.npmmirror.com/react/-/react-19.1.1.tgz", {}, "sha512-w8nqGImo45dmMIfljjMwOGtbmC/mk4CMYhWIicdSflH91J9TyCyczcPFXJzrZ/ZXcgGRFeP6BU0BEJTw6tZdfQ=="],
+
+    "@astravia/plugin-browser/react-dom": ["react-dom@19.1.1", "https://registry.npmmirror.com/react-dom/-/react-dom-19.1.1.tgz", { "dependencies": { "scheduler": "^0.26.0" }, "peerDependencies": { "react": "^19.1.1" } }, "sha512-Dlq/5LAZgF0Gaz6yiqZCf6VCcZs1ghAJyrsu84Q/GT0gV+mCxbfmKNoGRKBYMJ8IEdGPqu49YWXD02GCknEDkw=="],
+
     "@astravia/plugin-chart-renderer/react": ["react@19.1.1", "https://registry.npmmirror.com/react/-/react-19.1.1.tgz", {}, "sha512-w8nqGImo45dmMIfljjMwOGtbmC/mk4CMYhWIicdSflH91J9TyCyczcPFXJzrZ/ZXcgGRFeP6BU0BEJTw6tZdfQ=="],
 
     "@astravia/plugin-chart-renderer/react-dom": ["react-dom@19.1.1", "https://registry.npmmirror.com/react-dom/-/react-dom-19.1.1.tgz", { "dependencies": { "scheduler": "^0.26.0" }, "peerDependencies": { "react": "^19.1.1" } }, "sha512-Dlq/5LAZgF0Gaz6yiqZCf6VCcZs1ghAJyrsu84Q/GT0gV+mCxbfmKNoGRKBYMJ8IEdGPqu49YWXD02GCknEDkw=="],
@@ -5368,6 +5392,8 @@
     "@astravia/plugin-astravia-actions/react-dom/scheduler": ["scheduler@0.26.0", "https://registry.npmmirror.com/scheduler/-/scheduler-0.26.0.tgz", {}, "sha512-NlHwttCI/l5gCPR3D1nNXtWABUmBwvZpEQiD4IXSbIDq8BzLIK/7Ir5gTFSGZDUu37K5cMNp0hFtzO38sC7gWA=="],
 
     "@astravia/plugin-astravia-ui-design/react-dom/scheduler": ["scheduler@0.26.0", "https://registry.npmmirror.com/scheduler/-/scheduler-0.26.0.tgz", {}, "sha512-NlHwttCI/l5gCPR3D1nNXtWABUmBwvZpEQiD4IXSbIDq8BzLIK/7Ir5gTFSGZDUu37K5cMNp0hFtzO38sC7gWA=="],
+
+    "@astravia/plugin-browser/react-dom/scheduler": ["scheduler@0.26.0", "https://registry.npmmirror.com/scheduler/-/scheduler-0.26.0.tgz", {}, "sha512-NlHwttCI/l5gCPR3D1nNXtWABUmBwvZpEQiD4IXSbIDq8BzLIK/7Ir5gTFSGZDUu37K5cMNp0hFtzO38sC7gWA=="],
 
     "@astravia/plugin-chart-renderer/react-dom/scheduler": ["scheduler@0.26.0", "https://registry.npmmirror.com/scheduler/-/scheduler-0.26.0.tgz", {}, "sha512-NlHwttCI/l5gCPR3D1nNXtWABUmBwvZpEQiD4IXSbIDq8BzLIK/7Ir5gTFSGZDUu37K5cMNp0hFtzO38sC7gWA=="],
 

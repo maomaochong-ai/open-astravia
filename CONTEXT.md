@@ -641,3 +641,63 @@ _Avoid_: 叫「页面」「artboard」；把 frame 理解为静态 HTML 文件�
 
 「Astravia UI Design」插件托管的**单一** vite + React + Tailwind v4 模板工程：锁死版本、预装 node_modules（随插件预置或首启一次性下载），内含 @iconify/tailwind4 与 JSX 源码插桩（dev 注入 `data-source` 文件:行号，生产构建不注入）。每个打开的 .vetd 由引擎挂载其 [[旁挂目录（.vetd.d)]] 源码起一个 vite dev server（依赖宿主长驻进程 SDK 与托管 Node 运行时），画布 iframe 指向 localhost 获得 HMR。设计文档自身永不携带依赖与工具链。
 _Avoid_: 每个 .vetd 各自一套 node_modules / 各自 npm install。
+
+---
+
+以下为浏览器自动化新领域术语（ADR-0060）：
+
+### BrowserPanel（activity-panel 内置浏览器面板）
+
+activity-panel 的一个内置 tab：renderer 侧的**单 iframe 预览**。用户手动开 tab → agent 输出 URL 后宿主才贴进 iframe。agent 不参与浏览过程，无能力驱动点击/填表/快照。URL 存 `browserUrlBySessionAtom`（Jotai），按 sessionPath 隔离。是**用户手动辅助工具**，不属于 Agent 浏览器自动化链路。
+
+_避免_：把 BrowserPanel 与 BrowserAutomationService 当成同一东西或想"合并升级"。
+
+### BrowserAutomationService
+
+main 进程的 Agent 浏览器自动化**编排核心服务**（`main/browser-automation/`），封装 agent-browser Rust 原生引擎（三方依赖，非自研）。负责：会话创建与关闭、navigate/snapshot/act/readText/screenshot 操作编排、域名白名单断言与越界强制关闭、persistent profile 互斥锁、exclusive session 操作序列化。通过 preload IPC 暴露给 renderer，是 Skill + CLI shim 路径背后的主进程实现。
+
+### BrowserSession
+
+BrowserAutomationService 管理的**一次浏览器会话**。核心字段：`sessionId`（`astravia-${workspace-root-hash}`，workspace 根派生）、`source`（`managed` 宿主管理 / `attach` 附着已有 Chrome）、`profile`（`ephemeral` 临时用完即弃 / `persistent` 持久化 cookies/storage）、`headed`（是否可视化窗口）、`namespace`（workspace 隔离）、`allowedHosts`（域名白名单）。CLI 形态下 sessionId 由 workspace 根 hash 派生，配合 `--pin-tab` 防静默跳转。
+
+### BrowserProfile
+
+BrowserSession 的浏览器配置：
+- **ephemeral**：临时 profile，用完即弃，每次新建浏览器环境
+- **persistent**：持久化 profile，cookies/localStorage/session 全保留，下次同 id `--restore` 恢复登录态。宿主侧做互斥锁——同 profile.id 不能被两个会话同时占用。
+
+### BrowserPolicy
+
+浏览器自动化的**门禁策略层**（`browser-policy.ts`），无状态静态函数：`assertAllowedBrowserUrl(url, allowedHosts)`（创建/导航时断言）与 `assertReturnedPageAllowed(url, allowedHosts)`（navigate/snapshot/act 返回时二次断言）。域名白名单支持通配 `*.github.com`。越界 → 强制关闭会话 + 释放 profile（containPolicyEscape）。
+
+### agent-browser
+
+[vercel-labs/agent-browser](https://github.com/vercel-labs/agent-browser)：Vercel 开源的 Rust 原生浏览器引擎，CLI 形态。npm 包解包约 90MB（全平台预编译产物）。提供 navigate/snapshot/act/readText/screenshot/get text/url/title/body 等命令。是 BrowserAutomationService 与 CLI shim 背后的**执行引擎**，非自研。版本锁死 `0.34.0`。
+
+### BrowserAutomation CLI shim（已废弃）
+
+~~插件侧发布的 `scripts/browser.mjs`：Skill 路径下 agent 执行的中间件~~。2025-09-27 架构迭代中已删除（ADR-0060 superseded）。shim 的 session 派生（cwd hash）、安全门禁、--config/--session 注入已被 **宿主 ASTRAVIA_AGENT_SESSION_ID 注入** + **BrowserAutomationService 统一安全策略** + **plugin-sdk ctx.browser facade** 取代。Agent 现在直接调 PATH 上的 `agent-browser`。
+
+### ctx.browser（plugin-sdk Foundation Capability）
+
+plugin-sdk `PluginContext` 上的浏览器自动化 facade（`packages/plugins/plugin-sdk/src/browser.ts`），宿主通过 `createBrowserApi()` 桥接 preload `DesktopBrowserApi` 实现。暴露：`open()` / `runtime.status()` / `runtime.install()` / `sessions.create/close` / `navigate` / `snapshot` / `readText` / `screenshot` / `act`。权限声明在 manifest `browser.read` / `browser.runtime.manage` / `browser.interact` / `shell.openExternal`。替代手动 `window.astravia.browser` declare global。
+
+### ASTRAVIA_AGENT_SESSION_ID
+
+coding-agent bash 工具在 `runtime-manager.ts` buildRuntime() 中自动注入的环境变量（`CODING_AGENT_SESSION_ID_ENV`），值为当前 Agent Session 的真实 id。Agent 每次 bash 命令执行时都带上此 env，CLI 型能力（agent-browser 等）读取它作为自己的会话身份。替代 shim 阶段 `cwd → sha256[:16]` 的 session 派生。常量导出：`CODING_AGENT_SESSION_ID_ENV = "ASTRAVIA_AGENT_SESSION_ID"`；工厂函数：`createSessionCommandEnvironment(sessionId)`。
+
+### BrowserAutomationSkill（browser-use）
+
+系统插件贡献的 Agent Skill：名称 `browser-use`，描述 ~50 token 级（"Agent 驱动真实 Chrome。去站点上将事办了——填表单、点按钮、读登录后页面"）。命中后展开用法，引导模型通过 bash 调 CLI shim。不走 MCP 工具面（省 token、避免与网页搜索语义重叠）。完整命令参考指向 upstream 自带的 `agent-browser skills get core`。
+
+### BrowserRuntimeManager
+
+BrowserAutomation 主进程模块之一：负责就绪检查与安装编排。`status()` 通过 spawn `agent-browser --version` 比对版本判定 phase（ready / outdated / missing / browser-missing / error）；`install()` 按需执行 `npm i -g agent-browser@0.34.0`（runtime 步骤，spawn timeout 15min）或 `agent-browser install`（Chrome 步骤，timeout 10min）。复用 `RuntimeManager.applyEnv()` 全局注入的 npm 配置（npmmirror 镜像源 + 共享缓存 + .npm-global prefix）。
+
+### BrowserProcessRunner
+
+BrowserAutomation 主进程的 spawn 封装：`HostBrowserProcessRunner.run(file, args, { timeoutMs, maxOutputChars, signal }) → BrowserProcessResult`。核心机制：stdout/stderr 环形缓冲、timeout kill、AbortSignal → BrowserProcessAbortedError。spawn 直接继承 `process.env`（RuntimeManager.applyEnv() 已全局注入 PATH/npm_config_*）。agent-browser 首次调用启动 daemon 可能让 Node `close` 事件 pending，故 `exit` 后 `setImmediate` 再 resolve。
+
+### BrowserConsole（插件面板 UI）
+
+browser 系统插件的 workspace view（`sidebar: false`），纯安装引导 + 说明页。核心组件：**RuntimeSection**（状态机 UI，phase 驱动 dot 颜色 + 主按钮 + 安装输出）、能力四宫格、快速开始复制按钮、CLI 工作方式说明。不做假浏览器预览面板（真正的浏览器在后台跑，用户通过 Skill/对话框交互）。安装失败/网络问题时用户来面板手动触发。

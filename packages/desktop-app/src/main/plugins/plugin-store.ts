@@ -742,6 +742,7 @@ function installedFromManifest(
 		agent: previous?.agent ?? manifest.agent,
 		// 插件级工作模式白名单（agent_mode 轴）：始终跟随最新 manifest。见 ADR-0046。
 		agent_mode: manifest.agent_mode,
+		browser: manifest.browser,
 		styleUrls,
 		permissions: manifest.permissions ?? [],
 		grantedPermissions,

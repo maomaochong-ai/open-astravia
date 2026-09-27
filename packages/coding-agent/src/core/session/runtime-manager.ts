@@ -49,6 +49,7 @@ import {
 	type BashSpawnHook,
 	createAllTools,
 	createAskUserQuestionTool,
+	createSessionCommandEnvironment,
 } from "../tools/index.js";
 import { createInvokeSkillTool } from "../tools/invoke-skill/index.js";
 import { createTaskOutputTool } from "../tools/task-output/index.js";
@@ -1088,6 +1089,7 @@ export class RuntimeManager {
 		const spawnHook: BashSpawnHook | undefined = envOverlay
 			? (ctx) => ({ ...ctx, env: { ...ctx.env, ...envOverlay } })
 			: undefined;
+		const sessionEnv = createSessionCommandEnvironment(this.host.sessionId);
 		const baseTools: Record<string, AgentTool<any>> = this._baseToolsOverride
 			? { ...this._baseToolsOverride }
 			: createAllTools(this.ctx.cwd, {
@@ -1095,11 +1097,13 @@ export class RuntimeManager {
 					bash: {
 						commandPrefix: shellCommandPrefix,
 						spawnHook,
+						sessionEnv,
 						backgroundTasks: this._enableBackgroundTasks ? this._backgroundTasks : undefined,
 					},
 					shell: {
 						commandPrefix: shellCommandPrefix,
 						spawnHook,
+						sessionEnv,
 						backgroundTasks: this._enableBackgroundTasks ? this._backgroundTasks : undefined,
 					},
 				});

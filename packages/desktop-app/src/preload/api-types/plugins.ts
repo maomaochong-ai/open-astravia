@@ -77,6 +77,12 @@ export type PluginPermission =
 	| "ui.file-explorer.toolbar"
 	| "capture.offscreen"
 	| "shell.openExternal"
+	| "browser.read"
+	| "browser.open"
+	| "browser.interact"
+	| "browser.profile.persist"
+	| "browser.attach"
+	| "browser.runtime.manage"
 	| "agent.hooks.register"
 	| "agent.hookHandler.execute"
 	| "workspace.read"
@@ -244,6 +250,14 @@ export interface PluginManifest {
 	 * 不可见（agent 贡献 + UI/bundle 均不加载）。缺省/空 = 全局通用。plugin.json 里可写 string | string[]。
 	 */
 	agent_mode?: string | string[];
+	/**
+	 * 浏览器自动化 manifest 声明。`allowedHosts` 是插件允许 session 操作的域名通配符列表
+	 * （如 `["github.com", "*.google.com"]`）。session 的 effectiveAllowedHosts 不能超出
+	 * 这些授权。缺省或空数组 = 只允许显式传 allowedHosts；`["*"]` = 全放行。
+	 */
+	browser?: {
+		allowedHosts?: string[];
+	};
 }
 
 /** 一份扁平 catalog：翻译 key → 本地化字符串。 */
@@ -280,6 +294,10 @@ export interface InstalledPlugin {
 	agent?: PluginAgentManifest;
 	/** 插件级工作模式白名单（agent_mode 轴，见 ADR-0046）。缺省/空 = 全局通用。 */
 	agent_mode?: string | string[];
+	/** 见 PluginManifest.browser —— 浏览器自动化 allowedHosts 通配符声明。 */
+	browser?: {
+		allowedHosts?: string[];
+	};
 	styleUrls: string[];
 	permissions: PluginPermission[];
 	grantedPermissions: PluginPermission[];

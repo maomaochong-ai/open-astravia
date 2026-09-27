@@ -6,6 +6,7 @@ import { createAppLifecycleApi } from "./apis/app-lifecycle.js";
 import { createAppMonitorApi } from "./apis/app-monitor.js";
 import { createAppshotApi } from "./apis/appshot.js";
 import { createBatchTasksApi } from "./apis/batch-tasks.js";
+import { createBrowserApi } from "./apis/browser.js";
 import { createDatabaseApi } from "./apis/database.js";
 import { createDownloadsApi } from "./apis/downloads.js";
 import { createI18nApi } from "./apis/i18n.js";
@@ -45,6 +46,7 @@ const api: DesktopApi = {
 	...createImApi(ipcRenderer),
 	...createDownloadsApi(ipcRenderer),
 	...createBatchTasksApi(ipcRenderer),
+	...createBrowserApi(ipcRenderer),
 	...createSchedulerApi(ipcRenderer),
 	...createWebhookApi(ipcRenderer),
 	...createNotificationApi(ipcRenderer),

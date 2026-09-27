@@ -1,8 +1,34 @@
 import { createCapabilityCatalog } from "./catalog.js";
+import { FOUNDATION_BROWSER_CAPABILITIES } from "./foundation/browser.js";
 import { FOUNDATION_FILESYSTEM_CAPABILITIES } from "./foundation/filesystem.js";
 import { FOUNDATION_NETWORK_CAPABILITIES } from "./foundation/network.js";
 import { FOUNDATION_STORAGE_CAPABILITIES } from "./foundation/storage.js";
 
+export {
+	type BrowserActInput,
+	type BrowserAction,
+	type BrowserActionResult,
+	type BrowserNavigateInput,
+	type BrowserPageState,
+	type BrowserReadTextInput,
+	type BrowserRuntimeInstallInput,
+	type BrowserRuntimePhase,
+	type BrowserRuntimeStatus,
+	type BrowserRuntimeStatusInput,
+	type BrowserScreenshot,
+	type BrowserScreenshotInput,
+	type BrowserSession,
+	type BrowserSessionCreateInput,
+	type BrowserSessionInput,
+	type BrowserSessionProfile,
+	type BrowserSessionStatus,
+	type BrowserSnapshot,
+	type BrowserSnapshotInput,
+	type BrowserSource,
+	type BrowserTextContent,
+	FOUNDATION_BROWSER_CAPABILITIES,
+	FOUNDATION_BROWSER_CAPABILITY_CATALOG,
+} from "./foundation/browser.js";
 export {
 	type FilesystemEntry,
 	type FilesystemFileRef,
@@ -46,6 +72,7 @@ export {
 } from "./foundation/storage.js";
 
 export const FOUNDATION_CAPABILITY_CATALOG = createCapabilityCatalog([
+	...Object.values(FOUNDATION_BROWSER_CAPABILITIES),
 	...Object.values(FOUNDATION_FILESYSTEM_CAPABILITIES),
 	...Object.values(FOUNDATION_STORAGE_CAPABILITIES),
 	...Object.values(FOUNDATION_NETWORK_CAPABILITIES),

@@ -122,7 +122,7 @@ export function initStory() {
 			});
 		};
 
-		const updateSVG = (index: number, progress: number) => {
+		const updateSVG = (_index: number, progress: number) => {
 			const stepProgress = (progress * stepCount) % 1;
 			const currentStep = Math.floor(progress * stepCount);
 

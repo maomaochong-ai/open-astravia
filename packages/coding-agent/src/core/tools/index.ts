@@ -19,7 +19,9 @@ export {
 	type BashToolInput,
 	type BashToolOptions,
 	bashTool,
+	CODING_AGENT_SESSION_ID_ENV,
 	createBashTool,
+	createSessionCommandEnvironment,
 } from "./bash/index.js";
 export {
 	type CurrentTimeToolDetails,

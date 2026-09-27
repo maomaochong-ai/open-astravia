@@ -252,11 +252,33 @@ function prependPathCorrectionNotes(text: string, corrections: PathLiteralCorrec
 
 export type BashSpawnHook = (context: BashSpawnContext) => BashSpawnContext;
 
-function resolveSpawnContext(command: string, cwd: string, spawnHook?: BashSpawnHook): BashSpawnContext {
+/** 宿主注入的 Agent Session ID 环境变量名。CLI 型能力（agent-browser 等）读取此值。 */
+export const CODING_AGENT_SESSION_ID_ENV = "ASTRAVIA_AGENT_SESSION_ID";
+
+/**
+ * 创建 session 级命令环境变量 —— 和 open-vetta 的 createCodingAgentSessionCommandEnvironment 对应。
+ *
+ * 宿主在创建 Agent Session 时调此工厂，把 sessionId 注入 BashToolOptions.sessionEnv。
+ * 这样 Agent 每次 bash 命令执行时都会自动带上 ASTRAVIA_AGENT_SESSION_ID。
+ */
+export function createSessionCommandEnvironment(
+	sessionId: string,
+	extra?: Readonly<Record<string, string>>,
+): Record<string, string> {
+	if (!sessionId.trim()) throw new Error("Coding Agent command environment requires a session id");
+	return { ...extra, [CODING_AGENT_SESSION_ID_ENV]: sessionId };
+}
+
+function resolveSpawnContext(
+	command: string,
+	cwd: string,
+	spawnHook?: BashSpawnHook,
+	sessionEnv?: Readonly<Record<string, string>>,
+): BashSpawnContext {
 	const baseContext: BashSpawnContext = {
 		command,
 		cwd,
-		env: { ...getShellEnv() },
+		env: { ...getShellEnv(), ...sessionEnv },
 	};
 
 	return spawnHook ? spawnHook(baseContext) : baseContext;
@@ -269,6 +291,14 @@ export interface BashToolOptions {
 	commandPrefix?: string;
 	/** Hook to adjust command, cwd, or env before execution */
 	spawnHook?: BashSpawnHook;
+	/**
+	 * Session-level environment variables injected into every bash command's env.
+	 * 宿主用来注入 ASTRAVIA_AGENT_SESSION_ID —— 让 CLI 型能力（如 agent-browser）
+	 * 能在多次短命令间复用自己的会话状态，而不是从 cwd 推导身份。
+	 * 宿主值最后写入——如果 spawnHook 和 sessionEnv 都设置了同一个 key，
+	 * spawnHook 的值覆盖 sessionEnv。
+	 */
+	sessionEnv?: Readonly<Record<string, string>>;
 	/** Background task manager enabling run_in_background (local execution only) */
 	backgroundTasks?: BackgroundTaskManager;
 	/**
@@ -291,6 +321,7 @@ export function createBashTool(cwd: string, options?: BashToolOptions): CodingAg
 	const ops = options?.operations ?? defaultBashOperations;
 	const commandPrefix = options?.commandPrefix;
 	const spawnHook = options?.spawnHook;
+	const sessionEnv = options?.sessionEnv;
 	const backgroundTasks = options?.backgroundTasks;
 	const blockUntilSec = options?.blockUntilSec ?? DEFAULT_BASH_BLOCK_UNTIL_SEC;
 	// Custom ops (e.g. remote) cannot be adopted into the local BackgroundTaskManager.
@@ -319,7 +350,7 @@ export function createBashTool(cwd: string, options?: BashToolOptions): CodingAg
 			// Apply command prefix if configured (e.g., "shopt -s expand_aliases" for alias support)
 			const resolvedCommand = prependCommandPrefixes(command, [commandPrefix]);
 			const { output: correctedCommand, pathCorrections } = rewriteQuotedPathLiterals(resolvedCommand, cwd);
-			const spawnContext = resolveSpawnContext(correctedCommand, cwd, spawnHook);
+			const spawnContext = resolveSpawnContext(correctedCommand, cwd, spawnHook, sessionEnv);
 
 			if (run_in_background) {
 				if (!backgroundTasks) {
