@@ -94,6 +94,12 @@ jobs:
         with:
           go-version-file: packages/im-gateway/go.mod
 
+      # Linux 打包需要 meson + ninja 编译 bubblewrap（prepare-bwrap.js）。
+      # ubuntu-latest runner 默认没有，apt 装一下。
+      - name: Install meson/ninja for linux bwrap build
+        if: matrix.platform == 'linux'
+        run: sudo apt-get update && sudo apt-get install -y meson ninja-build pkg-config libcap-dev
+
 
       # 分层构建约定：桌面打包（dist:*）依赖工作区库的 dist 产物
       #（如 @astravia/toolkit/dist 的 versioned-config 子路径导出）。
