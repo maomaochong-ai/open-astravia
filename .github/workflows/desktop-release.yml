@@ -54,6 +54,12 @@ jobs:
             command: dist:win
             verify: verify:updates:windows
             macArch: ""
+          # linux (AppImage) — 首次进入发布矩阵（v0.0.2 起）
+          - platform: linux
+            runner: ubuntu-latest
+            command: dist:linux
+            verify: verify:updates:linux
+            macArch: ""
           # arm64 与 x64 必须分两次构建：内置的 node/python 运行时按
           # ASTRAVIA_VENDOR_PLATFORM 单架构落盘，一次构建出不了两套。两次都会写同名的
           # latest-mac.yml，因此各自重命名后上传，由发布任务合并回单一元数据。
