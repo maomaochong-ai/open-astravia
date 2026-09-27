@@ -1,3 +1,4 @@
+import ReactMarkdown from "react-markdown";
 import type { JSX } from "react";
 
 export interface UpdateCheckerViewLabels {
@@ -108,7 +109,9 @@ export function UpdateCheckerView({
 						)}
 					</div>
 					{releaseNote && (
-						<p className="whitespace-pre-wrap text-[12px] text-muted-foreground">{releaseNote}</p>
+						<div className="max-h-40 overflow-y-auto text-[12px] text-muted-foreground leading-relaxed prose prose-sm prose-invert">
+							<ReactMarkdown>{releaseNote}</ReactMarkdown>
+						</div>
 					)}
 				</div>
 			)}
