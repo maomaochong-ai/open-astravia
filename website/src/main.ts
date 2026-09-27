@@ -361,22 +361,21 @@ function initConstellation() {
 	const dlPrimaryText = document.getElementById("dlPrimaryText");
 	const dlPrimaryVersion = document.getElementById("dlPrimaryVersion");
 	if (isMac && /ARM|arm64|aarch64/i.test(ua)) {
-		dlPrimary.href = "https://dl.astravia.dev/app/v0.0.1/Astravia-0.0.1-arm64.dmg";
+		dlPrimary.href = "https://dl.astravia.dev/app/v0.0.2/Astravia-0.0.2-arm64.dmg";
 		dlPrimaryText!.textContent = "MAC ARM64 (APPLE SILICON)";
-		dlPrimaryVersion!.textContent = "v0.0.1 · DMG";
+		dlPrimaryVersion!.textContent = "v0.0.2 · DMG";
 	} else if (isMac) {
-		dlPrimary.href = "https://dl.astravia.dev/app/v0.0.1/Astravia-0.0.1.dmg";
+		dlPrimary.href = "https://dl.astravia.dev/app/v0.0.2/Astravia-0.0.2.dmg";
 		dlPrimaryText!.textContent = "MAC X64 (INTEL)";
-		dlPrimaryVersion!.textContent = "v0.0.1 · DMG";
+		dlPrimaryVersion!.textContent = "v0.0.2 · DMG";
 	} else if (isWin) {
-		dlPrimary.href = "https://dl.astravia.dev/app/v0.0.1/Astravia-0.0.1-win-x64.exe";
+		dlPrimary.href = "https://dl.astravia.dev/app/v0.0.2/Astravia-0.0.2-win-x64.exe";
 		dlPrimaryText!.textContent = "WINDOWS X64";
-		dlPrimaryVersion!.textContent = "v0.0.1 · EXE";
+		dlPrimaryVersion!.textContent = "v0.0.2 · EXE";
 	} else {
-		dlPrimary.setAttribute("aria-disabled", "true");
-		dlPrimary.removeAttribute("href");
-		dlPrimaryText!.textContent = "LINUX";
-		dlPrimaryVersion!.textContent = "即将推出";
+		dlPrimary.href = "https://dl.astravia.dev/app/v0.0.2/Astravia-0.0.2.AppImage";
+		dlPrimaryText!.textContent = "LINUX X64";
+		dlPrimaryVersion!.textContent = "v0.0.2 · AppImage";
 	}
 
 	// 其他版本展开/收起 + 实时跟随定位
