@@ -175,9 +175,14 @@ async function inspectVersionedObject(client, bucket, key, filePath, contentLeng
 		if (existing.ContentLength === contentLength && existing.Metadata?.sha512 === sha512) {
 			return { sha512, shouldUpload: false };
 		}
-		throw new Error(
-			`[publish-updates-r2] refusing to overwrite existing versioned object ${key}; content differs or lacks sha512 metadata`,
+		// 同版本号但构建产物 hash 不同（force push tag 重建、或 CI runner 差异导致），
+		// 允许覆盖——R2 的版本目录 app/v${VERSION}/ 语义上就是"这个版本号最新的构建"，
+		// 不应该因为 CI 重建就卡死发布流程。
+		console.warn(
+			`[publish-updates-r2] overwriting existing versioned object ${key} ` +
+				`(size=${existing.ContentLength}->${contentLength}, sha512 differs)`,
 		);
+		return { sha512, shouldUpload: true };
 	} catch (error) {
 		if (error?.$metadata?.httpStatusCode === 404 || error?.name === "NotFound") {
 			return { sha512, shouldUpload: true };
