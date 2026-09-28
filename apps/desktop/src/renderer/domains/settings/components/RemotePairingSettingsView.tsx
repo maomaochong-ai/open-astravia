@@ -10,43 +10,41 @@ function beaconBlue(percent: number): string {
 	return `color-mix(in srgb, var(--chart-2) ${percent}%, transparent)`;
 }
 
-/** Still rings around the beacon, innermost first: diameter and strength of the blue. */
+/** Rings around the beacon, innermost first: diameter and strength of the blue. */
 const HALOS = [
 	{ size: 88, percent: 22 },
-	{ size: 136, percent: 13 },
-	{ size: 188, percent: 8 },
-	{ size: 244, percent: 4 },
+	{ size: 140, percent: 13 },
+	{ size: 196, percent: 8 },
+	{ size: 256, percent: 4 },
 ] as const;
 
-const WAVE_STYLE: CSSProperties = { width: 244, height: 244, background: beaconBlue(18) };
-
 /**
- * The page's illustration: a link at the centre of blue rings, with two waves breathing
- * outwards. The waves are hidden until the shared live clock animates them, so with
- * reduced motion only the still rings show.
+ * The page's backdrop illustration in the top-right corner: a link at the centre of
+ * blue rings, like a signal looking for a phone. Static on purpose, so the translucent
+ * window is not repainted for decoration.
  */
 function PairingBeacon(): JSX.Element {
 	return (
-		<div aria-hidden="true" className="pointer-events-none relative mx-auto flex h-[244px] w-full items-center justify-center">
-			<div
-				className="absolute inset-x-0 -top-10 -bottom-10"
-				style={{ background: `radial-gradient(closest-side, ${beaconBlue(10)}, transparent)` }}
-			/>
-			{HALOS.map((halo) => (
+		<div aria-hidden="true" className="pointer-events-none absolute top-0 right-0 h-[280px] w-[320px] overflow-hidden">
+			<div className="absolute top-[110px] right-[120px] flex h-0 w-0 items-center justify-center">
 				<span
-					key={halo.size}
-					className="absolute rounded-full"
-					style={{ width: halo.size, height: halo.size, background: beaconBlue(halo.percent) }}
+					className="absolute h-[360px] w-[360px] rounded-full"
+					style={{ background: `radial-gradient(closest-side, ${beaconBlue(10)}, transparent)` }}
 				/>
-			))}
-			<span className="remote-beacon-wave-1 absolute rounded-full opacity-0" style={WAVE_STYLE} />
-			<span className="remote-beacon-wave-2 absolute rounded-full opacity-0" style={WAVE_STYLE} />
-			<span
-				className="relative flex h-14 w-14 items-center justify-center rounded-full text-white"
-				style={{ background: "var(--chart-2)" }}
-			>
-				<span className="icon-[solar--link-round-linear] h-6 w-6" />
-			</span>
+				{HALOS.map((halo) => (
+					<span
+						key={halo.size}
+						className="absolute rounded-full"
+						style={{ width: halo.size, height: halo.size, background: beaconBlue(halo.percent) }}
+					/>
+				))}
+				<span
+					className="absolute flex h-14 w-14 items-center justify-center rounded-full text-white"
+					style={{ background: "var(--chart-2)" }}
+				>
+					<span className="icon-[solar--link-round-linear] h-6 w-6" />
+				</span>
+			</div>
 		</div>
 	);
 }
@@ -57,14 +55,12 @@ function PairingPanel({ model }: { model: RemotePairingSettingsModel }): JSX.Ele
 	const code = pairing.code;
 
 	return (
-		<div className="flex flex-col items-center">
-			<PairingBeacon />
-			<h2 className="mt-2 text-[15px] font-semibold text-foreground">{labels.pairing.title}</h2>
+		<div className="px-3">
 			{!pairing.vaultAvailable ? (
-				<p className="mt-2 text-center text-[12px] text-destructive">{labels.pairing.vaultUnavailable}</p>
+				<p className="mb-3 text-[12px] text-destructive">{labels.pairing.vaultUnavailable}</p>
 			) : null}
 
-			<div className="mt-8 flex w-full flex-wrap items-center justify-center gap-x-12 gap-y-8">
+			<div className="flex flex-wrap items-center gap-x-10 gap-y-6">
 				<div className="flex h-[176px] w-[176px] shrink-0 items-center justify-center">
 					{pairing.qrDataUrl ? (
 						<img
@@ -137,7 +133,7 @@ function PairingPanel({ model }: { model: RemotePairingSettingsModel }): JSX.Ele
 			</div>
 
 			{pairing.endpoints.length > 0 ? (
-				<div className="mt-8 flex flex-col items-center">
+				<div className="mt-5 -ml-2.5">
 					<Button
 						variant="ghost"
 						size="sm"
@@ -153,7 +149,7 @@ function PairingPanel({ model }: { model: RemotePairingSettingsModel }): JSX.Ele
 						/>
 					</Button>
 					{manualOpen ? (
-						<div id="remote-manual-endpoints" className="mt-2 flex flex-col items-center gap-1.5">
+						<div id="remote-manual-endpoints" className="mt-1 flex flex-col gap-1.5 pl-2.5">
 							<p className="text-[12px] text-muted-foreground">{labels.pairing.manualHint}</p>
 							{pairing.endpoints.map((endpoint) => (
 								<span key={endpoint} className="font-mono text-[13px] text-foreground select-all">
@@ -213,18 +209,21 @@ export function RemotePairingSettingsView({ model }: { model: RemotePairingSetti
 	const [relayOpen, setRelayOpen] = useState(false);
 	const { labels } = model;
 	return (
-		<div className="mx-auto w-full max-w-[680px] px-8 pt-2 pb-12">
-			<h1 className="text-[20px] font-bold text-foreground">{labels.title}</h1>
-			<p className="mt-1.5 text-[12px] leading-relaxed text-muted-foreground">{labels.description}</p>
+		<div className="relative mx-auto w-full max-w-[680px] px-8 pt-2 pb-12">
+			<PairingBeacon />
+			<div className="relative max-w-[380px]">
+				<h1 className="text-[20px] font-bold text-foreground">{labels.title}</h1>
+				<p className="mt-1.5 text-[12px] leading-relaxed text-muted-foreground">{labels.description}</p>
+			</div>
 
 			{model.error ? (
-				<div role="alert" className="mt-5 rounded-xl bg-destructive/10 px-4 py-3 text-[12px] text-destructive">
+				<div role="alert" className="relative mt-5 rounded-xl bg-destructive/10 px-4 py-3 text-[12px] text-destructive">
 					{model.error}
 				</div>
 			) : null}
 
 			{model.approvals.length > 0 ? (
-				<section id="remote-approvals" className="mt-6 flex flex-col gap-2.5">
+				<section id="remote-approvals" className="relative mt-6 flex flex-col gap-2.5">
 					{model.approvals.map((approval) => (
 						<div key={approval.id} className="rounded-xl bg-amber-500/15 px-4 py-4">
 							<div className="flex items-center justify-between gap-4">
@@ -255,7 +254,8 @@ export function RemotePairingSettingsView({ model }: { model: RemotePairingSetti
 				</section>
 			) : null}
 
-			<section id="remote-pairing" className="mt-4">
+			<section id="remote-pairing" className="relative mt-24">
+				<SectionTitle>{labels.pairing.title}</SectionTitle>
 				<PairingPanel model={model} />
 			</section>
 

@@ -66,26 +66,6 @@ const REGISTRY: ReadonlyArray<readonly [selector: string, spec: LiveAnimationSpe
 			offset: 0.5,
 		},
 	],
-	// 远程连接页的配对信标：两圈光波从中心向外扩散淡出，错开半周。
-	[
-		".remote-beacon-wave-1",
-		{
-			keyframes: [
-				{ transform: "scale(0.3)", opacity: 0.8 },
-				{ transform: "scale(1)", opacity: 0 },
-			],
-		},
-	],
-	[
-		".remote-beacon-wave-2",
-		{
-			keyframes: [
-				{ transform: "scale(0.3)", opacity: 0.8 },
-				{ transform: "scale(1)", opacity: 0 },
-			],
-			offset: 0.5,
-		},
-	],
 ];
 
 const ANY_SELECTOR = REGISTRY.map(([selector]) => selector).join(", ");

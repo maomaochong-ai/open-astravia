@@ -170,7 +170,7 @@ macOS 主窗口带毛玻璃，页面每出一帧系统都要整窗重新合成�
 表达「还在进行」的常驻动效（呼吸文字、状态点、波纹、转弧）：
 
 - CSS 只写静止态（相位 0 的外观必须就是正常外观，光晕这类没有动画就该看不见的元素写 `opacity: 0`），**不写 `animation` / `@keyframes … infinite`**。
-- 元素带登记在 `shared/lib/live-animations.ts` 里的类名（`.processing-shimmer`、`.tool-call-shimmer-text`、`.vetta-live-dot`、`.todo-label-sheen`、`.todo-marker-spin`、`.activity-dot-halo/-core`、`.send-button-ripple-1/-2`、`.remote-beacon-wave-1/-2`）。宿主用 Web Animations API 挂 `steps(16)` 的 opacity/transform 动画，并把 `startTime` 锁到文档时间线原点：所有指示器同拍，整页每秒最多因此多出 10 帧，主线程零开销。新增一种指示器就往登记表加一行。
+- 元素带登记在 `shared/lib/live-animations.ts` 里的类名（`.processing-shimmer`、`.tool-call-shimmer-text`、`.vetta-live-dot`、`.todo-label-sheen`、`.todo-marker-spin`、`.activity-dot-halo/-core`、`.send-button-ripple-1/-2`）。宿主用 Web Animations API 挂 `steps(16)` 的 opacity/transform 动画，并把 `startTime` 锁到文档时间线原点：所有指示器同拍，整页每秒最多因此多出 10 帧，主线程零开销。新增一种指示器就往登记表加一行。
 - 流式期间的内容动效不要用逐元素动画：短语渐亮靠「最新短语偏暗、下一次放出时变亮」，只随内容更新出帧；rAF 逐帧追随滚动只留给大跳，短距离直接落位；头像小动作在流式中关闭。
 - `will-change` 对这类动画没有额外收益（实测主线程提交次数不变），不要为它加。
 
