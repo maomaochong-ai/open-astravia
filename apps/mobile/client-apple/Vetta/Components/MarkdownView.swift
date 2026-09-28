@@ -94,7 +94,7 @@ struct MarkdownView: View {
 
 	/// Parsed inline Markdown as `Text`, with each inline-code span and link
 	/// tagged for `InlineChipRenderer` and given a narrow space of padding on
-	/// either side (a link also gets a small arrow), since a text run cannot
+	/// either side (a link also gets a small arrow, a file link a document), since a text run cannot
 	/// carry padding of its own. The padding never wraps away from the span.
 	static func text(_ content: AttributedString) -> Text {
 		var result = Text(verbatim: "")
@@ -111,8 +111,8 @@ struct MarkdownView: View {
 			var span = lead + part.customAttribute(chip)
 			if chip.kind == .link {
 				span = span + Text(verbatim: "\u{2060}\u{2009}").customAttribute(chip)
-					+ Text(Image(systemName: "arrow.up.right"))
-					.font(.system(size: bodySize * 0.62, weight: .bold))
+					+ Text(Image(systemName: chip.file ? "doc.text" : "arrow.up.right"))
+					.font(.system(size: bodySize * (chip.file ? 0.72 : 0.62), weight: .bold))
 					.foregroundStyle(Theme.blue.opacity(chip.opacity))
 					.customAttribute(chip)
 			}
@@ -141,7 +141,8 @@ struct MarkdownView: View {
 			let kind: InlineChip.Kind? = run.link != nil ? .link : code ? .code : nil
 			if let kind {
 				if previous?.link != run.link || previous?.code != code && run.link == nil { chips += 1 }
-				attributed[run.range][InlineChipKey.self] = InlineChip(kind: kind, id: chips)
+				let file = run.link.map { ReplyLink.classify($0) != .system } ?? false
+				attributed[run.range][InlineChipKey.self] = InlineChip(kind: kind, file: file, id: chips)
 				previous = (run.link, code)
 			} else {
 				previous = nil
@@ -232,6 +233,8 @@ private enum RenderedBlock {
 nonisolated struct InlineChip: TextAttribute {
 	enum Kind: Hashable, Sendable { case code, link }
 	var kind: Kind
+	/// A link to a file on the desktop rather than a web page.
+	var file = false
 	/// Tells apart two spans that touch.
 	var id: Int
 	/// Follows the span's first character while a streaming reply fades in.

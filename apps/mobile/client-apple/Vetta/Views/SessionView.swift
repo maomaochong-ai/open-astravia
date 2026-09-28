@@ -23,6 +23,10 @@ struct SessionView: View {
 	@State private var newTitle = ""
 	/// Whether the conversation keeps the newest line in view; off while the user reads further up.
 	@State private var following = true
+	/// The panel the More menu opened.
+	@State private var panel: SessionPanel?
+	/// A desktop file a reply linked to, being previewed.
+	@State private var linkedFile: LinkedFile?
 
 	/// The desktop's id; a chat opened by New Session starts on a local one.
 	private var id: String { model.resolve(sessionId) }
@@ -75,6 +79,12 @@ struct SessionView: View {
 				.contentShape(Rectangle())
 				.onTapGesture { dismissKeyboard() }
 			}
+			// A reply's link to a desktop file opens it here; web links still go to Safari.
+			.environment(\.openURL, OpenURLAction { url in
+				guard case let .desktopFile(href) = ReplyLink.classify(url) else { return .systemAction }
+				linkedFile = LinkedFile(href: href)
+				return .handled
+			})
 			.defaultScrollAnchor(.bottom)
 			.scrollDismissesKeyboard(.interactively)
 			// Where the user leaves the conversation decides whether it keeps following.
@@ -145,6 +155,18 @@ struct SessionView: View {
 				.accessibilityLabel(L10n.NewSession.title)
 				.accessibilityIdentifier("chat.newSession")
 				Menu {
+					// The desktop's activity panel tabs, one entry each as the phone gains them.
+					Section(L10n.Files.panels) {
+						ForEach(SessionPanel.allCases) { item in
+							let available = model.isAvailable(item)
+							Button { panel = item } label: {
+								Label(item.title, systemImage: item.systemImage)
+								// Said only once the desktop's status is in, so a slow link does not claim it is old.
+								if !available, model.link.desktop != nil { Text(L10n.Files.needsDesktopUpdate) }
+							}
+							.disabled(!available || !model.online)
+						}
+					}
 					Button(L10n.Chat.resync, systemImage: "arrow.clockwise") { Task { await model.resync(id) } }
 					// The desktop's own sidebar actions, so it shows the same title and pin.
 					Button(L10n.Session.rename, systemImage: "pencil") {
@@ -165,6 +187,16 @@ struct SessionView: View {
 				// A chat New Session is still starting has no desktop session to act on yet.
 				.disabled(starting)
 			}
+		}
+		.sheet(item: $panel) { panel in
+			SessionPanelSheet(panel: panel, sessionId: id)
+		}
+		.sheet(item: $linkedFile) { file in
+			NavigationStack {
+				FilePreviewScreen(sessionId: id, path: file.href, title: file.title)
+			}
+			.presentationDetents([.large])
+			.presentationDragIndicator(.visible)
 		}
 		.alert(L10n.Session.renameTitle, isPresented: $renaming) {
 			TextField(L10n.Session.renameTitle, text: $newTitle)
@@ -205,6 +237,13 @@ struct SessionView: View {
 			}
 		}
 	}
+}
+
+/// A reply's link to a desktop file, kept as written for the desktop to resolve.
+private struct LinkedFile: Identifiable {
+	let href: String
+	var id: String { href }
+	var title: String { (href.removingPercentEncoding ?? href).split(separator: "/").last.map(String.init) ?? href }
 }
 
 /// The chat's title: what the session is about, with the model and thinking
