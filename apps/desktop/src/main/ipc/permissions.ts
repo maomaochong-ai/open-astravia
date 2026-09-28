@@ -3,8 +3,8 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { ipcMain, Notification, shell } from "electron";
 import { checkHelperPermissions } from "../appshot/appshot-service.js";
+import { PANE_URLS, type PermissionKind } from "./permission-panes.js";
 
-export type PermissionKind = "full-disk-access" | "accessibility" | "notifications" | "screen-recording";
 export type PermissionStatus = "granted" | "denied" | "unknown";
 
 interface PermissionsSnapshot {
@@ -18,14 +18,6 @@ const CHANNELS = {
 	CHECK_ALL: "vetta:permissions:check-all",
 	OPEN_PANE: "vetta:permissions:open-pane",
 } as const;
-
-// macOS 系统设置 → 隐私与安全 → 子面板的 URL Scheme
-const PANE_URLS: Record<PermissionKind, string> = {
-	"full-disk-access": "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles",
-	accessibility: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
-	notifications: "x-apple.systempreferences:com.apple.preference.notifications",
-	"screen-recording": "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture",
-};
 
 // 受 TCC 保护的探测目标。优先选机器上一定存在的路径；
 // 任一存在且能读 → 已授权；任一遇到 EACCES/EPERM → 未授权；全部 ENOENT → 未知。
