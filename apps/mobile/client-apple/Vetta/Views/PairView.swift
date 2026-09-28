@@ -125,10 +125,10 @@ struct PairView: View {
 				.presentationDetents([.height(360)])
 			}
 			.sheet(isPresented: $inviteOpen, onDismiss: { model.cancelPairing() }) {
-				InvitePairSheet { code, password, relay in
+				InvitePairView { code, password, relay in
 					await submit { await model.pairWithInvite(code: code, password: password, relayBaseUrl: relay) }
 				}
-				.presentationDetents([.height(500), .large])
+				.presentationDetents([.large])
 			}
 			.sheet(isPresented: $helpOpen) {
 				TroubleshootSheet().presentationDetents([.medium, .large])
@@ -181,7 +181,7 @@ struct PairView: View {
 	}
 }
 
-private struct VerificationCodeView: View {
+struct VerificationCodeView: View {
 	var code: String
 
 	var body: some View {
@@ -256,149 +256,6 @@ private struct ManualPairSheet: View {
 	private func submit() {
 		let value = endpoint
 		Task { await onSubmit(value) }
-	}
-}
-
-/// Asks for the connection code and password the computer shows next to its QR code
-/// (ADR-0136), and, only for a computer on its own relay, that relay's address. Checks
-/// their shape before anything goes on the network.
-private struct InvitePairSheet: View {
-	@Environment(AppModel.self) private var model
-	var onSubmit: (_ code: String, _ password: String, _ relay: String?) async -> Void
-	@State private var code = ""
-	@State private var password = ""
-	@State private var ownRelay = false
-	@State private var relay = ""
-	@State private var invalid: String?
-	@FocusState private var focus: Field?
-
-	private enum Field { case code, password, relay }
-
-	var body: some View {
-		ScrollView {
-			VStack(alignment: .leading, spacing: 0) {
-				Text(L10n.Pair.invite).font(.system(size: 18, weight: .semibold)).foregroundStyle(Theme.ink)
-				Text(L10n.Pair.inviteHint).font(.system(size: 13)).foregroundStyle(Theme.dim).lineSpacing(3).padding(.top, 4)
-				if case let .awaitingApproval(verification, _) = model.pairing {
-					VerificationCodeView(code: verification).frame(maxWidth: .infinity).padding(.top, 20)
-				} else {
-					form
-				}
-			}
-			.padding(.horizontal, 20)
-			.padding(.top, 24)
-			.padding(.bottom, 16)
-		}
-		.scrollBounceBehavior(.basedOnSize)
-		.onAppear { focus = .code }
-	}
-
-	@ViewBuilder
-	private var form: some View {
-		field(L10n.Pair.inviteCode) {
-			TextField("K7Q2-9MXD", text: $code)
-				.font(.mono(18))
-				.textInputAutocapitalization(.characters)
-				.autocorrectionDisabled()
-				.keyboardType(.asciiCapable)
-				.submitLabel(.next)
-				.focused($focus, equals: .code)
-				.onSubmit { focus = .password }
-				.onChange(of: code) { _, typed in
-					if typed.count > 12 { code = String(typed.prefix(12)) }
-					invalid = nil
-				}
-				.accessibilityIdentifier("pair.invite.code")
-		}
-		.padding(.top, 16)
-		field(L10n.Pair.invitePassword) {
-			TextField("••••••", text: $password)
-				.font(.mono(18))
-				.keyboardType(.numberPad)
-				.focused($focus, equals: .password)
-				.onChange(of: password) { _, typed in
-					let digits = String(typed.filter { $0.isASCII && $0.isNumber }.prefix(InviteCode.passwordLength))
-					if digits != typed { password = digits }
-					invalid = nil
-				}
-				.accessibilityIdentifier("pair.invite.password")
-		}
-		.padding(.top, 12)
-
-		Toggle(L10n.Pair.inviteOwnRelay, isOn: $ownRelay.animation(.snappy))
-			.font(.system(size: 14))
-			.foregroundStyle(Theme.ink2)
-			.tint(Theme.green)
-			.padding(.top, 14)
-			.accessibilityIdentifier("pair.invite.ownRelay")
-		if ownRelay {
-			field(L10n.Pair.inviteRelay) {
-				TextField(InviteCode.defaultRelayBaseUrl, text: $relay)
-					.font(.mono(15))
-					.textInputAutocapitalization(.never)
-					.autocorrectionDisabled()
-					.keyboardType(.URL)
-					.focused($focus, equals: .relay)
-					.accessibilityIdentifier("pair.invite.relay")
-			}
-			.padding(.top, 10)
-		}
-
-		if let message = invalid ?? failure {
-			Text(message)
-				.font(.system(size: 12))
-				.foregroundStyle(Theme.red)
-				.padding(.top, 10)
-				.accessibilityIdentifier("pair.invite.error")
-		}
-		Button(action: submit) {
-			Group {
-				if model.pairing.isConnecting {
-					ProgressView().tint(Theme.dim)
-				} else {
-					Text(L10n.Pair.connect).font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.pillInk)
-				}
-			}
-			.frame(maxWidth: .infinity)
-			.padding(.vertical, 6)
-		}
-		.buttonStyle(.glassProminent)
-		.tint(Theme.pill)
-		.disabled(model.pairing.isConnecting || code.isEmpty || password.isEmpty)
-		.padding(.top, 16)
-		.accessibilityIdentifier("pair.invite.connect")
-	}
-
-	private var failure: String? {
-		if case let .failed(reason) = model.pairing { return L10n.Pair.describe(reason) }
-		return nil
-	}
-
-	private func field(_ label: String, @ViewBuilder content: () -> some View) -> some View {
-		VStack(alignment: .leading, spacing: 6) {
-			Text(label).font(.system(size: 12)).foregroundStyle(Theme.dim)
-			content()
-				.padding(.horizontal, 16)
-				.frame(height: 50)
-				.glassEffect(.regular.interactive(), in: .rect(cornerRadius: 16))
-		}
-	}
-
-	private func submit() {
-		guard let normalized = InviteCode.normalize(code) else {
-			invalid = L10n.Pair.inviteCodeInvalid
-			focus = .code
-			return
-		}
-		guard InviteCode.isValidPassword(password) else {
-			invalid = L10n.Pair.invitePasswordInvalid
-			focus = .password
-			return
-		}
-		focus = nil
-		let typedRelay = ownRelay ? relay : nil
-		let typedPassword = password
-		Task { await onSubmit(normalized, typedPassword, typedRelay) }
 	}
 }
 

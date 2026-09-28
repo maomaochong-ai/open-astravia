@@ -42,6 +42,23 @@ public enum InviteCode {
 		return code
 	}
 
+	/// What the code boxes show while a code is typed or pasted: the characters it can
+	/// hold, read as `normalize` reads them, anything else dropped, at most eight.
+	public static func typedCode(_ input: String) -> String {
+		String(input.uppercased().compactMap { char -> Character? in
+			switch char {
+			case "O": "0"
+			case "I", "L": "1"
+			default: alphabet.contains(char) ? char : nil
+			}
+		}.prefix(codeLength))
+	}
+
+	/// The digits of what was typed or pasted into the password boxes, at most six.
+	public static func typedPassword(_ input: String) -> String {
+		String(input.filter { $0.isASCII && $0.isNumber }.prefix(passwordLength))
+	}
+
 	public static func isValidPassword(_ password: String) -> Bool {
 		password.count == passwordLength && password.allSatisfy { $0.isASCII && $0.isNumber }
 	}

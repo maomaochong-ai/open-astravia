@@ -28,6 +28,17 @@ struct InviteCodeTests {
 		#expect(InviteCode.boxUrl(relayBaseUrl: "ws://127.0.0.1:8787", code: "K7Q29MXD") == "http://127.0.0.1:8787/v2/invite/\(box)")
 	}
 
+	@Test func fillsTheBoxesFromWhateverWasTypedOrPasted() {
+		#expect(InviteCode.typedCode("k7q") == "K7Q")
+		#expect(InviteCode.typedCode("K7Q2-9MXD") == "K7Q29MXD", "a pasted code keeps its dash out of the boxes")
+		#expect(InviteCode.typedCode(" k7q2 9mxd extra") == "K7Q29MXD")
+		#expect(InviteCode.typedCode("oil") == "011")
+		#expect(InviteCode.typedCode("U#?") == "")
+		#expect(InviteCode.typedPassword("48 29-13") == "482913")
+		#expect(InviteCode.typedPassword("4829135") == "482913")
+		#expect(InviteCode.typedPassword("４８a") == "")
+	}
+
 	@Test func takesATypedRelayAsItsWebSocketAddress() {
 		#expect(InviteCode.relayBaseUrl(typed: nil) == InviteCode.defaultRelayBaseUrl)
 		#expect(InviteCode.relayBaseUrl(typed: "  ") == InviteCode.defaultRelayBaseUrl)

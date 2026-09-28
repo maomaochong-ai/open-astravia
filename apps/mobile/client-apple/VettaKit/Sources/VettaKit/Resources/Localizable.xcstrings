@@ -2346,36 +2346,70 @@
         }
       }
     },
-    "pair.inviteCodeInvalid": {
+    "pair.inviteCodeHint": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "A connection code has 8 letters and digits"
+            "value": "On your computer, open Vetta → Settings → Remote access. The 8-character code is next to the QR code. Works even when your phone is not next to the computer."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "连接码是 8 位字母和数字"
+            "value": "在电脑上的 Vetta 打开「设置 → 远程连接」，二维码旁有 8 位连接码。手机不在电脑旁也能用。"
           }
         }
       }
     },
-    "pair.inviteHint": {
+    "pair.inviteCodeTitle": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "On your computer, open Vetta → Settings → Remote access and enter the connection code and password shown next to the QR code. Works even when your phone is not next to the computer."
+            "value": "Enter the connection code"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "在电脑上的 Vetta 打开「设置 → 远程连接」，输入二维码旁的连接码和密码。手机不在电脑旁也能用。"
+            "value": "输入连接码"
+          }
+        }
+      }
+    },
+    "pair.inviteEditCode": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Change"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "修改"
+          }
+        }
+      }
+    },
+    "pair.inviteNext": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Next"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下一步"
           }
         }
       }
@@ -2431,19 +2465,53 @@
         }
       }
     },
-    "pair.invitePasswordInvalid": {
+    "pair.invitePasswordHint": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "The password has 6 digits"
+            "value": "The 6 digits shown with the connection code on your computer."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "密码是 6 位数字"
+            "value": "电脑上与连接码一起显示的 6 位数字。"
+          }
+        }
+      }
+    },
+    "pair.invitePasswordTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enter the password"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "输入密码"
+          }
+        }
+      }
+    },
+    "pair.invitePaste": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paste"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "粘贴"
           }
         }
       }

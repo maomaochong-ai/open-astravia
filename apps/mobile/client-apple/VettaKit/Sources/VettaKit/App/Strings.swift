@@ -228,11 +228,15 @@ public enum L10n {
 		public static var listening: String { tr("pair.listening") }
 		public static var manual: String { tr("pair.manual") }
 		public static var invite: String { tr("pair.invite") }
-		public static var inviteHint: String { tr("pair.inviteHint") }
+		public static var inviteCodeTitle: String { tr("pair.inviteCodeTitle") }
+		public static var inviteCodeHint: String { tr("pair.inviteCodeHint") }
+		public static var invitePasswordTitle: String { tr("pair.invitePasswordTitle") }
+		public static var invitePasswordHint: String { tr("pair.invitePasswordHint") }
 		public static var inviteCode: String { tr("pair.inviteCode") }
 		public static var invitePassword: String { tr("pair.invitePassword") }
-		public static var inviteCodeInvalid: String { tr("pair.inviteCodeInvalid") }
-		public static var invitePasswordInvalid: String { tr("pair.invitePasswordInvalid") }
+		public static var inviteNext: String { tr("pair.inviteNext") }
+		public static var inviteEditCode: String { tr("pair.inviteEditCode") }
+		public static var invitePaste: String { tr("pair.invitePaste") }
 		public static var inviteOwnRelay: String { tr("pair.inviteOwnRelay") }
 		public static var inviteRelay: String { tr("pair.inviteRelay") }
 		public static var inviteNotFound: String { tr("pair.inviteNotFound") }
