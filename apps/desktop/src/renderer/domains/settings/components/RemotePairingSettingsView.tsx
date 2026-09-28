@@ -34,10 +34,10 @@ function PairingPanel({ model }: { model: RemotePairingSettingsModel }): JSX.Ele
 	return (
 		<div className="px-3">
 			{!pairing.vaultAvailable ? (
-				<p className="mb-3 text-[12px] text-destructive">{labels.pairing.vaultUnavailable}</p>
+				<p className="mb-3 text-center text-[12px] text-destructive">{labels.pairing.vaultUnavailable}</p>
 			) : null}
 
-			<div className="flex gap-5">
+			<div className="flex justify-center gap-5">
 				<div className={`flex ${QR_SIZE} aspect-square shrink-0 items-center justify-center rounded-xl bg-muted/60`}>
 					{pairing.qrDataUrl ? (
 						<img
@@ -96,7 +96,7 @@ function PairingPanel({ model }: { model: RemotePairingSettingsModel }): JSX.Ele
 			</div>
 
 			{pairing.endpoints.length > 0 ? (
-				<div className="mt-3 -ml-2.5">
+				<div className="mt-3 flex flex-col items-center">
 					<Button
 						variant="ghost"
 						size="sm"
@@ -112,7 +112,7 @@ function PairingPanel({ model }: { model: RemotePairingSettingsModel }): JSX.Ele
 						/>
 					</Button>
 					{manualOpen ? (
-						<div id="remote-manual-endpoints" className="mt-1 flex flex-col gap-1 pl-2.5">
+						<div id="remote-manual-endpoints" className="mt-1 flex flex-col items-center gap-1">
 							<p className="text-[12px] text-muted-foreground">{labels.pairing.manualHint}</p>
 							{pairing.endpoints.map((endpoint) => (
 								<span key={endpoint} className="font-mono text-[13px] text-foreground select-all">
