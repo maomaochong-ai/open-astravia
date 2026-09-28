@@ -38,7 +38,7 @@ Opening **Settings → Remote access** prepares a QR code and shows about how ma
     | Method | iPhone | Android | When to use it |
     | --- | --- | --- | --- |
     | Scan the QR code | Yes | Yes | The phone is next to the computer |
-    | Connection code and password | No | Yes | You are not next to the computer. The computer shows an 8-character code and a 6-digit password. On the phone, choose **Connect with a Code** |
+    | Connection code and password | Yes | Yes | You are not next to the computer. The computer shows an 8-character code and a 6-digit password. On the phone, choose **Connect with a Code** |
     | Enter the address manually | Yes | Yes | Same Wi-Fi. Enter the address shown on the computer. Both sides then show the same 6-digit code |
 
     A connection code needs **Allow access away from home** and a relay that supports codes. Otherwise the computer keeps the QR code and says the connection code is unavailable. Manual addresses work only on the same LAN. Guest networks often isolate devices; scan or use a connection code instead.
@@ -86,7 +86,7 @@ The picture is set up through the relay, so the switch stays hidden when away-fr
 
 The settings button beside it can replace the relay address, test before saving, or restore the default. The address must start with `wss://` or `https://`. The test reports whether the address is reachable, whether it is a compatible Vetta relay, and whether it supports connection codes.
 
-Saving refreshes the current QR code. An Android phone that is already connected switches to the new address. A phone that is offline learns the new address the next time it connects on the same Wi-Fi. If the computer uses its own relay, an Android phone pairing with a connection code must enter that same relay address.
+Saving refreshes the current QR code. An Android phone that is already connected switches to the new address. A phone that is offline learns the new address the next time it connects on the same Wi-Fi. If the computer uses its own relay, turn on **My computer uses its own relay** while pairing with a connection code and enter that same address.
 
 ## Safety
 
@@ -99,7 +99,7 @@ Saving refreshes the current QR code. An Android phone that is already connected
 
 Choose **Remove** on that row on the computer, or unpair from the phone's computer settings. Sessions on the computer stay.
 
-- iPhone clears the sessions cached on that phone. Scan again to reconnect.
+- iPhone clears the sessions cached on that phone. Pair again to reconnect.
 - Android keeps sessions already synced on the phone. You can still read them, but they stop updating until you scan the same computer again.
 
 ## When it will not connect
