@@ -124,7 +124,9 @@ export type RemoteEventName =
 	| "session.resync"
 	| "diagnostics.updated"
 	/** Sent only to a phone subscribed to the screen, which declared `screen` in its hello (ADR-0140). */
-	| "screen.status";
+	| "screen.status"
+	/** Sent only to a phone that subscribed with `cursor: true` and draws the pointer itself. */
+	| "screen.cursor";
 
 export interface RemoteEvent {
 	readonly type: "event";

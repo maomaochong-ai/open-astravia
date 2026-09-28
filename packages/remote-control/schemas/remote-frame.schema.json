@@ -79,7 +79,7 @@
       "type": "object", "additionalProperties": false, "required": ["type", "eventId", "sequence", "name"],
       "properties": {
         "type": { "const": "event" }, "eventId": { "$ref": "#/$defs/id" }, "sequence": { "$ref": "#/$defs/sequence" },
-        "name": { "enum": ["device.status", "device.paired", "session.list", "session.state", "session.message", "session.tool", "session.input", "session.resync", "diagnostics.updated", "screen.status"] },
+        "name": { "enum": ["device.status", "device.paired", "session.list", "session.state", "session.message", "session.tool", "session.input", "session.resync", "diagnostics.updated", "screen.status", "screen.cursor"] },
         "sessionId": { "$ref": "#/$defs/id" }, "payload": true
       }
     },

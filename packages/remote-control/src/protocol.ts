@@ -51,6 +51,7 @@ const eventNames = new Set([
 	"session.resync",
 	"diagnostics.updated",
 	"screen.status",
+	"screen.cursor",
 ]);
 const errorCodes = new Set([
 	"invalid_frame",

@@ -95,6 +95,9 @@ describe("remote protocol v2", () => {
 		expect(decodeRemoteFrame({ type: "event", eventId: "e1", sequence: 1, name: "screen.status" })).toMatchObject({
 			name: "screen.status",
 		});
+		expect(decodeRemoteFrame({ type: "event", eventId: "e2", sequence: 2, name: "screen.cursor" })).toMatchObject({
+			name: "screen.cursor",
+		});
 		expect(() => decodeRemoteFrame({ type: "event", eventId: "e1", sequence: 1, name: "screen.frame" })).toThrow(
 			RemoteProtocolError,
 		);

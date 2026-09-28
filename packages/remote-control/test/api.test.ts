@@ -8,6 +8,7 @@ import {
 	readMessageEvent,
 	readModelOptions,
 	readQuestionRequest,
+	readScreenCursor,
 	readScreenStatus,
 	readSessionState,
 	readSessionSummaries,
@@ -219,6 +220,14 @@ describe("remote api payload readers", () => {
 		const base = { deviceName: "Mac", lanEndpoints: [], relayEnabled: true, runningSessionCount: 0 };
 		expect(readDeviceStatus({ ...base, screen: true })?.screen).toBe(true);
 		expect(readDeviceStatus(base)?.screen).toBe(false);
+	});
+
+	it("reads the pointer's shape and keeps its hot spot inside the image", () => {
+		expect(
+			readScreenCursor({ image: "iVBOR", width: 28, height: 40, hotspotX: 5, hotspotY: 50, screenWidth: 1512 }),
+		).toEqual({ image: "iVBOR", width: 28, height: 40, hotspotX: 5, hotspotY: 40, screenWidth: 1512 });
+		expect(readScreenCursor({ image: "iVBOR", width: 0, height: 40, screenWidth: 1512 })).toBeUndefined();
+		expect(readScreenCursor({ width: 28, height: 40, screenWidth: 1512 })).toBeUndefined();
 	});
 
 	it("reads the screen status and degrades states it does not know", () => {

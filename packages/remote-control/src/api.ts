@@ -205,6 +205,22 @@ export interface RemoteScreenStatus {
 	readonly input: RemoteInputState;
 }
 
+/**
+ * The pointer as the desktop shows it now (arrow, I-beam, hand…), for a phone that draws
+ * the pointer itself where its finger put it instead of waiting for the video. Sizes are
+ * in the desktop's points; `screenWidth` is the display's, so the phone can scale it.
+ */
+export interface RemoteScreenCursor {
+	/** base64 PNG. */
+	readonly image: string;
+	readonly width: number;
+	readonly height: number;
+	/** The point of the image that is the pointer's position, from its top-left. */
+	readonly hotspotX: number;
+	readonly hotspotY: number;
+	readonly screenWidth: number;
+}
+
 export interface RemoteDeviceStatus {
 	readonly deviceName: string;
 	readonly osLabel?: string;
@@ -297,7 +313,11 @@ export interface RemoteRequestPayloads {
 	 * `true` when the remote desktop screen opens, `false` when it closes or the app
 	 * leaves the foreground. The desktop captures only between the two.
 	 */
-	readonly "screen.subscribe": { readonly active: boolean };
+	readonly "screen.subscribe": {
+		readonly active: boolean;
+		/** The phone draws the pointer itself and wants `screen.cursor` whenever its shape changes. */
+		readonly cursor?: boolean;
+	};
 }
 
 export interface RemoteResponsePayloads {
@@ -344,6 +364,7 @@ export interface RemoteEventPayloads {
 	readonly "diagnostics.updated": RemoteDiagnosticsSnapshot;
 	/** The screen or input state changed while subscribed, e.g. a permission was granted. */
 	readonly "screen.status": RemoteScreenStatus;
+	readonly "screen.cursor": RemoteScreenCursor;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -646,5 +667,22 @@ export function readScreenStatus(value: unknown): RemoteScreenStatus | undefined
 	return {
 		screen: screenStates.has(screen as RemoteScreenState) ? (screen as RemoteScreenState) : "unavailable",
 		input: inputStates.has(input as RemoteInputState) ? (input as RemoteInputState) : "unsupported",
+	};
+}
+
+export function readScreenCursor(value: unknown): RemoteScreenCursor | undefined {
+	if (!isRecord(value)) return undefined;
+	const image = str(value.image);
+	const width = num(value.width);
+	const height = num(value.height);
+	const screenWidth = num(value.screenWidth);
+	if (!image || !width || !height || !screenWidth || width <= 0 || height <= 0 || screenWidth <= 0) return undefined;
+	return {
+		image,
+		width,
+		height,
+		hotspotX: Math.min(Math.max(num(value.hotspotX) ?? 0, 0), width),
+		hotspotY: Math.min(Math.max(num(value.hotspotY) ?? 0, 0), height),
+		screenWidth,
 	};
 }
