@@ -253,11 +253,6 @@ public enum L10n {
 		public static var load: String { tr("settings.load") }
 		public static func loadValue(_ n: Int) -> String { tr("settings.loadValue \(n)") }
 		public static var loadIdle: String { tr("settings.loadIdle") }
-		public static var confirmPolicy: String { tr("settings.confirmPolicy") }
-		public static var confirmPolicyHint: String { tr("settings.confirmPolicyHint") }
-		public static var policyMajor: String { tr("settings.policyMajor") }
-		public static var policyImportant: String { tr("settings.policyImportant") }
-		public static var policyAuto: String { tr("settings.policyAuto") }
 		public static var liveThinking: String { tr("settings.liveThinking") }
 		public static var haptics: String { tr("settings.haptics") }
 		public static var unpair: String { tr("settings.unpair") }

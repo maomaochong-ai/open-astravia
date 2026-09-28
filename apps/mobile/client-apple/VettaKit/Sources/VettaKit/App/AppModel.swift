@@ -4,23 +4,17 @@ import os
 
 private let log = Logger(subsystem: "com.openvetta.mobile", category: "app")
 
-public enum ConfirmPolicy: String, Codable, CaseIterable, Sendable {
-	case major, important, auto
-}
-
 public struct Preferences: Equatable, Codable, Sendable {
 	public var liveThinking: Bool
 	public var haptics: Bool
-	public var confirmPolicy: ConfirmPolicy
 
-	public static let defaults = Preferences(liveThinking: true, haptics: true, confirmPolicy: .important)
+	public static let defaults = Preferences(liveThinking: true, haptics: true)
 
 	static func decode(_ raw: String?) -> Preferences {
 		guard let raw, let value = try? JSONValue.parse(raw), value.isObject else { return .defaults }
 		return Preferences(
 			liveThinking: value["liveThinking"]?.boolValue != false,
-			haptics: value["haptics"]?.boolValue != false,
-			confirmPolicy: value["confirmPolicy"]?.stringValue.flatMap(ConfirmPolicy.init(rawValue:)) ?? .important
+			haptics: value["haptics"]?.boolValue != false
 		)
 	}
 }

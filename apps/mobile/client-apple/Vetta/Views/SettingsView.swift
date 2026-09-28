@@ -11,21 +11,6 @@ struct SettingsView: View {
 			computerSection
 
 			Section {
-				Picker(L10n.Settings.confirmPolicy, selection: Binding(
-					get: { model.preferences.confirmPolicy },
-					set: { value in model.setPreferences { $0.confirmPolicy = value } }
-				)) {
-					Text(L10n.Settings.policyMajor).tag(ConfirmPolicy.major)
-					Text(L10n.Settings.policyImportant).tag(ConfirmPolicy.important)
-					Text(L10n.Settings.policyAuto).tag(ConfirmPolicy.auto)
-				}
-				.pickerStyle(.menu)
-				.accessibilityIdentifier("settings.confirmPolicy")
-			} footer: {
-				Text(L10n.Settings.confirmPolicyHint)
-			}
-
-			Section {
 				Toggle(L10n.Settings.liveThinking, isOn: Binding(
 					get: { model.preferences.liveThinking },
 					set: { value in model.setPreferences { $0.liveThinking = value } }

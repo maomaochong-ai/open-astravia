@@ -3315,40 +3315,6 @@
         }
       }
     },
-    "settings.confirmPolicy": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Phone approvals"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "手机确认策略"
-          }
-        }
-      }
-    },
-    "settings.confirmPolicyHint": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "When your computer changes important files, when to ask you to confirm on your phone"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "当电脑在改动重要文件时，何时提醒你在手机上确认"
-          }
-        }
-      }
-    },
     "settings.haptics": {
       "extractionState": "manual",
       "localizations": {
@@ -3459,57 +3425,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "%lld 个任务处理中"
-          }
-        }
-      }
-    },
-    "settings.policyAuto": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Fully automatic"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "全自动执行"
-          }
-        }
-      }
-    },
-    "settings.policyImportant": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Important actions"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "重要操作确认"
-          }
-        }
-      }
-    },
-    "settings.policyMajor": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Major changes only"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "只在重大变动"
           }
         }
       }
