@@ -172,7 +172,7 @@ struct SessionView: View {
 			Button(L10n.Common.save) { Task { await model.rename(id, to: newTitle) } }
 				.disabled(newTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
 		}
-		// A new session's history is fetched once its prompt is out; earlier, it would replace the prompt.
+		// A new session is opened once its prompt is out; `openSession` then skips the history, which may still lack it.
 		.task(id: "\(id) \(starting)") {
 			guard !starting else { return }
 			await model.openSession(id)

@@ -97,6 +97,8 @@ public final class AppModel {
 	@ObservationIgnored private var transcriptSave: [String: Task<Void, Never>] = [:]
 	@ObservationIgnored private var active = true
 	@ObservationIgnored private var newSessionModelsLoad: Task<Void, Never>?
+	/// Sessions `startSession` just sent their first prompt to; see `openSession`.
+	@ObservationIgnored private var freshSessions: Set<String> = []
 
 	public init(platform: AppPlatform) {
 		self.platform = platform
@@ -245,6 +247,7 @@ public final class AppModel {
 		lastModelChoice = platform.settings.get(Self.lastModelKeyPrefix + key)
 			.flatMap { try? JSONDecoder().decode(ModelChoice.self, from: Data($0.utf8)) } ?? ModelChoice()
 		transcripts = [:]
+		freshSessions = []
 		link = .offline
 		var options = ChannelManagerOptions(desktop: record, link: identity, createTransport: platform.createTransport)
 		options.onSequence = { [weak self] sequence in
@@ -402,7 +405,11 @@ public final class AppModel {
 		return (try? JSONDecoder().decode([RemoteProjectSummary].self, from: Data(text.utf8))) ?? []
 	}
 
+	/// Fetches the session's history, except right after `startSession`: the desktop
+	/// accepts a prompt before its agent records it, so history taken then lacks the
+	/// prompt and would wipe it off the chat. The chat already has everything then.
 	public func openSession(_ sessionId: String) async {
+		let fresh = freshSessions.remove(sessionId) != nil && transcripts[sessionId]?.stale == false
 		if transcripts[sessionId] == nil, let key = desktopKey, let cached = platform.cache.loadTranscript(key, sessionId) {
 			var restored = TranscriptState.empty
 			restored.items = cached
@@ -413,6 +420,10 @@ public final class AppModel {
 		do {
 			let manager = try requireManager()
 			let opened = try await manager.request(.sessionOpen, sessionId: sessionId)
+			guard !fresh else {
+				patchSession(sessionId) { $0.live = true }
+				return
+			}
 			let history = try await manager.request(.sessionHistory, sessionId: sessionId)
 			let entries = RemoteAPI.readTranscriptEntries(history)
 			let state = RemoteAPI.readSessionState(history?["state"] ?? opened?["state"])
@@ -594,6 +605,7 @@ public final class AppModel {
 				startedSessions[localId] = target
 				await configure(target, modelKey: modelKey, thinkingLevel: thinkingLevel)
 				try await deliver(target, trimmed, attachments: attachments, echo: false)
+				freshSessions.insert(target)
 			} catch {
 				transcripts[localId] = nil
 				reportError(error)

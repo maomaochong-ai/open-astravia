@@ -623,6 +623,35 @@ import Testing
 		#expect(model.startSession("   ") == nil)
 	}
 
+	@Test func openingAJustStartedSessionKeepsItsPrompt() async throws {
+		let log = RequestLog()
+		let desktop = scriptedDesktop(recording: log)
+		let model = AppModel(platform: .memory(createTransport: desktop.createTransport))
+		model.start()
+		let invite = PairingURI.build(RemotePairingInvite(pairingId: "pair-1234567890abcdef", mobileSecret: "secret-1234567890abcdef", desktopIdentityKey: desktop.identityKey, desktopName: "MacBook Pro", lanEndpoints: ["192.168.1.20:43117"]))
+		#expect(await model.pairWithCode(invite))
+		#expect(await eventually { model.sessions.map(\.id) == ["s1"] })
+
+		let localId = try #require(model.startSession("你好"))
+		#expect(await eventually { !model.isStarting(localId) })
+		#expect(await eventually { model.transcript("s2").items.count == 2 })
+
+		// The chat opens the session as soon as the prompt is out; the desktop's history
+		// (the fake's never has "你好") may not have it yet and must not replace the chat.
+		await model.openSession("s2")
+		#expect(log.entries.contains { $0.method == .sessionOpen && $0.sessionId == "s2" })
+		#expect(!log.entries.contains { $0.method == .sessionHistory && $0.sessionId == "s2" })
+		guard case let .user(_, text, _, _)? = model.transcript("s2").items.first else {
+			Issue.record("the prompt is gone")
+			return
+		}
+		#expect(text == "你好")
+		#expect(model.transcript("s2").items.count == 2, "the reply streaming in stays too")
+
+		await model.openSession("s2")
+		#expect(log.entries.contains { $0.method == .sessionHistory && $0.sessionId == "s2" }, "only the first opening skips history")
+	}
+
 	@Test func aStartThatCannotReachTheDesktopReportsBack() async throws {
 		let desktop = scriptedDesktop()
 		let model = AppModel(platform: .memory(createTransport: desktop.createTransport))
