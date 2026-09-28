@@ -147,7 +147,7 @@
       "lastSeen": "Last connected {{time}}",
       "neverSeen": "Never connected",
       "revoke": "Remove",
-      "control": "Allow desktop control"
+      "desktop": "Control the desktop"
     },
     "pairing": {
       "create": "Generate QR code",

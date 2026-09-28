@@ -11,7 +11,7 @@ Settings pages change with the operating system, sign-in state, and build. If an
 | --- | --- | --- |
 | Account | Profile. Shown only after sign-in, and only in builds that have accounts | [Install, upgrade, and move data](/getting-started/installation-and-updates/) |
 | General | App behavior, network proxy, developer options, the first-run guide, and diagnostics | [Troubleshooting](/troubleshooting/) |
-| Remote access | Pair a phone, away-from-home access, and per-phone desktop control | [Remote access and phones](/product/remote-control/) |
+| Remote access | Pair a phone, away-from-home access, and whether each phone can control the desktop | [Remote access and phones](/product/remote-control/) |
 | Appearance | Light and dark mode, language, themes, sidebar, pointer, and ornaments | [Themes](/themes/overview/) |
 | Agent | Personalization, images, extra features, and runtime | [Context, tools, and permissions](/core/context-tools-and-permissions/) |
 | Models | Providers, models, the default, and thinking level | [Configure models](/product/models/) |
@@ -53,7 +53,7 @@ MCP is not in Settings. Discover, install, and manage connectors from the sideba
 | A plugin permission was granted | The plugin is not in a separate sandbox. It runs in the Desktop interface process |
 | An automation exists | A missed time is not run later |
 | An IM channel was revoked | The third-party account and every local trace are not necessarily gone |
-| A phone can read sessions | It cannot necessarily see the desktop. The picture also needs away-from-home access and Allow desktop control under that phone |
+| A phone can read sessions | It cannot necessarily see the desktop. The picture also needs away-from-home access and a green check on the computer icon beside that phone |
 
 <Callout title="Settings pages are not a cross-version API" type="info">
   Names, visibility, and form fields are user interface. Scripts and integrations should use the public SDK, RPC, CLI, or a configuration field that is explicitly promised. Do not depend on unpublished DOM, internal paths, or menu order.

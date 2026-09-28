@@ -253,46 +253,56 @@ export function RemotePairingSettingsView({ model }: { model: RemotePairingSetti
 				) : (
 					<ul className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-x-2">
 						{model.devices.map((device) => (
-							<li
-								key={device.id}
-								className="rounded-xl px-3 py-2.5 transition-colors duration-200 hover:bg-accent/40"
-							>
-								<div className="flex items-center gap-3.5">
-									<span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
-										<span className="icon-[solar--smartphone-2-linear] h-4.5 w-4.5" aria-hidden="true" />
-									</span>
-									<div className="min-w-0 flex-1">
-										<div className="truncate text-[13px] font-medium text-foreground">{device.name}</div>
-										<div
-											className={`mt-0.5 truncate text-[12px] ${device.online ? "text-foreground" : "text-muted-foreground"}`}
-										>
-											{device.status}
-										</div>
-									</div>
-									<Button
-										variant="ghost"
-										size="icon-sm"
-										className="shrink-0 hover:text-destructive"
-										aria-label={`${device.name} · ${labels.devices.revoke}`}
-										title={labels.devices.revoke}
-										disabled={model.busy}
-										onClick={() => model.actions.revokeDevice(device.id)}
-									>
-										<span className="icon-[solar--link-broken-linear] h-4 w-4" aria-hidden="true" />
-									</Button>
-								</div>
-								{/* Screen control needs the phone connected and the relay on; otherwise the switch would do nothing. */}
-								{device.online && model.cloud.enabled ? (
-									<label className="mt-2 flex items-center justify-between gap-3 pl-[50px]">
-										<span className="text-[12px] text-muted-foreground">{labels.devices.control}</span>
-										<Switch
-											aria-label={`${device.name} · ${labels.devices.control}`}
-											checked={device.desktopControl}
+							<li key={device.id}>
+								<Row
+									icon="icon-[solar--smartphone-2-linear]"
+									title={device.name}
+									detail={device.status}
+									detailClassName={device.online ? "text-foreground" : "text-muted-foreground"}
+								>
+									<div className="flex shrink-0 items-center gap-0.5">
+										{/* Screen control needs the phone connected and the relay on; otherwise the button would do nothing. */}
+										{device.online && model.cloud.enabled ? (
+											<Button
+												variant="ghost"
+												size="icon-sm"
+												aria-pressed={device.desktopControl}
+												aria-label={`${device.name} · ${labels.devices.desktop}`}
+												title={labels.devices.desktop}
+												className="overflow-visible text-foreground"
+												disabled={model.busy}
+												onClick={() => model.actions.setDesktopControl(device.id, !device.desktopControl)}
+											>
+												<span className="relative h-4 w-4">
+													<span className="icon-[solar--monitor-linear] h-4 w-4" aria-hidden="true" />
+													<span
+														aria-hidden="true"
+														className={`absolute -right-1 -bottom-1 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-background ${device.desktopControl ? "text-emerald-500" : "text-red-500"}`}
+													>
+														<span
+															className={
+																device.desktopControl
+																	? "icon-[solar--check-circle-bold] h-2.5 w-2.5"
+																	: "icon-[solar--close-circle-bold] h-2.5 w-2.5"
+															}
+														/>
+													</span>
+												</span>
+											</Button>
+										) : null}
+										<Button
+											variant="ghost"
+											size="icon-sm"
+											className="shrink-0 hover:text-destructive"
+											aria-label={`${device.name} · ${labels.devices.revoke}`}
+											title={labels.devices.revoke}
 											disabled={model.busy}
-											onCheckedChange={(enabled) => model.actions.setDesktopControl(device.id, enabled)}
-										/>
-									</label>
-								) : null}
+											onClick={() => model.actions.revokeDevice(device.id)}
+										>
+											<span className="icon-[solar--link-broken-linear] h-4 w-4" aria-hidden="true" />
+										</Button>
+									</div>
+								</Row>
 							</li>
 						))}
 					</ul>

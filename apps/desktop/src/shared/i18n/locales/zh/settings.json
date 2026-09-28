@@ -147,7 +147,7 @@
       "lastSeen": "上次连接 {{time}}",
       "neverSeen": "尚未连接过",
       "revoke": "解除配对",
-      "control": "允许操作桌面"
+      "desktop": "操作桌面"
     },
     "pairing": {
       "create": "生成二维码",
