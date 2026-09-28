@@ -1,4 +1,5 @@
 import {
+	buildInviteQr,
 	buildPairingUri,
 	decodePublicKey,
 	formatInviteCode,
@@ -46,6 +47,12 @@ export interface RemoteAccessDeviceView {
 export interface RemoteAccessInviteView {
 	readonly pairingId: string;
 	readonly inviteUri: string;
+	/**
+	 * What the QR code shows (ADR-0138): just the connection code and password once they are
+	 * on the relay, the whole pairing URI when there is no code; undefined while the code is
+	 * still being left on the relay, so the QR code does not change under a phone's camera.
+	 */
+	readonly qrText?: string;
 	readonly expiresAt: number;
 	/** The same invite as a connection code and password, for a phone that is not here (ADR-0136). */
 	readonly code?: RemoteAccessInviteCodeView;
@@ -895,18 +902,33 @@ export class DesktopRemoteAccessManager {
 		const mobileSecret = this.options.store.mobileSecret(pairingId);
 		if (!mobileSecret) return undefined;
 		const port = this.lanServer?.listeningPort;
+		const relayBaseUrl = this.config.cloudEnabled ? this.config.relayBaseUrl : undefined;
+		const inviteUri = buildPairingUri({
+			version: 2,
+			pairingId,
+			mobileSecret,
+			desktopIdentityKey: toBase64Url(this.identity().publicKey),
+			desktopName: this.options.deviceName,
+			lanEndpoints: port ? this.lanEndpoints(port) : [],
+			relayBaseUrl,
+		});
+		// With a relay a code is always on its way (publishInviteCode), even before it is recorded.
+		const qrText =
+			code?.status === "ready"
+				? buildInviteQr({
+						code: code.code,
+						password: code.password,
+						// The phones know the default relay; name it only when this desktop uses another.
+						relayBaseUrl: relayBaseUrl === this.options.store.defaultRelayBaseUrl() ? undefined : relayBaseUrl,
+					})
+				: code?.status === "failed" || !relayBaseUrl
+					? inviteUri
+					: undefined;
 		return {
 			pairingId,
 			expiresAt,
-			inviteUri: buildPairingUri({
-				version: 2,
-				pairingId,
-				mobileSecret,
-				desktopIdentityKey: toBase64Url(this.identity().publicKey),
-				desktopName: this.options.deviceName,
-				lanEndpoints: port ? this.lanEndpoints(port) : [],
-				relayBaseUrl: this.config.cloudEnabled ? this.config.relayBaseUrl : undefined,
-			}),
+			inviteUri,
+			...(qrText ? { qrText } : {}),
 			...(code ? { code: { code: formatInviteCode(code.code), password: code.password, status: code.status } } : {}),
 		};
 	}

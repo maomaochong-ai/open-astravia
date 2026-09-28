@@ -4,6 +4,7 @@ import {
 	inviteBoxId,
 	normalizeInviteCode,
 	openInvite,
+	parseInviteQr,
 	parsePairingUri,
 	type RemoteHello,
 	toBase64Url,
@@ -60,6 +61,8 @@ function harness(
 		published: [] as Array<{ boxUrl: string; token: string; envelope: RemoteInviteEnvelope; ttlMs: number }>,
 		withdrawn: [] as string[],
 		refuse: false,
+		/** Keeps a publish waiting until it settles. */
+		hold: undefined as Promise<void> | undefined,
 	};
 	const manager = new DesktopRemoteAccessManager({
 		store,
@@ -140,6 +143,7 @@ function harness(
 		},
 		inviteMailbox: {
 			publish: async (boxUrl, token, envelope, ttlMs) => {
+				await mailbox.hold;
 				if (mailbox.refuse) throw new Error("relay not deployed");
 				mailbox.published.push({ boxUrl, token, envelope, ttlMs });
 			},
@@ -242,6 +246,8 @@ describe("DesktopRemoteAccessManager", () => {
 		await expect(openInvite(published!.envelope, code, view?.password ?? "")).resolves.toBe(
 			created.invite?.inviteUri,
 		);
+		// The QR code carries only the code and password; the default relay goes unnamed.
+		expect(parseInviteQr(manager.getState().invite?.qrText ?? "")).toEqual({ code, password: view?.password });
 
 		// Claimed by the first phone: the mailbox is emptied.
 		const invite = parsePairingUri(created.invite?.inviteUri ?? "");
@@ -259,6 +265,7 @@ describe("DesktopRemoteAccessManager", () => {
 		await manager.createInvite();
 		await vi.waitFor(() => expect(manager.getState().invite?.code?.status).toBe("failed"));
 		expect(manager.getState().invite?.inviteUri).toBeTruthy();
+		expect(manager.getState().invite?.qrText).toBe(manager.getState().invite?.inviteUri);
 
 		mailbox.refuse = false;
 		await manager.createInvite();
@@ -274,7 +281,33 @@ describe("DesktopRemoteAccessManager", () => {
 		await manager.createInvite();
 		await new Promise((resolve) => setTimeout(resolve, 0));
 		expect(manager.getState().invite?.code).toBeUndefined();
+		expect(manager.getState().invite?.qrText).toBe(manager.getState().invite?.inviteUri);
 		expect(mailbox.published).toHaveLength(0);
+		await manager.shutdown();
+	});
+
+	it("shows no QR code until the connection code is on the relay, so the code does not change under the camera", async () => {
+		const { manager, mailbox } = harness();
+		let release!: () => void;
+		mailbox.hold = new Promise((resolve) => {
+			release = resolve;
+		});
+		await manager.createInvite();
+		await vi.waitFor(() => expect(manager.getState().invite?.code?.status).toBe("preparing"));
+		expect(manager.getState().invite?.qrText).toBeUndefined();
+
+		release();
+		await vi.waitFor(() => expect(manager.getState().invite?.code?.status).toBe("ready"));
+		expect(manager.getState().invite?.qrText).toMatch(/^VETTA:\/\/PAIR\//);
+		await manager.shutdown();
+	});
+
+	it("names a relay other than the default in the QR code", async () => {
+		const { manager } = harness();
+		await manager.setRelayBaseUrl("wss://relay.mine.test");
+		await manager.createInvite();
+		await vi.waitFor(() => expect(manager.getState().invite?.code?.status).toBe("ready"));
+		expect(parseInviteQr(manager.getState().invite?.qrText ?? "")?.relayBaseUrl).toBe("wss://relay.mine.test");
 		await manager.shutdown();
 	});
 

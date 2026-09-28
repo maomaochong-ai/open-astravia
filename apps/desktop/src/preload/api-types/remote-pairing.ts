@@ -16,6 +16,8 @@ export interface RemotePairingDevice {
 export interface RemotePairingInvite {
 	pairingId: string;
 	inviteUri: string;
+	/** What the QR code shows; undefined while the connection code is still being prepared. */
+	qrText?: string;
 	expiresAt: number;
 	/** The same invite as a connection code and password, for a phone that is not here. */
 	code?: {

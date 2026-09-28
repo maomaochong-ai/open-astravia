@@ -59,8 +59,9 @@ export { RemoteEventJournal } from "./event-journal.js";
 export { FakeRelay } from "./fake-relay.js";
 export type { FakeTransportOptions } from "./fake-transport.js";
 export { FakeTransport } from "./fake-transport.js";
-export type { RemoteInviteEnvelope } from "./invite-code.js";
+export type { InviteQr, RemoteInviteEnvelope } from "./invite-code.js";
 export {
+	buildInviteQr,
 	formatInviteCode,
 	generateInviteCode,
 	generateInvitePassword,
@@ -74,6 +75,7 @@ export {
 	MAX_INVITE_ENVELOPE_CHARS,
 	normalizeInviteCode,
 	openInvite,
+	parseInviteQr,
 	readInviteEnvelope,
 	sealInvite,
 } from "./invite-code.js";

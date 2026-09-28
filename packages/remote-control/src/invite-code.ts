@@ -74,6 +74,38 @@ export function isValidInvitePassword(password: string): boolean {
 	return new RegExp(`^\\d{${INVITE_PASSWORD_LENGTH}}$`).test(password);
 }
 
+/**
+ * The pairing QR code's text when the invite has a connection code: the code and the
+ * password instead of the whole pairing URI, so the QR code needs a quarter of the
+ * modules. Upper case keeps it in the QR alphanumeric mode. The relay is named only
+ * when it is not the one the phones use by default.
+ */
+export interface InviteQr {
+	readonly code: string;
+	readonly password: string;
+	readonly relayBaseUrl?: string;
+}
+
+const INVITE_QR_PREFIX = "VETTA://PAIR/";
+
+export function buildInviteQr(invite: InviteQr): string {
+	const text = `${INVITE_QR_PREFIX}${invite.code}/${invite.password}`;
+	return invite.relayBaseUrl ? `${text}?relay=${encodeURIComponent(invite.relayBaseUrl)}` : text;
+}
+
+/** The code, password and relay in a scanned invite QR code, or undefined for any other text. */
+export function parseInviteQr(text: string): InviteQr | undefined {
+	const trimmed = text.trim();
+	if (trimmed.slice(0, INVITE_QR_PREFIX.length).toUpperCase() !== INVITE_QR_PREFIX) return undefined;
+	const [path = "", query = ""] = trimmed.slice(INVITE_QR_PREFIX.length).split("?", 2);
+	const [rawCode = "", password = "", ...rest] = path.split("/");
+	const code = normalizeInviteCode(rawCode);
+	if (!code || rest.length > 0 || !isValidInvitePassword(password)) return undefined;
+	const relay = new URLSearchParams(query).get("relay") ?? undefined;
+	if (relay !== undefined && !/^wss?:\/\/[^\s/]+/i.test(relay)) return undefined;
+	return relay ? { code, password, relayBaseUrl: relay } : { code, password };
+}
+
 /** The mailbox's name on the relay; the code itself never leaves the two ends. */
 export function inviteBoxId(code: string): string {
 	return toBase64Url(sha256(textEncoder.encode(`${BOX_ID_PREFIX}${code}`)));

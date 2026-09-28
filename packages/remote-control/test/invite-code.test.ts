@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+	buildInviteQr,
 	formatInviteCode,
 	generateInviteCode,
 	generateInvitePassword,
@@ -8,6 +9,7 @@ import {
 	isValidInvitePassword,
 	normalizeInviteCode,
 	openInvite,
+	parseInviteQr,
 	RemoteProtocolError,
 	readInviteEnvelope,
 	sealInvite,
@@ -59,6 +61,30 @@ describe("invite codes", () => {
 		expect(envelope).toEqual({ v: 1, nonce: "AAECAwQFBgcICQoLDA0ODxAREhMUFRYX", ciphertext: CIPHERTEXT });
 	});
 
+	it("puts the code and password in the QR code, and the relay only when asked", () => {
+		expect(buildInviteQr({ code: "K7Q29MXD", password: "482913" })).toBe(QR);
+		expect(buildInviteQr({ code: "K7Q29MXD", password: "482913", relayBaseUrl: "wss://relay.mine.test" })).toBe(
+			QR_WITH_RELAY,
+		);
+		// Upper case letters, digits and ":/" only: the QR alphanumeric mode.
+		expect(QR).toMatch(/^[0-9A-Z:/]+$/);
+	});
+
+	it("reads the QR text the phones check against", () => {
+		expect(parseInviteQr(QR)).toEqual({ code: "K7Q29MXD", password: "482913" });
+		expect(parseInviteQr(QR_WITH_RELAY)).toEqual({
+			code: "K7Q29MXD",
+			password: "482913",
+			relayBaseUrl: "wss://relay.mine.test",
+		});
+		expect(parseInviteQr(" vetta://pair/k7q2-9mxd/482913 ")).toEqual({ code: "K7Q29MXD", password: "482913" });
+		expect(parseInviteQr("vetta://pair?v=2&id=abc")).toBeUndefined();
+		expect(parseInviteQr("VETTA://PAIR/K7Q29MXD")).toBeUndefined();
+		expect(parseInviteQr("VETTA://PAIR/K7Q29MXD/48291")).toBeUndefined();
+		expect(parseInviteQr("VETTA://PAIR/K7Q29MXD/482913/extra")).toBeUndefined();
+		expect(parseInviteQr("VETTA://PAIR/K7Q29MXD/482913?relay=https%3A%2F%2Fevil.test")).toBeUndefined();
+	});
+
 	it("rejects malformed envelopes", () => {
 		expect(readInviteEnvelope(null)).toBeUndefined();
 		expect(readInviteEnvelope({ v: 2, nonce: "a".repeat(32), ciphertext: "b".repeat(40) })).toBeUndefined();
@@ -67,5 +93,7 @@ describe("invite codes", () => {
 	});
 });
 
+const QR = "VETTA://PAIR/K7Q29MXD/482913";
+const QR_WITH_RELAY = "VETTA://PAIR/K7Q29MXD/482913?relay=wss%3A%2F%2Frelay.mine.test";
 const BOX_ID = "oe8sfyla3JaUnRAk_OqKI8DJvl48e8IfsfQ1SK6dMS4";
 const CIPHERTEXT = "7v0nMbc3Dzwj2xiCL-L0UvCWmf7PDe03MwwUW09QZzU";
