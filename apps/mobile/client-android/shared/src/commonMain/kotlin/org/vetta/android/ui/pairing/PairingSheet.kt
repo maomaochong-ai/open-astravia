@@ -30,6 +30,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Keyboard
+import androidx.compose.material.icons.filled.Password
 import androidx.compose.material.icons.filled.QrCode2
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.CircularProgressIndicator
@@ -63,6 +64,7 @@ import org.vetta.android.resources.Res
 import org.vetta.android.resources.cancel
 import org.vetta.android.resources.pair_code_hint
 import org.vetta.android.resources.pair_connecting
+import org.vetta.android.resources.pair_invite
 import org.vetta.android.resources.pair_manual
 import org.vetta.android.resources.pair_scan
 import org.vetta.android.resources.pair_scan_hint
@@ -91,14 +93,16 @@ import org.vetta.android.ui.design.springContentSize
 import org.vetta.android.ui.i18n.resolve
 import org.vetta.android.ui.remote.rememberPairingScanner
 import org.vetta.android.ui.work.BotAvatar
+import org.vetta.android.ui.work.CodePairDialog
 import org.vetta.android.ui.work.ManualPairDialog
 import org.vetta.android.ui.work.workColors
 
 /**
  * Pairing, as a sheet over whatever is showing (the iPhone's `PairView`): the scan frame
  * opens the camera, and the page follows the pairing as it goes: connecting, then the
- * code to check on the computer, or why it failed. Typing the computer's address is the
- * way in when scanning is not possible. Closing the sheet stops a pairing under way.
+ * code to check on the computer, or why it failed. A connection code and password from
+ * the computer work when the phone is elsewhere, and typing the computer's address when
+ * both are on one network. Closing the sheet stops a pairing under way.
  */
 @Composable
 fun PairingSheet(
@@ -109,8 +113,10 @@ fun PairingSheet(
     onManual: (String) -> Unit,
     onCancelPairing: () -> Unit,
     onDismiss: () -> Unit,
+    onCode: (code: String, password: String, relayBaseUrl: String?) -> Unit = { _, _, _ -> },
 ) {
     var manualOpen by remember { mutableStateOf(false) }
+    var codeOpen by remember { mutableStateOf(false) }
     var helpOpen by remember { mutableStateOf(false) }
     val scan = rememberPairingScanner(onScanned)
     val waiting = phase as? PairingPhase.AwaitingApproval
@@ -175,6 +181,14 @@ fun PairingSheet(
                 tag = "pair.scan",
             )
             GlassCapsuleButton(
+                text = stringResource(Res.string.pair_invite),
+                icon = Icons.Filled.Password,
+                enabled = !connecting,
+                onClick = { codeOpen = true },
+                modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                tag = "pair.invite",
+            )
+            GlassCapsuleButton(
                 text = stringResource(Res.string.pair_manual),
                 icon = Icons.Filled.Keyboard,
                 enabled = !connecting,
@@ -201,6 +215,15 @@ fun PairingSheet(
                 }
             }
         }
+    }
+    if (codeOpen) {
+        CodePairDialog(
+            onConnect = { code, password, relay ->
+                codeOpen = false
+                onCode(code, password, relay)
+            },
+            onDismiss = { codeOpen = false },
+        )
     }
     if (manualOpen) {
         ManualPairDialog(

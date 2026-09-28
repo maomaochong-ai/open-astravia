@@ -12,9 +12,13 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.vetta.android.app.AppContainer
 import org.vetta.android.app.ThemeMode
+import org.vetta.android.domain.remote.normalizeRelayBaseUrl
+import org.vetta.android.domain.remote.pairing.InviteCodeLookup
+import org.vetta.android.domain.remote.pairing.InviteLookup
 import org.vetta.android.domain.remote.pairing.PairingFailure
 import org.vetta.android.domain.remote.pairing.PairingPhase
 import org.vetta.android.domain.remote.parsePairingInvite
+import org.vetta.android.domain.remote.protocol.InviteCode
 import org.vetta.android.domain.work.NotificationPrefs
 import org.vetta.android.resources.Res
 import org.vetta.android.resources.invalid_pairing_invite
@@ -22,6 +26,9 @@ import org.vetta.android.resources.invalid_pairing_invite_hint
 import org.vetta.android.resources.pair_failed_rejected
 import org.vetta.android.resources.pair_failed_unauthorized
 import org.vetta.android.resources.pair_failed_unreachable
+import org.vetta.android.resources.pair_invite_not_found
+import org.vetta.android.resources.pair_invite_unreachable
+import org.vetta.android.resources.pair_invite_wrong_password
 import org.vetta.android.resources.pair_manual_invalid
 import org.vetta.android.resources.remote_connect_failed
 import org.vetta.android.ui.i18n.UiText
@@ -67,6 +74,7 @@ data class AppUiState(
 
 class AppViewModel(
     private val container: AppContainer,
+    private val inviteCodes: InviteCodeLookup = InviteCodeLookup(),
 ) : ViewModel() {
     private val _state = MutableStateFlow(AppUiState(themeMode = container.preferences.themeMode.value))
     val state: StateFlow<AppUiState> = _state.asStateFlow()
@@ -178,6 +186,24 @@ class AppViewModel(
     /** Pairs with the desktop at a typed `host:port`; the computer shows a code to allow. */
     fun connectDesktopManually(endpoint: String) = pair { container.mirror.pairManually(endpoint) }
 
+    /**
+     * Pairs with the desktop whose invite waits on the relay under a connection code
+     * (ADR-0136); from there it is the same as scanning its QR code.
+     */
+    fun connectDesktopWithCode(code: String, password: String, relayBaseUrl: String? = null) =
+        pair {
+            // A bare host name is taken to mean the secure WebSocket address.
+            val relay =
+                relayBaseUrl?.let { normalizeRelayBaseUrl(it) ?: normalizeRelayBaseUrl("wss://$it") } ?: InviteCode.DEFAULT_RELAY_BASE_URL
+            when (val found = inviteCodes.lookup(code, password, relay)) {
+                is InviteLookup.Found -> container.mirror.pairWithCode(found.uri)
+                else -> {
+                    _state.update { it.copy(pairingError = inviteError(found)) }
+                    false
+                }
+            }
+        }
+
     /** One pairing at a time; success closes the sheet, a failure says why, a cancelled one says nothing. */
     private fun pair(connect: suspend () -> Boolean) {
         if (_state.value.remoteConnecting) return
@@ -198,7 +224,8 @@ class AppViewModel(
                     _state.update { it.copy(showPairing = false) }
                 } else {
                     val failure = (container.mirror.state.value.pairing as? PairingPhase.Failed)?.reason
-                    if (failure != null) _state.update { it.copy(pairingError = pairingError(failure)) }
+                    // A code that led nowhere already said why; an earlier failure must not replace it.
+                    if (failure != null && _state.value.pairingError == null) _state.update { it.copy(pairingError = pairingError(failure)) }
                 }
             } finally {
                 _state.update { it.copy(remoteConnecting = false) }
@@ -207,6 +234,18 @@ class AppViewModel(
     }
 
     companion object {
+        fun inviteError(lookup: InviteLookup): PairingError =
+            PairingError(
+                uiText(Res.string.remote_connect_failed),
+                uiText(
+                    when (lookup) {
+                        InviteLookup.WrongPassword -> Res.string.pair_invite_wrong_password
+                        InviteLookup.NotFound -> Res.string.pair_invite_not_found
+                        else -> Res.string.pair_invite_unreachable
+                    },
+                ),
+            )
+
         fun pairingError(reason: PairingFailure): PairingError =
             if (reason == PairingFailure.InvalidCode) {
                 PairingError(uiText(Res.string.invalid_pairing_invite), uiText(Res.string.invalid_pairing_invite_hint))

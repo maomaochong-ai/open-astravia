@@ -266,6 +266,7 @@ fun RootApp(
                         error = state.pairingError,
                         onScanned = vm::connectDesktop,
                         onManual = vm::connectDesktopManually,
+                        onCode = vm::connectDesktopWithCode,
                         onCancelPairing = work::cancelPairing,
                         onDismiss = vm::closePairing,
                     )

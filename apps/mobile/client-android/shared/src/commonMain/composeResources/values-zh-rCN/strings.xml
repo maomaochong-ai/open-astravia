@@ -162,6 +162,17 @@
     <string name="pair_failed_rejected">电脑拒绝了这次配对</string>
     <string name="pair_failed_unauthorized">电脑不认识这部手机，请重新扫码</string>
     <string name="pair_failed_unreachable">连不上电脑，请确认两者在同一 Wi-Fi，或电脑在线</string>
+    <string name="pair_invite">用连接码连接</string>
+    <string name="pair_invite_code">连接码</string>
+    <string name="pair_invite_code_invalid">连接码是 8 位字母和数字</string>
+    <string name="pair_invite_hint">在电脑上的 Vetta 打开「设置 → 远程连接」，输入二维码下方的连接码和密码。手机不在电脑旁也能用。</string>
+    <string name="pair_invite_not_found">找不到这个连接码对应的邀请：可能输错了、已被使用，或已过期（10 分钟内有效）。</string>
+    <string name="pair_invite_password">密码</string>
+    <string name="pair_invite_password_invalid">密码是 6 位数字</string>
+    <string name="pair_invite_relay">中继地址</string>
+    <string name="pair_invite_relay_toggle">电脑使用的是自建中继</string>
+    <string name="pair_invite_unreachable">连不上中继，请检查网络，或确认电脑是否使用了自建中继。</string>
+    <string name="pair_invite_wrong_password">密码不对，请核对电脑上显示的 6 位数字。</string>
     <string name="pair_manual">手动输入地址</string>
     <string name="pair_manual_hint">输入电脑端显示的 IP 和端口，例如 192.168.1.20:43117</string>
     <string name="pair_manual_invalid">请输入形如 192.168.1.20:43117 的地址</string>

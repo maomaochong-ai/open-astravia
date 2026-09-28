@@ -18,6 +18,7 @@ import org.vetta.android.resources.Res
 import org.vetta.android.resources.pair_code_hint
 import org.vetta.android.resources.pair_connecting
 import org.vetta.android.resources.pair_failed_rejected
+import org.vetta.android.resources.pair_invite_code_invalid
 import org.vetta.android.resources.pair_manual_invalid
 import org.vetta.android.ui.AppViewModel
 import org.vetta.android.ui.str
@@ -49,6 +50,37 @@ class PairingSheetTest {
         composeRule.waitForIdle()
         assertEquals(listOf("192.168.1.20:43117"), connected)
         composeRule.onNodeWithTag("pair.endpoint").assertDoesNotExist()
+    }
+
+    @Test
+    fun aConnectionCodeAndPasswordAreCheckedBeforeTheyConnect() {
+        val connected = mutableListOf<Triple<String, String, String?>>()
+        composeRule.setContent {
+            VettaTheme(themeMode = ThemeMode.Light) {
+                PairingSheet(
+                    PairingPhase.Idle,
+                    connecting = false,
+                    error = null,
+                    onScanned = {},
+                    onManual = {},
+                    onCancelPairing = {},
+                    onDismiss = {},
+                    onCode = { code, password, relay -> connected += Triple(code, password, relay) },
+                )
+            }
+        }
+        composeRule.onNodeWithTag("pair.invite").performClick()
+        composeRule.onNodeWithTag("pair.invite.code").performTextInput("k7q2-9mx")
+        composeRule.onNodeWithTag("pair.invite.password").performTextInput("48291a3")
+        composeRule.onNodeWithTag("pair.invite.connect").performClick()
+        composeRule.onNodeWithText(str(Res.string.pair_invite_code_invalid)).assertIsDisplayed()
+        assertEquals(emptyList(), connected)
+
+        composeRule.onNodeWithTag("pair.invite.code").performTextInput("d")
+        composeRule.onNodeWithTag("pair.invite.connect").performClick()
+        composeRule.waitForIdle()
+        assertEquals(listOf(Triple("K7Q29MXD", "482913", null as String?)), connected, "letters in the password are dropped as typed")
+        composeRule.onNodeWithTag("pair.invite.code").assertDoesNotExist()
     }
 
     @Test
