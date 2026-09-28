@@ -53,6 +53,10 @@
                 <data
                     android:host="pair"
                     android:scheme="vetta" />
+                <!-- Android matches schemes case by case; a code-only QR code is upper case (ADR-0138). -->
+                <data
+                    android:host="PAIR"
+                    android:scheme="VETTA" />
             </intent-filter>
             <!-- Text, pictures and files shared from other apps start a session. -->
             <intent-filter>

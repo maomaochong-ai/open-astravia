@@ -1,9 +1,11 @@
 package org.vetta.android.domain.remote.protocol
 
+import java.net.URLDecoder
 import java.security.MessageDigest
 import org.bouncycastle.crypto.digests.SHA256Digest
 import org.bouncycastle.crypto.generators.PKCS5S2ParametersGenerator
 import org.bouncycastle.crypto.params.KeyParameter
+import org.vetta.android.domain.remote.normalizeRelayBaseUrl
 
 /**
  * Pairing with a connection code and password (port of `@vetta/remote-control`'s
@@ -26,6 +28,39 @@ object InviteCode {
     private const val KEY_SALT_PREFIX = "vetta-invite-key-v1:"
 
     data class Envelope(val nonce: String, val ciphertext: String)
+
+    /**
+     * What a desktop's pairing QR code holds once its connection code is on the relay
+     * (ADR-0138): the code and password instead of the whole pairing link, so the code is
+     * sparse enough to scan at a glance. The relay is named only when it is not the default.
+     */
+    data class Qr(val code: String, val password: String, val relayBaseUrl: String? = null)
+
+    private const val QR_PREFIX = "VETTA://PAIR/"
+
+    /**
+     * The code, password and relay in a scanned QR code; null for anything else, such as a
+     * whole pairing link. Mirrors `parseInviteQr` in `@vetta/remote-control`.
+     */
+    fun parseQr(text: String): Qr? {
+        val trimmed = text.trim()
+        if (!trimmed.uppercase().startsWith(QR_PREFIX)) return null
+        val rest = trimmed.substring(QR_PREFIX.length)
+        val path = rest.substringBefore('?').split('/')
+        if (path.size != 2) return null
+        val code = normalize(path[0]) ?: return null
+        val password = path[1].takeIf(::isValidPassword) ?: return null
+        var relay: String? = null
+        if ('?' in rest) {
+            for (item in rest.substringAfter('?').split('&')) {
+                if (!item.startsWith("relay=")) continue
+                val value = runCatching { URLDecoder.decode(item.removePrefix("relay="), "UTF-8") }.getOrNull() ?: return null
+                if (!value.lowercase().startsWith("ws://") && !value.lowercase().startsWith("wss://")) return null
+                relay = normalizeRelayBaseUrl(value) ?: return null
+            }
+        }
+        return Qr(code, password, relay)
+    }
 
     /** What was typed, as the code it names; null when it cannot be one. */
     fun normalize(input: String): String? {

@@ -173,15 +173,21 @@ class AppViewModel(
     /** A `vetta://pair` link from outside the app: checked before anything goes on the network. */
     fun handlePairingInvite(target: String) {
         _state.update { it.copy(showPairing = true) }
-        if (parsePairingInvite(target) == null) {
+        if (InviteCode.parseQr(target) == null && parsePairingInvite(target) == null) {
             _state.update { it.copy(pairingError = pairingError(PairingFailure.InvalidCode)) }
             return
         }
         connectDesktop(target)
     }
 
-    /** Pairs with the desktop in a scanned code. */
-    fun connectDesktop(target: String) = pair { container.mirror.pairWithCode(target) }
+    /**
+     * Pairs with the desktop in a scanned code: a whole pairing link, or just a connection
+     * code and password (ADR-0138), which is then looked up on the relay.
+     */
+    fun connectDesktop(target: String) {
+        val qr = InviteCode.parseQr(target) ?: return pair { container.mirror.pairWithCode(target) }
+        connectDesktopWithCode(qr.code, qr.password, qr.relayBaseUrl)
+    }
 
     /** Pairs with the desktop at a typed `host:port`; the computer shows a code to allow. */
     fun connectDesktopManually(endpoint: String) = pair { container.mirror.pairManually(endpoint) }

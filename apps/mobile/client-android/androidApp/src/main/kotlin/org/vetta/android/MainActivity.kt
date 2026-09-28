@@ -82,7 +82,7 @@ class MainActivity : ComponentActivity() {
 
 internal fun pairingInviteFrom(intent: Intent): String? {
     val data = intent.data ?: return null
-    return data.toString().takeIf { data.scheme == "vetta" && data.host == "pair" }
+    return data.toString().takeIf { data.scheme.equals("vetta", ignoreCase = true) && data.host.equals("pair", ignoreCase = true) }
 }
 
 @Preview

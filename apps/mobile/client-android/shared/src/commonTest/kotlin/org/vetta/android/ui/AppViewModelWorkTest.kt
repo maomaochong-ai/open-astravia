@@ -11,9 +11,12 @@ import kotlinx.coroutines.test.setMain
 import org.vetta.android.app.AppContainer
 import org.vetta.android.app.AppPreferences
 import org.vetta.android.app.ThemeMode
+import org.vetta.android.domain.remote.pairing.InviteCodeLookup
 import org.vetta.android.domain.remote.pairing.PairingFailure
+import org.vetta.android.domain.remote.protocol.InviteCode
 import org.vetta.android.resources.Res
 import org.vetta.android.resources.invalid_pairing_invite
+import org.vetta.android.resources.pair_invite_not_found
 import org.vetta.android.resources.pair_failed_rejected
 import org.vetta.android.ui.i18n.UiText
 import org.vetta.android.ui.navigation.HomePage
@@ -184,6 +187,24 @@ class AppViewModelWorkTest {
             vm.closePairing()
             assertFalse(vm.state.value.showPairing)
             assertEquals(null, vm.state.value.pairingError, "the next attempt starts clean")
+        }
+
+    @Test
+    fun aScannedCodeOnlyQrCodeIsLookedUpOnTheRelayItNames() =
+        runTest(dispatcher) {
+            val asked = mutableListOf<String>()
+            val vm = AppViewModel(AppContainer(preferences = AppPreferences(MapSettings()), mirror = unpairedMirror()), InviteCodeLookup { url -> asked += url; 404 to "" })
+            advanceUntilIdle()
+
+            vm.connectDesktop("VETTA://PAIR/K7Q29MXD/482913")
+            advanceUntilIdle()
+            assertEquals(listOf(InviteCode.boxUrl(InviteCode.DEFAULT_RELAY_BASE_URL, "K7Q29MXD")), asked)
+            assertEquals(UiText.Resource(Res.string.pair_invite_not_found), vm.state.value.pairingError?.message)
+
+            // Opened from the camera: the link is checked, then looked up on the desktop's own relay.
+            vm.handlePairingInvite("VETTA://PAIR/K7Q29MXD/482913?relay=wss%3A%2F%2Frelay.mine.test")
+            advanceUntilIdle()
+            assertEquals(InviteCode.boxUrl("wss://relay.mine.test", "K7Q29MXD"), asked.last())
         }
 
     @Test
