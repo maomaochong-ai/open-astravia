@@ -14,6 +14,7 @@ import { useAppInit } from "../domains/conversation/hooks/useAppInit";
 import { useSessionManager } from "../domains/conversation/hooks/useSessionManager";
 import { useNotificationInit } from "../domains/message/hooks/useNotificationInit";
 import { useProjectActions } from "../domains/project/hooks/useProjects";
+import { playNotificationSound } from "../shared/audio/notification-sound-player";
 import { useModelCatalogSync } from "../shared/hooks/useModelCatalogSync";
 import { useNarrowScreen } from "../shared/hooks/useNarrowScreen";
 import { useRunningSessionsSync } from "../shared/hooks/useRunningSessionsSync";
@@ -216,6 +217,14 @@ export function useRootLayoutModel(): RootLayoutModel {
 			}
 		});
 	}, [openSession, navigate]);
+
+	useEffect(
+		() =>
+			window.vetta.notification.onSound(({ soundId, volume }) => {
+				void playNotificationSound(soundId, volume);
+			}),
+		[],
+	);
 
 	// 快捷面板回车 → 主进程已据 postSendBehavior 处理窗口聚焦，这里在默认「对话」目录下
 	// 新建会话并直接发送 prompt（复用通知路由同款 openSession + sendMessage）。

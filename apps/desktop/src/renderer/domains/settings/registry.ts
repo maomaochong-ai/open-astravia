@@ -90,6 +90,7 @@ export const SETTINGS_TABS: readonly SettingsTabRegistration[] = [
 
 export const SETTINGS_SECTIONS = [
 	{ tab: "general", id: "general-basics", title: "基础", titleKey: "section_general-basics" },
+	{ tab: "general", id: "general-notifications", title: "通知", titleKey: "section_general-notifications" },
 	{ tab: "general", id: "general-network", title: "网络代理", titleKey: "section_general-network" },
 	{ tab: "general", id: "general-app", title: "应用", titleKey: "section_general-app" },
 	{ tab: "general", id: "general-developer", title: "开发者", titleKey: "section_general-developer" },

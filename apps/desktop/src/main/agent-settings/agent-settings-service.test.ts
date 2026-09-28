@@ -1,14 +1,17 @@
 import { describe, expect, it, vi } from "vitest";
+import { DEFAULT_NOTIFICATION_PREFERENCES } from "../../shared/notification-preferences.js";
 import type { DesktopConfig } from "../config/desktop-config-store.js";
 import { AgentSettingsService } from "./agent-settings-service.js";
 
 function createConfig(): DesktopConfig {
 	return {
+		schemaVersion: 2,
 		projects: [],
 		archivedProjects: [],
 		workspacePath: "C:\\workspace",
 		defaultExecutionMode: "full-access",
 		notificationsEnabled: true,
+		notificationPreferences: DEFAULT_NOTIFICATION_PREFERENCES,
 		experimental: { vettaCli: false, promptPrediction: false, agentSkills: true },
 		imageGeneration: {},
 	};

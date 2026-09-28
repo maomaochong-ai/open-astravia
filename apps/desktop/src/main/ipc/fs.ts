@@ -21,6 +21,7 @@ import type {
 	FsTextPreviewResult,
 } from "../../preload/fs-types.js";
 import { FS_READ_TEXT_PREVIEW_CHANNEL } from "../../preload/fs-types.js";
+import { normalizeNotificationPreferences } from "../../shared/notification-preferences.js";
 import {
 	type AppshotConfig,
 	type AppshotGesture,
@@ -453,6 +454,17 @@ export function registerFsIpc(): () => void {
 			vettaAppPath: patch.vettaAppPath ?? current.vettaAppPath,
 			vettaCliAppPath: patch.vettaCliAppPath ?? current.vettaCliAppPath,
 			notificationsEnabled: patch.notificationsEnabled ?? current.notificationsEnabled,
+			notificationPreferences:
+				patch.notificationPreferences !== undefined
+					? normalizeNotificationPreferences({
+							...current.notificationPreferences,
+							...patch.notificationPreferences,
+							events: {
+								...current.notificationPreferences.events,
+								...patch.notificationPreferences.events,
+							},
+						})
+					: current.notificationPreferences,
 			language: patch.language ?? current.language,
 			experimental:
 				patch.experimental !== undefined

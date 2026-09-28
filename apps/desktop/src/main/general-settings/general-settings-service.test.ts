@@ -1,15 +1,18 @@
 import { describe, expect, it, vi } from "vitest";
+import { DEFAULT_NOTIFICATION_PREFERENCES } from "../../shared/notification-preferences.js";
 import type { DesktopConfig } from "../config/desktop-config-store.js";
 import { GeneralSettingsService } from "./general-settings-service.js";
 
 function createConfig(): DesktopConfig {
 	return {
+		schemaVersion: 2,
 		projects: [],
 		archivedProjects: [],
 		workspacePath: "C:\\workspace",
 		defaultExecutionMode: "full-access",
 		debugMode: true,
 		notificationsEnabled: true,
+		notificationPreferences: DEFAULT_NOTIFICATION_PREFERENCES,
 	};
 }
 

@@ -22,6 +22,7 @@ export function GeneralSettingsView({ model }: GeneralSettingsViewProps): JSX.El
 			labels={model.labels}
 			sections={{
 				basics: SETTINGS_SECTION["general-basics"],
+				notifications: SETTINGS_SECTION["general-notifications"],
 				app: SETTINGS_SECTION["general-app"],
 				developer: SETTINGS_SECTION["general-developer"],
 			}}
@@ -54,8 +55,34 @@ export function GeneralSettingsView({ model }: GeneralSettingsViewProps): JSX.El
 			executionMode={model.executionMode}
 			onExecutionModeChange={(mode) => void model.actions.changeExecutionMode(mode)}
 			sandboxUnavailableReason={model.sandboxUnavailableReason}
-			notificationsEnabled={model.notificationsEnabled}
-			onNotificationsChange={model.actions.toggleNotifications}
+			notifications={{
+				sectionTitle: model.labels.sections.notifications,
+				labels: {
+					systemNotifications: model.labels.systemNotifications,
+					systemNotificationsDescription: model.labels.systemNotificationsDescription,
+					systemTiming: model.labels.notificationSystemTiming,
+					soundTiming: model.labels.notificationSoundTiming,
+					soundVolume: model.labels.notificationSoundVolume,
+					events: model.labels.notificationEvents,
+					eventCompleted: model.labels.notificationEventCompleted,
+					eventFailed: model.labels.notificationEventFailed,
+					eventActionRequired: model.labels.notificationEventActionRequired,
+					systemBanner: model.labels.notificationSystemBanner,
+					preview: model.labels.notificationPreview,
+					noSound: model.labels.notificationNoSound,
+					scopes: model.labels.notificationScopes,
+					sounds: model.labels.notificationSounds,
+				},
+				notificationsEnabled: model.notificationsEnabled,
+				value: model.notificationPreferences,
+				onNotificationsEnabledChange: model.actions.toggleNotifications,
+				onSystemScopeChange: model.actions.changeNotificationSystemScope,
+				onSoundScopeChange: model.actions.changeNotificationSoundScope,
+				onSoundVolumeChange: model.actions.changeNotificationSoundVolume,
+				onEventSystemEnabledChange: model.actions.changeNotificationEventSystem,
+				onEventSoundChange: model.actions.changeNotificationEventSound,
+				onPreview: model.actions.previewNotificationSound,
+			}}
 			debugMode={model.debugMode}
 			onDebugChange={model.actions.toggleDebug}
 			exportingDiagnostics={model.exportingDiagnostics}

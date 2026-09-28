@@ -1,4 +1,11 @@
 import { openSetupWizard } from "@domains/setup-wizard";
+import type {
+	BuiltinNotificationSoundId,
+	DesktopNotificationPreferences,
+	NotificationDeliveryScope,
+	NotificationEventType,
+} from "@preload/api";
+import { playNotificationSound } from "@shared/audio/notification-sound-player";
 import {
 	confirmDialogAtom,
 	debugModeAtom,
@@ -9,6 +16,7 @@ import {
 import { useAtom, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { DEFAULT_NOTIFICATION_PREFERENCES } from "@/shared/notification-preferences";
 import { SETTINGS_SECTION } from "../registry";
 import { recordSettingsUsage } from "./recordSettingsUsage";
 
@@ -21,12 +29,19 @@ export interface GeneralSettingsModel {
 		startAppGuide: () => void;
 		toggleDebug: (checked: boolean) => void;
 		toggleNotifications: (checked: boolean) => void;
+		changeNotificationSystemScope: (scope: NotificationDeliveryScope) => void;
+		changeNotificationSoundScope: (scope: NotificationDeliveryScope) => void;
+		changeNotificationSoundVolume: (volume: number) => void;
+		changeNotificationEventSystem: (event: NotificationEventType, enabled: boolean) => void;
+		changeNotificationEventSound: (event: NotificationEventType, soundId: BuiltinNotificationSoundId | null) => void;
+		previewNotificationSound: (soundId: BuiltinNotificationSoundId) => void;
 	};
 	debugMode: boolean;
 	executionMode: SessionExecutionMode;
 	exportingDiagnostics: boolean;
 	labels: GeneralSettingsLabels;
 	notificationsEnabled: boolean;
+	notificationPreferences: DesktopNotificationPreferences;
 	sandboxUnavailableReason: string | null;
 	workspacePath: string;
 }
@@ -47,12 +62,25 @@ interface GeneralSettingsLabels {
 		app: string;
 		basics: string;
 		developer: string;
+		notifications: string;
 	};
 	startAppGuide: string;
 	startAppGuideAction: string;
 	startAppGuideDescription: string;
 	systemNotifications: string;
 	systemNotificationsDescription: string;
+	notificationSystemTiming: string;
+	notificationSoundTiming: string;
+	notificationSoundVolume: string;
+	notificationEvents: string;
+	notificationEventCompleted: string;
+	notificationEventFailed: string;
+	notificationEventActionRequired: string;
+	notificationSystemBanner: string;
+	notificationPreview: string;
+	notificationNoSound: string;
+	notificationScopes: Record<NotificationDeliveryScope, string>;
+	notificationSounds: Record<BuiltinNotificationSoundId, string>;
 	title: string;
 	useSandbox: string;
 	workspaceDescription: string;
@@ -67,11 +95,13 @@ export function useGeneralSettingsModel(): GeneralSettingsModel {
 	const setConfirmDialog = useSetAtom(confirmDialogAtom);
 	const [sandboxUnavailableReason, setSandboxUnavailableReason] = useState<string | null>(null);
 	const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+	const [notificationPreferences, setNotificationPreferences] = useState(DEFAULT_NOTIFICATION_PREFERENCES);
 	const [exportingDiagnostics, setExportingDiagnostics] = useState(false);
 
 	useEffect(() => {
 		void window.vetta.config.get().then((config) => {
 			setNotificationsEnabled(config.notificationsEnabled !== false);
+			setNotificationPreferences(config.notificationPreferences);
 			const mode = config.defaultExecutionMode ?? "full-access";
 			setExecutionMode(mode);
 			localStorage.setItem("vetta-session-execution-mode", mode);
@@ -153,6 +183,31 @@ export function useGeneralSettingsModel(): GeneralSettingsModel {
 		recordSettingsUsage({ tab: "general", action: checked ? "enabled" : "disabled", target: "notifications" });
 	}, []);
 
+	const updateNotificationPreferences = useCallback(
+		(update: (current: DesktopNotificationPreferences) => DesktopNotificationPreferences) => {
+			setNotificationPreferences((current) => {
+				const next = update(current);
+				void window.vetta.config.set({ notificationPreferences: next });
+				return next;
+			});
+		},
+		[],
+	);
+
+	const changeNotificationEvent = useCallback(
+		(
+			event: NotificationEventType,
+			update: (
+				current: DesktopNotificationPreferences["events"][NotificationEventType],
+			) => DesktopNotificationPreferences["events"][NotificationEventType],
+		) =>
+			updateNotificationPreferences((current) => ({
+				...current,
+				events: { ...current.events, [event]: update(current.events[event]) },
+			})),
+		[updateNotificationPreferences],
+	);
+
 	const changeExecutionMode = useCallback(
 		async (mode: string) => {
 			const nextMode = mode as SessionExecutionMode;
@@ -194,6 +249,7 @@ export function useGeneralSettingsModel(): GeneralSettingsModel {
 				app: t(SETTINGS_SECTION["general-app"].titleKey),
 				basics: t(SETTINGS_SECTION["general-basics"].titleKey),
 				developer: t(SETTINGS_SECTION["general-developer"].titleKey),
+				notifications: t(SETTINGS_SECTION["general-notifications"].titleKey),
 			},
 			appVersion: t("appVersion"),
 			startAppGuide: t("startAppGuide"),
@@ -201,6 +257,27 @@ export function useGeneralSettingsModel(): GeneralSettingsModel {
 			startAppGuideDescription: t("startAppGuideDescription"),
 			systemNotifications: t("systemNotifications"),
 			systemNotificationsDescription: t("systemNotificationsDescription"),
+			notificationSystemTiming: t("notificationSystemTiming"),
+			notificationSoundTiming: t("notificationSoundTiming"),
+			notificationSoundVolume: t("notificationSoundVolume"),
+			notificationEvents: t("notificationEvents"),
+			notificationEventCompleted: t("notificationEventCompleted"),
+			notificationEventFailed: t("notificationEventFailed"),
+			notificationEventActionRequired: t("notificationEventActionRequired"),
+			notificationSystemBanner: t("notificationSystemBanner"),
+			notificationPreview: t("notificationPreview"),
+			notificationNoSound: t("notificationNoSound"),
+			notificationScopes: {
+				"background-only": t("notificationScopeBackground"),
+				"away-from-session": t("notificationScopeAway"),
+				always: t("notificationScopeAlways"),
+			},
+			notificationSounds: {
+				"soft-chime": t("notificationSoundSoftChime"),
+				"single-bell": t("notificationSoundSingleBell"),
+				"wood-tap": t("notificationSoundWoodTap"),
+				"digital-pulse": t("notificationSoundDigitalPulse"),
+			},
 			title: t("general"),
 			useSandbox: t("useSandbox"),
 			workspaceDescription: t("workspaceDescription"),
@@ -218,12 +295,25 @@ export function useGeneralSettingsModel(): GeneralSettingsModel {
 			startAppGuide,
 			toggleDebug,
 			toggleNotifications,
+			changeNotificationSystemScope: (scope) =>
+				updateNotificationPreferences((current) => ({ ...current, systemScope: scope })),
+			changeNotificationSoundScope: (scope) =>
+				updateNotificationPreferences((current) => ({ ...current, soundScope: scope })),
+			changeNotificationSoundVolume: (soundVolume) =>
+				updateNotificationPreferences((current) => ({ ...current, soundVolume })),
+			changeNotificationEventSystem: (event, systemEnabled) =>
+				changeNotificationEvent(event, (current) => ({ ...current, systemEnabled })),
+			changeNotificationEventSound: (event, soundId) =>
+				changeNotificationEvent(event, (current) => ({ ...current, soundId })),
+			previewNotificationSound: (soundId) =>
+				void playNotificationSound(soundId, notificationPreferences.soundVolume),
 		},
 		debugMode,
 		executionMode,
 		exportingDiagnostics,
 		labels,
 		notificationsEnabled,
+		notificationPreferences,
 		sandboxUnavailableReason,
 		workspacePath,
 	};
