@@ -3,6 +3,7 @@ import type { RemoteEventName, RemoteRequest } from "@vetta/remote-control";
 import type {
 	HistoryEntry,
 	PromptAttachmentRef,
+	PromptRequest,
 	SessionEvent,
 	SessionStateSnapshot,
 	SettingsPatch,
@@ -121,7 +122,12 @@ function harness() {
 	const runtime = new FakeRuntime();
 	const broker = new DesktopUserQuestionBroker();
 	const emitted: Emitted[] = [];
-	const prompts: Array<{ sessionId: string; text: string; attachments?: PromptAttachmentRef[] }> = [];
+	const prompts: Array<{
+		sessionId: string;
+		text: string;
+		attachments?: PromptAttachmentRef[];
+		promptRef?: PromptRequest["promptRef"];
+	}> = [];
 	const uploads: Array<{ sessionKey: string; kind: string; name: string; bytes: number }> = [];
 	const sessionIds = new Map<string, string>([
 		[CONVERSATION_PATH, "rt-chat"],
@@ -182,11 +188,12 @@ function harness() {
 				return open(path);
 			},
 			promptInteractiveSession: async (sessionId, prompt) => {
-				prompts.push(
-					prompt.attachments
-						? { sessionId, text: prompt.text, attachments: prompt.attachments }
-						: { sessionId, text: prompt.text },
-				);
+				prompts.push({
+					sessionId,
+					text: prompt.text,
+					...(prompt.attachments ? { attachments: prompt.attachments } : {}),
+					...(prompt.promptRef ? { promptRef: prompt.promptRef } : {}),
+				});
 				return { status: "completed" } as never;
 			},
 		},
@@ -271,6 +278,27 @@ describe("DesktopRemoteMirror", () => {
 			["对话", "conversation", 1],
 			["project", "project", 1],
 		]);
+		mirror.stop();
+	});
+
+	it("sends a phone prompt's scene as promptRef, keeps skills as text, and echoes what the phone typed", async () => {
+		const { mirror, request, emitted, prompts } = harness();
+		await mirror.start();
+		await request("session.list");
+		const key = keyForPath(CONVERSATION_PATH);
+		await request("session.open", undefined, key);
+
+		await request("session.prompt", { text: '@scene:weekly @skill:"pdf tools" 写周报' }, key);
+		expect(prompts).toEqual([
+			{ sessionId: "rt-chat", text: '@skill:"pdf tools" 写周报', promptRef: { kind: "scene", name: "weekly" } },
+		]);
+		expect(emitted.find((event) => event.name === "session.message")?.payload).toMatchObject({
+			kind: "user",
+			text: '@scene:weekly @skill:"pdf tools" 写周报',
+		});
+		await expect(request("session.prompt", { text: "@scene:a @scene:b go" }, key)).rejects.toMatchObject({
+			code: "invalid_frame",
+		});
 		mirror.stop();
 	});
 

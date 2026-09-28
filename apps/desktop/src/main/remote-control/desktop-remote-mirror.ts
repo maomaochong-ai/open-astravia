@@ -20,10 +20,12 @@ import { REMOTE_MAX_UPLOAD_BYTES } from "@vetta/remote-control";
 import type {
 	HistoryEntry,
 	PromptAttachmentRef,
+	PromptRequest,
 	SessionEvent,
 	SessionStateSnapshot,
 	SettingsPatch,
 } from "@vetta/runtime-core";
+import { MultipleSceneReferencesError, prepareInputPrompt } from "../../renderer/shared/lib/input-tokens/prepare.js";
 import type { DesktopSessionHistoryInfo } from "../../shared/session-access.js";
 import type {
 	DesktopConversationService,
@@ -247,8 +249,9 @@ export class DesktopRemoteMirror {
 				const payload = asRecord(request.payload);
 				const text = typeof payload.text === "string" ? payload.text : "";
 				if (!text.trim()) throw new RemoteOperationError("invalid_frame", "prompt text is required");
+				const prepared = prepareRemotePrompt(text);
 				const attachments = this.takeUploads(handle, payload.attachments);
-				await this.prompt(handle, text, attachments);
+				await this.prompt(handle, text, prepared, attachments);
 				return { accepted: true };
 			}
 			case "session.upload": {
@@ -621,19 +624,30 @@ export class DesktopRemoteMirror {
 		await this.options.runtime.updateSettings(sessionId, patch);
 	}
 
-	private async prompt(handle: SessionHandle, text: string, attachments: PromptAttachmentRef[] = []): Promise<void> {
+	/**
+	 * `text` is what the phone typed and is echoed as is, scene token included;
+	 * the runtime gets `prepared`, where a scene travels as `promptRef` the way
+	 * the desktop composer sends it.
+	 */
+	private async prompt(
+		handle: SessionHandle,
+		text: string,
+		prepared: PromptRequest,
+		attachments: PromptAttachmentRef[] = [],
+	): Promise<void> {
 		const tracked = await this.ensureOpen(handle, true);
 		if (this.options.runtime.getState(tracked.sessionId).isStreaming) {
 			throw new RemoteOperationError("busy", "Desktop session is already processing a turn", true);
 		}
-		tracked.pendingUserText = text;
+		// The runtime records the text without the scene token.
+		tracked.pendingUserText = prepared.text;
 		const at = this.now();
 		await this.emitMessage(handle.key, { kind: "user", text, at });
 		await this.emitState(handle.key, { status: "running" });
 		void this.options.conversations
 			.promptInteractiveSession(
 				tracked.sessionId,
-				attachments.length > 0 ? { text, attachments } : { text },
+				attachments.length > 0 ? { ...prepared, attachments } : prepared,
 				handle.cwd,
 			)
 			.catch(async (error: unknown) => {
@@ -1034,6 +1048,21 @@ function modelState(
 		modelKey: model?.provider && model.id ? `${model.provider}/${model.id}` : undefined,
 		thinkingLevel: snapshot.thinkingLevel,
 	};
+}
+
+/** Skills stay as `@skill:` text; the one scene a prompt may name becomes `promptRef`. */
+function prepareRemotePrompt(text: string): PromptRequest {
+	try {
+		const prepared = prepareInputPrompt(text);
+		return prepared.sceneName
+			? { text: prepared.text, promptRef: { kind: "scene", name: prepared.sceneName } }
+			: { text: prepared.text };
+	} catch (error) {
+		if (error instanceof MultipleSceneReferencesError) {
+			throw new RemoteOperationError("invalid_frame", "a prompt may reference one scene at most");
+		}
+		throw error;
+	}
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
