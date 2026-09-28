@@ -74,9 +74,9 @@ On the same Wi-Fi the phone tries a direct connection first, then the relay. An 
 
 ## View and control the desktop
 
-The switch is **Remote control**. It appears on a row in **Paired phones** only while that phone is online and **Allow access away from home** is on. It starts on.
+While that phone is online and **Allow access away from home** is on, a computer icon sits beside its name. A green check at its corner means the phone can view and control the desktop. A red cross means it cannot. Click the icon to switch. It starts with a green check.
 
-The phone can then open a full-screen desktop: taps, drags, scrolling, and typing go to this computer. On Android, open it from Home or Settings. On iPhone, open **Remote Control** from the Home drawer, from Settings, or by long-pressing the app icon. Turning the switch off drops the picture immediately. The phone can still read sessions.
+The phone can then open a full-screen desktop: taps, drags, scrolling, and typing go to this computer. On Android, open it from Home or Settings. On iPhone, open **Remote Control** from the Home drawer, from Settings, or by long-pressing the app icon. Switching it to a red cross drops the picture immediately. The phone can still read sessions.
 
 The computer captures its screen only while a phone has this page open and in front. Leaving the page or switching apps stops the capture, and on macOS the screen-recording indicator goes out. Both need a phone and computer on this release; an older phone keeps the picture running while it is connected, and iPhone does not show the desktop of an older computer.
 
@@ -84,7 +84,7 @@ On macOS, Vetta needs **Screen Recording** to show the picture and **Accessibili
 
 On iPhone, the whole screen works like a trackpad, inside the picture or outside it: move one finger to move the pointer, tap to click, tap with two fingers to right-click, and hold a finger for half a second to drag. Pinch with two fingers to zoom, and move two fingers to move a zoomed picture. The pointer follows your finger at once, always shows, and takes the shape it has on the computer (arrow, I-beam, hand); a zoomed picture moves only with two fingers. There is no scrolling gesture yet: drag the scroll bar. The bar above the keyboard adds Esc, Tab, the arrow keys, and ⌃ ⌥ ⌘ ⇧: tap one to hold it for the next key, or tap it twice to lock it. **Paste** types the iPhone's clipboard on the computer. Shortcuts from a hardware keyboard go straight through. Only the remote desktop turns to landscape.
 
-The picture is set up through the relay and then travels directly between phone and computer, so the switch stays hidden when away-from-home access is off or the phone is offline. Once a direct connection is up, sessions and chats use it too. Some networks cannot connect directly: sessions then keep working through the relay, and the phone says the desktop cannot be shown on this network. The Agent's own execution mode, tool permissions, and confirmations are unchanged.
+The picture is set up through the relay and then travels directly between phone and computer, so the computer icon stays hidden when away-from-home access is off or the phone is offline. Once a direct connection is up, sessions and chats use it too. Some networks cannot connect directly: sessions then keep working through the relay, and the phone says the desktop cannot be shown on this network. The Agent's own execution mode, tool permissions, and confirmations are unchanged.
 
 ## Away from home
 
@@ -114,7 +114,7 @@ Choose **Remove** on that row on the computer, or unpair from the phone's comput
 2. When a QR code or connection code expires, wait for the replacement or click **Refresh**. Do not reuse a code that was already used.
 3. If a manual address fails, confirm both sides show the same code and that the network does not isolate the two devices.
 4. If the same Wi-Fi works and leaving home does not, check **Allow access away from home**, the relay address, and whether the network blocks WebSocket.
-5. If sessions work but the phone has no desktop picture, confirm that phone is online, away-from-home access is on, and **Remote control** is on for its row. A message on the phone names a missing macOS permission or a network that cannot connect directly.
+5. If sessions work but the phone has no desktop picture, confirm that phone is online, away-from-home access is on, and the computer icon beside it has a green check. A message on the phone names a missing macOS permission or a network that cannot connect directly.
 
 <Continue>
   <ContinueLink href="/reference/security-and-data/" title="Security and data boundaries" description="See how phone pairing sits next to models and local data." />

@@ -183,7 +183,7 @@ describe("远程连接设置", () => {
 		expect(screen.queryByRole("button", { name: "remote.pairing.create" })).toBeNull();
 	});
 
-	it("连上的手机在自己那一行就能开关远程控制，默认开启", async () => {
+	it("连上的手机点电脑图标可以开关桌面操作，默认开启", async () => {
 		const device = {
 			id: "d1",
 			name: "Pixel",
@@ -197,13 +197,13 @@ describe("远程连接设置", () => {
 		const user = userEvent.setup();
 		render(<RemotePairingSettings />);
 
-		const toggle = await screen.findByRole("switch", { name: "Pixel · remote.devices.control" });
-		expect(toggle.getAttribute("aria-checked")).toBe("true");
-		await user.click(toggle);
+		const desktop = await screen.findByRole("button", { name: "Pixel · remote.devices.desktop" });
+		expect(desktop.getAttribute("aria-pressed")).toBe("true");
+		await user.click(desktop);
 		expect(setDesktopControl).toHaveBeenCalledWith("d1", false);
 	});
 
-	it("没连上或没开外网访问时不显示远程控制开关", async () => {
+	it("没连上或没开外网访问时不显示电脑图标", async () => {
 		const offline = {
 			id: "d1",
 			name: "Pixel",
@@ -217,13 +217,13 @@ describe("远程连接设置", () => {
 		const { push } = installRemotePairing({ initial: { ...inviteState(), devices: [offline] } });
 		render(<RemotePairingSettings />);
 		expect(await screen.findByText("Pixel")).toBeTruthy();
-		expect(screen.queryByRole("switch", { name: "Pixel · remote.devices.control" })).toBeNull();
+		expect(screen.queryByRole("button", { name: "Pixel · remote.devices.desktop" })).toBeNull();
 
 		act(() =>
 			push({ ...inviteState(), cloudEnabled: false, devices: [{ ...offline, online: true, channels: ["lan"] }] }),
 		);
 		expect(await screen.findByText("remote.devices.onlineVia:remote.devices.channel.lan")).toBeTruthy();
-		expect(screen.queryByRole("switch", { name: "Pixel · remote.devices.control" })).toBeNull();
+		expect(screen.queryByRole("button", { name: "Pixel · remote.devices.desktop" })).toBeNull();
 	});
 
 	it("二维码旁给出连接码和密码，供不在电脑旁的手机输入", async () => {

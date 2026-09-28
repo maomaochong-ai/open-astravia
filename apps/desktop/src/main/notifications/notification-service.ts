@@ -1,14 +1,18 @@
 import { readFile } from "node:fs/promises";
 import { Notification, shell, type WebContents } from "electron";
+import type { NotificationEventType } from "../../shared/notification-preferences.js";
 import { mainT } from "../i18n/index.js";
 import { readConfigSync } from "../ipc/fs.js";
 import { PANE_URLS } from "../ipc/permission-panes.js";
 import { getMainWindow, iconPath, showMainWindow } from "../window-manager.js";
+import { decideNotificationDelivery } from "./notification-policy.js";
 
 /** 渲染端→主进程：上报聊天页当前所在 session（离开聊天页传 null）。 */
 export const NOTIFICATION_SET_FOREGROUND_CHANNEL = "vetta:notification:set-foreground-session";
 /** 主进程→渲染端：用户点击系统通知后下发的路由意图。 */
 export const NOTIFICATION_NAVIGATE_CHANNEL = "vetta:notification:navigate";
+/** 主进程→渲染端：播放经过策略判定的内置提示音。 */
+export const NOTIFICATION_SOUND_CHANNEL = "vetta:notification:sound";
 
 /**
  * 系统通知的判别联合（见 CONTEXT.md「通知类型」）。横向扩充新类型时，
@@ -111,6 +115,12 @@ function shouldSuppress(n: AppNotification): boolean {
 	}
 }
 
+function getAgentEvent(n: AppNotification): NotificationEventType | null {
+	if (n.type === "agent-question-pending") return "actionRequired";
+	if (n.type === "agent-turn-complete") return n.outcome === "error" ? "failed" : "completed";
+	return null;
+}
+
 async function buildDescriptor(n: AppNotification): Promise<NotificationDescriptor> {
 	switch (n.type) {
 		case "agent-turn-complete": {
@@ -159,10 +169,29 @@ async function buildDescriptor(n: AppNotification): Promise<NotificationDescript
 }
 
 export async function notify(n: AppNotification): Promise<void> {
-	if (!Notification.isSupported()) return;
-	// 全局总开关（「通用设置」），默认开；显式 false 才静默。
-	if (readConfigSync().notificationsEnabled === false) return;
-	if (shouldSuppress(n)) return;
+	const config = readConfigSync();
+	const agentEvent = getAgentEvent(n);
+	if (agentEvent) {
+		const win = getMainWindow();
+		const decision = decideNotificationDelivery(agentEvent, config.notificationPreferences, {
+			windowFocused: win?.isFocused() ?? false,
+			viewingTargetSession:
+				(n.type === "agent-turn-complete" || n.type === "agent-question-pending") &&
+				foregroundSessionPath === n.sessionPath,
+			systemNotificationsEnabled: config.notificationsEnabled !== false,
+			systemNotificationsSupported: Notification.isSupported(),
+		});
+		if (decision.soundId && webContents && !webContents.isDestroyed()) {
+			webContents.send(NOTIFICATION_SOUND_CHANNEL, {
+				soundId: decision.soundId,
+				volume: decision.volume,
+			});
+		}
+		if (!decision.showSystemNotification) return;
+	} else {
+		// 设备接入和配对属于安全提示，保持原有系统通知行为和总开关语义。
+		if (!Notification.isSupported() || config.notificationsEnabled === false || shouldSuppress(n)) return;
+	}
 
 	const desc = await buildDescriptor(n);
 
@@ -173,6 +202,8 @@ export async function notify(n: AppNotification): Promise<void> {
 		title: desc.title,
 		body: desc.body,
 		icon: iconPath[process.platform],
+		// Agent 通知的声音由应用内播放器负责，避免与 OS 声音叠加并允许调节音量。
+		silent: agentEvent !== null,
 	});
 	activeNotifications.set(desc.coalesceKey, notification);
 

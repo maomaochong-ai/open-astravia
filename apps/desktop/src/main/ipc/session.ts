@@ -72,6 +72,7 @@ import { getDesktopMcpAppRegistry } from "../mcp/mcp-app-runtime.js";
 import { getDesktopMcpTaskCoordinator, getDesktopMcpTaskRegistry } from "../mcp/mcp-task-runtime.js";
 import { forgetMessageAnnotations } from "../message-annotations/host.js";
 import { notify } from "../notifications/index.js";
+import { SessionTurnNotificationController } from "../notifications/session-turn-notification-controller.js";
 import { PetSessionPresentationController } from "../pet/pet-session-presentation-controller.js";
 import { sendPetCommandToWindow } from "../pet-window.js";
 import { setDesktopPluginHookInvoker } from "../plugins/coding-agent-hook-invocation.js";
@@ -431,34 +432,18 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 	/** 给某交互式 session 挂常驻通知订阅；已挂则跳过。 */
 	const attachNotificationSub = (sessionId: string, cwd: string): void => {
 		if (notificationSubs.has(sessionId)) return;
-		// 逐轮跟踪终结状态：message.final 带 stopReason，error 事件、aborted
-		// lifecycle 各自独立。agent_end 时按累积状态判定该不该通知。
-		let lastStopReason: string | undefined;
-		let aborted = false;
+		const notificationController = new SessionTurnNotificationController();
 		const unsubscribe = runtime.subscribe(sessionId, (ev: SessionEvent) => {
 			petPresentationController.handleSessionEvent(ev);
-
-			if (ev.type === "message.final") {
-				const sr = (ev.message as unknown as { stopReason?: unknown }).stopReason;
-				if (typeof sr === "string") lastStopReason = sr;
-			} else if (ev.channel === "assistant" && (ev.type === "done" || ev.type === "error")) {
-				lastStopReason = ev.type === "done" ? ev.message.stopReason : "error";
-			} else if (ev.channel !== "assistant" && ev.type === "error") {
-				lastStopReason = "error";
-			} else if (ev.type === "session.lifecycle") {
-				if (ev.phase === "aborted") {
-					aborted = true;
-				} else if (ev.phase === "agent_end") {
-					const wasAborted = aborted || lastStopReason === "aborted";
-					const outcome = lastStopReason === "error" ? "error" : "completed";
-					const sessionPath = runtime.getSessionPath(sessionId);
-					lastStopReason = undefined;
-					aborted = false;
-					// 中断不通知；正常完成 / 出错才通知（见 CONTEXT.md「agent 完成通知」）。
-					if (!wasAborted && sessionPath) {
-						void notify({ type: "agent-turn-complete", sessionPath, cwd, outcome });
-					}
-				}
+			const outcome = notificationController.handle(ev);
+			const sessionPath = outcome ? runtime.getSessionPath(sessionId) : undefined;
+			if (outcome && sessionPath) {
+				void notify({
+					type: "agent-turn-complete",
+					sessionPath,
+					cwd,
+					outcome: outcome === "failed" ? "error" : "completed",
+				});
 			}
 		});
 		notificationSubs.set(sessionId, unsubscribe);
@@ -602,6 +587,9 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 			mcpElicitationMap.set(request.requestId, finish);
 			petPresentationController.beginWaiting(request.sessionId, waitingKey, "notice.waiting.mcp");
 			webContents.send(CHANNELS.MCP_ELICITATION_REQUEST, request);
+			const sessionPath = runtime.getSessionPath(request.sessionId);
+			const cwd = sessionCwdMap.get(request.sessionId);
+			if (sessionPath && cwd) void notify({ type: "agent-question-pending", sessionPath, cwd });
 		});
 	});
 	const unregisterMcpElicitationResolved = mcpElicitationBroker.onResolved((event) => {
@@ -633,6 +621,9 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 			sandboxGrantMap.set(request.requestId, finish);
 			petPresentationController.beginWaiting(request.sessionId, waitingKey, "notice.waiting.permission");
 			webContents.send(CHANNELS.SANDBOX_GRANT_REQUEST, request);
+			const sessionPath = runtime.getSessionPath(request.sessionId);
+			const cwd = sessionCwdMap.get(request.sessionId);
+			if (sessionPath && cwd) void notify({ type: "agent-question-pending", sessionPath, cwd });
 		});
 	};
 	const unregisterSandboxAuthorizationHandler =

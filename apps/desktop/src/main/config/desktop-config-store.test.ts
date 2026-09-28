@@ -61,6 +61,82 @@ describe("defaultAgentMode 兼容旧字段名", () => {
 	});
 });
 
+describe("desktop config schema migration", () => {
+	it("migrates an unversioned config to v2 and writes the new preferences back", async () => {
+		const store = await loadStoreWithConfig({ projects: [], fieldFromNewerVersion: { keep: true } });
+		const config = await store.readDesktopConfig();
+		expect(config.schemaVersion).toBe(2);
+		expect(config.notificationPreferences).toEqual({
+			systemScope: "away-from-session",
+			soundScope: "away-from-session",
+			soundVolume: 60,
+			events: {
+				completed: { systemEnabled: true, soundId: null },
+				failed: { systemEnabled: true, soundId: null },
+				actionRequired: { systemEnabled: true, soundId: null },
+			},
+		});
+		expect(await store.readDisk()).toMatchObject({
+			schemaVersion: 2,
+			fieldFromNewerVersion: { keep: true },
+		});
+	});
+
+	it("normalizes invalid notification preferences", async () => {
+		const store = await loadStoreWithConfig({
+			schemaVersion: 2,
+			notificationPreferences: {
+				systemScope: "sometimes",
+				soundScope: "always",
+				soundVolume: 150,
+				events: { completed: { systemEnabled: false, soundId: "from-disk" } },
+			},
+		});
+		expect((await store.readDesktopConfig()).notificationPreferences).toEqual({
+			systemScope: "away-from-session",
+			soundScope: "always",
+			soundVolume: 100,
+			events: {
+				completed: { systemEnabled: false, soundId: null },
+				failed: { systemEnabled: true, soundId: null },
+				actionRequired: { systemEnabled: true, soundId: null },
+			},
+		});
+	});
+
+	it("preserves a future schema and unknown fields across read-modify-write", async () => {
+		const store = await loadStoreWithConfig({
+			schemaVersion: 7,
+			future: { keep: true },
+			notificationPreferences: {
+				systemScope: "always",
+				soundScope: "always",
+				soundVolume: 50,
+				futurePreference: "keep",
+				events: {
+					completed: { systemEnabled: true, soundId: null, futureEventPreference: "keep" },
+					futureEvent: { future: true },
+				},
+			},
+		});
+		const config = await store.readDesktopConfig();
+		expect(config.schemaVersion).toBe(7);
+		await store.writeDesktopConfig({ ...config, debugMode: true });
+		expect(await store.readDisk()).toMatchObject({
+			schemaVersion: 7,
+			future: { keep: true },
+			debugMode: true,
+			notificationPreferences: {
+				futurePreference: "keep",
+				events: {
+					completed: { futureEventPreference: "keep" },
+					futureEvent: { future: true },
+				},
+			},
+		});
+	});
+});
+
 describe("写回配置不丢本版本不认识的字段", () => {
 	// 新旧版本共用同一份 ~/.vetta：旧版读配置时按白名单解析，不认识的字段（如 0.5.58 之于
 	// sshHosts）不进内存，随后任何一次写回都会把它从磁盘上抹掉。

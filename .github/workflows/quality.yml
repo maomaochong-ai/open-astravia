@@ -48,7 +48,11 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        # Linux covers portable logic; Windows keeps path/process behavior honest.
+        # macOS-specific production behavior is covered by the path-scoped packaged
+        # Desktop workflow and the Apple client workflow instead of rerunning every
+        # portable workspace test a third time.
+        os: [ubuntu-latest, windows-latest]
 
     steps:
       - uses: actions/checkout@v7
@@ -63,10 +67,6 @@ jobs:
       - name: Install ripgrep on Linux
         if: runner.os == 'Linux'
         run: command -v rg >/dev/null || { sudo apt-get update && sudo apt-get install --yes ripgrep; }
-
-      - name: Install ripgrep on macOS
-        if: runner.os == 'macOS'
-        run: command -v rg >/dev/null || brew install ripgrep
 
       - name: Install ripgrep on Windows
         if: runner.os == 'Windows'

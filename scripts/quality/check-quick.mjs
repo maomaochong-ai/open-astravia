@@ -10,6 +10,7 @@
 
 import { existsSync } from "node:fs";
 import { join } from "node:path";
+import { createQuickGuardPlan, runGuardPlan } from "./check-guards.mjs";
 import { changedFiles, isDirectRun, ok, parseFileSelectionArgs, repoRoot, runBun } from "./lib.mjs";
 
 const MAX_BATCH_CHARS = 16_000;
@@ -69,7 +70,7 @@ function runBiome(plan) {
 	return failed;
 }
 
-export function main(args = process.argv.slice(2)) {
+export async function main(args = process.argv.slice(2)) {
 	try {
 		const selection = parseFileSelectionArgs(args);
 		const files = selection.files.length > 0 ? selection.files : changedFiles(selection.base);
@@ -92,7 +93,9 @@ export function main(args = process.argv.slice(2)) {
 		}
 
 		const biomeCode = runBiome(plan);
-		const guardCode = runBun(["run", "check:guards"]);
+		const guardPlan = createQuickGuardPlan(files);
+		console.log(`[check:quick] guards: ${guardPlan.map(([id]) => id).join(", ") || "(none)"}`);
+		const guardCode = await runGuardPlan(guardPlan);
 		return biomeCode || guardCode;
 	} catch (error) {
 		console.error(`[check:quick] ${error instanceof Error ? error.message : String(error)}`);
@@ -101,5 +104,5 @@ export function main(args = process.argv.slice(2)) {
 }
 
 if (isDirectRun(import.meta.url)) {
-	process.exit(main());
+	process.exit(await main());
 }

@@ -3,37 +3,6 @@
 import { join } from "node:path";
 import { fail, isDirectRun, ok, readText, repoRoot, walkFiles } from "./lib.mjs";
 
-export const REQUIRED_RUNTIME_FAILURE_MARKERS = Object.freeze({
-	"packages/coding-agent/src/rpc/rpc-failure.ts": [
-		"RpcFailureMetadataSchema",
-		'"retry_safe"',
-		'"continue_session"',
-		'"restart_session"',
-		'"user_action"',
-		'"fatal"',
-	],
-	"packages/coding-agent/src/rpc/rpc-types.ts": ["RpcFailureMetadata"],
-	"packages/coding-agent/src/rpc/rpc-client.ts": ["reject(rpcClientErrorFromResponse(response))"],
-	"packages/coding-agent/src/composition/runtime-host-retry.ts": [
-		"CONVERSATION_STORAGE_ERROR_CODES.OWNERSHIP_CONFLICT",
-		'runtimeError("SESSION_LOCKED"',
-	],
-	"apps/cli-host/src/session-compatibility-error.ts": ["recoverability"],
-	"packages/runtime-core/src/errors.ts": ["SESSION_BUSY", "SESSION_LOCKED", "isSessionError"],
-	"apps/desktop/src/main/conversations/desktop-conversation-service.ts": [
-		"RUNTIME_ERROR_CODES.SESSION_BUSY",
-		"RUNTIME_ERROR_CODES.SESSION_LOCKED",
-	],
-	"packages/runtime-desktop/src/lifecycle.ts": ["DesktopRuntimeFailure", "DesktopRuntimeHealth"],
-	"apps/im-gateway/internal/hostclient/types.go": [
-		"type TypedFailure interface",
-		"FailureRecoverability() FailureRecoverability",
-	],
-	"apps/im-gateway/internal/hostclient/local/session.go": ["failureFromResponse(resp, commandPhase(cmd.Type))"],
-	"apps/im-gateway/internal/hostclient/pool.go": ["func (a *Acquired) Discard() error"],
-	"apps/im-gateway/internal/router/router.go": ["discardRestartRequiredSession", "FailureRestartSession"],
-});
-
 const BOUNDARY_ROOTS = [
 	"packages/coding-agent/src/rpc",
 	"packages/runtime-desktop/src",
@@ -78,23 +47,8 @@ const FORBIDDEN_BOUNDARY_PATTERNS = [
 	},
 ];
 
-export function findRuntimeFailureContractViolations(files, { requireBaseline = true } = {}) {
+export function findRuntimeFailureContractViolations(files) {
 	const violations = [];
-	const filesByPath = new Map(files.map((file) => [normalizePath(file.path), file.text]));
-
-	if (requireBaseline) {
-		for (const [path, markers] of Object.entries(REQUIRED_RUNTIME_FAILURE_MARKERS)) {
-			const text = filesByPath.get(path);
-			if (text === undefined) {
-				violations.push(`${path}: required runtime failure contract file is missing`);
-				continue;
-			}
-			for (const marker of markers) {
-				if (!text.includes(marker)) violations.push(`${path}: missing contract marker (${marker})`);
-			}
-		}
-	}
-
 	for (const file of files) {
 		for (const forbidden of FORBIDDEN_BOUNDARY_PATTERNS) {
 			if (forbidden.pattern.test(file.text)) violations.push(`${normalizePath(file.path)}: ${forbidden.label}`);

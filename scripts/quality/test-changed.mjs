@@ -18,21 +18,13 @@ import {
 	TESTABLE_PACKAGES,
 } from "./lib.mjs";
 
-const GLOBAL_TEST_FILES = new Set([
-	"biome.json",
-	"biome.jsonc",
-	"bun.lock",
-	"package.json",
-	"turbo.json",
-	"tsconfig.base.json",
-	"tsconfig.json",
-]);
+const GLOBAL_TEST_FILES = new Set(["bun.lock", "package.json", "turbo.json", "tsconfig.base.json", "tsconfig.json"]);
 
 export const parseArgs = parseFileSelectionArgs;
 
 export function isGlobalTestTrigger(file) {
 	const normalized = file.replaceAll("\\", "/");
-	return GLOBAL_TEST_FILES.has(normalized) || normalized.startsWith("scripts/quality/");
+	return GLOBAL_TEST_FILES.has(normalized);
 }
 
 export function createChangedTestPlan(files) {

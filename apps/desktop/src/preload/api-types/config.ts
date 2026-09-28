@@ -1,4 +1,12 @@
+import type { DesktopNotificationPreferences } from "../../shared/notification-preferences.js";
 import type { ProjectEntry } from "./shared.js";
+
+export type {
+	BuiltinNotificationSoundId,
+	DesktopNotificationPreferences,
+	NotificationDeliveryScope,
+	NotificationEventType,
+} from "../../shared/notification-preferences.js";
 
 export type DesktopProxyProtocol = "http" | "https";
 
@@ -23,6 +31,7 @@ export interface DesktopProxyConfigPatchData {
 }
 
 export interface DesktopConfigData {
+	schemaVersion: number;
 	projects: ProjectEntry[];
 	archivedProjects: ProjectEntry[];
 	workspacePath: string;
@@ -60,6 +69,8 @@ export interface DesktopConfigData {
 	debugMode?: boolean;
 	/** 系统通知总开关（「通用设置」）。缺省视为开启。 */
 	notificationsEnabled?: boolean;
+	/** Agent 事件的系统横幅、内置提示音与显示时机。 */
+	notificationPreferences: DesktopNotificationPreferences;
 	/** 实验性功能开关分组（「Agent配置 → 扩展功能」）。缺省视为全部开启。 */
 	experimental?: {
 		/** Vetta CLI 提示词开关。仅对桌面端对话会话生效，缺省开。 */

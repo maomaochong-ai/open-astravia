@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { findPackageBoundaryViolations } from "./check-package-boundaries.mjs";
+import { findDurablePackageBoundaryViolations } from "./check-package-boundaries.mjs";
+
+const findPackageBoundaryViolations = findDurablePackageBoundaryViolations;
 
 describe("platform Runtime package boundary", () => {
 	it("rejects Node imports and globals in runtime-core", () => {
