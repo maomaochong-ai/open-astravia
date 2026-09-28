@@ -58,6 +58,24 @@ export { RemoteEventJournal } from "./event-journal.js";
 export { FakeRelay } from "./fake-relay.js";
 export type { FakeTransportOptions } from "./fake-transport.js";
 export { FakeTransport } from "./fake-transport.js";
+export type { RemoteInviteEnvelope } from "./invite-code.js";
+export {
+	formatInviteCode,
+	generateInviteCode,
+	generateInvitePassword,
+	INVITE_ASSOCIATED_DATA,
+	INVITE_CODE_LENGTH,
+	INVITE_KDF_ITERATIONS,
+	INVITE_PASSWORD_LENGTH,
+	inviteBoxId,
+	inviteBoxUrl,
+	isValidInvitePassword,
+	MAX_INVITE_ENVELOPE_CHARS,
+	normalizeInviteCode,
+	openInvite,
+	readInviteEnvelope,
+	sealInvite,
+} from "./invite-code.js";
 export type { RemotePairingInvite } from "./pairing-uri.js";
 export {
 	buildPairingUri,
