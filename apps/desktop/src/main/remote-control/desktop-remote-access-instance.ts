@@ -25,6 +25,7 @@ import { DesktopRemoteMirror } from "./desktop-remote-mirror.js";
 import { RemoteDeviceStore } from "./remote-device-store.js";
 import { RemoteFiles } from "./remote-files.js";
 import { scaleImageForPhone } from "./remote-image-scale.js";
+import { desktopScreenPermissions } from "./remote-screen-permissions.js";
 import { toRemoteSkillOptions } from "./remote-skills.js";
 import { saveRemoteUpload } from "./remote-upload-store.js";
 
@@ -50,10 +51,13 @@ export function getDesktopRemoteAccessManager(
 		deviceName: desktopDisplayName(),
 		osLabel: formatOsLabel(),
 		remoteDesktop,
+		screenPermissions: desktopScreenPermissions,
 		runningSessionCount: () => getSharedRuntime().getRunningSessionPaths().length,
 		notifications: {
 			deviceConnected: ({ name }) => void notify({ type: "remote-device-connected", deviceName: name }),
 			pairingRequested: ({ deviceName, code }) => void notify({ type: "remote-pairing-request", deviceName, code }),
+			screenPermissionMissing: ({ deviceName, screen, input }) =>
+				void notify({ type: "remote-screen-permission", deviceName, screen, input }),
 		},
 		createMirror: (emit, deviceStatus) =>
 			new DesktopRemoteMirror({

@@ -53,7 +53,11 @@
 		"remoteDeviceConnectedTitle": "Phone connected",
 		"remoteDeviceConnected": "{{device}} connected to this computer. Not you? Remove it under Remote access.",
 		"remotePairingRequestTitle": "A phone wants to pair",
-		"remotePairingRequest": "{{device}} is asking to connect, code {{code}}. Click to verify and allow."
+		"remotePairingRequest": "{{device}} is asking to connect, code {{code}}. Click to verify and allow.",
+		"remoteScreenPermissionTitle": "A phone wants to see this screen",
+		"remoteScreenPermissionScreen": "{{device}} opened the remote desktop, but Vetta does not have Screen Recording permission yet, so the phone shows nothing. Click to grant it, then restart Vetta.",
+		"remoteScreenPermissionInput": "{{device}} can see the screen, but Vetta does not have Accessibility permission yet, so taps and typing on the phone do nothing. Click to grant it.",
+		"remoteScreenPermissionBoth": "{{device}} opened the remote desktop, but Vetta does not have Screen Recording or Accessibility permission yet. Click to grant them, then restart Vetta."
 	},
 	"remote": {
 		"conversationProject": "Conversations"

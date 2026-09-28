@@ -1,7 +1,8 @@
 import { readFile } from "node:fs/promises";
-import { Notification, type WebContents } from "electron";
+import { Notification, shell, type WebContents } from "electron";
 import { mainT } from "../i18n/index.js";
 import { readConfigSync } from "../ipc/fs.js";
+import { PANE_URLS } from "../ipc/permission-panes.js";
 import { getMainWindow, iconPath, showMainWindow } from "../window-manager.js";
 
 /** 渲染端→主进程：上报聊天页当前所在 session（离开聊天页传 null）。 */
@@ -39,6 +40,13 @@ export type AppNotification =
 			type: "remote-pairing-request";
 			deviceName: string;
 			code: string;
+	  }
+	| {
+			/** 手机打开了远程桌面，但 macOS 没给屏幕录制或辅助功能权限（ADR-0140）。 */
+			type: "remote-screen-permission";
+			deviceName: string;
+			screen: boolean;
+			input: boolean;
 	  };
 
 /** 点击通知后推给渲染端的路由意图（按 type 分流）。 */
@@ -56,6 +64,8 @@ interface NotificationDescriptor {
 	/** 同 key 的通知互相替换（合并为一条）。 */
 	coalesceKey: string;
 	navigate: NotificationNavigatePayload;
+	/** 点击后改为打开这个地址（如系统设置的隐私面板），不再切回应用。 */
+	openUrl?: string;
 }
 
 let webContents: WebContents | null = null;
@@ -95,6 +105,9 @@ function shouldSuppress(n: AppNotification): boolean {
 		case "remote-pairing-request":
 			// 安全提示永远弹：它的意义就是让用户知道有设备接入。
 			return false;
+		case "remote-screen-permission":
+			// 手机那头正等着画面，不弹就没人知道该去授权。
+			return false;
 	}
 }
 
@@ -131,6 +144,17 @@ async function buildDescriptor(n: AppNotification): Promise<NotificationDescript
 				coalesceKey: "remote-pairing-request",
 				navigate: { type: "remote-settings" },
 			};
+		case "remote-screen-permission": {
+			const key = n.screen && n.input ? "Both" : n.screen ? "Screen" : "Input";
+			return {
+				title: mainT("notification.remoteScreenPermissionTitle"),
+				body: mainT(`notification.remoteScreenPermission${key}`, { device: n.deviceName }),
+				coalesceKey: "remote-screen-permission",
+				navigate: { type: "remote-settings" },
+				// 屏幕录制缺了就先去那里：没有它手机什么也看不到。
+				openUrl: PANE_URLS[n.screen ? "screen-recording" : "accessibility"],
+			};
+		}
 	}
 }
 
@@ -154,6 +178,10 @@ export async function notify(n: AppNotification): Promise<void> {
 
 	notification.on("click", () => {
 		activeNotifications.delete(desc.coalesceKey);
+		if (desc.openUrl) {
+			void shell.openExternal(desc.openUrl);
+			return;
+		}
 		showMainWindow();
 		if (webContents && !webContents.isDestroyed()) {
 			webContents.send(NOTIFICATION_NAVIGATE_CHANNEL, desc.navigate);

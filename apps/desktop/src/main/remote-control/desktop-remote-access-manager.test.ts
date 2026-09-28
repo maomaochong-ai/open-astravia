@@ -53,10 +53,13 @@ function harness(
 	const notifications: string[] = [];
 	const mirrors: Array<{ started: boolean; stopped: boolean }> = [];
 	const desktopHosts: Array<{
-		options: { relayBaseUrl: string; pairingId: string; desktopSecret: string };
+		options: { relayBaseUrl: string; pairingId: string; desktopSecret: string; screenOnDemand: boolean };
 		stopped: boolean;
 		controlHandlers?: RemoteTransportHandlers;
+		/** Every `setScreen` call, in order. */
+		screen: boolean[];
 	}> = [];
+	const permissions = { screen: true, input: true };
 	const mailbox = {
 		published: [] as Array<{ boxUrl: string; token: string; envelope: RemoteInviteEnvelope; ttlMs: number }>,
 		withdrawn: [] as string[],
@@ -73,7 +76,11 @@ function harness(
 		notifications: {
 			deviceConnected: (device) => notifications.push(`connected:${device.name}`),
 			pairingRequested: (request) => notifications.push(`pairing:${request.deviceName}:${request.code}`),
+			screenPermissionMissing: (request) =>
+				notifications.push(`screen-permission:${request.deviceName}:${request.screen}:${request.input}`),
 		},
+		screenPermissions: { screenAllowed: () => permissions.screen, inputAllowed: () => permissions.input },
+		screenPermissionPollMs: 10,
 		createMirror: () => {
 			const entry = { started: false, stopped: false };
 			mirrors.push(entry);
@@ -89,7 +96,7 @@ function harness(
 		},
 		remoteDesktop: {
 			start: async (options) => {
-				const entry: (typeof desktopHosts)[number] = { options, stopped: false };
+				const entry: (typeof desktopHosts)[number] = { options, stopped: false, screen: [] };
 				desktopHosts.push(entry);
 				let handlers: RemoteTransportHandlers | undefined;
 				return {
@@ -103,6 +110,11 @@ function harness(
 						send: async () => undefined,
 						close: async () => handlers?.onClose("test stopped"),
 					},
+					setScreen: async (active: boolean) => {
+						entry.screen.push(active);
+						return active;
+					},
+					refreshInput: () => true,
 					revokeInput: () => undefined,
 					grantInput: () => undefined,
 					stop: async () => {
@@ -164,6 +176,7 @@ function harness(
 		notifications,
 		mirrors,
 		desktopHosts,
+		permissions,
 		mailbox,
 		readConfig: () => config,
 		/** Makes saving the desktop config fail, as a locked file on Windows does. */
@@ -714,6 +727,7 @@ describe("DesktopRemoteAccessManager", () => {
 			relayBaseUrl: "wss://relay.example",
 			pairingId,
 			desktopSecret: "relay-secret",
+			screenOnDemand: false,
 		});
 		desktopHosts[0]?.controlHandlers?.onClose("ICE failed");
 		await new Promise((resolve) => setTimeout(resolve, 0));
@@ -722,5 +736,141 @@ describe("DesktopRemoteAccessManager", () => {
 		expect(desktopHosts).toHaveLength(2);
 		await manager.shutdown();
 		expect(desktopHosts[1]?.stopped).toBe(true);
+	});
+
+	describe("screen on demand (ADR-0140)", () => {
+		const pairingId = "a".repeat(24);
+		const phoneKey = "k".repeat(43);
+		const paired = {
+			cloudEnabled: true,
+			relayBaseUrl: "wss://relay.example",
+			devices: [
+				{
+					id: pairingId,
+					name: "iPhone",
+					mobileSecretHash: "h",
+					mobileIdentityKey: phoneKey,
+					createdAt: 1,
+					desktopControl: true,
+				},
+			],
+		};
+
+		/** A phone link that can send requests and records what the desktop sends back. */
+		function phoneLink(capabilities: { chat: boolean; sessionRead: boolean; screen?: boolean }) {
+			let listener: ((event: unknown) => void) | undefined;
+			const responses: Array<{
+				requestId: string;
+				response: { success: boolean; payload?: unknown; error?: unknown };
+			}> = [];
+			const events: Array<{ name: string; payload?: unknown }> = [];
+			const connection = {
+				onEvent: (next: (event: unknown) => void) => {
+					listener = next;
+					return () => undefined;
+				},
+				getSnapshot: () => ({ state: "online", peerIdentityKey: phoneKey, peerCapabilities: capabilities }),
+				deliverEvent: async (event: { name: string; payload?: unknown }) => {
+					events.push(event);
+				},
+				respond: async (requestId: string, response: { success: boolean; payload?: unknown }) => {
+					responses.push({ requestId, response });
+				},
+				close: async () => undefined,
+			} as unknown as RemoteConnection;
+			let requests = 0;
+			const subscribe = async (active: unknown) => {
+				const requestId = `r${++requests}`;
+				listener?.({
+					type: "remote-request",
+					request: { type: "request", requestId, method: "screen.subscribe", payload: { active } },
+				});
+				await vi.waitFor(() => expect(responses.some((entry) => entry.requestId === requestId)).toBe(true));
+				return responses.find((entry) => entry.requestId === requestId)?.response;
+			};
+			return { connection, events, subscribe };
+		}
+
+		it("captures for a phone that declared screen only while it subscribes, and says it can", async () => {
+			const { manager, relayLinks, store, desktopHosts } = harness(structuredClone(paired));
+			store.putRelaySecret(pairingId, "relay-secret");
+			await manager.restore();
+			const phone = phoneLink({ chat: true, sessionRead: true, screen: true });
+			relayLinks[0]?.options.onConnection(phone.connection);
+			await vi.waitFor(() => expect(desktopHosts).toHaveLength(1));
+			expect(desktopHosts[0]?.options.screenOnDemand).toBe(true);
+			expect(phone.events.find((event) => event.name === "device.status")?.payload).toMatchObject({ screen: true });
+			expect(desktopHosts[0]?.screen).toEqual([]);
+
+			await expect(phone.subscribe(true)).resolves.toEqual({
+				success: true,
+				payload: { screen: "streaming", input: "ready" },
+			});
+			await expect(phone.subscribe(false)).resolves.toEqual({
+				success: true,
+				payload: { screen: "stopped", input: "ready" },
+			});
+			expect(desktopHosts[0]?.screen).toEqual([true, false]);
+			await manager.shutdown();
+		});
+
+		it("keeps sharing for the whole session with a phone that does not declare screen", async () => {
+			const { manager, relayLinks, store, desktopHosts } = harness(structuredClone(paired));
+			store.putRelaySecret(pairingId, "relay-secret");
+			await manager.restore();
+			relayLinks[0]?.options.onConnection(phoneLink({ chat: true, sessionRead: true }).connection);
+			await vi.waitFor(() => expect(desktopHosts).toHaveLength(1));
+			expect(desktopHosts[0]?.options.screenOnDemand).toBe(false);
+			await manager.shutdown();
+		});
+
+		it("explains a missing permission, asks the desktop to grant it, and follows up when it is granted", async () => {
+			const { manager, relayLinks, store, desktopHosts, permissions, notifications } = harness(
+				structuredClone(paired),
+			);
+			permissions.screen = false;
+			store.putRelaySecret(pairingId, "relay-secret");
+			await manager.restore();
+			const phone = phoneLink({ chat: true, sessionRead: true, screen: true });
+			relayLinks[0]?.options.onConnection(phone.connection);
+			await vi.waitFor(() => expect(desktopHosts).toHaveLength(1));
+
+			await expect(phone.subscribe(true)).resolves.toMatchObject({
+				payload: { screen: "permission_denied", input: "ready" },
+			});
+			expect(desktopHosts[0]?.screen).toEqual([]);
+			expect(notifications).toContain("screen-permission:iPhone:true:false");
+
+			permissions.screen = true;
+			await vi.waitFor(() =>
+				expect(phone.events.find((event) => event.name === "screen.status")?.payload).toEqual({
+					screen: "streaming",
+					input: "ready",
+				}),
+			);
+			await manager.shutdown();
+		});
+
+		it("refuses the screen to a phone it was turned off for, and stops capturing when it is", async () => {
+			const { manager, relayLinks, store, desktopHosts } = harness(structuredClone(paired));
+			store.putRelaySecret(pairingId, "relay-secret");
+			await manager.restore();
+			const phone = phoneLink({ chat: true, sessionRead: true, screen: true });
+			relayLinks[0]?.options.onConnection(phone.connection);
+			await vi.waitFor(() => expect(desktopHosts).toHaveLength(1));
+			await phone.subscribe(true);
+
+			await manager.setDesktopControl(pairingId, false);
+			expect(desktopHosts[0]?.stopped).toBe(true);
+			await expect(phone.subscribe(true)).resolves.toMatchObject({
+				success: false,
+				error: { code: "forbidden" },
+			});
+			await expect(phone.subscribe("yes")).resolves.toMatchObject({
+				success: false,
+				error: { code: "invalid_frame" },
+			});
+			await manager.shutdown();
+		});
 	});
 });

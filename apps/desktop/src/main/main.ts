@@ -734,11 +734,12 @@ if (!gotSingleLock) {
 			process.env.VETTA_REMOTE_DESKTOP_SIGNALING_URL && process.env.VETTA_REMOTE_DESKTOP_PAIRING_TOKEN
 				? undefined
 				: {
-						start: ({ relayBaseUrl, pairingId, desktopSecret }) =>
+						start: ({ relayBaseUrl, pairingId, desktopSecret, screenOnDemand }) =>
 							startDesktopRemoteDesktopHost({
 								signalingTarget: `${relayBaseUrl}/v2/desktop/${pairingId}/host#pairing=${encodeURIComponent(desktopSecret)}`,
 								// Started only for a phone allowed to control this desktop in Settings.
 								inputEnabled: true,
+								screenOnDemand,
 								appRoot,
 								isPackaged: app.isPackaged,
 								devServerUrl: process.env.VETTA_DESKTOP_DEV_URL,

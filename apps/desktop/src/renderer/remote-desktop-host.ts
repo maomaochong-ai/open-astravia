@@ -9,6 +9,9 @@ declare global {
 			onControlMessage(message: string): void;
 			onControlClose(reason?: string): void;
 			onControlSend(callback: (message: string) => void): () => void;
+			onScreen(callback: (request: { id: number; active: boolean }) => void): () => void;
+			screenReady(): void;
+			screenResult(id: number, streaming: boolean): void;
 		};
 	}
 }
@@ -17,6 +20,8 @@ const params = new URLSearchParams(window.location.search);
 const target = params.get("target");
 const sessionId = params.get("sessionId");
 if (!target || !sessionId) throw new Error("remote desktop host target is missing");
+// "demand": capture only while a phone subscribes (ADR-0140); otherwise for the whole session.
+const onDemand = params.get("screen") === "demand";
 
 const signaling = new WebSocketRemoteDesktopSignaling(target);
 let host: RemoteDesktopHost | undefined;
@@ -33,7 +38,7 @@ await signaling.connect({
 	},
 });
 
-const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+const stream = onDemand ? undefined : await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
 host = new RemoteDesktopHost(
 	{
 		sessionId,
@@ -58,6 +63,46 @@ const removeControlListener = window.vettaRemoteDesktop?.onControlSend((message)
 		console.warn("remote desktop control send failed", error);
 	}
 });
-window.addEventListener("beforeunload", () => removeControlListener?.(), { once: true });
 await host.start(stream, { waitForPeerReady: true });
 for (const signal of pending.splice(0)) await host.acceptSignal(signal);
+
+// Requests run one after another so a quick close-and-reopen cannot leave two captures.
+let screenTrack: MediaStreamTrack | undefined;
+let screenQueue = Promise.resolve();
+const setScreen = async (active: boolean): Promise<boolean> => {
+	const current = host;
+	if (!current) return false;
+	if (!active) {
+		screenTrack = undefined;
+		await current.replaceScreen(null);
+		return false;
+	}
+	if (screenTrack?.readyState === "live") return true;
+	const track = (await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false })).getVideoTracks()[0];
+	if (!track) return false;
+	await current.replaceScreen(track);
+	screenTrack = track;
+	return true;
+};
+const removeScreenListener = onDemand
+	? window.vettaRemoteDesktop?.onScreen(({ id, active }) => {
+			screenQueue = screenQueue.then(async () => {
+				let streaming = false;
+				try {
+					streaming = await setScreen(active);
+				} catch (error) {
+					console.warn("remote desktop screen capture failed", error);
+				}
+				window.vettaRemoteDesktop?.screenResult(id, streaming);
+			});
+		})
+	: undefined;
+window.addEventListener(
+	"beforeunload",
+	() => {
+		removeControlListener?.();
+		removeScreenListener?.();
+	},
+	{ once: true },
+);
+if (onDemand) window.vettaRemoteDesktop?.screenReady();
