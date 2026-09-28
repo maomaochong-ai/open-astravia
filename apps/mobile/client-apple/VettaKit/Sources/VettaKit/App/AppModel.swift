@@ -83,6 +83,9 @@ public final class AppModel {
 	public private(set) var preferences: Preferences = .defaults
 	public private(set) var pairing: PairingPhase = .idle
 	public var lastError: String?
+	/// What the desktop said about its screen while the remote desktop page is open; nil
+	/// otherwise (ADR-0140).
+	public private(set) var screen: RemoteScreenStatus?
 
 	@ObservationIgnored private let platform: AppPlatform
 	@ObservationIgnored private let pairingStore: PairingStore
@@ -93,6 +96,8 @@ public final class AppModel {
 	@ObservationIgnored private var unsubscribe: [() -> Void] = []
 	@ObservationIgnored private var transcriptSave: [String: Task<Void, Never>] = [:]
 	@ObservationIgnored private var active = true
+	/// The remote desktop page is open; the desktop captures only while it is and the app is in front.
+	@ObservationIgnored private var screenOpen = false
 	@ObservationIgnored private var newSessionModelsLoad: Task<Void, Never>?
 	/// Sessions `startSession` just sent their first prompt to; see `openSession`.
 	@ObservationIgnored private var freshSessions: Set<String> = []
@@ -136,6 +141,7 @@ public final class AppModel {
 		active = value
 		manager?.setForeground(value)
 		if value, !wasActive { manager?.refresh() }
+		if screenOpen, value != wasActive { syncScreen() }
 		if value != wasActive { platform.signals?.show(watch.digest(sessions), active: value) }
 	}
 
@@ -302,6 +308,41 @@ public final class AppModel {
 		unsubscribe.removeAll()
 		manager?.stop()
 		manager = nil
+		screen = nil
+	}
+
+	// MARK: Remote desktop
+
+	/// The relay's viewer signaling for the paired desktop's screen and the P2P channel;
+	/// nil without a relay to reach it through.
+	public var remoteDesktopTarget: String? {
+		guard let record = pairingStore.getCurrent(), let relay = record.relayBaseUrl, !relay.isEmpty else { return nil }
+		return PairingURI.desktopViewerUrl(relayBaseUrl: relay, pairingId: record.pairingId, mobileSecret: record.mobileSecret)
+	}
+
+	/// The remote desktop page opened or closed: the desktop starts or stops capturing (ADR-0140).
+	public func setScreenOpen(_ open: Bool) {
+		guard screenOpen != open else { return }
+		screenOpen = open
+		syncScreen()
+	}
+
+	private func syncScreen() {
+		let wanted = screenOpen && active
+		if !wanted { screen = nil }
+		// Only a desktop that captures on demand knows the request; with any other the
+		// phone never opens the P2P link that would carry its screen.
+		guard let manager, link.desktop?.screen == true, link.isUsable else { return }
+		Task {
+			do {
+				let result = try await manager.request(.screenSubscribe, payload: ["active": .bool(wanted)])
+				// A later open or close has its own answer coming.
+				guard wanted == (self.screenOpen && self.active) else { return }
+				self.screen = wanted ? RemoteAPI.readScreenStatus(result) : nil
+			} catch {
+				log.error("screen subscription failed: \(String(describing: type(of: error)), privacy: .public)")
+			}
+		}
 	}
 
 	private func requireManager() throws -> ChannelManager {
@@ -400,6 +441,11 @@ public final class AppModel {
 		case .sessionResync:
 			transcripts = transcripts.mapValues { TranscriptReducer.reduce($0, .resync) }
 			Task { await refreshSessions() }
+		case .deviceStatus:
+			// Sent on every connection: a desktop that lost the phone for a moment forgot it was watching.
+			if screenOpen, active { syncScreen() }
+		case .screenStatus:
+			if screenOpen, active, let status = RemoteAPI.readScreenStatus(event.payload) { screen = status }
 		default:
 			return
 		}
