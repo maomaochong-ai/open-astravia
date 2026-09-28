@@ -201,7 +201,8 @@ export async function readFilesystemDirectory(dirPath: string): Promise<FsEntry[
 	return results;
 }
 
-function openPreviewSource(filePath: string): PreviewFileSource {
+/** 按预览的可读范围打开一个文件；超出范围时抛错。本地与远程项目的路径都接受。 */
+export function openPreviewSource(filePath: string): PreviewFileSource {
 	if (isSshProjectUri(filePath)) return openRemotePreviewSource(filePath);
 	assertPathReadableForPreview(filePath);
 	const resolved = resolve(filePath);
@@ -210,7 +211,7 @@ function openPreviewSource(filePath: string): PreviewFileSource {
 		stat: async () => {
 			try {
 				const stats = await stat(resolved);
-				return { size: stats.size, isFile: stats.isFile() };
+				return { size: stats.size, isFile: stats.isFile(), modifiedAt: stats.mtimeMs };
 			} catch (error: unknown) {
 				if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
 				throw error;

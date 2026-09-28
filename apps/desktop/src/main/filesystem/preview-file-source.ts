@@ -8,8 +8,8 @@
 export interface PreviewFileSource {
 	/** 用来取扩展名的路径；远程项目给远端路径，不带 URI 前缀。 */
 	readonly path: string;
-	/** 文件不存在时返回 null。 */
-	stat(): Promise<{ readonly size: number; readonly isFile: boolean } | null>;
+	/** 文件不存在时返回 null。`modifiedAt` 为毫秒。 */
+	stat(): Promise<{ readonly size: number; readonly isFile: boolean; readonly modifiedAt: number } | null>;
 	read(): Promise<Buffer>;
 	readHead(byteCount: number): Promise<Buffer>;
 }
