@@ -116,11 +116,11 @@ import org.vetta.android.ui.work.workColors
 data class HomeEntry(val icon: ImageVector, val title: String, val tag: String, val onClick: () -> Unit)
 
 /**
- * The drawer over the slot (the iPhone's `HomeView`): the Vetta title and Close stay at
- * the top, then a short list of ways in and every session under a status filter that
- * sticks to the top. The link pill, Search and Settings float at the bottom, and Search
- * opens its field there, folding the top bar and the ways in away and listing matching
- * projects above the matching sessions.
+ * The drawer over the slot (the iPhone's `HomeView`): the Vetta title stays at the top,
+ * with the link-status chip on its right and Close at the far end. Under that, a short
+ * list of ways in and every session, beneath a status filter that sticks to the top.
+ * Search and Settings float at the bottom, and Search opens its field there, folding the
+ * top bar and the ways in away and listing matching projects above the matching sessions.
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -197,8 +197,18 @@ fun HomeScreen(
                         stringResource(Res.string.app_name),
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier.weight(1f).semantics { heading() },
+                        modifier = Modifier.semantics { heading() },
                     )
+                    LinkPill(
+                        state.paired,
+                        state.link,
+                        onReconnect,
+                        onPair,
+                        unlinked = state.unlinked,
+                        compact = true,
+                        modifier = Modifier.padding(start = 8.dp),
+                    )
+                    Spacer(Modifier.weight(1f))
                     // Nothing to close while Home stays beside the slot.
                     if (!LocalHomeBeside.current) GlassCircleButton(Icons.Filled.Close, stringResource(Res.string.close), onClick = onClose, tag = "home.close")
                 }
@@ -265,7 +275,6 @@ fun HomeScreen(
             onStartSearch = { searchActive = true },
             onEndSearch = ::endSearch,
             canSearch = state.sessions.isNotEmpty(),
-            pill = { LinkPill(state.paired, state.link, onReconnect, onPair, unlinked = state.unlinked) },
             onOpenSettings = onOpenSettings,
             modifier = Modifier.align(Alignment.BottomCenter),
         )
@@ -360,7 +369,7 @@ fun Unavailable(icon: ImageVector, title: String, description: String, action: (
 }
 
 /**
- * The bar floating over the list's end: the link pill, Search and Settings; while
+ * The bar floating over the list's end: Search and Settings on the right; while
  * searching, the search field in their place, lifted above the keyboard.
  */
 @Composable
@@ -371,7 +380,6 @@ private fun HomeBottomBar(
     onStartSearch: () -> Unit,
     onEndSearch: () -> Unit,
     canSearch: Boolean,
-    pill: @Composable () -> Unit,
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -385,7 +393,6 @@ private fun HomeBottomBar(
             SearchField(query, onQueryChange, onEndSearch)
         } else {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                pill()
                 Spacer(Modifier.weight(1f))
                 // Nothing to search until there is a session.
                 GlassCircleButton(Icons.Filled.Search, stringResource(Res.string.home_search), onClick = onStartSearch, size = 56.dp, enabled = canSearch, tag = "home.search")

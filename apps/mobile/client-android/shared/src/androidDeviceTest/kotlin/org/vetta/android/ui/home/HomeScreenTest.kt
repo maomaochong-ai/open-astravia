@@ -32,6 +32,8 @@ import org.vetta.android.domain.work.PromptDraft
 import org.vetta.android.domain.work.SessionFilter
 import org.vetta.android.domain.work.SessionStatusGroup
 import org.vetta.android.resources.Res
+import org.vetta.android.resources.app_name
+import org.vetta.android.resources.link_connected
 import org.vetta.android.resources.session_delete
 import org.vetta.android.resources.session_pin
 import org.vetta.android.resources.work_clear_filters
@@ -42,6 +44,7 @@ import org.vetta.android.ui.theme.VettaTheme
 import org.vetta.android.ui.work.WorkActions
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 @RunWith(AndroidJUnit4::class)
 class HomeScreenTest {
@@ -125,6 +128,20 @@ class HomeScreenTest {
                 )
             }
         }
+    }
+
+    @Test
+    fun linkStatusSitsBesideTheTitleAndOpensItsDetail() {
+        setHome()
+        val name = composeRule.onNodeWithText(str(Res.string.app_name)).fetchSemanticsNode().boundsInRoot
+        val status = composeRule.onNodeWithTag("link.status").fetchSemanticsNode().boundsInRoot
+        val search = composeRule.onNodeWithTag("home.search").fetchSemanticsNode().boundsInRoot
+        assertTrue(status.left >= name.right - 1f, "the status chip sits to the right of the name")
+        assertTrue(status.top < name.bottom && status.bottom > name.top, "the status chip stays on the title row")
+        assertTrue(status.bottom < search.top, "the status chip is no longer in the bottom bar")
+
+        composeRule.onNodeWithTag("link.status").performClick()
+        composeRule.onNodeWithText(str(Res.string.link_connected)).assertIsDisplayed()
     }
 
     @Test

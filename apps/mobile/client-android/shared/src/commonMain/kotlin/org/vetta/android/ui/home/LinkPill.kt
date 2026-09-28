@@ -74,6 +74,9 @@ private sealed interface PillPhase {
  * black with a tick while online, spinning while connecting, red with a cross once the
  * link has failed. Its colour, mark and width morph from one state to the next. Tapping
  * explains the link and, offline, offers a reconnect; unpaired, it opens pairing.
+ *
+ * [compact] is the chip beside Home's title: the same states, drawn shorter so it sits
+ * on the title line.
  */
 @Composable
 fun LinkPill(
@@ -84,6 +87,7 @@ fun LinkPill(
     modifier: Modifier = Modifier,
     /** Set after an unpairing: the sessions shown no longer sync. */
     unlinked: UnlinkReason? = null,
+    compact: Boolean = false,
 ) {
     val colors = MaterialTheme.workColors
     val phase: PillPhase = if (paired) PillPhase.Link(LinkIndicator.of(link)) else PillPhase.Unpaired
@@ -115,23 +119,27 @@ fun LinkPill(
             else -> stringResource(Res.string.work_unpaired_title)
         }
     val label = stringResource(Res.string.link_status)
+    val height = if (compact) 30.dp else 40.dp
+    val laptopSize = if (compact) 15.dp else 20.dp
+    val markSize = if (compact) 13.dp else 18.dp
+    val spinnerSize = if (compact) 12.dp else 14.dp
     Box(modifier) {
         Row(
             Modifier
-                .height(40.dp)
+                .height(height)
                 .clip(CircleShape)
                 .background(fill)
                 .springClickable(highlight = CircleShape) { if (paired) open = true else onPair() }
                 .semantics {
                     contentDescription = label
                     stateDescription = description
-                }.padding(horizontal = 16.dp)
+                }.padding(horizontal = if (compact) 9.dp else 16.dp)
                 .springContentSize()
                 .testTag("link.status"),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(7.dp),
+            horizontalArrangement = Arrangement.spacedBy(if (compact) 4.dp else 7.dp),
         ) {
-            Icon(if (offline) Icons.Outlined.LaptopChromebook else Icons.Filled.Laptop, contentDescription = null, tint = ink, modifier = Modifier.size(20.dp))
+            Icon(if (offline) Icons.Outlined.LaptopChromebook else Icons.Filled.Laptop, contentDescription = null, tint = ink, modifier = Modifier.size(laptopSize))
             AnimatedContent(
                 phase,
                 transitionSpec = { (fadeIn(VettaMotion.snappy()) + scaleIn(VettaMotion.bouncy(), 0.6f)) togetherWith (fadeOut(VettaMotion.snappy()) + scaleOut(VettaMotion.snappy(), 0.6f)) },
@@ -139,10 +147,10 @@ fun LinkPill(
                 label = "pill mark",
             ) { shown ->
                 when (shown) {
-                    PillPhase.Unpaired -> Icon(Icons.Filled.Add, contentDescription = null, tint = ink, modifier = Modifier.size(18.dp))
-                    PillPhase.Link(LinkIndicator.Online) -> Icon(Icons.Filled.Check, contentDescription = null, tint = colors.green, modifier = Modifier.size(18.dp))
-                    PillPhase.Link(LinkIndicator.Offline) -> Icon(Icons.Filled.Close, contentDescription = null, tint = ink, modifier = Modifier.size(18.dp))
-                    else -> CircularProgressIndicator(Modifier.size(14.dp), color = ink, strokeWidth = 2.dp)
+                    PillPhase.Unpaired -> Icon(Icons.Filled.Add, contentDescription = null, tint = ink, modifier = Modifier.size(markSize))
+                    PillPhase.Link(LinkIndicator.Online) -> Icon(Icons.Filled.Check, contentDescription = null, tint = colors.green, modifier = Modifier.size(markSize))
+                    PillPhase.Link(LinkIndicator.Offline) -> Icon(Icons.Filled.Close, contentDescription = null, tint = ink, modifier = Modifier.size(markSize))
+                    else -> CircularProgressIndicator(Modifier.size(spinnerSize), color = ink, strokeWidth = 2.dp)
                 }
             }
         }
