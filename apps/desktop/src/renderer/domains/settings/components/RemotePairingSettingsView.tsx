@@ -10,15 +10,31 @@ function blue(percent: number): string {
 	return `color-mix(in srgb, var(--chart-2) ${percent}%, transparent)`;
 }
 
-/** Side of the QR code; the code column beside it is held to the same height. */
-const QR_SIZE = "h-[184px]";
-
-function CodeTile({ label, value }: { label: string; value: string }): JSX.Element {
+/**
+ * A code shown one character per box, the way it is typed on the phone; a `-` in the
+ * code becomes a short dash between the groups. The whole value stays readable by
+ * screen readers and text search.
+ */
+function CodeBoxes({ label, value }: { label: string; value: string }): JSX.Element {
 	return (
-		<div className="flex flex-1 flex-col justify-center rounded-xl bg-muted/60 px-4">
+		<div className="flex flex-col items-center">
 			<dt className="text-[11px] text-muted-foreground">{label}</dt>
-			<dd className="mt-0.5 font-mono text-[20px] font-semibold tracking-[0.08em] whitespace-nowrap text-foreground select-all">
-				{value}
+			<dd className="mt-1.5">
+				<span className="sr-only">{value}</span>
+				<span aria-hidden="true" className="flex items-center gap-1.5">
+					{[...value].map((char, index) =>
+						char === "-" ? (
+							<span key={index} className="mx-1 h-0.5 w-3 rounded-full bg-muted-foreground/50" />
+						) : (
+							<span
+								key={index}
+								className="flex h-11 w-9 items-center justify-center rounded-lg bg-muted/60 font-mono text-[20px] font-semibold text-foreground"
+							>
+								{char}
+							</span>
+						),
+					)}
+				</span>
 			</dd>
 		</div>
 	);
@@ -32,71 +48,65 @@ function PairingPanel({ model }: { model: RemotePairingSettingsModel }): JSX.Ele
 		code?.status === "preparing" ? labels.pairing.codePreparing : code?.status === "ready" ? undefined : labels.pairing.codeFailed;
 
 	return (
-		<div className="px-3">
+		<div className="flex flex-col items-center px-3">
 			{!pairing.vaultAvailable ? (
 				<p className="mb-3 text-center text-[12px] text-destructive">{labels.pairing.vaultUnavailable}</p>
 			) : null}
 
-			<div className="flex justify-center gap-5">
-				<div className={`flex ${QR_SIZE} aspect-square shrink-0 items-center justify-center rounded-xl bg-muted/60`}>
-					{pairing.qrDataUrl ? (
-						<img
-							src={pairing.qrDataUrl}
-							alt={labels.pairing.qrAlt}
-							className="block h-full w-full rounded-xl bg-white p-2"
-						/>
-					) : pairing.preparing ? (
-						<div className="flex flex-col items-center text-muted-foreground">
-							<span className="icon-[solar--refresh-linear] h-8 w-8 animate-spin" aria-hidden="true" />
-							<p className="mt-3 text-[12px]">{labels.pairing.generating}</p>
-						</div>
-					) : (
-						<div className="flex flex-col items-center px-3 text-center text-muted-foreground">
-							<span className="icon-[solar--qr-code-linear] h-8 w-8" aria-hidden="true" />
-							<p className="mt-3 text-[12px]">{labels.pairing.empty}</p>
-							{pairing.canCreate ? (
-								<Button size="sm" className="mt-3" disabled={model.busy} onClick={model.actions.createInvite}>
-									{labels.pairing.create}
-								</Button>
-							) : null}
-						</div>
-					)}
-				</div>
-
+			<div className="flex h-[184px] w-[184px] items-center justify-center rounded-xl bg-muted/60">
 				{pairing.qrDataUrl ? (
-					<div className={`flex ${QR_SIZE} max-w-[280px] min-w-0 flex-1 flex-col gap-2`}>
-						<div className="flex h-7 shrink-0 items-center justify-between gap-2">
-							<p className="truncate text-[12px] text-muted-foreground" title={labels.pairing.codeHint}>{labels.pairing.codeHint}</p>
-							{pairing.hasInvite ? (
-								<Button
-									variant="ghost"
-									size="icon-sm"
-									className="shrink-0"
-									aria-label={labels.pairing.cancel}
-									title={labels.pairing.cancel}
-									disabled={model.busy}
-									onClick={model.actions.cancelInvite}
-								>
-									<span className="icon-[solar--refresh-linear] h-3.5 w-3.5" aria-hidden="true" />
-								</Button>
-							) : null}
-						</div>
-						{code?.status === "ready" ? (
-							<dl className="flex min-h-0 flex-1 flex-col gap-2">
-								<CodeTile label={labels.pairing.code} value={code.code} />
-								<CodeTile label={labels.pairing.password} value={code.password} />
-							</dl>
-						) : (
-							<div className="flex flex-1 items-center justify-center rounded-xl bg-muted/60 px-4 text-center text-[12px] text-muted-foreground">
-								{codeStatus}
-							</div>
-						)}
+					<img src={pairing.qrDataUrl} alt={labels.pairing.qrAlt} className="block h-full w-full rounded-xl bg-white p-2" />
+				) : pairing.preparing ? (
+					<div className="flex flex-col items-center text-muted-foreground">
+						<span className="icon-[solar--refresh-linear] h-8 w-8 animate-spin" aria-hidden="true" />
+						<p className="mt-3 text-[12px]">{labels.pairing.generating}</p>
 					</div>
-				) : null}
+				) : (
+					<div className="flex flex-col items-center px-3 text-center text-muted-foreground">
+						<span className="icon-[solar--qr-code-linear] h-8 w-8" aria-hidden="true" />
+						<p className="mt-3 text-[12px]">{labels.pairing.empty}</p>
+						{pairing.canCreate ? (
+							<Button size="sm" className="mt-3" disabled={model.busy} onClick={model.actions.createInvite}>
+								{labels.pairing.create}
+							</Button>
+						) : null}
+					</div>
+				)}
 			</div>
 
+			{pairing.qrDataUrl ? (
+				<>
+					<div className="mt-5 flex items-center justify-center gap-1">
+						<p className="text-center text-[12px] text-muted-foreground">{labels.pairing.codeHint}</p>
+						{pairing.hasInvite ? (
+							<Button
+								variant="ghost"
+								size="icon-sm"
+								className="shrink-0"
+								aria-label={labels.pairing.cancel}
+								title={labels.pairing.cancel}
+								disabled={model.busy}
+								onClick={model.actions.cancelInvite}
+							>
+								<span className="icon-[solar--refresh-linear] h-3.5 w-3.5" aria-hidden="true" />
+							</Button>
+						) : null}
+					</div>
+					{code?.status === "ready" ? (
+						<dl className="mt-3 flex flex-col items-center gap-4">
+							<CodeBoxes label={labels.pairing.code} value={code.code} />
+							<CodeBoxes label={labels.pairing.password} value={code.password} />
+						</dl>
+					) : (
+						<div className="mt-3 flex h-[140px] w-full max-w-[360px] items-center justify-center rounded-xl bg-muted/60 px-4 text-center text-[12px] text-muted-foreground">
+							{codeStatus}
+						</div>
+					)}
+				</>
+			) : null}
+
 			{pairing.endpoints.length > 0 ? (
-				<div className="mt-3 flex flex-col items-center">
+				<div className="mt-4 flex flex-col items-center">
 					<Button
 						variant="ghost"
 						size="sm"
