@@ -15,6 +15,7 @@ Cloudflare Worker and Durable Object implementation for relaying the Vetta remot
 - `GET /health` returns `{ status, protocolVersion: 2 }`.
 - `GET /v2/relay/:pairingId/:role` upgrades the control WebSocket. `role` is `desktop` or `mobile`.
 - `GET /v2/desktop/:pairingId/:role` upgrades the independent WebRTC signaling channel. `role` is `host` or `viewer`; the pair room vouches for the credential, so the desktop must have registered the room over the control route first.
+- `GET|PUT|DELETE /v2/invite/:boxId` is the connection-code mailbox (ADR-0136). `boxId` is a SHA-256 of the code; the body is an invite sealed with the code and password, which the relay cannot open. `PUT` and `DELETE` need the desktop's `X-Vetta-Invite-Token`; an invite lasts at most 10 minutes and 10 reads.
 
 Control clients offer:
 

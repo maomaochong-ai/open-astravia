@@ -35,6 +35,18 @@ export function parseDesktopRoute(
 	return { pairingId, role: match[2] };
 }
 
+/** An invite mailbox (ADR-0136): its name is a base64url SHA-256, never the code itself. */
+export function parseInviteRoute(pathname: string): { readonly boxId: string } | undefined {
+	const match = /^\/v2\/invite\/([A-Za-z0-9_-]{43})$/.exec(pathname);
+	return match?.[1] ? { boxId: match[1] } : undefined;
+}
+
+/** The desktop's token for replacing or withdrawing its own invite. */
+export function inviteWriterToken(headers: Headers): string | undefined {
+	const token = headers.get("X-Vetta-Invite-Token");
+	return token && pairingSecretPattern.test(token) ? token : undefined;
+}
+
 export interface PairingCredentials {
 	readonly pairingSecret: string;
 	/** SHA-256 hex of the phone's secret, offered by the desktop when it registers the room. */
