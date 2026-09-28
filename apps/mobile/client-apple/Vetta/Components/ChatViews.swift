@@ -53,7 +53,7 @@ struct UserBubble: View {
 
 /// The iMessage bubble: a rounded body with a tail hooking down just inside the trailing edge.
 /// The tail hangs `tail` points below the body, which the content pads for.
-/// Nonisolated because SwiftUI lays shapes out off the main actor.
+/// Nonisolated because SwiftUI lays shapes out off the main actor. 
 nonisolated struct MessageBubbleShape: Shape {
 	static let tail: CGFloat = 7.5
 
