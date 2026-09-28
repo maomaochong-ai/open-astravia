@@ -279,6 +279,12 @@ public enum L10n {
 		public static var rotate: String { tr("remote.rotate") }
 		public static var modifierOn: String { tr("remote.modifierOn") }
 		public static var modifierLocked: String { tr("remote.modifierLocked") }
+		public static var routeLan: String { tr("remote.routeLan") }
+		public static var routeInternet: String { tr("remote.routeInternet") }
+		public static var routeRelayed: String { tr("remote.routeRelayed") }
+		public static func roundTrip(_ ms: Int) -> String { tr("remote.roundTrip \(ms)") }
+		public static func pictureDelay(_ ms: Int) -> String { tr("remote.pictureDelay \(ms)") }
+		public static func framesPerSecond(_ fps: Int) -> String { tr("remote.framesPerSecond \(fps)") }
 	}
 
 	public enum Settings {

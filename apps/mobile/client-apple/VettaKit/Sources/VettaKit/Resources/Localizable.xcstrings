@@ -3395,6 +3395,23 @@
         }
       }
     },
+    "remote.framesPerSecond %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld fps"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld fps"
+          }
+        }
+      }
+    },
     "remote.hideKeyboard": {
       "extractionState": "manual",
       "localizations": {
@@ -3582,6 +3599,23 @@
         }
       }
     },
+    "remote.pictureDelay %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Picture ≈%lld ms"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "画面约 %lld ms"
+          }
+        }
+      }
+    },
     "remote.rotate": {
       "extractionState": "manual",
       "localizations": {
@@ -3595,6 +3629,74 @@
           "stringUnit": {
             "state": "translated",
             "value": "旋转"
+          }
+        }
+      }
+    },
+    "remote.roundTrip %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Latency %lld ms"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "延迟 %lld ms"
+          }
+        }
+      }
+    },
+    "remote.routeInternet": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Direct over the internet"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "公网直连"
+          }
+        }
+      }
+    },
+    "remote.routeLan": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Direct on LAN"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "局域网直连"
+          }
+        }
+      }
+    },
+    "remote.routeRelayed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Relayed"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "经中转"
           }
         }
       }
