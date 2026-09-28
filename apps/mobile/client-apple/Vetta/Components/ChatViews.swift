@@ -43,33 +43,34 @@ struct UserBubble: View {
 				.lineSpacing(2)
 				.foregroundStyle(.white)
 				.textSelection(.enabled)
-				.padding(.leading, 13)
-				.padding(.trailing, 13 + MessageBubbleShape.tail)
+				.padding(.horizontal, 13)
 				.padding(.vertical, 8)
+				.padding(.bottom, MessageBubbleShape.tail)
 				.background(MessageBubbleShape().fill(Theme.userBubble))
 		}
 	}
 }
 
-/// The iMessage bubble: a rounded body whose bottom-trailing corner curls out into a tail.
-/// The tail takes `tail` points on the trailing side, which the content pads for.
+/// The iMessage bubble: a rounded body with a tail hooking down just inside the trailing edge.
+/// The tail hangs `tail` points below the body, which the content pads for.
 /// Nonisolated because SwiftUI lays shapes out off the main actor.
 nonisolated struct MessageBubbleShape: Shape {
-	static let tail: CGFloat = 6
+	static let tail: CGFloat = 7.5
 
 	func path(in rect: CGRect) -> Path {
-		let w = rect.width, h = rect.height
-		let body = w - Self.tail
-		let r = min(18, h / 2, body / 2)
+		let w = rect.width
+		let h = rect.height - Self.tail
+		let r = min(18, h / 2, w / 2)
 		var p = Path()
 		p.move(to: CGPoint(x: r, y: 0))
-		p.addLine(to: CGPoint(x: body - r, y: 0))
-		p.addArc(tangent1End: CGPoint(x: body, y: 0), tangent2End: CGPoint(x: body, y: r), radius: r)
-		p.addLine(to: CGPoint(x: body, y: max(r, h - 14)))
-		// Down the trailing side into the tip, then back under the body.
-		p.addCurve(to: CGPoint(x: w, y: h), control1: CGPoint(x: body, y: h - 5), control2: CGPoint(x: w - 2, y: h - 1))
-		p.addCurve(to: CGPoint(x: body - 8, y: h - 3), control1: CGPoint(x: w - 5, y: h + 0.5), control2: CGPoint(x: body - 4, y: h - 1))
-		p.addQuadCurve(to: CGPoint(x: max(r, body - 18), y: h), control: CGPoint(x: body - 12, y: h))
+		p.addLine(to: CGPoint(x: w - r, y: 0))
+		p.addArc(tangent1End: CGPoint(x: w, y: 0), tangent2End: CGPoint(x: w, y: r), radius: r)
+		p.addLine(to: CGPoint(x: w, y: h - r))
+		p.addArc(center: CGPoint(x: w - r, y: h - r), radius: r, startAngle: .degrees(0), endAngle: .degrees(15), clockwise: false)
+		// Pinch in under the corner, drop to the tip, then sweep back into the bottom edge.
+		p.addCurve(to: CGPoint(x: w - 9, y: h - 1.5), control1: CGPoint(x: w - 1, y: h - 8), control2: CGPoint(x: w - 6, y: h - 3))
+		p.addCurve(to: CGPoint(x: w - 8, y: h + Self.tail), control1: CGPoint(x: w - 11, y: h), control2: CGPoint(x: w - 10, y: h + 5))
+		p.addCurve(to: CGPoint(x: w - 26, y: h), control1: CGPoint(x: w - 12, y: h + 6.5), control2: CGPoint(x: w - 18, y: h + 0.5))
 		p.addLine(to: CGPoint(x: r, y: h))
 		p.addArc(tangent1End: CGPoint(x: 0, y: h), tangent2End: CGPoint(x: 0, y: h - r), radius: r)
 		p.addLine(to: CGPoint(x: 0, y: r))
