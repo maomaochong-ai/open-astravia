@@ -9,6 +9,13 @@ export type RemoteDesktopSignalSender = (signal: RemoteDesktopSignal) => void | 
 export interface RemoteDesktopHostStartOptions {
 	/** Wait for the relay to confirm that a viewer is online before creating an offer. */
 	readonly waitForPeerReady?: boolean;
+	/**
+	 * A viewer came online after this host already offered to one. Each viewer is a new
+	 * peer connection, which this one cannot reach again (its DTLS is spent, or its offer
+	 * went to a viewer that is gone), so the host should start over. Without it the host
+	 * offers again with an ICE restart.
+	 */
+	readonly onViewerReplaced?: () => void;
 }
 
 /**
@@ -39,6 +46,8 @@ export class RemoteDesktopHost {
 	private peerReady = false;
 	private hasNegotiated = false;
 	private negotiation: Promise<void> | undefined;
+	private offered = false;
+	private onViewerReplaced: (() => void) | undefined;
 
 	constructor(
 		private readonly options: RemoteDesktopPeerOptions,
@@ -94,6 +103,7 @@ export class RemoteDesktopHost {
 			this.configureControlChannel(this.controlChannel);
 		}
 		this.started = true;
+		this.onViewerReplaced = startOptions.onViewerReplaced;
 		if (startOptions.waitForPeerReady !== true || this.peerReady) await this.negotiate();
 	}
 
@@ -101,6 +111,11 @@ export class RemoteDesktopHost {
 		const frame = decodeRemoteDesktopSignal(signal);
 		if (frame.type === "peer_ready") {
 			this.peerReady = true;
+			if (this.offered && this.onViewerReplaced) {
+				this.logger.info("remote desktop viewer replaced", { sessionId: this.options.sessionId });
+				this.onViewerReplaced();
+				return;
+			}
 			if (this.started) await this.negotiate();
 			return;
 		}
@@ -226,6 +241,7 @@ export class RemoteDesktopHost {
 			});
 			return;
 		}
+		this.offered = true;
 		const negotiation = (async () => {
 			const offer = await this.peer.createOffer(this.hasNegotiated ? { iceRestart: true } : undefined);
 			await this.peer.setLocalDescription(offer);

@@ -42,16 +42,20 @@ const logStats = async (): Promise<void> => {
 	for (const report of reports.values()) {
 		if (report.type !== "outbound-rtp" || report.kind !== "video") continue;
 		const pair = [...reports.values()].find((entry) => entry.type === "candidate-pair" && entry.nominated === true);
-		console.info("remote desktop stream", {
-			codec: typeof report.codecId === "string" ? reports.get(report.codecId)?.mimeType : undefined,
-			encoder: report.encoderImplementation,
-			framesPerSecond: report.framesPerSecond,
-			width: report.frameWidth,
-			height: report.frameHeight,
-			limitedBy: report.qualityLimitationReason,
-			roundTripMs:
-				typeof pair?.currentRoundTripTime === "number" ? Math.round(pair.currentRoundTripTime * 1000) : undefined,
-		});
+		console.info(
+			line("remote desktop stream", {
+				codec: typeof report.codecId === "string" ? reports.get(report.codecId)?.mimeType : undefined,
+				encoder: report.encoderImplementation,
+				framesPerSecond: report.framesPerSecond,
+				width: report.frameWidth,
+				height: report.frameHeight,
+				limitedBy: report.qualityLimitationReason,
+				roundTripMs:
+					typeof pair?.currentRoundTripTime === "number"
+						? Math.round(pair.currentRoundTripTime * 1000)
+						: undefined,
+			}),
+		);
 	}
 };
 const watchStats = (streaming: boolean): void => {
@@ -79,9 +83,9 @@ host = new RemoteDesktopHost(
 	{
 		sessionId,
 		logger: {
-			debug: (message, fields) => console.debug(message, fields),
-			info: (message, fields) => console.info(message, fields),
-			warn: (message, fields) => console.warn(message, fields),
+			debug: (message, fields) => console.debug(line(message, fields)),
+			info: (message, fields) => console.info(line(message, fields)),
+			warn: (message, fields) => console.warn(line(message, fields)),
 		},
 	},
 	async (signal) => signaling.send(signal),
@@ -99,7 +103,11 @@ const removeControlListener = window.vettaRemoteDesktop?.onControlSend((message)
 		console.warn("remote desktop control send failed", error);
 	}
 });
-await host.start(stream, { waitForPeerReady: true });
+await host.start(stream, {
+	waitForPeerReady: true,
+	// A new viewer is a new peer connection: start over with a fresh page, as when signaling drops.
+	onViewerReplaced: () => window.location.reload(),
+});
 // A screen shared for the whole session streams from the start.
 if (!onDemand) watchStats(true);
 for (const signal of pending.splice(0)) await host.acceptSignal(signal);
@@ -146,3 +154,8 @@ window.addEventListener(
 	{ once: true },
 );
 if (onDemand) window.vettaRemoteDesktop?.screenReady();
+
+/** The main process only sees console text, so fields go in as JSON. */
+function line(message: string, fields?: unknown): string {
+	return fields === undefined ? message : `${message} ${JSON.stringify(fields)}`;
+}

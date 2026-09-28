@@ -36,6 +36,25 @@ describe("remote desktop host negotiation", () => {
 		expect(peer.createOffer).toHaveBeenLastCalledWith({ iceRestart: true });
 	});
 
+	it("starts over when a new viewer comes online after the host already offered", async () => {
+		const peer = fakePeerConnection();
+		const replaced = vi.fn();
+		const host = new RemoteDesktopHost(
+			{ sessionId: "pairing_0123456789abcdefghijklmnop", createPeerConnection: () => peer.connection },
+			() => undefined,
+			() => undefined,
+		);
+		await host.start(undefined, { waitForPeerReady: true, onViewerReplaced: replaced });
+		await host.acceptSignal({ type: "peer_ready", protocolVersion: 1 });
+		expect(peer.createOffer).toHaveBeenCalledOnce();
+		expect(replaced).not.toHaveBeenCalled();
+
+		// The first viewer never answered, and another one arrives.
+		await host.acceptSignal({ type: "peer_ready", protocolVersion: 1 });
+		expect(replaced).toHaveBeenCalledOnce();
+		expect(peer.createOffer).toHaveBeenCalledOnce();
+	});
+
 	it("opens a reliable control channel and forwards only text payloads", async () => {
 		const peer = fakePeerConnection();
 		const messages: string[] = [];
