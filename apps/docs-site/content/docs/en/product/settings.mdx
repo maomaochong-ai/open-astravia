@@ -1,20 +1,60 @@
 ---
 title: Settings map
-description: Find the main settings areas and understand which controls affect models, permissions, integrations, and local data.
+description: Find models, remote access, SSH hosts, appearance, permissions, and integrations on the current settings pages.
 ---
 
-| Area | Controls |
+Settings pages change with the operating system, sign-in state, and build. If an entry is missing, check the system, whether this build has an account, and whether the package includes that capability. The names below are the current page titles.
+
+## Pages
+
+| Page | What it is for | Related guide |
+| --- | --- | --- |
+| Account | Profile. Shown only after sign-in, and only in builds that have accounts | [Install, upgrade, and move data](/getting-started/installation-and-updates/) |
+| General | App behavior, network proxy, developer options, the first-run guide, and diagnostics | [Troubleshooting](/troubleshooting/) |
+| Remote access | Pair a phone, away-from-home access, and per-phone remote control | [Remote access and phones](/product/remote-control/) |
+| Appearance | Light and dark mode, language, themes, sidebar, pointer, and ornaments | [Themes](/themes/overview/) |
+| Agent | Personalization, images, extra features, and runtime | [Context, tools, and permissions](/core/context-tools-and-permissions/) |
+| Models | Providers, models, the default, and thinking level | [Configure models](/product/models/) |
+| SSH hosts | Register a remote machine so you can add a project there | [Workspaces and sessions](/core/workspaces-and-sessions/) |
+| Claw | IM switch, channels, model, logs, and status | [Vetta Claw](/product/claw/) |
+| Webhook | Webhook channels and a test message | [Configure webhooks](/product/webhook/) |
+| Archived | Archived projects and sessions | [Workspaces and sessions](/core/workspaces-and-sessions/) |
+| Shortcuts | Global shortcuts and the quick panel | This page |
+| App Snapshot | macOS capture gesture and system permissions | [Use App Snapshot](/product/app-snapshot/) |
+| Environment | Bundled Node.js and Python, Git, and mirrors | [Manage the application environment](/product/application-environment/) |
+| Knowledge Base | Background processing, model, retry, and history | [Use the knowledge base](/product/knowledge-base/) |
+| Vetta Vivi | Pet window and bubble style | [Use the desktop pet](/product/desktop-pet/) |
+| Permissions | macOS system permission status | [Security and data boundaries](/reference/security-and-data/) |
+| More options | Pages contributed by installed plugins. A plugin's own settings stay on its page | [Use capabilities](/product/abilities/) |
+
+MCP is not in Settings. Discover, install, and manage connectors from the sidebar under **Capabilities → Connectors**.
+
+## Platform and build differences
+
+- **Remote access** and **SSH hosts** appear on Windows, macOS, and Linux.
+- **App Snapshot** and **Permissions** appear only on macOS.
+- **Account** requires sign-in. An open-source serv-less build has no commercial account, so this page is absent.
+- The theme list depends on the build and on themes packaged with the app.
+- An entry marked **BETA** can still change. Remote access is not marked that way today.
+
+## How to change a setting
+
+1. Change it on the settings page and save. Do not start by editing internal JSON.
+2. After a model, MCP, IM, webhook, SSH, or remote-access change, run the matching connection test or a minimal task.
+3. Before migrating or diagnosing, stop the related task and read [configuration paths](/reference/configuration-paths/).
+4. Copy structure only. Keep tokens, cookies, OAuth state, webhook URLs, pairing QR codes, and connection codes out of projects and issue reports.
+
+## Easy mistakes
+
+| What you see | What it means |
 | --- | --- |
-| General | Startup guide, diagnostics, language, appearance, and application behavior |
-| Model configuration | Providers, credentials, model IDs, defaults, and thinking level |
-| Agent | Execution defaults, permissions, context, and session behavior |
-| Claw | IM channels, command handling, reply model, logs, and restart |
-| Knowledge base | Source import, processing model, indexing, and history |
-| Application environment | Bundled Node.js/Python runtimes and reinstall actions |
-| Appearance and themes | Theme selection, custom theme sources, and preview |
-| Remote control | Supported host pairing and remote session state |
-| App Snapshot | macOS capture gesture and helper permissions, see [Use App Snapshot](/product/app-snapshot/) |
+| Node, Python, or Git works in a system terminal | Vetta's runtime, or the Git it detected, may still be missing |
+| An API key was entered | The model still needs a real call before it counts as working |
+| A plugin permission was granted | The plugin is not in a separate sandbox. It runs in the Desktop interface process |
+| An automation exists | A missed time is not run later |
+| An IM channel was revoked | The third-party account and every local trace are not necessarily gone |
+| A phone can read sessions | It cannot necessarily see the desktop. The picture also needs away-from-home access and that phone's remote-control switch |
 
-When a feature is missing, check the build profile, operating system, and whether the feature is marked Beta or Developer preview. Do not infer an internal route from a stale screenshot.
-
-Before exporting diagnostics, remove credentials, cookies, pairing data, webhook URLs, and private project contents.
+<Callout title="Settings pages are not a cross-version API" type="info">
+  Names, visibility, and form fields are user interface. Scripts and integrations should use the public SDK, RPC, CLI, or a configuration field that is explicitly promised. Do not depend on unpublished DOM, internal paths, or menu order.
+</Callout>

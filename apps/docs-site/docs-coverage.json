@@ -139,16 +139,18 @@
 		{
 			"id": "remote-control",
 			"source": ["apps/desktop/src/main/remote-control", "packages/remote-control", "packages/remote-desktop"],
-			"status": "developer-preview",
-			"platforms": ["windows", "android"],
-			"pages": ["/product/remote-control/", "/reference/compatibility/"]
+			"status": "beta",
+			"platforms": ["windows", "macos", "linux", "android", "ios"],
+			"pages": ["/product/remote-control/", "/reference/compatibility/", "/product/settings/"],
+			"note": "桌面三端都有远程连接。iPhone 与 Android 都能继续会话；连接码和桌面画面目前只有 Android。"
 		},
 		{
 			"id": "mobile-client",
-			"source": "apps/mobile/client-android",
-			"status": "developer-preview",
-			"platforms": ["android"],
-			"pages": ["/product/remote-control/", "/reference/compatibility/"]
+			"source": ["apps/mobile/client-android", "apps/mobile/client-apple"],
+			"status": "beta",
+			"platforms": ["android", "ios"],
+			"pages": ["/product/remote-control/", "/reference/compatibility/"],
+			"note": "iPhone 需要 iOS 26 起。两端都缓存最近会话；解除配对后 iPhone 清缓存，Android 保留只读记录。"
 		},
 		{
 			"id": "plugin-capabilities",

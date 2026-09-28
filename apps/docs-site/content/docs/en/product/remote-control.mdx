@@ -1,16 +1,117 @@
 ---
-title: Remote control
-description: Understand the current Desktop pairing boundary, host requirements, and safe recovery path for remote sessions.
+title: Remote access and phones
+description: Pair an iPhone or Android phone with this computer to continue its sessions. Android can also view and control the desktop.
 ---
 
-Remote control is a developer preview. The current public path is Desktop host pairing on supported Windows builds; mobile viewing and control are still platform- and build-dependent.
+<Takeaways>
+  <li>Windows, macOS, and Linux all have Settings, then Remote access</li>
+  <li>The phone follows this computer's sessions, end to end encrypted</li>
+  <li>Give the QR code, connection code, and password only to the phone you are pairing</li>
+</Takeaways>
 
-## Pairing flow
+Remote access lets a phone follow the work on this computer. It can open Chat and sessions in projects that are already open, including tasks you started on the computer, then reply, answer a question, or start a new session. The relay forwards ciphertext only. It does not store session contents.
 
-1. Open the remote-control entry from the supported Desktop settings.
-2. Create a short-lived pairing request and verify the displayed device and expiry.
-3. Approve the request on the intended device only.
-4. Confirm the paired host, workspace, and current session before sending a task.
-5. Revoke stale pairings and regenerate a request when the device or operator changes.
+Screen control is separate, and only Android has it today. Each paired phone has its own switch.
 
-Never share a pairing QR code or token in a ticket, chat, screenshot, or public issue. Remote control inherits the host's workspace and permission boundaries; pairing is not an authorization to access every project.
+Phones paired with the previous protocol cannot continue. Pair them again.
+
+## Before you start
+
+- Vetta on the computer can open **Settings → Remote access**. All three desktop systems have this page.
+- The phone runs a Vetta build that speaks to this computer. iPhone requires iOS 26 or later. Android uses the current Vetta app.
+- The same Wi-Fi can connect directly. Away from that network, turn on **Allow access away from home** and make sure both sides can reach the configured relay.
+- Check the screen before pairing. With remote control on, Android can see the whole desktop.
+
+## Pair
+
+Opening **Settings → Remote access** prepares a QR code and shows about how many minutes remain. A code lasts about 10 minutes. It is replaced as soon as it expires, is used, or you click **Refresh**. The first phone to scan it is the only one that code will accept.
+
+<Steps>
+  <Step>
+    ### Open the pairing page on the computer
+
+    Go to **Settings → Remote access**. If secure credential storage is unavailable, the page says pairing is not possible instead of showing a code that cannot work.
+  </Step>
+  <Step>
+    ### Use one method on the phone
+
+    | Method | iPhone | Android | When to use it |
+    | --- | --- | --- | --- |
+    | Scan the QR code | Yes | Yes | The phone is next to the computer |
+    | Connection code and password | No | Yes | You are not next to the computer. The computer shows an 8-character code and a 6-digit password. On the phone, choose **Connect with a Code** |
+    | Enter the address manually | Yes | Yes | Same Wi-Fi. Enter the address shown on the computer. Both sides then show the same 6-digit code |
+
+    A connection code needs **Allow access away from home** and a relay that supports codes. Otherwise the computer keeps the QR code and says the connection code is unavailable. Manual addresses work only on the same LAN. Guest networks often isolate devices; scan or use a connection code instead.
+  </Step>
+  <Step>
+    ### Match the code before you allow the phone
+
+    After a manual address, the computer shows **Phones waiting for approval**. Allow the phone only when its 6-digit code matches. Otherwise choose **Deny**.
+
+    Every phone that connects raises a system notification on the computer. If you did not do it, remove that phone under **Remote access**.
+  </Step>
+  <Step>
+    ### Confirm the phone is online
+
+    **Paired phones** lists the device and how it is connected: direct (P2P), same Wi-Fi, or via cloud relay. You can leave the page. The phone remembers this computer and reconnects on its own.
+  </Step>
+</Steps>
+
+The first time a phone connects over the LAN, macOS may ask whether to allow incoming connections. Allow it. iPhone also asks for local network permission the first time.
+
+## What the phone can do
+
+While the computer is online, the phone can:
+
+- Open Chat and project sessions, including a task already running on the computer. Replies keep arriving, and tool calls appear as cards.
+- Send a follow-up, stop the current turn, or start a new session.
+- Answer a question the computer is waiting on.
+- Send images and files, hold to dictate into the input (the text is not sent until you send it), and change the model and thinking level used for later replies in that session.
+
+While the computer is offline, the phone can still read the 50 most recently cached sessions. It cannot send or start a session.
+
+On the same Wi-Fi the phone tries a direct connection first, then the relay. An idle connection sleeps.
+
+## View and control the desktop
+
+The switch is **Remote control**. It appears on a row in **Paired phones** only while that phone is online and **Allow access away from home** is on. It starts on.
+
+Android can then open a full-screen desktop: taps, drags, scrolling, and typing go to this computer. Turning the switch off drops the picture immediately. The phone can still read sessions. iPhone does not show this desktop.
+
+The picture is set up through the relay, so the switch stays hidden when away-from-home access is off or the phone is offline. The Agent's own execution mode, tool permissions, and confirmations are unchanged.
+
+## Away from home
+
+**Allow access away from home** is on by default. Turn it off and phones can connect only on the same Wi-Fi.
+
+The settings button beside it can replace the relay address, test before saving, or restore the default. The address must start with `wss://` or `https://`. The test reports whether the address is reachable, whether it is a compatible Vetta relay, and whether it supports connection codes.
+
+Saving refreshes the current QR code. An Android phone that is already connected switches to the new address. A phone that is offline learns the new address the next time it connects on the same Wi-Fi. If the computer uses its own relay, an Android phone pairing with a connection code must enter that same relay address.
+
+## Safety
+
+- The QR code, the 8-character connection code, and the 6-digit password are one-time pairing material. Do not put them in chat, screenshots, issues, or project files.
+- Sessions are encrypted between the phone and the computer. The relay cannot read them.
+- A manual pairing must be approved on the computer after the codes match. A QR code works for the first phone only.
+- Quitting Vetta on the computer disconnects session sync and the remote desktop.
+
+## Remove a phone
+
+Choose **Remove** on that row on the computer, or unpair from the phone's computer settings. Sessions on the computer stay.
+
+- iPhone clears the sessions cached on that phone. Scan again to reconnect.
+- Android keeps sessions already synced on the phone. You can still read them, but they stop updating until you scan the same computer again.
+
+## When it will not connect
+
+1. Confirm the computer is still running and the settings page is not showing an error. Sleep or quit makes the phone go offline.
+2. When a QR code or connection code expires, wait for the replacement or click **Refresh**. Do not reuse a code that was already used.
+3. If a manual address fails, confirm both sides show the same code and that the network does not isolate the two devices.
+4. If the same Wi-Fi works and leaving home does not, check **Allow access away from home**, the relay address, and whether the network blocks WebSocket.
+5. If sessions work but Android has no desktop picture, confirm that phone is online, away-from-home access is on, and **Remote control** is on for its row.
+
+<Continue>
+  <ContinueLink href="/reference/security-and-data/" title="Security and data boundaries" description="See how phone pairing sits next to models and local data." />
+  <ContinueLink href="/product/settings/" title="Settings map" description="Find Remote access and the other current settings pages." />
+  <ContinueLink href="/troubleshooting/" title="Troubleshooting" description="Treat a phone that will not connect like any other layered failure." />
+</Continue>

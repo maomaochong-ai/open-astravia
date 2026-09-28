@@ -1,13 +1,13 @@
 ---
 title: Manage the application environment
-description: Inspect and repair the bundled Node.js, Python, and package mirror configuration used by Vetta.
+description: Inspect and repair the bundled Node.js, Python, Git, and package mirror configuration used by Vetta.
 ---
 
-Open **Settings → Application environment**. These runtimes are supplied with Vetta for Agent tools and related command processes. They do not modify the system terminal, shell configuration, or the machine-wide Node.js/Python installation.
+Open **Settings → Environment**. These runtimes are supplied with Vetta for Agent tools and related command processes. They do not modify the system terminal, shell configuration, or the machine-wide Node.js/Python installation.
 
-## Runtimes
+## Runtime
 
-The **Runtimes** section shows:
+The **Runtime** section shows:
 
 | Runtime | UI-described purpose |
 | --- | --- |
@@ -25,7 +25,21 @@ python --version
 
 Both commands should return a version. A different version in the system terminal does not mean Vetta's bundled environment failed.
 
-## Package mirrors
+## Developer tools
+
+**Developer tools** shows the Git version and where it came from. The Git panel and git commands the Agent runs both depend on it.
+
+A Git already installed on the system is used first. Vetta does not replace your configuration or credentials with its own Git. When none is found:
+
+| System | What the page offers |
+| --- | --- |
+| macOS | **Install** opens the system Command Line Developer Tools window. Click **Check again** when it finishes |
+| Windows | **Install for Vetta** works only inside Vetta and does not change the system. To use Git in a terminal or other apps, use the download link beside that hint |
+| Linux | Copy the command for your distribution, run it in a terminal, then click **Check again** |
+
+Until Git is installed, the Git panel offers this same install guidance instead of asking you to initialize a repository.
+
+## Mirrors
 
 | Item | Description |
 | --- | --- |
