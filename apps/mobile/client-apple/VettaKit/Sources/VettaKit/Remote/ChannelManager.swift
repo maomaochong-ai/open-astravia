@@ -92,9 +92,10 @@ public final class ChannelManager {
 		Task { await attempt() }
 	}
 
-	/// App came to the foreground or the network changed: re-evaluate the best channel now.
+	/// App came to the foreground, the network changed, or a background refresh woke the
+	/// app: re-evaluate the best channel now. Foreground or not is `setForeground`'s to say,
+	/// so a background refresh reconnects over the LAN or relay without opening P2P.
 	public func refresh() {
-		foreground = true
 		guard running else { return }
 		clearReconnect()
 		backoffMs = 1_000

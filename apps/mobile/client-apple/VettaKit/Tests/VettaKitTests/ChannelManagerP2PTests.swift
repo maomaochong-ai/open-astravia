@@ -100,6 +100,31 @@ import Testing
 		manager.stop()
 	}
 
+	@Test func reconnectsWithoutP2pWhenWokenInTheBackground() async throws {
+		let link = makeLink()
+		let desktop = FakeDesktop()
+		desktop.mobileIdentityKey = link.identity.publicKey
+		var options = ChannelManagerOptions(desktop: desktopRecord(desktop, relay: nil), link: link, createTransport: desktop.createTransport)
+		options.lanBudgetMs = 100
+		options.p2pTarget = viewer
+		var attempts = 0
+		options.createP2pTransport = { _ in
+			attempts += 1
+			return DeadTransport()
+		}
+		let manager = ChannelManager(options: options)
+		manager.setForeground(false)
+		manager.start()
+		#expect(await eventually { manager.snapshot.channel == .lan })
+		try #require(desktop.onlineAcceptor()).emitEvent(.deviceStatus, payload: deviceStatus(screen: true))
+		#expect(await eventually { manager.snapshot.desktop?.screen == true })
+		manager.refresh()
+		await sleep(ms: 200)
+		#expect(attempts == 0, "a background refresh stays on the LAN or relay")
+		#expect(manager.snapshot.isUsable)
+		manager.stop()
+	}
+
 	@Test func keepsTheLanWhenP2pCannotConnectAndTriesAgainLater() async throws {
 		let link = makeLink()
 		let desktop = FakeDesktop()
