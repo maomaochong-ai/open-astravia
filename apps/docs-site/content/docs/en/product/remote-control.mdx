@@ -1,6 +1,6 @@
 ---
 title: Remote access and phones
-description: Pair an iPhone or Android phone with this computer to continue its sessions. Android can also view and control the desktop.
+description: Pair an iPhone or Android phone with this computer to continue its sessions, and view and control the desktop.
 ---
 
 <Takeaways>
@@ -11,7 +11,7 @@ description: Pair an iPhone or Android phone with this computer to continue its 
 
 Remote access lets a phone follow the work on this computer. It can open Chat and sessions in projects that are already open, including tasks you started on the computer, then reply, answer a question, or start a new session. The relay forwards ciphertext only. It does not store session contents.
 
-Screen control is separate, and only Android has it today. Each paired phone has its own switch.
+Screen control is separate. Each paired phone has its own switch.
 
 Phones paired with the previous protocol cannot continue. Pair them again.
 
@@ -20,7 +20,7 @@ Phones paired with the previous protocol cannot continue. Pair them again.
 - Vetta on the computer can open **Settings → Remote access**. All three desktop systems have this page.
 - The phone runs a Vetta build that speaks to this computer. iPhone requires iOS 26 or later. Android uses the current Vetta app.
 - The same Wi-Fi can connect directly. Away from that network, turn on **Allow access away from home** and make sure both sides can reach the configured relay.
-- Check the screen before pairing. With remote control on, Android can see the whole desktop.
+- Check the screen before pairing. With remote control on, the phone can see the whole desktop.
 
 ## Pair
 
@@ -76,9 +76,15 @@ On the same Wi-Fi the phone tries a direct connection first, then the relay. An 
 
 The switch is **Remote control**. It appears on a row in **Paired phones** only while that phone is online and **Allow access away from home** is on. It starts on.
 
-Android can then open a full-screen desktop: taps, drags, scrolling, and typing go to this computer. Turning the switch off drops the picture immediately. The phone can still read sessions. iPhone does not show this desktop.
+The phone can then open a full-screen desktop: taps, drags, scrolling, and typing go to this computer. On Android, open it from Home or Settings. On iPhone, open **Remote Control** from the Home drawer, from Settings, or by long-pressing the app icon. Turning the switch off drops the picture immediately. The phone can still read sessions.
 
-The picture is set up through the relay, so the switch stays hidden when away-from-home access is off or the phone is offline. The Agent's own execution mode, tool permissions, and confirmations are unchanged.
+The computer captures its screen only while a phone has this page open and in front. Leaving the page or switching apps stops the capture, and on macOS the screen-recording indicator goes out. Both need a phone and computer on this release; an older phone keeps the picture running while it is connected, and iPhone does not show the desktop of an older computer.
+
+On macOS, Vetta needs **Screen Recording** to show the picture and **Accessibility** to take taps and typing (System Settings → Privacy & Security). When either is missing, the phone says which one, and the computer shows a notification that opens the right pane. Restart Vetta after granting Screen Recording.
+
+On iPhone, holding a finger down shows a magnifier and right-clicks on release. The bar above the keyboard adds Esc, Tab, the arrow keys, and ⌃ ⌥ ⌘ ⇧: tap one to hold it for the next key, or tap it twice to lock it. **Paste** types the iPhone's clipboard on the computer. Shortcuts from a hardware keyboard go straight through. Only the remote desktop turns to landscape.
+
+The picture is set up through the relay and then travels directly between phone and computer, so the switch stays hidden when away-from-home access is off or the phone is offline. Once a direct connection is up, sessions and chats use it too. Some networks cannot connect directly: sessions then keep working through the relay, and the phone says the desktop cannot be shown on this network. The Agent's own execution mode, tool permissions, and confirmations are unchanged.
 
 ## Away from home
 
@@ -108,7 +114,7 @@ Choose **Remove** on that row on the computer, or unpair from the phone's comput
 2. When a QR code or connection code expires, wait for the replacement or click **Refresh**. Do not reuse a code that was already used.
 3. If a manual address fails, confirm both sides show the same code and that the network does not isolate the two devices.
 4. If the same Wi-Fi works and leaving home does not, check **Allow access away from home**, the relay address, and whether the network blocks WebSocket.
-5. If sessions work but Android has no desktop picture, confirm that phone is online, away-from-home access is on, and **Remote control** is on for its row.
+5. If sessions work but the phone has no desktop picture, confirm that phone is online, away-from-home access is on, and **Remote control** is on for its row. A message on the phone names a missing macOS permission or a network that cannot connect directly.
 
 <Continue>
   <ContinueLink href="/reference/security-and-data/" title="Security and data boundaries" description="See how phone pairing sits next to models and local data." />
