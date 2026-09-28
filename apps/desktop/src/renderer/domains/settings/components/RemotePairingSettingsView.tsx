@@ -15,8 +15,12 @@ const HALOS = [
 	{ size: 88, percent: 22 },
 	{ size: 140, percent: 13 },
 	{ size: 196, percent: 8 },
-	{ size: 256, percent: 4 },
+	{ size: 256, percent: 5 },
+	{ size: 300, percent: 3 },
 ] as const;
+
+/** Fades the rings out towards the edges, so the backdrop has no cut-off border. */
+const BEACON_FADE = "radial-gradient(closest-side, black 45%, transparent 100%)";
 
 /**
  * The page's backdrop illustration in the top-right corner: a link at the centre of
@@ -25,26 +29,24 @@ const HALOS = [
  */
 function PairingBeacon(): JSX.Element {
 	return (
-		<div aria-hidden="true" className="pointer-events-none absolute top-0 right-0 h-[280px] w-[320px] overflow-hidden">
-			<div className="absolute top-[110px] right-[120px] flex h-0 w-0 items-center justify-center">
+		<div
+			aria-hidden="true"
+			className="pointer-events-none absolute top-0 right-0 flex h-[320px] w-[320px] items-center justify-center"
+			style={{ maskImage: BEACON_FADE, WebkitMaskImage: BEACON_FADE }}
+		>
+			{HALOS.map((halo) => (
 				<span
-					className="absolute h-[360px] w-[360px] rounded-full"
-					style={{ background: `radial-gradient(closest-side, ${beaconBlue(10)}, transparent)` }}
+					key={halo.size}
+					className="absolute rounded-full"
+					style={{ width: halo.size, height: halo.size, background: beaconBlue(halo.percent) }}
 				/>
-				{HALOS.map((halo) => (
-					<span
-						key={halo.size}
-						className="absolute rounded-full"
-						style={{ width: halo.size, height: halo.size, background: beaconBlue(halo.percent) }}
-					/>
-				))}
-				<span
-					className="absolute flex h-14 w-14 items-center justify-center rounded-full text-white"
-					style={{ background: "var(--chart-2)" }}
-				>
-					<span className="icon-[solar--link-round-linear] h-6 w-6" />
-				</span>
-			</div>
+			))}
+			<span
+				className="absolute flex h-14 w-14 items-center justify-center rounded-full text-white"
+				style={{ background: "var(--chart-2)" }}
+			>
+				<span className="icon-[solar--link-round-linear] h-6 w-6" />
+			</span>
 		</div>
 	);
 }
