@@ -164,7 +164,7 @@ export interface RemoteFileEntry {
 }
 
 export interface RemoteFileInfo extends RemoteFileEntry {
-	/** What `file.read` returns for it; images are served as JPEG once scaled down. */
+	/** Guessed from the extension; a chunk's `mimeType` says what was actually sent (scaled images arrive as JPEG). */
 	readonly mimeType: string;
 	/** The home directory abbreviated to `~`, for showing where the file lives. */
 	readonly displayPath: string;
