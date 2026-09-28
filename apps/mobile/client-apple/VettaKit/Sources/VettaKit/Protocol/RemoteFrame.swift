@@ -87,6 +87,9 @@ public enum RemoteRequestMethod: String, Sendable, CaseIterable {
 	case sessionAbort = "session.abort"
 	case sessionResume = "session.resume"
 	case diagnosticsSnapshot = "diagnostics.snapshot"
+	case fileList = "file.list"
+	case fileStat = "file.stat"
+	case fileRead = "file.read"
 }
 
 public struct RemoteRequest: Equatable, Sendable {
@@ -106,6 +109,12 @@ public enum RemoteErrorCode: String, Sendable {
 	case requestTimeout = "request_timeout"
 	case transportClosed = "transport_closed"
 	case internalError = "internal_error"
+	/// The file lies outside what the phone may read (ADR-0139).
+	case forbidden
+	/// The file is larger than a phone may preview.
+	case tooLarge = "too_large"
+	/// The file changed between two chunks of one `file.read`.
+	case fileChanged = "file_changed"
 }
 
 public struct RemoteError: Equatable, Sendable {

@@ -147,6 +147,24 @@ public enum L10n {
 		}
 	}
 
+	public enum Files {
+		public static var title: String { tr("files.title") }
+		public static var panels: String { tr("files.panels") }
+		public static var root: String { tr("files.root") }
+		public static var empty: String { tr("files.empty") }
+		public static var emptyDescription: String { tr("files.emptyDescription") }
+		public static var loading: String { tr("files.loading") }
+		public static var needsDesktopUpdate: String { tr("files.needsDesktopUpdate") }
+		public static var forbidden: String { tr("files.forbidden") }
+		public static var notFound: String { tr("files.notFound") }
+		public static var tooLarge: String { tr("files.tooLarge") }
+		public static var notAFile: String { tr("files.notAFile") }
+		public static var loadFailed: String { tr("files.loadFailed") }
+		public static var unsupported: String { tr("files.unsupported") }
+		public static var updated: String { tr("files.updated") }
+		public static var share: String { tr("files.share") }
+	}
+
 	public enum Chat {
 		public static var composerPlaceholder: String { tr("chat.composerPlaceholder") }
 		public static var thinking: String { tr("chat.thinking") }

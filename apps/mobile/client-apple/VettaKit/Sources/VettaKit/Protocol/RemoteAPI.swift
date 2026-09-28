@@ -230,6 +230,9 @@ public struct RemoteDeviceStatus: Equatable, Sendable {
 	public var lanEndpoints: [String]
 	public var relayEnabled: Bool
 	public var runningSessionCount: Double
+	/// Whether the desktop answers `file.*` requests (ADR-0139). Older desktops leave it
+	/// out and drop the link on those methods, so nothing may send them unless it is set.
+	public var fileRead: Bool = false
 }
 
 /// Sealed follow-up to a manual pairing approval; carries the long-lived credential.
@@ -386,7 +389,8 @@ public enum RemoteAPI {
 			osLabel: value["osLabel"]?.stringValue,
 			lanEndpoints: (value["lanEndpoints"]?.arrayValue ?? []).compactMap(\.stringValue),
 			relayEnabled: value["relayEnabled"]?.boolValue == true,
-			runningSessionCount: value["runningSessionCount"]?.numberValue ?? 0
+			runningSessionCount: value["runningSessionCount"]?.numberValue ?? 0,
+			fileRead: value["fileRead"]?.boolValue == true
 		)
 	}
 

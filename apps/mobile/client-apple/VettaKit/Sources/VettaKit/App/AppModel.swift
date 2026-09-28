@@ -99,6 +99,7 @@ public final class AppModel {
 	@ObservationIgnored private var newSessionModelsLoad: Task<Void, Never>?
 	/// Sessions `startSession` just sent their first prompt to; see `openSession`.
 	@ObservationIgnored private var freshSessions: Set<String> = []
+	@ObservationIgnored private let fileCache = FileContentCache()
 
 	public init(platform: AppPlatform) {
 		self.platform = platform
@@ -116,6 +117,9 @@ public final class AppModel {
 	public func transcript(_ sessionId: String) -> TranscriptState { transcripts[sessionId] ?? .empty }
 
 	public func session(_ sessionId: String) -> RemoteSessionSummary? { sessions.first { $0.id == sessionId } }
+
+	/// Whether the connected desktop serves `panel`; false until its status arrives.
+	public func isAvailable(_ panel: SessionPanel) -> Bool { panel.isAvailable(on: link.desktop) }
 
 	// MARK: Lifecycle
 
@@ -209,6 +213,7 @@ public final class AppModel {
 		skillCatalogs = [:]
 		lastModelChoice = ModelChoice()
 		transcripts = [:]
+		fileCache.removeAll()
 		link = .offline
 	}
 
@@ -253,6 +258,7 @@ public final class AppModel {
 			.flatMap { try? JSONDecoder().decode(ModelChoice.self, from: Data($0.utf8)) } ?? ModelChoice()
 		transcripts = [:]
 		freshSessions = []
+		fileCache.removeAll()
 		link = .offline
 		var options = ChannelManagerOptions(desktop: record, link: identity, createTransport: platform.createTransport)
 		options.onSequence = { [weak self] sequence in
@@ -752,6 +758,54 @@ public final class AppModel {
 			$0.pinnedAt = summary.pinnedAt
 		}
 		if let key = desktopKey { platform.cache.saveSessions(key, sessions) }
+	}
+
+	// MARK: Files (ADR-0139)
+
+	/// Lists a folder of the session's working directory; `path` is "" for the directory itself
+	/// or a path the desktop gave earlier.
+	public func listFiles(_ sessionId: String, path: String) async throws(FileViewError) -> FileListing {
+		let result = try await fileRequest(.fileList, ["path": .string(path)], sessionId)
+		return FileListing(path: result?["path"]?.stringValue ?? path, entries: RemoteAPI.readFileEntries(result))
+	}
+
+	/// Describes a file; `path` may be a link exactly as the reply wrote it.
+	public func statFile(_ sessionId: String, path: String) async throws(FileViewError) -> RemoteFileInfo {
+		let result = try await fileRequest(.fileStat, ["path": .string(path)], sessionId)
+		guard let info = RemoteAPI.readFileInfo(result) else { throw .failed }
+		return info
+	}
+
+	/// The whole file, fetched in chunks, or from memory when it has not changed since.
+	public func readFile(_ sessionId: String, _ info: RemoteFileInfo) async throws(FileViewError) -> FileContent {
+		guard !info.entry.isDirectory else { throw .notAFile }
+		if let cached = fileCache.get(sessionId, info) { return cached }
+		do {
+			let manager = try requireFileManager()
+			let content = try await RemoteFileReader.read(path: info.path) { payload in
+				try await manager.request(.fileRead, payload: payload, sessionId: sessionId)
+			}
+			fileCache.put(sessionId, info, content)
+			return content
+		} catch {
+			throw FileViewError.from(error)
+		}
+	}
+
+	private func fileRequest(_ method: RemoteRequestMethod, _ payload: [String: JSONValue], _ sessionId: String) async throws(FileViewError) -> JSONValue? {
+		do {
+			return try await requireFileManager().request(method, payload: .object(payload), sessionId: sessionId)
+		} catch {
+			throw FileViewError.from(error)
+		}
+	}
+
+	/// An older desktop drops the link on a method it does not know, so nothing is sent unless it said it serves files.
+	private func requireFileManager() throws -> ChannelManager {
+		let manager = try requireManager()
+		guard online else { throw LinkOfflineError() }
+		guard isAvailable(.files) else { throw FileViewError.unsupportedDesktop }
+		return manager
 	}
 
 	public func setPreferences(_ update: (inout Preferences) -> Void) {
