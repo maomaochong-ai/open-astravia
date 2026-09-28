@@ -608,7 +608,8 @@ describe("DesktopRemoteAccessManager", () => {
 		} as unknown as RemoteConnection;
 		relayLinks[0]?.options.onConnection(connection);
 		await vi.waitFor(() => expect(desktopHosts).toHaveLength(1));
-		expect(statuses[0]).toMatchObject({ desktopControl: true });
+		// The phone learns here, not from the handshake, that it may ask for files (ADR-0139).
+		expect(statuses[0]).toMatchObject({ desktopControl: true, fileRead: true });
 		expect(manager.getState().devices[0]?.desktopControl).toBe(true);
 
 		await manager.setDesktopControl(pairingId, false);

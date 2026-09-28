@@ -890,6 +890,7 @@ export class DesktopRemoteAccessManager {
 			lanEndpoints: port ? this.lanEndpoints(port) : [],
 			relayEnabled: this.config.cloudEnabled && Boolean(this.config.relayBaseUrl),
 			runningSessionCount: this.options.runningSessionCount(),
+			fileRead: DESKTOP_REMOTE_CAPABILITIES.fileRead === true,
 			...(device ? { desktopControl: device.desktopControl !== false } : {}),
 			...(this.config.cloudEnabled && this.config.relayBaseUrl ? { relayBaseUrl: this.config.relayBaseUrl } : {}),
 		};
