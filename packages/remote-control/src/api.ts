@@ -135,6 +135,11 @@ export interface RemoteDeviceStatus {
 	readonly lanEndpoints: readonly string[];
 	readonly relayEnabled: boolean;
 	readonly runningSessionCount: number;
+	/**
+	 * Whether the phone this status goes to may view and operate the desktop's screen.
+	 * Desktops before it leave it out; they let every phone view.
+	 */
+	readonly desktopControl?: boolean;
 }
 
 /** Sealed follow-up to a manual pairing approval; carries the long-lived credential. */

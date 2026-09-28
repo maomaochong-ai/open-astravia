@@ -76,6 +76,8 @@ export interface RemoteControlDeviceRecord {
 	name: string;
 	/** 用户在电脑上改过名字；此后不再用手机报上的名称覆盖。 */
 	renamed?: boolean;
+	/** 允许这部手机查看并操作电脑屏幕；缺省关闭，由用户逐台打开。 */
+	desktopControl?: boolean;
 	/** 手机长期凭据的 SHA-256 hex；明文只在首次绑定前留在凭据库里。 */
 	mobileSecretHash: string;
 	/** 首次成功握手后钉住的手机身份公钥（base64url）；未钉住表示邀请尚未被领取。 */
@@ -342,6 +344,7 @@ export function normalizeRemoteControl(value: unknown): DesktopConfig["remoteCon
 						id: record.id,
 						name: typeof record.name === "string" && record.name ? record.name : record.id,
 						...(record.renamed === true ? { renamed: true } : {}),
+						...(record.desktopControl === true ? { desktopControl: true } : {}),
 						mobileSecretHash: record.mobileSecretHash,
 						mobileIdentityKey:
 							typeof record.mobileIdentityKey === "string" ? record.mobileIdentityKey : undefined,

@@ -9,6 +9,7 @@ const CHANNELS = {
 	APPROVE: "vetta:remote-pairing:approve",
 	REVOKE_DEVICE: "vetta:remote-pairing:revoke-device",
 	RENAME_DEVICE: "vetta:remote-pairing:rename-device",
+	SET_DESKTOP_CONTROL: "vetta:remote-pairing:set-desktop-control",
 } as const;
 
 /** Pushed to every window whenever the pairing state changes. */
@@ -29,6 +30,9 @@ export function registerRemotePairingIpc(manager: DesktopRemoteAccessManager): (
 	ipcMain.handle(CHANNELS.REVOKE_DEVICE, (_event, id: unknown) => manager.revokeDevice(asString(id)));
 	ipcMain.handle(CHANNELS.RENAME_DEVICE, (_event, id: unknown, name: unknown) =>
 		manager.renameDevice(asString(id), asString(name)),
+	);
+	ipcMain.handle(CHANNELS.SET_DESKTOP_CONTROL, (_event, id: unknown, enabled: unknown) =>
+		manager.setDesktopControl(asString(id), enabled === true),
 	);
 	const stopPushing = manager.onStateChanged((state) => {
 		for (const window of BrowserWindow.getAllWindows()) {

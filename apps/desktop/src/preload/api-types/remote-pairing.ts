@@ -7,6 +7,8 @@ export interface RemotePairingDevice {
 	claimed: boolean;
 	online: boolean;
 	channels: RemotePairingChannel[];
+	/** May view and operate this desktop's screen. */
+	desktopControl: boolean;
 	createdAt: number;
 	lastSeenAt?: number;
 }
@@ -44,6 +46,7 @@ export interface RemotePairingApi {
 	approve(id: string, allow: boolean): Promise<RemotePairingState>;
 	revokeDevice(id: string): Promise<RemotePairingState>;
 	renameDevice(id: string, name: string): Promise<RemotePairingState>;
+	setDesktopControl(id: string, enabled: boolean): Promise<RemotePairingState>;
 	/** Called with the new state whenever it changes; returns the unsubscribe. */
 	onStateChanged(listener: (state: RemotePairingState) => void): () => void;
 }

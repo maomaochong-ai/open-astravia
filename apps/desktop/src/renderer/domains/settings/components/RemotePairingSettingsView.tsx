@@ -67,32 +67,47 @@ export function RemotePairingSettingsView({ model }: { model: RemotePairingSetti
 				) : (
 					<ul className="mt-3 flex flex-col gap-2">
 						{model.devices.map((device) => (
-							<li
-								key={device.id}
-								className="flex items-center justify-between gap-4 rounded-xl border border-border/50 bg-card/40 px-3.5 pt-3 pb-3"
-							>
-								<div className="flex min-w-0 items-center gap-3">
-									<span
-										className={
-											device.online
-												? "h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-400"
-												: "h-2.5 w-2.5 shrink-0 rounded-full bg-muted-foreground/40"
-										}
-									/>
-									<div className="min-w-0">
-										<div className="truncate text-[13px] font-medium text-foreground">{device.name}</div>
-										<div className="mt-0.5 text-[12px] text-muted-foreground">{device.status}</div>
+							<li key={device.id} className="rounded-xl border border-border/50 bg-card/40 px-3.5 pt-3 pb-3">
+								<div className="flex items-center justify-between gap-4">
+									<div className="flex min-w-0 items-center gap-3">
+										<span
+											className={
+												device.online
+													? "h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-400"
+													: "h-2.5 w-2.5 shrink-0 rounded-full bg-muted-foreground/40"
+											}
+										/>
+										<div className="min-w-0">
+											<div className="truncate text-[13px] font-medium text-foreground">{device.name}</div>
+											<div className="mt-0.5 text-[12px] text-muted-foreground">{device.status}</div>
+										</div>
 									</div>
+									<Button
+										variant="outline"
+										size="sm"
+										disabled={model.busy}
+										onClick={() => model.actions.revokeDevice(device.id)}
+									>
+										<span className="icon-[solar--link-broken-linear] h-3.5 w-3.5" aria-hidden="true" />
+										{model.labels.devices.revoke}
+									</Button>
 								</div>
-								<Button
-									variant="outline"
-									size="sm"
-									disabled={model.busy}
-									onClick={() => model.actions.revokeDevice(device.id)}
-								>
-									<span className="icon-[solar--link-broken-linear] h-3.5 w-3.5" aria-hidden="true" />
-									{model.labels.devices.revoke}
-								</Button>
+								<div className="mt-3 flex items-center justify-between gap-4 border-t border-border/50 pt-3">
+									<div className="min-w-0">
+										<div className="text-[13px] text-foreground">{model.labels.devices.control}</div>
+										<p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">
+											{model.cloud.enabled
+												? model.labels.devices.controlDescription
+												: model.labels.devices.controlNeedsCloud}
+										</p>
+									</div>
+									<Switch
+										aria-label={`${device.name} · ${model.labels.devices.control}`}
+										checked={device.desktopControl}
+										disabled={model.busy || !model.cloud.enabled}
+										onCheckedChange={(enabled) => model.actions.setDesktopControl(device.id, enabled)}
+									/>
+								</div>
 							</li>
 						))}
 					</ul>

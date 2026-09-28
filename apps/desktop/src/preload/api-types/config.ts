@@ -128,6 +128,7 @@ export interface DesktopConfigData {
 			id: string;
 			name: string;
 			renamed?: boolean;
+			desktopControl?: boolean;
 			mobileSecretHash: string;
 			mobileIdentityKey?: string;
 			createdAt: number;

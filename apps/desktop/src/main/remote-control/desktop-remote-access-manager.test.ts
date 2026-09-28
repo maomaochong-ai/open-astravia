@@ -348,7 +348,14 @@ describe("DesktopRemoteAccessManager", () => {
 				cloudEnabled: true,
 				relayBaseUrl: "wss://relay.example",
 				devices: [
-					{ id: pairingId, name: "Pixel", mobileSecretHash: "h", mobileIdentityKey: phoneKey, createdAt: 1 },
+					{
+						id: pairingId,
+						name: "Pixel",
+						mobileSecretHash: "h",
+						mobileIdentityKey: phoneKey,
+						createdAt: 1,
+						desktopControl: true,
+					},
 				],
 			},
 			{ hubGraceMs: 5_000 },
@@ -465,6 +472,44 @@ describe("DesktopRemoteAccessManager", () => {
 		await manager.shutdown();
 	});
 
+	it("shares the screen only with a phone allowed to control the desktop, and tells it", async () => {
+		const pairingId = "a".repeat(24);
+		const phoneKey = "k".repeat(43);
+		const { manager, relayLinks, store, desktopHosts } = harness({
+			cloudEnabled: true,
+			relayBaseUrl: "wss://relay.example",
+			devices: [{ id: pairingId, name: "Pixel", mobileSecretHash: "h", mobileIdentityKey: phoneKey, createdAt: 1 }],
+		});
+		store.putRelaySecret(pairingId, "relay-secret");
+		await manager.restore();
+		const statuses: unknown[] = [];
+		const connection = {
+			onEvent: () => () => undefined,
+			getSnapshot: () => ({ state: "online", peerIdentityKey: phoneKey }),
+			deliverEvent: async (event: { name: string; payload?: unknown }) => {
+				if (event.name === "device.status") statuses.push(event.payload);
+			},
+			close: async () => undefined,
+		} as unknown as RemoteConnection;
+		relayLinks[0]?.options.onConnection(connection);
+		await vi.waitFor(() => expect(statuses).toHaveLength(1));
+		expect(statuses[0]).toMatchObject({ desktopControl: false });
+		expect(desktopHosts).toHaveLength(0);
+		expect(manager.getState().devices[0]?.desktopControl).toBe(false);
+
+		await manager.setDesktopControl(pairingId, true);
+		await vi.waitFor(() => expect(desktopHosts).toHaveLength(1));
+		expect(statuses.at(-1)).toMatchObject({ desktopControl: true });
+		expect(manager.getState().devices[0]?.desktopControl).toBe(true);
+
+		await manager.setDesktopControl(pairingId, false);
+		expect(desktopHosts[0]?.stopped).toBe(true);
+		expect(statuses.at(-1)).toMatchObject({ desktopControl: false });
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(desktopHosts).toHaveLength(1);
+		await manager.shutdown();
+	});
+
 	it("starts the desktop screen host when a paired phone comes online", async () => {
 		const pairingId = "a".repeat(24);
 		const phoneKey = "k".repeat(43);
@@ -478,6 +523,7 @@ describe("DesktopRemoteAccessManager", () => {
 					mobileSecretHash: "h",
 					mobileIdentityKey: phoneKey,
 					createdAt: 1,
+					desktopControl: true,
 				},
 			],
 		});

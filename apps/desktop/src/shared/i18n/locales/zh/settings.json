@@ -147,7 +147,10 @@
       },
       "lastSeen": "上次连接 {{time}}",
       "neverSeen": "尚未连接过",
-      "revoke": "解除配对"
+      "revoke": "解除配对",
+      "control": "远程控制",
+      "controlDescription": "允许这部手机查看并操作这台电脑的屏幕（鼠标和键盘）。关闭后手机只能看会话，看不到屏幕。",
+      "controlNeedsCloud": "远程控制经云端中继建立连接，需要先开启下方的「允许在外网访问」。"
     },
     "pairing": {
       "title": "添加手机",

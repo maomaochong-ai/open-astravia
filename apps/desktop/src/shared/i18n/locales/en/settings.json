@@ -147,7 +147,10 @@
       },
       "lastSeen": "Last connected {{time}}",
       "neverSeen": "Never connected",
-      "revoke": "Remove"
+      "revoke": "Remove",
+      "control": "Remote control",
+      "controlDescription": "Let this phone see and operate this computer’s screen (mouse and keyboard). When off, the phone can follow sessions but not see the screen.",
+      "controlNeedsCloud": "Remote control connects through the cloud relay; turn on “Allow access away from home” below first."
     },
     "pairing": {
       "title": "Add a phone",

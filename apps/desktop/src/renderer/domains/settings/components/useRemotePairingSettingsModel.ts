@@ -28,6 +28,7 @@ export interface RemotePairingSettingsModel {
 		readonly name: string;
 		readonly online: boolean;
 		readonly status: string;
+		readonly desktopControl: boolean;
 	}[];
 	readonly error?: string;
 	readonly labels: {
@@ -45,6 +46,9 @@ export interface RemotePairingSettingsModel {
 			readonly unavailable: string;
 		};
 		readonly devices: {
+			readonly control: string;
+			readonly controlDescription: string;
+			readonly controlNeedsCloud: string;
 			readonly description: string;
 			readonly empty: string;
 			readonly revoke: string;
@@ -80,6 +84,7 @@ export interface RemotePairingSettingsModel {
 		readonly createInvite: () => void;
 		readonly revokeDevice: (id: string) => void;
 		readonly setCloudEnabled: (enabled: boolean) => void;
+		readonly setDesktopControl: (id: string, enabled: boolean) => void;
 	};
 }
 
@@ -200,6 +205,9 @@ export function useRemotePairingSettingsModel(): RemotePairingSettingsModel {
 				description: t("remote.devices.description"),
 				empty: t("remote.devices.empty"),
 				revoke: t("remote.devices.revoke"),
+				control: t("remote.devices.control"),
+				controlDescription: t("remote.devices.controlDescription"),
+				controlNeedsCloud: t("remote.devices.controlNeedsCloud"),
 			},
 			pairing: {
 				title: t("remote.pairing.title"),
@@ -242,6 +250,7 @@ export function useRemotePairingSettingsModel(): RemotePairingSettingsModel {
 								: device.lastSeenAt
 									? t("remote.devices.lastSeen", { time: new Date(device.lastSeenAt).toLocaleString() })
 									: t("remote.devices.neverSeen"),
+						desktopControl: device.desktopControl,
 					};
 				}),
 		[state.devices, t],
@@ -254,6 +263,7 @@ export function useRemotePairingSettingsModel(): RemotePairingSettingsModel {
 			createInvite: () => void run(() => window.vetta.remotePairing.createInvite(), "create"),
 			revokeDevice: (id) => void run(() => window.vetta.remotePairing.revokeDevice(id)),
 			setCloudEnabled: (enabled) => void run(() => window.vetta.remotePairing.setCloudEnabled(enabled)),
+			setDesktopControl: (id, enabled) => void run(() => window.vetta.remotePairing.setDesktopControl(id, enabled)),
 		}),
 		[run],
 	);

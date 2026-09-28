@@ -28,6 +28,8 @@ export interface RemoteAccessDeviceView {
 	readonly claimed: boolean;
 	readonly online: boolean;
 	readonly channels: readonly RemoteChannel[];
+	/** May view and operate this desktop's screen. */
+	readonly desktopControl: boolean;
 	readonly createdAt: number;
 	readonly lastSeenAt?: number;
 }
@@ -221,6 +223,7 @@ export class DesktopRemoteAccessManager {
 				claimed: device.mobileIdentityKey !== undefined,
 				online: this.hub.isOnline(device.id),
 				channels: this.hub.onlineChannels(device.id),
+				desktopControl: device.desktopControl === true,
 				createdAt: device.createdAt,
 				lastSeenAt: device.lastSeenAt,
 			})),
@@ -331,6 +334,29 @@ export class DesktopRemoteAccessManager {
 			await this.options.store.patchDevice(id, { name: trimmed, renamed: true });
 			this.config = await this.options.store.read();
 		}
+		return this.getState();
+	}
+
+	/**
+	 * Lets one phone view and operate this desktop's screen, or takes that back. The phone
+	 * hears it at once, so its remote control shows why the screen is not there.
+	 */
+	async setDesktopControl(id: string, enabled: boolean): Promise<RemoteAccessState> {
+		if (!this.config.devices.some((device) => device.id === id)) return this.getState();
+		await this.options.store.patchDevice(id, { desktopControl: enabled });
+		this.config = await this.options.store.read();
+		this.stateChanged();
+		if (enabled) {
+			if (this.hub.isOnline(id)) void this.startDesktopHost(id);
+		} else {
+			await this.desktopHosts
+				.get(id)
+				?.stop()
+				.catch(() => undefined);
+			this.desktopHosts.delete(id);
+		}
+		if (this.hub.isOnline(id)) await this.hub.emit(id, "device.status", this.deviceStatus(id)).catch(() => undefined);
+		log.info("remote desktop control changed", { pairingId: id.slice(0, 6), enabled });
 		return this.getState();
 	}
 
@@ -580,7 +606,7 @@ export class DesktopRemoteAccessManager {
 		} catch (error) {
 			log.warn("remote device last-seen save failed", { pairingId: deviceId.slice(0, 6), error: describe(error) });
 		}
-		await this.hub.emit(deviceId, "device.status", this.deviceStatus()).catch(() => undefined);
+		await this.hub.emit(deviceId, "device.status", this.deviceStatus(deviceId)).catch(() => undefined);
 		log.info("remote link online", { pairingId: deviceId.slice(0, 6), channel });
 		// The screen may have gone while this link was reconnecting; the phone never counted as
 		// offline (the grace period covers a brief absence), so nothing else would bring it back.
@@ -619,6 +645,8 @@ export class DesktopRemoteAccessManager {
 		const relayBaseUrl = this.config.relayBaseUrl;
 		const desktopSecret = this.options.store.relaySecret(deviceId);
 		if (!controller || !this.config.cloudEnabled || !relayBaseUrl || !desktopSecret) return;
+		// The screen is shared only with a phone the person allowed it for.
+		if (!this.config.devices.find((entry) => entry.id === deviceId)?.desktopControl) return;
 		if (this.desktopHosts.has(deviceId) || this.desktopHostStarts.has(deviceId)) return;
 		this.desktopHostStarts.add(deviceId);
 		try {
@@ -630,7 +658,8 @@ export class DesktopRemoteAccessManager {
 				return;
 			}
 			const device = this.config.devices.find((entry) => entry.id === deviceId);
-			if (!device?.mobileIdentityKey) {
+			// Turned off, or never claimed, while the host was starting.
+			if (!device?.mobileIdentityKey || !device.desktopControl) {
 				await host.stop();
 				return;
 			}
@@ -707,14 +736,17 @@ export class DesktopRemoteAccessManager {
 		return this.identityCache;
 	}
 
-	private deviceStatus(): RemoteDeviceStatus {
+	/** With `deviceId`, also says whether that phone may use the desktop's screen. */
+	private deviceStatus(deviceId?: string): RemoteDeviceStatus {
 		const port = this.lanServer?.listeningPort;
+		const device = deviceId ? this.config.devices.find((entry) => entry.id === deviceId) : undefined;
 		return {
 			deviceName: this.options.deviceName,
 			osLabel: this.options.osLabel,
 			lanEndpoints: port ? this.lanEndpoints(port) : [],
 			relayEnabled: this.config.cloudEnabled && Boolean(this.config.relayBaseUrl),
 			runningSessionCount: this.options.runningSessionCount(),
+			...(device ? { desktopControl: device.desktopControl === true } : {}),
 		};
 	}
 

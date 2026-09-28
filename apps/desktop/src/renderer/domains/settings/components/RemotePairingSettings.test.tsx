@@ -60,6 +60,7 @@ function installRemotePairing(options: {
 	const initial = options.initial ?? BASE_STATE;
 	const createInvite = vi.fn(options.createInvite ?? (async () => inviteState()));
 	const steady = async () => initial;
+	const setDesktopControl = vi.fn(steady);
 	const listeners = new Set<(state: RemotePairingState) => void>();
 	Object.defineProperty(window, "vetta", {
 		configurable: true,
@@ -72,6 +73,7 @@ function installRemotePairing(options: {
 				approve: vi.fn(steady),
 				revokeDevice: vi.fn(steady),
 				renameDevice: vi.fn(steady),
+				setDesktopControl,
 				onStateChanged: (listener: (state: RemotePairingState) => void) => {
 					listeners.add(listener);
 					return () => listeners.delete(listener);
@@ -83,7 +85,7 @@ function installRemotePairing(options: {
 	const push = (state: RemotePairingState) => {
 		for (const listener of listeners) listener(state);
 	};
-	return { createInvite, push };
+	return { createInvite, push, setDesktopControl };
 }
 
 afterEach(() => {
@@ -136,12 +138,60 @@ describe("远程连接设置", () => {
 	});
 
 	it("电脑上的变化由主进程推送过来，手机上线离线无需轮询也会立刻显示", async () => {
-		const device = { id: "d1", name: "Pixel", claimed: true, online: false, channels: [], createdAt: 1, lastSeenAt: 2 };
+		const device = {
+			id: "d1",
+			name: "Pixel",
+			claimed: true,
+			online: false,
+			channels: [],
+			desktopControl: false,
+			createdAt: 1,
+			lastSeenAt: 2,
+		};
 		const { push } = installRemotePairing({ initial: { ...inviteState(), devices: [device] } });
 		render(<RemotePairingSettings />);
 		expect(await screen.findByText(/remote\.devices\.lastSeen/)).toBeTruthy();
 
 		act(() => push({ ...inviteState(), devices: [{ ...device, online: true, channels: ["lan"] }] }));
 		expect(await screen.findByText("remote.devices.onlineVia:remote.devices.channel.lan")).toBeTruthy();
+	});
+
+	it("每台手机的记录里都能单独开关远程控制", async () => {
+		const device = {
+			id: "d1",
+			name: "Pixel",
+			claimed: true,
+			online: true,
+			channels: ["lan" as const],
+			desktopControl: false,
+			createdAt: 1,
+		};
+		const { setDesktopControl } = installRemotePairing({ initial: { ...inviteState(), devices: [device] } });
+		const user = userEvent.setup();
+		render(<RemotePairingSettings />);
+
+		const toggle = await screen.findByRole("switch", { name: "Pixel · remote.devices.control" });
+		expect(toggle.getAttribute("aria-checked")).toBe("false");
+		expect(screen.getByText("remote.devices.controlDescription")).toBeTruthy();
+		await user.click(toggle);
+		expect(setDesktopControl).toHaveBeenCalledWith("d1", true);
+	});
+
+	it("没开外网访问时远程控制开关不可用，并说明原因", async () => {
+		const device = {
+			id: "d1",
+			name: "Pixel",
+			claimed: true,
+			online: true,
+			channels: ["lan" as const],
+			desktopControl: false,
+			createdAt: 1,
+		};
+		installRemotePairing({ initial: { ...inviteState(), cloudEnabled: false, devices: [device] } });
+		render(<RemotePairingSettings />);
+
+		const toggle = await screen.findByRole("switch", { name: "Pixel · remote.devices.control" });
+		expect(toggle.hasAttribute("disabled")).toBe(true);
+		expect(screen.getByText("remote.devices.controlNeedsCloud")).toBeTruthy();
 	});
 });
