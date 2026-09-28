@@ -203,6 +203,13 @@ export interface RemoteDeviceStatus {
 	 * that paired with another relay switches to this one. Older desktops leave it out.
 	 */
 	readonly relayBaseUrl?: string;
+	/**
+	 * Whether the desktop answers `file.list`, `file.stat` and `file.read` (ADR-0139).
+	 * The phone learns it here rather than from the handshake, whose `hello_ack` does not
+	 * carry the desktop's capabilities. Older desktops leave it out and drop the link on
+	 * those methods, so the phone must not send them.
+	 */
+	readonly fileRead?: boolean;
 }
 
 /** Sealed follow-up to a manual pairing approval; carries the long-lived credential. */
@@ -487,6 +494,9 @@ export function readDeviceStatus(value: unknown): RemoteDeviceStatus | undefined
 			: [],
 		relayEnabled: value.relayEnabled === true,
 		runningSessionCount: num(value.runningSessionCount) ?? 0,
+		desktopControl: typeof value.desktopControl === "boolean" ? value.desktopControl : undefined,
+		relayBaseUrl: str(value.relayBaseUrl),
+		fileRead: value.fileRead === true,
 	};
 }
 

@@ -51,7 +51,7 @@
 
 新增错误码 `forbidden`（超出可读范围或命中黑名单）、`too_large`、`file_changed`。只有文件请求会返回它们。
 
-电脑在握手里声明 `fileRead: true`。旧版电脑遇到不认识的请求会断开连接，所以手机只在对端声明了 `fileRead` 时才发这三个请求，否则把入口置灰并提示升级电脑端。
+电脑在 `device.status`（每次手机连上都会推送）里带 `fileRead: true`，握手的 `hello` 也声明同名能力位。手机只能以 `device.status` 为准：它是握手的发起方，收到的 `hello_ack` 不含对端能力。旧版电脑遇到不认识的请求会断开连接，所以手机只在 `device.status` 声明了 `fileRead` 时才发这三个请求，否则把入口置灰并提示升级电脑端。
 
 ## 后果
 

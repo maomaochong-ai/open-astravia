@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
 	REMOTE_MAX_UPLOAD_BYTES,
+	readDeviceStatus,
 	readFileChunk,
 	readFileEntries,
 	readFileInfo,
@@ -205,5 +206,11 @@ describe("remote api payload readers", () => {
 			mimeType: "text/plain",
 		});
 		expect(readFileChunk({ data: "aGk=" })).toBeUndefined();
+	});
+
+	it("treats a desktop that does not mention fileRead as unable to serve files", () => {
+		const base = { deviceName: "Mac", lanEndpoints: [], relayEnabled: true, runningSessionCount: 0 };
+		expect(readDeviceStatus({ ...base, fileRead: true })?.fileRead).toBe(true);
+		expect(readDeviceStatus(base)?.fileRead).toBe(false);
 	});
 });
