@@ -156,14 +156,14 @@ describe("远程连接设置", () => {
 		expect(await screen.findByText("remote.devices.onlineVia:remote.devices.channel.lan")).toBeTruthy();
 	});
 
-	it("每台手机的记录里都能单独开关远程控制", async () => {
+	it("连上的手机在自己那一行就能开关远程控制，默认开启", async () => {
 		const device = {
 			id: "d1",
 			name: "Pixel",
 			claimed: true,
 			online: true,
 			channels: ["lan" as const],
-			desktopControl: false,
+			desktopControl: true,
 			createdAt: 1,
 		};
 		const { setDesktopControl } = installRemotePairing({ initial: { ...inviteState(), devices: [device] } });
@@ -171,31 +171,35 @@ describe("远程连接设置", () => {
 		render(<RemotePairingSettings />);
 
 		const toggle = await screen.findByRole("switch", { name: "Pixel · remote.devices.control" });
-		expect(toggle.getAttribute("aria-checked")).toBe("false");
-		expect(screen.getByText("remote.devices.controlDescription")).toBeTruthy();
+		expect(toggle.getAttribute("aria-checked")).toBe("true");
 		await user.click(toggle);
-		expect(setDesktopControl).toHaveBeenCalledWith("d1", true);
+		expect(setDesktopControl).toHaveBeenCalledWith("d1", false);
 	});
 
-	it("没开外网访问时远程控制开关不可用，并说明原因", async () => {
-		const device = {
+	it("没连上或没开外网访问时不显示远程控制开关", async () => {
+		const offline = {
 			id: "d1",
 			name: "Pixel",
 			claimed: true,
-			online: true,
-			channels: ["lan" as const],
-			desktopControl: false,
+			online: false,
+			channels: [],
+			desktopControl: true,
 			createdAt: 1,
+			lastSeenAt: 2,
 		};
-		installRemotePairing({ initial: { ...inviteState(), cloudEnabled: false, devices: [device] } });
+		const { push } = installRemotePairing({ initial: { ...inviteState(), devices: [offline] } });
 		render(<RemotePairingSettings />);
+		expect(await screen.findByText("Pixel")).toBeTruthy();
+		expect(screen.queryByRole("switch", { name: "Pixel · remote.devices.control" })).toBeNull();
 
-		const toggle = await screen.findByRole("switch", { name: "Pixel · remote.devices.control" });
-		expect(toggle.hasAttribute("disabled")).toBe(true);
-		expect(screen.getByText("remote.devices.controlNeedsCloud")).toBeTruthy();
+		act(() =>
+			push({ ...inviteState(), cloudEnabled: false, devices: [{ ...offline, online: true, channels: ["lan"] }] }),
+		);
+		expect(await screen.findByText("remote.devices.onlineVia:remote.devices.channel.lan")).toBeTruthy();
+		expect(screen.queryByRole("switch", { name: "Pixel · remote.devices.control" })).toBeNull();
 	});
 
-	it("二维码下方给出连接码和密码，供不在电脑旁的手机输入", async () => {
+	it("二维码旁给出连接码和密码，供不在电脑旁的手机输入", async () => {
 		installRemotePairing({
 			initial: {
 				...inviteState(),

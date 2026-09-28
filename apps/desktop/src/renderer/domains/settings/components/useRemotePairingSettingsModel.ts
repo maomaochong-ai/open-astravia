@@ -47,8 +47,6 @@ export interface RemotePairingSettingsModel {
 		};
 		readonly devices: {
 			readonly control: string;
-			readonly controlDescription: string;
-			readonly controlNeedsCloud: string;
 			readonly description: string;
 			readonly empty: string;
 			readonly revoke: string;
@@ -217,8 +215,6 @@ export function useRemotePairingSettingsModel(): RemotePairingSettingsModel {
 				empty: t("remote.devices.empty"),
 				revoke: t("remote.devices.revoke"),
 				control: t("remote.devices.control"),
-				controlDescription: t("remote.devices.controlDescription"),
-				controlNeedsCloud: t("remote.devices.controlNeedsCloud"),
 			},
 			pairing: {
 				title: t("remote.pairing.title"),

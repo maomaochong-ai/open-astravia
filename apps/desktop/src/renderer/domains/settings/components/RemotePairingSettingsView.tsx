@@ -57,63 +57,6 @@ export function RemotePairingSettingsView({ model }: { model: RemotePairingSetti
 				</section>
 			) : null}
 
-			<section id="remote-devices" className="mb-7">
-				<h2 className="text-[14px] font-semibold text-foreground">{model.labels.devices.title}</h2>
-				<p className="mt-1 text-[12px] text-muted-foreground">{model.labels.devices.description}</p>
-				{model.devices.length === 0 ? (
-					<div className="mt-3 rounded-xl border border-border/50 bg-card/40 px-4 py-6 text-center text-[12px] text-muted-foreground">
-						{model.labels.devices.empty}
-					</div>
-				) : (
-					<ul className="mt-3 flex flex-col gap-2">
-						{model.devices.map((device) => (
-							<li key={device.id} className="rounded-xl border border-border/50 bg-card/40 px-3.5 pt-3 pb-3">
-								<div className="flex items-center justify-between gap-4">
-									<div className="flex min-w-0 items-center gap-3">
-										<span
-											className={
-												device.online
-													? "h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-400"
-													: "h-2.5 w-2.5 shrink-0 rounded-full bg-muted-foreground/40"
-											}
-										/>
-										<div className="min-w-0">
-											<div className="truncate text-[13px] font-medium text-foreground">{device.name}</div>
-											<div className="mt-0.5 text-[12px] text-muted-foreground">{device.status}</div>
-										</div>
-									</div>
-									<Button
-										variant="outline"
-										size="sm"
-										disabled={model.busy}
-										onClick={() => model.actions.revokeDevice(device.id)}
-									>
-										<span className="icon-[solar--link-broken-linear] h-3.5 w-3.5" aria-hidden="true" />
-										{model.labels.devices.revoke}
-									</Button>
-								</div>
-								<div className="mt-3 flex items-center justify-between gap-4 border-t border-border/50 pt-3">
-									<div className="min-w-0">
-										<div className="text-[13px] text-foreground">{model.labels.devices.control}</div>
-										<p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">
-											{model.cloud.enabled
-												? model.labels.devices.controlDescription
-												: model.labels.devices.controlNeedsCloud}
-										</p>
-									</div>
-									<Switch
-										aria-label={`${device.name} · ${model.labels.devices.control}`}
-										checked={device.desktopControl}
-										disabled={model.busy || !model.cloud.enabled}
-										onCheckedChange={(enabled) => model.actions.setDesktopControl(device.id, enabled)}
-									/>
-								</div>
-							</li>
-						))}
-					</ul>
-				)}
-			</section>
-
 			<section id="remote-pairing" className="mb-7">
 				<div className="flex items-start justify-between gap-3">
 					<div>
@@ -133,15 +76,43 @@ export function RemotePairingSettingsView({ model }: { model: RemotePairingSetti
 				) : null}
 				<div className="mt-4 rounded-xl border border-border/50 bg-card/40 px-4 pt-4 pb-4">
 					{model.pairing.qrDataUrl ? (
-						<div className="flex flex-col items-center">
-							<img
-								src={model.pairing.qrDataUrl}
-								alt={model.labels.pairing.qrAlt}
-								className="h-[320px] w-[320px] rounded-lg bg-white p-2"
-							/>
-							<p className="mt-3 max-w-[420px] text-center text-[12px] leading-relaxed text-muted-foreground">
-								{model.labels.pairing.qrHint}
-							</p>
+						<div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center">
+							{/* Scales with the page, always square. */}
+							<div className="w-full max-w-[260px] min-w-[160px] shrink">
+								<img
+									src={model.pairing.qrDataUrl}
+									alt={model.labels.pairing.qrAlt}
+									className="block aspect-square h-auto w-full rounded-lg bg-white p-2"
+								/>
+							</div>
+							<div className="flex min-w-0 flex-1 flex-col gap-3 text-[12px] leading-relaxed text-muted-foreground">
+								<p>{model.labels.pairing.qrHint}</p>
+								{model.pairing.code?.status === "ready" ? (
+									<>
+										<p>{model.labels.pairing.codeHint}</p>
+										<dl className="grid grid-cols-2 gap-2">
+											<div className="rounded-lg border border-border/60 bg-background/60 px-3 py-2">
+												<dt className="text-[11px]">{model.labels.pairing.code}</dt>
+												<dd className="mt-0.5 font-mono text-[18px] font-semibold tracking-[0.08em] whitespace-nowrap text-foreground select-all">
+													{model.pairing.code.code}
+												</dd>
+											</div>
+											<div className="rounded-lg border border-border/60 bg-background/60 px-3 py-2">
+												<dt className="text-[11px]">{model.labels.pairing.password}</dt>
+												<dd className="mt-0.5 font-mono text-[18px] font-semibold tracking-[0.08em] whitespace-nowrap text-foreground select-all">
+													{model.pairing.code.password}
+												</dd>
+											</div>
+										</dl>
+									</>
+								) : model.pairing.code ? (
+									<p>
+										{model.pairing.code.status === "preparing"
+											? model.labels.pairing.codePreparing
+											: model.labels.pairing.codeFailed}
+									</p>
+								) : null}
+							</div>
 						</div>
 					) : model.pairing.preparing ? (
 						<div className="flex min-h-[160px] flex-col items-center justify-center text-muted-foreground">
@@ -160,35 +131,6 @@ export function RemotePairingSettingsView({ model }: { model: RemotePairingSetti
 							) : null}
 						</div>
 					)}
-					{model.pairing.qrDataUrl && model.pairing.code ? (
-						<div className="mt-4 border-t border-border/50 pt-3 text-[12px] leading-relaxed text-muted-foreground">
-							{model.pairing.code.status === "ready" ? (
-								<>
-									<p>{model.labels.pairing.codeHint}</p>
-									<dl className="mt-2 flex flex-wrap gap-x-8 gap-y-2">
-										<div>
-											<dt>{model.labels.pairing.code}</dt>
-											<dd className="font-mono text-[20px] font-semibold tracking-[0.15em] text-foreground select-all">
-												{model.pairing.code.code}
-											</dd>
-										</div>
-										<div>
-											<dt>{model.labels.pairing.password}</dt>
-											<dd className="font-mono text-[20px] font-semibold tracking-[0.15em] text-foreground select-all">
-												{model.pairing.code.password}
-											</dd>
-										</div>
-									</dl>
-								</>
-							) : (
-								<p>
-									{model.pairing.code.status === "preparing"
-										? model.labels.pairing.codePreparing
-										: model.labels.pairing.codeFailed}
-								</p>
-							)}
-						</div>
-					) : null}
 					{model.pairing.endpoints.length > 0 ? (
 						<div className="mt-4 border-t border-border/50 pt-3 text-[12px] leading-relaxed text-muted-foreground">
 							<p>{model.labels.pairing.manualHint}</p>
@@ -213,6 +155,59 @@ export function RemotePairingSettingsView({ model }: { model: RemotePairingSetti
 						onCheckedChange={model.actions.setCloudEnabled}
 					/>
 				</div>
+			</section>
+
+			<section id="remote-devices" className="mt-7">
+				<h2 className="text-[14px] font-semibold text-foreground">{model.labels.devices.title}</h2>
+				<p className="mt-1 text-[12px] text-muted-foreground">{model.labels.devices.description}</p>
+				{model.devices.length === 0 ? (
+					<div className="mt-3 rounded-xl border border-border/50 bg-card/40 px-4 py-6 text-center text-[12px] text-muted-foreground">
+						{model.labels.devices.empty}
+					</div>
+				) : (
+					<ul className="mt-3 flex flex-col gap-2">
+						{model.devices.map((device) => (
+							<li
+								key={device.id}
+								className="flex items-center gap-4 rounded-xl border border-border/50 bg-card/40 px-3.5 py-3"
+							>
+								<span
+									className={
+										device.online
+											? "h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-400"
+											: "h-2.5 w-2.5 shrink-0 rounded-full bg-muted-foreground/40"
+									}
+								/>
+								<div className="min-w-0 flex-1">
+									<div className="truncate text-[13px] font-medium text-foreground">{device.name}</div>
+									<div className="mt-0.5 truncate text-[12px] text-muted-foreground">{device.status}</div>
+								</div>
+								{/* Remote control needs the phone connected and the relay on; otherwise the switch would do nothing. */}
+								{device.online && model.cloud.enabled ? (
+									<label className="flex shrink-0 items-center gap-2 text-[12px] text-muted-foreground">
+										{model.labels.devices.control}
+										<Switch
+											aria-label={`${device.name} · ${model.labels.devices.control}`}
+											checked={device.desktopControl}
+											disabled={model.busy}
+											onCheckedChange={(enabled) => model.actions.setDesktopControl(device.id, enabled)}
+										/>
+									</label>
+								) : null}
+								<Button
+									variant="outline"
+									size="sm"
+									className="shrink-0"
+									disabled={model.busy}
+									onClick={() => model.actions.revokeDevice(device.id)}
+								>
+									<span className="icon-[solar--link-broken-linear] h-3.5 w-3.5" aria-hidden="true" />
+									{model.labels.devices.revoke}
+								</Button>
+							</li>
+						))}
+					</ul>
+				)}
 			</section>
 		</div>
 	);

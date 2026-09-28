@@ -148,9 +148,7 @@
       "lastSeen": "Last connected {{time}}",
       "neverSeen": "Never connected",
       "revoke": "Remove",
-      "control": "Remote control",
-      "controlDescription": "Let this phone see and operate this computer’s screen (mouse and keyboard). When off, the phone can follow sessions but not see the screen.",
-      "controlNeedsCloud": "Remote control connects through the cloud relay; turn on “Allow access away from home” below first."
+      "control": "Remote control"
     },
     "pairing": {
       "title": "Add a phone",
@@ -167,7 +165,7 @@
       "permissionHint": "If your system asks whether to allow the connection, choose Allow.",
       "code": "Connection code",
       "password": "Password",
-      "codeHint": "Phone not here, or can’t scan? In Vetta on your phone choose “Connect with a code” and enter the code and password below. Only the first phone to connect can use them.",
+      "codeHint": "Phone not here, or can’t scan? In Vetta on your phone choose “Connect with a code” and enter this code and password. Only the first phone to connect can use them.",
       "codePreparing": "Preparing a connection code…",
       "codeFailed": "The connection code is unavailable right now (the cloud relay did not answer or has not been updated). Use the QR code, or discard and generate a new one later."
     },
