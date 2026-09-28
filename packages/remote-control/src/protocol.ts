@@ -34,6 +34,9 @@ const requestMethods = new Set([
 	"session.abort",
 	"session.resume",
 	"diagnostics.snapshot",
+	"file.list",
+	"file.stat",
+	"file.read",
 ]);
 const eventNames = new Set([
 	"device.status",
@@ -57,6 +60,9 @@ const errorCodes = new Set([
 	"request_timeout",
 	"transport_closed",
 	"internal_error",
+	"forbidden",
+	"too_large",
+	"file_changed",
 ]);
 
 /** X25519 public key: 32 bytes as unpadded base64url. */

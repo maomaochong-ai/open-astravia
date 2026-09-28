@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
 	REMOTE_MAX_UPLOAD_BYTES,
+	readFileChunk,
+	readFileEntries,
+	readFileInfo,
 	readMessageEvent,
 	readModelOptions,
 	readQuestionRequest,
@@ -159,5 +162,48 @@ describe("remote api payload readers", () => {
 				error: undefined,
 			},
 		]);
+	});
+
+	it("reads file entries, keeping the session directory's own empty path", () => {
+		expect(
+			readFileEntries({
+				path: "",
+				entries: [
+					{ name: "out", path: "out", isDirectory: true, size: 0, modifiedAt: 3 },
+					{ name: "a.md", path: "a.md", size: 12 },
+					{ path: "nameless" },
+					"junk",
+				],
+			}),
+		).toEqual([
+			{ name: "out", path: "out", isDirectory: true, size: 0, modifiedAt: 3 },
+			{ name: "a.md", path: "a.md", isDirectory: false, size: 12, modifiedAt: 0 },
+		]);
+		expect(readFileEntries(undefined)).toEqual([]);
+	});
+
+	it("reads a file description and a chunk", () => {
+		expect(
+			readFileInfo({
+				file: { name: "x.html", path: "~/Desktop/x.html", size: 5, modifiedAt: 9, mimeType: "text/html" },
+			}),
+		).toEqual({
+			name: "x.html",
+			path: "~/Desktop/x.html",
+			isDirectory: false,
+			size: 5,
+			modifiedAt: 9,
+			mimeType: "text/html",
+			displayPath: "~/Desktop/x.html",
+		});
+		expect(readFileInfo({})).toBeUndefined();
+		expect(readFileChunk({ data: "aGk=", offset: 0, totalSize: 2, modifiedAt: 9, mimeType: "text/plain" })).toEqual({
+			data: "aGk=",
+			offset: 0,
+			totalSize: 2,
+			modifiedAt: 9,
+			mimeType: "text/plain",
+		});
+		expect(readFileChunk({ data: "aGk=" })).toBeUndefined();
 	});
 });

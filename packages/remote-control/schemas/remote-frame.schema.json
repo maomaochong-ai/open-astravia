@@ -23,7 +23,7 @@
     "error": {
       "type": "object", "additionalProperties": false, "required": ["code", "message", "retryable"],
       "properties": {
-        "code": { "enum": ["invalid_frame", "unsupported_version", "unauthorized", "approval_rejected", "not_found", "busy", "request_timeout", "transport_closed", "internal_error"] },
+        "code": { "enum": ["invalid_frame", "unsupported_version", "unauthorized", "approval_rejected", "not_found", "busy", "request_timeout", "transport_closed", "internal_error", "forbidden", "too_large", "file_changed"] },
         "message": { "type": "string", "minLength": 1, "maxLength": 512 }, "retryable": { "type": "boolean" }
       }
     },
@@ -67,7 +67,7 @@
       "type": "object", "additionalProperties": false, "required": ["type", "requestId", "method"],
       "properties": {
         "type": { "const": "request" }, "requestId": { "$ref": "#/$defs/id" },
-        "method": { "enum": ["project.list", "session.list", "session.create", "session.open", "session.history", "session.prompt", "session.upload", "model.list", "skill.list", "session.configure", "session.rename", "session.pin", "session.delete", "session.respond", "session.abort", "session.resume", "diagnostics.snapshot"] },
+        "method": { "enum": ["project.list", "session.list", "session.create", "session.open", "session.history", "session.prompt", "session.upload", "model.list", "skill.list", "session.configure", "session.rename", "session.pin", "session.delete", "session.respond", "session.abort", "session.resume", "diagnostics.snapshot", "file.list", "file.stat", "file.read"] },
         "sessionId": { "$ref": "#/$defs/id" }, "payload": true
       }
     },

@@ -145,6 +145,48 @@ export type RemoteUploadKind = "image" | "file";
  */
 export const REMOTE_MAX_UPLOAD_BYTES = 700 * 1024;
 
+/**
+ * A file or folder the phone may look at, as `file.list` and `file.stat` describe it.
+ *
+ * `path` is the desktop's canonical form and what the phone passes back to
+ * `file.stat`, `file.read` and `file.list`: relative to the session's working
+ * directory inside it (the directory itself is ""), `~/…` under the home
+ * directory, absolute anywhere else. The phone never builds paths itself
+ * (ADR-0139).
+ */
+export interface RemoteFileEntry {
+	readonly name: string;
+	readonly path: string;
+	readonly isDirectory: boolean;
+	readonly size: number;
+	/** Milliseconds since the epoch. */
+	readonly modifiedAt: number;
+}
+
+export interface RemoteFileInfo extends RemoteFileEntry {
+	/** What `file.read` returns for it; images are served as JPEG once scaled down. */
+	readonly mimeType: string;
+	/** The home directory abbreviated to `~`, for showing where the file lives. */
+	readonly displayPath: string;
+}
+
+/** One chunk of `file.read`. */
+export interface RemoteFileChunk {
+	/** base64 of at most `REMOTE_FILE_CHUNK_BYTES`. */
+	readonly data: string;
+	readonly offset: number;
+	/** Size of the whole content being read, which for images is the scaled-down copy. */
+	readonly totalSize: number;
+	readonly modifiedAt: number;
+	readonly mimeType: string;
+}
+
+/** Most bytes one `file.read` returns; a chunk has to fit a sealed frame, like an upload. */
+export const REMOTE_FILE_CHUNK_BYTES = 700 * 1024;
+
+/** Largest file the phone may preview, the desktop's own preview limit. */
+export const REMOTE_MAX_FILE_BYTES = 10 * 1024 * 1024;
+
 export interface RemoteDeviceStatus {
 	readonly deviceName: string;
 	readonly osLabel?: string;
@@ -208,6 +250,18 @@ export interface RemoteRequestPayloads {
 	readonly "session.abort": undefined;
 	readonly "session.resume": { readonly lastEventSequence: number };
 	readonly "diagnostics.snapshot": undefined;
+	/** Lists a folder inside the session's working directory; `path` omitted or "" is the directory itself. */
+	readonly "file.list": { readonly path?: string } | undefined;
+	/** `path` may be a link exactly as the assistant wrote it: relative, absolute, `~/…` or `file://`. */
+	readonly "file.stat": { readonly path: string };
+	readonly "file.read": {
+		readonly path: string;
+		readonly offset: number;
+		/** Defaults to, and is capped at, `REMOTE_FILE_CHUNK_BYTES`. */
+		readonly length?: number;
+		/** From the first chunk, so a file rewritten mid-read answers `file_changed` instead of mixing versions. */
+		readonly modifiedAt?: number;
+	};
 }
 
 export interface RemoteResponsePayloads {
@@ -231,6 +285,9 @@ export interface RemoteResponsePayloads {
 	readonly "session.abort": { readonly aborted: true };
 	readonly "session.resume": { readonly resumed: true };
 	readonly "diagnostics.snapshot": RemoteDiagnosticsSnapshot;
+	readonly "file.list": { readonly path: string; readonly entries: readonly RemoteFileEntry[] };
+	readonly "file.stat": { readonly file: RemoteFileInfo };
+	readonly "file.read": RemoteFileChunk;
 }
 
 export interface RemoteEventPayloads {
@@ -487,4 +544,49 @@ export function readModelOptions(value: unknown): RemoteModelOption[] {
 			},
 		];
 	});
+}
+
+function readFileEntry(value: unknown): RemoteFileEntry | undefined {
+	if (!isRecord(value)) return undefined;
+	const name = str(value.name);
+	const path = str(value.path);
+	if (!name || path === undefined) return undefined;
+	return {
+		name,
+		path,
+		isDirectory: value.isDirectory === true,
+		size: num(value.size) ?? 0,
+		modifiedAt: num(value.modifiedAt) ?? 0,
+	};
+}
+
+export function readFileEntries(value: unknown): RemoteFileEntry[] {
+	const list = isRecord(value) && Array.isArray(value.entries) ? value.entries : [];
+	return list.map(readFileEntry).filter((entry): entry is RemoteFileEntry => entry !== undefined);
+}
+
+export function readFileInfo(value: unknown): RemoteFileInfo | undefined {
+	const file = isRecord(value) ? value.file : undefined;
+	const entry = readFileEntry(file);
+	if (!entry || !isRecord(file)) return undefined;
+	return {
+		...entry,
+		mimeType: str(file.mimeType) ?? "application/octet-stream",
+		displayPath: str(file.displayPath) ?? entry.path,
+	};
+}
+
+export function readFileChunk(value: unknown): RemoteFileChunk | undefined {
+	if (!isRecord(value)) return undefined;
+	const data = str(value.data);
+	const offset = num(value.offset);
+	const totalSize = num(value.totalSize);
+	if (data === undefined || offset === undefined || totalSize === undefined) return undefined;
+	return {
+		data,
+		offset,
+		totalSize,
+		modifiedAt: num(value.modifiedAt) ?? 0,
+		mimeType: str(value.mimeType) ?? "application/octet-stream",
+	};
 }

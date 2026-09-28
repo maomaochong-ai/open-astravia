@@ -57,6 +57,9 @@ describe("remote control JSON Schema", () => {
 			"session.rename",
 			"session.pin",
 			"session.delete",
+			"file.list",
+			"file.stat",
+			"file.read",
 		]) {
 			expect(validate({ type: "request", requestId: "r1", method, sessionId: "s1", payload: {} })).toBe(true);
 		}

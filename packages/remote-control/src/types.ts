@@ -89,7 +89,10 @@ export type RemoteRequestMethod =
 	| "session.respond"
 	| "session.abort"
 	| "session.resume"
-	| "diagnostics.snapshot";
+	| "diagnostics.snapshot"
+	| "file.list"
+	| "file.stat"
+	| "file.read";
 
 export interface RemoteRequest {
 	readonly type: "request";
@@ -149,7 +152,13 @@ export interface RemoteError {
 		| "busy"
 		| "request_timeout"
 		| "transport_closed"
-		| "internal_error";
+		| "internal_error"
+		/** The file lies outside what the phone may read (ADR-0139). */
+		| "forbidden"
+		/** The file is larger than a phone may preview. */
+		| "too_large"
+		/** The file changed between two chunks of one `file.read`; read it again from the start. */
+		| "file_changed";
 	readonly message: string;
 	readonly retryable: boolean;
 }

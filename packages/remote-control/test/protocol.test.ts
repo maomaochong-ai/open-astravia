@@ -45,6 +45,9 @@ describe("remote protocol v2", () => {
 			"session.rename",
 			"session.pin",
 			"session.delete",
+			"file.list",
+			"file.stat",
+			"file.read",
 		]) {
 			expect(decodeRemoteFrame({ type: "request", requestId: "r1", method, sessionId: "s1" })).toMatchObject({
 				method,
@@ -105,6 +108,19 @@ describe("remote protocol v2", () => {
 				error: { code: "made_up", message: "x", retryable: false },
 			}),
 		).toThrow(RemoteProtocolError);
+	});
+
+	it("accepts the file errors only file requests answer with", () => {
+		for (const code of ["forbidden", "too_large", "file_changed"]) {
+			expect(
+				decodeRemoteFrame({
+					type: "response",
+					requestId: "r1",
+					success: false,
+					error: { code, message: "x", retryable: false },
+				}),
+			).toMatchObject({ error: { code } });
+		}
 	});
 
 	it("accepts the relay-owned frames", () => {
