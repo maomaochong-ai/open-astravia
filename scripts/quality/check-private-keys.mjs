@@ -9,7 +9,7 @@
 
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { fail, isBinaryLike, ok, readText, rel, repoRoot, stagedFiles, walkFiles } from "./lib.mjs";
+import { fail, isBinaryLike, isDirectRun, ok, readText, rel, repoRoot, stagedFiles, walkFiles } from "./lib.mjs";
 
 // Build markers at runtime so this file is not flagged by its own patterns.
 const begin = "-----BEGIN ";
@@ -42,16 +42,21 @@ function shouldSkip(posixPath) {
 	return SKIP_DIR_PARTS.some((part) => p.includes(part));
 }
 
-function collectTargets(stagedOnly) {
+export function collectTargets({ stagedOnly = false, files = [] } = {}) {
 	if (stagedOnly) {
 		return stagedFiles()
 			.map((f) => join(repoRoot, f))
 			.filter((f) => existsSync(f) && !isBinaryLike(f) && !shouldSkip(rel(f)));
 	}
+	if (files.length > 0) {
+		return files
+			.map((file) => join(repoRoot, file))
+			.filter((file) => existsSync(file) && !isBinaryLike(file) && !shouldSkip(rel(file)));
+	}
 	const roots = ["packages", "apps", "scripts", "deploy"].map((d) => join(repoRoot, d));
-	const files = [];
+	const targets = [];
 	for (const root of roots) {
-		files.push(
+		targets.push(
 			...walkFiles(root, {
 				extensions: [
 					".ts",
@@ -72,34 +77,41 @@ function collectTargets(stagedOnly) {
 			}),
 		);
 	}
-	return files.filter((f) => !shouldSkip(rel(f)) && !isBinaryLike(f));
+	return targets.filter((f) => !shouldSkip(rel(f)) && !isBinaryLike(f));
 }
 
-const stagedOnly = process.argv.includes("--staged");
-const targets = collectTargets(stagedOnly);
-let hits = 0;
+export function main(args = process.argv.slice(2)) {
+	const stagedOnly = args.includes("--staged");
+	const files = args.filter((arg) => arg !== "--staged");
+	const targets = collectTargets({ stagedOnly, files });
+	let hits = 0;
 
-for (const file of targets) {
-	let text;
-	try {
-		text = readText(file);
-	} catch {
-		continue;
-	}
-	// skip huge files
-	if (text.length > 2_000_000) continue;
-	for (const { name, re } of PATTERNS) {
-		if (re.test(text)) {
-			hits += 1;
-			fail(`[private-key] ${rel(file)}: possible ${name}`);
-			break;
+	for (const file of targets) {
+		let text;
+		try {
+			text = readText(file);
+		} catch {
+			continue;
+		}
+		if (text.length > 2_000_000) continue;
+		for (const { name, re } of PATTERNS) {
+			if (re.test(text)) {
+				hits += 1;
+				fail(`[private-key] ${rel(file)}: possible ${name}`);
+				break;
+			}
 		}
 	}
+
+	if (hits === 0) {
+		const scope = stagedOnly ? ", staged" : files.length > 0 ? ", selected" : "";
+		ok(`[private-key] ok (${targets.length} file(s)${scope})`);
+		return 0;
+	}
+	fail(`[private-key] ${hits} file(s) failed`);
+	return 1;
 }
 
-if (hits === 0) {
-	ok(`[private-key] ok (${targets.length} file(s)${stagedOnly ? ", staged" : ""})`);
-} else {
-	fail(`[private-key] ${hits} file(s) failed`);
-	process.exit(1);
+if (isDirectRun(import.meta.url)) {
+	process.exit(main());
 }

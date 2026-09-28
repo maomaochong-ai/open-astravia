@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { findPackageBoundaryViolations } from "./check-package-boundaries.mjs";
+import { findDurablePackageBoundaryViolations } from "./check-package-boundaries.mjs";
+
+const findPackageBoundaryViolations = findDurablePackageBoundaryViolations;
 
 describe("runtime-mcp protocol boundary", () => {
 	it("rejects Node environment imports", () => {
