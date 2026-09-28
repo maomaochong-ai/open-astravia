@@ -50,7 +50,12 @@ export class RemoteScreenShare {
 			if (host && !this.watchedBy(host)) await host.setScreen(false);
 			return { screen: "stopped", input: this.inputState(host) };
 		}
+		// Counted as watching from now on, so another phone leaving meanwhile keeps the capture.
+		if (!this.subscribed.has(deviceId))
+			this.subscribed.set(deviceId, { screen: "unavailable", input: "unsupported" });
 		const status = await this.evaluate(deviceId);
+		// Unsubscribed while capture was starting: that later answer stands.
+		if (!this.subscribed.has(deviceId)) return status;
 		this.subscribed.set(deviceId, status);
 		const missing = { screen: status.screen === "permission_denied", input: status.input === "permission_denied" };
 		if ((missing.screen || missing.input) && !this.notified.has(deviceId)) {

@@ -114,6 +114,59 @@ describe("RemoteScreenShare", () => {
 		screenShare.stop();
 	});
 
+	it("stays unsubscribed when the phone leaves while its capture is still starting", async () => {
+		let started: (() => void) | undefined;
+		const calls: boolean[] = [];
+		const slow: ScreenShareHost = {
+			setScreen: (active) => {
+				calls.push(active);
+				if (!active) return Promise.resolve(false);
+				return new Promise((resolve) => {
+					started = () => resolve(true);
+				});
+			},
+			refreshInput: () => true,
+		};
+		const { screenShare } = share(new Map([["phone", slow]]));
+		const opening = screenShare.subscribe("phone", true);
+		await vi.waitFor(() => expect(started).toBeDefined());
+		await screenShare.subscribe("phone", false);
+		started?.();
+		await opening;
+		expect(screenShare.isSubscribed("phone")).toBe(false);
+		expect(calls).toEqual([true, false]);
+	});
+
+	it("keeps capturing for a phone whose subscription is still starting when another leaves", async () => {
+		let started: (() => void) | undefined;
+		const calls: boolean[] = [];
+		const shared: ScreenShareHost = {
+			setScreen: (active) => {
+				calls.push(active);
+				if (!active) return Promise.resolve(false);
+				if (calls.length === 1) return Promise.resolve(true);
+				return new Promise((resolve) => {
+					started = () => resolve(true);
+				});
+			},
+			refreshInput: () => true,
+		};
+		const { screenShare } = share(
+			new Map([
+				["pixel", shared],
+				["iphone", shared],
+			]),
+		);
+		await screenShare.subscribe("pixel", true);
+		const opening = screenShare.subscribe("iphone", true);
+		await vi.waitFor(() => expect(started).toBeDefined());
+		await screenShare.subscribe("pixel", false);
+		started?.();
+		await opening;
+		expect(calls).toEqual([true, true]);
+		screenShare.stop();
+	});
+
 	it("does not restart capture for a phone that went away", async () => {
 		const phone = fakeHost();
 		const { screenShare } = share(new Map([["phone", phone.host]]));
