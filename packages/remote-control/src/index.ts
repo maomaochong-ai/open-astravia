@@ -15,6 +15,7 @@ export type {
 	RemoteSessionState,
 	RemoteSessionStatus,
 	RemoteSessionSummary,
+	RemoteSkillOption,
 	RemoteToolCallSummary,
 	RemoteToolEvent,
 	RemoteToolPhase,

@@ -52,6 +52,7 @@ describe("remote control JSON Schema", () => {
 		for (const method of [
 			"session.upload",
 			"model.list",
+			"skill.list",
 			"session.configure",
 			"session.rename",
 			"session.pin",

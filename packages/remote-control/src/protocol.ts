@@ -25,6 +25,7 @@ const requestMethods = new Set([
 	"session.prompt",
 	"session.upload",
 	"model.list",
+	"skill.list",
 	"session.configure",
 	"session.rename",
 	"session.pin",

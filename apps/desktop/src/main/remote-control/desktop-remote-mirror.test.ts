@@ -170,6 +170,7 @@ function harness() {
 		listCwd: path.startsWith(PROJECT_CWD) ? PROJECT_CWD : CONVERSATION_CWD,
 		source: "interactive",
 	});
+	const skillScopes: Array<string | undefined> = [];
 	const mirror = new DesktopRemoteMirror({
 		runtime,
 		conversations: {
@@ -191,6 +192,10 @@ function harness() {
 		},
 		questions: broker,
 		listProjects: async () => [{ cwd: PROJECT_CWD, name: "project" }],
+		listSkills: async (cwd) => {
+			skillScopes.push(cwd);
+			return [{ name: "pdf", description: "PDF", type: "skill", source: "builtin" }];
+		},
 		conversationCwd: CONVERSATION_CWD,
 		conversationLabel: "对话",
 		isConversationCwd: (cwd) => cwd.startsWith(CONVERSATION_CWD),
@@ -230,7 +235,20 @@ function harness() {
 	const changeCatalog = () => {
 		for (const listener of catalogListeners) listener();
 	};
-	return { runtime, broker, emitted, prompts, uploads, mirror, request, names, deleted, pins, changeCatalog };
+	return {
+		runtime,
+		broker,
+		emitted,
+		prompts,
+		uploads,
+		mirror,
+		request,
+		names,
+		deleted,
+		pins,
+		changeCatalog,
+		skillScopes,
+	};
 }
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 15));
@@ -254,6 +272,16 @@ describe("DesktopRemoteMirror", () => {
 			["project", "project", 1],
 		]);
 		mirror.stop();
+	});
+
+	it("lists skills scoped to a known project only, without needing a session", async () => {
+		const { request, skillScopes } = harness();
+		const result = (await request("skill.list", { cwd: PROJECT_CWD })) as { skills: Array<{ name: string }> };
+		expect(result.skills.map((skill) => skill.name)).toEqual(["pdf"]);
+		await request("skill.list", { cwd: "/etc" });
+		await request("skill.list", { cwd: CONVERSATION_CWD });
+		await request("skill.list");
+		expect(skillScopes).toEqual([PROJECT_CWD, undefined, undefined, undefined]);
 	});
 
 	it("runs a phone-originated turn: echoes the prompt, streams coalesced text and tool phases, ends the turn", async () => {

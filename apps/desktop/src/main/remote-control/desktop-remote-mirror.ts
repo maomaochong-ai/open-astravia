@@ -11,6 +11,7 @@ import type {
 	RemoteRequest,
 	RemoteSessionState,
 	RemoteSessionSummary,
+	RemoteSkillOption,
 	RemoteToolEvent,
 	RemoteTranscriptEntry,
 	RemoteUploadKind,
@@ -93,6 +94,8 @@ export interface DesktopRemoteMirrorOptions {
 	readonly conversations: RemoteMirrorConversations;
 	readonly questions: RemoteMirrorQuestions;
 	readonly listProjects: () => Promise<readonly RemoteMirrorProject[]>;
+	/** Skills for the composer's picker; `cwd` is a known project, or undefined for global ones. */
+	readonly listSkills: (cwd: string | undefined) => Promise<readonly RemoteSkillOption[]>;
 	readonly conversationCwd: string;
 	readonly conversationLabel: string;
 	readonly isConversationCwd: (cwd: string) => boolean;
@@ -257,6 +260,8 @@ export class DesktopRemoteMirror {
 				const tracked = await this.ensureOpen(handle, false);
 				return { models: this.modelOptions(tracked.sessionId) };
 			}
+			case "skill.list":
+				return { skills: await this.options.listSkills(await this.skillScope(request.payload)) };
 			case "session.configure": {
 				const handle = this.requireHandle(request.sessionId);
 				const tracked = await this.ensureOpen(handle, true);
@@ -320,6 +325,18 @@ export class DesktopRemoteMirror {
 	}
 
 	// ---- catalog ----
+
+	/**
+	 * The phone names a project by its cwd. Only the desktop's own projects may
+	 * scope the lookup, so a phone cannot make the desktop scan arbitrary paths;
+	 * anything else, the conversation root included, gets global skills.
+	 */
+	private async skillScope(payload: unknown): Promise<string | undefined> {
+		const cwd = asRecord(payload).cwd;
+		if (typeof cwd !== "string" || !cwd.trim()) return undefined;
+		const projects = await this.options.listProjects();
+		return projects.some((project) => project.cwd === cwd) ? cwd : undefined;
+	}
 
 	private async listProjects(): Promise<RemoteProjectSummary[]> {
 		const projects = await this.options.listProjects();

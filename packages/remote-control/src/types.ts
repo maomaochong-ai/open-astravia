@@ -81,6 +81,7 @@ export type RemoteRequestMethod =
 	| "session.prompt"
 	| "session.upload"
 	| "model.list"
+	| "skill.list"
 	| "session.configure"
 	| "session.rename"
 	| "session.pin"

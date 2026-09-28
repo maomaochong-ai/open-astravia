@@ -1,4 +1,5 @@
 import { basename } from "node:path";
+import { getAppMonitorSnapshot } from "../app-monitor/app-monitor-service.js";
 import { DEFAULT_CONVERSATION_CWD, readDesktopConfig, writeDesktopConfig } from "../config/desktop-config-store.js";
 import { onConversationListChanged } from "../conversations/conversation-list-events.js";
 import { getDesktopConversationService } from "../conversations/desktop-conversation-service.js";
@@ -13,11 +14,13 @@ import { notify } from "../notifications/index.js";
 import { getDesktopProjectService } from "../projects/project-service-instance.js";
 import { getSharedRuntime } from "../runtime.js";
 import { notifyAutomationSessionsDeleted } from "../scheduler/session-deletion.js";
+import { getDesktopSkillService } from "../skills/skill-service.js";
 import { desktopDeviceId, desktopDisplayName, desktopHardware, formatOsLabel } from "./desktop-host-info.js";
 import type { DesktopRemoteDesktopController } from "./desktop-remote-access-manager.js";
 import { DesktopRemoteAccessManager } from "./desktop-remote-access-manager.js";
 import { DesktopRemoteMirror } from "./desktop-remote-mirror.js";
 import { RemoteDeviceStore } from "./remote-device-store.js";
+import { toRemoteSkillOptions } from "./remote-skills.js";
 import { saveRemoteUpload } from "./remote-upload-store.js";
 
 let manager: DesktopRemoteAccessManager | undefined;
@@ -59,6 +62,11 @@ export function getDesktopRemoteAccessManager(
 						name: project.name?.trim() || basename(project.path) || project.path,
 					}));
 				},
+				listSkills: async (cwd) =>
+					toRemoteSkillOptions(
+						await getDesktopSkillService().list(cwd),
+						getAppMonitorSnapshot().inputPromptRefs.byRef,
+					),
 				conversationCwd: DEFAULT_CONVERSATION_CWD,
 				conversationLabel: mainT("remote.conversationProject"),
 				isConversationCwd,

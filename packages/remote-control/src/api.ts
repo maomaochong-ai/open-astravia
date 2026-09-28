@@ -120,6 +120,22 @@ export interface RemoteModelOption {
 	readonly supportsImage: boolean;
 }
 
+/**
+ * A skill or scene the phone may reference by writing `@skill:<name>` /
+ * `@scene:<name>` into a prompt. Already filtered and ordered as the desktop
+ * composer's picker shows them.
+ */
+export interface RemoteSkillOption {
+	/** What the token carries; the agent looks the skill up by it. */
+	readonly name: string;
+	/** Display name; omitted when it equals `name`. */
+	readonly alias?: string;
+	readonly description: string;
+	readonly type: "skill" | "scene";
+	/** Where it was installed: `builtin`, `plugin`, `user`, `project`, `market`, `agents-user`… */
+	readonly source: string;
+}
+
 export type RemoteUploadKind = "image" | "file";
 
 /**
@@ -178,6 +194,8 @@ export interface RemoteRequestPayloads {
 		readonly data: string;
 	};
 	readonly "model.list": undefined;
+	/** `cwd` must be one of `project.list`'s projects; anything else lists global skills only. */
+	readonly "skill.list": { readonly cwd?: string } | undefined;
 	readonly "session.configure": { readonly modelKey?: string; readonly thinkingLevel?: string };
 	readonly "session.rename": { readonly title: string };
 	readonly "session.pin": { readonly pinned: boolean };
@@ -204,6 +222,7 @@ export interface RemoteResponsePayloads {
 	readonly "session.prompt": { readonly accepted: true };
 	readonly "session.upload": { readonly uploadId: string };
 	readonly "model.list": { readonly models: readonly RemoteModelOption[] };
+	readonly "skill.list": { readonly skills: readonly RemoteSkillOption[] };
 	readonly "session.configure": { readonly state: RemoteSessionState };
 	readonly "session.rename": { readonly session: RemoteSessionSummary };
 	readonly "session.pin": { readonly session: RemoteSessionSummary };

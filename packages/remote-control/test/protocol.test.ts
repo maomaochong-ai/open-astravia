@@ -40,6 +40,7 @@ describe("remote protocol v2", () => {
 		for (const method of [
 			"session.upload",
 			"model.list",
+			"skill.list",
 			"session.configure",
 			"session.rename",
 			"session.pin",
