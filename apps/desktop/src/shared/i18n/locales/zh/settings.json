@@ -159,12 +159,13 @@
       "empty": "二维码不可用",
       "createFailed": "二维码生成失败，请重试。",
       "vaultUnavailable": "系统安全凭据存储不可用，暂时无法配对。",
-      "manualHint": "同一 Wi-Fi 下也可在手机上「手动输入地址」：",
+      "manualHint": "在手机上选「手动输入地址」，填入任一地址：",
       "code": "连接码",
       "password": "密码",
       "codeHint": "不方便扫码？在手机上选「用连接码连接」：",
       "codePreparing": "正在生成连接码…",
-      "codeFailed": "连接码暂不可用，请扫码。"
+      "codeFailed": "连接码暂不可用，请扫码。",
+      "manualTitle": "同一 Wi-Fi 下手动输入地址"
     },
     "cloud": {
       "title": "允许在外网访问",
@@ -187,7 +188,10 @@
         "incompatible": "不是兼容的 Vetta 中继",
         "unreachable": "连接不上这个地址",
         "invalid": "请输入 wss:// 或 https:// 开头的地址"
-      }
+      },
+      "change": "更改",
+      "defaultTag": "默认",
+      "unset": "未设置"
     }
   },
   "general": "常规",

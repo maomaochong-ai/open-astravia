@@ -159,12 +159,13 @@
       "empty": "QR code unavailable",
       "createFailed": "Could not generate a QR code. Try again.",
       "vaultUnavailable": "Secure credential storage is unavailable, so pairing is not possible.",
-      "manualHint": "On the same Wi-Fi, you can also “Enter address manually” on the phone:",
+      "manualHint": "On the phone, choose “Enter address manually” and use any of these:",
       "code": "Connection code",
       "password": "Password",
       "codeHint": "Can’t scan? Choose “Connect with a Code” on the phone:",
       "codePreparing": "Preparing a connection code…",
-      "codeFailed": "Connection code unavailable. Please scan instead."
+      "codeFailed": "Connection code unavailable. Please scan instead.",
+      "manualTitle": "Enter an address on the same Wi-Fi"
     },
     "cloud": {
       "title": "Allow access away from home",
@@ -187,7 +188,10 @@
         "incompatible": "Not a compatible Vetta relay",
         "unreachable": "Can’t reach this address",
         "invalid": "Enter an address starting with wss:// or https://"
-      }
+      },
+      "change": "Change",
+      "defaultTag": "Default",
+      "unset": "Not set"
     }
   },
   "general": "General",

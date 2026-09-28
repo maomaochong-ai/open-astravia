@@ -247,14 +247,29 @@ describe("远程连接设置", () => {
 		expect(screen.queryByText("482913")).toBeNull();
 	});
 
-	it("外网访问旁的设置按钮可以更换、测试中继地址", async () => {
+	it("同一 Wi-Fi 下的手动地址默认收起，点开才显示", async () => {
+		installRemotePairing({ initial: inviteState() });
+		const user = userEvent.setup();
+		render(<RemotePairingSettings />);
+
+		const toggle = await screen.findByRole("button", { name: "remote.pairing.manualTitle" });
+		expect(toggle.getAttribute("aria-expanded")).toBe("false");
+		expect(screen.queryByText("192.168.1.8:43117")).toBeNull();
+
+		await user.click(toggle);
+		expect(toggle.getAttribute("aria-expanded")).toBe("true");
+		expect(screen.getByText("192.168.1.8:43117")).toBeTruthy();
+	});
+
+	it("中继服务器一行的「更改」可以更换、测试中继地址", async () => {
 		const { setRelay, testRelay } = installRemotePairing({
 			initial: { ...inviteState(), defaultRelayBaseUrl: "wss://relay.example.test" },
 		});
 		const user = userEvent.setup();
 		render(<RemotePairingSettings />);
 
-		await user.click(await screen.findByRole("button", { name: "remote.relay.title" }));
+		expect(await screen.findByText("relay.example.test")).toBeTruthy();
+		await user.click(screen.getByRole("button", { name: "remote.relay.change" }));
 		const field = await screen.findByPlaceholderText("wss://relay.example.test");
 		await user.type(field, "wss://relay.mine.test");
 		await user.click(screen.getByRole("button", { name: "remote.relay.test" }));

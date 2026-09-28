@@ -28,6 +28,9 @@ export interface RemotePairingSettingsModel {
 		readonly enabled: boolean;
 		readonly relayBaseUrl?: string;
 		readonly defaultRelayBaseUrl?: string;
+		/** The relay's host alone, for showing on the page. */
+		readonly relayHost?: string;
+		readonly relayIsDefault: boolean;
 	};
 	readonly devices: readonly {
 		readonly id: string;
@@ -48,8 +51,15 @@ export interface RemotePairingSettingsModel {
 		};
 		readonly cloud: {
 			readonly description: string;
+			readonly section: string;
 			readonly title: string;
 			readonly unavailable: string;
+		};
+		readonly relay: {
+			readonly change: string;
+			readonly defaultTag: string;
+			readonly label: string;
+			readonly unset: string;
 		};
 		readonly devices: {
 			readonly control: string;
@@ -68,6 +78,7 @@ export interface RemotePairingSettingsModel {
 			readonly empty: string;
 			readonly generating: string;
 			readonly manualHint: string;
+			readonly manualTitle: string;
 			readonly qrAlt: string;
 			readonly qrHint: string;
 			readonly title: string;
@@ -112,6 +123,15 @@ const CHANNEL_LABELS = {
 
 function bestChannel(channels: readonly RemotePairingChannel[]): RemotePairingChannel | undefined {
 	return (Object.keys(CHANNEL_LABELS) as RemotePairingChannel[]).find((channel) => channels.includes(channel));
+}
+
+function relayHost(url: string | undefined): string | undefined {
+	if (!url) return undefined;
+	try {
+		return new URL(url).host || url;
+	} catch {
+		return url;
+	}
 }
 
 export function useRemotePairingSettingsModel(): RemotePairingSettingsModel {
@@ -240,6 +260,7 @@ export function useRemotePairingSettingsModel(): RemotePairingSettingsModel {
 				empty: t("remote.pairing.empty"),
 				vaultUnavailable: t("remote.pairing.vaultUnavailable"),
 				manualHint: t("remote.pairing.manualHint"),
+				manualTitle: t("remote.pairing.manualTitle"),
 				code: t("remote.pairing.code"),
 				password: t("remote.pairing.password"),
 				codeHint: t("remote.pairing.codeHint"),
@@ -248,8 +269,15 @@ export function useRemotePairingSettingsModel(): RemotePairingSettingsModel {
 			},
 			cloud: {
 				title: t("remote.cloud.title"),
+				section: t("section_remote-cloud"),
 				description: t("remote.cloud.description"),
 				unavailable: t("remote.cloud.unavailable"),
+			},
+			relay: {
+				label: t("remote.relay.label"),
+				change: t("remote.relay.change"),
+				defaultTag: t("remote.relay.defaultTag"),
+				unset: t("remote.relay.unset"),
 			},
 		}),
 		[state.invite, now, t],
@@ -317,6 +345,8 @@ export function useRemotePairingSettingsModel(): RemotePairingSettingsModel {
 			enabled: state.cloudEnabled,
 			relayBaseUrl: state.relayBaseUrl,
 			defaultRelayBaseUrl: state.defaultRelayBaseUrl,
+			relayHost: relayHost(state.relayBaseUrl),
+			relayIsDefault: !state.relayBaseUrl || state.relayBaseUrl === state.defaultRelayBaseUrl,
 		},
 		devices,
 		error: failureMessage,
