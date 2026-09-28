@@ -18,6 +18,7 @@ import {
 } from "@vetta/remote-control";
 import { type WebSocket as NodeWebSocket, WebSocketServer } from "ws";
 import { getAppLogger } from "../logger.js";
+import { DESKTOP_REMOTE_CAPABILITIES } from "./desktop-capabilities.js";
 import { adaptNodeWebSocket } from "./desktop-websocket.js";
 
 export const REMOTE_LAN_DEFAULT_PORT = 43117;
@@ -155,7 +156,7 @@ export class DesktopRemoteLanServer {
 			handshake: "accept",
 			deviceId: this.options.deviceId,
 			deviceName: this.options.deviceName,
-			capabilities: { chat: true, sessionRead: true },
+			capabilities: DESKTOP_REMOTE_CAPABILITIES,
 			identity: this.options.identity,
 			expectedPeerIdentityKey: expected,
 			journal: this.options.journalFor(device.id),
@@ -186,7 +187,7 @@ export class DesktopRemoteLanServer {
 			handshake: "accept",
 			deviceId: this.options.deviceId,
 			deviceName: this.options.deviceName,
-			capabilities: { chat: true, sessionRead: true },
+			capabilities: DESKTOP_REMOTE_CAPABILITIES,
 			identity: this.options.identity,
 			onHello,
 			logger: connectionLogger("lan:manual"),

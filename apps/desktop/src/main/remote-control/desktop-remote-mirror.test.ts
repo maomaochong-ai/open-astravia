@@ -13,6 +13,7 @@ import type { DesktopSessionHistoryInfo } from "../../shared/session-access.js";
 import type { DesktopConversationSession } from "../conversations/desktop-conversation-service.js";
 import { DesktopUserQuestionBroker } from "../conversations/user-question-broker.js";
 import { DesktopRemoteMirror, type RemoteMirrorRuntime } from "./desktop-remote-mirror.js";
+import { RemoteOperationError } from "./remote-error-mapping.js";
 import { keyForPath } from "./remote-transcript.js";
 
 interface Emitted {
@@ -149,7 +150,8 @@ function harness() {
 					{
 						id: "chat",
 						path: CONVERSATION_PATH,
-						cwd: CONVERSATION_CWD,
+						// Each conversation session runs in its own workspace under the root (ADR-0007).
+						cwd: `${CONVERSATION_CWD}/chat`,
 						name: "整理周报",
 						firstMessage: "帮我整理周报",
 						modifiedAt: 200,
@@ -177,6 +179,7 @@ function harness() {
 		source: "interactive",
 	});
 	const skillScopes: Array<string | undefined> = [];
+	const fileCalls: Array<{ method: string; cwd: string; payload: unknown }> = [];
 	const mirror = new DesktopRemoteMirror({
 		runtime,
 		conversations: {
@@ -213,6 +216,20 @@ function harness() {
 		saveUpload: async (sessionKey, upload) => {
 			uploads.push({ sessionKey, kind: upload.kind, name: upload.name, bytes: upload.bytes.byteLength });
 			return `/uploads/${uploads.length}/${upload.name}`;
+		},
+		files: {
+			list: async (cwd, payload) => {
+				fileCalls.push({ method: "list", cwd, payload });
+				return { path: "", entries: [] };
+			},
+			stat: async (cwd, payload) => {
+				fileCalls.push({ method: "stat", cwd, payload });
+				throw new RemoteOperationError("forbidden", "no");
+			},
+			read: async (cwd, payload) => {
+				fileCalls.push({ method: "read", cwd, payload });
+				return { data: "", offset: 0, totalSize: 0, modifiedAt: 1, mimeType: "text/plain" };
+			},
 		},
 		sessionCommands: {
 			rename: async (path, name) => void names.set(path, name),
@@ -255,6 +272,7 @@ function harness() {
 		pins,
 		changeCatalog,
 		skillScopes,
+		fileCalls,
 	};
 }
 
@@ -600,6 +618,21 @@ describe("DesktopRemoteMirror", () => {
 		const list = (await request("session.list")) as { sessions: Array<{ id: string }> };
 		expect(list.sessions.map((session) => session.id)).toEqual([keyForPath(PROJECT_PATH)]);
 		mirror.stop();
+	});
+
+	it("answers file requests against the session's own working directory, not its project", async () => {
+		const { request, fileCalls } = harness();
+		await request("session.list");
+		const key = keyForPath(CONVERSATION_PATH);
+		await request("file.list", { path: "out" }, key);
+		await request("file.read", { path: "a.md", offset: 0 }, key);
+		await expect(request("file.stat", { path: "~/.ssh/id_rsa" }, key)).rejects.toMatchObject({ code: "forbidden" });
+		expect(fileCalls).toEqual([
+			{ method: "list", cwd: `${CONVERSATION_CWD}/chat`, payload: { path: "out" } },
+			{ method: "read", cwd: `${CONVERSATION_CWD}/chat`, payload: { path: "a.md", offset: 0 } },
+			{ method: "stat", cwd: `${CONVERSATION_CWD}/chat`, payload: { path: "~/.ssh/id_rsa" } },
+		]);
+		await expect(request("file.list", {}, "unknown")).rejects.toMatchObject({ code: "not_found" });
 	});
 
 	it("creates a session in the conversation root by default and returns its summary", async () => {

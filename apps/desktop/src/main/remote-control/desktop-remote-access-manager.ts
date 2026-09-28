@@ -21,6 +21,7 @@ import {
 } from "@vetta/remote-control";
 import type { RemoteControlConfig, RemoteControlDeviceRecord } from "../config/desktop-config-store.js";
 import { getAppLogger } from "../logger.js";
+import { DESKTOP_REMOTE_CAPABILITIES } from "./desktop-capabilities.js";
 import type { DesktopRemoteDesktopHostHandle } from "./desktop-remote-desktop-host.js";
 import { DesktopRemoteDeviceHub, type RemoteChannel } from "./desktop-remote-device-hub.js";
 import { DesktopRemoteLanServer, type LanAcceptedLink, type LanDeviceCredential } from "./desktop-remote-lan-server.js";
@@ -811,7 +812,7 @@ export class DesktopRemoteAccessManager {
 				handshake: "accept",
 				deviceId: this.options.deviceId,
 				deviceName: this.options.deviceName,
-				capabilities: { chat: true, sessionRead: true },
+				capabilities: DESKTOP_REMOTE_CAPABILITIES,
 				identity: this.identity(),
 				expectedPeerIdentityKey: decodePublicKey(device.mobileIdentityKey),
 				journal: this.hub.journalFor(deviceId),

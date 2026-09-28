@@ -7,6 +7,7 @@ import {
 	WebSocketRemoteTransport,
 } from "@vetta/remote-control";
 import { getAppLogger } from "../logger.js";
+import { DESKTOP_REMOTE_CAPABILITIES } from "./desktop-capabilities.js";
 import { createDesktopWebSocketFactory } from "./desktop-websocket.js";
 
 export interface DesktopRemoteRelayLinkOptions {
@@ -90,7 +91,7 @@ export class DesktopRemoteRelayLink {
 			handshake: "initiate",
 			deviceId: this.options.deviceId,
 			deviceName: this.options.deviceName,
-			capabilities: { chat: true, sessionRead: true },
+			capabilities: DESKTOP_REMOTE_CAPABILITIES,
 			identity: this.options.identity,
 			expectedPeerIdentityKey: expected,
 			journal: this.options.journal,

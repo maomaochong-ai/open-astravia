@@ -1,4 +1,6 @@
-import { basename } from "node:path";
+import { realpath } from "node:fs/promises";
+import { homedir } from "node:os";
+import path, { basename } from "node:path";
 import { getAppMonitorSnapshot } from "../app-monitor/app-monitor-service.js";
 import { DEFAULT_CONVERSATION_CWD, readDesktopConfig, writeDesktopConfig } from "../config/desktop-config-store.js";
 import { onConversationListChanged } from "../conversations/conversation-list-events.js";
@@ -8,6 +10,7 @@ import { isConversationCwd } from "../conversations/session-paths.js";
 import { listSessionPins, onSessionPinsChanged, pinSession } from "../conversations/session-pins-store.js";
 import { getDesktopUserQuestionBroker } from "../conversations/user-question-broker.js";
 import { getDesktopCredentialVault } from "../credentials/desktop-credential-vault.js";
+import { openPreviewSource, readFilesystemDirectory } from "../filesystem/filesystem-service.js";
 import { mainT } from "../i18n/index.js";
 import { forgetMessageAnnotations } from "../message-annotations/host.js";
 import { notify } from "../notifications/index.js";
@@ -20,6 +23,8 @@ import type { DesktopRemoteDesktopController } from "./desktop-remote-access-man
 import { DesktopRemoteAccessManager } from "./desktop-remote-access-manager.js";
 import { DesktopRemoteMirror } from "./desktop-remote-mirror.js";
 import { RemoteDeviceStore } from "./remote-device-store.js";
+import { RemoteFiles } from "./remote-files.js";
+import { scaleImageForPhone } from "./remote-image-scale.js";
 import { toRemoteSkillOptions } from "./remote-skills.js";
 import { saveRemoteUpload } from "./remote-upload-store.js";
 
@@ -73,6 +78,16 @@ export function getDesktopRemoteAccessManager(
 				emit,
 				deviceStatus,
 				saveUpload: saveRemoteUpload,
+				files: new RemoteFiles({
+					fs: {
+						readDirectory: readFilesystemDirectory,
+						openSource: openPreviewSource,
+						realpath: (target) => realpath(target).catch(() => target),
+						scaleImage: scaleImageForPhone,
+					},
+					home: homedir(),
+					path,
+				}),
 				sessionCommands: createDesktopSessionCommands({
 					runtime: getSharedRuntime(),
 					onSessionsDeleted: notifyAutomationSessionsDeleted,

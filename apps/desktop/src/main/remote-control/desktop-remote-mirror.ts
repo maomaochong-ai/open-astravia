@@ -35,6 +35,7 @@ import type { DesktopSessionCommands } from "../conversations/desktop-session-co
 import type { DesktopUserQuestionBroker } from "../conversations/user-question-broker.js";
 import { getAppLogger } from "../logger.js";
 import { RemoteOperationError } from "./remote-error-mapping.js";
+import type { RemoteFiles } from "./remote-files.js";
 import {
 	describe,
 	keyForPath,
@@ -104,6 +105,8 @@ export interface DesktopRemoteMirrorOptions {
 	readonly emit: (name: RemoteEventName, payload?: unknown, sessionId?: string) => Promise<void>;
 	readonly deviceStatus: () => RemoteDeviceStatus;
 	readonly saveUpload: RemoteUploadWriter;
+	/** Lists and reads files for the phone, relative to a session's working directory (ADR-0139). */
+	readonly files: Pick<RemoteFiles, "list" | "stat" | "read">;
 	/** Rename and delete exactly as the sidebar does, cleanup included. */
 	readonly sessionCommands: Pick<DesktopSessionCommands, "rename" | "delete">;
 	readonly pins: RemoteMirrorPins;
@@ -316,6 +319,12 @@ export class DesktopRemoteMirror {
 				return { resumed: true };
 			case "diagnostics.snapshot":
 				return this.diagnostics();
+			case "file.list":
+				return await this.options.files.list(this.requireHandle(request.sessionId).cwd, request.payload);
+			case "file.stat":
+				return await this.options.files.stat(this.requireHandle(request.sessionId).cwd, request.payload);
+			case "file.read":
+				return await this.options.files.read(this.requireHandle(request.sessionId).cwd, request.payload);
 		}
 	}
 
