@@ -5,10 +5,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.assertContentDescriptionEquals
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Rule
@@ -18,11 +21,13 @@ import org.vetta.android.domain.work.PromptDraft
 import org.vetta.android.resources.Res
 import org.vetta.android.resources.chat_dictation_cancel
 import org.vetta.android.resources.chat_dictation_denied
+import org.vetta.android.resources.chat_dictation_hold
 import org.vetta.android.ui.str
 import org.vetta.android.ui.theme.VettaTheme
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 @RunWith(AndroidJUnit4::class)
 class DictationTest {
@@ -66,10 +71,25 @@ class DictationTest {
         return { draft }
     }
 
+    /** Slides "Hold to talk" out under the field, as the voice button does. */
+    private fun openVoice() {
+        composeRule.onNodeWithTag("composer.voice").performClick()
+        composeRule.waitForIdle()
+    }
+
     @Test
-    fun holdingTheEmptyFieldDictatesAndLettingGoFillsItIn() {
+    fun holdingHoldToTalkDictatesAndLettingGoFillsTheFieldWithoutSending() {
         val dictation = ScriptedDictation("帮我看看构建")
-        val draft = setComposer(dictation)
+        var sent = 0
+        var draft by mutableStateOf(PromptDraft("先"))
+        composeRule.setContent {
+            VettaTheme(ThemeMode.Light) {
+                Composer(draft, { draft = it }, placeholder = "", onSend = { sent += 1 }, dictation = dictation)
+            }
+        }
+        composeRule.onNodeWithTag("composer.hold").assertDoesNotExist()
+        openVoice()
+        composeRule.onNodeWithTag("composer.hold").assertIsDisplayed().assertContentDescriptionEquals(str(Res.string.chat_dictation_hold))
         composeRule.onNodeWithTag("composer.hold").performTouchInput {
             down(center)
             advanceEventTime(400)
@@ -80,7 +100,8 @@ class DictationTest {
 
         composeRule.onNodeWithTag("composer.hold").performTouchInput { up() }
         composeRule.waitForIdle()
-        assertEquals("帮我看看构建", draft().text, "the words go in the field, not straight to the desktop")
+        assertTrue(draft.text.endsWith("帮我看看构建"), "the words go in the field after what was typed")
+        assertEquals(0, sent, "nothing goes to the desktop until Send")
         assertFalse(dictation.listening)
     }
 
@@ -88,6 +109,7 @@ class DictationTest {
     fun slidingUpBeforeLettingGoThrowsTheWordsAway() {
         val dictation = ScriptedDictation("算了")
         val draft = setComposer(dictation)
+        openVoice()
         composeRule.onNodeWithTag("composer.hold").performTouchInput {
             down(center)
             advanceEventTime(400)
@@ -101,9 +123,10 @@ class DictationTest {
     }
 
     @Test
-    fun aQuickTapTypesInsteadOfListening() {
+    fun aQuickTapOnHoldToTalkHearsNothing() {
         val dictation = ScriptedDictation("不该出现")
-        setComposer(dictation)
+        val draft = setComposer(dictation)
+        openVoice()
         composeRule.onNodeWithTag("composer.hold").performTouchInput {
             down(center)
             advanceEventTime(50)
@@ -111,6 +134,17 @@ class DictationTest {
         }
         composeRule.waitForIdle()
         assertEquals(0, dictation.started)
+        assertEquals("", draft().text)
+    }
+
+    @Test
+    fun theKeyboardButtonPutsHoldToTalkAwayAndGoesBackToTyping() {
+        setComposer(ScriptedDictation(""))
+        openVoice()
+        composeRule.onNodeWithTag("composer.hold").assertExists()
+        composeRule.onNodeWithTag("composer.voice").performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("composer.hold").assertDoesNotExist()
         composeRule.onNodeWithTag("composer.field").assertIsFocused()
     }
 
@@ -118,6 +152,7 @@ class DictationTest {
     fun saysWhyDictationCannotStart() {
         val dictation = ScriptedDictation("", failure = DictationFailure.Denied)
         setComposer(dictation)
+        openVoice()
         composeRule.onNodeWithTag("composer.hold").performTouchInput {
             down(center)
             advanceEventTime(400)

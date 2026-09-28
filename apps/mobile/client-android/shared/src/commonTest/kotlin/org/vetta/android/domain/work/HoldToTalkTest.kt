@@ -5,11 +5,11 @@ import kotlin.test.assertEquals
 
 class HoldToTalkTest {
     @Test
-    fun aQuickTapStartsTyping() {
+    fun aQuickTapIsNotAHold() {
         val press = HoldToTalk()
         assertEquals(HoldToTalk.Action.None, press.began(0))
         assertEquals(HoldToTalk.Action.None, press.moved(1f, 1f, 50))
-        assertEquals(HoldToTalk.Action.Focus, press.ended(80))
+        assertEquals(HoldToTalk.Action.Tap, press.ended(80))
         assertEquals(HoldToTalk.Phase.Idle, press.phase)
     }
 
@@ -36,11 +36,11 @@ class HoldToTalkTest {
     }
 
     @Test
-    fun aSlowTapThatJustStartedListeningTypesInstead() {
+    fun aSlowTapThatJustStartedListeningIsTooShort() {
         val press = HoldToTalk()
         press.began(0)
         press.moved(0f, 0f, 100)
-        assertEquals(HoldToTalk.Action.CancelAndFocus, press.ended(250))
+        assertEquals(HoldToTalk.Action.TooShort, press.ended(250))
         assertEquals(HoldToTalk.Phase.Idle, press.phase)
     }
 
@@ -48,7 +48,7 @@ class HoldToTalkTest {
     fun aTapTheTimerMissedIsStillATap() {
         val press = HoldToTalk()
         press.began(0)
-        assertEquals(HoldToTalk.Action.Focus, press.ended(150), "never reached listening, so it was a tap")
+        assertEquals(HoldToTalk.Action.Tap, press.ended(150), "never reached listening, so it was a tap")
     }
 
     @Test

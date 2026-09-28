@@ -3,10 +3,12 @@ package org.vetta.android.ui.work
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -28,6 +30,8 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Keyboard
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
@@ -42,6 +46,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,12 +54,14 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
@@ -83,8 +90,11 @@ import org.vetta.android.resources.chat_camera_unavailable
 import org.vetta.android.resources.chat_dictation_cancel
 import org.vetta.android.resources.chat_dictation_denied
 import org.vetta.android.resources.chat_dictation_hint
+import org.vetta.android.resources.chat_dictation_hold
+import org.vetta.android.resources.chat_dictation_keyboard
 import org.vetta.android.resources.chat_dictation_listening
 import org.vetta.android.resources.chat_dictation_unavailable
+import org.vetta.android.resources.chat_dictation_voice
 import org.vetta.android.resources.send
 import org.vetta.android.resources.stop
 import org.vetta.android.ui.theme.vettaExtra
@@ -105,9 +115,10 @@ private sealed interface ComposerNotice {
 /**
  * The composer shared by New Session and the chat, laid out like Telegram: a
  * round attach button, then the message field that grows with its text (Return
- * adds a line). Send appears inside the field once there is something to send;
- * while the agent works, Stop takes its place. Holding the empty field dictates;
- * letting go puts the words in the field without sending them.
+ * adds a line), then the voice button. Send appears inside the field once there is
+ * something to send; while the agent works, Stop takes its place. The voice button
+ * slides a "Hold to talk" button out under the field: holding it dictates, and
+ * letting go puts the words in the field without sending them, to edit first.
  */
 @Composable
 fun Composer(
@@ -129,7 +140,10 @@ fun Composer(
     val haptics = LocalHapticFeedback.current
     val cue = rememberDictationCue()
     val press = remember { HoldToTalk() }
+    val focusManager = LocalFocusManager.current
     var sheet by remember { mutableStateOf(false) }
+    // Whether "Hold to talk" is out under the field in place of the keyboard.
+    var voice by rememberSaveable { mutableStateOf(false) }
     var notice by remember { mutableStateOf<ComposerNotice?>(null) }
     var cancelArmed by remember { mutableStateOf(false) }
     val current by rememberUpdatedState(draft)
@@ -159,11 +173,7 @@ fun Composer(
 
     fun handle(action: HoldToTalk.Action) {
         when (action) {
-            HoldToTalk.Action.None -> Unit
-            HoldToTalk.Action.Focus -> {
-                focus.requestFocus()
-                keyboard?.show()
-            }
+            HoldToTalk.Action.None, HoldToTalk.Action.Tap -> Unit
             HoldToTalk.Action.StartListening -> {
                 keyboard?.hide()
                 cancelArmed = false
@@ -175,12 +185,10 @@ fun Composer(
                 cancelArmed = action.armed
                 haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
             }
-            // Let go right after listening started: a slow tap, so type instead.
-            HoldToTalk.Action.CancelAndFocus -> {
+            // Let go right after listening started: a slow tap, nothing said.
+            HoldToTalk.Action.TooShort -> {
                 dictation.cancel()
                 cancelArmed = false
-                focus.requestFocus()
-                keyboard?.show()
             }
             is HoldToTalk.Action.Finish ->
                 scope.launch {
@@ -258,13 +266,11 @@ fun Composer(
                             Modifier
                                 .fillMaxWidth()
                                 .focusRequester(focus)
+                                // Typing again puts "Hold to talk" away.
+                                .onFocusChanged { if (it.isFocused) voice = false }
                                 .semantics { if (draft.text.isEmpty()) contentDescription = placeholder }
                                 .testTag("composer.field"),
                     )
-                    // On an empty field a hold dictates; a tap still starts typing.
-                    if (draft.text.isEmpty() && enabled) {
-                        Box(Modifier.matchParentSize().holdToTalk(press, scope, ::handle).testTag("composer.hold"))
-                    }
                 }
                 val buttonColors = IconButtonDefaults.filledIconButtonColors(containerColor = colors.pill, contentColor = colors.pillInk)
                 if (busy) {
@@ -279,13 +285,56 @@ fun Composer(
                     }
                 }
             }
+            // Voice, or back to the keyboard while "Hold to talk" is out.
+            IconButton(
+                onClick = {
+                    if (voice) {
+                        voice = false
+                        focus.requestFocus()
+                        keyboard?.show()
+                    } else {
+                        voice = true
+                        keyboard?.hide()
+                        focusManager.clearFocus()
+                    }
+                },
+                enabled = enabled,
+                modifier = Modifier.size(48.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surface).testTag("composer.voice"),
+            ) {
+                Icon(
+                    if (voice) Icons.Filled.Keyboard else Icons.Filled.Mic,
+                    contentDescription = stringResource(if (voice) Res.string.chat_dictation_keyboard else Res.string.chat_dictation_voice),
+                )
+            }
+        }
+        AnimatedVisibility(voice && enabled, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
+            val holdLabel = stringResource(Res.string.chat_dictation_hold)
+            Box(
+                Modifier
+                    .padding(top = 8.dp)
+                    .fillMaxWidth()
+                    .height(48.dp)
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(if (dictation.listening) colors.pill else MaterialTheme.colorScheme.surface)
+                    .border(1.dp, MaterialTheme.vettaExtra.border, RoundedCornerShape(24.dp))
+                    .testTag("composer.hold")
+                    .holdToTalk(press, scope, ::handle)
+                    .clearAndSetSemantics { contentDescription = holdLabel },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    holdLabel,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = if (dictation.listening) colors.pillInk else MaterialTheme.colorScheme.onSurface,
+                )
+            }
         }
     }
     if (sheet) AttachmentSheet(launchers, onDismiss = { sheet = false })
     if (dictation.listening) DictationGlow(dictation.transcript, dictation.level, cancelArmed)
 }
 
-/** Feeds the press on the empty field to [HoldToTalk]; a timer ticks it while the finger holds still. */
+/** Feeds the press on "Hold to talk" to [HoldToTalk]; a timer ticks it while the finger holds still. */
 private fun Modifier.holdToTalk(
     press: HoldToTalk,
     scope: CoroutineScope,

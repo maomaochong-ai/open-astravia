@@ -3,10 +3,10 @@ package org.vetta.android.domain.work
 import kotlin.math.sqrt
 
 /**
- * The composer's press on an empty field (port of the iOS `HoldToTalk.swift`):
- * a quick tap starts typing, holding starts dictation, sliding up while
- * listening arms cancel, and letting go either inserts what was heard or throws
- * it away. Distances are in dp and times in milliseconds.
+ * The press on the composer's "Hold to talk" button: holding starts dictation,
+ * sliding up while listening arms cancel, and letting go either inserts what was
+ * heard or throws it away; a quick tap does nothing. Distances are in dp and times
+ * in milliseconds.
  */
 class HoldToTalk {
     sealed interface Phase {
@@ -23,8 +23,8 @@ class HoldToTalk {
     sealed interface Action {
         data object None : Action
 
-        /** A plain tap: start typing. */
-        data object Focus : Action
+        /** A plain tap, not a hold: nothing to hear. */
+        data object Tap : Action
 
         data object StartListening : Action
 
@@ -33,8 +33,8 @@ class HoldToTalk {
         /** Released while listening: insert the transcript unless cancel was armed. */
         data class Finish(val insert: Boolean) : Action
 
-        /** Released right after listening started: drop the dictation and start typing. */
-        data object CancelAndFocus : Action
+        /** Released right after listening started: a slow tap, so drop the dictation. */
+        data object TooShort : Action
     }
 
     var phase: Phase = Phase.Idle
@@ -81,9 +81,9 @@ class HoldToTalk {
         return when (current) {
             // Never reached listening, so it was a tap, even if it outlasted the hold
             // before the timer got round to noticing.
-            is Phase.Pressing -> Action.Focus
+            is Phase.Pressing -> Action.Tap
             is Phase.Listening ->
-                if (!current.cancelArmed && at - listeningSince < QUICK_RELEASE_MS) Action.CancelAndFocus else Action.Finish(insert = !current.cancelArmed)
+                if (!current.cancelArmed && at - listeningSince < QUICK_RELEASE_MS) Action.TooShort else Action.Finish(insert = !current.cancelArmed)
             Phase.Idle, Phase.Abandoned -> Action.None
         }
     }
@@ -92,7 +92,7 @@ class HoldToTalk {
         /** Short enough that talking feels immediate; a slow tap that outlasts it is caught by [QUICK_RELEASE_MS]. */
         const val HOLD_DELAY_MS = 100L
 
-        /** Letting go this soon after listening started was a slow tap, not speech: type instead. */
+        /** Letting go this soon after listening started was a slow tap, not speech. */
         const val QUICK_RELEASE_MS = 200L
 
         /** Moving further than this before the hold registers is a scroll or swipe, not a press. */
