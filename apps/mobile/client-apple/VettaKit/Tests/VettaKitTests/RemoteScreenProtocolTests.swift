@@ -34,7 +34,7 @@ import Testing
 	@Test func showsThePointerReadableButNeverHuge() {
 		let cursor = RemoteScreenCursor(image: Data([1]), width: 28, height: 40, hotspotX: 5, hotspotY: 5, screenWidth: 1512)
 		#expect(abs(cursor.scale(shownWidth: 390) * 40 - 18) < 0.001, "a phone-wide picture would make it tiny")
-		#expect(abs(cursor.scale(shownWidth: 1_300) * 40 - 1_300 * 40 / 1512) < 0.001, "in between it keeps its size on the picture")
+		#expect(abs(cursor.scale(shownWidth: 900) * 40 - 900 * 40 / 1512) < 0.001, "in between it keeps its size on the picture")
 		#expect(abs(cursor.scale(shownWidth: 4_000) * 40 - 30) < 0.001, "zoomed far in it stops growing")
 	}
 
