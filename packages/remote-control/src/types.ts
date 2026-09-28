@@ -265,6 +265,8 @@ export interface RemoteConnectionSnapshot extends RemoteDiagnostics {
 	readonly peerDeviceId?: string;
 	/** The name the peer gave in its hello; only the accepting end hears one. */
 	readonly peerDeviceName?: string;
+	/** What the peer declared in its hello; only the accepting end hears one. */
+	readonly peerCapabilities?: RemoteCapabilities;
 	readonly peerIdentityKey?: string;
 	/** Six-digit code both ends can display to confirm a manual pairing. */
 	readonly verificationCode?: string;

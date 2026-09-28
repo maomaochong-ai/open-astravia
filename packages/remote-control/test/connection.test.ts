@@ -105,6 +105,8 @@ describe("RemoteConnection over a direct link (LAN)", () => {
 		expect(host.getSnapshot().state).toBe("online");
 		expect(phone.getSnapshot().peerDeviceId).toBe("desktop-1");
 		expect(host.getSnapshot().peerDeviceName).toBe("Phone");
+		expect(host.getSnapshot().peerCapabilities).toEqual(capabilities);
+		expect(phone.getSnapshot().peerCapabilities).toBeUndefined();
 		expect(host.getSnapshot().peerIdentityKey).toBe(toBase64Url(mobileIdentity.publicKey));
 		expect(phone.getSnapshot().verificationCode).toBe(host.getSnapshot().verificationCode);
 		await expect(phone.request("session.list")).resolves.toEqual({ echoed: "session.list" });

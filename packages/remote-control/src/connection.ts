@@ -13,6 +13,7 @@ import {
 import { RemoteEventJournal } from "./event-journal.js";
 import { decodeRemoteFrame, RemoteProtocolError } from "./protocol.js";
 import type {
+	RemoteCapabilities,
 	RemoteConnectionEvent,
 	RemoteConnectionOptions,
 	RemoteConnectionSnapshot,
@@ -68,6 +69,7 @@ export class RemoteConnection {
 	private keys: RemoteSessionKeys | undefined;
 	private peerDeviceId: string | undefined;
 	private peerDeviceName: string | undefined;
+	private peerCapabilities: RemoteCapabilities | undefined;
 	private peerIdentityKey: Uint8Array | undefined;
 	private lastEventSequence: number;
 	private lastAckSequence = 0;
@@ -110,6 +112,7 @@ export class RemoteConnection {
 			connectionId: this.connectionId,
 			peerDeviceId: this.peerDeviceId,
 			peerDeviceName: this.peerDeviceName,
+			peerCapabilities: this.peerCapabilities,
 			peerIdentityKey: this.peerIdentityKey ? toBase64Url(this.peerIdentityKey) : undefined,
 			verificationCode: this.peerIdentityKey
 				? verificationCode(this.options.identity.publicKey, this.peerIdentityKey)
@@ -317,6 +320,7 @@ export class RemoteConnection {
 		this.peerIdentityKey = peerIdentityKey;
 		this.peerDeviceId = hello.deviceId;
 		this.peerDeviceName = hello.deviceName;
+		this.peerCapabilities = hello.capabilities;
 		const decision = this.options.onHello
 			? await this.options.onHello(hello)
 			: this.options.expectedPeerIdentityKey
