@@ -373,6 +373,7 @@ import Testing
 		await model.respond("s2", requestId: "q1", answers: [RemoteQuestionAnswer(question: "要发邮件吗？", answers: ["发"])])
 		#expect(await eventually { model.transcript("s2").sessionState.status == .completed })
 		#expect(model.transcript("s2").pendingQuestion == nil)
+		#expect(model.session("s2")?.status == .completed)
 		#expect(turnEnds == 1)
 
 		await model.openSession("s1")

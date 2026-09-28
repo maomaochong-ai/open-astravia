@@ -674,7 +674,8 @@ public final class AppModel {
 			]
 			_ = try await requireManager().request(.sessionRespond, payload: payload, sessionId: sessionId)
 			dispatch(sessionId, .questionResolved(requestId: requestId))
-			patchSession(sessionId) { $0.status = .running }
+			// The desktop's next state may already be in, e.g. the turn it ended.
+			patchSession(sessionId) { if $0.status == .waitingInput { $0.status = .running } }
 		} catch {
 			reportError(error)
 		}
