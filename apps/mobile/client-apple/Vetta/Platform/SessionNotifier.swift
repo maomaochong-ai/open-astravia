@@ -54,6 +54,15 @@ final class SessionNotifier: NSObject, SessionSignals {
 		activity.show(digest, active: active)
 	}
 
+	/// A choice was tapped on the Live Activity; see `LiveActivityController.answering`.
+	func answering(_ sessionId: String, choice: String) {
+		activity.answering(sessionId, choice: choice)
+	}
+
+	func answerFailed() {
+		activity.answerFailed()
+	}
+
 	private nonisolated static let sessionKey = "sessionId"
 
 	private static func identifier(_ sessionId: String) -> String { "session.\(sessionId)" }

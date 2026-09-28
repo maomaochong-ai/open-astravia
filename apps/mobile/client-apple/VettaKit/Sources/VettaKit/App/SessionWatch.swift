@@ -129,7 +129,7 @@ public struct SessionWatch {
 		return alerts
 	}
 
-	///  gives a waiting session's open question, when it is known.
+	/// `question` gives a waiting session's open question, when it is known.
 	public func digest(_ sessions: [RemoteSessionSummary], question: (String) -> RemoteQuestionRequest? = { _ in nil }) -> LiveDigest {
 		let waiting = sessions.filter { $0.status == .waitingInput }
 		let running = sessions.filter { $0.status.isActive && $0.status != .waitingInput }

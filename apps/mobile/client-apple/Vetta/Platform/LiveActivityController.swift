@@ -17,6 +17,8 @@ final class LiveActivityController {
 
 	private var current: Activity<SessionActivityAttributes>?
 	private var shown: LiveDigest?
+	/// The digest from the sessions, under what `answering` shows for a moment.
+	private var latest: LiveDigest = .idle
 	private var pushedAt = Date.distantPast
 	/// Swiped away by the user: no new one until the current work is all done.
 	private var dismissed = false
@@ -28,6 +30,7 @@ final class LiveActivityController {
 
 	/// An unchanged digest is sent again at most once a minute, to push the stale date back.
 	func show(_ digest: LiveDigest, active: Bool) {
+		latest = digest
 		if let activity = current, activity.activityState == .dismissed || activity.activityState == .ended {
 			dismissed = activity.activityState == .dismissed
 			current = nil
@@ -54,6 +57,24 @@ final class LiveActivityController {
 				log.error("activity request failed: \(error.localizedDescription, privacy: .public)")
 			}
 		}
+	}
+
+	/// A choice was tapped: the buttons give way to what was chosen until the
+	/// sessions report back.
+	func answering(_ sessionId: String, choice: String) {
+		guard let activity = current, var digest = shown, digest.headline?.sessionId == sessionId else { return }
+		digest.headline?.question = nil
+		digest.headline?.answering = choice
+		shown = digest
+		pushedAt = Date()
+		let id = activity.id
+		let content = ActivityContent(state: digest, staleDate: Date().addingTimeInterval(Self.freshFor))
+		Task { await Self.update(id, content) }
+	}
+
+	/// The answer did not reach the desktop: the buttons come back.
+	func answerFailed() {
+		show(latest, active: false)
 	}
 
 	private func end(_ digest: LiveDigest) {

@@ -79,3 +79,45 @@ import Testing
 		#expect(SessionLink.sessionId(try #require(URL(string: "https://session?id=x"))) == nil)
 	}
 }
+
+@Suite struct LiveQuestionTests {
+	private func request(_ items: [RemoteQuestionItem]) -> RemoteQuestionRequest {
+		RemoteQuestionRequest(requestId: "q1", questions: items)
+	}
+
+	private func item(_ labels: [String], multi: Bool = false, question: String = "继续吗？") -> RemoteQuestionItem {
+		RemoteQuestionItem(question: question, header: "确认", options: labels.map { RemoteQuestionOption(label: $0, description: "") }, multiSelect: multi)
+	}
+
+	@Test func offersOneSingleChoiceQuestionWithAFewShortOptions() throws {
+		let live = try #require(LiveQuestion(request([item(["继续", "先停下"])])))
+		#expect(live.requestId == "q1")
+		#expect(live.question == "继续吗？")
+		#expect(live.options == ["继续", "先停下"])
+	}
+
+	@Test func leavesEverythingElseToTheApp() {
+		#expect(LiveQuestion(request([item(["发", "不发"], multi: true)])) == nil)
+		#expect(LiveQuestion(request([item(["是", "否"]), item(["产品", "测试"])])) == nil)
+		#expect(LiveQuestion(request([item(["一", "二", "三", "四"])])) == nil)
+		#expect(LiveQuestion(request([item([])])) == nil)
+		#expect(LiveQuestion(request([item([String(repeating: "长", count: 41), "短"])])) == nil)
+	}
+
+	@Test func cutsALongQuestionForDisplayButAnswersTheWholeOne() throws {
+		let long = String(repeating: "问", count: 300)
+		let live = try #require(LiveQuestion(request([item(["好"], question: long)])))
+		#expect(live.question == long)
+		#expect(live.text.count == 160)
+	}
+
+	@Test func digestCarriesTheQuestionOfTheWaitingLead() {
+		let sessions = [
+			RemoteSessionSummary(id: "a", projectCwd: "/c", projectName: "c", title: "a", updatedAt: 2, status: .waitingInput, live: true),
+			RemoteSessionSummary(id: "b", projectCwd: "/c", projectName: "c", title: "b", updatedAt: 1, status: .running, live: true),
+		]
+		let digest = SessionWatch().digest(sessions) { $0 == "a" ? request([item(["继续", "先停下"])]) : nil }
+		#expect(digest.headline?.question?.options == ["继续", "先停下"])
+		#expect(SessionWatch().digest(sessions).headline?.question == nil)
+	}
+}

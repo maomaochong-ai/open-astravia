@@ -729,6 +729,36 @@ import Testing
 		await model.openSession("s2")
 		#expect(signals.withdrawn.last == "s2")
 	}
+
+	@Test func answersAQuestionFromTheLiveActivity() async throws {
+		let requests = RequestLog()
+		let desktop = scriptedDesktop(recording: requests)
+		let signals = RecordingSignals()
+		var platform = AppPlatform.memory(createTransport: desktop.createTransport)
+		platform.signals = signals
+		let model = AppModel(platform: platform)
+		#expect(await model.answer("s1", requestId: "q0", question: "?", choice: "好") == false)
+
+		model.start()
+		let invite = PairingURI.build(RemotePairingInvite(pairingId: "pair-1234567890abcdef", mobileSecret: "secret-1234567890abcdef", desktopIdentityKey: desktop.identityKey, desktopName: "MacBook Pro", lanEndpoints: ["192.168.1.20:43117"]))
+		#expect(await model.pairWithCode(invite))
+		#expect(await eventually { model.sessions.map(\.id) == ["s1"] })
+		_ = await model.sendPrompt(nil, "帮我写周报")
+		#expect(await eventually { model.session("s2")?.status == .waitingInput })
+		let question = try #require(signals.digests.last?.headline?.question)
+		#expect(question.requestId == "q1")
+		#expect(question.options == ["发", "不发"])
+
+		model.setActive(false)
+		#expect(await model.answer("s2", requestId: question.requestId, question: question.question, choice: "不发"))
+		let respond = try #require(requests.entries.last { $0.method == .sessionRespond })
+		#expect(respond.payload?["requestId"]?.stringValue == "q1")
+		let answer = respond.payload?["answers"]?.arrayValue?.first
+		#expect(answer?["question"]?.stringValue == "要发邮件吗？")
+		#expect(answer?["answers"]?.arrayValue?.compactMap(\.stringValue) == ["不发"])
+		#expect(await eventually { model.session("s2")?.status == .completed })
+		#expect(signals.digests.last?.headline == nil)
+	}
 }
 
 final class RecordingSignals: SessionSignals {

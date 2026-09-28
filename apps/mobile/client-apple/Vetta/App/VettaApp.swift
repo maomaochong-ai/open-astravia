@@ -18,7 +18,15 @@ struct VettaApp: App {
 		let notifier = SessionNotifier()
 		self.ephemeral = ephemeral
 		_notifier = State(initialValue: notifier)
-		_model = State(initialValue: VettaApp.makeModel(ephemeral: ephemeral, signals: ephemeral ? nil : notifier))
+		let model = VettaApp.makeModel(ephemeral: ephemeral, signals: ephemeral ? nil : notifier)
+		_model = State(initialValue: model)
+		// Here rather than in the view: a tap on the Live Activity may launch the app with no window.
+		AnswerQuestionHandler.run = { sessionId, requestId, question, choice in
+			notifier.answering(sessionId, choice: choice)
+			if await !model.answer(sessionId, requestId: requestId, question: question, choice: choice) {
+				notifier.answerFailed()
+			}
+		}
 	}
 
 	var body: some Scene {

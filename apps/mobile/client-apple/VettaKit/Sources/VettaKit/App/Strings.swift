@@ -256,6 +256,8 @@ public enum L10n {
 		public static func others(_ n: Int) -> String { tr("activity.others \(n)") }
 		public static var allDone: String { tr("activity.allDone") }
 		public static var stale: String { tr("activity.stale") }
+		public static var openToAnswer: String { tr("activity.openToAnswer") }
+		public static func answering(_ choice: String) -> String { tr("activity.answering \(choice)") }
 	}
 
 	/// The paired computer's screen, seen and operated from the phone (ADR-0140).

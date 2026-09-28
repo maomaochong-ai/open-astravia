@@ -145,21 +145,38 @@ public final class AppModel {
 		manager?.setForeground(value)
 		if value, !wasActive { manager?.refresh() }
 		if screenOpen, value != wasActive { syncScreen() }
-		if value != wasActive { platform.signals?.show(watch.digest(sessions), active: value) }
+		if value != wasActive { platform.signals?.show(liveDigest, active: value) }
 	}
 
 	/// Woken in the background: reconnects, fetches the list and returns once it is
 	/// in, or when `timeoutMs` runs out. What changed meanwhile raises its alerts.
 	public func refreshInBackground(timeoutMs: Double = 20_000) async {
-		guard let manager else { return }
+		guard await reconnect(timeoutMs: timeoutMs) else { return }
+		await refreshSessions()
+	}
+
+	/// Answers a question from the Live Activity, which may have woken the app in
+	/// the background. False when it did not reach the desktop.
+	public func answer(_ sessionId: String, requestId: String, question: String, choice: String, timeoutMs: Double = 20_000) async -> Bool {
+		start()
+		guard await reconnect(timeoutMs: timeoutMs) else { return false }
+		return await respond(sessionId, requestId: requestId, answers: [RemoteQuestionAnswer(question: question, answers: [choice])])
+	}
+
+	/// Brings the link up if it is down and waits for it, without treating the app as in front.
+	private func reconnect(timeoutMs: Double) async -> Bool {
+		guard let manager else { return false }
 		manager.refresh()
 		defer { manager.setForeground(active) }
 		let deadline = WallClock.nowMs() + timeoutMs
 		while !online, WallClock.nowMs() < deadline {
 			try? await Task.sleep(nanoseconds: 200_000_000)
 		}
-		guard online else { return }
-		await refreshSessions()
+		return online
+	}
+
+	private var liveDigest: LiveDigest {
+		watch.digest(sessions) { [transcripts] sessionId in transcripts[sessionId]?.pendingQuestion }
 	}
 
 	private func loadDeviceId() -> String {
@@ -395,7 +412,7 @@ public final class AppModel {
 			signals.withdraw(session.id)
 		}
 		if !active { alerts.forEach(signals.alert) }
-		signals.show(watch.digest(sessions), active: active)
+		signals.show(liveDigest, active: active)
 	}
 
 	private func handleEvent(_ event: RemoteEvent) {
@@ -753,7 +770,8 @@ public final class AppModel {
 		_ = try await manager.request(.sessionPrompt, payload: .object(payload), sessionId: target)
 	}
 
-	public func respond(_ sessionId: String, requestId: String, answers: [RemoteQuestionAnswer], cancelled: Bool = false) async {
+	@discardableResult
+	public func respond(_ sessionId: String, requestId: String, answers: [RemoteQuestionAnswer], cancelled: Bool = false) async -> Bool {
 		do {
 			let payload: JSONValue = [
 				"requestId": .string(requestId),
@@ -764,8 +782,10 @@ public final class AppModel {
 			dispatch(sessionId, .questionResolved(requestId: requestId))
 			// The desktop's next state may already be in, e.g. the turn it ended.
 			patchSession(sessionId) { if $0.status == .waitingInput { $0.status = .running } }
+			return true
 		} catch {
 			reportError(error)
+			return false
 		}
 	}
 

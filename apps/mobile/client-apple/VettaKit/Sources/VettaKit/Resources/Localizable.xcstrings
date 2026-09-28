@@ -18,6 +18,40 @@
         }
       }
     },
+    "activity.answering %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sending “%@”…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已选「%@」，正在发送…"
+          }
+        }
+      }
+    },
+    "activity.openToAnswer": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open Vetta to answer"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打开 Vetta 回答"
+          }
+        }
+      }
+    },
     "activity.others %lld": {
       "extractionState": "manual",
       "localizations": {
