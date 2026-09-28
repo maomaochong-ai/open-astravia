@@ -2,6 +2,7 @@ package org.vetta.android.app
 
 import android.content.Context
 import android.os.Build
+import android.provider.Settings
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
@@ -13,6 +14,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import org.vetta.android.core.DeviceName
 import org.vetta.android.core.nowEpochMs
 import org.vetta.android.data.remote.SqliteSessionCache
 import org.vetta.android.data.secure.KeystoreSecretStore
@@ -45,7 +47,7 @@ object AndroidAppContainer {
                 scope = scope,
                 cache = SqliteSessionCache(AndroidSQLiteDriver(), cachePath),
                 secrets = KeystoreSecretStore(context),
-                deviceName = Build.MODEL?.takeIf { it.isNotBlank() } ?: "Android",
+                deviceName = phoneName(context),
                 onTurnEnd = { TurnEndHaptics.play(context) },
                 createP2pTransport = NativeRemoteDesktopSessions::transport,
             )
@@ -99,4 +101,14 @@ private object TurnEndHaptics {
         if (vibrator?.hasVibrator() != true) return
         vibrator.vibrate(VibrationEffect.createOneShot(40, VibrationEffect.DEFAULT_AMPLITUDE))
     }
+}
+
+/** The name the owner gave this phone in the system settings, else maker and model. */
+private fun phoneName(context: Context): String {
+    val resolver = context.contentResolver
+    val given =
+        (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) runCatching { Settings.Global.getString(resolver, Settings.Global.DEVICE_NAME) }.getOrNull() else null)
+            ?.takeIf { it.isNotBlank() }
+            ?: runCatching { Settings.Secure.getString(resolver, "bluetooth_name") }.getOrNull()
+    return DeviceName.pick(given, Build.MANUFACTURER, Build.MODEL)
 }
