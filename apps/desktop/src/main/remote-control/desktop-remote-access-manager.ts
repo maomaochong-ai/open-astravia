@@ -528,7 +528,7 @@ export class DesktopRemoteAccessManager {
 		this.options.store.putRelaySecret(pairingId, relaySecret);
 		await this.options.store.upsertDevice({
 			id: pairingId,
-			name: snapshot.peerDeviceId ?? "手机",
+			name: snapshot.peerDeviceName?.trim() || "手机",
 			mobileSecretHash: sha256Hex(mobileSecret),
 			mobileIdentityKey: peerIdentityKey,
 			createdAt: this.now(),
@@ -564,11 +564,17 @@ export class DesktopRemoteAccessManager {
 	): Promise<void> {
 		const device = this.config.devices.find((entry) => entry.id === deviceId);
 		if (!device) return;
-		const peerKey = connection.getSnapshot().peerIdentityKey;
-		if (!device.mobileIdentityKey && peerKey) await this.claim(deviceId, peerKey, undefined);
-		// Only a "last seen" time: failing to save it must not keep the phone from being served.
+		const snapshot = connection.getSnapshot();
+		const peerKey = snapshot.peerIdentityKey;
+		if (!device.mobileIdentityKey && peerKey) await this.claim(deviceId, peerKey, snapshot.peerDeviceName);
+		// A phone renamed since pairing (or paired before its name was kept) shows its current name.
+		const name = snapshot.peerDeviceName?.trim();
+		// Only a "last seen" time and the name: failing to save them must not keep the phone from being served.
 		try {
-			await this.options.store.patchDevice(deviceId, { lastSeenAt: this.now() });
+			await this.options.store.patchDevice(deviceId, {
+				lastSeenAt: this.now(),
+				...(name && name !== device.name ? { name } : {}),
+			});
 			this.config = await this.options.store.read();
 		} catch (error) {
 			log.warn("remote device last-seen save failed", { pairingId: deviceId.slice(0, 6), error: describe(error) });

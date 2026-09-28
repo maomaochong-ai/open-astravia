@@ -67,6 +67,7 @@ export class RemoteConnection {
 	private ephemeral: RemoteIdentityKeyPair | undefined;
 	private keys: RemoteSessionKeys | undefined;
 	private peerDeviceId: string | undefined;
+	private peerDeviceName: string | undefined;
 	private peerIdentityKey: Uint8Array | undefined;
 	private lastEventSequence: number;
 	private lastAckSequence = 0;
@@ -108,6 +109,7 @@ export class RemoteConnection {
 			deviceId: this.options.deviceId,
 			connectionId: this.connectionId,
 			peerDeviceId: this.peerDeviceId,
+			peerDeviceName: this.peerDeviceName,
 			peerIdentityKey: this.peerIdentityKey ? toBase64Url(this.peerIdentityKey) : undefined,
 			verificationCode: this.peerIdentityKey
 				? verificationCode(this.options.identity.publicKey, this.peerIdentityKey)
@@ -314,6 +316,7 @@ export class RemoteConnection {
 		}
 		this.peerIdentityKey = peerIdentityKey;
 		this.peerDeviceId = hello.deviceId;
+		this.peerDeviceName = hello.deviceName;
 		const decision = this.options.onHello
 			? await this.options.onHello(hello)
 			: this.options.expectedPeerIdentityKey
