@@ -184,37 +184,21 @@ public final class RemoteDesktopSession {
 	private func answer(_ sdp: String) {
 		guard let peer else { return }
 		log.info("remote desktop offer received")
-		peer.setRemoteDescription(RTCSessionDescription(type: .offer, sdp: sdp)) { [weak self] error in
-			Task { @MainActor in
-				guard let self, let peer = self.peer else { return }
-				if let error {
-					self.stop(reason: "remote description failed: \(error.localizedDescription)")
-					return
-				}
-				self.remoteDescriptionSet = true
-				for candidate in self.pendingCandidates { peer.add(candidate) { _ in } }
-				self.pendingCandidates.removeAll()
-				peer.answer(for: RTCMediaConstraints(mandatoryConstraints: nil, optionalConstraints: nil)) { created, error in
-					// Only the text crosses threads; the description is built again on the main actor.
-					let sdp = error == nil ? created?.sdp : nil
-					Task { @MainActor in
-						guard let sdp else {
-							self.stop(reason: "answer failed")
-							return
-						}
-						let description = RTCSessionDescription(type: .answer, sdp: sdp)
-						peer.setLocalDescription(description) { error in
-							Task { @MainActor in
-								guard error == nil else {
-									self.stop(reason: "local description failed")
-									return
-								}
-								self.sendSignal(.answer(sessionId: self.sessionId, sdp: description.sdp))
-								log.info("remote desktop answer sent")
-							}
-						}
-					}
-				}
+		Task {
+			do {
+				try await peer.setRemoteDescription(RTCSessionDescription(type: .offer, sdp: sdp))
+				guard self.peer === peer else { return }
+				remoteDescriptionSet = true
+				let early = pendingCandidates
+				pendingCandidates.removeAll()
+				for candidate in early { try? await peer.add(candidate) }
+				let answer = try await peer.answer(for: RTCMediaConstraints(mandatoryConstraints: nil, optionalConstraints: nil))
+				try await peer.setLocalDescription(answer)
+				guard self.peer === peer else { return }
+				sendSignal(.answer(sessionId: sessionId, sdp: answer.sdp))
+				log.info("remote desktop answer sent")
+			} catch {
+				stop(reason: "WebRTC negotiation failed: \(error.localizedDescription)")
 			}
 		}
 	}
