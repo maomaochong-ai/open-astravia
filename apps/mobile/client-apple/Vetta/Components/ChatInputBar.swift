@@ -4,8 +4,8 @@ import VettaKit
 /// The composer shared by New Session and the chat, laid out like Telegram:
 /// a round attach button, then the message field that grows with its text
 /// (Return adds a line). Referenced skills sit above it as chips. Send appears
-/// inside the field once there is something to send. Holding the empty field dictates; letting go puts the words in the
-/// field without sending them.
+/// inside the field once there is something to send. Holding the empty field
+/// dictates; letting go puts the words in the field without sending them.
 struct ChatInputBar: View {
 	@Binding var draft: PromptDraft
 	var placeholder: String
