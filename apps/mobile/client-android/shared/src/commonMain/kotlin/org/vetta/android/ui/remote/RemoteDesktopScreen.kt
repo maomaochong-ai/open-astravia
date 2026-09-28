@@ -43,6 +43,7 @@ import org.vetta.android.resources.Res
 import org.vetta.android.resources.close
 import org.vetta.android.resources.remote_control
 import org.vetta.android.resources.remote_control_hint
+import org.vetta.android.resources.remote_control_not_allowed
 import org.vetta.android.resources.remote_control_offline
 import org.vetta.android.resources.remote_keyboard
 import org.vetta.android.resources.remote_keyboard_hint
@@ -67,7 +68,9 @@ fun RemoteDesktopScreen(state: MirrorState, viewerUrl: String?, onClose: () -> U
     var landscape by rememberSaveable { mutableStateOf(false) }
     LightSystemBarIcons()
     LandscapeWhile(landscape)
-    val live = viewerUrl != null && state.online
+    // Turned off for this phone in the desktop's settings: say where to turn it on.
+    val allowed = state.link.desktop?.desktopControl != false
+    val live = viewerUrl != null && state.online && allowed
     val close = @Composable { GlassCircleButton(Icons.Filled.Close, stringResource(Res.string.close), onClick = onClose, size = 44.dp, tag = "remote.close") }
     val keyboard =
         @Composable {
@@ -103,7 +106,12 @@ fun RemoteDesktopScreen(state: MirrorState, viewerUrl: String?, onClose: () -> U
                 } else {
                     Column(Modifier.padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Icon(Icons.Outlined.LaptopChromebook, contentDescription = null, tint = OnBlack.copy(alpha = 0.5f), modifier = Modifier.size(48.dp))
-                        Text(stringResource(Res.string.remote_control_offline), color = OnBlack.copy(alpha = 0.7f), textAlign = TextAlign.Center)
+                        Text(
+                            stringResource(if (allowed) Res.string.remote_control_offline else Res.string.remote_control_not_allowed),
+                            color = OnBlack.copy(alpha = 0.7f),
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.testTag("remote.unavailable"),
+                        )
                     }
                 }
             }

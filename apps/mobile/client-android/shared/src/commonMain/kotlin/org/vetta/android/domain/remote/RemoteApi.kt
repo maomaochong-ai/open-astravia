@@ -211,6 +211,8 @@ data class RemoteDeviceStatus(
     val lanEndpoints: List<String>,
     val relayEnabled: Boolean,
     val runningSessionCount: Int,
+    /** Whether this phone may view and operate the desktop's screen; null from desktops that let every phone view. */
+    val desktopControl: Boolean? = null,
 )
 
 /** Sealed follow-up to a manual pairing approval; carries the long-lived credential. */
@@ -354,6 +356,7 @@ object RemoteApi {
             lanEndpoints = obj.array("lanEndpoints").mapNotNull { (it as? JsonPrimitive)?.takeIf(JsonPrimitive::isString)?.content },
             relayEnabled = obj.bool("relayEnabled") == true,
             runningSessionCount = obj.double("runningSessionCount")?.toInt() ?: 0,
+            desktopControl = obj.bool("desktopControl"),
         )
     }
 

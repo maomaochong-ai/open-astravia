@@ -179,6 +179,7 @@
     <string name="remote_connect_failed">无法连接桌面</string>
     <string name="remote_control">远程控制</string>
     <string name="remote_control_hint">轻点点击 · 长按右键 · 拖动移动 · 双指缩放 · 双指上下滑动滚动</string>
+    <string name="remote_control_not_allowed">这部手机的远程控制还没打开。请在电脑上的 Vetta「设置 → 远程连接」里，打开这部手机记录下的「远程控制」。</string>
     <string name="remote_control_offline">电脑在线时，这里会显示它的屏幕。</string>
     <string name="remote_keyboard">键盘</string>
     <string name="remote_keyboard_hint">可输入英文字母、数字和空格</string>

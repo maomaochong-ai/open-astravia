@@ -110,5 +110,7 @@ class RemoteApiTest {
         val status = RemoteApi.readDeviceStatus(json("""{"deviceName":"Mac","lanEndpoints":["10.0.0.2:7300",5],"relayEnabled":true,"runningSessionCount":2}"""))
         assertEquals(RemoteDeviceStatus("Mac", null, listOf("10.0.0.2:7300"), true, 2), status)
         assertNull(RemoteApi.readDeviceStatus(json("""{"deviceName":""}""")))
+        assertNull(status?.desktopControl, "a desktop before per-phone control leaves it out")
+        assertEquals(false, RemoteApi.readDeviceStatus(json("""{"deviceName":"Mac","desktopControl":false}"""))?.desktopControl)
     }
 }
