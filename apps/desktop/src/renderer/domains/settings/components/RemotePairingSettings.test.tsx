@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /**
  * 「设置 → 远程连接」的配对入口：打开页面后自动准备二维码，并保留已有邀请。
- * 从真实连接层进入并渲染完整 View，只替换 Electron preload 与二维码编码两个外部边界。
+ * 从真实连接层进入并渲染完整 View，只替换 Electron preload 这一外部边界。
  */
 import type { RemotePairingState } from "@preload/api-types/remote-pairing";
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
@@ -14,10 +14,6 @@ vi.mock("react-i18next", () => ({
 			options ? `${key}:${Object.values(options).join(",")}` : key,
 		i18n: { exists: () => true },
 	}),
-}));
-
-vi.mock("qrcode", () => ({
-	default: { toDataURL: async (text: string) => `data:image/png;base64,${btoa(text)}` },
 }));
 
 const { RemotePairingSettings } = await import("./RemotePairingSettings.js");
@@ -37,6 +33,7 @@ function inviteState(inviteUri = "vetta://pair/automatic"): RemotePairingState {
 		invite: {
 			pairingId: "pairing-1",
 			inviteUri,
+			qrText: inviteUri,
 			expiresAt: Date.now() + 10 * 60_000,
 		},
 		lanEndpoints: ["192.168.1.8:43117"],
@@ -111,7 +108,21 @@ describe("远程连接设置", () => {
 		act(() => pending.resolve(inviteState()));
 
 		const qr = await screen.findByRole("img", { name: "remote.pairing.qrAlt" });
-		expect(qr.getAttribute("src")).toContain("data:image/png;base64,");
+		expect(qr.getAttribute("src")).toMatch(/^data:image\/svg\+xml/);
+	});
+
+	it("连接码还在放上中继时先转圈，不显示随后会被换掉的二维码", async () => {
+		const preparing = inviteState();
+		installRemotePairing({
+			initial: {
+				...preparing,
+				invite: { ...preparing.invite!, qrText: undefined, code: { code: "K7Q2-9MXD", password: "482913", status: "preparing" } },
+			},
+		});
+		render(<RemotePairingSettings />);
+
+		expect(await screen.findByText("remote.pairing.generating")).toBeTruthy();
+		expect(screen.queryByRole("img", { name: "remote.pairing.qrAlt" })).toBeNull();
 	});
 
 	it("已有未过期二维码时直接沿用，不会因重新打开页面而作废", async () => {

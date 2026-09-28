@@ -150,7 +150,6 @@
       "control": "远程控制"
     },
     "pairing": {
-      "title": "添加手机",
       "create": "生成二维码",
       "cancel": "刷新",
       "qrAlt": "Vetta 手机配对二维码",

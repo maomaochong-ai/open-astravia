@@ -3,9 +3,9 @@ import type {
 	RemotePairingState,
 	RemoteRelayTestResult,
 } from "@preload/api-types/remote-pairing";
-import QRCode from "qrcode";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { type PairingQr, pairingQr } from "./remote-pairing-qr";
 
 const EMPTY_STATE: RemotePairingState = {
 	devices: [],
@@ -77,7 +77,6 @@ export interface RemotePairingSettingsModel {
 			readonly manualHint: string;
 			readonly manualTitle: string;
 			readonly qrAlt: string;
-			readonly title: string;
 			readonly vaultUnavailable: string;
 		};
 		readonly description: string;
@@ -89,6 +88,8 @@ export interface RemotePairingSettingsModel {
 		readonly hasInvite: boolean;
 		readonly preparing: boolean;
 		readonly qrDataUrl?: string;
+		/** Diameter of the badge over the QR code's centre, as a share of its width. */
+		readonly qrBadge?: number;
 		readonly vaultAvailable: boolean;
 		/** The invite as a connection code and password, when the relay can hold it. */
 		readonly code?: {
@@ -133,7 +134,7 @@ function relayHost(url: string | undefined): string | undefined {
 export function useRemotePairingSettingsModel(): RemotePairingSettingsModel {
 	const { t } = useTranslation("settings");
 	const [state, setState] = useState<RemotePairingState>(EMPTY_STATE);
-	const [qrDataUrl, setQrDataUrl] = useState<string>();
+	const [qr, setQr] = useState<PairingQr>();
 	const [initializing, setInitializing] = useState(true);
 	const [busy, setBusy] = useState(false);
 	const [failure, setFailure] = useState<RemotePairingFailure>();
@@ -175,25 +176,19 @@ export function useRemotePairingSettingsModel(): RemotePairingSettingsModel {
 	}, [apply]);
 
 	useEffect(() => {
-		const uri = state.invite?.inviteUri;
+		const uri = state.invite?.qrText;
 		if (!uri) {
-			setQrDataUrl(undefined);
+			setQr(undefined);
 			return;
 		}
 
-		let cancelled = false;
-		setQrDataUrl(undefined);
-		void QRCode.toDataURL(uri, { width: 320, margin: 1, errorCorrectionLevel: "M" })
-			.then((url) => {
-				if (!cancelled) setQrDataUrl(url);
-			})
-			.catch(() => {
-				if (!cancelled) setFailure("qr");
-			});
-		return () => {
-			cancelled = true;
-		};
-	}, [state.invite?.inviteUri]);
+		try {
+			setQr(pairingQr(uri));
+		} catch {
+			setQr(undefined);
+			setFailure("qr");
+		}
+	}, [state.invite?.qrText]);
 
 	const run = useCallback(
 		async (action: () => Promise<RemotePairingState>, failureKind: RemotePairingFailure = "action") => {
@@ -235,7 +230,6 @@ export function useRemotePairingSettingsModel(): RemotePairingSettingsModel {
 				control: t("remote.devices.control"),
 			},
 			pairing: {
-				title: t("remote.pairing.title"),
 				create: t("remote.pairing.create"),
 				cancel: t("remote.pairing.cancel"),
 				qrAlt: t("remote.pairing.qrAlt"),
@@ -338,9 +332,9 @@ export function useRemotePairingSettingsModel(): RemotePairingSettingsModel {
 			canCreate: !initializing && !busy && !state.invite && state.vaultAvailable,
 			endpoints: state.lanEndpoints,
 			hasInvite: Boolean(state.invite),
-			preparing:
-				initializing || Boolean((busy && !state.invite) || (state.invite && !qrDataUrl && failure !== "qr")),
-			qrDataUrl,
+			preparing: initializing || Boolean((busy && !state.invite) || (state.invite && !qr && failure !== "qr")),
+			qrDataUrl: qr?.dataUrl,
+			qrBadge: qr?.badge,
 			vaultAvailable: state.vaultAvailable,
 			code: state.invite?.code,
 		},

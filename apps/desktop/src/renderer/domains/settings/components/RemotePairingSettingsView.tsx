@@ -1,7 +1,7 @@
 import { Button } from "@shared/components/ui/button";
 import { Switch } from "@shared/components/ui/switch";
 import type { CSSProperties, ReactNode } from "react";
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { RemoteRelayDialog } from "./RemoteRelayDialog";
 import type { RemotePairingSettingsModel } from "./useRemotePairingSettingsModel";
 
@@ -11,29 +11,33 @@ function blue(percent: number): string {
 }
 
 /**
- * A code shown one character per box, the way it is typed on the phone; a `-` in the
- * code becomes a short dash between the groups. The whole value stays readable by
- * screen readers and text search.
+ * A code shown the way it is typed on the phone: each `-`-separated group in one box,
+ * its characters split by hairlines, with a short dash between the boxes. The whole
+ * value stays readable by screen readers and text search.
  */
 function CodeBoxes({ label, value }: { label: string; value: string }): JSX.Element {
+	const groups = value.split("-");
 	return (
-		<div className="flex flex-col items-center">
+		<div className="flex flex-col">
 			<dt className="text-[11px] text-muted-foreground">{label}</dt>
 			<dd className="mt-1.5">
 				<span className="sr-only">{value}</span>
-				<span aria-hidden="true" className="flex items-center gap-1.5">
-					{[...value].map((char, index) =>
-						char === "-" ? (
-							<span key={index} className="mx-1 h-0.5 w-3 rounded-full bg-muted-foreground/50" />
-						) : (
-							<span
-								key={index}
-								className="flex h-11 w-9 items-center justify-center rounded-lg bg-muted/60 font-mono text-[20px] font-semibold text-foreground"
-							>
-								{char}
+				<span aria-hidden="true" className="flex items-center gap-2">
+					{groups.map((group, groupIndex) => (
+						<Fragment key={groupIndex}>
+							{groupIndex > 0 ? <span className="h-0.5 w-3 rounded-full bg-muted-foreground/50" /> : null}
+							<span className="flex h-11 divide-x divide-border overflow-hidden rounded-lg border border-border bg-card">
+								{[...group].map((char, index) => (
+									<span
+										key={index}
+										className="flex w-9 items-center justify-center font-mono text-[20px] font-semibold text-foreground"
+									>
+										{char}
+									</span>
+								))}
 							</span>
-						),
-					)}
+						</Fragment>
+					))}
 				</span>
 			</dd>
 		</div>
@@ -48,70 +52,88 @@ function PairingPanel({ model }: { model: RemotePairingSettingsModel }): JSX.Ele
 		code?.status === "preparing" ? labels.pairing.codePreparing : code?.status === "ready" ? undefined : labels.pairing.codeFailed;
 
 	return (
-		<div className="flex flex-col items-center px-3">
+		<div>
 			{!pairing.vaultAvailable ? (
-				<p className="mb-3 text-center text-[12px] text-destructive">{labels.pairing.vaultUnavailable}</p>
+				<p className="mb-3 text-[12px] text-destructive">{labels.pairing.vaultUnavailable}</p>
 			) : null}
 
-			<div className="flex h-[184px] w-[184px] items-center justify-center rounded-xl bg-muted/60">
-				{pairing.qrDataUrl ? (
-					<img src={pairing.qrDataUrl} alt={labels.pairing.qrAlt} className="block h-full w-full rounded-xl bg-white p-2" />
-				) : pairing.preparing ? (
-					<div className="flex flex-col items-center text-muted-foreground">
-						<span className="icon-[solar--refresh-linear] h-8 w-8 animate-spin" aria-hidden="true" />
-						<p className="mt-3 text-[12px]">{labels.pairing.generating}</p>
-					</div>
-				) : (
-					<div className="flex flex-col items-center px-3 text-center text-muted-foreground">
-						<span className="icon-[solar--qr-code-linear] h-8 w-8" aria-hidden="true" />
-						<p className="mt-3 text-[12px]">{labels.pairing.empty}</p>
-						{pairing.canCreate ? (
-							<Button size="sm" className="mt-3" disabled={model.busy} onClick={model.actions.createInvite}>
-								{labels.pairing.create}
-							</Button>
-						) : null}
-					</div>
-				)}
-			</div>
-
-			{pairing.qrDataUrl ? (
-				<>
-					<div className="mt-5 flex items-center justify-center gap-1">
-						<p className="text-center text-[12px] text-muted-foreground">{labels.pairing.codeHint}</p>
-						{pairing.hasInvite ? (
-							<Button
-								variant="ghost"
-								size="icon-sm"
-								className="shrink-0"
-								aria-label={labels.pairing.cancel}
-								title={labels.pairing.cancel}
-								disabled={model.busy}
-								onClick={model.actions.cancelInvite}
-							>
-								<span className="icon-[solar--refresh-linear] h-3.5 w-3.5" aria-hidden="true" />
-							</Button>
-						) : null}
-					</div>
-					{code?.status === "ready" ? (
-						<dl className="mt-3 flex flex-col items-center gap-4">
-							<CodeBoxes label={labels.pairing.code} value={code.code} />
-							<div className="flex flex-col items-center">
-								<dt className="text-[11px] text-muted-foreground">{labels.pairing.password}</dt>
-								<dd className="mt-1 font-mono text-[20px] font-semibold tracking-[0.3em] text-foreground select-all">
-									{code.password}
-								</dd>
-							</div>
-						</dl>
+			<div className="flex items-center gap-8">
+				<div
+					className={`flex h-[184px] w-[184px] shrink-0 items-center justify-center rounded-2xl ${pairing.qrDataUrl ? "" : "bg-muted/60"}`}
+				>
+					{pairing.qrDataUrl ? (
+						<div className="relative h-full w-full rounded-2xl bg-white p-3">
+							<img src={pairing.qrDataUrl} alt={labels.pairing.qrAlt} className="block h-full w-full" />
+							{pairing.qrBadge ? (
+								<span
+									aria-hidden="true"
+									className="absolute top-1/2 left-1/2 flex aspect-square -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full text-white"
+									style={{ width: `calc((100% - 1.5rem) * ${pairing.qrBadge})`, background: "var(--chart-2)" }}
+								>
+									<span className="icon-[solar--link-round-linear] h-1/2 w-1/2" />
+								</span>
+							) : null}
+						</div>
+					) : pairing.preparing ? (
+						<div className="flex flex-col items-center text-muted-foreground">
+							<span className="icon-[solar--refresh-linear] h-8 w-8 animate-spin" aria-hidden="true" />
+							<p className="mt-3 text-[12px]">{labels.pairing.generating}</p>
+						</div>
 					) : (
-						<div className="mt-3 flex h-[140px] w-full max-w-[360px] items-center justify-center rounded-xl bg-muted/60 px-4 text-center text-[12px] text-muted-foreground">
-							{codeStatus}
+						<div className="flex flex-col items-center px-3 text-center text-muted-foreground">
+							<span className="icon-[solar--qr-code-linear] h-8 w-8" aria-hidden="true" />
+							<p className="mt-3 text-[12px]">{labels.pairing.empty}</p>
+							{pairing.canCreate ? (
+								<Button size="sm" className="mt-3" disabled={model.busy} onClick={model.actions.createInvite}>
+									{labels.pairing.create}
+								</Button>
+							) : null}
 						</div>
 					)}
-				</>
-			) : null}
+				</div>
+
+				{pairing.qrDataUrl ? (
+					// Held to the QR code's height so the two sides stay level whatever the code's state.
+					<div className="flex h-[184px] w-[360px] flex-col justify-between">
+						<div className="-mr-2 flex min-h-7 items-center justify-between gap-2">
+							<p className="line-clamp-2 text-[12px] leading-relaxed text-muted-foreground">
+								{labels.pairing.codeHint}
+							</p>
+							{pairing.hasInvite ? (
+								<Button
+									variant="ghost"
+									size="icon-sm"
+									className="shrink-0"
+									aria-label={labels.pairing.cancel}
+									title={labels.pairing.cancel}
+									disabled={model.busy}
+									onClick={model.actions.cancelInvite}
+								>
+									<span className="icon-[solar--refresh-linear] h-3.5 w-3.5" aria-hidden="true" />
+								</Button>
+							) : null}
+						</div>
+						{code?.status === "ready" ? (
+							<dl className="flex flex-col gap-3">
+								<CodeBoxes label={labels.pairing.code} value={code.code} />
+								<div className="flex flex-col">
+									<dt className="text-[11px] text-muted-foreground">{labels.pairing.password}</dt>
+									<dd className="mt-1.5 flex h-11 items-center self-start rounded-lg border border-border bg-card pr-[calc(1rem-0.3em)] pl-4 font-mono text-[20px] font-semibold tracking-[0.3em] text-foreground select-all">
+										{code.password}
+									</dd>
+								</div>
+							</dl>
+						) : (
+							<div className="flex h-[144px] items-center justify-center rounded-xl border border-border bg-card px-4 text-center text-[12px] text-muted-foreground">
+								{codeStatus}
+							</div>
+						)}
+					</div>
+				) : null}
+			</div>
 
 			{pairing.endpoints.length > 0 ? (
-				<div className="mt-4 flex flex-col items-center">
+				<div className="mt-4 -ml-2.5">
 					<Button
 						variant="ghost"
 						size="sm"
@@ -127,7 +149,7 @@ function PairingPanel({ model }: { model: RemotePairingSettingsModel }): JSX.Ele
 						/>
 					</Button>
 					{manualOpen ? (
-						<div id="remote-manual-endpoints" className="mt-1 flex flex-col items-center gap-1">
+						<div id="remote-manual-endpoints" className="mt-1 flex flex-col gap-1 pl-2.5">
 							<p className="text-[12px] text-muted-foreground">{labels.pairing.manualHint}</p>
 							{pairing.endpoints.map((endpoint) => (
 								<span key={endpoint} className="font-mono text-[13px] text-foreground select-all">
@@ -230,7 +252,6 @@ export function RemotePairingSettingsView({ model }: { model: RemotePairingSetti
 			) : null}
 
 			<section id="remote-pairing" className="mt-8">
-				<SectionTitle>{labels.pairing.title}</SectionTitle>
 				<PairingPanel model={model} />
 			</section>
 
@@ -239,7 +260,7 @@ export function RemotePairingSettingsView({ model }: { model: RemotePairingSetti
 				{model.devices.length === 0 ? (
 					<p className="px-3 py-3 text-[12px] text-muted-foreground">{labels.devices.empty}</p>
 				) : (
-					<ul className="flex flex-col">
+					<ul className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-x-2">
 						{model.devices.map((device) => (
 							<li key={device.id}>
 								<Row
@@ -253,8 +274,7 @@ export function RemotePairingSettingsView({ model }: { model: RemotePairingSetti
 								>
 									{/* Remote control needs the phone connected and the relay on; otherwise the switch would do nothing. */}
 									{device.online && model.cloud.enabled ? (
-										<label className="flex shrink-0 items-center gap-2 text-[12px] text-muted-foreground">
-											{labels.devices.control}
+										<label className="flex shrink-0 items-center" title={labels.devices.control}>
 											<Switch
 												aria-label={`${device.name} · ${labels.devices.control}`}
 												checked={device.desktopControl}

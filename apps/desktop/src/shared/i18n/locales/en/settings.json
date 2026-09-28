@@ -150,7 +150,6 @@
       "control": "Remote control"
     },
     "pairing": {
-      "title": "Add a phone",
       "create": "Generate QR code",
       "cancel": "Refresh",
       "qrAlt": "Vetta phone pairing QR code",
