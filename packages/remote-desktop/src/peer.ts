@@ -123,6 +123,7 @@ export class RemoteDesktopHost {
 		if (frame.type === "answer") {
 			await this.peer.setRemoteDescription({ type: "answer", sdp: frame.sdp });
 			await this.flushPendingIce();
+			this.logger.info("remote desktop answer applied", { sessionId: this.options.sessionId });
 			// Encodings exist only once negotiated: a screen shared for the whole session is tuned here.
 			for (const sender of this.peer.getSenders?.() ?? []) {
 				if (sender.track?.kind === "video") await tuneScreenSender(sender);
@@ -251,6 +252,10 @@ export class RemoteDesktopHost {
 				protocolVersion: REMOTE_DESKTOP_PROTOCOL_VERSION,
 				sessionId: this.options.sessionId,
 				sdp: offer.sdp,
+			});
+			this.logger.info("remote desktop offer sent", {
+				sessionId: this.options.sessionId,
+				restart: this.hasNegotiated,
 			});
 			this.hasNegotiated = true;
 		})();

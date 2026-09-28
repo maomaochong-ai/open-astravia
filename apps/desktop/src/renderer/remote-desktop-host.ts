@@ -69,11 +69,13 @@ const pending: RemoteDesktopSignal[] = [];
 
 await signaling.connect({
 	onSignal(signal) {
+		// Types only: never SDP or candidates (packages/remote-desktop/AGENTS.md).
+		console.info(line("remote desktop signal received", { type: signal.type }));
 		if (host) void host.acceptSignal(signal);
 		else pending.push(signal);
 	},
 	onClose(reason) {
-		console.warn("remote desktop signaling closed", reason);
+		console.warn(line("remote desktop signaling closed", { reason }));
 		setTimeout(() => window.location.reload(), 1_000);
 	},
 });
