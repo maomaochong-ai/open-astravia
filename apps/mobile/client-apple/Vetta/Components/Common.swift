@@ -137,7 +137,7 @@ struct LinkPill: View {
 
 	private var detail: String? {
 		guard let channel = model.link.channel else { return nil }
-		let via = channel == .lan ? L10n.Settings.viaLan : L10n.Settings.viaRelay
+		let via = channel.label
 		guard let rtt = model.link.rttMs, rtt > 0 else { return via }
 		return "\(via) · \(L10n.Link.latency(Int(rtt.rounded())))"
 	}

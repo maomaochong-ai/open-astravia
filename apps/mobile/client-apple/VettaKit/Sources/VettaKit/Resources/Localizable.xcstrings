@@ -3344,6 +3344,295 @@
         }
       }
     },
+    "remote.connecting": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connecting directly to your computer…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在直连电脑…"
+          }
+        }
+      }
+    },
+    "remote.hideKeyboard": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hide Keyboard"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "收起键盘"
+          }
+        }
+      }
+    },
+    "remote.hint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tap to click · hold to right-click · drag to move · pinch to zoom · two fingers to scroll"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻点点击 · 长按右键 · 拖动移动 · 双指缩放 · 双指滑动滚动"
+          }
+        }
+      }
+    },
+    "remote.inputPermission": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "View only: taps and typing won’t reach the computer until Vetta is allowed in System Settings → Privacy & Security → Accessibility on the Mac."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "只能看、不能操作：请在 Mac 的「系统设置 → 隐私与安全性 → 辅助功能」里允许 Vetta，手机上的点按和键盘才会生效。"
+          }
+        }
+      }
+    },
+    "remote.inputUnsupported": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "View only: this computer can’t be operated remotely."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "只能看、不能操作：这台电脑不支持远程操作。"
+          }
+        }
+      }
+    },
+    "remote.keyboard": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keyboard"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "键盘"
+          }
+        }
+      }
+    },
+    "remote.modifierLocked": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Locked"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已锁定"
+          }
+        }
+      }
+    },
+    "remote.modifierOn": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "On for the next key"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "作用于下一个键"
+          }
+        }
+      }
+    },
+    "remote.noDirectRoute": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This network can’t connect straight to your computer, so its screen can’t be shown. Chats still work. Try another Wi‑Fi or mobile data."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当前网络无法直连电脑，暂时看不到屏幕，聊天不受影响。可以换一个 Wi‑Fi 或改用蜂窝网络再试。"
+          }
+        }
+      }
+    },
+    "remote.noRelay": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Turn on “Access away from this network” in Vetta on your computer to see its screen here."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请在电脑上的 Vetta「设置 → 远程连接」里打开「允许在外网访问」，才能在这里查看它的屏幕。"
+          }
+        }
+      }
+    },
+    "remote.notAllowed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remote control is off for this iPhone. Turn it on in Vetta on your computer: Settings → Remote access → this iPhone."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这部 iPhone 的远程控制还没打开。请在电脑上的 Vetta「设置 → 远程连接」里，打开这部 iPhone 的「远程控制」。"
+          }
+        }
+      }
+    },
+    "remote.offline": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your computer’s screen shows here once it is online."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "电脑在线时，这里会显示它的屏幕。"
+          }
+        }
+      }
+    },
+    "remote.rotate": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rotate"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "旋转"
+          }
+        }
+      }
+    },
+    "remote.screenPermission": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your computer hasn’t let Vetta record its screen yet. On the Mac, open System Settings → Privacy & Security → Screen Recording, turn on Vetta, then restart Vetta."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "电脑还没允许 Vetta 录制屏幕。请在 Mac 的「系统设置 → 隐私与安全性 → 屏幕录制」里打开 Vetta，然后重启 Vetta。"
+          }
+        }
+      }
+    },
+    "remote.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remote Control"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "远程控制"
+          }
+        }
+      }
+    },
+    "remote.unavailable": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your computer couldn’t share its screen. Close this page and open it again."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "电脑没能共享屏幕，请关闭本页后重新打开。"
+          }
+        }
+      }
+    },
+    "remote.updateDesktop": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update Vetta on your computer to see its screen from this iPhone."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请把电脑上的 Vetta 更新到最新版本，才能在 iPhone 上查看它的屏幕。"
+          }
+        }
+      }
+    },
     "session.delete": {
       "extractionState": "manual",
       "localizations": {
@@ -3709,6 +3998,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "局域网直连"
+          }
+        }
+      }
+    },
+    "settings.viaP2p": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Direct"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "直连"
           }
         }
       }

@@ -258,6 +258,27 @@ public enum L10n {
 		public static var stale: String { tr("activity.stale") }
 	}
 
+	/// The paired computer's screen, seen and operated from the phone (ADR-0140).
+	public enum Remote {
+		public static var title: String { tr("remote.title") }
+		public static var hint: String { tr("remote.hint") }
+		public static var notAllowed: String { tr("remote.notAllowed") }
+		public static var offline: String { tr("remote.offline") }
+		public static var noRelay: String { tr("remote.noRelay") }
+		public static var updateDesktop: String { tr("remote.updateDesktop") }
+		public static var connecting: String { tr("remote.connecting") }
+		public static var noDirectRoute: String { tr("remote.noDirectRoute") }
+		public static var screenPermission: String { tr("remote.screenPermission") }
+		public static var inputPermission: String { tr("remote.inputPermission") }
+		public static var inputUnsupported: String { tr("remote.inputUnsupported") }
+		public static var unavailable: String { tr("remote.unavailable") }
+		public static var keyboard: String { tr("remote.keyboard") }
+		public static var hideKeyboard: String { tr("remote.hideKeyboard") }
+		public static var rotate: String { tr("remote.rotate") }
+		public static var modifierOn: String { tr("remote.modifierOn") }
+		public static var modifierLocked: String { tr("remote.modifierLocked") }
+	}
+
 	public enum Settings {
 		public static var title: String { tr("settings.title") }
 		public static var rescan: String { tr("settings.rescan") }
@@ -265,6 +286,7 @@ public enum L10n {
 		public static var latency: String { tr("settings.latency") }
 		public static var viaLan: String { tr("settings.viaLan") }
 		public static var viaRelay: String { tr("settings.viaRelay") }
+		public static var viaP2p: String { tr("settings.viaP2p") }
 		public static var load: String { tr("settings.load") }
 		public static func loadValue(_ n: Int) -> String { tr("settings.loadValue \(n)") }
 		public static var loadIdle: String { tr("settings.loadIdle") }

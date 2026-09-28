@@ -28,4 +28,11 @@ import Testing
 			== RemoteScreenStatus(screen: .unavailable, input: .unsupported), "states from a newer desktop degrade")
 		#expect(RemoteAPI.readScreenStatus(.object(["screen": .string("streaming")])) == nil)
 	}
+
+	@Test func namesEveryWayThePhoneReachesTheComputer() {
+		L10n.pin(language: "zh-Hans")
+		defer { L10n.pin(language: nil) }
+		#expect(LinkChannel.p2p.label == "直连")
+		#expect(Set([LinkChannel.p2p, .lan, .relay].map(\.label)).count == 3)
+	}
 }
