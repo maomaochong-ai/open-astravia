@@ -95,7 +95,12 @@ function PairingPanel({ model }: { model: RemotePairingSettingsModel }): JSX.Ele
 					{code?.status === "ready" ? (
 						<dl className="mt-3 flex flex-col items-center gap-4">
 							<CodeBoxes label={labels.pairing.code} value={code.code} />
-							<CodeBoxes label={labels.pairing.password} value={code.password} />
+							<div className="flex flex-col items-center">
+								<dt className="text-[11px] text-muted-foreground">{labels.pairing.password}</dt>
+								<dd className="mt-1 font-mono text-[20px] font-semibold tracking-[0.3em] text-foreground select-all">
+									{code.password}
+								</dd>
+							</div>
 						</dl>
 					) : (
 						<div className="mt-3 flex h-[140px] w-full max-w-[360px] items-center justify-center rounded-xl bg-muted/60 px-4 text-center text-[12px] text-muted-foreground">
