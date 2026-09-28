@@ -549,10 +549,10 @@ describe("DesktopRemoteAccessManager", () => {
 		await manager.shutdown();
 	});
 
-	it("shares the screen only with a phone allowed to control the desktop, and tells it", async () => {
+	it("shares the screen with a phone until it is turned off for it, and tells the phone", async () => {
 		const pairingId = "a".repeat(24);
 		const phoneKey = "k".repeat(43);
-		const { manager, relayLinks, store, desktopHosts } = harness({
+		const { manager, relayLinks, store, desktopHosts, readConfig } = harness({
 			cloudEnabled: true,
 			relayBaseUrl: "wss://relay.example",
 			devices: [{ id: pairingId, name: "Pixel", mobileSecretHash: "h", mobileIdentityKey: phoneKey, createdAt: 1 }],
@@ -569,21 +569,20 @@ describe("DesktopRemoteAccessManager", () => {
 			close: async () => undefined,
 		} as unknown as RemoteConnection;
 		relayLinks[0]?.options.onConnection(connection);
-		await vi.waitFor(() => expect(statuses).toHaveLength(1));
-		expect(statuses[0]).toMatchObject({ desktopControl: false });
-		expect(desktopHosts).toHaveLength(0);
-		expect(manager.getState().devices[0]?.desktopControl).toBe(false);
-
-		await manager.setDesktopControl(pairingId, true);
 		await vi.waitFor(() => expect(desktopHosts).toHaveLength(1));
-		expect(statuses.at(-1)).toMatchObject({ desktopControl: true });
+		expect(statuses[0]).toMatchObject({ desktopControl: true });
 		expect(manager.getState().devices[0]?.desktopControl).toBe(true);
 
 		await manager.setDesktopControl(pairingId, false);
 		expect(desktopHosts[0]?.stopped).toBe(true);
 		expect(statuses.at(-1)).toMatchObject({ desktopControl: false });
+		expect(readConfig().remoteControl?.devices[0]?.desktopControl).toBe(false);
 		await new Promise((resolve) => setTimeout(resolve, 0));
 		expect(desktopHosts).toHaveLength(1);
+
+		await manager.setDesktopControl(pairingId, true);
+		await vi.waitFor(() => expect(desktopHosts).toHaveLength(2));
+		expect(statuses.at(-1)).toMatchObject({ desktopControl: true });
 		await manager.shutdown();
 	});
 

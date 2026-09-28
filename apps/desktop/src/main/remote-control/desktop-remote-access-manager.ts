@@ -265,7 +265,7 @@ export class DesktopRemoteAccessManager {
 				claimed: device.mobileIdentityKey !== undefined,
 				online: this.hub.isOnline(device.id),
 				channels: this.hub.onlineChannels(device.id),
-				desktopControl: device.desktopControl === true,
+				desktopControl: device.desktopControl !== false,
 				createdAt: device.createdAt,
 				lastSeenAt: device.lastSeenAt,
 			})),
@@ -735,7 +735,7 @@ export class DesktopRemoteAccessManager {
 		const desktopSecret = this.options.store.relaySecret(deviceId);
 		if (!controller || !this.config.cloudEnabled || !relayBaseUrl || !desktopSecret) return;
 		// The screen is shared only with a phone the person allowed it for.
-		if (!this.config.devices.find((entry) => entry.id === deviceId)?.desktopControl) return;
+		if (this.config.devices.find((entry) => entry.id === deviceId)?.desktopControl === false) return;
 		if (this.desktopHosts.has(deviceId) || this.desktopHostStarts.has(deviceId)) return;
 		this.desktopHostStarts.add(deviceId);
 		try {
@@ -748,7 +748,7 @@ export class DesktopRemoteAccessManager {
 			}
 			const device = this.config.devices.find((entry) => entry.id === deviceId);
 			// Turned off, or never claimed, while the host was starting.
-			if (!device?.mobileIdentityKey || !device.desktopControl) {
+			if (!device?.mobileIdentityKey || device.desktopControl === false) {
 				await host.stop();
 				return;
 			}
@@ -835,7 +835,7 @@ export class DesktopRemoteAccessManager {
 			lanEndpoints: port ? this.lanEndpoints(port) : [],
 			relayEnabled: this.config.cloudEnabled && Boolean(this.config.relayBaseUrl),
 			runningSessionCount: this.options.runningSessionCount(),
-			...(device ? { desktopControl: device.desktopControl === true } : {}),
+			...(device ? { desktopControl: device.desktopControl !== false } : {}),
 		};
 	}
 
