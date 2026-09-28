@@ -138,8 +138,10 @@ export class RemoteDesktopHost {
 		}
 		if (!this.screenSender) throw new Error("remote desktop host shares a fixed screen stream");
 		const previous = this.screenSender.track;
+		if (track) track.contentHint = "detail";
 		await this.screenSender.replaceTrack(track);
 		if (previous && previous !== track) previous.stop();
+		if (track) await keepTextSharp(this.screenSender);
 	}
 
 	sendControl(message: string): void {
@@ -342,6 +344,26 @@ export class RemoteDesktopViewer {
 
 	private async flushPendingIce(): Promise<void> {
 		for (const candidate of this.pendingIce.splice(0)) await this.peer.addIceCandidate(candidate);
+	}
+}
+
+/** The most the screen may spend: enough for sharp text at full resolution. */
+const SCREEN_MAX_BITRATE = 8_000_000;
+
+/**
+ * A phone zooms in to read the screen, so text must stay sharp: when bandwidth runs
+ * short, WebRTC drops frames instead of resolution (ADR-0140). Best effort; a browser
+ * without these parameters keeps its defaults.
+ */
+async function keepTextSharp(sender: RTCRtpSender): Promise<void> {
+	if (typeof sender.getParameters !== "function") return;
+	try {
+		const parameters = sender.getParameters();
+		parameters.degradationPreference = "maintain-resolution";
+		for (const encoding of parameters.encodings ?? []) encoding.maxBitrate = SCREEN_MAX_BITRATE;
+		await sender.setParameters(parameters);
+	} catch {
+		// Unsupported here: the defaults still work, only blurrier under load.
 	}
 }
 

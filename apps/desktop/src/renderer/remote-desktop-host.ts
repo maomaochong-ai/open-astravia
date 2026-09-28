@@ -22,6 +22,12 @@ const sessionId = params.get("sessionId");
 if (!target || !sessionId) throw new Error("remote desktop host target is missing");
 // "demand": capture only while a phone subscribes (ADR-0140); otherwise for the whole session.
 const onDemand = params.get("screen") === "demand";
+// The display's own resolution, up to 4K: a phone zooms in to read text, so it must not be
+// captured already scaled down. 30 fps is plenty for a desktop.
+const SCREEN_CAPTURE: DisplayMediaStreamOptions = {
+	video: { width: { max: 3840 }, height: { max: 2160 }, frameRate: { max: 30 } },
+	audio: false,
+};
 
 const signaling = new WebSocketRemoteDesktopSignaling(target);
 let host: RemoteDesktopHost | undefined;
@@ -38,7 +44,7 @@ await signaling.connect({
 	},
 });
 
-const stream = onDemand ? undefined : await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+const stream = onDemand ? undefined : await navigator.mediaDevices.getDisplayMedia(SCREEN_CAPTURE);
 host = new RemoteDesktopHost(
 	{
 		sessionId,
@@ -78,7 +84,7 @@ const setScreen = async (active: boolean): Promise<boolean> => {
 		return false;
 	}
 	if (screenTrack?.readyState === "live") return true;
-	const track = (await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false })).getVideoTracks()[0];
+	const track = (await navigator.mediaDevices.getDisplayMedia(SCREEN_CAPTURE)).getVideoTracks()[0];
 	if (!track) return false;
 	await current.replaceScreen(track);
 	screenTrack = track;

@@ -84,6 +84,11 @@ describe("remote desktop host screen on demand", () => {
 		const first = fakeTrack();
 		await host.replaceScreen(first);
 		expect(peer.sender.track).toBe(first);
+		expect(first.contentHint).toBe("detail");
+		expect(peer.sender.parameters).toMatchObject({
+			degradationPreference: "maintain-resolution",
+			encodings: [{ maxBitrate: 8_000_000 }],
+		});
 
 		const second = fakeTrack();
 		await host.replaceScreen(second);
@@ -132,7 +137,7 @@ function fakePeerConnection(): {
 	readonly createDataChannel: ReturnType<typeof vi.fn>;
 	readonly channels: RTCDataChannel[];
 	readonly addTransceiver: ReturnType<typeof vi.fn>;
-	readonly sender: { track: MediaStreamTrack | null };
+	readonly sender: { track: MediaStreamTrack | null; parameters: Record<string, unknown> };
 } {
 	const createOffer = vi.fn(async () => ({ type: "offer" as const, sdp: "v=0\r\n" }));
 	const channels: RTCDataChannel[] = [];
@@ -151,6 +156,11 @@ function fakePeerConnection(): {
 	});
 	const sender = {
 		track: null as MediaStreamTrack | null,
+		parameters: { encodings: [{}] } as Record<string, unknown>,
+		getParameters: vi.fn(() => structuredClone(sender.parameters)),
+		setParameters: vi.fn(async (next: Record<string, unknown>) => {
+			sender.parameters = next;
+		}),
 		replaceTrack: vi.fn(async (track: MediaStreamTrack | null) => {
 			sender.track = track;
 		}),
