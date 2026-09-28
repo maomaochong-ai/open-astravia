@@ -19,6 +19,8 @@ settings:
 packages:
   VettaKit:
     path: VettaKit
+  VettaRTC:
+    path: VettaRTC
 targets:
   Vetta:
     type: application
@@ -28,6 +30,7 @@ targets:
       - path: Shared
     dependencies:
       - package: VettaKit
+      - package: VettaRTC
       - target: VettaWidgets
     settings:
       base:
@@ -51,8 +54,11 @@ targets:
           UIColorName: LaunchBackground
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: false
+        # Landscape only on the remote desktop page; AppDelegate keeps every other page portrait.
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
         CFBundleURLTypes:
           - CFBundleURLName: com.openvetta.mobile.pair
             CFBundleURLSchemes:

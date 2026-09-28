@@ -1,9 +1,11 @@
 import SwiftUI
 import UIKit
 import VettaKit
+import VettaRTC
 
 @main
 struct VettaApp: App {
+	@UIApplicationDelegateAdaptor(AppDelegate.self) private var delegate
 	@State private var notifier: SessionNotifier
 	@State private var model: AppModel
 	@State private var grace = BackgroundGrace()
@@ -73,6 +75,13 @@ struct VettaApp: App {
 			deviceName: String(UIDevice.current.name.prefix(64))
 		)
 		platform.onTurnEnd = { feedback.notificationOccurred(.success) }
+		// Once on the LAN or relay, the link moves to the WebRTC control channel through the
+		// relay's viewer signaling; the same session carries the screen (ADR-0140).
+		platform.configureManager = { options in
+			guard let relay = options.desktop.relayBaseUrl, !relay.isEmpty else { return }
+			options.p2pTarget = PairingURI.desktopViewerUrl(relayBaseUrl: relay, pairingId: options.desktop.pairingId, mobileSecret: options.desktop.mobileSecret)
+			options.createP2pTransport = { RemoteDesktopSessions.shared.transport(for: $0) }
+		}
 		platform.signals = signals
 		return AppModel(platform: platform)
 	}
