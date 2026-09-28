@@ -1,14 +1,9 @@
 import { Button } from "@shared/components/ui/button";
 import { Switch } from "@shared/components/ui/switch";
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { Fragment, useState } from "react";
 import { RemoteRelayDialog } from "./RemoteRelayDialog";
 import type { RemotePairingSettingsModel } from "./useRemotePairingSettingsModel";
-
-/** The theme's blue (`--chart-2`, set for both light and dark) at a given strength. */
-function blue(percent: number): string {
-	return `color-mix(in srgb, var(--chart-2) ${percent}%, transparent)`;
-}
 
 /**
  * A code shown the way it is typed on the phone: each `-`-separated group in one box,
@@ -176,16 +171,12 @@ function SectionTitle({ children, count }: { children: string; count?: number })
 /** One borderless row: a round icon, what it is, and its control on the right. */
 function Row({
 	icon,
-	iconClassName,
-	iconStyle,
 	title,
 	detail,
 	detailClassName = "text-muted-foreground",
 	children,
 }: {
 	icon: string;
-	iconClassName: string;
-	iconStyle?: CSSProperties;
 	title: string;
 	detail: ReactNode;
 	detailClassName?: string;
@@ -193,7 +184,7 @@ function Row({
 }): JSX.Element {
 	return (
 		<div className="flex items-center gap-3.5 rounded-xl px-3 py-2.5 transition-colors duration-200 hover:bg-accent/40">
-			<span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${iconClassName}`} style={iconStyle}>
+			<span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
 				<span className={`${icon} h-4.5 w-4.5`} aria-hidden="true" />
 			</span>
 			<div className="min-w-0 flex-1">
@@ -265,12 +256,9 @@ export function RemotePairingSettingsView({ model }: { model: RemotePairingSetti
 							<li key={device.id}>
 								<Row
 									icon="icon-[solar--smartphone-2-linear]"
-									iconClassName={
-										device.online ? "bg-emerald-500/15 text-emerald-400" : "bg-muted text-muted-foreground/60"
-									}
 									title={device.name}
 									detail={device.status}
-									detailClassName={device.online ? "text-emerald-400" : "text-muted-foreground"}
+									detailClassName={device.online ? "text-foreground" : "text-muted-foreground"}
 								>
 									{/* Remote control needs the phone connected and the relay on; otherwise the switch would do nothing. */}
 									{device.online && model.cloud.enabled ? (
@@ -305,10 +293,6 @@ export function RemotePairingSettingsView({ model }: { model: RemotePairingSetti
 				<SectionTitle>{labels.cloud.section}</SectionTitle>
 				<Row
 					icon="icon-[solar--global-linear]"
-					iconClassName={model.cloud.enabled ? "" : "bg-muted text-muted-foreground"}
-					iconStyle={
-						model.cloud.enabled ? { background: blue(15), color: "var(--chart-2)" } : undefined
-					}
 					title={labels.cloud.title}
 					detail={model.cloud.available ? labels.cloud.description : labels.cloud.unavailable}
 				>
@@ -321,7 +305,6 @@ export function RemotePairingSettingsView({ model }: { model: RemotePairingSetti
 				</Row>
 				<Row
 					icon="icon-[solar--server-linear]"
-					iconClassName="bg-muted text-muted-foreground"
 					title={labels.relay.label}
 					detail={
 						<>
