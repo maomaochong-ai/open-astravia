@@ -699,6 +699,7 @@
 			"creatingSession": "正在创建会话"
 		},
 		"duration": {
+			"lessThanSecond": "少于1秒",
 			"seconds": "{{seconds}}秒",
 			"minutes": "{{minutes}}分 {{seconds}}秒",
 			"hours": "{{hours}}小时 {{minutes}}分"

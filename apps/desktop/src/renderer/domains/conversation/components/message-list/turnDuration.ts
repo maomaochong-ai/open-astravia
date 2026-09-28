@@ -16,6 +16,9 @@ export function splitTurnDuration(seconds: number): TurnDurationParts {
 }
 
 export function formatTurnDuration(seconds: number, t: TFunction<"chat">): string {
+	if (Number.isFinite(seconds) && seconds >= 0 && seconds < 1) {
+		return t("messageList.duration.lessThanSecond");
+	}
 	const parts = splitTurnDuration(seconds);
 	if (parts.hours > 0) {
 		return t("messageList.duration.hours", {

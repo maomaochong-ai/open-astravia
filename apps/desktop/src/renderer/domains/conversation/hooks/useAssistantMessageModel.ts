@@ -121,7 +121,11 @@ export function useAssistantMessageModel({
 		liveThinkingId,
 		workFoldCount,
 		segments,
-		durationAvailable: Boolean(message.durationSeconds && message.durationSeconds > 0) && !isCurrentlyStreaming,
+		durationAvailable:
+			message.durationSeconds !== undefined &&
+			Number.isFinite(message.durationSeconds) &&
+			message.durationSeconds >= 0 &&
+			!isCurrentlyStreaming,
 		streamingTailIndex,
 	};
 }

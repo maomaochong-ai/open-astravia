@@ -19,6 +19,7 @@ vi.mock("react-i18next", () => ({
 			};
 			if (key === "chat.memberActivity.openSession") return `打开 ${values?.name} 的成员会话`;
 			if (key === "chat.memberActivity.recent") return `最近：${values?.text}`;
+			if (key === "messageList.duration.seconds") return `${values?.seconds}秒`;
 			return labels[key] ?? key;
 		},
 	}),
@@ -42,6 +43,7 @@ const event: Extract<ChatTimelineEventViewModel, { kind: "team-member-summary" }
 	current: "正在检查配置和边界条件",
 	recent: ["读取项目配置"],
 	timestamp: 1,
+	durationSeconds: 42,
 };
 
 describe("TeamMemberReplyCard", () => {
@@ -54,6 +56,7 @@ describe("TeamMemberReplyCard", () => {
 		expect(avatar.parentElement).toBe(memberName.parentElement);
 		expect(avatar.parentElement?.className).toContain("items-center");
 		expect(screen.getByTestId("team-member-reply-card").contains(avatar)).toBe(true);
+		expect(screen.getByText("42秒")).toBeTruthy();
 		// 默认折叠：只留身份行，活动详情不渲染。
 		const toggle = screen.getByRole("button", { expanded: false });
 		expect(screen.queryByTestId("live-thinking")).toBeNull();

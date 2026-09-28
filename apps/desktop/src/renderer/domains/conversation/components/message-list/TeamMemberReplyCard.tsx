@@ -2,6 +2,7 @@ import type { ChatTimelineEventViewModel } from "@shared/store/atoms";
 import { AgentAvatarView, LiveThinkingView } from "@vetta-org/theme-ui/chat";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { formatTurnDuration } from "./turnDuration";
 
 type TeamMemberSummaryEvent = Extract<ChatTimelineEventViewModel, { kind: "team-member-summary" }>;
 
@@ -70,6 +71,7 @@ function StatusBadge({ state, label }: { state: TeamMemberSummaryEvent["state"];
 
 export function TeamMemberReplyCard({ event, onOpen }: TeamMemberReplyCardProps): JSX.Element {
 	const { t } = useTranslation("agent-teams");
+	const { t: tChat } = useTranslation("chat");
 	// 默认折叠：一次派遣往往牵出多张卡片，先只留身份与状态一行。
 	const [expanded, setExpanded] = useState(false);
 	const status = t(stateKey(event));
@@ -108,6 +110,11 @@ export function TeamMemberReplyCard({ event, onOpen }: TeamMemberReplyCardProps)
 						{event.memberName}
 					</span>
 					<StatusBadge state={event.state} label={status} />
+					{event.durationSeconds !== undefined ? (
+						<span className="shrink-0 text-[10px] tabular-nums text-muted-foreground/55">
+							{formatTurnDuration(event.durationSeconds, tChat)}
+						</span>
+					) : null}
 					<span
 						className={`icon-[solar--alt-arrow-down-linear] ml-auto h-3.5 w-3.5 shrink-0 text-muted-foreground/45 transition-transform ${
 							expanded ? "rotate-180" : ""

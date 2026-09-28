@@ -181,6 +181,57 @@ describe("projectTeamConversationDisplay", () => {
 		]);
 	});
 
+	it("copies publication-linked member turn timing onto the public message", async () => {
+		const session = {
+			id: "team-session",
+			memberRuntime: {
+				reviewer: { sessionId: "runtime-reviewer", sessionPath: "C:/sessions/reviewer.jsonl" },
+			},
+		} as unknown as TeamSessionDocument;
+		const assistant = createAssistantMessage(
+			{ api: "openai-responses", provider: "test", model: "fixture" },
+			{ timestamp: 1 },
+		);
+		const display = await projectTeamConversationDisplay({
+			session,
+			readHistory: async () => [
+				{ type: "message", entryId: "prompt", message: { role: "user", content: "Review", timestamp: 1 } },
+				{
+					type: "message",
+					entryId: "private-final",
+					message: { ...assistant, content: [{ type: "text", text: "Done" }] },
+				},
+				{
+					type: "assistant_turn_timing",
+					timing: { startedAt: 1_000, endedAt: 4_250, durationMs: 3_250 },
+					timestamp: new Date(4_250).toISOString(),
+				},
+			],
+			publications: [
+				{
+					customType: "agent-team.publication-operation.v1",
+					operationId: "publication",
+					workItemId: "work-item",
+					sourceParticipantConversationId: "runtime-reviewer",
+					sourceTurnId: "reviewer-turn",
+					sourceMessageEntryId: "private-final",
+					publicMessageEntryId: "public-result",
+					state: "completed",
+					generation: 1,
+				},
+			],
+		});
+
+		expect(display.messageTimings).toEqual([
+			{
+				messageId: "public-result",
+				startedAt: 1_000,
+				endedAt: 4_250,
+				durationMs: 3_250,
+			},
+		]);
+	});
+
 	it("does not copy a completed turn's tools onto an automatic continuation result", async () => {
 		const session = {
 			id: "team-session",

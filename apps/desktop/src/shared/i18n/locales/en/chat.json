@@ -699,6 +699,7 @@
 			"creatingSession": "Creating conversation"
 		},
 		"duration": {
+			"lessThanSecond": "<1s",
 			"seconds": "{{seconds}}s",
 			"minutes": "{{minutes}}m {{seconds}}s",
 			"hours": "{{hours}}h {{minutes}}m"

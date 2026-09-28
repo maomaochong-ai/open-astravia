@@ -16,11 +16,12 @@ import type {
 	CodingAgentSessionHeader,
 	CodingAgentCustomEntry as CustomEntry,
 } from "../contracts/session-entry.js";
+import { ASSISTANT_TURN_TIMING_TYPE } from "../timing/assistant-turn-timing-participant.js";
 
 type CodingSessionEntry = CodingAgentSessionEntry;
 type FileEntry = CodingAgentSessionHeader | CodingAgentSessionEntry;
 
-export const ASSISTANT_TURN_TIMING_TYPE = "vetta.assistant_turn_timing";
+export { ASSISTANT_TURN_TIMING_TYPE };
 
 /**
  * Reconstruct the leaf→root branch from a flat list of FileEntries (as

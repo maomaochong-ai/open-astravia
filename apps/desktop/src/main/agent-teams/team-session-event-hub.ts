@@ -185,7 +185,11 @@ export class TeamSessionEventHub {
 						}
 						if (projected.type === "text_delta") active.text += projected.delta;
 						if ("partial" in projected) active.latestPublicPartial = projected.partial;
-						this.publishMemberMessageEvent(active, projected, event.timestamp);
+						this.publishMemberMessageEvent(
+							active,
+							projected,
+							projected.type === "start" ? active.startedAt : event.timestamp,
+						);
 					}
 					if (
 						(isResponseBlockCompleted(projected) || event.type === "done" || event.type === "error") &&
