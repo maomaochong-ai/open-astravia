@@ -66,11 +66,73 @@ describe("remote desktop host negotiation", () => {
 	});
 });
 
+describe("remote desktop host screen on demand", () => {
+	it("opens with an empty video slot and swaps the screen in and out without renegotiating", async () => {
+		const peer = fakePeerConnection();
+		const host = new RemoteDesktopHost(
+			{ sessionId: "pairing_0123456789abcdefghijklmnop", createPeerConnection: () => peer.connection },
+			() => undefined,
+			() => undefined,
+		);
+
+		await host.start(undefined, { waitForPeerReady: true });
+		await host.acceptSignal({ type: "peer_ready", protocolVersion: 1 });
+		expect(peer.addTransceiver).toHaveBeenCalledWith("video", { direction: "sendonly" });
+		expect(peer.connection.addTrack).not.toHaveBeenCalled();
+		expect(peer.sender.track).toBeNull();
+
+		const first = fakeTrack();
+		await host.replaceScreen(first);
+		expect(peer.sender.track).toBe(first);
+
+		const second = fakeTrack();
+		await host.replaceScreen(second);
+		expect(first.stop).toHaveBeenCalledOnce();
+		expect(peer.sender.track).toBe(second);
+
+		await host.replaceScreen(null);
+		expect(second.stop).toHaveBeenCalledOnce();
+		expect(peer.sender.track).toBeNull();
+		expect(peer.createOffer).toHaveBeenCalledOnce();
+	});
+
+	it("refuses to swap the screen of a session started with a fixed stream", async () => {
+		const peer = fakePeerConnection();
+		const host = new RemoteDesktopHost(
+			{ sessionId: "pairing_0123456789abcdefghijklmnop", createPeerConnection: () => peer.connection },
+			() => undefined,
+			() => undefined,
+		);
+		await host.start(fakeStream());
+		await expect(host.replaceScreen(fakeTrack())).rejects.toThrow("fixed screen stream");
+	});
+
+	it("stops a track handed to a closed session instead of leaking the capture", async () => {
+		const peer = fakePeerConnection();
+		const host = new RemoteDesktopHost(
+			{ sessionId: "pairing_0123456789abcdefghijklmnop", createPeerConnection: () => peer.connection },
+			() => undefined,
+			() => undefined,
+		);
+		await host.start();
+		host.close();
+		const late = fakeTrack();
+		await host.replaceScreen(late);
+		expect(late.stop).toHaveBeenCalledOnce();
+	});
+});
+
+function fakeTrack(): MediaStreamTrack & { readonly stop: ReturnType<typeof vi.fn> } {
+	return { stop: vi.fn() } as unknown as MediaStreamTrack & { readonly stop: ReturnType<typeof vi.fn> };
+}
+
 function fakePeerConnection(): {
 	readonly connection: RTCPeerConnection;
 	readonly createOffer: ReturnType<typeof vi.fn>;
 	readonly createDataChannel: ReturnType<typeof vi.fn>;
 	readonly channels: RTCDataChannel[];
+	readonly addTransceiver: ReturnType<typeof vi.fn>;
+	readonly sender: { track: MediaStreamTrack | null };
 } {
 	const createOffer = vi.fn(async () => ({ type: "offer" as const, sdp: "v=0\r\n" }));
 	const channels: RTCDataChannel[] = [];
@@ -87,7 +149,15 @@ function fakePeerConnection(): {
 		channels.push(channel);
 		return channel;
 	});
+	const sender = {
+		track: null as MediaStreamTrack | null,
+		replaceTrack: vi.fn(async (track: MediaStreamTrack | null) => {
+			sender.track = track;
+		}),
+	};
+	const addTransceiver = vi.fn(() => ({ sender }));
 	const connection = {
+		addTransceiver,
 		addIceCandidate: vi.fn(async () => undefined),
 		addTrack: vi.fn(),
 		close: vi.fn(),
@@ -101,7 +171,7 @@ function fakePeerConnection(): {
 		setLocalDescription: vi.fn(async () => undefined),
 		signalingState: "stable",
 	} as unknown as RTCPeerConnection;
-	return { connection, createOffer, createDataChannel, channels };
+	return { connection, createOffer, createDataChannel, channels, addTransceiver, sender };
 }
 
 function fakeStream(): MediaStream {

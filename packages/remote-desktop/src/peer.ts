@@ -31,6 +31,8 @@ export class RemoteDesktopHost {
 	private readonly pendingIce: RTCIceCandidateInit[] = [];
 	private inputChannel: RTCDataChannel | undefined;
 	private controlChannel: RTCDataChannel | undefined;
+	/** Set when started without a stream: the screen comes and goes through `replaceScreen`. */
+	private screenSender: RTCRtpSender | undefined;
 	private lastInputSequence = 0;
 	private closed = false;
 	private started = false;
@@ -65,11 +67,20 @@ export class RemoteDesktopHost {
 		};
 	}
 
-	async start(stream: MediaStream, startOptions: RemoteDesktopHostStartOptions = {}): Promise<void> {
+	/**
+	 * With a stream, the screen is shared for the whole session. Without one, the
+	 * session opens with an empty video slot so the data channels work while nobody
+	 * watches, and `replaceScreen` fills it on demand without renegotiating (ADR-0140).
+	 */
+	async start(stream?: MediaStream, startOptions: RemoteDesktopHostStartOptions = {}): Promise<void> {
 		if (this.closed) throw new Error("remote desktop host is closed");
 		if (this.started) throw new Error("remote desktop host is already started");
-		if (stream.getVideoTracks().length === 0) throw new Error("screen stream must contain a video track");
-		for (const track of stream.getTracks()) this.peer.addTrack(track, stream);
+		if (stream) {
+			if (stream.getVideoTracks().length === 0) throw new Error("screen stream must contain a video track");
+			for (const track of stream.getTracks()) this.peer.addTrack(track, stream);
+		} else {
+			this.screenSender = this.peer.addTransceiver("video", { direction: "sendonly" }).sender;
+		}
 		this.inputChannel = this.peer.createDataChannel("vetta-input-v1", { ordered: true });
 		this.configureInputChannel(this.inputChannel);
 		if (this.control) {
@@ -117,6 +128,18 @@ export class RemoteDesktopHost {
 
 	get connectionState(): RTCPeerConnectionState {
 		return this.peer.connectionState;
+	}
+
+	/** Puts a new screen track in the video slot, or empties it with null; the previous track is stopped. */
+	async replaceScreen(track: MediaStreamTrack | null): Promise<void> {
+		if (this.closed) {
+			track?.stop();
+			return;
+		}
+		if (!this.screenSender) throw new Error("remote desktop host shares a fixed screen stream");
+		const previous = this.screenSender.track;
+		await this.screenSender.replaceTrack(track);
+		if (previous && previous !== track) previous.stop();
 	}
 
 	sendControl(message: string): void {
