@@ -149,6 +149,8 @@ public enum RemoteEventName: String, Sendable, CaseIterable {
 	case diagnosticsUpdated = "diagnostics.updated"
 	/// Sent only to a phone subscribed to the screen (ADR-0140).
 	case screenStatus = "screen.status"
+	/// The desktop's pointer shape, for a phone that draws the pointer itself.
+	case screenCursor = "screen.cursor"
 }
 
 public struct RemoteEvent: Equatable, Sendable {

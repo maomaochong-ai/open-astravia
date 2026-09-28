@@ -258,6 +258,41 @@ public enum RemoteInputState: String, Equatable, Sendable {
 	case unsupported
 }
 
+/// The pointer as the desktop shows it now (arrow, I-beam, hand…), in the desktop's points.
+public struct RemoteScreenCursor: Equatable, Sendable {
+	/// PNG.
+	public var image: Data
+	public var width: Double
+	public var height: Double
+	/// The point of the image that is the pointer's position, from its top-left.
+	public var hotspotX: Double
+	public var hotspotY: Double
+	/// The desktop display's width in points, to scale the pointer with the picture.
+	public var screenWidth: Double
+
+	public init(image: Data, width: Double, height: Double, hotspotX: Double, hotspotY: Double, screenWidth: Double) {
+		self.image = image
+		self.width = width
+		self.height = height
+		self.hotspotX = hotspotX
+		self.hotspotY = hotspotY
+		self.screenWidth = screenWidth
+	}
+}
+
+public extension RemoteScreenCursor {
+	/// The pointer's height on the phone stays between these, however small the picture is
+	/// shown or however far it is zoomed: readable, never in the way.
+	static let minShownHeight = 18.0
+	static let maxShownHeight = 30.0
+
+	/// How much to scale the desktop's pointer when its screen is shown `shownWidth` points wide.
+	func scale(shownWidth: Double) -> Double {
+		let natural = height * shownWidth / screenWidth
+		return min(max(natural, Self.minShownHeight), Self.maxShownHeight) / height
+	}
+}
+
 /// The answer to `screen.subscribe`, and the payload of `screen.status`.
 public struct RemoteScreenStatus: Equatable, Sendable {
 	public var screen: RemoteScreenState
@@ -427,6 +462,20 @@ public enum RemoteAPI {
 			fileRead: value["fileRead"]?.boolValue == true,
 			desktopControl: value["desktopControl"]?.boolValue,
 			screen: value["screen"]?.boolValue == true
+		)
+	}
+
+	public static func readScreenCursor(_ value: JSONValue?) -> RemoteScreenCursor? {
+		guard let value, value.isObject,
+		      let encoded = value["image"]?.stringValue, let image = Data(base64Encoded: encoded), !image.isEmpty,
+		      let width = value["width"]?.numberValue, width > 0,
+		      let height = value["height"]?.numberValue, height > 0,
+		      let screenWidth = value["screenWidth"]?.numberValue, screenWidth > 0 else { return nil }
+		return RemoteScreenCursor(
+			image: image, width: width, height: height,
+			hotspotX: min(max(value["hotspotX"]?.numberValue ?? 0, 0), width),
+			hotspotY: min(max(value["hotspotY"]?.numberValue ?? 0, 0), height),
+			screenWidth: screenWidth
 		)
 	}
 

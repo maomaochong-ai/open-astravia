@@ -6,6 +6,7 @@ import Testing
 @Suite(.serialized) struct AppModelScreenTests {
 	final class Subscriptions {
 		var active: [Bool] = []
+		var cursor: [Bool] = []
 		var connection: RemoteConnection?
 	}
 
@@ -24,6 +25,7 @@ import Testing
 			case .screenSubscribe:
 				let active = request.payload?["active"]?.boolValue == true
 				subscriptions.active.append(active)
+				subscriptions.cursor.append(request.payload?["cursor"]?.boolValue == true)
 				try? connection.respond(requestId: request.requestId, success: true, payload: [
 					"screen": .string(active ? "streaming" : "stopped"),
 					"input": "permission_denied",
@@ -49,6 +51,10 @@ import Testing
 		#expect(await eventually { model.screen == RemoteScreenStatus(screen: .streaming, input: .permissionDenied) })
 		#expect(subscriptions.active == [true])
 
+		#expect(subscriptions.cursor == [true], "the phone draws the pointer and wants its shape")
+		_ = try subscriptions.connection?.emitEvent(.screenCursor, payload: ["image": "iVBORw==", "width": 28, "height": 40, "hotspotX": 5, "hotspotY": 5, "screenWidth": 1512])
+		#expect(await eventually { model.screenCursor?.width == 28 })
+
 		// The desktop follows up once Accessibility is granted.
 		_ = try subscriptions.connection?.emitEvent(.screenStatus, payload: ["screen": "streaming", "input": "ready"])
 		#expect(await eventually { model.screen?.input == .ready })
@@ -56,6 +62,7 @@ import Testing
 		model.setActive(false)
 		#expect(await eventually { subscriptions.active == [true, false] }, "the background stops the capture")
 		#expect(model.screen == nil)
+		#expect(model.screenCursor == nil)
 		model.setActive(true)
 		#expect(await eventually { subscriptions.active.last == true && subscriptions.active.count == 3 })
 

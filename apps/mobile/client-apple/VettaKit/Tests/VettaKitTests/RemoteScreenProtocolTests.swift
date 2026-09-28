@@ -21,6 +21,23 @@ import Testing
 		#expect(status?.desktopControl == false)
 	}
 
+	@Test func readsThePointerShapeAndKeepsItsHotSpotInside() {
+		let png = Data([0x89, 0x50, 0x4E, 0x47])
+		let cursor = RemoteAPI.readScreenCursor(.object([
+			"image": .string(png.base64EncodedString()), "width": 28, "height": 40, "hotspotX": 5, "hotspotY": 99, "screenWidth": 1512,
+		]))
+		#expect(cursor == RemoteScreenCursor(image: png, width: 28, height: 40, hotspotX: 5, hotspotY: 40, screenWidth: 1512))
+		#expect(RemoteAPI.readScreenCursor(.object(["image": "not base64!", "width": 28, "height": 40, "screenWidth": 1512])) == nil)
+		#expect(RemoteEventName(rawValue: "screen.cursor") == .screenCursor)
+	}
+
+	@Test func showsThePointerReadableButNeverHuge() {
+		let cursor = RemoteScreenCursor(image: Data([1]), width: 28, height: 40, hotspotX: 5, hotspotY: 5, screenWidth: 1512)
+		#expect(abs(cursor.scale(shownWidth: 390) * 40 - 18) < 0.001, "a phone-wide picture would make it tiny")
+		#expect(abs(cursor.scale(shownWidth: 1_300) * 40 - 1_300 * 40 / 1512) < 0.001, "in between it keeps its size on the picture")
+		#expect(abs(cursor.scale(shownWidth: 4_000) * 40 - 30) < 0.001, "zoomed far in it stops growing")
+	}
+
 	@Test func readsWhyTheScreenOrInputIsUnavailable() {
 		#expect(RemoteAPI.readScreenStatus(.object(["screen": .string("permission_denied"), "input": .string("ready")]))
 			== RemoteScreenStatus(screen: .permissionDenied, input: .ready))

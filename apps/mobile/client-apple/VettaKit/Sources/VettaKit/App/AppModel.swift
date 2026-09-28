@@ -86,6 +86,9 @@ public final class AppModel {
 	/// What the desktop said about its screen while the remote desktop page is open; nil
 	/// otherwise (ADR-0140).
 	public private(set) var screen: RemoteScreenStatus?
+	/// The desktop's pointer shape while the remote desktop is open; nil until it says, or
+	/// from a desktop that cannot (the phone then draws a plain arrow).
+	public private(set) var screenCursor: RemoteScreenCursor?
 
 	@ObservationIgnored private let platform: AppPlatform
 	@ObservationIgnored private let pairingStore: PairingStore
@@ -329,13 +332,17 @@ public final class AppModel {
 
 	private func syncScreen() {
 		let wanted = screenOpen && active
-		if !wanted { screen = nil }
+		if !wanted {
+			screen = nil
+			screenCursor = nil
+		}
 		// Only a desktop that captures on demand knows the request; with any other the
 		// phone never opens the P2P link that would carry its screen.
 		guard let manager, link.desktop?.screen == true, link.isUsable else { return }
 		Task {
 			do {
-				let result = try await manager.request(.screenSubscribe, payload: ["active": .bool(wanted)])
+				// `cursor`: this phone draws the pointer itself and wants its shape.
+				let result = try await manager.request(.screenSubscribe, payload: ["active": .bool(wanted), "cursor": .bool(wanted)])
 				// A later open or close has its own answer coming.
 				guard wanted == (self.screenOpen && self.active) else { return }
 				self.screen = wanted ? RemoteAPI.readScreenStatus(result) : nil
@@ -446,6 +453,8 @@ public final class AppModel {
 			if screenOpen, active { syncScreen() }
 		case .screenStatus:
 			if screenOpen, active, let status = RemoteAPI.readScreenStatus(event.payload) { screen = status }
+		case .screenCursor:
+			if screenOpen, active, let cursor = RemoteAPI.readScreenCursor(event.payload) { screenCursor = cursor }
 		default:
 			return
 		}

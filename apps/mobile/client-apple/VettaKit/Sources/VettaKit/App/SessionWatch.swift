@@ -26,12 +26,18 @@ nonisolated public struct LiveDigest: Codable, Hashable, Sendable {
 		public var waiting: Bool
 		/// When the session became busy, in ms since 1970; the activity counts up from it.
 		public var since: Double
+		/// The question it waits on, when it can be answered with one tap.
+		public var question: LiveQuestion?
+		/// The choice just tapped on the activity, while it is on its way to the desktop.
+		public var answering: String?
 
-		public init(sessionId: String, title: String, waiting: Bool, since: Double) {
+		public init(sessionId: String, title: String, waiting: Bool, since: Double, question: LiveQuestion? = nil, answering: String? = nil) {
 			self.sessionId = sessionId
 			self.title = title
 			self.waiting = waiting
 			self.since = since
+			self.question = question
+			self.answering = answering
 		}
 	}
 
@@ -60,6 +66,34 @@ public protocol SessionSignals: AnyObject {
 	func withdraw(_ sessionId: String)
 	/// The busy sessions as they are now; `active` is whether the app is in front.
 	func show(_ digest: LiveDigest, active: Bool)
+}
+
+/// A question the Live Activity offers as buttons: one question, one choice
+/// among a few options. Anything else is answered in the app.
+nonisolated public struct LiveQuestion: Codable, Hashable, Sendable {
+	/// As many buttons as fit side by side on the Lock Screen.
+	public static let maxOptions = 3
+	/// ActivityKit caps the whole state at 4 KB, so long texts are cut.
+	static let maxQuestion = 160
+	static let maxOption = 40
+
+	public var requestId: String
+	/// The question as the desktop asked it, which the answer must name.
+	public var question: String
+	/// What the activity shows, cut to fit.
+	public var text: String
+	public var options: [String]
+
+	public init?(_ request: RemoteQuestionRequest) {
+		guard request.questions.count == 1, let item = request.questions.first, !item.multiSelect,
+		      (1 ... Self.maxOptions).contains(item.options.count),
+		      item.options.allSatisfy({ $0.label.count <= Self.maxOption })
+		else { return nil }
+		requestId = request.requestId
+		question = item.question
+		text = String(item.question.prefix(Self.maxQuestion))
+		options = item.options.map(\.label)
+	}
 }
 
 /// Follows session statuses between two looks at the list: which changes deserve
@@ -95,7 +129,8 @@ public struct SessionWatch {
 		return alerts
 	}
 
-	public func digest(_ sessions: [RemoteSessionSummary]) -> LiveDigest {
+	///  gives a waiting session's open question, when it is known.
+	public func digest(_ sessions: [RemoteSessionSummary], question: (String) -> RemoteQuestionRequest? = { _ in nil }) -> LiveDigest {
 		let waiting = sessions.filter { $0.status == .waitingInput }
 		let running = sessions.filter { $0.status.isActive && $0.status != .waitingInput }
 		let recent: (RemoteSessionSummary, RemoteSessionSummary) -> Bool = { $0.updatedAt < $1.updatedAt }
@@ -108,7 +143,8 @@ public struct SessionWatch {
 					sessionId: session.id,
 					title: Self.title(session),
 					waiting: session.status == .waitingInput,
-					since: busySince[session.id] ?? session.updatedAt
+					since: busySince[session.id] ?? session.updatedAt,
+					question: session.status == .waitingInput ? question(session.id).flatMap(LiveQuestion.init) : nil
 				)
 			}
 		)
