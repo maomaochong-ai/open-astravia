@@ -39,17 +39,43 @@ struct UserBubble: View {
 		HStack {
 			Spacer(minLength: 48)
 			Text(text)
-				.font(.system(size: 15))
-				.lineSpacing(4)
-				.foregroundStyle(Theme.pillInk)
+				.font(.system(size: 16))
+				.lineSpacing(2)
+				.foregroundStyle(.white)
 				.textSelection(.enabled)
-				.padding(.horizontal, 16)
-				.padding(.vertical, 12)
-				.background(
-					UnevenRoundedRectangle(topLeadingRadius: 20, bottomLeadingRadius: 20, bottomTrailingRadius: 6, topTrailingRadius: 20, style: .continuous)
-						.fill(Theme.pill)
-				)
+				.padding(.leading, 13)
+				.padding(.trailing, 13 + MessageBubbleShape.tail)
+				.padding(.vertical, 8)
+				.background(MessageBubbleShape().fill(Theme.userBubble))
 		}
+	}
+}
+
+/// The iMessage bubble: a rounded body whose bottom-trailing corner curls out into a tail.
+/// The tail takes `tail` points on the trailing side, which the content pads for.
+/// Nonisolated because SwiftUI lays shapes out off the main actor.
+nonisolated struct MessageBubbleShape: Shape {
+	static let tail: CGFloat = 6
+
+	func path(in rect: CGRect) -> Path {
+		let w = rect.width, h = rect.height
+		let body = w - Self.tail
+		let r = min(18, h / 2, body / 2)
+		var p = Path()
+		p.move(to: CGPoint(x: r, y: 0))
+		p.addLine(to: CGPoint(x: body - r, y: 0))
+		p.addArc(tangent1End: CGPoint(x: body, y: 0), tangent2End: CGPoint(x: body, y: r), radius: r)
+		p.addLine(to: CGPoint(x: body, y: max(r, h - 14)))
+		// Down the trailing side into the tip, then back under the body.
+		p.addCurve(to: CGPoint(x: w, y: h), control1: CGPoint(x: body, y: h - 5), control2: CGPoint(x: w - 2, y: h - 1))
+		p.addCurve(to: CGPoint(x: body - 8, y: h - 3), control1: CGPoint(x: w - 5, y: h + 0.5), control2: CGPoint(x: body - 4, y: h - 1))
+		p.addQuadCurve(to: CGPoint(x: max(r, body - 18), y: h), control: CGPoint(x: body - 12, y: h))
+		p.addLine(to: CGPoint(x: r, y: h))
+		p.addArc(tangent1End: CGPoint(x: 0, y: h), tangent2End: CGPoint(x: 0, y: h - r), radius: r)
+		p.addLine(to: CGPoint(x: 0, y: r))
+		p.addArc(tangent1End: CGPoint(x: 0, y: 0), tangent2End: CGPoint(x: r, y: 0), radius: r)
+		p.closeSubpath()
+		return p
 	}
 }
 

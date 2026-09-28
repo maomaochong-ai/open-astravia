@@ -13,9 +13,11 @@ enum Theme {
 	static let ink2 = dynamic(light: 0x3F444B, dark: 0xB3B8BE)
 	static let dim = dynamic(light: 0x6B7077, dark: 0x8B9096)
 	static let faint = dynamic(light: 0x9AA0A6, dark: 0x5B6067)
-	/// Inverted surface for the user's own bubble and primary pills.
+	/// Inverted surface for primary pills.
 	static let pill = dynamic(light: 0x0B0C0E, dark: 0xF4F5F6)
 	static let pillInk = dynamic(light: 0xFFFFFF, dark: 0x0A0B0D)
+	/// The user's own message, iMessage blue with white text in both modes.
+	static let userBubble = Color(uiColor: .systemBlue)
 	/// Switches are on in black, or mid grey in dark mode where a white track would hide the knob.
 	static let switchOn = dynamic(light: 0x0B0C0E, dark: 0x6B7077)
 	static let green = dynamic(light: 0x16A34A, dark: 0x22C55E)
