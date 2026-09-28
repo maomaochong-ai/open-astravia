@@ -346,6 +346,12 @@ class DesktopMirror(
                 link = LinkSnapshot.Offline,
             )
         }
+        startLink(record)
+    }
+
+    /** Opens the link to `record`'s desktop; what the phone shows of it is left as it is. */
+    private fun startLink(record: DesktopRecord) {
+        val key = record.desktopIdentityKey
         val options =
             DesktopLinkOptions(
                 desktop = record,
@@ -412,6 +418,26 @@ class DesktopMirror(
         link = null
     }
 
+    /**
+     * The desktop moved access away from home to another relay, and says so before it
+     * switches: remember the new address and reconnect with it, keeping the chats as
+     * they are, so the phone is not left calling a relay the desktop no longer uses.
+     */
+    private fun followRelay(relay: String?) {
+        if (relay == null) return
+        val record = pairingStore.getCurrent() ?: return
+        if (record.desktopIdentityKey != desktopKey || record.relayBaseUrl == relay) return
+        pairingStore.update(record.desktopIdentityKey) { it.copy(relayBaseUrl = relay) }
+        platform.logger.info("desktop moved to another relay", emptyMap())
+        // Not from inside the event collection that detaching the link cancels.
+        scope.launch {
+            val moved = pairingStore.getCurrent()?.takeIf { it.desktopIdentityKey == desktopKey } ?: return@launch
+            detachLink()
+            mutate { it.copy(desktop = moved.stored) }
+            startLink(moved)
+        }
+    }
+
     private fun requireLink(): DesktopLink = link ?: throw LinkOfflineException()
 
     private fun reportError(error: Throwable) {
@@ -448,6 +474,7 @@ class DesktopMirror(
         val sessionId = event.sessionId
         when (event.name) {
             RemoteEventName.DeviceRevoked -> onRevoked()
+            RemoteEventName.DeviceStatus -> followRelay(RemoteApi.readDeviceStatus(event.payload)?.relayBaseUrl)
             RemoteEventName.SessionList -> keepSessions(RemoteApi.readSessionSummaries(event.payload))
             RemoteEventName.SessionState -> {
                 if (sessionId == null) return

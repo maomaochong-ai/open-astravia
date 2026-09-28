@@ -309,6 +309,33 @@ class DesktopMirrorTest {
         }
 
     @Test
+    fun followsTheDesktopToAnotherRelayWithoutLosingTheChats() =
+        runTest {
+            val desktop = scriptedDesktop()
+            val device = Device()
+            val mirror = mirror(desktop, device)
+            assertTrue(mirror.pairWithCode(desktop.invite(relay = "wss://relay.example")))
+            assertTrue(eventually { mirror.state.value.online && mirror.state.value.sessions.isNotEmpty() })
+            val sessions = mirror.state.value.sessions
+
+            desktop.emit(RemoteEventName.DeviceStatus, buildJsonObject {
+                put("deviceName", "MacBook Pro")
+                putJsonArray("lanEndpoints") {}
+                put("relayEnabled", true)
+                put("runningSessionCount", 0)
+                put("relayBaseUrl", "wss://relay.mine.test")
+            })
+            assertTrue(eventually { mirror.state.value.desktop?.relayBaseUrl == "wss://relay.mine.test" })
+            assertTrue(eventually { desktop.opened.any { it.startsWith("wss://relay.mine.test/") } }, "the link reconnects through the new relay")
+            assertTrue(eventually { mirror.state.value.online })
+            assertEquals(sessions.map { it.id }, mirror.state.value.sessions.map { it.id }, "the chats stay while it moves")
+            assertTrue(mirror.viewerUrl()!!.startsWith("wss://relay.mine.test/"))
+
+            val relaunched = mirror(desktop, device)
+            assertEquals("wss://relay.mine.test", relaunched.state.value.desktop?.relayBaseUrl, "the new relay is remembered")
+        }
+
+    @Test
     fun uploadsAttachmentsOneByOneBeforeThePromptAndKeepsThemOnTheBubble() =
         runTest {
             val desktop = scriptedDesktop()
