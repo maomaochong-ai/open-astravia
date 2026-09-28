@@ -5,50 +5,9 @@ import { useState } from "react";
 import { RemoteRelayDialog } from "./RemoteRelayDialog";
 import type { RemotePairingSettingsModel } from "./useRemotePairingSettingsModel";
 
-/** The beacon's blue at a given strength; `--chart-2` is the theme's blue in both light and dark. */
-function beaconBlue(percent: number): string {
+/** The theme's blue (`--chart-2`, set for both light and dark) at a given strength. */
+function blue(percent: number): string {
 	return `color-mix(in srgb, var(--chart-2) ${percent}%, transparent)`;
-}
-
-/** Rings around the beacon, innermost first: diameter and strength of the blue. */
-const HALOS = [
-	{ size: 88, percent: 22 },
-	{ size: 140, percent: 13 },
-	{ size: 196, percent: 8 },
-	{ size: 256, percent: 5 },
-	{ size: 300, percent: 3 },
-] as const;
-
-/** Fades the rings out towards the edges, so the backdrop has no cut-off border. */
-const BEACON_FADE = "radial-gradient(closest-side, black 45%, transparent 100%)";
-
-/**
- * The page's backdrop illustration in the top-right corner: a link at the centre of
- * blue rings, like a signal looking for a phone. Static on purpose, so the translucent
- * window is not repainted for decoration.
- */
-function PairingBeacon(): JSX.Element {
-	return (
-		<div
-			aria-hidden="true"
-			className="pointer-events-none absolute top-0 right-0 flex h-[320px] w-[320px] items-center justify-center"
-			style={{ maskImage: BEACON_FADE, WebkitMaskImage: BEACON_FADE }}
-		>
-			{HALOS.map((halo) => (
-				<span
-					key={halo.size}
-					className="absolute rounded-full"
-					style={{ width: halo.size, height: halo.size, background: beaconBlue(halo.percent) }}
-				/>
-			))}
-			<span
-				className="absolute flex h-14 w-14 items-center justify-center rounded-full text-white"
-				style={{ background: "var(--chart-2)" }}
-			>
-				<span className="icon-[solar--link-round-linear] h-6 w-6" />
-			</span>
-		</div>
-	);
 }
 
 /** Side of the QR code; the code column beside it is held to the same height. */
@@ -213,21 +172,18 @@ export function RemotePairingSettingsView({ model }: { model: RemotePairingSetti
 	const [relayOpen, setRelayOpen] = useState(false);
 	const { labels } = model;
 	return (
-		<div className="relative mx-auto w-full max-w-[680px] px-8 pt-2 pb-12">
-			<PairingBeacon />
-			<div className="relative max-w-[380px]">
-				<h1 className="text-[20px] font-bold text-foreground">{labels.title}</h1>
-				<p className="mt-1.5 text-[12px] leading-relaxed text-muted-foreground">{labels.description}</p>
-			</div>
+		<div className="mx-auto w-full max-w-[680px] px-8 pt-2 pb-12">
+			<h1 className="text-[20px] font-bold text-foreground">{labels.title}</h1>
+			<p className="mt-1.5 text-[12px] leading-relaxed text-muted-foreground">{labels.description}</p>
 
 			{model.error ? (
-				<div role="alert" className="relative mt-5 rounded-xl bg-destructive/10 px-4 py-3 text-[12px] text-destructive">
+				<div role="alert" className="mt-5 rounded-xl bg-destructive/10 px-4 py-3 text-[12px] text-destructive">
 					{model.error}
 				</div>
 			) : null}
 
 			{model.approvals.length > 0 ? (
-				<section id="remote-approvals" className="relative mt-6 flex flex-col gap-2.5">
+				<section id="remote-approvals" className="mt-6 flex flex-col gap-2.5">
 					{model.approvals.map((approval) => (
 						<div key={approval.id} className="rounded-xl bg-amber-500/15 px-4 py-4">
 							<div className="flex items-center justify-between gap-4">
@@ -258,7 +214,7 @@ export function RemotePairingSettingsView({ model }: { model: RemotePairingSetti
 				</section>
 			) : null}
 
-			<section id="remote-pairing" className="relative mt-16">
+			<section id="remote-pairing" className="mt-8">
 				<SectionTitle>{labels.pairing.title}</SectionTitle>
 				<PairingPanel model={model} />
 			</section>
@@ -316,7 +272,7 @@ export function RemotePairingSettingsView({ model }: { model: RemotePairingSetti
 					icon="icon-[solar--global-linear]"
 					iconClassName={model.cloud.enabled ? "" : "bg-muted text-muted-foreground"}
 					iconStyle={
-						model.cloud.enabled ? { background: beaconBlue(15), color: "var(--chart-2)" } : undefined
+						model.cloud.enabled ? { background: blue(15), color: "var(--chart-2)" } : undefined
 					}
 					title={labels.cloud.title}
 					detail={model.cloud.available ? labels.cloud.description : labels.cloud.unavailable}
