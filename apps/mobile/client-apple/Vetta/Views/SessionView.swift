@@ -180,7 +180,7 @@ struct SessionView: View {
 					}
 					.disabled(!model.online)
 				} label: {
-					Image(systemName: "ellipsis")
+					Image(systemName: "square.grid.2x2")
 				}
 				.accessibilityLabel(L10n.Chat.more)
 				.accessibilityIdentifier("chat.more")
