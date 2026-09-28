@@ -90,6 +90,7 @@ public enum RemoteRequestMethod: String, Sendable, CaseIterable {
 	case fileList = "file.list"
 	case fileStat = "file.stat"
 	case fileRead = "file.read"
+	case screenSubscribe = "screen.subscribe"
 }
 
 public struct RemoteRequest: Equatable, Sendable {
@@ -146,6 +147,8 @@ public enum RemoteEventName: String, Sendable, CaseIterable {
 	case sessionInput = "session.input"
 	case sessionResync = "session.resync"
 	case diagnosticsUpdated = "diagnostics.updated"
+	/// Sent only to a phone subscribed to the screen (ADR-0140).
+	case screenStatus = "screen.status"
 }
 
 public struct RemoteEvent: Equatable, Sendable {
