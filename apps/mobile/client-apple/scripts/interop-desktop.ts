@@ -5,11 +5,12 @@
  *
  *   bun apps/mobile/client-apple/scripts/interop-desktop.ts <info-file>
  *
- * Writes `{ lanPort, relayPort, invite, relayOnlyInvite }` to <info-file> once
+ * Writes `{ lanPort, relayPort, invite, relayOnlyInvite, filesInvite }` to <info-file> once
  * listening. Used by `scripts/interop.sh` and handy for manual simulator runs.
  */
-import { writeFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { mkdirSync, readdirSync, readFileSync, realpathSync, statSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path, { join, resolve } from "node:path";
 
 const root = resolve(import.meta.dir, "../../../..");
 
@@ -33,6 +34,7 @@ const rc = await import(resolve(root, "packages/remote-control/src/index.ts"));
 const { DesktopRemoteLanServer } = await import(resolve(root, "apps/desktop/src/main/remote-control/desktop-remote-lan-server.ts"));
 const { createDesktopWebSocketFactory } = await import(resolve(root, "apps/desktop/src/main/remote-control/desktop-websocket.ts"));
 await import(resolve(root, "packages/remote-control/scripts/fake-relay-server.ts"));
+const { RemoteFiles } = await import(resolve(root, "apps/desktop/src/main/remote-control/remote-files.ts"));
 
 type Connection = InstanceType<typeof rc.RemoteConnection>;
 
@@ -87,10 +89,61 @@ const histories = new Map<string, unknown[]>([
 	["s-report", [
 		{ kind: "user", id: "u1", text: "把上周 Jira 工单按模块汇总成周报", at: Date.now() - 3_600_000 },
 		{ kind: "assistant", id: "a1", text: "已汇总，共 **12** 个工单：\n\n| 模块 | 数量 |\n| --- | --- |\n| 桌面端 | 7 |\n| 手机端 | 5 |\n\n- 桌面端以打包问题为主\n- 手机端集中在配对流程\n\n```bash\njira export --week 38\n```", thinking: "先拉取工单列表，再按 component 分组。", toolCalls: [{ toolCallId: "t1", toolName: "web_search", args: "{\"query\":\"jira week 38\"}", result: "12 issues", durationMs: 820 }], at: Date.now() - 3_590_000 },
-		{ kind: "assistant", id: "a1b", text: "周报已同步到共享文档。", toolCalls: [{ toolCallId: "t1b", toolName: "write_file", args: "{\"path\":\"weekly.md\"}", result: "ok", durationMs: 12 }], at: Date.now() - 3_580_000 },
+		{ kind: "assistant", id: "a1b", text: "周报已同步到共享文档，也写了一份 [weekly.md](./weekly.md)，还有可以直接打开的 [报告页面](report.html)。", toolCalls: [{ toolCallId: "t1b", toolName: "write_file", args: "{\"path\":\"weekly.md\"}", result: "ok", durationMs: 12 }], at: Date.now() - 3_580_000 },
 	]],
 	["s-build", [{ kind: "user", id: "u2", text: "看看为什么打包签名失败", at: Date.now() - 120_000 }]],
 ]);
+
+// ---- Files (ADR-0139) ------------------------------------------------------------------
+// Every session's working directory is one fixture folder, served by the desktop's real
+// file service; its home is the fixture root, so anything outside it is refused.
+const filesHome = join(tmpdir(), "vetta-interop-files");
+const filesCwd = join(filesHome, "session");
+mkdirSync(join(filesCwd, "out"), { recursive: true });
+mkdirSync(join(filesHome, ".ssh"), { recursive: true });
+writeFileSync(join(filesCwd, "weekly.md"), "# 第 38 周周报\n\n共 **12** 个工单。\n\n| 模块 | 数量 |\n| --- | --- |\n| 桌面端 | 7 |\n| 手机端 | 5 |\n");
+writeFileSync(join(filesCwd, "report.html"), "<!doctype html><meta name=viewport content='width=device-width'><h1>周报</h1><p id=n></p><script>document.getElementById('n').textContent = '脚本已运行';</script>");
+writeFileSync(join(filesCwd, "notes.txt"), "Interop notes\n".repeat(200));
+writeFileSync(join(filesCwd, "out", "data.csv"), "module,count\ndesktop,7\nmobile,5\n");
+writeFileSync(join(filesCwd, "out", "big.bin"), Buffer.alloc(1_600_000, 1));
+writeFileSync(join(filesHome, ".ssh", "id_rsa"), "not a key");
+const realFilesHome = realpathSync(filesHome);
+const remoteFiles = new RemoteFiles({
+	fs: {
+		readDirectory: async (dir: string) =>
+			readdirSync(dir, { withFileTypes: true }).map((entry) => {
+				const stats = statSync(join(dir, entry.name));
+				return { name: entry.name, path: join(dir, entry.name), isDirectory: entry.isDirectory(), size: stats.size, modifiedAt: stats.mtimeMs };
+			}),
+		openSource: (target: string) => {
+			if (!target.startsWith(`${realFilesHome}/`)) throw new Error("Path is outside any previewable directory");
+			return {
+				path: target,
+				stat: async () => {
+					try {
+						const stats = statSync(target);
+						return { size: stats.size, isFile: stats.isFile(), modifiedAt: stats.mtimeMs };
+					} catch {
+						return null;
+					}
+				},
+				read: async () => readFileSync(target),
+				readHead: async (count: number) => readFileSync(target).subarray(0, count),
+			};
+		},
+		realpath: async (target: string) => {
+			try {
+				return realpathSync(target);
+			} catch {
+				return target;
+			}
+		},
+		scaleImage: () => undefined,
+	},
+	home: realFilesHome,
+	path,
+});
+const realFilesCwd = realpathSync(filesCwd);
 
 function emitAll(deviceId: string, name: string, payload: unknown, sessionId?: string): void {
 	const journal = journalFor(deviceId);
@@ -332,6 +385,16 @@ function handleRequest(deviceId: string, connection: Connection, request: { requ
 			ok({ aborted: true });
 			emitAll(deviceId, "session.state", { status: "aborted" }, sessionId);
 			return;
+		case "file.list":
+		case "file.stat":
+		case "file.read": {
+			const serve = request.method === "file.list" ? remoteFiles.list : request.method === "file.stat" ? remoteFiles.stat : remoteFiles.read;
+			serve.call(remoteFiles, realFilesCwd, request.payload).then(ok, (error: { code?: string; message?: string }) => {
+				const code = error.code ?? "internal_error";
+				void connection.respond(request.requestId, { success: false, error: { code, message: error.message ?? code, retryable: false } }).catch(() => undefined);
+			});
+			return;
+		}
 		case "diagnostics.snapshot":
 			ok({ deviceName: desktopName, lanEndpoints: [`127.0.0.1:${lanPort}`], relayEnabled: true, runningSessionCount: 1, liveSessionCount: 1 });
 			return;
@@ -347,7 +410,7 @@ function attach(deviceId: string, connection: Connection): void {
 		if (event.type === "remote-request") handleRequest(deviceId, connection, event.request);
 		if (event.type === "state" && event.state === "online") {
 			links.add(connection);
-			emitAll(deviceId, "device.status", { deviceName: desktopName, osLabel: "macOS", lanEndpoints: [`127.0.0.1:${lanPort}`], relayEnabled: true, runningSessionCount: 1 });
+			emitAll(deviceId, "device.status", { deviceName: desktopName, osLabel: "macOS", lanEndpoints: [`127.0.0.1:${lanPort}`], relayEnabled: true, runningSessionCount: 1, fileRead: true });
 		}
 		if (event.type === "state" && (event.state === "closed" || event.state === "failed" || event.state === "reconnecting")) links.delete(connection);
 	});
@@ -440,6 +503,19 @@ const relayOnlyInvite = rc.buildPairingUri({
 	relayBaseUrl: `ws://127.0.0.1:${relayPort}`,
 });
 
-writeFileSync(infoFile, JSON.stringify({ lanPort: boundPort, relayPort, invite, relayOnlyInvite }, null, 2));
+// Its own phone, so reading files through the relay does not share a pairing with the tests above.
+const filesDevice = addDevice();
+await connectRelay(filesDevice.id, filesDevice.mobileSecret);
+const filesInvite = rc.buildPairingUri({
+	version: 2,
+	pairingId: filesDevice.id,
+	mobileSecret: filesDevice.mobileSecret,
+	desktopIdentityKey: rc.toBase64Url(identity.publicKey),
+	desktopName,
+	lanEndpoints: ["127.0.0.1:1"],
+	relayBaseUrl: `ws://127.0.0.1:${relayPort}`,
+});
+
+writeFileSync(infoFile, JSON.stringify({ lanPort: boundPort, relayPort, invite, relayOnlyInvite, filesInvite }, null, 2));
 console.info(`[interop] LAN ws://127.0.0.1:${boundPort}  relay ws://127.0.0.1:${relayPort}`);
 console.info(`[interop] invite ${invite}`);
