@@ -46,6 +46,19 @@ public struct RemoteViewport: Equatable, Sendable {
 		(width / 2 + (x * width - width / 2) * zoom + panX, height / 2 + (y * height - height / 2) * zoom + panY)
 	}
 
+	/// Pans the least needed to keep a desktop point (0…1) at least `margin` inside the
+	/// view, so a cursor moved past the edge of a zoomed picture stays in sight.
+	public func following(x: Double, y: Double, width: Double, height: Double, margin: Double) -> RemoteViewport {
+		guard zoomed, width > 0, height > 0 else { return self }
+		let shown = toView(x: x, y: y, width: width, height: height)
+		var next = self
+		if shown.x < margin { next.panX += margin - shown.x } else if shown.x > width - margin { next.panX -= shown.x - (width - margin) }
+		if shown.y < margin { next.panY += margin - shown.y } else if shown.y > height - margin { next.panY -= shown.y - (height - margin) }
+		next.panX = Self.clampPan(next.panX, width, zoom)
+		next.panY = Self.clampPan(next.panY, height, zoom)
+		return next
+	}
+
 	private static func clampPan(_ value: Double, _ side: Double, _ zoom: Double) -> Double {
 		let limit = (zoom - 1) * side / 2
 		// Plus zero turns a -0 into 0, so an unmoved view equals the default.
@@ -62,6 +75,46 @@ public struct RemoteViewport: Equatable, Sendable {
 		let width = videoWidth * scale
 		let height = videoHeight * scale
 		return ((containerWidth - width) / 2, (containerHeight - height) / 2, width, height)
+	}
+}
+
+/// The phone as a trackpad (ADR-0140): the finger moves the cursor from where it is,
+/// not to where the finger is. Travel is measured against the picture as shown, so a
+/// zoomed picture gives finer control; faster moves go further, as on a Mac trackpad.
+public struct RemoteTrackpad: Equatable, Sendable {
+	/// Where the cursor is on the desktop, 0…1 across each side. The phone only knows
+	/// where it put it: the desktop's own mouse moving it is not seen.
+	public private(set) var cursor: (x: Double, y: Double) = (0.5, 0.5)
+
+	public init() {}
+
+	public static func == (lhs: RemoteTrackpad, rhs: RemoteTrackpad) -> Bool { lhs.cursor == rhs.cursor }
+
+	/// How much further than the finger the cursor goes at `speed` points a second.
+	public static func gain(speed: Double) -> Double {
+		1 + min(max(speed - 200, 0) / 600, 2)
+	}
+
+	/// Moves by the finger's travel over a picture shown `width`×`height` points in size
+	/// (zoom included); returns the move to send.
+	public mutating func move(dx: Double, dy: Double, speed: Double, width: Double, height: Double) -> RemoteInputCommand? {
+		guard width > 0, height > 0, dx != 0 || dy != 0 else { return nil }
+		let gain = Self.gain(speed: speed)
+		cursor = (min(max(cursor.x + dx * gain / width, 0), 1), min(max(cursor.y + dy * gain / height, 0), 1))
+		return .pointerMove(x: cursor.x, y: cursor.y)
+	}
+
+	/// A click where the cursor is, as a tap sends it.
+	public func click(_ button: RemotePointerButton) -> [RemoteInputCommand] {
+		[
+			.pointerMove(x: cursor.x, y: cursor.y),
+			.pointerButton(x: cursor.x, y: cursor.y, button: button, action: .down),
+			.pointerButton(x: cursor.x, y: cursor.y, button: button, action: .up),
+		]
+	}
+
+	public func press(_ action: RemoteKeyAction) -> RemoteInputCommand {
+		.pointerButton(x: cursor.x, y: cursor.y, button: .left, action: action)
 	}
 }
 

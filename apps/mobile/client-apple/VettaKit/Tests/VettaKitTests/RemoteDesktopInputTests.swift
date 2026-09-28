@@ -105,4 +105,48 @@ import Testing
 		latch.tap(.alt, at: 11_000)
 		#expect(latch.state(.alt) == .off, "a slow second tap turns it off")
 	}
+
+	@Test func movesTheCursorFromWhereItIsLikeATrackpad() {
+		var pad = RemoteTrackpad()
+		#expect(pad.cursor == (0.5, 0.5), "starts in the middle")
+		// Slow: the cursor goes as far as the finger across the picture.
+		#expect(pad.move(dx: 40, dy: -20, speed: 100, width: 400, height: 200) == .pointerMove(x: 0.6, y: 0.4))
+		// Fast: further than the finger.
+		_ = pad.move(dx: 40, dy: 0, speed: 800, width: 400, height: 200)
+		#expect(near(pad.cursor.x, 0.8))
+		// Never past the edge.
+		_ = pad.move(dx: 10_000, dy: 10_000, speed: 100, width: 400, height: 200)
+		#expect(pad.cursor == (1, 1))
+		#expect(pad.move(dx: 0, dy: 0, speed: 0, width: 400, height: 200) == nil)
+	}
+
+	@Test func clicksAndDragsWhereTheCursorIsNotWhereTheFingerIs() {
+		var pad = RemoteTrackpad()
+		_ = pad.move(dx: -100, dy: 0, speed: 0, width: 400, height: 200)
+		#expect(pad.click(.right) == [
+			.pointerMove(x: 0.25, y: 0.5),
+			.pointerButton(x: 0.25, y: 0.5, button: .right, action: .down),
+			.pointerButton(x: 0.25, y: 0.5, button: .right, action: .up),
+		])
+		#expect(pad.press(.down) == .pointerButton(x: 0.25, y: 0.5, button: .left, action: .down))
+	}
+
+	@Test func finerControlOnAZoomedPicture() {
+		var plain = RemoteTrackpad()
+		var zoomed = RemoteTrackpad()
+		_ = plain.move(dx: 40, dy: 0, speed: 0, width: 400, height: 200)
+		_ = zoomed.move(dx: 40, dy: 0, speed: 0, width: 1_600, height: 800)
+		#expect(near(zoomed.cursor.x - 0.5, (plain.cursor.x - 0.5) / 4))
+	}
+
+	@Test func pansAZoomedPictureToKeepTheCursorInSight() {
+		let zoomed = RemoteViewport(zoom: 2)
+		let followed = zoomed.following(x: 0.9, y: 0.5, width: 400, height: 200, margin: 20)
+		let shown = followed.toView(x: 0.9, y: 0.5, width: 400, height: 200)
+		#expect(near(shown.x, 380), "just inside the right edge")
+		let edge = zoomed.following(x: 1, y: 0.5, width: 400, height: 200, margin: 20)
+		#expect(near(edge.toView(x: 1, y: 0.5, width: 400, height: 200).x, 400), "never past the picture's own edge")
+		#expect(followed.panY == 0, "no need to move up or down")
+		#expect(RemoteViewport().following(x: 1, y: 1, width: 400, height: 200, margin: 20) == RemoteViewport(), "an unzoomed picture shows everything")
+	}
 }
