@@ -3395,6 +3395,23 @@
         }
       }
     },
+    "remote.details": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connection details"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "连接细节"
+          }
+        }
+      }
+    },
     "remote.framesPerSecond %lld": {
       "extractionState": "manual",
       "localizations": {

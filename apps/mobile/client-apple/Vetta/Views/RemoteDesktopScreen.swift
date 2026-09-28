@@ -136,6 +136,21 @@ struct RemoteDesktopScreen: View {
 					.foregroundStyle(.white.opacity(0.75))
 					.multilineTextAlignment(.center)
 					.accessibilityIdentifier("remote.unavailable")
+				// What the direct connection got through so far, to tell where it stops.
+				if waitingForDirect, let trace = target.flatMap({ sessions.latest(for: $0)?.trace }), !trace.isEmpty {
+					VStack(alignment: .leading, spacing: 2) {
+						Text(L10n.Remote.details)
+							.font(.caption2.weight(.semibold))
+						ForEach(Array(trace.enumerated()), id: \.offset) { _, step in
+							Text(step)
+						}
+					}
+					.font(.caption2.monospaced())
+					.foregroundStyle(.white.opacity(0.5))
+					.frame(maxWidth: .infinity, alignment: .leading)
+					.padding(.top, 8)
+					.accessibilityIdentifier("remote.trace")
+				}
 			}
 			.padding(32)
 			.frame(maxWidth: .infinity, maxHeight: .infinity)

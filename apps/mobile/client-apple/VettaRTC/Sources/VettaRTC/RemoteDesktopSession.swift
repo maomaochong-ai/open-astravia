@@ -29,6 +29,9 @@ public final class RemoteDesktopSession {
 	public private(set) var videoTrack: RTCVideoTrack?
 	/// How the picture travels right now, refreshed every second while connected.
 	public private(set) var stats: RemoteStreamStats?
+	/// The last steps of setting up the connection, newest last, for a page stuck connecting.
+	/// Technical names only: never SDP, candidates or the pairing secret.
+	public private(set) var trace: [String] = []
 
 	@ObservationIgnored private let sessionId: String
 	@ObservationIgnored private var peer: RTCPeerConnection?
@@ -63,6 +66,7 @@ public final class RemoteDesktopSession {
 	func start() {
 		guard phase == .idle else { return }
 		phase = .connecting
+		note("signaling connecting")
 		let (url, token) = RemoteDesktopProtocol.splitTarget(target)
 		guard let socketUrl = URL(string: url), !sessionId.isEmpty else {
 			stop(reason: "remote desktop target is invalid")
@@ -94,6 +98,7 @@ public final class RemoteDesktopSession {
 	/// instead of waiting for ICE to time out. A new session takes over from here.
 	public func stop(reason: String = "closed") {
 		guard phase != .stopped else { return }
+		note("stopped: \(reason)")
 		phase = .stopped
 		if socket != nil, !sessionId.isEmpty {
 			sendSignal(.end(sessionId: sessionId, reason: .peerClosed))
@@ -176,7 +181,11 @@ public final class RemoteDesktopSession {
 			case .peerReady, .answer:
 				break
 			case let .offer(id, sdp):
-				guard id == sessionId else { continue }
+				guard id == sessionId else {
+					note("offer for another session ignored")
+					continue
+				}
+				note("offer received")
 				answer(sdp)
 			case let .ice(id, candidate, sdpMid, sdpMLineIndex):
 				guard id == sessionId else { continue }
@@ -204,6 +213,7 @@ public final class RemoteDesktopSession {
 				try await peer.setLocalDescription(answer)
 				guard self.peer === peer else { return }
 				sendSignal(.answer(sessionId: sessionId, sdp: answer.sdp))
+				note("answer sent")
 				log.info("remote desktop answer sent")
 			} catch {
 				stop(reason: "WebRTC negotiation failed: \(error.localizedDescription)")
@@ -223,6 +233,7 @@ public final class RemoteDesktopSession {
 	}
 
 	fileprivate func peerChanged(_ state: RTCIceConnectionState) {
+		note("ICE \(Self.name(state))")
 		switch state {
 		case .connected, .completed:
 			if phase == .connecting {
@@ -237,6 +248,7 @@ public final class RemoteDesktopSession {
 	}
 
 	fileprivate func peerOpened(_ channel: RTCDataChannel) {
+		note("channel \(channel.label) open")
 		switch channel.label {
 		case RemoteDesktopProtocol.inputChannel:
 			inputChannel = channel
@@ -252,6 +264,10 @@ public final class RemoteDesktopSession {
 		guard let video = track as? RTCVideoTrack else { return }
 		videoTrack = video
 		log.info("remote desktop video track attached")
+	}
+
+	fileprivate func signalingOpened() {
+		note("signaling open")
 	}
 
 	fileprivate func signalingClosed(_ reason: String) {
@@ -306,6 +322,26 @@ public final class RemoteDesktopSession {
 		stats = next
 	}
 
+	private func note(_ step: String) {
+		let time = Date().formatted(.dateTime.hour(.twoDigits(amPM: .omitted)).minute(.twoDigits).second(.twoDigits))
+		trace = Array((trace + ["\(time) \(step)"]).suffix(8))
+		log.info("remote desktop step: \(step, privacy: .public)")
+	}
+
+	private static func name(_ state: RTCIceConnectionState) -> String {
+		switch state {
+		case .new: "new"
+		case .checking: "checking"
+		case .connected: "connected"
+		case .completed: "completed"
+		case .failed: "failed"
+		case .disconnected: "disconnected"
+		case .closed: "closed"
+		case .count: "count"
+		@unknown default: "unknown"
+		}
+	}
+
 	private static func sessionId(in target: String) -> String {
 		guard let range = target.range(of: #"/v2/desktop/([A-Za-z0-9_-]{16,128})/"#, options: .regularExpression) else { return "" }
 		return target[range].split(separator: "/").dropFirst(2).first.map(String.init) ?? ""
@@ -351,6 +387,10 @@ private final class PeerDelegate: NSObject, RTCPeerConnectionDelegate, URLSessio
 	nonisolated func peerConnection(_ peerConnection: RTCPeerConnection, didStartReceivingOn transceiver: RTCRtpTransceiver) {
 		guard let track = transceiver.receiver.track else { return }
 		onMain { $0.peerReceived(track) }
+	}
+
+	nonisolated func urlSession(_ session: URLSession, webSocketTask: URLSessionWebSocketTask, didOpenWithProtocol protocol: String?) {
+		onMain { $0.signalingOpened() }
 	}
 
 	nonisolated func urlSession(_ session: URLSession, webSocketTask: URLSessionWebSocketTask, didCloseWith closeCode: URLSessionWebSocketTask.CloseCode, reason: Data?) {

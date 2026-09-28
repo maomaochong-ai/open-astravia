@@ -18,6 +18,12 @@ public final class RemoteDesktopSessions {
 		sessions[target].flatMap { $0.isStopped ? nil : $0 }
 	}
 
+	/// The session most recently opened for `target`, stopped or not: what the page shows
+	/// while it waits for a connection.
+	public func latest(for target: String) -> RemoteDesktopSession? {
+		sessions[target]
+	}
+
 	/// For `ChannelManagerOptions.createP2pTransport`: a new session's control channel.
 	/// Each P2P attempt starts afresh; a session left over from an earlier one is ended.
 	public func transport(for target: String) -> RemoteTransport {
