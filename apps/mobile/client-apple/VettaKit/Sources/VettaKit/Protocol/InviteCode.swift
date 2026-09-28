@@ -63,6 +63,39 @@ public enum InviteCode {
 		password.count == passwordLength && password.allSatisfy { $0.isASCII && $0.isNumber }
 	}
 
+	/// What a desktop's pairing QR code holds once its connection code is on the relay
+	/// (ADR-0138): the code and password instead of the whole pairing link, so the code
+	/// is sparse enough to scan at a glance. The relay is named only when it is not the
+	/// default one.
+	public struct QR: Equatable, Sendable {
+		public var code: String
+		public var password: String
+		public var relayBaseUrl: String?
+	}
+
+	private static let qrPrefix = "VETTA://PAIR/"
+
+	/// The code, password and relay in a scanned QR code; nil for anything else, such as
+	/// a whole pairing link. Mirrors `parseInviteQr` in `@vetta/remote-control`.
+	public static func parseQR(_ text: String) -> QR? {
+		let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+		guard trimmed.uppercased().hasPrefix(qrPrefix) else { return nil }
+		let parts = trimmed.dropFirst(qrPrefix.count).split(separator: "?", maxSplits: 1, omittingEmptySubsequences: false)
+		let path = parts[0].split(separator: "/", omittingEmptySubsequences: false)
+		guard path.count == 2, let code = normalize(String(path[0])), isValidPassword(String(path[1])) else { return nil }
+		var qr = QR(code: code, password: String(path[1]))
+		if parts.count == 2 {
+			for item in parts[1].split(separator: "&") where item.hasPrefix("relay=") {
+				guard let relay = item.dropFirst("relay=".count).removingPercentEncoding,
+				      relay.lowercased().hasPrefix("ws://") || relay.lowercased().hasPrefix("wss://"),
+				      let normalized = PairingURI.normalizeRelayBaseUrl(relay)
+				else { return nil }
+				qr.relayBaseUrl = normalized
+			}
+		}
+		return qr
+	}
+
 	/// The mailbox's name on the relay; the code itself never leaves the two ends.
 	public static func boxId(_ code: String) -> String {
 		Base64URL.encode(Data(SHA256.hash(data: Data("\(boxIdPrefix)\(code)".utf8))))

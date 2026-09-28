@@ -155,7 +155,8 @@ struct RootView: View {
 		}
 		#endif
 		.onOpenURL { url in
-			guard url.scheme == PairingURI.scheme, url.host == PairingURI.host else { return }
+			// Case-blind: a code-only QR code is upper case (ADR-0138).
+			guard url.scheme?.lowercased() == PairingURI.scheme, url.host?.lowercased() == PairingURI.host else { return }
 			Task {
 				if await model.pairWithCode(url.absoluteString) {
 					router.showPairing = false

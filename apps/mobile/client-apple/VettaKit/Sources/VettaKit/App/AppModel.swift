@@ -145,7 +145,12 @@ public final class AppModel {
 
 	// MARK: Pairing
 
+	/// Pairs with what a QR code or link holds: a whole pairing link, or just a connection
+	/// code and password (ADR-0138), which is then looked up on the relay.
 	public func pairWithCode(_ text: String) async -> Bool {
+		if let qr = InviteCode.parseQR(text) {
+			return await pairWithInvite(code: qr.code, password: qr.password, relayBaseUrl: qr.relayBaseUrl)
+		}
 		let flow = startFlow()
 		guard let record = await flow.pairWithCode(text) else { return false }
 		return finishPairing(record)

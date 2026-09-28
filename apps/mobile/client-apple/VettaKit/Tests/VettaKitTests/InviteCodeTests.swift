@@ -28,6 +28,18 @@ struct InviteCodeTests {
 		#expect(InviteCode.boxUrl(relayBaseUrl: "ws://127.0.0.1:8787", code: "K7Q29MXD") == "http://127.0.0.1:8787/v2/invite/\(box)")
 	}
 
+	@Test func readsTheQRCodeTheDesktopShows() {
+		// Pinned in packages/remote-control/test/invite-code.test.ts.
+		#expect(InviteCode.parseQR("VETTA://PAIR/K7Q29MXD/482913") == InviteCode.QR(code: "K7Q29MXD", password: "482913"))
+		#expect(InviteCode.parseQR("VETTA://PAIR/K7Q29MXD/482913?relay=wss%3A%2F%2Frelay.mine.test") == InviteCode.QR(code: "K7Q29MXD", password: "482913", relayBaseUrl: "wss://relay.mine.test"))
+		#expect(InviteCode.parseQR(" vetta://pair/k7q2-9mxd/482913 ") == InviteCode.QR(code: "K7Q29MXD", password: "482913"))
+		#expect(InviteCode.parseQR("vetta://pair?v=2&id=abc") == nil, "a whole pairing link is left to PairingURI")
+		#expect(InviteCode.parseQR("VETTA://PAIR/K7Q29MXD") == nil)
+		#expect(InviteCode.parseQR("VETTA://PAIR/K7Q29MXD/48291") == nil)
+		#expect(InviteCode.parseQR("VETTA://PAIR/K7Q29MXD/482913/extra") == nil)
+		#expect(InviteCode.parseQR("VETTA://PAIR/K7Q29MXD/482913?relay=https%3A%2F%2Fevil.test") == nil)
+	}
+
 	@Test func fillsTheBoxesFromWhateverWasTypedOrPasted() {
 		#expect(InviteCode.typedCode("k7q") == "K7Q")
 		#expect(InviteCode.typedCode("K7Q2-9MXD") == "K7Q29MXD", "a pasted code keeps its dash out of the boxes")
@@ -83,6 +95,25 @@ struct InviteCodeTests {
 		#expect(model.paired)
 		#expect(model.desktop?.desktopName == "MacBook Pro")
 		#expect(asked.last == InviteCode.boxUrl(relayBaseUrl: "wss://relay.example", code: "K7Q29MXD"))
+		model.unpair()
+	}
+
+	@Test func pairsFromAScannedCodeOnlyQRCode() async throws {
+		let desktop = FakeDesktop()
+		desktop.onHello = { _ in .approve }
+		let uri = PairingURI.build(RemotePairingInvite(pairingId: "pair-1234567890abcdef", mobileSecret: "secret-1234567890abcdef", desktopIdentityKey: desktop.identityKey, desktopName: "MacBook Pro", lanEndpoints: ["192.168.1.20:43117"]))
+		let envelope = try InviteCode.seal(uri, code: "K7Q29MXD", password: "482913", nonce: nonce)
+		let body = Data(#"{"envelope":{"v":1,"nonce":"\#(envelope.nonce)","ciphertext":"\#(envelope.ciphertext)"}}"#.utf8)
+		var asked: [String] = []
+		var platform = AppPlatform.memory(createTransport: desktop.createTransport)
+		platform.inviteLookup = InviteCodeLookup { url in asked.append(url); return (200, body) }
+		let model = AppModel(platform: platform)
+		model.start()
+
+		// What the scanner reads goes through the same entry as a whole pairing link.
+		#expect(await model.pairWithCode("VETTA://PAIR/K7Q29MXD/482913"))
+		#expect(model.paired)
+		#expect(asked == [InviteCode.boxUrl(relayBaseUrl: InviteCode.defaultRelayBaseUrl, code: "K7Q29MXD")])
 		model.unpair()
 	}
 
