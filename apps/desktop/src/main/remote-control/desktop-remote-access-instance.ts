@@ -22,6 +22,7 @@ import { desktopDeviceId, desktopDisplayName, desktopHardware, formatOsLabel } f
 import type { DesktopRemoteDesktopController } from "./desktop-remote-access-manager.js";
 import { DesktopRemoteAccessManager } from "./desktop-remote-access-manager.js";
 import { DesktopRemoteMirror } from "./desktop-remote-mirror.js";
+import { readMacCursor } from "./mac-cursor.js";
 import { RemoteDeviceStore } from "./remote-device-store.js";
 import { RemoteFiles } from "./remote-files.js";
 import { scaleImageForPhone } from "./remote-image-scale.js";
@@ -52,6 +53,7 @@ export function getDesktopRemoteAccessManager(
 		osLabel: formatOsLabel(),
 		remoteDesktop,
 		screenPermissions: desktopScreenPermissions,
+		readCursor: process.platform === "darwin" ? readMacCursor : undefined,
 		runningSessionCount: () => getSharedRuntime().getRunningSessionPaths().length,
 		notifications: {
 			deviceConnected: ({ name }) => void notify({ type: "remote-device-connected", deviceName: name }),

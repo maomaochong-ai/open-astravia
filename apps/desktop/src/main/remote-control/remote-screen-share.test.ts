@@ -176,6 +176,33 @@ describe("RemoteScreenShare", () => {
 		expect(phone.calls).toEqual([true]);
 	});
 
+	it("sends the pointer's shape to a phone that draws it, and again only when it changes", async () => {
+		const phone = fakeHost();
+		const shapes: string[] = [];
+		let shown = "arrow";
+		const screenShare = new RemoteScreenShare({
+			permissions: { screenAllowed: () => true, inputAllowed: () => true },
+			hostFor: () => phone.host,
+			emit: () => undefined,
+			notifyMissing: () => undefined,
+			readCursor: () => ({ image: shown, width: 28, height: 40, hotspotX: 5, hotspotY: 5, screenWidth: 1512 }),
+			emitCursor: (deviceId, cursor) => shapes.push(`${deviceId}:${cursor.image}`),
+			cursorPollMs: 5,
+		});
+		await screenShare.subscribe("iphone", true, true);
+		await screenShare.subscribe("pixel", true);
+		expect(shapes).toEqual(["iphone:arrow"]);
+		await new Promise((resolve) => setTimeout(resolve, 20));
+		expect(shapes).toEqual(["iphone:arrow"]);
+		shown = "ibeam";
+		await vi.waitFor(() => expect(shapes).toEqual(["iphone:arrow", "iphone:ibeam"]));
+		await screenShare.subscribe("iphone", false);
+		shown = "hand";
+		await new Promise((resolve) => setTimeout(resolve, 20));
+		expect(shapes).toHaveLength(2);
+		screenShare.stop();
+	});
+
 	it("says input is unsupported where the desktop cannot inject it", async () => {
 		const phone = fakeHost({ input: false });
 		const { screenShare } = share(new Map([["phone", phone.host]]));

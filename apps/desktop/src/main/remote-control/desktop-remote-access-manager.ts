@@ -1,3 +1,4 @@
+import type { RemoteScreenCursor } from "@vetta/remote-control";
 import {
 	buildInviteQr,
 	buildPairingUri,
@@ -130,6 +131,8 @@ export interface DesktopRemoteAccessManagerOptions {
 	readonly screenPermissions?: ScreenSharePermissions;
 	/** Test seam: how often a missing permission is checked again. */
 	readonly screenPermissionPollMs?: number;
+	/** The pointer the desktop shows now, for phones that draw it; left out where it cannot be read. */
+	readonly readCursor?: () => RemoteScreenCursor | undefined;
 	readonly deviceId: string;
 	readonly deviceName: string;
 	readonly osLabel?: string;
@@ -239,6 +242,8 @@ export class DesktopRemoteAccessManager {
 					...missing,
 				}),
 			pollMs: options.screenPermissionPollMs,
+			readCursor: options.readCursor,
+			emitCursor: (deviceId, cursor) => void this.hub.emit(deviceId, "screen.cursor", cursor).catch(() => undefined),
 		});
 	}
 
@@ -909,14 +914,15 @@ export class DesktopRemoteAccessManager {
 	}
 
 	private async subscribeScreen(deviceId: string, payload: unknown): Promise<unknown> {
-		const active =
-			typeof payload === "object" && payload !== null ? (payload as { active?: unknown }).active : undefined;
+		const fields =
+			typeof payload === "object" && payload !== null ? (payload as { active?: unknown; cursor?: unknown }) : {};
+		const active = fields.active;
 		if (typeof active !== "boolean") throw new RemoteOperationError("invalid_frame", "screen.subscribe needs active");
 		const device = this.config.devices.find((entry) => entry.id === deviceId);
 		if (active && device?.desktopControl === false) {
 			throw new RemoteOperationError("forbidden", "This desktop does not share its screen with this phone");
 		}
-		return this.screenShare.subscribe(deviceId, active);
+		return this.screenShare.subscribe(deviceId, active, fields.cursor === true);
 	}
 
 	private requireMirror(): DesktopRemoteMirror {

@@ -1,4 +1,4 @@
-import type { RemoteInputState, RemoteScreenStatus } from "@vetta/remote-control";
+import type { RemoteInputState, RemoteScreenCursor, RemoteScreenStatus } from "@vetta/remote-control";
 
 /** The part of a desktop screen host the subscription needs. */
 export interface ScreenShareHost {
@@ -25,6 +25,12 @@ export interface RemoteScreenShareOptions {
 	readonly notifyMissing: (deviceId: string, missing: { readonly screen: boolean; readonly input: boolean }) => void;
 	/** How often a missing permission is checked again while a phone waits for it. */
 	readonly pollMs?: number;
+	/** The pointer the desktop shows now; left out where it cannot be read. */
+	readonly readCursor?: () => RemoteScreenCursor | undefined;
+	/** Sends `screen.cursor` to one phone. */
+	readonly emitCursor?: (deviceId: string, cursor: RemoteScreenCursor) => void;
+	/** How often the pointer's shape is checked while a phone draws it. */
+	readonly cursorPollMs?: number;
 }
 
 /**
@@ -38,12 +44,16 @@ export class RemoteScreenShare {
 	private readonly notified = new Set<string>();
 	private poll: ReturnType<typeof setInterval> | undefined;
 	private readonly pollMs: number;
+	/** Phones drawing the pointer themselves, with the image they last got. */
+	private readonly cursorWatchers = new Map<string, string | undefined>();
+	private cursorPoll: ReturnType<typeof setInterval> | undefined;
 
 	constructor(private readonly options: RemoteScreenShareOptions) {
 		this.pollMs = options.pollMs ?? 3_000;
 	}
 
-	async subscribe(deviceId: string, active: boolean): Promise<RemoteScreenStatus> {
+	/** `cursor`: the phone draws the pointer itself and is sent its shape as it changes. */
+	async subscribe(deviceId: string, active: boolean, cursor = false): Promise<RemoteScreenStatus> {
 		if (!active) {
 			const host = this.options.hostFor(deviceId);
 			this.release(deviceId);
@@ -63,6 +73,8 @@ export class RemoteScreenShare {
 			this.options.notifyMissing(deviceId, missing);
 		}
 		this.schedulePoll();
+		if (cursor) this.watchCursor(deviceId);
+		else this.cursorWatchers.delete(deviceId);
 		return status;
 	}
 
@@ -84,12 +96,42 @@ export class RemoteScreenShare {
 		this.subscribed.clear();
 		this.notified.clear();
 		this.stopPoll();
+		this.cursorWatchers.clear();
+		this.stopCursorPoll();
 	}
 
 	private release(deviceId: string): void {
 		this.subscribed.delete(deviceId);
 		this.notified.delete(deviceId);
 		if (this.subscribed.size === 0) this.stopPoll();
+		this.cursorWatchers.delete(deviceId);
+		if (this.cursorWatchers.size === 0) this.stopCursorPoll();
+	}
+
+	/** Sends the pointer now, then again each time its shape changes. */
+	private watchCursor(deviceId: string): void {
+		const { readCursor, emitCursor } = this.options;
+		if (!readCursor || !emitCursor) return;
+		this.cursorWatchers.set(deviceId, undefined);
+		this.sendCursor(readCursor());
+		if (this.cursorPoll) return;
+		this.cursorPoll = setInterval(() => this.sendCursor(readCursor()), this.options.cursorPollMs ?? 100);
+		this.cursorPoll.unref?.();
+	}
+
+	private sendCursor(cursor: RemoteScreenCursor | undefined): void {
+		if (!cursor) return;
+		for (const [deviceId, sent] of this.cursorWatchers) {
+			if (sent === cursor.image) continue;
+			this.cursorWatchers.set(deviceId, cursor.image);
+			this.options.emitCursor?.(deviceId, cursor);
+		}
+	}
+
+	private stopCursorPoll(): void {
+		if (!this.cursorPoll) return;
+		clearInterval(this.cursorPoll);
+		this.cursorPoll = undefined;
 	}
 
 	private watchedBy(host: ScreenShareHost): boolean {
