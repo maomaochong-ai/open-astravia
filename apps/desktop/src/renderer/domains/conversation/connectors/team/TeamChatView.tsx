@@ -2,10 +2,16 @@ import { DefaultChatView, ChatComposer } from "../../components/chat-view/Defaul
 import { MessageList } from "../../components/MessageList";
 import { createActivityWorkspace } from "@shared/workspace/activity-workspace";
 import type { ActivityWorkspace } from "@shared/workspace/activity-workspace";
+import type { WorkSurfaceScope } from "@shared/workspace/work-surface";
 import { memo, useMemo } from "react";
 import { TeamComposerConnector } from "./TeamComposerConnector";
 import { TeamMemberRoster } from "./TeamMemberRoster";
-import type { TeamChatActions, TeamChatViewModel, TeamComposerViewModel } from "./teamChatModel";
+import {
+	isTeamChatStreaming,
+	type TeamChatActions,
+	type TeamChatViewModel,
+	type TeamComposerViewModel,
+} from "./teamChatModel";
 
 export interface TeamChatViewProps {
 	readonly model: TeamChatViewModel;
@@ -13,6 +19,11 @@ export interface TeamChatViewProps {
 	readonly onOpenMember: (memberId: string) => void;
 	readonly onBackToTeam: () => void;
 	readonly onOpenSettings: () => void;
+	readonly workSurface: WorkSurfaceScope | null;
+	readonly exportState?: {
+		readonly title: string;
+		readonly onFinished: () => void;
+	};
 }
 
 const TeamTimelinePane = memo(function TeamTimelinePane({
@@ -77,11 +88,13 @@ const TeamRoster = memo(function TeamRoster({
 const TeamComposer = memo(function TeamComposer({
 	model,
 	actions,
+	workSurface,
 }: {
 	readonly model: TeamComposerViewModel;
 	readonly actions: TeamChatActions;
+	readonly workSurface: WorkSurfaceScope | null;
 }): JSX.Element {
-	return <TeamComposerConnector model={model} actions={actions} />;
+	return <TeamComposerConnector model={model} actions={actions} workSurface={workSurface} />;
 });
 
 export function TeamChatView({
@@ -90,6 +103,8 @@ export function TeamChatView({
 	onOpenMember,
 	onBackToTeam,
 	onOpenSettings,
+	workSurface,
+	exportState,
 }: TeamChatViewProps): JSX.Element {
 	const workspace = useMemo(
 		() => model.workspace ?? createActivityWorkspace(`agent-team:${model.feedKey}`, null),
@@ -146,15 +161,15 @@ export function TeamChatView({
 			workspace,
 		],
 	);
-	const isStreaming = model.memberViewId
-		? model.feedItems.some((item) => item.kind === "agent" && item.phase === "streaming")
-		: model.status === "sending" || model.status === "streaming" || model.status === "cancelling";
+	const isStreaming = isTeamChatStreaming(model);
 
 	return (
 		<DefaultChatView
 			messages={model.feedItems}
 			workspace={workspace}
+			workSurface={workSurface}
 			activity={activity}
+			exportState={exportState ? { ...exportState, participants: model.members } : undefined}
 			subHeader={
 				<TeamRoster
 					model={model}
@@ -175,7 +190,7 @@ export function TeamChatView({
 			/>
 			{model.memberViewId ? null : (
 				<ChatComposer>
-					<TeamComposer model={composerModel} actions={actions} />
+					<TeamComposer model={composerModel} actions={actions} workSurface={workSurface} />
 				</ChatComposer>
 			)}
 		</DefaultChatView>

@@ -3,13 +3,10 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
-	activeInputDraftKeyAtom,
-	activeSessionAtom,
-	bottomPanelStateAtom,
+	bottomPanelStateAtomFamily,
 	collectBottomPanelLeaves,
 	confirmDialogAtom,
-	currentScenarioAtom,
-	dispatchBottomPanelAtom,
+	dispatchBottomPanelAtomFamily,
 	pluginBottomPanelsAtom,
 	type RegisteredBottomPanel,
 } from "@shared/store/atoms";
@@ -69,15 +66,15 @@ function DemoPanelBody(): JSX.Element {
 
 /** 把「右上角按钮」和「折叠 pill」这两个入口一起挂上，测的是用户真实走的路径。 */
 function Harness(): JSX.Element {
-	const state = useAtomValue(bottomPanelStateAtom);
-	const dispatch = useSetAtom(dispatchBottomPanelAtom);
+	const state = useAtomValue(bottomPanelStateAtomFamily(SCOPE.key));
+	const dispatch = useSetAtom(dispatchBottomPanelAtomFamily(SCOPE.key));
 	const confirm = useAtomValue(confirmDialogAtom);
 	return (
 		<>
 			<button type="button" onClick={() => dispatch({ type: "set-collapsed", collapsed: !state.collapsed })}>
 				toggle-bottom-panel
 			</button>
-			<BottomPanelHost />
+			<BottomPanelHost scope={SCOPE} />
 			{confirm ? (
 				<div role="dialog" aria-label={confirm.title}>
 					<p>{confirm.message}</p>
@@ -93,11 +90,10 @@ function Harness(): JSX.Element {
 	);
 }
 
+const SCOPE = { key: "/session.json", cwd: "/workspace", scenario: "project" as const };
+
 function setup(panels: RegisteredBottomPanel[] = [makePanel()]) {
 	const store = createStore();
-	store.set(activeSessionAtom, { cwd: "/workspace", sessionPath: "/session.json", runtimeId: "session" });
-	store.set(activeInputDraftKeyAtom, "/session.json");
-	store.set(currentScenarioAtom, "project");
 	store.set(pluginBottomPanelsAtom, panels);
 	const view = render(
 		<Provider store={store}>
@@ -108,7 +104,7 @@ function setup(panels: RegisteredBottomPanel[] = [makePanel()]) {
 }
 
 function leafCount(store: ReturnType<typeof createStore>): number {
-	return collectBottomPanelLeaves(store.get(bottomPanelStateAtom).root).length;
+	return collectBottomPanelLeaves(store.get(bottomPanelStateAtomFamily(SCOPE.key)).root).length;
 }
 
 /**
@@ -159,7 +155,7 @@ describe("底部面板：常见使用流程", () => {
 		await addFromMenu(user);
 
 		expect(screen.getAllByRole("tab")).toHaveLength(2);
-		const tabs = store.get(bottomPanelStateAtom).root;
+		const tabs = store.get(bottomPanelStateAtomFamily(SCOPE.key)).root;
 		expect(collectBottomPanelLeaves(tabs)[0]?.tabs).toHaveLength(2);
 	});
 
@@ -197,13 +193,13 @@ describe("底部面板：常见使用流程", () => {
 		await user.click(screen.getByRole("button", { name: /bottomPanel.closeTab/ }));
 		const dialog = await screen.findByRole("dialog", { name: "还在跑" });
 		await user.click(screen.getByRole("button", { name: "cancel" }));
-		expect(store.get(bottomPanelStateAtom).root).not.toBeNull();
+		expect(store.get(bottomPanelStateAtomFamily(SCOPE.key)).root).not.toBeNull();
 		await waitFor(() => expect(dialog.isConnected).toBe(false));
 
 		await user.click(screen.getByRole("button", { name: /bottomPanel.closeTab/ }));
 		await user.click(await screen.findByRole("button", { name: "仍然关闭" }));
 
-		await waitFor(() => expect(store.get(bottomPanelStateAtom).root).toBeNull());
+		await waitFor(() => expect(store.get(bottomPanelStateAtomFamily(SCOPE.key)).root).toBeNull());
 	});
 
 	it("关掉最后一个 tab 后面板自动收起，再点按钮回到空态", async () => {
@@ -214,7 +210,7 @@ describe("底部面板：常见使用流程", () => {
 		await user.click(screen.getByRole("button", { name: /bottomPanel.closeTab/ }));
 
 		await waitFor(() => expect(document.querySelector("[data-bottom-panel-root]")).toBeNull());
-		expect(store.get(bottomPanelStateAtom).collapsed).toBe(true);
+		expect(store.get(bottomPanelStateAtomFamily(SCOPE.key)).collapsed).toBe(true);
 
 		await user.click(screen.getByRole("button", { name: "toggle-bottom-panel" }));
 		expect(screen.getByText("bottomPanel.empty.title")).not.toBeNull();
@@ -224,7 +220,7 @@ describe("底部面板：常见使用流程", () => {
 		const { user, store } = setup();
 		await user.click(screen.getByRole("button", { name: "toggle-bottom-panel" }));
 		await addFromEmptyState(user);
-		const tabId = collectBottomPanelLeaves(store.get(bottomPanelStateAtom).root)[0]?.tabs[0]?.tabId ?? "";
+		const tabId = collectBottomPanelLeaves(store.get(bottomPanelStateAtomFamily(SCOPE.key)).root)[0]?.tabs[0]?.tabId ?? "";
 		expect(mountCounts[tabId]).toBe(1);
 
 		await user.click(screen.getByRole("button", { name: "toggle-bottom-panel" }));
@@ -232,7 +228,7 @@ describe("底部面板：常见使用流程", () => {
 		expect(document.querySelector<HTMLElement>("[data-bottom-panel-root]")?.hidden).toBe(true);
 		expect(screen.queryByRole("tab", { name: /日志/ })).toBeNull();
 		expect(screen.getByRole("tab", { name: /日志/, hidden: true })).not.toBeNull();
-		expect(store.get(bottomPanelStateAtom).root).not.toBeNull();
+		expect(store.get(bottomPanelStateAtomFamily(SCOPE.key)).root).not.toBeNull();
 
 		await user.click(screen.getByRole("button", { name: "toggle-bottom-panel" }));
 		// 折叠只是把面板藏起来：内容组件一旦重挂，里面的进程和滚动缓冲就全丢了。

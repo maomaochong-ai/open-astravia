@@ -175,6 +175,7 @@ export function NewSessionPageView({
 								<TeamComposerConnector
 									model={teamComposer.model}
 									actions={teamComposer.actions}
+									workSurface={null}
 									onExpandedChange={onCommandPanelExpandedChange}
 								/>
 							) : (

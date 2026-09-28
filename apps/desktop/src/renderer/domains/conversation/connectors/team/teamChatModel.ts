@@ -121,6 +121,12 @@ export interface TeamChatActions {
 	readonly setExecutionMode?: (mode: SessionExecutionMode) => Promise<void>;
 }
 
+export function isTeamChatStreaming(model: Pick<TeamChatViewModel, "feedItems" | "memberViewId" | "status">): boolean {
+	return model.memberViewId
+		? model.feedItems.some((item) => item.kind === "agent" && item.phase === "streaming")
+		: model.status === "sending" || model.status === "streaming" || model.status === "cancelling";
+}
+
 export interface TeamAttachmentViewModel {
 	readonly path: string;
 	readonly name: string;

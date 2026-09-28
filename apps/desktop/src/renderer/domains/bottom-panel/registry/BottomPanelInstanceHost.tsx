@@ -1,4 +1,4 @@
-import { dispatchBottomPanelAtom } from "@shared/store/atoms";
+import { dispatchBottomPanelAtomFamily } from "@shared/store/atoms";
 import { useSetAtom } from "jotai";
 import { Component, type ErrorInfo, type JSX, type ReactNode, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -41,6 +41,7 @@ class BottomPanelErrorBoundary extends Component<BoundaryProps, BoundaryState> {
 
 export interface BottomPanelInstanceHostProps {
 	readonly definition: BottomPanelComponentDefinition;
+	readonly scopeKey: string;
 	readonly tabId: string;
 	readonly cwd: string | null;
 	readonly active: boolean;
@@ -49,6 +50,7 @@ export interface BottomPanelInstanceHostProps {
 /** 每个实例一层 bridge：注入 handle、隔离渲染错误、卸载时清掉实例的运行时状态。 */
 export function BottomPanelInstanceHost({
 	definition,
+	scopeKey,
 	tabId,
 	cwd,
 	active,
@@ -56,7 +58,7 @@ export function BottomPanelInstanceHost({
 	const { t } = useTranslation("chat");
 	const setMeta = useSetAtom(setBottomPanelMetaAtom);
 	const setCloseGuard = useSetAtom(setBottomPanelCloseGuardAtom);
-	const dispatch = useSetAtom(dispatchBottomPanelAtom);
+	const dispatch = useSetAtom(dispatchBottomPanelAtomFamily(scopeKey));
 
 	const handle = useMemo<BottomPanelHandle>(
 		() => ({

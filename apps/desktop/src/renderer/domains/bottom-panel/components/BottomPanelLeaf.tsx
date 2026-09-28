@@ -14,6 +14,7 @@ export interface BottomPanelLeafProps {
 	readonly leaf: BottomPanelLeafState;
 	readonly state: BottomPanelSessionState;
 	readonly definitions: readonly BottomPanelComponentDefinition[];
+	readonly scopeKey: string;
 	readonly cwd: string | null;
 	readonly focused: boolean;
 	readonly panelCollapsed: boolean;
@@ -36,6 +37,7 @@ export function BottomPanelLeaf({
 	leaf,
 	state,
 	definitions,
+	scopeKey,
 	cwd,
 	focused,
 	panelCollapsed,
@@ -115,6 +117,7 @@ export function BottomPanelLeaf({
 						>
 							<BottomPanelInstanceHost
 								definition={entry.definition}
+								scopeKey={scopeKey}
 								tabId={entry.tabId}
 								cwd={cwd}
 								active={active && !panelCollapsed}

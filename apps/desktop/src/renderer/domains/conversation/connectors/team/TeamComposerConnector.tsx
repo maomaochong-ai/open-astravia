@@ -8,6 +8,8 @@ import { useAtom, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { publishPluginTurnStart } from "@domains/plugins/runtime/plugin-host-bridge";
+import { useBottomPanelPills } from "@domains/bottom-panel/hooks/useBottomPanelPills";
+import type { WorkSurfaceScope } from "@shared/workspace/work-surface";
 import { InputBar } from "../../components/InputBar";
 import { ContextRing } from "../../components/ContextRing";
 import type { AtPanelItem } from "../../components/AtPanel";
@@ -69,10 +71,12 @@ function projectTeamDraftSegments(model: TeamComposerViewModel): readonly InputS
 export function TeamComposerConnector({
 	model,
 	actions,
+	workSurface,
 	onExpandedChange,
 }: {
 	readonly model: TeamComposerViewModel;
 	readonly actions: TeamChatActions;
+	readonly workSurface: WorkSurfaceScope | null;
 	/** 命令区展开回调：新会话页据此淡出 hero，否则 hero（含装饰件）会压住向上生长的面板。 */
 	readonly onExpandedChange?: (expanded: boolean) => void;
 }): JSX.Element {
@@ -219,6 +223,7 @@ export function TeamComposerConnector({
 				})),
 		[model.attachments, t],
 	);
+	const bottomPanelPills = useBottomPanelPills(workSurface);
 
 	const detectDragKind = useCallback((event: DragEvent): "files" | "internal" | null => {
 		const types = Array.from(event.dataTransfer.types);
@@ -342,8 +347,7 @@ export function TeamComposerConnector({
 			: [],
 		drawerActiveTab: null,
 		todo: null,
-		// Team 的输入栏不挂底部面板：面板绑在普通会话的 cwd 上。
-		bottomPanelPills: null,
+		bottomPanelPills,
 		speechInput,
 		hasPromptAttachment: Boolean(promptAttachment),
 		promptAttachmentIcon: promptAttachment?.icon,

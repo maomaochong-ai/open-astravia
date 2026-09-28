@@ -221,6 +221,7 @@ function TeamFlow(): JSX.Element {
 		<TeamChatView
 			model={model}
 			actions={actions}
+			workSurface={null}
 			onOpenMember={vi.fn()}
 			onBackToTeam={vi.fn()}
 			onOpenSettings={vi.fn()}

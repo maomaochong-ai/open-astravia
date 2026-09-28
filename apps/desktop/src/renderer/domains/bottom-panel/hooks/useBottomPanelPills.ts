@@ -1,3 +1,4 @@
+import type { WorkSurfaceScope } from "@shared/workspace/work-surface";
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -13,16 +14,16 @@ import { useBottomPanelModel } from "./useBottomPanelModel";
  * 而 pill 的视觉本来就该由 theme-ui 的 `BottomPanelPillsView` 统一提供。
  * 展开态的 tab 与这里读同一份 meta，两种形态的名字和状态点永远一致。
  */
-export function useBottomPanelPills(): InputBarBottomPanelPillsModel | null {
+export function useBottomPanelPills(scope: WorkSurfaceScope | null): InputBarBottomPanelPillsModel | null {
 	const { t } = useTranslation("chat");
-	const model = useBottomPanelModel();
+	const model = useBottomPanelModel(scope ?? { key: "bottom-panel:unbound", cwd: null }, Boolean(scope));
 	const metaById = useAtomValue(bottomPanelMetaMapAtom);
 
 	const pills = useMemo(() => {
-		if (!model || !model.state.collapsed || !model.state.root) return [];
+		if (!scope || !model.state.collapsed || !model.state.root) return [];
 		return resolveBottomPanelPills(model.state, model.definitions, metaById);
-	}, [model, metaById]);
+	}, [model, metaById, scope]);
 
-	if (!model || pills.length === 0) return null;
+	if (!scope || pills.length === 0) return null;
 	return { pills, groupLabel: t("bottomPanel.pillsGroup"), onSelect: model.expandAndActivate };
 }

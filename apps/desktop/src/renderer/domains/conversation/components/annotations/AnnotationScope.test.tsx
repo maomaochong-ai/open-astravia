@@ -9,7 +9,6 @@ import { AnnotationScope } from "./AnnotationScope";
 import { AnnotationMessageMenu } from "./AnnotationMenus";
 import { SessionSelection } from "../message-list/SessionSelection";
 import { SessionMessageList } from "../SessionMessageList";
-import { ChatHeaderActionsView } from "../chat-view/ChatHeaderActionsView";
 import type { ReactNode } from "react";
 import type { ChatConversationItem } from "@shared/store/atoms";
 import type {
@@ -151,42 +150,6 @@ describe("Q&A note interaction", () => {
 		await user.click(screen.getByRole("menuitem", { name: "annotations.ask" }));
 		return screen.findByRole("dialog", { name: "annotations.title" });
 	}
-
-	it("keeps ordinary header actions without a persistent annotation menu", () => {
-		const store = createStore();
-		store.set(activeSessionAtom, session);
-		render(
-			<Provider store={store}>
-				<ChatHeaderActionsView
-					actions={{
-						finishExport: vi.fn(),
-						openExport: vi.fn(),
-						togglePanel: vi.fn(),
-						toggleBottomPanel: vi.fn(),
-						openTerminal: vi.fn(),
-						togglePin: vi.fn(async () => {}),
-					}}
-					model={{
-						exportDisabled: false,
-						exporting: false,
-						exportTitle: "Export",
-						panelOpen: false,
-						panelTitle: "Panel",
-						bottomPanelOpen: false,
-						bottomPanelTitle: "Bottom panel",
-						terminalAvailable: true,
-						terminalFocused: false,
-						terminalTitle: "Terminal",
-						pinTitle: "Pin",
-						pinned: false,
-					}}
-				/>
-			</Provider>,
-		);
-		expect(screen.getByRole("button", { name: "Export" })).toBeTruthy();
-		expect(screen.queryByRole("button", { name: "annotations.conversationMenu" })).toBeNull();
-		expect(screen.queryByRole("button", { name: "annotations.messageMenu" })).toBeNull();
-	});
 
 	it("asks from selected text in the real session feed whose identity is a session path, not a runtime ID", async () => {
 		const user = userEvent.setup();

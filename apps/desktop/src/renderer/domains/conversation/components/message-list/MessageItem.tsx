@@ -91,9 +91,16 @@ export const DefaultMessageItem = memo(function DefaultMessageItem({
 	);
 });
 
-export const ExportMessageList = forwardRef<HTMLDivElement, { messages: readonly ChatConversationItem[] }>(
-	function ExportMessageList({ messages }, ref) {
+export const ExportMessageList = forwardRef<
+	HTMLDivElement,
+	{
+		messages: readonly ChatConversationItem[];
+		participants?: readonly ConversationParticipantViewModel[];
+	}
+>(
+	function ExportMessageList({ messages, participants = [] }, ref) {
 		const tailMessageId = messages.at(-1)?.id ?? null;
+		const participantsById = new Map(participants.map((participant) => [participant.id, participant]));
 		return (
 			<ExportMessageListView listRef={ref}>
 				{messages.map((message) => (
@@ -103,6 +110,8 @@ export const ExportMessageList = forwardRef<HTMLDivElement, { messages: readonly
 							isTailMessage={message.id === tailMessageId}
 							isStreaming={false}
 							exportMode
+							participant={message.kind === "agent" ? participantsById.get(message.authorId) : undefined}
+							participants={participants}
 						/>
 					</div>
 				))}

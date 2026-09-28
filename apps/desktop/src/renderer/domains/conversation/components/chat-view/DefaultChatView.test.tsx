@@ -21,7 +21,7 @@ vi.mock("../ChatExportHost", () => ({
 describe("DefaultChatView layout", () => {
 	it("keeps the activity panel outside the input column (drop is owned by InputBar card)", () => {
 		const html = renderToStaticMarkup(
-			<DefaultChatView messages={[]} workspace={workspace}>
+			<DefaultChatView messages={[]} workspace={workspace} workSurface={null}>
 				<div data-testid="message-list" />
 				<ChatError>Send failed</ChatError>
 				<ChatComposer>
@@ -42,7 +42,7 @@ describe("DefaultChatView layout", () => {
 
 	it("底部面板住在消息列内部：排在输入框之后、活动面板之前", () => {
 		const html = renderToStaticMarkup(
-			<DefaultChatView messages={[]} workspace={workspace}>
+			<DefaultChatView messages={[]} workspace={workspace} workSurface={null}>
 				<div data-testid="message-list" />
 				<ChatComposer>
 					<div data-testid="input-bar" />
@@ -62,7 +62,7 @@ describe("DefaultChatView layout", () => {
 
 	it("can compose a read-only feed without mounting a composer", () => {
 		const html = renderToStaticMarkup(
-			<DefaultChatView messages={[]} workspace={workspace}>
+			<DefaultChatView messages={[]} workspace={workspace} workSurface={null}>
 				<div data-testid="read-only-feed" />
 			</DefaultChatView>,
 		);

@@ -99,7 +99,7 @@ export const DefaultInputBarConnector = memo(function DefaultInputBarConnector(p
 		}
 		return items;
 	}, [props.onSendQueued, session.activeSession, queue.items.length, queue.paused, interactions.sandboxPermission, t]);
-	const bottomPanelPills = useBottomPanelPills();
+	const bottomPanelPills = useBottomPanelPills(props.workSurface ?? null);
 	const todo = useMemo<InputBarTodoModel | null>(() => todoItems.length > 0 ? { items: todoItems, onOpenPanel: trigger.openTodoPanel } : null, [todoItems, trigger.openTodoPanel]);
 	const defaultPlaceholders = useMemo(() => {
 		const raw = t("inputBar.placeholder.defaults", { returnObjects: true });
