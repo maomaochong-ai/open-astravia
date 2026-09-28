@@ -186,6 +186,8 @@ export class DesktopRemoteAccessManager {
 	private readonly desktopHostStops = new Map<string, Promise<void>>();
 	/** Phones that declared `screen` in their hello and so subscribe to it on demand. */
 	private readonly screenOnDemand = new Map<string, boolean>();
+	/** Whether each running host captures on demand, to replace one that does not. */
+	private readonly hostOnDemand = new Map<string, boolean>();
 	private readonly screenShare: RemoteScreenShare;
 	private readonly approvals = new Map<string, PendingApproval>();
 	private readonly lanLinks = new Map<string, Set<() => void>>();
@@ -779,6 +781,9 @@ export class DesktopRemoteAccessManager {
 		const snapshot = connection.getSnapshot();
 		// Before any await: the screen host started for this phone right after reads it.
 		if (snapshot.peerCapabilities) this.screenOnDemand.set(deviceId, snapshot.peerCapabilities.screen === true);
+		if (snapshot.peerCapabilities?.screen === true && device.screenOnDemand !== true) {
+			void this.rememberScreenOnDemand(deviceId);
+		}
 		const peerKey = snapshot.peerIdentityKey;
 		if (!device.mobileIdentityKey && peerKey) await this.claim(deviceId, peerKey, snapshot.peerDeviceName);
 		// A phone renamed since pairing (or paired before its name was kept) shows its current name,
@@ -840,11 +845,12 @@ export class DesktopRemoteAccessManager {
 		try {
 			// A host still stopping would be handed back instead of a new one.
 			await this.desktopHostStops.get(deviceId)?.catch(() => undefined);
+			const onDemand = this.capturesOnDemand(deviceId);
 			const host = await controller.start({
 				relayBaseUrl,
 				pairingId: deviceId,
 				desktopSecret,
-				screenOnDemand: this.screenOnDemand.get(deviceId) === true,
+				screenOnDemand: onDemand,
 			});
 			if (!this.hub.isOnline(deviceId)) {
 				await host.stop();
@@ -873,6 +879,7 @@ export class DesktopRemoteAccessManager {
 				},
 			});
 			this.desktopHosts.set(deviceId, host);
+			this.hostOnDemand.set(deviceId, onDemand);
 			const detach = this.hub.attach(deviceId, { channel: "p2p", connection });
 			let released = false;
 			const release = (): void => {
@@ -880,7 +887,10 @@ export class DesktopRemoteAccessManager {
 				released = true;
 				unsubscribe();
 				detach();
-				if (this.desktopHosts.get(deviceId) === host) this.desktopHosts.delete(deviceId);
+				if (this.desktopHosts.get(deviceId) === host) {
+					this.desktopHosts.delete(deviceId);
+					this.hostOnDemand.delete(deviceId);
+				}
 				const stopped = host.stop();
 				this.desktopHostStops.set(deviceId, stopped);
 				void stopped.finally(() => {
@@ -922,7 +932,37 @@ export class DesktopRemoteAccessManager {
 		if (active && device?.desktopControl === false) {
 			throw new RemoteOperationError("forbidden", "This desktop does not share its screen with this phone");
 		}
+		if (active && !this.capturesOnDemand(deviceId)) {
+			// Only a phone that captures on demand subscribes. Over the relay its handshake did
+			// not say so, and its host streams the whole time: remember it, and replace that host.
+			this.screenOnDemand.set(deviceId, true);
+			await this.rememberScreenOnDemand(deviceId);
+			if (this.hostOnDemand.get(deviceId) === false) {
+				log.info("remote desktop host restarts to capture on demand", { pairingId: deviceId.slice(0, 6) });
+				await this.desktopHosts
+					.get(deviceId)
+					?.stop()
+					.catch(() => undefined);
+			}
+		}
 		return this.screenShare.subscribe(deviceId, active, fields.cursor === true);
+	}
+
+	/** Said in this phone's handshake, or learnt earlier and kept with its pairing. */
+	private capturesOnDemand(deviceId: string): boolean {
+		return (
+			this.screenOnDemand.get(deviceId) ??
+			this.config.devices.find((entry) => entry.id === deviceId)?.screenOnDemand === true
+		);
+	}
+
+	private async rememberScreenOnDemand(deviceId: string): Promise<void> {
+		try {
+			await this.options.store.patchDevice(deviceId, { screenOnDemand: true });
+			this.config = await this.options.store.read();
+		} catch (error) {
+			log.warn("remote device screen mode save failed", { pairingId: deviceId.slice(0, 6), error: describe(error) });
+		}
 	}
 
 	private requireMirror(): DesktopRemoteMirror {

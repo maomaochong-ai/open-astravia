@@ -78,6 +78,11 @@ export interface RemoteControlDeviceRecord {
 	renamed?: boolean;
 	/** 允许这部手机查看并操作电脑屏幕；缺省开启，用户可逐台关闭。 */
 	desktopControl?: boolean;
+	/**
+	 * 这部手机按需订阅画面（ADR-0140）。经中继握手时电脑看不到手机的能力位，
+	 * 所以一旦从局域网握手或订阅请求得知，就记下来。
+	 */
+	screenOnDemand?: boolean;
 	/** 手机长期凭据的 SHA-256 hex；明文只在首次绑定前留在凭据库里。 */
 	mobileSecretHash: string;
 	/** 首次成功握手后钉住的手机身份公钥（base64url）；未钉住表示邀请尚未被领取。 */
@@ -345,6 +350,7 @@ export function normalizeRemoteControl(value: unknown): DesktopConfig["remoteCon
 						name: typeof record.name === "string" && record.name ? record.name : record.id,
 						...(record.renamed === true ? { renamed: true } : {}),
 						...(record.desktopControl === false ? { desktopControl: false } : {}),
+						...(record.screenOnDemand === true ? { screenOnDemand: true } : {}),
 						mobileSecretHash: record.mobileSecretHash,
 						mobileIdentityKey:
 							typeof record.mobileIdentityKey === "string" ? record.mobileIdentityKey : undefined,

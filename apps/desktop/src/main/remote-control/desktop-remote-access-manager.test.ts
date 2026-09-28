@@ -757,7 +757,8 @@ describe("DesktopRemoteAccessManager", () => {
 		};
 
 		/** A phone link that can send requests and records what the desktop sends back. */
-		function phoneLink(capabilities: { chat: boolean; sessionRead: boolean; screen?: boolean }) {
+		/** `capabilities` undefined: the desktop's end of a relay link, which never sees the phone's hello. */
+		function phoneLink(capabilities: { chat: boolean; sessionRead: boolean; screen?: boolean } | undefined) {
 			let listener: ((event: unknown) => void) | undefined;
 			const responses: Array<{
 				requestId: string;
@@ -811,6 +812,26 @@ describe("DesktopRemoteAccessManager", () => {
 				payload: { screen: "stopped", input: "ready" },
 			});
 			expect(desktopHosts[0]?.screen).toEqual([true, false]);
+			await manager.shutdown();
+		});
+
+		it("learns from a subscription over the relay that the phone captures on demand, and remembers it", async () => {
+			const { manager, relayLinks, store, desktopHosts, readConfig } = harness(structuredClone(paired));
+			store.putRelaySecret(pairingId, "relay-secret");
+			await manager.restore();
+			const phone = phoneLink(undefined);
+			relayLinks[0]?.options.onConnection(phone.connection);
+			await vi.waitFor(() => expect(desktopHosts).toHaveLength(1));
+			expect(desktopHosts[0]?.options.screenOnDemand).toBe(false);
+
+			await phone.subscribe(true);
+			expect(readConfig().remoteControl?.devices[0]?.screenOnDemand).toBe(true);
+			expect(desktopHosts[0]?.stopped).toBe(true);
+			desktopHosts[0]?.controlHandlers?.onClose("host stopped");
+			await vi.waitFor(() => expect(desktopHosts).toHaveLength(2));
+			expect(desktopHosts[1]?.options.screenOnDemand).toBe(true);
+			// The new host picks up the subscription made meanwhile.
+			await vi.waitFor(() => expect(desktopHosts[1]?.screen).toEqual([true]));
 			await manager.shutdown();
 		});
 
