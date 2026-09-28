@@ -10,6 +10,8 @@ const CHANNELS = {
 	REVOKE_DEVICE: "vetta:remote-pairing:revoke-device",
 	RENAME_DEVICE: "vetta:remote-pairing:rename-device",
 	SET_DESKTOP_CONTROL: "vetta:remote-pairing:set-desktop-control",
+	SET_RELAY: "vetta:remote-pairing:set-relay",
+	TEST_RELAY: "vetta:remote-pairing:test-relay",
 } as const;
 
 /** Pushed to every window whenever the pairing state changes. */
@@ -34,6 +36,10 @@ export function registerRemotePairingIpc(manager: DesktopRemoteAccessManager): (
 	ipcMain.handle(CHANNELS.SET_DESKTOP_CONTROL, (_event, id: unknown, enabled: unknown) =>
 		manager.setDesktopControl(asString(id), enabled === true),
 	);
+	ipcMain.handle(CHANNELS.SET_RELAY, (_event, url: unknown) =>
+		manager.setRelayBaseUrl(typeof url === "string" ? url : undefined),
+	);
+	ipcMain.handle(CHANNELS.TEST_RELAY, (_event, url: unknown) => manager.testRelay(asString(url)));
 	const stopPushing = manager.onStateChanged((state) => {
 		for (const window of BrowserWindow.getAllWindows()) {
 			if (!window.isDestroyed()) window.webContents.send(STATE_CHANGED, state);

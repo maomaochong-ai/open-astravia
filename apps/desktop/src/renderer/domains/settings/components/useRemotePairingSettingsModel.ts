@@ -1,4 +1,8 @@
-import type { RemotePairingChannel, RemotePairingState } from "@preload/api-types/remote-pairing";
+import type {
+	RemotePairingChannel,
+	RemotePairingState,
+	RemoteRelayTestResult,
+} from "@preload/api-types/remote-pairing";
 import QRCode from "qrcode";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -22,6 +26,8 @@ export interface RemotePairingSettingsModel {
 	readonly cloud: {
 		readonly available: boolean;
 		readonly enabled: boolean;
+		readonly relayBaseUrl?: string;
+		readonly defaultRelayBaseUrl?: string;
 	};
 	readonly devices: readonly {
 		readonly id: string;
@@ -91,6 +97,9 @@ export interface RemotePairingSettingsModel {
 		readonly revokeDevice: (id: string) => void;
 		readonly setCloudEnabled: (enabled: boolean) => void;
 		readonly setDesktopControl: (id: string, enabled: boolean) => void;
+		/** Another relay, or the default one for `undefined`; false when it was refused. */
+		readonly setRelay: (url: string | undefined) => Promise<boolean>;
+		readonly testRelay: (url: string) => Promise<RemoteRelayTestResult>;
 	};
 }
 
@@ -277,8 +286,17 @@ export function useRemotePairingSettingsModel(): RemotePairingSettingsModel {
 			revokeDevice: (id) => void run(() => window.vetta.remotePairing.revokeDevice(id)),
 			setCloudEnabled: (enabled) => void run(() => window.vetta.remotePairing.setCloudEnabled(enabled)),
 			setDesktopControl: (id, enabled) => void run(() => window.vetta.remotePairing.setDesktopControl(id, enabled)),
+			setRelay: async (url) => {
+				try {
+					apply(await window.vetta.remotePairing.setRelay(url));
+					return true;
+				} catch {
+					return false;
+				}
+			},
+			testRelay: (url) => window.vetta.remotePairing.testRelay(url).catch(() => "unreachable" as const),
 		}),
-		[run],
+		[apply, run],
 	);
 
 	const failureMessage = failure
@@ -297,6 +315,8 @@ export function useRemotePairingSettingsModel(): RemotePairingSettingsModel {
 		cloud: {
 			available: Boolean(state.relayBaseUrl),
 			enabled: state.cloudEnabled,
+			relayBaseUrl: state.relayBaseUrl,
+			defaultRelayBaseUrl: state.defaultRelayBaseUrl,
 		},
 		devices,
 		error: failureMessage,

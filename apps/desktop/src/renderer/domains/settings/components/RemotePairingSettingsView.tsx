@@ -1,8 +1,13 @@
 import { Button } from "@shared/components/ui/button";
 import { Switch } from "@shared/components/ui/switch";
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import { RemoteRelayDialog } from "./RemoteRelayDialog";
 import type { RemotePairingSettingsModel } from "./useRemotePairingSettingsModel";
 
 export function RemotePairingSettingsView({ model }: { model: RemotePairingSettingsModel }): JSX.Element {
+	const { t } = useTranslation("settings");
+	const [relayOpen, setRelayOpen] = useState(false);
 	return (
 		<div className="mx-auto w-full max-w-[680px] px-8 pt-2 pb-8">
 			<div className="mb-6">
@@ -143,12 +148,32 @@ export function RemotePairingSettingsView({ model }: { model: RemotePairingSetti
 							{model.cloud.available ? model.labels.cloud.description : model.labels.cloud.unavailable}
 						</p>
 					</div>
-					<Switch
-						checked={model.cloud.enabled}
-						disabled={model.busy || !model.cloud.available}
-						onCheckedChange={model.actions.setCloudEnabled}
-					/>
+					<div className="flex shrink-0 items-center gap-2">
+						<Button
+							variant="ghost"
+							size="icon"
+							className="h-8 w-8"
+							aria-label={t("remote.relay.title")}
+							title={t("remote.relay.title")}
+							onClick={() => setRelayOpen(true)}
+						>
+							<span className="icon-[solar--settings-linear] h-4 w-4" aria-hidden="true" />
+						</Button>
+						<Switch
+							checked={model.cloud.enabled}
+							disabled={model.busy || !model.cloud.available}
+							onCheckedChange={model.actions.setCloudEnabled}
+						/>
+					</div>
 				</div>
+				<RemoteRelayDialog
+					open={relayOpen}
+					onOpenChange={setRelayOpen}
+					relayBaseUrl={model.cloud.relayBaseUrl}
+					defaultRelayBaseUrl={model.cloud.defaultRelayBaseUrl}
+					onSave={model.actions.setRelay}
+					onTest={model.actions.testRelay}
+				/>
 			</section>
 
 			<section id="remote-devices" className="mt-7">

@@ -13,6 +13,8 @@ export function createRemotePairingApi(ipc: Pick<IpcRenderer, "invoke" | "on" | 
 		revokeDevice: (id) => ipc.invoke("vetta:remote-pairing:revoke-device", id),
 		renameDevice: (id, name) => ipc.invoke("vetta:remote-pairing:rename-device", id, name),
 		setDesktopControl: (id, enabled) => ipc.invoke("vetta:remote-pairing:set-desktop-control", id, enabled),
+		setRelay: (url) => ipc.invoke("vetta:remote-pairing:set-relay", url),
+		testRelay: (url) => ipc.invoke("vetta:remote-pairing:test-relay", url),
 		onStateChanged: (listener) => {
 			const handler = (_event: unknown, state: RemotePairingState): void => listener(state);
 			ipc.on(STATE_CHANGED, handler);

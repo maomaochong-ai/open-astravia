@@ -170,6 +170,24 @@
       "title": "Allow access away from home",
       "description": "When off, phones can only connect on the same Wi-Fi.",
       "unavailable": "Access away from this Wi-Fi is unavailable right now."
+    },
+    "relay": {
+      "title": "Away-from-home settings",
+      "note": "Phones reach this computer through this relay when not on the same Wi-Fi. After a change, connected phones switch to the new address and the QR code is renewed.",
+      "label": "Relay server",
+      "defaultHint": "Leave empty for the default: {{url}}",
+      "test": "Test connection",
+      "testing": "Testing…",
+      "restore": "Restore default",
+      "cancel": "Cancel",
+      "save": "Save",
+      "result": {
+        "ok": "Works",
+        "noInviteCodes": "Reachable, but too old for connection codes",
+        "incompatible": "Not a compatible Vetta relay",
+        "unreachable": "Can’t reach this address",
+        "invalid": "Enter an address starting with wss:// or https://"
+      }
     }
   },
   "general": "General",

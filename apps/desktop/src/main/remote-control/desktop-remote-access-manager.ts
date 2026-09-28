@@ -6,6 +6,7 @@ import {
 	generateInvitePassword,
 	inviteBoxId,
 	inviteBoxUrl,
+	normalizeRelayBaseUrl,
 	RemoteConnection,
 	type RemoteDevicePaired,
 	type RemoteDeviceStatus,
@@ -28,6 +29,7 @@ import type { RemoteDeviceStore } from "./remote-device-store.js";
 import { toRemoteError } from "./remote-error-mapping.js";
 import { createRemoteInviteMailbox, type RemoteInviteMailbox } from "./remote-invite-mailbox.js";
 import { listLanEndpoints } from "./remote-lan-endpoints.js";
+import { probeRemoteRelay, type RemoteRelayProbeResult } from "./remote-relay-probe.js";
 
 export interface RemoteAccessDeviceView {
 	readonly id: string;
@@ -80,6 +82,8 @@ export interface RemoteAccessState {
 	readonly lanEndpoints: readonly string[];
 	readonly cloudEnabled: boolean;
 	readonly relayBaseUrl?: string;
+	/** The relay this build uses when none is set, for "restore default". */
+	readonly defaultRelayBaseUrl?: string;
 	readonly vaultAvailable: boolean;
 	readonly error?: string;
 }
@@ -111,6 +115,8 @@ export interface DesktopRemoteAccessManagerOptions {
 	readonly runningSessionCount: () => number;
 	readonly listLanEndpoints?: (port: number) => string[];
 	readonly inviteTtlMs?: number;
+	/** Test seam: replaces checking a relay address. */
+	readonly probeRelay?: (relayBaseUrl: string) => Promise<RemoteRelayProbeResult>;
 	/** Test seam: replaces the relay's invite mailbox. */
 	readonly inviteMailbox?: RemoteInviteMailbox;
 	readonly now?: () => number;
@@ -282,6 +288,7 @@ export class DesktopRemoteAccessManager {
 			lanEndpoints: port ? this.lanEndpoints(port) : [],
 			cloudEnabled: this.config.cloudEnabled,
 			relayBaseUrl: this.config.relayBaseUrl,
+			defaultRelayBaseUrl: this.options.store.defaultRelayBaseUrl(),
 			vaultAvailable: this.options.store.vaultAvailable(),
 			error: this.lastError,
 		};
@@ -447,6 +454,46 @@ export class DesktopRemoteAccessManager {
 		if (this.hub.isOnline(id)) await this.hub.emit(id, "device.status", this.deviceStatus(id)).catch(() => undefined);
 		log.info("remote desktop control changed", { pairingId: id.slice(0, 6), enabled });
 		return this.getState();
+	}
+
+	/**
+	 * Moves access away from this network to another relay, or back to the default one
+	 * (`undefined`). Connected phones hear the new address first, so they follow instead
+	 * of losing the relay; the current QR code, made for the old relay, is replaced.
+	 */
+	async setRelayBaseUrl(value: string | undefined): Promise<RemoteAccessState> {
+		const typed = value?.trim();
+		const normalized = typed ? normalizeRelayBaseUrl(typed) : undefined;
+		if (typed && !normalized) throw new Error("invalid relay address");
+		const fallback = this.options.store.defaultRelayBaseUrl();
+		const stored = normalized === fallback ? undefined : normalized;
+		const next = stored ?? fallback;
+		if (next === this.config.relayBaseUrl) return this.getState();
+		for (const device of this.config.devices) {
+			if (!this.hub.isOnline(device.id)) continue;
+			await this.hub
+				.emit(device.id, "device.status", { ...this.deviceStatus(device.id), relayBaseUrl: next })
+				.catch(() => undefined);
+		}
+		this.config = await this.options.store.update((current) => ({ ...current, relayBaseUrl: stored }));
+		for (const link of this.relayLinks.values()) await link.stop();
+		this.relayLinks.clear();
+		for (const host of this.desktopHosts.values()) await host.stop().catch(() => undefined);
+		this.desktopHosts.clear();
+		await this.cancelInvite();
+		await this.reconcile();
+		for (const device of this.config.devices) {
+			if (this.hub.isOnline(device.id)) void this.startDesktopHost(device.id);
+		}
+		log.info("remote relay changed", { custom: stored !== undefined });
+		return this.getState();
+	}
+
+	/** Whether a relay address answers, and whether it can hold connection codes. */
+	testRelay(value: string): Promise<RemoteRelayProbeResult> {
+		const normalized = normalizeRelayBaseUrl(value.trim());
+		if (!normalized) return Promise.resolve("unreachable");
+		return (this.options.probeRelay ?? probeRemoteRelay)(normalized);
 	}
 
 	async setCloudEnabled(enabled: boolean): Promise<RemoteAccessState> {
@@ -836,6 +883,7 @@ export class DesktopRemoteAccessManager {
 			relayEnabled: this.config.cloudEnabled && Boolean(this.config.relayBaseUrl),
 			runningSessionCount: this.options.runningSessionCount(),
 			...(device ? { desktopControl: device.desktopControl !== false } : {}),
+			...(this.config.cloudEnabled && this.config.relayBaseUrl ? { relayBaseUrl: this.config.relayBaseUrl } : {}),
 		};
 	}
 

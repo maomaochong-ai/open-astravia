@@ -170,6 +170,24 @@
       "title": "允许在外网访问",
       "description": "关闭后只能在同一 Wi-Fi 下连接。",
       "unavailable": "暂时无法从外网连接。"
+    },
+    "relay": {
+      "title": "外网访问设置",
+      "note": "手机不在同一 Wi-Fi 时经这个中继连接。更换后，已连上的手机会自动改用新地址，二维码也会刷新。",
+      "label": "中继服务器",
+      "defaultHint": "留空使用默认：{{url}}",
+      "test": "测试连接",
+      "testing": "正在测试…",
+      "restore": "恢复默认",
+      "cancel": "取消",
+      "save": "保存",
+      "result": {
+        "ok": "可以使用",
+        "noInviteCodes": "可以连接，但版本较旧，不支持连接码配对",
+        "incompatible": "不是兼容的 Vetta 中继",
+        "unreachable": "连接不上这个地址",
+        "invalid": "请输入 wss:// 或 https:// 开头的地址"
+      }
     }
   },
   "general": "常规",

@@ -61,6 +61,8 @@ function installRemotePairing(options: {
 	const createInvite = vi.fn(options.createInvite ?? (async () => inviteState()));
 	const steady = async () => initial;
 	const setDesktopControl = vi.fn(steady);
+	const setRelay = vi.fn(async (url: string | undefined) => ({ ...initial, relayBaseUrl: url ?? initial.relayBaseUrl }));
+	const testRelay = vi.fn(async () => "noInviteCodes" as const);
 	const listeners = new Set<(state: RemotePairingState) => void>();
 	Object.defineProperty(window, "vetta", {
 		configurable: true,
@@ -74,6 +76,8 @@ function installRemotePairing(options: {
 				revokeDevice: vi.fn(steady),
 				renameDevice: vi.fn(steady),
 				setDesktopControl,
+				setRelay,
+				testRelay,
 				onStateChanged: (listener: (state: RemotePairingState) => void) => {
 					listeners.add(listener);
 					return () => listeners.delete(listener);
@@ -85,7 +89,7 @@ function installRemotePairing(options: {
 	const push = (state: RemotePairingState) => {
 		for (const listener of listeners) listener(state);
 	};
-	return { createInvite, push, setDesktopControl };
+	return { createInvite, push, setDesktopControl, setRelay, testRelay };
 }
 
 afterEach(() => {
@@ -241,5 +245,24 @@ describe("远程连接设置", () => {
 		await screen.findByRole("img", { name: "remote.pairing.qrAlt" });
 		expect(screen.getByText("remote.pairing.codeFailed")).toBeTruthy();
 		expect(screen.queryByText("482913")).toBeNull();
+	});
+
+	it("外网访问旁的设置按钮可以更换、测试中继地址", async () => {
+		const { setRelay, testRelay } = installRemotePairing({
+			initial: { ...inviteState(), defaultRelayBaseUrl: "wss://relay.example.test" },
+		});
+		const user = userEvent.setup();
+		render(<RemotePairingSettings />);
+
+		await user.click(await screen.findByRole("button", { name: "remote.relay.title" }));
+		const field = await screen.findByPlaceholderText("wss://relay.example.test");
+		await user.type(field, "wss://relay.mine.test");
+		await user.click(screen.getByRole("button", { name: "remote.relay.test" }));
+		expect(testRelay).toHaveBeenCalledWith("wss://relay.mine.test");
+		expect((await screen.findByRole("status")).textContent).toBe("remote.relay.result.noInviteCodes");
+
+		await user.click(screen.getByRole("button", { name: "remote.relay.save" }));
+		expect(setRelay).toHaveBeenCalledWith("wss://relay.mine.test");
+		await waitFor(() => expect(screen.queryByPlaceholderText("wss://relay.example.test")).toBeNull());
 	});
 });

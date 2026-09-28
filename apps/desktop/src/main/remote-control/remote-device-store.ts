@@ -49,6 +49,11 @@ export class RemoteDeviceStore {
 		return this.withDefaults(next);
 	}
 
+	/** The relay used when none is set; undefined when this build has none. */
+	defaultRelayBaseUrl(): string | undefined {
+		return this.options.defaultRelayBaseUrl;
+	}
+
 	/** The default relay is a runtime fallback, never persisted, so a later default change reaches old configs. */
 	private withDefaults(remote: RemoteControlConfig): RemoteControlConfig {
 		return {

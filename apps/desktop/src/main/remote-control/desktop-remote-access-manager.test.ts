@@ -16,12 +16,16 @@ import type { DesktopRemoteLanServerOptions } from "./desktop-remote-lan-server.
 import type { DesktopRemoteMirror } from "./desktop-remote-mirror.js";
 import type { DesktopRemoteRelayLinkOptions } from "./desktop-remote-relay-link.js";
 import { RemoteDeviceStore } from "./remote-device-store.js";
+import type { RemoteRelayProbeResult } from "./remote-relay-probe.js";
 
 function key(ref: CredentialRef): string {
 	return `${ref.namespace}/${ref.ownerId}/${ref.name}`;
 }
 
-function harness(initial?: DesktopConfig["remoteControl"], options: { hubGraceMs?: number } = {}) {
+function harness(
+	initial?: DesktopConfig["remoteControl"],
+	options: { hubGraceMs?: number; probeRelay?: (url: string) => Promise<RemoteRelayProbeResult> } = {},
+) {
 	let config: DesktopConfig = {
 		projects: [],
 		archivedProjects: [],
@@ -145,6 +149,7 @@ function harness(initial?: DesktopConfig["remoteControl"], options: { hubGraceMs
 		},
 		inviteTtlMs: 60_000,
 		hubGraceMs: options.hubGraceMs ?? 5,
+		probeRelay: options.probeRelay,
 	});
 	return {
 		manager,
@@ -584,6 +589,62 @@ describe("DesktopRemoteAccessManager", () => {
 		await vi.waitFor(() => expect(desktopHosts).toHaveLength(2));
 		expect(statuses.at(-1)).toMatchObject({ desktopControl: true });
 		await manager.shutdown();
+	});
+
+	it("moves to another relay, telling connected phones the new address first", async () => {
+		const pairingId = "a".repeat(24);
+		const phoneKey = "k".repeat(43);
+		const { manager, relayLinks, store, readConfig } = harness({
+			cloudEnabled: true,
+			devices: [{ id: pairingId, name: "Pixel", mobileSecretHash: "h", mobileIdentityKey: phoneKey, createdAt: 1 }],
+		});
+		store.putRelaySecret(pairingId, "relay-secret");
+		await manager.restore();
+		const events: Array<{ name: string; relayLinksAtThatTime: number; payload?: unknown }> = [];
+		const connection = {
+			onEvent: () => () => undefined,
+			getSnapshot: () => ({ state: "online", peerIdentityKey: phoneKey }),
+			deliverEvent: async (event: { name: string; payload?: unknown }) => {
+				events.push({
+					name: event.name,
+					payload: event.payload,
+					relayLinksAtThatTime: relayLinks.filter((l) => !l.stopped).length,
+				});
+			},
+			close: async () => undefined,
+		} as unknown as RemoteConnection;
+		relayLinks[0]?.options.onConnection(connection);
+		await vi.waitFor(() => expect(events).toHaveLength(1));
+		expect(events[0]?.payload).toMatchObject({ relayBaseUrl: "wss://relay.example" });
+
+		await expect(manager.setRelayBaseUrl("not a url")).rejects.toThrow();
+		const moved = await manager.setRelayBaseUrl("https://relay.mine.test/");
+		expect(moved.relayBaseUrl).toBe("wss://relay.mine.test");
+		expect(moved.defaultRelayBaseUrl).toBe("wss://relay.example");
+		expect(readConfig().remoteControl?.relayBaseUrl).toBe("wss://relay.mine.test");
+		const told = events.at(-1);
+		expect(told?.payload).toMatchObject({ relayBaseUrl: "wss://relay.mine.test" });
+		expect(told?.relayLinksAtThatTime).toBe(1);
+		expect(relayLinks[0]?.stopped).toBe(true);
+		expect(relayLinks.at(-1)?.options.relayBaseUrl).toBe("wss://relay.mine.test");
+
+		const restored = await manager.setRelayBaseUrl(undefined);
+		expect(restored.relayBaseUrl).toBe("wss://relay.example");
+		expect(readConfig().remoteControl?.relayBaseUrl).toBeUndefined();
+		await manager.shutdown();
+	});
+
+	it("checks a relay address before it is used", async () => {
+		const probed: string[] = [];
+		const { manager } = harness(undefined, {
+			probeRelay: async (url) => {
+				probed.push(url);
+				return "noInviteCodes";
+			},
+		});
+		await expect(manager.testRelay("relay.bad url")).resolves.toBe("unreachable");
+		await expect(manager.testRelay("https://relay.mine.test")).resolves.toBe("noInviteCodes");
+		expect(probed).toEqual(["wss://relay.mine.test"]);
 	});
 
 	it("starts the desktop screen host when a paired phone comes online", async () => {

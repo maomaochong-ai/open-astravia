@@ -40,9 +40,14 @@ export interface RemotePairingState {
 	lanEndpoints: string[];
 	cloudEnabled: boolean;
 	relayBaseUrl?: string;
+	/** The relay this build uses when none is set. */
+	defaultRelayBaseUrl?: string;
 	vaultAvailable: boolean;
 	error?: string;
 }
+
+/** A relay that works, one too old for connection codes, one on another protocol, or none that answered. */
+export type RemoteRelayTestResult = "ok" | "noInviteCodes" | "incompatible" | "unreachable";
 
 export interface RemotePairingApi {
 	getState(): Promise<RemotePairingState>;
@@ -53,6 +58,9 @@ export interface RemotePairingApi {
 	revokeDevice(id: string): Promise<RemotePairingState>;
 	renameDevice(id: string, name: string): Promise<RemotePairingState>;
 	setDesktopControl(id: string, enabled: boolean): Promise<RemotePairingState>;
+	/** Another relay for access away from this network; undefined goes back to the default. */
+	setRelay(url: string | undefined): Promise<RemotePairingState>;
+	testRelay(url: string): Promise<RemoteRelayTestResult>;
 	/** Called with the new state whenever it changes; returns the unsubscribe. */
 	onStateChanged(listener: (state: RemotePairingState) => void): () => void;
 }

@@ -140,6 +140,11 @@ export interface RemoteDeviceStatus {
 	 * Desktops before it leave it out; they let every phone view.
 	 */
 	readonly desktopControl?: boolean;
+	/**
+	 * The relay this desktop uses now, when access away from its network is on. A phone
+	 * that paired with another relay switches to this one. Older desktops leave it out.
+	 */
+	readonly relayBaseUrl?: string;
 }
 
 /** Sealed follow-up to a manual pairing approval; carries the long-lived credential. */
