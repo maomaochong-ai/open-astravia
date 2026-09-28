@@ -1,9 +1,8 @@
-import type { SkillInfo } from "@preload/api";
 import { describe, expect, it } from "vitest";
-import { filterSkills, lookupSkillUsage, sortSkillsForPanel } from "./skill-ranking";
+import { filterSkills, lookupSkillUsage, type RankableSkill, sortSkillsForPanel } from "./skill-ranking";
 
-function skill(name: string, source: string, type: SkillInfo["type"] = "skill"): SkillInfo {
-	return { name, description: "", source, type };
+function skill(name: string, source: string, type: RankableSkill["type"] = "skill"): RankableSkill {
+	return { name, source, type };
 }
 
 describe("sortSkillsForPanel", () => {

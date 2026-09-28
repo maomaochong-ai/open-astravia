@@ -1,5 +1,3 @@
-import type { AppMonitorPromptRefUsageMap, SkillInfo } from "@preload/api";
-
 /**
  * 类别权重：内置 > 插件贡献 > Vetta 原生 > 通用 Agent Skill 约定。
  *
@@ -31,6 +29,17 @@ export interface SkillUsage {
 	lastUsedAt: number;
 }
 
+/** app-monitor 的 per-ref 统计，key 为 `kind:归一化名字`。 */
+export type SkillUsageMap = Readonly<Record<string, SkillUsage>>;
+
+/** 排序与过滤只看这几个字段，主进程与渲染层各自的 skill 类型都满足。 */
+export interface RankableSkill {
+	name: string;
+	alias?: string;
+	source: string;
+	type: "skill" | "scene";
+}
+
 const NO_USAGE: SkillUsage = { used: 0, lastUsedAt: 0 };
 
 /**
@@ -38,7 +47,7 @@ const NO_USAGE: SkillUsage = { used: 0, lastUsedAt: 0 };
  * app-monitor 的 key 是 `kind:name` 且 name 经过归一化（小写 + 截断 128），
  * 所以这里必须同样小写化后再查。
  */
-export function lookupSkillUsage(usage: AppMonitorPromptRefUsageMap, skill: SkillInfo): SkillUsage {
+export function lookupSkillUsage(usage: SkillUsageMap, skill: RankableSkill): SkillUsage {
 	const kind = skill.type === "scene" ? "scene" : "skill";
 	return usage[`${kind}:${skill.name.trim().toLowerCase().slice(0, 128)}`] ?? NO_USAGE;
 }
@@ -49,7 +58,7 @@ export function lookupSkillUsage(usage: AppMonitorPromptRefUsageMap, skill: Skil
  * 「次数最高优先级」是字面意思——用过的一定排在没用过的前面，即使它来自权重
  * 最低的通用目录；没用过的那批才退回按类别分层。
  */
-export function sortSkillsForPanel(skills: readonly SkillInfo[], usage: AppMonitorPromptRefUsageMap): SkillInfo[] {
+export function sortSkillsForPanel<T extends RankableSkill>(skills: readonly T[], usage: SkillUsageMap): T[] {
 	return [...skills].sort((a, b) => {
 		const usageA = lookupSkillUsage(usage, a);
 		const usageB = lookupSkillUsage(usage, b);
@@ -63,7 +72,7 @@ export function sortSkillsForPanel(skills: readonly SkillInfo[], usage: AppMonit
 }
 
 /** 面板过滤：按名称与别名匹配，大小写无关。 */
-export function filterSkills(skills: readonly SkillInfo[], filter: string): SkillInfo[] {
+export function filterSkills<T extends RankableSkill>(skills: readonly T[], filter: string): T[] {
 	const query = filter.trim().toLowerCase();
 	if (query === "") return [...skills];
 	return skills.filter(
