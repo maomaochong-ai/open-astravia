@@ -100,6 +100,8 @@ const removeControlListener = window.vettaRemoteDesktop?.onControlSend((message)
 	}
 });
 await host.start(stream, { waitForPeerReady: true });
+// A screen shared for the whole session streams from the start.
+if (!onDemand) watchStats(true);
 for (const signal of pending.splice(0)) await host.acceptSignal(signal);
 
 // Requests run one after another so a quick close-and-reopen cannot leave two captures.

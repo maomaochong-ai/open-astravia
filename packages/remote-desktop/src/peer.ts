@@ -77,7 +77,10 @@ export class RemoteDesktopHost {
 		if (this.started) throw new Error("remote desktop host is already started");
 		if (stream) {
 			if (stream.getVideoTracks().length === 0) throw new Error("screen stream must contain a video track");
-			for (const track of stream.getTracks()) this.peer.addTrack(track, stream);
+			for (const track of stream.getTracks()) {
+				if (track.kind === "video") track.contentHint = "detail";
+				this.peer.addTrack(track, stream);
+			}
 			for (const transceiver of this.peer.getTransceivers?.() ?? []) preferHardwareCodec(transceiver);
 		} else {
 			const transceiver = this.peer.addTransceiver("video", { direction: "sendonly" });
@@ -105,6 +108,10 @@ export class RemoteDesktopHost {
 		if (frame.type === "answer") {
 			await this.peer.setRemoteDescription({ type: "answer", sdp: frame.sdp });
 			await this.flushPendingIce();
+			// Encodings exist only once negotiated: a screen shared for the whole session is tuned here.
+			for (const sender of this.peer.getSenders?.() ?? []) {
+				if (sender.track?.kind === "video") await tuneScreenSender(sender);
+			}
 			return;
 		}
 		if (frame.type === "ice") {
