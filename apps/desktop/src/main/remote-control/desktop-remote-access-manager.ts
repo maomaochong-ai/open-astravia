@@ -328,7 +328,7 @@ export class DesktopRemoteAccessManager {
 	async renameDevice(id: string, name: string): Promise<RemoteAccessState> {
 		const trimmed = name.trim().slice(0, 64);
 		if (trimmed) {
-			await this.options.store.patchDevice(id, { name: trimmed });
+			await this.options.store.patchDevice(id, { name: trimmed, renamed: true });
 			this.config = await this.options.store.read();
 		}
 		return this.getState();
@@ -567,8 +567,9 @@ export class DesktopRemoteAccessManager {
 		const snapshot = connection.getSnapshot();
 		const peerKey = snapshot.peerIdentityKey;
 		if (!device.mobileIdentityKey && peerKey) await this.claim(deviceId, peerKey, snapshot.peerDeviceName);
-		// A phone renamed since pairing (or paired before its name was kept) shows its current name.
-		const name = snapshot.peerDeviceName?.trim();
+		// A phone renamed since pairing (or paired before its name was kept) shows its current name,
+		// unless the name was chosen on this desktop.
+		const name = device.renamed ? undefined : snapshot.peerDeviceName?.trim();
 		// Only a "last seen" time and the name: failing to save them must not keep the phone from being served.
 		try {
 			await this.options.store.patchDevice(deviceId, {

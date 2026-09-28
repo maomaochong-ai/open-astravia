@@ -127,6 +127,7 @@ export interface DesktopConfigData {
 		devices: Array<{
 			id: string;
 			name: string;
+			renamed?: boolean;
 			mobileSecretHash: string;
 			mobileIdentityKey?: string;
 			createdAt: number;

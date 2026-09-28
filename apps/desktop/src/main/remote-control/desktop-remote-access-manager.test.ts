@@ -440,6 +440,31 @@ describe("DesktopRemoteAccessManager", () => {
 		await manager.shutdown();
 	});
 
+	it("keeps a name chosen on the desktop when the phone connects", async () => {
+		const pairingId = "a".repeat(24);
+		const phoneKey = "k".repeat(43);
+		const { manager, relayLinks, store } = harness({
+			cloudEnabled: true,
+			devices: [{ id: pairingId, name: "Pixel", mobileSecretHash: "h", mobileIdentityKey: phoneKey, createdAt: 1 }],
+		});
+		store.putRelaySecret(pairingId, "relay-secret");
+		await manager.restore();
+		await manager.renameDevice(pairingId, "工作手机");
+		const delivered: string[] = [];
+		const connection = {
+			onEvent: () => () => undefined,
+			getSnapshot: () => ({ state: "online", peerIdentityKey: phoneKey, peerDeviceName: "Xiaomi 14" }),
+			deliverEvent: async (event: { name: string }) => {
+				delivered.push(event.name);
+			},
+			close: async () => undefined,
+		} as unknown as RemoteConnection;
+		relayLinks[0]?.options.onConnection(connection);
+		await vi.waitFor(() => expect(delivered).toContain("device.status"));
+		expect(manager.getState().devices[0]?.name).toBe("工作手机");
+		await manager.shutdown();
+	});
+
 	it("starts the desktop screen host when a paired phone comes online", async () => {
 		const pairingId = "a".repeat(24);
 		const phoneKey = "k".repeat(43);
