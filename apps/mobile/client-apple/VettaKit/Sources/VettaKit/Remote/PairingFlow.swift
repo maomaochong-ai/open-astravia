@@ -80,52 +80,92 @@ public final class PairingFlow {
 			fail(.invalidCode)
 			return nil
 		}
-		var attempts: [(via: PairingVia, url: String)] = invite.lanEndpoints.map {
-			(.lan, PairingURI.lanControlUrl(endpoint: $0, pairingId: invite.pairingId))
-		}
-		if let relay = invite.relayBaseUrl {
-			attempts.append((.relay, PairingURI.relayControlUrl(relayBaseUrl: relay, pairingId: invite.pairingId, role: .mobile)))
-		}
-		if attempts.isEmpty {
+		let lanUrls = invite.lanEndpoints.map { PairingURI.lanControlUrl(endpoint: $0, pairingId: invite.pairingId) }
+		let relayUrl = invite.relayBaseUrl.map { PairingURI.relayControlUrl(relayBaseUrl: $0, pairingId: invite.pairingId, role: .mobile) }
+		if lanUrls.isEmpty, relayUrl == nil {
 			fail(.invalidCode)
 			return nil
 		}
+		let transport = TransportOptions(pairingSecret: invite.mobileSecret)
 		let expected = try? RemoteCrypto.decodePublicKey(invite.desktopIdentityKey)
-		var lastFailure = PairingFailure.unreachable
-		attempts: for attempt in attempts {
-			if cancelled { return nil }
-			options.onPhase(.connecting(via: attempt.via))
-			let outcome = await connectOnce(
-				url: attempt.url,
-				transport: TransportOptions(pairingSecret: invite.mobileSecret),
+		var outcome = Outcome.failed(.unreachable)
+		if !lanUrls.isEmpty {
+			options.onPhase(.connecting(via: .lan))
+			outcome = await raceLan(lanUrls, transport: transport, expectedPeerIdentityKey: expected)
+		}
+		// The desktop turning this phone away is final; only an unreachable LAN falls back.
+		if case .failed(.unreachable) = outcome, let relayUrl, !cancelled {
+			options.onPhase(.connecting(via: .relay))
+			outcome = await connectOnce(
+				url: relayUrl,
+				transport: transport,
 				expectedPeerIdentityKey: expected,
-				timeoutMs: attempt.via == .lan ? options.timeoutMs : max(options.timeoutMs, 8_000),
+				timeoutMs: max(options.timeoutMs, 8_000),
 				approvalTimeoutMs: options.approvalTimeoutMs
 			)
-			switch outcome {
-			case let .online(connection):
-				let now = options.now()
-				let record = DesktopRecord(
-					desktopIdentityKey: invite.desktopIdentityKey,
-					desktopName: invite.desktopName,
-					pairingId: invite.pairingId,
-					mobileSecret: invite.mobileSecret,
-					lanEndpoints: invite.lanEndpoints,
-					relayBaseUrl: invite.relayBaseUrl,
-					lastEventSequence: 0,
-					pairedAt: now,
-					lastSeenAt: now
-				)
-				connection.close()
-				options.onPhase(.paired(record))
-				return record
-			case let .failed(reason):
-				lastFailure = reason
-				if reason == .unauthorized || reason == .rejected { break attempts }
+		}
+		if cancelled { return nil }
+		switch outcome {
+		case let .online(connection):
+			let now = options.now()
+			let record = DesktopRecord(
+				desktopIdentityKey: invite.desktopIdentityKey,
+				desktopName: invite.desktopName,
+				pairingId: invite.pairingId,
+				mobileSecret: invite.mobileSecret,
+				lanEndpoints: invite.lanEndpoints,
+				relayBaseUrl: invite.relayBaseUrl,
+				lastEventSequence: 0,
+				pairedAt: now,
+				lastSeenAt: now
+			)
+			connection.close()
+			options.onPhase(.paired(record))
+			return record
+		case let .failed(reason):
+			fail(reason)
+			return nil
+		}
+	}
+
+	/// Tries every LAN address at once, as the channel manager does: a desktop lists
+	/// each of its interfaces (VM bridges, VPN tunnels) and most never answer, so
+	/// waiting out each in turn would take the sum of their timeouts. The first to come
+	/// online wins; when none does, a refusal from the desktop outranks silence.
+	private func raceLan(_ urls: [String], transport: TransportOptions, expectedPeerIdentityKey: Data?) async -> Outcome {
+		await withCheckedContinuation { continuation in
+			var remaining = urls.count
+			var failure = PairingFailure.unreachable
+			var done = false
+			for url in urls {
+				Task {
+					let outcome = await self.connectOnce(
+						url: url,
+						transport: transport,
+						expectedPeerIdentityKey: expectedPeerIdentityKey,
+						timeoutMs: self.options.timeoutMs,
+						approvalTimeoutMs: self.options.approvalTimeoutMs
+					)
+					switch outcome {
+					case let .online(connection):
+						if done {
+							connection.close()
+							return
+						}
+						done = true
+						for other in self.connections where other !== connection { other.close() }
+						continuation.resume(returning: outcome)
+					case let .failed(reason):
+						if reason != .unreachable { failure = reason }
+						remaining -= 1
+						if remaining == 0, !done {
+							done = true
+							continuation.resume(returning: .failed(failure))
+						}
+					}
+				}
 			}
 		}
-		fail(lastFailure)
-		return nil
 	}
 
 	public func pairManually(_ endpoint: String) async -> DesktopRecord? {
