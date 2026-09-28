@@ -3,18 +3,23 @@ import UIKit
 import VettaKit
 @preconcurrency import WebRTC
 
-/// The desktop's screen, and touches on it as the desktop's mouse, as on Android: a tap
-/// clicks, a long press right-clicks (with a magnifier over the finger while held), a drag
-/// drags; two fingers pinch to zoom the picture on the phone, pan it once zoomed, and
-/// scroll the desktop otherwise. Every click and drag is felt as well as seen.
+/// The desktop's screen with the whole phone screen as its trackpad (ADR-0140): one
+/// finger moves the cursor from where it is, anywhere on the screen, picture or not; a
+/// tap clicks and a two-finger tap right-clicks where the cursor is; holding a finger
+/// half a second presses the button, so moving then drags. Two fingers pinch to zoom
+/// the picture and move it once zoomed. The cursor is drawn by the phone, large and
+/// always on top, and a zoomed picture follows it.
 public struct RemoteScreenView: UIViewRepresentable {
 	let track: RTCVideoTrack?
 	let interactive: Bool
+	/// Room left around the picture for the page's controls; touches there still count.
+	let insets: UIEdgeInsets
 	let onInput: ([RemoteInputCommand]) -> Void
 
-	public init(track: RTCVideoTrack?, interactive: Bool, onInput: @escaping ([RemoteInputCommand]) -> Void) {
+	public init(track: RTCVideoTrack?, interactive: Bool, insets: UIEdgeInsets, onInput: @escaping ([RemoteInputCommand]) -> Void) {
 		self.track = track
 		self.interactive = interactive
+		self.insets = insets
 		self.onInput = onInput
 	}
 
@@ -25,6 +30,7 @@ public struct RemoteScreenView: UIViewRepresentable {
 	public func updateUIView(_ view: RemoteScreenSurface, context: Context) {
 		view.onInput = onInput
 		view.interactive = interactive
+		view.pictureInsets = insets
 		view.attach(track)
 	}
 
@@ -36,23 +42,23 @@ public struct RemoteScreenView: UIViewRepresentable {
 public final class RemoteScreenSurface: UIView, UIGestureRecognizerDelegate, RTCVideoViewDelegate {
 	var onInput: ([RemoteInputCommand]) -> Void = { _ in }
 	var interactive = true
+	var pictureInsets: UIEdgeInsets = .zero {
+		didSet { if pictureInsets != oldValue { setNeedsLayout() } }
+	}
 
 	private let video = RTCMTLVideoView()
-	private let magnifier = Magnifier()
+	private let cursor = makeCursor()
 	private var track: RTCVideoTrack?
 	private var videoSize: CGSize = .zero
 	private var viewport = RemoteViewport()
-	private var wheel = WheelNotches()
-	private var twoFingers: TwoFingerMode = .undecided
-	private var twoFingerStart: CGPoint = .zero
+	private var trackpad = RemoteTrackpad()
+	private var lastPan: CGPoint = .zero
+	private var lastHold: CGPoint = .zero
 	private var lastPinchScale: CGFloat = 1
 	private var lastTwoFingerTranslation: CGPoint = .zero
-	private var dragLast: (x: Double, y: Double)?
 	private let tapFeel = UIImpactFeedbackGenerator(style: .light)
-	private let holdFeel = UIImpactFeedbackGenerator(style: .medium)
+	private let rightFeel = UIImpactFeedbackGenerator(style: .medium)
 	private let dragFeel = UIImpactFeedbackGenerator(style: .rigid)
-
-	private enum TwoFingerMode { case undecided, zoom, scroll }
 
 	init() {
 		super.init(frame: .zero)
@@ -60,24 +66,29 @@ public final class RemoteScreenSurface: UIView, UIGestureRecognizerDelegate, RTC
 		clipsToBounds = true
 		video.videoContentMode = .scaleToFill
 		video.delegate = self
+		video.isUserInteractionEnabled = false
 		addSubview(video)
-		addSubview(magnifier)
+		layer.addSublayer(cursor)
+		cursor.isHidden = true
 
+		let move = UIPanGestureRecognizer(target: self, action: #selector(moved))
+		move.maximumNumberOfTouches = 1
 		let tap = UITapGestureRecognizer(target: self, action: #selector(tapped))
+		let rightTap = UITapGestureRecognizer(target: self, action: #selector(rightTapped))
+		rightTap.numberOfTouchesRequired = 2
 		let hold = UILongPressGestureRecognizer(target: self, action: #selector(held))
-		hold.minimumPressDuration = 0.45
-		hold.allowableMovement = 12
-		let drag = UIPanGestureRecognizer(target: self, action: #selector(dragged))
-		drag.maximumNumberOfTouches = 1
+		hold.minimumPressDuration = 0.5
+		hold.allowableMovement = 10
 		let pinch = UIPinchGestureRecognizer(target: self, action: #selector(pinched))
-		let pan2 = UIPanGestureRecognizer(target: self, action: #selector(twoFingerPanned))
-		pan2.minimumNumberOfTouches = 2
-		pan2.maximumNumberOfTouches = 2
-		for recognizer in [tap, hold, drag, pinch, pan2] as [UIGestureRecognizer] {
+		let twoFingers = UIPanGestureRecognizer(target: self, action: #selector(twoFingersMoved))
+		twoFingers.minimumNumberOfTouches = 2
+		twoFingers.maximumNumberOfTouches = 2
+		for recognizer in [move, tap, rightTap, hold, pinch, twoFingers] as [UIGestureRecognizer] {
 			recognizer.delegate = self
 			addGestureRecognizer(recognizer)
 		}
-		tap.require(toFail: hold)
+		// Two fingers landing a moment apart are a right-click, not a click first.
+		tap.require(toFail: rightTap)
 	}
 
 	@available(*, unavailable)
@@ -86,32 +97,52 @@ public final class RemoteScreenSurface: UIView, UIGestureRecognizerDelegate, RTC
 	func attach(_ next: RTCVideoTrack?) {
 		guard next !== track else { return }
 		track?.remove(video)
-		magnifier.detach()
 		track = next
 		next?.add(video)
 	}
 
 	// MARK: Layout
 
-	/// Where the picture sits: the video's shape fitted inside, so bars around it take no taps.
+	/// Where the unzoomed picture sits: the video's shape fitted inside the insets.
 	private var pictureRect: CGRect {
+		let area = bounds.inset(by: pictureInsets)
 		let fitted = RemoteViewport.fitted(
 			videoWidth: videoSize.width, videoHeight: videoSize.height,
-			containerWidth: bounds.width, containerHeight: bounds.height
+			containerWidth: area.width, containerHeight: area.height
 		)
-		return CGRect(x: fitted.x, y: fitted.y, width: fitted.width, height: fitted.height)
+		return CGRect(x: area.minX + fitted.x, y: area.minY + fitted.y, width: fitted.width, height: fitted.height)
 	}
 
 	public override func layoutSubviews() {
 		super.layoutSubviews()
-		let rect = pictureRect
-		video.transform = .identity
-		video.frame = rect
 		applyViewport()
 	}
 
+	/// The video view takes the zoomed size itself rather than being scaled by a
+	/// transform, so the picture is drawn at full sharpness however far it is zoomed.
 	private func applyViewport() {
-		video.transform = CGAffineTransform(translationX: viewport.panX, y: viewport.panY).scaledBy(x: viewport.zoom, y: viewport.zoom)
+		let rect = pictureRect
+		video.frame = CGRect(
+			x: rect.midX - rect.width * viewport.zoom / 2 + viewport.panX,
+			y: rect.midY - rect.height * viewport.zoom / 2 + viewport.panY,
+			width: rect.width * viewport.zoom,
+			height: rect.height * viewport.zoom
+		)
+		placeCursor()
+	}
+
+	private func placeCursor() {
+		guard videoSize != .zero else {
+			cursor.isHidden = true
+			return
+		}
+		let rect = pictureRect
+		let shown = viewport.toView(x: trackpad.cursor.x, y: trackpad.cursor.y, width: rect.width, height: rect.height)
+		CATransaction.begin()
+		CATransaction.setDisableActions(true)
+		cursor.position = CGPoint(x: rect.minX + shown.x, y: rect.minY + shown.y)
+		cursor.isHidden = false
+		CATransaction.commit()
 	}
 
 	public nonisolated func videoView(_ videoView: any RTCVideoRenderer, didChangeVideoSize size: CGSize) {
@@ -125,80 +156,61 @@ public final class RemoteScreenSurface: UIView, UIGestureRecognizerDelegate, RTC
 		}
 	}
 
-	/// A point on this view, in the picture's own unzoomed coordinates.
-	private func pictureLocal(_ point: CGPoint) -> CGPoint {
-		let rect = pictureRect
-		return CGPoint(x: point.x - rect.minX, y: point.y - rect.minY)
-	}
-
-	private func desktopPoint(_ point: CGPoint) -> (x: Double, y: Double) {
-		let rect = pictureRect
-		let local = pictureLocal(point)
-		return viewport.toDesktop(x: local.x, y: local.y, width: rect.width, height: rect.height)
-	}
-
-	private func onPicture(_ point: CGPoint) -> Bool {
-		pictureRect.width > 0 && pictureRect.contains(point)
-	}
-
 	// MARK: Gestures
 
 	public override func gestureRecognizerShouldBegin(_ recognizer: UIGestureRecognizer) -> Bool {
 		guard videoSize != .zero else { return false }
-		// Zooming and panning the picture stay available when taps cannot reach the desktop.
+		// Zooming and moving the picture stay available when taps cannot reach the desktop.
 		if recognizer is UIPinchGestureRecognizer { return true }
 		if let pan = recognizer as? UIPanGestureRecognizer, pan.minimumNumberOfTouches == 2 { return true }
-		return interactive && onPicture(recognizer.location(in: self))
+		return interactive
 	}
 
 	public func gestureRecognizer(_ recognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool {
-		// Pinch and two-finger pan read the same fingers.
+		// Pinch and two-finger move read the same fingers.
 		let pair: [UIGestureRecognizer] = [recognizer, other]
 		return pair.contains { $0 is UIPinchGestureRecognizer } && pair.contains { ($0 as? UIPanGestureRecognizer)?.minimumNumberOfTouches == 2 }
 	}
 
+	@objc private func moved(_ recognizer: UIPanGestureRecognizer) {
+		let translation = recognizer.translation(in: self)
+		switch recognizer.state {
+		case .began:
+			lastPan = translation
+		case .changed:
+			let velocity = recognizer.velocity(in: self)
+			moveCursor(dx: translation.x - lastPan.x, dy: translation.y - lastPan.y, speed: hypot(velocity.x, velocity.y))
+			lastPan = translation
+		default:
+			break
+		}
+	}
+
 	@objc private func tapped(_ recognizer: UITapGestureRecognizer) {
 		guard recognizer.state == .ended else { return }
-		click(at: recognizer.location(in: self), button: .left)
+		onInput(trackpad.click(.left))
 		tapFeel.impactOccurred()
 	}
 
+	@objc private func rightTapped(_ recognizer: UITapGestureRecognizer) {
+		guard recognizer.state == .ended else { return }
+		onInput(trackpad.click(.right))
+		rightFeel.impactOccurred()
+	}
+
+	/// Held half a second: the button goes down, the finger then drags, lifting lets go.
 	@objc private func held(_ recognizer: UILongPressGestureRecognizer) {
 		let point = recognizer.location(in: self)
 		switch recognizer.state {
 		case .began:
-			holdFeel.impactOccurred()
-			if let track { magnifier.show(track, over: point, picture: video.frame, bounds: bounds) }
-		case .changed:
-			magnifier.move(over: point, picture: video.frame, bounds: bounds)
-		case .ended:
-			magnifier.hide()
-			click(at: point, button: .right)
-		default:
-			magnifier.hide()
-		}
-	}
-
-	@objc private func dragged(_ recognizer: UIPanGestureRecognizer) {
-		let point = recognizer.location(in: self)
-		switch recognizer.state {
-		case .began:
-			// Pressed where the finger first came down, not where the drag was recognised.
-			let translation = recognizer.translation(in: self)
-			let start = desktopPoint(CGPoint(x: point.x - translation.x, y: point.y - translation.y))
+			lastHold = point
 			dragFeel.impactOccurred()
-			onInput([.pointerButton(x: start.x, y: start.y, button: .left, action: .down)])
-			let now = desktopPoint(point)
-			onInput([.pointerMove(x: now.x, y: now.y)])
-			dragLast = now
+			onInput([trackpad.press(.down)])
 		case .changed:
-			let now = desktopPoint(point)
-			onInput([.pointerMove(x: now.x, y: now.y)])
-			dragLast = now
+			moveCursor(dx: point.x - lastHold.x, dy: point.y - lastHold.y, speed: 0)
+			lastHold = point
 		default:
-			let end = dragLast ?? desktopPoint(point)
-			onInput([.pointerButton(x: end.x, y: end.y, button: .left, action: .up)])
-			dragLast = nil
+			onInput([trackpad.press(.up)])
 		}
 	}
 
@@ -207,112 +219,71 @@ public final class RemoteScreenSurface: UIView, UIGestureRecognizerDelegate, RTC
 		case .began:
 			lastPinchScale = 1
 		case .changed:
-			if twoFingers == .undecided, abs(recognizer.scale - 1) > 0.08 { twoFingers = .zoom }
-			guard twoFingers == .zoom else { return }
 			let factor = recognizer.scale / lastPinchScale
 			lastPinchScale = recognizer.scale
 			let rect = pictureRect
-			let focus = pictureLocal(recognizer.location(in: self))
-			viewport = viewport.transformed(factor: factor, focusX: focus.x, focusY: focus.y, moveX: 0, moveY: 0, width: rect.width, height: rect.height)
+			let location = recognizer.location(in: self)
+			viewport = viewport.transformed(factor: factor, focusX: location.x - rect.minX, focusY: location.y - rect.minY, moveX: 0, moveY: 0, width: rect.width, height: rect.height)
 			applyViewport()
 		default:
 			break
 		}
 	}
 
-	@objc private func twoFingerPanned(_ recognizer: UIPanGestureRecognizer) {
+	@objc private func twoFingersMoved(_ recognizer: UIPanGestureRecognizer) {
 		let translation = recognizer.translation(in: self)
 		switch recognizer.state {
 		case .began:
-			twoFingers = .undecided
-			lastTwoFingerTranslation = .zero
-			wheel.reset()
-		case .changed:
-			let move = CGPoint(x: translation.x - lastTwoFingerTranslation.x, y: translation.y - lastTwoFingerTranslation.y)
 			lastTwoFingerTranslation = translation
-			if twoFingers == .undecided, hypot(translation.x, translation.y) > 10 { twoFingers = .scroll }
+		case .changed:
 			let rect = pictureRect
-			if twoFingers == .zoom || viewport.zoomed {
-				// Moving a zoomed picture, or the fingers' shared travel while pinching.
-				let focus = pictureLocal(recognizer.location(in: self))
-				viewport = viewport.transformed(factor: 1, focusX: focus.x, focusY: focus.y, moveX: move.x, moveY: move.y, width: rect.width, height: rect.height)
-				applyViewport()
-			} else if twoFingers == .scroll, interactive {
-				let notches = wheel.add(move.y)
-				if notches != 0 { onInput([.pointerScroll(deltaX: 0, deltaY: Double(notches) * WheelNotches.wheelDelta)]) }
-			}
+			let location = recognizer.location(in: self)
+			viewport = viewport.transformed(
+				factor: 1, focusX: location.x - rect.minX, focusY: location.y - rect.minY,
+				moveX: translation.x - lastTwoFingerTranslation.x, moveY: translation.y - lastTwoFingerTranslation.y,
+				width: rect.width, height: rect.height
+			)
+			lastTwoFingerTranslation = translation
+			applyViewport()
 		default:
-			twoFingers = .undecided
+			break
 		}
 	}
 
-	private func click(at point: CGPoint, button: RemotePointerButton) {
-		let target = desktopPoint(point)
-		onInput([
-			.pointerMove(x: target.x, y: target.y),
-			.pointerButton(x: target.x, y: target.y, button: button, action: .down),
-			.pointerButton(x: target.x, y: target.y, button: button, action: .up),
-		])
+	private func moveCursor(dx: CGFloat, dy: CGFloat, speed: CGFloat) {
+		let rect = pictureRect
+		guard let move = trackpad.move(dx: dx, dy: dy, speed: speed, width: rect.width * viewport.zoom, height: rect.height * viewport.zoom) else { return }
+		onInput([move])
+		viewport = viewport.following(x: trackpad.cursor.x, y: trackpad.cursor.y, width: rect.width, height: rect.height, margin: 24)
+		applyViewport()
 	}
 }
 
-/// A round lens above the finger that shows the desktop under it at twice the size, so a
-/// long press lands on the right spot before the right-click goes out on release.
-private final class Magnifier: UIView {
-	private static let diameter: CGFloat = 116
-	private static let power: CGFloat = 2
-	private let lens = RTCMTLVideoView()
-	private weak var track: RTCVideoTrack?
-
-	init() {
-		super.init(frame: CGRect(x: 0, y: 0, width: Self.diameter, height: Self.diameter))
-		isHidden = true
-		isUserInteractionEnabled = false
-		clipsToBounds = true
-		layer.cornerRadius = Self.diameter / 2
-		layer.borderWidth = 2
-		layer.borderColor = UIColor.white.withAlphaComponent(0.9).cgColor
-		backgroundColor = .black
-		lens.videoContentMode = .scaleToFill
-		addSubview(lens)
-	}
-
-	@available(*, unavailable)
-	required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
-
-	func show(_ track: RTCVideoTrack, over point: CGPoint, picture: CGRect, bounds: CGRect) {
-		if self.track !== track {
-			self.track?.remove(lens)
-			track.add(lens)
-			self.track = track
-		}
-		isHidden = false
-		move(over: point, picture: picture, bounds: bounds)
-	}
-
-	/// Above the finger, or below it near the top edge; the picture under the finger in the middle.
-	func move(over point: CGPoint, picture: CGRect, bounds: CGRect) {
-		let gap: CGFloat = 36
-		let above = point.y - gap - Self.diameter / 2
-		let centreY = above - Self.diameter / 2 < bounds.minY ? point.y + gap + Self.diameter / 2 : above
-		center = CGPoint(x: min(max(point.x, Self.diameter / 2), bounds.width - Self.diameter / 2), y: centreY)
-		// The shown picture, zoomed further by `power` about the finger.
-		lens.frame = CGRect(
-			x: Self.diameter / 2 - (point.x - picture.minX) * Self.power,
-			y: Self.diameter / 2 - (point.y - picture.minY) * Self.power,
-			width: picture.width * Self.power,
-			height: picture.height * Self.power
-		)
-	}
-
-	func hide() {
-		isHidden = true
-		detach()
-	}
-
-	/// Stops drawing frames nobody sees.
-	func detach() {
-		track?.remove(lens)
-		track = nil
-	}
+/// A classic arrow pointer, larger than a desktop's and outlined so it shows on any
+/// background; its tip is its position.
+private func makeCursor() -> CAShapeLayer {
+	let cursor = CAShapeLayer()
+	let scale: CGFloat = 1.5
+	let points: [CGPoint] = [
+		CGPoint(x: 0, y: 0), CGPoint(x: 0, y: 22), CGPoint(x: 5.5, y: 17), CGPoint(x: 9.5, y: 26),
+		CGPoint(x: 13.5, y: 24.2), CGPoint(x: 9.6, y: 15.5), CGPoint(x: 16.5, y: 15.5),
+	]
+	let path = UIBezierPath()
+	path.move(to: points[0])
+	for point in points.dropFirst() { path.addLine(to: point) }
+	path.close()
+	path.apply(CGAffineTransform(scaleX: scale, y: scale))
+	cursor.path = path.cgPath
+	cursor.bounds = CGRect(x: 0, y: 0, width: 17 * scale, height: 26 * scale)
+	cursor.anchorPoint = .zero
+	cursor.fillColor = UIColor.white.cgColor
+	cursor.strokeColor = UIColor.black.cgColor
+	cursor.lineWidth = 1.5
+	cursor.lineJoin = .round
+	cursor.shadowColor = UIColor.black.cgColor
+	cursor.shadowOpacity = 0.35
+	cursor.shadowRadius = 2
+	cursor.shadowOffset = CGSize(width: 0, height: 1)
+	cursor.zPosition = 10
+	return cursor
 }

@@ -2,8 +2,8 @@ import SwiftUI
 import VettaKit
 import VettaRTC
 
-/// The paired computer's screen, full size on black, used as its mouse and keyboard
-/// (ADR-0140). The computer captures only while this page is open and the app is in
+/// The paired computer's screen, full size on black, with the whole phone screen as its
+/// trackpad and the phone's keyboard as its keyboard (ADR-0140). The computer captures only while this page is open and the app is in
 /// front. When the picture cannot show, the page says why and what to do instead of
 /// staying black. The only page that turns to landscape; controls move to the sides
 /// there so the picture keeps the full height.
@@ -20,8 +20,14 @@ struct RemoteDesktopScreen: View {
 	var body: some View {
 		GeometryReader { proxy in
 			let wide = proxy.size.width > proxy.size.height
+			let safe = proxy.safeAreaInsets
 			ZStack {
 				Color.black.ignoresSafeArea()
+				// The whole screen is the trackpad; the picture keeps clear of the controls.
+				screen(insets: wide
+					? UIEdgeInsets(top: safe.top, left: safe.leading + 64, bottom: safe.bottom, right: safe.trailing + 64)
+					: UIEdgeInsets(top: safe.top + 60, left: safe.leading, bottom: safe.bottom + 60, right: safe.trailing))
+					.ignoresSafeArea()
 				if wide {
 					HStack(spacing: 0) {
 						VStack {
@@ -30,7 +36,10 @@ struct RemoteDesktopScreen: View {
 							keyboardButton
 						}
 						.padding(8)
-						picture
+						VStack {
+							viewOnlyBanner
+							Spacer()
+						}
 						VStack {
 							Spacer()
 							rotate
@@ -46,7 +55,8 @@ struct RemoteDesktopScreen: View {
 						}
 						.padding(.horizontal, 12)
 						.padding(.vertical, 8)
-						picture
+						viewOnlyBanner
+						Spacer()
 						HStack(spacing: 12) {
 							keyboardButton
 							Text(L10n.Remote.hint)
@@ -54,6 +64,7 @@ struct RemoteDesktopScreen: View {
 								.foregroundStyle(.white.opacity(0.5))
 								.multilineTextAlignment(.center)
 								.frame(maxWidth: .infinity)
+								.allowsHitTesting(false)
 							rotate
 						}
 						.padding(.horizontal, 12)
@@ -98,41 +109,44 @@ struct RemoteDesktopScreen: View {
 	// MARK: Picture
 
 	@ViewBuilder
-	private var picture: some View {
-		ZStack(alignment: .top) {
-			if let session = liveSession, blocker == nil {
-				RemoteScreenView(track: session.videoTrack, interactive: interactive) { session.send($0) }
-					.accessibilityIdentifier("remote.screen")
-				if let viewOnly {
-					Text(viewOnly)
-						.font(.footnote)
-						.foregroundStyle(.white)
-						.multilineTextAlignment(.center)
-						.padding(.horizontal, 16)
-						.padding(.vertical, 8)
-						.frame(maxWidth: .infinity)
-						.background(.black.opacity(0.6))
-						.accessibilityIdentifier("remote.viewOnly")
+	private func screen(insets: UIEdgeInsets) -> some View {
+		if let session = liveSession, blocker == nil {
+			RemoteScreenView(track: session.videoTrack, interactive: interactive, insets: insets) { session.send($0) }
+				.accessibilityIdentifier("remote.screen")
+		} else {
+			VStack(spacing: 14) {
+				if blocker == nil || blocker == L10n.Remote.connecting {
+					ProgressView().tint(.white)
+				} else {
+					Image(systemName: "display")
+						.font(.system(size: 44))
+						.foregroundStyle(.white.opacity(0.5))
 				}
-			} else {
-				VStack(spacing: 14) {
-					if blocker == L10n.Remote.connecting {
-						ProgressView().tint(.white)
-					} else {
-						Image(systemName: "display")
-							.font(.system(size: 44))
-							.foregroundStyle(.white.opacity(0.5))
-					}
-					Text(blocker ?? L10n.Remote.connecting)
-						.foregroundStyle(.white.opacity(0.75))
-						.multilineTextAlignment(.center)
-						.accessibilityIdentifier("remote.unavailable")
-				}
-				.padding(32)
-				.frame(maxWidth: .infinity, maxHeight: .infinity)
+				Text(blocker ?? L10n.Remote.connecting)
+					.foregroundStyle(.white.opacity(0.75))
+					.multilineTextAlignment(.center)
+					.accessibilityIdentifier("remote.unavailable")
 			}
+			.padding(32)
+			.frame(maxWidth: .infinity, maxHeight: .infinity)
 		}
-		.frame(maxWidth: .infinity, maxHeight: .infinity)
+	}
+
+	/// Taps cannot reach the desktop: said along the top of the picture.
+	@ViewBuilder
+	private var viewOnlyBanner: some View {
+		if liveSession != nil, blocker == nil, let viewOnly {
+			Text(viewOnly)
+				.font(.footnote)
+				.foregroundStyle(.white)
+				.multilineTextAlignment(.center)
+				.padding(.horizontal, 16)
+				.padding(.vertical, 8)
+				.frame(maxWidth: .infinity)
+				.background(.black.opacity(0.6))
+				.allowsHitTesting(false)
+				.accessibilityIdentifier("remote.viewOnly")
+		}
 	}
 
 	private var target: String? { model.remoteDesktopTarget }

@@ -3384,13 +3384,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tap to click · hold to right-click · drag to move · pinch to zoom · two fingers to scroll"
+            "value": "Move a finger to move the pointer · tap to click · two-finger tap to right-click · hold to drag · two fingers zoom and move the picture"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "轻点点击 · 长按右键 · 拖动移动 · 双指缩放 · 双指滑动滚动"
+            "value": "单指移动光标 · 轻点点击 · 双指轻点右键 · 按住拖动 · 双指缩放和移动画面"
           }
         }
       }
