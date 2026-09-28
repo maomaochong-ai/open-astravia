@@ -27,13 +27,14 @@ describe("createSystemInputAdapter", () => {
 describe("MacPointerState", () => {
 	it("moves as a drag while a button is held, so the item under it comes along", () => {
 		const pointer = new MacPointerState();
-		expect(pointer.move().eventType).toBe(5);
+		expect(pointer.move(10, 10).eventType).toBe(5);
 		pointer.press("left", "down", 10, 10, 0);
-		expect(pointer.move()).toEqual({ eventType: 6, button: 0 });
+		expect(pointer.move(30, 5)).toEqual({ eventType: 6, button: 0, deltaX: 20, deltaY: -5 });
+		expect(pointer.move(32, 5)).toEqual({ eventType: 6, button: 0, deltaX: 2, deltaY: 0 });
 		pointer.press("left", "up", 50, 10, 900);
-		expect(pointer.move().eventType).toBe(5);
+		expect(pointer.move(50, 10).eventType).toBe(5);
 		pointer.press("right", "down", 10, 10, 2_000);
-		expect(pointer.move()).toEqual({ eventType: 7, button: 1 });
+		expect(pointer.move(12, 10)).toEqual({ eventType: 7, button: 1, deltaX: 2, deltaY: 0 });
 	});
 
 	it("counts quick clicks in one place as a double-click", () => {
