@@ -78,8 +78,11 @@ export class RemoteDesktopHost {
 		if (stream) {
 			if (stream.getVideoTracks().length === 0) throw new Error("screen stream must contain a video track");
 			for (const track of stream.getTracks()) this.peer.addTrack(track, stream);
+			for (const transceiver of this.peer.getTransceivers?.() ?? []) preferHardwareCodec(transceiver);
 		} else {
-			this.screenSender = this.peer.addTransceiver("video", { direction: "sendonly" }).sender;
+			const transceiver = this.peer.addTransceiver("video", { direction: "sendonly" });
+			preferHardwareCodec(transceiver);
+			this.screenSender = transceiver.sender;
 		}
 		this.inputChannel = this.peer.createDataChannel("vetta-input-v1", { ordered: true });
 		this.configureInputChannel(this.inputChannel);
@@ -130,6 +133,11 @@ export class RemoteDesktopHost {
 		return this.peer.connectionState;
 	}
 
+	/** The connection's statistics, for diagnostics: counts, codec names and timing only. */
+	getStats(): Promise<RTCStatsReport> {
+		return this.peer.getStats();
+	}
+
 	/** Puts a new screen track in the video slot, or empties it with null; the previous track is stopped. */
 	async replaceScreen(track: MediaStreamTrack | null): Promise<void> {
 		if (this.closed) {
@@ -141,7 +149,7 @@ export class RemoteDesktopHost {
 		if (track) track.contentHint = "detail";
 		await this.screenSender.replaceTrack(track);
 		if (previous && previous !== track) previous.stop();
-		if (track) await keepTextSharp(this.screenSender);
+		if (track) await tuneScreenSender(this.screenSender);
 	}
 
 	sendControl(message: string): void {
@@ -347,23 +355,43 @@ export class RemoteDesktopViewer {
 	}
 }
 
-/** The most the screen may spend: enough for sharp text at full resolution. */
-const SCREEN_MAX_BITRATE = 8_000_000;
+/**
+ * H.264 first: desktops and phones encode and decode it in hardware, where VP8, the
+ * default, is encoded in software and falls behind on a large screen, dropping frames
+ * while the picture moves. Other codecs stay as fallbacks.
+ */
+function preferHardwareCodec(transceiver: RTCRtpTransceiver): void {
+	if (typeof transceiver.setCodecPreferences !== "function" || typeof RTCRtpReceiver === "undefined") return;
+	// Chromium checks preferences against what it can receive, even for a send-only slot.
+	const codecs = RTCRtpReceiver.getCapabilities?.("video")?.codecs;
+	if (!codecs?.length) return;
+	const h264 = codecs.filter((codec) => codec.mimeType.toLowerCase() === "video/h264");
+	if (h264.length === 0) return;
+	try {
+		transceiver.setCodecPreferences([...h264, ...codecs.filter((codec) => !h264.includes(codec))]);
+	} catch {
+		// Left to the browser's default order.
+	}
+}
+
+/** The most the screen may spend: sharp text at a large capture, still well within a LAN. */
+const SCREEN_MAX_BITRATE = 12_000_000;
 
 /**
- * A phone zooms in to read the screen, so text must stay sharp: when bandwidth runs
- * short, WebRTC drops frames instead of resolution (ADR-0140). Best effort; a browser
- * without these parameters keeps its defaults.
+ * A phone zooms in to read the screen and drags things across it, so text should stay
+ * sharp and motion smooth. "balanced" trades a little of each under load instead of
+ * dropping frames to hold full resolution, which made dragging stutter (ADR-0140).
+ * Best effort; a browser without these parameters keeps its defaults.
  */
-async function keepTextSharp(sender: RTCRtpSender): Promise<void> {
+async function tuneScreenSender(sender: RTCRtpSender): Promise<void> {
 	if (typeof sender.getParameters !== "function") return;
 	try {
 		const parameters = sender.getParameters();
-		parameters.degradationPreference = "maintain-resolution";
+		parameters.degradationPreference = "balanced";
 		for (const encoding of parameters.encodings ?? []) encoding.maxBitrate = SCREEN_MAX_BITRATE;
 		await sender.setParameters(parameters);
 	} catch {
-		// Unsupported here: the defaults still work, only blurrier under load.
+		// Unsupported here: the defaults still work.
 	}
 }
 

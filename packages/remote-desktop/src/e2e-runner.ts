@@ -140,9 +140,31 @@ async function runOnDemand(): Promise<Record<string, number | string | boolean>>
 	const resumed = await motion(video);
 	if (resumed < 10_000) throw new Error(`resubscribed screen is not moving (delta=${resumed})`);
 
+	const codec = await sentCodec(host);
+	if (codec !== "video/H264")
+		throw new Error(
+			`screen is not sent as H.264 (${codec}); can send ${RTCRtpSender.getCapabilities("video")
+				?.codecs.map((c) => c.mimeType)
+				.join(",")}`,
+		);
+
 	viewer.close();
 	host.close();
-	return { onDemandMoving: moving, onDemandPaused: paused, onDemandResumed: resumed };
+	return { onDemandMoving: moving, onDemandPaused: paused, onDemandResumed: resumed, onDemandCodec: codec };
+}
+
+async function sentCodec(host: RemoteDesktopHost): Promise<string | undefined> {
+	const reports = new Map<string, Record<string, unknown>>();
+	(await host.getStats()).forEach((report: Record<string, unknown>) => {
+		reports.set(String(report.id), report);
+	});
+	for (const report of reports.values()) {
+		if (report.type === "outbound-rtp" && report.kind === "video" && typeof report.codecId === "string") {
+			const mimeType = reports.get(report.codecId)?.mimeType;
+			return typeof mimeType === "string" ? mimeType : undefined;
+		}
+	}
+	return undefined;
 }
 
 async function motion(video: HTMLVideoElement): Promise<number> {

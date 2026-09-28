@@ -78,6 +78,7 @@ describe("remote desktop host screen on demand", () => {
 		await host.start(undefined, { waitForPeerReady: true });
 		await host.acceptSignal({ type: "peer_ready", protocolVersion: 1 });
 		expect(peer.addTransceiver).toHaveBeenCalledWith("video", { direction: "sendonly" });
+		expect(peer.setCodecPreferences).not.toHaveBeenCalled(); // no codec list outside a browser
 		expect(peer.connection.addTrack).not.toHaveBeenCalled();
 		expect(peer.sender.track).toBeNull();
 
@@ -86,8 +87,8 @@ describe("remote desktop host screen on demand", () => {
 		expect(peer.sender.track).toBe(first);
 		expect(first.contentHint).toBe("detail");
 		expect(peer.sender.parameters).toMatchObject({
-			degradationPreference: "maintain-resolution",
-			encodings: [{ maxBitrate: 8_000_000 }],
+			degradationPreference: "balanced",
+			encodings: [{ maxBitrate: 12_000_000 }],
 		});
 
 		const second = fakeTrack();
@@ -137,6 +138,7 @@ function fakePeerConnection(): {
 	readonly createDataChannel: ReturnType<typeof vi.fn>;
 	readonly channels: RTCDataChannel[];
 	readonly addTransceiver: ReturnType<typeof vi.fn>;
+	readonly setCodecPreferences: ReturnType<typeof vi.fn>;
 	readonly sender: { track: MediaStreamTrack | null; parameters: Record<string, unknown> };
 } {
 	const createOffer = vi.fn(async () => ({ type: "offer" as const, sdp: "v=0\r\n" }));
@@ -165,7 +167,8 @@ function fakePeerConnection(): {
 			sender.track = track;
 		}),
 	};
-	const addTransceiver = vi.fn(() => ({ sender }));
+	const setCodecPreferences = vi.fn();
+	const addTransceiver = vi.fn(() => ({ sender, setCodecPreferences }));
 	const connection = {
 		addTransceiver,
 		addIceCandidate: vi.fn(async () => undefined),
@@ -181,7 +184,7 @@ function fakePeerConnection(): {
 		setLocalDescription: vi.fn(async () => undefined),
 		signalingState: "stable",
 	} as unknown as RTCPeerConnection;
-	return { connection, createOffer, createDataChannel, channels, addTransceiver, sender };
+	return { connection, createOffer, createDataChannel, channels, addTransceiver, sender, setCodecPreferences };
 }
 
 function fakeStream(): MediaStream {
