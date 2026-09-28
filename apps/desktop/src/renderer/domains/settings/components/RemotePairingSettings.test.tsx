@@ -194,4 +194,36 @@ describe("远程连接设置", () => {
 		expect(toggle.hasAttribute("disabled")).toBe(true);
 		expect(screen.getByText("remote.devices.controlNeedsCloud")).toBeTruthy();
 	});
+
+	it("二维码下方给出连接码和密码，供不在电脑旁的手机输入", async () => {
+		installRemotePairing({
+			initial: {
+				...inviteState(),
+				invite: {
+					...inviteState().invite!,
+					code: { code: "K7Q2-9MXD", password: "482913", status: "ready" },
+				},
+			},
+		});
+		render(<RemotePairingSettings />);
+
+		await screen.findByRole("img", { name: "remote.pairing.qrAlt" });
+		expect(screen.getByText("remote.pairing.codeHint")).toBeTruthy();
+		expect(screen.getByText("K7Q2-9MXD")).toBeTruthy();
+		expect(screen.getByText("482913")).toBeTruthy();
+	});
+
+	it("中继收不下连接码时仍保留二维码，并说明原因", async () => {
+		installRemotePairing({
+			initial: {
+				...inviteState(),
+				invite: { ...inviteState().invite!, code: { code: "K7Q2-9MXD", password: "482913", status: "failed" } },
+			},
+		});
+		render(<RemotePairingSettings />);
+
+		await screen.findByRole("img", { name: "remote.pairing.qrAlt" });
+		expect(screen.getByText("remote.pairing.codeFailed")).toBeTruthy();
+		expect(screen.queryByText("482913")).toBeNull();
+	});
 });

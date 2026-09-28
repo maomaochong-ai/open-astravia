@@ -56,6 +56,11 @@ export interface RemotePairingSettingsModel {
 		};
 		readonly pairing: {
 			readonly cancel: string;
+			readonly code: string;
+			readonly codeFailed: string;
+			readonly codeHint: string;
+			readonly codePreparing: string;
+			readonly password: string;
 			readonly create: string;
 			readonly description: string;
 			readonly empty: string;
@@ -77,6 +82,12 @@ export interface RemotePairingSettingsModel {
 		readonly preparing: boolean;
 		readonly qrDataUrl?: string;
 		readonly vaultAvailable: boolean;
+		/** The invite as a connection code and password, when the relay can hold it. */
+		readonly code?: {
+			readonly code: string;
+			readonly password: string;
+			readonly status: "preparing" | "ready" | "failed";
+		};
 	};
 	readonly actions: {
 		readonly approve: (id: string, allow: boolean) => void;
@@ -222,6 +233,11 @@ export function useRemotePairingSettingsModel(): RemotePairingSettingsModel {
 				empty: t("remote.pairing.empty"),
 				vaultUnavailable: t("remote.pairing.vaultUnavailable"),
 				manualHint: t("remote.pairing.manualHint"),
+				code: t("remote.pairing.code"),
+				password: t("remote.pairing.password"),
+				codeHint: t("remote.pairing.codeHint"),
+				codePreparing: t("remote.pairing.codePreparing"),
+				codeFailed: t("remote.pairing.codeFailed"),
 				permissionHint: t("remote.pairing.permissionHint"),
 			},
 			cloud: {
@@ -296,6 +312,7 @@ export function useRemotePairingSettingsModel(): RemotePairingSettingsModel {
 				initializing || Boolean((busy && !state.invite) || (state.invite && !qrDataUrl && failure !== "qr")),
 			qrDataUrl,
 			vaultAvailable: state.vaultAvailable,
+			code: state.invite?.code,
 		},
 		actions,
 	};

@@ -160,6 +160,35 @@ export function RemotePairingSettingsView({ model }: { model: RemotePairingSetti
 							) : null}
 						</div>
 					)}
+					{model.pairing.qrDataUrl && model.pairing.code ? (
+						<div className="mt-4 border-t border-border/50 pt-3 text-[12px] leading-relaxed text-muted-foreground">
+							{model.pairing.code.status === "ready" ? (
+								<>
+									<p>{model.labels.pairing.codeHint}</p>
+									<dl className="mt-2 flex flex-wrap gap-x-8 gap-y-2">
+										<div>
+											<dt>{model.labels.pairing.code}</dt>
+											<dd className="font-mono text-[20px] font-semibold tracking-[0.15em] text-foreground select-all">
+												{model.pairing.code.code}
+											</dd>
+										</div>
+										<div>
+											<dt>{model.labels.pairing.password}</dt>
+											<dd className="font-mono text-[20px] font-semibold tracking-[0.15em] text-foreground select-all">
+												{model.pairing.code.password}
+											</dd>
+										</div>
+									</dl>
+								</>
+							) : (
+								<p>
+									{model.pairing.code.status === "preparing"
+										? model.labels.pairing.codePreparing
+										: model.labels.pairing.codeFailed}
+								</p>
+							)}
+						</div>
+					) : null}
 					{model.pairing.endpoints.length > 0 ? (
 						<div className="mt-4 border-t border-border/50 pt-3 text-[12px] leading-relaxed text-muted-foreground">
 							<p>{model.labels.pairing.manualHint}</p>

@@ -1,6 +1,11 @@
 import {
 	buildPairingUri,
 	decodePublicKey,
+	formatInviteCode,
+	generateInviteCode,
+	generateInvitePassword,
+	inviteBoxId,
+	inviteBoxUrl,
 	RemoteConnection,
 	type RemoteDevicePaired,
 	type RemoteDeviceStatus,
@@ -8,6 +13,7 @@ import {
 	type RemoteHelloDecision,
 	type RemoteIdentityKeyPair,
 	randomToken,
+	sealInvite,
 	sha256Hex,
 	toBase64Url,
 } from "@vetta/remote-control";
@@ -20,6 +26,7 @@ import type { DesktopRemoteMirror } from "./desktop-remote-mirror.js";
 import { DesktopRemoteRelayLink } from "./desktop-remote-relay-link.js";
 import type { RemoteDeviceStore } from "./remote-device-store.js";
 import { toRemoteError } from "./remote-error-mapping.js";
+import { createRemoteInviteMailbox, type RemoteInviteMailbox } from "./remote-invite-mailbox.js";
 import { listLanEndpoints } from "./remote-lan-endpoints.js";
 
 export interface RemoteAccessDeviceView {
@@ -38,6 +45,24 @@ export interface RemoteAccessInviteView {
 	readonly pairingId: string;
 	readonly inviteUri: string;
 	readonly expiresAt: number;
+	/** The same invite as a connection code and password, for a phone that is not here (ADR-0136). */
+	readonly code?: RemoteAccessInviteCodeView;
+}
+
+export interface RemoteAccessInviteCodeView {
+	/** "K7Q2-9MXD" */
+	readonly code: string;
+	readonly password: string;
+	/** Being sealed and left on the relay; ready once a phone can fetch it; failed when the relay refused. */
+	readonly status: "preparing" | "ready" | "failed";
+}
+
+interface InviteCode {
+	readonly code: string;
+	readonly password: string;
+	readonly boxUrl: string;
+	readonly token: string;
+	readonly status: RemoteAccessInviteCodeView["status"];
 }
 
 export interface RemoteAccessApprovalView {
@@ -86,6 +111,8 @@ export interface DesktopRemoteAccessManagerOptions {
 	readonly runningSessionCount: () => number;
 	readonly listLanEndpoints?: (port: number) => string[];
 	readonly inviteTtlMs?: number;
+	/** Test seam: replaces the relay's invite mailbox. */
+	readonly inviteMailbox?: RemoteInviteMailbox;
 	readonly now?: () => number;
 	/** Test seam: replaces the LAN server. */
 	readonly createLanServer?: (
@@ -130,8 +157,14 @@ export class DesktopRemoteAccessManager {
 	private readonly approvals = new Map<string, PendingApproval>();
 	private readonly lanLinks = new Map<string, Set<() => void>>();
 	private currentInvite:
-		| { readonly pairingId: string; readonly expiresAt: number; timer: ReturnType<typeof setTimeout> }
+		| {
+				readonly pairingId: string;
+				readonly expiresAt: number;
+				timer: ReturnType<typeof setTimeout>;
+				readonly code?: InviteCode;
+		  }
 		| undefined;
+	private readonly inviteMailbox: RemoteInviteMailbox;
 	private currentError: string | undefined;
 	private readonly stateListeners = new Set<(state: RemoteAccessState) => void>();
 	private stateNotice: ReturnType<typeof setTimeout> | undefined;
@@ -142,6 +175,7 @@ export class DesktopRemoteAccessManager {
 	constructor(private readonly options: DesktopRemoteAccessManagerOptions) {
 		this.now = options.now ?? Date.now;
 		this.inviteTtlMs = options.inviteTtlMs ?? DEFAULT_INVITE_TTL_MS;
+		this.inviteMailbox = options.inviteMailbox ?? createRemoteInviteMailbox();
 		this.hub = new DesktopRemoteDeviceHub(
 			{
 				handleRequest: (_deviceId, request) => this.requireMirror().handleRequest(request),
@@ -201,8 +235,16 @@ export class DesktopRemoteAccessManager {
 	}
 
 	private set invite(value) {
+		const previous = this.currentInvite;
 		this.currentInvite = value;
 		this.stateChanged();
+		// Claimed, discarded or expired: nobody should find this invite on the relay any more.
+		if (previous?.code && previous.pairingId !== value?.pairingId) {
+			const { boxUrl, token } = previous.code;
+			void this.inviteMailbox.withdraw(boxUrl, token).catch((error: unknown) => {
+				log.warn("remote invite code withdraw failed", { error: describe(error) });
+			});
+		}
 	}
 
 	private get lastError(): string | undefined {
@@ -227,7 +269,9 @@ export class DesktopRemoteAccessManager {
 				createdAt: device.createdAt,
 				lastSeenAt: device.lastSeenAt,
 			})),
-			invite: this.invite ? this.inviteView(this.invite.pairingId, this.invite.expiresAt) : undefined,
+			invite: this.invite
+				? this.inviteView(this.invite.pairingId, this.invite.expiresAt, this.invite.code)
+				: undefined,
 			approvals: [...this.approvals.values()].map((approval) => ({
 				id: approval.id,
 				deviceName: approval.hello.deviceName,
@@ -290,8 +334,53 @@ export class DesktopRemoteAccessManager {
 		timer.unref?.();
 		this.invite = { pairingId, expiresAt, timer };
 		await this.reconcile();
+		void this.publishInviteCode(pairingId);
 		log.info("remote invite created", { pairingId: pairingId.slice(0, 6) });
 		return this.getState();
+	}
+
+	/**
+	 * Seals the invite under a fresh connection code and password and leaves it on the
+	 * relay, so a phone elsewhere can pair by typing both in. Needs the relay; the QR
+	 * code works either way.
+	 */
+	private async publishInviteCode(pairingId: string): Promise<void> {
+		const relayBaseUrl = this.config.cloudEnabled ? this.config.relayBaseUrl : undefined;
+		const invite = this.invite;
+		if (!relayBaseUrl || invite?.pairingId !== pairingId) return;
+		const view = this.inviteView(pairingId, invite.expiresAt);
+		if (!view) return;
+		const rawCode = generateInviteCode();
+		const code: InviteCode = {
+			code: rawCode,
+			password: generateInvitePassword(),
+			boxUrl: inviteBoxUrl(relayBaseUrl, inviteBoxId(rawCode)),
+			token: randomToken(32),
+			status: "preparing",
+		};
+		const settle = (status: InviteCode["status"]): void => {
+			const current = this.invite;
+			if (current?.pairingId === pairingId) this.invite = { ...current, code: { ...code, status } };
+		};
+		settle("preparing");
+		try {
+			const envelope = await sealInvite(view.inviteUri, code.code, code.password);
+			await this.inviteMailbox.publish(
+				code.boxUrl,
+				code.token,
+				envelope,
+				Math.max(invite.expiresAt - this.now(), 1_000),
+			);
+			if (this.invite?.pairingId !== pairingId) {
+				// Gone while it was being published: take it straight back.
+				await this.inviteMailbox.withdraw(code.boxUrl, code.token).catch(() => undefined);
+				return;
+			}
+			settle("ready");
+		} catch (error) {
+			log.warn("remote invite code publish failed", { error: describe(error) });
+			settle("failed");
+		}
 	}
 
 	async cancelInvite(): Promise<RemoteAccessState> {
@@ -754,7 +843,7 @@ export class DesktopRemoteAccessManager {
 		return (this.options.listLanEndpoints ?? listLanEndpoints)(port);
 	}
 
-	private inviteView(pairingId: string, expiresAt: number): RemoteAccessInviteView | undefined {
+	private inviteView(pairingId: string, expiresAt: number, code?: InviteCode): RemoteAccessInviteView | undefined {
 		const mobileSecret = this.options.store.mobileSecret(pairingId);
 		if (!mobileSecret) return undefined;
 		const port = this.lanServer?.listeningPort;
@@ -770,6 +859,7 @@ export class DesktopRemoteAccessManager {
 				lanEndpoints: port ? this.lanEndpoints(port) : [],
 				relayBaseUrl: this.config.cloudEnabled ? this.config.relayBaseUrl : undefined,
 			}),
+			...(code ? { code: { code: formatInviteCode(code.code), password: code.password, status: code.status } } : {}),
 		};
 	}
 

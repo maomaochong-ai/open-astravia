@@ -17,6 +17,12 @@ export interface RemotePairingInvite {
 	pairingId: string;
 	inviteUri: string;
 	expiresAt: number;
+	/** The same invite as a connection code and password, for a phone that is not here. */
+	code?: {
+		code: string;
+		password: string;
+		status: "preparing" | "ready" | "failed";
+	};
 }
 
 export interface RemotePairingApproval {

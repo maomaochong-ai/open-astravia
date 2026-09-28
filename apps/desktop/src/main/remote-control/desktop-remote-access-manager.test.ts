@@ -1,5 +1,13 @@
-import type { RemoteConnection, RemoteTransportHandlers } from "@vetta/remote-control";
-import { generateIdentityKeyPair, parsePairingUri, type RemoteHello, toBase64Url } from "@vetta/remote-control";
+import type { RemoteConnection, RemoteInviteEnvelope, RemoteTransportHandlers } from "@vetta/remote-control";
+import {
+	generateIdentityKeyPair,
+	inviteBoxId,
+	normalizeInviteCode,
+	openInvite,
+	parsePairingUri,
+	type RemoteHello,
+	toBase64Url,
+} from "@vetta/remote-control";
 import { describe, expect, it, vi } from "vitest";
 import type { DesktopConfig } from "../config/desktop-config-store.js";
 import type { CredentialRef } from "../credentials/credential-vault.js";
@@ -44,6 +52,11 @@ function harness(initial?: DesktopConfig["remoteControl"], options: { hubGraceMs
 		stopped: boolean;
 		controlHandlers?: RemoteTransportHandlers;
 	}> = [];
+	const mailbox = {
+		published: [] as Array<{ boxUrl: string; token: string; envelope: RemoteInviteEnvelope; ttlMs: number }>,
+		withdrawn: [] as string[],
+		refuse: false,
+	};
 	const manager = new DesktopRemoteAccessManager({
 		store,
 		deviceId: "desktop-1",
@@ -121,6 +134,15 @@ function harness(initial?: DesktopConfig["remoteControl"], options: { hubGraceMs
 				},
 			};
 		},
+		inviteMailbox: {
+			publish: async (boxUrl, token, envelope, ttlMs) => {
+				if (mailbox.refuse) throw new Error("relay not deployed");
+				mailbox.published.push({ boxUrl, token, envelope, ttlMs });
+			},
+			withdraw: async (boxUrl) => {
+				mailbox.withdrawn.push(boxUrl);
+			},
+		},
 		inviteTtlMs: 60_000,
 		hubGraceMs: options.hubGraceMs ?? 5,
 	});
@@ -133,6 +155,7 @@ function harness(initial?: DesktopConfig["remoteControl"], options: { hubGraceMs
 		notifications,
 		mirrors,
 		desktopHosts,
+		mailbox,
 		readConfig: () => config,
 		/** Makes saving the desktop config fail, as a locked file on Windows does. */
 		failWrites: (fail: boolean) => {
@@ -194,6 +217,60 @@ describe("DesktopRemoteAccessManager", () => {
 		// The relay link restarts with the pinned key so nobody else can take the room.
 		expect(relayLinks[0]?.stopped).toBe(true);
 		expect(relayLinks[1]?.options.mobileIdentityKey).toBe(phoneKey);
+	});
+
+	it("offers the invite as a connection code and password that open it from the relay", async () => {
+		const { manager, lanServers, readConfig, mailbox } = harness();
+		const created = await manager.createInvite();
+		await vi.waitFor(() => expect(manager.getState().invite?.code?.status).toBe("ready"));
+		const view = manager.getState().invite?.code;
+		expect(view?.code).toMatch(/^[0-9A-Z]{4}-[0-9A-Z]{4}$/);
+		expect(view?.password).toMatch(/^\d{6}$/);
+		const code = normalizeInviteCode(view?.code ?? "") ?? "";
+		expect(mailbox.published).toHaveLength(1);
+		const published = mailbox.published[0];
+		expect(published?.boxUrl).toBe(`https://relay.example/v2/invite/${inviteBoxId(code)}`);
+		expect(published?.ttlMs).toBeLessThanOrEqual(60_000);
+		expect(JSON.stringify(published?.envelope)).not.toContain(
+			parsePairingUri(created.invite?.inviteUri ?? "").mobileSecret,
+		);
+		await expect(openInvite(published!.envelope, code, view?.password ?? "")).resolves.toBe(
+			created.invite?.inviteUri,
+		);
+
+		// Claimed by the first phone: the mailbox is emptied.
+		const invite = parsePairingUri(created.invite?.inviteUri ?? "");
+		lanServers[0]?.options.onDeviceHello(
+			{ id: invite.pairingId, mobileSecretHash: readConfig().remoteControl?.devices[0]?.mobileSecretHash ?? "" },
+			hello(toBase64Url(generateIdentityKeyPair().publicKey)),
+		);
+		await vi.waitFor(() => expect(mailbox.withdrawn).toEqual([published?.boxUrl]));
+		await manager.shutdown();
+	});
+
+	it("keeps the QR code when the relay cannot take the connection code, and withdraws a discarded one", async () => {
+		const { manager, mailbox } = harness();
+		mailbox.refuse = true;
+		await manager.createInvite();
+		await vi.waitFor(() => expect(manager.getState().invite?.code?.status).toBe("failed"));
+		expect(manager.getState().invite?.inviteUri).toBeTruthy();
+
+		mailbox.refuse = false;
+		await manager.createInvite();
+		await vi.waitFor(() => expect(manager.getState().invite?.code?.status).toBe("ready"));
+		await manager.cancelInvite();
+		await vi.waitFor(() => expect(mailbox.withdrawn).toContain(mailbox.published[0]?.boxUrl));
+		await manager.shutdown();
+	});
+
+	it("does not offer a connection code without the relay", async () => {
+		const { manager, mailbox } = harness();
+		await manager.setCloudEnabled(false);
+		await manager.createInvite();
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(manager.getState().invite?.code).toBeUndefined();
+		expect(mailbox.published).toHaveLength(0);
+		await manager.shutdown();
 	});
 
 	it("a phone that scans again replaces its earlier pairing instead of adding another", async () => {
