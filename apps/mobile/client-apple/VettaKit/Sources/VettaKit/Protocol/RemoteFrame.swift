@@ -78,6 +78,7 @@ public enum RemoteRequestMethod: String, Sendable, CaseIterable {
 	case sessionPrompt = "session.prompt"
 	case sessionUpload = "session.upload"
 	case modelList = "model.list"
+	case skillList = "skill.list"
 	case sessionConfigure = "session.configure"
 	case sessionRename = "session.rename"
 	case sessionPin = "session.pin"

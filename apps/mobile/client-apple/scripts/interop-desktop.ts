@@ -263,6 +263,18 @@ function handleRequest(deviceId: string, connection: Connection, request: { requ
 		case "model.list":
 			ok({ models });
 			return;
+		case "skill.list": {
+			const skills: Array<Record<string, string>> = [
+				{ name: "frontend-design", alias: "前端设计", description: "生成有设计感的页面与组件", type: "skill", source: "builtin" },
+				{ name: "pdf", description: "读取、合并、拆分 PDF", type: "skill", source: "user" },
+				{ name: "weekly-report", alias: "周报", description: "按模板整理本周进展", type: "scene", source: "scene" },
+			];
+			if (typeof request.payload?.cwd === "string") {
+				skills.push({ name: "release", description: "本项目的发版步骤", type: "skill", source: "project" });
+			}
+			ok({ skills });
+			return;
+		}
 		case "session.configure": {
 			const next = { ...settingsFor(sessionId) };
 			if (typeof request.payload?.modelKey === "string") next.modelKey = request.payload.modelKey;

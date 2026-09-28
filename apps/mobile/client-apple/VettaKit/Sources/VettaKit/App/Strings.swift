@@ -123,6 +123,30 @@ public enum L10n {
 		public static var deleteMessage: String { tr("session.deleteMessage") }
 	}
 
+	public enum Skills {
+		public static var title: String { tr("skills.title") }
+		public static var search: String { tr("skills.search") }
+		public static var empty: String { tr("skills.empty") }
+		public static var noMatch: String { tr("skills.noMatch") }
+		public static var loadFailed: String { tr("skills.loadFailed") }
+		public static var retry: String { tr("skills.retry") }
+		public static var scene: String { tr("skills.scene") }
+		public static var added: String { tr("skills.added") }
+		public static var sceneReplaces: String { tr("skills.sceneReplaces") }
+
+		/// Where the desktop installed it, grouped the way its picker ranks sources; nil when unknown.
+		public static func source(_ source: String) -> String? {
+			switch source {
+			case "builtin": tr("skills.source.builtin")
+			case "plugin": tr("skills.source.plugin")
+			case "project": tr("skills.source.project")
+			case "user", "market", "scene": tr("skills.source.user")
+			case "agents-user", "agents-project": tr("skills.source.shared")
+			default: nil
+			}
+		}
+	}
+
 	public enum Chat {
 		public static var composerPlaceholder: String { tr("chat.composerPlaceholder") }
 		public static var thinking: String { tr("chat.thinking") }
@@ -159,6 +183,8 @@ public enum L10n {
 		public static var attachFiles: String { tr("chat.attachFiles") }
 		public static var attachCamera: String { tr("chat.attachCamera") }
 		public static var attachFilesHint: String { tr("chat.attachFilesHint") }
+		public static var attachSkills: String { tr("chat.attachSkills") }
+		public static var attachSkillsHint: String { tr("chat.attachSkillsHint") }
 		public static var attachRecent: String { tr("chat.attachRecent") }
 		public static var cameraUnavailable: String { tr("chat.cameraUnavailable") }
 		public static var dictationHint: String { tr("chat.dictationHint") }

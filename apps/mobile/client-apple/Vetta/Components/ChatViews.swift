@@ -6,7 +6,16 @@ struct UserBubble: View {
 	var attachments: [TranscriptAttachment] = []
 
 	var body: some View {
+		// The skills the message starts with show as chips; the words go in the bubble.
+		let (skills, words) = SkillTokens.split(text)
 		VStack(alignment: .trailing, spacing: 6) {
+			if !skills.isEmpty {
+				HStack(spacing: 6) {
+					ForEach(skills) { SkillChip(skill: $0) }
+				}
+				.frame(maxWidth: .infinity, alignment: .trailing)
+				.accessibilityIdentifier("bubble.skills")
+			}
 			if !attachments.isEmpty {
 				HStack(spacing: 6) {
 					ForEach(Array(attachments.enumerated()), id: \.offset) { _, attachment in
@@ -21,12 +30,12 @@ struct UserBubble: View {
 				.frame(maxWidth: .infinity, alignment: .trailing)
 				.accessibilityIdentifier("bubble.attachments")
 			}
-			bubble
+			if !words.isEmpty { bubble(words) }
 		}
 		.padding(.bottom, 16)
 	}
 
-	private var bubble: some View {
+	private func bubble(_ text: String) -> some View {
 		HStack {
 			Spacer(minLength: 48)
 			Text(text)

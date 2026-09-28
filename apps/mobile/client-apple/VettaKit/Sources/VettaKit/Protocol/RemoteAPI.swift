@@ -118,6 +118,34 @@ public struct RemoteSessionState: Equatable, Codable, Sendable {
 	}
 }
 
+/// A skill or scene the prompt may reference, as the desktop composer's picker lists it.
+public struct RemoteSkillOption: Equatable, Codable, Sendable, Identifiable {
+	public enum Kind: String, Codable, Sendable {
+		case skill, scene
+	}
+
+	/// What the `@skill:` / `@scene:` token carries.
+	public var name: String
+	/// The desktop's display name, when it differs from `name`.
+	public var alias: String?
+	public var description: String
+	public var kind: Kind
+	/// Where it was installed: `builtin`, `plugin`, `user`, `project`…
+	public var source: String
+
+	public var id: String { reference.id }
+	public var displayName: String { alias ?? name }
+	public var reference: SkillReference { SkillReference(kind: kind, name: name) }
+
+	public init(name: String, alias: String? = nil, description: String, kind: Kind, source: String) {
+		self.name = name
+		self.alias = alias
+		self.description = description
+		self.kind = kind
+		self.source = source
+	}
+}
+
 /// A model the session can switch to, with the thinking levels it accepts.
 public struct RemoteModelOption: Equatable, Codable, Sendable, Identifiable {
 	/// `provider/modelId`.
@@ -404,6 +432,25 @@ public enum RemoteAPI {
 				defaultThinkingLevel: entry["defaultThinkingLevel"]?.stringValue,
 				supportsImage: entry["supportsImage"]?.boolValue == true
 			)
+		}
+	}
+
+	/// In the desktop's order; entries without a name or of an unknown kind are dropped.
+	public static func readSkillOptions(_ value: JSONValue?) -> [RemoteSkillOption] {
+		var seen = Set<String>()
+		return (value?["skills"]?.arrayValue ?? []).compactMap { entry -> RemoteSkillOption? in
+			guard entry.isObject,
+			      let name = nonEmpty(entry["name"]?.stringValue),
+			      let kind = entry["type"]?.stringValue.flatMap(RemoteSkillOption.Kind.init(rawValue:))
+			else { return nil }
+			let option = RemoteSkillOption(
+				name: name,
+				alias: nonEmpty(entry["alias"]?.stringValue).flatMap { $0 == name ? nil : $0 },
+				description: entry["description"]?.stringValue ?? "",
+				kind: kind,
+				source: entry["source"]?.stringValue ?? ""
+			)
+			return seen.insert(option.id).inserted ? option : nil
 		}
 	}
 

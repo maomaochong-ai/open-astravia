@@ -272,6 +272,14 @@ import Testing
 					["key": "anthropic/claude-fable-5-1", "name": "Claude Fable 5.1", "provider": "anthropic", "thinkingLevels": ["off", "low", "medium", "high"], "supportsImage": true],
 					["key": "zai/glm-5", "name": "GLM 5", "provider": "zai", "thinkingLevels": ["none", "high", "max"], "supportsImage": false],
 				]])
+			case .skillList where request.payload?["cwd"]?.stringValue == "/broken":
+				try? connection.respond(requestId: request.requestId, success: false, error: RemoteError(code: .internalError, message: "scan failed", retryable: false))
+			case .skillList:
+				var skills: [JSONValue] = [["name": "pdf", "alias": "PDF 工具", "description": "读写 PDF", "type": "skill", "source": "builtin"]]
+				if request.payload?["cwd"]?.stringValue == "/code/vetta" {
+					skills.append(["name": "release", "description": "发版", "type": "scene", "source": "project"])
+				}
+				try? connection.respond(requestId: request.requestId, success: true, payload: ["skills": .array(skills)])
 			case .sessionConfigure:
 				modelKey = request.payload?["modelKey"]?.stringValue ?? modelKey
 				thinkingLevel = request.payload?["thinkingLevel"]?.stringValue ?? thinkingLevel
@@ -448,6 +456,31 @@ import Testing
 		await model.loadModels("old-desktop")
 		#expect(model.models["old-desktop"] == nil)
 		#expect(model.lastError == nil, "a desktop without model.list leaves the title as is, without an alert")
+	}
+
+	@Test func listsSkillsPerProjectAndKeepsTheLastListWhenAFetchFails() async throws {
+		let log = RequestLog()
+		let desktop = scriptedDesktop(recording: log)
+		let model = AppModel(platform: .memory(createTransport: desktop.createTransport))
+		model.start()
+		let invite = PairingURI.build(RemotePairingInvite(pairingId: "pair-1234567890abcdef", mobileSecret: "secret-1234567890abcdef", desktopIdentityKey: desktop.identityKey, desktopName: "MacBook Pro", lanEndpoints: ["192.168.1.20:43117"]))
+		#expect(await model.pairWithCode(invite))
+		#expect(await eventually { model.projects.count == 2 })
+
+		#expect(model.skillCatalog(cwd: "/code/vetta").options == nil)
+		await model.loadSkills(cwd: "/code/vetta")
+		#expect(model.skillCatalog(cwd: "/code/vetta").options?.map(\.name) == ["pdf", "release"])
+		await model.loadSkills(cwd: "/conv")
+		#expect(model.skillCatalog(cwd: nil).options?.map(\.name) == ["pdf"], "the conversation root lists global skills")
+		#expect(log.entries.last { $0.method == .skillList }?.payload == nil, "and does not send it as a project")
+		#expect(model.skillName(SkillReference(kind: .skill, name: "pdf")) == "PDF 工具")
+		#expect(model.skillName(SkillReference(kind: .skill, name: "gone")) == "gone")
+
+		await model.loadSkills(cwd: "/broken")
+		#expect(model.skillCatalog(cwd: "/broken").failed)
+		#expect(model.skillCatalog(cwd: "/broken").options == nil)
+		#expect(model.lastError == nil, "the picker shows the failure itself")
+		#expect(model.skillCatalog(cwd: "/code/vetta").failed == false)
 	}
 
 	@Test func startsANewSessionOnTheChosenModel() async throws {

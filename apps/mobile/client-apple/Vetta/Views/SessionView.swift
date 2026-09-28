@@ -114,6 +114,7 @@ struct SessionView: View {
 				ChatInputBar(
 					draft: $draft,
 					placeholder: L10n.Chat.composerPlaceholder,
+					skillScope: model.session(model.resolve(id))?.projectCwd,
 					sendDisabled: !model.online || starting,
 					busy: active,
 					onStop: { if !starting { Task { await model.abort(id) } } },
@@ -121,7 +122,7 @@ struct SessionView: View {
 						following = true
 						Task {
 							// Keep what was typed so a failed send is not lost.
-							if await model.sendPrompt(id, sent.text, attachments: sent.attachments) == nil { draft = sent }
+							if await model.sendPrompt(id, sent.promptText, attachments: sent.attachments) == nil { draft = sent }
 						}
 					}
 				)

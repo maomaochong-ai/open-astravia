@@ -76,6 +76,9 @@ public final class AppModel {
 	/// The model and level last used on this desktop, to start or switch a session;
 	/// New Session starts on it. Kept across launches.
 	public private(set) var lastModelChoice = ModelChoice()
+	/// Skills the composer may reference, per project; "" holds the global ones.
+	/// In memory only: `loadSkills` refreshes a list each time the picker opens.
+	public private(set) var skillCatalogs: [String: SkillCatalog] = [:]
 	public private(set) var transcripts: [String: TranscriptState] = [:]
 	/// Sessions opened by `startSession`: the local id the chat opened on → the desktop's id.
 	public private(set) var startedSessions: [String: String] = [:]
@@ -196,6 +199,7 @@ public final class AppModel {
 		projects = []
 		models = [:]
 		newSessionModels = []
+		skillCatalogs = [:]
 		lastModelChoice = ModelChoice()
 		transcripts = [:]
 		link = .offline
@@ -237,6 +241,7 @@ public final class AppModel {
 		projects = loadProjects(key)
 		models = [:]
 		newSessionModels = cachedNewSessionModels(key)
+		skillCatalogs = [:]
 		lastModelChoice = platform.settings.get(Self.lastModelKeyPrefix + key)
 			.flatMap { try? JSONDecoder().decode(ModelChoice.self, from: Data($0.utf8)) } ?? ModelChoice()
 		transcripts = [:]
@@ -432,6 +437,41 @@ public final class AppModel {
 			// An older desktop does not know `model.list`; the title then just shows the model.
 			log.info("model.list unavailable: \(String(describing: type(of: error)), privacy: .public)")
 		}
+	}
+
+	// MARK: Skills
+
+	public func skillCatalog(cwd: String?) -> SkillCatalog { skillCatalogs[skillScope(cwd)] ?? SkillCatalog() }
+
+	/// Fetches the skills a prompt in `cwd` may reference; the last list stays
+	/// on screen meanwhile. `cwd` is a project, or nil or the conversation root for global ones.
+	public func loadSkills(cwd: String?) async {
+		let scope = skillScope(cwd)
+		guard skillCatalogs[scope]?.loading != true else { return }
+		skillCatalogs[scope, default: SkillCatalog()].loading = true
+		skillCatalogs[scope]?.failed = false
+		do {
+			let payload: JSONValue? = scope.isEmpty ? nil : ["cwd": .string(scope)]
+			let result = try await requireManager().request(.skillList, payload: payload)
+			skillCatalogs[scope] = SkillCatalog(options: RemoteAPI.readSkillOptions(result))
+		} catch {
+			skillCatalogs[scope]?.loading = false
+			skillCatalogs[scope]?.failed = true
+			log.info("skill.list failed: \(String(describing: type(of: error)), privacy: .public)")
+		}
+	}
+
+	/// The desktop's display name for a referenced skill, when any list has it.
+	public func skillName(_ skill: SkillReference) -> String {
+		for catalog in skillCatalogs.values {
+			if let option = catalog.options?.first(where: { $0.id == skill.id }) { return option.displayName }
+		}
+		return skill.name
+	}
+
+	private func skillScope(_ cwd: String?) -> String {
+		guard let cwd, !cwd.isEmpty, cwd != conversationCwd else { return "" }
+		return cwd
 	}
 
 	/// The desktop lists models per session and every session reads the same
