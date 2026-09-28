@@ -382,6 +382,7 @@
   },
   "runtimeConfiguration": {
     "applyLabel": "生效时间",
+    "custom": "自定义",
     "provider": {
       "local": "本地",
       "remote": "远程",

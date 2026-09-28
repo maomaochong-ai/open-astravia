@@ -23,7 +23,6 @@ export interface RuntimeConfigurationFieldModel {
 }
 
 export interface RuntimeConfigurationSectionModel {
-	apply: string;
 	configurationId: string;
 	description?: string;
 	fields: RuntimeConfigurationFieldModel[];
@@ -35,7 +34,7 @@ export interface RuntimeConfigurationModel {
 		update: (configurationId: string, path: readonly string[], value: RuntimeConfigurationJsonValue) => void;
 	};
 	labels: {
-		apply: string;
+		custom: string;
 		pleaseSelect: string;
 		localProvider: string;
 		remoteProvider: string;
@@ -117,7 +116,6 @@ export function useRuntimeConfigurationModel(): RuntimeConfigurationModel {
 						translate(`runtimeConfiguration.fields.${field.path.join(".")}.description`, "") || undefined,
 				}));
 				return {
-					apply: translate(`runtimeConfiguration.apply.${entry.apply}`, entry.apply),
 					configurationId: entry.configurationId,
 					title: translate(
 						`runtimeConfiguration.configurations.${entry.configurationId}.title`,
@@ -137,7 +135,7 @@ export function useRuntimeConfigurationModel(): RuntimeConfigurationModel {
 	return {
 		actions: { update },
 		labels: {
-			apply: t("runtimeConfiguration.applyLabel"),
+			custom: t("runtimeConfiguration.custom"),
 			pleaseSelect: t("pleaseSelect"),
 			localProvider: t("runtimeConfiguration.provider.local"),
 			remoteProvider: t("runtimeConfiguration.provider.remote"),

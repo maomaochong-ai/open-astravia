@@ -382,6 +382,7 @@
   },
   "runtimeConfiguration": {
     "applyLabel": "Applies",
+    "custom": "Custom",
     "provider": {
       "local": "Local",
       "remote": "Remote",
