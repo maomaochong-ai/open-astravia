@@ -1,0 +1,320 @@
+import Foundation
+import Observation
+import os
+import VettaKit
+@preconcurrency import WebRTC
+
+private let log = Logger(subsystem: "com.openvetta.mobile", category: "remote-desktop")
+
+/// One WebRTC session with the paired desktop, set up through the relay's viewer
+/// signaling: the desktop offers, this phone answers. It carries the P2P control
+/// channel `ChannelManager` talks over, and the screen with its input channel for the
+/// remote desktop page (port of Android's `NativeRemoteDesktopSession`).
+///
+/// The screen's video slot exists from the start but stays empty until the page
+/// subscribes (`screen.subscribe`, ADR-0140), so a session that only carries the
+/// control channel costs neither side a capture.
+///
+/// WebRTC calls its delegates on its own threads; everything here hops to the main
+/// actor first, since default main-actor isolation traps on any other thread.
+@Observable
+public final class RemoteDesktopSession {
+	public enum Phase: Equatable, Sendable {
+		case idle, connecting, connected, stopped
+	}
+
+	public let target: String
+	public private(set) var phase: Phase = .idle
+	/// The desktop's screen track, present from the offer on; frames arrive only while subscribed.
+	public private(set) var videoTrack: RTCVideoTrack?
+
+	@ObservationIgnored private let sessionId: String
+	@ObservationIgnored private var peer: RTCPeerConnection?
+	@ObservationIgnored private var delegate: PeerDelegate?
+	@ObservationIgnored private var socket: URLSessionWebSocketTask?
+	@ObservationIgnored private var urlSession: URLSession?
+	@ObservationIgnored private var inputChannel: RTCDataChannel?
+	@ObservationIgnored private var controlChannel: RTCDataChannel?
+	@ObservationIgnored private var controlTransport: P2PControlTransport?
+	@ObservationIgnored private var pendingCandidates: [RTCIceCandidate] = []
+	@ObservationIgnored private var remoteDescriptionSet = false
+	@ObservationIgnored private var nextSequence = 1
+
+	private static let factory: RTCPeerConnectionFactory = {
+		RTCInitializeSSL()
+		return RTCPeerConnectionFactory(encoderFactory: RTCDefaultVideoEncoderFactory(), decoderFactory: RTCDefaultVideoDecoderFactory())
+	}()
+
+	init(target: String) {
+		self.target = target
+		sessionId = Self.sessionId(in: target)
+	}
+
+	public var isStopped: Bool { phase == .stopped }
+
+	/// Whether taps and keys can go out now.
+	public var canSendInput: Bool { inputChannel?.readyState == .open }
+
+	func start() {
+		guard phase == .idle else { return }
+		phase = .connecting
+		let (url, token) = RemoteDesktopProtocol.splitTarget(target)
+		guard let socketUrl = URL(string: url), !sessionId.isEmpty else {
+			stop(reason: "remote desktop target is invalid")
+			return
+		}
+		let delegate = PeerDelegate(owner: self)
+		self.delegate = delegate
+		let configuration = RTCConfiguration()
+		configuration.iceServers = [RTCIceServer(urlStrings: ["stun:stun.l.google.com:19302"])]
+		configuration.sdpSemantics = .unifiedPlan
+		configuration.continualGatheringPolicy = .gatherContinually
+		let constraints = RTCMediaConstraints(mandatoryConstraints: nil, optionalConstraints: nil)
+		guard let peer = Self.factory.peerConnection(with: configuration, constraints: constraints, delegate: delegate) else {
+			stop(reason: "WebRTC peer connection could not be created")
+			return
+		}
+		self.peer = peer
+		let session = URLSession(configuration: .ephemeral, delegate: delegate, delegateQueue: .main)
+		let socket = session.webSocketTask(with: socketUrl, protocols: RemoteDesktopProtocol.subprotocols(token: token))
+		socket.maximumMessageSize = 1024 * 1024
+		urlSession = session
+		self.socket = socket
+		socket.resume()
+		receive()
+		log.info("remote desktop signaling opened")
+	}
+
+	/// Ends the session for good, telling the desktop so it releases the screen at once
+	/// instead of waiting for ICE to time out. A new session takes over from here.
+	public func stop(reason: String = "closed") {
+		guard phase != .stopped else { return }
+		phase = .stopped
+		if socket != nil, !sessionId.isEmpty {
+			sendSignal(.end(sessionId: sessionId, reason: .peerClosed))
+		}
+		inputChannel?.close()
+		controlChannel?.close()
+		peer?.close()
+		peer = nil
+		videoTrack = nil
+		socket?.cancel(with: .normalClosure, reason: nil)
+		socket = nil
+		urlSession?.finishTasksAndInvalidate()
+		urlSession = nil
+		controlTransport?.channelClosed(reason)
+		delegate = nil
+		log.info("remote desktop session stopped: \(reason, privacy: .public)")
+	}
+
+	// MARK: Control channel
+
+	/// The P2P control channel, claimed once by `ChannelManager`.
+	func claimControlTransport() -> P2PControlTransport? {
+		guard controlTransport == nil, phase != .stopped else { return nil }
+		let transport = P2PControlTransport(session: self)
+		controlTransport = transport
+		if let controlChannel { transport.bind(controlChannel) }
+		return transport
+	}
+
+	// MARK: Input
+
+	/// Sends one input message; dropped while the input channel is not open.
+	public func send(_ command: RemoteInputCommand) {
+		guard let channel = inputChannel, channel.readyState == .open else { return }
+		do {
+			let text = try RemoteDesktopProtocol.encode(command, sequence: nextSequence)
+			nextSequence += 1
+			channel.sendData(RTCDataBuffer(data: Data(text.utf8), isBinary: false))
+		} catch {
+			log.warning("remote desktop input refused: \(String(describing: error), privacy: .public)")
+		}
+	}
+
+	public func send(_ commands: [RemoteInputCommand]) {
+		for command in commands { send(command) }
+	}
+
+	// MARK: Signaling
+
+	private func receive() {
+		socket?.receive { [weak self] result in
+			Task { @MainActor in
+				guard let self, self.phase != .stopped else { return }
+				switch result {
+				case let .success(.string(text)):
+					self.handleSignals(text)
+					self.receive()
+				case .success:
+					self.stop(reason: "desktop signaling returned a binary frame")
+				case let .failure(error):
+					self.stop(reason: "desktop signaling closed: \(error.localizedDescription)")
+				}
+			}
+		}
+	}
+
+	private func handleSignals(_ text: String) {
+		let signals: [RemoteDesktopSignal]
+		do {
+			signals = try RemoteDesktopProtocol.parseSignals(text)
+		} catch {
+			stop(reason: "desktop signaling returned an invalid frame")
+			return
+		}
+		for signal in signals {
+			switch signal {
+			case .peerReady, .answer:
+				break
+			case let .offer(id, sdp):
+				guard id == sessionId else { continue }
+				answer(sdp)
+			case let .ice(id, candidate, sdpMid, sdpMLineIndex):
+				guard id == sessionId else { continue }
+				let ice = RTCIceCandidate(sdp: candidate, sdpMLineIndex: Int32(sdpMLineIndex ?? 0), sdpMid: sdpMid)
+				if remoteDescriptionSet { peer?.add(ice) { _ in } } else { pendingCandidates.append(ice) }
+			case let .end(id, reason):
+				guard id == sessionId else { continue }
+				stop(reason: "desktop ended the session (\(reason.rawValue))")
+			}
+		}
+	}
+
+	private func answer(_ sdp: String) {
+		guard let peer else { return }
+		log.info("remote desktop offer received")
+		peer.setRemoteDescription(RTCSessionDescription(type: .offer, sdp: sdp)) { [weak self] error in
+			Task { @MainActor in
+				guard let self, let peer = self.peer else { return }
+				if let error {
+					self.stop(reason: "remote description failed: \(error.localizedDescription)")
+					return
+				}
+				self.remoteDescriptionSet = true
+				for candidate in self.pendingCandidates { peer.add(candidate) { _ in } }
+				self.pendingCandidates.removeAll()
+				peer.answer(for: RTCMediaConstraints(mandatoryConstraints: nil, optionalConstraints: nil)) { created, error in
+					// Only the text crosses threads; the description is built again on the main actor.
+					let sdp = error == nil ? created?.sdp : nil
+					Task { @MainActor in
+						guard let sdp else {
+							self.stop(reason: "answer failed")
+							return
+						}
+						let description = RTCSessionDescription(type: .answer, sdp: sdp)
+						peer.setLocalDescription(description) { error in
+							Task { @MainActor in
+								guard error == nil else {
+									self.stop(reason: "local description failed")
+									return
+								}
+								self.sendSignal(.answer(sessionId: self.sessionId, sdp: description.sdp))
+								log.info("remote desktop answer sent")
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	private func sendSignal(_ signal: RemoteDesktopSignal) {
+		socket?.send(.string(RemoteDesktopProtocol.encode(signal) + "\n")) { _ in }
+	}
+
+	// MARK: Peer events (already on the main actor)
+
+	fileprivate func peerGenerated(_ candidate: RTCIceCandidate) {
+		guard phase != .stopped else { return }
+		sendSignal(.ice(sessionId: sessionId, candidate: candidate.sdp, sdpMid: candidate.sdpMid, sdpMLineIndex: Int(candidate.sdpMLineIndex)))
+	}
+
+	fileprivate func peerChanged(_ state: RTCIceConnectionState) {
+		switch state {
+		case .connected, .completed:
+			if phase == .connecting { phase = .connected }
+		case .failed, .closed:
+			if phase != .stopped { stop(reason: "WebRTC ICE \(state == .failed ? "failed" : "closed")") }
+		default:
+			break
+		}
+	}
+
+	fileprivate func peerOpened(_ channel: RTCDataChannel) {
+		switch channel.label {
+		case RemoteDesktopProtocol.inputChannel:
+			inputChannel = channel
+		case RemoteDesktopProtocol.controlChannel:
+			controlChannel = channel
+			controlTransport?.bind(channel)
+		default:
+			channel.close()
+		}
+	}
+
+	fileprivate func peerReceived(_ track: RTCMediaStreamTrack) {
+		guard let video = track as? RTCVideoTrack else { return }
+		videoTrack = video
+		log.info("remote desktop video track attached")
+	}
+
+	fileprivate func signalingClosed(_ reason: String) {
+		if phase != .stopped { stop(reason: reason) }
+	}
+
+	private static func sessionId(in target: String) -> String {
+		guard let range = target.range(of: #"/v2/desktop/([A-Za-z0-9_-]{16,128})/"#, options: .regularExpression) else { return "" }
+		return target[range].split(separator: "/").dropFirst(2).first.map(String.init) ?? ""
+	}
+}
+
+/// WebRTC's and the signaling socket's callbacks, moved onto the main actor.
+private final class PeerDelegate: NSObject, RTCPeerConnectionDelegate, URLSessionWebSocketDelegate, @unchecked Sendable {
+	/// Read only on the main queue, where every callback hops before touching it.
+	nonisolated(unsafe) private weak var owner: RemoteDesktopSession?
+
+	init(owner: RemoteDesktopSession) { self.owner = owner }
+
+	/// In arrival order: a candidate must not overtake the answer it belongs after.
+	nonisolated private func onMain(_ body: @escaping @MainActor (RemoteDesktopSession) -> Void) {
+		DispatchQueue.main.async {
+			MainActor.assumeIsolated {
+				guard let owner = self.owner else { return }
+				body(owner)
+			}
+		}
+	}
+
+	nonisolated func peerConnection(_ peerConnection: RTCPeerConnection, didChange stateChanged: RTCSignalingState) {}
+	nonisolated func peerConnection(_ peerConnection: RTCPeerConnection, didAdd stream: RTCMediaStream) {}
+	nonisolated func peerConnection(_ peerConnection: RTCPeerConnection, didRemove stream: RTCMediaStream) {}
+	nonisolated func peerConnectionShouldNegotiate(_ peerConnection: RTCPeerConnection) {}
+	nonisolated func peerConnection(_ peerConnection: RTCPeerConnection, didChange newState: RTCIceGatheringState) {}
+	nonisolated func peerConnection(_ peerConnection: RTCPeerConnection, didRemove candidates: [RTCIceCandidate]) {}
+
+	nonisolated func peerConnection(_ peerConnection: RTCPeerConnection, didChange newState: RTCIceConnectionState) {
+		onMain { $0.peerChanged(newState) }
+	}
+
+	nonisolated func peerConnection(_ peerConnection: RTCPeerConnection, didGenerate candidate: RTCIceCandidate) {
+		onMain { $0.peerGenerated(candidate) }
+	}
+
+	nonisolated func peerConnection(_ peerConnection: RTCPeerConnection, didOpen dataChannel: RTCDataChannel) {
+		onMain { $0.peerOpened(dataChannel) }
+	}
+
+	nonisolated func peerConnection(_ peerConnection: RTCPeerConnection, didStartReceivingOn transceiver: RTCRtpTransceiver) {
+		guard let track = transceiver.receiver.track else { return }
+		onMain { $0.peerReceived(track) }
+	}
+
+	nonisolated func urlSession(_ session: URLSession, webSocketTask: URLSessionWebSocketTask, didCloseWith closeCode: URLSessionWebSocketTask.CloseCode, reason: Data?) {
+		onMain { $0.signalingClosed("desktop signaling closed (\(closeCode.rawValue))") }
+	}
+
+	nonisolated func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+		onMain { $0.signalingClosed(error?.localizedDescription ?? "desktop signaling closed") }
+	}
+}
