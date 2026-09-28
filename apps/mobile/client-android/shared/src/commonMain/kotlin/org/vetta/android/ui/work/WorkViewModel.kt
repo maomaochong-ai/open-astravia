@@ -139,12 +139,26 @@ class WorkViewModel(private val mirror: DesktopMirror) : ViewModel(), WorkAction
         }
     }
 
+    /** Chats whose prompt is still on its way; another tap on send waits for it. */
+    private val sending = mutableSetOf<String>()
+
+    /**
+     * `sessionId` is the chat's own id, the one its draft is kept under; a chat opened
+     * on a local id is sent to the desktop session it became.
+     */
     override fun send(sessionId: String, draft: PromptDraft) {
-        if (!draft.canSend) return
+        if (!draft.canSend || !sending.add(sessionId)) return
         setDraft(sessionId, PromptDraft())
         viewModelScope.launch {
-            // Put back what was typed so a failed send is not lost.
-            if (mirror.sendPrompt(sessionId, draft.text, attachments = draft.attachments) == null) setDraft(sessionId, draft)
+            try {
+                val target = mirror.state.value.resolve(sessionId)
+                // Put back what was typed so a failed send is not lost, unless something new was typed meanwhile.
+                if (mirror.sendPrompt(target, draft.text, attachments = draft.attachments) == null && _drafts.value[sessionId] == null) {
+                    setDraft(sessionId, draft)
+                }
+            } finally {
+                sending.remove(sessionId)
+            }
         }
     }
 

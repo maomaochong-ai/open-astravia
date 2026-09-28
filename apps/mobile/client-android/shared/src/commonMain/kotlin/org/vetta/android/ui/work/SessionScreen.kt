@@ -240,7 +240,7 @@ fun SessionScreen(
                     placeholder = stringResource(Res.string.chat_composer_placeholder),
                     onSend = {
                         following = true
-                        actions.send(id, it)
+                        actions.send(sessionId, it)
                     },
                     enabled = state.online && !starting,
                     busy = active,

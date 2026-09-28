@@ -771,25 +771,42 @@ class DesktopMirror(
         return session.id
     }
 
-    /** Uploads the attachments, then sends the prompt; `echo` shows it in the chat first. */
+    /**
+     * Uploads the attachments, then sends the prompt; `echo` shows it in the chat first.
+     * The chat shows the prompt and a running turn at once, before any upload, so a slow
+     * link does not look like a send that did nothing; when the prompt does not go out,
+     * both are taken back.
+     */
     private suspend fun deliver(target: String, text: String, attachments: List<PromptAttachment>, echo: Boolean) {
         val current = requireLink()
-        val uploadIds =
-            attachments.map { attachment ->
-                val uploaded = current.request(RemoteRequestMethod.SessionUpload, attachment.toJson(), target)
-                (uploaded as? JsonObject)?.string("uploadId") ?: throw IllegalStateException("session.upload returned no uploadId")
-            }
         val now = platform.now()
+        val before = _state.value.transcript(target).sessionState
+        val summary = _state.value.session(target)
         if (echo) dispatch(target, TranscriptAction.LocalUser(text, now, attachments.map { it.toTranscript() }))
         dispatch(target, TranscriptAction.State(RemoteSessionState(RemoteSessionStatus.Running)))
         val title = currentTitle(target, fallback = text)
         patchSession(target) { it.copy(status = RemoteSessionStatus.Running, preview = text, updatedAt = now, title = title) }
-        val payload =
-            buildJsonObject {
-                put("text", text)
-                if (uploadIds.isNotEmpty()) put("attachments", JsonArray(uploadIds.map(::JsonPrimitive)))
+        try {
+            val uploadIds =
+                attachments.map { attachment ->
+                    val uploaded = current.request(RemoteRequestMethod.SessionUpload, attachment.toJson(), target)
+                    (uploaded as? JsonObject)?.string("uploadId") ?: throw IllegalStateException("session.upload returned no uploadId")
+                }
+            val payload =
+                buildJsonObject {
+                    put("text", text)
+                    if (uploadIds.isNotEmpty()) put("attachments", JsonArray(uploadIds.map(::JsonPrimitive)))
+                }
+            current.request(RemoteRequestMethod.SessionPrompt, payload, target)
+        } catch (error: Throwable) {
+            if (echo) {
+                dispatch(target, TranscriptAction.WithdrawLocalUser(text, now, before))
+            } else {
+                dispatch(target, TranscriptAction.State(before))
             }
-        current.request(RemoteRequestMethod.SessionPrompt, payload, target)
+            if (summary != null) patchSession(target) { summary }
+            throw error
+        }
     }
 
     /** Answers the desktop's question; false when it could not be delivered. */

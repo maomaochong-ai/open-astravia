@@ -36,6 +36,7 @@ import org.vetta.android.domain.remote.protocol.RemoteCrypto
 import org.vetta.android.domain.remote.protocol.RemoteErrorCode
 import org.vetta.android.domain.remote.protocol.RemoteEventName
 import org.vetta.android.domain.remote.protocol.RemoteRequestMethod
+import kotlinx.coroutines.CompletableDeferred
 
 /**
  * End to end over the fake desktop: pairing, the session list, prompting with
@@ -339,6 +340,43 @@ class DesktopMirrorTest {
                 listOf(TranscriptAttachment(AttachmentKind.Image, "photo-1.jpg"), TranscriptAttachment(AttachmentKind.File, "notes.txt")),
                 (mirror.state.value.transcript("s2").items.first() as TranscriptItem.User).attachments,
             )
+        }
+
+    @Test
+    fun showsThePromptRunningBeforeUploadsAndTakesItBackWhenTheDesktopRefuses() =
+        runTest {
+            val desktop = scriptedDesktop()
+            val scripted = desktop.handler
+            val uploadGate = CompletableDeferred<Unit>()
+            desktop.handler = { request ->
+                when (request.method) {
+                    RemoteRequestMethod.SessionUpload -> {
+                        uploadGate.await()
+                        scripted(request)
+                    }
+                    RemoteRequestMethod.SessionPrompt -> fail(request.requestId, RemoteErrorCode.Busy, "Desktop session is already processing a turn")
+                    else -> scripted(request)
+                }
+            }
+            val mirror = mirror(desktop)
+            assertTrue(mirror.pairWithCode(desktop.invite()))
+            assertTrue(eventually { mirror.state.value.sessions.any { it.id == "s1" } })
+
+            val photo = PromptAttachment(AttachmentKind.Image, "photo-1.jpg", "image/jpeg", byteArrayOf(1, 2, 3))
+            val sending = async { mirror.sendPrompt("s1", "看看这张", attachments = listOf(photo)) }
+            assertTrue(
+                eventually { mirror.state.value.transcript("s1").items.any { it is TranscriptItem.User && it.text == "看看这张" } },
+                "the prompt shows while the photo is still uploading",
+            )
+            assertEquals(RemoteSessionStatus.Running, mirror.state.value.transcript("s1").sessionState.status)
+            assertEquals(RemoteSessionStatus.Running, mirror.state.value.session("s1")?.status)
+
+            uploadGate.complete(Unit)
+            assertNull(sending.await(), "a refused prompt was not sent")
+            assertTrue(mirror.state.value.transcript("s1").items.none { it is TranscriptItem.User && it.text == "看看这张" }, "the refused prompt is taken back")
+            assertEquals(RemoteSessionStatus.Idle, mirror.state.value.transcript("s1").sessionState.status)
+            assertEquals(RemoteSessionStatus.Completed, mirror.state.value.session("s1")?.status)
+            assertTrue(mirror.state.value.lastError != null)
         }
 
     @Test

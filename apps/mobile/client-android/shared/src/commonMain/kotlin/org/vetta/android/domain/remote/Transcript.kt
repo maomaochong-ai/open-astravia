@@ -104,6 +104,12 @@ sealed interface TranscriptAction {
         val attachments: List<TranscriptAttachment> = emptyList(),
     ) : TranscriptAction
 
+    /**
+     * Takes back the [LocalUser] bubble sent at `at` whose prompt never reached the
+     * desktop, and puts the session back in the state it had before.
+     */
+    data class WithdrawLocalUser(val text: String, val at: Long, val state: RemoteSessionState) : TranscriptAction
+
     data object Resync : TranscriptAction
 }
 
@@ -140,6 +146,11 @@ class TranscriptReducer(private val now: () -> Long) {
             }
             is TranscriptAction.LocalUser ->
                 state.copy(items = state.items + TranscriptItem.User(nextLocalId("local-user"), action.text, action.at, action.attachments))
+            is TranscriptAction.WithdrawLocalUser -> {
+                val index =
+                    state.items.indexOfLast { it is TranscriptItem.User && it.id.startsWith("local-user") && it.text == action.text && it.at == action.at }
+                if (index < 0) state else state.copy(items = state.items.toMutableList().also { it.removeAt(index) }, sessionState = action.state)
+            }
             is TranscriptAction.Message -> applyMessage(state, action.event)
             is TranscriptAction.Tool -> applyTool(state, action.event)
             is TranscriptAction.State -> applyState(state, action.state)
