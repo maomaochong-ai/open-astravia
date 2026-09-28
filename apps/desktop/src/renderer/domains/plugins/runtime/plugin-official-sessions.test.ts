@@ -1,4 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const logWarn = vi.hoisted(() => vi.fn());
+vi.mock("./plugin-runtime-log", () => ({ logPluginRuntimeWarn: logWarn }));
+
 import { createOfficialSessionsApi } from "./plugin-official-sessions";
 import { pluginRendererCapabilityHost } from "./plugin-renderer-capability-host";
 
@@ -7,6 +11,7 @@ import { pluginRendererCapabilityHost } from "./plugin-renderer-capability-host"
 vi.mock("@shared/store/atoms", () => ({ openSessionFnRef: { current: null } }));
 
 const SESSION = "official-session";
+const PLUGIN = { id: "kanban", activeVersion: "1.2.3" } as never;
 
 function stubHostSessionApi(): {
 	create: ReturnType<typeof vi.fn>;
@@ -38,13 +43,16 @@ describe("official.sessions 的模型指定", () => {
 
 	it("create 传 modelKey 时写入会话设置（而非只作用于单轮）", async () => {
 		const host = stubHostSessionApi();
-		await createOfficialSessionsApi(SESSION).create({ cwd: "/work", modelKey: "anthropic/claude-opus-5" });
+		await createOfficialSessionsApi(PLUGIN, SESSION).create({
+			cwd: "/work",
+			modelKey: "anthropic/claude-opus-5",
+		});
 		expect(host.updateSettings).toHaveBeenCalledWith("runtime-1", { modelKey: "anthropic/claude-opus-5" });
 	});
 
 	it("create 不传模型 / 传空白时不碰会话设置，交给宿主全局默认", async () => {
 		const host = stubHostSessionApi();
-		const api = createOfficialSessionsApi(SESSION);
+		const api = createOfficialSessionsApi(PLUGIN, SESSION);
 		await api.create({ cwd: "/work" });
 		await api.create({ cwd: "/work", modelKey: "   " });
 		expect(host.updateSettings).not.toHaveBeenCalled();
@@ -52,7 +60,7 @@ describe("official.sessions 的模型指定", () => {
 
 	it("prompt 的 modelKey 只钉住这一轮，随请求下发", async () => {
 		const host = stubHostSessionApi();
-		const api = createOfficialSessionsApi(SESSION);
+		const api = createOfficialSessionsApi(PLUGIN, SESSION);
 		await api.prompt("runtime-1", "hi", { modelKey: "openai/gpt-5" });
 		expect(host.prompt).toHaveBeenCalledWith("runtime-1", { text: "hi", modelKey: "openai/gpt-5" });
 
@@ -88,13 +96,13 @@ describe("official.sessions.list 的可用性透传", () => {
 				access: { readHistory: true, resume: true, rename: true, delete: false },
 			},
 		]);
-		const [session] = await createOfficialSessionsApi(SESSION).list("/work");
+		const [session] = await createOfficialSessionsApi(PLUGIN, SESSION).list("/work");
 		expect(session.access).toEqual({ readHistory: true, interactiveResume: true, rename: true, delete: false });
 	});
 
 	it("缺字段读作「完全不可用」，宁可退回新建会话页也不打开一个打不开的会话", async () => {
 		stubListSessions([{ path: "/s.jsonl", modifiedAt: 5 }]);
-		const [session] = await createOfficialSessionsApi(SESSION).list("/work");
+		const [session] = await createOfficialSessionsApi(PLUGIN, SESSION).list("/work");
 		expect(session.access).toEqual({ readHistory: false, interactiveResume: false, rename: false, delete: false });
 	});
 });

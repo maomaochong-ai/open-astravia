@@ -30,6 +30,7 @@ import {
 	registerPluginOcrProviderHandler,
 } from "./plugin-host-bridge";
 import { createPluginPermissionApi as createPermissionApi } from "./plugin-permissions";
+import { logPluginRuntimeError } from "./plugin-runtime-log";
 import { subscribePluginSecretsChanged } from "./plugin-secrets-subscription";
 import { createPluginStorageApi } from "./plugin-storage-api";
 
@@ -55,7 +56,25 @@ export function createConversationApi(plugin: InstalledPlugin, disposers: Array<
 		},
 		on: (listener) => {
 			permissions.require("agent.session.read");
-			return trackActivationDisposable(pluginHostBridge.conversation.on(listener), disposers);
+			return trackActivationDisposable(
+				pluginHostBridge.conversation.on((event) => {
+					try {
+						listener(event);
+					} catch (error) {
+						logPluginRuntimeError(
+							"conversation listener failed",
+							{
+								pluginId: plugin.id,
+								pluginVersion: plugin.activeVersion,
+								stage: "conversation-event",
+								eventType: event.type,
+							},
+							error,
+						);
+					}
+				}),
+				disposers,
+			);
 		},
 	};
 }
@@ -113,7 +132,17 @@ export function createFsApi(plugin: InstalledPlugin, capabilitySessionId: string
 			const unsubscribe = window.vetta.fs.onDirChanged(listener);
 			void window.vetta.fs.watchDir(dirPath).catch((error: unknown) => {
 				unsubscribe();
-				console.error(`Plugin ${plugin.id} failed to watch directory ${dirPath}`, error);
+				logPluginRuntimeError(
+					"directory watch failed",
+					{
+						pluginId: plugin.id,
+						pluginVersion: plugin.activeVersion,
+						capabilitySessionId,
+						stage: "watch-directory",
+						directory: dirPath,
+					},
+					error,
+				);
 			});
 			return {
 				dispose: () => {
@@ -530,22 +559,39 @@ export async function copyTextToClipboard(text: string): Promise<boolean> {
 	}
 }
 
+interface SpawnExitListenerEntry {
+	readonly pluginId: string;
+	readonly pluginVersion: string;
+	readonly capabilitySessionId: string;
+	readonly listeners: Set<(exit: PluginCommandSpawnExit) => void>;
+}
+
 /** Per-spawn exit listeners, fed by a single lazy IPC subscription. */
-const spawnExitListeners = new Map<string, Set<(exit: PluginCommandSpawnExit) => void>>();
+const spawnExitListeners = new Map<string, SpawnExitListenerEntry>();
 let spawnExitSubscribed = false;
 
 function ensureSpawnExitSubscription(): void {
 	if (spawnExitSubscribed) return;
 	spawnExitSubscribed = true;
 	window.vetta.plugins.onCommandSpawnExit((event) => {
-		const listeners = spawnExitListeners.get(event.spawnId);
-		if (!listeners) return;
+		const entry = spawnExitListeners.get(event.spawnId);
+		if (!entry) return;
 		spawnExitListeners.delete(event.spawnId);
-		for (const listener of listeners) {
+		for (const listener of entry.listeners) {
 			try {
 				listener({ exitCode: event.exitCode, signal: event.signal });
 			} catch (error) {
-				console.error("plugin spawn exit listener failed", error);
+				logPluginRuntimeError(
+					"command exit listener failed",
+					{
+						pluginId: entry.pluginId,
+						pluginVersion: entry.pluginVersion,
+						capabilitySessionId: entry.capabilitySessionId,
+						stage: "spawn-exit-listener",
+						spawnId: event.spawnId,
+					},
+					error,
+				);
 			}
 		}
 	});
@@ -611,12 +657,19 @@ export function createCommandApi(
 				stop,
 				status: () => window.vetta.plugins.getCommandSpawnStatus(capabilitySessionId, result.spawnId),
 				onExit: (listener) => {
-					const listeners = spawnExitListeners.get(result.spawnId) ?? new Set();
-					listeners.add(listener);
-					spawnExitListeners.set(result.spawnId, listeners);
+					const entry = spawnExitListeners.get(result.spawnId) ?? {
+						pluginId: plugin.id,
+						pluginVersion: plugin.activeVersion,
+						capabilitySessionId,
+						listeners: new Set<(exit: PluginCommandSpawnExit) => void>(),
+					};
+					entry.listeners.add(listener);
+					spawnExitListeners.set(result.spawnId, entry);
 					return {
 						dispose: () => {
-							spawnExitListeners.get(result.spawnId)?.delete(listener);
+							const current = spawnExitListeners.get(result.spawnId);
+							current?.listeners.delete(listener);
+							if (current?.listeners.size === 0) spawnExitListeners.delete(result.spawnId);
 						},
 					};
 				},

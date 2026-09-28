@@ -66,7 +66,17 @@ function scheduleRefresh(
 				triggeredBy: pendingUpdate?.triggeredBy,
 			});
 		} catch (error) {
-			log.warn(`dev-watch: reload failed for ${id}`, error);
+			log.warn(
+				"dev-watch reload failed",
+				{
+					pluginId: id,
+					attempt: entry.attempt,
+					reason: pendingUpdate?.reason ?? "unknown",
+					path: pendingUpdate?.path,
+					triggeredBy: pendingUpdate?.triggeredBy,
+				},
+				error,
+			);
 			pluginDevLinkService.setStatus(id, "error", error instanceof Error ? error.message : String(error));
 		}
 	}, DEBOUNCE_MS);
@@ -103,12 +113,23 @@ function scheduleRestart(id: string, entry: DevWatchEntry, message: string): voi
 	refreshAgentPlugins({ reason: "plugin-dev:server-exit", pluginId: id, force: true });
 	const delay = RESTART_DELAYS_MS[entry.restartAttempts];
 	if (delay === undefined) {
-		log.error(`dev-watch: restart exhausted for ${id}`, { error: message });
+		log.error("dev-watch restart exhausted", {
+			pluginId: id,
+			attempt: entry.attempt,
+			restartAttempts: entry.restartAttempts,
+			error: message,
+		});
 		return;
 	}
 	entry.restartAttempts += 1;
 	pluginDevLinkService.setStatus(id, "starting");
-	log.warn(`dev-watch: restarting ${id} in ${delay}ms`, { attempt: entry.restartAttempts, error: message });
+	log.warn("dev-watch restarting", {
+		pluginId: id,
+		attempt: entry.attempt,
+		restartAttempt: entry.restartAttempts,
+		delayMs: delay,
+		error: message,
+	});
 	entry.restartTimer = setTimeout(() => {
 		entry.restartTimer = null;
 		spawnPluginDevServer(id, entry);
@@ -149,7 +170,13 @@ function handleDevServerEvent(
 			if (entry.startupTimer) clearTimeout(entry.startupTimer);
 			entry.startupTimer = null;
 			refreshAgentPlugins({ reason: "plugin-dev:server-ready", pluginId: id, force: true });
-			log.info(`dev-watch: server ready for ${id} at ${event.origin}`);
+			log.info("dev-watch server ready", {
+				pluginId: id,
+				pluginVersion: plugin.activeVersion,
+				attempt,
+				origin: event.origin,
+				projectDir: entry.projectDir,
+			});
 			logAbilityDevelopmentLink("linked", {
 				abilityType: "plugin",
 				abilityId: id,
@@ -233,7 +260,12 @@ function spawnPluginDevServer(id: string, entry: DevWatchEntry): void {
 			`plugin dev server did not become ready within ${STARTUP_TIMEOUT_MS / 1000}s; update @vetta-org/plugin-vite`,
 		);
 	}, STARTUP_TIMEOUT_MS);
-	log.info(`dev-watch: starting ${id} at ${entry.projectDir}`);
+	log.info("dev-watch starting", {
+		pluginId: id,
+		attempt,
+		projectDir: entry.projectDir,
+		startupTimeoutMs: STARTUP_TIMEOUT_MS,
+	});
 }
 
 export function startPluginDevWatch(
@@ -273,7 +305,11 @@ export function stopPluginDevWatch(id: string): void {
 		settleInitialStartup(entry, new Error(`Plugin development watch stopped: ${id}`));
 		stopChild(entry.child);
 		entries.delete(id);
-		log.info(`dev-watch: stopped for ${id}`);
+		log.info("dev-watch stopped", {
+			pluginId: id,
+			attempt: entry.attempt,
+			projectDir: entry.projectDir,
+		});
 		logAbilityDevelopmentLink("unlinked", {
 			abilityType: "plugin",
 			abilityId: id,

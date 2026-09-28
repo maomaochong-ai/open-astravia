@@ -34,10 +34,12 @@ import { getDefaultStore, useSetAtom } from "jotai";
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import type { PluginGlobalSlotContribution } from "@vetta-org/plugin-sdk";
 import { markPluginHostLoading, markPluginHostReady } from "../runtime/plugin-events";
+import { disposePlugins } from "../runtime/plugin-disposal";
 import { installPluginHostBridge } from "../runtime/plugin-host-bridge";
 import { installPluginHostShim } from "../runtime/plugin-host-shim";
 import { PluginI18nBoundary } from "../runtime/plugin-i18n";
 import { loadPlugin, type LoadedPlugin } from "../runtime/plugin-loader";
+import { logPluginRuntimeError, logPluginRuntimeWarn } from "../runtime/plugin-runtime-log";
 import { loadPluginSnapshot } from "./plugin-snapshot";
 import { publishWorkspaceViews } from "./plugin-workspace-view-publication";
 import { PluginSlotErrorBoundary } from "./PluginSlotErrorBoundary";
@@ -121,17 +123,28 @@ export function PluginGlobalSlotHost(): JSX.Element | null {
 						previousPlugins,
 						pendingPluginIds instanceof Set ? pendingPluginIds : undefined,
 						(plugin) => loadPlugin(plugin, forceUpdate),
-						(plugin, error) => console.error(`Failed to load plugin: ${plugin.id}`, error),
+						(plugin, error) =>
+							logPluginRuntimeWarn(
+								"snapshot candidate rejected",
+								{
+									pluginId: plugin.id,
+									pluginVersion: plugin.activeVersion,
+									pluginSource: plugin.source,
+									stage: "load-snapshot",
+									reason: error instanceof Error ? error.name : "unknown",
+								},
+							),
 					),
 				)
-				.catch((error: Error) => {
-					console.error("Failed to initialize plugins", error);
+				.catch((error: unknown) => {
+					logPluginRuntimeError("snapshot load failed", { stage: "list-installed-plugins" }, error);
 					return previousPlugins;
 				});
 
 			if (unmountedRef.current) {
-				await Promise.all(
-					loadedPlugins.filter((plugin) => !previousPlugins.includes(plugin)).map((plugin) => plugin.dispose()),
+				await disposePlugins(
+					loadedPlugins.filter((plugin) => !previousPlugins.includes(plugin)),
+					"host-unmounted-before-publish",
 				);
 				return;
 			}
@@ -143,17 +156,18 @@ export function PluginGlobalSlotHost(): JSX.Element | null {
 			try {
 				await window.vetta.plugins.reportAgentContributionHostReady();
 			} catch (error) {
-				console.error("Failed to report plugin contribution host readiness", error);
+				logPluginRuntimeError("host readiness report failed", { stage: "report-ready" }, error);
 			} finally {
 				markPluginHostReady();
 			}
 			setHostLoading(false);
-			await Promise.all(
-				previousPlugins.filter((plugin) => !loadedPlugins.includes(plugin)).map((plugin) => plugin.dispose()),
+			await disposePlugins(
+				previousPlugins.filter((plugin) => !loadedPlugins.includes(plugin)),
+				"snapshot-replaced",
 			);
 		});
 		pluginHostLifecycle = lifecycle.catch((error: unknown) => {
-			console.error("Failed to replace plugins", error);
+			logPluginRuntimeError("snapshot replacement failed", { stage: "replace-snapshot" }, error);
 		});
 	}, [reloadRevision]);
 
@@ -165,10 +179,10 @@ export function PluginGlobalSlotHost(): JSX.Element | null {
 			loadedPluginsRef.current = [];
 			pluginHostLifecycle = pluginHostLifecycle
 				.then(async () => {
-					await Promise.all(activePlugins.map((plugin) => plugin.dispose()));
+					await disposePlugins(activePlugins, "host-unmounted");
 				})
 				.catch((error: unknown) => {
-					console.error("Failed to dispose plugins", error);
+					logPluginRuntimeError("host disposal failed", { stage: "dispose-host" }, error);
 				});
 		};
 	}, []);

@@ -1,7 +1,9 @@
+import type { InstalledPlugin } from "@preload/api";
 import { openSessionFnRef } from "@shared/store/atoms";
 import type { RuntimeSessionAccess } from "@vetta/runtime-core";
 import type { PluginOfficialApi, PluginOfficialSessionAccess } from "@vetta-org/plugin-sdk";
 import { pluginRendererCapabilityHost } from "./plugin-renderer-capability-host";
+import { logPluginRuntimeWarn } from "./plugin-runtime-log";
 
 /**
  * 后台会话编排（仅官方来源插件可用）。
@@ -13,7 +15,10 @@ import { pluginRendererCapabilityHost } from "./plugin-renderer-capability-host"
  * 与 `ctx.conversation.*` 的分工：那套 API 作用于**用户当前正在看的**会话；
  * 这套 API 按 sessionId 显式寻址，与当前路由无关。
  */
-export function createOfficialSessionsApi(capabilitySessionId: string): PluginOfficialApi["sessions"] {
+export function createOfficialSessionsApi(
+	plugin: InstalledPlugin,
+	capabilitySessionId: string,
+): PluginOfficialApi["sessions"] {
 	const invoke = <T>(run: () => T | Promise<T>): Promise<T> =>
 		Promise.resolve(pluginRendererCapabilityHost.invokeOfficial(capabilitySessionId, run));
 
@@ -52,7 +57,16 @@ export function createOfficialSessionsApi(capabilitySessionId: string): PluginOf
 				const title = typeof input?.title === "string" ? input.title.trim() : "";
 				if (title) {
 					await window.vetta.session.rename(created.sessionPath, title).catch((error: unknown) => {
-						console.warn("[official.sessions] rename after create failed", error);
+						logPluginRuntimeWarn(
+							"official session rename after create failed",
+							{
+								pluginId: plugin.id,
+								pluginVersion: plugin.activeVersion,
+								capabilitySessionId,
+								stage: "official-session-create",
+							},
+							error,
+						);
 					});
 				}
 				const modelKey = normalizeModelKey(input?.modelKey);

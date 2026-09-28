@@ -25,6 +25,7 @@ describe("plugin-events 就绪门", () => {
 	beforeEach(() => {
 		vi.restoreAllMocks();
 		vi.spyOn(console, "info").mockImplementation(() => {});
+		vi.spyOn(console, "warn").mockImplementation(() => {});
 	});
 
 	it("首次就绪前，首轮发送门保持等待；markPluginHostReady 后放行", async () => {
@@ -58,7 +59,7 @@ describe("plugin-events 就绪门", () => {
 	it("发送门超时兜底仍然有效（宿主一直不就绪也最多等 timeoutMs）", async () => {
 		vi.useFakeTimers();
 		try {
-			const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+			const warn = vi.spyOn(console, "warn");
 			const events = await loadModule();
 			events.markPluginHostLoading();
 			let resolved = false;
@@ -69,7 +70,11 @@ describe("plugin-events 就绪门", () => {
 			expect(resolved).toBe(false);
 			await vi.advanceTimersByTimeAsync(1);
 			expect(resolved).toBe(true);
-			expect(warn).toHaveBeenCalledWith('[plugin-agent] wait host first ready timed out {"timeoutMs":5000}');
+			expect(warn).toHaveBeenCalledWith(
+				expect.stringContaining(
+					'[plugin-runtime] host readiness wait timed out {"stage":"wait-first-ready","reason":"timeout","timeoutMs":5000}',
+				),
+			);
 		} finally {
 			vi.useRealTimers();
 		}

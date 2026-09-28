@@ -10,6 +10,8 @@ const mocks = vi.hoisted(() => ({
 	clearLabels: vi.fn(),
 	bindSession: vi.fn(),
 	closeRendererSession: vi.fn(),
+	logInfo: vi.fn(),
+	logError: vi.fn(),
 }));
 
 vi.mock("./plugin-agent-context", () => ({
@@ -32,6 +34,10 @@ vi.mock("./plugin-renderer-capability-host", () => ({
 			mocks.closeRendererSession(sessionId);
 		},
 	},
+}));
+vi.mock("./plugin-runtime-log", () => ({
+	logPluginRuntimeInfo: mocks.logInfo,
+	logPluginRuntimeError: mocks.logError,
 }));
 vi.mock("./plugin-style-loader", () => ({
 	loadPluginStyles: () => ({ dispose: () => mocks.events.push("styles:dispose") }),
@@ -104,6 +110,16 @@ describe("loadPlugin activation lifecycle", () => {
 		});
 
 		await expect(loadPlugin(plugin, () => mocks.events.push("local:changed"))).rejects.toThrow("activate failed");
+		expect(mocks.logError).toHaveBeenCalledWith(
+			"activation failed",
+			expect.objectContaining({
+				pluginId: "demo",
+				activationId: expect.any(String),
+				capabilitySessionId: "session-1",
+				stage: "activate",
+			}),
+			expect.objectContaining({ message: "activate failed" }),
+		);
 		expect(mocks.events).toEqual([
 			"activation:begin",
 			"activation:deactivate",

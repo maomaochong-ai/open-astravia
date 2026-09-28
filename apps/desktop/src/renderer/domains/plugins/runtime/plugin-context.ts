@@ -107,7 +107,7 @@ export function createPluginContext({
 			pendingRuntimeRegistrations,
 		}),
 		ai: createPluginAiApi(permissions, capabilitySessionId),
-		official: createPluginOfficialApi(capabilitySessionId),
+		official: createPluginOfficialApi(plugin, capabilitySessionId),
 		network: createPluginNetworkApi(plugin, capabilitySessionId),
 		gateway: plugin.trustLevel === "official" ? createGatewayApi(capabilitySessionId) : undefined,
 		storage: createStorageApi(plugin, capabilitySessionId),

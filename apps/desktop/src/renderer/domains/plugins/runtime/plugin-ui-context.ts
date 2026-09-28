@@ -65,6 +65,7 @@ import {
 	warnSkippedPluginContribution,
 } from "./plugin-permissions";
 import { pluginRendererCapabilityHost } from "./plugin-renderer-capability-host";
+import { logPluginRuntimeError, logPluginRuntimeWarn } from "./plugin-runtime-log";
 import {
 	assertPluginShortcutScopeKind,
 	normalizePluginShortcutBindings,
@@ -143,11 +144,24 @@ function setPluginActivityTabVisible(
  * the addressed conversation (see resolveActivityTabScopeKey). Commands originating
  * outside the foreground route pass their session cwd explicitly.
  */
-function openPluginActivityTab(pluginId: string, tabId: string, options?: PluginOpenActivityTabOptions): void {
+function openPluginActivityTab(
+	pluginId: string,
+	pluginVersion: string,
+	capabilitySessionId: string,
+	tabId: string,
+	options?: PluginOpenActivityTabOptions,
+): void {
 	const store = getDefaultStore();
 	const scopeKey = resolveActivityTabScopeKey(options?.cwd);
 	if (!scopeKey) {
-		console.warn("[plugin] openActivityTab: no activity workspace to open into");
+		logPluginRuntimeWarn("activity tab open skipped", {
+			pluginId,
+			pluginVersion,
+			capabilitySessionId,
+			stage: "open-activity-tab",
+			tabId,
+			reason: "no-activity-workspace",
+		});
 		return;
 	}
 	const key = `${pluginId}:${tabId}`;
@@ -649,11 +663,28 @@ export function createPluginUiApi({
 		createPluginPermissionApi(plugin).require("ui.slot.workspace-view");
 		const id = typeof viewId === "string" ? viewId.trim() : "";
 		if (!workspaceViews.some((view) => view.id === id)) {
-			console.warn(`[plugin:${plugin.id}] openWorkspaceView: unknown view ${JSON.stringify(viewId)}`);
+			logPluginRuntimeWarn("workspace view open skipped", {
+				pluginId: plugin.id,
+				pluginVersion: plugin.activeVersion,
+				capabilitySessionId,
+				stage: "open-workspace-view",
+				workspaceViewId: id || "(invalid)",
+				reason: "unknown-view",
+			});
 			return;
 		}
 		void pluginRendererCapabilityHost.openWorkspaceView(capabilitySessionId, id).catch((error: unknown) => {
-			console.error(`[plugin:${plugin.id}] openWorkspaceView failed`, error);
+			logPluginRuntimeError(
+				"workspace view open failed",
+				{
+					pluginId: plugin.id,
+					pluginVersion: plugin.activeVersion,
+					capabilitySessionId,
+					stage: "open-workspace-view",
+					workspaceViewId: id,
+				},
+				error,
+			);
 		});
 	};
 	const setWorkspaceViewBadge = (viewId: string, badge: PluginNavBadge | null): void => {
@@ -661,7 +692,14 @@ export function createPluginUiApi({
 		const id = typeof viewId === "string" ? viewId.trim() : "";
 		const view = workspaceViews.find((candidate) => candidate.id === id);
 		if (!view) {
-			console.warn(`[plugin:${plugin.id}] setWorkspaceViewBadge: unknown view ${JSON.stringify(viewId)}`);
+			logPluginRuntimeWarn("workspace view badge update skipped", {
+				pluginId: plugin.id,
+				pluginVersion: plugin.activeVersion,
+				capabilitySessionId,
+				stage: "set-workspace-view-badge",
+				workspaceViewId: id || "(invalid)",
+				reason: "unknown-view",
+			});
 			return;
 		}
 		const next = badge === null ? undefined : normalizePluginNavBadge(badge);
@@ -685,7 +723,14 @@ export function createPluginUiApi({
 		createPluginPermissionApi(plugin).require("ui.slot.workspace-view");
 		const id = typeof viewId === "string" ? viewId.trim() : "";
 		if (!workspaceViews.some((view) => view.id === id)) {
-			console.warn(`[plugin:${plugin.id}] setWorkspaceViewHeader: unknown view ${JSON.stringify(viewId)}`);
+			logPluginRuntimeWarn("workspace view header update skipped", {
+				pluginId: plugin.id,
+				pluginVersion: plugin.activeVersion,
+				capabilitySessionId,
+				stage: "set-workspace-view-header",
+				workspaceViewId: id || "(invalid)",
+				reason: "unknown-view",
+			});
 			return;
 		}
 		// 页头是每次状态变化都会重写的高频接口：认不出的入参当「撤下接管」处理，
@@ -756,7 +801,7 @@ export function createPluginUiApi({
 			throw new Error("Activity tab id is required");
 		}
 		validateActivityTabCwd(options?.cwd);
-		openPluginActivityTab(plugin.id, tabId, options);
+		openPluginActivityTab(plugin.id, plugin.activeVersion, capabilitySessionId, tabId, options);
 	};
 	const setActivityTabVisible = (tabId: string, visible: boolean, options?: PluginActivityTabTargetOptions): void => {
 		createPluginPermissionApi(plugin).require("ui.slot.activity-tab");
@@ -929,7 +974,16 @@ export function createPluginUiApi({
 				: undefined,
 		});
 		if (detail) {
-			console.error(`[plugin:${plugin.id}] ${message}\n${detail}`);
+			logPluginRuntimeError(
+				"plugin notification reported an error",
+				{
+					pluginId: plugin.id,
+					pluginVersion: plugin.activeVersion,
+					capabilitySessionId,
+					stage: "notify",
+				},
+				options.error,
+			);
 		}
 	};
 

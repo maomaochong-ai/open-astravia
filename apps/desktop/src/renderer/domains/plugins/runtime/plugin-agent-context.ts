@@ -26,6 +26,7 @@ import {
 	noopDisposable,
 	warnSkippedPluginContribution as warnSkippedContribution,
 } from "./plugin-permissions";
+import { logPluginRuntimeError, logPluginRuntimeInfo, type PluginRuntimeLogFields } from "./plugin-runtime-log";
 
 function setAgentToolLabel(pluginId: string, toolName: string, label: string | null): void {
 	getDefaultStore().set(pluginAgentToolLabelsAtom, (prev) => {
@@ -59,8 +60,8 @@ export function clearAgentToolLabelsForPlugin(pluginId: string): void {
 	});
 }
 
-export function debugPluginAgent(message: string, data?: Record<string, unknown>): void {
-	console.info(`[plugin-agent] ${message}${data ? ` ${JSON.stringify(data)}` : ""}`);
+export function debugPluginAgent(message: string, data: PluginRuntimeLogFields = {}): void {
+	logPluginRuntimeInfo(`agent ${message}`, data);
 }
 
 export interface CreatePluginAgentApiOptions {
@@ -92,7 +93,11 @@ export function createPluginAgentApi({
 			.registerAgentTool(plugin.id, payload)
 			.then(() => undefined)
 			.catch((error: Error) => {
-				console.error(`Plugin ${plugin.id} failed to register agent tool ${payload.id}`, error);
+				logPluginRuntimeError(
+					"agent registration failed",
+					{ pluginId: plugin.id, activationId, stage: "register-tool", toolId: payload.id },
+					error,
+				);
 			});
 	const api: PluginContext["agent"] = {
 		registerTool: (registration) => {
@@ -164,7 +169,11 @@ export function createPluginAgentApi({
 					// (activity tabs, slots) should still activate.
 					handlerHandle.dispose();
 					if (label) setAgentToolLabel(plugin.id, toolName, null);
-					console.error(`Plugin ${plugin.id} failed to register agent tool ${toolId}`, error);
+					logPluginRuntimeError(
+						"agent registration failed",
+						{ pluginId: plugin.id, activationId, stage: "register-tool", toolId },
+						error,
+					);
 				});
 			pendingRuntimeRegistrations.push(registrationPromise);
 			return {
@@ -218,7 +227,11 @@ export function createPluginAgentApi({
 				.registerAgentHook(plugin.id, payload)
 				.catch((error: Error) => {
 					handlerHandle.dispose();
-					console.error(`Plugin ${plugin.id} failed to register agent hook ${hookId}`, error);
+					logPluginRuntimeError(
+						"agent registration failed",
+						{ pluginId: plugin.id, activationId, stage: "register-hook", hookId },
+						error,
+					);
 				});
 			pendingRuntimeRegistrations.push(registrationPromise);
 			return {

@@ -5,6 +5,7 @@ import type {
 	PluginFileExplorerRevealOptions,
 	PluginWorkspaceRoot,
 } from "@vetta-org/plugin-sdk";
+import { logPluginRuntimeError } from "./plugin-runtime-log";
 
 export interface PluginFileExplorerHostAdapter {
 	getWorkspaceRoot(): PluginWorkspaceRoot | null;
@@ -14,8 +15,15 @@ export interface PluginFileExplorerHostAdapter {
 }
 
 let activeAdapter: PluginFileExplorerHostAdapter | null = null;
-const selectionListeners = new Set<(selection: readonly PluginFileExplorerEntry[]) => void>();
-const fileChangeListeners = new Set<(changes: readonly PluginFileExplorerChange[]) => void>();
+
+interface PluginFileExplorerListener<T> {
+	readonly pluginId: string;
+	readonly pluginVersion: string;
+	readonly listener: (value: T) => void;
+}
+
+const selectionListeners = new Set<PluginFileExplorerListener<readonly PluginFileExplorerEntry[]>>();
+const fileChangeListeners = new Set<PluginFileExplorerListener<readonly PluginFileExplorerChange[]>>();
 
 export function bindPluginFileExplorerHost(adapter: PluginFileExplorerHostAdapter): Disposable {
 	activeAdapter = adapter;
@@ -49,36 +57,58 @@ export async function refreshPluginFileExplorer(path?: string): Promise<void> {
 }
 
 export function onPluginFileExplorerSelectionChanged(
+	pluginId: string,
+	pluginVersion: string,
 	listener: (selection: readonly PluginFileExplorerEntry[]) => void,
 ): Disposable {
-	selectionListeners.add(listener);
-	return { dispose: () => selectionListeners.delete(listener) };
+	const entry = { pluginId, pluginVersion, listener };
+	selectionListeners.add(entry);
+	return { dispose: () => selectionListeners.delete(entry) };
 }
 
 export function onPluginFileExplorerFilesChanged(
+	pluginId: string,
+	pluginVersion: string,
 	listener: (changes: readonly PluginFileExplorerChange[]) => void,
 ): Disposable {
-	fileChangeListeners.add(listener);
-	return { dispose: () => fileChangeListeners.delete(listener) };
+	const entry = { pluginId, pluginVersion, listener };
+	fileChangeListeners.add(entry);
+	return { dispose: () => fileChangeListeners.delete(entry) };
 }
 
 export function emitPluginFileExplorerSelectionChanged(selection: readonly PluginFileExplorerEntry[]): void {
-	for (const listener of selectionListeners) {
+	for (const entry of selectionListeners) {
 		try {
-			listener(selection.map((entry) => ({ ...entry })));
+			entry.listener(selection.map((item) => ({ ...item })));
 		} catch (error) {
-			console.error("Plugin file explorer selection listener threw", error);
+			logPluginRuntimeError(
+				"file explorer listener failed",
+				{
+					pluginId: entry.pluginId,
+					pluginVersion: entry.pluginVersion,
+					stage: "selection-change",
+				},
+				error,
+			);
 		}
 	}
 }
 
 export function emitPluginFileExplorerFilesChanged(changes: readonly PluginFileExplorerChange[]): void {
 	if (changes.length === 0) return;
-	for (const listener of fileChangeListeners) {
+	for (const entry of fileChangeListeners) {
 		try {
-			listener(changes.map((change) => ({ ...change })));
+			entry.listener(changes.map((change) => ({ ...change })));
 		} catch (error) {
-			console.error("Plugin file explorer change listener threw", error);
+			logPluginRuntimeError(
+				"file explorer listener failed",
+				{
+					pluginId: entry.pluginId,
+					pluginVersion: entry.pluginVersion,
+					stage: "files-change",
+				},
+				error,
+			);
 		}
 	}
 }
