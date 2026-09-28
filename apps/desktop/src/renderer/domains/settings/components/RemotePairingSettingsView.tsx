@@ -51,10 +51,26 @@ function PairingBeacon(): JSX.Element {
 	);
 }
 
+/** Side of the QR code; the code column beside it is held to the same height. */
+const QR_SIZE = "h-[184px]";
+
+function CodeTile({ label, value }: { label: string; value: string }): JSX.Element {
+	return (
+		<div className="flex flex-1 flex-col justify-center rounded-xl bg-muted/60 px-4">
+			<dt className="text-[11px] text-muted-foreground">{label}</dt>
+			<dd className="mt-0.5 font-mono text-[20px] font-semibold tracking-[0.08em] whitespace-nowrap text-foreground select-all">
+				{value}
+			</dd>
+		</div>
+	);
+}
+
 function PairingPanel({ model }: { model: RemotePairingSettingsModel }): JSX.Element {
 	const [manualOpen, setManualOpen] = useState(false);
 	const { pairing, labels } = model;
 	const code = pairing.code;
+	const codeStatus =
+		code?.status === "preparing" ? labels.pairing.codePreparing : code?.status === "ready" ? undefined : labels.pairing.codeFailed;
 
 	return (
 		<div className="px-3">
@@ -62,13 +78,13 @@ function PairingPanel({ model }: { model: RemotePairingSettingsModel }): JSX.Ele
 				<p className="mb-3 text-[12px] text-destructive">{labels.pairing.vaultUnavailable}</p>
 			) : null}
 
-			<div className="flex flex-wrap items-center gap-x-10 gap-y-6">
-				<div className="flex h-[176px] w-[176px] shrink-0 items-center justify-center">
+			<div className="flex gap-5">
+				<div className={`flex ${QR_SIZE} aspect-square shrink-0 items-center justify-center rounded-xl bg-muted/60`}>
 					{pairing.qrDataUrl ? (
 						<img
 							src={pairing.qrDataUrl}
 							alt={labels.pairing.qrAlt}
-							className="block aspect-square w-full rounded-xl bg-white p-2"
+							className="block h-full w-full rounded-xl bg-white p-2"
 						/>
 					) : pairing.preparing ? (
 						<div className="flex flex-col items-center text-muted-foreground">
@@ -76,7 +92,7 @@ function PairingPanel({ model }: { model: RemotePairingSettingsModel }): JSX.Ele
 							<p className="mt-3 text-[12px]">{labels.pairing.generating}</p>
 						</div>
 					) : (
-						<div className="flex flex-col items-center text-muted-foreground">
+						<div className="flex flex-col items-center px-3 text-center text-muted-foreground">
 							<span className="icon-[solar--qr-code-linear] h-8 w-8" aria-hidden="true" />
 							<p className="mt-3 text-[12px]">{labels.pairing.empty}</p>
 							{pairing.canCreate ? (
@@ -89,53 +105,39 @@ function PairingPanel({ model }: { model: RemotePairingSettingsModel }): JSX.Ele
 				</div>
 
 				{pairing.qrDataUrl ? (
-					<div className="flex max-w-[260px] min-w-[220px] flex-1 flex-col">
-						<p className="text-[12px] leading-relaxed text-muted-foreground">{labels.pairing.qrHint}</p>
-						{code ? (
-							<div className="mt-6">
-								<p className="text-[12px] leading-relaxed text-muted-foreground">
-									{code.status === "ready"
-										? labels.pairing.codeHint
-										: code.status === "preparing"
-											? labels.pairing.codePreparing
-											: labels.pairing.codeFailed}
-								</p>
-								{code.status === "ready" ? (
-									<dl className="mt-3 flex flex-col gap-3">
-										<div>
-											<dt className="text-[11px] text-muted-foreground/70">{labels.pairing.code}</dt>
-											<dd className="font-mono text-[20px] font-semibold tracking-[0.08em] whitespace-nowrap text-foreground select-all">
-												{code.code}
-											</dd>
-										</div>
-										<div>
-											<dt className="text-[11px] text-muted-foreground/70">{labels.pairing.password}</dt>
-											<dd className="font-mono text-[20px] font-semibold tracking-[0.08em] whitespace-nowrap text-foreground select-all">
-												{code.password}
-											</dd>
-										</div>
-									</dl>
-								) : null}
+					<div className={`flex ${QR_SIZE} max-w-[280px] min-w-0 flex-1 flex-col gap-2`}>
+						<div className="flex h-7 shrink-0 items-center justify-between gap-2">
+							<p className="truncate text-[12px] text-muted-foreground" title={labels.pairing.codeHint}>{labels.pairing.codeHint}</p>
+							{pairing.hasInvite ? (
+								<Button
+									variant="ghost"
+									size="icon-sm"
+									className="shrink-0"
+									aria-label={labels.pairing.cancel}
+									title={labels.pairing.cancel}
+									disabled={model.busy}
+									onClick={model.actions.cancelInvite}
+								>
+									<span className="icon-[solar--refresh-linear] h-3.5 w-3.5" aria-hidden="true" />
+								</Button>
+							) : null}
+						</div>
+						{code?.status === "ready" ? (
+							<dl className="flex min-h-0 flex-1 flex-col gap-2">
+								<CodeTile label={labels.pairing.code} value={code.code} />
+								<CodeTile label={labels.pairing.password} value={code.password} />
+							</dl>
+						) : (
+							<div className="flex flex-1 items-center justify-center rounded-xl bg-muted/60 px-4 text-center text-[12px] text-muted-foreground">
+								{codeStatus}
 							</div>
-						) : null}
-						{pairing.hasInvite ? (
-							<Button
-								variant="ghost"
-								size="sm"
-								className="mt-4 -ml-2.5 self-start"
-								disabled={model.busy}
-								onClick={model.actions.cancelInvite}
-							>
-								<span className="icon-[solar--refresh-linear] h-3.5 w-3.5" aria-hidden="true" />
-								{labels.pairing.cancel}
-							</Button>
-						) : null}
+						)}
 					</div>
 				) : null}
 			</div>
 
 			{pairing.endpoints.length > 0 ? (
-				<div className="mt-5 -ml-2.5">
+				<div className="mt-3 -ml-2.5">
 					<Button
 						variant="ghost"
 						size="sm"
@@ -151,7 +153,7 @@ function PairingPanel({ model }: { model: RemotePairingSettingsModel }): JSX.Ele
 						/>
 					</Button>
 					{manualOpen ? (
-						<div id="remote-manual-endpoints" className="mt-1 flex flex-col gap-1.5 pl-2.5">
+						<div id="remote-manual-endpoints" className="mt-1 flex flex-col gap-1 pl-2.5">
 							<p className="text-[12px] text-muted-foreground">{labels.pairing.manualHint}</p>
 							{pairing.endpoints.map((endpoint) => (
 								<span key={endpoint} className="font-mono text-[13px] text-foreground select-all">
@@ -194,9 +196,9 @@ function Row({
 	children?: ReactNode;
 }): JSX.Element {
 	return (
-		<div className="flex items-center gap-3.5 rounded-xl px-3 py-3 transition-colors duration-200 hover:bg-accent/40">
-			<span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${iconClassName}`} style={iconStyle}>
-				<span className={`${icon} h-5 w-5`} aria-hidden="true" />
+		<div className="flex items-center gap-3.5 rounded-xl px-3 py-2.5 transition-colors duration-200 hover:bg-accent/40">
+			<span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${iconClassName}`} style={iconStyle}>
+				<span className={`${icon} h-4.5 w-4.5`} aria-hidden="true" />
 			</span>
 			<div className="min-w-0 flex-1">
 				<div className="truncate text-[13px] font-medium text-foreground">{title}</div>
@@ -256,12 +258,12 @@ export function RemotePairingSettingsView({ model }: { model: RemotePairingSetti
 				</section>
 			) : null}
 
-			<section id="remote-pairing" className="relative mt-24">
+			<section id="remote-pairing" className="relative mt-16">
 				<SectionTitle>{labels.pairing.title}</SectionTitle>
 				<PairingPanel model={model} />
 			</section>
 
-			<section id="remote-devices" className="mt-14">
+			<section id="remote-devices" className="mt-8">
 				<SectionTitle count={model.devices.length}>{labels.devices.title}</SectionTitle>
 				{model.devices.length === 0 ? (
 					<p className="px-3 py-3 text-[12px] text-muted-foreground">{labels.devices.empty}</p>
@@ -308,7 +310,7 @@ export function RemotePairingSettingsView({ model }: { model: RemotePairingSetti
 				)}
 			</section>
 
-			<section id="remote-cloud" className="mt-10">
+			<section id="remote-cloud" className="mt-8">
 				<SectionTitle>{labels.cloud.section}</SectionTitle>
 				<Row
 					icon="icon-[solar--global-linear]"

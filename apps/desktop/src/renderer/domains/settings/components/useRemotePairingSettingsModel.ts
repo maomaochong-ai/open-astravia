@@ -15,9 +15,6 @@ const EMPTY_STATE: RemotePairingState = {
 	vaultAvailable: true,
 };
 
-/** How often the QR code's "expires in N minutes" is recounted while one is shown. */
-const COUNTDOWN_MS = 15_000;
-
 type RemotePairingFailure = "action" | "create" | "load" | "qr";
 
 export interface RemotePairingSettingsModel {
@@ -80,7 +77,6 @@ export interface RemotePairingSettingsModel {
 			readonly manualHint: string;
 			readonly manualTitle: string;
 			readonly qrAlt: string;
-			readonly qrHint: string;
 			readonly title: string;
 			readonly vaultUnavailable: string;
 		};
@@ -141,16 +137,6 @@ export function useRemotePairingSettingsModel(): RemotePairingSettingsModel {
 	const [initializing, setInitializing] = useState(true);
 	const [busy, setBusy] = useState(false);
 	const [failure, setFailure] = useState<RemotePairingFailure>();
-
-	// Only the countdown needs the clock; the state itself is pushed.
-	const [now, setNow] = useState(() => Date.now());
-	const hasInvite = state.invite !== undefined;
-	useEffect(() => {
-		if (!hasInvite) return;
-		setNow(Date.now());
-		const timer = window.setInterval(() => setNow(Date.now()), COUNTDOWN_MS);
-		return () => window.clearInterval(timer);
-	}, [hasInvite]);
 
 	const apply = useCallback((next: RemotePairingState): void => {
 		setState(next);
@@ -253,9 +239,6 @@ export function useRemotePairingSettingsModel(): RemotePairingSettingsModel {
 				create: t("remote.pairing.create"),
 				cancel: t("remote.pairing.cancel"),
 				qrAlt: t("remote.pairing.qrAlt"),
-				qrHint: t("remote.pairing.qrHint", {
-					minutes: state.invite ? Math.max(0, Math.round((state.invite.expiresAt - now) / 60_000)) : 0,
-				}),
 				generating: t("remote.pairing.generating"),
 				empty: t("remote.pairing.empty"),
 				vaultUnavailable: t("remote.pairing.vaultUnavailable"),
@@ -280,7 +263,7 @@ export function useRemotePairingSettingsModel(): RemotePairingSettingsModel {
 				unset: t("remote.relay.unset"),
 			},
 		}),
-		[state.invite, now, t],
+		[t],
 	);
 
 	const devices = useMemo(

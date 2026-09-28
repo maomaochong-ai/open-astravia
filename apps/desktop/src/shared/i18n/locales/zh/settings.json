@@ -154,7 +154,6 @@
       "create": "生成二维码",
       "cancel": "刷新",
       "qrAlt": "Vetta 手机配对二维码",
-      "qrHint": "用手机上的 Vetta 扫码，约 {{minutes}} 分钟后自动更新。",
       "generating": "正在准备二维码…",
       "empty": "二维码不可用",
       "createFailed": "二维码生成失败，请重试。",

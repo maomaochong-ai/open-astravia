@@ -154,7 +154,6 @@
       "create": "Generate QR code",
       "cancel": "Refresh",
       "qrAlt": "Vetta phone pairing QR code",
-      "qrHint": "Scan with Vetta on your phone. Renews in about {{minutes}} min.",
       "generating": "Preparing QR code…",
       "empty": "QR code unavailable",
       "createFailed": "Could not generate a QR code. Try again.",
