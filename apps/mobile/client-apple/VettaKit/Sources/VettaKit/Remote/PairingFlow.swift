@@ -6,6 +6,11 @@ public enum PairingFailure: String, Sendable {
 	case unauthorized
 	case unreachable
 	case invalidEndpoint = "invalid_endpoint"
+	/// No invite under a connection code: mistyped, already used, or expired.
+	case inviteNotFound = "invite_not_found"
+	case inviteWrongPassword = "invite_wrong_password"
+	/// The relay holding connection-code invites could not be reached.
+	case inviteUnreachable = "invite_unreachable"
 }
 
 public enum PairingVia: String, Sendable {

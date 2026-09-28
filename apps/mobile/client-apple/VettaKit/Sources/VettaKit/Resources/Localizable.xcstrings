@@ -2312,6 +2312,193 @@
         }
       }
     },
+    "pair.invite": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connect with a Code"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用连接码连接"
+          }
+        }
+      }
+    },
+    "pair.inviteCode": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connection code"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "连接码"
+          }
+        }
+      }
+    },
+    "pair.inviteCodeInvalid": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A connection code has 8 letters and digits"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "连接码是 8 位字母和数字"
+          }
+        }
+      }
+    },
+    "pair.inviteHint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "On your computer, open Vetta → Settings → Remote access and enter the connection code and password shown next to the QR code. Works even when your phone is not next to the computer."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在电脑上的 Vetta 打开「设置 → 远程连接」，输入二维码旁的连接码和密码。手机不在电脑旁也能用。"
+          }
+        }
+      }
+    },
+    "pair.inviteNotFound": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No invite matches this code. It may be mistyped, already used, or expired (codes last 10 minutes)."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "找不到这个连接码对应的邀请：可能输错了、已被使用，或已过期（10 分钟内有效）。"
+          }
+        }
+      }
+    },
+    "pair.inviteOwnRelay": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "My computer uses its own relay"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "电脑使用的是自建中继"
+          }
+        }
+      }
+    },
+    "pair.invitePassword": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Password"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "密码"
+          }
+        }
+      }
+    },
+    "pair.invitePasswordInvalid": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The password has 6 digits"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "密码是 6 位数字"
+          }
+        }
+      }
+    },
+    "pair.inviteRelay": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Relay address"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "中继地址"
+          }
+        }
+      }
+    },
+    "pair.inviteUnreachable": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Can’t reach the relay. Check your network, or whether your computer uses its own relay."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "连不上中继，请检查网络，或确认电脑是否使用了自建中继。"
+          }
+        }
+      }
+    },
+    "pair.inviteWrongPassword": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wrong password. Check the 6 digits shown on your computer."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "密码不对，请核对电脑上显示的 6 位数字。"
+          }
+        }
+      }
+    },
     "pair.listening": {
       "extractionState": "manual",
       "localizations": {

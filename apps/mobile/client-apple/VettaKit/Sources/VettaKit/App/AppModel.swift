@@ -35,6 +35,7 @@ public struct AppPlatform {
 	public var onTurnEnd: (() -> Void)?
 	public var configureManager: ((inout ChannelManagerOptions) -> Void)?
 	public var configurePairing: ((inout PairingFlowOptions) -> Void)?
+	public var inviteLookup = InviteCodeLookup()
 
 	public init(settings: KeyValueStore, secrets: KeyValueStore, cache: SessionCache, createTransport: @escaping TransportFactory, deviceName: String, onTurnEnd: (() -> Void)? = nil) {
 		self.settings = settings
@@ -142,6 +143,26 @@ public final class AppModel {
 	public func pairWithCode(_ text: String) async -> Bool {
 		let flow = startFlow()
 		guard let record = await flow.pairWithCode(text) else { return false }
+		return finishPairing(record)
+	}
+
+	/// Pairs with the desktop whose invite waits on the relay under a connection code
+	/// (ADR-0136); from there it is the same as scanning its QR code. `relayBaseUrl` is
+	/// what was typed for a desktop on its own relay, nil for the default one.
+	public func pairWithInvite(code: String, password: String, relayBaseUrl: String? = nil) async -> Bool {
+		let flow = startFlow()
+		pairing = .connecting(via: .relay)
+		let found = await platform.inviteLookup.lookup(code: code, password: password, relayBaseUrl: InviteCode.relayBaseUrl(typed: relayBaseUrl))
+		// Cancelled, or another pairing started, while the relay was asked.
+		guard self.flow === flow else { return false }
+		let uri: String
+		switch found {
+		case let .found(link): uri = link
+		case .notFound: pairing = .failed(.inviteNotFound); return false
+		case .wrongPassword: pairing = .failed(.inviteWrongPassword); return false
+		case .unreachable: pairing = .failed(.inviteUnreachable); return false
+		}
+		guard let record = await flow.pairWithCode(uri) else { return false }
 		return finishPairing(record)
 	}
 

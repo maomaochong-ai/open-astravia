@@ -31,4 +31,4 @@
 
 ## 兼容与验证
 
-新增路由与 Durable Object 需要重新部署中继（新增 migration `v3`）；未部署时电脑只显示二维码，并提示连接码不可用。`@vetta/remote-control` 的测试固定了一组向量（连接码、密码、nonce → boxId 与密文），Android 用同一组向量校验互通。iPhone 客户端暂未实现此入口。
+新增路由与 Durable Object 需要重新部署中继（新增 migration `v3`）；未部署时电脑只显示二维码，并提示连接码不可用。`@vetta/remote-control` 的测试固定了一组向量（连接码、密码、nonce → boxId 与密文），Android 与 iPhone 用同一组向量校验互通。

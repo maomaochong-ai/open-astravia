@@ -227,6 +227,17 @@ public enum L10n {
 		public static var scanDescription: String { tr("pair.scanDescription") }
 		public static var listening: String { tr("pair.listening") }
 		public static var manual: String { tr("pair.manual") }
+		public static var invite: String { tr("pair.invite") }
+		public static var inviteHint: String { tr("pair.inviteHint") }
+		public static var inviteCode: String { tr("pair.inviteCode") }
+		public static var invitePassword: String { tr("pair.invitePassword") }
+		public static var inviteCodeInvalid: String { tr("pair.inviteCodeInvalid") }
+		public static var invitePasswordInvalid: String { tr("pair.invitePasswordInvalid") }
+		public static var inviteOwnRelay: String { tr("pair.inviteOwnRelay") }
+		public static var inviteRelay: String { tr("pair.inviteRelay") }
+		public static var inviteNotFound: String { tr("pair.inviteNotFound") }
+		public static var inviteWrongPassword: String { tr("pair.inviteWrongPassword") }
+		public static var inviteUnreachable: String { tr("pair.inviteUnreachable") }
 		public static var troubleshoot: String { tr("pair.troubleshoot") }
 		public static var cameraDenied: String { tr("pair.cameraDenied") }
 		public static var cameraUnavailable: String { tr("pair.cameraUnavailable") }
@@ -261,6 +272,9 @@ public enum L10n {
 			case .unauthorized: unauthorized
 			case .invalidEndpoint: manualInvalid
 			case .unreachable: failed
+			case .inviteNotFound: inviteNotFound
+			case .inviteWrongPassword: inviteWrongPassword
+			case .inviteUnreachable: inviteUnreachable
 			}
 		}
 	}
