@@ -46,19 +46,6 @@ public struct RemoteViewport: Equatable, Sendable {
 		(width / 2 + (x * width - width / 2) * zoom + panX, height / 2 + (y * height - height / 2) * zoom + panY)
 	}
 
-	/// Pans the least needed to keep a desktop point (0…1) at least `margin` inside the
-	/// view, so a cursor moved past the edge of a zoomed picture stays in sight.
-	public func following(x: Double, y: Double, width: Double, height: Double, margin: Double) -> RemoteViewport {
-		guard zoomed, width > 0, height > 0 else { return self }
-		let shown = toView(x: x, y: y, width: width, height: height)
-		var next = self
-		if shown.x < margin { next.panX += margin - shown.x } else if shown.x > width - margin { next.panX -= shown.x - (width - margin) }
-		if shown.y < margin { next.panY += margin - shown.y } else if shown.y > height - margin { next.panY -= shown.y - (height - margin) }
-		next.panX = Self.clampPan(next.panX, width, zoom)
-		next.panY = Self.clampPan(next.panY, height, zoom)
-		return next
-	}
-
 	private static func clampPan(_ value: Double, _ side: Double, _ zoom: Double) -> Double {
 		let limit = (zoom - 1) * side / 2
 		// Plus zero turns a -0 into 0, so an unmoved view equals the default.

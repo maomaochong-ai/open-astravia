@@ -138,15 +138,4 @@ import Testing
 		_ = zoomed.move(dx: 40, dy: 0, speed: 0, width: 1_600, height: 800)
 		#expect(near(zoomed.cursor.x - 0.5, (plain.cursor.x - 0.5) / 4))
 	}
-
-	@Test func pansAZoomedPictureToKeepTheCursorInSight() {
-		let zoomed = RemoteViewport(zoom: 2)
-		let followed = zoomed.following(x: 0.9, y: 0.5, width: 400, height: 200, margin: 20)
-		let shown = followed.toView(x: 0.9, y: 0.5, width: 400, height: 200)
-		#expect(near(shown.x, 380), "just inside the right edge")
-		let edge = zoomed.following(x: 1, y: 0.5, width: 400, height: 200, margin: 20)
-		#expect(near(edge.toView(x: 1, y: 0.5, width: 400, height: 200).x, 400), "never past the picture's own edge")
-		#expect(followed.panY == 0, "no need to move up or down")
-		#expect(RemoteViewport().following(x: 1, y: 1, width: 400, height: 200, margin: 20) == RemoteViewport(), "an unzoomed picture shows everything")
-	}
 }
