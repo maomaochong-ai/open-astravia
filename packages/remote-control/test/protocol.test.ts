@@ -48,6 +48,7 @@ describe("remote protocol v2", () => {
 			"file.list",
 			"file.stat",
 			"file.read",
+			"screen.subscribe",
 		]) {
 			expect(decodeRemoteFrame({ type: "request", requestId: "r1", method, sessionId: "s1" })).toMatchObject({
 				method,
@@ -88,6 +89,15 @@ describe("remote protocol v2", () => {
 	it("refuses handshake frames inside a sealed envelope", () => {
 		expect(() => decodeSessionFrame(hello)).toThrow(RemoteProtocolError);
 		expect(decodeSessionFrame({ type: "ack", sequence: 3 })).toEqual({ type: "ack", sequence: 3 });
+	});
+
+	it("accepts the screen status event and still rejects unknown event names", () => {
+		expect(decodeRemoteFrame({ type: "event", eventId: "e1", sequence: 1, name: "screen.status" })).toMatchObject({
+			name: "screen.status",
+		});
+		expect(() => decodeRemoteFrame({ type: "event", eventId: "e1", sequence: 1, name: "screen.frame" })).toThrow(
+			RemoteProtocolError,
+		);
 	});
 
 	it("requires positive event sequences", () => {

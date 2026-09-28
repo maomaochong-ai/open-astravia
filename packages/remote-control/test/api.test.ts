@@ -8,6 +8,7 @@ import {
 	readMessageEvent,
 	readModelOptions,
 	readQuestionRequest,
+	readScreenStatus,
 	readSessionState,
 	readSessionSummaries,
 	readToolEvent,
@@ -212,5 +213,28 @@ describe("remote api payload readers", () => {
 		const base = { deviceName: "Mac", lanEndpoints: [], relayEnabled: true, runningSessionCount: 0 };
 		expect(readDeviceStatus({ ...base, fileRead: true })?.fileRead).toBe(true);
 		expect(readDeviceStatus(base)?.fileRead).toBe(false);
+	});
+
+	it("treats a desktop that does not mention screen as streaming whenever P2P is up", () => {
+		const base = { deviceName: "Mac", lanEndpoints: [], relayEnabled: true, runningSessionCount: 0 };
+		expect(readDeviceStatus({ ...base, screen: true })?.screen).toBe(true);
+		expect(readDeviceStatus(base)?.screen).toBe(false);
+	});
+
+	it("reads the screen status and degrades states it does not know", () => {
+		expect(readScreenStatus({ screen: "streaming", input: "ready" })).toEqual({
+			screen: "streaming",
+			input: "ready",
+		});
+		expect(readScreenStatus({ screen: "permission_denied", input: "permission_denied" })).toEqual({
+			screen: "permission_denied",
+			input: "permission_denied",
+		});
+		expect(readScreenStatus({ screen: "hdr", input: "gamepad" })).toEqual({
+			screen: "unavailable",
+			input: "unsupported",
+		});
+		expect(readScreenStatus({ screen: "streaming" })).toBeUndefined();
+		expect(readScreenStatus("streaming")).toBeUndefined();
 	});
 });

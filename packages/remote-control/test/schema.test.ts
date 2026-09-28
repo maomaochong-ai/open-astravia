@@ -60,9 +60,27 @@ describe("remote control JSON Schema", () => {
 			"file.list",
 			"file.stat",
 			"file.read",
+			"screen.subscribe",
 		]) {
 			expect(validate({ type: "request", requestId: "r1", method, sessionId: "s1", payload: {} })).toBe(true);
 		}
+	});
+
+	it("accepts the screen capability and the screen status event", () => {
+		expect(
+			validate({
+				type: "hello",
+				protocolVersion: 2,
+				role: "mobile",
+				deviceId: "mobile-1",
+				deviceName: "Phone",
+				capabilities: { chat: true, sessionRead: true, screen: true },
+				connectionId: "connection-1",
+				identityKey: "A".repeat(43),
+				ephemeralKey: "B".repeat(43),
+			}),
+		).toBe(true);
+		expect(validate({ type: "event", eventId: "e1", sequence: 1, name: "screen.status", payload: {} })).toBe(true);
 	});
 
 	it("rejects authority-expanding unknown fields", () => {

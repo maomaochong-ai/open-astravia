@@ -92,7 +92,8 @@ export type RemoteRequestMethod =
 	| "diagnostics.snapshot"
 	| "file.list"
 	| "file.stat"
-	| "file.read";
+	| "file.read"
+	| "screen.subscribe";
 
 export interface RemoteRequest {
 	readonly type: "request";
@@ -121,7 +122,9 @@ export type RemoteEventName =
 	| "session.tool"
 	| "session.input"
 	| "session.resync"
-	| "diagnostics.updated";
+	| "diagnostics.updated"
+	/** Sent only to a phone subscribed to the screen, which declared `screen` in its hello (ADR-0140). */
+	| "screen.status";
 
 export interface RemoteEvent {
 	readonly type: "event";

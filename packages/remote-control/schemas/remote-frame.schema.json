@@ -67,7 +67,7 @@
       "type": "object", "additionalProperties": false, "required": ["type", "requestId", "method"],
       "properties": {
         "type": { "const": "request" }, "requestId": { "$ref": "#/$defs/id" },
-        "method": { "enum": ["project.list", "session.list", "session.create", "session.open", "session.history", "session.prompt", "session.upload", "model.list", "skill.list", "session.configure", "session.rename", "session.pin", "session.delete", "session.respond", "session.abort", "session.resume", "diagnostics.snapshot", "file.list", "file.stat", "file.read"] },
+        "method": { "enum": ["project.list", "session.list", "session.create", "session.open", "session.history", "session.prompt", "session.upload", "model.list", "skill.list", "session.configure", "session.rename", "session.pin", "session.delete", "session.respond", "session.abort", "session.resume", "diagnostics.snapshot", "file.list", "file.stat", "file.read", "screen.subscribe"] },
         "sessionId": { "$ref": "#/$defs/id" }, "payload": true
       }
     },
@@ -79,7 +79,7 @@
       "type": "object", "additionalProperties": false, "required": ["type", "eventId", "sequence", "name"],
       "properties": {
         "type": { "const": "event" }, "eventId": { "$ref": "#/$defs/id" }, "sequence": { "$ref": "#/$defs/sequence" },
-        "name": { "enum": ["device.status", "device.paired", "session.list", "session.state", "session.message", "session.tool", "session.input", "session.resync", "diagnostics.updated"] },
+        "name": { "enum": ["device.status", "device.paired", "session.list", "session.state", "session.message", "session.tool", "session.input", "session.resync", "diagnostics.updated", "screen.status"] },
         "sessionId": { "$ref": "#/$defs/id" }, "payload": true
       }
     },
