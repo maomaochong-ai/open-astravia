@@ -156,6 +156,18 @@ describe("远程连接设置", () => {
 		expect(await screen.findByText("remote.devices.onlineVia:remote.devices.channel.lan")).toBeTruthy();
 	});
 
+	it("二维码过期或被用掉后立即换一个新的，不用再点生成", async () => {
+		const { createInvite, push } = installRemotePairing({ initial: inviteState() });
+		render(<RemotePairingSettings />);
+		await screen.findByRole("img", { name: "remote.pairing.qrAlt" });
+		expect(createInvite).not.toHaveBeenCalled();
+
+		act(() => push({ ...BASE_STATE }));
+		await waitFor(() => expect(createInvite).toHaveBeenCalledTimes(1));
+		await screen.findByRole("img", { name: "remote.pairing.qrAlt" });
+		expect(screen.queryByRole("button", { name: "remote.pairing.create" })).toBeNull();
+	});
+
 	it("连上的手机在自己那一行就能开关远程控制，默认开启", async () => {
 		const device = {
 			id: "d1",

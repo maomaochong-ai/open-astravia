@@ -47,7 +47,6 @@ export interface RemotePairingSettingsModel {
 		};
 		readonly devices: {
 			readonly control: string;
-			readonly description: string;
 			readonly empty: string;
 			readonly revoke: string;
 			readonly title: string;
@@ -60,11 +59,9 @@ export interface RemotePairingSettingsModel {
 			readonly codePreparing: string;
 			readonly password: string;
 			readonly create: string;
-			readonly description: string;
 			readonly empty: string;
 			readonly generating: string;
 			readonly manualHint: string;
-			readonly permissionHint: string;
 			readonly qrAlt: string;
 			readonly qrHint: string;
 			readonly title: string;
@@ -197,6 +194,13 @@ export function useRemotePairingSettingsModel(): RemotePairingSettingsModel {
 		[apply],
 	);
 
+	// While the page is open there is always a code to scan: one that expired, was used by a
+	// phone or was refreshed is replaced at once. A failure stops it until the person retries.
+	const needsInvite = !initializing && !busy && !failure && !state.invite && state.vaultAvailable;
+	useEffect(() => {
+		if (needsInvite) void run(() => window.vetta.remotePairing.createInvite(), "create");
+	}, [needsInvite, run]);
+
 	const labels = useMemo<RemotePairingSettingsModel["labels"]>(
 		() => ({
 			title: t("remote.title"),
@@ -211,14 +215,12 @@ export function useRemotePairingSettingsModel(): RemotePairingSettingsModel {
 			},
 			devices: {
 				title: t("remote.devices.title"),
-				description: t("remote.devices.description"),
 				empty: t("remote.devices.empty"),
 				revoke: t("remote.devices.revoke"),
 				control: t("remote.devices.control"),
 			},
 			pairing: {
 				title: t("remote.pairing.title"),
-				description: t("remote.pairing.description"),
 				create: t("remote.pairing.create"),
 				cancel: t("remote.pairing.cancel"),
 				qrAlt: t("remote.pairing.qrAlt"),
@@ -234,7 +236,6 @@ export function useRemotePairingSettingsModel(): RemotePairingSettingsModel {
 				codeHint: t("remote.pairing.codeHint"),
 				codePreparing: t("remote.pairing.codePreparing"),
 				codeFailed: t("remote.pairing.codeFailed"),
-				permissionHint: t("remote.pairing.permissionHint"),
 			},
 			cloud: {
 				title: t("remote.cloud.title"),
