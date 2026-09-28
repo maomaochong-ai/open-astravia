@@ -25,6 +25,7 @@ import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
 import org.vetta.android.data.remote.MemorySessionCache
 import org.vetta.android.domain.remote.AttachmentKind
+import org.vetta.android.domain.remote.RemoteInputState
 import org.vetta.android.domain.remote.RemoteQuestionAnswer
 import org.vetta.android.domain.remote.RemoteSessionStatus
 import org.vetta.android.domain.remote.TranscriptAttachment
@@ -808,5 +809,72 @@ class DesktopMirrorTest {
                 mirror.state.value.pairing,
             )
             assertFalse(mirror.state.value.paired)
+        }
+
+    @Test
+    fun subscribesToTheScreenOnlyWhileItIsOpenAndTheAppIsInFront() =
+        runTest {
+            val desktop = scriptedDesktop()
+            val subscriptions = mutableListOf<Boolean>()
+            val scripted = desktop.handler
+            desktop.handler = { request ->
+                if (request.method == RemoteRequestMethod.ScreenSubscribe) {
+                    val active = (request.payload as JsonObject)["active"]!!.jsonPrimitive.booleanOrNull!!
+                    subscriptions += active
+                    respond(
+                        request.requestId,
+                        buildJsonObject {
+                            put("screen", if (active) "streaming" else "stopped")
+                            put("input", "permission_denied")
+                        },
+                    )
+                } else {
+                    scripted(request)
+                }
+            }
+            val mirror = mirror(desktop)
+            assertTrue(mirror.pairWithCode(desktop.invite()))
+            assertTrue(eventually { mirror.state.value.online })
+            assertEquals(true, desktop.hellos.last().capabilities.screen, "the phone says it subscribes on demand")
+            desktop.emit(RemoteEventName.DeviceStatus, buildJsonObject { put("deviceName", "MacBook Pro"); put("screen", true) })
+            testScheduler.runCurrent()
+
+            mirror.setScreenOpen(true)
+            assertTrue(eventually { mirror.state.value.screen?.input == RemoteInputState.PermissionDenied })
+            assertEquals(listOf(true), subscriptions)
+
+            desktop.emit(RemoteEventName.ScreenStatus, buildJsonObject { put("screen", "streaming"); put("input", "ready") })
+            assertTrue(eventually { mirror.state.value.screen?.input == RemoteInputState.Ready })
+
+            mirror.setActive(false)
+            assertTrue(eventually { subscriptions == listOf(true, false) }, "the background stops the capture")
+            assertNull(mirror.state.value.screen)
+            mirror.setActive(true)
+            assertTrue(eventually { subscriptions.last() })
+
+            // Every connection brings a device.status: a desktop that lost the phone for a moment forgot it.
+            desktop.emit(RemoteEventName.DeviceStatus, buildJsonObject { put("deviceName", "MacBook Pro"); put("screen", true) })
+            assertTrue(eventually { subscriptions.size == 4 && subscriptions.last() })
+
+            mirror.setScreenOpen(false)
+            assertTrue(eventually { subscriptions.size == 5 && !subscriptions.last() })
+            assertNull(mirror.state.value.screen)
+        }
+
+    @Test
+    fun neverAsksAnOlderDesktopForItsScreen() =
+        runTest {
+            val desktop = scriptedDesktop()
+            val mirror = mirror(desktop)
+            assertTrue(mirror.pairWithCode(desktop.invite()))
+            assertTrue(eventually { mirror.state.value.online })
+            desktop.emit(RemoteEventName.DeviceStatus, buildJsonObject { put("deviceName", "MacBook Pro") })
+            testScheduler.runCurrent()
+
+            mirror.setScreenOpen(true)
+            testScheduler.runCurrent()
+            mirror.setScreenOpen(false)
+            testScheduler.runCurrent()
+            assertTrue(desktop.requests.none { it.method == RemoteRequestMethod.ScreenSubscribe })
         }
 }

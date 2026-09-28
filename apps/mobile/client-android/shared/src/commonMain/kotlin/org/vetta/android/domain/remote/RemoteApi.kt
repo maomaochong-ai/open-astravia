@@ -215,7 +215,32 @@ data class RemoteDeviceStatus(
     val desktopControl: Boolean? = null,
     /** The relay the desktop uses now; a phone paired with another one follows it. Null when away access is off, or from older desktops. */
     val relayBaseUrl: String? = null,
+    /**
+     * Whether the desktop answers `screen.subscribe` and captures only while it is open
+     * (ADR-0140); older desktops share the screen whenever the P2P link is up.
+     */
+    val screen: Boolean = false,
 )
+
+/** Why frames or taps might not reach the phone, from `screen.subscribe` and `screen.status`. */
+enum class RemoteScreenState {
+    Stopped,
+    Streaming,
+
+    /** macOS withholds Screen Recording: the phone explains it instead of showing black. */
+    PermissionDenied,
+    Unavailable,
+}
+
+enum class RemoteInputState {
+    Ready,
+
+    /** macOS withholds Accessibility: the picture shows, taps and keys do nothing. */
+    PermissionDenied,
+    Unsupported,
+}
+
+data class RemoteScreenStatus(val screen: RemoteScreenState, val input: RemoteInputState)
 
 /** Sealed follow-up to a manual pairing approval; carries the long-lived credential. */
 data class RemoteDevicePaired(
@@ -360,6 +385,29 @@ object RemoteApi {
             runningSessionCount = obj.double("runningSessionCount")?.toInt() ?: 0,
             desktopControl = obj.bool("desktopControl"),
             relayBaseUrl = normalizeRelayBaseUrl(obj.string("relayBaseUrl")),
+            screen = obj.bool("screen") == true,
+        )
+    }
+
+    /** A state from a newer desktop reads as unavailable or unsupported. */
+    fun readScreenStatus(value: JsonElement?): RemoteScreenStatus? {
+        val obj = value as? JsonObject ?: return null
+        val screen = obj.string("screen") ?: return null
+        val input = obj.string("input") ?: return null
+        return RemoteScreenStatus(
+            screen =
+                when (screen) {
+                    "stopped" -> RemoteScreenState.Stopped
+                    "streaming" -> RemoteScreenState.Streaming
+                    "permission_denied" -> RemoteScreenState.PermissionDenied
+                    else -> RemoteScreenState.Unavailable
+                },
+            input =
+                when (input) {
+                    "ready" -> RemoteInputState.Ready
+                    "permission_denied" -> RemoteInputState.PermissionDenied
+                    else -> RemoteInputState.Unsupported
+                },
         )
     }
 

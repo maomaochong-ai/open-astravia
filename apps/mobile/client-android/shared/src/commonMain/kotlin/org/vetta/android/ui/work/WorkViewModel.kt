@@ -82,6 +82,11 @@ class WorkViewModel(private val mirror: DesktopMirror) : ViewModel(), WorkAction
         mirror.refreshLink()
     }
 
+    /** The remote screen opened or closed; the desktop captures only in between. */
+    fun setScreenOpen(open: Boolean) {
+        mirror.setScreenOpen(open)
+    }
+
     fun setPreferences(update: (MirrorPreferences) -> MirrorPreferences) {
         mirror.setPreferences(update)
     }

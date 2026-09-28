@@ -239,7 +239,7 @@ fun RootApp(
                     enter = slideInVertically(VettaMotion.snappy(IntOffset.VisibilityThreshold)) { it / 3 } + fadeIn(VettaMotion.snappy()),
                     exit = slideOutVertically(VettaMotion.snappy(IntOffset.VisibilityThreshold)) { it / 3 } + fadeOut(VettaMotion.snappy()),
                 ) {
-                    RemoteDesktopScreen(workState, viewerUrl, onClose = vm::closeRemote)
+                    RemoteDesktopScreen(workState, viewerUrl, onClose = vm::closeRemote, onScreenOpen = work::setScreenOpen)
                 }
                 if (shareSkipped > 0) {
                     VettaInfoDialog(

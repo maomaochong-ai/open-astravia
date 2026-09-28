@@ -91,6 +91,7 @@ enum class RemoteRequestMethod {
     @SerialName("session.abort") SessionAbort,
     @SerialName("session.resume") SessionResume,
     @SerialName("diagnostics.snapshot") DiagnosticsSnapshot,
+    @SerialName("screen.subscribe") ScreenSubscribe,
 }
 
 @Serializable
@@ -123,6 +124,7 @@ enum class RemoteEventName {
     @SerialName("session.input") SessionInput,
     @SerialName("session.resync") SessionResync,
     @SerialName("diagnostics.updated") DiagnosticsUpdated,
+    @SerialName("screen.status") ScreenStatus,
 }
 
 @Serializable

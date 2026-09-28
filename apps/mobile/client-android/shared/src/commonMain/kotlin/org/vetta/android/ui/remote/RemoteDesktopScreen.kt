@@ -21,6 +21,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -29,6 +30,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -37,6 +39,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.resources.stringResource
+import org.vetta.android.domain.remote.RemoteInputState
+import org.vetta.android.domain.remote.RemoteScreenState
 import org.vetta.android.domain.remote.link.LinkIndicator
 import org.vetta.android.domain.work.MirrorState
 import org.vetta.android.resources.Res
@@ -45,9 +49,11 @@ import org.vetta.android.resources.remote_control
 import org.vetta.android.resources.remote_control_hint
 import org.vetta.android.resources.remote_control_not_allowed
 import org.vetta.android.resources.remote_control_offline
+import org.vetta.android.resources.remote_input_permission_denied
 import org.vetta.android.resources.remote_keyboard
 import org.vetta.android.resources.remote_keyboard_hint
 import org.vetta.android.resources.remote_rotate
+import org.vetta.android.resources.remote_screen_permission_denied
 import org.vetta.android.ui.design.GlassCircleButton
 import org.vetta.android.ui.theme.LightSystemBarIcons
 import org.vetta.android.ui.work.describe
@@ -59,10 +65,15 @@ import org.vetta.android.ui.work.linkDetail
  * turn the phone to landscape for a larger picture. The title names the computer and how
  * the phone reaches it; while the computer is offline the page says so instead of showing
  * a stale picture. In landscape the controls move to the sides so the picture keeps the
- * full height.
+ * full height. The desktop captures only while this page is open ([onScreenOpen]), and
+ * says when macOS keeps it from showing its screen or taking taps (ADR-0140).
  */
 @Composable
-fun RemoteDesktopScreen(state: MirrorState, viewerUrl: String?, onClose: () -> Unit) {
+fun RemoteDesktopScreen(state: MirrorState, viewerUrl: String?, onClose: () -> Unit, onScreenOpen: (Boolean) -> Unit = {}) {
+    DisposableEffect(Unit) {
+        onScreenOpen(true)
+        onDispose { onScreenOpen(false) }
+    }
     var keyboardOpen by remember { mutableStateOf(false) }
     // Kept across the rotation it causes, which rebuilds the activity.
     var landscape by rememberSaveable { mutableStateOf(false) }
@@ -70,7 +81,10 @@ fun RemoteDesktopScreen(state: MirrorState, viewerUrl: String?, onClose: () -> U
     LandscapeWhile(landscape)
     // Turned off for this phone in the desktop's settings: say where to turn it on.
     val allowed = state.link.desktop?.desktopControl != false
-    val live = viewerUrl != null && state.online && allowed
+    // Without Screen Recording the picture would stay black: say why instead.
+    val screenDenied = state.screen?.screen == RemoteScreenState.PermissionDenied
+    val viewOnly = state.screen?.input == RemoteInputState.PermissionDenied
+    val live = viewerUrl != null && state.online && allowed && !screenDenied
     val close = @Composable { GlassCircleButton(Icons.Filled.Close, stringResource(Res.string.close), onClick = onClose, size = 44.dp, tag = "remote.close") }
     val keyboard =
         @Composable {
@@ -79,7 +93,7 @@ fun RemoteDesktopScreen(state: MirrorState, viewerUrl: String?, onClose: () -> U
                 stringResource(Res.string.remote_keyboard),
                 onClick = { keyboardOpen = !keyboardOpen },
                 size = 44.dp,
-                enabled = live,
+                enabled = live && !viewOnly,
                 tag = "remote.keyboard",
             )
         }
@@ -100,14 +114,37 @@ fun RemoteDesktopScreen(state: MirrorState, viewerUrl: String?, onClose: () -> U
                     RemoteDesktopSurface(
                         target = viewerUrl,
                         modifier = Modifier.fillMaxSize(),
-                        keyboardOpen = keyboardOpen,
+                        keyboardOpen = keyboardOpen && !viewOnly,
                         onKeyboardClosed = { keyboardOpen = false },
                     )
+                    if (viewOnly) {
+                        // Taps would go nowhere: swallow them, and say why along the top.
+                        Box(Modifier.fillMaxSize().pointerInput(Unit) { awaitPointerEventScope { while (true) awaitPointerEvent().changes.forEach { it.consume() } } })
+                        Text(
+                            stringResource(Res.string.remote_input_permission_denied),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = OnBlack,
+                            textAlign = TextAlign.Center,
+                            modifier =
+                                Modifier
+                                    .align(Alignment.TopCenter)
+                                    .fillMaxWidth()
+                                    .background(Color.Black.copy(alpha = 0.6f))
+                                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                                    .testTag("remote.viewOnly"),
+                        )
+                    }
                 } else {
                     Column(Modifier.padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Icon(Icons.Outlined.LaptopChromebook, contentDescription = null, tint = OnBlack.copy(alpha = 0.5f), modifier = Modifier.size(48.dp))
                         Text(
-                            stringResource(if (allowed) Res.string.remote_control_offline else Res.string.remote_control_not_allowed),
+                            stringResource(
+                                when {
+                                    !allowed -> Res.string.remote_control_not_allowed
+                                    screenDenied -> Res.string.remote_screen_permission_denied
+                                    else -> Res.string.remote_control_offline
+                                },
+                            ),
                             color = OnBlack.copy(alpha = 0.7f),
                             textAlign = TextAlign.Center,
                             modifier = Modifier.testTag("remote.unavailable"),

@@ -29,6 +29,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import org.vetta.android.data.remote.SessionCache
 import org.vetta.android.domain.remote.RemoteApi
+import org.vetta.android.domain.remote.RemoteScreenStatus
 import org.vetta.android.domain.remote.RemoteMessageEvent
 import org.vetta.android.domain.remote.RemoteModelOption
 import org.vetta.android.domain.remote.RemoteProjectSummary
@@ -125,6 +126,11 @@ data class MirrorState(
      * had from it stays readable. Pairing with that computer again carries on from there.
      */
     val unlinked: UnlinkReason? = null,
+    /**
+     * What the desktop said about its screen while the remote screen is open; null
+     * otherwise, and from desktops that share it without being asked (ADR-0140).
+     */
+    val screen: RemoteScreenStatus? = null,
 ) {
     val online: Boolean
         get() = link.isUsable
@@ -189,6 +195,12 @@ class DesktopMirror(
     private var unsavedSequence: Pair<String, Long>? = null
     private var sequenceSave: Job? = null
     private var active = true
+
+    /** The remote screen is open; the desktop captures only while it is and the app is in front. */
+    private var screenOpen = false
+
+    /** The desktop answers `screen.subscribe`, from its last `device.status`. */
+    private var desktopScreen = false
     private var newSessionModelsLoad: Deferred<Unit>? = null
     private var recentSync: Job? = null
 
@@ -219,6 +231,31 @@ class DesktopMirror(
         if (!value) saveProgress()
         link?.setForeground(value)
         if (value && !wasActive) link?.refresh()
+        if (screenOpen && value != wasActive) syncScreen()
+    }
+
+    /** The remote screen opened or closed: the desktop starts or stops capturing (ADR-0140). */
+    fun setScreenOpen(open: Boolean) {
+        if (screenOpen == open) return
+        screenOpen = open
+        syncScreen()
+    }
+
+    private fun syncScreen() {
+        val current = link ?: return
+        val wanted = screenOpen && active
+        if (!wanted) mutate { it.copy(screen = null) }
+        // An older desktop shares the screen whenever the P2P link is up and knows no such request.
+        if (!desktopScreen) return
+        scope.launch {
+            try {
+                val result = current.request(RemoteRequestMethod.ScreenSubscribe, buildJsonObject { put("active", wanted) })
+                // A later open or close has its own answer coming.
+                if (wanted == (screenOpen && active)) mutate { it.copy(screen = if (wanted) RemoteApi.readScreenStatus(result) else null) }
+            } catch (error: Throwable) {
+                platform.logger.warn("screen subscription failed", mapOf("active" to wanted, "error" to (error.message ?: "")))
+            }
+        }
     }
 
     fun refreshLink() {
@@ -474,7 +511,15 @@ class DesktopMirror(
         val sessionId = event.sessionId
         when (event.name) {
             RemoteEventName.DeviceRevoked -> onRevoked()
-            RemoteEventName.DeviceStatus -> followRelay(RemoteApi.readDeviceStatus(event.payload)?.relayBaseUrl)
+            RemoteEventName.DeviceStatus -> {
+                val status = RemoteApi.readDeviceStatus(event.payload)
+                followRelay(status?.relayBaseUrl)
+                desktopScreen = status?.screen == true
+                // Sent on every connection: a desktop that lost the phone for a moment forgot it was watching.
+                if (screenOpen && active) syncScreen()
+            }
+            RemoteEventName.ScreenStatus ->
+                if (screenOpen && active) mutate { it.copy(screen = RemoteApi.readScreenStatus(event.payload) ?: it.screen) }
             RemoteEventName.SessionList -> keepSessions(RemoteApi.readSessionSummaries(event.payload))
             RemoteEventName.SessionState -> {
                 if (sessionId == null) return

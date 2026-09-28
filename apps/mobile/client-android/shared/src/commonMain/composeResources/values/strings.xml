@@ -201,6 +201,8 @@
     <string name="remote_control_hint">Tap to click · hold to right-click · drag to move · pinch to zoom · two fingers to scroll</string>
     <string name="remote_control_not_allowed">Remote control is off for this phone. Turn it on in Vetta on your computer: Settings → Remote access → this phone.</string>
     <string name="remote_control_offline">Your computer’s screen shows here once it is online.</string>
+    <string name="remote_screen_permission_denied">Your computer hasn’t let Vetta record its screen yet. On the Mac, open System Settings → Privacy &amp; Security → Screen Recording, turn on Vetta, then restart Vetta.</string>
+    <string name="remote_input_permission_denied">View only: taps and typing won’t reach the computer until Vetta is allowed in System Settings → Privacy &amp; Security → Accessibility on the Mac.</string>
     <string name="remote_keyboard">Keyboard</string>
     <string name="remote_keyboard_hint">Types English letters, digits and spaces</string>
     <string name="remote_rotate">Rotate</string>

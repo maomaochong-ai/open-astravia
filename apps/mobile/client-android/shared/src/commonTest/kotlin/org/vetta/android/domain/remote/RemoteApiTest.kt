@@ -113,4 +113,20 @@ class RemoteApiTest {
         assertNull(status?.desktopControl, "a desktop before per-phone control leaves it out")
         assertEquals(false, RemoteApi.readDeviceStatus(json("""{"deviceName":"Mac","desktopControl":false}"""))?.desktopControl)
     }
+
+    @Test
+    fun readsWhetherTheDesktopCapturesOnDemandAndWhyItCannotShowItsScreen() {
+        assertEquals(false, RemoteApi.readDeviceStatus(json("""{"deviceName":"Mac"}"""))?.screen, "older desktops stream whenever P2P is up")
+        assertEquals(true, RemoteApi.readDeviceStatus(json("""{"deviceName":"Mac","screen":true}"""))?.screen)
+        assertEquals(
+            RemoteScreenStatus(RemoteScreenState.PermissionDenied, RemoteInputState.Ready),
+            RemoteApi.readScreenStatus(json("""{"screen":"permission_denied","input":"ready"}""")),
+        )
+        assertEquals(
+            RemoteScreenStatus(RemoteScreenState.Unavailable, RemoteInputState.Unsupported),
+            RemoteApi.readScreenStatus(json("""{"screen":"hdr","input":"gamepad"}""")),
+            "states from a newer desktop degrade",
+        )
+        assertNull(RemoteApi.readScreenStatus(json("""{"screen":"streaming"}""")))
+    }
 }
