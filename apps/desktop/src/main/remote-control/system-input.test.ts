@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createSystemInputAdapter } from "./system-input.js";
+import { createSystemInputAdapter, MacPointerState } from "./system-input.js";
 
 describe("createSystemInputAdapter", () => {
 	it("keeps system input disabled unless explicitly granted", () => {
@@ -21,5 +21,29 @@ describe("createSystemInputAdapter", () => {
 		if (process.platform !== "win32" && process.platform !== "darwin" && process.platform !== "linux") {
 			expect(adapter.supported).toBe(false);
 		}
+	});
+});
+
+describe("MacPointerState", () => {
+	it("moves as a drag while a button is held, so the item under it comes along", () => {
+		const pointer = new MacPointerState();
+		expect(pointer.move().eventType).toBe(5);
+		pointer.press("left", "down", 10, 10, 0);
+		expect(pointer.move()).toEqual({ eventType: 6, button: 0 });
+		pointer.press("left", "up", 50, 10, 900);
+		expect(pointer.move().eventType).toBe(5);
+		pointer.press("right", "down", 10, 10, 2_000);
+		expect(pointer.move()).toEqual({ eventType: 7, button: 1 });
+	});
+
+	it("counts quick clicks in one place as a double-click", () => {
+		const pointer = new MacPointerState();
+		expect(pointer.press("left", "down", 100, 100, 0).clickCount).toBe(1);
+		expect(pointer.press("left", "up", 100, 100, 60).clickCount).toBe(1);
+		expect(pointer.press("left", "down", 102, 101, 250).clickCount).toBe(2);
+		expect(pointer.press("left", "up", 102, 101, 300).clickCount).toBe(2);
+		// Too slow: a new click.
+		expect(pointer.press("left", "down", 100, 100, 1_200).clickCount).toBe(1);
+		expect(pointer.press("left", "down", 300, 100, 1_300).clickCount).toBe(1);
 	});
 });

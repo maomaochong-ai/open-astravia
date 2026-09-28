@@ -189,6 +189,7 @@ const macInput = once(() => {
 	const CGDisplayPixelsWide = coreGraphics.func("size_t CGDisplayPixelsWide(uint32)");
 	const CGDisplayPixelsHigh = coreGraphics.func("size_t CGDisplayPixelsHigh(uint32)");
 	const CFRelease = coreFoundation.func("void CFRelease(void *)");
+	const CGEventSetIntegerValueField = coreGraphics.func("void CGEventSetIntegerValueField(void *, uint32, int64)");
 	const CGEventKeyboardSetUnicodeString = coreGraphics.func(
 		"void CGEventKeyboardSetUnicodeString(void *, unsigned long, const uint16_t *)",
 	);
@@ -202,6 +203,7 @@ const macInput = once(() => {
 		CGDisplayPixelsWide,
 		CGDisplayPixelsHigh,
 		CFRelease,
+		CGEventSetIntegerValueField,
 	};
 });
 
@@ -220,8 +222,10 @@ function createMacInputAdapter(): SystemInputAdapter {
 		CGDisplayPixelsWide,
 		CGDisplayPixelsHigh,
 		CFRelease,
+		CGEventSetIntegerValueField,
 	} = macInput();
 	let enabled = true;
+	const pointer = new MacPointerState();
 	const post = (event: unknown): void => {
 		if (!event) return;
 		CGEventPost(0, event);
@@ -241,15 +245,16 @@ function createMacInputAdapter(): SystemInputAdapter {
 					x: message.x * Math.max(1, Number(CGDisplayPixelsWide(display)) - 1),
 					y: message.y * Math.max(1, Number(CGDisplayPixelsHigh(display)) - 1),
 				};
-				const eventType = message.type === "pointer.move" ? 5 : macMouseEventType(message.button, message.action);
-				post(
-					CGEventCreateMouseEvent(
-						null,
-						eventType,
-						point,
-						message.type === "pointer.button" ? macMouseButton(message.button) : 0,
-					),
-				);
+				if (message.type === "pointer.move") {
+					const move = pointer.move();
+					post(CGEventCreateMouseEvent(null, move.eventType, point, move.button));
+					return;
+				}
+				const press = pointer.press(message.button, message.action, point.x, point.y, Date.now());
+				const event = CGEventCreateMouseEvent(null, press.eventType, point, macMouseButton(message.button));
+				// Without the click count, two quick clicks never make a double-click.
+				if (event) CGEventSetIntegerValueField(event, MAC_MOUSE_EVENT_CLICK_STATE, press.clickCount);
+				post(event);
 				return;
 			}
 			if (message.type === "pointer.scroll") {
@@ -338,6 +343,54 @@ function createLinuxX11InputAdapter(): SystemInputAdapter {
 
 function utf16Units(text: string): number[] {
 	return Array.from({ length: text.length }, (_, index) => text.charCodeAt(index));
+}
+
+/** `kCGMouseEventClickState`. */
+const MAC_MOUSE_EVENT_CLICK_STATE = 1;
+/** Clicks closer than this, in time and in pixels, count as one double- or triple-click. */
+const MAC_MULTI_CLICK_MS = 500;
+const MAC_MULTI_CLICK_DISTANCE = 6;
+
+/**
+ * What macOS needs to hear beyond where the pointer is: a move with a button held is a
+ * drag (`kCGEventLeftMouseDragged` and friends), or apps see the pointer move without
+ * dragging anything; and a press carries how many clicks in a row it makes.
+ */
+export class MacPointerState {
+	private readonly held = new Set<"left" | "middle" | "right">();
+	private last: { button: string; at: number; x: number; y: number; count: number } | undefined;
+
+	move(): { readonly eventType: number; readonly button: number } {
+		if (this.held.has("left")) return { eventType: 6, button: 0 };
+		if (this.held.has("right")) return { eventType: 7, button: 1 };
+		if (this.held.has("middle")) return { eventType: 27, button: 2 };
+		return { eventType: 5, button: 0 };
+	}
+
+	press(
+		button: "left" | "middle" | "right",
+		action: "down" | "up",
+		x: number,
+		y: number,
+		now: number,
+	): { readonly eventType: number; readonly clickCount: number } {
+		const eventType = macMouseEventType(button, action);
+		if (action === "up") {
+			this.held.delete(button);
+			return { eventType, clickCount: this.last?.button === button ? this.last.count : 1 };
+		}
+		this.held.add(button);
+		const last = this.last;
+		const again =
+			last !== undefined &&
+			last.button === button &&
+			now - last.at <= MAC_MULTI_CLICK_MS &&
+			Math.abs(x - last.x) <= MAC_MULTI_CLICK_DISTANCE &&
+			Math.abs(y - last.y) <= MAC_MULTI_CLICK_DISTANCE;
+		const count = again ? last.count + 1 : 1;
+		this.last = { button, at: now, x, y, count };
+		return { eventType, clickCount: count };
+	}
 }
 
 function macMouseButton(button: "left" | "middle" | "right"): number {
