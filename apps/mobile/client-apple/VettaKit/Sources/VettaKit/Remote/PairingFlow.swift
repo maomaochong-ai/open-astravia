@@ -214,7 +214,8 @@ public final class PairingFlow {
 			role: .mobile,
 			deviceId: options.link.deviceId,
 			deviceName: options.link.deviceName,
-			capabilities: RemoteCapabilities(chat: true, sessionRead: true),
+			// Like the lasting link: the desktop may start its screen host from this one (ADR-0140).
+			capabilities: RemoteCapabilities(chat: true, sessionRead: true, screen: true),
 			identity: options.link.identity
 		)
 		connectionOptions.expectedPeerIdentityKey = expectedPeerIdentityKey
