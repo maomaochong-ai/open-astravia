@@ -36,7 +36,17 @@ struct RemoteDesktopScreen: View {
 							keyboardButton
 						}
 						.padding(8)
-						VStack {
+						VStack(spacing: 6) {
+							if let summary = statsLine {
+								Text(summary)
+									.font(.caption2.monospacedDigit())
+									.foregroundStyle(.white.opacity(0.8))
+									.padding(.horizontal, 10)
+									.padding(.vertical, 4)
+									.background(.black.opacity(0.45), in: .capsule)
+									.padding(.top, 6)
+									.allowsHitTesting(false)
+							}
 							viewOnlyBanner
 							Spacer()
 						}
@@ -151,6 +161,13 @@ struct RemoteDesktopScreen: View {
 
 	private var target: String? { model.remoteDesktopTarget }
 
+	/// Route, latency and frame rate of the picture, so a slow network and a slow picture
+	/// can be told apart.
+	private var statsLine: String? {
+		guard let summary = liveSession?.stats?.summary, !summary.isEmpty else { return nil }
+		return summary
+	}
+
 	/// The WebRTC session the link opened, while it lasts.
 	private var liveSession: RemoteDesktopSession? {
 		target.flatMap { sessions.session(for: $0) }.flatMap { $0.phase == .connected ? $0 : nil }
@@ -218,8 +235,8 @@ struct RemoteDesktopScreen: View {
 				.foregroundStyle(.white)
 				.lineLimit(1)
 				.accessibilityAddTraits(.isHeader)
-			Text(model.online ? (model.link.channel?.label ?? L10n.Common.online) : L10n.Common.offline)
-				.font(.caption)
+			Text(statsLine ?? (model.online ? (model.link.channel?.label ?? L10n.Common.online) : L10n.Common.offline))
+				.font(.caption.monospacedDigit())
 				.foregroundStyle(.white.opacity(0.6))
 				.lineLimit(1)
 		}
