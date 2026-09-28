@@ -125,9 +125,10 @@ struct PairView: View {
 				.presentationDetents([.height(360)])
 			}
 			.sheet(isPresented: $inviteOpen, onDismiss: { model.cancelPairing() }) {
-				InvitePairView { code, password, relay in
-					await submit { await model.pairWithInvite(code: code, password: password, relayBaseUrl: relay) }
-				}
+				InvitePairView(
+					connect: { code, password, relay in await model.pairWithInvite(code: code, password: password, relayBaseUrl: relay) },
+					onPaired: close
+				)
 				.presentationDetents([.large])
 			}
 			.sheet(isPresented: $helpOpen) {
@@ -173,7 +174,11 @@ struct PairView: View {
 		busy = true
 		let ok = await attempt()
 		busy = false
-		guard ok else { return }
+		if ok { close() }
+	}
+
+	/// Paired: close the screen and reconnect.
+	private func close() {
 		manualOpen = false
 		inviteOpen = false
 		model.refreshLink()

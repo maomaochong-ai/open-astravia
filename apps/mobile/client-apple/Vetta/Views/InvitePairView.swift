@@ -5,10 +5,14 @@ import VettaKit
 /// Pairing with the connection code and password the computer shows next to its QR code
 /// (ADR-0136), one step at a time: eight boxes for the code, then six for the password.
 /// A full code moves on by itself and a full password connects; what went wrong sends
-/// the user back to the step that needs fixing.
+/// the user back to the step that needs fixing. The picture on top follows along, the
+/// way Telegram's login does: it answers what is typed rather than playing on its own.
 struct InvitePairView: View {
 	@Environment(AppModel.self) private var model
-	var onSubmit: (_ code: String, _ password: String, _ relay: String?) async -> Void
+	/// Pairs with what was typed; true once paired.
+	var connect: (_ code: String, _ password: String, _ relay: String?) async -> Bool
+	/// Called a moment after pairing, once the lock has been seen to open.
+	var onPaired: () -> Void
 
 	private enum Step { case code, password }
 	private enum Field { case code, password, relay }
@@ -20,12 +24,16 @@ struct InvitePairView: View {
 	@State private var relay = ""
 	@State private var error: String?
 	@State private var shakes = 0
+	@State private var paired = false
 	@FocusState private var focus: Field?
 
 	var body: some View {
 		VStack(alignment: .leading, spacing: 0) {
+			InviteHero(stage: heroStage, failures: shakes)
+				.frame(maxWidth: .infinity)
+				.padding(.bottom, 20)
 			if case let .awaitingApproval(verification, _) = model.pairing {
-				VerificationCodeView(code: verification).frame(maxWidth: .infinity).padding(.top, 40)
+				VerificationCodeView(code: verification).frame(maxWidth: .infinity)
 			} else {
 				switch step {
 				case .code:
@@ -37,8 +45,20 @@ struct InvitePairView: View {
 			Spacer(minLength: 0)
 		}
 		.padding(.horizontal, 24)
-		.padding(.top, 28)
+		.padding(.top, 36)
 		.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+		.overlay(alignment: .topLeading) {
+			if step == .password, !paired {
+				Button(action: back) {
+					Image(systemName: "chevron.left").font(.system(size: 17, weight: .semibold)).foregroundStyle(Theme.ink)
+						.frame(width: 44, height: 44)
+				}
+				.buttonStyle(.plain)
+				.accessibilityLabel(L10n.Common.back)
+				.padding(.leading, 12)
+				.padding(.top, 8)
+			}
+		}
 		.background(Theme.page)
 		.sensoryFeedback(.error, trigger: shakes)
 		.onAppear { focus = .code }
@@ -52,7 +72,7 @@ struct InvitePairView: View {
 			let clean = InviteCode.typedPassword(typed)
 			if clean != typed { password = clean }
 			if !clean.isEmpty { error = nil }
-			if clean.count == InviteCode.passwordLength { connect() }
+			if clean.count == InviteCode.passwordLength { submit() }
 		}
 	}
 
@@ -81,14 +101,6 @@ struct InvitePairView: View {
 
 	private var passwordStep: some View {
 		VStack(alignment: .leading, spacing: 0) {
-			Button(action: back) {
-				Image(systemName: "chevron.left").font(.system(size: 17, weight: .semibold)).foregroundStyle(Theme.ink)
-					.frame(width: 36, height: 36, alignment: .leading)
-			}
-			.buttonStyle(.plain)
-			.accessibilityLabel(L10n.Common.back)
-			.padding(.top, -8)
-			.padding(.bottom, 4)
 			heading(L10n.Pair.invitePasswordTitle, L10n.Pair.invitePasswordHint)
 			HStack(spacing: 8) {
 				Text(formatted(code)).font(.mono(14, weight: .semibold)).foregroundStyle(Theme.ink2)
@@ -98,11 +110,12 @@ struct InvitePairView: View {
 					.buttonStyle(.plain)
 					.accessibilityIdentifier("pair.invite.editCode")
 			}
+			.frame(maxWidth: .infinity)
 			.padding(.top, -12)
 			.padding(.bottom, 20)
 			boxes(for: .password)
 			errorLine
-			Button(action: connect) {
+			Button(action: submit) {
 				Group {
 					if model.pairing.isConnecting {
 						ProgressView().tint(Theme.pillInk)
@@ -122,10 +135,12 @@ struct InvitePairView: View {
 	}
 
 	private func heading(_ title: String, _ hint: String) -> some View {
-		VStack(alignment: .leading, spacing: 8) {
+		VStack(spacing: 8) {
 			Text(title).font(.system(size: 26, weight: .bold)).foregroundStyle(Theme.ink)
 			Text(hint).font(.system(size: 14)).foregroundStyle(Theme.dim).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
 		}
+		.multilineTextAlignment(.center)
+		.frame(maxWidth: .infinity)
 		.padding(.bottom, 28)
 	}
 
@@ -170,7 +185,9 @@ struct InvitePairView: View {
 			Text(error)
 				.font(.system(size: 13))
 				.foregroundStyle(Theme.red)
+				.multilineTextAlignment(.center)
 				.fixedSize(horizontal: false, vertical: true)
+				.frame(maxWidth: .infinity)
 				.padding(.top, 12)
 				.accessibilityIdentifier("pair.invite.error")
 		}
@@ -190,6 +207,7 @@ struct InvitePairView: View {
 				.foregroundStyle(Theme.dim)
 			}
 			.buttonStyle(.plain)
+			.frame(maxWidth: .infinity)
 			.accessibilityIdentifier("pair.invite.ownRelay")
 			if ownRelay {
 				TextField(InviteCode.defaultRelayBaseUrl, text: $relay)
@@ -224,13 +242,19 @@ struct InvitePairView: View {
 		focus = .code
 	}
 
-	private func connect() {
+	private func submit() {
 		guard !model.pairing.isConnecting, InviteCode.isValidPassword(password),
 		      let normalized = InviteCode.normalize(code) else { return }
 		let typed = password
 		let typedRelay = ownRelay ? relay : nil
 		Task {
-			await onSubmit(normalized, typed, typedRelay)
+			if await connect(normalized, typed, typedRelay) {
+				focus = nil
+				paired = true
+				try? await Task.sleep(for: .milliseconds(800))
+				onPaired()
+				return
+			}
 			guard case let .failed(reason) = model.pairing else { return }
 			failed(reason)
 		}
@@ -250,8 +274,75 @@ struct InvitePairView: View {
 		}
 	}
 
+	private var heroStage: InviteHero.Stage {
+		if paired { return .paired }
+		if model.pairing.isConnecting { return .connecting }
+		if case .awaitingApproval = model.pairing { return .connecting }
+		return step == .code ? .code(filled: code.count) : .password(filled: password.count)
+	}
+
 	private func formatted(_ code: String) -> String {
 		code.count > 4 ? "\(code.prefix(4))-\(code.dropFirst(4))" : code
+	}
+}
+
+/// The picture over the steps, drawn from SF Symbols so it needs no artwork: the computer
+/// and this phone join up dot by dot as the code is typed, then a lock takes a knock
+/// per digit, breathes while connecting, shakes when turned down and opens once paired.
+private struct InviteHero: View {
+	enum Stage: Equatable {
+		case code(filled: Int)
+		case password(filled: Int)
+		case connecting
+		case paired
+	}
+
+	var stage: Stage
+	var failures: Int
+
+	var body: some View {
+		ZStack {
+			if case let .code(filled) = stage {
+				link(filled).transition(.blurReplace)
+			} else {
+				lock.transition(.blurReplace)
+			}
+		}
+		.frame(height: 72)
+		.animation(.snappy, value: stage)
+		.symbolEffect(.wiggle, options: .speed(1.4), value: failures)
+		.accessibilityHidden(true)
+	}
+
+	private func link(_ filled: Int) -> some View {
+		let complete = filled >= InviteCode.codeLength
+		return HStack(spacing: 12) {
+			Image(systemName: "laptopcomputer")
+				.font(.system(size: 42, weight: .light))
+				.foregroundStyle(Theme.ink2)
+			HStack(spacing: 5) {
+				ForEach(0 ..< InviteCode.codeLength, id: \.self) { index in
+					Circle()
+						.fill(index < filled ? (complete ? Theme.green : Theme.ink) : Theme.line)
+						.frame(width: 5, height: 5)
+				}
+			}
+			Image(systemName: complete ? "iphone.radiowaves.left.and.right" : "iphone")
+				.font(.system(size: 38, weight: .light))
+				.foregroundStyle(complete ? Theme.green : Theme.ink2)
+				.contentTransition(.symbolEffect(.replace))
+				.symbolEffect(.bounce.down, options: .speed(1.6), value: filled)
+		}
+	}
+
+	private var lock: some View {
+		let digits: Int = if case let .password(filled) = stage { filled } else { 0 }
+		return Image(systemName: stage == .paired ? "lock.open.fill" : "lock.fill")
+			.font(.system(size: 50, weight: .regular))
+			.foregroundStyle(stage == .paired ? Theme.green : Theme.ink)
+			.contentTransition(.symbolEffect(.replace))
+			.symbolEffect(.bounce.down, options: .speed(1.6), value: digits)
+			.symbolEffect(.breathe, isActive: stage == .connecting)
 	}
 }
 
