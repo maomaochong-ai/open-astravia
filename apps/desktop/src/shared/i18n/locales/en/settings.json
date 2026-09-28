@@ -122,21 +122,20 @@
   "title": "Settings",
   "remote": {
     "title": "Remote access",
-    "description": "Use your phone to view and continue conversations on this computer, including questions waiting for you. Connection content is end-to-end encrypted.",
+    "description": "Follow and continue this computer’s sessions on your phone, end-to-end encrypted.",
     "actionFailed": "That action failed. Try again.",
     "loadFailed": "Remote access status is temporarily unavailable. Try again shortly.",
     "connectionFailed": "Phone connections are temporarily unavailable. Try again shortly.",
     "approvals": {
       "title": "Phones waiting for approval",
-      "description": "A phone started pairing by typing this computer's address. Check that the code on the phone matches before allowing it.",
-      "hint": "The code shown on the phone should match the one on the right",
+      "description": "Allow it only if the phone shows the same code.",
+      "hint": "The phone should show the same code",
       "allow": "Allow this phone",
       "deny": "Deny"
     },
     "devices": {
       "title": "Paired phones",
-      "description": "You can remove each phone separately. A removed phone can no longer connect; the sessions it already has stay on it to read but no longer update. Scan again to carry on syncing.",
-      "empty": "No phone is paired yet. Scan the QR code below to add one.",
+      "empty": "No phone paired yet.",
       "unnamed": "Phone",
       "online": "Online",
       "onlineVia": "Online · {{channel}}",
@@ -152,27 +151,25 @@
     },
     "pairing": {
       "title": "Add a phone",
-      "description": "Scan the QR code below with Vetta on your phone, or type the connection code and password on it. Expires after 10 minutes.",
-      "create": "Generate a new QR code",
-      "cancel": "Discard",
+      "create": "Generate QR code",
+      "cancel": "Refresh",
       "qrAlt": "Vetta phone pairing QR code",
-      "qrHint": "Open Vetta on your phone and tap “Scan to connect” in the top right. About {{minutes}} minutes left.",
+      "qrHint": "Scan with Vetta on your phone. Renews in about {{minutes}} min.",
       "generating": "Preparing QR code…",
       "empty": "QR code unavailable",
       "createFailed": "Could not generate a QR code. Try again.",
-      "vaultUnavailable": "Secure credential storage is unavailable on this system, so pairing is not possible right now.",
-      "manualHint": "Can't scan? Choose “Enter manually” on your phone, enter any address below, then compare the verification code here.",
-      "permissionHint": "If your system asks whether to allow the connection, choose Allow.",
+      "vaultUnavailable": "Secure credential storage is unavailable, so pairing is not possible.",
+      "manualHint": "On the same Wi-Fi, you can also “Enter address manually” on the phone:",
       "code": "Connection code",
       "password": "Password",
-      "codeHint": "Phone not here, or can’t scan? In Vetta on your phone choose “Connect with a code” and enter this code and password. Only the first phone to connect can use them.",
+      "codeHint": "Can’t scan? Choose “Connect with a Code” on the phone:",
       "codePreparing": "Preparing a connection code…",
-      "codeFailed": "The connection code is unavailable right now (the cloud relay did not answer or has not been updated). Use the QR code, or discard and generate a new one later."
+      "codeFailed": "Connection code unavailable. Please scan instead."
     },
     "cloud": {
       "title": "Allow access away from home",
-      "description": "When enabled, your phone can connect away from this Wi-Fi. Turn it off to allow same-Wi-Fi connections only.",
-      "unavailable": "Access away from this Wi-Fi is currently unavailable."
+      "description": "When off, phones can only connect on the same Wi-Fi.",
+      "unavailable": "Access away from this Wi-Fi is unavailable right now."
     }
   },
   "general": "General",

@@ -58,13 +58,8 @@ export function RemotePairingSettingsView({ model }: { model: RemotePairingSetti
 			) : null}
 
 			<section id="remote-pairing" className="mb-7">
-				<div className="flex items-start justify-between gap-3">
-					<div>
-						<h2 className="text-[14px] font-semibold text-foreground">{model.labels.pairing.title}</h2>
-						<p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
-							{model.labels.pairing.description}
-						</p>
-					</div>
+				<div className="flex items-center justify-between gap-3">
+					<h2 className="text-[14px] font-semibold text-foreground">{model.labels.pairing.title}</h2>
 					{model.pairing.hasInvite ? (
 						<Button variant="outline" size="sm" disabled={model.busy} onClick={model.actions.cancelInvite}>
 							{model.labels.pairing.cancel}
@@ -135,7 +130,6 @@ export function RemotePairingSettingsView({ model }: { model: RemotePairingSetti
 						<div className="mt-4 border-t border-border/50 pt-3 text-[12px] leading-relaxed text-muted-foreground">
 							<p>{model.labels.pairing.manualHint}</p>
 							<p className="mt-1 font-mono text-[11px] text-foreground/80">{model.pairing.endpoints.join("  ·  ")}</p>
-							<p className="mt-1">{model.labels.pairing.permissionHint}</p>
 						</div>
 					) : null}
 				</div>
@@ -159,7 +153,6 @@ export function RemotePairingSettingsView({ model }: { model: RemotePairingSetti
 
 			<section id="remote-devices" className="mt-7">
 				<h2 className="text-[14px] font-semibold text-foreground">{model.labels.devices.title}</h2>
-				<p className="mt-1 text-[12px] text-muted-foreground">{model.labels.devices.description}</p>
 				{model.devices.length === 0 ? (
 					<div className="mt-3 rounded-xl border border-border/50 bg-card/40 px-4 py-6 text-center text-[12px] text-muted-foreground">
 						{model.labels.devices.empty}
