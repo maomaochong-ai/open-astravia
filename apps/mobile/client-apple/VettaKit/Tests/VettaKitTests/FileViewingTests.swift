@@ -131,6 +131,26 @@ private final class ChunkedFile {
 		_ = file
 	}
 
+	@Test func asksForChunksThatFitTheChannelInUse() async throws {
+		let file = ChunkedFile(Data("0123456789".utf8))
+		var channel: LinkChannel? = .relay
+		let content = try await RemoteFileReader.read(path: "a.txt", chunkBytes: { RemoteFileReader.chunkBytes(on: channel) }) { payload in
+			defer { channel = .p2p }
+			return try file.answer(payload)
+		}
+		#expect(content.data == Data("0123456789".utf8))
+		#expect(file.requests.first?["length"] == nil, "the desktop picks the size off P2P")
+		#expect(file.requests.dropFirst().allSatisfy { $0["length"]?.numberValue == 128 * 1024 }, "a switch to P2P mid-read shrinks the rest")
+	}
+
+	@Test func aP2pChunkFitsOneDataChannelMessageOnceSealed() {
+		let length = RemoteFileReader.chunkBytes(on: .p2p) ?? .max
+		// base64 of the bytes, then base64 of the sealed frame, plus the frames around them.
+		#expect(length * 16 / 9 + 2048 <= 256 * 1024)
+		#expect(RemoteFileReader.chunkBytes(on: .lan) == nil)
+		#expect(RemoteFileReader.chunkBytes(on: .relay) == nil)
+	}
+
 	@Test func readsAnEmptyFile() async throws {
 		let content = try await RemoteFileReader.read(path: "empty") { _ in
 			["data": "", "offset": 0, "totalSize": 0, "modifiedAt": 1, "mimeType": "text/plain"]

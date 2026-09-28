@@ -885,7 +885,7 @@ public final class AppModel {
 		if let cached = fileCache.get(sessionId, info) { return cached }
 		do {
 			let manager = try requireFileManager()
-			let content = try await RemoteFileReader.read(path: info.path) { payload in
+			let content = try await RemoteFileReader.read(path: info.path, chunkBytes: { RemoteFileReader.chunkBytes(on: link.channel) }) { payload in
 				try await manager.request(.fileRead, payload: payload, sessionId: sessionId)
 			}
 			fileCache.put(sessionId, info, content)

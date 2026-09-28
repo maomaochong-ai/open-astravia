@@ -143,24 +143,34 @@ public struct FileContent: Equatable, Sendable {
 public enum RemoteFileReader {
 	public typealias Request = (JSONValue) async throws -> JSONValue?
 
-	public static func read(path: String, request: Request) async throws -> FileContent {
+	/// `chunkBytes` is asked before every chunk, since the link can change channel
+	/// mid-read; nil leaves the size to the desktop.
+	public static func read(path: String, chunkBytes: () -> Int? = { nil }, request: Request) async throws -> FileContent {
 		var attempts = 0
 		while true {
 			attempts += 1
 			do {
-				return try await readOnce(path: path, request: request)
+				return try await readOnce(path: path, chunkBytes: chunkBytes, request: request)
 			} catch let error as RemoteRequestError where error.code == .fileChanged && attempts < 3 {
 				continue
 			}
 		}
 	}
 
-	private static func readOnce(path: String, request: Request) async throws -> FileContent {
+	/// Bytes one chunk may carry on a channel, nil for the desktop's own size. A WebRTC
+	/// data channel drops any message over 256 KiB, and base64 twice over (the chunk,
+	/// then the sealed frame) makes a chunk 16/9 of its size on the wire.
+	public static func chunkBytes(on channel: LinkChannel?) -> Int? {
+		channel == .p2p ? 128 * 1024 : nil
+	}
+
+	private static func readOnce(path: String, chunkBytes: () -> Int?, request: Request) async throws -> FileContent {
 		var data = Data()
 		var first: RemoteFileChunk?
 		repeat {
 			var payload: [String: JSONValue] = ["path": .string(path), "offset": .number(Double(data.count))]
 			if let first { payload["modifiedAt"] = .number(first.modifiedAt) }
+			if let length = chunkBytes() { payload["length"] = .number(Double(length)) }
 			guard let chunk = RemoteAPI.readFileChunk(try await request(.object(payload))), chunk.offset == data.count else {
 				throw FileViewError.failed
 			}
