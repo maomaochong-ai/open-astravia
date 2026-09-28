@@ -243,6 +243,21 @@ public enum L10n {
 		public static var compacted: String { tr("chat.compacted") }
 	}
 
+	public enum Notify {
+		public static var needsInput: String { tr("notify.needsInput") }
+		public static func needsInputDetail(_ question: String) -> String { tr("notify.needsInputDetail \(question)") }
+		public static var finished: String { tr("notify.finished") }
+		public static var failed: String { tr("notify.failed") }
+	}
+
+	public enum Activity {
+		public static var waiting: String { tr("activity.waiting") }
+		public static var running: String { tr("activity.running") }
+		public static func others(_ n: Int) -> String { tr("activity.others \(n)") }
+		public static var allDone: String { tr("activity.allDone") }
+		public static var stale: String { tr("activity.stale") }
+	}
+
 	public enum Settings {
 		public static var title: String { tr("settings.title") }
 		public static var rescan: String { tr("settings.rescan") }

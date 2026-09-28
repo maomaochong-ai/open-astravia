@@ -482,6 +482,25 @@ async function connectRelay(deviceId: string, secret: string): Promise<void> {
 }
 await connectRelay(primary.id, primary.mobileSecret);
 
+// `VETTA_INTEROP_ASK_AFTER_MS=<ms>` has the running build session ask a question that long after
+// start, so the phone can be sent to the background first and show its notification.
+const askAfterMs = Number(process.env.VETTA_INTEROP_ASK_AFTER_MS ?? 0);
+if (askAfterMs > 0) {
+	setTimeout(() => {
+		const sessionId = "s-build";
+		const request = {
+			requestId: `q-${Date.now()}`,
+			questions: [{ question: "签名证书过期了，要用新证书重新打包吗？", header: "确认", options: [{ label: "重新打包", description: "" }, { label: "先停下", description: "" }] }],
+		};
+		pendingQuestions.set(sessionId, request);
+		const session = sessions.find((entry) => entry.id === sessionId);
+		if (session) Object.assign(session, { status: "waiting_input", updatedAt: Date.now() });
+		emitAll(primary.id, "session.input", { kind: "question", request }, sessionId);
+		emitAll(primary.id, "session.state", { status: "waiting_input", ...modelState(sessionId), pendingQuestion: request }, sessionId);
+		console.info(`[interop] ${sessionId} asked a question`);
+	}, askAfterMs);
+}
+
 const invite = rc.buildPairingUri({
 	version: 2,
 	pairingId: primary.id,

@@ -692,6 +692,53 @@ import Testing
 		#expect(second.sessions.map(\.id) == ["s1"])
 		#expect(await eventually { second.online })
 	}
+
+	@Test func signalsQuestionsAndFinishedTurnsOnlyWhileInTheBackground() async throws {
+		let desktop = scriptedDesktop()
+		let signals = RecordingSignals()
+		var platform = AppPlatform.memory(createTransport: desktop.createTransport)
+		platform.signals = signals
+		let model = AppModel(platform: platform)
+		model.start()
+		let invite = PairingURI.build(RemotePairingInvite(pairingId: "pair-1234567890abcdef", mobileSecret: "secret-1234567890abcdef", desktopIdentityKey: desktop.identityKey, desktopName: "MacBook Pro", lanEndpoints: ["192.168.1.20:43117"]))
+		#expect(await model.pairWithCode(invite))
+		#expect(await eventually { model.sessions.map(\.id) == ["s1"] })
+
+		// In front: the question shows in the app, not as a notification.
+		_ = await model.sendPrompt(nil, "帮我写周报")
+		#expect(await eventually { model.session("s2")?.status == .waitingInput })
+		#expect(signals.alerts.isEmpty)
+		#expect(signals.digests.last?.headline?.sessionId == "s2")
+		#expect(signals.digests.last?.waiting == 1)
+
+		model.setActive(false)
+		#expect(signals.digests.last?.busy == true)
+		await model.respond("s2", requestId: "q1", answers: [RemoteQuestionAnswer(question: "要发邮件吗？", answers: ["发"])])
+		#expect(await eventually { model.session("s2")?.status == .completed })
+		#expect(signals.withdrawn == ["s2"])
+		#expect(signals.alerts.map(\.kind) == [.finished])
+		#expect(signals.alerts.first?.title == "帮我写周报")
+		#expect(signals.digests.last == .idle)
+
+		// Asked again while away: the notification carries the question.
+		_ = await model.sendPrompt("s2", "再来一次")
+		#expect(await eventually { signals.alerts.count == 2 })
+		#expect(signals.alerts.last?.kind == .needsInput)
+		#expect(signals.alerts.last?.detail == "要发邮件吗？")
+
+		await model.openSession("s2")
+		#expect(signals.withdrawn.last == "s2")
+	}
+}
+
+final class RecordingSignals: SessionSignals {
+	var alerts: [SessionAlert] = []
+	var withdrawn: [String] = []
+	var digests: [LiveDigest] = []
+
+	func alert(_ alert: SessionAlert) { alerts.append(alert) }
+	func withdraw(_ sessionId: String) { withdrawn.append(sessionId) }
+	func show(_ digest: LiveDigest, active: Bool) { digests.append(digest) }
 }
 
 /// Every request the scripted desktop saw, in order.

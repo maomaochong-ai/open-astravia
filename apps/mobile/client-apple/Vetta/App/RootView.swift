@@ -94,6 +94,7 @@ final class Router {
 
 struct RootView: View {
 	@Environment(AppModel.self) private var model
+	@Environment(SessionNotifier.self) private var notifier
 	@State private var router = Router()
 
 	var body: some View {
@@ -154,7 +155,17 @@ struct RootView: View {
 			if target != "new" { router.show(target) }
 		}
 		#endif
+		// A notification or the Live Activity was tapped.
+		.onChange(of: notifier.requestedSession, initial: true) { _, sessionId in
+			guard let sessionId else { return }
+			notifier.requestedSession = nil
+			if model.paired { router.show(sessionId) }
+		}
 		.onOpenURL { url in
+			if let sessionId = SessionLink.sessionId(url) {
+				if model.paired { router.show(sessionId) }
+				return
+			}
 			// Case-blind: a code-only QR code is upper case (ADR-0138).
 			guard url.scheme?.lowercased() == PairingURI.scheme, url.host?.lowercased() == PairingURI.host else { return }
 			Task {

@@ -27,6 +27,7 @@ public struct AppPlatform {
 	public var createTransport: TransportFactory
 	public var deviceName: String
 	public var onTurnEnd: (() -> Void)?
+	public var signals: SessionSignals?
 	public var configureManager: ((inout ChannelManagerOptions) -> Void)?
 	public var configurePairing: ((inout PairingFlowOptions) -> Void)?
 	public var inviteLookup = InviteCodeLookup()
@@ -58,7 +59,9 @@ public final class AppModel {
 	public private(set) var paired = false
 	public private(set) var desktop: StoredDesktop?
 	public private(set) var link: LinkSnapshot = .offline
-	public private(set) var sessions: [RemoteSessionSummary] = []
+	public private(set) var sessions: [RemoteSessionSummary] = [] {
+		didSet { sessionsChanged(from: oldValue) }
+	}
 	public private(set) var sessionsLoaded = false
 	/// The desktop's project list, the conversation bucket first. Kept across
 	/// launches so filtering by kind works before the link comes up.
@@ -94,6 +97,7 @@ public final class AppModel {
 	/// Sessions `startSession` just sent their first prompt to; see `openSession`.
 	@ObservationIgnored private var freshSessions: Set<String> = []
 	@ObservationIgnored private let fileCache = FileContentCache()
+	@ObservationIgnored private var watch = SessionWatch()
 
 	public init(platform: AppPlatform) {
 		self.platform = platform
@@ -132,6 +136,21 @@ public final class AppModel {
 		active = value
 		manager?.setForeground(value)
 		if value, !wasActive { manager?.refresh() }
+		if value != wasActive { platform.signals?.show(watch.digest(sessions), active: value) }
+	}
+
+	/// Woken in the background: reconnects, fetches the list and returns once it is
+	/// in, or when `timeoutMs` runs out. What changed meanwhile raises its alerts.
+	public func refreshInBackground(timeoutMs: Double = 20_000) async {
+		guard let manager else { return }
+		manager.refresh()
+		defer { manager.setForeground(active) }
+		let deadline = WallClock.nowMs() + timeoutMs
+		while !online, WallClock.nowMs() < deadline {
+			try? await Task.sleep(nanoseconds: 200_000_000)
+		}
+		guard online else { return }
+		await refreshSessions()
 	}
 
 	private func loadDeviceId() -> String {
@@ -318,6 +337,19 @@ public final class AppModel {
 		patch(&sessions[index])
 	}
 
+	private func sessionsChanged(from old: [RemoteSessionSummary]) {
+		guard let signals = platform.signals else { return }
+		let alerts = watch.update(from: old, to: sessions) { [transcripts] sessionId in
+			transcripts[sessionId]?.pendingQuestion?.questions.first?.question
+		}
+		let waitingNow = Set(sessions.filter { $0.status == .waitingInput }.map(\.id))
+		for session in old where session.status == .waitingInput && !waitingNow.contains(session.id) {
+			signals.withdraw(session.id)
+		}
+		if !active { alerts.forEach(signals.alert) }
+		signals.show(watch.digest(sessions), active: active)
+	}
+
 	private func handleEvent(_ event: RemoteEvent) {
 		let sessionId = event.sessionId
 		switch event.name {
@@ -414,6 +446,7 @@ public final class AppModel {
 	/// accepts a prompt before its agent records it, so history taken then lacks the
 	/// prompt and would wipe it off the chat. The chat already has everything then.
 	public func openSession(_ sessionId: String) async {
+		platform.signals?.withdraw(sessionId)
 		let fresh = freshSessions.remove(sessionId) != nil && transcripts[sessionId]?.stale == false
 		if transcripts[sessionId] == nil, let key = desktopKey, let cached = platform.cache.loadTranscript(key, sessionId) {
 			var restored = TranscriptState.empty

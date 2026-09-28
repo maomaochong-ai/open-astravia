@@ -9,7 +9,9 @@ Vetta 手机端的 iOS 原生客户端（Swift 6 + SwiftUI，iOS 26 起，Liquid
 | 路径 | 内容 |
 | --- | --- |
 | `VettaKit/` | Swift Package，平台无关的全部逻辑：协议帧与校验、加密、连接状态机、事件日志、配对链接、载荷解析（`Protocol/`）；双通道管理、配对流程、配对存储、转写归约、SQLite 缓存、WebSocket 传输（`Remote/`）；应用状态 `AppModel` 与文案键 `L10n`（`App/`），中英文译文在 `Resources/Localizable.xcstrings`，跟随系统语言、其他语言回落英文。可在 macOS 上直接 `swift test`。 |
-| `Vetta/` | iOS App：SwiftUI 界面、钥匙串、相机扫码。 |
+| `Vetta/` | iOS App：SwiftUI 界面、钥匙串、相机扫码；会话提醒（本地通知、图标角标、后台刷新）在 `Platform/`。 |
+| `VettaWidgets/` | Widget Extension，只放灵动岛与锁屏上的 Live Activity 界面。 |
+| `Shared/` | App 与 `VettaWidgets` 共同编译的源码（Live Activity 的属性类型）。 |
 | `VettaUITests/` | XCUITest，驱动真实 App 走完整流程并截图。 |
 | `scripts/` | 与桌面端真实实现对跑的 interop 夹具、UI 测试脚本、加密测试向量生成。 |
 | `project.yml` | XcodeGen 工程定义；`Vetta.xcodeproj` 由它生成。 |
@@ -52,4 +54,6 @@ bun scripts/interop-desktop.ts /tmp/vetta-interop.json
 xcrun simctl launch booted com.openvetta.mobile -VettaPairURI "$(jq -r .invite /tmp/vetta-interop.json)"
 ```
 
-`-VettaEphemeralStorage` 让 App 使用内存存储（UI 测试用，每次启动都是全新安装的状态）。
+`-VettaEphemeralStorage` 让 App 使用内存存储（UI 测试用，每次启动都是全新安装的状态）。它同时关掉通知和 Live Activity，免得权限弹框挡住 UI 测试。
+
+提醒不经过 Apple 推送服务：App 离开屏幕后约半分钟内、以及系统安排的后台刷新时，状态变化才会变成通知并更新 Live Activity；再之后 Live Activity 过 15 分钟标为过时。要在模拟器上看后台通知，给夹具加 `VETTA_INTEROP_ASK_AFTER_MS=25000`，配对后把 App 切到后台，时间一到 `s-build` 会发起提问。
