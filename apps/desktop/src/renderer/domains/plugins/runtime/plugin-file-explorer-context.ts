@@ -186,13 +186,13 @@ export function createPluginFileExplorerApi({
 		},
 		onDidChangeSelection: (listener) => {
 			createPermissionApi(plugin).require("workspace.read");
-			const handle = onPluginFileExplorerSelectionChanged(listener);
+			const handle = onPluginFileExplorerSelectionChanged(plugin.id, plugin.activeVersion, listener);
 			disposers.push(() => handle.dispose());
 			return handle;
 		},
 		onDidChangeFiles: (listener) => {
 			createPermissionApi(plugin).require("workspace.read");
-			const handle = onPluginFileExplorerFilesChanged(listener);
+			const handle = onPluginFileExplorerFilesChanged(plugin.id, plugin.activeVersion, listener);
 			disposers.push(() => handle.dispose());
 			return handle;
 		},

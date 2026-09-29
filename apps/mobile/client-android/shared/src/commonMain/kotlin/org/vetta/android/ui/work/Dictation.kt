@@ -31,3 +31,11 @@ interface Dictation {
 
 @Composable
 expect fun rememberDictation(): Dictation
+
+/**
+ * The cue for dictation starting, played the moment the hold registers: a short soft
+ * tone (silent when the phone is on silent or vibrate) with a vibration in the same rhythm
+ * as the iPhone's: a light tick, a firm tap, then a hum that fades out.
+ */
+@Composable
+expect fun rememberDictationCue(): () -> Unit

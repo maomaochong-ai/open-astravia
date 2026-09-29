@@ -31,7 +31,9 @@ jobs:
           java-version: "21"
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
+        with:
+          packages: platform-tools
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -41,3 +43,75 @@ jobs:
 
       - name: Assemble Android debug app
         run: bash ./gradlew --no-daemon :androidApp:assembleDebug
+
+      # The device tests run in their own job on an emulator; compiling them here reports a
+      # broken test within minutes instead of after the emulator boots.
+      - name: Compile device tests
+        run: bash ./gradlew --no-daemon :shared:compileAndroidDeviceTest
+
+      - name: Upload host test reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-host-test-reports
+          path: apps/mobile/client-android/shared/build/reports/tests/
+          if-no-files-found: ignore
+
+  device-tests:
+    name: Android device tests (emulator)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: apps/mobile/client-android
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: platform-tools
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      # Hardware acceleration for the emulator; without it an x86_64 image is too slow to boot.
+      - name: Enable KVM
+        working-directory: .
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Build device test APKs
+        run: bash ./gradlew --no-daemon :shared:assembleAndroidDeviceTest
+
+      # The live end-to-end test needs a paired desktop and skips itself here.
+      - name: Run device tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          working-directory: apps/mobile/client-android
+          script: bash ./gradlew --no-daemon :shared:connectedAndroidDeviceTest
+
+      - name: Upload device test reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-device-test-reports
+          path: |
+            apps/mobile/client-android/shared/build/reports/androidTests/
+            apps/mobile/client-android/shared/build/outputs/androidTest-results/
+          if-no-files-found: ignore

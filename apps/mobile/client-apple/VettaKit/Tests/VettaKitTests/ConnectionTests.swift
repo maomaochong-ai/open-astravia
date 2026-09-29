@@ -285,6 +285,29 @@ import Testing
 		#expect(phases.filter(\.isConnecting) == [.connecting(via: .lan), .connecting(via: .relay)])
 	}
 
+	@Test func triesEveryLanAddressAtOnce() async throws {
+		let desktop = FakeDesktop()
+		desktop.onHello = { _ in .approve }
+		let bridges = (1 ... 8).map { "192.168.\(100 + $0).1:43117" }
+		for bridge in bridges { desktop.unreachable.insert("ws://\(bridge)") }
+		var options = PairingFlowOptions(link: makeLink(), createTransport: desktop.createTransport) { _ in }
+		options.timeoutMs = 300
+		let started = Date()
+		let record = await PairingFlow(options: options).pairWithCode(invite(desktop, lan: bridges + ["192.168.50.22:43117"]))
+		#expect(record?.desktopIdentityKey == desktop.identityKey)
+		#expect(Date().timeIntervalSince(started) < 0.3, "the reachable address need not wait out the others")
+
+		desktop.unreachable.insert("ws://192.168.50.22")
+		try await desktop.connectRelay("pair-1234567890abcdef")
+		var phases: [PairingPhase] = []
+		options.onPhase = { phases.append($0) }
+		let fallback = Date()
+		let relayed = await PairingFlow(options: options).pairWithCode(invite(desktop, lan: bridges, relay: "wss://relay.example"))
+		#expect(relayed?.relayBaseUrl == "wss://relay.example")
+		#expect(Date().timeIntervalSince(fallback) < 0.9, "one LAN timeout, not one per address, before the relay")
+		#expect(phases.filter(\.isConnecting) == [.connecting(via: .lan), .connecting(via: .relay)])
+	}
+
 	@Test func rejectsForeignCodesAndImpostors() async {
 		let desktop = FakeDesktop()
 		desktop.onHello = { _ in .approve }

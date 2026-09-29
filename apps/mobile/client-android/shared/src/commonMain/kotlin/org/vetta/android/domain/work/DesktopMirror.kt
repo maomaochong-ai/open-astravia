@@ -2,6 +2,7 @@ package org.vetta.android.domain.work
 
 import com.russhwolf.settings.Settings
 import com.russhwolf.settings.set
+import kotlin.random.Random
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
@@ -13,9 +14,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.MapSerializer
+import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -26,19 +29,23 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import org.vetta.android.data.remote.SessionCache
 import org.vetta.android.domain.remote.RemoteApi
+import org.vetta.android.domain.remote.RemoteFileEntry
+import org.vetta.android.domain.remote.RemoteFileInfo
 import org.vetta.android.domain.remote.RemoteMessageEvent
 import org.vetta.android.domain.remote.RemoteModelOption
 import org.vetta.android.domain.remote.RemoteProjectSummary
 import org.vetta.android.domain.remote.RemoteQuestionAnswer
+import org.vetta.android.domain.remote.RemoteScreenCursor
+import org.vetta.android.domain.remote.RemoteScreenStatus
 import org.vetta.android.domain.remote.RemoteSessionState
 import org.vetta.android.domain.remote.RemoteSessionStatus
 import org.vetta.android.domain.remote.RemoteSessionSummary
 import org.vetta.android.domain.remote.TranscriptAction
 import org.vetta.android.domain.remote.TranscriptReducer
 import org.vetta.android.domain.remote.TranscriptState
-import org.vetta.android.domain.remote.desktopViewerUrl
 import org.vetta.android.domain.remote.connection.NoopRemoteLogger
 import org.vetta.android.domain.remote.connection.RemoteLogger
+import org.vetta.android.domain.remote.desktopViewerUrl
 import org.vetta.android.domain.remote.link.DesktopLink
 import org.vetta.android.domain.remote.link.DesktopLinkOptions
 import org.vetta.android.domain.remote.link.LinkOfflineException
@@ -56,7 +63,6 @@ import org.vetta.android.domain.remote.protocol.RemoteCrypto
 import org.vetta.android.domain.remote.protocol.RemoteEvent
 import org.vetta.android.domain.remote.protocol.RemoteEventName
 import org.vetta.android.domain.remote.protocol.RemoteRequestMethod
-import kotlin.random.Random
 
 @Serializable
 enum class ConfirmPolicy {
@@ -78,6 +84,20 @@ enum class MirrorError {
     Unknown,
 }
 
+/** Why the phone no longer syncs with the computer whose sessions it still shows. */
+@Serializable
+enum class UnlinkReason {
+    /** Unpaired from the phone's settings. */
+    @SerialName("here") UnpairedHere,
+
+    /** The computer removed this phone. */
+    @SerialName("computer") UnpairedOnComputer,
+}
+
+/** The computer an unpairing left behind, kept so its sessions stay readable across launches. */
+@Serializable
+private data class UnlinkedDesktop(val desktop: StoredDesktop, val reason: UnlinkReason)
+
 /** The phone's whole view of the paired desktop. */
 data class MirrorState(
     val ready: Boolean = false,
@@ -92,6 +112,11 @@ data class MirrorState(
     val models: Map<String, List<RemoteModelOption>> = emptyMap(),
     /** Models a new session may start with, kept across launches; see [DesktopMirror.loadNewSessionModels]. */
     val newSessionModels: List<RemoteModelOption> = emptyList(),
+    /**
+     * The model and level last used on this desktop, to start or switch a session;
+     * New Session starts on it. Kept across launches.
+     */
+    val lastModelChoice: ModelChoice = ModelChoice(),
     val transcripts: Map<String, TranscriptState> = emptyMap(),
     /** Sessions opened by [DesktopMirror.startSession]: the local id the chat opened on → the desktop's id. */
     val startedSessions: Map<String, String> = emptyMap(),
@@ -99,12 +124,42 @@ data class MirrorState(
     val preferences: MirrorPreferences = MirrorPreferences(),
     val pairing: PairingPhase = PairingPhase.Idle,
     val lastError: MirrorError? = null,
+    /**
+     * Set after an unpairing: the phone no longer syncs with [desktop], but everything it
+     * had from it stays readable. Pairing with that computer again carries on from there.
+     */
+    val unlinked: UnlinkReason? = null,
+    /**
+     * What the desktop said about its screen while the remote screen is open; null
+     * otherwise, and from desktops that share it without being asked (ADR-0140).
+     */
+    val screen: RemoteScreenStatus? = null,
+    /** Skills the composer may reference, per project; "" holds the global ones. In memory only. */
+    val skillCatalogs: Map<String, SkillCatalog> = emptyMap(),
+    /** The desktop's pointer shape while the screen is open; null draws a plain arrow. */
+    val screenCursor: RemoteScreenCursor? = null,
 ) {
     val online: Boolean
         get() = link.isUsable
 
     val conversationCwd: String?
         get() = projects.firstOrNull { it.isConversation }?.cwd
+
+    /** The skill list for a prompt in `cwd`: a project's, or the global one. */
+    fun skillCatalog(cwd: String?): SkillCatalog = skillCatalogs[skillScope(cwd)] ?: SkillCatalog()
+
+    /** The desktop's display name for a referenced skill, when any list has it. */
+    fun skillName(skill: SkillReference): String =
+        skillCatalogs.values.firstNotNullOfOrNull { catalog -> catalog.options?.firstOrNull { it.id == skill.id }?.displayName } ?: skill.name
+
+    /** A project's own skills, or "" for the global list: the conversation root has none of its own. */
+    fun skillScope(cwd: String?): String = cwd?.takeIf { it.isNotEmpty() && it != conversationCwd } ?: ""
+
+    /** What to call the project at `cwd`: its name on the desktop, else its folder's. */
+    fun projectName(cwd: String): String =
+        projects.firstOrNull { it.cwd == cwd }?.name
+            ?: sessions.firstOrNull { it.projectCwd == cwd }?.projectName
+            ?: cwd.trimEnd('/', '\\').substringAfterLast('/').substringAfterLast('\\')
 
     fun count(group: SessionStatusGroup): Int = sessions.count { SessionStatusGroup.of(it.status) == group }
 
@@ -158,10 +213,24 @@ class DesktopMirror(
     private var link: DesktopLink? = null
     private var linkJobs = emptyList<Job>()
     private var desktopKey: String? = null
+
+    private val fileCache = FileContentCache()
+
+    /** Sessions [startSession] just sent their first prompt to; see [openSession]. */
+    private val freshSessions = mutableSetOf<String>()
     private var flow: PairingFlow? = null
     private val transcriptSaves = mutableMapOf<String, Job>()
+    private var unsavedSequence: Pair<String, Long>? = null
+    private var sequenceSave: Job? = null
     private var active = true
+
+    /** The remote screen is open; the desktop captures only while it is and the app is in front. */
+    private var screenOpen = false
+
+    /** The desktop answers `screen.subscribe`, from its last `device.status`. */
+    private var desktopScreen = false
     private var newSessionModelsLoad: Deferred<Unit>? = null
+    private var recentSync: Job? = null
 
     /** The link, for the few callers that speak the protocol directly. */
     val currentLink: DesktopLink?
@@ -179,7 +248,7 @@ class DesktopMirror(
         deviceId = platform.settings.getStringOrNull(DEVICE_ID_KEY)
             ?: "mobile-${RemoteCrypto.toBase64Url(RemoteCrypto.randomBytes(8))}".also { platform.settings[DEVICE_ID_KEY] = it }
         mutate { it.copy(preferences = decodePreferences(platform.settings.getStringOrNull(PREFERENCES_KEY))) }
-        pairingStore.getCurrent()?.let(::attachLink)
+        pairingStore.getCurrent()?.let(::attachLink) ?: restoreUnlinked()
         mutate { it.copy(ready = true) }
     }
 
@@ -187,8 +256,42 @@ class DesktopMirror(
     fun setActive(value: Boolean) {
         val wasActive = active
         active = value
+        if (!value) saveProgress()
         link?.setForeground(value)
         if (value && !wasActive) link?.refresh()
+        if (screenOpen && value != wasActive) syncScreen()
+    }
+
+    /** The remote screen opened or closed: the desktop starts or stops capturing (ADR-0140). */
+    fun setScreenOpen(open: Boolean) {
+        if (screenOpen == open) return
+        screenOpen = open
+        syncScreen()
+    }
+
+    private fun syncScreen() {
+        val current = link ?: return
+        val wanted = screenOpen && active
+        if (!wanted) mutate { it.copy(screen = null, screenCursor = null) }
+        // An older desktop shares the screen whenever the P2P link is up and knows no such request.
+        if (!desktopScreen) return
+        scope.launch {
+            try {
+                // `cursor`: this phone draws the pointer itself and wants its shape (ADR-0140).
+                val result =
+                    current.request(
+                        RemoteRequestMethod.ScreenSubscribe,
+                        buildJsonObject {
+                            put("active", wanted)
+                            if (wanted) put("cursor", true)
+                        },
+                    )
+                // A later open or close has its own answer coming.
+                if (wanted == (screenOpen && active)) mutate { it.copy(screen = if (wanted) RemoteApi.readScreenStatus(result) else null) }
+            } catch (error: Throwable) {
+                platform.logger.warn("screen subscription failed", mapOf("active" to wanted, "error" to (error.message ?: "")))
+            }
+        }
     }
 
     fun refreshLink() {
@@ -223,27 +326,48 @@ class DesktopMirror(
         mutate { it.copy(pairing = PairingPhase.Idle) }
     }
 
-    fun unpair() {
-        val key = desktopKey
+    /** Unpairs from the phone's settings: it stops syncing, and keeps what it has. */
+    fun unpair() = unlink(UnlinkReason.UnpairedHere)
+
+    /**
+     * Ends the pairing, from either side, without taking anything away: the sessions and
+     * chats the phone has stay on screen and across launches, read-only. Only the pairing's
+     * credentials go. Pairing with the same computer again resumes syncing them.
+     */
+    private fun unlink(reason: UnlinkReason) {
+        val key = desktopKey ?: return
+        val desktop = _state.value.desktop
         detachLink()
-        if (key != null) {
-            pairingStore.revoke(key)
-            platform.cache.clearDesktop(key)
-            platform.settings.remove(PROJECTS_KEY_PREFIX + key)
-            platform.settings.remove(MODELS_KEY_PREFIX + key)
+        pairingStore.revoke(key)
+        if (desktop != null) {
+            platform.settings[UNLINKED_KEY] = json.encodeToString(UnlinkedDesktop.serializer(), UnlinkedDesktop(desktop, reason))
         }
-        desktopKey = null
         mutate {
             it.copy(
                 paired = false,
-                desktop = null,
-                sessions = emptyList(),
-                sessionsLoaded = false,
-                projects = emptyList(),
+                unlinked = reason,
                 models = emptyMap(),
-                newSessionModels = emptyList(),
-                transcripts = emptyMap(),
                 link = LinkSnapshot.Offline,
+            )
+        }
+    }
+
+    /** At launch without a pairing: the computer an earlier unpairing left, still readable. */
+    private fun restoreUnlinked() {
+        val saved =
+            platform.settings.getStringOrNull(UNLINKED_KEY)
+                ?.let { runCatching { json.decodeFromString(UnlinkedDesktop.serializer(), it) }.getOrNull() }
+                ?: return
+        val key = saved.desktop.desktopIdentityKey
+        desktopKey = key
+        val cached = platform.cache.loadSessions(key)
+        mutate {
+            it.copy(
+                desktop = saved.desktop,
+                unlinked = saved.reason,
+                sessions = cached,
+                sessionsLoaded = cached.isNotEmpty(),
+                projects = loadList(PROJECTS_KEY_PREFIX + key, RemoteProjectSummary.serializer()),
             )
         }
     }
@@ -265,6 +389,7 @@ class DesktopMirror(
 
     private fun finishPairing(record: DesktopRecord) {
         pairingStore.save(record)
+        platform.settings.remove(UNLINKED_KEY)
         attachLink(record)
         mutate { it.copy(pairing = PairingPhase.Idle) }
     }
@@ -273,22 +398,36 @@ class DesktopMirror(
 
     private fun attachLink(record: DesktopRecord) {
         detachLink()
+        freshSessions.clear()
+        fileCache.clear()
         val key = record.desktopIdentityKey
         desktopKey = key
         val cached = platform.cache.loadSessions(key)
         mutate {
             it.copy(
                 paired = true,
+                unlinked = null,
                 desktop = record.stored,
                 sessions = cached,
                 sessionsLoaded = cached.isNotEmpty(),
                 projects = loadList(PROJECTS_KEY_PREFIX + key, RemoteProjectSummary.serializer()),
                 models = emptyMap(),
                 newSessionModels = loadList(MODELS_KEY_PREFIX + key, RemoteModelOption.serializer()),
+                lastModelChoice =
+                    platform.settings.getStringOrNull(LAST_MODEL_KEY_PREFIX + key)
+                        ?.let { runCatching { json.decodeFromString(ModelChoice.serializer(), it) }.getOrNull() }
+                        ?: ModelChoice(),
                 transcripts = emptyMap(),
+                skillCatalogs = emptyMap(),
                 link = LinkSnapshot.Offline,
             )
         }
+        startLink(record)
+    }
+
+    /** Opens the link to `record`'s desktop; what the phone shows of it is left as it is. */
+    private fun startLink(record: DesktopRecord) {
+        val key = record.desktopIdentityKey
         val options =
             DesktopLinkOptions(
                 desktop = record,
@@ -299,9 +438,7 @@ class DesktopMirror(
                 createP2pTransport = platform.createP2pTransport,
                 p2pTarget = record.relayBaseUrl?.let { desktopViewerUrl(it, record.pairingId, record.mobileSecret) },
                 now = platform.now,
-                onSequence = { sequence ->
-                    pairingStore.update(key) { it.copy(lastEventSequence = sequence, lastSeenAt = platform.now()) }
-                },
+                onSequence = { sequence -> keepSequence(key, sequence) },
                 onLanEndpoints = { endpoints -> pairingStore.update(key) { it.copy(lanEndpoints = endpoints) } },
                 logger = platform.logger,
             )
@@ -322,11 +459,59 @@ class DesktopMirror(
         next.start()
     }
 
+    /**
+     * Remembers the last event seen, for a relaunch to resume from. A streaming reply is
+     * hundreds of events, and saving the pairing for each one kept the main thread busy
+     * and made leaving the app wait for every write; it is saved at most every couple of
+     * seconds, and at once when the app leaves the screen. A relaunch that resumes a little
+     * early only sees a few events again, which are dropped as duplicates.
+     */
+    private fun keepSequence(key: String, sequence: Long) {
+        unsavedSequence = key to sequence
+        if (sequenceSave?.isActive == true) return
+        sequenceSave =
+            scope.launch {
+                delay(SEQUENCE_SAVE_DELAY_MS)
+                sequenceSave = null
+                saveProgress()
+            }
+    }
+
+    /** Saves where the phone got to in the desktop's events now, as the app leaves the screen. */
+    fun saveProgress() {
+        sequenceSave?.cancel()
+        sequenceSave = null
+        val (key, sequence) = unsavedSequence ?: return
+        unsavedSequence = null
+        pairingStore.update(key) { it.copy(lastEventSequence = sequence, lastSeenAt = platform.now()) }
+    }
+
     private fun detachLink() {
+        saveProgress()
         linkJobs.forEach(Job::cancel)
         linkJobs = emptyList()
         link?.stop()
         link = null
+    }
+
+    /**
+     * The desktop moved access away from home to another relay, and says so before it
+     * switches: remember the new address and reconnect with it, keeping the chats as
+     * they are, so the phone is not left calling a relay the desktop no longer uses.
+     */
+    private fun followRelay(relay: String?) {
+        if (relay == null) return
+        val record = pairingStore.getCurrent() ?: return
+        if (record.desktopIdentityKey != desktopKey || record.relayBaseUrl == relay) return
+        pairingStore.update(record.desktopIdentityKey) { it.copy(relayBaseUrl = relay) }
+        platform.logger.info("desktop moved to another relay", emptyMap())
+        // Not from inside the event collection that detaching the link cancels.
+        scope.launch {
+            val moved = pairingStore.getCurrent()?.takeIf { it.desktopIdentityKey == desktopKey } ?: return@launch
+            detachLink()
+            mutate { it.copy(desktop = moved.stored) }
+            startLink(moved)
+        }
     }
 
     private fun requireLink(): DesktopLink = link ?: throw LinkOfflineException()
@@ -364,6 +549,18 @@ class DesktopMirror(
     private fun handleEvent(event: RemoteEvent) {
         val sessionId = event.sessionId
         when (event.name) {
+            RemoteEventName.DeviceRevoked -> onRevoked()
+            RemoteEventName.DeviceStatus -> {
+                val status = RemoteApi.readDeviceStatus(event.payload)
+                followRelay(status?.relayBaseUrl)
+                desktopScreen = status?.screen == true
+                // Sent on every connection: a desktop that lost the phone for a moment forgot it was watching.
+                if (screenOpen && active) syncScreen()
+            }
+            RemoteEventName.ScreenStatus ->
+                if (screenOpen && active) mutate { it.copy(screen = RemoteApi.readScreenStatus(event.payload) ?: it.screen) }
+            RemoteEventName.ScreenCursor ->
+                if (screenOpen && active) RemoteApi.readScreenCursor(event.payload)?.let { cursor -> mutate { it.copy(screenCursor = cursor) } }
             RemoteEventName.SessionList -> keepSessions(RemoteApi.readSessionSummaries(event.payload))
             RemoteEventName.SessionState -> {
                 if (sessionId == null) return
@@ -408,6 +605,12 @@ class DesktopMirror(
         }
     }
 
+    /** The computer removed this phone: it stops syncing, and keeps what it has. */
+    private fun onRevoked() {
+        // Detaching the link cancels the collector delivering this event, so it runs apart.
+        scope.launch { unlink(UnlinkReason.UnpairedOnComputer) }
+    }
+
     // Actions
 
     suspend fun refreshSessions() {
@@ -418,12 +621,68 @@ class DesktopMirror(
             // Ready before New Session opens. Only when it is cheap or there is nothing yet:
             // borrowing a session that is not open makes the desktop load it.
             if (_state.value.newSessionModels.isEmpty() || list.any { it.live }) scope.launch { loadNewSessionModels() }
+            launchRecentSync()
             refreshProjects()
         } catch (_: LinkOfflineException) {
             // Offline: what was loaded or cached stays on screen.
         } catch (error: Throwable) {
             reportError(error)
         }
+    }
+
+    private fun launchRecentSync() {
+        if (recentSync?.isActive == true) return
+        recentSync = scope.launch { syncRecent() }
+    }
+
+    /**
+     * Keeps the whole chat of the most recent sessions on the phone, not only those opened
+     * here, so they read in full offline and after an unpairing. Runs in the background once
+     * the list is fresh, one session at a time, and fetches a session again only after it
+     * changed on the desktop. `session.history` reads the saved chat without loading the
+     * session on the desktop. Sessions still at work wait for their turn to end; one on
+     * screen keeps its own copy up to date.
+     */
+    private suspend fun syncRecent() {
+        val key = desktopKey ?: return
+        val syncedKey = SYNCED_KEY_PREFIX + key
+        val synced =
+            platform.settings.getStringOrNull(syncedKey)
+                ?.let { runCatching { json.decodeFromString(syncedSerializer, it) }.getOrNull() }
+                .orEmpty()
+                .toMutableMap()
+        val due =
+            _state.value.sessions
+                .sortedByDescending { it.updatedAt }
+                .take(RECENT_SYNC_LIMIT)
+                .filter { session ->
+                    SessionStatusGroup.of(session.status) != SessionStatusGroup.Processing &&
+                        session.status != RemoteSessionStatus.WaitingInput &&
+                        synced[session.id] != session.updatedAt &&
+                        _state.value.transcripts[session.id]?.let { it.loaded && !it.stale } != true
+                }
+        for (session in due) {
+            if (desktopKey != key) return
+            try {
+                val history = requireLink().request(RemoteRequestMethod.SessionHistory, sessionId = session.id)
+                val entries = RemoteApi.readTranscriptEntries(history)
+                val state = RemoteApi.readSessionState((history as? JsonObject)?.get("state"))
+                val items = reducer.reduce(TranscriptState.Empty, TranscriptAction.History(entries, state)).items
+                if (desktopKey != key) return
+                platform.cache.saveTranscript(key, session.id, items)
+                synced[session.id] = session.updatedAt
+            } catch (error: CancellationException) {
+                throw error
+            } catch (_: LinkOfflineException) {
+                break
+            } catch (error: Throwable) {
+                // One session that cannot be read does not stop the others.
+                platform.logger.info("recent session sync skipped", mapOf("error" to error::class.simpleName))
+            }
+        }
+        // Only sessions still listed are remembered, so the record does not grow forever.
+        val listed = _state.value.sessions.mapTo(HashSet()) { it.id }
+        platform.settings[syncedKey] = json.encodeToString(syncedSerializer, synced.filterKeys { it in listed })
     }
 
     suspend fun refreshProjects() {
@@ -439,9 +698,16 @@ class DesktopMirror(
         }
     }
 
+    /**
+     * Fetches the session's history, except right after [startSession]: the desktop
+     * accepts a prompt before its agent records it, so history taken then lacks the
+     * prompt and would wipe it off the chat. The chat already has everything then.
+     */
     suspend fun openSession(sessionId: String) {
+        val fresh = freshSessions.remove(sessionId) && _state.value.transcripts[sessionId]?.stale == false
         val key = desktopKey
-        if (_state.value.transcripts[sessionId] == null && key != null) {
+        // Events for a chat never opened leave only a partial one: the cached copy is fuller.
+        if (_state.value.transcripts[sessionId]?.loaded != true && key != null) {
             platform.cache.loadTranscript(key, sessionId)?.let { cached ->
                 val restored = TranscriptState.Empty.copy(items = cached, loaded = true, stale = true)
                 mutate { it.copy(transcripts = it.transcripts + (sessionId to restored)) }
@@ -450,6 +716,10 @@ class DesktopMirror(
         try {
             val current = requireLink()
             val opened = current.request(RemoteRequestMethod.SessionOpen, sessionId = sessionId)
+            if (fresh) {
+                patchSession(sessionId) { it.copy(live = true) }
+                return
+            }
             val history = current.request(RemoteRequestMethod.SessionHistory, sessionId = sessionId)
             val entries = RemoteApi.readTranscriptEntries(history)
             val sessionState = RemoteApi.readSessionState((history as? JsonObject)?.get("state") ?: (opened as? JsonObject)?.get("state"))
@@ -459,6 +729,69 @@ class DesktopMirror(
             // Offline: what was loaded or cached stays on screen.
         } catch (error: Throwable) {
             reportError(error)
+        }
+    }
+
+    // Files (ADR-0139)
+
+    private fun requireFiles(): DesktopLink {
+        val current = requireLink()
+        if (_state.value.link.desktop?.fileRead != true) throw FileViewException(FileViewError.UnsupportedDesktop)
+        return current
+    }
+
+    /** A folder inside the session's working directory; "" is the directory itself. Throws [FileViewException]. */
+    suspend fun listFiles(sessionId: String, path: String): List<RemoteFileEntry> =
+        fileRequest {
+            val payload = if (path.isEmpty()) null else buildJsonObject { put("path", path) }
+            RemoteApi.readFileEntries(requireFiles().request(RemoteRequestMethod.FileList, payload, sessionId))
+                .sortedWith(compareBy<RemoteFileEntry> { !it.isDirectory }.thenBy { it.name.lowercase() })
+        }
+
+    /** What `href` (a link as the assistant wrote it, or a listed path) points at. Throws [FileViewException]. */
+    suspend fun statFile(sessionId: String, href: String): RemoteFileInfo =
+        fileRequest {
+            RemoteApi.readFileInfo(requireFiles().request(RemoteRequestMethod.FileStat, buildJsonObject { put("path", href) }, sessionId))
+                ?: throw FileViewException(FileViewError.Failed)
+        }
+
+    /** The whole file, from this launch's cache while it is unchanged. Throws [FileViewException]. */
+    suspend fun readFile(sessionId: String, info: RemoteFileInfo): FileContent =
+        fileRequest {
+            if (info.isDirectory) throw FileViewException(FileViewError.NotAFile)
+            if (info.size > RemoteFileReader.MAX_FILE_BYTES) throw FileViewException(FileViewError.TooLarge)
+            fileCache.get(sessionId, info)?.let { return@fileRequest it }
+            val current = requireFiles()
+            RemoteFileReader.read(info.path, { RemoteFileReader.chunkBytes(_state.value.link.channel) }) { payload ->
+                current.request(RemoteRequestMethod.FileRead, payload, sessionId)
+            }.also { fileCache.put(sessionId, info, it) }
+        }
+
+    private inline fun <T> fileRequest(block: () -> T): T =
+        try {
+            block()
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            throw error as? FileViewException ?: FileViewException(FileViewError.from(error))
+        }
+
+    /**
+     * Fetches the skills a prompt in `cwd` may reference; the last list stays on screen
+     * meanwhile. `cwd` is a project, or null or the conversation root for the global ones.
+     */
+    suspend fun loadSkills(cwd: String?) {
+        val scope = _state.value.skillScope(cwd)
+        if (_state.value.skillCatalogs[scope]?.loading == true) return
+        mutate { it.copy(skillCatalogs = it.skillCatalogs + (scope to (it.skillCatalogs[scope] ?: SkillCatalog()).copy(loading = true, failed = false))) }
+        try {
+            val payload = if (scope.isEmpty()) null else buildJsonObject { put("cwd", scope) }
+            val options = RemoteApi.readSkillOptions(requireLink().request(RemoteRequestMethod.SkillList, payload))
+            mutate { it.copy(skillCatalogs = it.skillCatalogs + (scope to SkillCatalog(options))) }
+        } catch (error: Throwable) {
+            if (error is CancellationException) throw error
+            mutate { it.copy(skillCatalogs = it.skillCatalogs + (scope to (it.skillCatalogs[scope] ?: SkillCatalog()).copy(loading = false, failed = true))) }
+            platform.logger.info("skill.list failed", mapOf("error" to error::class.simpleName))
         }
     }
 
@@ -505,7 +838,16 @@ class DesktopMirror(
         desktopKey?.let { saveList(MODELS_KEY_PREFIX + it, RemoteModelOption.serializer(), options) }
     }
 
-    /** Switches the session's model and/or thinking level on the desktop. */
+    private fun rememberModel(choice: ModelChoice) {
+        if (choice == _state.value.lastModelChoice) return
+        mutate { it.copy(lastModelChoice = choice) }
+        desktopKey?.let { platform.settings[LAST_MODEL_KEY_PREFIX + it] = json.encodeToString(ModelChoice.serializer(), choice) }
+    }
+
+    /**
+     * Switches the session's model and/or thinking level on the desktop, and remembers
+     * where it landed for the next New Session.
+     */
     suspend fun configure(sessionId: String, modelKey: String? = null, thinkingLevel: String? = null): Boolean {
         if (modelKey == null && thinkingLevel == null) return false
         val payload =
@@ -515,7 +857,9 @@ class DesktopMirror(
             }
         return try {
             val result = requireLink().request(RemoteRequestMethod.SessionConfigure, payload, sessionId)
-            dispatch(sessionId, TranscriptAction.State(RemoteApi.readSessionState((result as? JsonObject)?.get("state"))))
+            val state = RemoteApi.readSessionState((result as? JsonObject)?.get("state"))
+            dispatch(sessionId, TranscriptAction.State(state))
+            rememberModel(ModelChoice(state.modelKey ?: modelKey, state.thinkingLevel ?: thinkingLevel))
             true
         } catch (error: Throwable) {
             reportError(error)
@@ -539,6 +883,7 @@ class DesktopMirror(
         val trimmed = text.trim()
         if (trimmed.isEmpty()) return null
         return try {
+            if (sessionId == null) rememberModel(ModelChoice(modelKey, thinkingLevel))
             val target =
                 sessionId ?: createSession(projectCwd).also { created ->
                     // A failed switch is reported; the prompt still goes out on the default model.
@@ -575,6 +920,7 @@ class DesktopMirror(
         var transcript = reducer.reduce(TranscriptState.Empty, TranscriptAction.History(emptyList(), RemoteSessionState(RemoteSessionStatus.Running)))
         transcript = reducer.reduce(transcript, TranscriptAction.LocalUser(trimmed, platform.now(), attachments.map { it.toTranscript() }))
         mutate { it.copy(transcripts = it.transcripts + (localId to transcript), startingSessions = it.startingSessions + localId) }
+        rememberModel(ModelChoice(modelKey, thinkingLevel))
         scope.launch {
             try {
                 val target = createSession(projectCwd)
@@ -588,6 +934,7 @@ class DesktopMirror(
                 }
                 configure(target, modelKey, thinkingLevel)
                 deliver(target, trimmed, attachments, echo = false)
+                freshSessions += target
             } catch (error: Throwable) {
                 if (error is CancellationException) throw error
                 mutate { it.copy(transcripts = it.transcripts - localId) }
@@ -611,29 +958,47 @@ class DesktopMirror(
         return session.id
     }
 
-    /** Uploads the attachments, then sends the prompt; `echo` shows it in the chat first. */
+    /**
+     * Uploads the attachments, then sends the prompt; `echo` shows it in the chat first.
+     * The chat shows the prompt and a running turn at once, before any upload, so a slow
+     * link does not look like a send that did nothing; when the prompt does not go out,
+     * both are taken back.
+     */
     private suspend fun deliver(target: String, text: String, attachments: List<PromptAttachment>, echo: Boolean) {
         val current = requireLink()
-        val uploadIds =
-            attachments.map { attachment ->
-                val uploaded = current.request(RemoteRequestMethod.SessionUpload, attachment.toJson(), target)
-                (uploaded as? JsonObject)?.string("uploadId") ?: throw IllegalStateException("session.upload returned no uploadId")
-            }
         val now = platform.now()
+        val before = _state.value.transcript(target).sessionState
+        val summary = _state.value.session(target)
         if (echo) dispatch(target, TranscriptAction.LocalUser(text, now, attachments.map { it.toTranscript() }))
         dispatch(target, TranscriptAction.State(RemoteSessionState(RemoteSessionStatus.Running)))
         val title = currentTitle(target, fallback = text)
         patchSession(target) { it.copy(status = RemoteSessionStatus.Running, preview = text, updatedAt = now, title = title) }
-        val payload =
-            buildJsonObject {
-                put("text", text)
-                if (uploadIds.isNotEmpty()) put("attachments", JsonArray(uploadIds.map(::JsonPrimitive)))
+        try {
+            val uploadIds =
+                attachments.map { attachment ->
+                    val uploaded = current.request(RemoteRequestMethod.SessionUpload, attachment.toJson(), target)
+                    (uploaded as? JsonObject)?.string("uploadId") ?: throw IllegalStateException("session.upload returned no uploadId")
+                }
+            val payload =
+                buildJsonObject {
+                    put("text", text)
+                    if (uploadIds.isNotEmpty()) put("attachments", JsonArray(uploadIds.map(::JsonPrimitive)))
+                }
+            current.request(RemoteRequestMethod.SessionPrompt, payload, target)
+        } catch (error: Throwable) {
+            if (echo) {
+                dispatch(target, TranscriptAction.WithdrawLocalUser(text, now, before))
+            } else {
+                dispatch(target, TranscriptAction.State(before))
             }
-        current.request(RemoteRequestMethod.SessionPrompt, payload, target)
+            if (summary != null) patchSession(target) { summary }
+            throw error
+        }
     }
 
-    suspend fun respond(sessionId: String, requestId: String, answers: List<RemoteQuestionAnswer>, cancelled: Boolean = false) {
-        try {
+    /** Answers the desktop's question; false when it could not be delivered. */
+    suspend fun respond(sessionId: String, requestId: String, answers: List<RemoteQuestionAnswer>, cancelled: Boolean = false): Boolean {
+        return try {
             val payload =
                 buildJsonObject {
                     put("requestId", requestId)
@@ -642,9 +1007,12 @@ class DesktopMirror(
                 }
             requireLink().request(RemoteRequestMethod.SessionRespond, payload, sessionId)
             dispatch(sessionId, TranscriptAction.QuestionResolved(requestId))
-            patchSession(sessionId) { it.copy(status = RemoteSessionStatus.Running) }
+            // The desktop's next state may already be in, such as the end of the turn.
+            patchSession(sessionId) { if (it.status == RemoteSessionStatus.WaitingInput) it.copy(status = RemoteSessionStatus.Running) else it }
+            true
         } catch (error: Throwable) {
             reportError(error)
+            false
         }
     }
 
@@ -748,11 +1116,23 @@ class DesktopMirror(
     companion object {
         const val PREFERENCES_KEY = "vetta.preferences"
         const val DEVICE_ID_KEY = "vetta.device.id"
+
+        /** The computer the last unpairing left, whose sessions stay readable. */
+        const val UNLINKED_KEY = "vetta.unlinkedDesktop"
         const val PROJECTS_KEY_PREFIX = "vetta.projects."
         const val MODELS_KEY_PREFIX = "vetta.models."
 
+        /** Per desktop: each session's `updatedAt` when its chat was last synced to the phone. */
+        const val SYNCED_KEY_PREFIX = "vetta.synced."
+        const val LAST_MODEL_KEY_PREFIX = "vetta.lastModel."
+
         private const val SESSION_LIST_LIMIT = 200
+
+        /** How many of the most recent sessions keep their whole chat on the phone. */
+        const val RECENT_SYNC_LIMIT = 20
+        private val syncedSerializer = MapSerializer(String.serializer(), Long.serializer())
         private const val TRANSCRIPT_SAVE_DELAY_MS = 400L
+        private const val SEQUENCE_SAVE_DELAY_MS = 2_000L
         private const val TITLE_FALLBACK_LENGTH = 60
         private val json = Json { ignoreUnknownKeys = true }
 

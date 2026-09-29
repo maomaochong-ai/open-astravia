@@ -118,6 +118,12 @@ public enum PairingURI {
 		"\(relayBaseUrl)/v2/relay/\(uriComponent(pairingId))/\(role.rawValue)"
 	}
 
+	/// The relay's WebRTC signaling for the desktop's screen and the P2P control channel.
+	/// The secret rides in the fragment and is offered as a subprotocol, never sent in the URL.
+	public static func desktopViewerUrl(relayBaseUrl: String, pairingId: String, mobileSecret: String) -> String {
+		"\(relayBaseUrl)/v2/desktop/\(uriComponent(pairingId))/viewer#pairing=\(uriComponent(mobileSecret))"
+	}
+
 	static func uriComponent(_ text: String) -> String {
 		var allowed = CharacterSet.alphanumerics
 		allowed.insert(charactersIn: "-_.!~*'()")

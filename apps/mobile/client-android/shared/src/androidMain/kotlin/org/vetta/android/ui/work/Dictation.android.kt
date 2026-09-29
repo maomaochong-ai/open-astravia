@@ -4,7 +4,13 @@ import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.media.AudioManager
+import android.media.ToneGenerator
+import android.os.Build
 import android.os.Bundle
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
@@ -155,3 +161,39 @@ private class AndroidDictation(private val context: Context) : Dictation {
         const val FINAL_WAIT_MS = 800L
     }
 }
+
+@Composable
+actual fun rememberDictationCue(): () -> Unit {
+    val context = LocalContext.current.applicationContext
+    val tone = remember { runCatching { ToneGenerator(AudioManager.STREAM_SYSTEM, CUE_VOLUME) }.getOrNull() }
+    DisposableEffect(tone) { onDispose { tone?.release() } }
+    return remember(context, tone) {
+        {
+            val audio = context.getSystemService(AudioManager::class.java)
+            if (audio?.ringerMode == AudioManager.RINGER_MODE_NORMAL) runCatching { tone?.startTone(ToneGenerator.TONE_PROP_ACK, 120) }
+            val vibrator =
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    context.getSystemService(VibratorManager::class.java)?.defaultVibrator
+                } else {
+                    @Suppress("DEPRECATION")
+                    context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+                }
+            if (vibrator?.hasVibrator() == true) {
+                // Tick, tap, then a hum stepping down: off/on durations in ms with their strength.
+                val timings = longArrayOf(0, 12, 79, 20, 61, 60, 60, 60, 60, 60, 80)
+                val amplitudes = intArrayOf(0, 110, 0, 255, 0, 200, 150, 100, 60, 30, 0)
+                val effect =
+                    if (vibrator.hasAmplitudeControl()) {
+                        VibrationEffect.createWaveform(timings, amplitudes, -1)
+                    } else {
+                        VibrationEffect.createWaveform(longArrayOf(0, 12, 79, 20, 61, 160), -1)
+                    }
+                // A cue is never worth failing dictation over, e.g. where vibrating is not allowed.
+                runCatching { vibrator.vibrate(effect) }
+            }
+        }
+    }
+}
+
+/** Out of ToneGenerator's 0-100: present but quiet. */
+private const val CUE_VOLUME = 35

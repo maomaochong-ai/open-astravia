@@ -1,3 +1,5 @@
+import { logPluginRuntimeInfo, logPluginRuntimeWarn } from "./plugin-runtime-log";
+
 let resolvePluginHostReady: (() => void) | undefined;
 let pluginHostReadyPromise = new Promise<void>((resolve) => {
 	resolvePluginHostReady = resolve;
@@ -9,19 +11,19 @@ const pluginHostFirstReadyPromise = new Promise<void>((resolve) => {
 	resolvePluginHostFirstReady = resolve;
 });
 
-function debugPluginAgent(message: string, data?: Record<string, unknown>): void {
-	console.info(`[plugin-agent] ${message}${data ? ` ${JSON.stringify(data)}` : ""}`);
+function debugPluginAgent(message: string, data: Record<string, boolean | number | string> = {}): void {
+	logPluginRuntimeInfo(`host ${message}`, data);
 }
 
 export function markPluginHostLoading(): void {
-	debugPluginAgent("host loading");
+	debugPluginAgent("loading");
 	pluginHostReadyPromise = new Promise<void>((resolve) => {
 		resolvePluginHostReady = resolve;
 	});
 }
 
 export function markPluginHostReady(): void {
-	debugPluginAgent("host ready");
+	debugPluginAgent("ready");
 	resolvePluginHostReady?.();
 	resolvePluginHostReady = undefined;
 	pluginHostEverReady = true;
@@ -42,7 +44,7 @@ export async function waitForPluginHostFirstReady(timeoutMs = 5000): Promise<voi
 	if (pluginHostEverReady) return;
 	let timeout: ReturnType<typeof setTimeout> | undefined;
 	let timedOut = false;
-	debugPluginAgent("wait host first ready start", { timeoutMs });
+	debugPluginAgent("wait first ready start", { timeoutMs });
 	try {
 		await Promise.race([
 			pluginHostFirstReadyPromise,
@@ -56,9 +58,13 @@ export async function waitForPluginHostFirstReady(timeoutMs = 5000): Promise<voi
 	} finally {
 		if (timeout) clearTimeout(timeout);
 		if (timedOut) {
-			console.warn(`[plugin-agent] wait host first ready timed out ${JSON.stringify({ timeoutMs })}`);
+			logPluginRuntimeWarn("host readiness wait timed out", {
+				stage: "wait-first-ready",
+				reason: "timeout",
+				timeoutMs,
+			});
 		} else {
-			debugPluginAgent("wait host first ready end", { timedOut: false });
+			debugPluginAgent("wait first ready end", { timedOut: false });
 		}
 	}
 }
@@ -66,7 +72,7 @@ export async function waitForPluginHostFirstReady(timeoutMs = 5000): Promise<voi
 export async function waitForPluginHostReady(timeoutMs = 5000): Promise<void> {
 	let timeout: ReturnType<typeof setTimeout> | undefined;
 	let timedOut = false;
-	debugPluginAgent("wait host ready start", { timeoutMs });
+	debugPluginAgent("wait ready start", { timeoutMs });
 	try {
 		await Promise.race([
 			pluginHostReadyPromise,
@@ -80,9 +86,13 @@ export async function waitForPluginHostReady(timeoutMs = 5000): Promise<void> {
 	} finally {
 		if (timeout) clearTimeout(timeout);
 		if (timedOut) {
-			console.warn(`[plugin-agent] wait host ready timed out ${JSON.stringify({ timeoutMs })}`);
+			logPluginRuntimeWarn("host readiness wait timed out", {
+				stage: "wait-ready",
+				reason: "timeout",
+				timeoutMs,
+			});
 		} else {
-			debugPluginAgent("wait host ready end", { timedOut: false });
+			debugPluginAgent("wait ready end", { timedOut: false });
 		}
 	}
 }

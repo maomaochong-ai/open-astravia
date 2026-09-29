@@ -26,6 +26,32 @@ export function McpServerForm({
 	saveLabel: string;
 }): JSX.Element {
 	const { t } = useTranslation("settings");
+
+	return (
+		<>
+			<McpServerFields form={form} setForm={setForm} />
+
+			<div className="mt-3 flex justify-end gap-2">
+				<Button variant="ghost" size="sm" onClick={onCancel}>
+					{t("cancel")}
+				</Button>
+				<Button variant="primary" size="sm" onClick={onSave} disabled={!isMcpFormValid(form) || saving}>
+					{saveLabel}
+				</Button>
+			</div>
+		</>
+	);
+}
+
+/** MCP 表单字段。添加弹窗与编辑弹窗各自组合所需的底部操作。 */
+export function McpServerFields({
+	form,
+	setForm,
+}: {
+	form: McpServerFormState;
+	setForm: React.Dispatch<React.SetStateAction<McpServerFormState>>;
+}): JSX.Element {
+	const { t } = useTranslation("settings");
 	const [advancedOpen, setAdvancedOpen] = useState(() => hasAdvancedValues(form));
 
 	return (
@@ -111,14 +137,6 @@ export function McpServerForm({
 				)}
 			</div>
 
-			<div className="mt-3 flex justify-end gap-2">
-				<Button variant="ghost" size="sm" onClick={onCancel}>
-					{t("cancel")}
-				</Button>
-				<Button variant="primary" size="sm" onClick={onSave} disabled={!isMcpFormValid(form) || saving}>
-					{saveLabel}
-				</Button>
-			</div>
 		</>
 	);
 }

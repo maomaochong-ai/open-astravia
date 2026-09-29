@@ -9,6 +9,16 @@ import { baseSessionEvent, mapRuntimeSessionObservationEvent } from "./session-e
 
 /** 将 Kernel EventSink 事件适配为宿主 SessionEvent。 */
 export function mapKernelEventToSessionEvents(event: KernelEvent): SessionEvent[] {
+	if (event.type === "turn.started") {
+		return [
+			{
+				...baseSessionEvent(event.sessionId, "runtime-core", event.timestamp),
+				type: "conversation.turn.started",
+				turnId: event.turnId,
+			},
+		];
+	}
+
 	if (event.type === "conversation.continued") {
 		return [
 			{
@@ -30,10 +40,27 @@ export function mapKernelEventToSessionEvents(event: KernelEvent): SessionEvent[
 		];
 	}
 
-	if (event.type === "message.appended" && event.message.role === "assistant") {
-		return assistantMessageObservations(event.message, event.turnId, event.failure).map((observation) =>
-			mapRuntimeSessionObservationEvent(event.sessionId, observation, event.timestamp),
-		);
+	if (event.type === "message.appended") {
+		const committed: SessionEvent[] = event.messageId
+			? [
+					{
+						...baseSessionEvent(event.sessionId, "runtime-core", event.timestamp),
+						type: "conversation.message.appended",
+						turnId: event.turnId,
+						messageId: event.messageId,
+						message: event.message,
+					},
+				]
+			: [];
+		if (event.message.role !== "assistant") return committed;
+		return [
+			...committed,
+			...assistantMessageObservations(event.message, event.turnId, event.failure).map((observation) =>
+				mapRuntimeSessionObservationEvent(event.sessionId, observation, event.timestamp, {
+					turnId: event.turnId,
+				}),
+			),
+		];
 	}
 
 	if (event.type === "context.compacted") {
@@ -81,6 +108,12 @@ export function mapKernelEventToSessionEvents(event: KernelEvent): SessionEvent[
 
 	if (event.type === "turn.cancelled") {
 		return [
+			{
+				...baseSessionEvent(event.sessionId, "runtime-core", event.timestamp),
+				type: "conversation.turn.cancelled",
+				turnId: event.turnId,
+				...(event.reason ? { reason: event.reason } : {}),
+			},
 			mapRuntimeSessionObservationEvent(
 				event.sessionId,
 				{ type: "lifecycle", phase: "aborted", source: "runtime-core" },
@@ -140,11 +173,38 @@ export function mapKernelEventToSessionEvents(event: KernelEvent): SessionEvent[
 				},
 				event.timestamp,
 			),
+			{
+				...baseSessionEvent(event.sessionId, "runtime-core", event.timestamp),
+				type: "conversation.turn.failed",
+				turnId: event.turnId,
+				error: {
+					code: failure.code,
+					message: failure.message,
+					retryable: failure.retryable ?? false,
+					origin: failure.origin ?? "runtime",
+					...(failure.details ? { details: failure.details } : {}),
+				},
+			},
 			mapRuntimeSessionObservationEvent(
 				event.sessionId,
-				{ type: "lifecycle", phase: "agent_end", source: "runtime-core" },
+				{
+					type: "lifecycle",
+					phase: "agent_end",
+					source: "runtime-core",
+				},
 				event.timestamp,
 			),
+		];
+	}
+
+	if (event.type === "turn.completed") {
+		return [
+			{
+				...baseSessionEvent(event.sessionId, "runtime-core", event.timestamp),
+				type: "conversation.turn.completed",
+				turnId: event.turnId,
+				stopReason: event.stopReason,
+			},
 		];
 	}
 

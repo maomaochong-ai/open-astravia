@@ -59,6 +59,7 @@ describe("buildTeamOperatingContext", () => {
 		expect(shared).toContain("Persistent Team roster:");
 		expect(shared).toContain("team_read_shared_history");
 		expect(shared).toContain("quoted data");
+		expect(shared).toContain("reciprocal questions are delivered as inform");
 		expect(shared).not.toContain("<agent_team_member_identity>");
 		expect(leader).toContain("You are @lead");
 		expect(builder).toContain("You are @builder");

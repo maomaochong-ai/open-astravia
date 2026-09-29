@@ -10,6 +10,7 @@ export const PLUGIN_PERMISSION_LABEL_KEYS = {
 	"ui.slot.file-preview": "permission.uiSlotFilePreview",
 	"ui.slot.activity-tab": "permission.uiSlotActivityTab",
 	"ui.slot.bottom-panel": "permission.uiSlotBottomPanel",
+	"terminal.run": "permission.terminalRun",
 	"ui.slot.input-action": "permission.uiSlotInputAction",
 	"ui.slot.message": "permission.uiSlotMessage",
 	"ui.slot.tool-call": "permission.uiSlotToolCall",
@@ -366,6 +367,13 @@ export const PLUGIN_PERMISSION_PRESENTATIONS = {
 	"agent.command.spawn": {
 		descriptionKey: "permission.description.agentCommandSpawn",
 		group: "execution",
+		risk: "high",
+		visual: "execution",
+	},
+	"terminal.run": {
+		descriptionKey: "permission.description.terminalRun",
+		group: "execution",
+		// 命令敲进用户自己的 shell，能做的事与用户手敲一样多；只是过程摊在可见的终端里。
 		risk: "high",
 		visual: "execution",
 	},

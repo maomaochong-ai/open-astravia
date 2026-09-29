@@ -23,7 +23,7 @@ describe("chat activity column", () => {
 		const activity = { pluginScenario: "project" as const };
 		const workspace = { id: "conversation:a", cwd: "/work", runtimeIds: ["one"] };
 		const { rerender } = render(
-			<DefaultChatView messages={[]} workspace={workspace} activity={activity}>
+			<DefaultChatView messages={[]} workspace={workspace} workSurface={null} activity={activity}>
 				<div>first message</div>
 			</DefaultChatView>,
 		);
@@ -31,7 +31,7 @@ describe("chat activity column", () => {
 		expect(screen.getByTestId("activity-panel").textContent).toBe("one:project:default");
 
 		rerender(
-			<DefaultChatView messages={[]} workspace={{ ...workspace, runtimeIds: ["one"] }} activity={{ ...activity }}>
+			<DefaultChatView messages={[]} workspace={{ ...workspace, runtimeIds: ["one"] }} workSurface={null} activity={{ ...activity }}>
 				<div>next message</div>
 			</DefaultChatView>,
 		);
@@ -39,7 +39,7 @@ describe("chat activity column", () => {
 		expect(panelRendered).toHaveBeenCalledTimes(1);
 
 		rerender(
-			<DefaultChatView messages={[]} workspace={{ ...workspace, runtimeIds: ["two"] }} activity={activity}>
+			<DefaultChatView messages={[]} workspace={{ ...workspace, runtimeIds: ["two"] }} workSurface={null} activity={activity}>
 				<div>next message</div>
 			</DefaultChatView>,
 		);
@@ -47,7 +47,7 @@ describe("chat activity column", () => {
 		expect(panelRendered).toHaveBeenCalledTimes(2);
 
 		rerender(
-			<DefaultChatView messages={[]} workspace={{ ...workspace, runtimeIds: ["two"] }} activity={{ pluginScenario: "automation" }}>
+			<DefaultChatView messages={[]} workspace={{ ...workspace, runtimeIds: ["two"] }} workSurface={null} activity={{ pluginScenario: "automation" }}>
 				<div>next message</div>
 			</DefaultChatView>,
 		);
@@ -55,7 +55,7 @@ describe("chat activity column", () => {
 		expect(panelRendered).toHaveBeenCalledTimes(3);
 
 		rerender(
-			<DefaultChatView messages={[]} workspace={{ ...workspace, runtimeIds: ["two"] }} activity={{ pluginScenario: "automation", enabledBuiltinTabs: [] }}>
+			<DefaultChatView messages={[]} workspace={{ ...workspace, runtimeIds: ["two"] }} workSurface={null} activity={{ pluginScenario: "automation", enabledBuiltinTabs: [] }}>
 				<div>next message</div>
 			</DefaultChatView>,
 		);

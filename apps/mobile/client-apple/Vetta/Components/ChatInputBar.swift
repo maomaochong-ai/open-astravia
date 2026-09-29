@@ -3,12 +3,14 @@ import VettaKit
 
 /// The composer shared by New Session and the chat, laid out like Telegram:
 /// a round attach button, then the message field that grows with its text
-/// (Return adds a line). Send appears inside the field once there is something
-/// to send. Holding the empty field dictates; letting go puts the words in the
-/// field without sending them.
+/// (Return adds a line). Referenced skills sit above it as chips. Send appears
+/// inside the field once there is something to send. Holding the empty field
+/// dictates; letting go puts the words in the field without sending them.
 struct ChatInputBar: View {
 	@Binding var draft: PromptDraft
 	var placeholder: String
+	/// The project the prompt goes to, for the skills it may reference; nil for a conversation.
+	var skillScope: String?
 	/// Only sending waits on the link; typing, attaching and dictating never do.
 	var sendDisabled = false
 	var busy = false
@@ -16,6 +18,9 @@ struct ChatInputBar: View {
 	var onSend: (PromptDraft) -> Void
 
 	@State private var attaching = false
+	/// Skills was picked in the attach sheet; its own sheet opens once that one is gone.
+	@State private var skillsNext = false
+	@State private var pickingSkills = false
 	@State private var dictation = SpeechDictation()
 	@State private var press = HoldToTalk()
 	@State private var cancelArmed = false
@@ -32,6 +37,11 @@ struct ChatInputBar: View {
 
 	var body: some View {
 		VStack(alignment: .leading, spacing: 8) {
+			if !draft.skills.isEmpty {
+				SkillStrip(skills: draft.skills) { id in
+					withAnimation(.snappy) { draft.removeSkill(id) }
+				}
+			}
 			if !draft.attachments.isEmpty {
 				AttachmentStrip(attachments: draft.attachments) { id in
 					withAnimation(.snappy) { draft.remove(id) }
@@ -74,8 +84,18 @@ struct ChatInputBar: View {
 			}
 		}
 		.animation(.easeInOut(duration: 0.2), value: dictation.listening)
-		.sheet(isPresented: $attaching) {
-			AttachmentSheet(draft: $draft)
+		.sheet(isPresented: $attaching, onDismiss: {
+			if skillsNext {
+				skillsNext = false
+				pickingSkills = true
+			}
+		}) {
+			AttachmentSheet(draft: $draft) { skillsNext = true }
+		}
+		.sheet(isPresented: $pickingSkills) {
+			SkillSheet(cwd: skillScope, selected: draft.skills) { skill in
+				withAnimation(.snappy) { draft.add(skill) }
+			}
 		}
 	}
 
@@ -85,6 +105,7 @@ struct ChatInputBar: View {
 				.font(.body)
 				.lineLimit(1 ... 6)
 				.focused($focused)
+				.tint(Theme.selection)
 				.padding(.leading, 16)
 				.padding(.vertical, 11)
 				.accessibilityIdentifier("composer.field")
@@ -248,6 +269,24 @@ private struct DictationGlow: View {
 		.padding(.bottom, -48)
 		.accessibilityElement(children: .contain)
 		.accessibilityIdentifier("dictation.glow")
+	}
+}
+
+/// The skills the prompt references, each with a remove button.
+private struct SkillStrip: View {
+	var skills: [SkillReference]
+	var onRemove: (String) -> Void
+
+	var body: some View {
+		ScrollView(.horizontal) {
+			HStack(spacing: 8) {
+				ForEach(skills) { skill in
+					SkillChip(skill: skill) { onRemove(skill.id) }
+				}
+			}
+			.padding(.horizontal, 16)
+		}
+		.scrollIndicators(.hidden)
 	}
 }
 

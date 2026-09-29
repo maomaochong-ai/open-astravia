@@ -65,7 +65,6 @@ function projectsState(sessionsMap: Map<string, SessionInfo[]>) {
 		renameSession: vi.fn(),
 		archiveProject: vi.fn(),
 		removeProject: vi.fn(),
-		deleteProjectFromDisk: vi.fn(),
 		loadSessions: vi.fn(),
 	};
 }

@@ -97,6 +97,8 @@ export type {
 export { ImLogDrawerView } from "./ImLogDrawerView";
 export type { ImStatusBadgeStatus, ImStatusBadgeViewProps } from "./ImStatusBadgeView";
 export { ImStatusBadgeView } from "./ImStatusBadgeView";
+export type { JsonConfigInputViewProps } from "./JsonConfigInputView";
+export { JsonConfigInputView } from "./JsonConfigInputView";
 export { McpDefaultIcon } from "./McpDefaultIcon";
 export type { McpJsonEditorViewProps } from "./McpJsonEditorView";
 export { McpJsonEditorView } from "./McpJsonEditorView";
@@ -113,6 +115,12 @@ export type {
 export { ModelsProvidersSectionView } from "./ModelsProvidersSectionView";
 export type { MotionSelectOption, MotionSelectProps } from "./MotionSelect";
 export { MotionSelect } from "./MotionSelect";
+export type {
+	NotificationScopeView,
+	NotificationSettingsViewLabels,
+	NotificationSettingsViewProps,
+} from "./NotificationSettingsView";
+export { NotificationSettingsView } from "./NotificationSettingsView";
 export type {
 	PermissionItemView,
 	PermissionStatusView,

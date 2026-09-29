@@ -10,15 +10,22 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.vetta.android.app.AppContainer
 import org.vetta.android.app.AppPreferences
-import org.vetta.android.core.auth.InMemoryTokenStore
-import org.vetta.android.data.session.SettingsSessionStore
-import org.vetta.android.ui.navigation.AppRoute
-import org.vetta.android.ui.navigation.MainTab
-import org.vetta.android.ui.navigation.hasInAppBackDestination
+import org.vetta.android.app.ThemeMode
+import org.vetta.android.domain.remote.pairing.InviteCodeLookup
+import org.vetta.android.domain.remote.pairing.PairingFailure
+import org.vetta.android.domain.remote.protocol.InviteCode
+import org.vetta.android.resources.Res
+import org.vetta.android.resources.invalid_pairing_invite
+import org.vetta.android.resources.pair_invite_not_found
+import org.vetta.android.resources.pair_failed_rejected
+import org.vetta.android.ui.i18n.UiText
+import org.vetta.android.ui.navigation.HomePage
+import org.vetta.android.ui.navigation.Slot
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -35,61 +42,174 @@ class AppViewModelWorkTest {
         Dispatchers.resetMain()
     }
 
+    private fun viewModel(preferences: AppPreferences = AppPreferences(MapSettings())) =
+        AppViewModel(AppContainer(preferences = preferences, mirror = unpairedMirror()))
+
     @Test
-    fun aDesktopSessionOpensOverTheWorkTabAndBackReturnsToIt() =
+    fun theAppOpensOnNewSessionWhereBackLeaves() =
         runTest(dispatcher) {
-            val vm =
-                AppViewModel(
-                    AppContainer(
-                        preferences = AppPreferences(MapSettings()),
-                        tokenStore = InMemoryTokenStore(),
-                        sessionStore = SettingsSessionStore(MapSettings()),
-                        mirror = unpairedMirror(),
-                    ),
-                )
+            val vm = viewModel()
             advanceUntilIdle()
-            vm.skipWelcome()
-            vm.selectMainTab(MainTab.Work)
-
-            vm.openWorkSession("s1")
-            assertEquals(AppRoute.WorkSession("s1"), vm.state.value.route)
-            assertTrue(vm.state.value.route.hasInAppBackDestination())
-
-            vm.handleSystemBack()
-            assertEquals(AppRoute.Main(MainTab.Work), vm.state.value.route)
+            assertEquals(Slot.NewSession(), vm.state.value.slot)
+            assertFalse(vm.state.value.drawerOpen)
+            assertFalse(vm.state.value.backEnabled)
         }
 
     @Test
-    fun newSessionFromAChatReturnsToItAndAFailedStartReturnsToNewSession() =
+    fun openingASessionFillsTheSlotAndPutsHomeAway() =
         runTest(dispatcher) {
-            val vm =
-                AppViewModel(
-                    AppContainer(
-                        preferences = AppPreferences(MapSettings()),
-                        tokenStore = InMemoryTokenStore(),
-                        sessionStore = SettingsSessionStore(MapSettings()),
-                        mirror = unpairedMirror(),
-                    ),
-                )
+            val vm = viewModel()
             advanceUntilIdle()
-            vm.skipWelcome()
-            vm.selectMainTab(MainTab.Work)
+            vm.openDrawer()
+            vm.show("s1")
+            assertEquals(Slot.Session("s1"), vm.state.value.slot)
+            assertFalse(vm.state.value.drawerOpen)
+        }
 
-            vm.openWorkSession("s1")
-            vm.openWorkNewSession("/code/vetta", returnTo = "s1")
-            vm.handleSystemBack()
-            assertEquals(AppRoute.WorkSession("s1"), vm.state.value.route, "Back from New Session returns to the chat it came from")
+    @Test
+    fun backFromAChatOpensHomeThenShutsIt() =
+        runTest(dispatcher) {
+            val vm = viewModel()
+            advanceUntilIdle()
+            vm.show("s1")
+            assertTrue(vm.state.value.backEnabled)
 
-            vm.openWorkNewSession()
-            vm.handleSystemBack()
-            assertEquals(AppRoute.Main(MainTab.Work), vm.state.value.route)
+            vm.handleBack()
+            assertTrue(vm.state.value.drawerOpen, "Home is the chat's parent")
+            vm.handleBack()
+            assertFalse(vm.state.value.drawerOpen)
+            assertEquals(Slot.Session("s1"), vm.state.value.slot, "the chat is still there under Home")
+        }
 
-            vm.openWorkSession("local-1")
+    @Test
+    fun homesPagesStackAndBackWalksThemBeforeShuttingHome() =
+        runTest(dispatcher) {
+            val vm = viewModel()
+            advanceUntilIdle()
+            vm.push(HomePage.Project("/code/app"))
+            vm.push(HomePage.Settings)
+            assertTrue(vm.state.value.drawerOpen)
+            assertEquals(listOf(HomePage.Project("/code/app"), HomePage.Settings), vm.state.value.homePath)
+
+            vm.handleBack()
+            assertEquals(listOf<HomePage>(HomePage.Project("/code/app")), vm.state.value.homePath)
+            vm.closeDrawer()
+            assertEquals(listOf<HomePage>(HomePage.Project("/code/app")), vm.state.value.homePath, "Home reopens where it was left")
+        }
+
+    @Test
+    fun newSessionInAProjectAndAFailedStartReturnsToNewSession() =
+        runTest(dispatcher) {
+            val vm = viewModel()
+            advanceUntilIdle()
+            vm.startNewSession("/code/vetta")
+            assertEquals(Slot.NewSession("/code/vetta"), vm.state.value.slot)
+
+            vm.show("local-1")
             vm.returnToNewSession("local-1", "/code/vetta")
-            assertEquals(AppRoute.WorkNewSession("/code/vetta"), vm.state.value.route)
+            assertEquals(Slot.NewSession("/code/vetta"), vm.state.value.slot)
 
-            vm.openWorkSession("s2")
+            vm.show("s2")
             vm.returnToNewSession("local-1", null)
-            assertEquals(AppRoute.WorkSession("s2"), vm.state.value.route, "a user who already left that chat stays where they are")
+            assertEquals(Slot.Session("s2"), vm.state.value.slot, "a user who already left that chat stays where they are")
         }
+
+    @Test
+    fun theBoardMakesWayForTheSessionItOpensAndLeadsToHomesWholeList() =
+        runTest(dispatcher) {
+            val vm = viewModel()
+            advanceUntilIdle()
+            vm.openBoard()
+            vm.show("s1")
+            assertFalse(vm.state.value.showBoard)
+            assertEquals(Slot.Session("s1"), vm.state.value.slot)
+
+            vm.push(HomePage.Settings)
+            vm.closeDrawer()
+            vm.openBoard()
+            vm.showAllSessions()
+            assertFalse(vm.state.value.showBoard)
+            assertTrue(vm.state.value.drawerOpen)
+            assertEquals(emptyList(), vm.state.value.homePath, "all sessions is Home's own list, not the page left open")
+        }
+
+    @Test
+    fun backClosesTheComputersScreenFirst() =
+        runTest(dispatcher) {
+            val vm = viewModel()
+            advanceUntilIdle()
+            vm.openDrawer()
+            vm.openRemote()
+            assertTrue(vm.state.value.backEnabled)
+            vm.handleBack()
+            assertFalse(vm.state.value.showRemote)
+            assertTrue(vm.state.value.drawerOpen, "Home is still where the screen was opened from")
+        }
+
+    @Test
+    fun besideTheSlotBackOnlyClosesWhatIsOverHome() =
+        runTest(dispatcher) {
+            val vm = viewModel()
+            advanceUntilIdle()
+            vm.show("s1")
+            assertFalse(vm.state.value.backEnabledBeside, "a chat beside Home has nothing to go back to")
+            vm.push(HomePage.Settings)
+            vm.openRemote()
+            vm.handleBack(beside = true)
+            assertFalse(vm.state.value.showRemote)
+            vm.handleBack(beside = true)
+            assertEquals(emptyList(), vm.state.value.homePath)
+            assertEquals(Slot.Session("s1"), vm.state.value.slot)
+        }
+
+    @Test
+    fun theThemeChoiceIsKept() =
+        runTest(dispatcher) {
+            val preferences = AppPreferences(MapSettings())
+            val vm = viewModel(preferences)
+            vm.setThemeMode(ThemeMode.Dark)
+            advanceUntilIdle()
+            assertEquals(ThemeMode.Dark, vm.state.value.themeMode)
+            assertEquals(ThemeMode.Dark, preferences.themeMode.value)
+        }
+
+    @Test
+    fun anInvalidPairingLinkOpensPairingWithTheReasonAndNoNetworkAccess() =
+        runTest(dispatcher) {
+            val vm = viewModel()
+            advanceUntilIdle()
+            vm.handlePairingInvite("vetta://pair?nonsense")
+            advanceUntilIdle()
+            assertTrue(vm.state.value.showPairing)
+            assertEquals(UiText.Resource(Res.string.invalid_pairing_invite), vm.state.value.pairingError?.title)
+            assertFalse(vm.state.value.remoteConnecting)
+
+            vm.closePairing()
+            assertFalse(vm.state.value.showPairing)
+            assertEquals(null, vm.state.value.pairingError, "the next attempt starts clean")
+        }
+
+    @Test
+    fun aScannedCodeOnlyQrCodeIsLookedUpOnTheRelayItNames() =
+        runTest(dispatcher) {
+            val asked = mutableListOf<String>()
+            val vm = AppViewModel(AppContainer(preferences = AppPreferences(MapSettings()), mirror = unpairedMirror()), InviteCodeLookup { url -> asked += url; 404 to "" })
+            advanceUntilIdle()
+
+            vm.connectDesktop("VETTA://PAIR/K7Q29MXD/482913")
+            advanceUntilIdle()
+            assertEquals(listOf(InviteCode.boxUrl(InviteCode.DEFAULT_RELAY_BASE_URL, "K7Q29MXD")), asked)
+            assertEquals(UiText.Resource(Res.string.pair_invite_not_found), vm.state.value.pairingError?.message)
+
+            // Opened from the camera: the link is checked, then looked up on the desktop's own relay.
+            vm.handlePairingInvite("VETTA://PAIR/K7Q29MXD/482913?relay=wss%3A%2F%2Frelay.mine.test")
+            advanceUntilIdle()
+            assertEquals(InviteCode.boxUrl("wss://relay.mine.test", "K7Q29MXD"), asked.last())
+        }
+
+    @Test
+    fun pairingFailuresAreWordedByTheirReason() {
+        assertEquals(UiText.Resource(Res.string.pair_failed_rejected), AppViewModel.pairingError(PairingFailure.Rejected).message)
+        assertEquals(UiText.Resource(Res.string.invalid_pairing_invite), AppViewModel.pairingError(PairingFailure.InvalidCode).title)
+    }
 }

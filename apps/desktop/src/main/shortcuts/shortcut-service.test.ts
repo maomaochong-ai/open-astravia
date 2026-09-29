@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { DEFAULT_NOTIFICATION_PREFERENCES } from "../../shared/notification-preferences.js";
 import type { DesktopConfig } from "../config/desktop-config-store.js";
 import { ShortcutService } from "./shortcut-service.js";
 
@@ -17,10 +18,12 @@ vi.mock("../quickpanel-window.js", () => ({
 
 function createFixture(initial?: Partial<DesktopConfig>) {
 	let config: DesktopConfig = {
+		schemaVersion: 2,
 		projects: [],
 		archivedProjects: [],
 		workspacePath: "C:\\workspace",
 		defaultExecutionMode: "full-access",
+		notificationPreferences: DEFAULT_NOTIFICATION_PREFERENCES,
 		shortcuts: { bindings: {} },
 		quickPanel: { trigger: "none", postSendBehavior: "foreground" },
 		...initial,
@@ -29,8 +32,9 @@ function createFixture(initial?: Partial<DesktopConfig>) {
 	const reloadQuickPanelTrigger = vi.fn(async () => {});
 	const service = new ShortcutService({
 		readConfig: async () => structuredClone(config),
-		writeConfig: async (next) => {
-			config = structuredClone(next);
+		updateConfig: async (update) => {
+			config = structuredClone(await update(structuredClone(config)));
+			return structuredClone(config);
 		},
 		broadcastBindings,
 		reloadQuickPanelTrigger,

@@ -3,7 +3,7 @@ import type { RemoteDesktopSignal, RemoteInputMessage } from "./types.js";
 
 const resultPrefix = "VETTA_E2E_RESULT:";
 
-void run().then(
+void (async () => ({ ...(await run()), ...(await runOnDemand()) }))().then(
 	(result) => {
 		document.title = `${resultPrefix}${JSON.stringify({ ok: true, ...result })}`;
 	},
@@ -79,6 +79,98 @@ async function run(): Promise<Record<string, number | string | boolean>> {
 		pixelDelta,
 		inputDelivered: true,
 	};
+}
+
+/** ADR-0140: the session opens without a screen; frames flow only between two `replaceScreen` calls. */
+async function runOnDemand(): Promise<Record<string, number | string | boolean>> {
+	const sessionId = `webrtc-e2e-demand-${crypto.randomUUID()}`;
+	const canvas = createAnimatedCanvas();
+	let viewerStream: MediaStream | undefined;
+	let host: RemoteDesktopHost | undefined;
+	let viewer: RemoteDesktopViewer | undefined;
+	const hostQueue: RemoteDesktopSignal[] = [];
+	host = new RemoteDesktopHost(
+		{ sessionId },
+		async (signal) => {
+			await viewer?.acceptSignal(signal);
+		},
+		() => undefined,
+	);
+	viewer = new RemoteDesktopViewer(
+		{ sessionId },
+		async (signal) => {
+			if (host) await host.acceptSignal(signal);
+			else hostQueue.push(signal);
+		},
+		(received) => {
+			viewerStream = received;
+		},
+	);
+	await host.start();
+	await waitFor(() => host?.connectionState === "connected" && viewer?.connectionState === "connected", 10_000);
+	await waitFor(() => viewerStream !== undefined, 5_000);
+
+	const video = document.createElement("video");
+	video.muted = true;
+	video.autoplay = true;
+	video.playsInline = true;
+	video.srcObject = viewerStream ?? null;
+	document.body.append(video);
+	void video.play().catch(() => undefined);
+	await delay(300);
+	if (video.videoWidth > 0) throw new Error("video arrived before the screen was subscribed");
+
+	const firstTrack = canvas.captureStream(20).getVideoTracks()[0];
+	if (!firstTrack) throw new Error("canvas capture produced no track");
+	await host.replaceScreen(firstTrack);
+	await waitFor(() => video.videoWidth > 0 && video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA, 5_000);
+	const moving = await motion(video);
+	if (moving < 10_000) throw new Error(`subscribed screen is not moving (delta=${moving})`);
+
+	await host.replaceScreen(null);
+	if (firstTrack.readyState !== "ended") throw new Error("unsubscribing left the capture running");
+	await delay(300);
+	const paused = await motion(video);
+	if (paused >= 10_000) throw new Error(`frames kept arriving after unsubscribing (delta=${paused})`);
+
+	const secondTrack = canvas.captureStream(20).getVideoTracks()[0];
+	if (!secondTrack) throw new Error("canvas capture produced no track");
+	await host.replaceScreen(secondTrack);
+	await delay(300);
+	const resumed = await motion(video);
+	if (resumed < 10_000) throw new Error(`resubscribed screen is not moving (delta=${resumed})`);
+
+	const codec = await sentCodec(host);
+	if (codec !== "video/H264")
+		throw new Error(
+			`screen is not sent as H.264 (${codec}); can send ${RTCRtpSender.getCapabilities("video")
+				?.codecs.map((c) => c.mimeType)
+				.join(",")}`,
+		);
+
+	viewer.close();
+	host.close();
+	return { onDemandMoving: moving, onDemandPaused: paused, onDemandResumed: resumed, onDemandCodec: codec };
+}
+
+async function sentCodec(host: RemoteDesktopHost): Promise<string | undefined> {
+	const reports = new Map<string, Record<string, unknown>>();
+	(await host.getStats()).forEach((report: Record<string, unknown>) => {
+		reports.set(String(report.id), report);
+	});
+	for (const report of reports.values()) {
+		if (report.type === "outbound-rtp" && report.kind === "video" && typeof report.codecId === "string") {
+			const mimeType = reports.get(report.codecId)?.mimeType;
+			return typeof mimeType === "string" ? mimeType : undefined;
+		}
+	}
+	return undefined;
+}
+
+async function motion(video: HTMLVideoElement): Promise<number> {
+	const first = samplePixels(video);
+	await delay(180);
+	return absolutePixelDelta(first, samplePixels(video));
 }
 
 function createAnimatedCanvas(): HTMLCanvasElement {

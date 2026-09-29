@@ -197,6 +197,33 @@ describe("DesktopRemoteDeviceHub", () => {
 		}
 	});
 
+	it("reports every change of a device's channels, not only coming online and going offline", async () => {
+		const seen: string[] = [];
+		const hub: DesktopRemoteDeviceHub = new DesktopRemoteDeviceHub(
+			{
+				handleRequest: async () => ({}),
+				toRemoteError: () => ({ code: "internal_error", message: "boom", retryable: false }),
+				onLinksChanged: (deviceId) => seen.push(hub.onlineChannels(deviceId).sort().join("+") || "none"),
+			},
+			{ offlineGraceMs: 5 },
+		);
+		const lan = link(hub, "device-1", "lan");
+		await lan.desktop.connect();
+		await lan.phone.connect();
+		const p2p = link(hub, "device-1", "p2p");
+		await p2p.desktop.connect();
+		await p2p.phone.connect();
+		await settle();
+		expect(seen.at(-1)).toBe("lan+p2p");
+
+		await p2p.desktop.close();
+		await settle();
+		expect(seen.at(-1)).toBe("lan");
+
+		await hub.drop("device-1");
+		expect(seen.at(-1)).toBe("none");
+	});
+
 	it("answers a failing request with the mapped protocol error", async () => {
 		const hub = new DesktopRemoteDeviceHub(
 			{

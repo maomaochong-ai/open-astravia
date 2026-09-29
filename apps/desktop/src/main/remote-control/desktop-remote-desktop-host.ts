@@ -13,6 +13,11 @@ export interface DesktopRemoteDesktopHostOptions {
 	readonly pairingToken?: string;
 	readonly signalingTarget?: string;
 	readonly inputEnabled: boolean;
+	/**
+	 * Capture only while a phone subscribes through `setScreen` (ADR-0140). Off for a
+	 * phone that does not declare `screen`: it expects the screen for the whole session.
+	 */
+	readonly screenOnDemand?: boolean;
 	readonly appRoot: string;
 	readonly isPackaged: boolean;
 	readonly devServerUrl?: string;
@@ -22,12 +27,18 @@ export interface DesktopRemoteDesktopHostHandle {
 	readonly sessionId: string;
 	readonly inputSupported: boolean;
 	readonly controlTransport: RemoteTransport;
+	/** Starts or stops capturing; resolves to whether frames now flow. A host sharing for the whole session always does. */
+	setScreen(active: boolean): Promise<boolean>;
+	/** Builds the input adapter again if it was unsupported, e.g. before Accessibility was granted. */
+	refreshInput(): boolean;
 	revokeInput(): void;
 	grantInput(): void;
 	stop(): Promise<void>;
 }
 
 const log = getAppLogger("remote-desktop-host");
+/** Starting a capture shows no prompt here, so anything longer means it hung. */
+const SCREEN_REQUEST_TIMEOUT_MS = 10_000;
 let activeHost: DesktopRemoteDesktopHostHandle | undefined;
 
 /** Starts the hidden renderer only when an explicit relay target is configured. */
@@ -37,8 +48,9 @@ export async function startDesktopRemoteDesktopHost(
 	if (activeHost) return activeHost;
 	const sessionId =
 		remoteDesktopSessionId(options.signalingTarget ?? options.signalingUrl ?? "") ?? `desktop-${randomUUID()}`;
-	const input = createSystemInputAdapter({ enabled: options.inputEnabled });
-	input.setEnabled(options.inputEnabled);
+	let inputEnabled = options.inputEnabled;
+	let input = createSystemInputAdapter({ enabled: inputEnabled });
+	input.setEnabled(inputEnabled);
 	const paths = resolveDesktopRemoteDesktopHostPaths(options);
 	const window = new BrowserWindow({
 		show: false,
@@ -88,10 +100,70 @@ export async function startDesktopRemoteDesktopHost(
 	ipcMain.on("vetta:remote-desktop:control-open", onControlOpen);
 	ipcMain.on("vetta:remote-desktop:control-message", onControlMessage);
 	ipcMain.on("vetta:remote-desktop:control-close", onControlClose);
+	// The page asks for the screen itself; it reloads when signaling drops, so it says when
+	// it is listening and gets the screen again if a phone still wants it.
+	let screenWanted = false;
+	let screenReady = false;
+	let screenRequests = 0;
+	const screenWaiters = new Map<number, (streaming: boolean) => void>();
+	const readyWaiters = new Set<() => void>();
+	const requestScreen = (active: boolean): Promise<boolean> =>
+		new Promise((resolve) => {
+			if (window.isDestroyed()) {
+				resolve(false);
+				return;
+			}
+			const id = ++screenRequests;
+			const timer = setTimeout(() => {
+				screenWaiters.delete(id);
+				log.warn("remote desktop screen request timed out", { sessionId, active });
+				resolve(false);
+			}, SCREEN_REQUEST_TIMEOUT_MS);
+			screenWaiters.set(id, (streaming) => {
+				clearTimeout(timer);
+				resolve(streaming);
+			});
+			window.webContents.send("vetta:remote-desktop:screen", { id, active });
+		});
+	const onScreenReady = (event: Electron.IpcMainEvent): void => {
+		if (event.sender.id !== window.webContents.id) return;
+		screenReady = true;
+		for (const waiter of readyWaiters) waiter();
+		readyWaiters.clear();
+		if (screenWanted) void requestScreen(true);
+	};
+	const onScreenResult = (event: Electron.IpcMainEvent, id: unknown, streaming: unknown): void => {
+		if (event.sender.id !== window.webContents.id || typeof id !== "number") return;
+		screenWaiters.get(id)?.(streaming === true);
+		screenWaiters.delete(id);
+	};
+	const waitForScreenReady = (): Promise<boolean> =>
+		screenReady
+			? Promise.resolve(true)
+			: new Promise((resolve) => {
+					const done = (): void => {
+						clearTimeout(timer);
+						resolve(true);
+					};
+					const timer = setTimeout(() => {
+						readyWaiters.delete(done);
+						resolve(false);
+					}, SCREEN_REQUEST_TIMEOUT_MS);
+					readyWaiters.add(done);
+				});
+	ipcMain.on("vetta:remote-desktop:screen-ready", onScreenReady);
+	ipcMain.on("vetta:remote-desktop:screen-result", onScreenResult);
+	window.webContents.on("did-start-loading", () => {
+		screenReady = false;
+	});
 	const removeControlListeners = (): void => {
 		ipcMain.removeListener("vetta:remote-desktop:control-open", onControlOpen);
 		ipcMain.removeListener("vetta:remote-desktop:control-message", onControlMessage);
 		ipcMain.removeListener("vetta:remote-desktop:control-close", onControlClose);
+		ipcMain.removeListener("vetta:remote-desktop:screen-ready", onScreenReady);
+		ipcMain.removeListener("vetta:remote-desktop:screen-result", onScreenResult);
+		for (const waiter of screenWaiters.values()) waiter(false);
+		screenWaiters.clear();
 	};
 	let displayMediaHandlerInstalled = false;
 	try {
@@ -129,14 +201,15 @@ export async function startDesktopRemoteDesktopHost(
 		displayMediaHandlerInstalled = true;
 
 		const target = options.signalingTarget ?? `${options.signalingUrl}#${options.pairingToken}`;
+		const screen = options.screenOnDemand ? "demand" : "always";
 		if (options.isPackaged) {
 			await window.loadFile(paths.pagePath, {
-				query: { target, sessionId },
+				query: { target, sessionId, screen },
 			});
 		} else {
 			const page = `${options.devServerUrl ?? "http://127.0.0.1:3020"}/remote-desktop-host.html`;
 			await window.loadURL(
-				`${page}?target=${encodeURIComponent(target)}&sessionId=${encodeURIComponent(sessionId)}`,
+				`${page}?target=${encodeURIComponent(target)}&sessionId=${encodeURIComponent(sessionId)}&screen=${screen}`,
 			);
 		}
 	} catch (error) {
@@ -148,16 +221,43 @@ export async function startDesktopRemoteDesktopHost(
 		if (!window.isDestroyed()) window.destroy();
 		throw error;
 	}
-	log.info("remote desktop host started", { sessionId, inputEnabled: input.supported });
+	log.info("remote desktop host started", {
+		sessionId,
+		inputEnabled: input.supported,
+		screenOnDemand: options.screenOnDemand === true,
+	});
 
 	const handle: DesktopRemoteDesktopHostHandle = {
 		sessionId,
-		inputSupported: input.supported,
+		get inputSupported() {
+			return input.supported;
+		},
 		controlTransport,
+		async setScreen(active) {
+			if (!options.screenOnDemand) return true;
+			screenWanted = active;
+			if (!(await waitForScreenReady())) return false;
+			// A later request may have changed what is wanted while this one waited.
+			if (screenWanted !== active) return screenWanted;
+			const streaming = await requestScreen(active);
+			log.info("remote desktop screen subscription", { sessionId, active, streaming });
+			return streaming;
+		},
+		refreshInput() {
+			if (input.supported) return true;
+			const next = createSystemInputAdapter({ enabled: inputEnabled });
+			if (next.supported) {
+				input = next;
+				log.info("remote desktop input became available", { sessionId });
+			}
+			return input.supported;
+		},
 		revokeInput() {
+			inputEnabled = false;
 			input.setEnabled(false);
 		},
 		grantInput() {
+			inputEnabled = true;
 			input.setEnabled(true);
 		},
 		async stop() {

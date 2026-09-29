@@ -31,9 +31,10 @@ export function listLanEndpoints(
 }
 
 function rankInterface(name: string, address: string): number {
-	// Virtual adapters (Docker bridges, VPN tunnels, VM host-only networks)
-	// carry addresses a phone can never reach; keep them but try them last.
-	if (/^(docker|br-|veth|utun|tun|tap|vmnet|vboxnet|zt|tailscale|wg)/i.test(name)) return 3;
+	// Virtual adapters (Docker bridges, VPN tunnels, VM host-only networks; on
+	// macOS every VM or container runtime adds a bridgeNNN) carry addresses a
+	// phone can almost never reach; keep them but try them last.
+	if (/^(docker|br-|bridge|veth|utun|tun|tap|vmnet|vboxnet|zt|tailscale|wg)/i.test(name)) return 3;
 	if (address.startsWith("192.168.")) return 0;
 	if (address.startsWith("10.")) return 1;
 	if (/^172\.(1[6-9]|2\d|3[01])\./.test(address)) return 1;

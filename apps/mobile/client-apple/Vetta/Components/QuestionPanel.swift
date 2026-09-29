@@ -167,6 +167,7 @@ struct QuestionPanel: View {
 				), axis: .vertical)
 				.lineLimit(1 ... 4)
 				.focused($otherFocused)
+				.tint(Theme.selection)
 				.accessibilityIdentifier("question.otherField")
 			}
 		}

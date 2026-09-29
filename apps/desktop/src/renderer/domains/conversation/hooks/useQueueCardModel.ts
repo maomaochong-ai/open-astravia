@@ -1,4 +1,3 @@
-import { markQueueEntrySelfRemoved } from "@domains/conversation/services/queue-mirror";
 import { isCompactingAtom } from "@shared/store/atoms";
 import {
 	getQueueForSession,
@@ -55,9 +54,6 @@ export function useQueueCardModel(runtimeId: string): QueueCardModel {
 
 	const onRemove = useCallback(
 		(id: string) => {
-			// 先记账再发 IPC：queue.changed 可能先于 invoke 返回到达，
-			// 记账保证该条目不被误判为「已消费」而补出用户气泡。
-			markQueueEntrySelfRemoved(id);
 			setQueue({ runtimeId, items: fullItems.filter((item) => item.id !== id) });
 			void window.vetta.session.removeQueuedMessage(runtimeId, id).catch((err) => {
 				console.warn("[useQueueCardModel] remove failed", err);

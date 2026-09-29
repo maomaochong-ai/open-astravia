@@ -13,11 +13,11 @@
         "svg-viewer",
         "chart-renderer",
         "git",
+        "scripts",
         "plugin-workbench",
         "comfyui-media-provider",
         "content-creation",
-        "browser",
-        "build-apple-apps"
+        "browser"
       ]
     },
     "production": {
@@ -31,9 +31,9 @@
         "svg-viewer",
         "chart-renderer",
         "git",
+        "scripts",
         "plugin-workbench",
-        "browser",
-        "build-apple-apps"
+        "browser"
       ]
     }
   }

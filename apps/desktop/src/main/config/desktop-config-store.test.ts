@@ -61,14 +61,91 @@ describe("defaultAgentMode 兼容旧字段名", () => {
 	});
 });
 
+describe("desktop config schema migration", () => {
+	it("migrates an unversioned config to v2 and writes the new preferences back", async () => {
+		const store = await loadStoreWithConfig({ projects: [], fieldFromNewerVersion: { keep: true } });
+		const config = await store.readDesktopConfig();
+		expect(config.schemaVersion).toBe(2);
+		expect(config.notificationPreferences).toEqual({
+			soundEnabled: true,
+			systemScope: "away-from-session",
+			soundScope: "always",
+			soundVolume: 60,
+			events: {
+				completed: { systemEnabled: true, soundId: "soft-chime" },
+				failed: { systemEnabled: true, soundId: "soft-chime" },
+				actionRequired: { systemEnabled: true, soundId: "soft-chime" },
+			},
+		});
+		expect(await store.readDisk()).toMatchObject({
+			schemaVersion: 2,
+			fieldFromNewerVersion: { keep: true },
+		});
+	});
+
+	it("normalizes invalid notification preferences", async () => {
+		const store = await loadStoreWithConfig({
+			schemaVersion: 2,
+			notificationPreferences: {
+				systemScope: "sometimes",
+				soundScope: "always",
+				soundVolume: 150,
+				events: { completed: { systemEnabled: false, soundId: "from-disk" } },
+			},
+		});
+		expect((await store.readDesktopConfig()).notificationPreferences).toEqual({
+			soundEnabled: true,
+			systemScope: "away-from-session",
+			soundScope: "always",
+			soundVolume: 100,
+			events: {
+				completed: { systemEnabled: false, soundId: "soft-chime" },
+				failed: { systemEnabled: true, soundId: "soft-chime" },
+				actionRequired: { systemEnabled: true, soundId: "soft-chime" },
+			},
+		});
+	});
+
+	it("preserves a future schema and unknown fields across read-modify-write", async () => {
+		const store = await loadStoreWithConfig({
+			schemaVersion: 7,
+			future: { keep: true },
+			notificationPreferences: {
+				systemScope: "always",
+				soundScope: "always",
+				soundVolume: 50,
+				futurePreference: "keep",
+				events: {
+					completed: { systemEnabled: true, soundId: null, futureEventPreference: "keep" },
+					futureEvent: { future: true },
+				},
+			},
+		});
+		const config = await store.readDesktopConfig();
+		expect(config.schemaVersion).toBe(7);
+		await store.updateDesktopConfig((current) => ({ ...current, debugMode: true }));
+		expect(await store.readDisk()).toMatchObject({
+			schemaVersion: 7,
+			future: { keep: true },
+			debugMode: true,
+			notificationPreferences: {
+				futurePreference: "keep",
+				events: {
+					completed: { futureEventPreference: "keep" },
+					futureEvent: { future: true },
+				},
+			},
+		});
+	});
+});
+
 describe("写回配置不丢本版本不认识的字段", () => {
 	// 新旧版本共用同一份 ~/.vetta：旧版读配置时按白名单解析，不认识的字段（如 0.5.58 之于
 	// sshHosts）不进内存，随后任何一次写回都会把它从磁盘上抹掉。
 	it("读改写之后，磁盘上未知字段原样保留", async () => {
 		const future = { hosts: [{ id: "h1", target: "user@example" }] };
 		const store = await loadStoreWithConfig({ projects: [], fieldFromNewerVersion: future });
-		const config = await store.readDesktopConfig();
-		await store.writeDesktopConfig({ ...config, debugMode: true });
+		await store.updateDesktopConfig((current) => ({ ...current, debugMode: true }));
 		const disk = await store.readDisk();
 		expect(disk.fieldFromNewerVersion).toEqual(future);
 		expect(disk.debugMode).toBe(true);
@@ -76,9 +153,69 @@ describe("写回配置不丢本版本不认识的字段", () => {
 
 	it("已知字段显式置空仍能删除", async () => {
 		const store = await loadStoreWithConfig({ projects: [], remoteControl: { cloudEnabled: true, devices: [] } });
-		const config = await store.readDesktopConfig();
-		await store.writeDesktopConfig({ ...config, remoteControl: undefined });
+		await store.updateDesktopConfig((current) => ({ ...current, remoteControl: undefined }));
 		expect((await store.readDisk()).remoteControl).toBeUndefined();
+	});
+
+	it("并发更新不同字段时在最新配置上依次执行", async () => {
+		const store = await loadStoreWithConfig({ projects: [], debugMode: false, language: "zh-CN" });
+		let releaseFirst!: () => void;
+		const firstCanFinish = new Promise<void>((resolve) => {
+			releaseFirst = resolve;
+		});
+		let firstStarted!: () => void;
+		const firstDidStart = new Promise<void>((resolve) => {
+			firstStarted = resolve;
+		});
+
+		const first = store.updateDesktopConfig(async (current) => {
+			firstStarted();
+			await firstCanFinish;
+			return { ...current, debugMode: true };
+		});
+		await firstDidStart;
+		const second = store.updateDesktopConfig((current) => ({ ...current, language: "en" }));
+		releaseFirst();
+
+		await Promise.all([first, second]);
+		expect(await store.readDisk()).toMatchObject({ debugMode: true, language: "en" });
+	});
+
+	it("读取会等待排在它前面的配置更新并返回最新快照", async () => {
+		const store = await loadStoreWithConfig({ projects: [], debugMode: false });
+		let releaseUpdate!: () => void;
+		const updateCanFinish = new Promise<void>((resolve) => {
+			releaseUpdate = resolve;
+		});
+		let updateStarted!: () => void;
+		const updateDidStart = new Promise<void>((resolve) => {
+			updateStarted = resolve;
+		});
+
+		const update = store.updateDesktopConfig(async (current) => {
+			updateStarted();
+			await updateCanFinish;
+			return { ...current, debugMode: true };
+		});
+		await updateDidStart;
+		const read = store.readDesktopConfig();
+		releaseUpdate();
+
+		await expect(update).resolves.toMatchObject({ debugMode: true });
+		await expect(read).resolves.toMatchObject({ debugMode: true });
+	});
+
+	it("一次更新失败不会阻断后续配置更新", async () => {
+		const store = await loadStoreWithConfig({ projects: [], debugMode: false });
+
+		const failed = store.updateDesktopConfig(() => {
+			throw new Error("injected failure");
+		});
+		const recovered = store.updateDesktopConfig((current) => ({ ...current, debugMode: true }));
+
+		await expect(failed).rejects.toThrow("injected failure");
+		await expect(recovered).resolves.toMatchObject({ debugMode: true });
+		expect(await store.readDisk()).toMatchObject({ debugMode: true });
 	});
 });
 
@@ -99,19 +236,18 @@ describe("SSH 主机单独存放，旧版本整份覆盖 desktop-config 也抹�
 		const store = await loadStoreWithConfig({ projects: [], sshHosts: [host] });
 		const config = await store.readDesktopConfig();
 		expect(config.sshHosts).toEqual([host]);
-		await store.writeDesktopConfig({ ...config, debugMode: true });
+		await store.updateDesktopConfig((current) => ({ ...current, debugMode: true }));
 		expect((await store.readDisk()).sshHosts).toBeUndefined();
 		await store.overwriteDisk({ projects: [] });
 		expect((await store.readDesktopConfig()).sshHosts).toEqual([host]);
 	});
 
-	it("其他设置写回时带着的旧主机快照不会盖掉刚改过的主机列表", async () => {
+	it("其他设置更新不会盖掉刚改过的主机列表", async () => {
 		const store = await loadStoreWithConfig({ projects: [] });
 		await store.writeSshHosts([host]);
-		const stale = await store.readDesktopConfig();
 		const moved = { ...host, target: "build-02" };
 		await store.writeSshHosts([moved]);
-		await store.writeDesktopConfig({ ...stale, debugMode: true });
+		await store.updateDesktopConfig((current) => ({ ...current, debugMode: true }));
 		expect((await store.readDesktopConfig()).sshHosts).toEqual([moved]);
 	});
 });

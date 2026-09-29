@@ -316,4 +316,20 @@ describe("文件树操作（在真实 shell 上执行）", () => {
 		const command = buildListFilesRecursiveCommand(dir, { ignoredDirectoryNames: [], limit: 2 });
 		expect(run(command).stdout.trim().split("\n")).toHaveLength(2);
 	});
+
+	it("按文件名筛选时上限只算命中项，忽略目录里的同名文件不会混进来", () => {
+		const dir = mkdtempSync(join(tmpdir(), "vetta-walk-"));
+		for (const sub of ["a/src", "b", "node_modules/x"]) mkdirSync(join(dir, sub), { recursive: true });
+		for (let index = 0; index < 5; index++) writeFileSync(join(dir, `a/src/f${index}.ts`), "");
+		writeFileSync(join(dir, "a/package.json"), "");
+		writeFileSync(join(dir, "b/Makefile"), "");
+		writeFileSync(join(dir, "node_modules/x/package.json"), "");
+
+		const command = buildListFilesRecursiveCommand(dir, {
+			ignoredDirectoryNames: ["node_modules"],
+			limit: 2,
+			names: ["package.json", "Makefile"],
+		});
+		expect(run(command).stdout.trim().split("\n").sort()).toEqual(["./a/package.json", "./b/Makefile"]);
+	});
 });

@@ -10,6 +10,8 @@ export interface VersionedConfigMigrationOptions {
 	readonly currentVersion: number;
 	readonly initialVersion?: number;
 	readonly migrations: readonly VersionedConfigMigration[];
+	/** How to handle data written by a newer application version. Defaults to fail closed. */
+	readonly futureVersionPolicy?: "throw" | "preserve";
 }
 
 export interface VersionedConfigMigrationResult {
@@ -69,6 +71,9 @@ export function migrateVersionedConfig(
 	}
 
 	if (version > options.currentVersion) {
+		if (options.futureVersionPolicy === "preserve") {
+			return { config, migrated: false };
+		}
 		throw new Error(`Unsupported config version v${version}; current version is v${options.currentVersion}`);
 	}
 

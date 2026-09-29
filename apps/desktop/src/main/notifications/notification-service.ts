@@ -1,13 +1,18 @@
 import { readFile } from "node:fs/promises";
-import { Notification, type WebContents } from "electron";
+import { Notification, shell, type WebContents } from "electron";
+import type { NotificationEventType } from "../../shared/notification-preferences.js";
 import { mainT } from "../i18n/index.js";
 import { readConfigSync } from "../ipc/fs.js";
+import { PANE_URLS } from "../ipc/permission-panes.js";
 import { getMainWindow, iconPath, showMainWindow } from "../window-manager.js";
+import { decideNotificationDelivery } from "./notification-policy.js";
 
 /** 渲染端→主进程：上报聊天页当前所在 session（离开聊天页传 null）。 */
 export const NOTIFICATION_SET_FOREGROUND_CHANNEL = "vetta:notification:set-foreground-session";
 /** 主进程→渲染端：用户点击系统通知后下发的路由意图。 */
 export const NOTIFICATION_NAVIGATE_CHANNEL = "vetta:notification:navigate";
+/** 主进程→渲染端：播放经过策略判定的内置提示音。 */
+export const NOTIFICATION_SOUND_CHANNEL = "vetta:notification:sound";
 
 /**
  * 系统通知的判别联合（见 CONTEXT.md「通知类型」）。横向扩充新类型时，
@@ -39,6 +44,13 @@ export type AppNotification =
 			type: "remote-pairing-request";
 			deviceName: string;
 			code: string;
+	  }
+	| {
+			/** 手机打开了远程桌面，但 macOS 没给屏幕录制或辅助功能权限（ADR-0140）。 */
+			type: "remote-screen-permission";
+			deviceName: string;
+			screen: boolean;
+			input: boolean;
 	  };
 
 /** 点击通知后推给渲染端的路由意图（按 type 分流）。 */
@@ -56,6 +68,8 @@ interface NotificationDescriptor {
 	/** 同 key 的通知互相替换（合并为一条）。 */
 	coalesceKey: string;
 	navigate: NotificationNavigatePayload;
+	/** 点击后改为打开这个地址（如系统设置的隐私面板），不再切回应用。 */
+	openUrl?: string;
 }
 
 let webContents: WebContents | null = null;
@@ -95,7 +109,16 @@ function shouldSuppress(n: AppNotification): boolean {
 		case "remote-pairing-request":
 			// 安全提示永远弹：它的意义就是让用户知道有设备接入。
 			return false;
+		case "remote-screen-permission":
+			// 手机那头正等着画面，不弹就没人知道该去授权。
+			return false;
 	}
+}
+
+function getAgentEvent(n: AppNotification): NotificationEventType | null {
+	if (n.type === "agent-question-pending") return "actionRequired";
+	if (n.type === "agent-turn-complete") return n.outcome === "error" ? "failed" : "completed";
+	return null;
 }
 
 async function buildDescriptor(n: AppNotification): Promise<NotificationDescriptor> {
@@ -131,14 +154,44 @@ async function buildDescriptor(n: AppNotification): Promise<NotificationDescript
 				coalesceKey: "remote-pairing-request",
 				navigate: { type: "remote-settings" },
 			};
+		case "remote-screen-permission": {
+			const key = n.screen && n.input ? "Both" : n.screen ? "Screen" : "Input";
+			return {
+				title: mainT("notification.remoteScreenPermissionTitle"),
+				body: mainT(`notification.remoteScreenPermission${key}`, { device: n.deviceName }),
+				coalesceKey: "remote-screen-permission",
+				navigate: { type: "remote-settings" },
+				// 屏幕录制缺了就先去那里：没有它手机什么也看不到。
+				openUrl: PANE_URLS[n.screen ? "screen-recording" : "accessibility"],
+			};
+		}
 	}
 }
 
 export async function notify(n: AppNotification): Promise<void> {
-	if (!Notification.isSupported()) return;
-	// 全局总开关（「通用设置」），默认开；显式 false 才静默。
-	if (readConfigSync().notificationsEnabled === false) return;
-	if (shouldSuppress(n)) return;
+	const config = readConfigSync();
+	const agentEvent = getAgentEvent(n);
+	if (agentEvent) {
+		const win = getMainWindow();
+		const decision = decideNotificationDelivery(agentEvent, config.notificationPreferences, {
+			windowFocused: win?.isFocused() ?? false,
+			viewingTargetSession:
+				(n.type === "agent-turn-complete" || n.type === "agent-question-pending") &&
+				foregroundSessionPath === n.sessionPath,
+			systemNotificationsEnabled: config.notificationsEnabled !== false,
+			systemNotificationsSupported: Notification.isSupported(),
+		});
+		if (decision.soundId && webContents && !webContents.isDestroyed()) {
+			webContents.send(NOTIFICATION_SOUND_CHANNEL, {
+				soundId: decision.soundId,
+				volume: decision.volume,
+			});
+		}
+		if (!decision.showSystemNotification) return;
+	} else {
+		// 设备接入和配对属于安全提示，保持原有系统通知行为和总开关语义。
+		if (!Notification.isSupported() || config.notificationsEnabled === false || shouldSuppress(n)) return;
+	}
 
 	const desc = await buildDescriptor(n);
 
@@ -149,11 +202,17 @@ export async function notify(n: AppNotification): Promise<void> {
 		title: desc.title,
 		body: desc.body,
 		icon: iconPath[process.platform],
+		// Agent 通知的声音由应用内播放器负责，避免与 OS 声音叠加并允许调节音量。
+		silent: agentEvent !== null,
 	});
 	activeNotifications.set(desc.coalesceKey, notification);
 
 	notification.on("click", () => {
 		activeNotifications.delete(desc.coalesceKey);
+		if (desc.openUrl) {
+			void shell.openExternal(desc.openUrl);
+			return;
+		}
 		showMainWindow();
 		if (webContents && !webContents.isDestroyed()) {
 			webContents.send(NOTIFICATION_NAVIGATE_CHANNEL, desc.navigate);

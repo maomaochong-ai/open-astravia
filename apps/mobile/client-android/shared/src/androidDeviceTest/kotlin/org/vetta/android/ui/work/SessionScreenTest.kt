@@ -13,6 +13,9 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeDown
+import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Rule
 import org.junit.runner.RunWith
@@ -136,7 +139,7 @@ class SessionScreenTest {
         val actions = RecordingActions()
         composeRule.setContent {
             VettaTheme(ThemeMode.Light) {
-                SessionScreen("s1", state(RemoteSessionStatus.Completed, finishedTurn), PromptDraft(), actions, onBack = {})
+                SessionScreen("s1", state(RemoteSessionStatus.Completed, finishedTurn), PromptDraft(), actions, onOpenHome = {})
             }
         }
         composeRule.onNodeWithText("整理周报").assertIsDisplayed()
@@ -163,13 +166,15 @@ class SessionScreenTest {
             }
         composeRule.setContent {
             VettaTheme(ThemeMode.Light) {
-                SessionScreen("s1", current, typed, typing, onBack = {})
+                SessionScreen("s1", current, typed, typing, onOpenHome = {})
             }
         }
         composeRule.onNodeWithTag("composer.field").performTextInput("再写一份月报")
         composeRule.onNodeWithTag("composer.send").performClick()
         assertEquals("send s1 再写一份月报", actions.calls.last())
 
+        // The bare test activity pans for the keyboard, which the app itself does not.
+        Espresso.closeSoftKeyboard()
         current = state(RemoteSessionStatus.Running, finishedTurn)
         composeRule.onNodeWithTag("composer.stop").performClick()
         assertEquals("stop s1", actions.calls.last())
@@ -177,11 +182,41 @@ class SessionScreenTest {
     }
 
     @Test
+    fun readingHistoryIsNotInterruptedAndTheButtonReturnsToTheLatest() {
+        val history =
+            (1..30).flatMap { n ->
+                listOf(
+                    TranscriptItem.User("u$n", "问题 $n", n * 1_000L),
+                    TranscriptItem.Assistant(AssistantTurn("a$n", "回答 $n\n\n第二段 $n", "", emptyList(), false, n * 1_000L + 500)),
+                )
+            }
+        var current by mutableStateOf(state(RemoteSessionStatus.Running, history))
+        composeRule.setContent {
+            VettaTheme(ThemeMode.Light) {
+                SessionScreen("s1", current, PromptDraft(), RecordingActions(), onOpenHome = {})
+            }
+        }
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("问题 30").assertIsDisplayed()
+
+        // The user reads further up; a new reply must not pull them back down.
+        composeRule.onNodeWithTag("chat.list").performTouchInput { swipeDown(durationMillis = 300) }
+        composeRule.waitForIdle()
+        current = state(RemoteSessionStatus.Running, history + TranscriptItem.Assistant(AssistantTurn("a31", "新的回复", "", emptyList(), false, 40_000)))
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("新的回复").assertDoesNotExist()
+
+        composeRule.onNodeWithTag("chat.toBottom").performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("新的回复").assertIsDisplayed()
+    }
+
+    @Test
     fun switchesModelAndLevelFromTheTitle() {
         val actions = RecordingActions()
         composeRule.setContent {
             VettaTheme(ThemeMode.Light) {
-                SessionScreen("s1", state(RemoteSessionStatus.Completed, finishedTurn), PromptDraft(), actions, onBack = {})
+                SessionScreen("s1", state(RemoteSessionStatus.Completed, finishedTurn), PromptDraft(), actions, onOpenHome = {})
             }
         }
         composeRule.onNodeWithTag("chat.modelMenu").performClick()
@@ -211,7 +246,7 @@ class SessionScreenTest {
     fun answersEveryQuestionInTurnThenSubmits() {
         val actions = RecordingActions()
         composeRule.setContent {
-            VettaTheme(ThemeMode.Light) { SessionScreen("s1", asking(), PromptDraft(), actions, onBack = {}) }
+            VettaTheme(ThemeMode.Light) { SessionScreen("s1", asking(), PromptDraft(), actions, onOpenHome = {}) }
         }
         composeRule.onNodeWithTag("composer.field").assertDoesNotExist()
         composeRule.onNodeWithText(str(Res.string.chat_question_title)).assertIsDisplayed()
@@ -231,7 +266,7 @@ class SessionScreenTest {
     fun cancelsTheQuestion() {
         val actions = RecordingActions()
         composeRule.setContent {
-            VettaTheme(ThemeMode.Light) { SessionScreen("s1", asking(), PromptDraft(), actions, onBack = {}) }
+            VettaTheme(ThemeMode.Light) { SessionScreen("s1", asking(), PromptDraft(), actions, onOpenHome = {}) }
         }
         composeRule.onNodeWithTag("question.tab.1").performClick()
         composeRule.onNodeWithText("通知谁？").assertIsDisplayed()

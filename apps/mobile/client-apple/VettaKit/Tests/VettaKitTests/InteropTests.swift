@@ -11,6 +11,7 @@ nonisolated enum Interop {
 		let relayPort: Int
 		let invite: String
 		let relayOnlyInvite: String
+		let filesInvite: String
 	}
 
 	static let info: Info? = {
@@ -66,6 +67,37 @@ struct InteropTests {
 			#expect(turn.text.hasSuffix("好的，已按你的选择继续。"))
 			#expect(!turn.streaming)
 		}
+		model.unpair()
+	}
+
+	/// Through the relay, where a chunk has to fit the relay's message limit (ADR-0139).
+	@Test func browsesAndReadsDesktopFilesInChunksThroughTheRelay() async throws {
+		let info = try #require(Interop.info)
+		let model = AppModel(platform: Interop.platform())
+		model.start()
+		#expect(await model.pairWithCode(info.filesInvite))
+		#expect(await eventually(timeoutMs: 12_000) { model.online && model.isAvailable(.files) })
+		#expect(model.link.channel == .relay)
+
+		let root = try await model.listFiles("s-report", path: "")
+		#expect(root.path == "")
+		#expect(root.entries.map(\.name).sorted() == ["notes.txt", "out", "report.html", "weekly.md"])
+		let out = try await model.listFiles("s-report", path: "out")
+		#expect(out.entries.map(\.path).sorted() == ["out/big.bin", "out/data.csv"])
+
+		// A reply's link, exactly as written.
+		let weekly = try await model.statFile("s-report", path: "./weekly.md")
+		#expect(weekly.path == "weekly.md")
+		let text = try await model.readFile("s-report", weekly)
+		#expect(String(data: text.data, encoding: .utf8)?.hasPrefix("# 第 38 周周报") == true)
+
+		let big = try await model.statFile("s-report", path: "out/big.bin")
+		let content = try await model.readFile("s-report", big)
+		#expect(content.data.count == 1_600_000, "three chunks through the relay")
+
+		await #expect(throws: FileViewError.forbidden) { _ = try await model.statFile("s-report", path: "../.ssh/id_rsa") }
+		await #expect(throws: FileViewError.forbidden) { _ = try await model.listFiles("s-report", path: "..") }
+		await #expect(throws: FileViewError.notFound) { _ = try await model.statFile("s-report", path: "missing.md") }
 		model.unpair()
 	}
 

@@ -11,6 +11,7 @@ import type {
 	RemoteRequest,
 	RemoteSessionState,
 	RemoteSessionSummary,
+	RemoteSkillOption,
 	RemoteToolEvent,
 	RemoteTranscriptEntry,
 	RemoteUploadKind,
@@ -19,10 +20,12 @@ import { REMOTE_MAX_UPLOAD_BYTES } from "@vetta/remote-control";
 import type {
 	HistoryEntry,
 	PromptAttachmentRef,
+	PromptRequest,
 	SessionEvent,
 	SessionStateSnapshot,
 	SettingsPatch,
 } from "@vetta/runtime-core";
+import { MultipleSceneReferencesError, prepareInputPrompt } from "../../renderer/shared/lib/input-tokens/prepare.js";
 import type { DesktopSessionHistoryInfo } from "../../shared/session-access.js";
 import type {
 	DesktopConversationService,
@@ -32,6 +35,7 @@ import type { DesktopSessionCommands } from "../conversations/desktop-session-co
 import type { DesktopUserQuestionBroker } from "../conversations/user-question-broker.js";
 import { getAppLogger } from "../logger.js";
 import { RemoteOperationError } from "./remote-error-mapping.js";
+import type { RemoteFiles } from "./remote-files.js";
 import {
 	describe,
 	keyForPath,
@@ -93,12 +97,16 @@ export interface DesktopRemoteMirrorOptions {
 	readonly conversations: RemoteMirrorConversations;
 	readonly questions: RemoteMirrorQuestions;
 	readonly listProjects: () => Promise<readonly RemoteMirrorProject[]>;
+	/** Skills for the composer's picker; `cwd` is a known project, or undefined for global ones. */
+	readonly listSkills: (cwd: string | undefined) => Promise<readonly RemoteSkillOption[]>;
 	readonly conversationCwd: string;
 	readonly conversationLabel: string;
 	readonly isConversationCwd: (cwd: string) => boolean;
 	readonly emit: (name: RemoteEventName, payload?: unknown, sessionId?: string) => Promise<void>;
 	readonly deviceStatus: () => RemoteDeviceStatus;
 	readonly saveUpload: RemoteUploadWriter;
+	/** Lists and reads files for the phone, relative to a session's working directory (ADR-0139). */
+	readonly files: Pick<RemoteFiles, "list" | "stat" | "read">;
 	/** Rename and delete exactly as the sidebar does, cleanup included. */
 	readonly sessionCommands: Pick<DesktopSessionCommands, "rename" | "delete">;
 	readonly pins: RemoteMirrorPins;
@@ -244,8 +252,9 @@ export class DesktopRemoteMirror {
 				const payload = asRecord(request.payload);
 				const text = typeof payload.text === "string" ? payload.text : "";
 				if (!text.trim()) throw new RemoteOperationError("invalid_frame", "prompt text is required");
+				const prepared = prepareRemotePrompt(text);
 				const attachments = this.takeUploads(handle, payload.attachments);
-				await this.prompt(handle, text, attachments);
+				await this.prompt(handle, text, prepared, attachments);
 				return { accepted: true };
 			}
 			case "session.upload": {
@@ -257,6 +266,8 @@ export class DesktopRemoteMirror {
 				const tracked = await this.ensureOpen(handle, false);
 				return { models: this.modelOptions(tracked.sessionId) };
 			}
+			case "skill.list":
+				return { skills: await this.options.listSkills(await this.skillScope(request.payload)) };
 			case "session.configure": {
 				const handle = this.requireHandle(request.sessionId);
 				const tracked = await this.ensureOpen(handle, true);
@@ -308,6 +319,12 @@ export class DesktopRemoteMirror {
 				return { resumed: true };
 			case "diagnostics.snapshot":
 				return this.diagnostics();
+			case "file.list":
+				return await this.options.files.list(this.requireHandle(request.sessionId).cwd, request.payload);
+			case "file.stat":
+				return await this.options.files.stat(this.requireHandle(request.sessionId).cwd, request.payload);
+			case "file.read":
+				return await this.options.files.read(this.requireHandle(request.sessionId).cwd, request.payload);
 		}
 	}
 
@@ -320,6 +337,18 @@ export class DesktopRemoteMirror {
 	}
 
 	// ---- catalog ----
+
+	/**
+	 * The phone names a project by its cwd. Only the desktop's own projects may
+	 * scope the lookup, so a phone cannot make the desktop scan arbitrary paths;
+	 * anything else, the conversation root included, gets global skills.
+	 */
+	private async skillScope(payload: unknown): Promise<string | undefined> {
+		const cwd = asRecord(payload).cwd;
+		if (typeof cwd !== "string" || !cwd.trim()) return undefined;
+		const projects = await this.options.listProjects();
+		return projects.some((project) => project.cwd === cwd) ? cwd : undefined;
+	}
 
 	private async listProjects(): Promise<RemoteProjectSummary[]> {
 		const projects = await this.options.listProjects();
@@ -604,19 +633,30 @@ export class DesktopRemoteMirror {
 		await this.options.runtime.updateSettings(sessionId, patch);
 	}
 
-	private async prompt(handle: SessionHandle, text: string, attachments: PromptAttachmentRef[] = []): Promise<void> {
+	/**
+	 * `text` is what the phone typed and is echoed as is, scene token included;
+	 * the runtime gets `prepared`, where a scene travels as `promptRef` the way
+	 * the desktop composer sends it.
+	 */
+	private async prompt(
+		handle: SessionHandle,
+		text: string,
+		prepared: PromptRequest,
+		attachments: PromptAttachmentRef[] = [],
+	): Promise<void> {
 		const tracked = await this.ensureOpen(handle, true);
 		if (this.options.runtime.getState(tracked.sessionId).isStreaming) {
 			throw new RemoteOperationError("busy", "Desktop session is already processing a turn", true);
 		}
-		tracked.pendingUserText = text;
+		// The runtime records the text without the scene token.
+		tracked.pendingUserText = prepared.text;
 		const at = this.now();
 		await this.emitMessage(handle.key, { kind: "user", text, at });
 		await this.emitState(handle.key, { status: "running" });
 		void this.options.conversations
 			.promptInteractiveSession(
 				tracked.sessionId,
-				attachments.length > 0 ? { text, attachments } : { text },
+				attachments.length > 0 ? { ...prepared, attachments } : prepared,
 				handle.cwd,
 			)
 			.catch(async (error: unknown) => {
@@ -1017,6 +1057,21 @@ function modelState(
 		modelKey: model?.provider && model.id ? `${model.provider}/${model.id}` : undefined,
 		thinkingLevel: snapshot.thinkingLevel,
 	};
+}
+
+/** Skills stay as `@skill:` text; the one scene a prompt may name becomes `promptRef`. */
+function prepareRemotePrompt(text: string): PromptRequest {
+	try {
+		const prepared = prepareInputPrompt(text);
+		return prepared.sceneName
+			? { text: prepared.text, promptRef: { kind: "scene", name: prepared.sceneName } }
+			: { text: prepared.text };
+	} catch (error) {
+		if (error instanceof MultipleSceneReferencesError) {
+			throw new RemoteOperationError("invalid_frame", "a prompt may reference one scene at most");
+		}
+		throw error;
+	}
 }
 
 function asRecord(value: unknown): Record<string, unknown> {

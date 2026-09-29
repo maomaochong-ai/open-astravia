@@ -25,6 +25,7 @@ const requestMethods = new Set([
 	"session.prompt",
 	"session.upload",
 	"model.list",
+	"skill.list",
 	"session.configure",
 	"session.rename",
 	"session.pin",
@@ -33,10 +34,15 @@ const requestMethods = new Set([
 	"session.abort",
 	"session.resume",
 	"diagnostics.snapshot",
+	"file.list",
+	"file.stat",
+	"file.read",
+	"screen.subscribe",
 ]);
 const eventNames = new Set([
 	"device.status",
 	"device.paired",
+	"device.revoked",
 	"session.list",
 	"session.state",
 	"session.message",
@@ -44,6 +50,8 @@ const eventNames = new Set([
 	"session.input",
 	"session.resync",
 	"diagnostics.updated",
+	"screen.status",
+	"screen.cursor",
 ]);
 const errorCodes = new Set([
 	"invalid_frame",
@@ -55,6 +63,9 @@ const errorCodes = new Set([
 	"request_timeout",
 	"transport_closed",
 	"internal_error",
+	"forbidden",
+	"too_large",
+	"file_changed",
 ]);
 
 /** X25519 public key: 32 bytes as unpadded base64url. */

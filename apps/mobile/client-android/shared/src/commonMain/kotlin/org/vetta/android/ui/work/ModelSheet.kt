@@ -3,6 +3,7 @@ package org.vetta.android.ui.work
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -14,9 +15,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -34,8 +37,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.resources.stringResource
 import org.vetta.android.domain.remote.RemoteModelOption
@@ -47,6 +53,7 @@ import org.vetta.android.resources.chat_thinking_level
 import org.vetta.android.resources.common_done
 import org.vetta.android.resources.new_session_default_model
 import org.vetta.android.resources.new_session_default_model_hint
+import org.vetta.android.ui.design.springClickable
 import org.vetta.android.ui.theme.vettaExtra
 
 /**
@@ -167,6 +174,38 @@ private fun LevelPicker(levels: List<String>, selected: String?, onSelect: (Stri
                         .padding(horizontal = 14.dp, vertical = 8.dp)
                         .testTag("modelSheet.level.$level"),
             )
+        }
+    }
+}
+
+/**
+ * A page's title with the model and thinking level under it, as the chat and New Session
+ * show it at the top; a dot tells whether the computer is online, and a chevron appears
+ * once there are models to pick from. Tapping it opens the model sheet.
+ */
+@Composable
+fun ModelTitle(
+    title: String,
+    detail: String,
+    online: Boolean,
+    picks: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    description: String? = null,
+) {
+    Column(
+        modifier
+            .clip(MaterialTheme.shapes.small)
+            .springClickable(enabled = enabled, pressedScale = 0.97f, onClick = onClick)
+            .then(if (description != null) Modifier.semantics { contentDescription = description } else Modifier)
+            .padding(vertical = 2.dp, horizontal = 4.dp),
+    ) {
+        Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Box(Modifier.size(6.dp).clip(CircleShape).background(if (online) MaterialTheme.workColors.green else MaterialTheme.workColors.faint))
+            Text(detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+            if (picks) Icon(Icons.Filled.KeyboardArrowDown, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

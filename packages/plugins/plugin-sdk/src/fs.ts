@@ -35,6 +35,19 @@ export interface PluginFsSaveAsOptions {
 	filters?: Array<{ name: string; extensions: string[] }>;
 }
 
+export interface PluginFsListFilesRecursiveOptions {
+	/**
+	 * Only return files whose base name is one of these (exact match, e.g.
+	 * `["package.json", "Makefile"]`). The host's result cap counts matches, so a
+	 * manifest scan in a large monorepo is not truncated by unrelated files.
+	 * Hosts older than Plugin API 2.8.0 ignore this and return every file — filter
+	 * the result yourself if you also target them.
+	 */
+	names?: readonly string[];
+	/** Extra directory names to skip, on top of the host defaults (`node_modules`, `.git`, `dist`, …). */
+	ignoredDirectories?: readonly string[];
+}
+
 export interface PluginFsApi {
 	readDir(dirPath: string): Promise<PluginFsEntry[]>;
 	readFile(filePath: string): Promise<PluginFsReadResult>;
@@ -46,7 +59,11 @@ export interface PluginFsApi {
 	delete(targetPath: string): Promise<void>;
 	move(sourcePath: string, destDir: string): Promise<void>;
 	createDirectory(dirPath: string): Promise<void>;
-	listFilesRecursive(rootPath: string): Promise<PluginFsFileRef[]>;
+	/**
+	 * Every regular file under `rootPath`, skipping dot-entries and the host's
+	 * ignored directories. Capped at 10,000 results.
+	 */
+	listFilesRecursive(rootPath: string, options?: PluginFsListFilesRecursiveOptions): Promise<PluginFsFileRef[]>;
 	/**
 	 * Write bytes to a path the user picks in the host's native save dialog.
 	 * Unlike {@link writeFile} the destination is not restricted to project

@@ -5,7 +5,15 @@ description: Select the right boundary for files and tools, then use session his
 
 ## Workspace boundaries
 
-A project workspace identifies the files and directories relevant to a task. Open the narrowest directory that contains the required context. The default conversation workspace is useful for tasks that do not need project files.
+A project workspace identifies the files and directories relevant to a task. Open the narrowest directory that contains the required context. The default Chat workspace is useful for tasks that do not need project files.
+
+A project can also live on an SSH host you can already reach from a terminal.
+
+1. Open **Settings → SSH hosts**. Add a host, or import aliases from `~/.ssh/config`. The connection target is an alias that already works, or `user@host`.
+2. When adding a project, choose **Add from remote host** and pick a directory on that machine.
+3. The Agent's commands and file changes then run on that host. The session terminal opens there too.
+
+Remote projects have no sandbox. A sandbox can constrain only processes on this computer, and remote commands run on the other machine. Deleting the host record does not delete remote files. Remove projects that still live on that host first. If the host is deleted or added again under a new identity, the project asks you to bind it again. Its sessions stay with the project.
 
 ## Session history
 
@@ -15,9 +23,9 @@ Before continuing an old session, check the current project path, model, outstan
 
 ## Ask a side question
 
-In an ordinary conversation, select message text and choose **Ask AI** from the context menu, or use the message's more menu to ask about the whole message. A small panel keeps the discussion beside its source. You can ask follow-up questions or stop an answer. Closing the panel lets the answer continue; questions and answers are saved automatically.
+In an ordinary conversation, select message text and choose **Ask AI** from the context menu. A small panel keeps the discussion beside its source. You can ask follow-up questions or stop an answer. Closing the panel lets the answer continue; questions and answers are saved automatically.
 
-Messages with saved notes show a note marker on hover or keyboard focus. Reopen it there, or choose **View Q&A notes** from a message's more menu to search questions and answers in the current conversation.
+Messages with saved notes show a note marker on hover or keyboard focus. Reopen it there, then search questions and answers in the current conversation from the note panel.
 
 Notes use a fixed text snapshot up to the source message. Existing compaction summaries replace older history. They use the conversation's current model and incur separate model usage, without reading image contents, executing tools, creating an ordinary session, or adding to the main conversation's context. Deleting the source session also deletes its notes.
 

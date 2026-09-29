@@ -371,10 +371,18 @@ export class StatelessAgentCoreTurnEngine implements TurnEnginePort {
 					queueing: true,
 					modelBinding: request.modelBinding,
 				});
-				return prepared.action === "continue" ? prepared.input : undefined;
+				if (prepared.action !== "continue") return undefined;
+				return input.request.messageId && !prepared.input.messageId
+					? { ...prepared.input, messageId: input.request.messageId }
+					: prepared.input;
 			}),
 		);
 		const admittedInputs = preparedInputs.filter((input): input is QueuedSessionInput => input !== undefined);
+		for (const input of admittedInputs) {
+			if (input.message && input.messageId) {
+				identities.set(input.message, { kind: "message", message: input.message, messageId: input.messageId });
+			}
+		}
 		const context = admittedInputs.flatMap((input) => input.context ?? []);
 		if (context.length > 0) await request.appendQueuedContext?.(context);
 		return admittedInputs.flatMap((input) => {
@@ -438,7 +446,7 @@ class AgentEventProjector {
 					type: "message",
 					message: event.message,
 					...(event.failure ? { failure: runtimeFailureFromAI(event.failure) } : {}),
-					...messageOrigin(event.message, this.identities),
+					...messageIdentity(event.message, this.identities),
 				},
 			];
 		}
@@ -457,7 +465,7 @@ class AgentEventProjector {
 							{
 								type: "message",
 								message: event.message,
-								...messageOrigin(event.message, this.identities),
+								...messageIdentity(event.message, this.identities),
 							} as const,
 						]),
 			];
@@ -817,17 +825,21 @@ function hydrateMessages(
 ): Message[] {
 	return envelopes.map((envelope) => {
 		const message = envelopeToPlaceholder(envelope);
-		if (envelope.kind !== "message" || envelope.origin) identities.set(message, envelope);
+		if (envelope.kind !== "message" || envelope.origin || envelope.messageId) identities.set(message, envelope);
 		return message;
 	});
 }
 
-function messageOrigin(
+function messageIdentity(
 	message: Message,
 	identities: WeakMap<object, RuntimeMessageEnvelope>,
-): Pick<Extract<TurnEngineEvent, { readonly type: "message" }>, "origin"> | Record<never, never> {
+): Pick<Extract<TurnEngineEvent, { readonly type: "message" }>, "messageId" | "origin"> {
 	const envelope = identities.get(message);
-	return envelope?.kind === "message" && envelope.origin ? { origin: envelope.origin } : {};
+	if (envelope?.kind !== "message") return {};
+	return {
+		...(envelope.messageId ? { messageId: envelope.messageId } : {}),
+		...(envelope.origin ? { origin: envelope.origin } : {}),
+	};
 }
 
 function isContinuationMessage(

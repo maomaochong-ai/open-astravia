@@ -1,13 +1,13 @@
 import {
 	activeBottomPanelTab,
-	activeSessionCwdAtom,
 	type BottomPanelSessionState,
-	bottomPanelStateAtom,
-	dispatchBottomPanelAtom,
+	bottomPanelStateAtomFamily,
+	dispatchBottomPanelAtomFamily,
 	latestBottomPanelTabOf,
 } from "@shared/store/atoms";
+import type { WorkSurfaceScope } from "@shared/workspace/work-surface";
 import { parseProjectLocation } from "@vetta/ssh-transport/project-uri";
-import { atom, useAtomValue, useSetAtom } from "jotai";
+import { type Atom, atom, useAtomValue, useSetAtom, type WritableAtom } from "jotai";
 import { useCallback, useMemo } from "react";
 import { TERMINAL_PANEL_ID } from "../builtins";
 import { bottomPanelFocusRequestAtom } from "../registry/instance-atoms";
@@ -46,35 +46,61 @@ function newId(prefix: string): string {
 }
 
 /** 派生成布尔再订阅：布局里拖高度、改 payload 之类的变化不该让头部按钮跟着重渲。 */
-const terminalFocusedAtom = atom((get) => isTerminalFocused(get(bottomPanelStateAtom)));
+const terminalFocusedAtoms = new Map<string, Atom<boolean>>();
+
+function terminalFocusedAtomFamily(scopeKey: string): Atom<boolean> {
+	const existing = terminalFocusedAtoms.get(scopeKey);
+	if (existing) return existing;
+	const created = atom((get) => isTerminalFocused(get(bottomPanelStateAtomFamily(scopeKey))));
+	terminalFocusedAtoms.set(scopeKey, created);
+	return created;
+}
 
 /** 在写 atom 里现读布局，而不是闭包捕获——这样 `open` 不必随布局每次变化换引用。 */
-const openTerminalAtom = atom(null, (get, set) => {
-	const plan = planOpenTerminal(get(bottomPanelStateAtom));
-	if (plan.kind === "noop") return;
-	if (plan.kind === "activate") {
-		set(dispatchBottomPanelAtom, { type: "set-collapsed", collapsed: false });
-		set(dispatchBottomPanelAtom, { type: "activate-tab", tabId: plan.tabId });
-		set(bottomPanelFocusRequestAtom, plan.tabId);
-		return;
-	}
-	const tabId = newId("tab");
-	set(dispatchBottomPanelAtom, { type: "open-tab", tabId, componentId: TERMINAL_PANEL_ID, newLeafId: newId("leaf") });
-	set(bottomPanelFocusRequestAtom, tabId);
-});
+const openTerminalAtoms = new Map<string, WritableAtom<null, [], void>>();
+
+function openTerminalAtomFamily(scopeKey: string): WritableAtom<null, [], void> {
+	const existing = openTerminalAtoms.get(scopeKey);
+	if (existing) return existing;
+	const created = atom(null, (get, set) => {
+		const stateAtom = bottomPanelStateAtomFamily(scopeKey);
+		const dispatchAtom = dispatchBottomPanelAtomFamily(scopeKey);
+		const plan = planOpenTerminal(get(stateAtom));
+		if (plan.kind === "noop") return;
+		if (plan.kind === "activate") {
+			set(dispatchAtom, { type: "set-collapsed", collapsed: false });
+			set(dispatchAtom, { type: "activate-tab", tabId: plan.tabId });
+			set(bottomPanelFocusRequestAtom, plan.tabId);
+			return;
+		}
+		const tabId = newId("tab");
+		set(dispatchAtom, {
+			type: "open-tab",
+			tabId,
+			componentId: TERMINAL_PANEL_ID,
+			newLeafId: newId("leaf"),
+		});
+		set(bottomPanelFocusRequestAtom, tabId);
+	});
+	openTerminalAtoms.set(scopeKey, created);
+	return created;
+}
 
 /**
  * 「一步到位打开终端」。与面板里「+」新建终端走同一个 `open-tab`，
  * 只是多了「已有就复用」与「把键盘焦点送进去」两步。
  */
-export function useOpenTerminal(): OpenTerminalEntry {
-	const focused = useAtomValue(terminalFocusedAtom);
-	const cwd = useAtomValue(activeSessionCwdAtom);
-	const runOpen = useSetAtom(openTerminalAtom);
-	const capabilities = useTerminalCapabilities();
+export function useOpenTerminal(scope: WorkSurfaceScope | null): OpenTerminalEntry {
+	const scopeKey = scope?.key ?? "bottom-panel:unbound";
+	const focused = useAtomValue(terminalFocusedAtomFamily(scopeKey));
+	const runOpen = useSetAtom(openTerminalAtomFamily(scopeKey));
+	const capabilities = useTerminalCapabilities(Boolean(scope));
 
-	const remoteSession = useMemo(() => (cwd ? parseProjectLocation(cwd).kind === "ssh" : false), [cwd]);
-	const available = remoteSession || capabilities.localPty;
+	const remoteSession = useMemo(
+		() => (scope?.cwd ? parseProjectLocation(scope.cwd).kind === "ssh" : false),
+		[scope?.cwd],
+	);
+	const available = Boolean(scope) && (remoteSession || capabilities.localPty);
 
 	const open = useCallback(() => {
 		if (available) runOpen();

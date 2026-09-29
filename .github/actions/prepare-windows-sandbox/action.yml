@@ -1,0 +1,65 @@
+name: Prepare Windows sandbox
+description: Build and stage the pinned Codex Windows sandbox binaries for Desktop packaging.
+
+runs:
+  using: composite
+  steps:
+    - name: Check out pinned Codex sandbox source
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      with:
+        repository: openvetta/codex
+        ref: 0110b9f41e1c841210dc7019e6da4050f029436c
+        path: .ci/codex-windows-sandbox
+        persist-credentials: false
+
+    - name: Set up Rust for the Windows sandbox
+      uses: dtolnay/rust-toolchain@a0b273b48ed29de4470960879e8381ff45632f26 # 1.93.0
+      with:
+        targets: x86_64-pc-windows-msvc
+
+    - name: Build Windows sandbox binaries
+      shell: pwsh
+      working-directory: .ci/codex-windows-sandbox/codex-rs
+      run: cargo build --locked -p codex-windows-sandbox --bins --release --target x86_64-pc-windows-msvc
+
+    - name: Verify and stage Windows sandbox binaries
+      shell: pwsh
+      run: |
+        $ErrorActionPreference = "Stop"
+        $releaseDir = Join-Path $env:GITHUB_WORKSPACE ".ci/codex-windows-sandbox/codex-rs/target/x86_64-pc-windows-msvc/release"
+        $stageDir = Join-Path $env:GITHUB_WORKSPACE "packages/runtime-core/sandbox/bin"
+        $binaryNames = @(
+          "codex-windows-sandbox-host.exe",
+          "codex-windows-sandbox-setup.exe",
+          "codex-command-runner.exe"
+        )
+
+        New-Item -ItemType Directory -Path $stageDir -Force | Out-Null
+        foreach ($binaryName in $binaryNames) {
+          $binaryPath = Join-Path $releaseDir $binaryName
+          if (-not (Test-Path -LiteralPath $binaryPath -PathType Leaf)) {
+            throw "Required Windows sandbox binary is missing: $binaryPath"
+          }
+          Copy-Item -LiteralPath $binaryPath -Destination (Join-Path $stageDir $binaryName) -Force
+        }
+
+        $hostPath = Join-Path $stageDir "codex-windows-sandbox-host.exe"
+        $capabilitiesJson = & $hostPath --capabilities --json
+        if ($LASTEXITCODE -ne 0) {
+          throw "Windows sandbox capability probe failed with exit code $LASTEXITCODE"
+        }
+        $capabilities = $capabilitiesJson | ConvertFrom-Json
+        foreach ($requiredCapability in @(
+          "fullSandbox",
+          "explicitRoots",
+          "denyRead",
+          "denyWrite",
+          "tempRoot",
+          "networkIsolation",
+          "jobObjectKillTree",
+          "clearEnv"
+        )) {
+          if ($capabilities.$requiredCapability -ne $true) {
+            throw "Windows sandbox did not report required capability: $requiredCapability"
+          }
+        }

@@ -3,7 +3,6 @@
 		"title": "问答批注",
 		"ask": "问问 AI",
 		"history": "查看问答批注",
-		"messageMenu": "消息更多操作",
 		"saved": "查看 {{count}} 条问答批注",
 		"close": "关闭批注",
 		"contextHint": "参考截至此处的文字对话，单独讨论，不影响主对话。问答自动保存。",
@@ -657,6 +656,7 @@
 		"layoutStacked": "收纳"
 	},
 	"messageList": {
+		"scrollToBottom": "滚动到底部",
 		"userMessage": {
 			"expand": "展开消息",
 			"sceneBadge": "场景",
@@ -699,6 +699,7 @@
 			"creatingSession": "正在创建会话"
 		},
 		"duration": {
+			"lessThanSecond": "少于1秒",
 			"seconds": "{{seconds}}秒",
 			"minutes": "{{minutes}}分 {{seconds}}秒",
 			"hours": "{{hours}}小时 {{minutes}}分"

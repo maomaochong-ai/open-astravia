@@ -3,9 +3,10 @@ import { pathToFileURL } from "node:url";
 import { changedFiles } from "./lib.mjs";
 
 const PACKAGED_SMOKE_PATTERNS = [
-	/^apps\/desktop\/(src\/main|src\/preload|scripts\/(prepare-pack\.js|desktop-build-environment\.mjs|mac-signing-config\.mjs|run-open-source-build\.mjs)|scripts\/desktop-packaging-layout\.mjs|scripts\/packaged-native-dependencies\.|vite\..*config\.|package\.json|wdio\.conf\.ts|e2e\/)/,
+	/^apps\/desktop\/(src\/main|src\/preload|scripts\/(prepare-pack\.js|windows-sandbox-packaging\.|desktop-build-environment\.mjs|mac-signing-config\.mjs|run-open-source-build\.mjs)|scripts\/desktop-packaging-layout\.mjs|scripts\/packaged-native-dependencies\.|vite\..*config\.|package\.json|wdio\.conf\.ts|e2e\/)/,
 	/^packages\/(remote-control|remote-desktop)\//,
 	/^bun\.lock$/,
+	/^\.github\/actions\/prepare-windows-sandbox\//,
 	/^\.github\/workflows\/(quality|desktop-packaged)\.yml$/,
 ];
 

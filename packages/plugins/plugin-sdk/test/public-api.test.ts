@@ -1,5 +1,7 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 import type {
+	PluginBottomPanelContextValue,
+	PluginBottomPanelTerminalRequest,
 	PluginBrowserApi,
 	PluginCodingAgentHookEventOf,
 	PluginCodingAgentHookRegistration,
@@ -15,6 +17,14 @@ describe("plugin-sdk public API", () => {
 		expect(PLUGIN_PERMISSIONS).toContain("browser.open");
 		expect(PLUGIN_PERMISSIONS).toContain("browser.interact");
 		expect(PLUGIN_PERMISSIONS).toContain("shell.openExternal");
+		expect(PLUGIN_PERMISSIONS).toContain("terminal.run");
+	});
+
+	it("lets bottom panels open a host terminal and reveal instances", () => {
+		expectTypeOf<PluginBottomPanelContextValue["openTerminal"]>().toEqualTypeOf<
+			(request: PluginBottomPanelTerminalRequest) => string
+		>();
+		expectTypeOf<PluginBottomPanelContextValue["revealInstance"]>().toEqualTypeOf<(instanceId: string) => boolean>();
 	});
 
 	it("exposes browser as a required facade with a display-only open method", () => {

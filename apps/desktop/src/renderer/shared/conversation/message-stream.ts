@@ -33,6 +33,7 @@ export function abortConversationAgentMessage(
 		...settlePendingToolCalls(message, "cancelled"),
 		phase: "aborted",
 		endedAt,
+		...(message.startedAt === undefined ? {} : { durationSeconds: Math.max(0, endedAt - message.startedAt) / 1000 }),
 	};
 }
 

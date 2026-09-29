@@ -1,4 +1,5 @@
 import type { ChatConversationItem } from "@shared/store/atoms";
+import type { WorkSurfaceScope } from "@shared/workspace/work-surface";
 
 export interface ChatViewProps {
 	onAbort: () => Promise<void>;
@@ -13,13 +14,6 @@ export interface ChatViewHeaderModel {
 	exportTitle: string;
 	panelOpen: boolean;
 	panelTitle: string;
-	bottomPanelOpen: boolean;
-	bottomPanelTitle: string;
-	terminalAvailable: boolean;
-	terminalFocused: boolean;
-	terminalTitle: string;
-	pinTitle: string;
-	pinned: boolean;
 }
 
 export interface ChatViewModel {
@@ -32,15 +26,13 @@ export interface ChatViewModel {
 	messages: ChatConversationItem[];
 	rootClassName?: string;
 	sessionId: string | null;
+	workSurface: WorkSurfaceScope | null;
 }
 
 export interface ChatViewActions {
 	finishExport: () => void;
 	openExport: () => void;
 	togglePanel: () => void;
-	toggleBottomPanel: () => void;
-	openTerminal: () => void;
-	togglePin: () => Promise<void>;
 }
 
 export interface ChatViewModelResult {

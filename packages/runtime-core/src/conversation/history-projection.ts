@@ -46,6 +46,8 @@ export function projectConversationDocumentHistory(document: ConversationDocumen
 				type: "message",
 				entryId: entry.id,
 				parentId: entry.parentId,
+				...(entry.kind !== undefined || entry.turnId ? { turnId: entry.turnId } : {}),
+				...(entry.kind === undefined && entry.messageId ? { messageId: entry.messageId } : {}),
 				message: entry.message,
 			};
 			if (entry.message.role === "user") {

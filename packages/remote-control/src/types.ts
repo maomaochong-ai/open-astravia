@@ -81,6 +81,7 @@ export type RemoteRequestMethod =
 	| "session.prompt"
 	| "session.upload"
 	| "model.list"
+	| "skill.list"
 	| "session.configure"
 	| "session.rename"
 	| "session.pin"
@@ -88,7 +89,11 @@ export type RemoteRequestMethod =
 	| "session.respond"
 	| "session.abort"
 	| "session.resume"
-	| "diagnostics.snapshot";
+	| "diagnostics.snapshot"
+	| "file.list"
+	| "file.stat"
+	| "file.read"
+	| "screen.subscribe";
 
 export interface RemoteRequest {
 	readonly type: "request";
@@ -109,13 +114,19 @@ export interface RemoteResponse {
 export type RemoteEventName =
 	| "device.status"
 	| "device.paired"
+	/** The desktop removed this phone's pairing; sent just before the link closes. */
+	| "device.revoked"
 	| "session.list"
 	| "session.state"
 	| "session.message"
 	| "session.tool"
 	| "session.input"
 	| "session.resync"
-	| "diagnostics.updated";
+	| "diagnostics.updated"
+	/** Sent only to a phone subscribed to the screen, which declared `screen` in its hello (ADR-0140). */
+	| "screen.status"
+	/** Sent only to a phone that subscribed with `cursor: true` and draws the pointer itself. */
+	| "screen.cursor";
 
 export interface RemoteEvent {
 	readonly type: "event";
@@ -146,7 +157,13 @@ export interface RemoteError {
 		| "busy"
 		| "request_timeout"
 		| "transport_closed"
-		| "internal_error";
+		| "internal_error"
+		/** The file lies outside what the phone may read (ADR-0139). */
+		| "forbidden"
+		/** The file is larger than a phone may preview. */
+		| "too_large"
+		/** The file changed between two chunks of one `file.read`; read it again from the start. */
+		| "file_changed";
 	readonly message: string;
 	readonly retryable: boolean;
 }
@@ -248,6 +265,10 @@ export interface RemoteConnectionOptions {
 
 export interface RemoteConnectionSnapshot extends RemoteDiagnostics {
 	readonly peerDeviceId?: string;
+	/** The name the peer gave in its hello; only the accepting end hears one. */
+	readonly peerDeviceName?: string;
+	/** What the peer declared in its hello; only the accepting end hears one. */
+	readonly peerCapabilities?: RemoteCapabilities;
 	readonly peerIdentityKey?: string;
 	/** Six-digit code both ends can display to confirm a manual pairing. */
 	readonly verificationCode?: string;

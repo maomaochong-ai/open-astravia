@@ -28,12 +28,16 @@ import { type PluginNetworkMethods, pluginNetworkMethods } from "./foundation/ne
 import { type PluginStorageMethods, pluginStorageMethods } from "./foundation/storage.js";
 import { buildPluginCapabilityGrants } from "./grants.js";
 import {
+	type ClosedPluginCapabilitySession,
 	PLUGIN_ID_PATTERN,
 	type PluginCapabilityAdapterOptions,
 	type PluginCapabilityRequirement,
 	type PluginCapabilitySession,
 	type PluginCapabilitySessionAccess,
+	type PluginCapabilitySessionCloseReason,
 } from "./types.js";
+
+const MAX_CLOSED_SESSION_DIAGNOSTICS = 256;
 
 export interface PluginCapabilityAdapter
 	extends PluginArtifactMethods,
@@ -64,6 +68,7 @@ export interface PluginCapabilityAdapter
 
 /** Internal Plugin-system adapter. Plugin authors consume host-exposed capability APIs instead. */
 export class PluginCapabilityAdapter implements PluginCapabilitySessionAccess {
+	private readonly closedSessions = new Map<string, ClosedPluginCapabilitySession>();
 	private readonly sessionIdsByPlugin = new Map<string, Set<string>>();
 	private readonly sessions = new Map<string, PluginCapabilitySession>();
 
@@ -79,7 +84,7 @@ export class PluginCapabilityAdapter implements PluginCapabilitySessionAccess {
 		// 机会替旧文档执行 cleanup，打开首个 session 时直接回收其遗留授权。
 		for (const existingSessionId of this.sessionIdsByPlugin.get(pluginId) ?? []) {
 			const existing = this.sessions.get(existingSessionId);
-			if (existing && existing.ownerId !== ownerId) this.closeSession(existingSessionId);
+			if (existing && existing.ownerId !== ownerId) this.closeSession(existingSessionId, "renderer-replaced");
 		}
 		const permissions = new Set(this.options.resolvePermissions(pluginId));
 		const official = this.options.isOfficialPlugin(pluginId);
@@ -96,15 +101,31 @@ export class PluginCapabilityAdapter implements PluginCapabilitySessionAccess {
 		const pluginSessionIds = this.sessionIdsByPlugin.get(pluginId) ?? new Set<string>();
 		pluginSessionIds.add(sessionId);
 		this.sessionIdsByPlugin.set(pluginId, pluginSessionIds);
+		this.options.onSessionLifecycle?.({
+			type: "opened",
+			pluginId,
+			sessionId,
+			ownerId,
+			openedAt: new Date().toISOString(),
+		});
 		return sessionId;
 	}
 
-	closeSession(sessionId: string): void {
+	closeSession(sessionId: string, reason: PluginCapabilitySessionCloseReason = "renderer-requested"): void {
 		const session = this.sessions.get(sessionId);
 		if (!session) return;
 		const browserSessionIds = [...session.browserSessionIds];
+		const closedSession: ClosedPluginCapabilitySession = {
+			type: "closed",
+			pluginId: session.pluginId,
+			sessionId,
+			ownerId: session.ownerId,
+			reason,
+			closedAt: new Date().toISOString(),
+		};
 		session.access.revoke();
 		this.sessions.delete(sessionId);
+		this.rememberClosedSession(closedSession);
 		const pluginSessionIds = this.sessionIdsByPlugin.get(session.pluginId);
 		pluginSessionIds?.delete(sessionId);
 		if (pluginSessionIds?.size === 0) {
@@ -114,10 +135,11 @@ export class PluginCapabilityAdapter implements PluginCapabilitySessionAccess {
 		if (browserSessionIds.length > 0) {
 			this.options.onBrowserSessionsReleased?.(session.pluginId, browserSessionIds);
 		}
+		this.options.onSessionLifecycle?.(closedSession);
 	}
 
 	dispose(): void {
-		for (const sessionId of [...this.sessions.keys()]) this.closeSession(sessionId);
+		for (const sessionId of [...this.sessions.keys()]) this.closeSession(sessionId, "host-disposed");
 	}
 
 	assertOfficialSession(sessionId: string): void {
@@ -161,7 +183,14 @@ export class PluginCapabilityAdapter implements PluginCapabilitySessionAccess {
 	session(sessionId: string, requirement: PluginCapabilityRequirement): PluginCapabilitySession {
 		const session = this.sessions.get(sessionId);
 		if (!session || session.access.isRevoked()) {
-			throw new CapabilityError(CAPABILITY_ERROR_CODES.SESSION_REVOKED, "Plugin capability session is not active");
+			const closed = this.closedSessions.get(sessionId);
+			const detail = closed
+				? `pluginId=${JSON.stringify(closed.pluginId)}, sessionId=${JSON.stringify(sessionId)}, reason=${JSON.stringify(closed.reason)}, closedAt=${JSON.stringify(closed.closedAt)}`
+				: `sessionId=${JSON.stringify(sessionId)}, state=${JSON.stringify(session ? "access-revoked" : "unknown")}`;
+			throw new CapabilityError(
+				CAPABILITY_ERROR_CODES.SESSION_REVOKED,
+				`Plugin capability session is not active (${detail})`,
+			);
 		}
 		if (requirement.official && !this.options.isOfficialPlugin(session.pluginId)) {
 			throw new CapabilityError(CAPABILITY_ERROR_CODES.ACCESS_DENIED, "Plugin official capability access denied");
@@ -176,6 +205,15 @@ export class PluginCapabilityAdapter implements PluginCapabilitySessionAccess {
 			);
 		}
 		return session;
+	}
+
+	private rememberClosedSession(session: ClosedPluginCapabilitySession): void {
+		this.closedSessions.set(session.sessionId, session);
+		while (this.closedSessions.size > MAX_CLOSED_SESSION_DIAGNOSTICS) {
+			const oldestSessionId = this.closedSessions.keys().next().value;
+			if (oldestSessionId === undefined) return;
+			this.closedSessions.delete(oldestSessionId);
+		}
 	}
 }
 

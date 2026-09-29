@@ -5,11 +5,12 @@
  *
  *   bun apps/mobile/client-apple/scripts/interop-desktop.ts <info-file>
  *
- * Writes `{ lanPort, relayPort, invite, relayOnlyInvite }` to <info-file> once
+ * Writes `{ lanPort, relayPort, invite, relayOnlyInvite, filesInvite }` to <info-file> once
  * listening. Used by `scripts/interop.sh` and handy for manual simulator runs.
  */
-import { writeFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { mkdirSync, readdirSync, readFileSync, realpathSync, statSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path, { join, resolve } from "node:path";
 
 const root = resolve(import.meta.dir, "../../../..");
 
@@ -33,6 +34,7 @@ const rc = await import(resolve(root, "packages/remote-control/src/index.ts"));
 const { DesktopRemoteLanServer } = await import(resolve(root, "apps/desktop/src/main/remote-control/desktop-remote-lan-server.ts"));
 const { createDesktopWebSocketFactory } = await import(resolve(root, "apps/desktop/src/main/remote-control/desktop-websocket.ts"));
 await import(resolve(root, "packages/remote-control/scripts/fake-relay-server.ts"));
+const { RemoteFiles } = await import(resolve(root, "apps/desktop/src/main/remote-control/remote-files.ts"));
 
 type Connection = InstanceType<typeof rc.RemoteConnection>;
 
@@ -87,10 +89,99 @@ const histories = new Map<string, unknown[]>([
 	["s-report", [
 		{ kind: "user", id: "u1", text: "把上周 Jira 工单按模块汇总成周报", at: Date.now() - 3_600_000 },
 		{ kind: "assistant", id: "a1", text: "已汇总，共 **12** 个工单：\n\n| 模块 | 数量 |\n| --- | --- |\n| 桌面端 | 7 |\n| 手机端 | 5 |\n\n- 桌面端以打包问题为主\n- 手机端集中在配对流程\n\n```bash\njira export --week 38\n```", thinking: "先拉取工单列表，再按 component 分组。", toolCalls: [{ toolCallId: "t1", toolName: "web_search", args: "{\"query\":\"jira week 38\"}", result: "12 issues", durationMs: 820 }], at: Date.now() - 3_590_000 },
-		{ kind: "assistant", id: "a1b", text: "周报已同步到共享文档。", toolCalls: [{ toolCallId: "t1b", toolName: "write_file", args: "{\"path\":\"weekly.md\"}", result: "ok", durationMs: 12 }], at: Date.now() - 3_580_000 },
+		{ kind: "assistant", id: "a1b", text: "周报已同步到共享文档，也写了一份 [weekly.md](./weekly.md)，还有可以直接打开的 [报告页面](report.html)。", toolCalls: [{ toolCallId: "t1b", toolName: "write_file", args: "{\"path\":\"weekly.md\"}", result: "ok", durationMs: 12 }], at: Date.now() - 3_580_000 },
 	]],
 	["s-build", [{ kind: "user", id: "u2", text: "看看为什么打包签名失败", at: Date.now() - 120_000 }]],
 ]);
+// `VETTA_INTEROP_LONG=<turns>` adds a long chat, for timing how fast a big history opens;
+// `VETTA_INTEROP_STEPS=<n>` gives each turn that many tool-calling steps. Like the desktop,
+// history is capped at the last 240 entries and tool text at 1200 characters.
+const longTurns = Number(process.env.VETTA_INTEROP_LONG ?? 0);
+const longSteps = Math.max(1, Number(process.env.VETTA_INTEROP_STEPS ?? 1));
+if (longTurns > 0) {
+	const start = Date.now() - longTurns * 600_000;
+	const narration = (turn: number, step: number) =>
+		[
+			`### 第 ${turn + 1} 轮 · 第 ${step + 1} 步`,
+			`先看 \`src/main/index.ts\` 的第 ${step} 处改动，再对照 [说明](https://example.com/${turn}/${step})。`,
+			"- 检查 **签名** 配置\n- 重新跑 `electron-builder`\n- 对比产物大小",
+			"```ts\nconst result = await build({ target: \"dmg\" });\nconsole.log(result.artifacts);\n```",
+			"结论：".concat("这一步的输出与预期一致，可以继续。".repeat(6)),
+		].join("\n\n");
+	const entries = Array.from({ length: longTurns }, (_, turn) => {
+		const at = start + turn * 600_000;
+		return [
+			{ kind: "user", id: `lu${turn}`, text: `第 ${turn + 1} 个问题：继续排查打包流程`, at },
+			...Array.from({ length: longSteps }, (_, step) => ({
+				kind: "assistant",
+				id: `la${turn}-${step}`,
+				text: narration(turn, step),
+				thinking: "先读文件，再运行命令。",
+				toolCalls: [0, 1].map((call) => ({
+					toolCallId: `lt${turn}-${step}-${call}`,
+					toolName: "bash",
+					args: `{"command":"ls step-${turn}-${step}-${call}"}`,
+					result: "drwxr-xr-x  12 dev  staff   384 Sep 29 10:00 build\n".repeat(40).slice(0, 1_200),
+					durationMs: 40,
+				})),
+				at: at + (step + 1) * 5_000,
+			})),
+		];
+	}).flat();
+	sessions.unshift({ id: "s-long", projectCwd: "/Users/dev/vetta", projectName: "vetta", title: "超长会话", preview: "打包流程逐步排查", updatedAt: Date.now(), status: "completed", live: false });
+	histories.set("s-long", entries.slice(-240));
+}
+
+// ---- Files (ADR-0139) ------------------------------------------------------------------
+// Every session's working directory is one fixture folder, served by the desktop's real
+// file service; its home is the fixture root, so anything outside it is refused.
+const filesHome = join(tmpdir(), "vetta-interop-files");
+const filesCwd = join(filesHome, "session");
+mkdirSync(join(filesCwd, "out"), { recursive: true });
+mkdirSync(join(filesHome, ".ssh"), { recursive: true });
+writeFileSync(join(filesCwd, "weekly.md"), "# 第 38 周周报\n\n共 **12** 个工单。\n\n| 模块 | 数量 |\n| --- | --- |\n| 桌面端 | 7 |\n| 手机端 | 5 |\n");
+writeFileSync(join(filesCwd, "report.html"), "<!doctype html><meta name=viewport content='width=device-width'><h1>周报</h1><p id=n></p><script>document.getElementById('n').textContent = '脚本已运行';</script>");
+writeFileSync(join(filesCwd, "notes.txt"), "Interop notes\n".repeat(200));
+writeFileSync(join(filesCwd, "out", "data.csv"), "module,count\ndesktop,7\nmobile,5\n");
+writeFileSync(join(filesCwd, "out", "big.bin"), Buffer.alloc(1_600_000, 1));
+writeFileSync(join(filesHome, ".ssh", "id_rsa"), "not a key");
+const realFilesHome = realpathSync(filesHome);
+const remoteFiles = new RemoteFiles({
+	fs: {
+		readDirectory: async (dir: string) =>
+			readdirSync(dir, { withFileTypes: true }).map((entry) => {
+				const stats = statSync(join(dir, entry.name));
+				return { name: entry.name, path: join(dir, entry.name), isDirectory: entry.isDirectory(), size: stats.size, modifiedAt: stats.mtimeMs };
+			}),
+		openSource: (target: string) => {
+			if (!target.startsWith(`${realFilesHome}/`)) throw new Error("Path is outside any previewable directory");
+			return {
+				path: target,
+				stat: async () => {
+					try {
+						const stats = statSync(target);
+						return { size: stats.size, isFile: stats.isFile(), modifiedAt: stats.mtimeMs };
+					} catch {
+						return null;
+					}
+				},
+				read: async () => readFileSync(target),
+				readHead: async (count: number) => readFileSync(target).subarray(0, count),
+			};
+		},
+		realpath: async (target: string) => {
+			try {
+				return realpathSync(target);
+			} catch {
+				return target;
+			}
+		},
+		scaleImage: () => undefined,
+	},
+	home: realFilesHome,
+	path,
+});
+const realFilesCwd = realpathSync(filesCwd);
 
 function emitAll(deviceId: string, name: string, payload: unknown, sessionId?: string): void {
 	const journal = journalFor(deviceId);
@@ -263,6 +354,18 @@ function handleRequest(deviceId: string, connection: Connection, request: { requ
 		case "model.list":
 			ok({ models });
 			return;
+		case "skill.list": {
+			const skills: Array<Record<string, string>> = [
+				{ name: "frontend-design", alias: "前端设计", description: "生成有设计感的页面与组件", type: "skill", source: "builtin" },
+				{ name: "pdf", description: "读取、合并、拆分 PDF", type: "skill", source: "user" },
+				{ name: "weekly-report", alias: "周报", description: "按模板整理本周进展", type: "scene", source: "scene" },
+			];
+			if (typeof request.payload?.cwd === "string") {
+				skills.push({ name: "release", description: "本项目的发版步骤", type: "skill", source: "project" });
+			}
+			ok({ skills });
+			return;
+		}
 		case "session.configure": {
 			const next = { ...settingsFor(sessionId) };
 			if (typeof request.payload?.modelKey === "string") next.modelKey = request.payload.modelKey;
@@ -320,6 +423,16 @@ function handleRequest(deviceId: string, connection: Connection, request: { requ
 			ok({ aborted: true });
 			emitAll(deviceId, "session.state", { status: "aborted" }, sessionId);
 			return;
+		case "file.list":
+		case "file.stat":
+		case "file.read": {
+			const serve = request.method === "file.list" ? remoteFiles.list : request.method === "file.stat" ? remoteFiles.stat : remoteFiles.read;
+			serve.call(remoteFiles, realFilesCwd, request.payload).then(ok, (error: { code?: string; message?: string }) => {
+				const code = error.code ?? "internal_error";
+				void connection.respond(request.requestId, { success: false, error: { code, message: error.message ?? code, retryable: false } }).catch(() => undefined);
+			});
+			return;
+		}
 		case "diagnostics.snapshot":
 			ok({ deviceName: desktopName, lanEndpoints: [`127.0.0.1:${lanPort}`], relayEnabled: true, runningSessionCount: 1, liveSessionCount: 1 });
 			return;
@@ -335,7 +448,7 @@ function attach(deviceId: string, connection: Connection): void {
 		if (event.type === "remote-request") handleRequest(deviceId, connection, event.request);
 		if (event.type === "state" && event.state === "online") {
 			links.add(connection);
-			emitAll(deviceId, "device.status", { deviceName: desktopName, osLabel: "macOS", lanEndpoints: [`127.0.0.1:${lanPort}`], relayEnabled: true, runningSessionCount: 1 });
+			emitAll(deviceId, "device.status", { deviceName: desktopName, osLabel: "macOS", lanEndpoints: [`127.0.0.1:${lanPort}`], relayEnabled: true, runningSessionCount: 1, fileRead: true });
 		}
 		if (event.type === "state" && (event.state === "closed" || event.state === "failed" || event.state === "reconnecting")) links.delete(connection);
 	});
@@ -407,6 +520,25 @@ async function connectRelay(deviceId: string, secret: string): Promise<void> {
 }
 await connectRelay(primary.id, primary.mobileSecret);
 
+// `VETTA_INTEROP_ASK_AFTER_MS=<ms>` has the running build session ask a question that long after
+// start, so the phone can be sent to the background first and show its notification.
+const askAfterMs = Number(process.env.VETTA_INTEROP_ASK_AFTER_MS ?? 0);
+if (askAfterMs > 0) {
+	setTimeout(() => {
+		const sessionId = "s-build";
+		const request = {
+			requestId: `q-${Date.now()}`,
+			questions: [{ question: "签名证书过期了，要用新证书重新打包吗？", header: "确认", options: [{ label: "重新打包", description: "" }, { label: "先停下", description: "" }] }],
+		};
+		pendingQuestions.set(sessionId, request);
+		const session = sessions.find((entry) => entry.id === sessionId);
+		if (session) Object.assign(session, { status: "waiting_input", updatedAt: Date.now() });
+		emitAll(primary.id, "session.input", { kind: "question", request }, sessionId);
+		emitAll(primary.id, "session.state", { status: "waiting_input", ...modelState(sessionId), pendingQuestion: request }, sessionId);
+		console.info(`[interop] ${sessionId} asked a question`);
+	}, askAfterMs);
+}
+
 const invite = rc.buildPairingUri({
 	version: 2,
 	pairingId: primary.id,
@@ -428,6 +560,19 @@ const relayOnlyInvite = rc.buildPairingUri({
 	relayBaseUrl: `ws://127.0.0.1:${relayPort}`,
 });
 
-writeFileSync(infoFile, JSON.stringify({ lanPort: boundPort, relayPort, invite, relayOnlyInvite }, null, 2));
+// Its own phone, so reading files through the relay does not share a pairing with the tests above.
+const filesDevice = addDevice();
+await connectRelay(filesDevice.id, filesDevice.mobileSecret);
+const filesInvite = rc.buildPairingUri({
+	version: 2,
+	pairingId: filesDevice.id,
+	mobileSecret: filesDevice.mobileSecret,
+	desktopIdentityKey: rc.toBase64Url(identity.publicKey),
+	desktopName,
+	lanEndpoints: ["127.0.0.1:1"],
+	relayBaseUrl: `ws://127.0.0.1:${relayPort}`,
+});
+
+writeFileSync(infoFile, JSON.stringify({ lanPort: boundPort, relayPort, invite, relayOnlyInvite, filesInvite }, null, 2));
 console.info(`[interop] LAN ws://127.0.0.1:${boundPort}  relay ws://127.0.0.1:${relayPort}`);
 console.info(`[interop] invite ${invite}`);

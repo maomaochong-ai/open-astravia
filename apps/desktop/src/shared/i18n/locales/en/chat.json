@@ -3,7 +3,6 @@
 		"title": "Q&A notes",
 		"ask": "Ask AI",
 		"history": "View Q&A notes",
-		"messageMenu": "More message actions",
 		"saved": "View {{count}} Q&A notes",
 		"close": "Close note",
 		"contextHint": "Uses the text conversation up to this message. This separate discussion does not affect the main conversation. Q&A is saved automatically.",
@@ -657,6 +656,7 @@
 		"layoutStacked": "Stacked"
 	},
 	"messageList": {
+		"scrollToBottom": "Scroll to bottom",
 		"userMessage": {
 			"expand": "Expand message",
 			"sceneBadge": "Scene",
@@ -699,6 +699,7 @@
 			"creatingSession": "Creating conversation"
 		},
 		"duration": {
+			"lessThanSecond": "<1s",
 			"seconds": "{{seconds}}s",
 			"minutes": "{{minutes}}m {{seconds}}s",
 			"hours": "{{hours}}h {{minutes}}m"

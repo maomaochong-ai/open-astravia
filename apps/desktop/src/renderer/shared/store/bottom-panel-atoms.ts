@@ -1,14 +1,14 @@
 /**
- * 底部面板的会话级状态。
+ * 底部面板的工作表面级状态。
  *
  * 布局树本身是纯函数（`bottom-panel-layout.ts`），落盘也是纯函数
- * （`bottom-panel-persistence.ts`）；这里只负责「当前是哪个会话」以及什么时候写盘。
+ * （`bottom-panel-persistence.ts`）；这里只负责按显式 scope key 取状态以及什么时候写盘。
  *
  * 拖拽高度和拖拽分屏比例走 transient 版本：实时改内存让布局跟手，松手才写一次
  * localStorage——与活动面板宽度（`activity-atoms.ts`）完全同形。
  */
 
-import { atom } from "jotai";
+import { type Atom, atom, type WritableAtom } from "jotai";
 import {
 	type BottomPanelAction,
 	type BottomPanelSessionState,
@@ -21,21 +21,23 @@ import {
 	renameBottomPanelStateKey,
 	touchBottomPanelState,
 } from "./bottom-panel-persistence";
-import { activeInputDraftKeyAtom } from "./session-input-draft";
 
 const bottomPanelStatesAtom = atom<Map<string, BottomPanelSessionState>>(readPersistedBottomPanelStates());
 
 /**
- * 面板按会话分桶，主键与输入草稿同源：已有会话是 sessionPath，新会话页是
- * `new:${cwd}`。刻意不另起一套规则，否则「这是哪个会话」会有两个答案。
+ * 面板按工作表面分桶。key 由页面 Connector 显式提供：普通会话通常使用
+ * sessionPath，Team 使用自己的稳定工作表面 key。这里不再读取输入草稿的当前 scope，
+ * 避免无关领域通过一个全局“当前会话”互相耦合。
  */
-export const bottomPanelScopeKeyAtom = atom((get) => get(activeInputDraftKeyAtom));
+const stateAtomsByScope = new Map<string, Atom<BottomPanelSessionState>>();
 
-export const bottomPanelStateAtom = atom((get) => {
-	const key = get(bottomPanelScopeKeyAtom);
-	if (!key) return emptyBottomPanelState();
-	return get(bottomPanelStatesAtom).get(key) ?? emptyBottomPanelState();
-});
+export function bottomPanelStateAtomFamily(scopeKey: string): Atom<BottomPanelSessionState> {
+	const existing = stateAtomsByScope.get(scopeKey);
+	if (existing) return existing;
+	const created = atom((get) => get(bottomPanelStatesAtom).get(scopeKey) ?? emptyBottomPanelState());
+	stateAtomsByScope.set(scopeKey, created);
+	return created;
+}
 
 function dispatch(
 	states: Map<string, BottomPanelSessionState>,
@@ -49,23 +51,37 @@ function dispatch(
 }
 
 /** 改布局并立即落盘。 */
-export const dispatchBottomPanelAtom = atom(null, (get, set, action: BottomPanelAction) => {
-	const key = get(bottomPanelScopeKeyAtom);
-	if (!key) return;
-	const result = dispatch(get(bottomPanelStatesAtom), key, action);
-	if (!result.changed) return;
-	set(bottomPanelStatesAtom, result.states);
-	persistBottomPanelStates(result.states);
-});
+const dispatchAtomsByScope = new Map<string, WritableAtom<null, [BottomPanelAction], void>>();
+
+export function dispatchBottomPanelAtomFamily(scopeKey: string): WritableAtom<null, [BottomPanelAction], void> {
+	const existing = dispatchAtomsByScope.get(scopeKey);
+	if (existing) return existing;
+	const created = atom(null, (get, set, action: BottomPanelAction) => {
+		const result = dispatch(get(bottomPanelStatesAtom), scopeKey, action);
+		if (!result.changed) return;
+		set(bottomPanelStatesAtom, result.states);
+		persistBottomPanelStates(result.states);
+	});
+	dispatchAtomsByScope.set(scopeKey, created);
+	return created;
+}
 
 /** 拖拽过程中改布局，不写盘。 */
-export const dispatchTransientBottomPanelAtom = atom(null, (get, set, action: BottomPanelAction) => {
-	const key = get(bottomPanelScopeKeyAtom);
-	if (!key) return;
-	const result = dispatch(get(bottomPanelStatesAtom), key, action);
-	if (!result.changed) return;
-	set(bottomPanelStatesAtom, result.states);
-});
+const transientDispatchAtomsByScope = new Map<string, WritableAtom<null, [BottomPanelAction], void>>();
+
+export function dispatchTransientBottomPanelAtomFamily(
+	scopeKey: string,
+): WritableAtom<null, [BottomPanelAction], void> {
+	const existing = transientDispatchAtomsByScope.get(scopeKey);
+	if (existing) return existing;
+	const created = atom(null, (get, set, action: BottomPanelAction) => {
+		const result = dispatch(get(bottomPanelStatesAtom), scopeKey, action);
+		if (!result.changed) return;
+		set(bottomPanelStatesAtom, result.states);
+	});
+	transientDispatchAtomsByScope.set(scopeKey, created);
+	return created;
+}
 
 /** 拖拽结束时把当前内存状态落一次盘。 */
 export const persistBottomPanelAtom = atom(null, (get) => {

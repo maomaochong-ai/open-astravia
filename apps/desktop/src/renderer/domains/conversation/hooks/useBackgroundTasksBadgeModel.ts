@@ -1,6 +1,5 @@
 import type { ActivityTabKey } from "@shared/lib/project-profile";
 import {
-	activeSessionAtom,
 	activityPanelOpenAtom,
 	activityPanelTabByProjectAtom,
 	backgroundTasksBySessionAtom,
@@ -21,22 +20,27 @@ export interface BackgroundTasksBadgeModel {
 	onClick: () => void;
 }
 
-export function useBackgroundTasksBadgeModel(): BackgroundTasksBadgeModel {
+export function useBackgroundTasksBadgeModel(
+	runtimeIds: readonly string[],
+	activityWorkspaceId: string,
+): BackgroundTasksBadgeModel {
 	const { t } = useTranslation("chat");
-	const activeSession = useAtomValue(activeSessionAtom);
 	const tasksMap = useAtomValue(backgroundTasksBySessionAtom);
 	const subagentsMap = useAtomValue(subagentsBySessionAtom);
 	const setPanelOpen = useSetAtom(activityPanelOpenAtom);
 	const setTabByProject = useSetAtom(activityPanelTabByProjectAtom);
 
 	const tasks = useMemo(
-		() => getBackgroundTasksForSession(tasksMap, activeSession?.runtimeId ?? null),
-		[tasksMap, activeSession?.runtimeId],
+		() => runtimeIds.flatMap((runtimeId) => getBackgroundTasksForSession(tasksMap, runtimeId)),
+		[tasksMap, runtimeIds],
 	);
 	// Workflows surface via footer items + workflow tab, not this badge.
 	const subagents = useMemo(
-		() => getSubagentsForSession(subagentsMap, activeSession?.runtimeId ?? null).filter((a) => !isWorkflowTask(a)),
-		[subagentsMap, activeSession?.runtimeId],
+		() =>
+			runtimeIds.flatMap((runtimeId) =>
+				getSubagentsForSession(subagentsMap, runtimeId).filter((agent) => !isWorkflowTask(agent)),
+			),
+		[subagentsMap, runtimeIds],
 	);
 	const running = useMemo(() => {
 		const bash = tasks.filter((task) => task.status === "running").length;
@@ -45,16 +49,15 @@ export function useBackgroundTasksBadgeModel(): BackgroundTasksBadgeModel {
 	}, [tasks, subagents]);
 
 	const onClick = useCallback(() => {
-		const cwd = activeSession?.cwd;
-		if (cwd) {
+		if (activityWorkspaceId) {
 			setTabByProject((prev) => {
 				const map = new Map(prev);
-				map.set(cwd, "background-tasks" as ActivityTabKey);
+				map.set(activityWorkspaceId, "background-tasks" as ActivityTabKey);
 				return map;
 			});
 		}
 		setPanelOpen(true);
-	}, [activeSession?.cwd, setPanelOpen, setTabByProject]);
+	}, [activityWorkspaceId, setPanelOpen, setTabByProject]);
 
 	return {
 		runningCount: running === 0 ? null : running,

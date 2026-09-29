@@ -15,6 +15,7 @@ import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import org.vetta.android.domain.remote.connection.RemoteTransport
+import org.vetta.android.domain.remote.connection.UnknownPairingException
 import org.vetta.android.domain.remote.link.RemoteTransportFactory
 import org.vetta.android.domain.remote.pairing.PairingFlow
 import org.vetta.android.domain.remote.protocol.RemoteAck
@@ -56,6 +57,9 @@ class FakeDesktop(private val scope: CoroutineScope) {
     /** False makes the local-network addresses unreachable, as from another network. */
     var lanReachable = true
 
+    /** The local server answers that it does not know this pairing, as after unpairing on the desktop. */
+    var forgotPairing = false
+
     /** Rejects the phone as a revoked pairing: an `unauthorized` error, then the socket closes. */
     var rejectUnauthorized = false
 
@@ -70,6 +74,11 @@ class FakeDesktop(private val scope: CoroutineScope) {
 
     private val journal = mutableListOf<RemoteEvent>()
     private var sequence = 0L
+
+    /** The last event this desktop sent. */
+    val lastSequence: Long
+        get() = sequence
+
     private val sockets = mutableListOf<Socket>()
     private val requestSockets = mutableMapOf<String, Socket>()
 
@@ -77,7 +86,11 @@ class FakeDesktop(private val scope: CoroutineScope) {
         opened += url
         secrets += secret
         val lan = url.startsWith("ws://")
-        if (reachable && (!lan || lanReachable)) Socket(manual = url.endsWith(PairingFlow.MANUAL_PAIRING_PATH)).also { sockets += it } else DeadTransport()
+        when {
+            lan && forgotPairing -> ForgottenTransport()
+            reachable && (!lan || lanReachable) -> Socket(manual = url.endsWith(PairingFlow.MANUAL_PAIRING_PATH)).also { sockets += it }
+            else -> DeadTransport()
+        }
     }
 
     val lanOpened: List<String>
@@ -138,6 +151,16 @@ class FakeDesktop(private val scope: CoroutineScope) {
         val event = RemoteEvent(eventId = "event-$sequence", sequence = sequence, name = name, sessionId = sessionId, payload = payload)
         journal += event
         sockets.filter { it.online }.forEach { it.sendSession(event) }
+    }
+
+    /**
+     * Removes the phone as the desktop does: tells it, then drops the pairing's journal, so a
+     * later pairing starts a fresh sequence instead of hearing the removal again.
+     */
+    suspend fun revoke() {
+        emit(RemoteEventName.DeviceRevoked, buildJsonObject {})
+        journal.clear()
+        sequence = 0
     }
 
     /** Journals an event without delivering it, as if the phone was away when it happened. */
@@ -236,6 +259,18 @@ class FakeDesktop(private val scope: CoroutineScope) {
             online = false
             channel.close()
         }
+    }
+
+    private class ForgottenTransport : RemoteTransport {
+        override val incoming: Flow<RemoteFrame> = Channel<RemoteFrame>().receiveAsFlow()
+
+        override suspend fun connect() {
+            throw UnknownPairingException(IllegalStateException("Expected HTTP 101 response but was '404 unknown pairing'"))
+        }
+
+        override suspend fun send(frame: RemoteFrame) = Unit
+
+        override suspend fun close() = Unit
     }
 
     private class DeadTransport : RemoteTransport {

@@ -19,14 +19,19 @@ settings:
 packages:
   VettaKit:
     path: VettaKit
+  VettaRTC:
+    path: VettaRTC
 targets:
   Vetta:
     type: application
     platform: iOS
     sources:
       - path: Vetta
+      - path: Shared
     dependencies:
       - package: VettaKit
+      - package: VettaRTC
+      - target: VettaWidgets
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.openvetta.mobile
@@ -49,8 +54,11 @@ targets:
           UIColorName: LaunchBackground
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: false
+        # Landscape only on the remote desktop page; AppDelegate keeps every other page portrait.
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
         CFBundleURLTypes:
           - CFBundleURLName: com.openvetta.mobile.pair
             CFBundleURLSchemes:
@@ -64,6 +72,34 @@ targets:
           - _vetta._tcp
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
+        NSSupportsLiveActivities: true
+        UIBackgroundModes:
+          - fetch
+        BGTaskSchedulerPermittedIdentifiers:
+          - com.openvetta.mobile.refresh
+  VettaWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: VettaWidgets
+      - path: Shared
+    dependencies:
+      - package: VettaKit
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.openvetta.mobile.widgets
+        PRODUCT_NAME: VettaWidgets
+        TARGETED_DEVICE_FAMILY: "1"
+        INFOPLIST_FILE: VettaWidgets/Info.plist
+    info:
+      path: VettaWidgets/Info.plist
+      properties:
+        CFBundleDisplayName: Vetta
+        CFBundleDevelopmentRegion: en
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
   VettaUITests:
     type: bundle.ui-testing
     platform: iOS

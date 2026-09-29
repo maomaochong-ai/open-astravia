@@ -11,6 +11,7 @@ import {
 import { createAssistantMessage } from "@vetta/ai";
 import type { ConversationMessageRecord } from "@vetta/runtime-core/conversation";
 import type { TeamCollaborationStore } from "./team-collaboration-store.js";
+import { TeamNotificationJournal } from "./team-notification-journal.js";
 
 export interface TeamMessageControlHost {
 	readSession(id: string): Promise<TeamSessionDocument>;
@@ -23,10 +24,14 @@ export interface TeamMessageControlHost {
 
 /** Persists public messages and per-recipient delivery before any recipient execution starts. */
 export class TeamMessageControlService {
+	private readonly notificationJournal: TeamNotificationJournal;
+
 	constructor(
 		private readonly store: TeamCollaborationStore,
 		private readonly host: TeamMessageControlHost,
-	) {}
+	) {
+		this.notificationJournal = new TeamNotificationJournal(store);
+	}
 
 	forSession(teamSessionId: string): TeamMessageControlPort {
 		return { sendMessage: (input) => this.sendMessage(teamSessionId, input) };
@@ -81,6 +86,8 @@ export class TeamMessageControlService {
 		if (!sourceMemberId || !isActiveMember(session, sourceMemberId)) {
 			throw new Error("Source session is not a persistent member of this Agent Team");
 		}
+		const state = this.store.read(session);
+		const responseOnlyRecipients = this.responseOnlyRecipients(session, state, sourceMemberId, input.sourceTurnId);
 		const recipients = input.recipientHandles.map((handle) => {
 			const participantId = this.host.resolveTarget(session, handle);
 			if (!participantId || !isActiveMember(session, participantId))
@@ -152,15 +159,19 @@ export class TeamMessageControlService {
 		if (!existingRouting) await this.host.appendMetadata(coordination.sessionId, routing.customType, routing);
 		const pending = recipients.map((toParticipantId): TeamMessageDelivery => {
 			const id = stableTeamEventId(["delivery", messageId, toParticipantId]);
+			const existing = state.deliveries.find((delivery) => delivery.id === id);
+			const intent =
+				existing?.intent ??
+				(input.intent === "question" && responseOnlyRecipients.has(toParticipantId) ? "inform" : input.intent);
 			const requestId = `question:${id}`;
 			return {
 				id,
 				messageId,
 				fromParticipantId: sourceMemberId,
 				toParticipantId,
-				intent: input.intent,
+				intent,
 				state: "pending",
-				...(input.intent === "question" ? { workItemId: `work:${requestId}:${toParticipantId}` } : {}),
+				...(intent === "question" ? { workItemId: `work:${requestId}:${toParticipantId}` } : {}),
 				sourceTurnId: input.sourceTurnId,
 				toolCallId: input.toolCallId,
 				createdAt: timestamp,
@@ -171,7 +182,7 @@ export class TeamMessageControlService {
 		input.signal.throwIfAborted();
 		for (const delivery of deliveries) {
 			if (delivery.state !== "pending") continue;
-			if (input.intent === "inform") {
+			if (delivery.intent === "inform") {
 				const delivered = await this.store.updateDelivery(session, delivery.id, { state: "delivered" });
 				this.host.onDelivery(session, delivered);
 				continue;
@@ -191,6 +202,45 @@ export class TeamMessageControlService {
 			if (admitted.workItem.state === "queued") this.host.startWorkItem(session, admitted.workItem);
 		}
 		return { messageId, deliveryIds: deliveries.map((delivery) => delivery.id) };
+	}
+
+	/**
+	 * A question result and a completion continuation are already delivered back
+	 * to the member that triggered the turn. Starting that same member again from
+	 * inside the response creates an asynchronous ping-pong that the scheduler's
+	 * live wait graph cannot see. Keep the public message, but make those specific
+	 * deliveries informational so no reciprocal model turn is admitted.
+	 */
+	private responseOnlyRecipients(
+		session: TeamSessionDocument,
+		state: ReturnType<TeamCollaborationStore["read"]>,
+		sourceMemberId: string,
+		sourceTurnId: string,
+	): ReadonlySet<string> {
+		const attempt = [...state.attempts].reverse().find((candidate) => candidate.sourceTurnId === sourceTurnId);
+		const item = attempt
+			? state.workItems.find(
+					(candidate) =>
+						candidate.id === attempt.workItemId && candidate.assignedToParticipantId === sourceMemberId,
+				)
+			: undefined;
+		if (!item) return new Set();
+		const recipients = new Set<string>();
+		if (item.kind === "question" && item.createdByParticipantId !== "local-user") {
+			recipients.add(item.createdByParticipantId);
+		}
+		for (const record of this.notificationJournal.contexts(session, item.notificationIds ?? [])) {
+			const metadata = record.metadata;
+			if (
+				typeof metadata === "object" &&
+				metadata !== null &&
+				"assignedToParticipantId" in metadata &&
+				typeof metadata.assignedToParticipantId === "string"
+			) {
+				recipients.add(metadata.assignedToParticipantId);
+			}
+		}
+		return recipients;
 	}
 
 	private async ensureQuestionWorkItem(

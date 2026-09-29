@@ -7,6 +7,7 @@ import {
 } from "../../src/composition/session-lifecycle/runtime-resources.js";
 import { createCodingAgentBackgroundWorkSessionExtension } from "../../src/execution/background/background-work-session-extension.js";
 import { createCodingAgentPluginConfigurationSessionExtension } from "../../src/plugins/runtime/plugin-configuration-session-extension.js";
+import { AssistantTurnTimingParticipant } from "../../src/sessions/timing/assistant-turn-timing-participant.js";
 
 describe("Coding Agent Turn admission preparation", () => {
 	it("keeps the Agent Session as the only Snapshot Provider instead of wrapping MCP refresh", async () => {
@@ -82,6 +83,26 @@ describe("Coding Agent Turn admission preparation", () => {
 
 		expect(refreshSessionMcp).not.toHaveBeenCalled();
 		expect(createRequest).toHaveBeenCalledOnce();
+	});
+
+	it("wires assistant turn timing into every Coding Agent session", async () => {
+		const sessionExtensions = await createRequiredSessionExtensions();
+		const resources = createCodingAgentSessionRuntimeResources({
+			session: {
+				initialSessionId: "session",
+				readSessionId: () => "session",
+				cwd: "C:\\workspace",
+			},
+			conversation: { resolveSessionDirectory: () => undefined, resolveSessionPath: () => undefined },
+			turnCapabilityAssembly: { promptAdapter: {} },
+			capabilitySnapshotProvider: { acquire: vi.fn() },
+			sessionExtensions,
+			executionRuntime: { backgroundService: {} },
+			pluginConfigurationRuntime: {},
+			activation: { mode: "explicit", toolNames: [] },
+		} as unknown as CodingAgentSessionRuntimeResourcesOptions);
+
+		expect(resources.documentParticipants?.some((item) => item instanceof AssistantTurnTimingParticipant)).toBe(true);
 	});
 });
 

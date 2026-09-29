@@ -1,0 +1,19 @@
+/* 导入 theme 层 + utilities 层（不要 preflight，避免 reset 污染宿主全局）。 */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+/* 面板里用到的 iconify 图标由这里生成，随 dist/style.css 一起装进插件包。 */
+@plugin "@iconify/tailwind4";
+
+/* 卡片图标底色按来源区分：Node 绿、Make 琥珀。跟随宿主深浅色（light-dark 依赖宿主设置的
+   color-scheme），不跟随主题色——来源是事实，不是强调。 */
+.scripts-tone-node {
+	color: light-dark(#059669, #34d399);
+	background-color: light-dark(rgb(16 185 129 / 0.1), rgb(52 211 153 / 0.12));
+}
+
+.scripts-tone-make {
+	color: light-dark(#d97706, #fbbf24);
+	background-color: light-dark(rgb(245 158 11 / 0.1), rgb(251 191 36 / 0.12));
+}

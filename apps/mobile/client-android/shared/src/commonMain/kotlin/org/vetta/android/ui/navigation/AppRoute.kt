@@ -1,61 +1,20 @@
 package org.vetta.android.ui.navigation
 
-import org.vetta.android.domain.device.ConnectChannel
-
-enum class MainTab {
-    Home,
-    /** The paired desktop's sessions. */
-    Work,
-    Sessions,
-    Discover,
-    Me,
-}
-
-enum class ChatSurface {
-    /** 对接 Desktop 会话 */
-    Desktop,
-    /** 云端 AI */
-    Cloud,
-}
-
-sealed class AppRoute {
-    data object Boot : AppRoute()
-
-    data object Welcome : AppRoute()
-
-    data object Login : AppRoute()
-
-    /** 带底部导航的主壳 */
-    data class Main(val tab: MainTab = MainTab.Home) : AppRoute()
-
-    data class DeviceDetail(val deviceId: String) : AppRoute()
-
-    data class NewConversation(
-        val channel: ConnectChannel = ConnectChannel.Lan,
-    ) : AppRoute()
-
-    data class Chat(
-        val sessionId: String?,
-        val surface: ChatSurface = ChatSurface.Cloud,
-        val title: String = "",
-        val deviceId: String? = null,
-    ) : AppRoute()
-
-    /**
-     * A blank page for starting a desktop session, in `projectCwd` or the desktop's
-     * conversations. `returnTo` is the chat it was opened from, where Back goes.
-     */
-    data class WorkNewSession(val projectCwd: String? = null, val returnTo: String? = null) : AppRoute()
-
-    /** The paired computer, its link, and how the phone works with it. */
-    data object WorkSettings : AppRoute()
+/** What the root shows: one session at a time, New Session when there is none (the iPhone's `Slot`). */
+sealed interface Slot {
+    /** `projectCwd` is chosen up front; `null` starts in the desktop's conversations. */
+    data class NewSession(val projectCwd: String? = null) : Slot
 
     /** One desktop session; `sessionId` may be the local id of one New Session is starting. */
-    data class WorkSession(val sessionId: String) : AppRoute()
+    data class Session(val sessionId: String) : Slot
+}
 
-    data object Plan : AppRoute()
+/** Pages inside the Home drawer, pushed over Home's list. */
+sealed interface HomePage {
+    data class Project(val cwd: String) : HomePage
 
-    data object Settings : AppRoute()
+    data object Settings : HomePage
 
-    data object About : AppRoute()
+    /** Which session news becomes a notification; opened from Settings. */
+    data object Notifications : HomePage
 }

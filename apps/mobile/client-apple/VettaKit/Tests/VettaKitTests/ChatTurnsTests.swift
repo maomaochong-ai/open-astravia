@@ -33,6 +33,25 @@ import Testing
 		#expect(first.conclusion == "查到了")
 	}
 
+	@Test func latestExchangeStartsAtTheLastUserMessage() {
+		let blocks = ChatTurns.build([
+			.user(id: "u1", text: "查一下", at: 1),
+			reply("a1", text: "查到了"),
+			.user(id: "u2", text: "再查", at: 2),
+			.marker(id: "m1", text: "", at: 3),
+			reply("a2", text: "好"),
+		], waiting: true)
+		#expect(ChatTurns.latestExchange(blocks) == 2)
+		#expect(ChatTurns.latestExchange(ChatTurns.build([reply("a1", text: "你好")])) == nil)
+	}
+
+	@Test func jumpToBottomShowsPastOneAndAHalfScreens() {
+		#expect(!ChatScroll.offersJump(below: 900, viewport: 800))
+		#expect(!ChatScroll.offersJump(below: 1200, viewport: 800))
+		#expect(ChatScroll.offersJump(below: 1201, viewport: 800))
+		#expect(!ChatScroll.offersJump(below: 5000, viewport: 0), "nothing measured yet")
+	}
+
 	@Test func textBetweenToolRoundsClosesTheWorkGroup() {
 		let turn = turns(ChatTurns.build([
 			reply("a1", text: "我先跑测试", tools: [tool("t1")]),

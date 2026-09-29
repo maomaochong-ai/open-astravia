@@ -4,6 +4,7 @@ import { BottomPanelTabStripView } from "@vetta-org/theme-ui/bottom-panel";
 import { useAtomValue } from "jotai";
 import type { JSX } from "react";
 import { useTranslation } from "react-i18next";
+import { TERMINAL_PANEL_ID } from "../builtins/terminal-panel";
 import { BottomPanelInstanceHost } from "../registry/BottomPanelInstanceHost";
 import { bottomPanelMetaMapAtom } from "../registry/instance-atoms";
 import { resolveBottomPanelTabs } from "../registry/resolve-bottom-panel-tabs";
@@ -14,6 +15,7 @@ export interface BottomPanelLeafProps {
 	readonly leaf: BottomPanelLeafState;
 	readonly state: BottomPanelSessionState;
 	readonly definitions: readonly BottomPanelComponentDefinition[];
+	readonly scopeKey: string;
 	readonly cwd: string | null;
 	readonly focused: boolean;
 	readonly panelCollapsed: boolean;
@@ -36,6 +38,7 @@ export function BottomPanelLeaf({
 	leaf,
 	state,
 	definitions,
+	scopeKey,
 	cwd,
 	focused,
 	panelCollapsed,
@@ -50,6 +53,7 @@ export function BottomPanelLeaf({
 	const { t } = useTranslation("chat");
 	const metaById = useAtomValue(bottomPanelMetaMapAtom);
 	const resolved = resolveBottomPanelTabs({ tabs: leaf.tabs, definitions, metaById });
+	const terminalAvailable = definitions.some((definition) => definition.id === TERMINAL_PANEL_ID);
 
 	return (
 		<div
@@ -115,9 +119,12 @@ export function BottomPanelLeaf({
 						>
 							<BottomPanelInstanceHost
 								definition={entry.definition}
+								scopeKey={scopeKey}
 								tabId={entry.tabId}
 								cwd={cwd}
 								active={active && !panelCollapsed}
+								payload={leaf.tabs.find((tab) => tab.tabId === entry.tabId)?.payload}
+								terminalAvailable={terminalAvailable}
 							/>
 						</div>
 					);

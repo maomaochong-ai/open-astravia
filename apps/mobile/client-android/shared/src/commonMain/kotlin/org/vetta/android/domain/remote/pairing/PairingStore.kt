@@ -75,7 +75,14 @@ class PairingStore(
                     secrets.set(IDENTITY_KEY, RemoteCrypto.toBase64Url(it.secretKey))
                 }
         desktops = settings.getStringOrNull(DESKTOPS_KEY)?.let(::parseDesktops).orEmpty()
-        current = settings.getStringOrNull(CURRENT_KEY) ?: desktops.firstOrNull()?.desktopIdentityKey
+        current =
+            when (val stored = settings.getStringOrNull(CURRENT_KEY)) {
+                // Stores from before the current one was recorded: the first is it.
+                null -> desktops.firstOrNull()?.desktopIdentityKey
+                // Unpaired: none, even with other computers stored.
+                NO_CURRENT -> null
+                else -> stored
+            }
     }
 
     fun getIdentity(): RemoteIdentityKeyPair = checkNotNull(identity) { "pairing store is not loaded" }
@@ -106,14 +113,14 @@ class PairingStore(
     fun revoke(desktopIdentityKey: String) {
         desktops = desktops.filterNot { it.desktopIdentityKey == desktopIdentityKey }
         secrets.remove(secretKey(desktopIdentityKey))
-        if (current == desktopIdentityKey) current = desktops.firstOrNull()?.desktopIdentityKey
+        // No other computer takes its place unasked: the phone keeps showing the one it left.
+        if (current == desktopIdentityKey) current = null
         persist()
     }
 
     private fun persist() {
         settings[DESKTOPS_KEY] = json.encodeToString(ListSerializer(StoredDesktop.serializer()), desktops)
-        val key = current
-        if (key != null) settings[CURRENT_KEY] = key else settings.remove(CURRENT_KEY)
+        settings[CURRENT_KEY] = current ?: NO_CURRENT
     }
 
     private fun parseDesktops(raw: String): List<StoredDesktop> =
@@ -123,6 +130,7 @@ class PairingStore(
         const val IDENTITY_KEY = "vetta.identity.secret"
         const val DESKTOPS_KEY = "vetta.desktops"
         const val CURRENT_KEY = "vetta.desktops.current"
+        private const val NO_CURRENT = ""
 
         fun secretKey(desktopIdentityKey: String): String = "vetta.desktop.$desktopIdentityKey.secret"
 

@@ -1,11 +1,15 @@
 package org.vetta.android.domain.remote.pairing
 
+import kotlin.random.Random
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import org.vetta.android.domain.remote.RemoteApi
@@ -28,7 +32,6 @@ import org.vetta.android.domain.remote.protocol.RemoteEventName
 import org.vetta.android.domain.remote.protocol.RemoteIdentityKeyPair
 import org.vetta.android.domain.remote.protocol.RemoteRole
 import org.vetta.android.domain.remote.relayControlUrl
-import kotlin.random.Random
 
 enum class PairingFailure {
     InvalidCode,
@@ -105,55 +108,97 @@ class PairingFlow(
         open.forEach { scope.launch { it.close() } }
     }
 
-    /** Tries the code's local-network addresses first, then its relay. */
+    /**
+     * Tries all of the code's local-network addresses at once, then its relay. The desktop
+     * lists every network card's address and most do not answer; trying them one by one
+     * made a phone elsewhere (as with a connection code) wait for each to time out before
+     * the relay got its turn.
+     */
     suspend fun pairWithCode(text: String): DesktopRecord? {
         val invite = parsePairingInvite(text)
         if (invite == null) {
             fail(PairingFailure.InvalidCode)
             return null
         }
-        val attempts =
-            invite.lanEndpoints.map { PairingVia.Lan to lanControlUrl(it, invite.pairingId) } +
-                listOfNotNull(invite.relayBaseUrl?.let { PairingVia.Relay to relayControlUrl(it, invite.pairingId) })
-        if (attempts.isEmpty()) {
+        val lanUrls = invite.lanEndpoints.map { lanControlUrl(it, invite.pairingId) }
+        val relayUrl = invite.relayBaseUrl?.let { relayControlUrl(it, invite.pairingId) }
+        if (lanUrls.isEmpty() && relayUrl == null) {
             fail(PairingFailure.InvalidCode)
             return null
         }
         val expected = RemoteCrypto.decodePublicKey(invite.desktopIdentityKey)
-        var lastFailure = PairingFailure.Unreachable
-        for ((via, url) in attempts) {
-            if (cancelled) return null
-            options.onPhase(PairingPhase.Connecting(via))
-            val timeoutMs = if (via == PairingVia.Lan) options.timeoutMs else maxOf(options.timeoutMs, options.relayTimeoutMs)
-            when (val outcome = connectOnce(url, invite.mobileSecret, expected, timeoutMs)) {
-                is Outcome.Online -> {
-                    release(outcome.attempt)
-                    val now = options.now()
-                    val record =
-                        DesktopRecord(
-                            desktopIdentityKey = invite.desktopIdentityKey,
-                            desktopName = invite.desktopName,
-                            pairingId = invite.pairingId,
-                            mobileSecret = invite.mobileSecret,
-                            lanEndpoints = invite.lanEndpoints,
-                            relayBaseUrl = invite.relayBaseUrl,
-                            pairedAt = now,
-                            lastSeenAt = now,
-                        )
-                    if (cancelled) return null
-                    options.onPhase(PairingPhase.Paired(record))
-                    return record
-                }
-                is Outcome.Failed -> {
-                    lastFailure = outcome.reason
-                    // The desktop answered and said no; another path would only ask again.
-                    if (lastFailure == PairingFailure.Unauthorized || lastFailure == PairingFailure.Rejected) break
-                }
+        var outcome: Outcome = Outcome.Failed(PairingFailure.Unreachable)
+        if (lanUrls.isNotEmpty()) {
+            options.onPhase(PairingPhase.Connecting(PairingVia.Lan))
+            outcome = raceLan(lanUrls, invite.mobileSecret, expected)
+        }
+        // The desktop answered and said no; the relay would only ask again.
+        val refused = (outcome as? Outcome.Failed)?.reason.let { it == PairingFailure.Unauthorized || it == PairingFailure.Rejected }
+        if (outcome is Outcome.Failed && !refused && relayUrl != null && !cancelled) {
+            options.onPhase(PairingPhase.Connecting(PairingVia.Relay))
+            outcome = connectOnce(relayUrl, invite.mobileSecret, expected, maxOf(options.timeoutMs, options.relayTimeoutMs))
+        }
+        if (cancelled) {
+            (outcome as? Outcome.Online)?.let { release(it.attempt) }
+            return null
+        }
+        return when (outcome) {
+            is Outcome.Online -> {
+                release(outcome.attempt)
+                val now = options.now()
+                val record =
+                    DesktopRecord(
+                        desktopIdentityKey = invite.desktopIdentityKey,
+                        desktopName = invite.desktopName,
+                        pairingId = invite.pairingId,
+                        mobileSecret = invite.mobileSecret,
+                        lanEndpoints = invite.lanEndpoints,
+                        relayBaseUrl = invite.relayBaseUrl,
+                        pairedAt = now,
+                        lastSeenAt = now,
+                    )
+                options.onPhase(PairingPhase.Paired(record))
+                record
+            }
+            is Outcome.Failed -> {
+                fail(outcome.reason)
+                null
             }
         }
-        fail(lastFailure)
-        return null
     }
+
+    /**
+     * Connects to every address at once; the first to come online wins and the rest are
+     * dropped. A desktop that refuses the phone ends the race: another address is the
+     * same desktop.
+     */
+    private suspend fun raceLan(urls: List<String>, pairingSecret: String, expected: ByteArray): Outcome =
+        coroutineScope {
+            val results = Channel<Outcome>(urls.size)
+            val racers = urls.map { url -> launch { results.send(connectOnce(url, pairingSecret, expected, options.timeoutMs)) } }
+            var result: Outcome = Outcome.Failed(PairingFailure.Unreachable)
+            for (index in urls.indices) {
+                val outcome = results.receive()
+                if (outcome is Outcome.Online) {
+                    result = outcome
+                    break
+                }
+                val reason = (outcome as Outcome.Failed).reason
+                if (reason == PairingFailure.Unauthorized || reason == PairingFailure.Rejected) {
+                    result = outcome
+                    break
+                }
+                if (reason != PairingFailure.Unreachable) result = outcome
+            }
+            racers.forEach(Job::cancel)
+            racers.joinAll()
+            // Another address may have come online in the same moment; it is not needed.
+            while (true) {
+                val late = results.tryReceive().getOrNull() ?: break
+                if (late is Outcome.Online) release(late.attempt)
+            }
+            result
+        }
 
     /**
      * Pairs with the desktop at `host:port` on the local network, without a code.
@@ -213,7 +258,8 @@ class PairingFlow(
                         role = RemoteRole.Mobile,
                         deviceId = options.deviceId,
                         deviceName = options.deviceName,
-                        capabilities = RemoteCapabilities(chat = true, sessionRead = true),
+                        // `screen`: the desktop captures only while the remote screen is open (ADR-0140).
+                        capabilities = RemoteCapabilities(chat = true, sessionRead = true, screen = true),
                         identity = options.identity,
                         expectedPeerIdentityKey = expectedPeerIdentityKey,
                         connectionId = "mobile-${Random.nextLong().toULong().toString(16)}",

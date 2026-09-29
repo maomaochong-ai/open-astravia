@@ -65,7 +65,12 @@ public struct RemoteConnectionOptions {
 
 public struct RemoteRequestError: Error, LocalizedError, Equatable {
 	public let message: String
-	public init(_ message: String) { self.message = message }
+	/// What the desktop answered with, when it answered at all.
+	public let code: RemoteErrorCode?
+	public init(_ message: String, code: RemoteErrorCode? = nil) {
+		self.message = message
+		self.code = code
+	}
 	public var errorDescription: String? { message }
 }
 
@@ -173,7 +178,7 @@ public final class RemoteConnection {
 				let message = "remote request timed out: \(method.rawValue)"
 				self.lastErrorCode = .requestTimeout
 				self.emit(.error(RemoteError(code: .requestTimeout, message: message, retryable: true)))
-				entry.continuation.resume(throwing: RemoteRequestError(message))
+				entry.continuation.resume(throwing: RemoteRequestError(message, code: .requestTimeout))
 			}
 			pending[requestId] = PendingRequest(continuation: continuation, startedAt: options.now(), timeout: timeout)
 			do {
@@ -418,7 +423,7 @@ public final class RemoteConnection {
 			lastErrorCode = frame.error?.code ?? .internalError
 			let message = frame.error?.message ?? "remote request failed"
 			emit(.error(frame.error ?? RemoteError(code: .internalError, message: message, retryable: false)))
-			entry.continuation.resume(throwing: RemoteRequestError(message))
+			entry.continuation.resume(throwing: RemoteRequestError(message, code: frame.error?.code ?? .internalError))
 		}
 	}
 
@@ -480,7 +485,7 @@ public final class RemoteConnection {
 		pending.removeAll()
 		for entry in entries {
 			entry.timeout.cancel()
-			entry.continuation.resume(throwing: RemoteRequestError(message))
+			entry.continuation.resume(throwing: RemoteRequestError(message, code: .transportClosed))
 		}
 	}
 

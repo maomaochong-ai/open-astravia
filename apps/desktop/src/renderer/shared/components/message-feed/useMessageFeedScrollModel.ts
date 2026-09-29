@@ -8,6 +8,7 @@ const SCROLL_DISTANCE_FOR_MAX_RATIO = 900;
 const IDLE_MEASURE_EVERY_N_FRAMES = 4;
 const MAX_CACHED_FEED_STATES = 24;
 const SCROLL_SETTLE_DELAY_MS = 180;
+const SCROLL_TO_BOTTOM_VISIBILITY_THRESHOLD_PX = 500;
 const INITIAL_TAIL_LOCATION: IndexLocationWithAlign = { index: "LAST", align: "end" };
 
 interface CachedFeedState {
@@ -77,7 +78,9 @@ export interface MessageFeedScrollModel {
 	readonly onTotalListHeightChange: (height: number) => void;
 	readonly scrollerElement: HTMLElement | null;
 	readonly scrollerRef: (element: HTMLElement | Window | null) => void;
+	readonly scrollToBottom: () => void;
 	readonly scrollToItem: (index: number) => void;
+	readonly showScrollToBottom: boolean;
 	readonly virtuosoRef: React.RefObject<VirtuosoHandle | null>;
 	readonly restoreStateFrom?: StateSnapshot;
 }
@@ -120,6 +123,12 @@ export function useMessageFeedScrollModel<T>({
 	const { initialTopMostItemIndex, snapshot: restoreStateFrom } = initialViewportSelectionRef.current;
 	const scrollerElementRef = useRef<HTMLElement | null>(null);
 	const [scrollerElement, setScrollerElement] = useState<HTMLElement | null>(null);
+	const [scrollToBottomVisibilityState, setScrollToBottomVisibilityState] = useState(() => ({
+		resetKey,
+		visible: false,
+	}));
+	const showScrollToBottom =
+		scrollToBottomVisibilityState.resetKey === resetKey && scrollToBottomVisibilityState.visible;
 	const layoutResizingRef = useRef(layoutResizing);
 	const previousLayoutResizingRef = useRef(layoutResizing);
 	layoutResizingRef.current = layoutResizing;
@@ -134,6 +143,7 @@ export function useMessageFeedScrollModel<T>({
 	shouldFollowBottomRef.current = followOutputEnabled;
 	const lerpAnimationFrameRef = useRef<number | null>(null);
 	const snapAnimationFrameRef = useRef<number | null>(null);
+	const visibilityAnimationFrameRef = useRef<number | null>(null);
 	const idleFrameCountRef = useRef(0);
 	const lastTouchYRef = useRef<number | null>(null);
 	const lastScrollTopRef = useRef(0);
@@ -175,6 +185,23 @@ export function useMessageFeedScrollModel<T>({
 		if (!handle || typeof handle.getState !== "function") return;
 		handle.getState((snapshot) => cacheFeedState(key, itemCount, identity, snapshot));
 	}, []);
+	const updateScrollToBottomVisibility = useCallback(() => {
+		visibilityAnimationFrameRef.current = null;
+		const element = scrollerElementRef.current;
+		const visible = element
+			? element.scrollHeight - element.clientHeight - element.scrollTop > SCROLL_TO_BOTTOM_VISIBILITY_THRESHOLD_PX
+			: false;
+		const currentResetKey = stateKeyRef.current;
+		setScrollToBottomVisibilityState((current) =>
+			current.resetKey === currentResetKey && current.visible === visible
+				? current
+				: { resetKey: currentResetKey, visible },
+		);
+	}, []);
+	const scheduleScrollToBottomVisibilityUpdate = useCallback(() => {
+		if (visibilityAnimationFrameRef.current !== null) return;
+		visibilityAnimationFrameRef.current = requestAnimationFrame(updateScrollToBottomVisibility);
+	}, [updateScrollToBottomVisibility]);
 
 	const tickLerp = useCallback(() => {
 		const element = scrollerElementRef.current;
@@ -236,6 +263,12 @@ export function useMessageFeedScrollModel<T>({
 		},
 		[stopFollowingBottom],
 	);
+	const scrollToBottom = useCallback(() => {
+		browsingHistoryRef.current = false;
+		lastUserScrollDirectionRef.current = null;
+		setShouldFollowBottom(true);
+		virtuosoRef.current?.scrollToIndex({ index: "LAST", align: "end", behavior: "smooth" });
+	}, [setShouldFollowBottom]);
 
 	const onWheel = useCallback(
 		(event: WheelEvent) => {
@@ -297,8 +330,9 @@ export function useMessageFeedScrollModel<T>({
 			}
 			lastScrollTopRef.current = scrollTop;
 		}
+		scheduleScrollToBottomVisibilityUpdate();
 		scheduleScrollSettle();
-	}, [scheduleScrollSettle, stopFollowingBottom]);
+	}, [scheduleScrollSettle, scheduleScrollToBottomVisibilityUpdate, stopFollowingBottom]);
 
 	const previousResetKeyRef = useRef<string | null | undefined>(resetKey);
 	useEffect(() => {
@@ -385,9 +419,10 @@ export function useMessageFeedScrollModel<T>({
 
 	const onTotalListHeightChange = useCallback(
 		(_height: number) => {
+			updateScrollToBottomVisibility();
 			scheduleSnapToBottom();
 		},
-		[scheduleSnapToBottom],
+		[scheduleSnapToBottom, updateScrollToBottomVisibility],
 	);
 
 	useEffect(() => {
@@ -410,6 +445,7 @@ export function useMessageFeedScrollModel<T>({
 		element.addEventListener("scroll", onScroll, { passive: true });
 		element.addEventListener("scrollend", settleScroll, { passive: true });
 		const resizeObserver = new ResizeObserver(() => {
+			updateScrollToBottomVisibility();
 			scheduleSnapToBottom();
 		});
 		resizeObserver.observe(element);
@@ -444,12 +480,16 @@ export function useMessageFeedScrollModel<T>({
 		scheduleSnapToBottom,
 		scrollerElement,
 		settleScroll,
+		updateScrollToBottomVisibility,
 	]);
 
 	useEffect(
 		() => () => {
 			if (lerpAnimationFrameRef.current !== null) cancelAnimationFrame(lerpAnimationFrameRef.current);
 			if (snapAnimationFrameRef.current !== null) cancelAnimationFrame(snapAnimationFrameRef.current);
+			if (visibilityAnimationFrameRef.current !== null) {
+				cancelAnimationFrame(visibilityAnimationFrameRef.current);
+			}
 			if (scrollSettleTimerRef.current !== null) window.clearTimeout(scrollSettleTimerRef.current);
 			captureState();
 		},
@@ -466,7 +506,9 @@ export function useMessageFeedScrollModel<T>({
 		restoreStateFrom,
 		scrollerElement,
 		scrollerRef,
+		scrollToBottom,
 		scrollToItem,
+		showScrollToBottom,
 		virtuosoRef,
 	};
 }

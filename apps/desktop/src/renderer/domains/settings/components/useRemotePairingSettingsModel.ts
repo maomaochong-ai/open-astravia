@@ -1,7 +1,11 @@
-import type { RemotePairingState } from "@preload/api-types/remote-pairing";
-import QRCode from "qrcode";
+import type {
+	RemotePairingChannel,
+	RemotePairingState,
+	RemoteRelayTestResult,
+} from "@preload/api-types/remote-pairing";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { type PairingQr, pairingQr } from "./remote-pairing-qr";
 
 const EMPTY_STATE: RemotePairingState = {
 	devices: [],
@@ -11,9 +15,6 @@ const EMPTY_STATE: RemotePairingState = {
 	vaultAvailable: true,
 };
 
-/** Polls only while this page is mounted; the main process pushes nothing otherwise. */
-const REFRESH_MS = 1_000;
-
 type RemotePairingFailure = "action" | "create" | "load" | "qr";
 
 export interface RemotePairingSettingsModel {
@@ -22,12 +23,18 @@ export interface RemotePairingSettingsModel {
 	readonly cloud: {
 		readonly available: boolean;
 		readonly enabled: boolean;
+		readonly relayBaseUrl?: string;
+		readonly defaultRelayBaseUrl?: string;
+		/** The relay's host alone, for showing on the page. */
+		readonly relayHost?: string;
+		readonly relayIsDefault: boolean;
 	};
 	readonly devices: readonly {
 		readonly id: string;
 		readonly name: string;
 		readonly online: boolean;
 		readonly status: string;
+		readonly desktopControl: boolean;
 	}[];
 	readonly error?: string;
 	readonly labels: {
@@ -41,26 +48,35 @@ export interface RemotePairingSettingsModel {
 		};
 		readonly cloud: {
 			readonly description: string;
+			readonly section: string;
 			readonly title: string;
 			readonly unavailable: string;
 		};
+		readonly relay: {
+			readonly change: string;
+			readonly defaultTag: string;
+			readonly label: string;
+			readonly unset: string;
+		};
 		readonly devices: {
-			readonly description: string;
+			readonly desktop: string;
 			readonly empty: string;
 			readonly revoke: string;
 			readonly title: string;
 		};
 		readonly pairing: {
 			readonly cancel: string;
+			readonly code: string;
+			readonly codeFailed: string;
+			readonly codeHint: string;
+			readonly codePreparing: string;
+			readonly password: string;
 			readonly create: string;
-			readonly description: string;
 			readonly empty: string;
 			readonly generating: string;
 			readonly manualHint: string;
-			readonly permissionHint: string;
+			readonly manualTitle: string;
 			readonly qrAlt: string;
-			readonly qrHint: string;
-			readonly title: string;
 			readonly vaultUnavailable: string;
 		};
 		readonly description: string;
@@ -72,7 +88,15 @@ export interface RemotePairingSettingsModel {
 		readonly hasInvite: boolean;
 		readonly preparing: boolean;
 		readonly qrDataUrl?: string;
+		/** Diameter of the badge over the QR code's centre, as a share of its width. */
+		readonly qrBadge?: number;
 		readonly vaultAvailable: boolean;
+		/** The invite as a connection code and password, when the relay can hold it. */
+		readonly code?: {
+			readonly code: string;
+			readonly password: string;
+			readonly status: "preparing" | "ready" | "failed";
+		};
 	};
 	readonly actions: {
 		readonly approve: (id: string, allow: boolean) => void;
@@ -80,13 +104,37 @@ export interface RemotePairingSettingsModel {
 		readonly createInvite: () => void;
 		readonly revokeDevice: (id: string) => void;
 		readonly setCloudEnabled: (enabled: boolean) => void;
+		readonly setDesktopControl: (id: string, enabled: boolean) => void;
+		/** Another relay, or the default one for `undefined`; false when it was refused. */
+		readonly setRelay: (url: string | undefined) => Promise<boolean>;
+		readonly testRelay: (url: string) => Promise<RemoteRelayTestResult>;
 	};
+}
+
+/** How a phone is connected, fastest first: the one it uses when several are up. */
+const CHANNEL_LABELS = {
+	p2p: "remote.devices.channel.p2p",
+	lan: "remote.devices.channel.lan",
+	relay: "remote.devices.channel.relay",
+} as const satisfies Record<RemotePairingChannel, string>;
+
+function bestChannel(channels: readonly RemotePairingChannel[]): RemotePairingChannel | undefined {
+	return (Object.keys(CHANNEL_LABELS) as RemotePairingChannel[]).find((channel) => channels.includes(channel));
+}
+
+function relayHost(url: string | undefined): string | undefined {
+	if (!url) return undefined;
+	try {
+		return new URL(url).host || url;
+	} catch {
+		return url;
+	}
 }
 
 export function useRemotePairingSettingsModel(): RemotePairingSettingsModel {
 	const { t } = useTranslation("settings");
 	const [state, setState] = useState<RemotePairingState>(EMPTY_STATE);
-	const [qrDataUrl, setQrDataUrl] = useState<string>();
+	const [qr, setQr] = useState<PairingQr>();
 	const [initializing, setInitializing] = useState(true);
 	const [busy, setBusy] = useState(false);
 	const [failure, setFailure] = useState<RemotePairingFailure>();
@@ -98,19 +146,12 @@ export function useRemotePairingSettingsModel(): RemotePairingSettingsModel {
 
 	useEffect(() => {
 		let cancelled = false;
-		let timer: number | undefined;
-
-		const sync = async (): Promise<void> => {
-			try {
-				const next = await window.vetta.remotePairing.getState();
-				if (!cancelled) {
-					setState(next);
-					setFailure((current) => (current === "load" ? undefined : current));
-				}
-			} catch {
-				if (!cancelled) setFailure("load");
-			}
-		};
+		// The desktop pushes every change: a phone coming or going, an invite or approval appearing.
+		const unsubscribe = window.vetta.remotePairing.onStateChanged((next) => {
+			if (cancelled) return;
+			setState(next);
+			setFailure((current) => (current === "load" ? undefined : current));
+		});
 
 		const initialize = async (): Promise<void> => {
 			try {
@@ -123,40 +164,31 @@ export function useRemotePairingSettingsModel(): RemotePairingSettingsModel {
 			} catch {
 				if (!cancelled) setFailure("create");
 			} finally {
-				if (!cancelled) {
-					setInitializing(false);
-					timer = window.setInterval(() => void sync(), REFRESH_MS);
-				}
+				if (!cancelled) setInitializing(false);
 			}
 		};
 
 		void initialize();
 		return () => {
 			cancelled = true;
-			if (timer !== undefined) window.clearInterval(timer);
+			unsubscribe();
 		};
 	}, [apply]);
 
 	useEffect(() => {
-		const uri = state.invite?.inviteUri;
+		const uri = state.invite?.qrText;
 		if (!uri) {
-			setQrDataUrl(undefined);
+			setQr(undefined);
 			return;
 		}
 
-		let cancelled = false;
-		setQrDataUrl(undefined);
-		void QRCode.toDataURL(uri, { width: 320, margin: 1, errorCorrectionLevel: "M" })
-			.then((url) => {
-				if (!cancelled) setQrDataUrl(url);
-			})
-			.catch(() => {
-				if (!cancelled) setFailure("qr");
-			});
-		return () => {
-			cancelled = true;
-		};
-	}, [state.invite?.inviteUri]);
+		try {
+			setQr(pairingQr(uri));
+		} catch {
+			setQr(undefined);
+			setFailure("qr");
+		}
+	}, [state.invite?.qrText]);
 
 	const run = useCallback(
 		async (action: () => Promise<RemotePairingState>, failureKind: RemotePairingFailure = "action") => {
@@ -172,6 +204,13 @@ export function useRemotePairingSettingsModel(): RemotePairingSettingsModel {
 		[apply],
 	);
 
+	// While the page is open there is always a code to scan: one that expired, was used by a
+	// phone or was refreshed is replaced at once. A failure stops it until the person retries.
+	const needsInvite = !initializing && !busy && !failure && !state.invite && state.vaultAvailable;
+	useEffect(() => {
+		if (needsInvite) void run(() => window.vetta.remotePairing.createInvite(), "create");
+	}, [needsInvite, run]);
+
 	const labels = useMemo<RemotePairingSettingsModel["labels"]>(
 		() => ({
 			title: t("remote.title"),
@@ -186,48 +225,61 @@ export function useRemotePairingSettingsModel(): RemotePairingSettingsModel {
 			},
 			devices: {
 				title: t("remote.devices.title"),
-				description: t("remote.devices.description"),
 				empty: t("remote.devices.empty"),
 				revoke: t("remote.devices.revoke"),
+				desktop: t("remote.devices.desktop"),
 			},
 			pairing: {
-				title: t("remote.pairing.title"),
-				description: t("remote.pairing.description"),
 				create: t("remote.pairing.create"),
 				cancel: t("remote.pairing.cancel"),
 				qrAlt: t("remote.pairing.qrAlt"),
-				qrHint: t("remote.pairing.qrHint", {
-					minutes: state.invite ? Math.max(0, Math.round((state.invite.expiresAt - Date.now()) / 60_000)) : 0,
-				}),
 				generating: t("remote.pairing.generating"),
 				empty: t("remote.pairing.empty"),
 				vaultUnavailable: t("remote.pairing.vaultUnavailable"),
 				manualHint: t("remote.pairing.manualHint"),
-				permissionHint: t("remote.pairing.permissionHint"),
+				manualTitle: t("remote.pairing.manualTitle"),
+				code: t("remote.pairing.code"),
+				password: t("remote.pairing.password"),
+				codeHint: t("remote.pairing.codeHint"),
+				codePreparing: t("remote.pairing.codePreparing"),
+				codeFailed: t("remote.pairing.codeFailed"),
 			},
 			cloud: {
 				title: t("remote.cloud.title"),
+				section: t("section_remote-cloud"),
 				description: t("remote.cloud.description"),
 				unavailable: t("remote.cloud.unavailable"),
 			},
+			relay: {
+				label: t("remote.relay.label"),
+				change: t("remote.relay.change"),
+				defaultTag: t("remote.relay.defaultTag"),
+				unset: t("remote.relay.unset"),
+			},
 		}),
-		[state.invite, t],
+		[t],
 	);
 
 	const devices = useMemo(
 		() =>
 			state.devices
 				.filter((device) => device.claimed)
-				.map((device) => ({
-					id: device.id,
-					name: device.name || t("remote.devices.unnamed"),
-					online: device.online,
-					status: device.online
-						? t("remote.devices.online")
-						: device.lastSeenAt
-							? t("remote.devices.lastSeen", { time: new Date(device.lastSeenAt).toLocaleString() })
-							: t("remote.devices.neverSeen"),
-				})),
+				.map((device) => {
+					const channel = device.online ? bestChannel(device.channels) : undefined;
+					return {
+						id: device.id,
+						name: device.name || t("remote.devices.unnamed"),
+						online: device.online,
+						status: channel
+							? t("remote.devices.onlineVia", { channel: t(CHANNEL_LABELS[channel]) })
+							: device.online
+								? t("remote.devices.online")
+								: device.lastSeenAt
+									? t("remote.devices.lastSeen", { time: new Date(device.lastSeenAt).toLocaleString() })
+									: t("remote.devices.neverSeen"),
+						desktopControl: device.desktopControl,
+					};
+				}),
 		[state.devices, t],
 	);
 
@@ -238,8 +290,18 @@ export function useRemotePairingSettingsModel(): RemotePairingSettingsModel {
 			createInvite: () => void run(() => window.vetta.remotePairing.createInvite(), "create"),
 			revokeDevice: (id) => void run(() => window.vetta.remotePairing.revokeDevice(id)),
 			setCloudEnabled: (enabled) => void run(() => window.vetta.remotePairing.setCloudEnabled(enabled)),
+			setDesktopControl: (id, enabled) => void run(() => window.vetta.remotePairing.setDesktopControl(id, enabled)),
+			setRelay: async (url) => {
+				try {
+					apply(await window.vetta.remotePairing.setRelay(url));
+					return true;
+				} catch {
+					return false;
+				}
+			},
+			testRelay: (url) => window.vetta.remotePairing.testRelay(url).catch(() => "unreachable" as const),
 		}),
-		[run],
+		[apply, run],
 	);
 
 	const failureMessage = failure
@@ -258,6 +320,10 @@ export function useRemotePairingSettingsModel(): RemotePairingSettingsModel {
 		cloud: {
 			available: Boolean(state.relayBaseUrl),
 			enabled: state.cloudEnabled,
+			relayBaseUrl: state.relayBaseUrl,
+			defaultRelayBaseUrl: state.defaultRelayBaseUrl,
+			relayHost: relayHost(state.relayBaseUrl),
+			relayIsDefault: !state.relayBaseUrl || state.relayBaseUrl === state.defaultRelayBaseUrl,
 		},
 		devices,
 		error: failureMessage,
@@ -266,10 +332,11 @@ export function useRemotePairingSettingsModel(): RemotePairingSettingsModel {
 			canCreate: !initializing && !busy && !state.invite && state.vaultAvailable,
 			endpoints: state.lanEndpoints,
 			hasInvite: Boolean(state.invite),
-			preparing:
-				initializing || Boolean((busy && !state.invite) || (state.invite && !qrDataUrl && failure !== "qr")),
-			qrDataUrl,
+			preparing: initializing || Boolean((busy && !state.invite) || (state.invite && !qr && failure !== "qr")),
+			qrDataUrl: qr?.dataUrl,
+			qrBadge: qr?.badge,
 			vaultAvailable: state.vaultAvailable,
+			code: state.invite?.code,
 		},
 		actions,
 	};

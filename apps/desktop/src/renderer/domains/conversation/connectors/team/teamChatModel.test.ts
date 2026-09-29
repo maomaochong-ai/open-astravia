@@ -707,7 +707,12 @@ describe("team chat stream state", () => {
 			reason: "aborted",
 			timestamp: 2,
 		});
-		expect(state.turn?.message).toMatchObject({ phase: "aborted", text: "partial", endedAt: 2 });
+		expect(state.turn?.message).toMatchObject({
+			phase: "aborted",
+			text: "partial",
+			endedAt: 2,
+			durationSeconds: 0.001,
+		});
 
 		const late = reduceTeamStreamState(state, streamEvent("turn", 3, "late"));
 		expect(late).toBe(state);
@@ -803,6 +808,7 @@ describe("team chat stream state", () => {
 			phase: "failed",
 			text: "partial",
 			endedAt: 3,
+			durationSeconds: 0.002,
 			blocks: expect.arrayContaining([
 				expect.objectContaining({ type: "tool_call", toolCallId: "failed-tool", status: "error" }),
 			]),
@@ -836,6 +842,7 @@ describe("team chat stream state", () => {
 		expect(late).toBe(completed);
 		expect(late.turn?.message.phase).toBe("completed");
 		expect(late.turn?.message.text).toBe("done");
+		expect(late.turn?.message).toMatchObject({ startedAt: 1, endedAt: 3, durationSeconds: 0.002 });
 	});
 
 	it("deduplicates optimistic user messages by request id and keeps partial member output visible", () => {
@@ -1924,5 +1931,59 @@ describe("team chat stream state", () => {
 				result: "done",
 			}),
 		]);
+	});
+});
+
+describe("team turn timing", () => {
+	it("restores overall and delegated member durations from the durable display projection", () => {
+		const leaderDelegation = agentMessage("leader-delegation", "leader-turn", "leader", "Delegating", 10);
+		const leaderResult = agentMessage("leader-result", "leader-turn", "leader", "Overall result", 30);
+		const reviewerResult = agentMessage("reviewer-result", "reviewer-turn", "reviewer", "Review complete", 20);
+		const items = projectTeamConversationTimeline({
+			snapshot: snapshot({
+				messages: [leaderDelegation, reviewerResult, leaderResult],
+				activities: [
+					{
+						kind: "delegation",
+						id: "delegation",
+						requestId: "reviewer-turn",
+						sourceMemberId: "leader",
+						targetMemberId: "reviewer",
+						objective: "Review",
+						state: "completed",
+						timestamp: 15,
+					},
+				],
+				display: {
+					memberConversations: [],
+					messageTimings: [
+						{ messageId: "leader-delegation", startedAt: 1_000, endedAt: 3_000, durationMs: 2_000 },
+						{ messageId: "reviewer-result", startedAt: 2_000, endedAt: 5_250, durationMs: 3_250 },
+						{ messageId: "leader-result", startedAt: 8_000, endedAt: 11_000, durationMs: 3_000 },
+					],
+				},
+			}),
+			pending: undefined,
+			streams: {},
+			members: [
+				member,
+				{ ...member, id: "reviewer", name: "Reviewer", handle: "reviewer", blueprintId: "reviewer" },
+			],
+			labels: { delegation: (from, to) => `${from} -> ${to}`, unknownMember: "Unknown" },
+		});
+
+		expect(items).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ kind: "agent", id: "leader-delegation", durationSeconds: 10 }),
+				expect.objectContaining({
+					kind: "event",
+					event: expect.objectContaining({
+						kind: "team-member-summary",
+						memberId: "reviewer",
+						durationSeconds: 3.25,
+					}),
+				}),
+			]),
+		);
 	});
 });

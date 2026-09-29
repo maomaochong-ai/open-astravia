@@ -14,7 +14,16 @@ describe("listLanEndpoints", () => {
 			bridge100: [{ address: "10.211.55.2", family: "IPv4", internal: false }],
 			eth1: [{ address: "203.0.113.7", family: 4, internal: false }],
 		});
-		expect(endpoints).toEqual(["192.168.1.20:43117", "10.211.55.2:43117", "203.0.113.7:43117", "100.64.0.9:43117"]);
+		expect(endpoints).toEqual(["192.168.1.20:43117", "203.0.113.7:43117", "10.211.55.2:43117", "100.64.0.9:43117"]);
+	});
+
+	it("puts the Wi-Fi address ahead of the private ranges macOS VM bridges hand out", () => {
+		const endpoints = listLanEndpoints(43117, {
+			bridge100: [{ address: "192.168.2.1", family: "IPv4", internal: false }],
+			bridge102: [{ address: "192.168.107.0", family: "IPv4", internal: false }],
+			en1: [{ address: "192.168.50.22", family: "IPv4", internal: false }],
+		});
+		expect(endpoints[0]).toBe("192.168.50.22:43117");
 	});
 
 	it("returns nothing when only loopback exists", () => {

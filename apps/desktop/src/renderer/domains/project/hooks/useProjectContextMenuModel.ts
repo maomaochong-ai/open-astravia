@@ -14,9 +14,8 @@ interface UseProjectContextMenuModelArgs {
 	onClearClaw?: (cwd: string) => void;
 	onClearConversation?: (cwd: string) => void;
 	onClose: () => void;
-	onDelete: (cwd: string) => void;
-	onOpenClawSettings?: () => void;
 	onRemove: (cwd: string) => void;
+	onOpenClawSettings?: () => void;
 	project: Project;
 }
 
@@ -28,9 +27,8 @@ export function useProjectContextMenuModel({
 	onClearClaw,
 	onClearConversation,
 	onClose,
-	onDelete,
-	onOpenClawSettings,
 	onRemove,
+	onOpenClawSettings,
 	project,
 }: UseProjectContextMenuModelArgs): Omit<ProjectContextMenuViewProps, "x" | "y"> {
 	const { t } = useTranslation("project");
@@ -51,10 +49,10 @@ export function useProjectContextMenuModel({
 		onClose();
 	}, [cwd, onClearConversation, onClose]);
 
-	const handleDelete = useCallback(() => {
-		onDelete(cwd);
+	const handleRemove = useCallback(() => {
+		onRemove(cwd);
 		onClose();
-	}, [cwd, onDelete, onClose]);
+	}, [cwd, onClose, onRemove]);
 
 	const handleOpenClawSettings = useCallback(() => {
 		onOpenClawSettings?.();
@@ -65,11 +63,6 @@ export function useProjectContextMenuModel({
 		void window.vetta.shell.showInFolder(cwd);
 		onClose();
 	}, [cwd, onClose]);
-
-	const handleRemove = useCallback(() => {
-		onRemove(cwd);
-		onClose();
-	}, [cwd, onClose, onRemove]);
 
 	return {
 		// 远程项目在这台电脑上没有对应的位置，系统文件管理器无从显示。
@@ -82,7 +75,6 @@ export function useProjectContextMenuModel({
 			openInFolder: isMac ? t("contextMenu.openInFinder") : t("contextMenu.openInExplorer"),
 			archiveProject: t("contextMenu.archiveProject"),
 			removeFromList: t("contextMenu.removeFromList"),
-			deleteProject: t("contextMenu.deleteProject"),
 			clearConversation: t("contextMenu.clearConversation"),
 			clearConversationDisabled: t("contextMenu.clearConversationDisabled"),
 			clearClaw: t("contextMenu.clearClaw"),
@@ -93,7 +85,6 @@ export function useProjectContextMenuModel({
 		onClearClaw: onClearClaw ? handleClearClaw : undefined,
 		onClearConversation: onClearConversation ? handleClearConversation : undefined,
 		onClose,
-		onDelete: handleDelete,
 		onOpenClawSettings: onOpenClawSettings ? handleOpenClawSettings : undefined,
 		onOpenInFolder: handleOpenInFolder,
 		onRemove: handleRemove,

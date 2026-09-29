@@ -9,7 +9,7 @@ import {
 	type KnowledgeBaseConfig,
 	normalizeKnowledgeBase,
 	readDesktopConfig,
-	writeDesktopConfig,
+	updateDesktopConfig,
 } from "../config/desktop-config-store.js";
 import { getAppLogger } from "../logger.js";
 import {
@@ -132,21 +132,22 @@ export class KnowledgeService {
 	}
 
 	async setProcessing(data: KnowledgeProcessingUpdate): Promise<KnowledgeBaseConfig> {
-		const config = await readDesktopConfig();
-		const knowledgeBase = { ...config.knowledgeBase };
-		if (data.enabled !== undefined) knowledgeBase.enabled = data.enabled;
-		if (data.pollIntervalMinutes !== undefined) knowledgeBase.pollIntervalMinutes = data.pollIntervalMinutes;
-		if (data.processingModelKey === null) delete knowledgeBase.processingModelKey;
-		else if (data.processingModelKey !== undefined) knowledgeBase.processingModelKey = data.processingModelKey;
-		if (data.processingModelReasoningLevel === null) delete knowledgeBase.processingModelReasoningLevel;
-		else if (data.processingModelReasoningLevel !== undefined) {
-			knowledgeBase.processingModelReasoningLevel = data.processingModelReasoningLevel;
-		}
-		if (data.agentConcurrency !== undefined) knowledgeBase.agentConcurrency = data.agentConcurrency;
-		if (data.ocrConcurrency !== undefined) knowledgeBase.ocrConcurrency = data.ocrConcurrency;
-
-		const normalized = normalizeKnowledgeBase(knowledgeBase);
-		await writeDesktopConfig({ ...config, knowledgeBase: normalized });
+		let normalized: KnowledgeBaseConfig = {};
+		await updateDesktopConfig((config) => {
+			const knowledgeBase = { ...config.knowledgeBase };
+			if (data.enabled !== undefined) knowledgeBase.enabled = data.enabled;
+			if (data.pollIntervalMinutes !== undefined) knowledgeBase.pollIntervalMinutes = data.pollIntervalMinutes;
+			if (data.processingModelKey === null) delete knowledgeBase.processingModelKey;
+			else if (data.processingModelKey !== undefined) knowledgeBase.processingModelKey = data.processingModelKey;
+			if (data.processingModelReasoningLevel === null) delete knowledgeBase.processingModelReasoningLevel;
+			else if (data.processingModelReasoningLevel !== undefined) {
+				knowledgeBase.processingModelReasoningLevel = data.processingModelReasoningLevel;
+			}
+			if (data.agentConcurrency !== undefined) knowledgeBase.agentConcurrency = data.agentConcurrency;
+			if (data.ocrConcurrency !== undefined) knowledgeBase.ocrConcurrency = data.ocrConcurrency;
+			normalized = normalizeKnowledgeBase(knowledgeBase);
+			return { ...config, knowledgeBase: normalized };
+		});
 		await this.reload();
 		return { ...normalized };
 	}

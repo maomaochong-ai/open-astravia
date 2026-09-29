@@ -53,13 +53,34 @@ function createDesktopCapabilityHost(): DesktopCapabilityHost {
 			const plugin = listPlugins().find((candidate) => candidate.id === pluginId);
 			return plugin?.enabled === true && plugin.trustLevel === "official";
 		},
+		onSessionLifecycle: (event) => {
+			if (event.type === "opened") {
+				log.info("plugin session opened", {
+					pluginId: event.pluginId,
+					sessionId: event.sessionId,
+					ownerId: event.ownerId,
+					openedAt: event.openedAt,
+				});
+				return;
+			}
+			log.info("plugin session closed", {
+				pluginId: event.pluginId,
+				sessionId: event.sessionId,
+				ownerId: event.ownerId,
+				reason: event.reason,
+				closedAt: event.closedAt,
+			});
+		},
 		onBrowserSessionsReleased: (pluginId, browserSessionIds) => {
 			void browser.closeReleasedSessions(pluginId, browserSessionIds).catch((error: unknown) => {
-				log.warn("browser session cleanup after plugin release failed", {
-					pluginId,
-					sessionCount: browserSessionIds.length,
-					errorKind: error instanceof Error ? error.name : "unknown",
-				});
+				log.warn(
+					"browser session cleanup after plugin release failed",
+					{
+						pluginId,
+						sessionCount: browserSessionIds.length,
+					},
+					error,
+				);
 			});
 		},
 		// Jobs and temporary artifacts are owned by the stable plugin id, not by a

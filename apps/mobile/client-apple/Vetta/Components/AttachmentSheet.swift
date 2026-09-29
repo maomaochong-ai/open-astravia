@@ -6,9 +6,11 @@ import VettaKit
 
 /// The attach button's sheet, like Gemini's: a row that scrolls sideways with
 /// Photos, Camera and the newest pictures in the library, then a list of other
-/// sources (for now only Files). Tapping a recent picture attaches it at once.
+/// sources: Files, and Skills to reference one. Tapping a recent picture attaches it at once.
 struct AttachmentSheet: View {
 	@Binding var draft: PromptDraft
+	/// Skills was picked; this sheet closes and the composer opens the skill picker.
+	var onSkills: () -> Void
 	@Environment(\.dismiss) private var dismiss
 	@State private var recent: [PHAsset] = []
 	@State private var photoItems: [PhotosPickerItem] = []
@@ -45,6 +47,10 @@ struct AttachmentSheet: View {
 			VStack(spacing: 0) {
 				row(symbol: "folder", title: L10n.Chat.attachFiles, detail: L10n.Chat.attachFilesHint, identifier: "attach.files") {
 					pickingFiles = true
+				}
+				row(symbol: "sparkles", title: L10n.Chat.attachSkills, detail: L10n.Chat.attachSkillsHint, identifier: "attach.skills") {
+					onSkills()
+					dismiss()
 				}
 				#if DEBUG
 				if uiTesting {

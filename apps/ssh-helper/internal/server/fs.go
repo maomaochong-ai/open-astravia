@@ -343,6 +343,10 @@ type listRecursiveParams struct {
 	IgnoredDirectories   []string `json:"ignoredDirectories"`
 	Limit                int      `json:"limit"`
 	IncludeHiddenEntries bool     `json:"includeHiddenEntries"`
+	// Names keeps only files whose base name is listed. Filtering here rather
+	// than on the client matters in large monorepos: the limit applies to the
+	// matches, so a manifest scan is not truncated by unrelated source files.
+	Names []string `json:"names"`
 }
 
 // fsListRecursive walks the tree on the machine that owns it. Doing this from
@@ -358,6 +362,13 @@ func fsListRecursive(p listRecursiveParams) (any, *protocol.Error) {
 	ignored := make(map[string]struct{}, len(p.IgnoredDirectories))
 	for _, name := range p.IgnoredDirectories {
 		ignored[name] = struct{}{}
+	}
+	var wanted map[string]struct{}
+	if len(p.Names) > 0 {
+		wanted = make(map[string]struct{}, len(p.Names))
+		for _, name := range p.Names {
+			wanted[name] = struct{}{}
+		}
 	}
 	files := make([]string, 0, 256)
 	truncated := false
@@ -381,6 +392,11 @@ func fsListRecursive(p listRecursiveParams) (any, *protocol.Error) {
 		}
 		if hidden || !entry.Type().IsRegular() {
 			return nil
+		}
+		if wanted != nil {
+			if _, keep := wanted[name]; !keep {
+				return nil
+			}
 		}
 		if len(files) >= limit {
 			truncated = true

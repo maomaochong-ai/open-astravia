@@ -6,6 +6,12 @@ public struct ChannelManagerOptions {
 	public var createTransport: TransportFactory
 	public var onSequence: ((Int) -> Void)?
 	public var onLanEndpoints: (([String]) -> Void)?
+	/// Opens the WebRTC control channel to `p2pTarget`; nil keeps the link on the LAN and relay.
+	public var createP2pTransport: ((String) -> RemoteTransport)?
+	/// The relay's viewer signaling for this desktop (`PairingURI.desktopViewerUrl`).
+	public var p2pTarget: String?
+	public var p2pTimeoutMs: Double = 12_000
+	public var p2pProbeIntervalMs: Double = 20_000
 	public var lanBudgetMs: Double = 1_500
 	public var lanProbeIntervalMs: Double = 20_000
 	public var keepaliveIntervalMs: Double = 25_000
@@ -23,10 +29,13 @@ public struct ChannelManagerOptions {
 	}
 }
 
-/// One logical link to one desktop over two candidate channels (port of
-/// `channel-manager.ts`). LAN endpoints race first; the relay is the fallback.
-/// While on the relay a LAN probe runs periodically and the link switches back
-/// silently. The event sequence lives here, so a switch never replays or drops.
+/// One logical link to one desktop (port of `channel-manager.ts`). LAN endpoints
+/// race first; the relay is the fallback. While on the relay a LAN probe runs
+/// periodically and the link switches back silently. Once either is online, the
+/// link upgrades to the WebRTC control channel in the foreground, as Android's
+/// `DesktopLink` does (ADR-0135), but only with a desktop that captures its screen
+/// on demand (ADR-0140). The event sequence lives here, so a switch never replays
+/// or drops.
 public final class ChannelManager {
 	private final class Candidate {
 		let channel: LinkChannel
@@ -56,6 +65,7 @@ public final class ChannelManager {
 	private var attemptInFlight = false
 	private var reconnectTimer: Task<Void, Never>?
 	private var probeTimer: Task<Void, Never>?
+	private var p2pTask: Task<Void, Never>?
 	private var rttTimer: Task<Void, Never>?
 	private var backoffMs: Double = 1_000
 	private var reconnectAttempt = 0
@@ -82,22 +92,37 @@ public final class ChannelManager {
 		Task { await attempt() }
 	}
 
-	/// App came to the foreground or the network changed: re-evaluate the best channel now.
+	/// App came to the foreground, the network changed, or a background refresh woke the
+	/// app: re-evaluate the best channel now. Foreground or not is `setForeground`'s to say,
+	/// so a background refresh reconnects over the LAN or relay without opening P2P.
 	public func refresh() {
-		foreground = true
 		guard running else { return }
 		clearReconnect()
 		backoffMs = 1_000
 		if snapshot.status == .online {
 			if active?.channel == .relay { Task { await probeLan() } }
+			if active?.channel != .p2p {
+				clearP2pProbe()
+				launchP2pProbe()
+			}
 			return
 		}
 		Task { await attempt() }
 	}
 
+	/// In the background the P2P link closes at once, so the desktop stops its capture and
+	/// frees the connection instead of waiting for ICE to time out; the link falls back to
+	/// the LAN or relay, and upgrades again in the foreground.
 	public func setForeground(_ value: Bool) {
 		foreground = value
-		if !value { clearProbe() } else if active?.channel == .relay { scheduleProbe() }
+		if !value {
+			clearProbe()
+			clearP2pProbe()
+			if let active, active.channel == .p2p { dropActive(active, reason: "background") }
+		} else {
+			if active?.channel == .relay { scheduleProbe() }
+			launchP2pProbe()
+		}
 	}
 
 	public func stop() {
@@ -105,6 +130,7 @@ public final class ChannelManager {
 		generation += 1
 		clearReconnect()
 		clearProbe()
+		clearP2pProbe()
 		stopRttSampling()
 		let previous = active
 		active = nil
@@ -168,10 +194,8 @@ public final class ChannelManager {
 		backoffMs = 1_000
 		reconnectAttempt = 0
 		clearReconnect()
-		if let previous {
-			previous.dispose()
-			previous.connection.close()
-		}
+		if candidate.channel == .lan { clearProbe() }
+		if let previous { retire(previous) }
 		candidate.connection.onEvent { [weak self, weak candidate] event in
 			guard let self, let candidate, self.active === candidate else { return }
 			switch event {
@@ -210,11 +234,60 @@ public final class ChannelManager {
 			reconnectAttempt: 0
 		))
 		startRttSampling()
+		if candidate.channel != .p2p { launchP2pProbe() }
+	}
+
+	/// Lets a channel that a better one replaced finish the requests already sent on it,
+	/// then closes it: the desktop may already have acted on them, so they cannot simply
+	/// be sent again on the new channel.
+	private func retire(_ candidate: Candidate) {
+		candidate.dispose()
+		Task {
+			let deadline = options.now() + 10_000
+			while candidate.connection.snapshot.pendingRequestCount > 0, options.now() < deadline {
+				try? await Task.sleep(nanoseconds: 50_000_000)
+			}
+			candidate.connection.close()
+		}
+	}
+
+	/// Upgrades an established LAN or relay link to the WebRTC control channel, and keeps
+	/// trying every `p2pProbeIntervalMs` while it cannot. Only in the foreground, and only
+	/// with a desktop that captures on demand: an older one streams its screen for as long
+	/// as the link is up (ADR-0140).
+	private func launchP2pProbe() {
+		guard running, foreground, let active, active.channel != .p2p, p2pTask == nil,
+		      snapshot.desktop?.screen == true,
+		      let factory = options.createP2pTransport, let target = options.p2pTarget else { return }
+		let current = generation
+		p2pTask = Task { [weak self] in
+			guard let self else { return }
+			let candidate = self.buildConnection(.p2p, transport: factory(target))
+			let online = await self.waitOnline(candidate, timeoutMs: self.options.p2pTimeoutMs)
+			if !Task.isCancelled, online, self.running, self.foreground, current == self.generation, self.active != nil, self.active?.channel != .p2p {
+				self.p2pTask = nil
+				self.adopt(candidate)
+				return
+			}
+			candidate.dispose()
+			candidate.connection.close()
+			guard !Task.isCancelled else { return }
+			try? await Task.sleep(nanoseconds: UInt64(self.options.p2pProbeIntervalMs * 1_000_000))
+			guard !Task.isCancelled else { return }
+			self.p2pTask = nil
+			self.launchP2pProbe()
+		}
+	}
+
+	private func clearP2pProbe() {
+		p2pTask?.cancel()
+		p2pTask = nil
 	}
 
 	private func dropActive(_ candidate: Candidate, reason: String) {
 		guard active === candidate else { return }
 		active = nil
+		clearP2pProbe()
 		stopRttSampling()
 		candidate.dispose()
 		candidate.connection.close()
@@ -240,20 +313,25 @@ public final class ChannelManager {
 			var next = snapshot
 			next.desktop = status
 			publish(next)
+			launchP2pProbe()
 		}
 		eventListeners.emit(event)
 	}
 
 	private func buildConnection(_ channel: LinkChannel, url: String) -> Candidate {
-		let transport = options.createTransport(url, TransportOptions(
+		buildConnection(channel, transport: options.createTransport(url, TransportOptions(
 			pairingSecret: options.desktop.mobileSecret,
 			keepaliveIntervalMs: options.keepaliveIntervalMs
-		))
+		)))
+	}
+
+	private func buildConnection(_ channel: LinkChannel, transport: RemoteTransport) -> Candidate {
 		var connectionOptions = RemoteConnectionOptions(
 			role: .mobile,
 			deviceId: options.link.deviceId,
 			deviceName: options.link.deviceName,
-			capabilities: RemoteCapabilities(chat: true, sessionRead: true),
+			// `screen`: the desktop captures only while the remote screen is open (ADR-0140).
+			capabilities: RemoteCapabilities(chat: true, sessionRead: true, screen: true),
 			identity: options.link.identity
 		)
 		connectionOptions.expectedPeerIdentityKey = try? RemoteCrypto.decodePublicKey(options.desktop.desktopIdentityKey)

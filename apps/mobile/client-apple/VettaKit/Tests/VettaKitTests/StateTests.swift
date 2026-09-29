@@ -272,6 +272,14 @@ import Testing
 					["key": "anthropic/claude-fable-5-1", "name": "Claude Fable 5.1", "provider": "anthropic", "thinkingLevels": ["off", "low", "medium", "high"], "supportsImage": true],
 					["key": "zai/glm-5", "name": "GLM 5", "provider": "zai", "thinkingLevels": ["none", "high", "max"], "supportsImage": false],
 				]])
+			case .skillList where request.payload?["cwd"]?.stringValue == "/broken":
+				try? connection.respond(requestId: request.requestId, success: false, error: RemoteError(code: .internalError, message: "scan failed", retryable: false))
+			case .skillList:
+				var skills: [JSONValue] = [["name": "pdf", "alias": "PDF 工具", "description": "读写 PDF", "type": "skill", "source": "builtin"]]
+				if request.payload?["cwd"]?.stringValue == "/code/vetta" {
+					skills.append(["name": "release", "description": "发版", "type": "scene", "source": "project"])
+				}
+				try? connection.respond(requestId: request.requestId, success: true, payload: ["skills": .array(skills)])
 			case .sessionConfigure:
 				modelKey = request.payload?["modelKey"]?.stringValue ?? modelKey
 				thinkingLevel = request.payload?["thinkingLevel"]?.stringValue ?? thinkingLevel
@@ -328,8 +336,10 @@ import Testing
 
 	@Test func pairsPromptsAnswersAndUnpairs() async throws {
 		let desktop = scriptedDesktop()
+		var turnStarts = 0
 		var turnEnds = 0
 		var platform = AppPlatform.memory(createTransport: desktop.createTransport)
+		platform.onTurnStart = { turnStarts += 1 }
 		platform.onTurnEnd = { turnEnds += 1 }
 		let model = AppModel(platform: platform)
 		model.start()
@@ -361,10 +371,13 @@ import Testing
 		}
 		#expect(model.session("s2")?.status == .waitingInput)
 		#expect(model.session("s2")?.title == "帮我写周报")
+		// A tool call and two text deltas follow the prompt; only the first one buzzes.
+		#expect(turnStarts == 1)
 
 		await model.respond("s2", requestId: "q1", answers: [RemoteQuestionAnswer(question: "要发邮件吗？", answers: ["发"])])
 		#expect(await eventually { model.transcript("s2").sessionState.status == .completed })
 		#expect(model.transcript("s2").pendingQuestion == nil)
+		#expect(model.session("s2")?.status == .completed)
 		#expect(turnEnds == 1)
 
 		await model.openSession("s1")
@@ -448,6 +461,31 @@ import Testing
 		await model.loadModels("old-desktop")
 		#expect(model.models["old-desktop"] == nil)
 		#expect(model.lastError == nil, "a desktop without model.list leaves the title as is, without an alert")
+	}
+
+	@Test func listsSkillsPerProjectAndKeepsTheLastListWhenAFetchFails() async throws {
+		let log = RequestLog()
+		let desktop = scriptedDesktop(recording: log)
+		let model = AppModel(platform: .memory(createTransport: desktop.createTransport))
+		model.start()
+		let invite = PairingURI.build(RemotePairingInvite(pairingId: "pair-1234567890abcdef", mobileSecret: "secret-1234567890abcdef", desktopIdentityKey: desktop.identityKey, desktopName: "MacBook Pro", lanEndpoints: ["192.168.1.20:43117"]))
+		#expect(await model.pairWithCode(invite))
+		#expect(await eventually { model.projects.count == 2 })
+
+		#expect(model.skillCatalog(cwd: "/code/vetta").options == nil)
+		await model.loadSkills(cwd: "/code/vetta")
+		#expect(model.skillCatalog(cwd: "/code/vetta").options?.map(\.name) == ["pdf", "release"])
+		await model.loadSkills(cwd: "/conv")
+		#expect(model.skillCatalog(cwd: nil).options?.map(\.name) == ["pdf"], "the conversation root lists global skills")
+		#expect(log.entries.last { $0.method == .skillList }?.payload == nil, "and does not send it as a project")
+		#expect(model.skillName(SkillReference(kind: .skill, name: "pdf")) == "PDF 工具")
+		#expect(model.skillName(SkillReference(kind: .skill, name: "gone")) == "gone")
+
+		await model.loadSkills(cwd: "/broken")
+		#expect(model.skillCatalog(cwd: "/broken").failed)
+		#expect(model.skillCatalog(cwd: "/broken").options == nil)
+		#expect(model.lastError == nil, "the picker shows the failure itself")
+		#expect(model.skillCatalog(cwd: "/code/vetta").failed == false)
 	}
 
 	@Test func startsANewSessionOnTheChosenModel() async throws {
@@ -590,6 +628,35 @@ import Testing
 		#expect(model.startSession("   ") == nil)
 	}
 
+	@Test func openingAJustStartedSessionKeepsItsPrompt() async throws {
+		let log = RequestLog()
+		let desktop = scriptedDesktop(recording: log)
+		let model = AppModel(platform: .memory(createTransport: desktop.createTransport))
+		model.start()
+		let invite = PairingURI.build(RemotePairingInvite(pairingId: "pair-1234567890abcdef", mobileSecret: "secret-1234567890abcdef", desktopIdentityKey: desktop.identityKey, desktopName: "MacBook Pro", lanEndpoints: ["192.168.1.20:43117"]))
+		#expect(await model.pairWithCode(invite))
+		#expect(await eventually { model.sessions.map(\.id) == ["s1"] })
+
+		let localId = try #require(model.startSession("你好"))
+		#expect(await eventually { !model.isStarting(localId) })
+		#expect(await eventually { model.transcript("s2").items.count == 2 })
+
+		// The chat opens the session as soon as the prompt is out; the desktop's history
+		// (the fake's never has "你好") may not have it yet and must not replace the chat.
+		await model.openSession("s2")
+		#expect(log.entries.contains { $0.method == .sessionOpen && $0.sessionId == "s2" })
+		#expect(!log.entries.contains { $0.method == .sessionHistory && $0.sessionId == "s2" })
+		guard case let .user(_, text, _, _)? = model.transcript("s2").items.first else {
+			Issue.record("the prompt is gone")
+			return
+		}
+		#expect(text == "你好")
+		#expect(model.transcript("s2").items.count == 2, "the reply streaming in stays too")
+
+		await model.openSession("s2")
+		#expect(log.entries.contains { $0.method == .sessionHistory && $0.sessionId == "s2" }, "only the first opening skips history")
+	}
+
 	@Test func aStartThatCannotReachTheDesktopReportsBack() async throws {
 		let desktop = scriptedDesktop()
 		let model = AppModel(platform: .memory(createTransport: desktop.createTransport))
@@ -629,6 +696,83 @@ import Testing
 		#expect(second.sessions.map(\.id) == ["s1"])
 		#expect(await eventually { second.online })
 	}
+
+	@Test func signalsQuestionsAndFinishedTurnsOnlyWhileInTheBackground() async throws {
+		let desktop = scriptedDesktop()
+		let signals = RecordingSignals()
+		var platform = AppPlatform.memory(createTransport: desktop.createTransport)
+		platform.signals = signals
+		let model = AppModel(platform: platform)
+		model.start()
+		let invite = PairingURI.build(RemotePairingInvite(pairingId: "pair-1234567890abcdef", mobileSecret: "secret-1234567890abcdef", desktopIdentityKey: desktop.identityKey, desktopName: "MacBook Pro", lanEndpoints: ["192.168.1.20:43117"]))
+		#expect(await model.pairWithCode(invite))
+		#expect(await eventually { model.sessions.map(\.id) == ["s1"] })
+
+		// In front: the question shows in the app, not as a notification.
+		_ = await model.sendPrompt(nil, "帮我写周报")
+		#expect(await eventually { model.session("s2")?.status == .waitingInput })
+		#expect(signals.alerts.isEmpty)
+		#expect(signals.digests.last?.headline?.sessionId == "s2")
+		#expect(signals.digests.last?.waiting == 1)
+
+		model.setActive(false)
+		#expect(signals.digests.last?.busy == true)
+		await model.respond("s2", requestId: "q1", answers: [RemoteQuestionAnswer(question: "要发邮件吗？", answers: ["发"])])
+		#expect(await eventually { model.session("s2")?.status == .completed })
+		#expect(signals.withdrawn == ["s2"])
+		#expect(signals.alerts.map(\.kind) == [.finished])
+		#expect(signals.alerts.first?.title == "帮我写周报")
+		#expect(signals.digests.last == .idle)
+
+		// Asked again while away: the notification carries the question.
+		_ = await model.sendPrompt("s2", "再来一次")
+		#expect(await eventually { signals.alerts.count == 2 })
+		#expect(signals.alerts.last?.kind == .needsInput)
+		#expect(signals.alerts.last?.detail == "要发邮件吗？")
+
+		await model.openSession("s2")
+		#expect(signals.withdrawn.last == "s2")
+	}
+
+	@Test func answersAQuestionFromTheLiveActivity() async throws {
+		let requests = RequestLog()
+		let desktop = scriptedDesktop(recording: requests)
+		let signals = RecordingSignals()
+		var platform = AppPlatform.memory(createTransport: desktop.createTransport)
+		platform.signals = signals
+		let model = AppModel(platform: platform)
+		#expect(await model.answer("s1", requestId: "q0", question: "?", choice: "好") == false)
+
+		model.start()
+		let invite = PairingURI.build(RemotePairingInvite(pairingId: "pair-1234567890abcdef", mobileSecret: "secret-1234567890abcdef", desktopIdentityKey: desktop.identityKey, desktopName: "MacBook Pro", lanEndpoints: ["192.168.1.20:43117"]))
+		#expect(await model.pairWithCode(invite))
+		#expect(await eventually { model.sessions.map(\.id) == ["s1"] })
+		_ = await model.sendPrompt(nil, "帮我写周报")
+		#expect(await eventually { model.session("s2")?.status == .waitingInput })
+		let question = try #require(signals.digests.last?.headline?.question)
+		#expect(question.requestId == "q1")
+		#expect(question.options == ["发", "不发"])
+
+		model.setActive(false)
+		#expect(await model.answer("s2", requestId: question.requestId, question: question.question, choice: "不发"))
+		let respond = try #require(requests.entries.last { $0.method == .sessionRespond })
+		#expect(respond.payload?["requestId"]?.stringValue == "q1")
+		let answer = respond.payload?["answers"]?.arrayValue?.first
+		#expect(answer?["question"]?.stringValue == "要发邮件吗？")
+		#expect(answer?["answers"]?.arrayValue?.compactMap(\.stringValue) == ["不发"])
+		#expect(await eventually { model.session("s2")?.status == .completed })
+		#expect(signals.digests.last?.headline == nil)
+	}
+}
+
+final class RecordingSignals: SessionSignals {
+	var alerts: [SessionAlert] = []
+	var withdrawn: [String] = []
+	var digests: [LiveDigest] = []
+
+	func alert(_ alert: SessionAlert) { alerts.append(alert) }
+	func withdraw(_ sessionId: String) { withdrawn.append(sessionId) }
+	func show(_ digest: LiveDigest, active: Bool) { digests.append(digest) }
 }
 
 /// Every request the scripted desktop saw, in order.

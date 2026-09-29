@@ -5,7 +5,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -24,7 +23,6 @@ import org.vetta.android.domain.work.ModelChoice
 import org.vetta.android.domain.work.PromptDraft
 import org.vetta.android.resources.Res
 import org.vetta.android.resources.chat_level_max
-import org.vetta.android.resources.new_session_offline
 import org.vetta.android.resources.work_conversation
 import org.vetta.android.ui.str
 import org.vetta.android.ui.theme.VettaTheme
@@ -56,7 +54,8 @@ class NewSessionScreenTest {
         }
         composeRule.onNodeWithText(str(Res.string.work_conversation)).assertIsDisplayed()
         composeRule.onNodeWithTag("newSession.location").performClick()
-        composeRule.onNodeWithText("vetta").performClick()
+        composeRule.onNodeWithTag("projectSheet./code/vetta").performClick()
+        composeRule.waitForIdle()
 
         composeRule.onNodeWithTag("newSession.model").performClick()
         composeRule.onNodeWithTag("modelSheet.model.zai/glm-5").performClick()
@@ -90,7 +89,8 @@ class NewSessionScreenTest {
                 NewSessionScreen(online.copy(link = LinkSnapshot.Offline), PromptDraft("写好的"), {}, null, null, {}, {}, {}, {})
             }
         }
-        composeRule.onNodeWithText(str(Res.string.new_session_offline)).assertIsDisplayed()
-        composeRule.onNodeWithTag("newSession.location").assertIsNotEnabled()
+        // The link pill stands where the composer goes until the computer answers.
+        composeRule.onNodeWithTag("link.status").assertIsDisplayed()
+        composeRule.onNodeWithTag("composer.field").assertDoesNotExist()
     }
 }

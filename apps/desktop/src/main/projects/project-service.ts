@@ -1,12 +1,12 @@
 import { parseProjectLocation } from "@vetta/ssh-transport";
-import type { DesktopConfig, ProjectEntry } from "../config/desktop-config-store.js";
+import type { DesktopConfig, DesktopConfigUpdater, ProjectEntry } from "../config/desktop-config-store.js";
 import { sameProjectPath } from "./project-path.js";
 
 export interface ProjectServiceDependencies {
 	readonly allowProjectRoot: (path: string) => void;
 	readonly createDirectory: (path: string) => Promise<void>;
 	readonly readConfig: () => Promise<DesktopConfig>;
-	readonly writeConfig: (config: DesktopConfig) => Promise<void>;
+	readonly updateConfig: (update: DesktopConfigUpdater) => Promise<DesktopConfig>;
 	/**
 	 * 这个 hostId 是否对应一台已登记的 SSH 主机。
 	 *
@@ -75,9 +75,10 @@ export class ProjectService {
 	constructor(private readonly dependencies: ProjectServiceDependencies) {}
 
 	/** 唯一的写路径：落盘 + 广播。任何改动项目列表的地方都必须经由它。 */
-	private async commit(config: DesktopConfig): Promise<void> {
-		await this.dependencies.writeConfig(config);
+	private async commit(update: DesktopConfigUpdater): Promise<DesktopConfig> {
+		const config = await this.dependencies.updateConfig(update);
 		this.dependencies.broadcastChanged();
+		return config;
 	}
 
 	async list(): Promise<ProjectListSnapshot> {
@@ -101,12 +102,17 @@ export class ProjectService {
 		if (!isAbsolutePath(projectPath)) throw new Error("Project path must be absolute.");
 
 		await this.dependencies.createDirectory(projectPath);
-		const projects = config.projects.map((entry) => ({ ...entry }));
-		const archivedProjects = config.archivedProjects.map((entry) => ({ ...entry }));
-		if (!findProject(projects, projectPath) && !findProject(archivedProjects, projectPath)) {
-			projects.push({ path: projectPath, name: normalizedName });
-			await this.commit({ ...config, projects, archivedProjects });
-		}
+		let changed = false;
+		await this.dependencies.updateConfig((current) => {
+			const projects = current.projects.map((entry) => ({ ...entry }));
+			const archivedProjects = current.archivedProjects.map((entry) => ({ ...entry }));
+			if (!findProject(projects, projectPath) && !findProject(archivedProjects, projectPath)) {
+				projects.push({ path: projectPath, name: normalizedName });
+				changed = true;
+			}
+			return changed ? { ...current, projects, archivedProjects } : current;
+		});
+		if (changed) this.dependencies.broadcastChanged();
 		this.dependencies.allowProjectRoot(projectPath);
 		return { path: projectPath, name: normalizedName };
 	}
@@ -127,62 +133,76 @@ export class ProjectService {
 		if (await this.dependencies.isExistingNonDirectory(path)) {
 			throw new Error("Project path must be a directory.");
 		}
-		const config = await this.dependencies.readConfig();
-		const projects = config.projects.map((entry) => ({ ...entry }));
-		const archivedProjects = config.archivedProjects
-			.filter((entry) => !sameProjectPath(entry.path, path))
-			.map((entry) => ({ ...entry }));
 		const entry = { path, name: name?.trim() || pathBasename(path) };
-		if (!findProject(projects, path)) projects.push(entry);
-		await this.commit({ ...config, projects, archivedProjects });
+		await this.commit((current) => {
+			const projects = current.projects.map((item) => ({ ...item }));
+			const archivedProjects = current.archivedProjects
+				.filter((item) => !sameProjectPath(item.path, path))
+				.map((item) => ({ ...item }));
+			if (!findProject(projects, path)) projects.push(entry);
+			return { ...current, projects, archivedProjects };
+		});
 		this.dependencies.allowProjectRoot(path);
 		return entry;
 	}
 
 	async rename(path: string, name: string): Promise<ProjectEntry> {
-		const config = await this.dependencies.readConfig();
-		const projects = config.projects.map((entry) => ({ ...entry }));
-		const archivedProjects = config.archivedProjects.map((entry) => ({ ...entry }));
-		const entry = findProject(projects, path) ?? findProject(archivedProjects, path);
-		if (!entry) throw new Error(`Project not found: ${path}`);
-		entry.name = name;
-		await this.commit({ ...config, projects, archivedProjects });
-		return { ...entry };
+		let renamed: ProjectEntry | undefined;
+		await this.commit((current) => {
+			const projects = current.projects.map((entry) => ({ ...entry }));
+			const archivedProjects = current.archivedProjects.map((entry) => ({ ...entry }));
+			const entry = findProject(projects, path) ?? findProject(archivedProjects, path);
+			if (!entry) throw new Error(`Project not found: ${path}`);
+			entry.name = name;
+			renamed = { ...entry };
+			return { ...current, projects, archivedProjects };
+		});
+		return renamed!;
 	}
 
 	async archive(path: string): Promise<void> {
-		const config = await this.dependencies.readConfig();
-		const entry = findProject(config.projects, path);
-		if (!entry) throw new Error(`Active project not found: ${path}`);
-		const projects = config.projects.filter((item) => !sameProjectPath(item.path, path)).map((item) => ({ ...item }));
-		const archivedProjects = config.archivedProjects.map((item) => ({ ...item }));
-		if (!findProject(archivedProjects, path)) archivedProjects.push({ ...entry });
-		await this.commit({ ...config, projects, archivedProjects });
+		await this.commit((current) => {
+			const entry = findProject(current.projects, path);
+			if (!entry) throw new Error(`Active project not found: ${path}`);
+			const projects = current.projects
+				.filter((item) => !sameProjectPath(item.path, path))
+				.map((item) => ({ ...item }));
+			const archivedProjects = current.archivedProjects.map((item) => ({ ...item }));
+			if (!findProject(archivedProjects, path)) archivedProjects.push({ ...entry });
+			return { ...current, projects, archivedProjects };
+		});
 	}
 
 	async unarchive(path: string): Promise<void> {
-		const config = await this.dependencies.readConfig();
-		const entry = findProject(config.archivedProjects, path);
-		if (!entry) throw new Error(`Archived project not found: ${path}`);
-		const archivedProjects = config.archivedProjects
-			.filter((item) => !sameProjectPath(item.path, path))
-			.map((item) => ({ ...item }));
-		const projects = config.projects.map((item) => ({ ...item }));
-		if (!findProject(projects, path)) projects.push({ ...entry });
-		await this.commit({ ...config, projects, archivedProjects });
+		await this.commit((current) => {
+			const entry = findProject(current.archivedProjects, path);
+			if (!entry) throw new Error(`Archived project not found: ${path}`);
+			const archivedProjects = current.archivedProjects
+				.filter((item) => !sameProjectPath(item.path, path))
+				.map((item) => ({ ...item }));
+			const projects = current.projects.map((item) => ({ ...item }));
+			if (!findProject(projects, path)) projects.push({ ...entry });
+			return { ...current, projects, archivedProjects };
+		});
 		this.dependencies.allowProjectRoot(path);
 	}
 
 	async remove(path: string): Promise<void> {
-		const config = await this.dependencies.readConfig();
-		const projects = config.projects.filter((item) => !sameProjectPath(item.path, path)).map((item) => ({ ...item }));
-		const archivedProjects = config.archivedProjects
-			.filter((item) => !sameProjectPath(item.path, path))
-			.map((item) => ({ ...item }));
-		if (projects.length === config.projects.length && archivedProjects.length === config.archivedProjects.length) {
-			throw new Error(`Project not found: ${path}`);
-		}
-		await this.commit({ ...config, projects, archivedProjects });
+		await this.commit((current) => {
+			const projects = current.projects
+				.filter((item) => !sameProjectPath(item.path, path))
+				.map((item) => ({ ...item }));
+			const archivedProjects = current.archivedProjects
+				.filter((item) => !sameProjectPath(item.path, path))
+				.map((item) => ({ ...item }));
+			if (
+				projects.length === current.projects.length &&
+				archivedProjects.length === current.archivedProjects.length
+			) {
+				throw new Error(`Project not found: ${path}`);
+			}
+			return { ...current, projects, archivedProjects };
+		});
 		this.dependencies.onRemoved?.(path);
 	}
 }

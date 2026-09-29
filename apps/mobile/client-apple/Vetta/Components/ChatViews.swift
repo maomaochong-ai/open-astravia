@@ -6,7 +6,16 @@ struct UserBubble: View {
 	var attachments: [TranscriptAttachment] = []
 
 	var body: some View {
+		// The skills the message starts with show as chips; the words go in the bubble.
+		let (skills, words) = SkillTokens.split(text)
 		VStack(alignment: .trailing, spacing: 6) {
+			if !skills.isEmpty {
+				HStack(spacing: 6) {
+					ForEach(skills) { SkillChip(skill: $0) }
+				}
+				.frame(maxWidth: .infinity, alignment: .trailing)
+				.accessibilityIdentifier("bubble.skills")
+			}
 			if !attachments.isEmpty {
 				HStack(spacing: 6) {
 					ForEach(Array(attachments.enumerated()), id: \.offset) { _, attachment in
@@ -21,26 +30,59 @@ struct UserBubble: View {
 				.frame(maxWidth: .infinity, alignment: .trailing)
 				.accessibilityIdentifier("bubble.attachments")
 			}
-			bubble
+			if !words.isEmpty { bubble(words) }
 		}
 		.padding(.bottom, 16)
 	}
 
-	private var bubble: some View {
+	private func bubble(_ text: String) -> some View {
 		HStack {
 			Spacer(minLength: 48)
-			Text(text)
-				.font(.system(size: 15))
-				.lineSpacing(4)
-				.foregroundStyle(Theme.pillInk)
-				.textSelection(.enabled)
-				.padding(.horizontal, 16)
-				.padding(.vertical, 12)
-				.background(
-					UnevenRoundedRectangle(topLeadingRadius: 20, bottomLeadingRadius: 20, bottomTrailingRadius: 6, topTrailingRadius: 20, style: .continuous)
-						.fill(Theme.pill)
-				)
+			SelectableText(text: Self.attributed(text), tint: .white)
+				.padding(.horizontal, 13)
+				.padding(.vertical, 8)
+				.padding(.bottom, MessageBubbleShape.tail)
+				.background(MessageBubbleShape().fill(Theme.userBubble))
 		}
+	}
+
+	private static func attributed(_ text: String) -> NSAttributedString {
+		let paragraph = NSMutableParagraphStyle()
+		paragraph.lineSpacing = 2
+		return NSAttributedString(string: text, attributes: [
+			.font: UIFont.systemFont(ofSize: 16),
+			.foregroundColor: UIColor.white,
+			.paragraphStyle: paragraph,
+		])
+	}
+}
+
+/// The iMessage bubble: a rounded body with a tail hooking down just inside the trailing edge.
+/// The tail hangs `tail` points below the body, which the content pads for.
+/// Nonisolated because SwiftUI lays shapes out off the main actor. 
+nonisolated struct MessageBubbleShape: Shape {
+	static let tail: CGFloat = 7.5
+
+	func path(in rect: CGRect) -> Path {
+		let w = rect.width
+		let h = rect.height - Self.tail
+		let r = min(18, h / 2, w / 2)
+		var p = Path()
+		p.move(to: CGPoint(x: r, y: 0))
+		p.addLine(to: CGPoint(x: w - r, y: 0))
+		p.addArc(tangent1End: CGPoint(x: w, y: 0), tangent2End: CGPoint(x: w, y: r), radius: r)
+		p.addLine(to: CGPoint(x: w, y: h - r))
+		p.addArc(center: CGPoint(x: w - r, y: h - r), radius: r, startAngle: .degrees(0), endAngle: .degrees(15), clockwise: false)
+		// Pinch in under the corner, drop to the tip, then sweep back into the bottom edge.
+		p.addCurve(to: CGPoint(x: w - 9, y: h - 1.5), control1: CGPoint(x: w - 1, y: h - 8), control2: CGPoint(x: w - 6, y: h - 3))
+		p.addCurve(to: CGPoint(x: w - 8, y: h + Self.tail), control1: CGPoint(x: w - 11, y: h), control2: CGPoint(x: w - 10, y: h + 5))
+		p.addCurve(to: CGPoint(x: w - 26, y: h), control1: CGPoint(x: w - 12, y: h + 6.5), control2: CGPoint(x: w - 18, y: h + 0.5))
+		p.addLine(to: CGPoint(x: r, y: h))
+		p.addArc(tangent1End: CGPoint(x: 0, y: h), tangent2End: CGPoint(x: 0, y: h - r), radius: r)
+		p.addLine(to: CGPoint(x: 0, y: r))
+		p.addArc(tangent1End: CGPoint(x: 0, y: 0), tangent2End: CGPoint(x: r, y: 0), radius: r)
+		p.closeSubpath()
+		return p
 	}
 }
 
@@ -188,88 +230,92 @@ struct ThinkingBlock: View {
 	}
 }
 
-/// Everything the agent did between two user messages, as the desktop shows it:
-/// one header, work folded into step groups, the answer as Markdown, and a
-/// copy button once the turn is over.
-struct AgentTurnView: View {
-	var turn: AgentTurn
+/// The top of an agent's turn: avatar, name, when it started and, while it
+/// runs, what it is doing. The turn's pieces follow as rows of their own (see `ChatLine`).
+struct TurnHeader: View {
+	var id: String
+	var startedAt: Double?
+	var streaming: Bool
+	var empty: Bool
 	/// What the live turn is doing that its content does not show, e.g. a retry.
 	var note: String?
+
+	var body: some View {
+		HStack(spacing: 8) {
+			BotAvatar(size: 22)
+			Text("Vetta").font(.subheadline.weight(.semibold))
+			if let startedAt {
+				Text(TimeFormat.relative(startedAt)).font(.caption).foregroundStyle(.secondary)
+			}
+			if streaming {
+				Text(note ?? (empty ? L10n.Chat.waitingModel : L10n.Chat.working))
+					.font(.caption)
+					.foregroundStyle(.secondary)
+					.shimmer()
+					.transition(.opacity)
+					.accessibilityIdentifier("turn.status")
+			}
+		}
+		.accessibilityElement(children: .contain)
+		.accessibilityIdentifier("turn.\(id)")
+	}
+}
+
+/// One segment of a turn: a folded work group, the answer as Markdown, or a failure.
+struct TurnPieceView: View {
+	var segment: TurnSegment
+	var live: Bool
+	var activity: WorkStep?
+
+	var body: some View {
+		switch segment {
+		case let .work(_, steps):
+			WorkGroupView(steps: steps, live: live, activity: activity)
+		case let .text(_, text):
+			StreamingMarkdown(text: text, live: live)
+		case let .error(_, message, count):
+			HStack(alignment: .firstTextBaseline, spacing: 6) {
+				Label(message, systemImage: "exclamationmark.triangle.fill")
+				if count > 1 {
+					Text("×\(count)")
+						.font(.caption.weight(.semibold).monospacedDigit())
+						.padding(.horizontal, 6)
+						.padding(.vertical, 1)
+						.background(Theme.red.opacity(0.15), in: .capsule)
+				}
+			}
+			.font(.subheadline)
+			.foregroundStyle(Theme.red)
+			.padding(12)
+			.frame(maxWidth: .infinity, alignment: .leading)
+			.background(Theme.red.opacity(0.08), in: .rect(cornerRadius: 14))
+			.accessibilityElement(children: .combine)
+			.accessibilityIdentifier("turn.error")
+		}
+	}
+}
+
+/// Copies a finished turn's closing answer.
+struct TurnCopyButton: View {
+	var conclusion: String
 	@State private var copied = false
 
 	var body: some View {
-		VStack(alignment: .leading, spacing: 10) {
-			HStack(spacing: 8) {
-				BotAvatar(size: 22)
-				Text("Vetta").font(.subheadline.weight(.semibold))
-				if let at = turn.startedAt {
-					Text(TimeFormat.relative(at)).font(.caption).foregroundStyle(.secondary)
-				}
-				if turn.streaming {
-					Text(note ?? (turn.segments.isEmpty ? L10n.Chat.waitingModel : L10n.Chat.working))
-						.font(.caption)
-						.foregroundStyle(.secondary)
-						.shimmer()
-						.transition(.opacity)
-						.accessibilityIdentifier("turn.status")
-				}
+		Button {
+			UIPasteboard.general.string = conclusion
+			withAnimation { copied = true }
+			Task {
+				try? await Task.sleep(for: .seconds(1.5))
+				withAnimation { copied = false }
 			}
-			ForEach(Array(turn.segments.enumerated()), id: \.element.id) { index, segment in
-				switch segment {
-				case let .work(_, steps):
-					WorkGroupView(
-						steps: steps,
-						live: turn.streaming && index == turn.segments.count - 1,
-						activity: turn.activity
-					)
-				case let .text(_, text):
-					StreamingMarkdown(text: text, live: turn.streaming && index == turn.segments.count - 1)
-				case let .error(_, message, count):
-					HStack(alignment: .firstTextBaseline, spacing: 6) {
-						Label(message, systemImage: "exclamationmark.triangle.fill")
-						if count > 1 {
-							Text("×\(count)")
-								.font(.caption.weight(.semibold).monospacedDigit())
-								.padding(.horizontal, 6)
-								.padding(.vertical, 1)
-								.background(Theme.red.opacity(0.15), in: .capsule)
-						}
-					}
-					.font(.subheadline)
-					.foregroundStyle(Theme.red)
-					.padding(12)
-					.frame(maxWidth: .infinity, alignment: .leading)
-					.background(Theme.red.opacity(0.08), in: .rect(cornerRadius: 14))
-					.accessibilityElement(children: .combine)
-					.accessibilityIdentifier("turn.error")
-				}
-			}
-			if !turn.streaming, !turn.conclusion.isEmpty {
-				Button {
-					UIPasteboard.general.string = turn.conclusion
-					withAnimation { copied = true }
-					Task {
-						try? await Task.sleep(for: .seconds(1.5))
-						withAnimation { copied = false }
-					}
-				} label: {
-					Label(copied ? L10n.Chat.copied : L10n.Chat.copy, systemImage: copied ? "checkmark" : "doc.on.doc")
-						.font(.caption)
-						.foregroundStyle(.secondary)
-						.contentTransition(.symbolEffect(.replace))
-				}
-				.buttonStyle(.plain)
-				.transition(.opacity.combined(with: .offset(y: 4)))
-				.accessibilityIdentifier("turn.copy")
-			}
+		} label: {
+			Label(copied ? L10n.Chat.copied : L10n.Chat.copy, systemImage: copied ? "checkmark" : "doc.on.doc")
+				.font(.caption)
+				.foregroundStyle(.secondary)
+				.contentTransition(.symbolEffect(.replace))
 		}
-		// Blocks, the status line and the copy button ease in instead of popping.
-		.animation(.easeOut(duration: 0.3), value: turn.segments.map(\.id))
-		.animation(.easeOut(duration: 0.35), value: turn.streaming)
-		.padding(.bottom, 20)
-		.frame(maxWidth: .infinity, alignment: .leading)
-		.accessibilityElement(children: .contain)
-		.accessibilityIdentifier("turn.\(turn.id)")
+		.buttonStyle(.plain)
+		.accessibilityIdentifier("turn.copy")
 	}
 }
 
@@ -361,10 +407,12 @@ struct StreamingMarkdown: View {
 		} else {
 			TimelineView(.animation(minimumInterval: 1.0 / 60, paused: clock.idle && !clock.behind(target))) { context in
 				let reveal = clock.advance(to: context.date.timeIntervalSinceReferenceDate, target: target)
+				// Once the reply is over and every character has faded in, it becomes selectable.
+				let settled = !live && !reveal.animating(toward: target)
 				MarkdownView(
 					text: reveal.shown == target ? text : String(text.prefix(reveal.shown)),
 					// A fade lasts `fade` seconds and the head moves at most `backlog / catchUp` per second.
-					fade: FadeTail(span: 160) { reveal.opacity(at: reveal.shown - 1 - $0) }
+					fade: settled ? nil : FadeTail(span: 160) { reveal.opacity(at: reveal.shown - 1 - $0) }
 				)
 			}
 		}

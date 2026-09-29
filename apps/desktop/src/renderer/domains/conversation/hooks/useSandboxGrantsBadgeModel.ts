@@ -1,8 +1,6 @@
-import { activeSessionAtom } from "@shared/store/atoms";
 import type { RuntimeSandboxGrantInfo } from "@vetta/runtime-core";
 import type { SandboxGrantsBadgeViewLabels, SandboxGrantViewItem } from "@vetta-org/theme-ui/chat";
 import type { TFunction } from "i18next";
-import { useAtomValue } from "jotai";
 import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -47,27 +45,41 @@ export interface SandboxGrantsBadgeModel {
 	onRevoke: (grantId: string) => void;
 }
 
-export function useSandboxGrantsBadgeModel(): SandboxGrantsBadgeModel | null {
+interface ScopedGrant {
+	readonly runtimeId: string;
+	readonly grant: RuntimeSandboxGrantInfo;
+}
+
+export function useSandboxGrantsBadgeModel(runtimeIds: readonly string[]): SandboxGrantsBadgeModel | null {
 	const { t } = useTranslation("chat");
-	const activeSession = useAtomValue(activeSessionAtom);
-	const sessionId = activeSession?.runtimeId;
-	const [grants, setGrants] = useState<RuntimeSandboxGrantInfo[]>([]);
+	const [grants, setGrants] = useState<ScopedGrant[]>([]);
 	const [open, setOpen] = useState(false);
 	const [now, setNow] = useState(() => Date.now());
 	const containerRef = useRef<HTMLDivElement>(null);
 
 	const refresh = useCallback(async () => {
-		if (!sessionId) {
+		if (runtimeIds.length === 0) {
 			setGrants([]);
 			return;
 		}
 		try {
-			const result = await window.vetta.session.listSandboxGrants(sessionId);
-			setGrants(result);
+			const results = await Promise.allSettled(
+				runtimeIds.map(async (runtimeId) => ({
+					runtimeId,
+					grants: await window.vetta.session.listSandboxGrants(runtimeId),
+				})),
+			);
+			setGrants(
+				results.flatMap((result) =>
+					result.status === "fulfilled"
+						? result.value.grants.map((grant) => ({ runtimeId: result.value.runtimeId, grant }))
+						: [],
+				),
+			);
 		} catch {
 			// Ignore — IPC may be torn down during navigation.
 		}
-	}, [sessionId]);
+	}, [runtimeIds]);
 
 	useEffect(() => {
 		void refresh();
@@ -91,27 +103,27 @@ export function useSandboxGrantsBadgeModel(): SandboxGrantsBadgeModel | null {
 	}, [open, refresh]);
 
 	const handleRevoke = useCallback(
-		async (grantId: string) => {
-			if (!sessionId) return;
-			await window.vetta.session.revokeSandboxGrant(sessionId, grantId);
+		async (scopedGrantId: string) => {
+			const scopedGrant = grants.find(({ runtimeId, grant }) => `${runtimeId}:${grant.id}` === scopedGrantId);
+			if (!scopedGrant) return;
+			await window.vetta.session.revokeSandboxGrant(scopedGrant.runtimeId, scopedGrant.grant.id);
 			await refresh();
 		},
-		[sessionId, refresh],
+		[grants, refresh],
 	);
 
 	const handleRevokeAll = useCallback(async () => {
-		if (!sessionId) return;
-		await window.vetta.session.revokeAllSandboxGrants(sessionId);
+		await Promise.all(runtimeIds.map((runtimeId) => window.vetta.session.revokeAllSandboxGrants(runtimeId)));
 		await refresh();
-	}, [sessionId, refresh]);
+	}, [runtimeIds, refresh]);
 
 	const sortedGrants = useMemo(
 		(): SandboxGrantViewItem[] =>
 			grants
 				.slice()
-				.sort((a, b) => b.createdAt - a.createdAt)
-				.map((grant) => ({
-					id: grant.id,
+				.sort((a, b) => b.grant.createdAt - a.grant.createdAt)
+				.map(({ runtimeId, grant }) => ({
+					id: `${runtimeId}:${grant.id}`,
 					capabilityLabel: capabilityLabel(grant.capability, t),
 					toolName: grant.toolName,
 					grantRoot: grant.grantRoot,
@@ -131,7 +143,7 @@ export function useSandboxGrantsBadgeModel(): SandboxGrantsBadgeModel | null {
 		[t],
 	);
 
-	if (!sessionId || grants.length === 0) return null;
+	if (runtimeIds.length === 0 || grants.length === 0) return null;
 
 	return {
 		count: grants.length,

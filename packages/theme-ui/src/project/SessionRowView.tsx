@@ -8,6 +8,7 @@ import {
 	SESSION_ROW_CONTENT_FADE_CLASS,
 	SessionRowMoreButton,
 } from "./SessionRowMoreButton";
+import { SessionTitleMarquee } from "./SessionTitleMarquee";
 import { prepareSidebarSelection } from "./useActiveSessionAutoScroll";
 
 export interface SessionRowViewProps {
@@ -85,7 +86,6 @@ export const SessionRowView = memo(function SessionRowView({
 					active ? "bg-accent text-foreground" : "hover:bg-accent/50",
 				)}
 				style={IMMEDIATE_SESSION_SELECTION_STYLE}
-				title={title}
 			>
 				{renaming ? (
 					<SessionRenameInputView
@@ -125,15 +125,15 @@ export const SessionRowView = memo(function SessionRowView({
 						) : (
 							<SessionStatusIcon active={active} running={running} scheduled={scheduled} />
 						)}
-						<span
+						<SessionTitleMarquee
 							className={cn(
-								"min-w-0 flex-1 truncate text-[13px]",
+								"text-[13px]",
 								running && "pl-1",
 								active ? "font-semibold text-foreground" : "text-foreground",
 							)}
-						>
-							{label}
-						</span>
+							label={label}
+							title={title}
+						/>
 						{trailingAvatarUrls && trailingAvatarUrls.length > 0 ? (
 							<AvatarStackView avatarUrls={trailingAvatarUrls} />
 						) : null}

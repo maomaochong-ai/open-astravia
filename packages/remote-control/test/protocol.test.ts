@@ -40,10 +40,15 @@ describe("remote protocol v2", () => {
 		for (const method of [
 			"session.upload",
 			"model.list",
+			"skill.list",
 			"session.configure",
 			"session.rename",
 			"session.pin",
 			"session.delete",
+			"file.list",
+			"file.stat",
+			"file.read",
+			"screen.subscribe",
 		]) {
 			expect(decodeRemoteFrame({ type: "request", requestId: "r1", method, sessionId: "s1" })).toMatchObject({
 				method,
@@ -86,6 +91,18 @@ describe("remote protocol v2", () => {
 		expect(decodeSessionFrame({ type: "ack", sequence: 3 })).toEqual({ type: "ack", sequence: 3 });
 	});
 
+	it("accepts the screen status event and still rejects unknown event names", () => {
+		expect(decodeRemoteFrame({ type: "event", eventId: "e1", sequence: 1, name: "screen.status" })).toMatchObject({
+			name: "screen.status",
+		});
+		expect(decodeRemoteFrame({ type: "event", eventId: "e2", sequence: 2, name: "screen.cursor" })).toMatchObject({
+			name: "screen.cursor",
+		});
+		expect(() => decodeRemoteFrame({ type: "event", eventId: "e1", sequence: 1, name: "screen.frame" })).toThrow(
+			RemoteProtocolError,
+		);
+	});
+
 	it("requires positive event sequences", () => {
 		expect(() => decodeRemoteFrame({ type: "event", eventId: "e1", sequence: 0, name: "session.state" })).toThrow(
 			RemoteProtocolError,
@@ -104,6 +121,19 @@ describe("remote protocol v2", () => {
 				error: { code: "made_up", message: "x", retryable: false },
 			}),
 		).toThrow(RemoteProtocolError);
+	});
+
+	it("accepts the file errors only file requests answer with", () => {
+		for (const code of ["forbidden", "too_large", "file_changed"]) {
+			expect(
+				decodeRemoteFrame({
+					type: "response",
+					requestId: "r1",
+					success: false,
+					error: { code, message: "x", retryable: false },
+				}),
+			).toMatchObject({ error: { code } });
+		}
 	});
 
 	it("accepts the relay-owned frames", () => {

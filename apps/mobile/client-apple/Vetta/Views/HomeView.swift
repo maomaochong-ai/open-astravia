@@ -70,6 +70,7 @@ struct HomeView: View {
 				.accessibilityAddTraits(.isHeader)
 			Spacer()
 			GlassCircleButton(symbol: "xmark", size: 48, label: L10n.Common.close, identifier: "home.close") {
+				tapHaptic()
 				router.closeDrawer()
 			}
 		}
@@ -109,11 +110,19 @@ struct HomeView: View {
 	/// Ways in, as plain icon-and-label rows. One list row, so they sit closer than list rows can.
 	private var entries: some View {
 		VStack(spacing: 0) {
-			EntryRow(symbol: "square.and.pencil", title: L10n.NewSession.title, identifier: "home.newSession") {
-				router.startNewSession()
+			EntryRow(
+				symbol: "square.and.pencil",
+				title: L10n.NewSession.title,
+				detail: filter.projectCwd.map(projectName),
+				identifier: "home.newSession"
+			) {
+				router.startNewSession(in: filter.projectCwd)
 			}
 			EntryRow(symbol: "square.stack.3d.up", title: L10n.Home.taskBoard, identifier: "home.taskBoard") {
 				router.openBoard()
+			}
+			EntryRow(symbol: "display", title: L10n.Remote.title, identifier: "home.remote") {
+				router.openRemote()
 			}
 		}
 		.bareRow()
@@ -166,17 +175,27 @@ struct HomeView: View {
 		}
 		.bareRow(top: 24)
 	}
+
+	private func projectName(_ cwd: String) -> String {
+		model.projects.first { $0.cwd == cwd }?.name
+			?? model.sessions.first { $0.projectCwd == cwd }?.projectName
+			?? URL(fileURLWithPath: cwd).lastPathComponent
+	}
 }
 
 /// One of Home's ways in: an icon and a label, no background.
 private struct EntryRow: View {
 	var symbol: String
 	var title: String
+	var detail: String? = nil
 	var identifier: String
 	var action: () -> Void
 
 	var body: some View {
-		Button(action: action) {
+		Button {
+			tapHaptic()
+			action()
+		} label: {
 			HStack(spacing: 14) {
 				Image(systemName: symbol)
 					.font(.title3)
@@ -184,6 +203,12 @@ private struct EntryRow: View {
 				Text(title)
 					.font(.body.weight(.medium))
 				Spacer(minLength: 0)
+				if let detail {
+					Text(detail)
+						.font(.subheadline)
+						.foregroundStyle(Theme.dim)
+						.lineLimit(1)
+				}
 			}
 			.foregroundStyle(Theme.ink)
 			.padding(.horizontal, 20)

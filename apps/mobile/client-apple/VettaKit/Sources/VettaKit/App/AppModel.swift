@@ -4,23 +4,17 @@ import os
 
 private let log = Logger(subsystem: "com.openvetta.mobile", category: "app")
 
-public enum ConfirmPolicy: String, Codable, CaseIterable, Sendable {
-	case major, important, auto
-}
-
 public struct Preferences: Equatable, Codable, Sendable {
 	public var liveThinking: Bool
 	public var haptics: Bool
-	public var confirmPolicy: ConfirmPolicy
 
-	public static let defaults = Preferences(liveThinking: true, haptics: true, confirmPolicy: .important)
+	public static let defaults = Preferences(liveThinking: true, haptics: true)
 
 	static func decode(_ raw: String?) -> Preferences {
 		guard let raw, let value = try? JSONValue.parse(raw), value.isObject else { return .defaults }
 		return Preferences(
 			liveThinking: value["liveThinking"]?.boolValue != false,
-			haptics: value["haptics"]?.boolValue != false,
-			confirmPolicy: value["confirmPolicy"]?.stringValue.flatMap(ConfirmPolicy.init(rawValue:)) ?? .important
+			haptics: value["haptics"]?.boolValue != false
 		)
 	}
 }
@@ -32,9 +26,12 @@ public struct AppPlatform {
 	public var cache: SessionCache
 	public var createTransport: TransportFactory
 	public var deviceName: String
+	public var onTurnStart: (() -> Void)?
 	public var onTurnEnd: (() -> Void)?
+	public var signals: SessionSignals?
 	public var configureManager: ((inout ChannelManagerOptions) -> Void)?
 	public var configurePairing: ((inout PairingFlowOptions) -> Void)?
+	public var inviteLookup = InviteCodeLookup()
 
 	public init(settings: KeyValueStore, secrets: KeyValueStore, cache: SessionCache, createTransport: @escaping TransportFactory, deviceName: String, onTurnEnd: (() -> Void)? = nil) {
 		self.settings = settings
@@ -63,7 +60,9 @@ public final class AppModel {
 	public private(set) var paired = false
 	public private(set) var desktop: StoredDesktop?
 	public private(set) var link: LinkSnapshot = .offline
-	public private(set) var sessions: [RemoteSessionSummary] = []
+	public private(set) var sessions: [RemoteSessionSummary] = [] {
+		didSet { sessionsChanged(from: oldValue) }
+	}
 	public private(set) var sessionsLoaded = false
 	/// The desktop's project list, the conversation bucket first. Kept across
 	/// launches so filtering by kind works before the link comes up.
@@ -75,6 +74,9 @@ public final class AppModel {
 	/// The model and level last used on this desktop, to start or switch a session;
 	/// New Session starts on it. Kept across launches.
 	public private(set) var lastModelChoice = ModelChoice()
+	/// Skills the composer may reference, per project; "" holds the global ones.
+	/// In memory only: `loadSkills` refreshes a list each time the picker opens.
+	public private(set) var skillCatalogs: [String: SkillCatalog] = [:]
 	public private(set) var transcripts: [String: TranscriptState] = [:]
 	/// Sessions opened by `startSession`: the local id the chat opened on → the desktop's id.
 	public private(set) var startedSessions: [String: String] = [:]
@@ -82,6 +84,12 @@ public final class AppModel {
 	public private(set) var preferences: Preferences = .defaults
 	public private(set) var pairing: PairingPhase = .idle
 	public var lastError: String?
+	/// What the desktop said about its screen while the remote desktop page is open; nil
+	/// otherwise (ADR-0140).
+	public private(set) var screen: RemoteScreenStatus?
+	/// The desktop's pointer shape while the remote desktop is open; nil until it says, or
+	/// from a desktop that cannot (the phone then draws a plain arrow).
+	public private(set) var screenCursor: RemoteScreenCursor?
 
 	@ObservationIgnored private let platform: AppPlatform
 	@ObservationIgnored private let pairingStore: PairingStore
@@ -92,7 +100,15 @@ public final class AppModel {
 	@ObservationIgnored private var unsubscribe: [() -> Void] = []
 	@ObservationIgnored private var transcriptSave: [String: Task<Void, Never>] = [:]
 	@ObservationIgnored private var active = true
+	/// The remote desktop page is open; the desktop captures only while it is and the app is in front.
+	@ObservationIgnored private var screenOpen = false
 	@ObservationIgnored private var newSessionModelsLoad: Task<Void, Never>?
+	/// Sessions `startSession` just sent their first prompt to; see `openSession`.
+	@ObservationIgnored private var freshSessions: Set<String> = []
+	@ObservationIgnored private let fileCache = FileContentCache()
+	@ObservationIgnored private var watch = SessionWatch()
+	/// Sessions whose latest user message has no reply yet; the first output buzzes once.
+	@ObservationIgnored private var awaitingOutput: Set<String> = []
 
 	public init(platform: AppPlatform) {
 		self.platform = platform
@@ -111,6 +127,9 @@ public final class AppModel {
 
 	public func session(_ sessionId: String) -> RemoteSessionSummary? { sessions.first { $0.id == sessionId } }
 
+	/// Whether the connected desktop serves `panel`; false until its status arrives.
+	public func isAvailable(_ panel: SessionPanel) -> Bool { panel.isAvailable(on: link.desktop) }
+
 	// MARK: Lifecycle
 
 	public func start() {
@@ -128,6 +147,39 @@ public final class AppModel {
 		active = value
 		manager?.setForeground(value)
 		if value, !wasActive { manager?.refresh() }
+		if screenOpen, value != wasActive { syncScreen() }
+		if value != wasActive { platform.signals?.show(liveDigest, active: value) }
+	}
+
+	/// Woken in the background: reconnects, fetches the list and returns once it is
+	/// in, or when `timeoutMs` runs out. What changed meanwhile raises its alerts.
+	public func refreshInBackground(timeoutMs: Double = 20_000) async {
+		guard await reconnect(timeoutMs: timeoutMs) else { return }
+		await refreshSessions()
+	}
+
+	/// Answers a question from the Live Activity, which may have woken the app in
+	/// the background. False when it did not reach the desktop.
+	public func answer(_ sessionId: String, requestId: String, question: String, choice: String, timeoutMs: Double = 20_000) async -> Bool {
+		start()
+		guard await reconnect(timeoutMs: timeoutMs) else { return false }
+		return await respond(sessionId, requestId: requestId, answers: [RemoteQuestionAnswer(question: question, answers: [choice])])
+	}
+
+	/// Brings the link up if it is down and waits for it, without treating the app as in front.
+	private func reconnect(timeoutMs: Double) async -> Bool {
+		guard let manager else { return false }
+		manager.refresh()
+		defer { manager.setForeground(active) }
+		let deadline = WallClock.nowMs() + timeoutMs
+		while !online, WallClock.nowMs() < deadline {
+			try? await Task.sleep(nanoseconds: 200_000_000)
+		}
+		return online
+	}
+
+	private var liveDigest: LiveDigest {
+		watch.digest(sessions) { [transcripts] sessionId in transcripts[sessionId]?.pendingQuestion }
 	}
 
 	private func loadDeviceId() -> String {
@@ -139,9 +191,34 @@ public final class AppModel {
 
 	// MARK: Pairing
 
+	/// Pairs with what a QR code or link holds: a whole pairing link, or just a connection
+	/// code and password (ADR-0138), which is then looked up on the relay.
 	public func pairWithCode(_ text: String) async -> Bool {
+		if let qr = InviteCode.parseQR(text) {
+			return await pairWithInvite(code: qr.code, password: qr.password, relayBaseUrl: qr.relayBaseUrl)
+		}
 		let flow = startFlow()
 		guard let record = await flow.pairWithCode(text) else { return false }
+		return finishPairing(record)
+	}
+
+	/// Pairs with the desktop whose invite waits on the relay under a connection code
+	/// (ADR-0136); from there it is the same as scanning its QR code. `relayBaseUrl` is
+	/// what was typed for a desktop on its own relay, nil for the default one.
+	public func pairWithInvite(code: String, password: String, relayBaseUrl: String? = nil) async -> Bool {
+		let flow = startFlow()
+		pairing = .connecting(via: .relay)
+		let found = await platform.inviteLookup.lookup(code: code, password: password, relayBaseUrl: InviteCode.relayBaseUrl(typed: relayBaseUrl))
+		// Cancelled, or another pairing started, while the relay was asked.
+		guard self.flow === flow else { return false }
+		let uri: String
+		switch found {
+		case let .found(link): uri = link
+		case .notFound: pairing = .failed(.inviteNotFound); return false
+		case .wrongPassword: pairing = .failed(.inviteWrongPassword); return false
+		case .unreachable: pairing = .failed(.inviteUnreachable); return false
+		}
+		guard let record = await flow.pairWithCode(uri) else { return false }
 		return finishPairing(record)
 	}
 
@@ -175,8 +252,10 @@ public final class AppModel {
 		projects = []
 		models = [:]
 		newSessionModels = []
+		skillCatalogs = [:]
 		lastModelChoice = ModelChoice()
 		transcripts = [:]
+		fileCache.removeAll()
 		link = .offline
 	}
 
@@ -216,9 +295,12 @@ public final class AppModel {
 		projects = loadProjects(key)
 		models = [:]
 		newSessionModels = cachedNewSessionModels(key)
+		skillCatalogs = [:]
 		lastModelChoice = platform.settings.get(Self.lastModelKeyPrefix + key)
 			.flatMap { try? JSONDecoder().decode(ModelChoice.self, from: Data($0.utf8)) } ?? ModelChoice()
 		transcripts = [:]
+		freshSessions = []
+		fileCache.removeAll()
 		link = .offline
 		var options = ChannelManagerOptions(desktop: record, link: identity, createTransport: platform.createTransport)
 		options.onSequence = { [weak self] sequence in
@@ -249,6 +331,45 @@ public final class AppModel {
 		unsubscribe.removeAll()
 		manager?.stop()
 		manager = nil
+		screen = nil
+	}
+
+	// MARK: Remote desktop
+
+	/// The relay's viewer signaling for the paired desktop's screen and the P2P channel;
+	/// nil without a relay to reach it through.
+	public var remoteDesktopTarget: String? {
+		guard let record = pairingStore.getCurrent(), let relay = record.relayBaseUrl, !relay.isEmpty else { return nil }
+		return PairingURI.desktopViewerUrl(relayBaseUrl: relay, pairingId: record.pairingId, mobileSecret: record.mobileSecret)
+	}
+
+	/// The remote desktop page opened or closed: the desktop starts or stops capturing (ADR-0140).
+	public func setScreenOpen(_ open: Bool) {
+		guard screenOpen != open else { return }
+		screenOpen = open
+		syncScreen()
+	}
+
+	private func syncScreen() {
+		let wanted = screenOpen && active
+		if !wanted {
+			screen = nil
+			screenCursor = nil
+		}
+		// Only a desktop that captures on demand knows the request; with any other the
+		// phone never opens the P2P link that would carry its screen.
+		guard let manager, link.desktop?.screen == true, link.isUsable else { return }
+		Task {
+			do {
+				// `cursor`: this phone draws the pointer itself and wants its shape.
+				let result = try await manager.request(.screenSubscribe, payload: ["active": .bool(wanted), "cursor": .bool(wanted)])
+				// A later open or close has its own answer coming.
+				guard wanted == (self.screenOpen && self.active) else { return }
+				self.screen = wanted ? RemoteAPI.readScreenStatus(result) : nil
+			} catch {
+				log.error("screen subscription failed: \(String(describing: type(of: error)), privacy: .public)")
+			}
+		}
 	}
 
 	private func requireManager() throws -> ChannelManager {
@@ -284,6 +405,24 @@ public final class AppModel {
 		patch(&sessions[index])
 	}
 
+	private func sessionsChanged(from old: [RemoteSessionSummary]) {
+		guard let signals = platform.signals else { return }
+		let alerts = watch.update(from: old, to: sessions) { [transcripts] sessionId in
+			transcripts[sessionId]?.pendingQuestion?.questions.first?.question
+		}
+		let waitingNow = Set(sessions.filter { $0.status == .waitingInput }.map(\.id))
+		for session in old where session.status == .waitingInput && !waitingNow.contains(session.id) {
+			signals.withdraw(session.id)
+		}
+		if !active { alerts.forEach(signals.alert) }
+		signals.show(liveDigest, active: active)
+	}
+
+	private func outputStarted(_ sessionId: String) {
+		guard awaitingOutput.remove(sessionId) != nil, preferences.haptics, active else { return }
+		platform.onTurnStart?()
+	}
+
 	private func handleEvent(_ event: RemoteEvent) {
 		let sessionId = event.sessionId
 		switch event.name {
@@ -303,6 +442,11 @@ public final class AppModel {
 			}
 		case .sessionMessage:
 			guard let sessionId, let message = RemoteAPI.readMessageEvent(event.payload) else { return }
+			switch message {
+			case .user: awaitingOutput.insert(sessionId)
+			case .assistantDelta, .thinkingDelta: outputStarted(sessionId)
+			case .turnEnd: awaitingOutput.remove(sessionId)
+			}
 			if case .thinkingDelta = message, !preferences.liveThinking { return }
 			dispatch(sessionId, .message(message))
 			if case .turnEnd = message, preferences.haptics, active { platform.onTurnEnd?() }
@@ -314,6 +458,7 @@ public final class AppModel {
 			}
 		case .sessionTool:
 			guard let sessionId, let tool = RemoteAPI.readToolEvent(event.payload) else { return }
+			outputStarted(sessionId)
 			dispatch(sessionId, .tool(tool))
 		case .sessionInput:
 			guard let sessionId, let payload = event.payload else { return }
@@ -332,8 +477,16 @@ public final class AppModel {
 				return
 			}
 		case .sessionResync:
+			awaitingOutput.removeAll()
 			transcripts = transcripts.mapValues { TranscriptReducer.reduce($0, .resync) }
 			Task { await refreshSessions() }
+		case .deviceStatus:
+			// Sent on every connection: a desktop that lost the phone for a moment forgot it was watching.
+			if screenOpen, active { syncScreen() }
+		case .screenStatus:
+			if screenOpen, active, let status = RemoteAPI.readScreenStatus(event.payload) { screen = status }
+		case .screenCursor:
+			if screenOpen, active, let cursor = RemoteAPI.readScreenCursor(event.payload) { screenCursor = cursor }
 		default:
 			return
 		}
@@ -376,7 +529,12 @@ public final class AppModel {
 		return (try? JSONDecoder().decode([RemoteProjectSummary].self, from: Data(text.utf8))) ?? []
 	}
 
+	/// Fetches the session's history, except right after `startSession`: the desktop
+	/// accepts a prompt before its agent records it, so history taken then lacks the
+	/// prompt and would wipe it off the chat. The chat already has everything then.
 	public func openSession(_ sessionId: String) async {
+		platform.signals?.withdraw(sessionId)
+		let fresh = freshSessions.remove(sessionId) != nil && transcripts[sessionId]?.stale == false
 		if transcripts[sessionId] == nil, let key = desktopKey, let cached = platform.cache.loadTranscript(key, sessionId) {
 			var restored = TranscriptState.empty
 			restored.items = cached
@@ -387,6 +545,10 @@ public final class AppModel {
 		do {
 			let manager = try requireManager()
 			let opened = try await manager.request(.sessionOpen, sessionId: sessionId)
+			guard !fresh else {
+				patchSession(sessionId) { $0.live = true }
+				return
+			}
 			let history = try await manager.request(.sessionHistory, sessionId: sessionId)
 			let entries = RemoteAPI.readTranscriptEntries(history)
 			let state = RemoteAPI.readSessionState(history?["state"] ?? opened?["state"])
@@ -411,6 +573,41 @@ public final class AppModel {
 			// An older desktop does not know `model.list`; the title then just shows the model.
 			log.info("model.list unavailable: \(String(describing: type(of: error)), privacy: .public)")
 		}
+	}
+
+	// MARK: Skills
+
+	public func skillCatalog(cwd: String?) -> SkillCatalog { skillCatalogs[skillScope(cwd)] ?? SkillCatalog() }
+
+	/// Fetches the skills a prompt in `cwd` may reference; the last list stays
+	/// on screen meanwhile. `cwd` is a project, or nil or the conversation root for global ones.
+	public func loadSkills(cwd: String?) async {
+		let scope = skillScope(cwd)
+		guard skillCatalogs[scope]?.loading != true else { return }
+		skillCatalogs[scope, default: SkillCatalog()].loading = true
+		skillCatalogs[scope]?.failed = false
+		do {
+			let payload: JSONValue? = scope.isEmpty ? nil : ["cwd": .string(scope)]
+			let result = try await requireManager().request(.skillList, payload: payload)
+			skillCatalogs[scope] = SkillCatalog(options: RemoteAPI.readSkillOptions(result))
+		} catch {
+			skillCatalogs[scope]?.loading = false
+			skillCatalogs[scope]?.failed = true
+			log.info("skill.list failed: \(String(describing: type(of: error)), privacy: .public)")
+		}
+	}
+
+	/// The desktop's display name for a referenced skill, when any list has it.
+	public func skillName(_ skill: SkillReference) -> String {
+		for catalog in skillCatalogs.values {
+			if let option = catalog.options?.first(where: { $0.id == skill.id }) { return option.displayName }
+		}
+		return skill.name
+	}
+
+	private func skillScope(_ cwd: String?) -> String {
+		guard let cwd, !cwd.isEmpty, cwd != conversationCwd else { return "" }
+		return cwd
 	}
 
 	/// The desktop lists models per session and every session reads the same
@@ -533,6 +730,7 @@ public final class AppModel {
 				startedSessions[localId] = target
 				await configure(target, modelKey: modelKey, thinkingLevel: thinkingLevel)
 				try await deliver(target, trimmed, attachments: attachments, echo: false)
+				freshSessions.insert(target)
 			} catch {
 				transcripts[localId] = nil
 				reportError(error)
@@ -587,7 +785,8 @@ public final class AppModel {
 		_ = try await manager.request(.sessionPrompt, payload: .object(payload), sessionId: target)
 	}
 
-	public func respond(_ sessionId: String, requestId: String, answers: [RemoteQuestionAnswer], cancelled: Bool = false) async {
+	@discardableResult
+	public func respond(_ sessionId: String, requestId: String, answers: [RemoteQuestionAnswer], cancelled: Bool = false) async -> Bool {
 		do {
 			let payload: JSONValue = [
 				"requestId": .string(requestId),
@@ -596,9 +795,12 @@ public final class AppModel {
 			]
 			_ = try await requireManager().request(.sessionRespond, payload: payload, sessionId: sessionId)
 			dispatch(sessionId, .questionResolved(requestId: requestId))
-			patchSession(sessionId) { $0.status = .running }
+			// The desktop's next state may already be in, e.g. the turn it ended.
+			patchSession(sessionId) { if $0.status == .waitingInput { $0.status = .running } }
+			return true
 		} catch {
 			reportError(error)
+			return false
 		}
 	}
 
@@ -674,6 +876,54 @@ public final class AppModel {
 			$0.pinnedAt = summary.pinnedAt
 		}
 		if let key = desktopKey { platform.cache.saveSessions(key, sessions) }
+	}
+
+	// MARK: Files (ADR-0139)
+
+	/// Lists a folder of the session's working directory; `path` is "" for the directory itself
+	/// or a path the desktop gave earlier.
+	public func listFiles(_ sessionId: String, path: String) async throws(FileViewError) -> FileListing {
+		let result = try await fileRequest(.fileList, ["path": .string(path)], sessionId)
+		return FileListing(path: result?["path"]?.stringValue ?? path, entries: RemoteAPI.readFileEntries(result))
+	}
+
+	/// Describes a file; `path` may be a link exactly as the reply wrote it.
+	public func statFile(_ sessionId: String, path: String) async throws(FileViewError) -> RemoteFileInfo {
+		let result = try await fileRequest(.fileStat, ["path": .string(path)], sessionId)
+		guard let info = RemoteAPI.readFileInfo(result) else { throw .failed }
+		return info
+	}
+
+	/// The whole file, fetched in chunks, or from memory when it has not changed since.
+	public func readFile(_ sessionId: String, _ info: RemoteFileInfo) async throws(FileViewError) -> FileContent {
+		guard !info.entry.isDirectory else { throw .notAFile }
+		if let cached = fileCache.get(sessionId, info) { return cached }
+		do {
+			let manager = try requireFileManager()
+			let content = try await RemoteFileReader.read(path: info.path, chunkBytes: { RemoteFileReader.chunkBytes(on: link.channel) }) { payload in
+				try await manager.request(.fileRead, payload: payload, sessionId: sessionId)
+			}
+			fileCache.put(sessionId, info, content)
+			return content
+		} catch {
+			throw FileViewError.from(error)
+		}
+	}
+
+	private func fileRequest(_ method: RemoteRequestMethod, _ payload: [String: JSONValue], _ sessionId: String) async throws(FileViewError) -> JSONValue? {
+		do {
+			return try await requireFileManager().request(method, payload: .object(payload), sessionId: sessionId)
+		} catch {
+			throw FileViewError.from(error)
+		}
+	}
+
+	/// An older desktop drops the link on a method it does not know, so nothing is sent unless it said it serves files.
+	private func requireFileManager() throws -> ChannelManager {
+		let manager = try requireManager()
+		guard online else { throw LinkOfflineError() }
+		guard isAvailable(.files) else { throw FileViewError.unsupportedDesktop }
+		return manager
 	}
 
 	public func setPreferences(_ update: (inout Preferences) -> Void) {

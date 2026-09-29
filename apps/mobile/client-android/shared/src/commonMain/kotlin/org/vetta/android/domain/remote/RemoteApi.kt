@@ -211,7 +211,122 @@ data class RemoteDeviceStatus(
     val lanEndpoints: List<String>,
     val relayEnabled: Boolean,
     val runningSessionCount: Int,
+    /** Whether this phone may view and operate the desktop's screen; null from desktops that let every phone view. */
+    val desktopControl: Boolean? = null,
+    /** The relay the desktop uses now; a phone paired with another one follows it. Null when away access is off, or from older desktops. */
+    val relayBaseUrl: String? = null,
+    /**
+     * Whether the desktop answers `screen.subscribe` and captures only while it is open
+     * (ADR-0140); older desktops share the screen whenever the P2P link is up.
+     */
+    val screen: Boolean = false,
+    /** Whether the desktop answers `file.list`, `file.stat` and `file.read` (ADR-0139). */
+    val fileRead: Boolean = false,
 )
+
+/**
+ * A file or folder the phone may look at, as `file.list` and `file.stat` describe it.
+ * `path` is the desktop's canonical form and what the phone passes back; the phone never
+ * builds paths itself (ADR-0139).
+ */
+data class RemoteFileEntry(
+    val name: String,
+    val path: String,
+    val isDirectory: Boolean,
+    val size: Long,
+    /** Milliseconds since the epoch. */
+    val modifiedAt: Double,
+)
+
+data class RemoteFileInfo(
+    val name: String,
+    val path: String,
+    val isDirectory: Boolean,
+    val size: Long,
+    val modifiedAt: Double,
+    /** Guessed from the extension; a chunk's type says what was actually sent (scaled images arrive as JPEG). */
+    val mimeType: String,
+    /** The home directory abbreviated to `~`, for showing where the file lives. */
+    val displayPath: String,
+)
+
+/** One chunk of `file.read`. */
+class RemoteFileChunk(val data: ByteArray, val offset: Long, val totalSize: Long, val modifiedAt: Double, val mimeType: String)
+
+/**
+ * A skill or scene the phone may reference by writing `@skill:<name>` / `@scene:<name>`
+ * into a prompt, already filtered and ordered as the desktop composer's picker shows them
+ * (ADR-0137).
+ */
+data class RemoteSkillOption(
+    /** What the token carries; the agent looks the skill up by it. */
+    val name: String,
+    /** Display name; null when it equals [name]. */
+    val alias: String?,
+    val description: String,
+    val kind: Kind,
+    /** Where it was installed: `builtin`, `plugin`, `user`, `project`, `market`… */
+    val source: String,
+) {
+    enum class Kind(val wire: String) {
+        Skill("skill"),
+        Scene("scene"),
+    }
+
+    val id: String
+        get() = "${kind.wire}:$name"
+
+    val displayName: String
+        get() = alias ?: name
+}
+
+/**
+ * The pointer as the desktop shows it now (arrow, I-beam, hand…), for a phone that draws
+ * the pointer itself where its finger put it. Sizes are in the desktop's points;
+ * `screenWidth` is its display's, to scale the pointer with the picture.
+ */
+class RemoteScreenCursor(
+    /** PNG. */
+    val image: ByteArray,
+    val width: Float,
+    val height: Float,
+    /** The point of the image that is the pointer's position, from its top-left. */
+    val hotspotX: Float,
+    val hotspotY: Float,
+    val screenWidth: Float,
+) {
+    /**
+     * How much to scale the desktop's pointer when its screen is shown `shownWidth` wide:
+     * its height stays between [MIN_SHOWN_HEIGHT] and [MAX_SHOWN_HEIGHT] dp however small the
+     * picture is or however far it is zoomed, readable and never in the way.
+     */
+    fun scale(shownWidth: Float): Float = (height * shownWidth / screenWidth).coerceIn(MIN_SHOWN_HEIGHT, MAX_SHOWN_HEIGHT) / height
+
+    companion object {
+        const val MIN_SHOWN_HEIGHT = 18f
+        const val MAX_SHOWN_HEIGHT = 30f
+    }
+}
+
+/** Why frames or taps might not reach the phone, from `screen.subscribe` and `screen.status`. */
+enum class RemoteScreenState {
+    Stopped,
+    Streaming,
+
+    /** macOS withholds Screen Recording: the phone explains it instead of showing black. */
+    PermissionDenied,
+    Unavailable,
+}
+
+enum class RemoteInputState {
+    Ready,
+
+    /** macOS withholds Accessibility: the picture shows, taps and keys do nothing. */
+    PermissionDenied,
+    Unsupported,
+}
+
+data class RemoteScreenStatus(val screen: RemoteScreenState, val input: RemoteInputState)
 
 /** Sealed follow-up to a manual pairing approval; carries the long-lived credential. */
 data class RemoteDevicePaired(
@@ -354,6 +469,94 @@ object RemoteApi {
             lanEndpoints = obj.array("lanEndpoints").mapNotNull { (it as? JsonPrimitive)?.takeIf(JsonPrimitive::isString)?.content },
             relayEnabled = obj.bool("relayEnabled") == true,
             runningSessionCount = obj.double("runningSessionCount")?.toInt() ?: 0,
+            desktopControl = obj.bool("desktopControl"),
+            relayBaseUrl = normalizeRelayBaseUrl(obj.string("relayBaseUrl")),
+            screen = obj.bool("screen") == true,
+            fileRead = obj.bool("fileRead") == true,
+        )
+    }
+
+    /** A state from a newer desktop reads as unavailable or unsupported. */
+    private fun readFileEntry(value: JsonElement?): RemoteFileEntry? {
+        val obj = value as? JsonObject ?: return null
+        val name = obj.text("name") ?: return null
+        val path = obj.string("path") ?: return null
+        return RemoteFileEntry(name, path, obj.bool("isDirectory") == true, obj.double("size")?.toLong() ?: 0, obj.double("modifiedAt") ?: 0.0)
+    }
+
+    fun readFileEntries(value: JsonElement?): List<RemoteFileEntry> =
+        ((value as? JsonObject)?.get("entries") as? JsonArray).orEmpty().mapNotNull(::readFileEntry)
+
+    fun readFileInfo(value: JsonElement?): RemoteFileInfo? {
+        val file = (value as? JsonObject)?.get("file") as? JsonObject ?: return null
+        val entry = readFileEntry(file) ?: return null
+        return RemoteFileInfo(
+            name = entry.name,
+            path = entry.path,
+            isDirectory = entry.isDirectory,
+            size = entry.size,
+            modifiedAt = entry.modifiedAt,
+            mimeType = file.string("mimeType") ?: "application/octet-stream",
+            displayPath = file.string("displayPath") ?: entry.path,
+        )
+    }
+
+    fun readFileChunk(value: JsonElement?): RemoteFileChunk? {
+        val obj = value as? JsonObject ?: return null
+        val data = obj.string("data")?.let { runCatching { java.util.Base64.getDecoder().decode(it) }.getOrNull() } ?: return null
+        val offset = obj.double("offset")?.toLong() ?: return null
+        val totalSize = obj.double("totalSize")?.toLong() ?: return null
+        return RemoteFileChunk(data, offset, totalSize, obj.double("modifiedAt") ?: 0.0, obj.string("mimeType") ?: "application/octet-stream")
+    }
+
+    fun readSkillOptions(value: JsonElement?): List<RemoteSkillOption> =
+        ((value as? JsonObject)?.get("skills") as? JsonArray).orEmpty().mapNotNull { entry ->
+            val obj = entry as? JsonObject ?: return@mapNotNull null
+            val name = obj.text("name") ?: return@mapNotNull null
+            val kind = RemoteSkillOption.Kind.entries.firstOrNull { it.wire == obj.string("type") } ?: return@mapNotNull null
+            RemoteSkillOption(
+                name = name,
+                alias = obj.text("alias")?.takeIf { it != name },
+                description = obj.string("description").orEmpty(),
+                kind = kind,
+                source = obj.string("source").orEmpty(),
+            )
+        }
+
+    fun readScreenCursor(value: JsonElement?): RemoteScreenCursor? {
+        val obj = value as? JsonObject ?: return null
+        val image = obj.string("image")?.let { runCatching { java.util.Base64.getDecoder().decode(it) }.getOrNull() } ?: return null
+        val width = obj.double("width")?.toFloat()?.takeIf { it > 0f } ?: return null
+        val height = obj.double("height")?.toFloat()?.takeIf { it > 0f } ?: return null
+        val screenWidth = obj.double("screenWidth")?.toFloat()?.takeIf { it > 0f } ?: return null
+        return RemoteScreenCursor(
+            image = image,
+            width = width,
+            height = height,
+            hotspotX = (obj.double("hotspotX")?.toFloat() ?: 0f).coerceIn(0f, width),
+            hotspotY = (obj.double("hotspotY")?.toFloat() ?: 0f).coerceIn(0f, height),
+            screenWidth = screenWidth,
+        )
+    }
+
+    fun readScreenStatus(value: JsonElement?): RemoteScreenStatus? {
+        val obj = value as? JsonObject ?: return null
+        val screen = obj.string("screen") ?: return null
+        val input = obj.string("input") ?: return null
+        return RemoteScreenStatus(
+            screen =
+                when (screen) {
+                    "stopped" -> RemoteScreenState.Stopped
+                    "streaming" -> RemoteScreenState.Streaming
+                    "permission_denied" -> RemoteScreenState.PermissionDenied
+                    else -> RemoteScreenState.Unavailable
+                },
+            input =
+                when (input) {
+                    "ready" -> RemoteInputState.Ready
+                    "permission_denied" -> RemoteInputState.PermissionDenied
+                    else -> RemoteInputState.Unsupported
+                },
         )
     }
 

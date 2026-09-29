@@ -22,8 +22,6 @@ const project = {
 	remove: vi.fn(async () => {}),
 };
 const selectFolder = vi.fn(async () => "/picked/repo");
-const fsDelete = vi.fn(async () => {});
-const deleteAllForCwd = vi.fn(async () => {});
 
 vi.stubGlobal(
 	"window",
@@ -36,11 +34,9 @@ vi.stubGlobal(
 			},
 			project,
 			dialog: { selectFolder },
-			fs: { delete: fsDelete },
 			session: {
 				listSessions: async () => [],
 				onSessionsChanged: () => () => {},
-				deleteAllForCwd,
 			},
 			im: { onSessionChanged: () => () => {} },
 		},
@@ -87,28 +83,6 @@ describe("侧边栏的项目写入", () => {
 		});
 
 		expect(project.open).not.toHaveBeenCalled();
-		expect(configSet).not.toHaveBeenCalled();
-	});
-
-	it("删除项目目录时，先清会话再摘登记，最后才动磁盘", async () => {
-		const { result } = renderHook(() => useProjectActions());
-		const order: string[] = [];
-		deleteAllForCwd.mockImplementationOnce(async () => {
-			order.push("sessions");
-		});
-		project.remove.mockImplementationOnce(async () => {
-			order.push("unregister");
-		});
-		fsDelete.mockImplementationOnce(async () => {
-			order.push("disk");
-		});
-
-		await act(async () => {
-			await result.current.deleteProjectFromDisk("/picked/repo");
-		});
-
-		// 会话分片目录由 config.projects 推导，摘登记之后就找不到了，顺序不能反。
-		expect(order).toEqual(["sessions", "unregister", "disk"]);
 		expect(configSet).not.toHaveBeenCalled();
 	});
 });

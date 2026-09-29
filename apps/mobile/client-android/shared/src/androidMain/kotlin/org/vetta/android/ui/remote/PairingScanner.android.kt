@@ -16,13 +16,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -48,21 +46,15 @@ import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import org.vetta.android.domain.remote.connection.PlatformRemoteLogger
-import org.vetta.android.ui.components.SecondaryOutlineButton
 import org.jetbrains.compose.resources.stringResource
 import org.vetta.android.resources.Res
 import org.vetta.android.resources.align_pairing_qr
 import org.vetta.android.resources.camera_permission_required
 import org.vetta.android.resources.camera_unavailable
 import org.vetta.android.resources.close_scanner
-import org.vetta.android.resources.scan_pairing_qr
 
 @Composable
-actual fun PairingScannerButton(
-    onScanned: (String) -> Unit,
-    modifier: Modifier,
-    label: String?,
-) {
+actual fun rememberPairingScanner(onScanned: (String) -> Unit): () -> Unit {
     val context = LocalContext.current
     val permissionRequired = stringResource(Res.string.camera_permission_required)
     var scanning by remember { mutableStateOf(false) }
@@ -76,28 +68,6 @@ actual fun PairingScannerButton(
             }
         }
 
-    val openScanner = {
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
-            scanning = true
-        } else {
-            permissionLauncher.launch(Manifest.permission.CAMERA)
-        }
-    }
-    if (label == null) {
-        IconButton(modifier = modifier, onClick = openScanner) {
-            Icon(Icons.Default.QrCodeScanner, contentDescription = stringResource(Res.string.scan_pairing_qr))
-        }
-    } else {
-        SecondaryOutlineButton(
-            modifier = modifier.height(48.dp),
-            onClick = openScanner,
-            text = label,
-            leadingIcon = {
-                Icon(Icons.Default.QrCodeScanner, contentDescription = null)
-            },
-        )
-    }
-
     if (scanning) {
         PairingScannerDialog(
             onDismiss = { scanning = false },
@@ -106,6 +76,15 @@ actual fun PairingScannerButton(
                 onScanned(value)
             },
         )
+    }
+    return remember(context, permissionLauncher) {
+        {
+            if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                scanning = true
+            } else {
+                permissionLauncher.launch(Manifest.permission.CAMERA)
+            }
+        }
     }
 }
 

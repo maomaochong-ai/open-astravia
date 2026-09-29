@@ -159,7 +159,9 @@ export function openRemotePreviewSource(uri: string): PreviewFileSource {
 		stat: async () => {
 			// 跟随符号链接：预览的是链接指向的内容。
 			const entry = await connection.stat(remotePath, undefined, { followSymlinks: true });
-			return entry ? { size: entry.sizeBytes, isFile: entry.kind === "file" } : null;
+			return entry
+				? { size: entry.sizeBytes, isFile: entry.kind === "file", modifiedAt: entry.modifiedAtSeconds * 1000 }
+				: null;
 		},
 		read: async () => Buffer.from(await connection.readFile(remotePath)),
 		readHead: async (byteCount) => Buffer.from(await connection.readFileHead(remotePath, byteCount)),
@@ -238,7 +240,11 @@ export async function createRemoteEntry(
 
 export async function listRemoteFilesRecursive(
 	rootUri: string,
-	options: { readonly ignoredDirectoryNames: readonly string[]; readonly limit: number },
+	options: {
+		readonly ignoredDirectoryNames: readonly string[];
+		readonly limit: number;
+		readonly names?: readonly string[];
+	},
 ): Promise<FsFileRef[]> {
 	assertRemotePathWithinProject(rootUri);
 	const { hostId, remotePath } = split(rootUri);

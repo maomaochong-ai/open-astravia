@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -7,11 +7,85 @@ import { FS_EDITABLE_TEXT_ERROR } from "../../preload/fs-types";
 import {
 	allowProjectRoot,
 	createFilesystemEntry,
+	deleteFilesystemPath,
+	listFilesystemFilesRecursive,
 	readEditableTextFile,
 	readFilesystemBinaryFile,
 	readTextPreviewFile,
 	saveEditableTextFile,
 } from "./filesystem-service";
+
+describe("deleteFilesystemPath", () => {
+	let projectRoot = "";
+
+	beforeEach(async () => {
+		projectRoot = await mkdtemp(join(tmpdir(), "vetta-delete-path-"));
+		allowProjectRoot(projectRoot);
+	});
+
+	afterEach(async () => {
+		if (projectRoot) await rm(projectRoot, { recursive: true, force: true });
+	});
+
+	it("refuses to delete a registered project root but still deletes children", async () => {
+		const child = join(projectRoot, "generated");
+		await createFilesystemEntry(projectRoot, "generated", "directory");
+
+		await expect(deleteFilesystemPath(projectRoot)).rejects.toThrow("project root");
+		await expect(deleteFilesystemPath(child)).resolves.toBeUndefined();
+		await expect(stat(projectRoot)).resolves.toBeDefined();
+		await expect(stat(child)).rejects.toMatchObject({ code: "ENOENT" });
+	});
+});
+
+describe("listFilesystemFilesRecursive", () => {
+	let projectRoot = "";
+
+	beforeEach(async () => {
+		projectRoot = await mkdtemp(join(tmpdir(), "vetta-list-recursive-"));
+		allowProjectRoot(projectRoot);
+	});
+
+	afterEach(async () => {
+		if (projectRoot) await rm(projectRoot, { recursive: true, force: true });
+	});
+
+	async function touch(relPath: string): Promise<void> {
+		await mkdir(join(projectRoot, relPath, ".."), { recursive: true });
+		await writeFile(join(projectRoot, relPath), "");
+	}
+
+	it("keeps only the named files and skips default and extra ignored directories", async () => {
+		for (const file of [
+			"package.json",
+			"src/index.ts",
+			"apps/web/package.json",
+			"tools/Makefile",
+			"node_modules/pkg/package.json",
+			"vendor/lib/package.json",
+		]) {
+			await touch(file);
+		}
+
+		const files = await listFilesystemFilesRecursive(projectRoot, {
+			names: ["package.json", "Makefile"],
+			ignoredDirectories: ["vendor"],
+		});
+
+		expect(files.map((file) => file.relPath.split("\\").join("/")).sort()).toEqual([
+			"apps/web/package.json",
+			"package.json",
+			"tools/Makefile",
+		]);
+	});
+
+	it("still lists every file when no filter is given", async () => {
+		await touch("a.txt");
+		await touch("src/b.ts");
+		const files = await listFilesystemFilesRecursive(projectRoot);
+		expect(files.map((file) => file.name).sort()).toEqual(["a.txt", "b.ts"]);
+	});
+});
 
 describe("createFilesystemEntry", () => {
 	let projectRoot = "";

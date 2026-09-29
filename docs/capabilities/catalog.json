@@ -1430,6 +1430,24 @@
           "path": {
             "pattern": "\\S",
             "type": "string"
+          },
+          "names": {
+            "maxItems": 64,
+            "type": "array",
+            "items": {
+              "pattern": "^(?!\\.{1,2}$)[^/\\\\]+$",
+              "maxLength": 255,
+              "type": "string"
+            }
+          },
+          "ignoredDirectories": {
+            "maxItems": 64,
+            "type": "array",
+            "items": {
+              "pattern": "^(?!\\.{1,2}$)[^/\\\\]+$",
+              "maxLength": 255,
+              "type": "string"
+            }
           }
         }
       },

@@ -22,6 +22,7 @@ import type { HistoryEntry, PromptAttachmentRef, PromptResourceRef } from "@vett
 import { readMcpAppAttachment, selectMcpMediaCandidates } from "@vetta/runtime-mcp/browser";
 import type { CardDescriptor } from "@vetta-org/plugin-sdk";
 import { classifyChatError } from "./classifyChatError";
+import { conversationAssistantMessageId } from "./conversation-message-identity";
 
 export function toChatErrorDetails(
 	error:
@@ -562,17 +563,34 @@ export function fullHistoryToChat(entries: HistoryEntry[]): ChatConversationItem
 	const messages: ChatConversationItem[] = [];
 	const toolCallIndex = new Map<string, ToolCallBlock>();
 	const historyErrors = createDeferredHistoryErrors();
+	const turnSegments = new Map<string, number>();
 
-	function currentAssistant(): ConversationAgentMessageViewModel {
+	function currentAssistant(turnId?: string): ConversationAgentMessageViewModel {
 		const last = messages.at(-1);
-		if (last?.kind === "agent") return last;
+		const stableId = turnId ? conversationAssistantMessageId(turnId, turnSegments.get(turnId) ?? 0) : undefined;
+		if (last?.kind === "agent" && (!stableId || last.id === stableId)) return last;
 		const msg = createConversationAgentMessage({
-			id: `hist-asst-${messages.length}`,
+			id: stableId ?? `hist-asst-${messages.length}`,
+			...(turnId ? { turnId } : {}),
 			text: "",
 			blocks: [],
 		});
 		messages.push(msg);
 		return msg;
+	}
+
+	function assistantForDurableError(turnId: string, errorMessage: string): ConversationAgentMessageViewModel {
+		const last = messages.at(-1);
+		const matchingLegacyError =
+			last?.kind === "agent" &&
+			(last.turnId === last.id || last.turnId.startsWith("hist-asst-")) &&
+			last.blocks.some(
+				(block) => block.type === "error" && block.turnId === undefined && block.text === errorMessage,
+			);
+		if (!matchingLegacyError) return currentAssistant(turnId);
+		last.id = conversationAssistantMessageId(turnId, turnSegments.get(turnId) ?? 0);
+		last.turnId = turnId;
+		return last;
 	}
 
 	/** Next user message follows a settings-assist model-only instruction. */
@@ -656,7 +674,7 @@ export function fullHistoryToChat(entries: HistoryEntry[]): ChatConversationItem
 
 		if (entry.type === "error") {
 			historyErrors.flush();
-			const target = currentAssistant();
+			const target = entry.turnId ? assistantForDurableError(entry.turnId, entry.message) : currentAssistant();
 			pushHistoryError(
 				target.blocks!,
 				entry.message,
@@ -690,6 +708,9 @@ export function fullHistoryToChat(entries: HistoryEntry[]): ChatConversationItem
 
 		if (m.role === "user") {
 			historyErrors.flush();
+			if (entry.type === "message" && entry.turnId) {
+				turnSegments.set(entry.turnId, (turnSegments.get(entry.turnId) ?? 0) + 1);
+			}
 			const text = extractText(m.content);
 			const parsedUser = parseUserPrefixes(text);
 			const legacyPromptRef: PromptResourceRef | undefined =
@@ -700,8 +721,9 @@ export function fullHistoryToChat(entries: HistoryEntry[]): ChatConversationItem
 			const parentId = entry.type === "message" ? entry.parentId : undefined;
 			const branch = entry.type === "message" ? entry.branch : undefined;
 			const userMsg = createConversationUserMessage({
-				id: entryId ?? `hist-user-${messages.length}`,
+				id: (entry.type === "message" ? entry.messageId : undefined) ?? entryId ?? `hist-user-${messages.length}`,
 				entryId,
+				...(entry.type === "message" && entry.turnId ? { turnId: entry.turnId } : {}),
 				parentId,
 				branch: branch ? { siblings: branch.siblings, index: branch.index } : undefined,
 				text,
@@ -725,13 +747,14 @@ export function fullHistoryToChat(entries: HistoryEntry[]): ChatConversationItem
 			pendingPromptRef = undefined;
 			pendingAttachments = undefined;
 			const entryId = entry.type === "message" ? entry.entryId : undefined;
-			const target = currentAssistant();
+			const turnId = entry.type === "message" ? entry.turnId : undefined;
+			const target = currentAssistant(turnId);
 			if (m.usage) target.usages = [...(target.usages ?? []), m.usage];
 			if (target.timestamp === undefined && m.timestamp !== undefined) target.timestamp = m.timestamp;
 			// Prefer first assistant entry id for the merged bubble when not set yet.
 			if (entryId && !target.entryId) {
 				target.entryId = entryId;
-				target.id = entryId;
+				if (!turnId) target.id = entryId;
 			}
 			const blocks = messageToBlocks(m.content, m.stopReason === "aborted" ? "cancelled" : "success");
 			for (const b of blocks) {
@@ -1264,7 +1287,26 @@ export function appendError(
 	turnId?: string,
 	details?: ChatErrorDetails,
 ): ChatConversationItem[] {
-	const [msgs, idx] = ensureDraft(prev);
+	let msgs: ChatConversationItem[];
+	let idx = turnId ? prev.findIndex((item) => item.kind === "agent" && item.turnId === turnId) : -1;
+	if (idx >= 0) msgs = [...prev];
+	else if (turnId) {
+		msgs = [
+			...prev,
+			createConversationAgentMessage({
+				id: conversationAssistantMessageId(turnId, 0),
+				turnId,
+				phase: "streaming",
+				text: "",
+				blocks: [],
+				timestamp: Date.now(),
+				startedAt: Date.now(),
+			}),
+		];
+		idx = msgs.length - 1;
+	} else {
+		[msgs, idx] = ensureDraft(prev);
+	}
 	const msg = requireAgentMessage(msgs[idx]);
 	const blocks = [...msg.blocks];
 	if (turnId) {

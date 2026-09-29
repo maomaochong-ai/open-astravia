@@ -9,6 +9,15 @@ import {
 
 const requiredInputStringType = Type.String({ pattern: "\\S" });
 const filesystemPathInputType = Type.Object({ path: requiredInputStringType });
+/** 单个文件或目录名：不含路径分隔符，也不是 `.` / `..`。 */
+const filesystemBaseNameType = Type.String({ pattern: "^(?!\\.{1,2}$)[^/\\\\]+$", maxLength: 255 });
+const filesystemListRecursiveInputType = Type.Object({
+	path: requiredInputStringType,
+	/** 只返回这些文件名（精确匹配）；上限按命中数计。 */
+	names: Type.Optional(Type.Array(filesystemBaseNameType, { maxItems: 64 })),
+	/** 在宿主默认忽略目录之外再跳过的目录名。 */
+	ignoredDirectories: Type.Optional(Type.Array(filesystemBaseNameType, { maxItems: 64 })),
+});
 const filesystemRenameInputType = Type.Object({
 	oldPath: requiredInputStringType,
 	newPath: requiredInputStringType,
@@ -51,6 +60,7 @@ const filesystemStatResultType = Type.Object({
 });
 
 export type FilesystemPathInput = Readonly<Static<typeof filesystemPathInputType>>;
+export type FilesystemListRecursiveInput = Readonly<Static<typeof filesystemListRecursiveInputType>>;
 export type FilesystemRenameInput = Readonly<Static<typeof filesystemRenameInputType>>;
 export type FilesystemMoveInput = Readonly<Static<typeof filesystemMoveInputType>>;
 export type FilesystemWriteFileInput = Readonly<Static<typeof filesystemWriteFileInputType>>;
@@ -61,6 +71,9 @@ export type FilesystemReadBinaryFileResult = Readonly<Static<typeof filesystemRe
 export type FilesystemStatResult = Readonly<Static<typeof filesystemStatResultType>>;
 
 const filesystemPathInputSchema = defineCapabilityInputSchema(filesystemPathInputType, { clean: true });
+const filesystemListRecursiveInputSchema = defineCapabilityInputSchema(filesystemListRecursiveInputType, {
+	clean: true,
+});
 const filesystemRenameInputSchema = defineCapabilityInputSchema(filesystemRenameInputType, { clean: true });
 const filesystemMoveInputSchema = defineCapabilityInputSchema(filesystemMoveInputType, { clean: true });
 const filesystemWriteFileInputSchema = defineCapabilityInputSchema(filesystemWriteFileInputType, { clean: true });
@@ -148,12 +161,12 @@ export const FOUNDATION_FILESYSTEM_CAPABILITIES = {
 		input: filesystemPathInputSchema,
 		output: filesystemNoOutputSchema,
 	}),
-	LIST_FILES_RECURSIVE: defineCapability<FilesystemPathInput, FilesystemFileRef[]>({
+	LIST_FILES_RECURSIVE: defineCapability<FilesystemListRecursiveInput, FilesystemFileRef[]>({
 		id: "cap.foundation.vetta.fs.list-files-recursive",
 		kind: "query",
 		layer: CAPABILITY_LAYERS.FOUNDATION,
 		version: 1,
-		input: filesystemPathInputSchema,
+		input: filesystemListRecursiveInputSchema,
 		output: filesystemFileRefsOutputSchema,
 	}),
 } as const;

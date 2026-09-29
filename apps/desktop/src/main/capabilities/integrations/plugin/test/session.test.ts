@@ -45,17 +45,72 @@ describe("PluginCapabilityAdapter session lifecycle", () => {
 	});
 
 	it("revokes sessions left by an older renderer document", () => {
+		const lifecycleEvents: Array<Record<string, unknown>> = [];
 		const adapter = new PluginCapabilityAdapter(new RecordingAccessFactory(), {
 			isOfficialPlugin: () => false,
 			resolvePermissions: () => [PLUGIN_CAPABILITY_PERMISSIONS.FILESYSTEM_READ],
+			onSessionLifecycle: (event) => lifecycleEvents.push(event),
 		});
 		const oldSessionId = adapter.openSession("reloadable", "web-1:frame-1");
 		const replacementSessionId = adapter.openSession("reloadable", "web-1:frame-2");
 
-		expect(() => adapter.readFile(oldSessionId, "C:/project/file.txt")).toThrowError(
-			expect.objectContaining({ code: CAPABILITY_ERROR_CODES.SESSION_REVOKED }),
+		let revokedError: unknown;
+		try {
+			adapter.readFile(oldSessionId, "C:/project/file.txt");
+		} catch (error) {
+			revokedError = error;
+		}
+		expect(revokedError).toEqual(
+			expect.objectContaining({
+				code: CAPABILITY_ERROR_CODES.SESSION_REVOKED,
+				message: expect.stringContaining('pluginId="reloadable"'),
+			}),
+		);
+		expect(revokedError).toEqual(
+			expect.objectContaining({ message: expect.stringContaining('reason="renderer-replaced"') }),
+		);
+		expect(revokedError).toEqual(
+			expect.objectContaining({ message: expect.stringContaining(`sessionId="${oldSessionId}"`) }),
 		);
 		expect(() => adapter.readFile(replacementSessionId, "C:/project/file.txt")).not.toThrow();
+		expect(lifecycleEvents).toEqual([
+			expect.objectContaining({
+				type: "opened",
+				pluginId: "reloadable",
+				sessionId: oldSessionId,
+				ownerId: "web-1:frame-1",
+				openedAt: expect.any(String),
+			}),
+			expect.objectContaining({
+				type: "closed",
+				pluginId: "reloadable",
+				sessionId: oldSessionId,
+				ownerId: "web-1:frame-1",
+				reason: "renderer-replaced",
+				closedAt: expect.any(String),
+			}),
+			expect.objectContaining({
+				type: "opened",
+				pluginId: "reloadable",
+				sessionId: replacementSessionId,
+				ownerId: "web-1:frame-2",
+				openedAt: expect.any(String),
+			}),
+		]);
+	});
+
+	it("distinguishes an unknown session from a previously closed plugin session", () => {
+		const adapter = new PluginCapabilityAdapter(new RecordingAccessFactory(), {
+			isOfficialPlugin: () => false,
+			resolvePermissions: () => [],
+		});
+
+		expect(() => adapter.pluginIdForSession("missing-session")).toThrowError(
+			expect.objectContaining({
+				code: CAPABILITY_ERROR_CODES.SESSION_REVOKED,
+				message: expect.stringContaining('state="unknown"'),
+			}),
+		);
 	});
 
 	it("resolves the owning plugin id only for active sessions", () => {

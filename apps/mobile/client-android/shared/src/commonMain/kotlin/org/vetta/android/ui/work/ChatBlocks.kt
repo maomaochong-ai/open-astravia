@@ -31,8 +31,8 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Build
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -41,6 +41,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -53,7 +54,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -74,6 +74,8 @@ import org.vetta.android.domain.remote.ToolCard
 import org.vetta.android.domain.remote.ToolCardStatus
 import org.vetta.android.domain.remote.TranscriptAttachment
 import org.vetta.android.domain.work.AgentTurn
+import org.vetta.android.domain.work.SkillReference
+import org.vetta.android.domain.work.SkillTokens
 import org.vetta.android.domain.work.TurnSegment
 import org.vetta.android.domain.work.WorkStep
 import org.vetta.android.resources.Res
@@ -94,9 +96,21 @@ import org.vetta.android.ui.i18n.relativeTimeLabel
 import org.vetta.android.ui.theme.vettaExtra
 
 @Composable
-fun UserBubble(text: String, attachments: List<TranscriptAttachment>, modifier: Modifier = Modifier) {
+fun UserBubble(
+    text: String,
+    attachments: List<TranscriptAttachment>,
+    modifier: Modifier = Modifier,
+    skillName: (SkillReference) -> String = { it.name },
+) {
     val colors = MaterialTheme.workColors
+    // The skills a prompt starts with show as chips, like the composer had them.
+    val (skills, body) = remember(text) { SkillTokens.split(text) }
     Column(modifier.fillMaxWidth().padding(bottom = 16.dp), horizontalAlignment = Alignment.End) {
+        if (skills.isNotEmpty()) {
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(bottom = 6.dp).testTag("bubble.skills")) {
+                items(skills, key = { it.id }) { SkillBadge(skillName(it)) }
+            }
+        }
         if (attachments.isNotEmpty()) {
             LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(bottom = 6.dp).testTag("bubble.attachments")) {
                 items(attachments) { attachment ->
@@ -115,9 +129,9 @@ fun UserBubble(text: String, attachments: List<TranscriptAttachment>, modifier: 
                 }
             }
         }
-        SelectionContainer {
+        if (body.isNotEmpty()) SelectionContainer {
             Text(
-                text,
+                body,
                 style = MaterialTheme.typography.bodyLarge.copy(lineHeight = 22.sp),
                 color = colors.pillInk,
                 modifier =
@@ -174,7 +188,13 @@ fun AgentTurnView(turn: AgentTurn, note: String?) {
             when (segment) {
                 is TurnSegment.Work ->
                     WorkGroupView(segment.steps, live = turn.streaming && index == turn.segments.lastIndex, activity = turn.activity)
-                is TurnSegment.Text -> org.vetta.android.ui.chat.MarkdownContent(segment.text)
+                is TurnSegment.Text ->
+                    // The segment still growing plays out at an even pace; the rest is shown whole.
+                    if (index == turn.segments.lastIndex) {
+                        key(segment.id) { StreamingMarkdown(segment.text, turn.streaming) }
+                    } else {
+                        org.vetta.android.ui.chat.MarkdownContent(segment.text)
+                    }
                 is TurnSegment.Error -> ErrorBlock(segment.message, segment.count)
             }
         }

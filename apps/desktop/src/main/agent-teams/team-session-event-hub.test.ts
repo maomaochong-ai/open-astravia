@@ -82,6 +82,14 @@ describe("TeamSessionEventHub active replay", () => {
 			partial: emptyPartial,
 		} as SessionEvent);
 		expect(onFirstResponseBlockCompleted).not.toHaveBeenCalled();
+		expect(events).toContainEqual(
+			expect.objectContaining({
+				type: "conversation.agent-message-event",
+				messageId: "leader-result",
+				timestamp: 1,
+				event: expect.objectContaining({ type: "start" }),
+			}),
+		);
 
 		const textPartial = { ...emptyPartial, content: [{ type: "text" as const, text: "Ready" }] };
 		for (const [sequence, delta] of ["Re", "ady"].entries()) {

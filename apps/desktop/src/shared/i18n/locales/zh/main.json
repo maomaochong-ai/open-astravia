@@ -53,7 +53,11 @@
 		"remoteDeviceConnectedTitle": "手机已连接",
 		"remoteDeviceConnected": "{{device}} 已连接到这台电脑。不是你操作的？到「远程连接」里解除配对。",
 		"remotePairingRequestTitle": "有手机请求配对",
-		"remotePairingRequest": "{{device}} 想连接这台电脑，验证码 {{code}}。点击核对并放行。"
+		"remotePairingRequest": "{{device}} 想连接这台电脑，验证码 {{code}}。点击核对并放行。",
+		"remoteScreenPermissionTitle": "手机想看这台电脑的屏幕",
+		"remoteScreenPermissionScreen": "{{device}} 打开了远程桌面，但 Vetta 还没有「屏幕录制」权限，手机上看不到画面。点击前往授权，授权后重启 Vetta。",
+		"remoteScreenPermissionInput": "{{device}} 能看到画面，但 Vetta 还没有「辅助功能」权限，手机上的点按和键盘不会生效。点击前往授权。",
+		"remoteScreenPermissionBoth": "{{device}} 打开了远程桌面，但 Vetta 还没有「屏幕录制」和「辅助功能」权限。点击前往授权，授权后重启 Vetta。"
 	},
 	"remote": {
 		"conversationProject": "对话"

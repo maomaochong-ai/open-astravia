@@ -1,5 +1,6 @@
 import type { InstalledPlugin } from "@preload/api";
 import type { Disposable, PluginContext, PluginPermission } from "@vetta-org/plugin-sdk";
+import { logPluginRuntimeWarn } from "./plugin-runtime-log";
 
 export const noopDisposable: Disposable = { dispose: () => {} };
 
@@ -23,5 +24,12 @@ export function warnSkippedPluginContribution(
 	permission: PluginPermission,
 	contribution: string,
 ): void {
-	console.warn(`Plugin ${plugin.id} skipped ${contribution}: missing permission ${permission}`);
+	logPluginRuntimeWarn("contribution skipped", {
+		pluginId: plugin.id,
+		pluginVersion: plugin.activeVersion,
+		stage: "permission-check",
+		reason: "missing-permission",
+		permission,
+		contribution,
+	});
 }

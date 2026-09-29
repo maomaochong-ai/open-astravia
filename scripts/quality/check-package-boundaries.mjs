@@ -12,7 +12,8 @@
  *   bun run scripts/quality/check-package-boundaries.mjs
  */
 
-import { join } from "node:path";
+import { existsSync } from "node:fs";
+import { extname, join } from "node:path";
 import ts from "typescript";
 import { fail, isDirectRun, ok, readText, rel, repoRoot, walkFiles } from "./lib.mjs";
 
@@ -100,21 +101,6 @@ const RETIRED_CODING_AGENT_TOOL_EXPORTS = new Set([
 	"treeTool",
 	"writeTool",
 ]);
-
-const RETIRED_CLI_COMPOSITION_FORWARDERS = new Set([
-	"apps/cli-host/src/conversation-ownership-binding.ts",
-	"apps/cli-host/src/greenfield-runtime-composition.ts",
-	"apps/cli-host/src/greenfield-runtime-host-session-backend.ts",
-	"apps/cli-host/src/greenfield-session-execution-runtime.ts",
-	"apps/cli-host/src/greenfield-session-peripherals.ts",
-	"apps/cli-host/src/greenfield-subagent-child.ts",
-	"apps/cli-host/src/greenfield-subagent-runtime.ts",
-	"apps/cli-host/src/greenfield-subagent-state-persistence.ts",
-	"apps/cli-host/src/rpc/greenfield-conversation-path.ts",
-	"apps/cli-host/src/runtime-tools-composition.ts",
-]);
-
-const RETIRED_CODING_AGENT_RUNTIME_HOST = "@vetta/coding-agent/runtime-host";
 
 function isLibFile(posixPath) {
 	return LIB_PREFIXES.some((prefix) => posixPath.startsWith(prefix));
@@ -442,233 +428,6 @@ function checkRuntimeCorePlatformImports(posixPath, text, specifiers, findings) 
 	}
 }
 
-function checkGreenfieldLegacyStartupSymbols(posixPath, text, findings) {
-	const isGreenfieldProductModule =
-		posixPath.startsWith("apps/cli-host/src/rpc/") || posixPath.startsWith("packages/coding-agent/src/composition/");
-	if (!isGreenfieldProductModule) return;
-
-	const sourceFile = ts.createSourceFile(posixPath, text, ts.ScriptTarget.Latest, true, scriptKind(posixPath));
-	const forbiddenSymbols = new Set(["createLegacyAgentBootstrap", "runLegacyAgentWithBootstrap"]);
-	const usedSymbols = new Set();
-	const usedPolicyLiterals = new Set();
-	const visit = (node) => {
-		if (ts.isIdentifier(node) && forbiddenSymbols.has(node.text)) {
-			usedSymbols.add(node.text);
-		}
-		if (ts.isStringLiteralLike(node) && node.text === "legacy-extension") {
-			usedPolicyLiterals.add(node.text);
-		}
-		ts.forEachChild(node, visit);
-	};
-	visit(sourceFile);
-
-	for (const symbol of usedSymbols) {
-		findings.push(`${posixPath}: greenfield product modules must not use legacy startup symbol ${symbol}`);
-	}
-	for (const literal of usedPolicyLiterals) {
-		findings.push(`${posixPath}: greenfield product modules must report compatibility facts instead of ${literal}`);
-	}
-}
-
-function checkActiveSessionTransitionBoundary(posixPath, text, specifiers, findings) {
-	if (posixPath !== "packages/runtime-core/src/runtime-host/active-session-host.ts") return;
-	for (const specifier of specifiers) {
-		if (specifier.startsWith("node:")) {
-			findings.push(`${posixPath}: active-session transactions must use host ports instead of ${specifier}`);
-		}
-		if (specifier.includes("core/session-manager") || specifier.includes("legacy-session-import-normalizer")) {
-			findings.push(`${posixPath}: active-session transactions must delegate Legacy session seed construction`);
-		}
-		if (specifier === "@vetta/coding-agent" || specifier.startsWith("@vetta/coding-agent/")) {
-			findings.push(`${posixPath}: active-session transactions must not import Coding Agent products`);
-		}
-		if (specifier.includes("core/extensions")) {
-			findings.push(`${posixPath}: active-session transactions must use neutral session action ports`);
-		}
-	}
-	const sourceFile = ts.createSourceFile(posixPath, text, ts.ScriptTarget.Latest, true, scriptKind(posixPath));
-	const forbiddenSymbols = new Set([
-		"ExtensionCommandContextActions",
-		"CodingAgentRuntimeComposition",
-		"CodingAgentSessionTransitionRuntimePort",
-		"SessionManager",
-		"Buffer",
-		"process",
-		"migrateLegacySessionToV2",
-	]);
-	const visit = (node) => {
-		if (ts.isIdentifier(node) && forbiddenSymbols.has(node.text)) {
-			findings.push(`${posixPath}: active-session transactions must not use ${node.text}`);
-		}
-		ts.forEachChild(node, visit);
-	};
-	visit(sourceFile);
-}
-
-function checkBranchNavigationBoundary(posixPath, text, findings) {
-	if (posixPath !== "packages/coding-agent/src/host/session-history/branch-navigation-host.ts") return;
-	const sourceFile = ts.createSourceFile(posixPath, text, ts.ScriptTarget.Latest, true, scriptKind(posixPath));
-	const visit = (node) => {
-		if (ts.isIdentifier(node) && node.text === "ExtensionCommandContextActions") {
-			findings.push(`${posixPath}: branch navigation must expose a neutral options contract`);
-		}
-		ts.forEachChild(node, visit);
-	};
-	visit(sourceFile);
-}
-
-function checkKnowledgeProcessingBoundary(posixPath, text, specifiers, findings) {
-	const processingPath = "packages/coding-agent/src/composition/knowledge-processing-session.ts";
-	const contractPath = "packages/coding-agent/src/composition/knowledge-processing-contract.ts";
-	if (posixPath === processingPath) {
-		for (const specifier of specifiers) {
-			if (specifier.includes("legacy-knowledge-processing-session")) {
-				findings.push(`${posixPath}: Knowledge Processing must depend on the neutral contract`);
-			}
-		}
-		return;
-	}
-	if (posixPath !== contractPath) return;
-
-	const forbiddenImportFragments = [
-		"agent-session",
-		"runtime-composition",
-		"legacy-knowledge-processing-session",
-		"session-manager",
-		"/sdk",
-	];
-	for (const specifier of specifiers) {
-		if (
-			specifier === "@vetta/runtime-core" ||
-			specifier.startsWith("@vetta/runtime-core/") ||
-			forbiddenImportFragments.some((fragment) => specifier.includes(fragment))
-		) {
-			findings.push(`${posixPath}: Knowledge Processing contract must not depend on a backend implementation`);
-		}
-	}
-	const sourceFile = ts.createSourceFile(posixPath, text, ts.ScriptTarget.Latest, true, scriptKind(posixPath));
-	const forbiddenSymbols = new Set([
-		"AgentSession",
-		"CodingAgentRuntimeComposition",
-		"SessionManager",
-		"createAgentSession",
-	]);
-	const visit = (node) => {
-		if (ts.isIdentifier(node) && forbiddenSymbols.has(node.text)) {
-			findings.push(`${posixPath}: Knowledge Processing contract must not use ${node.text}`);
-		}
-		ts.forEachChild(node, visit);
-	};
-	visit(sourceFile);
-}
-
-function checkCodingAgentSubagentAssemblyBoundary(posixPath, text, findings) {
-	if (posixPath !== "packages/coding-agent/src/composition/runtime-composition.ts") return;
-
-	const sourceFile = ts.createSourceFile(posixPath, text, ts.ScriptTarget.Latest, true, scriptKind(posixPath));
-	const forbiddenSymbols = new Set([
-		"CodingAgentSubagentProfile",
-		"CodingAgentSubagentRuntime",
-		"SubagentChildHandle",
-		"SubagentLifecycle",
-		"SubagentSnapshot",
-		"SubagentSpawnRequest",
-		"SubagentTypeDefinition",
-		"createCodingAgentSubagentChildHandle",
-		"runSubagentStart",
-		"runSubagentStop",
-		"validateRecoveredSubagentTranscript",
-	]);
-	const forbiddenLiterals = new Set([".subagents", "subagent-notification", "subagents_update"]);
-	const visit = (node) => {
-		if (ts.isIdentifier(node) && forbiddenSymbols.has(node.text)) {
-			findings.push(`${posixPath}: Coding Agent Composition Root must delegate Subagent assembly (${node.text})`);
-		}
-		if (ts.isStringLiteralLike(node) && forbiddenLiterals.has(node.text)) {
-			findings.push(`${posixPath}: Coding Agent Composition Root must not own Subagent policy (${node.text})`);
-		}
-		ts.forEachChild(node, visit);
-	};
-	visit(sourceFile);
-}
-
-function checkCodingAgentTurnCapabilityAssemblyBoundary(posixPath, text, findings) {
-	if (posixPath !== "packages/coding-agent/src/composition/runtime-composition.ts") return;
-
-	const sourceFile = ts.createSourceFile(posixPath, text, ts.ScriptTarget.Latest, true, scriptKind(posixPath));
-	const forbiddenSymbols = new Set([
-		"CodingAgentContinuationOrchestrator",
-		"CodingAgentModelCallMessageFinalizer",
-		"CodingAgentModelCallFrameComposer",
-		"CodingAgentPluginRunOrchestrator",
-		"CodingAgentPluginToolRuntime",
-		"CodingAgentPromptRequestAdapter",
-		"CodingAgentPromptRuntime",
-		"CodingAgentStopHookContinuationSource",
-		"CodingAgentTodoContinuationSource",
-		"RuntimeCapabilityComposition",
-		"createCodingAgentInvokeSkillFeature",
-		"createCodingAgentPromptResourceResolver",
-		"createCodingAgentPromptRuntime",
-		"joinPromptAddons",
-		"previewSystemPrompt",
-		"toPluginToolActivation",
-	]);
-	const visit = (node) => {
-		if (ts.isIdentifier(node) && forbiddenSymbols.has(node.text)) {
-			findings.push(
-				`${posixPath}: Coding Agent Composition Root must delegate Turn Capability assembly (${node.text})`,
-			);
-		}
-		ts.forEachChild(node, visit);
-	};
-	visit(sourceFile);
-}
-
-function checkCodingAgentDomainAdapterBoundary(posixPath, specifiers, findings) {
-	const domainRoots = [
-		"packages/coding-agent/src/extensions/",
-		"packages/coding-agent/src/features/",
-		"packages/coding-agent/src/memory/",
-		"packages/coding-agent/src/mcp/",
-		"packages/coding-agent/src/model-context/",
-		"packages/coding-agent/src/plugins/",
-		"packages/coding-agent/src/resources/",
-		"packages/coding-agent/src/sessions/",
-	];
-	if (!domainRoots.some((root) => posixPath.startsWith(root))) return;
-	for (const specifier of specifiers) {
-		if (!specifier.includes("adapters/")) continue;
-		findings.push(`${posixPath}: Coding Agent domain must depend on contracts instead of Adapters (${specifier})`);
-	}
-}
-
-function checkRuntimePromptContractIdentity(posixPath, text, findings) {
-	if (!posixPath.startsWith("packages/runtime-core/src/")) return;
-
-	const retiredSymbols = new Set([
-		"GreenfieldPromptPreparationContext",
-		"GreenfieldPreparedPrompt",
-		"GreenfieldPromptInterceptionResult",
-		"GreenfieldHandledPromptResult",
-		"GreenfieldPromptResult",
-		"GreenfieldPromptAdapter",
-	]);
-	const sourceFile = ts.createSourceFile(posixPath, text, ts.ScriptTarget.Latest, true, scriptKind(posixPath));
-	const foundSymbols = new Set();
-	const visit = (node) => {
-		if (ts.isIdentifier(node) && retiredSymbols.has(node.text)) {
-			foundSymbols.add(node.text);
-		}
-		ts.forEachChild(node, visit);
-	};
-	visit(sourceFile);
-
-	for (const symbol of foundSymbols) {
-		findings.push(`${posixPath}: Runtime Prompt contract must use its stable identity (${symbol})`);
-	}
-}
-
 function checkRuntimeProductSemanticBoundary(posixPath, text, findings) {
 	const isRuntimeProductBoundary =
 		posixPath.startsWith("packages/runtime-core/src/") ||
@@ -725,472 +484,6 @@ function checkRuntimeProductSemanticBoundary(posixPath, text, findings) {
 	}
 }
 
-function checkCodingAgentSessionResourceLifecycleBoundary(posixPath, text, findings) {
-	if (posixPath !== "packages/coding-agent/src/composition/runtime-composition.ts") return;
-
-	const sourceFile = ts.createSourceFile(posixPath, text, ts.ScriptTarget.Latest, true, scriptKind(posixPath));
-	const forbiddenSymbols = new Set([
-		"CODING_AGENT_ASK_USER_QUESTION_TOOL_NAME",
-		"CodingAgentBackgroundWorkController",
-		"CodingAgentSessionRuntimeResources",
-		"createSessionPeripherals",
-		"hookSessionController",
-		"hookSessionEnded",
-		"isCodingAgentAskUserQuestionEnabled",
-		"onConversationContinued",
-		"readActiveToolNames",
-		"sessionCleanup",
-		"stateSource",
-		"withAgentMode",
-	]);
-	const visit = (node) => {
-		if (ts.isIdentifier(node) && forbiddenSymbols.has(node.text)) {
-			findings.push(
-				`${posixPath}: Coding Agent Composition Root must delegate Session Resource Lifecycle assembly (${node.text})`,
-			);
-		}
-		ts.forEachChild(node, visit);
-	};
-	visit(sourceFile);
-}
-
-function checkCodingAgentCompositionResourceRegistryBoundary(posixPath, text, findings) {
-	if (posixPath !== "packages/coding-agent/src/composition/runtime-composition.ts") return;
-
-	const sourceFile = ts.createSourceFile(posixPath, text, ts.ScriptTarget.Latest, true, scriptKind(posixPath));
-	const forbiddenSymbols = new Set([
-		"InMemoryCodingAgentSessionMarkerIndex",
-		"InMemoryCodingAgentSessionValueIndex",
-		"RetryableCleanup",
-		"compositionCleanup",
-		"contextRuntimes",
-		"hookSessionDisposers",
-		"memoryRuntimes",
-		"ownershipBindings",
-		"prepareCompositionCleanup",
-		"todoRuntimes",
-		"turnCapabilityAssemblies",
-	]);
-	const visit = (node) => {
-		if (ts.isIdentifier(node) && forbiddenSymbols.has(node.text)) {
-			findings.push(
-				`${posixPath}: Coding Agent Composition Root must delegate resource registry and shutdown (${node.text})`,
-			);
-		}
-		ts.forEachChild(node, visit);
-	};
-	visit(sourceFile);
-}
-
-function checkCodingAgentMcpSessionCoordinatorBoundary(posixPath, text, findings) {
-	if (posixPath !== "packages/coding-agent/src/composition/runtime-composition.ts") return;
-
-	const sourceFile = ts.createSourceFile(posixPath, text, ts.ScriptTarget.Latest, true, scriptKind(posixPath));
-	const forbiddenSymbols = new Set([
-		"McpRuntimeToolSynchronizer",
-		"createMcpDeferredToolController",
-		"createMcpRuntimeToolSynchronizer",
-		"mergeMcpSnapshots",
-		"mergeMcpToolViews",
-		"refreshAndMergeMcpViews",
-	]);
-	const forbiddenLiterals = new Set(["mcp.reload.start", "mcp.reload.end"]);
-	const visit = (node) => {
-		if (ts.isIdentifier(node) && forbiddenSymbols.has(node.text)) {
-			findings.push(
-				`${posixPath}: Coding Agent Composition Root must delegate MCP Session coordination (${node.text})`,
-			);
-		}
-		if (ts.isStringLiteralLike(node) && forbiddenLiterals.has(node.text)) {
-			findings.push(
-				`${posixPath}: Coding Agent Composition Root must not own MCP refresh observation policy (${node.text})`,
-			);
-		}
-		ts.forEachChild(node, visit);
-	};
-	visit(sourceFile);
-}
-
-function checkCodingAgentSessionInitializationTransactionBoundary(posixPath, text, findings) {
-	if (posixPath !== "packages/coding-agent/src/composition/runtime-composition.ts") return;
-
-	const sourceFile = ts.createSourceFile(posixPath, text, ts.ScriptTarget.Latest, true, scriptKind(posixPath));
-	const forbiddenSymbols = new Set([
-		"CodingAgentGreenfieldContextRuntime",
-		"CodingAgentMemoryRolloverOrchestrator",
-		"CodingAgentTodoRuntime",
-		"CodingAgentSessionConfigurationState",
-		"CodingAgentSessionExecutionRuntime",
-		"InitializationRollbackScope",
-		"createEcosystemHookRuntime",
-		"createForkContextFeature",
-		"createCodingAgentSessionResourceLifecycle",
-		"createCodingAgentSubagentSessionAssembly",
-		"createCodingAgentTurnCapabilitySessionAssembly",
-		"createSessionPluginRuntime",
-	]);
-	const forbiddenRollbackIds = new Set([
-		"capability-composition",
-		"configuration-state-binding",
-		"context-runtime",
-		"conversation-context-overlay",
-		"conversation-ownership",
-		"execution-runtime",
-		"hook-session",
-		"mcp-controller-binding",
-		"memory-runtime",
-		"plugin-mcp-runtime",
-		"resource-context-binding",
-		"session-bindings",
-		"subagent-runtime",
-		"todo-runtime",
-	]);
-	const visit = (node) => {
-		if (ts.isIdentifier(node) && forbiddenSymbols.has(node.text)) {
-			findings.push(
-				`${posixPath}: Coding Agent Composition Root must delegate Session initialization (${node.text})`,
-			);
-		}
-		if (ts.isStringLiteralLike(node) && forbiddenRollbackIds.has(node.text)) {
-			findings.push(
-				`${posixPath}: Coding Agent Composition Root must not own Session initialization rollback (${node.text})`,
-			);
-		}
-		ts.forEachChild(node, visit);
-	};
-	visit(sourceFile);
-}
-
-function checkCodingAgentSessionInitializationProfileBoundary(posixPath, text, findings) {
-	const compositionRootPath = "packages/coding-agent/src/composition/runtime-composition.ts";
-	const transactionPath = "packages/coding-agent/src/composition/session-initialization/transaction.ts";
-	if (posixPath !== compositionRootPath && posixPath !== transactionPath) return;
-
-	const sourceFile = ts.createSourceFile(posixPath, text, ts.ScriptTarget.Latest, true, scriptKind(posixPath));
-	const visit = (node) => {
-		if (
-			posixPath === compositionRootPath &&
-			ts.isPropertyAssignment(node) &&
-			ts.isIdentifier(node.name) &&
-			node.name.text === "composition"
-		) {
-			findings.push(
-				`${posixPath}: Coding Agent Composition Root must project Session initialization options through a profile`,
-			);
-		}
-		if (
-			posixPath === transactionPath &&
-			ts.isIdentifier(node) &&
-			(node.text === "CodingAgentRuntimeCompositionOptions" || node.text === "composition")
-		) {
-			findings.push(
-				`${posixPath}: Session initialization transaction must depend on its narrow profile (${node.text})`,
-			);
-		}
-		ts.forEachChild(node, visit);
-	};
-	visit(sourceFile);
-}
-
-function checkCodingAgentSessionInitializationStageBoundary(posixPath, text, findings) {
-	if (posixPath !== "packages/coding-agent/src/composition/session-initialization/transaction.ts") {
-		return;
-	}
-
-	const sourceFile = ts.createSourceFile(posixPath, text, ts.ScriptTarget.Latest, true, scriptKind(posixPath));
-	const forbiddenConstructors = new Set([
-		"CodingAgentGreenfieldContextRuntime",
-		"CodingAgentSessionMemoryController",
-		"CodingAgentMemoryRolloverOrchestrator",
-		"CodingAgentTodoRuntime",
-		"GreenfieldRuntimeModel",
-		"CodingAgentSessionConfigurationState",
-		"CodingAgentSessionExecutionRuntime",
-	]);
-	const forbiddenFactories = new Set([
-		"createCodingAgentSpecializedToolRegistrations",
-		"createCodingAgentTodoRuntimeToolRegistration",
-		"createEcosystemHookRuntime",
-		"createForkContextFeature",
-		"createCodingAgentSubagentSessionAssembly",
-		"createSessionPluginRuntime",
-	]);
-	const visit = (node) => {
-		if (
-			ts.isNewExpression(node) &&
-			ts.isIdentifier(node.expression) &&
-			forbiddenConstructors.has(node.expression.text)
-		) {
-			findings.push(
-				`${posixPath}: Session initialization transaction must delegate staged runtime construction (${node.expression.text})`,
-			);
-		}
-		if (
-			ts.isCallExpression(node) &&
-			ts.isIdentifier(node.expression) &&
-			forbiddenFactories.has(node.expression.text)
-		) {
-			findings.push(
-				`${posixPath}: Session initialization transaction must delegate staged runtime policy (${node.expression.text})`,
-			);
-		}
-		ts.forEachChild(node, visit);
-	};
-	visit(sourceFile);
-}
-
-function checkCodingAgentRuntimeToolSurfaceBoundary(posixPath, text, findings) {
-	if (posixPath !== "packages/coding-agent/src/composition/runtime-composition.ts") return;
-
-	const sourceFile = ts.createSourceFile(posixPath, text, ts.ScriptTarget.Latest, true, scriptKind(posixPath));
-	const forbiddenSymbols = new Set([
-		"CODING_AGENT_MODEL_TOOL_ORDER",
-		"CODING_TOOL_SCOPES",
-		"adaptCodingAgentToolRegistration",
-		"createCodingToolsRuntimeComposition",
-		"createCodingAgentMcpSessionCoordinator",
-		"createKbFilterByTagsTool",
-		"createKbListTagsTool",
-		"isCodingAgentKnowledgeToolEnabled",
-		"isKnowledgeToolEnabled",
-		"resolveCodingAgentToolActivation",
-		"resolveTurnToolActivation",
-	]);
-	const visit = (node) => {
-		if (ts.isIdentifier(node) && forbiddenSymbols.has(node.text)) {
-			findings.push(`${posixPath}: Coding Agent Composition Root must delegate Runtime Tool Surface (${node.text})`);
-		}
-		if (ts.isStringLiteralLike(node) && node.text === "knowledge_mode_instruction") {
-			findings.push(`${posixPath}: Coding Agent Composition Root must not own Knowledge Tool activation policy`);
-		}
-		ts.forEachChild(node, visit);
-	};
-	visit(sourceFile);
-}
-
-function checkCodingAgentRuntimeToolPortBoundary(posixPath, text, findings) {
-	const contractPath = "packages/coding-agent/src/composition/contracts/runtime-composition-result.ts";
-	const compositionPath = "packages/coding-agent/src/composition/tool-surface/runtime-tools-composition.ts";
-	if (posixPath !== contractPath && posixPath !== compositionPath) return;
-
-	const sourceFile = ts.createSourceFile(posixPath, text, ts.ScriptTarget.Latest, true, scriptKind(posixPath));
-	if (posixPath === contractPath) {
-		const forbiddenSymbols = new Set([
-			"CodingToolsRuntimeComposition",
-			"FeatureCompiler",
-			"InMemoryCodingToolRegistry",
-		]);
-		const visit = (node) => {
-			if (ts.isIdentifier(node) && forbiddenSymbols.has(node.text)) {
-				findings.push(
-					`${posixPath}: Greenfield Runtime Tool access must depend on CodingToolRegistry (${node.text})`,
-				);
-			}
-			ts.forEachChild(node, visit);
-		};
-		visit(sourceFile);
-		return;
-	}
-
-	for (const statement of sourceFile.statements) {
-		if (!ts.isInterfaceDeclaration(statement) || statement.name.text !== "CodingToolsRuntimeComposition") continue;
-		for (const member of statement.members) {
-			if (
-				ts.isPropertySignature(member) &&
-				member.name !== undefined &&
-				ts.isIdentifier(member.name) &&
-				member.name.text === "registry" &&
-				member.type?.getText(sourceFile) !== "CodingToolRegistry"
-			) {
-				findings.push(`${posixPath}: Coding Tools composition must expose its Registry through CodingToolRegistry`);
-			}
-		}
-	}
-}
-
-function checkCodingAgentToolPolicyOwnershipBoundary(posixPath, text, findings) {
-	const isAdapter = posixPath.startsWith("packages/coding-agent/src/adapters/");
-	const isComposition = posixPath.startsWith("packages/coding-agent/src/composition/");
-	if (!isAdapter && !isComposition) return;
-
-	const sourceFile = ts.createSourceFile(posixPath, text, ts.ScriptTarget.Latest, true, scriptKind(posixPath));
-	const compositionPolicyDeclarations = new Set([
-		"CodingAgentToolAvailability",
-		"isCodingAgentKnowledgeToolEnabled",
-		"resolveCodingAgentToolActivation",
-	]);
-	const adapterPolicyDeclarations = new Set([
-		"CODING_AGENT_MODEL_TOOL_ORDER",
-		"CODING_AGENT_SUBAGENT_MODEL_TOOL_ORDER_STEP",
-	]);
-	const visit = (node) => {
-		if (
-			isAdapter &&
-			ts.isVariableDeclaration(node) &&
-			ts.isIdentifier(node.name) &&
-			adapterPolicyDeclarations.has(node.name.text)
-		) {
-			findings.push(`${posixPath}: Coding Agent Adapter must not own Tool policy (${node.name.text})`);
-		}
-		if (
-			isComposition &&
-			((ts.isFunctionDeclaration(node) && node.name) ||
-				(ts.isInterfaceDeclaration(node) && node.name) ||
-				(ts.isTypeAliasDeclaration(node) && node.name)) &&
-			compositionPolicyDeclarations.has(node.name.text)
-		) {
-			findings.push(`${posixPath}: Coding Agent Composition must not declare Tool policy (${node.name.text})`);
-		}
-		ts.forEachChild(node, visit);
-	};
-	visit(sourceFile);
-}
-
-function checkCodingAgentChildCompositionPolicyBoundary(posixPath, text, findings) {
-	if (posixPath !== "packages/coding-agent/src/composition/runtime-composition.ts") return;
-
-	const sourceFile = ts.createSourceFile(posixPath, text, ts.ScriptTarget.Latest, true, scriptKind(posixPath));
-	const forbiddenSymbols = new Set([
-		"_createPluginMcpRuntime",
-		"_extensionTools",
-		"_mcpSource",
-		"childComposition",
-		"childCompositionOptions",
-	]);
-	const visit = (node) => {
-		if (ts.isIdentifier(node) && forbiddenSymbols.has(node.text)) {
-			findings.push(
-				`${posixPath}: Coding Agent Composition Root must delegate Child Composition policy (${node.text})`,
-			);
-		}
-		if (
-			ts.isPropertyAssignment(node) &&
-			ts.isIdentifier(node.name) &&
-			node.name.text === "enableSubagents" &&
-			node.initializer.kind === ts.SyntaxKind.FalseKeyword
-		) {
-			findings.push(`${posixPath}: Coding Agent Composition Root must not own recursive Child isolation policy`);
-		}
-		if (
-			ts.isPropertyAccessExpression(node) &&
-			(node.name.text === "create" || node.name.text === "resume") &&
-			ts.isPropertyAccessExpression(node.expression) &&
-			node.expression.name.text === "backend"
-		) {
-			findings.push(`${posixPath}: Coding Agent Composition Root must delegate Child Composition projection`);
-		}
-		ts.forEachChild(node, visit);
-	};
-	visit(sourceFile);
-}
-
-function checkGreenfieldRuntimeHostControlSurfaceBoundary(posixPath, text, findings) {
-	if (posixPath !== "packages/coding-agent/src/composition/runtime-composition.ts") return;
-
-	const sourceFile = ts.createSourceFile(posixPath, text, ts.ScriptTarget.Latest, true, scriptKind(posixPath));
-	const forbiddenSymbols = new Set([
-		"appendSessionContext",
-		"bindExtensionRunner",
-		"clearSessionExecutionContext",
-		"deliverSessionContext",
-		"executionRuntimes",
-		"extensionEventBridges",
-		"flushMemory",
-		"hookSessionControllers",
-		"memoryControllers",
-		"preserveSessionExecutionContext",
-		"quiesceSessionBackgroundCommands",
-		"refreshExtensionTools",
-		"resourceContexts",
-		"sessionHooks",
-	]);
-	const visit = (node) => {
-		if (ts.isIdentifier(node) && forbiddenSymbols.has(node.text)) {
-			findings.push(
-				`${posixPath}: Coding Agent Composition Root must delegate Runtime Host Controls (${node.text})`,
-			);
-		}
-		ts.forEachChild(node, visit);
-	};
-	visit(sourceFile);
-}
-
-function checkCodingAgentSessionHostOwnershipBoundary(posixPath, text, findings) {
-	if (!posixPath.startsWith("packages/coding-agent/src/composition/")) return;
-
-	const sourceFile = ts.createSourceFile(posixPath, text, ts.ScriptTarget.Latest, true, scriptKind(posixPath));
-	const hostOwnedDeclarations = new Set([
-		"CodingAgentBackgroundWorkController",
-		"CodingAgentPluginReconfiguration",
-		"CodingAgentSessionConfigurationState",
-		"CodingAgentSessionExecutionRuntime",
-		"CodingAgentSubagentWorkRuntime",
-	]);
-	const visit = (node) => {
-		if (
-			(ts.isClassDeclaration(node) || ts.isInterfaceDeclaration(node) || ts.isTypeAliasDeclaration(node)) &&
-			node.name &&
-			hostOwnedDeclarations.has(node.name.text)
-		) {
-			findings.push(
-				`${posixPath}: Coding Agent Composition must not declare Session Host capability (${node.name.text})`,
-			);
-		}
-		ts.forEachChild(node, visit);
-	};
-	visit(sourceFile);
-}
-
-function checkRetiredAutomaticLegacyFallback(posixPath, text, findings) {
-	const isRuntimeProductionSource =
-		(posixPath.startsWith("apps/cli-host/src/") || posixPath.startsWith("packages/coding-agent/src/")) &&
-		!posixPath.endsWith(".d.ts") &&
-		!/\.(?:test|spec)\.[cm]?[jt]sx?$/.test(posixPath);
-	if (!isRuntimeProductionSource) return;
-
-	const sourceFile = ts.createSourceFile(posixPath, text, ts.ScriptTarget.Latest, true, scriptKind(posixPath));
-	const retiredFallbacks = new Set();
-	const visit = (node) => {
-		if (
-			ts.isStringLiteralLike(node) &&
-			(node.text === "legacy-extension" || node.text === "legacy-session" || node.text === "session-migration-gap")
-		) {
-			retiredFallbacks.add(node.text);
-		}
-		ts.forEachChild(node, visit);
-	};
-	visit(sourceFile);
-	for (const fallback of retiredFallbacks) {
-		findings.push(
-			`${posixPath}: automatic ${fallback} fallback is retired; report an explicit compatibility failure instead`,
-		);
-	}
-}
-
-function checkRetiredCompositionBoundaries(posixPath, text, specifiers, findings) {
-	if (posixPath.startsWith("packages/runtime-composition/")) {
-		findings.push(`${posixPath}: retired runtime-composition package must stay deleted`);
-	}
-	if (text.includes("@vetta/runtime-composition")) {
-		findings.push(`${posixPath}: retired @vetta/runtime-composition reference must stay deleted`);
-	}
-	if (RETIRED_CLI_COMPOSITION_FORWARDERS.has(posixPath)) {
-		findings.push(`${posixPath}: retired CLI composition forwarding module must stay deleted`);
-	}
-	if (posixPath === "apps/cli-host/src/index.ts" && specifiers.includes("@vetta/coding-agent/composition")) {
-		findings.push(`${posixPath}: CLI public API must not re-export Coding Agent composition`);
-	}
-	if (
-		posixPath.startsWith("apps/desktop/src/") &&
-		specifiers.includes("@vetta/cli-host") &&
-		/\b(?:CodingAgentGreenfieldActiveSessionHost|CodingToolsRuntimeComposition|GreenfieldCliSessionOptions|CodingAgentRuntimeComposition(?:Options)?|GreenfieldRuntimeHostSessionBackend|resolveGreenfieldSessionIdFromPath)\b/.test(
-			text,
-		)
-	) {
-		findings.push(`${posixPath}: Desktop must import Coding Agent composition contracts from their owner`);
-	}
-}
-
 function checkCodingAgentRootImports(posixPath, specifiers, findings) {
 	const isInternalConsumer =
 		(posixPath.startsWith("packages/") || posixPath.startsWith("apps/")) &&
@@ -1242,159 +535,6 @@ function checkCodingAgentToolPublicSurfaceBoundary(posixPath, text, findings) {
 	}
 }
 
-function checkRetiredCodingAgentKnowledgeSurface(posixPath, specifiers, findings) {
-	if (posixPath.startsWith("packages/coding-agent/src/core/knowledge/")) {
-		findings.push(`${posixPath}: retired Coding Agent Knowledge implementation must stay deleted`);
-	}
-	for (const specifier of specifiers) {
-		if (specifier !== "@vetta/coding-agent/knowledge" && !specifier.includes("core/knowledge")) continue;
-		findings.push(`${posixPath}: retired Coding Agent Knowledge surface import (${specifier})`);
-	}
-}
-
-const RETIRED_CODING_AGENT_MODEL_CONTEXT_FILES = new Set([
-	"packages/coding-agent/src/core/messages.ts",
-	"packages/coding-agent/src/core/subconscious.ts",
-	"packages/coding-agent/src/core/system-prompt.ts",
-]);
-
-function checkRetiredCodingAgentModelContextSurface(posixPath, specifiers, findings) {
-	if (RETIRED_CODING_AGENT_MODEL_CONTEXT_FILES.has(posixPath)) {
-		findings.push(`${posixPath}: retired Coding Agent model-context implementation must stay deleted`);
-	}
-	for (const specifier of specifiers) {
-		if (!/core\/(?:messages|subconscious|system-prompt)(?:\.js)?$/.test(specifier)) continue;
-		findings.push(`${posixPath}: retired Coding Agent model-context import (${specifier})`);
-	}
-}
-
-function checkCodingAgentCompactionBoundary(posixPath, specifiers, findings) {
-	if (posixPath.startsWith("packages/coding-agent/src/core/compaction/")) {
-		findings.push(`${posixPath}: retired Coding Agent core Compaction implementation must stay deleted`);
-	}
-	for (const specifier of specifiers) {
-		if (specifier.includes("core/compaction")) {
-			findings.push(`${posixPath}: retired Coding Agent core Compaction import (${specifier})`);
-		}
-	}
-
-	if (!posixPath.startsWith("packages/coding-agent/src/compaction/")) return;
-	const isCompactionRuntime = posixPath.startsWith("packages/coding-agent/src/compaction/runtime/");
-	for (const specifier of specifiers) {
-		const dependsOnSessionImplementation = specifier.includes("/core/") || specifier.includes("/adapters/");
-		const dependsOnRuntimeStorage =
-			specifier === "@vetta/runtime-core" ||
-			specifier.startsWith("@vetta/runtime-core/") ||
-			specifier === "@vetta/runtime-storage" ||
-			specifier.startsWith("@vetta/runtime-storage/");
-		if (dependsOnSessionImplementation || (dependsOnRuntimeStorage && !isCompactionRuntime)) {
-			findings.push(
-				`${posixPath}: Compaction policy must not depend on Session implementations; ` +
-					`only compaction/runtime may consume Runtime Core contracts (${specifier})`,
-			);
-		}
-	}
-}
-
-function checkCodingAgentLegacyBoundaries(posixPath, text, specifiers, findings) {
-	const isProductionSource = posixPath.includes("/src/") && !/\.(?:test|spec)\.[cm]?[jt]sx?$/.test(posixPath);
-	if (!isProductionSource) return;
-	const historicalSessionPublicSubpath = "@vetta/coding-agent/historical-sessions";
-	const historicalSessionConsumers = new Set([
-		"apps/cli-host/src/coding-agent-bootstrap.ts",
-		"apps/cli-host/src/rpc/cli-session-format-compatibility.ts",
-		"apps/cli-host/src/rpc/runtime-host/runtime-host-contract.ts",
-		"apps/cli-host/src/rpc/runtime-host/runtime-host.ts",
-		"apps/cli-host/src/session-compatibility-error.ts",
-		"apps/cli-host/src/html-export-runtime.ts",
-		"packages/runtime-desktop/src/historical-session-format.ts",
-		"packages/runtime-desktop/src/historical-session-import-backend.ts",
-	]);
-
-	for (const specifier of specifiers) {
-		if (specifier.startsWith("@vetta/coding-agent/legacy/")) {
-			findings.push(`${posixPath}: production Legacy subpath import is outside the compatibility allowlist`);
-		}
-		if (specifier === historicalSessionPublicSubpath && !historicalSessionConsumers.has(posixPath)) {
-			findings.push(`${posixPath}: historical Session public surface is outside the host compatibility allowlist`);
-		}
-	}
-
-	const sourceFile = ts.createSourceFile(posixPath, text, ts.ScriptTarget.Latest, true, scriptKind(posixPath));
-	const usedSymbols = new Set();
-	const visit = (node) => {
-		if (ts.isIdentifier(node)) usedSymbols.add(node.text);
-		ts.forEachChild(node, visit);
-	};
-	visit(sourceFile);
-
-	if (posixPath.startsWith("apps/cli-host/src/") && !posixPath.startsWith("apps/cli-host/src/rpc/")) {
-		for (const symbol of ["runLegacyAgent", "runLegacyAgentWithBootstrap"]) {
-			if (usedSymbols.has(symbol)) {
-				findings.push(`${posixPath}: Legacy startup symbol ${symbol} is outside the execution gateway`);
-			}
-		}
-	}
-
-	const isLegacyFormatModule = posixPath.startsWith("packages/coding-agent/src/sessions/legacy/");
-	if (isLegacyFormatModule) {
-		const forbiddenImportFragments = ["agent-session", "/sdk", "legacy-session-backend"];
-		for (const specifier of specifiers) {
-			if (forbiddenImportFragments.some((fragment) => specifier.includes(fragment))) {
-				findings.push(`${posixPath}: Legacy session-format modules must not import execution code (${specifier})`);
-			}
-		}
-		for (const symbol of ["AgentSession", "createAgentSession", "LegacyCodingAgentSessionBackend", "ModelRegistry"]) {
-			if (usedSymbols.has(symbol)) {
-				findings.push(`${posixPath}: Legacy session-format modules must not use execution symbol ${symbol}`);
-			}
-		}
-	}
-	const historicalRuntimeHostSurfaces = new Set([
-		"packages/coding-agent/src/adapters/runtime-core/index.ts",
-		"packages/coding-agent/src/adapters/runtime-core/greenfield.ts",
-	]);
-	const historicalRuntimeHostSymbols = new Set([
-		"acquireLegacySessionFormatLease",
-		"CODING_AGENT_LEGACY_AGENT_MESSAGE_CONTEXT_TYPE",
-		"LegacyRuntimeSessionCatalog",
-		"LegacyRuntimeSessionFileHistoryReader",
-		"LegacySessionFormatLeaseResult",
-		"normalizeCodingAgentLegacySessionEntry",
-		"restoreCodingAgentLegacyAgentMessageEntry",
-		"CodingAgentLegacySessionIncompatibilityCode",
-		"CodingAgentLegacySessionMigration",
-		"CodingAgentLegacySessionMigrationIncompatible",
-		"CodingAgentLegacySessionMigrationSuccess",
-		"migrateCodingAgentLegacySession",
-	]);
-	if (historicalRuntimeHostSurfaces.has(posixPath)) {
-		for (const symbol of usedSymbols) {
-			if (historicalRuntimeHostSymbols.has(symbol)) {
-				findings.push(`${posixPath}: Runtime Host must not expose historical Session symbol ${symbol}`);
-			}
-		}
-	}
-	if (isLegacyFormatModule) return;
-
-	const historicalSessionFacade = "packages/coding-agent/src/public-api/historical-sessions.ts";
-	const protectedSymbols = new Set([
-		"createLegacyRuntimeHostOptions",
-		"LegacyCodingAgentSessionBackend",
-		"LegacyRuntimeSessionCatalog",
-		"LegacyRuntimeSessionFileHistoryReader",
-		"LegacyRuntimeSharedModelController",
-	]);
-	for (const symbol of usedSymbols) {
-		if (!protectedSymbols.has(symbol)) continue;
-		const isFacadeImplementation =
-			posixPath === historicalSessionFacade &&
-			(symbol === "LegacyRuntimeSessionCatalog" || symbol === "LegacyRuntimeSessionFileHistoryReader");
-		if (isFacadeImplementation) continue;
-		findings.push(`${posixPath}: Legacy Runtime adapter ${symbol} is outside the compatibility allowlist`);
-	}
-}
-
 function workspacePackageName(specifier) {
 	if (!specifier.startsWith("@vetta/") && !specifier.startsWith("@vetta-org/")) return undefined;
 	return specifier.split("/").slice(0, 2).join("/");
@@ -1434,24 +574,7 @@ function checkAgentCoreImports(posixPath, specifiers, findings) {
 	}
 }
 
-function checkRetiredCodingAgentRuntimeHost(posixPath, text, specifiers, findings) {
-	const retiredImports = specifiers.filter(
-		(specifier) =>
-			specifier === RETIRED_CODING_AGENT_RUNTIME_HOST ||
-			specifier.startsWith(`${RETIRED_CODING_AGENT_RUNTIME_HOST}/`),
-	);
-	if (retiredImports.length > 0 && findings.length === 0) {
-		findings.push(`${posixPath}: retired Coding Agent Runtime Host import (${retiredImports[0]})`);
-	}
-
-	const isResolutionConfig =
-		posixPath === "tsconfig.json" || posixPath.endsWith("/tsconfig.json") || posixPath.endsWith("/vitest.config.ts");
-	if (isResolutionConfig && text.includes(RETIRED_CODING_AGENT_RUNTIME_HOST)) {
-		findings.push(`${posixPath}: retired Coding Agent Runtime Host resolution alias`);
-	}
-}
-
-export function findPackageBoundaryViolations(posixPath, text, options = {}) {
+export function findDurablePackageBoundaryViolations(posixPath, text, options = {}) {
 	const findings = [];
 	const specifiers = collectImportSpecifiers(posixPath, text);
 	checkForbiddenAppImports(posixPath, specifiers, findings);
@@ -1469,57 +592,18 @@ export function findPackageBoundaryViolations(posixPath, text, options = {}) {
 	checkToolsProtocolImports(posixPath, specifiers, findings);
 	checkMcpProtocolImports(posixPath, specifiers, findings);
 	checkRuntimeCorePlatformImports(posixPath, text, specifiers, findings);
-	checkGreenfieldLegacyStartupSymbols(posixPath, text, findings);
-	checkActiveSessionTransitionBoundary(posixPath, text, specifiers, findings);
-	checkBranchNavigationBoundary(posixPath, text, findings);
-	checkKnowledgeProcessingBoundary(posixPath, text, specifiers, findings);
-	checkCodingAgentSubagentAssemblyBoundary(posixPath, text, findings);
-	checkCodingAgentTurnCapabilityAssemblyBoundary(posixPath, text, findings);
-	checkCodingAgentSessionResourceLifecycleBoundary(posixPath, text, findings);
-	checkCodingAgentCompositionResourceRegistryBoundary(posixPath, text, findings);
-	checkCodingAgentMcpSessionCoordinatorBoundary(posixPath, text, findings);
-	checkCodingAgentSessionInitializationTransactionBoundary(posixPath, text, findings);
-	checkCodingAgentSessionInitializationProfileBoundary(posixPath, text, findings);
-	checkCodingAgentSessionInitializationStageBoundary(posixPath, text, findings);
-	checkCodingAgentRuntimeToolSurfaceBoundary(posixPath, text, findings);
-	checkCodingAgentRuntimeToolPortBoundary(posixPath, text, findings);
-	checkCodingAgentToolPolicyOwnershipBoundary(posixPath, text, findings);
-	checkCodingAgentDomainAdapterBoundary(posixPath, specifiers, findings);
-	checkRuntimePromptContractIdentity(posixPath, text, findings);
 	checkRuntimeProductSemanticBoundary(posixPath, text, findings);
-	checkCodingAgentChildCompositionPolicyBoundary(posixPath, text, findings);
-	checkGreenfieldRuntimeHostControlSurfaceBoundary(posixPath, text, findings);
-	checkCodingAgentSessionHostOwnershipBoundary(posixPath, text, findings);
-	checkRetiredAutomaticLegacyFallback(posixPath, text, findings);
-	checkRetiredCompositionBoundaries(posixPath, text, specifiers, findings);
 	checkCodingAgentRootImports(posixPath, specifiers, findings);
 	checkCodingAgentToolPublicSurfaceBoundary(posixPath, text, findings);
-	checkRetiredCodingAgentKnowledgeSurface(posixPath, specifiers, findings);
-	checkRetiredCodingAgentModelContextSurface(posixPath, specifiers, findings);
-	checkCodingAgentCompactionBoundary(posixPath, specifiers, findings);
-	checkCodingAgentLegacyBoundaries(posixPath, text, specifiers, findings);
 	checkWorkspaceManifestImports(posixPath, specifiers, options.manifest, findings);
 	checkRuntimeCoreImports(posixPath, specifiers, findings);
 	checkAgentCoreImports(posixPath, specifiers, findings);
-	checkRetiredCodingAgentRuntimeHost(posixPath, text, specifiers, findings);
 	return findings;
 }
 
-export function findPackageManifestBoundaryViolations(manifest) {
+export function findDurablePackageManifestBoundaryViolations(manifest) {
 	const findings = [];
 	if (!manifest) return findings;
-	if (manifest.name === "@vetta/runtime-composition") {
-		findings.push("packages/runtime-composition/package.json: retired package must stay deleted");
-	}
-	const dependencyGroups = [
-		manifest.dependencies,
-		manifest.devDependencies,
-		manifest.optionalDependencies,
-		manifest.peerDependencies,
-	];
-	if (dependencyGroups.some((dependencies) => Object.hasOwn(dependencies ?? {}, "@vetta/runtime-composition"))) {
-		findings.push(`${manifest.name ?? "workspace package"}: retired @vetta/runtime-composition dependency`);
-	}
 	if (manifest.name === "@vetta/agent-core") {
 		const productionDependencies = {
 			...manifest.dependencies,
@@ -1531,20 +615,6 @@ export function findPackageManifestBoundaryViolations(manifest) {
 				findings.push(`@vetta/agent-core: lower-level execution kernel must not depend on ${dependency}`);
 			}
 		}
-	}
-	if (manifest.name !== "@vetta/coding-agent") return findings;
-	const exports = manifest.exports ?? {};
-	if (Object.hasOwn(exports, "./knowledge")) {
-		findings.push("packages/coding-agent/package.json: retired ./knowledge export must stay deleted");
-	}
-	for (const key of ["./core/messages.js", "./core/subconscious.js", "./core/system-prompt.js"]) {
-		if (Object.hasOwn(exports, key)) {
-			findings.push(`packages/coding-agent/package.json: retired ${key} export must stay deleted`);
-		}
-	}
-	for (const key of Object.keys(exports)) {
-		if (key !== "./runtime-host" && !key.startsWith("./runtime-host/")) continue;
-		findings.push(`packages/coding-agent/package.json: retired ${key} export must stay deleted`);
 	}
 	return findings;
 }
@@ -1576,41 +646,83 @@ const roots = [
 	join(repoRoot, "apps/desktop"),
 ];
 
-export function main() {
+const SOURCE_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".mjs", ".cjs"]);
+
+function manifestForFile(posixPath) {
+	const root = roots.find((candidate) => {
+		const relativeRoot = rel(candidate);
+		return posixPath === `${relativeRoot}/package.json` || posixPath.startsWith(`${relativeRoot}/`);
+	});
+	if (!root) return undefined;
+	try {
+		return JSON.parse(readText(join(root, "package.json")));
+	} catch {
+		return undefined;
+	}
+}
+
+export function main(files = process.argv.slice(2)) {
 	const findings = [];
 	let scanned = 0;
-	const rootTsconfigPath = join(repoRoot, "tsconfig.json");
-	findings.push(...findPackageBoundaryViolations("tsconfig.json", readText(rootTsconfigPath)));
-	scanned += 1;
-
-	for (const root of roots) {
-		let manifest;
-		try {
-			manifest = JSON.parse(readText(join(root, "package.json")));
-		} catch {
-			manifest = undefined;
-		}
-		findings.push(...findPackageManifestBoundaryViolations(manifest));
-		for (const file of walkFiles(root)) {
-			const posixPath = rel(file);
-			if (posixPath.includes("/node_modules/") || posixPath.includes("/dist/")) continue;
-			// 构建期内置进插件包的第三方产物（如工作台的 agent/cli/），是打包结果不是源码
-			if (posixPath.includes("/agent/cli/")) continue;
-			// examples under coding-agent may intentionally wire hosts; skip demos
-			if (posixPath.includes("/examples/")) continue;
-			let text;
-			try {
-				text = readText(file);
-			} catch {
+	if (files.length > 0) {
+		for (const file of [...new Set(files.map((value) => value.replaceAll("\\", "/")))]) {
+			const absolute = join(repoRoot, file);
+			if (!existsSync(absolute)) continue;
+			if (file === "tsconfig.json") {
+				findings.push(...findDurablePackageBoundaryViolations(file, readText(absolute)));
+				scanned += 1;
 				continue;
 			}
+			if (file.endsWith("/package.json") || file === "package.json") {
+				try {
+					findings.push(...findDurablePackageManifestBoundaryViolations(JSON.parse(readText(absolute))));
+				} catch {
+					// JSON parsing is owned by Biome/type tooling; this guard only checks valid manifests.
+				}
+				scanned += 1;
+				continue;
+			}
+			if (!SOURCE_EXTENSIONS.has(extname(file))) continue;
+			if (file.includes("/examples/") || file.includes("/agent/cli/")) continue;
+			findings.push(
+				...findDurablePackageBoundaryViolations(file, readText(absolute), { manifest: manifestForFile(file) }),
+			);
 			scanned += 1;
-			findings.push(...findPackageBoundaryViolations(posixPath, text, { manifest }));
+		}
+	} else {
+		const rootTsconfigPath = join(repoRoot, "tsconfig.json");
+		findings.push(...findDurablePackageBoundaryViolations("tsconfig.json", readText(rootTsconfigPath)));
+		scanned += 1;
+
+		for (const root of roots) {
+			let manifest;
+			try {
+				manifest = JSON.parse(readText(join(root, "package.json")));
+			} catch {
+				manifest = undefined;
+			}
+			findings.push(...findDurablePackageManifestBoundaryViolations(manifest));
+			for (const file of walkFiles(root)) {
+				const posixPath = rel(file);
+				if (posixPath.includes("/node_modules/") || posixPath.includes("/dist/")) continue;
+				// 构建期内置进插件包的第三方产物（如工作台的 agent/cli/），是打包结果不是源码
+				if (posixPath.includes("/agent/cli/")) continue;
+				// examples under coding-agent may intentionally wire hosts; skip demos
+				if (posixPath.includes("/examples/")) continue;
+				let text;
+				try {
+					text = readText(file);
+				} catch {
+					continue;
+				}
+				scanned += 1;
+				findings.push(...findDurablePackageBoundaryViolations(posixPath, text, { manifest }));
+			}
 		}
 	}
 
 	if (findings.length === 0) {
-		ok(`[package-boundaries] ok (${scanned} file(s) scanned)`);
+		ok(`[package-boundaries] ok (${scanned} file(s) scanned${files.length > 0 ? ", selected" : ""})`);
 		return 0;
 	}
 

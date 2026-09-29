@@ -1,4 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
+
+const logError = vi.hoisted(() => vi.fn());
+vi.mock("./plugin-runtime-log", () => ({ logPluginRuntimeError: logError }));
+
 import {
 	bindPluginFileExplorerHost,
 	emitPluginFileExplorerFilesChanged,
@@ -45,8 +49,8 @@ describe("plugin file explorer host", () => {
 	it("notifies selection and file listeners until their handles are disposed", () => {
 		const selectionListener = vi.fn();
 		const fileListener = vi.fn();
-		const selectionHandle = onPluginFileExplorerSelectionChanged(selectionListener);
-		const fileHandle = onPluginFileExplorerFilesChanged(fileListener);
+		const selectionHandle = onPluginFileExplorerSelectionChanged("example", "1.0.0", selectionListener);
+		const fileHandle = onPluginFileExplorerFilesChanged("example", "1.0.0", fileListener);
 
 		emitPluginFileExplorerSelectionChanged([entry]);
 		emitPluginFileExplorerFilesChanged([{ type: "changed", path: "/workspace" }]);
@@ -59,5 +63,30 @@ describe("plugin file explorer host", () => {
 		emitPluginFileExplorerFilesChanged([{ type: "deleted", path: entry.path }]);
 		expect(selectionListener).toHaveBeenCalledOnce();
 		expect(fileListener).toHaveBeenCalledOnce();
+	});
+
+	it("logs the owning plugin when a listener fails without blocking other plugins", () => {
+		logError.mockClear();
+		const failing = onPluginFileExplorerSelectionChanged("broken", "2.0.0", () => {
+			throw new Error("listener failed");
+		});
+		const healthyListener = vi.fn();
+		const healthy = onPluginFileExplorerSelectionChanged("healthy", "3.0.0", healthyListener);
+
+		emitPluginFileExplorerSelectionChanged([entry]);
+
+		expect(healthyListener).toHaveBeenCalledWith([entry]);
+		expect(logError).toHaveBeenCalledWith(
+			"file explorer listener failed",
+			{
+				pluginId: "broken",
+				pluginVersion: "2.0.0",
+				stage: "selection-change",
+			},
+			expect.any(Error),
+		);
+
+		failing.dispose();
+		healthy.dispose();
 	});
 });

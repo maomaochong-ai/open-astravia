@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Vetta's face for the status bar: a rounded square with two round eyes cut out. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M8,3h8a5,5 0 0,1 5,5v8a5,5 0 0,1 -5,5h-8a5,5 0 0,1 -5,-5v-8a5,5 0 0,1 5,-5zM9,10.2a1.8,1.8 0 1,0 0,3.6a1.8,1.8 0 1,0 0,-3.6zM15,10.2a1.8,1.8 0 1,0 0,3.6a1.8,1.8 0 1,0 0,-3.6z" />
+</vector>

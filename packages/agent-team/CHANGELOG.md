@@ -22,6 +22,8 @@
 
 ### Changed
 
+- Reciprocal `team_send_message` questions sent while answering an incoming Team question or integrating a completion notification are delivered as `inform`. The public message remains visible, but the triggering member is not started again, preventing asynchronous response loops while leaving questions to other members unchanged.
+
 - 结果发布记录新增向后兼容的可选 `purpose`，用于区分成功结果与失败/取消时仅供展示的终态片段；旧记录省略该字段时仍按成功结果恢复。
 
 - Initial Agent Profiles and teams now use ordinary UUID identities and the same contracts as user-created data; preset identity/version fields and startup reseeding were removed.

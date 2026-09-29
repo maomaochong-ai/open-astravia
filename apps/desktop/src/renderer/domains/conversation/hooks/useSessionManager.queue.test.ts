@@ -74,6 +74,22 @@ function deferred<T>(): { readonly promise: Promise<T>; resolve(value: T): void 
 	return { promise, resolve: (value) => resolvePromise?.(value) };
 }
 
+function assistantTextDelta(base: Record<string, unknown>, turnId: string, delta: string, sequence: number) {
+	return {
+		...base,
+		eventId: `assistant-${sequence}`,
+		sequence,
+		channel: "assistant",
+		source: "agent",
+		turnId,
+		modelCallIndex: 0,
+		type: "text_delta",
+		contentIndex: 0,
+		delta,
+		partial: { role: "assistant", content: [{ type: "text", text: delta }] },
+	};
+}
+
 function installStorage(): void {
 	const values = new Map<string, string>();
 	vi.stubGlobal("localStorage", {
@@ -267,13 +283,19 @@ it(
 		expect(mocks.prompt).toHaveBeenCalledTimes(1);
 		const [, request] = mocks.prompt.mock.calls[0] as unknown as [
 			string,
-			{ text: string; streamingBehavior?: string },
+			{ messageId: string; text: string; streamingBehavior?: string },
 		];
 		expect(request.streamingBehavior).toBe("followUp");
 		expect(request.text).toBe("排队消息");
 		expect(result).toEqual({ status: "queued", queueItemId: "q-1" });
-		// 排队消息不上屏：待消费时经 queue.changed 差分补气泡，顺序与模型可见一致。
+		// 排队消息不上屏：待消费时由 durable message.appended 事实上屏。
 		expect(store.get(chatMessagesAtom)).toEqual([]);
+		const { findOptimisticUserMessage } = await import("../services/optimistic-user-message-cache");
+		expect(findOptimisticUserMessage(runtimeId, request.messageId)).toMatchObject({
+			id: request.messageId,
+			text: "排队消息",
+			inputSegments: [{ kind: "text", text: "排队消息" }],
+		});
 		// 入队语义下输入框仍然清空。
 		expect(store.get(inputValueAtom)).toBe("");
 	},
@@ -321,8 +343,8 @@ it("turn 内接力消费：第二条回复的流式内容开新气泡、排在�
 	};
 	const base = { schemaVersion: 1, sessionId: runtimeId, eventId: "e", timestamp: Date.now(), source: "runtime-core" };
 
-	emit({ ...base, type: "session.lifecycle", phase: "agent_start" });
-	emit({ ...base, type: "message.delta", delta: "回答一" });
+	emit({ ...base, type: "conversation.turn.started", turnId: "turn-a" });
+	emit(assistantTextDelta(base, "turn-a", "回答一", 1));
 	// 入队（第二条消息进入 kernel 队列）→ 随后被本轮自然停止点消费。
 	emit({
 		...base,
@@ -332,7 +354,15 @@ it("turn 内接力消费：第二条回复的流式内容开新气泡、排在�
 		snapshot: {},
 	});
 	emit({ ...base, type: "queue.changed", paused: false, entries: [], snapshot: {} });
-	emit({ ...base, type: "message.delta", delta: "回答二" });
+	emit({ ...base, type: "conversation.turn.started", turnId: "turn-b" });
+	emit({
+		...base,
+		type: "conversation.message.appended",
+		turnId: "turn-b",
+		messageId: "user-b",
+		message: { role: "user", content: "第二条消息", timestamp: base.timestamp },
+	});
+	emit(assistantTextDelta(base, "turn-b", "回答二", 2));
 	// delta 按 100ms 批量落地。
 	await act(async () => {
 		await new Promise((resolve) => setTimeout(resolve, 150));
@@ -377,16 +407,30 @@ it("立即发送打断插队：上一回合已 streaming 的部分回复保留�
 	};
 	sessionApi.getFullHistory = vi.fn(async () => historyRef.current);
 	const canonicalAfterInterrupt = [
-		{ type: "message", entryId: "e-u1", message: { role: "user", content: "第一条" } },
+		{
+			type: "message",
+			entryId: "e-u1",
+			messageId: "e-u1",
+			turnId: "turn-a",
+			message: { role: "user", content: "第一条" },
+		},
 		{
 			type: "message",
 			entryId: "e-a1",
+			turnId: "turn-a",
 			message: { role: "assistant", content: [{ type: "text", text: "部分回复" }], stopReason: "aborted" },
 		},
-		{ type: "message", entryId: "e-u2", message: { role: "user", content: "插队消息" } },
+		{
+			type: "message",
+			entryId: "e-u2",
+			messageId: "e-u2",
+			turnId: "turn-b",
+			message: { role: "user", content: "插队消息" },
+		},
 		{
 			type: "message",
 			entryId: "e-a2",
+			turnId: "turn-b",
 			message: { role: "assistant", content: [{ type: "text", text: "回复二" }], stopReason: "end_turn" },
 		},
 	];
@@ -407,8 +451,15 @@ it("立即发送打断插队：上一回合已 streaming 的部分回复保留�
 	};
 
 	// 旧回合：用户消息 + 部分回复 streaming 中，第二条消息已入队。
-	emit({ ...base, type: "session.lifecycle", phase: "agent_start" });
-	emit({ ...base, type: "message.delta", delta: "部分回复" });
+	emit({ ...base, type: "conversation.turn.started", turnId: "turn-a" });
+	emit({
+		...base,
+		type: "conversation.message.appended",
+		turnId: "turn-a",
+		messageId: "e-u1",
+		message: { role: "user", content: "第一条", timestamp: base.timestamp },
+	});
+	emit(assistantTextDelta(base, "turn-a", "部分回复", 1));
 	await flushTimers();
 	emit({
 		...base,
@@ -418,29 +469,35 @@ it("立即发送打断插队：上一回合已 streaming 的部分回复保留�
 		snapshot: {},
 	});
 
-	// 用户点「立即发送」：kernel 原子地 take → cancel → start。渲染端先 bump 序号，
-	// 随后事件依序回流：消费（条目消失）→ aborted 部分回复 final → 旧回合收尾 → 新回合。
+	// 用户点「立即发送」：Kernel 原子地 take → cancel → start。queue.changed
+	// 只更新抽屉；消息和终态由带身份的持久化事实驱动。
 	await act(async () => {
 		await manager?.sendQueuedNow(runtimeId, "q-2");
 	});
 	emit({ ...base, type: "queue.changed", paused: false, entries: [], snapshot: {} });
+	expect(store.get(chatMessagesAtom)).toHaveLength(2);
+	emit({ ...base, type: "conversation.turn.cancelled", turnId: "turn-a" });
+	emit({ ...base, type: "conversation.turn.started", turnId: "turn-b" });
 	emit({
 		...base,
-		type: "message.final",
-		message: { role: "assistant", content: [{ type: "text", text: "部分回复" }], stopReason: "aborted" },
+		type: "conversation.message.appended",
+		turnId: "turn-b",
+		messageId: "e-u2",
+		message: { role: "user", content: "插队消息", timestamp: base.timestamp + 1 },
 	});
-	emit({ ...base, type: "session.lifecycle", phase: "aborted" });
-	emit({ ...base, type: "session.lifecycle", phase: "agent_end" });
-	emit({ ...base, type: "session.lifecycle", phase: "agent_start" });
-	emit({ ...base, type: "message.delta", delta: "回复二" });
+	const interruptedMessages = store.get(chatMessagesAtom);
+	expect(interruptedMessages).toHaveLength(4);
+	expect(interruptedMessages[1]).toMatchObject({
+		kind: "agent",
+		phase: "aborted",
+		text: "部分回复",
+	});
+	expect(interruptedMessages[2]).toMatchObject({ kind: "user", text: "插队消息" });
+	expect(interruptedMessages[3]).toMatchObject({ kind: "agent", phase: "streaming", text: "" });
+	emit(assistantTextDelta(base, "turn-b", "回复二", 2));
 	await flushTimers();
-	emit({
-		...base,
-		type: "message.final",
-		message: { role: "assistant", content: [{ type: "text", text: "回复二" }], stopReason: "end_turn" },
-	});
 	historyRef.current = canonicalAfterInterrupt;
-	emit({ ...base, type: "session.lifecycle", phase: "agent_end" });
+	emit({ ...base, type: "conversation.turn.completed", turnId: "turn-b", stopReason: "stop" });
 	// 等 canonical 重拉落地。
 	await flushTimers();
 

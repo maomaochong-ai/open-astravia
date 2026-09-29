@@ -21,7 +21,7 @@ import org.vetta.android.domain.remote.RemoteSessionStatus
 import org.vetta.android.domain.remote.TranscriptItem
 import org.vetta.android.domain.remote.connection.KtorWebSocketRemoteTransport
 import org.vetta.android.domain.remote.parsePairingInvite
-import org.vetta.android.domain.session.nowEpochMs
+import org.vetta.android.core.nowEpochMs
 import org.vetta.android.domain.work.DesktopMirror
 import org.vetta.android.domain.work.MirrorPlatform
 import kotlin.test.assertContains

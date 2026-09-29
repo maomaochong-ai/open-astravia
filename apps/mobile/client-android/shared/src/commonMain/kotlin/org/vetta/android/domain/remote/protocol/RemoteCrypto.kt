@@ -197,7 +197,7 @@ object RemoteCrypto {
         return output
     }
 
-    private fun xchacha(
+    internal fun xchacha(
         encrypt: Boolean,
         key: ByteArray,
         nonce: ByteArray,

@@ -7,8 +7,8 @@ import { describe, expect, it, vi } from "vitest";
 const connectorRender = vi.hoisted(() => vi.fn());
 
 vi.mock("./input-bar/DefaultInputBarConnector", () => ({
-	DefaultInputBarConnector: () => {
-		connectorRender();
+	DefaultInputBarConnector: (props: { contentWidth?: string }) => {
+		connectorRender(props);
 		return <div>composer</div>;
 	},
 }));
@@ -30,6 +30,9 @@ describe("DefaultChatComposer", () => {
 		};
 		const { rerender } = render(<DefaultChatComposer {...props} />);
 		expect(connectorRender).toHaveBeenCalledTimes(1);
+		expect(connectorRender).toHaveBeenLastCalledWith(
+			expect.objectContaining({ contentWidth: "message" }),
+		);
 
 		rerender(<DefaultChatComposer {...props} />);
 		expect(connectorRender).toHaveBeenCalledTimes(1);

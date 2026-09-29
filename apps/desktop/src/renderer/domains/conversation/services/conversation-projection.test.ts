@@ -18,6 +18,10 @@ function envelope(event: AssistantMessageEvent, sequence: number): AssistantSess
 	};
 }
 
+function turnEnvelope(turnId: string, event: AssistantMessageEvent, sequence: number): AssistantSessionEvent {
+	return { ...envelope(event, sequence), turnId };
+}
+
 describe("ConversationProjection", () => {
 	it("projects persisted assistant content and execution metadata through the shared block model", () => {
 		const message = {
@@ -117,5 +121,22 @@ describe("ConversationProjection", () => {
 		projection.enqueue(event);
 
 		expect(projection.flush([])[0]).toMatchObject({ kind: "agent", text: "a" });
+	});
+
+	it("keeps pending events scoped to their Turn when two Turns overlap in delivery", () => {
+		const projection = new ConversationProjection();
+		projection.beginTurn("turn-a");
+		projection.advanceTurnSegment("turn-a");
+		projection.beginTurn("turn-b");
+		projection.advanceTurnSegment("turn-b");
+		const partial = { role: "assistant", content: [{ type: "text", text: "" }] } as unknown as AssistantMessage;
+		projection.enqueue(turnEnvelope("turn-a", { type: "text_delta", contentIndex: 0, delta: "A", partial }, 1));
+		projection.enqueue(turnEnvelope("turn-b", { type: "text_delta", contentIndex: 0, delta: "B", partial }, 2));
+
+		const messages = projection.flush([]);
+		expect(messages).toEqual([
+			expect.objectContaining({ id: "assistant:turn-a:1", turnId: "turn-a", text: "A" }),
+			expect.objectContaining({ id: "assistant:turn-b:1", turnId: "turn-b", text: "B" }),
+		]);
 	});
 });

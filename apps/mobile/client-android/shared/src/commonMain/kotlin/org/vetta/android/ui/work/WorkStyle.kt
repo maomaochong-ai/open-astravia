@@ -23,6 +23,16 @@ data class WorkColors(
     /** The glow New Session fades into at the bottom of the screen. */
     val dawn: Color,
     val dawnSide: Color,
+    /** Secondary ink: body text on cards, icons beside a label. */
+    val ink2: Color,
+    /** New Session's backdrop, violet at the top left into blue at the right. */
+    val welcomeViolet: Color,
+    val welcomeBlue: Color,
+    /** The greeting's accent line over that backdrop: lighter in dark, deeper in light, to stay readable. */
+    val greetingStart: Color,
+    val greetingEnd: Color,
+    /** The soft light at the top of Home and a project's page. */
+    val glow: Color,
 )
 
 private val Light =
@@ -38,6 +48,12 @@ private val Light =
         pillInk = Color(0xFFFFFFFF),
         dawn = Color(0xFFD6E2FB),
         dawnSide = Color(0xFFE6DEFA),
+        ink2 = Color(0xFF3F444B),
+        welcomeViolet = Color(0xFF7B4DDB),
+        welcomeBlue = Color(0xFF3A5BD9),
+        greetingStart = Color(0xFF6D3FD6),
+        greetingEnd = Color(0xFF2F55D4),
+        glow = Color(0xFFFFFFFF),
     )
 
 private val Dark =
@@ -53,6 +69,12 @@ private val Dark =
         pillInk = Color(0xFF0A0B0D),
         dawn = Color(0xFF13235E),
         dawnSide = Color(0xFF1C1A52),
+        ink2 = Color(0xFFB3B8BE),
+        welcomeViolet = Color(0xFF7B4DDB),
+        welcomeBlue = Color(0xFF3A5BD9),
+        greetingStart = Color(0xFFD2BCFF),
+        greetingEnd = Color(0xFF9DB4FF),
+        glow = Color(0xFF34373D),
     )
 
 /** Follows the theme actually in use (which may differ from the system setting). */

@@ -4,12 +4,10 @@ import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
 	activeBottomPanelTab,
-	activeInputDraftKeyAtom,
-	activeSessionAtom,
 	type BottomPanelAction,
-	bottomPanelStateAtom,
+	bottomPanelStateAtomFamily,
 	collectBottomPanelLeaves,
-	dispatchBottomPanelAtom,
+	dispatchBottomPanelAtomFamily,
 } from "@shared/store/atoms";
 import { createStore, Provider } from "jotai";
 import type { JSX } from "react";
@@ -27,7 +25,7 @@ vi.mock("./useTerminalCapabilities", () => ({
 const PLUGIN_ID = "plugin:demo:logs";
 
 function Harness(): JSX.Element {
-	const terminal = useOpenTerminal();
+	const terminal = useOpenTerminal({ key: "/session.json", cwd: currentCwd });
 	return (
 		<button type="button" disabled={!terminal.available} aria-pressed={terminal.focused} onClick={terminal.open}>
 			open-terminal
@@ -35,11 +33,13 @@ function Harness(): JSX.Element {
 	);
 }
 
+let currentCwd = "/workspace";
+const SCOPE_KEY = "/session.json";
+
 function setup(cwd = "/workspace", ...actions: BottomPanelAction[]) {
 	const store = createStore();
-	store.set(activeSessionAtom, { cwd, sessionPath: "/session.json", runtimeId: "session" });
-	store.set(activeInputDraftKeyAtom, "/session.json");
-	for (const action of actions) store.set(dispatchBottomPanelAtom, action);
+	currentCwd = cwd;
+	for (const action of actions) store.set(dispatchBottomPanelAtomFamily(SCOPE_KEY), action);
 	render(
 		<Provider store={store}>
 			<Harness />
@@ -54,7 +54,7 @@ function open(tabId: string, componentId: string = TERMINAL_PANEL_ID): BottomPan
 }
 
 function terminalTabIds(store: ReturnType<typeof createStore>): string[] {
-	return collectBottomPanelLeaves(store.get(bottomPanelStateAtom).root).flatMap((leaf) =>
+	return collectBottomPanelLeaves(store.get(bottomPanelStateAtomFamily(SCOPE_KEY)).root).flatMap((leaf) =>
 		leaf.tabs.filter((tab) => tab.componentId === TERMINAL_PANEL_ID).map((tab) => tab.tabId),
 	);
 }
@@ -72,7 +72,7 @@ describe("头部终端入口", () => {
 
 		await click();
 
-		const state = store.get(bottomPanelStateAtom);
+		const state = store.get(bottomPanelStateAtomFamily(SCOPE_KEY));
 		expect(state.collapsed).toBe(false);
 		expect(activeBottomPanelTab(state)?.tabId).toBe("t1");
 		expect(terminalTabIds(store)).toEqual(["t1", "t2"]);
@@ -84,7 +84,7 @@ describe("头部终端入口", () => {
 
 		await click();
 
-		const state = store.get(bottomPanelStateAtom);
+		const state = store.get(bottomPanelStateAtomFamily(SCOPE_KEY));
 		const [created] = terminalTabIds(store);
 		expect(state.collapsed).toBe(false);
 		expect(created).toBeDefined();
@@ -97,7 +97,7 @@ describe("头部终端入口", () => {
 
 		await click();
 
-		const leaves = collectBottomPanelLeaves(store.get(bottomPanelStateAtom).root);
+		const leaves = collectBottomPanelLeaves(store.get(bottomPanelStateAtomFamily(SCOPE_KEY)).root);
 		expect(leaves).toHaveLength(1);
 		expect(leaves[0]?.tabs.map((tab) => tab.componentId)).toEqual([PLUGIN_ID, TERMINAL_PANEL_ID]);
 	});
@@ -107,19 +107,19 @@ describe("头部终端入口", () => {
 
 		await click();
 
-		expect(activeBottomPanelTab(store.get(bottomPanelStateAtom))?.tabId).toBe("t1");
+		expect(activeBottomPanelTab(store.get(bottomPanelStateAtomFamily(SCOPE_KEY)))?.tabId).toBe("t1");
 		expect(terminalTabIds(store)).toEqual(["t1"]);
 		expect(store.get(bottomPanelFocusRequestAtom)).toBe("t1");
 	});
 
 	it("已经在终端里：按钮呈按下态，点了什么都不改，也不抢焦点", async () => {
 		const { store, button, click } = setup("/workspace", open("t1"));
-		const before = store.get(bottomPanelStateAtom);
+		const before = store.get(bottomPanelStateAtomFamily(SCOPE_KEY));
 
 		expect(button.getAttribute("aria-pressed")).toBe("true");
 		await click();
 
-		expect(store.get(bottomPanelStateAtom)).toBe(before);
+		expect(store.get(bottomPanelStateAtomFamily(SCOPE_KEY))).toBe(before);
 		expect(store.get(bottomPanelFocusRequestAtom)).toBeNull();
 	});
 

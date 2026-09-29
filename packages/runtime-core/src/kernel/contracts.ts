@@ -40,6 +40,8 @@ export interface SessionContextRecord {
 
 export interface SessionInput {
 	readonly message: UserMessage;
+	/** Stable host identity retained across queue admission and persistence. */
+	readonly messageId?: string;
 	readonly context?: readonly SessionContextRecord[];
 	/** 在用户消息之后进入模型上下文；用于 next-turn aside 等保持顺序的输入。 */
 	readonly trailingContext?: readonly SessionContextRecord[];
@@ -49,6 +51,8 @@ export interface SessionInput {
 export interface SessionInputRequest {
 	readonly payload: unknown;
 	readonly displayText: string;
+	/** Stable host identity retained while this request waits in the queue. */
+	readonly messageId?: string;
 	/** 可选的本 Turn 模型覆盖；由模型绑定 Provider 在同一次 snapshot acquire 中解释。 */
 	readonly model?: {
 		readonly key?: string;
@@ -63,6 +67,7 @@ export interface SessionQueueOperation {
 
 export interface QueuedSessionInput {
 	readonly message?: UserMessage;
+	readonly messageId?: string;
 	readonly context?: readonly SessionContextRecord[];
 	readonly request?: SessionInputRequest;
 	/** 宿主操作只借输入队列排序；绝不能投影为模型消息。 */
@@ -732,6 +737,8 @@ export interface MessageAppendedEvent {
 	readonly type: "message.appended";
 	readonly sessionId: string;
 	readonly turnId: string;
+	/** Added in schema v2; historical records legitimately omit it. */
+	readonly messageId?: string;
 	readonly message: Message;
 	/** Structured provider failure for an assistant error message, when available. */
 	readonly failure?: RuntimeFailure;
@@ -985,6 +992,7 @@ export type TurnEngineEvent =
 	| {
 			readonly type: "message";
 			readonly message: Message;
+			readonly messageId?: string;
 			readonly failure?: RuntimeFailure;
 			readonly origin?: RuntimeMessageOrigin;
 	  }

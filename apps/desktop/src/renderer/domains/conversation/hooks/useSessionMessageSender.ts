@@ -49,7 +49,6 @@ import {
 	selectedModelAtom,
 	todoItemsBySessionAtom,
 } from "@shared/store/atoms";
-import { bumpQueuedDispatchSeq } from "@shared/store/message-queue-atoms";
 import type { PromptAttachmentRef, PromptRequest } from "@vetta/runtime-core";
 import type { PluginPromptContext } from "@vetta-org/plugin-sdk";
 import { getDefaultStore, useAtom, useAtomValue, useSetAtom } from "jotai";
@@ -63,7 +62,7 @@ import {
 	toChatErrorDetails,
 } from "../services/chat-service";
 import { planFailedResendRollback } from "../services/failed-resend-rollback";
-import { rememberOptimisticUserMessage } from "../services/optimistic-user-message-cache";
+import { discardOptimisticUserMessage, rememberOptimisticUserMessage } from "../services/optimistic-user-message-cache";
 import { applyDraftPlanMode } from "../services/plan-mode-draft";
 import { getSessionRuntimeWhenReady } from "../services/session-runtime-readiness";
 import {
@@ -321,18 +320,44 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 			// 清 todo」这些开启新一轮才该有的副作用，仅在下方组装好 promptReq 快照后入队。
 			// （输入框已在上方清空，符合「入队后清空输入框」语义。）
 			const streaming = pendingEdit ? false : getDefaultStore().get(isStreamingAtom);
+			const createUserSnapshot = (id: string): ConversationUserMessageViewModel => {
+				if (stagedInput) {
+					return {
+						...stagedInput.optimisticMessage,
+						id,
+						attachments,
+						...(imagePaths.length > 0 ? { images: undefined } : {}),
+					};
+				}
+				const userMessage = createConversationUserMessage({
+					id,
+					deliveryPhase: "pending",
+					text,
+					...(hasOverride ? {} : { inputSegments: preparedInput.segments }),
+					timestamp: Date.now(),
+					model: modelKeyToParts(selectedModel),
+					promptRef,
+					attachments,
+				});
+				// Base64 preview only when persistence failed; structured image paths
+				// are otherwise the canonical source for optimistic and restored UI.
+				if (images && imagePaths.length === 0) {
+					userMessage.images = images.map((image) => ({
+						data: image.data,
+						mimeType: image.mimeType,
+						name: image.name,
+					}));
+				}
+				if (appshot) userMessage.appshot = appshot;
+				userMessage.mentionedFiles = mentionedFiles.slice();
+				const settingsAssistTabId = options?.settingsAssistTabId?.trim();
+				if (settingsAssistTabId) userMessage.settingsAssistTabId = settingsAssistTabId;
+				return userMessage;
+			};
 			let optimisticUserMsgId: string | undefined;
 			if (!streaming && stagedInput) {
 				optimisticUserMsgId = stagedInput.optimisticMessage.id;
-				rememberOptimisticUserMessage(
-					session.runtimeId,
-					{
-						...stagedInput.optimisticMessage,
-						attachments,
-						...(imagePaths.length > 0 ? { images: undefined } : {}),
-					},
-					[],
-				);
+				rememberOptimisticUserMessage(session.runtimeId, createUserSnapshot(optimisticUserMsgId), []);
 			} else if (!streaming) {
 				// 失败重发去重（ADR-0060）：上一轮在 prompt 前置阶段就失败、什么都没产出，
 				// 且本次原样重发时，先 replaceLastUserMessage 回退再发，避免 jsonl 双份
@@ -351,29 +376,7 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 						}
 					}
 				}
-				const userMsg: ConversationUserMessageViewModel = createConversationUserMessage({
-					id: nextId("user"),
-					deliveryPhase: "pending",
-					text,
-					...(hasOverride ? {} : { inputSegments: preparedInput.segments }),
-					timestamp: Date.now(),
-					model: modelKeyToParts(selectedModel),
-					promptRef,
-					attachments,
-				});
-				// Base64 preview only when persistence failed; structured image paths
-				// are otherwise the canonical source for optimistic and restored UI.
-				if (images && imagePaths.length === 0) {
-					userMsg.images = images.map((img) => ({ data: img.data, mimeType: img.mimeType, name: img.name }));
-				}
-				if (appshot) {
-					userMsg.appshot = appshot;
-				}
-				userMsg.mentionedFiles = mentionedFiles.slice();
-				const settingsAssistTabId = options?.settingsAssistTabId?.trim();
-				if (settingsAssistTabId) {
-					userMsg.settingsAssistTabId = settingsAssistTabId;
-				}
+				const userMsg = createUserSnapshot(nextId("user"));
 				rememberOptimisticUserMessage(session.runtimeId, userMsg, store.get(chatMessagesAtom));
 				perfSendMark("optimistic-append", interactionId);
 				setChatMessages((prev) => [...prev, userMsg]);
@@ -456,10 +459,23 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 				return;
 			}
 
+			const promptMessageId = optimisticUserMsgId ?? nextId("user");
 			const promptReq: PromptRequest = {
 				text: text || "(see attached content)",
+				messageId: promptMessageId,
 				promptRef,
 			};
+			let hiddenOptimisticMessageId: string | undefined;
+			if (streaming) {
+				// Queued messages stay out of the timeline until the Kernel appends them,
+				// but their editor-only metadata must survive that wait under the same ID.
+				hiddenOptimisticMessageId = promptMessageId;
+				rememberOptimisticUserMessage(
+					session.runtimeId,
+					createUserSnapshot(hiddenOptimisticMessageId),
+					store.get(chatMessagesAtom),
+				);
+			}
 			if (attachments.length > 0 || pendingEdit) {
 				promptReq.attachments = attachments;
 			}
@@ -579,6 +595,9 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 					}
 					sendResult = { status: "queued", queueItemId: outcome.queueItemId };
 				} else if (outcome?.status === "failed") {
+					if (hiddenOptimisticMessageId) {
+						discardOptimisticUserMessage(session.runtimeId, hiddenOptimisticMessageId);
+					}
 					// A terminal failure is a normal prompt receipt, not a rejected IPC call.
 					// Render it here as the authoritative fallback when the event stream is
 					// delayed or lost. appendError deduplicates the later error event by turnId.
@@ -594,6 +613,9 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 					sendResult = { status: "sent" };
 				}
 			} catch (err) {
+				if (hiddenOptimisticMessageId) {
+					discardOptimisticUserMessage(session.runtimeId, hiddenOptimisticMessageId);
+				}
 				// RuntimeHost.prompt 现在会先把 prompt 期同步抛错（"No model
 				// selected" / "No API key found" / "Agent is already processing"
 				// 等）转换成 error 事件广播给所有订阅者，再把异常向上抛——所以
@@ -647,14 +669,10 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 		await window.vetta.session.abort(activeSession.runtimeId);
 	}, [activeSession]);
 
-	// 立即发送某条排队消息（队列面板点击 / 拖拽后即时发）。ADR-0060：打断与续发在
-	// kernel 内原子完成（take → cancel 当前回合 → 以该条目开新 turn），渲染端不再
-	// 等待 running-changed、没有超时竞态。用户气泡在消费时经 queue.changed 差分上屏。
+	// 立即发送某条排队消息。Kernel 原子执行 take → cancel → start；Renderer
+	// 只等待带 Turn/message 身份的事实事件，不在本地猜测消费或中断时机。
 	const sendQueuedNow = useCallback(
 		async (runtimeId: string, id: string) => {
-			// 被打断回合的 agent_end 整体重拉已「跨到下一轮」：+1 序号使其落地时被判
-			// 过期而跳过，避免冲掉新一轮的用户气泡（判活机制见 message-queue-atoms）。
-			bumpQueuedDispatchSeq(runtimeId);
 			try {
 				await window.vetta.session.sendQueuedMessageNow(runtimeId, id);
 			} catch (err) {

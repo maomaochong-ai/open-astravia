@@ -26,6 +26,7 @@ export type TeamMemberSummaryEventViewModel = {
 	readonly current?: string;
 	readonly recent: readonly string[];
 	readonly result?: string;
+	readonly durationSeconds?: number;
 	readonly timestamp: number;
 };
 

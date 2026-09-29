@@ -122,7 +122,7 @@ enum Vectors {
 	}
 
 	@Test func speaksTheUploadModelAndSessionMethodsLikeTheDesktop() throws {
-		for method in ["session.upload", "model.list", "session.configure", "session.rename", "session.pin", "session.delete"] {
+		for method in ["session.upload", "model.list", "skill.list", "session.configure", "session.rename", "session.pin", "session.delete"] {
 			let frame = try RemoteFrame.parse(line: #"{"type":"request","requestId":"r","method":"\#(method)","sessionId":"s"}"#)
 			if case let .request(request) = frame { #expect(request.method.rawValue == method) } else { Issue.record("\(method) should parse") }
 		}
@@ -151,6 +151,24 @@ enum Vectors {
 		let state = RemoteAPI.readSessionState(try JSONValue.parse(#"{"status":"idle","model":"GLM 5","modelKey":"zai/glm-5","thinkingLevel":"max"}"#))
 		#expect(state.modelKey == "zai/glm-5")
 		#expect(state.thinkingLevel == "max")
+	}
+
+	@Test func readsSkillOptionsInTheDesktopsOrder() throws {
+		let skills = RemoteAPI.readSkillOptions(try JSONValue.parse(#"""
+		{"skills":[
+			{"name":"frontend-design","alias":"前端设计","description":"页面","type":"skill","source":"builtin"},
+			{"name":"weekly","alias":"weekly","type":"scene","source":"scene"},
+			{"name":"frontend-design","type":"skill"},
+			{"name":"x","type":"mcp"},
+			{"alias":"no name","type":"skill"}
+		]}
+		"""#))
+		#expect(skills == [
+			RemoteSkillOption(name: "frontend-design", alias: "前端设计", description: "页面", kind: .skill, source: "builtin"),
+			RemoteSkillOption(name: "weekly", description: "", kind: .scene, source: "scene"),
+		])
+		#expect(skills.map(\.displayName) == ["前端设计", "weekly"])
+		#expect(RemoteAPI.readSkillOptions(nil).isEmpty)
 	}
 
 	@Test func keepsOneUploadInsideASealedFrame() {

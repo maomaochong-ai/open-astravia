@@ -1,10 +1,10 @@
 import {
 	BOTTOM_PANEL_MAX_HEIGHT_RATIO,
 	BOTTOM_PANEL_MIN_HEIGHT_RATIO,
-	bottomPanelStateAtom,
+	bottomPanelStateAtomFamily,
 	clampBottomPanelHeightRatio,
-	dispatchBottomPanelAtom,
-	dispatchTransientBottomPanelAtom,
+	dispatchBottomPanelAtomFamily,
+	dispatchTransientBottomPanelAtomFamily,
 	persistBottomPanelAtom,
 } from "@shared/store/atoms";
 import { useAtomValue, useSetAtom } from "jotai";
@@ -32,10 +32,10 @@ export interface BottomPanelSizing {
  * 存的是**比例**而不是像素：存像素会让面板在窗口变大后只缩不涨（与活动面板宽度
  * 的 `ActivityPanelWidthMode` 同一个理由）。拖拽期间只改内存，松手才落盘。
  */
-export function useBottomPanelSizing(): BottomPanelSizing {
-	const state = useAtomValue(bottomPanelStateAtom);
-	const dispatch = useSetAtom(dispatchBottomPanelAtom);
-	const dispatchTransient = useSetAtom(dispatchTransientBottomPanelAtom);
+export function useBottomPanelSizing(scopeKey: string): BottomPanelSizing {
+	const state = useAtomValue(bottomPanelStateAtomFamily(scopeKey));
+	const dispatch = useSetAtom(dispatchBottomPanelAtomFamily(scopeKey));
+	const dispatchTransient = useSetAtom(dispatchTransientBottomPanelAtomFamily(scopeKey));
 	const persist = useSetAtom(persistBottomPanelAtom);
 	/** 拖拽期间的实时比例：state 的更新是异步的，逐帧读它会把增量算丢。 */
 	const liveRatioRef = useRef(state.heightRatio);

@@ -63,6 +63,7 @@ describe("conversation custom entry persistence", () => {
 				id: "event-1",
 				parentId: null,
 				timestamp: new Date(1).toISOString(),
+				turnId: "turn-1",
 				message: { role: "user", content: "start", timestamp: 1 },
 			},
 			{

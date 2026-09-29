@@ -7,7 +7,6 @@ export interface ProjectContextMenuViewLabels {
 	openInFolder: string;
 	archiveProject: string;
 	removeFromList: string;
-	deleteProject: string;
 	clearConversation: string;
 	clearConversationDisabled: string;
 	clearClaw: string;
@@ -30,7 +29,6 @@ export interface ProjectContextMenuViewProps {
 	onClearClaw?: () => void;
 	onClearConversation?: () => void;
 	onClose: () => void;
-	onDelete: () => void;
 	onOpenClawSettings?: () => void;
 	onOpenInFolder: () => void;
 	onRemove: () => void;
@@ -49,7 +47,6 @@ export function ProjectContextMenuView({
 	onClearClaw,
 	onClearConversation,
 	onClose,
-	onDelete,
 	onOpenClawSettings,
 	onOpenInFolder,
 	onRemove,
@@ -173,19 +170,6 @@ export function ProjectContextMenuView({
 						<span className="icon-[solar--list-cross-minimalistic-linear] h-3.5 w-3.5" />
 						{labels.removeFromList}
 					</button>
-				)}
-				{!isDefault && (
-					<>
-						<div className="mx-1.5 my-1 h-px bg-border" />
-						<button
-							type="button"
-							onClick={onDelete}
-							className="flex w-full items-center gap-2 rounded-md px-2 py-[5px] text-[12px] font-medium text-destructive transition-colors hover:bg-accent"
-						>
-							<span className="icon-[solar--trash-bin-trash-linear] h-3.5 w-3.5" />
-							{labels.deleteProject}
-						</button>
-					</>
 				)}
 			</motion.div>
 		</AnimatePresence>

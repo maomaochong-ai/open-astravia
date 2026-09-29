@@ -103,6 +103,14 @@ function isWithinAllowedRoots(targetPath: string): boolean {
 	return false;
 }
 
+function isAllowedRoot(targetPath: string): boolean {
+	const normalizedTarget = normalizePathForComparison(targetPath);
+	for (const root of allowedRoots) {
+		if (normalizePathForComparison(root) === normalizedTarget) return true;
+	}
+	return false;
+}
+
 export function assertFilesystemPathWithinProject(targetPath: string): void {
 	// 与 {@link assertFilesystemRealPathWithinProject} 同理：远程路径有自己的授权根，
 	// 落到本机那套里只会把合法的远程路径一律拒掉。
@@ -201,7 +209,8 @@ export async function readFilesystemDirectory(dirPath: string): Promise<FsEntry[
 	return results;
 }
 
-function openPreviewSource(filePath: string): PreviewFileSource {
+/** 按预览的可读范围打开一个文件；超出范围时抛错。本地与远程项目的路径都接受。 */
+export function openPreviewSource(filePath: string): PreviewFileSource {
 	if (isSshProjectUri(filePath)) return openRemotePreviewSource(filePath);
 	assertPathReadableForPreview(filePath);
 	const resolved = resolve(filePath);
@@ -210,7 +219,7 @@ function openPreviewSource(filePath: string): PreviewFileSource {
 		stat: async () => {
 			try {
 				const stats = await stat(resolved);
-				return { size: stats.size, isFile: stats.isFile() };
+				return { size: stats.size, isFile: stats.isFile(), modifiedAt: stats.mtimeMs };
 			} catch (error: unknown) {
 				if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
 				throw error;
@@ -383,6 +392,9 @@ export async function renameFilesystemPath(oldPath: string, newPath: string): Pr
 export async function deleteFilesystemPath(targetPath: string): Promise<void> {
 	if (isSshProjectUri(targetPath)) return deleteRemotePath(targetPath);
 	assertFilesystemPathWithinProject(targetPath);
+	// 文件树可以删除项目内的文件和目录，但项目根只能从项目列表注销。否则任何拿到
+	// 通用文件 IPC 的调用方都能绕过项目菜单，把用户打开的外部仓库整个永久删除。
+	if (isAllowedRoot(targetPath)) throw new Error("Refusing to delete the project root");
 	await rm(resolve(targetPath), { recursive: true, force: true });
 }
 
@@ -447,11 +459,24 @@ export async function createFilesystemEntry(
 	};
 }
 
-export async function listFilesystemFilesRecursive(rootPath: string): Promise<FsFileRef[]> {
+export interface ListFilesRecursiveOptions {
+	/** 只返回这些文件名（精确匹配）；上限按命中数计，大仓库里找清单文件才不会被无关文件挤掉。 */
+	readonly names?: readonly string[];
+	/** 在默认忽略目录之外再跳过的目录名。 */
+	readonly ignoredDirectories?: readonly string[];
+}
+
+export async function listFilesystemFilesRecursive(
+	rootPath: string,
+	options: ListFilesRecursiveOptions = {},
+): Promise<FsFileRef[]> {
+	const ignoredDirectories = new Set([...RECURSIVE_IGNORED_DIRS, ...(options.ignoredDirectories ?? [])]);
+	const wantedNames = options.names?.length ? new Set(options.names) : null;
 	if (isSshProjectUri(rootPath)) {
 		return listRemoteFilesRecursive(rootPath, {
-			ignoredDirectoryNames: [...RECURSIVE_IGNORED_DIRS],
+			ignoredDirectoryNames: [...ignoredDirectories],
 			limit: MAX_RECURSIVE_FILES,
+			names: wantedNames ? [...wantedNames] : undefined,
 		});
 	}
 	assertFilesystemPathWithinProject(rootPath);
@@ -470,10 +495,11 @@ export async function listFilesystemFilesRecursive(rootPath: string): Promise<Fs
 			if (entry.name.startsWith(".") || HIDDEN_FILES.has(entry.name)) continue;
 			const fullPath = join(dir, entry.name);
 			if (entry.isDirectory()) {
-				if (RECURSIVE_IGNORED_DIRS.has(entry.name)) continue;
+				if (ignoredDirectories.has(entry.name)) continue;
 				if (isConversationWorkspaceDirEntry(dir, entry.name)) continue;
 				await walk(fullPath);
 			} else if (entry.isFile()) {
+				if (wantedNames && !wantedNames.has(entry.name)) continue;
 				results.push({ name: entry.name, path: fullPath, relPath: relative(root, fullPath) });
 			}
 		}

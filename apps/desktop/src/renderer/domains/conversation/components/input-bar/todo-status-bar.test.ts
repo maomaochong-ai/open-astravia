@@ -23,12 +23,12 @@ const ITEMS: TodoStatusItem[] = [
 	{ id: 3, content: "完成数学题三", status: "pending" },
 ];
 
-function render(items: readonly TodoStatusItem[], onOpenPanel?: () => void) {
+function render(items: readonly TodoStatusItem[], onOpenPanel?: () => void, className?: string) {
 	const container = document.createElement("div");
 	document.body.appendChild(container);
 	const root = createRoot(container);
 	act(() => {
-		root.render(createElement(TodoStatusBarView, { items, labels: LABELS, onOpenPanel }));
+		root.render(createElement(TodoStatusBarView, { items, labels: LABELS, onOpenPanel, className }));
 	});
 	return {
 		container,
@@ -54,6 +54,19 @@ describe("TodoStatusBarView", () => {
 		expect(view.trigger()?.textContent).toContain("3/3");
 		expect(view.trigger()?.textContent).toContain("全部完成");
 		view.cleanup();
+	});
+
+	it("lets the host row own the spacing so the trigger lines up with its neighbours", () => {
+		// 输入框下沿那一行把待办条和底部面板 pill 并排居中；待办条自带的上内边距会让它单独下沉。
+		const standalone = render(ITEMS);
+		expect(standalone.container.firstElementChild?.className).toContain("pt-1.5");
+		standalone.cleanup();
+
+		const inRow = render(ITEMS, undefined, "p-0");
+		const wrapper = inRow.container.firstElementChild;
+		expect(wrapper?.className).not.toContain("pt-1.5");
+		expect(wrapper?.className).not.toContain("px-1");
+		inRow.cleanup();
 	});
 
 	it("renders nothing without todos", () => {

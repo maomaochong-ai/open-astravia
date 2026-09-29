@@ -13,20 +13,23 @@ export function useMessageListModel(
 	derivationMessages: MessageListProps["messages"],
 ): MessageListModel {
 	const resolvedParticipants = participants ?? EMPTY_PARTICIPANTS;
-	const { options } = useModelOptions();
-	const modelNames = useMemo(() => new Map(options.map((option) => [option.key, option.displayName])), [options]);
+	const { options, labelFor } = useModelOptions();
+	const modelLabels = useMemo(
+		() => new Map(options.map((option) => [option.key, `${labelFor(option.provider)} (${option.displayName})`])),
+		[options, labelFor],
+	);
 	const modelSwitchFingerprint = userModelSwitchFingerprint(derivationMessages);
 	const modelSwitchCacheRef = useRef<{
 		fingerprint: string;
-		modelNames: ReadonlyMap<string, string>;
+		modelLabels: ReadonlyMap<string, string>;
 		labels: Map<string, ModelSwitchLabel>;
-	}>({ fingerprint: "", modelNames: new Map(), labels: new Map() });
+	}>({ fingerprint: "", modelLabels: new Map(), labels: new Map() });
 	const modelSwitchCache = modelSwitchCacheRef.current;
-	if (modelSwitchCache.fingerprint !== modelSwitchFingerprint || modelSwitchCache.modelNames !== modelNames) {
+	if (modelSwitchCache.fingerprint !== modelSwitchFingerprint || modelSwitchCache.modelLabels !== modelLabels) {
 		modelSwitchCacheRef.current = {
 			fingerprint: modelSwitchFingerprint,
-			modelNames,
-			labels: collectModelSwitchLabels(derivationMessages, modelNames),
+			modelLabels,
+			labels: collectModelSwitchLabels(derivationMessages, modelLabels),
 		};
 	}
 	const modelSwitchLabels = modelSwitchCacheRef.current.labels;

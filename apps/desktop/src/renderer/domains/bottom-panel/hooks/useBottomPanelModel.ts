@@ -1,12 +1,10 @@
 import {
-	activeSessionCwdAtom,
 	type BottomPanelSessionState,
-	bottomPanelScopeKeyAtom,
-	bottomPanelStateAtom,
+	bottomPanelStateAtomFamily,
 	canSplitBottomPanel,
-	currentScenarioAtom,
-	dispatchBottomPanelAtom,
+	dispatchBottomPanelAtomFamily,
 } from "@shared/store/atoms";
+import type { WorkSurfaceScope } from "@shared/workspace/work-surface";
 import { parseProjectLocation } from "@vetta/ssh-transport/project-uri";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useMemo } from "react";
@@ -29,25 +27,24 @@ export interface BottomPanelModel {
 }
 
 /**
- * 底部面板的连接层：把会话主键、场景、能力探测和三组动作装配成一个 view model。
- * 返回 null 表示当前没有可挂靠的会话（启动瞬间），此时整块不渲染。
+ * 底部面板的连接层：把显式工作表面、能力探测和三组动作装配成一个 view model。
  */
-export function useBottomPanelModel(): BottomPanelModel | null {
-	const scopeKey = useAtomValue(bottomPanelScopeKeyAtom);
-	const cwd = useAtomValue(activeSessionCwdAtom);
-	const scenario = useAtomValue(currentScenarioAtom) ?? undefined;
-	const state = useAtomValue(bottomPanelStateAtom);
-	const dispatch = useSetAtom(dispatchBottomPanelAtom);
-	const capabilities = useTerminalCapabilities();
+export function useBottomPanelModel(scope: WorkSurfaceScope, enabled = true): BottomPanelModel {
+	const state = useAtomValue(bottomPanelStateAtomFamily(scope.key));
+	const dispatch = useSetAtom(dispatchBottomPanelAtomFamily(scope.key));
+	const capabilities = useTerminalCapabilities(enabled);
 
-	const remoteSession = useMemo(() => (cwd ? parseProjectLocation(cwd).kind === "ssh" : false), [cwd]);
+	const remoteSession = useMemo(
+		() => (scope.cwd ? parseProjectLocation(scope.cwd).kind === "ssh" : false),
+		[scope.cwd],
+	);
 	const definitions = useBottomPanelDefinitions({
-		scenario,
+		scenario: scope.scenario,
 		localPtyAvailable: capabilities.localPty,
 		remoteSession,
 	});
-	const sizing = useBottomPanelSizing();
-	const tabs = useBottomPanelTabs(definitions);
+	const sizing = useBottomPanelSizing(scope.key);
+	const tabs = useBottomPanelTabs(scope.key, definitions);
 
 	const setCollapsed = useCallback((collapsed: boolean) => dispatch({ type: "set-collapsed", collapsed }), [dispatch]);
 
@@ -59,17 +56,17 @@ export function useBottomPanelModel(): BottomPanelModel | null {
 		[dispatch],
 	);
 
-	return useMemo(() => {
-		if (!scopeKey) return null;
-		return {
+	return useMemo(
+		() => ({
 			state,
-			cwd,
+			cwd: scope.cwd,
 			definitions,
 			canSplit: canSplitBottomPanel(state),
 			sizing,
 			tabs,
 			setCollapsed,
 			expandAndActivate,
-		};
-	}, [scopeKey, state, cwd, definitions, sizing, tabs, setCollapsed, expandAndActivate]);
+		}),
+		[state, scope.cwd, definitions, sizing, tabs, setCollapsed, expandAndActivate],
+	);
 }

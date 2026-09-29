@@ -26,6 +26,8 @@ final class Router {
 	var showPairing = false
 	/// The task board, a sheet over whatever is showing.
 	var showBoard = false
+	/// The computer's screen, full screen over everything.
+	var showRemote = false
 
 	/// What New Session had when its start failed, put back when it reopens.
 	var failedStart: NewSessionStart?
@@ -42,6 +44,12 @@ final class Router {
 	func openBoard() {
 		dismissKeyboard()
 		showBoard = true
+	}
+
+	func openRemote() {
+		dismissKeyboard()
+		showBoard = false
+		showRemote = true
 	}
 
 	/// From the board to Home's whole list.
@@ -75,6 +83,7 @@ final class Router {
 			path.removeAll()
 			drawerOpen = false
 			showBoard = false
+			showRemote = false
 		}
 	}
 
@@ -94,6 +103,7 @@ final class Router {
 
 struct RootView: View {
 	@Environment(AppModel.self) private var model
+	@Environment(SessionNotifier.self) private var notifier
 	@State private var router = Router()
 
 	var body: some View {
@@ -127,6 +137,9 @@ struct RootView: View {
 			TaskBoardSheet()
 				.environment(router)
 		}
+		.fullScreenCover(isPresented: $router.showRemote) {
+			RemoteDesktopScreen()
+		}
 		// Content fades out under every bar, as on iOS 26; iOS 27 otherwise draws a hard edge.
 		// Outside the sheet above so it reaches every page, sheets included.
 		.scrollEdgeEffectStyle(.soft, for: .all)
@@ -135,6 +148,21 @@ struct RootView: View {
 		}
 		.onChange(of: model.paired) { _, paired in
 			if !paired { router.reset() }
+			QuickActions.update(paired: paired)
+		}
+		// The icon's menu asked for the screen; pairing comes first without a computer.
+		.onChange(of: QuickActions.shared.remoteRequested, initial: true) { _, requested in
+			guard requested, model.ready else { return }
+			QuickActions.shared.remoteRequested = false
+			if model.paired { router.openRemote() } else { router.showPairing = true }
+		}
+		.onChange(of: model.ready) { _, ready in
+			guard ready else { return }
+			QuickActions.update(paired: model.paired)
+			if QuickActions.shared.remoteRequested {
+				QuickActions.shared.remoteRequested = false
+				if model.paired { router.openRemote() } else { router.showPairing = true }
+			}
 		}
 		// The chat in the slot was deleted, here or on the desktop.
 		.onChange(of: model.sessions.map(\.id)) { old, new in
@@ -154,8 +182,19 @@ struct RootView: View {
 			if target != "new" { router.show(target) }
 		}
 		#endif
+		// A notification or the Live Activity was tapped.
+		.onChange(of: notifier.requestedSession, initial: true) { _, sessionId in
+			guard let sessionId else { return }
+			notifier.requestedSession = nil
+			if model.paired { router.show(sessionId) }
+		}
 		.onOpenURL { url in
-			guard url.scheme == PairingURI.scheme, url.host == PairingURI.host else { return }
+			if let sessionId = SessionLink.sessionId(url) {
+				if model.paired { router.show(sessionId) }
+				return
+			}
+			// Case-blind: a code-only QR code is upper case (ADR-0138).
+			guard url.scheme?.lowercased() == PairingURI.scheme, url.host?.lowercased() == PairingURI.host else { return }
 			Task {
 				if await model.pairWithCode(url.absoluteString) {
 					router.showPairing = false

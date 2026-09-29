@@ -4,12 +4,11 @@ import {
 	activeSessionCwdAtom,
 	activityPanelOpenAtom,
 	applyInputActionWorkingState,
-	bottomPanelStateAtom,
 	captureInputActionWorkingState,
 	chatMessagesAtom,
 	closeInlineFilePreviewAtom,
+	currentScenarioAtom,
 	defaultConversationCwdAtom,
-	dispatchBottomPanelAtom,
 	emptySessionInputActionState,
 	getProjectDisplayName,
 	inlineFilePreviewContextReadonlyAtom,
@@ -33,7 +32,6 @@ import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { selectAtom } from "jotai/utils";
 import { createElement, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useOpenTerminal } from "../../bottom-panel/hooks/useOpenTerminal";
 import type { ChatViewModelResult } from "../components/chat-view/types";
 
 /**
@@ -50,6 +48,7 @@ export function useChatViewModel(): ChatViewModelResult {
 	const activeSessionCwd = useAtomValue(activeSessionCwdAtom);
 	const pendingSessionOpen = useAtomValue(pendingSessionOpenAtom);
 	const pendingSessionCreation = useAtomValue(pendingSessionCreationAtom);
+	const scenario = useAtomValue(currentScenarioAtom) ?? undefined;
 	const messages = useAtomValue(chatMessagesAtom);
 	const isStreaming = useAtomValue(isConversationBusyAtom);
 	const [panelOpen, setPanelOpen] = useAtom(activityPanelOpenAtom);
@@ -111,28 +110,9 @@ export function useChatViewModel(): ChatViewModelResult {
 		prevSessionPathRef.current = nextPath;
 	}, [activeSessionPath, setPromptAttachment]);
 
-	const [pinned, setPinned] = useState(false);
 	const [exporting, setExporting] = useState(false);
-	useEffect(() => {
-		void window.vetta.window.isAlwaysOnTop().then(setPinned);
-	}, []);
-
-	const togglePin = useCallback(async () => {
-		const next = await window.vetta.window.toggleAlwaysOnTop();
-		setPinned(next);
-	}, []);
 	const finishExport = useCallback(() => setExporting(false), []);
 	const openExport = useCallback(() => setExporting(true), []);
-	// 底部面板的展开态是会话级持久化状态，所以读写都走它自己的 atom，
-	// 不在这里再存一份 useState。
-	const bottomPanelState = useAtomValue(bottomPanelStateAtom);
-	const dispatchBottomPanel = useSetAtom(dispatchBottomPanelAtom);
-	const bottomPanelOpen = !bottomPanelState.collapsed;
-	const toggleBottomPanel = useCallback(() => {
-		dispatchBottomPanel({ type: "set-collapsed", collapsed: bottomPanelOpen });
-	}, [dispatchBottomPanel, bottomPanelOpen]);
-	const terminal = useOpenTerminal();
-	const openTerminal = terminal.open;
 
 	const togglePanel = useCallback(() => {
 		if (inlinePreviewActive) {
@@ -194,11 +174,8 @@ export function useChatViewModel(): ChatViewModelResult {
 			finishExport,
 			openExport,
 			togglePanel,
-			toggleBottomPanel,
-			openTerminal,
-			togglePin,
 		}),
-		[finishExport, openExport, togglePanel, toggleBottomPanel, openTerminal, togglePin],
+		[finishExport, openExport, togglePanel],
 	);
 
 	const hasMessages = messages.length > 0;
@@ -209,32 +186,14 @@ export function useChatViewModel(): ChatViewModelResult {
 			exportTitle: t("chatView.exportButton.title"),
 			panelOpen,
 			panelTitle: panelOpen ? t("chatView.panelButton.open") : t("chatView.panelButton.closed"),
-			bottomPanelOpen,
-			bottomPanelTitle: bottomPanelOpen
-				? t("chatView.bottomPanelButton.open")
-				: t("chatView.bottomPanelButton.closed"),
-			terminalAvailable: terminal.available,
-			terminalFocused: terminal.focused,
-			terminalTitle: !terminal.available
-				? t("chatView.terminalButton.unavailable")
-				: terminal.focused
-					? t("chatView.terminalButton.focused")
-					: t("chatView.terminalButton.open"),
-			pinTitle: pinned ? t("chatView.pinButton.pinned") : t("chatView.pinButton.unpinned"),
-			pinned,
 		}),
-		[
-			bottomPanelOpen,
-			exporting,
-			hasMessages,
-			isStreaming,
-			panelOpen,
-			pinned,
-			t,
-			terminal.available,
-			terminal.focused,
-		],
+		[exporting, hasMessages, isStreaming, panelOpen, t],
 	);
+	const workSurface = useMemo(() => {
+		const sessionPath = pendingSessionOpen?.sessionPath ?? activeSessionPath;
+		const cwd = pendingSessionOpen?.cwd ?? activeSessionCwd;
+		return sessionPath ? { key: sessionPath, cwd, scenario } : null;
+	}, [activeSessionCwd, activeSessionPath, pendingSessionOpen, scenario]);
 
 	return {
 		actions,
@@ -250,6 +209,7 @@ export function useChatViewModel(): ChatViewModelResult {
 			// pending path is the visual identity. It avoids old -> null -> target
 			// Virtuoso resets while Runtime-bound activeSession is intentionally absent.
 			sessionId: pendingSessionOpen?.sessionPath ?? activeSessionPath,
+			workSurface,
 		},
 	};
 }

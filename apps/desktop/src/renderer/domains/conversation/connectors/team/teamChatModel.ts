@@ -121,6 +121,12 @@ export interface TeamChatActions {
 	readonly setExecutionMode?: (mode: SessionExecutionMode) => Promise<void>;
 }
 
+export function isTeamChatStreaming(model: Pick<TeamChatViewModel, "feedItems" | "memberViewId" | "status">): boolean {
+	return model.memberViewId
+		? model.feedItems.some((item) => item.kind === "agent" && item.phase === "streaming")
+		: model.status === "sending" || model.status === "streaming" || model.status === "cancelling";
+}
+
 export interface TeamAttachmentViewModel {
 	readonly path: string;
 	readonly name: string;
@@ -287,6 +293,7 @@ function buildTeamMemberReplySummary(input: TeamMemberReplySummaryInput): ChatCo
 			...(currentText ? { current: currentText } : {}),
 			recent,
 			...(result ? { result } : {}),
+			...(message?.durationSeconds === undefined ? {} : { durationSeconds: message.durationSeconds }),
 			timestamp: input.timestamp,
 		},
 	};
@@ -316,7 +323,7 @@ export function reduceTeamStreamState(state: TeamStreamState, event: DesktopTeam
 				[event.messageId]: {
 					...current,
 					sequence: event.sequence,
-					message: { ...current.message, phase: "completed", endedAt: event.timestamp },
+					message: finishTeamStreamMessage(current.message, "completed", event.timestamp),
 				},
 			};
 		}
@@ -336,11 +343,13 @@ export function reduceTeamStreamState(state: TeamStreamState, event: DesktopTeam
 				[event.messageId]: {
 					...current,
 					sequence: event.sequence,
-					message: {
-						...settlePendingToolCalls(current.message, "error"),
-						phase: event.reason,
-						endedAt: event.timestamp,
-					},
+					message: finishTeamStreamMessage(
+						{
+							...settlePendingToolCalls(current.message, "error"),
+						},
+						event.reason,
+						event.timestamp,
+					),
 				},
 			};
 		}
@@ -361,6 +370,19 @@ export function reduceTeamStreamState(state: TeamStreamState, event: DesktopTeam
 	return {
 		...state,
 		[event.messageId]: next,
+	};
+}
+
+function finishTeamStreamMessage(
+	message: ConversationAgentMessageViewModel,
+	phase: "completed" | "failed" | "waiting",
+	endedAt: number,
+): ConversationAgentMessageViewModel {
+	return {
+		...message,
+		phase,
+		endedAt,
+		...(message.startedAt === undefined ? {} : { durationSeconds: Math.max(0, endedAt - message.startedAt) / 1000 }),
 	};
 }
 
@@ -852,6 +874,7 @@ function splitTeamMemberHistoryTurns(history: readonly HistoryEntry[]): HistoryE
 /** Compatibility for legacy Team snapshots that predate member histories. */
 function projectLegacySnapshotMessages(snapshot: DesktopTeamSessionSnapshot): ChatConversationItem[] {
 	const toolExecutions = snapshot.display?.toolExecutions ?? [];
+	const messageTimings = new Map(snapshot.display?.messageTimings?.map((timing) => [timing.messageId, timing]));
 	return snapshot.messages.map((record) => {
 		if (record.kind === "user") {
 			return {
@@ -894,8 +917,16 @@ function projectLegacySnapshotMessages(snapshot: DesktopTeamSessionSnapshot): Ch
 			projected.kind === "agent" && (record.message.stopReason === "stop" || record.message.stopReason === "aborted")
 				? patchLegacyPendingTools(projected, record.message.stopReason === "aborted")
 				: projected;
+		const timing = messageTimings.get(record.id);
 		return {
 			...normalized,
+			...(timing
+				? {
+						startedAt: timing.startedAt,
+						endedAt: timing.endedAt,
+						durationSeconds: timing.durationMs / 1000,
+					}
+				: {}),
 			// Public Team records intentionally omit private tool-result entries.
 			// Once the terminal assistant record is persisted, a pending tool block
 			// is no longer running and must not render as an endless spinner.
@@ -951,6 +982,12 @@ function mergeTeamAgentTurns(items: readonly ConversationAgentMessageViewModel[]
 		const existing = merged[existingIndex];
 		const phase = item.phase;
 		const blocks = mergeAgentBlocks(existing.blocks, item.blocks);
+		const startedAt = existing.startedAt ?? item.startedAt;
+		const endedAt = item.endedAt ?? existing.endedAt;
+		const durationSeconds =
+			startedAt !== undefined && endedAt !== undefined
+				? Math.max(0, endedAt - startedAt) / 1000
+				: (item.durationSeconds ?? existing.durationSeconds);
 		const withTerminalTools =
 			phase === "aborted"
 				? settlePendingToolCalls({ ...item, blocks }, "cancelled").blocks
@@ -965,9 +1002,9 @@ function mergeTeamAgentTurns(items: readonly ConversationAgentMessageViewModel[]
 			blocks: withTerminalTools,
 			...(item.text ? { text: existing.text ? `${existing.text}\n${item.text}` : item.text } : {}),
 			...(existing.usages || item.usages ? { usages: [...(existing.usages ?? []), ...(item.usages ?? [])] } : {}),
-			...(item.startedAt !== undefined && existing.startedAt === undefined ? { startedAt: item.startedAt } : {}),
-			...(item.endedAt !== undefined ? { endedAt: item.endedAt } : {}),
-			...(item.durationSeconds !== undefined ? { durationSeconds: item.durationSeconds } : {}),
+			...(startedAt === undefined ? {} : { startedAt }),
+			...(endedAt === undefined ? {} : { endedAt }),
+			...(durationSeconds === undefined ? {} : { durationSeconds }),
 		};
 	}
 	return merged;
@@ -1023,15 +1060,21 @@ function mergeTeamAgentMessage(
 	renderKey: string,
 ): ConversationAgentMessageViewModel {
 	const blocks = mergeAgentBlocks(persisted.blocks, live.blocks);
+	const startedAt = persisted.startedAt ?? live.startedAt;
+	const endedAt = live.endedAt ?? persisted.endedAt;
+	const durationSeconds =
+		startedAt !== undefined && endedAt !== undefined
+			? Math.max(0, endedAt - startedAt) / 1000
+			: (live.durationSeconds ?? persisted.durationSeconds);
 	const merged = {
 		...persisted,
 		phase: live.phase,
 		blocks,
 		text: mergePublicAgentText(persisted.text, live.text),
 		renderKey,
-		...(live.startedAt !== undefined ? { startedAt: live.startedAt } : {}),
-		...(live.endedAt !== undefined ? { endedAt: live.endedAt } : {}),
-		...(live.durationSeconds !== undefined ? { durationSeconds: live.durationSeconds } : {}),
+		...(startedAt === undefined ? {} : { startedAt }),
+		...(endedAt === undefined ? {} : { endedAt }),
+		...(durationSeconds === undefined ? {} : { durationSeconds }),
 	};
 	if (live.phase === "aborted") return settlePendingToolCalls(merged, "cancelled");
 	if (live.phase === "failed" || live.phase === "waiting") return settlePendingToolCalls(merged, "error");

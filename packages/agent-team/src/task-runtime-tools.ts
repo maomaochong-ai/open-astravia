@@ -50,7 +50,10 @@ export const TeamSendMessageInputSchema = Type.Object(
 			maxItems: 8,
 			uniqueItems: true,
 		}),
-		intent: Type.Union([Type.Literal("inform"), Type.Literal("question")]),
+		intent: Type.Union([Type.Literal("inform"), Type.Literal("question")], {
+			description:
+				"Use inform for results, acknowledgements, status, or any message that does not require a new response. Use question only for genuinely missing information.",
+		}),
 		text: Type.String({ minLength: 1, maxLength: 16_000 }),
 	},
 	{ additionalProperties: false },
@@ -177,7 +180,7 @@ export function createTeamSendMessageTool(port: TeamMessageControlPort): Runtime
 		name: "team_send_message",
 		label: "team_send_message",
 		description:
-			"Publish a normal Agent message to the shared Team conversation and address one or more persistent members. Use intent=inform when no immediate response is needed; it will enter later shared context without starting a model. Use intent=question only when missing information requires the recipients to respond; recipients run independently and completion notifications automatically wake the initiating session. The result contains a messageId and per-recipient deliveryIds, not teamTaskIds; never pass those IDs or the requestId to team_wait_tasks. After a question, do not claim that all recipients replied from the admission result alone; integrate replies from the automatic continuation or team_read_shared_history. This is public Team communication, not private chat, task ownership transfer, or subagent messaging.",
+			"Publish a normal Agent message to the shared Team conversation and address one or more persistent members. Use intent=inform when no immediate response is needed; it will enter later shared context without starting a model. Use intent=question only when missing information requires the recipients to respond; recipients run independently and completion notifications automatically wake the initiating session. When answering an incoming Team question or integrating an automatic completion notification, do not send another question to the member who triggered this turn: your final response already reaches them, and reciprocal questions are delivered as inform to prevent a response loop. The result contains a messageId and per-recipient deliveryIds, not teamTaskIds; never pass those IDs or the requestId to team_wait_tasks. After a question, do not claim that all recipients replied from the admission result alone; integrate replies from the automatic continuation or team_read_shared_history. This is public Team communication, not private chat, task ownership transfer, or subagent messaging.",
 		inputSchema: TeamSendMessageInputSchema,
 		async execute({ sessionId, turnId, toolCallId, input, messages, signal }) {
 			const identity = [...(messages ?? [])].reverse().find((message) => message.role === "assistant");

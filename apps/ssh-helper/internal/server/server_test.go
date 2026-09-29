@@ -268,6 +268,34 @@ func TestListRecursiveSkipsHiddenAndIgnoredTrees(t *testing.T) {
 	}
 }
 
+func TestListRecursiveNameFilterAppliesBeforeTheLimit(t *testing.T) {
+	root := t.TempDir()
+	files := []string{"a/src/1.ts", "a/src/2.ts", "a/src/3.ts", "a/package.json", "b/Makefile", "node_modules/x/package.json"}
+	for _, file := range files {
+		path := filepath.Join(root, file)
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, nil, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	c := startServer(t, t.TempDir())
+	var result struct {
+		Files     []string `json:"files"`
+		Truncated bool     `json:"truncated"`
+	}
+	c.mustCall("fs.listRecursive", map[string]any{
+		"path":               root,
+		"ignoredDirectories": []string{"node_modules"},
+		"names":              []string{"package.json", "Makefile"},
+		"limit":              2,
+	}, &result)
+	if got := strings.Join(result.Files, ","); got != "a/package.json,b/Makefile" || result.Truncated {
+		t.Fatalf("unexpected listing: %s truncated=%v", got, result.Truncated)
+	}
+}
+
 func TestRemoveRefusesTheRootDirectory(t *testing.T) {
 	c := startServer(t, t.TempDir())
 	if response := c.call("fs.remove", map[string]any{"path": "/"}, nil); response.Error == nil {

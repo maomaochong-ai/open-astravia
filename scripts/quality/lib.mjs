@@ -109,6 +109,7 @@ export function git(args, { allowFail = false } = {}) {
 	const result = spawnSync("git", args, {
 		cwd: repoRoot,
 		encoding: "utf8",
+		maxBuffer: 64 * 1024 * 1024,
 		shell: false,
 	});
 	if (result.status !== 0 && !allowFail) {

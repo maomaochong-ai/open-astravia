@@ -429,7 +429,7 @@ describe("StatelessAgentCoreTurnEngine", () => {
 		// 一个用户气泡，而规范历史按 origin 过滤掉它 —— 两侧永远对不上账。
 		const snapshots: SessionInputQueueSnapshot[] = [];
 		const queue = new SessionInputQueue({ onChange: (entry) => snapshots.push(entry) });
-		queue.followUp({ message: user("user follow-up") });
+		queue.followUp({ message: user("user follow-up"), messageId: "user-follow-up-id" });
 		let collected = false;
 		const continuationPolicy = {
 			async collect() {
@@ -478,6 +478,10 @@ describe("StatelessAgentCoreTurnEngine", () => {
 			kind: "continuation",
 			source: "model-length",
 		});
+		const userFollowUp = events.find(
+			(event) => event.type === "message" && event.message.content === "user follow-up",
+		);
+		expect(userFollowUp).toMatchObject({ messageId: "user-follow-up-id" });
 	});
 });
 

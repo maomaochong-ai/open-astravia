@@ -27,8 +27,30 @@ export interface PluginCapabilityAdapterOptions {
 	readonly resolvePermissions: (pluginId: string) => readonly string[];
 	readonly resolveBrowserAllowedHosts?: (pluginId: string) => readonly string[];
 	readonly onSessionClosed?: (pluginId: string) => void;
+	readonly onSessionLifecycle?: (event: PluginCapabilitySessionLifecycleEvent) => void;
 	readonly onBrowserSessionsReleased?: (pluginId: string, browserSessionIds: readonly string[]) => void;
 }
+
+export type PluginCapabilitySessionCloseReason = "renderer-requested" | "renderer-replaced" | "host-disposed";
+
+export type PluginCapabilitySessionLifecycleEvent =
+	| {
+			readonly type: "opened";
+			readonly pluginId: string;
+			readonly sessionId: string;
+			readonly ownerId: string;
+			readonly openedAt: string;
+	  }
+	| {
+			readonly type: "closed";
+			readonly pluginId: string;
+			readonly sessionId: string;
+			readonly ownerId: string;
+			readonly reason: PluginCapabilitySessionCloseReason;
+			readonly closedAt: string;
+	  };
+
+export type ClosedPluginCapabilitySession = Extract<PluginCapabilitySessionLifecycleEvent, { type: "closed" }>;
 
 export interface PluginCapabilitySession {
 	readonly access: CapabilityAccessHandle;

@@ -192,7 +192,10 @@ struct SessionCardRows: View {
 
 	var body: some View {
 		ForEach(rows) { session in
-			Button { router.show(session.id) } label: {
+			Button {
+				tapHaptic()
+				router.show(session.id)
+			} label: {
 				SessionCard(session: session, conversationCwd: model.conversationCwd, showsProject: showsProject)
 			}
 			.buttonStyle(.plain)

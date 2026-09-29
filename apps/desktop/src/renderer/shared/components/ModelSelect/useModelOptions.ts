@@ -2,7 +2,7 @@ import type { ModelsConfigData } from "@preload/api";
 import { localModelsConfigAtom, remoteProvidersAtom } from "@shared/store/atoms";
 import { modelCatalog } from "@shared/store/model-catalog";
 import { useAtomValue } from "jotai";
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 
 export interface ModelOption {
 	provider: string;
@@ -113,14 +113,17 @@ export function useModelOptions(): UseModelOptionsResult {
 		return local?.icon ?? remote?.icon;
 	};
 
-	const labelFor = (provider: string): string => {
-		const local = config?.providers[provider] as { displayName?: string } | undefined;
-		const remote = (remoteProviders as Record<string, { displayName?: string }>)[provider];
-		if (local?.displayName) return local.displayName;
-		if (remote?.displayName) return remote.displayName;
-		if (provider === "vetta-go") return "Vetta Go";
-		return provider;
-	};
+	const labelFor = useCallback(
+		(provider: string): string => {
+			const local = config?.providers[provider] as { displayName?: string } | undefined;
+			const remote = (remoteProviders as Record<string, { displayName?: string }>)[provider];
+			if (local?.displayName) return local.displayName;
+			if (remote?.displayName) return remote.displayName;
+			if (provider === "vetta-go") return "Vetta Go";
+			return provider;
+		},
+		[config, remoteProviders],
+	);
 
 	return { options, grouped, defaultKey: config?.defaultModel, iconFor, labelFor };
 }

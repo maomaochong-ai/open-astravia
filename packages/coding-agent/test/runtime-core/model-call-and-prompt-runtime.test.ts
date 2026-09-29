@@ -296,6 +296,20 @@ describe("Coding Agent model call and prompt runtime", () => {
 		expect(prepared.input.context).toEqual(context);
 	});
 
+	it("preserves the host message identity through request preparation", async () => {
+		const adapter = new CodingAgentPromptRequestAdapter({ now: () => 42 });
+		const request = adapter.createRequest({ text: "queued", messageId: "user-123" });
+		const result = await adapter.prepare(request, {
+			sessionId: "session-1",
+			turnId: "turn-1",
+			queueing: true,
+			signal: new AbortController().signal,
+		});
+
+		expect(request.messageId).toBe("user-123");
+		expect(result).toMatchObject({ action: "continue", input: { messageId: "user-123" } });
+	});
+
 	it("preserves prompt images when model capability metadata only declares text", async () => {
 		const adapter = new CodingAgentPromptRequestAdapter({ now: () => 42 });
 		const request = adapter.createRequest({

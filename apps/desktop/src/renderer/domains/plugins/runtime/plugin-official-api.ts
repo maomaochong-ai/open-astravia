@@ -1,3 +1,4 @@
+import type { InstalledPlugin } from "@preload/api";
 import type { PluginOfficialApi } from "@vetta-org/plugin-sdk";
 import { createOfficialAgentApi } from "./plugin-official-agent";
 import { createOfficialAppearanceApi } from "./plugin-official-appearance";
@@ -21,7 +22,7 @@ import { createOfficialUpdaterApi } from "./plugin-official-updater";
 import { createOfficialWebhookApi } from "./plugin-official-webhook";
 import { pluginRendererCapabilityHost } from "./plugin-renderer-capability-host";
 
-export function createPluginOfficialApi(capabilitySessionId: string): PluginOfficialApi {
+export function createPluginOfficialApi(plugin: InstalledPlugin, capabilitySessionId: string): PluginOfficialApi {
 	const assertOfficial = (): void => {
 		pluginRendererCapabilityHost.assertOfficialSession(capabilitySessionId);
 	};
@@ -45,7 +46,7 @@ export function createPluginOfficialApi(capabilitySessionId: string): PluginOffi
 		batchTasks: createOfficialBatchTasksApi(assertOfficial, capabilitySessionId),
 		scheduler: createOfficialSchedulerApi(assertOfficial, capabilitySessionId),
 		appearance: createOfficialAppearanceApi(capabilitySessionId),
-		sessions: createOfficialSessionsApi(capabilitySessionId),
+		sessions: createOfficialSessionsApi(plugin, capabilitySessionId),
 		navigation: createOfficialNavigationApi(capabilitySessionId),
 	};
 }

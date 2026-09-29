@@ -1,5 +1,6 @@
 package org.vetta.android.domain.work
 
+import kotlinx.serialization.Serializable
 import org.vetta.android.domain.remote.RemoteModelOption
 
 /** A provider's models, in the order the desktop lists them. */
@@ -10,6 +11,7 @@ data class ModelGroup(val provider: String, val models: List<RemoteModelOption>)
  * and the chat title share. `null` model is the desktop's default; `null` level
  * leaves the model's own.
  */
+@Serializable
 data class ModelChoice(
     val modelKey: String? = null,
     val thinkingLevel: String? = null,
@@ -23,6 +25,18 @@ data class ModelChoice(
         return options.firstOrNull { it.key == key }?.thinkingLevels.orEmpty()
     }
 
+    /**
+     * What of this choice the desktop still offers: a model it no longer lists falls back
+     * to its default, a level the model lacks to the model's own. An empty list is not
+     * known yet and keeps everything.
+     */
+    fun available(options: List<RemoteModelOption>): ModelChoice {
+        val key = modelKey ?: return this
+        if (options.isEmpty()) return this
+        if (options.none { it.key == key }) return ModelChoice()
+        return if (thinkingLevel != null && thinkingLevel !in levels(options)) copy(thinkingLevel = null) else this
+    }
+
     /** Switches model, keeping the level only where the new model offers it. */
     fun picking(modelKey: String?, options: List<RemoteModelOption>): ModelChoice {
         val next = copy(modelKey = modelKey)
@@ -30,6 +44,13 @@ data class ModelChoice(
     }
 
     companion object {
+        /**
+         * The level a chat's title shows: the one the desktop reports, unless the model is
+         * known to have no thinking control. Not knowing the model (its list not loaded yet,
+         * or a request for it failed) is no reason to hide the level the desktop runs with.
+         */
+        fun shownLevel(level: String?, model: RemoteModelOption?): String? = level?.takeUnless { model != null && model.thinkingLevels.isEmpty() }
+
         /** Models by provider, providers in the order the desktop lists them. */
         fun groups(options: List<RemoteModelOption>): List<ModelGroup> =
             options.groupBy { it.provider }.map { (provider, models) -> ModelGroup(provider, models) }

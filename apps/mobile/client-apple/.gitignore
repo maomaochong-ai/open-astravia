@@ -1,6 +1,8 @@
 build/
 VettaKit/.build/
 VettaKit/.swiftpm/
+VettaRTC/.build/
+VettaRTC/.swiftpm/
 *.xcodeproj/xcuserdata/
 *.xcodeproj/project.xcworkspace/xcuserdata/
 DerivedData/

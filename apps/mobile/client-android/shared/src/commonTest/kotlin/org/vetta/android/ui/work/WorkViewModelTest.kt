@@ -70,6 +70,19 @@ class WorkViewModelTest {
                     )
                 RemoteRequestMethod.SessionConfigure ->
                     respond(request.requestId, buildJsonObject { putJsonObject("state") { put("status", "idle") } })
+                RemoteRequestMethod.SessionCreate ->
+                    respond(
+                        request.requestId,
+                        buildJsonObject {
+                            putJsonObject("session") {
+                                put("id", "s9")
+                                put("projectCwd", "/conv")
+                                put("title", "")
+                                put("updatedAt", 2)
+                                put("status", "idle")
+                            }
+                        },
+                    )
                 else -> respond(request.requestId, buildJsonObject {})
             }
         }
@@ -135,6 +148,38 @@ class WorkViewModelTest {
         }
 
     @Test
+    fun tappingSendAgainWhileThePromptIsOnItsWaySendsItOnce() =
+        runTest(dispatcher) {
+            val (desktop, vm) = paired()
+            vm.setDraft("s1", PromptDraft("写周报"))
+            vm.send("s1", PromptDraft("写周报"))
+            vm.send("s1", PromptDraft("写周报"))
+            vm.send("s1", PromptDraft("写周报"))
+            assertNull(vm.drafts.value["s1"], "the composer clears at once")
+            assertTrue(eventually { desktop.requests.any { it.method == RemoteRequestMethod.SessionPrompt } })
+            assertTrue(eventually { true })
+            assertEquals(1, desktop.requests.count { it.method == RemoteRequestMethod.SessionPrompt })
+
+            vm.send("s1", PromptDraft("再来一条"))
+            assertTrue(eventually { desktop.requests.count { it.method == RemoteRequestMethod.SessionPrompt } == 2 }, "once it went out, the next prompt can go")
+        }
+
+    @Test
+    fun aChatStartedOnALocalIdClearsItsOwnDraftWhenSending() =
+        runTest(dispatcher) {
+            val (desktop, vm) = paired()
+            val localId = vm.startSession(NewSessionStart(PromptDraft("开个头"), null, ModelChoice(null, null))) {}
+            assertTrue(localId != null)
+            assertTrue(eventually { vm.state.value.resolve(localId!!) != localId && !vm.state.value.isStarting(localId) })
+
+            vm.setDraft(localId!!, PromptDraft("接着说"))
+            vm.send(localId, PromptDraft("接着说"))
+            assertNull(vm.drafts.value[localId], "the draft kept under the chat's own id is the one cleared")
+            assertTrue(eventually { desktop.requests.count { it.method == RemoteRequestMethod.SessionPrompt } == 2 })
+            assertEquals(vm.state.value.resolve(localId), desktop.requests.last { it.method == RemoteRequestMethod.SessionPrompt }.sessionId)
+        }
+
+    @Test
     fun aStartThatFailsIsKeptOnceForNewSessionToPutBack() =
         runTest(dispatcher) {
             val desktop = FakeDesktop(backgroundScope)
@@ -159,7 +204,7 @@ class WorkViewModelTest {
         }
 
     @Test
-    fun unpairingForgetsTheComputerAndTheDrafts() =
+    fun unpairingKeepsTheSessionsAndTheDrafts() =
         runTest(dispatcher) {
             val (_, vm) = paired()
             vm.setDraft("s1", PromptDraft("写到一半"))
@@ -167,7 +212,7 @@ class WorkViewModelTest {
             assertEquals(false, vm.state.value.preferences.haptics)
 
             vm.unpair()
-            assertTrue(vm.drafts.value.isEmpty())
-            assertTrue(!vm.state.value.paired && vm.state.value.sessions.isEmpty())
+            assertEquals(PromptDraft("写到一半"), vm.drafts.value["s1"], "nothing typed is lost")
+            assertTrue(!vm.state.value.paired && vm.state.value.sessions.isNotEmpty())
         }
 }

@@ -7,10 +7,13 @@ struct PairView: View {
 	@Environment(\.dismiss) private var dismiss
 	@State private var camera = CameraAccess.current
 	@State private var manualOpen = false
+	@State private var inviteOpen = false
 	@State private var helpOpen = false
 	@State private var busy = false
 
-	private var scanning: Bool { model.pairing == .idle && !manualOpen && !helpOpen }
+	private var scanning: Bool { model.pairing == .idle && !sheetOpen && !helpOpen }
+	/// A pairing typed into a sheet shows its progress there, not behind it.
+	private var sheetOpen: Bool { manualOpen || inviteOpen }
 
 	var body: some View {
 		NavigationStack {
@@ -20,7 +23,7 @@ struct PairView: View {
 				}
 				.padding(.top, 32)
 
-				if case let .awaitingApproval(code, _) = model.pairing, !manualOpen {
+				if case let .awaitingApproval(code, _) = model.pairing, !sheetOpen {
 					VerificationCodeView(code: code).padding(.top, 32)
 				} else {
 					Text(L10n.Pair.scanHint)
@@ -51,7 +54,7 @@ struct PairView: View {
 				.glassEffect(.regular, in: .capsule)
 				.padding(.top, 20)
 
-				if case let .failed(reason) = model.pairing, !manualOpen {
+				if case let .failed(reason) = model.pairing, !sheetOpen {
 					Text(L10n.Pair.describe(reason))
 						.font(.system(size: 13))
 						.foregroundStyle(Theme.red)
@@ -61,8 +64,8 @@ struct PairView: View {
 				}
 				Spacer(minLength: 16)
 
-				Button { manualOpen = true } label: {
-					Label(L10n.Pair.manual, systemImage: "keyboard")
+				Button { inviteOpen = true } label: {
+					Label(L10n.Pair.invite, systemImage: "key")
 						.font(.system(size: 15, weight: .semibold))
 						.foregroundStyle(Theme.pillInk)
 						.frame(maxWidth: .infinity)
@@ -70,6 +73,17 @@ struct PairView: View {
 				}
 				.buttonStyle(.glassProminent)
 				.tint(Theme.pill)
+				.accessibilityIdentifier("pair.invite")
+
+				Button { manualOpen = true } label: {
+					Label(L10n.Pair.manual, systemImage: "keyboard")
+						.font(.system(size: 15, weight: .semibold))
+						.foregroundStyle(Theme.ink)
+						.frame(maxWidth: .infinity)
+						.padding(.vertical, 8)
+				}
+				.buttonStyle(.glass)
+				.padding(.top, 12)
 				.accessibilityIdentifier("pair.manual")
 
 				Button { helpOpen = true } label: {
@@ -109,6 +123,13 @@ struct PairView: View {
 					await submit { await model.pairManually(endpoint) }
 				}
 				.presentationDetents([.height(360)])
+			}
+			.sheet(isPresented: $inviteOpen, onDismiss: { model.cancelPairing() }) {
+				InvitePairView(
+					connect: { code, password, relay in await model.pairWithInvite(code: code, password: password, relayBaseUrl: relay) },
+					onPaired: close
+				)
+				.presentationDetents([.large])
 			}
 			.sheet(isPresented: $helpOpen) {
 				TroubleshootSheet().presentationDetents([.medium, .large])
@@ -153,14 +174,19 @@ struct PairView: View {
 		busy = true
 		let ok = await attempt()
 		busy = false
-		guard ok else { return }
+		if ok { close() }
+	}
+
+	/// Paired: close the screen and reconnect.
+	private func close() {
 		manualOpen = false
+		inviteOpen = false
 		model.refreshLink()
 		router.showPairing = false
 	}
 }
 
-private struct VerificationCodeView: View {
+struct VerificationCodeView: View {
 	var code: String
 
 	var body: some View {
@@ -199,6 +225,7 @@ private struct ManualPairSheet: View {
 					.keyboardType(.URL)
 					.submitLabel(.go)
 					.focused($focused)
+					.tint(Theme.selection)
 					.onSubmit(submit)
 					.padding(.horizontal, 16)
 					.frame(height: 52)

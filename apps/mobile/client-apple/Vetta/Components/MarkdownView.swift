@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import VettaKit
 
 /// Opacity of a rendered character by its distance from the end of the text
@@ -17,7 +18,7 @@ struct MarkdownView: View {
 	var fade: FadeTail?
 
 	var body: some View {
-		VStack(alignment: .leading, spacing: 10) {
+		VStack(alignment: .leading, spacing: 16) {
 			ForEach(Array(RenderedBlock.render(MarkdownBlock.parse(text), fade: fade).enumerated()), id: \.offset) { _, block in
 				view(for: block)
 			}
@@ -29,44 +30,58 @@ struct MarkdownView: View {
 	private func view(for block: RenderedBlock) -> some View {
 		switch block {
 		case let .heading(level, content):
-			Text(content)
-				.font(.system(size: level == 1 ? 20 : level == 2 ? 18 : 16, weight: level <= 2 ? .bold : .semibold))
-				.foregroundStyle(Theme.ink)
+			let size: CGFloat = level == 1 ? 22 : level == 2 ? 19.5 : 17.5
+			if fade == nil {
+				SelectableText(text: Self.uiText(content, font: .systemFont(ofSize: size, weight: level <= 2 ? .bold : .semibold)))
+			} else {
+				Self.text(content)
+					.font(.system(size: size, weight: level <= 2 ? .bold : .semibold))
+					.foregroundStyle(Theme.ink)
+					.textRenderer(InlineChipRenderer.theme)
+			}
 		case let .paragraph(content):
-			Self.body(content)
+			body(content)
 		case let .bullets(items):
-			VStack(alignment: .leading, spacing: 4) {
+			VStack(alignment: .leading, spacing: 8) {
 				ForEach(Array(items.enumerated()), id: \.offset) { _, item in
 					HStack(alignment: .firstTextBaseline, spacing: 8) {
-						Text("•").font(.system(size: 15)).foregroundStyle(Theme.dim).opacity(item.markerOpacity)
-						Self.body(item.text)
+						Text("•").font(.system(size: Self.bodySize)).foregroundStyle(Theme.dim).opacity(item.markerOpacity)
+						body(item.text)
 					}
 				}
 			}
 		case let .ordered(items):
-			VStack(alignment: .leading, spacing: 4) {
+			VStack(alignment: .leading, spacing: 8) {
 				ForEach(Array(items.enumerated()), id: \.offset) { _, item in
 					HStack(alignment: .firstTextBaseline, spacing: 8) {
-						Text("\(item.number).").font(.system(size: 15)).foregroundStyle(Theme.dim).monospacedDigit().opacity(item.markerOpacity)
-						Self.body(item.text)
+						Text("\(item.number).").font(.system(size: Self.bodySize)).foregroundStyle(Theme.dim).monospacedDigit().opacity(item.markerOpacity)
+						body(item.text)
 					}
 				}
 			}
 		case let .code(content):
 			ScrollView(.horizontal, showsIndicators: false) {
-				Text(content)
-					.font(.mono(12.5))
-					.foregroundStyle(Theme.ink)
-					.textSelection(.enabled)
-					.fixedSize(horizontal: true, vertical: false)
-					.padding(12)
+				Group {
+					if fade == nil {
+						SelectableText(text: NSAttributedString(
+							string: String(content.characters),
+							attributes: [.font: UIFont.monospacedSystemFont(ofSize: 13.5, weight: .regular), .foregroundColor: UIColor(Theme.ink)]
+						))
+					} else {
+						Text(content)
+							.font(.mono(13.5))
+							.foregroundStyle(Theme.ink)
+					}
+				}
+				.fixedSize(horizontal: true, vertical: false)
+				.padding(12)
 			}
 			.background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Theme.card))
 			.overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(Theme.line, lineWidth: 1))
 		case let .quote(content):
 			HStack(spacing: 10) {
 				Rectangle().fill(Theme.faint).frame(width: 2)
-				Self.body(content)
+				body(content)
 			}
 			.padding(.horizontal, 12)
 			.padding(.vertical, 6)
@@ -79,35 +94,157 @@ struct MarkdownView: View {
 		}
 	}
 
-	static func body(_ content: AttributedString) -> some View {
-		Text(content)
-			.font(.system(size: 15))
-			.foregroundStyle(Theme.ink)
-			.lineSpacing(5)
-			.textSelection(.enabled)
-			.fixedSize(horizontal: false, vertical: true)
+	static let bodySize: CGFloat = 16.5
+	private static let bodyLineSpacing: CGFloat = 7
+
+	/// Body text, selectable once it has settled. While a reply fades in it is
+	/// SwiftUI text, which draws the fade; `textSelection` would turn the chip renderer off.
+	@ViewBuilder
+	private func body(_ content: AttributedString) -> some View {
+		if fade == nil {
+			let font = UIFont.systemFont(ofSize: Self.bodySize)
+			SelectableText(text: Self.uiText(content, font: font, lineSpacing: Self.bodyLineSpacing))
+				// A list's marker lines up with the first line, as it does with `Text`.
+				.alignmentGuide(.firstTextBaseline) { _ in font.ascender }
+				.fixedSize(horizontal: false, vertical: true)
+		} else {
+			Self.text(content)
+				.font(.system(size: Self.bodySize))
+				.foregroundStyle(Theme.ink)
+				.lineSpacing(Self.bodyLineSpacing)
+				.textRenderer(InlineChipRenderer.theme)
+				.fixedSize(horizontal: false, vertical: true)
+		}
+	}
+
+	/// Parsed inline Markdown for `SelectableText`: the same styling and chip
+	/// padding as `text(_:)`, in UIKit attributes, with each chip marked for
+	/// `ChipLayoutFragment` to draw.
+	static func uiText(_ content: AttributedString, font: UIFont, lineSpacing: CGFloat = 0) -> NSAttributedString {
+		let paragraph = NSMutableParagraphStyle()
+		paragraph.lineSpacing = lineSpacing
+		let base: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: UIColor(Theme.ink), .paragraphStyle: paragraph]
+		let result = NSMutableAttributedString()
+		for (chip, range) in content.runs[InlineChipKey.self] {
+			guard let chip else {
+				result.append(runs(content[range], base: base))
+				continue
+			}
+			let value = ChipMark(kind: chip.kind)
+			var padding = base
+			padding[.vettaChip] = value
+			// A no-break narrow space before, a word joiner and a thin space after.
+			result.append(NSAttributedString(string: "\u{202F}", attributes: padding))
+			let span = NSMutableAttributedString(attributedString: runs(content[range], base: base))
+			span.addAttribute(.vettaChip, value: value, range: NSRange(location: 0, length: span.length))
+			result.append(span)
+			if chip.kind == .link {
+				// TextKit may break around an attachment, so the icon is held by a no-break space and a word joiner.
+				result.append(NSAttributedString(string: "\u{202F}\u{2060}", attributes: padding))
+				let symbol = UIImage(
+					systemName: chip.file ? "doc.text" : "arrow.up.right",
+					withConfiguration: UIImage.SymbolConfiguration(pointSize: font.pointSize * (chip.file ? 0.72 : 0.62), weight: .bold)
+				)
+				if let symbol {
+					let arrow = NSMutableAttributedString(attachment: NSTextAttachment(image: symbol.withTintColor(Theme.Chip.link, renderingMode: .alwaysOriginal)))
+					arrow.addAttributes(padding, range: NSRange(location: 0, length: arrow.length))
+					result.append(arrow)
+				}
+			}
+			result.append(NSAttributedString(string: "\u{2060}\u{2009}", attributes: padding))
+		}
+		return result
+	}
+
+	/// Inline runs in UIKit attributes: bold, italic, code and struck-through
+	/// text, links (which `SelectableText` opens) and their colours.
+	private static func runs(_ content: AttributedSubstring, base: [NSAttributedString.Key: Any]) -> NSAttributedString {
+		let result = NSMutableAttributedString()
+		let font = base[.font] as? UIFont ?? .systemFont(ofSize: bodySize)
+		for run in content.runs {
+			var attributes = base
+			let intent = run.inlinePresentationIntent ?? []
+			if intent.contains(.code) {
+				attributes[.font] = UIFont.monospacedSystemFont(ofSize: font.pointSize - 1.5, weight: .regular)
+			} else {
+				var traits = font.fontDescriptor.symbolicTraits
+				if intent.contains(.stronglyEmphasized) { traits.insert(.traitBold) }
+				if intent.contains(.emphasized) { traits.insert(.traitItalic) }
+				if let descriptor = font.fontDescriptor.withSymbolicTraits(traits) {
+					attributes[.font] = UIFont(descriptor: descriptor, size: font.pointSize)
+				}
+			}
+			if intent.contains(.strikethrough) { attributes[.strikethroughStyle] = NSUnderlineStyle.single.rawValue }
+			if let link = run.link {
+				attributes[.link] = link
+				attributes[.foregroundColor] = Theme.Chip.link
+			}
+			result.append(NSAttributedString(string: String(content[run.range].characters), attributes: attributes))
+		}
+		return result
+	}
+
+	/// Parsed inline Markdown as `Text`, with each inline-code span and link
+	/// tagged for `InlineChipRenderer` and given a narrow space of padding on
+	/// either side (a link also gets a small arrow, a file link a document), since a text run cannot
+	/// carry padding of its own. The padding never wraps away from the span.
+	static func text(_ content: AttributedString) -> Text {
+		var result = Text(verbatim: "")
+		for (chip, range) in content.runs[InlineChipKey.self] {
+			let part = Text(AttributedString(content[range]))
+			guard var chip else {
+				result = result + part
+				continue
+			}
+			chip.opacity = content[range.lowerBound ..< content.index(afterCharacter: range.lowerBound)][InlineFadeKey.self] ?? 1
+			// A no-break narrow space before, a word joiner and a thin space after.
+			let lead = Text(verbatim: "\u{202F}").font(.system(size: bodySize)).customAttribute(chip)
+			let trail = Text(verbatim: "\u{2060}\u{2009}").font(.system(size: bodySize)).customAttribute(chip)
+			var span = lead + part.customAttribute(chip)
+			if chip.kind == .link {
+				span = span + Text(verbatim: "\u{2060}\u{2009}").customAttribute(chip)
+					+ Text(Image(systemName: chip.file ? "doc.text" : "arrow.up.right"))
+					.font(.system(size: bodySize * (chip.file ? 0.72 : 0.62), weight: .bold))
+					.foregroundStyle(Theme.blue.opacity(chip.opacity))
+					.customAttribute(chip)
+			}
+			result = result + span + trail
+		}
+		return result
 	}
 
 	/// Parsed inline Markdown by source. A streaming reply is laid out again on
 	/// every frame, and all but its last block are unchanged, so they come from here.
 	private static var inlineCache: [String: AttributedString] = [:]
 
-	/// Inline Markdown with the design's inline-code treatment (mono on a soft chip).
+	/// Inline Markdown with the design's inline-code and link treatments; the
+	/// chips behind them are drawn by `InlineChipRenderer` (see `text(_:)`).
 	static func inline(_ content: String) -> AttributedString {
 		if let cached = inlineCache[content] { return cached }
 		var attributed = (try? AttributedString(
 			markdown: content,
 			options: AttributedString.MarkdownParsingOptions(interpretedSyntax: .inlineOnlyPreservingWhitespace)
 		)) ?? AttributedString(content)
+		// Adjacent runs of one link (say, partly bold) share a chip; a code span inside a link joins the link's.
+		var chips = 0
+		var previous: (link: URL?, code: Bool)?
 		for run in attributed.runs {
-			if run.inlinePresentationIntent?.contains(.code) == true {
-				attributed[run.range].font = .mono(13)
+			let code = run.inlinePresentationIntent?.contains(.code) == true
+			let kind: InlineChip.Kind? = run.link != nil ? .link : code ? .code : nil
+			if let kind {
+				if previous?.link != run.link || previous?.code != code && run.link == nil { chips += 1 }
+				let file = run.link.map { ReplyLink.classify($0) != .system } ?? false
+				attributed[run.range][InlineChipKey.self] = InlineChip(kind: kind, file: file, id: chips)
+				previous = (run.link, code)
+			} else {
+				previous = nil
+			}
+			if code {
+				attributed[run.range].font = .mono(bodySize - 1.5)
 				attributed[run.range].foregroundColor = Theme.ink
-				attributed[run.range].backgroundColor = Theme.card2
 			}
 			if run.link != nil {
-				attributed[run.range].foregroundColor = Theme.ink
-				attributed[run.range].underlineStyle = .single
+				attributed[run.range].foregroundColor = Theme.blue
 			}
 		}
 		if inlineCache.count > 512 { inlineCache.removeAll(keepingCapacity: true) }
@@ -149,6 +286,7 @@ private enum RenderedBlock {
 				let opacity = fade.opacity(fromEnd)
 				if opacity < 1 {
 					let range = previous ..< index
+					text[range][InlineFadeKey.self] = opacity
 					let base = text[range].foregroundColor ?? Theme.ink
 					text[range].foregroundColor = base.opacity(opacity)
 					if let background = text[range].backgroundColor { text[range].backgroundColor = background.opacity(opacity) }
@@ -183,6 +321,71 @@ private enum RenderedBlock {
 	}
 }
 
+/// An inline-code span or a link, drawn as a rounded chip behind its text.
+nonisolated struct InlineChip: TextAttribute {
+	enum Kind: Hashable, Sendable { case code, link }
+	var kind: Kind
+	/// A link to a file on the desktop rather than a web page.
+	var file = false
+	/// Tells apart two spans that touch.
+	var id: Int
+	/// Follows the span's first character while a streaming reply fades in.
+	var opacity = 1.0
+}
+
+private nonisolated enum InlineChipKey: AttributedStringKey {
+	typealias Value = InlineChip
+	static let name = "vetta.inlineChip"
+}
+
+/// A character's opacity while it fades in, which the chip behind it follows.
+private nonisolated enum InlineFadeKey: AttributedStringKey {
+	typealias Value = Double
+	static let name = "vetta.inlineFade"
+}
+
+/// Draws the chips behind inline code (a soft grey tile) and links (a tinted,
+/// outlined pill), one per line a span covers, before the text itself.
+/// SwiftUI calls it on the render thread on device, so it is nonisolated.
+/// The palette is passed in because `Theme` is main-actor.
+nonisolated struct InlineChipRenderer: TextRenderer {
+	var codeFill: Color
+	var codeStroke: Color
+	var link: Color
+
+	@MainActor static var theme: Self { Self(codeFill: Theme.card2, codeStroke: Theme.line, link: Theme.blue) }
+
+	func draw(layout: Text.Layout, in context: inout GraphicsContext) {
+		for line in layout {
+			var spans: [(chip: InlineChip, rect: CGRect)] = []
+			for run in line {
+				guard let chip = run[InlineChip.self] else { continue }
+				let rect = run.typographicBounds.rect
+				if let last = spans.last, last.chip.id == chip.id, last.chip.kind == chip.kind {
+					spans[spans.count - 1].rect = last.rect.union(rect)
+				} else {
+					spans.append((chip, rect))
+				}
+			}
+			for span in spans {
+				let shape = RoundedRectangle(cornerRadius: span.chip.kind == .link ? 7 : 6, style: .continuous)
+					.path(in: span.rect.insetBy(dx: -1.5, dy: span.chip.kind == .link ? -2.5 : -1.5))
+				switch span.chip.kind {
+				case .code:
+					context.fill(shape, with: .color(codeFill.opacity(span.chip.opacity)))
+					context.stroke(shape, with: .color(codeStroke.opacity(span.chip.opacity)), lineWidth: 0.75)
+				case .link:
+					context.fill(shape, with: .color(link.opacity(0.1 * span.chip.opacity)))
+					context.stroke(shape, with: .color(link.opacity(0.32 * span.chip.opacity)), lineWidth: 1)
+				}
+			}
+		}
+		for line in layout {
+			context.draw(line)
+		}
+	}
+}
+
 private struct MarkdownTable: View {
 	var header: [String]
 	var rows: [[String]]
@@ -192,8 +395,9 @@ private struct MarkdownTable: View {
 			Grid(alignment: .leading, horizontalSpacing: 0, verticalSpacing: 0) {
 				GridRow {
 					ForEach(Array(header.enumerated()), id: \.offset) { _, cell in
-						Text(MarkdownView.inline(cell))
+						MarkdownView.text(MarkdownView.inline(cell))
 							.font(.system(size: 12, weight: .medium))
+							.textRenderer(InlineChipRenderer.theme)
 							.foregroundStyle(Theme.dim)
 							.padding(.horizontal, 12)
 							.padding(.vertical, 9)
@@ -205,8 +409,9 @@ private struct MarkdownTable: View {
 					Divider().overlay(Theme.line)
 					GridRow {
 						ForEach(0 ..< header.count, id: \.self) { index in
-							Text(MarkdownView.inline(index < row.count ? row[index] : ""))
+							MarkdownView.text(MarkdownView.inline(index < row.count ? row[index] : ""))
 								.font(.mono(13))
+								.textRenderer(InlineChipRenderer.theme)
 								.foregroundStyle(Theme.ink)
 								.padding(.horizontal, 12)
 								.padding(.vertical, 10)

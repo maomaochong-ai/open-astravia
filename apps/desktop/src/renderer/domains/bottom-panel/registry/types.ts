@@ -1,6 +1,7 @@
 import type { ConversationScenario } from "@vetta-org/plugin-sdk";
 import type { BottomPanelTabStatus } from "@vetta-org/theme-ui/bottom-panel";
 import type { ComponentType, ReactNode } from "react";
+import type { TerminalLaunch } from "../terminal/terminal-launch";
 
 /**
  * 底部面板的组件贡献定义。内置与插件同构，宿主只收集定义与可见性策略。
@@ -74,6 +75,15 @@ export interface BottomPanelHandle {
 	readonly active: boolean;
 	setMeta(meta: Partial<BottomPanelTabMeta> | null): void;
 	setCloseGuard(guard: BottomPanelWillClose | null): void;
+	/** 这个实例当前的持久化载荷（打开时带入的，或此后 `setPayload` 写入的）。 */
+	readonly payload: unknown;
 	/** 写进持久化载荷，重开会话时原样交回。 */
 	setPayload(payload: unknown): void;
+	/**
+	 * 在本实例所在的格子里新开一个终端并替用户敲一条命令，返回新终端的 tabId。
+	 * 请求不合规（cwd 越出会话目录、命令跨行）或当前会话开不了终端时抛错。
+	 */
+	openTerminal(launch: TerminalLaunch): string;
+	/** 把同一面板里的某个 tab 切到前台并展开面板；tab 已经关掉时返回 false。 */
+	revealTab(tabId: string): boolean;
 }

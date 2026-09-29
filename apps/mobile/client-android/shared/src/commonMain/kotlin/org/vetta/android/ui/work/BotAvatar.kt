@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
@@ -53,6 +54,8 @@ fun BotAvatar(
             .size(size)
             // Offscreen, so clearing the eyes cuts through the face only, not what is behind it.
             .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+            // A tap only makes it blink: nothing for a screen reader to stop at.
+            .clearAndSetSemantics {}
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
                 if (!asleep && !blinking) blinking = true
             },

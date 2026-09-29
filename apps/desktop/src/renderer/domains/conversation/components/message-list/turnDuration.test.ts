@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { formatTurnDuration, splitTurnDuration } from "./turnDuration";
 
 const t = ((key: string, values?: Record<string, unknown>) => {
+	if (key.endsWith(".lessThanSecond")) return "<1s";
 	if (key.endsWith(".hours")) return `${values?.hours}h ${values?.minutes}m`;
 	if (key.endsWith(".minutes")) return `${values?.minutes}m ${values?.seconds}s`;
 	return `${values?.seconds}s`;
@@ -15,6 +16,8 @@ describe("turn duration", () => {
 	});
 
 	it("uses readable second, minute, and hour forms", () => {
+		expect(formatTurnDuration(0, t)).toBe("<1s");
+		expect(formatTurnDuration(0.4, t)).toBe("<1s");
 		expect(formatTurnDuration(42, t)).toBe("42s");
 		expect(formatTurnDuration(128, t)).toBe("2m 08s");
 		expect(formatTurnDuration(3788, t)).toBe("1h 03m");

@@ -11,21 +11,6 @@ struct SettingsView: View {
 			computerSection
 
 			Section {
-				Picker(L10n.Settings.confirmPolicy, selection: Binding(
-					get: { model.preferences.confirmPolicy },
-					set: { value in model.setPreferences { $0.confirmPolicy = value } }
-				)) {
-					Text(L10n.Settings.policyMajor).tag(ConfirmPolicy.major)
-					Text(L10n.Settings.policyImportant).tag(ConfirmPolicy.important)
-					Text(L10n.Settings.policyAuto).tag(ConfirmPolicy.auto)
-				}
-				.pickerStyle(.menu)
-				.accessibilityIdentifier("settings.confirmPolicy")
-			} footer: {
-				Text(L10n.Settings.confirmPolicyHint)
-			}
-
-			Section {
 				Toggle(L10n.Settings.liveThinking, isOn: Binding(
 					get: { model.preferences.liveThinking },
 					set: { value in model.setPreferences { $0.liveThinking = value } }
@@ -83,6 +68,11 @@ struct SettingsView: View {
 					LabeledContent(L10n.Settings.latency, value: latency)
 					LabeledContent(L10n.Settings.load, value: load)
 				}
+				Button { router.openRemote() } label: {
+					Label(L10n.Remote.title, systemImage: "display")
+				}
+				.foregroundStyle(Theme.ink)
+				.accessibilityIdentifier("settings.remote")
 				Button(L10n.Settings.rescan) { router.showPairing = true }
 					.foregroundStyle(Theme.ink)
 					.accessibilityIdentifier("settings.rescan")
@@ -100,7 +90,7 @@ struct SettingsView: View {
 		switch LinkIndicator(model.link) {
 		case .online:
 			guard let channel = model.link.channel else { return L10n.Common.online }
-			return "\(L10n.Common.online) · \(channel == .lan ? L10n.Settings.viaLan : L10n.Settings.viaRelay)"
+			return "\(L10n.Common.online) · \(channel.label)"
 		case .connecting: return L10n.Link.connecting
 		case let .reconnecting(attempt): return L10n.Link.reconnecting(attempt)
 		case .offline: return L10n.Common.offline

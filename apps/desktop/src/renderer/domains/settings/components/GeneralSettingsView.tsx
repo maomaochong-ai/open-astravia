@@ -22,6 +22,7 @@ export function GeneralSettingsView({ model }: GeneralSettingsViewProps): JSX.El
 			labels={model.labels}
 			sections={{
 				basics: SETTINGS_SECTION["general-basics"],
+				notifications: SETTINGS_SECTION["general-notifications"],
 				app: SETTINGS_SECTION["general-app"],
 				developer: SETTINGS_SECTION["general-developer"],
 			}}
@@ -54,8 +55,26 @@ export function GeneralSettingsView({ model }: GeneralSettingsViewProps): JSX.El
 			executionMode={model.executionMode}
 			onExecutionModeChange={(mode) => void model.actions.changeExecutionMode(mode)}
 			sandboxUnavailableReason={model.sandboxUnavailableReason}
-			notificationsEnabled={model.notificationsEnabled}
-			onNotificationsChange={model.actions.toggleNotifications}
+			notifications={{
+				sectionTitle: model.labels.sections.notifications,
+				labels: {
+					systemNotifications: model.labels.systemNotifications,
+					systemNotificationsDescription: model.labels.systemNotificationsDescription,
+					soundNotifications: model.labels.notificationSound,
+					soundNotificationsDescription: model.labels.notificationSoundDescription,
+					soundTiming: model.labels.notificationSoundTiming,
+					preview: model.labels.notificationPreview,
+					previewAction: model.labels.notificationPreviewAction,
+					scopes: model.labels.notificationScopes,
+				},
+				notificationsEnabled: model.notificationsEnabled,
+				soundEnabled: model.notificationPreferences.soundEnabled,
+				soundScope: model.notificationPreferences.soundScope,
+				onNotificationsEnabledChange: model.actions.toggleNotifications,
+				onSoundEnabledChange: model.actions.toggleSound,
+				onSoundScopeChange: model.actions.changeNotificationSoundScope,
+				onPreview: () => model.actions.previewNotificationSound(),
+			}}
 			debugMode={model.debugMode}
 			onDebugChange={model.actions.toggleDebug}
 			exportingDiagnostics={model.exportingDiagnostics}

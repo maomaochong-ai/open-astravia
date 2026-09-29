@@ -3,6 +3,7 @@ import type { RemoteEventName, RemoteRequest } from "@vetta/remote-control";
 import type {
 	HistoryEntry,
 	PromptAttachmentRef,
+	PromptRequest,
 	SessionEvent,
 	SessionStateSnapshot,
 	SettingsPatch,
@@ -12,6 +13,7 @@ import type { DesktopSessionHistoryInfo } from "../../shared/session-access.js";
 import type { DesktopConversationSession } from "../conversations/desktop-conversation-service.js";
 import { DesktopUserQuestionBroker } from "../conversations/user-question-broker.js";
 import { DesktopRemoteMirror, type RemoteMirrorRuntime } from "./desktop-remote-mirror.js";
+import { RemoteOperationError } from "./remote-error-mapping.js";
 import { keyForPath } from "./remote-transcript.js";
 
 interface Emitted {
@@ -121,7 +123,12 @@ function harness() {
 	const runtime = new FakeRuntime();
 	const broker = new DesktopUserQuestionBroker();
 	const emitted: Emitted[] = [];
-	const prompts: Array<{ sessionId: string; text: string; attachments?: PromptAttachmentRef[] }> = [];
+	const prompts: Array<{
+		sessionId: string;
+		text: string;
+		attachments?: PromptAttachmentRef[];
+		promptRef?: PromptRequest["promptRef"];
+	}> = [];
 	const uploads: Array<{ sessionKey: string; kind: string; name: string; bytes: number }> = [];
 	const sessionIds = new Map<string, string>([
 		[CONVERSATION_PATH, "rt-chat"],
@@ -143,7 +150,8 @@ function harness() {
 					{
 						id: "chat",
 						path: CONVERSATION_PATH,
-						cwd: CONVERSATION_CWD,
+						// Each conversation session runs in its own workspace under the root (ADR-0007).
+						cwd: `${CONVERSATION_CWD}/chat`,
 						name: "整理周报",
 						firstMessage: "帮我整理周报",
 						modifiedAt: 200,
@@ -170,6 +178,8 @@ function harness() {
 		listCwd: path.startsWith(PROJECT_CWD) ? PROJECT_CWD : CONVERSATION_CWD,
 		source: "interactive",
 	});
+	const skillScopes: Array<string | undefined> = [];
+	const fileCalls: Array<{ method: string; cwd: string; payload: unknown }> = [];
 	const mirror = new DesktopRemoteMirror({
 		runtime,
 		conversations: {
@@ -181,16 +191,21 @@ function harness() {
 				return open(path);
 			},
 			promptInteractiveSession: async (sessionId, prompt) => {
-				prompts.push(
-					prompt.attachments
-						? { sessionId, text: prompt.text, attachments: prompt.attachments }
-						: { sessionId, text: prompt.text },
-				);
+				prompts.push({
+					sessionId,
+					text: prompt.text,
+					...(prompt.attachments ? { attachments: prompt.attachments } : {}),
+					...(prompt.promptRef ? { promptRef: prompt.promptRef } : {}),
+				});
 				return { status: "completed" } as never;
 			},
 		},
 		questions: broker,
 		listProjects: async () => [{ cwd: PROJECT_CWD, name: "project" }],
+		listSkills: async (cwd) => {
+			skillScopes.push(cwd);
+			return [{ name: "pdf", description: "PDF", type: "skill", source: "builtin" }];
+		},
 		conversationCwd: CONVERSATION_CWD,
 		conversationLabel: "对话",
 		isConversationCwd: (cwd) => cwd.startsWith(CONVERSATION_CWD),
@@ -201,6 +216,20 @@ function harness() {
 		saveUpload: async (sessionKey, upload) => {
 			uploads.push({ sessionKey, kind: upload.kind, name: upload.name, bytes: upload.bytes.byteLength });
 			return `/uploads/${uploads.length}/${upload.name}`;
+		},
+		files: {
+			list: async (cwd, payload) => {
+				fileCalls.push({ method: "list", cwd, payload });
+				return { path: "", entries: [] };
+			},
+			stat: async (cwd, payload) => {
+				fileCalls.push({ method: "stat", cwd, payload });
+				throw new RemoteOperationError("forbidden", "no");
+			},
+			read: async (cwd, payload) => {
+				fileCalls.push({ method: "read", cwd, payload });
+				return { data: "", offset: 0, totalSize: 0, modifiedAt: 1, mimeType: "text/plain" };
+			},
 		},
 		sessionCommands: {
 			rename: async (path, name) => void names.set(path, name),
@@ -230,7 +259,21 @@ function harness() {
 	const changeCatalog = () => {
 		for (const listener of catalogListeners) listener();
 	};
-	return { runtime, broker, emitted, prompts, uploads, mirror, request, names, deleted, pins, changeCatalog };
+	return {
+		runtime,
+		broker,
+		emitted,
+		prompts,
+		uploads,
+		mirror,
+		request,
+		names,
+		deleted,
+		pins,
+		changeCatalog,
+		skillScopes,
+		fileCalls,
+	};
 }
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 15));
@@ -254,6 +297,37 @@ describe("DesktopRemoteMirror", () => {
 			["project", "project", 1],
 		]);
 		mirror.stop();
+	});
+
+	it("sends a phone prompt's scene as promptRef, keeps skills as text, and echoes what the phone typed", async () => {
+		const { mirror, request, emitted, prompts } = harness();
+		await mirror.start();
+		await request("session.list");
+		const key = keyForPath(CONVERSATION_PATH);
+		await request("session.open", undefined, key);
+
+		await request("session.prompt", { text: '@scene:weekly @skill:"pdf tools" 写周报' }, key);
+		expect(prompts).toEqual([
+			{ sessionId: "rt-chat", text: '@skill:"pdf tools" 写周报', promptRef: { kind: "scene", name: "weekly" } },
+		]);
+		expect(emitted.find((event) => event.name === "session.message")?.payload).toMatchObject({
+			kind: "user",
+			text: '@scene:weekly @skill:"pdf tools" 写周报',
+		});
+		await expect(request("session.prompt", { text: "@scene:a @scene:b go" }, key)).rejects.toMatchObject({
+			code: "invalid_frame",
+		});
+		mirror.stop();
+	});
+
+	it("lists skills scoped to a known project only, without needing a session", async () => {
+		const { request, skillScopes } = harness();
+		const result = (await request("skill.list", { cwd: PROJECT_CWD })) as { skills: Array<{ name: string }> };
+		expect(result.skills.map((skill) => skill.name)).toEqual(["pdf"]);
+		await request("skill.list", { cwd: "/etc" });
+		await request("skill.list", { cwd: CONVERSATION_CWD });
+		await request("skill.list");
+		expect(skillScopes).toEqual([PROJECT_CWD, undefined, undefined, undefined]);
 	});
 
 	it("runs a phone-originated turn: echoes the prompt, streams coalesced text and tool phases, ends the turn", async () => {
@@ -544,6 +618,21 @@ describe("DesktopRemoteMirror", () => {
 		const list = (await request("session.list")) as { sessions: Array<{ id: string }> };
 		expect(list.sessions.map((session) => session.id)).toEqual([keyForPath(PROJECT_PATH)]);
 		mirror.stop();
+	});
+
+	it("answers file requests against the session's own working directory, not its project", async () => {
+		const { request, fileCalls } = harness();
+		await request("session.list");
+		const key = keyForPath(CONVERSATION_PATH);
+		await request("file.list", { path: "out" }, key);
+		await request("file.read", { path: "a.md", offset: 0 }, key);
+		await expect(request("file.stat", { path: "~/.ssh/id_rsa" }, key)).rejects.toMatchObject({ code: "forbidden" });
+		expect(fileCalls).toEqual([
+			{ method: "list", cwd: `${CONVERSATION_CWD}/chat`, payload: { path: "out" } },
+			{ method: "read", cwd: `${CONVERSATION_CWD}/chat`, payload: { path: "a.md", offset: 0 } },
+			{ method: "stat", cwd: `${CONVERSATION_CWD}/chat`, payload: { path: "~/.ssh/id_rsa" } },
+		]);
+		await expect(request("file.list", {}, "unknown")).rejects.toMatchObject({ code: "not_found" });
 	});
 
 	it("creates a session in the conversation root by default and returns its summary", async () => {

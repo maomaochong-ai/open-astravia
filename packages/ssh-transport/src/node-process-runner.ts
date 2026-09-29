@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { type ChildProcess, spawn } from "node:child_process";
 import type {
 	SshChannelInvocation,
 	SshProcessChannel,
@@ -47,6 +47,7 @@ function runSshProcess(
 		const child = spawn(sshBinary, [...invocation.argv], {
 			env: { ...baseEnv, ...invocation.env },
 			stdio: ["pipe", "pipe", "pipe"],
+			detached: ownsProcessGroup(),
 		});
 
 		const stdoutChunks: Buffer[] = [];
@@ -56,13 +57,14 @@ function runSshProcess(
 		let settled = false;
 
 		const stop = (reason: "signal" | "timeout"): void => {
-			if (settled || child.killed) return;
+			if (settled || child.exitCode !== null) return;
 			aborted = true;
 			timedOut = reason === "timeout";
-			// 先 SIGTERM 让 ssh 有机会清理 master 连接；它不理会时再硬杀。
-			child.kill("SIGTERM");
+			// ProxyCommand 和测试回环 shell 都会派生子进程；只杀 ssh PID 会让它们
+			// 继续持有 stdout/stderr 管道，close 永远不到。POSIX 下整组 TERM，再整组硬杀。
+			killSshProcess(child, "SIGTERM");
 			setTimeout(() => {
-				if (!settled) child.kill("SIGKILL");
+				if (!settled) killSshProcess(child, "SIGKILL");
 			}, 2000).unref?.();
 		};
 
@@ -129,6 +131,7 @@ function openSshChannel(
 	const child = spawn(sshBinary, [...invocation.argv], {
 		env: { ...baseEnv, ...invocation.env },
 		stdio: ["pipe", "pipe", "pipe"],
+		detached: ownsProcessGroup(),
 	});
 	const stderrChunks: Buffer[] = [];
 	child.stdout.on("data", (chunk: Buffer) => invocation.onStdout(chunk));
@@ -148,10 +151,26 @@ function openSshChannel(
 		},
 		end: () => child.stdin.end(),
 		kill: () => {
-			if (!child.killed) child.kill("SIGTERM");
+			if (child.exitCode === null) killSshProcess(child, "SIGTERM");
 		},
 		exited,
 	};
+}
+
+function ownsProcessGroup(): boolean {
+	return process.platform !== "win32";
+}
+
+function killSshProcess(child: ChildProcess, signal: NodeJS.Signals): void {
+	if (ownsProcessGroup() && child.pid !== undefined) {
+		try {
+			process.kill(-child.pid, signal);
+			return;
+		} catch (error) {
+			if ((error as NodeJS.ErrnoException).code === "ESRCH") return;
+		}
+	}
+	child.kill(signal);
 }
 
 const STREAMED_STDERR_TAIL_BYTES = 16 * 1024;

@@ -57,8 +57,21 @@ function unsupportedInputAdapter(reason: string): SystemInputAdapter {
 	};
 }
 
-function createWindowsInputAdapter(): SystemInputAdapter {
-	// Loaded lazily so Linux/macOS builds do not resolve the native DLL binding.
+/**
+ * koffi registers named types process-wide, so defining `INPUT` or `CGPoint` a second
+ * time throws. The host builds a new adapter each time it restarts; the bindings are
+ * loaded once and shared.
+ */
+function once<T>(load: () => T): () => T {
+	let loaded: { readonly value: T } | undefined;
+	return () => {
+		loaded ??= { value: load() };
+		return loaded.value;
+	};
+}
+
+// Loaded lazily so Linux/macOS builds do not resolve the native DLL binding.
+const windowsInput = once(() => {
 	const koffi = createRequire(import.meta.url)("koffi") as typeof Koffi;
 	const user32 = koffi.load("user32.dll");
 	const MOUSEINPUT = koffi.struct({
@@ -89,7 +102,11 @@ function createWindowsInputAdapter(): SystemInputAdapter {
 	const SetCursorPos = user32.func("int __stdcall SetCursorPos(int, int)");
 	const GetSystemMetrics = user32.func("int __stdcall GetSystemMetrics(int)");
 	const MapVirtualKey = user32.func("uint32 __stdcall MapVirtualKeyW(uint32, uint32)");
+	return { SendInput, SetCursorPos, GetSystemMetrics, MapVirtualKey, inputSize: koffi.sizeof(INPUT) };
+});
 
+function createWindowsInputAdapter(): SystemInputAdapter {
+	const { SendInput, SetCursorPos, GetSystemMetrics, MapVirtualKey, inputSize } = windowsInput();
 	let enabled = true;
 	return {
 		supported: true,
@@ -111,7 +128,7 @@ function createWindowsInputAdapter(): SystemInputAdapter {
 					SendInput(
 						1,
 						{ type: 0, u: { mi: { dx: 0, dy: 0, mouseData: 0, dwFlags: flags, time: 0, dwExtraInfo: 0 } } },
-						koffi.sizeof(INPUT),
+						inputSize,
 					);
 				}
 				return;
@@ -125,8 +142,21 @@ function createWindowsInputAdapter(): SystemInputAdapter {
 							mi: { dx: 0, dy: 0, mouseData: message.deltaY >>> 0, dwFlags: 0x0800, time: 0, dwExtraInfo: 0 },
 						},
 					},
-					koffi.sizeof(INPUT),
+					inputSize,
 				);
+				return;
+			}
+			if (message.type === "text") {
+				// KEYEVENTF_UNICODE types each UTF-16 unit whatever the keyboard layout or input method.
+				for (const unit of utf16Units(message.text)) {
+					for (const flags of [0x0004, 0x0004 | 0x0002]) {
+						SendInput(
+							1,
+							{ type: 1, u: { ki: { wVk: 0, wScan: unit, dwFlags: flags, time: 0, dwExtraInfo: 0 } } },
+							inputSize,
+						);
+					}
+				}
 				return;
 			}
 			if (message.type === "key") {
@@ -137,18 +167,14 @@ function createWindowsInputAdapter(): SystemInputAdapter {
 				SendInput(
 					1,
 					{ type: 1, u: { ki: { wVk: 0, wScan: scan, dwFlags: flags, time: 0, dwExtraInfo: 0 } } },
-					koffi.sizeof(INPUT),
+					inputSize,
 				);
 			}
 		},
 	};
 }
 
-function createMacInputAdapter(): SystemInputAdapter {
-	if (!systemPreferences.isTrustedAccessibilityClient(false)) {
-		log.warn("macOS accessibility permission is required for remote input");
-		return unsupportedInputAdapter("accessibility_permission_required");
-	}
+const macInput = once(() => {
 	const koffi = createRequire(import.meta.url)("koffi") as typeof Koffi;
 	const coreGraphics = koffi.load("/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics");
 	const coreFoundation = koffi.load("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation");
@@ -163,7 +189,43 @@ function createMacInputAdapter(): SystemInputAdapter {
 	const CGDisplayPixelsWide = coreGraphics.func("size_t CGDisplayPixelsWide(uint32)");
 	const CGDisplayPixelsHigh = coreGraphics.func("size_t CGDisplayPixelsHigh(uint32)");
 	const CFRelease = coreFoundation.func("void CFRelease(void *)");
+	const CGEventSetIntegerValueField = coreGraphics.func("void CGEventSetIntegerValueField(void *, uint32, int64)");
+	const CGEventKeyboardSetUnicodeString = coreGraphics.func(
+		"void CGEventKeyboardSetUnicodeString(void *, unsigned long, const uint16_t *)",
+	);
+	return {
+		CGEventKeyboardSetUnicodeString,
+		CGEventCreateMouseEvent,
+		CGEventCreateKeyboardEvent,
+		CGEventCreateScrollWheelEvent,
+		CGEventPost,
+		CGMainDisplayID,
+		CGDisplayPixelsWide,
+		CGDisplayPixelsHigh,
+		CFRelease,
+		CGEventSetIntegerValueField,
+	};
+});
+
+function createMacInputAdapter(): SystemInputAdapter {
+	if (!systemPreferences.isTrustedAccessibilityClient(false)) {
+		log.warn("macOS accessibility permission is required for remote input");
+		return unsupportedInputAdapter("accessibility_permission_required");
+	}
+	const {
+		CGEventKeyboardSetUnicodeString,
+		CGEventCreateMouseEvent,
+		CGEventCreateKeyboardEvent,
+		CGEventCreateScrollWheelEvent,
+		CGEventPost,
+		CGMainDisplayID,
+		CGDisplayPixelsWide,
+		CGDisplayPixelsHigh,
+		CFRelease,
+		CGEventSetIntegerValueField,
+	} = macInput();
 	let enabled = true;
+	const pointer = new MacPointerState();
 	const post = (event: unknown): void => {
 		if (!event) return;
 		CGEventPost(0, event);
@@ -183,19 +245,40 @@ function createMacInputAdapter(): SystemInputAdapter {
 					x: message.x * Math.max(1, Number(CGDisplayPixelsWide(display)) - 1),
 					y: message.y * Math.max(1, Number(CGDisplayPixelsHigh(display)) - 1),
 				};
-				const eventType = message.type === "pointer.move" ? 5 : macMouseEventType(message.button, message.action);
-				post(
-					CGEventCreateMouseEvent(
-						null,
-						eventType,
-						point,
-						message.type === "pointer.button" ? macMouseButton(message.button) : 0,
-					),
-				);
+				if (message.type === "pointer.move") {
+					const move = pointer.move(point.x, point.y);
+					const event = CGEventCreateMouseEvent(null, move.eventType, point, move.button);
+					// The window server moves a window by these, not by the position.
+					if (event) {
+						CGEventSetIntegerValueField(event, MAC_MOUSE_EVENT_DELTA_X, move.deltaX);
+						CGEventSetIntegerValueField(event, MAC_MOUSE_EVENT_DELTA_Y, move.deltaY);
+					}
+					post(event);
+					return;
+				}
+				const press = pointer.press(message.button, message.action, point.x, point.y, Date.now());
+				const event = CGEventCreateMouseEvent(null, press.eventType, point, macMouseButton(message.button));
+				// Without the click count, two quick clicks never make a double-click.
+				if (event) CGEventSetIntegerValueField(event, MAC_MOUSE_EVENT_CLICK_STATE, press.clickCount);
+				post(event);
 				return;
 			}
 			if (message.type === "pointer.scroll") {
 				post(CGEventCreateScrollWheelEvent(null, 0, 2, Math.round(-message.deltaY), Math.round(-message.deltaX)));
+				return;
+			}
+			if (message.type === "text") {
+				// A key event carries at most 20 UTF-16 units of text; longer text goes in pieces.
+				const units = utf16Units(message.text);
+				for (let start = 0; start < units.length; start += 20) {
+					const piece = Uint16Array.from(units.slice(start, start + 20));
+					for (const down of [true, false]) {
+						const event = CGEventCreateKeyboardEvent(null, 0, down);
+						if (!event) continue;
+						CGEventKeyboardSetUnicodeString(event, piece.length, piece);
+						post(event);
+					}
+				}
 				return;
 			}
 			if (message.type === "key") {
@@ -262,6 +345,75 @@ function createLinuxX11InputAdapter(): SystemInputAdapter {
 			XFlush(display);
 		},
 	};
+}
+
+function utf16Units(text: string): number[] {
+	return Array.from({ length: text.length }, (_, index) => text.charCodeAt(index));
+}
+
+/** `kCGMouseEventClickState`. */
+const MAC_MOUSE_EVENT_CLICK_STATE = 1;
+/** `kCGMouseEventDeltaX` and `kCGMouseEventDeltaY`. */
+const MAC_MOUSE_EVENT_DELTA_X = 4;
+const MAC_MOUSE_EVENT_DELTA_Y = 5;
+/** Clicks closer than this, in time and in pixels, count as one double- or triple-click. */
+const MAC_MULTI_CLICK_MS = 500;
+const MAC_MULTI_CLICK_DISTANCE = 6;
+
+/**
+ * What macOS needs to hear beyond where the pointer is: a move with a button held is a
+ * drag (`kCGEventLeftMouseDragged` and friends), or apps see the pointer move without
+ * dragging anything; a move carries how far it went, which is what moves a window by
+ * its title bar; and a press carries how many clicks in a row it makes.
+ */
+export class MacPointerState {
+	private readonly held = new Set<"left" | "middle" | "right">();
+	private last: { button: string; at: number; x: number; y: number; count: number } | undefined;
+
+	private position: { x: number; y: number } | undefined;
+
+	move(
+		x: number,
+		y: number,
+	): { readonly eventType: number; readonly button: number; readonly deltaX: number; readonly deltaY: number } {
+		const deltaX = this.position ? Math.round(x - this.position.x) : 0;
+		const deltaY = this.position ? Math.round(y - this.position.y) : 0;
+		this.position = { x, y };
+		const kind = this.held.has("left")
+			? { eventType: 6, button: 0 }
+			: this.held.has("right")
+				? { eventType: 7, button: 1 }
+				: this.held.has("middle")
+					? { eventType: 27, button: 2 }
+					: { eventType: 5, button: 0 };
+		return { ...kind, deltaX, deltaY };
+	}
+
+	press(
+		button: "left" | "middle" | "right",
+		action: "down" | "up",
+		x: number,
+		y: number,
+		now: number,
+	): { readonly eventType: number; readonly clickCount: number } {
+		const eventType = macMouseEventType(button, action);
+		if (action === "up") {
+			this.held.delete(button);
+			return { eventType, clickCount: this.last?.button === button ? this.last.count : 1 };
+		}
+		this.held.add(button);
+		this.position = { x, y };
+		const last = this.last;
+		const again =
+			last !== undefined &&
+			last.button === button &&
+			now - last.at <= MAC_MULTI_CLICK_MS &&
+			Math.abs(x - last.x) <= MAC_MULTI_CLICK_DISTANCE &&
+			Math.abs(y - last.y) <= MAC_MULTI_CLICK_DISTANCE;
+		const count = again ? last.count + 1 : 1;
+		this.last = { button, at: now, x, y, count };
+		return { eventType, clickCount: count };
+	}
 }
 
 function macMouseButton(button: "left" | "middle" | "right"): number {

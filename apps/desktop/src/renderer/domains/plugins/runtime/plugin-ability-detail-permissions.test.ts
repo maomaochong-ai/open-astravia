@@ -81,7 +81,9 @@ describe("ability detail permission recovery", () => {
 		const initial = await loadPluginSnapshot([denied], [], undefined, activate, onError);
 
 		expect(warn).toHaveBeenCalledWith(
-			"Plugin cli-proxy-api skipped ability detail slot: missing permission ui.slot.ability-detail",
+			expect.stringMatching(
+				/^\[plugin-runtime\] contribution skipped \{"pluginId":"cli-proxy-api","pluginVersion":"1\.0\.3","stage":"permission-check","reason":"missing-permission","permission":"ui\.slot\.ability-detail","contribution":"ability detail slot"\}$/,
+			),
 		);
 		expect(initial[0]?.abilityDetailSlots).toEqual([]);
 		expect(denied.grantedPermissions).toEqual([]);

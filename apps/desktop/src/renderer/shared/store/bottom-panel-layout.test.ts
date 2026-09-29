@@ -72,6 +72,21 @@ describe("open-tab", () => {
 		expect(findBottomPanelTab(state.root, "c")?.leaf.id).toBe("leaf-a");
 		expect(state.activeLeafId).toBe("leaf-a");
 	});
+
+	it("带初始载荷的 tab 原样保留载荷，不带的不写 payload 键", () => {
+		const payload = { kind: "terminal-launch", command: "bun run dev", issued: false };
+		const withPayload: BottomPanelAction = {
+			type: "open-tab",
+			tabId: "b",
+			componentId: "terminal",
+			newLeafId: "leaf-b",
+			payload,
+		};
+		const state = run(emptyBottomPanelState(), openTerminal("a"), withPayload);
+
+		expect(findBottomPanelTab(state.root, "b")?.tab).toEqual({ tabId: "b", componentId: "terminal", payload });
+		expect(findBottomPanelTab(state.root, "a")?.tab).toEqual({ tabId: "a", componentId: "terminal" });
+	});
 });
 
 describe("close-tab", () => {

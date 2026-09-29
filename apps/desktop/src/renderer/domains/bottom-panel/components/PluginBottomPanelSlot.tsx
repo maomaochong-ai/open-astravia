@@ -4,6 +4,7 @@ import {
 	type PluginBottomPanelCloseDecision,
 	type PluginBottomPanelCloseRequest,
 	type PluginBottomPanelMeta,
+	type PluginBottomPanelTerminalRequest,
 } from "@vetta-org/plugin-sdk";
 import { type JSX, useMemo } from "react";
 import { PluginI18nBoundary } from "../../plugins/runtime/plugin-i18n";
@@ -36,8 +37,14 @@ export function PluginBottomPanelSlot({ panel }: { panel: RegisteredBottomPanel 
 				handle.setCloseGuard(
 					guard ? (request) => guard({ instanceId: request.tabId, reason: request.reason }) : null,
 				),
+			// 与其它受门控的调用一致：缺权限直接抛，插件作者一眼能看出少声明了什么。
+			openTerminal: (request: PluginBottomPanelTerminalRequest) => {
+				if (!panel.terminalAccess) throw new Error("Plugin permission denied: terminal.run");
+				return handle.openTerminal(request);
+			},
+			revealInstance: (instanceId: string) => handle.revealTab(instanceId),
 		}),
-		[handle],
+		[handle, panel.terminalAccess],
 	);
 
 	return (

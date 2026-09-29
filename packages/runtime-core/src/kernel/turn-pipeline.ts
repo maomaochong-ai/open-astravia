@@ -276,7 +276,10 @@ export class TurnPipeline {
 				if (preparedRequest.action === "handled") {
 					return { status: "handled", sessionId: state.sessionId };
 				}
-				input = preparedRequest.input;
+				input =
+					request.messageId && !preparedRequest.input.messageId
+						? { ...preparedRequest.input, messageId: request.messageId }
+						: preparedRequest.input;
 			}
 
 			await this.enterStage(state.sessionId, turnId, "conversation_loading");
@@ -303,7 +306,15 @@ export class TurnPipeline {
 					record,
 					timestamp: record.timestamp ?? startedAt,
 				})),
-				...(input ? [{ kind: "message" as const, message: input.message }] : []),
+				...(input
+					? [
+							{
+								kind: "message" as const,
+								message: input.message,
+								...(input.messageId ? { messageId: input.messageId } : {}),
+							},
+						]
+					: []),
 				...trailingContext.map((record) => ({
 					kind: "context" as const,
 					record,
@@ -325,6 +336,7 @@ export class TurnPipeline {
 					type: "message.appended",
 					sessionId: state.sessionId,
 					turnId,
+					messageId: input.messageId ?? kernelMessageId(turnId, state.version + startEvents.length + 1),
 					message: input.message,
 					timestamp: startedAt,
 				});
@@ -572,6 +584,7 @@ export class TurnPipeline {
 						type: "message.appended",
 						sessionId: state.sessionId,
 						turnId,
+						messageId: event.messageId ?? kernelMessageId(turnId, state.version + 1),
 						message: event.message,
 						...(messageFailure ? { failure: messageFailure } : {}),
 						...(event.origin ? { origin: event.origin } : {}),
@@ -609,6 +622,7 @@ export class TurnPipeline {
 					type: "message.appended",
 					sessionId: state.sessionId,
 					turnId,
+					messageId: event.messageId ?? kernelMessageId(turnId, state.version + 1),
 					message: event.message,
 					...(messageFailure ? { failure: messageFailure } : {}),
 					...(event.origin ? { origin: event.origin } : {}),
@@ -1241,4 +1255,8 @@ function omitLastFailedAssistant(envelopes: readonly RuntimeMessageEnvelope[]): 
 	}
 	if (failedAssistantIndex < 0) return envelopes;
 	return envelopes.filter((_, index) => index !== failedAssistantIndex);
+}
+
+function kernelMessageId(turnId: string, journalSequence: number): string {
+	return `message:${turnId}:${journalSequence}`;
 }

@@ -4,11 +4,17 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { getVettaHomePath } from "@vetta/action-rpc";
 import type { SshHost } from "@vetta/ssh-transport";
-import { atomicWriteJSON } from "@vetta/toolkit/atomic-write";
+import { atomicWriteJSON, atomicWriteJSONAsync } from "@vetta/toolkit/atomic-write";
 import { isLanguagePreference, type LanguagePreference } from "../../shared/i18n/config.js";
+import {
+	DEFAULT_NOTIFICATION_PREFERENCES,
+	type DesktopNotificationPreferences,
+	normalizeNotificationPreferences,
+} from "../../shared/notification-preferences.js";
 import { normalizeShortcutsConfig, type ShortcutsConfig } from "../../shared/shortcuts.js";
 import { isAgentMode } from "../agent-modes/index.js";
 import { DEFAULT_PROXY_CONFIG, type DesktopProxyConfig, normalizeProxyConfig } from "../proxy/proxy-settings.js";
+import { DESKTOP_CONFIG_SCHEMA_VERSION, migrateDesktopConfig } from "./desktop/migrate-config.js";
 
 export interface ProjectEntry {
 	path: string;
@@ -34,6 +40,7 @@ export interface ImageGenerationConfig {
 }
 
 export interface DesktopConfig {
+	schemaVersion: number;
 	projects: ProjectEntry[];
 	archivedProjects: ProjectEntry[];
 	workspacePath: string;
@@ -42,6 +49,7 @@ export interface DesktopConfig {
 	vettaAppPath?: string;
 	vettaCliAppPath?: string;
 	notificationsEnabled?: boolean;
+	notificationPreferences: DesktopNotificationPreferences;
 	language?: LanguagePreference;
 	/** 新建会话的默认工作模式（合法值来自 main/agent-modes 模式注册表，ADR-0071）。会话创建时固化进会话，改这里只影响之后新建的会话。 */
 	defaultAgentMode?: string;
@@ -65,7 +73,7 @@ export interface DesktopConfig {
 	 * 「本机连到远端主机上开发」，方向相反。
 	 *
 	 * 只读投影：真身在 `ssh-hosts.json`（见 {@link writeSshHosts}），
-	 * {@link writeDesktopConfig} 会忽略这个字段。
+	 * {@link updateDesktopConfig} 会忽略这个字段。
 	 */
 	sshHosts?: SshHost[];
 }
@@ -74,6 +82,15 @@ export interface RemoteControlDeviceRecord {
 	/** 配对 id，也是中继房间名与局域网路径段。 */
 	id: string;
 	name: string;
+	/** 用户在电脑上改过名字；此后不再用手机报上的名称覆盖。 */
+	renamed?: boolean;
+	/** 允许这部手机查看并操作电脑屏幕；缺省开启，用户可逐台关闭。 */
+	desktopControl?: boolean;
+	/**
+	 * 这部手机按需订阅画面（ADR-0140）。经中继握手时电脑看不到手机的能力位，
+	 * 所以一旦从局域网握手或订阅请求得知，就记下来。
+	 */
+	screenOnDemand?: boolean;
 	/** 手机长期凭据的 SHA-256 hex；明文只在首次绑定前留在凭据库里。 */
 	mobileSecretHash: string;
 	/** 首次成功握手后钉住的手机身份公钥（base64url）；未钉住表示邀请尚未被领取。 */
@@ -131,6 +148,7 @@ const CONFIG_PATH = join(getVettaHomePath(), "desktop-config.json");
  */
 const SSH_HOSTS_PATH = join(getVettaHomePath(), "ssh-hosts.json");
 const DEFAULT_CONFIG: DesktopConfig = {
+	schemaVersion: DESKTOP_CONFIG_SCHEMA_VERSION,
 	projects: [],
 	archivedProjects: [],
 	workspacePath: join(getVettaHomePath(), "workspace"),
@@ -138,6 +156,7 @@ const DEFAULT_CONFIG: DesktopConfig = {
 	defaultAgentMode: "work",
 	debugMode: false,
 	notificationsEnabled: true,
+	notificationPreferences: DEFAULT_NOTIFICATION_PREFERENCES,
 	experimental: { vettaCli: true, agentSkills: true },
 	proxy: { ...DEFAULT_PROXY_CONFIG },
 	imageGeneration: {},
@@ -255,26 +274,43 @@ export function normalizeImageGeneration(value: unknown): ImageGenerationConfig 
 	};
 }
 
-export async function readDesktopConfig(): Promise<DesktopConfig> {
-	try {
-		const raw = await readFile(CONFIG_PATH, "utf8");
-		return parseDesktopConfig(JSON.parse(raw) as Record<string, unknown>);
-	} catch {
-		return { ...DEFAULT_CONFIG };
-	}
+export function readDesktopConfig(): Promise<DesktopConfig> {
+	return enqueueDesktopConfigOperation(async () => {
+		try {
+			const raw: unknown = JSON.parse(await readFile(CONFIG_PATH, "utf8"));
+			const result = migrateDesktopConfig(raw);
+			readSshHostsSync(result.config.sshHosts);
+			if (result.migrated) {
+				await atomicWriteJSONAsync(CONFIG_PATH, { ...result.config, sshHosts: undefined });
+			}
+			return parseDesktopConfig(result.config);
+		} catch {
+			return { ...DEFAULT_CONFIG };
+		}
+	});
 }
 
 export function readConfigSync(): DesktopConfig {
 	try {
 		const raw = readFileSync(CONFIG_PATH, "utf8");
-		return parseDesktopConfig(JSON.parse(raw) as Record<string, unknown>);
+		return migrateAndParseDesktopConfig(JSON.parse(raw));
 	} catch {
 		return { ...DEFAULT_CONFIG };
 	}
 }
 
+function migrateAndParseDesktopConfig(value: unknown): DesktopConfig {
+	const result = migrateDesktopConfig(value);
+	readSshHostsSync(result.config.sshHosts);
+	return parseDesktopConfig(result.config);
+}
+
 function parseDesktopConfig(parsed: Record<string, unknown>): DesktopConfig {
 	return {
+		schemaVersion:
+			typeof parsed.schemaVersion === "number" && Number.isInteger(parsed.schemaVersion)
+				? parsed.schemaVersion
+				: DESKTOP_CONFIG_SCHEMA_VERSION,
 		projects: migrateProjectEntries(parsed.projects),
 		archivedProjects: migrateProjectEntries(parsed.archivedProjects),
 		workspacePath:
@@ -288,6 +324,7 @@ function parseDesktopConfig(parsed: Record<string, unknown>): DesktopConfig {
 		vettaAppPath: typeof parsed.vettaAppPath === "string" ? parsed.vettaAppPath : undefined,
 		vettaCliAppPath: typeof parsed.vettaCliAppPath === "string" ? parsed.vettaCliAppPath : undefined,
 		notificationsEnabled: typeof parsed.notificationsEnabled === "boolean" ? parsed.notificationsEnabled : true,
+		notificationPreferences: normalizeNotificationPreferences(parsed.notificationPreferences),
 		language: isLanguagePreference(parsed.language) ? parsed.language : undefined,
 		experimental: normalizeExperimental(parsed.experimental),
 		proxy: normalizeProxyConfig(parsed.proxy),
@@ -339,6 +376,9 @@ export function normalizeRemoteControl(value: unknown): DesktopConfig["remoteCon
 					{
 						id: record.id,
 						name: typeof record.name === "string" && record.name ? record.name : record.id,
+						...(record.renamed === true ? { renamed: true } : {}),
+						...(record.desktopControl === false ? { desktopControl: false } : {}),
+						...(record.screenOnDemand === true ? { screenOnDemand: true } : {}),
 						mobileSecretHash: record.mobileSecretHash,
 						mobileIdentityKey:
 							typeof record.mobileIdentityKey === "string" ? record.mobileIdentityKey : undefined,
@@ -397,22 +437,71 @@ function normalizeSshHosts(value: unknown): SshHost[] | undefined {
 	return hosts;
 }
 
+export type DesktopConfigUpdater = (current: DesktopConfig) => DesktopConfig | Promise<DesktopConfig>;
+
+let desktopConfigOperationQueue: Promise<void> = Promise.resolve();
+
+function enqueueDesktopConfigOperation<T>(operation: () => Promise<T>): Promise<T> {
+	const result = desktopConfigOperationQueue.then(operation, operation);
+	desktopConfigOperationQueue = result.then(
+		() => undefined,
+		() => undefined,
+	);
+	return result;
+}
+
 /**
- * 整文件写回，但保留磁盘上本版本不认识的字段。
+ * 在进程内唯一的配置写队列上读取最新快照、修改并原子落盘。
  *
- * 新旧版本共用同一份 `~/.vetta`（开发版与已安装的正式版、或升级后又回退）。读路径
- * {@link parseDesktopConfig} 是字段白名单，不认识的字段不进内存；若写回时整份覆盖，
- * 旧版任何一次保存都会把新版的字段抹掉——0.5.58 启动时顺手写回 CLI 路径，就这样清空了
- * sshHosts，远程项目随之全部报「Unknown SSH host」。已知字段仍以传入值为准：显式给
- * `undefined` 的键在序列化时被丢掉，删除语义不变。
+ * 新旧版本可能共用同一份配置，磁盘上本版本不认识的字段会原样保留。已知字段仍以 updater
+ * 返回值为准，显式赋 `undefined` 的键在序列化时被删除。SSH 主机有独立事实源，不随这里
+ * 的只读投影写回。
+ *
+ * updater 必须只计算下一份配置，不应在里面再次读写 desktop config。它可以执行异步
+ * 计算，但会占住写队列；调用方应先完成与配置无关的 I/O，再进入这里提交最小修改。
  */
-export async function writeDesktopConfig(config: DesktopConfig): Promise<void> {
-	const raw = readRawConfigSync();
-	// 迁移没来得及发生时（文件由外部写入、本进程还没读过）先把旧字段迁出，再从这里删掉。
-	readSshHostsSync(raw.sshHosts);
-	// sshHosts 由 writeSshHosts 独占：调用方手里的是读配置那一刻的快照，拿它写回会盖掉
-	// 期间刚增删的主机。
-	atomicWriteJSON(CONFIG_PATH, { ...raw, ...config, sshHosts: undefined });
+export function updateDesktopConfig(update: DesktopConfigUpdater): Promise<DesktopConfig> {
+	return enqueueDesktopConfigOperation(async () => {
+		const raw = readRawConfigSync();
+		const migrated = migrateDesktopConfig(raw).config;
+		// 迁移没来得及发生时（文件由外部写入、本进程还没读过）先把旧字段迁出，再从这里删掉。
+		readSshHostsSync(migrated.sshHosts);
+		const current = parseDesktopConfig(migrated);
+		const next = await update(current);
+		if (next === current) return current;
+		// sshHosts 由 writeSshHosts 独占：调用方手里的 DesktopConfig 只是只读投影，不能写回。
+		const notificationPreferences = preserveFutureNotificationFields(raw, next.notificationPreferences);
+		await atomicWriteJSONAsync(CONFIG_PATH, {
+			...raw,
+			...next,
+			notificationPreferences,
+			sshHosts: undefined,
+		});
+		return next;
+	});
+}
+
+function preserveFutureNotificationFields(
+	raw: Record<string, unknown>,
+	preferences: DesktopNotificationPreferences,
+): DesktopNotificationPreferences | Record<string, unknown> {
+	if (typeof raw.schemaVersion !== "number" || raw.schemaVersion <= DESKTOP_CONFIG_SCHEMA_VERSION) return preferences;
+	if (typeof raw.notificationPreferences !== "object" || raw.notificationPreferences === null) return preferences;
+	const future = raw.notificationPreferences as Record<string, unknown>;
+	const futureEvents =
+		typeof future.events === "object" && future.events !== null ? (future.events as Record<string, unknown>) : {};
+	const events = Object.fromEntries(
+		Object.entries(preferences.events).map(([event, value]) => {
+			const futureEvent = futureEvents[event];
+			return [
+				event,
+				typeof futureEvent === "object" && futureEvent !== null
+					? { ...(futureEvent as Record<string, unknown>), ...value }
+					: value,
+			];
+		}),
+	);
+	return { ...future, ...preferences, events: { ...futureEvents, ...events } };
 }
 
 function readRawConfigSync(): Record<string, unknown> {
@@ -427,9 +516,11 @@ function readRawConfigSync(): Record<string, unknown> {
 }
 
 export async function persistVettaCliPaths(paths: { vettaAppPath: string; vettaCliAppPath: string }): Promise<void> {
-	const config = await readDesktopConfig();
-	if (config.vettaAppPath === paths.vettaAppPath && config.vettaCliAppPath === paths.vettaCliAppPath) return;
-	await writeDesktopConfig({ ...config, ...paths });
+	await updateDesktopConfig((config) =>
+		config.vettaAppPath === paths.vettaAppPath && config.vettaCliAppPath === paths.vettaCliAppPath
+			? config
+			: { ...config, ...paths },
+	);
 }
 
 export function expandTildePath(path: string): string {

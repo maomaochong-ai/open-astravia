@@ -3,6 +3,10 @@ export type {
 	RemoteDeviceStatus,
 	RemoteDiagnosticsSnapshot,
 	RemoteEventPayloads,
+	RemoteFileChunk,
+	RemoteFileEntry,
+	RemoteFileInfo,
+	RemoteInputState,
 	RemoteMessageEvent,
 	RemoteModelOption,
 	RemoteProjectSummary,
@@ -12,9 +16,13 @@ export type {
 	RemoteQuestionRequest,
 	RemoteRequestPayloads,
 	RemoteResponsePayloads,
+	RemoteScreenCursor,
+	RemoteScreenState,
+	RemoteScreenStatus,
 	RemoteSessionState,
 	RemoteSessionStatus,
 	RemoteSessionSummary,
+	RemoteSkillOption,
 	RemoteToolCallSummary,
 	RemoteToolEvent,
 	RemoteToolPhase,
@@ -22,13 +30,20 @@ export type {
 	RemoteUploadKind,
 } from "./api.js";
 export {
+	REMOTE_FILE_CHUNK_BYTES,
+	REMOTE_MAX_FILE_BYTES,
 	REMOTE_MAX_UPLOAD_BYTES,
 	readDevicePaired,
 	readDeviceStatus,
+	readFileChunk,
+	readFileEntries,
+	readFileInfo,
 	readMessageEvent,
 	readModelOptions,
 	readProjectSummaries,
 	readQuestionRequest,
+	readScreenCursor,
+	readScreenStatus,
 	readSessionState,
 	readSessionStatus,
 	readSessionSummaries,
@@ -58,6 +73,26 @@ export { RemoteEventJournal } from "./event-journal.js";
 export { FakeRelay } from "./fake-relay.js";
 export type { FakeTransportOptions } from "./fake-transport.js";
 export { FakeTransport } from "./fake-transport.js";
+export type { InviteQr, RemoteInviteEnvelope } from "./invite-code.js";
+export {
+	buildInviteQr,
+	formatInviteCode,
+	generateInviteCode,
+	generateInvitePassword,
+	INVITE_ASSOCIATED_DATA,
+	INVITE_CODE_LENGTH,
+	INVITE_KDF_ITERATIONS,
+	INVITE_PASSWORD_LENGTH,
+	inviteBoxId,
+	inviteBoxUrl,
+	isValidInvitePassword,
+	MAX_INVITE_ENVELOPE_CHARS,
+	normalizeInviteCode,
+	openInvite,
+	parseInviteQr,
+	readInviteEnvelope,
+	sealInvite,
+} from "./invite-code.js";
 export type { RemotePairingInvite } from "./pairing-uri.js";
 export {
 	buildPairingUri,

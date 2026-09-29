@@ -3,6 +3,8 @@ package org.vetta.android.app
 import com.russhwolf.settings.MapSettings
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import org.vetta.android.domain.work.NotificationPrefs
+import org.vetta.android.domain.work.QuietHours
 
 class AppPreferencesTest {
     @Test
@@ -11,37 +13,25 @@ class AppPreferencesTest {
     }
 
     @Test
-    fun productPreferencesPersistBehaviorChoices() {
-        val preferences = AppPreferences(MapSettings())
-
-        preferences.setAutoResumeLastSession(false)
-        preferences.setMotionEnabled(false)
-        preferences.setConfirmBeforeDelete(false)
-
-        assertEquals(false, preferences.autoResumeLastSession.value)
-        assertEquals(false, preferences.motionEnabled.value)
-        assertEquals(false, preferences.confirmBeforeDelete.value)
+    fun backgroundLinkIsOffUntilChosenAndPersists() {
+        val settings = MapSettings()
+        assertEquals(false, AppPreferences(settings).backgroundLink.value)
+        AppPreferences(settings).setBackgroundLink(true)
+        assertEquals(true, AppPreferences(settings).backgroundLink.value)
     }
 
     @Test
-    fun booleanPreferencesReadExistingTypedValues() {
+    fun themeChoicePersists() {
         val settings = MapSettings()
-        settings.putBoolean("vetta.prefs.auto_resume", false)
-        settings.putBoolean("vetta.prefs.motion_enabled", false)
-        settings.putBoolean("vetta.prefs.confirm_delete", false)
-
-        val preferences = AppPreferences(settings)
-
-        assertEquals(false, preferences.autoResumeLastSession.value)
-        assertEquals(false, preferences.motionEnabled.value)
-        assertEquals(false, preferences.confirmBeforeDelete.value)
+        AppPreferences(settings).setThemeMode(ThemeMode.Dark)
+        assertEquals(ThemeMode.Dark, AppPreferences(settings).themeMode.value)
     }
 
     @Test
-    fun booleanPreferencesStillReadLegacyStringValues() {
+    fun notificationChoicesSurviveARelaunch() {
         val settings = MapSettings()
-        settings.putString("vetta.prefs.auto_resume", "false")
-
-        assertEquals(false, AppPreferences(settings).autoResumeLastSession.value)
+        assertEquals(NotificationPrefs(), AppPreferences(settings).notifications.value, "everything on by default")
+        AppPreferences(settings).setNotifications { it.copy(finished = false, mutedProjects = setOf("/code/noisy"), quietHours = QuietHours()) }
+        assertEquals(NotificationPrefs(finished = false, mutedProjects = setOf("/code/noisy"), quietHours = QuietHours()), AppPreferences(settings).notifications.value)
     }
 }

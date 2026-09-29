@@ -7,7 +7,7 @@ import {
 } from "@vetta-org/capability-sdk";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { filterSkills, sortSkillsForPanel } from "../lib/skill-ranking";
+import { filterSkills, sortSkillsForPanel } from "@/shared/skill-ranking";
 
 export interface SkillListModel {
 	/** 已按「调用次数 → 类别 → 最近使用 → 名称」排好并过滤完的单列列表。 */

@@ -1,9 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
 	REMOTE_MAX_UPLOAD_BYTES,
+	readDeviceStatus,
+	readFileChunk,
+	readFileEntries,
+	readFileInfo,
 	readMessageEvent,
 	readModelOptions,
 	readQuestionRequest,
+	readScreenCursor,
+	readScreenStatus,
 	readSessionState,
 	readSessionSummaries,
 	readToolEvent,
@@ -159,5 +165,85 @@ describe("remote api payload readers", () => {
 				error: undefined,
 			},
 		]);
+	});
+
+	it("reads file entries, keeping the session directory's own empty path", () => {
+		expect(
+			readFileEntries({
+				path: "",
+				entries: [
+					{ name: "out", path: "out", isDirectory: true, size: 0, modifiedAt: 3 },
+					{ name: "a.md", path: "a.md", size: 12 },
+					{ path: "nameless" },
+					"junk",
+				],
+			}),
+		).toEqual([
+			{ name: "out", path: "out", isDirectory: true, size: 0, modifiedAt: 3 },
+			{ name: "a.md", path: "a.md", isDirectory: false, size: 12, modifiedAt: 0 },
+		]);
+		expect(readFileEntries(undefined)).toEqual([]);
+	});
+
+	it("reads a file description and a chunk", () => {
+		expect(
+			readFileInfo({
+				file: { name: "x.html", path: "~/Desktop/x.html", size: 5, modifiedAt: 9, mimeType: "text/html" },
+			}),
+		).toEqual({
+			name: "x.html",
+			path: "~/Desktop/x.html",
+			isDirectory: false,
+			size: 5,
+			modifiedAt: 9,
+			mimeType: "text/html",
+			displayPath: "~/Desktop/x.html",
+		});
+		expect(readFileInfo({})).toBeUndefined();
+		expect(readFileChunk({ data: "aGk=", offset: 0, totalSize: 2, modifiedAt: 9, mimeType: "text/plain" })).toEqual({
+			data: "aGk=",
+			offset: 0,
+			totalSize: 2,
+			modifiedAt: 9,
+			mimeType: "text/plain",
+		});
+		expect(readFileChunk({ data: "aGk=" })).toBeUndefined();
+	});
+
+	it("treats a desktop that does not mention fileRead as unable to serve files", () => {
+		const base = { deviceName: "Mac", lanEndpoints: [], relayEnabled: true, runningSessionCount: 0 };
+		expect(readDeviceStatus({ ...base, fileRead: true })?.fileRead).toBe(true);
+		expect(readDeviceStatus(base)?.fileRead).toBe(false);
+	});
+
+	it("treats a desktop that does not mention screen as streaming whenever P2P is up", () => {
+		const base = { deviceName: "Mac", lanEndpoints: [], relayEnabled: true, runningSessionCount: 0 };
+		expect(readDeviceStatus({ ...base, screen: true })?.screen).toBe(true);
+		expect(readDeviceStatus(base)?.screen).toBe(false);
+	});
+
+	it("reads the pointer's shape and keeps its hot spot inside the image", () => {
+		expect(
+			readScreenCursor({ image: "iVBOR", width: 28, height: 40, hotspotX: 5, hotspotY: 50, screenWidth: 1512 }),
+		).toEqual({ image: "iVBOR", width: 28, height: 40, hotspotX: 5, hotspotY: 40, screenWidth: 1512 });
+		expect(readScreenCursor({ image: "iVBOR", width: 0, height: 40, screenWidth: 1512 })).toBeUndefined();
+		expect(readScreenCursor({ width: 28, height: 40, screenWidth: 1512 })).toBeUndefined();
+	});
+
+	it("reads the screen status and degrades states it does not know", () => {
+		expect(readScreenStatus({ screen: "streaming", input: "ready" })).toEqual({
+			screen: "streaming",
+			input: "ready",
+		});
+		expect(readScreenStatus({ screen: "permission_denied", input: "permission_denied" })).toEqual({
+			screen: "permission_denied",
+			input: "permission_denied",
+		});
+		expect(readScreenStatus({ screen: "hdr", input: "gamepad" })).toEqual({
+			screen: "unavailable",
+			input: "unsupported",
+		});
+		expect(readScreenStatus({ screen: "streaming" })).toBeUndefined();
+		expect(readScreenStatus("streaming")).toBeUndefined();
 	});
 });

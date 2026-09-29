@@ -23,6 +23,7 @@ import { InputBarFooter } from "./InputBarFooter";
 import { InputBarSpeechStatus } from "./InputBarSpeechStatus";
 import { InputBarTodoStatus } from "./InputBarTodoStatus";
 import { InputEditor } from "./editor/InputEditor";
+import { inputBarContentWidthClassName } from "./input-bar-layout";
 import { PromptAttachmentLabels } from "./PromptAttachmentLabels";
 import type { InputBarViewProps } from "./types";
 
@@ -92,7 +93,8 @@ export function InputBarView({ model, className, classNames, children }: InputBa
 			<div
 				className={[
 					// @container：工具栏/动作条按输入区宽度折叠文案（非视口），避免窄栏换行
-					"relative mx-auto w-full max-w-2xl @container transition-opacity duration-150",
+					"relative mx-auto w-full @container transition-opacity duration-150",
+					inputBarContentWidthClassName(model.contentWidth),
 					hasPendingInteraction ? "pointer-events-none opacity-0" : "",
 					classNames?.stack,
 				]
@@ -237,8 +239,9 @@ export function InputBarView({ model, className, classNames, children }: InputBa
 						 * 而它们是同一类「这个会话现在有什么在跑」的指示物。
 						 */}
 						{model.todo || model.bottomPanelPills ? (
-							<div className="flex min-w-0 items-center gap-2">
-								{model.todo ? <InputBarTodoStatus todo={model.todo} /> : null}
+							// 行距由这一行统一给：待办条自带的上内边距只让它自己下沉，与右侧 pill 对不齐。
+							<div className="flex min-w-0 items-center gap-2 px-1 pt-1.5" data-input-bar-status-row="">
+								{model.todo ? <InputBarTodoStatus todo={model.todo} className="p-0" /> : null}
 								{model.bottomPanelPills ? (
 									<BottomPanelPillsView
 										pills={model.bottomPanelPills.pills}

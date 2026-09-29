@@ -781,6 +781,111 @@ describe("Team member concurrency", () => {
 		}
 	});
 
+	it("does not start a reciprocal question turn when a member replies to the question initiator", async () => {
+		const fixture = await createFixture();
+		const [leader, member] = fixture.members;
+		const controls = fixture.service.messageControls(fixture.session.id);
+		const prompt = `Answer this public question from @${fixture.session.memberHandles[leader]}: Introduce yourself`;
+		const memberTurn = fixture.turn(member, prompt);
+
+		await controls.sendMessage({
+			...taskCaller(fixture, leader),
+			requestId: "introduce-member",
+			recipientHandles: [fixture.session.memberHandles[member]!],
+			intent: "question",
+			text: "Introduce yourself",
+			modelIdentity: { api: "openai-responses", provider: "openai", model: "test" },
+		});
+		await memberTurn.started.promise;
+
+		const running = await fixture.service.readCollaborationState(fixture.session.id);
+		const memberAttempt = running.attempts.find(
+			(attempt) =>
+				attempt.workItemId === running.workItems.find((item) => item.assignedToParticipantId === member)?.id,
+		);
+		if (!memberAttempt) throw new Error("Expected the member question attempt to be running");
+		const reply = await controls.sendMessage({
+			sourceRuntimeSessionId: fixture.session.memberRuntime[member]!.sessionId,
+			sourceTurnId: memberAttempt.sourceTurnId,
+			toolCallId: "reply-to-initiator",
+			signal: new AbortController().signal,
+			requestId: "introduce-member-reply",
+			recipientHandles: [fixture.session.memberHandles[leader]!],
+			intent: "question",
+			text: "I have introduced myself; please confirm",
+			modelIdentity: { api: "openai-responses", provider: "openai", model: "test" },
+		});
+
+		const afterReply = await fixture.service.readCollaborationState(fixture.session.id);
+		expect(afterReply.deliveries.find((delivery) => delivery.id === reply.deliveryIds[0])).toMatchObject({
+			fromParticipantId: member,
+			toParticipantId: leader,
+			intent: "inform",
+			state: "delivered",
+		});
+		expect(afterReply.workItems.filter((item) => item.assignedToParticipantId === leader)).toHaveLength(0);
+		expect(fixture.runtime.prompt).toHaveBeenCalledTimes(1);
+
+		await fixture.service.abort(fixture.session.id);
+	});
+
+	it("keeps real questions to other members while suppressing only the reciprocal recipient", async () => {
+		const fixture = await createFixture();
+		const [leader, member] = fixture.members;
+		const peer = fixture.team.members.find((candidate) => candidate.id !== leader && candidate.id !== member)?.id;
+		if (!peer) throw new Error("Team fixture requires three members");
+		const controls = fixture.service.messageControls(fixture.session.id);
+		const inboundPrompt = `Answer this public question from @${fixture.session.memberHandles[leader]}: Review the launch`;
+		const memberTurn = fixture.turn(member, inboundPrompt);
+		await controls.sendMessage({
+			...taskCaller(fixture, leader),
+			requestId: "review-launch",
+			recipientHandles: [fixture.session.memberHandles[member]!],
+			intent: "question",
+			text: "Review the launch",
+			modelIdentity: { api: "openai-responses", provider: "openai", model: "test" },
+		});
+		await memberTurn.started.promise;
+
+		const running = await fixture.service.readCollaborationState(fixture.session.id);
+		const memberAttempt = running.attempts.find((attempt) =>
+			running.workItems.some(
+				(item) =>
+					item.id === attempt.workItemId && item.assignedToParticipantId === member && item.state === "running",
+			),
+		);
+		if (!memberAttempt) throw new Error("Expected the member question attempt to be running");
+		const peerPrompt = `Answer this public question from @${fixture.session.memberHandles[member]}: Check one open risk`;
+		const peerTurn = fixture.turn(peer, peerPrompt);
+		const reply = await controls.sendMessage({
+			sourceRuntimeSessionId: fixture.session.memberRuntime[member]!.sessionId,
+			sourceTurnId: memberAttempt.sourceTurnId,
+			toolCallId: "mixed-reply",
+			signal: new AbortController().signal,
+			requestId: "mixed-reply",
+			recipientHandles: [fixture.session.memberHandles[leader]!, fixture.session.memberHandles[peer]!],
+			intent: "question",
+			text: "Check one open risk",
+			modelIdentity: { api: "openai-responses", provider: "openai", model: "test" },
+		});
+		await peerTurn.started.promise;
+
+		const state = await fixture.service.readCollaborationState(fixture.session.id);
+		const replyDeliveries = state.deliveries.filter((delivery) => reply.deliveryIds.includes(delivery.id));
+		expect(replyDeliveries).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ toParticipantId: leader, intent: "inform", state: "delivered" }),
+				expect.objectContaining({ toParticipantId: peer, intent: "question", state: "waiting" }),
+			]),
+		);
+		expect(state.workItems.some((item) => item.assignedToParticipantId === leader)).toBe(false);
+		expect(state.workItems.some((item) => item.assignedToParticipantId === peer && item.kind === "question")).toBe(
+			true,
+		);
+
+		await fixture.service.abort(fixture.session.id);
+	});
+
 	it("delegates durable tasks without waiting and observes completion through task state", async () => {
 		const fixture = await createFixture();
 		const [leader, member] = fixture.members;
@@ -917,6 +1022,79 @@ describe("Team member concurrency", () => {
 		const leaderMessages = publicAgentMessagesBy(fixture, leader);
 		expect(leaderMessages.map((entry) => entry.turnId)).toEqual(["plan", "plan:continuation:1"]);
 		expect(JSON.stringify(leaderMessages[1])).toContain("Wrap-up after review");
+	});
+
+	it("does not restart the result producer when an automatic continuation sends a reciprocal question", async () => {
+		const fixture = await createFixture();
+		const [leader, member] = fixture.members;
+		const leaderRuntime = fixture.session.memberRuntime[leader]!.sessionId;
+		const controls = fixture.service.messageControls(fixture.session.id);
+		const leaderTurn = fixture.turn(leader, "plan");
+		const send = fixture.service.send(fixture.session.id, {
+			requestId: "plan",
+			text: "plan",
+			targetMemberIds: [leader],
+		});
+		await leaderTurn.started.promise;
+		leaderTurn.finish.resolve();
+		await send;
+
+		let reciprocalDeliveryId: string | undefined;
+		vi.mocked(fixture.runtime.deliverSessionContext).mockImplementation(async (sessionId, _records, mode) => {
+			if (mode !== "triggerTurn" || sessionId !== leaderRuntime) return;
+			const running = await fixture.service.readCollaborationState(fixture.session.id);
+			const attempt = [...running.attempts]
+				.reverse()
+				.find(
+					(candidate) =>
+						candidate.state === "running" &&
+						running.workItems.some(
+							(item) => item.id === candidate.workItemId && item.assignedToParticipantId === leader,
+						),
+				);
+			if (!attempt) throw new Error("Expected the leader continuation attempt to be running");
+			const reply = await controls.sendMessage({
+				sourceRuntimeSessionId: leaderRuntime,
+				sourceTurnId: attempt.sourceTurnId,
+				toolCallId: "ask-result-producer-again",
+				signal: new AbortController().signal,
+				requestId: "ask-result-producer-again",
+				recipientHandles: [fixture.session.memberHandles[member]!],
+				intent: "question",
+				text: "Please confirm the completed review",
+				modelIdentity: { api: "openai-responses", provider: "openai", model: "test" },
+			});
+			reciprocalDeliveryId = reply.deliveryIds[0];
+			fixture.appendHistory(sessionId, {
+				...createAssistantMessage({ api: "openai-responses", provider: "openai", model: "test" }),
+				content: [{ type: "text", text: "Integrated review" }],
+			});
+		});
+
+		const memberTurn = fixture.turn(member, "Review the plan");
+		const task = await fixture.service.taskControls(fixture.session.id).delegateTask({
+			...taskCaller(fixture, leader),
+			requestId: "review",
+			targetHandle: fixture.session.memberHandles[member]!,
+			objective: "Review the plan",
+		});
+		await memberTurn.started.promise;
+		const followUpCompleted = fixture.workState(`work:plan:continuation:1:${leader}`, "completed");
+		memberTurn.finish.resolve();
+		await followUpCompleted;
+
+		const state = await fixture.service.readCollaborationState(fixture.session.id);
+		expect(reciprocalDeliveryId).toBeDefined();
+		expect(state.deliveries.find((delivery) => delivery.id === reciprocalDeliveryId)).toMatchObject({
+			fromParticipantId: leader,
+			toParticipantId: member,
+			intent: "inform",
+			state: "delivered",
+		});
+		expect(
+			state.workItems.filter((item) => item.assignedToParticipantId === member && item.id !== task.teamTaskId),
+		).toHaveLength(0);
+		expect(fixture.runtime.prompt).toHaveBeenCalledTimes(2);
 	});
 
 	it("lets the leader delegate fresh work to the same member after an earlier task completed", async () => {

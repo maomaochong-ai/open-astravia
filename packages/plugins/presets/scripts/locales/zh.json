@@ -1,0 +1,21 @@
+{
+	"plugin.name": "脚本",
+	"plugin.description": "在会话底部面板列出项目里 package.json 的 scripts 与 Makefile 的目标（monorepo 会递归找到每个子项目），点一下就在终端里运行。",
+	"panel.label": "脚本",
+	"search.placeholder": "搜索脚本或项目",
+	"summary": "{{projects}} 个项目 · {{scripts}} 个脚本",
+	"action.refresh": "重新扫描",
+	"action.runInNewTerminal": "在新终端中运行 {{name}}",
+	"state.loading": "正在扫描项目…",
+	"state.empty.title": "没有找到可运行的脚本",
+	"state.empty.description": "项目里的 package.json 需要有 scripts，或者有 Makefile。node_modules 等依赖目录不会被扫描。",
+	"state.noMatch": "没有匹配的脚本",
+	"error.run": "无法运行：{{message}}",
+	"search.clear": "清空搜索",
+	"action.dismiss": "关闭提示",
+	"state.error.title": "扫描项目失败",
+	"card.root": "根目录",
+	"card.scripts": "scripts",
+	"card.showMore": "还有 {{count}} 个",
+	"card.showLess": "收起"
+}

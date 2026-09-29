@@ -64,6 +64,12 @@ export type RemoteInputMessage =
 			readonly modifiers?: readonly ("alt" | "control" | "meta" | "shift")[];
 	  }
 	| {
+			/** Printable text typed as-is, in any language; control keys still go as `key`. */
+			readonly type: "text";
+			readonly sequence: number;
+			readonly text: string;
+	  }
+	| {
 			readonly type: "heartbeat";
 			readonly sequence: number;
 			readonly sentAt: number;

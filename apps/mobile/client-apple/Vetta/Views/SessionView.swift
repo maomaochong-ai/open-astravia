@@ -1,18 +1,6 @@
 import SwiftUI
 import VettaKit
 
-private enum ChatRow: Identifiable {
-	case timestamp(Double)
-	case block(ChatBlock)
-
-	var id: String {
-		switch self {
-		case .timestamp: "ts"
-		case let .block(block): block.id
-		}
-	}
-}
-
 struct SessionView: View {
 	let sessionId: String
 	@Environment(AppModel.self) private var model
@@ -21,8 +9,22 @@ struct SessionView: View {
 	@State private var pageWidth: CGFloat = 0
 	@State private var renaming = false
 	@State private var newTitle = ""
-	/// Whether the conversation keeps the newest line in view; off while the user reads further up.
-	@State private var following = true
+	/// A send puts its message at the top of the chat; the reply then fills in
+	/// below it without moving the conversation, which the user scrolls by hand.
+	@State private var pinned = false
+	/// A send is waiting for its message to show up, to scroll it to the top.
+	@State private var pinPending = false
+	/// The latest message when the send went out; the exchange is held to a screen's
+	/// height only once a newer one arrives, never an old exchange of any length.
+	@State private var pinnedAfter: String?
+	/// The chat's height, which the latest exchange fills once sent.
+	@State private var viewport: CGFloat = 0
+	/// Far enough from the end to offer a jump there.
+	@State private var farFromEnd = false
+	/// The panel the More menu opened.
+	@State private var panel: SessionPanel?
+	/// A desktop file a reply linked to, being previewed.
+	@State private var linkedFile: LinkedFile?
 
 	/// The desktop's id; a chat opened by New Session starts on a local one.
 	private var id: String { model.resolve(sessionId) }
@@ -35,29 +37,29 @@ struct SessionView: View {
 		return cwd
 	}
 
-	private var rows: [ChatRow] {
-		var rows: [ChatRow] = []
-		if let first = transcript.items.first?.at { rows.append(.timestamp(first)) }
-		rows += ChatTurns.build(transcript.items, waiting: transcript.sessionState.status.isActive).map(ChatRow.block)
-		return rows
-	}
-
-	/// Changes whenever new content streams in, to keep the latest line in view.
-	private var scrollKey: String {
-		let last = transcript.items.last
-		var length = 0
-		if case let .assistant(turn) = last { length = turn.text.count + turn.thinking.count + turn.tools.count }
-		return "\(transcript.items.count)-\(length)-\(transcript.pendingQuestion?.requestId ?? "")"
-	}
-
 	var body: some View {
-		let rows = rows
 		let active = transcript.sessionState.status.isActive
+		let (rows, latest) = ChatLines.build(transcript.items, waiting: active)
+		let latestUser = latest < rows.endIndex ? rows[latest].id : nil
+		// Only an exchange sent from here is laid out as one piece; any other stays lazy row by row.
+		let split = pinned && latestUser != pinnedAfter ? latest : rows.endIndex
 		ScrollViewReader { proxy in
 			ScrollView {
 				LazyVStack(alignment: .leading, spacing: 0) {
-					ForEach(rows) { row in
+					ForEach(rows[..<split]) { row in
 						rowView(row)
+					}
+					// An exchange sent from here takes at least a screen, so its
+					// message can sit at the top while the reply is still short.
+					if split < rows.endIndex {
+						VStack(alignment: .leading, spacing: 0) {
+							ForEach(rows[split...]) { row in
+								rowView(row)
+							}
+						}
+						.frame(minHeight: pinned ? max(0, viewport - 16) : nil, alignment: .top)
+						// Scrolled to as one piece: a row nested in here is not a lazy item of its own.
+						.id(Self.latestExchange)
 					}
 					if rows.isEmpty {
 						Text(transcript.loaded ? (model.session(id)?.title ?? "") : L10n.Chat.loadingHistory)
@@ -71,30 +73,60 @@ struct SessionView: View {
 				.padding(.horizontal, 20)
 				.padding(.top, 8)
 				.padding(.bottom, 16)
+				// A live turn's new pieces and, once it ends, its copy button ease in instead of popping.
+				.animation(.easeOut(duration: 0.3), value: Self.liveShape(rows))
 				// Tapping the conversation puts the keyboard away; buttons inside keep their own taps.
 				.contentShape(Rectangle())
 				.onTapGesture { dismissKeyboard() }
 			}
-			.defaultScrollAnchor(.bottom)
+			// A reply's link to a desktop file opens it here; web links still go to Safari.
+			.environment(\.openURL, OpenURLAction { url in
+				guard case let .desktopFile(href) = ReplyLink.classify(url) else { return .systemAction }
+				linkedFile = LinkedFile(href: href)
+				return .handled
+			})
+			// Opens on the newest line, but streaming never moves the conversation: following
+			// a reply that grows every frame kept the scroll view animating and stuttered.
+			.defaultScrollAnchor(.bottom, for: .initialOffset)
 			.scrollDismissesKeyboard(.interactively)
-			// Where the user leaves the conversation decides whether it keeps following.
-			// Only the user's own scrolling counts: a follow's animation also ends in `.idle`,
-			// possibly just as a burst lands further below.
-			.onScrollPhaseChange { old, phase, context in
-				switch phase {
-				case .interacting:
-					following = false
-				case .idle where old == .interacting || old == .decelerating:
-					let geometry = context.geometry
-					following = geometry.contentSize.height - geometry.visibleRect.maxY < 80
-				default:
-					break
+			// A geometry change, not a scroll one: that fires only on a change, which left a
+			// chat nothing had moved yet with no height to put the sent message at the top.
+			.onGeometryChange(for: CGFloat.self, of: ChatViewport.height) { viewport = $0 }
+			// A flag, not the distance, so scrolling only reaches the view when it flips.
+			.onScrollGeometryChange(for: Bool.self, of: ChatViewport.farFromEnd) { _, far in
+				withAnimation(.snappy) { farFromEnd = far }
+			}
+			// Floats just above the composer, which the safe area already keeps clear.
+			.overlay(alignment: .bottom) {
+				if farFromEnd {
+					Button {
+						withAnimation(.smooth(duration: 0.35)) { proxy.scrollTo("bottom", anchor: .bottom) }
+					} label: {
+						Image(systemName: "arrow.down")
+							.font(.system(size: 17, weight: .semibold))
+							.frame(width: 44, height: 44)
+							.glassEffect(.regular.interactive(), in: .circle)
+					}
+					.buttonStyle(.plain)
+					.accessibilityLabel(L10n.Chat.scrollToBottom)
+					.accessibilityIdentifier("chat.scrollToBottom")
+					.padding(.bottom, 12)
+					.transition(.scale(scale: 0.6).combined(with: .opacity))
 				}
 			}
-			.onChange(of: scrollKey) { follow(proxy) }
-			// The reply grows a little on every frame as it fades in; glide along with it.
-			.onScrollGeometryChange(for: CGFloat.self, of: \.contentSize.height) { old, new in
-				if new > old { follow(proxy) }
+			// History that arrives after the chat opened lands past the initial offset.
+			.onChange(of: transcript.loaded) { _, loaded in
+				if loaded, !pinned { proxy.scrollTo("bottom", anchor: .bottom) }
+			}
+			.onChange(of: latestUser) { _, user in
+				guard pinPending, user != nil else { return }
+				pinPending = false
+				// Once the keyboard is down and the exchange has its screen of height laid out:
+				// scrolling any sooner stops at the old bottom, short of the top.
+				Task { @MainActor in
+					try? await Task.sleep(for: .milliseconds(300))
+					withAnimation(.smooth(duration: 0.35)) { proxy.scrollTo(Self.latestExchange, anchor: .top) }
+				}
 			}
 		}
 		.background(Theme.page)
@@ -114,14 +146,23 @@ struct SessionView: View {
 				ChatInputBar(
 					draft: $draft,
 					placeholder: L10n.Chat.composerPlaceholder,
+					skillScope: model.session(model.resolve(id))?.projectCwd,
 					sendDisabled: !model.online || starting,
 					busy: active,
 					onStop: { if !starting { Task { await model.abort(id) } } },
 					onSend: { sent in
-						following = true
+						// The sent message takes the whole screen's top, not the strip above the keyboard.
+						dismissKeyboard()
+						// Room below goes in before the message does, so the scroll has somewhere to go.
+						pinnedAfter = latestUser
+						pinned = true
+						pinPending = true
 						Task {
 							// Keep what was typed so a failed send is not lost.
-							if await model.sendPrompt(id, sent.text, attachments: sent.attachments) == nil { draft = sent }
+							if await model.sendPrompt(id, sent.promptText, attachments: sent.attachments) == nil {
+								draft = sent
+								pinPending = false
+							}
 						}
 					}
 				)
@@ -144,6 +185,18 @@ struct SessionView: View {
 				.accessibilityLabel(L10n.NewSession.title)
 				.accessibilityIdentifier("chat.newSession")
 				Menu {
+					// The desktop's activity panel tabs, one entry each as the phone gains them.
+					Section(L10n.Files.panels) {
+						ForEach(SessionPanel.allCases) { item in
+							let available = model.isAvailable(item)
+							Button { panel = item } label: {
+								Label(item.title, systemImage: item.systemImage)
+								// Said only once the desktop's status is in, so a slow link does not claim it is old.
+								if !available, model.link.desktop != nil { Text(L10n.Files.needsDesktopUpdate) }
+							}
+							.disabled(!available || !model.online)
+						}
+					}
 					Button(L10n.Chat.resync, systemImage: "arrow.clockwise") { Task { await model.resync(id) } }
 					// The desktop's own sidebar actions, so it shows the same title and pin.
 					Button(L10n.Session.rename, systemImage: "pencil") {
@@ -157,7 +210,7 @@ struct SessionView: View {
 					}
 					.disabled(!model.online)
 				} label: {
-					Image(systemName: "ellipsis")
+					Image(systemName: "square.grid.2x2")
 				}
 				.accessibilityLabel(L10n.Chat.more)
 				.accessibilityIdentifier("chat.more")
@@ -165,13 +218,23 @@ struct SessionView: View {
 				.disabled(starting)
 			}
 		}
+		.sheet(item: $panel) { panel in
+			SessionPanelSheet(panel: panel, sessionId: id)
+		}
+		.sheet(item: $linkedFile) { file in
+			NavigationStack {
+				FilePreviewScreen(sessionId: id, path: file.href, title: file.title)
+			}
+			.presentationDetents([.large])
+			.presentationDragIndicator(.visible)
+		}
 		.alert(L10n.Session.renameTitle, isPresented: $renaming) {
 			TextField(L10n.Session.renameTitle, text: $newTitle)
 			Button(L10n.Common.cancel, role: .cancel) {}
 			Button(L10n.Common.save) { Task { await model.rename(id, to: newTitle) } }
 				.disabled(newTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
 		}
-		// A new session's history is fetched once its prompt is out; earlier, it would replace the prompt.
+		// A new session is opened once its prompt is out; `openSession` then skips the history, which may still lack it.
 		.task(id: "\(id) \(starting)") {
 			guard !starting else { return }
 			await model.openSession(id)
@@ -183,27 +246,61 @@ struct SessionView: View {
 		}
 	}
 
-	private func follow(_ proxy: ScrollViewProxy) {
-		guard following else { return }
-		withAnimation(.smooth(duration: 0.35)) { proxy.scrollTo("bottom", anchor: .bottom) }
-	}
+	private static let latestExchange = "latest-exchange"
 
 	@ViewBuilder
-	private func rowView(_ row: ChatRow) -> some View {
+	private func rowView(_ row: ChatLine) -> some View {
 		switch row {
 		case let .timestamp(at):
 			MarkerRow(text: TimeFormat.clock(at))
-		case let .block(block):
-			switch block {
-			case let .user(_, text, _, attachments):
-				UserBubble(text: text, attachments: attachments)
-			case let .marker(_, text, _):
-				MarkerRow(text: text.isEmpty ? L10n.Chat.compacted : text)
-			case let .turn(turn):
-				AgentTurnView(turn: turn, note: turn.streaming ? L10n.Chat.activity(transcript.sessionState.detail) : nil)
-			}
+		case let .user(_, text, attachments):
+			UserBubble(text: text, attachments: attachments)
+		case let .marker(_, text):
+			MarkerRow(text: text.isEmpty ? L10n.Chat.compacted : text)
+		case let .head(id, startedAt, streaming, empty, ends):
+			TurnHeader(id: id, startedAt: startedAt, streaming: streaming, empty: empty, note: streaming ? L10n.Chat.activity(transcript.sessionState.detail) : nil)
+				.padding(.bottom, ends ? 20 : 10)
+				.frame(maxWidth: .infinity, alignment: .leading)
+		case let .piece(segment, live, ends, activity):
+			TurnPieceView(segment: segment, live: live, activity: activity)
+				.padding(.bottom, ends ? 20 : 10)
+				.frame(maxWidth: .infinity, alignment: .leading)
+		case let .foot(_, conclusion):
+			TurnCopyButton(conclusion: conclusion)
+				.padding(.bottom, 20)
+				.frame(maxWidth: .infinity, alignment: .leading)
+				.transition(.opacity.combined(with: .offset(y: 4)))
 		}
 	}
+
+	/// The rows of a turn still running, or nil once it is done: what the chat animates on.
+	private static func liveShape(_ rows: [ChatLine]) -> [String]? {
+		guard let head = rows.lastIndex(where: { if case .head = $0 { true } else { false } }),
+		      case .head(_, _, true, _, _) = rows[head]
+		else { return nil }
+		return rows[head...].map(\.id)
+	}
+}
+
+/// Runs on SwiftUI's render thread on device, so it must stay nonisolated.
+private enum ChatViewport {
+	/// The whole frame, bars included: room to spare below a sent message costs a little
+	/// blank space, while room short of the visible height leaves it below the top.
+	/// Whole points, so the keyboard's slide does not re-lay the chat on every fraction.
+	nonisolated static func height(_ proxy: GeometryProxy) -> CGFloat {
+		proxy.size.height.rounded()
+	}
+
+	nonisolated static func farFromEnd(_ geometry: ScrollGeometry) -> Bool {
+		ChatScroll.offersJump(below: geometry.contentSize.height - geometry.visibleRect.maxY, viewport: geometry.containerSize.height)
+	}
+}
+
+/// A reply's link to a desktop file, kept as written for the desktop to resolve.
+private struct LinkedFile: Identifiable {
+	let href: String
+	var id: String { href }
+	var title: String { (href.removingPercentEncoding ?? href).split(separator: "/").last.map(String.init) ?? href }
 }
 
 /// The chat's title: what the session is about, with the model and thinking

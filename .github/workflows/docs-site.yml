@@ -1,6 +1,7 @@
 # Docs site: verify on path changes. Vercel Git deploys the site.
 #
-# - PR / push touching apps/docs-site: typecheck, test, and `next build`
+# - PR / push touching apps/docs-site: `next build`
+# - Typecheck and tests are owned by the repository quality workflow.
 # - Push to `dev` with docs-site changes: Vercel production
 #   (https://vetta-docs.vercel.app). Unrelated monorepo commits are skipped
 #   by apps/docs-site/vercel.json ignoreCommand (turbo query affected).
@@ -39,7 +40,7 @@ permissions:
 
 jobs:
   check:
-    name: check + test + build
+    name: build
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -53,12 +54,6 @@ jobs:
 
       - name: Install dependencies
         uses: ./.github/actions/install-bun-dependencies
-
-      - name: Typecheck
-        run: bun run --cwd apps/docs-site check
-
-      - name: Test
-        run: bun run --cwd apps/docs-site test
 
       - name: Build
         run: bun run build:docs

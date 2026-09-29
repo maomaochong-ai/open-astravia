@@ -2,6 +2,7 @@ import type { TeamPublicationOperationRecord, TeamSessionDocument, TeamWorkItem 
 import type { ContextCompositionReport, HistoryEntry, SessionExecutionMode } from "@vetta/runtime-core";
 import type {
 	DesktopTeamConversationDisplay,
+	DesktopTeamMessageTimingProjection,
 	DesktopTeamToolExecutionProjection,
 } from "../../preload/api-types/team-conversation-display.js";
 
@@ -39,6 +40,7 @@ export async function projectTeamConversationDisplay(
 		memberConversations.map((conversation) => [conversation.runtimeSessionId, conversation]),
 	);
 	const toolExecutions = new Map<string, DesktopTeamToolExecutionProjection>();
+	const messageTimings = new Map<string, DesktopTeamMessageTimingProjection>();
 	for (const publication of source.publications ?? []) {
 		if (!publication.publicMessageEntryId) continue;
 		const memberConversation = memberConversationsByRuntimeId.get(publication.sourceParticipantConversationId);
@@ -50,6 +52,12 @@ export async function projectTeamConversationDisplay(
 		)) {
 			toolExecutions.set(`${execution.messageId}\u0000${execution.toolCallId}`, execution);
 		}
+		const timing = collectPublishedTurnTiming(
+			memberConversation.history,
+			publication.sourceMessageEntryId,
+			publication.publicMessageEntryId,
+		);
+		if (timing) messageTimings.set(timing.messageId, timing);
 	}
 	return {
 		memberConversations,
@@ -64,6 +72,7 @@ export async function projectTeamConversationDisplay(
 			return workingMemberIds.length > 0 ? { workingMemberIds } : {};
 		})(),
 		...(toolExecutions.size > 0 ? { toolExecutions: [...toolExecutions.values()] } : {}),
+		...(messageTimings.size > 0 ? { messageTimings: [...messageTimings.values()] } : {}),
 		executionMode: source.runtimeStates?.[0]?.executionMode ?? source.session.executionMode ?? "full-access",
 		...(source.runtimeStates && source.runtimeStates.length > 0
 			? {
@@ -92,6 +101,25 @@ export async function projectTeamConversationDisplay(
 				}
 			: {}),
 	};
+}
+
+export function collectPublishedTurnTiming(
+	history: readonly HistoryEntry[],
+	sourceMessageEntryId: string,
+	messageId: string,
+): DesktopTeamMessageTimingProjection | undefined {
+	const sourceIndex = history.findIndex((entry) => entry.type === "message" && entry.entryId === sourceMessageEntryId);
+	if (sourceIndex < 0) return undefined;
+	for (const entry of history.slice(sourceIndex + 1)) {
+		if (entry.type === "assistant_turn_timing") {
+			return { messageId, ...entry.timing };
+		}
+		if (entry.type === "message" && entry.message.role === "user") return undefined;
+		if (entry.type === "custom_marker" && entry.customType === "agent-team.compaction-reference.v1") {
+			return undefined;
+		}
+	}
+	return undefined;
 }
 
 /**

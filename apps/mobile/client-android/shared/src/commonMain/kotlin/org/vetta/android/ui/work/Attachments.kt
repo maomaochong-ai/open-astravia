@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Folder
@@ -48,6 +49,8 @@ import org.vetta.android.resources.chat_attach_camera
 import org.vetta.android.resources.chat_attach_files
 import org.vetta.android.resources.chat_attach_files_hint
 import org.vetta.android.resources.chat_attach_photos
+import org.vetta.android.resources.chat_attach_skills
+import org.vetta.android.resources.chat_attach_skills_hint
 import org.vetta.android.resources.chat_remove_attachment
 import org.vetta.android.ui.media.imageBitmapFromBytes
 import org.vetta.android.ui.theme.vettaExtra
@@ -85,6 +88,8 @@ expect fun rememberAttachmentLaunchers(onPick: (AttachmentPick) -> Unit): Attach
 fun AttachmentSheet(
     launchers: AttachmentLaunchers,
     onDismiss: () -> Unit,
+    /** Opens the skill picker; null when the composer cannot reference skills. */
+    onSkills: (() -> Unit)? = null,
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(bottom = 12.dp)) {
@@ -113,6 +118,25 @@ fun AttachmentSheet(
                 Column {
                     Text(stringResource(Res.string.chat_attach_files), style = MaterialTheme.typography.bodyLarge)
                     Text(stringResource(Res.string.chat_attach_files_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.vettaExtra.secondaryText)
+                }
+            }
+            if (onSkills != null) {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            onDismiss()
+                            onSkills()
+                        }.padding(horizontal = 24.dp, vertical = 14.dp)
+                        .testTag("attach.skills"),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                ) {
+                    Icon(Icons.Filled.AutoAwesome, contentDescription = null)
+                    Column {
+                        Text(stringResource(Res.string.chat_attach_skills), style = MaterialTheme.typography.bodyLarge)
+                        Text(stringResource(Res.string.chat_attach_skills_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.vettaExtra.secondaryText)
+                    }
                 }
             }
         }

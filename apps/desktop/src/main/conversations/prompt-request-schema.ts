@@ -44,6 +44,7 @@ const promptImageSchema = z
 export const promptRequestSchema: z.ZodType<PromptRequest> = z
 	.object({
 		text: z.string().min(1),
+		messageId: z.string().trim().min(1).optional(),
 		promptRef: promptResourceRefSchema.optional(),
 		attachments: z.array(promptAttachmentRefSchema).optional(),
 		images: z.array(promptImageSchema).optional(),

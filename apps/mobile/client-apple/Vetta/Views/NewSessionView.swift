@@ -100,7 +100,7 @@ struct NewSessionView: View {
 		.safeAreaInset(edge: .bottom, spacing: 0) {
 			Group {
 				if model.online {
-					ChatInputBar(draft: $draft, placeholder: L10n.Chat.composerPlaceholder) { sent in
+					ChatInputBar(draft: $draft, placeholder: L10n.Chat.composerPlaceholder, skillScope: projectCwd) { sent in
 						send(sent)
 					}
 				} else {
@@ -174,7 +174,7 @@ struct NewSessionView: View {
 		let start = NewSessionStart(draft: sent, projectCwd: projectCwd, modelChoice: modelChoice)
 		var localId = ""
 		guard let id = model.startSession(
-			sent.text,
+			sent.promptText,
 			projectCwd: projectCwd,
 			modelKey: modelChoice.modelKey,
 			thinkingLevel: modelChoice.thinkingLevel,
