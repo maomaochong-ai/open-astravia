@@ -26,7 +26,7 @@ struct SessionView: View {
 	@State private var pinned = false
 	/// A send is waiting for its message to show up, to scroll it to the top.
 	@State private var pinPending = false
-	/// The chat's visible height between the title and the composer.
+	/// The chat's height, which the latest exchange fills once sent.
 	@State private var viewport: CGFloat = 0
 	/// The panel the More menu opened.
 	@State private var panel: SessionPanel?
@@ -112,9 +112,10 @@ struct SessionView: View {
 			.onChange(of: latestUser) { _, user in
 				guard pinPending, user != nil else { return }
 				pinPending = false
-				// A turn later, so the exchange has its screen of height to scroll to.
+				// Once the keyboard is down and the exchange has its screen of height laid out:
+				// scrolling any sooner stops at the old bottom, short of the top.
 				Task { @MainActor in
-					await Task.yield()
+					try? await Task.sleep(for: .milliseconds(300))
 					withAnimation(.smooth(duration: 0.35)) { proxy.scrollTo(Self.latestExchange, anchor: .top) }
 				}
 			}
@@ -141,6 +142,8 @@ struct SessionView: View {
 					busy: active,
 					onStop: { if !starting { Task { await model.abort(id) } } },
 					onSend: { sent in
+						// The sent message takes the whole screen's top, not the strip above the keyboard.
+						dismissKeyboard()
 						// Room below goes in before the message does, so the scroll has somewhere to go.
 						pinned = true
 						pinPending = true
@@ -255,10 +258,11 @@ struct SessionView: View {
 
 /// Runs on SwiftUI's render thread on device, so it must stay nonisolated.
 private enum ChatViewport {
-	/// The chat's height minus the title and composer bars (and the keyboard) it scrolls
-	/// under. Whole points, so the keyboard's slide does not re-lay the chat on every fraction.
+	/// The whole frame, bars included: room to spare below a sent message costs a little
+	/// blank space, while room short of the visible height leaves it below the top.
+	/// Whole points, so the keyboard's slide does not re-lay the chat on every fraction.
 	nonisolated static func height(_ proxy: GeometryProxy) -> CGFloat {
-		(proxy.size.height - proxy.safeAreaInsets.top - proxy.safeAreaInsets.bottom).rounded()
+		proxy.size.height.rounded()
 	}
 }
 
