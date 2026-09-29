@@ -159,7 +159,7 @@ describe("底部面板：常见使用流程", () => {
 		expect(collectBottomPanelLeaves(tabs)[0]?.tabs).toHaveLength(2);
 	});
 
-	it("实例能实时改名与点亮状态点，tab 条立刻跟上", async () => {
+	it("实例能实时改名，但运行状态不在 tab 上展示", async () => {
 		const { user } = setup();
 		await user.click(screen.getByRole("button", { name: "toggle-bottom-panel" }));
 		await addFromEmptyState(user);
@@ -167,7 +167,7 @@ describe("底部面板：常见使用流程", () => {
 		await user.click(screen.getByRole("button", { name: "rename" }));
 
 		expect(await screen.findByRole("tab", { name: /改过的名字/ })).not.toBeNull();
-		expect(document.querySelector('[data-status="active"]')).not.toBeNull();
+		expect(document.querySelector("[data-status]")).toBeNull();
 	});
 
 	it("分屏后两格并存，关掉一格树会塌缩回单格", async () => {

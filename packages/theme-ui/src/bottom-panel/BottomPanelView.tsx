@@ -1,9 +1,9 @@
 import { cn } from "@vetta-org/ui";
 import type { ComponentPropsWithoutRef, JSX, ReactNode } from "react";
 import { ThemeSurface } from "../appearance/ThemeSurface";
-import { ActivityStatusDot, ActivityStatusDotStyles } from "../shared/ActivityStatusDot";
+import { ActivityStatusDotStyles } from "../shared/ActivityStatusDot";
 
-/** 空闲是静止灰点，活动是脉冲绿点；tab 与折叠 pill 用同一套状态。 */
+/** 保留实例活动状态的公共合同；底部面板标签不再把它渲染为状态点。 */
 export type BottomPanelTabStatus = "idle" | "active";
 
 export interface BottomPanelTabViewModel {
@@ -100,7 +100,6 @@ export function BottomPanelTabStripView({
 								onClick={() => onSelect(tab.tabId)}
 								className="flex min-w-0 items-center gap-1.5 rounded-lg px-2 py-1 text-[12px]"
 							>
-								<ActivityStatusDot pulse={tab.status === "active"} tone={tab.status === "active" ? "emerald" : "muted"} />
 								<TabIcon icon={tab.icon} />
 								<span
 									className={cn("max-w-[160px] truncate", selected ? "text-foreground" : "text-muted-foreground")}
@@ -141,7 +140,6 @@ export interface BottomPanelPillsViewProps {
 export function BottomPanelPillsView({ pills, onSelect, labels, className }: BottomPanelPillsViewProps): JSX.Element {
 	return (
 		<div aria-label={labels.group} className={cn("flex min-w-0 items-center gap-1", className)}>
-			<ActivityStatusDotStyles />
 			{pills.map((pill) => (
 				<button
 					key={pill.tabId}
@@ -150,7 +148,6 @@ export function BottomPanelPillsView({ pills, onSelect, labels, className }: Bot
 					onClick={() => onSelect(pill.tabId)}
 					className="flex min-w-0 max-w-full items-center gap-1.5 rounded-full px-2 py-1 text-[11px] transition-colors hover:bg-accent/50"
 				>
-					<ActivityStatusDot pulse={pill.status === "active"} tone={pill.status === "active" ? "emerald" : "muted"} />
 					<TabIcon icon={pill.icon} className="h-3 w-3" />
 					<span className="max-w-[120px] truncate font-medium text-muted-foreground">{pill.label}</span>
 				</button>
