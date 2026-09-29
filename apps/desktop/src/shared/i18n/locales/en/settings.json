@@ -909,6 +909,8 @@
   "fetchModels": "Fetch from API",
   "fetchModelsNeedsBaseUrl": "Set a Base URL first",
   "fetchedModelsHint": "{{n}} models returned — pick the ones to add",
+  "selectAllFetchedModels": "Select all",
+  "deselectAllFetchedModels": "Deselect all",
   "alreadyAdded": "Added",
   "addSelectedModels": "Add selected ({{n}})",
   "providerName": "Provider name",

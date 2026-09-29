@@ -62,6 +62,7 @@ const EXPLICIT_SOURCE_TESTS = new Map([
 		"packages/theme-ui/src/chat/ModelSelectorTrigger.tsx",
 		desktopTests(MODEL_SELECTOR_VIEW_TEST, TEAM_MODEL_SELECTOR_TEST),
 	],
+	["packages/ui/src/dropdown-menu.tsx", desktopTests(MODEL_SELECTOR_VIEW_TEST)],
 	["packages/theme-ui/src/chat/ModelSelectorView.tsx", desktopTests(MODEL_SELECTOR_VIEW_TEST)],
 	["packages/theme-ui/src/chat/ModelConfiguration.tsx", desktopTests(TEAM_MODEL_SELECTOR_TEST)],
 	["packages/theme-ui/src/chat/InlineModelPicker.tsx", desktopTests(TEAM_MODEL_SELECTOR_TEST)],
