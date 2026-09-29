@@ -181,6 +181,11 @@ struct GlassCircleButton: View {
 	UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
 }
 
+/// A light tap under the finger for buttons that move between pages.
+@MainActor func tapHaptic() {
+	UIImpactFeedbackGenerator(style: .light).impactOccurred()
+}
+
 /// Vetta's face, drawn like the desktop's `BotAvatar` in its black-and-white
 /// theme: a rounded square with two round eyes cut out of it, so whatever is
 /// behind shows through them. Asleep, the eyes close to slits.
