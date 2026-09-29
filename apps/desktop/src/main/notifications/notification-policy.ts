@@ -29,14 +29,15 @@ export function decideNotificationDelivery(
 	preferences: DesktopNotificationPreferences,
 	context: NotificationDeliveryContext,
 ): NotificationDeliveryDecision {
-	const eventPreference = preferences.events[event];
+	const eventPreference = preferences.events?.[event];
+	const soundAllowed = preferences.soundEnabled && scopeAllows(preferences.soundScope, context);
 	return {
 		showSystemNotification:
 			context.systemNotificationsEnabled &&
 			context.systemNotificationsSupported &&
-			eventPreference.systemEnabled &&
+			(eventPreference ? eventPreference.systemEnabled : true) &&
 			scopeAllows(preferences.systemScope, context),
-		soundId: eventPreference.soundId && scopeAllows(preferences.soundScope, context) ? eventPreference.soundId : null,
+		soundId: soundAllowed ? (eventPreference?.soundId ?? "soft-chime") : null,
 		volume: preferences.soundVolume,
 	};
 }

@@ -29,12 +29,13 @@ export interface GeneralSettingsModel {
 		startAppGuide: () => void;
 		toggleDebug: (checked: boolean) => void;
 		toggleNotifications: (checked: boolean) => void;
+		toggleSound: (enabled: boolean) => void;
 		changeNotificationSystemScope: (scope: NotificationDeliveryScope) => void;
 		changeNotificationSoundScope: (scope: NotificationDeliveryScope) => void;
 		changeNotificationSoundVolume: (volume: number) => void;
 		changeNotificationEventSystem: (event: NotificationEventType, enabled: boolean) => void;
 		changeNotificationEventSound: (event: NotificationEventType, soundId: BuiltinNotificationSoundId | null) => void;
-		previewNotificationSound: (soundId: BuiltinNotificationSoundId) => void;
+		previewNotificationSound: (soundId?: BuiltinNotificationSoundId) => void;
 	};
 	debugMode: boolean;
 	executionMode: SessionExecutionMode;
@@ -69,6 +70,8 @@ interface GeneralSettingsLabels {
 	startAppGuideDescription: string;
 	systemNotifications: string;
 	systemNotificationsDescription: string;
+	notificationSound: string;
+	notificationSoundDescription: string;
 	notificationSystemTiming: string;
 	notificationSoundTiming: string;
 	notificationSoundVolume: string;
@@ -78,6 +81,7 @@ interface GeneralSettingsLabels {
 	notificationEventActionRequired: string;
 	notificationSystemBanner: string;
 	notificationPreview: string;
+	notificationPreviewAction: string;
 	notificationNoSound: string;
 	notificationScopes: Record<NotificationDeliveryScope, string>;
 	notificationSounds: Record<BuiltinNotificationSoundId, string>;
@@ -257,6 +261,8 @@ export function useGeneralSettingsModel(): GeneralSettingsModel {
 			startAppGuideDescription: t("startAppGuideDescription"),
 			systemNotifications: t("systemNotifications"),
 			systemNotificationsDescription: t("systemNotificationsDescription"),
+			notificationSound: t("notificationSound"),
+			notificationSoundDescription: t("notificationSoundDescription"),
 			notificationSystemTiming: t("notificationSystemTiming"),
 			notificationSoundTiming: t("notificationSoundTiming"),
 			notificationSoundVolume: t("notificationSoundVolume"),
@@ -266,6 +272,7 @@ export function useGeneralSettingsModel(): GeneralSettingsModel {
 			notificationEventActionRequired: t("notificationEventActionRequired"),
 			notificationSystemBanner: t("notificationSystemBanner"),
 			notificationPreview: t("notificationPreview"),
+			notificationPreviewAction: t("notificationPreviewAction"),
 			notificationNoSound: t("notificationNoSound"),
 			notificationScopes: {
 				"background-only": t("notificationScopeBackground"),
@@ -295,6 +302,7 @@ export function useGeneralSettingsModel(): GeneralSettingsModel {
 			startAppGuide,
 			toggleDebug,
 			toggleNotifications,
+			toggleSound: (enabled) => updateNotificationPreferences((current) => ({ ...current, soundEnabled: enabled })),
 			changeNotificationSystemScope: (scope) =>
 				updateNotificationPreferences((current) => ({ ...current, systemScope: scope })),
 			changeNotificationSoundScope: (scope) =>
@@ -305,8 +313,8 @@ export function useGeneralSettingsModel(): GeneralSettingsModel {
 				changeNotificationEvent(event, (current) => ({ ...current, systemEnabled })),
 			changeNotificationEventSound: (event, soundId) =>
 				changeNotificationEvent(event, (current) => ({ ...current, soundId })),
-			previewNotificationSound: (soundId) =>
-				void playNotificationSound(soundId, notificationPreferences.soundVolume),
+			previewNotificationSound: (soundId?: BuiltinNotificationSoundId) =>
+				void playNotificationSound(soundId ?? "soft-chime", notificationPreferences.soundVolume),
 		},
 		debugMode,
 		executionMode,

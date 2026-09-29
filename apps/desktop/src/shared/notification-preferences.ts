@@ -1,4 +1,5 @@
 export const BUILTIN_NOTIFICATION_SOUND_IDS = ["soft-chime", "single-bell", "wood-tap", "digital-pulse"] as const;
+export const DEFAULT_NOTIFICATION_SOUND_ID = "soft-chime" as const;
 
 export type BuiltinNotificationSoundId = (typeof BUILTIN_NOTIFICATION_SOUND_IDS)[number];
 export type NotificationDeliveryScope = "background-only" | "away-from-session" | "always";
@@ -10,6 +11,7 @@ export interface NotificationEventPreference {
 }
 
 export interface DesktopNotificationPreferences {
+	soundEnabled: boolean;
 	systemScope: NotificationDeliveryScope;
 	soundScope: NotificationDeliveryScope;
 	soundVolume: number;
@@ -17,13 +19,14 @@ export interface DesktopNotificationPreferences {
 }
 
 export const DEFAULT_NOTIFICATION_PREFERENCES: DesktopNotificationPreferences = {
+	soundEnabled: true,
 	systemScope: "away-from-session",
-	soundScope: "away-from-session",
+	soundScope: "always",
 	soundVolume: 60,
 	events: {
-		completed: { systemEnabled: true, soundId: null },
-		failed: { systemEnabled: true, soundId: null },
-		actionRequired: { systemEnabled: true, soundId: null },
+		completed: { systemEnabled: true, soundId: DEFAULT_NOTIFICATION_SOUND_ID },
+		failed: { systemEnabled: true, soundId: DEFAULT_NOTIFICATION_SOUND_ID },
+		actionRequired: { systemEnabled: true, soundId: DEFAULT_NOTIFICATION_SOUND_ID },
 	},
 };
 
@@ -31,15 +34,18 @@ export function isBuiltinNotificationSoundId(value: unknown): value is BuiltinNo
 	return typeof value === "string" && BUILTIN_NOTIFICATION_SOUND_IDS.some((sound) => sound === value);
 }
 
-function normalizeScope(value: unknown): NotificationDeliveryScope {
-	return value === "background-only" || value === "always" ? value : "away-from-session";
+function normalizeScope(
+	value: unknown,
+	defaultScope: NotificationDeliveryScope = "away-from-session",
+): NotificationDeliveryScope {
+	return value === "background-only" || value === "always" || value === "away-from-session" ? value : defaultScope;
 }
 
 function normalizeEventPreference(value: unknown): NotificationEventPreference {
 	const input = typeof value === "object" && value !== null ? (value as Record<string, unknown>) : {};
 	return {
 		systemEnabled: input.systemEnabled !== false,
-		soundId: isBuiltinNotificationSoundId(input.soundId) ? input.soundId : null,
+		soundId: isBuiltinNotificationSoundId(input.soundId) ? input.soundId : DEFAULT_NOTIFICATION_SOUND_ID,
 	};
 }
 
@@ -51,9 +57,11 @@ export function normalizeNotificationPreferences(value: unknown): DesktopNotific
 		typeof input.soundVolume === "number" && Number.isFinite(input.soundVolume)
 			? Math.round(input.soundVolume)
 			: DEFAULT_NOTIFICATION_PREFERENCES.soundVolume;
+	const soundEnabled = typeof input.soundEnabled === "boolean" ? input.soundEnabled : true;
 	return {
-		systemScope: normalizeScope(input.systemScope),
-		soundScope: normalizeScope(input.soundScope),
+		soundEnabled,
+		systemScope: normalizeScope(input.systemScope, "away-from-session"),
+		soundScope: normalizeScope(input.soundScope, "always"),
 		soundVolume: Math.max(0, Math.min(100, volume)),
 		events: {
 			completed: normalizeEventPreference(events.completed),
