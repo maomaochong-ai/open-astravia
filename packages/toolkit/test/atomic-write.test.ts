@@ -97,4 +97,24 @@ describe("atomicWriteFileAsync", () => {
 		expect(JSON.parse(await readFile(path, "utf8")).n).toBeTypeOf("number");
 		expect(await readdir(directory)).toEqual(["config.json"]);
 	});
+
+	it("keeps retrying without blocking the event loop during a longer Windows hold", async () => {
+		const directory = await createDirectory();
+		const path = join(directory, "config.json");
+		refusals.async.push(...Array.from({ length: 11 }, () => "EPERM"));
+		let timerRan = false;
+		const timer = new Promise<void>((resolve) => {
+			setTimeout(() => {
+				timerRan = true;
+				resolve();
+			}, 0);
+		});
+
+		const write = atomicWriteFileAsync(path, "{}");
+		await timer;
+
+		expect(timerRan).toBe(true);
+		await expect(write).resolves.toBeUndefined();
+		expect(await readFile(path, "utf8")).toBe("{}");
+	});
 });

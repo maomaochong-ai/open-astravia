@@ -4,7 +4,7 @@ import { basename, join, resolve, sep } from "node:path";
 import AdmZip from "adm-zip";
 import { dialog, ipcMain } from "electron";
 import { getAppLogger } from "../logger.js";
-import { allowProjectRoot, readDesktopConfig, writeDesktopConfig } from "./fs.js";
+import { allowProjectRoot, readDesktopConfig, updateDesktopConfig } from "./fs.js";
 
 const log = getAppLogger("project-export");
 
@@ -420,13 +420,11 @@ async function handleImport(): Promise<ImportProjectResult | null> {
 
 	// Authorize the new root for fs IPC operations and register in config.
 	allowProjectRoot(projectDir);
-	const fresh = await readDesktopConfig();
-	if (!fresh.projects.some((p) => p.path === projectDir)) {
-		await writeDesktopConfig({
-			...fresh,
-			projects: [...fresh.projects, { path: projectDir, name }],
-		});
-	}
+	await updateDesktopConfig((fresh) =>
+		fresh.projects.some((p) => p.path === projectDir)
+			? fresh
+			: { ...fresh, projects: [...fresh.projects, { path: projectDir, name }] },
+	);
 
 	const missingSources = manifest.type === "batch" ? collectMissingBatchSources(projectDir) : undefined;
 

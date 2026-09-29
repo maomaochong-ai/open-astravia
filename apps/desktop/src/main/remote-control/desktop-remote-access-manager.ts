@@ -190,6 +190,7 @@ export class DesktopRemoteAccessManager {
 	private readonly hostOnDemand = new Map<string, boolean>();
 	private readonly screenShare: RemoteScreenShare;
 	private readonly approvals = new Map<string, PendingApproval>();
+	private readonly deviceClaims = new Map<string, Promise<void>>();
 	private readonly lanLinks = new Map<string, Set<() => void>>();
 	private currentInvite:
 		| {
@@ -643,12 +644,24 @@ export class DesktopRemoteAccessManager {
 			// The connection already compared the pinned key; a mismatch never reaches here.
 			return { kind: "approve" };
 		}
-		void this.claim(device.id, hello.identityKey, hello.deviceName);
+		void this.claim(device.id, hello.identityKey, hello.deviceName).catch((error: unknown) =>
+			log.warn("remote device claim failed", { pairingId: device.id.slice(0, 6), error: describe(error) }),
+		);
 		return { kind: "approve" };
 	}
 
 	/** First phone to present an invite's secret becomes its owner; the invite cannot be reused afterwards. */
-	private async claim(deviceId: string, identityKey: string, deviceName: string | undefined): Promise<void> {
+	private claim(deviceId: string, identityKey: string, deviceName: string | undefined): Promise<void> {
+		const active = this.deviceClaims.get(deviceId);
+		if (active) return active;
+		const claim = this.claimDevice(deviceId, identityKey, deviceName).finally(() => {
+			if (this.deviceClaims.get(deviceId) === claim) this.deviceClaims.delete(deviceId);
+		});
+		this.deviceClaims.set(deviceId, claim);
+		return claim;
+	}
+
+	private async claimDevice(deviceId: string, identityKey: string, deviceName: string | undefined): Promise<void> {
 		const current = this.config.devices.find((device) => device.id === deviceId);
 		if (!current || current.mobileIdentityKey) return;
 		const name = deviceName?.trim() || current.name || "手机";

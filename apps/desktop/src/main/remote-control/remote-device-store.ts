@@ -5,7 +5,12 @@ import {
 	type RemoteIdentityKeyPair,
 	toBase64Url,
 } from "@vetta/remote-control";
-import type { DesktopConfig, RemoteControlConfig, RemoteControlDeviceRecord } from "../config/desktop-config-store.js";
+import type {
+	DesktopConfig,
+	DesktopConfigUpdater,
+	RemoteControlConfig,
+	RemoteControlDeviceRecord,
+} from "../config/desktop-config-store.js";
 import type { CredentialRef } from "../credentials/credential-vault.js";
 
 const CREDENTIAL_NAMESPACE = "remote-control";
@@ -21,7 +26,7 @@ export interface RemoteDeviceStoreVault {
 
 export interface RemoteDeviceStoreOptions {
 	readonly readConfig: () => Promise<DesktopConfig>;
-	readonly writeConfig: (config: DesktopConfig) => Promise<void>;
+	readonly updateConfig: (update: DesktopConfigUpdater) => Promise<DesktopConfig>;
 	readonly vault: RemoteDeviceStoreVault;
 	readonly defaultRelayBaseUrl?: string;
 }
@@ -43,10 +48,11 @@ export class RemoteDeviceStore {
 	}
 
 	async update(mutate: (current: RemoteControlConfig) => RemoteControlConfig): Promise<RemoteControlConfig> {
-		const config = await this.options.readConfig();
-		const next = mutate(config.remoteControl ?? EMPTY_REMOTE_CONTROL_CONFIG);
-		await this.options.writeConfig({ ...config, remoteControl: next });
-		return this.withDefaults(next);
+		const config = await this.options.updateConfig((current) => ({
+			...current,
+			remoteControl: mutate(current.remoteControl ?? EMPTY_REMOTE_CONTROL_CONFIG),
+		}));
+		return this.withDefaults(config.remoteControl ?? EMPTY_REMOTE_CONTROL_CONFIG);
 	}
 
 	/** The relay used when none is set; undefined when this build has none. */

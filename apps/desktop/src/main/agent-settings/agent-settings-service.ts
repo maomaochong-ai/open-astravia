@@ -6,15 +6,16 @@ import type {
 } from "@vetta-org/capability-sdk";
 import {
 	type DesktopConfig,
+	type DesktopConfigUpdater,
 	normalizeExperimental,
 	normalizeImageGeneration,
 	readDesktopConfig,
-	writeDesktopConfig,
+	updateDesktopConfig,
 } from "../config/desktop-config-store.js";
 
 export interface AgentSettingsServiceOptions {
 	readonly readConfig: () => Promise<DesktopConfig>;
-	readonly writeConfig: (config: DesktopConfig) => Promise<void>;
+	readonly updateConfig: (update: DesktopConfigUpdater) => Promise<DesktopConfig>;
 }
 
 function normalizeAgentExperimentalSettings(value: unknown): AgentExperimentalSettings {
@@ -35,10 +36,11 @@ export class AgentSettingsService {
 	}
 
 	async setExperimental(input: AgentExperimentalSettingsUpdate): Promise<AgentExperimentalSettings> {
-		const current = await this.options.readConfig();
-		const experimental = normalizeAgentExperimentalSettings({ ...current.experimental, ...input });
-		await this.options.writeConfig({ ...current, experimental });
-		return experimental;
+		const config = await this.options.updateConfig((current) => ({
+			...current,
+			experimental: normalizeAgentExperimentalSettings({ ...current.experimental, ...input }),
+		}));
+		return normalizeAgentExperimentalSettings(config.experimental);
 	}
 
 	async getImageGeneration(): Promise<ImageGenerationSettings> {
@@ -47,35 +49,36 @@ export class AgentSettingsService {
 	}
 
 	async setImageGeneration(input: ImageGenerationSettingsUpdate): Promise<ImageGenerationSettings> {
-		const current = await this.options.readConfig();
-		const currentSettings = normalizeImageGeneration(current.imageGeneration);
-		const imageGeneration = normalizeImageGeneration({
-			...currentSettings,
-			...(input.textToImageProviderId === null
-				? { textToImageProviderId: undefined }
-				: input.textToImageProviderId !== undefined
-					? { textToImageProviderId: input.textToImageProviderId }
-					: {}),
-			...(input.textToImageModelId === null ||
-			(input.textToImageProviderId !== undefined && input.textToImageModelId === undefined)
-				? { textToImageModelId: undefined }
-				: input.textToImageModelId !== undefined
-					? { textToImageModelId: input.textToImageModelId }
-					: {}),
-			...(input.imageToImageProviderId === null
-				? { imageToImageProviderId: undefined }
-				: input.imageToImageProviderId !== undefined
-					? { imageToImageProviderId: input.imageToImageProviderId }
-					: {}),
-			...(input.imageToImageModelId === null ||
-			(input.imageToImageProviderId !== undefined && input.imageToImageModelId === undefined)
-				? { imageToImageModelId: undefined }
-				: input.imageToImageModelId !== undefined
-					? { imageToImageModelId: input.imageToImageModelId }
-					: {}),
+		const config = await this.options.updateConfig((current) => {
+			const currentSettings = normalizeImageGeneration(current.imageGeneration);
+			const imageGeneration = normalizeImageGeneration({
+				...currentSettings,
+				...(input.textToImageProviderId === null
+					? { textToImageProviderId: undefined }
+					: input.textToImageProviderId !== undefined
+						? { textToImageProviderId: input.textToImageProviderId }
+						: {}),
+				...(input.textToImageModelId === null ||
+				(input.textToImageProviderId !== undefined && input.textToImageModelId === undefined)
+					? { textToImageModelId: undefined }
+					: input.textToImageModelId !== undefined
+						? { textToImageModelId: input.textToImageModelId }
+						: {}),
+				...(input.imageToImageProviderId === null
+					? { imageToImageProviderId: undefined }
+					: input.imageToImageProviderId !== undefined
+						? { imageToImageProviderId: input.imageToImageProviderId }
+						: {}),
+				...(input.imageToImageModelId === null ||
+				(input.imageToImageProviderId !== undefined && input.imageToImageModelId === undefined)
+					? { imageToImageModelId: undefined }
+					: input.imageToImageModelId !== undefined
+						? { imageToImageModelId: input.imageToImageModelId }
+						: {}),
+			});
+			return { ...current, imageGeneration };
 		});
-		await this.options.writeConfig({ ...current, imageGeneration });
-		return imageGeneration;
+		return normalizeImageGeneration(config.imageGeneration);
 	}
 }
 
@@ -84,7 +87,7 @@ let desktopAgentSettingsService: AgentSettingsService | undefined;
 export function getDesktopAgentSettingsService(): AgentSettingsService {
 	desktopAgentSettingsService ??= new AgentSettingsService({
 		readConfig: readDesktopConfig,
-		writeConfig: writeDesktopConfig,
+		updateConfig: updateDesktopConfig,
 	});
 	return desktopAgentSettingsService;
 }

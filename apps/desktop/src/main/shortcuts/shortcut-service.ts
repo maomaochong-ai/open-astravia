@@ -20,16 +20,17 @@ import {
 import { SHORTCUTS_CHANNELS } from "../../shared/shortcuts-ipc.js";
 import {
 	type DesktopConfig,
+	type DesktopConfigUpdater,
 	normalizeQuickPanel,
 	readDesktopConfig,
-	writeDesktopConfig,
+	updateDesktopConfig,
 } from "../config/desktop-config-store.js";
 import { applyQuickPanelTrigger, setQuickPanelTriggerHandler } from "../quickpanel-trigger.js";
 import { toggleQuickPanelWindow } from "../quickpanel-window.js";
 
 export interface ShortcutServiceOptions {
 	readonly readConfig: () => Promise<DesktopConfig>;
-	readonly writeConfig: (config: DesktopConfig) => Promise<void>;
+	readonly updateConfig: (update: DesktopConfigUpdater) => Promise<DesktopConfig>;
 	readonly broadcastBindings: (bindings: Record<string, string>) => void;
 	readonly reloadQuickPanelTrigger: () => Promise<void>;
 }
@@ -66,27 +67,32 @@ export class ShortcutService {
 		const normalized = normalizeShortcutCombo(shortcut);
 		if (!isValidShortcutCombo(normalized)) throw new Error(`Invalid shortcut combo: ${shortcut}`);
 
-		const config = await this.options.readConfig();
-		const current = readBindings(config);
-		const conflict = findShortcutBindingConflict(id, normalized, current);
-		if (conflict) {
-			throw new Error(`Shortcut ${JSON.stringify(normalized)} is already bound to ${JSON.stringify(conflict)}.`);
-		}
-
-		const next: ShortcutBindings = { ...current };
-		const definition = getShortcutActionDef(id);
-		if (normalized === definition.defaultShortcut) delete next[id];
-		else next[id] = normalized;
-		await this.persistBindings(config, next);
+		let next: ShortcutBindings = {};
+		await this.options.updateConfig((config) => {
+			const current = readBindings(config);
+			const conflict = findShortcutBindingConflict(id, normalized, current);
+			if (conflict) {
+				throw new Error(`Shortcut ${JSON.stringify(normalized)} is already bound to ${JSON.stringify(conflict)}.`);
+			}
+			next = { ...current };
+			const definition = getShortcutActionDef(id);
+			if (normalized === definition.defaultShortcut) delete next[id];
+			else next[id] = normalized;
+			return { ...config, shortcuts: { bindings: next } };
+		});
+		this.options.broadcastBindings(next);
 		return { bindings: listShortcutBindingsSnapshot(next) };
 	}
 
 	async resetBinding(id: string): Promise<ShortcutBindingResetResult> {
 		if (!isShortcutActionId(id)) throw new Error(`Unknown shortcut action id: ${id}`);
-		const config = await this.options.readConfig();
-		const next = { ...readBindings(config) };
-		delete next[id];
-		await this.persistBindings(config, next);
+		let next: ShortcutBindings = {};
+		await this.options.updateConfig((config) => {
+			next = { ...readBindings(config) };
+			delete next[id];
+			return { ...config, shortcuts: { bindings: next } };
+		});
+		this.options.broadcastBindings(next);
 		return {
 			bindings: listShortcutBindingsSnapshot(next),
 			shortcut: getShortcutActionDef(id).defaultShortcut,
@@ -94,39 +100,30 @@ export class ShortcutService {
 	}
 
 	async resetAllBindings(): Promise<ShortcutBindingsResult> {
-		const config = await this.options.readConfig();
-		await this.persistBindings(config, {});
+		await this.options.updateConfig((config) => ({ ...config, shortcuts: { bindings: {} } }));
+		this.options.broadcastBindings({});
 		return { bindings: listShortcutBindingsSnapshot({}) };
 	}
 
 	async setQuickPanelTrigger(trigger: QuickPanelTrigger): Promise<QuickPanelSettings> {
-		const config = await this.options.readConfig();
-		const current = snapshotQuickPanel(config);
-		await this.options.writeConfig({
-			...config,
-			quickPanel: { trigger, postSendBehavior: current.postSendBehavior },
+		await this.options.updateConfig((config) => {
+			const current = snapshotQuickPanel(config);
+			return { ...config, quickPanel: { trigger, postSendBehavior: current.postSendBehavior } };
 		});
 		await this.options.reloadQuickPanelTrigger();
 		return this.getQuickPanelSettings();
 	}
 
 	async setQuickPanelPostSendBehavior(behavior: QuickPanelPostSendBehavior): Promise<QuickPanelSettings> {
-		const config = await this.options.readConfig();
-		const current = snapshotQuickPanel(config);
-		await this.options.writeConfig({
-			...config,
-			quickPanel: { trigger: current.trigger, postSendBehavior: behavior },
+		await this.options.updateConfig((config) => {
+			const current = snapshotQuickPanel(config);
+			return { ...config, quickPanel: { trigger: current.trigger, postSendBehavior: behavior } };
 		});
 		await this.options.reloadQuickPanelTrigger();
 		return this.getQuickPanelSettings();
 	}
 
 	notifyBindingsChanged(bindings: Record<string, string>): void {
-		this.options.broadcastBindings(bindings);
-	}
-
-	private async persistBindings(config: DesktopConfig, bindings: ShortcutBindings): Promise<void> {
-		await this.options.writeConfig({ ...config, shortcuts: { bindings } });
 		this.options.broadcastBindings(bindings);
 	}
 }
@@ -155,7 +152,7 @@ function broadcastBindings(bindings: Record<string, string>): void {
 
 const desktopShortcutService = new ShortcutService({
 	readConfig: readDesktopConfig,
-	writeConfig: writeDesktopConfig,
+	updateConfig: updateDesktopConfig,
 	broadcastBindings,
 	reloadQuickPanelTrigger: syncQuickPanelTrigger,
 });

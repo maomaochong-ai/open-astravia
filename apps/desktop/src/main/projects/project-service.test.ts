@@ -23,8 +23,9 @@ function createFixture(initial?: Partial<DesktopConfig>) {
 		createDirectory,
 		isKnownSshHost: async (hostId) => knownSshHosts.has(hostId),
 		readConfig: async () => structuredClone(config),
-		writeConfig: async (next) => {
-			config = structuredClone(next);
+		updateConfig: async (update) => {
+			config = structuredClone(await update(structuredClone(config)));
+			return structuredClone(config);
 		},
 		broadcastChanged,
 		isExistingNonDirectory: async (path) => nonDirectoryPaths.has(path),

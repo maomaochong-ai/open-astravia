@@ -8,8 +8,10 @@ import { dirname } from "node:path";
  * reader mid-read. Such holds last moments, so the rename is tried again a few times.
  */
 const RETRYABLE_RENAME_CODES = new Set(["EPERM", "EACCES", "EBUSY"]);
-const RENAME_ATTEMPTS = 10;
+const SYNC_RENAME_ATTEMPTS = 10;
+const ASYNC_RENAME_ATTEMPTS = 30;
 const RENAME_BACKOFF_MS = 10;
+const MAX_RENAME_BACKOFF_MS = 100;
 
 let tempSequence = 0;
 
@@ -28,17 +30,21 @@ function sleepSync(ms: number): void {
 	Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 }
 
+function renameBackoffMs(attempt: number): number {
+	return Math.min(attempt * RENAME_BACKOFF_MS, MAX_RENAME_BACKOFF_MS);
+}
+
 function renameWithRetry(from: string, to: string): void {
 	for (let attempt = 1; ; attempt += 1) {
 		try {
 			renameSync(from, to);
 			return;
 		} catch (error) {
-			if (!isRetryableRename(error) || attempt >= RENAME_ATTEMPTS) {
+			if (!isRetryableRename(error) || attempt >= SYNC_RENAME_ATTEMPTS) {
 				rmSync(from, { force: true });
 				throw error;
 			}
-			sleepSync(attempt * RENAME_BACKOFF_MS);
+			sleepSync(renameBackoffMs(attempt));
 		}
 	}
 }
@@ -49,11 +55,11 @@ async function renameWithRetryAsync(from: string, to: string): Promise<void> {
 			await rename(from, to);
 			return;
 		} catch (error) {
-			if (!isRetryableRename(error) || attempt >= RENAME_ATTEMPTS) {
+			if (!isRetryableRename(error) || attempt >= ASYNC_RENAME_ATTEMPTS) {
 				await rm(from, { force: true });
 				throw error;
 			}
-			await new Promise((resolve) => setTimeout(resolve, attempt * RENAME_BACKOFF_MS));
+			await new Promise((resolve) => setTimeout(resolve, renameBackoffMs(attempt)));
 		}
 	}
 }

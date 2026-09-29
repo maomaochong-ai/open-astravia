@@ -4,7 +4,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { getVettaHomePath } from "@vetta/action-rpc";
 import type { SshHost } from "@vetta/ssh-transport";
-import { atomicWriteJSON } from "@vetta/toolkit/atomic-write";
+import { atomicWriteJSON, atomicWriteJSONAsync } from "@vetta/toolkit/atomic-write";
 import { isLanguagePreference, type LanguagePreference } from "../../shared/i18n/config.js";
 import {
 	DEFAULT_NOTIFICATION_PREFERENCES,
@@ -73,7 +73,7 @@ export interface DesktopConfig {
 	 * 「本机连到远端主机上开发」，方向相反。
 	 *
 	 * 只读投影：真身在 `ssh-hosts.json`（见 {@link writeSshHosts}），
-	 * {@link writeDesktopConfig} 会忽略这个字段。
+	 * {@link updateDesktopConfig} 会忽略这个字段。
 	 */
 	sshHosts?: SshHost[];
 }
@@ -274,13 +274,20 @@ export function normalizeImageGeneration(value: unknown): ImageGenerationConfig 
 	};
 }
 
-export async function readDesktopConfig(): Promise<DesktopConfig> {
-	try {
-		const raw = await readFile(CONFIG_PATH, "utf8");
-		return migrateAndParseDesktopConfig(JSON.parse(raw));
-	} catch {
-		return { ...DEFAULT_CONFIG };
-	}
+export function readDesktopConfig(): Promise<DesktopConfig> {
+	return enqueueDesktopConfigOperation(async () => {
+		try {
+			const raw: unknown = JSON.parse(await readFile(CONFIG_PATH, "utf8"));
+			const result = migrateDesktopConfig(raw);
+			readSshHostsSync(result.config.sshHosts);
+			if (result.migrated) {
+				await atomicWriteJSONAsync(CONFIG_PATH, { ...result.config, sshHosts: undefined });
+			}
+			return parseDesktopConfig(result.config);
+		} catch {
+			return { ...DEFAULT_CONFIG };
+		}
+	});
 }
 
 export function readConfigSync(): DesktopConfig {
@@ -294,10 +301,7 @@ export function readConfigSync(): DesktopConfig {
 
 function migrateAndParseDesktopConfig(value: unknown): DesktopConfig {
 	const result = migrateDesktopConfig(value);
-	if (result.migrated) {
-		readSshHostsSync(result.config.sshHosts);
-		atomicWriteJSON(CONFIG_PATH, { ...result.config, sshHosts: undefined });
-	}
+	readSshHostsSync(result.config.sshHosts);
 	return parseDesktopConfig(result.config);
 }
 
@@ -433,23 +437,48 @@ function normalizeSshHosts(value: unknown): SshHost[] | undefined {
 	return hosts;
 }
 
+export type DesktopConfigUpdater = (current: DesktopConfig) => DesktopConfig | Promise<DesktopConfig>;
+
+let desktopConfigOperationQueue: Promise<void> = Promise.resolve();
+
+function enqueueDesktopConfigOperation<T>(operation: () => Promise<T>): Promise<T> {
+	const result = desktopConfigOperationQueue.then(operation, operation);
+	desktopConfigOperationQueue = result.then(
+		() => undefined,
+		() => undefined,
+	);
+	return result;
+}
+
 /**
- * 整文件写回，但保留磁盘上本版本不认识的字段。
+ * 在进程内唯一的配置写队列上读取最新快照、修改并原子落盘。
  *
- * 新旧版本共用同一份 `~/.vetta`（开发版与已安装的正式版、或升级后又回退）。读路径
- * {@link parseDesktopConfig} 是字段白名单，不认识的字段不进内存；若写回时整份覆盖，
- * 旧版任何一次保存都会把新版的字段抹掉——0.5.58 启动时顺手写回 CLI 路径，就这样清空了
- * sshHosts，远程项目随之全部报「Unknown SSH host」。已知字段仍以传入值为准：显式给
- * `undefined` 的键在序列化时被丢掉，删除语义不变。
+ * 新旧版本可能共用同一份配置，磁盘上本版本不认识的字段会原样保留。已知字段仍以 updater
+ * 返回值为准，显式赋 `undefined` 的键在序列化时被删除。SSH 主机有独立事实源，不随这里
+ * 的只读投影写回。
+ *
+ * updater 必须只计算下一份配置，不应在里面再次读写 desktop config。它可以执行异步
+ * 计算，但会占住写队列；调用方应先完成与配置无关的 I/O，再进入这里提交最小修改。
  */
-export async function writeDesktopConfig(config: DesktopConfig): Promise<void> {
-	const raw = readRawConfigSync();
-	// 迁移没来得及发生时（文件由外部写入、本进程还没读过）先把旧字段迁出，再从这里删掉。
-	readSshHostsSync(raw.sshHosts);
-	// sshHosts 由 writeSshHosts 独占：调用方手里的是读配置那一刻的快照，拿它写回会盖掉
-	// 期间刚增删的主机。
-	const notificationPreferences = preserveFutureNotificationFields(raw, config.notificationPreferences);
-	atomicWriteJSON(CONFIG_PATH, { ...raw, ...config, notificationPreferences, sshHosts: undefined });
+export function updateDesktopConfig(update: DesktopConfigUpdater): Promise<DesktopConfig> {
+	return enqueueDesktopConfigOperation(async () => {
+		const raw = readRawConfigSync();
+		const migrated = migrateDesktopConfig(raw).config;
+		// 迁移没来得及发生时（文件由外部写入、本进程还没读过）先把旧字段迁出，再从这里删掉。
+		readSshHostsSync(migrated.sshHosts);
+		const current = parseDesktopConfig(migrated);
+		const next = await update(current);
+		if (next === current) return current;
+		// sshHosts 由 writeSshHosts 独占：调用方手里的 DesktopConfig 只是只读投影，不能写回。
+		const notificationPreferences = preserveFutureNotificationFields(raw, next.notificationPreferences);
+		await atomicWriteJSONAsync(CONFIG_PATH, {
+			...raw,
+			...next,
+			notificationPreferences,
+			sshHosts: undefined,
+		});
+		return next;
+	});
 }
 
 function preserveFutureNotificationFields(
@@ -487,9 +516,11 @@ function readRawConfigSync(): Record<string, unknown> {
 }
 
 export async function persistVettaCliPaths(paths: { vettaAppPath: string; vettaCliAppPath: string }): Promise<void> {
-	const config = await readDesktopConfig();
-	if (config.vettaAppPath === paths.vettaAppPath && config.vettaCliAppPath === paths.vettaCliAppPath) return;
-	await writeDesktopConfig({ ...config, ...paths });
+	await updateDesktopConfig((config) =>
+		config.vettaAppPath === paths.vettaAppPath && config.vettaCliAppPath === paths.vettaCliAppPath
+			? config
+			: { ...config, ...paths },
+	);
 }
 
 export function expandTildePath(path: string): string {

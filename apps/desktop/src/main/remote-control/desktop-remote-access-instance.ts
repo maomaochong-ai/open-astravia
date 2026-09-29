@@ -2,7 +2,7 @@ import { realpath } from "node:fs/promises";
 import { homedir } from "node:os";
 import path, { basename } from "node:path";
 import { getAppMonitorSnapshot } from "../app-monitor/app-monitor-service.js";
-import { DEFAULT_CONVERSATION_CWD, readDesktopConfig, writeDesktopConfig } from "../config/desktop-config-store.js";
+import { DEFAULT_CONVERSATION_CWD, readDesktopConfig, updateDesktopConfig } from "../config/desktop-config-store.js";
 import { onConversationListChanged } from "../conversations/conversation-list-events.js";
 import { getDesktopConversationService } from "../conversations/desktop-conversation-service.js";
 import { createDesktopSessionCommands } from "../conversations/desktop-session-commands.js";
@@ -44,7 +44,7 @@ export function getDesktopRemoteAccessManager(
 	manager ??= new DesktopRemoteAccessManager({
 		store: new RemoteDeviceStore({
 			readConfig: readDesktopConfig,
-			writeConfig: writeDesktopConfig,
+			updateConfig: updateDesktopConfig,
 			vault: getDesktopCredentialVault(),
 			defaultRelayBaseUrl,
 		}),

@@ -34,11 +34,15 @@ function harness(
 	} as unknown as DesktopConfig;
 	const vault = new Map<string, string>();
 	let writesFail = false;
+	let writeCount = 0;
 	const store = new RemoteDeviceStore({
 		readConfig: async () => structuredClone(config),
-		writeConfig: async (next) => {
+		updateConfig: async (update) => {
 			if (writesFail) throw Object.assign(new Error("EPERM: operation not permitted, rename"), { code: "EPERM" });
+			const next = await update(structuredClone(config));
 			config = structuredClone(next);
+			writeCount += 1;
+			return structuredClone(config);
 		},
 		vault: {
 			isAvailable: () => true,
@@ -179,6 +183,7 @@ function harness(
 		permissions,
 		mailbox,
 		readConfig: () => config,
+		writeCount: () => writeCount,
 		/** Makes saving the desktop config fail, as a locked file on Windows does. */
 		failWrites: (fail: boolean) => {
 			writesFail = fail;
@@ -211,7 +216,7 @@ describe("DesktopRemoteAccessManager", () => {
 	});
 
 	it("creates an invite that opens the LAN server and parks a relay link, then claims the first phone", async () => {
-		const { manager, lanServers, relayLinks, readConfig, store } = harness();
+		const { manager, lanServers, relayLinks, readConfig, store, writeCount } = harness();
 		const state = await manager.createInvite();
 		expect(state.invite).toBeDefined();
 		const invite = parsePairingUri(state.invite?.inviteUri ?? "");
@@ -226,12 +231,18 @@ describe("DesktopRemoteAccessManager", () => {
 		expect(state.devices[0]).toMatchObject({ claimed: false });
 
 		const phoneKey = toBase64Url(generateIdentityKeyPair().publicKey);
+		const writesBeforeClaim = writeCount();
 		const decision = lanServers[0]?.options.onDeviceHello(
+			{ id: invite.pairingId, mobileSecretHash: readConfig().remoteControl?.devices[0]?.mobileSecretHash ?? "" },
+			hello(phoneKey),
+		);
+		lanServers[0]?.options.onDeviceHello(
 			{ id: invite.pairingId, mobileSecretHash: readConfig().remoteControl?.devices[0]?.mobileSecretHash ?? "" },
 			hello(phoneKey),
 		);
 		expect(decision).toEqual({ kind: "approve" });
 		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(writeCount()).toBe(writesBeforeClaim + 1);
 		const device = readConfig().remoteControl?.devices[0];
 		expect(device).toMatchObject({ mobileIdentityKey: phoneKey, name: "iPhone" });
 		expect(store.mobileSecret(invite.pairingId)).toBeUndefined();

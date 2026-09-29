@@ -30,6 +30,7 @@ import {
 	DEFAULT_IM_CONVERSATION_CWD,
 	DEFAULT_IM_CONVERSATION_SESSION_DIR,
 	type DesktopConfig,
+	type DesktopConfigUpdater,
 	type ExperimentalConfig,
 	expandTildePath,
 	KB_PROCESSING_CWD,
@@ -49,7 +50,7 @@ import {
 	type QuickPanelTrigger,
 	readConfigSync,
 	readDesktopConfig,
-	writeDesktopConfig,
+	updateDesktopConfig,
 } from "../config/desktop-config-store.js";
 import {
 	allowProjectRoot,
@@ -109,6 +110,7 @@ export {
 	DEFAULT_IM_CONVERSATION_CWD,
 	DEFAULT_IM_CONVERSATION_SESSION_DIR,
 	type DesktopConfig,
+	type DesktopConfigUpdater,
 	type ExperimentalConfig,
 	KB_PROCESSING_CWD,
 	KB_PROCESSING_SESSION_DIR,
@@ -119,7 +121,7 @@ export {
 	type QuickPanelTrigger,
 	readConfigSync,
 	readDesktopConfig,
-	writeDesktopConfig,
+	updateDesktopConfig,
 };
 export { readMcpConfig, writeMcpConfig };
 
@@ -429,71 +431,69 @@ export function registerFsIpc(): () => void {
 
 	ipcMain.handle(CHANNELS.CONFIG_SET, async (_event, config: unknown) => {
 		if (typeof config !== "object" || config === null) throw new Error("Invalid config");
-		const current = await readDesktopConfig();
 		// proxy 走补丁语义（口令可省略），与其余整体覆盖的字段不同，故单独放宽为 unknown。
 		const patch = config as Partial<Omit<DesktopConfig, "proxy">> & { proxy?: unknown };
-		const next: DesktopConfig = {
-			// 先摊开 current 打底。下面是一张字段白名单，而 writeDesktopConfig 是整文件覆盖：
-			// 白名单漏掉哪个字段，哪个字段就会在用户每次保存设置时被从磁盘上抹掉。sshHosts
-			// 和 remoteControl 就是这么丢的——它们晚于这个处理器加入 DesktopConfig，而两者
-			// 都是可选字段，TypeScript 不会提示缺失。打底之后白名单只决定「哪些字段允许被
-			// 补丁改写」，不再决定「哪些字段能活下来」。
-			...current,
-			projects: patch.projects ?? current.projects,
-			archivedProjects: patch.archivedProjects ?? current.archivedProjects,
-			workspacePath: patch.workspacePath ?? current.workspacePath,
-			defaultExecutionMode:
-				patch.defaultExecutionMode !== undefined
-					? normalizeExecutionMode(patch.defaultExecutionMode)
-					: current.defaultExecutionMode,
-			defaultAgentMode:
-				patch.defaultAgentMode !== undefined
-					? normalizeAgentMode(patch.defaultAgentMode)
-					: current.defaultAgentMode,
-			debugMode: patch.debugMode ?? current.debugMode,
-			vettaAppPath: patch.vettaAppPath ?? current.vettaAppPath,
-			vettaCliAppPath: patch.vettaCliAppPath ?? current.vettaCliAppPath,
-			notificationsEnabled: patch.notificationsEnabled ?? current.notificationsEnabled,
-			notificationPreferences:
-				patch.notificationPreferences !== undefined
-					? normalizeNotificationPreferences({
-							...current.notificationPreferences,
-							...patch.notificationPreferences,
-							events: {
-								...current.notificationPreferences.events,
-								...patch.notificationPreferences.events,
-							},
-						})
-					: current.notificationPreferences,
-			language: patch.language ?? current.language,
-			experimental:
-				patch.experimental !== undefined
-					? normalizeExperimental({ ...current.experimental, ...patch.experimental })
-					: current.experimental,
-			imageGeneration:
-				patch.imageGeneration !== undefined
-					? normalizeImageGeneration({ ...current.imageGeneration, ...patch.imageGeneration })
-					: current.imageGeneration,
-			knowledgeBase:
-				patch.knowledgeBase !== undefined
-					? normalizeKnowledgeBase({ ...current.knowledgeBase, ...patch.knowledgeBase })
-					: current.knowledgeBase,
-			// bindings 整表替换（支持 reset 删键）；GUI/Action 均传完整 map。
-			shortcuts: patch.shortcuts !== undefined ? normalizeShortcuts(patch.shortcuts) : current.shortcuts,
-			quickPanel:
-				patch.quickPanel !== undefined
-					? normalizeQuickPanel({ ...current.quickPanel, ...patch.quickPanel })
-					: current.quickPanel,
-			appshot:
-				patch.appshot !== undefined ? normalizeAppshot({ ...current.appshot, ...patch.appshot }) : current.appshot,
-			// 补丁省略 password 即沿用已存口令，渲染层不必回传明文。
-			proxy: patch.proxy !== undefined ? mergeProxyConfigPatch(current.proxy, patch.proxy) : current.proxy,
-		};
+		const next = await updateDesktopConfig(
+			(current): DesktopConfig => ({
+				// updater 在中央队列里拿到最新快照；这张白名单只决定哪些字段允许被补丁改写。
+				...current,
+				projects: patch.projects ?? current.projects,
+				archivedProjects: patch.archivedProjects ?? current.archivedProjects,
+				workspacePath: patch.workspacePath ?? current.workspacePath,
+				defaultExecutionMode:
+					patch.defaultExecutionMode !== undefined
+						? normalizeExecutionMode(patch.defaultExecutionMode)
+						: current.defaultExecutionMode,
+				defaultAgentMode:
+					patch.defaultAgentMode !== undefined
+						? normalizeAgentMode(patch.defaultAgentMode)
+						: current.defaultAgentMode,
+				debugMode: patch.debugMode ?? current.debugMode,
+				vettaAppPath: patch.vettaAppPath ?? current.vettaAppPath,
+				vettaCliAppPath: patch.vettaCliAppPath ?? current.vettaCliAppPath,
+				notificationsEnabled: patch.notificationsEnabled ?? current.notificationsEnabled,
+				notificationPreferences:
+					patch.notificationPreferences !== undefined
+						? normalizeNotificationPreferences({
+								...current.notificationPreferences,
+								...patch.notificationPreferences,
+								events: {
+									...current.notificationPreferences.events,
+									...patch.notificationPreferences.events,
+								},
+							})
+						: current.notificationPreferences,
+				language: patch.language ?? current.language,
+				experimental:
+					patch.experimental !== undefined
+						? normalizeExperimental({ ...current.experimental, ...patch.experimental })
+						: current.experimental,
+				imageGeneration:
+					patch.imageGeneration !== undefined
+						? normalizeImageGeneration({ ...current.imageGeneration, ...patch.imageGeneration })
+						: current.imageGeneration,
+				knowledgeBase:
+					patch.knowledgeBase !== undefined
+						? normalizeKnowledgeBase({ ...current.knowledgeBase, ...patch.knowledgeBase })
+						: current.knowledgeBase,
+				// bindings 整表替换（支持 reset 删键）；GUI/Action 均传完整 map。
+				shortcuts: patch.shortcuts !== undefined ? normalizeShortcuts(patch.shortcuts) : current.shortcuts,
+				quickPanel:
+					patch.quickPanel !== undefined
+						? normalizeQuickPanel({ ...current.quickPanel, ...patch.quickPanel })
+						: current.quickPanel,
+				appshot:
+					patch.appshot !== undefined
+						? normalizeAppshot({ ...current.appshot, ...patch.appshot })
+						: current.appshot,
+				// 补丁省略 password 即沿用已存口令，渲染层不必回传明文。
+				proxy: patch.proxy !== undefined ? mergeProxyConfigPatch(current.proxy, patch.proxy) : current.proxy,
+			}),
+		);
 		// Allow all known roots for file operations
 		for (const p of next.projects) allowProjectRoot(p.path);
 		for (const p of next.archivedProjects) allowProjectRoot(p.path);
 		if (next.workspacePath) allowProjectRoot(next.workspacePath);
-		await writeDesktopConfig(next);
 		if (patch.shortcuts !== undefined) {
 			const bindings = next.shortcuts?.bindings ?? {};
 			shortcuts.notifyBindingsChanged(bindings as Record<string, string>);
