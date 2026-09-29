@@ -58,7 +58,6 @@ export function useProjectsPanelModel({
 		renameSession,
 		archiveProject,
 		removeProject,
-		deleteProjectFromDisk,
 		loadSessions,
 		removePinnedSessions,
 	} = useProjects();
@@ -391,39 +390,6 @@ export function useProjectsPanelModel({
 		],
 	);
 
-	const deletePanelProject = useCallback(
-		(cwd: string) => {
-			const batch = batchProjects.find((project) => project.id === cwd);
-			if (batch) {
-				confirmDeleteBatchProject(batch);
-				return;
-			}
-			const project = projects.find((item) => item.cwd === cwd);
-			const displayName = project?.name ?? pathBasename(cwd);
-			const sessionPaths = (sessionsMap.get(cwd) ?? []).map((session) => session.path);
-			setConfirm({
-				title: t("sidebar.dialogs.deleteProjectTitle"),
-				message: t("sidebar.dialogs.deleteProjectMessage", { name: displayName }),
-				confirmLabel: t("sidebar.dialogs.deleteConfirm"),
-				variant: "danger",
-				onConfirm: async () => {
-					await deleteProjectFromDisk(cwd);
-					cleanupAfterProjectGone(cwd, sessionPaths);
-				},
-			});
-		},
-		[
-			batchProjects,
-			confirmDeleteBatchProject,
-			projects,
-			sessionsMap,
-			setConfirm,
-			t,
-			deleteProjectFromDisk,
-			cleanupAfterProjectGone,
-		],
-	);
-
 	const clearConversation = useCallback(
 		(cwd: string) => {
 			const allSessions = sessionsMap.get(cwd) ?? [];
@@ -594,7 +560,7 @@ export function useProjectsPanelModel({
 			clearConversation,
 			collapseBatchProject,
 			collapseProject,
-			deleteProject: deletePanelProject,
+			removeProject: removePanelProject,
 			deleteSession: deletePanelSession,
 			defaultNewSession,
 			defaultSelectSession,
@@ -605,7 +571,6 @@ export function useProjectsPanelModel({
 			openClawSettings: () => {
 				void navigate({ to: "/settings/$tab", params: { tab: "im" } });
 			},
-			removeProject: removePanelProject,
 			renameSession: renamePanelSession,
 			selectBatchSession,
 			selectSession: selectSidebarSession,

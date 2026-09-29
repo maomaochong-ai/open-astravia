@@ -69,10 +69,6 @@ export function useProjectsPanelMenusModel(model: ProjectsPanelModel) {
 				setProjectMenu(null);
 				model.actions.removeProject(cwd);
 			},
-			deleteProject: (cwd: string) => {
-				setProjectMenu(null);
-				model.actions.deleteProject(cwd);
-			},
 			clearConversation: (cwd: string) => {
 				setProjectMenu(null);
 				model.actions.clearConversation(cwd);

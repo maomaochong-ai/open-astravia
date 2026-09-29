@@ -11,8 +11,7 @@ const props: ProjectContextMenuViewProps = {
 	labels: {
 		openInFolder: "Show in Finder",
 		archiveProject: "Archive",
-		removeFromList: "Remove",
-		deleteProject: "Delete",
+		removeFromList: "Remove from list",
 		clearConversation: "Clear conversation",
 		clearConversationDisabled: "Nothing to clear",
 		clearClaw: "Clear claw",
@@ -21,9 +20,8 @@ const props: ProjectContextMenuViewProps = {
 	},
 	onArchive: noop,
 	onClose: noop,
-	onDelete: noop,
-	onOpenInFolder: noop,
 	onRemove: noop,
+	onOpenInFolder: noop,
 };
 
 describe("ProjectContextMenuView", () => {
@@ -37,6 +35,11 @@ describe("ProjectContextMenuView", () => {
 		render(<ProjectContextMenuView {...props} canOpenInFolder={false} />);
 		expect(screen.queryByText("Show in Finder")).toBeNull();
 		expect(screen.queryByText("Archive")).not.toBeNull();
-		expect(screen.queryByText("Delete")).not.toBeNull();
+		expect(screen.queryByText("Remove from list")).not.toBeNull();
+	});
+
+	it("offers a single project removal action", () => {
+		render(<ProjectContextMenuView {...props} />);
+		expect(screen.getAllByRole("button", { name: "Remove from list" })).toHaveLength(1);
 	});
 });

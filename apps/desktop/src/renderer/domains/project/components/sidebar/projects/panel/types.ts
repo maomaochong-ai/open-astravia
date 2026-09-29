@@ -44,7 +44,6 @@ export interface ProjectsPanelModel {
 		clearConversation(cwd: string): void;
 		collapseBatchProject(cwd: string): void;
 		collapseProject(cwd: string): void;
-		deleteProject(cwd: string): void;
 		deleteSession(session: SessionContextMenuSession): void;
 		defaultNewSession(cwd: string): void;
 		defaultSelectSession(cwd: string, session: SidebarConversationInfo): void;

@@ -37,7 +37,6 @@ export function ProjectsPanelMenus({ model }: ProjectsPanelMenusProps): JSX.Elem
 						onClose={menus.actions.closeProjectMenu}
 						onArchive={menus.actions.archiveProject}
 						onRemove={menus.actions.removeProject}
-						onDelete={menus.actions.deleteProject}
 						defaultScope={menus.defaultScope}
 						onClearConversation={menus.actions.clearConversation}
 						onClearClaw={menus.actions.clearClaw}

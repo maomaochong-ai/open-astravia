@@ -103,6 +103,14 @@ function isWithinAllowedRoots(targetPath: string): boolean {
 	return false;
 }
 
+function isAllowedRoot(targetPath: string): boolean {
+	const normalizedTarget = normalizePathForComparison(targetPath);
+	for (const root of allowedRoots) {
+		if (normalizePathForComparison(root) === normalizedTarget) return true;
+	}
+	return false;
+}
+
 export function assertFilesystemPathWithinProject(targetPath: string): void {
 	// 与 {@link assertFilesystemRealPathWithinProject} 同理：远程路径有自己的授权根，
 	// 落到本机那套里只会把合法的远程路径一律拒掉。
@@ -384,6 +392,9 @@ export async function renameFilesystemPath(oldPath: string, newPath: string): Pr
 export async function deleteFilesystemPath(targetPath: string): Promise<void> {
 	if (isSshProjectUri(targetPath)) return deleteRemotePath(targetPath);
 	assertFilesystemPathWithinProject(targetPath);
+	// 文件树可以删除项目内的文件和目录，但项目根只能从项目列表注销。否则任何拿到
+	// 通用文件 IPC 的调用方都能绕过项目菜单，把用户打开的外部仓库整个永久删除。
+	if (isAllowedRoot(targetPath)) throw new Error("Refusing to delete the project root");
 	await rm(resolve(targetPath), { recursive: true, force: true });
 }
 

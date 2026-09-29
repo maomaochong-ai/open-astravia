@@ -7,11 +7,35 @@ import { FS_EDITABLE_TEXT_ERROR } from "../../preload/fs-types";
 import {
 	allowProjectRoot,
 	createFilesystemEntry,
+	deleteFilesystemPath,
 	readEditableTextFile,
 	readFilesystemBinaryFile,
 	readTextPreviewFile,
 	saveEditableTextFile,
 } from "./filesystem-service";
+
+describe("deleteFilesystemPath", () => {
+	let projectRoot = "";
+
+	beforeEach(async () => {
+		projectRoot = await mkdtemp(join(tmpdir(), "vetta-delete-path-"));
+		allowProjectRoot(projectRoot);
+	});
+
+	afterEach(async () => {
+		if (projectRoot) await rm(projectRoot, { recursive: true, force: true });
+	});
+
+	it("refuses to delete a registered project root but still deletes children", async () => {
+		const child = join(projectRoot, "generated");
+		await createFilesystemEntry(projectRoot, "generated", "directory");
+
+		await expect(deleteFilesystemPath(projectRoot)).rejects.toThrow("project root");
+		await expect(deleteFilesystemPath(child)).resolves.toBeUndefined();
+		await expect(stat(projectRoot)).resolves.toBeDefined();
+		await expect(stat(child)).rejects.toMatchObject({ code: "ENOENT" });
+	});
+});
 
 describe("createFilesystemEntry", () => {
 	let projectRoot = "";
