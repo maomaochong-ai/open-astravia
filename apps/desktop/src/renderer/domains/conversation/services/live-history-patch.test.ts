@@ -151,6 +151,42 @@ describe("patchLiveMessagesWithCanonical", () => {
 });
 
 describe("applyAgentEndHistoryRefresh", () => {
+	it("按稳定身份回填旧 Turn 时保留已经开始的新 Turn", () => {
+		const turnAUser = createConversationUserMessage({ id: "user-a", entryId: "user-a", text: "A" });
+		const turnAAgent = createConversationAgentMessage({
+			id: "assistant:turn-a:1",
+			turnId: "turn-a",
+			phase: "completed",
+			text: "done A",
+			blocks: [textBlock("done A")],
+		});
+		const turnBUser = createConversationUserMessage({ id: "user-b", turnId: "turn-b", text: "B" });
+		const turnBAgent = createConversationAgentMessage({
+			id: "assistant:turn-b:1",
+			turnId: "turn-b",
+			phase: "streaming",
+			text: "running B",
+			blocks: [textBlock("running B")],
+		});
+		const refreshed = applyAgentEndHistoryRefresh(
+			[turnAUser, turnAAgent, turnBUser, turnBAgent],
+			[
+				createConversationUserMessage({ id: "user-a", entryId: "user-a", text: "A" }),
+				createConversationAgentMessage({
+					id: "assistant:turn-a:1",
+					entryId: "assistant-entry-a",
+					turnId: "turn-a",
+					text: "done A",
+					blocks: [],
+				}),
+			],
+		);
+
+		expect(refreshed).toHaveLength(4);
+		expect(refreshed[1]).toMatchObject({ entryId: "assistant-entry-a" });
+		expect(refreshed[3]).toBe(turnBAgent);
+	});
+
 	it("落后的 agent_end 历史不会清掉刚显示的错误卡片", () => {
 		const live = appendError(
 			[createConversationUserMessage({ id: "user-live", text: "hello" })],

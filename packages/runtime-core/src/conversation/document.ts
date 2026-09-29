@@ -24,6 +24,9 @@ export interface ConversationDocumentEntryBase {
 export interface ConversationDocumentLegacyMessageEntry extends ConversationDocumentEntryBase {
 	readonly type: "message";
 	readonly kind?: never;
+	/** Present on records written by identity-complete runtimes. */
+	readonly turnId?: string;
+	readonly messageId?: string;
 	/** Legacy sessions may contain extension-specific AgentMessage variants. */
 	readonly message: unknown;
 	readonly origin?: RuntimeMessageOrigin;
@@ -346,6 +349,8 @@ export function applyStoredEventToConversationDocument(
 				? {
 						type: "message",
 						...entryReference,
+						turnId: event.turnId,
+						...(event.messageId ? { messageId: event.messageId } : {}),
 						message: event.message,
 						...(event.origin ? { origin: event.origin } : {}),
 					}

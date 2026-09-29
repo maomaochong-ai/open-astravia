@@ -1,4 +1,3 @@
-import { createConversationUserMessage } from "@shared/conversation";
 import { i18n } from "@shared/i18n";
 import {
 	activeSessionStreamingAtom,
@@ -21,7 +20,6 @@ import {
 	todoItemsBySessionAtom,
 } from "@shared/store/atoms";
 import {
-	getQueuedDispatchSeq,
 	getQueueForSession,
 	messageQueueBySessionAtom,
 	type QueuedMessage,
@@ -51,19 +49,20 @@ import {
 	handleToolEnd,
 	handleToolPhase,
 	handleToolStart,
-	nextId,
 	startAssistantTurn,
 	toChatErrorDetails,
 	turnStatsCache,
 } from "../services/chat-service";
 import { clearCachedContextComposition, writeCachedContextComposition } from "../services/context-composition-cache";
 import { ConversationProjection } from "../services/conversation-projection";
-import { applyAgentEndHistoryRefresh } from "../services/live-history-patch";
 import {
-	reconcileOptimisticUserMessages,
-	rememberOptimisticUserMessage,
-} from "../services/optimistic-user-message-cache";
-import { diffConsumedQueueEntries } from "../services/queue-mirror";
+	commitConversationUserMessage,
+	finishConversationTurn,
+	markConversationModelRequestStarted,
+	startConversationTurn,
+} from "../services/conversation-turn-reducer";
+import { applyAgentEndHistoryRefresh } from "../services/live-history-patch";
+import { findOptimisticUserMessage, reconcileOptimisticUserMessages } from "../services/optimistic-user-message-cache";
 import type { ActiveSessionHandle } from "./session-manager-types";
 
 const DELTA_FLUSH_INTERVAL_MS = 100;
@@ -101,7 +100,8 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 	const setPromptSuggestions = useSetAtom(promptSuggestionsAtom);
 	const setPromptPredicting = useSetAtom(promptPredictingAtom);
 	const suggestionTokenRef = useRef<Map<string, number>>(new Map());
-	const turnStartDispatchSeqRef = useRef<Map<string, number>>(new Map());
+	const activeTurnIdRef = useRef<string | null>(null);
+	const identityProtocolRef = useRef(false);
 	const pendingTextDeltaRef = useRef("");
 	const pendingThinkingDeltaRef = useRef("");
 	const deltaTimerRef = useRef<number | null>(null);
@@ -134,6 +134,8 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 		pendingTextDeltaRef.current = "";
 		pendingThinkingDeltaRef.current = "";
 		pendingDeltaSessionRef.current = null;
+		activeTurnIdRef.current = null;
+		identityProtocolRef.current = false;
 		conversationProjectionRef.current.reset();
 	}, []);
 
@@ -174,6 +176,60 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 
 	useEffect(() => resetEventBuffers, [resetEventBuffers]);
 
+	const refreshAfterTurnTerminal = useCallback(
+		(sessionId: string, completed: boolean) => {
+			void window.vetta.session
+				.getFullHistory(sessionId)
+				.then((history) => {
+					if (activeSessionRef.current?.runtimeId !== sessionId) return;
+					const mapped = reconcileOptimisticUserMessages(
+						sessionId,
+						conversationProjectionRef.current.projectHistory(history),
+					);
+					setChatMessages((liveMessages) => applyAgentEndHistoryRefresh(liveMessages, mapped));
+				})
+				.catch((err) => {
+					console.warn("[useSessionManager] getFullHistory after Turn terminal failed", err);
+				});
+
+			if (!completed) return;
+			const active = activeSessionRef.current;
+			const cwd = active?.cwd;
+			const rid = active?.runtimeId;
+			const projectType = cwd ? getProjects().find((project) => project.cwd === cwd)?.type : undefined;
+			if (!rid || projectType === "batch") return;
+			let predictSnapshot: ChatConversationItem[] = [];
+			setChatMessages((previous) => {
+				predictSnapshot = previous;
+				return previous;
+			});
+			const token = suggestionTokenRef.current.get(rid) ?? 0;
+			void (async () => {
+				try {
+					const config = await window.vetta.config.get();
+					if (config.experimental?.promptPrediction !== true) return;
+					const conversation = buildRecentConversation(predictSnapshot);
+					if (!conversation) return;
+					markPredicting(rid, true);
+					const suggestions = await window.vetta.session.nextPromptSuggestions(rid, conversation);
+					if ((suggestionTokenRef.current.get(rid) ?? 0) !== token) return;
+					setPromptSuggestions((previous) => {
+						if (suggestions.length > 0) return { ...previous, [rid]: suggestions };
+						if (!(rid in previous)) return previous;
+						const next = { ...previous };
+						delete next[rid];
+						return next;
+					});
+				} catch (error) {
+					console.warn("[useSessionManager] prompt prediction failed", error);
+				} finally {
+					markPredicting(rid, false);
+				}
+			})();
+		},
+		[activeSessionRef, markPredicting, setChatMessages, setPromptSuggestions],
+	);
+
 	const createSessionEventHandler = useCallback(
 		(sessionId: string) => (event: SessionEvent) => {
 			// Defensive guard: if user has already switched away to another
@@ -196,12 +252,48 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 				setCompactionEligibility(event.state.compaction.eligibility);
 				return;
 			}
-			// ── kernel 队列镜像（ADR-0060）──
-			// 条目「消失且非本端主动移除」= 已被 turn 消费：此刻补用户气泡，
-			// 时序与模型可见顺序严格一致；agent_end 重拉由乐观对账按文本吸收。
+			if (event.type === "conversation.turn.started") {
+				flushDeltas();
+				identityProtocolRef.current = true;
+				activeTurnIdRef.current = event.turnId;
+				bumpSuggestionToken(sessionId);
+				const messageId = conversationProjectionRef.current.beginTurn(event.turnId);
+				setChatMessages((previous) => startConversationTurn(previous, event.turnId, messageId, event.timestamp));
+				setActiveSessionStreaming(true);
+				return;
+			}
+			if (event.type === "conversation.message.appended") {
+				identityProtocolRef.current = true;
+				if (event.message.role !== "user") return;
+				flushDeltas();
+				const messageId = conversationProjectionRef.current.advanceTurnSegment(event.turnId);
+				const optimisticMessage = findOptimisticUserMessage(sessionId, event.messageId);
+				setChatMessages((previous) => commitConversationUserMessage(previous, event, messageId, optimisticMessage));
+				return;
+			}
+			if (
+				event.type === "conversation.turn.completed" ||
+				event.type === "conversation.turn.cancelled" ||
+				event.type === "conversation.turn.failed"
+			) {
+				flushDeltas();
+				identityProtocolRef.current = true;
+				setChatMessages((previous) => finishConversationTurn(previous, event));
+				setRetryProgress(null);
+				if (activeTurnIdRef.current === event.turnId) {
+					activeTurnIdRef.current = null;
+					setActiveSessionStreaming(false);
+				}
+				conversationProjectionRef.current.endTurn(event.turnId);
+				refreshAfterTurnTerminal(sessionId, event.type === "conversation.turn.completed");
+				return;
+			}
+			// ── Kernel queue snapshot (ADR-0060) ──
+			// Snapshot disappearance is deliberately not interpreted as message
+			// consumption. Durable conversation.message.appended is the only source
+			// of truth for when a queued user message becomes part of a Turn.
 			if (event.type === "queue.changed") {
 				const queueStore = getDefaultStore();
-				const prevQueue = getQueueForSession(queueStore.get(messageQueueBySessionAtom), sessionId);
 				const nextQueue: QueuedMessage[] = event.entries.map((entry) => ({
 					id: entry.id,
 					displayText: entry.displayText,
@@ -210,33 +302,17 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 				}));
 				queueStore.set(setQueueForSessionAtom, { runtimeId: sessionId, items: nextQueue });
 				queueStore.set(setQueuePausedAtom, { runtimeId: sessionId, paused: event.paused });
-				const consumedEntries = diffConsumedQueueEntries(prevQueue, nextQueue);
-				if (consumedEntries.length > 0) {
-					// 同一 turn 内接力消费：把上一段流先落定、并切断 assistant 草稿——
-					// 否则后续 delta 仍按 draftId 续写进用户气泡**之前**的旧回复气泡里，
-					// 第二条回复会显示在它自己的用户消息上方（ADR-0060）。
-					flushDeltas();
-					conversationProjectionRef.current.reset();
-				}
-				for (const consumed of consumedEntries) {
-					if (consumed.kind !== "message") continue;
-					const consumedMsg = createConversationUserMessage({
-						id: nextId("user"),
-						deliveryPhase: "pending",
-						text: consumed.displayText,
-						timestamp: Date.now(),
-					});
-					// 镜像条目只有 displayText（无 attachments/promptRef 元数据），
-					// 规范消息回流后按文本吸收即可，避免元数据不等造成气泡残留。
-					rememberOptimisticUserMessage(sessionId, consumedMsg, queueStore.get(chatMessagesAtom), {
-						matchTextOnly: true,
-					});
-					setChatMessages((prev) => [...prev, consumedMsg]);
-				}
 				return;
 			}
 			// ── Lifecycle ──
 			if (event.type === "model.request.started") {
+				if (identityProtocolRef.current) {
+					const messageId = conversationProjectionRef.current.messageIdForTurn(event.turnId);
+					setChatMessages((previous) =>
+						markConversationModelRequestStarted(previous, event.turnId, messageId, event.timestamp),
+					);
+					return;
+				}
 				setChatMessages((previous) => {
 					const tail = previous.at(-1);
 					// Later tool-loop calls must not reactivate a completed message or reset its duration.
@@ -254,11 +330,14 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 				return;
 			}
 			if (event.type === "session.lifecycle") {
+				// Identity-complete Kernel backends publish durable conversation.turn.*
+				// events. Their legacy lifecycle observations are display compatibility
+				// only and must not mutate Turn-owned state a second time.
+				if (identityProtocolRef.current) return;
 				if (event.phase === "agent_start") {
 					// 新一轮开始：让上一轮的输入预测生成（若仍在飞）回填时作废。
 					bumpSuggestionToken(sessionId);
 					// 快照本轮起始时的队列派发序号，供本轮 agent_end 判定重拉是否已过期。
-					turnStartDispatchSeqRef.current.set(sessionId, getQueuedDispatchSeq(sessionId));
 					conversationProjectionRef.current.reset();
 					// agent_start 就建立真实 assistant 草稿：慢模型首包到达前也有稳定消息身份与
 					// 绝对 startedAt。无用户消息介入的唤醒仍复用末尾 assistant 气泡。
@@ -287,12 +366,6 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 						.getFullHistory(sessionId)
 						.then((history) => {
 							if (activeSessionRef.current?.runtimeId !== sessionId) return;
-							// 判活：本轮结束时/后若发生过队列派发（立即发送 / 自然出队），这次历史
-							// 回流已「跨到下一轮」——会冲掉下一轮的乐观用户气泡、令 draft 串台，或与
-							// 已抢先落盘的 mapped 重复。跳过，交由下一轮自己的 agent_end 安全重拉。
-							if (getQueuedDispatchSeq(sessionId) !== (turnStartDispatchSeqRef.current.get(sessionId) ?? 0)) {
-								return;
-							}
 							const mapped = reconcileOptimisticUserMessages(
 								sessionId,
 								conversationProjectionRef.current.projectHistory(history),
@@ -369,7 +442,12 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 			// AssistantMessageEvent stays intact across Runtime/IPC. The projection
 			// batches an ordered event array instead of merging by content type.
 			if (event.channel === "assistant") {
-				conversationProjectionRef.current.enqueue(event);
+				const tail = getDefaultStore().get(chatMessagesAtom).at(-1);
+				const legacyMessageId =
+					!identityProtocolRef.current && tail?.kind === "agent" && tail.endedAt === undefined
+						? tail.id
+						: undefined;
+				conversationProjectionRef.current.enqueue(event, legacyMessageId);
 				pendingDeltaSessionRef.current = sessionId;
 				if (event.type === "text_delta" || event.type === "thinking_delta" || event.type === "toolcall_delta") {
 					scheduleDeltaFlush();
@@ -629,6 +707,7 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 			bumpSuggestionToken,
 			flushDeltas,
 			markPredicting,
+			refreshAfterTurnTerminal,
 			scheduleDeltaFlush,
 			setActiveSessionStreaming,
 			setActiveToolNames,

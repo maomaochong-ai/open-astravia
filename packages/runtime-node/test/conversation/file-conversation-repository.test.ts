@@ -176,6 +176,23 @@ describe("FileConversationRepository", () => {
 		});
 	});
 
+	it("persists message identity without changing the document entry identity", async () => {
+		const { repository } = await createRepository();
+		await repository.create({ sessionId: "identity-session", createdAt: 100 });
+		await repository.append("identity-session", 0, [
+			started("identity-session", "turn-1"),
+			{ ...message("identity-session", "turn-1", "hello"), messageId: "user-123" },
+		]);
+
+		const document = await repository.readDocument("identity-session");
+		expect(document.activeLeafId).toBe("event-2");
+		expect(document.entries[0]).toMatchObject({
+			id: "event-2",
+			turnId: "turn-1",
+			messageId: "user-123",
+		});
+	});
+
 	it("reads existing v1 records without rewriting them", async () => {
 		const { repository } = await createRepository();
 		const sessionId = "legacy-native-v1";

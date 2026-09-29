@@ -2,6 +2,8 @@ import { type ConversationUserMessageViewModel, createConversationUserMessage } 
 import { beforeEach, describe, expect, it } from "vitest";
 import {
 	clearOptimisticUserMessages,
+	discardOptimisticUserMessage,
+	findOptimisticUserMessage,
 	reconcileOptimisticUserMessages,
 	rememberOptimisticUserMessage,
 } from "./optimistic-user-message-cache";
@@ -72,35 +74,39 @@ describe("optimistic user message reconciliation", () => {
 		expect(reconcileOptimisticUserMessages("runtime-a", [canonical])).toEqual([canonical]);
 	});
 
-	it("队列消费气泡按 matchTextOnly 吸收：规范消息带附件徽章也不残留重复", () => {
-		// 队列镜像只有 displayText；被 turn 消费后规范消息带 attachments，
-		// 严格元数据比较会失配，曾导致 agent 回复完成后气泡重复（ADR-0060）。
-		const optimistic = user("optimistic-1", "@/cache/img.png badge 字体太大");
-		rememberOptimisticUserMessage("runtime-a", optimistic, [], { matchTextOnly: true });
+	it("稳定身份确认优先于文本和附件元数据比较", () => {
+		const optimistic = user("user-1", "发送时的文本");
+		rememberOptimisticUserMessage("runtime-a", optimistic, []);
 
 		const canonical = {
-			...user("persisted-1", "@/cache/img.png badge 字体太大"),
+			...user("user-1", "运行时规范化后的文本"),
 			attachments: [{ kind: "image" as const, path: "/cache/img.png" }],
 		};
 		expect(reconcileOptimisticUserMessages("runtime-a", [canonical])).toEqual([canonical]);
-		expect(reconcileOptimisticUserMessages("runtime-a", [canonical])).toEqual([canonical]);
 	});
 
-	it("matchTextOnly 仍要求文本与序号命中，防止误吸收", () => {
+	it("可按稳定身份找回已从时间线撤下的乐观消息元数据", () => {
 		const optimistic = user("optimistic-1", "second");
-		rememberOptimisticUserMessage("runtime-a", optimistic, [user("persisted-1", "first")], {
-			matchTextOnly: true,
-		});
+		rememberOptimisticUserMessage("runtime-a", optimistic, []);
+		expect(findOptimisticUserMessage("runtime-a", "optimistic-1")).toBe(optimistic);
+		expect(findOptimisticUserMessage("runtime-a", "missing")).toBeUndefined();
+	});
 
-		const history = [user("persisted-1", "first"), user("persisted-2", "different")];
-		expect(reconcileOptimisticUserMessages("runtime-a", history)).toEqual([...history, optimistic]);
+	it("prompt 在持久化前失败时可按稳定身份丢弃隐藏快照", () => {
+		const optimistic = user("queued-1", "second");
+		rememberOptimisticUserMessage("runtime-a", optimistic, []);
+
+		discardOptimisticUserMessage("runtime-a", optimistic.id);
+
+		expect(findOptimisticUserMessage("runtime-a", optimistic.id)).toBeUndefined();
+		expect(reconcileOptimisticUserMessages("runtime-a", [])).toEqual([]);
 	});
 
 	it("永远对不上账的气泡在有限次对账后停止残留", () => {
 		// 队列镜像曾为内部 continuation 消息补气泡，而规范历史按 origin 过滤掉它，
 		// 于是每次 agent_end 重拉都把这条气泡重新追加到列表末尾，永久残留且错位。
 		const optimistic = user("optimistic-1", "Continue the response from where you stopped.");
-		rememberOptimisticUserMessage("runtime-a", optimistic, [], { matchTextOnly: true });
+		rememberOptimisticUserMessage("runtime-a", optimistic, []);
 
 		const history = [user("persisted-1", "真实用户消息")];
 		expect(reconcileOptimisticUserMessages("runtime-a", history)).toEqual([...history, optimistic]);

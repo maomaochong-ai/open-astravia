@@ -521,9 +521,13 @@ describe("KernelRuntimeSessionBackend", () => {
 		]);
 		expect(events.map((event) => event.type)).toEqual([
 			"session.context.state",
+			"conversation.turn.started",
+			"conversation.message.appended",
 			"session.lifecycle",
+			"conversation.message.appended",
 			"usage.update",
 			"session.lifecycle",
+			"conversation.turn.completed",
 		]);
 		expect(await session.getState()).toMatchObject({
 			sessionId: "session-1",
@@ -629,9 +633,13 @@ describe("KernelRuntimeSessionBackend", () => {
 		});
 		expect(events.map((event) => event.type)).toEqual([
 			"session.context.state",
+			"conversation.turn.started",
+			"conversation.message.appended",
 			"session.lifecycle",
+			"conversation.message.appended",
 			"usage.update",
 			"session.lifecycle",
+			"conversation.turn.completed",
 		]);
 		expect(assembly.historyReader.readHistory()).toMatchObject([
 			{ type: "message", entryId: "event-2", parentId: null, message: { role: "user" } },
@@ -795,12 +803,21 @@ describe("KernelRuntimeSessionBackend", () => {
 			type: "turn.failed",
 			error: { code: KERNEL_ERROR_CODES.TURN_INTERRUPTED },
 		});
-		expect(events.map((event) => event.type)).toEqual(["error", "session.lifecycle", "session.context.state"]);
+		expect(events.map((event) => event.type)).toEqual([
+			"error",
+			"conversation.turn.failed",
+			"session.lifecycle",
+			"session.context.state",
+		]);
 		expect(events[0]).toMatchObject({
 			type: "error",
 			error: { code: KERNEL_ERROR_CODES.TURN_INTERRUPTED },
 		});
-		expect(events[1]).toMatchObject({ type: "session.lifecycle", phase: "agent_end" });
+		expect(events[1]).toMatchObject({
+			type: "conversation.turn.failed",
+			turnId: expect.any(String),
+		});
+		expect(events[2]).toMatchObject({ type: "session.lifecycle", phase: "agent_end" });
 	});
 
 	it("commits manual compaction outside a turn and publishes its refreshed usage", async () => {

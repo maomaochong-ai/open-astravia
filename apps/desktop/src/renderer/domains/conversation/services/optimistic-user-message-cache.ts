@@ -4,11 +4,6 @@ import type { ChatConversationItem } from "@shared/store/atoms";
 interface PendingOptimisticUserMessage {
 	message: ConversationUserMessageViewModel;
 	precedingUserCount: number;
-	/**
-	 * 队列镜像补的气泡只有 displayText，没有规范消息才有的 attachments /
-	 * promptRef 元数据；这类气泡只按文本 + 序号吸收（ADR-0060）。
-	 */
-	matchTextOnly?: boolean;
 	/** 已经历多少次"规范历史已到达该序号却仍未确认"的对账。 */
 	unresolvedReconciles?: number;
 }
@@ -33,7 +28,6 @@ export function rememberOptimisticUserMessage(
 	runtimeId: string,
 	message: ConversationUserMessageViewModel,
 	currentMessages: readonly ChatConversationItem[],
-	options?: { matchTextOnly?: boolean },
 ): void {
 	const pending = pendingByRuntimeId.get(runtimeId) ?? [];
 	pendingByRuntimeId.set(runtimeId, [
@@ -41,15 +35,33 @@ export function rememberOptimisticUserMessage(
 		{
 			message,
 			precedingUserCount: currentMessages.filter((item) => item.kind === "user").length,
-			...(options?.matchTextOnly ? { matchTextOnly: true } : {}),
 		},
 	]);
 }
 
+export function findOptimisticUserMessage(
+	runtimeId: string,
+	messageId: string,
+): ConversationUserMessageViewModel | undefined {
+	return pendingByRuntimeId.get(runtimeId)?.find((entry) => entry.message.id === messageId)?.message;
+}
+
+/** Remove a snapshot when the corresponding prompt was rejected before it became durable. */
+export function discardOptimisticUserMessage(runtimeId: string, messageId: string): void {
+	const pending = pendingByRuntimeId.get(runtimeId);
+	if (!pending) return;
+	const remaining = pending.filter((entry) => entry.message.id !== messageId);
+	if (remaining.length === 0) {
+		pendingByRuntimeId.delete(runtimeId);
+		return;
+	}
+	pendingByRuntimeId.set(runtimeId, remaining);
+}
+
 /**
- * Reconcile a freshly loaded canonical history with optimistic user bubbles.
- * Text is checked at the recorded ordinal so an identical older prompt cannot
- * accidentally acknowledge a newer pending send.
+ * Reconcile canonical history with optimistic user bubbles. Current runtimes
+ * acknowledge by stable message ID; ordinal/content matching remains only for
+ * historical or external runtimes that do not implement that contract.
  */
 export function reconcileOptimisticUserMessages(
 	runtimeId: string,
@@ -67,17 +79,17 @@ export function reconcileOptimisticUserMessages(
 	>();
 	const unresolved: PendingOptimisticUserMessage[] = [];
 	for (const entry of pending) {
-		const canonical = canonicalUsers[entry.precedingUserCount];
+		const canonical =
+			canonicalUsers.find((candidate) => candidate.id === entry.message.id) ??
+			canonicalUsers[entry.precedingUserCount];
 		// 规范历史还没写到这个序号：本轮消息仍在落盘途中，无条件保留。
 		if (!canonical) {
 			unresolved.push(entry);
 			continue;
 		}
-		const confirmed = entry.matchTextOnly
-			? sameText(canonical.text, entry.message.text)
-			: sameUserMessage(canonical, entry.message);
+		const confirmed = canonical.id === entry.message.id || sameUserMessage(canonical, entry.message);
 		if (confirmed) {
-			if (!entry.matchTextOnly && entry.message.inputSegments) {
+			if (entry.message.inputSegments) {
 				confirmedSnapshots.set(canonical, entry.message.inputSegments);
 			}
 			continue;

@@ -41,6 +41,31 @@ describe("decodeSessionEvent", () => {
 		expect(decodeSessionEvent(payload)).toBe(payload);
 	});
 
+	it("accepts identity-complete conversation facts and rejects missing identities", () => {
+		const started = {
+			schemaVersion: 1,
+			channel: "runtime",
+			sessionId: "session-1",
+			eventId: "turn-started-1",
+			timestamp: 10,
+			source: "runtime-core",
+			type: "conversation.turn.started",
+			turnId: "turn-1",
+		};
+		const message = {
+			...started,
+			eventId: "message-1",
+			type: "conversation.message.appended",
+			messageId: "user-1",
+			message: { role: "user", content: "hello" },
+		};
+
+		expect(decodeSessionEvent(started)).toBe(started);
+		expect(decodeSessionEvent(message)).toBe(message);
+		expect(() => decodeSessionEvent({ ...started, turnId: "" })).toThrow("conversation turnId is missing");
+		expect(() => decodeSessionEvent({ ...message, messageId: "" })).toThrow("conversation messageId is missing");
+	});
+
 	it("rejects malformed raw assistant deltas", () => {
 		expect(() =>
 			decodeSessionEvent({

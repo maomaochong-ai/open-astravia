@@ -13,6 +13,8 @@ export type RuntimeMessageEnvelope =
 	| {
 			readonly kind: "message";
 			readonly message: Message;
+			/** Host identity for a user input; omitted for generated/legacy messages. */
+			readonly messageId?: string;
 			readonly entryId?: string;
 			readonly origin?: RuntimeMessageOrigin;
 	  }

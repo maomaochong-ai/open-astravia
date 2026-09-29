@@ -12,10 +12,12 @@ import type { AssistantSessionEvent, HistoryEntry } from "@vetta/runtime-core";
 import type { ConversationAgentMessageEvent, ConversationToolExecutionEvent } from "@vetta/runtime-core/conversation";
 import type { RuntimeToolResult } from "@vetta/runtime-core/kernel";
 import { fullHistoryToChat, handleToolEnd, handleToolPhase, handleToolStart, resetStreamState } from "./chat-service";
+import { conversationAssistantMessageId } from "./conversation-message-identity";
 
 interface QueuedAssistantEvent {
 	readonly event: AssistantSessionEvent;
 	readonly sequence: number;
+	readonly messageId: string;
 }
 
 export interface ConversationToolExecutionProjection {
@@ -39,13 +41,27 @@ export class ConversationProjection {
 	private lastHostSequence: number | undefined;
 	private localSequence = 0;
 	private rawAssistantStream = false;
-	private targetMessageId: string | undefined;
+	private readonly turnSegments = new Map<string, number>();
 
 	projectHistory(history: HistoryEntry[]): ChatConversationItem[] {
 		return fullHistoryToChat(history);
 	}
 
-	enqueue(event: AssistantSessionEvent): void {
+	beginTurn(turnId: string): string {
+		if (!this.turnSegments.has(turnId)) this.turnSegments.set(turnId, 0);
+		return this.messageIdForTurn(turnId);
+	}
+
+	advanceTurnSegment(turnId: string): string {
+		this.turnSegments.set(turnId, (this.turnSegments.get(turnId) ?? 0) + 1);
+		return this.messageIdForTurn(turnId);
+	}
+
+	messageIdForTurn(turnId: string): string {
+		return conversationAssistantMessageId(turnId, this.turnSegments.get(turnId) ?? 0);
+	}
+
+	enqueue(event: AssistantSessionEvent, messageIdOverride?: string): void {
 		if (
 			event.sequence !== undefined &&
 			this.lastHostSequence !== undefined &&
@@ -56,7 +72,16 @@ export class ConversationProjection {
 		if (event.sequence !== undefined) this.lastHostSequence = event.sequence;
 		this.localSequence = Math.max(this.localSequence + 1, event.sequence ?? 0);
 		this.rawAssistantStream = true;
-		this.pendingAssistantEvents.push({ event, sequence: this.localSequence });
+		const turnId = event.turnId ?? "legacy-unscoped";
+		this.pendingAssistantEvents.push({
+			event,
+			sequence: this.localSequence,
+			messageId: messageIdOverride ?? this.messageIdForTurn(turnId),
+		});
+	}
+
+	endTurn(turnId: string): void {
+		this.turnSegments.delete(turnId);
 	}
 
 	hasRawAssistantStream(): boolean {
@@ -72,23 +97,26 @@ export class ConversationProjection {
 		this.pendingAssistantEvents = [];
 		if (pending.length === 0) return messages;
 
-		const first = pending[0];
-		if (!first) return messages;
-		const existing = findTargetAgentMessage(messages, this.targetMessageId);
-		this.targetMessageId ??=
-			existing?.id ?? `assistant:${first.event.sessionId}:${first.event.turnId ?? "unscoped-turn"}`;
-		let state: ConversationMessageEventState | undefined = existing
-			? { conversationId: first.event.sessionId, sequence: -1, message: existing }
-			: undefined;
+		let next = messages;
+		const states = new Map<string, ConversationMessageEventState>();
 		for (const queued of pending) {
-			state = reduceConversationMessageEvent(state, toConversationEnvelope(queued, this.targetMessageId));
+			let state = states.get(queued.messageId);
+			if (!state) {
+				const existing = next.find(
+					(item): item is Extract<ChatConversationItem, { readonly kind: "agent" }> =>
+						item.kind === "agent" && item.id === queued.messageId,
+				);
+				state = existing ? { conversationId: queued.event.sessionId, sequence: -1, message: existing } : undefined;
+			}
+			state = reduceConversationMessageEvent(state, toConversationEnvelope(queued));
+			states.set(queued.messageId, state);
+			const index = next.findIndex((item) => item.kind === "agent" && item.id === state.message.id);
+			if (index < 0) next = [...next, state.message];
+			else {
+				next = [...next];
+				next[index] = state.message;
+			}
 		}
-		if (!state) return messages;
-
-		const index = messages.findIndex((item) => item.kind === "agent" && item.id === state?.message.id);
-		if (index < 0) return [...messages, state.message];
-		const next = [...messages];
-		next[index] = state.message;
 		return next;
 	}
 
@@ -97,7 +125,7 @@ export class ConversationProjection {
 		this.lastHostSequence = undefined;
 		this.localSequence = 0;
 		this.rawAssistantStream = false;
-		this.targetMessageId = undefined;
+		this.turnSegments.clear();
 		resetStreamState();
 	}
 }
@@ -244,22 +272,13 @@ function asRecord(value: unknown): Record<string, unknown> {
 		: {};
 }
 
-function findTargetAgentMessage(messages: readonly ChatConversationItem[], targetMessageId: string | undefined) {
-	if (targetMessageId) {
-		const target = messages.find((item) => item.kind === "agent" && item.id === targetMessageId);
-		if (target?.kind === "agent") return target;
-	}
-	const tail = messages.at(-1);
-	return tail?.kind === "agent" && tail.phase === "streaming" ? tail : undefined;
-}
-
-function toConversationEnvelope(queued: QueuedAssistantEvent, messageId: string): ConversationAgentMessageEvent {
+function toConversationEnvelope(queued: QueuedAssistantEvent): ConversationAgentMessageEvent {
 	const { event, sequence } = queued;
 	return {
 		type: "conversation.agent-message-event",
 		conversationId: event.sessionId,
-		messageId,
-		turnId: event.turnId ?? messageId,
+		messageId: queued.messageId,
+		turnId: event.turnId ?? queued.messageId,
 		author: { kind: "agent", id: DEFAULT_AGENT_PARTICIPANT_ID },
 		sequence,
 		timestamp: event.timestamp,

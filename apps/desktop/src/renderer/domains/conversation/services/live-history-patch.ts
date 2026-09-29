@@ -123,5 +123,20 @@ export function applyAgentEndHistoryRefresh(
 	live: readonly ChatConversationItem[],
 	canonical: ChatConversationItem[],
 ): ChatConversationItem[] {
+	const liveById = new Map(live.map((item) => [item.id, item]));
+	if (
+		canonical.length > 0 &&
+		canonical.every((item) => {
+			const liveItem = liveById.get(item.id);
+			return liveItem?.kind === item.kind;
+		})
+	) {
+		const canonicalById = new Map(canonical.map((item) => [item.id, item]));
+		return live.map((liveItem) => {
+			const canonicalItem = canonicalById.get(liveItem.id);
+			if (!canonicalItem) return liveItem;
+			return patchLiveMessagesWithCanonical([liveItem], [canonicalItem])?.[0] ?? liveItem;
+		});
+	}
 	return patchLiveMessagesWithCanonical(live, canonical) ?? reconcileHistoryWithLiveTerminalErrors(canonical, live);
 }

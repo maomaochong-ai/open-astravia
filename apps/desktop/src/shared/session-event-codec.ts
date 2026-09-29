@@ -2,6 +2,11 @@ import type { SessionEvent } from "@vetta/runtime-core";
 
 const SESSION_EVENT_TYPES = new Set([
 	"session.lifecycle",
+	"conversation.turn.started",
+	"conversation.turn.completed",
+	"conversation.turn.cancelled",
+	"conversation.turn.failed",
+	"conversation.message.appended",
 	"model.request.started",
 	"session.path_changed",
 	"message.delta",
@@ -106,6 +111,28 @@ export function decodeSessionEvent(value: unknown): SessionEvent {
 		if (typeof event.turnId !== "string" || event.turnId.length === 0) fail("request turnId is missing");
 		if (!Number.isInteger(event.modelCallIndex) || Number(event.modelCallIndex) < 0)
 			fail("request modelCallIndex is invalid");
+	}
+	if (event.type.startsWith("conversation.turn.")) {
+		if (typeof event.turnId !== "string" || event.turnId.length === 0) fail("conversation turnId is missing");
+		if (event.type === "conversation.turn.completed" && typeof event.stopReason !== "string") {
+			fail("conversation stopReason is missing");
+		}
+		if (
+			event.type === "conversation.turn.cancelled" &&
+			event.reason !== undefined &&
+			typeof event.reason !== "string"
+		) {
+			fail("conversation cancellation reason is invalid");
+		}
+		if (event.type === "conversation.turn.failed" && !record(event.error)) {
+			fail("conversation failure is missing");
+		}
+	}
+	if (event.type === "conversation.message.appended") {
+		if (typeof event.turnId !== "string" || event.turnId.length === 0) fail("conversation turnId is missing");
+		if (typeof event.messageId !== "string" || event.messageId.length === 0)
+			fail("conversation messageId is missing");
+		if (!record(event.message)) fail("conversation message is missing");
 	}
 	if (event.type === "session.context.state") {
 		const state = record(event.state);

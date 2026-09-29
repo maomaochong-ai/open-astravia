@@ -1,5 +1,5 @@
 import type { ThinkingLevel, ToolPhase } from "@vetta/agent-core";
-import type { AssistantMessageEvent, CacheUsageReporting, Message, Model } from "@vetta/ai";
+import type { AssistantMessageEvent, CacheUsageReporting, Message, Model, StopReason } from "@vetta/ai";
 import type { ContextCompositionReport } from "./context-composition/contracts.js";
 import type { RuntimeFailure, RuntimeFailureDetails, RuntimeFailureOrigin } from "./failure-contract.js";
 import type { SessionContextRecord } from "./kernel/contracts.js";
@@ -50,6 +50,34 @@ export type AssistantSessionEvent = Omit<SessionEventBase, "channel" | "source">
 export interface SessionLifecycleEvent extends SessionEventBase {
 	type: "session.lifecycle";
 	phase: "created" | "agent_start" | "turn_start" | "turn_end" | "agent_end" | "aborted";
+}
+
+/**
+ * Identity-complete Turn lifecycle emitted from durable Kernel facts.
+ *
+ * `session.lifecycle` remains as a compatibility/display signal. State owners
+ * must use this event instead: every non-created lifecycle transition is tied
+ * to the exact Turn it changes, so a late terminal event cannot close a newer
+ * Turn.
+ */
+export type ConversationTurnEvent = SessionEventBase &
+	(
+		| { readonly type: "conversation.turn.started"; readonly turnId: string }
+		| {
+				readonly type: "conversation.turn.completed";
+				readonly turnId: string;
+				readonly stopReason: StopReason;
+		  }
+		| { readonly type: "conversation.turn.cancelled"; readonly turnId: string; readonly reason?: string }
+		| { readonly type: "conversation.turn.failed"; readonly turnId: string; readonly error: SessionError }
+	);
+
+/** A committed Conversation message with stable Turn and message identity. */
+export interface ConversationMessageAppendedEvent extends SessionEventBase {
+	readonly type: "conversation.message.appended";
+	readonly turnId: string;
+	readonly messageId: string;
+	readonly message: Message;
 }
 
 export interface SessionPathChangedEvent extends SessionEventBase {
@@ -255,6 +283,8 @@ export type SessionEvent =
 	  })
 	| SessionContextStateEvent
 	| SessionLifecycleEvent
+	| ConversationTurnEvent
+	| ConversationMessageAppendedEvent
 	| SessionPathChangedEvent
 	| AssistantSessionEvent
 	| MessageDeltaEvent
@@ -403,6 +433,11 @@ export interface SessionConfig {
 export interface PromptRequest {
 	text: string;
 	/**
+	 * Host-assigned identity for this user message. It is preserved through
+	 * queueing, persistence, live events and history projection.
+	 */
+	messageId?: string;
+	/**
 	 * Product-authored context committed in the same Turn as this prompt. Keeping it
 	 * on the request prevents a separate context write from racing with admission.
 	 */
@@ -460,6 +495,9 @@ export type HistoryEntry =
 			/** Session tree entry id (coding-agent). */
 			entryId?: string;
 			parentId?: string | null;
+			/** Stable identities for records created by identity-complete runtimes. */
+			messageId?: string;
+			turnId?: string;
 			message: Message;
 			/** Present on user messages when multiple sibling versions exist (or always when known). */
 			branch?: HistoryMessageBranch;

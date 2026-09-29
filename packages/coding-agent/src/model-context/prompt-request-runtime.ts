@@ -138,6 +138,7 @@ export class DefaultCodingAgentPromptRequestRuntime implements CodingAgentPrompt
 		];
 		return {
 			message,
+			...(request.messageId ? { messageId: request.messageId } : {}),
 			...(contextRecords.length > 0 ? { context: contextRecords } : {}),
 		};
 	}

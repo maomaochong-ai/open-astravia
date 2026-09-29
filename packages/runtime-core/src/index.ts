@@ -4,6 +4,8 @@ export * from "./context-composition/index.js";
 export type {
 	AssistantSessionEvent,
 	AssistantTurnTiming,
+	ConversationMessageAppendedEvent,
+	ConversationTurnEvent,
 	ErrorEvent,
 	HistoryEntry,
 	HistoryMessageBranch,
