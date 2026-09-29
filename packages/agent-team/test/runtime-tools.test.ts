@@ -138,6 +138,8 @@ describe("team task runtime tools", () => {
 		expect(tool.description).toContain("public Team communication");
 		expect(tool.description).toContain("not teamTaskIds");
 		expect(tool.description).toContain("automatically wake");
+		expect(tool.description).toContain("reciprocal questions are delivered as inform");
+		expect(tool.inputSchema.properties.intent.description).toContain("genuinely missing information");
 	});
 
 	it("reads public history through the caller-scoped port", async () => {
