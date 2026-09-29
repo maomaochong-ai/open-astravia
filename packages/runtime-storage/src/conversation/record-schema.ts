@@ -170,6 +170,23 @@ type StoredAssistantFailure = NonNullable<
 	Extract<Extract<StoredSessionEvent, { type: "message.appended" }>["message"], { role: "assistant" }>["failure"]
 >;
 
+const ResponseValidationSchema = Type.Object(
+	{
+		payloadType: Type.String(),
+		errors: Type.Array(
+			Type.Object(
+				{
+					path: Type.String(),
+					message: Type.String(),
+					received: Type.Optional(Type.String()),
+				},
+				{ additionalProperties: false },
+			),
+		),
+	},
+	{ additionalProperties: false },
+);
+
 const AssistantFailureSchema = Type.Unsafe<StoredAssistantFailure>(
 	Type.Object(
 		{
@@ -177,6 +194,8 @@ const AssistantFailureSchema = Type.Unsafe<StoredAssistantFailure>(
 			message: Type.String(),
 			retryable: Type.Boolean(),
 			...FailureDiagnosticProperties,
+			// Provider 响应结构校验失败时随终态错误消息投影，必须能落盘，否则整轮会以存储错误中止。
+			responseValidation: Type.Optional(ResponseValidationSchema),
 		},
 		{ additionalProperties: false },
 	),
