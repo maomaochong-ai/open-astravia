@@ -96,6 +96,10 @@ data class RemoteViewport(val zoom: Float = 1f, val panX: Float = 0f, val panY: 
         return (px / width).coerceIn(0f, 1f) to (py / height).coerceIn(0f, 1f)
     }
 
+    /** Where a desktop point (0…1) shows on the view, to draw the pointer over it. */
+    fun toView(x: Float, y: Float, width: Float, height: Float): Pair<Float, Float> =
+        (width / 2 + (x * width - width / 2) * zoom + panX) to (height / 2 + (y * height - height / 2) * zoom + panY)
+
     private fun clampPan(value: Float, side: Float, zoom: Float): Float {
         val limit = (zoom - 1f) * side / 2
         // Plus zero turns a -0 into 0, so an unmoved view equals the default.
@@ -104,6 +108,52 @@ data class RemoteViewport(val zoom: Float = 1f, val panX: Float = 0f, val panY: 
 
     companion object {
         const val MAX_ZOOM = 4f
+    }
+}
+
+/** One mouse event for the desktop, at `x`, `y` from 0 to 1 across its screen. */
+data class RemotePointerCommand(val type: String, val x: Float, val y: Float, val button: String? = null, val action: String? = null)
+
+/**
+ * The phone as a trackpad (port of the iPhone's `RemoteTrackpad`, ADR-0140): the finger
+ * moves the pointer from where it is, not to where the finger is. Travel is measured
+ * against the picture as shown, so a zoomed picture gives finer control; faster moves go
+ * further, as on a laptop's trackpad. The phone only knows where it put the pointer: the
+ * desktop's own mouse moving it is not seen.
+ */
+class RemoteTrackpad {
+    /** Where the pointer is on the desktop, 0 to 1 across each side. */
+    var x = 0.5f
+        private set
+    var y = 0.5f
+        private set
+
+    /**
+     * Moves by the finger's travel over a picture shown `width`×`height` in size (zoom
+     * included), at `speed` dp a second; returns the move to send.
+     */
+    fun move(dx: Float, dy: Float, speed: Float, width: Float, height: Float): RemotePointerCommand? {
+        if (width <= 0f || height <= 0f || (dx == 0f && dy == 0f)) return null
+        val gain = gain(speed)
+        x = (x + dx * gain / width).coerceIn(0f, 1f)
+        y = (y + dy * gain / height).coerceIn(0f, 1f)
+        return RemotePointerCommand("pointer.move", x, y)
+    }
+
+    /** A click where the pointer is, as a tap sends it. */
+    fun click(button: String): List<RemotePointerCommand> =
+        listOf(
+            RemotePointerCommand("pointer.move", x, y),
+            RemotePointerCommand("pointer.button", x, y, button, "down"),
+            RemotePointerCommand("pointer.button", x, y, button, "up"),
+        )
+
+    /** The left button going `action` ("down" or "up") where the pointer is: holding, then dragging. */
+    fun press(action: String): RemotePointerCommand = RemotePointerCommand("pointer.button", x, y, "left", action)
+
+    companion object {
+        /** How much further than the finger the pointer goes at `speed` dp a second. */
+        fun gain(speed: Float): Float = 1f + ((speed - 200f).coerceAtLeast(0f) / 600f).coerceAtMost(2f)
     }
 }
 

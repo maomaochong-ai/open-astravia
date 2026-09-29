@@ -844,11 +844,13 @@ class DesktopMirrorTest {
         runTest {
             val desktop = scriptedDesktop()
             val subscriptions = mutableListOf<Boolean>()
+            val cursorAsked = mutableListOf<Boolean?>()
             val scripted = desktop.handler
             desktop.handler = { request ->
                 if (request.method == RemoteRequestMethod.ScreenSubscribe) {
                     val active = (request.payload as JsonObject)["active"]!!.jsonPrimitive.booleanOrNull!!
                     subscriptions += active
+                    cursorAsked += (request.payload as JsonObject)["cursor"]?.jsonPrimitive?.booleanOrNull
                     respond(
                         request.requestId,
                         buildJsonObject {
@@ -870,6 +872,21 @@ class DesktopMirrorTest {
             mirror.setScreenOpen(true)
             assertTrue(eventually { mirror.state.value.screen?.input == RemoteInputState.PermissionDenied })
             assertEquals(listOf(true), subscriptions)
+            assertEquals(listOf<Boolean?>(true), cursorAsked, "the phone draws the pointer and asks for its shape")
+
+            desktop.emit(
+                RemoteEventName.ScreenCursor,
+                buildJsonObject {
+                    put("image", "iVBORw0KGgo=")
+                    put("width", 16)
+                    put("height", 24)
+                    put("hotspotX", 3)
+                    put("hotspotY", 40)
+                    put("screenWidth", 1512)
+                },
+            )
+            assertTrue(eventually { mirror.state.value.screenCursor != null })
+            assertEquals(24f, mirror.state.value.screenCursor!!.hotspotY, "the hot spot stays on the image")
 
             desktop.emit(RemoteEventName.ScreenStatus, buildJsonObject { put("screen", "streaming"); put("input", "ready") })
             assertTrue(eventually { mirror.state.value.screen?.input == RemoteInputState.Ready })
@@ -877,6 +894,7 @@ class DesktopMirrorTest {
             mirror.setActive(false)
             assertTrue(eventually { subscriptions == listOf(true, false) }, "the background stops the capture")
             assertNull(mirror.state.value.screen)
+            assertNull(mirror.state.value.screenCursor)
             mirror.setActive(true)
             assertTrue(eventually { subscriptions.last() })
 

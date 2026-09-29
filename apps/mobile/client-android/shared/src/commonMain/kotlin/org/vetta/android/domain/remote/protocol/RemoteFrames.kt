@@ -125,6 +125,7 @@ enum class RemoteEventName {
     @SerialName("session.resync") SessionResync,
     @SerialName("diagnostics.updated") DiagnosticsUpdated,
     @SerialName("screen.status") ScreenStatus,
+    @SerialName("screen.cursor") ScreenCursor,
 }
 
 @Serializable

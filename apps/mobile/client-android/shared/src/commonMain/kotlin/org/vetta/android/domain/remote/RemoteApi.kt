@@ -222,6 +222,34 @@ data class RemoteDeviceStatus(
     val screen: Boolean = false,
 )
 
+/**
+ * The pointer as the desktop shows it now (arrow, I-beam, hand…), for a phone that draws
+ * the pointer itself where its finger put it. Sizes are in the desktop's points;
+ * `screenWidth` is its display's, to scale the pointer with the picture.
+ */
+class RemoteScreenCursor(
+    /** PNG. */
+    val image: ByteArray,
+    val width: Float,
+    val height: Float,
+    /** The point of the image that is the pointer's position, from its top-left. */
+    val hotspotX: Float,
+    val hotspotY: Float,
+    val screenWidth: Float,
+) {
+    /**
+     * How much to scale the desktop's pointer when its screen is shown `shownWidth` wide:
+     * its height stays between [MIN_SHOWN_HEIGHT] and [MAX_SHOWN_HEIGHT] dp however small the
+     * picture is or however far it is zoomed, readable and never in the way.
+     */
+    fun scale(shownWidth: Float): Float = (height * shownWidth / screenWidth).coerceIn(MIN_SHOWN_HEIGHT, MAX_SHOWN_HEIGHT) / height
+
+    companion object {
+        const val MIN_SHOWN_HEIGHT = 18f
+        const val MAX_SHOWN_HEIGHT = 30f
+    }
+}
+
 /** Why frames or taps might not reach the phone, from `screen.subscribe` and `screen.status`. */
 enum class RemoteScreenState {
     Stopped,
@@ -390,6 +418,22 @@ object RemoteApi {
     }
 
     /** A state from a newer desktop reads as unavailable or unsupported. */
+    fun readScreenCursor(value: JsonElement?): RemoteScreenCursor? {
+        val obj = value as? JsonObject ?: return null
+        val image = obj.string("image")?.let { runCatching { java.util.Base64.getDecoder().decode(it) }.getOrNull() } ?: return null
+        val width = obj.double("width")?.toFloat()?.takeIf { it > 0f } ?: return null
+        val height = obj.double("height")?.toFloat()?.takeIf { it > 0f } ?: return null
+        val screenWidth = obj.double("screenWidth")?.toFloat()?.takeIf { it > 0f } ?: return null
+        return RemoteScreenCursor(
+            image = image,
+            width = width,
+            height = height,
+            hotspotX = (obj.double("hotspotX")?.toFloat() ?: 0f).coerceIn(0f, width),
+            hotspotY = (obj.double("hotspotY")?.toFloat() ?: 0f).coerceIn(0f, height),
+            screenWidth = screenWidth,
+        )
+    }
+
     fun readScreenStatus(value: JsonElement?): RemoteScreenStatus? {
         val obj = value as? JsonObject ?: return null
         val screen = obj.string("screen") ?: return null

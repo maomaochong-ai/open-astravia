@@ -3,6 +3,7 @@ package org.vetta.android.domain.remote
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class RemoteInputTest {
@@ -86,5 +87,45 @@ class RemoteInputTest {
         assertEquals(-1, wheel.add(-60f))
         wheel.reset()
         assertEquals(0, wheel.add(39f))
+    }
+
+    @Test
+    fun theTrackpadMovesThePointerFromWhereItIsAndFasterMovesGoFurther() {
+        val pad = RemoteTrackpad()
+        assertEquals(RemotePointerCommand("pointer.move", 0.6f, 0.5f), pad.move(100f, 0f, speed = 100f, width = 1000f, height = 500f))
+        assertEquals(RemotePointerCommand("pointer.move", 0.6f, 0.7f), pad.move(0f, 100f, speed = 100f, width = 1000f, height = 500f), "from where it was, not where the finger is")
+        val fast = pad.move(100f, 0f, speed = 1400f, width = 1000f, height = 500f)!!
+        assertEquals(0.9f, fast.x, 0.0001f, "a quick flick goes three times as far")
+        pad.move(10_000f, 10_000f, speed = 0f, width = 1000f, height = 500f)
+        assertEquals(1f to 1f, pad.x to pad.y, "the pointer stays on the screen")
+        assertNull(pad.move(0f, 0f, speed = 0f, width = 1000f, height = 500f))
+        assertEquals(
+            listOf(
+                RemotePointerCommand("pointer.move", 1f, 1f),
+                RemotePointerCommand("pointer.button", 1f, 1f, "right", "down"),
+                RemotePointerCommand("pointer.button", 1f, 1f, "right", "up"),
+            ),
+            pad.click("right"),
+        )
+        assertEquals(RemotePointerCommand("pointer.button", 1f, 1f, "left", "down"), pad.press("down"))
+    }
+
+    @Test
+    fun aDesktopPointShowsWhereTheViewportPutsIt() {
+        val viewport = RemoteViewport().transformed(2f, 500f, 250f, 0f, 0f, 1000f, 500f)
+        val (x, y) = viewport.toView(0.25f, 0.5f, 1000f, 500f)
+        assertEquals(0f, x, 0.001f)
+        assertEquals(250f, y, 0.001f)
+        val (dx, dy) = viewport.toDesktop(x, y, 1000f, 500f)
+        assertEquals(0.25f, dx, 0.001f)
+        assertEquals(0.5f, dy, 0.001f)
+    }
+
+    @Test
+    fun theDesktopsPointerIsDrawnAtAReadableSize() {
+        val cursor = RemoteScreenCursor(ByteArray(0), width = 16f, height = 24f, hotspotX = 0f, hotspotY = 0f, screenWidth = 1500f)
+        assertEquals(18f / 24f, cursor.scale(shownWidth = 400f), 0.0001f, "never smaller than 18 dp")
+        assertEquals(30f / 24f, cursor.scale(shownWidth = 4000f), 0.0001f, "never larger than 30 dp")
+        assertEquals(1f, cursor.scale(shownWidth = 1500f), 0.0001f)
     }
 }

@@ -29,11 +29,12 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import org.vetta.android.data.remote.SessionCache
 import org.vetta.android.domain.remote.RemoteApi
-import org.vetta.android.domain.remote.RemoteScreenStatus
 import org.vetta.android.domain.remote.RemoteMessageEvent
 import org.vetta.android.domain.remote.RemoteModelOption
 import org.vetta.android.domain.remote.RemoteProjectSummary
 import org.vetta.android.domain.remote.RemoteQuestionAnswer
+import org.vetta.android.domain.remote.RemoteScreenCursor
+import org.vetta.android.domain.remote.RemoteScreenStatus
 import org.vetta.android.domain.remote.RemoteSessionState
 import org.vetta.android.domain.remote.RemoteSessionStatus
 import org.vetta.android.domain.remote.RemoteSessionSummary
@@ -131,6 +132,8 @@ data class MirrorState(
      * otherwise, and from desktops that share it without being asked (ADR-0140).
      */
     val screen: RemoteScreenStatus? = null,
+    /** The desktop's pointer shape while the screen is open; null draws a plain arrow. */
+    val screenCursor: RemoteScreenCursor? = null,
 ) {
     val online: Boolean
         get() = link.isUsable
@@ -253,12 +256,20 @@ class DesktopMirror(
     private fun syncScreen() {
         val current = link ?: return
         val wanted = screenOpen && active
-        if (!wanted) mutate { it.copy(screen = null) }
+        if (!wanted) mutate { it.copy(screen = null, screenCursor = null) }
         // An older desktop shares the screen whenever the P2P link is up and knows no such request.
         if (!desktopScreen) return
         scope.launch {
             try {
-                val result = current.request(RemoteRequestMethod.ScreenSubscribe, buildJsonObject { put("active", wanted) })
+                // `cursor`: this phone draws the pointer itself and wants its shape (ADR-0140).
+                val result =
+                    current.request(
+                        RemoteRequestMethod.ScreenSubscribe,
+                        buildJsonObject {
+                            put("active", wanted)
+                            if (wanted) put("cursor", true)
+                        },
+                    )
                 // A later open or close has its own answer coming.
                 if (wanted == (screenOpen && active)) mutate { it.copy(screen = if (wanted) RemoteApi.readScreenStatus(result) else null) }
             } catch (error: Throwable) {
@@ -530,6 +541,8 @@ class DesktopMirror(
             }
             RemoteEventName.ScreenStatus ->
                 if (screenOpen && active) mutate { it.copy(screen = RemoteApi.readScreenStatus(event.payload) ?: it.screen) }
+            RemoteEventName.ScreenCursor ->
+                if (screenOpen && active) RemoteApi.readScreenCursor(event.payload)?.let { cursor -> mutate { it.copy(screenCursor = cursor) } }
             RemoteEventName.SessionList -> keepSessions(RemoteApi.readSessionSummaries(event.payload))
             RemoteEventName.SessionState -> {
                 if (sessionId == null) return
