@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next";
 import { Button, cn } from "@vetta-org/ui";
 import type { ModelsSettingsModel } from "./useModelsSettingsModel";
 
-/** 展示 `GET {baseUrl}/models` 拉取到的模型 id，勾选后批量写入 provider。 */
+/** 展示 `GET {baseUrl}/models` 拉取到的模型 id，默认不勾选，可全选或取消全选后批量写入 provider。 */
 export function ModelsFetchedModelsPanel({
 	name,
 	model,
@@ -15,6 +15,7 @@ export function ModelsFetchedModelsPanel({
 	if (!fetched || fetched.provider !== name) return null;
 
 	const existing = new Set((model.config?.providers[name]?.models || []).map((item) => item.id));
+	const selectableCount = fetched.models.filter((id) => !existing.has(id)).length;
 
 	return (
 		<div className="border-t border-border/50 bg-secondary/50 px-5 py-3">
@@ -22,8 +23,28 @@ export function ModelsFetchedModelsPanel({
 				<div className="text-[12px] text-destructive">{fetched.error}</div>
 			) : (
 				<>
-					<div className="mb-2 text-[11px] text-muted-foreground">
-						{t("fetchedModelsHint", { n: fetched.models.length })}
+					<div className="mb-2 flex items-center gap-2">
+						<span className="min-w-0 flex-1 text-[11px] text-muted-foreground">
+							{t("fetchedModelsHint", { n: fetched.models.length })}
+						</span>
+						<Button
+							variant="ghost"
+							size="sm"
+							className="h-6 px-2 text-[11px]"
+							onClick={model.onSelectAllFetchedModels}
+							disabled={selectableCount === 0 || fetched.selected.length >= selectableCount}
+						>
+							{t("selectAllFetchedModels")}
+						</Button>
+						<Button
+							variant="ghost"
+							size="sm"
+							className="h-6 px-2 text-[11px]"
+							onClick={model.onDeselectAllFetchedModels}
+							disabled={fetched.selected.length === 0}
+						>
+							{t("deselectAllFetchedModels")}
+						</Button>
 					</div>
 					<div className="max-h-56 overflow-y-auto rounded border border-border">
 						{fetched.models.map((id) => {

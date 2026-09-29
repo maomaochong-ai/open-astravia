@@ -909,6 +909,8 @@
   "fetchModels": "从接口拉取",
   "fetchModelsNeedsBaseUrl": "请先填写 Base URL",
   "fetchedModelsHint": "接口返回 {{n}} 个模型，勾选后添加",
+  "selectAllFetchedModels": "全选",
+  "deselectAllFetchedModels": "取消全选",
   "alreadyAdded": "已添加",
   "addSelectedModels": "添加所选 ({{n}})",
   "providerName": "服务商名称",
