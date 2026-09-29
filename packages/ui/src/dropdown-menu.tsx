@@ -17,10 +17,13 @@ const CONTENT_CLASS =
 function DropdownMenuContent({
 	className,
 	sideOffset = 6,
+	portalContainer,
 	...props
-}: React.ComponentProps<typeof DropdownMenuPrimitive.Content>) {
+}: React.ComponentProps<typeof DropdownMenuPrimitive.Content> & {
+	portalContainer?: React.ComponentProps<typeof DropdownMenuPrimitive.Portal>["container"];
+}) {
 	return (
-		<DropdownMenuPrimitive.Portal>
+		<DropdownMenuPrimitive.Portal container={portalContainer}>
 			<DropdownMenuPrimitive.Content
 				data-slot="dropdown-menu-content"
 				sideOffset={sideOffset}
@@ -109,10 +112,13 @@ function DropdownMenuSubTrigger({
 function DropdownMenuSubContent({
 	className,
 	sideOffset = 4,
+	portalContainer,
 	...props
-}: React.ComponentProps<typeof DropdownMenuPrimitive.SubContent>) {
+}: React.ComponentProps<typeof DropdownMenuPrimitive.SubContent> & {
+	portalContainer?: React.ComponentProps<typeof DropdownMenuPrimitive.Portal>["container"];
+}) {
 	return (
-		<DropdownMenuPrimitive.Portal>
+		<DropdownMenuPrimitive.Portal container={portalContainer}>
 			<DropdownMenuPrimitive.SubContent
 				data-slot="dropdown-menu-sub-content"
 				sideOffset={sideOffset}

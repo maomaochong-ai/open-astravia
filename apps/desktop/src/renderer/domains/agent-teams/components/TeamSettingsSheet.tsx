@@ -1,5 +1,4 @@
 import { useAgentAvatarResolver } from "@shared/agent-teams/agent-avatar";
-import { ModelSelect } from "@shared/components/ModelSelect";
 import { useModelOptions } from "@shared/components/ModelSelect/useModelOptions";
 import { useTeamMemberModels } from "@shared/agent-teams/useTeamMemberModels";
 import { resolveReasoning } from "@shared/components/ModelSelect/resolveReasoning";
@@ -26,6 +25,7 @@ import { RendererMarkdownContent } from "@shared/components/RendererMarkdownCont
 import { type ReactNode, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AgentAvatarStack } from "./agent-center/AgentAvatarStack";
+import { TeamMemberModelSelector } from "./TeamMemberModelSelector";
 import { type BlueprintDisplayPlugin, resourceProviderName } from "../lib/blueprint-display";
 import {
 	type TeamAssemblyDraft,
@@ -368,18 +368,20 @@ export function TeamSettingsSheet({
 											)}
 											{memberId ? <div className="flex flex-col gap-1.5 border-t border-border/40 pt-2">
 												<span className="text-[11px] font-medium text-muted-foreground">{t("settings.memberModel")}</span>
-												<ModelSelect
+												<TeamMemberModelSelector
 													value={selectedModel ?? null}
 													onChange={(value) => {
 														const defaultReasoning = resolveReasoning(modelOptions.find((option) => option.key === value))?.default;
 														void setMemberModel(memberId, value ? { modelKey: value, ...(defaultReasoning ? { reasoning: defaultReasoning } : {}) } : null);
 													}}
-													allowClear
-													clearLabel={t("settings.memberModelInherit")}
+													emptyLabel={t("settings.memberModelInherit")}
+													ariaLabel={t("settings.memberModel")}
 													disabled={!modelState?.models || modelState.loading || modelState.saving}
 													placeholder={!modelState?.models ? t("models.loading") : selectedModel ?? t("settings.memberModelInherit")}
-													triggerClassName="w-full justify-between"
-													reasoning={selectedModel ? { value: memberModels[memberId]?.reasoning, onChange: (reasoning) => void setMemberModel(memberId, { modelKey: selectedModel, reasoning }) } : undefined}
+													reasoning={memberModels[memberId]?.reasoning}
+													onReasoningChange={(reasoning) => {
+														if (selectedModel) void setMemberModel(memberId, { modelKey: selectedModel, reasoning });
+													}}
 												/>
 												<span className="text-[11px] text-muted-foreground/70">{!modelState?.models ? t("models.loading") : selectedModel ? t("settings.memberModelFixedHint") : t("settings.memberModelInheritHint")}</span>
 												{modelUnavailable ? <span role="status" className="text-[11px] text-destructive">{t("settings.memberModelUnavailable", { model: selectedModel })}</span> : null}
