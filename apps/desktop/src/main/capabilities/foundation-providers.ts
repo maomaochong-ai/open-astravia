@@ -204,10 +204,10 @@ export function registerDesktopFoundationProviders(
 			},
 		}),
 		bindCapability(FOUNDATION_FILESYSTEM_CAPABILITIES.LIST_FILES_RECURSIVE, {
-			execute: async ({ path }, context) => {
+			execute: async ({ path, names, ignoredDirectories }, context) => {
 				assertNotAborted(context.signal);
 				await assertFilesystemRealPathWithinProject(path);
-				return listFilesystemFilesRecursive(path);
+				return listFilesystemFilesRecursive(path, { names, ignoredDirectories });
 			},
 		}),
 	]);

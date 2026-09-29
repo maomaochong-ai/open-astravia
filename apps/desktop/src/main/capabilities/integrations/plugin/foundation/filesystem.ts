@@ -1,6 +1,7 @@
 import {
 	type FilesystemEntry,
 	type FilesystemFileRef,
+	type FilesystemListRecursiveInput,
 	type FilesystemReadBinaryFileResult,
 	type FilesystemReadFileResult,
 	type FilesystemStatResult,
@@ -96,10 +97,11 @@ export const pluginFilesystemMethods = {
 		this: PluginCapabilitySessionAccess,
 		sessionId: string,
 		path: string,
+		options: Omit<FilesystemListRecursiveInput, "path"> = {},
 	): Promise<FilesystemFileRef[]> {
 		return this.client(sessionId, { permission: PLUGIN_CAPABILITY_PERMISSIONS.FILESYSTEM_READ }).invoke(
 			FOUNDATION_FILESYSTEM_CAPABILITIES.LIST_FILES_RECURSIVE,
-			{ path },
+			{ ...options, path },
 		);
 	},
 };

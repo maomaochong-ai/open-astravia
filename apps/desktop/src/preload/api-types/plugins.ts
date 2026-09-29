@@ -445,7 +445,11 @@ export interface DesktopPluginCapabilityFilesystemApi {
 	delete(sessionId: string, path: string): Promise<void>;
 	move(sessionId: string, sourcePath: string, destinationDirectory: string): Promise<void>;
 	createDirectory(sessionId: string, path: string): Promise<void>;
-	listFilesRecursive(sessionId: string, path: string): Promise<FsFileRef[]>;
+	listFilesRecursive(
+		sessionId: string,
+		path: string,
+		options?: { names?: readonly string[]; ignoredDirectories?: readonly string[] },
+	): Promise<FsFileRef[]>;
 }
 
 export interface DesktopPluginCapabilityGeneralSettingsApi {

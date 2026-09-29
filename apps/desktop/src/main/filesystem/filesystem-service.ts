@@ -459,11 +459,24 @@ export async function createFilesystemEntry(
 	};
 }
 
-export async function listFilesystemFilesRecursive(rootPath: string): Promise<FsFileRef[]> {
+export interface ListFilesRecursiveOptions {
+	/** 只返回这些文件名（精确匹配）；上限按命中数计，大仓库里找清单文件才不会被无关文件挤掉。 */
+	readonly names?: readonly string[];
+	/** 在默认忽略目录之外再跳过的目录名。 */
+	readonly ignoredDirectories?: readonly string[];
+}
+
+export async function listFilesystemFilesRecursive(
+	rootPath: string,
+	options: ListFilesRecursiveOptions = {},
+): Promise<FsFileRef[]> {
+	const ignoredDirectories = new Set([...RECURSIVE_IGNORED_DIRS, ...(options.ignoredDirectories ?? [])]);
+	const wantedNames = options.names?.length ? new Set(options.names) : null;
 	if (isSshProjectUri(rootPath)) {
 		return listRemoteFilesRecursive(rootPath, {
-			ignoredDirectoryNames: [...RECURSIVE_IGNORED_DIRS],
+			ignoredDirectoryNames: [...ignoredDirectories],
 			limit: MAX_RECURSIVE_FILES,
+			names: wantedNames ? [...wantedNames] : undefined,
 		});
 	}
 	assertFilesystemPathWithinProject(rootPath);
@@ -482,10 +495,11 @@ export async function listFilesystemFilesRecursive(rootPath: string): Promise<Fs
 			if (entry.name.startsWith(".") || HIDDEN_FILES.has(entry.name)) continue;
 			const fullPath = join(dir, entry.name);
 			if (entry.isDirectory()) {
-				if (RECURSIVE_IGNORED_DIRS.has(entry.name)) continue;
+				if (ignoredDirectories.has(entry.name)) continue;
 				if (isConversationWorkspaceDirEntry(dir, entry.name)) continue;
 				await walk(fullPath);
 			} else if (entry.isFile()) {
+				if (wantedNames && !wantedNames.has(entry.name)) continue;
 				results.push({ name: entry.name, path: fullPath, relPath: relative(root, fullPath) });
 			}
 		}

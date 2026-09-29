@@ -231,6 +231,7 @@ export type {
 export type {
 	PluginFsEntry,
 	PluginFsFileRef,
+	PluginFsListFilesRecursiveOptions,
 	PluginFsBinaryReadResult,
 	PluginFsStatResult,
 	PluginFsReadResult,

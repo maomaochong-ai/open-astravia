@@ -185,6 +185,26 @@ describe("network and namespaced storage foundation capabilities", () => {
 		]);
 	});
 
+	it("accepts optional name filters for recursive listing and rejects path-like names", () => {
+		const listRecursive = FOUNDATION_FILESYSTEM_CAPABILITIES.LIST_FILES_RECURSIVE;
+		expect(listRecursive.parseInput({ path: "/repo" })).toEqual({ path: "/repo" });
+		expect(
+			listRecursive.parseInput({
+				path: "/repo",
+				names: ["package.json", "Makefile"],
+				ignoredDirectories: ["vendor"],
+			}),
+		).toEqual({ path: "/repo", names: ["package.json", "Makefile"], ignoredDirectories: ["vendor"] });
+		for (const names of [["a/package.json"], ["..\\x"], [".."], [""]]) {
+			expect(() => listRecursive.parseInput({ path: "/repo", names })).toThrowError(
+				expect.objectContaining({ code: CAPABILITY_ERROR_CODES.INVALID_INPUT }),
+			);
+		}
+		expect(() => listRecursive.parseInput({ path: "/repo", ignoredDirectories: ["a/b"] })).toThrowError(
+			expect.objectContaining({ code: CAPABILITY_ERROR_CODES.INVALID_INPUT }),
+		);
+	});
+
 	it("keeps open-object extension fields when additionalProperties is true", () => {
 		expect(
 			FOUNDATION_JOB_CAPABILITIES.GET.parseOutput({

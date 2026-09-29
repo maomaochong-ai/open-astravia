@@ -119,9 +119,9 @@ export function createFsApi(plugin: InstalledPlugin, capabilitySessionId: string
 			permissions.require("fs.write");
 			return filesystem.createDirectory(capabilitySessionId, dirPath);
 		},
-		listFilesRecursive: (rootPath) => {
+		listFilesRecursive: (rootPath, options) => {
 			permissions.require("fs.read");
-			return filesystem.listFilesRecursive(capabilitySessionId, rootPath);
+			return filesystem.listFilesRecursive(capabilitySessionId, rootPath, options);
 		},
 		saveAs: (defaultFileName, content, encoding, options) => {
 			permissions.require("fs.write");

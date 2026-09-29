@@ -78,6 +78,11 @@ describe("远程项目的文件树：用户在面板里的一串常见操作", (
 		expect(files.find((file) => file.relPath === "src/main.ts")?.path).toBe(`${root}/src/main.ts`);
 	});
 
+	it("按文件名筛选的递归列举只给出命中的远端文件", async () => {
+		const files = await service.listFilesystemFilesRecursive(root, { names: ["LICENSE", "index.js"] });
+		expect(files.map((file) => file.relPath)).toEqual(["LICENSE"]);
+	});
+
 	it("写文件保留远端文件原有的可执行位", async () => {
 		writeFileSync(join(remoteRoot, "run.sh"), "old");
 		chmodSync(join(remoteRoot, "run.sh"), 0o755);

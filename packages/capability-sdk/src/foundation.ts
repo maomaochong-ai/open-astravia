@@ -45,6 +45,7 @@ export {
 export {
 	type FilesystemEntry,
 	type FilesystemFileRef,
+	type FilesystemListRecursiveInput,
 	type FilesystemMoveInput,
 	type FilesystemPathInput,
 	type FilesystemReadBinaryFileResult,
