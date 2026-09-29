@@ -1,7 +1,12 @@
 package org.vetta.android.ui.work
 
 import androidx.activity.ComponentActivity
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -93,5 +98,24 @@ class FileViewerTest {
         composeRule.onNodeWithText(str(Res.string.files_no_app)).assertExists()
         composeRule.onNodeWithTag("files.preview.share").performClick()
         composeRule.runOnIdle { assertEquals(listOf("open model.bin", "share model.bin"), handed) }
+    }
+
+    private fun single(name: String, bytes: ByteArray) =
+        object : FileSource by source {
+            override suspend fun stat(href: String) = RemoteFileInfo(name, name, false, bytes.size.toLong(), 1.0, "application/octet-stream", "~/vetta/$name")
+
+            override suspend fun read(info: RemoteFileInfo) = FileContent(bytes, "application/octet-stream", 1.0)
+        }
+
+    @Test
+    fun drawsATableAsAPageAndHandsOnADocumentItCannotRead() {
+        var file by mutableStateOf(single("stock.csv", "名称,数量\n键盘,3\n".encodeToByteArray()))
+        composeRule.setContent { VettaTheme(ThemeMode.Light) { key(file) { FilePreviewScreen(file, "x", onDismiss = {}) } } }
+        composeRule.waitUntil(5_000) { composeRule.onAllNodesWithTag("files.html").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onNodeWithTag("files.message").assertDoesNotExist()
+
+        file = single("broken.docx", "not a zip".encodeToByteArray())
+        composeRule.waitUntil(5_000) { composeRule.onAllNodesWithTag("files.unsupported.open").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onNodeWithTag("files.html").assertDoesNotExist()
     }
 }

@@ -34,6 +34,8 @@
     <string name="files_share">分享</string>
     <string name="files_open_with">用其他应用打开</string>
     <string name="files_no_app">手机上没有能打开这种文件的应用。</string>
+    <string name="files_sheet_empty">这个工作表是空的</string>
+    <string name="files_rows_shown">只显示前 %1$d 行，共 %2$d 行</string>
     <string name="chat_attach_skills">技能</string>
     <string name="chat_attach_skills_hint">引用电脑上的技能或场景</string>
     <string name="skills_title">技能</string>

@@ -10,12 +10,19 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.TextButton
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.text.style.TextAlign
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.vetta.android.domain.work.documents.DocumentLabels
+import org.vetta.android.domain.work.documents.DocumentPreview
 import org.vetta.android.resources.files_no_app
 import org.vetta.android.resources.files_open_with
+import org.vetta.android.resources.files_rows_shown
 import org.vetta.android.resources.files_share
+import org.vetta.android.resources.files_sheet_empty
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
@@ -148,7 +155,7 @@ fun FilePreviewScreen(source: FileSource, href: String, onDismiss: () -> Unit, e
 @Composable
 private fun FileBody(info: RemoteFileInfo, content: FileContent, onOpen: () -> Unit, onShare: () -> Unit) {
     val kind = remember(content) { FilePreviewKind.of(info.name, content.mimeType, content.data) }
-    val text = remember(content, kind) { if (kind == FilePreviewKind.Image || kind == FilePreviewKind.Unsupported) null else FileText.decode(content.data) }
+    val text = remember(content, kind) { if (kind in setOf(FilePreviewKind.Markdown, FilePreviewKind.Html, FilePreviewKind.Text)) FileText.decode(content.data) else null }
     when (kind) {
         FilePreviewKind.Markdown ->
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp)) { MarkdownContent(text.orEmpty()) }
@@ -167,6 +174,18 @@ private fun FileBody(info: RemoteFileInfo, content: FileContent, onOpen: () -> U
                 Image(bitmap, contentDescription = info.name, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize().padding(8.dp))
             } else {
                 CannotShow(info, content, onOpen, onShare)
+            }
+        }
+        FilePreviewKind.Document -> {
+            val labels = documentLabels()
+            // Drawn off the main thread: a large workbook takes a moment. "" when it could not be read.
+            val page by produceState<String?>(null, content) {
+                value = withContext(Dispatchers.Default) { DocumentPreview.html(info.name, content.data, labels) }.orEmpty()
+            }
+            when (val shown = page) {
+                null -> Loading()
+                "" -> CannotShow(info, content, onOpen, onShare)
+                else -> HtmlPreview(shown, Modifier.fillMaxSize(), zoomable = true)
             }
         }
         FilePreviewKind.Unsupported -> CannotShow(info, content, onOpen, onShare)
@@ -194,6 +213,17 @@ private fun CannotShow(info: RemoteFileInfo, content: FileContent, onOpen: () ->
     }
 }
 
-/** A web page from the desktop, shown without running its scripts or loading anything from the network. */
 @Composable
-expect fun HtmlPreview(html: String, modifier: Modifier = Modifier)
+private fun documentLabels(): DocumentLabels {
+    val empty = stringResource(Res.string.files_sheet_empty)
+    val rows = stringResource(Res.string.files_rows_shown)
+    return remember(empty, rows) { DocumentLabels(empty) { shown, total -> rows.replace("%1\$d", "$shown").replace("%2\$d", "$total") } }
+}
+
+/**
+ * A page from the desktop, or one [DocumentPreview] drew, shown without running scripts
+ * or loading anything from the network; links open in the browser. A `zoomable` page
+ * can be pinched, for documents laid out wider or smaller than the phone.
+ */
+@Composable
+expect fun HtmlPreview(html: String, modifier: Modifier = Modifier, zoomable: Boolean = false)

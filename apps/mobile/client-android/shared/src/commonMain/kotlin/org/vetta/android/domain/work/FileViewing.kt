@@ -10,6 +10,7 @@ import org.vetta.android.domain.remote.connection.RemoteRequestException
 import org.vetta.android.domain.remote.link.LinkChannel
 import org.vetta.android.domain.remote.link.LinkOfflineException
 import org.vetta.android.domain.remote.protocol.RemoteErrorCode
+import org.vetta.android.domain.work.documents.DocumentPreview
 
 /*
  * Viewing the desktop's files from the phone (port of the iPhone's `FileViewing`,
@@ -50,6 +51,9 @@ enum class FilePreviewKind {
     /** Code and other text, shown as it is. */
     Text,
     Image,
+
+    /** Word, Excel and PowerPoint documents and CSV / TSV tables, drawn as a page ([DocumentPreview]). */
+    Document,
     Unsupported,
     ;
 
@@ -59,6 +63,7 @@ enum class FilePreviewKind {
             when (FileNames.extensionOf(name)) {
                 "md", "markdown", "mdx" -> Markdown
                 "html", "htm", "xhtml" -> Html
+                in DocumentPreview.EXTENSIONS -> Document
                 // A scaled-down photo arrives as JPEG whatever its extension was; SVG is text to Android.
                 else -> if (mimeType.startsWith("image/") && mimeType != "image/svg+xml") Image else if (FileText.decode(data) != null) Text else Unsupported
             }
