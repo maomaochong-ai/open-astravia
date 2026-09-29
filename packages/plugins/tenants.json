@@ -16,8 +16,7 @@
         "plugin-workbench",
         "comfyui-media-provider",
         "content-creation",
-        "browser",
-        "build-apple-apps"
+        "browser"
       ]
     },
     "production": {
@@ -32,8 +31,7 @@
         "chart-renderer",
         "git",
         "plugin-workbench",
-        "browser",
-        "build-apple-apps"
+        "browser"
       ]
     }
   }
