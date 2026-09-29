@@ -13,6 +13,7 @@
         "svg-viewer",
         "chart-renderer",
         "git",
+        "scripts",
         "plugin-workbench",
         "comfyui-media-provider",
         "content-creation",
@@ -30,6 +31,7 @@
         "svg-viewer",
         "chart-renderer",
         "git",
+        "scripts",
         "plugin-workbench",
         "browser"
       ]

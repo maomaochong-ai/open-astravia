@@ -1,0 +1,17 @@
+{
+	"id": "scripts",
+	"name": "%plugin.name%",
+	"icon": "solar:play-circle-linear",
+	"version": "0.1.0",
+	"defaultLocale": "zh",
+	"pluginApiVersion": "^2.8.0",
+	"entry": "dist/mf-manifest.json",
+	"moduleFederation": {
+		"remoteName": "scripts",
+		"expose": "./plugin"
+	},
+	"styles": ["dist/style.css"],
+	"permissions": ["ui.slot.bottom-panel", "terminal.run", "fs.read"],
+	"description": "%plugin.description%",
+	"author": "Vetta"
+}

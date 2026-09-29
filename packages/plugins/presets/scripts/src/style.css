@@ -1,0 +1,7 @@
+/* 导入 theme 层 + utilities 层（不要 preflight，避免 reset 污染宿主全局）。 */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+/* 面板里用到的 iconify 图标由这里生成，随 dist/style.css 一起装进插件包。 */
+@plugin "@iconify/tailwind4";
