@@ -31,7 +31,7 @@ export function InlineTokenChip({
 	const classes = cn(
 		"mx-px inline-block max-w-full select-none whitespace-pre rounded-md border px-1.5 align-baseline text-[12px] font-medium leading-[1.6]",
 		tone === "member"
-			? "border-sky-400/30 bg-sky-400/10 text-sky-200"
+			? "border-primary/30 bg-primary/10 text-primary"
 			: "border-primary/25 bg-primary/10 text-primary",
 		asButton && "cursor-pointer hover:bg-primary/20",
 		className,
