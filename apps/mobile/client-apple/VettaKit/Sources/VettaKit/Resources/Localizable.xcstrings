@@ -977,6 +977,23 @@
         }
       }
     },
+    "chat.scrollToBottom": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scroll to bottom"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "滚动到底部"
+          }
+        }
+      }
+    },
     "chat.send": {
       "extractionState": "manual",
       "localizations": {

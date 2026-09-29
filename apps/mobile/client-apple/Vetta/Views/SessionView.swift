@@ -28,6 +28,8 @@ struct SessionView: View {
 	@State private var pinPending = false
 	/// The chat's height, which the latest exchange fills once sent.
 	@State private var viewport: CGFloat = 0
+	/// Far enough from the end to offer a jump there.
+	@State private var farFromEnd = false
 	/// The panel the More menu opened.
 	@State private var panel: SessionPanel?
 	/// A desktop file a reply linked to, being previewed.
@@ -105,6 +107,28 @@ struct SessionView: View {
 			// A geometry change, not a scroll one: that fires only on a change, which left a
 			// chat nothing had moved yet with no height to put the sent message at the top.
 			.onGeometryChange(for: CGFloat.self, of: ChatViewport.height) { viewport = $0 }
+			// A flag, not the distance, so scrolling only reaches the view when it flips.
+			.onScrollGeometryChange(for: Bool.self, of: ChatViewport.farFromEnd) { _, far in
+				withAnimation(.snappy) { farFromEnd = far }
+			}
+			// Floats just above the composer, which the safe area already keeps clear.
+			.overlay(alignment: .bottom) {
+				if farFromEnd {
+					Button {
+						withAnimation(.smooth(duration: 0.35)) { proxy.scrollTo("bottom", anchor: .bottom) }
+					} label: {
+						Image(systemName: "arrow.down")
+							.font(.system(size: 17, weight: .semibold))
+							.frame(width: 44, height: 44)
+							.glassEffect(.regular.interactive(), in: .circle)
+					}
+					.buttonStyle(.plain)
+					.accessibilityLabel(L10n.Chat.scrollToBottom)
+					.accessibilityIdentifier("chat.scrollToBottom")
+					.padding(.bottom, 12)
+					.transition(.scale(scale: 0.6).combined(with: .opacity))
+				}
+			}
 			// History that arrives after the chat opened lands past the initial offset.
 			.onChange(of: transcript.loaded) { _, loaded in
 				if loaded, !pinned { proxy.scrollTo("bottom", anchor: .bottom) }
@@ -263,6 +287,10 @@ private enum ChatViewport {
 	/// Whole points, so the keyboard's slide does not re-lay the chat on every fraction.
 	nonisolated static func height(_ proxy: GeometryProxy) -> CGFloat {
 		proxy.size.height.rounded()
+	}
+
+	nonisolated static func farFromEnd(_ geometry: ScrollGeometry) -> Bool {
+		ChatScroll.offersJump(below: geometry.contentSize.height - geometry.visibleRect.maxY, viewport: geometry.containerSize.height)
 	}
 }
 

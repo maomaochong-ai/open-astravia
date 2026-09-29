@@ -147,3 +147,12 @@ public enum ChatTurns {
 		}
 	}
 }
+
+/// When the chat offers a jump to its end.
+public enum ChatScroll {
+	/// Once more than one and a half screens are left below: past that, scrolling
+	/// there by hand takes several flicks. Nonisolated: it runs on SwiftUI's render thread.
+	public nonisolated static func offersJump(below: Double, viewport: Double) -> Bool {
+		viewport > 0 && below > viewport * 1.5
+	}
+}

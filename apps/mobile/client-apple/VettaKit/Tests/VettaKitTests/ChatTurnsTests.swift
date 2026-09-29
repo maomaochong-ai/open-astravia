@@ -45,6 +45,13 @@ import Testing
 		#expect(ChatTurns.latestExchange(ChatTurns.build([reply("a1", text: "你好")])) == nil)
 	}
 
+	@Test func jumpToBottomShowsPastOneAndAHalfScreens() {
+		#expect(!ChatScroll.offersJump(below: 900, viewport: 800))
+		#expect(!ChatScroll.offersJump(below: 1200, viewport: 800))
+		#expect(ChatScroll.offersJump(below: 1201, viewport: 800))
+		#expect(!ChatScroll.offersJump(below: 5000, viewport: 0), "nothing measured yet")
+	}
+
 	@Test func textBetweenToolRoundsClosesTheWorkGroup() {
 		let turn = turns(ChatTurns.build([
 			reply("a1", text: "我先跑测试", tools: [tool("t1")]),
