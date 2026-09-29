@@ -7,11 +7,13 @@ describe("Desktop packaging risk classification", () => {
 			"apps/desktop/src/main/remote-control/desktop-remote-pairing-service.ts",
 			"apps/desktop/src/preload/api-types/remote-pairing.ts",
 			"apps/desktop/scripts/prepare-pack.js",
+			"apps/desktop/scripts/windows-sandbox-packaging.mjs",
 			"apps/desktop/scripts/desktop-build-environment.mjs",
 			"packages/remote-control/src/index.ts",
+			".github/actions/prepare-windows-sandbox/action.yml",
 		]);
 		expect(result.packagedSmokeRequired).toBe(true);
-		expect(result.reasons).toHaveLength(5);
+		expect(result.reasons).toHaveLength(7);
 	});
 
 	it("does not require packaged smoke for unrelated renderer work", () => {

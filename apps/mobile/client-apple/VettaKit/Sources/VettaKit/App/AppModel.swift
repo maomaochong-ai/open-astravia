@@ -26,6 +26,7 @@ public struct AppPlatform {
 	public var cache: SessionCache
 	public var createTransport: TransportFactory
 	public var deviceName: String
+	public var onTurnStart: (() -> Void)?
 	public var onTurnEnd: (() -> Void)?
 	public var signals: SessionSignals?
 	public var configureManager: ((inout ChannelManagerOptions) -> Void)?
@@ -106,6 +107,8 @@ public final class AppModel {
 	@ObservationIgnored private var freshSessions: Set<String> = []
 	@ObservationIgnored private let fileCache = FileContentCache()
 	@ObservationIgnored private var watch = SessionWatch()
+	/// Sessions whose latest user message has no reply yet; the first output buzzes once.
+	@ObservationIgnored private var awaitingOutput: Set<String> = []
 
 	public init(platform: AppPlatform) {
 		self.platform = platform
@@ -415,6 +418,11 @@ public final class AppModel {
 		signals.show(liveDigest, active: active)
 	}
 
+	private func outputStarted(_ sessionId: String) {
+		guard awaitingOutput.remove(sessionId) != nil, preferences.haptics, active else { return }
+		platform.onTurnStart?()
+	}
+
 	private func handleEvent(_ event: RemoteEvent) {
 		let sessionId = event.sessionId
 		switch event.name {
@@ -434,6 +442,11 @@ public final class AppModel {
 			}
 		case .sessionMessage:
 			guard let sessionId, let message = RemoteAPI.readMessageEvent(event.payload) else { return }
+			switch message {
+			case .user: awaitingOutput.insert(sessionId)
+			case .assistantDelta, .thinkingDelta: outputStarted(sessionId)
+			case .turnEnd: awaitingOutput.remove(sessionId)
+			}
 			if case .thinkingDelta = message, !preferences.liveThinking { return }
 			dispatch(sessionId, .message(message))
 			if case .turnEnd = message, preferences.haptics, active { platform.onTurnEnd?() }
@@ -445,6 +458,7 @@ public final class AppModel {
 			}
 		case .sessionTool:
 			guard let sessionId, let tool = RemoteAPI.readToolEvent(event.payload) else { return }
+			outputStarted(sessionId)
 			dispatch(sessionId, .tool(tool))
 		case .sessionInput:
 			guard let sessionId, let payload = event.payload else { return }
@@ -463,6 +477,7 @@ public final class AppModel {
 				return
 			}
 		case .sessionResync:
+			awaitingOutput.removeAll()
 			transcripts = transcripts.mapValues { TranscriptReducer.reduce($0, .resync) }
 			Task { await refreshSessions() }
 		case .deviceStatus:

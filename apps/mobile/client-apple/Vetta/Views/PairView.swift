@@ -225,6 +225,7 @@ private struct ManualPairSheet: View {
 					.keyboardType(.URL)
 					.submitLabel(.go)
 					.focused($focused)
+					.tint(Theme.selection)
 					.onSubmit(submit)
 					.padding(.horizontal, 16)
 					.frame(height: 52)

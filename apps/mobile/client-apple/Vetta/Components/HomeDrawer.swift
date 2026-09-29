@@ -64,7 +64,10 @@ struct DrawerButton: View {
 	@Environment(Router.self) private var router
 
 	var body: some View {
-		Button { router.openDrawer() } label: {
+		Button {
+			tapHaptic()
+			router.openDrawer()
+		} label: {
 			Image(systemName: "line.3.horizontal")
 		}
 		.accessibilityLabel(L10n.Home.title)

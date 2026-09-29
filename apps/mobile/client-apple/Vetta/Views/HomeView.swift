@@ -70,6 +70,7 @@ struct HomeView: View {
 				.accessibilityAddTraits(.isHeader)
 			Spacer()
 			GlassCircleButton(symbol: "xmark", size: 48, label: L10n.Common.close, identifier: "home.close") {
+				tapHaptic()
 				router.closeDrawer()
 			}
 		}
@@ -191,7 +192,10 @@ private struct EntryRow: View {
 	var action: () -> Void
 
 	var body: some View {
-		Button(action: action) {
+		Button {
+			tapHaptic()
+			action()
+		} label: {
 			HStack(spacing: 14) {
 				Image(systemName: symbol)
 					.font(.title3)

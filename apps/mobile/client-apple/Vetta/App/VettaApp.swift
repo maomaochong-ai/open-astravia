@@ -17,6 +17,9 @@ struct VettaApp: App {
 		let ephemeral = ProcessInfo.processInfo.arguments.contains("-VettaEphemeralStorage")
 		let notifier = SessionNotifier()
 		self.ephemeral = ephemeral
+		// Fields SwiftUI's tint does not reach, such as an alert's, get the blue caret too.
+		UITextField.appearance().tintColor = Theme.selectionUI
+		UITextView.appearance().tintColor = Theme.selectionUI
 		_notifier = State(initialValue: notifier)
 		let model = VettaApp.makeModel(ephemeral: ephemeral, signals: ephemeral ? nil : notifier)
 		_model = State(initialValue: model)
@@ -82,6 +85,8 @@ struct VettaApp: App {
 			createTransport: { url, options in WebSocketTransport(url: url, options: options) },
 			deviceName: String(UIDevice.current.name.prefix(64))
 		)
+		let impact = UIImpactFeedbackGenerator(style: .light)
+		platform.onTurnStart = { impact.impactOccurred() }
 		platform.onTurnEnd = { feedback.notificationOccurred(.success) }
 		// Once on the LAN or relay, the link moves to the WebRTC control channel through the
 		// relay's viewer signaling; the same session carries the screen (ADR-0140).

@@ -216,6 +216,7 @@ struct InvitePairView: View {
 					.autocorrectionDisabled()
 					.keyboardType(.URL)
 					.focused($focus, equals: .relay)
+					.tint(Theme.selection)
 					.padding(.horizontal, 16)
 					.frame(height: 48)
 					.glassEffect(.regular.interactive(), in: .rect(cornerRadius: 14))

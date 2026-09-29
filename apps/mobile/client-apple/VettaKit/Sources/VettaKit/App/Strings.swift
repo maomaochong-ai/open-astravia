@@ -197,6 +197,7 @@ public enum L10n {
 		public static var copied: String { tr("chat.copied") }
 		public static var questionTitle: String { tr("chat.questionTitle") }
 		public static var attach: String { tr("chat.attach") }
+		public static var scrollToBottom: String { tr("chat.scrollToBottom") }
 		public static var attachPhotos: String { tr("chat.attachPhotos") }
 		public static var attachFiles: String { tr("chat.attachFiles") }
 		public static var attachCamera: String { tr("chat.attachCamera") }

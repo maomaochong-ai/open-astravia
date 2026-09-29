@@ -67,13 +67,14 @@ describe("desktop config schema migration", () => {
 		const config = await store.readDesktopConfig();
 		expect(config.schemaVersion).toBe(2);
 		expect(config.notificationPreferences).toEqual({
+			soundEnabled: true,
 			systemScope: "away-from-session",
-			soundScope: "away-from-session",
+			soundScope: "always",
 			soundVolume: 60,
 			events: {
-				completed: { systemEnabled: true, soundId: null },
-				failed: { systemEnabled: true, soundId: null },
-				actionRequired: { systemEnabled: true, soundId: null },
+				completed: { systemEnabled: true, soundId: "soft-chime" },
+				failed: { systemEnabled: true, soundId: "soft-chime" },
+				actionRequired: { systemEnabled: true, soundId: "soft-chime" },
 			},
 		});
 		expect(await store.readDisk()).toMatchObject({
@@ -93,13 +94,14 @@ describe("desktop config schema migration", () => {
 			},
 		});
 		expect((await store.readDesktopConfig()).notificationPreferences).toEqual({
+			soundEnabled: true,
 			systemScope: "away-from-session",
 			soundScope: "always",
 			soundVolume: 100,
 			events: {
-				completed: { systemEnabled: false, soundId: null },
-				failed: { systemEnabled: true, soundId: null },
-				actionRequired: { systemEnabled: true, soundId: null },
+				completed: { systemEnabled: false, soundId: "soft-chime" },
+				failed: { systemEnabled: true, soundId: "soft-chime" },
+				actionRequired: { systemEnabled: true, soundId: "soft-chime" },
 			},
 		});
 	});
