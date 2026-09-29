@@ -457,6 +457,30 @@ class DesktopMirrorTest {
         }
 
     @Test
+    fun openingAJustStartedSessionKeepsItsPrompt() =
+        runTest {
+            val desktop = scriptedDesktop()
+            val mirror = mirror(desktop)
+            assertTrue(mirror.pairWithCode(desktop.invite()))
+            assertTrue(eventually { mirror.state.value.sessions.map { it.id } == listOf("s1") })
+
+            val localId = assertNotNull(mirror.startSession("你好"))
+            assertTrue(eventually { !mirror.state.value.isStarting(localId) && mirror.state.value.resolve(localId) == "s2" })
+            assertTrue(eventually { mirror.state.value.transcript("s2").items.size >= 2 })
+
+            // The chat opens the session as soon as the prompt is out; the desktop's history
+            // (the fake's never has "你好") may not have it yet and must not replace the chat.
+            mirror.openSession("s2")
+            assertTrue(desktop.requests.any { it.method == RemoteRequestMethod.SessionOpen && it.sessionId == "s2" })
+            assertTrue(desktop.requests.none { it.method == RemoteRequestMethod.SessionHistory && it.sessionId == "s2" })
+            assertEquals("你好", (mirror.state.value.transcript("s2").items.first() as? TranscriptItem.User)?.text, "the prompt stays")
+            assertTrue(mirror.state.value.session("s2")?.live == true)
+
+            mirror.openSession("s2")
+            assertTrue(desktop.requests.any { it.method == RemoteRequestMethod.SessionHistory && it.sessionId == "s2" }, "only the first opening skips history")
+        }
+
+    @Test
     fun remembersTheLastUsedModelPerDesktopAcrossLaunches() =
         runTest {
             val desktop = scriptedDesktop()

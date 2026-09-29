@@ -190,6 +190,9 @@ class DesktopMirror(
     private var link: DesktopLink? = null
     private var linkJobs = emptyList<Job>()
     private var desktopKey: String? = null
+
+    /** Sessions [startSession] just sent their first prompt to; see [openSession]. */
+    private val freshSessions = mutableSetOf<String>()
     private var flow: PairingFlow? = null
     private val transcriptSaves = mutableMapOf<String, Job>()
     private var unsavedSequence: Pair<String, Long>? = null
@@ -362,6 +365,7 @@ class DesktopMirror(
 
     private fun attachLink(record: DesktopRecord) {
         detachLink()
+        freshSessions.clear()
         val key = record.desktopIdentityKey
         desktopKey = key
         val cached = platform.cache.loadSessions(key)
@@ -657,7 +661,13 @@ class DesktopMirror(
         }
     }
 
+    /**
+     * Fetches the session's history, except right after [startSession]: the desktop
+     * accepts a prompt before its agent records it, so history taken then lacks the
+     * prompt and would wipe it off the chat. The chat already has everything then.
+     */
     suspend fun openSession(sessionId: String) {
+        val fresh = freshSessions.remove(sessionId) && _state.value.transcripts[sessionId]?.stale == false
         val key = desktopKey
         // Events for a chat never opened leave only a partial one: the cached copy is fuller.
         if (_state.value.transcripts[sessionId]?.loaded != true && key != null) {
@@ -669,6 +679,10 @@ class DesktopMirror(
         try {
             val current = requireLink()
             val opened = current.request(RemoteRequestMethod.SessionOpen, sessionId = sessionId)
+            if (fresh) {
+                patchSession(sessionId) { it.copy(live = true) }
+                return
+            }
             val history = current.request(RemoteRequestMethod.SessionHistory, sessionId = sessionId)
             val entries = RemoteApi.readTranscriptEntries(history)
             val sessionState = RemoteApi.readSessionState((history as? JsonObject)?.get("state") ?: (opened as? JsonObject)?.get("state"))
@@ -820,6 +834,7 @@ class DesktopMirror(
                 }
                 configure(target, modelKey, thinkingLevel)
                 deliver(target, trimmed, attachments, echo = false)
+                freshSessions += target
             } catch (error: Throwable) {
                 if (error is CancellationException) throw error
                 mutate { it.copy(transcripts = it.transcripts - localId) }
