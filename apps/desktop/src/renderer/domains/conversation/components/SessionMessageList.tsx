@@ -3,7 +3,7 @@ import { useAtom, useAtomValue } from "jotai";
 import { createContext, useCallback, useContext, useMemo } from "react";
 import { SessionSelection } from "./message-list/SessionSelection";
 import { AnnotationScope } from "./annotations/AnnotationScope";
-import { AnnotationMessageMenu } from "./annotations/AnnotationMenus";
+import { AnnotationMessageMarker } from "./annotations/AnnotationMenus";
 import type { ConversationUserMessageViewModel } from "@shared/conversation";
 import { MessageList } from "./MessageList";
 import { MessageListFooter } from "./message-list/MessageListFooter";
@@ -32,7 +32,7 @@ function SessionMessageRow(props: MessageRowProps) {
 				{props.children}
 				{props.message.kind === "agent" ? (
 					<div className="pointer-events-none absolute right-0 top-0 opacity-0 group-hover/annotation:pointer-events-auto group-hover/annotation:opacity-100 group-focus-within/annotation:pointer-events-auto group-focus-within/annotation:opacity-100">
-						<AnnotationMessageMenu message={props.message} />
+						<AnnotationMessageMarker message={props.message} />
 					</div>
 				) : null}
 			</div>

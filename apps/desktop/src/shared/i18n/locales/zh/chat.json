@@ -3,7 +3,6 @@
 		"title": "问答批注",
 		"ask": "问问 AI",
 		"history": "查看问答批注",
-		"messageMenu": "消息更多操作",
 		"saved": "查看 {{count}} 条问答批注",
 		"close": "关闭批注",
 		"contextHint": "参考截至此处的文字对话，单独讨论，不影响主对话。问答自动保存。",

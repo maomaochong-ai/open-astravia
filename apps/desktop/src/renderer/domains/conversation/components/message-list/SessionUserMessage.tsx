@@ -17,7 +17,7 @@ import {
 import { CopyButton } from "./MessageActions";
 import { projectUserMessage } from "./userMessageProjection";
 import { UserMessage } from "./UserMessage";
-import { AnnotationMessageMenu } from "../annotations/AnnotationMenus";
+import { AnnotationMessageMarker } from "../annotations/AnnotationMenus";
 
 export interface SessionUserMessageProps {
 	message: ConversationUserMessageViewModel;
@@ -111,7 +111,7 @@ export function SessionUserMessage({
 										</UserMessagePrimitive.Action>
 									) : null}
 									{canCopy ? <CopyButton getText={() => projection.copyText} onCopy={copyMessage} /> : null}
-									<AnnotationMessageMenu message={message} />
+									<AnnotationMessageMarker message={message} />
 								</div>
 							) : null}
 							{hasMeta ? (
