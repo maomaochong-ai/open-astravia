@@ -190,6 +190,12 @@
     <string name="remote_connect_failed">无法连接桌面</string>
     <string name="remote_control">远程控制</string>
     <string name="remote_control_hint">滑动移动光标 · 轻点点击 · 双指轻点右键 · 按住拖动 · 双指缩放或滚动</string>
+    <string name="remote_frames_per_second">%1$d fps</string>
+    <string name="remote_picture_delay">画面约 %1$d ms</string>
+    <string name="remote_round_trip">延迟 %1$d ms</string>
+    <string name="remote_route_internet">公网直连</string>
+    <string name="remote_route_lan">局域网直连</string>
+    <string name="remote_route_relayed">经中转</string>
     <string name="remote_control_not_allowed">这部手机还不能操作电脑桌面。请在电脑上的 Vetta「设置 → 远程连接」里，点这部手机旁边的电脑图标，直到右下角变成绿色对勾。</string>
     <string name="remote_control_offline">电脑在线时，这里会显示它的屏幕。</string>
     <string name="remote_screen_permission_denied">电脑还没允许 Vetta 录制屏幕。请在 Mac 的「系统设置 → 隐私与安全性 → 屏幕录制」里打开 Vetta，然后重启 Vetta。</string>

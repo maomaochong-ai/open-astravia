@@ -10,13 +10,14 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.takeFrom
 import io.ktor.websocket.Frame
 import io.ktor.websocket.readText
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -26,10 +27,11 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.int
 import kotlinx.serialization.json.put
+import org.vetta.android.domain.remote.RemoteStreamStats
 import org.vetta.android.domain.remote.connection.PlatformRemoteLogger
 import org.vetta.android.domain.remote.connection.RemoteTransport
 import org.vetta.android.domain.remote.protocol.RemoteFrame
@@ -88,6 +90,15 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
     /** The stream's picture as shown, rotation applied; null until the first frame. */
     val frameSize: StateFlow<IntSize?> = _frameSize
 
+    private val _stats = MutableStateFlow<RemoteStreamStats?>(null)
+
+    /** How the picture travels right now, refreshed every second while connected. */
+    val stats: StateFlow<RemoteStreamStats?> = _stats
+    private var statsJob: Job? = null
+
+    /** The running totals at the last sample, to average over the last second only. */
+    private var lastTotals: RemoteStreamStats.FrameTotals? = null
+
     fun createControlTransport(): RemoteTransport {
         check(controlTransport == null) { "remote desktop control transport already claimed" }
         return NativeRemoteControlTransport(this).also { transport ->
@@ -127,6 +138,9 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
         stopped = true
         signalingJob?.cancel()
         signalingJob = null
+        statsJob?.cancel()
+        statsJob = null
+        _stats.value = null
         inputChannel?.dispose()
         controlChannel?.dispose()
         peerConnection?.dispose()
@@ -236,6 +250,9 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
             override fun onSignalingChange(state: PeerConnection.SignalingState) = Unit
             override fun onIceConnectionChange(state: PeerConnection.IceConnectionState) {
                 PlatformRemoteLogger.info("native WebRTC ICE state", mapOf("state" to state.name))
+                if (state == PeerConnection.IceConnectionState.CONNECTED || state == PeerConnection.IceConnectionState.COMPLETED) {
+                    scope.launch { sampleStats() }
+                }
                 if (state == PeerConnection.IceConnectionState.FAILED || state == PeerConnection.IceConnectionState.CLOSED) {
                     controlTransport?.channelClosed("WebRTC ICE ${state.name.lowercase()}")
                 }
@@ -264,6 +281,25 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
                 PlatformRemoteLogger.info("native WebRTC video track attached")
             }
         })
+    }
+
+    /** Samples WebRTC's statistics once a second while the picture flows. */
+    private fun sampleStats() {
+        if (statsJob?.isActive == true) return
+        statsJob =
+            scope.launch {
+                while (!stopped) {
+                    val peer = peerConnection ?: break
+                    val entries = CompletableDeferred<List<RemoteStreamStats.Entry>>()
+                    peer.getStats { report ->
+                        entries.complete(report.statsMap.values.map { RemoteStreamStats.Entry(it.id, it.type, it.members) })
+                    }
+                    val (next, totals) = RemoteStreamStats.read(entries.await(), lastTotals)
+                    lastTotals = totals
+                    _stats.value = next
+                    delay(1_000)
+                }
+            }
     }
 
     private fun handleSignal(raw: String) {

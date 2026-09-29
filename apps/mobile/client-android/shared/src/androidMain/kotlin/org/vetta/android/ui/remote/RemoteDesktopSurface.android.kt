@@ -3,6 +3,7 @@ package org.vetta.android.ui.remote
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -11,10 +12,14 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -69,14 +74,23 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.stringResource
 import org.vetta.android.domain.remote.RemoteKeyStroke
 import org.vetta.android.domain.remote.RemoteKeys
 import org.vetta.android.domain.remote.RemotePointerCommand
 import org.vetta.android.domain.remote.RemoteScreenCursor
+import org.vetta.android.domain.remote.RemoteStreamStats
 import org.vetta.android.domain.remote.RemoteTrackpad
 import org.vetta.android.domain.remote.RemoteTyping
 import org.vetta.android.domain.remote.RemoteViewport
 import org.vetta.android.domain.remote.WheelNotches
+import org.vetta.android.resources.Res
+import org.vetta.android.resources.remote_frames_per_second
+import org.vetta.android.resources.remote_picture_delay
+import org.vetta.android.resources.remote_round_trip
+import org.vetta.android.resources.remote_route_internet
+import org.vetta.android.resources.remote_route_lan
+import org.vetta.android.resources.remote_route_relayed
 
 @Composable
 actual fun RemoteDesktopSurface(
@@ -117,6 +131,7 @@ actual fun RemoteDesktopSurface(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
     val frame by session.frameSize.collectAsState()
+    val stats by session.stats.collectAsState()
     // The screen stays on while the desktop is being watched.
     val view = LocalView.current
     DisposableEffect(view) {
@@ -237,6 +252,8 @@ actual fun RemoteDesktopSurface(
             val (x, y) = viewport.toView(pointer.first, pointer.second, picture.width, picture.height)
             RemotePointer(Offset(picture.left + x, picture.top + y), cursor, shownWidth = picture.width * viewport.zoom / density.density)
         }
+        // Route, latency and frame rate, so a slow network and a slow picture can be told apart.
+        stats?.let { StatsLine(it, Modifier.align(Alignment.TopCenter)) }
         RemoteKeyboard(keyboardOpen, onKeyboardClosed) { typing ->
             when (typing) {
                 is RemoteTyping.Text -> session.sendText(typing.text)
@@ -250,6 +267,35 @@ actual fun RemoteDesktopSurface(
             }
         }
     }
+}
+
+@Composable
+private fun StatsLine(stats: RemoteStreamStats, modifier: Modifier = Modifier) {
+    val parts =
+        listOfNotNull(
+            when (stats.route) {
+                RemoteStreamStats.Route.Lan -> stringResource(Res.string.remote_route_lan)
+                RemoteStreamStats.Route.Internet -> stringResource(Res.string.remote_route_internet)
+                RemoteStreamStats.Route.Relayed -> stringResource(Res.string.remote_route_relayed)
+                null -> null
+            },
+            stats.roundTripMs?.let { stringResource(Res.string.remote_round_trip, it.roundToInt()) },
+            stats.pictureDelayMs?.let { stringResource(Res.string.remote_picture_delay, it.roundToInt()) },
+            stats.framesPerSecond?.let { stringResource(Res.string.remote_frames_per_second, it.roundToInt()) },
+            if (stats.frameWidth != null && stats.frameHeight != null) "${stats.frameWidth}×${stats.frameHeight}" else null,
+        )
+    if (parts.isEmpty()) return
+    Text(
+        parts.joinToString(" · "),
+        style = MaterialTheme.typography.labelSmall.copy(fontFeatureSettings = "tnum"),
+        color = Color.White.copy(alpha = 0.8f),
+        modifier =
+            modifier
+                .padding(top = 6.dp)
+                .background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(50))
+                .padding(horizontal = 10.dp, vertical = 4.dp)
+                .testTag("remote.stats"),
+    )
 }
 
 /** A finger has to travel this far before it moves the pointer, so a tap does not nudge it. */
