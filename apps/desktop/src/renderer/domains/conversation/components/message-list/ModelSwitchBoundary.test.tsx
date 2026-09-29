@@ -10,9 +10,9 @@ import { ModelSwitchBoundary } from "./MessageItem";
 
 describe("ModelSwitchBoundary", () => {
 	it.each([
-		["zh", "模型已从 GPT-4 切换为 GPT-5"],
-		["en", "Switched model from GPT-4 to GPT-5"],
-	])("shows the previous and selected model in %s", async (language, label) => {
+		["zh", "模型已从 OpenAI (GPT-4) 切换为 Anthropic (Claude Sonnet 4)"],
+		["en", "Switched model from OpenAI (GPT-4) to Anthropic (Claude Sonnet 4)"],
+	])("shows the previous and selected provider-model identity in %s", async (language, label) => {
 		const i18n = createInstance();
 		await i18n.init({
 			resources: { zh: { chat: zhChat }, en: { chat: enChat } },
@@ -24,7 +24,7 @@ describe("ModelSwitchBoundary", () => {
 		});
 		render(
 			<I18nextProvider i18n={i18n}>
-				<ModelSwitchBoundary from="GPT-4" to="GPT-5" />
+				<ModelSwitchBoundary from="OpenAI (GPT-4)" to="Anthropic (Claude Sonnet 4)" />
 			</I18nextProvider>,
 		);
 		expect(screen.getByText(label)).toBeTruthy();
