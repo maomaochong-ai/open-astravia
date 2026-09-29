@@ -42,6 +42,8 @@ class FileViewingTest {
         assertEquals(FilePreviewKind.Image, FilePreviewKind.of("shot.png", "application/octet-stream", byteArrayOf(1, 0, 2)), "known by its extension")
         assertEquals(FilePreviewKind.WebImage, FilePreviewKind.of("logo.svg", "image/svg+xml", "<svg/>".encodeToByteArray()), "SVG is drawn, not shown as text")
         assertEquals(FilePreviewKind.WebImage, FilePreviewKind.of("loading.GIF", "image/gif", byteArrayOf(71, 73, 70)), "a GIF keeps moving")
+        assertEquals(FilePreviewKind.Audio, FilePreviewKind.of("memo.M4A", "application/octet-stream", byteArrayOf(1, 0, 2)))
+        assertEquals(FilePreviewKind.Video, FilePreviewKind.of("demo.mov", "application/octet-stream", byteArrayOf(1, 0, 2)))
         assertEquals(FilePreviewKind.Pdf, FilePreviewKind.of("paper.PDF", "application/octet-stream", byteArrayOf(37, 80, 68, 70)))
         assertEquals(FilePreviewKind.Document, FilePreviewKind.of("plan.docx", "application/octet-stream", byteArrayOf(1, 0, 2)))
         assertEquals(FilePreviewKind.Document, FilePreviewKind.of("q3.XLSX", "application/octet-stream", byteArrayOf(1, 0, 2)))

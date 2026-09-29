@@ -166,6 +166,28 @@ class FileViewerTest {
         composeRule.waitUntil(5_000) { composeRule.onAllNodesWithTag("files.unsupported.open").fetchSemanticsNodes().isNotEmpty() }
     }
 
+    /** Half a second of silence as a 16-bit mono WAV. */
+    private fun wav(): ByteArray {
+        val samples = 8000 / 2
+        val buffer = java.nio.ByteBuffer.allocate(44 + samples * 2).order(java.nio.ByteOrder.LITTLE_ENDIAN)
+        buffer.put("RIFF".encodeToByteArray()).putInt(36 + samples * 2).put("WAVE".encodeToByteArray())
+        buffer.put("fmt ".encodeToByteArray()).putInt(16).putShort(1).putShort(1).putInt(8000).putInt(16000).putShort(2).putShort(16)
+        buffer.put("data".encodeToByteArray()).putInt(samples * 2)
+        return buffer.array()
+    }
+
+    @Test
+    fun playsSoundAndHandsOnAClipItCannotPlay() {
+        var file by mutableStateOf(single("memo.wav", wav()))
+        composeRule.setContent { VettaTheme(ThemeMode.Light) { key(file) { FilePreviewScreen(file, "x", onDismiss = {}) } } }
+        composeRule.waitUntil(5_000) { composeRule.onAllNodesWithTag("files.media").fetchSemanticsNodes().isNotEmpty() }
+        Thread.sleep(1_000)
+        composeRule.onNodeWithTag("files.unsupported.open").assertDoesNotExist()
+
+        file = single("clip.mp4", "not a video".encodeToByteArray())
+        composeRule.waitUntil(5_000) { composeRule.onAllNodesWithTag("files.unsupported.open").fetchSemanticsNodes().isNotEmpty() }
+    }
+
     @Test
     fun opensALongLogAtOnce() {
         val log = (1..150_000).joinToString("\n") { "2026-09-29 12:00:00 INFO request $it served" }

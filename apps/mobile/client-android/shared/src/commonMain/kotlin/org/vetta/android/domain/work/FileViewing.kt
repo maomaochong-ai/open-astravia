@@ -57,6 +57,12 @@ enum class FilePreviewKind {
     WebImage,
     Pdf,
 
+    /** Sound, played with the system's player. */
+    Audio,
+
+    /** A video clip, played with the system's player. */
+    Video,
+
     /** Word, Excel and PowerPoint documents and CSV / TSV tables, drawn as a page ([DocumentPreview]). */
     Document,
     Unsupported,
@@ -71,6 +77,8 @@ enum class FilePreviewKind {
                 in DocumentPreview.EXTENSIONS -> Document
                 "gif", "svg" -> WebImage
                 "pdf" -> Pdf
+                "mp3", "m4a", "aac", "wav", "ogg", "oga", "opus", "flac", "amr" -> Audio
+                "mp4", "m4v", "mov", "webm", "3gp", "mkv" -> Video
                 "png", "jpg", "jpeg", "webp", "bmp", "heic", "heif", "ico" -> Image
                 // A scaled-down photo arrives as JPEG whatever its extension was.
                 else ->

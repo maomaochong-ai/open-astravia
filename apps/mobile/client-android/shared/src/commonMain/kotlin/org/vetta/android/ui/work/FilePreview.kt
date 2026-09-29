@@ -204,6 +204,14 @@ private fun FileBody(info: RemoteFileInfo, content: FileContent, onOpen: () -> U
             var unreadable by remember(content) { mutableStateOf(false) }
             if (unreadable) CannotShow(info, content, onOpen, onShare) else PdfPreview(info.name, content.data, Modifier.fillMaxSize()) { unreadable = true }
         }
+        FilePreviewKind.Audio, FilePreviewKind.Video -> {
+            var unplayable by remember(content) { mutableStateOf(false) }
+            if (unplayable) {
+                CannotShow(info, content, onOpen, onShare)
+            } else {
+                MediaPreview(info.name, content.data, audio = kind == FilePreviewKind.Audio, modifier = Modifier.fillMaxSize()) { unplayable = true }
+            }
+        }
         FilePreviewKind.Document -> {
             val labels = documentLabels()
             // Drawn off the main thread: a large workbook takes a moment. "" when it could not be read.
@@ -247,6 +255,10 @@ private fun CannotShow(info: RemoteFileInfo, content: FileContent, onOpen: () ->
  */
 @Composable
 expect fun PdfPreview(name: String, data: ByteArray, modifier: Modifier = Modifier, onUnreadable: () -> Unit)
+
+/** Sound or a video clip with the system's controls; `onUnplayable` when the phone cannot play it. */
+@Composable
+expect fun MediaPreview(name: String, data: ByteArray, audio: Boolean, modifier: Modifier = Modifier, onUnplayable: () -> Unit)
 
 @Composable
 private fun documentLabels(): DocumentLabels {
