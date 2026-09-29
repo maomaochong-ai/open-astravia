@@ -759,7 +759,8 @@ class DesktopMirror(
     suspend fun readFile(sessionId: String, info: RemoteFileInfo): FileContent =
         fileRequest {
             if (info.isDirectory) throw FileViewException(FileViewError.NotAFile)
-            if (info.size > RemoteFileReader.MAX_FILE_BYTES) throw FileViewException(FileViewError.TooLarge)
+            // Not judged by `info.size`: the desktop scales a large photo down to fit, so only
+            // the size of what it sends, in the first chunk, says whether it is too large.
             fileCache.get(sessionId, info)?.let { return@fileRequest it }
             val current = requireFiles()
             RemoteFileReader.read(info.path, { RemoteFileReader.chunkBytes(_state.value.link.channel) }) { payload ->
