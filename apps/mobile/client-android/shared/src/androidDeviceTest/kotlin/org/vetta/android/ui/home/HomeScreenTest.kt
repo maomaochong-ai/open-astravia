@@ -6,6 +6,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -15,6 +16,9 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 import org.junit.Rule
 import org.junit.runner.RunWith
 import org.vetta.android.app.ThemeMode
@@ -42,9 +46,6 @@ import org.vetta.android.resources.work_group_waiting
 import org.vetta.android.ui.str
 import org.vetta.android.ui.theme.VettaTheme
 import org.vetta.android.ui.work.WorkActions
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 
 @RunWith(AndroidJUnit4::class)
 class HomeScreenTest {
@@ -128,6 +129,33 @@ class HomeScreenTest {
                 )
             }
         }
+    }
+
+    @Test
+    fun theNewSessionEntryNamesTheProjectItStartsIn() {
+        var started = 0
+        composeRule.setContent {
+            VettaTheme(ThemeMode.Light) {
+                HomeScreen(
+                    state = paired,
+                    filter = SessionFilter(),
+                    onFilterChange = {},
+                    actions = RecordingActions(),
+                    entries = listOf(newSessionEntry("vetta") { started += 1 }),
+                    onClose = {},
+                    onOpenSession = {},
+                    onOpenProject = {},
+                    onOpenSettings = {},
+                    onRefresh = {},
+                    onRefreshProjects = {},
+                    onReconnect = {},
+                    onPair = {},
+                )
+            }
+        }
+        composeRule.onNodeWithTag("home.newSession.detail").assertTextEquals("vetta")
+        composeRule.onNodeWithTag("home.newSession").performClick()
+        assertEquals(1, started)
     }
 
     @Test

@@ -138,6 +138,12 @@ data class MirrorState(
     val conversationCwd: String?
         get() = projects.firstOrNull { it.isConversation }?.cwd
 
+    /** What to call the project at `cwd`: its name on the desktop, else its folder's. */
+    fun projectName(cwd: String): String =
+        projects.firstOrNull { it.cwd == cwd }?.name
+            ?: sessions.firstOrNull { it.projectCwd == cwd }?.projectName
+            ?: cwd.trimEnd('/', '\\').substringAfterLast('/').substringAfterLast('\\')
+
     fun count(group: SessionStatusGroup): Int = sessions.count { SessionStatusGroup.of(it.status) == group }
 
     fun transcript(sessionId: String): TranscriptState = transcripts[sessionId] ?: TranscriptState.Empty

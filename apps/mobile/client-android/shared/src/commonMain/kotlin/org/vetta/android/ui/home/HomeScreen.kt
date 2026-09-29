@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
@@ -73,6 +74,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
@@ -113,7 +115,8 @@ import org.vetta.android.ui.work.WorkActions
 import org.vetta.android.ui.work.workColors
 
 /** One of Home's ways in, above the sessions. */
-data class HomeEntry(val icon: ImageVector, val title: String, val tag: String, val onClick: () -> Unit)
+/** One of Home's ways in; `detail` says where it leads, on the right, such as the project a new session starts in. */
+data class HomeEntry(val icon: ImageVector, val title: String, val tag: String, val onClick: () -> Unit, val detail: String? = null)
 
 /**
  * The drawer over the slot (the iPhone's `HomeView`): the Vetta title stays at the top,
@@ -305,7 +308,17 @@ private fun EntryRow(entry: HomeEntry, modifier: Modifier = Modifier) {
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Icon(entry.icon, contentDescription = null, modifier = Modifier.size(24.dp))
-        Text(entry.title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+        Text(entry.title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
+        entry.detail?.let {
+            Text(
+                it,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.widthIn(max = 160.dp).testTag("${entry.tag}.detail"),
+            )
+        }
     }
 }
 
@@ -451,4 +464,5 @@ fun taskBoardEntry(onClick: () -> Unit) = HomeEntry(Icons.Outlined.Dashboard, st
 
 /** Home's standard way in: a blank New Session. */
 @Composable
-fun newSessionEntry(onClick: () -> Unit) = HomeEntry(Icons.Outlined.EditNote, stringResource(Res.string.new_session_title), "home.newSession", onClick)
+fun newSessionEntry(project: String? = null, onClick: () -> Unit) =
+    HomeEntry(Icons.Outlined.EditNote, stringResource(Res.string.new_session_title), "home.newSession", onClick, detail = project)

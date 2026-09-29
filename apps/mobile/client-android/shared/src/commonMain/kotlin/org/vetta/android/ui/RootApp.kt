@@ -365,7 +365,8 @@ private fun HomeStack(state: AppUiState, workState: MirrorState, vm: AppViewMode
                     actions = work,
                     entries =
                         listOfNotNull(
-                            newSessionEntry { vm.startNewSession() },
+                            // Filtered to a project: a new session starts there, and the entry says so.
+                            newSessionEntry(filter.projectCwd?.let(workState::projectName)) { vm.startNewSession(filter.projectCwd) },
                             taskBoardEntry(vm::openBoard),
                             viewerUrl?.let { remoteEntry(vm::openRemote) },
                         ),
