@@ -19,7 +19,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Test packaging contract helpers
-        run: node --test apps/desktop/scripts/desktop-packaging-layout.test.mjs apps/desktop/scripts/electron-e2e-service-options.node-test.mjs apps/desktop/scripts/packaged-e2e-binary.node-test.mjs apps/desktop/scripts/packaged-native-dependencies.test.mjs
+        run: node --test apps/desktop/scripts/desktop-packaging-layout.test.mjs apps/desktop/scripts/electron-e2e-service-options.node-test.mjs apps/desktop/scripts/packaged-e2e-binary.node-test.mjs apps/desktop/scripts/packaged-native-dependencies.test.mjs apps/desktop/scripts/windows-sandbox-packaging.test.mjs
 
   scope:
     name: Detect packaged smoke scope
@@ -64,6 +64,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Prepare Windows sandbox
+        if: runner.os == 'Windows'
+        uses: ./.github/actions/prepare-windows-sandbox
 
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2

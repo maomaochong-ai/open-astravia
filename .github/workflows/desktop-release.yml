@@ -260,6 +260,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Prepare Windows sandbox
+        if: runner.os == 'Windows'
+        uses: ./.github/actions/prepare-windows-sandbox
+
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
         with:
