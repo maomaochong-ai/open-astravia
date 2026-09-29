@@ -25,6 +25,28 @@
 	}
 }
 
+@keyframes session-title-marquee {
+	0%,
+	15% {
+		transform: translateX(0);
+	}
+	85%,
+	100% {
+		transform: translateX(var(--session-title-marquee-distance));
+	}
+}
+
+.session-title-marquee-track {
+	animation: session-title-marquee var(--session-title-marquee-duration) linear infinite alternate;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.session-title-marquee-track {
+		animation: none;
+		transform: none;
+	}
+}
+
 /* ─── 「进行中」指示器 ───
    .processing-shimmer / .vetta-live-dot / .tool-call-shimmer-text / .send-button-ripple-* /
    .todo-label-sheen / .todo-marker-spin / .activity-dot-* 这些类在 CSS 里只写静止态，
