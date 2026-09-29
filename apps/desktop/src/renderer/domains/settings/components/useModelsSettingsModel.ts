@@ -78,6 +78,8 @@ export interface ModelsSettingsModel {
 	onSetDefaultModel: (providerName: string, modelId: string) => Promise<void>;
 	onFetchProviderModels: (providerName: string) => Promise<void>;
 	onToggleFetchedModel: (modelId: string) => void;
+	onSelectAllFetchedModels: () => void;
+	onDeselectAllFetchedModels: () => void;
 	onCancelFetchedModels: () => void;
 	onApplyFetchedModels: (providerName: string) => Promise<void>;
 }
@@ -386,25 +388,21 @@ export function useModelsSettingsModel(): ModelsSettingsModel {
 		[config],
 	);
 
-	const handleFetchProviderModels = useCallback(
-		async (providerName: string) => {
-			setFetchingModelsFor(providerName);
-			try {
-				const result = await window.vetta.models.fetchProviderModels(providerName);
-				const existing = new Set((config?.providers[providerName]?.models || []).map((item) => item.id));
-				setFetchedModels({
-					provider: providerName,
-					models: result.models,
-					// 默认只勾选尚未添加的模型，避免重复项。
-					selected: result.models.filter((id) => !existing.has(id)),
-					error: result.error,
-				});
-			} finally {
-				setFetchingModelsFor(null);
-			}
-		},
-		[config],
-	);
+	const handleFetchProviderModels = useCallback(async (providerName: string) => {
+		setFetchingModelsFor(providerName);
+		try {
+			const result = await window.vetta.models.fetchProviderModels(providerName);
+			// 接口常返回上百个模型，默认不勾选，由用户挑选或一键全选。
+			setFetchedModels({
+				provider: providerName,
+				models: result.models,
+				selected: [],
+				error: result.error,
+			});
+		} finally {
+			setFetchingModelsFor(null);
+		}
+	}, []);
 
 	const handleApplyFetchedModels = useCallback(
 		async (providerName: string) => {
@@ -501,6 +499,14 @@ export function useModelsSettingsModel(): ModelsSettingsModel {
 						}
 					: prev,
 			),
+		onSelectAllFetchedModels: () =>
+			setFetchedModels((prev) => {
+				if (!prev) return prev;
+				// 已添加的模型勾选了也不会重复写入，全选只覆盖尚未添加的，计数才准确。
+				const existing = new Set((config?.providers[prev.provider]?.models || []).map((item) => item.id));
+				return { ...prev, selected: prev.models.filter((id) => !existing.has(id)) };
+			}),
+		onDeselectAllFetchedModels: () => setFetchedModels((prev) => (prev ? { ...prev, selected: [] } : prev)),
 		onCancelFetchedModels: () => setFetchedModels(null),
 		onApplyFetchedModels: handleApplyFetchedModels,
 	};
