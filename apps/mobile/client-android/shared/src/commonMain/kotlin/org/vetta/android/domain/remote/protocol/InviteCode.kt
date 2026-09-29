@@ -62,6 +62,25 @@ object InviteCode {
         return Qr(code, password, relay)
     }
 
+    /**
+     * What typing or pasting into the code boxes leaves: capitals, the look-alike letters
+     * read as digits, anything else dropped, at most eight.
+     */
+    fun typed(input: String): String =
+        input
+            .uppercase()
+            .mapNotNull { char ->
+                when (char) {
+                    'O' -> '0'
+                    'I', 'L' -> '1'
+                    else -> char.takeIf { it in ALPHABET }
+                }
+            }.take(CODE_LENGTH)
+            .joinToString("")
+
+    /** "K7Q29MXD" → "K7Q2-9MXD", as the computer shows it; shorter input is left as it is. */
+    fun format(code: String): String = if (code.length > 4) "${code.take(4)}-${code.drop(4)}" else code
+
     /** What was typed, as the code it names; null when it cannot be one. */
     fun normalize(input: String): String? {
         val code =

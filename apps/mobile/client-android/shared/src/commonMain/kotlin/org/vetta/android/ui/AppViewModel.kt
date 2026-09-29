@@ -62,6 +62,8 @@ data class AppUiState(
     val remoteConnecting: Boolean = false,
     /** Why the last pairing failed, shown on the pairing sheet until the next attempt. */
     val pairingError: PairingError? = null,
+    /** Why the last connection code led nowhere, so its page can go back to the step to fix. */
+    val inviteFailure: InviteLookup? = null,
 ) {
     /** Whether Back has somewhere to go inside the app; otherwise it leaves. */
     val backEnabled: Boolean
@@ -204,7 +206,7 @@ class AppViewModel(
             when (val found = inviteCodes.lookup(code, password, relay)) {
                 is InviteLookup.Found -> container.mirror.pairWithCode(found.uri)
                 else -> {
-                    _state.update { it.copy(pairingError = inviteError(found)) }
+                    _state.update { it.copy(pairingError = inviteError(found), inviteFailure = found) }
                     false
                 }
             }
@@ -213,7 +215,7 @@ class AppViewModel(
     /** One pairing at a time; success closes the sheet, a failure says why, a cancelled one says nothing. */
     private fun pair(connect: suspend () -> Boolean) {
         if (_state.value.remoteConnecting) return
-        _state.update { it.copy(remoteConnecting = true, pairingError = null) }
+        _state.update { it.copy(remoteConnecting = true, pairingError = null, inviteFailure = null) }
         viewModelScope.launch {
             try {
                 val paired =

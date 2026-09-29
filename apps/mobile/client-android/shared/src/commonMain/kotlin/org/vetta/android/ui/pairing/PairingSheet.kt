@@ -58,6 +58,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.jetbrains.compose.resources.stringResource
+import org.vetta.android.domain.remote.pairing.InviteLookup
 import org.vetta.android.domain.remote.pairing.PairingPhase
 import org.vetta.android.domain.work.UnlinkReason
 import org.vetta.android.resources.Res
@@ -93,7 +94,6 @@ import org.vetta.android.ui.design.springContentSize
 import org.vetta.android.ui.i18n.resolve
 import org.vetta.android.ui.remote.rememberPairingScanner
 import org.vetta.android.ui.work.BotAvatar
-import org.vetta.android.ui.work.CodePairDialog
 import org.vetta.android.ui.work.ManualPairDialog
 import org.vetta.android.ui.work.workColors
 
@@ -114,6 +114,8 @@ fun PairingSheet(
     onCancelPairing: () -> Unit,
     onDismiss: () -> Unit,
     onCode: (code: String, password: String, relayBaseUrl: String?) -> Unit = { _, _, _ -> },
+    /** Why the last connection code led nowhere, for its page. */
+    inviteFailure: InviteLookup? = null,
 ) {
     var manualOpen by remember { mutableStateOf(false) }
     var codeOpen by remember { mutableStateOf(false) }
@@ -217,11 +219,11 @@ fun PairingSheet(
         }
     }
     if (codeOpen) {
-        CodePairDialog(
-            onConnect = { code, password, relay ->
-                codeOpen = false
-                onCode(code, password, relay)
-            },
+        InvitePairScreen(
+            connecting = connecting,
+            error = error,
+            failure = inviteFailure,
+            onConnect = onCode,
             onDismiss = { codeOpen = false },
         )
     }

@@ -267,6 +267,7 @@ fun RootApp(
                         onScanned = vm::connectDesktop,
                         onManual = vm::connectDesktopManually,
                         onCode = vm::connectDesktopWithCode,
+                        inviteFailure = state.inviteFailure,
                         onCancelPairing = work::cancelPairing,
                         onDismiss = vm::closePairing,
                     )

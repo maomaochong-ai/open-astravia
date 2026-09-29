@@ -1,16 +1,23 @@
 package org.vetta.android.ui.pairing
 
 import androidx.activity.ComponentActivity
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import kotlin.test.Test
+import kotlin.test.assertEquals
 import org.junit.Rule
 import org.junit.runner.RunWith
 import org.vetta.android.app.ThemeMode
+import org.vetta.android.domain.remote.pairing.InviteLookup
 import org.vetta.android.domain.remote.pairing.PairingFailure
 import org.vetta.android.domain.remote.pairing.PairingPhase
 import org.vetta.android.domain.remote.pairing.PairingVia
@@ -18,13 +25,12 @@ import org.vetta.android.resources.Res
 import org.vetta.android.resources.pair_code_hint
 import org.vetta.android.resources.pair_connecting
 import org.vetta.android.resources.pair_failed_rejected
-import org.vetta.android.resources.pair_invite_code_invalid
+import org.vetta.android.resources.pair_invite_not_found
 import org.vetta.android.resources.pair_manual_invalid
 import org.vetta.android.ui.AppViewModel
+import org.vetta.android.ui.PairingError
 import org.vetta.android.ui.str
 import org.vetta.android.ui.theme.VettaTheme
-import kotlin.test.Test
-import kotlin.test.assertEquals
 
 @RunWith(AndroidJUnit4::class)
 class PairingSheetTest {
@@ -53,7 +59,7 @@ class PairingSheetTest {
     }
 
     @Test
-    fun aConnectionCodeAndPasswordAreCheckedBeforeTheyConnect() {
+    fun aFullCodeMovesOnAndAFullPasswordConnects() {
         val connected = mutableListOf<Triple<String, String, String?>>()
         composeRule.setContent {
             VettaTheme(themeMode = ThemeMode.Light) {
@@ -70,17 +76,37 @@ class PairingSheetTest {
             }
         }
         composeRule.onNodeWithTag("pair.invite").performClick()
-        composeRule.onNodeWithTag("pair.invite.code").performTextInput("k7q2-9mx")
+        composeRule.onNodeWithTag("pair.invite.code").performTextInput("k7q2-9mxd")
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("K7Q2-9MXD").assertIsDisplayed()
         composeRule.onNodeWithTag("pair.invite.password").performTextInput("48291a3")
-        composeRule.onNodeWithTag("pair.invite.connect").performClick()
-        composeRule.onNodeWithText(str(Res.string.pair_invite_code_invalid)).assertIsDisplayed()
-        assertEquals(emptyList(), connected)
-
-        composeRule.onNodeWithTag("pair.invite.code").performTextInput("d")
-        composeRule.onNodeWithTag("pair.invite.connect").performClick()
         composeRule.waitForIdle()
         assertEquals(listOf(Triple("K7Q29MXD", "482913", null as String?)), connected, "letters in the password are dropped as typed")
-        composeRule.onNodeWithTag("pair.invite.code").assertDoesNotExist()
+    }
+
+    @Test
+    fun anUnknownCodeGoesBackToTheCodeStepAndSaysWhy() {
+        var connecting by mutableStateOf(false)
+        var error by mutableStateOf<PairingError?>(null)
+        composeRule.setContent {
+            VettaTheme(themeMode = ThemeMode.Light) {
+                InvitePairScreen(
+                    connecting = connecting,
+                    error = error,
+                    failure = if (error != null) InviteLookup.NotFound else null,
+                    onConnect = { _, _, _ -> connecting = true },
+                    onDismiss = {},
+                )
+            }
+        }
+        composeRule.onNodeWithTag("pair.invite.code").performTextInput("K7Q29MXD")
+        composeRule.onNodeWithTag("pair.invite.password").performTextInput("482913")
+        composeRule.waitForIdle()
+        error = AppViewModel.inviteError(InviteLookup.NotFound)
+        connecting = false
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("pair.invite.error").assertTextEquals(str(Res.string.pair_invite_not_found))
+        composeRule.onNodeWithTag("pair.invite.next").assertExists()
     }
 
     @Test

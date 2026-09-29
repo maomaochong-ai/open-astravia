@@ -49,6 +49,15 @@ class InviteCodeTest {
     }
 
     @Test
+    fun theBoxesKeepOnlyWhatACodeCanHold() {
+        assertEquals("K7Q29MXD", InviteCode.typed("k7q2-9mxd"))
+        assertEquals("01100000", InviteCode.typed("oil 00000 extra"))
+        assertEquals("K7Q2", InviteCode.typed("K7Q2U!"))
+        assertEquals("K7Q2-9MXD", InviteCode.format("K7Q29MXD"))
+        assertEquals("K7Q", InviteCode.format("K7Q"))
+    }
+
+    @Test
     fun looksTheInviteUpOnTheRelayAndSaysWhyWhenItCannot() =
         runTest {
             val envelope = InviteCode.seal("vetta://pair?v=2&p=room", "K7Q29MXD", "482913", nonce)
