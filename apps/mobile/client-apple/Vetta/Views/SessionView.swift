@@ -1,18 +1,6 @@
 import SwiftUI
 import VettaKit
 
-private enum ChatRow: Identifiable {
-	case timestamp(Double)
-	case block(ChatBlock)
-
-	var id: String {
-		switch self {
-		case .timestamp: "ts"
-		case let .block(block): block.id
-		}
-	}
-}
-
 struct SessionView: View {
 	let sessionId: String
 	@Environment(AppModel.self) private var model
@@ -26,6 +14,9 @@ struct SessionView: View {
 	@State private var pinned = false
 	/// A send is waiting for its message to show up, to scroll it to the top.
 	@State private var pinPending = false
+	/// The latest message when the send went out; the exchange is held to a screen's
+	/// height only once a newer one arrives, never an old exchange of any length.
+	@State private var pinnedAfter: String?
 	/// The chat's height, which the latest exchange fills once sent.
 	@State private var viewport: CGFloat = 0
 	/// Far enough from the end to offer a jump there.
@@ -46,27 +37,19 @@ struct SessionView: View {
 		return cwd
 	}
 
-	/// The rows, and where the latest exchange starts among them.
-	private var rows: (rows: [ChatRow], latest: Int) {
-		var rows: [ChatRow] = []
-		if let first = transcript.items.first?.at { rows.append(.timestamp(first)) }
-		let blocks = ChatTurns.build(transcript.items, waiting: transcript.sessionState.status.isActive)
-		let latest = ChatTurns.latestExchange(blocks).map { rows.count + $0 }
-		rows += blocks.map(ChatRow.block)
-		return (rows, latest ?? rows.endIndex)
-	}
-
 	var body: some View {
-		let (rows, split) = rows
-		let latestUser = split < rows.endIndex ? rows[split].id : nil
 		let active = transcript.sessionState.status.isActive
+		let (rows, latest) = ChatLines.build(transcript.items, waiting: active)
+		let latestUser = latest < rows.endIndex ? rows[latest].id : nil
+		// Only an exchange sent from here is laid out as one piece; any other stays lazy row by row.
+		let split = pinned && latestUser != pinnedAfter ? latest : rows.endIndex
 		ScrollViewReader { proxy in
 			ScrollView {
 				LazyVStack(alignment: .leading, spacing: 0) {
 					ForEach(rows[..<split]) { row in
 						rowView(row)
 					}
-					// The latest exchange takes at least a screen once sent, so its
+					// An exchange sent from here takes at least a screen, so its
 					// message can sit at the top while the reply is still short.
 					if split < rows.endIndex {
 						VStack(alignment: .leading, spacing: 0) {
@@ -90,6 +73,8 @@ struct SessionView: View {
 				.padding(.horizontal, 20)
 				.padding(.top, 8)
 				.padding(.bottom, 16)
+				// A live turn's new pieces and, once it ends, its copy button ease in instead of popping.
+				.animation(.easeOut(duration: 0.3), value: Self.liveShape(rows))
 				// Tapping the conversation puts the keyboard away; buttons inside keep their own taps.
 				.contentShape(Rectangle())
 				.onTapGesture { dismissKeyboard() }
@@ -169,6 +154,7 @@ struct SessionView: View {
 						// The sent message takes the whole screen's top, not the strip above the keyboard.
 						dismissKeyboard()
 						// Room below goes in before the message does, so the scroll has somewhere to go.
+						pinnedAfter = latestUser
 						pinned = true
 						pinPending = true
 						Task {
@@ -263,20 +249,36 @@ struct SessionView: View {
 	private static let latestExchange = "latest-exchange"
 
 	@ViewBuilder
-	private func rowView(_ row: ChatRow) -> some View {
+	private func rowView(_ row: ChatLine) -> some View {
 		switch row {
 		case let .timestamp(at):
 			MarkerRow(text: TimeFormat.clock(at))
-		case let .block(block):
-			switch block {
-			case let .user(_, text, _, attachments):
-				UserBubble(text: text, attachments: attachments)
-			case let .marker(_, text, _):
-				MarkerRow(text: text.isEmpty ? L10n.Chat.compacted : text)
-			case let .turn(turn):
-				AgentTurnView(turn: turn, note: turn.streaming ? L10n.Chat.activity(transcript.sessionState.detail) : nil)
-			}
+		case let .user(_, text, attachments):
+			UserBubble(text: text, attachments: attachments)
+		case let .marker(_, text):
+			MarkerRow(text: text.isEmpty ? L10n.Chat.compacted : text)
+		case let .head(id, startedAt, streaming, empty, ends):
+			TurnHeader(id: id, startedAt: startedAt, streaming: streaming, empty: empty, note: streaming ? L10n.Chat.activity(transcript.sessionState.detail) : nil)
+				.padding(.bottom, ends ? 20 : 10)
+				.frame(maxWidth: .infinity, alignment: .leading)
+		case let .piece(segment, live, ends, activity):
+			TurnPieceView(segment: segment, live: live, activity: activity)
+				.padding(.bottom, ends ? 20 : 10)
+				.frame(maxWidth: .infinity, alignment: .leading)
+		case let .foot(_, conclusion):
+			TurnCopyButton(conclusion: conclusion)
+				.padding(.bottom, 20)
+				.frame(maxWidth: .infinity, alignment: .leading)
+				.transition(.opacity.combined(with: .offset(y: 4)))
 		}
+	}
+
+	/// The rows of a turn still running, or nil once it is done: what the chat animates on.
+	private static func liveShape(_ rows: [ChatLine]) -> [String]? {
+		guard let head = rows.lastIndex(where: { if case .head = $0 { true } else { false } }),
+		      case .head(_, _, true, _, _) = rows[head]
+		else { return nil }
+		return rows[head...].map(\.id)
 	}
 }
 

@@ -148,6 +148,60 @@ public enum ChatTurns {
 	}
 }
 
+/// One row of the chat's lazy list. A turn is split into its header, each of
+/// its segments and its copy button: as a single row, a turn of many steps was
+/// built all at once when its chat opened, which froze the screen for seconds.
+public enum ChatLine: Equatable, Identifiable, Sendable {
+	case timestamp(Double)
+	case user(id: String, text: String, attachments: [TranscriptAttachment])
+	case marker(id: String, text: String)
+	/// `empty` while the turn has nothing to show yet; `ends` when nothing of the turn follows.
+	case head(id: String, startedAt: Double?, streaming: Bool, empty: Bool, ends: Bool)
+	/// `live` for the last piece of a streaming turn, which `activity` then names.
+	case piece(TurnSegment, live: Bool, ends: Bool, activity: WorkStep?)
+	/// The copy button under a finished turn.
+	case foot(id: String, conclusion: String)
+
+	public var id: String {
+		switch self {
+		case .timestamp: "ts"
+		case let .user(id, _, _), let .marker(id, _): id
+		case let .head(id, _, _, _, _): "\(id)-head"
+		case let .piece(segment, _, _, _): segment.id
+		case let .foot(id, _): "\(id)-foot"
+		}
+	}
+}
+
+public enum ChatLines {
+	/// The chat's rows, and where the latest exchange starts among them (past
+	/// the end before anything was sent).
+	public static func build(_ items: [TranscriptItem], waiting: Bool = false) -> (lines: [ChatLine], latest: Int) {
+		var lines: [ChatLine] = []
+		if let first = items.first?.at { lines.append(.timestamp(first)) }
+		var latest: Int?
+		for block in ChatTurns.build(items, waiting: waiting) {
+			switch block {
+			case let .user(id, text, _, attachments):
+				latest = lines.count
+				lines.append(.user(id: id, text: text, attachments: attachments))
+			case let .marker(id, text, _):
+				lines.append(.marker(id: id, text: text))
+			case let .turn(turn):
+				let copy = !turn.streaming && !turn.conclusion.isEmpty
+				lines.append(.head(id: turn.id, startedAt: turn.startedAt, streaming: turn.streaming, empty: turn.segments.isEmpty, ends: turn.segments.isEmpty && !copy))
+				for (index, segment) in turn.segments.enumerated() {
+					let last = index == turn.segments.count - 1
+					let live = turn.streaming && last
+					lines.append(.piece(segment, live: live, ends: last && !copy, activity: live ? turn.activity : nil))
+				}
+				if copy { lines.append(.foot(id: turn.id, conclusion: turn.conclusion)) }
+			}
+		}
+		return (lines, latest ?? lines.endIndex)
+	}
+}
+
 /// When the chat offers a jump to its end.
 public enum ChatScroll {
 	/// Once more than one and a half screens are left below: past that, scrolling
