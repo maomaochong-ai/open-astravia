@@ -121,7 +121,7 @@ export class RemoteDesktopHost {
 		}
 		if (frame.sessionId !== this.options.sessionId) throw new Error("remote desktop signal session mismatch");
 		if (frame.type === "answer") {
-			await this.peer.setRemoteDescription({ type: "answer", sdp: frame.sdp });
+			await this.peer.setRemoteDescription({ type: "answer", sdp: answerForHardwareEncoding(frame.sdp) });
 			await this.flushPendingIce();
 			this.logger.info("remote desktop answer applied", { sessionId: this.options.sessionId });
 			// Encodings exist only once negotiated: a screen shared for the whole session is tuned here.
@@ -400,6 +400,16 @@ function preferHardwareCodec(transceiver: RTCRtpTransceiver): void {
 	} catch {
 		// Left to the browser's default order.
 	}
+}
+
+/**
+ * Phones accept H.264 only as constrained baseline (42e0..), which Chromium on macOS
+ * encodes in software (OpenH264): a large screen then manages a dozen frames a second
+ * and the picture falls behind. As baseline (4200..) it goes to the hardware encoder.
+ * The encoder uses no tool constrained baseline forbids, so the phone decodes it as before.
+ */
+function answerForHardwareEncoding(sdp: string): string {
+	return sdp.replace(/(profile-level-id=)42e0([0-9a-f]{2})/gi, "$14200$2");
 }
 
 /** The most the screen may spend: sharp text at a large capture, still well within a LAN. */

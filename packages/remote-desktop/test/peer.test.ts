@@ -55,6 +55,43 @@ describe("remote desktop host negotiation", () => {
 		expect(peer.createOffer).toHaveBeenCalledOnce();
 	});
 
+	it("takes a phone's constrained-baseline H.264 answer as baseline so the desktop encodes in hardware", async () => {
+		const peer = fakePeerConnection();
+		const host = new RemoteDesktopHost(
+			{ sessionId: "pairing_0123456789abcdefghijklmnop", createPeerConnection: () => peer.connection },
+			() => undefined,
+			() => undefined,
+		);
+		await host.start(undefined, { waitForPeerReady: true });
+		await host.acceptSignal({ type: "peer_ready", protocolVersion: 1 });
+
+		await host.acceptSignal({
+			type: "answer",
+			protocolVersion: 1,
+			sessionId: "pairing_0123456789abcdefghijklmnop",
+			sdp: [
+				"v=0",
+				"a=rtpmap:108 H264/90000",
+				"a=fmtp:108 level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f",
+				"a=rtpmap:127 H264/90000",
+				"a=fmtp:127 level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=640c1f",
+				"",
+			].join("\r\n"),
+		});
+
+		expect(peer.setRemoteDescription).toHaveBeenCalledWith({
+			type: "answer",
+			sdp: [
+				"v=0",
+				"a=rtpmap:108 H264/90000",
+				"a=fmtp:108 level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42001f",
+				"a=rtpmap:127 H264/90000",
+				"a=fmtp:127 level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=640c1f",
+				"",
+			].join("\r\n"),
+		});
+	});
+
 	it("opens a reliable control channel and forwards only text payloads", async () => {
 		const peer = fakePeerConnection();
 		const messages: string[] = [];
@@ -158,6 +195,7 @@ function fakePeerConnection(): {
 	readonly channels: RTCDataChannel[];
 	readonly addTransceiver: ReturnType<typeof vi.fn>;
 	readonly setCodecPreferences: ReturnType<typeof vi.fn>;
+	readonly setRemoteDescription: ReturnType<typeof vi.fn>;
 	readonly sender: { track: MediaStreamTrack | null; parameters: Record<string, unknown> };
 } {
 	const createOffer = vi.fn(async () => ({ type: "offer" as const, sdp: "v=0\r\n" }));
@@ -187,6 +225,7 @@ function fakePeerConnection(): {
 		}),
 	};
 	const setCodecPreferences = vi.fn();
+	const setRemoteDescription = vi.fn(async () => undefined);
 	const addTransceiver = vi.fn(() => ({ sender, setCodecPreferences }));
 	const connection = {
 		addTransceiver,
@@ -201,9 +240,19 @@ function fakePeerConnection(): {
 		onicecandidate: null,
 		remoteDescription: null,
 		setLocalDescription: vi.fn(async () => undefined),
+		setRemoteDescription,
 		signalingState: "stable",
 	} as unknown as RTCPeerConnection;
-	return { connection, createOffer, createDataChannel, channels, addTransceiver, sender, setCodecPreferences };
+	return {
+		connection,
+		createOffer,
+		createDataChannel,
+		channels,
+		addTransceiver,
+		sender,
+		setCodecPreferences,
+		setRemoteDescription,
+	};
 }
 
 function fakeStream(): MediaStream {
