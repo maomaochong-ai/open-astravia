@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
@@ -43,6 +44,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -54,6 +56,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.UriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
@@ -66,6 +70,7 @@ import org.vetta.android.domain.work.MirrorError
 import org.vetta.android.domain.work.MirrorState
 import org.vetta.android.domain.work.ModelChoice
 import org.vetta.android.domain.work.PromptDraft
+import org.vetta.android.domain.work.ReplyLink
 import org.vetta.android.resources.Res
 import org.vetta.android.resources.chat_compacted
 import org.vetta.android.resources.chat_composer_placeholder
@@ -74,6 +79,7 @@ import org.vetta.android.resources.chat_more
 import org.vetta.android.resources.chat_resync
 import org.vetta.android.resources.chat_scroll_to_bottom
 import org.vetta.android.resources.confirm
+import org.vetta.android.resources.files_title
 import org.vetta.android.resources.session_name
 import org.vetta.android.resources.session_pin
 import org.vetta.android.resources.session_rename
@@ -115,6 +121,10 @@ fun SessionScreen(
     val blocks = remember(transcript.items, active) { ChatTurns.build(transcript.items, waiting = active) }
     val listState = rememberLazyListState()
     var renaming by rememberSaveable { mutableStateOf<String?>(null) }
+    val files = remember(sessionId) { actions.files(sessionId) }
+    var filesOpen by remember { mutableStateOf(false) }
+    // A desktop file being previewed, as the link or listing named it.
+    var previewing by rememberSaveable { mutableStateOf<String?>(null) }
 
     // A new session's history is fetched once its prompt is out; earlier, it would replace the prompt.
     LaunchedEffect(id, starting) { if (!starting) actions.open(id) }
@@ -179,38 +189,55 @@ fun SessionScreen(
                 onResync = { actions.resync(id) },
                 onRename = { renaming = state.session(id)?.title.orEmpty() },
                 onTogglePin = { actions.setPinned(id, state.session(id)?.pinned != true) },
+                // The desktop's activity panel, starting with its files (ADR-0139).
+                onOpenFiles = files?.takeIf { state.link.desktop?.fileRead == true }?.let { { filesOpen = true } },
             )
         }
-        Box(Modifier.weight(1f)) {
-            LazyColumn(
-                state = listState,
-                // The conversation fades out under the title and the composer instead of running into them.
-                modifier = Modifier.fillMaxSize().edgeFade(top = 12.dp, bottom = 16.dp).testTag("chat.list"),
-                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
-            ) {
-                transcript.items.firstOrNull()?.at?.let { at -> item(key = "timestamp") { MarkerRow(clockLabel(at)) } }
-                items(blocks, key = { it.id }) { block ->
-                    when (block) {
-                        is ChatBlock.User -> UserBubble(block.text, block.attachments, skillName = state::skillName)
-                        is ChatBlock.Marker -> MarkerRow(block.text.ifEmpty { stringResource(Res.string.chat_compacted) })
-                        is ChatBlock.Turn ->
-                            AgentTurnView(block.turn, note = if (block.turn.streaming) activityLabel(transcript.sessionState.detail) else null)
+        // A link to a file on the desktop opens it here; web links go to the system as before.
+        val systemLinks = LocalUriHandler.current
+        val links =
+            remember(systemLinks, files) {
+                object : UriHandler {
+                    override fun openUri(uri: String) {
+                        when (val link = ReplyLink.classify(uri)) {
+                            ReplyLink.System -> systemLinks.openUri(uri)
+                            is ReplyLink.DesktopFile -> if (files != null) previewing = link.href
+                        }
                     }
                 }
-                if (blocks.isEmpty()) {
-                    item(key = "empty") {
-                        Text(
-                            when {
-                                transcript.loaded -> workSessionTitle(state.session(id)?.title)
-                                // Unpaired and never kept on the phone: it will not load, so say so.
-                                state.unlinked != null -> stringResource(Res.string.unlinked_not_cached)
-                                else -> stringResource(Res.string.chat_loading_history)
-                            },
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.vettaExtra.secondaryText,
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 64.dp),
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                        )
+            }
+        Box(Modifier.weight(1f)) {
+            CompositionLocalProvider(LocalUriHandler provides links) {
+                LazyColumn(
+                    state = listState,
+                    // The conversation fades out under the title and the composer instead of running into them.
+                    modifier = Modifier.fillMaxSize().edgeFade(top = 12.dp, bottom = 16.dp).testTag("chat.list"),
+                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
+                ) {
+                    transcript.items.firstOrNull()?.at?.let { at -> item(key = "timestamp") { MarkerRow(clockLabel(at)) } }
+                    items(blocks, key = { it.id }) { block ->
+                        when (block) {
+                            is ChatBlock.User -> UserBubble(block.text, block.attachments, skillName = state::skillName)
+                            is ChatBlock.Marker -> MarkerRow(block.text.ifEmpty { stringResource(Res.string.chat_compacted) })
+                            is ChatBlock.Turn ->
+                                AgentTurnView(block.turn, note = if (block.turn.streaming) activityLabel(transcript.sessionState.detail) else null)
+                        }
+                    }
+                    if (blocks.isEmpty()) {
+                        item(key = "empty") {
+                            Text(
+                                when {
+                                    transcript.loaded -> workSessionTitle(state.session(id)?.title)
+                                    // Unpaired and never kept on the phone: it will not load, so say so.
+                                    state.unlinked != null -> stringResource(Res.string.unlinked_not_cached)
+                                    else -> stringResource(Res.string.chat_loading_history)
+                                },
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.vettaExtra.secondaryText,
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 64.dp),
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            )
+                        }
                     }
                 }
             }
@@ -250,6 +277,9 @@ fun SessionScreen(
             }
         }
     }
+
+    if (filesOpen && files != null) FilesPanel(files, onOpenFile = { previewing = it }, onDismiss = { filesOpen = false })
+    previewing?.let { href -> if (files != null) FilePreviewScreen(files, href, onDismiss = { previewing = null }) }
 
     renaming?.let { title ->
         VettaTextInputDialog(
@@ -323,6 +353,7 @@ private fun SessionMenu(
     onResync: () -> Unit,
     onRename: () -> Unit,
     onTogglePin: () -> Unit,
+    onOpenFiles: (() -> Unit)? = null,
 ) {
     var open by remember { mutableStateOf(false) }
     Box {
@@ -357,6 +388,18 @@ private fun SessionMenu(
                     onTogglePin()
                 },
             )
+            if (onOpenFiles != null) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(Res.string.files_title)) },
+                    leadingIcon = { Icon(Icons.Outlined.Folder, contentDescription = null) },
+                    enabled = online,
+                    onClick = {
+                        open = false
+                        onOpenFiles()
+                    },
+                    modifier = Modifier.testTag("chat.files"),
+                )
+            }
         }
     }
 }

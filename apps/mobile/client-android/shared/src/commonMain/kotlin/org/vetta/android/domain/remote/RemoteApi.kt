@@ -220,7 +220,38 @@ data class RemoteDeviceStatus(
      * (ADR-0140); older desktops share the screen whenever the P2P link is up.
      */
     val screen: Boolean = false,
+    /** Whether the desktop answers `file.list`, `file.stat` and `file.read` (ADR-0139). */
+    val fileRead: Boolean = false,
 )
+
+/**
+ * A file or folder the phone may look at, as `file.list` and `file.stat` describe it.
+ * `path` is the desktop's canonical form and what the phone passes back; the phone never
+ * builds paths itself (ADR-0139).
+ */
+data class RemoteFileEntry(
+    val name: String,
+    val path: String,
+    val isDirectory: Boolean,
+    val size: Long,
+    /** Milliseconds since the epoch. */
+    val modifiedAt: Double,
+)
+
+data class RemoteFileInfo(
+    val name: String,
+    val path: String,
+    val isDirectory: Boolean,
+    val size: Long,
+    val modifiedAt: Double,
+    /** Guessed from the extension; a chunk's type says what was actually sent (scaled images arrive as JPEG). */
+    val mimeType: String,
+    /** The home directory abbreviated to `~`, for showing where the file lives. */
+    val displayPath: String,
+)
+
+/** One chunk of `file.read`. */
+class RemoteFileChunk(val data: ByteArray, val offset: Long, val totalSize: Long, val modifiedAt: Double, val mimeType: String)
 
 /**
  * A skill or scene the phone may reference by writing `@skill:<name>` / `@scene:<name>`
@@ -441,10 +472,43 @@ object RemoteApi {
             desktopControl = obj.bool("desktopControl"),
             relayBaseUrl = normalizeRelayBaseUrl(obj.string("relayBaseUrl")),
             screen = obj.bool("screen") == true,
+            fileRead = obj.bool("fileRead") == true,
         )
     }
 
     /** A state from a newer desktop reads as unavailable or unsupported. */
+    private fun readFileEntry(value: JsonElement?): RemoteFileEntry? {
+        val obj = value as? JsonObject ?: return null
+        val name = obj.text("name") ?: return null
+        val path = obj.string("path") ?: return null
+        return RemoteFileEntry(name, path, obj.bool("isDirectory") == true, obj.double("size")?.toLong() ?: 0, obj.double("modifiedAt") ?: 0.0)
+    }
+
+    fun readFileEntries(value: JsonElement?): List<RemoteFileEntry> =
+        ((value as? JsonObject)?.get("entries") as? JsonArray).orEmpty().mapNotNull(::readFileEntry)
+
+    fun readFileInfo(value: JsonElement?): RemoteFileInfo? {
+        val file = (value as? JsonObject)?.get("file") as? JsonObject ?: return null
+        val entry = readFileEntry(file) ?: return null
+        return RemoteFileInfo(
+            name = entry.name,
+            path = entry.path,
+            isDirectory = entry.isDirectory,
+            size = entry.size,
+            modifiedAt = entry.modifiedAt,
+            mimeType = file.string("mimeType") ?: "application/octet-stream",
+            displayPath = file.string("displayPath") ?: entry.path,
+        )
+    }
+
+    fun readFileChunk(value: JsonElement?): RemoteFileChunk? {
+        val obj = value as? JsonObject ?: return null
+        val data = obj.string("data")?.let { runCatching { java.util.Base64.getDecoder().decode(it) }.getOrNull() } ?: return null
+        val offset = obj.double("offset")?.toLong() ?: return null
+        val totalSize = obj.double("totalSize")?.toLong() ?: return null
+        return RemoteFileChunk(data, offset, totalSize, obj.double("modifiedAt") ?: 0.0, obj.string("mimeType") ?: "application/octet-stream")
+    }
+
     fun readSkillOptions(value: JsonElement?): List<RemoteSkillOption> =
         ((value as? JsonObject)?.get("skills") as? JsonArray).orEmpty().mapNotNull { entry ->
             val obj = entry as? JsonObject ?: return@mapNotNull null

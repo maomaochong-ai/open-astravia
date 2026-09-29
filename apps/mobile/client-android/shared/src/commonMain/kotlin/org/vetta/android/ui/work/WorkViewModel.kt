@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import org.vetta.android.domain.remote.RemoteFileInfo
 import org.vetta.android.domain.remote.RemoteQuestionAnswer
 import org.vetta.android.domain.remote.RemoteSessionState
 import org.vetta.android.domain.work.DesktopMirror
@@ -46,6 +47,9 @@ interface WorkActions {
 
     /** Refreshes the skills a prompt in `cwd` may reference (ADR-0137). */
     fun loadSkills(cwd: String?) {}
+
+    /** The session's files on the desktop (ADR-0139); null where they cannot be read. */
+    fun files(sessionId: String): FileSource? = null
 
     /** Answers the question the desktop is waiting on, or cancels it. */
     fun respond(sessionId: String, requestId: String, answers: List<RemoteQuestionAnswer>, cancelled: Boolean = false)
@@ -205,6 +209,18 @@ class WorkViewModel(private val mirror: DesktopMirror) : ViewModel(), WorkAction
     override fun setDraft(sessionId: String, draft: PromptDraft) {
         _drafts.update { if (draft.text.isEmpty() && draft.attachments.isEmpty() && draft.skills.isEmpty()) it - sessionId else it + (sessionId to draft) }
     }
+
+    override fun files(sessionId: String): FileSource =
+        object : FileSource {
+            private val target: String
+                get() = mirror.state.value.resolve(sessionId)
+
+            override suspend fun list(path: String) = mirror.listFiles(target, path)
+
+            override suspend fun stat(href: String) = mirror.statFile(target, href)
+
+            override suspend fun read(info: RemoteFileInfo) = mirror.readFile(target, info)
+        }
 
     override fun loadSkills(cwd: String?) {
         viewModelScope.launch { mirror.loadSkills(cwd) }

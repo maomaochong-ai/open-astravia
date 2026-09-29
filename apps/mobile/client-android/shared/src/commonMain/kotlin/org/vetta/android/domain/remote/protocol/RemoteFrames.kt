@@ -93,6 +93,9 @@ enum class RemoteRequestMethod {
     @SerialName("diagnostics.snapshot") DiagnosticsSnapshot,
     @SerialName("screen.subscribe") ScreenSubscribe,
     @SerialName("skill.list") SkillList,
+    @SerialName("file.list") FileList,
+    @SerialName("file.stat") FileStat,
+    @SerialName("file.read") FileRead,
 }
 
 @Serializable
@@ -158,6 +161,15 @@ enum class RemoteErrorCode {
     @SerialName("request_timeout") RequestTimeout,
     @SerialName("transport_closed") TransportClosed,
     @SerialName("internal_error") InternalError,
+
+    /** The file lies outside what the phone may read (ADR-0139). */
+    @SerialName("forbidden") Forbidden,
+
+    /** The file is larger than a phone may preview. */
+    @SerialName("too_large") TooLarge,
+
+    /** The file changed between two chunks of one `file.read`; read it again from the start. */
+    @SerialName("file_changed") FileChanged,
 }
 
 @Serializable

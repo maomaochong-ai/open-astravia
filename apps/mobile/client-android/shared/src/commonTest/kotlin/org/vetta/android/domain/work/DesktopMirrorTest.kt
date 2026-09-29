@@ -521,6 +521,60 @@ class DesktopMirrorTest {
         }
 
     @Test
+    fun browsesAndReadsTheSessionsFilesOnlyFromADesktopThatServesThem() =
+        runTest {
+            val desktop = scriptedDesktop()
+            val scripted = desktop.handler
+            desktop.handler = { request ->
+                when (request.method) {
+                    RemoteRequestMethod.FileList ->
+                        respond(
+                            request.requestId,
+                            buildJsonObject {
+                                put("path", "")
+                                putJsonArray("entries") {
+                                    add(buildJsonObject { put("name", "b.md"); put("path", "b.md"); put("isDirectory", false); put("size", 5); put("modifiedAt", 1) })
+                                    add(buildJsonObject { put("name", "src"); put("path", "src"); put("isDirectory", true); put("size", 0); put("modifiedAt", 1) })
+                                }
+                            },
+                        )
+                    RemoteRequestMethod.FileStat ->
+                        respond(
+                            request.requestId,
+                            buildJsonObject {
+                                putJsonObject("file") {
+                                    put("name", "b.md"); put("path", "b.md"); put("isDirectory", false); put("size", 5); put("modifiedAt", 1)
+                                    put("mimeType", "text/markdown"); put("displayPath", "~/vetta/b.md")
+                                }
+                            },
+                        )
+                    RemoteRequestMethod.FileRead ->
+                        respond(
+                            request.requestId,
+                            buildJsonObject { put("data", "IyBIaQ=="); put("offset", 0); put("totalSize", 4); put("modifiedAt", 1); put("mimeType", "text/markdown") },
+                        )
+                    else -> scripted(request)
+                }
+            }
+            val mirror = mirror(desktop)
+            assertTrue(mirror.pairWithCode(desktop.invite()))
+            assertTrue(eventually { mirror.state.value.online })
+            desktop.emit(RemoteEventName.DeviceStatus, buildJsonObject { put("deviceName", "MacBook Pro") })
+            testScheduler.runCurrent()
+            val old = runCatching { mirror.listFiles("s1", "") }.exceptionOrNull() as? FileViewException
+            assertEquals(FileViewError.UnsupportedDesktop, old?.reason, "an older desktop is not asked")
+
+            desktop.emit(RemoteEventName.DeviceStatus, buildJsonObject { put("deviceName", "MacBook Pro"); put("fileRead", true) })
+            assertTrue(eventually { mirror.state.value.link.desktop?.fileRead == true })
+            assertEquals(listOf("src", "b.md"), mirror.listFiles("s1", "").map { it.name }, "folders first")
+            val info = mirror.statFile("s1", "./b.md")
+            assertEquals("~/vetta/b.md", info.displayPath)
+            assertEquals("# Hi", mirror.readFile("s1", info).data.decodeToString())
+            mirror.readFile("s1", info)
+            assertEquals(1, desktop.requests.count { it.method == RemoteRequestMethod.FileRead }, "an unchanged file is read once")
+        }
+
+    @Test
     fun remembersTheLastUsedModelPerDesktopAcrossLaunches() =
         runTest {
             val desktop = scriptedDesktop()

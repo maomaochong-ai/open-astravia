@@ -29,6 +29,8 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import org.vetta.android.data.remote.SessionCache
 import org.vetta.android.domain.remote.RemoteApi
+import org.vetta.android.domain.remote.RemoteFileEntry
+import org.vetta.android.domain.remote.RemoteFileInfo
 import org.vetta.android.domain.remote.RemoteMessageEvent
 import org.vetta.android.domain.remote.RemoteModelOption
 import org.vetta.android.domain.remote.RemoteProjectSummary
@@ -211,6 +213,8 @@ class DesktopMirror(
     private var link: DesktopLink? = null
     private var linkJobs = emptyList<Job>()
     private var desktopKey: String? = null
+
+    private val fileCache = FileContentCache()
 
     /** Sessions [startSession] just sent their first prompt to; see [openSession]. */
     private val freshSessions = mutableSetOf<String>()
@@ -395,6 +399,7 @@ class DesktopMirror(
     private fun attachLink(record: DesktopRecord) {
         detachLink()
         freshSessions.clear()
+        fileCache.clear()
         val key = record.desktopIdentityKey
         desktopKey = key
         val cached = platform.cache.loadSessions(key)
@@ -726,6 +731,50 @@ class DesktopMirror(
             reportError(error)
         }
     }
+
+    // Files (ADR-0139)
+
+    private fun requireFiles(): DesktopLink {
+        val current = requireLink()
+        if (_state.value.link.desktop?.fileRead != true) throw FileViewException(FileViewError.UnsupportedDesktop)
+        return current
+    }
+
+    /** A folder inside the session's working directory; "" is the directory itself. Throws [FileViewException]. */
+    suspend fun listFiles(sessionId: String, path: String): List<RemoteFileEntry> =
+        fileRequest {
+            val payload = if (path.isEmpty()) null else buildJsonObject { put("path", path) }
+            RemoteApi.readFileEntries(requireFiles().request(RemoteRequestMethod.FileList, payload, sessionId))
+                .sortedWith(compareBy<RemoteFileEntry> { !it.isDirectory }.thenBy { it.name.lowercase() })
+        }
+
+    /** What `href` (a link as the assistant wrote it, or a listed path) points at. Throws [FileViewException]. */
+    suspend fun statFile(sessionId: String, href: String): RemoteFileInfo =
+        fileRequest {
+            RemoteApi.readFileInfo(requireFiles().request(RemoteRequestMethod.FileStat, buildJsonObject { put("path", href) }, sessionId))
+                ?: throw FileViewException(FileViewError.Failed)
+        }
+
+    /** The whole file, from this launch's cache while it is unchanged. Throws [FileViewException]. */
+    suspend fun readFile(sessionId: String, info: RemoteFileInfo): FileContent =
+        fileRequest {
+            if (info.isDirectory) throw FileViewException(FileViewError.NotAFile)
+            if (info.size > RemoteFileReader.MAX_FILE_BYTES) throw FileViewException(FileViewError.TooLarge)
+            fileCache.get(sessionId, info)?.let { return@fileRequest it }
+            val current = requireFiles()
+            RemoteFileReader.read(info.path, { RemoteFileReader.chunkBytes(_state.value.link.channel) }) { payload ->
+                current.request(RemoteRequestMethod.FileRead, payload, sessionId)
+            }.also { fileCache.put(sessionId, info, it) }
+        }
+
+    private inline fun <T> fileRequest(block: () -> T): T =
+        try {
+            block()
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            throw error as? FileViewException ?: FileViewException(FileViewError.from(error))
+        }
 
     /**
      * Fetches the skills a prompt in `cwd` may reference; the last list stays on screen
