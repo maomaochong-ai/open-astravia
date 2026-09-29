@@ -342,9 +342,11 @@ export class SshConnection {
 				path: remotePath,
 				ignoredDirectories: options.ignoredDirectoryNames,
 				limit: options.limit,
+				names: options.names,
 			}),
 		);
-		if (viaHelper) return viaHelper.value.files;
+		// 旧版 helper 不认识 `names`、会照常全列，所以这里总是再筛一遍。
+		if (viaHelper) return keepNamedFiles(viaHelper.value.files, options.names);
 		const result = await this.runChecked(buildListFilesRecursiveCommand(remotePath, options), { signal });
 		return decode(result.stdout)
 			.split("\n")
@@ -849,4 +851,10 @@ function basename(remotePath: string): string {
 	const trimmed = remotePath.replace(/\/+$/, "");
 	const index = trimmed.lastIndexOf("/");
 	return index < 0 ? trimmed : trimmed.slice(index + 1);
+}
+
+function keepNamedFiles(files: readonly string[], names: readonly string[] | undefined): string[] {
+	if (!names?.length) return [...files];
+	const wanted = new Set(names);
+	return files.filter((file) => wanted.has(basename(file)));
 }

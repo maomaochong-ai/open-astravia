@@ -241,6 +241,11 @@ export interface ListFilesRecursiveOptions {
 	/** 整个子树都跳过的目录名（`node_modules`、`dist` 之类）。点开头的条目总是跳过。 */
 	readonly ignoredDirectoryNames: readonly string[];
 	readonly limit: number;
+	/**
+	 * 只留这些文件名（精确匹配 basename）。上限按命中数算——在大仓库里找清单文件时，
+	 * 先截断再筛会把排在后面的清单漏掉。
+	 */
+	readonly names?: readonly string[];
 }
 
 /**
@@ -252,9 +257,12 @@ export interface ListFilesRecursiveOptions {
 export function buildListFilesRecursiveCommand(remotePath: string, options: ListFilesRecursiveOptions): string {
 	const pruned = [".*", ...options.ignoredDirectoryNames].map((name) => `-name ${quoteShellArgument(name)}`);
 	const limit = Math.max(1, Math.floor(options.limit));
+	const names = options.names?.length
+		? ` \\( ${options.names.map((name) => `-name ${quoteShellArgument(name)}`).join(" -o ")} \\)`
+		: "";
 	const script = [
 		`cd ${quoteShellArgument(remotePath)} || exit 1`,
-		`find . -mindepth 1 \\( ${pruned.join(" -o ")} \\) -prune -o -type f -print | head -n ${limit}`,
+		`find . -mindepth 1 \\( ${pruned.join(" -o ")} \\) -prune -o -type f${names} -print | head -n ${limit}`,
 	].join("\n");
 	return `/bin/sh -c ${quoteShellArgument(script)}`;
 }
