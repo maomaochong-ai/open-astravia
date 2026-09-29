@@ -51,6 +51,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
@@ -61,6 +63,7 @@ import androidx.compose.ui.window.DialogProperties
 import org.jetbrains.compose.resources.stringResource
 import org.vetta.android.domain.remote.RemoteFileInfo
 import org.vetta.android.domain.work.FileContent
+import org.vetta.android.domain.work.FileNames
 import org.vetta.android.domain.work.FilePreviewKind
 import org.vetta.android.domain.work.FileText
 import org.vetta.android.domain.work.FileViewError
@@ -169,12 +172,29 @@ private fun FileBody(info: RemoteFileInfo, content: FileContent, onOpen: () -> U
                 )
             }
         FilePreviewKind.Image -> {
-            val bitmap = remember(content) { imageBitmapFromBytes(content.data) }
-            if (bitmap != null) {
-                Image(bitmap, contentDescription = info.name, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize().padding(8.dp))
-            } else {
-                CannotShow(info, content, onOpen, onShare)
+            // Decoded off the main thread; a picture that will not decode is handed on.
+            val bitmap by produceState<Result<ImageBitmap?>?>(null, content) {
+                value = Result.success(withContext(Dispatchers.Default) { imageBitmapFromBytes(content.data) })
             }
+            when (val decoded = bitmap?.getOrNull()) {
+                null -> if (bitmap == null) Loading() else CannotShow(info, content, onOpen, onShare)
+                else -> {
+                    val zoom = remember(content) { ZoomState() }
+                    Box(Modifier.fillMaxSize().clipToBounds()) {
+                        Image(
+                            decoded,
+                            contentDescription = info.name,
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.fillMaxSize().padding(8.dp).zoomable(zoom).testTag("files.image"),
+                        )
+                    }
+                }
+            }
+        }
+        FilePreviewKind.WebImage -> {
+            val type = if (FileNames.extensionOf(info.name) == "svg" || content.mimeType == "image/svg+xml") "image/svg+xml" else content.mimeType
+            val page = remember(content) { DocumentPreview.image(type, content.data) }
+            HtmlPreview(page, Modifier.fillMaxSize(), zoomable = true)
         }
         FilePreviewKind.Document -> {
             val labels = documentLabels()

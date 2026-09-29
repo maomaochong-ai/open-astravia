@@ -50,7 +50,11 @@ enum class FilePreviewKind {
 
     /** Code and other text, shown as it is. */
     Text,
+    /** A picture the phone decodes itself. */
     Image,
+
+    /** A picture drawn by the web view: animated GIFs and SVG. */
+    WebImage,
 
     /** Word, Excel and PowerPoint documents and CSV / TSV tables, drawn as a page ([DocumentPreview]). */
     Document,
@@ -64,8 +68,16 @@ enum class FilePreviewKind {
                 "md", "markdown", "mdx" -> Markdown
                 "html", "htm", "xhtml" -> Html
                 in DocumentPreview.EXTENSIONS -> Document
-                // A scaled-down photo arrives as JPEG whatever its extension was; SVG is text to Android.
-                else -> if (mimeType.startsWith("image/") && mimeType != "image/svg+xml") Image else if (FileText.decode(data) != null) Text else Unsupported
+                "gif", "svg" -> WebImage
+                "png", "jpg", "jpeg", "webp", "bmp", "heic", "heif", "ico" -> Image
+                // A scaled-down photo arrives as JPEG whatever its extension was.
+                else ->
+                    when {
+                        mimeType == "image/svg+xml" || mimeType == "image/gif" -> WebImage
+                        mimeType.startsWith("image/") -> Image
+                        FileText.decode(data) != null -> Text
+                        else -> Unsupported
+                    }
             }
     }
 }

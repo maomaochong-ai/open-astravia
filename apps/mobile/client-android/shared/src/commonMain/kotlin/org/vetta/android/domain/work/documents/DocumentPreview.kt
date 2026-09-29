@@ -27,6 +27,13 @@ object DocumentPreview {
             null
         }
 
+    /** A picture the web view draws (an animated GIF, an SVG), centered on a page. Scripts in an SVG do not run as an image. */
+    fun image(mimeType: String, data: ByteArray): String =
+        HtmlPage.page(
+            "body{display:flex;align-items:center;justify-content:center;min-height:100vh}img{display:block}",
+            "<img src=\"data:${HtmlPage.escape(mimeType)};base64,${java.util.Base64.getEncoder().encodeToString(data)}\" alt=\"\">",
+        )
+
     /** UTF-8, or GBK for the CSV files Chinese Excel saves. */
     private fun text(data: ByteArray): String =
         runCatching { Charsets.UTF_8.newDecoder().decode(java.nio.ByteBuffer.wrap(data)).toString() }.getOrNull()

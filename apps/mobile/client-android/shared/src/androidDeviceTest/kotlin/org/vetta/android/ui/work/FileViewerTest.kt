@@ -118,4 +118,16 @@ class FileViewerTest {
         composeRule.waitUntil(5_000) { composeRule.onAllNodesWithTag("files.unsupported.open").fetchSemanticsNodes().isNotEmpty() }
         composeRule.onNodeWithTag("files.html").assertDoesNotExist()
     }
+
+    @Test
+    fun showsAPictureItCanZoomAndDrawsAnSvg() {
+        val png = java.util.Base64.getDecoder().decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==")
+        var file by mutableStateOf(single("dot.png", png))
+        composeRule.setContent { VettaTheme(ThemeMode.Light) { key(file) { FilePreviewScreen(file, "x", onDismiss = {}) } } }
+        composeRule.waitUntil(5_000) { composeRule.onAllNodesWithTag("files.image").fetchSemanticsNodes().isNotEmpty() }
+
+        file = single("logo.svg", "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"10\" height=\"10\"/>".encodeToByteArray())
+        composeRule.waitUntil(5_000) { composeRule.onAllNodesWithTag("files.html").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onNodeWithTag("files.text").assertDoesNotExist()
+    }
 }
