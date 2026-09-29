@@ -31,10 +31,16 @@ function terminalLabel(project: ScriptProject, script: RunnableScript, rootName:
 }
 
 /**
- * 卡片宫格：列宽自适应，底部面板拉宽就多排几列。卡片按内容高度对齐到行首，
- * 不强行等高——脚本少的项目不必陪脚本多的项目留一大块空白。
+ * 瀑布流：用 CSS 多列而不是网格。网格按行对齐，一行里最高的卡片决定行高，矮卡片下面
+ * 就留出缺口；多列让每列自上而下紧贴着排，列数随面板宽度自动增减（每列至少 240px）。
+ * 代价是阅读顺序变成先上下后左右——根目录那张仍在左上角。
  */
-const GRID = "grid items-start gap-2.5 p-2.5 [grid-template-columns:repeat(auto-fill,minmax(240px,1fr))]";
+const MASONRY = "columns-[240px] gap-2.5 p-2.5";
+/** 卡片不能被拆到两列里；间距用下边距，多列布局里 gap 只管列间。 */
+const MASONRY_ITEM = "mb-2.5 break-inside-avoid";
+
+/** 骨架也做成高低不一，加载完成时布局不会整体跳一下。 */
+const SKELETON_HEIGHTS = ["h-28", "h-20", "h-36", "h-24"];
 
 function Placeholder({ icon, title, description, tone = "muted" }: {
 	readonly icon: string;
@@ -170,9 +176,12 @@ export function ScriptsPanel(): JSX.Element {
 			) : null}
 			<div className="min-h-0 flex-1 overflow-y-auto">
 				{state.kind === "loading" ? (
-					<div className={GRID} aria-label={t("state.loading")} aria-busy="true">
-						{[0, 1, 2].map((index) => (
-							<div key={index} className="h-28 animate-pulse rounded-xl border border-border bg-muted/40" />
+					<div className={MASONRY} aria-label={t("state.loading")} aria-busy="true">
+						{SKELETON_HEIGHTS.map((height) => (
+							<div
+								key={height}
+								className={`${MASONRY_ITEM} ${height} animate-pulse rounded-xl border border-border bg-muted/40`}
+							/>
 						))}
 					</div>
 				) : state.kind === "error" ? (
@@ -191,10 +200,11 @@ export function ScriptsPanel(): JSX.Element {
 				) : visible.length === 0 ? (
 					<Placeholder icon="icon-[mdi--magnify]" title={t("state.noMatch")} />
 				) : (
-					<div className={GRID}>
+					<div className={MASONRY}>
 						{visible.map((project) => (
 							<ProjectCard
 								key={project.relDir}
+								className={MASONRY_ITEM}
 								project={project}
 								title={projectTitle(project, rootName)}
 								forceExpanded={searching}

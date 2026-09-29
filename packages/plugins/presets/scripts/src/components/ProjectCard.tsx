@@ -2,12 +2,14 @@ import { useTranslation } from "@vetta-org/plugin-sdk";
 import { type JSX, useState } from "react";
 import type { RunnableScript, ScriptProject, ScriptSource } from "../scripts/model";
 
-/** 卡片默认只露出这么多个脚本：宫格里一张卡太高会把同一行的其它卡片都撑出大片空白。 */
+/** 卡片默认只露出这么多个脚本：一张卡太长会独占一整列，其它项目都被挤到后面去。 */
 export const COLLAPSED_SCRIPT_LIMIT = 10;
 
 export interface ProjectCardProps {
 	readonly project: ScriptProject;
 	readonly title: string;
+	/** 外层布局给卡片的类名（瀑布流的防拆列与间距）。 */
+	readonly className?: string;
 	/** 搜索时展开全部命中项，不让匹配结果藏在「更多」后面。 */
 	readonly forceExpanded: boolean;
 	readonly onRun: (script: RunnableScript, options: { reuse: boolean }) => void;
@@ -84,7 +86,7 @@ function ScriptGroup({
 }
 
 /** 一个子项目一张卡：标题区说明它是谁、在哪、用什么跑，下面是可以直接点的脚本芯片。 */
-export function ProjectCard({ project, title, forceExpanded, onRun }: ProjectCardProps): JSX.Element {
+export function ProjectCard({ project, title, className, forceExpanded, onRun }: ProjectCardProps): JSX.Element {
 	const { t } = useTranslation();
 	const [expanded, setExpanded] = useState(false);
 	const showAll = expanded || forceExpanded;
@@ -101,7 +103,7 @@ export function ProjectCard({ project, title, forceExpanded, onRun }: ProjectCar
 	return (
 		<section
 			aria-label={title}
-			className="flex min-w-0 flex-col gap-2.5 rounded-xl border border-border bg-card/70 p-3 text-card-foreground transition-colors hover:border-foreground/15"
+			className={`flex min-w-0 flex-col gap-2.5 rounded-xl border border-border bg-card/70 p-3 text-card-foreground transition-colors hover:border-foreground/15 ${className ?? ""}`}
 		>
 			<header className="flex min-w-0 items-center gap-2.5">
 				<span className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${tone.tile}`}>
