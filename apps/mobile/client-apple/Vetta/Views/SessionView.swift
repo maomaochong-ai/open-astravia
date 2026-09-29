@@ -21,8 +21,13 @@ struct SessionView: View {
 	@State private var pageWidth: CGFloat = 0
 	@State private var renaming = false
 	@State private var newTitle = ""
-	/// Whether the conversation keeps the newest line in view; off while the user reads further up.
-	@State private var following = true
+	/// A send puts its message at the top of the chat; the reply then fills in
+	/// below it without moving the conversation, which the user scrolls by hand.
+	@State private var pinned = false
+	/// A send is waiting for its message to show up, to scroll it to the top.
+	@State private var pinPending = false
+	/// The chat's visible height between the title and the composer.
+	@State private var viewport: CGFloat = 0
 	/// The panel the More menu opened.
 	@State private var panel: SessionPanel?
 	/// A desktop file a reply linked to, being previewed.
@@ -39,29 +44,35 @@ struct SessionView: View {
 		return cwd
 	}
 
-	private var rows: [ChatRow] {
+	/// The rows, and where the latest exchange starts among them.
+	private var rows: (rows: [ChatRow], latest: Int) {
 		var rows: [ChatRow] = []
 		if let first = transcript.items.first?.at { rows.append(.timestamp(first)) }
-		rows += ChatTurns.build(transcript.items, waiting: transcript.sessionState.status.isActive).map(ChatRow.block)
-		return rows
-	}
-
-	/// Changes whenever new content streams in, to keep the latest line in view.
-	private var scrollKey: String {
-		let last = transcript.items.last
-		var length = 0
-		if case let .assistant(turn) = last { length = turn.text.count + turn.thinking.count + turn.tools.count }
-		return "\(transcript.items.count)-\(length)-\(transcript.pendingQuestion?.requestId ?? "")"
+		let blocks = ChatTurns.build(transcript.items, waiting: transcript.sessionState.status.isActive)
+		let latest = ChatTurns.latestExchange(blocks).map { rows.count + $0 }
+		rows += blocks.map(ChatRow.block)
+		return (rows, latest ?? rows.endIndex)
 	}
 
 	var body: some View {
-		let rows = rows
+		let (rows, split) = rows
+		let latestUser = split < rows.endIndex ? rows[split].id : nil
 		let active = transcript.sessionState.status.isActive
 		ScrollViewReader { proxy in
 			ScrollView {
 				LazyVStack(alignment: .leading, spacing: 0) {
-					ForEach(rows) { row in
+					ForEach(rows[..<split]) { row in
 						rowView(row)
+					}
+					// The latest exchange takes at least a screen once sent, so its
+					// message can sit at the top while the reply is still short.
+					if split < rows.endIndex {
+						VStack(alignment: .leading, spacing: 0) {
+							ForEach(rows[split...]) { row in
+								rowView(row)
+							}
+						}
+						.frame(minHeight: pinned ? max(0, viewport - 16) : nil, alignment: .top)
 					}
 					if rows.isEmpty {
 						Text(transcript.loaded ? (model.session(id)?.title ?? "") : L10n.Chat.loadingHistory)
@@ -85,26 +96,23 @@ struct SessionView: View {
 				linkedFile = LinkedFile(href: href)
 				return .handled
 			})
-			.defaultScrollAnchor(.bottom)
+			// Opens on the newest line, but streaming never moves the conversation: following
+			// a reply that grows every frame kept the scroll view animating and stuttered.
+			.defaultScrollAnchor(.bottom, for: .initialOffset)
 			.scrollDismissesKeyboard(.interactively)
-			// Where the user leaves the conversation decides whether it keeps following.
-			// Only the user's own scrolling counts: a follow's animation also ends in `.idle`,
-			// possibly just as a burst lands further below.
-			.onScrollPhaseChange { old, phase, context in
-				switch phase {
-				case .interacting:
-					following = false
-				case .idle where old == .interacting || old == .decelerating:
-					let geometry = context.geometry
-					following = geometry.contentSize.height - geometry.visibleRect.maxY < 80
-				default:
-					break
-				}
+			.onScrollGeometryChange(for: CGFloat.self, of: ChatViewport.height) { _, height in viewport = height }
+			// History that arrives after the chat opened lands past the initial offset.
+			.onChange(of: transcript.loaded) { _, loaded in
+				if loaded, !pinned { proxy.scrollTo("bottom", anchor: .bottom) }
 			}
-			.onChange(of: scrollKey) { follow(proxy) }
-			// The reply grows a little on every frame as it fades in; glide along with it.
-			.onScrollGeometryChange(for: CGFloat.self, of: \.contentSize.height) { old, new in
-				if new > old { follow(proxy) }
+			.onChange(of: latestUser) { _, user in
+				guard pinPending, let user else { return }
+				pinPending = false
+				pinned = true
+				// A frame later, so the exchange has its screen of height to scroll to.
+				Task { @MainActor in
+					withAnimation(.smooth(duration: 0.35)) { proxy.scrollTo(user, anchor: .top) }
+				}
 			}
 		}
 		.background(Theme.page)
@@ -129,10 +137,13 @@ struct SessionView: View {
 					busy: active,
 					onStop: { if !starting { Task { await model.abort(id) } } },
 					onSend: { sent in
-						following = true
+						pinPending = true
 						Task {
 							// Keep what was typed so a failed send is not lost.
-							if await model.sendPrompt(id, sent.promptText, attachments: sent.attachments) == nil { draft = sent }
+							if await model.sendPrompt(id, sent.promptText, attachments: sent.attachments) == nil {
+								draft = sent
+								pinPending = false
+							}
 						}
 					}
 				)
@@ -216,11 +227,6 @@ struct SessionView: View {
 		}
 	}
 
-	private func follow(_ proxy: ScrollViewProxy) {
-		guard following else { return }
-		withAnimation(.smooth(duration: 0.35)) { proxy.scrollTo("bottom", anchor: .bottom) }
-	}
-
 	@ViewBuilder
 	private func rowView(_ row: ChatRow) -> some View {
 		switch row {
@@ -236,6 +242,14 @@ struct SessionView: View {
 				AgentTurnView(turn: turn, note: turn.streaming ? L10n.Chat.activity(transcript.sessionState.detail) : nil)
 			}
 		}
+	}
+}
+
+/// Runs on SwiftUI's render thread on device, so it must stay nonisolated.
+private enum ChatViewport {
+	/// Whole points, so the keyboard's slide does not re-lay the chat on every fraction.
+	nonisolated static func height(_ geometry: ScrollGeometry) -> CGFloat {
+		(geometry.containerSize.height - geometry.contentInsets.top - geometry.contentInsets.bottom).rounded()
 	}
 }
 

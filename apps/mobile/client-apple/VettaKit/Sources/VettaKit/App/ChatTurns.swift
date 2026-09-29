@@ -110,6 +110,12 @@ public enum ChatTurns {
 		return blocks
 	}
 
+	/// Where the latest exchange starts: the last user message, which a send
+	/// scrolls to the top of the chat. Nil before anything was sent.
+	public static func latestExchange(_ blocks: [ChatBlock]) -> Int? {
+		blocks.lastIndex { if case .user = $0 { true } else { false } }
+	}
+
 	private static func append(_ reply: AssistantTurn, to turn: inout AgentTurn) {
 		var steps: [WorkStep] = []
 		if !reply.thinking.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
