@@ -83,7 +83,7 @@ function workspacePathFromPackageEntry(entry) {
 	return markerIndex === -1 ? null : resolution.slice(markerIndex + marker.length).replaceAll("\\", "/");
 }
 
-function workspaceFingerprint(lock, workspaceDir) {
+function closureFingerprint(lock, visitRoot) {
 	const records = new Map();
 	const visitedPackages = new Set();
 	const visitedWorkspaces = new Set();
@@ -127,14 +127,37 @@ function workspaceFingerprint(lock, workspaceDir) {
 		visitDependencies(metadata, packageKey);
 	}
 
-	visitWorkspace(workspaceDir);
+	visitRoot({ records, visitDependencies, visitPackage, visitWorkspace });
 	return [...records.entries()]
 		.sort(([left], [right]) => left.localeCompare(right))
 		.map(([key, value]) => `${key}\0${value}`)
 		.join("\n");
 }
 
-export function changedLockfileWorkspaceKeys(beforeText, afterText, workspaces) {
+function workspaceFingerprint(lock, workspaceDir) {
+	return closureFingerprint(lock, ({ visitWorkspace }) => visitWorkspace(workspaceDir));
+}
+
+function dependencyFingerprint(lock, workspaceDir, dependencyName) {
+	return closureFingerprint(lock, ({ records, visitPackage }) => {
+		const workspace = lock.workspaces[workspaceDir];
+		if (!workspace || typeof workspace !== "object") {
+			records.set(`workspace:${workspaceDir}`, "missing");
+			return;
+		}
+		const entries = dependencyEntries(workspace).filter(({ name }) => name === dependencyName);
+		records.set(`dependency:${dependencyName}`, canonicalStringify(entries));
+		const packageKey = resolvePackageKey(dependencyName, workspace.name, lock.packages, Object.keys(lock.packages));
+		if (packageKey) visitPackage(packageKey);
+		else records.set(`unresolved:${dependencyName}`, "missing");
+	});
+}
+
+function directDependencyNames(lock, workspaceDir) {
+	return new Set(dependencyEntries(lock.workspaces[workspaceDir]).map(({ name }) => name));
+}
+
+export function changedLockfileWorkspaceImpacts(beforeText, afterText, workspaces) {
 	const before = parseBunLock(beforeText, "base bun.lock");
 	const after = parseBunLock(afterText, "current bun.lock");
 	for (const { dir } of workspaces) {
@@ -142,7 +165,16 @@ export function changedLockfileWorkspaceKeys(beforeText, afterText, workspaces) 
 			throw new Error(`cannot analyze bun.lock: current lockfile is missing workspace ${dir}`);
 		}
 	}
-	return workspaces
-		.filter(({ dir }) => workspaceFingerprint(before, dir) !== workspaceFingerprint(after, dir))
-		.map(({ key }) => key);
+	return workspaces.flatMap(({ key, dir }) => {
+		if (workspaceFingerprint(before, dir) === workspaceFingerprint(after, dir)) return [];
+		const dependencyNames = new Set([...directDependencyNames(before, dir), ...directDependencyNames(after, dir)]);
+		const dependencies = [...dependencyNames]
+			.filter((name) => dependencyFingerprint(before, dir, name) !== dependencyFingerprint(after, dir, name))
+			.sort();
+		return [{ key, dependencies }];
+	});
+}
+
+export function changedLockfileWorkspaceKeys(beforeText, afterText, workspaces) {
+	return changedLockfileWorkspaceImpacts(beforeText, afterText, workspaces).map(({ key }) => key);
 }

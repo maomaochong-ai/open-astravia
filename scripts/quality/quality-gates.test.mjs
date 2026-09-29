@@ -30,7 +30,7 @@ import {
 	TESTABLE_PACKAGES,
 	WORKSPACE_PACKAGES,
 } from "./lib.mjs";
-import { changedLockfileWorkspaceKeys } from "./lockfile-impact.mjs";
+import { changedLockfileWorkspaceImpacts, changedLockfileWorkspaceKeys } from "./lockfile-impact.mjs";
 import { createChangedTestPlan, parseArgs } from "./test-changed.mjs";
 import { createImpactTestPlan, parseImpactArgs } from "./test-impact.mjs";
 
@@ -315,11 +315,11 @@ describe("affected package selection", () => {
 	});
 
 	it("runs Runtime and Desktop tests when those packages change", () => {
-		expect(createChangedTestPlan(["packages/runtime-core/src/index.ts"]).targets.map(({ key }) => key)).toEqual(
-			expect.arrayContaining(["runtime-core", "runtime-mcp", "coding-agent", "desktop"]),
-		);
+		expect(createChangedTestPlan(["packages/runtime-core/src/index.ts"]).targets).toMatchObject([
+			{ key: "runtime-core", relatedSources: ["src/index.ts"] },
+		]);
 		expect(createChangedTestPlan(["apps/desktop/src/main/window-manager.ts"]).targets).toMatchObject([
-			{ key: "desktop", full: false, relatedSources: ["src/main/window-manager.ts"] },
+			{ key: "desktop", relatedSources: ["src/main/window-manager.ts"] },
 		]);
 	});
 
@@ -338,20 +338,26 @@ describe("affected package selection", () => {
 			{
 				key: "desktop",
 				directTests: ["src/renderer/domains/conversation/components/annotations/AnnotationScope.test.tsx"],
-				full: false,
 				relatedSources: ["src/renderer/domains/conversation/components/annotations/AnnotationMenus.tsx"],
 			},
 		]);
 		expect(plan.targets).not.toEqual(expect.arrayContaining([expect.objectContaining({ key: "docs-site" })]));
 	});
 
-	it("uses lockfile workspace impact without turning root inputs into a full test run", () => {
-		const plan = createChangedTestPlan(["bun.lock", "package.json", "turbo.json"], ["ai"]);
-		expect(plan.lockfilePackages).toEqual(["ai"]);
+	it("maps lockfile dependency changes back to importing source files without package tests", () => {
+		const plan = createChangedTestPlan(
+			["bun.lock", "package.json", "turbo.json"],
+			[{ key: "externals/chinese-chess", dependencies: ["zh-chess"] }],
+		);
+		expect(plan.lockfileImpacts).toEqual([{ key: "externals/chinese-chess", dependencies: ["zh-chess"] }]);
 		expect(plan.runQuality).toBe(true);
-		expect(plan.targets.map(({ key }) => key)).toEqual(expect.arrayContaining(expandTestablePackages(["ai"])));
-		expect(plan.targets).toEqual(expect.arrayContaining([expect.objectContaining({ key: "ai", full: true })]));
-		expect(plan.targets).toHaveLength(expandTestablePackages(["ai"]).length);
+		expect(plan.targets).toMatchObject([
+			{
+				key: "externals/chinese-chess",
+				directTests: [],
+				relatedSources: ["src/game/engine.ts"],
+			},
+		]);
 	});
 
 	it("finds only workspaces whose resolved lockfile dependency closure changed", () => {
@@ -377,6 +383,12 @@ describe("affected package selection", () => {
 				{ key: "beta", dir: "packages/beta", name: "@test/beta" },
 			]),
 		).toEqual(["alpha"]);
+		expect(
+			changedLockfileWorkspaceImpacts(before, after, [
+				{ key: "alpha", dir: "packages/alpha", name: "@test/alpha" },
+				{ key: "beta", dir: "packages/beta", name: "@test/beta" },
+			]),
+		).toEqual([{ key: "alpha", dependencies: ["shared"] }]);
 	});
 
 	it("ignores formatting and root-only tool changes in lockfile package selection", () => {
@@ -411,14 +423,25 @@ describe("affected package selection", () => {
 	it("runs quality tests when their implementation changes", () => {
 		const plan = createChangedTestPlan(["scripts/quality/test-changed.mjs"]);
 		expect(plan.runQuality).toBe(true);
-		expect(plan.lockfilePackages).toEqual([]);
+		expect(plan.qualityTests).toEqual(["scripts/quality/quality-gates.test.mjs"]);
+		expect(plan.lockfileImpacts).toEqual([]);
 		expect(plan.targets).toEqual([]);
 	});
 
 	it("does not run product tests for lint-only configuration changes", () => {
 		const plan = createChangedTestPlan(["biome.json"]);
 		expect(plan.runQuality).toBe(false);
-		expect(plan.lockfilePackages).toEqual([]);
+		expect(plan.lockfileImpacts).toEqual([]);
+		expect(plan.targets).toEqual([]);
+	});
+
+	it("leaves package and test configuration validation to check without running package tests", () => {
+		const plan = createChangedTestPlan([
+			"packages/ai/package.json",
+			"packages/ai/tsconfig.build.json",
+			"packages/ai/vitest.config.ts",
+		]);
+		expect(plan.selectionErrors).toEqual([]);
 		expect(plan.targets).toEqual([]);
 	});
 
@@ -439,24 +462,36 @@ describe("affected package selection", () => {
 				key: "ai",
 				directTests: ["test/provider-retry-policy.test.ts"],
 				relatedSources: ["src/providers/retry-policy.ts"],
-				full: false,
 			},
 		]);
 	});
 
-	it("expands public contracts explicitly and fails unselectable changes without a full-test fallback", () => {
+	it("keeps public contracts on related tests and fails unselectable changes without a package-test fallback", () => {
 		const publicContract = createImpactTestPlan(["packages/ai/src/index.ts"]);
 		expect(publicContract.selectionErrors).toEqual([]);
-		expect(publicContract.targets.map(({ key }) => key)).toEqual(
-			expect.arrayContaining(["ai", "agent", "coding-agent", "desktop"]),
-		);
-		expect(publicContract.targets.every(({ full }) => full)).toBe(true);
+		expect(publicContract.targets).toMatchObject([
+			{
+				key: "ai",
+				directTests: [],
+				relatedSources: ["src/index.ts"],
+			},
+		]);
+		expect(publicContract.targets.every((target) => !("full" in target))).toBe(true);
 		expect(createImpactTestPlan(["packages/ai/src/provider.ts"], () => false).selectionErrors).toEqual([
-			"packages/ai/src/provider.ts was deleted; add an explicit regression test or run test:full",
+			"packages/ai/src/provider.ts was deleted; add an explicit regression test or mapping",
 		]);
 		expect(createImpactTestPlan(["packages/action-rpc/src/server.ts"]).selectionErrors).toEqual([
 			"action-rpc has no targeted test entry point for packages/action-rpc/src/server.ts",
 		]);
+	});
+
+	it("never exposes a package-test fallback from the changed-test runner", () => {
+		const implementation = readFileSync(join(repoRoot, "scripts/quality/test-impact.mjs"), "utf8");
+		expect(implementation).not.toContain("full package");
+		expect(implementation).not.toContain("target.full");
+		expect(implementation).not.toMatch(/runBun\(\["run",\s*"test"/u);
+		expect(implementation).not.toContain('["run", "test:quality"]');
+		expect(implementation).not.toContain("test-pkg.mjs");
 	});
 
 	it("uses explicit host component tests for shared model selector UI", () => {
@@ -475,9 +510,21 @@ describe("affected package selection", () => {
 					"src/renderer/domains/conversation/connectors/team/TeamModelSelector.test.tsx",
 				],
 				relatedSources: [],
-				full: false,
 			},
 		]);
+	});
+
+	it("keeps packages with test prerequisites on targeted tests", () => {
+		const plan = createImpactTestPlan(["packages/plugins/presets/vetta-ui-design/src/vetd/tool-gate.ts"]);
+		expect(plan.selectionErrors).toEqual([]);
+		expect(plan.targets).toMatchObject([
+			{
+				key: "presets/vetta-ui-design",
+				prerequisites: [["run", "build:runner"]],
+				relatedSources: ["src/vetd/tool-gate.ts"],
+			},
+		]);
+		expect(plan.targets.every((target) => !("full" in target))).toBe(true);
 	});
 
 	it("keeps unmapped source files inside workspaces with package tests on the targeted path", () => {
@@ -488,19 +535,40 @@ describe("affected package selection", () => {
 				key: "theme-ui",
 				directTests: [],
 				relatedSources: ["src/chat/UnmappedView.tsx"],
-				full: false,
 			},
 		]);
 	});
 
 	it("runs quality tests for scripts while documentation-only changes need no package tests", () => {
 		const quality = createImpactTestPlan(["scripts/quality/test-impact.mjs"]);
-		expect(quality).toMatchObject({ runQuality: true, selectionErrors: [], targets: [] });
+		expect(quality).toMatchObject({
+			qualityTests: ["scripts/quality/quality-gates.test.mjs"],
+			runQuality: true,
+			selectionErrors: [],
+			targets: [],
+		});
+		const workflow = createImpactTestPlan([".github/workflows/desktop-release.yml"]);
+		expect(workflow).toMatchObject({
+			qualityTests: ["scripts/quality/desktop-release-workflow.test.mjs"],
+			runQuality: true,
+			selectionErrors: [],
+			targets: [],
+		});
 		const docs = createImpactTestPlan(["docs/dev/quality-gates.md"]);
 		expect(docs).toMatchObject({ runQuality: false, selectionErrors: [], targets: [] });
 		expect(parseImpactArgs(["--dry-run", "packages/ai/src/providers/retry-policy.ts"])).toMatchObject({
 			dryRun: true,
 			files: ["packages/ai/src/providers/retry-policy.ts"],
+		});
+	});
+
+	it("routes changed plugin manifests to repository manifest contract tests", () => {
+		const plan = createImpactTestPlan(["packages/plugins/externals/chinese-chess/plugin.json"]);
+		expect(plan.targets).toEqual([]);
+		expect(plan).toMatchObject({
+			qualityTests: ["scripts/quality/plugin-manifests.test.mjs"],
+			runQuality: true,
+			selectionErrors: [],
 		});
 	});
 
