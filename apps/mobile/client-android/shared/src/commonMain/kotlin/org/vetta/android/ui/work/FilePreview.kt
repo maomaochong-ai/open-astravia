@@ -24,8 +24,8 @@ import org.vetta.android.resources.files_rows_shown
 import org.vetta.android.resources.files_share
 import org.vetta.android.resources.files_sheet_empty
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -33,6 +33,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
@@ -163,14 +165,16 @@ private fun FileBody(info: RemoteFileInfo, content: FileContent, onOpen: () -> U
         FilePreviewKind.Markdown ->
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp)) { MarkdownContent(text.orEmpty()) }
         FilePreviewKind.Html -> HtmlPreview(text.orEmpty(), Modifier.fillMaxSize())
-        FilePreviewKind.Text ->
+        FilePreviewKind.Text -> {
+            // Laid out a piece at a time, so a long log opens at once; lines wrap as on the iPhone.
+            val pieces = remember(text) { FileText.chunks(text.orEmpty()) }
+            val style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace)
             SelectionContainer {
-                Text(
-                    text.orEmpty(),
-                    style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
-                    modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).horizontalScroll(rememberScrollState()).padding(16.dp).testTag("files.text"),
-                )
+                LazyColumn(Modifier.fillMaxSize().testTag("files.text"), contentPadding = PaddingValues(16.dp)) {
+                    items(pieces) { piece -> Text(piece, style = style) }
+                }
             }
+        }
         FilePreviewKind.Image -> {
             // Decoded off the main thread; a picture that will not decode is handed on.
             val bitmap by produceState<Result<ImageBitmap?>?>(null, content) {

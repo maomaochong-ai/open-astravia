@@ -55,6 +55,16 @@ class FileViewingTest {
     }
 
     @Test
+    fun cutsLongTextIntoPiecesOfWholeLines() {
+        val text = (1..5).joinToString("\n") { "line $it" }
+        assertEquals(listOf("line 1\nline 2", "line 3\nline 4", "line 5"), FileText.chunks(text, lines = 2))
+        assertEquals(listOf(""), FileText.chunks(""))
+        assertEquals(listOf("abcd", "efgh", "ij"), FileText.chunks("abcdefghij", maxChars = 4), "a single long line is cut too")
+        val big = (1..10_000).joinToString("\n") { "row $it" }
+        assertEquals(big, FileText.chunks(big).joinToString("\n"), "nothing lost or added")
+    }
+
+    @Test
     fun namesAFileForOtherAppsByWhatWasSent() {
         assertEquals("report.pdf", FileNames.exportName("report.pdf", "application/pdf"))
         assertEquals("IMG_1.jpg", FileNames.exportName("IMG_1.HEIC", "image/jpeg"), "a scaled photo is a JPEG")

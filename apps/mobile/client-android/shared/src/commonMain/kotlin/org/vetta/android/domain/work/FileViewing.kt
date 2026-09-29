@@ -112,6 +112,30 @@ object FileText {
         if (data.take(8192).any { it == 0.toByte() }) return null
         return runCatching { Charsets.UTF_8.newDecoder().decode(java.nio.ByteBuffer.wrap(data)).toString() }.getOrNull()
     }
+
+    /**
+     * Text cut into pieces of whole lines for a lazy list, so only what is on screen is laid
+     * out; an overlong line is cut too, since one line can be the whole file (minified code).
+     */
+    fun chunks(text: String, lines: Int = 40, maxChars: Int = 4000): List<String> {
+        val result = ArrayList<String>()
+        var start = 0
+        var count = 0
+        var i = 0
+        while (i < text.length) {
+            val newline = text[i] == '\n'
+            if (newline) count++
+            if (count == lines || i - start + 1 >= maxChars) {
+                // The line break closing a piece is dropped: the next piece starts on a line of its own.
+                result += text.substring(start, if (newline) i else i + 1)
+                start = i + 1
+                count = 0
+            }
+            i++
+        }
+        if (start < text.length || result.isEmpty()) result += text.substring(start)
+        return result
+    }
 }
 
 /** Why a file cannot be shown, in terms the phone can explain. */

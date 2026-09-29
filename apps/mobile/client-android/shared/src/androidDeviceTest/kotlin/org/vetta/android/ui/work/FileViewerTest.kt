@@ -165,4 +165,11 @@ class FileViewerTest {
         file = single("broken.pdf", "%PDF-1.4 nothing".encodeToByteArray())
         composeRule.waitUntil(5_000) { composeRule.onAllNodesWithTag("files.unsupported.open").fetchSemanticsNodes().isNotEmpty() }
     }
+
+    @Test
+    fun opensALongLogAtOnce() {
+        val log = (1..150_000).joinToString("\n") { "2026-09-29 12:00:00 INFO request $it served" }
+        composeRule.setContent { VettaTheme(ThemeMode.Light) { FilePreviewScreen(single("server.log", log.encodeToByteArray()), "x", onDismiss = {}) } }
+        composeRule.waitUntil(3_000) { composeRule.onAllNodesWithText("request 1 served", substring = true).fetchSemanticsNodes().isNotEmpty() }
+    }
 }
