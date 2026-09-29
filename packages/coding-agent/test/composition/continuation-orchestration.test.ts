@@ -11,10 +11,12 @@ import {
 	type Message,
 	type Model,
 } from "@vetta/ai";
+import type { RuntimeHostSession } from "@vetta/runtime-core";
 import type { RuntimeSnapshotAcquireContext } from "@vetta/runtime-core/kernel";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CompactionPreparation } from "../../src/compaction/index.js";
 import type { CodingAgentRuntimeComposition } from "../../src/composition/index.js";
+import { CODING_AGENT_GOAL_CREATE, CODING_AGENT_GOAL_UPDATE } from "../../src/features/goal/index.js";
 import { CodingAgentTodoRuntime } from "../../src/features/todo/todo-runtime.js";
 import {
 	type EcosystemHookEvent,
@@ -342,6 +344,51 @@ describe("Coding Agent continuation orchestration", () => {
 		);
 		expect((await session.readMessages()).filter((message) => message.role === "assistant")).toHaveLength(2);
 		expect((await session.readMessages()).at(-1)).toMatchObject({ role: "assistant", stopReason: "stop" });
+		await session.dispose();
+	});
+
+	it("continues an active goal until its completion state is persisted", async () => {
+		const conversationDir = await mkdtemp(join(tmpdir(), "goal-continuation-"));
+		temporaryDirectories.push(conversationDir);
+		const calls: Context[] = [];
+		let goalId = "";
+		let session: RuntimeHostSession | undefined;
+		let responseIndex = 0;
+		const responses = [assistantMessage("seed"), assistantMessage("first goal step"), assistantMessage("goal done")];
+		const composition = await createCodingAgentRuntimeComposition({
+			conversationDir,
+			modelRegistry: modelRegistry(),
+			initialModel: MODEL,
+			initialThinkingLevel: "off",
+			activation: { mode: "explicit", toolNames: [] },
+			streamFn: (_model, context) => {
+				calls.push(structuredClone(context));
+				if (responseIndex === 2) {
+					session?.invokeExtensionSync?.(CODING_AGENT_GOAL_UPDATE, { goalId, status: "complete" });
+				}
+				const response = responses[responseIndex++];
+				if (!response) throw new Error("Unexpected extra goal continuation");
+				return new RecordedAssistantStream(response);
+			},
+		});
+		compositions.push(composition);
+		session = await composition.createSession({ sessionId: "goal-session", cwd: conversationDir });
+		await session.prompt({ text: "seed the persisted session" });
+		const goal = session.invokeExtensionSync?.(CODING_AGENT_GOAL_CREATE, {
+			objective: "Finish two verified steps",
+		});
+		if (!goal) throw new Error("Expected goal extension endpoint");
+		goalId = goal.goalId;
+
+		await session.continue();
+
+		expect(calls).toHaveLength(3);
+		expect(calls[1]?.systemPrompt).toContain("# Goal mode is active");
+		expect(calls[1]?.systemPrompt).toContain("Finish two verified steps");
+		const goalMessages = (await session.readMessages()).filter(
+			(message) => message.role === "user" && messageText(message).includes("[ephemeral:goal]"),
+		);
+		expect(goalMessages).toHaveLength(1);
 		await session.dispose();
 	});
 });
