@@ -15,6 +15,10 @@ const captured = vi.hoisted(() => ({
 	virtualListUnmounts: 0,
 }));
 
+vi.mock("react-i18next", () => ({
+	useTranslation: () => ({ t: (key: string) => key }),
+}));
+
 vi.mock("react-virtuoso", () => ({
 	Virtuoso: (props: Record<string, unknown>) => {
 		captured.virtuosoProps = props;
@@ -108,8 +112,13 @@ vi.mock("./MessageTimeline", () => ({
 	),
 }));
 
-function props(deferredContentReady: boolean, isStreaming = false): ComponentProps<typeof MessageListView> {
+function props(
+	deferredContentReady: boolean,
+	isStreaming = false,
+	showScrollToBottom = false,
+): ComponentProps<typeof MessageListView> {
 	const scrollToMessage = vi.fn();
+	const scrollToBottom = vi.fn();
 	return {
 		model: {
 			isStreaming,
@@ -120,7 +129,9 @@ function props(deferredContentReady: boolean, isStreaming = false): ComponentPro
 				scrollerRef: vi.fn(),
 				onAtBottomChange: vi.fn(),
 				onTotalListHeightChange: vi.fn(),
+				scrollToBottom,
 				scrollToMessage,
+				showScrollToBottom,
 				followOutput: "auto",
 				initialTopMostItemIndex: 0,
 			} as never,
@@ -342,6 +353,25 @@ describe("MessageListView virtualization", () => {
 
 		expect(viewProps.model.scroll.scrollToMessage).toHaveBeenCalledWith(3);
 		expect(captured.virtuosoProps?.itemsRendered).toEqual(expect.any(Function));
+	});
+
+	it("离底部超过阈值时在输入区上方提供回到底部按钮", async () => {
+		const viewProps = props(true, false, true);
+		render(<MessageListView {...viewProps} />);
+
+		const button = screen.getByRole("button", { name: "messageList.scrollToBottom" });
+		expect(button.className).toContain("bottom-3");
+		expect(button.className).toContain("left-1/2");
+		expect(button.querySelector("[aria-hidden='true']")?.className).toContain("solar--arrow-down-linear");
+
+		await userEvent.click(button);
+		expect(viewProps.model.scroll.scrollToBottom).toHaveBeenCalledOnce();
+	});
+
+	it("接近会话底部时不显示回到底部按钮", () => {
+		render(<MessageListView {...props(true)} />);
+
+		expect(screen.queryByRole("button", { name: "messageList.scrollToBottom" })).toBeNull();
 	});
 
 	it("把提问目录悬浮在会话区域左侧，不占消息列宽度", () => {

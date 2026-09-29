@@ -657,6 +657,7 @@
 		"layoutStacked": "Stacked"
 	},
 	"messageList": {
+		"scrollToBottom": "Scroll to bottom",
 		"userMessage": {
 			"expand": "Expand message",
 			"sceneBadge": "Scene",

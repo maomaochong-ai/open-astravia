@@ -657,6 +657,7 @@
 		"layoutStacked": "收纳"
 	},
 	"messageList": {
+		"scrollToBottom": "滚动到底部",
 		"userMessage": {
 			"expand": "展开消息",
 			"sceneBadge": "场景",

@@ -213,6 +213,84 @@ describe("useMessageFeedScrollModel", () => {
 		expect(result.current.followOutput).toBe("auto");
 	});
 
+	it("shows the bottom shortcut only when the viewport is more than 500px from the tail", () => {
+		const frames: FrameRequestCallback[] = [];
+		vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+			frames.push(callback);
+			return frames.length;
+		});
+		vi.stubGlobal("cancelAnimationFrame", vi.fn());
+		vi.stubGlobal(
+			"ResizeObserver",
+			class {
+				observe() {}
+				disconnect() {}
+			},
+		);
+		const { result } = renderHook(() =>
+			useMessageFeedScrollModel({
+				active: false,
+				items: [{ id: "message-1" }],
+				resetKey: "feed-bottom-shortcut",
+				initialTargetKey: "history",
+			}),
+		);
+		const element = document.createElement("div");
+		Object.defineProperties(element, {
+			scrollHeight: { configurable: true, value: 1400 },
+			clientHeight: { configurable: true, value: 400 },
+			scrollTop: { configurable: true, writable: true, value: 500 },
+		});
+
+		act(() => result.current.scrollerRef(element));
+		act(() => element.dispatchEvent(new Event("scroll")));
+		act(() => frames.shift()?.(0));
+		expect(result.current.showScrollToBottom).toBe(false);
+
+		element.scrollTop = 499;
+		act(() => element.dispatchEvent(new Event("scroll")));
+		act(() => frames.shift()?.(0));
+		expect(result.current.showScrollToBottom).toBe(true);
+
+		element.scrollTop = 501;
+		act(() => element.dispatchEvent(new Event("scroll")));
+		act(() => frames.shift()?.(0));
+		expect(result.current.showScrollToBottom).toBe(false);
+	});
+
+	it("returns to the tail and resumes streaming follow from the bottom shortcut", () => {
+		vi.stubGlobal("requestAnimationFrame", vi.fn(() => 1));
+		vi.stubGlobal("cancelAnimationFrame", vi.fn());
+		vi.stubGlobal(
+			"ResizeObserver",
+			class {
+				observe() {}
+				disconnect() {}
+			},
+		);
+		const { result } = renderHook(() =>
+			useMessageFeedScrollModel({
+				active: true,
+				items: [{ id: "message-1" }],
+				resetKey: "feed-bottom-action",
+			}),
+		);
+		const scrollToIndex = vi.fn();
+		(result.current.virtuosoRef as { current: VirtuosoHandle | null }).current = {
+			scrollToIndex,
+		} as unknown as VirtuosoHandle;
+		const element = document.createElement("div");
+
+		act(() => result.current.scrollerRef(element));
+		act(() => element.dispatchEvent(new WheelEvent("wheel", { deltaY: -1 })));
+		expect(result.current.followOutput).toBe(false);
+
+		act(() => result.current.scrollToBottom());
+
+		expect(result.current.followOutput).toBe("auto");
+		expect(scrollToIndex).toHaveBeenCalledWith({ index: "LAST", align: "end", behavior: "smooth" });
+	});
+
 	it("recognizes an upward scrollbar drag as history-browsing intent", () => {
 		vi.stubGlobal("requestAnimationFrame", vi.fn(() => 1));
 		vi.stubGlobal("cancelAnimationFrame", vi.fn());
