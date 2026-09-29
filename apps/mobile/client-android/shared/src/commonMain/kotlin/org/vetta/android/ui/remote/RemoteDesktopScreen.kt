@@ -116,6 +116,7 @@ fun RemoteDesktopScreen(state: MirrorState, viewerUrl: String?, onClose: () -> U
                         modifier = Modifier.fillMaxSize(),
                         keyboardOpen = keyboardOpen && !viewOnly,
                         onKeyboardClosed = { keyboardOpen = false },
+                        cursor = state.screenCursor,
                     )
                     if (viewOnly) {
                         // Taps would go nowhere: swallow them, and say why along the top.
