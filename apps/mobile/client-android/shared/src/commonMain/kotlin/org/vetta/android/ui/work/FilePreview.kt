@@ -164,7 +164,7 @@ private fun FileBody(info: RemoteFileInfo, content: FileContent, onOpen: () -> U
     when (kind) {
         FilePreviewKind.Markdown ->
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp)) { MarkdownContent(text.orEmpty()) }
-        FilePreviewKind.Html -> HtmlPreview(text.orEmpty(), Modifier.fillMaxSize())
+        FilePreviewKind.Html -> HtmlPreview(text.orEmpty(), Modifier.fillMaxSize(), scripts = true)
         FilePreviewKind.Text -> {
             // Laid out a piece at a time, so a long log opens at once; lines wrap as on the iPhone.
             val pieces = remember(text) { FileText.chunks(text.orEmpty()) }
@@ -256,9 +256,11 @@ private fun documentLabels(): DocumentLabels {
 }
 
 /**
- * A page from the desktop, or one [DocumentPreview] drew, shown without running scripts
- * or loading anything from the network; links open in the browser. A `zoomable` page
- * can be pinched, for documents laid out wider or smaller than the phone.
+ * A page from the desktop, or one [DocumentPreview] drew. Nothing is stored, the phone's
+ * files are out of reach, and tapped links open in the browser. With `scripts` the page
+ * runs its scripts and loads what it links to, as generated pages usually need (the
+ * iPhone does the same); without, it is a static look that fetches nothing. A `zoomable`
+ * page can be pinched, for documents laid out wider or smaller than the phone.
  */
 @Composable
-expect fun HtmlPreview(html: String, modifier: Modifier = Modifier, zoomable: Boolean = false)
+expect fun HtmlPreview(html: String, modifier: Modifier = Modifier, zoomable: Boolean = false, scripts: Boolean = false)

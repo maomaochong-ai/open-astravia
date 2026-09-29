@@ -12,16 +12,18 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.viewinterop.AndroidView
 
 @Composable
-actual fun HtmlPreview(html: String, modifier: Modifier, zoomable: Boolean) {
+actual fun HtmlPreview(html: String, modifier: Modifier, zoomable: Boolean, scripts: Boolean) {
     // Loaded once per page, so recomposing does not reload it and lose the scroll.
     key(html) {
         AndroidView(
             modifier = modifier.testTag("files.html"),
             factory = { context ->
                 WebView(context).apply {
-                    // A static look at the page: no scripts, nothing fetched, no file access.
-                    settings.javaScriptEnabled = false
-                    settings.blockNetworkLoads = true
+                    // Never the phone's files, nothing kept between pages, and no bridge into the app;
+                    // scripts and what they fetch only for a page that asks for them.
+                    settings.javaScriptEnabled = scripts
+                    settings.blockNetworkLoads = !scripts
+                    settings.domStorageEnabled = false
                     settings.allowFileAccess = false
                     settings.allowContentAccess = false
                     if (zoomable) {
@@ -38,9 +40,14 @@ actual fun HtmlPreview(html: String, modifier: Modifier, zoomable: Boolean) {
     }
 }
 
-/** A page never navigates away: web and mail links open in their own apps, anything else goes nowhere. */
+/**
+ * A page never navigates away: a tapped web or mail link opens in its own app, a frame
+ * inside the page loads, and a script sending the page elsewhere goes nowhere.
+ */
 private object LinksLeave : WebViewClient() {
     override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
+        if (!request.isForMainFrame) return false
+        if (!request.hasGesture()) return true
         val url = request.url
         if (url.scheme?.lowercase() in setOf("http", "https", "mailto")) {
             try {
