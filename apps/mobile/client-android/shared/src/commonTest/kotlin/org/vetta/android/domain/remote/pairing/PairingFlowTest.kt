@@ -50,6 +50,21 @@ class PairingFlowTest {
         }
 
     @Test
+    fun triesEveryLocalAddressAtOnceSoThePhoneElsewhereReachesTheRelaySoon() =
+        runTest {
+            val desktop = FakeDesktop(backgroundScope)
+            desktop.lanReachable = false
+            val endpoints = listOf("192.168.1.20:43117", "10.0.0.5:43117", "172.17.0.1:43117")
+            val started = testScheduler.currentTime
+
+            assertNotNull(flow(desktop).pairWithCode(desktop.invite(lan = endpoints)))
+            assertEquals(endpoints.size, desktop.lanOpened.size, "every address is tried")
+            assertTrue(desktop.opened.last().startsWith("wss://relay.example/"))
+            assertTrue(testScheduler.currentTime - started < 2 * 4_000, "one timeout for all addresses, not one each")
+            assertEquals(listOf(PairingVia.Lan, PairingVia.Relay), phases.filterIsInstance<PairingPhase.Connecting>().map { it.via })
+        }
+
+    @Test
     fun aCodeWithNeitherAnAddressNorARelayIsNotUsable() =
         runTest {
             val desktop = FakeDesktop(backgroundScope)
