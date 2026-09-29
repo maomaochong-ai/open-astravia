@@ -336,8 +336,10 @@ import Testing
 
 	@Test func pairsPromptsAnswersAndUnpairs() async throws {
 		let desktop = scriptedDesktop()
+		var turnStarts = 0
 		var turnEnds = 0
 		var platform = AppPlatform.memory(createTransport: desktop.createTransport)
+		platform.onTurnStart = { turnStarts += 1 }
 		platform.onTurnEnd = { turnEnds += 1 }
 		let model = AppModel(platform: platform)
 		model.start()
@@ -369,6 +371,8 @@ import Testing
 		}
 		#expect(model.session("s2")?.status == .waitingInput)
 		#expect(model.session("s2")?.title == "帮我写周报")
+		// A tool call and two text deltas follow the prompt; only the first one buzzes.
+		#expect(turnStarts == 1)
 
 		await model.respond("s2", requestId: "q1", answers: [RemoteQuestionAnswer(question: "要发邮件吗？", answers: ["发"])])
 		#expect(await eventually { model.transcript("s2").sessionState.status == .completed })

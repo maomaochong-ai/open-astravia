@@ -82,6 +82,8 @@ struct VettaApp: App {
 			createTransport: { url, options in WebSocketTransport(url: url, options: options) },
 			deviceName: String(UIDevice.current.name.prefix(64))
 		)
+		let impact = UIImpactFeedbackGenerator(style: .light)
+		platform.onTurnStart = { impact.impactOccurred() }
 		platform.onTurnEnd = { feedback.notificationOccurred(.success) }
 		// Once on the LAN or relay, the link moves to the WebRTC control channel through the
 		// relay's viewer signaling; the same session carries the screen (ADR-0140).
