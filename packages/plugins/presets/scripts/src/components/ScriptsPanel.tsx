@@ -1,10 +1,11 @@
 import { useBottomPanel, useTranslation } from "@vetta-org/plugin-sdk";
-import { Button, Input } from "@vetta-org/ui";
+import { Button } from "@vetta-org/ui";
 import { type JSX, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getScriptsFs } from "../runtime";
 import { discoverScripts } from "../scripts/discover";
 import { countScripts, filterProjects } from "../scripts/filter";
 import type { RunnableScript, ScriptProject } from "../scripts/model";
+import { ProjectCard } from "./ProjectCard";
 
 type LoadState =
 	| { readonly kind: "loading" }
@@ -29,10 +30,32 @@ function terminalLabel(project: ScriptProject, script: RunnableScript, rootName:
 	return project.relDir ? `${projectTitle(project, rootName)}: ${script.name}` : script.name;
 }
 
-const SOURCE_ICONS: Record<RunnableScript["source"], string> = {
-	"package.json": "icon-[mdi--nodejs]",
-	makefile: "icon-[mdi--hammer-wrench]",
-};
+/**
+ * 卡片宫格：列宽自适应，底部面板拉宽就多排几列。卡片按内容高度对齐到行首，
+ * 不强行等高——脚本少的项目不必陪脚本多的项目留一大块空白。
+ */
+const GRID = "grid items-start gap-2.5 p-2.5 [grid-template-columns:repeat(auto-fill,minmax(240px,1fr))]";
+
+function Placeholder({ icon, title, description, tone = "muted" }: {
+	readonly icon: string;
+	readonly title: string;
+	readonly description?: string;
+	readonly tone?: "muted" | "error";
+}): JSX.Element {
+	return (
+		<div className="flex flex-col items-center justify-center gap-2 px-6 py-10 text-center">
+			<span
+				className={`flex size-10 items-center justify-center rounded-xl ${
+					tone === "error" ? "bg-destructive/10 text-destructive" : "bg-muted text-muted-foreground"
+				}`}
+			>
+				<span aria-hidden className={`${icon} size-5`} />
+			</span>
+			<p className="text-[13px] font-medium text-foreground">{title}</p>
+			{description ? <p className="max-w-96 text-[12px] text-muted-foreground">{description}</p> : null}
+		</div>
+	);
+}
 
 export function ScriptsPanel(): JSX.Element {
 	const { t } = useTranslation();
@@ -67,6 +90,7 @@ export function ScriptsPanel(): JSX.Element {
 	const rootName = cwd ? basename(cwd) : "";
 	const projects = state.kind === "ready" ? state.projects : [];
 	const visible = useMemo(() => filterProjects(projects, query), [projects, query]);
+	const searching = query.trim().length > 0;
 
 	const run = (project: ScriptProject, script: RunnableScript, options: { reuse: boolean }): void => {
 		setNotice(null);
@@ -86,16 +110,31 @@ export function ScriptsPanel(): JSX.Element {
 
 	return (
 		<div className="flex min-h-0 flex-1 flex-col text-[12px] text-foreground">
-			<div className="flex shrink-0 items-center gap-2 border-b border-border px-2 py-1.5">
-				<Input
-					value={query}
-					onChange={(event) => setQuery(event.target.value)}
-					placeholder={t("search.placeholder")}
-					aria-label={t("search.placeholder")}
-					className="h-7 max-w-72 text-[12px]"
-				/>
-				{state.kind === "ready" ? (
-					<span className="text-muted-foreground">{t("summary", { count: countScripts(projects) })}</span>
+			<div className="flex shrink-0 items-center gap-2 border-b border-border px-2.5 py-1.5">
+				<label className="flex h-7 w-full max-w-72 items-center gap-1.5 rounded-md border border-border bg-background/70 px-2 transition-colors focus-within:border-primary/50">
+					<span aria-hidden className="icon-[mdi--magnify] size-3.5 shrink-0 text-muted-foreground" />
+					<input
+						value={query}
+						onChange={(event) => setQuery(event.target.value)}
+						placeholder={t("search.placeholder")}
+						aria-label={t("search.placeholder")}
+						className="min-w-0 flex-1 bg-transparent text-[12px] outline-none placeholder:text-muted-foreground"
+					/>
+					{searching ? (
+						<button
+							type="button"
+							aria-label={t("search.clear")}
+							onClick={() => setQuery("")}
+							className="flex text-muted-foreground hover:text-foreground"
+						>
+							<span aria-hidden className="icon-[mdi--close-circle] size-3.5" />
+						</button>
+					) : null}
+				</label>
+				{state.kind === "ready" && projects.length > 0 ? (
+					<span className="shrink-0 text-[11px] text-muted-foreground">
+						{t("summary", { projects: projects.length, scripts: countScripts(projects) })}
+					</span>
 				) : null}
 				<div className="flex-1" />
 				<Button
@@ -106,68 +145,63 @@ export function ScriptsPanel(): JSX.Element {
 					disabled={state.kind === "loading"}
 					onClick={() => void load()}
 				>
-					<span aria-hidden className="icon-[mdi--refresh] size-3.5" />
+					<span
+						aria-hidden
+						className={`icon-[mdi--refresh] size-3.5 ${state.kind === "loading" ? "animate-spin" : ""}`}
+					/>
 				</Button>
 			</div>
 			{notice ? (
-				<p role="alert" className="shrink-0 border-b border-border px-3 py-1.5 text-destructive">
-					{notice}
-				</p>
+				<div
+					role="alert"
+					className="mx-2.5 mt-2 flex shrink-0 items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-2.5 py-1.5 text-destructive"
+				>
+					<span aria-hidden className="icon-[mdi--alert-circle-outline] mt-px size-3.5 shrink-0" />
+					<span className="min-w-0 flex-1">{notice}</span>
+					<button
+						type="button"
+						aria-label={t("action.dismiss")}
+						onClick={() => setNotice(null)}
+						className="flex opacity-70 hover:opacity-100"
+					>
+						<span aria-hidden className="icon-[mdi--close] size-3.5" />
+					</button>
+				</div>
 			) : null}
 			<div className="min-h-0 flex-1 overflow-y-auto">
 				{state.kind === "loading" ? (
-					<p className="px-3 py-4 text-muted-foreground">{t("state.loading")}</p>
-				) : state.kind === "error" ? (
-					<p className="px-3 py-4 text-destructive">{t("state.error", { message: state.message })}</p>
-				) : projects.length === 0 ? (
-					<div className="px-3 py-4 text-muted-foreground">
-						<p className="text-foreground">{t("state.empty.title")}</p>
-						<p className="mt-1">{t("state.empty.description")}</p>
+					<div className={GRID} aria-label={t("state.loading")} aria-busy="true">
+						{[0, 1, 2].map((index) => (
+							<div key={index} className="h-28 animate-pulse rounded-xl border border-border bg-muted/40" />
+						))}
 					</div>
+				) : state.kind === "error" ? (
+					<Placeholder
+						icon="icon-[mdi--alert-circle-outline]"
+						tone="error"
+						title={t("state.error.title")}
+						description={state.message}
+					/>
+				) : projects.length === 0 ? (
+					<Placeholder
+						icon="icon-[mdi--script-text-play-outline]"
+						title={t("state.empty.title")}
+						description={t("state.empty.description")}
+					/>
 				) : visible.length === 0 ? (
-					<p className="px-3 py-4 text-muted-foreground">{t("state.noMatch")}</p>
+					<Placeholder icon="icon-[mdi--magnify]" title={t("state.noMatch")} />
 				) : (
-					visible.map((project) => (
-						<section key={project.relDir} aria-label={projectTitle(project, rootName)} className="py-1">
-							<header className="flex items-baseline gap-2 px-3 pt-1.5 pb-1">
-								<span className="font-medium">{projectTitle(project, rootName)}</span>
-								<span className="truncate text-[11px] text-muted-foreground">{project.relDir || "."}</span>
-								{project.packageManager ? (
-									<span className="text-[11px] text-muted-foreground">{project.packageManager}</span>
-								) : null}
-							</header>
-							<ul>
-								{project.scripts.map((script) => (
-									<li key={script.key} className="group flex items-center gap-1 pr-2 hover:bg-accent/50">
-										<button
-											type="button"
-											className="flex min-w-0 flex-1 items-center gap-2 py-1 pl-3 text-left"
-											title={script.command}
-											onClick={() => run(project, script, { reuse: true })}
-										>
-											<span aria-hidden className={`${SOURCE_ICONS[script.source]} size-3.5 shrink-0 text-muted-foreground`} />
-											<span className="shrink-0 font-mono">{script.name}</span>
-											{script.detail ? (
-												<span className="min-w-0 truncate font-mono text-[11px] text-muted-foreground">
-													{script.detail}
-												</span>
-											) : null}
-										</button>
-										<Button
-											variant="ghost"
-											size="icon-xs"
-											className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
-											aria-label={t("action.runInNewTerminal", { name: script.name })}
-											title={t("action.runInNewTerminal", { name: script.name })}
-											onClick={() => run(project, script, { reuse: false })}
-										>
-											<span aria-hidden className="icon-[mdi--console-line] size-3.5" />
-										</Button>
-									</li>
-								))}
-							</ul>
-						</section>
-					))
+					<div className={GRID}>
+						{visible.map((project) => (
+							<ProjectCard
+								key={project.relDir}
+								project={project}
+								title={projectTitle(project, rootName)}
+								forceExpanded={searching}
+								onRun={(script, options) => run(project, script, options)}
+							/>
+						))}
+					</div>
 				)}
 			</div>
 		</div>

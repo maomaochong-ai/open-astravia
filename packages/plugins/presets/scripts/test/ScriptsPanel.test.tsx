@@ -72,7 +72,8 @@ describe("脚本面板：常见使用流程", () => {
 
 		const web = await screen.findByRole("region", { name: "@acme/web" });
 		expect(within(screen.getByRole("region", { name: "acme" })).getByText("test")).toBeTruthy();
-		expect(within(web).getByText("vite build")).toBeTruthy();
+		// 原始命令放在悬停提示里，芯片本身只写脚本名，宫格才排得密。
+		expect(within(web).getByRole("button", { name: "build" }).getAttribute("title")).toBe("bun run build\nvite build");
 
 		await user.click(within(web).getByRole("button", { name: /^dev/ }));
 
@@ -108,9 +109,12 @@ describe("脚本面板：常见使用流程", () => {
 
 		await user.type(screen.getByRole("textbox", { name: "search.placeholder" }), "vite build");
 		expect(screen.queryByRole("region", { name: "acme" })).toBeNull();
-		expect(within(screen.getByRole("region", { name: "@acme/web" })).queryByText("vite")).toBeNull();
+		const web = screen.getByRole("region", { name: "@acme/web" });
+		expect(within(web).getByRole("button", { name: "build" })).toBeTruthy();
+		expect(within(web).queryByRole("button", { name: "dev" })).toBeNull();
 
-		await user.clear(screen.getByRole("textbox", { name: "search.placeholder" }));
+		await user.click(screen.getByRole("button", { name: "search.clear" }));
+		expect(screen.getByRole("region", { name: "acme" })).toBeTruthy();
 		await user.type(screen.getByRole("textbox", { name: "search.placeholder" }), "zzz");
 		expect(screen.getByText("state.noMatch")).toBeTruthy();
 	});
@@ -137,5 +141,37 @@ describe("脚本面板：常见使用流程", () => {
 		await user.click(screen.getByRole("button", { name: "action.refresh" }));
 
 		expect(await screen.findByRole("region", { name: "acme" })).toBeTruthy();
+	});
+});
+
+describe("脚本很多的项目", () => {
+	const many = {
+		"package.json": JSON.stringify({
+			name: "big",
+			scripts: Object.fromEntries(Array.from({ length: 14 }, (_, index) => [`task-${index}`, `echo ${index}`])),
+		}),
+	};
+
+	it("卡片默认只露出前 10 个，点「更多」展开、再点收起", async () => {
+		installFs(many);
+		const { user } = renderPanel();
+		const card = await screen.findByRole("region", { name: "big" });
+		expect(within(card).queryByRole("button", { name: "task-13" })).toBeNull();
+
+		await user.click(within(card).getByRole("button", { name: /card.showMore.*4/ }));
+		expect(within(card).getByRole("button", { name: "task-13" })).toBeTruthy();
+
+		await user.click(within(card).getByRole("button", { name: "card.showLess" }));
+		expect(within(card).queryByRole("button", { name: "task-13" })).toBeNull();
+	});
+
+	it("搜索时命中项不会被藏在「更多」后面", async () => {
+		installFs(many);
+		const { user } = renderPanel();
+		await screen.findByRole("region", { name: "big" });
+
+		await user.type(screen.getByRole("textbox", { name: "search.placeholder" }), "big");
+
+		expect(within(screen.getByRole("region", { name: "big" })).getByRole("button", { name: "task-13" })).toBeTruthy();
 	});
 });
