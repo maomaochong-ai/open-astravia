@@ -119,6 +119,7 @@ export const DefaultInputBarConnector = memo(function DefaultInputBarConnector(p
 	const contextMenu: InputBarContextMenuViewProps | null = contextMenuModel.contextMenu;
 
 	const model: InputBarModel = {
+		contentWidth: props.contentWidth ?? "compact",
 		dropZone,
 		isStreaming: session.isStreaming,
 		sendPending: props.sendPending,

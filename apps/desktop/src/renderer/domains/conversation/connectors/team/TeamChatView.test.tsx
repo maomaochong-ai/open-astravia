@@ -137,6 +137,9 @@ describe("TeamChatView shared conversation UI", () => {
 			expect.objectContaining({ title: "Team export", participants: viewModel.members }),
 		);
 		expect(captured.feed.mock.calls[0]?.[0].messages).toBe(viewModel.feedItems);
+		expect(captured.composer).toHaveBeenCalledWith(
+			expect.objectContaining({ contentWidth: "message" }),
+		);
 	});
 
 	it("keeps feed and roster work isolated when only the composer draft changes", () => {

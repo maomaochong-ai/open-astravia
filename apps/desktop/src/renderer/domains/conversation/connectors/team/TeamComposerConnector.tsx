@@ -13,7 +13,7 @@ import type { WorkSurfaceScope } from "@shared/workspace/work-surface";
 import { InputBar } from "../../components/InputBar";
 import { ContextRing } from "../../components/ContextRing";
 import type { AtPanelItem } from "../../components/AtPanel";
-import type { InputBarModel } from "../../components/input-bar/types";
+import type { InputBarContentWidth, InputBarModel } from "../../components/input-bar/types";
 import { useInputBarContextMenuModel } from "../../components/input-bar/useInputBarContextMenuModel";
 import { useInputBarTriggerModel } from "../../components/input-bar/useInputBarTriggerModel";
 import { useSpeechInput } from "../../components/input-bar/useSpeechInput";
@@ -73,10 +73,12 @@ export function TeamComposerConnector({
 	actions,
 	workSurface,
 	onExpandedChange,
+	contentWidth = "compact",
 }: {
 	readonly model: TeamComposerViewModel;
 	readonly actions: TeamChatActions;
 	readonly workSurface: WorkSurfaceScope | null;
+	readonly contentWidth?: InputBarContentWidth;
 	/** 命令区展开回调：新会话页据此淡出 hero，否则 hero（含装饰件）会压住向上生长的面板。 */
 	readonly onExpandedChange?: (expanded: boolean) => void;
 }): JSX.Element {
@@ -307,6 +309,7 @@ export function TeamComposerConnector({
 	}, [actions, model.labels, model.leaderMemberId, model.members, t]);
 
 	const inputModel: InputBarModel = {
+		contentWidth,
 		dropZone: {
 			dragKind,
 			enabled: model.editorEnabled,

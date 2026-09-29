@@ -20,6 +20,8 @@ export interface ConnectedInputBarProps {
 	onSend: (overrideText?: string, context?: SendInteractionContext) => Promise<void>;
 	onAbort: () => Promise<void>;
 	onSendQueued?: (runtimeId: string, id: string) => void;
+	/** 已有会话与消息列同宽；新建会话保持与 hero、选项行一致的紧凑宽度。 */
+	contentWidth?: InputBarContentWidth;
 	/**
 	 * 当无 activeSession 但仍希望放行输入与发送时（例如 NewSessionPage），
 	 * 把该项目的 cwd 传进来：InputBar 把它视为「有会话」、@ 文件面板用它作为根目录。
@@ -118,6 +120,8 @@ export interface SpeechInputModel {
 	onToggle: () => void;
 }
 
+export type InputBarContentWidth = "compact" | "message";
+
 export interface InputBarCommandModel {
 	readonly slashOpen: boolean;
 	readonly slashVisible: boolean;
@@ -148,6 +152,7 @@ export type InputBarTrailingTool = {
 };
 
 export interface InputBarModel {
+	contentWidth: InputBarContentWidth;
 	dropZone: Omit<SessionDropZoneViewProps, "children" | "className">;
 	isStreaming: boolean;
 	/** 宿主传入的发送前准备态，原样透给发送按钮。 */

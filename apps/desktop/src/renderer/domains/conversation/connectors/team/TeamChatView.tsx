@@ -94,7 +94,14 @@ const TeamComposer = memo(function TeamComposer({
 	readonly actions: TeamChatActions;
 	readonly workSurface: WorkSurfaceScope | null;
 }): JSX.Element {
-	return <TeamComposerConnector model={model} actions={actions} workSurface={workSurface} />;
+	return (
+		<TeamComposerConnector
+			model={model}
+			actions={actions}
+			workSurface={workSurface}
+			contentWidth="message"
+		/>
+	);
 });
 
 export function TeamChatView({

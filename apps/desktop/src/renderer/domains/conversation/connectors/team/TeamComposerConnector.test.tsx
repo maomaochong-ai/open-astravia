@@ -108,12 +108,20 @@ function model(overrides: Partial<TeamChatViewModel> = {}): TeamChatViewModel {
 describe("TeamComposerConnector", () => {
 	it("composes Team state and commands with the existing InputBar contract", () => {
 		const viewActions = actions();
-		render(<TeamComposerConnector model={model()} actions={viewActions} workSurface={null} />);
+		render(
+			<TeamComposerConnector
+				model={model()}
+				actions={viewActions}
+				workSurface={null}
+				contentWidth="message"
+			/>,
+		);
 		const inputModel = captured.model;
 		expect(inputModel).toBeDefined();
 		if (!inputModel) throw new Error("InputBar model was not captured");
 
 		expect(inputModel.editor).toMatchObject({ value: "Ship it", history: ["Previous"] });
+		expect(inputModel.contentWidth).toBe("message");
 		expect(inputModel.editor.persistenceId).toBe("session-1");
 		expect(inputModel.commands).toBeDefined();
 		expect(inputModel.commands?.onOpen).toBeTypeOf("function");

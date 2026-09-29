@@ -23,6 +23,7 @@ import { InputBarFooter } from "./InputBarFooter";
 import { InputBarSpeechStatus } from "./InputBarSpeechStatus";
 import { InputBarTodoStatus } from "./InputBarTodoStatus";
 import { InputEditor } from "./editor/InputEditor";
+import { inputBarContentWidthClassName } from "./input-bar-layout";
 import { PromptAttachmentLabels } from "./PromptAttachmentLabels";
 import type { InputBarViewProps } from "./types";
 
@@ -92,7 +93,8 @@ export function InputBarView({ model, className, classNames, children }: InputBa
 			<div
 				className={[
 					// @container：工具栏/动作条按输入区宽度折叠文案（非视口），避免窄栏换行
-					"relative mx-auto w-full max-w-2xl @container transition-opacity duration-150",
+					"relative mx-auto w-full @container transition-opacity duration-150",
+					inputBarContentWidthClassName(model.contentWidth),
 					hasPendingInteraction ? "pointer-events-none opacity-0" : "",
 					classNames?.stack,
 				]
