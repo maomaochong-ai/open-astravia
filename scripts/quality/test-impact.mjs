@@ -14,6 +14,7 @@ import { join } from "node:path";
 import {
 	buildableTestDependencies,
 	changedFiles,
+	expandTestablePackages,
 	isDirectRun,
 	ok,
 	parseFileSelectionArgs,
@@ -112,30 +113,43 @@ export function parseImpactArgs(args, root = repoRoot) {
 	return { ...selection, dryRun };
 }
 
-export function createImpactTestPlan(files, pathExists = (file) => existsSync(join(repoRoot, file))) {
-	const normalizedFiles = [...new Set(files.map((file) => file.replaceAll("\\", "/")))].sort();
-	const runQuality = normalizedFiles.some((file) => file.startsWith("scripts/"));
-	const fallbackReasons = [];
-	if (normalizedFiles.some((file) => ROOT_GLOBAL_TEST_FILES.has(file))) {
-		fallbackReasons.push("root test configuration changed");
+function addFullAffectedTargets(grouped, workspaceKey) {
+	for (const affectedKey of expandTestablePackages([workspaceKey])) {
+		const affectedWorkspace = WORKSPACE_PACKAGES.find((workspace) => workspace.key === affectedKey);
+		if (!affectedWorkspace?.scripts.test) continue;
+		const target = targetForWorkspace(grouped, affectedWorkspace);
+		target.full = true;
 	}
+}
+
+export function createImpactTestPlan(
+	files,
+	pathExists = (file) => existsSync(join(repoRoot, file)),
+	{ lockfilePackages = [] } = {},
+) {
+	const normalizedFiles = [...new Set(files.map((file) => file.replaceAll("\\", "/")))].sort();
+	const runQuality = normalizedFiles.some(
+		(file) => file.startsWith("scripts/") || file === "package.json" || file === "turbo.json",
+	);
+	const selectionErrors = [];
 
 	const grouped = new Map();
+	for (const workspaceKey of lockfilePackages) addFullAffectedTargets(grouped, workspaceKey);
 	for (const file of normalizedFiles) {
 		if (file.startsWith("scripts/") || ROOT_GLOBAL_TEST_FILES.has(file)) continue;
 		const workspace = workspaceForFile(file);
 		if (!workspace) continue;
 		const relativeFile = file.slice(workspace.dir.length + 1);
 		if (!pathExists(file)) {
-			fallbackReasons.push(`${file} was deleted`);
+			selectionErrors.push(`${file} was deleted; add an explicit regression test or run test:full`);
 			continue;
 		}
-		if (
-			PUBLIC_CONTRACT_PATTERN.test(relativeFile) ||
-			CONTRACT_DIRECTORY_PATTERN.test(relativeFile) ||
-			PACKAGE_CONFIG_PATTERN.test(relativeFile)
-		) {
-			fallbackReasons.push(`${file} may affect package consumers or test configuration`);
+		if (PUBLIC_CONTRACT_PATTERN.test(relativeFile) || CONTRACT_DIRECTORY_PATTERN.test(relativeFile)) {
+			addFullAffectedTargets(grouped, workspace.key);
+			continue;
+		}
+		if (PACKAGE_CONFIG_PATTERN.test(relativeFile)) {
+			addFullAffectedTargets(grouped, workspace.key);
 			continue;
 		}
 		const mapped = EXPLICIT_SOURCE_TESTS.get(file);
@@ -151,24 +165,21 @@ export function createImpactTestPlan(files, pathExists = (file) => existsSync(jo
 			continue;
 		}
 		if (!workspace.scripts.test) {
-			fallbackReasons.push(`${workspace.key} has no direct test entry point`);
+			selectionErrors.push(`${workspace.key} has no targeted test entry point for ${file}`);
 			continue;
 		}
+		if (!CODE_FILE_PATTERN.test(relativeFile)) continue;
 		const target = targetForWorkspace(grouped, workspace);
 		if (target.full) continue;
-		if (!CODE_FILE_PATTERN.test(relativeFile)) {
-			target.full = true;
-			continue;
-		}
 		if (TEST_FILE_PATTERN.test(relativeFile)) target.directTests.push(relativeFile);
 		else target.relatedSources.push(relativeFile);
 	}
 
 	return {
 		files: normalizedFiles,
-		fallbackChanged: fallbackReasons.length > 0,
-		fallbackReasons,
+		lockfilePackages,
 		runQuality,
+		selectionErrors,
 		targets: [...grouped.values()]
 			.map((target) => ({
 				...target,
@@ -209,14 +220,24 @@ function runTargetedTests(target) {
 
 	ok(`[test:impact] ${target.key}: tests related to ${target.relatedSources.join(", ")}`);
 	const related = runCapturedBun(
-		[runner, "related", ...target.relatedSources, "--run", "--passWithNoTests=false", ...sharedArgs],
+		[
+			runner,
+			"related",
+			...target.relatedSources,
+			"--run",
+			"--passWithNoTests=false",
+			...sharedArgs,
+			...target.directTests.map((test) => `--exclude=${test}`),
+		],
 		cwd,
 	);
 	if (related.code === 0) return 0;
 	if (!/No test files found|No test suite found/i.test(related.output)) return related.code;
 
-	ok(`[test:impact] ${target.key}: no related tests found; falling back to the package test script`);
-	return runBun(["run", "test"], { cwd });
+	console.error(
+		`[test:impact] ${target.key}: no related tests found; add a regression test or run test:full explicitly`,
+	);
+	return 1;
 }
 
 function printPlan(plan, selection) {
@@ -233,50 +254,56 @@ function printPlan(plan, selection) {
 			: `direct=${target.directTests.length}, related=${target.relatedSources.length}`;
 		console.log(`[test:impact] ${target.key}: ${mode}`);
 	}
-	if (plan.fallbackChanged) {
-		console.log(`[test:impact] conservative fallback: ${plan.fallbackReasons.join("; ")}`);
+	if (plan.selectionErrors.length > 0) {
+		console.log(`[test:impact] selection errors: ${plan.selectionErrors.join("; ")}`);
 	}
+}
+
+export function runImpactTestPlan(plan) {
+	if (plan.selectionErrors.length > 0) return 1;
+	if (plan.runQuality) {
+		const qualityCode = runBun(["run", "test:quality"]);
+		if (qualityCode !== 0) return qualityCode;
+	}
+	if (plan.targets.length === 0) {
+		ok("[test:impact] no affected testable code; skip");
+		return 0;
+	}
+
+	const buildDependencies = buildableTestDependencies(plan.targets.map((target) => target.key));
+	if (buildDependencies.length > 0) {
+		ok(`[test:impact] building workspace dependencies: ${buildDependencies.join(", ")}`);
+		const buildCode = runBun([
+			"x",
+			"turbo",
+			"run",
+			"build",
+			"--summarize",
+			...buildDependencies.map((packageName) => `--filter=${packageName}`),
+		]);
+		if (buildCode !== 0) return buildCode;
+	}
+
+	for (const target of plan.targets) {
+		const code = target.full
+			? runBun(["run", "test"], { cwd: join(repoRoot, target.dir) })
+			: runTargetedTests(target);
+		if (code !== 0) return code;
+	}
+	return 0;
 }
 
 export function main(args = process.argv.slice(2)) {
 	try {
 		const selection = parseImpactArgs(args);
 		const files = selection.files.length > 0 ? selection.files : changedFiles(selection.base);
+		if (files.some((file) => file.replaceAll("\\", "/") === "bun.lock")) {
+			return runBun(["run", "test:changed", "--base", selection.base, "--", ...files]);
+		}
 		const plan = createImpactTestPlan(files);
 		printPlan(plan, selection);
 		if (files.length === 0 || selection.dryRun) return 0;
-		if (plan.fallbackChanged) return runBun(["run", "test:changed", "--", ...files]);
-
-		if (plan.runQuality) {
-			const qualityCode = runBun(["run", "test:quality"]);
-			if (qualityCode !== 0) return qualityCode;
-		}
-		if (plan.targets.length === 0) {
-			ok("[test:impact] no affected testable code; skip");
-			return 0;
-		}
-
-		const buildDependencies = buildableTestDependencies(plan.targets.map((target) => target.key));
-		if (buildDependencies.length > 0) {
-			ok(`[test:impact] building workspace dependencies: ${buildDependencies.join(", ")}`);
-			const buildCode = runBun([
-				"x",
-				"turbo",
-				"run",
-				"build",
-				"--summarize",
-				...buildDependencies.map((packageName) => `--filter=${packageName}`),
-			]);
-			if (buildCode !== 0) return buildCode;
-		}
-
-		for (const target of plan.targets) {
-			const code = target.full
-				? runBun(["run", "test"], { cwd: join(repoRoot, target.dir) })
-				: runTargetedTests(target);
-			if (code !== 0) return code;
-		}
-		return 0;
+		return runImpactTestPlan(plan);
 	} catch (error) {
 		console.error(`[test:impact] ${error instanceof Error ? error.message : String(error)}`);
 		return 1;
