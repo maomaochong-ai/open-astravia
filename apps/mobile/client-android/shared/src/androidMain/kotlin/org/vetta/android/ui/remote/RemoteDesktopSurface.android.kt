@@ -9,6 +9,7 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
@@ -60,6 +61,8 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
@@ -85,6 +88,7 @@ import org.vetta.android.domain.remote.RemoteTyping
 import org.vetta.android.domain.remote.RemoteViewport
 import org.vetta.android.domain.remote.WheelNotches
 import org.vetta.android.resources.Res
+import org.vetta.android.resources.remote_details
 import org.vetta.android.resources.remote_frames_per_second
 import org.vetta.android.resources.remote_picture_delay
 import org.vetta.android.resources.remote_round_trip
@@ -132,6 +136,7 @@ actual fun RemoteDesktopSurface(
     }
     val frame by session.frameSize.collectAsState()
     val stats by session.stats.collectAsState()
+    val trace by session.trace.collectAsState()
     // The screen stays on while the desktop is being watched.
     val view = LocalView.current
     DisposableEffect(view) {
@@ -254,6 +259,8 @@ actual fun RemoteDesktopSurface(
         }
         // Route, latency and frame rate, so a slow network and a slow picture can be told apart.
         stats?.let { StatsLine(it, Modifier.align(Alignment.TopCenter)) }
+        // No picture yet: what the direct connection got through so far, to tell where it stops.
+        if (frame == null && trace.isNotEmpty()) ConnectionTrace(trace, Modifier.align(Alignment.BottomStart))
         RemoteKeyboard(keyboardOpen, onKeyboardClosed) { typing ->
             when (typing) {
                 is RemoteTyping.Text -> session.sendText(typing.text)
@@ -265,6 +272,16 @@ actual fun RemoteDesktopSurface(
                     if (stroke.shift) session.sendKey("ShiftLeft", "up")
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun ConnectionTrace(steps: List<String>, modifier: Modifier = Modifier) {
+    Column(modifier.padding(16.dp).testTag("remote.trace")) {
+        Text(stringResource(Res.string.remote_details), style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold), color = Color.White.copy(alpha = 0.5f))
+        steps.forEach { step ->
+            Text(step, style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace), color = Color.White.copy(alpha = 0.5f))
         }
     }
 }

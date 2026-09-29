@@ -10,6 +10,9 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.takeFrom
 import io.ktor.websocket.Frame
 import io.ktor.websocket.readText
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -22,6 +25,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -54,6 +58,7 @@ private const val PROTOCOL_VERSION = 1
 private const val INPUT_CHANNEL = "vetta-input-v1"
 private const val CONTROL_CHANNEL = "vetta-control-v2"
 private const val MAX_CONTROL_MESSAGE_BYTES = 1_500_000
+private const val TRACE_STEPS = 8
 
 class NativeRemoteDesktopSession(private val context: Context, private val target: String) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -96,6 +101,14 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
     val stats: StateFlow<RemoteStreamStats?> = _stats
     private var statsJob: Job? = null
 
+    private val _trace = MutableStateFlow<List<String>>(emptyList())
+
+    /**
+     * The last steps of setting up the connection, newest last, for a page stuck connecting.
+     * Technical names only: never SDP, candidates or the pairing secret.
+     */
+    val trace: StateFlow<List<String>> = _trace
+
     /** The running totals at the last sample, to average over the last second only. */
     private var lastTotals: RemoteStreamStats.FrameTotals? = null
 
@@ -135,6 +148,7 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
 
     fun stop() {
         if (stopped) return
+        note("stopped")
         stopped = true
         signalingJob?.cancel()
         signalingJob = null
@@ -225,16 +239,21 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
                 .setVideoEncoderFactory(org.webrtc.DefaultVideoEncoderFactory(eglBase.eglBaseContext, true, true))
                 .createPeerConnectionFactory()
             val (socketUrl, token) = splitTarget(target)
+            note("signaling connecting")
             val socket = client.webSocketSession {
                 url.takeFrom(socketUrl)
                 headers.append(HttpHeaders.SecWebSocketProtocol, listOf("vetta.desktop.v1", "vetta.pairing.$token").joinToString(", "))
             }
             signaling = socket
+            note("signaling open")
             PlatformRemoteLogger.info("native WebRTC signaling connected")
             createPeerConnection()
             for (frame in socket.incoming) if (frame is Frame.Text) handleSignal(frame.readText())
         } catch (error: Throwable) {
-            if (!stopped) PlatformRemoteLogger.warn("native WebRTC session failed", mapOf("error" to (error.message ?: error::class.simpleName)))
+            if (!stopped) {
+                note("failed: ${error::class.simpleName}")
+                PlatformRemoteLogger.warn("native WebRTC session failed", mapOf("error" to (error.message ?: error::class.simpleName)))
+            }
         } finally {
             controlTransport?.channelClosed("remote desktop signaling closed")
             if (!stopped) stop()
@@ -249,6 +268,7 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
         peerConnection = factory?.createPeerConnection(configuration, object : PeerConnection.Observer {
             override fun onSignalingChange(state: PeerConnection.SignalingState) = Unit
             override fun onIceConnectionChange(state: PeerConnection.IceConnectionState) {
+                note("ICE ${state.name.lowercase()}")
                 PlatformRemoteLogger.info("native WebRTC ICE state", mapOf("state" to state.name))
                 if (state == PeerConnection.IceConnectionState.CONNECTED || state == PeerConnection.IceConnectionState.COMPLETED) {
                     scope.launch { sampleStats() }
@@ -264,6 +284,7 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
             override fun onAddStream(stream: MediaStream) = Unit
             override fun onRemoveStream(stream: MediaStream) = Unit
             override fun onDataChannel(channel: DataChannel) {
+                note("channel ${channel.label()} open")
                 when (channel.label()) {
                     INPUT_CHANNEL -> inputChannel = channel
                     CONTROL_CHANNEL -> {
@@ -281,6 +302,12 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
                 PlatformRemoteLogger.info("native WebRTC video track attached")
             }
         })
+    }
+
+    /** Adds a step to [trace]; WebRTC calls back from its own threads. */
+    private fun note(step: String) {
+        val time = SimpleDateFormat("HH:mm:ss", Locale.US).format(Date())
+        _trace.update { (it + "$time $step").takeLast(TRACE_STEPS) }
     }
 
     /** Samples WebRTC's statistics once a second while the picture flows. */
@@ -308,6 +335,7 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
             when (signal["type"]?.jsonPrimitive?.contentOrNull) {
                 "offer" -> {
                     val sdp = signal["sdp"]?.jsonPrimitive?.content ?: return
+                    note("offer received")
                     PlatformRemoteLogger.info("native WebRTC offer received")
                     peerConnection?.setRemoteDescription(object : SdpObserver by LoggingSdpObserver {
                         override fun onSetSuccess() {
@@ -326,6 +354,7 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
                                                 put("sessionId", sessionId())
                                                 put("sdp", description.description)
                                             })
+                                            note("answer sent")
                                             PlatformRemoteLogger.info("native WebRTC answer sent")
                                         }
                                     }, description)
