@@ -93,6 +93,44 @@ const histories = new Map<string, unknown[]>([
 	]],
 	["s-build", [{ kind: "user", id: "u2", text: "看看为什么打包签名失败", at: Date.now() - 120_000 }]],
 ]);
+// `VETTA_INTEROP_LONG=<turns>` adds a long chat, for timing how fast a big history opens;
+// `VETTA_INTEROP_STEPS=<n>` gives each turn that many tool-calling steps. Like the desktop,
+// history is capped at the last 240 entries and tool text at 1200 characters.
+const longTurns = Number(process.env.VETTA_INTEROP_LONG ?? 0);
+const longSteps = Math.max(1, Number(process.env.VETTA_INTEROP_STEPS ?? 1));
+if (longTurns > 0) {
+	const start = Date.now() - longTurns * 600_000;
+	const narration = (turn: number, step: number) =>
+		[
+			`### 第 ${turn + 1} 轮 · 第 ${step + 1} 步`,
+			`先看 \`src/main/index.ts\` 的第 ${step} 处改动，再对照 [说明](https://example.com/${turn}/${step})。`,
+			"- 检查 **签名** 配置\n- 重新跑 `electron-builder`\n- 对比产物大小",
+			"```ts\nconst result = await build({ target: \"dmg\" });\nconsole.log(result.artifacts);\n```",
+			"结论：".concat("这一步的输出与预期一致，可以继续。".repeat(6)),
+		].join("\n\n");
+	const entries = Array.from({ length: longTurns }, (_, turn) => {
+		const at = start + turn * 600_000;
+		return [
+			{ kind: "user", id: `lu${turn}`, text: `第 ${turn + 1} 个问题：继续排查打包流程`, at },
+			...Array.from({ length: longSteps }, (_, step) => ({
+				kind: "assistant",
+				id: `la${turn}-${step}`,
+				text: narration(turn, step),
+				thinking: "先读文件，再运行命令。",
+				toolCalls: [0, 1].map((call) => ({
+					toolCallId: `lt${turn}-${step}-${call}`,
+					toolName: "bash",
+					args: `{"command":"ls step-${turn}-${step}-${call}"}`,
+					result: "drwxr-xr-x  12 dev  staff   384 Sep 29 10:00 build\n".repeat(40).slice(0, 1_200),
+					durationMs: 40,
+				})),
+				at: at + (step + 1) * 5_000,
+			})),
+		];
+	}).flat();
+	sessions.unshift({ id: "s-long", projectCwd: "/Users/dev/vetta", projectName: "vetta", title: "超长会话", preview: "打包流程逐步排查", updatedAt: Date.now(), status: "completed", live: false });
+	histories.set("s-long", entries.slice(-240));
+}
 
 // ---- Files (ADR-0139) ------------------------------------------------------------------
 // Every session's working directory is one fixture folder, served by the desktop's real
