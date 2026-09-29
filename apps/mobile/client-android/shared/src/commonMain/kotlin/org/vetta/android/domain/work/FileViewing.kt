@@ -55,6 +55,7 @@ enum class FilePreviewKind {
 
     /** A picture drawn by the web view: animated GIFs and SVG. */
     WebImage,
+    Pdf,
 
     /** Word, Excel and PowerPoint documents and CSV / TSV tables, drawn as a page ([DocumentPreview]). */
     Document,
@@ -69,11 +70,13 @@ enum class FilePreviewKind {
                 "html", "htm", "xhtml" -> Html
                 in DocumentPreview.EXTENSIONS -> Document
                 "gif", "svg" -> WebImage
+                "pdf" -> Pdf
                 "png", "jpg", "jpeg", "webp", "bmp", "heic", "heif", "ico" -> Image
                 // A scaled-down photo arrives as JPEG whatever its extension was.
                 else ->
                     when {
                         mimeType == "image/svg+xml" || mimeType == "image/gif" -> WebImage
+                        mimeType == "application/pdf" -> Pdf
                         mimeType.startsWith("image/") -> Image
                         FileText.decode(data) != null -> Text
                         else -> Unsupported

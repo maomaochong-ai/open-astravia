@@ -196,6 +196,10 @@ private fun FileBody(info: RemoteFileInfo, content: FileContent, onOpen: () -> U
             val page = remember(content) { DocumentPreview.image(type, content.data) }
             HtmlPreview(page, Modifier.fillMaxSize(), zoomable = true)
         }
+        FilePreviewKind.Pdf -> {
+            var unreadable by remember(content) { mutableStateOf(false) }
+            if (unreadable) CannotShow(info, content, onOpen, onShare) else PdfPreview(info.name, content.data, Modifier.fillMaxSize()) { unreadable = true }
+        }
         FilePreviewKind.Document -> {
             val labels = documentLabels()
             // Drawn off the main thread: a large workbook takes a moment. "" when it could not be read.
@@ -232,6 +236,13 @@ private fun CannotShow(info: RemoteFileInfo, content: FileContent, onOpen: () ->
         TextButton(onClick = onShare) { Text(stringResource(Res.string.files_share)) }
     }
 }
+
+/**
+ * A PDF drawn page by page, pinched to zoom. `onUnreadable` when it will not open (a
+ * password, a damaged file), for the caller to hand it on instead.
+ */
+@Composable
+expect fun PdfPreview(name: String, data: ByteArray, modifier: Modifier = Modifier, onUnreadable: () -> Unit)
 
 @Composable
 private fun documentLabels(): DocumentLabels {
