@@ -23,6 +23,7 @@ import org.vetta.android.resources.files_open_with
 import org.vetta.android.resources.files_rows_shown
 import org.vetta.android.resources.files_share
 import org.vetta.android.resources.files_sheet_empty
+import org.vetta.android.resources.files_updated
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -40,6 +41,7 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -94,14 +96,23 @@ expect fun rememberFileExport(): FileExport
  * and offers it to other apps, which the top bar does for every file.
  */
 @Composable
-fun FilePreviewScreen(source: FileSource, href: String, onDismiss: () -> Unit, export: FileExport = rememberFileExport()) {
+fun FilePreviewScreen(
+    source: FileSource,
+    href: String,
+    onDismiss: () -> Unit,
+    active: Boolean = false,
+    export: FileExport = rememberFileExport(),
+) {
     var reload by remember { mutableIntStateOf(0) }
     var info by remember { mutableStateOf<RemoteFileInfo?>(null) }
     var content by remember { mutableStateOf<FileContent?>(null) }
     var error by remember { mutableStateOf<FileViewError?>(null) }
+    // The desktop's copy changed after this one was fetched.
+    var changed by remember { mutableStateOf(false) }
     LaunchedEffect(href, reload) {
         content = null
         error = null
+        changed = false
         try {
             val file = source.stat(href).also { info = it }
             content = source.read(file)
@@ -110,6 +121,14 @@ fun FilePreviewScreen(source: FileSource, href: String, onDismiss: () -> Unit, e
         }
     }
     val scope = rememberCoroutineScope()
+    // Only noticed when the agent's turn ends, not reloaded: a file does not change under the reader.
+    OnTurnEnd(active) {
+        val shown = info ?: return@OnTurnEnd
+        scope.launch {
+            val latest = runCatching { source.stat(shown.path) }.getOrNull() ?: return@launch
+            changed = latest.modifiedAt != shown.modifiedAt || latest.size != shown.size
+        }
+    }
     val notices = remember { SnackbarHostState() }
     val noApp = stringResource(Res.string.files_no_app)
     val share: () -> Unit = {
@@ -141,6 +160,15 @@ fun FilePreviewScreen(source: FileSource, href: String, onDismiss: () -> Unit, e
                     IconButton(onClick = share, modifier = Modifier.testTag("files.preview.share")) {
                         Icon(Icons.Filled.Share, contentDescription = stringResource(Res.string.files_share))
                     }
+                }
+            }
+            if (changed) {
+                TextButton(
+                    onClick = { reload += 1 },
+                    modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)).testTag("files.preview.changed"),
+                ) {
+                    Icon(Icons.Filled.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Text(stringResource(Res.string.files_updated), modifier = Modifier.padding(start = 6.dp))
                 }
             }
             Box(Modifier.fillMaxSize()) {

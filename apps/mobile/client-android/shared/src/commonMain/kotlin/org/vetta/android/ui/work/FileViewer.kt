@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material3.CircularProgressIndicator
@@ -54,6 +55,7 @@ import org.vetta.android.resources.files_error_offline
 import org.vetta.android.resources.files_error_too_large
 import org.vetta.android.resources.files_error_unsupported_desktop
 import org.vetta.android.resources.files_loading
+import org.vetta.android.resources.files_refresh
 import org.vetta.android.resources.files_retry
 import org.vetta.android.resources.files_root
 import org.vetta.android.resources.files_title
@@ -70,24 +72,30 @@ interface FileSource {
 
 /**
  * The session's working directory, read-only, as the desktop's files panel shows it
- * (ADR-0139): folders first, a way up, and a tap on a file previews it.
+ * (ADR-0139): folders first, a way up, and a tap on a file previews it. What the agent
+ * wrote shows up once its turn ends (`active` falling back), or on refresh; a live watch
+ * would cost the desktop for every phone.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FilesPanel(source: FileSource, onOpenFile: (String) -> Unit, onDismiss: () -> Unit) {
+fun FilesPanel(source: FileSource, onOpenFile: (String) -> Unit, onDismiss: () -> Unit, active: Boolean = false) {
     var path by remember { mutableStateOf("") }
     var reload by remember { mutableIntStateOf(0) }
     var entries by remember { mutableStateOf<List<RemoteFileEntry>?>(null) }
+    var listed by remember { mutableStateOf<String?>(null) }
     var error by remember { mutableStateOf<FileViewError?>(null) }
     LaunchedEffect(path, reload) {
-        entries = null
-        error = null
+        // Another folder starts blank; the same one keeps its entries on screen while it refreshes.
+        if (listed != path) entries = null
         try {
             entries = source.list(path)
+            listed = path
+            error = null
         } catch (failure: FileViewException) {
-            error = failure.reason
+            if (entries == null) error = failure.reason
         }
     }
+    OnTurnEnd(active) { reload += 1 }
     val root = stringResource(Res.string.files_root)
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(bottom = 12.dp).testTag("files.panel")) {
@@ -101,8 +109,11 @@ fun FilesPanel(source: FileSource, onOpenFile: (String) -> Unit, onDismiss: () -
                     if (path.isEmpty()) stringResource(Res.string.files_title) else FileNames.title(path, root),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    modifier = Modifier.weight(1f).padding(horizontal = 12.dp, vertical = 8.dp),
                 )
+                IconButton(onClick = { reload += 1 }, modifier = Modifier.testTag("files.refresh")) {
+                    Icon(Icons.Filled.Refresh, contentDescription = stringResource(Res.string.files_refresh))
+                }
             }
             val shown = entries
             when {
@@ -131,6 +142,16 @@ fun FilesPanel(source: FileSource, onOpenFile: (String) -> Unit, onDismiss: () -
                     }
             }
         }
+    }
+}
+
+/** Runs `onEnd` each time the agent's turn ends: `active` going from true to false. */
+@Composable
+internal fun OnTurnEnd(active: Boolean, onEnd: () -> Unit) {
+    var was by remember { mutableStateOf(active) }
+    LaunchedEffect(active) {
+        if (was && !active) onEnd()
+        was = active
     }
 }
 

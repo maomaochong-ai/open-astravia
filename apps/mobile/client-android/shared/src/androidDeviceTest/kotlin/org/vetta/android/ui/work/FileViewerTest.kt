@@ -189,6 +189,42 @@ class FileViewerTest {
     }
 
     @Test
+    fun showsWhatTheAgentWroteOnceItsTurnEnds() {
+        var written = listOf(RemoteFileEntry("notes.txt", "notes.txt", false, 12, 0.0))
+        var version = 1.0
+        val desktop =
+            object : FileSource by source {
+                override suspend fun list(path: String) = written
+
+                override suspend fun stat(href: String) = RemoteFileInfo("notes.txt", "notes.txt", false, 12, version, "text/plain", "~/vetta/notes.txt")
+
+                override suspend fun read(info: RemoteFileInfo) = FileContent("第 ${info.modifiedAt.toInt()} 版".encodeToByteArray(), "text/plain", info.modifiedAt)
+            }
+        var active by mutableStateOf(true)
+        var previewing by mutableStateOf(false)
+        composeRule.setContent {
+            VettaTheme(ThemeMode.Light) {
+                if (previewing) FilePreviewScreen(desktop, "notes.txt", onDismiss = {}, active = active) else FilesPanel(desktop, onOpenFile = {}, onDismiss = {}, active = active)
+            }
+        }
+        composeRule.onNodeWithTag("files.entry.notes.txt").assertExists()
+        written = written + RemoteFileEntry("report.md", "report.md", false, 40, 0.0)
+        active = false
+        composeRule.waitUntil(5_000) { composeRule.onAllNodesWithTag("files.entry.report.md").fetchSemanticsNodes().isNotEmpty() }
+
+        active = true
+        previewing = true
+        composeRule.waitUntil(5_000) { composeRule.onAllNodesWithText("第 1 版").fetchSemanticsNodes().isNotEmpty() }
+        version = 2.0
+        active = false
+        composeRule.waitUntil(5_000) { composeRule.onAllNodesWithTag("files.preview.changed").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onNodeWithText("第 1 版").assertExists()
+        composeRule.onNodeWithTag("files.preview.changed").performClick()
+        composeRule.waitUntil(5_000) { composeRule.onAllNodesWithText("第 2 版").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onNodeWithTag("files.preview.changed").assertDoesNotExist()
+    }
+
+    @Test
     fun opensALongLogAtOnce() {
         val log = (1..150_000).joinToString("\n") { "2026-09-29 12:00:00 INFO request $it served" }
         composeRule.setContent { VettaTheme(ThemeMode.Light) { FilePreviewScreen(single("server.log", log.encodeToByteArray()), "x", onDismiss = {}) } }

@@ -37,6 +37,8 @@
     <string name="files_no_app">No app on this phone opens this kind of file.</string>
     <string name="files_sheet_empty">This sheet is empty</string>
     <string name="files_rows_shown">Showing the first %1$d of %2$d rows</string>
+    <string name="files_refresh">Refresh</string>
+    <string name="files_updated">This file has changed. Tap to reload.</string>
     <string name="chat_attach_skills">Skills</string>
     <string name="chat_attach_skills_hint">Use a skill or scene from your computer</string>
     <string name="skills_title">Skills</string>
