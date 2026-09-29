@@ -73,6 +73,8 @@ struct SessionView: View {
 							}
 						}
 						.frame(minHeight: pinned ? max(0, viewport - 16) : nil, alignment: .top)
+						// Scrolled to as one piece: a row nested in here is not a lazy item of its own.
+						.id(Self.latestExchange)
 					}
 					if rows.isEmpty {
 						Text(transcript.loaded ? (model.session(id)?.title ?? "") : L10n.Chat.loadingHistory)
@@ -100,18 +102,20 @@ struct SessionView: View {
 			// a reply that grows every frame kept the scroll view animating and stuttered.
 			.defaultScrollAnchor(.bottom, for: .initialOffset)
 			.scrollDismissesKeyboard(.interactively)
-			.onScrollGeometryChange(for: CGFloat.self, of: ChatViewport.height) { _, height in viewport = height }
+			// A geometry change, not a scroll one: that fires only on a change, which left a
+			// chat nothing had moved yet with no height to put the sent message at the top.
+			.onGeometryChange(for: CGFloat.self, of: ChatViewport.height) { viewport = $0 }
 			// History that arrives after the chat opened lands past the initial offset.
 			.onChange(of: transcript.loaded) { _, loaded in
 				if loaded, !pinned { proxy.scrollTo("bottom", anchor: .bottom) }
 			}
 			.onChange(of: latestUser) { _, user in
-				guard pinPending, let user else { return }
+				guard pinPending, user != nil else { return }
 				pinPending = false
-				pinned = true
-				// A frame later, so the exchange has its screen of height to scroll to.
+				// A turn later, so the exchange has its screen of height to scroll to.
 				Task { @MainActor in
-					withAnimation(.smooth(duration: 0.35)) { proxy.scrollTo(user, anchor: .top) }
+					await Task.yield()
+					withAnimation(.smooth(duration: 0.35)) { proxy.scrollTo(Self.latestExchange, anchor: .top) }
 				}
 			}
 		}
@@ -137,6 +141,8 @@ struct SessionView: View {
 					busy: active,
 					onStop: { if !starting { Task { await model.abort(id) } } },
 					onSend: { sent in
+						// Room below goes in before the message does, so the scroll has somewhere to go.
+						pinned = true
 						pinPending = true
 						Task {
 							// Keep what was typed so a failed send is not lost.
@@ -227,6 +233,8 @@ struct SessionView: View {
 		}
 	}
 
+	private static let latestExchange = "latest-exchange"
+
 	@ViewBuilder
 	private func rowView(_ row: ChatRow) -> some View {
 		switch row {
@@ -247,9 +255,10 @@ struct SessionView: View {
 
 /// Runs on SwiftUI's render thread on device, so it must stay nonisolated.
 private enum ChatViewport {
-	/// Whole points, so the keyboard's slide does not re-lay the chat on every fraction.
-	nonisolated static func height(_ geometry: ScrollGeometry) -> CGFloat {
-		(geometry.containerSize.height - geometry.contentInsets.top - geometry.contentInsets.bottom).rounded()
+	/// The chat's height minus the title and composer bars (and the keyboard) it scrolls
+	/// under. Whole points, so the keyboard's slide does not re-lay the chat on every fraction.
+	nonisolated static func height(_ proxy: GeometryProxy) -> CGFloat {
+		(proxy.size.height - proxy.safeAreaInsets.top - proxy.safeAreaInsets.bottom).rounded()
 	}
 }
 
