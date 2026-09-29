@@ -18,6 +18,7 @@ import {
 	recordInputActionToggled,
 } from "../../../shared/lib/app-monitor-events";
 import { usePluginTextResolver } from "../../plugins/runtime/plugin-i18n";
+import { useGoalModeModel } from "../hooks/useGoalModeModel";
 import { usePlanModeModel } from "../hooks/usePlanModeModel";
 
 const KNOWLEDGE_TOOLS = ["kb_filter_by_tags", "kb_list_available_tags"];
@@ -40,6 +41,7 @@ export interface BuiltinInputAction {
 }
 
 export const BUILTIN_PLAN_MODE_ACTION_ID = "__builtin_plan_mode__";
+export const BUILTIN_GOAL_MODE_ACTION_ID = "__builtin_goal_mode__";
 
 export interface InputActionBarModel {
 	actions: {
@@ -57,6 +59,10 @@ function knowledgeVisible(activeTools: Set<string> | null): boolean {
 /** 计划模式需要有人审批计划；新会话页（场景未定）也放行，由发送时落地。 */
 function planModeVisible(scenario: ConversationScenario | null): boolean {
 	return scenario === null || scenario === "conversation" || scenario === "project";
+}
+
+function goalModeVisible(scenario: ConversationScenario | null, hasSession: boolean): boolean {
+	return hasSession && (scenario === "conversation" || scenario === "project");
 }
 
 function actionVisible(
@@ -77,8 +83,11 @@ export function useInputActionBarModel(): InputActionBarModel {
 	const knowledgeBaseEnabled = useAtomValue(knowledgeBaseEnabledAtom);
 	const activeTools = useAtomValue(activeToolNamesAtom);
 	const currentScenario = useAtomValue(currentScenarioAtom);
-	const sessionPath = useAtomValue(activeSessionAtom)?.sessionPath || null;
+	const activeSession = useAtomValue(activeSessionAtom);
+	const sessionPath = activeSession?.sessionPath || null;
 	const planMode = usePlanModeModel();
+	const goalMode = useGoalModeModel();
+	const hasSession = Boolean(activeSession?.runtimeId);
 	const showKnowledge = knowledgeBaseEnabled && knowledgeVisible(activeTools);
 	const visibleActions = allActions.filter((action) => actionVisible(action, activeTools, currentScenario));
 
@@ -137,6 +146,17 @@ export function useInputActionBarModel(): InputActionBarModel {
 						iconClass: "icon-[solar--checklist-minimalistic-linear]",
 						active: planMode.active,
 						onToggle: planMode.onToggle,
+					},
+				]
+			: []),
+		...(goalModeVisible(currentScenario, hasSession)
+			? [
+					{
+						id: BUILTIN_GOAL_MODE_ACTION_ID,
+						label: t("inputActionBar.goalMode.label"),
+						iconClass: "icon-[solar--target-linear]",
+						active: goalMode.active,
+						onToggle: goalMode.onToggle,
 					},
 				]
 			: []),

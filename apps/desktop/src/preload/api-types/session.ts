@@ -8,7 +8,12 @@ import type {
 	CodingAgentSandboxAuthorizationFunctionRequest,
 } from "@vetta/coding-agent/function-extensions";
 import type { ConversationScenario } from "@vetta/coding-agent/profile";
-import type { CodingAgentPermissionMode, CodingAgentPlanModeState } from "@vetta/coding-agent/session-extensions";
+import type {
+	CodingAgentGoalSnapshot,
+	CodingAgentGoalState,
+	CodingAgentPermissionMode,
+	CodingAgentPlanModeState,
+} from "@vetta/coding-agent/session-extensions";
 import type {
 	HistoryEntry,
 	ProjectInfo,
@@ -175,6 +180,14 @@ export interface DesktopSessionApi {
 	getPlanModeState(sessionId: string): Promise<CodingAgentPlanModeState>;
 	/** Plan 模式：用户手势切换权限模式；收紧从下一轮生效，放宽立即生效。 */
 	setPermissionMode(sessionId: string, permissionMode: CodingAgentPermissionMode): Promise<CodingAgentPlanModeState>;
+	/** 目标模式：读取当前会话目标；没有目标时返回 null。 */
+	getGoalState(sessionId: string): Promise<CodingAgentGoalSnapshot>;
+	/** 创建目标并在会话空闲时立即开始执行。 */
+	startGoal(sessionId: string, objective: string): Promise<CodingAgentGoalState>;
+	/** 先暂停目标状态，再中断当前执行，避免自然停止竞态继续续跑。 */
+	pauseGoal(sessionId: string, goalId: string): Promise<CodingAgentGoalState>;
+	resumeGoal(sessionId: string, goalId: string): Promise<CodingAgentGoalState>;
+	clearGoal(sessionId: string, goalId: string): Promise<null>;
 	/** exit_plan_mode：监听主进程发来的计划审批请求。 */
 	onPlanReviewRequest(handler: (request: CodingAgentPlanReviewRequest) => void): () => void;
 	/** 当前仍等待审批的计划快照，供 Renderer 初始化或重载后恢复真实状态。 */

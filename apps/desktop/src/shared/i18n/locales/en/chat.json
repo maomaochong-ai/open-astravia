@@ -556,6 +556,9 @@
 		},
 		"planMode": {
 			"label": "Plan mode"
+		},
+		"goalMode": {
+			"label": "Goal mode"
 		}
 	},
 	"inputBar": {
@@ -967,6 +970,29 @@
 			"dismissed": "Not decided yet",
 			"pending": "Waiting for your approval",
 			"title": "Plan"
+		}
+	},
+	"goalMode": {
+		"dialog": {
+			"cancel": "Cancel",
+			"clear": "Clear goal",
+			"createDescription": "Vetta keeps iterating until the goal is complete, blocked, or paused.",
+			"manageDescription": "Review the current goal, resume it, or clear it.",
+			"objectiveLabel": "Goal",
+			"objectivePlaceholder": "Describe a concrete, verifiable final outcome…",
+			"resume": "Resume goal",
+			"start": "Start working",
+			"statusLabel": "Status",
+			"title": "Goal mode",
+			"usage": "{{used}} tokens used · {{count}} automatic continuations"
+		},
+		"operationFailed": "Goal operation failed",
+		"status": {
+			"active": "Active",
+			"blocked": "Blocked",
+			"complete": "Complete",
+			"paused": "Paused",
+			"usage_limited": "Usage limited"
 		}
 	},
 	"questionPanel": {
