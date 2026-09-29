@@ -50,7 +50,7 @@ export interface LoadedPlugin {
 	fileExplorerDecorationProviders: ResolvedFileExplorerDecorationProvider[];
 	fileIconThemes: PluginFileIconTheme[];
 	activityTabs: PluginActivityTabContribution[];
-	bottomPanels: PluginBottomPanelContribution[];
+	bottomPanels: ResolvedPluginBottomPanelContribution[];
 	inputActions: PluginInputActionContribution[];
 	newSessionContexts: ResolvedPluginNewSessionContextContribution[];
 	cardRenderers: PluginCardRendererContribution[];
@@ -58,6 +58,11 @@ export interface LoadedPlugin {
 	turnCards: PluginTurnCardContribution[];
 	workspaceViews: ResolvedPluginWorkspaceViewContribution[];
 	dispose(): Promise<void>;
+}
+
+export interface ResolvedPluginBottomPanelContribution extends PluginBottomPanelContribution {
+	/** 注册时插件是否持有 `terminal.run`：面板实例的 `openTerminal` 据此放行。 */
+	terminalAccess: boolean;
 }
 
 export interface ResolvedFileExplorerDecorationProvider extends PluginFileExplorerDecorationProvider {
@@ -74,7 +79,7 @@ export class PluginLocalContributions {
 	readonly fileExplorerDecorationProviders: ResolvedFileExplorerDecorationProvider[] = [];
 	readonly fileIconThemes: PluginFileIconTheme[] = [];
 	readonly activityTabs: PluginActivityTabContribution[] = [];
-	readonly bottomPanels: PluginBottomPanelContribution[] = [];
+	readonly bottomPanels: ResolvedPluginBottomPanelContribution[] = [];
 	readonly inputActions: PluginInputActionContribution[] = [];
 	readonly newSessionContexts: ResolvedPluginNewSessionContextContribution[] = [];
 	readonly cardRenderers: PluginCardRendererContribution[] = [];

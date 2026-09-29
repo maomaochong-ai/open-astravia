@@ -500,6 +500,39 @@ function LogsPanel() {
 
 `setCloseGuard` 的裁决：`true` 直接关、`false` 取消、返回文案则请宿主弹一次确认。允许 async（真实判断常常要问后端）。**3 秒内给不出裁决按「需要确认」处理**，不会静默关掉——丢东西的方向必须是保守的。`reason` 为 `session-switch` / `app-quit` 时仍会调用守卫（给你收尾的机会），但返回值被忽略：退出流程上挂一个能阻塞的对话框会把用户卡住。
 
+### 替用户开终端跑命令 openTerminal
+
+脚本运行器、任务面板这类插件要让命令跑在真终端里时，不要自己用 `command.spawn` 拼一个输出视图：`useBottomPanel().openTerminal()` 让宿主在**本实例所在的格子**里开一个内置终端，把命令敲进用户的交互式 shell。终端的输入、颜色、进度条重绘、分屏、关闭前确认都由宿主负责，本地项目和 `ssh://` 远程项目都能用。
+
+- 权限：`terminal.run`（缺权限**抛错** `Plugin permission denied: terminal.run`），并且面板本身要有 `ui.slot.bottom-panel`
+- 需要 Plugin API `^2.8.0`
+- 返回新终端的 `instanceId`；`revealInstance(instanceId)` 把它切回前台，终端已被用户关掉时返回 `false`，据此决定复用还是新开
+- 命令只在终端**第一次**启动时敲一次。用户重开会话时宿主会恢复终端的布局和上次输出，但起的是新 shell，**不会**再敲一遍命令
+- 命令跑完 shell 还在，用户可以接着按上箭头重跑或自己继续敲
+
+```ts
+interface PluginBottomPanelTerminalRequest {
+  command: string; // 单行，不能含换行或其他控制字符，最长 4096 字符
+  cwd?: string;    // 面板 cwd 本身或它下面的目录；省略即面板 cwd
+  label?: string;  // 终端 tab 的名字；省略按目录名显示
+}
+```
+
+```tsx
+function ScriptsPanel() {
+  const { cwd, openTerminal, revealInstance } = useBottomPanel();
+  const running = useRef(new Map<string, string>()); // 脚本 → 终端 instanceId
+
+  const run = (script: { key: string; dir: string; command: string }) => {
+    const existing = running.current.get(script.key);
+    if (existing && revealInstance(existing)) return; // 还开着就切过去，不重复启动 dev server
+    running.current.set(script.key, openTerminal({ command: script.command, cwd: script.dir, label: script.key }));
+  };
+}
+```
+
+以下情况 `openTerminal` 抛错：缺 `terminal.run`；`cwd` 越出面板 `cwd`（或本地、远程混用、不是同一台主机）；命令为空、跨行或含控制字符；当前是本地会话而这台机器上没有终端支持。
+
 ## 输入栏动作 registerInputAction
 
 在 AI 输入栏下方加一个**开关型动作按钮**（toggle）。激活时，宿主在每次发送前调用 `decoratePrompt()`，把元数据和插件隐藏指令合并进外发 prompt。

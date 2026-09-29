@@ -19,6 +19,7 @@ description: 按目标查找 ctx 上的界面、对话、Agent、文件、网络
 | 注册工具与 Hook | `ctx.agent.registerTool`、`registerHook` | `agent.tools.register` / `agent.hooks.register` 及对应 execute | 输入使用结构化 schema，执行错误要稳定返回 |
 | 干预系统提示词与续跑 | `registerSystemPromptProvider`、`registerContinuationProvider` | `agent.systemPrompt.write`、`agent.continuation.register` | Provider 每个 Turn 开始时求值一次，本 Turn 内不会因插件状态变化重跑 |
 | 执行宿主命令 | `ctx.command.run`、`ctx.command.spawn` | `agent.command.run` / `agent.command.spawn` | 清单必须声明 `commands`，不要把密钥放进参数 |
+| 在终端里替用户跑命令 | 底部面板里的 `useBottomPanel().openTerminal` | `terminal.run` | 命令敲进用户自己的 shell、全程可见；cwd 只能在会话目录之内 |
 | 离屏渲染截图 | `ctx.capture.offscreen` | `capture.offscreen` | 旧宿主上为 `undefined`，使用前判空 |
 | 读写文件 | `ctx.fs.*` | `fs.read` / `fs.write` | 大文件先 `stat` 再决定读取方式 |
 | 调用外部网络 | `ctx.network.request` | `network.fetch` | 清单声明最小 `network.allowedHosts` |

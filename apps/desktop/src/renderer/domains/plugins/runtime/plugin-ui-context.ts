@@ -54,6 +54,7 @@ import { copyTextToClipboard, formatPluginErrorDetail, resolvePluginDisplayText 
 import { activateInputActionIds } from "./plugin-input-action-state";
 import type {
 	PluginLocalContributions,
+	ResolvedPluginBottomPanelContribution,
 	ResolvedPluginNewSessionContextContribution,
 	ResolvedPluginWorkspaceViewContribution,
 } from "./plugin-local-contributions";
@@ -407,7 +408,7 @@ export function createPluginUiApi({
 		) {
 			throw new Error("Bottom panel maxInstances must be a positive integer");
 		}
-		const normalized: PluginBottomPanelContribution = {
+		const normalized: ResolvedPluginBottomPanelContribution = {
 			id: contribution.id,
 			label: contribution.label,
 			icon: resolvePluginContributionIcon(contribution.icon, plugin.iconUrl, "h-3.5 w-3.5"),
@@ -415,6 +416,7 @@ export function createPluginUiApi({
 			scope_use: contribution.scope_use,
 			order: contribution.order,
 			maxInstances: contribution.maxInstances,
+			terminalAccess: hasPluginPermission(plugin, "terminal.run"),
 		};
 		bottomPanels.push(normalized);
 		onChanged();

@@ -124,6 +124,8 @@ export interface RegisteredBottomPanel {
 	order?: PluginBottomPanelContribution["order"];
 	/** 同一会话最多几个实例；缺省不限。 */
 	maxInstances?: PluginBottomPanelContribution["maxInstances"];
+	/** 插件持有 `terminal.run`，实例可以替用户开终端跑命令；缺省没有。 */
+	terminalAccess?: boolean;
 }
 
 /**

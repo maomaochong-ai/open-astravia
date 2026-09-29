@@ -19,6 +19,7 @@ The `ctx` passed to `activate(ctx)` is the single outlet for every capability. O
 | Register tools and hooks | `ctx.agent.registerTool`, `registerHook` | `agent.tools.register` / `agent.hooks.register` plus the matching execute | Use structured schemas and stable errors |
 | Shape system prompts and continuation | `registerSystemPromptProvider`, `registerContinuationProvider` | `agent.systemPrompt.write`, `agent.continuation.register` | A provider is evaluated once per Turn and does not re-run when plugin state changes mid-Turn |
 | Run host commands | `ctx.command.run`, `ctx.command.spawn` | `agent.command.run` / `agent.command.spawn` | The manifest must declare `commands`; keep secrets out of arguments |
+| Run a command in a terminal for the user | `useBottomPanel().openTerminal` inside a bottom panel | `terminal.run` | The command is typed into the user's own shell and stays visible; its cwd must be inside the session folder |
 | Capture an offscreen render | `ctx.capture.offscreen` | `capture.offscreen` | `undefined` on older hosts, so check before use |
 | Read and write files | `ctx.fs.*` | `fs.read` / `fs.write` | `stat` large files before deciding how to read them |
 | Call external networks | `ctx.network.request` | `network.fetch` | Declare the smallest `network.allowedHosts` |

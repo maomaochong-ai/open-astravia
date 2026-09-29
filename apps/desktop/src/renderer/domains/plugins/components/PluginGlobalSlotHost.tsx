@@ -276,6 +276,7 @@ export function PluginGlobalSlotHost(): JSX.Element | null {
 				order: panel.order,
 				scope_use: panel.scope_use,
 				maxInstances: panel.maxInstances,
+				terminalAccess: panel.terminalAccess,
 			})),
 		);
 		if (panels.length > 0 || !hostLoading) setBottomPanels(panels);

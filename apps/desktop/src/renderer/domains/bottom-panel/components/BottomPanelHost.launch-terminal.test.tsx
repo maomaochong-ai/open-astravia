@@ -9,6 +9,7 @@ import {
 	pluginBottomPanelsAtom,
 	type RegisteredBottomPanel,
 } from "@shared/store/atoms";
+import { useBottomPanel } from "@vetta-org/plugin-sdk";
 import { createStore, Provider, useSetAtom } from "jotai";
 import { type JSX, useEffect, useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -100,11 +101,38 @@ function Harness(): JSX.Element {
 	);
 }
 
-function setup(localPty: boolean) {
+/** 插件作者写的面板：走 SDK 的 `useBottomPanel()`，而不是宿主内部的实例控制面。 */
+function PluginScriptsPanel(): JSX.Element {
+	const { openTerminal, revealInstance } = useBottomPanel();
+	const [launched, setLaunched] = useState<string | null>(null);
+	const [message, setMessage] = useState("");
+	return (
+		<div>
+			<button
+				type="button"
+				onClick={() => {
+					try {
+						setLaunched(openTerminal({ command: "make test", label: "make test" }));
+					} catch (error) {
+						setMessage(error instanceof Error ? error.message : String(error));
+					}
+				}}
+			>
+				plugin-run
+			</button>
+			<button type="button" onClick={() => setMessage(String(launched ? revealInstance(launched) : false))}>
+				plugin-reveal
+			</button>
+			<p>message:{message}</p>
+		</div>
+	);
+}
+
+function setup(localPty: boolean, panels: RegisteredBottomPanel[] = [scriptsPanel]) {
 	const capabilities = vi.fn(async () => ({ localPty }));
 	Object.assign(window, { vetta: { terminal: { capabilities } } });
 	const store = createStore();
-	store.set(pluginBottomPanelsAtom, [scriptsPanel]);
+	store.set(pluginBottomPanelsAtom, panels);
 	render(
 		<Provider store={store}>
 			<Harness />
@@ -174,6 +202,37 @@ describe("面板替用户开终端跑命令", () => {
 		await user.click(await screen.findByRole("button", { name: "run-dev" }));
 
 		expect(screen.getByText(/message:openTerminal: terminals are not available/)).not.toBeNull();
+		expect(leaves(store)[0]?.tabs).toHaveLength(1);
+	});
+});
+
+describe("插件经 useBottomPanel() 开终端", () => {
+	const pluginPanel = (terminalAccess: boolean): RegisteredBottomPanel => ({
+		...scriptsPanel,
+		component: PluginScriptsPanel,
+		terminalAccess,
+	});
+
+	it("持有 terminal.run 的插件开出终端，并能按返回的 id 切回去", async () => {
+		const { store, user } = setup(true, [pluginPanel(true)]);
+		await user.click(screen.getByRole("button", { name: "open-scripts" }));
+
+		await user.click(await screen.findByRole("button", { name: "plugin-run" }));
+
+		expect(await screen.findByText("terminal:make test@/workspace")).not.toBeNull();
+		await user.click(screen.getByRole("tab", { name: /脚本/ }));
+		await user.click(screen.getByRole("button", { name: "plugin-reveal" }));
+		expect(screen.getByText("message:true")).not.toBeNull();
+		await waitFor(() => expect(leaves(store)[0]?.activeTabId).toBe(leaves(store)[0]?.tabs[1]?.tabId));
+	});
+
+	it("没有 terminal.run 时抛出权限错误，不开终端", async () => {
+		const { store, user } = setup(true, [pluginPanel(false)]);
+		await user.click(screen.getByRole("button", { name: "open-scripts" }));
+
+		await user.click(await screen.findByRole("button", { name: "plugin-run" }));
+
+		expect(screen.getByText("message:Plugin permission denied: terminal.run")).not.toBeNull();
 		expect(leaves(store)[0]?.tabs).toHaveLength(1);
 	});
 });

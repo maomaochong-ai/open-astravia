@@ -4,6 +4,7 @@ export const PLUGIN_PERMISSIONS = [
 	"ui.slot.file-preview",
 	"ui.slot.activity-tab",
 	"ui.slot.bottom-panel",
+	"terminal.run",
 	"ui.slot.input-action",
 	"ui.slot.message",
 	"ui.slot.tool-call",
