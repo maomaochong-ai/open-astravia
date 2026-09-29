@@ -114,6 +114,30 @@ describe("CatalogRoutedRuntimeHostSessionBackend", () => {
 		await runtime.close();
 	});
 
+	it("forwards the caller's message id so the durable user message keeps the optimistic identity", async () => {
+		const prompt = vi.fn(async () => ({ status: "queued" as const, pendingCount: 1, queueItemId: "q-1" }));
+		const promptWhenAvailable = vi.fn(async () => ({ status: "completed" as const, turnId: "turn-1" }));
+		const base = assembly("session-message-id");
+		const sessionBackend: RuntimeHostSessionBackend = {
+			createAssembly: async () => ({
+				...base,
+				corePorts: {
+					...base.corePorts,
+					turnControl: { ...base.corePorts.turnControl, prompt, promptWhenAvailable },
+				},
+			}),
+		};
+		const runtime = new RuntimeHost({ sessionBackend });
+		const { sessionId } = await runtime.createSession();
+
+		await runtime.prompt(sessionId, { text: "queued", messageId: "user-7", streamingBehavior: "followUp" });
+		await runtime.promptWhenAvailable(sessionId, { text: "waiting", messageId: "user-8" });
+
+		expect(prompt).toHaveBeenCalledWith(expect.objectContaining({ messageId: "user-7" }));
+		expect(promptWhenAvailable).toHaveBeenCalledWith(expect.objectContaining({ messageId: "user-8" }), undefined);
+		await runtime.close();
+	});
+
 	it("uses the explicit default backend only for new sessions", async () => {
 		const defaultBackend = backend("default");
 		const legacyBackend = backend("legacy");

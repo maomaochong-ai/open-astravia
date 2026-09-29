@@ -96,6 +96,7 @@ export class RuntimeHostSessionOperations {
 			}
 			const outcome = await handle.turnControl.prompt({
 				text: request.text,
+				messageId: request.messageId,
 				context: request.context,
 				images: request.images,
 				streamingBehavior: request.streamingBehavior,
@@ -150,6 +151,7 @@ export class RuntimeHostSessionOperations {
 		try {
 			const prompt = {
 				text: request.text,
+				messageId: request.messageId,
 				context: request.context,
 				images: request.images,
 				streamingBehavior: request.streamingBehavior,
