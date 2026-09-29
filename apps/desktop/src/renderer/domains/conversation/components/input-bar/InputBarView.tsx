@@ -239,8 +239,9 @@ export function InputBarView({ model, className, classNames, children }: InputBa
 						 * 而它们是同一类「这个会话现在有什么在跑」的指示物。
 						 */}
 						{model.todo || model.bottomPanelPills ? (
-							<div className="flex min-w-0 items-center gap-2">
-								{model.todo ? <InputBarTodoStatus todo={model.todo} /> : null}
+							// 行距由这一行统一给：待办条自带的上内边距只让它自己下沉，与右侧 pill 对不齐。
+							<div className="flex min-w-0 items-center gap-2 px-1 pt-1.5" data-input-bar-status-row="">
+								{model.todo ? <InputBarTodoStatus todo={model.todo} className="p-0" /> : null}
 								{model.bottomPanelPills ? (
 									<BottomPanelPillsView
 										pills={model.bottomPanelPills.pills}

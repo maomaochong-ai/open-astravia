@@ -4,13 +4,14 @@ import { useTranslation } from "react-i18next";
 import type { InputBarTodoModel } from "./types";
 
 /** Desktop 适配层：给纯视图注入 i18n 文案。 */
-export function InputBarTodoStatus({ todo }: { todo: InputBarTodoModel }): JSX.Element {
+export function InputBarTodoStatus({ todo, className }: { todo: InputBarTodoModel; className?: string }): JSX.Element {
 	const { t } = useTranslation("chat");
 	const ThemedTodoStatusBar = useThemeComponent("chat.todoStatusBar", TodoStatusBarView);
 	return (
 		<ThemedTodoStatusBar
 			items={todo.items}
 			onOpenPanel={todo.onOpenPanel}
+			className={className}
 			labels={{
 				trigger: t("inputBar.todo.trigger"),
 				allDone: t("inputBar.todo.allDone"),
