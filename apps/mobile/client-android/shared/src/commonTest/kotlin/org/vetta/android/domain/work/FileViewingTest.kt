@@ -45,6 +45,16 @@ class FileViewingTest {
         assertEquals("vetta", FileNames.title("", root = "vetta"))
     }
 
+    @Test
+    fun namesAFileForOtherAppsByWhatWasSent() {
+        assertEquals("report.pdf", FileNames.exportName("report.pdf", "application/pdf"))
+        assertEquals("IMG_1.jpg", FileNames.exportName("IMG_1.HEIC", "image/jpeg"), "a scaled photo is a JPEG")
+        assertEquals("a.JPG", FileNames.exportName("a.JPG", "image/jpeg"))
+        assertEquals("scan.jpg", FileNames.exportName("scan", "image/jpeg"))
+        assertEquals(".._etc_passwd", FileNames.exportName("../etc/passwd", "text/plain"), "never outside its folder")
+        assertEquals("file", FileNames.exportName("..", "text/plain"))
+    }
+
     private fun chunk(bytes: ByteArray, offset: Int, total: Int, modifiedAt: Double = 7.0) =
         buildJsonObject {
             put("data", Base64.getEncoder().encodeToString(bytes))

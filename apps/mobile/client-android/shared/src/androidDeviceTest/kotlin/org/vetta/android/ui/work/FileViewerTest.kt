@@ -16,6 +16,7 @@ import org.vetta.android.domain.work.FileViewError
 import org.vetta.android.domain.work.FileViewException
 import org.vetta.android.resources.Res
 import org.vetta.android.resources.files_error_forbidden
+import org.vetta.android.resources.files_no_app
 import org.vetta.android.ui.str
 import org.vetta.android.ui.theme.VettaTheme
 import kotlin.test.Test
@@ -65,5 +66,32 @@ class FileViewerTest {
     fun saysWhyAFileCannotBeShown() {
         composeRule.setContent { VettaTheme(ThemeMode.Light) { FilePreviewScreen(source, "/etc/passwd", onDismiss = {}) } }
         composeRule.onNodeWithText(str(Res.string.files_error_forbidden)).assertExists()
+    }
+
+    @Test
+    fun handsAFileItCannotShowToAnotherApp() {
+        val binary =
+            object : FileSource by source {
+                override suspend fun stat(href: String) = RemoteFileInfo("model.bin", "model.bin", false, 3, 1.0, "application/octet-stream", "~/vetta/model.bin")
+
+                override suspend fun read(info: RemoteFileInfo) = FileContent(byteArrayOf(1, 0, 2), "application/octet-stream", 1.0)
+            }
+        val handed = mutableListOf<String>()
+        val export =
+            object : FileExport {
+                override suspend fun share(name: String, mimeType: String, data: ByteArray) {
+                    handed += "share $name"
+                }
+
+                override suspend fun open(name: String, mimeType: String, data: ByteArray): Boolean {
+                    handed += "open $name"
+                    return false
+                }
+            }
+        composeRule.setContent { VettaTheme(ThemeMode.Light) { FilePreviewScreen(binary, "model.bin", onDismiss = {}, export = export) } }
+        composeRule.onNodeWithTag("files.unsupported.open").performClick()
+        composeRule.onNodeWithText(str(Res.string.files_no_app)).assertExists()
+        composeRule.onNodeWithTag("files.preview.share").performClick()
+        composeRule.runOnIdle { assertEquals(listOf("open model.bin", "share model.bin"), handed) }
     }
 }

@@ -74,6 +74,16 @@ object FileNames {
 
     /** The folder above `path`, "" being the working directory. */
     fun parent(path: String): String = path.trimEnd('/').substringBeforeLast('/', "")
+
+    /**
+     * The name a fetched file is handed to other apps under: a photo the desktop scaled
+     * down is a JPEG whatever it was called, and a name never reaches outside its folder.
+     */
+    fun exportName(name: String, mimeType: String): String {
+        val base = name.replace('/', '_').replace('\\', '_').takeUnless { it.isBlank() || it == "." || it == ".." } ?: "file"
+        if (mimeType != "image/jpeg" || extensionOf(base) in setOf("jpg", "jpeg")) return base
+        return base.substringBeforeLast('.', base) + ".jpg"
+    }
 }
 
 object FileText {

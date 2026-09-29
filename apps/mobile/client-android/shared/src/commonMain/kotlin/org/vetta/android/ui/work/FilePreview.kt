@@ -1,6 +1,21 @@
 package org.vetta.android.ui.work
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material3.Button
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.text.style.TextAlign
+import kotlinx.coroutines.launch
+import org.vetta.android.resources.files_no_app
+import org.vetta.android.resources.files_open_with
+import org.vetta.android.resources.files_share
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
@@ -50,12 +65,24 @@ import org.vetta.android.ui.chat.MarkdownContent
 import org.vetta.android.ui.media.imageBitmapFromBytes
 import org.vetta.android.ui.theme.vettaExtra
 
+/** Hands a fetched file to other apps: the share sheet, or whichever app opens its type. */
+interface FileExport {
+    suspend fun share(name: String, mimeType: String, data: ByteArray)
+
+    /** False when no app on the phone opens this type. */
+    suspend fun open(name: String, mimeType: String, data: ByteArray): Boolean
+}
+
+@Composable
+expect fun rememberFileExport(): FileExport
+
 /**
  * One desktop file, full screen: fetched when it opens, then shown by its kind as
- * Markdown, a web page, text or a picture; anything else says it cannot be shown here.
+ * Markdown, a web page, text or a picture; anything else says it cannot be shown here
+ * and offers it to other apps, which the top bar does for every file.
  */
 @Composable
-fun FilePreviewScreen(source: FileSource, href: String, onDismiss: () -> Unit) {
+fun FilePreviewScreen(source: FileSource, href: String, onDismiss: () -> Unit, export: FileExport = rememberFileExport()) {
     var reload by remember { mutableIntStateOf(0) }
     var info by remember { mutableStateOf<RemoteFileInfo?>(null) }
     var content by remember { mutableStateOf<FileContent?>(null) }
@@ -70,6 +97,21 @@ fun FilePreviewScreen(source: FileSource, href: String, onDismiss: () -> Unit) {
             error = failure.reason
         }
     }
+    val scope = rememberCoroutineScope()
+    val notices = remember { SnackbarHostState() }
+    val noApp = stringResource(Res.string.files_no_app)
+    val share: () -> Unit = {
+        val file = info
+        val data = content
+        if (file != null && data != null) scope.launch { export.share(file.name, data.mimeType, data.data) }
+    }
+    val open: () -> Unit = {
+        val file = info
+        val data = content
+        if (file != null && data != null) {
+            scope.launch { if (!export.open(file.name, data.mimeType, data.data)) notices.showSnackbar(noApp) }
+        }
+    }
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Column(Modifier.fillMaxSize().background(MaterialTheme.vettaExtra.pageBackground).statusBarsPadding().navigationBarsPadding().testTag("files.preview")) {
             Row(Modifier.fillMaxWidth().padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -80,6 +122,14 @@ fun FilePreviewScreen(source: FileSource, href: String, onDismiss: () -> Unit) {
                     Text(info?.name ?: href.substringAfterLast('/'), style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     info?.let { Text(it.displayPath, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.vettaExtra.secondaryText, maxLines = 1, overflow = TextOverflow.StartEllipsis) }
                 }
+                if (content != null) {
+                    IconButton(onClick = open, modifier = Modifier.testTag("files.preview.open")) {
+                        Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = stringResource(Res.string.files_open_with))
+                    }
+                    IconButton(onClick = share, modifier = Modifier.testTag("files.preview.share")) {
+                        Icon(Icons.Filled.Share, contentDescription = stringResource(Res.string.files_share))
+                    }
+                }
             }
             Box(Modifier.fillMaxSize()) {
                 val file = info
@@ -87,15 +137,16 @@ fun FilePreviewScreen(source: FileSource, href: String, onDismiss: () -> Unit) {
                 when {
                     error != null -> Message(error!!.message(), onRetry = { reload += 1 })
                     file == null || data == null -> Loading()
-                    else -> FileBody(file, data)
+                    else -> FileBody(file, data, onOpen = open, onShare = share)
                 }
+                SnackbarHost(notices, Modifier.align(Alignment.BottomCenter))
             }
         }
     }
 }
 
 @Composable
-private fun FileBody(info: RemoteFileInfo, content: FileContent) {
+private fun FileBody(info: RemoteFileInfo, content: FileContent, onOpen: () -> Unit, onShare: () -> Unit) {
     val kind = remember(content) { FilePreviewKind.of(info.name, content.mimeType, content.data) }
     val text = remember(content, kind) { if (kind == FilePreviewKind.Image || kind == FilePreviewKind.Unsupported) null else FileText.decode(content.data) }
     when (kind) {
@@ -115,10 +166,31 @@ private fun FileBody(info: RemoteFileInfo, content: FileContent) {
             if (bitmap != null) {
                 Image(bitmap, contentDescription = info.name, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize().padding(8.dp))
             } else {
-                Message(stringResource(Res.string.files_preview_unsupported))
+                CannotShow(info, content, onOpen, onShare)
             }
         }
-        FilePreviewKind.Unsupported -> Message(stringResource(Res.string.files_preview_unsupported))
+        FilePreviewKind.Unsupported -> CannotShow(info, content, onOpen, onShare)
+    }
+}
+
+/** A file the phone cannot show itself, handed on to an app that can. */
+@Composable
+private fun CannotShow(info: RemoteFileInfo, content: FileContent, onOpen: () -> Unit, onShare: () -> Unit) {
+    Column(
+        Modifier.fillMaxSize().padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
+    ) {
+        Icon(Icons.Outlined.Description, contentDescription = null, modifier = Modifier.size(48.dp), tint = MaterialTheme.vettaExtra.secondaryText)
+        Text(info.name, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
+        Text(
+            "${stringResource(Res.string.files_preview_unsupported)} · ${sizeLabel(content.data.size.toLong())}",
+            color = MaterialTheme.vettaExtra.secondaryText,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.testTag("files.message"),
+        )
+        Button(onClick = onOpen, modifier = Modifier.testTag("files.unsupported.open")) { Text(stringResource(Res.string.files_open_with)) }
+        TextButton(onClick = onShare) { Text(stringResource(Res.string.files_share)) }
     }
 }
 

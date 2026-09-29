@@ -164,7 +164,7 @@ internal fun FileViewError.message(): String =
         },
     )
 
-private fun sizeLabel(bytes: Long): String =
+internal fun sizeLabel(bytes: Long): String =
     when {
         bytes < 1024 -> "$bytes B"
         bytes < 1024 * 1024 -> "${(bytes + 512) / 1024} KB"

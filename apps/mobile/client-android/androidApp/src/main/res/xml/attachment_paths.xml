@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Where the system camera writes a photo for the composer; the app reads it back and deletes it. -->
 <paths>
+    <!-- Where the system camera writes a photo for the composer; the app reads it back and deletes it. -->
     <cache-path name="camera" path="camera/" />
+    <!-- Desktop files the preview hands to other apps to share or open. -->
+    <cache-path name="files" path="files/" />
 </paths>
