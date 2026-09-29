@@ -892,7 +892,8 @@ class DesktopMirror(
                 }
             requireLink().request(RemoteRequestMethod.SessionRespond, payload, sessionId)
             dispatch(sessionId, TranscriptAction.QuestionResolved(requestId))
-            patchSession(sessionId) { it.copy(status = RemoteSessionStatus.Running) }
+            // The desktop's next state may already be in, such as the end of the turn.
+            patchSession(sessionId) { if (it.status == RemoteSessionStatus.WaitingInput) it.copy(status = RemoteSessionStatus.Running) else it }
             true
         } catch (error: Throwable) {
             reportError(error)

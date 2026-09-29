@@ -8,6 +8,7 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runTest
@@ -213,9 +214,11 @@ class DesktopMirrorTest {
                     )
                 }
                 RemoteRequestMethod.SessionRespond -> {
-                    respond(request.requestId, buildJsonObject { put("responded", true) })
+                    // The turn can end before the answer's own reply reaches the phone.
                     emit(RemoteEventName.SessionMessage, buildJsonObject { put("kind", "turn_end"); put("at", 9) }, sid)
                     emit(RemoteEventName.SessionState, buildJsonObject { put("status", "completed") }, sid)
+                    delay(50)
+                    respond(request.requestId, buildJsonObject { put("responded", true) })
                 }
                 else -> respond(request.requestId, buildJsonObject {})
             }
@@ -273,6 +276,7 @@ class DesktopMirrorTest {
             mirror.respond("s2", "q1", listOf(RemoteQuestionAnswer("要发邮件吗？", listOf("发"))))
             assertTrue(eventually { mirror.state.value.transcript("s2").sessionState.status == RemoteSessionStatus.Completed })
             assertNull(mirror.state.value.transcript("s2").pendingQuestion)
+            assertEquals(RemoteSessionStatus.Completed, mirror.state.value.session("s2")?.status, "the list is not put back to running")
             assertEquals(1, device.turnEnds)
 
             mirror.openSession("s1")
