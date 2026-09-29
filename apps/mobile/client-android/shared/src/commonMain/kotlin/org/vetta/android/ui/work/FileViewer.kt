@@ -14,8 +14,24 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.automirrored.outlined.Article
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.outlined.AudioFile
+import androidx.compose.material.icons.outlined.CloudOff
+import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.Description
-import androidx.compose.material.icons.outlined.Folder
+import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material.icons.outlined.FolderZip
+import androidx.compose.material.icons.outlined.Image
+import androidx.compose.material.icons.outlined.Language
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Movie
+import androidx.compose.material.icons.outlined.PictureAsPdf
+import androidx.compose.material.icons.outlined.SearchOff
+import androidx.compose.material.icons.outlined.Slideshow
+import androidx.compose.material.icons.outlined.Storage
+import androidx.compose.material.icons.outlined.SystemUpdate
+import androidx.compose.material.icons.outlined.TableChart
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -33,13 +49,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.resources.stringResource
 import org.vetta.android.domain.remote.RemoteFileEntry
 import org.vetta.android.domain.remote.RemoteFileInfo
+import org.vetta.android.domain.work.FileCategory
 import org.vetta.android.domain.work.FileContent
 import org.vetta.android.domain.work.FileNames
 import org.vetta.android.domain.work.FileViewError
@@ -59,6 +78,7 @@ import org.vetta.android.resources.files_refresh
 import org.vetta.android.resources.files_retry
 import org.vetta.android.resources.files_root
 import org.vetta.android.resources.files_title
+import org.vetta.android.ui.i18n.relativeTimeLabel
 import org.vetta.android.ui.theme.vettaExtra
 
 /** What the file views need from the desktop, each throwing [FileViewException]. */
@@ -117,7 +137,7 @@ fun FilesPanel(source: FileSource, onOpenFile: (String) -> Unit, onDismiss: () -
             }
             val shown = entries
             when {
-                error != null -> Message(error!!.message(), onRetry = { reload += 1 })
+                error != null -> Failure(error!!) { reload += 1 }
                 shown == null -> Loading()
                 shown.isEmpty() -> Message(stringResource(Res.string.files_empty))
                 else ->
@@ -132,10 +152,19 @@ fun FilesPanel(source: FileSource, onOpenFile: (String) -> Unit, onDismiss: () -
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(14.dp),
                             ) {
-                                Icon(if (entry.isDirectory) Icons.Outlined.Folder else Icons.Outlined.Description, contentDescription = null)
-                                Text(entry.name, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                                if (!entry.isDirectory) {
-                                    Text(sizeLabel(entry.size), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.vettaExtra.secondaryText)
+                                Icon(
+                                    if (entry.isDirectory) Icons.Filled.Folder else FileNames.category(entry.name).icon(),
+                                    contentDescription = null,
+                                    tint = if (entry.isDirectory) MaterialTheme.colorScheme.primary else MaterialTheme.vettaExtra.secondaryText,
+                                )
+                                Column(Modifier.weight(1f)) {
+                                    Text(entry.name, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.MiddleEllipsis)
+                                    val time = relativeTimeLabel(entry.modifiedAt.toLong())
+                                    Text(
+                                        if (entry.isDirectory) time else "${sizeLabel(entry.size)} · $time",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.vettaExtra.secondaryText,
+                                    )
                                 }
                             }
                         }
@@ -164,12 +193,44 @@ internal fun Loading() {
 }
 
 @Composable
-internal fun Message(text: String, onRetry: (() -> Unit)? = null) {
+private fun Message(text: String) {
+    Text(text, color = MaterialTheme.vettaExtra.secondaryText, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(32.dp).testTag("files.message"))
+}
+
+/** Why a file or folder cannot be shown, with a way to try again when that may help. */
+@Composable
+internal fun Failure(error: FileViewError, onRetry: () -> Unit) {
     Column(Modifier.fillMaxWidth().padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(text, color = MaterialTheme.vettaExtra.secondaryText, modifier = Modifier.testTag("files.message"))
-        if (onRetry != null) TextButton(onClick = onRetry) { Text(stringResource(Res.string.files_retry)) }
+        Icon(error.icon(), contentDescription = null, modifier = Modifier.size(36.dp), tint = MaterialTheme.vettaExtra.secondaryText)
+        Text(error.message(), color = MaterialTheme.vettaExtra.secondaryText, textAlign = TextAlign.Center, modifier = Modifier.testTag("files.message"))
+        if (error.retryable) TextButton(onClick = onRetry, modifier = Modifier.testTag("files.retry")) { Text(stringResource(Res.string.files_retry)) }
     }
 }
+
+private fun FileViewError.icon(): ImageVector =
+    when (this) {
+        FileViewError.Forbidden -> Icons.Outlined.Lock
+        FileViewError.NotFound -> Icons.Outlined.SearchOff
+        FileViewError.TooLarge -> Icons.Outlined.Storage
+        FileViewError.Offline -> Icons.Outlined.CloudOff
+        FileViewError.UnsupportedDesktop -> Icons.Outlined.SystemUpdate
+        FileViewError.NotAFile, FileViewError.Failed -> Icons.Outlined.ErrorOutline
+    }
+
+internal fun FileCategory.icon(): ImageVector =
+    when (this) {
+        FileCategory.Text -> Icons.AutoMirrored.Outlined.Article
+        FileCategory.Web -> Icons.Outlined.Language
+        FileCategory.Image -> Icons.Outlined.Image
+        FileCategory.Pdf -> Icons.Outlined.PictureAsPdf
+        FileCategory.Sheet -> Icons.Outlined.TableChart
+        FileCategory.Slides -> Icons.Outlined.Slideshow
+        FileCategory.Document -> Icons.Outlined.Description
+        FileCategory.Audio -> Icons.Outlined.AudioFile
+        FileCategory.Video -> Icons.Outlined.Movie
+        FileCategory.Archive -> Icons.Outlined.FolderZip
+        FileCategory.Code -> Icons.Outlined.Code
+    }
 
 @Composable
 internal fun FileViewError.message(): String =

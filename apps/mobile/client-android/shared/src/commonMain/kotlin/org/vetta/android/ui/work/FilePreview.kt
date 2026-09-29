@@ -175,7 +175,7 @@ fun FilePreviewScreen(
                 val file = info
                 val data = content
                 when {
-                    error != null -> Message(error!!.message(), onRetry = { reload += 1 })
+                    error != null -> Failure(error!!) { reload += 1 }
                     file == null || data == null -> Loading()
                     else -> FileBody(file, data, onOpen = open, onShare = share)
                 }

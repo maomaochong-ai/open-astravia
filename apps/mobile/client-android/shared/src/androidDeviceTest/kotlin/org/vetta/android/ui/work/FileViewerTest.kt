@@ -72,6 +72,23 @@ class FileViewerTest {
     fun saysWhyAFileCannotBeShown() {
         composeRule.setContent { VettaTheme(ThemeMode.Light) { FilePreviewScreen(source, "/etc/passwd", onDismiss = {}) } }
         composeRule.onNodeWithText(str(Res.string.files_error_forbidden)).assertExists()
+        composeRule.onNodeWithTag("files.retry").assertDoesNotExist()
+    }
+
+    @Test
+    fun offersToTryAgainWhenTheComputerDropsOff() {
+        var offline = true
+        val flaky =
+            object : FileSource by source {
+                override suspend fun list(path: String): List<RemoteFileEntry> {
+                    if (offline) throw FileViewException(FileViewError.Offline)
+                    return source.list(path)
+                }
+            }
+        composeRule.setContent { VettaTheme(ThemeMode.Light) { FilesPanel(flaky, onOpenFile = {}, onDismiss = {}) } }
+        offline = false
+        composeRule.onNodeWithTag("files.retry").performClick()
+        composeRule.onNodeWithTag("files.entry.notes.txt").assertExists()
     }
 
     @Test

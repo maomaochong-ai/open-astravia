@@ -93,7 +93,26 @@ enum class FilePreviewKind {
     }
 }
 
+/** What kind of file a name suggests, for the icon beside it in a listing. */
+enum class FileCategory { Text, Web, Image, Pdf, Sheet, Slides, Document, Audio, Video, Archive, Code }
+
 object FileNames {
+    /** By extension; anything unrecognised is taken for code, as the working folder mostly holds. */
+    fun category(name: String): FileCategory =
+        when (extensionOf(name)) {
+            "md", "markdown", "mdx", "txt", "log", "rtf" -> FileCategory.Text
+            "html", "htm", "xhtml" -> FileCategory.Web
+            "png", "jpg", "jpeg", "gif", "webp", "heic", "heif", "svg", "bmp", "tif", "tiff", "ico" -> FileCategory.Image
+            "pdf" -> FileCategory.Pdf
+            "csv", "tsv", "xls", "xlsx", "xlsm", "numbers" -> FileCategory.Sheet
+            "ppt", "pptx", "pptm", "key" -> FileCategory.Slides
+            "doc", "docx", "docm", "pages", "odt" -> FileCategory.Document
+            "mp3", "m4a", "aac", "wav", "ogg", "opus", "flac" -> FileCategory.Audio
+            "mp4", "m4v", "mov", "webm", "mkv" -> FileCategory.Video
+            "zip", "gz", "tgz", "7z", "rar", "tar" -> FileCategory.Archive
+            else -> FileCategory.Code
+        }
+
     /** Lower-cased, without the dot; empty when there is none. */
     fun extensionOf(name: String): String = name.substringAfterLast('.', "").lowercase()
 
@@ -161,6 +180,9 @@ enum class FileViewError {
     NotAFile,
     Failed,
     ;
+
+    /** Whether trying again may help: a dropped connection or a failed read, not a refusal. */
+    val retryable: Boolean get() = this == Offline || this == Failed
 
     companion object {
         fun from(error: Throwable): FileViewError =

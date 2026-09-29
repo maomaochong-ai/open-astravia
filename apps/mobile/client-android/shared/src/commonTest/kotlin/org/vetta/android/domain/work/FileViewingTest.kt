@@ -67,6 +67,17 @@ class FileViewingTest {
     }
 
     @Test
+    fun sortsFilesIntoKindsForTheirIconsAndSaysWhenTryingAgainHelps() {
+        assertEquals(FileCategory.Sheet, FileNames.category("Q3.XLSX"))
+        assertEquals(FileCategory.Slides, FileNames.category("deck.pptx"))
+        assertEquals(FileCategory.Pdf, FileNames.category("paper.pdf"))
+        assertEquals(FileCategory.Image, FileNames.category("shot.png"))
+        assertEquals(FileCategory.Code, FileNames.category("main.kt"))
+        assertEquals(FileCategory.Code, FileNames.category("Makefile"))
+        assertEquals(listOf(FileViewError.Offline, FileViewError.Failed), FileViewError.entries.filter { it.retryable })
+    }
+
+    @Test
     fun namesAFileForOtherAppsByWhatWasSent() {
         assertEquals("report.pdf", FileNames.exportName("report.pdf", "application/pdf"))
         assertEquals("IMG_1.jpg", FileNames.exportName("IMG_1.HEIC", "image/jpeg"), "a scaled photo is a JPEG")
