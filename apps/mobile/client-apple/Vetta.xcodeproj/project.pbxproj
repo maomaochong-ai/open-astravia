@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		04032F6FE25AFFC90FF24235 /* BoardSummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2E57343C2D36E3BE44AE2C2 /* BoardSummary.swift */; };
+		0AF6F5BEB9F459E2AC4F9F2C /* SelectableText.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BB05311664030A073FAB0BD /* SelectableText.swift */; };
 		1751F6BEC22BE28DE42676E2 /* MarkdownView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7F30E48D0595CE66EF6B8A3 /* MarkdownView.swift */; };
 		1BC2ADDD25F6F424A36E542A /* SessionActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42C75DA38A656366214CFA8E /* SessionActivityAttributes.swift */; };
 		1C3ED9E212F22BF40A83A827 /* SessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7040E8A21BCC88B0A703712D /* SessionView.swift */; };
@@ -116,6 +117,7 @@
 		966CF05AA64EAAE95B6C18D2 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		9958F311B813AAB23E9A6D69 /* VettaApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VettaApp.swift; sourceTree = "<group>"; };
 		9A223D846ECA782112079EA4 /* SpeechDictation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechDictation.swift; sourceTree = "<group>"; };
+		9BB05311664030A073FAB0BD /* SelectableText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectableText.swift; sourceTree = "<group>"; };
 		A13EF44F614DFAF09BEA92D8 /* InfoPlist.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = InfoPlist.xcstrings; sourceTree = "<group>"; };
 		A2F2E8568E29015930ADEE81 /* BackgroundRefresh.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundRefresh.swift; sourceTree = "<group>"; };
 		A49878D0D659B4398CDFD735 /* FilePreviewScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilePreviewScreen.swift; sourceTree = "<group>"; };
@@ -301,6 +303,7 @@
 				F4BD5077EC35B7196CE6FE34 /* ProjectRow.swift */,
 				AE556B5F31422EA43BDF8294 /* ProjectSheet.swift */,
 				1571266B7208052D80E40A95 /* QuestionPanel.swift */,
+				9BB05311664030A073FAB0BD /* SelectableText.swift */,
 				DDD1656ECA9BA0A1442B19A3 /* SessionCards.swift */,
 				3336215DCCD9B5B8DB739834 /* SkillSheet.swift */,
 			);
@@ -491,6 +494,7 @@
 				8CB51BACBD63840B98FE330F /* QuestionPanel.swift in Sources */,
 				F7A5DB149BDBD735850F0D00 /* RemoteDesktopScreen.swift in Sources */,
 				B3E19125E863C30778ACE155 /* RootView.swift in Sources */,
+				0AF6F5BEB9F459E2AC4F9F2C /* SelectableText.swift in Sources */,
 				1BC2ADDD25F6F424A36E542A /* SessionActivityAttributes.swift in Sources */,
 				AEE9524BBEAF56AD778B1F3D /* SessionCards.swift in Sources */,
 				B5BF4A2E7B64452A1BA4F1B9 /* SessionNotifier.swift in Sources */,

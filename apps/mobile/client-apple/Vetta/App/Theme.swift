@@ -16,6 +16,9 @@ enum Theme {
 	/// Inverted surface for primary pills.
 	static let pill = dynamic(light: 0x0B0C0E, dark: 0xF4F5F6)
 	static let pillInk = dynamic(light: 0xFFFFFF, dark: 0x0A0B0D)
+	/// The caret, selection handles and highlight in every text, iOS blue whatever the accent.
+	nonisolated static let selectionUI = UIColor.systemBlue
+	static let selection = Color(uiColor: selectionUI)
 	/// The user's own message, iMessage blue with white text in both modes.
 	static let userBubble = Color(uiColor: .systemBlue)
 	/// Switches are on in black, or mid grey in dark mode where a white track would hide the knob.
@@ -40,13 +43,25 @@ enum Theme {
 	/// The soft light at the top of Home and a project's page.
 	static let glow = dynamic(light: 0xFFFFFF, dark: 0x34373D)
 
+	/// The chips behind inline code and links in selectable text, which UIKit
+	/// may draw off the main actor; the same colours as `card2`, `line` and `blue`.
+	nonisolated enum Chip {
+		static let codeFill = dynamicUI(light: 0xF0F1F3, dark: 0x1C1F23)
+		static let codeStroke = dynamicUI(light: 0xE3E5E8, dark: 0x24272C)
+		static let link = dynamicUI(light: 0x2563EB, dark: 0x3B82F6)
+	}
+
 	/// UIKit resolves the colour on SwiftUI's render thread on device, so the
 	/// provider must not inherit the module's main-actor isolation: a main-actor
 	/// closure traps there (EXC_BREAKPOINT on com.apple.SwiftUI.AsyncRenderer).
 	private nonisolated static func dynamic(light: UInt32, dark: UInt32) -> Color {
-		Color(uiColor: UIColor { @Sendable traits in
+		Color(uiColor: dynamicUI(light: light, dark: dark))
+	}
+
+	private nonisolated static func dynamicUI(light: UInt32, dark: UInt32) -> UIColor {
+		UIColor { @Sendable traits in
 			UIColor(rgb: traits.userInterfaceStyle == .dark ? dark : light)
-		})
+		}
 	}
 }
 

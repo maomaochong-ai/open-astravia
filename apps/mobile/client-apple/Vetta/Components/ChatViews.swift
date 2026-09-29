@@ -38,16 +38,22 @@ struct UserBubble: View {
 	private func bubble(_ text: String) -> some View {
 		HStack {
 			Spacer(minLength: 48)
-			Text(text)
-				.font(.system(size: 16))
-				.lineSpacing(2)
-				.foregroundStyle(.white)
-				.textSelection(.enabled)
+			SelectableText(text: Self.attributed(text), tint: .white)
 				.padding(.horizontal, 13)
 				.padding(.vertical, 8)
 				.padding(.bottom, MessageBubbleShape.tail)
 				.background(MessageBubbleShape().fill(Theme.userBubble))
 		}
+	}
+
+	private static func attributed(_ text: String) -> NSAttributedString {
+		let paragraph = NSMutableParagraphStyle()
+		paragraph.lineSpacing = 2
+		return NSAttributedString(string: text, attributes: [
+			.font: UIFont.systemFont(ofSize: 16),
+			.foregroundColor: UIColor.white,
+			.paragraphStyle: paragraph,
+		])
 	}
 }
 
@@ -397,10 +403,12 @@ struct StreamingMarkdown: View {
 		} else {
 			TimelineView(.animation(minimumInterval: 1.0 / 60, paused: clock.idle && !clock.behind(target))) { context in
 				let reveal = clock.advance(to: context.date.timeIntervalSinceReferenceDate, target: target)
+				// Once the reply is over and every character has faded in, it becomes selectable.
+				let settled = !live && !reveal.animating(toward: target)
 				MarkdownView(
 					text: reveal.shown == target ? text : String(text.prefix(reveal.shown)),
 					// A fade lasts `fade` seconds and the head moves at most `backlog / catchUp` per second.
-					fade: FadeTail(span: 160) { reveal.opacity(at: reveal.shown - 1 - $0) }
+					fade: settled ? nil : FadeTail(span: 160) { reveal.opacity(at: reveal.shown - 1 - $0) }
 				)
 			}
 		}

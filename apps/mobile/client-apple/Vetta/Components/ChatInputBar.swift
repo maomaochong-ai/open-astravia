@@ -105,6 +105,7 @@ struct ChatInputBar: View {
 				.font(.body)
 				.lineLimit(1 ... 6)
 				.focused($focused)
+				.tint(Theme.selection)
 				.padding(.leading, 16)
 				.padding(.vertical, 11)
 				.accessibilityIdentifier("composer.field")

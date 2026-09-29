@@ -17,6 +17,9 @@ struct VettaApp: App {
 		let ephemeral = ProcessInfo.processInfo.arguments.contains("-VettaEphemeralStorage")
 		let notifier = SessionNotifier()
 		self.ephemeral = ephemeral
+		// Fields SwiftUI's tint does not reach, such as an alert's, get the blue caret too.
+		UITextField.appearance().tintColor = Theme.selectionUI
+		UITextView.appearance().tintColor = Theme.selectionUI
 		_notifier = State(initialValue: notifier)
 		let model = VettaApp.makeModel(ephemeral: ephemeral, signals: ephemeral ? nil : notifier)
 		_model = State(initialValue: model)
