@@ -29,9 +29,9 @@ vi.mock("@vetta-org/theme-ui/chat", () => ({
 vi.mock("@shared/components/ModelSelect/useModelOptions", () => ({
 	useModelOptions: () => ({ options: [{ key: "provider/fixed" }, { key: "provider/other" }] }),
 }));
-vi.mock("@shared/components/ModelSelect", () => ({
-	ModelSelect: ({ value, onChange, placeholder }: { value: string | null; onChange: (value: string | null) => void; placeholder: string }) => (
-		<select aria-label="member-model" value={value ?? ""} onChange={(event) => onChange(event.target.value || null)}>
+vi.mock("./TeamMemberModelSelector", () => ({
+	TeamMemberModelSelector: ({ value, onChange, placeholder, ariaLabel }: { value: string | null; onChange: (value: string | null) => void; placeholder: string; ariaLabel: string }) => (
+		<select aria-label={ariaLabel} value={value ?? ""} onChange={(event) => onChange(event.target.value || null)}>
 			<option value="">{placeholder}</option>
 			<option value="provider/fixed">Fixed</option>
 			<option value="provider/other">Other</option>
@@ -144,7 +144,7 @@ describe("TeamSettingsSheet", () => {
 	it("lets a plugin team's member pin and clear a model without editing its definition", async () => {
 		renderSheet({ team: { ...team, source: { kind: "plugin", pluginId: "preset" } } });
 		const user = userEvent.setup();
-		const selectors = screen.getAllByLabelText("member-model");
+		const selectors = screen.getAllByLabelText("settings.memberModel");
 		await user.selectOptions(selectors[0] as HTMLSelectElement, "provider/fixed");
 		await waitFor(() => expect(setMemberModel).toHaveBeenCalledWith("team", "member-alpha", { modelKey: "provider/fixed" }));
 		await user.selectOptions(selectors[0] as HTMLSelectElement, "");
@@ -155,7 +155,7 @@ describe("TeamSettingsSheet", () => {
 		savedModels["member-alpha"] = { agentProfileId: "alpha", modelKey: "provider/retired" };
 		renderSheet();
 		await waitFor(() => expect(screen.getByRole("status").textContent).toContain("provider/retired"));
-		const selectors = screen.getAllByLabelText("member-model");
+		const selectors = screen.getAllByLabelText("settings.memberModel");
 		expect((selectors[0] as HTMLSelectElement).value).toBe("");
 	});
 
