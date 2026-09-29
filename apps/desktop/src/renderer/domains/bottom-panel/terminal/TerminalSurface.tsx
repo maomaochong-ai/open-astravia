@@ -8,12 +8,13 @@ import { Terminal } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
 import { pathBasename } from "@shared/lib/utils";
 import { useAtom } from "jotai";
-import { type JSX, useEffect, useRef, useState } from "react";
+import { type JSX, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { TerminalEventEnvelope } from "../../../../shared/terminal-ipc";
 import { bottomPanelFocusRequestAtom } from "../registry/instance-atoms";
 import { useBottomPanelInstance } from "../registry/instance-context";
 import { detectWebgl2Support, selectTerminalRenderer } from "./select-terminal-renderer";
+import { claimTerminalLaunch, readTerminalLaunchPayload } from "./terminal-launch";
 import { buildTerminalTheme, createDocumentCssVariableReader } from "./terminal-theme";
 
 /** xterm 自己的回滚历史；主进程那份尾部缓冲只负责补断连期间的输出，不是历史。 */
@@ -42,10 +43,16 @@ export function TerminalSurface(): JSX.Element {
 	const [message, setMessage] = useState<string | null>(null);
 	const [degradedNoResize, setDegradedNoResize] = useState(false);
 
-	const { cwd, tabId, active } = handle;
+	const { tabId, active } = handle;
+	// 插件替用户开的终端带着要敲的命令和子目录；普通终端没有载荷，落在会话 cwd。
+	const launch = useMemo(() => readTerminalLaunchPayload(handle.payload, handle.cwd), [handle.payload, handle.cwd]);
+	const cwd = launch?.cwd ?? handle.cwd;
+	const launchLabel = launch?.label;
 	// effect 里要用到最新的 handle 方法，但不希望它们变化就重建终端。
 	const handleRef = useRef(handle);
 	handleRef.current = handle;
+	const launchRef = useRef(launch);
+	launchRef.current = launch;
 	const activeRef = useRef(active);
 	activeRef.current = active;
 	/** 由建终端的 effect 填上；折叠期间跳过的尺寸变化靠它在展开后补一次。 */
@@ -194,6 +201,12 @@ export function TerminalSurface(): JSX.Element {
 				});
 				cleanups.push(() => inputSubscription.dispose());
 
+				const claimed = claimTerminalLaunch(launchRef.current);
+				if (claimed) {
+					handleRef.current.setPayload(claimed.payload);
+					void window.vetta.terminal.write(result.terminalId, claimed.input);
+				}
+
 				// 有活进程时关闭要先确认；空闲时把守卫撤掉，免得每次关都问一遍。
 				handleRef.current.setCloseGuard(async () => {
 					if (!terminalId) return true;
@@ -234,11 +247,11 @@ export function TerminalSurface(): JSX.Element {
 		};
 	}, [cwd, tabId, t]);
 
-	// 名字随 cwd 走：同一会话里开多个终端时，按目录区分比都叫「终端」有用。
+	// 名字随 cwd 走：同一会话里开多个终端时，按目录区分比都叫「终端」有用。插件开的终端用它给的名字。
 	useEffect(() => {
-		const label = cwd ? pathBasename(cwd) : "";
+		const label = launchLabel ?? (cwd ? pathBasename(cwd) : "");
 		handleRef.current.setMeta({ label: label || t("bottomPanel.terminal.title") });
-	}, [cwd, tabId, t]);
+	}, [cwd, launchLabel, tabId, t]);
 
 	// 重新成为活动格时补一次 fit：折叠期间容器高度是 0，那段时间的尺寸变化都被跳过了。
 	useEffect(() => {

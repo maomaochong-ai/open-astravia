@@ -2,8 +2,10 @@ import { dispatchBottomPanelAtomFamily } from "@shared/store/atoms";
 import { useSetAtom } from "jotai";
 import { Component, type ErrorInfo, type JSX, type ReactNode, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { parseTerminalLaunch, toTerminalLaunchPayload } from "../terminal/terminal-launch";
 import { setBottomPanelCloseGuardAtom, setBottomPanelMetaAtom } from "./instance-atoms";
 import { BottomPanelInstanceProvider } from "./instance-context";
+import { launchTerminalAtomFamily, revealTabAtomFamily } from "./tab-commands";
 import type { BottomPanelComponentDefinition, BottomPanelHandle, BottomPanelTabMeta } from "./types";
 
 interface BoundaryProps {
@@ -45,6 +47,13 @@ export interface BottomPanelInstanceHostProps {
 	readonly tabId: string;
 	readonly cwd: string | null;
 	readonly active: boolean;
+	readonly payload: unknown;
+	/** 当前会话能不能开终端（本机缺 PTY 的本地会话不能）。 */
+	readonly terminalAvailable: boolean;
+}
+
+function newId(prefix: string): string {
+	return `${prefix}-${crypto.randomUUID()}`;
 }
 
 /** 每个实例一层 bridge：注入 handle、隔离渲染错误、卸载时清掉实例的运行时状态。 */
@@ -54,22 +63,40 @@ export function BottomPanelInstanceHost({
 	tabId,
 	cwd,
 	active,
+	payload,
+	terminalAvailable,
 }: BottomPanelInstanceHostProps): JSX.Element {
 	const { t } = useTranslation("chat");
 	const setMeta = useSetAtom(setBottomPanelMetaAtom);
 	const setCloseGuard = useSetAtom(setBottomPanelCloseGuardAtom);
 	const dispatch = useSetAtom(dispatchBottomPanelAtomFamily(scopeKey));
+	const launchTerminal = useSetAtom(launchTerminalAtomFamily(scopeKey));
+	const revealTab = useSetAtom(revealTabAtomFamily(scopeKey));
 
 	const handle = useMemo<BottomPanelHandle>(
 		() => ({
 			tabId,
 			cwd,
 			active,
+			payload,
 			setMeta: (meta: Partial<BottomPanelTabMeta> | null) => setMeta(tabId, meta),
 			setCloseGuard: (guard) => setCloseGuard(tabId, guard),
-			setPayload: (payload) => dispatch({ type: "set-payload", tabId, payload }),
+			setPayload: (next) => dispatch({ type: "set-payload", tabId, payload: next }),
+			openTerminal: (launch) => {
+				if (!terminalAvailable) throw new Error("openTerminal: terminals are not available in this session");
+				const parsed = parseTerminalLaunch(launch, cwd);
+				const terminalTabId = newId("tab");
+				launchTerminal({
+					tabId: terminalTabId,
+					newLeafId: newId("leaf"),
+					nearTabId: tabId,
+					payload: toTerminalLaunchPayload(parsed),
+				});
+				return terminalTabId;
+			},
+			revealTab: (target) => revealTab(target),
 		}),
-		[tabId, cwd, active, setMeta, setCloseGuard, dispatch],
+		[tabId, cwd, active, payload, terminalAvailable, setMeta, setCloseGuard, dispatch, launchTerminal, revealTab],
 	);
 
 	// 实例卸载时清掉运行时状态；默认 meta 不在这里上报——tab 条按
