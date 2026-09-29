@@ -74,6 +74,8 @@ import org.vetta.android.domain.remote.ToolCard
 import org.vetta.android.domain.remote.ToolCardStatus
 import org.vetta.android.domain.remote.TranscriptAttachment
 import org.vetta.android.domain.work.AgentTurn
+import org.vetta.android.domain.work.SkillReference
+import org.vetta.android.domain.work.SkillTokens
 import org.vetta.android.domain.work.TurnSegment
 import org.vetta.android.domain.work.WorkStep
 import org.vetta.android.resources.Res
@@ -94,9 +96,21 @@ import org.vetta.android.ui.i18n.relativeTimeLabel
 import org.vetta.android.ui.theme.vettaExtra
 
 @Composable
-fun UserBubble(text: String, attachments: List<TranscriptAttachment>, modifier: Modifier = Modifier) {
+fun UserBubble(
+    text: String,
+    attachments: List<TranscriptAttachment>,
+    modifier: Modifier = Modifier,
+    skillName: (SkillReference) -> String = { it.name },
+) {
     val colors = MaterialTheme.workColors
+    // The skills a prompt starts with show as chips, like the composer had them.
+    val (skills, body) = remember(text) { SkillTokens.split(text) }
     Column(modifier.fillMaxWidth().padding(bottom = 16.dp), horizontalAlignment = Alignment.End) {
+        if (skills.isNotEmpty()) {
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(bottom = 6.dp).testTag("bubble.skills")) {
+                items(skills, key = { it.id }) { SkillBadge(skillName(it)) }
+            }
+        }
         if (attachments.isNotEmpty()) {
             LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(bottom = 6.dp).testTag("bubble.attachments")) {
                 items(attachments) { attachment ->
@@ -115,9 +129,9 @@ fun UserBubble(text: String, attachments: List<TranscriptAttachment>, modifier: 
                 }
             }
         }
-        SelectionContainer {
+        if (body.isNotEmpty()) SelectionContainer {
             Text(
-                text,
+                body,
                 style = MaterialTheme.typography.bodyLarge.copy(lineHeight = 22.sp),
                 color = colors.pillInk,
                 modifier =

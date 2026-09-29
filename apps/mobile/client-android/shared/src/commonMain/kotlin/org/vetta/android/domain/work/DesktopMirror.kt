@@ -132,6 +132,8 @@ data class MirrorState(
      * otherwise, and from desktops that share it without being asked (ADR-0140).
      */
     val screen: RemoteScreenStatus? = null,
+    /** Skills the composer may reference, per project; "" holds the global ones. In memory only. */
+    val skillCatalogs: Map<String, SkillCatalog> = emptyMap(),
     /** The desktop's pointer shape while the screen is open; null draws a plain arrow. */
     val screenCursor: RemoteScreenCursor? = null,
 ) {
@@ -140,6 +142,16 @@ data class MirrorState(
 
     val conversationCwd: String?
         get() = projects.firstOrNull { it.isConversation }?.cwd
+
+    /** The skill list for a prompt in `cwd`: a project's, or the global one. */
+    fun skillCatalog(cwd: String?): SkillCatalog = skillCatalogs[skillScope(cwd)] ?: SkillCatalog()
+
+    /** The desktop's display name for a referenced skill, when any list has it. */
+    fun skillName(skill: SkillReference): String =
+        skillCatalogs.values.firstNotNullOfOrNull { catalog -> catalog.options?.firstOrNull { it.id == skill.id }?.displayName } ?: skill.name
+
+    /** A project's own skills, or "" for the global list: the conversation root has none of its own. */
+    fun skillScope(cwd: String?): String = cwd?.takeIf { it.isNotEmpty() && it != conversationCwd } ?: ""
 
     /** What to call the project at `cwd`: its name on the desktop, else its folder's. */
     fun projectName(cwd: String): String =
@@ -401,6 +413,7 @@ class DesktopMirror(
                         ?.let { runCatching { json.decodeFromString(ModelChoice.serializer(), it) }.getOrNull() }
                         ?: ModelChoice(),
                 transcripts = emptyMap(),
+                skillCatalogs = emptyMap(),
                 link = LinkSnapshot.Offline,
             )
         }
@@ -711,6 +724,25 @@ class DesktopMirror(
             // Offline: what was loaded or cached stays on screen.
         } catch (error: Throwable) {
             reportError(error)
+        }
+    }
+
+    /**
+     * Fetches the skills a prompt in `cwd` may reference; the last list stays on screen
+     * meanwhile. `cwd` is a project, or null or the conversation root for the global ones.
+     */
+    suspend fun loadSkills(cwd: String?) {
+        val scope = _state.value.skillScope(cwd)
+        if (_state.value.skillCatalogs[scope]?.loading == true) return
+        mutate { it.copy(skillCatalogs = it.skillCatalogs + (scope to (it.skillCatalogs[scope] ?: SkillCatalog()).copy(loading = true, failed = false))) }
+        try {
+            val payload = if (scope.isEmpty()) null else buildJsonObject { put("cwd", scope) }
+            val options = RemoteApi.readSkillOptions(requireLink().request(RemoteRequestMethod.SkillList, payload))
+            mutate { it.copy(skillCatalogs = it.skillCatalogs + (scope to SkillCatalog(options))) }
+        } catch (error: Throwable) {
+            if (error is CancellationException) throw error
+            mutate { it.copy(skillCatalogs = it.skillCatalogs + (scope to (it.skillCatalogs[scope] ?: SkillCatalog()).copy(loading = false, failed = true))) }
+            platform.logger.info("skill.list failed", mapOf("error" to error::class.simpleName))
         }
     }
 

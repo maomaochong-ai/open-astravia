@@ -18,6 +18,16 @@
     <string name="chat_attach_camera">拍照</string>
     <string name="chat_attach_files">文件</string>
     <string name="chat_attach_files_hint">从手机里选取文件，单个不超过 700 KB</string>
+    <string name="chat_attach_skills">技能</string>
+    <string name="chat_attach_skills_hint">引用电脑上的技能或场景</string>
+    <string name="skills_title">技能</string>
+    <string name="skills_search">搜索技能</string>
+    <string name="skills_loading">正在读取技能…</string>
+    <string name="skills_failed">读取技能失败。</string>
+    <string name="skills_retry">重试</string>
+    <string name="skills_empty">没有可用的技能</string>
+    <string name="skills_scene">场景</string>
+    <string name="skills_remove">移除 %1$s</string>
     <string name="chat_attach_photos">相册</string>
     <string name="chat_attach_too_large">%1$s 太大了，单个附件不能超过 700 KB。</string>
     <plurals name="chat_attach_too_many">

@@ -19,6 +19,16 @@
     <string name="chat_attach_camera">Camera</string>
     <string name="chat_attach_files">Files</string>
     <string name="chat_attach_files_hint">Documents from your phone, up to 700 KB each</string>
+    <string name="chat_attach_skills">Skills</string>
+    <string name="chat_attach_skills_hint">Use a skill or scene from your computer</string>
+    <string name="skills_title">Skills</string>
+    <string name="skills_search">Search skills</string>
+    <string name="skills_loading">Loading skills…</string>
+    <string name="skills_failed">Couldn’t load the skills.</string>
+    <string name="skills_retry">Try again</string>
+    <string name="skills_empty">No skills to show</string>
+    <string name="skills_scene">Scene</string>
+    <string name="skills_remove">Remove %1$s</string>
     <string name="chat_attach_photos">Photos</string>
     <string name="chat_attach_too_large">%1$s is too large. Each attachment must be under 700 KB.</string>
     <plurals name="chat_attach_too_many">

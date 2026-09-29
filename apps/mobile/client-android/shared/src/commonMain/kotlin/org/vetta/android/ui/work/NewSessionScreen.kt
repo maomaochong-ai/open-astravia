@@ -114,6 +114,8 @@ fun NewSessionScreen(
     onReconnect: () -> Unit = {},
     onPair: () -> Unit = {},
     onRefreshProjects: suspend () -> Unit = {},
+    /** Refreshes the skills a prompt in the given project may reference. */
+    onLoadSkills: (String?) -> Unit = {},
 ) {
     var projectCwd by rememberSaveable { mutableStateOf(restored?.projectCwd ?: initialProjectCwd) }
     // Starts on what was used last on this desktop; empty keeps the desktop's default model and level.
@@ -194,6 +196,7 @@ fun NewSessionScreen(
                         placeholder = stringResource(Res.string.chat_composer_placeholder),
                         onSend = { sent -> onStart(NewSessionStart(sent, projectCwd, choice)) },
                         containerColor = Color.Transparent,
+                        skills = ComposerSkills(state.skillCatalog(projectCwd), { onLoadSkills(projectCwd) }, state::skillName),
                     )
                 } else {
                     Box(Modifier.fillMaxWidth().navigationBarsPadding().padding(bottom = 12.dp), contentAlignment = Alignment.Center) {

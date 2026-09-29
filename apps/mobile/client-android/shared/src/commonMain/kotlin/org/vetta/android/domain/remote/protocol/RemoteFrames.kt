@@ -92,6 +92,7 @@ enum class RemoteRequestMethod {
     @SerialName("session.resume") SessionResume,
     @SerialName("diagnostics.snapshot") DiagnosticsSnapshot,
     @SerialName("screen.subscribe") ScreenSubscribe,
+    @SerialName("skill.list") SkillList,
 }
 
 @Serializable

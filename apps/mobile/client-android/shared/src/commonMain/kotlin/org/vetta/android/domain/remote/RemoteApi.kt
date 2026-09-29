@@ -223,6 +223,33 @@ data class RemoteDeviceStatus(
 )
 
 /**
+ * A skill or scene the phone may reference by writing `@skill:<name>` / `@scene:<name>`
+ * into a prompt, already filtered and ordered as the desktop composer's picker shows them
+ * (ADR-0137).
+ */
+data class RemoteSkillOption(
+    /** What the token carries; the agent looks the skill up by it. */
+    val name: String,
+    /** Display name; null when it equals [name]. */
+    val alias: String?,
+    val description: String,
+    val kind: Kind,
+    /** Where it was installed: `builtin`, `plugin`, `user`, `project`, `market`… */
+    val source: String,
+) {
+    enum class Kind(val wire: String) {
+        Skill("skill"),
+        Scene("scene"),
+    }
+
+    val id: String
+        get() = "${kind.wire}:$name"
+
+    val displayName: String
+        get() = alias ?: name
+}
+
+/**
  * The pointer as the desktop shows it now (arrow, I-beam, hand…), for a phone that draws
  * the pointer itself where its finger put it. Sizes are in the desktop's points;
  * `screenWidth` is its display's, to scale the pointer with the picture.
@@ -418,6 +445,20 @@ object RemoteApi {
     }
 
     /** A state from a newer desktop reads as unavailable or unsupported. */
+    fun readSkillOptions(value: JsonElement?): List<RemoteSkillOption> =
+        ((value as? JsonObject)?.get("skills") as? JsonArray).orEmpty().mapNotNull { entry ->
+            val obj = entry as? JsonObject ?: return@mapNotNull null
+            val name = obj.text("name") ?: return@mapNotNull null
+            val kind = RemoteSkillOption.Kind.entries.firstOrNull { it.wire == obj.string("type") } ?: return@mapNotNull null
+            RemoteSkillOption(
+                name = name,
+                alias = obj.text("alias")?.takeIf { it != name },
+                description = obj.string("description").orEmpty(),
+                kind = kind,
+                source = obj.string("source").orEmpty(),
+            )
+        }
+
     fun readScreenCursor(value: JsonElement?): RemoteScreenCursor? {
         val obj = value as? JsonObject ?: return null
         val image = obj.string("image")?.let { runCatching { java.util.Base64.getDecoder().decode(it) }.getOrNull() } ?: return null

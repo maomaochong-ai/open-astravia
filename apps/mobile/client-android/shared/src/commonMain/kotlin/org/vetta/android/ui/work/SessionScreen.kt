@@ -191,7 +191,7 @@ fun SessionScreen(
                 transcript.items.firstOrNull()?.at?.let { at -> item(key = "timestamp") { MarkerRow(clockLabel(at)) } }
                 items(blocks, key = { it.id }) { block ->
                     when (block) {
-                        is ChatBlock.User -> UserBubble(block.text, block.attachments)
+                        is ChatBlock.User -> UserBubble(block.text, block.attachments, skillName = state::skillName)
                         is ChatBlock.Marker -> MarkerRow(block.text.ifEmpty { stringResource(Res.string.chat_compacted) })
                         is ChatBlock.Turn ->
                             AgentTurnView(block.turn, note = if (block.turn.streaming) activityLabel(transcript.sessionState.detail) else null)
@@ -245,6 +245,7 @@ fun SessionScreen(
                     enabled = state.online && !starting,
                     busy = active,
                     onStop = { if (!starting) actions.stop(id) },
+                    skills = state.session(id)?.projectCwd.let { cwd -> ComposerSkills(state.skillCatalog(cwd), { actions.loadSkills(cwd) }, state::skillName) },
                 )
             }
         }

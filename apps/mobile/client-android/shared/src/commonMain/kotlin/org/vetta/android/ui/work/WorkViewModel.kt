@@ -44,6 +44,9 @@ interface WorkActions {
 
     fun setDraft(sessionId: String, draft: PromptDraft)
 
+    /** Refreshes the skills a prompt in `cwd` may reference (ADR-0137). */
+    fun loadSkills(cwd: String?) {}
+
     /** Answers the question the desktop is waiting on, or cancels it. */
     fun respond(sessionId: String, requestId: String, answers: List<RemoteQuestionAnswer>, cancelled: Boolean = false)
 
@@ -118,7 +121,7 @@ class WorkViewModel(private val mirror: DesktopMirror) : ViewModel(), WorkAction
     fun startSession(start: NewSessionStart, onFailure: () -> Unit): String? {
         val id =
             mirror.startSession(
-                text = start.draft.text,
+                text = start.draft.promptText,
                 projectCwd = start.projectCwd,
                 modelKey = start.modelChoice.modelKey,
                 thinkingLevel = start.modelChoice.thinkingLevel,
@@ -158,7 +161,7 @@ class WorkViewModel(private val mirror: DesktopMirror) : ViewModel(), WorkAction
             try {
                 val target = mirror.state.value.resolve(sessionId)
                 // Put back what was typed so a failed send is not lost, unless something new was typed meanwhile.
-                if (mirror.sendPrompt(target, draft.text, attachments = draft.attachments) == null && _drafts.value[sessionId] == null) {
+                if (mirror.sendPrompt(target, draft.promptText, attachments = draft.attachments) == null && _drafts.value[sessionId] == null) {
                     setDraft(sessionId, draft)
                 }
             } finally {
@@ -200,7 +203,11 @@ class WorkViewModel(private val mirror: DesktopMirror) : ViewModel(), WorkAction
     }
 
     override fun setDraft(sessionId: String, draft: PromptDraft) {
-        _drafts.update { if (draft.text.isEmpty() && draft.attachments.isEmpty()) it - sessionId else it + (sessionId to draft) }
+        _drafts.update { if (draft.text.isEmpty() && draft.attachments.isEmpty() && draft.skills.isEmpty()) it - sessionId else it + (sessionId to draft) }
+    }
+
+    override fun loadSkills(cwd: String?) {
+        viewModelScope.launch { mirror.loadSkills(cwd) }
     }
 
     override fun respond(sessionId: String, requestId: String, answers: List<RemoteQuestionAnswer>, cancelled: Boolean) {

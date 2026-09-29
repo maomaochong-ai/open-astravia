@@ -313,6 +313,7 @@ private fun SlotContent(slot: Slot, workState: MirrorState, vm: AppViewModel, wo
                         onReconnect = work::reconnect,
                         onPair = vm::openPairing,
                         onRefreshProjects = work::refreshProjects,
+                        onLoadSkills = work::loadSkills,
                     )
                 }
             is Slot.Session ->

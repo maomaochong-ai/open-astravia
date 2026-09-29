@@ -481,6 +481,46 @@ class DesktopMirrorTest {
         }
 
     @Test
+    fun listsSkillsPerProjectAndGlobalOnesForConversations() =
+        runTest {
+            val desktop = scriptedDesktop()
+            val asked = mutableListOf<String?>()
+            val scripted = desktop.handler
+            desktop.handler = { request ->
+                if (request.method == RemoteRequestMethod.SkillList) {
+                    val cwd = (request.payload as? JsonObject)?.get("cwd")?.jsonPrimitive?.content
+                    asked += cwd
+                    respond(
+                        request.requestId,
+                        buildJsonObject {
+                            putJsonArray("skills") {
+                                add(buildJsonObject { put("name", if (cwd == null) "global" else "project"); put("description", ""); put("type", "skill"); put("source", "user") })
+                            }
+                        },
+                    )
+                } else {
+                    scripted(request)
+                }
+            }
+            val mirror = mirror(desktop)
+            assertTrue(mirror.pairWithCode(desktop.invite()))
+            assertTrue(eventually { mirror.state.value.online })
+
+            mirror.loadSkills("/code/vetta")
+            mirror.loadSkills(null)
+            assertEquals(listOf<String?>("/code/vetta", null), asked)
+            assertEquals(listOf("project"), mirror.state.value.skillCatalog("/code/vetta").options?.map { it.name })
+            assertEquals(listOf("global"), mirror.state.value.skillCatalog(null).options?.map { it.name })
+
+            desktop.reachable = false
+            desktop.dropConnections()
+            assertTrue(eventually { !mirror.state.value.online })
+            mirror.loadSkills(null)
+            assertTrue(mirror.state.value.skillCatalog(null).failed)
+            assertEquals(listOf("global"), mirror.state.value.skillCatalog(null).options?.map { it.name }, "the last list stays")
+        }
+
+    @Test
     fun remembersTheLastUsedModelPerDesktopAcrossLaunches() =
         runTest {
             val desktop = scriptedDesktop()

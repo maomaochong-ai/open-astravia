@@ -132,6 +132,8 @@ fun Composer(
     onStop: () -> Unit = {},
     containerColor: Color = MaterialTheme.vettaExtra.pageBackground,
     dictation: Dictation = rememberDictation(),
+    /** The desktop's skills to reference (ADR-0137); null leaves them out. */
+    skills: ComposerSkills? = null,
 ) {
     val colors = MaterialTheme.workColors
     val scope = rememberCoroutineScope()
@@ -142,6 +144,7 @@ fun Composer(
     val press = remember { HoldToTalk() }
     val focusManager = LocalFocusManager.current
     var sheet by remember { mutableStateOf(false) }
+    var skillSheet by remember { mutableStateOf(false) }
     // Whether "Hold to talk" is out under the field in place of the keyboard.
     var voice by rememberSaveable { mutableStateOf(false) }
     var notice by remember { mutableStateOf<ComposerNotice?>(null) }
@@ -224,6 +227,9 @@ fun Composer(
                 color = colors.red,
                 modifier = Modifier.padding(start = 4.dp, bottom = 6.dp).testTag("attach.notice"),
             )
+        }
+        if (draft.skills.isNotEmpty()) {
+            SkillChips(draft.skills, skills?.displayName ?: { it.name }) { id -> onDraftChange(current.removingSkill(id)) }
         }
         if (draft.attachments.isNotEmpty()) {
             AttachmentRow(draft.attachments) { id -> onDraftChange(current.removing(id)) }
@@ -330,7 +336,10 @@ fun Composer(
             }
         }
     }
-    if (sheet) AttachmentSheet(launchers, onDismiss = { sheet = false })
+    if (sheet) AttachmentSheet(launchers, onDismiss = { sheet = false }, onSkills = skills?.let { { skillSheet = true } })
+    if (skillSheet && skills != null) {
+        SkillSheet(skills, draft.skills, onPick = { onDraftChange(current.addingSkill(it)) }, onDismiss = { skillSheet = false })
+    }
     if (dictation.listening) DictationGlow(dictation.transcript, dictation.level, cancelArmed)
 }
 
