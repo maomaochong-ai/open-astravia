@@ -6,7 +6,7 @@ import { useMcpSettingsModel } from "./useMcpSettingsModel";
 
 vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 
-describe("useMcpSettingsModel managed runtime parameters", () => {
+describe("useMcpSettingsModel", () => {
 	it("preserves the managed connection identity and writes parameters to runtime env", async () => {
 		const set = vi.fn(async () => undefined);
 		(window as unknown as { vetta: unknown }).vetta = {
@@ -53,5 +53,77 @@ describe("useMcpSettingsModel managed runtime parameters", () => {
 				},
 			},
 		});
+	});
+
+	it("merges servers pasted as standard MCP JSON without removing existing connectors", async () => {
+		const set = vi.fn(async () => undefined);
+		(window as unknown as { vetta: unknown }).vetta = {
+			mcp: {
+				get: vi.fn(async () => ({
+					mcpServers: {
+						existing: { command: "existing-command" },
+					},
+				})),
+				set,
+				authStatus: vi.fn(async () => ({})),
+			},
+		};
+		const { result } = renderHook(() => useMcpSettingsModel());
+		await waitFor(() => expect(result.current.config).not.toBeNull());
+
+		act(() => {
+			result.current.onStartAddServer();
+			result.current.onModeSwitch("json");
+			result.current.setJsonText(
+				JSON.stringify({
+					mcpServers: {
+						playwright: { command: "npx", args: ["-y", "@playwright/mcp@latest"] },
+					},
+				}),
+			);
+		});
+
+		let added = false;
+		await act(async () => {
+			added = await result.current.onAddServersFromJson();
+		});
+
+		expect(added).toBe(true);
+		expect(set).toHaveBeenCalledWith({
+			mcpServers: {
+				existing: { command: "existing-command" },
+				playwright: { command: "npx", args: ["-y", "@playwright/mcp@latest"] },
+			},
+		});
+		expect(result.current.addingServer).toBe(false);
+	});
+
+	it("keeps the add dialog open and reports invalid MCP JSON", async () => {
+		const set = vi.fn(async () => undefined);
+		(window as unknown as { vetta: unknown }).vetta = {
+			mcp: {
+				get: vi.fn(async () => ({ mcpServers: {} })),
+				set,
+				authStatus: vi.fn(async () => ({})),
+			},
+		};
+		const { result } = renderHook(() => useMcpSettingsModel());
+		await waitFor(() => expect(result.current.config).not.toBeNull());
+
+		act(() => {
+			result.current.onStartAddServer();
+			result.current.onModeSwitch("json");
+			result.current.setJsonText('{ "mcpServers": { "broken": { "args": [] } } }');
+		});
+
+		let added = true;
+		await act(async () => {
+			added = await result.current.onAddServersFromJson();
+		});
+
+		expect(added).toBe(false);
+		expect(result.current.jsonError).toBe("jsonMissingCommand");
+		expect(result.current.addingServer).toBe(true);
+		expect(set).not.toHaveBeenCalled();
 	});
 });
