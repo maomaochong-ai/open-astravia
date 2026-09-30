@@ -13,7 +13,7 @@ struct SelectableText: UIViewRepresentable {
 	func makeCoordinator() -> Coordinator { Coordinator() }
 
 	func makeUIView(context: Context) -> UITextView {
-		let view = UITextView(usingTextLayoutManager: true)
+		let view = FittedTextView(usingTextLayoutManager: true)
 		view.isEditable = false
 		view.isSelectable = true
 		view.isScrollEnabled = false
@@ -36,23 +36,53 @@ struct SelectableText: UIViewRepresentable {
 
 	func sizeThatFits(_ proposal: ProposedViewSize, uiView: UITextView, context: Context) -> CGSize? {
 		let width = proposal.width.flatMap { $0.isFinite ? $0 : nil } ?? .greatestFiniteMagnitude
-		guard let layout = uiView.textLayoutManager else { return nil }
-		uiView.textContainer.size = CGSize(width: width, height: .greatestFiniteMagnitude)
-		layout.ensureLayout(for: layout.documentRange)
-		let used = layout.usageBoundsForTextContainer
-		return CGSize(width: ceil(min(used.width, width)), height: ceil(used.height))
+		return context.coordinator.measure.size(of: text, width: width)
 	}
 
 	final class Coordinator: NSObject, UITextViewDelegate {
 		var openURL: OpenURLAction?
 		/// Held here: the layout manager keeps its delegate weakly.
 		let chips = ChipLayoutDelegate()
+		let measure = TextMeasure()
 
 		/// A tap on a link goes where SwiftUI's links go, so a desktop file opens in the app.
 		func textView(_ textView: UITextView, primaryActionFor textItem: UITextItem, defaultAction: UIAction) -> UIAction? {
 			guard case let .link(url) = textItem.content, let openURL else { return defaultAction }
 			return UIAction { _ in openURL(url) }
 		}
+	}
+}
+
+/// Keeps its text container as wide as itself. Measuring happens in `TextMeasure`,
+/// since SwiftUI tries widths it never lays out at: a list item's `HStack` asks for
+/// 0 and for infinity too, and a container left at 0 draws no text on device.
+final class FittedTextView: UITextView {
+	override func layoutSubviews() {
+		if textContainer.size.width != bounds.width {
+			textContainer.size = CGSize(width: bounds.width, height: .greatestFiniteMagnitude)
+		}
+		super.layoutSubviews()
+	}
+}
+
+/// Lays text out off screen, in the same TextKit 2 setup as the shown view, for `sizeThatFits`.
+final class TextMeasure {
+	private let storage = NSTextContentStorage()
+	private let layout = NSTextLayoutManager()
+	private let container = NSTextContainer()
+
+	init() {
+		container.lineFragmentPadding = 0
+		layout.textContainer = container
+		storage.addTextLayoutManager(layout)
+	}
+
+	func size(of text: NSAttributedString, width: CGFloat) -> CGSize {
+		if storage.attributedString?.isEqual(to: text) != true { storage.attributedString = text }
+		container.size = CGSize(width: width, height: .greatestFiniteMagnitude)
+		layout.ensureLayout(for: layout.documentRange)
+		let used = layout.usageBoundsForTextContainer
+		return CGSize(width: ceil(min(used.width, width)), height: ceil(used.height))
 	}
 }
 
