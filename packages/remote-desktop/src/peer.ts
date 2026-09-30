@@ -14,8 +14,14 @@ export interface RemoteDesktopHostStartOptions {
 	 * peer connection, which this one cannot reach again (its DTLS is spent, or its offer
 	 * went to a viewer that is gone), so the host should start over. Without it the host
 	 * offers again with an ICE restart.
+	 *
+	 * While the peer connection is up, a `peer_ready` is taken as the same viewer
+	 * rejoining signaling (after a relay restart, say) and the connection is kept; only
+	 * if the connection then drops is the viewer treated as replaced.
 	 */
 	readonly onViewerReplaced?: () => void;
+	/** Every change of the peer connection's state, e.g. to decide what a signaling drop means. */
+	readonly onConnectionStateChange?: (state: RTCPeerConnectionState) => void;
 }
 
 /**
@@ -48,6 +54,9 @@ export class RemoteDesktopHost {
 	private negotiation: Promise<void> | undefined;
 	private offered = false;
 	private onViewerReplaced: (() => void) | undefined;
+	private onConnectionStateChange: ((state: RTCPeerConnectionState) => void) | undefined;
+	/** A viewer came online while connected: it rejoined, unless the connection drops after all. */
+	private viewerRejoined = false;
 
 	constructor(
 		private readonly options: RemoteDesktopPeerOptions,
@@ -69,10 +78,14 @@ export class RemoteDesktopHost {
 			});
 		};
 		this.peer.onconnectionstatechange = () => {
-			this.logger.info("remote desktop host peer state", {
-				sessionId: options.sessionId,
-				state: this.peer.connectionState,
-			});
+			const state = this.peer.connectionState;
+			this.logger.info("remote desktop host peer state", { sessionId: options.sessionId, state });
+			this.onConnectionStateChange?.(state);
+			if (this.viewerRejoined && state !== "connected" && this.onViewerReplaced && !this.closed) {
+				this.viewerRejoined = false;
+				this.logger.info("remote desktop viewer replaced", { sessionId: options.sessionId, state });
+				this.onViewerReplaced();
+			}
 		};
 	}
 
@@ -104,6 +117,7 @@ export class RemoteDesktopHost {
 		}
 		this.started = true;
 		this.onViewerReplaced = startOptions.onViewerReplaced;
+		this.onConnectionStateChange = startOptions.onConnectionStateChange;
 		if (startOptions.waitForPeerReady !== true || this.peerReady) await this.negotiate();
 	}
 
@@ -111,6 +125,12 @@ export class RemoteDesktopHost {
 		const frame = decodeRemoteDesktopSignal(signal);
 		if (frame.type === "peer_ready") {
 			this.peerReady = true;
+			if (this.offered && this.peer.connectionState === "connected") {
+				// The direct connection never went through the relay, so it outlives signaling.
+				this.viewerRejoined = true;
+				this.logger.info("remote desktop viewer rejoined signaling", { sessionId: this.options.sessionId });
+				return;
+			}
 			if (this.offered && this.onViewerReplaced) {
 				this.logger.info("remote desktop viewer replaced", { sessionId: this.options.sessionId });
 				this.onViewerReplaced();

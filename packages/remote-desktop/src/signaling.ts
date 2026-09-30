@@ -19,7 +19,13 @@ export interface RemoteDesktopSignalingHandlers {
 	onClose(reason?: string): void;
 }
 
-/** WebSocket signaling adapter. The pairing token is stripped from the URL and offered as a subprotocol. */
+/**
+ * WebSocket signaling adapter. The pairing token is stripped from the URL and offered as a subprotocol.
+ *
+ * `connect` may be called again after `onClose` to reopen signaling: a peer connection that
+ * is already up does not depend on it. A connection that never opens rejects `connect`
+ * without calling `onClose`.
+ */
 export class WebSocketRemoteDesktopSignaling {
 	private socket: RemoteDesktopWebSocket | undefined;
 	private handlers: RemoteDesktopSignalingHandlers | undefined;
@@ -28,6 +34,10 @@ export class WebSocketRemoteDesktopSignaling {
 		private readonly target: string,
 		private readonly createSocket: RemoteDesktopWebSocketFactory = defaultSocket,
 	) {}
+
+	get connected(): boolean {
+		return this.socket !== undefined;
+	}
 
 	async connect(handlers: RemoteDesktopSignalingHandlers): Promise<void> {
 		this.handlers = handlers;
@@ -38,6 +48,7 @@ export class WebSocketRemoteDesktopSignaling {
 		);
 		this.socket = socket;
 		socket.onmessage = (event) => {
+			if (this.socket !== socket) return;
 			if (typeof event.data !== "string") return this.closeWith("desktop signaling returned a binary frame");
 			try {
 				this.handlers?.onSignal(parseRemoteDesktopSignal(event.data));
@@ -45,10 +56,23 @@ export class WebSocketRemoteDesktopSignaling {
 				this.closeWith("desktop signaling returned an invalid frame");
 			}
 		};
-		socket.onclose = (event) => this.handlers?.onClose(event.reason);
 		await new Promise<void>((resolve, reject) => {
-			socket.onopen = () => resolve();
-			socket.onerror = () => reject(new Error("desktop signaling connection failed"));
+			let opened = false;
+			socket.onopen = () => {
+				opened = true;
+				resolve();
+			};
+			socket.onerror = () => {
+				if (opened) return;
+				if (this.socket === socket) this.socket = undefined;
+				reject(new Error("desktop signaling connection failed"));
+			};
+			socket.onclose = (event) => {
+				if (this.socket !== socket) return;
+				this.socket = undefined;
+				if (opened) this.handlers?.onClose(event.reason);
+				else reject(new Error("desktop signaling connection failed"));
+			};
 		});
 	}
 
@@ -58,13 +82,16 @@ export class WebSocketRemoteDesktopSignaling {
 	}
 
 	async close(): Promise<void> {
-		this.socket?.close();
+		const socket = this.socket;
 		this.socket = undefined;
+		socket?.close();
 	}
 
 	private closeWith(reason: string): void {
+		const socket = this.socket;
+		this.socket = undefined;
 		this.handlers?.onClose(reason);
-		this.socket?.close();
+		socket?.close();
 	}
 }
 
