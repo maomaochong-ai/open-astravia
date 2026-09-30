@@ -184,7 +184,63 @@ export interface SelectedSkill {
 
 export type { AppshotAttachment, MentionedFile } from "@shared/conversation";
 
-export const chatMessagesAtom = atom<ChatConversationItem[]>([]);
+/**
+ * The active conversation feed (ADR-0146). Every write goes through
+ * `reduceConversationFeed`; the message list is a read-only projection of it.
+ */
+export interface ConversationFeedState {
+	/** Runtime that owns this feed; runtime-scoped writes for any other Runtime are ignored. */
+	readonly runtimeId: string | null;
+	/** Display order. */
+	readonly items: readonly ChatConversationItem[];
+	/** Ids confirmed by the latest applied durable history snapshot. */
+	readonly durableIds: ReadonlySet<string>;
+	/** Token of the applied history snapshot; responses to older requests are ignored. */
+	readonly historyRevision: number;
+	/** Last applied Runtime event sequence of the current subscription. */
+	readonly sequence: number;
+	/** Sends queued behind a running Turn: editor-only metadata waiting for the Kernel append. */
+	readonly queuedUsers: readonly ConversationUserMessageViewModel[];
+	/** Turn currently streaming, from `conversation.turn.*` facts. */
+	readonly activeTurnId: string | null;
+	/** Counter for renderer-local item ids (drafts before a Turn exists, local errors). */
+	readonly localSequence: number;
+}
+
+export function createConversationFeedState(runtimeId: string | null = null): ConversationFeedState {
+	return {
+		runtimeId,
+		items: [],
+		durableIds: new Set(),
+		historyRevision: 0,
+		sequence: 0,
+		queuedUsers: [],
+		activeTurnId: null,
+		localSequence: 0,
+	};
+}
+
+export const conversationFeedAtom = atom<ConversationFeedState>(createConversationFeedState());
+
+/**
+ * Read-only view of the active feed's items. Direct writes replace the items
+ * wholesale and keep only the durable marks that still apply; they exist for
+ * fixtures and must not be used by production writers.
+ */
+export const chatMessagesAtom = atom(
+	(get) => get(conversationFeedAtom).items as ChatConversationItem[],
+	(get, set, update: ChatConversationItem[] | ((previous: ChatConversationItem[]) => ChatConversationItem[])) => {
+		const feed = get(conversationFeedAtom);
+		const items = typeof update === "function" ? update(feed.items as ChatConversationItem[]) : update;
+		if (items === feed.items) return;
+		const ids = new Set(items.map((item) => item.id));
+		set(conversationFeedAtom, {
+			...feed,
+			items,
+			durableIds: new Set([...feed.durableIds].filter((id) => ids.has(id))),
+		});
+	},
+);
 
 /** Pending latest-message replacement, deferred until send. */
 export const pendingMessageEditAtom = atom<PendingMessageEdit | null>(null);
