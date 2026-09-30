@@ -4,12 +4,18 @@
     <string name="app_name">Vetta</string>
     <string name="appearance">Appearance</string>
     <string name="back">Back</string>
-    <string name="board_empty">No tasks yet</string>
-    <string name="board_empty_description">Sessions you start show up here, grouped by project.</string>
+    <string name="board_empty">Nothing needs you on this computer</string>
+    <string name="board_empty_description">Sessions waiting on you, still running, or just stopped show up here.</string>
     <plurals name="board_more">
         <item quantity="one">%1$d more</item>
         <item quantity="other">%1$d more</item>
     </plurals>
+    <string name="board_section_running">In progress</string>
+    <string name="board_section_running_empty">Nothing is running</string>
+    <string name="board_section_stopped">Just stopped</string>
+    <string name="board_section_stopped_empty">Nothing just stopped</string>
+    <string name="board_section_waiting">Waiting on you</string>
+    <string name="board_section_waiting_empty">Nothing is waiting on you</string>
     <string name="board_stale">Showing the last synced state</string>
     <string name="board_view_all">View all</string>
     <string name="camera_permission_required">Camera access is needed to scan</string>
