@@ -281,9 +281,13 @@ describe("quick check selection", () => {
 			"private-keys",
 			"conflict-markers",
 			"package-boundaries",
+			"session-event-tombstones",
 			"conversation-architecture",
 		]);
 		expect(rendererPlan.find(([id]) => id === "package-boundaries")).toContain(
+			"apps/desktop/src/renderer/domains/conversation/ConversationView.tsx",
+		);
+		expect(rendererPlan.find(([id]) => id === "session-event-tombstones")).toContain(
 			"apps/desktop/src/renderer/domains/conversation/ConversationView.tsx",
 		);
 	});

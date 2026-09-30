@@ -27,9 +27,15 @@ export function findConversationMessageArchitectureViolations(files) {
 		if (file.path.startsWith("packages/agent-team/") && /@vetta\/runtime-subagents/u.test(file.text)) {
 			violations.push(`${file.path}: Agent Team must not depend on the private subagent runtime`);
 		}
+		const isTest = /\.test\.[cm]?[jt]sx?$/u.test(file.path);
 		for (const [index, line] of file.text.split(/\r?\n/u).entries()) {
 			if (/\brole\s*:\s*["']compaction["']/u.test(line)) {
 				violations.push(`${file.path}:${index + 1}: compaction must be a timeline event, not a message role`);
+			}
+			if (!isTest && /(?:\buseSetAtom\(|\buseAtom\(|\bset\()\s*chatMessagesAtom\b/u.test(line)) {
+				violations.push(
+					`${file.path}:${index + 1}: write the message list through dispatchConversationFeed, not chatMessagesAtom (ADR-0146)`,
+				);
 			}
 		}
 	}

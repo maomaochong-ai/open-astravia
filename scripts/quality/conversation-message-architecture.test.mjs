@@ -28,6 +28,28 @@ describe("Conversation message architecture guard", () => {
 		).toEqual(["apps/desktop/src/renderer/example.ts:1: compaction must be a timeline event, not a message role"]);
 	});
 
+	it("routes message list writes through the conversation feed reducer", () => {
+		expect(
+			findConversationMessageArchitectureViolations([
+				{
+					path: "apps/desktop/src/renderer/domains/example.ts",
+					text: [
+						"const messages = useAtomValue(chatMessagesAtom);",
+						"const setMessages = useSetAtom(chatMessagesAtom);",
+						"store.set(chatMessagesAtom, []);",
+					].join("\n"),
+				},
+				{
+					path: "apps/desktop/src/renderer/domains/example.test.ts",
+					text: "store.set(chatMessagesAtom, []);",
+				},
+			]),
+		).toEqual([
+			"apps/desktop/src/renderer/domains/example.ts:2: write the message list through dispatchConversationFeed, not chatMessagesAtom (ADR-0146)",
+			"apps/desktop/src/renderer/domains/example.ts:3: write the message list through dispatchConversationFeed, not chatMessagesAtom (ADR-0146)",
+		]);
+	});
+
 	it("does not confuse explicit legacy migration names with the retired current type", () => {
 		expect(
 			findConversationMessageArchitectureViolations([
