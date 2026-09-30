@@ -89,6 +89,8 @@ export interface RuntimeHostSessionRecord {
  * `agent_end`.
  */
 export interface InFlightBuffer {
+	/** Events of the running Turn from `conversation.turn.started` on, for whole-Turn replay. */
+	turn?: { readonly turnId: string; readonly events: SessionEvent[] };
 	turnStartedAt: number;
 	events: SessionEvent[];
 	isActive: boolean;

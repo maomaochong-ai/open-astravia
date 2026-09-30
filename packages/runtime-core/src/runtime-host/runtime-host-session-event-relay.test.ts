@@ -172,4 +172,71 @@ describe("RuntimeHostSessionEventRelay", () => {
 		expect(relay.readCurrentTurnId("session-key")).toBeUndefined();
 		relay.release("session-key", handle.lifecycle.sessionPath, handle.lifecycle.sessionId);
 	});
+
+	it("replays the whole running Turn with adjacent deltas merged for turn subscribers", () => {
+		const stream = createEventStream();
+		const handle = {
+			lifecycle: { sessionId: "session-1", sessionPath: "C:/sessions/session-1.jsonl" },
+			stateReader: { readState: () => ({ activeToolNames: [] }) },
+			eventStream: stream,
+		} as unknown as RuntimeHostSessionRecord;
+		const relay = new RuntimeHostSessionEventRelay({
+			queueSidecar: { persist: () => undefined } as unknown as RuntimeHostQueueSidecar,
+			synchronizeSessionIdentity: () => undefined,
+			reportFailure: () => undefined,
+		});
+		relay.attach("session-key", handle, stream);
+		const base = {
+			schemaVersion: 1 as const,
+			channel: "runtime" as const,
+			sessionId: "session-1",
+			eventId: "event",
+			timestamp: 1,
+			source: "runtime-core" as const,
+		};
+		const partial = { role: "assistant", content: [{ type: "text", text: "hello" }] } as unknown as AssistantMessage;
+		stream.emit({ ...base, type: "conversation.turn.started", turnId: "turn-1" });
+		stream.emit(lifecycleSessionEvent("session-1", "agent_start", 1));
+		stream.emit({
+			...base,
+			type: "conversation.message.appended",
+			turnId: "turn-1",
+			messageId: "user-1",
+			message: { role: "user", content: "go", timestamp: 1 },
+		});
+		stream.emit(assistantEvent({ type: "text_delta", contentIndex: 0, delta: "hel", partial }));
+		stream.emit(assistantEvent({ type: "text_delta", contentIndex: 0, delta: "lo", partial }));
+		// A persisted model call ends the per-call buffer but not the Turn replay.
+		stream.emit({
+			...base,
+			type: "usage.update",
+			input: 1,
+			output: 1,
+			contextPercent: null,
+			contextTokens: 2,
+			contextWindow: 0,
+		} as SessionEvent);
+
+		const replayed: SessionEvent[] = [];
+		const unsubscribe = relay.subscribe("session-key", handle, (event) => replayed.push(event), { replay: "turn" });
+		const turnEvents = replayed.filter(
+			(event) => event.channel === "assistant" || event.type.startsWith("conversation."),
+		);
+		expect(turnEvents.map((event) => event.type)).toEqual([
+			"conversation.turn.started",
+			"conversation.message.appended",
+			"text_delta",
+		]);
+		expect(turnEvents[2]).toMatchObject({ delta: "hello" });
+		const perCall: SessionEvent[] = [];
+		relay.subscribe("session-key", handle, (event) => perCall.push(event))();
+		expect(perCall.some((event) => event.channel === "assistant")).toBe(false);
+		unsubscribe();
+
+		stream.emit({ ...base, type: "conversation.turn.completed", turnId: "turn-1", stopReason: "stop" });
+		const afterTurn: SessionEvent[] = [];
+		relay.subscribe("session-key", handle, (event) => afterTurn.push(event), { replay: "turn" })();
+		expect(afterTurn.some((event) => event.type.startsWith("conversation."))).toBe(false);
+		relay.release("session-key", handle.lifecycle.sessionPath, handle.lifecycle.sessionId);
+	});
 });

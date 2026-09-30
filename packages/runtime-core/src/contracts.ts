@@ -295,6 +295,15 @@ export interface QueueChangedEvent extends SessionEventBase {
 	snapshot: unknown;
 }
 
+/** Result of {@link SessionFacade.attach}. */
+export interface SessionAttachment {
+	readonly unsubscribe: () => void;
+	/** Durable history. Messages of `runningTurnId` are rebuilt from the replayed events instead. */
+	readonly history: HistoryEntry[];
+	/** Turn replayed from its start through the handler; absent when the Session is idle. */
+	readonly runningTurnId?: string;
+}
+
 export interface SessionStateSnapshot {
 	sessionId: string;
 	contextState?: SessionContextState;
@@ -522,6 +531,12 @@ export interface SessionFacade {
 		signal?: AbortSignal,
 	): Promise<Output>;
 	subscribe(sessionId: string, handler: (event: SessionEvent) => void): () => void;
+	/**
+	 * Subscribe and read history as one snapshot: the running Turn is replayed from
+	 * its start through `handler`, and `history` is read in the same synchronous
+	 * step, so history plus events has neither a gap nor an overlap.
+	 */
+	attach(sessionId: string, handler: (event: SessionEvent) => void): SessionAttachment;
 	updateSettings(sessionId: string, partialSettings: SettingsPatch): Promise<void>;
 	/** Update thinking level for ALL open sessions at once. */
 	updateGlobalThinkingLevel(level: ThinkingLevel): void;

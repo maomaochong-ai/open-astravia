@@ -5,6 +5,7 @@ import type {
 	PromptRequest,
 	RuntimeQueuePromptIfRunningOutcome,
 	RuntimeTurnPromptOutcome,
+	SessionAttachment,
 	SessionEvent,
 	SessionExecutionMode,
 	SessionStateSnapshot,
@@ -270,6 +271,17 @@ export class RuntimeHostSessionOperations {
 	subscribe(sessionId: string, handler: (event: SessionEvent) => void): () => void {
 		const sessionKey = this.options.directory.resolveSessionKey(sessionId);
 		return this.options.events.subscribe(sessionKey, this.requireSession(sessionId), handler);
+	}
+
+	attach(sessionId: string, handler: (event: SessionEvent) => void): SessionAttachment {
+		const sessionKey = this.options.directory.resolveSessionKey(sessionId);
+		const handle = this.requireSession(sessionId);
+		// Registration, whole-Turn replay and the history read happen without yielding,
+		// so no event can land between the snapshot and the subscription.
+		const unsubscribe = this.options.events.subscribe(sessionKey, handle, handler, { replay: "turn" });
+		const history = [...handle.historyReader.readHistory()];
+		const runningTurnId = this.options.events.readCurrentTurnId(sessionKey);
+		return { unsubscribe, history, ...(runningTurnId ? { runningTurnId } : {}) };
 	}
 
 	subscribeExecutionObservations(

@@ -18,6 +18,7 @@ export type {
 	RuntimeSandboxGrantInfo,
 	RuntimeSessionAgentSelection,
 	RuntimeTurnPromptOutcome,
+	SessionAttachment,
 	SessionConfig,
 	SessionError,
 	SessionEvent,
