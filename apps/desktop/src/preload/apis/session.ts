@@ -1,7 +1,7 @@
 import type { IpcRenderer } from "electron";
 import { decodeSessionEvent } from "../../shared/session-event-codec.js";
 import type { DesktopApi } from "../api.js";
-import { onIpcEvent, subscribeById } from "./helper.js";
+import { attachById, onIpcEvent, subscribeById } from "./helper.js";
 import { subscribeSessionSearch } from "./session-search.js";
 
 const CHANNELS = {
@@ -21,6 +21,7 @@ const CHANNELS = {
 	QUEUE_CLEAR: "vetta:session:queue-clear",
 	CLEAR_TODOS: "vetta:session:clear-todos",
 	SUBSCRIBE: "vetta:session:subscribe",
+	ATTACH: "vetta:session:attach",
 	UNSUBSCRIBE: "vetta:session:unsubscribe",
 	UPDATE_SETTINGS: "vetta:session:update-settings",
 	SET_EXECUTION_MODE: "vetta:session:set-execution-mode",
@@ -119,6 +120,16 @@ export function createSessionApi(ipc: IpcRenderer): Pick<DesktopApi, "session"> 
 					CHANNELS.EVENT,
 					CHANNELS.UNSUBSCRIBE,
 					handler,
+					[sessionId],
+					decodeSessionEvent,
+				),
+			attach: (sessionId, handlers) =>
+				attachById(
+					ipc,
+					CHANNELS.ATTACH,
+					CHANNELS.EVENT,
+					CHANNELS.UNSUBSCRIBE,
+					handlers,
 					[sessionId],
 					decodeSessionEvent,
 				),

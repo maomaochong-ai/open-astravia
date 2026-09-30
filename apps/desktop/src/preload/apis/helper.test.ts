@@ -1,8 +1,44 @@
 import type { IpcRenderer, IpcRendererEvent } from "electron";
 import { describe, expect, it, vi } from "vitest";
-import { subscribeById } from "./helper";
+import { attachById, subscribeById } from "./helper";
 
 type IpcListener = Parameters<IpcRenderer["on"]>[1];
+
+describe("attachById", () => {
+	it("hands over the snapshot before the events the main process sent ahead of the reply", async () => {
+		const listeners = new Set<IpcListener>();
+		const emit = (subscriptionId: string, payload: unknown) => {
+			for (const listener of listeners) listener({} as IpcRendererEvent, subscriptionId, payload);
+		};
+		const ipc = {
+			on: vi.fn((_channel: string, listener: IpcListener) => listeners.add(listener)),
+			removeListener: vi.fn((_channel: string, listener: IpcListener) => listeners.delete(listener)),
+			invoke: vi.fn(async (channel: string) => {
+				if (channel !== "attach") return undefined;
+				// The running Turn is replayed before the reply resolves.
+				emit("attachment", { type: "conversation.turn.started" });
+				emit("other", { type: "foreign" });
+				return { subscriptionId: "attachment", snapshot: { history: ["h1"] } };
+			}),
+		} as unknown as IpcRenderer;
+		const order: unknown[] = [];
+
+		const detach = await attachById(
+			ipc,
+			"attach",
+			"event",
+			"unsubscribe",
+			{ onSnapshot: (snapshot) => order.push(snapshot), onEvent: (event) => order.push(event) },
+			["session"],
+		);
+		emit("attachment", { type: "text_delta" });
+
+		expect(order).toEqual([{ history: ["h1"] }, { type: "conversation.turn.started" }, { type: "text_delta" }]);
+		detach();
+		expect(listeners.size).toBe(0);
+		expect(ipc.invoke).toHaveBeenCalledWith("unsubscribe", "attachment");
+	});
+});
 
 describe("subscribeById", () => {
 	it("delivers the subscription snapshot after the listener is installed", async () => {
