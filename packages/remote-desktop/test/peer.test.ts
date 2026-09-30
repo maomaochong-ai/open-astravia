@@ -55,6 +55,34 @@ describe("remote desktop host negotiation", () => {
 		expect(peer.createOffer).toHaveBeenCalledOnce();
 	});
 
+	it("keeps a connected viewer that rejoins signaling, and starts over only if the connection then drops", async () => {
+		const peer = fakePeerConnection();
+		const replaced = vi.fn();
+		const states: string[] = [];
+		const host = new RemoteDesktopHost(
+			{ sessionId: "pairing_0123456789abcdefghijklmnop", createPeerConnection: () => peer.connection },
+			() => undefined,
+			() => undefined,
+		);
+		await host.start(undefined, {
+			waitForPeerReady: true,
+			onViewerReplaced: replaced,
+			onConnectionStateChange: (state) => states.push(state),
+		});
+		await host.acceptSignal({ type: "peer_ready", protocolVersion: 1 });
+		peer.setConnectionState("connected");
+
+		// The relay restarted and the phone's signaling came back; the direct link stayed up.
+		await host.acceptSignal({ type: "peer_ready", protocolVersion: 1 });
+		expect(replaced).not.toHaveBeenCalled();
+		expect(peer.createOffer).toHaveBeenCalledOnce();
+
+		// It was a new viewer after all: the old one's connection goes away.
+		peer.setConnectionState("disconnected");
+		expect(replaced).toHaveBeenCalledOnce();
+		expect(states).toEqual(["connected", "disconnected"]);
+	});
+
 	it("takes a phone's constrained-baseline H.264 answer as baseline so the desktop encodes in hardware", async () => {
 		const peer = fakePeerConnection();
 		const host = new RemoteDesktopHost(
@@ -197,6 +225,7 @@ function fakePeerConnection(): {
 	readonly setCodecPreferences: ReturnType<typeof vi.fn>;
 	readonly setRemoteDescription: ReturnType<typeof vi.fn>;
 	readonly sender: { track: MediaStreamTrack | null; parameters: Record<string, unknown> };
+	readonly setConnectionState: (state: RTCPeerConnectionState) => void;
 } {
 	const createOffer = vi.fn(async () => ({ type: "offer" as const, sdp: "v=0\r\n" }));
 	const channels: RTCDataChannel[] = [];
@@ -252,6 +281,10 @@ function fakePeerConnection(): {
 		sender,
 		setCodecPreferences,
 		setRemoteDescription,
+		setConnectionState(state) {
+			(connection as { connectionState: RTCPeerConnectionState }).connectionState = state;
+			connection.onconnectionstatechange?.(new Event("connectionstatechange"));
+		},
 	};
 }
 
