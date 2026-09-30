@@ -83,13 +83,18 @@ describe("Desktop release workflow contracts", () => {
 		expect(workflow).toContain("needs: [prepare, quality]");
 	});
 
-	it("builds and verifies the pinned Windows sandbox before packaging", () => {
+	it("downloads and verifies the pinned Windows sandbox release before packaging", () => {
 		const sandboxSteps = actionSteps("prepare-windows-sandbox");
-		const checkout = sandboxSteps.find((step) => step.name === "Check out pinned Codex sandbox source");
-		expect(checkout.with.repository).toBe("openvetta/codex");
-		expect(checkout.with.ref).toMatch(/^[0-9a-f]{40}$/);
-		expect(sandboxSteps.some((step) => step.run?.includes("cargo build --locked"))).toBe(true);
-		expect(sandboxSteps.some((step) => step.run?.includes("--capabilities --json"))).toBe(true);
+		expect(sandboxSteps).toHaveLength(1);
+		const [download] = sandboxSteps;
+		expect(download.env.SANDBOX_REPOSITORY).toBe("openvetta/codex");
+		expect(download.env.SANDBOX_TAG).toMatch(/^vetta-sandbox-v\d+\.\d+\.\d+$/);
+		expect(download.env.SANDBOX_COMMIT).toMatch(/^[0-9a-f]{40}$/);
+		expect(download.env.SANDBOX_ARCHIVE_SHA256).toMatch(/^[0-9a-f]{64}$/);
+		expect(download.run).toContain("SHA-256 mismatch");
+		expect(download.run).toContain("$manifest.commit -ne $env:SANDBOX_COMMIT");
+		expect(download.run).toContain("--capabilities --json");
+		expect(JSON.stringify(sandboxSteps)).not.toMatch(/cargo|rust-toolchain|actions\/checkout/);
 
 		for (const buildSteps of [jobs.build.steps, packagedJobs.smoke.steps]) {
 			const sandbox = buildSteps.findIndex((step) => step.uses === "./.github/actions/prepare-windows-sandbox");

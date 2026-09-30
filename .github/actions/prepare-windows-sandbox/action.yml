@@ -1,44 +1,54 @@
 name: Prepare Windows sandbox
-description: Build and stage the pinned Codex Windows sandbox binaries for Desktop packaging.
+description: Download, verify and stage the pinned Codex Windows sandbox release for Desktop packaging.
 
 runs:
   using: composite
   steps:
-    - name: Check out pinned Codex sandbox source
-      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-      with:
-        repository: openvetta/codex
-        ref: 0110b9f41e1c841210dc7019e6da4050f029436c
-        path: .ci/codex-windows-sandbox
-        persist-credentials: false
-
-    - name: Set up Rust for the Windows sandbox
-      uses: dtolnay/rust-toolchain@a0b273b48ed29de4470960879e8381ff45632f26 # 1.93.0
-      with:
-        targets: x86_64-pc-windows-msvc
-
-    - name: Build Windows sandbox binaries
+    # 沙盒由 openvetta/codex 的 vetta-windows-sandbox 工作流编译、测试并发布为 Release；
+    # 这里只下载固定版本。升级时同时改 tag、源码提交和压缩包 SHA-256。
+    - name: Download and stage Windows sandbox binaries
       shell: pwsh
-      working-directory: .ci/codex-windows-sandbox/codex-rs
-      run: cargo build --locked -p codex-windows-sandbox --bins --release --target x86_64-pc-windows-msvc
-
-    - name: Verify and stage Windows sandbox binaries
-      shell: pwsh
+      env:
+        SANDBOX_REPOSITORY: openvetta/codex
+        SANDBOX_TAG: vetta-sandbox-v1.0.0
+        SANDBOX_COMMIT: 0110b9f41e1c841210dc7019e6da4050f029436c
+        SANDBOX_ARCHIVE: vetta-windows-sandbox-x86_64-pc-windows-msvc.zip
+        SANDBOX_ARCHIVE_SHA256: 67eb456349b56ccda979d650b10745d555ff0bd677e999ce1313c4a357328af5
       run: |
         $ErrorActionPreference = "Stop"
-        $releaseDir = Join-Path $env:GITHUB_WORKSPACE ".ci/codex-windows-sandbox/codex-rs/target/x86_64-pc-windows-msvc/release"
+        $ProgressPreference = "SilentlyContinue"
+        $archivePath = Join-Path $env:RUNNER_TEMP $env:SANDBOX_ARCHIVE
+        $extractDir = Join-Path $env:RUNNER_TEMP "vetta-windows-sandbox"
         $stageDir = Join-Path $env:GITHUB_WORKSPACE "packages/runtime-core/sandbox/bin"
-        $binaryNames = @(
+        $url = "https://github.com/$env:SANDBOX_REPOSITORY/releases/download/$env:SANDBOX_TAG/$env:SANDBOX_ARCHIVE"
+
+        Invoke-WebRequest -Uri $url -OutFile $archivePath -MaximumRetryCount 3 -RetryIntervalSec 5
+        $archiveHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $archivePath).Hash.ToLowerInvariant()
+        if ($archiveHash -ne $env:SANDBOX_ARCHIVE_SHA256) {
+          throw "Windows sandbox archive SHA-256 mismatch: expected $env:SANDBOX_ARCHIVE_SHA256, got $archiveHash"
+        }
+
+        Remove-Item -LiteralPath $extractDir -Recurse -Force -ErrorAction SilentlyContinue
+        Expand-Archive -LiteralPath $archivePath -DestinationPath $extractDir
+        $manifest = Get-Content -LiteralPath (Join-Path $extractDir "manifest.json") -Raw | ConvertFrom-Json
+        if ($manifest.commit -ne $env:SANDBOX_COMMIT) {
+          throw "Windows sandbox was built from $($manifest.commit), expected $env:SANDBOX_COMMIT"
+        }
+
+        New-Item -ItemType Directory -Path $stageDir -Force | Out-Null
+        foreach ($binaryName in @(
           "codex-windows-sandbox-host.exe",
           "codex-windows-sandbox-setup.exe",
           "codex-command-runner.exe"
-        )
-
-        New-Item -ItemType Directory -Path $stageDir -Force | Out-Null
-        foreach ($binaryName in $binaryNames) {
-          $binaryPath = Join-Path $releaseDir $binaryName
+        )) {
+          $binaryPath = Join-Path $extractDir $binaryName
           if (-not (Test-Path -LiteralPath $binaryPath -PathType Leaf)) {
-            throw "Required Windows sandbox binary is missing: $binaryPath"
+            throw "Required Windows sandbox binary is missing: $binaryName"
+          }
+          $expected = $manifest.binaries | Where-Object { $_.name -eq $binaryName }
+          $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $binaryPath).Hash.ToLowerInvariant()
+          if ($null -eq $expected -or $actual -ne $expected.sha256) {
+            throw "Windows sandbox binary does not match its manifest: $binaryName"
           }
           Copy-Item -LiteralPath $binaryPath -Destination (Join-Path $stageDir $binaryName) -Force
         }

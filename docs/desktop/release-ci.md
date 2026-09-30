@@ -59,6 +59,12 @@
 曾经的下载缓存（ADR-0120）在 Windows 和 macOS 上得不偿失：约 700 MB 的 Bun 缓存下载只要几秒，
 解压却要 2.5～4 分钟，而直接安装只需半分钟左右；默认分支预热还额外占用四种 runner。
 
+Windows 命令沙盒不在本仓库编译：`openvetta/codex` 的 `vetta/windows-sandbox` 分支由
+`vetta-windows-sandbox` 工作流测试、编译并在推送 `vetta-sandbox-v*` tag 时发布 Release。
+[prepare-windows-sandbox](../../.github/actions/prepare-windows-sandbox/action.yml) 只下载固定 tag 的压缩包，
+校验压缩包 SHA-256、manifest 中的源码提交与各二进制哈希，再运行能力探测。升级沙盒时先在
+`openvetta/codex` 打新 tag，再同时更新 action 里的 tag、源码提交和压缩包 SHA-256。
+
 正式 workspace 构建继续 `--force`，不启用 Turbo Remote Cache，不跨版本复用签名产物。
 
 GitHub 说明：[重跑工作流](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/re-run-workflows-and-jobs)。
