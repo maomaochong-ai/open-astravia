@@ -150,12 +150,11 @@ export function MessageListView({
 		}
 		return null;
 	}, [messages]);
-	const sessionUsages = useMemo<readonly Usage[]>(
-		() => collectAgentUsages(deferredContentReady ? messages : messages.slice(-4)),
+	const sessionUsagesRef = useRef<readonly Usage[]>([]);
+	sessionUsagesRef.current = useMemo<readonly Usage[]>(
+		() => collectAgentUsages(deferredContentReady ? messages : messages.slice(-4), sessionUsagesRef.current),
 		[deferredContentReady, messages],
 	);
-	const sessionUsagesRef = useRef(sessionUsages);
-	sessionUsagesRef.current = sessionUsages;
 	const itemContent = useCallback(
 		(index: number, message: ChatConversationItem) => {
 			const modelSwitchLabel = modelSwitchLabels.get(message.id);
