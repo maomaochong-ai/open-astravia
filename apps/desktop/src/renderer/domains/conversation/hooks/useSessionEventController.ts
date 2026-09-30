@@ -265,6 +265,17 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 				setActiveSessionStreaming(true);
 				return;
 			}
+			// A reopened session resets the projection while its Turn keeps running;
+			// adopt the Turn's segment from the restored messages before deriving ids.
+			const adoptedTurnId =
+				event.type === "conversation.message.appended" ||
+				event.type === "model.request.started" ||
+				event.channel === "assistant"
+					? event.turnId
+					: undefined;
+			if (adoptedTurnId) {
+				conversationProjectionRef.current.adoptTurn(adoptedTurnId, getDefaultStore().get(chatMessagesAtom));
+			}
 			if (event.type === "conversation.message.appended") {
 				identityProtocolRef.current = true;
 				if (event.message.role !== "user") return;

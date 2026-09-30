@@ -57,6 +57,24 @@ export class ConversationProjection {
 		return this.messageIdForTurn(turnId);
 	}
 
+	/**
+	 * Recover the segment of a Turn that was already running before this
+	 * projection was reset (session reopened mid-Turn). History projection
+	 * numbers segments by the user messages inside the Turn, so the live stream
+	 * must continue from the highest segment already on screen.
+	 */
+	adoptTurn(turnId: string, messages: readonly ChatConversationItem[]): void {
+		if (this.turnSegments.has(turnId)) return;
+		const prefix = conversationAssistantMessageId(turnId, 0).slice(0, -1);
+		let segment: number | undefined;
+		for (const item of messages) {
+			if (item.kind !== "agent" || !item.id.startsWith(prefix)) continue;
+			const parsed = Number(item.id.slice(prefix.length));
+			if (Number.isInteger(parsed) && parsed > (segment ?? -1)) segment = parsed;
+		}
+		if (segment !== undefined) this.turnSegments.set(turnId, segment);
+	}
+
 	messageIdForTurn(turnId: string): string {
 		return conversationAssistantMessageId(turnId, this.turnSegments.get(turnId) ?? 0);
 	}
