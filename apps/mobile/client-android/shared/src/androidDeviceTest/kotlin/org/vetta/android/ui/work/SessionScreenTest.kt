@@ -6,6 +6,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -55,11 +56,24 @@ import org.vetta.android.ui.str
 import org.vetta.android.ui.theme.VettaTheme
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 @RunWith(AndroidJUnit4::class)
 class SessionScreenTest {
     @get:Rule
     val composeRule = createAndroidComposeRule<ComponentActivity>()
+
+    private fun buttonIsLeftOf(leftTag: String, rightTag: String): Boolean {
+        val left = composeRule.onNodeWithTag(leftTag).getUnclippedBoundsInRoot()
+        val right = composeRule.onNodeWithTag(rightTag).getUnclippedBoundsInRoot()
+        return left.right <= right.left
+    }
+
+    private fun buttonIsInside(innerTag: String, outerTag: String): Boolean {
+        val inner = composeRule.onNodeWithTag(innerTag).getUnclippedBoundsInRoot()
+        val outer = composeRule.onNodeWithTag(outerTag).getUnclippedBoundsInRoot()
+        return inner.left >= outer.left && inner.right <= outer.right && inner.top >= outer.top && inner.bottom <= outer.bottom
+    }
 
     private class RecordingActions : WorkActions {
         val calls = mutableListOf<String>()
@@ -179,12 +193,21 @@ class SessionScreenTest {
             }
         }
         composeRule.onNodeWithTag("composer.field").performTextInput("再写一份月报")
+        assertTrue(buttonIsInside("composer.attach", "composer.box"), "attach sits inside the field")
+        assertTrue(buttonIsLeftOf("composer.attach", "composer.field"), "attach sits to the left of the text")
+        assertTrue(buttonIsInside("composer.voice", "composer.box"), "voice sits inside the field")
+        assertTrue(buttonIsLeftOf("composer.field", "composer.voice"), "voice sits to the right of the text")
+        assertTrue(buttonIsLeftOf("composer.box", "composer.send"), "send sits to the right of the field")
         composeRule.onNodeWithTag("composer.send").performClick()
         assertEquals("send s1 再写一份月报", actions.calls.last())
 
         // The bare test activity pans for the keyboard, which the app itself does not.
         Espresso.closeSoftKeyboard()
         current = state(RemoteSessionStatus.Running, finishedTurn)
+        composeRule.waitForIdle()
+        assertTrue(buttonIsInside("composer.attach", "composer.box"), "attach stays inside the field")
+        assertTrue(buttonIsInside("composer.voice", "composer.box"), "voice stays inside the field")
+        assertTrue(buttonIsLeftOf("composer.box", "composer.stop"), "stop sits to the right of the field")
         composeRule.onNodeWithTag("composer.stop").performClick()
         assertEquals("stop s1", actions.calls.last())
         composeRule.onNodeWithTag("turn.status").assertIsDisplayed()
