@@ -39,6 +39,7 @@ import androidx.compose.material.icons.outlined.Cancel
 import androidx.compose.material.icons.outlined.Dashboard
 import androidx.compose.material.icons.outlined.DesktopWindows
 import androidx.compose.material.icons.outlined.EditNote
+import androidx.compose.material.icons.outlined.QrCodeScanner
 import androidx.compose.material.icons.outlined.FilterAltOff
 import androidx.compose.material.icons.outlined.Inbox
 import androidx.compose.material.icons.outlined.Settings
@@ -89,6 +90,7 @@ import org.vetta.android.resources.Res
 import org.vetta.android.resources.app_name
 import org.vetta.android.resources.cancel
 import org.vetta.android.resources.close
+import org.vetta.android.resources.home_connect_computer
 import org.vetta.android.resources.home_no_results
 import org.vetta.android.resources.home_no_results_hint
 import org.vetta.android.resources.home_search
@@ -457,6 +459,38 @@ private fun SearchField(query: String, onQueryChange: (String) -> Unit, onCancel
 /** Home's way to the computer's screen. */
 @Composable
 fun remoteEntry(onClick: () -> Unit) = HomeEntry(Icons.Outlined.DesktopWindows, stringResource(Res.string.remote_control), "home.remote", onClick)
+
+/** Home's way to pair. [computerName] is the paired computer, shown on the right. */
+@Composable
+fun connectComputerEntry(computerName: String? = null, onClick: () -> Unit) =
+    HomeEntry(Icons.Outlined.QrCodeScanner, stringResource(Res.string.home_connect_computer), "home.connect", onClick, detail = computerName)
+
+/**
+ * The name beside [connectComputerEntry]: the paired computer's, and nothing while unpaired
+ * or when the record has no name. An earlier computer can still be remembered after unpairing.
+ */
+fun connectComputerDetail(paired: Boolean, desktopName: String?): String? =
+    desktopName?.takeIf { paired && it.isNotBlank() }
+
+/**
+ * Home's menu, in the order it is shown: a new session, the task board, connecting a computer,
+ * then the computer's screen once it can be reached.
+ */
+@Composable
+fun homeEntries(
+    projectName: String?,
+    computerName: String?,
+    onNewSession: () -> Unit,
+    onOpenBoard: () -> Unit,
+    onConnect: () -> Unit,
+    onRemote: (() -> Unit)?,
+): List<HomeEntry> =
+    listOfNotNull(
+        newSessionEntry(projectName, onNewSession),
+        taskBoardEntry(onOpenBoard),
+        connectComputerEntry(computerName, onConnect),
+        onRemote?.let { remoteEntry(it) },
+    )
 
 /** Home's way to the task board. */
 @Composable
