@@ -53,6 +53,7 @@ function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
 function installRemotePairing(options: {
 	initial?: RemotePairingState;
 	createInvite?: () => Promise<RemotePairingState>;
+	cancelInvite?: () => Promise<RemotePairingState>;
 } = {}) {
 	const initial = options.initial ?? BASE_STATE;
 	const createInvite = vi.fn(options.createInvite ?? (async () => inviteState()));
@@ -67,7 +68,7 @@ function installRemotePairing(options: {
 			remotePairing: {
 				getState: vi.fn(async () => initial),
 				createInvite,
-				cancelInvite: vi.fn(steady),
+				cancelInvite: vi.fn(options.cancelInvite ?? steady),
 				setCloudEnabled: vi.fn(steady),
 				approve: vi.fn(steady),
 				revokeDevice: vi.fn(steady),
@@ -102,6 +103,10 @@ describe("远程连接设置", () => {
 		render(<RemotePairingSettings />);
 
 		expect(screen.getByText("remote.pairing.generating")).toBeTruthy();
+		expect(screen.getByText("remote.pairing.codePreparing")).toBeTruthy();
+		expect(screen.getByText("remote.pairing.code")).toBeTruthy();
+		expect(screen.getByText("remote.pairing.password")).toBeTruthy();
+		expect(screen.queryByRole("img", { name: "remote.pairing.qrAlt" })).toBeNull();
 		await waitFor(() => expect(createInvite).toHaveBeenCalledTimes(1));
 		expect(screen.queryByRole("button", { name: "remote.pairing.create" })).toBeNull();
 
@@ -122,7 +127,63 @@ describe("远程连接设置", () => {
 		render(<RemotePairingSettings />);
 
 		expect(await screen.findByText("remote.pairing.generating")).toBeTruthy();
+		expect(screen.getByText("remote.pairing.codePreparing")).toBeTruthy();
+		expect(screen.getByText("remote.pairing.code")).toBeTruthy();
 		expect(screen.queryByRole("img", { name: "remote.pairing.qrAlt" })).toBeNull();
+		expect(screen.getByRole("button", { name: "remote.pairing.cancel" }).hasAttribute("disabled")).toBe(true);
+	});
+
+	it("刷新时保持二维码和连接码的位置，并立刻收起即将作废的码", async () => {
+		const ready = {
+			...inviteState(),
+			invite: {
+				...inviteState().invite!,
+				code: { code: "K7Q2-9MXD", password: "482913", status: "ready" as const },
+			},
+		};
+		const pendingCancel = deferred<RemotePairingState>();
+		const pendingCreate = deferred<RemotePairingState>();
+		const { createInvite } = installRemotePairing({
+			initial: ready,
+			cancelInvite: () => pendingCancel.promise,
+			createInvite: () => pendingCreate.promise,
+		});
+		const user = userEvent.setup();
+		render(<RemotePairingSettings />);
+
+		await screen.findByRole("img", { name: "remote.pairing.qrAlt" });
+		expect(screen.getByText("K7Q2-9MXD")).toBeTruthy();
+		await user.click(screen.getByRole("button", { name: "remote.pairing.cancel" }));
+
+		expect(screen.queryByRole("img", { name: "remote.pairing.qrAlt" })).toBeNull();
+		expect(screen.queryByText("K7Q2-9MXD")).toBeNull();
+		expect(screen.queryByText("482913")).toBeNull();
+		expect(screen.getByText("remote.pairing.generating")).toBeTruthy();
+		expect(screen.getByText("remote.pairing.code")).toBeTruthy();
+		expect(screen.getByText("remote.pairing.password")).toBeTruthy();
+		expect(screen.getByRole("button", { name: "remote.pairing.cancel" }).hasAttribute("disabled")).toBe(true);
+
+		act(() => pendingCancel.resolve({ ...BASE_STATE, lanEndpoints: ready.lanEndpoints }));
+		await waitFor(() => expect(createInvite).toHaveBeenCalledTimes(1));
+		expect(screen.queryByRole("img", { name: "remote.pairing.qrAlt" })).toBeNull();
+		expect(screen.getByText("remote.pairing.generating")).toBeTruthy();
+		expect(screen.queryByRole("button", { name: "remote.pairing.create" })).toBeNull();
+
+		const next = inviteState("vetta://pair/next");
+		act(() =>
+			pendingCreate.resolve({
+				...next,
+				invite: {
+					...next.invite!,
+					pairingId: "pairing-2",
+					code: { code: "ABCD-EFGH", password: "111222", status: "ready" },
+				},
+			}),
+		);
+		await screen.findByRole("img", { name: "remote.pairing.qrAlt" });
+		expect(screen.getByText("ABCD-EFGH")).toBeTruthy();
+		expect(screen.getByText("111222")).toBeTruthy();
+		expect(screen.queryByText("remote.pairing.generating")).toBeNull();
 	});
 
 	it("已有未过期二维码时直接沿用，不会因重新打开页面而作废", async () => {
