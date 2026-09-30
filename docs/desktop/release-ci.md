@@ -19,15 +19,31 @@
   以 GitHub Release 为更新源的开源版要等你把清单上传到 Release。
 - Release 刚创建时只有先完成的平台的安装包。
 
-### 手动上线更新清单
+### 上线更新清单：desktop-promote
 
-1. 等需要的平台都构建完成，从 R2 的 `<prefix>/pending/<版本>/` 或 Actions 制品取回 `latest*.yml`。
-2. macOS 两个架构各有一份 `latest-mac-arm64.yml`、`latest-mac-x64.yml`，放进 `apps/desktop/release/` 后
-   执行 `bun run --cwd apps/desktop merge:updates:mac` 合并成 `latest-mac.yml`（只需要清单，不需要安装包）。
-3. 把 `latest.yml`、`latest-mac.yml`、`latest-linux.yml` 复制到 `<prefix>/`（GitHub 目标则上传到 Release）。
-   先确认清单里的版本不低于线上版本，清单引用的安装包都已在同一目录。
-4. 可用 `VETTA_UPDATE_PROVIDER=generic VETTA_UPDATE_URL=<url> VETTA_DESKTOP_RELEASE_VERSION=<版本> node apps/desktop/scripts/verify-update-feed.mjs`
-   检查线上清单及其引用的安装包是否可访问。
+需要的平台都构建完成后，在 **Actions → desktop-promote → Run workflow** 填写：
+
+| 输入 | 说明 |
+| --- | --- |
+| `version` | 要上线的版本，如 `0.5.60` |
+| `channel` | `stable` 或 `test`，决定 R2 目录与更新地址（与发版解析规则相同） |
+| `platforms` | 默认 `windows,mac,linux`；只写部分平台时，其余平台的线上清单保持不变 |
+| `dry_run` | 只校验不发布，可先勾选跑一次看结果 |
+
+[desktop-promote](../../.github/workflows/desktop-promote.yml) 依次：
+
+1. 从 `<prefix>/pending/<版本>/` 取出所选平台的清单；macOS 必须两个架构都在，合并成 `latest-mac.yml`。
+2. 核对每份清单的版本号，以及清单引用的每个安装包都已在 `<prefix>/`，且 sha512 与大小和上传时记录的一致。
+3. 拒绝让线上清单降级（线上已是更高版本时失败）。
+4. 上传到 `<prefix>/`，并通过公网地址复核清单与安装包可访问；CDN 有 60 秒缓存，复核会自动重试。
+5. 非 test 渠道把同一份清单附到 `v<版本>` 的 GitHub Release。
+
+有 R2 凭据时也可以在本地执行同一脚本：先设置 `VETTA_R2_ACCOUNT_ID`、`VETTA_R2_ACCESS_KEY_ID`、
+`VETTA_R2_SECRET_ACCESS_KEY`、`VETTA_R2_BUCKET`、`VETTA_R2_PREFIX`、`VETTA_UPDATE_URL`，再运行
+`bun run --cwd apps/desktop promote:updates:r2 -- --version <版本> [--platforms mac] [--dry-run]`。
+
+以 GitHub Release 为更新源的构建（开源版）没有 R2 暂存目录，需从 Actions 制品取回清单、
+用 `merge:updates:mac` 合并后手动上传到 Release。
 
 ## 哪一步失败，就重跑哪一步
 

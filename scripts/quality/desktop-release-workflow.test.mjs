@@ -74,6 +74,26 @@ describe("Desktop release workflow contracts", () => {
 		expect(workflow).not.toContain("verify-update-feed");
 	});
 
+	// 上线清单会让用户开始收到新版本，只能手动触发，并与构建使用同一套 R2 目标解析。
+	it("promotes staged update metadata only through a manual workflow", () => {
+		const promote = parse(
+			readFileSync(join(import.meta.dirname, "../../.github/workflows/desktop-promote.yml"), "utf8"),
+		);
+		expect(Object.keys(promote.on)).toEqual(["workflow_dispatch"]);
+		expect(promote.on.workflow_dispatch.inputs.version.required).toBe(true);
+		expect(promote.on.workflow_dispatch.inputs.dry_run.default).toBe(false);
+		const steps = promote.jobs.promote.steps;
+		const resolve = steps.find((step) => step.name === "Resolve R2 update target");
+		expect(resolve.env.INPUT_RELEASE_TARGET).toBe("r2");
+		expect(resolve.run).toContain("resolve-desktop-release-config.mjs --export-env");
+		const run = steps.find((step) => step.name === "Promote staged update metadata");
+		expect(run.run).toContain("node scripts/promote-update-metadata-r2.mjs");
+		expect(run.run).toContain("--dry-run");
+		const attach = steps.find((step) => step.name === "Attach promoted metadata to GitHub Release");
+		expect(attach.if).toContain("dry_run != 'true'");
+		expect(attach.if).toContain("channel != 'test'");
+	});
+
 	it("runs quality and packaging tests before the platform matrix", () => {
 		expect(workflow).toContain("  quality:");
 		expect(workflow).toContain("run: bun run check");

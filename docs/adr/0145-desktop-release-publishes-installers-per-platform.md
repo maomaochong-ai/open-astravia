@@ -18,7 +18,8 @@ Accepted
   `latest*.yml` 只上传到 `<prefix>/pending/<版本>/`，客户端读不到。
 - GitHub Release（非 test 渠道）：第一个完成的平台直接创建正式 Release，其余平台追加安装包；不上传更新清单。
 - 更新清单仍由 electron-builder 生成：其中每个安装包的 sha512 与 size 是客户端下载校验的依据，手写易错。
-  开发者检查、合并 macOS 清单后，自行复制到正式目录或上传到 Release。
+  开发者决定上线时手动运行 `desktop-promote`：合并 macOS 清单、核对安装包哈希、拒绝降级后发布到正式目录，
+  并附到 GitHub Release。
 
 ## 备选方案
 
@@ -30,6 +31,6 @@ Accepted
 ## 后果
 
 各平台构建完即可下载安装包，Release 页面随平台完成逐步补齐，刚创建时可能只有部分平台。
-CI 不再让任何客户端看到新版本，漏做手动上线步骤时用户收不到更新；线上 feed 的可达性检查改为
-开发者上线后按需运行 `verify-update-feed.mjs`。构建任务需要写 Release 的权限。
+CI 不再让任何客户端看到新版本，漏做手动上线步骤时用户收不到更新；线上 feed 的可达性检查移到
+`desktop-promote` 上线之后执行。构建任务需要写 Release 的权限。
 操作步骤见 [发版下载与失败恢复](../desktop/release-ci.md)。

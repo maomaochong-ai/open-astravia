@@ -12,14 +12,16 @@ import { windowsSupplementalArtifactNames } from "./windows-packaging-contract.m
 const projectRoot = join(import.meta.dirname, "..");
 const releaseDir = join(projectRoot, "release");
 const multipartPartSize = 16 * 1024 * 1024;
+// 更新清单短缓存，上线后客户端一分钟内看到新版本；安装包按版本命名，长期不可变。
+export const METADATA_CACHE_CONTROL = "public, max-age=60, s-maxage=60, must-revalidate";
 
-function requireEnv(key) {
+export function requireEnv(key) {
 	const value = process.env[key]?.trim();
 	if (!value) throw new Error(`[publish-updates-r2] missing ${key}`);
 	return value;
 }
 
-function normalizePrefix(rawPrefix) {
+export function normalizePrefix(rawPrefix) {
 	return rawPrefix
 		.split("/")
 		.map((part) => part.trim())
@@ -231,7 +233,7 @@ async function uploadFile({ client, bucket, prefix, fileName, isMetadata }) {
 			ContentLength: fileStat.size,
 			ContentType: contentTypeFor(fileName),
 			CacheControl: isMetadata
-				? "public, max-age=60, s-maxage=60, must-revalidate"
+				? METADATA_CACHE_CONTROL
 				: "public, max-age=31536000, immutable",
 			...(sha512 ? { Metadata: { sha512 } } : {}),
 		},
