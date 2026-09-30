@@ -50,7 +50,7 @@ const builtInToolDescriptions: Record<string, string> = {
 	tool_search: "Search the deferred MCP tool index by keyword and activate matching tools so they become callable",
 };
 
-export const VETTA_CLI_GUIDANCE = [
+export const VETTA_CLI_GUIDANCE = `# Vetta Desktop CLI\n\n${[
 	"Vetta CLI is your interface to the running Vetta Desktop app: use `vetta action` both to learn what Desktop can do and to operate it.",
 	"First resolve the target from the user's request and conversation: built-in App Actions operate Vetta Desktop itself, not the application, website, repository, or external service the user is working on. Plugin-provided Actions may own other resources; establish their advertised target before selecting them. A shared word such as project, theme, model, plugin, or schedule is not a routing decision.",
 	"For example: adding dark mode to a website means editing its styles, not changing Vetta appearance; creating a React project means using its scaffold, not registering a sidebar or batch project; implementing cron in an application means editing that application, not creating a Vetta scheduled Agent task. Use repository tools for those tasks. Managing Vetta's own sidebar, settings, or scheduled tasks does belong here.",
@@ -63,7 +63,7 @@ export const VETTA_CLI_GUIDANCE = [
 	"Never show or quote Vetta CLI commands, arguments, or raw terminal output. Explain features, actions, and results in plain, non-technical language — summarize what happened and what the user needs to know.",
 	"Actions that require authorization automatically ask the user through Vetta Desktop while the command runs; do not ask for authorization beforehand, and do not retry after the user rejects.",
 	"An approval dialog is not a way to discover what the user meant. Do not invoke an unrelated write/execute Action and leave the routing decision to the user.",
-].join(" ");
+].join(" ")}`;
 
 const TOOL_SELECTION_GUIDANCE =
 	"Before selecting a tool, identify the requested outcome, target resource, and whether the user wants explanation, inspection, or execution. " +
@@ -96,15 +96,26 @@ const RESPONSE_LANGUAGE_GUIDANCE =
 	"If the user writes in English, answer entirely in English even when your instructions and examples are in Chinese. Switch as soon as the user switches. " +
 	"The only exceptions are identifiers you must reproduce verbatim (file paths, code, commands, quoted source text) and content the user explicitly asked for in another language.";
 
+/**
+ * 指令优先级。Mode、Persona、项目指令文件与本文件的通用规则会在同一问题上给出相反要求
+ * （例如是否先征得授权、是否顺手重构），缺少裁决时模型只能按出现顺序猜。
+ * Persona/自定义指令只裁决沟通与协作方式，项目指令文件裁决该项目内的做事方式，两者按领域划分而非全序。
+ */
+const INSTRUCTION_PRECEDENCE_GUIDANCE =
+	"Instruction precedence: the user's messages in this conversation override everything else. " +
+	"Project instruction files (AGENTS.md, CLAUDE.md, …) govern how work is done in their project and override the work mode and these general guidelines. " +
+	"The user's persona and custom instructions govern communication and collaboration style — tone, length, and how much to confirm before acting — and override the work mode and project files on those points only. " +
+	"The work mode overrides these general guidelines. Where sources do not actually conflict, follow all of them.";
+
 const FINAL_ANSWER_ORDER_GUIDANCE =
 	"Before writing the final user-facing answer, complete all required tool calls and cleanup work, including validation, saving files, todo updates, and status updates. " +
 	"Once you begin the final answer, do not call more tools or perform additional actions. If more work is needed, do it first, then answer.";
 
-/** 文件名保真规则（buildGuidelines 与 custom-prompt 分支共用同一定义）。 */
+/** 文件名保真规则（buildGuidelines 与 custom-prompt 分支共用同一定义）。不点名具体工具：ls/find 并不总是可用。 */
 const FILENAME_FIDELITY_GUIDANCE =
-	"CRITICAL — File name fidelity: file names and paths are opaque byte strings — reproduce them EXACTLY as returned by tools (ls, find, dir_tree) or provided by the user; " +
+	"CRITICAL — File name fidelity: file names and paths are opaque byte strings — reproduce them EXACTLY as returned by tools or provided by the user; " +
 	"NEVER add, remove, or change any characters including spaces, dashes, underscores, or punctuation. " +
-	"When in doubt, run ls or find first to get the exact name, then copy it verbatim.";
+	"When in doubt, list the directory with an available tool first to get the exact name, then copy it verbatim.";
 
 /**
  * 桌面端渲染契约（文件徽章 / 产物块 / URL 链接）。这些是 UI 渲染约定而非模型行为指令，
@@ -117,11 +128,17 @@ const FILE_LINK_GUIDANCE =
 	"Use the exact absolute path returned by tools — never invent one; if you genuinely only have a relative path, leave it as plain text rather than fabricating an absolute one. " +
 	"The only exception is paths inside fenced code blocks or shell command examples — keep those as-is.";
 
+/**
+ * 交付物清单的唯一定义（Mode 不再另写一份）。它与 FILE_LINK_GUIDANCE 兼容：
+ * 正文按文件链接规则提到文件是允许的，交付物块只是结尾的完整清单。
+ */
 const DELIVERABLES_GUIDANCE =
-	"If you created, edited, or wrote ANY file during this turn, the VERY LAST thing in your final message MUST be one aggregated deliverables block — this is mandatory with NO exception, even for a single file or a one-line edit; never end such a turn without it. " +
-	"Format: a short heading in the user's language ('交付物:' for Chinese, 'Deliverables:' for English) followed by an unordered list where each item uses the standard CommonMark absolute file-link form — `- [filename.ext](</abs/path/with spaces/filename.ext>)`. The link label is the bare file name, never the full path. " +
-	"This block is the ONLY place outputs are listed (do not also scatter the same links earlier). List every file you created or changed for the user, plus user-facing outputs; exclude ONLY pure throwaway scaffolding, temp files, and files you merely read without changing. " +
-	"The single case where you omit this block is a turn that changed no files at all.";
+	"Deliverables block: if you created, edited, or wrote any file during this turn, end your final message with one aggregated deliverables block — even for a single file or a one-line edit. " +
+	"Give it a short bold heading in the user's language (**交付物** for Chinese, **Deliverables** for English, the natural equivalent otherwise), followed by an unordered list (`- ` prefix, never numbered) with one entry per file: " +
+	"a CommonMark link whose label is the bare file name (never the full or relative path) and whose destination is the absolute path in angle brackets, followed by a terse note on what changed — `- [filename.ext](</abs/path/with spaces/filename.ext>) — what changed here`. " +
+	"When two listed files share a name, disambiguate the label with the shortest distinguishing parent directory (`[app/index.ts](...)`, `[lib/index.ts](...)`). " +
+	"List every file you created or changed for the user, documents and code alike, plus user-facing outputs; exclude only throwaway scaffolding, temp files, and files you merely read. " +
+	"Linking a file earlier in your prose is fine; this block is still the one complete list. Omit it only when the turn changed no files.";
 
 const URL_LINK_GUIDANCE =
 	"Render web URLs in your prose as markdown links with descriptive text, e.g. [Vite docs](https://vitejs.dev), instead of bare URLs. Keep URLs as-is inside code blocks and shell examples.";
@@ -246,7 +263,7 @@ function buildDateTime(): string {
 }
 
 function buildGuidelines(tools: string[], scenario?: ConversationScenario): string {
-	const guidelinesList: string[] = [];
+	const guidelinesList: string[] = [INSTRUCTION_PRECEDENCE_GUIDANCE];
 	if (tools.length > 0) guidelinesList.push(TOOL_SELECTION_GUIDANCE);
 	// 渲染契约（徽章/产物块/URL 链接）只对有 UI 渲染的场景有意义；cli 场景剔除。
 	// scenario 未传（SDK 直调/测试）时保守保留，行为与旧版一致。
@@ -254,18 +271,16 @@ function buildGuidelines(tools: string[], scenario?: ConversationScenario): stri
 	const hasSelectedCommandTool = tools.includes("bash") || tools.includes("shell");
 	const hasEdit = tools.includes("edit");
 	const hasWrite = tools.includes("write");
-	const hasGrep = tools.includes("grep");
-	const hasGlob = tools.includes("glob");
-	const hasFind = tools.includes("find");
-	const hasLs = tools.includes("ls");
 	const hasDirTree = tools.includes("dir_tree");
 	const hasRead = tools.includes("read");
 
-	if (hasSelectedCommandTool && !hasGrep && !hasGlob && !hasFind && !hasLs && !hasDirTree) {
+	// 只点名本次真实可用的探索工具，避免引导模型去调用不存在的 find/ls。
+	const explorationTools = ["grep", "glob", "find", "ls", "dir_tree"].filter((tool) => tools.includes(tool));
+	if (hasSelectedCommandTool && explorationTools.length === 0) {
 		guidelinesList.push("Use the shell tool for file operations like ls, rg, find");
-	} else if (hasSelectedCommandTool && (hasGrep || hasGlob || hasFind || hasLs || hasDirTree)) {
+	} else if (hasSelectedCommandTool) {
 		guidelinesList.push(
-			"Prefer grep/glob/find/ls/dir_tree tools over the shell tool for file exploration (faster, respects .gitignore)",
+			`Prefer ${explorationTools.join("/")} over the shell tool for file exploration (faster, respects .gitignore)`,
 		);
 	}
 
@@ -277,7 +292,7 @@ function buildGuidelines(tools: string[], scenario?: ConversationScenario): stri
 
 	if (hasDirTree) {
 		guidelinesList.push(
-			'ALWAYS use dir_tree (not bash "tree", "ls -R", "find", "fd", or "rg --files") whenever you need to view directory structure or explore a codebase. Only fall back to bash if dir_tree cannot fulfill the specific requirement (e.g., custom output formatting)',
+			'Use dir_tree (not bash "tree", "ls -R", "find", "fd", or "rg --files") whenever you need to view directory structure or explore a codebase. Only fall back to bash if dir_tree cannot fulfill the specific requirement (e.g., custom output formatting)',
 		);
 	}
 
@@ -289,7 +304,7 @@ function buildGuidelines(tools: string[], scenario?: ConversationScenario): stri
 
 	if (tools.includes("current_time")) {
 		guidelinesList.push(
-			'ALWAYS use current_time tool (not bash "date", "timedatectl", or other shell commands) when you need to know the current date or time. Only fall back to bash if current_time cannot fulfill the specific requirement (e.g., timezone conversion, date arithmetic)',
+			'Use the current_time tool (not bash "date", "timedatectl", or other shell commands) when you need to know the current date or time. Only fall back to bash if current_time cannot fulfill the specific requirement (e.g., timezone conversion, date arithmetic)',
 		);
 	}
 
