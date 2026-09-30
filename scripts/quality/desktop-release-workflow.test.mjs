@@ -22,37 +22,17 @@ function actionSteps(name) {
 }
 
 describe("Desktop release workflow contracts", () => {
-	it("saves successful dependency downloads before later build or verification failures", () => {
-		const steps = actionSteps("install-bun-dependencies");
-		const restore = steps.findIndex((step) => step.uses === "actions/cache/restore@v4");
-		const install = steps.findIndex((step) => step.run?.includes("install-ci-dependencies.mjs"));
-		const save = steps.findIndex((step) => step.uses === "actions/cache/save@v4");
-		expect(restore).toBeLessThan(install);
-		expect(install).toBeLessThan(save);
-		expect(steps[save].if).toBe("steps.bun-cache.outputs.cache-hit != 'true'");
-		expect(steps[restore].with.path).toBe("~/.bun/install/cache");
-		expect(steps[restore].with.key).toContain("runner.arch");
-	});
-
-	it("isolates model inputs and saves resources before compilation without caching application outputs", () => {
-		const steps = actionSteps("prepare-desktop-resources");
-		const restore = steps.find((step) => step.uses === "actions/cache/restore@v4");
-		expect(restore.with["restore-keys"]).toBeUndefined();
-		for (const input of [
-			"runtimes/manifest.json",
-			"speech-input/model-manifest.json",
-			"fetch-ocr-models.js",
-			"runner.arch",
-		]) {
-			expect(restore.with.key).toContain(input);
+	it("downloads packaging inputs directly instead of restoring Actions caches", () => {
+		expect(actionSteps("install-bun-dependencies").some((step) => step.uses?.startsWith("actions/cache"))).toBe(
+			false,
+		);
+		expect(workflow).not.toContain("actions/cache");
+		expect(workflow).not.toContain("desktop-download-cache");
+		expect(workflow).not.toContain("prepare-desktop-resources");
+		for (const job of [jobs.quality, jobs.build]) {
+			const setupGo = job.steps.find((step) => step.uses === "actions/setup-go@v5");
+			expect(setupGo.with.cache).toBe(false);
 		}
-		const save = steps.findIndex((step) => step.uses === "actions/cache/save@v4");
-		expect(steps.findIndex((step) => step.name === "Download release resources")).toBeLessThan(save);
-		expect(steps[save].with.path).toBe(restore.with.path);
-		expect(restore.with.path).not.toMatch(/node_modules|build-stage|\.turbo|release\//);
-		expect(
-			jobs.build.steps.findIndex((step) => step.uses === "./.github/actions/prepare-desktop-resources"),
-		).toBeLessThan(jobs.build.steps.findIndex((step) => step.name === "Build updater artifacts"));
 	});
 
 	it("publishes the platform builds directly without a separate verification stage", () => {
@@ -73,16 +53,6 @@ describe("Desktop release workflow contracts", () => {
 				"desktop-*",
 			);
 		}
-	});
-
-	it("prewarms tag-readable downloads on the default branch without building or publishing", () => {
-		const warm = parse(readFileSync(join(import.meta.dirname, "../../.github/workflows/desktop-cache.yml"), "utf8"));
-		expect(warm.on.schedule).toHaveLength(1);
-		expect(warm.jobs.warm.if).toContain("github.event.repository.default_branch");
-		expect([...warm.jobs.warm.strategy.matrix.runner].sort()).toEqual(
-			jobs.build.strategy.matrix.include.map((entry) => entry.runner).sort(),
-		);
-		expect(warm.jobs.warm.steps.some((step) => /dist:|publish:/.test(step.run ?? ""))).toBe(false);
 	});
 
 	it("runs quality and packaging tests before the platform matrix", () => {
@@ -191,8 +161,8 @@ describe("Desktop release workflow contracts", () => {
 			expect(jobSource).toContain("Set up Go for IM gateway");
 			expect(jobSource).toContain("uses: actions/setup-go@v5");
 			expect(jobSource).toContain("go-version-file: apps/im-gateway/go.mod");
-			expect(jobSource).toContain("cache-dependency-path: apps/im-gateway/go.sum");
 		}
+		expect(packagedSmokeJob).toContain("cache-dependency-path: apps/im-gateway/go.sum");
 	});
 
 	it("uses the same publish jobs for tagged stable and dispatched test/stable releases", () => {

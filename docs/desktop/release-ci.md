@@ -1,7 +1,6 @@
-# 发版缓存与失败恢复
+# 发版下载与失败恢复
 
-实现入口：[desktop-release.yml](../../.github/workflows/desktop-release.yml)、
-[desktop-cache.yml](../../.github/workflows/desktop-cache.yml)。
+实现入口：[desktop-release.yml](../../.github/workflows/desktop-release.yml)。
 
 ## 哪一步失败，就重跑哪一步
 
@@ -33,30 +32,18 @@ R2 发布前仍由 `verify-update-artifacts` 检查更新清单与 macOS 签名�
 已经发布的 GitHub Release 不允许覆盖；若仅其更新源校验失败，重跑独立校验任务即可。
 R2 使用可变的 channel URL；如果下一版已覆盖当前 channel，旧版本校验会按版本不匹配失败。
 
-## 下载缓存
+## 下载：不使用 Actions 缓存
 
-- Bun 包下载由共享安装 action 恢复，始终执行 `bun install --frozen-lockfile`；不缓存 `node_modules`。
-  首次安装失败先保留已下载内容重试，连续失败才清理缓存兜底。
-- Electron 与 electron-builder 的工具下载按 OS、架构和锁文件隔离，允许恢复同平台的旧下载目录，
-  由工具按版本选择。Electron 安装脚本与打包器使用相同的显式缓存根。
-- 内置 Node/Python 原始归档、OCR 和 Windows 语音模型按平台、清单及下载脚本精确匹配，
-  不恢复旧资源键。运行时归档在缓存命中和下载完成时检查可读性，语音模型保留 SHA-256 校验。
-- Bun 安装、资源准备成功后立即保存；后面的构建或测试失败不会丢弃它们。
-  工具下载在打包失败后也尝试保存。缓存被清理或未命中时仍可正常下载并构建。
+发版流水线不恢复也不保存任何 Actions 缓存，每次直接从源头下载：
 
-GitHub 的缓存按分支/tag 限定作用域：新 tag 不能读取另一个 tag 的缓存，但能读取默认分支缓存。
-因此 `desktop-cache` 在默认分支预热四种构建机器的 Bun、Electron、运行时和模型下载，
-不编译应用、不签名、不发布，也不读取发布环境秘密。
-electron-builder 的附加工具在真正打包时补齐；预热缓存与完整工具缓存使用不同键，
-避免仅有 Electron 的预热条目阻止后续保存。
+- Bun 包由共享安装 action 执行 `bun install --frozen-lockfile`；首次失败先保留本次已下载的内容重试，连续失败才清理 Bun 缓存兜底。
+- Electron 与 electron-builder 的工具由打包器按需下载。
+- 内置 Node/Python 归档、OCR 与语音模型由 `prepare:desktop-pack` 在打包时下载；运行时归档下载后检查可读性，语音模型保留 SHA-256 校验。
+- Go 工具链由 `actions/setup-go` 安装，关闭其内置的模块缓存。
 
-将改动合入默认分支后，可在 **Actions → desktop-cache → Run workflow** 中选择默认分支先跑一次，
-等预热完成再发新版本。当前仓库默认分支是 `main`，依赖/资源变更时自动预热；
-每周一、四还会维护缓存。fork 修改默认分支后应同步调整 push 的分支过滤，
-定时与手动入口仍会校验实际默认分支。第一次预热和新依赖版本仍需下载；缓存可能因配额或闲置被驱逐。
+曾经的下载缓存（ADR-0120）在 Windows 和 macOS 上得不偿失：约 700 MB 的 Bun 缓存下载只要几秒，
+解压却要 2.5～4 分钟，而直接安装只需半分钟左右；默认分支预热还额外占用四种 runner。
 
-这是下载复用与恢复粒度优化。正式 workspace 构建继续 `--force`，不启用 Turbo Remote Cache，
-不跨版本复用签名产物。
+正式 workspace 构建继续 `--force`，不启用 Turbo Remote Cache，不跨版本复用签名产物。
 
-GitHub 说明：[重跑工作流](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/re-run-workflows-and-jobs)、
-[缓存作用域](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching)。
+GitHub 说明：[重跑工作流](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/re-run-workflows-and-jobs)。

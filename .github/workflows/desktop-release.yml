@@ -199,7 +199,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: apps/im-gateway/go.mod
-          cache-dependency-path: apps/im-gateway/go.sum
+          cache: false
 
       - name: Test IM gateway sidecar
         working-directory: apps/im-gateway
@@ -273,11 +273,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: apps/im-gateway/go.mod
-          cache-dependency-path: apps/im-gateway/go.sum
-
-      - name: Restore packaging tool downloads
-        id: download-cache
-        uses: ./.github/actions/desktop-download-cache
+          cache: false
 
       - name: Install dependencies
         uses: ./.github/actions/install-bun-dependencies
@@ -394,9 +390,6 @@ jobs:
           OUTPUT_UPDATE_URL: ${{ needs.prepare.outputs.update_url }}
         run: node scripts/release/resolve-desktop-release-config.mjs --from-outputs --export-env >> "${GITHUB_ENV}"
 
-      - name: Prepare cached release resources
-        uses: ./.github/actions/prepare-desktop-resources
-
       - name: Build updater artifacts
         working-directory: apps/desktop
         env:
@@ -430,13 +423,6 @@ jobs:
             apps/desktop/release/*.rpm
             apps/desktop/release/*.zip
             apps/desktop/release/latest*.yml
-
-      - name: Save packaging tool downloads
-        if: ${{ !cancelled() && steps.download-cache.outputs.tools-key != '' && steps.download-cache.outputs.tools-cache-hit != 'true' }}
-        uses: actions/cache/save@v4
-        with:
-          path: ${{ steps.download-cache.outputs.tools-path }}
-          key: ${{ steps.download-cache.outputs.tools-key }}
 
   publish-r2:
     name: publish R2
