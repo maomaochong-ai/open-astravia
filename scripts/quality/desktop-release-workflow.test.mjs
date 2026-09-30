@@ -35,24 +35,43 @@ describe("Desktop release workflow contracts", () => {
 		}
 	});
 
-	it("publishes the platform builds directly without a separate verification stage", () => {
+	it("publishes each platform's installers as soon as it is built", () => {
 		expect(jobs.build.strategy["fail-fast"]).toBe(false);
-		expect(jobs.verify).toBeUndefined();
+		expect(Object.keys(jobs)).toEqual(["prepare", "quality", "build"]);
 		expect(workflow).not.toContain("release-build-");
 		expect(workflow).not.toContain("test:e2e:packaged");
+		expect(workflow).not.toContain("download-artifact");
+		expect(workflow).not.toContain("merge:updates:mac");
 		const buildSteps = jobs.build.steps;
-		const build = buildSteps.findIndex((step) => step.name === "Build updater artifacts");
-		const rename = buildSteps.findIndex((step) => step.name === "Name macOS update metadata per architecture");
-		const upload = buildSteps.findIndex((step) => step.name === "Upload updater artifacts");
-		expect(build).toBeLessThan(rename);
+		const index = (name) => buildSteps.findIndex((step) => step.name === name);
+		const build = index("Build updater artifacts");
+		const verify = index("Verify updater artifacts");
+		const rename = index("Name macOS update metadata per architecture");
+		const upload = index("Upload updater artifacts");
+		const r2 = index("Publish installers to R2 and stage update metadata");
+		const github = index("Add installers to GitHub Release");
+		expect(build).toBeLessThan(verify);
+		expect(verify).toBeLessThan(rename);
 		expect(rename).toBeLessThan(upload);
+		expect(upload).toBeLessThan(r2);
+		expect(r2).toBeLessThan(github);
 		expect(buildSteps[upload].with.name).toBe("desktop-$" + "{{ matrix.platform }}");
-		for (const target of ["publish-r2", "publish-github"]) {
-			expect(jobs[target].needs).toEqual(["prepare", "quality", "build"]);
-			expect(jobs[target].steps.find((step) => step.uses === "actions/download-artifact@v4").with.pattern).toBe(
-				"desktop-*",
-			);
-		}
+		expect(buildSteps[verify].if).toContain("runner.os != 'Windows'");
+		expect(jobs.build.permissions).toEqual({ contents: "write" });
+	});
+
+	// 更新清单决定客户端何时看到新版本，由开发者手动上线；CI 只上传安装包。
+	it("never publishes update metadata to a live update source", () => {
+		const buildSteps = jobs.build.steps;
+		const r2 = buildSteps.find((step) => step.name === "Publish installers to R2 and stage update metadata");
+		expect(r2.if).toContain("needs.prepare.outputs.release_target == 'r2'");
+		expect(r2.run).toBe("node scripts/publish-update-artifacts-r2.mjs --stage-metadata");
+		expect(workflow).not.toContain("publish:updates:r2");
+		const github = buildSteps.find((step) => step.name === "Add installers to GitHub Release");
+		expect(github.run).toContain("gh release upload");
+		expect(github.run).not.toContain(".yml");
+		expect(github.run).not.toContain("--draft");
+		expect(workflow).not.toContain("verify-update-feed");
 	});
 
 	it("runs quality and packaging tests before the platform matrix", () => {
@@ -77,19 +96,6 @@ describe("Desktop release workflow contracts", () => {
 			expect(sandbox).toBeGreaterThanOrEqual(0);
 			expect(buildSteps[sandbox].if).toBe("runner.os == 'Windows'");
 			expect(sandbox).toBeLessThan(buildSteps.findIndex((step) => step.name === "Set up Bun"));
-		}
-	});
-
-	it("verifies the public update feed after either publish target", () => {
-		expect(workflow.match(/node scripts\/verify-update-feed\.mjs/g)).toHaveLength(2);
-		expect(workflow.match(/needs: \[prepare, quality, build\]/g)).toHaveLength(2);
-		for (const target of ["r2", "github"]) {
-			const feed = jobs[`verify-feed-${target}`];
-			expect(feed.needs).toEqual(["prepare", `publish-${target}`]);
-			expect(feed.steps.some((step) => step.run?.includes("verify-update-feed.mjs"))).toBe(true);
-			expect(feed.steps.some((step) => step.uses?.includes("download-artifact"))).toBe(false);
-			expect(feed.steps.some((step) => /publish:|gh release|matrix.command/.test(step.run ?? ""))).toBe(false);
-			expect(JSON.stringify(feed)).not.toContain("secrets.");
 		}
 	});
 
@@ -155,7 +161,7 @@ describe("Desktop release workflow contracts", () => {
 
 	it("installs the IM gateway Go toolchain from its module declaration", () => {
 		const packagedSmokeJob = packagedWorkflow.split("\n  smoke:\n")[1];
-		const releaseBuildJob = workflow.split("\n  build:\n")[1]?.split("\n  publish-github:\n")[0];
+		const releaseBuildJob = workflow.split("\n  build:\n")[1];
 		for (const jobSource of [packagedSmokeJob, releaseBuildJob]) {
 			expect(jobSource).toBeDefined();
 			expect(jobSource).toContain("Set up Go for IM gateway");
@@ -196,7 +202,7 @@ describe("Desktop release workflow contracts", () => {
 	});
 
 	it("allows enough wall clock for signing and notarizing both macOS architectures", () => {
-		const buildJob = workflow.slice(workflow.indexOf("\n  build:"), workflow.indexOf("\n  publish-r2:"));
+		const buildJob = workflow.slice(workflow.indexOf("\n  build:"));
 		const timeout = Number(buildJob.match(/timeout-minutes: (\d+)/)?.[1]);
 		expect(timeout).toBeGreaterThanOrEqual(120);
 	});
@@ -204,7 +210,7 @@ describe("Desktop release workflow contracts", () => {
 	// R2 是更新源，GitHub Release 是对外的下载入口和版本说明归档。早先两个发布 job
 	// 按 release_target 互斥，商业版发版在 GitHub 上什么都看不到。
 	it("publishes a GitHub Release alongside R2 for every non-test channel", () => {
-		expect(workflow).toContain("  publish-github:");
+		expect(workflow).toContain("- name: Add installers to GitHub Release");
 		expect(workflow).toContain("needs.prepare.outputs.channel != 'test'");
 		expect(workflow).not.toContain("needs.prepare.outputs.release_target != 'r2'");
 	});

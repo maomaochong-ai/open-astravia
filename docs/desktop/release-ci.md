@@ -2,35 +2,50 @@
 
 实现入口：[desktop-release.yml](../../.github/workflows/desktop-release.yml)。
 
+## 各平台构建完即发布安装包，更新清单由开发者上线
+
+流水线只有 `prepare` → `quality` → `build <platform>` 三段。每个平台构建成功后在同一个任务里：
+
+1. 校验更新清单与安装包（`verify-update-artifacts`，macOS 含签名与公证）；Windows 的校验会真实安装一遍，发版跳过。
+2. 上传 Actions 制品 `desktop-<platform>`（安装包、blockmap 与 `latest*.yml`，保留 30 天）。
+3. R2 目标：安装包与 blockmap 上传到 `<prefix>/`（如 `desktop/stable/`），更新清单只上传到
+   `<prefix>/pending/<版本>/`。安装包按版本命名、不会被已安装的客户端读到，所以可以先传。
+4. 非 test 渠道：第一个完成的平台创建 GitHub Release（正文取发布说明），其余平台追加安装包与 blockmap；
+   不上传 `latest*.yml`。
+
+因此不再等四个平台全部完成才开始发布，Release 页面会随各平台完成逐步补齐。代价是：
+
+- **CI 不会让任何客户端看到新版本。** R2 客户端要等你把清单放到 `<prefix>/` 下；
+  以 GitHub Release 为更新源的开源版要等你把清单上传到 Release。
+- Release 刚创建时只有先完成的平台的安装包。
+
+### 手动上线更新清单
+
+1. 等需要的平台都构建完成，从 R2 的 `<prefix>/pending/<版本>/` 或 Actions 制品取回 `latest*.yml`。
+2. macOS 两个架构各有一份 `latest-mac-arm64.yml`、`latest-mac-x64.yml`，放进 `apps/desktop/release/` 后
+   执行 `bun run --cwd apps/desktop merge:updates:mac` 合并成 `latest-mac.yml`（只需要清单，不需要安装包）。
+3. 把 `latest.yml`、`latest-mac.yml`、`latest-linux.yml` 复制到 `<prefix>/`（GitHub 目标则上传到 Release）。
+   先确认清单里的版本不低于线上版本，清单引用的安装包都已在同一目录。
+4. 可用 `VETTA_UPDATE_PROVIDER=generic VETTA_UPDATE_URL=<url> VETTA_DESKTOP_RELEASE_VERSION=<版本> node apps/desktop/scripts/verify-update-feed.mjs`
+   检查线上清单及其引用的安装包是否可访问。
+
 ## 哪一步失败，就重跑哪一步
 
 在原来的 Actions 运行页面选择 **Re-run jobs → Re-run failed jobs**，不要重新 Run workflow，
-也不要为重试删除或重推 tag。GitHub 会保留成功任务的结果，执行失败任务及其需要继续的下游。
-修复源码需要新提交和新的运行；重跑旧运行仍使用原来的提交和工作流定义。
+也不要为重试删除或重推 tag。修复源码需要新提交和新的运行；重跑旧运行仍使用原来的提交和工作流定义。
 
 | 失败位置 | 重跑时执行什么 |
 | --- | --- |
 | `quality` | 重新检查；通过后开始构建 |
-| `build <platform>` | 重做失败平台的构建；已经成功的平台不重打 |
-| `publish R2` / `publish GitHub Release` | 使用已上传的平台制品继续发布，不重新构建 |
-| `verify published r2/github feed` | 只读取线上更新源，不重新上传或构建 |
+| `build <platform>` | 重做该平台的构建与上传；已经成功的平台不重打 |
 
-构建矩阵关闭 fail-fast，避免一个平台失败取消其他平台；发布等待所有平台构建成功。
-单个平台内部的编译和各安装格式生成是一个构建任务，其中失败时会重跑该平台；尚不支持单个安装格式续做。
+构建矩阵关闭 fail-fast，一个平台失败不影响其他平台发布。重跑时 R2 上内容相同的安装包会跳过，
+内容不同则拒绝覆盖；pending 清单与 GitHub Release 的同名文件直接覆盖。
+单个平台内部的编译和各安装格式生成是一个构建任务，尚不支持单个安装格式续做。
 
-发布流水线不再单独跑平台验收（安装包实装、Windows 补充格式解包、packaged E2E）：
+发布流水线不单独跑平台验收（安装包实装、Windows 补充格式解包、packaged E2E）：
 那一段要把未压缩的应用连同安装包一起存成 1 GB 以上的检查点再下载回来，
-成本远高于它拦下的问题。packaged E2E 由 PR 上的 `desktop-packaged` 覆盖；
-R2 发布前仍由 `verify-update-artifacts` 检查更新清单与 macOS 签名公证，发布后仍校验公开 feed。
-
-每个平台构建成功后直接上传 `desktop-<platform>`（只含安装包、blockmap 与 `latest*.yml`），发布任务只消费它。
-制品保留 30 天（仍受仓库保留策略限制），只在同一次运行内使用，
-不跨提交、版本、租户或发布配置混用。制品过期或被删除后，需要重跑相应上游构建。
-显式重跑全部任务会覆盖该运行同名制品；它仍然会全量构建。
-
-线上校验失败可能是 CDN 缓存、网络或更新源配置问题，应先查看失败 URL 与状态。
-已经发布的 GitHub Release 不允许覆盖；若仅其更新源校验失败，重跑独立校验任务即可。
-R2 使用可变的 channel URL；如果下一版已覆盖当前 channel，旧版本校验会按版本不匹配失败。
+成本远高于它拦下的问题。packaged E2E 由 PR 上的 `desktop-packaged` 覆盖。
 
 ## 下载：不使用 Actions 缓存
 
