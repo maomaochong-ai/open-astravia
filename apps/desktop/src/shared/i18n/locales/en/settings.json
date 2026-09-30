@@ -135,7 +135,8 @@
     },
     "devices": {
       "title": "Paired phones",
-      "empty": "No phone paired yet.",
+      "empty": "No phone paired yet",
+      "emptyHint": "Use the QR code or connection code above in Vetta on your phone.",
       "unnamed": "Phone",
       "online": "Online",
       "onlineVia": "Online · {{channel}}",

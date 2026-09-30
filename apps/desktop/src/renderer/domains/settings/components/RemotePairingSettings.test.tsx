@@ -186,6 +186,15 @@ describe("远程连接设置", () => {
 		expect(screen.queryByText("remote.pairing.generating")).toBeNull();
 	});
 
+	it("还没有配对手机时，用和手机行一样的空位说明如何配对", async () => {
+		installRemotePairing({ initial: inviteState() });
+		render(<RemotePairingSettings />);
+
+		expect(await screen.findByText("remote.devices.empty")).toBeTruthy();
+		expect(screen.getByText("remote.devices.emptyHint")).toBeTruthy();
+		expect(screen.getByText("remote.devices.title")).toBeTruthy();
+	});
+
 	it("已有未过期二维码时直接沿用，不会因重新打开页面而作废", async () => {
 		const { createInvite } = installRemotePairing({ initial: inviteState("vetta://pair/existing") });
 
