@@ -33,7 +33,6 @@ export interface RuntimeHostSessionEventRelayOptions {
  * subscriber/observer 失败隔离为安全 Observation。
  */
 export class RuntimeHostSessionEventRelay {
-	private readonly currentTurnStartedAt = new Map<string, number>();
 	private readonly inFlightBuffers = new Map<string, InFlightBuffer>();
 	private readonly inFlightUnsubscribers = new Map<string, () => void>();
 	private readonly externalSubscribers = new Map<string, Set<(event: SessionEvent) => void>>();
@@ -69,7 +68,6 @@ export class RuntimeHostSessionEventRelay {
 			}
 			recordTurnReplay(buffer, event);
 			if (event.type === "session.lifecycle" && event.phase === "agent_start") {
-				this.currentTurnStartedAt.set(sessionKey, event.timestamp);
 				buffer.turnStartedAt = event.timestamp;
 				buffer.events = [];
 				buffer.isActive = true;
@@ -80,7 +78,6 @@ export class RuntimeHostSessionEventRelay {
 			} else if (event.channel !== "assistant" && event.type === "error" && buffer.isActive) {
 				buffer.terminalReason = "error";
 			} else if (event.type === "session.lifecycle" && event.phase === "agent_end") {
-				this.currentTurnStartedAt.delete(sessionKey);
 				buffer.events = [];
 				buffer.isActive = false;
 				this.markRunning(
@@ -172,10 +169,6 @@ export class RuntimeHostSessionEventRelay {
 		this.notifyExternalSubscribers(sessionKey, sequencedEvent);
 	}
 
-	readCurrentTurnStartedAt(sessionKey: string): number | undefined {
-		return this.currentTurnStartedAt.get(sessionKey);
-	}
-
 	/** Identity of the Turn currently running in this Session, from `conversation.turn.*` facts. */
 	readCurrentTurnId(sessionKey: string): string | undefined {
 		return this.inFlightBuffers.get(sessionKey)?.turn?.turnId;
@@ -197,7 +190,6 @@ export class RuntimeHostSessionEventRelay {
 		this.inFlightBuffers.delete(sessionKey);
 		this.externalSubscribers.delete(sessionKey);
 		this.externalSubscriberActiveToolFingerprints.delete(sessionKey);
-		this.currentTurnStartedAt.delete(sessionKey);
 		this.nextSequences.delete(sessionKey);
 		this.contextStateEvents.delete(sessionKey);
 		this.markRunning(sessionPath, false, sessionId);
