@@ -26,6 +26,9 @@ const reservedSessionId = "11111111-1111-4111-8111-111111111111";
 
 describe("useNewSessionTeamDraft", () => {
 	const list = vi.fn(async () => document);
+	const listBlueprints = vi.fn(async () =>
+		document.agents.map((agent) => ({ id: agent.blueprintId, avatarUrl: `provided:${agent.blueprintId}` })),
+	);
 	const createSessionRecord = vi.fn(async () => snapshot);
 	const setExecutionMode = vi.fn(async () => snapshot);
 	const sendMessage = vi.fn(async () => snapshot);
@@ -45,8 +48,20 @@ describe("useNewSessionTeamDraft", () => {
 		vi.spyOn(crypto, "randomUUID").mockReturnValue(reservedSessionId);
 		Object.defineProperty(window, "vetta", {
 			configurable: true,
-			value: { agentTeams: { list, createSessionRecord, setExecutionMode, sendMessage } },
+			value: { agentTeams: { list, listBlueprints, createSessionRecord, setExecutionMode, sendMessage } },
 		});
+	});
+
+	it("uses each member blueprint avatar in the new-session @ suggestions", async () => {
+		const { result } = renderHook(() => useNewSessionTeamDraft(options()));
+
+		await waitFor(() => expect(result.current.model?.members.length).toBeGreaterThan(0));
+		await waitFor(() =>
+			expect(result.current.model?.members.map((member) => member.avatar)).toEqual(
+				result.current.model?.members.map((member) => `provided:${member.blueprintId}`),
+			),
+		);
+		expect(listBlueprints).toHaveBeenCalledOnce();
 	});
 
     it("keeps the chosen reasoning when the model is remembered globally, then sends that same selection", async () => {

@@ -221,6 +221,6 @@ VETTA_R2_PREFIX      = desktop/stable
 
 表单可以覆盖版本形态、服务端地址、租户、语音开关、发布目标和通道；GitHub + 开源版、R2 + 商业版必须成对。**不要在表单里填 R2 key、证书或 DSN**——它们继续走 Secrets。
 
-发布矩阵前会先等待独立质量 Job：根 `bun run check`、质量脚本测试、Desktop packaging 合同测试全部通过后才开始平台构建。每个平台构建后还会校验 updater metadata、hash、blockmap 和可安装内容。
+发布矩阵前会先等待独立质量 Job：根 `bun run check`、质量脚本测试、Desktop packaging 合同测试全部通过后才开始平台构建。每个平台构建后还会校验 updater metadata、hash 和 blockmap（macOS 含签名公证）。
 
-匹配 Desktop 版本的 tag，以及解析后 channel 为 `stable` / `test` 的 `workflow_dispatch` 会进入发布流程；其他手动构建只保留 Actions Artifact。发布完成后，独立任务通过公开 URL 检查 `latest.yml`、`latest-mac.yml`、`latest-linux.yml` 及其引用的安装包。表单定义必须在 GitHub 默认分支上才看得到。下载预热、阶段检查点和失败重跑方法见 [发版缓存与失败恢复](./release-ci.md)。
+匹配 Desktop 版本的 tag，以及解析后 channel 为 `stable` / `test` 的 `workflow_dispatch` 会进入发布流程；其他手动构建只保留 Actions Artifact。每个平台构建完立即上传安装包，更新清单只放到 R2 的 `pending/<版本>/`，由开发者手动上线。表单定义必须在 GitHub 默认分支上才看得到。失败重跑方法见 [发版下载与失败恢复](./release-ci.md)。

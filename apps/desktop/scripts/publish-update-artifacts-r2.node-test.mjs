@@ -8,6 +8,7 @@ import {
 	collectArtifacts,
 	contentTypeFor,
 	readReleaseVersion,
+	stagedMetadataPrefix,
 	validatePublishTarget,
 	verifyRemoteMetadataVersions,
 } from "./publish-update-artifacts-r2.mjs";
@@ -16,6 +17,11 @@ test("contentTypeFor publishes native package formats with package media types",
 	assert.equal(contentTypeFor("vetta_1.2.3_amd64.deb"), "application/vnd.debian.binary-package");
 	assert.equal(contentTypeFor("vetta-1.2.3.x86_64.rpm"), "application/x-rpm");
 	assert.equal(contentTypeFor("Vetta-1.2.3-win-x64.msi"), "application/x-msi");
+});
+
+test("stagedMetadataPrefix keeps pending metadata out of the live update directory", () => {
+	assert.equal(stagedMetadataPrefix("desktop/stable", "1.2.3"), "desktop/stable/pending/1.2.3");
+	assert.equal(stagedMetadataPrefix("", "1.2.3"), "pending/1.2.3");
 });
 
 test("collectArtifacts uploads updater files and matching Windows supplements before metadata", async () => {

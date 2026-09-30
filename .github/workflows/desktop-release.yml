@@ -199,7 +199,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: apps/im-gateway/go.mod
-          cache-dependency-path: apps/im-gateway/go.sum
+          cache: false
 
       - name: Test IM gateway sidecar
         working-directory: apps/im-gateway
@@ -231,6 +231,9 @@ jobs:
     # 公证，比未签名构建多出 10~30 分钟。
     timeout-minutes: 120
     environment: ${{ needs.prepare.outputs.channel == 'test' && 'desktop-test' || 'desktop-production' }}
+    # 每个平台构建完直接把安装包追加到 GitHub Release，需要写 Release 的权限。
+    permissions:
+      contents: write
     strategy:
       fail-fast: false
       matrix:
@@ -273,11 +276,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: apps/im-gateway/go.mod
-          cache-dependency-path: apps/im-gateway/go.sum
-
-      - name: Restore packaging tool downloads
-        id: download-cache
-        uses: ./.github/actions/desktop-download-cache
+          cache: false
 
       - name: Install dependencies
         uses: ./.github/actions/install-bun-dependencies
@@ -394,9 +393,6 @@ jobs:
           OUTPUT_UPDATE_URL: ${{ needs.prepare.outputs.update_url }}
         run: node scripts/release/resolve-desktop-release-config.mjs --from-outputs --export-env >> "${GITHUB_ENV}"
 
-      - name: Prepare cached release resources
-        uses: ./.github/actions/prepare-desktop-resources
-
       - name: Build updater artifacts
         working-directory: apps/desktop
         env:
@@ -405,6 +401,13 @@ jobs:
           VETTA_UPDATE_GITHUB_OWNER: ${{ github.repository_owner }}
           VETTA_UPDATE_GITHUB_REPO: ${{ github.event.repository.name }}
         run: bun run ${{ matrix.command }}
+
+      # 更新清单改名前校验：verify-update-artifacts 按 latest-mac.yml 识别 macOS。
+      # Windows 的校验会真实安装一遍，发版不做（与此前在 Linux 发布任务里跳过一致）。
+      - name: Verify updater artifacts
+        if: needs.prepare.outputs.should-publish == 'true' && runner.os != 'Windows'
+        working-directory: apps/desktop
+        run: node scripts/verify-update-artifacts.mjs
 
       - name: Name macOS update metadata per architecture
         if: matrix.macArch != ''
@@ -431,113 +434,22 @@ jobs:
             apps/desktop/release/*.zip
             apps/desktop/release/latest*.yml
 
-      - name: Save packaging tool downloads
-        if: ${{ !cancelled() && steps.download-cache.outputs.tools-key != '' && steps.download-cache.outputs.tools-cache-hit != 'true' }}
-        uses: actions/cache/save@v4
-        with:
-          path: ${{ steps.download-cache.outputs.tools-path }}
-          key: ${{ steps.download-cache.outputs.tools-key }}
-
-  publish-r2:
-    name: publish R2
-    if: needs.prepare.outputs.should-build == 'true' && needs.prepare.outputs.should-publish == 'true' && needs.prepare.outputs.release_target == 'r2'
-    needs: [prepare, quality, build]
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    environment: ${{ needs.prepare.outputs.channel == 'test' && 'desktop-test' || 'desktop-production' }}
-    concurrency:
-      group: desktop-${{ needs.prepare.outputs.channel }}-publish
-      cancel-in-progress: false
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version-file: package.json
-
-      - name: Install dependencies
-        uses: ./.github/actions/install-bun-dependencies
-
-      - name: Download updater artifacts
-        uses: actions/download-artifact@v4
-        with:
-          pattern: desktop-*
-          merge-multiple: true
-          path: apps/desktop/release
-
-      - name: Merge macOS update metadata
-        working-directory: apps/desktop
-        run: bun run merge:updates:mac
-
-      - name: Apply resolved release configuration
-        shell: bash
-        env:
-          OUTPUT_BUILD_VERSION: ${{ needs.prepare.outputs.build-version }}
-          OUTPUT_CHANNEL: ${{ needs.prepare.outputs.channel }}
-          OUTPUT_CLOUD_ENABLED: ${{ needs.prepare.outputs.cloud_enabled }}
-          OUTPUT_MARKETPLACE_REPOSITORY: ${{ needs.prepare.outputs.marketplace_repository }}
-          OUTPUT_MARKETPLACE_REF: ${{ needs.prepare.outputs.marketplace_ref }}
-          OUTPUT_NOTES: ${{ needs.prepare.outputs.notes }}
-          OUTPUT_R2_BUCKET: ${{ needs.prepare.outputs.r2_bucket }}
-          OUTPUT_R2_PREFIX: ${{ needs.prepare.outputs.r2_prefix }}
-          OUTPUT_RELEASE_TARGET: ${{ needs.prepare.outputs.release_target }}
-          OUTPUT_SHOULD_PUBLISH: ${{ needs.prepare.outputs.should-publish }}
-          OUTPUT_SERVER_URL: ${{ needs.prepare.outputs.server_url }}
-          OUTPUT_SITE_URL: ${{ needs.prepare.outputs.site_url }}
-          OUTPUT_SPEECH_INPUT: ${{ needs.prepare.outputs.speech_input }}
-          OUTPUT_TENANT: ${{ needs.prepare.outputs.tenant }}
-          OUTPUT_UPDATE_PROVIDER: ${{ needs.prepare.outputs.update_provider }}
-          OUTPUT_UPDATE_URL: ${{ needs.prepare.outputs.update_url }}
-        run: node scripts/release/resolve-desktop-release-config.mjs --from-outputs --export-env >> "${GITHUB_ENV}"
-
-      - name: Publish artifacts before metadata
+      # 各平台构建完立即上传自己的安装包，不等其他平台。更新清单（latest*.yml）
+      # 只放到 <prefix>/pending/<版本>/，客户端读不到；何时上线由开发者手动决定。
+      - name: Publish installers to R2 and stage update metadata
+        if: needs.prepare.outputs.should-publish == 'true' && needs.prepare.outputs.release_target == 'r2'
         working-directory: apps/desktop
         env:
           VETTA_R2_ACCOUNT_ID: ${{ secrets.VETTA_R2_ACCOUNT_ID }}
           VETTA_R2_ACCESS_KEY_ID: ${{ secrets.VETTA_R2_ACCESS_KEY_ID }}
           VETTA_R2_SECRET_ACCESS_KEY: ${{ secrets.VETTA_R2_SECRET_ACCESS_KEY }}
-        run: bun run publish:updates:r2
+        run: node scripts/publish-update-artifacts-r2.mjs --stage-metadata
 
-  # R2 目标也要发 GitHub Release：R2 是更新源，GitHub Release 是对外的下载入口和
-  # 版本说明归档，两者同时发布。test 渠道除外——它的构建不该出现在正式 Release 列表里。
-  publish-github:
-    name: publish GitHub Release
-    if: needs.prepare.outputs.should-build == 'true' && needs.prepare.outputs.should-publish == 'true' && needs.prepare.outputs.channel != 'test'
-    needs: [prepare, quality, build]
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    environment: desktop-production
-    concurrency:
-      group: desktop-production-publish
-      cancel-in-progress: false
-    permissions:
-      contents: write
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version-file: package.json
-
-      - name: Install dependencies
-        uses: ./.github/actions/install-bun-dependencies
-
-      - name: Download updater artifacts
-        uses: actions/download-artifact@v4
-        with:
-          pattern: desktop-*
-          merge-multiple: true
-          path: apps/desktop/release
-
-      - name: Merge macOS update metadata
-        working-directory: apps/desktop
-        run: bun run merge:updates:mac
-
-      - name: Publish release after all assets are ready
+      # R2 是更新源，GitHub Release 是对外的下载入口和版本说明归档，两者同时发布；
+      # test 渠道的构建不进正式 Release 列表。第一个完成的平台创建 Release，
+      # 其余平台追加安装包；更新清单不上传，由开发者自行处理。
+      - name: Add installers to GitHub Release
+        if: needs.prepare.outputs.should-publish == 'true' && needs.prepare.outputs.channel != 'test'
         env:
           GH_TOKEN: ${{ github.token }}
           BUILD_VERSION: ${{ needs.prepare.outputs.build-version }}
@@ -545,67 +457,13 @@ jobs:
         run: |
           VERSION="${BUILD_VERSION:-$(node -p "require('./apps/desktop/package.json').version")}"
           TAG="v${VERSION}"
-          NOTES_FILE="$(node scripts/release/release-notes.mjs --version "${VERSION}")"
-          if gh release view "${TAG}" >/dev/null 2>&1; then
-            IS_DRAFT="$(gh release view "${TAG}" --json isDraft --jq .isDraft)"
-            if [[ "${IS_DRAFT}" != "true" ]]; then
-              echo "Refusing to modify published release ${TAG}." >&2
-              exit 1
-            fi
-            echo "Resuming draft release ${TAG}"
-            gh release edit "${TAG}" --notes-file "${NOTES_FILE}"
-          else
-            gh release create "${TAG}" --draft --notes-file "${NOTES_FILE}" --title "Vetta ${VERSION}" --target "${GITHUB_SHA}"
+          if ! gh release view "${TAG}" >/dev/null 2>&1; then
+            NOTES_FILE="$(node scripts/release/release-notes.mjs --version "${VERSION}")"
+            # 另一个平台可能同时创建了同一个 Release；创建失败时以它已存在为准。
+            gh release create "${TAG}" --notes-file "${NOTES_FILE}" --title "Vetta ${VERSION}" --target "${GITHUB_SHA}" \
+              || gh release view "${TAG}" >/dev/null
           fi
-          find apps/desktop/release -maxdepth 1 -type f -print0 \
+          find apps/desktop/release -maxdepth 1 -type f \( \
+            -name "*.AppImage" -o -name "*.blockmap" -o -name "*.deb" -o -name "*.dmg" \
+            -o -name "*.exe" -o -name "*.msi" -o -name "*.rpm" -o -name "*.zip" \) -print0 \
             | xargs -0 gh release upload "${TAG}" --clobber
-          gh release edit "${TAG}" --draft=false
-
-  verify-feed-r2:
-    name: verify published r2 feed
-    needs: [prepare, publish-r2]
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version-file: package.json
-      - name: Install dependencies
-        uses: ./.github/actions/install-bun-dependencies
-      - name: Verify published update feed
-        working-directory: apps/desktop
-        shell: bash
-        env:
-          BUILD_VERSION: ${{ needs.prepare.outputs.build-version }}
-          VETTA_UPDATE_PROVIDER: generic
-          VETTA_UPDATE_URL: ${{ needs.prepare.outputs.update_url }}
-        run: |
-          export VETTA_DESKTOP_RELEASE_VERSION="${BUILD_VERSION:-$(node -p "require('./package.json').version")}"
-          node scripts/verify-update-feed.mjs
-
-  verify-feed-github:
-    name: verify published github feed
-    needs: [prepare, publish-github]
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version-file: package.json
-      - name: Install dependencies
-        uses: ./.github/actions/install-bun-dependencies
-      - name: Verify published update feed
-        working-directory: apps/desktop
-        shell: bash
-        env:
-          BUILD_VERSION: ${{ needs.prepare.outputs.build-version }}
-          VETTA_UPDATE_PROVIDER: github
-          VETTA_UPDATE_GITHUB_OWNER: ${{ github.repository_owner }}
-          VETTA_UPDATE_GITHUB_REPO: ${{ github.event.repository.name }}
-        run: |
-          export VETTA_DESKTOP_RELEASE_VERSION="${BUILD_VERSION:-$(node -p "require('./package.json').version")}"
-          node scripts/verify-update-feed.mjs
