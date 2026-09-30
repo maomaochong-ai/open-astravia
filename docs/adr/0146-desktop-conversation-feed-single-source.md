@@ -2,7 +2,7 @@
 
 ## 状态
 
-提议（延续 ADR-0142 的身份事件合同，替换 Renderer 侧的消息列表投影方式）
+已接受，实施中（延续 ADR-0142 的身份事件合同，替换 Renderer 侧的消息列表投影方式）。进度与偏差见文末「实施记录」。
 
 ## 背景
 
@@ -96,3 +96,25 @@ ADR-0142 让 Runtime 发布带 `turnId` / `messageId` 的身份事件，但 Rend
 - 后台会话在订阅期间持续更新自己的 feed，切回无需伪造草稿；是否对非活动会话保持订阅，由内存与 IPC 成本决定，不影响正确性。
 - runtime-core 的 relay 合同改变：in-flight 缓冲与 running 状态不再依赖 legacy lifecycle。CLI host、宠物、通知、远程镜像等 Main 侧消费方仍能收到 legacy 事件，它们对 `message.final` 的处理是否清理另行评估。
 - P3 期间会同时存在新旧两条打开会话的路径，需要以功能开关隔离，并在 P4 结束前移除旧路径。
+
+## 实施记录
+
+### 2026-09-30：第一批（P1、P3、P4 主体，P2 的一部分）
+
+- **已完成**
+  - `conversation-feed.ts` 是消息列表唯一的写入口：Runtime 事件、历史快照、乐观发送、本地报错、失败重发回滚、编辑后的整表替换都是它的 action；`chatMessagesAtom` 改为从 `conversationFeedAtom` 派生。不变量测试见 `conversation-feed.test.ts`。
+  - Renderer 只处理身份协议，旧协议分支、`identityProtocolRef`、模块级 `draftId` 与 `ConversationProjection` 已删除；回合的当前分段由「该回合内的用户消息数」算出，与历史投影同一规则，不再保存在 ref 里，也不再从 id 字符串解析。
+  - `live-history-patch`、`chat-message-snapshot`、`terminal-error-reconciliation`、`optimistic-user-message-cache`、`conversation-turn-reducer` 已删除。历史统一按 id 合并：运行中回合的消息保留实时内容，已结束的消息采用持久化内容（错误块补回实时才有的重试次数），尚未持久化的本地项锚定在原前驱之后。
+  - 乐观消息按宿主分配的 messageId 精确确认；未确认的发送是 feed 的 outbox，切走时按 Runtime 暂存、切回绑定时恢复；被拒绝的发送标为 `failed`，不再进入 outbox。
+  - runtime-core：`getState` 返回 `currentTurnId`，relay 的 in-flight 重放包含 `tool.*`。切回运行中的会话时按回合身份恢复（`turn.restored`），续跑回合不会再接到上一轮的回复上。
+  - 历史投影的块 id 改为与实时流一致的 `<messageId>:<type>:<index>`，同一消息在预览、完整历史、实时流之间复用 DOM。
+
+- **与计划的偏差**
+  - P1 未单独落地，并入 P3 一起完成：两者都要改同一批写入点，拆开需要为即将删除的代码再写一遍适配。
+  - 暂未按会话保留整份 feed（`atomFamily`）：切会话时事件订阅本来就会拆除，保留旧 feed 只会留下过期内容。当前只保留一份活动 feed，外加按 Runtime 暂存的 outbox。
+  - `session.attach`（快照带序号水位）尚未实现。历史仍在订阅前读取，并在回合结束、手动压缩后各重读一次；重读只做按 id 的合并，并用单调的历史版本号丢弃过期响应，不再做结构性替换。读取与订阅之间若恰好持久化了一次模型调用，这段内容要到回合结束的重读才补上，这是已知的剩余窗口，留给 P2 的水位合同消除。
+  - `chatStreamOwner` 与 `activeSessionRef` 闸门仍保留，只用于会话侧的全局状态（用量、队列、todo 等）；消息列表本身由 feed 的 runtimeId 作用域隔离。
+  - 用户在界面上发起的本地动作（发送、报错），在 feed 尚未绑定 Runtime 时也允许写入，避免会话过渡期间静默丢掉用户的消息；Runtime 事实（事件、历史、回合恢复）严格要求作用域一致。
+  - 已暂停批量子任务的恢复发送走 `resumeTaskWithText`，没有宿主 messageId，无法按身份确认；因此不再先显示乐观气泡，改由回合开始时写入的消息显示。
+
+- **未开始**：P2 的 `attach` 水位合同、running 状态改由 `conversation.turn.*` 界定；P5 会话侧状态的 handler 拆分；P6 行级订阅与滚动模型瘦身；P7 Team / Viewer 收敛。
