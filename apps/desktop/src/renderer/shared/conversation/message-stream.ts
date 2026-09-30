@@ -174,6 +174,11 @@ function mergeTerminalMessage(
 	if (phase === "aborted") {
 		next = settlePendingToolCalls(next, "cancelled");
 	}
+	// A call that stops to run tools is followed by another call in the same message:
+	// it contributes usage but does not end the message or its visible duration.
+	if (phase === "completed" && terminal.stopReason === "toolUse") {
+		return { ...next, phase: "streaming", usages: [...(next.usages ?? []), terminal.usage] };
+	}
 	const endedAt = terminal.timestamp;
 	return {
 		...next,
