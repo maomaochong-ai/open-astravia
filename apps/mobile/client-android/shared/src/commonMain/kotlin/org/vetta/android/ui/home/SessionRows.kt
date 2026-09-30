@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -23,16 +22,19 @@ import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.QuestionMark
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Inbox
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -43,13 +45,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.CustomAccessibilityAction
-import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.heading
@@ -68,6 +70,7 @@ import org.vetta.android.domain.work.ProjectScope
 import org.vetta.android.domain.work.SessionFilter
 import org.vetta.android.domain.work.SessionStatusGroup
 import org.vetta.android.resources.Res
+import org.vetta.android.resources.chat_more
 import org.vetta.android.resources.home_filter_status
 import org.vetta.android.resources.home_pick_project
 import org.vetta.android.resources.home_session_count
@@ -77,14 +80,18 @@ import org.vetta.android.resources.new_session_title
 import org.vetta.android.resources.session_delete
 import org.vetta.android.resources.session_delete_message
 import org.vetta.android.resources.session_delete_title
+import org.vetta.android.resources.session_name
 import org.vetta.android.resources.session_pin
 import org.vetta.android.resources.session_pinned
+import org.vetta.android.resources.session_rename
+import org.vetta.android.resources.session_rename_title
 import org.vetta.android.resources.session_unpin
 import org.vetta.android.resources.work_group_done
 import org.vetta.android.resources.work_group_processing
 import org.vetta.android.resources.work_group_waiting
 import org.vetta.android.resources.work_status_all
 import org.vetta.android.ui.components.VettaConfirmDialog
+import org.vetta.android.ui.components.VettaTextInputDialog
 import org.vetta.android.ui.design.GlassCapsuleButton
 import org.vetta.android.ui.design.StatusGlyph
 import org.vetta.android.ui.design.VettaMotion
@@ -99,10 +106,50 @@ import org.vetta.android.ui.work.workSessionTitle
 val ProjectIcon: ImageVector = Icons.Outlined.Folder
 
 /**
- * A session as Home and a project's page list it, on one line (the iPhone's
- * `SessionCard`): a pin, the title, then at the far right its project as a badge and a
- * status glyph while it needs a look. Conversations name no project, and a project's own
- * page leaves it out. A tap opens it; a long press offers pin and delete.
+ * A session's project and when it last moved, on one line: the folder icon, the name,
+ * then the time. A conversation has no project, so only the time shows.
+ */
+@Composable
+fun SessionProjectLine(sessionId: String, project: String?, time: String?, color: Color) {
+    if (project == null && time == null) return
+    Row(
+        Modifier.testTag("session.$sessionId.meta"),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (project != null) {
+            Icon(
+                ProjectIcon,
+                contentDescription = null,
+                tint = color,
+                modifier = Modifier.size(12.dp).testTag("session.$sessionId.projectIcon"),
+            )
+            Text(
+                project,
+                style = MaterialTheme.typography.labelMedium,
+                color = color,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(start = 4.dp).weight(1f, fill = false).testTag("session.$sessionId.project"),
+            )
+        }
+        if (time != null) {
+            Text(
+                time,
+                style = MaterialTheme.typography.labelMedium,
+                color = color,
+                maxLines = 1,
+                modifier = Modifier.padding(start = if (project != null) 8.dp else 0.dp).testTag("session.$sessionId.time"),
+            )
+        }
+    }
+}
+
+/**
+ * A session as Home and a project's page list it: a pin, the title, then under the title
+ * its project (folder icon, then the name) and when it last moved. Conversations name no
+ * project, and a project's own page leaves it out. A status glyph sits by the title while
+ * it needs a look, and the menu is at the right. A tap opens it; the menu pins, renames,
+ * or deletes it.
  */
 @Composable
 fun SessionCard(
@@ -111,20 +158,23 @@ fun SessionCard(
     actions: WorkActions,
     onOpen: () -> Unit,
     onDelete: () -> Unit,
+    onRename: () -> Unit,
     modifier: Modifier = Modifier,
     showsProject: Boolean = true,
     /** The session open beside the list. */
     selected: Boolean = false,
 ) {
     val colors = MaterialTheme.workColors
-    val haptics = LocalHapticFeedback.current
     var menu by remember { mutableStateOf(false) }
     val title = workSessionTitle(session.title)
-    val project = session.projectName.takeIf { showsProject && session.projectCwd != conversationCwd }
+    val project = session.projectName.takeIf { showsProject && it.isNotBlank() && session.projectCwd != conversationCwd }
+    val time = session.updatedAt.takeIf { it > 0 }?.let { relativeTimeLabel(it) }
     val status = statusLabel(session.status)
     val pinnedLabel = stringResource(Res.string.session_pinned)
     val pinLabel = stringResource(if (session.pinned) Res.string.session_unpin else Res.string.session_pin)
+    val renameLabel = stringResource(Res.string.session_rename)
     val deleteLabel = stringResource(Res.string.session_delete)
+    val moreLabel = stringResource(Res.string.chat_more)
     // Waiting on the user warms the whole row, not just its glyph.
     val background by animateColorAsState(
         when {
@@ -135,27 +185,22 @@ fun SessionCard(
         VettaMotion.snappy(),
         label = "row warmth",
     )
-    Box(modifier) {
+    Row(modifier.fillMaxWidth().background(background), verticalAlignment = Alignment.CenterVertically) {
         Row(
             Modifier
-                .fillMaxWidth()
-                // Before the semantics below, which would otherwise clear it.
+                .weight(1f)
                 .testTag("session.${session.id}")
-                .background(background)
-                .springClickable(
-                    pressedScale = 0.98f,
-                    highlight = RectangleShape,
-                    onLongClick = {
-                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                        menu = true
-                    },
-                    onClick = onOpen,
-                ).clearAndSetSemantics {
-                    contentDescription = listOfNotNull(title, status, pinnedLabel.takeIf { session.pinned }, project).joinToString(", ")
+                .springClickable(pressedScale = 0.98f, highlight = RectangleShape, onClick = onOpen)
+                .semantics(mergeDescendants = true) {
+                    contentDescription = listOfNotNull(title, status, pinnedLabel.takeIf { session.pinned }, project, time).joinToString(", ")
                     customActions =
                         listOf(
                             CustomAccessibilityAction(pinLabel) {
                                 actions.setPinned(session.id, !session.pinned)
+                                true
+                            },
+                            CustomAccessibilityAction(renameLabel) {
+                                onRename()
                                 true
                             },
                             CustomAccessibilityAction(deleteLabel) {
@@ -163,52 +208,61 @@ fun SessionCard(
                                 true
                             },
                         )
-                }.padding(horizontal = 20.dp, vertical = 13.dp),
-            verticalAlignment = Alignment.CenterVertically,
+                }.padding(start = 20.dp, top = 10.dp, bottom = 10.dp),
+            verticalAlignment = Alignment.Top,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            if (session.pinned) Icon(Icons.Filled.PushPin, contentDescription = null, tint = colors.yellow, modifier = Modifier.size(14.dp))
-            Text(
-                title,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
-            )
-            if (project != null) {
-                // Always whole; the title is what gives way.
-                Row(
-                    Modifier
-                        .clip(CircleShape)
-                        .background(colors.faint.copy(alpha = 0.16f))
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Icon(ProjectIcon, contentDescription = null, tint = colors.ink2, modifier = Modifier.size(12.dp))
-                    Text(project, style = MaterialTheme.typography.labelMedium, color = colors.ink2, maxLines = 1, modifier = Modifier.widthIn(max = 140.dp), overflow = TextOverflow.Ellipsis)
-                }
+            if (session.pinned) {
+                Icon(
+                    Icons.Filled.PushPin,
+                    contentDescription = null,
+                    tint = colors.yellow,
+                    modifier = Modifier.padding(top = 5.dp).size(14.dp),
+                )
             }
-            StatusGlyph(session.status, size = 15.dp)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    title,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                SessionProjectLine(session.id, project, time, colors.ink2)
+            }
+            StatusGlyph(session.status, modifier = Modifier.padding(top = 4.dp), size = 15.dp)
         }
-        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-            DropdownMenuItem(
-                text = { Text(pinLabel) },
-                leadingIcon = { Icon(if (session.pinned) Icons.Outlined.PushPin else Icons.Filled.PushPin, contentDescription = null) },
-                onClick = {
-                    menu = false
-                    actions.setPinned(session.id, !session.pinned)
-                },
-            )
-            DropdownMenuItem(
-                text = { Text(deleteLabel, color = colors.red) },
-                leadingIcon = { Icon(Icons.Filled.Delete, contentDescription = null, tint = colors.red) },
-                onClick = {
-                    menu = false
-                    onDelete()
-                },
-            )
+        // Outside the row semantics, so the button stays a control of its own.
+        Box(Modifier.padding(end = 4.dp)) {
+            IconButton(onClick = { menu = true }, modifier = Modifier.testTag("session.${session.id}.more")) {
+                Icon(Icons.Filled.MoreVert, contentDescription = moreLabel, tint = colors.ink2)
+            }
+            DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                DropdownMenuItem(
+                    text = { Text(pinLabel) },
+                    leadingIcon = { Icon(if (session.pinned) Icons.Outlined.PushPin else Icons.Filled.PushPin, contentDescription = null) },
+                    onClick = {
+                        menu = false
+                        actions.setPinned(session.id, !session.pinned)
+                    },
+                )
+                DropdownMenuItem(
+                    text = { Text(renameLabel) },
+                    leadingIcon = { Icon(Icons.Outlined.Edit, contentDescription = null) },
+                    onClick = {
+                        menu = false
+                        onRename()
+                    },
+                )
+                DropdownMenuItem(
+                    text = { Text(deleteLabel, color = colors.red) },
+                    leadingIcon = { Icon(Icons.Filled.Delete, contentDescription = null, tint = colors.red) },
+                    onClick = {
+                        menu = false
+                        onDelete()
+                    },
+                )
+            }
         }
     }
 }
@@ -223,6 +277,24 @@ fun SessionDeleteDialog(session: RemoteSessionSummary?, actions: WorkActions, on
         confirmLabel = stringResource(Res.string.session_delete),
         onConfirm = {
             actions.delete(session.id)
+            onDismiss()
+        },
+        onDismiss = onDismiss,
+    )
+}
+
+/** Asks for a new title and sends it to the desktop. Kept by the screen, so the keyboard cannot dismiss it with the row. */
+@Composable
+fun SessionRenameDialog(session: RemoteSessionSummary?, actions: WorkActions, onDismiss: () -> Unit) {
+    if (session == null) return
+    var title by remember(session.id) { mutableStateOf(session.title) }
+    VettaTextInputDialog(
+        title = stringResource(Res.string.session_rename_title),
+        value = title,
+        label = stringResource(Res.string.session_name),
+        onValueChange = { title = it },
+        onConfirm = {
+            actions.rename(session.id, title)
             onDismiss()
         },
         onDismiss = onDismiss,

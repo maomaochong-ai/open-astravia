@@ -21,6 +21,9 @@ import org.junit.Rule
 import org.junit.runner.RunWith
 import org.vetta.android.app.ThemeMode
 import org.vetta.android.domain.remote.AssistantTurn
+import org.vetta.android.domain.remote.RemoteDeviceStatus
+import org.vetta.android.domain.remote.RemoteFileEntry
+import org.vetta.android.domain.remote.RemoteFileInfo
 import org.vetta.android.domain.remote.RemoteModelOption
 import org.vetta.android.domain.remote.RemoteQuestionAnswer
 import org.vetta.android.domain.remote.RemoteSessionState
@@ -35,13 +38,19 @@ import org.vetta.android.domain.remote.TranscriptItem
 import org.vetta.android.domain.remote.TranscriptState
 import org.vetta.android.domain.remote.link.LinkSnapshot
 import org.vetta.android.domain.remote.link.LinkStatus
+import org.vetta.android.domain.work.FileContent
 import org.vetta.android.domain.work.MirrorState
 import org.vetta.android.domain.work.ModelChoice
 import org.vetta.android.domain.work.PromptDraft
 import org.vetta.android.resources.Res
 import org.vetta.android.resources.chat_question_title
 import org.vetta.android.resources.chat_model
+import org.vetta.android.resources.chat_resync
 import org.vetta.android.resources.chat_steps_done
+import org.vetta.android.resources.files_empty
+import org.vetta.android.resources.files_title
+import org.vetta.android.resources.session_pin
+import org.vetta.android.resources.session_rename
 import org.vetta.android.ui.str
 import org.vetta.android.ui.theme.VettaTheme
 import kotlin.test.Test
@@ -260,6 +269,54 @@ class SessionScreenTest {
         composeRule.onNodeWithTag("question.otherField").performTextInput("设计")
         composeRule.onNodeWithTag("question.submit").performClick()
         assertEquals("respond s1 q1 继续吗？=继续, 通知谁？=测试+设计 false", actions.calls.last())
+    }
+
+    @Test
+    fun headerOpensFilesAndNoLongerOffersPinRenameOrRefresh() {
+        val actions = RecordingActions()
+        composeRule.setContent {
+            VettaTheme(ThemeMode.Light) {
+                SessionScreen("s1", state(RemoteSessionStatus.Completed, finishedTurn), PromptDraft(), actions, onOpenHome = {})
+            }
+        }
+        composeRule.onNodeWithTag("chat.more").assertDoesNotExist()
+        composeRule.onNodeWithTag("chat.files").assertDoesNotExist()
+        composeRule.onNodeWithText(str(Res.string.session_pin)).assertDoesNotExist()
+        composeRule.onNodeWithText(str(Res.string.session_rename)).assertDoesNotExist()
+        composeRule.onNodeWithText(str(Res.string.chat_resync)).assertDoesNotExist()
+
+        val reading =
+            object : WorkActions by actions {
+                override fun files(sessionId: String): FileSource =
+                    object : FileSource {
+                        override suspend fun list(path: String): List<RemoteFileEntry> = emptyList()
+
+                        override suspend fun stat(href: String): RemoteFileInfo = error("not used")
+
+                        override suspend fun read(info: RemoteFileInfo): FileContent = error("not used")
+                    }
+            }
+        val linked =
+            state(RemoteSessionStatus.Completed, finishedTurn).copy(
+                link =
+                    LinkSnapshot(
+                        LinkStatus.Online,
+                        peerOnline = true,
+                        desktop = RemoteDeviceStatus("desk", null, emptyList(), false, 0, fileRead = true),
+                    ),
+            )
+        composeRule.setContent {
+            VettaTheme(ThemeMode.Light) {
+                SessionScreen("s1", linked, PromptDraft(), reading, onOpenHome = {})
+            }
+        }
+        composeRule.onNodeWithText(str(Res.string.files_title)).assertDoesNotExist()
+        composeRule.onNodeWithTag("chat.files").assertIsDisplayed().performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("files.panel").assertIsDisplayed()
+        composeRule.onNodeWithText(str(Res.string.files_empty)).assertIsDisplayed()
+        composeRule.onNodeWithText(str(Res.string.session_pin)).assertDoesNotExist()
+        composeRule.onNodeWithText(str(Res.string.session_rename)).assertDoesNotExist()
     }
 
     @Test
