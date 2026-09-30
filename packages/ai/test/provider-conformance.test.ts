@@ -133,6 +133,49 @@ const fixtures: ProviderConformanceFixture[] = [
 
 for (const fixture of fixtures) providerConformanceSuite(fixture);
 
+describe("Anthropic Messages compatible gateways", () => {
+	it("accepts a thinking block start without signature and keeps the streamed signature", async () => {
+		const transport = createProviderTestTransport([
+			anthropicSse([
+				anthropicMessageStart(),
+				{
+					event: "content_block_start",
+					data: { type: "content_block_start", index: 0, content_block: { type: "thinking", thinking: "" } },
+				},
+				{
+					event: "content_block_delta",
+					data: { type: "content_block_delta", index: 0, delta: { type: "thinking_delta", thinking: "plan" } },
+				},
+				{
+					event: "content_block_delta",
+					data: { type: "content_block_delta", index: 0, delta: { type: "signature_delta", signature: "sig" } },
+				},
+				{ event: "content_block_stop", data: { type: "content_block_stop", index: 0 } },
+				{
+					event: "content_block_start",
+					data: { type: "content_block_start", index: 1, content_block: { type: "text", text: "" } },
+				},
+				{
+					event: "content_block_delta",
+					data: { type: "content_block_delta", index: 1, delta: { type: "text_delta", text: "hello" } },
+				},
+				{ event: "content_block_stop", data: { type: "content_block_stop", index: 1 } },
+				anthropicMessageDelta("end_turn"),
+				{ event: "message_stop", data: { type: "message_stop" } },
+			]),
+		]);
+		const { result } = await collect(
+			streamAnthropic(anthropicModel, context, { apiKey: "test", fetch: transport.fetch }),
+		);
+
+		expect(result.stopReason).toBe("stop");
+		expect(result.content).toEqual([
+			{ type: "thinking", thinking: "plan", thinkingSignature: "sig" },
+			{ type: "text", text: "hello" },
+		]);
+	});
+});
+
 function providerConformanceSuite(fixture: ProviderConformanceFixture): void {
 	describe(`${fixture.name} provider conformance`, () => {
 		it("streams text, usage, lifecycle, and a successful terminal result", async () => {

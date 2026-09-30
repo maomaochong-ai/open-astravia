@@ -3,7 +3,7 @@ import type {
 	RemotePairingState,
 	RemoteRelayTestResult,
 } from "@preload/api-types/remote-pairing";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { type PairingQr, pairingQr } from "./remote-pairing-qr";
 
@@ -61,6 +61,7 @@ export interface RemotePairingSettingsModel {
 		readonly devices: {
 			readonly desktop: string;
 			readonly empty: string;
+			readonly emptyHint: string;
 			readonly revoke: string;
 			readonly title: string;
 		};
@@ -87,6 +88,12 @@ export interface RemotePairingSettingsModel {
 		readonly endpoints: readonly string[];
 		readonly hasInvite: boolean;
 		readonly preparing: boolean;
+		/**
+		 * True from the moment a refresh is asked for until the replacement code is ready.
+		 * The previous QR and connection code are already being withdrawn, so the view
+		 * must not keep showing them.
+		 */
+		readonly renewing: boolean;
 		readonly qrDataUrl?: string;
 		/** Diameter of the badge over the QR code's centre, as a share of its width. */
 		readonly qrBadge?: number;
@@ -137,7 +144,11 @@ export function useRemotePairingSettingsModel(): RemotePairingSettingsModel {
 	const [qr, setQr] = useState<PairingQr>();
 	const [initializing, setInitializing] = useState(true);
 	const [busy, setBusy] = useState(false);
+	const [renewing, setRenewing] = useState(false);
 	const [failure, setFailure] = useState<RemotePairingFailure>();
+	const inviteIdRef = useRef<string | undefined>(undefined);
+	const renewedFromRef = useRef<string | undefined>(undefined);
+	inviteIdRef.current = state.invite?.pairingId;
 
 	const apply = useCallback((next: RemotePairingState): void => {
 		setState(next);
@@ -190,6 +201,19 @@ export function useRemotePairingSettingsModel(): RemotePairingSettingsModel {
 		}
 	}, [state.invite?.qrText]);
 
+	// A refresh withdraws the current invite and mints another. Hold the preparing layout
+	// across that gap, including the moment with no invite at all, and release it once
+	// an invite is actually showable again (or the refresh failed).
+	useEffect(() => {
+		if (!renewing || busy) return;
+		if (failure) {
+			setRenewing(false);
+			return;
+		}
+		if (!state.invite?.pairingId) return;
+		if (qr && state.invite?.code?.status !== "preparing") setRenewing(false);
+	}, [busy, failure, qr, renewing, state.invite?.code?.status, state.invite?.pairingId]);
+
 	const run = useCallback(
 		async (action: () => Promise<RemotePairingState>, failureKind: RemotePairingFailure = "action") => {
 			setBusy(true);
@@ -226,6 +250,7 @@ export function useRemotePairingSettingsModel(): RemotePairingSettingsModel {
 			devices: {
 				title: t("remote.devices.title"),
 				empty: t("remote.devices.empty"),
+				emptyHint: t("remote.devices.emptyHint"),
 				revoke: t("remote.devices.revoke"),
 				desktop: t("remote.devices.desktop"),
 			},
@@ -286,7 +311,11 @@ export function useRemotePairingSettingsModel(): RemotePairingSettingsModel {
 	const actions = useMemo<RemotePairingSettingsModel["actions"]>(
 		() => ({
 			approve: (id, allow) => void run(() => window.vetta.remotePairing.approve(id, allow)),
-			cancelInvite: () => void run(() => window.vetta.remotePairing.cancelInvite()),
+			cancelInvite: () => {
+				renewedFromRef.current = inviteIdRef.current ?? "";
+				setRenewing(true);
+				void run(() => window.vetta.remotePairing.cancelInvite());
+			},
 			createInvite: () => void run(() => window.vetta.remotePairing.createInvite(), "create"),
 			revokeDevice: (id) => void run(() => window.vetta.remotePairing.revokeDevice(id)),
 			setCloudEnabled: (enabled) => void run(() => window.vetta.remotePairing.setCloudEnabled(enabled)),
@@ -333,6 +362,7 @@ export function useRemotePairingSettingsModel(): RemotePairingSettingsModel {
 			endpoints: state.lanEndpoints,
 			hasInvite: Boolean(state.invite),
 			preparing: initializing || Boolean((busy && !state.invite) || (state.invite && !qr && failure !== "qr")),
+			renewing,
 			qrDataUrl: qr?.dataUrl,
 			qrBadge: qr?.badge,
 			vaultAvailable: state.vaultAvailable,

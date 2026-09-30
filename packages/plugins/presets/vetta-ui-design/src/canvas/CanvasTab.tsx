@@ -16,7 +16,13 @@ import { findVetdFiles } from "../vetd/discover";
 import { scaffoldDesign } from "../vetd/scaffold";
 import { BridgeHub, type ElementQuery, type SelectedElementPayload } from "./bridge-client";
 import { refreshCover } from "./cover-compose";
-import { clearFrameActivity, setCanvasController, setPendingDesignPath, takePendingDesignPath } from "./design-runtime";
+import {
+	clearFrameActivity,
+	onPendingDesignPath,
+	setCanvasController,
+	setPendingDesignPath,
+	takePendingDesignPath,
+} from "./design-runtime";
 import { DesignCanvas, type FrameCapture } from "./DesignCanvas";
 import { byCanvasOrder } from "./frame-order";
 import { ThemePalette } from "./ThemePalette";
@@ -106,6 +112,23 @@ export function CanvasTab() {
 		};
 	}, [cwd, refreshFiles]);
 
+	// 画布开着时的打开请求（vetd_create、画廊、文件树右键）：目标多半是刚落盘的新设计，
+	// 先重扫再切，否则下拉里没有它、选中也会被当成无效路径。
+	useEffect(() => {
+		let disposed = false;
+		const unsubscribe = onPendingDesignPath(() => {
+			const pending = takePendingDesignPath(cwd ?? undefined);
+			if (!pending) return;
+			void refreshFiles().then((found) => {
+				if (!disposed && found.includes(pending)) setSelectedPath(pending);
+			});
+		});
+		return () => {
+			disposed = true;
+			unsubscribe();
+		};
+	}, [cwd, refreshFiles]);
+
 	// Open the selected design: session + engine server; teardown on switch.
 	useEffect(() => {
 		if (!selectedPath || !cwd) {
@@ -183,10 +206,7 @@ export function CanvasTab() {
 					if (!resolve) return Promise.reject(new Error("design canvas is not rendered yet"));
 					return resolve(frameId, queries);
 				},
-				openDesign: (vetdPath) => {
-					setPendingDesignPath(vetdPath);
-					void refreshFiles().then(() => setSelectedPath(vetdPath));
-				},
+				openDesign: (vetdPath) => setPendingDesignPath(vetdPath),
 			});
 			setPhase({ kind: "ready", port: server.port });
 		})().catch((error: unknown) => {
@@ -214,7 +234,7 @@ export function CanvasTab() {
 				console.warn("[vetd] 设计引擎清理失败，交由宿主生命周期兜底", error);
 			});
 		};
-	}, [selectedPath, cwd, t, refreshFiles, reloadNonce]);
+	}, [selectedPath, cwd, t, reloadNonce]);
 
 
 	const createDesign = async (): Promise<void> => {

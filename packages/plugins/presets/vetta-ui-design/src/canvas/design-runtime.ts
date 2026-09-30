@@ -51,14 +51,26 @@ export function getCanvasController(): CanvasController | null {
 /** Hand-off from tools (vetd_create) to the canvas: open this design when the matching cwd mounts/refreshes. */
 let pendingDesignPath: string | null = null;
 const pendingDesignPathsByCwd = new Map<string, string>();
+/**
+ * 已挂载的画布在这里等「打开这份设计」。只存不喊的话，画布开着时的请求要等它下次
+ * 挂载才被取走——同 cwd 里新建或点开第二份设计，画布停在原来那份、下拉也还是旧列表。
+ */
+const pendingDesignListeners = new Set<() => void>();
 
 export function setPendingDesignPath(vetdPath: string | null, cwd?: string): void {
 	if (cwd) {
 		if (vetdPath) pendingDesignPathsByCwd.set(cwd, vetdPath);
 		else pendingDesignPathsByCwd.delete(cwd);
-		return;
+	} else {
+		pendingDesignPath = vetdPath;
 	}
-	pendingDesignPath = vetdPath;
+	if (vetdPath) for (const listener of pendingDesignListeners) listener();
+}
+
+/** 画布挂载期间订阅：有新请求时由画布自己按 cwd 去 take，不属于它的留给别的画布。 */
+export function onPendingDesignPath(listener: () => void): () => void {
+	pendingDesignListeners.add(listener);
+	return () => pendingDesignListeners.delete(listener);
 }
 
 export function takePendingDesignPath(cwd?: string): string | null {

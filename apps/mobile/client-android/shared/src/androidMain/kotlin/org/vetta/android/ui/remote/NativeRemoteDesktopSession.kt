@@ -13,6 +13,7 @@ import io.ktor.websocket.readText
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -36,6 +37,8 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import org.vetta.android.domain.remote.RemoteStreamStats
+import org.vetta.android.domain.remote.SignalingDrop
+import org.vetta.android.domain.remote.SignalingRetry
 import org.vetta.android.domain.remote.connection.PlatformRemoteLogger
 import org.vetta.android.domain.remote.connection.RemoteTransport
 import org.vetta.android.domain.remote.protocol.RemoteFrame
@@ -60,6 +63,11 @@ private const val CONTROL_CHANNEL = "vetta-control-v2"
 private const val MAX_CONTROL_MESSAGE_BYTES = 1_500_000
 private const val TRACE_STEPS = 8
 
+/**
+ * One WebRTC session with the paired desktop, set up through the relay's viewer signaling.
+ * Once connected directly it no longer needs the relay: if signaling drops (the relay
+ * restarts, say) it reopens in the background and the link stays up.
+ */
 class NativeRemoteDesktopSession(private val context: Context, private val target: String) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val json = Json { ignoreUnknownKeys = true }
@@ -68,7 +76,7 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
     private var factory: PeerConnectionFactory? = null
     private var peerConnection: PeerConnection? = null
     private var signalingJob: Job? = null
-    private var signaling: DefaultClientWebSocketSession? = null
+    @Volatile private var signaling: DefaultClientWebSocketSession? = null
     private var inputChannel: DataChannel? = null
     private var controlChannel: DataChannel? = null
     private var controlTransport: NativeRemoteControlTransport? = null
@@ -83,6 +91,10 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
         }
     private var remoteDescriptionSet = false
     private val pendingCandidates = mutableListOf<IceCandidate>()
+    private val signalingRetry = SignalingRetry()
+
+    /** ICE reached the desktop; set from WebRTC's thread. */
+    @Volatile private var directlyConnected = false
 
     val isStopped: Boolean
         get() = stopped
@@ -239,16 +251,38 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
                 .setVideoEncoderFactory(org.webrtc.DefaultVideoEncoderFactory(eglBase.eglBaseContext, true, true))
                 .createPeerConnectionFactory()
             val (socketUrl, token) = splitTarget(target)
-            note("signaling connecting")
-            val socket = client.webSocketSession {
-                url.takeFrom(socketUrl)
-                headers.append(HttpHeaders.SecWebSocketProtocol, listOf("vetta.desktop.v1", "vetta.pairing.$token").joinToString(", "))
+            while (!stopped) {
+                try {
+                    note(if (peerConnection == null) "signaling connecting" else "signaling reconnecting")
+                    val socket = client.webSocketSession {
+                        url.takeFrom(socketUrl)
+                        headers.append(HttpHeaders.SecWebSocketProtocol, listOf("vetta.desktop.v1", "vetta.pairing.$token").joinToString(", "))
+                    }
+                    signaling = socket
+                    signalingRetry.reopened()
+                    note("signaling open")
+                    PlatformRemoteLogger.info("native WebRTC signaling connected")
+                    if (peerConnection == null) createPeerConnection()
+                    for (frame in socket.incoming) if (frame is Frame.Text) handleSignal(frame.readText())
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Throwable) {
+                    // Before the direct link is up the session cannot go on without signaling.
+                    if (stopped || !directlyConnected) throw error
+                    PlatformRemoteLogger.warn("native WebRTC signaling lost", mapOf("error" to (error.message ?: error::class.simpleName)))
+                }
+                signaling?.cancel()
+                signaling = null
+                if (stopped) break
+                when (val drop = signalingRetry.dropped(directlyConnected)) {
+                    SignalingDrop.Stop -> break
+                    is SignalingDrop.Reconnect -> {
+                        note("signaling lost, direct link kept")
+                        delay(drop.afterMs)
+                    }
+                }
+                if (!directlyConnected) break
             }
-            signaling = socket
-            note("signaling open")
-            PlatformRemoteLogger.info("native WebRTC signaling connected")
-            createPeerConnection()
-            for (frame in socket.incoming) if (frame is Frame.Text) handleSignal(frame.readText())
         } catch (error: Throwable) {
             if (!stopped) {
                 note("failed: ${error::class.simpleName}")
@@ -271,10 +305,14 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
                 note("ICE ${state.name.lowercase()}")
                 PlatformRemoteLogger.info("native WebRTC ICE state", mapOf("state" to state.name))
                 if (state == PeerConnection.IceConnectionState.CONNECTED || state == PeerConnection.IceConnectionState.COMPLETED) {
+                    directlyConnected = true
                     scope.launch { sampleStats() }
                 }
                 if (state == PeerConnection.IceConnectionState.FAILED || state == PeerConnection.IceConnectionState.CLOSED) {
+                    directlyConnected = false
                     controlTransport?.channelClosed("WebRTC ICE ${state.name.lowercase()}")
+                    // With signaling away nothing else would end this session.
+                    if (signaling == null) scope.launch { stop() }
                 }
             }
             override fun onIceConnectionReceivingChange(receiving: Boolean) = Unit

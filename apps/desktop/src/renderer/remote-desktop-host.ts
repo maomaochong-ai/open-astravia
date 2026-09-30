@@ -67,18 +67,68 @@ const signaling = new WebSocketRemoteDesktopSignaling(target);
 let host: RemoteDesktopHost | undefined;
 const pending: RemoteDesktopSignal[] = [];
 
-await signaling.connect({
-	onSignal(signal) {
+// Starting over drops the peer connection and the page's state; the new page reconnects
+// signaling and offers again once the phone is there.
+let restarting = false;
+const restart = (reason: string, delayMs = 1_000): void => {
+	if (restarting) return;
+	restarting = true;
+	console.warn(line("remote desktop host restarting", { reason }));
+	setTimeout(() => window.location.reload(), delayMs);
+};
+
+// Once the phone is connected directly, signaling is only needed to negotiate again: the
+// relay can restart or drop the socket and the screen, input and control keep flowing.
+// Signaling comes back in the background; before that point a drop starts over as before.
+const SIGNALING_RETRY_MAX_MS = 30_000;
+let signalingRetryMs = 1_000;
+let signalingRetry: ReturnType<typeof setTimeout> | undefined;
+const signalingHandlers = {
+	onSignal(signal: RemoteDesktopSignal) {
 		// Types only: never SDP or candidates (packages/remote-desktop/AGENTS.md).
 		console.info(line("remote desktop signal received", { type: signal.type }));
 		if (host) void host.acceptSignal(signal);
 		else pending.push(signal);
 	},
-	onClose(reason) {
-		console.warn(line("remote desktop signaling closed", { reason }));
-		setTimeout(() => window.location.reload(), 1_000);
+	onClose(reason?: string) {
+		const state = host?.connectionState;
+		console.warn(line("remote desktop signaling closed", { reason, peer: state }));
+		if (state === "connected") reconnectSignaling();
+		else restart("signaling closed");
 	},
-});
+};
+const reconnectSignaling = (): void => {
+	if (signalingRetry || restarting) return;
+	const delay = signalingRetryMs;
+	signalingRetryMs = Math.min(signalingRetryMs * 2, SIGNALING_RETRY_MAX_MS);
+	signalingRetry = setTimeout(() => {
+		signalingRetry = undefined;
+		signaling.connect(signalingHandlers).then(
+			() => {
+				signalingRetryMs = 1_000;
+				console.info(line("remote desktop signaling reconnected", { peer: host?.connectionState }));
+			},
+			() => reconnectSignaling(),
+		);
+	}, delay);
+};
+const sendSignal = async (signal: RemoteDesktopSignal): Promise<void> => {
+	// While signaling is away, late candidates have nowhere to go; the direct link does not need them.
+	if (!signaling.connected) return;
+	try {
+		await signaling.send(signal);
+	} catch (error) {
+		console.warn(line("remote desktop signal not sent", { type: signal.type, error: String(error) }));
+	}
+};
+
+try {
+	await signaling.connect(signalingHandlers);
+} catch (error) {
+	// The relay may be down: try again with a fresh page, as when signaling drops.
+	restart(`signaling unavailable: ${String(error)}`);
+	throw error;
+}
 
 const stream = onDemand ? undefined : await navigator.mediaDevices.getDisplayMedia(SCREEN_CAPTURE);
 host = new RemoteDesktopHost(
@@ -90,7 +140,7 @@ host = new RemoteDesktopHost(
 			warn: (message, fields) => console.warn(line(message, fields)),
 		},
 	},
-	async (signal) => signaling.send(signal),
+	sendSignal,
 	(message) => window.vettaRemoteDesktop?.onInput(message),
 	{
 		onOpen: () => window.vettaRemoteDesktop?.onControlOpen(),
@@ -108,7 +158,12 @@ const removeControlListener = window.vettaRemoteDesktop?.onControlSend((message)
 await host.start(stream, {
 	waitForPeerReady: true,
 	// A new viewer is a new peer connection: start over with a fresh page, as when signaling drops.
-	onViewerReplaced: () => window.location.reload(),
+	onViewerReplaced: () => restart("viewer replaced", 0),
+	// With signaling away no phone can tell this page the session ended, so a connection
+	// that is gone for good starts over here.
+	onConnectionStateChange: (state) => {
+		if ((state === "failed" || state === "closed") && !signaling.connected) restart(`peer ${state}`);
+	},
 });
 // A screen shared for the whole session streams from the start.
 if (!onDemand) watchStats(true);

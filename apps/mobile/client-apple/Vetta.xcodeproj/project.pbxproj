@@ -30,8 +30,10 @@
 		63581B8EDAF81E8D93112759 /* KeyboardWarmup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 673796C16D0A139458E920DF /* KeyboardWarmup.swift */; };
 		6673CF5C1F7565B1C508CB2F /* AnswerQuestionIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2602407278F3CD5FBB62062A /* AnswerQuestionIntent.swift */; };
 		66D6CE7F264FF96A2319C757 /* SessionActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42C75DA38A656366214CFA8E /* SessionActivityAttributes.swift */; };
+		7817043EE92EDBA7254220A4 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = D9EC3367723DEC9190E6178F /* PrivacyInfo.xcprivacy */; };
 		7DA488FEBA0742A13F504CD6 /* VettaWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = DB8ACE598BF9B55DF98CD7C1 /* VettaWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		8CB51BACBD63840B98FE330F /* QuestionPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1571266B7208052D80E40A95 /* QuestionPanel.swift */; };
+		952C4B56D7EE26BBF1659623 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A7F83033C41560D540A7083F /* PrivacyInfo.xcprivacy */; };
 		97373277B2BCFF1BA7983CE2 /* ModelSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0D2A6C73F7E73DC53077670 /* ModelSheet.swift */; };
 		97E3DC8E241B2B6E710580AC /* PairView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5FE60E74C2993F10053947E /* PairView.swift */; };
 		99925AFD6476F200F1186F5D /* NewSessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14FB7C60CF7BBB386D64B42C /* NewSessionView.swift */; };
@@ -124,6 +126,7 @@
 		A5B834FE35ABAA6C5DE654BC /* ProjectView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectView.swift; sourceTree = "<group>"; };
 		A5FE60E74C2993F10053947E /* PairView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairView.swift; sourceTree = "<group>"; };
 		A611A3DDE7F1EC89CAD12F7F /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		A7F83033C41560D540A7083F /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		AE556B5F31422EA43BDF8294 /* ProjectSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectSheet.swift; sourceTree = "<group>"; };
 		AFA10FF588C2F944AE4E2E90 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		B43B0EEECDDBB2807AA280EF /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -134,6 +137,7 @@
 		C2E57343C2D36E3BE44AE2C2 /* BoardSummary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardSummary.swift; sourceTree = "<group>"; };
 		CA39B1C0456D27FC25D9A90B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		CC87D827140BB66CD638FD48 /* Vetta.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Vetta.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D9EC3367723DEC9190E6178F /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		DB8ACE598BF9B55DF98CD7C1 /* VettaWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = VettaWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		DDD1656ECA9BA0A1442B19A3 /* SessionCards.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionCards.swift; sourceTree = "<group>"; };
 		E33BB88AA6F56D2A00716432 /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
@@ -206,6 +210,7 @@
 			isa = PBXGroup;
 			children = (
 				AFA10FF588C2F944AE4E2E90 /* Info.plist */,
+				A7F83033C41560D540A7083F /* PrivacyInfo.xcprivacy */,
 				BFEE4568B92E6D902969658A /* SessionActivityWidget.swift */,
 				405CD81A957E334A0D0E01F1 /* VettaWidgets.swift */,
 			);
@@ -316,6 +321,7 @@
 				B43B0EEECDDBB2807AA280EF /* Assets.xcassets */,
 				CA39B1C0456D27FC25D9A90B /* Info.plist */,
 				A13EF44F614DFAF09BEA92D8 /* InfoPlist.xcstrings */,
+				D9EC3367723DEC9190E6178F /* PrivacyInfo.xcprivacy */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -369,6 +375,7 @@
 			buildConfigurationList = E3906BC9AA36095ACE3C4918 /* Build configuration list for PBXNativeTarget "VettaWidgets" */;
 			buildPhases = (
 				88E54516BB4AF9A089C1878D /* Sources */,
+				BCC61F68AC9D9BEE6EFD8523 /* Resources */,
 				7B602BC0994DD8C693D65626 /* Frameworks */,
 			);
 			buildRules = (
@@ -437,6 +444,15 @@
 			files = (
 				29BC275076D8A1DC3A573BBB /* Assets.xcassets in Resources */,
 				A4C727247A724BC396D2EF75 /* InfoPlist.xcstrings in Resources */,
+				7817043EE92EDBA7254220A4 /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BCC61F68AC9D9BEE6EFD8523 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				952C4B56D7EE26BBF1659623 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

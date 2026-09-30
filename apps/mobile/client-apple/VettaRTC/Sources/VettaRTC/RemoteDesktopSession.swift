@@ -15,6 +15,9 @@ private let log = Logger(subsystem: "com.openvetta.mobile", category: "remote-de
 /// subscribes (`screen.subscribe`, ADR-0140), so a session that only carries the
 /// control channel costs neither side a capture.
 ///
+/// Once connected directly, the session no longer needs the relay: if signaling drops
+/// (the relay restarts, say) it reopens in the background and the link stays up.
+///
 /// WebRTC calls its delegates on its own threads; everything here hops to the main
 /// actor first, since default main-actor isolation traps on any other thread.
 @Observable
@@ -45,6 +48,8 @@ public final class RemoteDesktopSession {
 	@ObservationIgnored private var remoteDescriptionSet = false
 	@ObservationIgnored private var nextSequence = 1
 	@ObservationIgnored private var statsTask: Task<Void, Never>?
+	@ObservationIgnored private var signalingRetry = SignalingRetry()
+	@ObservationIgnored private var reconnectTask: Task<Void, Never>?
 	/// The running totals at the last sample, to average over the last second only.
 	@ObservationIgnored private var lastTotals: FrameTotals?
 
@@ -84,13 +89,17 @@ public final class RemoteDesktopSession {
 			return
 		}
 		self.peer = peer
-		let session = URLSession(configuration: .ephemeral, delegate: delegate, delegateQueue: .main)
-		let socket = session.webSocketTask(with: socketUrl, protocols: RemoteDesktopProtocol.subprotocols(token: token))
+		urlSession = URLSession(configuration: .ephemeral, delegate: delegate, delegateQueue: .main)
+		openSignaling(socketUrl, token: token)
+	}
+
+	private func openSignaling(_ url: URL, token: String?) {
+		guard let urlSession else { return }
+		let socket = urlSession.webSocketTask(with: url, protocols: RemoteDesktopProtocol.subprotocols(token: token))
 		socket.maximumMessageSize = 1024 * 1024
-		urlSession = session
 		self.socket = socket
 		socket.resume()
-		receive()
+		receive(on: socket)
 		log.info("remote desktop signaling opened")
 	}
 
@@ -110,6 +119,8 @@ public final class RemoteDesktopSession {
 		videoTrack = nil
 		statsTask?.cancel()
 		statsTask = nil
+		reconnectTask?.cancel()
+		reconnectTask = nil
 		stats = nil
 		socket?.cancel(with: .normalClosure, reason: nil)
 		socket = nil
@@ -151,19 +162,43 @@ public final class RemoteDesktopSession {
 
 	// MARK: Signaling
 
-	private func receive() {
-		socket?.receive { [weak self] result in
+	private func receive(on socket: URLSessionWebSocketTask) {
+		socket.receive { [weak self] result in
 			Task { @MainActor in
-				guard let self, self.phase != .stopped else { return }
+				guard let self, self.phase != .stopped, self.socket === socket else { return }
 				switch result {
 				case let .success(.string(text)):
 					self.handleSignals(text)
-					self.receive()
+					self.receive(on: socket)
 				case .success:
 					self.stop(reason: "desktop signaling returned a binary frame")
 				case let .failure(error):
-					self.stop(reason: "desktop signaling closed: \(error.localizedDescription)")
+					self.signalingLost("desktop signaling closed: \(error.localizedDescription)")
 				}
+			}
+		}
+	}
+
+	/// Ends a session still setting up; keeps one connected directly and reopens signaling.
+	private func signalingLost(_ reason: String) {
+		guard phase != .stopped else { return }
+		switch signalingRetry.dropped(directlyConnected: phase == .connected) {
+		case .stop:
+			stop(reason: reason)
+		case let .reconnect(after):
+			let dropped = socket
+			socket = nil
+			dropped?.cancel(with: .goingAway, reason: nil)
+			note("signaling lost, direct link kept")
+			log.info("remote desktop signaling lost, reopening in \(after, privacy: .public)s: \(reason, privacy: .public)")
+			reconnectTask?.cancel()
+			reconnectTask = Task { [weak self] in
+				try? await Task.sleep(for: .seconds(after))
+				guard !Task.isCancelled, let self, self.phase == .connected, self.socket == nil else { return }
+				let (url, token) = RemoteDesktopProtocol.splitTarget(self.target)
+				guard let socketUrl = URL(string: url) else { return }
+				self.note("signaling reconnecting")
+				self.openSignaling(socketUrl, token: token)
 			}
 		}
 	}
@@ -266,12 +301,15 @@ public final class RemoteDesktopSession {
 		log.info("remote desktop video track attached")
 	}
 
-	fileprivate func signalingOpened() {
+	fileprivate func signalingOpened(_ task: URLSessionTask) {
+		guard task === socket else { return }
+		signalingRetry.reopened()
 		note("signaling open")
 	}
 
-	fileprivate func signalingClosed(_ reason: String) {
-		if phase != .stopped { stop(reason: reason) }
+	fileprivate func signalingClosed(_ task: URLSessionTask, _ reason: String) {
+		guard task === socket else { return }
+		signalingLost(reason)
 	}
 
 	// MARK: Statistics
@@ -390,15 +428,15 @@ private final class PeerDelegate: NSObject, RTCPeerConnectionDelegate, URLSessio
 	}
 
 	nonisolated func urlSession(_ session: URLSession, webSocketTask: URLSessionWebSocketTask, didOpenWithProtocol protocol: String?) {
-		onMain { $0.signalingOpened() }
+		onMain { $0.signalingOpened(webSocketTask) }
 	}
 
 	nonisolated func urlSession(_ session: URLSession, webSocketTask: URLSessionWebSocketTask, didCloseWith closeCode: URLSessionWebSocketTask.CloseCode, reason: Data?) {
-		onMain { $0.signalingClosed("desktop signaling closed (\(closeCode.rawValue))") }
+		onMain { $0.signalingClosed(webSocketTask, "desktop signaling closed (\(closeCode.rawValue))") }
 	}
 
 	nonisolated func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
-		onMain { $0.signalingClosed(error?.localizedDescription ?? "desktop signaling closed") }
+		onMain { $0.signalingClosed(task, error?.localizedDescription ?? "desktop signaling closed") }
 	}
 }
 
