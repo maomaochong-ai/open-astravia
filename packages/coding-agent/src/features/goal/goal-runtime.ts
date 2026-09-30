@@ -1,6 +1,6 @@
 import type { Message } from "@vetta/ai";
 import type { ConversationDocument, RuntimeDocumentParticipantContext } from "@vetta/runtime-core";
-import { selectConversationDocumentEntries } from "@vetta/runtime-core";
+import { selectConversationDocumentEntries } from "@vetta/runtime-core/conversation";
 import type { StoredSessionEvent } from "@vetta/runtime-core/kernel";
 import type {
 	CodingAgentGoalSnapshot,
