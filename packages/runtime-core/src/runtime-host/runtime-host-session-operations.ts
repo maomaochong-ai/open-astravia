@@ -335,6 +335,7 @@ export class RuntimeHostSessionOperations {
 		const sessionKey = this.options.directory.resolveSessionKey(sessionId);
 		const handle = this.requireSession(sessionId);
 		const state = handle.stateReader.readState();
+		const currentTurnId = this.options.events.readCurrentTurnId(sessionKey);
 		return {
 			sessionId: handle.lifecycle.sessionId,
 			...(handle.lifecycle.agentId ? { agentId: handle.lifecycle.agentId } : {}),
@@ -343,6 +344,7 @@ export class RuntimeHostSessionOperations {
 			executionMode: handle.executionMode,
 			isStreaming: state.isStreaming,
 			currentTurnStartedAt: this.options.events.readCurrentTurnStartedAt(sessionKey),
+			...(currentTurnId ? { currentTurnId } : {}),
 			messageCount: state.messageCount,
 			...(state.contextState ? { contextState: state.contextState } : {}),
 			contextPercent: state.contextPercent,

@@ -353,6 +353,8 @@ export interface SessionStateSnapshot {
 	isStreaming: boolean;
 	/** Timestamp (ms) for the current agent_start, if this session is streaming. */
 	currentTurnStartedAt?: number;
+	/** Identity of the running Turn, so a subscriber joining mid-Turn can target its messages. */
+	currentTurnId?: string;
 	messageCount: number;
 	/** Context window usage percentage (0-100), or null if unknown */
 	contextPercent: number | null;

@@ -34,6 +34,7 @@ export interface RuntimeHostSessionEventRelayOptions {
  */
 export class RuntimeHostSessionEventRelay {
 	private readonly currentTurnStartedAt = new Map<string, number>();
+	private readonly currentTurnIds = new Map<string, string>();
 	private readonly inFlightBuffers = new Map<string, InFlightBuffer>();
 	private readonly inFlightUnsubscribers = new Map<string, () => void>();
 	private readonly externalSubscribers = new Map<string, Set<(event: SessionEvent) => void>>();
@@ -67,6 +68,16 @@ export class RuntimeHostSessionEventRelay {
 			if (event.type === "queue.changed") {
 				this.options.queueSidecar.persist(handle.lifecycle.sessionPath, event);
 			}
+			if (event.type === "conversation.turn.started") {
+				this.currentTurnIds.set(sessionKey, event.turnId);
+			} else if (
+				(event.type === "conversation.turn.completed" ||
+					event.type === "conversation.turn.cancelled" ||
+					event.type === "conversation.turn.failed") &&
+				this.currentTurnIds.get(sessionKey) === event.turnId
+			) {
+				this.currentTurnIds.delete(sessionKey);
+			}
 			if (event.type === "session.lifecycle" && event.phase === "agent_start") {
 				this.currentTurnStartedAt.set(sessionKey, event.timestamp);
 				buffer.turnStartedAt = event.timestamp;
@@ -97,6 +108,13 @@ export class RuntimeHostSessionEventRelay {
 					else buffer.terminalReason = undefined;
 				}
 			} else if (event.type === "model.request.started" && buffer.isActive) {
+				buffer.events.push(event);
+			} else if (
+				(event.type === "tool.start" || event.type === "tool.phase" || event.type === "tool.end") &&
+				buffer.isActive
+			) {
+				// Tool execution state is display-only and never persisted as a partial record;
+				// a subscriber joining mid-Turn needs it to show running and finished tools.
 				buffer.events.push(event);
 			} else if (event.channel === "assistant" && buffer.isActive) {
 				buffer.events.push(event);
@@ -159,6 +177,11 @@ export class RuntimeHostSessionEventRelay {
 		return this.currentTurnStartedAt.get(sessionKey);
 	}
 
+	/** Identity of the Turn currently running in this Session, from `conversation.turn.*` facts. */
+	readCurrentTurnId(sessionKey: string): string | undefined {
+		return this.currentTurnIds.get(sessionKey);
+	}
+
 	getRunningSessionPaths(): string[] {
 		return Array.from(this.runningSessionPaths);
 	}
@@ -176,6 +199,7 @@ export class RuntimeHostSessionEventRelay {
 		this.externalSubscribers.delete(sessionKey);
 		this.externalSubscriberActiveToolFingerprints.delete(sessionKey);
 		this.currentTurnStartedAt.delete(sessionKey);
+		this.currentTurnIds.delete(sessionKey);
 		this.nextSequences.delete(sessionKey);
 		this.contextStateEvents.delete(sessionKey);
 		this.markRunning(sessionPath, false, sessionId);
