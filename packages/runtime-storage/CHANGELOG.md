@@ -30,6 +30,7 @@ All notable changes to `@vetta/runtime-storage` are documented in this file.
 
 ### Fixed
 
+- **响应校验诊断可持久化**：Assistant `failure` Schema 接受 `responseValidation`，Provider 响应结构校验失败的终态错误消息不再被 `message.appended` 存储校验拦截成 `turn_failed`。
 - **结构化 Provider 失败可持久化**：Conversation 严格 Schema 接受 Assistant、`message.appended` 与 `turn.failed` 的安全失败字段，余额不足等终端错误不再因公共类型与存储校验漂移而被 `conversation_invalid_event` 覆盖。
 
 - **Legacy 会话重复导入**：确定性迁移目标在初始 Import Seed 后追加原生 V2 事件时仍可安全复用，重复打开不再误报 `Conversation already exists`，且保留迁移后继续产生的会话历史。

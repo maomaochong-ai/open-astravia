@@ -470,7 +470,11 @@ describe("session row title overflow", () => {
 		fireEvent.mouseEnter(titleViewport);
 
 		expect(titleViewport.dataset.sessionTitleScrolling).toBe("true");
-		expect(view.getByText(longTitle).className).not.toContain("truncate");
+		const scrollingTitle = view.getByText(longTitle);
+		expect(scrollingTitle.className).not.toContain("truncate");
+		expect(
+			Number.parseFloat(scrollingTitle.style.getPropertyValue("--session-title-marquee-duration")),
+		).toBeLessThanOrEqual(4.6);
 
 		fireEvent.mouseLeave(titleViewport);
 

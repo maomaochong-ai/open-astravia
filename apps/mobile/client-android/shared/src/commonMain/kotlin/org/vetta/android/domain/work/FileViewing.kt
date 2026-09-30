@@ -10,6 +10,7 @@ import org.vetta.android.domain.remote.connection.RemoteRequestException
 import org.vetta.android.domain.remote.link.LinkChannel
 import org.vetta.android.domain.remote.link.LinkOfflineException
 import org.vetta.android.domain.remote.protocol.RemoteErrorCode
+import org.vetta.android.domain.work.documents.DocumentPreview
 
 /*
  * Viewing the desktop's files from the phone (port of the iPhone's `FileViewing`,
@@ -49,7 +50,21 @@ enum class FilePreviewKind {
 
     /** Code and other text, shown as it is. */
     Text,
+    /** A picture the phone decodes itself. */
     Image,
+
+    /** A picture drawn by the web view: animated GIFs and SVG. */
+    WebImage,
+    Pdf,
+
+    /** Sound, played with the system's player. */
+    Audio,
+
+    /** A video clip, played with the system's player. */
+    Video,
+
+    /** Word, Excel and PowerPoint documents and CSV / TSV tables, drawn as a page ([DocumentPreview]). */
+    Document,
     Unsupported,
     ;
 
@@ -59,13 +74,45 @@ enum class FilePreviewKind {
             when (FileNames.extensionOf(name)) {
                 "md", "markdown", "mdx" -> Markdown
                 "html", "htm", "xhtml" -> Html
-                // A scaled-down photo arrives as JPEG whatever its extension was; SVG is text to Android.
-                else -> if (mimeType.startsWith("image/") && mimeType != "image/svg+xml") Image else if (FileText.decode(data) != null) Text else Unsupported
+                in DocumentPreview.EXTENSIONS -> Document
+                "gif", "svg" -> WebImage
+                "pdf" -> Pdf
+                "mp3", "m4a", "aac", "wav", "ogg", "oga", "opus", "flac", "amr" -> Audio
+                "mp4", "m4v", "mov", "webm", "3gp", "mkv" -> Video
+                "png", "jpg", "jpeg", "webp", "bmp", "heic", "heif", "ico" -> Image
+                // A scaled-down photo arrives as JPEG whatever its extension was.
+                else ->
+                    when {
+                        mimeType == "image/svg+xml" || mimeType == "image/gif" -> WebImage
+                        mimeType == "application/pdf" -> Pdf
+                        mimeType.startsWith("image/") -> Image
+                        FileText.decode(data) != null -> Text
+                        else -> Unsupported
+                    }
             }
     }
 }
 
+/** What kind of file a name suggests, for the icon beside it in a listing. */
+enum class FileCategory { Text, Web, Image, Pdf, Sheet, Slides, Document, Audio, Video, Archive, Code }
+
 object FileNames {
+    /** By extension; anything unrecognised is taken for code, as the working folder mostly holds. */
+    fun category(name: String): FileCategory =
+        when (extensionOf(name)) {
+            "md", "markdown", "mdx", "txt", "log", "rtf" -> FileCategory.Text
+            "html", "htm", "xhtml" -> FileCategory.Web
+            "png", "jpg", "jpeg", "gif", "webp", "heic", "heif", "svg", "bmp", "tif", "tiff", "ico" -> FileCategory.Image
+            "pdf" -> FileCategory.Pdf
+            "csv", "tsv", "xls", "xlsx", "xlsm", "numbers" -> FileCategory.Sheet
+            "ppt", "pptx", "pptm", "key" -> FileCategory.Slides
+            "doc", "docx", "docm", "pages", "odt" -> FileCategory.Document
+            "mp3", "m4a", "aac", "wav", "ogg", "opus", "flac" -> FileCategory.Audio
+            "mp4", "m4v", "mov", "webm", "mkv" -> FileCategory.Video
+            "zip", "gz", "tgz", "7z", "rar", "tar" -> FileCategory.Archive
+            else -> FileCategory.Code
+        }
+
     /** Lower-cased, without the dot; empty when there is none. */
     fun extensionOf(name: String): String = name.substringAfterLast('.', "").lowercase()
 
@@ -74,6 +121,16 @@ object FileNames {
 
     /** The folder above `path`, "" being the working directory. */
     fun parent(path: String): String = path.trimEnd('/').substringBeforeLast('/', "")
+
+    /**
+     * The name a fetched file is handed to other apps under: a photo the desktop scaled
+     * down is a JPEG whatever it was called, and a name never reaches outside its folder.
+     */
+    fun exportName(name: String, mimeType: String): String {
+        val base = name.replace('/', '_').replace('\\', '_').takeUnless { it.isBlank() || it == "." || it == ".." } ?: "file"
+        if (mimeType != "image/jpeg" || extensionOf(base) in setOf("jpg", "jpeg")) return base
+        return base.substringBeforeLast('.', base) + ".jpg"
+    }
 }
 
 object FileText {
@@ -81,6 +138,30 @@ object FileText {
     fun decode(data: ByteArray): String? {
         if (data.take(8192).any { it == 0.toByte() }) return null
         return runCatching { Charsets.UTF_8.newDecoder().decode(java.nio.ByteBuffer.wrap(data)).toString() }.getOrNull()
+    }
+
+    /**
+     * Text cut into pieces of whole lines for a lazy list, so only what is on screen is laid
+     * out; an overlong line is cut too, since one line can be the whole file (minified code).
+     */
+    fun chunks(text: String, lines: Int = 40, maxChars: Int = 4000): List<String> {
+        val result = ArrayList<String>()
+        var start = 0
+        var count = 0
+        var i = 0
+        while (i < text.length) {
+            val newline = text[i] == '\n'
+            if (newline) count++
+            if (count == lines || i - start + 1 >= maxChars) {
+                // The line break closing a piece is dropped: the next piece starts on a line of its own.
+                result += text.substring(start, if (newline) i else i + 1)
+                start = i + 1
+                count = 0
+            }
+            i++
+        }
+        if (start < text.length || result.isEmpty()) result += text.substring(start)
+        return result
     }
 }
 
@@ -99,6 +180,9 @@ enum class FileViewError {
     NotAFile,
     Failed,
     ;
+
+    /** Whether trying again may help: a dropped connection or a failed read, not a refusal. */
+    val retryable: Boolean get() = this == Offline || this == Failed
 
     companion object {
         fun from(error: Throwable): FileViewError =

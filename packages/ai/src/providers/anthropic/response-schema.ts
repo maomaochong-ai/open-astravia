@@ -15,7 +15,8 @@ const usage = Type.Object(
 );
 const contentBlock = Type.Union([
 	objectWithType("text", { text: Type.String() }),
-	objectWithType("thinking", { thinking: Type.String(), signature: Type.String() }),
+	// 部分 Anthropic 兼容网关在 content_block_start 省略空 signature，签名随后经 signature_delta 下发或整体缺失。
+	objectWithType("thinking", { thinking: Type.String(), signature: Type.Optional(Type.String()) }),
 	objectWithType("redacted_thinking", { data: Type.String() }),
 	objectWithType("tool_use", { id: Type.String(), name: Type.String(), input: Type.Unknown() }),
 	objectWithType("server_tool_use"),

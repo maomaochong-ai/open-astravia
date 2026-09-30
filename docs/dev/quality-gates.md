@@ -10,11 +10,11 @@
 | 开发中（快） | `bun run check:quick` | 一轮编辑后 | 准确合并分支已提交差异、暂存、未暂存和未跟踪文件；对变更文件运行 Biome，并只运行命中范围的架构守卫；不做类型检查 |
 | 完整本地/PR | `bun run check` | 一轮代码任务完成、交付或开 PR 前一次 | 对显式源码根运行 Biome，并行执行根 `tsgo`、增量 desktop `tsc`、docs check 与全量架构守卫 |
 | 构建声明消费 | `bun run check:types:build-surfaces` | workspace 前置声明生成后 | 按 `cli-host/tsconfig.build.json` 验证真实包声明消费；会拒绝陈旧 `dist/*.d.ts` |
-| 质量脚本测试 | `bun run test:quality` | 修改 `scripts/quality` | 变更选择、依赖传播与包边界规则 |
+| 质量脚本测试 | `bun run test:quality` | 修改 `scripts/quality`、workflow 或插件清单 | 变更选择、插件清单、发布流程与包边界规则 |
 | 全量单元测试 | `bun run test:full`（`test` / `test:unit` 为别名） | 明确需要全仓验证 | 先由 Turbo 生成测试消费的 workspace 依赖产物，再顺序运行所有声明 `test` 的 TypeScript workspace |
 | 按包 | `bun run test:pkg <name>` | 改单包 | 例：`test:pkg ai` |
 | 按任务影响 | `bun run test:impact -- <file...>` | 日常实现与 Agent 任务 | 直接运行显式测试和 Vitest 依赖相关测试；无法可靠选择时直接失败 |
-| 按变更 | `bun run test:changed` | 提 PR 前可选 | 合并已提交/工作区/未跟踪改动；普通源码运行直接及关联测试，公共合同、包配置和真实依赖变化扩展到受影响范围 |
+| 按变更 | `bun run test:changed` | 提 PR 前可选 | 合并已提交/工作区/未跟踪改动；只运行变更文件的直接、Vitest 关联或显式映射测试，无法定向时失败，永不退化为整包或全仓测试 |
 | 按需 Desktop UI 验收 | `bun run verify:ui:*` | 仅用户明确要求使用 UI 验证或具体命令时 | 不由 UI、图标、样式或 Renderer/Main 改动自动触发；见 [README](./README.md) |
 | Desktop 生产边界 | `bun run verify:desktop:contracts`；受影响时由 GitHub Actions 在 Windows/macOS/Linux 运行 packaged smoke 与 updater E2E | 修改 Desktop 主进程、preload、打包脚本、原生依赖或远程控制 | 见下文 |
 | 死代码（可选） | `bun run deadcode:report` | 清理时 | Knip 报告，**默认不阻断** `check` |
@@ -42,6 +42,7 @@ scripts/quality/
   lockfile-impact.mjs          按 workspace 依赖闭包比较 bun.lock
   test-changed.mjs             按 git 变更和依赖图选包
   quality-gates.test.mjs       质量脚本定向测试
+  plugin-manifests.test.mjs    仓库插件清单 Schema 合同测试
 knip.config.ts                 Knip（可选）
 ```
 
@@ -150,7 +151,9 @@ Desktop build task 显式依赖 `@vetta-org/plugin-vite`。开发前置构建读
 
 新增或修改 workspace 依赖后必须执行正常的 `bun install`；`bun install --lockfile-only` 只更新锁文件，不创建包级 workspace 链接。可用 `bunx turbo run build --dry=json --filter=<package>` 检查任务闭包和依赖原因。
 
-`test:changed` 对普通源码不会再调用包级 `test`：已修改测试文件直接运行，源码交给 Vitest `related` 选择真实依赖它的测试，两者同时存在时会从 related 阶段排除已直接运行的测试。只有公共入口/合同、包级测试配置或锁文件依赖确实变化时，才扩展到受影响 workspace 及下游；删除文件、缺少可定向测试入口或找不到关联测试时直接失败并要求补回归测试或显式运行 `bun run test:full`，不会静默退化为整包/全仓测试。`bun.lock` 会比较基线与当前锁文件中每个 workspace 的完整已解析依赖闭包；纯格式变化和只被根工具使用的依赖变化不会触发产品包测试。根 `package.json`、Turbo 与 TypeScript 配置也不会把按变更入口隐式升级为全量测试。测试启动前会由 Turbo 构建所选测试消费的 workspace 依赖，确保干净 checkout 中指向 `dist` 的包导出可被解析，同时不会构建 Desktop、Docs 或 Remote Relay 这些叶子应用本身。锁文件或 Git 基线无法可靠读取、解析时同样直接失败。
+`test:changed` 不调用包级 `test` 或 `test:pkg`：已修改测试文件直接运行，源码（包括公共入口和合同源码）交给 Vitest `related` 选择真实依赖它的测试，两者同时存在时会从 related 阶段排除已直接运行的测试。共享源码已有更窄且经审查的宿主合同测试时使用显式映射；删除文件、缺少可定向 Vitest 入口或找不到关联测试时直接失败，要求补回归测试或显式映射，不会建议或自动转为整包/全仓测试。包内测试脚本若包含测试所需的前置命令，会先执行前置命令再运行选中的测试，例如 `vetta-ui-design` 的 `build:runner`。
+
+`bun.lock` 会比较基线与当前锁文件中每个 workspace 的完整已解析依赖闭包，并把变化定位到 workspace 的直接依赖；随后只把实际 import 这些依赖的源码或测试交给同一文件级选择器。纯格式变化和只被根工具使用的依赖变化不会触发产品包测试；无法定位依赖或 importer 时直接失败。workspace 的 `package.json`、Vitest/Vite/TypeScript 配置由 `check` 校验，不触发产品包测试；根 `package.json`、Turbo、workflow、质量脚本和 `plugin.json` 选择对应的质量合同测试，不会运行整个 `test:quality`，其中插件清单由仓库级 Schema 测试验证。测试启动前会由 Turbo 构建所选测试消费的 workspace 依赖，确保干净 checkout 中指向 `dist` 的包导出可被解析，同时不会构建 Desktop、Docs 或 Remote Relay 这些叶子应用本身。锁文件或 Git 基线无法可靠读取、解析时同样直接失败。
 
 `test:impact` 面向本地短反馈循环：显式测试文件直接运行，普通源码交给 Vitest 的 `related` 依赖图选择。拥有测试文件的 workspace 应声明可定向的包级 `test` 入口。共享 UI 的跨宿主行为，或 Vitest 的依赖图明显大于组件合同时，只要已有宿主组件测试从公开入口直接覆盖该源码，就可以在脚本中登记窄范围的源码到测试映射。没有关联测试、删除文件或缺少可定向入口都直接报错，不再回退整包测试；根配置只运行其对应的质量门禁。`bun.lock` 委托 `test:changed` 做 workspace 依赖闭包分析。CI 继续使用 `test:changed`，同时获得相同的文件级选择。
 
@@ -171,7 +174,7 @@ workspace 包声明解析。因此，上游源码修改但 `dist/*.d.ts` 尚未�
 
 ## CI
 
-`.github/workflows/quality.yml` 负责通用 TypeScript 质量门禁：冻结依赖安装、`bun run check`、质量脚本测试、Runtime 合同检查，并在 Ubuntu 与 Windows 上顺序运行受影响 workspace 及其可测下游。Linux 覆盖可移植逻辑，Windows 保留路径、进程和 Bun/Node 兼容性覆盖；macOS 特有的生产行为由 path-filtered Desktop packaged E2E 与 Apple 客户端 workflow 验证，不再把所有可移植单测重复跑第三遍。各平台按操作系统、架构和锁文件复用 Bun 下载缓存，但每次都由冻结锁文件重新生成根 `node_modules`；不得跨 Runner 恢复 `node_modules`。完整 Git 历史用于计算 PR base，同一 PR 或分支的新提交会取消旧运行。
+`.github/workflows/quality.yml` 负责通用 TypeScript 质量门禁：冻结依赖安装、`bun run check`、质量脚本测试、Runtime 合同检查，并在 Ubuntu 与 Windows 上运行 `test:changed` 选出的直接、关联或显式合同测试。Linux 覆盖可移植逻辑，Windows 保留路径、进程和 Bun/Node 兼容性覆盖；macOS 特有的生产行为由 path-filtered Desktop packaged E2E 与 Apple 客户端 workflow 验证，不再把所有可移植单测重复跑第三遍。各平台按操作系统、架构和锁文件复用 Bun 下载缓存，但每次都由冻结锁文件重新生成根 `node_modules`；不得跨 Runner 恢复 `node_modules`。完整 Git 历史用于计算 PR base，同一 PR 或分支的新提交会取消旧运行。
 
 非 Bun workspace 由独立的 path-filtered workflow 覆盖：`.github/workflows/im-gateway.yml` 对 Go Gateway 执行 tidy、vet、build、test、接口纪律和 golangci-lint；`.github/workflows/kotlin.yml` 对 `apps/mobile/client-android` 执行 Android host tests 和 debug APK 构建；`.github/workflows/mobile-apple.yml` 对 `apps/mobile/client-apple` 执行 VettaKit 单元测试、与桌面端真实 LAN 服务器的 interop 测试和 iOS 模拟器构建，协议包 `packages/remote-control` 变化时同样触发。这些 path-filtered workflow 只在分支 push 或 PR 中对应目录或 workflow 自身变化时运行，不响应 tag push。
 
@@ -208,7 +211,7 @@ Windows、macOS、Linux runner 上真实安装基线包，驱动现有 updater �
 | OpenClaw | 本仓库选择 |
 |----------|------------|
 | oxlint / oxfmt | 继续 **Biome**（已覆盖 lint+format） |
-| 170+ test shards | 本地用 `test:impact` 缩短反馈；CI 用 `test:changed` 保持下游覆盖 |
+| 170+ test shards | 本地与 CI 都使用文件级选择；需要整包或全仓时显式运行 `test:pkg` / `test:full` |
 | pre-commit 全家桶 | husky + 快路径；类型检查放 `check` |
 | knip 阻断 CI | 仅扫描四个核心包，`deadcode:report` 先观察，再收紧 |
 | OpenGrep / CodeQL | 未引入；有安全面再加 |

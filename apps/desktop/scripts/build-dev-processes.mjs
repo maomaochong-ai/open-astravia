@@ -24,6 +24,20 @@ const envInputs = [
 ];
 
 const developmentEnv = { ...process.env, VETTA_BUILD_ENV: "development" };
+
+// 与 vite.main.config.ts 的 developmentWorkspacePackages 保持一致：这些包在 dev 下是 external，
+// 运行时直接读各自 dist，改动无需重打主进程；其余 workspace 包都会被打进主进程 bundle。
+const mainExternalWorkspacePackages = new Set(["action-rpc", "ai", "coding-agent", "remote-control", "runtime-core"]);
+
+// 主进程 bundle 的 workspace 依赖逐个手写登记容易漏（曾漏掉 runtime-storage，改了 Schema 重启仍跑旧代码），
+// 因此按 packages/* 目录全量登记被打包的包。
+const mainBundledWorkspaceInputs = (await readdir(join(repoRoot, "packages"), { withFileTypes: true }))
+	.filter((entry) => entry.isDirectory() && !mainExternalWorkspacePackages.has(entry.name))
+	.sort((left, right) => left.name.localeCompare(right.name))
+	.flatMap((entry) => [
+		join(repoRoot, "packages", entry.name, "package.json"),
+		join(repoRoot, "packages", entry.name, "dist"),
+	]);
 const tasks = [
 	{
 		name: "preload",
@@ -73,17 +87,9 @@ const tasks = [
 			join(desktopRoot, "vite.main.config.ts"),
 			join(desktopRoot, "src", "main"),
 			join(desktopRoot, "src", "shared"),
-			join(repoRoot, "packages", "capability-runtime", "package.json"),
-			join(repoRoot, "packages", "capability-runtime", "dist"),
-			join(repoRoot, "packages", "capability-sdk", "package.json"),
-			join(repoRoot, "packages", "capability-sdk", "dist"),
+			...mainBundledWorkspaceInputs,
 			join(repoRoot, "packages", "plugins", "plugin-sdk", "package.json"),
 			join(repoRoot, "packages", "plugins", "plugin-sdk", "dist"),
-			join(repoRoot, "packages", "runtime-desktop", "package.json"),
-			join(repoRoot, "packages", "runtime-desktop", "dist"),
-			join(repoRoot, "packages", "runtime-node", "package.json"),
-			join(repoRoot, "packages", "runtime-node", "dist"),
-			join(repoRoot, "packages", "toolkit", "package.json"),
 			join(repoRoot, "packages", "toolkit", "src"),
 		],
 		outputDir: join(desktopRoot, "dist", "main"),

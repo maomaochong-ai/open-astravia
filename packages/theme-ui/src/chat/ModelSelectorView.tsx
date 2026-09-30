@@ -74,6 +74,13 @@ export interface ModelSelectorViewProps {
 	groups: readonly ModelSelectorProviderGroup[];
 	defaultKey?: string;
 	labels: ModelSelectorLabels;
+	ariaLabel?: string;
+	disabled?: boolean;
+	/** 可选的空值项，例如“不固定模型”或“跟随会话默认”。 */
+	emptyOption?: {
+		readonly label: string;
+		readonly onSelect: () => void;
+	};
 	className?: string;
 	classNames?: {
 		trigger?: string;
@@ -106,6 +113,9 @@ export function ModelSelectorView({
 	groups,
 	defaultKey,
 	labels,
+	ariaLabel,
+	disabled = false,
+	emptyOption,
 	className,
 	classNames,
 	onModelSelect,
@@ -117,6 +127,11 @@ export function ModelSelectorView({
 	const [searchQuery, setSearchQuery] = useState("");
 	const searchInputRef = useRef<HTMLInputElement>(null);
 	const modelListRef = useRef<HTMLDivElement>(null);
+	const triggerRef = useRef<HTMLButtonElement>(null);
+	const portalContainer = open
+		? (triggerRef.current?.closest<HTMLElement>('[data-slot="drawer-content"], [data-slot="dialog-content"]') ??
+			undefined)
+		: undefined;
 
 	const filteredGroups = useMemo(() => {
 		const query = normalizeSearchValue(searchQuery);
@@ -198,8 +213,11 @@ export function ModelSelectorView({
 		// 搜索型选择器不需要锁住页面；modal 模式会改写 body 的滚动与 pointer-events，
 		// 在长会话页面触发整棵 DOM 的同步样式重算。
 		<DropdownMenu open={open} modal={false} onOpenChange={handleOpenChange}>
-			<DropdownMenuTrigger asChild>
+			<DropdownMenuTrigger asChild disabled={disabled}>
 				<ModelSelectorTrigger
+					ref={triggerRef}
+					aria-label={ariaLabel}
+					disabled={disabled}
 					label={selectedOption?.displayName ?? labels.placeholder}
 					icon={
 						selectedOption ? groups.find((group) => group.provider === selectedOption.provider)?.icon : undefined
@@ -213,10 +231,11 @@ export function ModelSelectorView({
 					<DropdownMenuContent
 						forceMount
 						asChild
+						portalContainer={portalContainer}
 						align="start"
 						className={cn(
 							// 底色跟搜索框走同一个变量：搜索行去掉底色后要和面板融成一块
-						"w-[min(16rem,calc(100vw-2rem))] min-w-[180px] max-w-[16rem] overflow-visible bg-background p-0",
+							"w-[min(16rem,calc(100vw-2rem))] min-w-[180px] max-w-[16rem] overflow-visible bg-background p-0",
 							classNames?.content,
 						)}
 						style={{ animation: "none" }}
@@ -279,6 +298,7 @@ export function ModelSelectorView({
 														<DropdownMenuSubContent
 															forceMount
 															asChild
+															portalContainer={portalContainer}
 															className="min-w-[130px] overflow-visible bg-background p-0"
 															style={{ animation: "none" }}
 														>
@@ -319,55 +339,73 @@ export function ModelSelectorView({
 										</>
 									)}
 									<div ref={modelListRef} className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
-										<DropdownMenuLabel className={COMPACT_LABEL_CLASS}>{labels.modelHeader}</DropdownMenuLabel>
-										{filteredGroups.map((group) => (
-										<div key={group.provider}>
-											<div
-												className={cn(
-													"flex items-center gap-1 px-2 pb-0.5 pt-1 text-[10px] font-medium text-muted-foreground/50",
-													classNames?.providerHeader,
-												)}
-											>
-												<ProviderIcon symbol={group.icon} className="h-2.5 w-2.5" />
-												<span className="min-w-0 truncate">{group.label}</span>
-												{group.models[0]?.remote && (
-													<span className="shrink-0 rounded-full bg-primary/15 px-1 text-[9px] font-medium text-primary">
-														{labels.cloudOnly}
-													</span>
-												)}
-											</div>
-											{group.models.map((model) => (
+										{emptyOption && (
+											<>
 												<DropdownMenuItem
-													key={model.key}
-													data-model-key={model.key}
-													aria-current={model.key === selectedModel ? "true" : undefined}
+													aria-current={!selectedModel ? "true" : undefined}
 													className={cn(
 														COMPACT_ITEM_CLASS,
-														model.key === selectedModel && "bg-accent text-accent-foreground",
-														classNames?.item,
+														!selectedModel && "bg-accent text-accent-foreground",
 													)}
-													onSelect={() => handleModelSelect(model.key)}
+													onSelect={emptyOption.onSelect}
 												>
-													<span className="min-w-0 flex-1 truncate">{model.displayName}</span>
-													<ModelMultiplier label={labels.multiplierLabel?.(model)} />
-													{model.supportsImage && (
-														<span
-															aria-label={labels.visionBadge}
-															title={labels.visionBadge}
-															className="icon-[solar--gallery-linear] size-3 shrink-0 text-primary"
-														/>
-													)}
-													{model.key === defaultKey && (
-														<span className="shrink-0 rounded-full bg-primary/15 px-1 text-[9px] font-medium text-primary">
-															{labels.defaultBadge}
-														</span>
-													)}
-													{model.key === selectedModel && (
+													<span className="min-w-0 flex-1 truncate">{emptyOption.label}</span>
+													{!selectedModel && (
 														<span className="icon-[solar--check-circle-linear] h-3 w-3 shrink-0" />
 													)}
 												</DropdownMenuItem>
-											))}
-										</div>
+												<DropdownMenuSeparator />
+											</>
+										)}
+										<DropdownMenuLabel className={COMPACT_LABEL_CLASS}>{labels.modelHeader}</DropdownMenuLabel>
+										{filteredGroups.map((group) => (
+											<div key={group.provider}>
+												<div
+													className={cn(
+														"flex items-center gap-1 px-2 pb-0.5 pt-1 text-[10px] font-medium text-muted-foreground/50",
+														classNames?.providerHeader,
+													)}
+												>
+													<ProviderIcon symbol={group.icon} className="h-2.5 w-2.5" />
+													<span className="min-w-0 truncate">{group.label}</span>
+													{group.models[0]?.remote && (
+														<span className="shrink-0 rounded-full bg-primary/15 px-1 text-[9px] font-medium text-primary">
+															{labels.cloudOnly}
+														</span>
+													)}
+												</div>
+												{group.models.map((model) => (
+													<DropdownMenuItem
+														key={model.key}
+														data-model-key={model.key}
+														aria-current={model.key === selectedModel ? "true" : undefined}
+														className={cn(
+															COMPACT_ITEM_CLASS,
+															model.key === selectedModel && "bg-accent text-accent-foreground",
+															classNames?.item,
+														)}
+														onSelect={() => handleModelSelect(model.key)}
+													>
+														<span className="min-w-0 flex-1 truncate">{model.displayName}</span>
+														<ModelMultiplier label={labels.multiplierLabel?.(model)} />
+														{model.supportsImage && (
+															<span
+																aria-label={labels.visionBadge}
+																title={labels.visionBadge}
+																className="icon-[solar--gallery-linear] size-3 shrink-0 text-primary"
+															/>
+														)}
+														{model.key === defaultKey && (
+															<span className="shrink-0 rounded-full bg-primary/15 px-1 text-[9px] font-medium text-primary">
+																{labels.defaultBadge}
+															</span>
+														)}
+														{model.key === selectedModel && (
+															<span className="icon-[solar--check-circle-linear] h-3 w-3 shrink-0" />
+														)}
+													</DropdownMenuItem>
+												))}
+											</div>
 										))}
 										{filteredGroups.length === 0 && (
 											<div className="flex min-h-24 flex-col items-center justify-center px-4 py-6 text-center">

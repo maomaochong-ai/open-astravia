@@ -24,7 +24,7 @@
     <string name="files_empty">This folder is empty</string>
     <string name="files_loading">Loading…</string>
     <string name="files_retry">Try again</string>
-    <string name="files_preview_unsupported">This kind of file can’t be shown on the phone yet.</string>
+    <string name="files_preview_unsupported">Can’t be shown here</string>
     <string name="files_error_unsupported_desktop">Update Vetta on your computer to view its files.</string>
     <string name="files_error_offline">Your computer isn’t connected.</string>
     <string name="files_error_forbidden">This file is outside what the phone may view.</string>
@@ -32,6 +32,13 @@
     <string name="files_error_too_large">The file is over 10 MB, too large to preview on the phone.</string>
     <string name="files_error_not_a_file">This is a folder.</string>
     <string name="files_error_failed">Couldn’t read the file.</string>
+    <string name="files_share">Share</string>
+    <string name="files_open_with">Open in another app</string>
+    <string name="files_no_app">No app on this phone opens this kind of file.</string>
+    <string name="files_sheet_empty">This sheet is empty</string>
+    <string name="files_rows_shown">Showing the first %1$d of %2$d rows</string>
+    <string name="files_refresh">Refresh</string>
+    <string name="files_updated">This file has changed. Tap to reload.</string>
     <string name="chat_attach_skills">Skills</string>
     <string name="chat_attach_skills_hint">Use a skill or scene from your computer</string>
     <string name="skills_title">Skills</string>

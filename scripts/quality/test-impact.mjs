@@ -1,6 +1,6 @@
 /**
  * Fast, task-scoped test selection for local development and coding agents.
- * CI keeps using test:changed so cross-package and cross-platform coverage stays conservative.
+ * CI uses the same file-level selection through test:changed on each supported platform.
  *
  * Usage:
  *   bun run test:impact
@@ -9,18 +9,19 @@
  */
 
 import { spawnSync } from "node:child_process";
-import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
+import { join, relative } from "node:path";
+import ts from "typescript";
 import {
 	buildableTestDependencies,
 	changedFiles,
-	expandTestablePackages,
 	isDirectRun,
 	ok,
 	parseFileSelectionArgs,
 	repoRoot,
 	runBun,
 	WORKSPACE_PACKAGES,
+	walkFiles,
 } from "./lib.mjs";
 
 const ROOT_GLOBAL_TEST_FILES = new Set([
@@ -34,10 +35,15 @@ const ROOT_GLOBAL_TEST_FILES = new Set([
 ]);
 const CODE_FILE_PATTERN = /\.(?:[cm]?[jt]sx?)$/i;
 const TEST_FILE_PATTERN = /(?:^|\/)(?:test|tests|__tests__)(?:\/|$)|\.(?:test|spec)\.[cm]?[jt]sx?$/i;
-const PUBLIC_CONTRACT_PATTERN = /(?:^|\/)src\/(?:index\.[cm]?[jt]sx?|public-api\/)/i;
-const CONTRACT_DIRECTORY_PATTERN = /(?:^|\/)(?:contracts?|runtime-contracts)(?:\/|$)/i;
 const PACKAGE_CONFIG_PATTERN =
 	/(?:^|\/)(?:package\.json|vitest\.config\.[cm]?[jt]s|vite\.config\.[cm]?[jt]s|tsconfig(?:\.[^.]+)?\.json)$/i;
+const RUNTIME_CONTRACT_PATTERN = /(?:^|\/)plugin\.json$/i;
+const QUALITY_GATES_TEST = "scripts/quality/quality-gates.test.mjs";
+const PLUGIN_MANIFESTS_TEST = "scripts/quality/plugin-manifests.test.mjs";
+const WORKFLOW_CONTRACT_TESTS = new Map([
+	[".github/workflows/desktop-packaged.yml", "scripts/quality/desktop-packaging-scope.test.mjs"],
+	[".github/workflows/desktop-release.yml", "scripts/quality/desktop-release-workflow.test.mjs"],
+]);
 
 /**
  * Keep narrowly reviewed source-to-test mappings here when Vitest's dependency
@@ -56,6 +62,7 @@ const EXPLICIT_SOURCE_TESTS = new Map([
 		"packages/theme-ui/src/chat/ModelSelectorTrigger.tsx",
 		desktopTests(MODEL_SELECTOR_VIEW_TEST, TEAM_MODEL_SELECTOR_TEST),
 	],
+	["packages/ui/src/dropdown-menu.tsx", desktopTests(MODEL_SELECTOR_VIEW_TEST)],
 	["packages/theme-ui/src/chat/ModelSelectorView.tsx", desktopTests(MODEL_SELECTOR_VIEW_TEST)],
 	["packages/theme-ui/src/chat/ModelConfiguration.tsx", desktopTests(TEAM_MODEL_SELECTOR_TEST)],
 	["packages/theme-ui/src/chat/InlineModelPicker.tsx", desktopTests(TEAM_MODEL_SELECTOR_TEST)],
@@ -68,18 +75,15 @@ function workspaceForFile(file) {
 		.find((pkg) => file === pkg.dir || file.startsWith(`${pkg.dir}/`));
 }
 
-function supportsTargetedVitest(testScript) {
-	return (
-		typeof testScript === "string" &&
-		!testScript.includes("&&") &&
-		/^bun\s+\S*scripts\/quality\/run-vitest\.mjs(?:\s|$)/.test(testScript.replaceAll("\\", "/"))
-	);
+function parseBunCommand(command) {
+	const match = command.trim().match(/^bun\s+(.+)$/u);
+	return match ? match[1].trim().split(/\s+/u).filter(Boolean) : null;
 }
 
-function staticVitestArgs(testScript) {
-	const normalized = testScript.replaceAll("\\", "/");
+function staticVitestArgs(command) {
+	const normalized = command.replaceAll("\\", "/");
 	const match = normalized.match(/^bun\s+\S*scripts\/quality\/run-vitest\.mjs(?:\s+(.*))?$/);
-	if (!match) return [];
+	if (!match) return null;
 	return (match[1] ?? "")
 		.trim()
 		.split(/\s+/)
@@ -87,17 +91,32 @@ function staticVitestArgs(testScript) {
 		.filter((arg) => arg !== "--run");
 }
 
-function targetForWorkspace(grouped, workspace) {
+function targetedTestConfiguration(testScript) {
+	if (typeof testScript !== "string") return null;
+	const commands = testScript.split(/\s*&&\s*/u);
+	const vitestArgs = staticVitestArgs(commands.at(-1) ?? "");
+	if (!vitestArgs) return null;
+	const prerequisites = commands.slice(0, -1).map(parseBunCommand);
+	if (prerequisites.some((command) => !command)) return null;
+	return { prerequisites, vitestArgs };
+}
+
+function targetForWorkspace(grouped, workspace, selectionErrors) {
 	let target = grouped.get(workspace.key);
 	if (target) return target;
+	const configuration = targetedTestConfiguration(workspace.scripts.test);
+	if (!configuration) {
+		selectionErrors.push(`${workspace.key} has no targeted Vitest entry point`);
+		return null;
+	}
 	target = {
 		key: workspace.key,
 		dir: workspace.dir,
 		packageName: workspace.name,
-		testScript: workspace.scripts.test,
+		prerequisites: configuration.prerequisites,
+		vitestArgs: configuration.vitestArgs,
 		directTests: [],
 		relatedSources: [],
-		full: !supportsTargetedVitest(workspace.scripts.test),
 	};
 	grouped.set(workspace.key, target);
 	return target;
@@ -113,43 +132,113 @@ export function parseImpactArgs(args, root = repoRoot) {
 	return { ...selection, dryRun };
 }
 
-function addFullAffectedTargets(grouped, workspaceKey) {
-	for (const affectedKey of expandTestablePackages([workspaceKey])) {
-		const affectedWorkspace = WORKSPACE_PACKAGES.find((workspace) => workspace.key === affectedKey);
-		if (!affectedWorkspace?.scripts.test) continue;
-		const target = targetForWorkspace(grouped, affectedWorkspace);
-		target.full = true;
+function addTargetFile(grouped, workspace, relativeFile, selectionErrors) {
+	if (!workspace.scripts.test) {
+		selectionErrors.push(`${workspace.key} has no targeted test entry point for ${workspace.dir}/${relativeFile}`);
+		return;
 	}
+	const target = targetForWorkspace(grouped, workspace, selectionErrors);
+	if (!target) return;
+	if (TEST_FILE_PATTERN.test(relativeFile)) target.directTests.push(relativeFile);
+	else target.relatedSources.push(relativeFile);
+}
+
+function importedSpecifiers(file) {
+	try {
+		return ts.preProcessFile(readFileSync(file, "utf8"), true, true).importedFiles.map(({ fileName }) => fileName);
+	} catch {
+		return [];
+	}
+}
+
+function dependencyImporterFiles(workspace, dependencies) {
+	const packageRoot = join(repoRoot, workspace.dir);
+	return walkFiles(packageRoot)
+		.map((absolute) => ({
+			absolute,
+			relative: relative(packageRoot, absolute).replaceAll("\\", "/"),
+		}))
+		.filter(({ relative: relativeFile }) => /^(?:src|test|tests|scripts)\//u.test(relativeFile))
+		.filter(({ absolute }) =>
+			importedSpecifiers(absolute).some((specifier) =>
+				dependencies.some((dependency) => specifier === dependency || specifier.startsWith(`${dependency}/`)),
+			),
+		)
+		.map(({ relative: relativeFile }) => relativeFile)
+		.sort();
+}
+
+function companionTest(file, pathExists) {
+	if (TEST_FILE_PATTERN.test(file)) return file;
+	const extension = file.match(/\.[^./]+$/u)?.[0];
+	if (!extension) return null;
+	const candidate = `${file.slice(0, -extension.length)}.test${extension}`;
+	return pathExists(candidate) ? candidate : null;
+}
+
+function qualityTestsForFiles(files, pathExists) {
+	const tests = [];
+	for (const file of files) {
+		if (RUNTIME_CONTRACT_PATTERN.test(file)) {
+			tests.push(PLUGIN_MANIFESTS_TEST);
+			continue;
+		}
+		if (file.startsWith(".github/workflows/")) {
+			tests.push(WORKFLOW_CONTRACT_TESTS.get(file) ?? QUALITY_GATES_TEST);
+			continue;
+		}
+		if (file.startsWith("scripts/")) {
+			tests.push(companionTest(file, pathExists) ?? QUALITY_GATES_TEST);
+			continue;
+		}
+		if (file === "package.json" || file === "turbo.json") tests.push(QUALITY_GATES_TEST);
+	}
+	return [...new Set(tests)].sort();
 }
 
 export function createImpactTestPlan(
 	files,
 	pathExists = (file) => existsSync(join(repoRoot, file)),
-	{ lockfilePackages = [] } = {},
+	{ lockfileImpacts = [] } = {},
 ) {
 	const normalizedFiles = [...new Set(files.map((file) => file.replaceAll("\\", "/")))].sort();
-	const runQuality = normalizedFiles.some(
-		(file) => file.startsWith("scripts/") || file === "package.json" || file === "turbo.json",
-	);
+	const qualityTests = qualityTestsForFiles(normalizedFiles, pathExists);
+	const runQuality = qualityTests.length > 0;
 	const selectionErrors = [];
 
 	const grouped = new Map();
-	for (const workspaceKey of lockfilePackages) addFullAffectedTargets(grouped, workspaceKey);
+	for (const impact of lockfileImpacts) {
+		const workspace = WORKSPACE_PACKAGES.find((candidate) => candidate.key === impact.key);
+		if (!workspace) {
+			selectionErrors.push(`bun.lock changed unknown workspace ${impact.key}`);
+			continue;
+		}
+		if (impact.dependencies.length === 0) {
+			selectionErrors.push(`bun.lock changed ${impact.key} without an identifiable direct dependency`);
+			continue;
+		}
+		const importers = dependencyImporterFiles(workspace, impact.dependencies);
+		if (importers.length === 0) {
+			selectionErrors.push(
+				`bun.lock changed ${impact.key} dependencies ${impact.dependencies.join(", ")} without importing source files`,
+			);
+			continue;
+		}
+		for (const relativeFile of importers) addTargetFile(grouped, workspace, relativeFile, selectionErrors);
+	}
 	for (const file of normalizedFiles) {
 		if (file.startsWith("scripts/") || ROOT_GLOBAL_TEST_FILES.has(file)) continue;
 		const workspace = workspaceForFile(file);
 		if (!workspace) continue;
 		const relativeFile = file.slice(workspace.dir.length + 1);
 		if (!pathExists(file)) {
-			selectionErrors.push(`${file} was deleted; add an explicit regression test or run test:full`);
+			selectionErrors.push(`${file} was deleted; add an explicit regression test or mapping`);
 			continue;
 		}
-		if (PUBLIC_CONTRACT_PATTERN.test(relativeFile) || CONTRACT_DIRECTORY_PATTERN.test(relativeFile)) {
-			addFullAffectedTargets(grouped, workspace.key);
+		if (RUNTIME_CONTRACT_PATTERN.test(relativeFile)) {
 			continue;
 		}
 		if (PACKAGE_CONFIG_PATTERN.test(relativeFile)) {
-			addFullAffectedTargets(grouped, workspace.key);
 			continue;
 		}
 		const mapped = EXPLICIT_SOURCE_TESTS.get(file);
@@ -157,29 +246,23 @@ export function createImpactTestPlan(
 			const testWorkspace = WORKSPACE_PACKAGES.find((candidate) => candidate.key === mapped.workspaceKey);
 			const missingTests = mapped.tests.filter((test) => !pathExists(`${testWorkspace?.dir ?? ""}/${test}`));
 			if (!testWorkspace?.scripts.test || missingTests.length > 0) {
-				fallbackReasons.push(`${file} has an invalid explicit test mapping`);
+				selectionErrors.push(`${file} has an invalid explicit test mapping`);
 				continue;
 			}
-			const target = targetForWorkspace(grouped, testWorkspace);
-			target.directTests.push(...mapped.tests);
-			continue;
-		}
-		if (!workspace.scripts.test) {
-			selectionErrors.push(`${workspace.key} has no targeted test entry point for ${file}`);
+			const target = targetForWorkspace(grouped, testWorkspace, selectionErrors);
+			target?.directTests.push(...mapped.tests);
 			continue;
 		}
 		if (!CODE_FILE_PATTERN.test(relativeFile)) continue;
-		const target = targetForWorkspace(grouped, workspace);
-		if (target.full) continue;
-		if (TEST_FILE_PATTERN.test(relativeFile)) target.directTests.push(relativeFile);
-		else target.relatedSources.push(relativeFile);
+		addTargetFile(grouped, workspace, relativeFile, selectionErrors);
 	}
 
 	return {
 		files: normalizedFiles,
-		lockfilePackages,
+		lockfileImpacts,
+		qualityTests,
 		runQuality,
-		selectionErrors,
+		selectionErrors: [...new Set(selectionErrors)].sort(),
 		targets: [...grouped.values()]
 			.map((target) => ({
 				...target,
@@ -210,10 +293,14 @@ function runCapturedBun(args, cwd) {
 function runTargetedTests(target) {
 	const cwd = join(repoRoot, target.dir);
 	const runner = join(repoRoot, "scripts/quality/run-vitest.mjs");
-	const sharedArgs = staticVitestArgs(target.testScript);
+	for (const prerequisite of target.prerequisites) {
+		ok(`[test:impact] ${target.key}: prerequisite bun ${prerequisite.join(" ")}`);
+		const prerequisiteCode = runBun(prerequisite, { cwd });
+		if (prerequisiteCode !== 0) return prerequisiteCode;
+	}
 	if (target.directTests.length > 0) {
 		ok(`[test:impact] ${target.key}: direct tests ${target.directTests.join(", ")}`);
-		const directCode = runBun([runner, "--run", ...sharedArgs, ...target.directTests], { cwd });
+		const directCode = runBun([runner, "--run", ...target.vitestArgs, ...target.directTests], { cwd });
 		if (directCode !== 0) return directCode;
 	}
 	if (target.relatedSources.length === 0) return 0;
@@ -226,7 +313,7 @@ function runTargetedTests(target) {
 			...target.relatedSources,
 			"--run",
 			"--passWithNoTests=false",
-			...sharedArgs,
+			...target.vitestArgs,
 			...target.directTests.map((test) => `--exclude=${test}`),
 		],
 		cwd,
@@ -234,9 +321,7 @@ function runTargetedTests(target) {
 	if (related.code === 0) return 0;
 	if (!/No test files found|No test suite found/i.test(related.output)) return related.code;
 
-	console.error(
-		`[test:impact] ${target.key}: no related tests found; add a regression test or run test:full explicitly`,
-	);
+	console.error(`[test:impact] ${target.key}: no related tests found; add a regression test or explicit test mapping`);
 	return 1;
 }
 
@@ -247,11 +332,9 @@ function printPlan(plan, selection) {
 			: `[test:impact] scope=git base=${selection.base}`,
 	);
 	console.log(`[test:impact] changed files: ${plan.files.length}`);
-	if (plan.runQuality) console.log("[test:impact] quality script tests selected");
+	if (plan.runQuality) console.log(`[test:impact] quality tests: ${plan.qualityTests.join(", ")}`);
 	for (const target of plan.targets) {
-		const mode = target.full
-			? "full package"
-			: `direct=${target.directTests.length}, related=${target.relatedSources.length}`;
+		const mode = `direct=${target.directTests.length}, related=${target.relatedSources.length}`;
 		console.log(`[test:impact] ${target.key}: ${mode}`);
 	}
 	if (plan.selectionErrors.length > 0) {
@@ -262,7 +345,7 @@ function printPlan(plan, selection) {
 export function runImpactTestPlan(plan) {
 	if (plan.selectionErrors.length > 0) return 1;
 	if (plan.runQuality) {
-		const qualityCode = runBun(["run", "test:quality"]);
+		const qualityCode = runBun([join(repoRoot, "scripts/quality/run-vitest.mjs"), "--run", ...plan.qualityTests]);
 		if (qualityCode !== 0) return qualityCode;
 	}
 	if (plan.targets.length === 0) {
@@ -285,9 +368,7 @@ export function runImpactTestPlan(plan) {
 	}
 
 	for (const target of plan.targets) {
-		const code = target.full
-			? runBun(["run", "test"], { cwd: join(repoRoot, target.dir) })
-			: runTargetedTests(target);
+		const code = runTargetedTests(target);
 		if (code !== 0) return code;
 	}
 	return 0;

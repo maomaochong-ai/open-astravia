@@ -39,10 +39,52 @@ class FileViewingTest {
         assertEquals(FilePreviewKind.Image, FilePreviewKind.of("photo.heic", "image/jpeg", byteArrayOf(1, 0, 2)), "a scaled photo arrives as JPEG")
         assertEquals(FilePreviewKind.Text, FilePreviewKind.of("main.kt", "text/x-kotlin", text))
         assertEquals(FilePreviewKind.Unsupported, FilePreviewKind.of("app.bin", "application/octet-stream", byteArrayOf(1, 0, 2)))
+        assertEquals(FilePreviewKind.Image, FilePreviewKind.of("shot.png", "application/octet-stream", byteArrayOf(1, 0, 2)), "known by its extension")
+        assertEquals(FilePreviewKind.WebImage, FilePreviewKind.of("logo.svg", "image/svg+xml", "<svg/>".encodeToByteArray()), "SVG is drawn, not shown as text")
+        assertEquals(FilePreviewKind.WebImage, FilePreviewKind.of("loading.GIF", "image/gif", byteArrayOf(71, 73, 70)), "a GIF keeps moving")
+        assertEquals(FilePreviewKind.Audio, FilePreviewKind.of("memo.M4A", "application/octet-stream", byteArrayOf(1, 0, 2)))
+        assertEquals(FilePreviewKind.Video, FilePreviewKind.of("demo.mov", "application/octet-stream", byteArrayOf(1, 0, 2)))
+        assertEquals(FilePreviewKind.Pdf, FilePreviewKind.of("paper.PDF", "application/octet-stream", byteArrayOf(37, 80, 68, 70)))
+        assertEquals(FilePreviewKind.Document, FilePreviewKind.of("plan.docx", "application/octet-stream", byteArrayOf(1, 0, 2)))
+        assertEquals(FilePreviewKind.Document, FilePreviewKind.of("q3.XLSX", "application/octet-stream", byteArrayOf(1, 0, 2)))
+        assertEquals(FilePreviewKind.Document, FilePreviewKind.of("deck.pptx", "application/octet-stream", byteArrayOf(1, 0, 2)))
+        assertEquals(FilePreviewKind.Document, FilePreviewKind.of("data.csv", "text/csv", text), "a table, not text")
+        assertEquals(FilePreviewKind.Unsupported, FilePreviewKind.of("old.doc", "application/octet-stream", byteArrayOf(1, 0, 2)), "the binary formats are handed on")
         assertEquals("", FileNames.parent("docs"))
         assertEquals("docs", FileNames.parent("docs/api/"))
         assertEquals("api", FileNames.title("docs/api", root = "vetta"))
         assertEquals("vetta", FileNames.title("", root = "vetta"))
+    }
+
+    @Test
+    fun cutsLongTextIntoPiecesOfWholeLines() {
+        val text = (1..5).joinToString("\n") { "line $it" }
+        assertEquals(listOf("line 1\nline 2", "line 3\nline 4", "line 5"), FileText.chunks(text, lines = 2))
+        assertEquals(listOf(""), FileText.chunks(""))
+        assertEquals(listOf("abcd", "efgh", "ij"), FileText.chunks("abcdefghij", maxChars = 4), "a single long line is cut too")
+        val big = (1..10_000).joinToString("\n") { "row $it" }
+        assertEquals(big, FileText.chunks(big).joinToString("\n"), "nothing lost or added")
+    }
+
+    @Test
+    fun sortsFilesIntoKindsForTheirIconsAndSaysWhenTryingAgainHelps() {
+        assertEquals(FileCategory.Sheet, FileNames.category("Q3.XLSX"))
+        assertEquals(FileCategory.Slides, FileNames.category("deck.pptx"))
+        assertEquals(FileCategory.Pdf, FileNames.category("paper.pdf"))
+        assertEquals(FileCategory.Image, FileNames.category("shot.png"))
+        assertEquals(FileCategory.Code, FileNames.category("main.kt"))
+        assertEquals(FileCategory.Code, FileNames.category("Makefile"))
+        assertEquals(listOf(FileViewError.Offline, FileViewError.Failed), FileViewError.entries.filter { it.retryable })
+    }
+
+    @Test
+    fun namesAFileForOtherAppsByWhatWasSent() {
+        assertEquals("report.pdf", FileNames.exportName("report.pdf", "application/pdf"))
+        assertEquals("IMG_1.jpg", FileNames.exportName("IMG_1.HEIC", "image/jpeg"), "a scaled photo is a JPEG")
+        assertEquals("a.JPG", FileNames.exportName("a.JPG", "image/jpeg"))
+        assertEquals("scan.jpg", FileNames.exportName("scan", "image/jpeg"))
+        assertEquals(".._etc_passwd", FileNames.exportName("../etc/passwd", "text/plain"), "never outside its folder")
+        assertEquals("file", FileNames.exportName("..", "text/plain"))
     }
 
     private fun chunk(bytes: ByteArray, offset: Int, total: Int, modifiedAt: Double = 7.0) =

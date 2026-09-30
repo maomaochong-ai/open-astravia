@@ -46,6 +46,26 @@ describe("createSessionApi trace propagation", () => {
 		expect(invoke).toHaveBeenCalledWith("vetta:session:queue-context-compaction", "session-1");
 	});
 
+	it("exposes goal lifecycle channels", async () => {
+		const invoke = vi.fn(async () => undefined);
+		const ipc = { invoke } as unknown as IpcRenderer;
+		const session = createSessionApi(ipc).session;
+
+		await session.getGoalState("session-1");
+		await session.startGoal("session-1", "Ship");
+		await session.pauseGoal("session-1", "goal-1");
+		await session.resumeGoal("session-1", "goal-1");
+		await session.clearGoal("session-1", "goal-1");
+
+		expect(invoke.mock.calls).toEqual([
+			["vetta:session:goal-get-state", "session-1"],
+			["vetta:session:goal-start", "session-1", "Ship"],
+			["vetta:session:goal-pause", "session-1", "goal-1"],
+			["vetta:session:goal-resume", "session-1", "goal-1"],
+			["vetta:session:goal-clear", "session-1", "goal-1"],
+		]);
+	});
+
 	it("exposes the MCP Apps surface proxy channels", async () => {
 		const invoke = vi.fn(async () => undefined);
 		const ipc = { invoke } as unknown as IpcRenderer;

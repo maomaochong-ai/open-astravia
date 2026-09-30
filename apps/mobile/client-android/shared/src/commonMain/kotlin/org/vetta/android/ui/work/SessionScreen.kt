@@ -278,8 +278,8 @@ fun SessionScreen(
         }
     }
 
-    if (filesOpen && files != null) FilesPanel(files, onOpenFile = { previewing = it }, onDismiss = { filesOpen = false })
-    previewing?.let { href -> if (files != null) FilePreviewScreen(files, href, onDismiss = { previewing = null }) }
+    if (filesOpen && files != null) FilesPanel(files, onOpenFile = { previewing = it }, onDismiss = { filesOpen = false }, active = active)
+    previewing?.let { href -> if (files != null) FilePreviewScreen(files, href, onDismiss = { previewing = null }, active = active) }
 
     renaming?.let { title ->
         VettaTextInputDialog(

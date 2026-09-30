@@ -47,6 +47,7 @@ import { agentTeamSessionService } from "../agent-teams/team-session-service.js"
 import { stopMonitoringRuntimeSession } from "../app-monitor/app-monitor-service.js";
 import { onConversationListChanged } from "../conversations/conversation-list-events.js";
 import { getDesktopConversationService } from "../conversations/desktop-conversation-service.js";
+import { DesktopGoalController } from "../conversations/desktop-goal-controller.js";
 import { createDesktopSessionCommands } from "../conversations/desktop-session-commands.js";
 import { desktopSessionSearch } from "../conversations/desktop-session-search.js";
 import {
@@ -205,6 +206,11 @@ const CHANNELS = {
 	QUESTION_RESPONSE: "vetta:session:question-response",
 	PLAN_MODE_GET_STATE: "vetta:session:plan-mode-get-state",
 	PLAN_MODE_SET_PERMISSION_MODE: "vetta:session:plan-mode-set-permission-mode",
+	GOAL_GET_STATE: "vetta:session:goal-get-state",
+	GOAL_START: "vetta:session:goal-start",
+	GOAL_PAUSE: "vetta:session:goal-pause",
+	GOAL_RESUME: "vetta:session:goal-resume",
+	GOAL_CLEAR: "vetta:session:goal-clear",
 	PLAN_REVIEW_REQUEST: "vetta:session:plan-review-request",
 	PLAN_REVIEW_LIST_PENDING: "vetta:session:plan-review-list-pending",
 	PLAN_REVIEW_RESOLVED: "vetta:session:plan-review-resolved",
@@ -385,6 +391,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 	};
 
 	const runtime = getSharedRuntime();
+	const goalController = new DesktopGoalController(runtime);
 	const sessionCommands = createDesktopSessionCommands({
 		runtime,
 		onSessionsDeleted: notifyAutomationSessionsDeleted,
@@ -1403,6 +1410,30 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		assertNonEmptyString(sessionId, "sessionId");
 		if (!isCodingAgentPermissionMode(permissionMode)) throw new Error("Invalid permission mode");
 		return runtime.invokeSessionExtensionSync(sessionId, CODING_AGENT_PERMISSION_MODE_SET, { permissionMode });
+	});
+	ipcMain.handle(CHANNELS.GOAL_GET_STATE, (_event, sessionId: unknown) => {
+		assertNonEmptyString(sessionId, "sessionId");
+		return goalController.read(sessionId);
+	});
+	ipcMain.handle(CHANNELS.GOAL_START, (_event, sessionId: unknown, objective: unknown) => {
+		assertNonEmptyString(sessionId, "sessionId");
+		assertNonEmptyString(objective, "objective");
+		return goalController.start(sessionId, objective);
+	});
+	ipcMain.handle(CHANNELS.GOAL_PAUSE, (_event, sessionId: unknown, goalId: unknown) => {
+		assertNonEmptyString(sessionId, "sessionId");
+		assertNonEmptyString(goalId, "goalId");
+		return goalController.pause(sessionId, goalId);
+	});
+	ipcMain.handle(CHANNELS.GOAL_RESUME, (_event, sessionId: unknown, goalId: unknown) => {
+		assertNonEmptyString(sessionId, "sessionId");
+		assertNonEmptyString(goalId, "goalId");
+		return goalController.resume(sessionId, goalId);
+	});
+	ipcMain.handle(CHANNELS.GOAL_CLEAR, (_event, sessionId: unknown, goalId: unknown) => {
+		assertNonEmptyString(sessionId, "sessionId");
+		assertNonEmptyString(goalId, "goalId");
+		return goalController.clear(sessionId, goalId);
 	});
 
 	ipcMain.handle(CHANNELS.MCP_ELICITATION_RESPONSE, (_event, requestId: unknown, result: unknown) => {

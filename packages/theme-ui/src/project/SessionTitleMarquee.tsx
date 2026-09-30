@@ -29,7 +29,7 @@ export function SessionTitleMarquee({
 
 		setMarqueeStyle({
 			"--session-title-marquee-distance": `-${overflowDistance}px`,
-			"--session-title-marquee-duration": `${Math.max(4, overflowDistance / 36 + 2)}s`,
+			"--session-title-marquee-duration": `${Math.max(2.5, overflowDistance / 72 + 1.2)}s`,
 		});
 	};
 

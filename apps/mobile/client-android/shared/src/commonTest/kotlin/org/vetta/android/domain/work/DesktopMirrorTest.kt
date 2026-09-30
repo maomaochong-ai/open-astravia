@@ -575,6 +575,42 @@ class DesktopMirrorTest {
         }
 
     @Test
+    fun opensAPhotoLargerThanTheLimitThatTheDesktopScalesDown() =
+        runTest {
+            val desktop = scriptedDesktop()
+            val scripted = desktop.handler
+            desktop.handler = { request ->
+                when (request.method) {
+                    RemoteRequestMethod.FileStat ->
+                        respond(
+                            request.requestId,
+                            buildJsonObject {
+                                putJsonObject("file") {
+                                    put("name", "IMG_0001.HEIC"); put("path", "IMG_0001.HEIC"); put("isDirectory", false); put("size", 20 * 1024 * 1024); put("modifiedAt", 1)
+                                    put("mimeType", "image/heic"); put("displayPath", "~/vetta/IMG_0001.HEIC")
+                                }
+                            },
+                        )
+                    // The desktop sends a scaled-down JPEG well under the limit.
+                    RemoteRequestMethod.FileRead ->
+                        respond(
+                            request.requestId,
+                            buildJsonObject { put("data", "/9j/"); put("offset", 0); put("totalSize", 3); put("modifiedAt", 1); put("mimeType", "image/jpeg") },
+                        )
+                    else -> scripted(request)
+                }
+            }
+            val mirror = mirror(desktop)
+            assertTrue(mirror.pairWithCode(desktop.invite()))
+            assertTrue(eventually { mirror.state.value.online })
+            desktop.emit(RemoteEventName.DeviceStatus, buildJsonObject { put("deviceName", "MacBook Pro"); put("fileRead", true) })
+            assertTrue(eventually { mirror.state.value.link.desktop?.fileRead == true })
+            val photo = mirror.readFile("s1", mirror.statFile("s1", "IMG_0001.HEIC"))
+            assertEquals("image/jpeg", photo.mimeType)
+            assertEquals(3, photo.data.size)
+        }
+
+    @Test
     fun remembersTheLastUsedModelPerDesktopAcrossLaunches() =
         runTest {
             val desktop = scriptedDesktop()
