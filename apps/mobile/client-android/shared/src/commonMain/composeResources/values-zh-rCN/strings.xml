@@ -116,6 +116,7 @@
     </plurals>
     <string name="half_hour_ago">半小时前</string>
     <string name="home_all_sessions">全部会话</string>
+    <string name="home_connect_computer">连接电脑</string>
     <string name="home_filter_status">状态</string>
     <string name="home_no_results">没有“%1$s”的相关结果</string>
     <string name="home_no_results_hint">检查拼写或换个关键词试试。</string>

@@ -120,6 +120,7 @@
     </plurals>
     <string name="half_hour_ago">Half an hour ago</string>
     <string name="home_all_sessions">All Sessions</string>
+    <string name="home_connect_computer">Connect a Computer</string>
     <string name="home_filter_status">Status</string>
     <string name="home_no_results">No Results for “%1$s”</string>
     <string name="home_no_results_hint">Check the spelling or try a new search.</string>

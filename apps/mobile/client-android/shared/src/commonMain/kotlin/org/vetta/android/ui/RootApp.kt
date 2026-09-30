@@ -61,9 +61,8 @@ import org.vetta.android.ui.components.VettaInfoDialog
 import org.vetta.android.ui.design.VettaMotion
 import org.vetta.android.ui.home.HomeScreen
 import org.vetta.android.ui.home.ProjectScreen
-import org.vetta.android.ui.home.newSessionEntry
-import org.vetta.android.ui.home.remoteEntry
-import org.vetta.android.ui.home.taskBoardEntry
+import org.vetta.android.ui.home.connectComputerDetail
+import org.vetta.android.ui.home.homeEntries
 import org.vetta.android.ui.navigation.HomePage
 import org.vetta.android.ui.navigation.PlatformBackHandler
 import org.vetta.android.ui.navigation.Slot
@@ -366,11 +365,14 @@ private fun HomeStack(state: AppUiState, workState: MirrorState, vm: AppViewMode
                     onFilterChange = work::setFilter,
                     actions = work,
                     entries =
-                        listOfNotNull(
+                        homeEntries(
                             // Filtered to a project: a new session starts there, and the entry says so.
-                            newSessionEntry(filter.projectCwd?.let(workState::projectName)) { vm.startNewSession(filter.projectCwd) },
-                            taskBoardEntry(vm::openBoard),
-                            viewerUrl?.let { remoteEntry(vm::openRemote) },
+                            projectName = filter.projectCwd?.let(workState::projectName),
+                            computerName = connectComputerDetail(workState.paired, workState.desktop?.desktopName),
+                            onNewSession = { vm.startNewSession(filter.projectCwd) },
+                            onOpenBoard = vm::openBoard,
+                            onConnect = vm::openPairing,
+                            onRemote = viewerUrl?.let { vm::openRemote },
                         ),
                     onClose = vm::closeDrawer,
                     onOpenSession = vm::show,
