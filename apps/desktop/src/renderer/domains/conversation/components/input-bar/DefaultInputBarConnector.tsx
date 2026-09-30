@@ -2,12 +2,20 @@ import { InputBarToolbar } from "./InputBarToolbarActions";
 import { InputBarModelAction } from "./InputBarToolbar";
 import { useBottomPanelPills } from "@domains/bottom-panel/hooks/useBottomPanelPills";
 import { pathBasename, toVettaFileUrl } from "@shared/lib/utils";
+import { currentScenarioAtom } from "@shared/store/atoms";
 import type { InputBarContextMenuViewProps } from "@vetta-org/theme-ui/chat";
-import { Fragment, memo, useMemo } from "react";
+import { useAtomValue } from "jotai";
+import { memo, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { InputBar } from "../InputBar";
 import type { ActiveActionCapsule } from "./ActiveActionCapsules";
-import type { ConnectedInputBarProps, InputBarDrawerItem, InputBarModel, InputBarTodoModel } from "./types";
+import type {
+	ConnectedInputBarProps,
+	InputBarDrawerItem,
+	InputBarGoalModel,
+	InputBarModel,
+	InputBarTodoModel,
+} from "./types";
 import { useInputBarAttachmentModel } from "./useInputBarAttachmentModel";
 import { useInputBarContextMenuModel } from "./useInputBarContextMenuModel";
 import {
@@ -25,7 +33,7 @@ import { useInputActionBarModel } from "../useInputActionBarModel";
 import { useDefaultContextRingModel } from "../../hooks/useContextRingModel";
 import { useDefaultExecutionModeSelectorModel } from "../../hooks/useExecutionModeSelectorModel";
 import { usePlanModeModel } from "../../hooks/usePlanModeModel";
-import { GoalModeDialog } from "../GoalModeDialog";
+import { useGoalModeModel } from "../../hooks/useGoalModeModel";
 
 /** 普通 Chat 的默认配方；每项能力由独立 source/model 提供，其他 Connector 可自行取舍。 */
 export const DefaultInputBarConnector = memo(function DefaultInputBarConnector(props: ConnectedInputBarProps): JSX.Element {
@@ -37,15 +45,35 @@ export const DefaultInputBarConnector = memo(function DefaultInputBarConnector(p
 	const firstSuggestion = useInputBarSuggestionSource(runtimeId);
 	const queue = useInputBarQueueSource(runtimeId);
 	const todoItems = useInputBarTodoSource(runtimeId);
-	const actionBar = useInputActionBarModel();
+	const currentScenario = useAtomValue(currentScenarioAtom);
+	const goalMode = useGoalModeModel(props.startNewSessionGoal);
+	const goalVisible =
+		currentScenario === null || currentScenario === "conversation" || currentScenario === "project";
+	const composingGoal = goalVisible && goalMode.composing;
+	const actionBar = useInputActionBarModel(
+		goalVisible && goalMode.canCompose
+			? { active: composingGoal, onToggle: goalMode.onToggleCompose }
+			: undefined,
+	);
 	const speechInput = useSpeechInput(session.hasSession);
 	const executionModeModel = useDefaultExecutionModeSelectorModel();
 	const planMode = usePlanModeModel();
 	const contextUsageModel = useDefaultContextRingModel(true);
-	const canSend =
-		session.hasSession &&
-		!session.isStreaming &&
-		(!session.isBlank || Boolean(draft.appshotAttachment));
+	const canSend = composingGoal
+		? session.hasSession && !session.isStreaming && !session.isBlank && !goalMode.busy
+		: session.hasSession &&
+			!session.isStreaming &&
+			(!session.isBlank || Boolean(draft.appshotAttachment));
+	const handleSend = useCallback(
+		async (overrideText?: string, context?: Parameters<ConnectedInputBarProps["onSend"]>[1]): Promise<void> => {
+			if (composingGoal) {
+				await goalMode.submitDraft(overrideText);
+				return;
+			}
+			await props.onSend(overrideText, context);
+		},
+		[composingGoal, goalMode.submitDraft, props.onSend],
+	);
 	const dropZone = useSessionDropZoneModel(session.effectiveCwd || undefined);
 	const trigger = useInputBarTriggerModel({
 		activeSession: session.activeSession,
@@ -57,7 +85,7 @@ export const DefaultInputBarConnector = memo(function DefaultInputBarConnector(p
 		isStreaming: session.isStreaming,
 		onAbort: props.onAbort,
 		onExpandedChange: props.onExpandedChange,
-		onSend: props.onSend,
+		onSend: handleSend,
 	});
 	const imageAttachments = useMemo(
 		() => draft.imagePaths.map((path, index) => ({ path, name: pathBasename(path), url: toVettaFileUrl(path), label: t("inputBar.capsule.imageBadge", { index: index + 1 }) })),
@@ -102,6 +130,19 @@ export const DefaultInputBarConnector = memo(function DefaultInputBarConnector(p
 	}, [props.onSendQueued, session.activeSession, queue.items.length, queue.paused, interactions.sandboxPermission, t]);
 	const bottomPanelPills = useBottomPanelPills(props.workSurface ?? null);
 	const todo = useMemo<InputBarTodoModel | null>(() => todoItems.length > 0 ? { items: todoItems, onOpenPanel: trigger.openTodoPanel } : null, [todoItems, trigger.openTodoPanel]);
+	const goal = useMemo<InputBarGoalModel | null>(
+		() =>
+			goalVisible && goalMode.state
+				? {
+						state: goalMode.state,
+						busy: goalMode.busy,
+						onPause: goalMode.pause,
+						onResume: goalMode.resume,
+						onClear: goalMode.clear,
+					}
+				: null,
+		[goalMode.busy, goalMode.clear, goalMode.pause, goalMode.resume, goalMode.state, goalVisible],
+	);
 	const defaultPlaceholders = useMemo(() => {
 		const raw = t("inputBar.placeholder.defaults", { returnObjects: true });
 		return (Array.isArray(raw) ? raw : []).filter((item): item is string => typeof item === "string" && item.length > 0);
@@ -140,6 +181,7 @@ export const DefaultInputBarConnector = memo(function DefaultInputBarConnector(p
 		placeholderRotating: placeholderModel.placeholderRotating,
 		isFocused: trigger.isFocused,
 		commands: {
+			inputActions: actionBar,
 			slashOpen: trigger.slashOpen,
 			slashVisible: trigger.slashVisible,
 			slashFilter: trigger.slashFilter,
@@ -157,6 +199,7 @@ export const DefaultInputBarConnector = memo(function DefaultInputBarConnector(p
 		drawerItems,
 		drawerActiveTab: trigger.drawerActiveTab,
 		todo,
+		goal,
 		bottomPanelPills,
 		speechInput: speechInput,
 		hasPromptAttachment: Boolean(draft.promptAttachment),
@@ -192,13 +235,10 @@ export const DefaultInputBarConnector = memo(function DefaultInputBarConnector(p
 	};
 
 	return (
-		<Fragment>
-			<InputBar model={model}>
-				<InputBarToolbar model={model}>
-					<InputBarModelAction visible={!model.commands?.slashOpen} />
-				</InputBarToolbar>
-			</InputBar>
-			<GoalModeDialog />
-		</Fragment>
+		<InputBar model={model}>
+			<InputBarToolbar model={model}>
+				<InputBarModelAction visible={!model.commands?.slashOpen} />
+			</InputBarToolbar>
+		</InputBar>
 	);
 });

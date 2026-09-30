@@ -350,6 +350,7 @@ export function TeamComposerConnector({
 			: [],
 		drawerActiveTab: null,
 		todo: null,
+		goal: null,
 		bottomPanelPills,
 		speechInput,
 		hasPromptAttachment: Boolean(promptAttachment),

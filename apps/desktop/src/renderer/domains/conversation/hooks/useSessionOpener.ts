@@ -492,8 +492,8 @@ export function useSessionOpener(): SessionOpenerController {
 				// 都会被推迟到本轮流式输出之后——期间 scenario 停在 null，插件页签与输入
 				// 栏动作会整体消失，pending 过渡还会挡住本轮内的后续发送。
 				try {
-					const promptReady = options?.onPromptReady?.();
-					if (promptReady) {
+					const promptReady = options?.onPromptReady?.(sessionId);
+					if (promptReady instanceof Promise) {
 						void promptReady.catch((error: unknown) => {
 							console.error("[useSessionOpener] prompt-ready callback failed", error);
 						});

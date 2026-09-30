@@ -103,6 +103,48 @@ describe("useCommandPanelModel context compaction", () => {
 		expect(result.current.viewProps.operation).toBeUndefined();
 	});
 
+	it("复用输入框装配的动作，让目标模式与计划模式出现在同一动作区", () => {
+		const onToggleGoal = vi.fn();
+		const { result } = renderHook(() =>
+			useCommandPanelModel({
+				inputActions: {
+					actions: { toggleItem: vi.fn() },
+					builtins: [
+						{
+							id: "plan",
+							label: "计划模式",
+							iconClass: "plan-icon",
+							active: false,
+							onToggle: vi.fn(),
+						},
+						{
+							id: "goal",
+							label: "目标模式",
+							iconClass: "goal-icon",
+							active: true,
+							onToggle: onToggleGoal,
+						},
+					],
+					items: [],
+					visible: true,
+				},
+				open: true,
+				onClose: vi.fn(),
+				onSelect: vi.fn(),
+				onSelectConnector: vi.fn(),
+				filter: "/",
+				allowCompaction: false,
+			}),
+		);
+
+		expect(result.current.viewProps.actions.map(({ label }) => label)).toEqual([
+			"计划模式",
+			"目标模式",
+		]);
+		act(() => result.current.viewProps.actions[1]?.onToggle());
+		expect(onToggleGoal).toHaveBeenCalledOnce();
+	});
+
 	it("新会话没有可压缩上下文时不展示压缩操作", () => {
 		const store = getDefaultStore();
 		store.set(activeSessionAtom, null);

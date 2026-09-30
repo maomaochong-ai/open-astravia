@@ -4,15 +4,18 @@ import type { AppshotAttachment } from "@shared/store/atoms";
 import type { TodoItem } from "@shared/store/todo-atoms";
 import type { WorkSurfaceScope } from "@shared/workspace/work-surface";
 import type { CodingAgentPlanReviewRequest } from "@vetta/coding-agent/function-extensions";
+import type { CodingAgentGoalState } from "@vetta/coding-agent/session-extensions";
 import type { BottomPanelTabViewModel } from "@vetta-org/theme-ui/bottom-panel";
 import type { InputBarContextMenuViewProps, SessionDropZoneViewProps } from "@vetta-org/theme-ui/chat";
 import type { ComponentProps, MouseEvent, ReactNode } from "react";
 import type { ConnectorGridItem } from "../../hooks/useConnectorGrid";
 import type { ContextRingModel } from "../../hooks/useContextRingModel";
+import type { StartNewSessionGoal } from "../../services/goal-mode-entry";
 import type { AtPanelItem, AtPanelSelection } from "../AtPanel";
 import type { ExecutionModeSelectorViewProps } from "../execution-mode-selector/types";
 import type { McpElicitationPanel } from "../McpElicitationPanel";
 import type { QuestionPanel } from "../QuestionPanel";
+import type { InputActionBarModel } from "../useInputActionBarModel";
 import type { ActiveActionCapsule } from "./ActiveActionCapsules";
 import type { TriggerMatch } from "./editor/tokens/trigger";
 
@@ -39,6 +42,8 @@ export interface ConnectedInputBarProps {
 	 * 输入内容保持可编辑，发送按钮就地展开成带文案的胶囊并拒绝重复点击。
 	 */
 	sendPending?: { readonly label: string };
+	/** 新会话没有 runtimeId 时，由页面 Connector 负责先创建 Session 再启动目标。 */
+	startNewSessionGoal?: StartNewSessionGoal;
 }
 
 export interface ControlledInputBarProps {
@@ -111,6 +116,15 @@ export interface InputBarTodoModel {
 	onOpenPanel: () => void;
 }
 
+/** 输入框下沿的目标摘要；目标真相仍由 Runtime 持有。 */
+export interface InputBarGoalModel {
+	readonly state: CodingAgentGoalState;
+	readonly busy: boolean;
+	readonly onPause: () => Promise<boolean>;
+	readonly onResume: () => Promise<boolean>;
+	readonly onClear: () => Promise<boolean>;
+}
+
 export interface SpeechInputModel {
 	visible: boolean;
 	active: boolean;
@@ -123,6 +137,8 @@ export interface SpeechInputModel {
 export type InputBarContentWidth = "compact" | "message";
 
 export interface InputBarCommandModel {
+	/** 输入动作与命令面板共享同一模型，避免面板与激活胶囊各自维护状态。 */
+	readonly inputActions?: InputActionBarModel;
 	readonly slashOpen: boolean;
 	readonly slashVisible: boolean;
 	readonly slashFilter: string;
@@ -184,6 +200,8 @@ export interface InputBarModel {
 	drawerActiveTab: string | null;
 	/** 输入卡片外部下方的待办条。 */
 	todo: InputBarTodoModel | null;
+	/** 输入卡片外部下方的当前目标摘要；点击后就地展开详情 Popover。 */
+	goal: InputBarGoalModel | null;
 	/**
 	 * 底部面板缩起时排在待办条右侧的 tab pill。
 	 * 只传数据不传节点：视觉由 theme-ui 的 `BottomPanelPillsView` 统一提供。

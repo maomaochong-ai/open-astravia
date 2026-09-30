@@ -184,6 +184,59 @@ describe("CodingAgentGoalRuntime persistence and accounting", () => {
 		).document;
 		expect(() => createRuntime(malformed)).toThrow("Invalid goal_snapshot entry: bad");
 	});
+
+	it("blocks an active goal after three automatic continuations make no observable progress", async () => {
+		const fixture = createRuntime(createEmptyConversationDocument({ sessionId: "s", createdAt: 1 }));
+		fixture.runtime.create("Finish without looping forever");
+		for (let index = 0; index < 3; index += 1) {
+			fixture.runtime.recordContinuation();
+			await fixture.runtime.onSessionEvent({ type: "turn.started", turnId: `turn-${index}` } as never);
+			await fixture.runtime.onSessionEvent({ type: "turn.completed", turnId: `turn-${index}` } as never);
+		}
+		expect(fixture.runtime.readState()).toMatchObject({ status: "blocked" });
+		expect(fixture.runtime.readState()?.statusDetail).toContain("three consecutive goal continuations");
+	});
+
+	it("requires three new failures after a successful tool result resets the failure audit", async () => {
+		const fixture = createRuntime(createEmptyConversationDocument({ sessionId: "s", createdAt: 1 }));
+		fixture.runtime.create("Recover from intermittent failures");
+		for (let index = 0; index < 2; index += 1) {
+			await fixture.runtime.onSessionEvent({ type: "turn.started", turnId: `failed-${index}` } as never);
+			await fixture.runtime.onSessionEvent({ type: "turn.failed", turnId: `failed-${index}` } as never);
+		}
+		await fixture.runtime.onSessionEvent({ type: "turn.started", turnId: "recovered" } as never);
+		await fixture.runtime.onSessionEvent({
+			type: "message.appended",
+			turnId: "recovered",
+			message: { role: "toolResult", isError: false },
+		} as never);
+		await fixture.runtime.onSessionEvent({ type: "turn.failed", turnId: "recovered" } as never);
+		expect(fixture.runtime.readState()?.status).toBe("active");
+
+		for (let index = 0; index < 3; index += 1) {
+			await fixture.runtime.onSessionEvent({ type: "turn.started", turnId: `again-${index}` } as never);
+			await fixture.runtime.onSessionEvent({ type: "turn.failed", turnId: `again-${index}` } as never);
+		}
+		expect(fixture.runtime.readState()).toMatchObject({ status: "blocked" });
+	});
+
+	it("does not charge a replacement goal for events from the cleared turn", async () => {
+		const fixture = createRuntime(createEmptyConversationDocument({ sessionId: "s", createdAt: 1 }));
+		const first = fixture.runtime.create("First");
+		await fixture.runtime.onSessionEvent({ type: "turn.started", turnId: "old" } as never);
+		fixture.runtime.clear(first.goalId);
+		fixture.runtime.create("Replacement");
+		await fixture.runtime.onSessionEvent({
+			type: "message.appended",
+			turnId: "old",
+			message: {
+				role: "assistant",
+				content: [{ type: "text", text: "late" }],
+				usage: { totalTokens: 99, input: 0, output: 99, cacheRead: 0, cacheWrite: 0 },
+			},
+		} as never);
+		expect(fixture.runtime.readState()).toMatchObject({ objective: "Replacement", tokensUsed: 0 });
+	});
 });
 
 describe("goal observation contract", () => {

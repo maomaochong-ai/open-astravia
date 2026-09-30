@@ -76,6 +76,7 @@ interface NewSessionPageModel {
 	onAbort: () => Promise<void>;
 	onCommandPanelExpandedChange: (expanded: boolean) => void;
 	onSend: (overrideText?: string, context?: SendInteractionContext) => Promise<void>;
+	onStartGoal: ReturnType<typeof useNewSessionSend>["startGoal"];
 	onSelectPendingProject: (name: string) => void;
 	onSelectProject: (cwd: string | null) => void;
 	onSelectTarget: (targetKey: NewSessionTargetKey | null) => void;
@@ -322,6 +323,7 @@ export function useNewSessionPageModel(): NewSessionPageModel {
 		onSelectPendingProject: projectSelection.selectPendingProject,
 		onSelectProject: projectSelection.selectProject,
 		onSend: targetStrategies.resolve(targetKey).dispatch,
+		onStartGoal: newSessionSend.startGoal,
 		onSelectTarget: handleSelectTarget,
 		onToggleActivity: handleToggleActivity,
 		onTogglePin: handleTogglePin,

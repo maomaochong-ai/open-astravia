@@ -20,6 +20,7 @@ import { InputBarBackground } from "./InputBarBackground";
 import { InputBarAttachmentPreview } from "./InputBarAttachmentPreview";
 import { InputBarDrawer } from "./InputBarDrawer";
 import { InputBarFooter } from "./InputBarFooter";
+import { InputBarGoalStatus } from "./InputBarGoalStatus";
 import { InputBarSpeechStatus } from "./InputBarSpeechStatus";
 import { InputBarTodoStatus } from "./InputBarTodoStatus";
 import { InputEditor } from "./editor/InputEditor";
@@ -139,18 +140,21 @@ export function InputBarView({ model, className, classNames, children }: InputBa
 						>
 							<ThemedInputBarBackground />
 							<MessageInput.Content className={classNames?.cardContent}>
-								{commands ? <PerfSendProfiler id="ib:CommandPanel">
-									<CommandPanel
-										open={commands.slashOpen}
-										onClose={commands.onSlashClose}
-										onSelect={commands.onSlashSelect}
-										onSelectConnector={commands.onConnectorSelect}
-										filter={commands.slashFilter}
-										cwd={model.effectiveCwd || undefined}
-										className={model.isFocused ? "border-primary/20" : undefined}
-										allowCompaction={commands.allowCompaction}
-									/>
-								</PerfSendProfiler> : null}
+								{commands ? (
+									<PerfSendProfiler id="ib:CommandPanel">
+										<CommandPanel
+											inputActions={commands.inputActions}
+											open={commands.slashOpen}
+											onClose={commands.onSlashClose}
+											onSelect={commands.onSlashSelect}
+											onSelectConnector={commands.onConnectorSelect}
+											filter={commands.slashFilter}
+											cwd={model.effectiveCwd || undefined}
+											className={model.isFocused ? "border-primary/20" : undefined}
+											allowCompaction={commands.allowCompaction}
+										/>
+									</PerfSendProfiler>
+								) : null}
 
 								{/*
 								 * 顶部附件区只剩「不是一个词」的东西：重编辑提示、Appshot 复合卡片、
@@ -235,12 +239,13 @@ export function InputBarView({ model, className, classNames, children }: InputBa
 					</InputBarFooter.Item>
 					<InputBarFooter.Item>
 						{/*
-						 * 待办条与底部面板 pill 同属一行：放进两个 Item 会变成纵向堆叠，
+						 * 目标、待办条与底部面板 pill 同属一行：放进多个 Item 会变成纵向堆叠，
 						 * 而它们是同一类「这个会话现在有什么在跑」的指示物。
 						 */}
-						{model.todo || model.bottomPanelPills ? (
-							// 行距由这一行统一给：待办条自带的上内边距只让它自己下沉，与右侧 pill 对不齐。
+						{model.goal || model.todo || model.bottomPanelPills ? (
+							// 行距由这一行统一给：各摘要不再各自占一行，也不会与右侧 pill 错位。
 							<div className="flex min-w-0 items-center gap-2 px-1 pt-1.5" data-input-bar-status-row="">
+								{model.goal ? <InputBarGoalStatus goal={model.goal} className="p-0" /> : null}
 								{model.todo ? <InputBarTodoStatus todo={model.todo} className="p-0" /> : null}
 								{model.bottomPanelPills ? (
 									<BottomPanelPillsView

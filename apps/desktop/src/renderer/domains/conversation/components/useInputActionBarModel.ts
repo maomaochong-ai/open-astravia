@@ -18,7 +18,6 @@ import {
 	recordInputActionToggled,
 } from "../../../shared/lib/app-monitor-events";
 import { usePluginTextResolver } from "../../plugins/runtime/plugin-i18n";
-import { useGoalModeModel } from "../hooks/useGoalModeModel";
 import { usePlanModeModel } from "../hooks/usePlanModeModel";
 
 const KNOWLEDGE_TOOLS = ["kb_filter_by_tags", "kb_list_available_tags"];
@@ -43,6 +42,11 @@ export interface BuiltinInputAction {
 export const BUILTIN_PLAN_MODE_ACTION_ID = "__builtin_plan_mode__";
 export const BUILTIN_GOAL_MODE_ACTION_ID = "__builtin_goal_mode__";
 
+export interface GoalModeInputAction {
+	readonly active: boolean;
+	readonly onToggle: () => void;
+}
+
 export interface InputActionBarModel {
 	actions: {
 		toggleItem: (id: string) => void;
@@ -61,10 +65,6 @@ function planModeVisible(scenario: ConversationScenario | null): boolean {
 	return scenario === null || scenario === "conversation" || scenario === "project";
 }
 
-function goalModeVisible(scenario: ConversationScenario | null, hasSession: boolean): boolean {
-	return hasSession && (scenario === "conversation" || scenario === "project");
-}
-
 function actionVisible(
 	action: RegisteredInputAction,
 	activeTools: Set<string> | null,
@@ -74,7 +74,7 @@ function actionVisible(
 	return activeTools === null || !action.requiresActiveTool || activeTools.has(action.requiresActiveTool);
 }
 
-export function useInputActionBarModel(): InputActionBarModel {
+export function useInputActionBarModel(goalMode?: GoalModeInputAction): InputActionBarModel {
 	const { t } = useTranslation("chat");
 	const resolvePluginText = usePluginTextResolver();
 	const allActions = useAtomValue(pluginInputActionsAtom);
@@ -86,8 +86,6 @@ export function useInputActionBarModel(): InputActionBarModel {
 	const activeSession = useAtomValue(activeSessionAtom);
 	const sessionPath = activeSession?.sessionPath || null;
 	const planMode = usePlanModeModel();
-	const goalMode = useGoalModeModel();
-	const hasSession = Boolean(activeSession?.runtimeId);
 	const showKnowledge = knowledgeBaseEnabled && knowledgeVisible(activeTools);
 	const visibleActions = allActions.filter((action) => actionVisible(action, activeTools, currentScenario));
 
@@ -149,7 +147,7 @@ export function useInputActionBarModel(): InputActionBarModel {
 					},
 				]
 			: []),
-		...(goalModeVisible(currentScenario, hasSession)
+		...(goalMode
 			? [
 					{
 						id: BUILTIN_GOAL_MODE_ACTION_ID,

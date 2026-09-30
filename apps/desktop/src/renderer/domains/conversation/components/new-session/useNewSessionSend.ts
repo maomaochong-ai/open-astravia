@@ -4,6 +4,7 @@ import { chatMessagesAtom, pendingSessionSendAtom } from "@shared/store/atoms";
 import { getDefaultStore } from "jotai";
 import { useCallback, useRef } from "react";
 import { startAssistantTurn } from "../../services/chat-service";
+import type { StartNewSessionGoal } from "../../services/goal-mode-entry";
 import { restoreStagedNewSessionSend, stageNewSessionSend } from "../../services/staged-new-session-send";
 import type { SendInteractionContext } from "../input-bar/types";
 
@@ -32,6 +33,7 @@ interface NewSessionSendOptions {
 
 export function useNewSessionSend(options: NewSessionSendOptions): {
 	readonly send: (overrideText?: string, context?: SendInteractionContext) => Promise<void>;
+	readonly startGoal: StartNewSessionGoal;
 } {
 	const sendingRef = useRef(false);
 	const { cwd, executionMode, prepareCwd, openSession, sendMessage, agentProfileId } = options;
@@ -77,5 +79,34 @@ export function useNewSessionSend(options: NewSessionSendOptions): {
 		[agentProfileId, cwd, executionMode, prepareCwd, openSession, sendMessage],
 	);
 
-	return { send };
+	const startGoal = useCallback<StartNewSessionGoal>(
+		async (objective) => {
+			if (sendingRef.current) return null;
+			sendingRef.current = true;
+			const interactionId = perfSendBegin("new-session-goal");
+			perfSendMark("new-session-goal-submit", interactionId);
+			try {
+				const targetCwd = prepareCwd ? await prepareCwd() : cwd;
+				if (!targetCwd) return null;
+				let startPromise: ReturnType<StartNewSessionGoal> | undefined;
+				await openSession(targetCwd, undefined, executionMode, {
+					interactionId,
+					...(agentProfileId ? { agentProfileId } : {}),
+					navigateBeforeCreate: true,
+					onPromptReady: (sessionId) => {
+						startPromise = window.vetta.session
+							.startGoal(sessionId, objective)
+							.then((state) => ({ sessionId, state }));
+						return startPromise;
+					},
+				});
+				return startPromise ? await startPromise : null;
+			} finally {
+				sendingRef.current = false;
+			}
+		},
+		[agentProfileId, cwd, executionMode, openSession, prepareCwd],
+	);
+
+	return { send, startGoal };
 }

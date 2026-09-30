@@ -423,7 +423,7 @@ export interface OpenSessionOptions {
 	 * finishes. Dispatched, never awaited: the first prompt's IPC only settles when the
 	 * whole turn ends, so awaiting it would hold Session hydration for the turn.
 	 */
-	onPromptReady?: () => void | Promise<void>;
+	onPromptReady?: (sessionId: string) => unknown;
 	/**
 	 * For a new session, render the chat route and yield a paint before starting
 	 * runtime creation. Existing-session opens ignore this option.
