@@ -257,7 +257,11 @@
     <string name="session_unpin">取消置顶</string>
     <string name="settings_background_link">后台保持连接</string>
     <string name="settings_background_link_denied">需要先在系统设置里允许 Vetta 发送通知。</string>
-    <string name="settings_background_link_hint">关掉 App 后，会话需要你决策、完成或出错时也会通知你。保持连接期间通知栏会常驻一条提示，耗电会略有增加。</string>
+    <string name="settings_background_link_hint">关掉后仍会通知你。通知栏留一条提示，耗电略增。</string>
+    <string name="settings_link_computer">电脑</string>
+    <string name="settings_link_idle">还没连上</string>
+    <string name="settings_link_phone">这台手机</string>
+    <string name="settings_notification_rules">通知规则</string>
     <string name="settings_title">设置</string>
     <plurals name="share_skipped">
         <item quantity="other">有 %1$d 项没能加入：可能文件太大，或者一条消息最多只能带 %2$d 个附件。</item>

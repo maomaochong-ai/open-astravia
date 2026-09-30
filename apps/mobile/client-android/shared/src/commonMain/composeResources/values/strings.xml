@@ -266,7 +266,11 @@
     <string name="session_unpin">Unpin</string>
     <string name="settings_background_link">Stay connected in the background</string>
     <string name="settings_background_link_denied">Allow notifications for Vetta in the system settings to use this.</string>
-    <string name="settings_background_link_hint">Get notified when a session needs you, finishes or fails, even with Vetta closed. A small notification stays while connected, and it uses a little more battery.</string>
+    <string name="settings_background_link_hint">Still notifies you after you close the app. One notification stays up, and battery use rises a little.</string>
+    <string name="settings_link_computer">Computer</string>
+    <string name="settings_link_idle">Not connected yet</string>
+    <string name="settings_link_phone">This phone</string>
+    <string name="settings_notification_rules">Notification rules</string>
     <string name="settings_title">Settings</string>
     <plurals name="share_skipped">
         <item quantity="one">%1$d item couldn’t be added: it may be too large, or a message holds at most %2$d attachments.</item>

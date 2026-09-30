@@ -52,6 +52,12 @@ import org.vetta.android.resources.notify_settings_quiet_on
 import org.vetta.android.resources.notify_settings_quiet_to
 import org.vetta.android.resources.notify_settings_set_time
 import org.vetta.android.ui.design.GlassCircleButton
+import org.vetta.android.ui.design.form.FormMetrics
+import org.vetta.android.ui.design.form.Section
+import org.vetta.android.ui.design.form.custom
+import org.vetta.android.ui.design.form.heading
+import org.vetta.android.ui.design.form.labeledContent
+import org.vetta.android.ui.design.form.toggle
 import org.vetta.android.ui.theme.vettaExtra
 
 /**
@@ -85,50 +91,46 @@ fun NotificationSettingsScreen(
             style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp).semantics { heading() },
         )
-        Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(FormMetrics.SectionGap)) {
             if (!backgroundLink) {
-                Text(
-                    stringResource(Res.string.notify_settings_needs_link),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                )
-            }
-
-            Titled(stringResource(Res.string.notify_settings_kinds)) {
                 Section {
-                    Toggle(stringResource(Res.string.notify_settings_needs_you), prefs.needsYou, "notifications.needsYou") { on -> onChange { it.copy(needsYou = on) } }
-                    Divider()
-                    Toggle(stringResource(Res.string.notify_settings_finished), prefs.finished, "notifications.finished") { on -> onChange { it.copy(finished = on) } }
-                    Divider()
-                    Toggle(stringResource(Res.string.notify_settings_failed), prefs.failed, "notifications.failed") { on -> onChange { it.copy(failed = on) } }
+                    custom {
+                        Text(
+                            stringResource(Res.string.notify_settings_needs_link),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(16.dp),
+                        )
+                    }
                 }
             }
 
-            Titled(stringResource(Res.string.notify_settings_quiet), footer = stringResource(Res.string.notify_settings_quiet_hint)) {
-                Section {
-                    val quiet = prefs.quietHours
-                    Toggle(stringResource(Res.string.notify_settings_quiet_on), quiet != null, "notifications.quiet") { on ->
-                        onChange { it.copy(quietHours = if (on) it.quietHours ?: QuietHours() else null) }
-                    }
-                    if (quiet != null) {
-                        Divider()
-                        Value(stringResource(Res.string.notify_settings_quiet_from), clock(quiet.startMinute), "notifications.quiet.from") { picking = QuietEnd.Start }
-                        Divider()
-                        Value(stringResource(Res.string.notify_settings_quiet_to), clock(quiet.endMinute), "notifications.quiet.to") { picking = QuietEnd.End }
-                    }
+            Section {
+                heading(stringResource(Res.string.notify_settings_kinds))
+                toggle(stringResource(Res.string.notify_settings_needs_you), prefs.needsYou, { on -> onChange { it.copy(needsYou = on) } }, tag = "notifications.needsYou")
+                toggle(stringResource(Res.string.notify_settings_finished), prefs.finished, { on -> onChange { it.copy(finished = on) } }, tag = "notifications.finished")
+                toggle(stringResource(Res.string.notify_settings_failed), prefs.failed, { on -> onChange { it.copy(failed = on) } }, tag = "notifications.failed")
+            }
+
+            Section {
+                heading(stringResource(Res.string.notify_settings_quiet), stringResource(Res.string.notify_settings_quiet_hint))
+                val quiet = prefs.quietHours
+                toggle(stringResource(Res.string.notify_settings_quiet_on), quiet != null, { on ->
+                    onChange { it.copy(quietHours = if (on) it.quietHours ?: QuietHours() else null) }
+                }, tag = "notifications.quiet")
+                if (quiet != null) {
+                    labeledContent(stringResource(Res.string.notify_settings_quiet_from), clock(quiet.startMinute), onClick = { picking = QuietEnd.Start }, tag = "notifications.quiet.from")
+                    labeledContent(stringResource(Res.string.notify_settings_quiet_to), clock(quiet.endMinute), onClick = { picking = QuietEnd.End }, tag = "notifications.quiet.to")
                 }
             }
 
             if (projects.isNotEmpty()) {
-                Titled(stringResource(Res.string.notify_settings_projects), footer = stringResource(Res.string.notify_settings_projects_hint)) {
-                    Section {
-                        projects.forEachIndexed { index, project ->
-                            if (index > 0) Divider()
-                            Toggle(project.name, project.cwd !in prefs.mutedProjects, "notifications.project.${project.cwd}") { on ->
-                                onChange { it.copy(mutedProjects = if (on) it.mutedProjects - project.cwd else it.mutedProjects + project.cwd) }
-                            }
-                        }
+                Section {
+                    heading(stringResource(Res.string.notify_settings_projects), stringResource(Res.string.notify_settings_projects_hint))
+                    for (project in projects) {
+                        toggle(project.name, project.cwd !in prefs.mutedProjects, { on ->
+                            onChange { it.copy(mutedProjects = if (on) it.mutedProjects - project.cwd else it.mutedProjects + project.cwd) }
+                        }, tag = "notifications.project.${project.cwd}")
                     }
                 }
             }
