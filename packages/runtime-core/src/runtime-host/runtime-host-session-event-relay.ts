@@ -119,8 +119,10 @@ export class RuntimeHostSessionEventRelay {
 			} else if (event.channel === "assistant" && buffer.isActive) {
 				buffer.events.push(event);
 				if (event.type === "error") buffer.terminalReason = "error";
-				else if (event.type === "done" && event.message.stopReason === "aborted") {
-					buffer.terminalReason = "aborted";
+				else if (event.type === "done") {
+					// A later model call that finishes normally means the Turn recovered from
+					// an earlier failed attempt; only the last call decides the Turn outcome.
+					buffer.terminalReason = event.message.stopReason === "aborted" ? "aborted" : undefined;
 				}
 			}
 			this.notifyExternalSubscribers(sessionKey, event);
