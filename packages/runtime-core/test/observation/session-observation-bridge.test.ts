@@ -1,3 +1,4 @@
+import type { AssistantMessage } from "@vetta/ai";
 import { describe, expect, it } from "vitest";
 import {
 	createRuntimeObservationPublisher,
@@ -12,9 +13,18 @@ describe("Runtime Session observation bridge", () => {
 		const summaries = [
 			projectRuntimeSessionObservation({ type: "model.request.started", source: "agent", modelCallIndex: 0 }),
 			projectRuntimeSessionObservation({
-				type: "message.delta",
+				type: "assistant.event",
 				source: "agent",
-				delta: "private message",
+				modelCallIndex: 0,
+				event: {
+					type: "text_delta",
+					contentIndex: 0,
+					delta: "private message",
+					partial: {
+						role: "assistant",
+						content: [{ type: "text", text: "private message" }],
+					} as unknown as AssistantMessage,
+				},
 			}),
 			projectRuntimeSessionObservation({
 				type: "tool.start",
@@ -35,7 +45,7 @@ describe("Runtime Session observation bridge", () => {
 
 		expect(summaries).toEqual([
 			{ eventType: "model.request.started", source: "agent", modelCallIndex: 0 },
-			{ eventType: "message.delta", source: "agent", characterCount: 15 },
+			{ eventType: "assistant.event", source: "agent", characterCount: 15 },
 			{ eventType: "tool.start", source: "tool", toolName: "review", startedAt: 10 },
 			{
 				eventType: "session.extension",

@@ -39,7 +39,6 @@ describe("TeamSessionEventHub active replay", () => {
 			startedAt: 1,
 			seq: 0,
 			text: "",
-			rawAssistantStream: false,
 			toolExecutionEvents: [],
 		});
 		hub.attach(session);
@@ -149,7 +148,6 @@ describe("TeamSessionEventHub active replay", () => {
 			startedAt: 1,
 			seq: 0,
 			text: "",
-			rawAssistantStream: false,
 			toolExecutionEvents: [],
 		});
 
@@ -198,19 +196,20 @@ describe("TeamSessionEventHub active replay", () => {
 			startedAt: 1,
 			seq: 0,
 			text: "",
-			rawAssistantStream: false,
 			toolExecutionEvents: [],
 		});
 		hub.attach(session);
 
 		sessionListener?.({
 			schemaVersion: 1,
-			channel: "runtime",
+			channel: "assistant",
 			sessionId: "leader-runtime",
-			eventId: "message-final",
+			eventId: "assistant-done",
 			timestamp: 2,
 			source: "agent",
-			type: "message.final",
+			modelCallIndex: 0,
+			type: "done",
+			reason: "stop",
 			message: {
 				...createAssistantMessage({ api: "openai-responses", provider: "test", model: "fixture" }),
 				content: [{ type: "text", text: "Ready" }],
@@ -262,7 +261,6 @@ describe("TeamSessionEventHub active replay", () => {
 			startedAt: 1,
 			seq: 0,
 			text: "",
-			rawAssistantStream: false,
 			toolExecutionEvents: [],
 		});
 		hub.attach(session);

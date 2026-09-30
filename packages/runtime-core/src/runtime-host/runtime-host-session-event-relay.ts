@@ -100,13 +100,9 @@ export class RuntimeHostSessionEventRelay {
 					buffer.terminalReason ?? "agent_end",
 				);
 				buffer.terminalReason = undefined;
-			} else if (event.type === "message.final" || event.type === "usage.update") {
+			} else if (event.type === "usage.update") {
+				// A persisted assistant message ends the in-flight part of this model call.
 				buffer.events = [];
-				if (event.type === "message.final" && event.message.role === "assistant") {
-					if (event.message.stopReason === "aborted") buffer.terminalReason = "aborted";
-					else if (event.message.stopReason === "error") buffer.terminalReason = "error";
-					else buffer.terminalReason = undefined;
-				}
 			} else if (event.type === "model.request.started" && buffer.isActive) {
 				buffer.events.push(event);
 			} else if (

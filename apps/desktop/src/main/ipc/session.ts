@@ -1560,13 +1560,11 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 					turnStartMap.set(sessionId, Date.now());
 				}
 				const assistantMessage =
-					runtimeEvent.type === "message.final"
+					runtimeEvent.channel === "assistant" && runtimeEvent.type === "done"
 						? runtimeEvent.message
-						: runtimeEvent.channel === "assistant" && runtimeEvent.type === "done"
-							? runtimeEvent.message
-							: runtimeEvent.channel === "assistant" && runtimeEvent.type === "error"
-								? runtimeEvent.error
-								: undefined;
+						: runtimeEvent.channel === "assistant" && runtimeEvent.type === "error"
+							? runtimeEvent.error
+							: undefined;
 				if (assistantMessage && readConfigSync().debugMode) {
 					const cwd = sessionCwdMap.get(sessionId);
 					if (cwd) {

@@ -96,15 +96,6 @@ export function projectRuntimeSessionObservation(
 			if (assistantEvent.type === "error") return { ...base, status: assistantEvent.reason, role: "assistant" };
 			return { ...base, status: assistantEvent.type };
 		}
-		case "message.delta":
-		case "thinking.delta":
-			return { ...base, characterCount: event.delta.length };
-		case "message.final":
-			return { ...base, role: event.message.role };
-		case "toolcall.start":
-			return { ...base, toolName: event.toolName };
-		case "toolcall.args":
-			return { ...base, toolName: event.toolName, fieldCount: Object.keys(event.args).length };
 		case "tool.start":
 			return { ...base, toolName: event.toolName, startedAt: event.startedAt };
 		case "tool.update":

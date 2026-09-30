@@ -355,8 +355,8 @@ describe("DesktopRemoteMirror", () => {
 		// The runtime now reports the turn; the user message must not be echoed twice.
 		runtime.messages.set("rt-chat", [{ role: "user", content: "继续", timestamp: 5 } as Message]);
 		runtime.emit("rt-chat", { type: "session.lifecycle", phase: "agent_start" } as never);
-		runtime.emit("rt-chat", { type: "message.delta", delta: "好" } as never);
-		runtime.emit("rt-chat", { type: "message.delta", delta: "的，" } as never);
+		runtime.emit("rt-chat", { channel: "assistant", type: "text_delta", contentIndex: 0, delta: "好" } as never);
+		runtime.emit("rt-chat", { channel: "assistant", type: "text_delta", contentIndex: 0, delta: "的，" } as never);
 		runtime.emit("rt-chat", {
 			type: "tool.start",
 			toolCallId: "t1",
@@ -371,7 +371,12 @@ describe("DesktopRemoteMirror", () => {
 			result: "ok",
 			durationMs: 12,
 		} as never);
-		runtime.emit("rt-chat", { type: "message.delta", delta: "完成了。" } as never);
+		runtime.emit("rt-chat", {
+			channel: "assistant",
+			type: "text_delta",
+			contentIndex: 0,
+			delta: "完成了。",
+		} as never);
 		runtime.emit("rt-chat", { type: "session.lifecycle", phase: "agent_end" } as never);
 		await flush();
 
@@ -651,7 +656,7 @@ describe("DesktopRemoteMirror", () => {
 		await request("session.open", undefined, keyForPath(CONVERSATION_PATH));
 		mirror.stop();
 		emitted.length = 0;
-		runtime.emit("rt-chat", { type: "message.delta", delta: "late" } as never);
+		runtime.emit("rt-chat", { channel: "assistant", type: "text_delta", contentIndex: 0, delta: "late" } as never);
 		runtime.setRunning(PROJECT_PATH, "rt-work", true);
 		await flush();
 		expect(emitted).toEqual([]);

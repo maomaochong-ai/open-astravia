@@ -31,13 +31,13 @@ describe("subscribeById", () => {
 			"session-b",
 		]);
 
-		harness.emit("event", "subscription-a", { type: "message.delta", delta: "first" });
-		expect(first).toHaveBeenCalledWith({ type: "message.delta", delta: "first" });
+		harness.emit("event", "subscription-a", { type: "tool.phase", label: "first" });
+		expect(first).toHaveBeenCalledWith({ type: "tool.phase", label: "first" });
 		expect(second).not.toHaveBeenCalled();
 
 		unsubscribeFirst();
-		harness.emit("event", "subscription-b", { type: "message.delta", delta: "second" });
-		expect(second).toHaveBeenCalledWith({ type: "message.delta", delta: "second" });
+		harness.emit("event", "subscription-b", { type: "tool.phase", label: "second" });
+		expect(second).toHaveBeenCalledWith({ type: "tool.phase", label: "second" });
 		expect(harness.invoke).toHaveBeenCalledWith("unsubscribe", "subscription-a");
 		expect(harness.listenerCount("event")).toBe(1);
 

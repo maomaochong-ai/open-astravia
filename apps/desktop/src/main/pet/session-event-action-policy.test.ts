@@ -43,11 +43,15 @@ describe("mapSessionEventToPetPresentation", () => {
 	});
 
 	it("uses assistant final text as the terminal bubble body", () => {
-		const event: SessionEvent = {
+		const event = {
 			...eventBase,
-			type: "message.final",
-			message: { role: "assistant", content: [{ type: "text", text: "已完成配置迁移" }] } as never,
-		};
+			channel: "assistant",
+			source: "agent",
+			modelCallIndex: 0,
+			type: "done",
+			reason: "stop",
+			message: { role: "assistant", content: [{ type: "text", text: "已完成配置迁移" }] },
+		} as unknown as SessionEvent;
 
 		expect(mapSessionEventToPetPresentation(event)?.bubble).toMatchObject({
 			body: "已完成配置迁移",
@@ -56,11 +60,15 @@ describe("mapSessionEventToPetPresentation", () => {
 	});
 
 	it("does not mark a tool-call-only assistant message as completed", () => {
-		const event: SessionEvent = {
+		const event = {
 			...eventBase,
-			type: "message.final",
-			message: { role: "assistant", content: [] } as never,
-		};
+			channel: "assistant",
+			source: "agent",
+			modelCallIndex: 0,
+			type: "done",
+			reason: "toolUse",
+			message: { role: "assistant", content: [] },
+		} as unknown as SessionEvent;
 
 		expect(mapSessionEventToPetPresentation(event)).toBeNull();
 	});

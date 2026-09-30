@@ -198,7 +198,14 @@ it("会话 A 仍在流式输出时新建会话 B，A 的事件不得写进 B 的
 
 	// 真实场景：navigateBeforeCreate 会 await 路由切换，这期间 A 仍处于订阅状态。
 	mocks.navigate.mockImplementationOnce(async () => {
-		handlers.get("runtime-a")?.({ type: "message.delta", delta: "A 的正文不该出现在 B" });
+		handlers.get("runtime-a")?.({
+			channel: "assistant",
+			type: "text_delta",
+			turnId: "turn-a",
+			contentIndex: 0,
+			delta: "A 的正文不该出现在 B",
+			partial: { role: "assistant", content: [] },
+		});
 		handlers.get("runtime-a")?.({
 			type: "tool.start",
 			toolCallId: "call-nav",

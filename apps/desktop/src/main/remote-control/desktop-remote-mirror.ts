@@ -135,7 +135,7 @@ interface TrackedSession {
 	assistantBuffer: string;
 	thinkingBuffer: string;
 	flushTimer?: ReturnType<typeof setTimeout>;
-	/** Text already delivered for the current turn; `message.final` only sends the remainder. */
+	/** Text already delivered for the current turn; the assistant `done` event only sends the remainder. */
 	observedText: string;
 	/** Prompt text this mirror sent itself, so `agent_start` does not echo it a second time. */
 	pendingUserText?: string;
@@ -736,36 +736,6 @@ export class DesktopRemoteMirror {
 			return;
 		}
 		switch (event.type) {
-			case "message.delta":
-				this.bufferDelta(tracked, "assistant", event.delta);
-				return;
-			case "thinking.delta":
-				this.bufferDelta(tracked, "thinking", event.delta);
-				return;
-			case "message.final": {
-				if (event.message.role !== "assistant") return;
-				const text = textOf(event.message.content);
-				const missing =
-					tracked.observedText && text.startsWith(tracked.observedText)
-						? text.slice(tracked.observedText.length)
-						: text;
-				if (missing) this.bufferDelta(tracked, "assistant", missing);
-				this.flush(tracked);
-				return;
-			}
-			case "toolcall.start":
-				this.flush(tracked);
-				void this.emitTool(key, { toolCallId: event.toolCallId, toolName: event.toolName, phase: "generating" });
-				return;
-			case "toolcall.args":
-				this.flush(tracked);
-				void this.emitTool(key, {
-					toolCallId: event.toolCallId,
-					toolName: event.toolName,
-					phase: "generating",
-					args: preview(event.args),
-				});
-				return;
 			case "tool.start":
 				this.flush(tracked);
 				void this.emitTool(key, {
