@@ -117,4 +117,21 @@ ADR-0142 让 Runtime 发布带 `turnId` / `messageId` 的身份事件，但 Rend
   - 用户在界面上发起的本地动作（发送、报错），在 feed 尚未绑定 Runtime 时也允许写入，避免会话过渡期间静默丢掉用户的消息；Runtime 事实（事件、历史、回合恢复）严格要求作用域一致。
   - 已暂停批量子任务的恢复发送走 `resumeTaskWithText`，没有宿主 messageId，无法按身份确认；因此不再先显示乐观气泡，改由回合开始时写入的消息显示。
 
-- **未开始**：P2 的 `attach` 水位合同、running 状态改由 `conversation.turn.*` 界定；P5 会话侧状态的 handler 拆分；P6 行级订阅与滚动模型瘦身；P7 Team / Viewer 收敛。
+- **当时未开始**（第二批的进展见下）：P2 的 `attach` 水位合同、running 状态改由 `conversation.turn.*` 界定；P5 会话侧状态的 handler 拆分；P6 行级订阅与滚动模型瘦身；P7 Team / Viewer 收敛。
+
+### 2026-09-30：第二批（事件合同治理、P2 主体、P5、P6 一部分）
+
+- **事件合同治理**：`message.delta`、`thinking.delta`、`message.final`、`toolcall.start`、`toolcall.args` 早已没有发送方，却仍在合同里，十多处消费方与测试靠它们的分支编译通过；其中 relay「先失败后恢复」的结束原因纠正只写在 `message.final` 分支里，从未生效。五个类型已删除，由编译器列出全部消费方。防止再次积累的三道机制：
+  - `packages/runtime-core/test/session-event-producers.test.ts`：每个运行时事件类型借 `satisfies Record<…>` 登记发送方文件，并由测试核实该文件确实构造了这个事件；新增或删除事件类型必须同步。
+  - `scripts/quality/check-session-event-tombstones.mjs`（`check:guards`）：已删除的事件类型进入墓碑清单，源码（含测试、移动端）再出现即失败，专门拦截 `as never`、局部事件联合这类绕过编译器的写法。
+  - 渲染层 `session-event-routes.ts`：每个运行时事件类型声明去向（消息流 / 会话状态 / 忽略），新增事件类型不决定去向就无法编译；`session-event-codec.ts` 的 IPC 校验白名单同样改为 `Record` 形式。
+  - 另在 `conversation-message-architecture` 守卫中禁止生产代码直接写 `chatMessagesAtom`。
+- **P2 主体**：`SessionFacade.attach` 在同一同步步骤内注册订阅、从回合开始重放运行中的回合（相邻增量合并）并读取历史；relay 以 `conversation.turn.*` 界定整轮重放缓冲，原 `subscribe` 的按调用重放保持不变。渲染层改用 `session.attach`：运行中回合的消息只由重放事件重建（`feed.attached` 丢弃历史中该回合的助手消息并重置事件序号），因此历史投影先于事件更新的竞态不会再造成缺失或重复；空闲会话仍在空闲时映射完整历史，其间该订阅的写入按序暂扣。`turn.restored` 与 `getState` 的 `currentTurnId`、`currentTurnStartedAt` 随之删除。
+- **P5**：事件控制器拆为路由、会话状态（`useSessionStateEvents`）与输入预测（`usePromptPrediction`），控制器由 767 行降至约 190 行。
+- **P6（部分）**：会话用量清单在内容不变时复用原数组，流式期间非尾部行不再每 100ms 重渲染；行组件内部未订阅整个消息列表。
+- **修正**：`toolUse` 结束的模型调用不再把回复标为已结束。
+
+- **仍未完成与原因**
+  - P2 剩余：relay 的 running 状态仍以 legacy lifecycle 界定（牵动侧栏、通知、宠物、手机镜像，需逐一回归）；`conversation.message.appended` 尚未携带文档坐标，回合结束与手动压缩后仍按 id 合并重读一次历史。
+  - P6 滚动模型瘦身（去掉自绘 lerp、Virtuoso 按稳定 id 失效）：该区域有长会话滚动跳变的历史，需要在真机上对照 `perf-message-scroll` 采集前后数据后再改，未在无法目视验证的条件下实施。
+  - P7：Team 的丢弃 / 工具执行覆盖 / 成员摘要语义需先单独设计再并入 feed reducer；Viewer 与 Workflow 为只读且已共用 `fullHistoryToChat`，收益有限。
