@@ -344,66 +344,68 @@ describe("conversation feed", () => {
 		);
 	});
 
-	it("rejoining a running Turn shows exactly what staying would have shown", () => {
-		const stayed = reduce(
-			freshFeed(),
-			{ type: "user.sent", message: optimisticUser("u1", "go") },
-			events(
-				turnStarted("t1", 10),
-				userAppended("t1", "u1", "go", 11),
-				modelRequest("t1", 0, 12),
-				textDelta("t1", 0, "first", 13),
-				toolCallStart("t1", 0, "call-1", 14),
-				toolStart("call-1", 15),
-				toolEnd("call-1", 16),
-				modelRequest("t1", 1, 17),
-				textDelta("t1", 1, "second", 18),
-			),
-		);
+	it("rejoining a running Turn shows exactly what staying would have shown, whenever history was read", () => {
+		const turn = [
+			turnStarted("t1", 10),
+			userAppended("t1", "u1", "go", 11),
+			modelRequest("t1", 0, 12),
+			textDelta("t1", 0, "first", 13),
+			toolCallStart("t1", 0, "call-1", 14),
+			toolStart("call-1", 15),
+			toolEnd("call-1", 16),
+			modelRequest("t1", 1, 17),
+			textDelta("t1", 1, "second", 18),
+		];
+		const stayed = reduce(freshFeed(), { type: "user.sent", message: optimisticUser("u1", "go") }, events(...turn));
 
-		// Left after the first model call was persisted; rejoin with history, the running Turn
-		// identity from getState, and the relay's in-flight replay.
-		const history = fullHistoryToChat([
-			{
-				type: "message",
-				entryId: "e1",
-				messageId: "u1",
-				turnId: "t1",
-				message: { role: "user", content: "go", timestamp: 11 },
-			},
-			{
-				type: "message",
-				entryId: "e2",
-				turnId: "t1",
-				message: assistant([
-					{ type: "text", text: "first" },
-					{ type: "toolCall", id: "call-1", name: "bash", arguments: { command: "ls" } },
-				]),
-			},
-			{
-				type: "message",
-				entryId: "e3",
-				turnId: "t1",
-				message: { role: "toolResult", toolCallId: "call-1", toolName: "bash", content: "a.txt", timestamp: 16 },
-			},
-		] as HistoryEntry[]);
-		const rejoined = reduce(
-			freshFeed(),
-			{ type: "history.loaded", runtimeId: RUNTIME, items: history, revision: 1 },
-			{ type: "turn.restored", runtimeId: RUNTIME, turnId: "t1", startedAt: 10 },
-			events(
-				toolStart("call-1", 15),
-				toolEnd("call-1", 16),
-				modelRequest("t1", 1, 17),
-				textDelta("t1", 1, "second", 18),
-			),
-		);
-
-		expect(visible(rejoined.items)).toEqual(visible(stayed.items));
-		expect(rejoined.activeTurnId).toBe("t1");
+		const user = {
+			type: "message",
+			entryId: "e1",
+			messageId: "u1",
+			turnId: "t1",
+			message: { role: "user", content: "go", timestamp: 11 },
+		};
+		const firstCall = {
+			type: "message",
+			entryId: "e2",
+			turnId: "t1",
+			message: assistant([
+				{ type: "text", text: "first" },
+				{ type: "toolCall", id: "call-1", name: "bash", arguments: { command: "ls" } },
+			]),
+		};
+		const toolResult = {
+			type: "message",
+			entryId: "e3",
+			turnId: "t1",
+			message: { role: "toolResult", toolCallId: "call-1", toolName: "bash", content: "a.txt", timestamp: 16 },
+		};
+		// The history projection can run ahead of the events, so the snapshot may
+		// already contain the second call although its deltas are replayed too.
+		const secondCall = {
+			type: "message",
+			entryId: "e4",
+			turnId: "t1",
+			message: assistant([{ type: "text", text: "second" }]),
+		};
+		for (const entries of [[user], [user, firstCall, toolResult], [user, firstCall, toolResult, secondCall]]) {
+			const rejoined = reduce(
+				freshFeed(),
+				{
+					type: "feed.attached",
+					runtimeId: RUNTIME,
+					items: fullHistoryToChat(entries as HistoryEntry[]),
+					revision: 1,
+					runningTurnId: "t1",
+				},
+				events(...turn),
+			);
+			expect(visible(rejoined.items)).toEqual(visible(stayed.items));
+			expect(rejoined.activeTurnId).toBe("t1");
+		}
 	});
 
-	it("restoring a continuation Turn never reopens the previous Turn's message", () => {
+	it("rebuilds a continuation Turn on its own message, never on the previous Turn's", () => {
 		const history = fullHistoryToChat([
 			{
 				type: "message",
@@ -416,9 +418,8 @@ describe("conversation feed", () => {
 		] as HistoryEntry[]);
 		const state = reduce(
 			freshFeed(),
-			{ type: "history.loaded", items: history, revision: 1 },
-			{ type: "turn.restored", turnId: "t2", startedAt: 50 },
-			events(textDelta("t2", 0, "continuing", 51)),
+			{ type: "feed.attached", items: history, revision: 1, runningTurnId: "t2" },
+			events(turnStarted("t2", 50), textDelta("t2", 0, "continuing", 51)),
 		);
 
 		expect(visible(state.items)).toEqual([
@@ -426,6 +427,34 @@ describe("conversation feed", () => {
 			{ id: "assistant:t1:1", kind: "agent", phase: "completed", blocks: ["text:done"] },
 			{ id: "assistant:t2:0", kind: "agent", phase: "streaming", blocks: ["text:continuing"] },
 		]);
+	});
+
+	it("drops a preview's copy of the running Turn and restarts the event sequence on attach", () => {
+		const preview = fullHistoryToChat([
+			{
+				type: "message",
+				entryId: "e1",
+				messageId: "u1",
+				turnId: "t1",
+				message: { role: "user", content: "go", timestamp: 1 },
+			},
+			{ type: "message", entryId: "e2", turnId: "t1", message: assistant([{ type: "text", text: "partial" }]) },
+		] as HistoryEntry[]);
+		const previewed = reduce(
+			freshFeed(),
+			{ type: "history.loaded", items: preview, revision: 1 },
+			events({ ...turnStarted("t0", 0), sequence: 40 }),
+		);
+
+		const attached = reduce(previewed, {
+			type: "feed.attached",
+			items: preview,
+			revision: 2,
+			runningTurnId: "t1",
+		});
+		expect(attached.items.map((item) => item.id)).toEqual(["u1"]);
+		expect(attached.sequence).toBe(0);
+		expect(reduce(attached, { type: "feed.attached", items: [], revision: 1 })).toBe(attached);
 	});
 
 	it("keeps live content of the running Turn when history is read mid-Turn", () => {
@@ -563,49 +592,6 @@ describe("conversation feed", () => {
 
 		expect(state.items.find((item) => item.id === "assistant:ta:1")).toMatchObject({ text: "A" });
 		expect(state.items.find((item) => item.id === "assistant:tb:1")).toMatchObject({ text: "B" });
-	});
-
-	it("restores the running Turn's unfinished history tools as pending on the same message", () => {
-		const history = fullHistoryToChat([
-			{
-				type: "message",
-				entryId: "e1",
-				messageId: "u1",
-				turnId: "t1",
-				message: { role: "user", content: "go", timestamp: 1 },
-			},
-			{
-				type: "message",
-				entryId: "e2",
-				turnId: "t1",
-				message: assistant([
-					{ type: "toolCall", id: "done-call", name: "bash", arguments: {} },
-					{ type: "toolCall", id: "open-call", name: "bash", arguments: {} },
-				]),
-			},
-			{
-				type: "message",
-				entryId: "e3",
-				turnId: "t1",
-				message: { role: "toolResult", toolCallId: "done-call", toolName: "bash", content: "ok", timestamp: 2 },
-			},
-		] as HistoryEntry[]);
-
-		const state = reduce(
-			freshFeed(),
-			{ type: "history.loaded", items: history, revision: 1 },
-			{ type: "turn.restored", turnId: "t1", startedAt: 1 },
-		);
-
-		expect(visible(state.items)).toEqual([
-			{ id: "u1", kind: "user", text: "go" },
-			{
-				id: "assistant:t1:1",
-				kind: "agent",
-				phase: "streaming",
-				blocks: ["tool_call:done-call:success", "tool_call:open-call:pending"],
-			},
-		]);
 	});
 
 	it("settles a cancelled Turn once however often the cancellation is reported", () => {

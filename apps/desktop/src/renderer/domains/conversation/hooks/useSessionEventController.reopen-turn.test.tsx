@@ -63,13 +63,38 @@ describe("reopening a session while its Turn is still running", () => {
 				activeSessionRef: { current: { runtimeId: "session-1", cwd: "/w", sessionPath: "/s.jsonl" } },
 			}),
 		);
-		// Mirror useSessionOpener: show history, then restore the running Turn by its identity.
+		// Mirror useSessionOpener: apply the attach snapshot, then the Turn replayed from its start.
 		act(() => {
 			result.current.resetEventBuffers();
-			dispatchConversationFeed({ type: "history.loaded", items: fullHistoryToChat(history), revision: 1 });
-			dispatchConversationFeed({ type: "turn.restored", runtimeId: "session-1", turnId, startedAt: 1_000 });
+			dispatchConversationFeed({
+				type: "feed.attached",
+				runtimeId: "session-1",
+				items: fullHistoryToChat(history),
+				revision: 1,
+				runningTurnId: turnId,
+			});
 		});
 		const send = (event: SessionEvent) => act(() => result.current.createSessionEventHandler("session-1")(event));
+		send({ ...base, type: "conversation.turn.started", turnId, timestamp: 1_000 });
+		send({
+			...base,
+			type: "conversation.message.appended",
+			turnId,
+			messageId: "user-1",
+			message: { role: "user", content: [{ type: "text", text: "go" }], timestamp: 1_000 },
+			timestamp: 1_000,
+		});
+		send({
+			...base,
+			channel: "assistant",
+			type: "text_delta",
+			turnId,
+			modelCallIndex: 1,
+			contentIndex: 0,
+			delta: "first",
+			partial: assistant("first"),
+			timestamp: 2_000,
+		});
 
 		send({
 			...base,
@@ -96,6 +121,6 @@ describe("reopening a session while its Turn is still running", () => {
 
 		const agents = store.get(chatMessagesAtom).filter((item) => item.kind === "agent");
 		expect(agents).toHaveLength(1);
-		expect(agents[0]?.text).toContain("third");
+		expect(agents[0]?.text).toBe("firstthird");
 	});
 });

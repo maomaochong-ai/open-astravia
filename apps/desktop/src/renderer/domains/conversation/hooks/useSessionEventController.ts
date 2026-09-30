@@ -42,7 +42,7 @@ import { getDefaultStore, useSetAtom } from "jotai";
 import { type MutableRefObject, useCallback, useEffect, useRef } from "react";
 import { fullHistoryToChat, getChatStreamOwner, toChatErrorDetails, turnStatsCache } from "../services/chat-service";
 import { clearCachedContextComposition, writeCachedContextComposition } from "../services/context-composition-cache";
-import { activeAssistantStartedAt } from "../services/conversation-feed";
+import { activeAssistantStartedAt, type ConversationFeedAction } from "../services/conversation-feed";
 import { dispatchConversationFeed, nextConversationHistoryRevision } from "../services/conversation-feed-store";
 import type { ActiveSessionHandle } from "./session-manager-types";
 
@@ -54,6 +54,9 @@ export interface SessionEventController {
 	bumpSuggestionToken: (runtimeId: string) => void;
 	createSessionEventHandler: (runtimeId: string) => (event: SessionEvent) => void;
 	resetEventBuffers: () => void;
+	/** Queue this Runtime's feed writes, in order, until its attach snapshot is applied. */
+	holdFeedWrites: (runtimeId: string) => void;
+	releaseFeedWrites: (runtimeId: string) => void;
 }
 
 interface SessionEventControllerOptions {
@@ -111,6 +114,8 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 	const suggestionTokenRef = useRef<Map<string, number>>(new Map());
 	const pendingFeedEventsRef = useRef<{ runtimeId: string; events: SessionEvent[] } | null>(null);
 	const flushTimerRef = useRef<number | null>(null);
+	const heldWritesRef = useRef<{ runtimeId: string; actions: ConversationFeedAction[] } | null>(null);
+	const activeTurnIdRef = useRef<string | null>(null);
 
 	const markPredicting = useCallback(
 		(runtimeId: string, predicting: boolean) => {
@@ -130,6 +135,15 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 		tokens.set(runtimeId, (tokens.get(runtimeId) ?? 0) + 1);
 	}, []);
 
+	const writeFeed = useCallback((action: ConversationFeedAction & { readonly runtimeId: string }) => {
+		const held = heldWritesRef.current;
+		if (held?.runtimeId === action.runtimeId) {
+			held.actions.push(action);
+			return;
+		}
+		dispatchConversationFeed(action);
+	}, []);
+
 	const flushFeedEvents = useCallback(() => {
 		if (flushTimerRef.current !== null) {
 			window.clearTimeout(flushTimerRef.current);
@@ -140,8 +154,8 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 		if (!pending || pending.events.length === 0) return;
 		// The feed only accepts events of the Runtime it is bound to, so a stale
 		// subscription cannot write into the session now on screen.
-		dispatchConversationFeed({ type: "runtime.events", runtimeId: pending.runtimeId, events: pending.events });
-	}, []);
+		writeFeed({ type: "runtime.events", runtimeId: pending.runtimeId, events: pending.events });
+	}, [writeFeed]);
 
 	const enqueueFeedEvent = useCallback(
 		(runtimeId: string, event: SessionEvent) => {
@@ -164,7 +178,28 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 			flushTimerRef.current = null;
 		}
 		pendingFeedEventsRef.current = null;
+		heldWritesRef.current = null;
+		activeTurnIdRef.current = null;
 	}, []);
+
+	const holdFeedWrites = useCallback(
+		(runtimeId: string) => {
+			flushFeedEvents();
+			heldWritesRef.current = { runtimeId, actions: [] };
+		},
+		[flushFeedEvents],
+	);
+
+	const releaseFeedWrites = useCallback(
+		(runtimeId: string) => {
+			if (heldWritesRef.current?.runtimeId !== runtimeId) return;
+			flushFeedEvents();
+			const held = heldWritesRef.current;
+			heldWritesRef.current = null;
+			for (const action of held.actions) dispatchConversationFeed(action);
+		},
+		[flushFeedEvents],
+	);
 
 	useEffect(() => resetEventBuffers, [resetEventBuffers]);
 
@@ -204,22 +239,20 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 	);
 
 	/** Durable history supplies entry ids, branches and timing that live events do not carry. */
-	const syncDurableHistory = useCallback((runtimeId: string, context: string) => {
-		const revision = nextConversationHistoryRevision();
-		void window.vetta.session
-			.getFullHistory(runtimeId)
-			.then((history) => {
-				dispatchConversationFeed({
-					type: "history.loaded",
-					runtimeId,
-					items: fullHistoryToChat(history),
-					revision,
+	const syncDurableHistory = useCallback(
+		(runtimeId: string, context: string) => {
+			const revision = nextConversationHistoryRevision();
+			void window.vetta.session
+				.getFullHistory(runtimeId)
+				.then((history) => {
+					writeFeed({ type: "history.loaded", runtimeId, items: fullHistoryToChat(history), revision });
+				})
+				.catch((error) => {
+					console.warn(`[useSessionManager] history refresh after ${context} failed`, error);
 				});
-			})
-			.catch((error) => {
-				console.warn(`[useSessionManager] history refresh after ${context} failed`, error);
-			});
-	}, []);
+		},
+		[writeFeed],
+	);
 
 	const createSessionEventHandler = useCallback(
 		(sessionId: string) => (event: SessionEvent) => {
@@ -248,6 +281,7 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 				if (event.type === "conversation.turn.started") {
 					// 新一轮开始：让上一轮的输入预测生成（若仍在飞）回填时作废。
 					bumpSuggestionToken(sessionId);
+					activeTurnIdRef.current = event.turnId;
 					setActiveSessionStreaming(true);
 				} else if (
 					event.type === "conversation.turn.completed" ||
@@ -255,7 +289,11 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 					event.type === "conversation.turn.failed"
 				) {
 					setRetryProgress(null);
-					if (getDefaultStore().get(conversationFeedAtom).activeTurnId === null) setActiveSessionStreaming(false);
+					// Only the running Turn's terminal fact ends streaming; a late one for an older Turn does not.
+					if (activeTurnIdRef.current === null || activeTurnIdRef.current === event.turnId) {
+						activeTurnIdRef.current = null;
+						setActiveSessionStreaming(false);
+					}
 					syncDurableHistory(sessionId, "Turn terminal");
 					if (event.type === "conversation.turn.completed") predictNextPrompts(sessionId);
 				} else if (event.type === "error") {
@@ -459,7 +497,7 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 		],
 	);
 
-	return { bumpSuggestionToken, createSessionEventHandler, resetEventBuffers };
+	return { bumpSuggestionToken, createSessionEventHandler, resetEventBuffers, holdFeedWrites, releaseFeedWrites };
 }
 
 function buildRecentConversation(messages: readonly ChatConversationItem[]): string {

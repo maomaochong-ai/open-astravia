@@ -41,11 +41,20 @@ export type ConversationFeedAction =
 			readonly items: readonly ChatConversationItem[];
 			readonly revision: number;
 	  })
+	/**
+	 * History taken together with a new subscription. Messages of `runningTurnId` are
+	 * left out: the subscription replays that Turn from its start, and rebuilding it
+	 * from events alone is what keeps the snapshot free of gaps and duplicates.
+	 */
+	| (RuntimeScoped & {
+			readonly type: "feed.attached";
+			readonly items: readonly ChatConversationItem[];
+			readonly revision: number;
+			readonly runningTurnId?: string;
+	  })
 	| (RuntimeScoped & { readonly type: "runtime.events"; readonly events: readonly SessionEvent[] })
 	/** The user sent a first prompt before the Runtime could start its Turn. */
 	| { readonly type: "turn.pending"; readonly startedAt: number }
-	/** A subscriber joined while `turnId` was already running. */
-	| (RuntimeScoped & { readonly type: "turn.restored"; readonly turnId?: string; readonly startedAt: number })
 	| (RuntimeScoped & { readonly type: "user.sent"; readonly message: ConversationUserMessageViewModel })
 	| (RuntimeScoped & { readonly type: "user.queued"; readonly message: ConversationUserMessageViewModel })
 	/** The Runtime queued a send that was shown optimistically; it reappears when appended. */
@@ -86,6 +95,8 @@ export function reduceConversationFeed(
 			return bindFeed(state, action.runtimeId, action.outbox);
 		case "history.loaded":
 			return mergeHistorySnapshot(state, action.items, action.revision);
+		case "feed.attached":
+			return attachFeed(state, action.items, action.revision, action.runningTurnId);
 		case "runtime.events": {
 			let next = state;
 			for (const event of action.events) next = applyRuntimeEvent(next, event);
@@ -93,8 +104,6 @@ export function reduceConversationFeed(
 		}
 		case "turn.pending":
 			return startPendingTurn(state, action.startedAt);
-		case "turn.restored":
-			return restoreTurn(state, action.turnId, action.startedAt);
 		case "user.sent":
 			return withItems(state, upsertItem(state.items, action.message));
 		case "user.queued":
@@ -144,7 +153,7 @@ function isForeignWrite(state: ConversationFeedState, action: ConversationFeedAc
 	if (action.type === "feed.bound" || !("runtimeId" in action) || action.runtimeId === undefined) return false;
 	if (state.runtimeId === action.runtimeId) return false;
 	if (state.runtimeId !== null) return true;
-	return action.type === "runtime.events" || action.type === "history.loaded" || action.type === "turn.restored";
+	return action.type === "runtime.events" || action.type === "history.loaded" || action.type === "feed.attached";
 }
 
 /** Unconfirmed sends of this feed, to be restored when its Runtime is shown again. */
@@ -479,52 +488,28 @@ function startPendingTurn(state: ConversationFeedState, startedAt: number): Conv
 	return { ...state, items: [...state.items, draft], localSequence };
 }
 
-function restoreTurn(
+function attachFeed(
 	state: ConversationFeedState,
-	turnId: string | undefined,
-	startedAt: number,
+	items: readonly ChatConversationItem[],
+	revision: number,
+	runningTurnId: string | undefined,
 ): ConversationFeedState {
-	if (!turnId) {
-		// Runtimes without Turn identity: only the tail can be the running message.
-		const tail = state.items.at(-1);
-		if (tail?.kind === "agent") {
-			return withItems(state, replaceAt(state.items, state.items.length - 1, reactivate(tail, startedAt)));
-		}
-		return startPendingTurn(state, startedAt);
-	}
-	const id = currentAssistantId(state.items, turnId);
-	const index = findLastIndex(state.items, (item) => item.kind === "agent" && item.id === id);
-	const items =
-		index >= 0
-			? replaceAt(state.items, index, reactivate(state.items[index] as AgentItem, startedAt))
-			: [
-					...state.items,
-					createConversationAgentMessage({
-						id,
-						turnId,
-						phase: "streaming",
-						text: "",
-						blocks: [],
-						timestamp: startedAt,
-						startedAt,
-					}),
-				];
-	return { ...state, items, activeTurnId: turnId };
-}
-
-/** Reopen a persisted assistant message whose Turn is still running; its unfinished tools are pending again. */
-function reactivate(message: AgentItem, startedAt: number): AgentItem {
-	return {
-		...message,
-		phase: "streaming",
-		startedAt,
-		timestamp: message.timestamp ?? startedAt,
-		endedAt: undefined,
-		durationSeconds: undefined,
-		blocks: message.blocks.map((block) =>
-			block.type === "tool_call" && block.result === undefined ? { ...block, status: "pending" as const } : block,
-		),
-	};
+	if (revision < state.historyRevision) return state;
+	const durable = runningTurnId
+		? items.filter((item) => !(item.kind === "agent" && item.turnId === runningTurnId))
+		: items;
+	// A new subscription restarts everything derived from Runtime events: agent messages
+	// that history does not hold yet belong either to the replayed Turn or to a finished
+	// Turn now in history. The running Turn's copy from a preview goes the same way.
+	// What the user did locally (pending sends, local failures, a first-send draft) stays.
+	const filtered = state.items.filter((item) => {
+		if (item.kind !== "agent") return true;
+		if (item.turnId === runningTurnId) return false;
+		return state.durableIds.has(item.id) || item.id.startsWith(LOCAL_ITEM_PREFIX);
+	});
+	const kept = filtered.length === state.items.length ? state.items : filtered;
+	const merged = mergeHistorySnapshot({ ...state, items: kept, activeTurnId: null }, durable, revision);
+	return { ...merged, sequence: 0 };
 }
 
 function appendFeedError(

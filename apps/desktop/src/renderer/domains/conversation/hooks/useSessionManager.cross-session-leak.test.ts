@@ -5,6 +5,7 @@ import { getDefaultStore } from "jotai";
 import { act, createElement, Fragment } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { withSessionAttach } from "./session-attach.fixture";
 
 const mocks = vi.hoisted(() => ({
 	applyLocalRename: vi.fn(),
@@ -163,7 +164,7 @@ it("会话 A 仍在流式输出时新建会话 B，A 的事件不得写进 B 的
 			batchTasks: { resumeTaskWithText: vi.fn() },
 			config: { get: vi.fn(async () => ({})) },
 			dialog: { persistImages: vi.fn() },
-			session: sessionApi,
+			session: withSessionAttach(sessionApi),
 		},
 	});
 

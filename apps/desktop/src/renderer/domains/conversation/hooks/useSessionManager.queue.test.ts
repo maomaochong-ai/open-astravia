@@ -5,6 +5,7 @@ import { getDefaultStore } from "jotai";
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { withSessionAttach } from "./session-attach.fixture";
 
 const mocks = vi.hoisted(() => ({
 	applyLocalRename: vi.fn(),
@@ -122,7 +123,7 @@ beforeEach(() => {
 			batchTasks: { resumeTaskWithText: vi.fn() },
 			config: { get: vi.fn(async () => ({})) },
 			dialog: { persistImages: vi.fn(async () => []) },
-			session: {
+			session: withSessionAttach({
 				autoTitle: vi.fn(),
 				getFullHistory: vi.fn(async () => []),
 				openViewer: vi.fn(async () => ({ history: [] })),
@@ -130,7 +131,7 @@ beforeEach(() => {
 				prompt: mocks.prompt,
 				replaceLastUserMessage: vi.fn(async () => ({ leafId: null })),
 				subscribe: vi.fn(async () => vi.fn()),
-			},
+			}),
 		},
 	});
 });
@@ -207,6 +208,11 @@ it("新会话在订阅建立后立即发送，不等待空历史与状态水合"
 	const store = await mount("立即发送", false);
 	const { chatMessagesAtom } = await import("@shared/store/atoms");
 
+	// A new session's attach snapshot is empty and arrives with the subscription.
+	sessionApi.attach = vi.fn(async (_sessionId: string, handlers: { onSnapshot: (snapshot: unknown) => void }) => {
+		handlers.onSnapshot({ history: [] });
+		return vi.fn();
+	});
 	await act(async () => {
 		await manager?.openSession(cwd, undefined, "sandbox", {
 			onPromptReady: () => {
@@ -217,6 +223,7 @@ it("新会话在订阅建立后立即发送，不等待空历史与状态水合"
 
 	expect(mocks.prompt).toHaveBeenCalledOnce();
 	expect(stateResolved).toBe(true);
+	expect(sessionApi.attach).toHaveBeenCalledOnce();
 	expect(getFullHistory).not.toHaveBeenCalled();
 	expect(store.get(chatMessagesAtom).some((message) => message.kind === "user" && message.text === "立即发送")).toBe(
 		true,
@@ -580,6 +587,8 @@ it("失败收尾：agent_end 的落后历史快照不会清掉刚显示的错误
 	const { chatMessagesAtom } = await import("@shared/store/atoms");
 	await act(async () => {
 		await manager?.openSession(cwd, sessionPath);
+		// An idle session maps its whole history when the renderer is idle.
+		await new Promise((resolve) => setTimeout(resolve, 0));
 	});
 	if (!eventHandler) throw new Error("subscribe handler not captured");
 	const base = {
@@ -609,11 +618,19 @@ it("失败收尾：agent_end 的落后历史快照不会清掉刚显示的错误
 		blocks: [expect.objectContaining({ type: "error", turnId: "turn-failed-1", text: "供应商额度已用完" })],
 	});
 
+	// The terminal fact refreshes history, which has not persisted the failure yet.
 	await act(async () => {
-		eventHandler?.({ ...base, eventId: "event-end", type: "session.lifecycle", phase: "agent_end" });
+		eventHandler?.({
+			...base,
+			eventId: "event-end",
+			type: "conversation.turn.failed",
+			turnId: "turn-failed-1",
+			error: { code: "AI_BILLING_REQUIRED", message: "供应商额度已用完", retryable: false, origin: "provider" },
+		});
 		await Promise.resolve();
 		await Promise.resolve();
 	});
+	expect(sessionApi.getFullHistory).toHaveBeenCalledTimes(2);
 
 	expect(store.get(chatMessagesAtom).at(-1)).toMatchObject({
 		kind: "agent",

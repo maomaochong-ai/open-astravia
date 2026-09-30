@@ -1,5 +1,6 @@
 import { useProjectActions } from "@domains/project/hooks/useProjects";
 import { applyActiveTagFilterToNewConversation } from "@domains/project/services/new-conversation-tagging";
+import type { DesktopSessionAttachmentSnapshot } from "@preload/api";
 import { i18n } from "@shared/i18n";
 import { waitForCommittedPaint } from "@shared/lib/committed-paint";
 import { perfSendMark } from "@shared/lib/perf-send";
@@ -138,9 +139,8 @@ export function useSessionOpener(): SessionOpenerController {
 	const defaultConversationCwdRef = useRef(defaultConversationCwd);
 	defaultConversationCwdRef.current = defaultConversationCwd;
 	const activeSessionRef = useRef<{ cwd: string; sessionPath: string; runtimeId: string } | null>(null);
-	const { bumpSuggestionToken, createSessionEventHandler, resetEventBuffers } = useSessionEventController({
-		activeSessionRef,
-	});
+	const { bumpSuggestionToken, createSessionEventHandler, resetEventBuffers, holdFeedWrites, releaseFeedWrites } =
+		useSessionEventController({ activeSessionRef });
 	const openSessionRef = useRef<
 		| ((
 				cwd: string,
@@ -451,12 +451,60 @@ export function useSessionOpener(): SessionOpenerController {
 			}
 			const cachedKey = resolvedSessionPath;
 			let subscribed = false;
+			// History and the running Turn's replay arrive as one snapshot (ADR-0146). The
+			// Turn is rebuilt from its events alone, so the snapshot has no gap or overlap.
+			const applyAttachSnapshot = (snapshot: DesktopSessionAttachmentSnapshot): void => {
+				const revision = nextConversationHistoryRevision();
+				const attach = (): void => {
+					const store = getDefaultStore();
+					const shown = store.get(conversationFeedAtom).items;
+					const items = fullHistoryToChat(snapshot.history);
+					markSessionSwitch("session-history-mapped");
+					startTransition(() => {
+						dispatchConversationFeed(
+							{
+								type: "feed.attached",
+								runtimeId: sessionId,
+								items,
+								revision,
+								...(snapshot.runningTurnId ? { runningTurnId: snapshot.runningTurnId } : {}),
+							},
+							store,
+						);
+					});
+					// The feed keeps its items when the canonical history equals the preview.
+					markSessionSwitch(
+						store.get(conversationFeedAtom).items === shown
+							? "session-history-commit-skipped-equivalent"
+							: "session-history-committed",
+					);
+					releaseFeedWrites(sessionId);
+				};
+				// A new session has nothing to map, and a running Turn streams onto this
+				// snapshot, so neither waits.
+				if (sessionPath === undefined || snapshot.runningTurnId) {
+					attach();
+					return;
+				}
+				// An idle session's tail preview already owns the first screen; mapping the
+				// whole history waits for idle time and any events queue behind it in order.
+				holdFeedWrites(sessionId);
+				perfSendMark("session-history-loaded", interactionId);
+				markSessionSwitch("session-history-loaded");
+				scheduleHistoryBackfill(() => {
+					if (myOpenToken !== getOpenSessionToken()) return;
+					attach();
+				});
+			};
 			const subscribeForPrompt = async (): Promise<boolean> => {
 				perfSendMark("session-subscribe-start", interactionId);
 				markSessionSwitch("session-subscribe-start");
 				let unsubscribeFn: () => void;
 				try {
-					unsubscribeFn = await window.vetta.session.subscribe(sessionId, createSessionEventHandler(sessionId));
+					unsubscribeFn = await window.vetta.session.attach(sessionId, {
+						onSnapshot: applyAttachSnapshot,
+						onEvent: createSessionEventHandler(sessionId),
+					});
 				} catch (error) {
 					failSessionHydration("subscribe", error);
 					return false;
@@ -507,9 +555,6 @@ export function useSessionOpener(): SessionOpenerController {
 			// session is interactive; the tail preview already owns the first screen.
 			perfSendMark("session-state-load-start", interactionId);
 			markSessionSwitch("session-hydration-start");
-			const historyRevision = nextConversationHistoryRevision();
-			const historyPromise =
-				sessionPath === undefined ? Promise.resolve([]) : window.vetta.session.getFullHistory(sessionId);
 			const statePromise = window.vetta.session.getState(sessionId);
 			let state: Awaited<typeof statePromise>;
 			try {
@@ -559,19 +604,8 @@ export function useSessionOpener(): SessionOpenerController {
 				...(sessionPath !== undefined && backendModelKey ? { selectedModel: backendModelKey } : {}),
 			});
 
-			// A Turn that is still running owns exactly one assistant message, found by its
-			// Turn identity; the relay replays its in-flight events once we subscribe.
-			// 即使慢模型尚未产生任何可持久化 assistant 内容，也恢复一个带绝对
-			// startedAt 的回复，避免切回会话后等待态和计时从零开始。
-			if (state.isStreaming) {
-				dispatchConversationFeed({
-					type: "turn.restored",
-					runtimeId: sessionId,
-					startedAt: state.currentTurnStartedAt ?? Date.now(),
-					...(state.currentTurnId ? { turnId: state.currentTurnId } : {}),
-				});
-				setActiveSessionStreaming(true);
-			}
+			// The running Turn's messages come from the attach replay; only the busy state is set here.
+			if (state.isStreaming) setActiveSessionStreaming(true);
 
 			// 现有会话到这里才一次性发布完整 Runtime identity；新会话若血缘等字段
 			// 未变化则复用早期 identity，不制造第二次全局订阅更新。
@@ -598,51 +632,6 @@ export function useSessionOpener(): SessionOpenerController {
 			markSessionSwitch("session-hydration-committed");
 			if (stageExistingSessionOpen) clearOwnPendingTransition();
 			if (isExistingSessionOpen) perfSessionSwitchComplete("completed", interactionId);
-
-			if (sessionPath !== undefined) {
-				void historyPromise
-					.then((history) => {
-						perfSendMark("session-history-loaded", interactionId);
-						markSessionSwitch("session-history-loaded");
-						if (myOpenToken !== getOpenSessionToken()) return;
-						scheduleHistoryBackfill(() => {
-							if (myOpenToken !== getOpenSessionToken()) return;
-							const canonical = fullHistoryToChat(history);
-							markSessionSwitch("session-history-mapped");
-							const store = getDefaultStore();
-							const shown = store.get(conversationFeedAtom).items;
-							startTransition(() => {
-								dispatchConversationFeed(
-									{
-										type: "history.loaded",
-										runtimeId: sessionId,
-										items: canonical,
-										revision: historyRevision,
-									},
-									store,
-								);
-							});
-							// The feed keeps its items when the canonical history equals the preview.
-							markSessionSwitch(
-								store.get(conversationFeedAtom).items === shown
-									? "session-history-commit-skipped-equivalent"
-									: "session-history-committed",
-							);
-						});
-					})
-					.catch((error: unknown) => {
-						if (myOpenToken !== getOpenSessionToken()) return;
-						console.error("[useSessionOpener] session history backfill failed", { interactionId, error });
-						markSessionSwitch("session-history-backfill-failed");
-						const message = error instanceof Error ? error.message : String(error);
-						dispatchConversationFeed({
-							type: "error.appended",
-							runtimeId: sessionId,
-							message,
-							timestamp: Date.now(),
-						});
-					});
-			}
 
 			// kernel 队列镜像初始化（ADR-0060）：整体替换、不做消费差分——后台期间被
 			// 消费的条目由历史重放呈现，这里只要拿到当前真实队列与 paused 状态。
@@ -713,6 +702,8 @@ export function useSessionOpener(): SessionOpenerController {
 			createSessionEventHandler,
 			setInlineFilePreview,
 			resetEventBuffers,
+			holdFeedWrites,
+			releaseFeedWrites,
 		],
 	);
 
