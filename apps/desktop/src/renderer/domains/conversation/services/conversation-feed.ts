@@ -1,16 +1,21 @@
 import {
 	abortConversationAgentMessage,
 	type ConversationUserMessageViewModel,
-	conversationItemRenderKey,
 	createConversationAgentMessage,
 	createConversationUserMessage,
-	type ErrorBlock,
 	reduceConversationMessageEvent,
 } from "@shared/conversation";
 import type { ChatConversationItem, ChatErrorDetails, ConversationFeedState } from "@shared/store/atoms";
 import type { AssistantSessionEvent, SessionEvent } from "@vetta/runtime-core";
-import { findToolCallMessageIndex, withToolCallEnded, withToolCallPhase, withToolCallStarted } from "./chat-service";
+import {
+	findToolCallMessageIndex,
+	toChatErrorDetails,
+	withToolCallEnded,
+	withToolCallPhase,
+	withToolCallStarted,
+} from "./chat-service";
 import { classifyChatError } from "./classifyChatError";
+import { mergeHistorySnapshot, withStableRenderKey } from "./conversation-feed-history";
 import { conversationAssistantMessageId } from "./conversation-message-identity";
 
 type AgentItem = Extract<ChatConversationItem, { readonly kind: "agent" }>;
@@ -73,16 +78,14 @@ export function reduceConversationFeed(
 	state: ConversationFeedState,
 	action: ConversationFeedAction,
 ): ConversationFeedState {
-	if ("runtimeId" in action && action.type !== "feed.bound" && action.runtimeId !== undefined) {
-		if (state.runtimeId !== action.runtimeId) return state;
-	}
+	if (isForeignWrite(state, action)) return state;
 	switch (action.type) {
 		case "feed.replaced":
 			return { ...state, items: action.items, durableIds: new Set(action.items.map((item) => item.id)) };
 		case "feed.bound":
 			return bindFeed(state, action.runtimeId, action.outbox);
 		case "history.loaded":
-			return mergeHistory(state, action.items, action.revision);
+			return mergeHistorySnapshot(state, action.items, action.revision);
 		case "runtime.events": {
 			let next = state;
 			for (const event of action.events) next = applyRuntimeEvent(next, event);
@@ -130,6 +133,18 @@ export function reduceConversationFeed(
 			return { ...state, items, durableIds: new Set([...state.durableIds].filter((id) => kept.has(id))) };
 		}
 	}
+}
+
+/**
+ * Runtime facts apply only to the feed of the Runtime that produced them. A local
+ * action the user took on screen also applies while the feed is not bound yet, so
+ * a send is never dropped during a session transition.
+ */
+function isForeignWrite(state: ConversationFeedState, action: ConversationFeedAction): boolean {
+	if (action.type === "feed.bound" || !("runtimeId" in action) || action.runtimeId === undefined) return false;
+	if (state.runtimeId === action.runtimeId) return false;
+	if (state.runtimeId !== null) return true;
+	return action.type === "runtime.events" || action.type === "history.loaded" || action.type === "turn.restored";
 }
 
 /** Unconfirmed sends of this feed, to be restored when its Runtime is shown again. */
@@ -245,6 +260,15 @@ function applyRuntimeEvent(state: ConversationFeedState, event: SessionEvent): C
 				),
 			);
 		}
+		case "error":
+			return appendFeedError(state, {
+				type: "error.appended",
+				message: event.error.message,
+				timestamp: event.timestamp,
+				...(event.retryAttempts ? { attempts: event.retryAttempts } : {}),
+				...(event.turnId ? { turnId: event.turnId } : {}),
+				details: toChatErrorDetails(event.error),
+			});
 		default:
 			return state;
 	}
@@ -364,6 +388,8 @@ function finishTurn(
 	const index = findLastIndex(state.items, (item) => item.kind === "agent" && item.turnId === event.turnId);
 	const item = state.items[index];
 	if (item?.kind !== "agent") return activeTurnId === state.activeTurnId ? state : { ...state, activeTurnId };
+	// A repeated or late terminal fact for a Turn that is already settled changes nothing.
+	if (state.activeTurnId !== event.turnId && item.endedAt !== undefined) return state;
 	let settled: AgentItem;
 	if (event.type === "conversation.turn.cancelled") {
 		settled = abortConversationAgentMessage(item, event.timestamp);
@@ -591,137 +617,7 @@ function bindFeed(
 	};
 }
 
-// ─── Durable history ───
-
-/**
- * Merge a durable snapshot by id. Durable items take their persisted order and
- * metadata; items not yet durable stay right after the item that preceded them.
- * Items that were durable before and are missing now were deleted by history.
- */
-function mergeHistory(
-	state: ConversationFeedState,
-	incoming: readonly ChatConversationItem[],
-	revision: number,
-): ConversationFeedState {
-	if (revision < state.historyRevision) return state;
-	const currentById = new Map<string, ChatConversationItem>(state.items.map((item) => [item.id, item]));
-	for (const user of state.queuedUsers) if (!currentById.has(user.id)) currentById.set(user.id, user);
-	const incomingIds = new Set(incoming.map((item) => item.id));
-	const merged = incoming.map((durable) => {
-		const current = currentById.get(durable.id);
-		return current ? mergeDurableItem(current, durable, state.activeTurnId) : durable;
-	});
-
-	const localsAfter = new Map<string | null, ChatConversationItem[]>();
-	let anchor: string | null = null;
-	for (const item of state.items) {
-		if (incomingIds.has(item.id)) {
-			anchor = item.id;
-			continue;
-		}
-		if (state.durableIds.has(item.id)) continue;
-		const locals = localsAfter.get(anchor) ?? [];
-		locals.push(item);
-		localsAfter.set(anchor, locals);
-	}
-	const items: ChatConversationItem[] = [];
-	for (const item of merged) {
-		items.push(item);
-		const locals = localsAfter.get(item.id);
-		if (locals) items.push(...locals);
-	}
-	items.push(...(localsAfter.get(null) ?? []));
-
-	return {
-		...state,
-		items: sameItems(items, state.items) ? state.items : items,
-		durableIds: incomingIds,
-		historyRevision: revision,
-		queuedUsers: state.queuedUsers.filter((user) => !incomingIds.has(user.id)),
-	};
-}
-
-/**
- * Durable metadata always wins. A message of the running Turn keeps its live
- * content; a settled message takes persisted content unless the snapshot is
- * older than what is already shown.
- */
-function mergeDurableItem(
-	current: ChatConversationItem,
-	durable: ChatConversationItem,
-	activeTurnId: string | null,
-): ChatConversationItem {
-	if (current.kind !== durable.kind) return durable;
-	let merged: ChatConversationItem;
-	if (current.kind === "user" && durable.kind === "user") {
-		merged = {
-			...durable,
-			// Editor-only snapshot fields are never persisted; keep them from the send.
-			...(current.inputSegments ? { inputSegments: current.inputSegments } : {}),
-			...(current.images ? { images: current.images } : {}),
-			...(current.appshot ? { appshot: current.appshot } : {}),
-			...(current.mentionedFiles?.length && !durable.mentionedFiles?.length
-				? { mentionedFiles: current.mentionedFiles }
-				: {}),
-			attachments: durable.attachments ?? current.attachments,
-			settingsAssistTabId: durable.settingsAssistTabId ?? current.settingsAssistTabId,
-			promptRef: durable.promptRef ?? current.promptRef,
-			model: durable.model ?? current.model,
-			timestamp: durable.timestamp ?? current.timestamp,
-			deliveryPhase: "completed",
-		};
-	} else if (current.kind === "agent" && durable.kind === "agent") {
-		merged = mergeAgentItem(current, durable, current.turnId === activeTurnId);
-	} else {
-		merged = durable;
-	}
-	merged = withStableRenderKey(current, merged);
-	return sameValue(merged, current) ? current : merged;
-}
-
-function mergeAgentItem(current: AgentItem, durable: AgentItem, running: boolean): AgentItem {
-	const liveContentCount = current.blocks.filter((block) => block.type !== "error").length;
-	if (running || durable.blocks.length < liveContentCount) {
-		return {
-			...current,
-			entryId: durable.entryId ?? current.entryId,
-			usages: current.usages ?? durable.usages,
-			startedAt: current.startedAt ?? durable.startedAt,
-			endedAt: current.endedAt ?? durable.endedAt,
-			durationSeconds: current.durationSeconds ?? durable.durationSeconds,
-		};
-	}
-	const liveErrors = current.blocks.filter(
-		(block): block is ErrorBlock =>
-			block.type === "error" &&
-			!durable.blocks.some((candidate) => candidate.type === "error" && sameError(candidate, block)),
-	);
-	return {
-		...durable,
-		...(current.toolCallPresentations ? { toolCallPresentations: current.toolCallPresentations } : {}),
-		phase: current.phase,
-		text: durable.text || current.text,
-		blocks: liveErrors.length > 0 ? [...durable.blocks, ...liveErrors] : durable.blocks,
-		startedAt: current.startedAt ?? durable.startedAt,
-		endedAt: current.endedAt ?? durable.endedAt,
-		durationSeconds: current.durationSeconds ?? durable.durationSeconds,
-		modelRequestStartedAt: current.modelRequestStartedAt ?? durable.modelRequestStartedAt,
-		usages: durable.usages ?? current.usages,
-	};
-}
-
-function sameError(left: ErrorBlock, right: ErrorBlock): boolean {
-	if (left.turnId && right.turnId) return left.turnId === right.turnId;
-	return left.kind === right.kind && left.text === right.text;
-}
-
 // ─── Helpers ───
-
-/** Keep the DOM row when an item's identity fields change (draft adoption, durable entryId). */
-function withStableRenderKey<T extends ChatConversationItem>(previous: ChatConversationItem, next: T): T {
-	const key = conversationItemRenderKey(previous);
-	return conversationItemRenderKey(next) === key ? next : { ...next, renderKey: key };
-}
 
 function withItems(state: ConversationFeedState, items: readonly ChatConversationItem[]): ConversationFeedState {
 	return items === state.items ? state : { ...state, items };
@@ -753,25 +649,6 @@ function findLastIndex(
 ): number {
 	for (let index = items.length - 1; index >= 0; index--) if (predicate(items[index])) return index;
 	return -1;
-}
-
-function sameItems(left: readonly ChatConversationItem[], right: readonly ChatConversationItem[]): boolean {
-	return left.length === right.length && left.every((item, index) => item === right[index]);
-}
-
-/** Structural equality of JSON-like view models; undefined fields count as absent. */
-function sameValue(left: unknown, right: unknown): boolean {
-	if (left === right) return true;
-	if (typeof left !== "object" || typeof right !== "object" || left === null || right === null) return false;
-	if (Array.isArray(left) !== Array.isArray(right)) return false;
-	if (Array.isArray(left) && Array.isArray(right)) {
-		return left.length === right.length && left.every((value, index) => sameValue(value, right[index]));
-	}
-	const leftRecord = left as Record<string, unknown>;
-	const rightRecord = right as Record<string, unknown>;
-	const keys = new Set([...Object.keys(leftRecord), ...Object.keys(rightRecord)]);
-	for (const key of keys) if (!sameValue(leftRecord[key], rightRecord[key])) return false;
-	return true;
 }
 
 function messageText(

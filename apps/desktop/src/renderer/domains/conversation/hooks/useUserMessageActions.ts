@@ -4,7 +4,6 @@ import {
 	type ActiveSession,
 	activeSessionAtom,
 	appshotAttachmentAtom,
-	chatMessagesAtom,
 	confirmDialogAtom,
 	inputValueAtom,
 	isStreamingAtom,
@@ -16,6 +15,7 @@ import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
 import { type MouseEvent, useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { fullHistoryToChat, isUserImageFile } from "../services/chat-service";
+import { dispatchConversationFeed } from "../services/conversation-feed-store";
 import { getSessionRuntimeWhenReady } from "../services/session-runtime-readiness";
 import { cancelStagedPendingSessionSend, restoreStagedPendingSessionSend } from "../services/staged-new-session-send";
 import { copyUserMessageToClipboard } from "../services/user-message-clipboard";
@@ -107,7 +107,7 @@ async function reloadChatHistory(runtimeId: string): Promise<void> {
 	const history = await window.vetta.session.getFullHistory(runtimeId);
 	const store = getDefaultStore();
 	if (store.get(activeSessionAtom)?.runtimeId === runtimeId) {
-		store.set(chatMessagesAtom, fullHistoryToChat(history));
+		dispatchConversationFeed({ type: "feed.replaced", items: fullHistoryToChat(history) }, store);
 	}
 }
 

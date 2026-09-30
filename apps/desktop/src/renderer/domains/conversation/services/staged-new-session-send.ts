@@ -10,7 +10,6 @@ import {
 	activeInputDraftKeyAtom,
 	appshotAttachmentAtom,
 	attachedImagesAtom,
-	chatMessagesAtom,
 	clearCurrentSessionInputDraft,
 	inputSegmentsAtom,
 	inputValueAtom,
@@ -23,6 +22,7 @@ import {
 import type { PromptAttachmentRef } from "@vetta/runtime-core";
 import { getDefaultStore } from "jotai";
 import { isUserImageFile, nextId } from "./chat-service";
+import { dispatchConversationFeed, resetConversationFeed } from "./conversation-feed-store";
 
 const pendingSessionSends = new Map<string, StagedSendInput>();
 
@@ -113,9 +113,8 @@ function stageSessionSend(
 		store.set(attachedImagesAtom, []);
 		store.set(mentionedFilesAtom, []);
 	}
-	store.set(chatMessagesAtom, (messages) =>
-		messagePlacement === "replace" ? [optimisticMessage] : [...messages, optimisticMessage],
-	);
+	if (messagePlacement === "replace") resetConversationFeed(store);
+	dispatchConversationFeed({ type: "user.sent", message: optimisticMessage }, store);
 	perfSendMark("optimistic-append", interactionId);
 
 	return {
@@ -160,7 +159,7 @@ export function cancelStagedPendingSessionSend(messageId: string): StagedSendInp
 /** Restores a staged draft when runtime creation fails before dispatch. */
 export function restoreStagedNewSessionSend(staged: StagedSendInput): void {
 	const store = getDefaultStore();
-	store.set(chatMessagesAtom, []);
+	resetConversationFeed(store);
 	if (staged.hasOverride) return;
 	store.set(inputSegmentsAtom, staged.inputSegments.slice());
 	store.set(inputValueAtom, staged.rawText);
@@ -181,7 +180,7 @@ export function restoreStagedPendingSessionSend(
 ): void {
 	pendingSessionSends.delete(staged.optimisticMessage.id);
 	const store = getDefaultStore();
-	store.set(chatMessagesAtom, (messages) => messages.filter((message) => message.id !== staged.optimisticMessage.id));
+	dispatchConversationFeed({ type: "user.discarded", id: staged.optimisticMessage.id }, store);
 	if (staged.hasOverride || !staged.draftKey) return;
 	const activeDraftKey = store.get(activeInputDraftKeyAtom);
 	if (activeDraftKey !== staged.draftKey) {

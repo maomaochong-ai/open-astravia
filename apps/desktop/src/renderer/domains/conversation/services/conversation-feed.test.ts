@@ -465,6 +465,27 @@ describe("conversation feed", () => {
 		expect(reply?.kind === "agent" && reply.text).toBe("persisted streaming");
 	});
 
+	it("attaches a Turn failure to that Turn's message, not to the latest one", () => {
+		const state = reduce(
+			freshFeed(),
+			events(turnStarted("t1", 10), turnStarted("t2", 11), {
+				...base(12),
+				channel: "runtime",
+				source: "runtime-core",
+				type: "error",
+				turnId: "t1",
+				retryAttempts: 2,
+				error: { code: "PROVIDER_ERROR", message: "rate limited", retryable: true, origin: "provider" },
+			} as SessionEvent),
+		);
+		const failed = state.items.find((item) => item.id === "assistant:t1:0");
+		const running = state.items.find((item) => item.id === "assistant:t2:0");
+		expect(failed?.kind === "agent" && failed.blocks).toMatchObject([
+			{ type: "error", turnId: "t1", text: "rate limited", attempts: 2 },
+		]);
+		expect(running?.kind === "agent" && running.blocks).toEqual([]);
+	});
+
 	it("shows the same local failure once", () => {
 		const state = reduce(
 			freshFeed(),
@@ -498,5 +519,239 @@ describe("conversation feed", () => {
 
 		const confirmed = reduce(restored, events(turnStarted("t1", 5), userAppended("t1", "u1", "hi", 6)));
 		expect(conversationFeedOutbox(confirmed)).toMatchObject({ visible: [], queued: [{ id: "u2" }] });
+	});
+
+	it("keeps interleaved thinking, text and tool events in wire order", () => {
+		const partial = assistant([
+			{ type: "thinking", thinking: "r" },
+			{ type: "text", text: "a" },
+			{ type: "toolCall", id: "call-1", name: "read", arguments: { path: "README.md" } },
+		]);
+		const state = reduce(
+			freshFeed(),
+			events(
+				turnStarted("t1", 1),
+				assistantEvent("t1", 0, { type: "thinking_delta", contentIndex: 0, delta: "r", partial }, 2),
+				assistantEvent("t1", 0, { type: "text_delta", contentIndex: 1, delta: "a", partial }, 3),
+				assistantEvent("t1", 0, { type: "toolcall_start", contentIndex: 2, partial }, 4),
+				assistantEvent("t1", 0, { type: "text_delta", contentIndex: 1, delta: "b", partial }, 5),
+			),
+		);
+
+		expect(visible(state.items)).toEqual([
+			{
+				id: "assistant:t1:0",
+				kind: "agent",
+				phase: "streaming",
+				blocks: ["thinking:r", "text:a", "tool_call:call-1:pending", "text:b"],
+			},
+		]);
+	});
+
+	it("keeps events of two Turns delivered interleaved on their own messages", () => {
+		const state = reduce(
+			freshFeed(),
+			events(
+				turnStarted("ta", 1),
+				userAppended("ta", "ua", "A?", 2),
+				turnStarted("tb", 3),
+				userAppended("tb", "ub", "B?", 4),
+				textDelta("ta", 0, "A", 5),
+				textDelta("tb", 0, "B", 6),
+			),
+		);
+
+		expect(state.items.find((item) => item.id === "assistant:ta:1")).toMatchObject({ text: "A" });
+		expect(state.items.find((item) => item.id === "assistant:tb:1")).toMatchObject({ text: "B" });
+	});
+
+	it("restores the running Turn's unfinished history tools as pending on the same message", () => {
+		const history = fullHistoryToChat([
+			{
+				type: "message",
+				entryId: "e1",
+				messageId: "u1",
+				turnId: "t1",
+				message: { role: "user", content: "go", timestamp: 1 },
+			},
+			{
+				type: "message",
+				entryId: "e2",
+				turnId: "t1",
+				message: assistant([
+					{ type: "toolCall", id: "done-call", name: "bash", arguments: {} },
+					{ type: "toolCall", id: "open-call", name: "bash", arguments: {} },
+				]),
+			},
+			{
+				type: "message",
+				entryId: "e3",
+				turnId: "t1",
+				message: { role: "toolResult", toolCallId: "done-call", toolName: "bash", content: "ok", timestamp: 2 },
+			},
+		] as HistoryEntry[]);
+
+		const state = reduce(
+			freshFeed(),
+			{ type: "history.loaded", items: history, revision: 1 },
+			{ type: "turn.restored", turnId: "t1", startedAt: 1 },
+		);
+
+		expect(visible(state.items)).toEqual([
+			{ id: "u1", kind: "user", text: "go" },
+			{
+				id: "assistant:t1:1",
+				kind: "agent",
+				phase: "streaming",
+				blocks: ["tool_call:done-call:success", "tool_call:open-call:pending"],
+			},
+		]);
+	});
+
+	it("settles a cancelled Turn once however often the cancellation is reported", () => {
+		const cancelled = reduce(
+			freshFeed(),
+			events(turnStarted("t1", 1_000), turnEnded("conversation.turn.cancelled", "t1", 3_000)),
+		);
+		const again = reduce(cancelled, events(turnEnded("conversation.turn.cancelled", "t1", 9_000)));
+
+		expect(again).toBe(cancelled);
+		expect(cancelled.items[0]).toMatchObject({ phase: "aborted", endedAt: 3_000, durationSeconds: 2 });
+	});
+
+	it("closes the previous segment when a steering message joins the running Turn", () => {
+		const state = reduce(
+			freshFeed(),
+			events(
+				turnStarted("t1", 10),
+				userAppended("t1", "u1", "go", 11),
+				textDelta("t1", 0, "working", 12),
+				userAppended("t1", "u2", "also this", 20),
+				textDelta("t1", 1, "sure", 21),
+				turnEnded("conversation.turn.completed", "t1", 30),
+			),
+		);
+
+		expect(visible(state.items)).toEqual([
+			{ id: "u1", kind: "user", text: "go" },
+			{ id: "assistant:t1:1", kind: "agent", phase: "completed", blocks: ["text:working"] },
+			{ id: "u2", kind: "user", text: "also this" },
+			{ id: "assistant:t1:2", kind: "agent", phase: "completed", blocks: ["text:sure"] },
+		]);
+		expect(state.items[1]).toMatchObject({ endedAt: 20 });
+		expect(state.items[3]).toMatchObject({ endedAt: 30 });
+	});
+
+	it("takes the model a Turn actually used from history and otherwise keeps the one selected at send", () => {
+		const sent = reduce(
+			freshFeed(),
+			{ type: "user.sent", message: { ...optimisticUser("u1", "hi"), model: { provider: "openai", id: "gpt" } } },
+			{ type: "user.sent", message: { ...optimisticUser("u2", "hi"), model: { provider: "openai", id: "gpt" } } },
+		);
+		const history = [
+			{ ...createConversationUserMessage({ id: "u1", text: "hi" }), model: { provider: "deepseek", id: "chat" } },
+			createConversationUserMessage({ id: "u2", text: "hi" }),
+		];
+
+		const state = reduce(sent, { type: "history.loaded", items: history, revision: 1 });
+		expect(state.items[0]).toMatchObject({ model: { provider: "deepseek", id: "chat" } });
+		expect(state.items[1]).toMatchObject({ model: { provider: "openai", id: "gpt" } });
+	});
+
+	it("keeps item objects when a history snapshot changes nothing", () => {
+		const history = fullHistoryToChat([
+			{
+				type: "message",
+				entryId: "e1",
+				messageId: "u1",
+				turnId: "t1",
+				message: { role: "user", content: "hi", timestamp: 1 },
+			},
+			{ type: "message", entryId: "e2", turnId: "t1", message: assistant([{ type: "text", text: "a" }], "stop") },
+		] as HistoryEntry[]);
+		const shown = reduce(freshFeed(), { type: "history.loaded", items: history, revision: 1 });
+		// A second, independently mapped copy of the same history (preview, then Runtime).
+		const again = reduce(shown, {
+			type: "history.loaded",
+			items: fullHistoryToChat([
+				{
+					type: "message",
+					entryId: "e1",
+					messageId: "u1",
+					turnId: "t1",
+					message: { role: "user", content: "hi", timestamp: 1 },
+				},
+				{ type: "message", entryId: "e2", turnId: "t1", message: assistant([{ type: "text", text: "a" }], "stop") },
+			] as HistoryEntry[]),
+			revision: 2,
+		});
+
+		expect(again.items).toBe(shown.items);
+	});
+
+	it("keeps a newly started Turn when history of the previous Turn arrives", () => {
+		const live = reduce(
+			freshFeed(),
+			events(
+				turnStarted("t1", 1),
+				userAppended("t1", "u1", "one", 2),
+				textDelta("t1", 0, "first", 3),
+				turnEnded("conversation.turn.completed", "t1", 4),
+			),
+			{ type: "user.sent", message: optimisticUser("u2", "two") },
+			events(turnStarted("t2", 5), userAppended("t2", "u2", "two", 6), textDelta("t2", 0, "sec", 7)),
+		);
+		const previousTurnOnly = fullHistoryToChat([
+			{
+				type: "message",
+				entryId: "e1",
+				messageId: "u1",
+				turnId: "t1",
+				message: { role: "user", content: "one", timestamp: 2 },
+			},
+			{
+				type: "message",
+				entryId: "e2",
+				turnId: "t1",
+				message: assistant([{ type: "text", text: "first" }], "stop"),
+			},
+		] as HistoryEntry[]);
+
+		const state = reduce(live, { type: "history.loaded", items: previousTurnOnly, revision: 1 });
+		expect(visible(state.items)).toEqual(visible(live.items));
+		expect(state.items[0]).toMatchObject({ entryId: "e1" });
+	});
+
+	it("keeps the live Turn identity when a history record predates Turn identity", () => {
+		const live = reduce(freshFeed(), events(turnStarted("t1", 1), userAppended("t1", "u1", "go", 2)));
+		const legacyRecord = fullHistoryToChat([
+			{ type: "message", entryId: "u1", message: { role: "user", content: "go", timestamp: 2 } },
+		] as HistoryEntry[]);
+
+		const state = reduce(
+			live,
+			{ type: "history.loaded", items: legacyRecord, revision: 1 },
+			events(textDelta("t1", 0, "reply", 3)),
+		);
+		expect(visible(state.items)).toEqual([
+			{ id: "u1", kind: "user", text: "go" },
+			{ id: "assistant:t1:1", kind: "agent", phase: "streaming", blocks: ["text:reply"] },
+		]);
+	});
+
+	it("keeps the editor snapshot of a visible send once history confirms it", () => {
+		const segments = [{ kind: "text" as const, text: "hi" }];
+		const sent = reduce(freshFeed(), {
+			type: "user.sent",
+			message: { ...optimisticUser("u1", "hi"), inputSegments: segments },
+		});
+		const state = reduce(sent, {
+			type: "history.loaded",
+			items: [createConversationUserMessage({ id: "u1", entryId: "e1", text: "hi" })],
+			revision: 1,
+		});
+
+		expect(state.items[0]).toMatchObject({ entryId: "e1", deliveryPhase: "completed", inputSegments: segments });
+		expect(conversationFeedOutbox(state).visible).toEqual([]);
 	});
 });

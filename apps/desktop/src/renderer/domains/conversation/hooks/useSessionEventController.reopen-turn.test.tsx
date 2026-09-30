@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 
 import { act, renderHook } from "@testing-library/react";
-import { activeSessionStreamingAtom, chatMessagesAtom } from "@shared/store/atoms";
+import { activeSessionStreamingAtom, chatMessagesAtom, conversationFeedAtom, createConversationFeedState } from "@shared/store/atoms";
 import type { AssistantMessage } from "@vetta/ai";
 import type { HistoryEntry, SessionEvent } from "@vetta/runtime-core";
 import { getDefaultStore } from "jotai";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fullHistoryToChat, resetStreamState, restoreAssistantTurn, setChatStreamOwner } from "../services/chat-service";
+import { fullHistoryToChat, setChatStreamOwner } from "../services/chat-service";
+import { dispatchConversationFeed } from "../services/conversation-feed-store";
 import { useSessionEventController } from "./useSessionEventController";
 
 const base = {
@@ -32,9 +33,8 @@ describe("reopening a session while its Turn is still running", () => {
 	const store = getDefaultStore();
 	beforeEach(() => {
 		vi.useFakeTimers();
-		resetStreamState();
 		setChatStreamOwner("session-1");
-		store.set(chatMessagesAtom, []);
+		store.set(conversationFeedAtom, createConversationFeedState("session-1"));
 		store.set(activeSessionStreamingAtom, false);
 		vi.stubGlobal("vetta", {
 			session: { getFullHistory: () => new Promise(() => undefined) },
@@ -44,7 +44,6 @@ describe("reopening a session while its Turn is still running", () => {
 	afterEach(() => {
 		vi.useRealTimers();
 		vi.unstubAllGlobals();
-		resetStreamState();
 	});
 
 	it("keeps streaming into the restored assistant bubble instead of opening a second one", () => {
@@ -64,10 +63,11 @@ describe("reopening a session while its Turn is still running", () => {
 				activeSessionRef: { current: { runtimeId: "session-1", cwd: "/w", sessionPath: "/s.jsonl" } },
 			}),
 		);
-		// Mirror useSessionOpener: reset event buffers, show history, restore the running draft.
+		// Mirror useSessionOpener: show history, then restore the running Turn by its identity.
 		act(() => {
 			result.current.resetEventBuffers();
-			store.set(chatMessagesAtom, restoreAssistantTurn(fullHistoryToChat(history), 1_000));
+			dispatchConversationFeed({ type: "history.loaded", items: fullHistoryToChat(history), revision: 1 });
+			dispatchConversationFeed({ type: "turn.restored", runtimeId: "session-1", turnId, startedAt: 1_000 });
 		});
 		const send = (event: SessionEvent) => act(() => result.current.createSessionEventHandler("session-1")(event));
 

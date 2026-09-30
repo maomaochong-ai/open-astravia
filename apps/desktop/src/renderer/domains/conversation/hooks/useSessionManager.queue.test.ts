@@ -290,8 +290,8 @@ it(
 		expect(result).toEqual({ status: "queued", queueItemId: "q-1" });
 		// 排队消息不上屏：待消费时由 durable message.appended 事实上屏。
 		expect(store.get(chatMessagesAtom)).toEqual([]);
-		const { findOptimisticUserMessage } = await import("../services/optimistic-user-message-cache");
-		expect(findOptimisticUserMessage(runtimeId, request.messageId)).toMatchObject({
+		const { conversationFeedAtom } = await import("@shared/store/atoms");
+		expect(store.get(conversationFeedAtom).queuedUsers.find((user) => user.id === request.messageId)).toMatchObject({
 			id: request.messageId,
 			text: "排队消息",
 			inputSegments: [{ kind: "text", text: "排队消息" }],

@@ -1,9 +1,9 @@
 import { perfSendBegin, perfSendMark } from "@shared/lib/perf-send";
 import type { OpenSessionOptions, SendMessageOptions, SessionExecutionMode } from "@shared/store/atoms";
-import { chatMessagesAtom, pendingSessionSendAtom } from "@shared/store/atoms";
+import { pendingSessionSendAtom } from "@shared/store/atoms";
 import { getDefaultStore } from "jotai";
 import { useCallback, useRef } from "react";
-import { startAssistantTurn } from "../../services/chat-service";
+import { dispatchConversationFeed } from "../../services/conversation-feed-store";
 import type { StartNewSessionGoal } from "../../services/goal-mode-entry";
 import { restoreStagedNewSessionSend, stageNewSessionSend } from "../../services/staged-new-session-send";
 import type { SendInteractionContext } from "../input-bar/types";
@@ -56,7 +56,7 @@ export function useNewSessionSend(options: NewSessionSendOptions): {
 				});
 				// 发送意图确认后立即建立 assistant 草稿，头像/名称与暂停按钮同帧出现；
 				// 后续 session.create、订阅和 prompt 只负责让该草稿进入正式流式生命周期。
-				getDefaultStore().set(chatMessagesAtom, (prev) => startAssistantTurn(prev, Date.now()));
+				dispatchConversationFeed({ type: "turn.pending", startedAt: Date.now() });
 				await openSession(targetCwd, undefined, executionMode, {
 					interactionId,
 					...(agentProfileId ? { agentProfileId } : {}),
