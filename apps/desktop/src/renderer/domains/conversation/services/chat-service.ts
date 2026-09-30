@@ -349,17 +349,35 @@ function extractAskUserQuestion(detailsRecord: Record<string, unknown>): AskUser
  * Used for history loading only — tool_call blocks get status "success"
  * because history messages are already complete.
  */
-export function messageToBlocks(content: unknown, toolStatus: ToolCallBlock["status"] = "success"): ContentBlock[] {
+/**
+ * Block ids follow the live stream contract `<messageId>:<type>:<index in message>`,
+ * so the same message projected from history and from events keeps its DOM rows.
+ */
+function historyBlockId(owner: HistoryBlockOwner, type: string, offset: number): string {
+	return `${owner.id}:${type}:${owner.startIndex + offset}`;
+}
+
+interface HistoryBlockOwner {
+	readonly id: string;
+	readonly startIndex: number;
+}
+
+export function messageToBlocks(
+	content: unknown,
+	toolStatus: ToolCallBlock["status"] = "success",
+	owner?: HistoryBlockOwner,
+): ContentBlock[] {
+	const blockId = (type: string, offset: number) => (owner ? historyBlockId(owner, type, offset) : nextId("blk"));
 	if (typeof content === "string") {
-		return content ? [{ type: "text", id: nextId("blk"), text: content }] : [];
+		return content ? [{ type: "text", id: blockId("text", 0), text: content }] : [];
 	}
 	if (!Array.isArray(content)) return [];
 	const blocks: ContentBlock[] = [];
 	for (const part of content as Array<Record<string, unknown>>) {
 		if (part.type === "text" && typeof part.text === "string") {
-			blocks.push({ type: "text", id: nextId("blk"), text: part.text });
+			blocks.push({ type: "text", id: blockId("text", blocks.length), text: part.text });
 		} else if (part.type === "thinking" && typeof part.thinking === "string") {
-			blocks.push({ type: "thinking", id: nextId("blk"), text: part.thinking });
+			blocks.push({ type: "thinking", id: blockId("thinking", blocks.length), text: part.thinking });
 		} else if (part.type === "toolCall" && typeof part.name === "string" && part.name !== "") {
 			// Skip empty-name toolCall parts left behind by old provider parser bugs
 			// (OpenAI-compat placeholder frames produced ghost {id:"", name:""} blocks
@@ -386,6 +404,7 @@ export function messageToBlocks(content: unknown, toolStatus: ToolCallBlock["sta
  * 历史这条路只能在这里折叠。
  */
 function pushHistoryError(
+	ownerId: string,
 	blocks: ContentBlock[],
 	errorMessage: string,
 	turnId?: string,
@@ -420,7 +439,7 @@ function pushHistoryError(
 	}
 	blocks.push({
 		type: "error",
-		id: nextId("blk"),
+		id: `${ownerId}:error:${blocks.length}`,
 		text: errorMessage,
 		kind,
 		...(turnId ? { turnId } : {}),
@@ -450,7 +469,7 @@ function createDeferredHistoryErrors() {
 		},
 		flush(): void {
 			for (const { target, message, details } of pending) {
-				pushHistoryError(target.blocks!, message, undefined, details);
+				pushHistoryError(target.id, target.blocks!, message, undefined, details);
 				if (!target.text) target.text = message;
 			}
 			pending = [];
@@ -520,7 +539,10 @@ export function historyToChat(
 			const target = currentAssistant();
 			if (target.timestamp === undefined) target.timestamp = m.timestamp;
 			if (m.usage) target.usages = [...(target.usages ?? []), m.usage];
-			const blocks = messageToBlocks(m.content, m.stopReason === "aborted" ? "cancelled" : "success");
+			const blocks = messageToBlocks(m.content, m.stopReason === "aborted" ? "cancelled" : "success", {
+				id: target.id,
+				startIndex: target.blocks!.length,
+			});
 			for (const b of blocks) {
 				if (b.type === "tool_call") toolCallIndex.set(b.toolCallId, b);
 			}
@@ -676,6 +698,7 @@ export function fullHistoryToChat(entries: HistoryEntry[]): ChatConversationItem
 			historyErrors.flush();
 			const target = entry.turnId ? assistantForDurableError(entry.turnId, entry.message) : currentAssistant();
 			pushHistoryError(
+				target.id,
 				target.blocks!,
 				entry.message,
 				entry.turnId,
@@ -756,7 +779,10 @@ export function fullHistoryToChat(entries: HistoryEntry[]): ChatConversationItem
 				target.entryId = entryId;
 				if (!turnId) target.id = entryId;
 			}
-			const blocks = messageToBlocks(m.content, m.stopReason === "aborted" ? "cancelled" : "success");
+			const blocks = messageToBlocks(m.content, m.stopReason === "aborted" ? "cancelled" : "success", {
+				id: target.id,
+				startIndex: target.blocks!.length,
+			});
 			for (const b of blocks) {
 				if (b.type === "tool_call") toolCallIndex.set(b.toolCallId, b);
 			}
@@ -1121,6 +1147,120 @@ export function finalizeMessage(prev: ChatConversationItem[], content: unknown, 
 	return copy;
 }
 
+/** Index of the assistant message that owns `toolCallId`, searching newest first. */
+export function findToolCallMessageIndex(items: readonly ChatConversationItem[], toolCallId: string): number {
+	for (let index = items.length - 1; index >= 0; index--) {
+		const item = items[index];
+		if (
+			item.kind === "agent" &&
+			item.blocks.some((block) => block.type === "tool_call" && block.toolCallId === toolCallId)
+		)
+			return index;
+	}
+	return -1;
+}
+
+/** Record tool.start on one assistant message; returns the same object when nothing changes. */
+export function withToolCallStarted(
+	message: ConversationAgentMessageViewModel,
+	toolCallId: string,
+	toolName: string,
+	args: Record<string, unknown>,
+	startedAt?: number,
+): ConversationAgentMessageViewModel {
+	const blocks = [...message.blocks];
+	// The block usually exists already from the streamed assistant tool call.
+	const existing = blocks.findIndex((b) => b.type === "tool_call" && b.toolCallId === toolCallId);
+	if (existing !== -1) {
+		const block = blocks[existing] as ToolCallBlock;
+		const argsChanged = Object.keys(args).length > 0 && block.args !== args;
+		const startedAtChanged = startedAt !== undefined && block.startedAt === undefined;
+		if (!argsChanged && !startedAtChanged) return message;
+		blocks[existing] = {
+			...block,
+			args: argsChanged ? args : block.args,
+			startedAt: startedAtChanged ? startedAt : block.startedAt,
+		};
+		return { ...message, blocks };
+	}
+	blocks.push({
+		type: "tool_call",
+		toolCallId,
+		toolName,
+		args,
+		status: "pending",
+		startedAt,
+	});
+	return { ...message, blocks };
+}
+
+/** Record tool.end on one assistant message; returns the same object when the call is absent. */
+export function withToolCallEnded(
+	message: ConversationAgentMessageViewModel,
+	toolCallId: string,
+	result: unknown,
+	isError: boolean,
+	timing?: { startedAt: number; durationMs: number; phases: Array<{ label: string; atMs: number }> },
+): ConversationAgentMessageViewModel {
+	const blockIdx = message.blocks.findIndex((b) => b.type === "tool_call" && b.toolCallId === toolCallId);
+	if (blockIdx === -1) return message;
+	const imagePreviews = extractToolImagePreviews(result, undefined);
+	const blocks = [...message.blocks];
+	const block = blocks[blockIdx] as ToolCallBlock;
+	blocks[blockIdx] = {
+		...block,
+		status: isError ? "error" : "success",
+		result: extractResultText(result),
+		imagePreview: imagePreviews[0],
+		imagePreviews,
+		audioPreviews: extractToolAudioPreviews(result, undefined),
+		mcpApp: extractToolMcpApp(result, undefined),
+		uiDetails: extractToolUiDetails(result, undefined),
+		cards: extractToolCards(result, undefined),
+		isError,
+		startedAt: timing?.startedAt ?? block.startedAt,
+		durationMs: timing?.durationMs ?? block.durationMs,
+		phases: timing?.phases ?? block.phases,
+		// Clear currentPhase — execution is over, the badge is no longer "live".
+		currentPhase: undefined,
+	};
+	return { ...message, blocks };
+}
+
+/**
+ * Record tool.phase on one assistant message: append a phase boundary and mark it
+ * as the live "currentPhase" for header display. Both are out-of-band metadata —
+ * never sent to the LLM.
+ */
+export function withToolCallPhase(
+	message: ConversationAgentMessageViewModel,
+	toolCallId: string,
+	label: string,
+	atMs: number,
+): ConversationAgentMessageViewModel {
+	const blockIdx = message.blocks.findIndex((b) => b.type === "tool_call" && b.toolCallId === toolCallId);
+	if (blockIdx === -1) return message;
+	const blocks = [...message.blocks];
+	const block = blocks[blockIdx] as ToolCallBlock;
+	blocks[blockIdx] = {
+		...block,
+		phases: [...(block.phases ?? []), { label, atMs }],
+		currentPhase: label,
+	};
+	return { ...message, blocks };
+}
+
+function replaceAgentMessage(
+	prev: ChatConversationItem[],
+	index: number,
+	next: ConversationAgentMessageViewModel,
+): ChatConversationItem[] {
+	if (prev[index] === next) return prev;
+	const copy = [...prev];
+	copy[index] = next;
+	return copy;
+}
+
 /**
  * Handle tool.start: find or create a tool_call block on the last assistant message.
  */
@@ -1131,62 +1271,22 @@ export function handleToolStart(
 	args: Record<string, unknown>,
 	startedAt?: number,
 ): ChatConversationItem[] {
-	// First: search for a finalized message from the current turn (not a draft)
-	// or the current draft. We only want to attach to the LAST assistant message
-	// that belongs to the current turn, not older history messages.
-	const lastMsg = prev.length > 0 ? prev[prev.length - 1] : null;
-
-	// If the last message is an assistant message, attach to it
+	// Only the LAST assistant message belongs to the current turn, not older history messages.
+	const lastMsg = prev.at(-1);
 	if (lastMsg?.kind === "agent") {
-		const blocks = [...lastMsg.blocks];
-
-		// Check if this tool_call block already exists (from toolcall.start or message.final)
-		const existing = blocks.findIndex((b) => b.type === "tool_call" && b.toolCallId === toolCallId);
-		if (existing !== -1) {
-			const block = blocks[existing] as ToolCallBlock;
-			const argsChanged = Object.keys(args).length > 0 && block.args !== args;
-			const startedAtChanged = startedAt !== undefined && block.startedAt === undefined;
-			if (argsChanged || startedAtChanged) {
-				blocks[existing] = {
-					...block,
-					args: argsChanged ? args : block.args,
-					startedAt: startedAtChanged ? startedAt : block.startedAt,
-				};
-				const copy = [...prev];
-				copy[copy.length - 1] = { ...lastMsg, blocks };
-				return copy;
-			}
-			return prev;
-		}
-
-		blocks.push({
-			type: "tool_call",
-			toolCallId,
-			toolName,
-			args,
-			status: "pending",
-			startedAt,
-		});
-
-		const copy = [...prev];
-		copy[copy.length - 1] = { ...lastMsg, blocks };
-		return copy;
+		return replaceAgentMessage(
+			prev,
+			prev.length - 1,
+			withToolCallStarted(lastMsg, toolCallId, toolName, args, startedAt),
+		);
 	}
-
 	// No recent assistant message — use ensureDraft to keep one turn = one message
 	const [msgs, idx] = ensureDraft(prev);
-	const msg = requireAgentMessage(msgs[idx]);
-	const blocks = [...msg.blocks];
-	blocks.push({
-		type: "tool_call",
-		toolCallId,
-		toolName,
-		args,
-		status: "pending",
-		startedAt,
-	});
-	msgs[idx] = { ...msg, blocks };
-	return msgs;
+	return replaceAgentMessage(
+		msgs,
+		idx,
+		withToolCallStarted(requireAgentMessage(msgs[idx]), toolCallId, toolName, args, startedAt),
+	);
 }
 
 /**
@@ -1199,80 +1299,29 @@ export function handleToolEnd(
 	isError: boolean,
 	timing?: { startedAt: number; durationMs: number; phases: Array<{ label: string; atMs: number }> },
 ): ChatConversationItem[] {
-	const resultText = extractResultText(result);
-	const imagePreviews = extractToolImagePreviews(result, undefined);
-	const imagePreview = imagePreviews[0];
-	const audioPreviews = extractToolAudioPreviews(result, undefined);
-	const mcpApp = extractToolMcpApp(result, undefined);
-	const uiDetails = extractToolUiDetails(result, undefined);
-	const cards = extractToolCards(result, undefined);
-
-	// Search backwards for the matching tool_call block
-	for (let i = prev.length - 1; i >= 0; i--) {
-		const msg = prev[i];
-		if (msg.kind !== "agent") continue;
-
-		const blockIdx = msg.blocks.findIndex((b) => b.type === "tool_call" && b.toolCallId === toolCallId);
-		if (blockIdx === -1) continue;
-
-		const copy = [...prev];
-		const blocks = [...msg.blocks];
-		const block = blocks[blockIdx] as ToolCallBlock;
-		blocks[blockIdx] = {
-			...block,
-			status: isError ? "error" : "success",
-			result: resultText,
-			imagePreview,
-			imagePreviews,
-			audioPreviews,
-			mcpApp,
-			uiDetails,
-			cards,
-			isError,
-			startedAt: timing?.startedAt ?? block.startedAt,
-			durationMs: timing?.durationMs ?? block.durationMs,
-			phases: timing?.phases ?? block.phases,
-			// Clear currentPhase — execution is over, the badge is no longer "live".
-			currentPhase: undefined,
-		};
-		copy[i] = { ...msg, blocks };
-		return copy;
-	}
-
-	return prev;
+	const index = findToolCallMessageIndex(prev, toolCallId);
+	if (index < 0) return prev;
+	return replaceAgentMessage(
+		prev,
+		index,
+		withToolCallEnded(requireAgentMessage(prev[index]), toolCallId, result, isError, timing),
+	);
 }
 
-/**
- * Handle tool.phase: append a phase boundary to the matching tool_call block
- * while it's still streaming, and mark it as the live "currentPhase" for header
- * display. Both are out-of-band metadata — never sent to the LLM.
- */
+/** Handle tool.phase on the message that owns the tool call. */
 export function handleToolPhase(
 	prev: ChatConversationItem[],
 	toolCallId: string,
 	label: string,
 	atMs: number,
 ): ChatConversationItem[] {
-	for (let i = prev.length - 1; i >= 0; i--) {
-		const msg = prev[i];
-		if (msg.kind !== "agent") continue;
-
-		const blockIdx = msg.blocks.findIndex((b) => b.type === "tool_call" && b.toolCallId === toolCallId);
-		if (blockIdx === -1) continue;
-
-		const copy = [...prev];
-		const blocks = [...msg.blocks];
-		const block = blocks[blockIdx] as ToolCallBlock;
-		blocks[blockIdx] = {
-			...block,
-			phases: [...(block.phases ?? []), { label, atMs }],
-			currentPhase: label,
-		};
-		copy[i] = { ...msg, blocks };
-		return copy;
-	}
-
-	return prev;
+	const index = findToolCallMessageIndex(prev, toolCallId);
+	if (index < 0) return prev;
+	return replaceAgentMessage(
+		prev,
+		index,
+		withToolCallPhase(requireAgentMessage(prev[index]), toolCallId, label, atMs),
+	);
 }
 
 /**
