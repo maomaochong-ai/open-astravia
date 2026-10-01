@@ -11,16 +11,6 @@ export default defineConfig({
 		rollupOptions: {
 			input: {
 				main: "index.html",
-				download: "download.html",
-			},
-			output: {
-				// 下载页输出到 download/index.html 实现 /download 路由
-				assetFileNames: (assetInfo) => {
-					if (assetInfo.name === "download.html") {
-						return "download/index.html";
-					}
-					return "[name][extname]";
-				},
 			},
 		},
 	},

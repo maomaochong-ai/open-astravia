@@ -22,12 +22,11 @@ bun run typecheck  # tsc --noEmit 类型检查
 ```
 website/
 ├── index.html          # 首页（全部文案与结构）
-├── download.html       # 下载页
 ├── vite.config.ts      # 构建配置（outDir: dist）
 ├── tsconfig.json
 ├── public/             # 原样复制的静态资源
 │   ├── app/            # 产品真实界面截图（见下方「素材」）
-│   ├── download/       # 下载页服务商图标
+│   ├── download/       # 下载区块服务商图标
 │   ├── plugins/        # 11 个预装插件图标
 │   ├── fonts/
 │   ├── banner.png

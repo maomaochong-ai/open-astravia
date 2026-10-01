@@ -17,7 +17,7 @@
 <p align="center">
   <b>English</b> ·
   <a href="README.md">简体中文</a> ·
-  <a href="https://www.astravia.dev/download">Download</a>
+  <a href="https://www.astravia.dev/#download">Download</a>
 </p>
 
 ---
@@ -45,7 +45,7 @@ It is more than a chat interface: Astravia can inspect a workspace, use tools wi
 
 | I want to… | Start with |
 |---|---|
-| Use the desktop app | [Download for macOS, Windows, or Linux](https://www.astravia.dev/download), then follow the in-app setup. |
+| Use the desktop app | [Download for macOS, Windows, or Linux](https://www.astravia.dev/#download), then follow the in-app setup. |
 | Understand the product | Explore the core capabilities below. |
 | Build an extension | Choose between [skills, MCP, plugins, themes, SDK, RPC, and CLI](#plugin-development). |
 | Contribute code | Read [`QUICKSTART.md`](QUICKSTART.md) and [`CONTRIBUTING.md`](CONTRIBUTING.md). |

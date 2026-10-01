@@ -17,7 +17,7 @@
 <p align="center">
   <b>简体中文</b> ·
   <a href="README.zh-CN.md">English</a> ·
-  <a href="https://www.astravia.dev/download">下载</a>
+  <a href="https://www.astravia.dev/#download">下载</a>
 </p>
 
 ---
@@ -45,7 +45,7 @@ Astravia 把模型、项目文件、本机工具和可复用能力放进同一�
 
 | 我想要…… | 从这里开始 |
 |---|---|
-| 使用桌面应用 | [下载 macOS、Windows 或 Linux 客户端](https://www.astravia.dev/download)，完成应用内首次设置。 |
+| 使用桌面应用 | [下载 macOS、Windows 或 Linux 客户端](https://www.astravia.dev/#download)，完成应用内首次设置。 |
 | 理解产品能力 | 阅读下面的核心能力介绍。 |
 | 开发扩展 | 跳转到 [插件开发](#插件开发)。 |
 | 参与代码开发 | 阅读 [`QUICKSTART.zh-CN.md`](QUICKSTART.zh-CN.md) 与 [`CONTRIBUTING.zh-CN.md`](CONTRIBUTING.zh-CN.md)。 |
