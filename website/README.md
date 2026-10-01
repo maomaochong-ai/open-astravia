@@ -62,12 +62,12 @@ website/
 
 - 主参考 [OpenAI Codex 官网](https://openai.com/zh-Hans-CN/codex/)（仅内部设计参考）：浅色极简、黑白单色强调、大圆角窗口、发丝分隔线、紧凑字距标题
 - 设计系统 v6 要点：默认浅色白底 `#ffffff` + 首屏淡紫光带 `#efeefe`；主色为纯黑 `--accent: #000000`（黑色胶囊主按钮 + 白底发丝描边次按钮）；标题字体 Hanken Grotesk、标签字体 IBM Plex Mono；深色仍可切换（`#0d0d0d`，次要形态），代码窗与品牌示意图恒为暗色；克制动效（滚动显现 16px 位移 + 卡片 2px 悬停）
-- `openvetta.com` 仅作内部参考，官网文案不得出现「基于 open-vetta / openvetta」等表述（见下文品牌叙事）
+- 官网文案不得出现任何竞品名称或「基于某产品改造」「源于某产品」等表述（见下文品牌叙事）
 
 ## 内容维护
 
 - **新增/修改区块**：直接改 `index.html`，交互类效果在 `src/main.ts`，样式在 `src/style.css`
-- **品牌叙事（重要）**：官网**不得出现**「基于 open-vetta / openvetta 改造」「源于 / 复用 open-vetta」等表述，也不得把产品定位为任何现有产品的衍生。星轨定位为**独立自研**产品，文案一律按自研叙事撰写（如「独立自研」「自主设计」「不依赖既有产品代码」）。FAQ 中涉及与 Vetta 关系的回答同样按此口径，不承认基于 open-vetta。`openvetta.com` 仅可作为内部设计参考，不得写进官网文案
+- **品牌叙事（重要）**：官网**不得出现**任何竞品名称或「基于某产品改造」「源于 / 复用某产品」等表述，也不得把产品定位为任何现有产品的衍生。星轨定位为**独立自研**产品，文案一律按自研叙事撰写（如「独立自研」「自主设计」「不依赖既有产品代码」）。FAQ 中涉及与其他产品关系的回答同样按此口径，不承认基于任何竞品改造。仅可作为内部设计参考，不得写进官网文案
 - **升级版本号**（发版后）：改 `index.html` 中「下载」区块的三处文件名（`astravia-<版本>-mac.dmg` 等）与版本说明，并同步 `package.json` 的 `version`
  - **下载链接**：三平台按钮当前指向 GitHub Releases `releases/latest`（R2 直链 `https://dl.astravia.dev/app/v<版本>/astravia-<版本>-<平台>.<扩展名>` 在对应版本上传前不可用，勿切）。R2 上传完成后，按 [docs/deploy/launch/installer-r2-distribution.md](../docs/deploy/launch/installer-r2-distribution.md) 第 4 节替换为 dl 直链
 
