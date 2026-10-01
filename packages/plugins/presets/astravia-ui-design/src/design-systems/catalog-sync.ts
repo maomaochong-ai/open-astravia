@@ -28,8 +28,8 @@ import { markCatalogFailed, markCatalogLoading, setDesignSystems } from "./regis
  * 且**每一跳重定向都会重新校验**，所以会跳转的地址要把跳转目标也声明上）。
  */
 export const DESIGN_CATALOG_SOURCES: readonly string[] = [
-	"https://raw.githubusercontent.com/maomaochong-ai/astravia-design-system-templates/main/.astravia/design-templates.json",
 	"https://cdn.jsdelivr.net/gh/maomaochong-ai/astravia-design-system-templates@main/.astravia/design-templates.json",
+	"https://raw.githubusercontent.com/maomaochong-ai/astravia-design-system-templates/main/.astravia/design-templates.json",
 ];
 
 /** 上一次成功拉取到的清单原文，存插件私有 storage。 */
@@ -64,7 +64,7 @@ export function repoRootUrl(catalogUrl: string): string {
  */
 const REFRESH_TTL_MS = 5 * 60 * 1000;
 
-const REQUEST_TIMEOUT_MS = 15_000;
+const REQUEST_TIMEOUT_MS = 60_000;
 
 interface CachedCatalog {
 	/** 原样存下的清单对象，下次启动直接复用。 */
