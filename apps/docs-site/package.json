@@ -12,9 +12,9 @@
 	},
 	"dependencies": {
 		"@vercel/analytics": "^2.0.1",
-		"fumadocs-core": "16.14.1",
+		"fumadocs-core": "16.15.17",
 		"fumadocs-mdx": "15.2.2",
-		"fumadocs-ui": "16.14.1",
+		"fumadocs-ui": "16.15.17",
 		"next": "16.3.0",
 		"react": "19.2.8",
 		"react-dom": "19.2.8"
