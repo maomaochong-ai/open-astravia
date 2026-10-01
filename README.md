@@ -1,8 +1,8 @@
 <div align="center">
   <img src="docs/assets/banner.png" width="128" alt="Astravia" />
-  <h3>Astravia · 星轨</h3>
-  <p><strong>本地优先的开源 AI 桌面助手</strong> — 编码 · 文档 · 数据 · 自动化 · 设计，一个应用全包</p>
-  <p><b>简体中文</b> · <a href="README.en-US.md">English</a></p>
+  <h3>Astravia</h3>
+  <p><strong>A local-first open-source AI desktop assistant</strong> — coding · documents · data · automation · design, all in one app</p>
+  <p><a href="README.zh-CN.md">简体中文</a> · <b>English</b></p>
 </div>
 
 ---
@@ -10,76 +10,76 @@
 <p align="center">
   <table width="100%">
     <tr>
-      <td align="center"><img src="docs/assets/screenshot-main.png" alt="Astravia 深色主题" width="100%" /><p><em>主界面：对话、工作区、文件预览同屏可见</em></p></td>
-      <td align="center"><img src="docs/assets/capabilities.png" alt="能力页" width="100%" /><p><em>能力中心：所有扩展点随需启用，权限逐条授权</em></p></td>
+      <td align="center"><img src="docs/assets/screenshot-main.png" alt="Astravia dark theme" width="100%" /><p><em>Main view: conversation, workspace and file preview on one screen</em></p></td>
+      <td align="center"><img src="docs/assets/capabilities.png" alt="Capabilities page" width="100%" /><p><em>Capabilities center: enable extensions on demand, permissions granted one by one</em></p></td>
     </tr>
   </table>
 </p>
 
-## 快速上手
+## Quick Start
 
-1. **下载安装包**：从 [GitHub Releases](https://github.com/maomaochong-ai/astravia/releases) 获取 macOS（Apple Silicon / Intel）或 Windows x64 安装包
-2. **配置模型**：设置中选择服务商，填入你自己的 Key（支持 Claude、OpenAI、DeepSeek、Kimi、Gemini、Grok、Qwen 等）
-3. **开始使用**：写代码、整理文档、处理文件、查数据库、批量与定时任务
+1. **Download the installer** from [GitHub Releases](https://github.com/maomaochong-ai/astravia/releases) — macOS (Apple Silicon / Intel) or Windows x64
+2. **Configure a model**: pick a provider in Settings and enter your own key (Claude, OpenAI, DeepSeek, Kimi, Gemini, Grok, Qwen…)
+3. **Start using it**: write code, tidy documents, work on files, query databases, run batch and scheduled tasks
 
-## 核心能力
+## Features at a Glance
 
-### 对话与工作区
-消息流、工具调用、生成结果同屏可见；文件在应用内直接预览（PDF、Word、PPT、表格、图片、音视频、SVG）；扫描版 PDF 离线 OCR。内置 coding-agent 可读写工程文件、运行命令、截图。
+### Conversation & Workspace
+Message stream, tool-call progress and generated artifacts on one screen. Files preview in-app (PDF, Word, PPT, spreadsheets, images, audio, video, SVG). Scanned PDFs OCR'd offline. Built-in coding-agent reads/writes project files, runs commands and takes screenshots.
 
-### 数据库工作台
-内置 40+ 数据库连接（PostgreSQL、MySQL、SQLite、SQL Server、Oracle、Doris、OceanBase…），SQL 工作台多标签查询、历史记录、CSV/JSON 导出；AI 可在对话中直接查数；写操作分级授权，prod 连接默认只读。dbx（Apache-2.0）随应用分发，无需额外安装。
+### Database Workbench
+40+ database engines (PostgreSQL, MySQL, SQLite, SQL Server, Oracle, Doris, OceanBase…). SQL workbench with multi-tab queries, history, CSV/JSON export and data editing. The AI queries tables for you. Write operations need graded authorization — `prod` connections are read-only by default. The engine is dbx (Apache-2.0), shipped with the app.
 
-### 批量任务 & 定时调度
-一个 Prompt 对多目录批量执行；内置 Cron 调度，托盘后台运行，历史可查、可重试。
+### Batch Tasks & Scheduling
+One prompt across many directories. Built-in cron scheduler, quiet from the tray, with run history and retry.
 
-### 通知与远程控制
-批量 / 定时任务完成或异常推送飞书、钉钉机器人（凭据本地加密）；飞书 IM 遥控本机 Agent（Telegram、钉钉规划中）。
+### Notifications & Remote Control
+Batch / scheduled completion or failure pushed to Feishu / DingTalk bots (credentials stored encrypted). Remote-control your local agent from Feishu IM (Telegram and DingTalk planned).
 
-### 扩展生态
-从 GitHub 仓库安装 Skill、MCP Server、插件与主题；本地文档加工成可检索知识库，全程不出本机。插件权限系统：每项能力必须声明权限，宿主单独授权、运行时校验。
+### Ecosystem
+Install skills, MCP servers, plugins and themes from any GitHub repository. Turn local documents into a searchable knowledge base — everything stays on your machine. Plugins must declare capabilities in `plugin.json`, granted individually by the host and re-checked at runtime.
 
-### UI 设计工作区
-无限画布上的设计稿即真实可运行界面，共享色彩系统，可导出渲染图或只读分享包。
+### UI Design Workspace
+Mockups on an infinite canvas where frames are real, runnable interfaces. One color system across the whole design. Export as render images or read-only share packages.
 
-### 桌面集成
-全局快捷键唤起快捷面板；macOS Appshot 手势截图 + 屏上文字交给 Agent；Node / Python 运行时配置；托盘常驻；electron-updater 自动更新；中英双语界面。
+### Desktop Integration
+A global hotkey summons the quick panel. On macOS, Appshot captures the frontmost window (screenshot, title, on-screen text) in one gesture. Configure Node / Python runtimes. Tray residency, auto-update, bilingual UI.
 
-## 插件开发
+## Plugin Development
 
-Astravia 自身的设计画布、Git、图表、文件预览都是插件，同一套扩展点对第三方开放。插件用 Vite + Module Federation 构建成独立 bundle，宿主运行时按需加载、沙箱执行、权限校验。
+Astravia itself — the design canvas, Git, charts, file previewers — is all plugins. The same extension points are open to third parties. Plugins are built with Vite + Module Federation into isolated bundles; the host loads them on demand, runs them in a sandbox and validates permissions at runtime.
 
-### 能扩展什么
+### What you can extend
 
 <table width="100%">
 <colgroup><col width="25%"><col width="75%"></colgroup>
-<thead><tr><th>域</th><th>可用扩展点</th></tr></thead>
+<thead><tr><th>Domain</th><th>Extension points</th></tr></thead>
 <tbody>
-<tr><td>界面 (ctx.ui)</td><td>全局悬浮面板、活动面板标签、文件预览器、消息卡片、工具调用插槽、快捷键、通知、文件浏览器工具栏与右键菜单</td></tr>
-<tr><td>Agent (ctx.agent)</td><td>注册 JS 工具（JSON Schema 入参）、动态系统提示词 provider、Skill 目录注入、MCP Server 随插件声明、Continuation provider（会话尾自动追问）</td></tr>
-<tr><td>宿主能力</td><td>文件读写 (ctx.fs)、命令执行 (ctx.command)、HTTP 请求 (ctx.network)、持久化存储 (ctx.storage)、设置页 (ctx.settings)、i18n (ctx.i18n)、官方 API（模型 / 提供商 / MCP / 批量 / 调度…）</td></tr>
-<tr><td>权限系统</td><td>每项能力都必须在 plugin.json 的 permissions 中声明，宿主安装时弹窗让用户逐条授权，运行时再次校验</td></tr>
+<tr><td>UI (ctx.ui)</td><td>Global floating panels, activity tabs, file previews, message cards, tool-call slots, keyboard shortcuts, notifications, file explorer toolbar and context menu</td></tr>
+<tr><td>Agent (ctx.agent)</td><td>Register JS tools (JSON Schema input), dynamic system-prompt providers, Skill directory injection, inline MCP servers, continuation provider (auto follow-up at session end)</td></tr>
+<tr><td>Host capabilities</td><td>File read/write (ctx.fs), command execution (ctx.command), HTTP requests (ctx.network), persistent storage (ctx.storage), settings page (ctx.settings), i18n (ctx.i18n), Official API (providers / models / MCP / batches / scheduler…)</td></tr>
+<tr><td>Permission model</td><td>Every capability must be declared in plugin.json permissions. The host shows a consent dialog on install and re-checks at runtime.</td></tr>
 </tbody>
 </table>
 
-### 目录结构
+### Directory layout
 
 ```
 my-plugin/
-├── plugin.json          ← 必须，声明元数据、权限、Agent 贡献路径
+├── plugin.json          # required — metadata, permissions, agent contributions
 ├── package.json
-├── vite.config.ts       ← 用 @astravia-org/plugin-vite 的 astraviaPluginFederation
+├── vite.config.ts       # use @astravia-org/plugin-vite's astraviaPluginFederation
 ├── src/
-│   ├── index.tsx        ← 入口，导出 definePlugin({ activate })
+│   ├── index.tsx        # entry, exports definePlugin({ activate })
 │   └── style.css
-├── locales/zh.json      ← 可选，i18n 文案
+├── locales/zh.json      # optional, i18n
 ├── agent/
-│   └── skills/          ← 可选，随插件打包的 Skill
-├── mcp.json             ← 可选，随插件声明的 MCP Server
-└── icon.png             ← 可选，列表展示用
+│   └── skills/          # optional, bundled skills
+├── mcp.json             # optional, bundled MCP servers
+└── icon.png             # optional, list display
 ```
 
-### plugin.json（最小示例）
+### plugin.json (minimal example)
 
 ```json
 {
@@ -100,46 +100,46 @@ my-plugin/
 }
 ```
 
-### 入口代码
+### Entry code
 
 ```tsx
 import { definePlugin } from "@astravia-org/plugin-sdk";
 
 export default definePlugin({
   activate(ctx) {
-    // 扩展界面
-    ctx.ui.registerActivityTab({ id: "my-tab", label: "我的面板", component: MyPanel });
+    // Extend the UI
+    ctx.ui.registerActivityTab({ id: "my-tab", label: "My Panel", component: MyPanel });
 
-    // 扩展 Agent：注册一个 JS 工具
+    // Extend the agent: register a JS tool
     ctx.agent.registerTool({
       id: "greet",
       name: "greet_user",
-      description: "向用户打招呼",
+      description: "Greet the user by name",
       parameters: { type: "object", properties: { name: { type: "string" } }, required: ["name"] },
       handler: async ({ trigger }) => `Hello, ${trigger.input.name}!`,
     });
   },
 
-  deactivate() { /* 可选，卸载时清理 */ },
+  deactivate() { /* optional, cleanup on uninstall */ },
 });
 ```
 
-### 完整实例：chart-renderer
+### Full example: chart-renderer
 
-这就是随 Astravia 应用分发的内置图表插件。它做两件事：注册一个 `render_chart` 的 JS 工具（Agent 调用时生成 Chart.js 图表），并在消息气泡下方渲染图表卡片。
+This is the actual bundled chart plugin that ships with Astravia. It does two things: registers a `render_chart` JS tool (which the agent invokes to produce a Chart.js chart), and renders a chart card below the message bubble.
 
-**Step 1 — 目录**
+**Step 1 — Layout**
 
 ```
 chart-renderer/
 ├── plugin.json
-├── package.json        # dependencies: chart.js, react-chartjs-2
+├── package.json        # deps: chart.js, react-chartjs-2
 ├── vite.config.ts      # astraviaPluginFederation({ name: "chart_renderer", entry: "./src/index.tsx" })
 ├── src/index.tsx       # definePlugin({ activate })
-├── src/ChartCard.tsx   # 实际的图表卡片 React 组件
+├── src/ChartCard.tsx   # the actual chart-card React component
 ├── src/ToolChartSlot.tsx
 ├── locales/{zh,en}.json
-├── skills/chart-renderer/SKILL.md   # 告诉 Agent 什么时候该调用这个工具
+├── skills/chart-renderer/SKILL.md   # tells the agent when to invoke this tool
 └── icon.png
 ```
 
@@ -161,9 +161,9 @@ chart-renderer/
 }
 ```
 
-重点：`permissions` 只声明实际用到的 4 项，宿主安装时逐条弹窗；`skillPaths` 让 Agent 把插件打包的 SKILL.md 合入自己的技能库。
+Key point: `permissions` declares only the 4 actually used — the host prompts the user for each one at install time. `skillPaths` lets the host merge SKILL.md into the agent's skill library.
 
-**Step 3 — src/index.tsx（入口）**
+**Step 3 — src/index.tsx (entry)**
 
 ```tsx
 import { definePlugin } from "@astravia-org/plugin-sdk";
@@ -172,59 +172,59 @@ import { ToolChartSlot } from "./ToolChartSlot";
 const parameters = {
   type: "object",
   properties: {
-    type: { type: "string", enum: ["line","bar","pie","doughnut"], description: "Chart.js 图表类型" },
-    data: { type: "object", description: "标准 Chart.js data（labels + datasets）" },
+    type: { type: "string", enum: ["line","bar","pie","doughnut"] },
+    data: { type: "object", description: "Standard Chart.js data (labels + datasets)" },
     title: { type: "string" },
-    height: { type: "number", description: "建议 220–520" },
+    height: { type: "number", description: "Suggest 220–520" },
   },
   required: ["type", "data"],
 };
 
 export default definePlugin({
   activate(ctx) {
-    // 1. 注册工具调用的 UI 插槽 — Agent 调用 render_chart 时，用 ToolChartSlot 组件渲染卡片
+    // 1. Register a UI slot — when agent invokes render_chart, the host renders ToolChartSlot
     ctx.ui.registerToolCallSlot({
       id: "render-chart-tool-ui",
       toolName: "render_chart",
       component: ToolChartSlot,
     });
 
-    // 2. 注册 JS 工具 — Agent 可以调用它
+    // 2. Register the JS tool itself — the agent can now call it
     ctx.agent.registerTool({
       id: "chart-renderer",
       name: "render_chart",
-      label: "渲染图表",
-      description: "在对话消息下方渲染一个交互式 Chart.js 图表",
+      label: "Render Chart",
+      description: "Render an interactive Chart.js chart below the message",
       parameters,
       timeoutMs: 10_000,
       handler: async ({ trigger }) => {
         const { type, data, title, height = 300 } = trigger.input ?? {};
-        if (!type || !data) return { ok: false, retryable: true, error: "缺少 type 或 data" };
-        return { ok: true, rendered: true, summary: `已渲染 ${title ?? "图表"}` };
+        if (!type || !data) return { ok: false, retryable: true, error: "missing type or data" };
+        return { ok: true, rendered: true, summary: `Rendered ${title ?? "chart"}` };
       },
     });
   },
 });
 ```
 
-注意两个扩展点的配合：**`registerTool`** 让 Agent 知道有这个能力并会调它，**`registerToolCallSlot`** 告诉宿主"这个工具被调用时，用哪个 React 组件来展示结果"。工具 handler 本身不渲染 UI，只返回结构化数据，UI 渲染由宿主调用 ToolChartSlot 完成。
+How the two extension points cooperate: **`registerTool`** teaches the agent that this capability exists and how to invoke it. **`registerToolCallSlot`** tells the host "when this tool is called, render this React component". The handler never touches DOM — it returns structured data, and the host renders ToolChartSlot.
 
-**Step 4 — 构建打包**
+**Step 4 — Build & package**
 
 ```bash
 bun install
-bun run build          # 产物 dist/mf-manifest.json + remoteEntry.js + style.css
-zip -r chart-renderer.zip .   # 整个目录打包
+bun run build          # Output: dist/mf-manifest.json + remoteEntry.js + style.css
+zip -r chart-renderer.zip .   # Zip the whole directory
 ```
 
-**Step 5 — 安装到 Astravia**
+**Step 5 — Install into Astravia**
 
-- 开发调试：`bun run dev` 启动桌面应用，把 zip 拖进「设置 → 插件 → 安装本地插件」
-- 分发给用户：把 zip 放到 GitHub Release，在插件市场填仓库 URL，宿主自动拉取 + 校验 + 安装
+- Dev/debug: `bun run dev` to start the desktop app, drag the zip into **Settings → Plugins → Install local plugin**
+- End users: put the zip on a GitHub Release, paste the repo URL in the plugin marketplace, the host fetches, verifies and installs.
 
-源码位置：`packages/plugins/presets/chart-renderer/`，与 Astravia 主仓库同构，可直接对照。
+Source lives at `packages/plugins/presets/chart-renderer/` inside the main Astravia repo — open it up and follow along.
 
-### 构建与安装
+### Build & install
 
 ```bash
 # package.json
@@ -241,216 +241,217 @@ export default defineConfig({ plugins: [astraviaPluginFederation({ name: "my_plu
 
 ```bash
 bun install
-bun run build           # 产物：dist/mf-manifest.json + dist/remoteEntry.js + dist/style.css
-zip -r my-plugin.zip .  # 打包整个插件目录（含 plugin.json）
+bun run build           # Output: dist/mf-manifest.json + dist/remoteEntry.js + dist/style.css
+zip -r my-plugin.zip .  # Zip the whole plugin directory (including plugin.json)
 ```
 
-安装：在 Astravia 内「设置 → 插件 → 安装本地插件」选择 zip 即可。也可以把插件放到 GitHub Release，用仓库 URL 在应用内一键安装。
+Install: go to **Settings → Plugins → Install local plugin** in Astravia and pick the zip. You can also ship plugins on GitHub Releases and install them with a repository URL.
 
-**内置插件**：astravia-ui-design、content-creation、plugin-workbench、git、image-gen、chart-renderer、office-viewer、media-viewer、svg-viewer、astravia-actions。
+**Bundled plugins**: astravia-ui-design, content-creation, plugin-workbench, git, image-gen, chart-renderer, office-viewer, media-viewer, svg-viewer, astravia-actions.
 
-## 模型配置
+## Model Configuration
 
 <table width="100%">
 <colgroup><col width="30%"><col width="70%"></colgroup>
 <tbody>
-<tr><td>服务商预设</td><td>Claude、OpenAI、DeepSeek、Z.ai、Kimi、Gemini、Grok、Qwen — 预设只含 baseUrl 与 API 类型，<b>不含任何 Key</b></td></tr>
-<tr><td>Key 与模型同步</td><td>填入 Key 后立即拉取该账号可用模型，之后每 12 小时后台同步一次</td></tr>
-<tr><td>请求链路</td><td>直发服务商，应用不代理、不转发、不计费</td></tr>
-<tr><td>兼容端点</td><td>支持 OpenAI 兼容协议，可接 Ollama / vLLM / LM Studio 等本地推理服务</td></tr>
-<tr><td>元数据来源</td><td>价格与能力由 <a href="https://models.dev">models.dev</a> 补齐，随包带快照兜底，断网仍可使用</td></tr>
+<tr><td>Preset providers</td><td>Claude, OpenAI, DeepSeek, Z.ai, Kimi, Gemini, Grok, Qwen — baseUrl and API type only, <b>no keys at all</b></td></tr>
+<tr><td>Key & model sync</td><td>Adding your key immediately pulls available models for your account; a background sync runs every 12 hours</td></tr>
+<tr><td>Request path</td><td>Straight to the provider — the app never proxies, relays or bills you</td></tr>
+<tr><td>Compatibility</td><td>OpenAI-compatible endpoints work too — Ollama / vLLM / LM Studio and other local runners</td></tr>
+<tr><td>Metadata source</td><td>Pricing and capability data from <a href="https://models.dev">models.dev</a>, with a bundled snapshot as fallback — the app keeps working offline</td></tr>
 </tbody>
 </table>
 
-## 网络行为
+## Network Behavior
 
-应用从不主动发起网络请求——每次出站调用都由你明确的配置或操作触发。下表列出所有可能的网络场景：
+The app never initiates a network call on its own — every outbound request is triggered by your explicit configuration or action. The table below lists every possible network scenario:
 
 <table width="100%">
 <colgroup><col width="15%"><col width="30%"><col width="55%"></colgroup>
-<thead><tr><th>场景</th><th>触发条件</th><th>具体行为</th></tr></thead>
+<thead><tr><th>Scenario</th><th>When it happens</th><th>What exactly is sent</th></tr></thead>
 <tbody>
-<tr><td>LLM 推理</td><td>你在设置中配置了模型服务商并填入 Key</td><td>请求直发服务商（Claude / OpenAI / DeepSeek / Kimi / Gemini / Grok / Qwen），应用不代理、不转发、不计费。未配置 Key 即完全不发生。</td></tr>
-<tr><td>模型元数据</td><td>启动时 + 每 12 小时后台同步</td><td>从 <code>models.dev</code> 拉取价格与能力元数据；网络失败则回退随包内置的快照文件，不影响使用。</td></tr>
-<tr><td>能力市场</td><td>你在设置中添加了 GitHub 仓库作为来源</td><td>拉取你指定的仓库 Release，索引 Skill / MCP / 插件 / 主题。未添加任何来源即完全不发生。</td></tr>
-<tr><td>自动更新</td><td>更新源由应用配置决定（基于 electron-updater）</td><td>默认从 Cloudflare R2 拉取 <code>latest.yml</code> / <code>latest-mac.yml</code> 检查版本；未配置更新源即不检查。仅下载增量包。</td></tr>
-<tr><td>MCP Server</td><td>你在设置中安装了 MCP Server</td><td>按需拉起进程（stdio / http 两种模式），通过你填写的凭据连接远端服务。未安装即完全不发生。</td></tr>
-<tr><td>插件</td><td>你在应用内安装了第三方插件</td><td>插件可声明自己的网络行为（Webhook、API 调用等），由宿主运行时校验权限。预装插件无出站网络。</td></tr>
-<tr><td>IM 远程控制</td><td>你在设置中启用了飞书机器人并填写凭据</td><td>内嵌 <code>im-gateway</code> Go 边车连接飞书 WebSocket；未启用即不运行。Telegram / 钉钉规划中。</td></tr>
-<tr><td>OCR 模型</td><td>首次安装构建时一次性下载</td><td>PP-OCRv5 检测与识别模型（~100MB）下载到本地 <code>resources/ocr-models</code>，之后完全离线。</td></tr>
-<tr><td>构建期下载</td><td>开发时执行 <code>bun run build</code></td><td>便携 Python / Node.js 运行时从 <code>python-build-standalone</code> 拉取；dbx 数据库引擎二进制从 GitHub Releases 拉取。</td></tr>
+<tr><td>LLM inference</td><td>You configured a provider and entered your API key in Settings</td><td>Requests go straight to the provider (Claude / OpenAI / DeepSeek / Kimi / Gemini / Grok / Qwen) — the app never proxies, relays or bills you. Nothing happens without a key.</td></tr>
+<tr><td>Model metadata</td><td>At startup + every 12 hours in the background</td><td>Pulls pricing and capability metadata from <code>models.dev</code>. If the network fails, falls back to a bundled snapshot — no breakage.</td></tr>
+<tr><td>Marketplace</td><td>You added GitHub repos as sources in Settings</td><td>Fetches Releases from the repos you specified, indexes skills / MCP servers / plugins / themes. Nothing happens with zero sources.</td></tr>
+<tr><td>Automatic updates</td><td>Update source is decided by app configuration (electron-updater)</td><td>By default checks <code>latest.yml</code> / <code>latest-mac.yml</code> on Cloudflare R2. No update source configured → no checks. Only delta packages are downloaded.</td></tr>
+<tr><td>MCP servers</td><td>You installed an MCP server in Settings</td><td>Spawns the process on demand (stdio or HTTP), connects to remote services with your credentials. Nothing happens with no MCP installed.</td></tr>
+<tr><td>Plugins</td><td>You installed a third-party plugin in the app</td><td>Plugins can declare their own network behavior (webhooks, API calls etc.), checked at runtime by the host. Bundled plugins make no outbound network calls.</td></tr>
+<tr><td>IM remote control</td><td>You enabled a Feishu bot and entered credentials in Settings</td><td>The embedded <code>im-gateway</code> Go sidecar connects to Feishu WebSocket. Nothing happens when disabled. Telegram / DingTalk planned.</td></tr>
+<tr><td>OCR models</td><td>One-time download at first install build</td><td>PP-OCRv5 detection + recognition models (~100MB) are downloaded to <code>resources/ocr-models</code> and then run fully offline.</td></tr>
+<tr><td>Build-time downloads</td><td>Running <code>bun run build</code> during development</td><td>Portable Python / Node.js runtimes from <code>python-build-standalone</code>; the dbx database engine binary from GitHub Releases.</td></tr>
 </tbody>
 </table>
 
-## 如何开发
+## How to Develop
 
-### 环境要求
+### Prerequisites
 
 <table width="100%">
 <colgroup><col width="20%"><col width="25%"><col width="55%"></colgroup>
-<thead><tr><th>依赖</th><th>版本</th><th>用途</th></tr></thead>
+<thead><tr><th>Dependency</th><th>Version</th><th>Purpose</th></tr></thead>
 <tbody>
-<tr><td>Bun</td><td>1.3+</td><td>包管理器与脚本 runner，monorepo 全部使用 Bun，不接受 npm / pnpm</td></tr>
-<tr><td>Node.js</td><td>20+</td><td>Vite 前端构建时需要</td></tr>
-<tr><td>Go</td><td>1.22+</td><td>仅构建 <code>im-gateway</code> 可选</td></tr>
-<tr><td>macOS / Windows</td><td>—</td><td>仅构建桌面宿主可选；Linux 开发者可以完整跑核心库与 CLI</td></tr>
+<tr><td>Bun</td><td>1.3+</td><td>Package manager and script runner — the monorepo uses Bun everywhere; npm / pnpm are not accepted</td></tr>
+<tr><td>Node.js</td><td>20+</td><td>Needed for Vite frontend builds</td></tr>
+<tr><td>Go</td><td>1.22+</td><td>Only required for building <code>im-gateway</code>, optional</td></tr>
+<tr><td>macOS / Windows</td><td>—</td><td>Only required for building the desktop host; Linux devs can run the full core library and CLI</td></tr>
 </tbody>
 </table>
 
-### 一次性准备
+### One-time Setup
 
 ```bash
-# 1. 克隆仓库
+# 1. Clone
 git clone git@github.com:maomaochong-ai/astravia.git
 cd astravia
 
-# 2. 安装所有依赖（monorepo workspace 自动处理）
+# 2. Install all dependencies (monorepo workspaces handled automatically)
 bun install
 
-# 3. （可选）只构建桌面应用需要的原生模块
+# 3. (Optional) Build native modules required by the desktop app
 bun run build:desktop
 ```
 
-### 日常开发
+### Daily Development
 
 ```bash
-# 启动桌面应用开发模式（热重载 + DevTools）
+# Desktop app dev mode (hot reload + DevTools)
 bun run dev
 
-# 终端 CLI 开发模式
+# Terminal CLI dev mode
 bun run dev:cli
 
-# 只跑某个包的单元测试
-bun run test:pkg ai          # test:pkg --list 查看全部包
+# Run unit tests for one package only
+bun run test:pkg ai          # test:pkg --list to see all packages
 ```
 
-### 提交前检查
+### Before Submitting
 
 ```bash
-# 完整质量守卫（开 PR 前必跑，失败无法 commit）
+# Full quality gate (required before opening a PR; blocks commit on failure)
 bun run check
-#   包含：Biome lint + TypeScript 类型检查 + 架构守卫（单向依赖）+ 私钥检测 + 冲突标记检测
+#   Includes: Biome lint + TypeScript typecheck + architecture guard (one-way deps)
+#             + secret key detection + conflict marker detection
 
-# 改动文件的快速反馈（节省时间）
+# Fast feedback on changed files (saves time)
 bun run check:quick
 
-# 只跑受改动影响的包的单元测试
+# Only unit-test packages touched by your diff
 bun run test:changed
 ```
 
-### 提交约定
+### Commit Conventions
 
 <table width="100%">
 <colgroup><col width="25%"><col width="75%"></colgroup>
-<thead><tr><th>约定</th><th>说明</th></tr></thead>
+<thead><tr><th>Rule</th><th>Detail</th></tr></thead>
 <tbody>
-<tr><td>包管理</td><td>统一用 Bun；禁止出现 <code>package-lock.json</code> 或 <code>pnpm-lock.yaml</code></td></tr>
-<tr><td>TypeScript</td><td>禁止无必要 <code>any</code>；所有类型错误必须修复才能通过 <code>bun run check</code></td></tr>
-<tr><td>i18n</td><td>用户可见文案必须走 i18n，直接写中文 / 英文到组件里是违规的</td></tr>
-<tr><td>提交信息</td><td>中文，<code>feat:</code> / <code>fix:</code> / <code>docs:</code> / <code>refactor:</code> / <code>chore:</code> 开头；用 <code>fixes #N</code> / <code>closes #N</code> 关联工单</td></tr>
+<tr><td>Package manager</td><td>Bun only; no <code>package-lock.json</code> or <code>pnpm-lock.yaml</code></td></tr>
+<tr><td>TypeScript</td><td>No unnecessary <code>any</code>; all type errors must be fixed to pass <code>bun run check</code></td></tr>
+<tr><td>i18n</td><td>All user-facing copy must go through i18n; hard-coding strings in components is a violation</td></tr>
+<tr><td>Commit messages</td><td>In Chinese, prefixed with <code>feat:</code> / <code>fix:</code> / <code>docs:</code> / <code>refactor:</code> / <code>chore:</code>; reference issues with <code>fixes #N</code> / <code>closes #N</code></td></tr>
 </tbody>
 </table>
 
-完整规范见 [AGENTS.md](AGENTS.md)。
+Full rules in [AGENTS.md](AGENTS.md).
 
-### 可选模块构建
+### Optional Module Builds
 
 ```bash
-# CLI 封装
+# CLI wrapper
 bun run build:cli
 
-# IM 旁路网关（Go，独立 Makefile）
+# IM sidecar (Go, independent Makefile)
 cd packages/im-gateway && make build
 
-# OCR 模型（首次构建会自动下载）
+# OCR models (auto-downloaded on first build)
 bun run prepare:ocr-models
 ```
 
-## 架构
+## Architecture
 
-Monorepo，**依赖单向向下**：宿主应用 → runtime 适配层 → AI/Agent 内核。核心库不感知宿主，同一套内核既能跑在 Electron 桌面端，也能跑在终端 CLI。
+Monorepo. **Dependencies flow strictly downward**: host apps → runtime adapters → AI/agent kernel. Core libraries have no awareness of the host — the same kernel runs in the Electron desktop app and in a terminal CLI.
 
 ```
 astravia/
 ├── packages/
-│   ├── ai                     — 多 Provider LLM 适配（Claude / OpenAI / DeepSeek / Kimi / ...）
-│   ├── agent                  — Agent 循环、会话管理、工具调度
-│   ├── coding-agent           — 编码智能体：读写工程文件、执行命令、截图
-│   ├── ecosystem-adapter      — 能力市场、插件与 Skill 的运行时适配
-│   ├── runtime-core           — 宿主共享适配层：配置目录、凭据存储、事件总线
-│   ├── runtime-tools          — 宿主共享适配层：文件系统、命令执行、网络请求
-│   ├── runtime-storage        — 宿主共享适配层：会话持久化、工作区索引
-│   ├── runtime-mcp            — MCP Server 生命周期管理
-│   ├── runtime-telemetry      — 遥测（仅落盘，不发送）
-│   ├── desktop-app            — Electron 桌面宿主（macOS / Windows 原生签名）
-│   ├── cli-app                — 终端 CLI 宿主
-│   ├── im-gateway             — Go 实现的 IM 旁路网关（飞书，随应用启停）
-│   ├── ui                     — React 组件原语
-│   ├── theme-ui               — 主题化 UI 组件
-│   ├── theme-sdk              — 主题开发 SDK（颜色令牌、组件覆盖点）
-│   ├── plugins                — 预装插件集合（UI 设计、内容创作、Git、图表、预览…）
-│   ├── skill-presets          — 预装 Skill 预设
-│   ├── themes                 — 预装主题
-│   ├── capability-sdk         — 能力与权限定义 SDK
-│   ├── capability-runtime     — 能力运行时（权限校验、能力编排）
-│   ├── action-rpc             — Agent ↔ Desktop 间的 RPC 协议
-│   └── toolkit                — 开发辅助工具集
-├── docs/                      — 架构文档与 ADR
-└── scripts/                   — 构建、发布、质量守卫
+│   ├── ai                     — Multi-provider LLM adapters (Claude / OpenAI / DeepSeek / Kimi / ...)
+│   ├── agent                  — Agent loop, session management, tool dispatch
+│   ├── coding-agent           — Coding agent: reads/writes project files, runs commands, takes screenshots
+│   ├── ecosystem-adapter      — Runtime adapter for marketplace, plugins and skills
+│   ├── runtime-core           — Host-shared adapter layer: config dir, credential store, event bus
+│   ├── runtime-tools          — Host-shared adapter layer: filesystem, command execution, network
+│   ├── runtime-storage        — Host-shared adapter layer: session persistence, workspace index
+│   ├── runtime-mcp            — MCP server lifecycle management
+│   ├── runtime-telemetry      — Telemetry (disk-only, never sent)
+│   ├── desktop-app            — Electron desktop host (macOS / Windows native signed)
+│   ├── cli-app                — Terminal CLI host
+│   ├── im-gateway             — Go IM sidecar (Feishu, starts and stops with the app)
+│   ├── ui                     — React component primitives
+│   ├── theme-ui               — Themed UI components
+│   ├── theme-sdk              — Theme SDK (color tokens, component override points)
+│   ├── plugins                — Bundled plugins (UI design, content creation, Git, charts, preview…)
+│   ├── skill-presets          — Bundled skill presets
+│   ├── themes                 — Bundled themes
+│   ├── capability-sdk         — Capability and permission definition SDK
+│   ├── capability-runtime     — Capability runtime (permission checks, capability orchestration)
+│   ├── action-rpc             — Agent ↔ Desktop RPC protocol
+│   └── toolkit                — Dev utilities
+├── docs/                      — Architecture docs and ADRs
+└── scripts/                   — Build, release and quality guards
 ```
 
-**依赖方向**：
+**Dependency direction**:
 
 <table width="100%">
 <colgroup><col width="40%"><col width="60%"></colgroup>
-<thead><tr><th>链路</th><th>说明</th></tr></thead>
+<thead><tr><th>Chain</th><th>Detail</th></tr></thead>
 <tbody>
-<tr><td><code>desktop-app</code> / <code>cli-app</code> → <code>runtime-*</code> → <code>coding-agent</code> / <code>agent</code> / <code>ai</code></td><td>宿主不直接调用 AI 层，统一经 runtime 适配层注入</td></tr>
-<tr><td><code>ai</code> ← <code>agent</code> ← <code>coding-agent</code></td><td>上层包持有下层能力，coding-agent 是最上层的业务包</td></tr>
-<tr><td><code>runtime-*</code> 不依赖 AI 层</td><td>runtime 只适配宿主能力，capability-* 跨层提供权限定义</td></tr>
-<tr><td><code>plugins</code> / <code>skill-presets</code> / <code>themes</code></td><td>纯粹的资源包，无运行时依赖</td></tr>
+<tr><td><code>desktop-app</code> / <code>cli-app</code> → <code>runtime-*</code> → <code>coding-agent</code> / <code>agent</code> / <code>ai</code></td><td>Hosts never call the AI layer directly — always injected through the runtime adapter layer</td></tr>
+<tr><td><code>ai</code> ← <code>agent</code> ← <code>coding-agent</code></td><td>Upper packages hold lower capabilities; coding-agent is the topmost business package</td></tr>
+<tr><td><code>runtime-*</code> has no dependency on the AI layer</td><td>Runtimes only adapt host capabilities; <code>capability-*</code> spans layers for permission definitions</td></tr>
+<tr><td><code>plugins</code> / <code>skill-presets</code> / <code>themes</code></td><td>Pure resource bundles with no runtime dependency</td></tr>
 </tbody>
 </table>
 
-## 加入社群
+## Join the Community
 
-<p align="center" style="color:#656d76;font-size:14px;margin-bottom:20px;">扫码加入，交流使用经验、反馈问题、获取最新动态</p>
+<p align="center" style="color:#656d76;font-size:14px;margin-bottom:20px;">Scan the QR code, share feedback and get the latest updates</p>
 
 <div align="center">
   <table width="100%" style="border-collapse:separate;border-spacing:16px 0;">
     <tr>
       <td align="center" style="border:1px solid #d0d7de;border-radius:12px;padding:20px 16px;background:#f6f8fa;vertical-align:top;">
         <div style="display:inline-block;padding:3px 10px;border-radius:20px;background:#12b7f5;color:#fff;font-size:12px;font-weight:600;margin-bottom:12px;">QQ</div><br />
-        <img src="docs/assets/community/qq-group.png" width="200" alt="QQ 群" style="border-radius:6px;" /><br />
-        <p style="margin:12px 0 0 0;font-weight:600;font-size:15px;">QQ 官方群</p>
-        <p style="margin:4px 0 0 0;color:#656d76;font-size:13px;">日常交流 · 问题反馈</p>
+        <img src="docs/assets/community/qq-group.png" width="200" alt="QQ group" style="border-radius:6px;" /><br />
+        <p style="margin:12px 0 0 0;font-weight:600;font-size:15px;">QQ Official Group</p>
+        <p style="margin:4px 0 0 0;color:#656d76;font-size:13px;">Chat · Bug reports</p>
       </td>
       <td align="center" style="border:1px solid #d0d7de;border-radius:12px;padding:20px 16px;background:#f6f8fa;vertical-align:top;">
-        <div style="display:inline-block;padding:3px 10px;border-radius:20px;background:#07c160;color:#fff;font-size:12px;font-weight:600;margin-bottom:12px;">微信</div><br />
-        <img src="docs/assets/community/wechat-group.jpg" width="200" alt="微信群" style="border-radius:6px;" /><br />
-        <p style="margin:12px 0 0 0;font-weight:600;font-size:15px;">微信官方群</p>
-        <p style="margin:4px 0 0 0;color:#656d76;font-size:13px;">版本更新 · 内测招募</p>
+        <div style="display:inline-block;padding:3px 10px;border-radius:20px;background:#07c160;color:#fff;font-size:12px;font-weight:600;margin-bottom:12px;">WeChat</div><br />
+        <img src="docs/assets/community/wechat-group.jpg" width="200" alt="WeChat group" style="border-radius:6px;" /><br />
+        <p style="margin:12px 0 0 0;font-weight:600;font-size:15px;">WeChat Official Group</p>
+        <p style="margin:4px 0 0 0;color:#656d76;font-size:13px;">Updates · Beta recruiting</p>
       </td>
     </tr>
   </table>
 </div>
 
-## 致谢
+## Credits
 
 <table width="100%">
-<thead><tr><th>项目</th><th>用途</th><th>许可</th></tr></thead>
+<thead><tr><th>Project</th><th>Used for</th><th>License</th></tr></thead>
 <tbody>
-<tr><td><a href="https://github.com/badlogic/pi-mono">pi</a> · Mario Zechner</td><td><code>ai</code>、<code>agent</code>、<code>coding-agent</code>、<code>ecosystem-adapter</code> 源自该项目，已重写与扩展；Agent 循环、Provider 抽象、扩展机制均脱胎于此</td><td>MIT</td></tr>
-<tr><td><a href="https://github.com/openai/codex">Codex CLI</a> · OpenAI</td><td>执行沙箱方案借鉴其设计；Windows 沙箱宿主机二进制随应用分发</td><td>Apache-2.0</td></tr>
-<tr><td><a href="https://github.com/containers/bubblewrap">bubblewrap</a></td><td>Linux 沙箱后端 <code>bwrap</code>，随 Linux 安装包分发</td><td>LGPL-2.0+</td></tr>
-<tr><td><a href="https://github.com/PaddlePaddle/PaddleOCR">PP-OCRv5</a> · PaddlePaddle</td><td>离线 PDF OCR 检测与识别模型（<code>ppocrv5_det.onnx</code> / <code>ppocrv5_rec.onnx</code>）</td><td>Apache-2.0</td></tr>
-<tr><td><a href="https://github.com/astral-sh/python-build-standalone">python-build-standalone</a></td><td>便携 Python 运行时，按需下载分发</td><td>PSF / 混合</td></tr>
-<tr><td><a href="https://nodejs.org">Node.js</a></td><td>便携 Node 运行时，按需下载分发</td><td>MIT</td></tr>
+<tr><td><a href="https://github.com/badlogic/pi-mono">pi</a> · Mario Zechner</td><td><code>ai</code>, <code>agent</code>, <code>coding-agent</code>, <code>ecosystem-adapter</code> are derived from this project and have been rewritten and extended. The agent loop, provider abstraction and extension mechanism all originate here.</td><td>MIT</td></tr>
+<tr><td><a href="https://github.com/openai/codex">Codex CLI</a> · OpenAI</td><td>Execution sandbox design draws on this project; the Windows sandbox host binary is distributed with the app.</td><td>Apache-2.0</td></tr>
+<tr><td><a href="https://github.com/containers/bubblewrap">bubblewrap</a></td><td>Linux sandbox backend <code>bwrap</code>, shipped with the Linux installer.</td><td>LGPL-2.0+</td></tr>
+<tr><td><a href="https://github.com/PaddlePaddle/PaddleOCR">PP-OCRv5</a> · PaddlePaddle</td><td>Offline PDF OCR detection + recognition models (<code>ppocrv5_det.onnx</code> / <code>ppocrv5_rec.onnx</code>).</td><td>Apache-2.0</td></tr>
+<tr><td><a href="https://github.com/astral-sh/python-build-standalone">python-build-standalone</a></td><td>Portable Python runtime, downloaded and provisioned on demand.</td><td>PSF / mixed</td></tr>
+<tr><td><a href="https://nodejs.org">Node.js</a></td><td>Portable Node runtime, downloaded and provisioned on demand.</td><td>MIT</td></tr>
 </tbody>
 </table>
 
-感谢 [Model Context Protocol](https://modelcontextprotocol.io) 规范、[models.dev](https://models.dev) 公共模型目录，以及 Electron、React、Vite、Tailwind CSS、shadcn/ui、Bun 等开源项目。完整第三方清单见 [NOTICE](NOTICE)。
+Thanks also to the [Model Context Protocol](https://modelcontextprotocol.io) specification, the [models.dev](https://models.dev) catalog, and the Electron, React, Vite, Tailwind CSS, shadcn/ui and Bun projects. Full third-party inventory in [NOTICE](NOTICE).
 
-## 许可
+## License
 
 [Apache-2.0](LICENSE)
