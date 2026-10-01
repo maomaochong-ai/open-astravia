@@ -116,7 +116,7 @@ export function createLoopbackSshConnection(
 	hostId = "loopback",
 	options: Pick<SshConnectionOptions, "helper"> = {},
 ): SshConnection {
-	const directory = mkdtempSync(join(tmpdir(), "vetta-loopback-ssh-"));
+	const directory = mkdtempSync(join(tmpdir(), "astravia-loopback-ssh-"));
 	// 「远端」有自己的家目录：helper 会往 ~/.cache 里装东西，不能装进开发者真实的家目录。
 	const home = join(directory, "home");
 	mkdirSync(home);
@@ -164,8 +164,8 @@ let builtHelper: string | undefined | null = null;
 export function buildSshHelperForTests(): string | undefined {
 	if (builtHelper !== null) return builtHelper;
 	const source = resolve(dirname(fileURLToPath(import.meta.url)), "../../../apps/ssh-helper");
-	const output = join(mkdtempSync(join(tmpdir(), "vetta-helper-build-")), "vetta-ssh-helper");
-	const result = spawnSync("go", ["build", "-o", output, "./cmd/vetta-ssh-helper"], {
+	const output = join(mkdtempSync(join(tmpdir(), "astravia-helper-build-")), "astravia-ssh-helper");
+	const result = spawnSync("go", ["build", "-o", output, "./cmd/astravia-ssh-helper"], {
 		cwd: source,
 		env: { ...process.env, CGO_ENABLED: "0" },
 	});

@@ -1,6 +1,6 @@
 import type { DesktopApi } from "@preload/api";
 
-const rawApi = window.vetta;
+const rawApi = window.astravia;
 const hostAccessToken = rawApi.hostAccess?.claim();
 
 function bindHostAccess(value: unknown, owner?: object): unknown {

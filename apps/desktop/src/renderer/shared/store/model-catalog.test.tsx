@@ -13,7 +13,7 @@ const LOCAL_CONFIG = { providers: {}, defaultModel: undefined };
 type RemoteCatalog = Record<string, { api: string; models: { id: string; name: string }[] }>;
 
 function remoteCatalog(...modelIds: string[]): RemoteCatalog {
-	return { "vetta-go": { api: "openai-completions", models: modelIds.map((id) => ({ id, name: id })) } };
+	return { "astravia-go": { api: "openai-completions", models: modelIds.map((id) => ({ id, name: id })) } };
 }
 
 const models = {
@@ -27,7 +27,7 @@ beforeEach(() => {
 	models.get.mockClear();
 	models.fetchRemote.mockClear();
 	models.fetchRemote.mockResolvedValue({ providers: remoteCatalog("gpt-old") });
-	Object.defineProperty(window, "vetta", { configurable: true, writable: true, value: { models } });
+	Object.defineProperty(window, "astravia", { configurable: true, writable: true, value: { models } });
 	const store = getDefaultStore();
 	store.set(authTokenAtom, "token-1");
 	store.set(remoteProvidersAtom, {});

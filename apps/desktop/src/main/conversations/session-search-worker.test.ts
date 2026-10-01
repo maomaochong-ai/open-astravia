@@ -2,8 +2,8 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Worker } from "node:worker_threads";
-import { createAssistantMessage } from "@vetta/ai";
-import { FileConversationRepository } from "@vetta/runtime-node/conversation";
+import { createAssistantMessage } from "@astravia/ai";
+import { FileConversationRepository } from "@astravia/runtime-node/conversation";
 import { build } from "vite";
 import { describe, expect, it } from "vitest";
 import type { DesktopSessionSearchEvent, DesktopSessionSearchRequest } from "../../shared/session-search.js";
@@ -34,7 +34,7 @@ describe("session search worker boundary", () => {
 					},
 					outDir: join(temporary, "bundle"),
 					minify: false,
-					rollupOptions: { external: [/^node:/, /^@vetta\//] },
+					rollupOptions: { external: [/^node:/, /^@astravia\//] },
 				},
 			});
 			const sessionDir = join(temporary, "sessions");

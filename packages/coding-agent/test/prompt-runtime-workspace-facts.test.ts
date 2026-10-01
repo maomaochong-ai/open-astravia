@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { nodeWorkspaceFactsFileSource } from "@vetta/runtime-node/coding";
+import { nodeWorkspaceFactsFileSource } from "@astravia/runtime-node/coding";
 import { afterEach, describe, expect, it } from "vitest";
 import { CodingAgentPromptRuntime } from "../src/model-context/prompt-runtime.js";
 import { detectWorkspaceFacts, probeWorkspaceSignals } from "../src/model-context/workspace-facts.js";
@@ -14,7 +14,7 @@ afterEach(() => {
 });
 
 function createWorkspace(): string {
-	const root = mkdtempSync(join(tmpdir(), "vetta-prompt-runtime-"));
+	const root = mkdtempSync(join(tmpdir(), "astravia-prompt-runtime-"));
 	createdDirs.push(root);
 	mkdirSync(join(root, ".git"));
 	return root;
@@ -78,7 +78,7 @@ describe("CodingAgentPromptRuntime workspace facts", () => {
 	});
 
 	it("leaves the facts undefined for a directory with no detectable signal", () => {
-		const root = mkdtempSync(join(tmpdir(), "vetta-prompt-runtime-empty-"));
+		const root = mkdtempSync(join(tmpdir(), "astravia-prompt-runtime-empty-"));
 		createdDirs.push(root);
 
 		expect(createRuntime(root).resolve(promptContext).workspaceFacts).toBeUndefined();

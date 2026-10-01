@@ -1,33 +1,33 @@
 import { contextBridge, ipcRenderer } from "electron";
 
-contextBridge.exposeInMainWorld("vettaRemoteDesktop", {
+contextBridge.exposeInMainWorld("astraviaRemoteDesktop", {
 	onInput(message: unknown): void {
-		ipcRenderer.send("vetta:remote-desktop:input", message);
+		ipcRenderer.send("astravia:remote-desktop:input", message);
 	},
 	onControlOpen(): void {
-		ipcRenderer.send("vetta:remote-desktop:control-open");
+		ipcRenderer.send("astravia:remote-desktop:control-open");
 	},
 	onControlMessage(message: string): void {
-		ipcRenderer.send("vetta:remote-desktop:control-message", message);
+		ipcRenderer.send("astravia:remote-desktop:control-message", message);
 	},
 	onControlClose(reason?: string): void {
-		ipcRenderer.send("vetta:remote-desktop:control-close", reason);
+		ipcRenderer.send("astravia:remote-desktop:control-close", reason);
 	},
 	onScreen(callback: (request: { id: number; active: boolean }) => void): () => void {
 		const listener = (_event: Electron.IpcRendererEvent, request: { id: number; active: boolean }) =>
 			callback(request);
-		ipcRenderer.on("vetta:remote-desktop:screen", listener);
-		return () => ipcRenderer.removeListener("vetta:remote-desktop:screen", listener);
+		ipcRenderer.on("astravia:remote-desktop:screen", listener);
+		return () => ipcRenderer.removeListener("astravia:remote-desktop:screen", listener);
 	},
 	screenReady(): void {
-		ipcRenderer.send("vetta:remote-desktop:screen-ready");
+		ipcRenderer.send("astravia:remote-desktop:screen-ready");
 	},
 	screenResult(id: number, streaming: boolean): void {
-		ipcRenderer.send("vetta:remote-desktop:screen-result", id, streaming);
+		ipcRenderer.send("astravia:remote-desktop:screen-result", id, streaming);
 	},
 	onControlSend(callback: (message: string) => void): () => void {
 		const listener = (_event: Electron.IpcRendererEvent, message: string) => callback(message);
-		ipcRenderer.on("vetta:remote-desktop:control-send", listener);
-		return () => ipcRenderer.removeListener("vetta:remote-desktop:control-send", listener);
+		ipcRenderer.on("astravia:remote-desktop:control-send", listener);
+		return () => ipcRenderer.removeListener("astravia:remote-desktop:control-send", listener);
 	},
 });

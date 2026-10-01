@@ -4,8 +4,8 @@ import type {
 	McpElicitationField,
 	McpElicitationResult,
 	McpInteractionContext,
-} from "@vetta/runtime-mcp/protocol";
-import { isMcpElicitationCreateParams } from "@vetta/runtime-mcp/protocol";
+} from "@astravia/runtime-mcp/protocol";
+import { isMcpElicitationCreateParams } from "@astravia/runtime-mcp/protocol";
 import type {
 	DesktopMcpElicitationField,
 	DesktopMcpElicitationRequest,

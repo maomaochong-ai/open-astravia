@@ -15,11 +15,11 @@ import type {
 const MAX_NAME_LENGTH = 64;
 const MAX_DESCRIPTION_LENGTH = 1024;
 const IGNORE_FILE_NAMES = [".gitignore", ".ignore", ".fdignore"];
-const PROJECT_CONFIG_DIRECTORY = ".vetta";
+const PROJECT_CONFIG_DIRECTORY = ".astravia";
 type IgnoreMatcher = ReturnType<typeof ignore>;
 
 function provenanceForSource(source: string): SkillProvenance {
-	if (source === "builtin") return { kind: "builtin", providerId: "vetta" };
+	if (source === "builtin") return { kind: "builtin", providerId: "astravia" };
 	if (source.startsWith("sdk:")) return { kind: "provided", providerType: "sdk", providerId: source.slice(4) };
 	if (source.startsWith("plugin:")) return { kind: "provided", providerType: "plugin", providerId: source.slice(7) };
 	if (source.startsWith("runtime:")) return { kind: "provided", providerType: "runtime", providerId: source.slice(8) };

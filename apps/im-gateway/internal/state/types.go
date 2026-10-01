@@ -38,7 +38,7 @@ type SessionEntry struct {
 }
 
 // Store is the persistence interface for RouterState. The default
-// implementation writes to ~/.vetta/im-gateway/state.json using the standard
+// implementation writes to ~/.astravia/im-gateway/state.json using the standard
 // write-temp + fsync + rename atomic-write pattern, mirroring the convention
 // already established in desktop-app's atomic-write util and SessionManager's
 // lockfile module.

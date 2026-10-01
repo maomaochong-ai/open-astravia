@@ -1,5 +1,5 @@
-import type { AgentTeamDocument } from "@vetta/agent-team";
-import type { AgentConfigurationSelection } from "@vetta/coding-agent/profile";
+import type { AgentTeamDocument } from "@astravia/agent-team";
+import type { AgentConfigurationSelection } from "@astravia/coding-agent/profile";
 import { toAgentConfigurationOverrides } from "../agent-teams/agent-ability-overrides.js";
 import { pinnedAbilityContext, resolveAgentBlueprint } from "../agent-teams/agent-blueprint-registry.js";
 

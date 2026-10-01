@@ -1,22 +1,22 @@
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { type Api, type AssistantMessage, type AssistantMessageEvent, EventStream, type Model } from "@vetta/ai";
-import type { CodingAgentKnowledgeRuntime, CodingAgentRuntimeComposition } from "@vetta/coding-agent/composition";
-import type { CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
+import { type Api, type AssistantMessage, type AssistantMessageEvent, EventStream, type Model } from "@astravia/ai";
+import type { CodingAgentKnowledgeRuntime, CodingAgentRuntimeComposition } from "@astravia/coding-agent/composition";
+import type { CodingAgentRuntimeModelSource } from "@astravia/coding-agent/host-services";
 import {
 	CODING_AGENT_SESSION_AGENT_MODE_SET,
 	CODING_AGENT_SESSION_PROFILE_STATE_READ,
 	CODING_AGENT_SUBAGENTS_READ,
 	CODING_AGENT_TODO_READ,
-} from "@vetta/coding-agent/session-extensions";
+} from "@astravia/coding-agent/session-extensions";
 import {
 	createMcpServerRuntimeToolSource,
 	type McpClientHandle,
 	type McpRuntimeToolSource,
 	type McpTool,
-} from "@vetta/runtime-mcp";
-import { FileConversationRepository } from "@vetta/runtime-node/conversation";
+} from "@astravia/runtime-mcp";
+import { FileConversationRepository } from "@astravia/runtime-node/conversation";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createCliPromptRuntimeSources } from "../src/coding-agent-resource-runtime.js";
 import { createCodingAgentRuntimeComposition } from "./fixtures/runtime-composition.js";
@@ -26,8 +26,8 @@ describe("Runtime composition contract", () => {
 	const compositions: CodingAgentRuntimeComposition[] = [];
 	beforeEach(async () => {
 		const directory = await createTemporaryDirectory("runtime-test-home-");
-		vi.stubEnv("VETTA_HOME", directory);
-		vi.stubEnv("VETTA_CODING_AGENT_DIR", join(directory, "agent"));
+		vi.stubEnv("ASTRAVIA_HOME", directory);
+		vi.stubEnv("ASTRAVIA_CODING_AGENT_DIR", join(directory, "agent"));
 		vi.stubEnv("USERPROFILE", directory);
 	});
 

@@ -1,4 +1,4 @@
-# @vetta/runtime-knowledge
+# @astravia/runtime-knowledge
 
 Runtime-owned Knowledge capability for Agent hosts.
 
@@ -13,8 +13,8 @@ Runtime-owned Knowledge capability for Agent hosts.
 
 - Agent Session or model execution
 - Tool schemas and model-visible descriptions
-- Desktop UI, polling schedules or the default Vetta home directory
+- Desktop UI, polling schedules or the default Astravia home directory
 
 Hosts must pass the Knowledge root explicitly. Node application hosts can bind this package through
-`createNodeKnowledgeRuntime(root)` from `@vetta/runtime-node/host`; this package never selects the default
-`~/.vetta/knowledges` location or reads a process-level enablement switch.
+`createNodeKnowledgeRuntime(root)` from `@astravia/runtime-node/host`; this package never selects the default
+`~/.astravia/knowledges` location or reads a process-level enablement switch.

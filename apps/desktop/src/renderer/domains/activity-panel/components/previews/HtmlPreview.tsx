@@ -1,4 +1,4 @@
-import { HtmlPreviewView } from "@vetta-org/theme-ui/activity";
+import { HtmlPreviewView } from "@astravia-org/theme-ui/activity";
 import { useTranslation } from "react-i18next";
 
 interface HtmlPreviewProps {

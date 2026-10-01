@@ -19,7 +19,7 @@
 5. 公共 API 面积过大，runtime 和 desktop 对内部实现形成具体依赖。
 6. 内部存在运行时和类型依赖环，限制后续拆分。
 
-不建议整体重写。当前已有的 Controller、会话测试、Subagent 分层和底层 `@vetta/ai` / `@vetta/agent-core` 边界可以作为渐进式重构基础。
+不建议整体重写。当前已有的 Controller、会话测试、Subagent 分层和底层 `@astravia/ai` / `@astravia/agent-core` 边界可以作为渐进式重构基础。
 
 ## 2. 分析范围与方法
 
@@ -64,7 +64,7 @@ flowchart LR
     SDK["SDK 调用方"] --> Factory
     Desktop["runtime-core / Desktop"] --> Factory
 
-    Factory --> Agent["@vetta/agent-core Agent"]
+    Factory --> Agent["@astravia/agent-core Agent"]
     Factory --> Session["AgentSession 门面"]
 
     Session --> Controllers["Queue / Retry / Compaction / Navigation / EventRouter"]
@@ -91,7 +91,7 @@ flowchart LR
 - 设置服务端模型地址并加载远程模型；
 - 创建或接收 `ResourceLoader` 与 `SessionManager`；
 - 恢复模型、thinking level 和已有消息；
-- 创建底层 `@vetta/agent-core` 的 `Agent`；
+- 创建底层 `@astravia/agent-core` 的 `Agent`；
 - 创建 `AgentSession` 并注入工具、插件、MCP、Hook、内存模式和 Subagent 配置。
 
 随后，`AgentSession` 构造函数继续完成第二层装配：
@@ -324,7 +324,7 @@ ADR 0022 已明确移除 TUI 产品线，但 README、扩展文档和包级 AGEN
 
 ### 5.1 底层模型与产品行为已有初步分离
 
-`@vetta/ai` 负责 Provider 与模型协议，`@vetta/agent-core` 负责 Agent Loop，coding-agent 负责产品级 Session。这一总体方向合理。
+`@astravia/ai` 负责 Provider 与模型协议，`@astravia/agent-core` 负责 Agent Loop，coding-agent 负责产品级 Session。这一总体方向合理。
 
 ### 5.2 Controller 提取形成了可用缝隙
 

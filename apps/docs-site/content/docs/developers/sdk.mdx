@@ -3,12 +3,12 @@ title: 使用 Coding Agent SDK
 description: 在 TypeScript 进程内创建 Agent 会话、订阅事件、发送任务并正确关闭资源。
 ---
 
-`@vetta/coding-agent/sdk` 是进程内集成入口。它提供类型化 Session、Host 和离线会话目录，不要求通过 CLI 或解析 stdout。
+`@astravia/coding-agent/sdk` 是进程内集成入口。它提供类型化 Session、Host 和离线会话目录，不要求通过 CLI 或解析 stdout。
 
 ## 创建最小会话
 
 ```typescript
-import { createCodingAgentSession } from "@vetta/coding-agent/sdk";
+import { createCodingAgentSession } from "@astravia/coding-agent/sdk";
 
 const { session, diagnostics, modelFallbackMessage } =
   await createCodingAgentSession({
@@ -73,7 +73,7 @@ Catalog 与活动 Session 分离，不应为了展示会话列表而打开所有
 
 这里的 `CodingAgentHost` 是 SDK 便利所有权组，不是多主 Agent Registry。每个成员可以有独立 cwd、Storage、Tool、MCP、
 Extension Source 和模型资源；若要在一个进程内动态安装、替换或退役不同 `agentId`，应使用
-`@vetta/runtime-core` 的 `RuntimeHost.installAgent()`。
+`@astravia/runtime-core` 的 `RuntimeHost.installAgent()`。
 
 ## 可选产品能力
 
@@ -97,4 +97,4 @@ Session 还提供模型和思考档位、工具开关、上下文压缩、自动
 4. 将 `close()` 放进 `finally` 或宿主生命周期钩子。
 5. 不从实现目录导入管理器来绕过公共合同。
 
-完整类型以 `@vetta/coding-agent/sdk` 的声明为准。
+完整类型以 `@astravia/coding-agent/sdk` 的声明为准。

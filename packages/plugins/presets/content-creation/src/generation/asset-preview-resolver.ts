@@ -1,4 +1,4 @@
-import type { PluginFsApi, PluginStorageApi } from "@vetta-org/plugin-sdk";
+import type { PluginFsApi, PluginStorageApi } from "@astravia-org/plugin-sdk";
 import type { ContentAsset } from "../project/types";
 import { joinContentPath } from "../shared/path";
 

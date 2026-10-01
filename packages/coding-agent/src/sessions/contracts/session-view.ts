@@ -1,5 +1,5 @@
-import type { AgentMessage, ToolPhase } from "@vetta/agent-core";
-import type { ImageContent, TextContent } from "@vetta/ai";
+import type { AgentMessage, ToolPhase } from "@astravia/agent-core";
+import type { ImageContent, TextContent } from "@astravia/ai";
 import type { CodingAgentSessionEntry, CodingAgentSessionHeader, CodingAgentSessionTreeNode } from "./session-entry.js";
 
 export interface CodingAgentSessionView {

@@ -14,7 +14,7 @@
 - 会话历史、认证、模型和设置等用户数据；必要时由显式、独立的新迁移器读取旧格式。
 - 模型消息、工具消息、错误、取消、事件顺序、并发约束和资源释放语义。
 - 仍然有效的行为测试场景和数据 fixture；旧实现可以临时作为测试 Oracle，但不能被新生产代码调用。
-- `@vetta/ai` 与经过合同验证的 `@vetta/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
+- `@astravia/ai` 与经过合同验证的 `@astravia/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
 
 ## 明确舍弃（固定）
 
@@ -30,13 +30,13 @@
 
 第 280 轮已经将 Runtime Composition 根切换为稳定身份，但 Composition 公开入口仍包含三个由迁移命名实现提供的接缝：
 会话文件路径解析、Knowledge Processing Session 工厂和 RuntimeHost Session Backend。本轮按真实责任重新归属这些实现，
-不改变 `@vetta/coding-agent/composition` 对宿主提供的稳定导出，也不改变创建、恢复、重试、错误映射或资源释放语义。
+不改变 `@astravia/coding-agent/composition` 对宿主提供的稳定导出，也不改变创建、恢复、重试、错误映射或资源释放语义。
 
 ## 实施内容
 
 ### 会话路径解析归属 Runtime Storage
 
-- 将 `resolveSessionIdFromPath` 实现迁入 `@vetta/runtime-storage/conversation`；
+- 将 `resolveSessionIdFromPath` 实现迁入 `@astravia/runtime-storage/conversation`；
 - 解析器复用同域的 `encodeConversationSessionId` 做 Base64URL 规范往返校验；
 - SDK、CLI、IM 和 RuntimeHost Backend 直接依赖存储域，不再通过 Coding Agent Composition 取得存储格式能力；
 - Composition 仅直接重导出稳定公开名称，维持既有公共 API 集合。

@@ -1,5 +1,5 @@
-import type { AgentMessage } from "@vetta/agent-core";
-import type { Api, Model } from "@vetta/ai";
+import type { AgentMessage } from "@astravia/agent-core";
+import type { Api, Model } from "@astravia/ai";
 import type { MemoryFactExtractor } from "./memory-fact-extractor.js";
 import type { MemoryStore } from "./memory-store.js";
 

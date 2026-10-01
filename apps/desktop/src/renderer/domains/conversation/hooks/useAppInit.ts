@@ -36,10 +36,10 @@ export function useAppInit(): void {
 				.catch(console.error);
 		}
 		// Sync workspace path from config file
-		void window.vetta.config.get().then((config) => {
+		void window.astravia.config.get().then((config) => {
 			if (config.workspacePath) {
 				setWorkspacePath(config.workspacePath);
-				localStorage.setItem("vetta-workspace-path", config.workspacePath);
+				localStorage.setItem("astravia-workspace-path", config.workspacePath);
 			}
 			if (config.defaultConversationCwd) {
 				setDefaultConversationCwd(config.defaultConversationCwd);
@@ -49,7 +49,7 @@ export function useAppInit(): void {
 			}
 			const executionMode = config.defaultExecutionMode ?? "full-access";
 			setSessionExecutionMode(executionMode);
-			localStorage.setItem("vetta-session-execution-mode", executionMode);
+			localStorage.setItem("astravia-session-execution-mode", executionMode);
 			setKnowledgeBaseEnabled(config.knowledgeBase?.enabled === true);
 			if (config.knowledgeProcessingCwd) {
 				setKnowledgeProcessingCwd(config.knowledgeProcessingCwd);
@@ -57,7 +57,7 @@ export function useAppInit(): void {
 		});
 		// 恢复新会话全局模型偏好；无偏好时才回落到配置的 defaultModel。
 		// （atom 已从 localStorage 初始化；此处再同步一次，并补写缺失的默认。）
-		void window.vetta.models.get().then((modelsConfig) => {
+		void window.astravia.models.get().then((modelsConfig) => {
 			const saved = localStorage.getItem(SELECTED_MODEL_STORAGE_KEY);
 			if (saved) {
 				setSelectedModel(saved);

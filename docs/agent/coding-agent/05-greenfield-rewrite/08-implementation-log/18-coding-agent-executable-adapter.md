@@ -12,7 +12,7 @@ Termux、失败日志和版本选择仍由 `coding-agent` 拥有。
   - `EnsureTool`
   - `ToolExecutableResolver`
   - `createToolExecutableResolver`
-- 通过 `@vetta/coding-agent/core/host/executable-resolver.js` 发布明确子入口，不把
+- 通过 `@astravia/coding-agent/core/host/executable-resolver.js` 发布明确子入口，不把
   `tools-manager` 的下载细节暴露给组合根。
 - Adapter 每次 `resolve()` 都以 `silent: true` 委托 `ensureTool`。
 - Resolver 结果原样透传：

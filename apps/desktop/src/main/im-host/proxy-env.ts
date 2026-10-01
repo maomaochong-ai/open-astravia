@@ -5,7 +5,7 @@
  * HTTP_PROXY / NO_PROXY environment variables and nothing else. It does not
  * read the macOS or Windows system proxy settings. Electron/Chromium does,
  * so on a machine where a proxy is configured system-wide but not exported
- * into the environment, Vetta itself reaches the network while the sidecar
+ * into the environment, Astravia itself reaches the network while the sidecar
  * dials direct and fails — Discord surfaces this as
  * `Get "https://discord.com/api/v9/gateway": EOF` (the TLS handshake being
  * reset), and every other channel behind the same proxy fails likewise.

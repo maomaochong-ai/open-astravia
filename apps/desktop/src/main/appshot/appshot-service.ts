@@ -1,12 +1,12 @@
 // Appshot 捕获主流程：手势触发 → 权限检查 → spawn Swift helper 抓前台窗口
-// （截图 PNG + AX 结构化文本 + 源文件路径）→ 落盘 ~/.vetta/image-cache/appshot/
+// （截图 PNG + AX 结构化文本 + 源文件路径）→ 落盘 ~/.astravia/image-cache/appshot/
 // → 唤起主窗并推送 CAPTURED。文本层只用辅助功能（AX）；抓不到就只带截图，
 // 由 agent 自行用视觉/OCR 能力理解，不在捕获阶段做 OCR。日志走 getAppLogger("appshot")。
 
 import { execFile, spawn } from "node:child_process";
 import { copyFile, mkdir, rename, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { getVettaHomePath } from "@vetta/action-rpc";
+import { getAstraviaHomePath } from "@astravia/action-rpc";
 import {
 	APPSHOT_CHANNELS,
 	type AppshotCapturedPayload,
@@ -58,9 +58,9 @@ interface AppshotMeta {
 	capturedAt: number;
 }
 
-/** 落盘目录：~/.vetta/image-cache/appshot/（复用 dialog.ts 的 7 天 TTL 目录清理）。 */
+/** 落盘目录：~/.astravia/image-cache/appshot/（复用 dialog.ts 的 7 天 TTL 目录清理）。 */
 function appshotCacheDir(): string {
-	return join(getVettaHomePath(), "image-cache", "appshot");
+	return join(getAstraviaHomePath(), "image-cache", "appshot");
 }
 
 /** 本地时区 ISO 时间串（带 +08:00 形式的偏移），写进 md frontmatter。 */

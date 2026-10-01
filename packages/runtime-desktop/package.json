@@ -1,7 +1,7 @@
 {
-	"name": "@vetta/runtime-desktop",
+	"name": "@astravia/runtime-desktop",
 	"version": "0.0.1",
-	"description": "Desktop platform runtime composition and host adapters for Vetta agents",
+	"description": "Desktop platform runtime composition and host adapters for Astravia agents",
 	"type": "module",
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
@@ -19,15 +19,15 @@
 		"prepublishOnly": "bun run clean && bun run build"
 	},
 	"dependencies": {
-		"@vetta/runtime-ssh": "workspace:*",
-		"@vetta/ssh-transport": "workspace:*",
-		"@vetta/ai": "workspace:*",
-		"@vetta/coding-agent": "workspace:*",
-		"@vetta/runtime-core": "workspace:*",
-		"@vetta/runtime-mcp": "workspace:*",
-		"@vetta/runtime-node": "workspace:*",
-		"@vetta/runtime-storage": "workspace:*",
-		"@vetta/runtime-tools": "workspace:*"
+		"@astravia/runtime-ssh": "workspace:*",
+		"@astravia/ssh-transport": "workspace:*",
+		"@astravia/ai": "workspace:*",
+		"@astravia/coding-agent": "workspace:*",
+		"@astravia/runtime-core": "workspace:*",
+		"@astravia/runtime-mcp": "workspace:*",
+		"@astravia/runtime-node": "workspace:*",
+		"@astravia/runtime-storage": "workspace:*",
+		"@astravia/runtime-tools": "workspace:*"
 	},
 	"devDependencies": {
 		"@types/node": "^22.10.5",

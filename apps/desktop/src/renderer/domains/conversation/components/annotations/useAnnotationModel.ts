@@ -32,7 +32,7 @@ export function useAnnotationModel(session: ActiveSession) {
 		try {
 			await waitForCommittedPaint();
 			if (!alive.current) return;
-			const loaded = await window.vetta.messageAnnotations.list(session.runtimeId);
+			const loaded = await window.astravia.messageAnnotations.list(session.runtimeId);
 			if (alive.current)
 				setNotes((current) =>
 					revision.current === startRevision
@@ -47,7 +47,7 @@ export function useAnnotationModel(session: ActiveSession) {
 	}, [session.runtimeId]);
 	useEffect(() => {
 		alive.current = true;
-		const unsubscribe = window.vetta.messageAnnotations.onChanged((event) => {
+		const unsubscribe = window.astravia.messageAnnotations.onChanged((event) => {
 			if (event.sessionPath === session.sessionPath) upsert(event.annotation);
 		});
 		void reload();
@@ -74,7 +74,7 @@ export function useAnnotationModel(session: ActiveSession) {
 			await waitForCommittedPaint();
 			if (!alive.current || operation.cancelled) return;
 			operation.started = true;
-			const result = await window.vetta.messageAnnotations.ask(session.runtimeId, {
+			const result = await window.astravia.messageAnnotations.ask(session.runtimeId, {
 				id: captured.id,
 				entryId: captured.entryId,
 				quote: captured.quote,
@@ -101,7 +101,7 @@ export function useAnnotationModel(session: ActiveSession) {
 			return;
 		}
 		try {
-			await window.vetta.messageAnnotations.cancel(session.runtimeId, target.id);
+			await window.astravia.messageAnnotations.cancel(session.runtimeId, target.id);
 		} catch {
 			if (alive.current) setError(true);
 		}

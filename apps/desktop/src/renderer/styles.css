@@ -1,14 +1,14 @@
-@layer vetta-plugins, theme, base, components, utilities;
+@layer astravia-plugins, theme, base, components, utilities;
 
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "@vetta-org/theme-ui/styles.css";
+@import "@astravia-org/theme-ui/styles.css";
 @plugin "@iconify/tailwind4";
 
 /* Scan official theme UI package so utilities / iconify classes in migrated
    components (e.g. window minimize/maximize icons) are generated. */
 @source "../../../../packages/theme-ui/src/**/*.{ts,tsx}";
-/* Host design-system primitives live in @vetta-org/ui; re-exports under
+/* Host design-system primitives live in @astravia-org/ui; re-exports under
    desktop-app no longer contain className literals for Tailwind to see. */
 @source "../../../../packages/ui/src/**/*.{ts,tsx}";
 
@@ -28,7 +28,7 @@
 @source inline("icon-[solar--widget-2-linear]");
 
 @custom-variant dark (&:is([data-mode="dark"] *));
-/* Radix sets data-state="open"|"closed"; @vetta-org/ui uses data-open:/data-closed: utilities. */
+/* Radix sets data-state="open"|"closed"; @astravia-org/ui uses data-open:/data-closed: utilities. */
 @custom-variant data-open (&:is([data-state="open"]));
 @custom-variant data-closed (&:is([data-state="closed"]));
 
@@ -846,7 +846,7 @@ a {
    radix 在 overlay/content 上写 data-state="open"|"closed"，关闭时 Presence
    会等动画结束再卸载，因此出场动画也能完整播放。content 的 to 态保持
    translate(-50%,-50%) 与 Tailwind 的居中类一致，动画结束后无跳动。 */
-@keyframes vetta-dialog-overlay-in {
+@keyframes astravia-dialog-overlay-in {
 	from {
 		opacity: 0;
 	}
@@ -855,7 +855,7 @@ a {
 	}
 }
 
-@keyframes vetta-dialog-overlay-out {
+@keyframes astravia-dialog-overlay-out {
 	from {
 		opacity: 1;
 	}
@@ -864,7 +864,7 @@ a {
 	}
 }
 
-@keyframes vetta-dialog-content-in {
+@keyframes astravia-dialog-content-in {
 	from {
 		opacity: 0;
 		transform: translate(-50%, -50%) scale(0.96);
@@ -875,7 +875,7 @@ a {
 	}
 }
 
-@keyframes vetta-dialog-content-out {
+@keyframes astravia-dialog-content-out {
 	from {
 		opacity: 1;
 		transform: translate(-50%, -50%) scale(1);
@@ -887,15 +887,15 @@ a {
 }
 
 [data-slot="dialog-overlay"][data-state="open"] {
-	animation: vetta-dialog-overlay-in 200ms ease-out;
+	animation: astravia-dialog-overlay-in 200ms ease-out;
 }
 
 [data-slot="dialog-overlay"][data-state="closed"] {
-	animation: vetta-dialog-overlay-out 150ms ease-in;
+	animation: astravia-dialog-overlay-out 150ms ease-in;
 }
 
 /*
-  Safety net for DialogContent width after primitives moved to @vetta-org/ui.
+  Safety net for DialogContent width after primitives moved to @astravia-org/ui.
   Utility max-w-* / sm:max-w-* (utilities layer) still override this when present.
   Without a cap, only w-full may apply and dialogs span nearly the full viewport.
 */
@@ -907,11 +907,11 @@ a {
 }
 
 [data-slot="dialog-content"][data-state="open"] {
-	animation: vetta-dialog-content-in 200ms cubic-bezier(0.22, 1, 0.36, 1);
+	animation: astravia-dialog-content-in 200ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 [data-slot="dialog-content"][data-state="closed"] {
-	animation: vetta-dialog-content-out 150ms ease-in;
+	animation: astravia-dialog-content-out 150ms ease-in;
 }
 
 @media (prefers-reduced-motion: reduce) {

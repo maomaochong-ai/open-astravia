@@ -3,7 +3,7 @@ import { atom } from "jotai";
 
 /**
  * 主进程 UpdaterService 的镜像状态。
- * 由 App.tsx 在挂载时通过 window.vetta.updater.onStateChanged 订阅写入。
+ * 由 App.tsx 在挂载时通过 window.astravia.updater.onStateChanged 订阅写入。
  */
 export const updaterStateAtom = atom<UpdaterState>({
 	phase: "idle",

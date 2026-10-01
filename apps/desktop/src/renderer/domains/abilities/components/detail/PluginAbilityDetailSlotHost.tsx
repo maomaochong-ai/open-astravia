@@ -23,7 +23,7 @@ export function PluginAbilityDetailSlotHost({
 		!item.grantedPermissions.includes("ui.slot.ability-detail");
 	if (slots.length === 0 && !needsDetailPermission) return null;
 	return (
-		<div className="flex flex-col gap-3 vetta-plugin-host" data-testid="plugin-ability-detail-slots">
+		<div className="flex flex-col gap-3 astravia-plugin-host" data-testid="plugin-ability-detail-slots">
 			{needsDetailPermission ? (
 				<div className="flex flex-wrap items-start gap-3 rounded-xl border border-border/50 bg-muted/40 p-4">
 					<span aria-hidden="true" className="icon-[solar--shield-keyhole-linear] mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
@@ -42,7 +42,7 @@ export function PluginAbilityDetailSlotHost({
 				const SlotComponent = slot.component;
 				return (
 					<PluginSlotErrorBoundary key={slot.id} pluginSlotId={slot.id}>
-						<div className="vetta-plugin" data-vetta-plugin-slot={slot.id}>
+						<div className="astravia-plugin" data-astravia-plugin-slot={slot.id}>
 							<PluginI18nBoundary pluginId={slot.pluginId}>
 								<SlotComponent abilityId={item.slug} installed={item.installed} enabled={item.enabled} />
 							</PluginI18nBoundary>

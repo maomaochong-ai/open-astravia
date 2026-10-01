@@ -106,13 +106,13 @@ function buildProfile(cwd: string, meta: Record<string, unknown> | null): Projec
 /**
  * 异步获取项目 profile。
  *
- * 直接读取 .vetta/meta.json，不做任何缓存。
+ * 直接读取 .astravia/meta.json，不做任何缓存。
  * 适合在事件回调 / 命令式代码中使用。组件渲染请使用 {@link useProjectProfile}。
  */
 export async function getProjectProfile(cwd: string): Promise<ProjectProfile> {
 	let meta: Record<string, unknown> | null = null;
 	try {
-		meta = await window.vetta.project.readMeta(cwd);
+		meta = await window.astravia.project.readMeta(cwd);
 	} catch {
 		meta = null;
 	}

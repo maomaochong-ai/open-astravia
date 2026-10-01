@@ -2,7 +2,7 @@
 
 ## 状态
 
-已采纳，第 1、3 条被 ADR-0056 部分取代：供应商适配与 API key 从插件迁到 Vetta 网关，SDK 增加 `ctx.gateway.request`。其余条款继续有效。
+已采纳，第 1、3 条被 ADR-0056 部分取代：供应商适配与 API key 从插件迁到 Astravia 网关，SDK 增加 `ctx.gateway.request`。其余条款继续有效。
 
 ## 背景
 
@@ -17,7 +17,7 @@
    - `ctx.storage`：插件 id 隔离的 JSON、文件和 blob 持久化；blob 返回宿主媒体 URL。
 4. 输入动作通过 `PluginPromptDecoration.instructions` 贡献隐藏指令；coding-agent 只识别通用 `pluginInstructions`，不再识别 `imageMode` / `editImageId`。
 5. 网络与存储调用必须经过插件 capability session；主进程从 session 注入插件 id，并在 capability 层执行权限检查和审计。
-6. 插件私有数据统一写入 `~/.vetta/plugin-data/<plugin-id>/`；首次访问时复制旧 `plugin-images` 数据，再由 image-gen 迁移旧索引，保留已有图像 id 和谱系。
+6. 插件私有数据统一写入 `~/.astravia/plugin-data/<plugin-id>/`；首次访问时复制旧 `plugin-images` 数据，再由 image-gen 迁移旧索引，保留已有图像 id 和谱系。
 7. 下一轮业务上下文使用通用 `PluginPromptAttachment`（label/icon/instructions/metadata）；宿主不再持有编辑图片专用状态。
 8. 本地图片编辑通过 `fs.readBinaryFile` 读取受控原始字节并嗅探 MIME，不复用文本预览读取。
 

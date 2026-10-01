@@ -1,4 +1,4 @@
-import type { RuntimeSessionEventStream, SessionEvent } from "@vetta/runtime-core";
+import type { RuntimeSessionEventStream, SessionEvent } from "@astravia/runtime-core";
 import { describe, expect, it } from "vitest";
 import { DeferredRuntimeErrorEventStream } from "../../src/host/runtime-host/session-retry.js";
 

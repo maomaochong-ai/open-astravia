@@ -10,7 +10,7 @@ import {
 } from "./open-marketplace-managed-http-runtime";
 
 const roots: string[] = [];
-const PORT_TOKEN = `\${VETTA_MCP_PORT}`;
+const PORT_TOKEN = `\${ASTRAVIA_MCP_PORT}`;
 
 async function fixture(): Promise<{ root: string; id: string; command: string }> {
 	const root = await mkdtemp(join(tmpdir(), "managed-http-runtime-"));

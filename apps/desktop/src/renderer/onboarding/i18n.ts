@@ -10,7 +10,7 @@ import { type AppLanguage, resolveAppLanguageFromLocale, resources } from "@/sha
 
 function detectLanguage(): AppLanguage {
 	// 真相源：main 已按 config 或系统 locale 解析；缺失时用 navigator 兜底（与 main 同一套规则）。
-	const fromBridge = window.vettaOnboarding?.initialLanguage;
+	const fromBridge = window.astraviaOnboarding?.initialLanguage;
 	return resolveAppLanguageFromLocale(fromBridge ?? navigator.language);
 }
 
@@ -39,7 +39,7 @@ export function initOnboardingI18n(): void {
 
 /** 跟随 App 语言切换实时刷新引导窗文案；返回取消订阅函数。 */
 export function subscribeOnboardingLanguage(): () => void {
-	const bridge = window.vettaOnboarding;
+	const bridge = window.astraviaOnboarding;
 	if (!bridge?.onLanguageChanged) return () => {};
 	return bridge.onLanguageChanged((lang) => {
 		const next = resolveAppLanguageFromLocale(lang);

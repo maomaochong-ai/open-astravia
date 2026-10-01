@@ -1,4 +1,4 @@
-import type { AgentProfile, AgentTeamDocument, TeamDefinition } from "@vetta/agent-team";
+import type { AgentProfile, AgentTeamDocument, TeamDefinition } from "@astravia/agent-team";
 
 /**
  * 宿主当年随包铺下的装机档案 id。

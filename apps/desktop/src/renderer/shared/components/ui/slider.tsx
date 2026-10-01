@@ -1,1 +1,1 @@
-export { Slider } from "@vetta-org/ui";
+export { Slider } from "@astravia-org/ui";

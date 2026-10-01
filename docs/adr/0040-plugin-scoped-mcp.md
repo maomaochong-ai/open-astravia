@@ -1,6 +1,6 @@
 # 插件内聚 MCP：第三配置源，不写用户 mcp.json
 
-插件作为 Agent 能力聚合单元时，需要自带 MCP server（Codex 生态与 Cowart 类插件以 MCP 为主）。决定在 [[可信插件]] 模型下增加 **插件作用域 MCP**，与用户全局 / 项目 `mcp.json` 并列，**不回写** `~/.vetta/agent/mcp.json`。
+插件作为 Agent 能力聚合单元时，需要自带 MCP server（Codex 生态与 Cowart 类插件以 MCP 为主）。决定在 [[可信插件]] 模型下增加 **插件作用域 MCP**，与用户全局 / 项目 `mcp.json` 并列，**不回写** `~/.astravia/agent/mcp.json`。
 
 ## 背景
 

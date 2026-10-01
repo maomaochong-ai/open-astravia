@@ -1,5 +1,5 @@
-import { bindCapability } from "@vetta/capability-runtime";
-import { type Disposable, DOMAIN_NAVIGATION_CAPABILITIES } from "@vetta-org/capability-sdk";
+import { bindCapability } from "@astravia/capability-runtime";
+import { type Disposable, DOMAIN_NAVIGATION_CAPABILITIES } from "@astravia-org/capability-sdk";
 import type { RendererCapabilityHost } from "../capabilities/renderer-capability-host.js";
 import type { HostedRouteService } from "./hosted-route-service.js";
 

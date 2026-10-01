@@ -14,7 +14,7 @@
 - 会话历史、认证、模型和设置等用户数据；必要时由显式、独立的新迁移器读取旧格式。
 - 模型消息、工具消息、错误、取消、事件顺序、并发约束和资源释放语义。
 - 仍然有效的行为测试场景和数据 fixture；旧实现可以临时作为测试 Oracle，但不能被新生产代码调用。
-- `@vetta/ai` 与经过合同验证的 `@vetta/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
+- `@astravia/ai` 与经过合同验证的 `@astravia/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
 
 ## 明确舍弃（固定）
 
@@ -79,7 +79,7 @@
 - Coding Agent 重写治理测试：23 项通过。
 - `bun run check:quick` 通过，新旧架构统计与包边界守卫无回退。
 - `bun run check` 通过，覆盖 Biome、根/CLI/Desktop/Admin TypeScript 检查和全部质量守卫。
-- `bun run verify:agent-hosts` 通过：独立 Vetta CLI 产物、IM Gateway 真实 Greenfield Agent、Coding Agent 功能套件、CLI 34 个文件/186 项测试、Desktop 121 个文件/511 项测试全部通过；Desktop 另有 1 项平台不适用测试跳过。
+- `bun run verify:agent-hosts` 通过：独立 Astravia CLI 产物、IM Gateway 真实 Greenfield Agent、Coding Agent 功能套件、CLI 34 个文件/186 项测试、Desktop 121 个文件/511 项测试全部通过；Desktop 另有 1 项平台不适用测试跳过。
 - 本阶段没有改动 Provider 或模型调用实现，验收使用确定性测试模型，没有发送新的计费 DeepSeek 请求。
 
 ## 本阶段结果

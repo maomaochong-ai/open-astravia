@@ -1,5 +1,5 @@
 import type { JSX } from "react";
-import { Button, cn } from "@vetta-org/ui";
+import { Button, cn } from "@astravia-org/ui";
 
 export interface BatchProjectFoldersFieldViewLabels {
 	readonly folderModePicker: string;

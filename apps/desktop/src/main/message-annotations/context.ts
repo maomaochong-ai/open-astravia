@@ -1,4 +1,4 @@
-import type { HistoryEntry } from "@vetta/runtime-core";
+import type { HistoryEntry } from "@astravia/runtime-core";
 
 /** History is quoted reference material, never an executable continuation of the main agent. */
 export function annotationContext(history: readonly HistoryEntry[], entryId: string): string {

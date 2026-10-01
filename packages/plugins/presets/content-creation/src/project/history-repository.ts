@@ -1,4 +1,4 @@
-import { readJsonFile, writeJsonFile, type PluginStorageApi } from "@vetta-org/plugin-sdk";
+import { readJsonFile, writeJsonFile, type PluginStorageApi } from "@astravia-org/plugin-sdk";
 import { isContentProjectFile } from "./persistence";
 import type {
 	ContentHistoryAction,

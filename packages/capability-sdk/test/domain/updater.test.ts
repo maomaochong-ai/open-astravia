@@ -5,13 +5,13 @@ import { DOMAIN_UPDATER_CAPABILITIES, DOMAIN_UPDATER_CAPABILITY_CATALOG, UPDATER
 describe("updater domain capabilities", () => {
 	it("uses one stable id per updater operation", () => {
 		expect(Object.values(DOMAIN_UPDATER_CAPABILITIES).map((capability) => capability.id)).toEqual([
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}updater.state.get`,
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}updater.current-version.get`,
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}updater.check`,
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}updater.download`,
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}updater.install`,
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}updater.dismiss`,
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}updater.cancel`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}updater.state.get`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}updater.current-version.get`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}updater.check`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}updater.download`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}updater.install`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}updater.dismiss`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}updater.cancel`,
 		]);
 	});
 

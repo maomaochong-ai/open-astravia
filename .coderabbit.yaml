@@ -44,7 +44,7 @@ reviews:
     - path: "**"
       instructions: |
         This is the open-source client monorepo (desktop, CLI, docs site,
-        Android, IM gateway). Server billing/quota ADRs live in vetta-serv;
+        Android, IM gateway). Server billing/quota ADRs live in astravia-serv;
         missing ADR numbers here are intentional — do not "fix" them.
 
         Hard rules:
@@ -146,7 +146,7 @@ reviews:
     - path: "docs/adr/**"
       instructions: |
         Do not renumber, reuse, or backfill ADR ids. Do not invent
-        server-side ADRs that belong in vetta-serv.
+        server-side ADRs that belong in astravia-serv.
 
     - path: ".github/workflows/**"
       instructions: |

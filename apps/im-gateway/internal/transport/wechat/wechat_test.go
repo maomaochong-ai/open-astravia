@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"vetta-im-gateway/internal/transport"
-	"vetta-im-gateway/internal/transport/wechat/ilink"
+	"astravia-im-gateway/internal/transport"
+	"astravia-im-gateway/internal/transport/wechat/ilink"
 )
 
 // =============================================================================

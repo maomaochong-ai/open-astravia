@@ -1,5 +1,5 @@
-import type { RuntimeHostSessionBackend, RuntimeObservationRecord } from "@vetta/runtime-core";
-import { RUNTIME_HOST_LIFECYCLE_OBSERVATION, RuntimeHost } from "@vetta/runtime-core";
+import type { RuntimeHostSessionBackend, RuntimeObservationRecord } from "@astravia/runtime-core";
+import { RUNTIME_HOST_LIFECYCLE_OBSERVATION, RuntimeHost } from "@astravia/runtime-core";
 import { describe, expect, it, vi } from "vitest";
 
 describe("RuntimeHost Agent runtime ownership", () => {

@@ -4,7 +4,7 @@ import {
 	type RuntimeToolProjector,
 	TOOL_CALL_DESCRIPTION_TEXT,
 	ToolCallDescriptionSchema,
-} from "@vetta/runtime-tools";
+} from "@astravia/runtime-tools";
 
 export const CODING_AGENT_TOOL_PROJECTION_ORDER = {
 	callDescription: 100,

@@ -56,7 +56,7 @@ function PluginsSetEnabledApprovalContent({ approval }: { approval: ActiveAction
 	useEffect(() => {
 		if (!input?.id) return;
 		let cancelled = false;
-		void window.vetta.plugins
+		void window.astravia.plugins
 			.list()
 			.then((items) => {
 				if (!cancelled) setPlugin(items.find((item) => item.id === input.id) ?? null);

@@ -1,5 +1,5 @@
-import type { SessionEndCause } from "@vetta/ecosystem-adapter";
-import { defineRuntimeObservation, type RuntimeObservationFailure } from "@vetta/runtime-core";
+import type { SessionEndCause } from "@astravia/ecosystem-adapter";
+import { defineRuntimeObservation, type RuntimeObservationFailure } from "@astravia/runtime-core";
 
 export interface CodingAgentLifecycleIssueObservation {
 	readonly operation: "session-end-hook";

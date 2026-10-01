@@ -3,7 +3,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { getVettaHomePath } from "@vetta/action-rpc";
+import { getAstraviaHomePath } from "@astravia/action-rpc";
 import { app, autoUpdater as nativeAutoUpdater, powerMonitor } from "electron";
 import electronUpdater from "electron-updater";
 
@@ -39,8 +39,8 @@ const { autoUpdater } = electronUpdater;
  * changing the update source in production builds.
  */
 function configureE2eUpdateFeed(): void {
-	if (!app.isPackaged || process.env.VETTA_E2E !== "1") return;
-	const feedUrl = process.env.VETTA_E2E_UPDATE_URL?.trim();
+	if (!app.isPackaged || process.env.ASTRAVIA_E2E !== "1") return;
+	const feedUrl = process.env.ASTRAVIA_E2E_UPDATE_URL?.trim();
 	if (!feedUrl) return;
 	try {
 		const parsedUrl = new URL(feedUrl);
@@ -96,7 +96,7 @@ const prepareQuit = async () => {
 	(app as typeof app & { isQuitting?: boolean }).isQuitting = true;
 	// 安装器会以守护进程身份把应用拉回来，那样起来的窗口不会自动到前台，
 	// 打个标记让下次启动主动抢焦点（见 update-relaunch-marker.ts）。
-	markPendingUpdateRelaunch(getVettaHomePath());
+	markPendingUpdateRelaunch(getAstraviaHomePath());
 	console.info("[updater] running quit cleanup before handing off to the installer");
 	await runQuitCleanup();
 };
@@ -142,11 +142,11 @@ interface UpgradeE2eState {
 
 function upgradeE2eStatePaths(): string[] {
 	return [
-		process.env.VETTA_E2E_UPGRADE_STATE?.trim(),
-		join(getVettaHomePath(), "desktop-upgrade-e2e.json"),
+		process.env.ASTRAVIA_E2E_UPGRADE_STATE?.trim(),
+		join(getAstraviaHomePath(), "desktop-upgrade-e2e.json"),
 		// ShipIt can relaunch without the test environment. Keep one fallback marker
-		// under the runner user's normal Vetta home so the second process can find it.
-		join(homedir(), ".vetta", "desktop-upgrade-e2e.json"),
+		// under the runner user's normal Astravia home so the second process can find it.
+		join(homedir(), ".astravia", "desktop-upgrade-e2e.json"),
 	].filter((path, index, paths): path is string => Boolean(path) && paths.indexOf(path) === index);
 }
 
@@ -195,7 +195,7 @@ export async function runUpgradeE2e(): Promise<void> {
 	}
 	// ShipIt may start the relaunched macOS process without inheriting the shell
 	// environment. The persisted installing marker is the only second-launch opt-in.
-	if (process.env.VETTA_E2E !== "1" && state.phase !== "installing") return;
+	if (process.env.ASTRAVIA_E2E !== "1" && state.phase !== "installing") return;
 
 	const current = getAppVersion();
 	if (state.phase === "installing") {

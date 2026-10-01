@@ -1,10 +1,13 @@
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import {
+	RuntimeConfigurationCenter,
+	RuntimeConfigurationSnapshotCoordinator,
+} from "@astravia/runtime-core/configuration";
+import type { RuntimeSnapshotAcquireContext } from "@astravia/runtime-core/kernel";
+import { CODING_IMAGE_CONFIGURATION } from "@astravia/runtime-tools";
 import { PhotonImage, resize, SamplingFilter } from "@silvia-odwyer/photon-node";
-import { RuntimeConfigurationCenter, RuntimeConfigurationSnapshotCoordinator } from "@vetta/runtime-core/configuration";
-import type { RuntimeSnapshotAcquireContext } from "@vetta/runtime-core/kernel";
-import { CODING_IMAGE_CONFIGURATION } from "@vetta/runtime-tools";
 import { describe, expect, it } from "vitest";
 import { createReadTool, createReadToolRegistration, type ImageResizeOptions } from "../../../src/coding/index.js";
 import type { ReadBehaviorSubject, ReadBehaviorSubjectOptions } from "./read-behavior-contract.js";
@@ -149,7 +152,7 @@ describe("read runtime boundaries", () => {
 	it(
 		"resizes a real 3840x2160 JPEG through the production read path",
 		async () => {
-			const directory = await mkdtemp(join(tmpdir(), "vetta-read-large-image-"));
+			const directory = await mkdtemp(join(tmpdir(), "astravia-read-large-image-"));
 			const imagePath = join(directory, "large.jpg");
 			const source = PhotonImage.new_from_byteslice(
 				Buffer.from(

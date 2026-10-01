@@ -11,7 +11,7 @@ const testPaths = vi.hoisted(() => {
 });
 const sendToRenderer = vi.hoisted(() => vi.fn());
 
-vi.mock("@vetta/action-rpc", () => ({ getVettaHomePath: () => testPaths.home }));
+vi.mock("@astravia/action-rpc", () => ({ getAstraviaHomePath: () => testPaths.home }));
 vi.mock("electron", () => ({
 	app: { isPackaged: true, resourcesPath: testPaths.resources },
 	webContents: {
@@ -79,11 +79,11 @@ describe("installPluginFromArchive", () => {
 		await installPluginFromArchive(archive("0.0.0"), { source: "archive" });
 
 		expect(sendToRenderer).toHaveBeenCalledOnce();
-		expect(sendToRenderer).toHaveBeenCalledWith("vetta:plugins:changed", { pluginIds: [PLUGIN_ID] });
+		expect(sendToRenderer).toHaveBeenCalledWith("astravia:plugins:changed", { pluginIds: [PLUGIN_ID] });
 	});
 
-	it("从 .vettapkg 路径安装，并继续兼容旧 .zip 插件包", async () => {
-		const packagePath = join(testPaths.root, "install-activation-demo-0.0.0.vettapkg");
+	it("从 .astraviapkg 路径安装，并继续兼容旧 .zip 插件包", async () => {
+		const packagePath = join(testPaths.root, "install-activation-demo-0.0.0.astraviapkg");
 		const legacyPath = join(testPaths.root, "install-activation-demo-0.0.0.zip");
 		const invalidPath = join(testPaths.root, "plugin.tar");
 		const bytes = archive("0.0.0");
@@ -91,7 +91,7 @@ describe("installPluginFromArchive", () => {
 
 		await expect(installPluginFromPath(packagePath)).resolves.toMatchObject({ activeVersion: "0.0.0" });
 		await expect(installPluginFromPath(legacyPath)).resolves.toMatchObject({ activeVersion: "0.0.0" });
-		await expect(installPluginFromPath(invalidPath)).rejects.toThrow(".vettapkg");
+		await expect(installPluginFromPath(invalidPath)).rejects.toThrow(".astraviapkg");
 	});
 
 	it("手动装了新版本 zip 之后，无需任何重载动作就加载新版本内容", async () => {

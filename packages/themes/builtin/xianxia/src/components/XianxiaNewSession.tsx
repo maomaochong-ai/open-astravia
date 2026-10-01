@@ -1,12 +1,12 @@
-import { cn } from "@vetta-org/ui";
-import { useThemeSurface } from "@vetta-org/theme-sdk";
+import { cn } from "@astravia-org/ui";
+import { useThemeSurface } from "@astravia-org/theme-sdk";
 import type {
 	NewSessionSceneCarouselProps,
 	NewSessionSceneItem,
 	NewSessionSkillBadgeRowProps,
 	NewSessionSkillItem,
-} from "@vetta-org/theme-ui";
-import { ThemeSurface, useHorizontalDragScroll } from "@vetta-org/theme-ui";
+} from "@astravia-org/theme-ui";
+import { ThemeSurface, useHorizontalDragScroll } from "@astravia-org/theme-ui";
 import type { JSX } from "react";
 import { xianxiaAssets } from "../assets";
 

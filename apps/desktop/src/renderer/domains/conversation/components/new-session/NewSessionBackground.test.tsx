@@ -8,7 +8,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@vetta-org/theme-ui/chat", () => ({
+vi.mock("@astravia-org/theme-ui/chat", () => ({
 	NewSessionBackground: () => <div data-testid="grid" />,
 }));
 
@@ -20,7 +20,7 @@ vi.mock("@shared/components/ripple/RippleTexture", () => ({
 	RippleTexture: () => <div data-testid="ripple" />,
 }));
 
-const STORAGE_KEY = "vetta-new-session-texture";
+const STORAGE_KEY = "astravia-new-session-texture";
 
 /** atom 的初值在模块加载时就从 localStorage 读走了，所以每次都要先写值再重新 import。 */
 async function renderBackground(stored: string | null) {

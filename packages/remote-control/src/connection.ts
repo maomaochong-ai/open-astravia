@@ -44,7 +44,7 @@ interface PendingRequest {
 	readonly timeout: ReturnType<typeof setTimeout>;
 }
 
-const SEALED_ASSOCIATED_DATA = `vetta-remote-v${REMOTE_PROTOCOL_VERSION}`;
+const SEALED_ASSOCIATED_DATA = `astravia-remote-v${REMOTE_PROTOCOL_VERSION}`;
 const EARLY_SEALED_LIMIT = 32;
 
 /**

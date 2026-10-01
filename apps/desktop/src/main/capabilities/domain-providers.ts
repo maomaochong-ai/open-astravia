@@ -1,4 +1,4 @@
-import { bindCapability, type CapabilityRegistry } from "@vetta/capability-runtime";
+import { bindCapability, type CapabilityRegistry } from "@astravia/capability-runtime";
 import {
 	CAPABILITY_ERROR_CODES,
 	CapabilityError,
@@ -18,7 +18,7 @@ import {
 	DOMAIN_SKILL_CAPABILITIES,
 	DOMAIN_UPDATER_CAPABILITIES,
 	DOMAIN_WEBHOOK_CAPABILITIES,
-} from "@vetta-org/capability-sdk";
+} from "@astravia-org/capability-sdk";
 import { getDesktopAgentSettingsService } from "../agent-settings/agent-settings-service.js";
 import type { ArtifactStore } from "../artifacts/artifact-store.js";
 import { getDesktopBatchTaskService } from "../batch-tasks/batch-task-service.js";
@@ -41,21 +41,21 @@ import { registerDesktopMediaProviders } from "./media-providers.js";
 import { registerDesktopModelProviders } from "./model-providers.js";
 import { getDesktopOcrService, registerDesktopOcrProviders } from "./ocr-providers.js";
 
-const DOMAIN_BATCH_TASK_PROVIDER_OWNER = "vetta.domain.batch-task";
-const DOMAIN_AGENT_SETTINGS_PROVIDER_OWNER = "vetta.domain.agent-settings";
-const DOMAIN_GENERAL_SETTINGS_PROVIDER_OWNER = "vetta.domain.general-settings";
-const DOMAIN_IM_PROVIDER_OWNER = "vetta.domain.im";
-const DOMAIN_PROJECT_PROVIDER_OWNER = "vetta.domain.project";
-const DOMAIN_SESSION_PROVIDER_OWNER = "vetta.domain.session";
-const DOMAIN_SKILL_PROVIDER_OWNER = "vetta.domain.skill";
-const DOMAIN_SHORTCUT_PROVIDER_OWNER = "vetta.domain.shortcut";
-const DOMAIN_QUICK_PANEL_PROVIDER_OWNER = "vetta.domain.quick-panel";
-const DOMAIN_DOWNLOAD_PROVIDER_OWNER = "vetta.domain.download";
-const DOMAIN_UPDATER_PROVIDER_OWNER = "vetta.domain.updater";
-const DOMAIN_KNOWLEDGE_PROVIDER_OWNER = "vetta.domain.knowledge";
-const DOMAIN_SCHEDULER_PROVIDER_OWNER = "vetta.domain.scheduler";
-const DOMAIN_WEBHOOK_PROVIDER_OWNER = "vetta.domain.webhook";
-const DOMAIN_OCR_PROVIDER_OWNER = "vetta.domain.ocr";
+const DOMAIN_BATCH_TASK_PROVIDER_OWNER = "astravia.domain.batch-task";
+const DOMAIN_AGENT_SETTINGS_PROVIDER_OWNER = "astravia.domain.agent-settings";
+const DOMAIN_GENERAL_SETTINGS_PROVIDER_OWNER = "astravia.domain.general-settings";
+const DOMAIN_IM_PROVIDER_OWNER = "astravia.domain.im";
+const DOMAIN_PROJECT_PROVIDER_OWNER = "astravia.domain.project";
+const DOMAIN_SESSION_PROVIDER_OWNER = "astravia.domain.session";
+const DOMAIN_SKILL_PROVIDER_OWNER = "astravia.domain.skill";
+const DOMAIN_SHORTCUT_PROVIDER_OWNER = "astravia.domain.shortcut";
+const DOMAIN_QUICK_PANEL_PROVIDER_OWNER = "astravia.domain.quick-panel";
+const DOMAIN_DOWNLOAD_PROVIDER_OWNER = "astravia.domain.download";
+const DOMAIN_UPDATER_PROVIDER_OWNER = "astravia.domain.updater";
+const DOMAIN_KNOWLEDGE_PROVIDER_OWNER = "astravia.domain.knowledge";
+const DOMAIN_SCHEDULER_PROVIDER_OWNER = "astravia.domain.scheduler";
+const DOMAIN_WEBHOOK_PROVIDER_OWNER = "astravia.domain.webhook";
+const DOMAIN_OCR_PROVIDER_OWNER = "astravia.domain.ocr";
 
 function assertNotAborted(signal: AbortSignal): void {
 	if (signal.aborted) {

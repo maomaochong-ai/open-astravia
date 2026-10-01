@@ -7,7 +7,7 @@ export interface AppActionSystem {
 	runtime: AppActionRuntime;
 }
 
-const REQUIRED_ACTION_PROVIDER_PREFIXES = ["plugin:vetta-actions:"] as const;
+const REQUIRED_ACTION_PROVIDER_PREFIXES = ["plugin:astravia-actions:"] as const;
 
 /**
  * 创建空的 App Action 运行时。

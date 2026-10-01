@@ -1,3 +1,7 @@
+import type { Usage } from "@astravia/ai";
+import type { HistoryEntry, PromptAttachmentRef, PromptResourceRef } from "@astravia/runtime-core";
+import { readMcpAppAttachment, selectMcpMediaCandidates } from "@astravia/runtime-mcp/browser";
+import type { CardDescriptor } from "@astravia-org/plugin-sdk";
 import {
 	type ConversationAgentMessageViewModel,
 	createConversationAgentMessage,
@@ -17,10 +21,6 @@ import type {
 	ToolCallUiDetails,
 	ToolImagePreview,
 } from "@shared/store/atoms";
-import type { Usage } from "@vetta/ai";
-import type { HistoryEntry, PromptAttachmentRef, PromptResourceRef } from "@vetta/runtime-core";
-import { readMcpAppAttachment, selectMcpMediaCandidates } from "@vetta/runtime-mcp/browser";
-import type { CardDescriptor } from "@vetta-org/plugin-sdk";
 import { classifyChatError } from "./classifyChatError";
 import { conversationAssistantMessageId } from "./conversation-message-identity";
 

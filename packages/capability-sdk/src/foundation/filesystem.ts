@@ -90,7 +90,7 @@ const filesystemNoOutputSchema = defineCapabilityNoOutputSchema();
 
 export const FOUNDATION_FILESYSTEM_CAPABILITIES = {
 	READ_DIRECTORY: defineCapability<FilesystemPathInput, FilesystemEntry[]>({
-		id: "cap.foundation.vetta.fs.read-directory",
+		id: "cap.foundation.astravia.fs.read-directory",
 		kind: "query",
 		layer: CAPABILITY_LAYERS.FOUNDATION,
 		version: 1,
@@ -98,7 +98,7 @@ export const FOUNDATION_FILESYSTEM_CAPABILITIES = {
 		output: filesystemEntriesOutputSchema,
 	}),
 	READ_FILE: defineCapability<FilesystemPathInput, FilesystemReadFileResult>({
-		id: "cap.foundation.vetta.fs.read-file",
+		id: "cap.foundation.astravia.fs.read-file",
 		kind: "query",
 		layer: CAPABILITY_LAYERS.FOUNDATION,
 		version: 1,
@@ -106,7 +106,7 @@ export const FOUNDATION_FILESYSTEM_CAPABILITIES = {
 		output: filesystemReadFileOutputSchema,
 	}),
 	READ_BINARY_FILE: defineCapability<FilesystemPathInput, FilesystemReadBinaryFileResult>({
-		id: "cap.foundation.vetta.fs.read-binary-file",
+		id: "cap.foundation.astravia.fs.read-binary-file",
 		kind: "query",
 		layer: CAPABILITY_LAYERS.FOUNDATION,
 		version: 1,
@@ -114,7 +114,7 @@ export const FOUNDATION_FILESYSTEM_CAPABILITIES = {
 		output: filesystemReadBinaryFileOutputSchema,
 	}),
 	WRITE_FILE: defineCapability<FilesystemWriteFileInput, undefined>({
-		id: "cap.foundation.vetta.fs.write-file",
+		id: "cap.foundation.astravia.fs.write-file",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.FOUNDATION,
 		version: 1,
@@ -122,7 +122,7 @@ export const FOUNDATION_FILESYSTEM_CAPABILITIES = {
 		output: filesystemNoOutputSchema,
 	}),
 	STAT: defineCapability<FilesystemPathInput, FilesystemStatResult | null>({
-		id: "cap.foundation.vetta.fs.stat",
+		id: "cap.foundation.astravia.fs.stat",
 		kind: "query",
 		layer: CAPABILITY_LAYERS.FOUNDATION,
 		version: 1,
@@ -130,7 +130,7 @@ export const FOUNDATION_FILESYSTEM_CAPABILITIES = {
 		output: filesystemStatOutputSchema,
 	}),
 	RENAME: defineCapability<FilesystemRenameInput, undefined>({
-		id: "cap.foundation.vetta.fs.rename",
+		id: "cap.foundation.astravia.fs.rename",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.FOUNDATION,
 		version: 1,
@@ -138,7 +138,7 @@ export const FOUNDATION_FILESYSTEM_CAPABILITIES = {
 		output: filesystemNoOutputSchema,
 	}),
 	DELETE: defineCapability<FilesystemPathInput, undefined>({
-		id: "cap.foundation.vetta.fs.delete",
+		id: "cap.foundation.astravia.fs.delete",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.FOUNDATION,
 		version: 1,
@@ -146,7 +146,7 @@ export const FOUNDATION_FILESYSTEM_CAPABILITIES = {
 		output: filesystemNoOutputSchema,
 	}),
 	MOVE: defineCapability<FilesystemMoveInput, undefined>({
-		id: "cap.foundation.vetta.fs.move",
+		id: "cap.foundation.astravia.fs.move",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.FOUNDATION,
 		version: 1,
@@ -154,7 +154,7 @@ export const FOUNDATION_FILESYSTEM_CAPABILITIES = {
 		output: filesystemNoOutputSchema,
 	}),
 	CREATE_DIRECTORY: defineCapability<FilesystemPathInput, undefined>({
-		id: "cap.foundation.vetta.fs.create-directory",
+		id: "cap.foundation.astravia.fs.create-directory",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.FOUNDATION,
 		version: 1,
@@ -162,7 +162,7 @@ export const FOUNDATION_FILESYSTEM_CAPABILITIES = {
 		output: filesystemNoOutputSchema,
 	}),
 	LIST_FILES_RECURSIVE: defineCapability<FilesystemListRecursiveInput, FilesystemFileRef[]>({
-		id: "cap.foundation.vetta.fs.list-files-recursive",
+		id: "cap.foundation.astravia.fs.list-files-recursive",
 		kind: "query",
 		layer: CAPABILITY_LAYERS.FOUNDATION,
 		version: 1,

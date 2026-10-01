@@ -1,6 +1,6 @@
-import type { PluginTranslate } from "@vetta-org/plugin-sdk";
-import { useTranslation } from "@vetta-org/plugin-sdk";
-import { Button } from "@vetta-org/ui";
+import type { PluginTranslate } from "@astravia-org/plugin-sdk";
+import { useTranslation } from "@astravia-org/plugin-sdk";
+import { Button } from "@astravia-org/ui";
 import { useCallback, useEffect, useState } from "react";
 import { graphLog } from "../git/log";
 import { parseLog } from "../git/parseLog";

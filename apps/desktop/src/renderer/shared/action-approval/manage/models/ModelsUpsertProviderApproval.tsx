@@ -59,7 +59,7 @@ function Content({ approval }: { approval: ActiveActionApproval }): JSX.Element 
 	useEffect(() => {
 		if (!input?.provider) return;
 		let cancelled = false;
-		void window.vetta.models.get().then((config) => {
+		void window.astravia.models.get().then((config) => {
 			if (cancelled) return;
 			const existing = config.providers[input.provider];
 			if (!existing) {

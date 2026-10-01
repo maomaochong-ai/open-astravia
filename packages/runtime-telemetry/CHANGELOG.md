@@ -4,7 +4,7 @@
 
 ### Changed
 
-- `RuntimeTracer`、`RuntimeObservation` 及相关类型改为 `@vetta/agent-core` 观测 Port 的兼容别名；
+- `RuntimeTracer`、`RuntimeObservation` 及相关类型改为 `@astravia/agent-core` 观测 Port 的兼容别名；
   Langfuse 实现与既有 import 路径保持不变，同时移除 Agent 内核对 Runtime 包的反向依赖。
 
 ### Added

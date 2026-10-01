@@ -13,7 +13,7 @@ describe("Desktop dev workspace install check", () => {
 	let repoRoot: string;
 
 	beforeEach(() => {
-		repoRoot = mkdtempSync(join(tmpdir(), "vetta-install-"));
+		repoRoot = mkdtempSync(join(tmpdir(), "astravia-install-"));
 		writeFileSync(
 			join(repoRoot, "package.json"),
 			JSON.stringify({ workspaces: ["apps/desktop", "packages/presets/*"] }),

@@ -14,7 +14,7 @@ import (
 
 	"github.com/creack/pty"
 
-	"vetta-ssh-helper/internal/protocol"
+	"astravia-ssh-helper/internal/protocol"
 )
 
 // Interactive terminals are deliberately NOT modelled like proc.*.

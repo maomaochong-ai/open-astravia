@@ -1,4 +1,4 @@
-import type { PluginContext } from "@vetta-org/plugin-sdk";
+import type { PluginContext } from "@astravia-org/plugin-sdk";
 import type { ContentLocalAssetService } from "../../generation/local-asset-service";
 import {
 	CONTENT_PROJECT_DIR_PROPERTY,

@@ -89,7 +89,7 @@ runtime-mcp        -X-> coding-agent
 1. 实现 Session 状态机。
 2. 实现固定阶段的 Typed Turn Pipeline。
 3. 实现 Pipeline 的持久化检查点。
-4. 适配 `@vetta/agent-core` 的 Tool Loop。
+4. 适配 `@astravia/agent-core` 的 Tool Loop。
 5. 实现不可变 Runtime Snapshot。
 6. 实现统一 Tool Runtime。
 7. 实现取消、事件和 Conversation Repository 端口。

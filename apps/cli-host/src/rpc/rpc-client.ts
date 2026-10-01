@@ -1,4 +1,4 @@
-import { RpcClient as PortableRpcClient } from "@vetta/coding-agent/rpc";
+import { RpcClient as PortableRpcClient } from "@astravia/coding-agent/rpc";
 import {
 	NodeRpcClientTransport,
 	type NodeRpcClientTransportOptions,
@@ -7,7 +7,7 @@ import {
 } from "./node-rpc-client-transport.js";
 
 export type RpcClientOptions = NodeRpcClientTransportOptions;
-export type { ModelInfo, RpcEventListener } from "@vetta/coding-agent/rpc";
+export type { ModelInfo, RpcEventListener } from "@astravia/coding-agent/rpc";
 export type { RpcClientProcessLaunch };
 export { resolveRpcClientProcessLaunch };
 

@@ -64,4 +64,4 @@ const api: PetBridge = {
 	},
 };
 
-contextBridge.exposeInMainWorld("vettaPet", api);
+contextBridge.exposeInMainWorld("astraviaPet", api);

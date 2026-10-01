@@ -38,7 +38,7 @@ export function MarkdownView({ content, className, transformImageSrc }: Markdown
 	};
 
 	return (
-		<div className={className ? `vetta-markdown ${className}` : "vetta-markdown"}>
+		<div className={className ? `astravia-markdown ${className}` : "astravia-markdown"}>
 			<Markdown
 				remarkPlugins={REMARK_PLUGINS}
 				rehypePlugins={REHYPE_PLUGINS}

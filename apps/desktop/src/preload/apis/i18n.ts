@@ -9,9 +9,9 @@ import {
 import type { DesktopApi } from "../api.js";
 import { onIpcEvent } from "./helper.js";
 
-const GET_INITIAL_CHANNEL = "vetta:i18n:get-initial-language";
-const SET_LANGUAGE_CHANNEL = "vetta:i18n:set-language";
-const LANGUAGE_CHANGED_CHANNEL = "vetta:i18n:language-changed";
+const GET_INITIAL_CHANNEL = "astravia:i18n:get-initial-language";
+const SET_LANGUAGE_CHANNEL = "astravia:i18n:set-language";
+const LANGUAGE_CHANGED_CHANNEL = "astravia:i18n:language-changed";
 
 function normalizeLanguageState(raw: unknown): LanguageState {
 	if (raw && typeof raw === "object" && !Array.isArray(raw)) {

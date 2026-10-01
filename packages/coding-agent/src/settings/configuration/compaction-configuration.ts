@@ -1,4 +1,7 @@
-import type { RuntimeConfigurationDefinition, RuntimeConfigurationJsonObject } from "@vetta/runtime-core/configuration";
+import type {
+	RuntimeConfigurationDefinition,
+	RuntimeConfigurationJsonObject,
+} from "@astravia/runtime-core/configuration";
 import { DEFAULT_COMPACTION_SETTINGS } from "../../compaction/contracts.js";
 
 export const CODING_AGENT_COMPACTION_CONFIGURATION_ID = "coding.compaction";

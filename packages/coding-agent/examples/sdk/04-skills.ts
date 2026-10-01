@@ -5,8 +5,8 @@
  * Discover, filter, merge, or refresh them through stable value contracts.
  */
 
-import type { CodingAgentSkillSourceSnapshot } from "@vetta/coding-agent/sdk";
-import { createCodingAgentSession } from "@vetta/coding-agent/sdk";
+import type { CodingAgentSkillSourceSnapshot } from "@astravia/coding-agent/sdk";
+import { createCodingAgentSession } from "@astravia/coding-agent/sdk";
 
 let dynamicSkills: CodingAgentSkillSourceSnapshot = {
 	revision: 1,

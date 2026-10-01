@@ -260,7 +260,7 @@ export function useDefaultSessionListModel({
 				onRenameSession(cwd, session.path, name);
 				return;
 			}
-			void window.vetta.agentTeams
+			void window.astravia.agentTeams
 				.renameSession({ id: session.teamSessionId, coordinationSessionPath: session.path }, name)
 				.then(() => {
 					notifyTeamSessionsChanged(session.teamId);

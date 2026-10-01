@@ -1,4 +1,4 @@
-import { useTranslation } from "@vetta-org/plugin-sdk";
+import { useTranslation } from "@astravia-org/plugin-sdk";
 import {
 	Button,
 	Dialog,
@@ -7,7 +7,7 @@ import {
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
-} from "@vetta-org/ui";
+} from "@astravia-org/ui";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import type { ContentPreparedRun } from "../agent/service";
 import type { ContentCreationPluginRuntime } from "./runtime";
@@ -55,7 +55,7 @@ export function ContentRunApprovalDialog({ runtime }: { runtime: ContentCreation
 
 	return (
 		<Dialog open={Boolean(runId && run)} onOpenChange={(open) => !open && close()}>
-			<DialogContent data-vetta-plugin-root="content-creation" className="max-w-lg">
+			<DialogContent data-astravia-plugin-root="content-creation" className="max-w-lg">
 				<DialogHeader>
 					<DialogTitle>{t("runApproval.title")}</DialogTitle>
 					<DialogDescription>{t("runApproval.description")}</DialogDescription>

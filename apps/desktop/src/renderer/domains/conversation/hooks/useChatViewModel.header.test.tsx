@@ -19,8 +19,8 @@ vi.mock("react-i18next", () => {
 const { useChatViewModel } = await import("./useChatViewModel.js");
 const atoms = await import("@shared/store/atoms");
 
-function stubVettaWindow(): void {
-	Object.defineProperty(window, "vetta", {
+function stubAstraviaWindow(): void {
+	Object.defineProperty(window, "astravia", {
 		configurable: true,
 		value: {
 			terminal: { capabilities: async () => ({ localPty: true }) },
@@ -43,7 +43,7 @@ function makeActiveSession(extra: Record<string, unknown> = {}) {
 
 describe("useChatViewModel 引用稳定性", () => {
 	beforeEach(() => {
-		stubVettaWindow();
+		stubAstraviaWindow();
 		const store = getDefaultStore();
 		store.set(atoms.chatMessagesAtom, [
 			{ id: "m1", role: "user", blocks: [{ type: "text", text: "hi" }] },

@@ -19,7 +19,7 @@ import type { RemoteIdentityKeyPair, RemoteRole, RemoteSealed, RemoteSessionFram
 
 const NONCE_LENGTH = 24;
 const KEY_LENGTH = 32;
-const HKDF_INFO_PREFIX = "vetta-remote-v2";
+const HKDF_INFO_PREFIX = "astravia-remote-v2";
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
 

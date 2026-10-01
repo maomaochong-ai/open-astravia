@@ -1,4 +1,4 @@
-import type { AgentProfile, TeamDefinition } from "@vetta/agent-team";
+import type { AgentProfile, TeamDefinition } from "@astravia/agent-team";
 import { useCallback, useMemo } from "react";
 import { buildCreateTeamInput, buildUpdateTeamInput, type TeamAssemblyDraft } from "../lib/team-assembly";
 import { type AgentTeamResources, agentTeamErrorMessage } from "./useAgentTeamResources";
@@ -14,11 +14,11 @@ export function useTeamRosterModel(resources: AgentTeamResources, agents: readon
 			const existing = draft.teamId ? teams.find((team) => team.id === draft.teamId) : undefined;
 			try {
 				const saved = existing
-					? await window.vetta.agentTeams.updateTeam(
+					? await window.astravia.agentTeams.updateTeam(
 							existing.id,
 							buildUpdateTeamInput(draft, existing, agentsById),
 						)
-					: await window.vetta.agentTeams.createTeam(buildCreateTeamInput(draft, agentsById));
+					: await window.astravia.agentTeams.createTeam(buildCreateTeamInput(draft, agentsById));
 				setDocument((current) =>
 					current
 						? {
@@ -42,7 +42,7 @@ export function useTeamRosterModel(resources: AgentTeamResources, agents: readon
 	const deleteTeam = useCallback(
 		async (team: TeamDefinition): Promise<boolean> => {
 			try {
-				await window.vetta.agentTeams.deleteTeam(team.id, { expectedRevision: team.revision });
+				await window.astravia.agentTeams.deleteTeam(team.id, { expectedRevision: team.revision });
 				await reload();
 				return true;
 			} catch (cause) {

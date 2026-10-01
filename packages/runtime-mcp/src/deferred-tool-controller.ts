@@ -3,7 +3,7 @@ import type {
 	InstructionBlock,
 	ModelCallContribution,
 	ModelCallContributionProvider,
-} from "@vetta/runtime-core/kernel";
+} from "@astravia/runtime-core/kernel";
 import { createMcpToolSearchRuntimeTool, scoreMcpDeferredTools } from "./deferred-tool-search.js";
 import { renderMcpToolsInstruction } from "./mcp-prompt.js";
 import type { McpRuntimeToolDescriptor, McpRuntimeToolSnapshot } from "./runtime-tool-synchronizer.js";

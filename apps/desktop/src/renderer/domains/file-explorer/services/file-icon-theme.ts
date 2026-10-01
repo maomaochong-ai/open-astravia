@@ -1,4 +1,8 @@
-import type { PluginFileExplorerEntry, PluginFileIconAssociations, PluginFileIconTheme } from "@vetta-org/plugin-sdk";
+import type {
+	PluginFileExplorerEntry,
+	PluginFileIconAssociations,
+	PluginFileIconTheme,
+} from "@astravia-org/plugin-sdk";
 import type { ReactNode } from "react";
 
 export function resolveFileIconTheme(

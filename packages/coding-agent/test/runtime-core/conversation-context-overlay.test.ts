@@ -1,5 +1,5 @@
-import type { ConversationDocument, RuntimeMessageEnvelope } from "@vetta/runtime-core";
-import type { ConversationContextProjector } from "@vetta/runtime-core/kernel";
+import type { ConversationDocument, RuntimeMessageEnvelope } from "@astravia/runtime-core";
+import type { ConversationContextProjector } from "@astravia/runtime-core/kernel";
 import { describe, expect, it } from "vitest";
 import { CodingAgentConversationContextOverlay } from "../../src/sessions/projection/conversation-context-overlay.js";
 

@@ -144,7 +144,7 @@ func (g *fakeGateway) serveWS(w http.ResponseWriter, r *http.Request) {
 			"d": map[string]any{
 				"v":          10,
 				"session_id": "sess-1",
-				"user":       map[string]any{"id": "bot-1", "username": "vetta", "bot": true},
+				"user":       map[string]any{"id": "bot-1", "username": "astravia", "bot": true},
 				"guilds":     []any{},
 			},
 		})

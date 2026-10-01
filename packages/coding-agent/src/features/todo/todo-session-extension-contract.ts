@@ -1,10 +1,10 @@
-import { Type } from "@sinclair/typebox";
-import { Value } from "@sinclair/typebox/value";
-import type { SessionEvent } from "@vetta/runtime-core";
+import type { SessionEvent } from "@astravia/runtime-core";
 import {
 	defineSessionExtensionEndpoint,
 	defineSessionExtensionObservation,
-} from "@vetta/runtime-core/session-extensions";
+} from "@astravia/runtime-core/session-extensions";
+import { Type } from "@sinclair/typebox";
+import { Value } from "@sinclair/typebox/value";
 import type { TodoItem } from "./contracts.js";
 
 export const CODING_AGENT_TODO_EXTENSION_ID = "coding-agent.todo";

@@ -1,7 +1,7 @@
 import { InputBarToolbar } from "../../components/input-bar/InputBarToolbarActions";
 import { TeamModelSelector } from "./TeamModelSelector";
 import { type InputSegment, isImagePath, parseInputSegments } from "@shared/lib/input-tokens";
-import { pathBasename, toVettaFileUrl } from "@shared/lib/utils";
+import { pathBasename, toAstraviaFileUrl } from "@shared/lib/utils";
 import { filePreviewAtom } from "@shared/store/file-preview-atoms";
 import { pluginConversationOverrideAtom, promptAttachmentAtom } from "@shared/store/atoms";
 import { useAtom, useSetAtom } from "jotai";
@@ -28,7 +28,7 @@ import { useExecutionModeSelectorModel } from "../../hooks/useExecutionModeSelec
 import type { TeamAttachmentViewModel, TeamChatActions, TeamComposerViewModel } from "./teamChatModel";
 import { agentAvatarUrl } from "@shared/agent-teams/agent-avatar";
 
-const VETTA_PATH_MIME = "application/vetta-path";
+const ASTRAVIA_PATH_MIME = "application/astravia-path";
 
 function attachmentFromPath(path: string): TeamAttachmentViewModel {
 	return {
@@ -220,7 +220,7 @@ export function TeamComposerConnector({
 				.map((attachment, index) => ({
 					path: attachment.path,
 					name: attachment.name,
-					url: toVettaFileUrl(attachment.path),
+					url: toAstraviaFileUrl(attachment.path),
 					label: t("inputBar.capsule.imageBadge", { index: index + 1 }),
 				})),
 		[model.attachments, t],
@@ -229,7 +229,7 @@ export function TeamComposerConnector({
 
 	const detectDragKind = useCallback((event: DragEvent): "files" | "internal" | null => {
 		const types = Array.from(event.dataTransfer.types);
-		if (types.includes(VETTA_PATH_MIME)) return "internal";
+		if (types.includes(ASTRAVIA_PATH_MIME)) return "internal";
 		if (types.includes("Files")) return "files";
 		return null;
 	}, []);
@@ -260,12 +260,12 @@ export function TeamComposerConnector({
 		event.preventDefault();
 		event.stopPropagation();
 		if (kind === "internal") {
-			const path = event.dataTransfer.getData(VETTA_PATH_MIME);
+			const path = event.dataTransfer.getData(ASTRAVIA_PATH_MIME);
 			if (path) actions.addAttachments([attachmentFromPath(path)]);
 			return;
 		}
 		const additions = Array.from(event.dataTransfer.files)
-			.map((file) => window.vetta.fs.pathForFile(file))
+			.map((file) => window.astravia.fs.pathForFile(file))
 			.filter((path): path is string => Boolean(path))
 			.map(attachmentFromPath);
 		if (additions.length > 0) actions.addAttachments(additions);

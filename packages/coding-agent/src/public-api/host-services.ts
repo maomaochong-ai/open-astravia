@@ -4,7 +4,7 @@
  * Runtime 只通过窄 Port 消费这些资源；Desktop Composition Root
  * 可以在进程边界创建并持有具体实现。
  */
-import type { RuntimeSharedModelController } from "@vetta/runtime-core";
+import type { RuntimeSharedModelController } from "@astravia/runtime-core";
 import {
 	CodingAgentSharedModelController,
 	type CodingAgentSharedModelSource,

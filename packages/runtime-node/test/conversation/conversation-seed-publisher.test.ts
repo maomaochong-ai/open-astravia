@@ -1,7 +1,7 @@
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { ConversationDocumentEntry } from "@vetta/runtime-core/conversation";
+import type { ConversationDocumentEntry } from "@astravia/runtime-core/conversation";
 import { afterEach, describe, expect, it } from "vitest";
 import {
 	CONVERSATION_STORAGE_ERROR_CODES,

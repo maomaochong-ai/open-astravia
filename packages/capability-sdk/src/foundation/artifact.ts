@@ -82,7 +82,7 @@ const noOutputSchema = defineCapabilityNoOutputSchema();
 
 export const FOUNDATION_ARTIFACT_CAPABILITIES = {
 	PERSIST: defineCapability<ArtifactPersistInput, PersistedArtifact>({
-		id: "cap.foundation.vetta.artifact.persist",
+		id: "cap.foundation.astravia.artifact.persist",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.FOUNDATION,
 		version: 1,
@@ -90,7 +90,7 @@ export const FOUNDATION_ARTIFACT_CAPABILITIES = {
 		output: persistedArtifactOutputSchema,
 	}),
 	RELEASE: defineCapability<ArtifactReleaseInput, undefined>({
-		id: "cap.foundation.vetta.artifact.release",
+		id: "cap.foundation.astravia.artifact.release",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.FOUNDATION,
 		version: 1,

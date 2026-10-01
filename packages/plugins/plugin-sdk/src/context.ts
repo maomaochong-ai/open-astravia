@@ -71,7 +71,7 @@ export interface PluginContext {
 	browser: PluginBrowserApi;
 	network: PluginNetworkApi;
 	/**
-	 * Vetta 服务端网关调用（ADR-0056）。**仅内置 official 插件可用**，
+	 * Astravia 服务端网关调用（ADR-0056）。**仅内置 official 插件可用**，
 	 * 第三方插件读到 `undefined`，故使用前必须判空。
 	 */
 	gateway?: PluginGatewayApi;

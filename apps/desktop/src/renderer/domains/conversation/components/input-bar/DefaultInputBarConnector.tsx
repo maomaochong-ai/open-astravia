@@ -1,8 +1,8 @@
 import { InputBarToolbar } from "./InputBarToolbarActions";
 import { InputBarModelAction } from "./InputBarToolbar";
 import { useBottomPanelPills } from "@domains/bottom-panel/hooks/useBottomPanelPills";
-import { pathBasename, toVettaFileUrl } from "@shared/lib/utils";
-import type { InputBarContextMenuViewProps } from "@vetta-org/theme-ui/chat";
+import { pathBasename, toAstraviaFileUrl } from "@shared/lib/utils";
+import type { InputBarContextMenuViewProps } from "@astravia-org/theme-ui/chat";
 import { Fragment, memo, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { InputBar } from "../InputBar";
@@ -60,7 +60,7 @@ export const DefaultInputBarConnector = memo(function DefaultInputBarConnector(p
 		onSend: props.onSend,
 	});
 	const imageAttachments = useMemo(
-		() => draft.imagePaths.map((path, index) => ({ path, name: pathBasename(path), url: toVettaFileUrl(path), label: t("inputBar.capsule.imageBadge", { index: index + 1 }) })),
+		() => draft.imagePaths.map((path, index) => ({ path, name: pathBasename(path), url: toAstraviaFileUrl(path), label: t("inputBar.capsule.imageBadge", { index: index + 1 }) })),
 		[draft.imagePaths, t],
 	);
 	const attachments = useInputBarAttachmentModel({

@@ -37,8 +37,8 @@ import (
 	"github.com/slack-go/slack/slackevents"
 	"github.com/slack-go/slack/socketmode"
 
-	"vetta-im-gateway/internal/transport"
-	"vetta-im-gateway/internal/transport/inbox"
+	"astravia-im-gateway/internal/transport"
+	"astravia-im-gateway/internal/transport/inbox"
 )
 
 // MaxInboundAttachmentBytes caps a single inbound file we will download +
@@ -584,7 +584,7 @@ func stripBotMention(text, botUserID string) string {
 
 // buildButtonBlocks renders text + inline keyboard rows as Block Kit: one
 // mrkdwn section followed by one actions block per row. Each button's
-// action_id is "vetta_btn_<row>_<col>" and its value round-trips back as
+// action_id is "astravia_btn_<row>_<col>" and its value round-trips back as
 // InboundMessage.Text when pressed.
 func buildButtonBlocks(text string, rows [][]transport.Button) []slackapi.Block {
 	blocks := []slackapi.Block{
@@ -596,11 +596,11 @@ func buildButtonBlocks(text string, rows [][]transport.Button) []slackapi.Block 
 		elems := make([]slackapi.BlockElement, 0, len(row))
 		for c, btn := range row {
 			elems = append(elems, slackapi.NewButtonBlockElement(
-				fmt.Sprintf("vetta_btn_%d_%d", r, c),
+				fmt.Sprintf("astravia_btn_%d_%d", r, c),
 				btn.Value,
 				slackapi.NewTextBlockObject(slackapi.PlainTextType, btn.Text, false, false)))
 		}
-		blocks = append(blocks, slackapi.NewActionBlock(fmt.Sprintf("vetta_btn_row_%d", r), elems...))
+		blocks = append(blocks, slackapi.NewActionBlock(fmt.Sprintf("astravia_btn_row_%d", r), elems...))
 	}
 	return blocks
 }

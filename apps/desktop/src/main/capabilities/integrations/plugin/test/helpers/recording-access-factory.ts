@@ -6,8 +6,8 @@ import type {
 	CapabilityId,
 	CapabilityInvokeOptions,
 	CapabilityToken,
-} from "@vetta-org/capability-sdk";
-import { DOMAIN_AI_CAPABILITIES } from "@vetta-org/capability-sdk";
+} from "@astravia-org/capability-sdk";
+import { DOMAIN_AI_CAPABILITIES } from "@astravia-org/capability-sdk";
 import { capabilityOutputFor } from "./capability-outputs.js";
 
 export class RecordingAccessFactory implements CapabilityAccessSessionFactory {

@@ -1,6 +1,6 @@
 import { ModelSelect } from "@shared/components/ModelSelect";
-import { Button, Switch, cn } from "@vetta-org/ui";
-import { ImChannelIconView, SettingHeading, SettingRow, SettingSection } from "@vetta-org/theme-ui/settings";
+import { Button, Switch, cn } from "@astravia-org/ui";
+import { ImChannelIconView, SettingHeading, SettingRow, SettingSection } from "@astravia-org/theme-ui/settings";
 import { useTranslation } from "react-i18next";
 import { SettingsAiAssist } from "../ai-assist";
 import { SETTINGS_SECTION } from "../registry";
@@ -45,7 +45,7 @@ export function ImBridgeSettingsView({ model }: { model: ImBridgeSettingsModel }
 	if (!config) {
 		return (
 			<div className="mx-auto w-full max-w-[680px] px-8 pt-2 pb-4">
-				<h1 className="mb-6 text-[20px] font-bold text-foreground">Vetta Claw</h1>
+				<h1 className="mb-6 text-[20px] font-bold text-foreground">Astravia Claw</h1>
 				<div className="text-[13px] text-muted-foreground">{t("loadFailed")}</div>
 			</div>
 		);
@@ -96,7 +96,7 @@ export function ImBridgeSettingsView({ model }: { model: ImBridgeSettingsModel }
 	return (
 		<div className="mx-auto w-full max-w-[680px] px-8 pt-2 pb-4">
 			<div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-				<h1 className="text-[20px] font-bold text-foreground">Vetta Claw</h1>
+				<h1 className="text-[20px] font-bold text-foreground">Astravia Claw</h1>
 				<SettingsAiAssist tabId="im" />
 			</div>
 

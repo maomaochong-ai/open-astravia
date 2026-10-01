@@ -1,6 +1,6 @@
 /**
  * cloud 模块边界守卫：宿主代码不得直接依赖 cloud 内部实现，
- * 否则 lite 构建（VETTA_CLOUD_ENABLED=false）的死代码消除会失效。
+ * 否则 lite 构建（ASTRAVIA_CLOUD_ENABLED=false）的死代码消除会失效。
  *
  * 允许的接触面：
  * - renderer：`@shared/components/cloud-slots`（懒加载槽位）与 `import type`

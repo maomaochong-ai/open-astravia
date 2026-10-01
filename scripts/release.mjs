@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Release script for vetta-mono
+ * Release script for astravia-mono
  *
  * Usage: node scripts/release.mjs <major|minor|patch>
  *
@@ -190,13 +190,13 @@ function createReleaseArtifacts(version) {
 		"## Install from package artifact",
 		"```bash",
 		`npm install -g ./${packageArtifact}`,
-		"vetta --version",
+		"astravia --version",
 		"```",
 		"",
 		"## Install from registry",
 		"```bash",
-		`npm install -g @vetta/coding-agent@${version}`,
-		"vetta --version",
+		`npm install -g @astravia/coding-agent@${version}`,
+		"astravia --version",
 		"```",
 		"",
 		"## Binary artifact usage (optional)",

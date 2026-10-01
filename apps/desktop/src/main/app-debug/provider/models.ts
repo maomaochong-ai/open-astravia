@@ -1,5 +1,5 @@
-import type { Model } from "@vetta/ai";
-import type { CodingAgentModelRuntime } from "@vetta/coding-agent/host-services";
+import type { Model } from "@astravia/ai";
+import type { CodingAgentModelRuntime } from "@astravia/coding-agent/host-services";
 import { waitForSignal } from "./wait-for-signal.js";
 
 export interface ProviderModelListDependencies {

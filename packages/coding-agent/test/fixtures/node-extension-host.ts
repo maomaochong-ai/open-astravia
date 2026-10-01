@@ -1,4 +1,4 @@
-import { createNodeCommandExecutor, createNodeResourceAccess } from "@vetta/runtime-node/host";
+import { createNodeCommandExecutor, createNodeResourceAccess } from "@astravia/runtime-node/host";
 import type { EventBus, LoadExtensionsResult } from "../../src/extensions/index.js";
 import {
 	discoverAndLoadExtensions as discoverWithHost,

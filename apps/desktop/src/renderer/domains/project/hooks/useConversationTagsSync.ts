@@ -14,7 +14,7 @@ export function useConversationTagsSync(): void {
 
 	useEffect(() => {
 		let disposed = false;
-		void window.vetta.conversationTags
+		void window.astravia.conversationTags
 			.list()
 			.then((snapshot) => {
 				if (disposed) return;
@@ -25,7 +25,7 @@ export function useConversationTagsSync(): void {
 				// 读不到就维持空快照：标签入口降级为只剩「新标签」，不阻塞侧边栏。
 				if (!disposed) setLoaded(true);
 			});
-		const unsubscribe = window.vetta.conversationTags.onChanged((snapshot) => setTags(snapshot));
+		const unsubscribe = window.astravia.conversationTags.onChanged((snapshot) => setTags(snapshot));
 		return () => {
 			disposed = true;
 			unsubscribe();

@@ -21,16 +21,16 @@
 新增迁移期 package exports：
 
 ```text
-@vetta/coding-agent/legacy/cli
-@vetta/coding-agent/legacy/host-services
-@vetta/coding-agent/compat/runtime-storage
-@vetta/coding-agent/compat/runtime-tools
+@astravia/coding-agent/legacy/cli
+@astravia/coding-agent/legacy/host-services
+@astravia/coding-agent/compat/runtime-storage
+@astravia/coding-agent/compat/runtime-tools
 ```
 
 CLI selector、Desktop Runtime 以及 Runtime Storage/Tools 包根分别迁移到对应入口。Compat 文件直接从实际
 所有者模块转发，未通过 Coding Agent 根入口二次聚合。Runtime Storage/Tools 对外根导出保持原样。
 
-Poller 使用的既有 `createLimiter` 增加 `@vetta/coding-agent/concurrency` 子路径；实现、FIFO 和异常释放
+Poller 使用的既有 `createLimiter` 增加 `@astravia/coding-agent/concurrency` 子路径；实现、FIFO 和异常释放
 语义均未改变。该子路径只是当前所有权的显式表达，不代表通用并发原语已完成最终归位。
 
 ### Knowledge Processing Session Port
@@ -71,7 +71,7 @@ Poller 不再导入或读取 `AgentSession`、`AgentSessionEvent`、`SessionMana
 ### 根入口零允许守卫
 
 包边界规则删除上一轮 5 个文件允许项。受治理生产源码只要精确引用
-`@vetta/coding-agent` 就会失败；显式子路径和测试兼容合同继续允许。
+`@astravia/coding-agent` 就会失败；显式子路径和测试兼容合同继续允许。
 
 ## 明确未修改
 

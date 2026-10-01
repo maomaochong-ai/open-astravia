@@ -1,0 +1,96 @@
+package org.astravia.android.app
+
+import com.russhwolf.settings.Settings
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
+import org.astravia.android.core.nowEpochMs
+import org.astravia.android.data.remote.MemorySessionCache
+import org.astravia.android.data.remote.SessionCache
+import org.astravia.android.domain.remote.connection.KtorWebSocketRemoteTransport
+import org.astravia.android.domain.remote.connection.PlatformRemoteLogger
+import org.astravia.android.domain.remote.link.P2pRemoteTransportFactory
+import org.astravia.android.domain.remote.pairing.SecretStore
+import org.astravia.android.domain.remote.pairing.SettingsSecretStore
+import org.astravia.android.domain.work.DesktopMirror
+import org.astravia.android.domain.work.MirrorPlatform
+
+/**
+ * The process-wide dependencies. [scope] is bound to the main thread: the desktop
+ * mirror and its one link run on it, so their state needs no locking.
+ */
+class AppContainer(
+    val preferences: AppPreferences = AppPreferences(),
+    val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
+    val mirror: DesktopMirror = DesktopMirror(defaultMirrorPlatform(preferences, scope), scope),
+) {
+    private val _visible = MutableStateFlow(false)
+    private var screensOnView = 0
+
+    /** Whether the app is on screen; notifications are only for when it is not. */
+    val visible: StateFlow<Boolean> = _visible.asStateFlow()
+
+    init {
+        // The link rests in the background unless the user asked to be told about sessions there.
+        scope.launch {
+            combine(_visible, preferences.backgroundLink, mirror.state.map { it.paired }.distinctUntilChanged()) { shown, background, paired ->
+                shown || (background && paired)
+            }.distinctUntilChanged().collect(mirror::setActive)
+        }
+    }
+
+    /**
+     * A screen of the app came into view. Counted, not flagged: a shortcut or a notification
+     * can open a second screen, which starts before the one it covers stops, and that stop
+     * must not make the app count as gone while the new screen is showing.
+     */
+    fun screenStarted() {
+        screensOnView += 1
+        _visible.value = true
+    }
+
+    /** A screen of the app went out of view; the app is out of sight once none is left. */
+    fun screenStopped() {
+        screensOnView = (screensOnView - 1).coerceAtLeast(0)
+        if (screensOnView > 0) return
+        _visible.value = false
+        mirror.saveProgress()
+    }
+
+    companion object {
+        fun createDefault(): AppContainer = AppContainer()
+
+        /**
+         * The desktop mirror's device side. The platform entry point passes a persistent
+         * [cache], Keystore-backed [secrets] and the device's name; previews fall back to plain storage.
+         */
+        fun defaultMirrorPlatform(
+            preferences: AppPreferences,
+            scope: CoroutineScope,
+            cache: SessionCache = MemorySessionCache(),
+            secrets: SecretStore = SettingsSecretStore(Settings()),
+            deviceName: String = "Android",
+            onTurnEnd: () -> Unit = {},
+            createP2pTransport: P2pRemoteTransportFactory? = null,
+        ): MirrorPlatform =
+            MirrorPlatform(
+                settings = Settings(),
+                secrets = secrets,
+                cache = cache,
+                createTransport = { url, pairingSecret -> KtorWebSocketRemoteTransport(url, pairingSecret, scope) },
+                createP2pTransport = createP2pTransport,
+                deviceName = deviceName,
+                now = ::nowEpochMs,
+                onTurnEnd = onTurnEnd,
+                legacyIdentitySecret = preferences.legacyRemoteIdentitySecret,
+                logger = PlatformRemoteLogger,
+            )
+    }
+}

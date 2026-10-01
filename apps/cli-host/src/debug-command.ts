@@ -1,6 +1,6 @@
 import { writeSync } from "node:fs";
 import { parseArgs } from "node:util";
-import { ActionRpcError, createDebugRpcClient, readActionRpcEndpoint } from "@vetta/action-rpc";
+import { ActionRpcError, createDebugRpcClient, readActionRpcEndpoint } from "@astravia/action-rpc";
 import { z } from "zod";
 
 const debugErrorCommandSchema = z.object({
@@ -28,18 +28,18 @@ const debugCommandSchema = z.discriminatedUnion("type", [
 type DebugCommand = z.infer<typeof debugCommandSchema>;
 type DebugErrorCommand = z.infer<typeof debugErrorCommandSchema>;
 
-const HELP_TEXT = `Vetta Debug command line interface
+const HELP_TEXT = `Astravia Debug command line interface
 
 Usage:
-  vetta debug search [query] [--category <category>]
-  vetta debug describe <debug-id>
-  vetta debug run <debug-id> [json-input]
-  vetta debug -h
-  vetta debug --help
+  astravia debug search [query] [--category <category>]
+  astravia debug describe <debug-id>
+  astravia debug run <debug-id> [json-input]
+  astravia debug -h
+  astravia debug --help
 
 Description:
-  Operate development-only Vetta Debug capabilities through the same local
-  RPC server used by Vetta actions. The development Desktop app must already
+  Operate development-only Astravia Debug capabilities through the same local
+  RPC server used by Astravia actions. The development Desktop app must already
   be running. Packaged builds do not register the Debug runtime.
 
 Progressive discovery:
@@ -49,9 +49,9 @@ Progressive discovery:
   4. run <debug-id> [json-input]  execute the capability
 
 Examples:
-  vetta debug search ""
-  vetta debug describe debug.info
-  vetta debug run debug.info '{}'
+  astravia debug search ""
+  astravia debug describe debug.info
+  astravia debug run debug.info '{}'
 
 Output:
   stdout contains one JSON object:

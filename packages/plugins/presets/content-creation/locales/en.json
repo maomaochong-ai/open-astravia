@@ -163,7 +163,7 @@
 	"assetNode.showMore": "Show {{count}} more",
 	"job.progress": "{{progress}}%",
 	"job.failed": "Generation failed. Open the node to retry.",
-	"job.error.unauthenticated": "Sign in to use Vetta image generation",
+	"job.error.unauthenticated": "Sign in to use Astravia image generation",
 	"job.error.providerUnavailable": "Image generation is currently unavailable",
 	"job.error.operationUnsupported": "This generation mode is not supported",
 	"job.error.invalidRequest": "Check the prompt and reference media, then try again",

@@ -16,7 +16,7 @@
 | [质量与评测](./04-quality-and-evaluation.md) | 如何让系统知道“什么是好”，并证明改进有效？ |
 | [实施路线](./05-implementation-roadmap.md) | 如何在不推倒现有实现的前提下分阶段落地？ |
 | [已实施基础](./06-implemented-foundation.md) | 本轮实际落地了什么，仍有哪些边界？ |
-| [visual-skills 融合](./07-visual-skills-integration.md) | 两个 Skill 和 34 份 reference 如何逐项融入 Vetta？ |
+| [visual-skills 融合](./07-visual-skills-integration.md) | 两个 Skill 和 34 份 reference 如何逐项融入 Astravia？ |
 | [Generative-Media-Skills Library 融合](./08-generative-media-library-integration.md) | Library 下 57 个 Skill 如何逐项进入场景手册、路由和质量闸门？ |
 | [视频生成时间线与分镜](./09-video-generation-timeline.md) | Prompt 内时间分段和分镜如何指导视频模型生成？ |
 | [渐进式工具面](./10-progressive-tool-surface.md) | Cloudflare Code Mode 的哪些原则适合内容创作，如何在不引入任意代码执行的前提下降低 Schema 成本？ |
@@ -30,7 +30,7 @@
 | visual-skills | `3c55471`（2026-08-08） | CC BY 4.0 | 薄入口、按任务加载 reference、模型专属知识、质量 checklist |
 | ViMax | `05a4894`（2026-07-29） | MIT | 高层领域工具、阶段化 DAG、artifact authority、恢复、候选评审与 benchmark |
 
-分析以本地源码和配置为事实源。参考项目中的模型名称、供应商能力和产品宣传只视为该提交的快照，不作为 Vetta 的固定合同。
+分析以本地源码和配置为事实源。参考项目中的模型名称、供应商能力和产品宣传只视为该提交的快照，不作为 Astravia 的固定合同。
 
 ## 最重要的判断
 

@@ -1,5 +1,5 @@
+import type { RuntimeToolDefinition } from "@astravia/runtime-core/kernel";
 import { type Static, Type } from "@sinclair/typebox";
-import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
 import type { CodingAgentPlanReviewResult } from "../contracts.js";
 import { CODING_AGENT_EXIT_PLAN_MODE_TOOL_NAME } from "../plan-mode-tool-policy.js";
 import { EXIT_PLAN_MODE_TOOL_DESCRIPTION } from "./description.js";

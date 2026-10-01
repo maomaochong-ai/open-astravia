@@ -1,8 +1,8 @@
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { Api, Model } from "@vetta/ai";
-import type { RuntimeHostSession } from "@vetta/runtime-core";
+import type { Api, Model } from "@astravia/ai";
+import type { RuntimeHostSession } from "@astravia/runtime-core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
 	CodingAgentSdkResourceSourceAdapter,

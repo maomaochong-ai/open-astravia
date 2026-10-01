@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { nodeWorkspaceFactsFileSource } from "@vetta/runtime-node/coding";
+import { nodeWorkspaceFactsFileSource } from "@astravia/runtime-node/coding";
 import { afterEach, describe, expect, it } from "vitest";
 import {
 	detectWorkspaceFacts,
@@ -17,7 +17,7 @@ afterEach(() => {
 });
 
 function createWorkspace(files: Record<string, string>, dirs: string[] = []): string {
-	const root = mkdtempSync(join(tmpdir(), "vetta-workspace-facts-"));
+	const root = mkdtempSync(join(tmpdir(), "astravia-workspace-facts-"));
 	createdDirs.push(root);
 	for (const dir of dirs) mkdirSync(join(root, dir), { recursive: true });
 	for (const [name, content] of Object.entries(files)) writeFileSync(join(root, name), content, "utf-8");

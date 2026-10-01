@@ -1,9 +1,9 @@
 import { mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { hostname, tmpdir } from "node:os";
 import { join } from "node:path";
-import { migrateCodingAgentHistoricalSession } from "@vetta/coding-agent/historical-sessions";
-import { createNodeLegacySessionHost } from "@vetta/runtime-node/host";
-import { ConversationOwnershipConflictError } from "@vetta/runtime-storage/conversation";
+import { migrateCodingAgentHistoricalSession } from "@astravia/coding-agent/historical-sessions";
+import { createNodeLegacySessionHost } from "@astravia/runtime-node/host";
+import { ConversationOwnershipConflictError } from "@astravia/runtime-storage/conversation";
 import { afterEach, describe, expect, it } from "vitest";
 
 const temporaryRoots = new Set<string>();
@@ -200,7 +200,7 @@ describe("historical session migration", () => {
 });
 
 async function createFixture(content: string) {
-	const root = await mkdtemp(join(tmpdir(), "vetta-greenfield-legacy-migration-"));
+	const root = await mkdtemp(join(tmpdir(), "astravia-greenfield-legacy-migration-"));
 	temporaryRoots.add(root);
 	const sourcePath = join(root, "legacy.jsonl");
 	const targetRootDir = join(root, "conversations");

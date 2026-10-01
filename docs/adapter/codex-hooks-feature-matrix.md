@@ -5,7 +5,7 @@
 - Codex 源码：`C:\github\codex`
 - 目标提交：`fca51f6dafb106177f23084d16f076ff2f66dd91`
 - 唯一 profile：`codex-hooks/fca51f6`
-- Vetta 兼容包：`packages/ecosystem-adapter`
+- Astravia 兼容包：`packages/ecosystem-adapter`
 - Coding Agent 宿主桥接：`packages/coding-agent/src/core/hooks`
 
 只兼容上述最新版协议，不保留旧版 Codex Hook profile、codec、parser 或运行时选择分支。
@@ -38,20 +38,20 @@
 
 ## 4. 工具对照
 
-| 工具类别 | 最新 Codex 行为 | Vetta 实现 | 状态 |
+| 工具类别 | 最新 Codex 行为 | Astravia 实现 | 状态 |
 | --- | --- | --- | --- |
 | Bash/shell | canonical `Bash` | shell descriptor 映射为 `Bash` | 可用 |
-| 普通 function tool | 使用真实扁平工具名 | 使用 Vetta 工具真实名称和原始 JSON 参数 | 可用 |
+| 普通 function tool | 使用真实扁平工具名 | 使用 Astravia 工具真实名称和原始 JSON 参数 | 可用 |
 | MCP | `mcp__server__tool` | MCP 创建时保留 server/tool 元数据并稳定编码 | 可用 |
 | 其他自定义工具 | 自动进入 Pre/Post | 所有实际激活工具统一经过 wrapper | 可用 |
 | `spawn_agent` | canonical `spawn_agent`，alias `Agent` | mapper 已支持 agent descriptor；宿主暂无对应生命周期 | 协议可用 |
-| `apply_patch` | canonical `apply_patch`，aliases `Write/Edit` | 真正名为 `apply_patch` 的工具按真实名匹配；Vetta `edit/write` 保留自身 canonical 并提供对应 alias | 部分兼容 |
+| `apply_patch` | canonical `apply_patch`，aliases `Write/Edit` | 真正名为 `apply_patch` 的工具按真实名匹配；Astravia `edit/write` 保留自身 canonical 并提供对应 alias | 部分兼容 |
 
 MCP 不再通过 `mcp_<server>_<tool>` 字符串猜测 server/tool 边界。`ecosystemHook` descriptor 保存原始 MCP 元数据，Codex mapper 只负责生成 Codex canonical name；未来其他生态可以复用同一宿主元数据。
 
 ## 5. 配置与执行对照
 
-| 能力 | 最新 Codex | Vetta 实现 | 状态 |
+| 能力 | 最新 Codex | Astravia 实现 | 状态 |
 | --- | --- | --- | --- |
 | `hooks.json` | 支持 | 解析宿主显式提供的 JSON source | 可用 |
 | 配置层累加 | 支持 | 按 `HookConfigLayer` 与 source 顺序累加 | 可用 |
@@ -71,7 +71,7 @@ MCP 不再通过 `mcp_<server>_<tool>` 字符串猜测 server/tool 边界。`eco
 
 ## 6. 输入输出语义对照
 
-| 能力 | Vetta 行为 | 状态 |
+| 能力 | Astravia 行为 | 状态 |
 | --- | --- | --- |
 | 事件级 stdin | 10 个事件分别编码，只发送适用字段 | 可用 |
 | 严格 stdout | 按事件拒绝未知字段、错误类型和错误 specific output | 可用 |
@@ -100,10 +100,10 @@ Zod 只负责“输入形状是否合法”，不负责 block、stop、fail-open
 
 ## 7. 文件发现边界
 
-默认 Coding Agent 经 `buildDefaultHookConfigLayers` 仅提供 Vetta 嵌套路径（source 带 `profileId`）：
+默认 Coding Agent 经 `buildDefaultHookConfigLayers` 仅提供 Astravia 嵌套路径（source 带 `profileId`）：
 
-1. `~/.vetta/.codex/hooks.json`（用户，`VETTA_HOME` 可覆盖 vetta 根）；
-2. `<cwd>/.vetta/.codex/hooks.json`（项目）。
+1. `~/.astravia/.codex/hooks.json`（用户，`ASTRAVIA_HOME` 可覆盖 astravia 根）；
+2. `<cwd>/.astravia/.codex/hooks.json`（项目）。
 
 不读顶层 `~/.codex` / 项目根 `.codex`。兼容层不扫描 Codex 源码树或 marketplace；只解析宿主传入层。缺失文件 ENOENT 跳过。
 
@@ -116,26 +116,26 @@ Zod 只负责“输入形状是否合法”，不负责 block、stop、fail-open
 | oh-story 能力 | 当前结果 | 状态 |
 | --- | --- | --- |
 | SessionStart 四种 source | matcher 与 wire 均兼容 | 可用 |
-| `Bash\|apply_patch\|Edit\|Write` matcher | Bash canonical 匹配；Vetta edit/write 通过 aliases 匹配 | 可用 |
+| `Bash\|apply_patch\|Edit\|Write` matcher | Bash canonical 匹配；Astravia edit/write 通过 aliases 匹配 | 可用 |
 | 正文写前 deny | 在工具实际执行前阻止 | 可用 |
 | commit advisory additionalContext | 作为隐藏上下文进入会话 | 可用 |
 | Pre/PostCompact | 手动和自动压缩都会触发 | 可用 |
 | Stop 扫描 | 根 turn 自然结束点执行 | 可用 |
 | `commandWindows` | Windows 使用覆盖命令 | 可用 |
-| 样本 `.codex/hooks.json` 自动发现 | 需放到 `.vetta/.codex/hooks.json`（默认不读顶层 `.codex`） | 可用 |
+| 样本 `.codex/hooks.json` 自动发现 | 需放到 `.astravia/.codex/hooks.json`（默认不读顶层 `.codex`） | 可用 |
 
-集成方必须把 Hook 配置作为 Vetta 应用或插件的显式 source 提供，并保证配置引用的 Python 脚本路径与实际部署位置一致。兼容层不会自动改写脚本路径。
+集成方必须把 Hook 配置作为 Astravia 应用或插件的显式 source 提供，并保证配置引用的 Python 脚本路径与实际部署位置一致。兼容层不会自动改写脚本路径。
 
 ## 9. 剩余缺口
 
 1. Coding Agent 统一工具审批入口，供 PermissionRequest 真实触发。
 2. 可见子代理生命周期与父子 transcript，供 SubagentStart/SubagentStop 真实触发。
-3. Vetta 插件 manifest 到 `HookConfigLayer.sources` 的自动桥接及路径越界校验。
+3. Astravia 插件 manifest 到 `HookConfigLayer.sources` 的自动桥接及路径越界校验。
 4. enabled/trusted/modified hash 状态与用户信任 UI。
 5. 成功 Hook 的 `statusMessage/systemMessage` 到 Coding Agent UI 的投影。
 6. TOML Hook decoder。
 7. 大输出 spill-to-file。
-8. Vetta edit/write 与 Codex apply_patch 的等价输入转换。
+8. Astravia edit/write 与 Codex apply_patch 的等价输入转换。
 
 ## 10. 验证
 

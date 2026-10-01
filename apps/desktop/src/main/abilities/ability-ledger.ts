@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { getVettaHomePath } from "@vetta/action-rpc";
-import { atomicWriteJSON } from "@vetta/toolkit/atomic-write";
+import { getAstraviaHomePath } from "@astravia/action-rpc";
+import { atomicWriteJSON } from "@astravia/toolkit/atomic-write";
 import type {
 	AbilityInstallMetadata,
 	AbilityInstallOrigin,
@@ -15,8 +15,8 @@ import { ABILITY_LEDGER_SCHEMA_VERSION, migrateAbilityLedgerConfig } from "./abi
  * 能力安装台账（ADR-0049）。
  *
  * 只记录「装了哪些能力、什么版本」，**不改变任何物理安装位置**：
- * skill → `~/.vetta/skills/<slug>`、scene → `~/.vetta/scene/<slug>`、
- * plugin → `~/.vetta/plugins/<slug>`、mcp → `~/.vetta/agent/mcp.json` 的一个 key。
+ * skill → `~/.astravia/skills/<slug>`、scene → `~/.astravia/scene/<slug>`、
+ * plugin → `~/.astravia/plugins/<slug>`、mcp → `~/.astravia/agent/mcp.json` 的一个 key。
  * bundle 不进台账（状态由成员派生）。
  *
  * 并发：所有读改写都在**一个同步 tick** 内完成（主进程 JS 单线程 → 不会与其它
@@ -25,11 +25,11 @@ import { ABILITY_LEDGER_SCHEMA_VERSION, migrateAbilityLedgerConfig } from "./abi
  * 本模块刻意不依赖 getAppLogger：它被 mcp-settings-service 等带单测的模块引用，
  * 而 logger 会连带 electron-log/main（node 测试环境下加载不了 electron）。
  */
-const ledgerPath = join(getVettaHomePath(), "abilities.json");
-const skillsBaseDir = join(getVettaHomePath(), "skills");
-const sceneBaseDir = join(getVettaHomePath(), "scene");
-const pluginsBaseDir = join(getVettaHomePath(), "plugins");
-const mcpConfigPath = join(getVettaHomePath(), "agent", "mcp.json");
+const ledgerPath = join(getAstraviaHomePath(), "abilities.json");
+const skillsBaseDir = join(getAstraviaHomePath(), "skills");
+const sceneBaseDir = join(getAstraviaHomePath(), "scene");
+const pluginsBaseDir = join(getAstraviaHomePath(), "plugins");
+const mcpConfigPath = join(getAstraviaHomePath(), "agent", "mcp.json");
 
 const LEDGER_TYPES = new Set<string>(["skill", "scene", "plugin", "mcp"]);
 

@@ -9,22 +9,22 @@ import { ipcMain } from "electron";
 import { getKnowledgeService } from "./knowledge-service.js";
 
 const CHANNELS = {
-	SCAN_NOW: "vetta:kb:scan-now",
-	RETRY_FAILED: "vetta:kb:retry-failed",
-	RELOAD: "vetta:kb:reload",
-	IS_PROCESSING: "vetta:kb:is-processing",
-	LIST: "vetta:kb:list",
-	LIST_DIR: "vetta:kb:list-dir",
-	STATUSES: "vetta:kb:statuses",
-	ADD_FILES: "vetta:kb:add-files",
-	DELETE_ENTRY: "vetta:kb:delete-entry",
-	RENAME_ENTRY: "vetta:kb:rename-entry",
-	CREATE: "vetta:kb:create",
-	DELETE: "vetta:kb:delete",
-	RENAME: "vetta:kb:rename",
-	CLEAR_WIKI: "vetta:kb:clear-wiki",
-	CLEAR_RECORDS: "vetta:kb:clear-records",
-	DELETE_WIKI: "vetta:kb:delete-wiki",
+	SCAN_NOW: "astravia:kb:scan-now",
+	RETRY_FAILED: "astravia:kb:retry-failed",
+	RELOAD: "astravia:kb:reload",
+	IS_PROCESSING: "astravia:kb:is-processing",
+	LIST: "astravia:kb:list",
+	LIST_DIR: "astravia:kb:list-dir",
+	STATUSES: "astravia:kb:statuses",
+	ADD_FILES: "astravia:kb:add-files",
+	DELETE_ENTRY: "astravia:kb:delete-entry",
+	RENAME_ENTRY: "astravia:kb:rename-entry",
+	CREATE: "astravia:kb:create",
+	DELETE: "astravia:kb:delete",
+	RENAME: "astravia:kb:rename",
+	CLEAR_WIKI: "astravia:kb:clear-wiki",
+	CLEAR_RECORDS: "astravia:kb:clear-records",
+	DELETE_WIKI: "astravia:kb:delete-wiki",
 } as const;
 
 export function registerKnowledgeIpc(): void {

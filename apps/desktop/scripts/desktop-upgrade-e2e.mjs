@@ -88,9 +88,9 @@ async function resolveCandidate(baseUrl, expectedVersion) {
 }
 
 function baselineArtifactName(buildVersion) {
-	if (platform === "win32") return `Vetta-${buildVersion}-win-x64.exe`;
-	if (platform === "linux") return `Vetta-${buildVersion}.AppImage`;
-	return architecture === "arm64" ? `Vetta-${buildVersion}-arm64-mac.zip` : `Vetta-${buildVersion}-mac.zip`;
+	if (platform === "win32") return `Astravia-${buildVersion}-win-x64.exe`;
+	if (platform === "linux") return `Astravia-${buildVersion}.AppImage`;
+	return architecture === "arm64" ? `Astravia-${buildVersion}-arm64-mac.zip` : `Astravia-${buildVersion}-mac.zip`;
 }
 
 async function installBaseline(installerPath, installRoot) {
@@ -107,7 +107,7 @@ async function installBaseline(installerPath, installRoot) {
 			child.once("error", reject);
 			child.once("exit", (code) => (code === 0 ? resolve() : reject(new Error(`Inno exited with ${code}`))));
 		});
-		return join(installRoot, "Vetta.exe");
+		return join(installRoot, "Astravia.exe");
 	}
 	if (platform === "linux") {
 		await chmod(installerPath, 0o755);
@@ -120,11 +120,11 @@ async function installBaseline(installerPath, installRoot) {
 		child.once("error", reject);
 		child.once("exit", (code) => (code === 0 ? resolve() : reject(new Error(`ditto exited with ${code}`))));
 	});
-	const appPath = join(extractedRoot, "Vetta.app");
-	const installedApp = join(installRoot, "Vetta.app");
+	const appPath = join(extractedRoot, "Astravia.app");
+	const installedApp = join(installRoot, "Astravia.app");
 	await rm(installedApp, { recursive: true, force: true });
 	await rename(appPath, installedApp);
-	return join(installedApp, "Contents", "MacOS", "Vetta");
+	return join(installedApp, "Contents", "MacOS", "Astravia");
 }
 
 function statePath(home) {
@@ -160,16 +160,16 @@ async function main() {
 	if (!["win32", "darwin", "linux"].includes(platform)) {
 		throw new Error(`[desktop-upgrade-e2e] unsupported platform: ${platform}`);
 	}
-	const baseUrl = feedBase(required("VETTA_DESKTOP_UPGRADE_URL"));
-	const baselineVersion = version(required("VETTA_DESKTOP_UPGRADE_BASELINE"), "baseline version");
-	const candidateVersion = version(required("VETTA_DESKTOP_UPGRADE_CANDIDATE"), "candidate version");
+	const baseUrl = feedBase(required("ASTRAVIA_DESKTOP_UPGRADE_URL"));
+	const baselineVersion = version(required("ASTRAVIA_DESKTOP_UPGRADE_BASELINE"), "baseline version");
+	const candidateVersion = version(required("ASTRAVIA_DESKTOP_UPGRADE_CANDIDATE"), "candidate version");
 	if (compareVersions(candidateVersion, baselineVersion) <= 0) {
 		throw new Error("[desktop-upgrade-e2e] candidate version must be greater than baseline version");
 	}
 
-	const requestedWorkdir = process.env.VETTA_DESKTOP_UPGRADE_WORKDIR?.trim();
+	const requestedWorkdir = process.env.ASTRAVIA_DESKTOP_UPGRADE_WORKDIR?.trim();
 	const root = await import("node:fs/promises").then(({ mkdtemp }) =>
-		mkdtemp(join(requestedWorkdir || tmpdir(), "vetta-upgrade-e2e-")),
+		mkdtemp(join(requestedWorkdir || tmpdir(), "astravia-upgrade-e2e-")),
 	);
 	const home = join(root, "home");
 	const installRoot = join(root, "installed");
@@ -191,13 +191,13 @@ async function main() {
 	console.log(`[desktop-upgrade-e2e] candidate ${candidate.artifactUrl}`);
 	const environment = {
 		...process.env,
-		VETTA_E2E: "1",
-		VETTA_E2E_UPGRADE: "1",
-		VETTA_E2E_UPDATE_URL: baseUrl,
-		VETTA_E2E_UPGRADE_STATE: state,
-		VETTA_HOME: home,
-		VETTA_CONFIG_DIR: ".vetta-upgrade-e2e",
-		VETTA_SPEECH_INPUT_ENABLED: "false",
+		ASTRAVIA_E2E: "1",
+		ASTRAVIA_E2E_UPGRADE: "1",
+		ASTRAVIA_E2E_UPDATE_URL: baseUrl,
+		ASTRAVIA_E2E_UPGRADE_STATE: state,
+		ASTRAVIA_HOME: home,
+		ASTRAVIA_CONFIG_DIR: ".astravia-upgrade-e2e",
+		ASTRAVIA_SPEECH_INPUT_ENABLED: "false",
 	};
 	if (platform === "linux") {
 		const child = launch(binary, environment, logPath);
@@ -208,7 +208,7 @@ async function main() {
 		const result = await waitForVerification(state, child, 15 * 60 * 1000);
 		console.log(`[desktop-upgrade-e2e] verified ${result.currentVersion}; log=${logPath}`);
 	}
-	await rm(join(homedir(), ".vetta", "desktop-upgrade-e2e.json"), { force: true });
+	await rm(join(homedir(), ".astravia", "desktop-upgrade-e2e.json"), { force: true });
 	await rm(root, { recursive: true, force: true });
 }
 

@@ -1,11 +1,11 @@
-import type { EcosystemHookContributionSource } from "@vetta/ecosystem-adapter";
-import type { PromptRequest, PromptResourceRef } from "@vetta/runtime-core";
+import type { EcosystemHookContributionSource } from "@astravia/ecosystem-adapter";
+import type { PromptRequest, PromptResourceRef } from "@astravia/runtime-core";
 import type {
 	ModelCallFrameCompositionContext,
 	RuntimeInputRequestPreparationContext,
 	RuntimeInputRequestPreparationResult,
 	RuntimeSnapshotAcquireContext,
-} from "@vetta/runtime-core/kernel";
+} from "@astravia/runtime-core/kernel";
 import type { CodingAgentLegacyImageSettingsSource } from "../model-context/image-settings-source.js";
 import type { BuildSystemPromptOptions, PersonalizationSettingsSource } from "../model-context/index.js";
 import type { SessionResourceRuntime } from "../resources/index.js";

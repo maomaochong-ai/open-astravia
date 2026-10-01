@@ -1,3 +1,4 @@
+import type { BackgroundWorkViewItem } from "@astravia-org/theme-ui/activity";
 import type { DesktopMcpTask } from "@preload/api";
 import { subagentErrorPresentation, subagentObjective, subagentUsageLabel } from "@shared/lib/subagent-presentation";
 import {
@@ -12,7 +13,6 @@ import {
 	type SubagentTask,
 	subagentsBySessionAtom,
 } from "@shared/store/atoms";
-import type { BackgroundWorkViewItem } from "@vetta-org/theme-ui/activity";
 import type { TFunction } from "i18next";
 import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -270,23 +270,23 @@ export function useBackgroundTasksTabPanelModel(): BackgroundTasksTabPanelModel 
 		// Host clears both bash finished tasks and terminal subagents, then emits
 		// Background-task + Subagent extension observations (or empty snapshots).
 		for (const runtimeId of runtimeIds) {
-			void window.vetta.session.clearFinishedBackgroundTasks(runtimeId);
-			void window.vetta.session.clearFinishedMcpTasks(runtimeId);
+			void window.astravia.session.clearFinishedBackgroundTasks(runtimeId);
+			void window.astravia.session.clearFinishedMcpTasks(runtimeId);
 		}
 	}, [runtimeIds]);
 
 	const handleStop = useCallback(
 		(id: string, kind: "bash" | "subagent" | "mcp") => {
 			if (kind === "mcp") {
-				void window.vetta.session.cancelMcpTask(id);
+				void window.astravia.session.cancelMcpTask(id);
 				return;
 			}
 			const runtimeId = runtimeIdByItemId.get(`${kind}:${id}`);
 			if (!runtimeId) return;
 			if (kind === "bash") {
-				void window.vetta.session.killBackgroundTask(runtimeId, id);
+				void window.astravia.session.killBackgroundTask(runtimeId, id);
 			} else {
-				void window.vetta.session.interruptSubagent?.(runtimeId, id);
+				void window.astravia.session.interruptSubagent?.(runtimeId, id);
 			}
 		},
 		[runtimeIdByItemId],

@@ -1,21 +1,21 @@
 # RPC 模式
 
 子进程通过 **stdin/stdout 逐行 JSON** 驱动单会话。协议类型和可移植 `RpcClient` 由
-`@vetta/coding-agent/rpc` 导出，Client 需要显式 `RpcClientTransport`；绑定 Node 子进程的零配置
-`RpcClient` 由 `@vetta/cli-host` 导出。协议核心不负责启动子进程或选择传输。
+`@astravia/coding-agent/rpc` 导出，Client 需要显式 `RpcClientTransport`；绑定 Node 子进程的零配置
+`RpcClient` 由 `@astravia/cli-host` 导出。协议核心不负责启动子进程或选择传输。
 
 同进程嵌入请用 [sdk.md](sdk.md)，不要走子进程。
 
 ## 启动
 
 ```bash
-vetta --mode rpc [options]
+astravia --mode rpc [options]
 ```
 
 常用：`--provider` / `--model` / `--session` / `--session-dir` / `--continue` / `--no-session` / `--enable-host-bridge` / `--memory-mode`。
 
 - 工作目录 = 进程 cwd（无运行时改 cwd 命令）。
-- 默认会话目录：`~/.vetta/agent/sessions/<safe-cwd>/`。
+- 默认会话目录：`~/.astravia/agent/sessions/<safe-cwd>/`。
 - **一进程一活动会话**；同文件禁止多 writer。
 - 旧 JSONL v1–v3 会非破坏导入为 V2 conversation 后再恢复。
 

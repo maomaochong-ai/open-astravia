@@ -1,7 +1,7 @@
 import { mkdir, stat, unlink } from "node:fs/promises";
 import nodePath from "node:path";
+import type { RuntimeToolDefinition } from "@astravia/runtime-core/kernel";
 import { type Static, Type } from "@sinclair/typebox";
-import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
 import { resolveExistingPath, resolveToCwd } from "../../shared/path-resolution.js";
 import { RENDER_PDF_PAGE_TOOL_DESCRIPTION } from "./description.js";
 

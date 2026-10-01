@@ -13,14 +13,14 @@ describe("agent ability overrides", () => {
 		// 回归：曾经在这里把「全局已启用的插件」展开成显式数组再并上钉死项。那份数组会被
 		// agent 侧按「有 agent 贡献的插件目录」校验，纯 UI 插件不在其中，于是建会话直接以
 		// AGENT_CONFIGURATION_RESOURCE_UNAVAILABLE 失败——选了插件智能体就发不出消息。
-		expect(toAgentConfigurationOverrides(ALL, { plugins: ["vetta-ui-design"] })).toEqual({});
+		expect(toAgentConfigurationOverrides(ALL, { plugins: ["astravia-ui-design"] })).toEqual({});
 	});
 
 	it("unions pinned plugins into an explicit selection", () => {
-		expect(toAgentConfigurationOverrides(CUSTOM, { plugins: ["vetta-ui-design"] })).toEqual({
+		expect(toAgentConfigurationOverrides(CUSTOM, { plugins: ["astravia-ui-design"] })).toEqual({
 			skills: ["a"],
 			mcpServers: ["b"],
-			plugins: ["c", "vetta-ui-design"],
+			plugins: ["c", "astravia-ui-design"],
 		});
 	});
 

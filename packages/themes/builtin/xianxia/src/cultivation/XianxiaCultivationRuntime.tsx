@@ -1,4 +1,4 @@
-import { useThemeUsageStats } from "@vetta-org/theme-sdk";
+import { useThemeUsageStats } from "@astravia-org/theme-sdk";
 import { useEffect } from "react";
 import { computeCultivation } from "./computeCultivation";
 import { useCultivationRepository } from "./persistence/cultivation-repository";
@@ -9,7 +9,7 @@ const SYNC_INTERVAL_MS = 30_000;
  * Headless runtime: app-monitor aggregates → theme cultivation storage.
  * CultivationRepository owns persistence for the canonical cultivation state.
  * Verify via console `[xianxia-cultivation]` and
- * `~/.vetta/desktop-app/themes/xianxia/{cultivation,cultivation-history}.json`.
+ * `~/.astravia/desktop-app/themes/xianxia/{cultivation,cultivation-history}.json`.
  */
 export function XianxiaCultivationRuntime(): null {
 	const repository = useCultivationRepository();

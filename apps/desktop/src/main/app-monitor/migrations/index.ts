@@ -1,5 +1,5 @@
-import { getVettaHomePath } from "@vetta/action-rpc";
-import { runFileMigrations } from "@vetta/toolkit/file-migrations";
+import { getAstraviaHomePath } from "@astravia/action-rpc";
+import { runFileMigrations } from "@astravia/toolkit/file-migrations";
 import type { getAppLogger } from "../../logger.js";
 import { appMonitorFileMigration000To1 } from "./000_to_1.js";
 import { appMonitorFileMigration001To2 } from "./001_to_2.js";
@@ -10,7 +10,7 @@ export async function runAppMonitorFileMigrations(logger: ReturnType<typeof getA
 	const result = await runFileMigrations({
 		logger,
 		migrations: APP_MONITOR_FILE_MIGRATIONS,
-		root: getVettaHomePath(),
+		root: getAstraviaHomePath(),
 		statePath: "app-monitor/.migrations.json",
 	});
 	if (result.applied.length > 0) {

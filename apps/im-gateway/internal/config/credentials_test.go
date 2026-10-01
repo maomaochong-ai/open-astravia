@@ -76,7 +76,7 @@ func TestLoadCredentials_FileFallback(t *testing.T) {
 	t.Setenv("IM_GATEWAY_FEISHU_APP_ID", "")
 	t.Setenv("IM_GATEWAY_FEISHU_APP_SECRET", "")
 
-	credsDir := filepath.Join(tempHome, ".vetta", "im-gateway")
+	credsDir := filepath.Join(tempHome, ".astravia", "im-gateway")
 	if err := os.MkdirAll(credsDir, 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -104,7 +104,7 @@ func TestLoadCredentials_EnvOverridesFile(t *testing.T) {
 	stubKeyring(t, nil, nil)
 
 	tempHome := setTestHome(t)
-	credsDir := filepath.Join(tempHome, ".vetta", "im-gateway")
+	credsDir := filepath.Join(tempHome, ".astravia", "im-gateway")
 	if err := os.MkdirAll(credsDir, 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -142,7 +142,7 @@ func TestLoadCredentials_PermissionWarning(t *testing.T) {
 	t.Setenv("IM_GATEWAY_FEISHU_APP_ID", "")
 	t.Setenv("IM_GATEWAY_FEISHU_APP_SECRET", "")
 
-	credsDir := filepath.Join(tempHome, ".vetta", "im-gateway")
+	credsDir := filepath.Join(tempHome, ".astravia", "im-gateway")
 	if err := os.MkdirAll(credsDir, 0o700); err != nil {
 		t.Fatal(err)
 	}

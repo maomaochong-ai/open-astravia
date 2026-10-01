@@ -35,7 +35,7 @@ describe("useSessionSearch", () => {
 			emit: (event: DesktopSessionSearchEvent) => void;
 			cancel: ReturnType<typeof vi.fn>;
 		}[] = [];
-		vi.stubGlobal("vetta", {
+		vi.stubGlobal("astravia", {
 			session: {
 				searchSessions: (request: DesktopSessionSearchRequest, emit: (event: DesktopSessionSearchEvent) => void) => {
 					const cancel = vi.fn();

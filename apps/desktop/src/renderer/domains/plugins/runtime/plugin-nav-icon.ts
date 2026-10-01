@@ -16,7 +16,7 @@ export type PluginNavIcon = ClassifiedPluginIcon;
 /**
  * Classify an icon reference the way the host already classifies plugin manifest icons:
  * a Tailwind Iconify utility, a legacy `set:name` Iconify reference, or an image URL
- * (`vetta-plugin://` / `http(s)://` / `data:`) the host must render itself.
+ * (`astravia-plugin://` / `http(s)://` / `data:`) the host must render itself.
  */
 export function classifyPluginNavIcon(icon: string | undefined): PluginNavIcon | null {
 	return classifyPluginIcon(icon);
@@ -56,7 +56,7 @@ export function resolveNavIcon(icon: string | undefined, tint: boolean): Resolve
 
 /** Stable, CSS-identifier-safe class name for one masked image URL. */
 export function navIconClassName(token: number): string {
-	return `vetta-plugin-nav-icon-${token}`;
+	return `astravia-plugin-nav-icon-${token}`;
 }
 
 export function navIconMaskRule(className: string, url: string): string {
@@ -95,7 +95,7 @@ export function acquireNavIconClass(url: string): { className: string; release: 
 	nextToken += 1;
 	const className = navIconClassName(nextToken);
 	const style = document.createElement("style");
-	style.dataset.vettaPluginNavIcon = className;
+	style.dataset.astraviaPluginNavIcon = className;
 	style.textContent = navIconMaskRule(className, url);
 	document.head.append(style);
 	maskEntries.set(url, { className, refCount: 1, style });

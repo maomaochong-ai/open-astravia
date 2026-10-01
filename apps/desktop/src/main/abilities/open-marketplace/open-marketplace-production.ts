@@ -1,5 +1,5 @@
 import { basename, join } from "node:path";
-import { getVettaHomePath } from "@vetta/action-rpc";
+import { getAstraviaHomePath } from "@astravia/action-rpc";
 import type {
 	GitHubMarketplaceOrigin,
 	OpenMarketplaceMcpRuntimeProgress,
@@ -37,7 +37,7 @@ import { createOpenMarketplacePluginArchive, validateOpenMarketplacePlugin } fro
 
 const dependencies: OpenMarketplaceInstallerDependencies = {
 	getBaseDir: getSkillBaseDir,
-	tmpBaseDir: join(getVettaHomePath(), "tmp"),
+	tmpBaseDir: join(getAstraviaHomePath(), "tmp"),
 	readManifest: readSkillsManifest,
 	writeManifest: writeSkillsManifest,
 	recordInstall: (type, slug, version, metadata) => recordAbilityInstall(type, slug, version, metadata),
@@ -46,7 +46,7 @@ const dependencies: OpenMarketplaceInstallerDependencies = {
 
 function artifactKindFromUrl(url: string): AbilityArtifactKind {
 	const pathname = new URL(url).pathname.toLowerCase();
-	if (pathname.endsWith(".vettapkg")) return "vettapkg";
+	if (pathname.endsWith(".astraviapkg")) return "astraviapkg";
 	if (pathname.endsWith(".zip")) return "legacy-zip";
 	return "remote-archive";
 }

@@ -42,7 +42,7 @@ html body {
   scrollbar-width: thin;
   scrollbar-color: ${thumb} transparent;
 }
-/* Also style nested overflow nodes (match .vetta-app-ui * on the host). */
+/* Also style nested overflow nodes (match .astravia-app-ui * on the host). */
 html body * {
   scrollbar-width: thin;
   scrollbar-color: ${thumb} transparent;

@@ -53,6 +53,6 @@ export function useFilePreviewDialogModel(): FilePreviewDialogModel {
 		onGoNext: goNext,
 		onGoPrev: goPrev,
 		onSelectIndex: selectIndex,
-		onShowInFolder: (path) => void window.vetta.shell.showItemInFolder(path),
+		onShowInFolder: (path) => void window.astravia.shell.showItemInFolder(path),
 	};
 }

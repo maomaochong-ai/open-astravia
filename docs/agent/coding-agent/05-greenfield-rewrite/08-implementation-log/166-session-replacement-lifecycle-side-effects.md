@@ -81,8 +81,8 @@ binding prepare/commit/after 或 fork target 初始化失败时，先 discard ta
 
 - Active Session Host：12 项通过。
 - Greenfield Ecosystem Hook Runtime：3 项通过。
-- 真实 Vetta CLI active-turn replacement 差分：4 项通过。
-- 真实 Vetta CLI Extension history 差分：2 项通过。
+- 真实 Astravia CLI active-turn replacement 差分：4 项通过。
+- 真实 Astravia CLI Extension history 差分：2 项通过。
 - Legacy/Greenfield 的 ownership、取消、fork context、失败恢复与 Extension 事件合同未发生回归。
 
 ## TypeBox / Zod 判断
@@ -99,4 +99,4 @@ binding prepare/commit/after 或 fork target 初始化失败时，先 discard ta
 
 ## 下一步
 
-第 167 轮建议补齐独立可执行产物的 replacement 生命周期门禁：通过 Vetta CLI 的真实 Hook 配置和 TypeScript Extension audit，同时观察 new/switch/fork 的 Extension 与 Hook 顺序、Hook command 失败的 best-effort 语义、进程退出的 `session_shutdown`/`SessionEnd("dispose")` 恰好一次。若安装产物与进程内 Composition 观察一致，则继续审计 post-commit finalize/previous-dispose 错误的 RPC 可观察结果，不为测试注入生产故障开关。
+第 167 轮建议补齐独立可执行产物的 replacement 生命周期门禁：通过 Astravia CLI 的真实 Hook 配置和 TypeScript Extension audit，同时观察 new/switch/fork 的 Extension 与 Hook 顺序、Hook command 失败的 best-effort 语义、进程退出的 `session_shutdown`/`SessionEnd("dispose")` 恰好一次。若安装产物与进程内 Composition 观察一致，则继续审计 post-commit finalize/previous-dispose 错误的 RPC 可观察结果，不为测试注入生产故障开关。

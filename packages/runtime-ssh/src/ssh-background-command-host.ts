@@ -8,8 +8,8 @@ import type {
 	BackgroundCommandProcess,
 	BackgroundCommandProcessOperations,
 	SpawnBackgroundCommandProcessOptions,
-} from "@vetta/runtime-node/coding";
-import { type SshConnection, type SshHelperClient, SshHelperClosedError } from "@vetta/ssh-transport";
+} from "@astravia/runtime-node/coding";
+import { type SshConnection, type SshHelperClient, SshHelperClosedError } from "@astravia/ssh-transport";
 
 /**
  * 远端后台任务（dev server、watcher 等）。
@@ -194,7 +194,7 @@ function toStringRecord(env: NodeJS.ProcessEnv): Record<string, string> {
 
 const localBackgroundCommandOutputStore: BackgroundCommandOutputStore = {
 	create(taskId) {
-		const path = join(tmpdir(), `vetta-remote-task-${taskId}-${randomBytes(4).toString("hex")}.log`);
+		const path = join(tmpdir(), `astravia-remote-task-${taskId}-${randomBytes(4).toString("hex")}.log`);
 		const stream = createWriteStream(path);
 		return {
 			path,

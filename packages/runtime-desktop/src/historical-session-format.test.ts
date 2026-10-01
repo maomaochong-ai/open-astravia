@@ -13,7 +13,7 @@ afterEach(() => {
 
 describe("Desktop historical session format compatibility", () => {
 	it("preserves discovery, history, rename, and delete behavior through the public facade", async () => {
-		const directory = mkdtempSync(join(tmpdir(), "vetta-desktop-historical-session-"));
+		const directory = mkdtempSync(join(tmpdir(), "astravia-desktop-historical-session-"));
 		temporaryRoots.add(directory);
 		const sessionPath = join(directory, "historical.jsonl");
 		writeFileSync(sessionPath, historicalSession(), "utf8");

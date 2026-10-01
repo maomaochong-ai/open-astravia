@@ -34,7 +34,7 @@ description: 按产品目标选择界面、文件、Agent、Provider 或 App Act
 组件使用宿主共享的 React 与设计令牌。注册函数返回 `Disposable`，在停用阶段释放，避免重载后重复注册。
 
 <Callout title="样式只用 className" type="warn">
-  插件与宿主共享同一个页面。在样式入口里写 `button`、`div`、`*` 这类元素选择器会污染整个界面，而且是只在用户机器上复现的那种污染。`@vetta-org/plugin-vite` 会自动把插件 CSS 限定到插件根节点并接入宿主主题令牌，`text-foreground`、`bg-card` 这类语义类直接可用。
+  插件与宿主共享同一个页面。在样式入口里写 `button`、`div`、`*` 这类元素选择器会污染整个界面，而且是只在用户机器上复现的那种污染。`@astravia-org/plugin-vite` 会自动把插件 CSS 限定到插件根节点并接入宿主主题令牌，`text-foreground`、`bg-card` 这类语义类直接可用。
 </Callout>
 
 面板类槽位（文件预览、活动 Tab、工作区视图）禁止使用铺满视口的固定定位浮层，它们会盖住宿主自己的界面。

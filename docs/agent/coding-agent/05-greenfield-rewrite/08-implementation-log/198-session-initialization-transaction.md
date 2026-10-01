@@ -162,7 +162,7 @@ CLI Composition、Plugin MCP 与 Ownership 回归：
 19 tests passed
 ```
 
-真实 Vetta RPC CLI 初始化失败回归：
+真实 Astravia RPC CLI 初始化失败回归：
 
 ```text
 1 file passed

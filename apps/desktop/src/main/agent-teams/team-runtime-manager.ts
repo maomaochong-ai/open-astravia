@@ -10,12 +10,12 @@ import {
 	type TeamSessionDocument,
 	teamMemberAssignmentFingerprint,
 	teamRosterFingerprint,
-} from "@vetta/agent-team";
+} from "@astravia/agent-team";
 import type {
 	CodingAgentPinnedModelContextBinder,
 	CodingAgentRuntimeToolRegistration,
-} from "@vetta/coding-agent/runtime";
-import type { RuntimeHost, SessionExecutionMode } from "@vetta/runtime-core";
+} from "@astravia/coding-agent/runtime";
+import type { RuntimeHost, SessionExecutionMode } from "@astravia/runtime-core";
 import { resolveDesktopSessionConfig } from "../conversations/resolve-session-config.js";
 import { getAppLogger } from "../logger.js";
 import { toAgentConfigurationOverrides } from "./agent-ability-overrides.js";

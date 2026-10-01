@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"vetta-im-gateway/internal/hostclient"
-	"vetta-im-gateway/internal/transport"
+	"astravia-im-gateway/internal/hostclient"
+	"astravia-im-gateway/internal/transport"
 )
 
 // fakeTransport records all SendMessage / EditMessage calls so tests can
@@ -743,7 +743,7 @@ func TestBridge_DeferredMode_FastTurnSkipsAck(t *testing.T) {
 	_ = b.Run(context.Background(), events)
 	calls := sendsOnly(tr.snapshot())
 	for _, c := range calls {
-		if strings.Contains(c.Text, "vetta正在处理") {
+		if strings.Contains(c.Text, "astravia正在处理") {
 			t.Errorf("ack should not fire on a fast turn, got %+v", calls)
 		}
 	}

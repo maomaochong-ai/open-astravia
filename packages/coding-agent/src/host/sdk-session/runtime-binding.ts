@@ -1,4 +1,4 @@
-import type { RuntimeActiveSessionHost, RuntimeHostSession } from "@vetta/runtime-core";
+import type { RuntimeActiveSessionHost, RuntimeHostSession } from "@astravia/runtime-core";
 import type { CodingAgentRuntimeSessionOptions } from "../../composition/contracts/index.js";
 import type { CodingAgentSdkSessionCapabilityPort, CodingAgentSdkSessionRuntimePort } from "./runtime-contracts.js";
 

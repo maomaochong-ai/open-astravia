@@ -1,7 +1,7 @@
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { parseCodingAgentRuntimeSessionConfiguration } from "@vetta/coding-agent/composition";
+import { parseCodingAgentRuntimeSessionConfiguration } from "@astravia/coding-agent/composition";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 /** 可变的 desktop-config 桩：模拟用户在新会话页改「默认工作模式」。 */
@@ -42,7 +42,7 @@ import {
 const temporaryRoots: string[] = [];
 
 async function createTemporaryRoot(): Promise<string> {
-	const root = await mkdtemp(join(tmpdir(), "vetta-agent-mode-"));
+	const root = await mkdtemp(join(tmpdir(), "astravia-agent-mode-"));
 	temporaryRoots.push(root);
 	return root;
 }

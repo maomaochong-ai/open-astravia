@@ -7,7 +7,7 @@ import type { ActivityWorkspace } from "@shared/workspace/activity-workspace";
 import type { WorkSurfaceScope } from "@shared/workspace/work-surface";
 import type { ConversationParticipantViewModel } from "@shared/conversation";
 import type { ActivityTabId } from "@domains/activity-panel/registry/types";
-import type { ConversationScenario } from "@vetta-org/plugin-sdk";
+import type { ConversationScenario } from "@astravia-org/plugin-sdk";
 import { memo, type ReactNode } from "react";
 import { ChatExportHost } from "../ChatExportHost";
 

@@ -1,7 +1,7 @@
 import { mkdtempSync, realpathSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createLoopbackSshConnection, formatLoopbackProjectUri } from "@vetta/ssh-transport/testing";
+import { createLoopbackSshConnection, formatLoopbackProjectUri } from "@astravia/ssh-transport/testing";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("electron", () => ({ protocol: { handle: () => undefined } }));
@@ -25,7 +25,7 @@ function createMedia(directory: string, name: string): Buffer {
 
 describe("媒体协议", () => {
 	it("本地项目：整份与 Range 请求都按字节返回", async () => {
-		const root = realpathSync(mkdtempSync(join(tmpdir(), "vetta-media-local-")));
+		const root = realpathSync(mkdtempSync(join(tmpdir(), "astravia-media-local-")));
 		const bytes = createMedia(root, "clip.mp4");
 		allowProjectRoot(root);
 
@@ -43,7 +43,7 @@ describe("媒体协议", () => {
 	});
 
 	it("远程项目：图片与视频从远端按范围取回，内容与远端文件逐字节一致", async () => {
-		const remoteRoot = realpathSync(mkdtempSync(join(tmpdir(), "vetta-media-remote-")));
+		const remoteRoot = realpathSync(mkdtempSync(join(tmpdir(), "astravia-media-remote-")));
 		const bytes = createMedia(remoteRoot, "clip.mp4");
 		const root = formatLoopbackProjectUri("build-01", remoteRoot);
 		allowProjectRoot(root);
@@ -63,7 +63,7 @@ describe("媒体协议", () => {
 	});
 
 	it("远程项目之外的远端路径被拒绝，不存在的文件是 404", async () => {
-		const remoteRoot = realpathSync(mkdtempSync(join(tmpdir(), "vetta-media-remote-")));
+		const remoteRoot = realpathSync(mkdtempSync(join(tmpdir(), "astravia-media-remote-")));
 		const root = formatLoopbackProjectUri("build-01", remoteRoot);
 		allowProjectRoot(root);
 

@@ -1,4 +1,4 @@
-import { useTranslation } from "@vetta-org/plugin-sdk";
+import { useTranslation } from "@astravia-org/plugin-sdk";
 import { type JSX, useEffect, useRef } from "react";
 import type { ChessSnapshot } from "../game/store";
 import { pieceChar } from "../game/notation";

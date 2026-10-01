@@ -1,18 +1,18 @@
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
+import type { RuntimeToolDefinition } from "@astravia/runtime-core/kernel";
 import type {
 	SandboxPermissionDecision,
 	SandboxPermissionRequest,
 	SandboxShellGrant,
-} from "@vetta/runtime-core/sandbox";
+} from "@astravia/runtime-core/sandbox";
 import {
 	type CodingToolRegistration,
 	createNodeSandboxCodingToolEnvironment,
 	type ForegroundCommandOperations,
-} from "@vetta/runtime-node/coding";
-import { clearSessionGrants, getSandboxShellGrant, type NodeSandboxPlatform } from "@vetta/runtime-node/sandbox";
+} from "@astravia/runtime-node/coding";
+import { clearSessionGrants, getSandboxShellGrant, type NodeSandboxPlatform } from "@astravia/runtime-node/sandbox";
 import { afterEach, describe, expect, it } from "vitest";
 import type { CodingAgentSandboxAuthorizationPort } from "../../src/execution/sandbox/authorization-contract.js";
 import { createCodingAgentSandboxToolRegistrations } from "../../src/execution/sandbox/tool-registrations.js";
@@ -31,7 +31,7 @@ describe("Coding Agent sandbox tool registrations", () => {
 		{ platform: "darwin" as const, commandToolName: "bash" },
 		{ platform: "win32" as const, commandToolName: "shell" },
 	])("assembles native tool registrations for $platform", async ({ platform, commandToolName }) => {
-		const cwd = await mkdtemp(join(tmpdir(), "vetta-sandbox-tools-"));
+		const cwd = await mkdtemp(join(tmpdir(), "astravia-sandbox-tools-"));
 		try {
 			const registrations = createRegistrations({ cwd, platform, decision: "deny" });
 			const declarations = declareCodingAgentPlatformTools(registrations);
@@ -58,8 +58,8 @@ describe("Coding Agent sandbox tool registrations", () => {
 	});
 
 	it("routes outside-workspace read grants through the product authorization port and caches session grants", async () => {
-		const cwd = await mkdtemp(join(tmpdir(), "vetta-sandbox-workspace-"));
-		const outsideRoot = await mkdtemp(join(tmpdir(), "vetta-sandbox-outside-"));
+		const cwd = await mkdtemp(join(tmpdir(), "astravia-sandbox-workspace-"));
+		const outsideRoot = await mkdtemp(join(tmpdir(), "astravia-sandbox-outside-"));
 		const outsidePath = join(outsideRoot, "outside.txt");
 		await writeFile(outsidePath, "outside content", "utf8");
 		const prompts: RecordedAuthorizationRequest[] = [];
@@ -92,8 +92,8 @@ describe("Coding Agent sandbox tool registrations", () => {
 	});
 
 	it("preserves the existing outside-workspace denial error", async () => {
-		const cwd = await mkdtemp(join(tmpdir(), "vetta-sandbox-deny-workspace-"));
-		const outsideRoot = await mkdtemp(join(tmpdir(), "vetta-sandbox-deny-outside-"));
+		const cwd = await mkdtemp(join(tmpdir(), "astravia-sandbox-deny-workspace-"));
+		const outsideRoot = await mkdtemp(join(tmpdir(), "astravia-sandbox-deny-outside-"));
 		try {
 			const readTool = requireTool(
 				createRegistrations({
@@ -115,8 +115,8 @@ describe("Coding Agent sandbox tool registrations", () => {
 	});
 
 	it("applies an outside-write grant while forwarding command timeout, signal and output", async () => {
-		const cwd = await mkdtemp(join(tmpdir(), "vetta-sandbox-shell-"));
-		const outsidePath = join(dirname(tmpdir()), `vetta-sandbox-contract-${Date.now()}`, "result.txt").replaceAll(
+		const cwd = await mkdtemp(join(tmpdir(), "astravia-sandbox-shell-"));
+		const outsidePath = join(dirname(tmpdir()), `astravia-sandbox-contract-${Date.now()}`, "result.txt").replaceAll(
 			"\\",
 			"/",
 		);

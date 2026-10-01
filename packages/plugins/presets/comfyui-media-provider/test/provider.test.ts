@@ -6,7 +6,7 @@ import type {
 	PluginNetworkApi,
 	PluginNetworkRequest,
 	PluginNetworkResponse,
-} from "@vetta-org/plugin-sdk";
+} from "@astravia-org/plugin-sdk";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { setPluginCtx } from "../src/plugin-context";
 import { createComfyUiProvider } from "../src/provider";

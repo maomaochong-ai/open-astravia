@@ -115,9 +115,9 @@ async function writeFailingExtension(fixture: AgentRpcFixture, auditPath: string
 }
 
 async function writeProjectHookConfigs(fixture: AgentRpcFixture, auditPath: string): Promise<void> {
-	const hookScriptPath = join(fixture.workspace, ".vetta", "initialization-hook.cjs");
-	const codexDirectory = join(fixture.workspace, ".vetta", ".codex");
-	const claudeDirectory = join(fixture.workspace, ".vetta", ".claude");
+	const hookScriptPath = join(fixture.workspace, ".astravia", "initialization-hook.cjs");
+	const codexDirectory = join(fixture.workspace, ".astravia", ".codex");
+	const claudeDirectory = join(fixture.workspace, ".astravia", ".claude");
 	await Promise.all([mkdir(codexDirectory, { recursive: true }), mkdir(claudeDirectory, { recursive: true })]);
 	await writeFile(
 		hookScriptPath,
@@ -126,7 +126,7 @@ async function writeProjectHookConfigs(fixture: AgentRpcFixture, auditPath: stri
 		appendFileSync(${JSON.stringify(auditPath)}, JSON.stringify({ owner: "hook", event: input.hook_event_name }) + "\\n", "utf8");`,
 		"utf8",
 	);
-	const command = "bun .vetta/initialization-hook.cjs";
+	const command = "bun .astravia/initialization-hook.cjs";
 	await Promise.all([
 		writeFile(
 			join(codexDirectory, "hooks.json"),

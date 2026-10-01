@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { basename, extname, isAbsolute, join, resolve } from "node:path";
-import type { RuntimeToolResult } from "@vetta/runtime-core/kernel";
+import type { RuntimeToolResult } from "@astravia/runtime-core/kernel";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { ToolCompatibilityDefinition } from "../compatibility/tool-compatibility-contract.js";
 

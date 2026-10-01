@@ -24,7 +24,7 @@ describe("plugin manifest skill presentation", () => {
 					defaultVisibility: "hidden",
 					surfaces: { abilityCatalog: "visible", pluginDetail: "visible" },
 					skills: {
-						" vetta-ui-design ": {
+						" astravia-ui-design ": {
 							defaultVisibility: "visible",
 							displayName: " %plugin.name% ",
 							displayDescription: " Design UI ",
@@ -38,7 +38,7 @@ describe("plugin manifest skill presentation", () => {
 			defaultVisibility: "hidden",
 				surfaces: { abilityCatalog: "visible", pluginDetail: "visible" },
 			skills: {
-				"vetta-ui-design": {
+				"astravia-ui-design": {
 					defaultVisibility: "visible",
 					surfaces: undefined,
 					displayName: "%plugin.name%",

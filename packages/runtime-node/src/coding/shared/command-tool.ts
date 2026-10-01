@@ -1,5 +1,9 @@
+import type {
+	RuntimeToolDefinition,
+	RuntimeToolExecutionRequest,
+	RuntimeToolResult,
+} from "@astravia/runtime-core/kernel";
 import { type Static, Type } from "@sinclair/typebox";
-import type { RuntimeToolDefinition, RuntimeToolExecutionRequest, RuntimeToolResult } from "@vetta/runtime-core/kernel";
 
 export const CommandToolInputSchema = Type.Object({
 	description: Type.Optional(

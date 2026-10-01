@@ -8,10 +8,10 @@ import {
 	type TeamMessageRoutingRecord,
 	type TeamSessionDocument,
 	type TeamWorkItem,
-} from "@vetta/agent-team";
-import { createAssistantMessage } from "@vetta/ai";
-import type { ConversationDocument } from "@vetta/runtime-core";
-import type { ConversationMessageRecord } from "@vetta/runtime-core/conversation";
+} from "@astravia/agent-team";
+import { createAssistantMessage } from "@astravia/ai";
+import type { ConversationDocument } from "@astravia/runtime-core";
+import type { ConversationMessageRecord } from "@astravia/runtime-core/conversation";
 
 export interface TeamLegacySessionMigrationPort {
 	readDocument(sessionId: string): ConversationDocument;

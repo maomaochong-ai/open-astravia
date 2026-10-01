@@ -30,7 +30,7 @@ export function __setPluginHostBridge(bridge: PluginHostBridge): void {
 /** Package-internal: throws if the host has not installed the bridge yet. */
 export function requireBridge(): PluginHostBridge {
 	if (!hostBridge) {
-		throw new Error("Vetta plugin host bridge is not installed");
+		throw new Error("Astravia plugin host bridge is not installed");
 	}
 	return hostBridge;
 }

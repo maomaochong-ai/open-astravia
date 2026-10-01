@@ -1,8 +1,8 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { AssistantMessage } from "@vetta/ai";
-import type { RuntimeHost } from "@vetta/runtime-core";
+import type { AssistantMessage } from "@astravia/ai";
+import type { RuntimeHost } from "@astravia/runtime-core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { BatchTaskState } from "./batch-task-state.js";
 import type { BatchProject, BatchTask } from "./batch-task-storage.js";
@@ -98,7 +98,7 @@ describe("batch RuntimeHost consumer", () => {
 		const prompt = vi.fn(async () => {});
 		const runtime = {
 			createSession,
-			getSessionPath: () => join(projectDir, ".vetta", "sessions", "batch.jsonl"),
+			getSessionPath: () => join(projectDir, ".astravia", "sessions", "batch.jsonl"),
 			getMessages: () => [assistantMessage("batch completed")],
 			prompt,
 			renameSessionById,
@@ -114,7 +114,7 @@ describe("batch RuntimeHost consumer", () => {
 
 		expect(createSession).toHaveBeenCalledWith({
 			cwd: task.cwd,
-			sessionDir: join(project.id, ".vetta", "sessions"),
+			sessionDir: join(project.id, ".astravia", "sessions"),
 			agent: {
 				id: "coding-agent",
 				sessionConfiguration: {
@@ -152,7 +152,7 @@ describe("batch RuntimeHost consumer", () => {
 			taskId: task.id,
 			status: "paused",
 			sessionId: "paused-session",
-			sessionPath: join(projectDir, ".vetta", "sessions", "paused.jsonl"),
+			sessionPath: join(projectDir, ".astravia", "sessions", "paused.jsonl"),
 			executionMode: "full-access",
 			lastModified: 1,
 		});
@@ -199,7 +199,7 @@ describe("batch RuntimeHost consumer", () => {
 			abort,
 			createSession,
 			getMessages: () => [assistantMessage("aborted")],
-			getSessionPath: () => join(projectDir, ".vetta", "sessions", "batch.jsonl"),
+			getSessionPath: () => join(projectDir, ".astravia", "sessions", "batch.jsonl"),
 			prompt,
 			renameSessionById: vi.fn(),
 		} as unknown as RuntimeHost;

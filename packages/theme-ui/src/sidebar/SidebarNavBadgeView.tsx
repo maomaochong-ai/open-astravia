@@ -1,6 +1,6 @@
 import type { JSX } from "react";
-import type { SidebarNavBadge, SidebarNavBadgeTone } from "@vetta-org/theme-sdk/sidebar";
-import { cn } from "@vetta-org/ui";
+import type { SidebarNavBadge, SidebarNavBadgeTone } from "@astravia-org/theme-sdk/sidebar";
+import { cn } from "@astravia-org/ui";
 import { navBadgeText } from "./nav-badge-text";
 
 /**

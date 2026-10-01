@@ -37,7 +37,7 @@ vi.mock("../logger.js", () => ({
 vi.mock("./plugin-catalog.js", () => ({
 	listPlugins: () => [
 		{
-			id: "vetta-ui-design",
+			id: "astravia-ui-design",
 			enabled: true,
 			permissions: ["capture.offscreen"],
 			grantedPermissions: ["capture.offscreen"],
@@ -55,7 +55,7 @@ function baseOptions(overrides: Record<string, unknown> = {}) {
 		width: 390,
 		height: 844,
 		sessionKey: "design-raster:7788:0",
-		readyExpression: "window.__vetdPainted === 'a'",
+		readyExpression: "window.__astraviaDesignPainted === 'a'",
 		timeoutMs: 200,
 		format: "jpeg" as const,
 		quality: 0.8,
@@ -85,7 +85,7 @@ describe("离屏截图必须受 timeoutMs 整体约束", () => {
 	it("readyExpression 求值卡住时也要在期限内失败", async () => {
 		hooks.loadURL.mockResolvedValue(undefined);
 		hooks.executeJavaScript.mockReturnValue(NEVER);
-		const result = await outcomeWithin(capturePluginOffscreen("vetta-ui-design", baseOptions()), 1_500);
+		const result = await outcomeWithin(capturePluginOffscreen("astravia-ui-design", baseOptions()), 1_500);
 		expect(result).toContain("readyExpression");
 		expect(result).toContain("timed out");
 	});
@@ -93,7 +93,7 @@ describe("离屏截图必须受 timeoutMs 整体约束", () => {
 	it("页面加载卡住时也要在期限内失败", async () => {
 		hooks.loadURL.mockReturnValue(NEVER);
 		hooks.executeJavaScript.mockResolvedValue(true);
-		const result = await outcomeWithin(capturePluginOffscreen("vetta-ui-design", baseOptions()), 1_500);
+		const result = await outcomeWithin(capturePluginOffscreen("astravia-ui-design", baseOptions()), 1_500);
 		expect(result).toContain("loadURL");
 	});
 
@@ -101,16 +101,16 @@ describe("离屏截图必须受 timeoutMs 整体约束", () => {
 		hooks.loadURL.mockResolvedValue(undefined);
 		hooks.executeJavaScript.mockResolvedValue(true);
 		hooks.capturePage.mockReturnValue(NEVER);
-		const result = await outcomeWithin(capturePluginOffscreen("vetta-ui-design", baseOptions()), 1_500);
+		const result = await outcomeWithin(capturePluginOffscreen("astravia-ui-design", baseOptions()), 1_500);
 		expect(result).toContain("capturePage");
 	});
 
 	it("一次卡死的请求不得让同 sessionKey 的后续请求永久排队", async () => {
 		hooks.loadURL.mockResolvedValue(undefined);
 		hooks.executeJavaScript.mockReturnValue(NEVER);
-		const first = capturePluginOffscreen("vetta-ui-design", baseOptions());
+		const first = capturePluginOffscreen("astravia-ui-design", baseOptions());
 		void first.catch(() => undefined);
-		const second = capturePluginOffscreen("vetta-ui-design", baseOptions());
+		const second = capturePluginOffscreen("astravia-ui-design", baseOptions());
 		void second.catch(() => undefined);
 		// 排在后面的请求也要按自己的预算失败，而不是永远排在那堵墙后面。
 		expect(await outcomeWithin(second, 2_000)).toContain("timed out");
@@ -119,7 +119,7 @@ describe("离屏截图必须受 timeoutMs 整体约束", () => {
 	it("超时后销毁旧窗口，下一次请求换新窗口重来", async () => {
 		hooks.loadURL.mockResolvedValue(undefined);
 		hooks.executeJavaScript.mockReturnValue(NEVER);
-		await outcomeWithin(capturePluginOffscreen("vetta-ui-design", baseOptions()), 1_500);
+		await outcomeWithin(capturePluginOffscreen("astravia-ui-design", baseOptions()), 1_500);
 		expect(hooks.destroyed).toHaveBeenCalledTimes(1);
 	});
 });

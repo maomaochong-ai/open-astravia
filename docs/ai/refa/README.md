@@ -6,7 +6,7 @@
 
 1. `packages/ai` 应保留为 Provider 中立的模型调用门面，但需要把协议、Provider 适配、模型目录、流式生命周期和公共工具拆成清晰模块。
 2. `packages/agent` 不应再次扩张为 Session Runtime。生产路径的 Session、Turn、持久化、上下文、输入队列和工具策略已经由 `packages/runtime-core` 负责。
-3. 保留 `@vetta/agent-core` 作为无持久状态的模型-工具执行引擎；现有 `Agent` 类移到 standalone 兼容子路径，满足退出条件后删除。
+3. 保留 `@astravia/agent-core` 作为无持久状态的模型-工具执行引擎；现有 `Agent` 类移到 standalone 兼容子路径，满足退出条件后删除。
 4. 不立即复制 Vercel AI SDK 的多包规模。先在现有包内形成可验证的模块边界，只有出现独立版本、独立消费者或独立发布需求时才拆新 workspace 包。
 5. TypeBox 用于工具输入和 JSON Schema 协议边界；Zod 只用于确实需要预处理、转换、默认值和迁移的配置边界；内部领域对象只用 TypeScript。禁止同一个对象同时维护 TypeBox、Zod 和手写类型三份定义。
 6. 重构必须以契约测试、Provider 功能一致性测试、Agent 场景测试、Runtime 集成测试和新旧实现差分测试作为迁移前提，而不是重构完成后的补充工作。

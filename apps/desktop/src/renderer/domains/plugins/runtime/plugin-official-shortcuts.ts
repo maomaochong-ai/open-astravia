@@ -1,11 +1,11 @@
-import type { PluginOfficialApi } from "@vetta-org/plugin-sdk";
+import type { PluginOfficialApi } from "@astravia-org/plugin-sdk";
 import { SHORTCUT_ACTIONS } from "../../../../shared/shortcuts";
 
 export function createOfficialShortcutsApi(
 	assertOfficial: () => void,
 	capabilitySessionId: string,
 ): PluginOfficialApi["shortcuts"] {
-	const shortcuts = window.vetta.plugins.internalCapabilities.shortcuts;
+	const shortcuts = window.astravia.plugins.internalCapabilities.shortcuts;
 	return {
 		listAvailableActions: () => {
 			assertOfficial();

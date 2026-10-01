@@ -4,7 +4,7 @@
  * Shows how to replace or modify the default system prompt.
  */
 
-import { createCodingAgentSession } from "@vetta/coding-agent/sdk";
+import { createCodingAgentSession } from "@astravia/coding-agent/sdk";
 
 // Option 1: Replace prompt entirely
 const { session: session1 } = await createCodingAgentSession({

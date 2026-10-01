@@ -1,4 +1,4 @@
-import type { RuntimeConversationSessionRoot } from "@vetta/runtime-node/conversation";
+import type { RuntimeConversationSessionRoot } from "@astravia/runtime-node/conversation";
 import type { DesktopSessionSearchRequest } from "../../shared/session-search.js";
 import type { SessionSearchSource } from "./session-search-service.js";
 

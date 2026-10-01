@@ -1,4 +1,4 @@
-import type { RemoteFrame } from "@vetta/remote-control";
+import type { RemoteFrame } from "@astravia/remote-control";
 import { describe, expect, it, vi } from "vitest";
 import { RendererDataChannelTransport } from "./renderer-data-channel-transport.js";
 

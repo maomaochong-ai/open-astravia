@@ -55,7 +55,7 @@ describe("PasteImagePlugin", () => {
 		mocks.persistImageFiles.mockClear();
 		mocks.pasteUserMessage.mockReset();
 		mocks.recordInputImagesAdded.mockClear();
-		Object.defineProperty(window, "vetta", {
+		Object.defineProperty(window, "astravia", {
 			configurable: true,
 			value: { clipboard: { pasteUserMessage: mocks.pasteUserMessage } },
 		});
@@ -105,7 +105,7 @@ describe("PasteImagePlugin", () => {
 		);
 	});
 
-	it("persists non-Vetta image files through the fallback and inserts all paths as one batch", async () => {
+	it("persists non-Astravia image files through the fallback and inserts all paths as one batch", async () => {
 		render(<PasteImagePlugin />);
 		const preventDefault = vi.fn();
 		const nativeFile = new File([new Uint8Array([9])], "native.png", { type: "image/png" });

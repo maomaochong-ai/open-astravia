@@ -1,4 +1,4 @@
-import type { MarkdownLabels } from "@vetta-org/theme-ui/markdown";
+import type { MarkdownLabels } from "@astravia-org/theme-ui/markdown";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 

@@ -3,7 +3,7 @@ title: Configure MCP connectors
 description: Connect external tools and data through MCP while keeping commands, hosts, credentials, and approvals bounded.
 ---
 
-MCP connects Vetta to external tools and data sources through a declared server. It is useful when the same structured capability should be available across sessions, but it also creates an external process or network boundary that must be reviewed.
+MCP connects Astravia to external tools and data sources through a declared server. It is useful when the same structured capability should be available across sessions, but it also creates an external process or network boundary that must be reviewed.
 
 ## Choose a transport
 
@@ -14,7 +14,7 @@ MCP connects Vetta to external tools and data sources through a declared server.
 
 Add a connector from **Capabilities → Add capability → Add MCP manually**, or install one from a trusted capability source.
 
-Global MCP connections are prewarmed after application startup and reused across sessions. Servers from a project's `.vetta/mcp.json`, global servers that reference `${PROJECT_ROOT}`, and global servers with `"resourceScope": "workspace"` stay isolated per workspace and can use that workspace's MCP roots. If a global server depends on `roots/list` without referencing `${PROJECT_ROOT}` in its configuration, set `resourceScope` to `workspace` in the advanced JSON configuration.
+Global MCP connections are prewarmed after application startup and reused across sessions. Servers from a project's `.astravia/mcp.json`, global servers that reference `${PROJECT_ROOT}`, and global servers with `"resourceScope": "workspace"` stay isolated per workspace and can use that workspace's MCP roots. If a global server depends on `roots/list` without referencing `${PROJECT_ROOT}` in its configuration, set `resourceScope` to `workspace` in the advanced JSON configuration.
 
 ## Configure the smallest useful server
 
@@ -43,7 +43,7 @@ Run this from a short session before including the connector in a larger workflo
 ## Troubleshooting
 
 1. Check **Capabilities → My capabilities** and confirm that the connector is enabled.
-2. Inspect `~/.vetta/agent/mcp.json` for the command or URL, without exposing credentials.
+2. Inspect `~/.astravia/agent/mcp.json` for the command or URL, without exposing credentials.
 3. For STDIO, confirm the command is executable from the configured environment.
 4. For HTTP, confirm the URL is reachable from the current network and the authentication has not expired.
 5. Reload MCP capabilities or start a new session after configuration changes.

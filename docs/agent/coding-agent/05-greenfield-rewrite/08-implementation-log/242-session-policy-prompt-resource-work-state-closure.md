@@ -18,7 +18,7 @@
 - 会话历史、认证、模型和设置等用户数据；必要时由显式、独立的新迁移器读取旧格式。
 - 模型消息、工具消息、错误、取消、事件顺序、并发约束和资源释放语义。
 - 仍然有效的行为测试场景和数据 fixture；旧实现可以临时作为测试 Oracle，但不能被新生产代码调用。
-- `@vetta/ai` 与经过合同验证的 `@vetta/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
+- `@astravia/ai` 与经过合同验证的 `@astravia/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
 
 ## 明确舍弃（固定）
 
@@ -76,7 +76,7 @@
 - Todo Runtime 测试覆盖 Tool、Controller、持久化、分支恢复和非法快照拒绝。
 - Continuation、Stop Hook、Tool Adapter、System Prompt 和 Subagent Session Assembly 特征测试保持通过。
 - 根 TypeScript `tsgo --noEmit`、`check:quick`、治理守卫和完整 `bun run check` 作为最终交付门禁。
-- CLI continuation 集成测试在收集阶段受本地 `@vetta/runtime-knowledge` 未构建入口阻断；该测试未出现断言失败，Coding Agent 同行为由包内特征测试覆盖。
+- CLI continuation 集成测试在收集阶段受本地 `@astravia/runtime-knowledge` 未构建入口阻断；该测试未出现断言失败，Coding Agent 同行为由包内特征测试覆盖。
 
 ## 旧实现依赖变化
 

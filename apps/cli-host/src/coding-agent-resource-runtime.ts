@@ -2,21 +2,21 @@ import { join } from "node:path";
 import type {
 	CodingAgentPromptRuntimeSourceContext,
 	CodingAgentPromptRuntimeSources,
-} from "@vetta/coding-agent/composition";
+} from "@astravia/coding-agent/composition";
 import {
 	CONFIG_DIR_NAME,
 	getAgentDir,
+	getAstraviaHomePath,
 	getSceneDir,
 	getUserSkillsDir,
-	getVettaHomePath,
-} from "@vetta/coding-agent/config";
+} from "@astravia/coding-agent/config";
 import {
 	configureThemeRuntime,
 	detectColorMode,
 	detectTerminalBackground,
 	loadThemeFromContent,
-} from "@vetta/coding-agent/extensions";
-import { createCodingAgentNodeExtensionFactoryLoader } from "@vetta/coding-agent/host-services";
+} from "@astravia/coding-agent/extensions";
+import { createCodingAgentNodeExtensionFactoryLoader } from "@astravia/coding-agent/host-services";
 import {
 	createResourcePackageRuntime,
 	createSessionResourceRuntime,
@@ -24,14 +24,14 @@ import {
 	type ResourceSettingsPort,
 	type SessionResourceRuntime,
 	type SessionResourceRuntimeOptions,
-} from "@vetta/coding-agent/resources";
-import { createSettingsRuntimeFromStorage, type SettingsRuntime } from "@vetta/coding-agent/settings";
+} from "@astravia/coding-agent/resources";
+import { createSettingsRuntimeFromStorage, type SettingsRuntime } from "@astravia/coding-agent/settings";
 import {
 	createNodeCommandExecutor,
 	createNodeResourcePackageHost,
 	NodeScopedTextStorage,
 	nodeTextFileWatchPort,
-} from "@vetta/runtime-node/host";
+} from "@astravia/runtime-node/host";
 
 export interface CliResourceRuntimeScope {
 	readonly cwd: string;
@@ -104,7 +104,7 @@ export function createCliSessionResourceRuntime(
 		skillLocations: {
 			sceneDir: getSceneDir(),
 			managedSkillsDir: getUserSkillsDir(),
-			manifestPath: host.resourceAccess.paths.join(getVettaHomePath(), "skills-manifest.json"),
+			manifestPath: host.resourceAccess.paths.join(getAstraviaHomePath(), "skills-manifest.json"),
 		},
 	});
 }

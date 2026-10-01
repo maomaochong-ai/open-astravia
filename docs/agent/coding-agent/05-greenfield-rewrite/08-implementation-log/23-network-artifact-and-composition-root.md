@@ -38,7 +38,7 @@
 
 ## 依赖边界决策
 
-当前 `runtime-tools` 包根仍保留旧 `@vetta/coding-agent` 兼容导出，因此不能让
+当前 `runtime-tools` 包根仍保留旧 `@astravia/coding-agent` 兼容导出，因此不能让
 `coding-agent` 直接依赖 `runtime-tools` 作为组合根。组合根暂时放在 `cli-host`：
 
 ```text

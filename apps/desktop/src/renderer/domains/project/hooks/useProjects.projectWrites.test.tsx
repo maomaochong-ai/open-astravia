@@ -9,7 +9,7 @@ import { useProjectActions } from "./useProjects";
  * 渲染进程以前是自己 `config.get()` → 改数组 → `config.set()`，与插件/Action 走的服务
  * 并行。那条路绕开了「必须是绝对路径」「必须是目录」的校验，也不发变更广播，于是同一
  * 个项目从侧边栏加和从插件加会得到不同结果，别的窗口还看不见。这里锁住重构后的不变量：
- * 侧边栏的增删改归档一律经过 `window.vetta.project.*`，且一次都不碰 `config.set`。
+ * 侧边栏的增删改归档一律经过 `window.astravia.project.*`，且一次都不碰 `config.set`。
  */
 
 const configSet = vi.fn(async () => {});
@@ -26,7 +26,7 @@ const selectFolder = vi.fn(async () => "/picked/repo");
 vi.stubGlobal(
 	"window",
 	Object.assign(globalThis.window, {
-		vetta: {
+		astravia: {
 			config: {
 				get: async () => ({ projects: [], archivedProjects: [], defaultConversationCwd: "" }),
 				set: configSet,

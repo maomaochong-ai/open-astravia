@@ -1,9 +1,9 @@
-import type { RemoteDesktopSignal } from "@vetta/remote-desktop";
-import { RemoteDesktopHost, WebSocketRemoteDesktopSignaling } from "@vetta/remote-desktop";
+import type { RemoteDesktopSignal } from "@astravia/remote-desktop";
+import { RemoteDesktopHost, WebSocketRemoteDesktopSignaling } from "@astravia/remote-desktop";
 
 declare global {
 	interface Window {
-		vettaRemoteDesktop?: {
+		astraviaRemoteDesktop?: {
 			onInput(message: unknown): void;
 			onControlOpen(): void;
 			onControlMessage(message: string): void;
@@ -141,14 +141,14 @@ host = new RemoteDesktopHost(
 		},
 	},
 	sendSignal,
-	(message) => window.vettaRemoteDesktop?.onInput(message),
+	(message) => window.astraviaRemoteDesktop?.onInput(message),
 	{
-		onOpen: () => window.vettaRemoteDesktop?.onControlOpen(),
-		onMessage: (message) => window.vettaRemoteDesktop?.onControlMessage(message),
-		onClose: (reason) => window.vettaRemoteDesktop?.onControlClose(reason),
+		onOpen: () => window.astraviaRemoteDesktop?.onControlOpen(),
+		onMessage: (message) => window.astraviaRemoteDesktop?.onControlMessage(message),
+		onClose: (reason) => window.astraviaRemoteDesktop?.onControlClose(reason),
 	},
 );
-const removeControlListener = window.vettaRemoteDesktop?.onControlSend((message) => {
+const removeControlListener = window.astraviaRemoteDesktop?.onControlSend((message) => {
 	try {
 		host?.sendControl(message);
 	} catch (error) {
@@ -190,7 +190,7 @@ const setScreen = async (active: boolean): Promise<boolean> => {
 	return true;
 };
 const removeScreenListener = onDemand
-	? window.vettaRemoteDesktop?.onScreen(({ id, active }) => {
+	? window.astraviaRemoteDesktop?.onScreen(({ id, active }) => {
 			screenQueue = screenQueue.then(async () => {
 				let streaming = false;
 				try {
@@ -198,7 +198,7 @@ const removeScreenListener = onDemand
 				} catch (error) {
 					console.warn("remote desktop screen capture failed", error);
 				}
-				window.vettaRemoteDesktop?.screenResult(id, streaming);
+				window.astraviaRemoteDesktop?.screenResult(id, streaming);
 			});
 		})
 	: undefined;
@@ -210,7 +210,7 @@ window.addEventListener(
 	},
 	{ once: true },
 );
-if (onDemand) window.vettaRemoteDesktop?.screenReady();
+if (onDemand) window.astraviaRemoteDesktop?.screenReady();
 
 /** The main process only sees console text, so fields go in as JSON. */
 function line(message: string, fields?: unknown): string {

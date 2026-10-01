@@ -251,7 +251,7 @@ const modelOwnedProviderListOutputSchema = defineCapabilityOutputSchema(modelOwn
 
 export const DOMAIN_MODEL_CAPABILITIES = {
 	LIST: defineCapability<Record<string, never>, ModelListResult>({
-		id: "cap.domain.vetta.model.list",
+		id: "cap.domain.astravia.model.list",
 		kind: "query",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -259,7 +259,7 @@ export const DOMAIN_MODEL_CAPABILITIES = {
 		output: modelListOutputSchema,
 	}),
 	GET_CONFIG: defineCapability<Record<string, never>, ModelConfigSnapshot>({
-		id: "cap.domain.vetta.model.config.get",
+		id: "cap.domain.astravia.model.config.get",
 		kind: "query",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -267,7 +267,7 @@ export const DOMAIN_MODEL_CAPABILITIES = {
 		output: modelConfigOutputSchema,
 	}),
 	GET_PROVIDER: defineCapability<ModelProviderInput, ModelProviderDetail>({
-		id: "cap.domain.vetta.model.provider.get",
+		id: "cap.domain.astravia.model.provider.get",
 		kind: "query",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -275,7 +275,7 @@ export const DOMAIN_MODEL_CAPABILITIES = {
 		output: modelProviderDetailOutputSchema,
 	}),
 	PROBE: defineCapability<ModelProbeInput, ModelProbeResult>({
-		id: "cap.domain.vetta.model.probe",
+		id: "cap.domain.astravia.model.probe",
 		kind: "query",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -283,7 +283,7 @@ export const DOMAIN_MODEL_CAPABILITIES = {
 		output: modelProbeOutputSchema,
 	}),
 	VALIDATE_KEY: defineCapability<ModelKeyValidationInput, undefined>({
-		id: "cap.domain.vetta.model.key.validate",
+		id: "cap.domain.astravia.model.key.validate",
 		kind: "query",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -291,7 +291,7 @@ export const DOMAIN_MODEL_CAPABILITIES = {
 		output: modelNoOutputSchema,
 	}),
 	SET_DEFAULT: defineCapability<ModelDefaultInput, ModelDefaultResult>({
-		id: "cap.domain.vetta.model.default.set",
+		id: "cap.domain.astravia.model.default.set",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -299,7 +299,7 @@ export const DOMAIN_MODEL_CAPABILITIES = {
 		output: modelDefaultOutputSchema,
 	}),
 	UPSERT_PROVIDER: defineCapability<ModelProviderUpsertInput, ModelProviderConfigSnapshot>({
-		id: "cap.domain.vetta.model.provider.upsert",
+		id: "cap.domain.astravia.model.provider.upsert",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -307,7 +307,7 @@ export const DOMAIN_MODEL_CAPABILITIES = {
 		output: modelProviderConfigOutputSchema,
 	}),
 	REMOVE_PROVIDER: defineCapability<ModelProviderInput, undefined>({
-		id: "cap.domain.vetta.model.provider.remove",
+		id: "cap.domain.astravia.model.provider.remove",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -315,7 +315,7 @@ export const DOMAIN_MODEL_CAPABILITIES = {
 		output: modelNoOutputSchema,
 	}),
 	REPLACE_OWNED_PROVIDERS: defineCapability<ModelOwnedProviderReplaceInput, undefined>({
-		id: "cap.domain.vetta.model.owned-providers.replace",
+		id: "cap.domain.astravia.model.owned-providers.replace",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -323,7 +323,7 @@ export const DOMAIN_MODEL_CAPABILITIES = {
 		output: modelNoOutputSchema,
 	}),
 	LIST_OWNED_PROVIDERS: defineCapability<ModelOwnedProviderListInput, ModelOwnedProviderListResult>({
-		id: "cap.domain.vetta.model.owned-providers.list",
+		id: "cap.domain.astravia.model.owned-providers.list",
 		kind: "query",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,

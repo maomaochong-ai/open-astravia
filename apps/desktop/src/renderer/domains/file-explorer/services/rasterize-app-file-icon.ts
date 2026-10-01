@@ -1,4 +1,4 @@
-import { getFileIcon } from "@vetta-org/theme-ui/file-explorer";
+import { getFileIcon } from "@astravia-org/theme-ui/file-explorer";
 
 const DRAG_ICON_SIZE = 32;
 /** Cache by iconify class so multi-file drags of the same type stay cheap. */
@@ -116,7 +116,8 @@ export interface AppFileDragIconEntry {
  */
 export async function cacheAppFileDragIcons(
 	entries: readonly AppFileDragIconEntry[],
-	cacheDragIcon: (path: string, pngDataUrl: string) => void = (path, png) => window.vetta.fs.cacheDragIcon(path, png),
+	cacheDragIcon: (path: string, pngDataUrl: string) => void = (path, png) =>
+		window.astravia.fs.cacheDragIcon(path, png),
 ): Promise<void> {
 	const seen = new Set<string>();
 	for (const entry of entries) {

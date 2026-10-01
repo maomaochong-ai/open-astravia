@@ -1,5 +1,3 @@
-import type { InstalledPlugin, PluginAgentHookHostRegistration, PluginAgentToolRegistration } from "@preload/api";
-import { pluginAgentToolLabelsAtom, type RegisteredAgentToolLabel } from "@shared/store/atoms";
 import type {
 	PluginAgentToolHandler,
 	PluginAppActionHandler,
@@ -10,8 +8,10 @@ import type {
 	PluginConversationApi,
 	PluginFsApi,
 	PluginToolCallSlotContribution,
-} from "@vetta-org/plugin-sdk";
-import { PLUGIN_CODING_AGENT_HOOK_EVENT_NAMES } from "@vetta-org/plugin-sdk";
+} from "@astravia-org/plugin-sdk";
+import { PLUGIN_CODING_AGENT_HOOK_EVENT_NAMES } from "@astravia-org/plugin-sdk";
+import type { InstalledPlugin, PluginAgentHookHostRegistration, PluginAgentToolRegistration } from "@preload/api";
+import { pluginAgentToolLabelsAtom, type RegisteredAgentToolLabel } from "@shared/store/atoms";
 import { getDefaultStore } from "jotai";
 import {
 	registerPluginAgentHookHandler,
@@ -89,7 +89,7 @@ export function createPluginAgentApi({
 	const registeredAgentTools = new Map<string, PluginAgentToolRegistration>();
 	const hasToolCallSlot = (toolName: string): boolean => toolCallSlots.some((slot) => slot.toolName === toolName);
 	const pushAgentToolRegistration = (payload: PluginAgentToolRegistration): Promise<void> =>
-		window.vetta.plugins
+		window.astravia.plugins
 			.registerAgentTool(plugin.id, payload)
 			.then(() => undefined)
 			.catch((error: Error) => {
@@ -153,7 +153,7 @@ export function createPluginAgentApi({
 			};
 			registeredAgentTools.set(toolName, payload);
 			if (label) setAgentToolLabel(plugin.id, toolName, label);
-			const registrationPromise = window.vetta.plugins
+			const registrationPromise = window.astravia.plugins
 				.registerAgentTool(plugin.id, payload)
 				.then(() => {
 					debugPluginAgent("renderer registerTool completed", {
@@ -180,7 +180,7 @@ export function createPluginAgentApi({
 				dispose: () => {
 					registeredAgentTools.delete(toolName);
 					if (label) setAgentToolLabel(plugin.id, toolName, null);
-					void window.vetta.plugins.unregisterAgentTool(plugin.id, toolId, activationId);
+					void window.astravia.plugins.unregisterAgentTool(plugin.id, toolId, activationId);
 				},
 			};
 		},
@@ -223,7 +223,7 @@ export function createPluginAgentApi({
 				scope_use: registration.scope_use,
 				toolNames: registration.toolNames,
 			};
-			const registrationPromise = window.vetta.plugins
+			const registrationPromise = window.astravia.plugins
 				.registerAgentHook(plugin.id, payload)
 				.catch((error: Error) => {
 					handlerHandle.dispose();
@@ -238,7 +238,7 @@ export function createPluginAgentApi({
 				dispose: () => {
 					// Main owns the generation lease. The renderer handler is released only
 					// after the last admitted Turn drops that lease.
-					void window.vetta.plugins.unregisterAgentHook(plugin.id, hookId, activationId);
+					void window.astravia.plugins.unregisterAgentHook(plugin.id, hookId, activationId);
 				},
 			};
 		},
@@ -259,7 +259,7 @@ export function createPluginAgentApi({
 				handler: registration.handler,
 				api: { fs, conversation },
 			});
-			const registrationPromise = window.vetta.plugins
+			const registrationPromise = window.astravia.plugins
 				.registerContinuationProvider(plugin.id, {
 					id: providerId,
 					handlerId,
@@ -274,7 +274,7 @@ export function createPluginAgentApi({
 			pendingRuntimeRegistrations.push(registrationPromise);
 			return {
 				dispose: () => {
-					void window.vetta.plugins.unregisterContinuationProvider(plugin.id, providerId, activationId);
+					void window.astravia.plugins.unregisterContinuationProvider(plugin.id, providerId, activationId);
 				},
 			};
 		},
@@ -300,7 +300,7 @@ export function createPluginAgentApi({
 				handler: registration.handler,
 				api: { fs, conversation },
 			});
-			const registrationPromise = window.vetta.plugins
+			const registrationPromise = window.astravia.plugins
 				.registerSystemPromptProvider(plugin.id, {
 					id: providerId,
 					handlerId,
@@ -315,7 +315,7 @@ export function createPluginAgentApi({
 			pendingRuntimeRegistrations.push(registrationPromise);
 			return {
 				dispose: () => {
-					void window.vetta.plugins.unregisterSystemPromptProvider(plugin.id, providerId, activationId);
+					void window.astravia.plugins.unregisterSystemPromptProvider(plugin.id, providerId, activationId);
 				},
 			};
 		},
@@ -391,7 +391,7 @@ export function createPluginAppActionsApi({
 				assertReady: registration.assertReady as PluginAppActionReadyHandler | undefined,
 			});
 			disposers.push(() => handlerHandle.dispose());
-			const registrationPromise = window.vetta.plugins
+			const registrationPromise = window.astravia.plugins
 				.registerAppAction(plugin.id, {
 					id: actionId,
 					publicId: registration.publicId,
@@ -417,7 +417,7 @@ export function createPluginAppActionsApi({
 			return {
 				dispose: () => {
 					handlerHandle.dispose();
-					void window.vetta.plugins.unregisterAppAction(plugin.id, actionId, activationId);
+					void window.astravia.plugins.unregisterAppAction(plugin.id, actionId, activationId);
 				},
 			};
 		},

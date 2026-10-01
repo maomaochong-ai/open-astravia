@@ -55,7 +55,7 @@ describe("main bundle asset-URL guard", () => {
 
 	// 回归：主线程 import uiohook-napi 只为取键码常量，却在主线程 Environment 注册了
 	// napi env cleanup hook；退出时它替 worker 跑 uiohook_worker_stop()，对已失效的
-	// CFRunLoopRef 调 CFRunLoopCopyCurrentMode → SIGTRAP，用户看到「Vetta 意外退出」。
+	// CFRunLoopRef 调 CFRunLoopCopyCurrentMode → SIGTRAP，用户看到「Astravia 意外退出」。
 	// 原生 addon 只允许在 uiohook-worker.ts（worker 线程）里加载。
 	it("除 uiohook-worker.ts 外，主进程源码不加载 uiohook-napi 原生模块", () => {
 		const offenders: string[] = [];

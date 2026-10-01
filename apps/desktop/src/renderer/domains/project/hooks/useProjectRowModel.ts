@@ -1,6 +1,6 @@
+import { isSshProjectUri } from "@astravia/ssh-transport/project-uri";
+import type { ProjectRowViewProps } from "@astravia-org/theme-ui/project";
 import type { Project, ProjectType } from "@shared/store/atoms";
-import { isSshProjectUri } from "@vetta/ssh-transport/project-uri";
-import type { ProjectRowViewProps } from "@vetta-org/theme-ui/project";
 
 interface Args {
 	badge?: string;

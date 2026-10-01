@@ -1,8 +1,8 @@
-import type { PluginOfficialApi } from "@vetta-org/plugin-sdk";
+import type { PluginOfficialApi } from "@astravia-org/plugin-sdk";
 
 export function createOfficialImApi(assertOfficial: () => void, capabilitySessionId: string): PluginOfficialApi["im"] {
-	const im = window.vetta.plugins.internalCapabilities.im;
-	const models = window.vetta.plugins.internalCapabilities.models;
+	const im = window.astravia.plugins.internalCapabilities.im;
+	const models = window.astravia.plugins.internalCapabilities.models;
 	return {
 		getStatus: async () => {
 			assertOfficial();
@@ -30,8 +30,8 @@ export function createOfficialImApi(assertOfficial: () => void, capabilitySessio
 		},
 		setFeishuConfig: async (input) => {
 			assertOfficial();
-			const current = await window.vetta.im.getConfig();
-			const result = await window.vetta.im.setConfig({
+			const current = await window.astravia.im.getConfig();
+			const result = await window.astravia.im.setConfig({
 				enabled: input.enabled ?? current.enabled,
 				transport: "feishu",
 				feishu: {

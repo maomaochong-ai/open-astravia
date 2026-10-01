@@ -4,7 +4,7 @@ import {
 	type FileExplorerEntry,
 	type FileTreeRow,
 	hitTestFileTreeMarquee,
-} from "@vetta-org/theme-ui/file-explorer";
+} from "@astravia-org/theme-ui/file-explorer";
 import { describe, expect, it } from "vitest";
 
 function file(path: string, name = path.slice(path.lastIndexOf("/") + 1)): FileExplorerEntry {

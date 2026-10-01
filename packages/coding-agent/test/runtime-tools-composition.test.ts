@@ -1,4 +1,4 @@
-import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
+import type { RuntimeToolDefinition } from "@astravia/runtime-core/kernel";
 import { describe, expect, it, vi } from "vitest";
 import { createCodingToolsRuntimeComposition } from "../src/composition/tool-surface/runtime-tools-composition.js";
 import { createCodingAgentNodeToolEnvironment } from "../src/host/tool-environment/node/node-tool-environment.js";

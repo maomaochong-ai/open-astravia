@@ -1,5 +1,5 @@
-import { SkillDefaultIcon, SkillTypeIcon } from "@vetta-org/theme-ui/skills";
-import { cn } from "@vetta-org/ui";
+import { SkillDefaultIcon, SkillTypeIcon } from "@astravia-org/theme-ui/skills";
+import { cn } from "@astravia-org/ui";
 import { useState } from "react";
 import type { AbilityType } from "@shared/lib/api";
 import { ABILITY_TYPE_ICON, isIconifyIcon, isRenderableImageIcon } from "../lib/ability-presentation";

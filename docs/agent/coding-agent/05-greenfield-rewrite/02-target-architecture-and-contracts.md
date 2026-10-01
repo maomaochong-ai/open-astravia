@@ -33,7 +33,7 @@ flowchart TB
 
 ## 2. 包职责
 
-### 2.1 `@vetta/ai`
+### 2.1 `@astravia/ai`
 
 继续拥有：
 
@@ -49,7 +49,7 @@ flowchart TB
 - 工具权限。
 - Skill、MCP、知识库。
 
-### 2.2 `@vetta/agent-core`
+### 2.2 `@astravia/agent-core`
 
 继续拥有：
 
@@ -68,7 +68,7 @@ flowchart TB
 
 是否保留该包由合同测试决定。如果它不能接受不可变工具集、取消信号和事件接收端，再对它做小范围重写；不能因为全面重写 `coding-agent` 而默认复制一份 Turn Engine。
 
-### 2.3 `@vetta/runtime-core`
+### 2.3 `@astravia/runtime-core`
 
 重建为中立的 Agent Runtime，拥有：
 
@@ -86,12 +86,12 @@ flowchart TB
 
 禁止导入：
 
-- `@vetta/coding-agent`。
+- `@astravia/coding-agent`。
 - Desktop 业务类型。
 - IM、CLI、RPC 类型。
 - 具体 MCP SDK。
 
-### 2.4 `@vetta/runtime-storage`
+### 2.4 `@astravia/runtime-storage`
 
 由“重新导出 coding-agent 存储”改为真正拥有：
 
@@ -104,7 +104,7 @@ flowchart TB
 
 它依赖 `runtime-core` 的存储端口，不依赖 `coding-agent`。
 
-### 2.5 `@vetta/runtime-tools`
+### 2.5 `@astravia/runtime-tools`
 
 真正拥有：
 
@@ -115,7 +115,7 @@ flowchart TB
 
 它依赖 `runtime-core` 的 Tool 合同和必要的 Host Capability Token，不依赖 `coding-agent`。
 
-### 2.6 `@vetta/runtime-mcp`
+### 2.6 `@astravia/runtime-mcp`
 
 真正拥有：
 
@@ -127,7 +127,7 @@ flowchart TB
 
 它作为 `McpFeature` 向运行快照贡献工具，不直接修改 Session。
 
-### 2.7 `@vetta-org/capability-sdk` / `@vetta/capability-runtime`
+### 2.7 `@astravia-org/capability-sdk` / `@astravia/capability-runtime`
 
 继续拥有宿主服务调用与授权，不承载 Agent Feature 编排。
 
@@ -142,7 +142,7 @@ flowchart TB
 -> Host Capability Provider
 ```
 
-### 2.8 `@vetta/coding-agent`
+### 2.8 `@astravia/coding-agent`
 
 最终只拥有：
 

@@ -46,7 +46,7 @@ export function runProductTour(options: RunTourOptions): boolean {
 		nextBtnText: options.labels.next,
 		prevBtnText: options.labels.prev,
 		doneBtnText: options.labels.done,
-		popoverClass: "vetta-driver-popover",
+		popoverClass: "astravia-driver-popover",
 		steps,
 		onDestroyed: () => {
 			markTourCompleted(options.storageKey);

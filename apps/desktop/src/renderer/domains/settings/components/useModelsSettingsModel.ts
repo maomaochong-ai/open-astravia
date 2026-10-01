@@ -166,7 +166,7 @@ export function useModelsSettingsModel(): ModelsSettingsModel {
 	const saveConfig = useCallback(async (newConfig: ModelsConfigData) => {
 		setSaving(true);
 		try {
-			await window.vetta.models.set(newConfig);
+			await window.astravia.models.set(newConfig);
 			// 刚写过盘，必须绕开 TTL 重新读回主进程规范化后的结果。
 			await modelCatalog.revalidate({ force: true, sources: ["local"] });
 		} finally {
@@ -269,7 +269,7 @@ export function useModelsSettingsModel(): ModelsSettingsModel {
 	const handleCopyProviderApiKey = useCallback(
 		async (name: string): Promise<void> => {
 			try {
-				const copied = await window.vetta.models.copyApiKey(name);
+				const copied = await window.astravia.models.copyApiKey(name);
 				showToast({
 					variant: copied ? "success" : "error",
 					message: t(copied ? "apiKeyCopied" : "apiKeyCopyFailed"),
@@ -363,7 +363,7 @@ export function useModelsSettingsModel(): ModelsSettingsModel {
 			const newDefault = config.defaultModel === modelKey ? undefined : modelKey;
 			await saveConfig({ ...config, defaultModel: newDefault });
 			if (newDefault) {
-				localStorage.setItem("vetta-selected-model", newDefault);
+				localStorage.setItem("astravia-selected-model", newDefault);
 			}
 			recordSettingsUsage({
 				tab: "models",
@@ -391,7 +391,7 @@ export function useModelsSettingsModel(): ModelsSettingsModel {
 	const handleFetchProviderModels = useCallback(async (providerName: string) => {
 		setFetchingModelsFor(providerName);
 		try {
-			const result = await window.vetta.models.fetchProviderModels(providerName);
+			const result = await window.astravia.models.fetchProviderModels(providerName);
 			// 接口常返回上百个模型，默认不勾选，由用户挑选或一键全选。
 			setFetchedModels({
 				provider: providerName,

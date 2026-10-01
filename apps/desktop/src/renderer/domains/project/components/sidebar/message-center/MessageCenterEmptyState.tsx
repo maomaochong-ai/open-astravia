@@ -1,2 +1,2 @@
-export type { MessageCenterEmptyStateProps } from "@vetta-org/theme-ui/sidebar";
-export { MessageCenterEmptyState } from "@vetta-org/theme-ui/sidebar";
+export type { MessageCenterEmptyStateProps } from "@astravia-org/theme-ui/sidebar";
+export { MessageCenterEmptyState } from "@astravia-org/theme-ui/sidebar";

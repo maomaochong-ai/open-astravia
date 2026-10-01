@@ -147,12 +147,12 @@ Provider 收到的 `inputs` 只有不透明 ID、媒体类型和 MIME，不包�
 
 ## Provider SPI
 
-通用媒体契约和 capability token 定义在 `@vetta-org/capability-sdk`，当前协议版本为 5。注册表、通用任务、临时产物存储、输入解析与网络传输位于 desktop 主进程。插件 Provider 通过受控 IPC 回调桥接到同一个 Registry，注销时会中止仍在执行的调用。使用模型目录或 `readInput()` 的插件应声明 `pluginApiVersion: ^2.4.0`；旧 Provider 不声明模型目录时继续按原行为运行。
+通用媒体契约和 capability token 定义在 `@astravia-org/capability-sdk`，当前协议版本为 5。注册表、通用任务、临时产物存储、输入解析与网络传输位于 desktop 主进程。插件 Provider 通过受控 IPC 回调桥接到同一个 Registry，注销时会中止仍在执行的调用。使用模型目录或 `readInput()` 的插件应声明 `pluginApiVersion: ^2.4.0`；旧 Provider 不声明模型目录时继续按原行为运行。
 
 需要宿主凭据或其它主进程特权的实现仍应注册为宿主 Provider；普通远端服务、本地模型或 sidecar 可用 Provider 插件适配。两者对消费者暴露同一契约。
 
-## Desktop 内置 Vetta Provider
+## Desktop 内置 Astravia Provider
 
-desktop 默认注册 `desktop:vetta`，当前支持 `text-to-image` 与 `image-to-image`。它的实现位于主进程：renderer 只提交媒体协议请求，主进程固定选择 `images/generate` 或 `images/edit`，并负责注入 JWT 与刷新凭据。插件拿不到用户 token，也不能通过该接口传入任意网关路径。
+desktop 默认注册 `desktop:astravia`，当前支持 `text-to-image` 与 `image-to-image`。它的实现位于主进程：renderer 只提交媒体协议请求，主进程固定选择 `images/generate` 或 `images/edit`，并负责注入 JWT 与刷新凭据。插件拿不到用户 token，也不能通过该接口传入任意网关路径。
 
 该内置实现不是底层协议的前提。没有它的宿主构建仍可暴露一个空 Registry；消费者必须处理 `listProviders()` 为空和 `provider-unavailable`。

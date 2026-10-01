@@ -7,17 +7,17 @@ Desktop 的「streaming 中发送」此前完全由 renderer 自建：`useSessio
 - 渲染端队列出队后 `prompt` 失败不回滚、`sendQueuedNow` 先移除再 abort 带 8 秒超时兜底，两处都会**丢用户已看到过的消息**；
 - `turn.failed` 只产生 `error` observation + `agent_end`，`attachInFlightBuffer` 的 `terminalReason` 不认 `error` 事件，`running-changed.reason` 落成 `"agent_end"`——上游报错后渲染端把失败当自然结束，**自动把下一条排队消息发出去**；
 - 队列纯内存零持久化，崩溃/重启静默丢失；`getState().pendingMessageCount` 恒为 0，主进程对排队一无所知；
-- abort/error 后队列静默滞留，无提示无出口；插件（如 vetta-ui-design 模板卡）经 `sendPrompt` 排进去的消息从此杳无音信，而卡片 UI 已显示「已选择」；
+- abort/error 后队列静默滞留，无提示无出口；插件（如 astravia-ui-design 模板卡）经 `sendPrompt` 排进去的消息从此杳无音信，而卡片 UI 已显示「已选择」；
 - prompt 前置失败（hook 阻断、模型未配置等）时用户消息既不进 jsonl 也不进队列，历史里查无此人。
 
 ## 决策
 
 1. **队列唯一属主是 kernel 的 `SessionInputQueue`，渲染进程只保留只读镜像。** renderer 在 streaming 中发送时改为直接 `session.prompt`，请求携带 `streamingBehavior: "followUp"`；`RuntimeHost.prompt` 的 busy 检查放行带 `streamingBehavior` 的请求，转发给已经支持排队的 `RuntimeSession.prompt` → `AgentSession.send`。渲染端的 `messageQueueBySessionAtom` 降级为 kernel 队列的事件镜像，`useMessageQueueDispatcher` 的「渲染端自动出队重发」路径整体删除——followUp 由 agent loop 在自然停止点于**同一 turn 内**消费，消费时经 `message.appended` 落盘并回流 UI，天然消灭「出队后 prompt 失败」「跨轮重拉串台」两类竞态。
-2. **队列条目获得身份与可管理性。** `SessionInputQueue` 条目带 `id`，新增 `list` / `remove` / `reorder` / `promoteToSteering`；`RuntimeSessionQueueController` 端口、`RuntimeHost` 与 IPC（`vetta:session:queue-*`）逐层暴露，并新增 `queue-changed` 广播。队列抽屉的「立即发送」保持**打断并立刻发送**的产品语义，但打断与续发下沉到 kernel 内原子完成（take 条目 → cancel 当前 turn → 以该条目开新 turn）；渲染端不再等待 running-changed，原先「先移除、8 秒超时后照发撞 SESSION_BUSY」的丢消息竞态从根上消失。
+2. **队列条目获得身份与可管理性。** `SessionInputQueue` 条目带 `id`，新增 `list` / `remove` / `reorder` / `promoteToSteering`；`RuntimeSessionQueueController` 端口、`RuntimeHost` 与 IPC（`astravia:session:queue-*`）逐层暴露，并新增 `queue-changed` 广播。队列抽屉的「立即发送」保持**打断并立刻发送**的产品语义，但打断与续发下沉到 kernel 内原子完成（take 条目 → cancel 当前 turn → 以该条目开新 turn）；渲染端不再等待 running-changed，原先「先移除、8 秒超时后照发撞 SESSION_BUSY」的丢消息竞态从根上消失。
 3. **终止即暂停（pause-on-terminal）。** turn 以 aborted / failed 收尾时，kernel 将队列置为 `paused`：take* 返回空，残留条目不会在下一个不相干的 turn 里突然插入。UI 显示「N 条待发」与「继续发送」入口；`resumeQueue` 解除暂停并（空闲时）以队首开启新 turn，其余条目由该 turn 的自然停止点逐条接力消费。`running-changed` 的 reason 修正为：`turn.failed` 路径的 `error` observation 也置 `terminalReason = "error"`，错误不再伪装成 `agent_end`。
 4. **队列持久化为会话 sidecar 文件。** 队列每次变更把可序列化快照（条目 id、behavior、`SessionInput`）写入 `<sessionPath>.queue.json`，resume 会话时装载并恢复 `paused` 状态。app 重启后用户仍能看到并处置排队中的消息。
 5. **prompt 前置失败落盘为 custom entry。** `RuntimeSession.prompt` 的 intercept/prepare 抛错与 `RuntimeHost.prompt` 的同步校验失败，除合成 `error` 事件外，追加 `custom` 记录（`prompt_rejected`：原文 + 失败原因）进会话文件，历史可查。失败 turn 后用户重发同文本时，renderer 走 `replaceLastUserMessage` 路径避免 jsonl 双份 user 记录。
-6. **插件 `sendPrompt` 语义显式化。** 返回 `{ status: "sent" | "queued", queueItemId? }`；排队时立即 resolve 并附条目 id。插件发送路径不再消费用户挂在输入框上的 `promptAttachment`、不再清输入预测。`conversation.on` 新增 `queue_changed` 事件，卡片类 UI（vetta-ui-design 模板卡）据此呈现「已排队」并在条目被移除/队列暂停时解锁重选。
+6. **插件 `sendPrompt` 语义显式化。** 返回 `{ status: "sent" | "queued", queueItemId? }`；排队时立即 resolve 并附条目 id。插件发送路径不再消费用户挂在输入框上的 `promptAttachment`、不再清输入预测。`conversation.on` 新增 `queue_changed` 事件，卡片类 UI（astravia-ui-design 模板卡）据此呈现「已排队」并在条目被移除/队列暂停时解锁重选。
 
 ## 备选方案
 

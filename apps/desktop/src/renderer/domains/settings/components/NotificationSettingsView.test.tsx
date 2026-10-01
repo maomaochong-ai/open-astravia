@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import {
 	NotificationSettingsView,
 	type NotificationSettingsViewProps,
-} from "@vetta-org/theme-ui/settings";
+} from "@astravia-org/theme-ui/settings";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 afterEach(cleanup);

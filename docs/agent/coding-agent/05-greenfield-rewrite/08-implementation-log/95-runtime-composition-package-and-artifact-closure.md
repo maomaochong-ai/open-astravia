@@ -33,7 +33,7 @@ Greenfield Composition
 ```
 
 若 `coding-agent` 直接拥有 Composition，就会形成 `coding-agent <-> runtime-*` 环。因此新增薄包
-`@vetta/runtime-composition`，它位于完整 Runtime 栈之上、CLI/Desktop 宿主之下，只负责生产组合
+`@astravia/runtime-composition`，它位于完整 Runtime 栈之上、CLI/Desktop 宿主之下，只负责生产组合
 和宿主无关的 Session 外围装配。
 
 ## 3. 代码归位
@@ -55,11 +55,11 @@ Greenfield Composition
 CLI 原路径现在只有窄 re-export：
 
 ```text
-cli-host/src/* -> @vetta/runtime-composition
+cli-host/src/* -> @astravia/runtime-composition
 ```
 
 这样现有 CLI 内部导入、测试和外部导出保持兼容；新的 Desktop 生产接线则直接依赖
-`@vetta/runtime-composition`，不再经过 `cli-host/src`。
+`@astravia/runtime-composition`，不再经过 `cli-host/src`。
 
 ## 4. Workspace 与构建图
 
@@ -87,11 +87,11 @@ runtime-core
 
 ## 5. 独立 `dist` 产物闭包
 
-`@vetta/runtime-composition` 发布一个机器可读清单：
+`@astravia/runtime-composition` 发布一个机器可读清单：
 
 ```ts
 {
-  packageName: "@vetta/runtime-composition",
+  packageName: "@astravia/runtime-composition",
   entrypoints: ["index.js"],
   typeEntrypoints: ["index.d.ts"],
   runtimeAssets: []
@@ -102,7 +102,7 @@ runtime-core
 
 1. `dist` 中每个相对 JS / declaration import 都仍位于 `dist` 内；
 2. 每个相对 import 的目标文件真实存在；
-3. 产物不依赖 `@vetta/cli-host`；
+3. 产物不依赖 `@astravia/cli-host`；
 4. manifest 中的入口、类型入口和资源全部存在；
 5. Node 能够直接导入 `dist/index.js` 并读取 manifest。
 
@@ -119,7 +119,7 @@ runtime-core
 - `runtime-composition` 被视为宿主无关 library，禁止反向依赖 CLI/Desktop 等应用包；
 - Desktop 生产源码禁止直接导入 `cli-host/src`，必须消费正式 package export。
 
-对应质量测试同时验证违规相对源码导入会失败，而 `@vetta/runtime-composition` 合法。
+对应质量测试同时验证违规相对源码导入会失败，而 `@astravia/runtime-composition` 合法。
 
 ## 7. 行为兼容验证
 

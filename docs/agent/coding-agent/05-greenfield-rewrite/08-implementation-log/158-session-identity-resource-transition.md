@@ -78,7 +78,7 @@ Hook turn identity 均指向新父会话。
   掩盖闭包问题。
 - 回归测试：AgentSession close、Bash block-until/shutdown、Runtime close、Subagent coordinator 和 branching 共 28 项通过，
   另有 3 项需要真实 API key 的既有测试按原条件跳过。
-- 真实 Vetta RPC CLI：Legacy 后台命令启动后执行 `new_session`，响应返回时 PID 已消失、源锁释放、目标锁持有、无旧任务通知
+- 真实 Astravia RPC CLI：Legacy 后台命令启动后执行 `new_session`，响应返回时 PID 已消失、源锁释放、目标锁持有、无旧任务通知
   触发额外 Provider 请求，并可在同进程继续 Turn。
 - 独立安装 CLI 产物：重复 Legacy 后台 PID → `new_session` → 新会话恢复场景，验证 standalone 二进制与源码入口一致。
 - `bun run check:quick` 和根目录 `bun run check` 通过。

@@ -1,4 +1,4 @@
-import type { OAuthCredentials, OAuthLoginCallbacks, OAuthProviderId, OAuthProviderInterface } from "@vetta/ai";
+import type { OAuthCredentials, OAuthLoginCallbacks, OAuthProviderId, OAuthProviderInterface } from "@astravia/ai";
 
 export type ApiKeyCredential = {
 	readonly type: "api_key";

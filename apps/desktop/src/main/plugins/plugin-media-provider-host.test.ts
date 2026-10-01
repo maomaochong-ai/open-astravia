@@ -1,4 +1,4 @@
-import type { MediaProviderJob } from "@vetta-org/capability-sdk";
+import type { MediaProviderJob } from "@astravia-org/capability-sdk";
 import type { WebContents } from "electron";
 import { describe, expect, it, vi } from "vitest";
 import type { InstalledPlugin } from "../../preload/api-types/plugins.js";
@@ -14,7 +14,7 @@ function plugin(permissions: InstalledPlugin["permissions"] = ["media.provider.r
 		activeVersion: "1.0.0",
 		pluginApiVersion: "^2.0.0",
 		moduleFederation: { remoteName: "media_provider_test", expose: "./plugin" },
-		entryUrl: "vetta-plugin://demo/index.js",
+		entryUrl: "astravia-plugin://demo/index.js",
 		styleUrls: [],
 		permissions,
 		grantedPermissions: permissions,

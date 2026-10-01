@@ -13,7 +13,7 @@ const desktopSecret = randomBytes(32).toString("base64url");
 const mobileSecret = randomBytes(32).toString("base64url");
 
 console.info(`Desktop URL:   ${websocketBase}/v2/relay/${pairingId}/desktop`);
-console.info(`Desktop protocols: vetta.remote.v2, vetta.pairing.${desktopSecret}, vetta.peer.${sha256Hex(mobileSecret)}`);
+console.info(`Desktop protocols: astravia.remote.v2, astravia.pairing.${desktopSecret}, astravia.peer.${sha256Hex(mobileSecret)}`);
 console.info(`Mobile URL:    ${websocketBase}/v2/relay/${pairingId}/mobile`);
-console.info(`Mobile protocols:  vetta.remote.v2, vetta.pairing.${mobileSecret}`);
+console.info(`Mobile protocols:  astravia.remote.v2, astravia.pairing.${mobileSecret}`);
 console.info("The desktop must connect first; the relay stores only SHA-256 hashes of both secrets.");

@@ -1,9 +1,9 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { Api, Model } from "@vetta/ai";
-import { EcosystemHookRuntime } from "@vetta/ecosystem-adapter";
-import type { RuntimeModel } from "@vetta/runtime-core";
+import type { Api, Model } from "@astravia/ai";
+import { EcosystemHookRuntime } from "@astravia/ecosystem-adapter";
+import type { RuntimeModel } from "@astravia/runtime-core";
 import {
 	type AgentFeatureDefinition,
 	type ConversationContextProjector,
@@ -13,7 +13,7 @@ import {
 	RandomIdGenerator,
 	RuntimeCapabilityComposition,
 	type RuntimeToolDefinition,
-} from "@vetta/runtime-core/kernel";
+} from "@astravia/runtime-core/kernel";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AgentSessionConfiguration } from "../../src/agent-configuration/session-configuration.js";
 import { createCodingToolsRuntimeComposition } from "../../src/composition/tool-surface/runtime-tools-composition.js";
@@ -132,7 +132,7 @@ describe("Coding Agent Turn Capability session assembly", () => {
 		const workspace = join(root, "workspace");
 		const agentDir = join(root, "agent");
 		const sceneName = "assembly-scene";
-		const sceneDir = join(workspace, ".vetta", "skills", sceneName);
+		const sceneDir = join(workspace, ".astravia", "skills", sceneName);
 		mkdirSync(sceneDir, { recursive: true });
 		writeFileSync(
 			join(sceneDir, "SKILL.md"),
@@ -312,7 +312,7 @@ describe("Coding Agent Turn Capability session assembly", () => {
 		const todoRuntime = new CodingAgentTodoRuntime();
 		disposals.push(() => todoRuntime.dispose());
 		const executed: string[] = [];
-		const specializedTool = createTool("vetd_create", executed);
+		const specializedTool = createTool("astravia_design_create", executed);
 		const pluginToolName = "generate_image";
 		const toolName = source === "specialized" ? specializedTool.name : pluginToolName;
 		const agentPlugins = {
@@ -590,8 +590,8 @@ function isolatedDirectory(prefix: string): string {
 	const root = mkdtempSync(join(tmpdir(), prefix));
 	writeFileSync(join(root, ".git"), "");
 	vi.stubEnv("USERPROFILE", root);
-	vi.stubEnv("VETTA_HOME", join(root, "home"));
-	vi.stubEnv("VETTA_CODING_AGENT_DIR", join(root, "agent"));
+	vi.stubEnv("ASTRAVIA_HOME", join(root, "home"));
+	vi.stubEnv("ASTRAVIA_CODING_AGENT_DIR", join(root, "agent"));
 	return root;
 }
 

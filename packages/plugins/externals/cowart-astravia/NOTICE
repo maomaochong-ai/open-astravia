@@ -1,0 +1,3 @@
+Cowart (https://github.com/zhongerxin/Cowart) by ZHONG XIN.
+This package adapts Cowart for the Astravia Desktop plugin host (MCP + skills + activity tab).
+tldraw is used by upstream canvas sources; Astravia mode ships MCP tools without the Codex MCP App widget host.

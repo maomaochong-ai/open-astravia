@@ -9,4 +9,4 @@ export {
 	TOKEN_ACTIVITY_MAX_ROWS,
 	type TokenActivityMode,
 	type UsageSeriesPointLike,
-} from "@vetta-org/theme-ui/settings";
+} from "@astravia-org/theme-ui/settings";

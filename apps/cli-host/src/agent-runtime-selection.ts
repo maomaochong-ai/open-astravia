@@ -1,10 +1,10 @@
-import { resolveCodingAgentSessionDir } from "@vetta/coding-agent/bootstrap";
-import { getAgentDir } from "@vetta/coding-agent/config";
-import type { CodingAgentHtmlExportRuntime } from "@vetta/coding-agent/export-html";
-import type { CodingAgentAuthRuntime } from "@vetta/coding-agent/host-services";
-import { RPC_FAILURE_CODES, stringifyRpcStartupFailure } from "@vetta/coding-agent/rpc";
-import { isSessionError, RUNTIME_ERROR_CODES } from "@vetta/runtime-core";
-import { ConversationOwnershipConflictError } from "@vetta/runtime-storage/conversation";
+import { resolveCodingAgentSessionDir } from "@astravia/coding-agent/bootstrap";
+import { getAgentDir } from "@astravia/coding-agent/config";
+import type { CodingAgentHtmlExportRuntime } from "@astravia/coding-agent/export-html";
+import type { CodingAgentAuthRuntime } from "@astravia/coding-agent/host-services";
+import { RPC_FAILURE_CODES, stringifyRpcStartupFailure } from "@astravia/coding-agent/rpc";
+import { isSessionError, RUNTIME_ERROR_CODES } from "@astravia/runtime-core";
+import { ConversationOwnershipConflictError } from "@astravia/runtime-storage/conversation";
 import { classifyAgentCliIntent } from "./agent-cli-intent.js";
 import { createCliCodingAgentBootstrap } from "./coding-agent-bootstrap.js";
 import { runCodingAgentCliControl } from "./coding-agent-cli-control.js";

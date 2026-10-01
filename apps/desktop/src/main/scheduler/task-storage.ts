@@ -1,13 +1,13 @@
 import { existsSync } from "node:fs";
 import { mkdir, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { getVettaHomePath } from "@vetta/action-rpc";
+import { getAstraviaHomePath } from "@astravia/action-rpc";
 import type { AutomationSessionLink, ScheduledTask, TaskExecutionRecord } from "../../shared/automation.js";
 import { type LegacyMigrationContext, type LegacyScheduledTask, migrateLegacyTask } from "./automation-migration.js";
 
 export type { ScheduledTask, TaskExecutionRecord } from "../../shared/automation.js";
 
-const CONFIG_DIR = getVettaHomePath();
+const CONFIG_DIR = getAstraviaHomePath();
 const TASKS_FILE = join(CONFIG_DIR, "automations.json");
 const LEGACY_TASKS_FILE = join(CONFIG_DIR, "scheduled-tasks.json");
 const LEGACY_BACKUP_FILE = `${LEGACY_TASKS_FILE}.v1.bak`;

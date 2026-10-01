@@ -1,4 +1,4 @@
-import { useTranslation } from "@vetta-org/plugin-sdk";
+import { useTranslation } from "@astravia-org/plugin-sdk";
 import { useState } from "react";
 import type { ContentAsset } from "../project/types";
 import { ContentAssetThumbnail } from "./ContentAssetThumbnail";

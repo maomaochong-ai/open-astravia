@@ -1,5 +1,5 @@
-import type { Message, UserMessage } from "@vetta/ai";
-import type { SessionContextRecord } from "@vetta/runtime-core/kernel";
+import type { Message, UserMessage } from "@astravia/ai";
+import type { SessionContextRecord } from "@astravia/runtime-core/kernel";
 import type { CodingAgentPinnedModelContext } from "../../runtime-contracts/index.js";
 
 /** Validates the host boundary before a pinned prefix can affect model input. */

@@ -142,7 +142,7 @@ it("面板拖动期间只同步离散阈值，结束时才提交并持久化最�
 	});
 	expect(store.get(activityPanelWidthAtom)).toBe(initialWidth);
 	expect(store.get(activityPanelPreviewAvailableAtom)).toBe(false);
-	expect(localStorage.getItem("vetta-activity-panel-width")).toBeNull();
+	expect(localStorage.getItem("astravia-activity-panel-width")).toBeNull();
 
 	act(() => latest?.actions.onResize(540));
 	expect(store.get(activityPanelWidthAtom)).toBe(initialWidth);
@@ -151,5 +151,5 @@ it("面板拖动期间只同步离散阈值，结束时才提交并持久化最�
 	act(() => latest?.actions.onResizeEnd(540));
 	expect(store.get(activityPanelWidthAtom)).toBe(540);
 	expect(store.get(activityPanelResizingAtom)).toBe(false);
-	expect(localStorage.getItem("vetta-activity-panel-width")).toBe("540");
+	expect(localStorage.getItem("astravia-activity-panel-width")).toBe("540");
 });

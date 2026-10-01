@@ -4,18 +4,18 @@ import type { SchedulerService } from "../scheduler/scheduler-service.js";
 import { getRunningTaskIds } from "../scheduler/task-executor.js";
 
 const CHANNELS = {
-	GET_TASKS: "vetta:scheduler:get-tasks",
-	CREATE_TASK: "vetta:scheduler:create-task",
-	UPDATE_TASK: "vetta:scheduler:update-task",
-	DELETE_TASK: "vetta:scheduler:delete-task",
-	TOGGLE_TASK: "vetta:scheduler:toggle-task",
-	DISABLE_TASK: "vetta:scheduler:disable-task",
-	GET_RECORDS: "vetta:scheduler:get-records",
-	GET_RUNNING: "vetta:scheduler:get-running",
-	GET_SESSION_LINKS: "vetta:scheduler:get-session-links",
-	RUN_NOW: "vetta:scheduler:run-now",
-	ABORT: "vetta:scheduler:abort",
-	EVENT: "vetta:scheduler:event",
+	GET_TASKS: "astravia:scheduler:get-tasks",
+	CREATE_TASK: "astravia:scheduler:create-task",
+	UPDATE_TASK: "astravia:scheduler:update-task",
+	DELETE_TASK: "astravia:scheduler:delete-task",
+	TOGGLE_TASK: "astravia:scheduler:toggle-task",
+	DISABLE_TASK: "astravia:scheduler:disable-task",
+	GET_RECORDS: "astravia:scheduler:get-records",
+	GET_RUNNING: "astravia:scheduler:get-running",
+	GET_SESSION_LINKS: "astravia:scheduler:get-session-links",
+	RUN_NOW: "astravia:scheduler:run-now",
+	ABORT: "astravia:scheduler:abort",
+	EVENT: "astravia:scheduler:event",
 } as const;
 
 export type TaskEvent = AutomationTaskEvent;

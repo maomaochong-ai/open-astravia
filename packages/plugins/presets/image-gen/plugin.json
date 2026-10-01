@@ -24,7 +24,7 @@
 		"fs.read"
 	],
 	"description": "%plugin.description%",
-	"author": "Vetta",
+	"author": "Astravia",
 	"defaultLocale": "zh",
 	"guidingWords": []
 }

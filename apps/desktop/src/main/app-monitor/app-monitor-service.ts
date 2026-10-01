@@ -1,4 +1,4 @@
-import type { RuntimeHost, SessionEvent } from "@vetta/runtime-core";
+import type { RuntimeHost, SessionEvent } from "@astravia/runtime-core";
 import type { AppMonitorEvent, AppMonitorInputImageAttachment } from "../../preload/api-types/app-monitor.js";
 import { type AbilityLifecycleLogContext, logAbilityLifecycleEvent } from "../abilities/ability-lifecycle-log.js";
 import { getAppLogger } from "../logger.js";

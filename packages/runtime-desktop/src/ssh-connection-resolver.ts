@@ -1,4 +1,4 @@
-import type { SshConnection } from "@vetta/ssh-transport";
+import type { SshConnection } from "@astravia/ssh-transport";
 
 export type DesktopSshConnectionResolver = (hostId: string) => SshConnection;
 

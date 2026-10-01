@@ -1,5 +1,5 @@
-import type { AgentMessage } from "@vetta/agent-core";
-import type { ImageContent } from "@vetta/ai";
+import type { AgentMessage } from "@astravia/agent-core";
+import type { ImageContent } from "@astravia/ai";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { runPrintMode } from "../src/modes/print-mode.js";
 import type { PrintExtensionError, PrintSessionCapabilities } from "../src/modes/print-session-capabilities.js";

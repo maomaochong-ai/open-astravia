@@ -125,7 +125,7 @@ const mcpNoOutputSchema = defineCapabilityNoOutputSchema();
 
 export const DOMAIN_MCP_CAPABILITIES = {
 	LIST_SERVERS: defineCapability<Record<string, never>, McpServerSummary[]>({
-		id: "cap.domain.vetta.mcp.server.list",
+		id: "cap.domain.astravia.mcp.server.list",
 		kind: "query",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -133,7 +133,7 @@ export const DOMAIN_MCP_CAPABILITIES = {
 		output: mcpServerListOutputSchema,
 	}),
 	GET_SERVER: defineCapability<McpServerNameInput, McpServerDetail>({
-		id: "cap.domain.vetta.mcp.server.get",
+		id: "cap.domain.astravia.mcp.server.get",
 		kind: "query",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -141,7 +141,7 @@ export const DOMAIN_MCP_CAPABILITIES = {
 		output: mcpServerDetailOutputSchema,
 	}),
 	UPSERT_SERVER: defineCapability<McpServerUpsertInput, McpServerDetail>({
-		id: "cap.domain.vetta.mcp.server.upsert",
+		id: "cap.domain.astravia.mcp.server.upsert",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -149,7 +149,7 @@ export const DOMAIN_MCP_CAPABILITIES = {
 		output: mcpServerDetailOutputSchema,
 	}),
 	SET_SERVER_ENABLED: defineCapability<McpServerSetEnabledInput, undefined>({
-		id: "cap.domain.vetta.mcp.server.set-enabled",
+		id: "cap.domain.astravia.mcp.server.set-enabled",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -157,7 +157,7 @@ export const DOMAIN_MCP_CAPABILITIES = {
 		output: mcpNoOutputSchema,
 	}),
 	REMOVE_SERVER: defineCapability<McpServerNameInput, undefined>({
-		id: "cap.domain.vetta.mcp.server.remove",
+		id: "cap.domain.astravia.mcp.server.remove",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,

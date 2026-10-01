@@ -1,4 +1,4 @@
-import { cn } from "@vetta-org/ui";
+import { cn } from "@astravia-org/ui";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { PluginUiPreview } from "../../lib/plugin-permission-labels";

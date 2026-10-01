@@ -1,5 +1,5 @@
+import type { Message, ToolCall, ToolResultMessage } from "@astravia/ai";
 import { Value } from "@sinclair/typebox/value";
-import type { Message, ToolCall, ToolResultMessage } from "@vetta/ai";
 import { AgentToolExecutionError } from "../tool-execution-error.js";
 import type {
 	AgentExecutionEvent,

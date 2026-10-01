@@ -3,9 +3,9 @@ title: Manifest and permissions
 description: Declare plugin identity, entry, styles, permissions, commands, network scope, and Agent contributions, and understand how grants are checked.
 ---
 
-`plugin.json` sits at the root of the `.vettapkg` ZIP container, or inside its single top-level folder. The host validates identity, compatibility, and permissions from it before loading any code, so the manifest must match the build output.
+`plugin.json` sits at the root of the `.astraviapkg` ZIP container, or inside its single top-level folder. The host validates identity, compatibility, and permissions from it before loading any code, so the manifest must match the build output.
 
-The manifest structure has exactly one implementation: the TypeBox schema exported from `@vetta-org/plugin-sdk/manifest`. `PluginManifestSchema` serialises directly to JSON Schema, and `parsePluginManifest()` handles validation, defaults, de-duplication, relative-path normalisation, and cross-field constraints. The schema deliberately allows unknown fields so a newer manifest is not rejected outright by an older host.
+The manifest structure has exactly one implementation: the TypeBox schema exported from `@astravia-org/plugin-sdk/manifest`. `PluginManifestSchema` serialises directly to JSON Schema, and `parsePluginManifest()` handles validation, defaults, de-duplication, relative-path normalisation, and cross-field constraints. The schema deliberately allows unknown fields so a newer manifest is not rejected outright by an older host.
 
 ```json
 {
@@ -124,7 +124,7 @@ Each entry of `network.allowedHosts` and `browser.allowedHosts` is normalised to
 
 ## Install directory and versions
 
-User plugins are stored per version under `~/.vetta/plugins/<id>/versions/<version>/`. Installing a newer version is only recorded as pending; the app keeps loading the current active version until a reload switches over. While debugging, raise `version` and reload for a change to take effect reliably.
+User plugins are stored per version under `~/.astravia/plugins/<id>/versions/<version>/`. Installing a newer version is only recorded as pending; the app keeps loading the current active version until a reload switches over. While debugging, raise `version` and reload for a change to take effect reliably.
 
 System plugins never enter that directory. They ship with the app, are rediscovered from a read-only location on every start, and have their declared permissions granted in full without the user being able to revoke them.
 
@@ -192,7 +192,7 @@ The host does not start processes through a caller-controlled shell, and `node`,
 Declare only what the plugin actually uses. A smaller set means an easier approval for the user and a faster review. Start from the minimal manifest, and when a host API reports a permission error, confirm the behaviour is really needed before adding the permission and re-running the approval flow. Do not copy another plugin's full permission array for convenience.
 
 <Callout title="The build reconciles this for you" type="info">
-  `@vetta-org/plugin-vite` scans the final JavaScript output during build and packaging. When it detects `registerTool`, `registerHook`, `registerSystemPromptProvider`, `registerContinuationProvider`, runtime tool toggles, or an `agent.toolPolicy` in the manifest without the matching permission, it fails the build. UI slots are not part of this check: a missing slot permission is only skipped silently at runtime, so verify those against [extension points](/plugins/extension-points/).
+  `@astravia-org/plugin-vite` scans the final JavaScript output during build and packaging. When it detects `registerTool`, `registerHook`, `registerSystemPromptProvider`, `registerContinuationProvider`, runtime tool toggles, or an `agent.toolPolicy` in the manifest without the matching permission, it fails the build. UI slots are not part of this check: a missing slot permission is only skipped silently at runtime, so verify those against [extension points](/plugins/extension-points/).
 </Callout>
 
 ## Before publishing
@@ -201,7 +201,7 @@ Declare only what the plugin actually uses. A smaller set means an easier approv
   <Step>
     ### Check the archive layout
 
-    Unzip the final `.vettapkg` and confirm `plugin.json` sits at the ZIP container root or in the single top-level folder, and that every entry, stylesheet, skill, and prompt file it references exists.
+    Unzip the final `.astraviapkg` and confirm `plugin.json` sits at the ZIP container root or in the single top-level folder, and that every entry, stylesheet, skill, and prompt file it references exists.
   </Step>
   <Step>
     ### Verify the permission prompt

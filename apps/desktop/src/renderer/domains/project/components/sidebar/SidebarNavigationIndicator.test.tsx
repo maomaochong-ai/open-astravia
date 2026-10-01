@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen } from "@testing-library/react";
-import { SidebarNavigation } from "@vetta-org/theme-ui/sidebar";
-import type { SidebarNavItem } from "@vetta-org/theme-sdk/sidebar";
+import { SidebarNavigation } from "@astravia-org/theme-ui/sidebar";
+import type { SidebarNavItem } from "@astravia-org/theme-sdk/sidebar";
 import { describe, expect, it, vi } from "vitest";
 
 /**

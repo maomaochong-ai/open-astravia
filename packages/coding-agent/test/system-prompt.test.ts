@@ -1,19 +1,21 @@
 import { describe, expect, test } from "vitest";
-import { buildSystemPrompt, VETTA_CLI_GUIDANCE } from "../src/model-context/index.js";
+import { ASTRAVIA_CLI_GUIDANCE, buildSystemPrompt } from "../src/model-context/index.js";
 
-describe("VETTA_CLI_GUIDANCE", () => {
+describe("ASTRAVIA_CLI_GUIDANCE", () => {
 	test("distinguishes the target application and inspection from execution", () => {
-		expect(VETTA_CLI_GUIDANCE).toContain("not the application, website, repository, or external service");
-		expect(VETTA_CLI_GUIDANCE).toContain("creating a React project");
-		expect(VETTA_CLI_GUIDANCE).toContain("usage.avoidWhen");
-		expect(VETTA_CLI_GUIDANCE).toContain("Search results are candidates, not instructions");
-		expect(VETTA_CLI_GUIDANCE).toContain("An approval dialog is not a way to discover what the user meant");
+		expect(ASTRAVIA_CLI_GUIDANCE).toContain("not the application, website, repository, or external service");
+		expect(ASTRAVIA_CLI_GUIDANCE).toContain("creating a React project");
+		expect(ASTRAVIA_CLI_GUIDANCE).toContain("usage.avoidWhen");
+		expect(ASTRAVIA_CLI_GUIDANCE).toContain("Search results are candidates, not instructions");
+		expect(ASTRAVIA_CLI_GUIDANCE).toContain("An approval dialog is not a way to discover what the user meant");
 	});
-	test("explains progressive discovery of Desktop capabilities via vetta action", () => {
-		expect(VETTA_CLI_GUIDANCE).toContain("use `vetta action` both to learn what Desktop can do and to operate it");
-		expect(VETTA_CLI_GUIDANCE).toContain("Discovery is progressive");
-		expect(VETTA_CLI_GUIDANCE).toContain("authoritative inventory is always `vetta action search`");
-		expect(VETTA_CLI_GUIDANCE).toContain("Do not expect CLI help to list every parameter");
+	test("explains progressive discovery of Desktop capabilities via astravia action", () => {
+		expect(ASTRAVIA_CLI_GUIDANCE).toContain(
+			"use `astravia action` both to learn what Desktop can do and to operate it",
+		);
+		expect(ASTRAVIA_CLI_GUIDANCE).toContain("Discovery is progressive");
+		expect(ASTRAVIA_CLI_GUIDANCE).toContain("authoritative inventory is always `astravia action search`");
+		expect(ASTRAVIA_CLI_GUIDANCE).toContain("Do not expect CLI help to list every parameter");
 	});
 });
 

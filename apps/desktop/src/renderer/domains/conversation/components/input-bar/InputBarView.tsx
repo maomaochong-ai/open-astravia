@@ -1,13 +1,13 @@
 import { PerfSendProfiler } from "@shared/lib/perf-send";
-import { useThemeComponent } from "@vetta-org/theme-sdk";
-import { useThemeSurface } from "@vetta-org/theme-sdk/appearance";
+import { useThemeComponent } from "@astravia-org/theme-sdk";
+import { useThemeSurface } from "@astravia-org/theme-sdk/appearance";
 import {
 	MessageInput,
 	InputBarContextMenuView,
 	InputBarPlaceholder,
-} from "@vetta-org/theme-ui/chat";
-import { BottomPanelPillsView } from "@vetta-org/theme-ui/bottom-panel";
-import { useDelayedUnmount } from "@vetta-org/theme-ui/shared";
+} from "@astravia-org/theme-ui/chat";
+import { BottomPanelPillsView } from "@astravia-org/theme-ui/bottom-panel";
+import { useDelayedUnmount } from "@astravia-org/theme-ui/shared";
 import { AnimatePresence, motion } from "motion/react";
 import { createPortal } from "react-dom";
 import { ActionButtonBar } from "../ActionButtonBar";

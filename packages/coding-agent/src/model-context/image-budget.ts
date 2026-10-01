@@ -1,6 +1,6 @@
-import type { AgentMessage } from "@vetta/agent-core";
-import type { ImageContent, TextContent, ToolResultMessage, UserMessage } from "@vetta/ai";
-import { CODING_IMAGE_CONFIGURATION } from "@vetta/runtime-tools";
+import type { AgentMessage } from "@astravia/agent-core";
+import type { ImageContent, TextContent, ToolResultMessage, UserMessage } from "@astravia/ai";
+import { CODING_IMAGE_CONFIGURATION } from "@astravia/runtime-tools";
 
 const IMAGE_OMITTED_PLACEHOLDER = "[earlier image omitted to conserve memory]";
 export const DEFAULT_IMAGE_REQUEST_HIGH_WATERMARK_BYTES =

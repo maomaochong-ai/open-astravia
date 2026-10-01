@@ -15,7 +15,7 @@
 > mode、Plugin 与 Execution Mode 的目标值由同一个 overlay 接受并在后续 Turn 发布，不再把 mode
 > 视为可在 Model Call 之间变化的实时执行状态。
 
-Vetta 要把 Agent 分成 Work（偏文档处理）与 Coding（偏严谨编程）两种工作模式，用来隔离工具、系统提示词、可见插件、MCP 与内置/插件 skills；而 coding-agent 已有一套 `scope_use`（会话场景）∩ `requires`（能力槽）的 fail-closed 过滤机制。
+Astravia 要把 Agent 分成 Work（偏文档处理）与 Coding（偏严谨编程）两种工作模式，用来隔离工具、系统提示词、可见插件、MCP 与内置/插件 skills；而 coding-agent 已有一套 `scope_use`（会话场景）∩ `requires`（能力槽）的 fail-closed 过滤机制。
 
 决定把 `agent_mode` 做成**独立的第三条正交过滤轴**，在 `resolveActiveToolNames` 中追加一层 `!agent_mode?.length || agent_mode.includes(currentMode)` 的 AND 过滤（未填即通用），不复用 `scope_use`/`requires`。mode 采用**纯全局状态**（不绑定对话），切换**立即**更新全局态与 UI，但受影响 session 的 runtime / 系统提示词重建**推迟到其下一个 turn 边界**（懒重建）。合法 mode 是中心硬编码的 `AgentMode = "work" | "coding"` 注册表，插件只能引用不能自创；`agent_mode` 字段挂在 `AgentTool` 宿主元数据层（不进 LLM schema），并镜像到 `PluginAgentToolRegistration` / `AgentPluginToolContribution`。
 
@@ -33,7 +33,7 @@ Vetta 要把 Agent 分成 Work（偏文档处理）与 Coding（偏严谨编程�
 - 提供鉴别函数：控制面可同步读取 desired mode；Agent Prompt、Tool、Skill、MCP、Plugin 与 Hook
   只读取 Turn admission 捕获的 effective mode。插件 UI 可订阅 desired mode，Tool handler ctx 携带
   该 Turn 的 mode 快照。
-- session mode 为可选参数，**未传 = 不过滤**，coding-agent CLI/headless 行为零改动；desktop 默认 **Work**，持久化于 `~/.vetta/desktop-config.json` 并 broadcast。
+- session mode 为可选参数，**未传 = 不过滤**，coding-agent CLI/headless 行为零改动；desktop 默认 **Work**，持久化于 `~/.astravia/desktop-config.json` 并 broadcast。
 - 首期仅文档处理 5 工具（`doc_to_pdf` / `html_to_pdf` / `extract_text_from_pdf` / `extract_text_from_img` / `render_pdf_page`）标 `["work"]`，其余内置工具全通用，coding 无专用工具。
 
 ---
@@ -83,7 +83,7 @@ Runtime Host 不再有任何模式推送通道。
 
 误调引导由以下三层提示词约束承担，不动能力集合（原工具首调确认已于 2026-08-30 移除，见 ADR-0071 修订）：
 
-1. **工具描述反向触发**：重量级工具（`vetta-ui-design` / `image-gen` / `content-creation` /
+1. **工具描述反向触发**：重量级工具（`astravia-ui-design` / `image-gen` / `content-creation` /
    `remotion-renderer`）在 description 里显式写出「什么情况下不要用我」。
 2. **工作区事实注入**：`packages/coding-agent/src/model-context/workspace-facts.ts` 在会话创建时探测 `cwd`
    的工程性质，把「当前工作区是一个已有的 X 仓库、沿用既有技术栈、不要另起工程」写进 `core.context`。

@@ -3,9 +3,9 @@ import type {
 	RuntimeResourceContext,
 	RuntimeSessionExecutionController,
 	SessionExecutionMode,
-} from "@vetta/runtime-core";
-import type { AgentFeatureDefinition, AgentSession, CapabilityBinding } from "@vetta/runtime-core/kernel";
-import { sessionExtensionObservation } from "@vetta/runtime-core/session-extensions";
+} from "@astravia/runtime-core";
+import type { AgentFeatureDefinition, AgentSession, CapabilityBinding } from "@astravia/runtime-core/kernel";
+import { sessionExtensionObservation } from "@astravia/runtime-core/session-extensions";
 import {
 	type BackgroundCommandService,
 	CODING_TOOL_AVAILABILITY_ERROR_CODES,
@@ -16,7 +16,7 @@ import {
 	GenerationalCodingToolCatalog,
 	guardCodingToolRegistration,
 	InMemoryCodingToolRegistry,
-} from "@vetta/runtime-tools";
+} from "@astravia/runtime-tools";
 import type { CodingAgentSessionExecutionEnvironment } from "../../composition/contracts/session-execution-environment.js";
 import {
 	createTaskOutputToolRegistration,

@@ -15,16 +15,16 @@
  */
 
 import type { McpHttpServerConfig } from "../protocol/index.js";
-import { loadVettaCredentials, vettaApiUrl } from "./vetta-credentials.js";
+import { astraviaApiUrl, loadAstraviaCredentials } from "./astravia-credentials.js";
 
 /**
- * 内置 vetta server 的运行时名。
+ * 内置 astravia server 的运行时名。
  * 不能含下划线——工具适配器按 `mcp_${serverName}_${toolName}` 命名并按第一个 `_` 切分。
  */
-export const VETTA_BUILTIN_MCP_NAME = "vetta";
+export const ASTRAVIA_BUILTIN_MCP_NAME = "astravia";
 
 /** 服务端 MCP endpoint 的路径（挂在 API 前缀下）。 */
-export const VETTA_BUILTIN_MCP_PATH = "/mcp";
+export const ASTRAVIA_BUILTIN_MCP_PATH = "/mcp";
 
 /**
  * 客户端版本头。服务端据此决定下发哪些工具。
@@ -32,7 +32,7 @@ export const VETTA_BUILTIN_MCP_PATH = "/mcp";
  * 必须**每一版都带**：老客户端不会补发这个头，服务端只能把没带头的一律当成最老
  * 版本，「新工具只对新客户端可见」这条闸门一旦漏发就永久失效。
  */
-export const VETTA_CLIENT_VERSION_HEADER = "X-Vetta-Client-Version";
+export const ASTRAVIA_CLIENT_VERSION_HEADER = "X-Astravia-Client-Version";
 
 /**
  * 内置服务的连接超时。
@@ -46,7 +46,7 @@ export interface BuildBuiltinMcpOptions {
 	/** 客户端版本，写进版本头。省略时服务端按最老客户端对待。 */
 	clientVersion?: string;
 	/** 覆盖凭据读取，测试用。 */
-	loadCredentials?: typeof loadVettaCredentials;
+	loadCredentials?: typeof loadAstraviaCredentials;
 }
 
 /**
@@ -57,19 +57,19 @@ export interface BuildBuiltinMcpOptions {
  * 拿到，无需重启。
  */
 export function buildBuiltinMcpServers(options: BuildBuiltinMcpOptions = {}): Record<string, McpHttpServerConfig> {
-	const load = options.loadCredentials ?? loadVettaCredentials;
+	const load = options.loadCredentials ?? loadAstraviaCredentials;
 	const credentials = load();
 	if (!credentials) return {};
 
 	const headers: Record<string, string> = {};
 	if (options.clientVersion) {
-		headers[VETTA_CLIENT_VERSION_HEADER] = options.clientVersion;
+		headers[ASTRAVIA_CLIENT_VERSION_HEADER] = options.clientVersion;
 	}
 
 	return {
-		[VETTA_BUILTIN_MCP_NAME]: {
+		[ASTRAVIA_BUILTIN_MCP_NAME]: {
 			type: "http",
-			url: vettaApiUrl(credentials.baseUrl, VETTA_BUILTIN_MCP_PATH),
+			url: astraviaApiUrl(credentials.baseUrl, ASTRAVIA_BUILTIN_MCP_PATH),
 			headers,
 			startupTimeout: BUILTIN_STARTUP_TIMEOUT_MS,
 			// 凭据按请求解析而不是写进 headers：access token 会轮换，写死在连接上

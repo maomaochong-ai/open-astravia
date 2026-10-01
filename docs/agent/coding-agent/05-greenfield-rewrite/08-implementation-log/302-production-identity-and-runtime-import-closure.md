@@ -14,7 +14,7 @@
 - 会话历史、认证、模型和设置等用户数据；必要时由显式、独立的新迁移器读取旧格式。
 - 模型消息、工具消息、错误、取消、事件顺序、并发约束和资源释放语义。
 - 仍然有效的行为测试场景和数据 fixture；旧实现可以临时作为测试 Oracle，但不能被新生产代码调用。
-- `@vetta/ai` 与经过合同验证的 `@vetta/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
+- `@astravia/ai` 与经过合同验证的 `@astravia/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
 
 ## 明确舍弃（固定）
 
@@ -28,7 +28,7 @@
 
 ## 本阶段与最终目标的关系
 
-本轮关闭生产代码中最后的迁移期身份和 Desktop 对 Runtime 包源码目录的越界依赖。新的合同使用能力语义，不再用 `greenfield` 区分已经成为唯一生产实现的 Runtime；Desktop 只依赖 `@vetta/runtime-core` 公开入口，避免应用直接耦合工作区目录结构。
+本轮关闭生产代码中最后的迁移期身份和 Desktop 对 Runtime 包源码目录的越界依赖。新的合同使用能力语义，不再用 `greenfield` 区分已经成为唯一生产实现的 Runtime；Desktop 只依赖 `@astravia/runtime-core` 公开入口，避免应用直接耦合工作区目录结构。
 
 ## 实施内容
 
@@ -36,7 +36,7 @@
 - 将 CLI Runtime Host Ready 判别值改为 `rpc` / `print`。
 - 将历史会话迁移成功结果判别值改为 `session`，保留 `migrated` / `reused` 状态语义。
 - 将 SDK 内部错误码前缀从 `greenfield_sdk_*` 改为产品语义 `coding_agent_sdk_*`。
-- 将 Desktop main、preload、renderer 和 shared 中 35 个 `runtime-core/src/index.js` 相对导入改为 `@vetta/runtime-core`。
+- 将 Desktop main、preload、renderer 和 shared 中 35 个 `runtime-core/src/index.js` 相对导入改为 `@astravia/runtime-core`。
 - 删除迁移残留守卫中的全部 Greenfield 协议字面量白名单；生产源码中的未分类 Greenfield 文本必须为零。
 - 新增 Desktop Runtime 相对源码导入计数和反例测试，要求 `desktopRuntimeSourceImportFiles=0`。
 - 将宿主验证脚本的迁移期日志标签改为中性 Agent suite 标签。

@@ -4,7 +4,7 @@ import {
 	pluginInputActionsAtom,
 	type RegisteredBottomPanel,
 } from "@shared/store/atoms";
-import type { ConversationScenario } from "@vetta-org/plugin-sdk";
+import type { ConversationScenario } from "@astravia-org/plugin-sdk";
 import { useAtomValue } from "jotai";
 import { type ComponentType, useMemo } from "react";
 import { useTranslation } from "react-i18next";

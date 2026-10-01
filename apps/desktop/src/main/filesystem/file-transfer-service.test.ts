@@ -11,7 +11,7 @@ let projectDirectory: string;
 let sourceDirectory: string;
 
 beforeEach(async () => {
-	testRoot = await mkdtemp(join(tmpdir(), "vetta-file-transfer-test-"));
+	testRoot = await mkdtemp(join(tmpdir(), "astravia-file-transfer-test-"));
 	projectDirectory = join(testRoot, "project");
 	sourceDirectory = join(testRoot, "external");
 	await Promise.all([mkdir(projectDirectory, { recursive: true }), mkdir(sourceDirectory, { recursive: true })]);

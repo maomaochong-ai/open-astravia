@@ -1,4 +1,4 @@
-import { traceIdentifier, traceObject } from "@vetta/runtime-telemetry";
+import { traceIdentifier, traceObject } from "@astravia/runtime-telemetry";
 import type { AgentObservationQuery } from "./contracts.js";
 
 export function parseAgentObservationQuery(input: unknown): AgentObservationQuery {

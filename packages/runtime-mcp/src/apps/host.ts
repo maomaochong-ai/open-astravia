@@ -1,4 +1,4 @@
-import type { RuntimeToolResult } from "@vetta/runtime-core/kernel";
+import type { RuntimeToolResult } from "@astravia/runtime-core/kernel";
 import type {
 	IMcpClient,
 	McpAppAttachment,
@@ -47,7 +47,7 @@ export function attachMcpAppDescriptor(projected: RuntimeToolResult, attachment:
 			...details,
 			_meta: {
 				...meta,
-				"io.vetta/mcpApp": attachment,
+				"io.astravia/mcpApp": attachment,
 			},
 		},
 	};

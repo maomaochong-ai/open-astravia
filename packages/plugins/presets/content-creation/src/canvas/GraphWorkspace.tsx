@@ -13,7 +13,7 @@ import {
 	type PluginRegisterShortcutScope,
 	usePluginShortcutScope,
 	useTranslation,
-} from "@vetta-org/plugin-sdk";
+} from "@astravia-org/plugin-sdk";
 import { type DragEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { findContentFlowAlignmentGuides } from "./alignment-guides";
 import { listCompatibleNodeKinds, resolveContentConnection } from "../node/connections";

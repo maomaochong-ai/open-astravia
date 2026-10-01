@@ -1,4 +1,4 @@
-import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
+import type { RuntimeToolDefinition } from "@astravia/runtime-core/kernel";
 import type { CodingToolResultPolicy } from "./coding-tool-result-policy.js";
 
 export type CodingToolConfigurationSupport = "native" | "adapter" | "host-policy";

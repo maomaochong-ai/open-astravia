@@ -27,4 +27,4 @@ Read [references/production-planning.md](references/production-planning.md) befo
 - Prepare separate runs when the user may reasonably approve one stage but reject the next.
 - A generated file is not complete until it passes its delivery gate.
 
-This method is an original Vetta adaptation informed by Generative-Media-Skills (MIT), visual-skills by Serge Shima (CC BY 4.0), and ViMax (MIT).
+This method is an original Astravia adaptation informed by Generative-Media-Skills (MIT), visual-skills by Serge Shima (CC BY 4.0), and ViMax (MIT).

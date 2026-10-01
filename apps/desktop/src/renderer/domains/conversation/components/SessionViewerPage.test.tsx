@@ -3,7 +3,7 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type * as Jotai from "jotai";
-import type * as ThemeChat from "@vetta-org/theme-ui/chat";
+import type * as ThemeChat from "@astravia-org/theme-ui/chat";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { SessionViewerPage } from "./SessionViewerPage";
@@ -27,8 +27,8 @@ vi.mock("jotai", async (importOriginal) => ({
 	useSetAtom: () => captured.setHeader,
 }));
 vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
-vi.mock("@vetta-org/theme-sdk/appearance", () => ({ useThemeSurface: () => undefined }));
-vi.mock("@vetta-org/theme-ui/chat", async (importOriginal) => ({
+vi.mock("@astravia-org/theme-sdk/appearance", () => ({ useThemeSurface: () => undefined }));
+vi.mock("@astravia-org/theme-ui/chat", async (importOriginal) => ({
 	...(await importOriginal<typeof ThemeChat>()),
 	SessionViewerPageView: ({ messageList }: { messageList: ReactNode }) => <main>{messageList}</main>,
 }));

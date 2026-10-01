@@ -36,7 +36,7 @@ describe("Node RuntimeHost services", () => {
 	});
 
 	async function createTemporaryRoot(): Promise<string> {
-		const root = await mkdtemp(join(tmpdir(), "vetta-runtime-host-services-"));
+		const root = await mkdtemp(join(tmpdir(), "astravia-runtime-host-services-"));
 		temporaryRoots.push(root);
 		return root;
 	}

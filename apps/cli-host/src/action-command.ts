@@ -1,6 +1,6 @@
 import { writeSync } from "node:fs";
 import { parseArgs } from "node:util";
-import { ActionRpcError, createActionRpcClient, readActionRpcEndpoint } from "@vetta/action-rpc";
+import { ActionRpcError, createActionRpcClient, readActionRpcEndpoint } from "@astravia/action-rpc";
 import { z } from "zod";
 
 const actionErrorCommandSchema = z.object({
@@ -48,17 +48,17 @@ type ActionSubcommandDefinition = {
 	run: (client: ActionRpcClient, command: ActionCommand) => Promise<unknown> | unknown;
 };
 
-const HELP_TEXT = `Vetta action command line interface
+const HELP_TEXT = `Astravia action command line interface
 
 Usage:
-  vetta action search [query] [--domain <domain>]
-  vetta action describe <action-id>
-  vetta action run <action-id> [json-input]
-  vetta action -h
-  vetta action --help
+  astravia action search [query] [--domain <domain>]
+  astravia action describe <action-id>
+  astravia action run <action-id> [json-input]
+  astravia action -h
+  astravia action --help
 
 Description:
-  Operate the running Vetta Desktop app through its local action RPC.
+  Operate the running Astravia Desktop app through its local action RPC.
   The GUI must already be running. Do not guess action ids or parameters
   from memory; discover them at runtime.
 
@@ -76,12 +76,12 @@ Capability areas (high-level only; live catalog comes from search):
   batch-tasks, scheduler, knowledge, plugins, im, webhook, downloads, updater
 
 Examples:
-  vetta action search ""
-  vetta action search "model"
-  vetta action search "定时" --domain scheduler
-  vetta action describe models.query
-  vetta action run models.query '{"operation":"help"}'
-  vetta action run models.query '{"operation":"list"}'
+  astravia action search ""
+  astravia action search "model"
+  astravia action search "定时" --domain scheduler
+  astravia action describe models.query
+  astravia action run models.query '{"operation":"help"}'
+  astravia action run models.query '{"operation":"list"}'
 
 JSON input:
   In PowerShell and POSIX shells, wrap the JSON argument in single quotes.

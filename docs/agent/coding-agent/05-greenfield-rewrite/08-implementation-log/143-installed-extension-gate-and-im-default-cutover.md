@@ -5,7 +5,7 @@
 把第 142 阶段的源码级 Extension Profile 门禁推进到标准安装产物，并在同一阶段完成 Desktop IM
 Composition Root 的默认切换：
 
-- 标准安装后的独立 Vetta CLI 必须证明已支持 Extension 进入 Greenfield；
+- 标准安装后的独立 Astravia CLI 必须证明已支持 Extension 进入 Greenfield；
 - 未知 Extension Event 必须继续回退 Legacy，并在 stderr 给出结构化诊断；
 - Desktop IM 默认选择 Greenfield，同时保留显式 Legacy 回滚；
 - Provider 请求中的工具定义和顺序必须与 Legacy 完全一致，不能以“测试忽略顺序”掩盖行为变化；
@@ -19,7 +19,7 @@ Greenfield 不是 coding-agent 内核的全局隐式默认。不同宿主仍可�
 Desktop IM 的 `coding-agent` 启动规格默认值改为 `greenfield-im`。CLI 的通用选择器、旧会话格式识别和
 显式参数语义不变。
 
-`VETTA_IM_AGENT_RUNTIME=legacy` 仍是明确的进程级回滚开关。空值和未配置值选择 Greenfield，未知值
+`ASTRAVIA_IM_AGENT_RUNTIME=legacy` 仍是明确的进程级回滚开关。空值和未配置值选择 Greenfield，未知值
 继续抛错，避免拼写错误静默改变运行时。
 
 ### 2. 安装产物必须验证能力选择，而不只是验证可启动

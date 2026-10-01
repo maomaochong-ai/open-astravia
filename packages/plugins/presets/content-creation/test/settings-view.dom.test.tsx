@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ContentSettingsStore } from "../src/settings/content-settings";
 import { ContentSettingsView } from "../src/settings/SettingsView";
 
-vi.mock("@vetta-org/plugin-sdk", () => ({
+vi.mock("@astravia-org/plugin-sdk", () => ({
 	useTranslation: () => ({ t: (key: string) => key }),
 }));
 

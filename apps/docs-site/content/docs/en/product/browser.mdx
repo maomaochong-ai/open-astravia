@@ -44,7 +44,7 @@ The plugin itself ships with the app and needs no installation. The Agent prepar
   <Step>
     ### Install the pinned version
 
-    When the runtime is missing or too old, the Agent installs the pinned version into Vetta's private npm directory (~90MB). It verifies that this private directory exists first, and never touches an existing global `agent-browser` on your machine.
+    When the runtime is missing or too old, the Agent installs the pinned version into Astravia's private npm directory (~90MB). It verifies that this private directory exists first, and never touches an existing global `agent-browser` on your machine.
   </Step>
   <Step>
     ### Prepare a browser
@@ -64,7 +64,7 @@ Panel states:
 | --- | --- | --- |
 | Ready | The CLI is available; just ask in the conversation | Nothing to do |
 | Runtime not installed | First run, or the runtime was removed | Install |
-| Runtime out of date | An older `agent-browser` is earlier on PATH | Upgrade into Vetta's own runtime directory |
+| Runtime out of date | An older `agent-browser` is earlier on PATH | Upgrade into Astravia's own runtime directory |
 | Browser not installed | No reusable Chrome on this machine | Download Chrome for Testing |
 | Install failed | Network, permission, or command conflict | Read the command and error shown, fix, retry |
 

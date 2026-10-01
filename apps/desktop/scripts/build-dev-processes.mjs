@@ -23,7 +23,7 @@ const envInputs = [
 	join(desktopRoot, ".env.development.local"),
 ];
 
-const developmentEnv = { ...process.env, VETTA_BUILD_ENV: "development" };
+const developmentEnv = { ...process.env, ASTRAVIA_BUILD_ENV: "development" };
 
 // 与 vite.main.config.ts 的 developmentWorkspacePackages 保持一致：这些包在 dev 下是 external，
 // 运行时直接读各自 dist，改动无需重打主进程；其余 workspace 包都会被打进主进程 bundle。
@@ -128,7 +128,7 @@ async function updateHashWithPath(hash, path) {
 async function hashPaths(paths, env) {
 	const hash = createHash("sha256");
 	for (const path of paths) await updateHashWithPath(hash, path);
-	for (const [key, value] of Object.entries(env).filter(([key]) => key.startsWith("VETTA_")).sort()) {
+	for (const [key, value] of Object.entries(env).filter(([key]) => key.startsWith("ASTRAVIA_")).sort()) {
 		hash.update(key);
 		hash.update(value ?? "");
 	}

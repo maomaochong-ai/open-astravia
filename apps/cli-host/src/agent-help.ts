@@ -1,11 +1,11 @@
-import { CODING_AGENT_BUILT_IN_TOOL_NAMES } from "@vetta/coding-agent/bootstrap";
+import { CODING_AGENT_BUILT_IN_TOOL_NAMES } from "@astravia/coding-agent/bootstrap";
 import {
 	APP_NAME,
 	CONFIG_DIR_NAME,
 	ENV_AGENT_DIR,
 	ENV_PACKAGE_DIR,
 	ENV_SHARE_VIEWER_URL,
-} from "@vetta/coding-agent/config";
+} from "@astravia/coding-agent/config";
 import chalk from "chalk";
 
 /** Render the Node CLI help text. Product option names come from Coding Agent; terminal presentation stays here. */

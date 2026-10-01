@@ -28,7 +28,7 @@ describe("site URL helpers", () => {
 	});
 
 	it("prefers DOCS_SITE_URL without a trailing slash", () => {
-		expect(getSiteOrigin("https://docs.openvetta.com/")).toBe(DEFAULT_DOCS_SITE_URL);
+		expect(getSiteOrigin("https://docs.astravia.dev/")).toBe(DEFAULT_DOCS_SITE_URL);
 	});
 });
 
@@ -41,7 +41,7 @@ describe("metadata", () => {
 		});
 
 		const home = buildPageMetadata({
-			title: "Vetta 文档",
+			title: "Astravia 文档",
 			description: site.description,
 			path: "/",
 			isHome: true,
@@ -98,11 +98,11 @@ describe("metadata", () => {
 			canonical: "/product/models/",
 			types: { "text/markdown": "/product/models.md" },
 		});
-		expect(metadata.title).toEqual({ absolute: "Configure models | Vetta Documentation" });
+		expect(metadata.title).toEqual({ absolute: "Configure models | Astravia Documentation" });
 		expect(metadata.alternates).not.toHaveProperty("languages");
 		expect(metadata.openGraph).toMatchObject({
 			locale: "en_US",
-			siteName: "Vetta Documentation",
+			siteName: "Astravia Documentation",
 			url: "/product/models/",
 		});
 	});

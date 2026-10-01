@@ -50,7 +50,7 @@ Runtime Adapter 因此增加事件交付屏障：Engine observer 同步记录 em
 
 ## 上游测试解析修复
 
-Coding Agent Vitest 原本把 `runtime-core` 指向源码，却让其新依赖的 `agent-core` 解析旧 dist，形成不一致模块图并报 `salvageTextToolCalls is not a function`。测试配置补充 `@vetta/agent-core` 与 `@vetta/ai` 源码别名，使工作区测试验证同一轮源码。没有运行 build 刷新 dist。
+Coding Agent Vitest 原本把 `runtime-core` 指向源码，却让其新依赖的 `agent-core` 解析旧 dist，形成不一致模块图并报 `salvageTextToolCalls is not a function`。测试配置补充 `@astravia/agent-core` 与 `@astravia/ai` 源码别名，使工作区测试验证同一轮源码。没有运行 build 刷新 dist。
 
 ## 测试证据
 

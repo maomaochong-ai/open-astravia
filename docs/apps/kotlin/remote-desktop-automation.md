@@ -5,7 +5,7 @@
 ## 1. Remote Desktop 包
 
 ```powershell
-Set-Location "C:\develop\yiyun\vetta\open-vetta\packages\remote-desktop"
+Set-Location "C:\develop\yiyun\astravia\open-astravia\packages\remote-desktop"
 bun run build
 bun run test
 bun run test:e2e
@@ -23,7 +23,7 @@ bun run test:e2e
 ## 2. Cloudflare Worker
 
 ```powershell
-Set-Location "C:\develop\yiyun\vetta\open-vetta\apps\remote-relay"
+Set-Location "C:\develop\yiyun\astravia\open-astravia\apps\remote-relay"
 bun run test
 bun run typecheck
 bun run deploy:dry
@@ -42,7 +42,7 @@ Worker 测试必须覆盖：
 ## 3. Android 构建和测试
 
 ```powershell
-Set-Location "C:\develop\yiyun\vetta\open-vetta\apps\kotlin"
+Set-Location "C:\develop\yiyun\astravia\open-astravia\apps\kotlin"
 .\gradlew.bat :shared:testAndroidHostTest :androidApp:assembleDebug --no-daemon
 ```
 
@@ -57,7 +57,7 @@ Set-Location "C:\develop\yiyun\vetta\open-vetta\apps\kotlin"
 ## 4. 仓库质量门禁
 
 ```powershell
-Set-Location "C:\develop\yiyun\vetta\open-vetta"
+Set-Location "C:\develop\yiyun\astravia\open-astravia"
 bun run check:quick
 bun run check
 ```
@@ -72,7 +72,7 @@ bun run check
 $adb = "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe"
 & $adb logcat -c
 & $adb logcat -v time |
-  Select-String "VettaRemote|org.webrtc.Logging|AndroidRuntime|FATAL EXCEPTION"
+  Select-String "AstraviaRemote|org.webrtc.Logging|AndroidRuntime|FATAL EXCEPTION"
 ```
 
 状态日志的含义：

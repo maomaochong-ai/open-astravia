@@ -1,3 +1,6 @@
+import { isSshProjectUri } from "@astravia/ssh-transport/project-uri";
+import type { SessionContextMenuViewProps } from "@astravia-org/theme-ui/project";
+import type { ContextMenuNode } from "@astravia-org/theme-ui/shared";
 import type { SessionContextMenuSession } from "@shared/store/atoms";
 import {
 	automationCreateRequestAtom,
@@ -11,9 +14,6 @@ import {
 	setSessionPinnedAtom,
 } from "@shared/store/atoms";
 import { useNavigate } from "@tanstack/react-router";
-import { isSshProjectUri } from "@vetta/ssh-transport/project-uri";
-import type { SessionContextMenuViewProps } from "@vetta-org/theme-ui/project";
-import type { ContextMenuNode } from "@vetta-org/theme-ui/shared";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -47,7 +47,7 @@ export function useSessionContextMenuModel(
 	}, [onClose, session.path, setRenamingSessionPath]);
 
 	const handleOpenInFolder = useCallback(() => {
-		void window.vetta.shell.showInFolder(session.cwd);
+		void window.astravia.shell.showInFolder(session.cwd);
 		onClose();
 	}, [onClose, session.cwd]);
 
@@ -106,7 +106,7 @@ export function useSessionContextMenuModel(
 					dotColor: tag.color,
 					checked,
 					onSelect: () => {
-						void window.vetta.conversationTags.assign({
+						void window.astravia.conversationTags.assign({
 							sessionPath: session.path,
 							tagId: tag.id,
 							assigned: !checked,

@@ -47,7 +47,7 @@ let agentModeListener: ((mode: "work" | "coding") => void) | undefined;
 function mountWithConfig(config: ConfigStub, modes: ModeStub[] = REGISTRY_MODES): { store: ReturnType<typeof createStore> } {
 	(globalThis as unknown as { window: unknown }).window = globalThis.window;
 	Object.assign(globalThis.window, {
-		vetta: {
+		astravia: {
 			config: { get: async () => config },
 			session: {
 				setGlobalAgentMode,

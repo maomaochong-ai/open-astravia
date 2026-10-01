@@ -1,5 +1,5 @@
-import type { ThinkingLevel } from "@vetta/agent-core";
-import type { Api, Message, Model } from "@vetta/ai";
+import type { ThinkingLevel } from "@astravia/agent-core";
+import type { Api, Message, Model } from "@astravia/ai";
 import type { ContextCompositionReport } from "../context-composition/contracts.js";
 import type {
 	HistoryEntry,

@@ -67,20 +67,20 @@ describe("context resources host port", () => {
 	it("prefers the project prompt and resolves file or literal input through the port", async () => {
 		const access = createMemoryResourceAccess({
 			"/agent/SYSTEM.md": "global prompt",
-			"/workspace/.vetta/SYSTEM.md": "project prompt",
+			"/workspace/.astravia/SYSTEM.md": "project prompt",
 		});
 
 		await expect(discoverPromptFile(access, "/workspace", "/agent", "SYSTEM.md")).resolves.toBe(
-			"/workspace/.vetta/SYSTEM.md",
+			"/workspace/.astravia/SYSTEM.md",
 		);
-		await expect(resolvePromptInput(access, "/workspace/.vetta/SYSTEM.md", "system prompt")).resolves.toBe(
+		await expect(resolvePromptInput(access, "/workspace/.astravia/SYSTEM.md", "system prompt")).resolves.toBe(
 			"project prompt",
 		);
 		await expect(resolvePromptInput(access, "literal prompt", "system prompt")).resolves.toBe("literal prompt");
 	});
 
 	it("preserves the input path when an existing prompt file cannot be read", async () => {
-		const promptPath = "/workspace/.vetta/SYSTEM.md";
+		const promptPath = "/workspace/.astravia/SYSTEM.md";
 		const access = createMemoryResourceAccess({ [promptPath]: "unavailable" }, new Set([promptPath]));
 		const error = vi.spyOn(console, "error").mockImplementation(() => {});
 		try {
@@ -92,7 +92,7 @@ describe("context resources host port", () => {
 	});
 
 	it("propagates cancellation instead of treating it as a recoverable read failure", async () => {
-		const promptPath = "/workspace/.vetta/SYSTEM.md";
+		const promptPath = "/workspace/.astravia/SYSTEM.md";
 		const access = createMemoryResourceAccess({ [promptPath]: "unavailable" }, new Set([promptPath]));
 		const controller = new AbortController();
 		controller.abort();

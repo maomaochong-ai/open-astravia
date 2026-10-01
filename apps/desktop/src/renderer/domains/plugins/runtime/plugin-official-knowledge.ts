@@ -1,10 +1,10 @@
-import type { PluginOfficialApi } from "@vetta-org/plugin-sdk";
+import type { PluginOfficialApi } from "@astravia-org/plugin-sdk";
 
 export function createOfficialKnowledgeApi(
 	assertOfficial: () => void,
 	capabilitySessionId: string,
 ): PluginOfficialApi["knowledge"] {
-	const knowledge = window.vetta.plugins.internalCapabilities.knowledge;
+	const knowledge = window.astravia.plugins.internalCapabilities.knowledge;
 	return {
 		list: async () => {
 			assertOfficial();

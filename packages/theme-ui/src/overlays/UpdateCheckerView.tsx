@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type JSX } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Button } from "@vetta-org/ui";
+import { Button } from "@astravia-org/ui";
 
 export interface UpdateCheckerViewLabels {
 	readonly check: string;

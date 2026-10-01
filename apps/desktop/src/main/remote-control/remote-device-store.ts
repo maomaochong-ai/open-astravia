@@ -4,7 +4,7 @@ import {
 	identityKeyPairFromSecret,
 	type RemoteIdentityKeyPair,
 	toBase64Url,
-} from "@vetta/remote-control";
+} from "@astravia/remote-control";
 import type {
 	DesktopConfig,
 	DesktopConfigUpdater,

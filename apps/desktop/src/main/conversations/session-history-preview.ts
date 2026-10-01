@@ -1,4 +1,4 @@
-import type { HistoryEntry } from "@vetta/runtime-core";
+import type { HistoryEntry } from "@astravia/runtime-core";
 
 const PREVIEW_ENTRY_FALLBACK = 32;
 

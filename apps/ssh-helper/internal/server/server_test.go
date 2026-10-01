@@ -181,7 +181,7 @@ func TestWriteKeepsExecutableBitAndWritesThroughSymlinks(t *testing.T) {
 	if info, _ := os.Stat(script); info.Mode().Perm() != 0o755 {
 		t.Fatalf("executable bit lost: %v", info.Mode().Perm())
 	}
-	leftovers, _ := filepath.Glob(filepath.Join(dir, ".*vetta-tmp*"))
+	leftovers, _ := filepath.Glob(filepath.Join(dir, ".*astravia-tmp*"))
 	if len(leftovers) != 0 {
 		t.Fatalf("temp files left behind: %v", leftovers)
 	}

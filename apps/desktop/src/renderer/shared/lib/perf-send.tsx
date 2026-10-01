@@ -2,15 +2,15 @@
  * [PERF-send] 发送链路本地诊断：定位「点击发送 / 回车后界面冻结」的耗时归属。
  *
  * 打开方式（渲染进程 DevTools Console）：
- *   localStorage.setItem("vetta-perf-send", "1"); location.reload()
- * 关闭：localStorage.removeItem("vetta-perf-send")
+ *   localStorage.setItem("astravia-perf-send", "1"); location.reload()
+ * 关闭：localStorage.removeItem("astravia-perf-send")
  *
  * 即使未开启本地诊断，perfSendBegin 仍生成 privacy-safe interaction id，供主进程日志关联。
  */
 
 import { Profiler, type ProfilerOnRenderCallback, type ReactNode } from "react";
 
-const ENABLED_KEY = "vetta-perf-send";
+const ENABLED_KEY = "astravia-perf-send";
 const MAX_REPORT_DELAY_MS = 15_000;
 const COMPLETION_REPORT_DELAY_MS = 1_000;
 

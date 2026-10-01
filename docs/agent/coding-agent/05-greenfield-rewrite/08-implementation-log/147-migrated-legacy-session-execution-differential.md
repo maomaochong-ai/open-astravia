@@ -68,7 +68,7 @@ JSONL 格式。
 
 ## 独立安装产物
 
-独立 `vetta` 可执行产物测试不再只对迁移会话调用 `get_state`。它现在：
+独立 `astravia` 可执行产物测试不再只对迁移会话调用 `get_state`。它现在：
 
 1. 打开综合 Legacy fixture 并自动迁移；
 2. 加载 Extension，执行第一个真实 Provider Turn；

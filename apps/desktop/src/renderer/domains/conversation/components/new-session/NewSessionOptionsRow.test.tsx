@@ -14,7 +14,7 @@ vi.mock("react-i18next", () => ({
 
 beforeEach(() => {
 	Object.assign(window, {
-		vetta: {
+		astravia: {
 			config: { get: async () => ({ defaultAgentMode: "work", projects: [] }), onProjectsChanged: () => () => {} },
 			im: { onSessionChanged: () => () => {} },
 			session: {

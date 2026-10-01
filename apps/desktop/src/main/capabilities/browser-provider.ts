@@ -1,14 +1,14 @@
-import { bindCapability, type CapabilityRegistry } from "@vetta/capability-runtime";
+import { bindCapability, type CapabilityRegistry } from "@astravia/capability-runtime";
 import {
 	CAPABILITY_ERROR_CODES,
 	CapabilityError,
 	type Disposable,
 	FOUNDATION_BROWSER_CAPABILITIES,
-} from "@vetta-org/capability-sdk";
+} from "@astravia-org/capability-sdk";
 import type { BrowserAutomationService } from "../browser-automation/browser-automation-service.js";
 import { BrowserAutomationError } from "../browser-automation/contracts.js";
 
-const BROWSER_PROVIDER_OWNER = "vetta.foundation.browser";
+const BROWSER_PROVIDER_OWNER = "astravia.foundation.browser";
 
 export type BrowserCapabilityService = Pick<
 	BrowserAutomationService,

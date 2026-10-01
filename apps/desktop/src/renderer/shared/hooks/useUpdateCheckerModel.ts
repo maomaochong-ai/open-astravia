@@ -1,4 +1,4 @@
-import type { UpdateCheckerViewProps } from "@vetta-org/theme-ui/overlays";
+import type { UpdateCheckerViewProps } from "@astravia-org/theme-ui/overlays";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -40,11 +40,11 @@ export function useUpdateCheckerModel(): UpdateCheckerViewProps {
 			latestVersion: state.latestVersion,
 			onCheck: () => {
 				setBusy(true);
-				void window.vetta.updater.check().finally(() => setBusy(false));
+				void window.astravia.updater.check().finally(() => setBusy(false));
 			},
 			onPrimary: () => {
 				if (state.phase === "available") {
-					void window.vetta.updater.download();
+					void window.astravia.updater.download();
 					return;
 				}
 				if (state.phase === "ready") {

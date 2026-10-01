@@ -1,7 +1,7 @@
 import { copyFile, mkdir, readFile } from "node:fs/promises";
 import { dirname } from "node:path";
-import { isSshProjectUri } from "@vetta/ssh-transport";
-import type { ArtifactPersistInput, PersistedArtifact } from "@vetta-org/capability-sdk";
+import { isSshProjectUri } from "@astravia/ssh-transport";
+import type { ArtifactPersistInput, PersistedArtifact } from "@astravia-org/capability-sdk";
 import { assertFilesystemPathWithinProject, writeFilesystemFile } from "../filesystem/filesystem-service.js";
 import { putPluginBlobFromFile } from "../plugins/plugin-storage-service.js";
 import type { ArtifactStore } from "./artifact-store.js";

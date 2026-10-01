@@ -1,6 +1,6 @@
 // 快捷面板独立 i18next 实例（面板窗口走独立 ns、内联自己的文案目录）。语言真相源
 // = main 解析结果（config.language 或系统 locale）：preload 经 sendSync 暴露
-// window.vettaQuickPanel.initialLanguage，与主窗口同源；navigator 仅作 bridge 缺失时的兜底。
+// window.astraviaQuickPanel.initialLanguage，与主窗口同源；navigator 仅作 bridge 缺失时的兜底。
 
 import i18next from "i18next";
 import { initReactI18next, useTranslation } from "react-i18next";
@@ -11,7 +11,7 @@ const QUICK_PANEL_NS = "quickpanel";
 const resources = {
 	zh: {
 		[QUICK_PANEL_NS]: {
-			placeholder: "向 Vetta 提问…",
+			placeholder: "向 Astravia 提问…",
 			recentTitle: "最近会话",
 			emptyTitle: "暂无最近会话",
 			emptyHint: "在上方输入即可开始新对话",
@@ -32,7 +32,7 @@ const resources = {
 	},
 	en: {
 		[QUICK_PANEL_NS]: {
-			placeholder: "Ask Vetta…",
+			placeholder: "Ask Astravia…",
 			recentTitle: "Recent",
 			emptyTitle: "No recent conversations",
 			emptyHint: "Type above to start a new chat",
@@ -55,13 +55,13 @@ const resources = {
 
 function detectLanguage(): AppLanguage {
 	// 真相源：main 已按 config 或系统 locale 解析（preload sendSync）；缺失时回退 navigator。
-	const fromBridge = window.vettaQuickPanel?.initialLanguage;
+	const fromBridge = window.astraviaQuickPanel?.initialLanguage;
 	return resolveAppLanguageFromLocale(fromBridge ?? navigator.language);
 }
 
 /** 跟随 App 语言切换实时刷新；返回取消订阅函数。 */
 export function subscribeQuickPanelLanguage(): () => void {
-	const bridge = window.vettaQuickPanel;
+	const bridge = window.astraviaQuickPanel;
 	if (!bridge?.onLanguageChanged) return () => {};
 	return bridge.onLanguageChanged((lang) => {
 		const next = resolveAppLanguageFromLocale(lang);

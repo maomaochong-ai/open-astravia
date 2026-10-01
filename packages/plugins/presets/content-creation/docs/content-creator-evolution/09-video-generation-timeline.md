@@ -50,7 +50,7 @@ Library 的 ceremony、freeze effect、UGC、cooking、fight 和 `seedance-2` �
 
 ### ViMax
 
-ViMax 的主要启发仍是阶段化 DAG、artifact authority、候选评审与恢复。它帮助 Vetta 决定何时生成分镜板、何时验证高风险运动、何时扩展镜头。
+ViMax 的主要启发仍是阶段化 DAG、artifact authority、候选评审与恢复。它帮助 Astravia 决定何时生成分镜板、何时验证高风险运动、何时扩展镜头。
 
 ## 实施后的层级
 

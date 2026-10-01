@@ -134,7 +134,7 @@ export function TerminalSurface(): JSX.Element {
 				snapshotTimer = undefined;
 			}
 			try {
-				void window.vetta.terminal.saveSnapshot(tabId, serialize.serialize({ scrollback: SNAPSHOT_SCROLLBACK }));
+				void window.astravia.terminal.saveSnapshot(tabId, serialize.serialize({ scrollback: SNAPSHOT_SCROLLBACK }));
 			} catch {
 				// 快照是尽力而为的：存不上只是下次回来终端是空的，不该影响使用。
 			}
@@ -153,16 +153,16 @@ export function TerminalSurface(): JSX.Element {
 		void (async () => {
 			try {
 				// 先回放上次的输出，再接新进程：顺序反了用户会以为回放内容是活的。
-				const snapshot = await window.vetta.terminal.loadSnapshot(tabId);
+				const snapshot = await window.astravia.terminal.loadSnapshot(tabId);
 				if (disposed) return;
 				if (snapshot) {
 					terminal.write(snapshot);
 					terminal.writeln(`\r\n${t("bottomPanel.terminal.previousOutput")}`);
 				}
 				const size = fitIfMeasurable() ?? { cols: terminal.cols, rows: terminal.rows };
-				const result = await window.vetta.terminal.open({ cwd, cols: size.cols, rows: size.rows });
+				const result = await window.astravia.terminal.open({ cwd, cols: size.cols, rows: size.rows });
 				if (disposed) {
-					void window.vetta.terminal.close(result.terminalId);
+					void window.astravia.terminal.close(result.terminalId);
 					return;
 				}
 				terminalId = result.terminalId;
@@ -172,7 +172,7 @@ export function TerminalSurface(): JSX.Element {
 				setStatus("running");
 
 				cleanups.push(
-					window.vetta.terminal.onEvent((envelope: TerminalEventEnvelope) => {
+					window.astravia.terminal.onEvent((envelope: TerminalEventEnvelope) => {
 						if (envelope.terminalId !== terminalId) return;
 						const event = envelope.event;
 						if (event.kind === "data") {
@@ -197,20 +197,20 @@ export function TerminalSurface(): JSX.Element {
 				);
 
 				const inputSubscription = terminal.onData((data) => {
-					if (terminalId) void window.vetta.terminal.write(terminalId, data);
+					if (terminalId) void window.astravia.terminal.write(terminalId, data);
 				});
 				cleanups.push(() => inputSubscription.dispose());
 
 				const claimed = claimTerminalLaunch(launchRef.current);
 				if (claimed) {
 					handleRef.current.setPayload(claimed.payload);
-					void window.vetta.terminal.write(result.terminalId, claimed.input);
+					void window.astravia.terminal.write(result.terminalId, claimed.input);
 				}
 
 				// 有活进程时关闭要先确认；空闲时把守卫撤掉，免得每次关都问一遍。
 				handleRef.current.setCloseGuard(async () => {
 					if (!terminalId) return true;
-					const foreground = await window.vetta.terminal.foregroundProcess(terminalId);
+					const foreground = await window.astravia.terminal.foregroundProcess(terminalId);
 					if (!foreground) return true;
 					return {
 						title: t("bottomPanel.terminal.closeConfirm.title"),
@@ -228,7 +228,7 @@ export function TerminalSurface(): JSX.Element {
 
 		const applyFit = (): void => {
 			const size = fitIfMeasurable();
-			if (size && terminalId) void window.vetta.terminal.resize(terminalId, size.cols, size.rows);
+			if (size && terminalId) void window.astravia.terminal.resize(terminalId, size.cols, size.rows);
 		};
 		refitRef.current = applyFit;
 		cleanups.push(() => {
@@ -242,7 +242,7 @@ export function TerminalSurface(): JSX.Element {
 		return () => {
 			disposed = true;
 			for (const cleanup of cleanups) cleanup();
-			if (terminalId) void window.vetta.terminal.close(terminalId);
+			if (terminalId) void window.astravia.terminal.close(terminalId);
 			terminal.dispose();
 		};
 	}, [cwd, tabId, t]);

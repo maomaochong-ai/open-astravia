@@ -21,8 +21,8 @@ interface TaskStatus {
 /** 真的把 helper 编出来、经回环 SSH 上传并运行：协议两端一起测，不是对着一份假的应答。 */
 describe.skipIf(!hasGo)("远端 helper（真实二进制，经回环 SSH）", () => {
 	beforeAll(() => {
-		helperBinary = join(mkdtempSync(join(tmpdir(), "vetta-helper-build-")), "vetta-ssh-helper");
-		execFileSync("go", ["build", "-o", helperBinary, "./cmd/vetta-ssh-helper"], {
+		helperBinary = join(mkdtempSync(join(tmpdir(), "astravia-helper-build-")), "astravia-ssh-helper");
+		execFileSync("go", ["build", "-o", helperBinary, "./cmd/astravia-ssh-helper"], {
 			cwd: helperSource,
 			env: { ...process.env, CGO_ENABLED: "0" },
 		});
@@ -58,7 +58,7 @@ describe.skipIf(!hasGo)("远端 helper（真实二进制，经回环 SSH）", ()
 	});
 
 	it("带修订号的写入一次往返完成编辑，且不覆盖别人刚做的修改", async () => {
-		const dir = realpathSync(mkdtempSync(join(tmpdir(), "vetta-helper-fs-")));
+		const dir = realpathSync(mkdtempSync(join(tmpdir(), "astravia-helper-fs-")));
 		const file = join(dir, "run.sh");
 		writeFileSync(file, "echo old\n", { mode: 0o755 });
 		const helper = await requireHelper(connect());
@@ -86,7 +86,7 @@ describe.skipIf(!hasGo)("远端 helper（真实二进制，经回环 SSH）", ()
 	});
 
 	it("订阅的目录有变化时推送通知", async () => {
-		const dir = realpathSync(mkdtempSync(join(tmpdir(), "vetta-helper-watch-")));
+		const dir = realpathSync(mkdtempSync(join(tmpdir(), "astravia-helper-watch-")));
 		const helper = await requireHelper(connect());
 		const changed = vi.fn();
 		helper.on("watch.changed", changed);
@@ -98,7 +98,7 @@ describe.skipIf(!hasGo)("远端 helper（真实二进制，经回环 SSH）", ()
 	});
 
 	it("后台任务在连接断开后继续跑，重连后能接管并读回完整输出", async () => {
-		const cwd = realpathSync(mkdtempSync(join(tmpdir(), "vetta-helper-task-")));
+		const cwd = realpathSync(mkdtempSync(join(tmpdir(), "astravia-helper-task-")));
 		const connection = connect();
 		const first = await requireHelper(connection);
 		const started = await first.call<TaskStatus>("proc.spawn", {
@@ -138,7 +138,7 @@ describe.skipIf(!hasGo)("远端 helper（真实二进制，经回环 SSH）", ()
 		await expect(withoutBuild.helper()).resolves.toBeUndefined();
 		expect(noBuild.join("\n")).toContain("using ssh exec");
 
-		const garbage = join(mkdtempSync(join(tmpdir(), "vetta-helper-bad-")), "vetta-ssh-helper");
+		const garbage = join(mkdtempSync(join(tmpdir(), "astravia-helper-bad-")), "astravia-ssh-helper");
 		writeFileSync(garbage, "#!/bin/sh\necho not json\n");
 		const broken = createLoopbackSshConnection("loopback", {
 			helper: { resolveBinary: () => garbage, handshakeTimeoutMs: 1500 },

@@ -1,4 +1,4 @@
-import { type PluginAiModel, useTranslation } from "@vetta-org/plugin-sdk";
+import { type PluginAiModel, useTranslation } from "@astravia-org/plugin-sdk";
 import { useEffect, useState } from "react";
 import { useContentCreationRuntime } from "../plugin/runtime-context";
 import type { ContentPromptOptimizationService } from "./prompt-optimization-service";

@@ -43,7 +43,7 @@ beforeEach(async () => {
 	HTMLElement.prototype.hasPointerCapture = () => false;
 	HTMLElement.prototype.scrollIntoView = noop;
 	localStorage.clear();
-	Object.defineProperty(window, "vetta", { configurable: true, value: { fs: { readDir, watchDir: vi.fn(), unwatchDir: vi.fn(), onDirChanged: () => noop } } });
+	Object.defineProperty(window, "astravia", { configurable: true, value: { fs: { readDir, watchDir: vi.fn(), unwatchDir: vi.fn(), onDirChanged: () => noop } } });
 	initI18n();
 	await i18n.changeLanguage("en");
 	readDir.mockClear();

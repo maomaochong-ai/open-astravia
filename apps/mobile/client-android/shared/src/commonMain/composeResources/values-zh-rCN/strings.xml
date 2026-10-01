@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="align_pairing_qr">将二维码置于取景框内</string>
-    <string name="app_name">Vetta</string>
+    <string name="app_name">Astravia</string>
     <string name="appearance">外观</string>
     <string name="back">返回</string>
     <string name="board_empty">还没有任务</string>
@@ -24,7 +24,7 @@
     <string name="files_loading">正在读取…</string>
     <string name="files_retry">重试</string>
     <string name="files_preview_unsupported">无法在这里预览</string>
-    <string name="files_error_unsupported_desktop">需要把电脑上的 Vetta 升级到最新版本才能查看文件。</string>
+    <string name="files_error_unsupported_desktop">需要把电脑上的 Astravia 升级到最新版本才能查看文件。</string>
     <string name="files_error_offline">电脑没有连接。</string>
     <string name="files_error_forbidden">这个文件不在手机可以查看的范围内。</string>
     <string name="files_error_not_found">文件不存在，或已被移动。</string>
@@ -53,13 +53,13 @@
     <plurals name="chat_attach_too_many">
         <item quantity="other">最多只能添加 %1$d 个附件。</item>
     </plurals>
-    <string name="chat_camera_denied">需要在「设置」中允许 Vetta 使用相机才能拍照。</string>
+    <string name="chat_camera_denied">需要在「设置」中允许 Astravia 使用相机才能拍照。</string>
     <string name="chat_camera_unavailable">这台设备没有可用的相机。</string>
     <string name="chat_compacted">上下文已压缩</string>
     <string name="chat_compacting">正在压缩上下文</string>
-    <string name="chat_composer_placeholder">指示 Vetta…</string>
+    <string name="chat_composer_placeholder">指示 Astravia…</string>
     <string name="chat_dictation_cancel">松手取消</string>
-    <string name="chat_dictation_denied">需要在「设置」中允许 Vetta 使用麦克风才能听写。</string>
+    <string name="chat_dictation_denied">需要在「设置」中允许 Astravia 使用麦克风才能听写。</string>
     <string name="chat_dictation_hint">松手填入，上移取消</string>
     <string name="chat_dictation_hold">按住说话</string>
     <string name="chat_dictation_keyboard">切换到键盘</string>
@@ -85,7 +85,7 @@
     <string name="chat_question_other_placeholder">输入你的答案…</string>
     <string name="chat_question_submit">提交</string>
     <string name="chat_question_tab">问题 %1$d</string>
-    <string name="chat_question_title">Vetta 需要你的选择</string>
+    <string name="chat_question_title">Astravia 需要你的选择</string>
     <string name="chat_remove_attachment">移除 %1$s</string>
     <string name="chat_resync">刷新</string>
     <string name="chat_retrying">正在重试（%1$d/%2$d）</string>
@@ -168,7 +168,7 @@
     <string name="notify_link_title">已连接到 %1$s</string>
     <string name="notify_needs_you">等你决策</string>
     <string name="notify_reply">回复</string>
-    <string name="notify_reply_failed">回答没能送到电脑，点此在 Vetta 里作答。</string>
+    <string name="notify_reply_failed">回答没能送到电脑，点此在 Astravia 里作答。</string>
     <string name="notify_reply_hint">你的回答</string>
     <string name="notify_settings">通知</string>
     <string name="notify_settings_failed">会话出错</string>
@@ -196,7 +196,7 @@
     <string name="pair_invite">用连接码连接</string>
     <string name="pair_invite_code">连接码</string>
     <string name="pair_invite_code_title">输入连接码</string>
-    <string name="pair_invite_code_hint">在电脑上的 Vetta 打开「设置 → 远程连接」，二维码旁有 8 位连接码。手机不在电脑旁也能用。</string>
+    <string name="pair_invite_code_hint">在电脑上的 Astravia 打开「设置 → 远程连接」，二维码旁有 8 位连接码。手机不在电脑旁也能用。</string>
     <string name="pair_invite_password_title">输入密码</string>
     <string name="pair_invite_password_hint">电脑上与连接码一起显示的 6 位数字。</string>
     <string name="pair_invite_next">下一步</string>
@@ -231,10 +231,10 @@
     <string name="remote_route_internet">公网直连</string>
     <string name="remote_route_lan">局域网直连</string>
     <string name="remote_route_relayed">经中转</string>
-    <string name="remote_control_not_allowed">这部手机还不能操作电脑桌面。请在电脑上的 Vetta「设置 → 远程连接」里，点这部手机旁边的电脑图标，直到右下角变成绿色对勾。</string>
+    <string name="remote_control_not_allowed">这部手机还不能操作电脑桌面。请在电脑上的 Astravia「设置 → 远程连接」里，点这部手机旁边的电脑图标，直到右下角变成绿色对勾。</string>
     <string name="remote_control_offline">电脑在线时，这里会显示它的屏幕。</string>
-    <string name="remote_screen_permission_denied">电脑还没允许 Vetta 录制屏幕。请在 Mac 的「系统设置 → 隐私与安全性 → 屏幕录制」里打开 Vetta，然后重启 Vetta。</string>
-    <string name="remote_input_permission_denied">只能看、不能操作：请在 Mac 的「系统设置 → 隐私与安全性 → 辅助功能」里允许 Vetta，手机上的点按和键盘才会生效。</string>
+    <string name="remote_screen_permission_denied">电脑还没允许 Astravia 录制屏幕。请在 Mac 的「系统设置 → 隐私与安全性 → 屏幕录制」里打开 Astravia，然后重启 Astravia。</string>
+    <string name="remote_input_permission_denied">只能看、不能操作：请在 Mac 的「系统设置 → 隐私与安全性 → 辅助功能」里允许 Astravia，手机上的点按和键盘才会生效。</string>
     <string name="remote_keyboard">键盘</string>
     <string name="remote_keyboard_hint">可输入英文字母、数字和空格</string>
     <string name="remote_rotate">旋转屏幕</string>
@@ -250,13 +250,13 @@
     <string name="session_rename_title">重命名会话</string>
     <string name="session_unpin">取消置顶</string>
     <string name="settings_background_link">后台保持连接</string>
-    <string name="settings_background_link_denied">需要先在系统设置里允许 Vetta 发送通知。</string>
+    <string name="settings_background_link_denied">需要先在系统设置里允许 Astravia 发送通知。</string>
     <string name="settings_background_link_hint">关掉 App 后，会话需要你决策、完成或出错时也会通知你。保持连接期间通知栏会常驻一条提示，耗电会略有增加。</string>
     <string name="settings_title">设置</string>
     <plurals name="share_skipped">
         <item quantity="other">有 %1$d 项没能加入：可能文件太大，或者一条消息最多只能带 %2$d 个附件。</item>
     </plurals>
-    <string name="share_title">已分享到 Vetta</string>
+    <string name="share_title">已分享到 Astravia</string>
     <string name="sheet_handle">拖动可调整大小或关闭</string>
     <string name="stop">停止</string>
     <string name="theme_dark">深色</string>
@@ -310,7 +310,7 @@
     <string name="work_status_thinking">思考中</string>
     <string name="work_status_waiting">待你决策</string>
     <string name="work_title">我的工作</string>
-    <string name="work_unpaired_description">打开电脑上的 Vetta Desktop，点击右上角「手机扫码连接」后扫码配对。</string>
+    <string name="work_unpaired_description">打开电脑上的 Astravia Desktop，点击右上角「手机扫码连接」后扫码配对。</string>
     <string name="work_unpaired_scan">扫码连接</string>
     <string name="work_unpaired_title">还没有连接电脑</string>
     <string name="work_untitled">未命名对话</string>

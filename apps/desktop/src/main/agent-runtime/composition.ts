@@ -8,14 +8,14 @@ import {
 	CODING_AGENT_SUBAGENT_ISSUE_OBSERVATION,
 	createCodingAgentMemoryRolloverRuntime,
 	publishCodingAgentExecutionRuntimeDefinition,
-} from "@vetta/coding-agent/composition";
-import { getAgentDir } from "@vetta/coding-agent/config";
+} from "@astravia/coding-agent/composition";
+import { getAgentDir } from "@astravia/coding-agent/config";
 import {
 	createCodingAgentMcpRuntimeToolSource,
 	createCodingAgentPluginMcpRuntime,
 	createCodingAgentSharedModelController,
-} from "@vetta/coding-agent/host-services";
-import { AGENT_CONFIGURATION_OBSERVATION } from "@vetta/coding-agent/session-extensions";
+} from "@astravia/coding-agent/host-services";
+import { AGENT_CONFIGURATION_OBSERVATION } from "@astravia/coding-agent/session-extensions";
 import {
 	CatalogRoutedRuntimeHostSessionBackend,
 	CatalogRoutedRuntimeSessionAccessResolver,
@@ -29,7 +29,7 @@ import {
 	type RuntimeHostSessionBackendRouteDecision,
 	RuntimeObservationHub,
 	type RuntimeObservationPublisher,
-} from "@vetta/runtime-core";
+} from "@astravia/runtime-core";
 import {
 	createDesktopHistoricalSessionFormat,
 	createDesktopResultArtifactRuntime,
@@ -43,14 +43,14 @@ import {
 	logRuntimeSessionError,
 	PathFilteredRuntimeSessionCatalog,
 	setDesktopSshConnectionResolver,
-} from "@vetta/runtime-desktop";
-import { FileConversationRuntimeSessionFileHistoryReader } from "@vetta/runtime-node/conversation";
+} from "@astravia/runtime-desktop";
+import { FileConversationRuntimeSessionFileHistoryReader } from "@astravia/runtime-node/conversation";
 import {
 	createLoopbackSessionAffinityStream,
 	createNodeKnowledgeRuntime,
 	NodeTextFileStorage,
-} from "@vetta/runtime-node/host";
-import { loadVettaCredentials } from "@vetta/runtime-node/mcp";
+} from "@astravia/runtime-node/host";
+import { loadAstraviaCredentials } from "@astravia/runtime-node/mcp";
 import { getModePrompt } from "../agent-modes/index.js";
 import { createDesktopAgentObservability } from "../agent-observability/composition.js";
 import {
@@ -178,7 +178,7 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 				createManagedMcpSource("application", DEFAULT_CONVERSATION_CWD, agentDir),
 			createWorkspaceSource: ({ cwd, agentDir }) => createManagedMcpSource("workspace", cwd, agentDir),
 			resolveApplicationRevision: (agentDir) => {
-				const credentials = loadVettaCredentials(agentDir);
+				const credentials = loadAstraviaCredentials(agentDir);
 				return credentials ? `authenticated:${credentials.baseUrl}` : "anonymous";
 			},
 		});
@@ -197,7 +197,7 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 				resolveModePrompt: getModePrompt,
 				sessionExtensionFunctions,
 				knowledgeRuntime:
-					process.env.VETTA_KNOWLEDGE_DISABLED === "1"
+					process.env.ASTRAVIA_KNOWLEDGE_DISABLED === "1"
 						? undefined
 						: createNodeKnowledgeRuntime(getKnowledgeRoot()),
 				createMemoryRolloverRuntime: (options) => {

@@ -1,9 +1,12 @@
-import type { AgentObservationLevel as RuntimeObservationLevel, AgentTracer as RuntimeTracer } from "@vetta/agent-core";
+import type {
+	AgentObservationLevel as RuntimeObservationLevel,
+	AgentTracer as RuntimeTracer,
+} from "@astravia/agent-core";
 import type {
 	RuntimeObservationLevel as HubObservationLevel,
 	RuntimeObservationPort,
 	RuntimeObservationRecord,
-} from "@vetta/runtime-core/observation";
+} from "@astravia/runtime-core/observation";
 import type { RuntimeLogger } from "./logger.js";
 
 export interface RuntimeObservationLoggerPortOptions {

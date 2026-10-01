@@ -17,9 +17,9 @@ import {
 	type ReadToolOptions,
 	remotePosixToolPathHost,
 	type WritePathPolicy,
-} from "@vetta/runtime-node/coding";
-import type { BackgroundCommandService, CodingToolRegistration } from "@vetta/runtime-tools";
-import type { SshConnection } from "@vetta/ssh-transport";
+} from "@astravia/runtime-node/coding";
+import type { BackgroundCommandService, CodingToolRegistration } from "@astravia/runtime-tools";
+import type { SshConnection } from "@astravia/ssh-transport";
 import { createRemoteFileToolRegistrations } from "./remote-file-tool-bridge.js";
 import { createSshBackgroundCommandHost } from "./ssh-background-command-host.js";
 import { createSshForegroundCommandOperations } from "./ssh-command-operations.js";

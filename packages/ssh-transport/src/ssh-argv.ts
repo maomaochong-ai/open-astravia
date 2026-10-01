@@ -55,7 +55,7 @@ export function buildSshArgv(host: SshHost, options: SshArgvOptions, remoteComma
  * ControlPath 必须短。
  *
  * 它是一个 Unix domain socket 路径，`sockaddr_un.sun_path` 在 macOS 上只有 104 字节、
- * Linux 上 108 字节。直接用 `<tmp>/vetta-ssh-<hostId>-<user>@<host>:<port>` 这类可读名字，
+ * Linux 上 108 字节。直接用 `<tmp>/astravia-ssh-<hostId>-<user>@<host>:<port>` 这类可读名字，
  * 在稍长的用户名或临时目录下就会超长，表现为连接偶发失败且错误信息完全看不出原因。
  * 所以用短哈希，并且把目录也算进长度检查。
  */

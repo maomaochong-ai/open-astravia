@@ -1,0 +1,851 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>星轨 Astravia — 本地优先的开源 AI 桌面助手</title>
+	<meta name="description" content="星轨 Astravia 是本地优先的开源 AI 桌面助手：编码、文档、数据、自动化，一个应用全包。无云端、无账号、无遥测，数据与密钥始终留在本机。macOS / Windows 免费下载。" />
+	<meta property="og:title" content="星轨 Astravia — 本地优先的开源 AI 桌面助手" />
+	<meta property="og:description" content="无云端、无账号、无遥测。编码、文档、数据、自动化，一个应用全包。" />
+	<meta property="og:type" content="website" />
+	<meta property="og:locale" content="zh_CN" />
+	<meta name="twitter:card" content="summary" />
+	<meta name="theme-color" content="#ffffff" />
+	<link rel="icon" href="/favicon.png" type="image/png" />
+	<link rel="apple-touch-icon" href="/favicon.png" />
+	<!-- 关键 CSS 内联，防止刷新闪烁 -->
+	<style>
+		:root {
+			color-scheme: light;
+			--bg: #ffffff;
+			--elev: #ffffff;
+			--tint: #f9f9f9;
+			--line: #e8e8e8;
+			--line-strong: #cdcdcd;
+			--ink: #000000;
+			--muted: #5d5d5d;
+			--faint: #8f8f8f;
+			--accent: #000000;
+			--accent-deep: #2f2f2f;
+			--accent-soft: rgba(0, 0, 0, 0.05);
+			--band: #efeefe;
+			--btn-bg: #000000;
+			--btn-bg-hover: #2f2f2f;
+			--btn-fg: #ffffff;
+			--nav-bg: rgba(255, 255, 255, 0.82);
+			--radius: 16px;
+			--ease: cubic-bezier(0.16, 1, 0.3, 1);
+			--font-sans: "Hanken Grotesk", Inter, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+			--font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Menlo, Consolas, monospace;
+		}
+		:root[data-theme="dark"] {
+			color-scheme: dark;
+			--bg: #0d0d0d;
+			--elev: #1a1a1a;
+			--tint: #151515;
+			--line: #262626;
+			--line-strong: #3d3d3d;
+			--ink: #f5f5f5;
+			--muted: #a1a1a1;
+			--faint: #6f6f6f;
+			--accent: #f5f5f5;
+			--accent-deep: #dcdcdc;
+			--accent-soft: rgba(255, 255, 255, 0.08);
+			--band: #17182b;
+			--btn-bg: #ffffff;
+			--btn-bg-hover: #dcdcdc;
+			--btn-fg: #0d0d0d;
+			--nav-bg: rgba(13, 13, 13, 0.82);
+		}
+		*, ::before, ::after { box-sizing: border-box; }
+		body { margin: 0; font-family: var(--font-sans); background: var(--bg); color: var(--ink); -webkit-font-smoothing: antialiased; }
+		.nav { position: fixed; inset: 0 0 auto; z-index: 100; background: transparent; border-bottom: 1px solid transparent; transition: background-color 0.2s var(--ease), border-color 0.2s var(--ease); }
+		.nav.is-scrolled { background: var(--nav-bg); backdrop-filter: blur(16px) saturate(1.4); -webkit-backdrop-filter: blur(16px) saturate(1.4); border-bottom-color: var(--line); }
+		.nav__inner { display: flex; align-items: center; gap: 24px; height: 60px; max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+		.nav__brand { display: inline-flex; align-items: center; gap: 9px; font-weight: 700; font-size: 16px; text-decoration: none; color: var(--ink); margin-right: auto; }
+		.nav__brand img { border-radius: 6px; }
+		.nav__links { display: flex; gap: 2px; align-items: center; }
+		.nav__links a { text-decoration: none; font-size: 14px; font-weight: 500; color: var(--muted); padding: 6px 11px; border-radius: 7px; transition: color 0.15s var(--ease), background-color 0.15s var(--ease); }
+		.nav__links a:hover { color: var(--ink); background: var(--tint); }
+		.nav__links a.is-active { color: var(--ink); background: var(--tint); }
+		.nav__actions { display: flex; align-items: center; gap: 10px; }
+		.theme-toggle { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; padding: 0; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--muted); cursor: pointer; }
+		.theme-toggle svg { display: none; }
+		.theme-toggle.is-light .icon-sun, .theme-toggle.is-dark .icon-moon { display: block; }
+		.btn--ghost, .btn--primary { display: inline-flex; align-items: center; gap: 8px; border-radius: 999px; font-size: 14px; font-weight: 600; text-decoration: none; border: 1px solid transparent; cursor: pointer; white-space: nowrap; }
+		.btn--ghost { padding: 7px 12px; color: var(--ink); background: var(--bg); border-color: var(--line-strong); }
+		.btn--primary { padding: 8px 15px; background: var(--btn-bg); color: var(--btn-fg); }
+		.container { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+		.reveal { opacity: 0; transform: translateY(16px); transition: opacity 0.6s var(--ease), transform 0.6s var(--ease); }
+		.reveal.is-visible { opacity: 1; transform: none; }
+	</style>
+	<!-- 外部 CSS（生产环境使用，开发环境由 Vite 注入） -->
+	<link rel="stylesheet" href="/src/style.css" />
+	<script>
+		(() => {
+			const stored = localStorage.getItem("astravia-theme");
+			document.documentElement.dataset.theme = stored === "dark" ? "dark" : "light";
+		})();
+	</script>
+	<script type="module" src="/src/main.ts"></script>
+</head>
+<body>
+	<!-- ================= 导航 ================= -->
+	<header class="nav" id="nav">
+		<div class="container nav__inner">
+			<a class="nav__brand" href="#top" aria-label="Astravia 首页">
+				<img src="/banner.png" width="26" height="26" alt="" />
+				<span>Astravia</span>
+			</a>
+			<nav class="nav__links" id="navLinks" aria-label="主导航">
+				<a href="#products" data-nav="products">能力</a>
+				<a href="#models" data-nav="models">模型</a>
+				<a href="#ecosystem" data-nav="ecosystem">生态</a>
+				<a href="#privacy" data-nav="privacy">隐私</a>
+				<a href="#download" data-nav="download">下载</a>
+			</nav>
+			<div class="nav__actions">
+				<button class="theme-toggle" id="themeToggle" type="button" aria-label="切换到深色模式" aria-pressed="false">
+					<svg class="icon-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z" /></svg>
+					<svg class="icon-sun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" /></svg>
+				</button>
+				<a class="btn btn--ghost nav__github" href="https://github.com/maomaochong-ai/astravia" target="_blank" rel="noopener">
+					<svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+						<path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8 8 0 0 0 16 8c0-4.42-3.58-8-8-8Z" fill="currentColor" />
+					</svg>
+					<span>GitHub</span>
+				</a>
+				<a class="btn btn--primary nav__download" href="https://dl.astravia.dev/app/v0.0.2/Astravia-0.0.2-arm64.dmg" target="_blank" rel="noopener">下载</a>
+				<button class="nav__toggle" id="navToggle" type="button" aria-expanded="false" aria-controls="navLinks" aria-label="打开菜单">
+					<span></span><span></span><span></span>
+				</button>
+			</div>
+		</div>
+	</header>
+
+	<main>
+		<!-- ================= 首屏 ================= -->
+		<section class="hero" id="top">
+			<div class="container hero__inner">
+				<div class="hero__copy">
+					<p class="hero__pill">
+						<span class="hero__pill-dot" aria-hidden="true"></span>
+						OPEN SOURCE · LOCAL-FIRST · NO TELEMETRY
+					</p>
+					<h1 class="hero__title">
+						你的 AI 助手，<br /><em class="hl">住在你的电脑里。</em>
+					</h1>
+					<p class="hero__sub">本地优先的开源 AI 桌面助手——编码、文档、数据、自动化，一个应用全包。数据与密钥始终留在本机。</p>
+					<div class="hero__cta">
+					<a class="btn btn--primary btn--lg" href="https://dl.astravia.dev/app/v0.0.2/Astravia-0.0.2-arm64.dmg" target="_blank" rel="noopener">
+							下载星轨
+						</a>
+						<a class="btn btn--ghost btn--lg" href="https://github.com/maomaochong-ai/astravia" target="_blank" rel="noopener">在 GitHub 查看源码</a>
+					</div>
+					<p class="hero__meta">macOS 12+ · Windows 10+ · Linux &nbsp;·&nbsp; 免注册，双击即用</p>
+					<ul class="hero__badges" aria-label="产品特性">
+						<li>开源 Apache-2.0</li>
+						<li>隐私优先</li>
+						<li>本地部署</li>
+						<li>跨平台</li>
+					</ul>
+				</div>
+
+				<div class="hero__visual">
+					<figure class="hero__window">
+						<div class="hero__window-bar">
+							<span class="hero__window-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+							<span class="hero__window-title">星轨 Astravia · 会话工作区</span>
+						</div>
+						<img class="hero__screenshot--dark" src="/screenshot.png" width="2560" height="1598" alt="星轨 Astravia 应用界面截图：会话与工作区" />
+						<img class="hero__screenshot--light" src="/screenshot-light.png" width="2560" height="1598" alt="星轨 Astravia 应用界面截图：会话与工作区" />
+					</figure>
+					<p class="hero__caption">应用界面 · 真实截图</p>
+				</div>
+			</div>
+		</section>
+
+		<!-- ================= 滚动条幅 ================= -->
+		<div class="marquee" aria-hidden="true">
+			<div class="marquee__track">
+				<ul class="marquee__list">
+					<li>编码</li><li>文档</li><li>数据</li><li>自动化</li><li>批量任务</li><li>定时任务</li><li>SQL 工作台</li><li>插件</li><li>MCP</li><li>知识库</li><li>UI 设计</li><li>本地优先</li>
+				</ul>
+				<ul class="marquee__list">
+					<li>编码</li><li>文档</li><li>数据</li><li>自动化</li><li>批量任务</li><li>定时任务</li><li>SQL 工作台</li><li>插件</li><li>MCP</li><li>知识库</li><li>UI 设计</li><li>本地优先</li>
+				</ul>
+			</div>
+		</div>
+
+		<!-- ================= 产品故事 ================= -->
+		<section class="section story" id="story">
+			<div class="story__bg" aria-hidden="true"></div>
+			<div class="container">
+				<header class="section__head reveal">
+					<p class="section__kicker">STORY · 产品故事</p>
+					<h2 class="section__title">从一句需求，到交付成果。</h2>
+					<p class="section__lead">输入、思考、执行、结果——全部在同一个窗口完成。</p>
+				</header>
+
+				<div class="story__grid">
+					<div class="story__left">
+						<div class="story__rail" aria-hidden="true">
+							<div class="story__rail-track"></div>
+							<div class="story__rail-fill" data-story-progress></div>
+							<button type="button" class="story__dot" data-story-dot="0" style="top: 0%" aria-label="步骤 1：输入需求" aria-current="step"></button>
+							<button type="button" class="story__dot" data-story-dot="1" style="top: 25%" aria-label="步骤 2：AI 思考"></button>
+							<button type="button" class="story__dot" data-story-dot="2" style="top: 50%" aria-label="步骤 3：工具执行"></button>
+							<button type="button" class="story__dot" data-story-dot="3" style="top: 75%" aria-label="步骤 4：查看结果"></button>
+							<button type="button" class="story__dot" data-story-dot="4" style="top: 100%" aria-label="步骤 5：继续对话"></button>
+						</div>
+
+						<div class="story__copy">
+							<article class="story__copy-item is-active" data-story-copy="0">
+								<p class="story__step-num">01 · 输入需求</p>
+								<h3 class="story__step-title">告诉星轨你要做什么</h3>
+								<p class="story__step-desc">在输入栏输入自然语言指令，可以附上文件或 @ 提及路径。</p>
+								<p class="story__step-tag"><span class="story__step-tick"></span>输入已就绪</p>
+							</article>
+							<article class="story__copy-item" data-story-copy="1">
+								<p class="story__step-num">02 · AI 思考</p>
+								<h3 class="story__step-title">模型理解意图并规划步骤</h3>
+								<p class="story__step-desc">AI 分析你的需求，生成执行计划，展示思考过程。</p>
+								<p class="story__step-tag"><span class="story__step-tick">◉</span>思考中</p>
+							</article>
+							<article class="story__copy-item" data-story-copy="2">
+								<p class="story__step-num">03 · 工具执行</p>
+								<h3 class="story__step-title">自动调用工具完成任务</h3>
+								<p class="story__step-desc">文件读写、命令执行、代码编辑——工具调用过程实时可见。</p>
+								<p class="story__step-tag"><span class="story__step-tick">⚡</span>工具调用中</p>
+							</article>
+							<article class="story__copy-item" data-story-copy="3">
+								<p class="story__step-num">04 · 查看结果</p>
+								<h3 class="story__step-title">完整对话与输出同屏可见</h3>
+								<p class="story__step-desc">消息流展示完整的问答、工具输出和文件变更。</p>
+								<p class="story__step-tag"><span class="story__step-tick">✓</span>本轮完成</p>
+							</article>
+							<article class="story__copy-item" data-story-copy="4">
+								<p class="story__step-num">05 · 继续对话</p>
+								<h3 class="story__step-title">基于结果追问或调整</h3>
+								<p class="story__step-desc">不满意就继续迭代，满意就进入下一个任务。</p>
+								<p class="story__step-tag"><span class="story__step-tick">↻</span>循环迭代</p>
+							</article>
+						</div>
+					</div>
+
+					<div class="story__stage">
+						<figure class="story__window">
+							<div class="story__window-bar">
+								<span class="hero__window-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+								<span class="story__window-title">星轨 Astravia · 会话工作区</span>
+							</div>
+							<!-- SVG Mockup: 应用界面 -->
+							<div class="story__app-mockup">
+								<svg viewBox="0 0 556 470" fill="none" xmlns="http://www.w3.org/2000/svg" class="story__svg">
+									<!-- 背景网格 -->
+									<defs>
+										<pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+											<path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(255,255,255,0.03)" stroke-width="1"/>
+										</pattern>
+									</defs>
+									<rect width="556" height="470" fill="url(#grid)"/>
+
+									<!-- 窗口容器 -->
+									<rect x="40" y="20" width="476" height="430" rx="12" fill="#0c0c0f" stroke="#1e1e24" stroke-width="1"/>
+
+									<!-- 窗口标题栏 -->
+									<rect x="40" y="20" width="476" height="40" rx="12" fill="#101014"/>
+									<rect x="40" y="48" width="476" height="12" fill="#101014"/>
+									<circle cx="56" cy="40" r="4" fill="#2b2b33"/>
+									<circle cx="70" cy="40" r="4" fill="#2b2b33"/>
+									<circle cx="84" cy="40" r="4" fill="#2b2b33"/>
+									<text x="160" y="45" fill="#565964" font-size="11" font-family="IBM Plex Mono">星轨 Astravia · 会话工作区</text>
+
+									<!-- 侧边栏 -->
+									<rect x="40" y="60" width="100" height="390" fill="#101014"/>
+									<text x="56" y="90" fill="#e9e9ec" font-size="12" font-weight="600" font-family="Hanken Grotesk">Astravia</text>
+
+									<!-- 侧边栏导航项 -->
+									<rect class="story__sidebar-nav" x="48" y="108" width="84" height="28" rx="6" fill="#1e1e24"/>
+									<text class="story__sidebar-text" x="60" y="127" fill="#ffffff" font-size="11" font-weight="500" font-family="Hanken Grotesk">新会话</text>
+
+									<rect class="story__sidebar-nav" x="48" y="144" width="84" height="24" rx="4" fill="transparent"/>
+									<text class="story__sidebar-text" x="60" y="160" fill="#8e9199" font-size="11" font-family="Hanken Grotesk">自动化</text>
+
+									<rect class="story__sidebar-nav" x="48" y="176" width="84" height="24" rx="4" fill="transparent"/>
+									<text class="story__sidebar-text" x="60" y="192" fill="#8e9199" font-size="11" font-family="Hanken Grotesk">批量任务</text>
+
+									<rect class="story__sidebar-nav" x="48" y="208" width="84" height="24" rx="4" fill="transparent"/>
+									<text class="story__sidebar-text" x="60" y="224" fill="#8e9199" font-size="11" font-family="Hanken Grotesk">知识库</text>
+
+									<!-- 主内容区 -->
+									<rect x="140" y="60" width="376" height="390" fill="#08080a"/>
+
+									<!-- 消息区域 -->
+									<!-- 用户消息 -->
+									<g class="story__svg-msg-user" data-step="0">
+										<rect x="160" y="84" width="240" height="36" rx="10" fill="#1e1e24"/>
+										<text x="176" y="107" fill="#e9e9ec" font-size="11" font-family="Hanken Grotesk">帮我写一个 Python 脚本读取 CSV</text>
+									</g>
+
+									<!-- AI 思考中 -->
+									<g class="story__svg-msg-assistant" data-step="1" style="opacity:0">
+										<rect x="160" y="132" width="200" height="44" rx="10" fill="#101014" stroke="#1e1e24" stroke-width="1"/>
+										<circle cx="176" cy="148" r="3" fill="#ffffff">
+											<animate attributeName="opacity" values="1;0.3;1" dur="1.2s" repeatCount="indefinite"/>
+										</circle>
+										<circle cx="188" cy="148" r="3" fill="#ffffff">
+											<animate attributeName="opacity" values="0.3;1;0.3" dur="1.2s" repeatCount="indefinite" begin="0.15s"/>
+										</circle>
+										<circle cx="200" cy="148" r="3" fill="#ffffff">
+											<animate attributeName="opacity" values="1;0.3;1" dur="1.2s" repeatCount="indefinite" begin="0.3s"/>
+										</circle>
+										<text x="176" y="166" fill="#565964" font-size="9" font-family="IBM Plex Mono">思考中...</text>
+									</g>
+
+									<!-- 工具调用卡片 -->
+									<g class="story__svg-msg-tool" data-step="2" style="opacity:0">
+										<rect x="160" y="188" width="260" height="44" rx="8" fill="#0c0c0f" stroke="#1e1e24" stroke-width="1"/>
+										<!-- 工具图标 -->
+										<rect x="172" y="200" width="14" height="14" rx="3" fill="#a6a6a6"/>
+										<!-- 工具名称 -->
+										<text x="194" y="210" fill="#e9e9ec" font-size="10" font-weight="500" font-family="IBM Plex Mono">write_file</text>
+										<text x="194" y="222" fill="#565964" font-size="8" font-family="IBM Plex Mono">script.py · 2.1s</text>
+										<!-- 成功标记 -->
+										<circle cx="400" cy="210" r="8" fill="#2b2b33"/>
+										<text x="396" y="214" fill="#e9e9ec" font-size="10" font-family="Hanken Grotesk">✓</text>
+									</g>
+
+									<!-- 完整结果 -->
+									<g class="story__svg-msg-result" data-step="3" style="opacity:0">
+										<rect x="160" y="244" width="280" height="56" rx="10" fill="#101014" stroke="#1e1e24" stroke-width="1"/>
+										<text x="176" y="264" fill="#e9e9ec" font-size="11" font-family="Hanken Grotesk">已创建 script.py，包含以下功能：</text>
+										<rect x="172" y="272" width="256" height="18" rx="3" fill="#0b0b0e"/>
+										<text x="180" y="285" fill="#c9c9c9" font-size="9" font-family="IBM Plex Mono">import pandas as pd</text>
+									</g>
+
+									<!-- 输入栏 -->
+									<g class="story__svg-inputbar">
+										<rect x="160" y="400" width="340" height="36" rx="18" fill="#101014" stroke="#1e1e24" stroke-width="1"/>
+										<text x="180" y="423" fill="#565964" font-size="11" font-family="Hanken Grotesk">向 Astravia 提问...</text>
+										<!-- 发送按钮 -->
+										<circle cx="480" cy="418" r="12" fill="#ffffff"/>
+										<path d="M476 414l8 4-8 4" stroke="#08080a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+									</g>
+
+									<!-- 步骤高亮覆盖层 -->
+									<g class="story__svg-highlight" data-step="0">
+										<rect x="154" y="394" width="352" height="48" rx="22" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-dasharray="4 4" opacity="0.5">
+											<animate attributeName="opacity" values="0.5;0.15;0.5" dur="2s" repeatCount="indefinite"/>
+										</rect>
+									</g>
+									<g class="story__svg-highlight" data-step="1" style="opacity:0">
+										<rect x="154" y="126" width="212" height="56" rx="14" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-dasharray="4 4" opacity="0.5"/>
+									</g>
+									<g class="story__svg-highlight" data-step="2" style="opacity:0">
+										<rect x="154" y="182" width="272" height="56" rx="12" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-dasharray="4 4" opacity="0.5"/>
+									</g>
+									<g class="story__svg-highlight" data-step="3" style="opacity:0">
+										<rect x="154" y="238" width="292" height="68" rx="14" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-dasharray="4 4" opacity="0.5"/>
+									</g>
+									<g class="story__svg-highlight" data-step="4" style="opacity:0">
+										<rect x="154" y="394" width="352" height="48" rx="22" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-dasharray="4 4" opacity="0.5">
+											<animate attributeName="opacity" values="0.5;0.15;0.5" dur="2s" repeatCount="indefinite"/>
+										</rect>
+									</g>
+								</svg>
+
+								<!-- 步骤 04-05：交叉淡入真实界面（与深色手绘示意同色系，切换无闪白） -->
+								<div class="story__shot">
+									<img class="story__shot-img" src="/app/app-dark.webp" alt="星轨 Astravia 会话工作区真实界面：消息流、工具调用与结果同屏" width="1680" height="1051" loading="lazy" decoding="async" />
+								</div>
+							</div>
+						</figure>
+					</div>
+				</div>
+			</div>
+		</section>
+		
+		<!-- ================= 能力 ================= -->
+		<section class="section" id="products">
+			<div class="container">
+				<header class="section__head reveal">
+					<p class="section__kicker">PRODUCTS · 能力</p>
+					<h2 class="section__title">一个应用，八项能力。</h2>
+					<p class="section__lead">对话、数据库、批量任务与扩展能力，在同一窗口协作——无需额外客户端，不依赖外部服务。</p>
+				</header>
+
+				<div class="cards">
+					<article class="card reveal">
+						<span class="card__icon" aria-hidden="true">
+							<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+						</span>
+						<span class="card__num">01</span>
+						<h3 class="card__title">对话与工作区</h3>
+						<p class="card__desc">消息流、工具调用与结果同屏可见；PDF、Word、PPT、表格、图片、音视频、SVG 等文件应用内直接预览，扫描版 PDF 支持离线 OCR。</p>
+						<ul class="card__tags"><li>会话</li><li>文件预览</li><li>离线 OCR</li></ul>
+					</article>
+					<article class="card reveal">
+						<span class="card__icon" aria-hidden="true">
+							<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3" /><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" /><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" /></svg>
+						</span>
+						<span class="card__num">02</span>
+						<h3 class="card__title">数据库工作台</h3>
+						<p class="card__desc">内置连接管理与 SQL 工作台：表浏览、多标签查询、历史记录、CSV/JSON 导出。AI 对话中直接查数，写操作分级授权，生产连接默认只读。</p>
+						<ul class="card__tags"><li>SQL</li><li>40+ 数据库</li><li>AI 查数</li></ul>
+					</article>
+					<article class="card reveal">
+						<span class="card__icon" aria-hidden="true">
+							<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 10 6-10 6L2 8l10-6Z" /><path d="m2 16 10 6 10-6" /><path d="m2 12 10 6 10-6" /></svg>
+						</span>
+						<span class="card__num">03</span>
+						<h3 class="card__title">批量任务</h3>
+						<p class="card__desc">一条指令批量执行多个目录；任务按「项目 + 任务」组织，可运行、可重试，进度实时可见。</p>
+						<ul class="card__tags"><li>批处理</li><li>可重试</li></ul>
+					</article>
+					<article class="card reveal">
+						<span class="card__icon" aria-hidden="true">
+							<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+						</span>
+						<span class="card__num">04</span>
+						<h3 class="card__title">定时任务</h3>
+						<p class="card__desc">内置 Cron 调度，任务在系统托盘后台运行，执行历史随时可查。</p>
+						<ul class="card__tags"><li>Cron</li><li>托盘常驻</li></ul>
+					</article>
+					<article class="card reveal">
+						<span class="card__icon" aria-hidden="true">
+							<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" /></svg>
+						</span>
+						<span class="card__num">05</span>
+						<h3 class="card__title">通知与远程控制</h3>
+						<p class="card__desc">批量 / 定时任务完成或异常时推送到飞书、钉钉机器人；手机 IM 可遥控本机 Agent，凭据本地加密。</p>
+						<ul class="card__tags"><li>飞书</li><li>钉钉</li><li>遥控</li></ul>
+					</article>
+					<article class="card reveal">
+						<span class="card__icon" aria-hidden="true">
+							<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" /><path d="M3.3 7 12 12l8.7-5" /><path d="M12 22V12" /></svg>
+						</span>
+						<span class="card__num">06</span>
+						<h3 class="card__title">能力与扩展</h3>
+						<p class="card__desc">能力市场里一键安装技能、MCP、插件与能力套装；本地文档加工成可检索知识库，全程不出本机。</p>
+						<ul class="card__tags"><li>能力市场</li><li>技能</li><li>MCP</li><li>知识库</li></ul>
+					</article>
+					<article class="card reveal">
+						<span class="card__icon" aria-hidden="true">
+							<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15.707 21.293a1 1 0 0 1-1.414 0l-1.586-1.586a1 1 0 0 1 0-1.414l5.586-5.586a1 1 0 0 1 1.414 0l1.586 1.586a1 1 0 0 1 0 1.414z" /><path d="m18 13-1.375-6.874a1 1 0 0 0-.746-.776L3.235 2.028a1 1 0 0 0-1.207 1.207L5.35 15.879a1 1 0 0 0 .776.746L13 18" /><path d="m2.3 2.3 7.286 7.286" /><circle cx="11" cy="11" r="2" /></svg>
+						</span>
+						<span class="card__num">07</span>
+						<h3 class="card__title">UI 设计工作区</h3>
+						<p class="card__desc">画布上的设计稿就是真实可运行的界面；整套设计共享色彩系统，可导出渲染图或只读分享包。</p>
+						<ul class="card__tags"><li>设计画布</li><li>导出</li></ul>
+					</article>
+					<article class="card reveal">
+						<span class="card__icon" aria-hidden="true">
+							<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3" /></svg>
+						</span>
+						<span class="card__num">08</span>
+						<h3 class="card__title">桌面集成</h3>
+						<p class="card__desc">全局快捷键唤起快捷面板；macOS Appshot 一键把前台窗口交给 Agent；托盘常驻、自动更新、中英双语界面。</p>
+						<ul class="card__tags"><li>快捷键</li><li>Appshot</li><li>自动更新</li></ul>
+					</article>
+				</div>
+
+				<!-- 真实界面截图 -->
+				<div class="shot-pair">
+					<figure class="shot reveal">
+						<img class="shot__img" src="/app/capabilities.webp" alt="Astravia 能力面板界面" width="1680" height="1051" loading="lazy" decoding="async" />
+						<figcaption class="shot__cap"><em>能力面板</em>对话、数据库、批量任务与扩展能力，在同一处按需启用。</figcaption>
+					</figure>
+					<figure class="shot reveal">
+						<img class="shot__img" src="/app/ui-design-canvas.webp" alt="Astravia UI 设计画布界面" width="1680" height="1048" loading="lazy" decoding="async" />
+						<figcaption class="shot__cap"><em>UI 设计工作区</em>画框即真实可运行的界面，选中元素即可定向修改。</figcaption>
+					</figure>
+				</div>
+			</div>
+		</section>
+
+		<!-- ================= 流程 ================= -->
+		<section class="section section--tint" id="workflow">
+			<div class="container">
+				<header class="section__head reveal">
+					<p class="section__kicker">WORKFLOW · 快速上手</p>
+					<h2 class="section__title">四步，从下载到自动化。</h2>
+				</header>
+
+				<ol class="steps">
+					<li class="step reveal">
+						<span class="step__num">01</span>
+						<span class="step__icon" aria-hidden="true">
+							<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4" /><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" /></svg>
+						</span>
+						<h3 class="step__title">下载安装</h3>
+						<p class="step__desc">从 Releases 下载 macOS / Windows / Linux 安装包，双击即装，无需注册账号。</p>
+					</li>
+					<li class="step reveal">
+						<span class="step__num">02</span>
+						<span class="step__icon" aria-hidden="true">
+							<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="5.5" /><path d="m21 2-9.6 9.6" /><path d="m15.5 7.5 3 3L22 7l-3-3" /></svg>
+						</span>
+						<h3 class="step__title">配置模型</h3>
+						<p class="step__desc">设置中选择服务商，填入你自己的 Key；请求直连服务商，密钥只存本机钥匙串。</p>
+					</li>
+					<li class="step reveal">
+						<span class="step__num">03</span>
+						<span class="step__icon" aria-hidden="true">
+							<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+						</span>
+						<h3 class="step__title">开始对话</h3>
+						<p class="step__desc">新建项目写代码、整理文档、处理文件；要查数据时连上数据库，用自然语言直接问。</p>
+					</li>
+					<li class="step reveal">
+						<span class="step__num">04</span>
+						<span class="step__icon" aria-hidden="true">
+							<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z" /></svg>
+						</span>
+						<h3 class="step__title">自动化收尾</h3>
+						<p class="step__desc">重复性工作交给自动化与批量任务，完成时通过飞书 / 钉钉机器人收到通知。</p>
+					</li>
+				</ol>
+			</div>
+		</section>
+
+		<!-- ================= 模型 ================= -->
+		<section class="section" id="models">
+			<div class="container models__grid">
+				<div class="models__copy reveal">
+					<header class="section__head section__head--flush">
+						<p class="section__kicker">MODELS · 模型</p>
+						<h2 class="section__title">用你自己的模型。<br />用你自己的 Key。</h2>
+					</header>
+					<p class="models__lead">内置多家服务商预设——只含接口地址与 API 类型，<strong>不含任何 Key</strong>。填入 Key 立即拉取可用模型，之后每 12 小时后台同步；模型能力与价格由 models.dev 补齐，随包带快照兜底。</p>
+					<ul class="models__points">
+						<li>请求直发服务商——应用不代理、不转发、不计费</li>
+						<li>密钥只存本机钥匙串</li>
+						<li>支持 OpenAI 兼容端点，可接本地推理（Ollama / vLLM / LM Studio）</li>
+					</ul>
+				</div>
+				<div class="models__panel reveal">
+					<p class="models__panel-label">支持的服务商与端点</p>
+					<ul class="chips">
+						<li>Claude</li><li>OpenAI</li><li>DeepSeek</li><li>Kimi</li><li>Gemini</li><li>Grok</li><li>Qwen</li><li>Z.ai</li><li>Ollama</li><li>vLLM</li><li>LM Studio</li>
+					</ul>
+				</div>
+			</div>
+		</section>
+
+		<!-- ================= 生态 ================= -->
+		<section class="section section--tint" id="ecosystem">
+			<div class="container ecosystem__grid">
+				<div class="ecosystem__copy reveal">
+					<header class="section__head section__head--flush">
+						<p class="section__kicker">ECOSYSTEM · 生态</p>
+						<h2 class="section__title">一切皆插件。</h2>
+					</header>
+					<p class="ecosystem__lead">设计画布、内容创作、浏览器操作、Office 查看器——这些工作区本身就是插件写出来的，同一套扩展点向第三方开放。权限在 <code>plugin.json</code> 显式声明，宿主单独授权、运行时校验；预装与第三方插件走同一套 API。</p>
+					<ul class="chips chips--alt">
+						<li>技能</li><li>MCP Server</li><li>插件</li><li>主题</li><li>知识库</li>
+					</ul>
+				</div>
+
+				<figure class="code reveal">
+					<div class="code__bar" aria-hidden="true">
+						<span></span><span></span><span></span>
+						<em>plugin.ts</em>
+					</div>
+					<pre><code><span class="tok-k">import</span> { definePlugin } <span class="tok-k">from</span> <span class="tok-s">"@astravia-org/plugin-sdk"</span>;
+
+<span class="tok-k">export default</span> definePlugin({
+  activate(ctx) {
+    ctx.ui.registerActivityTab({
+      id: <span class="tok-s">"my-tab"</span>,
+      label: <span class="tok-s">"我的面板"</span>,
+      component: MyPanel,
+    });
+  },
+});</code></pre>
+				</figure>
+			</div>
+
+
+			<!-- 预装插件：真实图标 -->
+			<div class="container">
+				<p class="plugin-grid__head reveal">
+					<span>预装插件</span>
+					<em>11 个 · 与第三方插件同一套 API</em>
+				</p>
+				<ul class="plugin-grid">
+					<li class="plugin reveal">
+						<img class="plugin__icon" src="/plugins/astravia-ui-design.png" alt="" width="64" height="64" loading="lazy" decoding="async" />
+						<div>
+							<span class="plugin__name">Astravia UI Design</span>
+							<span class="plugin__desc">在无限画布上做 UI 设计稿，画框即真实 React 代码。</span>
+						</div>
+					</li>
+					<li class="plugin reveal">
+						<img class="plugin__icon" src="/plugins/content-creation.png" alt="" width="64" height="64" loading="lazy" decoding="async" />
+						<div>
+							<span class="plugin__name">内容创作</span>
+							<span class="plugin__desc">节点画布、素材生产与多轨编排工作区。</span>
+						</div>
+					</li>
+					<li class="plugin reveal">
+						<img class="plugin__icon" src="/plugins/browser.png" alt="" width="128" height="128" loading="lazy" decoding="async" />
+						<div>
+							<span class="plugin__name">浏览器操作</span>
+							<span class="plugin__desc">让 Agent 驱动真实浏览器完成导航、读页、填表与点击。</span>
+						</div>
+					</li>
+					<li class="plugin reveal">
+						<img class="plugin__icon" src="/plugins/chart-renderer.png" alt="" width="64" height="64" loading="lazy" decoding="async" />
+						<div>
+							<span class="plugin__name">图表渲染</span>
+							<span class="plugin__desc">在对话消息下方直接渲染 Chart.js 图表。</span>
+						</div>
+					</li>
+					<li class="plugin reveal">
+						<img class="plugin__icon" src="/plugins/image-gen.png" alt="" width="64" height="64" loading="lazy" decoding="async" />
+						<div>
+							<span class="plugin__name">图像生成</span>
+							<span class="plugin__desc">文生图与图像编辑。</span>
+						</div>
+					</li>
+					<li class="plugin reveal">
+						<img class="plugin__icon" src="/plugins/office-viewer.png" alt="" width="128" height="128" loading="lazy" decoding="async" />
+						<div>
+							<span class="plugin__name">Office 查看器</span>
+							<span class="plugin__desc">离线预览 PDF、DOCX、PPTX 与电子表格。</span>
+						</div>
+					</li>
+					<li class="plugin reveal">
+						<img class="plugin__icon" src="/plugins/media-viewer.png" alt="" width="64" height="64" loading="lazy" decoding="async" />
+						<div>
+							<span class="plugin__name">媒体查看器</span>
+							<span class="plugin__desc">图片、音频与视频文件的内置预览。</span>
+						</div>
+					</li>
+					<li class="plugin reveal">
+						<img class="plugin__icon" src="/plugins/svg-viewer.png" alt="" width="64" height="64" loading="lazy" decoding="async" />
+						<div>
+							<span class="plugin__name">SVG Viewer</span>
+							<span class="plugin__desc">预览 SVG 文件，渲染与源码可切换。</span>
+						</div>
+					</li>
+					<li class="plugin reveal">
+						<img class="plugin__icon" src="/plugins/git.png" alt="" width="64" height="64" loading="lazy" decoding="async" />
+						<div>
+							<span class="plugin__name">Git</span>
+							<span class="plugin__desc">项目活动面板里查看变更状态树与文件 diff。</span>
+						</div>
+					</li>
+					<li class="plugin reveal">
+						<img class="plugin__icon" src="/plugins/plugin-workbench.png" alt="" width="64" height="64" loading="lazy" decoding="async" />
+						<div>
+							<span class="plugin__name">制作插件</span>
+							<span class="plugin__desc">通过对话自举插件：脚手架、打包、一键应用。</span>
+						</div>
+					</li>
+					<li class="plugin reveal">
+						<img class="plugin__icon" src="/plugins/astravia-actions.png" alt="" width="64" height="64" loading="lazy" decoding="async" />
+						<div>
+							<span class="plugin__name">Astravia Actions</span>
+							<span class="plugin__desc">提供可独立演进的官方 App Action。</span>
+						</div>
+					</li>
+				</ul>
+			</div>
+		</section>
+
+		<!-- ================= 隐私 ================= -->
+		<section class="section" id="privacy">
+			<div class="container">
+				<header class="section__head reveal">
+					<p class="section__kicker">PRIVACY · 隐私</p>
+					<h2 class="section__title">你在本机工作，<br />数据就留在本机。</h2>
+				</header>
+
+				<div class="promises">
+					<article class="promise reveal">
+						<span class="promise__icon" aria-hidden="true">
+							<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m2 2 20 20" /><path d="M5.782 5.782A7 7 0 0 0 9 19h8.5a4.5 4.5 0 0 0 1.307-.193" /><path d="M21.532 16.5A4.5 4.5 0 0 0 17.5 10h-1.79A7.008 7.008 0 0 0 10 5.07" /></svg>
+						</span>
+						<h3 class="promise__title">没有云端</h3>
+						<p class="promise__desc">无登录、无账号、无订阅。模型密钥（BYOK）由你配置，请求直连服务商。</p>
+					</article>
+					<article class="promise reveal">
+						<span class="promise__icon" aria-hidden="true">
+							<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg>
+						</span>
+						<h3 class="promise__title">没有遥测</h3>
+						<p class="promise__desc">不收集崩溃报告与使用统计；任何出站请求都由你的配置明确触发。</p>
+					</article>
+					<article class="promise reveal">
+						<span class="promise__icon" aria-hidden="true">
+							<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12H2" /><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" /><path d="M6 16h.01M10 16h.01" /></svg>
+						</span>
+						<h3 class="promise__title">数据在本机</h3>
+						<p class="promise__desc">会话、工作区、知识库、数据库连接默认都在 <code>~/.astravia</code>，不离开你的机器。</p>
+					</article>
+				</div>
+
+				<div class="network reveal">
+					<p class="network__label">只在以下情况联网（全部由你的配置决定）：</p>
+					<ul class="network__list">
+						<li>LLM 推理 —— 你配置的服务商；不配 Key 即不发生</li>
+						<li>模型元数据 —— models.dev 公共目录；失败回退随包快照</li>
+						<li>能力市场 —— 你添加的 GitHub 仓库；不加来源即不发生</li>
+						<li>自动更新 —— 更新源由应用配置决定；不配即不检查</li>
+						<li>MCP / 插件 / Webhook / IM —— 由你安装的扩展与凭据决定</li>
+					</ul>
+					<p class="network__foot">没有遥测，没有崩溃上报，没有使用统计。</p>
+				</div>
+			</div>
+		</section>
+
+		<!-- ================= FAQ ================= -->
+		<section class="section section--tint" id="faq">
+			<div class="container">
+				<header class="section__head reveal">
+					<p class="section__kicker">FAQ · 常见问题</p>
+					<h2 class="section__title">常见问题。</h2>
+				</header>
+
+				<div class="faq reveal">
+					<details class="faq__item">
+						<summary>需要注册账号吗？</summary>
+						<div class="faq__body">
+							<p>不需要。星轨没有账号体系，不登录、不订阅、不收费——它是一款本地运行的开源应用。</p>
+						</div>
+					</details>
+					<details class="faq__item">
+						<summary>我的数据存在哪里？</summary>
+						<div class="faq__body">
+							<p>默认都在本机 <code>~/.astravia</code>：会话、工作区、知识库、数据库连接，全部不离开你的机器。</p>
+						</div>
+					</details>
+					<details class="faq__item">
+						<summary>支持哪些模型？</summary>
+						<div class="faq__body">
+							<p>内置 Claude、OpenAI、DeepSeek、Kimi、Gemini、Grok、Qwen、Z.ai 等预设，也支持任何 OpenAI 兼容端点——包括 Ollama、vLLM、LM Studio 等本地推理。只需要你自己的 Key。</p>
+						</div>
+					</details>
+					<details class="faq__item">
+						<summary>必须联网才能用吗？</summary>
+						<div class="faq__body">
+							<p>不需要。联网只发生在你配置的范围内：不配置服务商 Key 就不会有推理请求；使用本地推理端点可以完全离线。</p>
+						</div>
+					</details>
+					<details class="faq__item">
+						<summary>如何更新到新版本？</summary>
+						<div class="faq__body">
+							<p>自动更新由应用内配置决定，也可以随时到官网下载最新安装包覆盖安装。</p>
+						</div>
+					</details>
+					<details class="faq__item">
+						<summary>星轨与 Vetta 是什么关系？</summary>
+						<div class="faq__body">
+							<p>星轨是独立自研的开源项目，不依赖任何既有产品代码。Agent 内核与桌面宿主均由我们自主设计与维护，并持续独立演进。</p>
+						</div>
+					</details>
+				</div>
+			</div>
+		</section>
+	</main>
+
+	<!-- ================= 下载 ================= -->
+	<section class="section" id="download">
+		<div class="container">
+			<header class="section__head reveal">
+				<p class="section__kicker">DOWNLOAD · 下载</p>
+				<h2 class="section__title">获取星轨。</h2>
+				<p class="section__lead">macOS / Windows / Linux 免费下载，双击即用，无需注册。</p>
+			</header>
+			<div class="download-embed" id="downloadEmbed">
+				<div class="download-theater">
+					<div class="download-theater-beams" aria-hidden="true"><div class="download-theater-haze"></div><span class="download-theater-beam download-theater-beam--a"></span><span class="download-theater-beam download-theater-beam--b"></span><span class="download-theater-beam download-theater-beam--c"></span></div>
+					<div class="dl-platforms" id="dlPlatforms" aria-hidden="true">
+						<div class="dl-platform-icon" data-p="ollama"><div class="icon-glow"></div><img src="/download/ollama.webp" alt="" width="28" height="28" /></div>
+						<div class="dl-platform-icon" data-p="kimi"><div class="icon-glow"></div><img src="/download/kimi.webp" alt="" width="28" height="28" /></div>
+						<div class="dl-platform-icon" data-p="grok"><div class="icon-glow"></div><img src="/download/grok.webp" alt="" width="28" height="28" /></div>
+						<div class="dl-platform-icon" data-p="mistral"><div class="icon-glow"></div><img src="/download/mistral.webp" alt="" width="28" height="28" /></div>
+						<div class="dl-platform-icon" data-p="minimax"><div class="icon-glow"></div><img src="/download/minimax.webp" alt="" width="28" height="28" /></div>
+						<div class="dl-platform-icon" data-p="doubao"><div class="icon-glow"></div><img src="/download/doubao.webp" alt="" width="28" height="28" /></div>
+						<div class="dl-platform-icon" data-p="zai"><div class="icon-glow"></div><img src="/download/zai.webp" alt="" width="28" height="28" /></div>
+						<div class="dl-platform-icon" data-p="openai"><div class="icon-glow"></div><img src="/download/openai.webp" alt="" width="28" height="28" /></div>
+					</div>
+					<svg class="dl-constellation-svg" id="dlConstellationSVG" aria-hidden="true">
+						<defs>
+							<filter id="constellation-glow" x="-50%" y="-50%" width="200%" height="200%">
+								<feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur" />
+								<feMerge>
+									<feMergeNode in="blur" />
+									<feMergeNode in="SourceGraphic" />
+								</feMerge>
+							</filter>
+						</defs>
+					</svg>
+					<div class="dl-content">
+						<h2 class="dl__title" id="dlTitle">下载</h2>
+						<p class="dl__desc" id="dlDesc">我们会检测你的设备并推荐合适的版本。点击即可下载，或通过下方选择其他平台。</p>
+						<div class="dl__primary-wrap">
+							<a class="dl__primary" id="dlPrimary" href="https://dl.astravia.dev/app/v0.0.2/Astravia-0.0.2-arm64.dmg" target="_blank" rel="noopener"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><span id="dlPrimaryText">macOS Apple 芯片版</span></a>
+							<p class="dl__version" id="dlPrimaryVersion">v0.0.2 · DMG</p>
+						</div>
+						<button class="dl__others-toggle" id="dlOthersToggle" type="button">其他版本<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>
+						<div class="dl__others" id="dlOthers"><ul class="dl__others-list"><li><a class="dl__others-item" href="https://dl.astravia.dev/app/v0.0.2/Astravia-0.0.2-arm64.dmg" target="_blank" rel="noopener"><span>Mac Arm64 (Apple Silicon)<span class="dl-rec">推荐</span></span><small>v0.0.2</small></a></li><li><a class="dl__others-item" href="https://dl.astravia.dev/app/v0.0.2/Astravia-0.0.2.dmg" target="_blank" rel="noopener"><span>Mac x64 (Intel)</span><small>v0.0.2</small></a></li><li><a class="dl__others-item" href="https://dl.astravia.dev/app/v0.0.2/Astravia-0.0.2-win-x64.exe" target="_blank" rel="noopener"><span>Windows x64</span><small>v0.0.2</small></a></li></ul></div>
+					</div>
+					<div class="dl-platforms-bottom" id="dlPlatformsBottom" aria-hidden="true"></div>
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<!-- ================= 页脚 ================= -->
+	<footer class="footer">
+		<div class="container">
+			<div class="footer__grid">
+				<!-- 左侧：品牌 + 介绍 + 社交 -->
+				<div class="footer__brand-col">
+					<a class="footer__brand" href="#top">
+						<img src="/banner.png" width="24" height="24" alt="" />
+						<span>Astravia</span>
+					</a>
+					<p class="footer__brand-desc">本地优先的开源 AI 桌面助手——编码、文档、数据、自动化，一个应用全包。</p>
+				</div>
+
+				<!-- 中间：分栏导航 -->
+				<nav class="footer__links" aria-label="页脚导航">
+					<div class="footer__link-group">
+						<p class="footer__link-heading">产品</p>
+						<ul>
+							<li><a href="#products">能力</a></li>
+							<li><a href="#models">模型</a></li>
+							<li><a href="#ecosystem">生态</a></li>
+							<li><a href="#download">下载</a></li>
+						</ul>
+					</div>
+					<div class="footer__link-group">
+						<p class="footer__link-heading">资源</p>
+						<ul>
+							<li><a href="https://github.com/maomaochong-ai/astravia" target="_blank" rel="noopener">开源</a></li>
+							<li><a href="https://github.com/maomaochong-ai/astravia/issues" target="_blank" rel="noopener">Issues</a></li>
+							<li><a href="https://github.com/maomaochong-ai/astravia/releases" target="_blank" rel="noopener">更新日志</a></li>
+						</ul>
+					</div>
+					<div class="footer__link-group">
+						<p class="footer__link-heading">关于</p>
+						<ul>
+							<li><a href="#privacy">隐私</a></li>
+							<li><a href="https://github.com/maomaochong-ai/astravia/blob/main/LICENSE" target="_blank" rel="noopener">Apache-2.0</a></li>
+						</ul>
+					</div>
+				</nav>
+			</div>
+
+			<!-- 底部：版权 -->
+			<div class="footer__bottom">
+				<p>© <span id="year">2026</span> Astravia · Apache-2.0</p>
+			</div>
+		</div>
+	</footer>
+</body>
+</html>

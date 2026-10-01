@@ -6,14 +6,14 @@
 
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { CONFIG_DIR_NAME } from "@vetta/coding-agent/config";
-import { createCodingAgentHostWithServices, SettingsRuntime } from "@vetta/coding-agent/host-services";
-import { NodeScopedTextStorage } from "@vetta/runtime-node/host";
+import { CONFIG_DIR_NAME } from "@astravia/coding-agent/config";
+import { createCodingAgentHostWithServices, SettingsRuntime } from "@astravia/coding-agent/host-services";
+import { NodeScopedTextStorage } from "@astravia/runtime-node/host";
 
 function createNodeSettingsRuntime() {
 	return SettingsRuntime.fromStorage(
 		new NodeScopedTextStorage({
-			global: join(homedir(), ".vetta", "agent", "settings.json"),
+			global: join(homedir(), ".astravia", "agent", "settings.json"),
 			project: join(process.cwd(), CONFIG_DIR_NAME, "settings.json"),
 		}),
 	);

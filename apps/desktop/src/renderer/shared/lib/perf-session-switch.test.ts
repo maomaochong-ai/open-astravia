@@ -36,7 +36,7 @@ it("关闭诊断时只生成关联 id，不安装浏览器采集器", () => {
 });
 
 it("开启诊断后输出可检索的单行阶段与 long-task JSON", () => {
-	localStorage.setItem("vetta-perf-session-switch", "1");
+	localStorage.setItem("astravia-perf-session-switch", "1");
 	let currentTime = 100;
 	vi.spyOn(performance, "now").mockImplementation(() => currentTime);
 	const frames: FrameRequestCallback[] = [];

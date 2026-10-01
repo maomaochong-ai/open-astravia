@@ -56,7 +56,7 @@ export type InlineTokenAnnotation =
 			readonly handle: string;
 	  } & InlineTokenAnnotationRange);
 
-export const INLINE_TOKEN_TAG = "vetta-inline-token";
+export const INLINE_TOKEN_TAG = "astravia-inline-token";
 
 /** 把文本节点里的 token 换成自定义元素；代码块与链接文本内不处理。 */
 export function rehypeInlineTokens(parse: (text: string) => InlineTokenPiece[]) {

@@ -48,7 +48,7 @@ describe("exclusive conversation file publisher", () => {
 });
 
 async function createRoot(): Promise<string> {
-	const root = await mkdtemp(join(tmpdir(), "vetta-conversation-publisher-"));
+	const root = await mkdtemp(join(tmpdir(), "astravia-conversation-publisher-"));
 	temporaryRoots.push(root);
 	return root;
 }

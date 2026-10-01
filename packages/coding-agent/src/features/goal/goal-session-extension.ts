@@ -1,10 +1,10 @@
-import type { RuntimeDocumentParticipant } from "@vetta/runtime-core";
-import type { ContinuationPolicyContext } from "@vetta/runtime-core/kernel";
+import type { RuntimeDocumentParticipant } from "@astravia/runtime-core";
+import type { ContinuationPolicyContext } from "@astravia/runtime-core/kernel";
 import {
 	defineSessionExtensionService,
 	type SessionExtensionDefinition,
 	sessionExtensionObservation,
-} from "@vetta/runtime-core/session-extensions";
+} from "@astravia/runtime-core/session-extensions";
 import type { ConversationScenario } from "../../profiles/index.js";
 import type { CodingAgentGoalSnapshot } from "./contracts.js";
 import { CODING_AGENT_GOAL_EXTENSION_ID, isCodingAgentGoalStatus } from "./contracts.js";

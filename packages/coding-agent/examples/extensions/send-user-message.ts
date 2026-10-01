@@ -11,7 +11,7 @@
  *   /followup And then?   - Sends while streaming with followUp delivery
  */
 
-import type { ExtensionAPI } from "@vetta/coding-agent";
+import type { ExtensionAPI } from "@astravia/coding-agent";
 
 export default function (api: ExtensionAPI) {
 	// Simple command that sends a user message

@@ -84,8 +84,8 @@ type FeishuConfig struct {
 //   - the runtime flag (Enabled) so the host knows to select wechat as
 //     the active transport;
 //   - the absolute path to the persistent state file (so the parent can
-//     keep that file alongside its other vetta data and override the
-//     ~/.vetta/im-gateway/wechat.json default).
+//     keep that file alongside its other astravia data and override the
+//     ~/.astravia/im-gateway/wechat.json default).
 type WechatConfig struct {
 	Enabled   bool   `json:"enabled"`
 	StatePath string `json:"statePath,omitempty"`
@@ -200,10 +200,10 @@ type InitFrame struct {
 	LogLevel        string              `json:"logLevel,omitempty"` // debug|info|warn|error
 	// CodingAgent overrides how the sidecar invokes the coding-agent
 	// subprocess for IM sessions. When omitted, the sidecar falls back to
-	// looking up `vetta` on PATH — fine for dev (where `bun link` puts it
-	// there) but broken in production where the Vetta.app bundle does not
+	// looking up `astravia` on PATH — fine for dev (where `bun link` puts it
+	// there) but broken in production where the Astravia.app bundle does not
 	// install a global CLI. Desktop-app's host runtime populates this with
-	// the Vetta.app executable path + the `--agent-rpc` discriminator so
+	// the Astravia.app executable path + the `--agent-rpc` discriminator so
 	// the spawned Electron process short-circuits into coding-agent's main.
 	CodingAgent *CodingAgentSpec `json:"codingAgent,omitempty"`
 }
@@ -214,7 +214,7 @@ type InitFrame struct {
 //	[Bin, PrefixArgs..., "--mode", "rpc", "--cwd", <cwd>, ...]
 //
 // PrefixArgs is where the parent stuffs e.g. `--agent-rpc` (to switch
-// Vetta.app into CLI mode) or, in dev, the Electron main-entry path.
+// Astravia.app into CLI mode) or, in dev, the Electron main-entry path.
 type CodingAgentSpec struct {
 	Bin        string   `json:"bin"`
 	PrefixArgs []string `json:"prefixArgs,omitempty"`
@@ -224,7 +224,7 @@ type CodingAgentSpec struct {
 	// because the normal GUI mode closes stdio before RPC can handshake.
 	RunAsNode bool `json:"runAsNode,omitempty"`
 	// PackageDir, when non-empty, is forwarded to the spawned subprocess
-	// as the `VETTA_PACKAGE_DIR` environment variable. The agent's
+	// as the `ASTRAVIA_PACKAGE_DIR` environment variable. The agent's
 	// `getPackageDir()` defaults to walking up `__dirname` to find
 	// `package.json` — which lands on the host bundle when coding-agent is
 	// Vite-bundled into Electron's main process. Setting this explicitly
@@ -232,8 +232,8 @@ type CodingAgentSpec struct {
 	// resolve correctly.
 	PackageDir string `json:"packageDir,omitempty"`
 	// ServerURL, when non-empty, is forwarded to the spawned subprocess as
-	// the `VETTA_SERVER_URL` environment variable. coding-agent's main.ts
-	// otherwise reads serverUrl from `~/.vetta/agent/settings.json`, which
+	// the `ASTRAVIA_SERVER_URL` environment variable. coding-agent's main.ts
+	// otherwise reads serverUrl from `~/.astravia/agent/settings.json`, which
 	// may carry a stale LAN address (test env / fresh dev login residue)
 	// that produces 401 on the prod gateway. With this env present the
 	// agent ignores the settings residue and uses the host-injected URL.
@@ -430,7 +430,7 @@ type SignalBindStartFrame struct {
 // SignalLogoutFrame requests the sidecar stop the signal transport and
 // forget the linked account. signal-cli's own device registration is left
 // on disk — unlinking a device is done from the phone — so this only drops
-// Vetta's use of it and returns to awaiting_bind.
+// Astravia's use of it and returns to awaiting_bind.
 type SignalLogoutFrame struct {
 	Type string `json:"type"` // always TypeSignalLogout
 }

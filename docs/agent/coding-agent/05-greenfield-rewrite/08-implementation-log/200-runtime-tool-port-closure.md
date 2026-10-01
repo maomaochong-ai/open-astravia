@@ -8,7 +8,7 @@
 
 ## 实施前分析
 
-`@vetta/runtime-tools/coding` 已经提供完整的 `CodingToolRegistry` Port，包含：
+`@astravia/runtime-tools/coding` 已经提供完整的 `CodingToolRegistry` Port，包含：
 
 - `register()`；
 - `activate()`；

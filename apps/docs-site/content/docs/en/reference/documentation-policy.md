@@ -38,4 +38,4 @@ Placeholder paths, domains, and model IDs in examples must be clearly identified
 
 ## Reporting a documentation issue
 
-Include the page address, incorrect content, Vetta version, and expected behavior. Do not include access keys, personal data, or internal service addresses in an issue.
+Include the page address, incorrect content, Astravia version, and expected behavior. Do not include access keys, personal data, or internal service addresses in an issue.

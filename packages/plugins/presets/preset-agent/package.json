@@ -1,5 +1,5 @@
 {
-	"name": "@vetta/plugin-preset-agent",
+	"name": "@astravia/plugin-preset-agent",
 	"version": "0.1.0",
 	"private": true,
 	"type": "module",
@@ -12,8 +12,8 @@
 		"@types/node": "^22.10.5",
 		"@types/react": "^19.1.1",
 		"@types/react-dom": "^19.1.1",
-		"@vetta-org/plugin-sdk": "workspace:*",
-		"@vetta-org/plugin-vite": "workspace:*",
+		"@astravia-org/plugin-sdk": "workspace:*",
+		"@astravia-org/plugin-vite": "workspace:*",
 		"react": "19.1.1",
 		"react-dom": "19.1.1",
 		"typescript": "^5.9.2",

@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "
 import { join, relative, resolve, sep } from "node:path";
 
 /**
- * 对账能力市场索引（`.vetta/marketplace.json`）与各能力目录。
+ * 对账能力市场索引（`.astravia/marketplace.json`）与各能力目录。
  *
  * 索引本来就是派生数据，却有一组会咬人的硬约束：条目的 slug/version 必须与能力目录里的身份
  * 文件完全相等，否则宿主同步**直接失败**；`entry`/`styles` 指向的文件必须真实存在，否则本地
@@ -43,7 +43,7 @@ export interface SyncInput {
 	readonly apply: boolean;
 }
 
-const SCAN_IGNORED = new Set(["node_modules", ".git", "dist", "release", ".vetta", "assets", "test", "src"]);
+const SCAN_IGNORED = new Set(["node_modules", ".git", "dist", "release", ".astravia", "assets", "test", "src"]);
 const SCAN_MAX_DEPTH = 5;
 
 /**
@@ -420,5 +420,5 @@ export function describeIndexDrift(input: {
 	) as Record<string, unknown> | undefined;
 	if (!entry) return undefined;
 	if (entry.version === input.version) return undefined;
-	return `Marketplace index still lists ${input.slug} ${JSON.stringify(entry.version)} (this project is ${JSON.stringify(input.version)}). Run \`vetta-plugin-cli sync\` at ${input.hubRoot} — the host refuses to sync an entry whose version does not match.`;
+	return `Marketplace index still lists ${input.slug} ${JSON.stringify(entry.version)} (this project is ${JSON.stringify(input.version)}). Run \`astravia-plugin-cli sync\` at ${input.hubRoot} — the host refuses to sync an entry whose version does not match.`;
 }

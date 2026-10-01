@@ -1,4 +1,4 @@
-import type { Api, AssistantMessage, Model } from "@vetta/ai";
+import type { Api, AssistantMessage, Model } from "@astravia/ai";
 import { describe, expect, it } from "vitest";
 import { MemoryJournalWriter } from "../../src/memory/index.js";
 import { createMemoryTextStorage, readMemoryTextStorage } from "../fixtures/memory-storage.js";

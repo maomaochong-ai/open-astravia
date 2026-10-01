@@ -3,7 +3,7 @@ import type { BrowserWindow } from "electron";
 
 import type { UpdateEngine, UpdateEngineDownload, UpdateEngineInfo } from "./updater-engine.js";
 
-const EVENT_CHANNEL = "vetta:updater:state";
+const EVENT_CHANNEL = "astravia:updater:state";
 const DEFAULT_AUTO_DOWNLOAD_DELAY_MS = 20_000;
 const DEFAULT_AUTO_DOWNLOAD_RETRY_DELAYS_MS = [30_000, 120_000, 600_000];
 const DEFAULT_DOWNLOAD_STALL_TIMEOUT_MS = 120_000;

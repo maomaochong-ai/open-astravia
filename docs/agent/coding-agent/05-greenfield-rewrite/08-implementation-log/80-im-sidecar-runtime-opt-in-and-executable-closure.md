@@ -18,7 +18,7 @@
 第 78 轮新增了独立 `agent-rpc-cli.ts` 和 `--agent-runtime`，但生产 IM 链路仍有两个绕过点：
 
 - macOS/Linux 通过 Electron `--agent-rpc` 进入 `agent-rpc-command.ts` 后，直接调用
-  `@vetta/coding-agent.main()`。
+  `@astravia/coding-agent.main()`。
 - Windows 的 `agent-rpc-cli.mjs` 由 `coding-agent/dist/cli.js` 打包生成。
 
 这意味着只在 IM Gateway 增加 `--agent-runtime greenfield-im` 不会形成完整接入：参数最终会落到不认识
@@ -55,7 +55,7 @@ Desktop IM Composition
 当前灰度入口为：
 
 ```text
-VETTA_IM_AGENT_RUNTIME=greenfield-im
+ASTRAVIA_IM_AGENT_RUNTIME=greenfield-im
 ```
 
 未设置、空字符串或显式 `legacy` 均选择 Legacy；其他值直接报错，不静默猜测。构造函数同时保留类型化
@@ -66,9 +66,9 @@ VETTA_IM_AGENT_RUNTIME=greenfield-im
 
 ### 4.2 三平台统一 Runtime Selector
 
-- Electron `--agent-rpc` 改为调用 `@vetta/cli-host.runAgentRuntimeCli()`。
+- Electron `--agent-rpc` 改为调用 `@astravia/cli-host.runAgentRuntimeCli()`。
 - Windows staged `agent-rpc-cli.mjs` 改由 `cli-host/src/agent-rpc-cli.ts` 打包。
-- `@vetta/cli-host` 加入 Desktop workspace 依赖。
+- `@astravia/cli-host` 加入 Desktop workspace 依赖。
 - Desktop TypeScript source path map 补齐 `cli-host` 及其直接 Runtime 依赖，避免独立 Desktop `tsc`
   错误读取陈旧 `dist/*.d.ts`。
 

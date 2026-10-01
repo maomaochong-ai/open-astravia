@@ -13,11 +13,11 @@ export const DESKTOP_BUILD_OUTPUTS = Object.freeze([
 	{ source: "dist/ocr-runner", target: "ocr-runner" },
 ]);
 
-export const VETTA_PLUGIN_FILE_ASSOCIATION = Object.freeze({
-	ext: "vettapkg",
-	name: "Vetta Plugin Package",
-	description: "Installable Vetta plugin package",
-	mimeType: "application/vnd.vetta.plugin+zip",
+export const ASTRAVIA_PLUGIN_FILE_ASSOCIATION = Object.freeze({
+	ext: "astraviapkg",
+	name: "Astravia Plugin Package",
+	description: "Installable Astravia plugin package",
+	mimeType: "application/vnd.astravia.plugin+zip",
 	role: "Editor",
 });
 

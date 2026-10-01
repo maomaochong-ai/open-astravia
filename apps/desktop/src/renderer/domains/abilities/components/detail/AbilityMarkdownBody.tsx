@@ -1,6 +1,6 @@
 import { useMarkdownHost } from "@shared/hooks/useMarkdownHost";
 import { useMarkdownLabels } from "@shared/hooks/useMarkdownLabels";
-import { MarkdownPreviewView } from "@vetta-org/theme-ui/activity";
+import { MarkdownPreviewView } from "@astravia-org/theme-ui/activity";
 import { resolvedThemeAtom } from "@shared/store/atoms";
 import { useAtomValue } from "jotai";
 import { useCallback } from "react";
@@ -11,7 +11,7 @@ export function AbilityMarkdownBody({ content }: { content: string }): JSX.Eleme
 	const host = useMarkdownHost(null);
 	const labels = useMarkdownLabels();
 	const onOpenExternal = useCallback((href: string) => {
-		void window.vetta.shell.openExternal(href);
+		void window.astravia.shell.openExternal(href);
 	}, []);
 
 	if (!content.trim()) return null;

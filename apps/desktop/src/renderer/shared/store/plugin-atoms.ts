@@ -19,7 +19,7 @@ import type {
 	PluginTurnCardContribution,
 	PluginWorkspaceViewContribution,
 	PluginWorkspaceViewHeader,
-} from "@vetta-org/plugin-sdk";
+} from "@astravia-org/plugin-sdk";
 import { atom, getDefaultStore } from "jotai";
 
 /** A loaded plugin's i18n catalogs + fallback locale, keyed by plugin id. */
@@ -255,7 +255,7 @@ export interface SessionInputActionState {
 	knowledgeRetrieval: boolean;
 }
 
-export const SESSION_INPUT_ACTIONS_STORAGE_KEY = "vetta-session-input-actions";
+export const SESSION_INPUT_ACTIONS_STORAGE_KEY = "astravia-session-input-actions";
 
 function normalizeSessionInputActionState(raw: unknown): SessionInputActionState | null {
 	if (raw == null || typeof raw !== "object") return null;
@@ -336,7 +336,7 @@ export function syncHardIsolationContributionModes(activeIds: ReadonlySet<string
 		byPlugin.set(action.pluginId, (byPlugin.get(action.pluginId) ?? false) || on);
 	}
 	for (const [pluginId, active] of byPlugin) {
-		void window.vetta.plugins.setContributionMode(pluginId, active);
+		void window.astravia.plugins.setContributionMode(pluginId, active);
 	}
 }
 

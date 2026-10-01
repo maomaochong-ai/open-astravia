@@ -1,4 +1,4 @@
-import type { ImageContent, TextContent } from "@vetta/ai";
+import type { ImageContent, TextContent } from "@astravia/ai";
 import type {
 	BashToolDetails,
 	BashToolInput,

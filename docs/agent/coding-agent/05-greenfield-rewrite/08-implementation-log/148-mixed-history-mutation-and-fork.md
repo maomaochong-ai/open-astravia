@@ -56,7 +56,7 @@ Runtime Storage 新增综合 fixture，包含根消息、两条用户分支、Br
 
 ## 真实 CLI 会话门禁
 
-新增独立 RPC 可执行测试，直接使用 Vetta CLI 会话能力完成纵向流程：
+新增独立 RPC 可执行测试，直接使用 Astravia CLI 会话能力完成纵向流程：
 
 1. 打开官方 Legacy 综合 fixture，由 Greenfield 自动迁移；
 2. 执行首个真实 Provider Turn；

@@ -1,5 +1,5 @@
 import { createServer } from "node:net";
-import { isSshProjectUri } from "@vetta/ssh-transport";
+import { isSshProjectUri } from "@astravia/ssh-transport";
 import { webContents } from "electron";
 import type { InstalledPlugin, PluginCommandSpawnStatus } from "../../preload/api-types/plugins.js";
 import { PLUGIN_EXECUTION_CHANNELS } from "../../shared/plugin-ipc.js";

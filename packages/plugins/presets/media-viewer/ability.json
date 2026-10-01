@@ -26,7 +26,7 @@
 					},
 					{
 						"title": "无需离开项目",
-						"description": "选中文件即可在 Vetta 活动面板中查看。",
+						"description": "选中文件即可在 Astravia 活动面板中查看。",
 						"icon": "solar:sidebar-code-linear"
 					}
 				]
@@ -56,7 +56,7 @@
 							},
 							{
 								"title": "Stay in the project",
-								"description": "Select a file and preview it in Vetta’s activity panel.",
+								"description": "Select a file and preview it in Astravia’s activity panel.",
 								"icon": "solar:sidebar-code-linear"
 							}
 						]

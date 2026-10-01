@@ -1,4 +1,4 @@
-import type { PluginCommandApi, PluginCommandRunResult, PluginFsApi } from "@vetta-org/plugin-sdk";
+import type { PluginCommandApi, PluginCommandRunResult, PluginFsApi } from "@astravia-org/plugin-sdk";
 import { describe, expect, it } from "vitest";
 import { isGitAvailable, isInsideGitWorkTree, probeGitTab } from "../src/git/tab-visibility";
 

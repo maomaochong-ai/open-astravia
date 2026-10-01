@@ -1,6 +1,6 @@
 import { chmodSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { getVettaHomePath } from "@vetta/action-rpc";
+import { getAstraviaHomePath } from "@astravia/action-rpc";
 
 /**
  * OpenSSH 执行的那个 askpass 程序。
@@ -18,16 +18,16 @@ function quoteForShell(value: string): string {
 }
 
 const ASKPASS_ENTRY_SOURCE = `#!/usr/bin/env node
-// 由 Vetta 运行时生成，手工修改会在下次启动时被覆盖。
+// 由 Astravia 运行时生成，手工修改会在下次启动时被覆盖。
 //
 // OpenSSH 把提示文本作为 argv[2] 传进来，期待答案打到 stdout。确认类提示（首次主机
 // 指纹核对）不看 stdout，只看退出码：0 视为「是」，非 0 视为「否」。
 const net = require("node:net");
 
-const socketPath = process.env.VETTA_ASKPASS_SOCKET;
-const token = process.env.VETTA_ASKPASS_TOKEN;
+const socketPath = process.env.ASTRAVIA_ASKPASS_SOCKET;
+const token = process.env.ASTRAVIA_ASKPASS_TOKEN;
 const prompt = process.argv[2] ?? "";
-const hostId = process.env.VETTA_ASKPASS_HOST ?? "";
+const hostId = process.env.ASTRAVIA_ASKPASS_HOST ?? "";
 const promptEnv = process.env.SSH_ASKPASS_PROMPT ?? "";
 // 父进程就是发起这次提示的那个 ssh——外层 shell 用的是 exec，没有多套一层。
 // 上层靠它区分「同一轮认证的第二次追问」与「下一次连接」。
@@ -35,7 +35,7 @@ const round = process.ppid;
 
 if (!socketPath || !token) {
 	// 没有回传通道就必须失败。这里若静默放行，确认类提示会变成「默认同意」。
-	process.stderr.write("vetta askpass: missing channel\\n");
+	process.stderr.write("astravia askpass: missing channel\\n");
 	process.exit(1);
 }
 
@@ -79,7 +79,7 @@ export interface AskpassAssets {
 
 /** 写出 askpass 的两个文件并返回脚本路径。每次启动覆盖，保证内容与当前版本一致。 */
 export function ensureAskpassAssets(electronExecutablePath: string): AskpassAssets {
-	const directory = join(getVettaHomePath(), "ssh");
+	const directory = join(getAstraviaHomePath(), "ssh");
 	mkdirSync(directory, { recursive: true, mode: 0o700 });
 
 	const entryPath = join(directory, "askpass-entry.cjs");
@@ -88,7 +88,7 @@ export function ensureAskpassAssets(electronExecutablePath: string): AskpassAsse
 	const scriptPath = join(directory, "askpass.sh");
 	const script = [
 		"#!/bin/sh",
-		"# 由 Vetta 运行时生成。",
+		"# 由 Astravia 运行时生成。",
 		`ELECTRON_RUN_AS_NODE=1 exec ${quoteForShell(electronExecutablePath)} ${quoteForShell(entryPath)} "$@"`,
 		"",
 	].join("\n");

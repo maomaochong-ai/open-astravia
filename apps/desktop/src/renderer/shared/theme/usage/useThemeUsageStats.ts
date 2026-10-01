@@ -1,4 +1,4 @@
-import type { ThemeUsageModel, ThemeUsageStats, ThemeUsageStatus } from "@vetta-org/theme-sdk/usage";
+import type { ThemeUsageModel, ThemeUsageStats, ThemeUsageStatus } from "@astravia-org/theme-sdk/usage";
 import { useCallback, useEffect, useState } from "react";
 
 const EMPTY_STATS: ThemeUsageStats = {
@@ -30,7 +30,7 @@ export function useThemeUsageStats(): ThemeUsageModel {
 
 	const refresh = useCallback(async (): Promise<void> => {
 		try {
-			const next = await window.vetta.appMonitor.getAchievementUsage();
+			const next = await window.astravia.appMonitor.getAchievementUsage();
 			setStats(next);
 			setStatus("ready");
 		} catch (error) {

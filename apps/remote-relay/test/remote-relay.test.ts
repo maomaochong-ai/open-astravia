@@ -10,12 +10,12 @@ import {
 	type RemoteHello,
 	sha256Hex,
 	toBase64Url,
-} from "@vetta/remote-control";
+} from "@astravia/remote-control";
 import {
 	encodeRemoteDesktopSignal,
 	parseRemoteDesktopSignal,
 	REMOTE_DESKTOP_WEBSOCKET_PROTOCOL,
-} from "@vetta/remote-desktop/protocol";
+} from "@astravia/remote-desktop/protocol";
 import { describe, expect, it } from "vitest";
 
 const desktopSecret = "desktop_secret_0123456789abcdefghijklmnopqrstuv";
@@ -181,7 +181,7 @@ describe("remote relay Worker (protocol v2)", () => {
 			type: "offer",
 			protocolVersion: 1,
 			sessionId: "desktop-session-1",
-			sdp: "v=0\r\ns=Vetta E2E\r\n",
+			sdp: "v=0\r\ns=Astravia E2E\r\n",
 		} as const;
 		const forwarded = nextDesktopSignal(viewer);
 		host.send(encodeRemoteDesktopSignal(offer));

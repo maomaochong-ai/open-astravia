@@ -42,7 +42,7 @@ vi.mock("../logger.js", () => ({
 vi.mock("./plugin-catalog.js", () => ({
 	listPlugins: () => [
 		{
-			id: "vetta-ui-design",
+			id: "astravia-ui-design",
 			enabled: true,
 			permissions: ["capture.offscreen"],
 			grantedPermissions: ["capture.offscreen"],
@@ -67,7 +67,7 @@ describe("离屏截图窗口不得持续逐帧绘制", () => {
 		["复用会话", { sessionKey: "design-raster:7788:0" }],
 		["一次性窗口", {}],
 	])("%s建窗后立即停绘", async (_label, extra) => {
-		await capturePluginOffscreen("vetta-ui-design", {
+		await capturePluginOffscreen("astravia-ui-design", {
 			url: "http://127.0.0.1:7788/",
 			width: 390,
 			height: 844,

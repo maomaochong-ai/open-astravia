@@ -12,7 +12,7 @@ afterEach(async () => {
 
 describe("BrowserProfileRegistry legacy migration", () => {
 	it("copies the old Browser plugin login profile into the host-owned default profile", async () => {
-		const root = await mkdtemp(join(tmpdir(), "vetta-browser-profile-test-"));
+		const root = await mkdtemp(join(tmpdir(), "astravia-browser-profile-test-"));
 		directories.push(root);
 		const legacy = join(root, "legacy");
 		await mkdir(legacy, { recursive: true });
@@ -38,7 +38,7 @@ describe("BrowserProfileRegistry legacy migration", () => {
 	});
 
 	it("never overwrites an existing target profile", async () => {
-		const root = await mkdtemp(join(tmpdir(), "vetta-browser-profile-test-"));
+		const root = await mkdtemp(join(tmpdir(), "astravia-browser-profile-test-"));
 		directories.push(root);
 		const legacy = join(root, "legacy");
 		await mkdir(legacy, { recursive: true });
@@ -66,11 +66,11 @@ describe("BrowserProfileRegistry legacy migration", () => {
 	});
 
 	it("lists only host sessions that reference the requested persistent profile", async () => {
-		const root = await mkdtemp(join(tmpdir(), "vetta-browser-profile-test-"));
+		const root = await mkdtemp(join(tmpdir(), "astravia-browser-profile-test-"));
 		directories.push(root);
 		const registry = new BrowserProfileRegistry({ baseDirectory: root });
-		const matchingId = "vetta-11111111-1111-4111-8111-111111111111";
-		const otherId = "vetta-22222222-2222-4222-8222-222222222222";
+		const matchingId = "astravia-11111111-1111-4111-8111-111111111111";
+		const otherId = "astravia-22222222-2222-4222-8222-222222222222";
 		await registry.prepareSession({
 			namespace: "browser",
 			sessionId: matchingId,

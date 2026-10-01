@@ -1,4 +1,4 @@
-import type { PluginCommandRunResult } from "@vetta-org/plugin-sdk";
+import type { PluginCommandRunResult } from "@astravia-org/plugin-sdk";
 import { getGitCommand } from "./runtime";
 import type { BranchRef, ChangeEntry, GraphScope, GraphSelection } from "./types";
 

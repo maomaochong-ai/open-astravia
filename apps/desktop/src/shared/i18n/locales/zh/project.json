@@ -166,7 +166,7 @@
 	},
 	"exportDialog": {
 		"title": "导出项目",
-		"message": "确定要导出项目「{{name}}」吗？\n\n将打包当前项目目录下的所有文件，包括 .vetta/sessions 历史、batch 任务工作目录与状态。文件锁（*.lock）会被排除。",
+		"message": "确定要导出项目「{{name}}」吗？\n\n将打包当前项目目录下的所有文件，包括 .astravia/sessions 历史、batch 任务工作目录与状态。文件锁（*.lock）会被排除。",
 		"confirm": "导出",
 		"failedTitle": "导出失败",
 		"failedConfirm": "好的"
@@ -210,7 +210,7 @@
 			},
 			"skills": {
 				"title": "能力入口",
-				"description": "点这里打开能力页，安装技能与连接器，让 Vetta 具备更多专业能力。"
+				"description": "点这里打开能力页，安装技能与连接器，让 Astravia 具备更多专业能力。"
 			}
 		}
 	},

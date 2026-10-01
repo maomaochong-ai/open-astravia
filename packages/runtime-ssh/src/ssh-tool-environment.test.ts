@@ -1,9 +1,9 @@
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { RuntimeToolResult } from "@vetta/runtime-core/kernel";
-import type { CodingToolRegistration } from "@vetta/runtime-tools";
-import { SshConnection, type SshHost, type SshProcessResult, type SshProcessRunner } from "@vetta/ssh-transport";
+import type { RuntimeToolResult } from "@astravia/runtime-core/kernel";
+import type { CodingToolRegistration } from "@astravia/runtime-tools";
+import { SshConnection, type SshHost, type SshProcessResult, type SshProcessRunner } from "@astravia/ssh-transport";
 import { describe, expect, it } from "vitest";
 import { createSshCodingToolEnvironment } from "./ssh-tool-environment.js";
 
@@ -227,7 +227,7 @@ describe("远程项目的 Agent 工具", () => {
 	});
 
 	it("宿主交给模型的本机路径（粘贴的图片、技能资料）在远程会话里读的是本机", async () => {
-		const localRoot = mkdtempSync(join(tmpdir(), "vetta-local-artifacts-"));
+		const localRoot = mkdtempSync(join(tmpdir(), "astravia-local-artifacts-"));
 		writeFileSync(join(localRoot, "reference.md"), "LOCAL SKILL REFERENCE\n");
 		const fake = createFakeHost(new Map([["/srv/app/main.ts", "remote"]]));
 		const environment = createSshCodingToolEnvironment({

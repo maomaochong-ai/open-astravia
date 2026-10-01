@@ -1,5 +1,5 @@
-import type { EcosystemHookRuntime } from "@vetta/ecosystem-adapter";
-import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
+import type { EcosystemHookRuntime } from "@astravia/ecosystem-adapter";
+import type { RuntimeToolDefinition } from "@astravia/runtime-core/kernel";
 import { describe, expect, it, vi } from "vitest";
 import type { Skill } from "../../src/resources/skills/index.js";
 import { createCodingAgentInvokeSkillFeature } from "../../src/resources/skills/invoke-skill-feature.js";

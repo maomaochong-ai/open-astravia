@@ -1,4 +1,4 @@
-import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
+import type { RuntimeToolDefinition } from "@astravia/runtime-core/kernel";
 import {
 	createMcpServerRuntimeToolSource,
 	type ManagedMcpRuntimeToolSource,
@@ -8,7 +8,7 @@ import {
 	type McpTaskExecutionCoordinator,
 	type McpToolResultPolicy,
 	PRESERVE_MCP_TOOL_RESULT_POLICY,
-} from "@vetta/runtime-mcp";
+} from "@astravia/runtime-mcp";
 import type { EcosystemHookAwareRuntimeTool } from "../../extensions/runtime/ecosystem-hook-tool-wrapper.js";
 
 export interface CodingAgentMcpRuntimeToolSourceOptions {

@@ -1,10 +1,10 @@
 # Module Federation 共享依赖约定
 
-本文档适用于使用 `@vetta-org/plugin-vite` 的 preset 和 external 插件。
+本文档适用于使用 `@astravia-org/plugin-vite` 的 preset 和 external 插件。
 
 ## 默认共享依赖
 
-`vettaPluginFederation()` 会把以下模块配置为 Module Federation 的
+`astraviaPluginFederation()` 会把以下模块配置为 Module Federation 的
 `singleton: true` 和 `import: false`：
 
 | 模块 | 插件 `package.json` 中的要求 | 运行时来源 |
@@ -12,7 +12,7 @@
 | `react` | `devDependencies` 必须声明 | Desktop 宿主 share scope |
 | `react-dom` | `devDependencies` 必须声明 | Desktop 宿主 share scope |
 | `react-dom/client` | 不单独安装；由 `react-dom` 提供 | Desktop 宿主 share scope |
-| `@vetta-org/plugin-sdk` | `devDependencies` 必须声明 | Desktop 宿主 shim/share scope |
+| `@astravia-org/plugin-sdk` | `devDependencies` 必须声明 | Desktop 宿主 shim/share scope |
 
 依赖版本应与仓库其他插件保持一致。当前仓库使用 `react` / `react-dom`
 `19.1.1`，本地包使用 `workspace:*`。
@@ -22,8 +22,8 @@
 ```json
 {
   "devDependencies": {
-    "@vetta-org/plugin-sdk": "workspace:*",
-    "@vetta-org/plugin-vite": "workspace:*",
+    "@astravia-org/plugin-sdk": "workspace:*",
+    "@astravia-org/plugin-vite": "workspace:*",
     "react": "19.1.1",
     "react-dom": "19.1.1"
   }
@@ -32,11 +32,11 @@
 
 ## 按需共享宿主 UI primitives
 
-`@vetta-org/ui` 不是默认共享依赖。只有源码实际导入该包的插件才应同时开启
+`@astravia-org/ui` 不是默认共享依赖。只有源码实际导入该包的插件才应同时开启
 `hostUi` 并声明本地开发依赖：
 
 ```ts
-vettaPluginFederation({
+astraviaPluginFederation({
   name: "my_plugin",
   hostUi: true,
 });
@@ -45,22 +45,22 @@ vettaPluginFederation({
 ```json
 {
   "devDependencies": {
-    "@vetta-org/ui": "workspace:*"
+    "@astravia-org/ui": "workspace:*"
   }
 }
 ```
 
 `hostUi` 会同时配置 Module Federation shared 和 Rollup external。未使用该包的
-插件不要开启 `hostUi`，也不要声明 `@vetta-org/ui`；仅为了消除构建警告增加依赖
+插件不要开启 `hostUi`，也不要声明 `@astravia-org/ui`；仅为了消除构建警告增加依赖
 会掩盖配置与源码不一致。
 
 ## 按需共享宿主 Theme UI
 
-`@vetta-org/theme-ui/plugin-ui` 是宿主成品 UI 的窄公共入口，不是所有插件的基础依赖。
+`@astravia-org/theme-ui/plugin-ui` 是宿主成品 UI 的窄公共入口，不是所有插件的基础依赖。
 只有实际导入该入口的插件才应同时完成两项声明：
 
 ```ts
-vettaPluginFederation({
+astraviaPluginFederation({
   name: "my_plugin",
   hostThemeUi: true,
 });
@@ -69,15 +69,15 @@ vettaPluginFederation({
 ```json
 {
   "devDependencies": {
-    "@vetta-org/theme-ui": "workspace:*"
+    "@astravia-org/theme-ui": "workspace:*"
   }
 }
 ```
 
 仓库外插件应把 `workspace:*` 换成已发布且与目标 Desktop 兼容的版本。配置中的
-共享键是子路径 `@vetta-org/theme-ui/plugin-ui`，但需要安装的 npm 包是
-`@vetta-org/theme-ui`。未使用该入口的插件不要开启 `hostThemeUi`，也不需要声明
-`@vetta-org/theme-ui`。
+共享键是子路径 `@astravia-org/theme-ui/plugin-ui`，但需要安装的 npm 包是
+`@astravia-org/theme-ui`。未使用该入口的插件不要开启 `hostThemeUi`，也不需要声明
+`@astravia-org/theme-ui`。
 
 ## `import: false` 的含义
 
@@ -87,7 +87,7 @@ vettaPluginFederation({
 Module Federation 仍会在构建阶段解析本地包并检测命名导出。例如：
 
 ```ts
-import { Button } from "@vetta-org/ui";
+import { Button } from "@astravia-org/ui";
 ```
 
 如果包没有安装，构建器会输出：
@@ -102,7 +102,7 @@ Shared dependency "..." has import: false but is not installed locally.
 ## 顶层求值限制
 
 共享模块由宿主异步注入。不要在模块顶层立即创建依赖共享运行时的值，尤其是
-JSX、`React.createContext()`、或基于 `@vetta-org/ui` 组件的常量：
+JSX、`React.createContext()`、或基于 `@astravia-org/ui` 组件的常量：
 
 ```tsx
 // 错误：插件 bootstrap 完成前可能读取到未初始化的共享模块。
@@ -113,23 +113,23 @@ const EmptyState = <div />;
 
 ## 新增或修改插件时的清单
 
-1. 使用 `vettaPluginFederation()` 时，先检查上述默认共享依赖是否都在
-   `devDependencies` 中；导入 `@vetta-org/ui` 时再同时添加 `hostUi: true` 和对应依赖。
+1. 使用 `astraviaPluginFederation()` 时，先检查上述默认共享依赖是否都在
+   `devDependencies` 中；导入 `@astravia-org/ui` 时再同时添加 `hostUi: true` 和对应依赖。
 2. 修改依赖后在仓库根目录运行 `bun install`，只提交根 `bun.lock`。
 3. 在插件目录运行生产构建，确认日志中没有 `Shared dependency` 警告。
 4. 修改 `shared` 配置时同步检查 Desktop 宿主的 share scope 和
    `plugin-shared-modules` 导出列表。
 5. 若插件是 resource-only，不需要 renderer Module Federation 入口时，不要
-   引入 `vettaPluginFederation()`；否则仍需遵守本页的共享依赖契约。
+   引入 `astraviaPluginFederation()`；否则仍需遵守本页的共享依赖契约。
 
 ## 警告排查
 
 - `react` / `react-dom` 缺失：插件通常是非 UI 入口，但仍使用了默认 Federation
   配置；补充对应开发依赖，或改用 resource-only 构建路径。
-- `@vetta-org/ui` 缺失：仅当源码确实导入它时开启 `hostUi`、补充 `workspace:*`
-  开发依赖，并确认宿主版本提供 `vetta-host://ui` shim；未使用时不要增加依赖。
-- `@vetta-org/theme-ui/plugin-ui` 缺失：仅在源码确实导入该入口时开启
-  `hostThemeUi`，并安装基础包 `@vetta-org/theme-ui`；未使用时不要把它加入
+- `@astravia-org/ui` 缺失：仅当源码确实导入它时开启 `hostUi`、补充 `workspace:*`
+  开发依赖，并确认宿主版本提供 `astravia-host://ui` shim；未使用时不要增加依赖。
+- `@astravia-org/theme-ui/plugin-ui` 缺失：仅在源码确实导入该入口时开启
+  `hostThemeUi`，并安装基础包 `@astravia-org/theme-ui`；未使用时不要把它加入
   `shared`。
 - 警告重复出现：通常表示多个 preset 被并行构建；按插件目录逐一检查，
   不要只修复第一个输出警告的包。

@@ -1,4 +1,4 @@
-import type { PluginContext } from "@vetta-org/plugin-sdk";
+import type { PluginContext } from "@astravia-org/plugin-sdk";
 
 /**
  * activate() 拿到的 ctx 存这里：工作区配置页是零 props 组件，拿不到 ctx，

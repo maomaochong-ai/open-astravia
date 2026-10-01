@@ -1,2 +1,2 @@
-export type { SyntaxHighlightedCodeProps } from "@vetta-org/theme-ui/shared";
-export { SyntaxHighlightedCode } from "@vetta-org/theme-ui/shared";
+export type { SyntaxHighlightedCodeProps } from "@astravia-org/theme-ui/shared";
+export { SyntaxHighlightedCode } from "@astravia-org/theme-ui/shared";

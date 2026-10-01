@@ -98,7 +98,7 @@ SDK Host Adapter：
 - 可选 `modelFallbackMessage`。
 
 但现有公开 `AgentSession` 仍有大量 Runtime Capability 与产品门面成员，Greenfield SDK Core 不能冒充其
-完整类型。本阶段只从 `@vetta/coding-agent/bootstrap` 暴露候选工厂，旧 `createAgentSession` 的签名、
+完整类型。本阶段只从 `@astravia/coding-agent/bootstrap` 暴露候选工厂，旧 `createAgentSession` 的签名、
 导出与执行路径保持不变。
 
 ## 本阶段修改

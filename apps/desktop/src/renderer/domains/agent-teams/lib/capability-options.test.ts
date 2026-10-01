@@ -110,14 +110,14 @@ describe("agent capability options", () => {
 		const [option] = buildAgentCapabilityOptions({
 			skills: [
 				{
-					name: "vetta-ui-design",
+					name: "astravia-ui-design",
 					alias: "Internal alias",
 					description: "Internal description",
 					source: "plugin",
 					type: "skill",
 					presentation: {
 						defaultVisibility: "visible",
-						displayName: "Vetta 设计",
+						displayName: "Astravia 设计",
 						displayDescription: "设计产品界面",
 					},
 				},
@@ -128,8 +128,8 @@ describe("agent capability options", () => {
 		});
 
 		expect(option).toMatchObject({
-			id: "vetta-ui-design",
-			title: "Vetta 设计",
+			id: "astravia-ui-design",
+			title: "Astravia 设计",
 			description: "设计产品界面",
 			visibleInAgentConfiguration: true,
 		});

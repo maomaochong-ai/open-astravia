@@ -1,7 +1,7 @@
 import { formatShortcut } from "@shared/lib/platform";
 import { getEffectiveShortcut, loadShortcutBindings } from "@shared/lib/shortcuts";
 import { commandMenuOpenAtom } from "@shared/store/atoms";
-import { Button } from "@vetta-org/ui";
+import { Button } from "@astravia-org/ui";
 import { useSetAtom } from "jotai";
 import { useEffect, useState, type JSX } from "react";
 import { useTranslation } from "react-i18next";
@@ -24,7 +24,7 @@ export function SidebarCommandMenuTrigger(): JSX.Element {
 			if (active) setShortcut(getEffectiveShortcut("open-command-menu", bindings));
 		};
 		void loadShortcutBindings().then(apply);
-		return window.vetta.config.onShortcutsChanged((event) => apply(event.bindings ?? {}));
+		return window.astravia.config.onShortcutsChanged((event) => apply(event.bindings ?? {}));
 	}, []);
 
 	const label = t("commandMenu.trigger");

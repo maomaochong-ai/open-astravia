@@ -81,7 +81,7 @@ function createAvailableEngine(): FakeUpdateEngine {
 		info: {
 			version: "0.6.0",
 			releaseNote: "Release notes",
-			assetFileName: "Vetta-0.6.0.exe",
+			assetFileName: "Astravia-0.6.0.exe",
 			totalBytes: 1_000,
 		},
 	};
@@ -109,7 +109,7 @@ describe("UpdaterService", () => {
 			currentVersion: "0.5.21",
 			latestVersion: "0.6.0",
 			releaseNote: "Release notes",
-			assetFileName: "Vetta-0.6.0.exe",
+			assetFileName: "Astravia-0.6.0.exe",
 			totalBytes: 1_000,
 		});
 	});
@@ -133,7 +133,7 @@ describe("UpdaterService", () => {
 			downloadedBytes: 500,
 		});
 
-		engine.completeDownload(["C:\\updates\\Vetta-0.6.0.exe"]);
+		engine.completeDownload(["C:\\updates\\Astravia-0.6.0.exe"]);
 		await downloadPromise;
 
 		expect(service.getState()).toMatchObject({
@@ -216,7 +216,7 @@ describe("UpdaterService", () => {
 		expect(engine.cancelCalls).toBe(0);
 		expect(service.getState().phase).toBe("downloading");
 
-		engine.completeDownload(["/Applications/Vetta.app"]);
+		engine.completeDownload(["/Applications/Astravia.app"]);
 		await downloadPromise;
 		expect(service.getState().phase).toBe("ready");
 	});
@@ -245,7 +245,7 @@ describe("UpdaterService", () => {
 		const service = new UpdaterService(engine, "0.5.21", true, translate);
 		await service.check();
 		const downloadPromise = service.startDownload();
-		engine.completeDownload(["C:\\updates\\Vetta-0.6.0.exe"]);
+		engine.completeDownload(["C:\\updates\\Astravia-0.6.0.exe"]);
 		await downloadPromise;
 
 		service.cancel();

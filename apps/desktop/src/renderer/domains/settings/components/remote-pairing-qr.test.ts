@@ -6,9 +6,9 @@ import QRCode from "qrcode";
 import { describe, expect, it } from "vitest";
 import { inBadge, pairingQr, pairingQrSvg, roundedQrSvg } from "./remote-pairing-qr";
 
-const CODE_QR = "VETTA://PAIR/K7Q29MXD/482913";
+const CODE_QR = "ASTRAVIA://PAIR/K7Q29MXD/482913";
 
-const LINK = `vetta://pair?${new URLSearchParams({
+const LINK = `astravia://pair?${new URLSearchParams({
 	v: "2",
 	id: "a1B2c3D4e5F6g7H8i9J0kL",
 	s: "b".repeat(43),

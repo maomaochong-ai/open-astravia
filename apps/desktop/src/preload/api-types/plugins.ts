@@ -66,7 +66,7 @@ import type {
 	WebhookSendResult,
 	WebhookUpdateData,
 	WorkspaceSettingInput,
-} from "@vetta-org/capability-sdk";
+} from "@astravia-org/capability-sdk";
 import type {
 	OcrProviderDescriptor,
 	OcrProviderRequest,
@@ -107,7 +107,7 @@ import type {
 	PluginServiceRequest,
 	PluginServiceResponse,
 	PluginServiceStatus,
-} from "@vetta-org/plugin-sdk";
+} from "@astravia-org/plugin-sdk";
 
 export type {
 	PluginAgentManifest,
@@ -119,7 +119,7 @@ export type {
 	PluginServiceHostPlatform,
 	PluginServiceProviderManifest,
 	PluginServiceRequest,
-} from "@vetta-org/plugin-sdk";
+} from "@astravia-org/plugin-sdk";
 
 /** 一份扁平 catalog：翻译 key → 本地化字符串。 */
 export type PluginLocaleCatalog = Record<string, string>;
@@ -190,7 +190,7 @@ export interface InstalledPlugin {
 	author?: string;
 	/**
 	 * 见 PluginManifest.icon —— 已解析为可直接渲染的值：Iconify 名 / 外链原样，
-	 * 包内相对路径已转成带 cache key 的 `vetta-plugin://` URL。未声明图标时为 undefined。
+	 * 包内相对路径已转成带 cache key 的 `astravia-plugin://` URL。未声明图标时为 undefined。
 	 */
 	iconUrl?: string;
 	/** 见 PluginManifest.guidingWords —— NewSessionPage 欢迎页消费。 */
@@ -220,7 +220,7 @@ export interface InstalledPlugin {
 	pendingVersion?: string;
 	/**
 	 * Absolute filesystem root of the active plugin package
-	 * (system staging dir, or `~/.vetta/plugins/<id>/versions/<activeVersion>`).
+	 * (system staging dir, or `~/.astravia/plugins/<id>/versions/<activeVersion>`).
 	 */
 	rootPath: string;
 	/** 存在即该插件处于 dev 热更新链接（资源改从工程目录加载）。 */
@@ -793,7 +793,7 @@ export interface DesktopPluginsApi {
 	listAll(): Promise<InstalledPlugin[]>;
 	installFromArchive(archiveBuffer: ArrayBuffer, options?: PluginInstallOptions): Promise<InstalledPlugin>;
 	installFromUrl(url: string, options?: PluginInstallOptions): Promise<InstalledPlugin>;
-	/** Install from a local .vettapkg absolute path; legacy .zip is accepted for compatibility. */
+	/** Install from a local .astraviapkg absolute path; legacy .zip is accepted for compatibility. */
 	installFromPath(path: string, options?: PluginInstallOptions): Promise<InstalledPlugin>;
 	uninstall(id: string): Promise<void>;
 	setEnabled(id: string, enabled: boolean): Promise<void>;
@@ -960,7 +960,7 @@ export interface DesktopPluginsApi {
 	/** Fired when plugins are installed/uninstalled/enabled/reloaded (host should re-load remotes). */
 	onPluginsChanged(listener: (event?: PluginsChangedEvent) => void): () => void;
 	networkRequest<T = unknown>(sessionId: string, request: PluginNetworkRequest): Promise<PluginNetworkResponse<T>>;
-	/** 带登录身份打 Vetta 服务端；仅 official 插件的 session 会被主进程放行（ADR-0056）。 */
+	/** 带登录身份打 Astravia 服务端；仅 official 插件的 session 会被主进程放行（ADR-0056）。 */
 	gatewayRequest<T = unknown>(sessionId: string, request: PluginGatewayRequest): Promise<PluginGatewayResponse<T>>;
 	secretsGet(sessionId: string, key: string): Promise<string | undefined>;
 	secretsHas(sessionId: string, key: string): Promise<boolean>;

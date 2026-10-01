@@ -1,4 +1,4 @@
-import { createAssistantMessageEventStream, type Model, type SimpleStreamFunction } from "@vetta/ai";
+import { createAssistantMessageEventStream, type Model, type SimpleStreamFunction } from "@astravia/ai";
 import { describe, expect, it, vi } from "vitest";
 import { createLoopbackSessionAffinityStream } from "./loopback-session-affinity-stream.js";
 

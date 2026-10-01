@@ -1,6 +1,6 @@
 import { Button } from "@shared/components/ui/button";
 import type { BottomPanelLeaf as BottomPanelLeafState, BottomPanelSessionState } from "@shared/store/atoms";
-import { BottomPanelTabStripView } from "@vetta-org/theme-ui/bottom-panel";
+import { BottomPanelTabStripView } from "@astravia-org/theme-ui/bottom-panel";
 import { useAtomValue } from "jotai";
 import type { JSX } from "react";
 import { useTranslation } from "react-i18next";

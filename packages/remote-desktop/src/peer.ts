@@ -35,7 +35,7 @@ export interface RemoteDesktopTextChannelHandlers {
 	onClose?(reason?: string): void;
 }
 
-export const REMOTE_DESKTOP_CONTROL_CHANNEL = "vetta-control-v2";
+export const REMOTE_DESKTOP_CONTROL_CHANNEL = "astravia-control-v2";
 const MAX_CONTROL_MESSAGE_CHARS = 1_500_000;
 
 export class RemoteDesktopHost {
@@ -109,7 +109,7 @@ export class RemoteDesktopHost {
 			preferHardwareCodec(transceiver);
 			this.screenSender = transceiver.sender;
 		}
-		this.inputChannel = this.peer.createDataChannel("vetta-input-v1", { ordered: true });
+		this.inputChannel = this.peer.createDataChannel("astravia-input-v1", { ordered: true });
 		this.configureInputChannel(this.inputChannel);
 		if (this.control) {
 			this.controlChannel = this.peer.createDataChannel(REMOTE_DESKTOP_CONTROL_CHANNEL, { ordered: true });
@@ -323,7 +323,7 @@ export class RemoteDesktopViewer {
 			this.onStream(stream);
 		};
 		this.peer.ondatachannel = (event) => {
-			if (event.channel.label !== "vetta-input-v1" || this.inputChannel) {
+			if (event.channel.label !== "astravia-input-v1" || this.inputChannel) {
 				event.channel.close();
 				return;
 			}

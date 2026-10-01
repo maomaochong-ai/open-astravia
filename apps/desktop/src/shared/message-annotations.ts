@@ -1,10 +1,10 @@
 import { z } from "zod";
 
 export const ANNOTATION_CHANNELS = {
-	LIST: "vetta:annotations:list",
-	ASK: "vetta:annotations:ask",
-	CANCEL: "vetta:annotations:cancel",
-	CHANGED: "vetta:annotations:changed",
+	LIST: "astravia:annotations:list",
+	ASK: "astravia:annotations:ask",
+	CANCEL: "astravia:annotations:cancel",
+	CHANGED: "astravia:annotations:changed",
 } as const;
 
 export const annotationTurnSchema = z.object({

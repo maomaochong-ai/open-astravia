@@ -1,5 +1,5 @@
 import { NodeToolbar, Position } from "@xyflow/react";
-import { useTranslation } from "@vetta-org/plugin-sdk";
+import { useTranslation } from "@astravia-org/plugin-sdk";
 import { useMemo } from "react";
 import {
 	Button,
@@ -7,7 +7,7 @@ import {
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuTrigger,
-} from "@vetta-org/ui";
+} from "@astravia-org/ui";
 import type { ContentNodeAlignment, ContentNodeLayout } from "../node/layout";
 
 interface SelectionToolbarProps {

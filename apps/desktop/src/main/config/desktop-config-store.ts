@@ -2,9 +2,9 @@ import { readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { getVettaHomePath } from "@vetta/action-rpc";
-import type { SshHost } from "@vetta/ssh-transport";
-import { atomicWriteJSON, atomicWriteJSONAsync } from "@vetta/toolkit/atomic-write";
+import { getAstraviaHomePath } from "@astravia/action-rpc";
+import type { SshHost } from "@astravia/ssh-transport";
+import { atomicWriteJSON, atomicWriteJSONAsync } from "@astravia/toolkit/atomic-write";
 import { isLanguagePreference, type LanguagePreference } from "../../shared/i18n/config.js";
 import {
 	DEFAULT_NOTIFICATION_PREFERENCES,
@@ -23,8 +23,8 @@ export interface ProjectEntry {
 
 /** 实验性功能开关分组（设置页「Agent配置 → 扩展功能」）。新增实验项只加一个键。 */
 export interface ExperimentalConfig {
-	/** Vetta CLI 提示词：开启后仅注入桌面端对话会话。缺省开。 */
-	vettaCli?: boolean;
+	/** Astravia CLI 提示词：开启后仅注入桌面端对话会话。缺省开。 */
+	astraviaCli?: boolean;
 	/** 输入预测：每轮正常回答后预测用户下一个可能输入的 prompt。缺省关。 */
 	promptPrediction?: boolean;
 	/** 适配通用 Agent Skill。缺省开。 */
@@ -46,8 +46,8 @@ export interface DesktopConfig {
 	workspacePath: string;
 	defaultExecutionMode: "sandbox" | "full-access";
 	debugMode?: boolean;
-	vettaAppPath?: string;
-	vettaCliAppPath?: string;
+	astraviaAppPath?: string;
+	astraviaCliAppPath?: string;
 	notificationsEnabled?: boolean;
 	notificationPreferences: DesktopNotificationPreferences;
 	language?: LanguagePreference;
@@ -130,34 +130,34 @@ export interface KnowledgeBaseConfig {
 	ocrConcurrency?: number;
 }
 
-export const DEFAULT_CONVERSATION_CWD = join(getVettaHomePath(), "conversation");
-export const DEFAULT_CONVERSATION_SESSION_DIR = join(DEFAULT_CONVERSATION_CWD, ".vetta", "sessions");
-export const DEFAULT_IM_CONVERSATION_CWD = join(getVettaHomePath(), "im-gateway", "conversation");
-export const DEFAULT_IM_CONVERSATION_SESSION_DIR = join(DEFAULT_IM_CONVERSATION_CWD, ".vetta", "sessions");
-export const KB_PROCESSING_CWD = join(getVettaHomePath(), "knowledges", "processing_records");
-export const KB_PROCESSING_SESSION_DIR = join(KB_PROCESSING_CWD, ".vetta", "sessions");
+export const DEFAULT_CONVERSATION_CWD = join(getAstraviaHomePath(), "conversation");
+export const DEFAULT_CONVERSATION_SESSION_DIR = join(DEFAULT_CONVERSATION_CWD, ".astravia", "sessions");
+export const DEFAULT_IM_CONVERSATION_CWD = join(getAstraviaHomePath(), "im-gateway", "conversation");
+export const DEFAULT_IM_CONVERSATION_SESSION_DIR = join(DEFAULT_IM_CONVERSATION_CWD, ".astravia", "sessions");
+export const KB_PROCESSING_CWD = join(getAstraviaHomePath(), "knowledges", "processing_records");
+export const KB_PROCESSING_SESSION_DIR = join(KB_PROCESSING_CWD, ".astravia", "sessions");
 
-const CONFIG_PATH = join(getVettaHomePath(), "desktop-config.json");
+const CONFIG_PATH = join(getAstraviaHomePath(), "desktop-config.json");
 /**
  * SSH 主机单独成文件，而不是 desktop-config.json 的一个字段。
  *
- * 开发版与已安装的正式版共用 `~/.vetta`。0.5.58 及更早版本按自己的字段白名单整份重写
- * desktop-config.json，不认识的 sshHosts 随之消失——它们被 vetta:// 链接、通知之类
+ * 开发版与已安装的正式版共用 `~/.astravia`。0.5.58 及更早版本按自己的字段白名单整份重写
+ * desktop-config.json，不认识的 sshHosts 随之消失——它们被 astravia:// 链接、通知之类
  * 顺手拉起一次就够了，写回代码里再怎么保留未知字段也管不到已经发出去的旧版本。
  * 旧版本不知道这个文件，也就碰不到它。
  */
-const SSH_HOSTS_PATH = join(getVettaHomePath(), "ssh-hosts.json");
+const SSH_HOSTS_PATH = join(getAstraviaHomePath(), "ssh-hosts.json");
 const DEFAULT_CONFIG: DesktopConfig = {
 	schemaVersion: DESKTOP_CONFIG_SCHEMA_VERSION,
 	projects: [],
 	archivedProjects: [],
-	workspacePath: join(getVettaHomePath(), "workspace"),
+	workspacePath: join(getAstraviaHomePath(), "workspace"),
 	defaultExecutionMode: "full-access",
 	defaultAgentMode: "work",
 	debugMode: false,
 	notificationsEnabled: true,
 	notificationPreferences: DEFAULT_NOTIFICATION_PREFERENCES,
-	experimental: { vettaCli: true, agentSkills: true },
+	experimental: { astraviaCli: true, agentSkills: true },
 	proxy: { ...DEFAULT_PROXY_CONFIG },
 	imageGeneration: {},
 	shortcuts: { bindings: {} },
@@ -238,14 +238,14 @@ export function normalizeAppshot(value: unknown): AppshotConfig {
 export function normalizeExperimental(value: unknown): ExperimentalConfig {
 	if (typeof value !== "object" || value === null) {
 		return {
-			vettaCli: true,
+			astraviaCli: true,
 			promptPrediction: false,
 			agentSkills: true,
 		};
 	}
 	const input = value as Record<string, unknown>;
 	return {
-		vettaCli: typeof input.vettaCli === "boolean" ? input.vettaCli : true,
+		astraviaCli: typeof input.astraviaCli === "boolean" ? input.astraviaCli : true,
 		promptPrediction: typeof input.promptPrediction === "boolean" ? input.promptPrediction : false,
 		agentSkills: typeof input.agentSkills === "boolean" ? input.agentSkills : true,
 	};
@@ -321,8 +321,8 @@ function parseDesktopConfig(parsed: Record<string, unknown>): DesktopConfig {
 		// 兼容 0.x 的旧字段名 agentMode（当时语义是全局工作模式），老用户配置不丢。
 		defaultAgentMode: normalizeAgentMode(parsed.defaultAgentMode ?? parsed.agentMode),
 		debugMode: typeof parsed.debugMode === "boolean" ? parsed.debugMode : false,
-		vettaAppPath: typeof parsed.vettaAppPath === "string" ? parsed.vettaAppPath : undefined,
-		vettaCliAppPath: typeof parsed.vettaCliAppPath === "string" ? parsed.vettaCliAppPath : undefined,
+		astraviaAppPath: typeof parsed.astraviaAppPath === "string" ? parsed.astraviaAppPath : undefined,
+		astraviaCliAppPath: typeof parsed.astraviaCliAppPath === "string" ? parsed.astraviaCliAppPath : undefined,
 		notificationsEnabled: typeof parsed.notificationsEnabled === "boolean" ? parsed.notificationsEnabled : true,
 		notificationPreferences: normalizeNotificationPreferences(parsed.notificationPreferences),
 		language: isLanguagePreference(parsed.language) ? parsed.language : undefined,
@@ -515,9 +515,12 @@ function readRawConfigSync(): Record<string, unknown> {
 	}
 }
 
-export async function persistVettaCliPaths(paths: { vettaAppPath: string; vettaCliAppPath: string }): Promise<void> {
+export async function persistAstraviaCliPaths(paths: {
+	astraviaAppPath: string;
+	astraviaCliAppPath: string;
+}): Promise<void> {
 	await updateDesktopConfig((config) =>
-		config.vettaAppPath === paths.vettaAppPath && config.vettaCliAppPath === paths.vettaCliAppPath
+		config.astraviaAppPath === paths.astraviaAppPath && config.astraviaCliAppPath === paths.astraviaCliAppPath
 			? config
 			: { ...config, ...paths },
 	);

@@ -1,5 +1,5 @@
-import { useTranslation } from "@vetta-org/plugin-sdk";
-import { cn, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@vetta-org/ui";
+import { useTranslation } from "@astravia-org/plugin-sdk";
+import { cn, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@astravia-org/ui";
 import { useState, type JSX } from "react";
 
 export interface ProjectPickerProps {
@@ -78,7 +78,7 @@ export function ProjectPicker({
 					<span className="icon-[solar--alt-arrow-down-linear] h-2.5 w-2.5 shrink-0 opacity-60" />
 				</button>
 			</DropdownMenuTrigger>
-			<DropdownMenuContent data-vetta-plugin-root="kanban" align="start" className="max-h-64 w-60 overflow-y-auto">
+			<DropdownMenuContent data-astravia-plugin-root="kanban" align="start" className="max-h-64 w-60 overflow-y-auto">
 				{projects.map((project) => (
 					<DropdownMenuItem
 						key={project.path}

@@ -6,8 +6,8 @@
 
 | 范围 | 路径 |
 |------|------|
-| 全局 | `~/.vetta/agent/mcp.json` |
-| 项目 | `<cwd>/.vetta/mcp.json` |
+| 全局 | `~/.astravia/agent/mcp.json` |
+| 项目 | `<cwd>/.astravia/mcp.json` |
 
 项目覆盖同名全局项。示例：`mcp.example.json`。
 
@@ -31,7 +31,7 @@
 ```
 
 - `env` 支持 `${VAR}`；`cwd` 支持 `${PROJECT_ROOT}`。
-- HTTP 远程 server 由运行时支持（含 OAuth 流程时凭证在 `~/.vetta/agent/mcp-auth/`，不写回 `mcp.json`）。
+- HTTP 远程 server 由运行时支持（含 OAuth 流程时凭证在 `~/.astravia/agent/mcp-auth/`，不写回 `mcp.json`）。
 - 插件可贡献第三配置源（不回写用户文件），命名 `plugin-<id>-<local>`。见仓库 ADR-0040。
 
 ## 行为
@@ -48,12 +48,12 @@
   `server/discover`、CacheableResult、MRTR、取消和 subscriptions。
 - Modern Tool、Resource、Prompt 的 `input_required` 由统一 MRTR 状态机处理。Legacy Server Request 继续兼容
   Elicitation、Sampling 和 Roots；Desktop 只为当前项目暴露 Root，Sampling 必须由宿主显式注入审批策略。
-- MCP Tasks 与 Vetta 后台命令任务分开管理。Tool 创建 Task 后会轮询、处理输入、支持取消，并在 Desktop 活动面板投影
+- MCP Tasks 与 Astravia 后台命令任务分开管理。Tool 创建 Task 后会轮询、处理输入、支持取消，并在 Desktop 活动面板投影
   最小可恢复状态；远端 taskId 和正文不进入 Renderer。
 
 ## ToolResult 内容与图片
 
-Vetta 支持 MCP ToolResult 中的 `text`、`image`、`audio`、`resource_link` 和嵌入 `resource` 内容。
+Astravia 支持 MCP ToolResult 中的 `text`、`image`、`audio`、`resource_link` 和嵌入 `resource` 内容。
 
 - `image` 会进入 Runtime 的图片内容，并继续传给支持图片输入的 AI Provider；Desktop 工具结果展开区也会显示图片预览。
 - MIME 为 `image/*` 的嵌入资源 blob 会按图片处理。
@@ -73,5 +73,5 @@ initialize、Tool input/result、受限 `tools/call` 和 `resources/read`；Tool
 协议异常、超时、进程退出、MRTR/Task/App 生命周期和结果降级只记录安全摘要，不记录凭据、参数、结果正文或 base64 媒体。
 
 协议细节见 [MCP `2026-07-28` 规范](https://modelcontextprotocol.io/specification/2026-07-28)和
-[MCP Apps 规范](https://modelcontextprotocol.io/extensions/apps/overview)。运行时实现在 `@vetta/runtime-mcp`，
+[MCP Apps 规范](https://modelcontextprotocol.io/extensions/apps/overview)。运行时实现在 `@astravia/runtime-mcp`，
 本包负责产品侧装配。

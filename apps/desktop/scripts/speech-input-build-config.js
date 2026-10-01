@@ -1,4 +1,4 @@
-export const SPEECH_INPUT_ENABLED_ENV = "VETTA_SPEECH_INPUT_ENABLED";
+export const SPEECH_INPUT_ENABLED_ENV = "ASTRAVIA_SPEECH_INPUT_ENABLED";
 
 export function resolveSpeechInputTargetTags(
 	env = process.env,
@@ -6,7 +6,7 @@ export function resolveSpeechInputTargetTags(
 	arch = process.arch,
 ) {
 	const configured =
-		env.VETTA_IM_GATEWAY_TARGET_PLATFORMS ?? env.VETTA_CLI_TARGET_PLATFORMS ?? env.VETTA_VENDOR_PLATFORM;
+		env.ASTRAVIA_IM_GATEWAY_TARGET_PLATFORMS ?? env.ASTRAVIA_CLI_TARGET_PLATFORMS ?? env.ASTRAVIA_VENDOR_PLATFORM;
 	return typeof configured === "string" && configured.trim().length > 0
 		? configured
 				.split(",")

@@ -14,8 +14,8 @@ const API_PREFIX = "/api/v1";
 /**
  * 归一 baseUrl 为服务根（不含 API 前缀）。
  *
- * 必须容忍两种写法：桌面端注入的 VETTA_SERVER_URL 自带 /api/v1，手工设
- * VETTA_API_BASE_URL 的人通常只写到域名。不统一就会拼出 /api/v1/api/v1/... 而 404。
+ * 必须容忍两种写法：桌面端注入的 ASTRAVIA_SERVER_URL 自带 /api/v1，手工设
+ * ASTRAVIA_API_BASE_URL 的人通常只写到域名。不统一就会拼出 /api/v1/api/v1/... 而 404。
  */
 export function normalizeBaseUrl(raw) {
 	return raw.replace(/\/+$/, "").replace(/\/api\/v\d+$/, "");
@@ -28,17 +28,17 @@ export function apiUrl(baseUrl, path) {
 /**
  * 读取登录态。
  *
- * `~/.vetta/auth.json` 是客户端为外部进程下沉的凭据契约，登录、刷新、登出都会同步
+ * `~/.astravia/auth.json` 是客户端为外部进程下沉的凭据契约，登录、刷新、登出都会同步
  * 它。每次执行都重读，所以 token 轮换后脚本天然拿到新的。
  */
 export function loadCredentials() {
-	const envToken = process.env.VETTA_API_TOKEN?.trim();
-	const envBase = process.env.VETTA_API_BASE_URL?.trim() || process.env.VETTA_SERVER_URL?.trim();
+	const envToken = process.env.ASTRAVIA_API_TOKEN?.trim();
+	const envBase = process.env.ASTRAVIA_API_BASE_URL?.trim() || process.env.ASTRAVIA_SERVER_URL?.trim();
 	if (envToken && envBase) {
 		return { baseUrl: normalizeBaseUrl(envBase), token: envToken };
 	}
 
-	const home = process.env.VETTA_HOME?.trim() || join(homedir(), ".vetta");
+	const home = process.env.ASTRAVIA_HOME?.trim() || join(homedir(), ".astravia");
 	let parsed;
 	try {
 		parsed = JSON.parse(readFileSync(join(home, "auth.json"), "utf8"));

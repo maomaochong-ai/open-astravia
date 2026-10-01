@@ -4,7 +4,7 @@ import { createWriteStream, existsSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setImmediate } from "node:timers";
-import type { ForegroundCommandOperations } from "@vetta/runtime-tools";
+import type { ForegroundCommandOperations } from "@astravia/runtime-tools";
 import type {
 	BackgroundCommandHost,
 	BackgroundCommandOutputStore,
@@ -180,7 +180,7 @@ function createBackgroundProcessOperations(
 
 const localBackgroundCommandOutputStore: BackgroundCommandOutputStore = {
 	create(taskId) {
-		const path = join(tmpdir(), `vetta-task-${taskId}-${randomBytes(4).toString("hex")}.log`);
+		const path = join(tmpdir(), `astravia-task-${taskId}-${randomBytes(4).toString("hex")}.log`);
 		const stream = createWriteStream(path);
 		return {
 			path,

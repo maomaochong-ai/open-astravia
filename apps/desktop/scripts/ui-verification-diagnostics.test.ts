@@ -13,7 +13,7 @@ describe("UI verification diagnostics", () => {
 
   test("explains the stale DevTools target attach failure", () => {
     const message = formatPlaywrightAttachFailure({
-      sessionName: "vetta-dev-test",
+      sessionName: "astravia-dev-test",
       status: null,
       signal: "SIGTERM",
       timedOut: true,

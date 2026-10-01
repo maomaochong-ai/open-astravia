@@ -1,9 +1,9 @@
-import type { BatchProject } from "@shared/store/atoms";
 import type {
 	BatchProjectCountsView,
 	BatchTaskProjectBlockCallbacks,
 	BatchTaskViewItem,
-} from "@vetta-org/theme-ui/batch-tasks";
+} from "@astravia-org/theme-ui/batch-tasks";
+import type { BatchProject } from "@shared/store/atoms";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { computeCounts, relativeTime, sortTasks, statusLabel } from "../utils/batchTaskListData";

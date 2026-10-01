@@ -1,5 +1,5 @@
+import { parseProjectLocation } from "@astravia/ssh-transport/project-uri";
 import type { PortForward } from "@preload/api-types/ssh";
-import { parseProjectLocation } from "@vetta/ssh-transport/project-uri";
 import { useEffect, useState } from "react";
 
 /** 远程项目的 hostId；本机项目返回 null。 */
@@ -25,11 +25,11 @@ export function useSshPortForwards(hostId: string | null): readonly PortForward[
 		}
 		let cancelled = false;
 		const refresh = async (): Promise<void> => {
-			const next = await window.vetta.ssh.listPortForwards(hostId);
+			const next = await window.astravia.ssh.listPortForwards(hostId);
 			if (!cancelled) setForwards(next);
 		};
 		void refresh();
-		const off = window.vetta.ssh.onPortForwardsChanged(() => void refresh());
+		const off = window.astravia.ssh.onPortForwardsChanged(() => void refresh());
 		return () => {
 			cancelled = true;
 			off();

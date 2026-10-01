@@ -1,5 +1,5 @@
+import type { Usage } from "@astravia/ai/protocol";
 import type { ChatConversationItem } from "@shared/store/atoms";
-import type { Usage } from "@vetta/ai/protocol";
 
 /** User-message identity that drives model-switch banners; ignores streaming assistant ticks. */
 export function userModelSwitchFingerprint(messages: readonly ChatConversationItem[]): string {

@@ -35,7 +35,7 @@ describe("useCommandPanelModel context compaction", () => {
 			id: "compact-1",
 			pendingCount: 1,
 		}));
-		Object.defineProperty(window, "vetta", {
+		Object.defineProperty(window, "astravia", {
 			configurable: true,
 			value: { session: { queueContextCompaction } },
 		});
@@ -64,7 +64,7 @@ describe("useCommandPanelModel context compaction", () => {
 			id: "compact-1",
 			pendingCount: 1,
 		}));
-		Object.defineProperty(window, "vetta", {
+		Object.defineProperty(window, "astravia", {
 			configurable: true,
 			value: { session: { queueContextCompaction } },
 		});
@@ -152,7 +152,7 @@ describe("useCommandPanelModel context compaction", () => {
 		const queueContextCompaction = vi.fn(async () => {
 			throw new Error("queue unavailable");
 		});
-		Object.defineProperty(window, "vetta", {
+		Object.defineProperty(window, "astravia", {
 			configurable: true,
 			value: { session: { queueContextCompaction } },
 		});

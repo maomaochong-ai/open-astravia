@@ -8,19 +8,19 @@ Two ways in: install a build, or run the desktop app from this repository.
 
 Installers for macOS, Windows, and Linux:
 
-**→ [www.openvetta.com/download](https://www.openvetta.com/download)**
+**→ [www.astravia.dev](https://www.astravia.dev)**
 
-Official installers are published on the website CDN. This repository is the source. After install, the setup wizard walks through model configuration (BYOK) and permissions. Product guides: [docs.openvetta.com](https://docs.openvetta.com).
+Official installers are published on the website CDN. This repository is the source. After install, the setup wizard walks through model configuration (BYOK) and permissions. Product guides: [docs.astravia.dev](https://docs.astravia.dev).
 
-A source checkout produces the **lite** build: no Vetta login, no subscription, keys stay on your machine. Official installers may be the **full** build. The two shapes are documented in [Build Modes](docs/desktop/build-modes.en.md).
+A source checkout produces the **lite** build: no Astravia login, no subscription, keys stay on your machine. Official installers may be the **full** build. The two shapes are documented in [Build Modes](docs/desktop/build-modes.en.md).
 
 ## Develop from source
 
 Requires **Bun 1.3+** and **Node 20+**. macOS, Windows, and Linux are supported.
 
 ```bash
-git clone https://github.com/openvetta/open-vetta.git
-cd open-vetta
+git clone https://github.com/maomaochong-ai/open-astravia.git
+cd open-astravia
 git checkout dev
 bun install
 ```
@@ -32,12 +32,12 @@ cd apps/desktop
 bun run dev
 ```
 
-That starts the Vite renderer, the theme dev server, and Electron together. The process uses `~/.vetta-dev`, so your installed-app data in `~/.vetta` is left alone.
+That starts the Vite renderer, the theme dev server, and Electron together. The process uses `~/.astravia-dev`, so your installed-app data in `~/.astravia` is left alone.
 
 | Command | Data root | When to use it |
 |---|---|---|
-| `bun run dev` | `~/.vetta-dev` | Default sandbox |
-| `bun run dev:home` | `~/.vetta` | You want the dev build to read and write real user data |
+| `bun run dev` | `~/.astravia-dev` | Default sandbox |
+| `bun run dev:home` | `~/.astravia` | You want the dev build to read and write real user data |
 
 `bun run dev` **at the repository root** only watches core libraries. It does not launch the app.
 

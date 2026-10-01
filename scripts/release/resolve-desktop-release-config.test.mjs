@@ -42,7 +42,7 @@ describe("resolveDesktopReleaseConfig", () => {
 			serverUrl: "",
 		});
 		expect(toGithubEnv(resolveDesktopReleaseConfig({ eventName: "push", refType: "tag", vars: {} }))).not.toContain(
-			"VETTA_OPEN_MARKETPLACE_REF=",
+			"ASTRAVIA_OPEN_MARKETPLACE_REF=",
 		);
 	});
 
@@ -50,32 +50,32 @@ describe("resolveDesktopReleaseConfig", () => {
 		const fromVars = resolveDesktopReleaseConfig({
 			eventName: "push",
 			refType: "tag",
-			vars: { VETTA_OPEN_MARKETPLACE_REF: "marketplace-v3" },
+			vars: { ASTRAVIA_OPEN_MARKETPLACE_REF: "marketplace-v3" },
 		});
 		expect(fromVars.marketplaceRef).toBe("marketplace-v3");
 		expect(toGithubOutput(fromVars)).toContain("marketplace_ref=marketplace-v3");
-		expect(toGithubEnv(fromVars)).toContain("VETTA_OPEN_MARKETPLACE_REF=marketplace-v3");
+		expect(toGithubEnv(fromVars)).toContain("ASTRAVIA_OPEN_MARKETPLACE_REF=marketplace-v3");
 		expect(resolveDesktopReleaseConfig({
-			vars: { VETTA_OPEN_MARKETPLACE_REF: "main" },
+			vars: { ASTRAVIA_OPEN_MARKETPLACE_REF: "main" },
 			inputs: { marketplace_ref: "marketplace-v3" },
 		}).marketplaceRef).toBe("marketplace-v3");
 		expect(resolveDesktopReleaseConfig({
 			eventName: "push",
-			vars: { VETTA_OPEN_MARKETPLACE_REF: "main" },
+			vars: { ASTRAVIA_OPEN_MARKETPLACE_REF: "main" },
 			inputs: { marketplace_ref: "marketplace-v3" },
 		}).marketplaceRef).toBe("main");
 	});
 
 	it.each(["github", "r2"])("uses only explicit marketplace configuration for %s releases", (releaseTarget) => {
 		const vars = {
-			VETTA_RELEASE_TARGET: releaseTarget,
-			VETTA_SERVER_URL: "https://api.example.com/api/v1",
+			ASTRAVIA_RELEASE_TARGET: releaseTarget,
+			ASTRAVIA_SERVER_URL: "https://api.example.com/api/v1",
 		};
 		expect(resolveDesktopReleaseConfig({ vars }).marketplaceRepository).toBe("");
-		const configured = { ...vars, VETTA_OPEN_MARKETPLACE_REPOSITORY: "example/catalog" };
+		const configured = { ...vars, ASTRAVIA_OPEN_MARKETPLACE_REPOSITORY: "example/catalog" };
 		const fromVars = resolveDesktopReleaseConfig({ vars: configured });
 		expect(fromVars.marketplaceRepository).toBe("example/catalog");
-		expect(toGithubEnv(fromVars)).toContain("VETTA_OPEN_MARKETPLACE_REPOSITORY=example/catalog");
+		expect(toGithubEnv(fromVars)).toContain("ASTRAVIA_OPEN_MARKETPLACE_REPOSITORY=example/catalog");
 		expect(resolveDesktopReleaseConfig({
 			vars: configured,
 			inputs: { marketplace_repository: "example/override" },
@@ -92,10 +92,10 @@ describe("resolveDesktopReleaseConfig", () => {
 			eventName: "push",
 			inputs: { cloud_enabled: "false", server_url: "https://evil.example" },
 			vars: {
-				VETTA_CLOUD_ENABLED: "true",
-				VETTA_RELEASE_TARGET: "r2",
-				VETTA_SERVER_URL: "https://api.example.com/api/v1",
-				VETTA_UPDATE_URL: "https://releases.example.com/desktop/stable",
+				ASTRAVIA_CLOUD_ENABLED: "true",
+				ASTRAVIA_RELEASE_TARGET: "r2",
+				ASTRAVIA_SERVER_URL: "https://api.example.com/api/v1",
+				ASTRAVIA_UPDATE_URL: "https://releases.example.com/desktop/stable",
 			},
 		});
 		expect(config).toMatchObject({
@@ -117,10 +117,10 @@ describe("resolveDesktopReleaseConfig", () => {
 				server_url: "https://api.staging.example.com/api/v1",
 			},
 			vars: {
-				VETTA_CLOUD_ENABLED: "true",
-				VETTA_R2_PREFIX: "desktop/stable",
-				VETTA_SERVER_URL: "https://api.example.com/api/v1",
-				VETTA_UPDATE_URL: "https://releases.example.com/desktop/stable",
+				ASTRAVIA_CLOUD_ENABLED: "true",
+				ASTRAVIA_R2_PREFIX: "desktop/stable",
+				ASTRAVIA_SERVER_URL: "https://api.example.com/api/v1",
+				ASTRAVIA_UPDATE_URL: "https://releases.example.com/desktop/stable",
 			},
 		});
 		expect(config.serverUrl).toBe("https://api.staging.example.com/api/v1");
@@ -155,11 +155,11 @@ describe("resolveDesktopReleaseConfig", () => {
 			eventName: "workflow_dispatch",
 			inputs: { channel: "test", release_target: "r2" },
 			vars: {
-				VETTA_SERVER_URL: "https://api.example.com/api/v1",
-				VETTA_R2_PREFIX: "desktop/stable",
-				VETTA_R2_PREFIX_TEST: "desktop/nightly",
-				VETTA_UPDATE_URL: "https://releases.example.com/desktop/stable",
-				VETTA_UPDATE_URL_TEST: "https://releases.example.com/desktop/nightly",
+				ASTRAVIA_SERVER_URL: "https://api.example.com/api/v1",
+				ASTRAVIA_R2_PREFIX: "desktop/stable",
+				ASTRAVIA_R2_PREFIX_TEST: "desktop/nightly",
+				ASTRAVIA_UPDATE_URL: "https://releases.example.com/desktop/stable",
+				ASTRAVIA_UPDATE_URL_TEST: "https://releases.example.com/desktop/nightly",
 			},
 		});
 		expect(config.updateUrl).toBe("https://releases.example.com/desktop/nightly");
@@ -170,11 +170,11 @@ describe("resolveDesktopReleaseConfig", () => {
 		const config = resolveDesktopReleaseConfig({
 			eventName: "workflow_dispatch",
 			inputs: { channel: "test", build_version: "0.5.47", release_target: "r2" },
-			vars: { VETTA_SERVER_URL: "https://api.example.com/api/v1" },
+			vars: { ASTRAVIA_SERVER_URL: "https://api.example.com/api/v1" },
 		});
 		expect(config.buildVersion).toBe("0.5.47");
-		expect(toGithubEnv(config)).toContain("VETTA_DESKTOP_BUILD_VERSION=0.5.47");
-		expect(toGithubEnv(config)).toContain("VETTA_RELEASE_PUBLISH=true");
+		expect(toGithubEnv(config)).toContain("ASTRAVIA_DESKTOP_BUILD_VERSION=0.5.47");
+		expect(toGithubEnv(config)).toContain("ASTRAVIA_RELEASE_PUBLISH=true");
 		expect(toGithubOutput(config)).toContain("build_version=0.5.47");
 	});
 
@@ -201,9 +201,9 @@ describe("resolveDesktopReleaseConfig", () => {
 			resolveDesktopReleaseConfig({
 				eventName: "push",
 				vars: {
-					VETTA_RELEASE_CHANNEL: "test",
-					VETTA_RELEASE_TARGET: "r2",
-					VETTA_SERVER_URL: "https://api.example.com/api/v1",
+					ASTRAVIA_RELEASE_CHANNEL: "test",
+					ASTRAVIA_RELEASE_TARGET: "r2",
+					ASTRAVIA_SERVER_URL: "https://api.example.com/api/v1",
 				},
 			}),
 		).toThrow(/only available through workflow_dispatch/);
@@ -216,7 +216,7 @@ describe("resolveDesktopReleaseConfig", () => {
 				inputs: { cloud_enabled: "true", release_target: "r2" },
 				vars: {},
 			}),
-		).toThrow(/VETTA_SERVER_URL/);
+		).toThrow(/ASTRAVIA_SERVER_URL/);
 	});
 
 	it("rejects mixing release targets and desktop editions", () => {
@@ -240,15 +240,15 @@ describe("resolveDesktopReleaseConfig", () => {
 				eventName: "workflow_dispatch",
 				inputs: { release_target: "r2" },
 				vars: {
-					VETTA_SERVER_URL: "https://api.example.com/api/v1",
-					VETTA_UPDATE_URL: "https://releases.example.com/desktop/stable",
+					ASTRAVIA_SERVER_URL: "https://api.example.com/api/v1",
+					ASTRAVIA_UPDATE_URL: "https://releases.example.com/desktop/stable",
 				},
 			}),
 		);
-		expect(env).toContain("VETTA_UPDATE_PROVIDER=generic");
-		expect(env).toContain("VETTA_UPDATE_URL=https://releases.example.com/desktop/stable");
-		expect(env).toContain("VETTA_CLOUD_ENABLED=true");
-		expect(env).not.toContain("VETTA_TENANT=");
+		expect(env).toContain("ASTRAVIA_UPDATE_PROVIDER=generic");
+		expect(env).toContain("ASTRAVIA_UPDATE_URL=https://releases.example.com/desktop/stable");
+		expect(env).toContain("ASTRAVIA_CLOUD_ENABLED=true");
+		expect(env).not.toContain("ASTRAVIA_TENANT=");
 	});
 
 	it("writes GitHub output lines for the workflow", () => {

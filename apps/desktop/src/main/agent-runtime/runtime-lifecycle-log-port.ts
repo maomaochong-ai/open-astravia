@@ -1,7 +1,7 @@
 import {
 	AGENT_CONFIGURATION_OBSERVATION,
 	type AgentConfigurationObservation,
-} from "@vetta/coding-agent/session-extensions";
+} from "@astravia/coding-agent/session-extensions";
 import {
 	RUNTIME_ACTIVE_SESSION_HOST_OBSERVATION,
 	RUNTIME_AGENT_LIFECYCLE_OBSERVATION,
@@ -13,7 +13,7 @@ import {
 	type RuntimeHostLifecycleObservation,
 	type RuntimeObservationPort,
 	type RuntimeObservationRecord,
-} from "@vetta/runtime-core";
+} from "@astravia/runtime-core";
 
 interface RuntimeLifecycleLogger {
 	info(message: string, fields: Record<string, unknown>): void;

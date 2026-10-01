@@ -2,7 +2,7 @@
 
 ## 1. 目标
 
-第 103 轮已将通用 MCP Server 生命周期迁入 `@vetta/runtime-mcp`，但 Greenfield CLI 和 Desktop
+第 103 轮已将通用 MCP Server 生命周期迁入 `@astravia/runtime-mcp`，但 Greenfield CLI 和 Desktop
 仍通过以下绕行获得 Runtime Tool：
 
 ```text
@@ -122,11 +122,11 @@ CLI Greenfield Host/Composition：2 files, 16 tests passed
 Desktop Greenfield Backend Pool：1 file, 6 tests passed
 bun run check:quick: passed
 bun run check: passed
-installed standalone Vetta CLI artifact: 1 test passed
+installed standalone Astravia CLI artifact: 1 test passed
 ```
 
 独立 Runtime 测试覆盖直接发布、产品 decorator、调用、未变化刷新、重连、删除和精确错误结果。安装态
-测试通过仓库已有 Vetta CLI 启动两个独立可执行进程，验证新增导出进入真实产物依赖闭包。
+测试通过仓库已有 Astravia CLI 启动两个独立可执行进程，验证新增导出进入真实产物依赖闭包。
 
 ## 9. 实施过程中的修正
 

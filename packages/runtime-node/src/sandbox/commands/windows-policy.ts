@@ -1,7 +1,7 @@
 import { homedir } from "node:os";
 import { dirname, join, resolve as resolvePath } from "node:path";
-import { getVettaConfigDirName } from "@vetta/action-rpc";
-import type { SandboxShellGrant } from "@vetta/runtime-core/sandbox";
+import { getAstraviaConfigDirName } from "@astravia/action-rpc";
+import type { SandboxShellGrant } from "@astravia/runtime-core/sandbox";
 
 type HostEnvironment = Readonly<Record<string, string | undefined>>;
 
@@ -51,8 +51,8 @@ export function getWindowsSensitiveDenyRoots(env: HostEnvironment | undefined = 
 			join(homeDir, ".kube"),
 			join(homeDir, ".docker"),
 			appData ? join(appData, "gcloud") : undefined,
-			appData ? join(appData, "Vetta") : undefined,
-			join(homeDir, getVettaConfigDirName(), "agent"),
+			appData ? join(appData, "Astravia") : undefined,
+			join(homeDir, getAstraviaConfigDirName(), "agent"),
 			join(homeDir, ".pi"),
 		]),
 	);
@@ -67,10 +67,10 @@ export function buildWindowsSandboxPolicy(options: WindowsSandboxPolicyOptions):
 		optionalEnvDir(options.env, "PIP_CONFIG_FILE"),
 	]);
 	const actionRpcReadRoots = compactPaths([
-		optionalEnvPath(options.env, "VETTA_HOME"),
-		optionalEnvDir(options.env, "VETTA_ACTION_RPC_ENDPOINT_FILE"),
-		optionalEnvDir(options.env, "VETTA_DESKTOP_EXE"),
-		optionalEnvDir(options.env, "VETTA_CLI_APP_PATH"),
+		optionalEnvPath(options.env, "ASTRAVIA_HOME"),
+		optionalEnvDir(options.env, "ASTRAVIA_ACTION_RPC_ENDPOINT_FILE"),
+		optionalEnvDir(options.env, "ASTRAVIA_DESKTOP_EXE"),
+		optionalEnvDir(options.env, "ASTRAVIA_CLI_APP_PATH"),
 	]);
 	const packageManagerWriteRoots = compactPaths([
 		optionalEnvPath(options.env, "npm_config_prefix"),
@@ -78,8 +78,8 @@ export function buildWindowsSandboxPolicy(options: WindowsSandboxPolicyOptions):
 		optionalEnvPath(options.env, "npm_config_cache"),
 		optionalEnvPath(options.env, "NPM_CONFIG_CACHE"),
 		optionalEnvPath(options.env, "PIP_CACHE_DIR"),
-		optionalEnvPath(options.env, "VETTA_MANAGED_PYTHON_SITE_PACKAGES"),
-		optionalEnvPath(options.env, "VETTA_MANAGED_PYTHON_SCRIPTS"),
+		optionalEnvPath(options.env, "ASTRAVIA_MANAGED_PYTHON_SITE_PACKAGES"),
+		optionalEnvPath(options.env, "ASTRAVIA_MANAGED_PYTHON_SCRIPTS"),
 	]);
 	const allowReadRoots = uniqueResolved([
 		options.cwd,

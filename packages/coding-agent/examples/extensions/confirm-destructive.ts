@@ -5,7 +5,7 @@
  * Demonstrates how to cancel session events using the before_* events.
  */
 
-import type { ExtensionAPI, SessionBeforeSwitchEvent } from "@vetta/coding-agent";
+import type { ExtensionAPI, SessionBeforeSwitchEvent } from "@astravia/coding-agent";
 
 export default function (api: ExtensionAPI) {
 	api.on("session_before_switch", async (event: SessionBeforeSwitchEvent, ctx) => {

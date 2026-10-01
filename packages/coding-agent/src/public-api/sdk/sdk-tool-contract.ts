@@ -1,7 +1,7 @@
+import type { AgentToolResult, AgentToolUpdateCallback } from "@astravia/agent-core";
+import type { Api, Model } from "@astravia/ai";
+import type { RuntimeContextCompactionResult, RuntimeSessionContextUsage } from "@astravia/runtime-core";
 import type { Static, TSchema } from "@sinclair/typebox";
-import type { AgentToolResult, AgentToolUpdateCallback } from "@vetta/agent-core";
-import type { Api, Model } from "@vetta/ai";
-import type { RuntimeContextCompactionResult, RuntimeSessionContextUsage } from "@vetta/runtime-core";
 import type { ConversationScenario } from "./sdk-scenario-contract.js";
 
 export interface CodingAgentToolUiDialogOptions {

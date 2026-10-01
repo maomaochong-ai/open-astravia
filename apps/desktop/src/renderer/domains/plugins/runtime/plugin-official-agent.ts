@@ -1,10 +1,10 @@
-import type { PluginOfficialApi } from "@vetta-org/plugin-sdk";
+import type { PluginOfficialApi } from "@astravia-org/plugin-sdk";
 
 export function createOfficialAgentApi(
 	assertOfficial: () => void,
 	capabilitySessionId: string,
 ): PluginOfficialApi["agent"] {
-	const agentSettings = window.vetta.plugins.internalCapabilities.agentSettings;
+	const agentSettings = window.astravia.plugins.internalCapabilities.agentSettings;
 	return {
 		getExperimental: async () => {
 			assertOfficial();

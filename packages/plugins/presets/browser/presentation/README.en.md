@@ -6,7 +6,7 @@ Browser Use is for work that must happen inside a real page: signing in to an ad
 
 State the goal, URL, and boundaries directly in the conversation. For sign-in, captchas, or two-factor authentication, the agent hands you the visible browser window and continues after you finish. For publishing, payments, deletion, or final submission, explicitly ask it to stop before confirmation.
 
-On first use, the agent checks and automatically installs the plugin-pinned `agent-browser` runtime in Vetta's private npm directory. If no reusable Chrome is available, it installs Chrome for Testing after a health check. Vetta manages this runtime separately and does not overwrite a global installation; use the plugin panel to retry and diagnose an automated setup failure.
+On first use, the agent checks and automatically installs the plugin-pinned `agent-browser` runtime in Astravia's private npm directory. If no reusable Chrome is available, it installs Chrome for Testing after a health check. Astravia manages this runtime separately and does not overwrite a global installation; use the plugin panel to retry and diagnose an automated setup failure.
 
 ## Sessions and privacy
 

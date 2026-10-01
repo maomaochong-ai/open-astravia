@@ -97,11 +97,11 @@ describe("ProjectService", () => {
 	});
 
 	it("refuses to register a file as a project", async () => {
-		// 现场原型：v1 时代的 `x.vetd` 是个**文件**，被登记成项目后每轮扫描都 ENOTDIR。
+		// 现场原型：v1 时代的 `x.astravia-design` 是个**文件**，被登记成项目后每轮扫描都 ENOTDIR。
 		const fixture = createFixture();
-		fixture.nonDirectoryPaths.add("C:\\workspace\\design.vetd");
+		fixture.nonDirectoryPaths.add("C:\\workspace\\design.astravia-design");
 
-		await expect(fixture.service.open("C:\\workspace\\design.vetd")).rejects.toThrow(
+		await expect(fixture.service.open("C:\\workspace\\design.astravia-design")).rejects.toThrow(
 			"Project path must be a directory.",
 		);
 		expect(fixture.getConfig().projects).toEqual([]);

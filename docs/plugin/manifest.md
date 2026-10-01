@@ -1,20 +1,20 @@
 # 清单参考（plugin.json）
 
-`plugin.json` 是插件的唯一清单，位于 `.vettapkg` 包的 ZIP 容器根目录（或唯一顶层文件夹内）。
+`plugin.json` 是插件的唯一清单，位于 `.astraviapkg` 包的 ZIP 容器根目录（或唯一顶层文件夹内）。
 
 它描述插件的运行时合同。能力页的可选长详情使用独立的 `ability.json`，见
 [能力详情页](./ability-details.md)；不要把 showcase、长 Markdown 或展示图片塞进 `plugin.json`。
 
 ## 契约与校验
 
-清单结构的唯一实现位于 `@vetta-org/plugin-sdk/manifest`：
+清单结构的唯一实现位于 `@astravia-org/plugin-sdk/manifest`：
 
 ```ts
 import {
   PluginManifestSchema,
   parsePluginManifest,
   type PluginManifestInput,
-} from "@vetta-org/plugin-sdk/manifest";
+} from "@astravia-org/plugin-sdk/manifest";
 ```
 
 - `PluginManifestSchema` 是 TypeBox Schema，可直接序列化为 JSON Schema，供编辑器、CLI 或市场服务端使用。
@@ -22,7 +22,7 @@ import {
 - `parsePluginManifest(value)` 先按 Schema 校验，再负责默认值、字符串归一化、去重、相对路径和跨字段约束。
 - Schema 为向前兼容允许未知字段；发布工具可以对未知字段给警告，但宿主安装器不应因此拒绝更高版本清单。
 
-Schema 只描述 `plugin.json` 数据本身；Plugin API 版本是否兼容、声明的文件是否存在等包级规则，仍由宿主和 `vetta-plugin pack` 校验。
+Schema 只描述 `plugin.json` 数据本身；Plugin API 版本是否兼容、声明的文件是否存在等包级规则，仍由宿主和 `astravia-plugin pack` 校验。
 
 ## 完整示例
 
@@ -81,7 +81,7 @@ Schema 只描述 `plugin.json` 数据本身；Plugin API 版本是否兼容、�
 
 插件只有一种加载方式：宿主用 `@module-federation/enhanced/runtime` 动态注册 remote 并加载 `expose`。
 `entry` 指向 Federation 生成的 `dist/mf-manifest.json`，`moduleFederation` 必须声明与 Vite 配置一致的
-`remoteName` 和 `expose`。React / React DOM / `@vetta-org/plugin-sdk` 由宿主作为共享单例提供。
+`remoteName` 和 `expose`。React / React DOM / `@astravia-org/plugin-sdk` 由宿主作为共享单例提供。
 
 清单不提供加载模式选择字段；声明 `runtime` 会被校验器拒绝，避免清单看似选择了一条宿主并不存在的加载路径。
 
@@ -90,15 +90,15 @@ Schema 只描述 `plugin.json` 数据本身；Plugin API 版本是否兼容、�
 用户插件按版本存放：
 
 ```text
-~/.vetta/plugins/<id>/versions/<version>/
+~/.astravia/plugins/<id>/versions/<version>/
 ```
 
 - 安装一个**更新版本**只被记录为 **pending**；App 持续加载当前 `activeVersion`。
-- 直到用户（或代码）触发 `window.vetta.plugins.reload(id)` 才切换到新版本 UI。
+- 直到用户（或代码）触发 `window.astravia.plugins.reload(id)` 才切换到新版本 UI。
 - 调试时改了代码要 bump `version` + reload 才稳妥生效（见 [styling-and-pitfalls.md](./styling-and-pitfalls.md#缓存刷新)）。
 - `listPlugins()` 会给出 **`rootPath`**：活动版本包在磁盘上的绝对根（用户插件 = 上表版本目录；系统插件 = `system-plugins/<id>`）。脚本、MCP 相对路径均相对此根解析。
 
-系统插件不进 `~/.vetta/plugins`，见 [system-plugins.md](./system-plugins.md)。
+系统插件不进 `~/.astravia/plugins`，见 [system-plugins.md](./system-plugins.md)。
 
 ## commands
 
@@ -199,7 +199,7 @@ revision 读取；不要依次调用多次 `writeFile()` 冒充多文件事务�
     "skillPresentation": {
       "defaultVisibility": "hidden",
       "skills": {
-        "vetta-ui-design": {
+        "astravia-ui-design": {
           "defaultVisibility": "visible",
           "displayName": "%plugin.name%"
         }
@@ -214,7 +214,7 @@ revision 读取；不要依次调用多次 `writeFile()` 冒充多文件事务�
 - `skills.<skill-name>`：按 `SKILL.md` 中的稳定 Skill 名覆盖插件默认值；可声明 `defaultVisibility`、`surfaces`、`displayName`、`displayDescription`。
 - `displayName` / `displayDescription`：仅改变用户看到的文案，不改变 Skill 名、调用路由或已保存引用；支持插件 `%catalogKey%` 本地化占位符。
 
-普通用户、项目、市场与 Vetta 内置 Skill 没有声明时继续默认可见。已安装的旧插件没有 `skillPresentation` 时按插件默认隐藏，避免把实现细节意外暴露为产品能力。
+普通用户、项目、市场与 Astravia 内置 Skill 没有声明时继续默认可见。已安装的旧插件没有 `skillPresentation` 时按插件默认隐藏，避免把实现细节意外暴露为产品能力。
 
 ## 贡献智能体与团队
 
@@ -225,7 +225,7 @@ revision 读取；不要依次调用多次 `writeFile()` 冒充多文件事务�
 宿主**不再内置任何人设**——装机自带的那几位现在也由 `preset-agent` 这个预置插件提供，所以你写的插件与它们走的是同一条路径、同一套字段。
 
 - **不需要权限**：这是清单声明面，不是运行时 API。用户对「装了什么插件」本身知情，因此没有单独的授权开关。
-- 校验在构建期（`vetta-plugin validate` / `pack`）就做：id 格式、路径越界、头像格式都会直接失败，而不是等用户装上后发现智能体没出现。
+- 校验在构建期（`astravia-plugin validate` / `pack`）就做：id 格式、路径越界、头像格式都会直接失败，而不是等用户装上后发现智能体没出现。
 
 ```json
 {
@@ -355,11 +355,11 @@ revision 读取；不要依次调用多次 `writeFile()` 冒充多文件事务�
 | `auditor` | `preset-agent/auditor` | 审计员 | 红队挑刺：正确性、安全、边界、回归与无依据的结论 |
 | `business` | `preset-agent/business` | 业务员 | 把目标落成需求、范围与商业模式，并说清假设与风险 |
 
-来自 `vetta-ui-design`：
+来自 `astravia-ui-design`：
 
 | role | agent | 名称 | 擅长什么 |
 | --- | --- | --- | --- |
-| `designer` | `vetta-ui-design/designer` | 设计师 | 在 Vetta 设计画布上产出界面：App 页面、落地页、幻灯片与海报 |
+| `designer` | `astravia-ui-design/designer` | 设计师 | 在 Astravia 设计画布上产出界面：App 页面、落地页、幻灯片与海报 |
 
 这两个插件是**预置插件**，用户可以禁用但不会卸载。禁用时槽位按 `optional` 规则降级——用 `role` 引用它们的团队会少一名队员，重新启用后原样回来。
 

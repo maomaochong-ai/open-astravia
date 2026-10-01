@@ -1,32 +1,32 @@
 import { existsSync } from "node:fs";
 import { mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
-import { listPluginManifestResources, parsePluginManifest, type PluginManifest } from "@vetta-org/plugin-sdk/manifest";
-import { parseVettaNpmPluginPackage } from "@vetta-org/plugin-sdk/npm-package";
+import { listPluginManifestResources, parsePluginManifest, type PluginManifest } from "@astravia-org/plugin-sdk/manifest";
+import { parseAstraviaNpmPluginPackage } from "@astravia-org/plugin-sdk/npm-package";
 import { assertPluginPermissionContract } from "./permission-contract.js";
 
-export interface VettaPluginPackageFile {
+export interface AstraviaPluginPackageFile {
 	fullPath: string;
 	archivePath: string;
 }
 
-export interface VettaPluginPackageResult {
+export interface AstraviaPluginPackageResult {
 	outputPath: string;
 	npmOutputPath?: string;
-	files: VettaPluginPackageFile[];
+	files: AstraviaPluginPackageFile[];
 }
 
-export interface CreateVettaPluginPackageOptions {
+export interface CreateAstraviaPluginPackageOptions {
 	rootDir?: string;
 	manifestPath?: string;
 	releaseDir?: string;
 	distDir?: string;
-	/** Also write the stable npm distribution artifact `release/vetta-plugin.vettapkg`. */
+	/** Also write the stable npm distribution artifact `release/astravia-plugin.astraviapkg`. */
 	npmArchive?: boolean;
 }
 
-export const VETTA_PLUGIN_PACKAGE_EXTENSION = ".vettapkg";
-export const VETTA_NPM_PLUGIN_ARCHIVE_PATH = `release/vetta-plugin${VETTA_PLUGIN_PACKAGE_EXTENSION}`;
+export const ASTRAVIA_PLUGIN_PACKAGE_EXTENSION = ".astraviapkg";
+export const ASTRAVIA_NPM_PLUGIN_ARCHIVE_PATH = `release/astravia-plugin${ASTRAVIA_PLUGIN_PACKAGE_EXTENSION}`;
 
 const crcTable = new Uint32Array(256);
 for (let i = 0; i < 256; i += 1) {
@@ -94,9 +94,9 @@ function archivePathFromRoot(rootDir: string, fullPath: string): string {
 	return archivePath;
 }
 
-async function collectFiles(dir: string): Promise<VettaPluginPackageFile[]> {
+async function collectFiles(dir: string): Promise<AstraviaPluginPackageFile[]> {
 	const entries = await readdir(dir, { withFileTypes: true });
-	const files: VettaPluginPackageFile[] = [];
+	const files: AstraviaPluginPackageFile[] = [];
 	for (const entry of entries) {
 		const fullPath = join(dir, entry.name);
 		if (entry.isDirectory()) {
@@ -108,7 +108,7 @@ async function collectFiles(dir: string): Promise<VettaPluginPackageFile[]> {
 	return files;
 }
 
-async function collectPath(path: string): Promise<VettaPluginPackageFile[]> {
+async function collectPath(path: string): Promise<AstraviaPluginPackageFile[]> {
 	const info = await stat(path);
 	if (info.isDirectory()) {
 		return collectFiles(path);
@@ -119,7 +119,7 @@ async function collectPath(path: string): Promise<VettaPluginPackageFile[]> {
 	return [];
 }
 
-async function createZip(files: VettaPluginPackageFile[]): Promise<Buffer> {
+async function createZip(files: AstraviaPluginPackageFile[]): Promise<Buffer> {
 	const localParts: Buffer[] = [];
 	const centralParts: Buffer[] = [];
 	let offset = 0;
@@ -205,9 +205,9 @@ async function collectRuntimeFiles(
 	rootDir: string,
 	manifestPath: string,
 	distDir: string,
-): Promise<VettaPluginPackageFile[]> {
+): Promise<AstraviaPluginPackageFile[]> {
 	const pluginManifest = parsePluginManifest(parseJsonObject(await readFile(manifestPath), basename(manifestPath)));
-	const packageFiles = new Map<string, VettaPluginPackageFile>();
+	const packageFiles = new Map<string, AstraviaPluginPackageFile>();
 	const addFile = (fullPath: string) => {
 		const resolved = resolve(fullPath);
 		const archivePath = archivePathFromRoot(rootDir, resolved);
@@ -319,9 +319,9 @@ async function collectRuntimeFiles(
 	return [...packageFiles.values()].sort((a, b) => a.archivePath.localeCompare(b.archivePath));
 }
 
-export async function createVettaPluginPackage(
-	options: CreateVettaPluginPackageOptions = {},
-): Promise<VettaPluginPackageResult> {
+export async function createAstraviaPluginPackage(
+	options: CreateAstraviaPluginPackageOptions = {},
+): Promise<AstraviaPluginPackageResult> {
 	const rootDir = resolve(options.rootDir ?? process.cwd());
 	const manifestPath = resolve(rootDir, options.manifestPath ?? "plugin.json");
 	const releaseDir = resolve(rootDir, options.releaseDir ?? "release");
@@ -329,7 +329,7 @@ export async function createVettaPluginPackage(
 	const pluginManifest = parsePluginManifest(parseJsonObject(await readFile(manifestPath), basename(manifestPath)));
 	const outputPath = join(
 		releaseDir,
-		`${pluginManifest.id}-${pluginManifest.version}${VETTA_PLUGIN_PACKAGE_EXTENSION}`,
+		`${pluginManifest.id}-${pluginManifest.version}${ASTRAVIA_PLUGIN_PACKAGE_EXTENSION}`,
 	);
 	const files = await collectRuntimeFiles(rootDir, manifestPath, distDir);
 	assertPluginPermissionContract(
@@ -342,7 +342,7 @@ export async function createVettaPluginPackage(
 	);
 	let npmOutputPath: string | undefined;
 	if (options.npmArchive === true) {
-		const packageManifest = parseVettaNpmPluginPackage(
+		const packageManifest = parseAstraviaNpmPluginPackage(
 			parseJsonObject(await readFile(resolve(rootDir, "package.json")), "package.json"),
 		);
 		if (packageManifest.version !== pluginManifest.version) {
@@ -350,15 +350,15 @@ export async function createVettaPluginPackage(
 				`npm package version ${packageManifest.version} must match plugin version ${pluginManifest.version}.`,
 			);
 		}
-		if (packageManifest.vetta.pluginId !== pluginManifest.id) {
+		if (packageManifest.astravia.pluginId !== pluginManifest.id) {
 			throw new Error(
-				`npm package plugin id ${packageManifest.vetta.pluginId} must match plugin id ${pluginManifest.id}.`,
+				`npm package plugin id ${packageManifest.astravia.pluginId} must match plugin id ${pluginManifest.id}.`,
 			);
 		}
-		if (packageManifest.vetta.archive !== VETTA_NPM_PLUGIN_ARCHIVE_PATH) {
-			throw new Error(`npm package archive must be ${VETTA_NPM_PLUGIN_ARCHIVE_PATH}.`);
+		if (packageManifest.astravia.archive !== ASTRAVIA_NPM_PLUGIN_ARCHIVE_PATH) {
+			throw new Error(`npm package archive must be ${ASTRAVIA_NPM_PLUGIN_ARCHIVE_PATH}.`);
 		}
-		npmOutputPath = resolve(rootDir, VETTA_NPM_PLUGIN_ARCHIVE_PATH);
+		npmOutputPath = resolve(rootDir, ASTRAVIA_NPM_PLUGIN_ARCHIVE_PATH);
 	}
 
 	await mkdir(releaseDir, { recursive: true });

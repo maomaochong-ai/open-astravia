@@ -1,14 +1,14 @@
-import type { Message } from "@vetta/ai";
-import type { InitializationRollbackTask, RuntimeResourceContext } from "@vetta/runtime-core";
-import type { RuntimeConfigurationSnapshotSource } from "@vetta/runtime-core/configuration";
+import type { Message } from "@astravia/ai";
+import type { InitializationRollbackTask, RuntimeResourceContext } from "@astravia/runtime-core";
+import type { RuntimeConfigurationSnapshotSource } from "@astravia/runtime-core/configuration";
 import type {
 	AgentFeatureDefinition,
 	ModelCallContributionContext,
 	RuntimeCapabilityDefinition,
-} from "@vetta/runtime-core/kernel";
-import type { RuntimeObservationPublisher } from "@vetta/runtime-core/observation";
-import { SessionExtensionComposition, sessionExtensionObservation } from "@vetta/runtime-core/session-extensions";
-import type { McpDeferredToolController } from "@vetta/runtime-mcp";
+} from "@astravia/runtime-core/kernel";
+import type { RuntimeObservationPublisher } from "@astravia/runtime-core/observation";
+import { SessionExtensionComposition, sessionExtensionObservation } from "@astravia/runtime-core/session-extensions";
+import type { McpDeferredToolController } from "@astravia/runtime-mcp";
 import { createAgentConfigurationSessionExtension } from "../../agent-configuration/session-configuration-extension.js";
 import { createCodingAgentBackgroundWorkSessionExtension } from "../../execution/background/background-work-session-extension.js";
 import {

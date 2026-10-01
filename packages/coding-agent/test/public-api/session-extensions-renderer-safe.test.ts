@@ -7,7 +7,7 @@ const sourceRoot = fileURLToPath(new URL("../../src/", import.meta.url));
 const entry = resolve(sourceRoot, "public-api/session-extensions.ts");
 
 // 这两个根入口会连带加载全部 Provider（含 AWS SDK 等 Node 专用依赖），渲染进程打包会失败。
-const PROVIDER_LOADING_ENTRIES = new Set(["@vetta/ai", "@vetta/runtime-core"]);
+const PROVIDER_LOADING_ENTRIES = new Set(["@astravia/ai", "@astravia/runtime-core"]);
 
 const MODULE_REFERENCE = /^(?:import|export)\s+(type\s+)?([^;]*?)\s*from\s+"([^"]+)";/gms;
 

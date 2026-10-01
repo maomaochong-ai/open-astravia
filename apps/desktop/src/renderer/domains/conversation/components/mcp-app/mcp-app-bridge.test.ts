@@ -44,7 +44,7 @@ describe("DesktopMcpAppBridge", () => {
 
 	it("proxies validated same-surface calls through preload and rejects unsupported methods", async () => {
 		const callMcpAppTool = vi.fn(async () => ({ content: [] }));
-		Object.defineProperty(window, "vetta", {
+		Object.defineProperty(window, "astravia", {
 			configurable: true,
 			value: { session: { callMcpAppTool } } as unknown as DesktopApi,
 		});

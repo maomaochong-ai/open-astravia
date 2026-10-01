@@ -1,6 +1,6 @@
 import { PassThrough } from "node:stream";
-import type { CodingToolExecutableResolver, ToolProcessSpawner } from "@vetta/runtime-node/coding";
-import { quoteShellArgument, type SshConnection } from "@vetta/ssh-transport";
+import type { CodingToolExecutableResolver, ToolProcessSpawner } from "@astravia/runtime-node/coding";
+import { quoteShellArgument, type SshConnection } from "@astravia/ssh-transport";
 
 /**
  * 在远端启动搜索工具用的外部程序（ripgrep / fd）。

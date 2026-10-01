@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
-import { atomicWriteJSONAsync } from "@vetta/toolkit/atomic-write";
+import { atomicWriteJSONAsync } from "@astravia/toolkit/atomic-write";
 
 /**
  * 单 Agent 会话的绑定落盘位置：与会话文件同目录的一份 sessionId → agentProfileId 索引。

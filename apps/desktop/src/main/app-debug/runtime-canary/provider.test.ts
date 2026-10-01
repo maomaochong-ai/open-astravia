@@ -26,7 +26,7 @@ describe("Runtime Canary Provider", () => {
 	});
 
 	it("seeds isolated Desktop state and serves text and question responses", async () => {
-		rootDir = await mkdtemp(join(tmpdir(), "vetta-runtime-canary-provider-"));
+		rootDir = await mkdtemp(join(tmpdir(), "astravia-runtime-canary-provider-"));
 		provider = await startRuntimeCanaryProvider(rootDir);
 
 		expect(existsSync(join(provider.fixture.agentDir, "models.json"))).toBe(true);
@@ -42,7 +42,7 @@ describe("Runtime Canary Provider", () => {
 			await readFile(join(provider.fixture.knowledgeRoot, "raws", RUNTIME_CANARY_KNOWLEDGE_SOURCE_PATH), "utf8"),
 		).toBe("Runtime Canary Knowledge Source");
 		const desktopConfig = JSON.parse(
-			await readFile(join(provider.fixture.vettaHome, "desktop-config.json"), "utf8"),
+			await readFile(join(provider.fixture.astraviaHome, "desktop-config.json"), "utf8"),
 		) as {
 			projects: Array<{ path: string }>;
 			knowledgeBase: { enabled: boolean; pollIntervalMinutes: number; processingModelKey: string };

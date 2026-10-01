@@ -35,7 +35,7 @@
 					},
 					{
 						"title": "开箱即用",
-						"description": "默认使用 Vetta 内置图像生成，无需申请任何 API Key。",
+						"description": "默认使用 Astravia 内置图像生成，无需申请任何 API Key。",
 						"icon": "solar:tuning-square-2-linear"
 					}
 				]
@@ -74,7 +74,7 @@
 							},
 							{
 								"title": "Works out of the box",
-								"description": "Uses Vetta's built-in image generation by default — no API key needed.",
+								"description": "Uses Astravia's built-in image generation by default — no API key needed.",
 								"icon": "solar:tuning-square-2-linear"
 							}
 						]

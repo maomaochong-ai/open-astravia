@@ -1,4 +1,4 @@
-import type { PluginMediaInputSource } from "@vetta-org/plugin-sdk";
+import type { PluginMediaInputSource } from "@astravia-org/plugin-sdk";
 
 export type ContentGenerationModeId =
 	| "text-to-image"

@@ -5,7 +5,7 @@
 ## 职责范围
 
 协议、共享 Schema、注册元数据、Catalog、激活选择和纯状态逻辑位于 `src/coding/`，由包根和
-`@vetta/runtime-tools/coding` 暴露。访问环境的工具实现位于 `@vetta/runtime-node/coding`；包含产品
+`@astravia/runtime-tools/coding` 暴露。访问环境的工具实现位于 `@astravia/runtime-node/coding`；包含产品
 规则但不访问环境的工具由对应产品包拥有。
 
 ## 注意事项
@@ -15,7 +15,7 @@
 - Tool Definition 只表达执行能力；场景和分类元数据放在注册对象
 - Catalog、激活与选择逻辑不得持有 Session 或绕过 Runtime Tool Policy
 - 架构调整必须保持注册、激活、绑定、撤销和结果策略语义
-- 生产代码、测试、配置和包清单均不得依赖 `@vetta/coding-agent`
+- 生产代码、测试、配置和包清单均不得依赖 `@astravia/coding-agent`
 - 具体工具与 Host 适配测试属于平台 Runtime；本包验证平台无关合同
 
 ## 测试要求

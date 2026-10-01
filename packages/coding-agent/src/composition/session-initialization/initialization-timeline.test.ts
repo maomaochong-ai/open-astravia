@@ -1,4 +1,4 @@
-import { createRuntimeObservationPublisher, type RuntimeObservationRecord } from "@vetta/runtime-core";
+import { createRuntimeObservationPublisher, type RuntimeObservationRecord } from "@astravia/runtime-core";
 import { describe, expect, it, vi } from "vitest";
 import { CODING_AGENT_SESSION_INITIALIZATION_OBSERVATION } from "../contracts/session-initialization-observability.js";
 import { createCodingAgentSessionInitializationTimeline } from "./initialization-timeline.js";

@@ -8,7 +8,7 @@
 
 `team_send_message(intent="question")` 会为每个收件人创建独立 work item；收件人完成后，持久化通知又会自动唤醒发起者。同步等待期间的成员依赖由 `TeamMemberScheduler` 的等待图检查，但通知发生在前一项工作已经完成之后，不再持有等待边，因此不属于同步死锁。
 
-openvetta/open-vetta#60 暴露了另一种失败：成员在回答入站问题时，又用 `question` 向原发起者确认；或发起者在整合某成员的完成通知时，再用 `question` 要该成员确认。每个动作单独看都合法，却会形成跨 attempt 的异步回声：A 完成后唤醒 B，B 再启动 A，随后 A 又唤醒 B。work item、通知与 continuation ID 每轮都不同，已有的幂等键、等待环检测和单任务恢复预算都无法终止它。
+maomaochong-ai/open-astravia#60 暴露了另一种失败：成员在回答入站问题时，又用 `question` 向原发起者确认；或发起者在整合某成员的完成通知时，再用 `question` 要该成员确认。每个动作单独看都合法，却会形成跨 attempt 的异步回声：A 完成后唤醒 B，B 再启动 A，随后 A 又唤醒 B。work item、通知与 continuation ID 每轮都不同，已有的幂等键、等待环检测和单任务恢复预算都无法终止它。
 
 ## 决策
 

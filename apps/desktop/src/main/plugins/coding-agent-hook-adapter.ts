@@ -5,9 +5,9 @@ import type {
 	HookDispatchOutcome,
 	HookOutputEntry,
 	HookRunSummary,
-} from "@vetta/coding-agent/hooks";
-import { aggregateHookDispatchOutcomes, emptyHookDispatchOutcome } from "@vetta/coding-agent/hooks";
-import type { PluginCodingAgentHookEvent, PluginCodingAgentHookEventName } from "@vetta-org/plugin-sdk";
+} from "@astravia/coding-agent/hooks";
+import { aggregateHookDispatchOutcomes, emptyHookDispatchOutcome } from "@astravia/coding-agent/hooks";
+import type { PluginCodingAgentHookEvent, PluginCodingAgentHookEventName } from "@astravia-org/plugin-sdk";
 import { invokeDesktopPluginHook } from "./coding-agent-hook-invocation.js";
 import {
 	type DesktopPluginHookBinding,

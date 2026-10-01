@@ -66,7 +66,7 @@ export interface AIErrorDetails {
 	readonly responseValidation?: AIResponseValidationDetails;
 }
 
-const AI_ERROR_MARKER = Symbol.for("vetta.ai.error");
+const AI_ERROR_MARKER = Symbol.for("astravia.ai.error");
 const SAFE_DIAGNOSTIC_HEADERS = new Set([
 	"content-type",
 	"retry-after",

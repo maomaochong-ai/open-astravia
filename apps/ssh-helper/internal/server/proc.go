@@ -17,7 +17,7 @@ import (
 	"syscall"
 	"time"
 
-	"vetta-ssh-helper/internal/protocol"
+	"astravia-ssh-helper/internal/protocol"
 )
 
 // Tasks are long-running commands (dev servers, watchers, builds) that must
@@ -112,7 +112,7 @@ func (s *Server) procSpawn(p spawnParams) (any, *protocol.Error) {
 	}
 	defer output.Close()
 
-	cmd := exec.Command("/bin/sh", "-c", wrapperScript, "vetta-task", p.Command, filepath.Join(dir, "exit"))
+	cmd := exec.Command("/bin/sh", "-c", wrapperScript, "astravia-task", p.Command, filepath.Join(dir, "exit"))
 	cmd.Dir = p.Cwd
 	cmd.Env = os.Environ()
 	for key, value := range p.Env {

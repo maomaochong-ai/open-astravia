@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"vetta-im-gateway/internal/command"
-	"vetta-im-gateway/internal/router"
-	"vetta-im-gateway/internal/state"
-	"vetta-im-gateway/internal/transport/mock"
+	"astravia-im-gateway/internal/command"
+	"astravia-im-gateway/internal/router"
+	"astravia-im-gateway/internal/state"
+	"astravia-im-gateway/internal/transport/mock"
 )
 
 // TestEndToEnd_MockTransport_HelpCommand wires a mock transport ↔ router ↔
@@ -27,7 +27,7 @@ func TestEndToEnd_MockTransport_HelpCommand(t *testing.T) {
 
 	tr := mock.New(mock.Options{In: in, Out: out})
 
-	r := router.New(tr, command.NewRouter(), &noopStore{}, nil, "/home/u/.vetta/conversation")
+	r := router.New(tr, command.NewRouter(), &noopStore{}, nil, "/home/u/.astravia/conversation")
 	defer r.Shutdown()
 
 	ctx, cancel := context.WithCancel(context.Background())

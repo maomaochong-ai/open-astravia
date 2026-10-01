@@ -1,12 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { dirname, join } from "node:path";
-import { buildDefaultHookConfigLayers } from "@vetta/ecosystem-adapter";
+import { buildDefaultHookConfigLayers } from "@astravia/ecosystem-adapter";
 import {
 	SessionExtensionFunctionRegistry,
 	type SessionExtensionFunctionSource,
-} from "@vetta/runtime-core/session-extensions";
-import { createMcpToolResultPolicy, EMPTY_MCP_CONFIG_SOURCE, type McpServerSupervisor } from "@vetta/runtime-mcp";
-import { nodeModelInputImageProcessor, nodeWorkspaceFactsFileSource } from "@vetta/runtime-node/coding";
+} from "@astravia/runtime-core/session-extensions";
+import { createMcpToolResultPolicy, EMPTY_MCP_CONFIG_SOURCE, type McpServerSupervisor } from "@astravia/runtime-mcp";
+import { nodeModelInputImageProcessor, nodeWorkspaceFactsFileSource } from "@astravia/runtime-node/coding";
 import {
 	createLoopbackSessionAffinityStream,
 	createNodeHtmlExportFileAdapters,
@@ -16,9 +16,9 @@ import {
 	NodeTransactionalTextStorage,
 	nodeConfigurationValueResolver,
 	nodeSyncTextFileSource,
-} from "@vetta/runtime-node/host";
-import { createNodeMcpSupervisor } from "@vetta/runtime-node/mcp";
-import { createLangfuseRuntimeTracerFromEnv } from "@vetta/runtime-telemetry/langfuse";
+} from "@astravia/runtime-node/host";
+import { createNodeMcpSupervisor } from "@astravia/runtime-node/mcp";
+import { createLangfuseRuntimeTracerFromEnv } from "@astravia/runtime-telemetry/langfuse";
 import { createCodingAgentCompactionExtensionRuntime } from "../../adapters/extensions/compaction-extension-adapter.js";
 import { createCodingAgentAuthRuntime } from "../../auth/index.js";
 import { createCodingAgentMemoryRolloverRuntime } from "../../composition/memory-runtime.js";
@@ -36,7 +36,7 @@ import { CodingAgentSdkExtensionTransitionAdapter } from "../coding-agent-sdk-ex
 import { CodingAgentSdkResourceSourceAdapter } from "../coding-agent-sdk-resource-source-adapter.js";
 import { resolveCodingAgentSessionDir } from "../coding-agent-session-storage.js";
 import { createCodingAgentExtensionEventHost } from "../extensions/event-host.js";
-import { getAgentDir, getExportTemplateDir, getKnowledgeDir, getVettaHomePath, VERSION } from "../node-config.js";
+import { getAgentDir, getAstraviaHomePath, getExportTemplateDir, getKnowledgeDir, VERSION } from "../node-config.js";
 import { createCodingAgentNodeSettingsRuntime } from "../node-state-services.js";
 import { createCodingAgentNodeSessionExecutionEnvironment } from "../tool-environment/node/node-session-execution-environment.js";
 import { createCodingAgentNodeToolEnvironment } from "../tool-environment/node/node-tool-environment.js";
@@ -174,7 +174,7 @@ async function createCodingAgentSdkSessionComposition(
 							description: template.description,
 							content: template.content,
 							source: "sdk",
-							filePath: template.filePath ?? join(cwd, ".vetta", "sdk-prompts", `${template.name}.md`),
+							filePath: template.filePath ?? join(cwd, ".astravia", "sdk-prompts", `${template.name}.md`),
 						})),
 					],
 				})
@@ -246,9 +246,9 @@ async function createCodingAgentSdkSessionComposition(
 			createToolEnvironment: createCodingAgentNodeToolEnvironment,
 			createSessionExecutionEnvironment: createCodingAgentNodeSessionExecutionEnvironment,
 			codingToolResultPolicy: createCodingAgentCodingToolResultPolicy({ artifactStore: resultArtifacts.coding }),
-			ocrMaxConcurrent: resolvePositiveInteger(process.env.VETTA_KB_OCR_CONCURRENCY),
+			ocrMaxConcurrent: resolvePositiveInteger(process.env.ASTRAVIA_KB_OCR_CONCURRENCY),
 			knowledgeRuntime:
-				process.env.VETTA_KNOWLEDGE_DISABLED === "1" ? undefined : createNodeKnowledgeRuntime(getKnowledgeDir()),
+				process.env.ASTRAVIA_KNOWLEDGE_DISABLED === "1" ? undefined : createNodeKnowledgeRuntime(getKnowledgeDir()),
 			createMemoryRolloverRuntime: (memoryOptions) => {
 				const memoryFile = memoryOptions.memoryFile ?? join(memoryOptions.cwd, "MEMORY.md");
 				return createCodingAgentMemoryRolloverRuntime({
@@ -269,7 +269,7 @@ async function createCodingAgentSdkSessionComposition(
 			agentDir,
 			scenario: options.scenario,
 			activation,
-			hookConfigLayers: buildDefaultHookConfigLayers({ cwd, vettaHome: getVettaHomePath() }),
+			hookConfigLayers: buildDefaultHookConfigLayers({ cwd, astraviaHome: getAstraviaHomePath() }),
 			additionalHookAdapterFactories: options.additionalHookAdapterFactories,
 			enableSubagents: options.enableSubagents,
 			createSubagentId: randomUUID,
@@ -281,7 +281,7 @@ async function createCodingAgentSdkSessionComposition(
 			tracing: {
 				captureContent: true,
 				detail: "standard",
-				traceName: options.tracingTraceName ?? process.env.VETTA_TRACING_TRACE_NAME ?? "coding-agent run",
+				traceName: options.tracingTraceName ?? process.env.ASTRAVIA_TRACING_TRACE_NAME ?? "coding-agent run",
 				metadata: {
 					...options.tracingMetadata,
 					app: "coding-agent",

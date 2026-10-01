@@ -16,10 +16,10 @@ describe("Node shell runtime", () => {
 		expect(() =>
 			resolveNodeShell({
 				customShellPath: "C:/missing/bash.exe",
-				settingsPath: "C:/vetta/settings.json",
+				settingsPath: "C:/astravia/settings.json",
 				fileExists: () => false,
 			}),
-		).toThrow("Please update shellPath in C:/vetta/settings.json");
+		).toThrow("Please update shellPath in C:/astravia/settings.json");
 	});
 
 	it("uses the stable Windows shell preference and fallback", () => {
@@ -45,7 +45,7 @@ describe("Node shell runtime", () => {
 	});
 
 	it("prepends the managed bin directory exactly once", () => {
-		const binDirectory = process.platform === "win32" ? "C:/vetta/bin" : "/vetta/bin";
+		const binDirectory = process.platform === "win32" ? "C:/astravia/bin" : "/astravia/bin";
 		const initialPath =
 			process.platform === "win32"
 				? ["C:/Windows", "C:/tools"].join(delimiter)

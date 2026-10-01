@@ -2,14 +2,14 @@
 
 ## 1. 目标
 
-第 92 轮已证明独立 Vetta CLI 可以驱动测试内的 Desktop Debug RPC。本轮把相同方法接入真实
+第 92 轮已证明独立 Astravia CLI 可以驱动测试内的 Desktop Debug RPC。本轮把相同方法接入真实
 Electron 主进程，形成可重复执行的 Greenfield Runtime 进程级门禁。
 
 本轮作为一个阶段完成：
 
 1. 使用仓库既有 UI 验证入口启动真实开发版 Desktop 主进程。
 2. 为 Canary 注入独立的模型配置、认证目录、工作区和确定性本地 Provider。
-3. 继续复用独立 Vetta CLI 驱动会话，不创建第二套会话测试 API。
+3. 继续复用独立 Astravia CLI 驱动会话，不创建第二套会话测试 API。
 4. 覆盖会话创建、继续、列举、用户提问和中止。
 5. 通过 Debug 合同请求 Desktop 优雅退出。
 6. 验证会话持久化、锁释放、RPC endpoint 删除、Provider 停止和进程退出码。
@@ -26,7 +26,7 @@ verify:ui:start -- --runtime-canary greenfield
   -> Desktop Greenfield Runtime Composition
 
 verify:ui:debug -- runtime-canary
-  -> 独立 bun/Vetta CLI 进程
+  -> 独立 bun/Astravia CLI 进程
   -> Local HTTP Debug RPC
   -> conversation.create / continue / list / abort
   -> RuntimeHost / Greenfield Backend
@@ -57,9 +57,9 @@ Provider 为每次执行创建独立目录，并写入：
 
 Desktop 仅在本次验证进程中接收：
 
-- `VETTA_HOME`；
-- `VETTA_CODING_AGENT_DIR`；
-- `VETTA_DESKTOP_AGENT_RUNTIME=greenfield`。
+- `ASTRAVIA_HOME`；
+- `ASTRAVIA_CODING_AGENT_DIR`；
+- `ASTRAVIA_DESKTOP_AGENT_RUNTIME=greenfield`。
 
 因此 Canary 不读取或覆盖用户真实模型、认证、Skill 和会话数据。Provider 固定响应两轮文本，
 并在第三轮发出既有 `ask_user_question` 工具调用，以验证真实的 `input_required` 和中止路径。

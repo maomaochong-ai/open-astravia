@@ -2,10 +2,10 @@ import type {
 	ConversationDocument,
 	RuntimeDocumentParticipant,
 	RuntimeDocumentParticipantContext,
-} from "@vetta/runtime-core";
-import type { StoredSessionEvent } from "@vetta/runtime-core/kernel";
+} from "@astravia/runtime-core";
+import type { StoredSessionEvent } from "@astravia/runtime-core/kernel";
 
-export const ASSISTANT_TURN_TIMING_TYPE = "vetta.assistant_turn_timing";
+export const ASSISTANT_TURN_TIMING_TYPE = "astravia.assistant_turn_timing";
 
 /** Persists turn timing beside the assistant history it describes. */
 export class AssistantTurnTimingParticipant implements RuntimeDocumentParticipant {

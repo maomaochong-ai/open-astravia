@@ -7,9 +7,9 @@ import {
 	type TeamSendMessageResult,
 	type TeamSessionDocument,
 	type TeamWorkItem,
-} from "@vetta/agent-team";
-import { createAssistantMessage } from "@vetta/ai";
-import type { ConversationMessageRecord } from "@vetta/runtime-core/conversation";
+} from "@astravia/agent-team";
+import { createAssistantMessage } from "@astravia/ai";
+import type { ConversationMessageRecord } from "@astravia/runtime-core/conversation";
 import type { TeamCollaborationStore } from "./team-collaboration-store.js";
 import { TeamNotificationJournal } from "./team-notification-journal.js";
 

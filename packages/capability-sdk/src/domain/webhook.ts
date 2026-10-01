@@ -191,7 +191,7 @@ const webhookNoOutputSchema = defineCapabilityNoOutputSchema();
 
 export const DOMAIN_WEBHOOK_CAPABILITIES = {
 	LIST_ENDPOINTS: defineCapability<Record<string, never>, WebhookEndpoint[]>({
-		id: "cap.domain.vetta.webhook.endpoint.list",
+		id: "cap.domain.astravia.webhook.endpoint.list",
 		kind: "query",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -199,7 +199,7 @@ export const DOMAIN_WEBHOOK_CAPABILITIES = {
 		output: webhookEndpointsOutputSchema,
 	}),
 	LIST_PROVIDERS: defineCapability<Record<string, never>, WebhookProviderDescriptor[]>({
-		id: "cap.domain.vetta.webhook.provider.list",
+		id: "cap.domain.astravia.webhook.provider.list",
 		kind: "query",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -207,7 +207,7 @@ export const DOMAIN_WEBHOOK_CAPABILITIES = {
 		output: webhookProvidersOutputSchema,
 	}),
 	CREATE_ENDPOINT: defineCapability<WebhookCreateInput, WebhookEndpoint>({
-		id: "cap.domain.vetta.webhook.endpoint.create",
+		id: "cap.domain.astravia.webhook.endpoint.create",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -215,7 +215,7 @@ export const DOMAIN_WEBHOOK_CAPABILITIES = {
 		output: webhookEndpointOutputSchema,
 	}),
 	UPDATE_ENDPOINT: defineCapability<WebhookUpdateInput, WebhookEndpoint>({
-		id: "cap.domain.vetta.webhook.endpoint.update",
+		id: "cap.domain.astravia.webhook.endpoint.update",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -223,7 +223,7 @@ export const DOMAIN_WEBHOOK_CAPABILITIES = {
 		output: webhookEndpointOutputSchema,
 	}),
 	DELETE_ENDPOINT: defineCapability<WebhookIdInput, undefined>({
-		id: "cap.domain.vetta.webhook.endpoint.delete",
+		id: "cap.domain.astravia.webhook.endpoint.delete",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -231,7 +231,7 @@ export const DOMAIN_WEBHOOK_CAPABILITIES = {
 		output: webhookNoOutputSchema,
 	}),
 	SET_ENABLED: defineCapability<WebhookSetEnabledInput, WebhookEndpoint>({
-		id: "cap.domain.vetta.webhook.endpoint.set-enabled",
+		id: "cap.domain.astravia.webhook.endpoint.set-enabled",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -239,7 +239,7 @@ export const DOMAIN_WEBHOOK_CAPABILITIES = {
 		output: webhookEndpointOutputSchema,
 	}),
 	TEST_ENDPOINT: defineCapability<WebhookIdInput, WebhookSendResult>({
-		id: "cap.domain.vetta.webhook.endpoint.test",
+		id: "cap.domain.astravia.webhook.endpoint.test",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -247,7 +247,7 @@ export const DOMAIN_WEBHOOK_CAPABILITIES = {
 		output: webhookSendResultOutputSchema,
 	}),
 	SEND_MESSAGE: defineCapability<WebhookSendInput, WebhookSendResult>({
-		id: "cap.domain.vetta.webhook.endpoint.send",
+		id: "cap.domain.astravia.webhook.endpoint.send",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,

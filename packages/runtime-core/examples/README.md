@@ -1,6 +1,6 @@
 # Runtime Core Examples
 
-这里的示例只使用 `@vetta/runtime-core` 的公开入口，演示产品无关的多主 Agent 基座。示例中的 Agent
+这里的示例只使用 `@astravia/runtime-core` 的公开入口，演示产品无关的多主 Agent 基座。示例中的 Agent
 彼此平级；应用负责选择 `agentId` 或显式编排协作关系，Registry 不隐式建立主从关系。
 
 ## Multi-Agent

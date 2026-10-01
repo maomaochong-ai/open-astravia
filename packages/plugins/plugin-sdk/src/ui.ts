@@ -805,7 +805,7 @@ export interface PluginUiApi {
 	 */
 	previewFile(file: PluginPreviewFileRef, group?: PluginPreviewFileRef[]): void;
 	/**
-	 * Capture a rectangle in the current Vetta window and open the host save
+	 * Capture a rectangle in the current Astravia window and open the host save
 	 * dialog. Coordinates use renderer DIP values such as getBoundingClientRect().
 	 * Requires `ui.slot.activity-tab`.
 	 */

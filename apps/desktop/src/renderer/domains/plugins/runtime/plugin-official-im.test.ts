@@ -38,7 +38,7 @@ describe("createOfficialImApi", () => {
 		Object.defineProperty(globalThis, "window", {
 			configurable: true,
 			value: {
-				vetta: {
+				astravia: {
 					plugins: { internalCapabilities: { im, models } },
 					im: hostIm,
 				},

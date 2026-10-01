@@ -16,7 +16,7 @@ const networkRequestOutputSchema = defineCapabilityOutputSchema(CAPABILITY_JSON_
 
 export const FOUNDATION_NETWORK_CAPABILITIES = {
 	REQUEST: defineCapability<NetworkRequestInput, CapabilityJsonValue>({
-		id: "cap.foundation.vetta.network.request",
+		id: "cap.foundation.astravia.network.request",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.FOUNDATION,
 		version: 2,

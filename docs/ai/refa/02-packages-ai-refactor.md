@@ -100,7 +100,7 @@ fixtures/         脱敏 wire fixtures
 - `providerConformanceSuite`：所有 Adapter 必须通过的功能矩阵。
 - fixture builders：构造规范化消息和 wire chunk。
 
-测试工具只通过 `@vetta/ai/testing` 条件导出，不能进入生产入口。
+测试工具只通过 `@astravia/ai/testing` 条件导出，不能进入生产入口。
 
 ### `compat/`
 
@@ -169,7 +169,7 @@ interface ProviderRegistration<TApi extends Api> {
 - Provider 注册所需的最小类型。
 - 稳定错误类型。
 
-具体 Provider 的高级选项通过 `@vetta/ai/providers/<name>` 子路径导出。OAuth helper、request schema、stream parser 和测试 fixture 不从根入口导出。
+具体 Provider 的高级选项通过 `@astravia/ai/providers/<name>` 子路径导出。OAuth helper、request schema、stream parser 和测试 fixture 不从根入口导出。
 
 ## 7. 迁移顺序
 

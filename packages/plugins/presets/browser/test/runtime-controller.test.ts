@@ -1,4 +1,4 @@
-import type { PluginBrowserApi, PluginBrowserRuntimeStatus } from "@vetta-org/plugin-sdk";
+import type { PluginBrowserApi, PluginBrowserRuntimeStatus } from "@astravia-org/plugin-sdk";
 import { describe, expect, it, vi } from "vitest";
 import { BrowserRuntimeController } from "../src/runtime/runtime-controller";
 

@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { dirname, join, resolve } from "node:path";
-import type { Api, Model } from "@vetta/ai";
-import { resolveCodingAgentSessionDir } from "@vetta/coding-agent/bootstrap";
+import type { Api, Model } from "@astravia/ai";
+import { resolveCodingAgentSessionDir } from "@astravia/coding-agent/bootstrap";
 import {
 	type CodingAgentRuntimeComposition,
 	type CodingAgentRuntimeCompositionOptions,
@@ -10,26 +10,26 @@ import {
 	createCodingAgentRuntimeSessionAgentSelection,
 	DEFAULT_CODING_AGENT_RUNTIME_ID,
 	parseCodingAgentRuntimeSessionConfiguration,
-} from "@vetta/coding-agent/composition";
-import { createCodingAgentNodeSettingsRuntime } from "@vetta/coding-agent/host-services";
-import { detectWorkspaceFacts, probeWorkspaceSignals } from "@vetta/coding-agent/model-context";
+} from "@astravia/coding-agent/composition";
+import { createCodingAgentNodeSettingsRuntime } from "@astravia/coding-agent/host-services";
+import { detectWorkspaceFacts, probeWorkspaceSignals } from "@astravia/coding-agent/model-context";
 import {
 	type ConversationScenario,
 	DEFAULT_SCENARIO,
 	shouldEnableCodingAgentSubagents,
-} from "@vetta/coding-agent/profile";
+} from "@astravia/coding-agent/profile";
 import type {
 	RuntimeHostSessionAssembly,
 	RuntimeHostSessionBackend,
 	RuntimeObservationPublisher,
 	RuntimeSessionCreateRequest,
-} from "@vetta/runtime-core";
-import { RetryableCleanup, RetryableCloseController } from "@vetta/runtime-core";
-import type { McpRuntimeToolSource } from "@vetta/runtime-mcp";
-import { nodeModelInputImageProcessor, nodeWorkspaceFactsFileSource } from "@vetta/runtime-node/coding";
-import { createFileConversationPersistence, resolveSessionIdFromPath } from "@vetta/runtime-node/conversation";
-import type { CodingToolResultPolicy } from "@vetta/runtime-tools";
-import { normalizeProjectCwd, parseProjectLocation } from "@vetta/ssh-transport";
+} from "@astravia/runtime-core";
+import { RetryableCleanup, RetryableCloseController } from "@astravia/runtime-core";
+import type { McpRuntimeToolSource } from "@astravia/runtime-mcp";
+import { nodeModelInputImageProcessor, nodeWorkspaceFactsFileSource } from "@astravia/runtime-node/coding";
+import { createFileConversationPersistence, resolveSessionIdFromPath } from "@astravia/runtime-node/conversation";
+import type { CodingToolResultPolicy } from "@astravia/runtime-tools";
+import { normalizeProjectCwd, parseProjectLocation } from "@astravia/ssh-transport";
 import {
 	createDesktopCodingAgentSessionExecutionEnvironment,
 	createDesktopCodingAgentToolEnvironment,
@@ -264,7 +264,7 @@ export class DesktopRuntimeBackendPool implements RuntimeHostSessionBackend {
 				this.options.compositionDefaults.modelInputImageProcessor ?? nodeModelInputImageProcessor,
 			ocrMaxConcurrent:
 				this.options.compositionDefaults.ocrMaxConcurrent ??
-				resolvePositiveInteger(process.env.VETTA_KB_OCR_CONCURRENCY),
+				resolvePositiveInteger(process.env.ASTRAVIA_KB_OCR_CONCURRENCY),
 			createConversationPersistence:
 				this.options.compositionDefaults.createConversationPersistence ??
 				(({ conversationDir }) => createFileConversationPersistence(conversationDir)),
@@ -457,7 +457,7 @@ function resolveRuntimeScope(request: RuntimeSessionCreateRequest): DesktopRunti
 	// 下游的位置判断随即把远程会话当成本地会话，工具悄悄换回本地实现。
 	const cwd = normalizeProjectCwd(request.cwd ?? process.cwd(), resolve);
 	const sessionPath = request.sessionPath?.trim();
-	// 缺省落点是 agent 目录下按 cwd 编码分片的全局目录，**不是** `<cwd>/.vetta/sessions`：
+	// 缺省落点是 agent 目录下按 cwd 编码分片的全局目录，**不是** `<cwd>/.astravia/sessions`：
 	// 会话产物是宿主状态，不该在用户工程里长出未跟踪文件（还会被 `git add -A` 误提交）。
 	// 需要落在项目里的场景（批量任务、宿主自有 conversation 根）自己传 sessionDir。
 	const conversationDir = resolve(

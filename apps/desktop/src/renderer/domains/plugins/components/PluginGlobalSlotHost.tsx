@@ -32,7 +32,7 @@ import {
 import type { PluginsChangedEvent } from "@preload/api";
 import { getDefaultStore, useSetAtom } from "jotai";
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
-import type { PluginGlobalSlotContribution } from "@vetta-org/plugin-sdk";
+import type { PluginGlobalSlotContribution } from "@astravia-org/plugin-sdk";
 import { markPluginHostLoading, markPluginHostReady } from "../runtime/plugin-events";
 import { disposePlugins } from "../runtime/plugin-disposal";
 import { installPluginHostBridge } from "../runtime/plugin-host-bridge";
@@ -95,7 +95,7 @@ export function PluginGlobalSlotHost(): JSX.Element | null {
 			reloadPlugins();
 		};
 		// Main process install/enable/reload (Action / workbench) → re-load remotes.
-		const unsubMain = window.vetta.plugins.onPluginsChanged(requestMainReload);
+		const unsubMain = window.astravia.plugins.onPluginsChanged(requestMainReload);
 		return unsubMain;
 	}, [reloadPlugins]);
 
@@ -115,7 +115,7 @@ export function PluginGlobalSlotHost(): JSX.Element | null {
 			markPluginHostLoading();
 
 			const previousPlugins = loadedPluginsRef.current;
-			const loadedPlugins = await window.vetta.plugins
+			const loadedPlugins = await window.astravia.plugins
 				.list()
 				.then((installedPlugins) =>
 					loadPluginSnapshot(
@@ -154,7 +154,7 @@ export function PluginGlobalSlotHost(): JSX.Element | null {
 			loadedPluginsRef.current = loadedPlugins;
 			setPlugins(loadedPlugins);
 			try {
-				await window.vetta.plugins.reportAgentContributionHostReady();
+				await window.astravia.plugins.reportAgentContributionHostReady();
 			} catch (error) {
 				logPluginRuntimeError("host readiness report failed", { stage: "report-ready" }, error);
 			} finally {
@@ -425,13 +425,13 @@ export function PluginGlobalSlotHost(): JSX.Element | null {
 	if (slots.length === 0) return null;
 
 	return (
-		<div className="contents vetta-plugin-host">
+		<div className="contents astravia-plugin-host">
 			{slots.map((slot) => {
 				const SlotComponent = slot.component;
 				const pluginId = slot.id.slice(0, slot.id.indexOf(":"));
 				return (
 					<PluginSlotErrorBoundary key={slot.id} pluginSlotId={slot.id}>
-						<div className="contents vetta-plugin" data-vetta-plugin-slot={slot.id}>
+						<div className="contents astravia-plugin" data-astravia-plugin-slot={slot.id}>
 							<PluginI18nBoundary pluginId={pluginId}>
 								<SlotComponent />
 							</PluginI18nBoundary>

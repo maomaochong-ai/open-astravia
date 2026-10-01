@@ -1,5 +1,5 @@
 export const MAX_PREVIEW_LENGTH = 256_000;
-export const MARKDOWN_PREVIEW_FRAME_NAME = "vetta-markdown-preview";
+export const MARKDOWN_PREVIEW_FRAME_NAME = "astravia-markdown-preview";
 
 /** No same-origin, popups, forms, downloads, navigation of ancestors or host bridge. */
 export function createPreviewDocument(source: string): string {

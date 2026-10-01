@@ -1,5 +1,5 @@
-import { useThemeComponent } from "@vetta-org/theme-sdk";
-import { SchedulerUpdateApprovalView as ThemeSchedulerUpdateApprovalView } from "@vetta-org/theme-ui/action-approval";
+import { useThemeComponent } from "@astravia-org/theme-sdk";
+import { SchedulerUpdateApprovalView as ThemeSchedulerUpdateApprovalView } from "@astravia-org/theme-ui/action-approval";
 import { SchedulerEditApprovalDrawerView } from "./SchedulerEditApprovalDrawerView";
 import type { SchedulerUpdateApprovalModel } from "./useSchedulerUpdateApprovalModel";
 

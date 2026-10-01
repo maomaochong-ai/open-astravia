@@ -1,4 +1,4 @@
-import type { PluginCommandApi, PluginFsApi, PluginOfficialApi } from "@vetta-org/plugin-sdk";
+import type { PluginCommandApi, PluginFsApi, PluginOfficialApi } from "@astravia-org/plugin-sdk";
 
 interface WorkbenchRuntime {
 	command: PluginCommandApi | null;
@@ -7,7 +7,7 @@ interface WorkbenchRuntime {
 	dialog: PluginOfficialApi["dialog"] | null;
 }
 
-const KEY = "__vettaPluginWorkbenchRuntime__";
+const KEY = "__astraviaPluginWorkbenchRuntime__";
 
 function runtime(): WorkbenchRuntime {
 	const g = globalThis as Record<string, unknown>;

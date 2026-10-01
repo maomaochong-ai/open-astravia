@@ -172,12 +172,12 @@ describe("segmentsToText", () => {
 	});
 
 	it("Windows 反斜杠路径写成正斜杠，避免 markdown 吃掉 \\.", () => {
-		const path = "C:\\Users\\foo\\.vetta\\image-cache\\s\\a.png";
-		expect(pathTokenText(path)).toBe("@C:/Users/foo/.vetta/image-cache/s/a.png");
+		const path = "C:\\Users\\foo\\.astravia\\image-cache\\s\\a.png";
+		expect(pathTokenText(path)).toBe("@C:/Users/foo/.astravia/image-cache/s/a.png");
 		const text = segmentsToText([{ kind: "image", path }]);
-		expect(text).toBe("@C:/Users/foo/.vetta/image-cache/s/a.png");
+		expect(text).toBe("@C:/Users/foo/.astravia/image-cache/s/a.png");
 		expect(parseInputSegments(text).segments).toEqual([
-			{ kind: "image", path: "C:/Users/foo/.vetta/image-cache/s/a.png" },
+			{ kind: "image", path: "C:/Users/foo/.astravia/image-cache/s/a.png" },
 		]);
 	});
 });

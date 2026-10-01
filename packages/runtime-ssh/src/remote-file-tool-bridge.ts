@@ -1,9 +1,9 @@
 import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, join, posix } from "node:path";
-import type { RuntimeToolDefinition, RuntimeToolResult } from "@vetta/runtime-core/kernel";
-import type { CodingToolRegistration } from "@vetta/runtime-tools";
-import type { SshConnection } from "@vetta/ssh-transport";
+import type { RuntimeToolDefinition, RuntimeToolResult } from "@astravia/runtime-core/kernel";
+import type { CodingToolRegistration } from "@astravia/runtime-tools";
+import type { SshConnection } from "@astravia/ssh-transport";
 
 /**
  * 把「吃一个文件、吐一个文件」的本机工具桥接到远端文件上。
@@ -55,7 +55,7 @@ function bridgeTool(template: RuntimeToolDefinition, options: RemoteFileToolBrid
 					? await resolveRemotePath(connection, remoteCwd, input.output)
 					: undefined;
 
-			const workDir = await mkdtemp(join(tmpdir(), "vetta-remote-tool-"));
+			const workDir = await mkdtemp(join(tmpdir(), "astravia-remote-tool-"));
 			try {
 				// 输入与产物分开放：产物目录里出现的每个文件都是要传回去的，不必猜哪个是新的。
 				const inputDir = join(workDir, "in");

@@ -41,7 +41,7 @@ afterEach(async () => {
 });
 
 async function createDirectory(): Promise<string> {
-	const directory = await mkdtemp(join(tmpdir(), "vetta-atomic-write-"));
+	const directory = await mkdtemp(join(tmpdir(), "astravia-atomic-write-"));
 	directories.push(directory);
 	return directory;
 }

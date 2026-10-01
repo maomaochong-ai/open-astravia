@@ -1,4 +1,4 @@
-import { createAgentTeamFixture } from "@vetta/agent-team";
+import { createAgentTeamFixture } from "@astravia/agent-team";
 import { describe, expect, it } from "vitest";
 import { resolveNewSessionTargetIdentity } from "./new-session-target-identity";
 import { agentTargetKey, teamTargetKey } from "./target";

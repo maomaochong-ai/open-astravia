@@ -1,7 +1,7 @@
 import { motion } from "motion/react";
-import { useThemeSurface } from "@vetta-org/theme-sdk";
-import { ThemeSurface, type NewSessionGuidingWordsProps } from "@vetta-org/theme-ui";
-import { cn } from "@vetta-org/ui";
+import { useThemeSurface } from "@astravia-org/theme-sdk";
+import { ThemeSurface, type NewSessionGuidingWordsProps } from "@astravia-org/theme-ui";
+import { cn } from "@astravia-org/ui";
 import type { JSX } from "react";
 import { xianxiaAssets } from "../assets";
 

@@ -1,5 +1,5 @@
-import type { TeamSessionDocument } from "@vetta/agent-team";
-import { type ConversationDocument, createEmptyConversationDocument } from "@vetta/runtime-core";
+import type { TeamSessionDocument } from "@astravia/agent-team";
+import { type ConversationDocument, createEmptyConversationDocument } from "@astravia/runtime-core";
 import { describe, expect, it } from "vitest";
 import { TeamCollaborationStore } from "./team-collaboration-store.js";
 import { TeamNotificationJournal, undeliveredTeamNotifications } from "./team-notification-journal.js";

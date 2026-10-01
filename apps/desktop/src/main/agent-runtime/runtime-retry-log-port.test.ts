@@ -2,7 +2,7 @@ import {
 	RUNTIME_TURN_RETRY_ISSUE_OBSERVATION,
 	RUNTIME_TURN_RETRY_LIFECYCLE_OBSERVATION,
 	type RuntimeObservationRecord,
-} from "@vetta/runtime-core";
+} from "@astravia/runtime-core";
 import { describe, expect, it, vi } from "vitest";
 import { createRuntimeRetryLogPort } from "./runtime-retry-log-port.js";
 

@@ -3,12 +3,12 @@ import { dirname, resolve } from "node:path";
 import {
 	type CodingAgentHistoricalSessionMigrationIncompatible,
 	migrateCodingAgentHistoricalSession,
-} from "@vetta/coding-agent/historical-sessions";
+} from "@astravia/coding-agent/historical-sessions";
 import type {
 	RuntimeHostSessionAssembly,
 	RuntimeHostSessionBackend,
 	RuntimeSessionCreateRequest,
-} from "@vetta/runtime-core";
+} from "@astravia/runtime-core";
 import { createDesktopHistoricalSessionHost } from "./historical-session-host.js";
 
 export class DesktopHistoricalSessionImportError extends Error {

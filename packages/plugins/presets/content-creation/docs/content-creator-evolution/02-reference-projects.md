@@ -36,11 +36,11 @@ Workflow Recipes
 
 - MCP 模式会暴露 19 个工具，本身并没有解决工具上下文膨胀。
 - 多个 recipe 写死第三方模型 ID 和供应商，容易随服务变化失效。
-- 一些 shell wrapper 只是薄封装，输入校验、幂等、恢复和持久化弱于 Vetta 现有领域服务。
+- 一些 shell wrapper 只是薄封装，输入校验、幂等、恢复和持久化弱于 Astravia 现有领域服务。
 - 配方质量主要靠文字约定，没有系统化 evaluator 或 benchmark gate。
 - 某些 recipe 会一次并行执行完整 campaign，未充分区分探索成本与最终成本。
 
-对 Vetta 的正确映射是借用“三层能力模型”和“recipe 合同”，执行仍落在现有 Provider Registry、Generation Service、Artifact Store 和 command bus 中。
+对 Astravia 的正确映射是借用“三层能力模型”和“recipe 合同”，执行仍落在现有 Provider Registry、Generation Service、Artifact Store 和 command bus 中。
 
 ## visual-skills
 
@@ -73,9 +73,9 @@ Workflow Recipes
 ### 不应照搬的部分
 
 - 它只写提示词，不负责真实生成、状态、费用、恢复和 artifact lineage。
-- reference 体量很大，若 Vetta 在一次调用中全部加载，仍会重现上下文问题。
-- 部分材料混用英语和俄语，不能直接成为 Vetta 面向模型的稳定资产。
-- 模型规格会变化，需要从 Vetta capability registry 合并实时事实，不能把文档当唯一事实源。
+- reference 体量很大，若 Astravia 在一次调用中全部加载，仍会重现上下文问题。
+- 部分材料混用英语和俄语，不能直接成为 Astravia 面向模型的稳定资产。
+- 模型规格会变化，需要从 Astravia capability registry 合并实时事实，不能把文档当唯一事实源。
 - 许可证是 CC BY 4.0。若未来复制或改编具体文本、模板和例子，必须保留适当署名；本分析只抽象设计模式。
 
 ## ViMax
@@ -119,14 +119,14 @@ ViMax 还有几项强实践：
 ### 不应照搬的部分
 
 - ViMax 的完整 Agent 仍常驻 13 个通用工具和 3 个领域工具，并把轻量 tool manifest 额外写入 prompt；它不是工具渐进披露的完整答案。
-- pipeline 比较固定，适合 Idea/Script/Novel to Video，不适合 Vetta 的开放画布和图片、社媒、品牌等多种交付物。
+- pipeline 比较固定，适合 Idea/Script/Novel to Video，不适合 Astravia 的开放画布和图片、社媒、品牌等多种交付物。
 - 大量专业知识藏在单个 agent prompt 或 Python 模块中，不如 Skill/reference 资源图易维护和按需加载。
 - benchmark 主要是样本集合，没有看到完整的自动评分、阈值、基线对比与发布 gate，不能把“有 benchmark 文件”视为已经建立 eval 系统。
 - 视觉选择器返回一个最佳候选，但评分维度和置信度没有形成通用、可审计的 Evaluation artifact。
 
 ## 三个项目的互补关系
 
-| 维度 | Generative-Media-Skills | visual-skills | ViMax | Vetta 应采用 |
+| 维度 | Generative-Media-Skills | visual-skills | ViMax | Astravia 应采用 |
 | --- | --- | --- | --- | --- |
 | 执行原语 | Core CLI/MCP | 不执行 | 3 个领域工具 + 内部 pipeline | 现有 command bus / generation service |
 | 能力发现 | workflow catalog | Skill frontmatter 路由 | 固定三种 workflow | 轻量 recipe catalog + Skill 路由 |
@@ -142,6 +142,6 @@ ViMax 还有几项强实践：
 Generative-Media-Skills 的能力分层和配方
   + visual-skills 的渐进专业知识和 rubric
   + ViMax 的阶段 DAG、artifact authority 和候选评审
-  + Vetta 已有的安全命令总线、插件隔离、模型能力注册和确认卡
+  + Astravia 已有的安全命令总线、插件隔离、模型能力注册和确认卡
 ```
 

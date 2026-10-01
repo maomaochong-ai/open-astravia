@@ -42,7 +42,7 @@ Composition Root 创建，因此协调器不会绑定某一种 Session、存储�
 
 ## 3. 独立 Runtime Subagents 包
 
-新增 `@vetta/runtime-subagents`，职责包括：
+新增 `@astravia/runtime-subagents`，职责包括：
 
 - `SubagentTypeRegistry`：注册可用子代理类型及其不透明 Profile。
 - `SubagentCoordinator`：维护 pending、queued、running、completed、failed、interrupted 状态。

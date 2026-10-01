@@ -4,9 +4,9 @@ import { resolveUpdateFeedBase, verifyUpdateFeed } from "./verify-update-feed.mj
 
 const version = "0.5.46";
 const metadata = {
-	"latest.yml": `version: ${version}\npath: Vetta-Setup-${version}.exe\nfiles:\n  - url: Vetta-Setup-${version}.exe\n`,
-	"latest-mac.yml": `version: ${version}\nfiles:\n  - url: Vetta-${version}.zip\n    sha512: test\n`,
-	"latest-linux.yml": `version: ${version}\npath: Vetta-${version}.AppImage\nfiles:\n  - url: Vetta-${version}.AppImage\n`,
+	"latest.yml": `version: ${version}\npath: Astravia-Setup-${version}.exe\nfiles:\n  - url: Astravia-Setup-${version}.exe\n`,
+	"latest-mac.yml": `version: ${version}\nfiles:\n  - url: Astravia-${version}.zip\n    sha512: test\n`,
+	"latest-linux.yml": `version: ${version}\npath: Astravia-${version}.AppImage\nfiles:\n  - url: Astravia-${version}.AppImage\n`,
 };
 
 function createFetch() {
@@ -25,34 +25,34 @@ function createFetch() {
 test("resolves provider-specific public feed bases", () => {
 	assert.equal(
 		resolveUpdateFeedBase({
-			env: { VETTA_UPDATE_PROVIDER: "generic", VETTA_UPDATE_URL: "https://updates.example.com/desktop/stable" },
+			env: { ASTRAVIA_UPDATE_PROVIDER: "generic", ASTRAVIA_UPDATE_URL: "https://updates.example.com/desktop/stable" },
 			version,
 		}),
 		"https://updates.example.com/desktop/stable/",
 	);
 	assert.equal(
 		resolveUpdateFeedBase({
-			env: { VETTA_UPDATE_PROVIDER: "github", VETTA_UPDATE_GITHUB_OWNER: "openvetta", VETTA_UPDATE_GITHUB_REPO: "open-vetta" },
+			env: { ASTRAVIA_UPDATE_PROVIDER: "github", ASTRAVIA_UPDATE_GITHUB_OWNER: "maomaochong-ai", ASTRAVIA_UPDATE_GITHUB_REPO: "open-astravia" },
 			version,
 		}),
-		"https://github.com/openvetta/open-vetta/releases/download/v0.5.46/",
+		"https://github.com/maomaochong-ai/open-astravia/releases/download/v0.5.46/",
 	);
 });
 
 test("accepts a Git tag version with the leading v", () => {
 	assert.equal(
 		resolveUpdateFeedBase({
-			env: { VETTA_UPDATE_PROVIDER: "github", VETTA_UPDATE_GITHUB_OWNER: "openvetta", VETTA_UPDATE_GITHUB_REPO: "open-vetta" },
+			env: { ASTRAVIA_UPDATE_PROVIDER: "github", ASTRAVIA_UPDATE_GITHUB_OWNER: "maomaochong-ai", ASTRAVIA_UPDATE_GITHUB_REPO: "open-astravia" },
 		version: "v0.5.46",
 		}),
-		"https://github.com/openvetta/open-vetta/releases/download/v0.5.46/",
+		"https://github.com/maomaochong-ai/open-astravia/releases/download/v0.5.46/",
 	);
 });
 
 test("verifies all platform metadata and referenced artifacts", async () => {
 	const fake = createFetch();
 	const result = await verifyUpdateFeed({
-		env: { VETTA_UPDATE_PROVIDER: "generic", VETTA_UPDATE_URL: "https://updates.example.com/desktop/stable" },
+		env: { ASTRAVIA_UPDATE_PROVIDER: "generic", ASTRAVIA_UPDATE_URL: "https://updates.example.com/desktop/stable" },
 		version,
 		fetchImpl: fake.fetchImpl,
 		retryDelayMs: 0,
@@ -70,7 +70,7 @@ test("falls back to a ranged GET when a CDN rejects HEAD", async () => {
 		return fake.fetchImpl(url, init);
 	};
 	await verifyUpdateFeed({
-		env: { VETTA_UPDATE_PROVIDER: "generic", VETTA_UPDATE_URL: "https://updates.example.com/desktop/stable" },
+		env: { ASTRAVIA_UPDATE_PROVIDER: "generic", ASTRAVIA_UPDATE_URL: "https://updates.example.com/desktop/stable" },
 		version,
 		metadataFiles: ["latest-linux.yml"],
 		fetchImpl,
@@ -83,7 +83,7 @@ test("rejects a feed that serves a different release version", async () => {
 	const fake = createFetch();
 	assert.rejects(
 		verifyUpdateFeed({
-			env: { VETTA_UPDATE_PROVIDER: "generic", VETTA_UPDATE_URL: "https://updates.example.com/desktop/stable" },
+			env: { ASTRAVIA_UPDATE_PROVIDER: "generic", ASTRAVIA_UPDATE_URL: "https://updates.example.com/desktop/stable" },
 			version: "0.5.47",
 			metadataFiles: ["latest.yml"],
 			fetchImpl: fake.fetchImpl,

@@ -1,4 +1,4 @@
-import { CODING_IMAGE_CONFIGURATION } from "@vetta/runtime-tools";
+import { CODING_IMAGE_CONFIGURATION } from "@astravia/runtime-tools";
 import { loadPhoton } from "./photon.js";
 
 let warnedNoPhoton = false;

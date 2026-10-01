@@ -1,8 +1,8 @@
 import { mkdirSync, mkdtempSync, realpathSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createNodeResourceAccess } from "@vetta/runtime-node/host";
-import { createLoopbackSshConnection } from "@vetta/ssh-transport/testing";
+import { createNodeResourceAccess } from "@astravia/runtime-node/host";
+import { createLoopbackSshConnection } from "@astravia/ssh-transport/testing";
 import { describe, expect, it } from "vitest";
 import { createProjectResourceAccess } from "./project-resource-access.js";
 
@@ -48,7 +48,7 @@ describe("路径运算认得远程项目的 URI", () => {
 	});
 
 	it("resolve 遇到后面的本机绝对路径时以它为准，与 path.resolve 同义", () => {
-		expect(paths.resolve("ssh://h1/srv/app", "/Users/me/.vetta/skills")).toBe("/Users/me/.vetta/skills");
+		expect(paths.resolve("ssh://h1/srv/app", "/Users/me/.astravia/skills")).toBe("/Users/me/.astravia/skills");
 	});
 
 	it("本机路径原样沿用本机语义", () => {
@@ -59,7 +59,7 @@ describe("路径运算认得远程项目的 URI", () => {
 
 describe("文件读取按路径归属分发（远端经回环 SSH）", () => {
 	function createRemoteProject(): string {
-		const root = realpathSync(mkdtempSync(join(tmpdir(), "vetta-remote-resources-")));
+		const root = realpathSync(mkdtempSync(join(tmpdir(), "astravia-remote-resources-")));
 		mkdirSync(join(root, ".agents/skills/deploy"), { recursive: true });
 		writeFileSync(join(root, "AGENTS.md"), "# 远端项目规则\n");
 		writeFileSync(join(root, ".agents/skills/deploy/SKILL.md"), "---\nname: deploy\n---\n");

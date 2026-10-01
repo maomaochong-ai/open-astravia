@@ -22,7 +22,7 @@ function previousPlugin(): InstalledPlugin {
 		activeVersion: "1.0.0",
 		pluginApiVersion: "^2.0.0",
 		moduleFederation: { remoteName: "package_test", expose: "./plugin" },
-		entryUrl: "vetta-plugin://demo/versions/1.0.0/dist/mf-manifest.json?v=1.0.0",
+		entryUrl: "astravia-plugin://demo/versions/1.0.0/dist/mf-manifest.json?v=1.0.0",
 		styleUrls: [],
 		permissions: ["agent.skills.control"],
 		grantedPermissions: ["agent.skills.control"],
@@ -76,7 +76,7 @@ describe("createInstalledPluginFromManifest", () => {
 			activeVersion: "2.0.0",
 			// 升级不自动扩大授权：新声明的 agent.command.run 仍未授予。
 			grantedPermissions: ["agent.skills.control"],
-			entryUrl: "vetta-plugin://demo/versions/2.0.0/dist/mf-manifest.json?v=2.0.0&reload=42",
+			entryUrl: "astravia-plugin://demo/versions/2.0.0/dist/mf-manifest.json?v=2.0.0&reload=42",
 			moduleFederation: { remoteName: "demo", expose: "./plugin" },
 		});
 		expect(installed.pendingVersion).toBeUndefined();
@@ -99,7 +99,7 @@ describe("createInstalledPluginFromManifest", () => {
 });
 
 describe("readPluginManifestFromArchive", () => {
-	it.each(["plugin.json", "demo/plugin.json"])("recognizes a Vetta package whose manifest is at %s", (path) => {
+	it.each(["plugin.json", "demo/plugin.json"])("recognizes a Astravia package whose manifest is at %s", (path) => {
 		const archive = new AdmZip();
 		archive.addFile(path, Buffer.from(JSON.stringify(manifest)));
 

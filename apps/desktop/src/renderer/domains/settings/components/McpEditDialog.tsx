@@ -1,4 +1,4 @@
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@vetta-org/ui";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@astravia-org/ui";
 import { useTranslation } from "react-i18next";
 import { McpServerForm } from "./McpServerForm";
 import type { McpSettingsModel } from "./useMcpSettingsModel";

@@ -1,4 +1,4 @@
-import { migrateVersionedConfig } from "@vetta/toolkit/versioned-config";
+import { migrateVersionedConfig } from "@astravia/toolkit/versioned-config";
 import { Minimatch } from "minimatch";
 
 export interface FileExplorerPreferences {
@@ -8,7 +8,7 @@ export interface FileExplorerPreferences {
 	iconTheme: string;
 }
 
-export const FILE_EXPLORER_PREFERENCES_KEY = "vetta-file-explorer";
+export const FILE_EXPLORER_PREFERENCES_KEY = "astravia-file-explorer";
 export const DEFAULT_FILE_EXPLORER_PREFERENCES: FileExplorerPreferences = {
 	schemaVersion: 1,
 	showHidden: true,

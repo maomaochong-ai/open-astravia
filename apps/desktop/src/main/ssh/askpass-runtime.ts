@@ -1,4 +1,4 @@
-import { buildAskpassEnvironment } from "@vetta/ssh-transport";
+import { buildAskpassEnvironment } from "@astravia/ssh-transport";
 import { app } from "electron";
 import { getDesktopCredentialVault } from "../credentials/desktop-credential-vault.js";
 import { getAppLogger } from "../logger.js";
@@ -62,9 +62,9 @@ export function resolveAskpassEnvironment(
 		const { scriptPath } = ensureAskpassAssets(app.getPath("exe"));
 		return {
 			...buildAskpassEnvironment(scriptPath, process.env.DISPLAY),
-			VETTA_ASKPASS_SOCKET: channel.socketPath,
-			VETTA_ASKPASS_TOKEN: channel.token,
-			VETTA_ASKPASS_HOST: hostId,
+			ASTRAVIA_ASKPASS_SOCKET: channel.socketPath,
+			ASTRAVIA_ASKPASS_TOKEN: channel.token,
+			ASTRAVIA_ASKPASS_HOST: hostId,
 		};
 	} catch (error) {
 		// 准备失败就退回「没有 askpass」的状态：免密主机照常能连，需要交互的会失败并

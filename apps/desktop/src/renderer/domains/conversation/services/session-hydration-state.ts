@@ -1,3 +1,4 @@
+import type { ConversationScenario } from "@astravia-org/plugin-sdk";
 import {
 	type ContextUsageData,
 	contextUsageAtom,
@@ -9,7 +10,6 @@ import {
 	type TurnUsageData,
 } from "@shared/store/chat-atoms";
 import { activeToolNamesAtom, currentScenarioAtom } from "@shared/store/plugin-atoms";
-import type { ConversationScenario } from "@vetta-org/plugin-sdk";
 import { atom } from "jotai";
 
 export interface SessionHydrationState {

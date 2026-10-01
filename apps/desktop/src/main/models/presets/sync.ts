@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { getVettaHomePath } from "@vetta/action-rpc";
-import { atomicWriteJSON } from "@vetta/toolkit/atomic-write";
+import { getAstraviaHomePath } from "@astravia/action-rpc";
+import { atomicWriteJSON } from "@astravia/toolkit/atomic-write";
 import { BrowserWindow, net } from "electron";
 import { getAppLogger } from "../../logger.js";
 import { getDesktopModelSettingsService } from "../model-settings-host.js";
@@ -21,7 +21,7 @@ import { MODELS_DEV_SNAPSHOT } from "./models-dev-snapshot.generated.js";
 const presetLog = getAppLogger("preset-providers");
 
 const FETCH_TIMEOUT_MS = 15_000;
-const CATALOG_PATH = join(getVettaHomePath(), "agent", "models-dev-cache.json");
+const CATALOG_PATH = join(getAstraviaHomePath(), "agent", "models-dev-cache.json");
 /** 后台同步间隔:12 小时。上游模型目录变动没那么快,再密就是白烧流量。 */
 const AUTO_SYNC_INTERVAL_MS = 12 * 60 * 60 * 1000;
 
@@ -119,7 +119,7 @@ async function refreshCatalogInBackground(): Promise<void> {
 	const catalog = await ensureCatalog();
 	if (!catalog || catalog === before) return;
 	for (const win of BrowserWindow.getAllWindows()) {
-		if (!win.isDestroyed()) win.webContents.send("vetta:models:presets-updated");
+		if (!win.isDestroyed()) win.webContents.send("astravia:models:presets-updated");
 	}
 }
 

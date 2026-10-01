@@ -1,1 +1,1 @@
-export { KnowledgeFilesSkeleton } from "@vetta-org/theme-ui/knowledge";
+export { KnowledgeFilesSkeleton } from "@astravia-org/theme-ui/knowledge";

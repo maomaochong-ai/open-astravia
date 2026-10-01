@@ -22,7 +22,7 @@ import { useInputBarPanelModel } from "./useInputBarPanelModel";
 
 async function readFileSize(path: string, isDirectory: boolean): Promise<number | undefined> {
 	if (isDirectory) return undefined;
-	const stat = await window.vetta.fs.stat(path).catch(() => null);
+	const stat = await window.astravia.fs.stat(path).catch(() => null);
 	return stat && stat.size > 0 ? stat.size : undefined;
 }
 

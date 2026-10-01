@@ -1,4 +1,4 @@
-# @vetta/agent-team
+# @astravia/agent-team
 
 ## [Unreleased]
 

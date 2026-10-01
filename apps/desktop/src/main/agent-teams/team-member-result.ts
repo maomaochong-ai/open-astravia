@@ -1,6 +1,6 @@
-import type { AssistantMessage } from "@vetta/ai";
-import type { HistoryEntry } from "@vetta/runtime-core";
-import { type RuntimeFailure, readRuntimeFailure } from "@vetta/runtime-core/failures";
+import type { AssistantMessage } from "@astravia/ai";
+import type { HistoryEntry } from "@astravia/runtime-core";
+import { type RuntimeFailure, readRuntimeFailure } from "@astravia/runtime-core/failures";
 
 /** Read only this attempt's durable outcome, including turns whose host call returns void. */
 export function findTeamAttemptFailure(

@@ -4,7 +4,7 @@
 
 在第 122 轮真实 Legacy/Greenfield 差分为零的基础上，只切换 Desktop 进程的默认 Runtime：
 
-- 未设置或设置为空的 `VETTA_DESKTOP_AGENT_RUNTIME` 使用 Greenfield；
+- 未设置或设置为空的 `ASTRAVIA_DESKTOP_AGENT_RUNTIME` 使用 Greenfield；
 - 显式 `legacy` 保留完整回退；
 - 显式 `greenfield` 继续可用；
 - 既有 Legacy 会话仍按持久化格式路由到 Legacy，不自动迁移或改写；
@@ -52,7 +52,7 @@ Desktop 已有一个进程级选择事实源，同时被交互/Scheduler/Batch �
 
 真实 Canary 新增独立的 `RuntimeCanarySelection`：
 
-- `default`：不向 Desktop 注入 `VETTA_DESKTOP_AGENT_RUNTIME`；
+- `default`：不向 Desktop 注入 `ASTRAVIA_DESKTOP_AGENT_RUNTIME`；
 - `legacy`：显式注入 `legacy`；
 - `greenfield`：显式注入 `greenfield`。
 
@@ -60,7 +60,7 @@ Provider fixture 的 `mode` 仍表示期望的有效实现，只允许 `legacy |
 Runtime，它只是“没有显式配置”的启动方式。
 
 UI 验证环境会在 `default` 分支主动删除从父进程继承的
-`VETTA_DESKTOP_AGENT_RUNTIME`。这一步防止开发机环境变量把默认路径悄悄改成显式选择。
+`ASTRAVIA_DESKTOP_AGENT_RUNTIME`。这一步防止开发机环境变量把默认路径悄悄改成显式选择。
 
 跨进程状态和最终结果分别记录：
 

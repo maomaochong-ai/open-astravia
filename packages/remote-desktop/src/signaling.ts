@@ -44,7 +44,7 @@ export class WebSocketRemoteDesktopSignaling {
 		const { url, token } = splitTarget(this.target);
 		const socket = this.createSocket(
 			url,
-			token ? [REMOTE_DESKTOP_WEBSOCKET_PROTOCOL, `vetta.pairing.${token}`] : undefined,
+			token ? [REMOTE_DESKTOP_WEBSOCKET_PROTOCOL, `astravia.pairing.${token}`] : undefined,
 		);
 		this.socket = socket;
 		socket.onmessage = (event) => {

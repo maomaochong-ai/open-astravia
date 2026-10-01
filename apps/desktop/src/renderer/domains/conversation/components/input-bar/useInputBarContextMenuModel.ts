@@ -1,5 +1,5 @@
+import type { InputBarContextMenuViewProps } from "@astravia-org/theme-ui/chat";
 import { recordInputImagesAdded } from "@shared/lib/app-monitor-events";
-import type { InputBarContextMenuViewProps } from "@vetta-org/theme-ui/chat";
 import type { MouseEvent } from "react";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -86,7 +86,7 @@ export function useInputBarContextMenuModel({
 		if (!hasSession) return;
 		void (async () => {
 			try {
-				const rich = await window.vetta.clipboard.pasteUserMessage(activeRuntimeId ?? "draft");
+				const rich = await window.astravia.clipboard.pasteUserMessage(activeRuntimeId ?? "draft");
 				if (rich) {
 					recordInputImagesAdded("paste", rich.images);
 					insertClipboardMessage(

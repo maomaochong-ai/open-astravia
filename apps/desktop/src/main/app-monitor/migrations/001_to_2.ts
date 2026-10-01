@@ -1,4 +1,4 @@
-import type { FileMigration } from "@vetta/toolkit/file-migrations";
+import type { FileMigration } from "@astravia/toolkit/file-migrations";
 
 const LEGACY_PATH = "app-monitor.json";
 const SUMMARY_PATH = "app-monitor/summary.json";

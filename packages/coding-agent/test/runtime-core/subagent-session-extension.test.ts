@@ -1,4 +1,4 @@
-import { SessionExtensionComposition } from "@vetta/runtime-core/session-extensions";
+import { SessionExtensionComposition } from "@astravia/runtime-core/session-extensions";
 import { describe, expect, it, vi } from "vitest";
 import type { CodingAgentSubagentRuntime } from "../../src/composition/subagent/runtime.js";
 import {

@@ -66,7 +66,7 @@ describe("PluginOcrProviderHost", () => {
 			},
 		);
 		expect(sender.send).toHaveBeenCalledWith(
-			"vetta:plugins:ocr-provider-request",
+			"astravia:plugins:ocr-provider-request",
 			expect.objectContaining({ input: { inputs: [{ id: "page-1", mimeType: "image/png" }] } }),
 		);
 		expect(JSON.stringify(sender.send.mock.calls)).not.toContain("C:\\\\books");
@@ -137,6 +137,6 @@ describe("PluginOcrProviderHost", () => {
 		expect(progress).toHaveBeenCalledWith({ phase: "processing", completed: 1, total: 1, itemId: "page-1" });
 		controller.abort();
 		await expect(promise).rejects.toThrow("cancelled");
-		expect(sender.send).toHaveBeenCalledWith("vetta:plugins:ocr-provider-cancel", { requestId: "request-1" });
+		expect(sender.send).toHaveBeenCalledWith("astravia:plugins:ocr-provider-cancel", { requestId: "request-1" });
 	});
 });

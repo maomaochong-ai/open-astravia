@@ -1,5 +1,5 @@
-import type { AgentModelCallLifecycle } from "@vetta/agent-core";
-import type { AssistantMessage, Context, Model } from "@vetta/ai";
+import type { AgentModelCallLifecycle } from "@astravia/agent-core";
+import type { AssistantMessage, Context, Model } from "@astravia/ai";
 import { describe, expect, it } from "vitest";
 import type { ContextCompositionReport } from "../../src/context-composition/index.js";
 import {

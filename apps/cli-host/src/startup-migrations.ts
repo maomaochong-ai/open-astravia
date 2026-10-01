@@ -2,7 +2,7 @@
  * One-time migrations that run on startup.
  */
 
-import { CONFIG_DIR_NAME, getAgentDir, getChangelogPath, getDocsPath } from "@vetta/coding-agent/config";
+import { CONFIG_DIR_NAME, getAgentDir, getChangelogPath, getDocsPath } from "@astravia/coding-agent/config";
 import chalk from "chalk";
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "fs";
 import { dirname, join } from "path";

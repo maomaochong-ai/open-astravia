@@ -51,7 +51,7 @@ MCP 在 Prompt 边界发布既有 `mcp.reload.start/end` 观察事件。Prompt �
 
 ### 4. 修复启动后首次创建 Skill 根目录的刷新
 
-原 ResourceLoader 只指纹化启动时实际存在的 Skill 路径。若 Session 启动时 `.vetta/skills` 不存在，
+原 ResourceLoader 只指纹化启动时实际存在的 Skill 路径。若 Session 启动时 `.astravia/skills` 不存在，
 之后首次创建该目录不会触发刷新。
 
 现在：

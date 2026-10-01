@@ -2,7 +2,7 @@
  * 宿主侧云服务挂载点（主进程）。
  *
  * cloud 模块启动时经 `setCloudBridge()` 注入实现；lite 构建
- * （VETTA_CLOUD_ENABLED=false）不加载 cloud 模块，bridge 恒为 null，
+ * （ASTRAVIA_CLOUD_ENABLED=false）不加载 cloud 模块，bridge 恒为 null，
  * 宿主功能按「无云端」优雅降级。宿主代码只准 import 本文件，
  * 不得直接 import `cloud/` 内部实现。
  *
@@ -14,14 +14,14 @@ export interface RemoteProvidersResult {
 	error?: string;
 }
 
-export interface VettaGatewayRequest {
+export interface AstraviaGatewayRequest {
 	path: string;
 	method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 	body?: unknown;
 	timeoutMs?: number;
 }
 
-export interface VettaGatewayResponse<T = unknown> {
+export interface AstraviaGatewayResponse<T = unknown> {
 	ok: boolean;
 	status: number;
 	code: number;
@@ -36,10 +36,13 @@ export type CloudRefreshOutcome =
 	| { status: "transient" };
 
 export interface CloudBridge {
-	/** 云端 provider 目录（Vetta Go 等远程模型）。 */
+	/** 云端 provider 目录（Astravia Go 等远程模型）。 */
 	fetchRemoteProviders(): Promise<RemoteProvidersResult>;
-	/** 经 vetta 服务端 `/api/v1` 的带鉴权中转（图像生成等增值能力）。 */
-	requestGateway<T = unknown>(request: VettaGatewayRequest, signal?: AbortSignal): Promise<VettaGatewayResponse<T>>;
+	/** 经 astravia 服务端 `/api/v1` 的带鉴权中转（图像生成等增值能力）。 */
+	requestGateway<T = unknown>(
+		request: AstraviaGatewayRequest,
+		signal?: AbortSignal,
+	): Promise<AstraviaGatewayResponse<T>>;
 	/** 主进程内部 token refresh（单飞）。 */
 	tryRefreshAccessToken(): Promise<CloudRefreshOutcome>;
 }
@@ -56,6 +59,6 @@ export function getCloudBridge(): CloudBridge | null {
 }
 
 /** 云服务不可用时的统一网关失败回执（envelope 形状，调用方按 !ok 处理）。 */
-export function gatewayUnavailableResponse<T = unknown>(): VettaGatewayResponse<T> {
-	return { ok: false, status: 0, code: -1, message: "Vetta cloud services are not available in this build" };
+export function gatewayUnavailableResponse<T = unknown>(): AstraviaGatewayResponse<T> {
+	return { ok: false, status: 0, code: -1, message: "Astravia cloud services are not available in this build" };
 }

@@ -67,7 +67,7 @@ vi.mock("../../components/BackgroundTasksBadge", () => ({
 vi.mock("../../components/SandboxGrantsBadge", () => ({
 	SandboxGrantsBadge: () => <span>sandbox-grants</span>,
 }));
-vi.mock("@vetta-org/theme-ui/chat", () => ({
+vi.mock("@astravia-org/theme-ui/chat", () => ({
 	AgentAvatarView: ({ name }: { name: string }) => <span data-testid={`avatar-${name}`}>{name}</span>,
 	ChatHeaderActions: {
 		Export: ({ title, onClick }: { title: string; onClick: () => void }) => <button onClick={onClick}>{title}</button>,

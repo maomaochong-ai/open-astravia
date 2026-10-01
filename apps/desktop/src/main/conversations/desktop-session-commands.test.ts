@@ -43,17 +43,17 @@ describe("desktop session commands", () => {
 	});
 
 	it("keeps a project's directory and lists the change under the project", async () => {
-		const { commands, calls, events } = setup("/code/vetta");
+		const { commands, calls, events } = setup("/code/astravia");
 		await commands.delete("/s/a.jsonl");
 		expect(calls.some((call) => call.startsWith("rm "))).toBe(false);
-		expect(events).toEqual([{ cwd: "/code/vetta", sessionPath: "/s/a.jsonl" }]);
+		expect(events).toEqual([{ cwd: "/code/astravia", sessionPath: "/s/a.jsonl" }]);
 	});
 
 	it("renames only ordinary sessions and tells the list", async () => {
-		const { commands, calls, events } = setup("/code/vetta");
+		const { commands, calls, events } = setup("/code/astravia");
 		await commands.rename("/s/a.jsonl", "周报");
 		expect(calls).toEqual(["assert /s/a.jsonl", "rename /s/a.jsonl 周报"]);
-		expect(events).toEqual([{ cwd: "/code/vetta", sessionPath: "/s/a.jsonl" }]);
+		expect(events).toEqual([{ cwd: "/code/astravia", sessionPath: "/s/a.jsonl" }]);
 	});
 
 	it("stops before touching anything when the session belongs to a team", async () => {

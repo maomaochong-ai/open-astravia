@@ -27,8 +27,8 @@ function loadedPlugin(): LoadedPlugin {
 			{
 				id: "accounts",
 				label: "小红书账号",
-				icon: "vetta-plugin-nav-icon-1",
-				iconUrl: "vetta-plugin://xiaohongshu/assets/icon.png?v=1.0.9",
+				icon: "astravia-plugin-nav-icon-1",
+				iconUrl: "astravia-plugin://xiaohongshu/assets/icon.png?v=1.0.9",
 				component: () => null,
 			},
 		],
@@ -39,8 +39,8 @@ function loadedPlugin(): LoadedPlugin {
 describe("publishWorkspaceViews", () => {
 	it("preserves the full-color icon URL alongside its theme fallback", () => {
 		expect(publishWorkspaceViews([loadedPlugin()])[0]).toMatchObject({
-			icon: "vetta-plugin-nav-icon-1",
-			iconUrl: "vetta-plugin://xiaohongshu/assets/icon.png?v=1.0.9",
+			icon: "astravia-plugin-nav-icon-1",
+			iconUrl: "astravia-plugin://xiaohongshu/assets/icon.png?v=1.0.9",
 		});
 	});
 });

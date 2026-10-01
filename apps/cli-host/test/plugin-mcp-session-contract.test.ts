@@ -1,19 +1,19 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { type Api, type AssistantMessage, type AssistantMessageEvent, EventStream, type Model } from "@vetta/ai";
-import type { CodingAgentRuntimeComposition } from "@vetta/coding-agent/composition";
-import { createCodingAgentPluginMcpRuntime } from "@vetta/coding-agent/host-services";
-import type { AgentPluginRuntimeConfig } from "@vetta/coding-agent/plugin-runtime";
-import { CODING_AGENT_PLUGIN_CONFIGURATION_APPLY } from "@vetta/coding-agent/session-extensions";
+import { type Api, type AssistantMessage, type AssistantMessageEvent, EventStream, type Model } from "@astravia/ai";
+import type { CodingAgentRuntimeComposition } from "@astravia/coding-agent/composition";
+import { createCodingAgentPluginMcpRuntime } from "@astravia/coding-agent/host-services";
+import type { AgentPluginRuntimeConfig } from "@astravia/coding-agent/plugin-runtime";
+import { CODING_AGENT_PLUGIN_CONFIGURATION_APPLY } from "@astravia/coding-agent/session-extensions";
 import type {
 	McpClientHandle,
 	McpResourceReadResult,
 	McpToolCallResult,
 	RuntimeMcpClientFactory,
-} from "@vetta/runtime-mcp";
-import { EMPTY_MCP_CONFIG_SOURCE } from "@vetta/runtime-mcp";
-import { createNodeMcpSupervisor } from "@vetta/runtime-node/mcp";
+} from "@astravia/runtime-mcp";
+import { EMPTY_MCP_CONFIG_SOURCE } from "@astravia/runtime-mcp";
+import { createNodeMcpSupervisor } from "@astravia/runtime-node/mcp";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createCodingAgentRuntimeComposition } from "./fixtures/runtime-composition.js";
 

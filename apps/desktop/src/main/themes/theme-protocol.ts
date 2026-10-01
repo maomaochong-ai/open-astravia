@@ -27,7 +27,7 @@ function contentType(path: string): string {
 }
 
 export const THEME_PROTOCOL_PRIVILEGE: CustomScheme = {
-	scheme: "vetta-theme",
+	scheme: "astravia-theme",
 	privileges: {
 		standard: true,
 		secure: true,
@@ -37,7 +37,7 @@ export const THEME_PROTOCOL_PRIVILEGE: CustomScheme = {
 };
 
 export function registerThemeProtocol(): void {
-	protocol.handle("vetta-theme", async (request) => {
+	protocol.handle("astravia-theme", async (request) => {
 		const url = new URL(request.url);
 		const separatorIndex = url.hostname.indexOf("--");
 		const source = url.hostname.slice(0, separatorIndex);

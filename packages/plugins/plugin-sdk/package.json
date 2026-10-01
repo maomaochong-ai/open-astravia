@@ -1,5 +1,5 @@
 {
-	"name": "@vetta-org/plugin-sdk",
+	"name": "@astravia-org/plugin-sdk",
 	"version": "0.3.10",
 	"type": "module",
 	"main": "./dist/index.js",
@@ -35,7 +35,7 @@
 		"prepack": "node scripts/bundle-docs.mjs"
 	},
 	"dependencies": {
-		"@vetta-org/capability-sdk": "^0.1.0",
+		"@astravia-org/capability-sdk": "^0.1.0",
 		"@sinclair/typebox": "^0.34.41"
 	},
 	"peerDependencies": {

@@ -51,7 +51,7 @@ export interface DesktopMcpApi {
 	set(config: McpConfigData): Promise<void>;
 	/**
 	 * 对 type:http 的远程 MCP 发起浏览器 OAuth 授权（通用机制，不限 Notion）。
-	 * 成功后 token 写入 ~/.vetta/agent/mcp-auth/<name>.json。
+	 * 成功后 token 写入 ~/.astravia/agent/mcp-auth/<name>.json。
 	 * `url` 可选：首次添加时尚未写入 mcp.json，可直接传远程 MCP 地址。
 	 * `oauthClientId` 可选：不支持 DCR 的服务（如 GitHub）首次授权时透传预注册 client_id。
 	 * `oauthDeviceFlow`/`oauthScopes` 可选：首次授权时透传设备码流开关与请求 scopes。

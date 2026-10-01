@@ -1,4 +1,4 @@
-import type { Message } from "@vetta/ai";
+import type { Message } from "@astravia/ai";
 import type {
 	CodingAgentModelCallFailureRecovery,
 	CodingAgentModelCallFailureRecoveryInput,

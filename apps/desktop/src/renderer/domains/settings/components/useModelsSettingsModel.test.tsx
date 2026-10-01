@@ -19,7 +19,7 @@ vi.mock("@shared/store/model-catalog", async () => {
 describe("useModelsSettingsModel fetched models", () => {
 	it("starts with nothing selected and supports select all / deselect all", async () => {
 		const set = vi.fn(async () => undefined);
-		(window as unknown as { vetta: unknown }).vetta = {
+		(window as unknown as { astravia: unknown }).astravia = {
 			models: {
 				set,
 				fetchProviderModels: vi.fn(async () => ({ models: ["qwen3", "llama3", "gemma3"] })),

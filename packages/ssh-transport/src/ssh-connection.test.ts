@@ -70,7 +70,7 @@ describe("远端文件读写", () => {
 		await connection.writeFile("/srv/a.txt", encode("hello"));
 		const remoteCommand = String(calls[0].argv[calls[0].argv.length - 1]);
 		expect(remoteCommand).toBe(
-			buildWriteFileCommand("/srv/a.txt", remoteCommand.match(/\.vetta-tmp-[a-z0-9]+/)?.[0] ?? ""),
+			buildWriteFileCommand("/srv/a.txt", remoteCommand.match(/\.astravia-tmp-[a-z0-9]+/)?.[0] ?? ""),
 		);
 		expect(calls[0].stdin).toEqual(encode("hello"));
 	});
@@ -170,7 +170,7 @@ describe("失败分类（ADR-0124 执行边界）", () => {
 		expect(error).toBeInstanceOf(SshOperationAbortedError);
 		expect((error as SshOperationAbortedError).reason).toBe("aborted");
 		const commands = calls.map((call) => String(call.argv[call.argv.length - 1]));
-		const token = commands[1].match(/vetta-exec-[0-9a-f]+/)?.[0] ?? "";
+		const token = commands[1].match(/astravia-exec-[0-9a-f]+/)?.[0] ?? "";
 		expect(commands[2]).toBe(buildKillCommand(token));
 	});
 
@@ -247,7 +247,7 @@ describe("用户命令执行", () => {
 		});
 		// 引用语义由 remote-command 的测试守住，这里只证明 cwd 确实被透传下去。
 		const userCommand = calls.map((call) => String(call.argv[call.argv.length - 1])).at(-1);
-		const processToken = userCommand?.match(/vetta-exec-[0-9a-f]+/)?.[0];
+		const processToken = userCommand?.match(/astravia-exec-[0-9a-f]+/)?.[0];
 		expect(userCommand).toBe(buildRemoteCommand("npm test", { cwd: "/srv/app", processToken }));
 	});
 });
@@ -256,10 +256,10 @@ describe("远端端口与进程", () => {
 	it("ssh exec 路径下多问一次 ps 补上启动时间，22 照样列出但标成敏感", async () => {
 		const { connection, calls } = connect((command) => {
 			if (command.startsWith("uname")) return ok("Linux\nx86_64\n");
-			if (command.includes("@vetta-listeners")) {
+			if (command.includes("@astravia-listeners")) {
 				return ok(
 					[
-						"@vetta-listeners ss",
+						"@astravia-listeners ss",
 						'LISTEN 0 511 127.0.0.1:3000 0.0.0.0:* users:(("node",pid=1234,fd=23))',
 						'LISTEN 0 128 0.0.0.0:22 0.0.0.0:* users:(("sshd",pid=800,fd=3))',
 					].join("\n"),
@@ -282,8 +282,10 @@ describe("远端端口与进程", () => {
 	it("ps 失败只是少了时间，扫描本身照常返回", async () => {
 		const { connection } = connect((command) => {
 			if (command.startsWith("uname")) return ok("Linux\nx86_64\n");
-			if (command.includes("@vetta-listeners")) {
-				return ok('@vetta-listeners ss\nLISTEN 0 511 127.0.0.1:3000 0.0.0.0:* users:(("node",pid=1234,fd=23))\n');
+			if (command.includes("@astravia-listeners")) {
+				return ok(
+					'@astravia-listeners ss\nLISTEN 0 511 127.0.0.1:3000 0.0.0.0:* users:(("node",pid=1234,fd=23))\n',
+				);
 			}
 			return { exitCode: 127, stdout: encode(""), stderr: "ps: not found", aborted: false };
 		});

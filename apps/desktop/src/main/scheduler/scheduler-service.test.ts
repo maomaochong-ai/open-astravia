@@ -29,7 +29,7 @@ function service() {
 		unscheduleTask: vi.fn(),
 		isKnownProject: async () => true,
 		sameProjectPath: (a, b) => a === b,
-		conversationCwd: "C:/home/.vetta/conversation",
+		conversationCwd: "C:/home/.astravia/conversation",
 	});
 }
 
@@ -49,7 +49,7 @@ describe("SchedulerService", () => {
 
 		expect(task.runTarget).toEqual({
 			mode: "same-session",
-			projectCwd: "C:/home/.vetta/conversation",
+			projectCwd: "C:/home/.astravia/conversation",
 			sessionPath: null,
 		});
 	});

@@ -1,4 +1,4 @@
-import type { AssistantMessage, EventStream } from "@vetta/ai";
+import type { AssistantMessage, EventStream } from "@astravia/ai";
 import type { AgentContextCheckpointReason, AgentContextCheckpointResult, AgentEvent, AgentMessage } from "../types.js";
 
 export class AgentContextCheckpointFailure extends Error {

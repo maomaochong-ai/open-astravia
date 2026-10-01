@@ -19,7 +19,7 @@ export function McpAppSurface({ attachment, input }: McpAppSurfaceProps): JSX.El
 
 	useEffect(() => {
 		let active = true;
-		void window.vetta.session.getMcpAppSurface(attachment.id).then((value) => {
+		void window.astravia.session.getMcpAppSurface(attachment.id).then((value) => {
 			if (active) setSurface(value);
 		});
 		return () => {
@@ -70,7 +70,7 @@ export function McpAppSurface({ attachment, input }: McpAppSurfaceProps): JSX.El
 				bridge.requestTeardown("host-unmounted"),
 				new Promise((resolve) => setTimeout(resolve, 250)),
 			]).finally(() => bridge.close());
-			void window.vetta.session.releaseMcpAppSurface(surface.id);
+			void window.astravia.session.releaseMcpAppSurface(surface.id);
 		};
 	}, [i18n.language, i18n.resolvedLanguage, input, surface]);
 

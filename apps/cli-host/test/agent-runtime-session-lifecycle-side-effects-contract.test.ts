@@ -177,7 +177,7 @@ async function runLifecycleScenario(): Promise<LifecycleObservation> {
 		await writeProjectHookConfigs(fixture, auditPath);
 		process = startAgentRpc(executable, fixture, {
 			extraArgs: ["--extension", extensionPath],
-			env: { VETTA_TEST_FAIL_HOOK: "SessionEnd" },
+			env: { ASTRAVIA_TEST_FAIL_HOOK: "SessionEnd" },
 		});
 
 		const source = readIdentity(await process.request("runtime-source-state", "get_state"));
@@ -273,9 +273,9 @@ async function writeLifecycleExtension(
 }
 
 async function writeProjectHookConfigs(fixture: AgentRpcFixture, auditPath: string): Promise<void> {
-	const hookScriptPath = join(fixture.workspace, ".vetta", "lifecycle-hook.cjs");
-	const codexDirectory = join(fixture.workspace, ".vetta", ".codex");
-	const claudeDirectory = join(fixture.workspace, ".vetta", ".claude");
+	const hookScriptPath = join(fixture.workspace, ".astravia", "lifecycle-hook.cjs");
+	const codexDirectory = join(fixture.workspace, ".astravia", ".codex");
+	const claudeDirectory = join(fixture.workspace, ".astravia", ".claude");
 	await Promise.all([mkdir(codexDirectory, { recursive: true }), mkdir(claudeDirectory, { recursive: true })]);
 	await writeFile(
 		hookScriptPath,
@@ -288,11 +288,11 @@ async function writeProjectHookConfigs(fixture: AgentRpcFixture, auditPath: stri
 			sessionFile: input.transcript_path,
 			detail: input.source ?? input.reason,
 		}) + "\\n", "utf8");
-		if (process.env.VETTA_TEST_FAIL_HOOK === input.hook_event_name) process.exitCode = 9;
+		if (process.env.ASTRAVIA_TEST_FAIL_HOOK === input.hook_event_name) process.exitCode = 9;
 		`,
 		"utf8",
 	);
-	const command = "bun .vetta/lifecycle-hook.cjs";
+	const command = "bun .astravia/lifecycle-hook.cjs";
 	await Promise.all([
 		writeFile(
 			join(codexDirectory, "hooks.json"),

@@ -6,12 +6,12 @@
 
 ### Runtime Tool validator Port
 
-- `RuntimeToolDefinition.validateInput` 已从 `@vetta/runtime-core` 透传到 Agent engine；
+- `RuntimeToolDefinition.validateInput` 已从 `@astravia/runtime-core` 透传到 Agent engine；
 - 没有自定义 validator 的 Tool 仍走原有 JSON Schema 校验；
 - validator 可以完成 normalize/decode，异常仍由 Agent engine 归类为 Tool input invalid；
 - Runtime Core 不依赖 Pi、TypeBox 1 或 Zod。
 
-### Vetta native Tool authoring
+### Astravia native Tool authoring
 
 Native `ToolDefinition` 新增：
 
@@ -23,9 +23,9 @@ Prompt block 有稳定 id、extension source、priority 和既有 token diagnost
 
 ### Pi Tool compatibility ACL
 
-已新增显式入口 `@vetta/coding-agent/extensions/pi-compat` 的 `loadPiExtensions()`，native `loadExtensions()` 不暴露 Pi virtual module。首个 profile 是 `pi-extension-0.84-host-neutral-v1`，当前证明过的映射为：
+已新增显式入口 `@astravia/coding-agent/extensions/pi-compat` 的 `loadPiExtensions()`，native `loadExtensions()` 不暴露 Pi virtual module。首个 profile 是 `pi-extension-0.84-host-neutral-v1`，当前证明过的映射为：
 
-| Pi 行为 | Vetta 投影 | 状态 |
+| Pi 行为 | Astravia 投影 | 状态 |
 | --- | --- | --- |
 | `registerTool` + TypeBox 1 Schema | plain JSON Schema + 隔离的 TypeBox 1 validator | adapted |
 | Tool/event handler `ExtensionContext` | 只保证双方共有字段；Pi-only mode/scoped model/trust 字段不存在 | host-dependent |
@@ -43,7 +43,7 @@ Prompt block 有稳定 id、extension source、priority 和既有 token diagnost
 
 当前 module facade 只开放 Tool corpus 所需的 current/legacy Pi package root、`Type`、`StringEnum` 和 `defineTool`。未验证的 Pi SDK、Agent Core、AI provider export、subpath 与 TUI 没有被伪装成完整 Pi 包。
 
-事件以 payload 合同而非同名判断：例如 Pi current 的 `session_start` 新增必需 `reason`，`before_agent_start` 新增必需 `systemPromptOptions`，compact/shutdown/fork 事件也增加了事实字段；Vetta 尚不能准确提供时，它们即使同名也仍为 unsupported。
+事件以 payload 合同而非同名判断：例如 Pi current 的 `session_start` 新增必需 `reason`，`before_agent_start` 新增必需 `systemPromptOptions`，compact/shutdown/fork 事件也增加了事实字段；Astravia 尚不能准确提供时，它们即使同名也仍为 unsupported。
 
 ## TypeBox 与 Zod 决策
 
@@ -74,7 +74,7 @@ Prompt block 有稳定 id、extension source、priority 和既有 token diagnost
 - 使用 Pi current namespace 和真实 TypeBox 1 的端到端 Extension fixture；
 - renderer/shortcut compatibility report；
 - parallel Tool、未落地事件 fail closed；
-- 未列入 profile 的 API 不会因 Vetta native API 同名而被意外透传；
+- 未列入 profile 的 API 不会因 Astravia native API 同名而被意外透传；
 - native loader 不泄漏 Pi module facade。
 
 后续每增加一个 capability，仍需同时补 native fixture、port/catalog contract test 和 Pi projection fixture。

@@ -1,12 +1,12 @@
-import type { CodingAgentBootstrap } from "@vetta/coding-agent/bootstrap";
-import type { CodingAgentHtmlExportRuntime } from "@vetta/coding-agent/export-html";
-import { createHostBashExecutor } from "@vetta/coding-agent/host-services";
+import type { CodingAgentBootstrap } from "@astravia/coding-agent/bootstrap";
+import type { CodingAgentHtmlExportRuntime } from "@astravia/coding-agent/export-html";
+import { createHostBashExecutor } from "@astravia/coding-agent/host-services";
 import {
 	CodingAgentRpcBashCapability,
 	RPC_FULL_SESSION_PROFILE,
 	type RpcSessionCapabilities,
-} from "@vetta/coding-agent/rpc";
-import { InitializationRollbackScope, RetryableCleanup } from "@vetta/runtime-core";
+} from "@astravia/coding-agent/rpc";
+import { InitializationRollbackScope, RetryableCleanup } from "@astravia/runtime-core";
 import { CliRpcSessionAdapter, createImRpcSessionAdapter } from "../rpc-session-adapter.js";
 import { CLI_RUNTIME_HOST_STARTUP_FAILURE, type CliSessionAssembly } from "./cli-session-assembly.js";
 

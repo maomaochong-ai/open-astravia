@@ -1,8 +1,8 @@
 import { mkdtemp, readFile, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, extname, join } from "node:path";
-import { isSshProjectUri } from "@vetta/ssh-transport";
-import type { MediaArtifact, MediaInput, MediaKind } from "@vetta-org/capability-sdk";
+import { isSshProjectUri } from "@astravia/ssh-transport";
+import type { MediaArtifact, MediaInput, MediaKind } from "@astravia-org/capability-sdk";
 import { ArtifactStore } from "../artifacts/artifact-store.js";
 import { assertFilesystemPathWithinProject } from "../filesystem/filesystem-service.js";
 import { openRemotePreviewSource } from "../filesystem/remote-filesystem.js";
@@ -95,7 +95,7 @@ export class MediaArtifactStore {
 			// 生成服务要的是本机可读的字节（它把文件交给 provider 或直接上传），远端路径
 			// 对它没有意义——先取回一份临时副本。参考图、首尾帧都走这里。
 			const bytes = await openRemotePreviewSource(input.source.path).read();
-			const localPath = join(await mkdtemp(join(tmpdir(), "vetta-media-input-")), basename(input.source.path));
+			const localPath = join(await mkdtemp(join(tmpdir(), "astravia-media-input-")), basename(input.source.path));
 			await writeFile(localPath, bytes);
 			return {
 				path: localPath,

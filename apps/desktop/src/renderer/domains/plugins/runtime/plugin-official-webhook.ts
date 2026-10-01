@@ -1,10 +1,10 @@
-import type { PluginOfficialApi } from "@vetta-org/plugin-sdk";
+import type { PluginOfficialApi } from "@astravia-org/plugin-sdk";
 
 export function createOfficialWebhookApi(
 	assertOfficial: () => void,
 	capabilitySessionId: string,
 ): PluginOfficialApi["webhook"] {
-	const webhook = window.vetta.plugins.internalCapabilities.webhook;
+	const webhook = window.astravia.plugins.internalCapabilities.webhook;
 	return {
 		list: async () => {
 			assertOfficial();

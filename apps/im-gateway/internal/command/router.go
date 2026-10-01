@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"vetta-im-gateway/internal/hostclient"
-	"vetta-im-gateway/internal/state"
-	"vetta-im-gateway/internal/transport"
+	"astravia-im-gateway/internal/hostclient"
+	"astravia-im-gateway/internal/state"
+	"astravia-im-gateway/internal/transport"
 )
 
 // flushMemoryTimeout bounds the memory-consolidation step on /new so a slow or

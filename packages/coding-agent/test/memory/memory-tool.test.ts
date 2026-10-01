@@ -1,4 +1,4 @@
-import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
+import type { RuntimeToolDefinition } from "@astravia/runtime-core/kernel";
 import { describe, expect, it } from "vitest";
 import {
 	createMemoryToolRegistration,

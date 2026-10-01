@@ -1,4 +1,4 @@
-import type { RuntimeToolResult } from "@vetta/runtime-core/kernel";
+import type { RuntimeToolResult } from "@astravia/runtime-core/kernel";
 import type { McpAudioContent, McpContent, McpToolCallResult } from "../protocol/index.js";
 import { createMcpMediaAdmission } from "./mcp-media-policy.js";
 

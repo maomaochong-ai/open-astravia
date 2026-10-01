@@ -25,7 +25,7 @@ export class ClaudeHookCommandExecutor implements HookCommandExecutor {
 		if (needsBash) {
 			if (!this.bashExecutor) {
 				return runtimeFailure(
-					"Claude hook requires Bash to run shell scripts; Bash was not found (install Git Bash or set VETTA_BASH)",
+					"Claude hook requires Bash to run shell scripts; Bash was not found (install Git Bash or set ASTRAVIA_BASH)",
 				);
 			}
 			// Ensure the script path is absolute when possible so bash -lc can find it after cd.
@@ -75,7 +75,7 @@ function normalizeShellCommand(command: string, cwd: string): string {
 
 function findBashExecutable(): string | undefined {
 	const candidates = [
-		process.env.VETTA_BASH,
+		process.env.ASTRAVIA_BASH,
 		process.env.GIT_BASH,
 		"C:\\Program Files\\Git\\bin\\bash.exe",
 		"C:\\Program Files\\Git\\usr\\bin\\bash.exe",

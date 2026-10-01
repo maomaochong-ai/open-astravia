@@ -8,7 +8,7 @@ import {
 	type FilesystemPathInput,
 	type FilesystemReadFileResult,
 	FOUNDATION_FILESYSTEM_CAPABILITIES,
-} from "@vetta-org/capability-sdk";
+} from "@astravia-org/capability-sdk";
 import { describe, expect, it } from "vitest";
 import { bindCapability } from "../src/provider.js";
 import { CAPABILITY_MODULE_TRUST_LEVELS, CapabilityRegistry } from "../src/registry.js";
@@ -141,7 +141,7 @@ describe("CapabilityRegistry", () => {
 		const registry = new CapabilityRegistry(CAPABILITY_LAYERS.FOUNDATION);
 		const module = defineCapabilityModule({
 			id: "filesystem",
-			publisher: "vetta",
+			publisher: "astravia",
 			version: "1.0.0",
 			capabilities: [TEST_CAPABILITY],
 		});

@@ -1,5 +1,5 @@
 import { dirname } from "node:path";
-import type { AgentTeamDocument, TeamSessionListItem } from "@vetta/agent-team";
+import type { AgentTeamDocument, TeamSessionListItem } from "@astravia/agent-team";
 import { teamMemberAvatarUrls } from "../../shared/agent-team-avatar.js";
 import type { DesktopTeamSidebarConversation } from "../../shared/sidebar-conversation.js";
 import { agentBlueprintRegistry } from "../agent-teams/agent-blueprint-registry.js";

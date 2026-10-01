@@ -22,7 +22,7 @@ describe("ThinkingTagSplitter", () => {
 		expect(run(["hello ", "world"])).toEqual([{ kind: "text", text: "hello world" }]);
 	});
 
-	test("extracts a leaked reasoning summary (vetta-go GPT gateway shape)", () => {
+	test("extracts a leaked reasoning summary (astravia-go GPT gateway shape)", () => {
 		expect(run(["<thinking>**Designing the poster visual**</thinking>"])).toEqual([
 			{ kind: "thinking", text: "**Designing the poster visual**" },
 		]);

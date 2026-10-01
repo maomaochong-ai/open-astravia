@@ -8,4 +8,4 @@ export {
 	type LegacySessionImportIssueCode,
 	type RepresentableLegacySessionImportAnalysis,
 	type UnrepresentableLegacySessionImportAnalysis,
-} from "@vetta/runtime-storage/conversation";
+} from "@astravia/runtime-storage/conversation";

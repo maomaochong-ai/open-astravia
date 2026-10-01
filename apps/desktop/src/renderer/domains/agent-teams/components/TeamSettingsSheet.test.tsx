@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import type { AgentProfile, TeamDefinition } from "@vetta/agent-team";
+import type { AgentProfile, TeamDefinition } from "@astravia/agent-team";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
@@ -14,7 +14,7 @@ vi.mock("react-i18next", () => ({
 			values ? `${key}:${Object.values(values).join(":")}` : key,
 	}),
 }));
-vi.mock("@vetta-org/theme-ui/overlays", () => ({
+vi.mock("@astravia-org/theme-ui/overlays", () => ({
 	DetailDrawer: ({ children, open }: { children: ReactNode; open: boolean }) =>
 		open ? <div>{children}</div> : null,
 	DetailDrawerEnter: ({ children }: { children: ReactNode }) => <div>{children}</div>,
@@ -22,7 +22,7 @@ vi.mock("@vetta-org/theme-ui/overlays", () => ({
 vi.mock("@shared/components/RendererMarkdownContent", () => ({
 	RendererMarkdownContent: ({ text }: { text: string }) => <div data-testid="markdown">{text}</div>,
 }));
-vi.mock("@vetta-org/theme-ui/chat", () => ({
+vi.mock("@astravia-org/theme-ui/chat", () => ({
 	NewSessionBackground: () => null,
 	AgentAvatarView: ({ name }: { name: string }) => <span data-testid="avatar">{name}</span>,
 }));
@@ -38,7 +38,7 @@ vi.mock("./TeamMemberModelSelector", () => ({
 		</select>
 	),
 }));
-vi.mock("@vetta-org/ui", () => ({
+vi.mock("@astravia-org/ui", () => ({
 	Button: ({ children, variant: _v, size: _s, ...props }: { children: ReactNode } & Record<string, unknown>) => (
 		<button {...props}>{children}</button>
 	),
@@ -99,7 +99,7 @@ const setMemberModel = vi.fn(async (_teamId: string, memberId: string, selection
 beforeEach(() => {
 	savedModels = {};
 	setMemberModel.mockClear();
-	Object.defineProperty(window, "vetta", { configurable: true, value: { agentTeams: { onChanged: () => () => undefined, onMemberModelsChanged: () => () => undefined, listMemberModels: async () => ({ ...savedModels }), setMemberModel } } });
+	Object.defineProperty(window, "astravia", { configurable: true, value: { agentTeams: { onChanged: () => () => undefined, onMemberModelsChanged: () => () => undefined, listMemberModels: async () => ({ ...savedModels }), setMemberModel } } });
 });
 
 function renderSheet(
@@ -160,7 +160,7 @@ describe("TeamSettingsSheet", () => {
 	});
 
 	it("shows a plugin's team as read-only, because the provider maintains it 1:1", () => {
-		renderSheet({ team: { ...team, source: { kind: "plugin", pluginId: "vetta-ui-design" } } });
+		renderSheet({ team: { ...team, source: { kind: "plugin", pluginId: "astravia-ui-design" } } });
 
 		// 插件升级会用清单整体重铺这支队，任何就地改动都活不过下一次同步。
 		expect(screen.queryByRole("button", { name: /settings.saveChanges/ })).toBeNull();
@@ -177,7 +177,7 @@ describe("TeamSettingsSheet", () => {
 	it("still lets the user expand a plugin team member to read its instructions as markdown", async () => {
 		const briefed: TeamDefinition = {
 			...team,
-			source: { kind: "plugin", pluginId: "vetta-ui-design" },
+			source: { kind: "plugin", pluginId: "astravia-ui-design" },
 			members: team.members.map((member) =>
 				member.id === "member-beta"
 					? { ...member, assignment: { responsibility: "Builds it.", instructions: "## Ship\n- behind a flag" } }

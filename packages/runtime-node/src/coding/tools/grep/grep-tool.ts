@@ -1,7 +1,7 @@
 import { statSync } from "node:fs";
 import { createInterface } from "node:readline";
+import type { RuntimeToolDefinition, RuntimeToolResult } from "@astravia/runtime-core/kernel";
 import { type Static, Type } from "@sinclair/typebox";
-import type { RuntimeToolDefinition, RuntimeToolResult } from "@vetta/runtime-core/kernel";
 import type { CodingToolExecutableResolver } from "../../host/executable-resolver.js";
 import { anchorLineHash } from "../../shared/anchors.js";
 import {

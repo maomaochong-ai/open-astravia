@@ -47,13 +47,13 @@ test("package scripts can build every Linux format independently", async () => {
 
 	assert.match(scripts["package:linux"], /--platform linux$/);
 	assert.equal(scripts["dist:linux"], "bun run package:linux");
-	assert.equal(scripts["package:linux:test"], "cross-env VETTA_BUILD_ENV=test bun run package:linux");
+	assert.equal(scripts["package:linux:test"], "cross-env ASTRAVIA_BUILD_ENV=test bun run package:linux");
 	for (const [scriptName, target] of Object.entries(expectedTargets)) {
 		assert.match(scripts[scriptName], new RegExp(`--platform linux --target ${target}$`));
 		assert.equal(scripts[`dist:${scriptName.slice("package:".length)}`], `bun run ${scriptName}`);
 		assert.equal(
 			scripts[`${scriptName}:test`],
-			`cross-env VETTA_BUILD_ENV=test bun run ${scriptName}`,
+			`cross-env ASTRAVIA_BUILD_ENV=test bun run ${scriptName}`,
 		);
 	}
 });
@@ -70,13 +70,13 @@ test("package scripts can build every Windows format independently", async () =>
 
 	assert.match(scripts["package:win"], /--platform win$/);
 	assert.equal(scripts["dist:win"], "bun run package:win");
-	assert.equal(scripts["package:win:test"], "cross-env VETTA_BUILD_ENV=test bun run package:win");
+	assert.equal(scripts["package:win:test"], "cross-env ASTRAVIA_BUILD_ENV=test bun run package:win");
 	for (const [scriptName, target] of Object.entries(expectedTargets)) {
 		assert.match(scripts[scriptName], new RegExp(`--platform win --target ${target}$`));
 		assert.equal(scripts[`dist:${scriptName.slice("package:".length)}`], `bun run ${scriptName}`);
 		assert.equal(
 			scripts[`${scriptName}:test`],
-			`cross-env VETTA_BUILD_ENV=test bun run ${scriptName}`,
+			`cross-env ASTRAVIA_BUILD_ENV=test bun run ${scriptName}`,
 		);
 	}
 	assert.equal(scripts["dist:win:test"], "bun run package:win:test");

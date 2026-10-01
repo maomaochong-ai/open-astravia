@@ -70,12 +70,12 @@ describe("toExtensionEntry", () => {
 
 	it("keeps a full-color image icon when the view declares one", () => {
 		const mapped = toExtensionEntry(
-			view({ icon: "icon-[solar--bug-linear]", iconUrl: "vetta-plugin://demo/icon.png" }),
+			view({ icon: "icon-[solar--bug-linear]", iconUrl: "astravia-plugin://demo/icon.png" }),
 			(_pluginId, value) => value,
 			() => undefined,
 		);
 
-		expect(mapped.iconUrl).toBe("vetta-plugin://demo/icon.png");
+		expect(mapped.iconUrl).toBe("astravia-plugin://demo/icon.png");
 		expect(mapped.icon).toBe("icon-[solar--bug-linear]");
 	});
 });
@@ -157,13 +157,13 @@ describe("ExtensionsSettingsView", () => {
 			<ExtensionsSettingsView
 				model={{
 					labels: LABELS,
-					entries: [entry(), entry({ key: "b", label: "Brand", iconUrl: "vetta-plugin://demo/icon.png" })],
+					entries: [entry(), entry({ key: "b", label: "Brand", iconUrl: "astravia-plugin://demo/icon.png" })],
 				}}
 			/>,
 		);
 
 		expect(container.querySelectorAll("img")).toHaveLength(1);
-		expect(container.querySelector('img[src="vetta-plugin://demo/icon.png"]')).toBeTruthy();
+		expect(container.querySelector('img[src="astravia-plugin://demo/icon.png"]')).toBeTruthy();
 		expect(container.querySelector("span.icon-\\[a\\]")).toBeTruthy();
 	});
 });

@@ -73,7 +73,7 @@ describe("useAutomationDetailModel", () => {
 		const onCreated = vi.fn();
 		const created = { ...existing, id: "created" };
 		schedulerMocks.createTask.mockRejectedValueOnce(
-			new Error("Error invoking remote method 'vetta:scheduler:create-task': SchedulerServiceError: 目标项目不存在。"),
+			new Error("Error invoking remote method 'astravia:scheduler:create-task': SchedulerServiceError: 目标项目不存在。"),
 		);
 		schedulerMocks.createTask.mockResolvedValueOnce(created);
 		const { result } = renderHook(

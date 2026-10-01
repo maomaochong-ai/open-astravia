@@ -1,11 +1,11 @@
-import { AutomationDetailPaneView, AutomationPaneIconButton } from "@vetta-org/theme-ui/scheduler";
+import { AutomationDetailPaneView, AutomationPaneIconButton } from "@astravia-org/theme-ui/scheduler";
 import {
 	Button,
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuTrigger,
-} from "@vetta-org/ui";
+} from "@astravia-org/ui";
 import { useTranslation } from "react-i18next";
 import type { ScheduledTask } from "../../../../shared/automation";
 import { type AutomationPane } from "../hooks/useAutomationPageModel";

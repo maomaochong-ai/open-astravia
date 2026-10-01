@@ -5,11 +5,11 @@ export default defineConfig({
 	root: __dirname,
 	resolve: {
 		alias: {
-			"@vetta/desktop-theme-ui/sidebar": resolve(
+			"@astravia/desktop-theme-ui/sidebar": resolve(
 				__dirname,
 				"../../../../apps/desktop/src/renderer/shared/theme/sdk/sidebar-primitives.ts",
 			),
-			"@vetta-org/theme-sdk/pages": resolve(__dirname, "../../../theme-sdk/src/pages/index.ts"),
+			"@astravia-org/theme-sdk/pages": resolve(__dirname, "../../../theme-sdk/src/pages/index.ts"),
 		},
 	},
 	test: {

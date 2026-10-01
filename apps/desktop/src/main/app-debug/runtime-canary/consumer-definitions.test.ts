@@ -9,7 +9,7 @@ describe("Runtime Canary consumer definitions", () => {
 			name: "Runtime Canary Scheduler",
 			prompt: RUNTIME_CANARY_SCHEDULER_PROMPT,
 			schedule: { kind: "custom" as const, cron: "0 0 1 1 *" },
-			runTarget: { mode: "new-session" as const, projectCwd: "C:/runtime-canary/.vetta/conversation" },
+			runTarget: { mode: "new-session" as const, projectCwd: "C:/runtime-canary/.astravia/conversation" },
 			enabled: false,
 			createdAt: 1,
 			updatedAt: 1,
@@ -46,7 +46,7 @@ describe("Runtime Canary consumer definitions", () => {
 					},
 				],
 			}),
-			conversationCwd: "C:/runtime-canary/.vetta/conversation",
+			conversationCwd: "C:/runtime-canary/.astravia/conversation",
 			readBatchState: () => ({
 				acceptingJobs: true,
 				shutdownStarted: false,
@@ -96,7 +96,7 @@ describe("Runtime Canary consumer definitions", () => {
 				startProject: vi.fn(),
 			},
 			readSchedulerState: () => ({ activeTasks: [] }),
-			conversationCwd: "C:/runtime-canary/.vetta/conversation",
+			conversationCwd: "C:/runtime-canary/.astravia/conversation",
 			readBatchState: () => ({ activeTasks: [], queuedTaskIds: [] }),
 		});
 

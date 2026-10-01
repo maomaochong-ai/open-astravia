@@ -1,4 +1,4 @@
-import { type PluginFsFileRef, useActivityTab, useTranslation } from "@vetta-org/plugin-sdk";
+import { type PluginFsFileRef, useActivityTab, useTranslation } from "@astravia-org/plugin-sdk";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AndroidMockup, AndroidTabMockup, IPadMockup, IPhoneMockup } from "react-device-mockup";
 import { DEFAULT_DEVICE_ID, DEVICE_PRESETS, findDevice, type DevicePreset } from "./devices";
@@ -15,7 +15,7 @@ function htmlStorageKey(cwd: string): string {
 
 /** 静态文件协议 URL（ADR-0027）：pathname 承载绝对路径，相对资源按目录解析。 */
 function toFileProtocolUrl(filePath: string): string {
-	return `vetta-file://local${encodeURI(filePath)}`;
+	return `astravia-file://local${encodeURI(filePath)}`;
 }
 
 function dirOf(filePath: string): string {

@@ -6,13 +6,13 @@
 
 ## 背景
 
-`desktop-config.json` 长期依赖读取时归一化，没有根级 `schemaVersion`。加入按事件配置的通知横幅、提示音、音量和投递时机后，配置形状出现了真实版本边界；同时开发版、正式版和降级后的旧版本会共用 `~/.vetta`，不能因为旧程序写回而破坏未来字段。
+`desktop-config.json` 长期依赖读取时归一化，没有根级 `schemaVersion`。加入按事件配置的通知横幅、提示音、音量和投递时机后，配置形状出现了真实版本边界；同时开发版、正式版和降级后的旧版本会共用 `~/.astravia`，不能因为旧程序写回而破坏未来字段。
 
 系统通知自身的声音由操作系统控制，无法可靠替换或按应用设置调节音量。若同时播放应用内声音，还会出现双重提示。
 
 ## 决策
 
-- 将无版本 Desktop Config 视为 v1，本次迁移到 v2，加入 `notificationPreferences`。迁移使用 `@vetta/toolkit/versioned-config`；Toolkit 新增可选的 `futureVersionPolicy: "preserve"`，默认仍为 `throw`，只有 Desktop 选择保留未来版本。
+- 将无版本 Desktop Config 视为 v1，本次迁移到 v2，加入 `notificationPreferences`。迁移使用 `@astravia/toolkit/versioned-config`；Toolkit 新增可选的 `futureVersionPolicy: "preserve"`，默认仍为 `throw`，只有 Desktop 选择保留未来版本。
 - Desktop 读取未来版本时不迁移、不降版本；写回前仍重新读取磁盘并合并未知字段。`sshHosts` 继续以独立文件为真相源，不写回根配置。
 - Agent 事件统一归并为完成、最终失败、等待处理。系统横幅与内置提示音分别根据投递范围决策；关闭系统通知不影响已配置的提示音。
 - Agent 系统横幅使用 `silent: true`，声音由 main 向 renderer 发送封闭的内置音色 id 与 0–100 音量。renderer 不接受路径或 URL，并复用一个播放器，新提示停止旧提示。

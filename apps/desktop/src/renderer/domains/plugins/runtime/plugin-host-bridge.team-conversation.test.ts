@@ -1,7 +1,7 @@
-import type { ConversationEvent } from "@vetta-org/plugin-sdk";
+import type { ConversationEvent } from "@astravia-org/plugin-sdk";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const RUNTIME_STATE_KEY = "__vettaPluginHostBridgeRuntimeState_v2";
+const RUNTIME_STATE_KEY = "__astraviaPluginHostBridgeRuntimeState_v2";
 
 // 事件桥读的是 jotai 默认 store，测试要用同一批 atom 实例才写得进去。
 const atoms = await vi.hoisted(async () => {
@@ -26,7 +26,7 @@ beforeEach(() => {
 	vi.resetModules();
 	delete (globalThis as unknown as Record<string, unknown>)[RUNTIME_STATE_KEY];
 	vi.stubGlobal("window", {
-		vetta: {
+		astravia: {
 			plugins: {
 				onAgentToolRequest: () => () => undefined,
 				onAgentHookRequest: () => () => undefined,

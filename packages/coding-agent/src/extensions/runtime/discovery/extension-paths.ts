@@ -5,7 +5,7 @@ import type {
 	ResourcePathPort,
 } from "../../../resources/contracts/resource-access.js";
 
-const CONFIG_DIRECTORY = ".vetta";
+const CONFIG_DIRECTORY = ".astravia";
 const UNICODE_SPACES = /[\u00A0\u2000-\u200A\u202F\u205F\u3000]/g;
 
 interface ExtensionManifest {

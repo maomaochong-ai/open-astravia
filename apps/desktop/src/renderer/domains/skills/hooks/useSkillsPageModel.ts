@@ -48,8 +48,8 @@ export function useSkillsPageModel(): SkillsPageModel {
 	const setHeaderTitleHidden = useSetAtom(pageHeaderTitleHiddenAtom);
 
 	const refresh = useCallback(() => {
-		void window.vetta.skills.getMarketManifest().then(setManifest);
-		void window.vetta.skills
+		void window.astravia.skills.getMarketManifest().then(setManifest);
+		void window.astravia.skills
 			.list()
 			.then((list) =>
 				setListedSkills(
@@ -100,7 +100,7 @@ export function useSkillsPageModel(): SkillsPageModel {
 			setActionState(skill.name, "loading");
 			void downloadAbility(skill.type, skill.name, token)
 				.then((buffer) =>
-					window.vetta.skills.installFromMarket(skill.name, buffer, skill.type, {
+					window.astravia.skills.installFromMarket(skill.name, buffer, skill.type, {
 						alias: skill.alias,
 						marketDescription: skill.description,
 						version: skill.version,
@@ -121,7 +121,7 @@ export function useSkillsPageModel(): SkillsPageModel {
 
 	const handleToggle = useCallback(
 		(name: string) => {
-			void window.vetta.skills
+			void window.astravia.skills
 				.toggle(name)
 				.then(() => refresh())
 				.catch((err: Error) => {
@@ -134,7 +134,7 @@ export function useSkillsPageModel(): SkillsPageModel {
 	const handleUninstall = useCallback(
 		(name: string, type: "skill" | "scene") => {
 			setActionState(name, "loading");
-			void window.vetta.skills
+			void window.astravia.skills
 				.uninstall(name, type)
 				.then(() => {
 					setActionState(name, "idle");
@@ -162,7 +162,7 @@ export function useSkillsPageModel(): SkillsPageModel {
 			if (!file) return;
 			void file
 				.arrayBuffer()
-				.then((buffer) => window.vetta.skills.importCustom(buffer))
+				.then((buffer) => window.astravia.skills.importCustom(buffer))
 				.then(() => refresh())
 				.catch((err: Error) => {
 					alert(i18n.t("skills:import.failed", { error: err.message || i18n.t("skills:import.unknownError") }));

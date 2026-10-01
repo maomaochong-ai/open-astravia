@@ -22,14 +22,14 @@ function resolveWindowsVersionedBinary(unpackedRoot) {
 	) {
 		throw new Error(`Windows packaged E2E has an invalid version pointer: ${String(version)}`);
 	}
-	return join(unpackedRoot, "versions", version, "Vetta.exe");
+	return join(unpackedRoot, "versions", version, "Astravia.exe");
 }
 
 export function resolvePackagedE2eAppImagePath(packageRoot, version) {
 	if (typeof version !== "string" || !PACKAGE_VERSION_PATTERN.test(version)) {
 		throw new Error(`Linux packaged E2E has an invalid application version: ${String(version)}`);
 	}
-	const appImagePath = join(packageRoot, "release", `Vetta-${version}.AppImage`);
+	const appImagePath = join(packageRoot, "release", `Astravia-${version}.AppImage`);
 	if (existsSync(appImagePath)) return appImagePath;
 	throw new Error(
 		`Linux packaged E2E AppImage not found: ${appImagePath}. Run bun run dist:linux:test first.`,
@@ -38,7 +38,7 @@ export function resolvePackagedE2eAppImagePath(packageRoot, version) {
 
 export function stagePackagedE2eAppImage(packageRoot, version, temporaryRoot = tmpdir()) {
 	const sourcePath = resolvePackagedE2eAppImagePath(packageRoot, version);
-	const stagingRoot = mkdtempSync(join(temporaryRoot, "vetta-packaged-e2e-appimage-"));
+	const stagingRoot = mkdtempSync(join(temporaryRoot, "astravia-packaged-e2e-appimage-"));
 	const appImagePath = join(stagingRoot, basename(sourcePath));
 	try {
 		copyFileSync(sourcePath, appImagePath);
@@ -65,12 +65,12 @@ export function resolvePackagedE2eBinaryPath(packageRoot, platform = process.pla
 			? [resolveWindowsVersionedBinary(join(releaseRoot, "win-unpacked"))]
 			: platform === "darwin"
 				? [
-						join(releaseRoot, "mac-arm64", "Vetta.app", "Contents", "MacOS", "Vetta"),
-						join(releaseRoot, "mac", "Vetta.app", "Contents", "MacOS", "Vetta"),
-						join(releaseRoot, "mac-x64", "Vetta.app", "Contents", "MacOS", "Vetta"),
+						join(releaseRoot, "mac-arm64", "Astravia.app", "Contents", "MacOS", "Astravia"),
+						join(releaseRoot, "mac", "Astravia.app", "Contents", "MacOS", "Astravia"),
+						join(releaseRoot, "mac-x64", "Astravia.app", "Contents", "MacOS", "Astravia"),
 					]
 				: platform === "linux"
-					? [join(releaseRoot, "linux-unpacked", "Vetta")]
+					? [join(releaseRoot, "linux-unpacked", "Astravia")]
 					: [];
 
 	const found = candidates.find((candidate) => existsSync(candidate));

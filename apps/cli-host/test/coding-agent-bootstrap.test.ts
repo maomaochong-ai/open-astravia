@@ -1,7 +1,7 @@
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { DEFAULT_SERVER_URL } from "@vetta/coding-agent/config";
+import { DEFAULT_SERVER_URL } from "@astravia/coding-agent/config";
 import { afterEach, describe, expect, it } from "vitest";
 import { createCliCodingAgentBootstrap } from "../src/coding-agent-bootstrap.js";
 

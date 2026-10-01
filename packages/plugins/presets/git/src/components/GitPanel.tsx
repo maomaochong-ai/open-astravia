@@ -1,5 +1,5 @@
-import { useActivityTab, useTranslation } from "@vetta-org/plugin-sdk";
-import { Button } from "@vetta-org/ui";
+import { useActivityTab, useTranslation } from "@astravia-org/plugin-sdk";
+import { Button } from "@astravia-org/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { countChanges, parseStatus } from "../git/parseStatus";
 import { initRepo, resolveRepoRoot, statusPorcelain } from "../git/run";

@@ -6,17 +6,17 @@
 
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { getModel } from "@vetta/ai";
+import { getModel } from "@astravia/ai";
 import {
 	AuthStorage,
 	createCodingAgentHostWithServices,
 	createCodingAgentModelRuntime,
-} from "@vetta/coding-agent/host-services";
-import { NodeTransactionalTextStorage } from "@vetta/runtime-node/host";
+} from "@astravia/coding-agent/host-services";
+import { NodeTransactionalTextStorage } from "@astravia/runtime-node/host";
 
 // Set up auth storage and model registry
 const authStorage = AuthStorage.fromStorage(
-	new NodeTransactionalTextStorage(join(homedir(), ".vetta", "agent", "auth.json")),
+	new NodeTransactionalTextStorage(join(homedir(), ".astravia", "agent", "auth.json")),
 );
 const modelRuntime = createCodingAgentModelRuntime(authStorage);
 

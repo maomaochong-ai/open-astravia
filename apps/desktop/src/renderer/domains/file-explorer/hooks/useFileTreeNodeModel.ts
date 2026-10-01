@@ -1,9 +1,9 @@
-import { type FsEntry, fileContextMenuAtom, renamingPathAtom } from "@shared/store/atoms";
 import type {
 	FileExplorerDragEntry,
 	FileExplorerSelectOptions,
 	FileTreeNodeViewProps,
-} from "@vetta-org/theme-ui/file-explorer";
+} from "@astravia-org/theme-ui/file-explorer";
+import { type FsEntry, fileContextMenuAtom, renamingPathAtom } from "@shared/store/atoms";
 import { useAtom } from "jotai";
 import { useCallback } from "react";
 

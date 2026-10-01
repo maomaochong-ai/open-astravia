@@ -1,12 +1,12 @@
 # 插件开发文档索引
 
-手册**不在工作台包里**，它随 `@vetta-org/plugin-sdk` 装进**被编辑工程自己的** `node_modules`。
+手册**不在工作台包里**，它随 `@astravia-org/plugin-sdk` 装进**被编辑工程自己的** `node_modules`。
 这样读到的合同与该工程实际编译的 SDK 版本一致——随 App 发版的内嵌副本做不到这一点。
 
 ## 先拿到手册路径
 
 ```bash
-node "<workbenchRoot>/agent/cli/vetta-plugin-cli.js" docs --json
+node "<workbenchRoot>/agent/cli/astravia-plugin-cli.js" docs --json
 ```
 
 `workbenchRoot` = `listPlugins()` 中 `id === "plugin-workbench"` 的 `rootPath`。
@@ -50,7 +50,7 @@ node "<workbenchRoot>/agent/cli/vetta-plugin-cli.js" docs --json
 ## 工程自带的 AGENTS.md
 
 `init` 生成的工程根目录有一份 `AGENTS.md`，内容与本 skill 同源（该读什么、不可违反的几条、
-构建安装闭环）。**先读它**——在 Vetta 外用别的 Agent 打开这个工程时，那份是唯一的说明书。
+构建安装闭环）。**先读它**——在 Astravia 外用别的 Agent 打开这个工程时，那份是唯一的说明书。
 
 ## 内置 CLI
 
@@ -58,10 +58,10 @@ node "<workbenchRoot>/agent/cli/vetta-plugin-cli.js" docs --json
 | --- | --- |
 | `init --id <slug> --name "<Display>" [dir]` | 起插件工程（含 AGENTS.md） |
 | `docs [--json]` | 手册位置与 SDK 版本 |
-| `add .` | 装当前工程（**在 Vetta 里优先走面板「应用到 Vetta」**，见主 skill） |
+| `add .` | 装当前工程（**在 Astravia 里优先走面板「应用到 Astravia」**，见主 skill） |
 | `reload <id>` / `uninstall [id]` | 应用待生效版本 / 卸载 |
 | `watch [--stop]` | 热更新：宿主改从工程目录加载 |
-| `sync [--check]` | 能力市场仓库根：对账 `.vetta/marketplace.json` |
+| `sync [--check]` | 能力市场仓库根：对账 `.astravia/marketplace.json` |
 
 ## 工作台脚本
 
@@ -71,5 +71,5 @@ node "<workbenchRoot>/agent/cli/vetta-plugin-cli.js" docs --json
 | bump-version | `<workbenchRoot>/scripts/bump-version.mjs` |
 | build-and-pack | `<workbenchRoot>/scripts/build-and-pack.mjs` |
 
-构建/打包在工作台里**必须**走 `build-and-pack.mjs`：面板的「应用到 Vetta」依赖它的产物，
+构建/打包在工作台里**必须**走 `build-and-pack.mjs`：面板的「应用到 Astravia」依赖它的产物，
 且那条安装路径不弹审批 sheet。不要自创 pack 流程。

@@ -13,7 +13,7 @@ import { pathToFileURL } from "node:url";
 // 目录里会累积多个版本：差分需要读**旧版本**的 blockmap（URL 由新版号替换成旧版号
 // 推出），因此发布新版本时只覆盖 latest-mac.yml，旧产物一律保留。
 
-const defaultRoot = join(process.env.HOME ?? "", ".vetta", "local-updates");
+const defaultRoot = join(process.env.HOME ?? "", ".astravia", "local-updates");
 
 function contentTypeFor(fileName) {
 	const lower = fileName.toLowerCase();
@@ -99,8 +99,8 @@ export function createLocalUpdateServer(root) {
 }
 
 export async function main() {
-	const root = resolve(process.env.VETTA_LOCAL_UPDATE_DIR || defaultRoot);
-	const port = Number(process.env.VETTA_LOCAL_UPDATE_PORT || 8080);
+	const root = resolve(process.env.ASTRAVIA_LOCAL_UPDATE_DIR || defaultRoot);
+	const port = Number(process.env.ASTRAVIA_LOCAL_UPDATE_PORT || 8080);
 	const entries = await readdir(root).catch(() => undefined);
 	if (!entries) {
 		throw new Error(`[serve-local-updates] 分发目录不存在：${root}（先跑 scripts/release-mac.sh local）`);

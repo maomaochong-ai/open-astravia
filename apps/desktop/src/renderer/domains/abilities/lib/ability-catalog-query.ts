@@ -60,7 +60,7 @@ export function isManuallyInstalledAbility(item: AbilityItem): boolean {
 	return false;
 }
 
-/** 「公开」展示已列入市场的条目以及 Vetta 内置能力。 */
+/** 「公开」展示已列入市场的条目以及 Astravia 内置能力。 */
 export function isAbilityListedInDiscover(item: AbilityItem): boolean {
 	return (item.fromMarket && (!item.market || isMarketAbilityListed(item.market))) || item.isBuiltin;
 }
@@ -99,7 +99,7 @@ export function queryAbilityCatalog(items: AbilityItem[], query: AbilityCatalogQ
 	const pageSize = Number.isInteger(query.pageSize) && query.pageSize > 0 ? query.pageSize : 60;
 	const filtered = filterAbilityCatalog(items, query);
 	// 内置能力随 App 分发、数量有限，整组返回不参与分页：它们 downloadCount 为 0 会排在最后，
-	// 若按扁平列表切片，「Vetta 内置」分组只会出现零星几条，分组计数也跟着显示成已加载数。
+	// 若按扁平列表切片，「Astravia 内置」分组只会出现零星几条，分组计数也跟着显示成已加载数。
 	const builtin = filtered.filter((item) => item.isBuiltin);
 	const paged = filtered.filter((item) => !item.isBuiltin);
 	const total = filtered.length;

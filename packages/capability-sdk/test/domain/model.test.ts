@@ -34,16 +34,16 @@ describe("model domain capabilities", () => {
 
 	it("uses one stable id per model operation", () => {
 		expect(Object.values(DOMAIN_MODEL_CAPABILITIES).map((capability) => capability.id)).toEqual([
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}model.list`,
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}model.config.get`,
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}model.provider.get`,
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}model.probe`,
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}model.key.validate`,
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}model.default.set`,
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}model.provider.upsert`,
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}model.provider.remove`,
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}model.owned-providers.replace`,
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}model.owned-providers.list`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}model.list`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}model.config.get`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}model.provider.get`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}model.probe`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}model.key.validate`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}model.default.set`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}model.provider.upsert`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}model.provider.remove`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}model.owned-providers.replace`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}model.owned-providers.list`,
 		]);
 	});
 

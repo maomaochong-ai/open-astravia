@@ -1,8 +1,8 @@
 import { useAgentAvatarResolver } from "@shared/agent-teams/agent-avatar";
-import type { AgentBlueprint, AgentProfile, AgentProfileUpdateImpact } from "@vetta/agent-team";
-import { AgentAvatarView } from "@vetta-org/theme-ui/chat";
-import { DetailDrawer, DetailDrawerEnter } from "@vetta-org/theme-ui/overlays";
-import { Button, cn } from "@vetta-org/ui";
+import type { AgentBlueprint, AgentProfile, AgentProfileUpdateImpact } from "@astravia/agent-team";
+import { AgentAvatarView } from "@astravia-org/theme-ui/chat";
+import { DetailDrawer, DetailDrawerEnter } from "@astravia-org/theme-ui/overlays";
+import { Button, cn } from "@astravia-org/ui";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { AgentProfileEditInput } from "../hooks/useAgentLibraryModel";

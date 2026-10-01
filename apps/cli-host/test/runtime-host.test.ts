@@ -1,9 +1,9 @@
 import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { CodingAgentBootstrap } from "@vetta/coding-agent/bootstrap";
-import type { RpcSessionInitialization } from "@vetta/coding-agent/rpc";
-import { RUNTIME_ERROR_CODES, type RuntimeSessionCatalog } from "@vetta/runtime-core";
+import type { CodingAgentBootstrap } from "@astravia/coding-agent/bootstrap";
+import type { RpcSessionInitialization } from "@astravia/coding-agent/rpc";
+import { RUNTIME_ERROR_CODES, type RuntimeSessionCatalog } from "@astravia/runtime-core";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { createCliCodingAgentBootstrap } from "../src/coding-agent-bootstrap.js";
 import { createCliRuntimeSessionCatalog } from "../src/rpc/cli-session-format-compatibility.js";
@@ -14,10 +14,10 @@ const preparedHosts: RpcRuntimeHostReady[] = [];
 let isolatedUserHome: string | undefined;
 
 beforeAll(async () => {
-	isolatedUserHome = await mkdtemp(join(tmpdir(), "vetta-im-runtime-host-home-"));
+	isolatedUserHome = await mkdtemp(join(tmpdir(), "astravia-im-runtime-host-home-"));
 	vi.stubEnv("HOME", isolatedUserHome);
 	vi.stubEnv("USERPROFILE", isolatedUserHome);
-	vi.stubEnv("VETTA_HOME", isolatedUserHome);
+	vi.stubEnv("ASTRAVIA_HOME", isolatedUserHome);
 });
 
 afterAll(async () => {
@@ -30,7 +30,7 @@ afterEach(async () => {
 	for (const directory of temporaryDirectories.splice(0).reverse()) {
 		await rm(directory, { force: true, recursive: true });
 	}
-	delete extensionLifecycleGlobal().__vettaGreenfieldExtensionLifecycle;
+	delete extensionLifecycleGlobal().__astraviaGreenfieldExtensionLifecycle;
 });
 
 describe("IM Runtime Host", () => {
@@ -168,14 +168,14 @@ describe("IM Runtime Host", () => {
 
 	it("runs Flag and Command Extensions after resolving their Runtime capabilities", async () => {
 		const lifecycle = extensionLifecycleGlobal();
-		lifecycle.__vettaGreenfieldExtensionLifecycle = [];
+		lifecycle.__astraviaGreenfieldExtensionLifecycle = [];
 		const fixture = await createFixture(
 			[],
 			`
 				export default function(pi) {
 					pi.registerFlag("audit-mode", { type: "boolean" });
 					pi.registerCommand("audit", {
-						handler: async () => globalThis.__vettaGreenfieldExtensionLifecycle.push("audit"),
+						handler: async () => globalThis.__astraviaGreenfieldExtensionLifecycle.push("audit"),
 					});
 				}
 			`,
@@ -199,7 +199,7 @@ describe("IM Runtime Host", () => {
 
 		await result.capabilities.turn?.prompt("/audit", { source: "rpc" });
 
-		expect(lifecycle.__vettaGreenfieldExtensionLifecycle).toEqual(["audit"]);
+		expect(lifecycle.__astraviaGreenfieldExtensionLifecycle).toEqual(["audit"]);
 	});
 
 	it("runs Provider/Flag-only Extensions on the production Runtime and binds their retained actions", async () => {
@@ -351,7 +351,7 @@ describe("IM Runtime Host", () => {
 
 	it("emits model_select when an Extension changes the Runtime model", async () => {
 		const lifecycle = extensionLifecycleGlobal();
-		lifecycle.__vettaGreenfieldExtensionLifecycle = [];
+		lifecycle.__astraviaGreenfieldExtensionLifecycle = [];
 		const fixture = await createFixture(
 			[],
 			`const nextModel = {
@@ -368,7 +368,7 @@ describe("IM Runtime Host", () => {
 			};
 			export default function(pi) {
 				pi.on("model_select", async (event) => {
-					globalThis.__vettaGreenfieldExtensionLifecycle.push(
+					globalThis.__astraviaGreenfieldExtensionLifecycle.push(
 						(event.previousModel?.id ?? "none") + "->" + event.model.id + ":" + event.source,
 					);
 				});
@@ -393,17 +393,17 @@ describe("IM Runtime Host", () => {
 		await result.capabilities.turn?.prompt("/switch-model", { source: "rpc" });
 
 		expect(result.session.readState().model?.id).toBe("second-model");
-		expect(lifecycle.__vettaGreenfieldExtensionLifecycle).toEqual(["test-model->second-model:set"]);
+		expect(lifecycle.__astraviaGreenfieldExtensionLifecycle).toEqual(["test-model->second-model:set"]);
 	});
 
 	it("routes manual compaction through the active Extension runner", async () => {
 		const lifecycle = extensionLifecycleGlobal();
-		lifecycle.__vettaGreenfieldExtensionLifecycle = [];
+		lifecycle.__astraviaGreenfieldExtensionLifecycle = [];
 		const fixture = await createFixture(
 			[],
 			`export default function(pi) {
 				pi.on("session_before_compact", async () => {
-					globalThis.__vettaGreenfieldExtensionLifecycle.push("before-compact");
+					globalThis.__astraviaGreenfieldExtensionLifecycle.push("before-compact");
 					return { cancel: true };
 				});
 			}`,
@@ -420,7 +420,7 @@ describe("IM Runtime Host", () => {
 		await initialize(result);
 		await result.session.appendMetadataEntry("compaction-seed", { value: "seed" });
 		await expect(result.session.compact()).rejects.toThrow("Compaction cancelled");
-		expect(lifecycle.__vettaGreenfieldExtensionLifecycle).toEqual(["before-compact"]);
+		expect(lifecycle.__astraviaGreenfieldExtensionLifecycle).toEqual(["before-compact"]);
 	});
 
 	it("exposes both resource and Extension command discovery", async () => {
@@ -465,12 +465,12 @@ describe("IM Runtime Host", () => {
 
 	it("atomically reloads Extension events, commands and definitions", async () => {
 		const lifecycle = extensionLifecycleGlobal();
-		lifecycle.__vettaGreenfieldExtensionLifecycle = [];
+		lifecycle.__astraviaGreenfieldExtensionLifecycle = [];
 		const fixture = await createFixture(
 			[],
 			`export default function(pi) {
 				pi.on("session_shutdown", async () => {
-					globalThis.__vettaGreenfieldExtensionLifecycle.push("old-shutdown");
+					globalThis.__astraviaGreenfieldExtensionLifecycle.push("old-shutdown");
 				});
 				pi.registerCommand("reload-fixture", { handler: async (_args, ctx) => ctx.reload() });
 			}`,
@@ -490,10 +490,10 @@ describe("IM Runtime Host", () => {
 			join(fixture.root, "legacy-extension.ts"),
 			`export default function(pi) {
 				pi.on("session_start", async () => {
-					globalThis.__vettaGreenfieldExtensionLifecycle.push("new-start");
+					globalThis.__astraviaGreenfieldExtensionLifecycle.push("new-start");
 				});
 				pi.registerCommand("after-reload", {
-					handler: async () => globalThis.__vettaGreenfieldExtensionLifecycle.push("after-command"),
+					handler: async () => globalThis.__astraviaGreenfieldExtensionLifecycle.push("after-command"),
 				});
 				pi.on("resources_discover", async (event) => {
 					if (event.reason !== "reload") throw new Error("unexpected discovery reason");
@@ -515,7 +515,7 @@ describe("IM Runtime Host", () => {
 		);
 		await result.capabilities.turn?.prompt("/after-reload", { source: "rpc" });
 
-		expect(lifecycle.__vettaGreenfieldExtensionLifecycle).toEqual(["old-shutdown", "new-start", "after-command"]);
+		expect(lifecycle.__astraviaGreenfieldExtensionLifecycle).toEqual(["old-shutdown", "new-start", "after-command"]);
 	});
 
 	it("runs supported input events with a real Runtime session context", async () => {
@@ -563,16 +563,16 @@ describe("IM Runtime Host", () => {
 
 	it("emits supported session lifecycle events exactly once through the real Runtime Host", async () => {
 		const lifecycle = extensionLifecycleGlobal();
-		lifecycle.__vettaGreenfieldExtensionLifecycle = [];
+		lifecycle.__astraviaGreenfieldExtensionLifecycle = [];
 		const fixture = await createFixture(
 			[],
 			`
 				export default function(pi) {
 					pi.on("session_start", async () => {
-						globalThis.__vettaGreenfieldExtensionLifecycle.push("start");
+						globalThis.__astraviaGreenfieldExtensionLifecycle.push("start");
 					});
 					pi.on("session_shutdown", async () => {
-						globalThis.__vettaGreenfieldExtensionLifecycle.push("shutdown");
+						globalThis.__astraviaGreenfieldExtensionLifecycle.push("shutdown");
 					});
 				}
 			`,
@@ -589,7 +589,7 @@ describe("IM Runtime Host", () => {
 		if (result.kind !== "rpc") throw new Error("Expected RPC runtime");
 		preparedHosts.push(result);
 
-		expect(lifecycle.__vettaGreenfieldExtensionLifecycle).toEqual([]);
+		expect(lifecycle.__astraviaGreenfieldExtensionLifecycle).toEqual([]);
 		await result.capabilities.initialize({
 			uiContext: {} as RpcSessionInitialization["uiContext"],
 			hostBridge: { sendAttachment: vi.fn(async () => ({})) },
@@ -602,12 +602,12 @@ describe("IM Runtime Host", () => {
 		await result.capabilities.shutdown();
 		await result.capabilities.shutdown();
 
-		expect(lifecycle.__vettaGreenfieldExtensionLifecycle).toEqual(["start", "shutdown"]);
+		expect(lifecycle.__astraviaGreenfieldExtensionLifecycle).toEqual(["start", "shutdown"]);
 	});
 });
 
 function extensionLifecycleGlobal(): typeof globalThis & {
-	__vettaGreenfieldExtensionLifecycle?: string[];
+	__astraviaGreenfieldExtensionLifecycle?: string[];
 } {
 	return globalThis;
 }
@@ -633,7 +633,7 @@ async function createFixture(
 	readonly sessionCatalog: RuntimeSessionCatalog;
 	readonly bootstrap: CodingAgentBootstrap;
 }> {
-	const root = await mkdtemp(join(tmpdir(), "vetta-im-runtime-host-"));
+	const root = await mkdtemp(join(tmpdir(), "astravia-im-runtime-host-"));
 	temporaryDirectories.push(root);
 	const fixture = {
 		root,

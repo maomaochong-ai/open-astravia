@@ -56,7 +56,7 @@ const downloadCancelOutputSchema = defineCapabilityNoOutputSchema();
 
 export const DOMAIN_DOWNLOAD_CAPABILITIES = {
 	LIST: defineCapability<Record<string, never>, DownloadItem[]>({
-		id: "cap.domain.vetta.download.list",
+		id: "cap.domain.astravia.download.list",
 		kind: "query",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -64,7 +64,7 @@ export const DOMAIN_DOWNLOAD_CAPABILITIES = {
 		output: downloadListOutputSchema,
 	}),
 	CANCEL: defineCapability<DownloadCancelInput, undefined>({
-		id: "cap.domain.vetta.download.cancel",
+		id: "cap.domain.astravia.download.cancel",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,

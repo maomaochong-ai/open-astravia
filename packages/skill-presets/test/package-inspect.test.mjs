@@ -100,14 +100,14 @@ describe("inspectPackage / zip", () => {
 		expect(Object.keys(pkg.locales)).toEqual(["en"]);
 	});
 
-	it("读出包内 vetta.json", () => {
-		const path = writeZip("with-vetta.zip", {
+	it("读出包内 astravia.json", () => {
+		const path = writeZip("with-astravia.zip", {
 			"plugin.json": JSON.stringify({ id: "demo" }),
-			"vetta.json": JSON.stringify({ name: "从包里来的" }),
+			"astravia.json": JSON.stringify({ name: "从包里来的" }),
 		});
 
 		expect(inspectPackage("/nope.zip")).toBeNull();
-		expect(inspectPackage(path).vettaJson.name).toBe("从包里来的");
+		expect(inspectPackage(path).astraviaJson.name).toBe("从包里来的");
 	});
 
 	it("坏文件返回 null 而不抛错——交叉校验只是增补的一层", () => {

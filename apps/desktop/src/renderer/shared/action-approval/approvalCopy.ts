@@ -18,7 +18,7 @@ export function formatExecutionMode(t: TFunction<"common">, mode: string): strin
 	return mode;
 }
 
-const EXPERIMENTAL_FIELD_KEYS = ["vettaCli", "promptPrediction", "agentSkills"] as const;
+const EXPERIMENTAL_FIELD_KEYS = ["astraviaCli", "promptPrediction", "agentSkills"] as const;
 export type ExperimentalFieldKey = (typeof EXPERIMENTAL_FIELD_KEYS)[number];
 
 export function isExperimentalFieldKey(key: string): key is ExperimentalFieldKey {
@@ -26,7 +26,7 @@ export function isExperimentalFieldKey(key: string): key is ExperimentalFieldKey
 }
 
 export function experimentalFieldLabel(t: TFunction<"common">, key: string): string {
-	if (key === "vettaCli") return t("manageApproval.agent.experimentalFields.vettaCli");
+	if (key === "astraviaCli") return t("manageApproval.agent.experimentalFields.astraviaCli");
 	if (key === "promptPrediction") return t("manageApproval.agent.experimentalFields.promptPrediction");
 	if (key === "agentSkills") return t("manageApproval.agent.experimentalFields.agentSkills");
 	return key;

@@ -1,4 +1,4 @@
-import { useTranslation } from "@vetta-org/plugin-sdk";
+import { useTranslation } from "@astravia-org/plugin-sdk";
 import { type JSX, useEffect, useState } from "react";
 import type { BrowserRuntimeController, RuntimeStatus } from "../runtime/runtime-controller";
 import { CapabilitiesSection, CliSection, ComparisonSection, PromptsSection } from "./GuideSections";
@@ -8,14 +8,14 @@ import { RuntimeSection } from "./RuntimeSection";
 export const UPSTREAM_REPO_URL = "https://github.com/vercel-labs/agent-browser";
 
 /**
- * 插件图标走宿主的 `vetta-plugin://` 协议，而**不是** `import icon from "../../icon.png"`。
+ * 插件图标走宿主的 `astravia-plugin://` 协议，而**不是** `import icon from "../../icon.png"`。
  *
  * 打包资源的内联（assetsInlineLimit）只在 build 时生效，dev 链接下 Vite 会把它变成一个
  * 路径 URL；而插件 remote 跑在宿主页面里，该 URL 会按宿主 origin 解析而不是插件自己的
  * dev server，结果就是开发态图标 404 空白。协议地址由主进程解析（dev 链接指向源码目录、
  * 打包后指向安装目录），两种形态都成立。
  */
-export const PLUGIN_ICON_URL = "vetta-plugin://browser/icon.png";
+export const PLUGIN_ICON_URL = "astravia-plugin://browser/icon.png";
 
 /**
  * 面板需要的副作用出口。全部走 props 注入，组件本身不 import ctx——

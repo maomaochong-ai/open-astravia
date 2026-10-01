@@ -44,7 +44,7 @@ Normalizer 抛错、产生未知 Entry 或修改树身份时统一报告 `invali
 Coding Agent 新增独立 Legacy Import Normalizer：
 
 - 使用 TypeBox 验证四种官方扩展 AgentMessage；
-- 将其转换为 `vetta.legacy_agent_message` 上下文记录；
+- 将其转换为 `astravia.legacy_agent_message` 上下文记录；
 - `details.agentMessage` 保存完整原始身份；
 - `content` 保存 `convertToLlm()` 产生的精确模型投影；
 - `modelVisible` 保留 `excludeFromContext` 和模型不可见 Prompt Marker 语义；
@@ -98,6 +98,6 @@ Runtime Core 或 Storage 认识产品消息。产品语义由 Coding Agent Adapt
 
 ## 下一步
 
-下一阶段应把“格式迁移成功”推进到“迁移后真实继续执行等价”：使用独立 Vetta CLI 打开包含 Bash、Custom、
+下一阶段应把“格式迁移成功”推进到“迁移后真实继续执行等价”：使用独立 Astravia CLI 打开包含 Bash、Custom、
 Branch Summary 和 Compaction 的旧会话，继续一个真实 Provider Turn，对比 Legacy/Greenfield 的 Provider 输入、
 Extension `context` 身份、分支选择和再次持久化结果。只有真实继续对话通过后，才能认为旧会话执行切换完整闭环。

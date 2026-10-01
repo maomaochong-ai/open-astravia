@@ -1,4 +1,4 @@
-import type { ErrorEvent } from "@vetta/runtime-core";
+import type { ErrorEvent } from "@astravia/runtime-core";
 
 const MAX_ERROR_MESSAGE_LENGTH = 2_048;
 

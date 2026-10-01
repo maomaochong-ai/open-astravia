@@ -18,7 +18,7 @@
 - 会话历史、认证、模型和设置等用户数据；必要时由显式、独立的新迁移器读取旧格式。
 - 模型消息、工具消息、错误、取消、事件顺序、并发约束和资源释放语义。
 - 仍然有效的行为测试场景和数据 fixture；旧实现可以临时作为测试 Oracle，但不能被新生产代码调用。
-- `@vetta/ai` 与经过合同验证的 `@vetta/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
+- `@astravia/ai` 与经过合同验证的 `@astravia/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
 
 ## 明确舍弃（固定）
 
@@ -47,7 +47,7 @@
 
 - CLI control、SDK Host、RPC session adapter 与 IM/Print/RPC composition 统一接收可选 `htmlExporter`，默认由 Composition Root 创建。
 - SDK 的自定义工具 HTML 渲染保留为独立适配器，不再依赖旧 Core 工具渲染器。
-- 新增 `@vetta/coding-agent/export-html` 公共子路径；CLI App 通过该稳定子路径消费合同与工厂。
+- 新增 `@astravia/coding-agent/export-html` 公共子路径；CLI App 通过该稳定子路径消费合同与工厂。
 
 ### 3. 删除独立产物的隐式全局资产安装
 
@@ -73,7 +73,7 @@
 - 既有 SDK Host Adapter 测试 8 项通过，覆盖真实 SDK `exportToHtml` 路径及其余宿主能力回归。
 - 重写治理测试 11 项通过；根 TSGo 类型检查通过。
 - 根级 `bun run check` 通过，包含全仓 Biome、monorepo 与 CLI App 类型检查、Desktop/Admin 独立类型检查和全部质量守卫。
-- CLI App 的既有 `agent-runtime-selection` 测试在收集阶段因工作区 `@vetta/runtime-knowledge` 未构建入口而阻断，没有执行到本次导出断言；本阶段没有构建或修改该无关包来掩盖环境前置条件。
+- CLI App 的既有 `agent-runtime-selection` 测试在收集阶段因工作区 `@astravia/runtime-knowledge` 未构建入口而阻断，没有执行到本次导出断言；本阶段没有构建或修改该无关包来掩盖环境前置条件。
 
 ## 旧实现依赖变化
 

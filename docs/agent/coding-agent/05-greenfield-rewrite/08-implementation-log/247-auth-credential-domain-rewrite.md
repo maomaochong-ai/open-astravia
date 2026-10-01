@@ -18,7 +18,7 @@
 - 会话历史、认证、模型和设置等用户数据；必要时由显式、独立的新迁移器读取旧格式。
 - 模型消息、工具消息、错误、取消、事件顺序、并发约束和资源释放语义。
 - 仍然有效的行为测试场景和数据 fixture；旧实现可以临时作为测试 Oracle，但不能被新生产代码调用。
-- `@vetta/ai` 与经过合同验证的 `@vetta/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
+- `@astravia/ai` 与经过合同验证的 `@astravia/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
 
 ## 明确舍弃（固定）
 
@@ -44,7 +44,7 @@
 
 ### 2. 隔离动态 OAuth Provider 运行时
 
-- 新增 `OAuthCredentialRuntime`，集中适配 `@vetta/ai` 的登录、刷新、API Key 投影与 Provider 枚举。
+- 新增 `OAuthCredentialRuntime`，集中适配 `@astravia/ai` 的登录、刷新、API Key 投影与 Provider 枚举。
 - Provider 目录在每次操作时动态读取，没有形成进程级快照；认证存储创建后注册的新 Provider 仍可立即登录和取 Key。
 - 保留刷新锁、锁损坏恢复、外部文件编辑合并、运行时覆盖、存储凭据、环境变量和 fallback 的既有优先级。
 

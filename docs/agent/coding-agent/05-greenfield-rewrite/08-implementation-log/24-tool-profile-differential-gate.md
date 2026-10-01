@@ -3,14 +3,14 @@
 ## 目标
 
 验证过渡 Runtime Composition Root 在所有旧会话场景下都保持相同的工具可见性，并判断
-`@vetta/runtime-tools` 包根兼容导出是否已经具备拆除条件。
+`@astravia/runtime-tools` 包根兼容导出是否已经具备拆除条件。
 
 ## 修改范围
 
 - 在 CLI Composition Root 测试中同时实例化旧 Tool Factory 和新 Tool Registration。
 - 对旧系统 `ALL_SCENARIOS` 的 7 个场景逐一比较最终模型可见工具名。
 - 保留已有的默认 CLI 和显式激活测试，覆盖空 scope 的 `find/ls`。
-- 审计仓库内 `@vetta/runtime-tools` 包根消费者及根导出内容。
+- 审计仓库内 `@astravia/runtime-tools` 包根消费者及根导出内容。
 
 ## 实施结果
 
@@ -23,7 +23,7 @@
 差分比较使用旧 `resolveActiveToolNames` 的实际结果和新 `CodingToolsFeature` 在模型调用时
 生成的 Contribution，不只是静态比较 `scope_use` 与 `scopeUse`。
 
-仓库内当前没有直接导入 `@vetta/runtime-tools` 包根的源码或测试，但该入口仍公开转发
+仓库内当前没有直接导入 `@astravia/runtime-tools` 包根的源码或测试，但该入口仍公开转发
 `bash/edit/write/tree` 等未迁移工具。仓库内无消费者不代表可以破坏公共 API；直接删除根
 导出还会让新 Profile 缺失功能。因此本轮没有修改或删除兼容导出。
 
@@ -32,7 +32,7 @@
 - 没有切换旧 CLI、Desktop、RPC 或 IM 生产入口。
 - 没有改变任何工具的名称、描述、Schema、输出、错误或副作用。
 - 没有扩大 `ls/find` 的默认 scope。
-- 没有删除 `@vetta/runtime-tools` 包根公共 API。
+- 没有删除 `@astravia/runtime-tools` 包根公共 API。
 - 没有把尚未迁移的旧工具伪装成已完成。
 
 ## 验证

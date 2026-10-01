@@ -17,7 +17,7 @@ describe("persistImageFiles", () => {
 	beforeEach(() => {
 		mocks.persistImageFiles.mockReset();
 		mocks.recordInputImagesAdded.mockClear();
-		Object.defineProperty(window, "vetta", {
+		Object.defineProperty(window, "astravia", {
 			configurable: true,
 			value: { dialog: { persistImageFiles: mocks.persistImageFiles } },
 		});

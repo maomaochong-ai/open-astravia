@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to `@vetta/runtime-tools` are documented in this file.
+All notable changes to `@astravia/runtime-tools` are documented in this file.
 
 ## [Unreleased]
 
@@ -24,9 +24,9 @@ All notable changes to `@vetta/runtime-tools` are documented in this file.
 
 ### Breaking Changes
 
-- **具体 Coding Tool 实现迁至 Node 平台层**：`read`、`write`、`edit`、命令、PDF/OCR、能力与 Subagent Tool 的工厂、Schema 和 Host 原语改由 `@vetta/runtime-node/coding` 导出；本包只保留注册、Catalog、激活、可用性、结果策略和执行文件解析 Port。
+- **具体 Coding Tool 实现迁至 Node 平台层**：`read`、`write`、`edit`、命令、PDF/OCR、能力与 Subagent Tool 的工厂、Schema 和 Host 原语改由 `@astravia/runtime-node/coding` 导出；本包只保留注册、Catalog、激活、可用性、结果策略和执行文件解析 Port。
 - **CodingToolCatalog 执行仲裁合同**：`resolve(toolName)` 返回带稳定 Capability Binding 的 Catalog Entry，只读 Catalog 新增 `execute(binding, request)`；Coding Tools 不再写入编译期 `RuntimeSnapshot.tools`，改为通过 Model Call Contribution 在每次模型调用前物化。
-- **退役 Coding Agent 工具兼容根**：包根改为暴露与 `@vetta/runtime-tools/coding` 相同的原生 Runtime Tool API，不再提供旧工具单例集合与旧工厂转发。
+- **退役 Coding Agent 工具兼容根**：包根改为暴露与 `@astravia/runtime-tools/coding` 相同的原生 Runtime Tool API，不再提供旧工具单例集合与旧工厂转发。
 
 ### Changed
 
@@ -56,7 +56,7 @@ All notable changes to `@vetta/runtime-tools` are documented in this file.
   的名称、Schema、描述和 Registration 由 Coding Agent Feature 持有，环境能力通过窄 Port 注入。
 - **中立宿主执行原语**：新增可注入的 FIFO 异步执行 Gate 与既有路径解析导出，供产品组合根实现并发限制和 `@file` 路径兼容，不依赖 `coding-agent` 旧实现。
 - **可等待的后台命令关闭合同**：`BackgroundCommandService` 新增 `shutdown()`，停止全部运行任务并等待宿主进程退出回调；同步 `dispose()` 兼容入口、任务状态、通知和停止原因保持不变。
-- **Greenfield Coding Tools Feature**：新增 `@vetta/runtime-tools/coding`、`createCodingToolsFeature` 和 TypeBox 驱动的 `current_time` Runtime Tool。
+- **Greenfield Coding Tools Feature**：新增 `@astravia/runtime-tools/coding`、`createCodingToolsFeature` 和 TypeBox 驱动的 `current_time` Runtime Tool。
 - **Coding Tool 注册层**：分离 Runtime Tool 执行定义与 `scope_use`、`category` 暴露元数据，并新增可复用旧新工具差分合同。
 - **Read 行为合同**：新增参数化旧新行为合同，覆盖路径、编码、图片、二进制提示、锚点、截断、自定义 Operations 和取消。
 - **Greenfield Read Tool**：新增独立 Runtime read、Coding 注册和可注入文件/图片 Port，并在旧新差分验证通过后接入 Greenfield Coding Tools Feature。

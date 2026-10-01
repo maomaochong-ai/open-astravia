@@ -1,7 +1,7 @@
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { createNodeMcpSupervisor } from "@vetta/runtime-node/mcp";
+import { createNodeMcpSupervisor } from "@astravia/runtime-node/mcp";
 import { afterEach, describe, expect, it } from "vitest";
 
 describe("MCP config compatibility", () => {
@@ -20,29 +20,29 @@ describe("MCP config compatibility", () => {
 		expect(loader.loadMerged()).toEqual({ mcpServers: {} });
 		expect(loader.getConfigPaths()).toEqual({
 			global: join(fixture.agentDir, "mcp.json"),
-			project: join(fixture.projectRoot, ".vetta", "mcp.json"),
+			project: join(fixture.projectRoot, ".astravia", "mcp.json"),
 		});
 	});
 
 	it("merges project overrides and expands project and environment variables", async () => {
 		const fixture = await createFixture();
-		process.env.VETTA_MCP_CONFIG_TEST_TOKEN = "resolved-token";
+		process.env.ASTRAVIA_MCP_CONFIG_TEST_TOKEN = "resolved-token";
 		try {
 			await writeJson(join(fixture.agentDir, "mcp.json"), {
 				mcpServers: {
 					shared: { command: "global", args: ["--global"], env: { TOKEN: "global" } },
 					remote: {
 						type: "http",
-						url: `https://example.test/${configVariable("VETTA_MCP_CONFIG_TEST_TOKEN")}`,
+						url: `https://example.test/${configVariable("ASTRAVIA_MCP_CONFIG_TEST_TOKEN")}`,
 					},
 				},
 			});
-			await writeJson(join(fixture.projectRoot, ".vetta", "mcp.json"), {
+			await writeJson(join(fixture.projectRoot, ".astravia", "mcp.json"), {
 				mcpServers: {
 					shared: {
 						command: "project",
 						cwd: configVariable("PROJECT_ROOT"),
-						env: { TOKEN: configVariable("VETTA_MCP_CONFIG_TEST_TOKEN") },
+						env: { TOKEN: configVariable("ASTRAVIA_MCP_CONFIG_TEST_TOKEN") },
 					},
 				},
 			});
@@ -61,7 +61,7 @@ describe("MCP config compatibility", () => {
 				},
 			});
 		} finally {
-			delete process.env.VETTA_MCP_CONFIG_TEST_TOKEN;
+			delete process.env.ASTRAVIA_MCP_CONFIG_TEST_TOKEN;
 		}
 	});
 

@@ -33,7 +33,7 @@ vi.mock("react-i18next", () => ({
 	useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-vi.mock("@vetta-org/theme-ui/chat", () => ({
+vi.mock("@astravia-org/theme-ui/chat", () => ({
 	ContextRingView: () => createElement("span", { "data-testid": "context-ring-view" }),
 }));
 

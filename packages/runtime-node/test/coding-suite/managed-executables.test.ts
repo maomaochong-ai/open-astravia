@@ -31,7 +31,7 @@ describe("managed coding-tool executables", () => {
 	it("adapts custom resolution and preserves unavailable tools", async () => {
 		const calls: string[] = [];
 		const resolver = createManagedCodingToolExecutableResolver({
-			toolsDirectory: "C:/vetta/bin",
+			toolsDirectory: "C:/astravia/bin",
 			resolveExecutable: async (tool, silent) => {
 				calls.push(`${tool}:${silent}`);
 				return tool === "rg" ? "rg-path" : undefined;
@@ -84,7 +84,7 @@ describe("managed coding-tool executables", () => {
 			version,
 			platform,
 			architecture,
-			toolsDirectory: "C:/vetta/bin",
+			toolsDirectory: "C:/astravia/bin",
 		});
 		expect(plan?.assetName).toBe(asset);
 		expect(plan?.binaryFileName).toBe(binary);
@@ -98,7 +98,7 @@ describe("managed coding-tool executables", () => {
 				version: "14.1.0",
 				platform: "freebsd",
 				architecture: "x64",
-				toolsDirectory: "C:/vetta/bin",
+				toolsDirectory: "C:/astravia/bin",
 			}),
 		).toBeUndefined();
 	});
@@ -112,10 +112,10 @@ describe("managed coding-tool executables", () => {
 			version: platform === "win32" ? "14.1.0" : "1.0.0",
 			platform,
 			architecture: "x64",
-			toolsDirectory: "C:/vetta/bin",
+			toolsDirectory: "C:/astravia/bin",
 		});
 		if (!plan || !plan.assetName.endsWith(extension)) throw new Error("expected matching plan");
-		const extractDirectory = "C:/vetta/extract";
+		const extractDirectory = "C:/astravia/extract";
 		const binary = join(extractDirectory, plan.binaryFileName);
 		const calls: string[] = [];
 		const operations: CodingToolArchiveOperations = {
@@ -148,7 +148,7 @@ describe("managed coding-tool executables", () => {
 			version: "14.1.0",
 			platform: "linux",
 			architecture: "x64",
-			toolsDirectory: "C:/vetta/bin",
+			toolsDirectory: "C:/astravia/bin",
 		});
 		if (!plan) throw new Error("expected plan");
 		const cleanup: string[] = [];

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import type { AgentProfile, AgentTeamDocument, TeamDefinition } from "@vetta/agent-team";
+import type { AgentProfile, AgentTeamDocument, TeamDefinition } from "@astravia/agent-team";
 import { describe, expect, it } from "vitest";
 import { localizeAgentTeamDocument } from "./agent-team-localization";
 

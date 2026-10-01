@@ -3,7 +3,7 @@ import {
 	createFileConversationPersistence,
 	createInMemoryConversationPersistence,
 	resolveSessionIdFromPath,
-} from "@vetta/runtime-node/conversation";
+} from "@astravia/runtime-node/conversation";
 import type { CodingAgentSessionStorageTarget } from "../../public-api/sdk/sdk-create-contract.js";
 import type { ResolvedCodingAgentSdkSessionStorage } from "./contracts/session-identity-runtime.js";
 

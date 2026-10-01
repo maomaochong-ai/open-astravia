@@ -90,17 +90,17 @@ describe("自定义 shell", () => {
 });
 
 describe("createTerminalEnvironment", () => {
-	it("剔除 Vetta 内部变量与 askpass 注入", () => {
+	it("剔除 Astravia 内部变量与 askpass 注入", () => {
 		const env = createTerminalEnvironment({
 			PATH: "/usr/bin",
-			VETTA_CONFIG_DIR: "/tmp/.vetta",
+			ASTRAVIA_CONFIG_DIR: "/tmp/.astravia",
 			ELECTRON_RUN_AS_NODE: "1",
 			NODE_OPTIONS: "--import tsx",
 			SSH_ASKPASS: "/tmp/askpass",
 		});
 
 		expect(env.PATH).toBe("/usr/bin");
-		expect(env.VETTA_CONFIG_DIR).toBeUndefined();
+		expect(env.ASTRAVIA_CONFIG_DIR).toBeUndefined();
 		expect(env.ELECTRON_RUN_AS_NODE).toBeUndefined();
 		expect(env.NODE_OPTIONS).toBeUndefined();
 		expect(env.SSH_ASKPASS).toBeUndefined();

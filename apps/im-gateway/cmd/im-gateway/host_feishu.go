@@ -6,20 +6,20 @@ import (
 	"fmt"
 	"sync"
 
-	"vetta-im-gateway/internal/hostproto"
-	"vetta-im-gateway/internal/transport/feishu"
+	"astravia-im-gateway/internal/hostproto"
+	"astravia-im-gateway/internal/transport/feishu"
 )
 
 // registerSource tags the QR URL so the platform can attribute apps
 // created through this gateway.
-const feishuRegisterSource = "vetta-im-gateway"
+const feishuRegisterSource = "astravia-im-gateway"
 
 // feishuBotName / feishuBotDesc pre-fill the app-creation page. Both
 // support the platform's "{user}" placeholder, which the page expands to
 // the scanning user's name.
 const (
-	feishuBotName = "Vetta"
-	feishuBotDesc = "Vetta 编程助手，在飞书私聊里直接和你的项目对话。"
+	feishuBotName = "Astravia"
+	feishuBotDesc = "Astravia 编程助手，在飞书私聊里直接和你的项目对话。"
 )
 
 // feishuInboundEvent is the single event the bridge lives on: a private
@@ -297,7 +297,7 @@ func (c *feishuBindCoordinator) emitBindStatus(status, errMsg string) {
 // in-memory credentials so the next build parks in awaiting_bind.
 //
 // The app itself is left alone on the Feishu Open Platform: only its owner
-// can delete it there, and a user who unbinds in Vetta may well want to
+// can delete it there, and a user who unbinds in Astravia may well want to
 // keep (or re-enter) the same app later.
 func (c *feishuBindCoordinator) LogoutAndClear(reason string) error {
 	c.Cancel()

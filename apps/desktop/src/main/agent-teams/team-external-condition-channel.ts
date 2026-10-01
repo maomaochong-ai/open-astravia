@@ -1,4 +1,4 @@
-import type { TeamExternalConditionChange } from "@vetta/agent-team";
+import type { TeamExternalConditionChange } from "@astravia/agent-team";
 
 export interface TeamExternalConditionChangeChannel {
 	publish(change: TeamExternalConditionChange): void;

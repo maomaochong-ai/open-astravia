@@ -3,7 +3,7 @@
 ## 决策原则
 
 1. **迁移语义，不迁移单体结构**：优先吸收 trust、lifecycle、source、transaction、protocol 等合同。
-2. **复用 Vetta 已有 Runtime 能力**：Coding Extension 的动态工具应投影 `runtime-tools`，不要创建第二套目录。
+2. **复用 Astravia 已有 Runtime 能力**：Coding Extension 的动态工具应投影 `runtime-tools`，不要创建第二套目录。
 3. **宿主无关核心不依赖具体 UI**：Desktop 和 TUI 分别适配，核心只定义能力与结构化交互。
 4. **不同信任边界不能伪统一**：Skill、MCP、进程内 Extension、Renderer Plugin 的执行权限不同。
 5. **每个新扩展点都回答五个问题**：来源、权限、生命周期、冲突、in-flight 行为。
@@ -71,7 +71,7 @@
 - `prepareArguments`；
 - sequential/parallel execution hint；
 - capability/permission requirement；
-- constrained sampling（仅在 `@vetta/ai` provider 合同能保持一致时）。
+- constrained sampling（仅在 `@astravia/ai` provider 合同能保持一致时）。
 
 不要把 TUI renderer state 下沉到 `runtime-tools`。Renderer 通过宿主 adapter 消费标准 call/result/progress 数据。
 
@@ -110,7 +110,7 @@
 
 #### K. 拆分 host-neutral Extension 与 TUI
 
-保留 `@vetta/coding-agent/extensions` 的事件、工具、Provider、结构化 UI request；把 terminal `Component`、editor/header/footer 等放到显式 TUI subpath。Desktop UI 继续使用 Plugin SDK，不在 Coding Extension 中复制 React/Renderer 权限面。
+保留 `@astravia/coding-agent/extensions` 的事件、工具、Provider、结构化 UI request；把 terminal `Component`、editor/header/footer 等放到显式 TUI subpath。Desktop UI 继续使用 Plugin SDK，不在 Coding Extension 中复制 React/Renderer 权限面。
 
 这是公共 API 变化，需要兼容层、deprecation 窗口和 consumer 清单。
 
@@ -122,7 +122,7 @@
 
 只在 Pi 上游满足以下条件后重新评审：主要 operation 不再抛 `HarnessNotImplemented`；durable storage/recovery、observer、lane 和 effect tests 完整；生产 coding-agent 至少有一条实际接入路径。
 
-届时重点比较 Vetta `runtime-core` 的 turn/snapshot、`runtime-subagents` 的调度恢复和 Harness record/effect 模型，仍应避免并行 Agent loop。
+届时重点比较 Astravia `runtime-core` 的 turn/snapshot、`runtime-subagents` 的调度恢复和 Harness record/effect 模型，仍应避免并行 Agent loop。
 
 ## 推荐实施批次
 
@@ -139,8 +139,8 @@
 ## 明确不做
 
 - 不整体同步 Pi `coding-agent/src/core`。
-- 不引入 Pi Manager/Registry 作为 Vetta 稳定 SDK 的主合同。
-- 不为追平功能数量复制与 Vetta 产品无关的 TUI API。
+- 不引入 Pi Manager/Registry 作为 Astravia 稳定 SDK 的主合同。
+- 不为追平功能数量复制与 Astravia 产品无关的 TUI API。
 - 不把 Plugin permission、tool sandbox 或 project trust 当成进程级代码隔离。
 - 不把 Pi AgentHarness v2 scaffold 或 remote experimental package 作为生产依赖。
 - 不通过放宽包边界检查来容纳上游结构。

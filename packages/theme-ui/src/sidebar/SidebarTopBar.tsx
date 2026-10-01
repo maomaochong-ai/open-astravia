@@ -1,5 +1,5 @@
 import type { JSX, ReactNode } from "react";
-import { cn } from "@vetta-org/ui";
+import { cn } from "@astravia-org/ui";
 import { isMac } from "../utils/platform";
 
 export interface SidebarTopBarClassNames {
@@ -58,7 +58,7 @@ export function SidebarTopBar({
 			) : (
 				<div className={cn("flex min-w-0 shrink items-center gap-2 overflow-hidden", classNames?.brand)}>
 					{brandIcon}
-					<span className="truncate text-[13px] font-semibold text-foreground">Vetta</span>
+					<span className="truncate text-[13px] font-semibold text-foreground">Astravia</span>
 					{brandTrailing}
 				</div>
 			)}

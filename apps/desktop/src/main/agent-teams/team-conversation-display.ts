@@ -1,5 +1,5 @@
-import type { TeamPublicationOperationRecord, TeamSessionDocument, TeamWorkItem } from "@vetta/agent-team";
-import type { ContextCompositionReport, HistoryEntry, SessionExecutionMode } from "@vetta/runtime-core";
+import type { TeamPublicationOperationRecord, TeamSessionDocument, TeamWorkItem } from "@astravia/agent-team";
+import type { ContextCompositionReport, HistoryEntry, SessionExecutionMode } from "@astravia/runtime-core";
 import type {
 	DesktopTeamConversationDisplay,
 	DesktopTeamMessageTimingProjection,

@@ -2,7 +2,7 @@ import { useSidebarState } from "@shared/app-shell/sidebar-state";
 import { ResizeHandle } from "@shared/components/ResizeHandle";
 import { cn } from "@shared/lib/utils";
 import { activityPanelOpenAtom, collectBottomPanelLeaves } from "@shared/store/atoms";
-import { BottomPanelEmptyPicker, BottomPanelEmptyState, BottomPanelFrame } from "@vetta-org/theme-ui/bottom-panel";
+import { BottomPanelEmptyPicker, BottomPanelEmptyState, BottomPanelFrame } from "@astravia-org/theme-ui/bottom-panel";
 import { useAtomValue } from "jotai";
 import { type JSX, useCallback, useRef } from "react";
 import type { WorkSurfaceScope } from "@shared/workspace/work-surface";

@@ -10,7 +10,7 @@ describe("useImageGenerationSettingsModel", () => {
 	it("lists providers by supported mode and persists user selections", async () => {
 		const set = vi.fn(async () => undefined);
 		const onMediaProvidersChanged = vi.fn(() => () => undefined);
-		(window as unknown as { vetta: unknown }).vetta = {
+		(window as unknown as { astravia: unknown }).astravia = {
 			config: {
 				get: vi.fn(async () => ({
 					imageGeneration: { textToImageProviderId: "remote:all" },
@@ -80,7 +80,7 @@ describe("useImageGenerationSettingsModel", () => {
 	});
 
 	it("keeps a missing saved provider visible as unavailable", async () => {
-		(window as unknown as { vetta: unknown }).vetta = {
+		(window as unknown as { astravia: unknown }).astravia = {
 			config: {
 				get: vi.fn(async () => ({ imageGeneration: { textToImageProviderId: "missing:images" } })),
 				set: vi.fn(async () => undefined),

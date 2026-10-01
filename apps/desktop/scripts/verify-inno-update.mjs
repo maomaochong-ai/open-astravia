@@ -35,9 +35,9 @@ async function runInstaller(installerPath, storeRoot, version) {
 		"/NOCLOSEAPPLICATIONS",
 		"/NORESTARTAPPLICATIONS",
 		"/SP-",
-		"/VETTAUPDATE=true",
-		`/VETTASTOREROOT=${storeRoot}`,
-		`/VETTAPROGRESS=${progressPath}`,
+		"/ASTRAVIAUPDATE=true",
+		`/ASTRAVIASTOREROOT=${storeRoot}`,
+		`/ASTRAVIAPROGRESS=${progressPath}`,
 		`/LOG=${logPath}`,
 	];
 	await new Promise((resolve, reject) => {
@@ -67,7 +67,7 @@ export async function verifyInnoUpdate({ installerPath, verificationManifestPath
 	try {
 		await runInstaller(installerPath, storeRoot, version);
 		await Promise.all([
-			assertFile(join(installedVersionDir, "Vetta.exe")),
+			assertFile(join(installedVersionDir, "Astravia.exe")),
 			assertFile(join(installedVersionDir, "resources", "app.asar")),
 			assertFile(join(installedVersionDir, ".install-complete")),
 		]);

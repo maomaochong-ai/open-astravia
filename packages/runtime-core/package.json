@@ -1,5 +1,5 @@
 {
-	"name": "@vetta/runtime-core",
+	"name": "@astravia/runtime-core",
 	"version": "0.0.1",
 	"type": "module",
 	"main": "./dist/index.js",
@@ -49,8 +49,8 @@
 		"test": "bun ../../scripts/quality/run-vitest.mjs --run --config vitest.config.ts"
 	},
 	"dependencies": {
-		"@vetta/agent-core": "workspace:*",
-		"@vetta/ai": "workspace:*"
+		"@astravia/agent-core": "workspace:*",
+		"@astravia/ai": "workspace:*"
 	},
 	"devDependencies": {
 		"typescript": "^5.9.2",

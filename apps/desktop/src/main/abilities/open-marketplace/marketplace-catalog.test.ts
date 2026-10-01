@@ -11,7 +11,7 @@ afterEach(() => {
 });
 
 function fixture() {
-	const root = mkdtempSync(join(tmpdir(), "vetta-bundle-catalog-test-"));
+	const root = mkdtempSync(join(tmpdir(), "astravia-bundle-catalog-test-"));
 	roots.push(root);
 	const source = { path: "abilities/guide" };
 	const directory = join(root, source.path);

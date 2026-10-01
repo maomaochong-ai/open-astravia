@@ -5,12 +5,12 @@ import {
 	isTeamLegacyEventsMigrationRecord,
 	isTeamWorkItem,
 	type TeamSessionDocument,
-} from "@vetta/agent-team";
+} from "@astravia/agent-team";
 import {
 	applyConversationDocumentCommand,
 	type ConversationDocument,
 	createEmptyConversationDocument,
-} from "@vetta/runtime-core";
+} from "@astravia/runtime-core";
 import { describe, expect, it } from "vitest";
 import {
 	ensureTeamConversationBinding,

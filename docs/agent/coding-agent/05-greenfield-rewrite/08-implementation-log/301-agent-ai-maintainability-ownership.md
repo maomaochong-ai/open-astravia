@@ -14,7 +14,7 @@
 - 会话历史、认证、模型和设置等用户数据；必要时由显式、独立的新迁移器读取旧格式。
 - 模型消息、工具消息、错误、取消、事件顺序、并发约束和资源释放语义。
 - 仍然有效的行为测试场景和数据 fixture；旧实现可以临时作为测试 Oracle，但不能被新生产代码调用。
-- `@vetta/ai` 与经过合同验证的 `@vetta/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
+- `@astravia/ai` 与经过合同验证的 `@astravia/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
 
 ## 明确舍弃（固定）
 
@@ -28,7 +28,7 @@
 
 ## 本阶段与最终目标的关系
 
-`@vetta/agent-core` 与 `@vetta/ai` 是 Coding Agent 新架构明确保留的下层能力。本轮不重写其功能合同，而是把执行编排、状态投影、消息队列和 Provider 协议转换拆到明确职责所有者，使 Coding Agent 继续依赖稳定、可验证的下层合同，而不是依赖聚合实现细节。
+`@astravia/agent-core` 与 `@astravia/ai` 是 Coding Agent 新架构明确保留的下层能力。本轮不重写其功能合同，而是把执行编排、状态投影、消息队列和 Provider 协议转换拆到明确职责所有者，使 Coding Agent 继续依赖稳定、可验证的下层合同，而不是依赖聚合实现细节。
 
 ## 实施内容
 
@@ -41,7 +41,7 @@
 
 ## 旧实现依赖变化
 
-- `@vetta/agent-core`、`@vetta/ai` 对旧 Coding Agent 生产实现的依赖：保持 `0`。
+- `@astravia/agent-core`、`@astravia/ai` 对旧 Coding Agent 生产实现的依赖：保持 `0`。
 - Provider 既有入口文件：由协议实现聚合体收敛为 6 个纯导出门面。
 - Agent loop 明确职责所有者：由 1 个聚合文件增为 4 个 loop 模块和 2 个 runtime 模块。
 - CLI、Desktop、Admin 及其他下游消费路径：保持原有包入口和公开类型，不新增兼容层或深层导入要求。

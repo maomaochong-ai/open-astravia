@@ -16,7 +16,7 @@ afterEach(() => {
 });
 
 function createProtectedDirectory(): string {
-	const root = mkdtempSync(join(tmpdir(), "vetta-protected-changes-"));
+	const root = mkdtempSync(join(tmpdir(), "astravia-protected-changes-"));
 	temporaryDirectories.push(root);
 	const protectedDirectory = join(root, "skills");
 	mkdirSync(protectedDirectory, { recursive: true });

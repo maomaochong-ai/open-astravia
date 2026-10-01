@@ -15,7 +15,7 @@ vi.mock("electron", () => ({
 it("exposes the Desktop bridge without Agent configuration or diagnostic APIs", async () => {
 	await import("./index.js");
 	const [name, api] = expose.mock.calls[0]!;
-	expect(name).toBe("vetta");
+	expect(name).toBe("astravia");
 	expect(api).not.toHaveProperty("agentConfiguration");
 	expect(api).not.toHaveProperty("agentTraces");
 	expect(api.session.create).toBeTypeOf("function");

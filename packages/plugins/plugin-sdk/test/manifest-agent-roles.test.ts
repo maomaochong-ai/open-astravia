@@ -127,7 +127,7 @@ describe("plugin manifest agent roles", () => {
 	 */
 	it("keeps every builtin role supplied by a preset plugin", () => {
 		const supplied = new Set(
-			["preset-agent", "vetta-ui-design"].flatMap((pluginId) => {
+			["preset-agent", "astravia-ui-design"].flatMap((pluginId) => {
 				const raw = readFileSync(join(repoRoot, "packages/plugins/presets", pluginId, "plugin.json"), "utf8");
 				const manifest = parsePluginManifest(JSON.parse(raw));
 				return (manifest.agent?.agents ?? []).flatMap((agent) => agent.roles ?? []);

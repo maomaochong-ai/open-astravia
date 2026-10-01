@@ -1,5 +1,5 @@
-import type { RuntimeConfigurationSnapshotSource } from "@vetta/runtime-core/configuration";
-import type { AsyncExecutionGate, CodingToolExecutableResolver, CodingToolRegistration } from "@vetta/runtime-tools";
+import type { RuntimeConfigurationSnapshotSource } from "@astravia/runtime-core/configuration";
+import type { AsyncExecutionGate, CodingToolExecutableResolver, CodingToolRegistration } from "@astravia/runtime-tools";
 import { createNodeSpecializedToolRegistrations } from "./host/specialized-tool-registrations.js";
 import { createBackgroundCommandToolExecutor } from "./shared/background-command-executor.js";
 import type { BackgroundCommandHost } from "./shared/background-command-host.js";

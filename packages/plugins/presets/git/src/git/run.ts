@@ -1,4 +1,4 @@
-import type { PluginCommandRunResult } from "@vetta-org/plugin-sdk";
+import type { PluginCommandRunResult } from "@astravia-org/plugin-sdk";
 import { enqueueWrite, getGitCommand } from "./runtime";
 import type { ChangeEntry, ChangeSection } from "./types";
 import { rebaseOntoWorkspace } from "./workspacePath";

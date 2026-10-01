@@ -10,15 +10,15 @@ import {
 	type TeamSessionDocument,
 	type TeamWorkItem,
 	teamMemberResultMessageId,
-} from "@vetta/agent-team";
-import { type AssistantMessage, isAIError } from "@vetta/ai";
+} from "@astravia/agent-team";
+import { type AssistantMessage, isAIError } from "@astravia/ai";
 import {
 	type HistoryEntry,
 	type PromptAttachmentRef,
 	type RuntimeHost,
 	readRuntimeFailure,
 	runtimeFailureFromError,
-} from "@vetta/runtime-core";
+} from "@astravia/runtime-core";
 import { getAppLogger } from "../logger.js";
 import type { TeamCollaborationStore } from "./team-collaboration-store.js";
 import { findTeamAttemptFailure, findTeamAttemptResult, isTeamAttemptFinalResult } from "./team-member-result.js";

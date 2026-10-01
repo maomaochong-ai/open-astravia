@@ -121,7 +121,7 @@ export interface CapabilityHandler<Input, Output, Event = never> {
 
 ### 5.2 基础能力
 
-基础能力提供与 Vetta 具体领域无关的平台原语，例如：
+基础能力提供与 Astravia 具体领域无关的平台原语，例如：
 
 - 文件读写和元数据。
 - 命名空间 KV 存储。
@@ -137,12 +137,12 @@ export interface CapabilityHandler<Input, Output, Event = never> {
 示例：
 
 ```text
-cap.foundation.vetta.fs.read-file
-cap.foundation.vetta.fs.write-file
-cap.foundation.vetta.storage.get
-cap.foundation.vetta.storage.set
-cap.foundation.vetta.window.minimize
-cap.foundation.vetta.notification.show
+cap.foundation.astravia.fs.read-file
+cap.foundation.astravia.fs.write-file
+cap.foundation.astravia.storage.get
+cap.foundation.astravia.storage.set
+cap.foundation.astravia.window.minimize
+cap.foundation.astravia.notification.show
 ```
 
 基础能力实现只处理技术约束，例如输入合法性、路径规范化、序列化、资源上限、取消以及底层 API 错误转换。它不判断调用者属于哪个系统。
@@ -163,15 +163,15 @@ cap.foundation.vetta.notification.show
 示例：
 
 ```text
-cap.domain.vetta.project.list
-cap.domain.vetta.project.create
-cap.domain.vetta.download.list
-cap.domain.vetta.download.cancel
-cap.domain.vetta.scheduler.task.create
-cap.domain.vetta.scheduler.task.run
-cap.domain.vetta.knowledge.entry.delete
-cap.domain.vetta.appearance.get
-cap.domain.vetta.appearance.set
+cap.domain.astravia.project.list
+cap.domain.astravia.project.create
+cap.domain.astravia.download.list
+cap.domain.astravia.download.cancel
+cap.domain.astravia.scheduler.task.create
+cap.domain.astravia.scheduler.task.run
+cap.domain.astravia.knowledge.entry.delete
+cap.domain.astravia.appearance.get
+cap.domain.astravia.appearance.set
 ```
 
 领域能力可以在实现内部组合基础能力。例如 `project.create` 可以使用目录检查、目录创建和 KV 写入，但调用者不需要复制这段业务流程。
@@ -187,15 +187,15 @@ cap.<layer>.<publisher>.<domain>.<operation>
 ```
 
 - `layer`：`foundation` 或 `domain`。
-- `publisher`：能力发布者，例如 `vetta`、`acme`。
+- `publisher`：能力发布者，例如 `astravia`、`acme`。
 - `domain`：能力领域，可以包含多级资源段。
 - `operation`：具体操作，使用小写 kebab-case。
 
 示例：
 
 ```text
-cap.foundation.vetta.fs.read-file
-cap.domain.vetta.scheduler.task.run
+cap.foundation.astravia.fs.read-file
+cap.domain.astravia.scheduler.task.run
 cap.foundation.acme.serial.open
 cap.domain.acme.crm.contact.create
 ```
@@ -207,8 +207,8 @@ export const CAPABILITY_PREFIXES = {
 	ROOT: "cap.",
 	FOUNDATION: "cap.foundation.",
 	DOMAIN: "cap.domain.",
-	VETTA_FOUNDATION: "cap.foundation.vetta.",
-	VETTA_DOMAIN: "cap.domain.vetta.",
+	ASTRAVIA_FOUNDATION: "cap.foundation.astravia.",
+	ASTRAVIA_DOMAIN: "cap.domain.astravia.",
 } as const;
 ```
 
@@ -229,12 +229,12 @@ export const CAPABILITY_PREFIXES = {
 ```ts
 export const FOUNDATION_CAPABILITIES = {
 	FS_READ_FILE: defineCapability<ReadFileInput, ReadFileOutput>({
-		id: "cap.foundation.vetta.fs.read-file",
+		id: "cap.foundation.astravia.fs.read-file",
 		layer: "foundation",
 		version: 1,
 	}),
 	STORAGE_GET: defineCapability<StorageGetInput, StorageGetOutput>({
-		id: "cap.foundation.vetta.storage.get",
+		id: "cap.foundation.astravia.storage.get",
 		layer: "foundation",
 		version: 1,
 	}),
@@ -242,7 +242,7 @@ export const FOUNDATION_CAPABILITIES = {
 
 export const DOMAIN_CAPABILITIES = {
 	PROJECT_CREATE: defineCapability<ProjectCreateInput, Project>({
-		id: "cap.domain.vetta.project.create",
+		id: "cap.domain.astravia.project.create",
 		layer: "domain",
 		version: 1,
 	}),
@@ -258,7 +258,7 @@ await client.invoke(FOUNDATION_CAPABILITIES.FS_READ_FILE, { path });
 禁止调用：
 
 ```ts
-await client.invoke("cap.foundation.vetta.fs.read-file", { path });
+await client.invoke("cap.foundation.astravia.fs.read-file", { path });
 ```
 
 以下稳定字符串也必须由能力契约常量提供：
@@ -303,7 +303,7 @@ const registration = registry.registerModule(module, bindings, {
 
 注册规则：
 
-- `vetta` namespace 只允许宿主内置或经过宿主签名确认的模块注册。
+- `astravia` namespace 只允许宿主内置或经过宿主签名确认的模块注册。
 - 外部模块必须使用自己的 publisher namespace。
 - 不同 owner 注册相同 Capability ID 时直接拒绝，不使用静默覆盖。
 - 同一模块升级使用 `stage -> validate -> commit/abort` 原子替换。
@@ -313,7 +313,7 @@ const registration = registry.registerModule(module, bindings, {
 - 新注册能力默认没有任何 Grant。
 
 `registerModule()` 会在修改 Registry 前一次性校验模块元数据、publisher、layer、声明的 Token
-与 Provider binding。`vetta` publisher 只接受宿主明确标记为 `built-in` 的模块。宿主自身按资源聚合的
+与 Provider binding。`astravia` publisher 只接受宿主明确标记为 `built-in` 的模块。宿主自身按资源聚合的
 Provider 可以使用低层 `registerOwner()`；外部 Capability Module 必须使用 `registerModule()`。
 
 普通 Plugin、Theme 不因使用扩展系统而自动获得注册底层 Provider 的资格。是否允许某个系统贡献 Capability Module，由对应系统适配层单独决定。
@@ -346,9 +346,9 @@ const grants: readonly CapabilityGrant[] = [
 不存在以下中间标识：
 
 ```text
-perm.foundation.vetta.fs.read
+perm.foundation.astravia.fs.read
 filesystem.read 权限组
-cap.foundation.vetta.fs.* 通配授权
+cap.foundation.astravia.fs.* 通配授权
 ```
 
 这样新增、拆分或调整能力时不会因为分组推断而扩大已有授权。
@@ -473,9 +473,9 @@ Plugin Adapter 在完成 manifest、用户授权和 trust level 校验后，将 
 
 ```text
 fs.read
-  -> cap.foundation.vetta.fs.read-file
-  -> cap.foundation.vetta.fs.stat
-  -> cap.foundation.vetta.fs.list
+  -> cap.foundation.astravia.fs.read-file
+  -> cap.foundation.astravia.fs.stat
+  -> cap.foundation.astravia.fs.list
 ```
 
 展开结果进入通用权限层时，只剩三条 Capability Grant。通用权限层不保存 `fs.read`，也不知道这些 Grant 来自 Plugin 权限。
@@ -495,7 +495,7 @@ Plugin Adapter 负责：
 - 插件权限到 Capability Grant 的展开。
 - 插件专用输入校验和错误转换。
 
-Plugin 开发者仍然只导入 `plugin-sdk` 并调用 `ctx.fs.readFile()`。宿主桥接把调用交给 Plugin Adapter，后者包装 `FS_READ_FILE` Token，不再直接调用原始 `window.vetta.fs.*`。Plugin Adapter 本身不作为第三方 API 导出。
+Plugin 开发者仍然只导入 `plugin-sdk` 并调用 `ctx.fs.readFile()`。宿主桥接把调用交给 Plugin Adapter，后者包装 `FS_READ_FILE` Token，不再直接调用原始 `window.astravia.fs.*`。Plugin Adapter 本身不作为第三方 API 导出。
 
 Plugin Loader 激活插件时向宿主打开一个与 `pluginId` 绑定的 Capability Session，并把不透明的 session ID 封装在 `ctx.fs` 实现中；插件停用、激活失败或重新加载时关闭对应 activation 的 session。事务式重新加载会在新 activation 就绪前暂时保留旧 activation 及其 session，成功发布后再按 session ID 精确关闭旧实例，失败则只关闭新实例并继续使用 last-known-good。每次调用都重新读取插件当前的启用状态、声明权限和用户授权，因此撤销 `fs.read`、`fs.write` 或禁用插件后无需等待旧 session 过期。跨进程接口只暴露 Plugin Adapter 已封装的文件操作，不提供任意 Capability ID 调用入口。
 
@@ -512,7 +512,7 @@ Theme Adapter 负责：
 
 例如主题自己的 storage 权限可以展开成 `storage.get`、`storage.set`、`storage.remove` 等独立 Capability Grant，并附带固定 namespace 约束。通用权限层只看到 Capability ID 和 namespace，不知道 Theme 或 themeId。
 
-Theme 开发者仍然只使用 `@vetta-org/theme-sdk` 的 hook 和类型。Theme SDK、renderer host、preload/IPC 是公开 facade 到内部 Theme Adapter 的桥接，不向主题代码暴露 Capability Client、Grant 或内部 Adapter。
+Theme 开发者仍然只使用 `@astravia-org/theme-sdk` 的 hook 和类型。Theme SDK、renderer host、preload/IPC 是公开 facade 到内部 Theme Adapter 的桥接，不向主题代码暴露 Capability Client、Grant 或内部 Adapter。
 
 ### 7.5 Action Adapter
 
@@ -600,7 +600,7 @@ Desktop 同时拥有原生 Provider、组合根，以及当前只服务 Desktop 
 权限执行必须位于可信宿主侧。禁止公开以下接口：
 
 ```ts
-window.vetta.capabilities.invoke({
+window.astravia.capabilities.invoke({
 	subjectId: "由调用方填写",
 	capabilityId: "任意字符串",
 	input: {},
@@ -626,12 +626,12 @@ window.vetta.capabilities.invoke({
 - Plugin `ctx.fs` 的读写与元数据操作已迁移为 `plugin-sdk facade -> Plugin Loader/Preload/IPC 桥接 -> 内置 Plugin Adapter -> AccessSession -> Foundation Filesystem Capability -> 文件服务`；目录监听作为 Plugin 系统订阅 facade 由 `PluginFsApi.watchDirectory()` 统一封装并检查 `fs.read`，普通插件源码不再直接访问 Desktop preload API。
 - Plugin Adapter 将 `fs.read` 和 `fs.write` 精确展开为各文件 Capability Grant；每次调用都会核验当前有效插件权限。同一插件事务式重新激活时允许新旧 activation 的 session 短暂重叠，宿主在发布新实例或回滚失败实例后按 session ID 精确撤销对应 session，避免破坏 last-known-good 回退。
 - Plugin `ctx.network` 和 `ctx.storage` 已迁移为 `plugin-sdk facade -> Plugin Loader/Preload/IPC 桥接 -> 内置 Plugin Adapter -> AccessSession -> Foundation Network/Storage Capability -> 网络与私有存储后端`。`network.fetch` 映射为通用网络请求 Grant；`storage.read`、`storage.write` 按文件快照、revision 提交和 Blob 操作展开为独立 Grant，并通过 namespace constraint 固定到当前插件。Capability 契约与 Provider 不接收 Plugin 身份；Plugin API 2.0 删除 JSON 专用能力，旧直写文件会在首次访问时导入初始 revision。
-- 官方插件的 Agent 实验设置已迁移为 `PluginOfficialApi agent facade -> Preload/IPC 桥接 -> Plugin Adapter -> AccessSession -> Domain Agent Settings Capability -> AgentSettingsService`；读取与局部更新使用两个精确 Grant，局部更新在主进程单次读写中完成并返回完整规范化快照。Desktop UI 的通用 Config IPC 保持兼容并共享同一个 config store；公开 `plugin-sdk` 签名保持兼容，不再直连 `window.vetta.config.*`。
-- 官方插件的通用设置已迁移为 `PluginOfficialApi general facade -> Preload/IPC 桥接 -> Plugin Adapter -> AccessSession -> Domain General Settings Capability -> GeneralSettingsService`；读取设置、设置通知、设置默认执行模式和设置工作区分别使用精确 Grant。工作区路径校验、持久化与文件根授权集中在主进程单例服务中，Desktop UI 的通用 Config IPC 保持兼容并共享同一个 config store；公开 `plugin-sdk` 签名保持兼容，不再直连 `window.vetta.config.*`。
+- 官方插件的 Agent 实验设置已迁移为 `PluginOfficialApi agent facade -> Preload/IPC 桥接 -> Plugin Adapter -> AccessSession -> Domain Agent Settings Capability -> AgentSettingsService`；读取与局部更新使用两个精确 Grant，局部更新在主进程单次读写中完成并返回完整规范化快照。Desktop UI 的通用 Config IPC 保持兼容并共享同一个 config store；公开 `plugin-sdk` 签名保持兼容，不再直连 `window.astravia.config.*`。
+- 官方插件的通用设置已迁移为 `PluginOfficialApi general facade -> Preload/IPC 桥接 -> Plugin Adapter -> AccessSession -> Domain General Settings Capability -> GeneralSettingsService`；读取设置、设置通知、设置默认执行模式和设置工作区分别使用精确 Grant。工作区路径校验、持久化与文件根授权集中在主进程单例服务中，Desktop UI 的通用 Config IPC 保持兼容并共享同一个 config store；公开 `plugin-sdk` 签名保持兼容，不再直连 `window.astravia.config.*`。
 - 官方插件的 IM 桥接管理已迁移为 `PluginOfficialApi im facade -> Preload/IPC 桥接 -> Plugin Adapter -> AccessSession -> Domain IM Capability -> ImHost`；状态、日志、启停、重启和 Agent 模型设置分别使用精确 Grant，Capability Provider 与原 IM IPC 复用同一个 `ImHost` 单例。状态契约只返回 App ID 等公开摘要，不返回 App Secret、Verification Token、Encrypt Key 等凭据；`assertModelKeyExists` 复用同一 Plugin Capability Session 下的 Models 领域能力。
 - 官方插件的模型配置已迁移为 `PluginOfficialApi models facade -> Preload/IPC 桥接 -> Plugin Adapter -> AccessSession -> Domain Model Capability -> ModelSettingsService`；模型列表、脱敏配置与 Provider 查询、连通性探测、模型键校验、默认模型设置和 Provider 增删改分别使用精确 Grant。配置更新在主进程单例服务中串行完成，写入后刷新共享 ModelRegistry；原 Models IPC 保持兼容并复用同一服务，Capability 输出不会返回原始 API Key 或敏感 Header。
 - 官方插件的 MCP 配置已迁移为 `PluginOfficialApi mcp facade -> Preload/IPC 桥接 -> Plugin Adapter -> AccessSession -> Domain MCP Capability -> McpSettingsService`；服务列表、脱敏详情、增改、启停和删除分别使用精确 Grant，`listNames` 继续由服务列表派生。配置更新在主进程单例服务中串行完成，原 MCP Config IPC 保持兼容并复用同一服务；Capability 输出会遮蔽敏感 Header 和环境变量，同时局部更新会保留 OAuth client 等内部配置字段。OAuth 登录和授权状态仍留在原 Desktop MCP API。
-- 官方插件的项目管理已迁移为 `PluginOfficialApi projects facade -> Preload/IPC 桥接 -> Plugin Adapter -> AccessSession -> Domain Project/Session Capability -> 项目与会话服务`；七个项目操作和两个会话查询分别使用精确 Grant，公开 facade 保持兼容，不再直连 `window.vetta.session.*`。
+- 官方插件的项目管理已迁移为 `PluginOfficialApi projects facade -> Preload/IPC 桥接 -> Plugin Adapter -> AccessSession -> Domain Project/Session Capability -> 项目与会话服务`；七个项目操作和两个会话查询分别使用精确 Grant，公开 facade 保持兼容，不再直连 `window.astravia.session.*`。
 - 官方插件的下载查询与取消已迁移为 `PluginOfficialApi downloads facade -> Preload/IPC 桥接 -> Plugin Adapter -> AccessSession -> Domain Download Capability -> 下载服务`；原 Downloads IPC 与 Provider 共用单例服务，公开 facade 和下载持久化格式保持兼容。
 - 官方插件的调度任务管理已迁移为 `PluginOfficialApi scheduler facade -> Preload/IPC 桥接 -> Plugin Adapter -> AccessSession -> Domain Scheduler Capability -> SchedulerService`；九个操作使用独立 Grant，`listTaskIds` 由任务列表派生，调度引擎和原 Scheduler IPC 继续复用同一个服务实例。
 - 官方插件的 Webhook 管理已迁移为 `PluginOfficialApi webhook facade -> Preload/IPC 桥接 -> Plugin Adapter -> AccessSession -> Domain Webhook Capability -> WebhookManager`；端点与 Provider 查询、端点增删改、启停、测试和发送分别使用精确 Grant，原 Webhook IPC 与 Provider 继续复用同一个服务实例。
@@ -641,9 +641,9 @@ window.vetta.capabilities.invoke({
 - 官方插件的技能管理已迁移为 `PluginOfficialApi skills facade -> Preload/IPC 桥接 -> Plugin Adapter -> AccessSession -> Domain Skill Capability -> SkillService`；技能发现、已安装清单、启停和卸载分别使用精确 Grant，原 Skills IPC 与 Provider 共用同一个服务单例，市场安装和自定义导入仍保留在原系统流程中。
 - 官方插件的快捷键管理已迁移为 `PluginOfficialApi shortcuts facade -> Preload/IPC 桥接 -> Plugin Adapter -> AccessSession -> Domain Shortcut/Quick Panel Capability -> ShortcutService`；绑定查询、设置、单项重置、全部重置、快捷面板触发键和发送后行为分别使用精确 Grant，原 Config/Quick Panel IPC 与 Provider 共用同一个服务单例。同步的动作目录仍由 Plugin 系统 facade 从宿主共享的静态应用目录派生，不进入能力契约。
 - `PluginOfficialApi.plugins` 属于 Plugin 系统自己的安装、启停、卸载和重载业务，不定义为 Domain Capability；当前通过绑定 `capabilitySessionId` 的 Plugin System IPC 调用，宿主侧 Plugin Adapter 在每次操作前重新校验 Session 和 official 状态，再复用 Desktop 插件管理副作用。
-- Desktop Renderer 的 `HostedRouteService` 提供 namespace 注册、路径解析和实际导航基础设施；Capability 层以 `cap.domain.vetta.navigation.open-hosted-route` 和可序列化 `HostedRouteRef` 暴露受授权命令。Plugin/Theme Renderer Adapter 分别固定 namespace 与当前 owner，并通过精确 Grant 和可撤销 Session 调用该能力。现有 `/theme/...`、`/workspace/...` URL、React 页面 Registry、加载和 ErrorBoundary 仍由 Desktop 及来源系统拥有；Plugin Loader 继续用主进程返回的 `capabilitySessionId` 关联 Renderer Session，Theme Runtime 则随激活主题创建并撤销 Session。
+- Desktop Renderer 的 `HostedRouteService` 提供 namespace 注册、路径解析和实际导航基础设施；Capability 层以 `cap.domain.astravia.navigation.open-hosted-route` 和可序列化 `HostedRouteRef` 暴露受授权命令。Plugin/Theme Renderer Adapter 分别固定 namespace 与当前 owner，并通过精确 Grant 和可撤销 Session 调用该能力。现有 `/theme/...`、`/workspace/...` URL、React 页面 Registry、加载和 ErrorBoundary 仍由 Desktop 及来源系统拥有；Plugin Loader 继续用主进程返回的 `capabilitySessionId` 关联 Renderer Session，Theme Runtime 则随激活主题创建并撤销 Session。
 - `PluginOfficialApi.appearance` 与通用 `PluginOfficialApi.navigation` 仍属于 Renderer Plugin 系统 facade，继续通过 active + official Session 校验；它们没有因为 Hosted Page Token 的落地而被错误提升为通用 Capability。
-- `Plugin Workbench` 是随宿主发布的内置插件开发管理工具，需要安装、授权、热重载、开发监听和保存对话框等宿主管理接口，因此是普通第三方插件不得复制的显式例外；质量守卫会阻止其他 preset/external 插件直接访问 `window.vetta`。
+- `Plugin Workbench` 是随宿主发布的内置插件开发管理工具，需要安装、授权、热重载、开发监听和保存对话框等宿主管理接口，因此是普通第三方插件不得复制的显式例外；质量守卫会阻止其他 preset/external 插件直接访问 `window.astravia`。
 - Plugin Action provider 的调用边界已有回归测试：Action caller 的来源、request id 和授权上下文不会转发给 provider；provider 被禁用后调用立即被拒绝。Agent 设置、通用设置、IM 桥接、模型配置、MCP 配置、项目、下载、调度、Webhook、知识库、批量任务、应用更新、技能管理和快捷键管理相关 Action 最终只使用该 Plugin 自己的 Capability Session。
 
 后续工作：
@@ -655,7 +655,7 @@ window.vetta.capabilities.invoke({
 
 1. 建立 Capability ID、Token、错误码和前缀常量。
 2. 实现 Foundation/Domain 两套 Registry 和统一 Hub。
-3. 盘点 `window.vetta.*`、`ThemeHost`、Plugin facade、`PluginOfficialApi` 和 App Action 使用的能力。
+3. 盘点 `window.astravia.*`、`ThemeHost`、Plugin facade、`PluginOfficialApi` 和 App Action 使用的能力。
 4. 将盘点结果划分为基础能力、领域能力或系统适配层业务。
 
 ### 阶段二：通用能力权限层
@@ -731,6 +731,6 @@ window.vetta.capabilities.invoke({
 
 ## 13. Browser Foundation Capability
 
-浏览器自动化按 `ADR-0088` 落在 Foundation 层：Capability SDK 提供十个 `cap.foundation.vetta.browser.*` Token，Desktop Provider 组合运行时、引擎、profile/session registry 与导航策略。Plugin Adapter 将 `browser.*` 权限展开为精确 Grant，注入插件 namespace 与 manifest host 上限，再由公开 `ctx.browser` facade 暴露。
+浏览器自动化按 `ADR-0088` 落在 Foundation 层：Capability SDK 提供十个 `cap.foundation.astravia.browser.*` Token，Desktop Provider 组合运行时、引擎、profile/session registry 与导航策略。Plugin Adapter 将 `browser.*` 权限展开为精确 Grant，注入插件 namespace 与 manifest host 上限，再由公开 `ctx.browser` facade 暴露。
 
 该能力的资源所有权在宿主：插件只能使用逻辑 profile/session ID，不接触目录、Cookie、token 或引擎 argv；调用取消会传播到浏览器子进程。Browser Use 系统插件只是一个消费者，其他 ESM / Module Federation 插件可独立使用同一合同。

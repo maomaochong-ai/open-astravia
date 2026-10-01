@@ -1,4 +1,4 @@
-import { useTranslation } from "@vetta-org/plugin-sdk";
+import { useTranslation } from "@astravia-org/plugin-sdk";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { ChangeSection } from "../git/types";
@@ -174,7 +174,7 @@ export function FloatingChangeMenu({
 	return createPortal(
 		<div
 			ref={ref}
-			data-vetta-plugin-root="git"
+			data-astravia-plugin-root="git"
 			// Marks this as part of the tree's own menu surface, so the library does not
 			// treat clicks inside it as an outside click.
 			data-file-tree-context-menu-root="true"

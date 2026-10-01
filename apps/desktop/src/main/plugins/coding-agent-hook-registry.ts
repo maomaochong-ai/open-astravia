@@ -1,4 +1,4 @@
-import type { PluginCodingAgentHookEventName } from "@vetta-org/plugin-sdk";
+import type { PluginCodingAgentHookEventName } from "@astravia-org/plugin-sdk";
 
 export interface DesktopPluginHookRegistration {
 	readonly id: string;

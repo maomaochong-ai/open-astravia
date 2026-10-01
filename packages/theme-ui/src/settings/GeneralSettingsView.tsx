@@ -1,5 +1,5 @@
 import type { JSX, ReactNode } from "react";
-import { Button, Switch } from "@vetta-org/ui";
+import { Button, Switch } from "@astravia-org/ui";
 import { MotionSelect } from "./MotionSelect";
 import { SettingRow, SettingSection, type SettingSectionMeta } from "./SettingChrome";
 import { NotificationSettingsView, type NotificationSettingsViewProps } from "./NotificationSettingsView";
@@ -60,7 +60,7 @@ export interface GeneralSettingsViewProps {
 }
 
 /**
- * Settings general page layout. Host chrome uses `@vetta-org/ui` primitives (not desktop components/ui).
+ * Settings general page layout. Host chrome uses `@astravia-org/ui` primitives (not desktop components/ui).
  * UpdateChecker stays host-injected (desktop-connected).
  *
  * Grouped into 3 sections to reduce one-setting-per-card scatter:

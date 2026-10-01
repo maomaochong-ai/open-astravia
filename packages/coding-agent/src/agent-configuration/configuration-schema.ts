@@ -1,6 +1,6 @@
+import type { RuntimeConfigurationDefinition } from "@astravia/runtime-core/configuration";
 import { type Static, Type } from "@sinclair/typebox";
 import { Value } from "@sinclair/typebox/value";
-import type { RuntimeConfigurationDefinition } from "@vetta/runtime-core/configuration";
 
 const resourceId = Type.String({ minLength: 1, maxLength: 256, pattern: "^\\S(?:[^\\r\\n]*\\S)?$" });
 const selection = Type.Union([Type.Null(), Type.Array(resourceId, { maxItems: 512, uniqueItems: true })]);

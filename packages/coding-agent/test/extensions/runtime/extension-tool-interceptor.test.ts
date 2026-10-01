@@ -1,4 +1,4 @@
-import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
+import type { RuntimeToolDefinition } from "@astravia/runtime-core/kernel";
 import { describe, expect, it, vi } from "vitest";
 import { CodingAgentPromptRequestAdapter } from "../../../src/adapters/runtime-core/prompt-request-adapter.js";
 import type { ExtensionRunner, ToolCallEvent, ToolResultEvent } from "../../../src/extensions/index.js";

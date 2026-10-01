@@ -48,7 +48,7 @@ describe("Conversation message architecture guard", () => {
 				},
 				{
 					path: "packages/agent-team/src/example.ts",
-					text: 'import { createSubagent } from "@vetta/runtime-subagents";',
+					text: 'import { createSubagent } from "@astravia/runtime-subagents";',
 				},
 			]),
 		).toEqual([

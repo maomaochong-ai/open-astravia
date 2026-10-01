@@ -1,7 +1,7 @@
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { RuntimeHostSessionAssembly, RuntimeSessionCreateRequest } from "@vetta/runtime-core";
+import type { RuntimeHostSessionAssembly, RuntimeSessionCreateRequest } from "@astravia/runtime-core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
 	DesktopHistoricalSessionImportBackend,
@@ -78,7 +78,7 @@ describe("Desktop historical session import", () => {
 });
 
 async function createFixture(content: string): Promise<{ sourcePath: string; targetRootDir: string }> {
-	const root = await mkdtemp(join(tmpdir(), "vetta-desktop-historical-import-"));
+	const root = await mkdtemp(join(tmpdir(), "astravia-desktop-historical-import-"));
 	temporaryRoots.add(root);
 	const sourcePath = join(root, "historical.jsonl");
 	const targetRootDir = join(root, "conversations");

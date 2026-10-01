@@ -163,7 +163,7 @@
 	"assetNode.showMore": "再显示 {{count}} 项",
 	"job.progress": "{{progress}}%",
 	"job.failed": "生成失败，打开节点可重试",
-	"job.error.unauthenticated": "请先登录后使用 Vetta 图片生成",
+	"job.error.unauthenticated": "请先登录后使用 Astravia 图片生成",
 	"job.error.providerUnavailable": "图片生成服务当前不可用",
 	"job.error.operationUnsupported": "当前服务不支持此生成方式",
 	"job.error.invalidRequest": "生成参数无效，请检查提示词和参考素材",

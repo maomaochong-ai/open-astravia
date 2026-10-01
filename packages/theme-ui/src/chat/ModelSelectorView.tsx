@@ -12,7 +12,7 @@ import {
 	DropdownMenuSubContent,
 	DropdownMenuSubTrigger,
 	DropdownMenuTrigger,
-} from "@vetta-org/ui";
+} from "@astravia-org/ui";
 import { ThemeSurface } from "../appearance/ThemeSurface";
 import { MultiplierTag } from "../shared/MultiplierTag";
 import { ProviderIcon } from "../shared/provider-icon";
@@ -22,7 +22,7 @@ import { ModelSelectorTrigger } from "./ModelSelectorTrigger";
  * 模型选择器的视图层：搜索、按 provider 分组、推理档位子菜单、云端/默认/视觉徽章。
  *
  * 纯展示——模型从哪来、选中后写到哪、文案怎么翻译，全部由调用方通过 props 决定。
- * 宿主的输入栏用它，插件（看板等）经 `@vetta-org/theme-ui/plugin-ui` 用的也是同一个，
+ * 宿主的输入栏用它，插件（看板等）经 `@astravia-org/theme-ui/plugin-ui` 用的也是同一个，
  * 两边因此不会长成两副样子。
  */
 
@@ -97,7 +97,7 @@ export interface ModelSelectorViewProps {
 
 const MODEL_ITEM_SELECTOR = "[data-model-key]";
 
-/** 紧凑行：覆盖 @vetta-org/ui 默认的 px-3 py-2 text-[13px]，让模型多时列表不至于过长。 */
+/** 紧凑行：覆盖 @astravia-org/ui 默认的 px-3 py-2 text-[13px]，让模型多时列表不至于过长。 */
 const COMPACT_ITEM_CLASS = "gap-1.5 rounded-md px-2 py-1 text-xs";
 const COMPACT_LABEL_CLASS = "px-2 pb-0.5 pt-1 text-[10px]";
 

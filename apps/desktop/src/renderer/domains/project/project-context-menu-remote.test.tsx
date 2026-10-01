@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { ProjectContextMenuView, type ProjectContextMenuViewProps } from "@vetta-org/theme-ui/project";
+import { ProjectContextMenuView, type ProjectContextMenuViewProps } from "@astravia-org/theme-ui/project";
 
 const noop = (): void => {};
 const props: ProjectContextMenuViewProps = {

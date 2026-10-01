@@ -1,4 +1,4 @@
-import type { PluginAiChatRequest, PluginAiChatResult } from "@vetta-org/plugin-sdk";
+import type { PluginAiChatRequest, PluginAiChatResult } from "@astravia-org/plugin-sdk";
 import { describe, expect, it } from "vitest";
 import { ChessStore, type GameStoragePort } from "../src/game/store";
 import type { PersistedGameState } from "../src/game/types";

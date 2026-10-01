@@ -316,7 +316,7 @@
 		"close": "Close"
 	},
 	"appshot": {
-		"errorSelfCapture": "Appshot skipped: the frontmost window is Vetta itself",
+		"errorSelfCapture": "Appshot skipped: the frontmost window is Astravia itself",
 		"errorNoPermission": "Appshot capture failed: Screen Recording and Accessibility permissions are missing. Grant them in Settings › Permissions",
 		"errorHelperFailed": "Appshot capture failed, please try again"
 	},
@@ -327,7 +327,7 @@
 	"mcpElicitation": {
 		"title": "MCP information request",
 		"source": "From {{server}}",
-		"urlNotice": "Vetta opens this address in your system browser only after you confirm.",
+		"urlNotice": "Astravia opens this address in your system browser only after you confirm.",
 		"decline": "Decline",
 		"openAndContinue": "Open and continue",
 		"submit": "Submit",
@@ -419,10 +419,10 @@
 		"write": "Write"
 	},
 	"chatExport": {
-		"defaultSessionName": "Vetta Session"
+		"defaultSessionName": "Astravia Session"
 	},
 	"chatView": {
-		"defaultSessionTitle": "Vetta Session",
+		"defaultSessionTitle": "Astravia Session",
 		"bottomPanelButton": {
 			"closed": "Open bottom panel",
 			"open": "Close bottom panel"
@@ -537,7 +537,7 @@
 	"guideBadgeSwiper": {
 		"dismissTooltip": "Don't show again",
 		"petFeatureText": "New desktop pet feature — click to enable in settings",
-		"quickPanelText": "Vetta now has a Quick Panel — click to set it up"
+		"quickPanelText": "Astravia now has a Quick Panel — click to set it up"
 	},
 	"imagePreview": {
 		"altText": "Loaded image",
@@ -595,13 +595,13 @@
 		},
 		"placeholder": {
 			"defaults": [
-				"Ask Vetta, use / for skills, @ to reference files",
+				"Ask Astravia, use / for skills, @ to reference files",
 				"Describe the task, press ⏎ to send",
 				"Paste a screenshot or @ a file to get started"
 			],
 			"noSession": "Select or create a session to start",
 			"suggestion": "↵ {{suggestion}}",
-			"thinking": "Vetta is thinking…"
+			"thinking": "Astravia is thinking…"
 		},
 		"mention": {
 			"trigger": "Mention members",
@@ -695,7 +695,7 @@
 			}
 		},
 		"assistantMessage": {
-			"predicting": "Vetta is predicting…",
+			"predicting": "Astravia is predicting…",
 			"processing": "Processing…",
 			"waiting": "Waiting for model response",
 			"preparing": "Preparing request",
@@ -775,9 +775,9 @@
 		"retryIndicator": "Reconnecting ({{attempt}}/{{maxAttempts}})",
 		"retryReason": "Last request failed: {{reason}}",
 		"streamingPhrases": [
-			"Vetta is replying…",
+			"Astravia is replying…",
 			"Please hold on…",
-			"Vetta is working hard…"
+			"Astravia is working hard…"
 		],
 		"copyButton": {
 			"copied": "Copied",
@@ -960,7 +960,7 @@
 			"sendFeedback": "Send feedback",
 			"sendFeedbackWithComments": "Send feedback ({{count}})",
 			"stepCommentPlaceholder": "How should this step change…",
-			"subtitle": "Vetta starts working from this plan once you approve it. Nothing is changed before that.",
+			"subtitle": "Astravia starts working from this plan once you approve it. Nothing is changed before that.",
 			"title": "A plan is waiting for your approval"
 		},
 		"switchFailed": "Couldn't switch plan mode",
@@ -976,7 +976,7 @@
 		"dialog": {
 			"cancel": "Cancel",
 			"clear": "Clear goal",
-			"createDescription": "Vetta keeps iterating until the goal is complete, blocked, or paused.",
+			"createDescription": "Astravia keeps iterating until the goal is complete, blocked, or paused.",
 			"manageDescription": "Review the current goal, resume it, or clear it.",
 			"objectiveLabel": "Goal",
 			"objectivePlaceholder": "Describe a concrete, verifiable final outcome…",
@@ -1003,7 +1003,7 @@
 		"nextButton": "Next",
 		"questionTabLabel": "Question {{number}}",
 		"submitButton": "Submit",
-		"title": "Vetta needs your choice"
+		"title": "Astravia needs your choice"
 	},
 	"sandboxGrantsBadge": {
 		"revoke": "Revoke",
@@ -1044,7 +1044,7 @@
 			"loadPrefix": "Failed to load: "
 		},
 		"export": {
-			"defaultTitle": "Vetta Session"
+			"defaultTitle": "Astravia Session"
 		},
 		"exportButton": {
 			"title": "Export full session as HTML"
@@ -1125,7 +1125,7 @@
 			"dir_tree": "Directory tree",
 			"dispatch_workflows": "Dispatch workflows",
 			"doc_to_pdf": "To PDF",
-			"easy_use_vettaApp": "Use app",
+			"easy_use_astraviaApp": "Use app",
 			"edit": "Edit",
 			"extract_text_from_img": "Extract text (image)",
 			"extract_text_from_pdf": "Extract text (PDF)",
@@ -1161,7 +1161,7 @@
 	},
 	"mcpApp": {
 		"externalAccess": "This MCP App declares access to {{count}} external domain(s)",
-		"permissionsDenied": "This MCP App requested device permissions; Vetta has not granted them",
+		"permissionsDenied": "This MCP App requested device permissions; Astravia has not granted them",
 		"title": "MCP App"
 	},
 	"usageBar": {

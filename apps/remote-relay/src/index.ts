@@ -1,5 +1,5 @@
-import { REMOTE_PROTOCOL_VERSION } from "@vetta/remote-control";
-import { REMOTE_DESKTOP_WEBSOCKET_PROTOCOL } from "@vetta/remote-desktop/protocol";
+import { REMOTE_PROTOCOL_VERSION } from "@astravia/remote-control";
+import { REMOTE_DESKTOP_WEBSOCKET_PROTOCOL } from "@astravia/remote-desktop/protocol";
 import {
 	inviteWriterToken,
 	pairingSecretFromHeaders,
@@ -65,7 +65,7 @@ export default {
 			const authResponse = await authStub.fetch(
 				new Request("https://remote-pair-room.internal/authorize", {
 					method: "POST",
-					headers: { "X-Vetta-Relay-Role": relayRole, "X-Vetta-Credential-Hash": credentialHash },
+					headers: { "X-Astravia-Relay-Role": relayRole, "X-Astravia-Credential-Hash": credentialHash },
 				}),
 			);
 			if (!authResponse.ok) {
@@ -79,11 +79,13 @@ export default {
 		const internalRequest = new Request("https://remote-pair-room.internal/connect", {
 			headers: {
 				Upgrade: "websocket",
-				...(desktopRoute ? { "X-Vetta-Desktop-Role": desktopRoute.role } : { "X-Vetta-Relay-Role": route.role }),
-				"X-Vetta-Credential-Hash": credentialHash,
-				...(credentials.peerCredentialHash ? { "X-Vetta-Peer-Hash": credentials.peerCredentialHash } : {}),
-				...(preauthorized ? { "X-Vetta-Preauthorized": preauthorized } : {}),
-				"X-Vetta-Room-Tag": roomTag,
+				...(desktopRoute
+					? { "X-Astravia-Desktop-Role": desktopRoute.role }
+					: { "X-Astravia-Relay-Role": route.role }),
+				"X-Astravia-Credential-Hash": credentialHash,
+				...(credentials.peerCredentialHash ? { "X-Astravia-Peer-Hash": credentials.peerCredentialHash } : {}),
+				...(preauthorized ? { "X-Astravia-Preauthorized": preauthorized } : {}),
+				"X-Astravia-Room-Tag": roomTag,
 			},
 		});
 		const response = await stub.fetch(internalRequest);
@@ -97,12 +99,12 @@ async function handleInvite(request: Request, env: Env, boxId: string): Promise<
 	if (request.method !== "GET" && request.method !== "PUT" && request.method !== "DELETE") {
 		return json({ error: "method_not_allowed" }, 405);
 	}
-	const headers: Record<string, string> = { "X-Vetta-Box-Tag": boxId.slice(0, 8) };
+	const headers: Record<string, string> = { "X-Astravia-Box-Tag": boxId.slice(0, 8) };
 	let body: string | undefined;
 	if (request.method !== "GET") {
 		const token = inviteWriterToken(request.headers);
 		if (!token) return json({ error: "unauthorized" }, 401);
-		headers["X-Vetta-Writer-Hash"] = await sha256(token);
+		headers["X-Astravia-Writer-Hash"] = await sha256(token);
 	}
 	if (request.method === "PUT") {
 		const length = Number(request.headers.get("Content-Length") ?? "0");

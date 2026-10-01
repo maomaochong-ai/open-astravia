@@ -18,7 +18,7 @@
 - 会话历史、认证、模型和设置等用户数据；必要时由显式、独立的新迁移器读取旧格式。
 - 模型消息、工具消息、错误、取消、事件顺序、并发约束和资源释放语义。
 - 仍然有效的行为测试场景和数据 fixture；旧实现可以临时作为测试 Oracle，但不能被新生产代码调用。
-- `@vetta/ai` 与经过合同验证的 `@vetta/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
+- `@astravia/ai` 与经过合同验证的 `@astravia/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
 
 ## 明确舍弃（固定）
 
@@ -38,12 +38,12 @@ Knowledge 是围绕 Agent 内核组合的独立能力域，不属于内核，也
 
 ## 实施内容
 
-- 新增 `@vetta/runtime-knowledge` 包，按 domain、storage、query、writer 和 processing 分层承载原知识能力，并建立独立公共入口、构建配置、README、CHANGELOG 和行为测试。
-- 删除 `coding-agent/src/core/knowledge` 全部 15 个实现文件以及 `@vetta/coding-agent/knowledge` 导出；Desktop、Canary 和 Coding Agent 组合改为直接依赖 `runtime-knowledge`。
+- 新增 `@astravia/runtime-knowledge` 包，按 domain、storage、query、writer 和 processing 分层承载原知识能力，并建立独立公共入口、构建配置、README、CHANGELOG 和行为测试。
+- 删除 `coding-agent/src/core/knowledge` 全部 15 个实现文件以及 `@astravia/coding-agent/knowledge` 导出；Desktop、Canary 和 Coding Agent 组合改为直接依赖 `runtime-knowledge`。
 - 新增 Runtime 原生 `kb_write_page` Tool，保持旧工具名称、描述、TypeBox Schema、scope、能力需求、输出和错误语义，通过 `KbWritePageOperations` 注入写入副作用。
 - 将默认知识目录解析收敛到 Coding Agent 产品组合边界；`runtime-knowledge` 不读取 Coding Agent 设置，也不反向依赖 `coding-agent`。
 - 删除只负责桥接旧知识实现的 Greenfield Adapter，生产组合直接注入独立 Runtime 合同。
-- 增加包边界审查，禁止恢复 `coding-agent/src/core/knowledge`、`@vetta/coding-agent/knowledge` 和对应 Manifest 导出。
+- 增加包边界审查，禁止恢复 `coding-agent/src/core/knowledge`、`@astravia/coding-agent/knowledge` 和对应 Manifest 导出。
 - 更新重写基线和受影响包的 Changelog；保留既有知识页面、索引、锁、批处理和差分行为测试作为兼容性依据。
 
 ## 旧实现依赖变化

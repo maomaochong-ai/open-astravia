@@ -9,7 +9,7 @@ vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (key: string) => k
 describe("useMcpSettingsModel", () => {
 	it("preserves the managed connection identity and writes parameters to runtime env", async () => {
 		const set = vi.fn(async () => undefined);
-		(window as unknown as { vetta: unknown }).vetta = {
+		(window as unknown as { astravia: unknown }).astravia = {
 			mcp: {
 				get: vi.fn(async () => ({
 					mcpServers: {
@@ -30,7 +30,7 @@ describe("useMcpSettingsModel", () => {
 			name: "xiaohongshu",
 			displayName: "Xiaohongshu",
 			description: "",
-			config: { type: "http", url: "${VETTA_MCP_URL}" },
+			config: { type: "http", url: "${ASTRAVIA_MCP_URL}" },
 			secrets: [{ envKey: "XHS_PROXY", required: false, secret: false }],
 		};
 		const { result } = renderHook(() => useMcpSettingsModel());
@@ -57,7 +57,7 @@ describe("useMcpSettingsModel", () => {
 
 	it("merges servers pasted as standard MCP JSON without removing existing connectors", async () => {
 		const set = vi.fn(async () => undefined);
-		(window as unknown as { vetta: unknown }).vetta = {
+		(window as unknown as { astravia: unknown }).astravia = {
 			mcp: {
 				get: vi.fn(async () => ({
 					mcpServers: {
@@ -100,7 +100,7 @@ describe("useMcpSettingsModel", () => {
 
 	it("keeps the add dialog open and reports invalid MCP JSON", async () => {
 		const set = vi.fn(async () => undefined);
-		(window as unknown as { vetta: unknown }).vetta = {
+		(window as unknown as { astravia: unknown }).astravia = {
 			mcp: {
 				get: vi.fn(async () => ({ mcpServers: {} })),
 				set,

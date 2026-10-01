@@ -32,7 +32,7 @@ TypeBox Schema
 
 ### 修改范围
 
-- 新增 `@vetta/runtime-tools/coding` 子入口：
+- 新增 `@astravia/runtime-tools/coding` 子入口：
   - `tools/current-time/current-time-tool.ts`
   - `tools/current-time/description.ts`
   - `tools/current-time/index.ts`

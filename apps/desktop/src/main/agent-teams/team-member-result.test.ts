@@ -1,5 +1,5 @@
-import { createAssistantMessage } from "@vetta/ai";
-import type { HistoryEntry } from "@vetta/runtime-core";
+import { createAssistantMessage } from "@astravia/ai";
+import type { HistoryEntry } from "@astravia/runtime-core";
 import { describe, expect, it } from "vitest";
 import { collectPublishedToolExecutions } from "./team-conversation-display.js";
 import { findTeamAttemptFailure, findTeamAttemptResult } from "./team-member-result.js";

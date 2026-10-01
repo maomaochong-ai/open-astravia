@@ -1,4 +1,4 @@
-export const CODING_AGENT_SESSION_ID_ENV = "VETTA_AGENT_SESSION_ID";
+export const CODING_AGENT_SESSION_ID_ENV = "ASTRAVIA_AGENT_SESSION_ID";
 
 /**
  * 把宿主已经确认的 Session identity 注入命令环境。

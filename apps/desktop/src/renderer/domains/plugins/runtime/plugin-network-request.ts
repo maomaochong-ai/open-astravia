@@ -1,4 +1,4 @@
-import type { PluginNetworkRequest } from "@vetta-org/plugin-sdk";
+import type { PluginNetworkRequest } from "@astravia-org/plugin-sdk";
 
 /** Keep the renderer-to-Capability payload JSON-compatible across Electron IPC. */
 export function normalizePluginNetworkRequest(request: PluginNetworkRequest): PluginNetworkRequest {

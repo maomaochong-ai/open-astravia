@@ -3,7 +3,7 @@ import {
 	DOMAIN_MEDIA_CAPABILITIES,
 	FOUNDATION_ARTIFACT_CAPABILITIES,
 	FOUNDATION_JOB_CAPABILITIES,
-} from "@vetta-org/capability-sdk";
+} from "@astravia-org/capability-sdk";
 import { describe, expect, it } from "vitest";
 import { PLUGIN_CAPABILITY_PERMISSIONS, PluginCapabilityAdapter } from "../index.js";
 import { RecordingAccessFactory } from "./helpers/recording-access-factory.js";
@@ -29,7 +29,7 @@ describe("PluginCapabilityAdapter media permission", () => {
 		await expect(adapter.listMediaProviders(sessionId)).resolves.toHaveLength(1);
 		await expect(
 			adapter.submitMedia(sessionId, {
-				providerId: "desktop-app:vetta",
+				providerId: "desktop-app:astravia",
 				operation: "generate",
 				kind: "image",
 				mode: "text-to-image",
@@ -56,7 +56,7 @@ describe("PluginCapabilityAdapter media permission", () => {
 		const sessionId = adapter.openSession("media-consumer");
 
 		await adapter.submitMedia(sessionId, {
-			providerId: "desktop-app:vetta",
+			providerId: "desktop-app:astravia",
 			operation: "generate",
 			kind: "image",
 			mode: "image-to-image",
@@ -96,7 +96,7 @@ describe("PluginCapabilityAdapter media permission", () => {
 
 		expect(() =>
 			adapter.submitMedia(sessionId, {
-				providerId: "desktop-app:vetta",
+				providerId: "desktop-app:astravia",
 				operation: "generate",
 				kind: "image",
 				mode: "image-to-image",

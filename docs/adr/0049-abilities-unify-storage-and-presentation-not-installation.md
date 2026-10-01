@@ -14,7 +14,7 @@ desktop 已经先走了半步：`useCapabilitiesModel` 把 skill 与 MCP connect
 
 ### 统一的边界
 
-统一 **存放**（一张表）与 **呈现**（一个列表、一套详情页、一套图标口径、一套分类）；**不统一安装**——skill 装 `~/.vetta/skills/`、scene 装 `~/.vetta/scene/`、plugin 装 `~/.vetta/plugins/`、mcp 写进 `mcp.json` 的一个 key；声明了受管运行时的 MCP 还会在 `~/.vetta/abilities/mcp/` 保存版本化可执行产物。三条轨道是三种不同的运行时机制，合并它们只会造出一层无收益的抽象。
+统一 **存放**（一张表）与 **呈现**（一个列表、一套详情页、一套图标口径、一套分类）；**不统一安装**——skill 装 `~/.astravia/skills/`、scene 装 `~/.astravia/scene/`、plugin 装 `~/.astravia/plugins/`、mcp 写进 `mcp.json` 的一个 key；声明了受管运行时的 MCP 还会在 `~/.astravia/abilities/mcp/` 保存版本化可执行产物。三条轨道是三种不同的运行时机制，合并它们只会造出一层无收益的抽象。
 
 scene 是这一模式的既有先例：服务端与 skill 同表同归档，仅客户端目录不同——本决策是把这个先例推广到全部四种形态。
 
@@ -65,7 +65,7 @@ bundle **不进[[能力安装台账]]**，`installed` / `enabled` / `needsUpdate
 - **三表保留，只在 desktop 合并展示**：改动最小，但 mcp 无版本、plugin 无图标、分类只有 skill 有这些不对称会永久留在数据层，desktop 得一直靠适配层抹平，且新增 bundle 无处安放。
 - **Ability 直接定义为组合包**（一行含多个制品）：与最初提案的 `skills[] / mcps[] / plugins[]` 一致，但会让最常见的「单个 skill」也被迫套一层包装，且组合语义与 plugin 内聚重复。改为「单制品为主 + bundle 作为一种 type」后，组合能力仍在，代价只落在真正需要它的那一种 type 上。
 - **详情用声明式 section 体系**：保住上周落地的结构化渲染与 showcase 模板，但运营写一篇介绍要拼 JSON。选择 markdown 正文 + showcase 结构化数组的折中。
-- **命名沿用 Capability**：desktop 零重命名，但与 `@vetta/capability-runtime` 的授权契约层彻底同名，代码里无法靠名字分辨两个完全不同的东西。改为市场条目叫 Ability、授权层中文让出「能力」一词。
+- **命名沿用 Capability**：desktop 零重命名，但与 `@astravia/capability-runtime` 的授权契约层彻底同名，代码里无法靠名字分辨两个完全不同的东西。改为市场条目叫 Ability、授权层中文让出「能力」一词。
 
 ## 影响
 

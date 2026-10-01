@@ -1,8 +1,8 @@
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { RuntimeTraceRecord } from "@vetta/runtime-telemetry";
-import { atomicWriteJSONAsync } from "@vetta/toolkit/atomic-write";
+import type { RuntimeTraceRecord } from "@astravia/runtime-telemetry";
+import { atomicWriteJSONAsync } from "@astravia/toolkit/atomic-write";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { LocalAgentObservationRepository } from "./local-observation-repository.js";
 

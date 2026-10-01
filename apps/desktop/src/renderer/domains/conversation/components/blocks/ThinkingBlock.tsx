@@ -1,4 +1,4 @@
-import { ThinkingBlock } from "@vetta-org/theme-ui/chat";
+import { ThinkingBlock } from "@astravia-org/theme-ui/chat";
 import { useTranslation } from "react-i18next";
 
 interface ThinkingBlockProps {

@@ -1,10 +1,10 @@
-import type { PluginOfficialApi } from "@vetta-org/plugin-sdk";
+import type { PluginOfficialApi } from "@astravia-org/plugin-sdk";
 
 export function createOfficialSchedulerApi(
 	assertOfficial: () => void,
 	capabilitySessionId: string,
 ): PluginOfficialApi["scheduler"] {
-	const scheduler = window.vetta.plugins.internalCapabilities.scheduler;
+	const scheduler = window.astravia.plugins.internalCapabilities.scheduler;
 	return {
 		listTasks: async () => {
 			assertOfficial();

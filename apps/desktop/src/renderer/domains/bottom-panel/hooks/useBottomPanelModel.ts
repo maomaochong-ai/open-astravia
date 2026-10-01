@@ -1,3 +1,4 @@
+import { parseProjectLocation } from "@astravia/ssh-transport/project-uri";
 import {
 	type BottomPanelSessionState,
 	bottomPanelStateAtomFamily,
@@ -5,7 +6,6 @@ import {
 	dispatchBottomPanelAtomFamily,
 } from "@shared/store/atoms";
 import type { WorkSurfaceScope } from "@shared/workspace/work-surface";
-import { parseProjectLocation } from "@vetta/ssh-transport/project-uri";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useMemo } from "react";
 import type { BottomPanelComponentDefinition } from "../registry/types";

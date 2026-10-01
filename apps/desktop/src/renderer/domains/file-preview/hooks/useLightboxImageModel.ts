@@ -1,5 +1,5 @@
-import type { FilePreviewItem } from "@vetta-org/theme-ui/file-preview";
-import { getExtension, type LightboxImageViewProps } from "@vetta-org/theme-ui/file-preview";
+import type { FilePreviewItem } from "@astravia-org/theme-ui/file-preview";
+import { getExtension, type LightboxImageViewProps } from "@astravia-org/theme-ui/file-preview";
 import { useEffect, useState } from "react";
 
 const MIME_MAP: Record<string, string> = {
@@ -27,7 +27,7 @@ export function useImageSrc(item: FilePreviewItem): { src: string; error: boolea
 			setError(true);
 			return;
 		}
-		void window.vetta.fs
+		void window.astravia.fs
 			.readFile(item.path)
 			.then(({ content, encoding }) => {
 				if (cancelled) return;

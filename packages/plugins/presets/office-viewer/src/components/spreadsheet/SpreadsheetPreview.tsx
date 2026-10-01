@@ -1,4 +1,4 @@
-import { type PluginFilePreviewProps, useTranslation } from "@vetta-org/plugin-sdk";
+import { type PluginFilePreviewProps, useTranslation } from "@astravia-org/plugin-sdk";
 import { useEffect, useState, type JSX } from "react";
 import { fetchFileBytes } from "../../utils/file";
 import { ErrorState, LoadingState, type LoadState } from "../PreviewState";

@@ -1,4 +1,4 @@
-import type { HistoryEntry } from "@vetta/runtime-core";
+import type { HistoryEntry } from "@astravia/runtime-core";
 import type {
 	AnnotationAsk,
 	AnnotationChanged,

@@ -3,7 +3,7 @@
 ## 目标
 
 在不改变旧 `glob` 工具可观察行为的前提下，把实现从 `coding-agent` 移到
-`@vetta/runtime-tools/coding/tools/glob`，并接入动态 Coding Tool Catalog 与 Agent Core
+`@astravia/runtime-tools/coding/tools/glob`，并接入动态 Coding Tool Catalog 与 Agent Core
 Tool Loop。
 
 ## 实施内容
@@ -15,7 +15,7 @@ Tool Loop。
   - `registration.ts`：保留旧全 scope 暴露和 `core` 分类。
   - `index.ts`：提供明确的 Coding 子入口。
 - Runtime 包直接声明 `glob` 与 `ignore` 依赖，移除对旧实现传递依赖的隐式依赖。
-- 将 `glob` 导出到 `@vetta/runtime-tools/coding`。
+- 将 `glob` 导出到 `@astravia/runtime-tools/coding`。
 - 在 Feature 契约中注册并显式激活 `glob`，通过真实 `AgentCoreTurnEngine` Tool Loop 验证。
 - 增加旧新差分测试，覆盖完整定义、注册元数据、去重、相对路径、目录标记、绝对模式和
   `.gitignore`。

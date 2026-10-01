@@ -1,5 +1,5 @@
-import type { ConversationDocument, RuntimeMessageEnvelope } from "@vetta/runtime-core";
-import { selectConversationDocumentEntries } from "@vetta/runtime-core/conversation";
+import type { ConversationDocument, RuntimeMessageEnvelope } from "@astravia/runtime-core";
+import { selectConversationDocumentEntries } from "@astravia/runtime-core/conversation";
 import type { CodingAgentPinnedModelContext } from "../../runtime-contracts/index.js";
 
 /** Uses the same entry projection for model calls and summary generation. */

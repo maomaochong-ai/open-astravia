@@ -1,4 +1,4 @@
-import type { RuntimeHost } from "@vetta/runtime-core";
+import type { RuntimeHost } from "@astravia/runtime-core";
 import { Cron } from "croner";
 import { powerMonitor } from "electron";
 import { type AutomationNotRunReason, automationScheduleToCron, type ScheduledTask } from "../../shared/automation.js";

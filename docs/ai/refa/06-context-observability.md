@@ -62,7 +62,7 @@ interface ContextSectionUsage {
 2. Context Strategy 输出压缩后的模型消息及 RuntimeMessageEnvelope 来源。
 3. Message Finalizer 完成 Provider 前的模型消息调整。
 4. Context Report Builder 对最终 instructions、tools 和 messages 估算。
-5. `@vetta/ai` Adapter 接收同一份最终输入并发起调用。
+5. `@astravia/ai` Adapter 接收同一份最终输入并发起调用。
 6. finish 后把 Provider reported input usage 附加到 completed report。
 
 不能在第 1 步就计算总量，因为 compaction、message finalizer、tool activation 和 Provider 转换可能继续改变实际输入。

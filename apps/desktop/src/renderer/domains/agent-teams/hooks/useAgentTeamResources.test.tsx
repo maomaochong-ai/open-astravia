@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import type { AgentTeamDocument } from "@vetta/agent-team";
+import type { AgentTeamDocument } from "@astravia/agent-team";
 import { renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { useAgentTeamResources } from "./useAgentTeamResources";
@@ -25,7 +25,7 @@ describe("useAgentTeamResources", () => {
 		let revision = 1;
 		mocks.load.mockImplementation(async () => resources(revision));
 		const listeners = new Set<() => void>();
-		Object.defineProperty(window, "vetta", {
+		Object.defineProperty(window, "astravia", {
 			configurable: true,
 			value: {
 				agentTeams: {

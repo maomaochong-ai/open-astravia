@@ -5,13 +5,13 @@ describe("plugin skill provenance", () => {
 	it("retains the plugin id and icon for a contributed skill path", () => {
 		const sources = buildPluginSkillSources(
 			[{ pluginId: "content-creation", paths: ["C:\\plugins\\content\\skills\\"] }],
-			new Map([["content-creation", "vetta-plugin://content/icon.png"]]),
+			new Map([["content-creation", "astravia-plugin://content/icon.png"]]),
 		);
 
 		expect(findPluginSkillSource("C:/plugins/content/skills/campaign/SKILL.md", sources)).toEqual({
 			pluginId: "content-creation",
 			root: "C:/plugins/content/skills",
-			icon: "vetta-plugin://content/icon.png",
+			icon: "astravia-plugin://content/icon.png",
 		});
 	});
 
@@ -38,7 +38,7 @@ describe("plugin skill provenance", () => {
 						defaultVisibility: "hidden",
 						surfaces: { abilityCatalog: "visible" },
 						skills: {
-							"vetta-ui-design": {
+							"astravia-ui-design": {
 								defaultVisibility: "visible",
 								surfaces: { commandPalette: "hidden" },
 								displayName: "%skill.name%",
@@ -53,11 +53,13 @@ describe("plugin skill provenance", () => {
 		if (!source) return;
 
 		expect(
-			resolvePluginSkillPresentation(source, "vetta-ui-design", (raw) => raw.replace("%skill.name%", "Vetta 设计")),
+			resolvePluginSkillPresentation(source, "astravia-ui-design", (raw) =>
+				raw.replace("%skill.name%", "Astravia 设计"),
+			),
 		).toEqual({
 			defaultVisibility: "visible",
 			surfaces: { abilityCatalog: "visible", commandPalette: "hidden" },
-			displayName: "Vetta 设计",
+			displayName: "Astravia 设计",
 		});
 	});
 });

@@ -5,7 +5,7 @@ import {
 	PageHeaderTitle,
 	usePageHeaderModel,
 	useWindowControlsModel,
-} from "@vetta/desktop-theme-ui/app-shell";
+} from "@astravia/desktop-theme-ui/app-shell";
 import type { JSX } from "react";
 import { sanctumPageAssets } from "./assets";
 

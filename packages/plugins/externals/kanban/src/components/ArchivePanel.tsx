@@ -1,5 +1,5 @@
-import { useTranslation } from "@vetta-org/plugin-sdk";
-import { cn, Popover, PopoverContent, PopoverTrigger } from "@vetta-org/ui";
+import { useTranslation } from "@astravia-org/plugin-sdk";
+import { cn, Popover, PopoverContent, PopoverTrigger } from "@astravia-org/ui";
 import type { JSX, ReactNode } from "react";
 import { formatRelativeTime } from "../board/relative-time";
 import type { KanbanCard } from "../board/types";
@@ -22,7 +22,7 @@ export function ArchivePanel({ cards, now, onDelete, onRestore, trigger }: Archi
 	return (
 		<Popover>
 			<PopoverTrigger asChild>{trigger}</PopoverTrigger>
-			<PopoverContent data-vetta-plugin-root="kanban" align="end" sideOffset={8} className="w-80 p-0">
+			<PopoverContent data-astravia-plugin-root="kanban" align="end" sideOffset={8} className="w-80 p-0">
 				<div className="flex items-center gap-2 border-b border-border/60 px-3 py-2">
 					<span className="icon-[solar--archive-minimalistic-linear] h-3.5 w-3.5 text-muted-foreground" />
 					<span className="text-[12px] font-semibold text-foreground">{t("archive.title")}</span>

@@ -1,14 +1,14 @@
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { type Api, AssistantMessageEventStream, type Model } from "@vetta/ai";
+import { type Api, AssistantMessageEventStream, type Model } from "@astravia/ai";
 import {
 	createCodingAgentRuntimeSessionSelection,
 	publishCodingAgentExecutionRuntimeDefinition,
-} from "@vetta/coding-agent/composition";
-import { AGENT_CONFIGURATION_UPDATE } from "@vetta/coding-agent/session-extensions";
-import { RuntimeHost, RuntimeObservationHub } from "@vetta/runtime-core";
-import { DesktopRuntimeBackendPool } from "@vetta/runtime-desktop";
+} from "@astravia/coding-agent/composition";
+import { AGENT_CONFIGURATION_UPDATE } from "@astravia/coding-agent/session-extensions";
+import { RuntimeHost, RuntimeObservationHub } from "@astravia/runtime-core";
+import { DesktopRuntimeBackendPool } from "@astravia/runtime-desktop";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createDesktopAgentObservability } from "./composition.js";
 import { LocalAgentObservationRepository } from "./local-observation-repository.js";
@@ -18,10 +18,10 @@ describe("Desktop Agent observability contract", () => {
 	it("persists native execution and correlates instances, Turns and immutable configuration revisions", async () => {
 		const directory = await mkdtemp(join(tmpdir(), "desktop-agent-trace-contract-"));
 		await writeFile(join(directory, ".git"), "");
-		vi.stubEnv("VETTA_HOME", directory);
-		vi.stubEnv("VETTA_CODING_AGENT_DIR", join(directory, "agent"));
+		vi.stubEnv("ASTRAVIA_HOME", directory);
+		vi.stubEnv("ASTRAVIA_CODING_AGENT_DIR", join(directory, "agent"));
 		vi.stubEnv("USERPROFILE", directory);
-		vi.stubEnv("VETTA_TRACING", "");
+		vi.stubEnv("ASTRAVIA_TRACING", "");
 		const path = join(directory, "agent-traces.json");
 		const observability = createDesktopAgentObservability(directory, { warn: vi.fn() });
 		const hub = new RuntimeObservationHub();

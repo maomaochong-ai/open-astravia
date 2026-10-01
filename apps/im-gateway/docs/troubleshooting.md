@@ -20,7 +20,7 @@ Project "foo" has a session that's currently open elsewhere
 
 ## "no project selected. Use /projects then /use <name>"
 
-You sent a plain message before picking a project. Type `/projects` to see what's available, then `/use <name>`. Project names are read from `~/.vetta/desktop-config.json`, the same list the desktop app shows in its sidebar.
+You sent a plain message before picking a project. Type `/projects` to see what's available, then `/use <name>`. Project names are read from `~/.astravia/desktop-config.json`, the same list the desktop app shows in its sidebar.
 
 If `/projects` returns empty: add at least one project in the desktop app first.
 
@@ -38,14 +38,14 @@ Common causes:
 
 ## "coding-agent: not found" or `OpenSession` fails immediately
 
-The gateway spawns `coding-agent` (the binary published by `packages/coding-agent`, installed as `vetta`) as a subprocess. If the binary isn't on `$PATH`:
+The gateway spawns `coding-agent` (the binary published by `packages/coding-agent`, installed as `astravia`) as a subprocess. If the binary isn't on `$PATH`:
 
 ```yaml
 hostClient:
-  codingAgentBin: /full/path/to/your/vetta-binary
+  codingAgentBin: /full/path/to/your/astravia-binary
 ```
 
-You can also set `IM_GATEWAY_CODING_AGENT_BIN=/path/to/vetta` in the environment.
+You can also set `IM_GATEWAY_CODING_AGENT_BIN=/path/to/astravia` in the environment.
 
 ## Pool full / "all sessions in flight"
 
@@ -74,13 +74,13 @@ The bridge passes raw text from the agent through to Feishu without rewriting it
 ## State file got corrupted
 
 ```
-im-gateway start: load state: parse state ~/.vetta/im-gateway/state.json: ...
+im-gateway start: load state: parse state ~/.astravia/im-gateway/state.json: ...
 ```
 
 The state file is the routing table — a flat `(im_user, project) → sessionPath` map. It is written atomically (write-temp + fsync + rename), so a crash mid-write should never produce a corrupt file. If you somehow have one, deleting it is safe; you'll just need to `/use <project>` again on your next message.
 
 ```bash
-rm ~/.vetta/im-gateway/state.json
+rm ~/.astravia/im-gateway/state.json
 ```
 
 ## Logs

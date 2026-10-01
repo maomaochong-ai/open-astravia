@@ -1,4 +1,4 @@
-import { REMOTE_PROTOCOL_VERSION } from "@vetta/remote-control";
+import { REMOTE_PROTOCOL_VERSION } from "@astravia/remote-control";
 
 /**
  * What a relay address turned out to be: a relay this desktop can use, one too old for

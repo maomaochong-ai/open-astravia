@@ -1,4 +1,4 @@
-import { createNodeCodingToolEnvironment } from "@vetta/runtime-node/coding";
+import { createNodeCodingToolEnvironment } from "@astravia/runtime-node/coding";
 import { afterAll, describe, expect, it } from "vitest";
 import { ALL_SCENARIOS } from "../../src/profiles/index.js";
 import { selectCodingAgentToolRegistrations } from "../../src/runtime-contracts/index.js";

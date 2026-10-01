@@ -19,7 +19,7 @@ export interface FsStatResult {
 	createdAt: number;
 }
 
-export const FS_READ_TEXT_PREVIEW_CHANNEL = "vetta:fs:read-text-preview";
+export const FS_READ_TEXT_PREVIEW_CHANNEL = "astravia:fs:read-text-preview";
 
 export type FsTextPreviewResult =
 	| { status: "text"; content: string; size: number }

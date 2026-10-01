@@ -23,7 +23,7 @@ import { spawnSync } from "node:child_process";
  * ShipIt 的 launchd 作业 label。必须与 electron-builder 配置里的 `appId` 一致
  * （见 scripts/prepare-pack.js 与 scripts/verify-mac-update.mjs）。
  */
-export const MACOS_SHIPIT_JOB_LABEL = "com.vetta.desktop.ShipIt";
+export const MACOS_SHIPIT_JOB_LABEL = "com.astravia.desktop.ShipIt";
 
 export interface InstallerHandoffOptions {
 	/** launchd 作业 label，形如 `<bundleId>.ShipIt`。 */

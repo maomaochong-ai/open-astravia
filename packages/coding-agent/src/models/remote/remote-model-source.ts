@@ -1,5 +1,5 @@
+import type { Api, Model } from "@astravia/ai";
 import { Value } from "@sinclair/typebox/value";
-import type { Api, Model } from "@vetta/ai";
 import { type RemoteModelsResponse, RemoteModelsResponseSchema } from "../configuration/model-config-schema.js";
 
 export interface RemoteModelLoadResult {

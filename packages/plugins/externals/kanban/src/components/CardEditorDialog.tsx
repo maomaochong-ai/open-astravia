@@ -1,4 +1,4 @@
-import { useTranslation } from "@vetta-org/plugin-sdk";
+import { useTranslation } from "@astravia-org/plugin-sdk";
 import {
 	Button,
 	cn,
@@ -8,7 +8,7 @@ import {
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
-} from "@vetta-org/ui";
+} from "@astravia-org/ui";
 import { useEffect, useRef, useState, type JSX } from "react";
 import { ModelPicker } from "./ModelPicker";
 import { ProjectPicker } from "./ProjectPicker";
@@ -108,7 +108,7 @@ export function CardEditorDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent data-vetta-plugin-root="kanban" className="max-w-xl">
+			<DialogContent data-astravia-plugin-root="kanban" className="max-w-xl">
 				<DialogHeader>
 					<DialogTitle>{t(card ? "editor.editTitle" : "editor.newTitle")}</DialogTitle>
 					<DialogDescription>{t("editor.description")}</DialogDescription>

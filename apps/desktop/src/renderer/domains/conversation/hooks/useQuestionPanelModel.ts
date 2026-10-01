@@ -25,14 +25,14 @@ export function useQuestionPanelModel(pending: PendingQuestion): QuestionPanelMo
 
 	const onSubmitAnswers = useCallback(
 		(answers: Array<{ question: string; answers: string[] }>) => {
-			void window.vetta.session.respondToQuestion(pending.requestId, { cancelled: false, answers });
+			void window.astravia.session.respondToQuestion(pending.requestId, { cancelled: false, answers });
 			remove();
 		},
 		[pending.requestId, remove],
 	);
 
 	const onCancel = useCallback(() => {
-		void window.vetta.session.respondToQuestion(pending.requestId, { cancelled: true, answers: [] });
+		void window.astravia.session.respondToQuestion(pending.requestId, { cancelled: true, answers: [] });
 		remove();
 	}, [pending.requestId, remove]);
 

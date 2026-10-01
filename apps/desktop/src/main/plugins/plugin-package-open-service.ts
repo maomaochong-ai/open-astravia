@@ -1,13 +1,13 @@
 import { extname } from "node:path";
 import type { InstalledPlugin, PluginManifest } from "../../preload/api-types/plugins.js";
-import { VETTA_PLUGIN_PACKAGE_EXTENSION } from "./plugin-package.js";
+import { ASTRAVIA_PLUGIN_PACKAGE_EXTENSION } from "./plugin-package.js";
 
-export function isVettaPluginPackagePath(filePath: string): boolean {
-	return extname(filePath).toLowerCase() === VETTA_PLUGIN_PACKAGE_EXTENSION;
+export function isAstraviaPluginPackagePath(filePath: string): boolean {
+	return extname(filePath).toLowerCase() === ASTRAVIA_PLUGIN_PACKAGE_EXTENSION;
 }
 
-export function findVettaPluginPackagePath(argv: readonly string[]): string | undefined {
-	return argv.find(isVettaPluginPackagePath);
+export function findAstraviaPluginPackagePath(argv: readonly string[]): string | undefined {
+	return argv.find(isAstraviaPluginPackagePath);
 }
 
 export interface PluginPackageOpenDependencies {
@@ -28,14 +28,14 @@ export class PluginPackageOpenService {
 	constructor(private readonly dependencies: PluginPackageOpenDependencies) {}
 
 	enqueue(filePath: string): boolean {
-		if (!isVettaPluginPackagePath(filePath)) return false;
+		if (!isAstraviaPluginPackagePath(filePath)) return false;
 		this.pending.push(filePath);
 		this.flush();
 		return true;
 	}
 
 	enqueueFromArgv(argv: readonly string[]): boolean {
-		const filePath = findVettaPluginPackagePath(argv);
+		const filePath = findAstraviaPluginPackagePath(argv);
 		return filePath ? this.enqueue(filePath) : false;
 	}
 

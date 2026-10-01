@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { parseProjectLocation, parseSshConfigAliases } from "@vetta/ssh-transport";
+import { parseProjectLocation, parseSshConfigAliases } from "@astravia/ssh-transport";
 import { readDesktopConfig, writeSshHosts } from "../config/desktop-config-store.js";
 import { broadcastSshHostsChanged } from "./ssh-events.js";
 import { SshHostService } from "./ssh-host-service.js";

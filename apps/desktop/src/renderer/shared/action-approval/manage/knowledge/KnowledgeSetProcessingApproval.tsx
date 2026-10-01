@@ -5,16 +5,16 @@ import {
 	SelectItem,
 	SelectTrigger,
 	SelectValue,
-} from "@vetta-org/ui";
+} from "@astravia-org/ui";
 import { useMemo, useState } from "react";
-import { Switch } from "@vetta-org/ui";
+import { Switch } from "@astravia-org/ui";
 import { type ActiveActionApproval, useActionApproval } from "../../useActionApproval";
 import { knowledgeBaseFieldLabel } from "../../approvalCopy";
 import {
 	ApprovalImpactCard,
 	ApprovalSettingGroup,
 	ApprovalSettingRow,
-} from "@vetta-org/theme-ui/action-approval";
+} from "@astravia-org/theme-ui/action-approval";
 import { ApprovalRawFallback } from "../ApprovalParts";
 import { useManageApprovalFrame } from "../useManageApprovalShell";
 

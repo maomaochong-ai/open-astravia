@@ -1,5 +1,5 @@
-import type { ToolPhase } from "@vetta/agent-core";
-import type { AssistantMessageEvent, CacheUsageReporting, Message } from "@vetta/ai";
+import type { ToolPhase } from "@astravia/agent-core";
+import type { AssistantMessageEvent, CacheUsageReporting, Message } from "@astravia/ai";
 import type { RuntimeEventSource, SessionError } from "./contracts.js";
 import type { RuntimeFailure } from "./failure-contract.js";
 import type { SessionExtensionObservation } from "./session-extensions/contracts.js";

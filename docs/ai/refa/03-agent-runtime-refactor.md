@@ -146,8 +146,8 @@ Agent 不生成 sessionId、repository version 或 UI event。Runtime 为事件�
 
 最终建议：
 
-- 保留 `@vetta/agent-core` 包作为无状态执行引擎。
-- 将现有 `Agent` 移到 `compat/standalone-agent.ts`，通过 `@vetta/agent-core/standalone` 子路径导出，内部完全基于 `runAgentTurn()`。
+- 保留 `@astravia/agent-core` 包作为无状态执行引擎。
+- 将现有 `Agent` 移到 `compat/standalone-agent.ts`，通过 `@astravia/agent-core/standalone` 子路径导出，内部完全基于 `runAgentTurn()`。
 - 停止为它新增产品能力。
 - 根入口停止导出 `Agent`；旧根导出先标记 deprecated 并保留至少两个锁步发布周期。
 - 仓库生产代码不得新增 `new Agent()`。
@@ -171,11 +171,11 @@ Agent 不生成 sessionId、repository version 或 UI event。Runtime 为事件�
 
 | 当前类型 | 目标所有者 | 处理 |
 | --- | --- | --- |
-| `ThinkingLevel` | `@vetta/ai/protocol` | 与 AI 中现有定义合并为 `ReasoningEffort`，包含 `off` 和 provider extension |
+| `ThinkingLevel` | `@astravia/ai/protocol` | 与 AI 中现有定义合并为 `ReasoningEffort`，包含 `off` 和 provider extension |
 | `AgentMessage` | AI Message + Runtime envelope | Engine 只接收模型 Message；UI/扩展 entry 由 Runtime envelope 承载 |
-| `ToolPhase` | `@vetta/runtime-core` | 它是执行 observation，不是 Agent 公共模型协议 |
+| `ToolPhase` | `@astravia/runtime-core` | 它是执行 observation，不是 Agent 公共模型协议 |
 | `AgentEvent` | Agent execution / Runtime SessionEvent | 内部 step event 留 Agent；SDK/RPC 改用 Runtime SessionEvent |
 | `AgentToolResult`/update | Runtime Tool 契约 | 产品工具不再依赖 standalone Agent 类型 |
-| `StreamFn` | `@vetta/ai` model runtime | Agent 依赖模型调用端口，不暴露 Provider stream function |
+| `StreamFn` | `@astravia/ai` model runtime | Agent 依赖模型调用端口，不暴露 Provider stream function |
 
-迁移后，`coding-agent` 对 `@vetta/agent-core` 的直接 import 应只出现在 Runtime Engine 组装或专门适配层，不能散落在 compaction、memory、session、RPC 和扩展 public API。
+迁移后，`coding-agent` 对 `@astravia/agent-core` 的直接 import 应只出现在 Runtime Engine 组装或专门适配层，不能散落在 compaction、memory、session、RPC 和扩展 public API。

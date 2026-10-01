@@ -1,4 +1,4 @@
-import type { SessionContextRecord } from "@vetta/runtime-core/kernel";
+import type { SessionContextRecord } from "@astravia/runtime-core/kernel";
 
 export const TEAM_TASK_COMPLETED_CONTEXT_TYPE = "agent-team.task-completed.v1";
 

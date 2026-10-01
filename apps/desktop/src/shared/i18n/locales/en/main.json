@@ -2,19 +2,19 @@
 	"tray": {
 		"showWindow": "Show Window",
 		"hideWindow": "Hide Window",
-		"quitVetta": "Quit Vetta",
+		"quitAstravia": "Quit Astravia",
 		"quit": "Quit",
 		"hideToTray": "Hide to Tray"
 	},
 	"menu": {
 		"app": {
-			"title": "Vetta",
-			"about": "About Vetta",
+			"title": "Astravia",
+			"about": "About Astravia",
 			"services": "Services",
-			"hide": "Hide Vetta",
+			"hide": "Hide Astravia",
 			"hideOthers": "Hide Others",
 			"unhide": "Show All",
-			"quit": "Quit Vetta"
+			"quit": "Quit Astravia"
 		},
 		"edit": {
 			"title": "Edit",
@@ -55,9 +55,9 @@
 		"remotePairingRequestTitle": "A phone wants to pair",
 		"remotePairingRequest": "{{device}} is asking to connect, code {{code}}. Click to verify and allow.",
 		"remoteScreenPermissionTitle": "A phone wants to see this screen",
-		"remoteScreenPermissionScreen": "{{device}} opened the remote desktop, but Vetta does not have Screen Recording permission yet, so the phone shows nothing. Click to grant it, then restart Vetta.",
-		"remoteScreenPermissionInput": "{{device}} can see the screen, but Vetta does not have Accessibility permission yet, so taps and typing on the phone do nothing. Click to grant it.",
-		"remoteScreenPermissionBoth": "{{device}} opened the remote desktop, but Vetta does not have Screen Recording or Accessibility permission yet. Click to grant them, then restart Vetta."
+		"remoteScreenPermissionScreen": "{{device}} opened the remote desktop, but Astravia does not have Screen Recording permission yet, so the phone shows nothing. Click to grant it, then restart Astravia.",
+		"remoteScreenPermissionInput": "{{device}} can see the screen, but Astravia does not have Accessibility permission yet, so taps and typing on the phone do nothing. Click to grant it.",
+		"remoteScreenPermissionBoth": "{{device}} opened the remote desktop, but Astravia does not have Screen Recording or Accessibility permission yet. Click to grant them, then restart Astravia."
 	},
 	"remote": {
 		"conversationProject": "Conversations"
@@ -66,9 +66,9 @@
 		"openDevTools": "Open Pet DevTools"
 	},
 	"pluginPackage": {
-		"confirmTitle": "Install Vetta Plugin",
+		"confirmTitle": "Install Astravia Plugin",
 		"confirmMessage": "Install and enable {{name}} {{version}}?",
-		"confirmDetail": "File: {{file}}\nPlugin ID: {{id}}\nVersion: {{version}}\n\nPermissions to grant:\n{{permissions}}\n\nCommands to enable:\n{{commands}}\n\nPlugin code runs inside Vetta. Install files only from sources you trust.",
+		"confirmDetail": "File: {{file}}\nPlugin ID: {{id}}\nVersion: {{version}}\n\nPermissions to grant:\n{{permissions}}\n\nCommands to enable:\n{{commands}}\n\nPlugin code runs inside Astravia. Install files only from sources you trust.",
 		"none": "None",
 		"install": "Install and Enable",
 		"cancel": "Cancel",
@@ -76,13 +76,13 @@
 		"installedTitle": "Plugin Installed",
 		"installedMessage": "{{name}} {{version}} is installed and enabled.",
 		"failedTitle": "Plugin Installation Failed",
-		"failedMessage": "{{file}} is not a valid Vetta plugin package or is incompatible with this version."
+		"failedMessage": "{{file}} is not a valid Astravia plugin package or is incompatible with this version."
 	},
 	"mcpOAuth": {
 		"authorizationSuccessful": "Authorization successful",
 		"authorizationFailed": "Authorization failed",
-		"returnToVetta": "You can close this window and return to Vetta.",
-		"closeAndRetry": "You can close this window and try again in Vetta.",
+		"returnToAstravia": "You can close this window and return to Astravia.",
+		"closeAndRetry": "You can close this window and try again in Astravia.",
 		"missingAuthorizationCode": "Missing authorization code",
 		"callbackAlreadySettled": "OAuth callback already settled",
 		"callbackTimedOut": "Timed out waiting for OAuth authorization in the browser",
@@ -92,7 +92,7 @@
 		"enterDeviceCode": "Enter this code on the GitHub page, then click Authorize.",
 		"copyCode": "Copy code",
 		"openGitHub": "Open GitHub to authorize",
-		"closeAfterAuthorization": "You can close this window once you have authorized in Vetta.",
+		"closeAfterAuthorization": "You can close this window once you have authorized in Astravia.",
 		"deviceFlowDisabled": "Device code request failed (422). Enable Device Flow in the OAuth or GitHub App settings: {{details}}"
 	},
 	"updater": {

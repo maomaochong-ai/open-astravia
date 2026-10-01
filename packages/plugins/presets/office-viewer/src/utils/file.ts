@@ -1,4 +1,4 @@
-import type { PluginPreviewFile } from "@vetta-org/plugin-sdk";
+import type { PluginPreviewFile } from "@astravia-org/plugin-sdk";
 
 export async function fetchFileBytes(file: PluginPreviewFile): Promise<ArrayBuffer> {
 	const url = file.getUrl();

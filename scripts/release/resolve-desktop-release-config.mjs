@@ -97,12 +97,12 @@ export function resolveDesktopReleaseConfig(request = {}) {
 		return firstExplicit(inputValue, ...varValues) || fallback;
 	};
 
-	const releaseTarget = pick("release_target", "VETTA_RELEASE_TARGET", "github");
+	const releaseTarget = pick("release_target", "ASTRAVIA_RELEASE_TARGET", "github");
 	if (!RELEASE_TARGETS.has(releaseTarget)) {
 		throw new Error(`release_target must be github or r2 (received ${JSON.stringify(releaseTarget)})`);
 	}
 	const configuredCloudEnabled = parseFlag(
-		pick("cloud_enabled", "VETTA_CLOUD_ENABLED"),
+		pick("cloud_enabled", "ASTRAVIA_CLOUD_ENABLED"),
 		"cloud_enabled",
 	);
 	const cloudEnabled = configuredCloudEnabled || (releaseTarget === "github" ? "false" : "true");
@@ -112,9 +112,9 @@ export function resolveDesktopReleaseConfig(request = {}) {
 	if (releaseTarget === "r2" && cloudEnabled !== "true") {
 		throw new Error("R2 can only publish the commercial build (cloud_enabled=true)");
 	}
-	const speechInput = parseFlag(pick("speech_input", "VETTA_SPEECH_INPUT_ENABLED"), "speech_input");
+	const speechInput = parseFlag(pick("speech_input", "ASTRAVIA_SPEECH_INPUT_ENABLED"), "speech_input");
 
-	const channel = pick("channel", "VETTA_RELEASE_CHANNEL", "default");
+	const channel = pick("channel", "ASTRAVIA_RELEASE_CHANNEL", "default");
 	if (!CHANNELS.has(channel)) {
 		throw new Error(`channel must be default, stable, or test (received ${JSON.stringify(channel)})`);
 	}
@@ -124,7 +124,7 @@ export function resolveDesktopReleaseConfig(request = {}) {
 	if (eventName !== "workflow_dispatch" && channel === "test") {
 		throw new Error("the test channel is only available through workflow_dispatch");
 	}
-	const buildVersion = pick("build_version", "VETTA_TEST_BUILD_VERSION");
+	const buildVersion = pick("build_version", "ASTRAVIA_TEST_BUILD_VERSION");
 	if (buildVersion && channel !== "test") {
 		throw new Error("build_version is only allowed for the test channel");
 	}
@@ -135,28 +135,28 @@ export function resolveDesktopReleaseConfig(request = {}) {
 		(eventName === "push" && refType === "tag") ||
 		(eventName === "workflow_dispatch" && (channel === "test" || channel === "stable"));
 
-	const serverUrl = cloudEnabled === "true" ? pick("server_url", "VETTA_SERVER_URL") : "";
-	const siteUrl = cloudEnabled === "true" ? pick("site_url", "VETTA_SITE_URL") : "";
-	const marketplaceRepository = pick("marketplace_repository", "VETTA_OPEN_MARKETPLACE_REPOSITORY");
-	const marketplaceRef = pick("marketplace_ref", "VETTA_OPEN_MARKETPLACE_REF");
-	const tenant = pick("tenant", "VETTA_TENANT");
+	const serverUrl = cloudEnabled === "true" ? pick("server_url", "ASTRAVIA_SERVER_URL") : "";
+	const siteUrl = cloudEnabled === "true" ? pick("site_url", "ASTRAVIA_SITE_URL") : "";
+	const marketplaceRepository = pick("marketplace_repository", "ASTRAVIA_OPEN_MARKETPLACE_REPOSITORY");
+	const marketplaceRef = pick("marketplace_ref", "ASTRAVIA_OPEN_MARKETPLACE_REF");
+	const tenant = pick("tenant", "ASTRAVIA_TENANT");
 	const notes = acceptInputs ? normalizeToken(inputs.notes).replaceAll(/\s+/g, " ") : "";
 
-	let updateUrl = pick("update_url", "VETTA_UPDATE_URL");
-	let r2Bucket = pick("r2_bucket", "VETTA_R2_BUCKET");
-	let r2Prefix = pick("r2_prefix", "VETTA_R2_PREFIX");
+	let updateUrl = pick("update_url", "ASTRAVIA_UPDATE_URL");
+	let r2Bucket = pick("r2_bucket", "ASTRAVIA_R2_BUCKET");
+	let r2Prefix = pick("r2_prefix", "ASTRAVIA_R2_PREFIX");
 
 	if (channel === "test") {
-		updateUrl = firstExplicit(acceptInputs ? inputs.update_url : "", vars.VETTA_UPDATE_URL_TEST, replaceLastPathSegment(updateUrl, "test"), updateUrl);
-		r2Prefix = firstExplicit(acceptInputs ? inputs.r2_prefix : "", vars.VETTA_R2_PREFIX_TEST, replaceLastPathSegment(r2Prefix, "test"), r2Prefix);
+		updateUrl = firstExplicit(acceptInputs ? inputs.update_url : "", vars.ASTRAVIA_UPDATE_URL_TEST, replaceLastPathSegment(updateUrl, "test"), updateUrl);
+		r2Prefix = firstExplicit(acceptInputs ? inputs.r2_prefix : "", vars.ASTRAVIA_R2_PREFIX_TEST, replaceLastPathSegment(r2Prefix, "test"), r2Prefix);
 	} else if (channel === "stable") {
-		updateUrl = firstExplicit(acceptInputs ? inputs.update_url : "", vars.VETTA_UPDATE_URL_STABLE, updateUrl);
-		r2Prefix = firstExplicit(acceptInputs ? inputs.r2_prefix : "", vars.VETTA_R2_PREFIX_STABLE, r2Prefix);
+		updateUrl = firstExplicit(acceptInputs ? inputs.update_url : "", vars.ASTRAVIA_UPDATE_URL_STABLE, updateUrl);
+		r2Prefix = firstExplicit(acceptInputs ? inputs.r2_prefix : "", vars.ASTRAVIA_R2_PREFIX_STABLE, r2Prefix);
 	}
 	if (releaseTarget === "github") updateUrl = "";
 
 	if (cloudEnabled === "true" && !serverUrl) {
-		throw new Error("VETTA_SERVER_URL is required when VETTA_CLOUD_ENABLED=true");
+		throw new Error("ASTRAVIA_SERVER_URL is required when ASTRAVIA_CLOUD_ENABLED=true");
 	}
 
 	return {
@@ -208,19 +208,19 @@ export function toGithubOutput(config) {
  */
 export function toGithubEnv(config) {
 	const entries = [
-		["VETTA_DESKTOP_BUILD_VERSION", config.buildVersion],
-		["VETTA_RELEASE_PUBLISH", config.shouldPublish ? "true" : "false"],
-		["VETTA_CLOUD_ENABLED", config.cloudEnabled],
-		["VETTA_SERVER_URL", config.serverUrl],
-		["VETTA_SITE_URL", config.siteUrl],
-		["VETTA_OPEN_MARKETPLACE_REPOSITORY", config.marketplaceRepository],
-		["VETTA_OPEN_MARKETPLACE_REF", config.marketplaceRef],
-		["VETTA_TENANT", config.tenant],
-		["VETTA_SPEECH_INPUT_ENABLED", config.speechInput],
-		["VETTA_UPDATE_PROVIDER", config.updateProvider],
-		["VETTA_UPDATE_URL", config.updateUrl],
-		["VETTA_R2_BUCKET", config.r2Bucket],
-		["VETTA_R2_PREFIX", config.r2Prefix],
+		["ASTRAVIA_DESKTOP_BUILD_VERSION", config.buildVersion],
+		["ASTRAVIA_RELEASE_PUBLISH", config.shouldPublish ? "true" : "false"],
+		["ASTRAVIA_CLOUD_ENABLED", config.cloudEnabled],
+		["ASTRAVIA_SERVER_URL", config.serverUrl],
+		["ASTRAVIA_SITE_URL", config.siteUrl],
+		["ASTRAVIA_OPEN_MARKETPLACE_REPOSITORY", config.marketplaceRepository],
+		["ASTRAVIA_OPEN_MARKETPLACE_REF", config.marketplaceRef],
+		["ASTRAVIA_TENANT", config.tenant],
+		["ASTRAVIA_SPEECH_INPUT_ENABLED", config.speechInput],
+		["ASTRAVIA_UPDATE_PROVIDER", config.updateProvider],
+		["ASTRAVIA_UPDATE_URL", config.updateUrl],
+		["ASTRAVIA_R2_BUCKET", config.r2Bucket],
+		["ASTRAVIA_R2_PREFIX", config.r2Prefix],
 	];
 	return entries
 		.filter(([, value]) => value !== "")
@@ -275,23 +275,23 @@ function readRequestFromEnv(env = process.env) {
 			update_url: env.INPUT_UPDATE_URL,
 		},
 		vars: {
-			VETTA_TEST_BUILD_VERSION: env.VAR_TEST_BUILD_VERSION,
-			VETTA_CLOUD_ENABLED: env.VAR_CLOUD_ENABLED,
-			VETTA_OPEN_MARKETPLACE_REPOSITORY: env.VAR_MARKETPLACE_REPOSITORY,
-			VETTA_OPEN_MARKETPLACE_REF: env.VAR_MARKETPLACE_REF,
-			VETTA_R2_BUCKET: env.VAR_R2_BUCKET,
-			VETTA_R2_PREFIX: env.VAR_R2_PREFIX,
-			VETTA_R2_PREFIX_STABLE: env.VAR_R2_PREFIX_STABLE,
-			VETTA_R2_PREFIX_TEST: env.VAR_R2_PREFIX_TEST,
-			VETTA_RELEASE_CHANNEL: env.VAR_RELEASE_CHANNEL,
-			VETTA_RELEASE_TARGET: env.VAR_RELEASE_TARGET,
-			VETTA_SERVER_URL: env.VAR_SERVER_URL,
-			VETTA_SITE_URL: env.VAR_SITE_URL,
-			VETTA_SPEECH_INPUT_ENABLED: env.VAR_SPEECH_INPUT,
-			VETTA_TENANT: env.VAR_TENANT,
-			VETTA_UPDATE_URL: env.VAR_UPDATE_URL,
-			VETTA_UPDATE_URL_STABLE: env.VAR_UPDATE_URL_STABLE,
-			VETTA_UPDATE_URL_TEST: env.VAR_UPDATE_URL_TEST,
+			ASTRAVIA_TEST_BUILD_VERSION: env.VAR_TEST_BUILD_VERSION,
+			ASTRAVIA_CLOUD_ENABLED: env.VAR_CLOUD_ENABLED,
+			ASTRAVIA_OPEN_MARKETPLACE_REPOSITORY: env.VAR_MARKETPLACE_REPOSITORY,
+			ASTRAVIA_OPEN_MARKETPLACE_REF: env.VAR_MARKETPLACE_REF,
+			ASTRAVIA_R2_BUCKET: env.VAR_R2_BUCKET,
+			ASTRAVIA_R2_PREFIX: env.VAR_R2_PREFIX,
+			ASTRAVIA_R2_PREFIX_STABLE: env.VAR_R2_PREFIX_STABLE,
+			ASTRAVIA_R2_PREFIX_TEST: env.VAR_R2_PREFIX_TEST,
+			ASTRAVIA_RELEASE_CHANNEL: env.VAR_RELEASE_CHANNEL,
+			ASTRAVIA_RELEASE_TARGET: env.VAR_RELEASE_TARGET,
+			ASTRAVIA_SERVER_URL: env.VAR_SERVER_URL,
+			ASTRAVIA_SITE_URL: env.VAR_SITE_URL,
+			ASTRAVIA_SPEECH_INPUT_ENABLED: env.VAR_SPEECH_INPUT,
+			ASTRAVIA_TENANT: env.VAR_TENANT,
+			ASTRAVIA_UPDATE_URL: env.VAR_UPDATE_URL,
+			ASTRAVIA_UPDATE_URL_STABLE: env.VAR_UPDATE_URL_STABLE,
+			ASTRAVIA_UPDATE_URL_TEST: env.VAR_UPDATE_URL_TEST,
 		},
 	};
 }

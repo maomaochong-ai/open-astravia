@@ -199,7 +199,7 @@ const skillNoOutputSchema = defineCapabilityNoOutputSchema();
 
 export const DOMAIN_SKILL_CAPABILITIES = {
 	LIST: defineCapability<SkillListInput, SkillInfo[]>({
-		id: "cap.domain.vetta.skill.list",
+		id: "cap.domain.astravia.skill.list",
 		kind: "query",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -207,7 +207,7 @@ export const DOMAIN_SKILL_CAPABILITIES = {
 		output: skillListOutputSchema,
 	}),
 	LIST_INSTALLED: defineCapability<Record<string, never>, Record<string, InstalledSkill>>({
-		id: "cap.domain.vetta.skill.installed.list",
+		id: "cap.domain.astravia.skill.installed.list",
 		kind: "query",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -215,7 +215,7 @@ export const DOMAIN_SKILL_CAPABILITIES = {
 		output: installedSkillsOutputSchema,
 	}),
 	SET_ENABLED: defineCapability<SkillSetEnabledInput, SkillSetEnabledResult>({
-		id: "cap.domain.vetta.skill.installed.set-enabled",
+		id: "cap.domain.astravia.skill.installed.set-enabled",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -223,7 +223,7 @@ export const DOMAIN_SKILL_CAPABILITIES = {
 		output: skillSetEnabledOutputSchema,
 	}),
 	UNINSTALL: defineCapability<SkillUninstallInput, undefined>({
-		id: "cap.domain.vetta.skill.installed.uninstall",
+		id: "cap.domain.astravia.skill.installed.uninstall",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,

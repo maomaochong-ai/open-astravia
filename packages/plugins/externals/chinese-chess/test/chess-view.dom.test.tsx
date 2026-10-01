@@ -3,10 +3,10 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { PluginAiChatRequest, PluginAiChatResult } from "@vetta-org/plugin-sdk";
+import type { PluginAiChatRequest, PluginAiChatResult } from "@astravia-org/plugin-sdk";
 import { ChessStore, type GameStoragePort } from "../src/game/store";
 
-vi.mock("@vetta-org/plugin-sdk", () => ({
+vi.mock("@astravia-org/plugin-sdk", () => ({
 	useTranslation: () => ({
 		t: (key: string, values?: Record<string, string | number>) =>
 			values ? `${key}:${JSON.stringify(values)}` : key,

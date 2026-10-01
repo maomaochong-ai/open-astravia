@@ -38,7 +38,7 @@ it("关闭诊断时不监听滚动，也不安装性能观察器", () => {
 });
 
 it("一次滚动结束后持久化高度修正、渲染范围和 React 提交的关联报告", () => {
-	localStorage.setItem("vetta-perf-message-scroll", "1");
+	localStorage.setItem("astravia-perf-message-scroll", "1");
 	let currentTime = 100;
 	vi.spyOn(performance, "now").mockImplementation(() => currentTime);
 	vi.spyOn(performance, "mark").mockImplementation(() => ({}) as PerformanceMark);
@@ -128,6 +128,6 @@ it("一次滚动结束后持久化高度修正、渲染范围和 React 提交的
 	expect(payload.events).toEqual(
 		expect.arrayContaining([expect.objectContaining({ type: "item-size", index: 10, correction: 80 })]),
 	);
-	expect(JSON.parse(sessionStorage.getItem("vetta-perf-message-scroll:last-report") ?? "null")).toEqual(payload);
+	expect(JSON.parse(sessionStorage.getItem("astravia-perf-message-scroll:last-report") ?? "null")).toEqual(payload);
 	expect(observers.every((observer) => observer.disconnect.mock.calls.length === 1)).toBe(true);
 });

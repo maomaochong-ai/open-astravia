@@ -66,13 +66,13 @@ const svg = `<?xml version="1.0" encoding="UTF-8"?>
 	<rect width="1320" height="880" fill="${COLORS.bg}"/>
 	${arrows}
 	<text x="660" y="700" font-family="-apple-system, Helvetica Neue, Helvetica" font-size="26" fill="${COLORS.text}" text-anchor="middle">
-		拖动 Vetta 到 Applications 完成安装
+		拖动 Astravia 到 Applications 完成安装
 	</text>
 	${repairHint}
 </svg>
 `;
 
-const stageDir = join(tmpdir(), "vetta-dmg-bg");
+const stageDir = join(tmpdir(), "astravia-dmg-bg");
 rmSync(stageDir, { recursive: true, force: true });
 mkdirSync(stageDir, { recursive: true });
 mkdirSync(buildDir, { recursive: true });

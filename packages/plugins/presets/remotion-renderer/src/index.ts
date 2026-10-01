@@ -1,4 +1,4 @@
-import { definePlugin } from "@vetta-org/plugin-sdk";
+import { definePlugin } from "@astravia-org/plugin-sdk";
 import { stopRemotionServer } from "./engine/engine-manager";
 import { createRemotionProvider } from "./provider/remotion-provider";
 import { setPluginContext } from "./runtime";

@@ -1,4 +1,4 @@
-import type { TeamOrchestrationPolicy } from "@vetta/agent-team";
+import type { TeamOrchestrationPolicy } from "@astravia/agent-team";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const info = vi.fn();

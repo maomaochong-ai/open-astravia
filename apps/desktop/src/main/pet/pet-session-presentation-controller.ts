@@ -1,4 +1,4 @@
-import type { SessionEvent } from "@vetta/runtime-core";
+import type { SessionEvent } from "@astravia/runtime-core";
 import type { PetActionId } from "../../shared/pet-actions.js";
 import type { PetActivityState, PetBubbleNotice, PetCommand } from "../../shared/pet-ipc.js";
 import { createPetBubbleCommand } from "./pet-bubble-command.js";

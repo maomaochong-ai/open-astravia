@@ -30,14 +30,14 @@ export function registerDialogIpc(): () => void {
 	// 把用户附加的图片（base64）落盘到按会话分目录的缓存，返回绝对路径。
 	// 调用方据此用 @路径 引用图片，交由 agent 的 Read 工具按需读取，
 	// 从而不再把 base64 直接塞进上下文（不支持视觉的模型也能用工具处理图片）。
-	ipcMain.handle("vetta:dialog:persist-images", async (_event, sessionId: string, images: PersistImageInput[]) =>
+	ipcMain.handle("astravia:dialog:persist-images", async (_event, sessionId: string, images: PersistImageInput[]) =>
 		Array.isArray(images) ? persistImageCache(sessionId, images) : [],
 	);
 	ipcMain.handle(PERSIST_IMAGE_FILES_CHANNEL, async (_event, sessionId: string, images: PersistImageFileInput[]) =>
 		Array.isArray(images) ? persistImageFileCache(sessionId, images) : [],
 	);
 
-	ipcMain.handle("vetta:dialog:select-images", async () => {
+	ipcMain.handle("astravia:dialog:select-images", async () => {
 		const result = await dialog.showOpenDialog({
 			properties: ["openFile", "multiSelections"],
 			title: "Select Images",
@@ -58,7 +58,7 @@ export function registerDialogIpc(): () => void {
 		return images;
 	});
 
-	ipcMain.handle("vetta:dialog:select-folder", async () => {
+	ipcMain.handle("astravia:dialog:select-folder", async () => {
 		const result = await dialog.showOpenDialog({ properties: ["openDirectory"], title: "Select Project Folder" });
 		if (result.canceled || result.filePaths.length === 0) return null;
 		const selectedPath = result.filePaths[0];
@@ -66,7 +66,7 @@ export function registerDialogIpc(): () => void {
 		return selectedPath;
 	});
 
-	ipcMain.handle("vetta:dialog:select-files", async (_event, defaultPath?: string) => {
+	ipcMain.handle("astravia:dialog:select-files", async (_event, defaultPath?: string) => {
 		const result = await dialog.showOpenDialog({
 			properties: ["openFile", "multiSelections"],
 			title: "选择文件",
@@ -84,7 +84,7 @@ export function registerDialogIpc(): () => void {
 	 * 读不了。让主进程当场读完回传，既不用把那个目录永久加进授权根（select-folder 就是
 	 * 那么做的，代价是整棵目录树从此可读），也不必发明按路径的一次性授权。
 	 */
-	ipcMain.handle("vetta:dialog:open-file-contents", async (_event, options: unknown) => {
+	ipcMain.handle("astravia:dialog:open-file-contents", async (_event, options: unknown) => {
 		const input = (options ?? {}) as {
 			title?: unknown;
 			filters?: unknown;
@@ -121,7 +121,7 @@ export function registerDialogIpc(): () => void {
 		return files;
 	});
 
-	ipcMain.handle("vetta:dialog:save-html", async (_event, defaultFileName: unknown, content: unknown) => {
+	ipcMain.handle("astravia:dialog:save-html", async (_event, defaultFileName: unknown, content: unknown) => {
 		if (typeof defaultFileName !== "string" || !defaultFileName.trim()) {
 			throw new Error("Invalid HTML export file name");
 		}
@@ -144,7 +144,7 @@ export function registerDialogIpc(): () => void {
 	 * Returns the saved path, or null if cancelled.
 	 */
 	ipcMain.handle(
-		"vetta:dialog:save-data",
+		"astravia:dialog:save-data",
 		async (
 			_event,
 			defaultFileName: unknown,
@@ -196,7 +196,7 @@ export function registerDialogIpc(): () => void {
 	 * Returns the saved path, or null if cancelled.
 	 */
 	ipcMain.handle(
-		"vetta:dialog:save-copy",
+		"astravia:dialog:save-copy",
 		async (
 			_event,
 			sourcePath: unknown,
@@ -253,7 +253,7 @@ export function registerDialogIpc(): () => void {
 		},
 	);
 
-	ipcMain.handle("vetta:dialog:select-folders", async () => {
+	ipcMain.handle("astravia:dialog:select-folders", async () => {
 		if (process.platform === "linux") {
 			try {
 				const selected = await selectFoldersWithLinuxPortal();
@@ -278,15 +278,15 @@ export function registerDialogIpc(): () => void {
 	});
 
 	return () => {
-		ipcMain.removeHandler("vetta:dialog:persist-images");
+		ipcMain.removeHandler("astravia:dialog:persist-images");
 		ipcMain.removeHandler(PERSIST_IMAGE_FILES_CHANNEL);
-		ipcMain.removeHandler("vetta:dialog:select-images");
-		ipcMain.removeHandler("vetta:dialog:select-folder");
-		ipcMain.removeHandler("vetta:dialog:select-files");
-		ipcMain.removeHandler("vetta:dialog:open-file-contents");
-		ipcMain.removeHandler("vetta:dialog:save-html");
-		ipcMain.removeHandler("vetta:dialog:save-data");
-		ipcMain.removeHandler("vetta:dialog:save-copy");
-		ipcMain.removeHandler("vetta:dialog:select-folders");
+		ipcMain.removeHandler("astravia:dialog:select-images");
+		ipcMain.removeHandler("astravia:dialog:select-folder");
+		ipcMain.removeHandler("astravia:dialog:select-files");
+		ipcMain.removeHandler("astravia:dialog:open-file-contents");
+		ipcMain.removeHandler("astravia:dialog:save-html");
+		ipcMain.removeHandler("astravia:dialog:save-data");
+		ipcMain.removeHandler("astravia:dialog:save-copy");
+		ipcMain.removeHandler("astravia:dialog:select-folders");
 	};
 }

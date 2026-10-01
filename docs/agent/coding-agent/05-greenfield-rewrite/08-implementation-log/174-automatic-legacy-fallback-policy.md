@@ -26,7 +26,7 @@
 
 ### 2. 生产导入白名单已经存在，不应重复建设
 
-第 125 轮的 package boundary guard 已经限制 `@vetta/coding-agent/legacy/cli` 只能由 CLI Runtime 选择入口导入。本轮需要约束的是该入口“何时可以执行 Legacy”，而不是再增加一套文件导入白名单。
+第 125 轮的 package boundary guard 已经限制 `@astravia/coding-agent/legacy/cli` 只能由 CLI Runtime 选择入口导入。本轮需要约束的是该入口“何时可以执行 Legacy”，而不是再增加一套文件导入白名单。
 
 ### 3. `failed` 是真实但此前缺少完整测试的迁移状态
 

@@ -11,7 +11,7 @@ const catalogInputSchema = defineCapabilityInputSchema(
 );
 
 const catalogCapability = defineCapability<Record<string, never>, undefined>({
-	id: `${CAPABILITY_PREFIXES.VETTA_DOMAIN}catalog.test`,
+	id: `${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}catalog.test`,
 	kind: "command",
 	layer: CAPABILITY_LAYERS.DOMAIN,
 	version: 1,

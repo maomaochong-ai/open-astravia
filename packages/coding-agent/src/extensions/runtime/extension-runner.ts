@@ -1,5 +1,5 @@
-import type { AgentMessage } from "@vetta/agent-core";
-import type { ImageContent } from "@vetta/ai";
+import type { AgentMessage } from "@astravia/agent-core";
+import type { ImageContent } from "@astravia/ai";
 import type { MessageRenderer, RegisteredCommand } from "../api-contracts.js";
 import type { ExtensionCommandContext, ExtensionContext, ExtensionModelCatalog } from "../context-contracts.js";
 import type {

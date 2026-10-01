@@ -44,7 +44,7 @@ export function configureRendererCdp(options: ConfigureRendererCdpOptions): Rend
 
 	const port = parsePort(options.portValue);
 	if (port === null) {
-		log.warn("renderer CDP disabled: invalid VETTA_DEBUG_CDP_PORT", { value: options.portValue });
+		log.warn("renderer CDP disabled: invalid ASTRAVIA_DEBUG_CDP_PORT", { value: options.portValue });
 		return { configured: false, reason: "invalid_port" };
 	}
 

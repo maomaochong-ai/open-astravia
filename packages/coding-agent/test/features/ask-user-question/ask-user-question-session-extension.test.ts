@@ -1,5 +1,8 @@
-import type { ModelCallContributionContext, RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
-import { SessionExtensionComposition, SessionExtensionFunctionRegistry } from "@vetta/runtime-core/session-extensions";
+import type { ModelCallContributionContext, RuntimeToolDefinition } from "@astravia/runtime-core/kernel";
+import {
+	SessionExtensionComposition,
+	SessionExtensionFunctionRegistry,
+} from "@astravia/runtime-core/session-extensions";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
 	CODING_AGENT_ASK_USER_QUESTION_FUNCTION,

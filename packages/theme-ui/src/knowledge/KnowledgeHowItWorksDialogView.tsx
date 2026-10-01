@@ -5,7 +5,7 @@ import {
 	DialogDescription,
 	DialogHeader,
 	DialogTitle,
-} from "@vetta-org/ui";
+} from "@astravia-org/ui";
 
 export interface KnowledgeHowItWorksStepView {
 	readonly icon: string;

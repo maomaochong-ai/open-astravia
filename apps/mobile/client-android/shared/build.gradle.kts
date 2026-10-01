@@ -10,7 +10,7 @@ plugins {
 
 kotlin {
     android {
-        namespace = "org.vetta.android.shared"
+        namespace = "org.astravia.android.shared"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
 
@@ -91,7 +91,7 @@ kotlin {
 }
 
 compose.resources {
-    packageOfResClass = "org.vetta.android.resources"
+    packageOfResClass = "org.astravia.android.resources"
 }
 
 dependencies {

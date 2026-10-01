@@ -10,10 +10,10 @@ export function useTeamMemberModels(teamId: string, enabled = true) {
 	useEffect(() => {
 		if (!enabled) return;
 		void reload();
-		const unsubscribeConfiguration = window.vetta.agentTeams.onChanged(() => {
+		const unsubscribeConfiguration = window.astravia.agentTeams.onChanged(() => {
 			void reload();
 		});
-		const unsubscribeModels = window.vetta.agentTeams.onMemberModelsChanged((changedTeamId) => {
+		const unsubscribeModels = window.astravia.agentTeams.onMemberModelsChanged((changedTeamId) => {
 			if (changedTeamId === teamId) void reload();
 		});
 		return () => {

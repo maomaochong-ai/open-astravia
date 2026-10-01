@@ -11,5 +11,5 @@
  */
 export const PROJECTS_CHANNELS = {
 	/** main → renderer：无载荷，仅通知「项目列表已变，去重读」。 */
-	CHANGED: "vetta:projects:changed",
+	CHANGED: "astravia:projects:changed",
 } as const;

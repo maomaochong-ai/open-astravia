@@ -4,7 +4,7 @@ import { act, renderHook } from "@testing-library/react";
 import { chatMessagesAtom, contextUsageAtom, isCompactingAtom } from "@shared/store/atoms";
 import { messageQueueBySessionAtom } from "@shared/store/message-queue-atoms";
 import { dismissToast, toastsAtom } from "@shared/store/toast-atoms";
-import type { ContextCompositionReport, SessionEvent } from "@vetta/runtime-core";
+import type { ContextCompositionReport, SessionEvent } from "@astravia/runtime-core";
 import { createStore, getDefaultStore, Provider } from "jotai";
 import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";

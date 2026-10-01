@@ -17,7 +17,7 @@ import {
 	DOMAIN_UPDATER_CAPABILITIES,
 	DOMAIN_WEBHOOK_CAPABILITIES,
 	FOUNDATION_GATEWAY_CAPABILITIES,
-} from "@vetta-org/capability-sdk";
+} from "@astravia-org/capability-sdk";
 import { describe, expect, it } from "vitest";
 import { PluginCapabilityAdapter } from "../index.js";
 import { RecordingAccessFactory } from "./helpers/recording-access-factory.js";
@@ -54,12 +54,12 @@ describe("PluginCapabilityAdapter official domain capabilities", () => {
 			...Object.values(DOMAIN_WEBHOOK_CAPABILITIES).map((capability) => capability.id),
 		]);
 		await expect(adapter.getAgentExperimental(sessionId)).resolves.toEqual({
-			vettaCli: true,
+			astraviaCli: true,
 			promptPrediction: false,
 			agentSkills: true,
 		});
 		await expect(adapter.setAgentExperimental(sessionId, { promptPrediction: true })).resolves.toEqual({
-			vettaCli: true,
+			astraviaCli: true,
 			promptPrediction: false,
 			agentSkills: true,
 		});
@@ -112,7 +112,7 @@ describe("PluginCapabilityAdapter official domain capabilities", () => {
 		await expect(adapter.listSessions(sessionId, "C:/workspace")).resolves.toEqual([
 			{
 				id: "session",
-				path: "C:/workspace/.vetta/sessions/session.jsonl",
+				path: "C:/workspace/.astravia/sessions/session.jsonl",
 				cwd: "C:/workspace",
 				firstMessage: "hello",
 				modifiedAt: 1,

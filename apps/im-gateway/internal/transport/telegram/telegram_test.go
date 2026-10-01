@@ -17,7 +17,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"vetta-im-gateway/internal/transport"
+	"astravia-im-gateway/internal/transport"
 )
 
 func TestNew_RequiresToken(t *testing.T) {
@@ -107,12 +107,12 @@ func TestStripBotMention(t *testing.T) {
 		in, user, want string
 		mentioned      bool
 	}{
-		{"@vettabot do thing", "vettabot", "do thing", true},
-		{"@VettaBot Do Thing", "vettabot", "Do Thing", true},
-		{"hey @vettabot help", "vettabot", "hey  help", true},
-		{"no mention here", "vettabot", "no mention here", false},
-		{"@otherbot hi", "vettabot", "@otherbot hi", false},
-		{"@vettabot", "vettabot", "", true},
+		{"@astraviabot do thing", "astraviabot", "do thing", true},
+		{"@AstraviaBot Do Thing", "astraviabot", "Do Thing", true},
+		{"hey @astraviabot help", "astraviabot", "hey  help", true},
+		{"no mention here", "astraviabot", "no mention here", false},
+		{"@otherbot hi", "astraviabot", "@otherbot hi", false},
+		{"@astraviabot", "astraviabot", "", true},
 		{"anything", "", "anything", false},
 	}
 	for _, c := range cases {
@@ -280,7 +280,7 @@ func privateTextUpdate(updateID, userID, chatID, messageID int64, text string) m
 
 func TestStart_PrivateMessageDelivered(t *testing.T) {
 	f := newFakeAPI(t)
-	f.serveGetMe("vettabot")
+	f.serveGetMe("astraviabot")
 
 	u := privateTextUpdate(41, 100, 100, 7, "hello agent")
 	u["message"].(map[string]any)["reply_to_message"] = map[string]any{
@@ -306,7 +306,7 @@ func TestStart_PrivateMessageDelivered(t *testing.T) {
 
 func TestStart_OffsetAdvances(t *testing.T) {
 	f := newFakeAPI(t)
-	f.serveGetMe("vettabot")
+	f.serveGetMe("astraviabot")
 
 	polled2 := make(chan struct{})
 	first := make(chan struct{}, 1)
@@ -364,7 +364,7 @@ func TestStart_OffsetAdvances(t *testing.T) {
 
 func TestStart_AllowedUserFilter(t *testing.T) {
 	f := newFakeAPI(t)
-	f.serveGetMe("vettabot")
+	f.serveGetMe("astraviabot")
 	f.serveUpdatesOnce(
 		privateTextUpdate(1, 555, 555, 1, "from stranger"),
 		privateTextUpdate(2, 100, 100, 2, "from friend"),
@@ -405,10 +405,10 @@ func groupTextUpdate(updateID, messageID int64, text string) map[string]any {
 
 func TestStart_GroupMentionGating(t *testing.T) {
 	f := newFakeAPI(t)
-	f.serveGetMe("vettabot")
+	f.serveGetMe("astraviabot")
 	f.serveUpdatesOnce(
 		groupTextUpdate(1, 1, "chit chat without the bot"),
-		groupTextUpdate(2, 2, "@vettabot run the tests"),
+		groupTextUpdate(2, 2, "@astraviabot run the tests"),
 	)
 
 	tr := newTestTransport(t, f, Options{})
@@ -435,7 +435,7 @@ func TestStart_GroupMentionGating(t *testing.T) {
 
 func TestStart_CallbackQuery(t *testing.T) {
 	f := newFakeAPI(t)
-	f.serveGetMe("vettabot")
+	f.serveGetMe("astraviabot")
 
 	acked := make(chan []byte, 1)
 	f.handle("answerCallbackQuery", func(body []byte, w http.ResponseWriter, _ *http.Request) {
@@ -817,7 +817,7 @@ var pngMagic = []byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'}
 
 func TestStart_InboundPhotoPersistedToInbox(t *testing.T) {
 	f := newFakeAPI(t)
-	f.serveGetMe("vettabot")
+	f.serveGetMe("astraviabot")
 	f.serveUpdatesOnce(map[string]any{
 		"update_id": 1,
 		"message": map[string]any{
@@ -883,7 +883,7 @@ func TestStart_InboundPhotoPersistedToInbox(t *testing.T) {
 
 func TestStart_InboundMediaWithoutInboxHint(t *testing.T) {
 	f := newFakeAPI(t)
-	f.serveGetMe("vettabot")
+	f.serveGetMe("astraviabot")
 
 	hinted := make(chan []byte, 1)
 	f.handle("sendMessage", func(body []byte, w http.ResponseWriter, _ *http.Request) {

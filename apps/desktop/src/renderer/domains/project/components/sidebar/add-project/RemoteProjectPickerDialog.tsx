@@ -6,7 +6,7 @@ import {
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
-} from "@vetta-org/ui";
+} from "@astravia-org/ui";
 import { useTranslation } from "react-i18next";
 import { useRemoteProjectPickerModel } from "./useRemoteProjectPickerModel";
 

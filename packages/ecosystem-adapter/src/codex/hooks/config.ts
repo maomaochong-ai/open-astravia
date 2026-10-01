@@ -217,7 +217,7 @@ function matcherForEvent(
 
 /**
  * Whether this config path belongs to the Codex profile.
- * Matches any `.../.codex/hooks.json` (Vetta-nested `~/.vetta/.codex/...` or top-level official).
+ * Matches any `.../.codex/hooks.json` (Astravia-nested `~/.astravia/.codex/...` or top-level official).
  * Claude settings and Claude plugin hooks/hooks.json are never Codex-owned.
  * Codex plugin hooks should set profileId (or an explicit owned path).
  */
@@ -227,7 +227,7 @@ export function isCodexOwnedSource(source: HookConfigSource): boolean {
 	const normalized = source.path.replace(/\\/g, "/").toLowerCase();
 	if (normalized.includes("/.claude/")) return false;
 	if (normalized.endsWith("/settings.json") || normalized.endsWith("/settings.local.json")) return false;
-	// Codex hooks.json under any .codex dir (including .vetta/.codex)
+	// Codex hooks.json under any .codex dir (including .astravia/.codex)
 	if (normalized.endsWith("/.codex/hooks.json")) return true;
 	return false;
 }

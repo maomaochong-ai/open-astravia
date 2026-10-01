@@ -1,13 +1,13 @@
 ---
 name: publish-ability
-description: Publish a skill, scene, MCP server, plugin, or bundle to the Vetta ability marketplace. Use when the user asks to upload/publish/submit an ability, put a plugin on the marketplace, share a skill with other users, or migrate an existing package into Vetta.
+description: Publish a skill, scene, MCP server, plugin, or bundle to the Astravia ability marketplace. Use when the user asks to upload/publish/submit an ability, put a plugin on the marketplace, share a skill with other users, or migrate an existing package into Astravia.
 metadata:
   version: 2.1.0
-  author: Vetta
+  author: Astravia
   category: 开发
 ---
 
-# Publish an Ability to the Vetta Marketplace
+# Publish an Ability to the Astravia Marketplace
 
 Submitting is a **local** action: it reads an archive from the user's disk, so it runs through
 the bundled script rather than a tool call.
@@ -17,7 +17,7 @@ node "$SKILL_DIR/scripts/publish.mjs" --input /abs/path/to/payload.json
 ```
 
 Checking review status afterwards is a **remote** action — use the `list_my_abilities` tool from
-the built-in `vetta` MCP server. It is always available and needs no setup.
+the built-in `astravia` MCP server. It is always available and needs no setup.
 
 ## Procedure
 
@@ -27,7 +27,7 @@ the built-in `vetta` MCP server. It is always available and needs no setup.
    | --- | --- | --- |
    | `skill` | A `SKILL.md` workflow | `.zip` / `.tar.gz` containing `SKILL.md` |
    | `scene` | A skill installed into the scene directory | same as `skill` |
-   | `plugin` | A Vetta plugin | `.zip` containing `plugin.json` |
+   | `plugin` | A Astravia plugin | `.zip` containing `plugin.json` |
    | `mcp` | One entry in the user's `mcp.json` | none — config only |
    | `bundle` | A named group of already-published abilities | none — references only |
 
@@ -76,7 +76,7 @@ the built-in `vetta` MCP server. It is always available and needs no setup.
    For `skill`/`scene`/`plugin` this also **opens the archive** and cross-checks the payload
    against `plugin.json`, `locales/*.json`, and `SKILL.md` frontmatter. That is the only place
    the "same data, two sources" mistakes surface: a translation key that does not match the
-   package's own locale files, a `slug` or `version` that the server will ignore, a `vetta.json`
+   package's own locale files, a `slug` or `version` that the server will ignore, a `astravia.json`
    that your `detail` silently supersedes. None of these fail the upload — they just make part
    of what you wrote unreachable. Do not skip the dry-run on packaged types.
 
@@ -92,11 +92,11 @@ the built-in `vetta` MCP server. It is always available and needs no setup.
   "review_status": "...", "has_pending": bool, "warnings": [...]}`.
 - `warnings` are things that did not block the submission but changed what gets published —
   a hand-written translation overriding the package's own, a `slug` that was ignored, a
-  `vetta.json` that was skipped. Relay them to the user; do not treat the run as clean.
+  `astravia.json` that was skipped. Relay them to the user; do not treat the run as clean.
 - Input may also arrive on stdin (`cat payload.json | node .../publish.mjs`) if that is more
   convenient than a temp file.
-- The script reads the login token from `~/.vetta/auth.json` itself. If it reports "未登录", tell
-  the user to log in through the Vetta client — do not attempt to pass credentials yourself.
+- The script reads the login token from `~/.astravia/auth.json` itself. If it reports "未登录", tell
+  the user to log in through the Astravia client — do not attempt to pass credentials yourself.
 
 ## Review
 

@@ -1,11 +1,11 @@
 # SDK
 
-进程内嵌入 Coding Agent。类型与完整签名见 `@vetta/coding-agent/sdk` 与 `src/public-api/sdk/`。
+进程内嵌入 Coding Agent。类型与完整签名见 `@astravia/coding-agent/sdk` 与 `src/public-api/sdk/`。
 
 ## 创建会话
 
 ```typescript
-import { createCodingAgentSession } from "@vetta/coding-agent/sdk";
+import { createCodingAgentSession } from "@astravia/coding-agent/sdk";
 
 const { session, diagnostics } = await createCodingAgentSession({
   storage: { kind: "memory" },
@@ -30,21 +30,21 @@ await session.close();
 
 离线列会话用 `createCodingAgentSessionCatalog()`，与活动 Session 生命周期无关。
 
-多 Session 生命周期：`createCodingAgentHost()`。共享 Auth / Model / Settings 时用 `@vetta/coding-agent/host-services`。
+多 Session 生命周期：`createCodingAgentHost()`。共享 Auth / Model / Settings 时用 `@astravia/coding-agent/host-services`。
 
 ## 公开子路径
 
 | 需求 | 导入 |
 |------|------|
-| 写 Extension | `@vetta/coding-agent` / `@vetta/coding-agent/extensions` |
-| 嵌入 Session | `@vetta/coding-agent/sdk` |
-| RPC | `@vetta/coding-agent/rpc` |
-| Runtime 组合 | `@vetta/coding-agent/runtime` / `composition` |
-| 宿主服务 | `@vetta/coding-agent/host-services` |
-| Settings | `@vetta/coding-agent/settings` |
-| Profile | `@vetta/coding-agent/profile` |
-| 资源 | `@vetta/coding-agent/resources` |
-| 历史会话 | `@vetta/coding-agent/historical-sessions` |
+| 写 Extension | `@astravia/coding-agent` / `@astravia/coding-agent/extensions` |
+| 嵌入 Session | `@astravia/coding-agent/sdk` |
+| RPC | `@astravia/coding-agent/rpc` |
+| Runtime 组合 | `@astravia/coding-agent/runtime` / `composition` |
+| 宿主服务 | `@astravia/coding-agent/host-services` |
+| Settings | `@astravia/coding-agent/settings` |
+| Profile | `@astravia/coding-agent/profile` |
+| 资源 | `@astravia/coding-agent/resources` |
+| 历史会话 | `@astravia/coding-agent/historical-sessions` |
 
 包根不再导出 `createAgentSession` / `SessionManager` 等旧 API。
 

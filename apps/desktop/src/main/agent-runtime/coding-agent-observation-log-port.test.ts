@@ -4,7 +4,7 @@ import {
 	CODING_AGENT_PLUGIN_CONFIGURATION_OBSERVATION,
 	CODING_AGENT_SESSION_ASSISTANCE_OBSERVATION,
 	CODING_AGENT_SUBAGENT_ISSUE_OBSERVATION,
-} from "@vetta/coding-agent/composition";
+} from "@astravia/coding-agent/composition";
 import { describe, expect, it, vi } from "vitest";
 import { createCodingAgentObservationLogPort } from "./coding-agent-observation-log-port.js";
 

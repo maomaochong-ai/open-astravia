@@ -1,4 +1,4 @@
-import { defineSessionExtensionFunction } from "@vetta/runtime-core/session-extensions";
+import { defineSessionExtensionFunction } from "@astravia/runtime-core/session-extensions";
 
 export const CODING_AGENT_PLAN_MODE_EXTENSION_ID = "coding-agent.plan-mode";
 

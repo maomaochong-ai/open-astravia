@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { codingAgentSessionShardPath } from "@vetta/coding-agent/bootstrap";
+import { codingAgentSessionShardPath } from "@astravia/coding-agent/bootstrap";
 import { afterEach, describe, expect, it } from "vitest";
 import {
 	createAgentTeamStorageKey,
@@ -27,9 +27,9 @@ describe("Agent Team storage layout", () => {
 	});
 
 	it("moves legacy definitions, workspaces and session references into layout v2", async () => {
-		const vettaHome = await mkdtemp(join(tmpdir(), "vetta-agent-team-migration-"));
-		temporaryDirectories.push(vettaHome);
-		const root = join(vettaHome, "agent-teams");
+		const astraviaHome = await mkdtemp(join(tmpdir(), "astravia-agent-team-migration-"));
+		temporaryDirectories.push(astraviaHome);
+		const root = join(astraviaHome, "agent-teams");
 		const teamId = "builtin:team:dev";
 		const migratedTeamId = "2f631500-0d58-4458-a595-9e403affa08e";
 		const teamName = "研发团队";
@@ -73,7 +73,7 @@ describe("Agent Team storage layout", () => {
 		await writeFile(join(legacyAgentRoot, "description.md"), "Agent description", "utf8");
 		await writeFile(join(oldCwd, "artifact.txt"), "workspace data", "utf8");
 
-		const agentDir = join(vettaHome, "agent");
+		const agentDir = join(astraviaHome, "agent");
 		const oldShard = codingAgentSessionShardPath(oldCwd, agentDir);
 		const oldSessionPath = join(oldShard, "session.conversation.jsonl");
 		await mkdir(oldShard, { recursive: true });
@@ -103,7 +103,7 @@ describe("Agent Team storage layout", () => {
 			"utf8",
 		);
 		await writeFile(
-			join(vettaHome, "conversation-ownership.v1.json"),
+			join(astraviaHome, "conversation-ownership.v1.json"),
 			JSON.stringify({ records: [{ sessionPath: oldSessionPath }] }),
 			"utf8",
 		);
@@ -158,7 +158,7 @@ describe("Agent Team storage layout", () => {
 		expect(lines[2]).toMatchObject({ event: { message: { content: oldCwd } } });
 		// An exact retired id in message content is still user text, not a structured identity reference.
 		expect(lines[3]).toMatchObject({ event: { message: { content: teamId } } });
-		expect(JSON.parse(await readFile(join(vettaHome, "conversation-ownership.v1.json"), "utf8"))).toEqual({
+		expect(JSON.parse(await readFile(join(astraviaHome, "conversation-ownership.v1.json"), "utf8"))).toEqual({
 			records: [{ sessionPath: newSessionPath }],
 		});
 
@@ -174,10 +174,10 @@ describe("Agent Team storage layout", () => {
 	});
 
 	it("keeps a deleted Team workspace as an explicit orphan", async () => {
-		const vettaHome = await mkdtemp(join(tmpdir(), "vetta-agent-team-orphan-"));
-		temporaryDirectories.push(vettaHome);
-		const root = join(vettaHome, "agent-teams");
-		const teamId = "builtin:team:vetta";
+		const astraviaHome = await mkdtemp(join(tmpdir(), "astravia-agent-team-orphan-"));
+		temporaryDirectories.push(astraviaHome);
+		const root = join(astraviaHome, "agent-teams");
+		const teamId = "builtin:team:astravia";
 		const legacyRoot = join(root, encodeURIComponent(teamId));
 		await mkdir(join(legacyRoot, "workspace"), { recursive: true });
 		await writeFile(join(root, "index.json"), JSON.stringify({ schemaVersion: 1, revision: 1 }), "utf8");
@@ -190,7 +190,7 @@ describe("Agent Team storage layout", () => {
 			root,
 			".orphaned",
 			"workspaces",
-			`${createAgentTeamStorageKey("Vetta Team", migratedTeamId)}--percent`,
+			`${createAgentTeamStorageKey("Astravia Team", migratedTeamId)}--percent`,
 		);
 		expect(await readFile(join(orphanRoot, "kept.txt"), "utf8")).toBe("keep");
 		expect(existsSync(legacyRoot)).toBe(false);

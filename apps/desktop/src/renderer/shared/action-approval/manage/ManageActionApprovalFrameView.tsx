@@ -1,5 +1,5 @@
 export type {
 	ManageActionApprovalFrameViewLabels,
 	ManageActionApprovalFrameViewProps,
-} from "@vetta-org/theme-ui/action-approval";
-export { ManageActionApprovalFrameView } from "@vetta-org/theme-ui/action-approval";
+} from "@astravia-org/theme-ui/action-approval";
+export { ManageActionApprovalFrameView } from "@astravia-org/theme-ui/action-approval";

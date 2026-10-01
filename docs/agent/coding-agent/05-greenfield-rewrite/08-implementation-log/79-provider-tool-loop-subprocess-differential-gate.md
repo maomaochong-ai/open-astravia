@@ -24,7 +24,7 @@ CLI App 测试新增两类支持设施：
 - OpenAI Responses fixture：只监听本机随机端口，用 Zod 校验外部请求边界，记录请求并输出确定性
   SSE；同时支持保持连接，以验证 abort 是否真正关闭网络请求。
 
-测试没有注入进程内假 Session，也没有绕过 `@vetta/ai` Provider、Agent Core Tool Loop、RPC Dispatcher
+测试没有注入进程内假 Session，也没有绕过 `@astravia/ai` Provider、Agent Core Tool Loop、RPC Dispatcher
 或文件会话存储。
 
 差分观察只归一化以下宿主语义：
@@ -137,7 +137,7 @@ tsgo、Desktop `tsc --noEmit`、Admin `tsc -b`、Biome 和全部质量守卫。
 
 下一阶段应把“宿主 opt-in + 会话可见/可打开”作为一个完整阶段实施：
 
-1. Desktop/IM sidecar Composition Root 显式选择新的 `vetta-agent-rpc` 入口与 Runtime 参数。
+1. Desktop/IM sidecar Composition Root 显式选择新的 `astravia-agent-rpc` 入口与 Runtime 参数。
 2. 默认仍为 Legacy，并保留可观测、可撤回的开关。
 3. Desktop Session Catalog、open/resume、rename/delete 一次性识别 Legacy 与 Greenfield 格式，不能只
    增加列表可见性。

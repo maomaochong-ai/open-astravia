@@ -1,9 +1,9 @@
 ---
 title: Architecture and package boundaries
-description: Understand the dependency direction between Vetta applications, runtime packages, and core Agent packages.
+description: Understand the dependency direction between Astravia applications, runtime packages, and core Agent packages.
 ---
 
-Vetta uses a monorepo for the desktop application, hosts, and core TypeScript packages. The dependency direction is:
+Astravia uses a monorepo for the desktop application, hosts, and core TypeScript packages. The dependency direction is:
 
 ```text
 applications → runtime-* → coding-agent → agent → ai
@@ -12,9 +12,9 @@ applications → runtime-* → coding-agent → agent → ai
 ## Core packages
 
 <Cards>
-  <Card title="@vetta/ai" description="Model provider protocols, message conversion, streaming events, and the model registry." />
-  <Card title="@vetta/agent-core" description="The stateful Agent Loop, tool calls, and event stream." />
-  <Card title="@vetta/coding-agent" description="Sessions, context, tool orchestration, and SDK/RPC product capabilities." />
+  <Card title="@astravia/ai" description="Model provider protocols, message conversion, streaming events, and the model registry." />
+  <Card title="@astravia/agent-core" description="The stateful Agent Loop, tool calls, and event stream." />
+  <Card title="@astravia/coding-agent" description="Sessions, context, tool orchestration, and SDK/RPC product capabilities." />
 </Cards>
 
 ## Runtime packages

@@ -1,4 +1,4 @@
-import { MessageInput } from "@vetta-org/theme-ui/chat";
+import { MessageInput } from "@astravia-org/theme-ui/chat";
 import type { ReactNode } from "react";
 import { InputBarMention } from "./InputBarMention";
 import {

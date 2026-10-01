@@ -1,4 +1,4 @@
-import type { CodingAgentModelRuntime } from "@vetta/coding-agent/host-services";
+import type { CodingAgentModelRuntime } from "@astravia/coding-agent/host-services";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createDesktopPromptRuntimeSources } from "../agent-runtime/resource-runtime.js";
 import { createDesktopKnowledgeProcessingSessionFactory } from "./processing-session-factory.js";
@@ -29,31 +29,31 @@ const factoryMocks = vi.hoisted(() => ({
 
 factoryMocks.createNodeKnowledgeRuntime.mockReturnValue(factoryMocks.knowledgeRuntime);
 
-vi.mock("@vetta/coding-agent/composition", () => ({
+vi.mock("@astravia/coding-agent/composition", () => ({
 	createKnowledgeProcessingSessionFactory: factoryMocks.create,
 }));
 
-vi.mock("@vetta/coding-agent/model-context", () => ({
+vi.mock("@astravia/coding-agent/model-context", () => ({
 	detectWorkspaceFacts: factoryMocks.detectWorkspaceFacts,
 	probeWorkspaceSignals: factoryMocks.probeWorkspaceSignals,
 }));
 
-vi.mock("@vetta/runtime-node/coding", () => ({
+vi.mock("@astravia/runtime-node/coding", () => ({
 	nodeModelInputImageProcessor: factoryMocks.nodeModelInputImageProcessor,
 	nodeWorkspaceFactsFileSource: factoryMocks.nodeWorkspaceFactsFileSource,
 }));
 
-vi.mock("@vetta/runtime-node/conversation", () => ({
+vi.mock("@astravia/runtime-node/conversation", () => ({
 	createFileConversationPersistence: factoryMocks.createFileConversationPersistence,
 	resolveConversationFilePath: vi.fn(),
 	resolveSessionIdFromPath: vi.fn(),
 }));
 
-vi.mock("@vetta/runtime-node/host", () => ({
+vi.mock("@astravia/runtime-node/host", () => ({
 	createNodeKnowledgeRuntime: factoryMocks.createNodeKnowledgeRuntime,
 }));
 
-vi.mock("@vetta/runtime-desktop", () => ({
+vi.mock("@astravia/runtime-desktop", () => ({
 	createDesktopCodingAgentSessionExecutionEnvironment:
 		factoryMocks.createDesktopCodingAgentSessionExecutionEnvironment,
 	createDesktopCodingAgentToolEnvironment: factoryMocks.createDesktopCodingAgentToolEnvironment,

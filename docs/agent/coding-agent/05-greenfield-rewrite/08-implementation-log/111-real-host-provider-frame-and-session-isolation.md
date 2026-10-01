@@ -5,7 +5,7 @@
 第 110 轮已经完成 Runtime-native 产品工具和通用模型顺序合同，但真实宿主门禁仍只比较事件与局部 Provider
 行为，尚未同时证明：
 
-1. `vetta` CLI/RPC/IM 独立进程发出的完整 Provider 请求与 Legacy 相等；
+1. `astravia` CLI/RPC/IM 独立进程发出的完整 Provider 请求与 Legacy 相等；
 2. 同一个 `RuntimeHost` 持有不同 cwd 的多个 Session 时，Session-local 产品工具不会串用工作目录；
 3. 测试执行的是当前源码组合，而不是直接调用某个内部 Session 或 Tool Factory。
 

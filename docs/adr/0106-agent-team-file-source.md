@@ -6,12 +6,12 @@
 
 ## 背景
 
-当前 Agent Team 有两个事实源：`@vetta/agent-team` 在 TypeScript 中写死随应用提供的初始 Agent/Blueprint/团队，Desktop 又把运行时聚合结果写入 `agent-teams.json`。初始项还被 UI 和 Store 当作特殊对象处理。这样会造成默认数据、运行时和用户修改之间的分叉，也无法自然地支持从文件增加团队。
+当前 Agent Team 有两个事实源：`@astravia/agent-team` 在 TypeScript 中写死随应用提供的初始 Agent/Blueprint/团队，Desktop 又把运行时聚合结果写入 `agent-teams.json`。初始项还被 UI 和 Store 当作特殊对象处理。这样会造成默认数据、运行时和用户修改之间的分叉，也无法自然地支持从文件增加团队。
 
 ## 决策
 
 1. 不定义“预设”领域类型。应用发布包只提供首次安装用的初始团队模板；安装到配置目录后，它就是普通 Agent Team 文件，与用户新建团队使用完全相同的读、改、删、导入流程。
-2. 使用现有 `VETTA_HOME` 作为根目录：生产默认 `~/.vetta`，开发/验证通过 `VETTA_HOME=~/.vetta-dev` 隔离。领域 ID 一律使用普通 UUID；应用附带数据与用户新建数据使用相同格式，不使用 `builtin:agent:*`、`builtin:team:*` 或其它身份前缀。
+2. 使用现有 `ASTRAVIA_HOME` 作为根目录：生产默认 `~/.astravia`，开发/验证通过 `ASTRAVIA_HOME=~/.astravia-dev` 隔离。领域 ID 一律使用普通 UUID；应用附带数据与用户新建数据使用相同格式，不使用 `builtin:agent:*`、`builtin:team:*` 或其它身份前缀。
 3. 团队采用“目录 + 小型元数据 JSON + 内容文件”的版本化合同，不把所有内容塞进一个 JSON。首期布局如下：
 
    ```text
@@ -23,25 +23,25 @@
          description.md            # 长职责说明
          system-prompt.md          # 可选的系统提示词覆盖
      teams/
-       vetta-team--f6e7d8c9b0/
+       astravia-team--f6e7d8c9b0/
          team.json                   # 团队元信息、成员索引、策略引用
          description.md              # 团队长描述
          members/
            master--1122334455.md     # 可选的成员任务书
      workspaces/
-       vetta-team--f6e7d8c9b0/       # 团队默认工作空间
+       astravia-team--f6e7d8c9b0/       # 团队默认工作空间
    ```
 
    目录键由首次落盘时的可读名称和不可变 ID 摘要组成，例如 `dev-team--5013fe9a32`。改名不改目录键，避免路径级联迁移；摘要用于解决同名冲突。`team.json` 和 `agent.json` 只保存结构化元数据；系统提示词、长描述、行为规则等内容使用独立 UTF-8 文本文件（默认 Markdown）。运行时由 Desktop 文件仓库解析为现有 `AgentTeamDocument` 投影，Runtime Core 不直接访问文件系统。
 4. 首次读取空目录时将应用提供的初始团队物化为上述普通文件；之后只读取文件，不再按启动次数重新注入。`.initialized` 标记用于区分“尚未安装”和“用户已删除全部团队”，用户删除该团队后不会被任何隐式逻辑恢复。
 5. 所有编辑（包括名称、描述、头像、mention handle、能力和高级 Blueprint 提示词）都写回来源目录中的对应文件，使用 revision 乐观锁与临时文件 + 原子替换。文件 ID 是稳定身份，不能因改名改变；单个内容文件的变更不应重写无关文件。
-6. 外部文件导入先读取为 `unknown`，完成 schema、相对路径、ID 唯一性、成员引用、策略注册、文件大小和符号链接限制校验，再复制到 `VETTA_HOME/agent-teams/`；冲突时要求用户选择新 ID 或覆盖，不允许静默覆盖。
+6. 外部文件导入先读取为 `unknown`，完成 schema、相对路径、ID 唯一性、成员引用、策略注册、文件大小和符号链接限制校验，再复制到 `ASTRAVIA_HOME/agent-teams/`；冲突时要求用户选择新 ID 或覆盖，不允许静默覆盖。
 7. 存储布局升级为 v2 时执行一次可恢复迁移：先写迁移日志，再移动团队、Agent、默认工作空间及其 Runtime session shard，并结构化改写 Team session、Conversation ownership 与 JSON/JSONL 中的 cwd、session path、团队/成员/Agent ID 引用。重复工作空间移入 `.orphaned/workspaces/`，不静默删除。全部成功后原子写入 v2 `index.json` 作为完成标记并删除迁移日志。
 8. 迁移完成后只按 v2 索引读取 `teams/`、`agents/` 与 `workspaces/`，不保留旧目录名、Base64URL 工作空间或百分号编码目录的兼容读取。历史 `builtin:*` 标识只允许存在于一次性迁移映射中；未知但符合旧前缀的 ID 使用确定性 UUID 改写，保证中断重试得到同一结果。
 
 ## 后果
 
-- `.vetta` 和 `.vetta-dev` 下看到的是按资源类型分组、名称可读且可复制/版本控制的团队目录；不存在“应用团队”和“用户团队”两套运行模型。长提示词和描述可以独立 diff、复用和审查。
+- `.astravia` 和 `.astravia-dev` 下看到的是按资源类型分组、名称可读且可复制/版本控制的团队目录；不存在“应用团队”和“用户团队”两套运行模型。长提示词和描述可以独立 diff、复用和审查。
 - 文件目录是持久化唯一事实源，内存索引只是缓存；新增团队不需要改 TypeScript、编译或发布客户端。
 - 删除、导入和文件冲突会成为必须测试的持久化边界；需要补充文件监听/刷新策略时，也只影响 Desktop Store，不扩散到 Runtime Core。
 - 多团队共享同一 Agent Profile 时，可在文件合同中使用显式 Profile 引用；若需要完全自包含导入，则复制 Profile 并生成新的稳定 ID，不能靠隐式别名维持一致性。

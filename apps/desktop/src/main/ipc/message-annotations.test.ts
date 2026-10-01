@@ -28,7 +28,7 @@ describe("annotation preload/main contract", () => {
 	});
 
 	it("runs the public API through registered handlers, saves results, scopes events and removes subscriptions", async () => {
-		directory = await mkdtemp(join(tmpdir(), "vetta-note-ipc-"));
+		directory = await mkdtemp(join(tmpdir(), "astravia-note-ipc-"));
 		const path = join(directory, "main.jsonl");
 		await writeFile(path, "main");
 		const complete = vi.fn(async () => ({

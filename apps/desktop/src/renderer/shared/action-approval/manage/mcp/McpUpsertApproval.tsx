@@ -90,7 +90,7 @@ function McpUpsertApprovalContent({ approval }: { approval: ActiveActionApproval
 	useEffect(() => {
 		if (!input?.name) return;
 		let cancelled = false;
-		void window.vetta.mcp
+		void window.astravia.mcp
 			.get()
 			.then((config) => {
 				if (cancelled) return;

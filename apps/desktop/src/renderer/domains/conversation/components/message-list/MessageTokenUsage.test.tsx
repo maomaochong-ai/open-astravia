@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import type { Usage } from "@vetta/ai";
+import type { Usage } from "@astravia/ai";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";

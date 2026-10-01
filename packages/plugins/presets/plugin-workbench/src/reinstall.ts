@@ -11,9 +11,9 @@ export interface ApplyPluginOptions {
 	 */
 	forceBuild?: boolean;
 	/**
-	 * After install, reload the whole Vetta renderer so host permission tables,
+	 * After install, reload the whole Astravia renderer so host permission tables,
 	 * settings schema, and every plugin remote re-hydrate from a cold start.
-	 * Default false for first-time「应用到 Vetta」; true for「重新安装」.
+	 * Default false for first-time「应用到 Astravia」; true for「重新安装」.
 	 */
 	refreshApp?: boolean;
 	/** Start / restart dev watch after install (ignored when refreshApp reloads). */
@@ -24,7 +24,7 @@ export interface ApplyPluginOptions {
  * Build (optional) → installFromPath → enable → grant → optional hot reload / full app refresh.
  * Shared by panel buttons and the reinstall message card.
  */
-export async function applyPluginToVetta(options: ApplyPluginOptions): Promise<{ packagePath: string }> {
+export async function applyPluginToAstravia(options: ApplyPluginOptions): Promise<{ packagePath: string }> {
 	const { project, forceBuild = false, refreshApp = false, startHotReload = true } = options;
 	const workbenchRoot = options.workbenchRoot ?? (await resolveWorkbenchRoot());
 	const command = getWorkbenchCommand();
@@ -42,7 +42,7 @@ export async function applyPluginToVetta(options: ApplyPluginOptions): Promise<{
 		}
 		const manifest = await readJson(joinPath(project.dir, "plugin.json"));
 		const version = typeof manifest?.version === "string" ? manifest.version : project.version;
-		packagePath = joinPath(project.dir, "release", `${project.id}-${version}.vettapkg`);
+		packagePath = joinPath(project.dir, "release", `${project.id}-${version}.astraviapkg`);
 	}
 
 	// 构建期间 dev-watch 可能已触发插件重载，必须用重载后的 fs session。
@@ -75,16 +75,16 @@ export async function applyPluginToVetta(options: ApplyPluginOptions): Promise<{
 	if (startHotReload) {
 		await plugins.startDevWatch(project.id, project.dir);
 	}
-	window.dispatchEvent(new Event("vetta:plugins-changed"));
+	window.dispatchEvent(new Event("astravia:plugins-changed"));
 	return { packagePath };
 }
 
 /** Reinstall = force rebuild + re-apply + full app refresh. */
-export async function reinstallPluginToVetta(
+export async function reinstallPluginToAstravia(
 	project: ProjectInfo,
 	workbenchRoot?: string,
 ): Promise<{ packagePath: string }> {
-	return applyPluginToVetta({
+	return applyPluginToAstravia({
 		project,
 		workbenchRoot,
 		forceBuild: true,

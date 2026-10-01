@@ -25,7 +25,7 @@ interface MockPopoverProps {
 	modal?: boolean;
 }
 
-vi.mock("@vetta-org/plugin-sdk", () => ({
+vi.mock("@astravia-org/plugin-sdk", () => ({
 	useTranslation: () => ({
 		t: (key: string) =>
 			({
@@ -36,7 +36,7 @@ vi.mock("@vetta-org/plugin-sdk", () => ({
 	}),
 }));
 
-vi.mock("@vetta-org/ui", () => ({
+vi.mock("@astravia-org/ui", () => ({
 	Button: ({ children, size: _size, variant: _variant, ...props }: MockButtonProps) => (
 		<button {...props}>{children}</button>
 	),

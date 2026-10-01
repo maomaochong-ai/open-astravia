@@ -2,46 +2,46 @@ import { ipcMain } from "electron";
 import { getAppVersion, updaterService } from "../updater.js";
 
 export function registerUpdaterIpc(): () => void {
-	ipcMain.handle("vetta:updater:check", async () => {
+	ipcMain.handle("astravia:updater:check", async () => {
 		return updaterService.check();
 	});
 
-	ipcMain.handle("vetta:updater:sync", async () => {
+	ipcMain.handle("astravia:updater:sync", async () => {
 		await updaterService.syncInBackground();
 	});
 
-	ipcMain.handle("vetta:updater:get-state", () => {
+	ipcMain.handle("astravia:updater:get-state", () => {
 		return updaterService.getState();
 	});
 
-	ipcMain.handle("vetta:updater:get-current-version", () => {
+	ipcMain.handle("astravia:updater:get-current-version", () => {
 		return getAppVersion();
 	});
 
-	ipcMain.handle("vetta:updater:download", async () => {
+	ipcMain.handle("astravia:updater:download", async () => {
 		return updaterService.startDownload();
 	});
 
-	ipcMain.handle("vetta:updater:install", async () => {
+	ipcMain.handle("astravia:updater:install", async () => {
 		await updaterService.install();
 	});
 
-	ipcMain.handle("vetta:updater:dismiss", () => {
+	ipcMain.handle("astravia:updater:dismiss", () => {
 		updaterService.dismissReady();
 	});
 
-	ipcMain.handle("vetta:updater:cancel", () => {
+	ipcMain.handle("astravia:updater:cancel", () => {
 		updaterService.cancel();
 	});
 
 	return () => {
-		ipcMain.removeHandler("vetta:updater:check");
-		ipcMain.removeHandler("vetta:updater:sync");
-		ipcMain.removeHandler("vetta:updater:get-state");
-		ipcMain.removeHandler("vetta:updater:get-current-version");
-		ipcMain.removeHandler("vetta:updater:download");
-		ipcMain.removeHandler("vetta:updater:install");
-		ipcMain.removeHandler("vetta:updater:dismiss");
-		ipcMain.removeHandler("vetta:updater:cancel");
+		ipcMain.removeHandler("astravia:updater:check");
+		ipcMain.removeHandler("astravia:updater:sync");
+		ipcMain.removeHandler("astravia:updater:get-state");
+		ipcMain.removeHandler("astravia:updater:get-current-version");
+		ipcMain.removeHandler("astravia:updater:download");
+		ipcMain.removeHandler("astravia:updater:install");
+		ipcMain.removeHandler("astravia:updater:dismiss");
+		ipcMain.removeHandler("astravia:updater:cancel");
 	};
 }

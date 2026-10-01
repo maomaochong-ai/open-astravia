@@ -1,4 +1,4 @@
-import type { RuntimeConfigurationJsonObject } from "@vetta/runtime-core/configuration";
+import type { RuntimeConfigurationJsonObject } from "@astravia/runtime-core/configuration";
 import { ipcMain, type WebContents } from "electron";
 import { RUNTIME_CONFIGURATION_CHANNELS } from "../../shared/runtime-configuration-ipc.js";
 import { getDesktopRuntimeConfigurationService } from "../runtime-configuration/runtime-configuration-composition.js";

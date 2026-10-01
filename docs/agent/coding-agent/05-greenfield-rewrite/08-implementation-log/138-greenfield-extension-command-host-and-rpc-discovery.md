@@ -28,7 +28,7 @@
 - 复用现有 `ExtensionRunner` 的 first-wins command 查询和 Command Context。
 - 保留 Legacy 参数解析、未知命令、错误上报与队列拒绝文案。
 - 独立输出 Extension command catalog，包含来源文件路径。
-- 通过 `@vetta/coding-agent/runtime-host/greenfield` 公开，供具体宿主完成会话迁移后显式注入。
+- 通过 `@astravia/coding-agent/runtime-host/greenfield` 公开，供具体宿主完成会话迁移后显式注入。
 
 ### 2. Greenfield IM RPC 命令发现
 

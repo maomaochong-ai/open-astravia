@@ -98,7 +98,7 @@ bun run vitest --run <test-file>
 bun run test:pkg <name>
 ```
 
-包装器会查找 Node 20+（可用 `VETTA_TEST_NODE` 指定 `node.exe`），再执行仓库里的 `node_modules/vitest/vitest.mjs`。不要使用 `bunx vitest`、`npx vitest` 或包脚本里的裸 `vitest`。`check-vitest-runner.mjs` 会扫描 workspace `package.json` 并拒绝这些入口。
+包装器会查找 Node 20+（可用 `ASTRAVIA_TEST_NODE` 指定 `node.exe`），再执行仓库里的 `node_modules/vitest/vitest.mjs`。不要使用 `bunx vitest`、`npx vitest` 或包脚本里的裸 `vitest`。`check-vitest-runner.mjs` 会扫描 workspace `package.json` 并拒绝这些入口。
 
 ## 包边界规则（`check-package-boundaries`）
 
@@ -141,17 +141,17 @@ bun run test:pkg <name>
 - 普通包声明 `dist/**`、插件 `release/**` 和 Next `.next/**` 为输出；lockfile、内部依赖任务哈希、根 `tsconfig.base.json`、根 `.env*` 与显式构建变量共同决定本地缓存键。包根 `test/**`、`tests/**`、README 和 CHANGELOG 不影响 build；`src/**` 内或被生成/打包脚本读取的资源仍参与哈希。
 - Desktop 完整 `build` 包含平台模型、生成、插件 staging 和多入口 bundle，初始阶段明确 `cache: false`。
 - Remote Cache 默认关闭且预先要求 HMAC 制品签名；启用前必须按 [Remote Cache 启用清单](./turborepo-remote-cache-rollout.md) 验证跨平台制品、环境变量、日志脱敏和缓存完整性，配置 `TURBO_REMOTE_CACHE_SIGNATURE_KEY`，并更新 ADR-0079。
-- Turbo 使用 strict environment mode。普通 build 只声明 `NODE_ENV`、`VETTA_PLUGIN_DEV_WATCH`、`VETTA_PLUGIN_DOCS_SRC` 和 `VETD_SRC`；Docs build 额外按自身合同声明 `DOCS_SITE_URL`，Desktop build 独立声明 `VETTA_*`/`VETD_*`，dev task 保留这些通配变量。新增影响构建的变量必须进入范围最小的 task `env`；只需运行时可见且不影响输出的秘密变量应审查后进入 `passThroughEnv`。
+- Turbo 使用 strict environment mode。普通 build 只声明 `NODE_ENV`、`ASTRAVIA_PLUGIN_DEV_WATCH`、`ASTRAVIA_PLUGIN_DOCS_SRC` 和 `ASTRAVIA_DESIGN_SRC`；Docs build 额外按自身合同声明 `DOCS_SITE_URL`，Desktop build 独立声明 `ASTRAVIA_*`/`ASTRAVIA_DESIGN_*`，dev task 保留这些通配变量。新增影响构建的变量必须进入范围最小的 task `env`；只需运行时可见且不影响输出的秘密变量应审查后进入 `passThroughEnv`。
 
 plugin-workbench 的 `prebuild` 会同步根 `docs/plugin/**`，该目录通过 `$TURBO_ROOT$` 作为其显式输入；其它包不会因插件文档变化而失效。
 
-Desktop build task 显式依赖 `@vetta-org/plugin-vite`。开发前置构建读取本地 Turbo 缓存；正式打包入口带 `--force`，继续无条件执行 workspace 构建并写入新缓存。Preset 的租户选择、zip 校验与 staging 仍由 `build-presets.mjs` 负责，但正式 Desktop build 复用 Turbo 已构建的 plugin tooling；独立 `build:preset` 才自行准备 tooling。
+Desktop build task 显式依赖 `@astravia-org/plugin-vite`。开发前置构建读取本地 Turbo 缓存；正式打包入口带 `--force`，继续无条件执行 workspace 构建并写入新缓存。Preset 的租户选择、zip 校验与 staging 仍由 `build-presets.mjs` 负责，但正式 Desktop build 复用 Turbo 已构建的 plugin tooling；独立 `build:preset` 才自行准备 tooling。
 
 根 build、Desktop 前置 build 和测试依赖 build 均使用 `--summarize`。本地 summary 位于 `.turbo/runs/`（已忽略），CI 的 Linux/Windows 单测 job 将其作为保留 7 天的诊断制品上传；summary 用于观察任务耗时、哈希和命中状态，不作为构建成功的第二事实源。
 
 新增或修改 workspace 依赖后必须执行正常的 `bun install`；`bun install --lockfile-only` 只更新锁文件，不创建包级 workspace 链接。可用 `bunx turbo run build --dry=json --filter=<package>` 检查任务闭包和依赖原因。
 
-`test:changed` 不调用包级 `test` 或 `test:pkg`：已修改测试文件直接运行，源码（包括公共入口和合同源码）交给 Vitest `related` 选择真实依赖它的测试，两者同时存在时会从 related 阶段排除已直接运行的测试。共享源码已有更窄且经审查的宿主合同测试时使用显式映射；删除文件、缺少可定向 Vitest 入口或找不到关联测试时直接失败，要求补回归测试或显式映射，不会建议或自动转为整包/全仓测试。包内测试脚本若包含测试所需的前置命令，会先执行前置命令再运行选中的测试，例如 `vetta-ui-design` 的 `build:runner`。
+`test:changed` 不调用包级 `test` 或 `test:pkg`：已修改测试文件直接运行，源码（包括公共入口和合同源码）交给 Vitest `related` 选择真实依赖它的测试，两者同时存在时会从 related 阶段排除已直接运行的测试。共享源码已有更窄且经审查的宿主合同测试时使用显式映射；删除文件、缺少可定向 Vitest 入口或找不到关联测试时直接失败，要求补回归测试或显式映射，不会建议或自动转为整包/全仓测试。包内测试脚本若包含测试所需的前置命令，会先执行前置命令再运行选中的测试，例如 `astravia-ui-design` 的 `build:runner`。
 
 `bun.lock` 会比较基线与当前锁文件中每个 workspace 的完整已解析依赖闭包，并把变化定位到 workspace 的直接依赖；随后只把实际 import 这些依赖的源码或测试交给同一文件级选择器。纯格式变化和只被根工具使用的依赖变化不会触发产品包测试；无法定位依赖或 importer 时直接失败。workspace 的 `package.json`、Vitest/Vite/TypeScript 配置由 `check` 校验，不触发产品包测试；根 `package.json`、Turbo、workflow、质量脚本和 `plugin.json` 选择对应的质量合同测试，不会运行整个 `test:quality`，其中插件清单由仓库级 Schema 测试验证。测试启动前会由 Turbo 构建所选测试消费的 workspace 依赖，确保干净 checkout 中指向 `dist` 的包导出可被解析，同时不会构建 Desktop、Docs 或 Remote Relay 这些叶子应用本身。锁文件或 Git 基线无法可靠读取、解析时同样直接失败。
 
@@ -163,7 +163,7 @@ Desktop build task 显式依赖 `@vetta-org/plugin-vite`。开发前置构建读
 不再重复执行 CLI 包级 typecheck。
 
 根 `tsconfig.json` 的 path map 必须为每个 workspace `package.json#exports` 的 types 子路径
-写明源文件（例如 `@vetta/runtime-mcp/auth` → `src/auth/index.ts`）。`check` 在干净树里
+写明源文件（例如 `@astravia/runtime-mcp/auth` → `src/auth/index.ts`）。`check` 在干净树里
 typecheck，不会先生成 `dist/*.d.ts`；`moduleResolution: Node16` 下通配 `src/*` 也不会把
 目录解析成 `index.ts`。`check-source-path-maps.mjs` 机械检查这条合同。
 
@@ -176,7 +176,7 @@ workspace 包声明解析。因此，上游源码修改但 `dist/*.d.ts` 尚未�
 
 `.github/workflows/quality.yml` 负责通用 TypeScript 质量门禁：冻结依赖安装、`bun run check`、质量脚本测试、Runtime 合同检查，并在 Ubuntu 与 Windows 上运行 `test:changed` 选出的直接、关联或显式合同测试。Linux 覆盖可移植逻辑，Windows 保留路径、进程和 Bun/Node 兼容性覆盖；macOS 特有的生产行为由 path-filtered Desktop packaged E2E 与 Apple 客户端 workflow 验证，不再把所有可移植单测重复跑第三遍。各平台按操作系统、架构和锁文件复用 Bun 下载缓存，但每次都由冻结锁文件重新生成根 `node_modules`；不得跨 Runner 恢复 `node_modules`。完整 Git 历史用于计算 PR base，同一 PR 或分支的新提交会取消旧运行。
 
-非 Bun workspace 由独立的 path-filtered workflow 覆盖：`.github/workflows/im-gateway.yml` 对 Go Gateway 执行 tidy、vet、build、test、接口纪律和 golangci-lint；`.github/workflows/kotlin.yml` 对 `apps/mobile/client-android` 执行 Android host tests 和 debug APK 构建；`.github/workflows/mobile-apple.yml` 对 `apps/mobile/client-apple` 执行 VettaKit 单元测试、与桌面端真实 LAN 服务器的 interop 测试和 iOS 模拟器构建，协议包 `packages/remote-control` 变化时同样触发。这些 path-filtered workflow 只在分支 push 或 PR 中对应目录或 workflow 自身变化时运行，不响应 tag push。
+非 Bun workspace 由独立的 path-filtered workflow 覆盖：`.github/workflows/im-gateway.yml` 对 Go Gateway 执行 tidy、vet、build、test、接口纪律和 golangci-lint；`.github/workflows/kotlin.yml` 对 `apps/mobile/client-android` 执行 Android host tests 和 debug APK 构建；`.github/workflows/mobile-apple.yml` 对 `apps/mobile/client-apple` 执行 AstraviaKit 单元测试、与桌面端真实 LAN 服务器的 interop 测试和 iOS 模拟器构建，协议包 `packages/remote-control` 变化时同样触发。这些 path-filtered workflow 只在分支 push 或 PR 中对应目录或 workflow 自身变化时运行，不响应 tag push。
 
 Desktop 仓库布局合同由通用 `test:quality` 检查一次；独立的 `.github/workflows/desktop-packaged.yml` 运行打包 helper 测试，并在变更涉及 Desktop 主进程、preload、打包脚本、原生依赖、远程控制或锁文件时启动 Windows、macOS、Linux runners，构建 unpacked packaged 应用并运行 Electron 启动与 updater E2E。无关变更不会构建 Desktop。
 
@@ -196,7 +196,7 @@ bun run --cwd apps/desktop dist:opensource -- --target dir
 bun run --cwd apps/desktop test:e2e:packaged
 ```
 
-该 E2E 会在 WDIO 启动 Electron 前创建本地 generic feed，通过真实 `window.vetta.updater.check()` 验证 `app-update.yml`、feed 请求、版本解析和 renderer/main IPC 链路；它不会安装伪造的更新包。发布后的真实安装包可读性、hash、blockmap 和平台安装准备仍由各平台 `verify:updates:*` 以及发布后 `verify-update-feed.mjs` 负责。
+该 E2E 会在 WDIO 启动 Electron 前创建本地 generic feed，通过真实 `window.astravia.updater.check()` 验证 `app-update.yml`、feed 请求、版本解析和 renderer/main IPC 链路；它不会安装伪造的更新包。发布后的真实安装包可读性、hash、blockmap 和平台安装准备仍由各平台 `verify:updates:*` 以及发布后 `verify-update-feed.mjs` 负责。
 
 需要验证真实安装、重启和版本切换时，先使用 `desktop-release` 的 `workflow_dispatch` + `channel=test` 发布基线和候选，
 再运行 `.github/workflows/desktop-upgrade-e2e.yml` 并填写 `baseline_version`、`candidate_version`。该 workflow 在
@@ -204,7 +204,7 @@ Windows、macOS、Linux runner 上真实安装基线包，驱动现有 updater �
 应用日志和升级状态文件。它使用独立的 `desktop-test` Environment，不会触碰 stable。当前 GitHub macOS runner 只验收
 其实际架构；macOS arm64 需要额外的自持 runner 矩阵。
 
-单元测试按包顺序执行，不使用根 workspace 的无界并发扇出；这会牺牲少量总耗时，但能避免多个 Vitest 进程同时争用 CPU、临时目录和子进程而产生假超时。包内测试若消费自身生成物，由该包的 `test` 脚本先生成（例如 `vetta-ui-design` 的独立 history runner），不把叶子包完整制品构建混入通用依赖预构建。CLI 的 Windows CI 进程型测试按文件串行，避免多个 Node、Bun、MCP 与 shell 子进程争用 Runner 资源；本地开发使用有界文件并行缩短反馈时间。平台特有行为由对应的平台 workflow 或 packaged E2E 覆盖。
+单元测试按包顺序执行，不使用根 workspace 的无界并发扇出；这会牺牲少量总耗时，但能避免多个 Vitest 进程同时争用 CPU、临时目录和子进程而产生假超时。包内测试若消费自身生成物，由该包的 `test` 脚本先生成（例如 `astravia-ui-design` 的独立 history runner），不把叶子包完整制品构建混入通用依赖预构建。CLI 的 Windows CI 进程型测试按文件串行，避免多个 Node、Bun、MCP 与 shell 子进程争用 Runner 资源；本地开发使用有界文件并行缩短反馈时间。平台特有行为由对应的平台 workflow 或 packaged E2E 覆盖。
 
 ## 与 OpenClaw 的对应关系（有意不做的）
 

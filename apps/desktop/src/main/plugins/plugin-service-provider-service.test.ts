@@ -2,7 +2,7 @@ import { ChildProcess } from "node:child_process";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { PluginServiceProviderManifest, PluginServiceRuntimeKind } from "@vetta-org/plugin-sdk";
+import type { PluginServiceProviderManifest, PluginServiceRuntimeKind } from "@astravia-org/plugin-sdk";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { InstalledPlugin } from "../../preload/api-types/plugins.js";
 import { PluginServiceProviderService } from "./plugin-service-provider-service.js";
@@ -20,7 +20,7 @@ afterEach(async () => {
 });
 
 async function fixture() {
-	const root = await mkdtemp(join(tmpdir(), "vetta-service-lifecycle-"));
+	const root = await mkdtemp(join(tmpdir(), "astravia-service-lifecycle-"));
 	directories.push(root);
 	const dataDirectory = join(root, "data");
 	const cacheDirectory = join(root, "cache");
@@ -28,7 +28,7 @@ async function fixture() {
 	await mkdir(cacheDirectory);
 	await writeFile(
 		join(root, "config.tpl"),
-		`port=\${VETTA_SERVICE_PORT}\nruntime=\${VETTA_SERVICE_RUNTIME_DIR}\nkey=\${VETTA_SERVICE_SECRET_API_KEY}`,
+		`port=\${ASTRAVIA_SERVICE_PORT}\nruntime=\${ASTRAVIA_SERVICE_RUNTIME_DIR}\nkey=\${ASTRAVIA_SERVICE_SECRET_API_KEY}`,
 	);
 	const manifest: PluginServiceProviderManifest = {
 		id: "bridge",
@@ -38,7 +38,7 @@ async function fixture() {
 			{ source: "config.tpl", destination: "generated.conf", mode: "render" },
 			{ source: "config.tpl", destination: "user.conf", mode: "create" },
 		],
-		process: { args: ["--config", `\${VETTA_SERVICE_CACHE_DIR}/generated.conf`] },
+		process: { args: ["--config", `\${ASTRAVIA_SERVICE_CACHE_DIR}/generated.conf`] },
 		health: { path: "/health", credentialId: "api-key" },
 	};
 	const plugin: InstalledPlugin = {
@@ -47,7 +47,7 @@ async function fixture() {
 		version: "1.0.0",
 		activeVersion: "1.0.0",
 		pluginApiVersion: "^2.0.0",
-		entryUrl: "vetta-plugin://managed-bridge/index.js",
+		entryUrl: "astravia-plugin://managed-bridge/index.js",
 		moduleFederation: { remoteName: "managed_bridge", expose: "./plugin" },
 		styleUrls: [],
 		permissions: [],
@@ -93,7 +93,7 @@ async function fixture() {
 		installer: { getPlatform: () => ({ tag: "win32-x64" }), install: installRuntime, resolve: resolveRuntime },
 		fetchClient,
 		spawnProcess,
-		resolveHostNodeExecutable: () => "C:/vetta/node.exe",
+		resolveHostNodeExecutable: () => "C:/astravia/node.exe",
 		killProcess,
 		allocatePort: async () => ++port,
 		broadcast: vi.fn(),
@@ -268,7 +268,7 @@ describe("PluginServiceProviderService", () => {
 		}));
 		await f.service.start(f.plugin.id, "bridge");
 		expect(f.spawnProcess).toHaveBeenCalledWith(
-			"C:/vetta/node.exe",
+			"C:/astravia/node.exe",
 			expect.arrayContaining([join(f.paths().runtimeDirectory, "service", "main.mjs")]),
 			expect.any(Object),
 		);

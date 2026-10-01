@@ -3,10 +3,10 @@ import { getRuntimeManager } from "../runtimes/manager.js";
 import type { RuntimeType } from "../runtimes/types.js";
 
 export const RUNTIMES_CHANNELS = {
-	GET_STATUS: "vetta:runtimes:get-status",
-	REINSTALL: "vetta:runtimes:reinstall",
-	REDETECT: "vetta:runtimes:redetect",
-	INSTALL_GIT: "vetta:runtimes:install-git",
+	GET_STATUS: "astravia:runtimes:get-status",
+	REINSTALL: "astravia:runtimes:reinstall",
+	REDETECT: "astravia:runtimes:redetect",
+	INSTALL_GIT: "astravia:runtimes:install-git",
 } as const;
 
 export function registerRuntimesIpc(): () => void {

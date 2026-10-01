@@ -1,8 +1,8 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { Api, Model } from "@vetta/ai";
-import type { SessionEvent } from "@vetta/runtime-core";
+import type { Api, Model } from "@astravia/ai";
+import type { SessionEvent } from "@astravia/runtime-core";
 import { afterEach, describe, expect, it } from "vitest";
 import type { CodingAgentRuntimeComposition } from "../../../src/composition/index.js";
 import { CodingAgentTodoRuntime } from "../../../src/features/todo/todo-runtime.js";

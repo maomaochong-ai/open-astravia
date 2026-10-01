@@ -2,7 +2,7 @@ import type { ResourceAccessPort, ResourceDirectoryEntry, ResourceFileInfo } fro
 import { parseFrontmatter } from "../shared/frontmatter.js";
 import type { LoadPromptTemplatesOptions, PromptTemplate } from "./contracts.js";
 
-const CONFIG_DIRECTORY = ".vetta";
+const CONFIG_DIRECTORY = ".astravia";
 
 export async function loadPromptTemplates(options: LoadPromptTemplatesOptions): Promise<PromptTemplate[]> {
 	const { resourceAccess: access, cwd, signal } = options;

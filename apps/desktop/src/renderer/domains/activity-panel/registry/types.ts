@@ -1,4 +1,4 @@
-import type { ConversationScenario } from "@vetta-org/plugin-sdk";
+import type { ConversationScenario } from "@astravia-org/plugin-sdk";
 import type { ComponentType, ReactNode } from "react";
 
 /** 活动面板 tab id：内置为稳定字符串，插件为 `plugin:<pluginId>:<tabId>`。 */

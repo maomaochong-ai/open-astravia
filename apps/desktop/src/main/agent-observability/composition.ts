@@ -1,6 +1,6 @@
 import { join } from "node:path";
-import { RuntimeTraceRecorder, type RuntimeTracer } from "@vetta/runtime-telemetry";
-import { createLangfuseRuntimeTracerFromEnv } from "@vetta/runtime-telemetry/langfuse";
+import { RuntimeTraceRecorder, type RuntimeTracer } from "@astravia/runtime-telemetry";
+import { createLangfuseRuntimeTracerFromEnv } from "@astravia/runtime-telemetry/langfuse";
 import type { AgentObservationQuery } from "./contracts.js";
 import { LocalAgentObservationRepository } from "./local-observation-repository.js";
 

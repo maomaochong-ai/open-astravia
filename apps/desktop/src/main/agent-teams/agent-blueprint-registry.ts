@@ -1,4 +1,4 @@
-import type { AgentBlueprint } from "@vetta/agent-team";
+import type { AgentBlueprint } from "@astravia/agent-team";
 import type { PluginPresetDeclarations } from "./plugin-agent-preset-reconcile.js";
 import type { PluginAgentPreset, PluginTeamPreset } from "./plugin-agent-presets.js";
 

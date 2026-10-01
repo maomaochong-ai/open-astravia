@@ -1,19 +1,19 @@
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { Api, Model } from "@vetta/ai";
-import { createCodingAgentRuntimeSessionSelection } from "@vetta/coding-agent/composition";
-import { ENV_AGENT_DIR, getAgentDir } from "@vetta/coding-agent/config";
+import type { Api, Model } from "@astravia/ai";
+import { createCodingAgentRuntimeSessionSelection } from "@astravia/coding-agent/composition";
+import { ENV_AGENT_DIR, getAgentDir } from "@astravia/coding-agent/config";
 import {
 	type CodingAgentPluginRuntimeSource,
 	type CodingAgentRuntimeModelSource,
 	createCodingAgentMcpRuntimeToolSource,
 	createCodingAgentPluginMcpRuntime,
-} from "@vetta/coding-agent/host-services";
-import type { AgentPluginRuntimeConfig } from "@vetta/coding-agent/plugin-runtime";
-import { ALL_SCENARIOS, type ConversationScenario } from "@vetta/coding-agent/profile";
-import { RuntimeHost } from "@vetta/runtime-core";
-import { DesktopRuntimeBackendPool } from "@vetta/runtime-desktop";
+} from "@astravia/coding-agent/host-services";
+import type { AgentPluginRuntimeConfig } from "@astravia/coding-agent/plugin-runtime";
+import { ALL_SCENARIOS, type ConversationScenario } from "@astravia/coding-agent/profile";
+import { RuntimeHost } from "@astravia/runtime-core";
+import { DesktopRuntimeBackendPool } from "@astravia/runtime-desktop";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import {
 	type OpenAiResponsesTestServer,
@@ -171,7 +171,7 @@ describe("Desktop RuntimeHost model-call frame contract", () => {
 			});
 
 			await fixture.runtime.prompt(created.sessionId, { text: "Observe skills before creation" });
-			const skillDirectory = join(cwd, ".vetta", "skills", "phase-112-dynamic-skill");
+			const skillDirectory = join(cwd, ".astravia", "skills", "phase-112-dynamic-skill");
 			const skillPath = join(skillDirectory, "SKILL.md");
 			await mkdir(skillDirectory, { recursive: true });
 			await writeFile(skillPath, skillDocument(PHASE_112_SKILL_V1), "utf8");

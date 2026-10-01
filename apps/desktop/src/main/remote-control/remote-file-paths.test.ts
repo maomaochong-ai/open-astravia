@@ -10,7 +10,7 @@ import {
 } from "./remote-file-paths.js";
 
 const HOME = "/Users/me";
-const CWD = "/Users/me/.vetta/conversation/s1";
+const CWD = "/Users/me/.astravia/conversation/s1";
 const local: RemotePathContext = { cwd: CWD, home: HOME, path: posix };
 const ssh: RemotePathContext = { cwd: "ssh://box/srv/app", home: HOME, path: posix };
 
@@ -20,7 +20,7 @@ describe("resolveRemoteFileTarget", () => {
 		expect(resolveRemoteFileTarget("out/a b.md", local)).toBe(`${CWD}/out/a b.md`);
 		expect(resolveRemoteFileTarget("out/a%20b.md", local)).toBe(`${CWD}/out/a b.md`);
 		expect(resolveRemoteFileTarget("<out/a b.md>", local)).toBe(`${CWD}/out/a b.md`);
-		expect(resolveRemoteFileTarget("../s2/x.md", local)).toBe("/Users/me/.vetta/conversation/s2/x.md");
+		expect(resolveRemoteFileTarget("../s2/x.md", local)).toBe("/Users/me/.astravia/conversation/s2/x.md");
 		expect(resolveRemoteFileTarget("/Users/me/Desktop/x.pdf", local)).toBe("/Users/me/Desktop/x.pdf");
 		expect(resolveRemoteFileTarget("~/Desktop/x.pdf", local)).toBe("/Users/me/Desktop/x.pdf");
 		expect(resolveRemoteFileTarget("file:///Users/me/Desktop/a%20b.pdf", local)).toBe("/Users/me/Desktop/a b.pdf");
@@ -67,7 +67,7 @@ describe("canonicalRemoteFilePath", () => {
 	});
 
 	it("shows where a file lives with home abbreviated", () => {
-		expect(displayRemoteFilePath(`${CWD}/out/a.md`, local)).toBe("~/.vetta/conversation/s1/out/a.md");
+		expect(displayRemoteFilePath(`${CWD}/out/a.md`, local)).toBe("~/.astravia/conversation/s1/out/a.md");
 		expect(displayRemoteFilePath("/opt/x", local)).toBe("/opt/x");
 		expect(displayRemoteFilePath("ssh://box/srv/app/a.md", ssh)).toBe("/srv/app/a.md");
 	});
@@ -77,7 +77,7 @@ describe("isInsideSessionDirectory", () => {
 	it("only admits the working directory and what is under it", () => {
 		expect(isInsideSessionDirectory(CWD, local)).toBe(true);
 		expect(isInsideSessionDirectory(`${CWD}/out`, local)).toBe(true);
-		expect(isInsideSessionDirectory("/Users/me/.vetta/conversation/s10", local)).toBe(false);
+		expect(isInsideSessionDirectory("/Users/me/.astravia/conversation/s10", local)).toBe(false);
 		expect(isInsideSessionDirectory("/Users/me", local)).toBe(false);
 		expect(isInsideSessionDirectory("ssh://box/srv/app/src", ssh)).toBe(true);
 		expect(isInsideSessionDirectory("ssh://box/srv/application", ssh)).toBe(false);
@@ -86,16 +86,16 @@ describe("isInsideSessionDirectory", () => {
 });
 
 describe("isBlockedForPhone", () => {
-	it("blocks credentials and Vetta's own configuration", () => {
+	it("blocks credentials and Astravia's own configuration", () => {
 		for (const target of [
 			"/Users/me/.ssh/id_ed25519",
 			"/Users/me/.aws/credentials",
 			"/Users/me/.config/gcloud/credentials.db",
 			"/Users/me/.netrc",
 			"/Users/me/Library/Keychains/login.keychain-db",
-			"/Users/me/.vetta/auth.json",
-			"/Users/me/.vetta/desktop-config.json",
-			"/Users/me/.vetta",
+			"/Users/me/.astravia/auth.json",
+			"/Users/me/.astravia/desktop-config.json",
+			"/Users/me/.astravia",
 			"/srv/deploy/.ssh/authorized_keys",
 			"ssh://box/home/me/.ssh/id_rsa",
 		]) {
@@ -106,8 +106,8 @@ describe("isBlockedForPhone", () => {
 	it("leaves session workspaces, uploads and ordinary files readable", () => {
 		for (const target of [
 			`${CWD}/report.html`,
-			"/Users/me/.vetta/remote-uploads/k/x/a.png",
-			"/Users/me/.vetta/workspace/p/a.md",
+			"/Users/me/.astravia/remote-uploads/k/x/a.png",
+			"/Users/me/.astravia/workspace/p/a.md",
 			"/Users/me/Desktop/x.pdf",
 			"/Users/me/.config/app.toml",
 			"ssh://box/srv/app/a.md",

@@ -1,4 +1,4 @@
-import { useTranslation } from "@vetta-org/plugin-sdk";
+import { useTranslation } from "@astravia-org/plugin-sdk";
 import { type ChangeEvent, useEffect, useRef, useState } from "react";
 import type { ImportedContentAsset } from "../generation/types";
 import type { ContentAsset, ContentNodeData } from "../project/types";

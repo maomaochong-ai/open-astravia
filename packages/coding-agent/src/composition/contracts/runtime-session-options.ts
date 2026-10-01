@@ -1,6 +1,6 @@
-import type { Message } from "@vetta/ai";
-import type { SessionConfig, SessionExecutionMode } from "@vetta/runtime-core";
-import type { SessionExtensionFunctionSource } from "@vetta/runtime-core/session-extensions";
+import type { Message } from "@astravia/ai";
+import type { SessionConfig, SessionExecutionMode } from "@astravia/runtime-core";
+import type { SessionExtensionFunctionSource } from "@astravia/runtime-core/session-extensions";
 import {
 	type AgentConfigurationSelection,
 	parseAgentConfigurationSelection,

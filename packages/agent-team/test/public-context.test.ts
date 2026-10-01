@@ -1,4 +1,7 @@
-import type { ConversationAgentMessageRecord, ConversationUserMessageRecord } from "@vetta/runtime-core/conversation";
+import type {
+	ConversationAgentMessageRecord,
+	ConversationUserMessageRecord,
+} from "@astravia/runtime-core/conversation";
 import { describe, expect, it } from "vitest";
 import { formatTeamSharedContext, projectPublicTeamContext } from "../src/public-context.js";
 

@@ -1,4 +1,4 @@
-import { definePlugin } from "@vetta-org/plugin-sdk";
+import { definePlugin } from "@astravia-org/plugin-sdk";
 import "@xyflow/react/dist/style.css";
 import "./styles/index.css";
 import { ContentRunApprovalDialog } from "./plugin/ContentRunApprovalDialog";

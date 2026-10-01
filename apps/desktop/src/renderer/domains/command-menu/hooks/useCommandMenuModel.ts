@@ -1,3 +1,4 @@
+import type { CommandMenuGroupView, CommandMenuViewLabels } from "@astravia-org/theme-ui/overlays";
 import type { InstalledPlugin, SkillInfo } from "@preload/api";
 import { PLUGIN_HOSTED_ROUTE_PATH } from "@shared/hosted-routes/hosted-route-descriptors";
 import { isMac, isWindows } from "@shared/lib/platform";
@@ -12,7 +13,6 @@ import {
 } from "@shared/store/atoms";
 import { authUserAtom } from "@shared/store/auth-atoms";
 import { useNavigate } from "@tanstack/react-router";
-import type { CommandMenuGroupView, CommandMenuViewLabels } from "@vetta-org/theme-ui/overlays";
 import { useAtom, useAtomValue } from "jotai";
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -55,7 +55,7 @@ function useCommandMenuToggleKey(enabled: boolean): string {
 			setKey(getEffectiveShortcut(OPEN_COMMAND_MENU_ACTION, bindings) || OPEN_COMMAND_MENU_DEFAULT_KEY);
 		};
 		void loadShortcutBindings().then(apply);
-		const unsubscribe = window.vetta.config.onShortcutsChanged((event) => apply(event.bindings ?? {}));
+		const unsubscribe = window.astravia.config.onShortcutsChanged((event) => apply(event.bindings ?? {}));
 		return () => {
 			active = false;
 			unsubscribe();
@@ -98,7 +98,7 @@ function useInstalledAbilities(enabled: boolean): {
 		loadedRef.current = true;
 		let active = true;
 		setLoading(true);
-		void Promise.all([window.vetta.skills.list(), window.vetta.plugins.listAll()])
+		void Promise.all([window.astravia.skills.list(), window.astravia.plugins.listAll()])
 			.then(([skills, plugins]) => {
 				if (active) setData({ skills, plugins });
 			})
@@ -256,7 +256,7 @@ export function useCommandMenuModel({ onOpenSession }: UseCommandMenuModelArgs):
 					// 用户选中项目是想继续干活，不是想看项目概览：落到最新一条会话上。
 					// listSessions 是本地调用，且只在真的选中某个项目时才发一次。
 					void (async () => {
-						const sessions = await window.vetta.session.listSessions(action.cwd).catch(() => []);
+						const sessions = await window.astravia.session.listSessions(action.cwd).catch(() => []);
 						const latest = pickLatestOpenableSession(sessions);
 						if (latest?.target === "interactive") {
 							await onOpenSession(action.cwd, latest.session.path);

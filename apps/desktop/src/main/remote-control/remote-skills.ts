@@ -1,10 +1,10 @@
-import type { RemoteSkillOption } from "@vetta/remote-control";
+import type { RemoteSkillOption } from "@astravia/remote-control";
 import {
 	getSkillDisplayDescription,
 	getSkillDisplayName,
 	isSkillVisibleOnSurface,
 	SKILL_PRESENTATION_SURFACES,
-} from "@vetta-org/capability-sdk";
+} from "@astravia-org/capability-sdk";
 import { type SkillUsageMap, sortSkillsForPanel } from "../../shared/skill-ranking.js";
 import type { ListedSkill } from "../skills/skill-service.js";
 

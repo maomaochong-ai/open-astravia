@@ -1,4 +1,4 @@
-import { readRuntimeFailure } from "@vetta/runtime-core";
+import { readRuntimeFailure } from "@astravia/runtime-core";
 import { isRetryableRuntimeError } from "../failure-classification.js";
 import type {
 	CodingAgentTurnExecutor,

@@ -7,11 +7,11 @@ import {
 	resolveCodingAgentExtensionCompatibility,
 	resolveCodingAgentInitialModel,
 	runPrintMode,
-} from "@vetta/coding-agent/bootstrap";
-import { migrateCodingAgentHistoricalSession } from "@vetta/coding-agent/historical-sessions";
-import { runRpcModeWithCapabilities } from "@vetta/coding-agent/rpc";
-import { InitializationRollbackScope } from "@vetta/runtime-core";
-import { resolveSessionIdFromPath } from "@vetta/runtime-node/conversation";
+} from "@astravia/coding-agent/bootstrap";
+import { migrateCodingAgentHistoricalSession } from "@astravia/coding-agent/historical-sessions";
+import { runRpcModeWithCapabilities } from "@astravia/coding-agent/rpc";
+import { InitializationRollbackScope } from "@astravia/runtime-core";
+import { resolveSessionIdFromPath } from "@astravia/runtime-node/conversation";
 import { createCliCodingAgentBootstrap } from "../../coding-agent-bootstrap.js";
 import { processCliFileArguments } from "../../file-processor.js";
 import { createCliHistoricalSessionHost } from "../../historical-session-host.js";
@@ -231,7 +231,7 @@ export async function runPrintRuntimeHost(prepared: PrintRuntimeHostReady): Prom
 			processFiles: processCliFileArguments,
 		});
 		if (invocation.kind === "interactive-unsupported") {
-			throw new Error("交互式终端模式已移除。请使用 --print 进行单次执行，或使用 Vetta 桌面应用。");
+			throw new Error("交互式终端模式已移除。请使用 --print 进行单次执行，或使用 Astravia 桌面应用。");
 		}
 		await runPrintMode(prepared.printSession, invocation.options, nodePrintOutput);
 	} finally {

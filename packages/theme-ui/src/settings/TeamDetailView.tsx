@@ -1,5 +1,5 @@
 import { useState, type JSX } from "react";
-import { Button } from "@vetta-org/ui";
+import { Button } from "@astravia-org/ui";
 import { SettingSection, type SettingSectionMeta } from "./SettingChrome";
 
 export interface TeamMemberView {

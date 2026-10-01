@@ -21,8 +21,8 @@
  * 5. **Invalid Signature Format**: Model validates signature format (Anthropic newer models).
  */
 
-import type { AssistantMessage } from "@vetta/ai";
-import { getModels } from "@vetta/ai";
+import type { AssistantMessage } from "@astravia/ai";
+import { getModels } from "@astravia/ai";
 import { describe, expect, it } from "vitest";
 import { Agent } from "../src/index.js";
 import { hasBedrockCredentials } from "./bedrock-utils.js";

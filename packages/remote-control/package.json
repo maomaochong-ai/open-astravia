@@ -1,7 +1,7 @@
 {
-	"name": "@vetta/remote-control",
+	"name": "@astravia/remote-control",
 	"version": "0.0.1",
-	"description": "Platform-neutral remote control protocol and test transport for Vetta",
+	"description": "Platform-neutral remote control protocol and test transport for Astravia",
 	"type": "module",
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",

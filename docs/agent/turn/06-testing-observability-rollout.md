@@ -65,7 +65,7 @@ Provider、MCP、Plugin 进程和 Sandbox 默认使用内存 fake 或本地受�
 
 ## 4. 分层测试计划
 
-### 4.1 `@vetta/runtime-core`
+### 4.1 `@astravia/runtime-core`
 
 单元/合同测试：
 
@@ -81,7 +81,7 @@ Provider、MCP、Plugin 进程和 Sandbox 默认使用内存 fake 或本地受�
 
 优先扩展现有 snapshot provider、runtime capability composition、turn pipeline 和 model-call frame 测试，不复制一套平行 fixture。
 
-### 4.2 `@vetta/coding-agent`
+### 4.2 `@astravia/coding-agent`
 
 单元/集成测试：
 
@@ -96,7 +96,7 @@ Provider、MCP、Plugin 进程和 Sandbox 默认使用内存 fake 或本地受�
 
 现有明确断言 Model Call 动态 refresh 的测试需要改成 Turn generation 合同测试，不能直接删除断言。
 
-### 4.3 `@vetta/runtime-tools`
+### 4.3 `@astravia/runtime-tools`
 
 合同测试：
 
@@ -109,7 +109,7 @@ Provider、MCP、Plugin 进程和 Sandbox 默认使用内存 fake 或本地受�
 - lease 归零后 implementation 只 dispose 一次；
 - deferred activation 只在固定 catalog 内变化。
 
-### 4.4 `@vetta/runtime-mcp`
+### 4.4 `@astravia/runtime-mcp`
 
 合同/进程边界测试：
 
@@ -326,10 +326,10 @@ Execution Mode 已更新；当前任务继续使用 Full Access，下一个 Turn
 ```powershell
 bun run check:quick
 bunx vitest --run <directly-related-test-file>
-bun run test:pkg @vetta/runtime-core
-bun run test:pkg @vetta/coding-agent
-bun run test:pkg @vetta/runtime-tools
-bun run test:pkg @vetta/runtime-mcp
+bun run test:pkg @astravia/runtime-core
+bun run test:pkg @astravia/coding-agent
+bun run test:pkg @astravia/runtime-tools
+bun run test:pkg @astravia/runtime-mcp
 bun run test:changed
 bun run check
 ```

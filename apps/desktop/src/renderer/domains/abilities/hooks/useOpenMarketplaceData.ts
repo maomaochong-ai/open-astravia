@@ -37,7 +37,9 @@ export function useOpenMarketplaceData() {
 	const load = useCallback(
 		(force: boolean) =>
 			run(() =>
-				force ? window.vetta.abilities.refreshOpenMarketplaces() : window.vetta.abilities.listOpenMarketplaces(),
+				force
+					? window.astravia.abilities.refreshOpenMarketplaces()
+					: window.astravia.abilities.listOpenMarketplaces(),
 			),
 		[run],
 	);
@@ -45,8 +47,8 @@ export function useOpenMarketplaceData() {
 	const refreshSource = useCallback(
 		async (id: string): Promise<void> => {
 			await run(async () => {
-				await window.vetta.abilities.refreshMarketplaceSource(id);
-				return window.vetta.abilities.listOpenMarketplaces();
+				await window.astravia.abilities.refreshMarketplaceSource(id);
+				return window.astravia.abilities.listOpenMarketplaces();
 			});
 		},
 		[run],
@@ -55,10 +57,10 @@ export function useOpenMarketplaceData() {
 	const addSource = useCallback(
 		async (input: AddMarketplaceSourceInput): Promise<void> => {
 			await run(async () => {
-				const source = await window.vetta.abilities.addMarketplaceSource(input);
+				const source = await window.astravia.abilities.addMarketplaceSource(input);
 				// A valid source remains configured when syncing fails, so the user can retry it.
-				await window.vetta.abilities.refreshMarketplaceSource(source.id);
-				return window.vetta.abilities.listOpenMarketplaces();
+				await window.astravia.abilities.refreshMarketplaceSource(source.id);
+				return window.astravia.abilities.listOpenMarketplaces();
 			});
 		},
 		[run],
@@ -67,10 +69,10 @@ export function useOpenMarketplaceData() {
 	const updateSource = useCallback(
 		async (id: string, input: UpdateMarketplaceSourceInput): Promise<void> => {
 			await run(async () => {
-				await window.vetta.abilities.updateMarketplaceSource(id, input);
+				await window.astravia.abilities.updateMarketplaceSource(id, input);
 				if (input.ref !== undefined || input.enabled === true)
-					await window.vetta.abilities.refreshMarketplaceSource(id);
-				return window.vetta.abilities.listOpenMarketplaces();
+					await window.astravia.abilities.refreshMarketplaceSource(id);
+				return window.astravia.abilities.listOpenMarketplaces();
 			});
 		},
 		[run],
@@ -79,8 +81,8 @@ export function useOpenMarketplaceData() {
 	const removeSource = useCallback(
 		async (id: string): Promise<void> => {
 			await run(async () => {
-				await window.vetta.abilities.removeMarketplaceSource(id);
-				return window.vetta.abilities.listOpenMarketplaces();
+				await window.astravia.abilities.removeMarketplaceSource(id);
+				return window.astravia.abilities.listOpenMarketplaces();
 			});
 		},
 		[run],
@@ -89,8 +91,8 @@ export function useOpenMarketplaceData() {
 	const clearCredential = useCallback(
 		async (id: string): Promise<void> => {
 			await run(async () => {
-				await window.vetta.abilities.clearMarketplaceSourceCredential(id);
-				return window.vetta.abilities.listOpenMarketplaces();
+				await window.astravia.abilities.clearMarketplaceSourceCredential(id);
+				return window.astravia.abilities.listOpenMarketplaces();
 			});
 		},
 		[run],
@@ -98,7 +100,7 @@ export function useOpenMarketplaceData() {
 
 	useEffect(() => {
 		mounted.current = true;
-		const unsubscribe = window.vetta.abilities.onOpenMarketplacesUpdated(() => {
+		const unsubscribe = window.astravia.abilities.onOpenMarketplacesUpdated(() => {
 			if (active.current > 0) pendingUpdate.current = true;
 			else void load(false).catch(() => undefined);
 		});

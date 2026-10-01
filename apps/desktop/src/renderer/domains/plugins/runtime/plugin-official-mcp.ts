@@ -1,10 +1,10 @@
-import type { PluginOfficialApi } from "@vetta-org/plugin-sdk";
+import type { PluginOfficialApi } from "@astravia-org/plugin-sdk";
 
 export function createOfficialMcpApi(
 	assertOfficial: () => void,
 	capabilitySessionId: string,
 ): PluginOfficialApi["mcp"] {
-	const mcp = window.vetta.plugins.internalCapabilities.mcp;
+	const mcp = window.astravia.plugins.internalCapabilities.mcp;
 	return {
 		list: async () => {
 			assertOfficial();

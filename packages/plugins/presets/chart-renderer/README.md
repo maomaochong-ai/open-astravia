@@ -1,6 +1,6 @@
 # 图表渲染（chart-renderer）
 
-随 Vetta Desktop 发布的**系统插件**。Agent 调用 `render_chart` 工具传入标准
+随 Astravia Desktop 发布的**系统插件**。Agent 调用 `render_chart` 工具传入标准
 Chart.js `type` / `data`（或 `charts` 数组，最多 4 个），图表以卡片形式渲染在
 当前工具调用下方（`ui.slot.tool-call`）。
 

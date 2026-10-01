@@ -1,4 +1,4 @@
-import { readJsonFile, writeJsonFile } from "@vetta-org/plugin-sdk";
+import { readJsonFile, writeJsonFile } from "@astravia-org/plugin-sdk";
 import { getStorageApi, settingsListeners } from "./runtime";
 
 /** Plugin-private settings file (global to the plugin, not per project). */

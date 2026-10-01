@@ -1,4 +1,4 @@
-import { useTranslation } from "@vetta-org/plugin-sdk";
+import { useTranslation } from "@astravia-org/plugin-sdk";
 import { memo } from "react";
 import type { ContentNodeKind, ContentNodeStatus } from "../project/types";
 import { NodeKindIcon } from "./NodeKindIcon";

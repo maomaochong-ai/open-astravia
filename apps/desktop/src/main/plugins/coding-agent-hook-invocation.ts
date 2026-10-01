@@ -1,4 +1,4 @@
-import type { PluginCodingAgentHookEvent } from "@vetta-org/plugin-sdk";
+import type { PluginCodingAgentHookEvent } from "@astravia-org/plugin-sdk";
 import type { DesktopPluginHookBinding } from "./coding-agent-hook-registry.js";
 
 export interface DesktopPluginHookInvocation {

@@ -1,4 +1,4 @@
-import type { AgentMessage } from "@vetta/agent-core";
+import type { AgentMessage } from "@astravia/agent-core";
 import {
 	createBranchSummaryMessage,
 	createCompactionSummaryMessage,

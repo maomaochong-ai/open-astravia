@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /**
  * 「通用设置 → 网络代理」的完整使用流程：开代理 → 填地址 → 按服务商排除。
- * 从连接层的 hook 进入，跑真实的 view，只把 `window.vetta` 这层真外部边界换掉。
+ * 从连接层的 hook 进入，跑真实的 view，只把 `window.astravia` 这层真外部边界换掉。
  */
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -26,7 +26,7 @@ function isOn(element: HTMLElement): boolean {
 	return element.getAttribute("aria-checked") === "true";
 }
 
-function installVetta(options: { proxyEnabled?: boolean } = {}): {
+function installAstravia(options: { proxyEnabled?: boolean } = {}): {
 	configSet: ReturnType<typeof vi.fn>;
 	modelsSet: ReturnType<typeof vi.fn>;
 } {
@@ -50,7 +50,7 @@ function installVetta(options: { proxyEnabled?: boolean } = {}): {
 			},
 		},
 	};
-	Object.defineProperty(window, "vetta", {
+	Object.defineProperty(window, "astravia", {
 		configurable: true,
 		value: {
 			config: {
@@ -74,12 +74,12 @@ function installVetta(options: { proxyEnabled?: boolean } = {}): {
 
 afterEach(() => {
 	cleanup();
-	Reflect.deleteProperty(window, "vetta");
+	Reflect.deleteProperty(window, "astravia");
 });
 
 describe("网络代理设置", () => {
 	it("默认关闭，关闭时不展示地址与服务商开关", async () => {
-		installVetta();
+		installAstravia();
 
 		render(<Harness />);
 
@@ -90,7 +90,7 @@ describe("网络代理设置", () => {
 	});
 
 	it("用户开启代理后立即保存，并展开地址与逐服务商开关", async () => {
-		const { configSet } = installVetta();
+		const { configSet } = installAstravia();
 		const user = userEvent.setup();
 		render(<Harness />);
 		await waitFor(() => expect(switchByName("proxy.enableTitle")).toBeTruthy());
@@ -104,7 +104,7 @@ describe("网络代理设置", () => {
 	});
 
 	it("输入代理地址时先跟手显示，停止输入后才落盘一次", async () => {
-		const { configSet } = installVetta({ proxyEnabled: true });
+		const { configSet } = installAstravia({ proxyEnabled: true });
 		const user = userEvent.setup();
 		render(<Harness />);
 		const host = (await screen.findByRole("textbox", { name: "proxy.hostTitle" })) as HTMLInputElement;
@@ -117,7 +117,7 @@ describe("网络代理设置", () => {
 	});
 
 	it("用户可以把个别服务商排除出代理", async () => {
-		const { modelsSet } = installVetta({ proxyEnabled: true });
+		const { modelsSet } = installAstravia({ proxyEnabled: true });
 		const user = userEvent.setup();
 		render(<Harness />);
 		await waitFor(() => expect(switchByName("DeepSeek")).toBeTruthy());
@@ -137,7 +137,7 @@ describe("网络代理设置", () => {
 	});
 
 	it("厂商 SDK 自己发请求的服务商显示为跟随全局、开关只读，并说明原因", async () => {
-		installVetta({ proxyEnabled: true });
+		installAstravia({ proxyEnabled: true });
 		render(<Harness />);
 
 		await waitFor(() => expect(switchByName("Google")).toBeTruthy());
@@ -148,7 +148,7 @@ describe("网络代理设置", () => {
 	});
 
 	it("上游在本机的服务商显示为始终直连、开关只读，并说明原因", async () => {
-		installVetta({ proxyEnabled: true });
+		installAstravia({ proxyEnabled: true });
 		render(<Harness />);
 
 		await waitFor(() => expect(switchByName("CLIProxyAPI")).toBeTruthy());
@@ -159,7 +159,7 @@ describe("网络代理设置", () => {
 	});
 
 	it("地址填不全时提示请求会失败，而不是让用户以为改走了直连", async () => {
-		installVetta({ proxyEnabled: true });
+		installAstravia({ proxyEnabled: true });
 		render(<Harness />);
 
 		const alert = await screen.findByRole("alert");

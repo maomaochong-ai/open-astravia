@@ -15,7 +15,7 @@ iPhone 客户端的聊天页需要：随消息附带相册图片和文件；在�
 ## 决策
 
 - **附件逐个上传，按 id 引用**。新增 `session.upload`，载荷为 `{ kind: "image" | "file", name, mimeType, data(base64) }`，解码后不超过 `REMOTE_MAX_UPLOAD_BYTES`（700 KB），返回 `{ uploadId }`。`session.prompt` 新增可选的 `attachments: uploadId[]`。
-  - 桌面端把上传写到 `~/.vetta/remote-uploads/<会话键>/<随机目录>/<清洗后的文件名>`，然后按桌面拖入文件时的方式交给运行时：`{ kind, path }`。
+  - 桌面端把上传写到 `~/.astravia/remote-uploads/<会话键>/<随机目录>/<清洗后的文件名>`，然后按桌面拖入文件时的方式交给运行时：`{ kind, path }`。
   - uploadId 只能在上传所属的会话里使用，而且只能用一次。30 分钟内没被引用就作废。
   - 超过 7 天的上传目录在下次写入时清理。
 - **手机端负责把附件压到帧内**。图片重新编码为 JPEG，逐步缩小尺寸直到不超过 700 KB。其他文件超过 700 KB 直接提示放不下，不做分片。一次最多 6 个附件。
@@ -23,7 +23,7 @@ iPhone 客户端的聊天页需要：随消息附带相册图片和文件；在�
   - 新增 `model.list`，返回会话可用的模型：`key`（`provider/modelId`）、名称、可选的思考强度和是否支持图片。思考强度菜单与桌面一致：模型有推理能力时，在预设强度前加 `off`；如果模型自带 `none`，就用 `none` 代替 `off`。
   - 新增 `session.configure { modelKey?, thinkingLevel? }`，调用运行时的 `updateSettings`，返回并广播新的 `session.state`。会话正在跑一轮时拒绝修改（`busy`）。
   - `session.state` 新增 `modelKey`、`thinkingLevel` 两个可选字段。
-- TypeScript 包、JSON Schema、`VettaKit` 同时更新，联调夹具同步支持。联调测试会通过真实中继上传一个正好 700 KB 的附件。
+- TypeScript 包、JSON Schema、`AstraviaKit` 同时更新，联调夹具同步支持。联调测试会通过真实中继上传一个正好 700 KB 的附件。
 
 ## 备选方案
 

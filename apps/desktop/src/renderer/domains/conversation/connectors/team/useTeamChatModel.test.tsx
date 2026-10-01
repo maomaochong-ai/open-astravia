@@ -4,10 +4,10 @@ import {
 	createAgentTeamFixture,
 	type TeamSessionDocument,
 	type TeamSessionSnapshot,
-} from "@vetta/agent-team";
+} from "@astravia/agent-team";
 import type { DesktopTeamSessionStreamEvent, DesktopTeamSessionSnapshot } from "@preload/api-types/team-conversation-display";
-import { createAssistantMessage } from "@vetta/ai";
-import type { ContextCompositionReport } from "@vetta/runtime-core";
+import { createAssistantMessage } from "@astravia/ai";
+import type { ContextCompositionReport } from "@astravia/runtime-core";
 import { reasoningByModelAtom, selectedModelAtom } from "@shared/store/atoms";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { createStore, Provider } from "jotai";
@@ -135,7 +135,7 @@ describe("useTeamChatModel streaming flow", () => {
 			snapshot: baseSnapshot,
 			sessions: [],
 		});
-		Object.defineProperty(window, "vetta", {
+		Object.defineProperty(window, "astravia", {
 			configurable: true,
 			value: {
 				agentTeams: {
@@ -163,7 +163,7 @@ describe("useTeamChatModel streaming flow", () => {
 
 	it("switches to waiting for the model only after the real request-start event", async () => {
 		let resolveSend: ((value: DesktopTeamSessionSnapshot) => void) | undefined;
-		vi.mocked(window.vetta.agentTeams.sendMessage).mockReturnValueOnce(
+		vi.mocked(window.astravia.agentTeams.sendMessage).mockReturnValueOnce(
 			new Promise((resolve) => {
 				resolveSend = resolve;
 			}),
@@ -177,9 +177,9 @@ describe("useTeamChatModel streaming flow", () => {
 		act(() => {
 			sendPromise = result.current.actions.send();
 		});
-		await waitFor(() => expect(window.vetta.agentTeams.sendMessage).toHaveBeenCalledTimes(1));
+		await waitFor(() => expect(window.astravia.agentTeams.sendMessage).toHaveBeenCalledTimes(1));
 		expect(result.current.model.pendingLabel).toBe("chat.teamLoading");
-		const requestId = vi.mocked(window.vetta.agentTeams.sendMessage).mock.calls[0]?.[1].requestId;
+		const requestId = vi.mocked(window.astravia.agentTeams.sendMessage).mock.calls[0]?.[1].requestId;
 		if (!requestId) throw new Error("send request id is missing");
 
 		act(() => {
@@ -268,7 +268,7 @@ describe("useTeamChatModel streaming flow", () => {
 	});
 
 	it("发送结果已带自动标题时，即使错过标题事件也更新会话列表", async () => {
-		vi.mocked(window.vetta.agentTeams.sendMessage).mockResolvedValueOnce({
+		vi.mocked(window.astravia.agentTeams.sendMessage).mockResolvedValueOnce({
 			...baseSnapshot,
 			session: { ...baseSession, revision: 2, title: "Review deployment plan" },
 		});
@@ -617,7 +617,7 @@ describe("useTeamChatModel streaming flow", () => {
 		expect(result.current.model.canSend).toBe(true);
 		await act(async () => result.current.actions.send());
 
-		expect(window.vetta.agentTeams.sendMessage).toHaveBeenCalledWith(
+		expect(window.astravia.agentTeams.sendMessage).toHaveBeenCalledWith(
 			baseSession.id,
 			expect.objectContaining({
 				text: "@C:/workspace/brief.md",
@@ -632,7 +632,7 @@ describe("useTeamChatModel streaming flow", () => {
 
 		act(() => result.current.actions.setDraft(`plain @${leader.handle}`));
 		await act(async () => result.current.actions.send());
-		expect(window.vetta.agentTeams.sendMessage).toHaveBeenLastCalledWith(
+		expect(window.astravia.agentTeams.sendMessage).toHaveBeenLastCalledWith(
 			baseSession.id,
 			expect.objectContaining({ targetMemberIds: [], memberMentions: [] }),
 		);
@@ -645,7 +645,7 @@ describe("useTeamChatModel streaming flow", () => {
 			]),
 		);
 		await act(async () => result.current.actions.send());
-		expect(window.vetta.agentTeams.sendMessage).toHaveBeenLastCalledWith(
+		expect(window.astravia.agentTeams.sendMessage).toHaveBeenLastCalledWith(
 			baseSession.id,
 			expect.objectContaining({
 				text,
@@ -662,7 +662,7 @@ describe("useTeamChatModel streaming flow", () => {
 		await waitFor(() => expect(result.current.model.status).toBe("ready"));
 
 		await act(async () => result.current.actions.selectModel("openai/gpt-5"));
-		expect(window.vetta.agentTeams.updateModelSettings).toHaveBeenCalledWith(
+		expect(window.astravia.agentTeams.updateModelSettings).toHaveBeenCalledWith(
 			baseSession.id,
 			expect.objectContaining({ modelKey: "openai/gpt-5" }),
 		);
@@ -671,7 +671,7 @@ describe("useTeamChatModel streaming flow", () => {
 		act(() => result.current.actions.setDraft("Ship it"));
 		await act(async () => result.current.actions.selectReasoning("high"));
 		await act(async () => result.current.actions.send());
-		expect(window.vetta.agentTeams.sendMessage).toHaveBeenCalledWith(
+		expect(window.astravia.agentTeams.sendMessage).toHaveBeenCalledWith(
 			baseSession.id,
 			expect.objectContaining({
 				modelKey: "openai/gpt-5",
@@ -689,7 +689,7 @@ describe("useTeamChatModel streaming flow", () => {
 		renderHook(() => useTeamChatModel(team.id), { wrapper });
 
 		await waitFor(() =>
-			expect(window.vetta.agentTeams.updateModelSettings).toHaveBeenCalledWith(baseSession.id, {
+			expect(window.astravia.agentTeams.updateModelSettings).toHaveBeenCalledWith(baseSession.id, {
 				modelKey: "openai/default",
 				reasoning: "medium",
 			}),
@@ -826,7 +826,7 @@ describe("useTeamChatModel streaming flow", () => {
 			snapshot: nextSnapshot,
 			sessions: [],
 		});
-		vi.mocked(window.vetta.agentTeams.sendMessage).mockResolvedValueOnce(nextSnapshot);
+		vi.mocked(window.astravia.agentTeams.sendMessage).mockResolvedValueOnce(nextSnapshot);
 		const { result, rerender } = renderHook(
 			({ preferredSessionId }: { preferredSessionId: string }) =>
 				useTeamChatModel(team.id, preferredSessionId),
@@ -847,7 +847,7 @@ describe("useTeamChatModel streaming flow", () => {
 		rerender({ preferredSessionId: nextSessionId });
 
 		await waitFor(() =>
-			expect(window.vetta.agentTeams.sendMessage).toHaveBeenCalledWith(
+			expect(window.astravia.agentTeams.sendMessage).toHaveBeenCalledWith(
 				nextSessionId,
 				expect.objectContaining({ requestId: "next-session-request" }),
 			),
@@ -855,7 +855,7 @@ describe("useTeamChatModel streaming flow", () => {
 		expect(createReservedTeamChatSession).toHaveBeenCalledWith(
 			expect.objectContaining({ teamId: team.id, sessionId: nextSessionId }),
 		);
-		expect(window.vetta.agentTeams.sendMessage).not.toHaveBeenCalledWith(
+		expect(window.astravia.agentTeams.sendMessage).not.toHaveBeenCalledWith(
 			baseSession.id,
 			expect.objectContaining({ requestId: "next-session-request" }),
 		);
@@ -890,11 +890,11 @@ describe("useTeamChatModel streaming flow", () => {
 		expect(result.current.model.editorEnabled).toBe(true);
 		expect(createReservedTeamChatSession).not.toHaveBeenCalled();
 		expect(loadTeamChatBootstrap).not.toHaveBeenCalled();
-		expect(window.vetta.agentTeams.sendMessage).not.toHaveBeenCalled();
+		expect(window.astravia.agentTeams.sendMessage).not.toHaveBeenCalled();
 
 		await act(async () => releasePaint?.());
 		await waitFor(() =>
-			expect(window.vetta.agentTeams.sendMessage).toHaveBeenCalledWith(
+			expect(window.astravia.agentTeams.sendMessage).toHaveBeenCalledWith(
 				baseSession.id,
 				expect.objectContaining({
 					requestId: "handoff-request",
@@ -933,7 +933,7 @@ describe("useTeamChatModel streaming flow", () => {
 		const { unmount } = renderHook(() => useTeamChatModel(team.id, baseSession.id));
 		await waitFor(() => expect(loadTeamChatBootstrap).toHaveBeenCalled());
 		await waitFor(() =>
-			expect(window.vetta.agentTeams.sendMessage).toHaveBeenCalledWith(
+			expect(window.astravia.agentTeams.sendMessage).toHaveBeenCalledWith(
 				baseSession.id,
 				expect.objectContaining({ requestId: "bootstrap-independent-request" }),
 			),
@@ -944,12 +944,12 @@ describe("useTeamChatModel streaming flow", () => {
 
 	it("persists the new-session composer model instead of the global default so delegated tasks inherit it", async () => {
 		const store = createStore();
-		store.set(selectedModelAtom, "vetta-go/stale-global");
+		store.set(selectedModelAtom, "astravia-go/stale-global");
 		const wrapper = ({ children }: { children: ReactNode }) => <Provider store={store}>{children}</Provider>;
 		// 真实后端的 send 快照带着已持久化的 modelSettings。
-		vi.mocked(window.vetta.agentTeams.updateModelSettings).mockImplementation(async (_id, settings) => {
+		vi.mocked(window.astravia.agentTeams.updateModelSettings).mockImplementation(async (_id, settings) => {
 			const configured = { ...baseSnapshot, session: { ...baseSession, modelSettings: settings } };
-			vi.mocked(window.vetta.agentTeams.sendMessage).mockResolvedValue(configured);
+			vi.mocked(window.astravia.agentTeams.sendMessage).mockResolvedValue(configured);
 			return configured;
 		});
 		stageTeamSessionHandoff({
@@ -967,15 +967,15 @@ describe("useTeamChatModel streaming flow", () => {
 
 		renderHook(() => useTeamChatModel(team.id, baseSession.id), { wrapper });
 
-		await waitFor(() => expect(window.vetta.agentTeams.sendMessage).toHaveBeenCalled());
+		await waitFor(() => expect(window.astravia.agentTeams.sendMessage).toHaveBeenCalled());
 		await act(async () => undefined);
-		expect(window.vetta.agentTeams.updateModelSettings).toHaveBeenCalledWith(baseSession.id, {
+		expect(window.astravia.agentTeams.updateModelSettings).toHaveBeenCalledWith(baseSession.id, {
 			modelKey: "cli-proxy-api.google/gemini-flash",
 			reasoning: "medium",
 		});
-		expect(window.vetta.agentTeams.updateModelSettings).not.toHaveBeenCalledWith(
+		expect(window.astravia.agentTeams.updateModelSettings).not.toHaveBeenCalledWith(
 			baseSession.id,
-			expect.objectContaining({ modelKey: "vetta-go/stale-global" }),
+			expect.objectContaining({ modelKey: "astravia-go/stale-global" }),
 		);
 	});
 
@@ -987,7 +987,7 @@ describe("useTeamChatModel streaming flow", () => {
 			}),
 		);
 		let resolveSend: ((value: DesktopTeamSessionSnapshot) => void) | undefined;
-		vi.mocked(window.vetta.agentTeams.sendMessage).mockReturnValueOnce(
+		vi.mocked(window.astravia.agentTeams.sendMessage).mockReturnValueOnce(
 			new Promise((resolve) => {
 				resolveSend = resolve;
 			}),
@@ -1015,7 +1015,7 @@ describe("useTeamChatModel streaming flow", () => {
 		expect(result.current.model.editorEnabled).toBe(true);
 
 		await act(async () => resolveCreation?.({ document, snapshot: baseSnapshot, sessions: [] }));
-		await waitFor(() => expect(window.vetta.agentTeams.sendMessage).toHaveBeenCalledTimes(1));
+		await waitFor(() => expect(window.astravia.agentTeams.sendMessage).toHaveBeenCalledTimes(1));
 		expect(peekTeamSessionHandoff(baseSession.id)).toBeUndefined();
 		expect(result.current.model.feedKey).toBe(initialFeedKey);
 		expect(result.current.model.feedItems.map((item) => item.renderKey)).toEqual(initialRenderKeys);
@@ -1053,8 +1053,8 @@ describe("useTeamChatModel streaming flow", () => {
 		expect(result.current.model.draft).toBe("the next message");
 		expect(result.current.model.canSend).toBe(false);
 		await act(async () => result.current.actions.send());
-		expect(window.vetta.agentTeams.sendMessage).toHaveBeenCalledTimes(1);
-		expect(window.vetta.agentTeams.sendMessage).toHaveBeenCalledWith(
+		expect(window.astravia.agentTeams.sendMessage).toHaveBeenCalledTimes(1);
+		expect(window.astravia.agentTeams.sendMessage).toHaveBeenCalledWith(
 			baseSession.id,
 			expect.objectContaining({ requestId, text: submittedText }),
 		);
@@ -1105,10 +1105,10 @@ describe("useTeamChatModel streaming flow", () => {
 			expect.objectContaining({ kind: "user", text: submittedText }),
 			expect.objectContaining({ kind: "agent", phase: "completed" }),
 		]);
-		vi.mocked(window.vetta.agentTeams.sendMessage).mockResolvedValue(finalSnapshot);
+		vi.mocked(window.astravia.agentTeams.sendMessage).mockResolvedValue(finalSnapshot);
 		await act(async () => result.current.actions.send());
-		expect(window.vetta.agentTeams.sendMessage).toHaveBeenCalledTimes(2);
-		expect(window.vetta.agentTeams.sendMessage).toHaveBeenLastCalledWith(
+		expect(window.astravia.agentTeams.sendMessage).toHaveBeenCalledTimes(2);
+		expect(window.astravia.agentTeams.sendMessage).toHaveBeenLastCalledWith(
 			baseSession.id,
 			expect.objectContaining({ text: "the next message" }),
 		);
@@ -1126,7 +1126,7 @@ describe("useTeamChatModel streaming flow", () => {
 		await waitFor(() => expect(result.current.model.status).toBe("streaming"));
 
 		await act(async () => result.current.actions.abort());
-		expect(window.vetta.agentTeams.abort).toHaveBeenCalledWith(baseSession.id);
+		expect(window.astravia.agentTeams.abort).toHaveBeenCalledWith(baseSession.id);
 		expect(result.current.model.feedItems).toEqual([
 			expect.objectContaining({ kind: "agent", phase: "aborted", text: "member still working" }),
 		]);
@@ -1289,7 +1289,7 @@ describe("useTeamChatModel streaming flow", () => {
 		expect(getStatus()).toBe("success");
 
 		let resolveContinue: ((value: DesktopTeamSessionSnapshot) => void) | undefined;
-		vi.mocked(window.vetta.agentTeams.sendMessage).mockReturnValueOnce(
+		vi.mocked(window.astravia.agentTeams.sendMessage).mockReturnValueOnce(
 			new Promise((resolve) => {
 				resolveContinue = resolve;
 			}),
@@ -1299,7 +1299,7 @@ describe("useTeamChatModel streaming flow", () => {
 		act(() => {
 			continuation = result.current.actions.send();
 		});
-		await waitFor(() => expect(window.vetta.agentTeams.sendMessage).toHaveBeenCalledTimes(1));
+		await waitFor(() => expect(window.astravia.agentTeams.sendMessage).toHaveBeenCalledTimes(1));
 		expect(getStatus()).toBe("success");
 		resolveContinue?.(baseSnapshot);
 		await act(async () => {
@@ -1383,7 +1383,7 @@ describe("useTeamChatModel streaming flow", () => {
 		expect(getStatus()).toBe("cancelled");
 
 		let resolveContinue: ((value: DesktopTeamSessionSnapshot) => void) | undefined;
-		vi.mocked(window.vetta.agentTeams.sendMessage).mockReturnValueOnce(
+		vi.mocked(window.astravia.agentTeams.sendMessage).mockReturnValueOnce(
 			new Promise((resolve) => {
 				resolveContinue = resolve;
 			}),
@@ -1393,7 +1393,7 @@ describe("useTeamChatModel streaming flow", () => {
 		act(() => {
 			continuation = result.current.actions.send();
 		});
-		await waitFor(() => expect(window.vetta.agentTeams.sendMessage).toHaveBeenCalledTimes(1));
+		await waitFor(() => expect(window.astravia.agentTeams.sendMessage).toHaveBeenCalledTimes(1));
 		// The wait was cancelled with the leader. Its durable historical tool-call
 		// record is still `toolUse`, so the terminal live overlay must win after continue.
 		expect(getStatus()).toBe("cancelled");
@@ -1417,7 +1417,7 @@ describe("useTeamChatModel streaming flow", () => {
 		// The retry keeps its send in flight, so the composer stays in the waiting state
 		// the user sees as "已等待 · n秒" while the member starts streaming again.
 		let resolveRetry: ((value: DesktopTeamSessionSnapshot) => void) | undefined;
-		vi.mocked(window.vetta.agentTeams.sendMessage).mockReturnValueOnce(
+		vi.mocked(window.astravia.agentTeams.sendMessage).mockReturnValueOnce(
 			new Promise((resolve) => {
 				resolveRetry = resolve;
 			}),
@@ -1427,7 +1427,7 @@ describe("useTeamChatModel streaming flow", () => {
 		act(() => {
 			retry = result.current.actions.send();
 		});
-		await waitFor(() => expect(window.vetta.agentTeams.sendMessage).toHaveBeenCalledTimes(2));
+		await waitFor(() => expect(window.astravia.agentTeams.sendMessage).toHaveBeenCalledTimes(2));
 
 		act(() => streamListener?.(streamEvent(1, "second answer")));
 		await waitFor(() => expect(result.current.model.status).toBe("streaming"));
@@ -1442,7 +1442,7 @@ describe("useTeamChatModel streaming flow", () => {
 
 	it("does not drop a streamed reply when the snapshot carrying it is rejected as stale", async () => {
 		// The send response advances the local snapshot revisions.
-		vi.mocked(window.vetta.agentTeams.sendMessage).mockResolvedValueOnce({
+		vi.mocked(window.astravia.agentTeams.sendMessage).mockResolvedValueOnce({
 			...baseSnapshot,
 			session: { ...baseSession, revision: 5 },
 			conversationRevision: 5,
@@ -1477,7 +1477,7 @@ describe("useTeamChatModel streaming flow", () => {
 	});
 
 	it("shows the in-flight turn from a session-snapshot even when its revisions look stale", async () => {
-		vi.mocked(window.vetta.agentTeams.sendMessage).mockResolvedValueOnce({
+		vi.mocked(window.astravia.agentTeams.sendMessage).mockResolvedValueOnce({
 			...baseSnapshot,
 			session: { ...baseSession, revision: 5 },
 			conversationRevision: 5,
@@ -1507,7 +1507,7 @@ describe("useTeamChatModel streaming flow", () => {
 
 	it.each(["failed", "aborted"] as const)("releases a %s send without overwriting a newer draft", async (outcome) => {
 		let rejectSend: ((reason: Error) => void) | undefined;
-		vi.mocked(window.vetta.agentTeams.sendMessage).mockReturnValueOnce(
+		vi.mocked(window.astravia.agentTeams.sendMessage).mockReturnValueOnce(
 			new Promise((_resolve, reject) => {
 				rejectSend = reject;
 			}),
@@ -1524,7 +1524,7 @@ describe("useTeamChatModel streaming flow", () => {
 		expect(result.current.model.canSend).toBe(false);
 		if (outcome === "aborted") {
 			await act(async () => result.current.actions.abort());
-			expect(window.vetta.agentTeams.abort).toHaveBeenCalledWith(baseSession.id);
+			expect(window.astravia.agentTeams.abort).toHaveBeenCalledWith(baseSession.id);
 		}
 		await act(async () => {
 			rejectSend?.(new Error("send stopped"));
@@ -1539,8 +1539,8 @@ describe("useTeamChatModel streaming flow", () => {
 		expect(result.current.model.canSend).toBe(true);
 		expect(result.current.model.feedItems.some((item) => item.kind === "agent" && item.phase === "pending")).toBe(false);
 		await act(async () => result.current.actions.send());
-		expect(window.vetta.agentTeams.sendMessage).toHaveBeenCalledTimes(2);
-		expect(window.vetta.agentTeams.sendMessage).toHaveBeenLastCalledWith(
+		expect(window.astravia.agentTeams.sendMessage).toHaveBeenCalledTimes(2);
+		expect(window.astravia.agentTeams.sendMessage).toHaveBeenLastCalledWith(
 			baseSession.id,
 			expect.objectContaining({ text: "edited while sending" }),
 		);
@@ -1591,7 +1591,7 @@ describe("useTeamChatModel streaming flow", () => {
 			resolveCreation?.({ document, snapshot: baseSnapshot, sessions: [] });
 			await sendPromise;
 		});
-		expect(window.vetta.agentTeams.sendMessage).toHaveBeenCalledWith(
+		expect(window.astravia.agentTeams.sendMessage).toHaveBeenCalledWith(
 			baseSession.id,
 			expect.objectContaining({ text: "Start immediately" }),
 		);

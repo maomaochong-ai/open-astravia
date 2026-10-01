@@ -1,8 +1,8 @@
 # App Action 测试
 
-本文记录 Vetta Desktop App Action（`vetta action` / 本地 Action RPC）的验收约定。
+本文记录 Astravia Desktop App Action（`astravia action` / 本地 Action RPC）的验收约定。
 
-UI 验证入口见 [Vetta Desktop UI 验证](../dev/README.md)。
+UI 验证入口见 [Astravia Desktop UI 验证](../dev/README.md)。
 
 本页只说明用户已明确要求使用 `verify:ui:*` 验收 App Action 时的操作方法，不会因为修改或测试了 App Action 而自动授权 Agent 启动 UI 验证实例。
 
@@ -15,7 +15,7 @@ UI 验证入口见 [Vetta Desktop UI 验证](../dev/README.md)。
 | `snapshot` / `run-code` 列出当前按钮文案 | 封装 `run-with-ui-approve.ps1` / 黑盒 `--approve` 盲点 |
 | 看到真实按钮后再 `click`（如 `确认开启`、`保存实验功能`） | 写死中文正则列表后批量空转 |
 | 先清残留弹窗（尤其 `拒绝（0:00）`）再发新 RPC | 队列堵着还连发写 action，把超时全记成 fail |
-| 统一使用 `verify:ui:pw` 操作 **Vetta Desktop** 主窗 | 直接调用全局 `playwright-cli` 或写死 tab 下标 |
+| 统一使用 `verify:ui:pw` 操作 **Astravia Desktop** 主窗 | 直接调用全局 `playwright-cli` 或写死 tab 下标 |
 
 原因：
 
@@ -35,7 +35,7 @@ bun run verify:ui:pw -- run-code "async (page) => { const all=page.getByRole('bu
 # 有「拒绝」则按需拒绝排空，或确认后点对应主按钮
 
 # 2) 后台发起 actions.run（会挂起直到 UI 确认）
-#    例如 bun/fetch 调 ~/.vetta/action-server.json 的 /rpc
+#    例如 bun/fetch 调 ~/.astravia/action-server.json 的 /rpc
 
 # 3) 再看页面：确认出现的按钮，再点
 bun run verify:ui:pw -- snapshot
@@ -60,10 +60,10 @@ bun apps/cli-host/src/cli.ts action run navigation.query '{"type":"help"}'
 ## 前置
 
 1. 验证实例已启动：`bun run verify:ui:start`
-2. 系统插件 `vetta-actions` 已启用并能激活（否则 Catalog 为空）
-3. CLI 可连本地 RPC（`~/.vetta/action-server.json`）
+2. 系统插件 `astravia-actions` 已启用并能激活（否则 Catalog 为空）
+3. CLI 可连本地 RPC（`~/.astravia/action-server.json`）
 4. `bun run verify:ui:status` 显示 `running` 和 `ui.targetFound` 均为 `true`
 
 ## 相关文档
 
-- [Vetta Desktop UI 验证](../dev/README.md)
+- [Astravia Desktop UI 验证](../dev/README.md)

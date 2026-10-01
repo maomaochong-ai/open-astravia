@@ -197,7 +197,7 @@ const knowledgeSetProcessingInputSchema = defineCapabilityInputSchema(knowledgeS
 
 export const DOMAIN_KNOWLEDGE_CAPABILITIES = {
 	LIST_BASES: defineCapability<Record<string, never>, KnowledgeBase[]>({
-		id: "cap.domain.vetta.knowledge.base.list",
+		id: "cap.domain.astravia.knowledge.base.list",
 		kind: "query",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -205,7 +205,7 @@ export const DOMAIN_KNOWLEDGE_CAPABILITIES = {
 		output: knowledgeBasesOutputSchema,
 	}),
 	LIST_FILE_STATUSES: defineCapability<Record<string, never>, KnowledgeFileStatuses>({
-		id: "cap.domain.vetta.knowledge.file-status.list",
+		id: "cap.domain.astravia.knowledge.file-status.list",
 		kind: "query",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -213,7 +213,7 @@ export const DOMAIN_KNOWLEDGE_CAPABILITIES = {
 		output: knowledgeFileStatusesOutputSchema,
 	}),
 	GET_PROCESSING_STATUS: defineCapability<Record<string, never>, boolean>({
-		id: "cap.domain.vetta.knowledge.processing.status.get",
+		id: "cap.domain.astravia.knowledge.processing.status.get",
 		kind: "query",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -221,7 +221,7 @@ export const DOMAIN_KNOWLEDGE_CAPABILITIES = {
 		output: knowledgeProcessingStatusOutputSchema,
 	}),
 	GET_PROCESSING_SETTINGS: defineCapability<Record<string, never>, KnowledgeProcessingSettings>({
-		id: "cap.domain.vetta.knowledge.processing.settings.get",
+		id: "cap.domain.astravia.knowledge.processing.settings.get",
 		kind: "query",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -229,7 +229,7 @@ export const DOMAIN_KNOWLEDGE_CAPABILITIES = {
 		output: knowledgeProcessingSettingsOutputSchema,
 	}),
 	CREATE_BASE: defineCapability<KnowledgeNameInput, undefined>({
-		id: "cap.domain.vetta.knowledge.base.create",
+		id: "cap.domain.astravia.knowledge.base.create",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -237,7 +237,7 @@ export const DOMAIN_KNOWLEDGE_CAPABILITIES = {
 		output: knowledgeNoOutputSchema,
 	}),
 	RENAME_BASE: defineCapability<KnowledgeRenameInput, undefined>({
-		id: "cap.domain.vetta.knowledge.base.rename",
+		id: "cap.domain.astravia.knowledge.base.rename",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -245,7 +245,7 @@ export const DOMAIN_KNOWLEDGE_CAPABILITIES = {
 		output: knowledgeNoOutputSchema,
 	}),
 	DELETE_BASE: defineCapability<KnowledgeNameInput, undefined>({
-		id: "cap.domain.vetta.knowledge.base.delete",
+		id: "cap.domain.astravia.knowledge.base.delete",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -253,7 +253,7 @@ export const DOMAIN_KNOWLEDGE_CAPABILITIES = {
 		output: knowledgeNoOutputSchema,
 	}),
 	ADD_FILES: defineCapability<KnowledgeAddFilesInput, undefined>({
-		id: "cap.domain.vetta.knowledge.entry.add-files",
+		id: "cap.domain.astravia.knowledge.entry.add-files",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -261,7 +261,7 @@ export const DOMAIN_KNOWLEDGE_CAPABILITIES = {
 		output: knowledgeNoOutputSchema,
 	}),
 	DELETE_ENTRY: defineCapability<KnowledgeDeleteEntryInput, undefined>({
-		id: "cap.domain.vetta.knowledge.entry.delete",
+		id: "cap.domain.astravia.knowledge.entry.delete",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -269,7 +269,7 @@ export const DOMAIN_KNOWLEDGE_CAPABILITIES = {
 		output: knowledgeNoOutputSchema,
 	}),
 	SCAN_NOW: defineCapability<Record<string, never>, KnowledgeScanResult>({
-		id: "cap.domain.vetta.knowledge.processing.scan",
+		id: "cap.domain.astravia.knowledge.processing.scan",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -277,7 +277,7 @@ export const DOMAIN_KNOWLEDGE_CAPABILITIES = {
 		output: knowledgeScanResultOutputSchema,
 	}),
 	RETRY_FAILED: defineCapability<Record<string, never>, KnowledgeScanResult>({
-		id: "cap.domain.vetta.knowledge.processing.retry-failed",
+		id: "cap.domain.astravia.knowledge.processing.retry-failed",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -285,7 +285,7 @@ export const DOMAIN_KNOWLEDGE_CAPABILITIES = {
 		output: knowledgeScanResultOutputSchema,
 	}),
 	SET_PROCESSING_SETTINGS: defineCapability<KnowledgeSetProcessingInput, KnowledgeProcessingSettings>({
-		id: "cap.domain.vetta.knowledge.processing.settings.set",
+		id: "cap.domain.astravia.knowledge.processing.settings.set",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,

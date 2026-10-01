@@ -1,7 +1,7 @@
 import type {
 	CodingAgentPlanReviewRequest,
 	CodingAgentPlanReviewResult,
-} from "@vetta/coding-agent/function-extensions";
+} from "@astravia/coding-agent/function-extensions";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import type { PlanReviewPanelLabels } from "../components/plan-review-panel/types";
@@ -21,7 +21,7 @@ export function usePlanReviewPanelModel(pending: CodingAgentPlanReviewRequest): 
 	const { t } = useTranslation("chat");
 	const respond = useCallback(
 		(result: CodingAgentPlanReviewResult) => {
-			void window.vetta.session.respondToPlanReview(pending.requestId, result).catch((error: unknown) => {
+			void window.astravia.session.respondToPlanReview(pending.requestId, result).catch((error: unknown) => {
 				console.error("[PlanReviewPanel] failed to send the review decision:", error);
 			});
 		},

@@ -1,6 +1,6 @@
+import type { SkillPromptAreaViewProps } from "@astravia-org/theme-ui/chat";
 import type { SkillInfo } from "@preload/api";
 import type { SelectedSkill } from "@shared/store/atoms";
-import type { SkillPromptAreaViewProps } from "@vetta-org/theme-ui/chat";
 import {
 	type ChangeEvent,
 	type KeyboardEvent,
@@ -70,7 +70,7 @@ export function useSkillPromptAreaModel({
 	}, [slashOpen]);
 
 	useEffect(() => {
-		void window.vetta.skills.list(cwd).then(setInstalledSkills);
+		void window.astravia.skills.list(cwd).then(setInstalledSkills);
 	}, [cwd]);
 
 	const skillMissing = useMemo(() => {

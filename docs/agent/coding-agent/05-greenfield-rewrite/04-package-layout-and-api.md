@@ -116,7 +116,7 @@ packages/coding-agent/src/
 入口文件只做导出和装配。解析、状态、存储、工具和协议实现必须位于其职责目录。
 
 迁移期间允许包根继续导出旧工具，但新实现只从明确的
-`@vetta/runtime-tools/coding` 子入口发布。每迁移一个工具，都必须先在该目录形成
+`@astravia/runtime-tools/coding` 子入口发布。每迁移一个工具，都必须先在该目录形成
 独立实现和 Feature 合同测试，不能从新子入口转发 `coding-agent`。合同测试必须同时运行
 旧实现与新实现，比较 Schema、模型描述、结果、错误和副作用；只完成其中一部分时不能公开
 同名工具。
@@ -245,7 +245,7 @@ CodingToolAvailabilityError
 
 ## 2. 公开 API 收缩
 
-新 `@vetta/coding-agent` 根入口建议只导出：
+新 `@astravia/coding-agent` 根入口建议只导出：
 
 ```ts
 export {
@@ -262,9 +262,9 @@ export {
 可选的明确子入口：
 
 ```text
-@vetta/coding-agent/cli
-@vetta/coding-agent/rpc
-@vetta/coding-agent/testing
+@astravia/coding-agent/cli
+@astravia/coding-agent/rpc
+@astravia/coding-agent/testing
 ```
 
 不再从根入口导出：

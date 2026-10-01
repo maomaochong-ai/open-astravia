@@ -1,3 +1,4 @@
+import type { WorkflowSwitcherItem } from "@astravia-org/theme-ui/activity";
 import { subagentErrorPresentation, subagentObjective, subagentUsageLabel } from "@shared/lib/subagent-presentation";
 import { workflowProgressLabel, workflowStatusMeta } from "@shared/lib/workflow-status";
 import {
@@ -10,7 +11,6 @@ import {
 	subagentsBySessionAtom,
 	workflowDisplayName,
 } from "@shared/store/atoms";
-import type { WorkflowSwitcherItem } from "@vetta-org/theme-ui/activity";
 import { useAtom, useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -90,10 +90,10 @@ export function useWorkflowTabPanelModel(): WorkflowTabPanelModel {
 
 		(async () => {
 			try {
-				const initial = await window.vetta.session.openViewer(sessionFile);
+				const initial = await window.astravia.session.openViewer(sessionFile);
 				if (cancelled) return;
 				setMessages(fullHistoryToChat(initial.history));
-				unsubscribe = await window.vetta.session.subscribeViewer(sessionFile, (snapshot) => {
+				unsubscribe = await window.astravia.session.subscribeViewer(sessionFile, (snapshot) => {
 					setMessages(fullHistoryToChat(snapshot.history));
 				});
 				if (cancelled) unsubscribe?.();
@@ -113,7 +113,7 @@ export function useWorkflowTabPanelModel(): WorkflowTabPanelModel {
 		(id: string) => {
 			const runtimeId = runtimeIdByWorkflowId.get(id);
 			if (!runtimeId) return;
-			void window.vetta.session.interruptSubagent?.(runtimeId, id);
+			void window.astravia.session.interruptSubagent?.(runtimeId, id);
 		},
 		[runtimeIdByWorkflowId],
 	);

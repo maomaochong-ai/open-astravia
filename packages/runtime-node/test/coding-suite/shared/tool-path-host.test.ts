@@ -18,7 +18,7 @@ describe("本机路径宿主（缺省）", () => {
 	});
 
 	it("照旧按磁盘上的真实文件名纠正弯引号写法", () => {
-		const dir = mkdtempSync(join(tmpdir(), "vetta-path-"));
+		const dir = mkdtempSync(join(tmpdir(), "astravia-path-"));
 		writeFileSync(join(dir, "it’s.md"), "x");
 		expect(resolveExistingPath("it's.md", dir)).toBe(join(dir, "it’s.md"));
 	});
@@ -27,7 +27,7 @@ describe("本机路径宿主（缺省）", () => {
 describe("远端路径宿主", () => {
 	it("不拿本机磁盘上碰巧存在的文件名去改写远端目标", () => {
 		// 本机恰好有弯引号版本：若仍探本机，远端的读写目标会被悄悄换成这个名字。
-		const dir = mkdtempSync(join(tmpdir(), "vetta-path-"));
+		const dir = mkdtempSync(join(tmpdir(), "astravia-path-"));
 		writeFileSync(join(dir, "it’s.md"), "x");
 		expect(resolveExistingPath("it's.md", dir, remotePosixToolPathHost)).toBe(`${dir}/it's.md`);
 		expect(resolveWritablePath("it's.md", dir, remotePosixToolPathHost)).toBe(`${dir}/it's.md`);
@@ -44,7 +44,7 @@ describe("远端路径宿主", () => {
 	});
 
 	it("找不到路径时不把本机父目录里的文件名当成提示报给模型", () => {
-		const dir = mkdtempSync(join(tmpdir(), "vetta-path-"));
+		const dir = mkdtempSync(join(tmpdir(), "astravia-path-"));
 		writeFileSync(join(dir, "config.local.json"), "x");
 		const message = formatNotFoundPath(`${dir}/config.json`, dir, remotePosixToolPathHost);
 		expect(message).not.toContain("Similar entries");
@@ -52,7 +52,7 @@ describe("远端路径宿主", () => {
 	});
 
 	it("bash 命令里带引号的路径不按本机磁盘改写", () => {
-		const dir = mkdtempSync(join(tmpdir(), "vetta-path-"));
+		const dir = mkdtempSync(join(tmpdir(), "astravia-path-"));
 		writeFileSync(join(dir, "it’s.md"), "x");
 		const command = `cat "./it's.md"`;
 		expect(rewriteQuotedPathLiterals(command, dir).pathCorrections).toHaveLength(1);

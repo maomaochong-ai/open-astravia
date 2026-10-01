@@ -6,9 +6,10 @@
  *
  * 与 React/IPC 解耦住在 lib：命令区、消息气泡、输入框胶囊共用同一份口径。
  */
+
+import { getSkillDisplayName } from "@astravia-org/capability-sdk";
 import type { SkillInfo } from "@preload/api";
 import { builtinSkillIconUrl } from "@shared/lib/builtin-skill-icons";
-import { getSkillDisplayName } from "@vetta-org/capability-sdk";
 import { resolveProvidedSkillPresentationIcon } from "@/shared/ability-presentation";
 
 /** 键为 `${type}:${slug}`：本地清单里 skill 与 scene 同命名空间，同名不同类型不能互相认领。 */

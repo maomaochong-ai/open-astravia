@@ -2,7 +2,7 @@
 
 ## 目的
 
-`@vetta-org/capability-sdk` 是纯合同包，只承担：
+`@astravia-org/capability-sdk` 是纯合同包，只承担：
 
 - 定义宿主无关的 Capability 端口。
 - 发布稳定 Token、输入输出 Schema、Catalog、错误码和 Access 合同。
@@ -14,7 +14,7 @@ SDK 不反向认识调用者。
 固定为受约束的 `namespace`，并把公开 facade 的 `plugin-blob` 转成通用 `storage-blob`；这些插件词汇
 不得出现在本包的 Token 或 Schema 中。
 
-相关执行机制见 [`@vetta/capability-runtime` 的 Registry 与 Access 文档](../../capability-runtime/docs/registry-and-access.md)。
+相关执行机制见 [`@astravia/capability-runtime` 的 Registry 与 Access 文档](../../capability-runtime/docs/registry-and-access.md)。
 
 最重要的不变量是：**能力合同是具体实现所依赖的抽象；合同不依赖宿主实现，宿主实现反向依赖合同。**
 
@@ -58,7 +58,7 @@ Desktop domain service / Electron / OS
 
 项目查询展示了完整结构：
 
-1. `src/domain/project.ts` 定义 `cap.domain.vetta.project.list`、输入输出 Schema 和 Token。
+1. `src/domain/project.ts` 定义 `cap.domain.astravia.project.list`、输入输出 Schema 和 Token。
 2. `desktop/src/main/capabilities/domain-providers.ts` 导入 Token，将 `ProjectService.list()` 绑定为 Provider。
 3. `desktop/src/main/capabilities/integrations/plugin/domain/project.ts` 在 Plugin 集成层通过已授权 Client
    调用 Token，不知道 Provider 的实现类型。
@@ -112,12 +112,12 @@ Desktop domain service / Electron / OS
 
 ### Foundation Capability
 
-与 Vetta 产品领域无关的平台原语，例如文件、网络、命名空间存储和 Artifact。实现只处理技术约束，
+与 Astravia 产品领域无关的平台原语，例如文件、网络、命名空间存储和 Artifact。实现只处理技术约束，
 不判断调用者是 Plugin、Theme 还是 Action。
 
 ### Domain Capability
 
-稳定的 Vetta 应用服务，例如项目、会话、调度器和知识库。Provider 可以组合 Foundation Capability
+稳定的 Astravia 应用服务，例如项目、会话、调度器和知识库。Provider 可以组合 Foundation Capability
 或宿主领域服务，但调用方不需要复制业务流程。导航等 Renderer 行为只有形成跨系统稳定合同并完成独立
 评审后才属于 Domain Capability；系统专用导航 facade 仍属于对应系统业务。
 

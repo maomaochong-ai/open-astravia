@@ -1,4 +1,4 @@
-import type { ConfigRecord, VersionedConfigMigration } from "@vetta/toolkit/versioned-config";
+import type { ConfigRecord, VersionedConfigMigration } from "@astravia/toolkit/versioned-config";
 import { CONTENT_CREATION_FORMAT } from "../types";
 import type { ContentNodeKind } from "../types";
 import { getDefaultNodePurpose } from "../node-semantics";

@@ -21,14 +21,14 @@
 
 ### 稳定 Host 与具体服务适配分离
 
-`@vetta/coding-agent/sdk` 新增：
+`@astravia/coding-agent/sdk` 新增：
 
 - `CodingAgentHost`；
 - `CreateCodingAgentHostOptions`；
 - `CodingAgentHostSessionDefaults`；
 - `createCodingAgentHost()`。
 
-该入口只包含稳定 Session 值合同。`@vetta/coding-agent/host-services` 新增 `createCodingAgentHostWithServices()`，负责把现有具体 Auth、Model 和 Settings 服务注入产品 Host Adapter。具体服务由调用方持有，Host 关闭不会伪造其不存在的释放语义。
+该入口只包含稳定 Session 值合同。`@astravia/coding-agent/host-services` 新增 `createCodingAgentHostWithServices()`，负责把现有具体 Auth、Model 和 Settings 服务注入产品 Host Adapter。具体服务由调用方持有，Host 关闭不会伪造其不存在的释放语义。
 
 ### Host 生命周期线性化
 

@@ -1,5 +1,5 @@
 import { createRequire } from "node:module";
-import type { RemoteScreenCursor } from "@vetta/remote-control";
+import type { RemoteScreenCursor } from "@astravia/remote-control";
 import { screen } from "electron";
 import type * as Koffi from "koffi";
 
@@ -22,7 +22,7 @@ function load() {
 	const runtime = koffi.load("/usr/lib/libobjc.A.dylib");
 	const getClass = runtime.func("void *objc_getClass(const char *)");
 	const selector = runtime.func("void *sel_registerName(const char *)");
-	const Pair = koffi.struct("VettaCursorPair", { x: "double", y: "double" });
+	const Pair = koffi.struct("AstraviaCursorPair", { x: "double", y: "double" });
 	return {
 		koffi,
 		getClass,

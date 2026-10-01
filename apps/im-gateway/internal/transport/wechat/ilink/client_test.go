@@ -456,7 +456,7 @@ func TestSendText_PayloadShape(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SendText: %v", err)
 	}
-	if !strings.HasPrefix(cid, "vetta-wechat-") {
+	if !strings.HasPrefix(cid, "astravia-wechat-") {
 		t.Errorf("client_id prefix wrong: %q", cid)
 	}
 

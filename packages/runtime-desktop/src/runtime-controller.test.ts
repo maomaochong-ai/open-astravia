@@ -1,4 +1,4 @@
-import type { RuntimeHost } from "@vetta/runtime-core";
+import type { RuntimeHost } from "@astravia/runtime-core";
 import { describe, expect, it, vi } from "vitest";
 import { DesktopRuntimeController } from "./runtime-controller.js";
 

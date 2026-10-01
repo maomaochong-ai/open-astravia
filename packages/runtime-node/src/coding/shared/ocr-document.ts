@@ -71,13 +71,13 @@ export function parseOcrDesktopResponse(stdout: string): OcrCliResponse {
 			// Electron helpers may write non-JSON lines before the response.
 		}
 	}
-	throw new Error("Vetta Desktop returned no parseable JSON on stdout");
+	throw new Error("Astravia Desktop returned no parseable JSON on stdout");
 }
 
 export function parseOcrJsonDocument(raw: string): OcrJsonDocument {
 	const parsed: unknown = JSON.parse(raw);
 	if (!Value.Check(OcrJsonDocumentSchema, parsed)) {
-		throw new Error("Vetta Desktop returned an invalid OCR document");
+		throw new Error("Astravia Desktop returned an invalid OCR document");
 	}
 	return parsed;
 }

@@ -10,11 +10,11 @@ export function useWindowPinAction(): WindowPinAction {
 	const [pinned, setPinned] = useState(false);
 
 	useEffect(() => {
-		void window.vetta.window.isAlwaysOnTop().then(setPinned);
+		void window.astravia.window.isAlwaysOnTop().then(setPinned);
 	}, []);
 
 	const toggle = useCallback(async () => {
-		setPinned(await window.vetta.window.toggleAlwaysOnTop());
+		setPinned(await window.astravia.window.toggleAlwaysOnTop());
 	}, []);
 
 	return useMemo(() => ({ pinned, toggle }), [pinned, toggle]);

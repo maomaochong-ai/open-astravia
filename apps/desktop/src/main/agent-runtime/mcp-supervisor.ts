@@ -1,16 +1,16 @@
 import { basename, join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { CONFIG_DIR_NAME, VERSION } from "@vetta/coding-agent/config";
-import type { McpServerConfig } from "@vetta/runtime-mcp";
+import { CONFIG_DIR_NAME, VERSION } from "@astravia/coding-agent/config";
+import type { McpServerConfig } from "@astravia/runtime-mcp";
 import {
 	EMPTY_MCP_CONFIG_SOURCE,
 	MCP_APP_CLIENT_CAPABILITY,
 	MCP_APPS_EXTENSION_ID,
 	type McpServerInteractionHandlers,
 	type McpServerSupervisor,
-} from "@vetta/runtime-mcp";
-import { createMcpClient, createNodeMcpSupervisor, FileMcpConfigSource } from "@vetta/runtime-node/mcp";
-import { isSshProjectUri } from "@vetta/ssh-transport";
+} from "@astravia/runtime-mcp";
+import { createMcpClient, createNodeMcpSupervisor, FileMcpConfigSource } from "@astravia/runtime-node/mcp";
+import { isSshProjectUri } from "@astravia/ssh-transport";
 import { ensureOpenMarketplaceManagedMcpRuntime } from "../abilities/open-marketplace/open-marketplace-mcp-runtime-host.js";
 import { getDesktopMcpElicitationBroker } from "../conversations/mcp-elicitation-broker.js";
 import { getAppLogger } from "../logger.js";

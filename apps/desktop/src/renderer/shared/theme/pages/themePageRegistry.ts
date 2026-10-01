@@ -1,6 +1,6 @@
+import { isValidHostedRouteSegment } from "@astravia-org/capability-sdk";
+import type { ThemeModule, ThemePageDefinition, ThemePageLayout } from "@astravia-org/theme-sdk";
 import { THEME_HOSTED_ROUTE_PATH } from "@shared/hosted-routes/hosted-route-descriptors";
-import { isValidHostedRouteSegment } from "@vetta-org/capability-sdk";
-import type { ThemeModule, ThemePageDefinition, ThemePageLayout } from "@vetta-org/theme-sdk";
 
 export const THEME_PAGE_ROUTE_PATH = THEME_HOSTED_ROUTE_PATH;
 

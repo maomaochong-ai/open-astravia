@@ -1,10 +1,10 @@
-import type { RuntimeDocumentParticipant } from "@vetta/runtime-core";
-import type { AgentFeatureDefinition } from "@vetta/runtime-core/kernel";
+import type { RuntimeDocumentParticipant } from "@astravia/runtime-core";
+import type { AgentFeatureDefinition } from "@astravia/runtime-core/kernel";
 import {
 	defineSessionExtensionService,
 	type SessionExtensionDefinition,
 	sessionExtensionObservation,
-} from "@vetta/runtime-core/session-extensions";
+} from "@astravia/runtime-core/session-extensions";
 import type { CodingAgentSubagentRuntime } from "./runtime.js";
 import {
 	CODING_AGENT_SUBAGENT_EXTENSION_ID,

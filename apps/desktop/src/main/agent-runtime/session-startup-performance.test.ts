@@ -1,10 +1,10 @@
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { Api, Model } from "@vetta/ai";
-import { createCodingAgentRuntimeSessionSelection } from "@vetta/coding-agent/composition";
-import { RuntimeHost } from "@vetta/runtime-core";
-import { DesktopRuntimeBackendPool } from "@vetta/runtime-desktop";
+import type { Api, Model } from "@astravia/ai";
+import { createCodingAgentRuntimeSessionSelection } from "@astravia/coding-agent/composition";
+import { RuntimeHost } from "@astravia/runtime-core";
+import { DesktopRuntimeBackendPool } from "@astravia/runtime-desktop";
 import { expect, it, vi } from "vitest";
 import {
 	startOpenAiResponsesTestServer,
@@ -13,17 +13,17 @@ import {
 import { DesktopMcpResourceManager } from "./mcp-resource-manager.js";
 import { createDesktopPromptRuntimeSources } from "./resource-runtime.js";
 
-// Set VETTA_STARTUP_BENCHMARK_RUNS=5 for comparable timing samples. No wall-clock
+// Set ASTRAVIA_STARTUP_BENCHMARK_RUNS=5 for comparable timing samples. No wall-clock
 // assertion: CI load must not turn a resource freshness regression into a flaky test.
-// Set VETTA_TEAM_STARTUP_BENCHMARK=1 to model a four-member Team: a lightweight
+// Set ASTRAVIA_TEAM_STARTUP_BENCHMARK=1 to model a four-member Team: a lightweight
 // coordination session, leader-first admission, then sibling warmup after the
 // leader's first response has completed.
-// Set VETTA_STARTUP_BENCHMARK_MCP_DELAY_MS=10000 to model a slow MCP source
+// Set ASTRAVIA_STARTUP_BENCHMARK_MCP_DELAY_MS=10000 to model a slow MCP source
 // without calling an external MCP service or provider.
 it("creates a conversation, sends with installed skills and observes edits on the next turn", async () => {
-	const root = await mkdtemp(join(tmpdir(), "vetta-startup-benchmark-"));
-	vi.stubEnv("VETTA_HOME", root);
-	vi.stubEnv("VETTA_CODING_AGENT_DIR", join(root, "agent"));
+	const root = await mkdtemp(join(tmpdir(), "astravia-startup-benchmark-"));
+	vi.stubEnv("ASTRAVIA_HOME", root);
+	vi.stubEnv("ASTRAVIA_CODING_AGENT_DIR", join(root, "agent"));
 	vi.stubEnv("USERPROFILE", root);
 	vi.stubEnv("HOME", root);
 	const providerRequestReceivedAt: number[] = [];
@@ -61,9 +61,9 @@ it("creates a conversation, sends with installed skills and observes edits on th
 				),
 			);
 		}
-		const runs = Number(process.env.VETTA_STARTUP_BENCHMARK_RUNS ?? 1);
+		const runs = Number(process.env.ASTRAVIA_STARTUP_BENCHMARK_RUNS ?? 1);
 		if (!Number.isInteger(runs) || runs < 1 || runs > 20) throw new Error("Invalid benchmark runs");
-		const mcpDelayMs = Number(process.env.VETTA_STARTUP_BENCHMARK_MCP_DELAY_MS ?? 0);
+		const mcpDelayMs = Number(process.env.ASTRAVIA_STARTUP_BENCHMARK_MCP_DELAY_MS ?? 0);
 		if (!Number.isInteger(mcpDelayMs) || mcpDelayMs < 0 || mcpDelayMs > 15_000) {
 			throw new Error("Invalid benchmark MCP delay");
 		}
@@ -148,7 +148,7 @@ it("creates a conversation, sends with installed skills and observes edits on th
 				const runtime = new RuntimeHost({ sessionBackend: pool, getDefaultExecutionMode: () => "full-access" });
 				try {
 					const start = performance.now();
-					const benchmarkTeam = process.env.VETTA_TEAM_STARTUP_BENCHMARK === "1";
+					const benchmarkTeam = process.env.ASTRAVIA_TEAM_STARTUP_BENCHMARK === "1";
 					const created = await runtime.createSession({
 						cwd,
 						sessionDir: join(root, "sessions"),
@@ -258,7 +258,7 @@ it("creates a conversation, sends with installed skills and observes edits on th
 		} finally {
 			await mcpResources?.dispose();
 		}
-		if (process.env.VETTA_STARTUP_BENCHMARK_RUNS) console.info("[startup-benchmark]", JSON.stringify(samples));
+		if (process.env.ASTRAVIA_STARTUP_BENCHMARK_RUNS) console.info("[startup-benchmark]", JSON.stringify(samples));
 	} finally {
 		await server.dispose();
 		await rm(root, { recursive: true, force: true });

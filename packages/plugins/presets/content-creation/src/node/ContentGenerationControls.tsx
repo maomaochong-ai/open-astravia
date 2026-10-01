@@ -1,4 +1,4 @@
-import { useTranslation } from "@vetta-org/plugin-sdk";
+import { useTranslation } from "@astravia-org/plugin-sdk";
 import {
 	Button,
 	DropdownMenu,
@@ -6,7 +6,7 @@ import {
 	DropdownMenuRadioGroup,
 	DropdownMenuRadioItem,
 	DropdownMenuTrigger,
-} from "@vetta-org/ui";
+} from "@astravia-org/ui";
 import { useCallback, useRef, useState } from "react";
 import type { ContentModelDescriptor } from "../generation/types";
 import type { ContentNodeData, ContentNodeKind } from "../project/types";
@@ -142,7 +142,7 @@ function ContentOptionMenu({ value, label, options, onValueChange }: ContentOpti
 			{open ? (
 				<DropdownMenuContent
 					ref={contentRef}
-					data-vetta-plugin-root="content-creation"
+					data-astravia-plugin-root="content-creation"
 					align="start"
 					className="z-[100] min-w-36 rounded-lg p-1"
 				>

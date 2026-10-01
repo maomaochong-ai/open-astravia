@@ -1,8 +1,8 @@
+import type { McpBrowserOAuthSession } from "@astravia/runtime-mcp/auth";
 import type { OAuthClientProvider } from "@modelcontextprotocol/sdk/client/auth.js";
 import { UnauthorizedError } from "@modelcontextprotocol/sdk/client/auth.js";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import type { McpBrowserOAuthSession } from "@vetta/runtime-mcp/auth";
 import type { McpClientInfo } from "../protocol/index.js";
 
 export interface McpBrowserOAuthSdkSessionOptions {

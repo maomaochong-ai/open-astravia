@@ -1,8 +1,8 @@
 import { mkdtempSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { RuntimeToolResult } from "@vetta/runtime-core/kernel";
-import { buildSshHelperForTests, createLoopbackSshConnection } from "@vetta/ssh-transport/testing";
+import type { RuntimeToolResult } from "@astravia/runtime-core/kernel";
+import { buildSshHelperForTests, createLoopbackSshConnection } from "@astravia/ssh-transport/testing";
 import { describe, expect, it } from "vitest";
 import { createSshEditOperations } from "./ssh-file-operations.js";
 import { createSshCodingToolEnvironment } from "./ssh-tool-environment.js";
@@ -17,7 +17,7 @@ describe.skipIf(!helperBinary)("远端 edit 的并发保护（由 helper 在远�
 	};
 
 	it("读与写之间文件被别人改了：拒绝覆盖，并让模型重新读", async () => {
-		const dir = realpathSync(mkdtempSync(join(tmpdir(), "vetta-edit-conflict-")));
+		const dir = realpathSync(mkdtempSync(join(tmpdir(), "astravia-edit-conflict-")));
 		const file = join(dir, "config.ts");
 		writeFileSync(file, "export const port = 3000;\n");
 		const operations = createSshEditOperations(await connect());
@@ -38,7 +38,7 @@ describe.skipIf(!helperBinary)("远端 edit 的并发保护（由 helper 在远�
 	});
 
 	it("没有外人插手时，edit 工具连续改同一个文件不受影响", async () => {
-		const dir = realpathSync(mkdtempSync(join(tmpdir(), "vetta-edit-conflict-")));
+		const dir = realpathSync(mkdtempSync(join(tmpdir(), "astravia-edit-conflict-")));
 		writeFileSync(join(dir, "main.ts"), "const a = 1;\nconst b = 2;\n");
 		const environment = createSshCodingToolEnvironment({
 			connection: await connect(),

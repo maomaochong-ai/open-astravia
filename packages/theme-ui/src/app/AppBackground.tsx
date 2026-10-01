@@ -1,4 +1,4 @@
-import { cn } from "@vetta-org/ui";
+import { cn } from "@astravia-org/ui";
 import type { ComponentPropsWithoutRef, JSX, ReactNode } from "react";
 import { ThemeSurface } from "../appearance";
 

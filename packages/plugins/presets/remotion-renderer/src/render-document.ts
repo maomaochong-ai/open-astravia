@@ -1,4 +1,4 @@
-export const REMOTION_DOCUMENT_MIME_TYPE = "application/vnd.vetta.remotion-project+json";
+export const REMOTION_DOCUMENT_MIME_TYPE = "application/vnd.astravia.remotion-project+json";
 
 export interface RemotionRenderDocument {
 	schemaVersion: 1;

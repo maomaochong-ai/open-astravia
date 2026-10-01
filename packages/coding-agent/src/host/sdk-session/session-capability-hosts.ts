@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
-import type { RuntimeHostSession } from "@vetta/runtime-core";
-import { createConversationSeedDraft } from "@vetta/runtime-node/conversation";
+import type { RuntimeHostSession } from "@astravia/runtime-core";
+import { createConversationSeedDraft } from "@astravia/runtime-node/conversation";
 import {
 	type CodingAgentHtmlExportRuntime,
 	createToolHtmlRenderer,

@@ -34,7 +34,7 @@ import (
 	"go.mau.fi/whatsmeow/types/events"
 	waLog "go.mau.fi/whatsmeow/util/log"
 
-	"vetta-im-gateway/internal/transport"
+	"astravia-im-gateway/internal/transport"
 
 	// Register the pure-Go sqlite driver under the name "sqlite" for
 	// database/sql, which sqlstore.New opens by dialect name.

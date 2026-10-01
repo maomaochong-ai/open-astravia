@@ -1,4 +1,4 @@
-import { definePlugin, type PluginFilePreviewProps, useTranslation } from "@vetta-org/plugin-sdk";
+import { definePlugin, type PluginFilePreviewProps, useTranslation } from "@astravia-org/plugin-sdk";
 import { AudioPreview } from "./AudioPreview";
 import { MEDIA_EXTENSIONS, isAudioExtension, isImageExtension, isVideoExtension } from "./formats";
 import { ImagePreview } from "./ImagePreview";

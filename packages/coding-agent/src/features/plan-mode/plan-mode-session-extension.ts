@@ -1,10 +1,10 @@
-import type { RuntimeDocumentParticipant } from "@vetta/runtime-core";
+import type { RuntimeDocumentParticipant } from "@astravia/runtime-core";
 import {
 	defineSessionExtensionService,
 	optionalSessionExtensionFunction,
 	type SessionExtensionDefinition,
 	sessionExtensionObservation,
-} from "@vetta/runtime-core/session-extensions";
+} from "@astravia/runtime-core/session-extensions";
 import type { ConversationScenario } from "../../profiles/index.js";
 import { CODING_AGENT_MODEL_TOOL_ORDER } from "../../tool-policy/model-tool-order.js";
 import {

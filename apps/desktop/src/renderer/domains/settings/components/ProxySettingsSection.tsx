@@ -1,4 +1,4 @@
-import { ProxySettingsSectionView } from "@vetta-org/theme-ui/settings";
+import { ProxySettingsSectionView } from "@astravia-org/theme-ui/settings";
 import { SETTINGS_SECTION } from "../registry";
 import type { ProxySettingsModel } from "./useProxySettingsModel";
 

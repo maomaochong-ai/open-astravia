@@ -2,7 +2,7 @@
 
 ## 目标
 
-在第 151 阶段让失败 `TurnResult` 可观察之后，本阶段收紧 RPC Turn 的终态合同，并用真实 Vetta CLI 验证
+在第 151 阶段让失败 `TurnResult` 可观察之后，本阶段收紧 RPC Turn 的终态合同，并用真实 Astravia CLI 验证
 Provider HTTP 错误、流中断和用户 abort 后的恢复能力。范围只包含终态仲裁和恢复门禁，不增加 RPC 命令、工具、
 Extension 能力或会话格式。
 
@@ -60,7 +60,7 @@ scope：
 
 ## 安装产物
 
-独立安装 CLI 产物新增 Provider HTTP 失败门禁，验证实际编译后的 `vetta agent`：
+独立安装 CLI 产物新增 Provider HTTP 失败门禁，验证实际编译后的 `astravia agent`：
 
 - 失败 Turn 只有一个终态且状态回到 idle；
 - 同一可执行进程可以继续下一 Turn；

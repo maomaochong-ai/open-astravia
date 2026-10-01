@@ -4,7 +4,7 @@ import {
 	type SkillInfo,
 	type SkillSetEnabledResult,
 	type SkillType,
-} from "@vetta-org/capability-sdk";
+} from "@astravia-org/capability-sdk";
 import type { PluginCapabilitySessionAccess } from "../types.js";
 
 export const pluginSkillMethods = {

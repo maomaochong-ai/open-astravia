@@ -3,11 +3,11 @@ title: Security and data boundaries
 description: Understand the data flow between local workspaces, model requests, credentials, MCP, plugins, and execution permissions.
 ---
 
-Vetta centers work in a local workspace, but “runs locally” does not mean that all content stays on the device. Model providers, MCP, and plugins may send task data to configured external services. Understand each boundary before using it.
+Astravia centers work in a local workspace, but “runs locally” does not mean that all content stays on the device. Model providers, MCP, and plugins may send task data to configured external services. Understand each boundary before using it.
 
 ## Data flow overview
 
-<DataFlow aria-label="Vetta data flow boundaries">
+<DataFlow aria-label="Astravia data flow boundaries">
   <div><strong>Local workspace</strong><span>Project files, sessions, knowledge sources, and configuration</span></div>
   <b>→</b>
   <div><strong>Context assembly</strong><span>Task, citations, tool results, and capability instructions</span></div>
@@ -33,12 +33,12 @@ Local tools may continue to read or modify files. MCP, plugins, webhooks, and IM
 
 - Enter credentials only in dedicated model, MCP, IM, or webhook configuration UI.
 - Do not put keys, tokens, cookies, or authorization codes in tasks, project files, skills, logs, or issue reports.
-- References such as `env:MY_API_KEY` store only the variable name; the environment that starts Vetta must still protect the value.
+- References such as `env:MY_API_KEY` store only the variable name; the environment that starts Astravia must still protect the value.
 - Inspect diagnostic exports and sessions before sharing them. Do not assume every third-party tool output is automatically redacted.
 
 ## Execution permissions
 
-Restricted sandbox mode limits file and process access to the workspace capability boundary. Full access permits broader system operations. If a platform cannot provide sandboxing, Vetta explains why; do not treat “sandbox unavailable” as equivalent protection.
+Restricted sandbox mode limits file and process access to the workspace capability boundary. Full access permits broader system operations. If a platform cannot provide sandboxing, Astravia explains why; do not treat “sandbox unavailable” as equivalent protection.
 
 A permission prompt only means that the host is asking whether to perform an action. Confirm the target path, command, network address, and reversibility, and do not assume the request itself is trustworthy.
 

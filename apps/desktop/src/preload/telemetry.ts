@@ -2,7 +2,7 @@ import { hookupIpc } from "@sentry/electron/preload-namespaced";
 import * as Sentry from "@sentry/electron/renderer";
 import { redactSensitiveText, redactUrl } from "../shared/sentry-privacy.js";
 
-if (process.env.VETTA_SENTRY_ENABLED === "true") {
+if (process.env.ASTRAVIA_SENTRY_ENABLED === "true") {
 	initializePreloadErrorMonitoring();
 }
 

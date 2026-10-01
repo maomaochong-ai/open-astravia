@@ -1,13 +1,13 @@
 # Pi 在重写基线后的关键更新
 
-本文件从近似历史基线 `v0.14.2` 到 current `0.84.1` 汇总与扩展性直接相关的变化。版本号用于定位上游演进，不表示 Vetta 必须按相同顺序实现。
+本文件从近似历史基线 `v0.14.2` 到 current `0.84.1` 汇总与扩展性直接相关的变化。版本号用于定位上游演进，不表示 Astravia 必须按相同顺序实现。
 
 ## 时间线
 
-| Pi 版本 | 关键变化 | 对 Vetta 的意义 |
+| Pi 版本 | 关键变化 | 对 Astravia 的意义 |
 | --- | --- | --- |
-| `0.16` | JSON/RPC 重新设计 | 可复核 Vetta RPC 的关联、事件和错误合同 |
-| `0.26` | SDK | Pi 开始把终端 harness 变成可嵌入会话；Vetta 已走得更远 |
+| `0.16` | JSON/RPC 重新设计 | 可复核 Astravia RPC 的关联、事件和错误合同 |
+| `0.26` | SDK | Pi 开始把终端 harness 变成可嵌入会话；Astravia 已走得更远 |
 | `0.35` | hooks/custom tools 统一到 ExtensionAPI | 形成 Pi 单一扩展作者模型 |
 | `0.38` | async factories、custom editor/UI、runtime split | 扩展初始化与 TUI 注入显著增强 |
 | `0.47` | input interception | Extension 可改变用户输入流 |
@@ -33,21 +33,21 @@
 
 Pi 把“Extension 被 reload”当成代际切换：旧 runtime/context 变为 inactive，继续调用会明确报 stale；event bus subscription 由 runtime 跟踪并在 teardown 取消。会话 new/switch/fork/import 时，通过 fresh callback 获取新 context，而不是让旧闭包隐式指向新 session。
 
-这是正确性问题，不是 API 装饰。Vetta 的 Coding Extension 应优先补齐同等语义，并直接复用底层 versioned registry 思路。
+这是正确性问题，不是 API 装饰。Astravia 的 Coding Extension 应优先补齐同等语义，并直接复用底层 versioned registry 思路。
 
 ### 2. Project trust
 
 Pi 在读取项目本地 settings、packages、extensions 等可影响代码执行的输入前做 trust 决策，并为非交互模式提供显式行为。它只解决“是否允许该项目参与配置/加载”，不解决获批代码的隔离。
 
-Vetta 同时有 CLI、Desktop、SDK、IM，不能照搬一个终端 prompt。应定义宿主无关 `ProjectTrustDecisionPort`，再由 Desktop UI、CLI flags 和非交互 policy 适配。
+Astravia 同时有 CLI、Desktop、SDK、IM，不能照搬一个终端 prompt。应定义宿主无关 `ProjectTrustDecisionPort`，再由 Desktop UI、CLI flags 和非交互 policy 适配。
 
 ### 3. 动态工具与 Provider
 
-Pi current 明确支持 runtime tool refresh、Provider register/unregister、live model catalog 和完整 native Provider。Vetta 底层 Runtime 已有接近或更强的动态目录，但 Coding Extension 的外部 API 未完整映射。优先统一“何时可见、in-flight 如何处理、同名替换如何处理、卸载后旧调用如何失败”四个语义。
+Pi current 明确支持 runtime tool refresh、Provider register/unregister、live model catalog 和完整 native Provider。Astravia 底层 Runtime 已有接近或更强的动态目录，但 Coding Extension 的外部 API 未完整映射。优先统一“何时可见、in-flight 如何处理、同名替换如何处理、卸载后旧调用如何失败”四个语义。
 
 ### 4. 结构化来源
 
-Pi 将来源附着在对象上，使工具列表、命令列表、RPC、错误和包管理界面都能回答“这是谁贡献的”。Vetta 现有 `extensionPath`、package source map 和 plugin identity 可以汇入统一结构，例如：
+Pi 将来源附着在对象上，使工具列表、命令列表、RPC、错误和包管理界面都能回答“这是谁贡献的”。Astravia 现有 `extensionPath`、package source map 和 plugin identity 可以汇入统一结构，例如：
 
 ```ts
 interface ContributionSourceInfo {
@@ -65,15 +65,15 @@ interface ContributionSourceInfo {
 
 ### 5. Package manager hardening
 
-值得吸收的不是“Pi Package”品牌，而是 install-and-persist 事务、configured package 列表、pinned/reconcile 规则、失败回滚、私有临时目录、安全 git path、自定义 npm command 和项目/全局配置增量。Vetta 应保留 Bun/现有目录语义，不照搬上游命令实现。
+值得吸收的不是“Pi Package”品牌，而是 install-and-persist 事务、configured package 列表、pinned/reconcile 规则、失败回滚、私有临时目录、安全 git path、自定义 npm command 和项目/全局配置增量。Astravia 应保留 Bun/现有目录语义，不照搬上游命令实现。
 
 ### 6. Provider interception 与 typed telemetry
 
-请求前、headers 前和响应后 hook 便于代理、企业认证、缓存与观测；typed telemetry 让不同 exporter 共享稳定 schema。两者都可能暴露 prompt、response、token 或认证信息，Vetta 必须把授权、redaction、采样和错误隔离作为合同的一部分。
+请求前、headers 前和响应后 hook 便于代理、企业认证、缓存与观测；typed telemetry 让不同 exporter 共享稳定 schema。两者都可能暴露 prompt、response、token 或认证信息，Astravia 必须把授权、redaction、采样和错误隔离作为合同的一部分。
 
 ### 7. Delta-only streaming
 
-Pi `0.84` 的 JSON/RPC `message_update` 只发送 delta，不再重复累计 partial，避免长输出产生二次方级传输和拼接开销。Vetta 当前 RPC 仍转发 `assistantMessageEvent`；应先确认其具体 payload 是否累计，再决定增加协议版本还是在兼容字段旁新增 delta。
+Pi `0.84` 的 JSON/RPC `message_update` 只发送 delta，不再重复累计 partial，避免长输出产生二次方级传输和拼接开销。Astravia 当前 RPC 仍转发 `assistantMessageEvent`；应先确认其具体 payload 是否累计，再决定增加协议版本还是在兼容字段旁新增 delta。
 
 ## 实验能力：可以研究，但不能按已交付评审
 
@@ -81,7 +81,7 @@ Pi `0.84` 的 JSON/RPC `message_update` 只发送 delta，不再重复累计 par
 
 Pi 新增 strict versioned framed CBOR 协议、transport-neutral client、lease/ownership、authoritative snapshot 和 server listener 边界。设计适合远程、多客户端和断线重连，但上游仍标记 experimental，未知字段策略和版本兼容也可能继续变化。
 
-Vetta 可以复用设计原则，不应直接替换已有 JSON RPC 或把 experimental package 作为生产依赖。
+Astravia 可以复用设计原则，不应直接替换已有 JSON RPC 或把 experimental package 作为生产依赖。
 
 ### AgentHarness v2
 
@@ -95,12 +95,12 @@ AgentHarness v2 的目标包括：
 - 原子 snapshot 与无缝 live events；
 - storage backends 和 typed telemetry。
 
-这些方向对 Vetta 的 long-running agent、subagent 和可复现测试很有价值。但当前 scaffold 的主要 run/drive 操作仍未实现，设计文档还有多组未完成 work package，生产 `coding-agent` 也未迁移到它。建议设置跟踪门槛：等上游完成核心 harness、recovery、observer/storage 合同并实际接入 production 后，再做第二轮差分评审。
+这些方向对 Astravia 的 long-running agent、subagent 和可复现测试很有价值。但当前 scaffold 的主要 run/drive 操作仍未实现，设计文档还有多组未完成 work package，生产 `coding-agent` 也未迁移到它。建议设置跟踪门槛：等上游完成核心 harness、recovery、observer/storage 合同并实际接入 production 后，再做第二轮差分评审。
 
 ## 不应采纳的部分
 
-- 不把 Pi 集中的 `coding-agent/src/core` 搬回 Vetta。
-- 不在 Vetta 稳定 SDK 中暴露具体 Manager/Registry 作为默认扩展面。
+- 不把 Pi 集中的 `coding-agent/src/core` 搬回 Astravia。
+- 不在 Astravia 稳定 SDK 中暴露具体 Manager/Registry 作为默认扩展面。
 - 不把 TUI concrete types 放入宿主无关 Runtime 根合同。
 - 不复制“获批 Extension 即拥有整个用户进程权限”的安全模型。
 - 不直接依赖 Pi experimental protocol 或未完成 AgentHarness scaffold。

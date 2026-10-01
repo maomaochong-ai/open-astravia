@@ -1,4 +1,4 @@
-import { createAgentTeamFixture } from "@vetta/agent-team";
+import { createAgentTeamFixture } from "@astravia/agent-team";
 import { describe, expect, it } from "vitest";
 import { AGENT_AVATAR_OPTIONS, agentAvatarUrl, teamMemberAvatarUrls } from "./agent-avatar";
 

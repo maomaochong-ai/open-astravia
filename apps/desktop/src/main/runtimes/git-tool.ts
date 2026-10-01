@@ -91,7 +91,7 @@ export function createGitToolDeps(): GitToolDeps {
 
 /**
  * Git 检测与安装引导（ADR-0134）。系统 git 优先；Windows 上缺 git 时可把 MinGit
- * 装进 ~/.vetta/runtimes，并追加到 PATH 末尾，只在 Vetta 进程树内生效。
+ * 装进 ~/.astravia/runtimes，并追加到 PATH 末尾，只在 Astravia 进程树内生效。
  */
 export class GitToolManager {
 	private status: GitToolStatus | null = null;

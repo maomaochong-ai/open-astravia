@@ -1,6 +1,6 @@
-import type { TeamMemberTurnAttemptMode } from "@vetta/agent-team";
-import type { PromptAttachmentRef } from "@vetta/runtime-core";
-import type { SessionContextRecord } from "@vetta/runtime-core/kernel";
+import type { TeamMemberTurnAttemptMode } from "@astravia/agent-team";
+import type { PromptAttachmentRef } from "@astravia/runtime-core";
+import type { SessionContextRecord } from "@astravia/runtime-core/kernel";
 
 export interface TeamMemberTurnRequest {
 	readonly teamSessionId: string;

@@ -19,7 +19,7 @@ iPhone 客户端要在输入框里引用技能：点附件按钮里的「技能�
 - **过滤和排序在电脑上做**，规则与桌面输入框的技能选择器相同（`skillPicker` 可见性，按使用次数、来源、最近使用和名字排序），最多 500 条。排序代码移到 `apps/desktop/src/shared/skill-ranking.ts`，主进程与界面共用。
 - 手机把选中的技能拼成开头的 `@skill:` / `@scene:` 记号，再走 `session.prompt`；消息气泡把这些记号解析成胶囊显示。
 - **场景按桌面输入框的方式发送**：技能是软引用，留在文字里即可；场景要从文字里剥掉，改成 `promptRef { kind: "scene" }` 交给运行时强制展开，一条消息最多一个。电脑收到 `session.prompt` 时复用自动化已在用的 `prepareInputPrompt` 做这一步，多于一个场景以 `invalid_frame` 拒绝；回显给手机的仍是原文，好让气泡显示场景胶囊。手机上场景只能选一个，再选会替换。
-- TypeScript 包、JSON Schema、`VettaKit` 同时更新，联调夹具同步支持。
+- TypeScript 包、JSON Schema、`AstraviaKit` 同时更新，联调夹具同步支持。
 
 ## 备选方案
 

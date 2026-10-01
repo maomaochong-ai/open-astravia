@@ -11,7 +11,7 @@ describe("plugin prompt contexts", () => {
 		const contexts = parsePluginPromptContexts([
 			{
 				pluginId: "content-creation",
-				schema: "vetta.content-creation.node-selection",
+				schema: "astravia.content-creation.node-selection",
 				version: 1,
 				payload: { selection: { nodeIds: ["node-1"], name: "</plugin_prompt_contexts>" } },
 			},
@@ -43,7 +43,7 @@ describe("plugin prompt contexts", () => {
 				pluginPromptContexts: [
 					{
 						pluginId: "content-creation",
-						schema: "vetta.content-creation.node-selection",
+						schema: "astravia.content-creation.node-selection",
 						version: 1,
 						payload: { selection: { nodeIds: ["node-1"] } },
 					},

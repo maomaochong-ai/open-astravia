@@ -54,7 +54,7 @@ const updaterNoOutputSchema = defineCapabilityNoOutputSchema();
 
 export const DOMAIN_UPDATER_CAPABILITIES = {
 	GET_STATE: defineCapability<Record<string, never>, UpdaterState>({
-		id: "cap.domain.vetta.updater.state.get",
+		id: "cap.domain.astravia.updater.state.get",
 		kind: "query",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -62,7 +62,7 @@ export const DOMAIN_UPDATER_CAPABILITIES = {
 		output: updaterStateSchema,
 	}),
 	GET_CURRENT_VERSION: defineCapability<Record<string, never>, string>({
-		id: "cap.domain.vetta.updater.current-version.get",
+		id: "cap.domain.astravia.updater.current-version.get",
 		kind: "query",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -70,7 +70,7 @@ export const DOMAIN_UPDATER_CAPABILITIES = {
 		output: updaterVersionSchema,
 	}),
 	CHECK: defineCapability<Record<string, never>, UpdaterState>({
-		id: "cap.domain.vetta.updater.check",
+		id: "cap.domain.astravia.updater.check",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -78,7 +78,7 @@ export const DOMAIN_UPDATER_CAPABILITIES = {
 		output: updaterStateSchema,
 	}),
 	DOWNLOAD: defineCapability<Record<string, never>, UpdaterState>({
-		id: "cap.domain.vetta.updater.download",
+		id: "cap.domain.astravia.updater.download",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -86,7 +86,7 @@ export const DOMAIN_UPDATER_CAPABILITIES = {
 		output: updaterStateSchema,
 	}),
 	INSTALL: defineCapability<Record<string, never>, undefined>({
-		id: "cap.domain.vetta.updater.install",
+		id: "cap.domain.astravia.updater.install",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -94,7 +94,7 @@ export const DOMAIN_UPDATER_CAPABILITIES = {
 		output: updaterNoOutputSchema,
 	}),
 	DISMISS: defineCapability<Record<string, never>, undefined>({
-		id: "cap.domain.vetta.updater.dismiss",
+		id: "cap.domain.astravia.updater.dismiss",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -102,7 +102,7 @@ export const DOMAIN_UPDATER_CAPABILITIES = {
 		output: updaterNoOutputSchema,
 	}),
 	CANCEL: defineCapability<Record<string, never>, undefined>({
-		id: "cap.domain.vetta.updater.cancel",
+		id: "cap.domain.astravia.updater.cancel",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,

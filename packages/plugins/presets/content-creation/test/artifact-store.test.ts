@@ -1,4 +1,4 @@
-import type { PluginArtifactsApi, PluginFsApi, PluginStorageApi } from "@vetta-org/plugin-sdk";
+import type { PluginArtifactsApi, PluginFsApi, PluginStorageApi } from "@astravia-org/plugin-sdk";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PluginContentArtifactStore } from "../src/generation/artifact-store";
 

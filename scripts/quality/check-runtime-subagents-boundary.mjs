@@ -14,7 +14,7 @@ export function findRuntimeSubagentsBoundaryViolations({ manifest }) {
 	const violations = [];
 	for (const section of DEPENDENCY_SECTIONS) {
 		for (const dependency of Object.keys(manifest.content[section] ?? {})) {
-			if (!dependency.startsWith("@vetta/")) continue;
+			if (!dependency.startsWith("@astravia/")) continue;
 			violations.push(`${manifest.path}: ${section} must not declare workspace dependency ${dependency}`);
 		}
 	}

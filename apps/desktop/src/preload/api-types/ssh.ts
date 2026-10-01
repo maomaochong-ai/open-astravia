@@ -1,4 +1,4 @@
-import type { RemoteDirectoryEntry, RemoteListenerScan, SshConnectionStatus, SshHost } from "@vetta/ssh-transport";
+import type { RemoteDirectoryEntry, RemoteListenerScan, SshConnectionStatus, SshHost } from "@astravia/ssh-transport";
 import type { PortForward } from "../../main/ssh/port-forward-service.js";
 import type { SshHostStatusEvent } from "../../shared/ssh-ipc.js";
 import type { SshPromptRequestEvent, SshPromptResponse } from "../../shared/ssh-prompt-ipc.js";

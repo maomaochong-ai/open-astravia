@@ -12,7 +12,7 @@ export function useImOnline(): boolean {
 		let unsub: (() => void) | null = null;
 		void (async () => {
 			try {
-				const unsubFn = await window.vetta.im.subscribeStatus(
+				const unsubFn = await window.astravia.im.subscribeStatus(
 					(s) => setOnline(s.transport === "online" || s.transport === "connecting"),
 					() => {},
 				);
@@ -22,7 +22,7 @@ export function useImOnline(): boolean {
 				}
 				unsub = unsubFn;
 				// subscribeStatus 的首帧与监听器挂载存在竞态，显式拉一次 seed 初始态。
-				const current = await window.vetta.im.getStatus();
+				const current = await window.astravia.im.getStatus();
 				if (!cancelled) setOnline(current.transport === "online" || current.transport === "connecting");
 			} catch {
 				// ignore; 徽章保持隐藏

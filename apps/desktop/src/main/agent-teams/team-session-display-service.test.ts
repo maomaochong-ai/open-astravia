@@ -1,5 +1,5 @@
-import { createAssistantMessage } from "@vetta/ai";
-import type { ConversationDocument } from "@vetta/runtime-core";
+import { createAssistantMessage } from "@astravia/ai";
+import type { ConversationDocument } from "@astravia/runtime-core";
 import { describe, expect, it } from "vitest";
 import { projectTeamPublicMessages, projectTeamUserMessageAnnotations } from "./team-session-display-service.js";
 

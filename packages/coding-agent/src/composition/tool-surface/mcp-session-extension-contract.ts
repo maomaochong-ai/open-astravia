@@ -1,6 +1,6 @@
-import type { RuntimeFailure, SessionEvent } from "@vetta/runtime-core";
-import { readRuntimeFailure } from "@vetta/runtime-core/failures";
-import { defineSessionExtensionObservation } from "@vetta/runtime-core/session-extensions";
+import type { RuntimeFailure, SessionEvent } from "@astravia/runtime-core";
+import { readRuntimeFailure } from "@astravia/runtime-core/failures";
+import { defineSessionExtensionObservation } from "@astravia/runtime-core/session-extensions";
 
 export const CODING_AGENT_MCP_EXTENSION_ID = "coding-agent.mcp";
 

@@ -14,12 +14,18 @@ describe("createSessionApi trace propagation", () => {
 
 		expect(invoke).toHaveBeenNthCalledWith(
 			1,
-			"vetta:session:create",
+			"astravia:session:create",
 			{ cwd: "C:/workspace" },
 			"conversation",
 			traceContext,
 		);
-		expect(invoke).toHaveBeenNthCalledWith(2, "vetta:session:prompt", "session-1", { text: "hello" }, traceContext);
+		expect(invoke).toHaveBeenNthCalledWith(
+			2,
+			"astravia:session:prompt",
+			"session-1",
+			{ text: "hello" },
+			traceContext,
+		);
 	});
 
 	it("exposes MCP Task snapshot, cancellation and cleanup channels", async () => {
@@ -31,9 +37,9 @@ describe("createSessionApi trace propagation", () => {
 		await session.cancelMcpTask("task-record-1");
 		await session.clearFinishedMcpTasks("session-1");
 
-		expect(invoke).toHaveBeenNthCalledWith(1, "vetta:session:mcp-tasks-list", "session-1");
-		expect(invoke).toHaveBeenNthCalledWith(2, "vetta:session:mcp-tasks-cancel", "task-record-1");
-		expect(invoke).toHaveBeenNthCalledWith(3, "vetta:session:mcp-tasks-clear-finished", "session-1");
+		expect(invoke).toHaveBeenNthCalledWith(1, "astravia:session:mcp-tasks-list", "session-1");
+		expect(invoke).toHaveBeenNthCalledWith(2, "astravia:session:mcp-tasks-cancel", "task-record-1");
+		expect(invoke).toHaveBeenNthCalledWith(3, "astravia:session:mcp-tasks-clear-finished", "session-1");
 	});
 
 	it("exposes queued context compaction without using the interrupting prompt path", async () => {
@@ -43,7 +49,7 @@ describe("createSessionApi trace propagation", () => {
 
 		await session.queueContextCompaction("session-1");
 
-		expect(invoke).toHaveBeenCalledWith("vetta:session:queue-context-compaction", "session-1");
+		expect(invoke).toHaveBeenCalledWith("astravia:session:queue-context-compaction", "session-1");
 	});
 
 	it("exposes goal lifecycle channels", async () => {
@@ -58,11 +64,11 @@ describe("createSessionApi trace propagation", () => {
 		await session.clearGoal("session-1", "goal-1");
 
 		expect(invoke.mock.calls).toEqual([
-			["vetta:session:goal-get-state", "session-1"],
-			["vetta:session:goal-start", "session-1", "Ship"],
-			["vetta:session:goal-pause", "session-1", "goal-1"],
-			["vetta:session:goal-resume", "session-1", "goal-1"],
-			["vetta:session:goal-clear", "session-1", "goal-1"],
+			["astravia:session:goal-get-state", "session-1"],
+			["astravia:session:goal-start", "session-1", "Ship"],
+			["astravia:session:goal-pause", "session-1", "goal-1"],
+			["astravia:session:goal-resume", "session-1", "goal-1"],
+			["astravia:session:goal-clear", "session-1", "goal-1"],
 		]);
 	});
 
@@ -76,17 +82,17 @@ describe("createSessionApi trace propagation", () => {
 		await session.readMcpAppResource({ surfaceId: "surface-1", uri: "ui://data" });
 		await session.releaseMcpAppSurface("surface-1");
 
-		expect(invoke).toHaveBeenNthCalledWith(1, "vetta:session:mcp-app-surface-get", "surface-1");
-		expect(invoke).toHaveBeenNthCalledWith(2, "vetta:session:mcp-app-call-tool", {
+		expect(invoke).toHaveBeenNthCalledWith(1, "astravia:session:mcp-app-surface-get", "surface-1");
+		expect(invoke).toHaveBeenNthCalledWith(2, "astravia:session:mcp-app-call-tool", {
 			surfaceId: "surface-1",
 			name: "refresh",
 			arguments: { page: 1 },
 		});
-		expect(invoke).toHaveBeenNthCalledWith(3, "vetta:session:mcp-app-read-resource", {
+		expect(invoke).toHaveBeenNthCalledWith(3, "astravia:session:mcp-app-read-resource", {
 			surfaceId: "surface-1",
 			uri: "ui://data",
 		});
-		expect(invoke).toHaveBeenNthCalledWith(4, "vetta:session:mcp-app-release", "surface-1");
+		expect(invoke).toHaveBeenNthCalledWith(4, "astravia:session:mcp-app-release", "surface-1");
 	});
 
 	it("forwards session search requests through the dedicated channel", async () => {
@@ -96,7 +102,7 @@ describe("createSessionApi trace propagation", () => {
 
 		await session.searchSessions({ query: "release plan", limit: 20 }, vi.fn());
 
-		expect(invoke).toHaveBeenCalledWith("vetta:session:search-sessions", expect.any(String), {
+		expect(invoke).toHaveBeenCalledWith("astravia:session:search-sessions", expect.any(String), {
 			query: "release plan",
 			limit: 20,
 		});
@@ -109,7 +115,7 @@ describe("createSessionApi trace propagation", () => {
 
 		await session.openViewer("C:/sessions/one.jsonl", { tailTurns: 2 });
 
-		expect(invoke).toHaveBeenCalledWith("vetta:session:viewer-open", "C:/sessions/one.jsonl", {
+		expect(invoke).toHaveBeenCalledWith("astravia:session:viewer-open", "C:/sessions/one.jsonl", {
 			tailTurns: 2,
 		});
 	});

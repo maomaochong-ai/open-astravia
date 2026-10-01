@@ -1,4 +1,4 @@
-import type { PluginContext } from "@vetta-org/plugin-sdk";
+import type { PluginContext } from "@astravia-org/plugin-sdk";
 import { ChessStore } from "./game/store";
 import type { ChessRuntime } from "./runtime-context";
 

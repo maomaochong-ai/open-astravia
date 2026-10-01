@@ -6,7 +6,7 @@ import type { TelemetryContext } from "../../shared/telemetry";
 let initialized = false;
 
 export function initializeRendererErrorMonitoring(rendererName: string): void {
-	if (initialized || process.env.VETTA_SENTRY_ENABLED !== "true") return;
+	if (initialized || process.env.ASTRAVIA_SENTRY_ENABLED !== "true") return;
 	try {
 		Sentry.init({
 			beforeBreadcrumb(breadcrumb) {

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"vetta-im-gateway/internal/transport/feishu"
+	"astravia-im-gateway/internal/transport/feishu"
 )
 
 // `im-gateway feishu register` is the standalone-CLI half of the one-click
@@ -90,10 +90,10 @@ func runFeishuRegister(args []string) int {
 	fmt.Printf("  App Secret: %s\n", res.AppSecret)
 	fmt.Println()
 	fmt.Println("推荐存入系统钥匙串：")
-	fmt.Println("  security add-generic-password -s vetta-im-gateway -a feishu_app_id     -w")
-	fmt.Println("  security add-generic-password -s vetta-im-gateway -a feishu_app_secret -w")
+	fmt.Println("  security add-generic-password -s astravia-im-gateway -a feishu_app_id     -w")
+	fmt.Println("  security add-generic-password -s astravia-im-gateway -a feishu_app_secret -w")
 	fmt.Println()
-	fmt.Println("或写入 ~/.vetta/im-gateway/credentials.yaml 的 feishu.appId / feishu.appSecret（文件权限 0600）。")
+	fmt.Println("或写入 ~/.astravia/im-gateway/credentials.yaml 的 feishu.appId / feishu.appSecret（文件权限 0600）。")
 	if res.TenantBrand == "lark" {
 		fmt.Println()
 		fmt.Printf("检测到 Lark 租户：请在 config.yaml 中把 transport.feishu.baseUrl 设为 %s\n", larkOpenBaseURL)

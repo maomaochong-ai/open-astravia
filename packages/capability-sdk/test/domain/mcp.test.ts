@@ -5,11 +5,11 @@ import { DOMAIN_MCP_CAPABILITIES, DOMAIN_MCP_CAPABILITY_CATALOG, MCP_SERVER_TYPE
 describe("MCP domain capabilities", () => {
 	it("uses one stable capability id per MCP server operation", () => {
 		expect(Object.values(DOMAIN_MCP_CAPABILITIES).map((capability) => capability.id)).toEqual([
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}mcp.server.list`,
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}mcp.server.get`,
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}mcp.server.upsert`,
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}mcp.server.set-enabled`,
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}mcp.server.remove`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}mcp.server.list`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}mcp.server.get`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}mcp.server.upsert`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}mcp.server.set-enabled`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}mcp.server.remove`,
 		]);
 	});
 

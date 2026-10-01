@@ -49,7 +49,7 @@ describe("createOfficialPluginsApi", () => {
 		const stopDevWatch = vi.fn().mockResolvedValue(undefined);
 		Object.defineProperty(globalThis, "window", {
 			configurable: true,
-			value: { vetta: { plugins: { internalCapabilities: { pluginSystem }, startDevWatch, stopDevWatch } } },
+			value: { astravia: { plugins: { internalCapabilities: { pluginSystem }, startDevWatch, stopDevWatch } } },
 		});
 		const assertOfficial = vi.fn();
 		const api = createOfficialPluginsApi(assertOfficial, "capability-session");

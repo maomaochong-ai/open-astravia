@@ -1,10 +1,10 @@
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { getVettaHomePath } from "@vetta/action-rpc";
+import { getAstraviaHomePath } from "@astravia/action-rpc";
 
 /**
  * Sensitive IM credentials. Persisted under
- *   ~/.vetta/desktop-app/im-credentials.json
+ *   ~/.astravia/desktop-app/im-credentials.json
  *
  * Stored as plain JSON with chmod 0600. We deliberately do NOT encrypt
  * via Electron safeStorage: the user explicitly requested "save it,
@@ -39,7 +39,7 @@ export interface ImCredentials {
 	// and imessage is gated by macOS permissions only.
 }
 
-const DEFAULT_DIR = join(getVettaHomePath(), "desktop-app");
+const DEFAULT_DIR = join(getAstraviaHomePath(), "desktop-app");
 const DEFAULT_FILE = join(DEFAULT_DIR, "im-credentials.json");
 
 function ensureDir(): void {

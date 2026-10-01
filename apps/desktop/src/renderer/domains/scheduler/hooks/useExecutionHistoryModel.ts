@@ -34,7 +34,7 @@ export function useExecutionHistoryModel(taskId: string): ExecutionHistoryModel 
 	const loadRecords = useCallback(async (): Promise<void> => {
 		setIsLoading(true);
 		try {
-			const loaded = await window.vetta.scheduler.getRecords(taskId);
+			const loaded = await window.astravia.scheduler.getRecords(taskId);
 			setRecords(loaded);
 		} finally {
 			setIsLoading(false);
@@ -47,7 +47,7 @@ export function useExecutionHistoryModel(taskId: string): ExecutionHistoryModel 
 	}, [loadRecords, recordsVersion]);
 
 	useEffect(() => {
-		return window.vetta.scheduler.onTaskEvent((event) => {
+		return window.astravia.scheduler.onTaskEvent((event) => {
 			if ((event.type === "task.started" || event.type === "record.updated") && event.taskId === taskId) {
 				void loadRecords();
 			}

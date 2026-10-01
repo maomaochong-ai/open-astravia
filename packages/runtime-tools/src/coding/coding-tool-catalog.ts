@@ -1,4 +1,4 @@
-import type { RuntimeObservationPublisher } from "@vetta/runtime-core";
+import type { RuntimeObservationPublisher } from "@astravia/runtime-core";
 import type {
 	CapabilityBinding,
 	RuntimeSnapshotAcquireContext,
@@ -6,7 +6,7 @@ import type {
 	RuntimeToolExecutionRequest,
 	RuntimeToolResult,
 	RuntimeToolTurnBinding,
-} from "@vetta/runtime-core/kernel";
+} from "@astravia/runtime-core/kernel";
 import { CODING_TOOL_AVAILABILITY_ERROR_CODES, CodingToolAvailabilityError } from "./coding-tool-availability.js";
 import { CodingToolExecutionTracker } from "./coding-tool-execution-tracker.js";
 import { type CodingToolResultPolicy, PRESERVE_CODING_TOOL_RESULT_POLICY } from "./coding-tool-result-policy.js";

@@ -1,5 +1,5 @@
+import type { RuntimeToolDefinition } from "@astravia/runtime-core/kernel";
 import { type Static, Type } from "@sinclair/typebox";
-import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
 import type { TeamMessageControlPort, TeamTaskControlPort } from "./task-control.js";
 
 export const TeamDelegateTaskInputSchema = Type.Object(

@@ -10,7 +10,7 @@
 
 ## 出图链路
 
-一律走宿主 `ctx.media` 协议，默认选择 desktop 内置的 `desktop-app:vetta` 图片 Provider；用户可在「设置 → Agent 配置 → 图片」分别为文生图和图生图指定 Provider，或恢复为自动选择。
+一律走宿主 `ctx.media` 协议，默认选择 desktop 内置的 `desktop-app:astravia` 图片 Provider；用户可在「设置 → Agent 配置 → 图片」分别为文生图和图生图指定 Provider，或恢复为自动选择。
 插件不感知模型、不持有任何 key，也不能指定网关路径；内置 Provider 在主进程固定调用
 `POST /api/v1/images/{generate,edit}`。模型选择、provider 形态适配（含改图协议差异）、
 尺寸白名单与按次计费都在服务端，管理员在 admin 配置；能不能出图由用户的订阅档位决定
@@ -32,11 +32,11 @@
 
 插件拥有 `generate_image` / `edit_image` 工具、隐藏提示、卡片渲染、持久化记录和编辑谱系；
 desktop 提供受 capability session 约束的 `ctx.media`、`ctx.storage`、
-`ctx.fs.readBinaryFile` 与通用 prompt attachment。Vetta Provider 内置于 desktop 主进程，凭据不出
+`ctx.fs.readBinaryFile` 与通用 prompt attachment。Astravia Provider 内置于 desktop 主进程，凭据不出
 主进程；其它 Provider 由宿主模块按同一 SPI 扩展，协议也允许 Provider 列表为空。图像字节仍只落插件本地
-`~/.vetta/plugin-data/image-gen/`，不进服务端存储、
+`~/.astravia/plugin-data/image-gen/`，不进服务端存储、
 也不进 LLM 上下文（工具结果只回 image id）。
 
-详见 `docs/adr/0057-host-media-protocol-and-desktop-vetta-provider.md`、
-`docs/adr/0056-image-generation-through-vetta-gateway-metered-by-credits.md`
+详见 `docs/adr/0057-host-media-protocol-and-desktop-astravia-provider.md`、
+`docs/adr/0056-image-generation-through-astravia-gateway-metered-by-credits.md`
 与被其部分取代的 `docs/adr/0048-image-generation-owned-by-plugin-generic-network-storage.md`。

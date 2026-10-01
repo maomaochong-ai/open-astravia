@@ -5,8 +5,8 @@
  * Requires: npm install in this directory
  */
 
+import type { ExtensionAPI } from "@astravia/coding-agent";
 import { Type } from "@sinclair/typebox";
-import type { ExtensionAPI } from "@vetta/coding-agent";
 import ms from "ms";
 
 export default function (api: ExtensionAPI) {

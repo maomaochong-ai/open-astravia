@@ -1,9 +1,9 @@
 /** Stable Coding Agent identity and configuration contract. */
-export const PACKAGE_NAME = "@vetta/coding-agent";
-export const APP_NAME = "vetta";
+export const PACKAGE_NAME = "@astravia/coding-agent";
+export const APP_NAME = "astravia";
 
-// Project-local resources always use the branded directory. VETTA_CONFIG_DIR only changes the home root.
-export const CONFIG_DIR_NAME = ".vetta";
+// Project-local resources always use the branded directory. ASTRAVIA_CONFIG_DIR only changes the home root.
+export const CONFIG_DIR_NAME = ".astravia";
 
 export const ENV_AGENT_DIR = `${APP_NAME.toUpperCase()}_CODING_AGENT_DIR`;
 export const ENV_PACKAGE_DIR = `${APP_NAME.toUpperCase()}_PACKAGE_DIR`;

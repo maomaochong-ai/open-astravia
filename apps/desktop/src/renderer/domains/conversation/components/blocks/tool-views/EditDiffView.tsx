@@ -4,7 +4,7 @@ import {
 	DiffPreviewView,
 	EditTextFallbackView,
 	type DiffLineView,
-} from "@vetta-org/theme-ui/chat";
+} from "@astravia-org/theme-ui/chat";
 import { useTranslation } from "react-i18next";
 import { formatSignedCount } from "./shared/format";
 import { parseDiff } from "./shared/parse-diff";

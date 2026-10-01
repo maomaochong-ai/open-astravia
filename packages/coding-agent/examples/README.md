@@ -6,7 +6,7 @@
 
 ### [sdk/](sdk/)
 
-通过 `@vetta/coding-agent/sdk` 做嵌入式集成。覆盖模型、提示词、工具、扩展、会话目录等。
+通过 `@astravia/coding-agent/sdk` 做嵌入式集成。覆盖模型、提示词、工具、扩展、会话目录等。
 
 运行：
 

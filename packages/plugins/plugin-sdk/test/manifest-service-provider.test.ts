@@ -30,7 +30,7 @@ function service() {
 		},
 		credentials: [{ id: "api-key", bytes: 32 }, { id: "management-key", bytes: 32 }],
 		templates: [{ source: "assets/config.yaml.tpl", destination: "config.yaml", mode: "create" }],
-		process: { args: ["--config", "${VETTA_SERVICE_DATA_DIR}/config.yaml"] },
+		process: { args: ["--config", "${ASTRAVIA_SERVICE_DATA_DIR}/config.yaml"] },
 		health: { path: "/v1/models", credentialId: "api-key", timeoutMs: 30_000 },
 	} as const;
 }
@@ -59,7 +59,7 @@ describe("plugin service provider manifest", () => {
 		const provider = service();
 		const manifest = parsePluginManifest({ ...baseManifest, providers: { services: [{ ...provider,
 			templates: [{ ...provider.templates[0], mode: "render" }],
-			process: { args: ["--config", "${VETTA_SERVICE_CACHE_DIR}/config.yaml"] },
+			process: { args: ["--config", "${ASTRAVIA_SERVICE_CACHE_DIR}/config.yaml"] },
 		}] } });
 		expect(manifest.providers?.services?.[0]?.templates?.[0]?.mode).toBe("render");
 	});

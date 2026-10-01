@@ -1,4 +1,4 @@
-import type { MediaProviderDescriptor } from "@vetta-org/capability-sdk";
+import type { MediaProviderDescriptor } from "@astravia-org/capability-sdk";
 import { ipcMain } from "electron";
 import { parseFile } from "music-metadata";
 import type { AudioMetadata } from "../../preload/api-types/media.js";
@@ -6,8 +6,8 @@ import { getDesktopMediaRuntime } from "../capabilities/media-providers.js";
 import { assertPathReadableForPreview } from "./fs.js";
 
 const CHANNELS = {
-	LIST_PROVIDERS: "vetta:media:list-providers",
-	AUDIO_METADATA: "vetta:media:audio-metadata",
+	LIST_PROVIDERS: "astravia:media:list-providers",
+	AUDIO_METADATA: "astravia:media:audio-metadata",
 } as const;
 
 /**

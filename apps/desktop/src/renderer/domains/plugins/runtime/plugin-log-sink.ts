@@ -1,4 +1,4 @@
-import { __setPluginLogSink, type PluginLogEntry } from "@vetta-org/plugin-sdk";
+import { __setPluginLogSink, type PluginLogEntry } from "@astravia-org/plugin-sdk";
 import { redactSensitiveText } from "../../../../shared/sentry-privacy.js";
 
 const MAX_MESSAGE_LENGTH = 4_096;

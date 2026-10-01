@@ -1,5 +1,5 @@
-import type { AssistantMessage } from "@vetta/ai";
-import type { ContextCompactionRecord, StoredSessionEvent } from "@vetta/runtime-core/kernel";
+import type { AssistantMessage } from "@astravia/ai";
+import type { ContextCompactionRecord, StoredSessionEvent } from "@astravia/runtime-core/kernel";
 import { renderMemoryForPrompt } from "../model-context/index.js";
 import type { CodingAgentRuntimeToolRegistration } from "../runtime-contracts/index.js";
 import { AiMemoryFactExtractor } from "./ai-memory-fact-extractor.js";

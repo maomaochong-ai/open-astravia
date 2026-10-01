@@ -6,7 +6,7 @@ import {
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
-} from "@vetta-org/ui";
+} from "@astravia-org/ui";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { AbilityItem, BundleAbility } from "../../types";

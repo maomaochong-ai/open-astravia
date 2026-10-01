@@ -29,7 +29,7 @@ describe("tag conversation filter", () => {
 		store.set(defaultConversationFilterAtom, tagConversationFilter("t1"));
 		expect(
 			parseDefaultConversationFilter(
-				JSON.parse(localStorage.getItem("vetta-default-conversation-filter") as string),
+				JSON.parse(localStorage.getItem("astravia-default-conversation-filter") as string),
 			),
 		).toBe("tag:t1");
 	});

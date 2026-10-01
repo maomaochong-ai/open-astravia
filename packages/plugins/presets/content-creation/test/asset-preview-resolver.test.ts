@@ -1,4 +1,4 @@
-import type { PluginFsApi, PluginStorageApi } from "@vetta-org/plugin-sdk";
+import type { PluginFsApi, PluginStorageApi } from "@astravia-org/plugin-sdk";
 import { describe, expect, it, vi } from "vitest";
 import { ContentAssetPreviewResolver } from "../src/generation/asset-preview-resolver";
 import type { ContentAsset } from "../src/project/types";
@@ -16,13 +16,13 @@ describe("ContentAssetPreviewResolver", () => {
 	it("resolves runtime URLs from blob IDs and caches the host reference", async () => {
 		const getBlobRef = vi.fn<PluginStorageApi["getBlobRef"]>().mockResolvedValue({
 			id: "stored-blob",
-			url: "vetta-media://resolved",
+			url: "astravia-media://resolved",
 			mimeType: "image/png",
 		});
 		const resolver = new ContentAssetPreviewResolver(createFs(), createStorage(getBlobRef));
 
-		expect(await resolver.resolveAll(null, [ASSET])).toEqual(new Map([["asset", "vetta-media://resolved"]]));
-		expect(await resolver.resolveAll(null, [ASSET])).toEqual(new Map([["asset", "vetta-media://resolved"]]));
+		expect(await resolver.resolveAll(null, [ASSET])).toEqual(new Map([["asset", "astravia-media://resolved"]]));
+		expect(await resolver.resolveAll(null, [ASSET])).toEqual(new Map([["asset", "astravia-media://resolved"]]));
 		expect(getBlobRef).toHaveBeenCalledOnce();
 	});
 
@@ -38,7 +38,7 @@ describe("ContentAssetPreviewResolver", () => {
 			maxInFlight = Math.max(maxInFlight, inFlight);
 			await gate;
 			inFlight -= 1;
-			return { id, url: `vetta-media://${id}`, mimeType: "image/png" };
+			return { id, url: `astravia-media://${id}`, mimeType: "image/png" };
 		});
 		const resolver = new ContentAssetPreviewResolver(createFs(), createStorage(getBlobRef));
 		const firstAssets = Array.from({ length: 20 }, (_, index) => createAsset(index));
@@ -59,7 +59,7 @@ describe("ContentAssetPreviewResolver", () => {
 	it("evicts cached references that are no longer part of the current project", async () => {
 		const getBlobRef = vi.fn<PluginStorageApi["getBlobRef"]>(async (id) => ({
 			id,
-			url: `vetta-media://${id}`,
+			url: `astravia-media://${id}`,
 			mimeType: "image/png",
 		}));
 		const resolver = new ContentAssetPreviewResolver(createFs(), createStorage(getBlobRef));
@@ -81,7 +81,7 @@ describe("ContentAssetPreviewResolver", () => {
 		});
 		const getBlobRef = vi.fn<PluginStorageApi["getBlobRef"]>(async (id) => {
 			await gate;
-			return { id, url: `vetta-media://${id}`, mimeType: "image/png" };
+			return { id, url: `astravia-media://${id}`, mimeType: "image/png" };
 		});
 		const resolver = new ContentAssetPreviewResolver(createFs(), createStorage(getBlobRef));
 		const supersededAssets = Array.from({ length: 9 }, (_, index) => createAsset(index));

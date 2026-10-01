@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { copyFile, mkdir, stat } from "node:fs/promises";
 import { extname, join } from "node:path";
-import { getVettaHomePath } from "@vetta/action-rpc";
+import { getAstraviaHomePath } from "@astravia/action-rpc";
 import { createLocalFileUrl } from "../../shared/file-protocol.js";
 
 /**
@@ -9,7 +9,7 @@ import { createLocalFileUrl } from "../../shared/file-protocol.js";
  * 那个目录的写回逻辑会清理不认识的团队/Agent 子目录，图片放进去迟早被扫掉。
  * 也不能借用 image-cache——那是 7 天过期的临时缓存，头像必须长期有效。
  */
-const AVATAR_ROOT = join(getVettaHomePath(), "agent-avatars");
+const AVATAR_ROOT = join(getAstraviaHomePath(), "agent-avatars");
 
 /** 只收浏览器能直接渲染的位图格式；SVG 会把任意脚本带进渲染进程，拒收。 */
 const ALLOWED_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".webp", ".gif"]);

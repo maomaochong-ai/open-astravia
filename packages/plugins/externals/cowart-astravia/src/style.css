@@ -1,0 +1,49 @@
+@import "tailwindcss";
+
+.cowart-astravia-panel {
+	display: flex;
+	flex: 1 1 0;
+	flex-direction: column;
+	height: 100%;
+	min-height: 0;
+	padding: 12px 14px;
+	gap: 12px;
+	background: var(--background);
+	color: var(--foreground);
+	font-size: 13px;
+	line-height: 1.45;
+}
+
+.cowart-astravia-panel h2 {
+	margin: 0;
+	font-size: 15px;
+	font-weight: 600;
+}
+
+.cowart-astravia-muted {
+	opacity: 0.7;
+	font-size: 12px;
+}
+
+/* Activity tab host is flex column; use flex:1 so height is definite for absolute canvas. */
+.cowart-astravia-canvas-host {
+	position: relative;
+	display: flex;
+	flex: 1 1 0;
+	flex-direction: column;
+	width: 100%;
+	min-height: 0;
+	height: 100%;
+	overflow: hidden;
+	background: var(--background, #f7f5ef);
+}
+
+/* Children (Cowart App root) fill host; absolute .cowart-canvas uses this box. */
+.cowart-astravia-canvas-host > * {
+	position: relative;
+	flex: 1 1 0;
+	width: 100%;
+	min-width: 0;
+	min-height: 0;
+	height: 100%;
+}

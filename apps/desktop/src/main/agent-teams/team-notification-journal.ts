@@ -1,6 +1,6 @@
-import { isTeamWorkItem, type TeamSessionDocument, type TeamWorkItem } from "@vetta/agent-team";
-import type { ConversationDocument } from "@vetta/runtime-core";
-import type { SessionContextRecord } from "@vetta/runtime-core/kernel";
+import { isTeamWorkItem, type TeamSessionDocument, type TeamWorkItem } from "@astravia/agent-team";
+import type { ConversationDocument } from "@astravia/runtime-core";
+import type { SessionContextRecord } from "@astravia/runtime-core/kernel";
 import type { TeamCollaborationStore } from "./team-collaboration-store.js";
 import { createTeamTaskCompletionNotification } from "./team-task-notification.js";
 

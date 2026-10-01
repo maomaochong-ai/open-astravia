@@ -1,4 +1,4 @@
-import type { SessionExecutionMode } from "@vetta/runtime-core";
+import type { SessionExecutionMode } from "@astravia/runtime-core";
 import type { ExecutionModeOverride, SelectedSkillRef } from "./shared.js";
 
 export type BatchTaskStatus = "pending" | "running" | "completed" | "failed" | "paused";

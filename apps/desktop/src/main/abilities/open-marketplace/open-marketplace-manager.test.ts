@@ -15,7 +15,7 @@ vi.mock("../../logger", () => ({ getAppLogger: () => marketplaceLog }));
 const temporaryRoots: string[] = [];
 
 async function temporaryRoot(): Promise<string> {
-	const root = await mkdtemp(join(tmpdir(), "vetta-marketplace-manager-test-"));
+	const root = await mkdtemp(join(tmpdir(), "astravia-marketplace-manager-test-"));
 	temporaryRoots.push(root);
 	return root;
 }

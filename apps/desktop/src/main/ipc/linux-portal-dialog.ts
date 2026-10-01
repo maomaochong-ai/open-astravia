@@ -24,7 +24,7 @@ type PortalOptions = Record<string, Variant<boolean | string>>;
 type PortalResponseResults = Record<string, Variant<unknown>>;
 
 function createHandleToken(): string {
-	return `vetta_select_folders_${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}`;
+	return `astravia_select_folders_${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}`;
 }
 
 function extractFilePaths(results: PortalResponseResults): string[] {

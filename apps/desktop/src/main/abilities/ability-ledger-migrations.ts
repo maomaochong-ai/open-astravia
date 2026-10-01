@@ -1,4 +1,4 @@
-import { migrateVersionedConfig, type VersionedConfigMigrationResult } from "@vetta/toolkit/versioned-config";
+import { migrateVersionedConfig, type VersionedConfigMigrationResult } from "@astravia/toolkit/versioned-config";
 
 export const ABILITY_LEDGER_SCHEMA_VERSION = 2;
 

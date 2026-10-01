@@ -34,7 +34,7 @@ Accepted
 看板这类工作台需要**并发派出多个后台任务**并观察其状态，而既有 `ctx.conversation.*` 只作用于「用户当前正在看的」那个会话。
 
 - 新增 `official.sessions`：`create` / `prompt` / `abort` / `rename` / `list` / `listRunning` / `onRunningChanged` / `open`。
-- 实现放在 renderer（与 `official.navigation` 同类），封装已存在的 `window.vetta.session.*`，**不新增主进程 IPC 通道，不扩大宿主能力面**。
+- 实现放在 renderer（与 `official.navigation` 同类），封装已存在的 `window.astravia.session.*`，**不新增主进程 IPC 通道，不扩大宿主能力面**。
 - 仅 `trustLevel === "official"` 的插件（即随 App 发布的 preset）可调用，普通插件调用被 `assertOfficialSession` 拒绝。
 - 会话本体跑在主进程，因此创建并 prompt 之后，即使宿主停留在别的页面、甚至该插件 UI 未挂载，agent loop 也会继续跑到自然停止点——这正是「后台并发派单」成立的前提。
 

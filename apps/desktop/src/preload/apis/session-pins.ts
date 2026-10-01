@@ -3,10 +3,10 @@ import { SESSION_PINS_CHANGED_CHANNEL, type SessionPinsSnapshot } from "../../sh
 import type { DesktopApi } from "../api.js";
 
 const CHANNELS = {
-	LIST: "vetta:session-pins:list",
-	SET: "vetta:session-pins:set",
-	FORGET: "vetta:session-pins:forget",
-	IMPORT: "vetta:session-pins:import",
+	LIST: "astravia:session-pins:list",
+	SET: "astravia:session-pins:set",
+	FORGET: "astravia:session-pins:forget",
+	IMPORT: "astravia:session-pins:import",
 } as const;
 
 export function createSessionPinsApi(ipc: IpcRenderer): Pick<DesktopApi, "sessionPins"> {

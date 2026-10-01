@@ -4,7 +4,7 @@ import {
 	createPromptCacheDiagnostics,
 	type LanguageModelStreamEvent,
 	type ModelStreamResponse,
-} from "@vetta/ai";
+} from "@astravia/ai";
 
 /** Adds privacy-safe prompt-prefix diagnostics to terminal model-call usage. */
 export function withPromptCacheDiagnostics(response: ModelStreamResponse, context: Context): ModelStreamResponse {

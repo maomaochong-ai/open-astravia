@@ -1,5 +1,5 @@
-import { useThemeComponent } from "@vetta-org/theme-sdk";
-import { TodoStatusBarView } from "@vetta-org/theme-ui/chat";
+import { useThemeComponent } from "@astravia-org/theme-sdk";
+import { TodoStatusBarView } from "@astravia-org/theme-ui/chat";
 import { useTranslation } from "react-i18next";
 import type { InputBarTodoModel } from "./types";
 

@@ -51,19 +51,19 @@ Coding Agent 实现细节，不应由上层产品包拥有。
 
 - `RuntimeSessionBackend` 只保留泛型工厂合同；`RuntimeHostSessionBackend` 只接收
   Runtime-owned 创建请求并返回 Runtime-owned Assembly。
-- 删除生产源码对 `@vetta/coding-agent` 的全部导入和生产依赖。
+- 删除生产源码对 `@astravia/coding-agent` 的全部导入和生产依赖。
 - `RuntimeHost` 不再在构造器内实例化 Legacy Backend、Catalog、History Reader 或
   Shared Model Controller；创建/目录/文件读取发生时若缺少对应组合，返回明确 Runtime Error。
 - 独立保留 Greenfield 事件映射、Session Port、模型运行时和 Conversation 合同。
-- 新增 `@vetta/runtime-core/sandbox` 子入口，暴露实现无关的授权合同和 grant 生命周期。
+- 新增 `@astravia/runtime-core/sandbox` 子入口，暴露实现无关的授权合同和 grant 生命周期。
 
 ### Coding Agent Adapter
 
-- 新增 `@vetta/coding-agent/runtime-host` 子入口。
+- 新增 `@astravia/coding-agent/runtime-host` 子入口。
 - Legacy Session Backend、Session Port、事件映射、历史转换、Catalog、文件历史读取和共享模型控制
   全部上移到 `coding-agent/src/adapters/runtime-core`。
 - 平台沙箱工具构造与 workspace guard 同步上移；运行时授权决策通过
-  `@vetta/runtime-core/sandbox` 注入。
+  `@astravia/runtime-core/sandbox` 注入。
 - 新增 `createLegacyRuntimeHostOptions()`，一次显式组装完整旧运行时依赖。
 
 ### Desktop Composition Root
@@ -76,7 +76,7 @@ Skill 路径、沙箱二进制和用户提问 handler 均按原路径注入，�
 
 包边界检查从“部分 Greenfield 文件不得导入 Coding Agent”升级为：
 
-> `packages/runtime-core/src/**` 任何生产文件都不得导入 `@vetta/coding-agent`。
+> `packages/runtime-core/src/**` 任何生产文件都不得导入 `@astravia/coding-agent`。
 
 测试可以引用 Compatibility Adapter；生产内核不可以。
 

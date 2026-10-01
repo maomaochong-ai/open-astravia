@@ -1,4 +1,4 @@
-import type { CodingToolRegistration } from "@vetta/runtime-tools";
+import type { CodingToolRegistration } from "@astravia/runtime-tools";
 import { ALL_SCENARIOS, type ConversationScenario, type ToolCategory } from "../profiles/index.js";
 import type { CodingAgentRuntimeToolRegistration } from "../runtime-contracts/index.js";
 import {

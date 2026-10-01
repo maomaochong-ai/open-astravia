@@ -7,7 +7,7 @@ import {
 	createCapabilityGrant,
 	FOUNDATION_STORAGE_CAPABILITIES,
 	parseCapabilityJsonValue,
-} from "@vetta-org/capability-sdk";
+} from "@astravia-org/capability-sdk";
 
 const THEME_ID_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$/;
 
@@ -36,7 +36,7 @@ export function themeIdFromStorageCapabilityNamespace(namespace: string): string
 	return themeId;
 }
 
-/** Internal Theme-system adapter. Theme authors consume @vetta-org/theme-sdk instead. */
+/** Internal Theme-system adapter. Theme authors consume @astravia-org/theme-sdk instead. */
 export class ThemeCapabilityAdapter {
 	private readonly sessions = new Map<string, CapabilityAccessHandle>();
 

@@ -1,4 +1,4 @@
-import { definePlugin } from "@vetta-org/plugin-sdk";
+import { definePlugin } from "@astravia-org/plugin-sdk";
 import "./style.css";
 import { ToolChartSlot } from "./ToolChartSlot";
 import { RENDER_CHART_TOOL_DESCRIPTION } from "./tool-description";

@@ -9,7 +9,7 @@ import type {
 	StopReason,
 	TextContent,
 	UserMessage,
-} from "@vetta/ai";
+} from "@astravia/ai";
 import type {
 	ContextCompositionReport,
 	ContextCompositionSectionInput,

@@ -1,7 +1,7 @@
 import {
 	KnowledgeGridView,
 	type KnowledgeViewProps as ThemeKnowledgeViewProps,
-} from "@vetta-org/theme-ui/knowledge";
+} from "@astravia-org/theme-ui/knowledge";
 import type { KnowledgeNode, KnowledgeProcessStatus } from "@shared/types/knowledge-base";
 import { useKnowledgeViewLabels } from "./KnowledgeViewShared";
 

@@ -18,7 +18,7 @@
 - 会话历史、认证、模型和设置等用户数据；必要时由显式、独立的新迁移器读取旧格式。
 - 模型消息、工具消息、错误、取消、事件顺序、并发约束和资源释放语义。
 - 仍然有效的行为测试场景和数据 fixture；旧实现可以临时作为测试 Oracle，但不能被新生产代码调用。
-- `@vetta/ai` 与经过合同验证的 `@vetta/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
+- `@astravia/ai` 与经过合同验证的 `@astravia/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
 
 ## 明确舍弃（固定）
 
@@ -32,19 +32,19 @@
 
 ## 本阶段与最终目标的关系
 
-重写 Coding Agent 不是把它架空成接线包。模型可见的消息语义、Vetta 产品身份、默认 Prompt、工具指导以及 Tool/MCP/Skill/Plugin Contribution 的组合都是 Coding Agent 的产品职责，因此保留在包内；Runtime Core 仍只负责 Turn、Model Call Frame 和状态机。
+重写 Coding Agent 不是把它架空成接线包。模型可见的消息语义、Astravia 产品身份、默认 Prompt、工具指导以及 Tool/MCP/Skill/Plugin Contribution 的组合都是 Coding Agent 的产品职责，因此保留在包内；Runtime Core 仍只负责 Turn、Model Call Frame 和状态机。
 
 只有具有独立生命周期、独立持久化或多个产品消费者的能力才拆成 Runtime 包。Model Context 不满足这一条件，新建 `runtime-prompt` 反而会把产品策略错误下沉。本阶段采用包内领域目录，并通过模块职责和回流守卫建立边界。
 
 ## 实施内容
 
 - 新增 `src/model-context/message-types.ts`，持有 Bash、Custom、Branch Summary、Compaction Summary 以及附件/资源引用的消息合同和工厂。
-- 新增 `message-projector.ts`，独立完成 Coding Agent Message 到 `@vetta/ai` Message 的确定性投影和模型不可见标记过滤。
+- 新增 `message-projector.ts`，独立完成 Coding Agent Message 到 `@astravia/ai` Message 的确定性投影和模型不可见标记过滤。
 - 新增 `prompt-document.ts`，持有 Prompt Block、Draft、Operation、不可变操作应用和确定性渲染。
 - 新增 `plugin-runtime.ts`，隔离 Plugin Tool、Prompt、Continuation、MCP Contribution 和调用 DTO，不再与产品 Prompt 文案混在一个文件。
 - 新增 `skill-prompt.ts`，只消费渲染 Skill 索引所需的最小结构合同，不依赖旧 Skill Loader 具体实现。
-- 新增 `system-prompt-policy.ts`，持有 Vetta 身份、工具说明、场景指导、Context/MCP/Skill 渲染和每次 Model Call 使用的 Prompt Builder。
-- 所有旧 Core、Greenfield Adapter、SDK/RPC、测试和 Desktop 消费者已切换到 `model-context`；Desktop 通过显式 `@vetta/coding-agent/cli-guidance` 子路径消费 CLI 指引。
+- 新增 `system-prompt-policy.ts`，持有 Astravia 身份、工具说明、场景指导、Context/MCP/Skill 渲染和每次 Model Call 使用的 Prompt Builder。
+- 所有旧 Core、Greenfield Adapter、SDK/RPC、测试和 Desktop 消费者已切换到 `model-context`；Desktop 通过显式 `@astravia/coding-agent/cli-guidance` 子路径消费 CLI 指引。
 - 删除旧 `core/messages.ts`、`core/system-prompt.ts` 和迁移后成为孤儿的 `core/subconscious.ts`，不保留转发文件或执行兼容层。
 - 增加回流守卫，禁止恢复三个旧文件、旧深层导入和对应 Manifest 导出。
 - 修正既有 Prompt 测试对默认命令工具的跨平台假设：Windows 验证 `shell`，其他平台验证 `bash`，生产行为未修改。

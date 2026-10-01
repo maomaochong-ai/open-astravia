@@ -15,7 +15,7 @@ export interface BuiltinSkillRegistration {
 	type: "skill" | "scene";
 	alias?: string;
 	description?: string;
-	/** 依赖 vetta 云服务（登录 / 官方市场）的技能：lite 构建下整个隐藏、不加载。 */
+	/** 依赖 astravia 云服务（登录 / 官方市场）的技能：lite 构建下整个隐藏、不加载。 */
 	requiresCloud?: boolean;
 }
 

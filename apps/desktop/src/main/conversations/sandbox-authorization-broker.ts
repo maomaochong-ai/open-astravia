@@ -1,7 +1,7 @@
 import type {
 	CodingAgentSandboxAuthorizationDecision,
 	CodingAgentSandboxAuthorizationFunctionRequest,
-} from "@vetta/coding-agent/function-extensions";
+} from "@astravia/coding-agent/function-extensions";
 
 export type SandboxAuthorizationHandler = (
 	request: CodingAgentSandboxAuthorizationFunctionRequest,

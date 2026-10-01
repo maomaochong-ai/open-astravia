@@ -52,8 +52,8 @@ export function createDesktopPluginPackageOpenService(): PluginPackageOpenServic
 				abilityId: manifest.id,
 				version: manifest.version,
 				installMode: "manual-package" as const,
-				artifactKind: artifactName.toLowerCase().endsWith(".vettapkg")
-					? ("vettapkg" as const)
+				artifactKind: artifactName.toLowerCase().endsWith(".astraviapkg")
+					? ("astraviapkg" as const)
 					: ("legacy-zip" as const),
 				artifactName,
 			};
@@ -98,7 +98,7 @@ export function createDesktopPluginPackageOpenService(): PluginPackageOpenServic
 					abilityType: "plugin",
 					...(manifest ? { abilityId: manifest.id, version: manifest.version } : {}),
 					installMode: "manual-package",
-					artifactKind: "vettapkg",
+					artifactKind: "astraviapkg",
 					artifactName,
 				},
 				error,

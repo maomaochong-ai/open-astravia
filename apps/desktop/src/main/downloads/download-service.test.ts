@@ -20,7 +20,7 @@ vi.mock("electron", () => ({
 let testRoot = "";
 
 beforeEach(async () => {
-	testRoot = await mkdtemp(join(tmpdir(), "vetta-download-service-"));
+	testRoot = await mkdtemp(join(tmpdir(), "astravia-download-service-"));
 	paths.downloads = join(testRoot, "downloads");
 	paths.userData = join(testRoot, "user-data");
 	await mkdir(join(paths.userData, "downloads"), { recursive: true });

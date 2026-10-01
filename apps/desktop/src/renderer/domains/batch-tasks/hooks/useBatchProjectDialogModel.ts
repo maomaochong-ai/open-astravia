@@ -71,7 +71,7 @@ export function useBatchProjectDialogModel({
 	useEffect(() => {
 		if (!open || !config) return;
 		const allModelKeys = flattenModelKeys(config, remoteProviders as ModelsConfigData["providers"]);
-		const currentSelected = localStorage.getItem("vetta-selected-model") ?? undefined;
+		const currentSelected = localStorage.getItem("astravia-selected-model") ?? undefined;
 		const fallback = project?.modelKey ?? currentSelected ?? config.defaultModel;
 		setData((current) => {
 			if (current.modelKey && allModelKeys.includes(current.modelKey)) return current;

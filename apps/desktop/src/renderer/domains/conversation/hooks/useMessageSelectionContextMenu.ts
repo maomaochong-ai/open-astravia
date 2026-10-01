@@ -1,5 +1,5 @@
+import type { MessageSelectionContextMenuViewProps } from "@astravia-org/theme-ui/chat";
 import { focusInputRequestAtom, inputValueAtom } from "@shared/store/atoms";
-import type { MessageSelectionContextMenuViewProps } from "@vetta-org/theme-ui/chat";
 import { useSetAtom } from "jotai";
 import { type MouseEvent, type RefObject, useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";

@@ -1,4 +1,4 @@
-import { migrateVersionedConfig, type VersionedConfigMigrationResult } from "@vetta/toolkit/versioned-config";
+import { migrateVersionedConfig, type VersionedConfigMigrationResult } from "@astravia/toolkit/versioned-config";
 import { migrateDesktopConfigV1ToV2 } from "./migrations/001_to_2.js";
 
 export const DESKTOP_CONFIG_SCHEMA_VERSION = 2;

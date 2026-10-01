@@ -3,7 +3,7 @@ import {
 	type WebhookEndpoint,
 	type WebhookProviderDescriptor,
 	type WebhookSendResult,
-} from "@vetta-org/capability-sdk";
+} from "@astravia-org/capability-sdk";
 import type { PluginCapabilitySessionAccess } from "../types.js";
 
 export const pluginWebhookMethods = {

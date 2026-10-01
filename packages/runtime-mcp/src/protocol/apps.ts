@@ -4,7 +4,7 @@ import type { McpResourceContents, McpTool } from "./types.js";
 export const MCP_APPS_EXTENSION_ID = "io.modelcontextprotocol/ui" as const;
 export const MCP_APP_MIME_TYPE = "text/html;profile=mcp-app" as const;
 export const MCP_APP_LEGACY_RESOURCE_URI_META_KEY = "ui/resourceUri" as const;
-export const VETTA_MCP_APP_ATTACHMENT_META_KEY = "io.vetta/mcpApp" as const;
+export const ASTRAVIA_MCP_APP_ATTACHMENT_META_KEY = "io.astravia/mcpApp" as const;
 
 export const MCP_APP_CLIENT_CAPABILITY = Object.freeze({
 	mimeTypes: [MCP_APP_MIME_TYPE],
@@ -95,7 +95,7 @@ export function readMcpAppResource(contents: readonly McpResourceContents[], uri
 export function readMcpAppAttachment(details: unknown): McpAppAttachment | undefined {
 	if (!isRecord(details)) return undefined;
 	const meta = isRecord(details._meta) ? details._meta : undefined;
-	const value = meta?.[VETTA_MCP_APP_ATTACHMENT_META_KEY];
+	const value = meta?.[ASTRAVIA_MCP_APP_ATTACHMENT_META_KEY];
 	if (!isRecord(value)) return undefined;
 	if (
 		typeof value.id !== "string" ||

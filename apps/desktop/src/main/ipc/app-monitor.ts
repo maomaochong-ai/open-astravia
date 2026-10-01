@@ -21,10 +21,10 @@ import {
 } from "../app-monitor/app-monitor-service.js";
 import { captureProductEvent } from "../telemetry/index.js";
 
-const USER_ACTIVITY_CHANNEL = "vetta:app-monitor:user-activity";
-const RECORD_EVENT_CHANNEL = "vetta:app-monitor:record-event";
-const GET_ACHIEVEMENT_USAGE_CHANNEL = "vetta:app-monitor:get-achievement-usage";
-const GET_PROMPT_REF_USAGE_CHANNEL = "vetta:app-monitor:get-prompt-ref-usage";
+const USER_ACTIVITY_CHANNEL = "astravia:app-monitor:user-activity";
+const RECORD_EVENT_CHANNEL = "astravia:app-monitor:record-event";
+const GET_ACHIEVEMENT_USAGE_CHANNEL = "astravia:app-monitor:get-achievement-usage";
+const GET_PROMPT_REF_USAGE_CHANNEL = "astravia:app-monitor:get-prompt-ref-usage";
 
 const INPUT_ATTACHMENT_SOURCES = new Set<AppMonitorInputAttachmentSource>([
 	"at-panel",

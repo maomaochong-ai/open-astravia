@@ -1,4 +1,4 @@
-import { parseProjectLocation, quoteShellArgument } from "@vetta/ssh-transport";
+import { parseProjectLocation, quoteShellArgument } from "@astravia/ssh-transport";
 import type { PluginCommandRunResult } from "../../preload/api-types/plugins.js";
 import { getSshConnection } from "../ssh/ssh-runtime.js";
 

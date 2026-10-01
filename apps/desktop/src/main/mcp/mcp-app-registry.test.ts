@@ -7,8 +7,8 @@ import type {
 	McpResourcesListResult,
 	McpToolCallResult,
 	McpToolsListResult,
-} from "@vetta/runtime-mcp";
-import { McpTaskCreatedError, McpTaskExecutionCoordinator } from "@vetta/runtime-mcp";
+} from "@astravia/runtime-mcp";
+import { McpTaskCreatedError, McpTaskExecutionCoordinator } from "@astravia/runtime-mcp";
 import { describe, expect, it } from "vitest";
 import { DesktopMcpAppRegistry } from "./mcp-app-registry.js";
 

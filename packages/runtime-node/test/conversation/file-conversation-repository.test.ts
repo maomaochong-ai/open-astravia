@@ -8,7 +8,7 @@ import type {
 	StoredSessionEvent,
 	TurnCompletedEvent,
 	TurnStartedEvent,
-} from "@vetta/runtime-core/kernel";
+} from "@astravia/runtime-core/kernel";
 import { afterEach, describe, expect, it } from "vitest";
 import { CONVERSATION_STORAGE_ERROR_CODES, FileConversationRepository } from "../../src/conversation/index.js";
 
@@ -22,7 +22,7 @@ async function createRepository(): Promise<{
 	readonly repository: FileConversationRepository;
 	readonly rootDir: string;
 }> {
-	const rootDir = await mkdtemp(join(tmpdir(), "vetta-conversation-"));
+	const rootDir = await mkdtemp(join(tmpdir(), "astravia-conversation-"));
 	temporaryRoots.push(rootDir);
 	return {
 		repository: new FileConversationRepository({ rootDir }),

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="align_pairing_qr">Fit the QR code inside the frame</string>
-    <string name="app_name">Vetta</string>
+    <string name="app_name">Astravia</string>
     <string name="appearance">Appearance</string>
     <string name="back">Back</string>
     <string name="board_empty">No tasks yet</string>
@@ -25,7 +25,7 @@
     <string name="files_loading">Loading…</string>
     <string name="files_retry">Try again</string>
     <string name="files_preview_unsupported">Can’t be shown here</string>
-    <string name="files_error_unsupported_desktop">Update Vetta on your computer to view its files.</string>
+    <string name="files_error_unsupported_desktop">Update Astravia on your computer to view its files.</string>
     <string name="files_error_offline">Your computer isn’t connected.</string>
     <string name="files_error_forbidden">This file is outside what the phone may view.</string>
     <string name="files_error_not_found">The file doesn’t exist, or has moved.</string>
@@ -55,13 +55,13 @@
         <item quantity="one">You can attach up to %1$d file.</item>
         <item quantity="other">You can attach up to %1$d files.</item>
     </plurals>
-    <string name="chat_camera_denied">Allow camera access for Vetta in Settings to take a photo.</string>
+    <string name="chat_camera_denied">Allow camera access for Astravia in Settings to take a photo.</string>
     <string name="chat_camera_unavailable">No camera is available on this device.</string>
     <string name="chat_compacted">Context compacted</string>
     <string name="chat_compacting">Compacting context</string>
-    <string name="chat_composer_placeholder">Tell Vetta what to do…</string>
+    <string name="chat_composer_placeholder">Tell Astravia what to do…</string>
     <string name="chat_dictation_cancel">Release to cancel</string>
-    <string name="chat_dictation_denied">Allow the microphone for Vetta in Settings to dictate.</string>
+    <string name="chat_dictation_denied">Allow the microphone for Astravia in Settings to dictate.</string>
     <string name="chat_dictation_hint">Release to insert, slide up to cancel</string>
     <string name="chat_dictation_hold">Hold to talk</string>
     <string name="chat_dictation_keyboard">Type instead</string>
@@ -87,7 +87,7 @@
     <string name="chat_question_other_placeholder">Type your answer…</string>
     <string name="chat_question_submit">Submit</string>
     <string name="chat_question_tab">Question %1$d</string>
-    <string name="chat_question_title">Vetta needs your choice</string>
+    <string name="chat_question_title">Astravia needs your choice</string>
     <string name="chat_remove_attachment">Remove %1$s</string>
     <string name="chat_resync">Refresh</string>
     <string name="chat_retrying">Retrying (%1$d/%2$d)</string>
@@ -176,7 +176,7 @@
     <string name="notify_link_title">Connected to %1$s</string>
     <string name="notify_needs_you">Needs your decision</string>
     <string name="notify_reply">Reply</string>
-    <string name="notify_reply_failed">Your answer didn’t reach the computer. Tap to answer in Vetta.</string>
+    <string name="notify_reply_failed">Your answer didn’t reach the computer. Tap to answer in Astravia.</string>
     <string name="notify_reply_hint">Your answer</string>
     <string name="notify_settings">Notifications</string>
     <string name="notify_settings_failed">A session runs into an error</string>
@@ -205,7 +205,7 @@
     <string name="pair_invite">Connect with a Code</string>
     <string name="pair_invite_code">Connection code</string>
     <string name="pair_invite_code_title">Enter the connection code</string>
-    <string name="pair_invite_code_hint">On your computer, open Vetta → Settings → Remote access. The 8-character code is next to the QR code. Works even when your phone is not next to the computer.</string>
+    <string name="pair_invite_code_hint">On your computer, open Astravia → Settings → Remote access. The 8-character code is next to the QR code. Works even when your phone is not next to the computer.</string>
     <string name="pair_invite_password_title">Enter the password</string>
     <string name="pair_invite_password_hint">The 6 digits shown with the connection code on your computer.</string>
     <string name="pair_invite_next">Next</string>
@@ -240,10 +240,10 @@
     <string name="remote_route_internet">Direct over the internet</string>
     <string name="remote_route_lan">Direct on LAN</string>
     <string name="remote_route_relayed">Relayed</string>
-    <string name="remote_control_not_allowed">This phone cannot control the computer desktop yet. In Vetta on your computer, open Settings → Remote access and click the computer icon beside this phone until its corner shows a green check.</string>
+    <string name="remote_control_not_allowed">This phone cannot control the computer desktop yet. In Astravia on your computer, open Settings → Remote access and click the computer icon beside this phone until its corner shows a green check.</string>
     <string name="remote_control_offline">Your computer’s screen shows here once it is online.</string>
-    <string name="remote_screen_permission_denied">Your computer hasn’t let Vetta record its screen yet. On the Mac, open System Settings → Privacy &amp; Security → Screen Recording, turn on Vetta, then restart Vetta.</string>
-    <string name="remote_input_permission_denied">View only: taps and typing won’t reach the computer until Vetta is allowed in System Settings → Privacy &amp; Security → Accessibility on the Mac.</string>
+    <string name="remote_screen_permission_denied">Your computer hasn’t let Astravia record its screen yet. On the Mac, open System Settings → Privacy &amp; Security → Screen Recording, turn on Astravia, then restart Astravia.</string>
+    <string name="remote_input_permission_denied">View only: taps and typing won’t reach the computer until Astravia is allowed in System Settings → Privacy &amp; Security → Accessibility on the Mac.</string>
     <string name="remote_keyboard">Keyboard</string>
     <string name="remote_keyboard_hint">Types English letters, digits and spaces</string>
     <string name="remote_rotate">Rotate</string>
@@ -259,14 +259,14 @@
     <string name="session_rename_title">Rename Session</string>
     <string name="session_unpin">Unpin</string>
     <string name="settings_background_link">Stay connected in the background</string>
-    <string name="settings_background_link_denied">Allow notifications for Vetta in the system settings to use this.</string>
-    <string name="settings_background_link_hint">Get notified when a session needs you, finishes or fails, even with Vetta closed. A small notification stays while connected, and it uses a little more battery.</string>
+    <string name="settings_background_link_denied">Allow notifications for Astravia in the system settings to use this.</string>
+    <string name="settings_background_link_hint">Get notified when a session needs you, finishes or fails, even with Astravia closed. A small notification stays while connected, and it uses a little more battery.</string>
     <string name="settings_title">Settings</string>
     <plurals name="share_skipped">
         <item quantity="one">%1$d item couldn’t be added: it may be too large, or a message holds at most %2$d attachments.</item>
         <item quantity="other">%1$d items couldn’t be added: they may be too large, or a message holds at most %2$d attachments.</item>
     </plurals>
-    <string name="share_title">Shared to Vetta</string>
+    <string name="share_title">Shared to Astravia</string>
     <string name="sheet_handle">Drag to resize or close</string>
     <string name="stop">Stop</string>
     <string name="theme_dark">Dark</string>
@@ -321,7 +321,7 @@
     <string name="work_status_thinking">Thinking</string>
     <string name="work_status_waiting">Needs you</string>
     <string name="work_title">My Work</string>
-    <string name="work_unpaired_description">Open Vetta Desktop on your computer and click “Connect Phone” in the top-right corner, then scan the code.</string>
+    <string name="work_unpaired_description">Open Astravia Desktop on your computer and click “Connect Phone” in the top-right corner, then scan the code.</string>
     <string name="work_unpaired_scan">Scan to Connect</string>
     <string name="work_unpaired_title">No Computer Connected</string>
     <string name="work_untitled">Untitled chat</string>

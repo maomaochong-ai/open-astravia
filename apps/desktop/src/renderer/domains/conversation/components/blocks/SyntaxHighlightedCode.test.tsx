@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { MarkdownContent } from "@vetta-org/theme-ui/markdown";
+import { MarkdownContent } from "@astravia-org/theme-ui/markdown";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { codeToHtml } = vi.hoisted(() => ({
@@ -10,7 +10,7 @@ vi.mock("shiki", () => ({
 	codeToHtml,
 }));
 
-const { SyntaxHighlightedCode } = await import("@vetta-org/theme-ui/shared");
+const { SyntaxHighlightedCode } = await import("@astravia-org/theme-ui/shared");
 
 describe("SyntaxHighlightedCode", () => {
 	beforeEach(() => {

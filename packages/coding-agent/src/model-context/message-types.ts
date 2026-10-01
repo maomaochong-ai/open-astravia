@@ -1,6 +1,6 @@
 /** Coding Agent model-context message contracts and factories. */
 
-import type { ImageContent, TextContent } from "@vetta/ai";
+import type { ImageContent, TextContent } from "@astravia/ai";
 
 /** Persisted prompt metadata marker. It is intentionally excluded from LLM context. */
 export const PROMPT_RESOURCE_REFERENCE_TYPE = "prompt_resource_reference";
@@ -70,7 +70,7 @@ export interface CompactionSummaryMessage {
 }
 
 // Extend CustomAgentMessages via declaration merging
-declare module "@vetta/agent-core" {
+declare module "@astravia/agent-core" {
 	interface CustomAgentMessages {
 		bashExecution: BashExecutionMessage;
 		custom: CustomMessage;

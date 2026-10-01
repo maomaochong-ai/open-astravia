@@ -15,7 +15,7 @@ it("resolves local Markdown images, exports SVG through the native dialog and cl
 	const save = vi.fn(async () => "C:/saved/image.svg");
 	const openHtml = vi.fn(async () => "preview-id");
 	const closeHtml = vi.fn(async () => {});
-	Object.defineProperty(window, "vetta", { configurable: true, value: { fs: { readFile: read }, dialog: { saveData: save }, markdown: { openHtml, closeHtml } } });
+	Object.defineProperty(window, "astravia", { configurable: true, value: { fs: { readFile: read }, dialog: { saveData: save }, markdown: { openHtml, closeHtml } } });
 	const store = createStore();
 	const wrapper = ({ children }: { children: ReactNode }) => <Provider store={store}>{children}</Provider>;
 	const { result } = renderHook(() => useMarkdownHost("C:/project/docs"), { wrapper });

@@ -12,11 +12,11 @@ function toolkitSourceAlias(): Plugin {
 	return {
 		name: "toolkit-source-alias",
 		resolveId(source) {
-			if (source === "@vetta/toolkit") {
+			if (source === "@astravia/toolkit") {
 				return resolve(process.cwd(), "../../packages/toolkit/src/index.ts");
 			}
-			if (source.startsWith("@vetta/toolkit/")) {
-				return resolve(process.cwd(), `../../packages/toolkit/src/${source.slice("@vetta/toolkit/".length)}.ts`);
+			if (source.startsWith("@astravia/toolkit/")) {
+				return resolve(process.cwd(), `../../packages/toolkit/src/${source.slice("@astravia/toolkit/".length)}.ts`);
 			}
 			return null;
 		},
@@ -24,53 +24,53 @@ function toolkitSourceAlias(): Plugin {
 }
 
 export default defineConfig(({ mode }) => {
-	// 允许通过 VETTA_BUILD_ENV 覆盖构建模式，方便 dist:*:test 等组合脚本从外层注入，
+	// 允许通过 ASTRAVIA_BUILD_ENV 覆盖构建模式，方便 dist:*:test 等组合脚本从外层注入，
 	// 而不必给每个平台/格式的脚本都复刻一遍。
 	// 默认值：vite build 命令的 mode（不指定时为 production）。
-	const effectiveMode = process.env.VETTA_BUILD_ENV || mode;
-	const env = loadEnv(effectiveMode, process.cwd(), "VETTA_");
+	const effectiveMode = process.env.ASTRAVIA_BUILD_ENV || mode;
+	const env = loadEnv(effectiveMode, process.cwd(), "ASTRAVIA_");
 	for (const [key, value] of Object.entries(process.env)) {
-		if (key.startsWith("VETTA_") && value !== undefined) env[key] = value;
+		if (key.startsWith("ASTRAVIA_") && value !== undefined) env[key] = value;
 	}
 	const speechInputBuildConfig = resolveSpeechInputBuildConfig({ env });
 	const developmentWorkspacePackages =
 		effectiveMode === "development"
-			? [/^@vetta\/(?:action-rpc|ai|coding-agent|remote-control|runtime-core)(?:\/|$)/]
+			? [/^@astravia\/(?:action-rpc|ai|coding-agent|remote-control|runtime-core)(?:\/|$)/]
 			: [];
-	const sourcemapEnabled = (process.env.VETTA_MAIN_SOURCEMAP ?? env.VETTA_MAIN_SOURCEMAP) === "true";
+	const sourcemapEnabled = (process.env.ASTRAVIA_MAIN_SOURCEMAP ?? env.ASTRAVIA_MAIN_SOURCEMAP) === "true";
 	const sentry = createSentryBuildSetup(env, "dist/main");
 
 	// 云服务构建期开关：默认关闭（lite）；只有显式 true 才产出完全体。
-	const cloudEnabled = env.VETTA_CLOUD_ENABLED === "true";
+	const cloudEnabled = env.ASTRAVIA_CLOUD_ENABLED === "true";
 
 	// SERVER_URL 只对完全体是必需的——lite 里登录、网关、官方市场都不进产物。
-	if (cloudEnabled && !env.VETTA_SERVER_URL) {
+	if (cloudEnabled && !env.ASTRAVIA_SERVER_URL) {
 		throw new Error(
-			`[vite.main.config] VETTA_CLOUD_ENABLED=true 需要 VETTA_SERVER_URL，请检查 .env.${effectiveMode}（mode=${effectiveMode}）`,
+			`[vite.main.config] ASTRAVIA_CLOUD_ENABLED=true 需要 ASTRAVIA_SERVER_URL，请检查 .env.${effectiveMode}（mode=${effectiveMode}）`,
 		);
 	}
 	console.log(
-		`[vite.main.config] mode=${effectiveMode}, cloud=${cloudEnabled}, VETTA_SERVER_URL=${env.VETTA_SERVER_URL ?? "(unset)"}, speechInput=${speechInputBuildConfig.enabled}`,
+		`[vite.main.config] mode=${effectiveMode}, cloud=${cloudEnabled}, ASTRAVIA_SERVER_URL=${env.ASTRAVIA_SERVER_URL ?? "(unset)"}, speechInput=${speechInputBuildConfig.enabled}`,
 	);
 
-	// 将 .env.<mode> 中的 VETTA_* 变量内联到构建产物
+	// 将 .env.<mode> 中的 ASTRAVIA_* 变量内联到构建产物
 	const define: Record<string, string> = {};
 	for (const [key, value] of Object.entries(env)) {
 		define[`process.env.${key}`] = JSON.stringify(value);
 	}
 	define[`process.env.${SPEECH_INPUT_ENABLED_ENV}`] = JSON.stringify(String(speechInputBuildConfig.enabled));
 	// 未配置时按 false（lite）内联，保证 cloud 判断能被常量折叠掉。
-	define["process.env.VETTA_CLOUD_ENABLED"] = JSON.stringify(cloudEnabled ? "true" : "false");
-	// 固化发行配置，防止打包后意外继承启动环境；空仓库由运行时解析为 Vetta 官方源。
-	define["process.env.VETTA_OPEN_MARKETPLACE_REPOSITORY"] = JSON.stringify(
-		env.VETTA_OPEN_MARKETPLACE_REPOSITORY?.trim() || "",
+	define["process.env.ASTRAVIA_CLOUD_ENABLED"] = JSON.stringify(cloudEnabled ? "true" : "false");
+	// 固化发行配置，防止打包后意外继承启动环境；空仓库由运行时解析为 Astravia 官方源。
+	define["process.env.ASTRAVIA_OPEN_MARKETPLACE_REPOSITORY"] = JSON.stringify(
+		env.ASTRAVIA_OPEN_MARKETPLACE_REPOSITORY?.trim() || "",
 	);
 	// 未配置 ref 时保留“缺省”语义：官方仓库由运行时选择 gh-pages，发行方 fork 仍回退 main。
-	define["process.env.VETTA_OPEN_MARKETPLACE_REF"] = env.VETTA_OPEN_MARKETPLACE_REF?.trim()
-		? JSON.stringify(env.VETTA_OPEN_MARKETPLACE_REF.trim())
+	define["process.env.ASTRAVIA_OPEN_MARKETPLACE_REF"] = env.ASTRAVIA_OPEN_MARKETPLACE_REF?.trim()
+		? JSON.stringify(env.ASTRAVIA_OPEN_MARKETPLACE_REF.trim())
 		: "undefined";
-	define["process.env.VETTA_OPEN_MARKETPLACE_ARCHIVE_URL"] = JSON.stringify(
-		env.VETTA_OPEN_MARKETPLACE_ARCHIVE_URL?.trim() || "",
+	define["process.env.ASTRAVIA_OPEN_MARKETPLACE_ARCHIVE_URL"] = JSON.stringify(
+		env.ASTRAVIA_OPEN_MARKETPLACE_ARCHIVE_URL?.trim() || "",
 	);
 
 	return {
@@ -79,7 +79,7 @@ export default defineConfig(({ mode }) => {
 		resolve: {
 			alias: [
 				{
-					find: /^@vetta\/remote-desktop$/,
+					find: /^@astravia\/remote-desktop$/,
 					replacement: resolve(process.cwd(), "../../packages/remote-desktop/src/index.ts"),
 				},
 				{ find: "x11", replacement: resolve(process.cwd(), "src/main/shims/x11.ts") },

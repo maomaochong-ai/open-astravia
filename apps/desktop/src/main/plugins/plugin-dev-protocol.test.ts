@@ -65,7 +65,7 @@ describe("plugin dev server protocol", () => {
 			type: "error",
 			pluginId: "demo",
 			message:
-				"Incompatible plugin-vite development protocol: expected 1, received 2. Update @vetta-org/plugin-vite.",
+				"Incompatible plugin-vite development protocol: expected 1, received 2. Update @astravia-org/plugin-vite.",
 		});
 	});
 

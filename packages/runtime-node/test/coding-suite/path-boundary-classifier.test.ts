@@ -12,7 +12,7 @@ afterEach(() => {
 });
 
 function createFixture(): { readonly protectedDirectory: string; readonly wikiDirectory: string } {
-	const root = mkdtempSync(join(tmpdir(), "vetta-path-boundary-"));
+	const root = mkdtempSync(join(tmpdir(), "astravia-path-boundary-"));
 	temporaryDirectories.push(root);
 	const protectedDirectory = join(root, "skills");
 	const wikiDirectory = join(root, "knowledge", "wiki");

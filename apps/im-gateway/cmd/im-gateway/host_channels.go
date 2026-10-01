@@ -4,14 +4,14 @@ import (
 	"errors"
 	"fmt"
 
-	"vetta-im-gateway/internal/transport"
-	"vetta-im-gateway/internal/transport/discord"
-	"vetta-im-gateway/internal/transport/feishu"
-	"vetta-im-gateway/internal/transport/imessage"
-	signalcli "vetta-im-gateway/internal/transport/signal"
-	"vetta-im-gateway/internal/transport/slack"
-	"vetta-im-gateway/internal/transport/telegram"
-	"vetta-im-gateway/internal/transport/wechat"
+	"astravia-im-gateway/internal/transport"
+	"astravia-im-gateway/internal/transport/discord"
+	"astravia-im-gateway/internal/transport/feishu"
+	"astravia-im-gateway/internal/transport/imessage"
+	signalcli "astravia-im-gateway/internal/transport/signal"
+	"astravia-im-gateway/internal/transport/slack"
+	"astravia-im-gateway/internal/transport/telegram"
+	"astravia-im-gateway/internal/transport/wechat"
 )
 
 // hostChannel binds one InitFrame slot to its transport constructor.

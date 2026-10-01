@@ -1,5 +1,5 @@
 import { languageAtom, type PluginI18nEntry, pluginI18nByIdAtom } from "@shared/store/atoms";
-import { __PluginI18nContext, resolvePluginText } from "@vetta-org/plugin-sdk";
+import { __PluginI18nContext, resolvePluginText } from "@astravia-org/plugin-sdk";
 import { useAtomValue } from "jotai";
 import { useCallback, type ReactNode } from "react";
 
@@ -57,7 +57,7 @@ export function PluginI18nBoundary({ pluginId, children }: { pluginId: string; c
 		<__PluginI18nContext.Provider
 			value={{ locales: entry?.locales ?? {}, defaultLocale: entry?.defaultLocale ?? "zh" }}
 		>
-			<div className="contents" data-vetta-plugin-root={pluginId}>
+			<div className="contents" data-astravia-plugin-root={pluginId}>
 				{children}
 			</div>
 		</__PluginI18nContext.Provider>
@@ -78,7 +78,7 @@ export function PluginInlineI18nBoundary({
 		<__PluginI18nContext.Provider
 			value={{ locales: entry?.locales ?? {}, defaultLocale: entry?.defaultLocale ?? "zh" }}
 		>
-			<span className="contents" data-vetta-plugin-root={pluginId}>
+			<span className="contents" data-astravia-plugin-root={pluginId}>
 				{children}
 			</span>
 		</__PluginI18nContext.Provider>

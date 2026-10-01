@@ -1,6 +1,6 @@
-import { cn } from "@vetta-org/ui";
-import { resolvePluginText } from "@vetta-org/plugin-sdk";
-import { isSkillVisibleOnSurface, resolveSkillProviderPresentation } from "@vetta-org/capability-sdk";
+import { cn } from "@astravia-org/ui";
+import { resolvePluginText } from "@astravia-org/plugin-sdk";
+import { isSkillVisibleOnSurface, resolveSkillProviderPresentation } from "@astravia-org/capability-sdk";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { AbilityContributedMcp, AbilityContributedSkill, AbilityType } from "@shared/lib/api";

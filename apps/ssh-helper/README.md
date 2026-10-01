@@ -1,4 +1,4 @@
-# vetta-ssh-helper
+# astravia-ssh-helper
 
 远程项目（ADR-0124）第二阶段的远端 helper：一个静态单文件二进制，由 Desktop 经 SSH 上传到项目所在的主机，通过该 SSH 通道的 stdio 与 Desktop 通信。
 
@@ -14,7 +14,7 @@
 
 - **零安装、无运行时依赖**：`CGO_ENABLED=0` 静态链接，不要求远端有 Node、glibc 特定版本或任何运行时。Go 模块依赖只有 `github.com/creack/pty`（纯 Go、无 cgo），它负责分配伪终端——各系统的 `grantpt`/`unlockpt` ioctl 差异抄一份进仓库只是把维护成本搬了个位置。
 - **不监听端口、不提权**：以登录用户身份运行，只经 stdio 通信。
-- **没有守护进程**：后台任务的全部状态落在 `~/.cache/vetta/helper/state/tasks/<id>/`（`meta.json`、`output.log`、`exit`）。任何一次之后启动的 helper 进程都能据此列出、续读、终止任务。守护进程会多出一个会崩溃的东西、一个要保护的 socket，以及守护进程与新客户端之间的版本偏差问题。
+- **没有守护进程**：后台任务的全部状态落在 `~/.cache/astravia/helper/state/tasks/<id>/`（`meta.json`、`output.log`、`exit`）。任何一次之后启动的 helper 进程都能据此列出、续读、终止任务。守护进程会多出一个会崩溃的东西、一个要保护的 socket，以及守护进程与新客户端之间的版本偏差问题。
 - **任务状态固定三态** `live` / `exited` / `unverifiable`：判定 `exited` 必须有 `exit` 文件这一正面证据；进程不见了又没有 `exit` 文件（主机重启、被外部杀掉）是 `unverifiable`，不并入任何一侧。
 - **协议版本是语义化版本号，不是构建哈希**（`internal/protocol`）。安装目录按它命名；按构建哈希命名会让每次应用升级后的新客户端连不上旧版本留下的任务。
 
@@ -55,14 +55,14 @@ make test         # go test -race -count=1
 make vet
 make lint         # 需要 golangci-lint：brew install golangci-lint
 make tidy
-make cross-build  # 四个远端平台 → dist/<os>-<arch>/vetta-ssh-helper
+make cross-build  # 四个远端平台 → dist/<os>-<arch>/astravia-ssh-helper
 make clean        # 清 bin/；dist/ 用 make dist-clean
 ```
 
 根目录的 `bun run check` 不覆盖 Go；改动本目录后请运行 `make vet test`。
 
-`cross-build` 的产物是给**开发态**用的：Desktop 会按 `dist/<os>-<arch>/vetta-ssh-helper`
-这个布局找 helper（也可以用 `VETTA_SSH_HELPER_DIR` 指向别处）。安装包里的那份由
+`cross-build` 的产物是给**开发态**用的：Desktop 会按 `dist/<os>-<arch>/astravia-ssh-helper`
+这个布局找 helper（也可以用 `ASTRAVIA_SSH_HELPER_DIR` 指向别处）。安装包里的那份由
 `apps/desktop/scripts/prepare-pack.js` 自己交叉编译，不走本 Makefile——改目标平台列表时
 两处要一起改。
 
@@ -83,12 +83,12 @@ scripts/verify-on-host.sh user@host                    # 复用 ~/.ssh/config �
 scripts/verify-on-host.sh build-01 -p 2222 -i ~/.ssh/id_ed25519
 ```
 
-它按 Vetta 自己的方式部署（同样的目录、权限与 sha256 校验），然后依次验证：握手、写入保留
+它按 Astravia 自己的方式部署（同样的目录、权限与 sha256 校验），然后依次验证：握手、写入保留
 权限位、以及**断开连接后后台任务是否仍在运行**——最后这条是 helper 存在的全部理由，每一步都
 用一条全新的 SSH 连接发起。全绿就说明这台主机可以作为远程项目使用。
 
 手工调协议时逐行敲 JSON：
 
 ```bash
-go run ./cmd/vetta-ssh-helper serve
+go run ./cmd/astravia-ssh-helper serve
 ```

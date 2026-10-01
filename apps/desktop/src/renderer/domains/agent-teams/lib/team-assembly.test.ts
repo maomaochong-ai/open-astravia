@@ -1,4 +1,4 @@
-import type { AgentProfile, TeamDefinition } from "@vetta/agent-team";
+import type { AgentProfile, TeamDefinition } from "@astravia/agent-team";
 import { describe, expect, it } from "vitest";
 import {
 	assemblyDraftFromTeam,

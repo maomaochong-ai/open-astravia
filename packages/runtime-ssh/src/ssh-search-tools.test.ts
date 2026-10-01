@@ -1,13 +1,13 @@
 import { mkdirSync, mkdtempSync, realpathSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { RuntimeToolResult } from "@vetta/runtime-core/kernel";
-import { createLoopbackSshConnection } from "@vetta/ssh-transport/testing";
+import type { RuntimeToolResult } from "@astravia/runtime-core/kernel";
+import { createLoopbackSshConnection } from "@astravia/ssh-transport/testing";
 import { describe, expect, it } from "vitest";
 import { createSshCodingToolEnvironment } from "./ssh-tool-environment.js";
 
 function createProject(): string {
-	const root = realpathSync(mkdtempSync(join(tmpdir(), "vetta-remote-project-")));
+	const root = realpathSync(mkdtempSync(join(tmpdir(), "astravia-remote-project-")));
 	mkdirSync(join(root, "src/it's here"), { recursive: true });
 	writeFileSync(join(root, "src/server.ts"), "const port = 3000;\nexport const cost = '$HOME';\n");
 	writeFileSync(join(root, "src/it's here/notes.md"), "port forwarding\n");

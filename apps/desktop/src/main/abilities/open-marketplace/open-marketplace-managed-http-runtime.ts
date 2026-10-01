@@ -5,7 +5,7 @@ import { homedir } from "node:os";
 import { isAbsolute, join, relative, sep } from "node:path";
 
 export const MANAGED_HTTP_RUNTIME_FILE = ".managed-http-runtime.json";
-export const MANAGED_HTTP_PORT_TOKEN = `\${VETTA_MCP_PORT}`;
+export const MANAGED_HTTP_PORT_TOKEN = `\${ASTRAVIA_MCP_PORT}`;
 
 export interface ManagedHttpRuntimeSetup {
 	readonly kind: "http-qrcode";

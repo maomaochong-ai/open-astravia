@@ -28,7 +28,7 @@ function versionOf(command) {
 }
 
 function candidateNodeCommands() {
-	if (process.env.VETTA_TEST_NODE) return [process.env.VETTA_TEST_NODE];
+	if (process.env.ASTRAVIA_TEST_NODE) return [process.env.ASTRAVIA_TEST_NODE];
 	const candidates = ["node"];
 	if (process.platform === "win32") {
 		if (process.env.ProgramFiles) candidates.push(join(process.env.ProgramFiles, "nodejs", "node.exe"));
@@ -47,7 +47,7 @@ function findNode() {
 	}
 	throw new Error(
 		`Vitest requires Node.js ${minimumNodeMajor}+. Node was not found. ` +
-			"Install Node.js or set VETTA_TEST_NODE to the absolute path of node executable.",
+			"Install Node.js or set ASTRAVIA_TEST_NODE to the absolute path of node executable.",
 	);
 }
 

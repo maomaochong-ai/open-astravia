@@ -1,4 +1,4 @@
-import type { PromptAttachmentRef } from "@vetta/runtime-core";
+import type { PromptAttachmentRef } from "@astravia/runtime-core";
 import { teamDelegationActivityId, teamMemberResultMessageId, teamUserMessageId } from "./context-projector.js";
 import type { LegacyTeamFeedEvent } from "./contracts.js";
 

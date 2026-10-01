@@ -1,4 +1,4 @@
-import { definePlugin } from "@vetta-org/plugin-sdk";
+import { definePlugin } from "@astravia-org/plugin-sdk";
 import "./style.css";
 import { ScriptsPanel } from "./components/ScriptsPanel";
 import { setScriptsFs } from "./runtime";

@@ -1,5 +1,5 @@
-import type { ConversationDocumentStore } from "@vetta/runtime-core/conversation";
-import type { ConversationContinuationStore, ConversationRepository } from "@vetta/runtime-core/kernel";
+import type { ConversationDocumentStore } from "@astravia/runtime-core/conversation";
+import type { ConversationContinuationStore, ConversationRepository } from "@astravia/runtime-core/kernel";
 import { FileConversationRepository } from "./file-conversation-repository.js";
 import { InMemoryConversationRepository } from "./in-memory-conversation-repository.js";
 

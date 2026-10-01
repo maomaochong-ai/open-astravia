@@ -1,9 +1,9 @@
 ---
 title: 架构与包边界
-description: 理解 Vetta 应用、运行时和核心 Agent 包之间的依赖方向。
+description: 理解 Astravia 应用、运行时和核心 Agent 包之间的依赖方向。
 ---
 
-Vetta 使用 monorepo 管理桌面应用、服务和核心 TypeScript 包。依赖方向保持为：
+Astravia 使用 monorepo 管理桌面应用、服务和核心 TypeScript 包。依赖方向保持为：
 
 ```text
 应用 → runtime-* → coding-agent → agent → ai
@@ -12,9 +12,9 @@ Vetta 使用 monorepo 管理桌面应用、服务和核心 TypeScript 包。依�
 ## 核心包
 
 <Cards>
-  <Card title="@vetta/ai" description="多模型服务协议、消息转换、流式事件和模型注册表。" />
-  <Card title="@vetta/agent-core" description="有状态 Agent Loop、工具调用和事件流。" />
-  <Card title="@vetta/coding-agent" description="会话、上下文、工具编排及 SDK/RPC 产品能力。" />
+  <Card title="@astravia/ai" description="多模型服务协议、消息转换、流式事件和模型注册表。" />
+  <Card title="@astravia/agent-core" description="有状态 Agent Loop、工具调用和事件流。" />
+  <Card title="@astravia/coding-agent" description="会话、上下文、工具编排及 SDK/RPC 产品能力。" />
 </Cards>
 
 ## 运行时包

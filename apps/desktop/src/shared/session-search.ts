@@ -1,4 +1,4 @@
-import type { SessionExecutionMode } from "@vetta/runtime-core";
+import type { SessionExecutionMode } from "@astravia/runtime-core";
 import type { DesktopSessionHistoryInfo } from "./session-access.js";
 
 export type DesktopSessionSearchSourceKind = "conversation" | "claw" | "project" | "batch";
@@ -48,7 +48,7 @@ export interface DesktopSessionSearchEvent {
 }
 
 export const SESSION_SEARCH_CHANNELS = {
-	start: "vetta:session:search-sessions",
-	cancel: "vetta:session:cancel-search",
-	event: "vetta:session:search-sessions-event",
+	start: "astravia:session:search-sessions",
+	cancel: "astravia:session:cancel-search",
+	event: "astravia:session:search-sessions-event",
 } as const;

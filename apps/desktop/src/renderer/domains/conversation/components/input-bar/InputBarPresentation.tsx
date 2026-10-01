@@ -1,4 +1,4 @@
-import { useThemeComponent } from "@vetta-org/theme-sdk";
+import { useThemeComponent } from "@astravia-org/theme-sdk";
 import { InputBarView } from "./InputBarView";
 import type { InputBarProps } from "./types";
 

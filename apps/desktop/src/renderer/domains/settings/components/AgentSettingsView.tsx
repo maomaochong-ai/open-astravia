@@ -1,9 +1,9 @@
-import { Button } from "@vetta-org/ui";
-import { Switch } from "@vetta-org/ui";
+import { Button } from "@astravia-org/ui";
+import { Switch } from "@astravia-org/ui";
 import { useMemo } from "react";
 import { SettingsAiAssist } from "../ai-assist";
 import { SETTINGS_SECTION } from "../registry";
-import { MotionSelect, SettingHeading, SettingRow, SettingSection } from "@vetta-org/theme-ui/settings";
+import { MotionSelect, SettingHeading, SettingRow, SettingSection } from "@astravia-org/theme-ui/settings";
 import type { AgentSettingsModel } from "./useAgentSettingsModel";
 import { RuntimeConfigurationSections } from "./RuntimeConfigurationSections";
 import type { RuntimeConfigurationModel } from "./useRuntimeConfigurationModel";
@@ -95,7 +95,7 @@ export function AgentSettingsView({ model, imageGeneration, runtimeConfiguration
 						title={model.labels.appOp}
 						description={model.labels.appOpDescription}
 					>
-						<Switch checked={model.vettaCliEnabled} onCheckedChange={model.actions.toggleVettaCli} />
+						<Switch checked={model.astraviaCliEnabled} onCheckedChange={model.actions.toggleAstraviaCli} />
 					</SettingRow>
 					<SettingRow
 						title={model.labels.inputPrediction}

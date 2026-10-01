@@ -1,5 +1,11 @@
-import type { RemoteConnection, RemoteError, RemoteEvent, RemoteEventName, RemoteRequest } from "@vetta/remote-control";
-import { RemoteEventJournal } from "@vetta/remote-control";
+import type {
+	RemoteConnection,
+	RemoteError,
+	RemoteEvent,
+	RemoteEventName,
+	RemoteRequest,
+} from "@astravia/remote-control";
+import { RemoteEventJournal } from "@astravia/remote-control";
 import { getAppLogger } from "../logger.js";
 
 export type RemoteChannel = "p2p" | "lan" | "relay";

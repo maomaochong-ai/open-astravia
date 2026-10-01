@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { parsePluginManifest } from "@vetta-org/plugin-sdk/manifest";
+import { parsePluginManifest } from "@astravia-org/plugin-sdk/manifest";
 import AdmZip from "adm-zip";
 import type { MarketplacePluginRelease } from "./marketplace-schema.js";
 
@@ -60,7 +60,7 @@ export async function fetchVerifiedMarketplacePluginArtifact(
 				redirect: "follow",
 				headers: {
 					Accept: "application/octet-stream",
-					"User-Agent": "Vetta-Desktop",
+					"User-Agent": "Astravia-Desktop",
 				},
 			});
 		} else {
@@ -71,7 +71,7 @@ export async function fetchVerifiedMarketplacePluginArtifact(
 					redirect: "manual",
 					headers: {
 						Accept: "application/octet-stream",
-						"User-Agent": "Vetta-Desktop",
+						"User-Agent": "Astravia-Desktop",
 						...(authorization ? { Authorization: authorization } : {}),
 					},
 				});

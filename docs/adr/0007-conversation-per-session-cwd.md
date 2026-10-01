@@ -4,13 +4,13 @@ status: accepted
 
 # desktop「对话」项目按 session 拆产物 cwd
 
-「对话」是 desktop 侧栏的默认项目、不可删除，扮演"sink"角色——任何无明确归属的 session 都落在它下面。ADR-0005 已经把 IM 与 desktop「对话」分家解决了渠道间窜味，但「对话」内部多个 desktop session 仍共用同一 cwd `~/.vetta/conversation`，agent 写出的 html/py/md 等产物全部堆在根目录：(1) 同名文件互相覆盖（A 的 `report.html` 被 B 覆盖）；(2) B 的 agent 在 ls 时能看到 A 的残留并可能误读。和 ADR-0005 同形态的「窜味」问题，只是发生在更细粒度。
+「对话」是 desktop 侧栏的默认项目、不可删除，扮演"sink"角色——任何无明确归属的 session 都落在它下面。ADR-0005 已经把 IM 与 desktop「对话」分家解决了渠道间窜味，但「对话」内部多个 desktop session 仍共用同一 cwd `~/.astravia/conversation`，agent 写出的 html/py/md 等产物全部堆在根目录：(1) 同名文件互相覆盖（A 的 `report.html` 被 B 覆盖）；(2) B 的 agent 在 ls 时能看到 A 的残留并可能误读。和 ADR-0005 同形态的「窜味」问题，只是发生在更细粒度。
 
-决定：「对话」项目下任何**新建** session（手动 / scheduler / IPC 等所有口子），在创建时 main 进程 eager `mkdir -p ~/.vetta/conversation/<sessionId>/`，并把该 session 的运行 cwd 设为此子目录。Session jsonl 仍集中存于项目根 `~/.vetta/conversation/.vetta/sessions/`，不挪——sidebar 列表逻辑不动。删除 session 时一并递归删除其产物子目录，二次确认弹窗提示包含 N 个文件。
+决定：「对话」项目下任何**新建** session（手动 / scheduler / IPC 等所有口子），在创建时 main 进程 eager `mkdir -p ~/.astravia/conversation/<sessionId>/`，并把该 session 的运行 cwd 设为此子目录。Session jsonl 仍集中存于项目根 `~/.astravia/conversation/.astravia/sessions/`，不挪——sidebar 列表逻辑不动。删除 session 时一并递归删除其产物子目录，二次确认弹窗提示包含 N 个文件。
 
 仅作用于「对话」默认项目。用户手动创建的项目（cwd 是用户自选的真实路径，比如代码仓）**不**走 per-session 拆分——共享 cwd 本来就是用户创建项目时的初衷。
 
-fs IPC 沙箱边界**不**收紧，仍是 `~/.vetta/conversation` 整体。隔离的是状态不是权限：用户从 sess_A 拖一个产物文件作为 [[mentionedFile]] 进 sess_B，agent 仍能用绝对路径读到。强行硬隔离反而破坏跨 session 引用这个合理用例。
+fs IPC 沙箱边界**不**收紧，仍是 `~/.astravia/conversation` 整体。隔离的是状态不是权限：用户从 sess_A 拖一个产物文件作为 [[mentionedFile]] 进 sess_B，agent 仍能用绝对路径读到。强行硬隔离反而破坏跨 session 引用这个合理用例。
 
 不做老 session 迁移：现有 session 的 cwd 保留为项目根，老产物原地保留可见。没有可靠信息能把"哪个文件是哪个 session 写的"反推出来，启发式迁移容易错绑。「对话」项目详情页（无激活 session 时）的 Files 面板仍展示项目根——同时能看到老产物 + 各 `<sessionId>/` 子目录，作为"索引页"。
 
@@ -31,7 +31,7 @@ fs IPC 沙箱边界**不**收紧，仍是 `~/.vetta/conversation` 整体。隔�
 - fs 的 UI 目录列举（文件面板树 `read-dir`、@文件递归补全 `list-files-recursive`）在「对话」根目录
   这一层隐藏 uuid 命名的工作区子目录（谓词 `isConversationWorkspaceDirEntry`，
   `apps/desktop/src/main/conversations/session-paths.ts`）。根目录下的老产物（非 uuid 命名）仍可见。
-- fs 权限边界维持不变（仍是 `~/.vetta/conversation` 整体）：隐藏的只是列举展示，显式绝对路径
+- fs 权限边界维持不变（仍是 `~/.astravia/conversation` 整体）：隐藏的只是列举展示，显式绝对路径
   （mentionedFile 拖拽等跨 session 引用）仍可读取，本 ADR 原有的「隔离状态而非权限」立场不变。
 - 新会话页在「对话」/待创建项目上下文中不再把 conversation 根传给活动面板，文件面板显示
   「选择项目」空态；选中项目后按项目根展示。

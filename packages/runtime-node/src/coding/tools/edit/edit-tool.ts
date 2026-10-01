@@ -1,6 +1,6 @@
 import { constants } from "node:fs";
 import { access, readFile, writeFile } from "node:fs/promises";
-import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
+import type { RuntimeToolDefinition } from "@astravia/runtime-core/kernel";
 import { resolveExistingPath } from "../../shared/path-resolution.js";
 import { formatStrippedPrefixNotice, prepareAnchorEdits } from "./anchor-edit.js";
 import { EDIT_TOOL_DESCRIPTION } from "./description.js";

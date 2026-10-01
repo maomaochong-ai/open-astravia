@@ -1,4 +1,4 @@
-import type { PluginActivationCleanup } from "@vetta-org/plugin-sdk";
+import type { PluginActivationCleanup } from "@astravia-org/plugin-sdk";
 
 /** Captures cleanup ownership for one loadPlugin() activation. */
 export class PluginActivationCleanupController {

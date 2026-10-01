@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { type ProjectGoneRouteContext, resolveProjectGoneCleanup } from "./project-gone-cleanup";
 
-const PROJECT = "/Users/me/.vetta/workspace/A";
-const DEFAULT_CONVERSATION = "/Users/me/.vetta/conversation";
+const PROJECT = "/Users/me/.astravia/workspace/A";
+const DEFAULT_CONVERSATION = "/Users/me/.astravia/conversation";
 
 function context(overrides: Partial<ProjectGoneRouteContext> = {}): ProjectGoneRouteContext {
 	return {
@@ -69,7 +69,7 @@ describe("resolveProjectGoneCleanup", () => {
 		const result = resolveProjectGoneCleanup(
 			PROJECT,
 			[],
-			context({ currentPath: "/new-session/x", routeCwd: "/Users/me/.vetta/workspace/B" }),
+			context({ currentPath: "/new-session/x", routeCwd: "/Users/me/.astravia/workspace/B" }),
 		);
 
 		expect(result).toEqual({ clearActiveSession: false, navigation: { kind: "stay" } });
@@ -79,7 +79,7 @@ describe("resolveProjectGoneCleanup", () => {
 		const result = resolveProjectGoneCleanup(
 			PROJECT,
 			[],
-			context({ currentPath: "/", activeSessionCwd: "/Users/me/.vetta/workspace/B" }),
+			context({ currentPath: "/", activeSessionCwd: "/Users/me/.astravia/workspace/B" }),
 		);
 
 		expect(result).toEqual({ clearActiveSession: false, navigation: { kind: "stay" } });

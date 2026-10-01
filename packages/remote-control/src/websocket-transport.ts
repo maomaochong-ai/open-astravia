@@ -13,17 +13,17 @@ export interface RemoteWebSocket {
 
 export type RemoteWebSocketFactory = (url: string, protocols?: readonly string[]) => RemoteWebSocket;
 
-export const REMOTE_WEBSOCKET_PROTOCOL = "vetta.remote.v2";
+export const REMOTE_WEBSOCKET_PROTOCOL = "astravia.remote.v2";
 /** Carries the pairing secret; kept out of the URL so proxies and logs never see it. */
-export const PAIRING_PROTOCOL_PREFIX = "vetta.pairing.";
+export const PAIRING_PROTOCOL_PREFIX = "astravia.pairing.";
 /** Declares a manual pairing that must be approved at the desktop instead of presenting a secret. */
-export const MANUAL_PAIRING_PROTOCOL = "vetta.manual";
+export const MANUAL_PAIRING_PROTOCOL = "astravia.manual";
 /**
  * Offered by the desktop when it registers a relay room: the SHA-256 hex of
  * the phone's secret, so the relay can admit the phone without ever holding
  * the secret itself.
  */
-export const PEER_HASH_PROTOCOL_PREFIX = "vetta.peer.";
+export const PEER_HASH_PROTOCOL_PREFIX = "astravia.peer.";
 /** Close code used by an endpoint that rejected the peer at the protocol level. */
 export const REMOTE_CLOSE_CODE_REJECTED = 4003;
 const WEBSOCKET_OPEN = 1;

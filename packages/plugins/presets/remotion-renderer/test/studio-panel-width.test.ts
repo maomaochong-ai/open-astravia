@@ -1,4 +1,4 @@
-import type { PluginContext } from "@vetta-org/plugin-sdk";
+import type { PluginContext } from "@astravia-org/plugin-sdk";
 import { describe, expect, it, vi } from "vitest";
 import { applyStudioPanelWidth } from "../src/studio/studio-panel-width";
 

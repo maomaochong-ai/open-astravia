@@ -1,12 +1,12 @@
-import type { RuntimeResourceContext, RuntimeSessionObservationEvent } from "@vetta/runtime-core";
-import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
-import { sessionExtensionObservation } from "@vetta/runtime-core/session-extensions";
+import type { RuntimeResourceContext, RuntimeSessionObservationEvent } from "@astravia/runtime-core";
+import type { RuntimeToolDefinition } from "@astravia/runtime-core/kernel";
+import { sessionExtensionObservation } from "@astravia/runtime-core/session-extensions";
 import type {
 	McpRuntimeToolBinding,
 	McpRuntimeToolRegistry,
 	McpRuntimeToolSnapshot,
 	McpRuntimeToolView,
-} from "@vetta/runtime-mcp";
+} from "@astravia/runtime-mcp";
 import { describe, expect, it, vi } from "vitest";
 import { CodingAgentCompositionResourceRegistry } from "../../src/composition/session-lifecycle/resource-registry.js";
 import { createCodingAgentMcpSessionCoordinator } from "../../src/composition/tool-surface/mcp-session-coordinator.js";

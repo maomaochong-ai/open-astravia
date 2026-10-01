@@ -1,5 +1,5 @@
 import { posix } from "node:path";
-import { formatSshProjectUri, normalizeRemotePath, parseProjectLocation } from "@vetta/ssh-transport";
+import { formatSshProjectUri, normalizeRemotePath, parseProjectLocation } from "@astravia/ssh-transport";
 import {
 	FILE_EXPLORER_ENTRY_EXISTS_ERROR,
 	getFileExplorerEntryNameIssue,

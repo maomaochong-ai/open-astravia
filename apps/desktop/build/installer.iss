@@ -13,16 +13,16 @@
 
 [Setup]
 AppId={{A2B92798-AB76-4F6B-A9B9-C252DBCB617C}
-AppName=Vetta
-AppVerName=Vetta {#AppVersion}
+AppName=Astravia
+AppVerName=Astravia {#AppVersion}
 AppVersion={#AppVersion}
-AppPublisher=Vetta
-DefaultDirName={localappdata}\Programs\Vetta
-DefaultGroupName=Vetta
+AppPublisher=Astravia
+DefaultDirName={localappdata}\Programs\Astravia
+DefaultGroupName=Astravia
 OutputDir={#OutputDir}
-OutputBaseFilename=Vetta-{#AppVersion}-win-{#Arch}
+OutputBaseFilename=Astravia-{#AppVersion}-win-{#Arch}
 SetupIconFile={#SourceDir}\versions\{#AppVersion}\resources\build\icon.ico
-UninstallDisplayIcon={app}\Vetta.exe
+UninstallDisplayIcon={app}\Astravia.exe
 Compression=lzma2/max
 SolidCompression=no
 PrivilegesRequired=lowest
@@ -54,7 +54,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; Flags: unchecked
 Name: "{app}\versions"; Check: IsNotBackgroundUpdate
 
 [Files]
-Source: "{#SourceDir}\Vetta.exe"; DestDir: "{app}"; Flags: ignoreversion; Check: IsNotBackgroundUpdate
+Source: "{#SourceDir}\Astravia.exe"; DestDir: "{app}"; Flags: ignoreversion; Check: IsNotBackgroundUpdate
 Source: "{#SourceDir}\current.json"; DestDir: "{app}"; Flags: ignoreversion; Check: IsNotBackgroundUpdate
 ; app.asar is already an archive. Keeping it uncompressed lets the outer blockmap
 ; reuse unchanged chunks instead of invalidating one large LZMA2 stream.
@@ -64,23 +64,23 @@ Source: "{#SourceDir}\versions\{#AppVersion}\*"; DestDir: "{code:GetUpdateVersio
 Source: "{#SourceDir}\versions\{#AppVersion}\resources\app.asar"; DestDir: "{code:GetUpdateVersionDirectory}\resources"; Flags: ignoreversion nocompression; Check: IsBackgroundUpdate
 
 [Icons]
-Name: "{group}\Vetta"; Filename: "{app}\Vetta.exe"; Check: IsNotBackgroundUpdate
-Name: "{autodesktop}\Vetta"; Filename: "{app}\Vetta.exe"; Tasks: desktopicon; Check: IsNotBackgroundUpdate
+Name: "{group}\Astravia"; Filename: "{app}\Astravia.exe"; Check: IsNotBackgroundUpdate
+Name: "{autodesktop}\Astravia"; Filename: "{app}\Astravia.exe"; Tasks: desktopicon; Check: IsNotBackgroundUpdate
 
 [Registry]
-Root: HKCU; Subkey: "Software\Classes\vetta"; ValueType: string; ValueName: ""; ValueData: "URL:Vetta Protocol"; Flags: uninsdeletekey; Check: IsNotBackgroundUpdate
-Root: HKCU; Subkey: "Software\Classes\vetta"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""; Check: IsNotBackgroundUpdate
-Root: HKCU; Subkey: "Software\Classes\vetta\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\Vetta.exe,0"; Check: IsNotBackgroundUpdate
-Root: HKCU; Subkey: "Software\Classes\vetta\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\Vetta.exe"" ""%1"""; Check: IsNotBackgroundUpdate
+Root: HKCU; Subkey: "Software\Classes\astravia"; ValueType: string; ValueName: ""; ValueData: "URL:Astravia Protocol"; Flags: uninsdeletekey; Check: IsNotBackgroundUpdate
+Root: HKCU; Subkey: "Software\Classes\astravia"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""; Check: IsNotBackgroundUpdate
+Root: HKCU; Subkey: "Software\Classes\astravia\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\Astravia.exe,0"; Check: IsNotBackgroundUpdate
+Root: HKCU; Subkey: "Software\Classes\astravia\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\Astravia.exe"" ""%1"""; Check: IsNotBackgroundUpdate
 
 [Run]
-Filename: "{app}\Vetta.exe"; Description: "{cm:LaunchProgram,Vetta}"; Flags: nowait postinstall skipifsilent; Check: IsNotBackgroundUpdate
+Filename: "{app}\Astravia.exe"; Description: "{cm:LaunchProgram,Astravia}"; Flags: nowait postinstall skipifsilent; Check: IsNotBackgroundUpdate
 
 [UninstallDelete]
-Type: filesandordirs; Name: "{localappdata}\Vetta\versions"
-Type: filesandordirs; Name: "{localappdata}\Vetta\installer"
-Type: filesandordirs; Name: "{localappdata}\Vetta\staging"
-Type: files; Name: "{localappdata}\Vetta\current.json"
+Type: filesandordirs; Name: "{localappdata}\Astravia\versions"
+Type: filesandordirs; Name: "{localappdata}\Astravia\installer"
+Type: filesandordirs; Name: "{localappdata}\Astravia\staging"
+Type: files; Name: "{localappdata}\Astravia\current.json"
 
 [Code]
 function CreateHardLinkW(
@@ -92,7 +92,7 @@ function CreateHardLinkW(
 
 function IsBackgroundUpdate(): Boolean;
 begin
-  Result := CompareText(ExpandConstant('{param:VETTAUPDATE|false}'), 'true') = 0;
+  Result := CompareText(ExpandConstant('{param:ASTRAVIAUPDATE|false}'), 'true') = 0;
 end;
 
 function IsNotBackgroundUpdate(): Boolean;
@@ -102,15 +102,15 @@ end;
 
 function GetUpdateVersionDirectory(Value: String): String;
 begin
-  Result := AddBackslash(ExpandConstant('{param:VETTASTOREROOT}')) + 'versions\{#AppVersion}';
+  Result := AddBackslash(ExpandConstant('{param:ASTRAVIASTOREROOT}')) + 'versions\{#AppVersion}';
 end;
 
 function InitializeSetup(): Boolean;
 begin
   Result := True;
-  if IsBackgroundUpdate() and (Trim(ExpandConstant('{param:VETTASTOREROOT}')) = '') then
+  if IsBackgroundUpdate() and (Trim(ExpandConstant('{param:ASTRAVIASTOREROOT}')) = '') then
   begin
-    Log('VETTASTOREROOT is required for a background update.');
+    Log('ASTRAVIASTOREROOT is required for a background update.');
     Result := False;
   end;
 end;
@@ -123,7 +123,7 @@ var
   SourceInstallerPath: String;
   TemporaryInstallerPath: String;
 begin
-  CacheDirectory := ExpandConstant('{localappdata}\vetta-updater');
+  CacheDirectory := ExpandConstant('{localappdata}\astravia-updater');
   CachedBlockmapPath := AddBackslash(CacheDirectory) + 'current.blockmap';
   CachedInstallerPath := AddBackslash(CacheDirectory) + 'installer.exe';
   SourceInstallerPath := ExpandConstant('{srcexe}');
@@ -176,7 +176,7 @@ begin
   if not IsBackgroundUpdate() then
     exit;
 
-  ProgressFilePath := ExpandConstant('{param:VETTAPROGRESS}');
+  ProgressFilePath := ExpandConstant('{param:ASTRAVIAPROGRESS}');
   if (ProgressFilePath = '') or (MaxProgress <= 0) then
     exit;
 
@@ -208,7 +208,7 @@ begin
     else
     begin
       SeedUpdaterDifferentialCache();
-      DeleteFile(ExpandConstant('{localappdata}\Vetta\current.json'));
+      DeleteFile(ExpandConstant('{localappdata}\Astravia\current.json'));
     end;
   end;
 end;

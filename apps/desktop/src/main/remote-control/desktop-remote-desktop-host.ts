@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
-import type { RemoteTransport } from "@vetta/remote-control";
-import { decodeRemoteInputMessage } from "@vetta/remote-desktop";
+import type { RemoteTransport } from "@astravia/remote-control";
+import { decodeRemoteInputMessage } from "@astravia/remote-desktop";
 import { BrowserWindow, desktopCapturer, ipcMain, session, webContents } from "electron";
 import { getAppLogger } from "../logger.js";
 import { registerRemoteDesktopVideoPermission } from "../speech-input/media-permissions.js";
@@ -66,10 +66,10 @@ export async function startDesktopRemoteDesktopHost(
 	const unregisterVideoPermission = registerRemoteDesktopVideoPermission(window.webContents.id);
 	const controlTransport = new RendererDataChannelTransport({
 		send(message) {
-			if (!window.isDestroyed()) window.webContents.send("vetta:remote-desktop:control-send", message);
+			if (!window.isDestroyed()) window.webContents.send("astravia:remote-desktop:control-send", message);
 		},
 		close() {
-			if (!window.isDestroyed()) window.webContents.send("vetta:remote-desktop:control-close");
+			if (!window.isDestroyed()) window.webContents.send("astravia:remote-desktop:control-close");
 		},
 	});
 	window.webContents.on("console-message", (_event, level, message) => {
@@ -85,7 +85,7 @@ export async function startDesktopRemoteDesktopHost(
 			log.warn("invalid remote desktop IPC input rejected", { sessionId });
 		}
 	};
-	ipcMain.on("vetta:remote-desktop:input", onInput);
+	ipcMain.on("astravia:remote-desktop:input", onInput);
 	const onControlOpen = (event: Electron.IpcMainEvent): void => {
 		if (event.sender.id === window.webContents.id) controlTransport.handleOpen();
 	};
@@ -97,9 +97,9 @@ export async function startDesktopRemoteDesktopHost(
 			controlTransport.handleClose(typeof reason === "string" ? reason.slice(0, 256) : undefined);
 		}
 	};
-	ipcMain.on("vetta:remote-desktop:control-open", onControlOpen);
-	ipcMain.on("vetta:remote-desktop:control-message", onControlMessage);
-	ipcMain.on("vetta:remote-desktop:control-close", onControlClose);
+	ipcMain.on("astravia:remote-desktop:control-open", onControlOpen);
+	ipcMain.on("astravia:remote-desktop:control-message", onControlMessage);
+	ipcMain.on("astravia:remote-desktop:control-close", onControlClose);
 	// The page asks for the screen itself; it reloads when signaling drops, so it says when
 	// it is listening and gets the screen again if a phone still wants it.
 	let screenWanted = false;
@@ -123,7 +123,7 @@ export async function startDesktopRemoteDesktopHost(
 				clearTimeout(timer);
 				resolve(streaming);
 			});
-			window.webContents.send("vetta:remote-desktop:screen", { id, active });
+			window.webContents.send("astravia:remote-desktop:screen", { id, active });
 		});
 	const onScreenReady = (event: Electron.IpcMainEvent): void => {
 		if (event.sender.id !== window.webContents.id) return;
@@ -151,17 +151,17 @@ export async function startDesktopRemoteDesktopHost(
 					}, SCREEN_REQUEST_TIMEOUT_MS);
 					readyWaiters.add(done);
 				});
-	ipcMain.on("vetta:remote-desktop:screen-ready", onScreenReady);
-	ipcMain.on("vetta:remote-desktop:screen-result", onScreenResult);
+	ipcMain.on("astravia:remote-desktop:screen-ready", onScreenReady);
+	ipcMain.on("astravia:remote-desktop:screen-result", onScreenResult);
 	window.webContents.on("did-start-loading", () => {
 		screenReady = false;
 	});
 	const removeControlListeners = (): void => {
-		ipcMain.removeListener("vetta:remote-desktop:control-open", onControlOpen);
-		ipcMain.removeListener("vetta:remote-desktop:control-message", onControlMessage);
-		ipcMain.removeListener("vetta:remote-desktop:control-close", onControlClose);
-		ipcMain.removeListener("vetta:remote-desktop:screen-ready", onScreenReady);
-		ipcMain.removeListener("vetta:remote-desktop:screen-result", onScreenResult);
+		ipcMain.removeListener("astravia:remote-desktop:control-open", onControlOpen);
+		ipcMain.removeListener("astravia:remote-desktop:control-message", onControlMessage);
+		ipcMain.removeListener("astravia:remote-desktop:control-close", onControlClose);
+		ipcMain.removeListener("astravia:remote-desktop:screen-ready", onScreenReady);
+		ipcMain.removeListener("astravia:remote-desktop:screen-result", onScreenResult);
 		for (const waiter of screenWaiters.values()) waiter(false);
 		screenWaiters.clear();
 	};
@@ -215,7 +215,7 @@ export async function startDesktopRemoteDesktopHost(
 	} catch (error) {
 		input.setEnabled(false);
 		unregisterVideoPermission();
-		ipcMain.removeListener("vetta:remote-desktop:input", onInput);
+		ipcMain.removeListener("astravia:remote-desktop:input", onInput);
 		removeControlListeners();
 		if (displayMediaHandlerInstalled) session.defaultSession.setDisplayMediaRequestHandler(null);
 		if (!window.isDestroyed()) window.destroy();
@@ -264,7 +264,7 @@ export async function startDesktopRemoteDesktopHost(
 			input.setEnabled(false);
 			unregisterVideoPermission();
 			session.defaultSession.setDisplayMediaRequestHandler(null);
-			ipcMain.removeListener("vetta:remote-desktop:input", onInput);
+			ipcMain.removeListener("astravia:remote-desktop:input", onInput);
 			removeControlListeners();
 			await controlTransport.close("remote desktop host stopped");
 			if (!window.isDestroyed()) window.destroy();

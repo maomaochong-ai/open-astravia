@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	"vetta-im-gateway/internal/transport/wechat/ilink"
+	"astravia-im-gateway/internal/transport/wechat/ilink"
 )
 
 // stateFileVersion is the schema version embedded in the persisted state

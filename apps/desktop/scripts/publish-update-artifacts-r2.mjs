@@ -30,10 +30,10 @@ function normalizePrefix(rawPrefix) {
 function normalizeUrlPrefix(rawUrl) {
 	const url = new URL(rawUrl);
 	if (url.protocol !== "https:" && url.protocol !== "http:") {
-		throw new Error("[publish-updates-r2] VETTA_UPDATE_URL must use http or https");
+		throw new Error("[publish-updates-r2] ASTRAVIA_UPDATE_URL must use http or https");
 	}
 	if (url.username || url.password || url.search || url.hash) {
-		throw new Error("[publish-updates-r2] VETTA_UPDATE_URL must not contain credentials, query, or hash");
+		throw new Error("[publish-updates-r2] ASTRAVIA_UPDATE_URL must not contain credentials, query, or hash");
 	}
 	return decodeURIComponent(url.pathname)
 		.split("/")
@@ -46,7 +46,7 @@ export function validatePublishTarget({ prefix, updateUrl, releaseVersion, packa
 	const urlPrefix = normalizeUrlPrefix(updateUrl);
 	if (urlPrefix !== prefix) {
 		throw new Error(
-			`[publish-updates-r2] VETTA_UPDATE_URL path "${urlPrefix}" does not match VETTA_R2_PREFIX "${prefix}"`,
+			`[publish-updates-r2] ASTRAVIA_UPDATE_URL path "${urlPrefix}" does not match ASTRAVIA_R2_PREFIX "${prefix}"`,
 		);
 	}
 	if (prefix.split("/").at(-1) === "stable" && releaseVersion !== packageVersion) {
@@ -260,12 +260,12 @@ async function verifyPublicFiles(baseUrl, fileNames) {
 }
 
 export async function main() {
-	const accountId = requireEnv("VETTA_R2_ACCOUNT_ID");
-	const accessKeyId = requireEnv("VETTA_R2_ACCESS_KEY_ID");
-	const secretAccessKey = requireEnv("VETTA_R2_SECRET_ACCESS_KEY");
-	const bucket = requireEnv("VETTA_R2_BUCKET");
-	const prefix = normalizePrefix(process.env.VETTA_R2_PREFIX ?? "desktop/stable");
-	const updateUrl = requireEnv("VETTA_UPDATE_URL");
+	const accountId = requireEnv("ASTRAVIA_R2_ACCOUNT_ID");
+	const accessKeyId = requireEnv("ASTRAVIA_R2_ACCESS_KEY_ID");
+	const secretAccessKey = requireEnv("ASTRAVIA_R2_SECRET_ACCESS_KEY");
+	const bucket = requireEnv("ASTRAVIA_R2_BUCKET");
+	const prefix = normalizePrefix(process.env.ASTRAVIA_R2_PREFIX ?? "desktop/stable");
+	const updateUrl = requireEnv("ASTRAVIA_UPDATE_URL");
 	const releaseVersion = await readReleaseVersion();
 	const packageVersion = JSON.parse(await readFile(join(projectRoot, "package.json"), "utf8")).version;
 	validatePublishTarget({ prefix, updateUrl, releaseVersion, packageVersion });

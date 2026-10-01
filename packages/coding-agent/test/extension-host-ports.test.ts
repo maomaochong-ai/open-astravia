@@ -12,7 +12,7 @@ import type {
 describe("Extension host ports", () => {
 	it("discovers project, user, and configured Extensions through an in-memory file tree", async () => {
 		const files = new Map([
-			["/workspace/.vetta/extensions/project.ts", "project"],
+			["/workspace/.astravia/extensions/project.ts", "project"],
 			["/agent/extensions/user/index.js", "user"],
 			["/extra/package.json", JSON.stringify({ pi: { extensions: ["./src/first.ts", "./src/missing.ts"] } })],
 			["/extra/src/first.ts", "extra"],
@@ -26,7 +26,7 @@ describe("Extension host ports", () => {
 				agentDir: "/agent",
 			}),
 		).resolves.toEqual([
-			"/workspace/.vetta/extensions/project.ts",
+			"/workspace/.astravia/extensions/project.ts",
 			"/agent/extensions/user/index.js",
 			"/extra/src/first.ts",
 		]);

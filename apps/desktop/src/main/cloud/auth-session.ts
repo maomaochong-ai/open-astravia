@@ -1,7 +1,7 @@
 /**
- * Vetta 云服务的登录会话（主进程侧）：token 持久化 / refresh 单飞 / 带鉴权的服务端请求。
+ * Astravia 云服务的登录会话（主进程侧）：token 持久化 / refresh 单飞 / 带鉴权的服务端请求。
  *
- * 本文件属于 cloud 模块——lite 构建（VETTA_CLOUD_ENABLED=false）不注册相关 IPC。
+ * 本文件属于 cloud 模块——lite 构建（ASTRAVIA_CLOUD_ENABLED=false）不注册相关 IPC。
  * 从 ipc/settings.ts 抽出：settings.json 的读写仍复用宿主的 readSettings/updateSettings
  * （跨进程锁语义见那边的注释），本文件只拥有「云会话」这一职责。
  */
@@ -28,7 +28,7 @@ function broadcastUnauthorized(reason: string): void {
 	sessionLog.warn(`广播 unauthorized，渲染层将登出：${reason}`);
 	for (const win of BrowserWindow.getAllWindows()) {
 		if (!win.isDestroyed()) {
-			win.webContents.send("vetta:auth:unauthorized");
+			win.webContents.send("astravia:auth:unauthorized");
 		}
 	}
 }
@@ -37,7 +37,7 @@ function broadcastUnauthorized(reason: string): void {
 function broadcastTokenRefreshed(accessToken: string, refreshToken: string): void {
 	for (const win of BrowserWindow.getAllWindows()) {
 		if (!win.isDestroyed()) {
-			win.webContents.send("vetta:auth:token-refreshed", { accessToken, refreshToken });
+			win.webContents.send("astravia:auth:token-refreshed", { accessToken, refreshToken });
 		}
 	}
 }
@@ -296,12 +296,12 @@ function registerWakeRefreshHooks(): () => void {
 
 /** 注册云会话相关 IPC（token 存取 / refresh / 远程模型 / 订阅）。lite 构建不调用。 */
 export function registerCloudAuthIpc(): () => void {
-	ipcMain.handle("vetta:settings:get-server-token", () => {
+	ipcMain.handle("astravia:settings:get-server-token", () => {
 		const settings = readSettings();
 		return (settings.serverToken as string | undefined) ?? undefined;
 	});
 
-	ipcMain.handle("vetta:settings:set-server-token", async (_event, token: unknown) => {
+	ipcMain.handle("astravia:settings:set-server-token", async (_event, token: unknown) => {
 		const nextToken = typeof token === "string" ? token : undefined;
 		updateSettings((settings) => {
 			if (nextToken !== undefined) {
@@ -324,12 +324,12 @@ export function registerCloudAuthIpc(): () => void {
 		}
 	});
 
-	ipcMain.handle("vetta:settings:get-server-refresh-token", () => {
+	ipcMain.handle("astravia:settings:get-server-refresh-token", () => {
 		const settings = readSettings();
 		return (settings.serverRefreshToken as string | undefined) ?? undefined;
 	});
 
-	ipcMain.handle("vetta:settings:set-server-refresh-token", (_event, token: unknown) => {
+	ipcMain.handle("astravia:settings:set-server-refresh-token", (_event, token: unknown) => {
 		const nextToken = typeof token === "string" ? token : undefined;
 		updateSettings((settings) => {
 			if (nextToken !== undefined) {
@@ -340,17 +340,17 @@ export function registerCloudAuthIpc(): () => void {
 		});
 	});
 
-	ipcMain.handle("vetta:models:fetch-remote", async () => {
+	ipcMain.handle("astravia:models:fetch-remote", async () => {
 		return fetchRemoteProviders();
 	});
 
-	ipcMain.handle("vetta:subscription:status", async () => {
+	ipcMain.handle("astravia:subscription:status", async () => {
 		return fetchSubscriptionStatus();
 	});
 
 	// 渲染层 401 时统一委托主进程 refresh，避免跨进程并发使用同一 refresh_token
 	// 触发服务端 reuse-detection（revoked）导致误踢登录。
-	ipcMain.handle("vetta:auth:refresh-token", async () => {
+	ipcMain.handle("astravia:auth:refresh-token", async () => {
 		return tryRefreshAccessToken();
 	});
 
@@ -358,12 +358,12 @@ export function registerCloudAuthIpc(): () => void {
 
 	return () => {
 		teardownWakeHooks();
-		ipcMain.removeHandler("vetta:settings:get-server-token");
-		ipcMain.removeHandler("vetta:settings:set-server-token");
-		ipcMain.removeHandler("vetta:settings:get-server-refresh-token");
-		ipcMain.removeHandler("vetta:settings:set-server-refresh-token");
-		ipcMain.removeHandler("vetta:models:fetch-remote");
-		ipcMain.removeHandler("vetta:subscription:status");
-		ipcMain.removeHandler("vetta:auth:refresh-token");
+		ipcMain.removeHandler("astravia:settings:get-server-token");
+		ipcMain.removeHandler("astravia:settings:set-server-token");
+		ipcMain.removeHandler("astravia:settings:get-server-refresh-token");
+		ipcMain.removeHandler("astravia:settings:set-server-refresh-token");
+		ipcMain.removeHandler("astravia:models:fetch-remote");
+		ipcMain.removeHandler("astravia:subscription:status");
+		ipcMain.removeHandler("astravia:auth:refresh-token");
 	};
 }

@@ -46,7 +46,7 @@ export function parsePluginDevServerEvent(line: string): PluginDevServerEvent | 
 			return {
 				type: "error",
 				pluginId: value.pluginId,
-				message: `Incompatible plugin-vite development protocol: expected ${PLUGIN_DEV_PROTOCOL_VERSION}, received ${received}. Update @vetta-org/plugin-vite.`,
+				message: `Incompatible plugin-vite development protocol: expected ${PLUGIN_DEV_PROTOCOL_VERSION}, received ${received}. Update @astravia-org/plugin-vite.`,
 			};
 		}
 		return {

@@ -4,8 +4,8 @@ JSON，项目覆盖全局。Schema：`src/settings/schema/settings-schema.ts`。
 
 | 范围 | 路径 |
 |------|------|
-| 全局 | `~/.vetta/agent/settings.json` |
-| 项目 | `<cwd>/.vetta/settings.json` |
+| 全局 | `~/.astravia/agent/settings.json` |
+| 项目 | `<cwd>/.astravia/settings.json` |
 
 相对路径相对各自配置目录；支持绝对路径与 `~`。
 

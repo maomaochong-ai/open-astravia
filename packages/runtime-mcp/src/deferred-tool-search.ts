@@ -1,5 +1,5 @@
+import type { RuntimeToolDefinition } from "@astravia/runtime-core/kernel";
 import { type Static, Type } from "@sinclair/typebox";
-import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
 import type { McpRuntimeToolDescriptor } from "./runtime-tool-synchronizer.js";
 
 const toolSearchSchema = Type.Object({

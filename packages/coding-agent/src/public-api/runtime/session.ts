@@ -1,5 +1,5 @@
-import type { AgentMessage } from "@vetta/agent-core";
-import type { ConversationDocument } from "@vetta/runtime-core/conversation";
+import type { AgentMessage } from "@astravia/agent-core";
+import type { ConversationDocument } from "@astravia/runtime-core/conversation";
 import {
 	CodingAgentResourceReloadHost,
 	type CodingAgentResourceReloadHostOptions,

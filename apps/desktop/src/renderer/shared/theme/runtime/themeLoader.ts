@@ -1,6 +1,6 @@
+import type { ThemeModule } from "@astravia-org/theme-sdk";
 import { createInstance, type ModuleFederation } from "@module-federation/enhanced/runtime";
 import type { DesktopThemePackage } from "@preload/api";
-import type { ThemeModule } from "@vetta-org/theme-sdk";
 import { createThemeRuntimeShared } from "./themeSharedModules";
 
 interface ThemeModuleExports {
@@ -27,7 +27,7 @@ function cacheKey(theme: DesktopThemePackage): string {
 
 function getHost(): ModuleFederation {
 	host ??= createInstance({
-		name: "vetta_theme_host",
+		name: "astravia_theme_host",
 		remotes: [],
 		shared: createThemeRuntimeShared(),
 		shareStrategy: "loaded-first",

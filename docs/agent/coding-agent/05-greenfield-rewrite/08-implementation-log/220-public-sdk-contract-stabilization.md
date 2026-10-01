@@ -2,7 +2,7 @@
 
 ## 阶段目标
 
-第 219 阶段已经提供 `@vetta/coding-agent/sdk`，但公开 Session 类型仍间接使用迁移期命名，且
+第 219 阶段已经提供 `@astravia/coding-agent/sdk`，但公开 Session 类型仍间接使用迁移期命名，且
 `public-api/sdk` 同时存放公共合同与内部 Adapter、Binding。本阶段只整理架构边界：
 
 1. 公共 SDK 类型全部使用稳定的 `CodingAgent*` 命名；
@@ -60,7 +60,7 @@ Composition，不属于 package 公共子路径。
 
 ### 公共入口使用显式导出清单
 
-`@vetta/coding-agent/sdk` 的运行时导出固定为：
+`@astravia/coding-agent/sdk` 的运行时导出固定为：
 
 - `createCodingAgentSession`；
 - `CODING_AGENT_SESSION_CREATE_ERROR_CODES`；
@@ -105,6 +105,6 @@ Composition，不属于 package 公共子路径。
 
 ## 阶段结论
 
-`@vetta/coding-agent/sdk` 现在具备独立、稳定且不包含迁移术语的公共类型面；迁移实现已回到 Adapter 和
+`@astravia/coding-agent/sdk` 现在具备独立、稳定且不包含迁移术语的公共类型面；迁移实现已回到 Adapter 和
 Composition 层。下一阶段可以开始迁移官方 SDK 文档和示例，并通过真实消费者决定是否需要补充会话目录与资源注入的
 窄公共 Port。在完成消费者迁移前，包根兼容工厂继续保留。

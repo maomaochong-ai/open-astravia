@@ -1,5 +1,5 @@
+import type { ConversationTagEditorDialogViewProps } from "@astravia-org/theme-ui/project";
 import { conversationTagEditorAtom, conversationTagsAtom } from "@shared/store/atoms";
-import type { ConversationTagEditorDialogViewProps } from "@vetta-org/theme-ui/project";
 import { useAtom, useAtomValue } from "jotai";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -25,7 +25,7 @@ export function useConversationTagEditorModel(): ConversationTagEditorDialogView
 
 	const create = useCallback(
 		(input: { name: string; color: string }) => {
-			void window.vetta.conversationTags.create({
+			void window.astravia.conversationTags.create({
 				...input,
 				sessionPath: editor?.mode === "create" ? editor.sessionPath : undefined,
 			});
@@ -34,15 +34,15 @@ export function useConversationTagEditorModel(): ConversationTagEditorDialogView
 	);
 
 	const rename = useCallback((input: { id: string; name: string }) => {
-		void window.vetta.conversationTags.update(input);
+		void window.astravia.conversationTags.update(input);
 	}, []);
 
 	const recolor = useCallback((input: { id: string; color: string }) => {
-		void window.vetta.conversationTags.update(input);
+		void window.astravia.conversationTags.update(input);
 	}, []);
 
 	const remove = useCallback((tagId: string) => {
-		void window.vetta.conversationTags.remove(tagId);
+		void window.astravia.conversationTags.remove(tagId);
 	}, []);
 
 	if (!editor) return null;

@@ -6,7 +6,7 @@
 
 ## 背景
 
-`@vetta/ai` 已经定义了完整的 `AssistantMessageEvent`：文本、思考和工具调用都具有
+`@astravia/ai` 已经定义了完整的 `AssistantMessageEvent`：文本、思考和工具调用都具有
 start/delta/end、`contentIndex`、`partial` 以及明确的 done/error 终态。RuntimeHost 曾把它再次
 压平为 `message.delta`、`thinking.delta`、`toolcall.start/args` 和 `message.final`。该映射丢失
 内容索引、部分消息、原始终态和 Provider 失败细节；Renderer 又按类型分别缓冲文本和思考，重连时
@@ -16,7 +16,7 @@ start/delta/end、`contentIndex`、`partial` 以及明确的 done/error 终态�
 ## 决策
 
 1. Provider Adapter 是唯一的模型语义映射边界：它把 OpenAI、Anthropic 等 Provider 私有网络帧规范化为
-   `@vetta/ai` 的 `AssistantMessageEvent`。Provider 私有帧不进入公共 Runtime 合同。
+   `@astravia/ai` 的 `AssistantMessageEvent`。Provider 私有帧不进入公共 Runtime 合同。
 2. Runtime Session 直接在顶层传输规范化后的 Assistant 事件。`type`、`contentIndex`、`partial`、`delta`、
    `message`、`error` 等字段不得改名、拆分、合并或包进 `event` 字段，不再产生第二套同义模型事件。
 3. Runtime 只给同一个顶层对象增加传输元数据：`sessionId`、`turnId`、`modelCallIndex`、`eventId`、时间戳与

@@ -1,4 +1,4 @@
-import type { ImageContent } from "@vetta/ai";
+import type { ImageContent } from "@astravia/ai";
 import type { BashOperations, BashResult } from "../infrastructure.js";
 
 /** Fired when user executes a bash command via ! or !! prefix */

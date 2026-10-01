@@ -82,8 +82,8 @@ export function resolveTerminalShell(options: ResolveTerminalShellOptions = {}):
 	return { file: fallback ?? "/bin/sh", args: posixArgs() };
 }
 
-/** Vetta 内部用的变量不该漏进用户终端，否则子进程行为会跟着宿主跑偏。 */
-const STRIPPED_ENV_PREFIXES = ["VETTA_", "ELECTRON_"];
+/** Astravia 内部用的变量不该漏进用户终端，否则子进程行为会跟着宿主跑偏。 */
+const STRIPPED_ENV_PREFIXES = ["ASTRAVIA_", "ELECTRON_"];
 const STRIPPED_ENV_KEYS = ["NODE_OPTIONS", "SSH_ASKPASS", "SSH_ASKPASS_REQUIRE", "DISPLAY_ASKPASS"];
 
 export function createTerminalEnvironment(env: NodeJS.ProcessEnv = process.env): Record<string, string> {

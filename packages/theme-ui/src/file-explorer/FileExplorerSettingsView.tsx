@@ -9,7 +9,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 	Switch,
-} from "@vetta-org/ui";
+} from "@astravia-org/ui";
 import { useId, type JSX } from "react";
 
 export interface FileExplorerSettingsViewProps {

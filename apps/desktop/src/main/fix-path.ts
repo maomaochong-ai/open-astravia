@@ -5,7 +5,7 @@ import { getAppLogger } from "./logger.js";
 const log = getAppLogger("fix-path");
 
 // 唯一标记,把 $PATH 从登录 shell 的输出里精确截出来,规避 profile 里的 banner/echo 污染。
-const MARKER = "__VETTA_PATH_MARKER__";
+const MARKER = "__ASTRAVIA_PATH_MARKER__";
 
 /**
  * 修复 macOS/Linux GUI 进程的 PATH。

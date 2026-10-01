@@ -1,4 +1,4 @@
-import type { FilteredPage, TagCount, TagQuery, WritePageRequest, WritePageResult } from "@vetta/runtime-knowledge";
+import type { FilteredPage, TagCount, TagQuery, WritePageRequest, WritePageResult } from "@astravia/runtime-knowledge";
 
 export interface CodingAgentKnowledgePage extends FilteredPage {
 	readonly absolutePath: string;

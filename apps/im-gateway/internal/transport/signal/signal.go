@@ -40,8 +40,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"vetta-im-gateway/internal/transport"
-	"vetta-im-gateway/internal/transport/inbox"
+	"astravia-im-gateway/internal/transport"
+	"astravia-im-gateway/internal/transport/inbox"
 )
 
 // MaxAttachmentBytes caps both inbound attachments we copy into the inbox and

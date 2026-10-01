@@ -3,7 +3,7 @@ import {
 	type FileExplorerPreferences,
 } from "@shared/lib/file-explorer-preferences";
 import { fileExplorerPreferencesAtom, pluginFileIconThemesAtom } from "@shared/store/atoms";
-import { FileExplorerSettingsView } from "@vetta-org/theme-ui/file-explorer";
+import { FileExplorerSettingsView } from "@astravia-org/theme-ui/file-explorer";
 import { useAtom, useAtomValue } from "jotai";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";

@@ -1,4 +1,4 @@
-import type { Model } from "@vetta/ai";
+import type { Model } from "@astravia/ai";
 import { describe, expect, it, vi } from "vitest";
 import { AuthStorage } from "../src/auth/index.js";
 import { createCodingAgentBootstrap, resolveCodingAgentInitialModel } from "../src/bootstrap/coding-agent-bootstrap.js";

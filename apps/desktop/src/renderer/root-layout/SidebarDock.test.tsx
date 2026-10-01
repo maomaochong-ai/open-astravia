@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { render, screen } from "@testing-library/react";
-import { SIDEBAR_DOCK_ANIMATION_MS, SidebarDock } from "@vetta-org/theme-ui/layout";
+import { SIDEBAR_DOCK_ANIMATION_MS, SidebarDock } from "@astravia-org/theme-ui/layout";
 import { describe, expect, it } from "vitest";
 
 /**

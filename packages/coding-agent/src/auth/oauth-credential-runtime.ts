@@ -6,7 +6,7 @@ import {
 	type OAuthLoginCallbacks,
 	type OAuthProviderId,
 	type OAuthProviderInterface,
-} from "@vetta/ai";
+} from "@astravia/ai";
 import type { OAuthCredential } from "./contracts.js";
 
 export interface OAuthCredentialRuntime {
@@ -20,7 +20,7 @@ export interface OAuthCredentialRuntime {
 	listProviders(): readonly OAuthProviderInterface[];
 }
 
-/** 每次调用都读取 @vetta/ai 的动态 Provider 目录，不冻结运行时注册结果。 */
+/** 每次调用都读取 @astravia/ai 的动态 Provider 目录，不冻结运行时注册结果。 */
 export function createOAuthCredentialRuntime(): OAuthCredentialRuntime {
 	return {
 		hasProvider: (providerId) => getOAuthProvider(providerId) !== undefined,

@@ -1,4 +1,4 @@
-import type { RuntimeToolResult } from "@vetta/runtime-core/kernel";
+import type { RuntimeToolResult } from "@astravia/runtime-core/kernel";
 
 export interface CodingToolResultContext {
 	readonly sessionId: string;

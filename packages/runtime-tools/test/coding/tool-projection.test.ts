@@ -2,7 +2,7 @@ import type {
 	ModelCallFrameCompositionContext,
 	RuntimeSnapshotAcquireContext,
 	RuntimeToolDefinition,
-} from "@vetta/runtime-core/kernel";
+} from "@astravia/runtime-core/kernel";
 import { describe, expect, it, vi } from "vitest";
 import {
 	createModelOnlyToolInputPropertyProjector,

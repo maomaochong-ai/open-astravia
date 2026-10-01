@@ -15,7 +15,7 @@ description: 用一支有负责人、有分工的常驻智能体团队完成一�
 
 ## 团队和子代理不是一回事
 
-Vetta 里有两种「多 Agent」，容易混淆，但边界很清楚：
+Astravia 里有两种「多 Agent」，容易混淆，但边界很清楚：
 
 | | 团队成员 | 子代理（Subagent） |
 | --- | --- | --- |
@@ -46,7 +46,7 @@ Vetta 里有两种「多 Agent」，容易混淆，但边界很清楚：
 入口是侧栏 **智能体**（Agents）。上半部分是**团队**，下半部分是**所有智能体**——团队由智能体编组而成，同一个智能体可以同时在多支团队里任职。
 
 <MediaFrame>
-  <img src="/images/product/agents-center.webp" alt="Vetta 智能体页，上方是四支预置团队卡片，下方是八个内置智能体" width="1920" height="1223" />
+  <img src="/images/product/agents-center.webp" alt="Astravia 智能体页，上方是四支预置团队卡片，下方是八个内置智能体" width="1920" height="1223" />
   <figcaption>团队卡片显示成员头像与人数。点击团队会进入成员选择态：团队内成员显示移出标记、其他成员显示加入标记，点击卡片即可调整阵容并在顶部保存或退出；团队卡片中的会话与设置动作仍可直接使用。</figcaption>
 </MediaFrame>
 
@@ -94,7 +94,7 @@ Vetta 里有两种「多 Agent」，容易混淆，但边界很清楚：
 </Steps>
 
 <MediaFrame>
-  <img src="/images/product/team-chat.webp" alt="Vetta 团队会话，顶部是主控、检索员、开发员、审计员成员条，下方是逐步委派与完成的协作过程" width="1920" height="1179" />
+  <img src="/images/product/team-chat.webp" alt="Astravia 团队会话，顶部是主控、检索员、开发员、审计员成员条，下方是逐步委派与完成的协作过程" width="1920" height="1179" />
   <figcaption>主时间线只显示公开进展：负责人的计划、每次 <code>team_delegate_task</code> 委派，以及各成员完成后的结论。</figcaption>
 </MediaFrame>
 
@@ -206,7 +206,7 @@ Vetta 里有两种「多 Agent」，容易混淆，但边界很清楚：
 在智能体页点击团队卡片会直接进入成员选择态：点击下方智能体卡片即可加入或移出该团队，顶部的保存与退出按钮分别提交或放弃这次调整。齿轮入口仍用于编辑团队名称、负责人和成员任务书等详细设置。
 
 <MediaFrame>
-  <img src="/images/product/agent-profile.webp" alt="Vetta 智能体档案抽屉，包含基本信息、系统提示词和能力三个页签" width="1920" height="1215" />
+  <img src="/images/product/agent-profile.webp" alt="Astravia 智能体档案抽屉，包含基本信息、系统提示词和能力三个页签" width="1920" height="1215" />
   <figcaption>档案分三块：基本信息（头像、名称、职责说明）、系统提示词、能力。能力开关只影响这个智能体，不会安装或卸载全局能力。</figcaption>
 </MediaFrame>
 
@@ -252,7 +252,7 @@ Vetta 里有两种「多 Agent」，容易混淆，但边界很清楚：
 
 | 创建时的选择 | 工作目录 |
 | --- | --- |
-| 不指定项目 | 这次会话独占的新目录（`VETTA_HOME/agent-teams/session-workspaces/` 下） |
+| 不指定项目 | 这次会话独占的新目录（`ASTRAVIA_HOME/agent-teams/session-workspaces/` 下） |
 | 指定项目 | 该项目目录 |
 
 协调运行时和所有成员共用这一个目录，因此成员写出的文件互相看得见——**文件是它们真正的共享工作台**，而消息只传结论。
@@ -261,7 +261,7 @@ Vetta 里有两种「多 Agent」，容易混淆，但边界很清楚：
 
 ### 团队配置就是一组文件
 
-所有团队与智能体都落在 `VETTA_HOME/agent-teams/`（生产环境默认 `~/.vetta`）：
+所有团队与智能体都落在 `ASTRAVIA_HOME/agent-teams/`（生产环境默认 `~/.astravia`）：
 
 <Files>
   <Folder name="agent-teams" defaultOpen>

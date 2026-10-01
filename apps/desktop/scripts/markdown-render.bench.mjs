@@ -13,7 +13,7 @@ const localRequire = createRequire(join(desktop, "package.json"));
 const repoRequire = createRequire(join(repo, "package.json"));
 const playwrightRequire = createRequire(repoRequire.resolve("@playwright/cli/package.json"));
 const { chromium } = playwrightRequire("playwright");
-const directory = await mkdtemp(join(tmpdir(), "vetta-markdown-bench-"));
+const directory = await mkdtemp(join(tmpdir(), "astravia-markdown-bench-"));
 let browser;
 let server;
 try {
@@ -43,7 +43,7 @@ try {
 		}
 	});
 	await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
-	browser = await chromium.launch({ headless: true, channel: process.env.VETTA_TEST_BROWSER || undefined });
+	browser = await chromium.launch({ headless: true, channel: process.env.ASTRAVIA_TEST_BROWSER || undefined });
 	const page = await browser.newPage();
 	await page.route("**/*", (route) => new URL(route.request().url()).hostname === "127.0.0.1" ? route.continue() : route.abort());
 	await page.goto(`http://127.0.0.1:${server.address().port}`);
@@ -58,6 +58,6 @@ try {
 	await browser?.close();
 	if (server) await new Promise((resolve) => server.close(resolve));
 	assert.equal(dirname(resolve(directory)), resolve(tmpdir()));
-	assert.ok(basename(directory).startsWith("vetta-markdown-bench-"));
+	assert.ok(basename(directory).startsWith("astravia-markdown-bench-"));
 	await rm(directory, { recursive: true, force: true });
 }

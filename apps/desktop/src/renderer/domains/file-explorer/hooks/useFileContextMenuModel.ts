@@ -1,9 +1,9 @@
+import { isSshProjectUri } from "@astravia/ssh-transport/project-uri";
+import type { FileContextMenuViewProps } from "@astravia-org/theme-ui/file-explorer";
 import type { FileExplorerEntryKind } from "@preload/fs-types";
 import { isMac } from "@shared/lib/platform";
 import { pathDirname } from "@shared/lib/utils";
 import { type FsEntry, pluginFileExplorerContextMenuActionsAtom, renamingPathAtom } from "@shared/store/atoms";
-import { isSshProjectUri } from "@vetta/ssh-transport/project-uri";
-import type { FileContextMenuViewProps } from "@vetta-org/theme-ui/file-explorer";
 import { useAtomValue, useSetAtom } from "jotai";
 import { createElement, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -34,9 +34,9 @@ export function useFileContextMenuModel(input: {
 	const onOpenInFolder = useCallback(() => {
 		const target = isRoot ? entry : singleTarget;
 		if (target.isDirectory) {
-			void window.vetta.shell.showInFolder(target.path);
+			void window.astravia.shell.showInFolder(target.path);
 		} else {
-			void window.vetta.shell.showItemInFolder(target.path);
+			void window.astravia.shell.showItemInFolder(target.path);
 		}
 		onClose();
 	}, [entry, isRoot, singleTarget, onClose]);

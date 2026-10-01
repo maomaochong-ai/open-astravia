@@ -1,5 +1,5 @@
-import { useBottomPanel, useTranslation } from "@vetta-org/plugin-sdk";
-import { Button } from "@vetta-org/ui";
+import { useBottomPanel, useTranslation } from "@astravia-org/plugin-sdk";
+import { Button } from "@astravia-org/ui";
 import { type JSX, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getScriptsFs } from "../runtime";
 import { discoverScripts } from "../scripts/discover";

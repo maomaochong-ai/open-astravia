@@ -1,4 +1,4 @@
-import type { OAuthProviderInterface } from "@vetta/ai";
+import type { OAuthProviderInterface } from "@astravia/ai";
 import { describe, expect, test, vi } from "vitest";
 import { createCodingAgentModelRuntime, type ModelCredential, type ModelCredentialStore } from "../src/models/index.js";
 

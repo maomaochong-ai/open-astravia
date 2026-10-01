@@ -11,7 +11,7 @@
 这不足以证明包发布配置可解析新依赖。单独检查 `runtime-mcp/tsconfig.build.json` 时实际出现：
 
 ```text
-TS2307: Cannot find module '@vetta/runtime-core/kernel'
+TS2307: Cannot find module '@astravia/runtime-core/kernel'
 TS7006: Parameter 'context' implicitly has an 'any' type
 ```
 
@@ -21,9 +21,9 @@ TS7006: Parameter 'context' implicitly has an 'any' type
 
 ### 1. Workspace 链接未同步
 
-`runtime-mcp/package.json` 已声明 `@vetta/runtime-core`，锁文件也已更新，但 `bun install --lockfile-only` 不更新 `node_modules` workspace 链接。因此根检查可通过源码 path mapping，而包发布配置按 package exports 解析时失败。
+`runtime-mcp/package.json` 已声明 `@astravia/runtime-core`，锁文件也已更新，但 `bun install --lockfile-only` 不更新 `node_modules` workspace 链接。因此根检查可通过源码 path mapping，而包发布配置按 package exports 解析时失败。
 
-执行正常 `bun install` 后，`runtime-mcp/node_modules/@vetta/runtime-core` 被正确创建，两个错误同时消失。
+执行正常 `bun install` 后，`runtime-mcp/node_modules/@astravia/runtime-core` 被正确创建，两个错误同时消失。
 
 这是开发环境同步要求，不需要新增运行时代码兜底。
 
@@ -32,8 +32,8 @@ TS7006: Parameter 'context' implicitly has an 'any' type
 审计 `scripts/build.sh` 和 package manifests 后发现：
 
 ```text
-@vetta/coding-agent
-  -> dependencies: @vetta/runtime-core
+@astravia/coding-agent
+  -> dependencies: @astravia/runtime-core
 ```
 
 但旧构建顺序是：

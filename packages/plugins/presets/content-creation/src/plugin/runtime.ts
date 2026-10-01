@@ -2,8 +2,8 @@ import type {
 	PluginContext,
 	PluginPromptAttachment,
 	PluginRegisterShortcutScope,
-} from "@vetta-org/plugin-sdk";
-import { readJsonFile, writeJsonFile } from "@vetta-org/plugin-sdk";
+} from "@astravia-org/plugin-sdk";
+import { readJsonFile, writeJsonFile } from "@astravia-org/plugin-sdk";
 import { ContentCreationAgentService } from "../agent/service";
 import { ContentAssetPreviewResolver } from "../generation/asset-preview-resolver";
 import { ContentAssetImportService } from "../generation/asset-import-service";

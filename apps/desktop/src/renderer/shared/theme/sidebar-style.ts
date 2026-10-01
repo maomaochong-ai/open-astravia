@@ -7,7 +7,7 @@
  */
 export type SidebarStyle = "classic" | "floating";
 
-export const SIDEBAR_STYLE_STORAGE_KEY = "vetta-sidebar-style";
+export const SIDEBAR_STYLE_STORAGE_KEY = "astravia-sidebar-style";
 
 export const DEFAULT_SIDEBAR_STYLE: SidebarStyle = "classic";
 

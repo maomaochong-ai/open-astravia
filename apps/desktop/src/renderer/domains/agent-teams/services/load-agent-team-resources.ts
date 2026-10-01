@@ -1,5 +1,5 @@
+import type { AgentBlueprint, AgentTeamDocument } from "@astravia/agent-team";
 import { i18n } from "@shared/i18n";
-import type { AgentBlueprint, AgentTeamDocument } from "@vetta/agent-team";
 import type { BlueprintDisplayPlugin } from "../lib/blueprint-display";
 import { type AgentCapabilityOption, buildAgentCapabilityOptions } from "../lib/capability-options";
 
@@ -13,12 +13,12 @@ export interface AgentTeamConfigurationResources {
 
 export async function loadAgentTeamConfigurationResources(): Promise<AgentTeamConfigurationResources> {
 	const [document, blueprints, skills, skillManifest, mcpConfig, plugins] = await Promise.all([
-		window.vetta.agentTeams.list(),
-		window.vetta.agentTeams.listBlueprints(),
-		window.vetta.skills.list(),
-		window.vetta.skills.getMarketManifest(),
-		window.vetta.mcp.get(),
-		window.vetta.plugins.listAll(),
+		window.astravia.agentTeams.list(),
+		window.astravia.agentTeams.listBlueprints(),
+		window.astravia.skills.list(),
+		window.astravia.skills.getMarketManifest(),
+		window.astravia.mcp.get(),
+		window.astravia.plugins.listAll(),
 	]);
 	return {
 		document,

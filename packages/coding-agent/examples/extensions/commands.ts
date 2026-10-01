@@ -5,12 +5,12 @@
  * that lists all available slash commands in the current session.
  *
  * Usage:
- * 1. Copy this file to ~/.vetta/agent/extensions/ or your project's .vetta/extensions/
+ * 1. Copy this file to ~/.astravia/agent/extensions/ or your project's .astravia/extensions/
  * 2. Use /commands to see available commands
  * 3. Use /commands extensions to filter by source
  */
 
-import type { ExtensionAPI, SlashCommandInfo } from "@vetta/coding-agent";
+import type { ExtensionAPI, SlashCommandInfo } from "@astravia/coding-agent";
 
 export default function commandsExtension(api: ExtensionAPI) {
 	api.registerCommand("commands", {

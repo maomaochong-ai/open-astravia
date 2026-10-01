@@ -1,4 +1,4 @@
-import { AI_ERROR_CODES, type Api, isAIError, type Model } from "@vetta/ai";
+import { AI_ERROR_CODES, type Api, isAIError, type Model } from "@astravia/ai";
 import { describe, expect, it, vi } from "vitest";
 import {
 	RuntimeModel,

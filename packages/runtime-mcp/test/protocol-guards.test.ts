@@ -90,7 +90,7 @@ describe("MCP protocol result guards", () => {
 		expect(
 			isMcpRequestMeta({
 				"io.modelcontextprotocol/protocolVersion": MCP_MODERN_PROTOCOL_VERSION,
-				"io.modelcontextprotocol/clientInfo": { name: "vetta", version: "1.0.0" },
+				"io.modelcontextprotocol/clientInfo": { name: "astravia", version: "1.0.0" },
 				"io.modelcontextprotocol/clientCapabilities": { extensions: { "io.modelcontextprotocol/ui": {} } },
 			}),
 		).toBe(true);

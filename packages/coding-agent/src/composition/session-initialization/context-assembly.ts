@@ -1,11 +1,11 @@
-import type { Message } from "@vetta/ai";
-import { createEcosystemHookRuntime, type EcosystemHookRuntime } from "@vetta/ecosystem-adapter";
+import type { Message } from "@astravia/ai";
+import { createEcosystemHookRuntime, type EcosystemHookRuntime } from "@astravia/ecosystem-adapter";
 import {
 	type InitializationRollbackTask,
 	RuntimeModel,
 	type RuntimeObservationPublisher,
 	type RuntimeResourceContext,
-} from "@vetta/runtime-core";
+} from "@astravia/runtime-core";
 import type { CodingAgentRuntimeModelAdapter } from "../../adapters/runtime-core/model-runtime-adapter.js";
 import { allowsAgentResource } from "../../agent-configuration/resource-selection.js";
 import { AGENT_SESSION_CONFIGURATION } from "../../agent-configuration/session-configuration-extension.js";

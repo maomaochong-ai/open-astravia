@@ -1,4 +1,4 @@
-import type { CodingAgentPlanReviewRequest } from "@vetta/coding-agent/function-extensions";
+import type { CodingAgentPlanReviewRequest } from "@astravia/coding-agent/function-extensions";
 import { usePlanReviewPanelModel } from "../hooks/usePlanReviewPanelModel";
 import { PlanReviewPanelView } from "./plan-review-panel/PlanReviewPanelView";
 

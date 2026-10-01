@@ -1,6 +1,6 @@
-import type { AgentMessage } from "@vetta/agent-core";
-import type { AssistantMessage, Usage } from "@vetta/ai";
-import { getModel } from "@vetta/ai";
+import type { AgentMessage } from "@astravia/agent-core";
+import type { AssistantMessage, Usage } from "@astravia/ai";
+import { getModel } from "@astravia/ai";
 import { readFileSync } from "fs";
 import { join } from "path";
 import { beforeEach, describe, expect, it } from "vitest";

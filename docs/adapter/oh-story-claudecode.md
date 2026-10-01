@@ -1,28 +1,28 @@
-# oh-story-claudecode → Vetta 适配评估
+# oh-story-claudecode → Astravia 适配评估
 
 ## 文档状态
 
 - 评估日期：2026-07-15
 - 外部仓库：[`worldwonderer/oh-story-claudecode`](https://github.com/worldwonderer/oh-story-claudecode)
 - 评估基线：[`12a9655a21abacfbd1c01eb41b98f2af007ab5be`](https://github.com/worldwonderer/oh-story-claudecode/tree/12a9655a21abacfbd1c01eb41b98f2af007ab5be)
-- Vetta 基线：`56f96cb885e06a7fd2dfd56bda5af33bba93e786`
-- 评估范围：Vetta desktop、coding-agent、Skill 市场和插件系统
+- Astravia 基线：`56f96cb885e06a7fd2dfd56bda5af33bba93e786`
+- 评估范围：Astravia desktop、coding-agent、Skill 市场和插件系统
 - 本文是兼容性评估与实施依据，不表示已经完成集成。
 
 ## 结论
 
 `oh-story-claudecode` 不是单个提示词 Skill，而是一套由 **13 个 Skill、7 个专业 Agent、生命周期 Hooks、浏览器采集脚本和封面生成链路**组成的写作工具集。
 
-Vetta 当前可以运行它的 generic/solo 路径：写作、拆文、导入、去 AI 味和基础审查可以依靠标准 `SKILL.md`、文件工具和 Node/Python 脚本执行。但原样集成无法获得完整体验，主要缺少：
+Astravia 当前可以运行它的 generic/solo 路径：写作、拆文、导入、去 AI 味和基础审查可以依靠标准 `SKILL.md`、文件工具和 Node/Python 脚本执行。但原样集成无法获得完整体验，主要缺少：
 
 1. 多 Skill 套件级安装和更新。
 2. 项目级 custom agent 注册、模型分级和并发调度。
-3. `.claude/settings.local.json` / `.codex/hooks.json` 到 Vetta 生命周期事件的适配层。
+3. `.claude/settings.local.json` / `.codex/hooks.json` 到 Astravia 生命周期事件的适配层。
 4. 可复用登录态的 Agent 浏览器控制能力。
-5. `story-cover` 到 Vetta 原生图像工具及项目文件落盘的适配。
+5. `story-cover` 到 Astravia 原生图像工具及项目文件落盘的适配。
 6. Windows PowerShell 与外部 POSIX Bash 指令之间的兼容处理。
 
-因此推荐先交付「Vetta solo 适配版」，再补齐 Agent、Hooks、浏览器三项宿主能力，升级为完整模式。
+因此推荐先交付「Astravia solo 适配版」，再补齐 Agent、Hooks、浏览器三项宿主能力，升级为完整模式。
 
 ## 外部工具集组成
 
@@ -73,7 +73,7 @@ Vetta 当前可以运行它的 generic/solo 路径：写作、拆文、导入、
 
 外部 Codex Hook 定义见 [`hooks.json`](https://github.com/worldwonderer/oh-story-claudecode/blob/12a9655a21abacfbd1c01eb41b98f2af007ab5be/skills/story-setup/references/codex/hooks/hooks.json)，实现见 [`story_codex_hook.py`](https://github.com/worldwonderer/oh-story-claudecode/blob/12a9655a21abacfbd1c01eb41b98f2af007ab5be/skills/story-setup/references/codex/hooks/story_codex_hook.py)。
 
-## Vetta 现有能力矩阵
+## Astravia 现有能力矩阵
 
 | 能力 | 状态 | 依据与影响 |
 | --- | --- | --- |
@@ -101,27 +101,27 @@ Vetta 当前可以运行它的 generic/solo 路径：写作、拆文、导入、
 
 desktop 自定义导入虽然递归查找 `SKILL.md`，但只选择一个最浅结果，并只复制该 Skill 的父目录，见 [`findShallowestSkillMd`](../../apps/desktop/src/main/ipc/skills.ts)。直接导入整仓最多得到其中一个 Skill，不能得到完整套件。
 
-适配结论：不要把外部仓库当作单个市场 Skill；应包装成 Vetta 插件或 coding-agent package，一次声明整个 `skills/` 目录。
+适配结论：不要把外部仓库当作单个市场 Skill；应包装成 Astravia 插件或 coding-agent package，一次声明整个 `skills/` 目录。
 
-### 2. generic 部署目录不会被 Vetta 自动发现
+### 2. generic 部署目录不会被 Astravia 自动发现
 
-外部 `story-setup` 的 generic/OpenClaw 路径会把 Skill 复制到项目根 `skills/{skill-name}/`。Vetta 默认发现路径是：
+外部 `story-setup` 的 generic/OpenClaw 路径会把 Skill 复制到项目根 `skills/{skill-name}/`。Astravia 默认发现路径是：
 
-- 全局 `~/.vetta/agent/skills/` / `~/.agents/skills/`
-- 项目 `.vetta/skills/` / `.agents/skills/`
+- 全局 `~/.astravia/agent/skills/` / `~/.agents/skills/`
+- 项目 `.astravia/skills/` / `.agents/skills/`
 - package 或插件声明的 Skill 路径
 
-项目根裸 `skills/` 不是 Vetta 默认发现源。适配时需要选择以下方案之一：
+项目根裸 `skills/` 不是 Astravia 默认发现源。适配时需要选择以下方案之一：
 
 1. 不复制，统一从插件声明的 `agent.skillPaths` 加载。
-2. 将 Vetta 部署目标改为 `.vetta/skills/`。
+2. 将 Astravia 部署目标改为 `.astravia/skills/`。
 3. 将通用部署目标改为 `.agents/skills/`。
 
 优先推荐方案 1，避免每个写作项目重复复制整套 references。
 
 ### 3. 调用语法不同
 
-外部说明使用 `/story-long-write`、`$story-long-write`、`Skill("story-long-write")` 等语法。Vetta 的标准显式调用是：
+外部说明使用 `/story-long-write`、`$story-long-write`、`Skill("story-long-write")` 等语法。Astravia 的标准显式调用是：
 
 ```text
 /skill:story-long-write
@@ -133,11 +133,11 @@ desktop 自定义导入虽然递归查找 `SKILL.md`，但只选择一个最浅�
 invoke_skill({ name: "story-long-write", args: "..." })
 ```
 
-自然语言触发可依赖 description 继续工作。适配版应统一修改路由说明和用户文档，不能要求 Vetta 识别 Claude/Codex 专用命令。
+自然语言触发可依赖 description 继续工作。适配版应统一修改路由说明和用户文档，不能要求 Astravia 识别 Claude/Codex 专用命令。
 
 ### 4. 多 Agent 完整模式不可用
 
-Vetta 的 flowing 是产品级 DAG 工作流，不等同于当前会话内可由 Skill 调用的 `Agent/Task` 工具。外部 Agent TOML/Markdown 文件也不会被 Vetta 自动注册。
+Astravia 的 flowing 是产品级 DAG 工作流，不等同于当前会话内可由 Skill 调用的 `Agent/Task` 工具。外部 Agent TOML/Markdown 文件也不会被 Astravia 自动注册。
 
 直接后果：
 
@@ -148,7 +148,7 @@ Vetta 的 flowing 是产品级 DAG 工作流，不等同于当前会话内可由
 
 ### 5. Hooks 没有执行入口
 
-Vetta 扩展系统已经提供实现所需的大部分原语：
+Astravia 扩展系统已经提供实现所需的大部分原语：
 
 - `session_start`
 - `session_before_compact` / `session_compact`
@@ -156,7 +156,7 @@ Vetta 扩展系统已经提供实现所需的大部分原语：
 - `tool_result`
 - `turn_end` / `agent_end` / `session_shutdown`
 
-缺少的是配置和语义适配层，而不是底层事件本身。不能直接执行外部 Hook JSON，应该把写作规则实现成 Vetta Extension：
+缺少的是配置和语义适配层，而不是底层事件本身。不能直接执行外部 Hook JSON，应该把写作规则实现成 Astravia Extension：
 
 - 正文写前守卫放到 `tool_call`。
 - 写后检查放到 `tool_result` 或 `tool_execution_end`。
@@ -174,7 +174,7 @@ Vetta 扩展系统已经提供实现所需的大部分原语：
 - 启动 remote-debugging Chrome
 - 必要时关闭用户当前 Chrome，再复制/复用登录态
 
-Vetta 已有 Node，但不托管 `agent-browser`，也没有 Agent 可控的浏览器工具。直接运行该 Skill 还存在关闭用户 Chrome、丢失未保存页面的风险。
+Astravia 已有 Node，但不托管 `agent-browser`，也没有 Agent 可控的浏览器工具。直接运行该 Skill 还存在关闭用户 Chrome、丢失未保存页面的风险。
 
 完整适配应提供宿主级浏览器工具或插件/MCP，并具备：
 
@@ -192,7 +192,7 @@ Vetta 已有 Node，但不托管 `agent-browser`，也没有 Agent 可控的浏�
 - ImageMagick 或 macOS `sips`
 - 将结果写入 `{BOOK_DIR}/封面/`
 
-Vetta 已有统一图像设置和 `generate_image` / `edit_image`，不应再引入一套环境变量和 API 调用。适配版应优先使用原生工具。
+Astravia 已有统一图像设置和 `generate_image` / `edit_image`，不应再引入一套环境变量和 API 调用。适配版应优先使用原生工具。
 
 仍需补充的能力：
 
@@ -202,12 +202,12 @@ Vetta 已有统一图像设置和 `generate_image` / `edit_image`，不应再引
 
 ### 8. Windows Shell 不兼容
 
-Vetta Windows 默认命令工具运行 PowerShell；外部 Skill 大量使用 POSIX Bash 语法，例如 `set -euo pipefail`、`for ...; do`、`$VAR`、`mktemp`、`command -v`、管道和 `.sh` Hooks。
+Astravia Windows 默认命令工具运行 PowerShell；外部 Skill 大量使用 POSIX Bash 语法，例如 `set -euo pipefail`、`for ...; do`、`$VAR`、`mktemp`、`command -v`、管道和 `.sh` Hooks。
 
 Node 脚本本身只依赖内置模块，适配成本较低。适配版应：
 
 - 优先用 Node 脚本替代复杂 Shell。
-- 字数统计改为直接调用 Vetta 托管 Python，或提供原生字符统计工具。
+- 字数统计改为直接调用 Astravia 托管 Python，或提供原生字符统计工具。
 - Windows 使用 PowerShell 参数数组和文件 API。
 - 不要求普通用户安装 Git Bash、jq、ImageMagick 等额外环境。
 
@@ -217,18 +217,18 @@ Node 脚本本身只依赖内置模块，适配成本较低。适配版应：
 
 目标：不新增 custom agent 和 hook runtime，先稳定运行主体工作流。
 
-1. 创建 `oh-story-vetta` 插件或 coding-agent package。
+1. 创建 `oh-story-astravia` 插件或 coding-agent package。
 2. 使用插件 `agent.skillPaths: ["skills/"]` 一次注册 13 个 Skill；该声明能力见 [`plugin manifest`](../plugin/manifest.md)。
 3. 保留上游 Skill 和 references 目录结构，适配改动单独维护，方便后续同步上游。
 4. 将所有路由改成 `invoke_skill` / `/skill:name`。
-5. 将 `story-setup` 的 Vetta 目标改成插件路径或 `.vetta/skills`，不写裸 `skills/`。
-6. 修改 `story-cover`，优先调用 Vetta 原生图像工具。
+5. 将 `story-setup` 的 Astravia 目标改成插件路径或 `.astravia/skills`，不写裸 `skills/`。
+6. 修改 `story-cover`，优先调用 Astravia 原生图像工具。
 7. 清理 Windows 不兼容的 Shell 片段，优先复用 Node/Python。
 8. 在运行报告中明确输出 `Effective Mode: solo`，不伪装 full/lean。
 
 验收：
 
-- 13 个 Skill 都出现在 Vetta Skill 列表并可显式调用。
+- 13 个 Skill 都出现在 Astravia Skill 列表并可显式调用。
 - 写作、拆文、导入、去 AI 味、solo 审查至少各跑通一个最小样例。
 - Windows 不依赖系统 Node/Python、Git Bash、jq。
 - 外部 Skill 目录保持只读，所有产物写入用户项目。
@@ -237,7 +237,7 @@ Node 脚本本身只依赖内置模块，适配成本较低。适配版应：
 
 目标：恢复写作状态与确定性质量守卫。
 
-1. 建立 Vetta story extension，不直接解析执行任意 Claude/Codex Hook shell。
+1. 建立 Astravia story extension，不直接解析执行任意 Claude/Codex Hook shell。
 2. 移植正文写前细纲守卫，并允许阻断 Write/Edit/Shell 写入。
 3. 移植写后正文轻量检查、字数欠账、追踪状态和标题重复检查。
 4. 接入 SessionStart、compact 前后和 turn end。
@@ -274,7 +274,7 @@ Node 脚本本身只依赖内置模块，适配成本较低。适配版应：
 目标：恢复扫榜和完整封面交付。
 
 1. 提供 Agent 浏览器工具或内聚 MCP。
-2. 复用 Vetta 独立浏览器 partition，避免关闭用户 Chrome。
+2. 复用 Astravia 独立浏览器 partition，避免关闭用户 Chrome。
 3. 给浏览器登录态、脚本执行、Token/Cookie 读取设置审批边界。
 4. 给原生图像工具增加导出到项目路径和精确裁剪能力。
 
@@ -287,7 +287,7 @@ Node 脚本本身只依赖内置模块，适配成本较低。适配版应：
 ## 建议的适配包结构
 
 ```text
-oh-story-vetta/
+oh-story-astravia/
 ├── plugin.json
 ├── skills/                    # 上游 13 个 Skill，保持目录结构
 ├── adapter/
@@ -295,11 +295,11 @@ oh-story-vetta/
 │   ├── agent-registry.ts      # 完整版阶段再接入
 │   ├── browser-tool.ts        # 浏览器能力适配
 │   └── image-export.ts        # 原生生图结果导出/裁剪
-├── prompts/                   # Vetta 路由与兼容说明
+├── prompts/                   # Astravia 路由与兼容说明
 └── upstream.json              # 上游仓库、commit、同步时间和本地 patch 列表
 ```
 
-不要直接改散落在 13 个 Skill 中的所有平台分支而不留记录。建议通过 `upstream.json` 或补丁目录记录每一处 Vetta 差异，便于上游更新时审计。
+不要直接改散落在 13 个 Skill 中的所有平台分支而不留记录。建议通过 `upstream.json` 或补丁目录记录每一处 Astravia 差异，便于上游更新时审计。
 
 ## 优先级清单
 
@@ -307,7 +307,7 @@ oh-story-vetta/
 
 - 多 Skill 打包注册。
 - 修正项目 Skill 发现目录。
-- Vetta 命令/路由语法。
+- Astravia 命令/路由语法。
 - Windows Shell 适配。
 - `story-cover` 使用原生图像工具。
 
@@ -330,7 +330,7 @@ oh-story-vetta/
 1. **逐个手工上传 13 个市场 Skill**：能工作但丢失套件级版本、更新原子性和统一适配逻辑。
 2. **直接信任并执行 `.claude/settings.local.json` / `.codex/hooks.json`**：会引入任意命令执行面，且事件语义并不完全等价。
 3. **把 flowing 当作 Skill 子代理替代品**：两者生命周期、上下文和调用入口不同。
-4. **要求 Windows 用户安装 Git Bash/jq/ImageMagick**：与 Vetta 托管运行时和普通用户定位冲突。
+4. **要求 Windows 用户安装 Git Bash/jq/ImageMagick**：与 Astravia 托管运行时和普通用户定位冲突。
 5. **为了兼容而删除外部 full/lean/guard 功能**：应保留降级语义并逐步补宿主能力，而不是静默弱化。
 
 ## 后续决策点
@@ -340,7 +340,7 @@ oh-story-vetta/
 1. 首版目标是 solo 可用，还是一次性交付 full/lean 多 Agent。
 2. 套件以系统插件、普通插件还是 coding-agent package 发布。
 3. Custom Agent 是建设通用宿主能力，还是先做 story 专用实现。
-4. 浏览器采用 Vetta 内嵌 partition、外部 Chrome CDP，还是 Playwright MCP。
+4. 浏览器采用 Astravia 内嵌 partition、外部 Chrome CDP，还是 Playwright MCP。
 5. 上游同步策略是 fork、vendor snapshot，还是构建期拉取固定 commit。
 
-默认建议：**系统/普通插件承载 Skill 套件 + 通用 Custom Agent 能力 + Vetta Extension Hooks + 内嵌浏览器 partition**。这样外部写作套件的适配不会变成只服务一个仓库的硬编码分支。
+默认建议：**系统/普通插件承载 Skill 套件 + 通用 Custom Agent 能力 + Astravia Extension Hooks + 内嵌浏览器 partition**。这样外部写作套件的适配不会变成只服务一个仓库的硬编码分支。

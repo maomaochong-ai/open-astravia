@@ -1,5 +1,5 @@
-import { CODING_AGENT_WORK_STOP_ALL } from "@vetta/coding-agent/session-extensions";
-import type { RuntimeHost } from "@vetta/runtime-core";
+import { CODING_AGENT_WORK_STOP_ALL } from "@astravia/coding-agent/session-extensions";
+import type { RuntimeHost } from "@astravia/runtime-core";
 
 /**
  * Cascades a user stop into the work a turn spawned but does not own.

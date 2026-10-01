@@ -5,7 +5,7 @@
  * Delegates to pi-ai's built-in Anthropic and OpenAI streaming implementations.
  *
  * Usage:
- *   vetta -e ./packages/coding-agent/examples/extensions/custom-provider-gitlab-duo
+ *   astravia -e ./packages/coding-agent/examples/extensions/custom-provider-gitlab-duo
  *   # Then /login gitlab-duo, or set GITLAB_TOKEN=glpat-...
  */
 
@@ -20,8 +20,8 @@ import {
 	type SimpleStreamOptions,
 	streamSimpleAnthropic,
 	streamSimpleOpenAIResponses,
-} from "@vetta/ai";
-import type { ExtensionAPI } from "@vetta/coding-agent";
+} from "@astravia/ai";
+import type { ExtensionAPI } from "@astravia/coding-agent";
 
 // =============================================================================
 // Constants

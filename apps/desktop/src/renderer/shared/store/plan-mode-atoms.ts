@@ -1,5 +1,5 @@
-import type { CodingAgentPlanReviewRequest } from "@vetta/coding-agent/function-extensions";
-import type { CodingAgentPlanModeState } from "@vetta/coding-agent/session-extensions";
+import type { CodingAgentPlanReviewRequest } from "@astravia/coding-agent/function-extensions";
+import type { CodingAgentPlanModeState } from "@astravia/coding-agent/session-extensions";
 import { atom } from "jotai";
 
 /**

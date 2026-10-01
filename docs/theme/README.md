@@ -26,8 +26,8 @@
 
 - 侧边栏默认 UI 已按区域拆分。
 - `MessageCenter`、`SettingsMenu` 等侧边栏子组件已迁入侧边栏结构。
-- 新增 `@vetta-org/theme-sdk`，提供 `ThemeProvider`、`ThemeHostProvider`、`ThemeModule`、`useThemeRegion`、`useThemeComponent`、appearance 协议和 public model hook facade。
-- 新增 `@vetta-org/theme-ui`，提供 `ThemeSurface`、`CornerImageFrame`、`AppFrame`、`SidebarDock`、`SidebarOverlay` 和 `MainContentFrame` 等可选 UI building blocks。
+- 新增 `@astravia-org/theme-sdk`，提供 `ThemeProvider`、`ThemeHostProvider`、`ThemeModule`、`useThemeRegion`、`useThemeComponent`、appearance 协议和 public model hook facade。
+- 新增 `@astravia-org/theme-ui`，提供 `ThemeSurface`、`CornerImageFrame`、`AppFrame`、`SidebarDock`、`SidebarOverlay` 和 `MainContentFrame` 等可选 UI building blocks。
 - `CornerImageFrame` 可作为 `ThemeSurface` 的 `corner-image` frame。
 - 侧边栏区域已接入稳定 surface slot。
 - 侧边栏入口支持 `regions.sidebar` 完整接管。
@@ -38,7 +38,7 @@
 - `useSidebarModel`、`usePageHeaderModel`、`useWindowControlsModel` 已作为 SDK facade hook 暴露，真实实现由 desktop 通过 `ThemeHostProvider` 注入。
 - Root global overlays 已开始按 connected container / props-driven view 拆分，审批、登录、文件预览、流转、更新提示等浮层已接入 view override 和 surface slot。
 - 主题模块已支持声明自有页面，desktop 通过固定 `/theme/$themeId/$pageId` 路由承载，并支持 `content` / `main` / `app` 三档受控覆盖范围。
-- 主题自有数据存储：SDK 提供 `useThemeStorage` / `useThemeStorageValue`，desktop host 落盘到 `~/.vetta/desktop-app/themes/<themeId>/data.json`。
+- 主题自有数据存储：SDK 提供 `useThemeStorage` / `useThemeStorageValue`，desktop host 落盘到 `~/.astravia/desktop-app/themes/<themeId>/data.json`。
 - 主题 usage host：`useThemeUsageStats` 暴露 app-monitor 聚合；`ThemeModule.runtime` 可挂载无 UI 同步逻辑。xianxia 用多指标 score 映射境界，写入 theme storage key `cultivation`（与设置页 fanren 成就阶梯无关）。
 
 当前仍未实现：
@@ -63,6 +63,6 @@ Region override > Component override > Appearance config > Default UI
 
 完整侧边栏接管使用 `regions.sidebar`。只替换局部组件使用 `components["sidebar.navItem"]`、`components["sidebar.settingsTrigger"]`。只做边框、背景和装饰使用 `appearance.surfaces`。
 
-开放给主题使用的协议必须进入 `@vetta-org/theme-sdk`。开放给主题复用的 UI 组件不能进入 SDK，应进入 `@vetta-org/theme-ui`、默认主题包或具体主题包，并按公开 API 维护。组件开放前需要明确 props contract、class API、ref 透传、装饰分层和数据边界，详见 [组件设计要求](./component-guidelines.md)。
+开放给主题使用的协议必须进入 `@astravia-org/theme-sdk`。开放给主题复用的 UI 组件不能进入 SDK，应进入 `@astravia-org/theme-ui`、默认主题包或具体主题包，并按公开 API 维护。组件开放前需要明确 props contract、class API、ref 透传、装饰分层和数据边界，详见 [组件设计要求](./component-guidelines.md)。
 
 公开 UI 组件应优先保持 props 驱动。调用 SDK hook 的 connected 容器可以留在 desktop 里作为默认入口，但不应作为主题复用的首选组件。

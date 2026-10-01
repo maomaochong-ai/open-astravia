@@ -7,7 +7,7 @@ const agentSettingsEmptyInputType = Type.Object({}, { additionalProperties: fals
 
 const agentExperimentalSettingsType = Type.Object(
 	{
-		vettaCli: Type.Boolean(),
+		astraviaCli: Type.Boolean(),
 		promptPrediction: Type.Boolean(),
 		agentSkills: Type.Boolean(),
 	},
@@ -16,7 +16,7 @@ const agentExperimentalSettingsType = Type.Object(
 
 const agentExperimentalSettingsUpdateType = Type.Object(
 	{
-		vettaCli: Type.Optional(Type.Boolean()),
+		astraviaCli: Type.Optional(Type.Boolean()),
 		promptPrediction: Type.Optional(Type.Boolean()),
 		agentSkills: Type.Optional(Type.Boolean()),
 	},
@@ -54,7 +54,7 @@ const agentExperimentalSettingsUpdateSchema = defineCapabilityInputSchema(agentE
 
 export const DOMAIN_AGENT_SETTINGS_CAPABILITIES = {
 	GET_EXPERIMENTAL: defineCapability<Record<string, never>, AgentExperimentalSettings>({
-		id: "cap.domain.vetta.agent-settings.experimental.get",
+		id: "cap.domain.astravia.agent-settings.experimental.get",
 		kind: "query",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -62,7 +62,7 @@ export const DOMAIN_AGENT_SETTINGS_CAPABILITIES = {
 		output: agentExperimentalSettingsSchema,
 	}),
 	SET_EXPERIMENTAL: defineCapability<AgentExperimentalSettingsUpdate, AgentExperimentalSettings>({
-		id: "cap.domain.vetta.agent-settings.experimental.set",
+		id: "cap.domain.astravia.agent-settings.experimental.set",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -70,7 +70,7 @@ export const DOMAIN_AGENT_SETTINGS_CAPABILITIES = {
 		output: agentExperimentalSettingsSchema,
 	}),
 	GET_IMAGE_GENERATION: defineCapability<Record<string, never>, ImageGenerationSettings>({
-		id: "cap.domain.vetta.agent-settings.image-generation.get",
+		id: "cap.domain.astravia.agent-settings.image-generation.get",
 		kind: "query",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -78,7 +78,7 @@ export const DOMAIN_AGENT_SETTINGS_CAPABILITIES = {
 		output: defineCapabilityOutputSchema(imageGenerationSettingsType, { clean: true }),
 	}),
 	SET_IMAGE_GENERATION: defineCapability<ImageGenerationSettingsUpdate, ImageGenerationSettings>({
-		id: "cap.domain.vetta.agent-settings.image-generation.set",
+		id: "cap.domain.astravia.agent-settings.image-generation.set",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,

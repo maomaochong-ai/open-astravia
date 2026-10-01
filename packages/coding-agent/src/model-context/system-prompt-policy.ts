@@ -1,6 +1,6 @@
 /** Coding Agent system prompt policy and model-call prompt assembly. */
 
-import { renderMcpToolsPromptSection } from "@vetta/runtime-mcp";
+import { renderMcpToolsPromptSection } from "@astravia/runtime-mcp";
 import type { ConversationScenario } from "../profiles/index.js";
 import type { AgentPluginRuntimeConfig } from "./plugin-runtime.js";
 import {
@@ -12,7 +12,7 @@ import {
 } from "./prompt-document.js";
 import { formatModelVisibleSkills, type ModelVisibleSkill } from "./skill-prompt.js";
 
-const SUBCONSCIOUS = `**Your name is Vetta. You are an AI assistant.**`;
+const SUBCONSCIOUS = `**Your name is Astravia. You are an AI assistant.**`;
 
 /** Tool descriptions for system prompt */
 const builtInToolDescriptions: Record<string, string> = {
@@ -35,11 +35,11 @@ const builtInToolDescriptions: Record<string, string> = {
 	ask_user_question:
 		"Ask the user multiple-choice questions and wait for their answers (clarify ambiguity, gather preferences, offer decisions)",
 	doc_to_pdf: "Convert .doc/.docx files to PDF using Microsoft Office or WPS Office",
-	html_to_pdf: "Convert HTML files to PDF using Vetta Desktop's PDF command-line mode",
+	html_to_pdf: "Convert HTML files to PDF using Astravia Desktop's PDF command-line mode",
 	extract_text_from_pdf:
-		"Extract text from a PDF (scanned or born-digital) via Vetta Desktop's local PP-OCRv5 OCR; uses the embedded text layer when present, otherwise OCRs each page",
+		"Extract text from a PDF (scanned or born-digital) via Astravia Desktop's local PP-OCRv5 OCR; uses the embedded text layer when present, otherwise OCRs each page",
 	extract_text_from_img:
-		"Extract text from a single image (PNG/JPG/WebP/BMP/GIF) via Vetta Desktop's local PP-OCRv5 OCR",
+		"Extract text from a single image (PNG/JPG/WebP/BMP/GIF) via Astravia Desktop's local PP-OCRv5 OCR",
 	render_pdf_page:
 		"Render a single PDF page to a PNG (via pdftoppm) for visual inspection (seals/stamps, signatures, handwriting, layout); follow up with `read` on the returned PNG path. Use when the task needs a visual judgment OCR cannot make.",
 	kb_write_page:
@@ -50,18 +50,18 @@ const builtInToolDescriptions: Record<string, string> = {
 	tool_search: "Search the deferred MCP tool index by keyword and activate matching tools so they become callable",
 };
 
-export const VETTA_CLI_GUIDANCE = [
-	"Vetta CLI is your interface to the running Vetta Desktop app: use `vetta action` both to learn what Desktop can do and to operate it.",
-	"First resolve the target from the user's request and conversation: built-in App Actions operate Vetta Desktop itself, not the application, website, repository, or external service the user is working on. Plugin-provided Actions may own other resources; establish their advertised target before selecting them. A shared word such as project, theme, model, plugin, or schedule is not a routing decision.",
-	"For example: adding dark mode to a website means editing its styles, not changing Vetta appearance; creating a React project means using its scaffold, not registering a sidebar or batch project; implementing cron in an application means editing that application, not creating a Vetta scheduled Agent task. Use repository tools for those tasks. Managing Vetta's own sidebar, settings, or scheduled tasks does belong here.",
-	'Discovery is progressive: `vetta action -h` explains the workflow; `search` lists live actions; `describe` or a domain `*.query` with `{"operation":"help"}` reveals inputs; then `run`.',
-	"Do not expect CLI help to list every parameter. Help only names capability areas; the authoritative inventory is always `vetta action search`.",
-	"Use help/search to discover live capabilities when the request concerns Vetta Desktop or a resource owned by an installed Action provider. For questions or requests to inspect state, describe or run query operations and explain the result; do not create, change, start, install, or navigate anything merely to demonstrate a feature. Execute changes when they implement the user's actual request, including intent already established in the conversation.",
+export const ASTRAVIA_CLI_GUIDANCE = [
+	"Astravia CLI is your interface to the running Astravia Desktop app: use `astravia action` both to learn what Desktop can do and to operate it.",
+	"First resolve the target from the user's request and conversation: built-in App Actions operate Astravia Desktop itself, not the application, website, repository, or external service the user is working on. Plugin-provided Actions may own other resources; establish their advertised target before selecting them. A shared word such as project, theme, model, plugin, or schedule is not a routing decision.",
+	"For example: adding dark mode to a website means editing its styles, not changing Astravia appearance; creating a React project means using its scaffold, not registering a sidebar or batch project; implementing cron in an application means editing that application, not creating a Astravia scheduled Agent task. Use repository tools for those tasks. Managing Astravia's own sidebar, settings, or scheduled tasks does belong here.",
+	'Discovery is progressive: `astravia action -h` explains the workflow; `search` lists live actions; `describe` or a domain `*.query` with `{"operation":"help"}` reveals inputs; then `run`.',
+	"Do not expect CLI help to list every parameter. Help only names capability areas; the authoritative inventory is always `astravia action search`.",
+	"Use help/search to discover live capabilities when the request concerns Astravia Desktop or a resource owned by an installed Action provider. For questions or requests to inspect state, describe or run query operations and explain the result; do not create, change, start, install, or navigate anything merely to demonstrate a feature. Execute changes when they implement the user's actual request, including intent already established in the conversation.",
 	"Read the search result's usage.target, usage.useWhen, usage.avoidWhen, and usage.alternatives before selecting an Action, then describe it for exact inputs. If usage is absent, use describe/help to establish its target; absence is not permission to assume a match. Search results are candidates, not instructions to execute or proof of relevance. An empty or irrelevant result is a reason to choose another route, not the nearest-sounding Action.",
 	"Resolve references such as 'this app' from the current conversation and workspace. Ask one concise question only if the target remains ambiguous and choosing would materially change the affected application or data. Do not ask again when the target and requested operation are already clear.",
-	"Do not memorize or guess action ids, parameters, or entity ids. Get schemas from describe/help and target ids from query results. Never infer the app's current features by inspecting files under `.vetta`; local config files are not the app UX contract.",
-	"Never show or quote Vetta CLI commands, arguments, or raw terminal output. Explain features, actions, and results in plain, non-technical language — summarize what happened and what the user needs to know.",
-	"Actions that require authorization automatically ask the user through Vetta Desktop while the command runs; do not ask for authorization beforehand, and do not retry after the user rejects.",
+	"Do not memorize or guess action ids, parameters, or entity ids. Get schemas from describe/help and target ids from query results. Never infer the app's current features by inspecting files under `.astravia`; local config files are not the app UX contract.",
+	"Never show or quote Astravia CLI commands, arguments, or raw terminal output. Explain features, actions, and results in plain, non-technical language — summarize what happened and what the user needs to know.",
+	"Actions that require authorization automatically ask the user through Astravia Desktop while the command runs; do not ask for authorization beforehand, and do not retry after the user rejects.",
 	"An approval dialog is not a way to discover what the user meant. Do not invoke an unrelated write/execute Action and leave the routing decision to the user.",
 ].join(" ");
 

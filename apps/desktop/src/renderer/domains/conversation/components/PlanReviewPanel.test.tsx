@@ -11,7 +11,7 @@ vi.mock("react-i18next", () => ({
 vi.mock("./blocks/TextBlock", () => ({
 	MarkdownContent: ({ text }: { text: string }) => <div data-testid="markdown">{text}</div>,
 }));
-vi.mock("@vetta-org/theme-ui/appearance", () => ({ ThemeSurface: () => null }));
+vi.mock("@astravia-org/theme-ui/appearance", () => ({ ThemeSurface: () => null }));
 
 const { PlanReviewPanel } = await import("./PlanReviewPanel.js");
 
@@ -23,7 +23,7 @@ describe("PlanReviewPanel", () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		Object.defineProperty(window, "vetta", { configurable: true, value: { session: { respondToPlanReview } } });
+		Object.defineProperty(window, "astravia", { configurable: true, value: { session: { respondToPlanReview } } });
 	});
 	afterEach(cleanup);
 

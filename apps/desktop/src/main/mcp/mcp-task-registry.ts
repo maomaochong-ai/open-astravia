@@ -1,8 +1,8 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { getVettaHomePath } from "@vetta/action-rpc";
-import type { McpTaskExecutionSnapshot, McpTaskExecutionStore } from "@vetta/runtime-mcp";
-import { atomicWriteJSONAsync } from "@vetta/toolkit/atomic-write";
+import { getAstraviaHomePath } from "@astravia/action-rpc";
+import type { McpTaskExecutionSnapshot, McpTaskExecutionStore } from "@astravia/runtime-mcp";
+import { atomicWriteJSONAsync } from "@astravia/toolkit/atomic-write";
 import type { DesktopMcpTask, DesktopMcpTasksChangedEvent } from "../../shared/mcp-task.js";
 
 const STORE_VERSION = 1;
@@ -32,7 +32,7 @@ export class DesktopMcpTaskRegistry implements McpTaskExecutionStore {
 	private writeQueue = Promise.resolve();
 
 	constructor(options: DesktopMcpTaskRegistryOptions = {}) {
-		this.filePath = options.filePath ?? join(getVettaHomePath(), "desktop-app", "mcp-tasks.json");
+		this.filePath = options.filePath ?? join(getAstraviaHomePath(), "desktop-app", "mcp-tasks.json");
 		this.now = options.now ?? Date.now;
 		this.ready = this.load();
 	}

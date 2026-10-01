@@ -1,4 +1,4 @@
-import type { SidebarNavItem } from "@vetta-org/theme-sdk/sidebar";
+import type { SidebarNavItem } from "@astravia-org/theme-sdk/sidebar";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const loaders = vi.hoisted(() => ({

@@ -2,7 +2,7 @@ import { ipcMain } from "electron";
 import type { ActionApprovalBroker } from "../app-actions/approval-broker.js";
 import type { JsonValue } from "../app-actions/types.js";
 
-const RESPONSE_CHANNEL = "vetta:action-approval:response";
+const RESPONSE_CHANNEL = "astravia:action-approval:response";
 
 export function registerActionApprovalIpc(broker: ActionApprovalBroker): () => void {
 	ipcMain.handle(RESPONSE_CHANNEL, (_event, approvalId: unknown, approved: unknown, input: unknown) => {

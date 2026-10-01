@@ -68,7 +68,7 @@ export function resolveImGatewayBinary(): ResolvedBinary {
 	if (!existsSync(fullPath)) {
 		throw new Error(
 			`im-gateway sidecar binary not found at ${fullPath}. ` +
-				`Run 'make cross-build' in apps/im-gateway, or rebuild Vetta.app.`,
+				`Run 'make cross-build' in apps/im-gateway, or rebuild Astravia.app.`,
 		);
 	}
 

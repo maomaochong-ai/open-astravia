@@ -104,7 +104,7 @@ describe("Q&A note interaction", () => {
 			},
 		};
 		Object.assign(window, {
-			vetta: {
+			astravia: {
 				messageAnnotations: api,
 				session: { listSandboxGrants: async () => [] },
 				models: { get: async () => ({ providers: {} }), fetchRemote: async () => ({ providers: {} }) },

@@ -1,5 +1,5 @@
-import { createAssistantMessage } from "@vetta/ai";
-import type { ConversationAgentMessageEvent } from "@vetta/runtime-core/conversation";
+import { createAssistantMessage } from "@astravia/ai";
+import type { ConversationAgentMessageEvent } from "@astravia/runtime-core/conversation";
 import { describe, expect, it } from "vitest";
 import { reduceConversationMessageEvent } from "./message-stream";
 

@@ -17,7 +17,7 @@ import {
 const roots: string[] = [];
 
 function tempFile(): string {
-	const root = mkdtempSync(join(tmpdir(), "vetta-tags-"));
+	const root = mkdtempSync(join(tmpdir(), "astravia-tags-"));
 	roots.push(root);
 	resetConversationTagsCache();
 	return join(root, "conversation-tags.json");

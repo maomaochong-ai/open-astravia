@@ -1,4 +1,4 @@
-import { REMOTE_FILE_CHUNK_BYTES } from "@vetta/remote-control";
+import { REMOTE_FILE_CHUNK_BYTES } from "@astravia/remote-control";
 import { nativeImage } from "electron";
 
 /** Long edge of an image sent to the phone; sharp on a phone screen, a fraction of a camera original. */

@@ -1,4 +1,4 @@
-import { Button, Slider } from "@vetta-org/ui";
+import { Button, Slider } from "@astravia-org/ui";
 import type { JSX } from "react";
 import { useEffect, useState } from "react";
 

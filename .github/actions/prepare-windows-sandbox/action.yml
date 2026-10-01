@@ -7,7 +7,7 @@ runs:
     - name: Check out pinned Codex sandbox source
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
       with:
-        repository: openvetta/codex
+        repository: maomaochong-ai/codex
         ref: 0110b9f41e1c841210dc7019e6da4050f029436c
         path: .ci/codex-windows-sandbox
         persist-credentials: false

@@ -15,7 +15,7 @@ const captured = vi.hoisted(() => ({
 	removeMemberToken: vi.fn(),
 }));
 
-Object.defineProperty(window, "vetta", {
+Object.defineProperty(window, "astravia", {
 	configurable: true,
 	value: {
 		config: { get: vi.fn(async () => ({})) },
@@ -42,7 +42,7 @@ vi.mock("react-i18next", () => ({
 }));
 
 beforeEach(() => {
-	Object.defineProperty(window, "vetta", {
+	Object.defineProperty(window, "astravia", {
 		configurable: true,
 		value: { config: { get: vi.fn(async () => ({})) } },
 	});

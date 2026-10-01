@@ -1,6 +1,6 @@
 # Turn 级运行时状态隔离方案
 
-本目录定义 Vetta Agent 在配置、沙盒、工作模式、Prompt、Tool、Skill、Plugin、MCP 与 Hook
+本目录定义 Astravia Agent 在配置、沙盒、工作模式、Prompt、Tool、Skill、Plugin、MCP 与 Hook
 动态变化时的统一一致性边界和实施路线。
 
 核心决策是：

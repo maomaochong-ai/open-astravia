@@ -34,7 +34,7 @@
 5. `review-content-quality`：基于实际像素/帧的 must-pass gate、分维 rubric、候选比较和最小修复策略。
 6. `create-content-campaign`：产品发布、电影感产品片、广告变体、社媒套装、UGC、角色故事和分镜转视频配方。
 
-每个 `SKILL.md` 只保留触发、路由和关键阶段；细节位于一层 `references/` 中，由具体任务决定是否读取。内容为 Vetta 重新组织和撰写的方法，参考了 Generative-Media-Skills（MIT）、visual-skills（CC BY 4.0）和 ViMax（MIT），相关 Skill 内保留来源说明。
+每个 `SKILL.md` 只保留触发、路由和关键阶段；细节位于一层 `references/` 中，由具体任务决定是否读取。内容为 Astravia 重新组织和撰写的方法，参考了 Generative-Media-Skills（MIT）、visual-skills（CC BY 4.0）和 ViMax（MIT），相关 Skill 内保留来源说明。
 
 ## 已验证合同
 

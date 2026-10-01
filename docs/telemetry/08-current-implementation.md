@@ -20,14 +20,14 @@
 
 | 变量 | 必填条件 | 用途 |
 |---|---|---|
-| `VETTA_SENTRY_DSN` | 启用 Sentry 时 | Main Sentry DSN；Renderer/Preload 通过 Electron SDK IPC 转发 |
-| `VETTA_SENTRY_RELEASE` | 正式发布时 | Sentry event 与 source map 使用的不可变 release |
-| `VETTA_TELEMETRY_ENVIRONMENT` | 建议 | `production`、`staging` 等环境名 |
-| `VETTA_SENTRY_TRACES_SAMPLE_RATE` | 可选 | `0` 到 `1`；缺省为 `0`，不自动开启性能采样 |
-| `VETTA_POSTHOG_KEY` | 启用 PostHog 时 | PostHog Project API Key；会被内联到 Renderer，不能使用私密 Personal API Key |
-| `VETTA_POSTHOG_HOST` | 可选 | PostHog ingest host，缺省为 `https://us.i.posthog.com` |
-| `VETTA_POSTHOG_REPLAY_ENABLED` | 启用 Replay 时 | 只有值为 `true` 才允许录制 |
-| `VETTA_POSTHOG_REPLAY_SAMPLE_RATE` | 可选 | `0` 到 `1`；未设置时由 PostHog 项目端采样配置决定 |
+| `ASTRAVIA_SENTRY_DSN` | 启用 Sentry 时 | Main Sentry DSN；Renderer/Preload 通过 Electron SDK IPC 转发 |
+| `ASTRAVIA_SENTRY_RELEASE` | 正式发布时 | Sentry event 与 source map 使用的不可变 release |
+| `ASTRAVIA_TELEMETRY_ENVIRONMENT` | 建议 | `production`、`staging` 等环境名 |
+| `ASTRAVIA_SENTRY_TRACES_SAMPLE_RATE` | 可选 | `0` 到 `1`；缺省为 `0`，不自动开启性能采样 |
+| `ASTRAVIA_POSTHOG_KEY` | 启用 PostHog 时 | PostHog Project API Key；会被内联到 Renderer，不能使用私密 Personal API Key |
+| `ASTRAVIA_POSTHOG_HOST` | 可选 | PostHog ingest host，缺省为 `https://us.i.posthog.com` |
+| `ASTRAVIA_POSTHOG_REPLAY_ENABLED` | 启用 Replay 时 | 只有值为 `true` 才允许录制 |
+| `ASTRAVIA_POSTHOG_REPLAY_SAMPLE_RATE` | 可选 | `0` 到 `1`；未设置时由 PostHog 项目端采样配置决定 |
 
 PostHog Replay 使用以下本地强制隐私配置：
 
@@ -44,16 +44,16 @@ PostHog Replay 使用以下本地强制隐私配置：
 
 | 变量 | 用途 |
 |---|---|
-| `VETTA_SENTRY_AUTH_TOKEN` | Source map 上传凭据；只能通过 CI Secret 或本地临时环境变量注入 |
-| `VETTA_SENTRY_ORG` | Sentry organization slug |
-| `VETTA_SENTRY_PROJECT` | Sentry project slug |
-| `VETTA_SENTRY_RELEASE` | 与运行时完全一致的 release |
+| `ASTRAVIA_SENTRY_AUTH_TOKEN` | Source map 上传凭据；只能通过 CI Secret 或本地临时环境变量注入 |
+| `ASTRAVIA_SENTRY_ORG` | Sentry organization slug |
+| `ASTRAVIA_SENTRY_PROJECT` | Sentry project slug |
+| `ASTRAVIA_SENTRY_RELEASE` | 与运行时完全一致的 release |
 
-自托管 Sentry 还可设置 `VETTA_SENTRY_URL`。上传成功后构建脚本删除 `dist/main`、`dist/preload`、`dist/renderer` 下的 `.map`，防止 source map 进入安装包。任一必填项缺失时不启用上传插件，不进行半配置上传。
+自托管 Sentry 还可设置 `ASTRAVIA_SENTRY_URL`。上传成功后构建脚本删除 `dist/main`、`dist/preload`、`dist/renderer` 下的 `.map`，防止 source map 进入安装包。任一必填项缺失时不启用上传插件，不进行半配置上传。
 
 ## 8.4 当前产品事件
 
-现有业务继续调用 `window.vetta.appMonitor.recordEvent`。Main 完成 schema 校验后，一份写入本地 App Monitor，另一份转换为低敏 PostHog 事件：
+现有业务继续调用 `window.astravia.appMonitor.recordEvent`。Main 完成 schema 校验后，一份写入本地 App Monitor，另一份转换为低敏 PostHog 事件：
 
 - `input_attachments_added`；
 - `input_action_toggled`；

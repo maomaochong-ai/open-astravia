@@ -1,6 +1,6 @@
+import { isSshProjectUri } from "@astravia/ssh-transport/project-uri";
+import type { ProjectContextMenuViewProps } from "@astravia-org/theme-ui/project";
 import type { Project } from "@shared/store/atoms";
-import { isSshProjectUri } from "@vetta/ssh-transport/project-uri";
-import type { ProjectContextMenuViewProps } from "@vetta-org/theme-ui/project";
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -60,7 +60,7 @@ export function useProjectContextMenuModel({
 	}, [onClose, onOpenClawSettings]);
 
 	const handleOpenInFolder = useCallback(() => {
-		void window.vetta.shell.showInFolder(cwd);
+		void window.astravia.shell.showInFolder(cwd);
 		onClose();
 	}, [cwd, onClose]);
 

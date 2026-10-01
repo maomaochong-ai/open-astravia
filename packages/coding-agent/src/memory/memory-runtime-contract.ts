@@ -1,10 +1,10 @@
-import type { AgentMessage } from "@vetta/agent-core";
-import type { Api, AssistantMessage, Model } from "@vetta/ai";
+import type { AgentMessage } from "@astravia/agent-core";
+import type { Api, AssistantMessage, Model } from "@astravia/ai";
 import type {
 	ContextCompactionRecord,
 	ConversationContinuationDirective,
 	TurnObserver,
-} from "@vetta/runtime-core/kernel";
+} from "@astravia/runtime-core/kernel";
 import type { CompactionPreparation, CompactionSettings } from "../compaction/index.js";
 import type { CodingAgentRuntimeToolRegistration } from "../runtime-contracts/index.js";
 import type { MemoryTextStorage } from "./memory-storage.js";

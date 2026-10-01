@@ -56,7 +56,7 @@ bun run verify:ui:stop
 Renderer 已有发送链路的可选性能打点。只在验证实例的 DevTools 中启用，完成后关闭：
 
 ```js
-localStorage.setItem("vetta-perf-send", "1");
+localStorage.setItem("astravia-perf-send", "1");
 location.reload();
 ```
 

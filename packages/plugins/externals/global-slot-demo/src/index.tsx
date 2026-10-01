@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { Type, type Static } from "@sinclair/typebox";
-import { definePlugin } from "@vetta-org/plugin-sdk";
+import { definePlugin } from "@astravia-org/plugin-sdk";
 import "./style.css";
 import {
 	DEMO_TOGGLE_KEYS,

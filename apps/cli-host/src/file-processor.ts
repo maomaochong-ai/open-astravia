@@ -1,5 +1,5 @@
 import { access, readFile, stat } from "node:fs/promises";
-import type { ImageContent } from "@vetta/ai";
+import type { ImageContent } from "@astravia/ai";
 import {
 	detectSupportedImageMimeTypeFromFile,
 	formatDimensionNote,
@@ -7,7 +7,7 @@ import {
 	isImageResizeFailure,
 	resizeImageBuffer,
 	resolveExistingPath,
-} from "@vetta/runtime-node/coding";
+} from "@astravia/runtime-node/coding";
 import chalk from "chalk";
 
 export interface ProcessedCliFiles {

@@ -29,7 +29,7 @@ Greenfield 选择失败时直接调用 `runLegacyAgentWithBootstrap()`。这不�
 
 ## 3. 显式 Runtime Selector
 
-`@vetta/cli-host` 新增宿主级参数：
+`@astravia/cli-host` 新增宿主级参数：
 
 ```text
 --agent-runtime legacy
@@ -50,7 +50,7 @@ Greenfield 选择失败时直接调用 `runLegacyAgentWithBootstrap()`。这不�
 
 ## 4. 独立 RPC 可执行入口
 
-新增 `agent-rpc-cli.ts` 和 `vetta-agent-rpc` bin。该入口只负责：
+新增 `agent-rpc-cli.ts` 和 `astravia-agent-rpc` bin。该入口只负责：
 
 1. 安装 RPC stdout guard；
 2. 执行 Runtime Selector；

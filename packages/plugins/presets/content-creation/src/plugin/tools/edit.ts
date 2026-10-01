@@ -1,4 +1,4 @@
-import type { PluginContext } from "@vetta-org/plugin-sdk";
+import type { PluginContext } from "@astravia-org/plugin-sdk";
 import { CONTENT_AGENT_OPERATION_SCHEMA } from "../../agent/operations";
 import type { ContentCreationAgentService } from "../../agent/service";
 import {

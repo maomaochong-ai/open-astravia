@@ -1,5 +1,5 @@
 import type { JSX, MouseEvent } from "react";
-import { cn } from "@vetta-org/ui";
+import { cn } from "@astravia-org/ui";
 
 export interface SettingsMenuThemeOption {
 	value: string;

@@ -36,9 +36,9 @@
 
 ### 第三次：对照 Vercel AI 后收紧终止律
 
-本机 `C:\develop\github\ai` 的 Anthropic/Bedrock Provider 展示了值得采用的实践：按 Provider 分包、mock transport、直接断言 request/stream parts，并分别覆盖 reasoning、tool、usage、cache 和错误事件。它的功能覆盖面显著大于原 Vetta 测试。
+本机 `C:\develop\github\ai` 的 Anthropic/Bedrock Provider 展示了值得采用的实践：按 Provider 分包、mock transport、直接断言 request/stream parts，并分别覆盖 reasoning、tool、usage、cache 和错误事件。它的功能覆盖面显著大于原 Astravia 测试。
 
-但实现不能照搬。当前 Vercel Bedrock transform 在 `flush()` 中生成 finish，即便上游没有合法 `messageStop`；这适合其 stream-part contract，不满足 Vetta “持久化前必须证明 Provider 成功终止”的要求。本阶段因此增加严格 terminal law，并把缺失 terminal、未闭合 block 和乱序事件作为失败。
+但实现不能照搬。当前 Vercel Bedrock transform 在 `flush()` 中生成 finish，即便上游没有合法 `messageStop`；这适合其 stream-part contract，不满足 Astravia “持久化前必须证明 Provider 成功终止”的要求。本阶段因此增加严格 terminal law，并把缺失 terminal、未闭合 block 和乱序事件作为失败。
 
 ## 模块划分
 
@@ -88,12 +88,12 @@ text、thinking、signature 和 tool JSON delta 都保留原语义。`redacted_t
 本阶段继续使用 TypeBox，不引入 Zod：
 
 - 两个 SDK 的 TypeScript 类型只描述编译期，不能证明运行时 event 结构。
-- TypeBox 已是 `@vetta/ai` 公共 schema 体系和 Phase 2/3 既有依赖，继续用于不可信 wire 边界可避免两套 schema runtime、错误格式和测试工具并存。
+- TypeBox 已是 `@astravia/ai` 公共 schema 体系和 Phase 2/3 既有依赖，继续用于不可信 wire 边界可避免两套 schema runtime、错误格式和测试工具并存。
 - Anthropic schema 校验 block/delta 判别项、index、usage 和 stop reason；Bedrock schema 校验 event union、delta、metadata usage 和 exception。
 - 事件顺序、唯一性和 EOF 规则不能仅靠 TypeBox/Zod 表达，继续由显式状态机承担。
 - AWS SDK command/request 等内部已类型化对象不做重复 schema 校验。
 
-Vercel AI 在其 Provider Core 体系中使用 Zod 是合理选择，因为它的公共 schema、safe-parse 和错误设施围绕 Zod 建立；这不是在 Vetta 同时引入 Zod 的理由。
+Vercel AI 在其 Provider Core 体系中使用 Zod 是合理选择，因为它的公共 schema、safe-parse 和错误设施围绕 Zod 建立；这不是在 Astravia 同时引入 Zod 的理由。
 
 ## 错误、取消与兼容
 
@@ -132,7 +132,7 @@ Windows 当前 shell 中 `node` 被 Bun shim 替代，直接 `bunx vitest` 的 w
 
 预期 Bedrock 只需 mock AWS client。实际直接注入 client 会扩大公共契约，最终改为 Adapter 构造注入 command sender；测试能力更强，生产 options 没有新增 SDK 泄漏。
 
-对照 Vercel 后没有追求一次补齐其全部 server tool、citation、compaction 和 provider metadata 功能。这些是独立产品功能，不应混入内部迁移。当前阶段优先保证 Vetta 已有 text/thinking/tool/cache 合同不回归，并建立后续扩展可测试的 wire 边界。
+对照 Vercel 后没有追求一次补齐其全部 server tool、citation、compaction 和 provider metadata 功能。这些是独立产品功能，不应混入内部迁移。当前阶段优先保证 Astravia 已有 text/thinking/tool/cache 合同不回归，并建立后续扩展可测试的 wire 边界。
 
 ## 已完成与未完成
 

@@ -1,12 +1,12 @@
 # Changelog
 
-All notable changes to `@vetta/runtime-mcp` are documented in this file.
+All notable changes to `@astravia/runtime-mcp` are documented in this file.
 
 ## [Unreleased]
 
 ### Breaking Changes
 
-- **Node MCP 实现迁至平台层**：文件配置、OAuth 状态文件、Vetta credentials、具体 Client Factory、stdio/HTTP transport、SDK OAuth Provider、Device Flow 和内置 Vetta MCP 改由 `@vetta/runtime-node/mcp` 导出；本包保留协议、Port、Schema、Supervisor 状态机、Tool 投影与渐进披露逻辑。
+- **Node MCP 实现迁至平台层**：文件配置、OAuth 状态文件、Astravia credentials、具体 Client Factory、stdio/HTTP transport、SDK OAuth Provider、Device Flow 和内置 Astravia MCP 改由 `@astravia/runtime-node/mcp` 导出；本包保留协议、Port、Schema、Supervisor 状态机、Tool 投影与渐进披露逻辑。
 
 ### Added
 
@@ -37,7 +37,7 @@ All notable changes to `@vetta/runtime-mcp` are documented in this file.
 
 ### Changed
 
-- 新增 `@vetta/runtime-mcp/browser` 纯浏览器入口，Renderer 可复用 MCP App Attachment 解析与媒体准入策略，
+- 新增 `@astravia/runtime-mcp/browser` 纯浏览器入口，Renderer 可复用 MCP App Attachment 解析与媒体准入策略，
   不再经包根入口把 Agent、Provider 或 Node transport 带入浏览器 bundle。
 - `prompts/list` 的 `McpPrompt.arguments` 修正为冻结 Schema 的 `PromptArgument[]`；Tool annotations、Icon、Resource size
   和 Implementation 展示字段同步补齐官方公共合同。

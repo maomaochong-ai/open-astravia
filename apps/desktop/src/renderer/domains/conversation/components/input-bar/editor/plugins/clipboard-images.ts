@@ -1,4 +1,4 @@
-import { extractVettaUserMessageClipboardImages } from "@/shared/clipboard";
+import { extractAstraviaUserMessageClipboardImages } from "@/shared/clipboard";
 import type { Base64Image } from "../persistImages";
 
 interface ClipboardDataLike {
@@ -6,17 +6,17 @@ interface ClipboardDataLike {
 	getData(format: string): string;
 }
 
-export interface VettaMessageClipboardImages {
-	kind: "vetta-message";
+export interface AstraviaMessageClipboardImages {
+	kind: "astravia-message";
 	images: Base64Image[];
 	messageText: string;
 }
 
-export type ClipboardImages = VettaMessageClipboardImages | { kind: "files"; files: File[] };
+export type ClipboardImages = AstraviaMessageClipboardImages | { kind: "files"; files: File[] };
 
-export function readVettaMessageClipboardImages(html: string, text: string): VettaMessageClipboardImages | null {
-	const images = extractVettaUserMessageClipboardImages(html);
-	return images.length > 0 ? { kind: "vetta-message", images, messageText: text } : null;
+export function readAstraviaMessageClipboardImages(html: string, text: string): AstraviaMessageClipboardImages | null {
+	const images = extractAstraviaUserMessageClipboardImages(html);
+	return images.length > 0 ? { kind: "astravia-message", images, messageText: text } : null;
 }
 
 export function readClipboardImageFiles(clipboardData: Pick<ClipboardDataLike, "items">): File[] {
@@ -29,7 +29,7 @@ export function readClipboardImageFiles(clipboardData: Pick<ClipboardDataLike, "
 export function readClipboardImages(clipboardData: ClipboardDataLike): ClipboardImages {
 	// The native clipboard also exposes the first image as a file. Prefer the marked
 	// HTML entry so a multi-image message does not duplicate that first image.
-	const richMessage = readVettaMessageClipboardImages(
+	const richMessage = readAstraviaMessageClipboardImages(
 		clipboardData.getData("text/html"),
 		clipboardData.getData("text/plain"),
 	);

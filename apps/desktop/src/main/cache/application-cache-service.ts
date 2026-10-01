@@ -1,6 +1,6 @@
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
-import { getVettaHomePath } from "@vetta/action-rpc";
+import { getAstraviaHomePath } from "@astravia/action-rpc";
 
 const CACHE_NAMESPACE_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const TEMPORARY_PREFIX_PATTERN = /^[a-z0-9]+(?:[a-z0-9.-]*[a-z0-9])?$/;
@@ -65,7 +65,7 @@ export class ApplicationCacheNamespace {
 export class ApplicationCacheService {
 	readonly rootDir: string;
 
-	constructor(rootDir = join(getVettaHomePath(), "cache")) {
+	constructor(rootDir = join(getAstraviaHomePath(), "cache")) {
 		this.rootDir = resolve(rootDir);
 	}
 

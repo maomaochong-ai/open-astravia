@@ -1,4 +1,4 @@
-import { McpTaskExecutionCoordinator } from "@vetta/runtime-mcp";
+import { McpTaskExecutionCoordinator } from "@astravia/runtime-mcp";
 import { getAppLogger } from "../logger.js";
 import { DesktopMcpTaskRegistry } from "./mcp-task-registry.js";
 

@@ -295,7 +295,7 @@ const mediaJobOutputSchema = defineCapabilityOutputSchema(JOB_TYPE, { clean: tru
 
 export const DOMAIN_MEDIA_CAPABILITIES = {
 	LIST_PROVIDERS: defineCapability<Record<string, never>, MediaProviderDescriptor[]>({
-		id: "cap.domain.vetta.media.provider.list",
+		id: "cap.domain.astravia.media.provider.list",
 		kind: "query",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 3,
@@ -303,7 +303,7 @@ export const DOMAIN_MEDIA_CAPABILITIES = {
 		output: mediaProviderListOutputSchema,
 	}),
 	SUBMIT: defineCapability<MediaSubmitInput, Job>({
-		id: "cap.domain.vetta.media.job.submit",
+		id: "cap.domain.astravia.media.job.submit",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 2,

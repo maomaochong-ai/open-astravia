@@ -10,7 +10,7 @@ RPC 模式适合语言无关集成、sidecar 和需要进程隔离的宿主。�
 ## 启动进程
 
 ```bash
-vetta-agent-rpc --mode rpc \
+astravia-agent-rpc --mode rpc \
   --session-dir /path/to/conversations \
   --provider openai \
   --model openai/gpt-4o
@@ -41,7 +41,7 @@ vetta-agent-rpc --mode rpc \
 {"type":"agent_end"}
 ```
 
-实际事件字段以 `@vetta/coding-agent/rpc` 导出的类型为准。
+实际事件字段以 `@astravia/coding-agent/rpc` 导出的类型为准。
 
 ## 命令分组
 

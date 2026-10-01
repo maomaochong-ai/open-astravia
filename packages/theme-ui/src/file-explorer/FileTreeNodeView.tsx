@@ -1,4 +1,4 @@
-import { cn } from "@vetta-org/ui";
+import { cn } from "@astravia-org/ui";
 import { useEffect, useRef, useState, type JSX } from "react";
 import { FILE_TREE_NODE_DROP_CLASS, isDragLeavingElement } from "./drag-target";
 import { getFileIcon } from "./fileIcons";
@@ -10,7 +10,7 @@ import type {
 	FileExplorerSelectOptions,
 } from "./types";
 
-const DRAG_MIME = "application/vetta-path";
+const DRAG_MIME = "application/astravia-path";
 const DECORATION_COLORS = {
 	foreground: "text-foreground",
 	muted: "text-muted-foreground",

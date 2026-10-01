@@ -3,7 +3,7 @@
 ## 1. 目标
 
 第 97 轮已经证明 Desktop 可以在真实进程重启后重新装配 MCP，但当时
-`@vetta/runtime-mcp` 仍只是 `coding-agent/core/mcp` 的反向导出：
+`@astravia/runtime-mcp` 仍只是 `coding-agent/core/mcp` 的反向导出：
 
 - Runtime MCP 的 Source 类型直接 `Pick<McpManager>`；
 - 渐进披露、Prompt 和 `tool_search` 仍反向导入 coding-agent；

@@ -1,6 +1,6 @@
 {
 	"$schema": "./node_modules/wrangler/config-schema.json",
-	"name": "vetta-remote-relay",
+	"name": "astravia-remote-relay",
 	"account_id": "0357cf29270289865e31d10d38ffecec",
 	"main": "src/index.ts",
 	"compatibility_date": "2026-03-10",

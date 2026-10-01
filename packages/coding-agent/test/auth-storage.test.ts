@@ -1,8 +1,8 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { registerOAuthProvider } from "@vetta/ai";
-import { clearNodeConfigurationValueCache } from "@vetta/runtime-node/host";
+import { registerOAuthProvider } from "@astravia/ai";
+import { clearNodeConfigurationValueCache } from "@astravia/runtime-node/host";
 import lockfile from "proper-lockfile";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { AuthStorage } from "../src/auth/index.js";

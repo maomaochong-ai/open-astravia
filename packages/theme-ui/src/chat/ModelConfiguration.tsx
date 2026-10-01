@@ -1,4 +1,4 @@
-import { Button, Popover, PopoverContent, PopoverTrigger } from "@vetta-org/ui";
+import { Button, Popover, PopoverContent, PopoverTrigger } from "@astravia-org/ui";
 import type { JSX, ReactNode } from "react";
 import { useEffect, useId, useRef, useState } from "react";
 import { ModelSelectorTrigger } from "./ModelSelectorTrigger";

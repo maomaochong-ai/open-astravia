@@ -22,7 +22,7 @@ export function QuickPanelApp(): JSX.Element {
 
 	// 面板每次被唤出：清空输入、复位高亮到输入行、重新聚焦输入框。
 	useEffect(() => {
-		const bridge = window.vettaQuickPanel;
+		const bridge = window.astraviaQuickPanel;
 		inputRef.current?.focus();
 		if (!bridge) return;
 		return bridge.onShown(() => {
@@ -34,7 +34,7 @@ export function QuickPanelApp(): JSX.Element {
 
 	// 订阅主进程下发的玻璃模式。
 	useEffect(() => {
-		const bridge = window.vettaQuickPanel;
+		const bridge = window.astraviaQuickPanel;
 		if (!bridge) return;
 		return bridge.onGlass(setGlassMode);
 	}, []);
@@ -45,11 +45,11 @@ export function QuickPanelApp(): JSX.Element {
 	const submitNew = useCallback(() => {
 		const text = input.trim();
 		if (!text) return;
-		void window.vettaQuickPanel?.createConversation(text);
+		void window.astraviaQuickPanel?.createConversation(text);
 	}, [input]);
 
 	const openItem = useCallback((item: QuickPanelItem) => {
-		void window.vettaQuickPanel?.openSession({ sessionPath: item.sessionPath, cwd: item.cwd });
+		void window.astraviaQuickPanel?.openSession({ sessionPath: item.sessionPath, cwd: item.cwd });
 	}, []);
 
 	const handleChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
@@ -81,7 +81,7 @@ export function QuickPanelApp(): JSX.Element {
 				}
 				case "Escape":
 					event.preventDefault();
-					window.vettaQuickPanel?.hide();
+					window.astraviaQuickPanel?.hide();
 					break;
 				default:
 					break;

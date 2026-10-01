@@ -10,7 +10,7 @@
 				"showcase": {
 					"template": "chat-over-canvas",
 					"canvas": "code",
-					"user_prompt": "帮我把这个插件装到 Vetta 里。",
+					"user_prompt": "帮我把这个插件装到 Astravia 里。",
 					"assistant_reply": "我会先判断它是插件、Skill 还是 MCP，装完后检查是否有待应用的版本，需要重载就立刻重载并核对生效版本。"
 				}
 			},
@@ -49,7 +49,7 @@
 						"showcase": {
 							"template": "chat-over-canvas",
 							"canvas": "code",
-							"user_prompt": "Install this plugin into Vetta for me.",
+							"user_prompt": "Install this plugin into Astravia for me.",
 							"assistant_reply": "I'll first tell whether it is a plugin, a Skill, or an MCP server, then check for a pending version after install and reload it right away."
 						}
 					},

@@ -1,10 +1,14 @@
-import { CapabilityAccessController, CapabilityHub, type CapabilityProviderBinding } from "@vetta/capability-runtime";
+import {
+	CapabilityAccessController,
+	CapabilityHub,
+	type CapabilityProviderBinding,
+} from "@astravia/capability-runtime";
 import type {
 	CapabilityAccessHandle,
 	CapabilityAccessSessionFactory,
 	CapabilityAccessSessionOptions,
 	Disposable,
-} from "@vetta-org/capability-sdk";
+} from "@astravia-org/capability-sdk";
 
 export class RendererCapabilityHost implements CapabilityAccessSessionFactory {
 	private readonly hub = new CapabilityHub();

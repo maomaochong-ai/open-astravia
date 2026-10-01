@@ -9,8 +9,8 @@ import (
 	"go.mau.fi/whatsmeow"
 	"go.mau.fi/whatsmeow/proto/waE2E"
 
-	"vetta-im-gateway/internal/transport"
-	"vetta-im-gateway/internal/transport/inbox"
+	"astravia-im-gateway/internal/transport"
+	"astravia-im-gateway/internal/transport/inbox"
 )
 
 // mediaPart is one downloadable payload of an inbound message, described

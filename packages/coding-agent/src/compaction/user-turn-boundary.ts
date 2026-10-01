@@ -1,4 +1,4 @@
-import type { AgentMessage } from "@vetta/agent-core";
+import type { AgentMessage } from "@astravia/agent-core";
 
 /** Index of the oldest real user message among the latest N user turns. */
 export function findRecentUserTurnBoundary(messages: readonly AgentMessage[], protectedTurns: number): number {

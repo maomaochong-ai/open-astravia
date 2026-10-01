@@ -1,6 +1,6 @@
-# @vetta/action-rpc
+# @astravia/action-rpc
 
-Localhost HTTP JSON RPC transport for Vetta Desktop capabilities.
+Localhost HTTP JSON RPC transport for Astravia Desktop capabilities.
 
 This package owns transport, protocol, server, and client helpers only. It does
 not define desktop business capabilities.

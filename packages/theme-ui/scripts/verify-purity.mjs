@@ -7,7 +7,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../src");
-const forbidden = /@shared\/|@domains\/|@preload\/|from ["']jotai|window\.vetta/;
+const forbidden = /@shared\/|@domains\/|@preload\/|from ["']jotai|window\.astravia/;
 
 async function walk(dir) {
 	const entries = await readdir(dir, { withFileTypes: true });

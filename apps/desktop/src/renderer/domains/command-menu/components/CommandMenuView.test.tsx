@@ -5,8 +5,8 @@ import type {
 	CommandMenuGroupView,
 	CommandMenuItemView,
 	CommandMenuViewProps,
-} from "@vetta-org/theme-ui/overlays";
-import { CommandMenuView } from "@vetta-org/theme-ui/overlays";
+} from "@astravia-org/theme-ui/overlays";
+import { CommandMenuView } from "@astravia-org/theme-ui/overlays";
 import { describe, expect, it, vi } from "vitest";
 
 const labels = {
@@ -136,16 +136,16 @@ describe("CommandMenuView", () => {
 		const groups = [
 			group({
 				items: [
-					item({ id: "p1", title: "openvetta", titleHighlights: [{ start: 4, end: 9 }] }),
+					item({ id: "p1", title: "maomaochong-ai", titleHighlights: [{ start: 4, end: 9 }] }),
 				],
 			}),
 		];
 		const { container } = render(<CommandMenuView {...props({ groups })} />);
 
 		const hits = Array.from(container.querySelectorAll(".text-primary")).map((node) => node.textContent);
-		expect(hits).toContain("vetta");
+		expect(hits).toContain("astravia");
 		// 拆成多个 span 后可访问名会被插入空格，故按原始文本断言拼接无损。
-		expect(screen.getByRole("option").textContent).toBe("openvetta");
+		expect(screen.getByRole("option").textContent).toBe("maomaochong-ai");
 	});
 
 	it("lets a long subtitle give way instead of squeezing the title", () => {
@@ -154,8 +154,8 @@ describe("CommandMenuView", () => {
 				items: [
 					item({
 						id: "a1",
-						title: "vetta-testing",
-						subtitle: "为 OpenVetta 的功能变更、Bug 修复、重构、公共合同和 UI 交互设计、编写或审查测试",
+						title: "astravia-testing",
+						subtitle: "为 OpenAstravia 的功能变更、Bug 修复、重构、公共合同和 UI 交互设计、编写或审查测试",
 					}),
 				],
 			}),

@@ -131,7 +131,7 @@ const workspaceSettingOutputSchema = defineCapabilityOutputSchema(workspaceSetti
 
 export const DOMAIN_GENERAL_SETTINGS_CAPABILITIES = {
 	GET: defineCapability<Record<string, never>, GeneralSettingsSnapshot>({
-		id: "cap.domain.vetta.general-settings.get",
+		id: "cap.domain.astravia.general-settings.get",
 		kind: "query",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -139,7 +139,7 @@ export const DOMAIN_GENERAL_SETTINGS_CAPABILITIES = {
 		output: generalSettingsSnapshotSchema,
 	}),
 	SET_NOTIFICATIONS: defineCapability<NotificationsSettingInput, NotificationsSettingInput>({
-		id: "cap.domain.vetta.general-settings.notifications.set",
+		id: "cap.domain.astravia.general-settings.notifications.set",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -147,7 +147,7 @@ export const DOMAIN_GENERAL_SETTINGS_CAPABILITIES = {
 		output: notificationsSettingOutputSchema,
 	}),
 	SET_DEFAULT_EXECUTION_MODE: defineCapability<DefaultExecutionModeSettingInput, DefaultExecutionModeSettingInput>({
-		id: "cap.domain.vetta.general-settings.default-execution-mode.set",
+		id: "cap.domain.astravia.general-settings.default-execution-mode.set",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -155,7 +155,7 @@ export const DOMAIN_GENERAL_SETTINGS_CAPABILITIES = {
 		output: defaultExecutionModeOutputSchema,
 	}),
 	SET_WORKSPACE: defineCapability<WorkspaceSettingInput, WorkspaceSettingInput>({
-		id: "cap.domain.vetta.general-settings.workspace.set",
+		id: "cap.domain.astravia.general-settings.workspace.set",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,

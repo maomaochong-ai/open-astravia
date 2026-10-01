@@ -26,10 +26,10 @@ import {
 	type TeamSharedHistoryPort,
 	type TeamTaskControlPort,
 	type UpdateTeamSessionModelSettingsInput,
-} from "@vetta/agent-team";
-import type { CodingAgentRuntimeToolRegistration } from "@vetta/coding-agent/runtime";
-import { CODING_AGENT_SESSION_TITLE_GENERATE } from "@vetta/coding-agent/session-extensions";
-import type { ConversationDocument, RuntimeHost, SessionExecutionMode } from "@vetta/runtime-core";
+} from "@astravia/agent-team";
+import type { CodingAgentRuntimeToolRegistration } from "@astravia/coding-agent/runtime";
+import { CODING_AGENT_SESSION_TITLE_GENERATE } from "@astravia/coding-agent/session-extensions";
+import type { ConversationDocument, RuntimeHost, SessionExecutionMode } from "@astravia/runtime-core";
 import type {
 	DesktopTeamConversationDisplay,
 	DesktopTeamSessionStreamEvent,

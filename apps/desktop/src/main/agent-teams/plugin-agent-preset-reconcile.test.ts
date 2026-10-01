@@ -1,5 +1,5 @@
-import type { AgentBlueprint, AgentTeamDocument, TeamDefinition } from "@vetta/agent-team";
-import { createAgentTeamFixture, pluginBlueprintId } from "@vetta/agent-team";
+import type { AgentBlueprint, AgentTeamDocument, TeamDefinition } from "@astravia/agent-team";
+import { createAgentTeamFixture, pluginBlueprintId } from "@astravia/agent-team";
 import { describe, expect, it } from "vitest";
 import {
 	type PluginPresetDeclarations,
@@ -9,7 +9,7 @@ import {
 } from "./plugin-agent-preset-reconcile.js";
 import type { PluginAgentPreset, PluginTeamPreset } from "./plugin-agent-presets.js";
 
-const PLUGIN_ID = "vetta-ui-design";
+const PLUGIN_ID = "astravia-ui-design";
 const BLUEPRINT_ID = pluginBlueprintId(PLUGIN_ID, "designer");
 const PROVIDER_ID = "preset-agent";
 const DEVELOPER_BLUEPRINT = pluginBlueprintId(PROVIDER_ID, "developer");

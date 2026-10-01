@@ -1,7 +1,7 @@
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve as resolvePath } from "node:path";
-import { type AssistantMessage, type AssistantMessageEvent, EventStream, type Message, type Model } from "@vetta/ai";
+import { type AssistantMessage, type AssistantMessageEvent, EventStream, type Message, type Model } from "@astravia/ai";
 import {
 	AgentCoreTurnEngine,
 	FeatureCompiler,
@@ -12,20 +12,20 @@ import {
 	resolveModelCallFrame,
 	StaticRuntimeSnapshotProvider,
 	type TurnEngineEvent,
-} from "@vetta/runtime-core/kernel";
+} from "@astravia/runtime-core/kernel";
 import {
 	createFindToolRegistration,
 	createGlobToolRegistration,
 	createGrepToolRegistration,
 	createLsToolRegistration,
 	createReadToolRegistration,
-} from "@vetta/runtime-node/coding";
+} from "@astravia/runtime-node/coding";
 import {
 	type CodingToolCatalog,
 	type CodingToolRegistration,
 	createCodingToolsFeature,
 	InMemoryCodingToolRegistry,
-} from "@vetta/runtime-tools";
+} from "@astravia/runtime-tools";
 import { describe, expect, it } from "vitest";
 import { TASK_OUTPUT_TOOL_REQUIRES, TASK_OUTPUT_TOOL_SCOPES } from "../../src/features/background-tasks/index.js";
 import {

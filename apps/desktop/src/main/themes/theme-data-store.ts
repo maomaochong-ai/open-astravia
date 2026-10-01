@@ -1,8 +1,8 @@
 import { existsSync } from "node:fs";
 import { readFile, unlink } from "node:fs/promises";
 import { join } from "node:path";
-import { getVettaHomePath } from "@vetta/action-rpc";
-import { atomicWriteJSONAsync } from "@vetta/toolkit/atomic-write";
+import { getAstraviaHomePath } from "@astravia/action-rpc";
+import { atomicWriteJSONAsync } from "@astravia/toolkit/atomic-write";
 import {
 	assertThemeStorageWritable,
 	isThemeStorageJson,
@@ -24,7 +24,7 @@ const memoryCache = new Map<string, Record<string, ThemeStorageJson>>();
 const writeQueues = new Map<string, Promise<void>>();
 
 function themesDataRoot(): string {
-	return join(getVettaHomePath(), "desktop-app", "themes");
+	return join(getAstraviaHomePath(), "desktop-app", "themes");
 }
 
 function themeDir(themeId: string): string {

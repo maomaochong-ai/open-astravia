@@ -1,4 +1,4 @@
-/** 知识库 raws ↔ UI 的读写契约。磁盘（~/.vetta/knowledges/raws/）是唯一真相源。 */
+/** 知识库 raws ↔ UI 的读写契约。磁盘（~/.astravia/knowledges/raws/）是唯一真相源。 */
 
 export interface KnowledgeNodeDto {
 	/** 相对 raws/<kb>/ 的 posix 路径，稳定。 */

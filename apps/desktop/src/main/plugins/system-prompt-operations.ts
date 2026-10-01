@@ -1,4 +1,7 @@
-import type { AgentPluginRuntimeEffect, AgentPluginSystemPromptInvocation } from "@vetta/coding-agent/plugin-runtime";
+import type {
+	AgentPluginRuntimeEffect,
+	AgentPluginSystemPromptInvocation,
+} from "@astravia/coding-agent/plugin-runtime";
 import type {
 	InstalledPlugin,
 	PluginDynamicSystemPromptOperation,

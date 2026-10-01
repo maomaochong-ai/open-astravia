@@ -2,4 +2,4 @@ export {
 	SidebarFilterSelectView,
 	type SidebarFilterSelectOption,
 	type SidebarFilterSelectViewProps,
-} from "@vetta-org/theme-ui/sidebar";
+} from "@astravia-org/theme-ui/sidebar";

@@ -3,7 +3,7 @@ title: 插件能力参考
 description: 按目标查找 ctx 上的界面、对话、Agent、文件、网络、浏览器、模型、媒体与存储 API 及其权限边界。
 ---
 
-插件 API 由 `@vetta-org/plugin-sdk` 提供，构建由 `@vetta-org/plugin-vite` 提供，脚手架与安装命令由 `@vetta-org/plugin-cli` 提供。插件代码运行在 Desktop renderer 进程的共享 JavaScript realm 内；权限声明用于知情同意和宿主 API 门控，不是 iframe、Worker 或恶意代码沙箱。
+插件 API 由 `@astravia-org/plugin-sdk` 提供，构建由 `@astravia-org/plugin-vite` 提供，脚手架与安装命令由 `@astravia-org/plugin-cli` 提供。插件代码运行在 Desktop renderer 进程的共享 JavaScript realm 内；权限声明用于知情同意和宿主 API 门控，不是 iframe、Worker 或恶意代码沙箱。
 
 `activate(ctx)` 拿到的 `ctx` 是所有能力的唯一出口。宿主在主进程一侧并不认识「插件」这个概念，只认识一个带授权清单的能力会话，因此每一次调用都会被重新校验、约束到本插件的命名空间，并留下审计记录。
 

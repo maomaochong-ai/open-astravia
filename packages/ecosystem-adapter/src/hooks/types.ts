@@ -17,7 +17,7 @@ export type HookEventName = (typeof HOOK_EVENT_NAMES)[number];
 export type HookPermissionMode = "default" | "acceptEdits" | "plan" | "dontAsk" | "bypassPermissions";
 export type SessionStartSource = "startup" | "resume" | "clear" | "compact";
 /**
- * Vetta-native reason the current session is ending.
+ * Astravia-native reason the current session is ending.
  * Host and neutral runtime use only these values — never Claude/Codex wire strings.
  * Claude stdin `reason` / settings matchers are produced only in the Claude profile.
  */
@@ -127,7 +127,7 @@ export interface SessionStartHookRequest extends HookRequestBase {
 
 export interface SessionEndHookRequest extends HookRequestBase {
 	eventName: "SessionEnd";
-	/** Vetta-native end cause; profile maps to ecosystem wire fields if needed. */
+	/** Astravia-native end cause; profile maps to ecosystem wire fields if needed. */
 	cause: SessionEndCause;
 }
 

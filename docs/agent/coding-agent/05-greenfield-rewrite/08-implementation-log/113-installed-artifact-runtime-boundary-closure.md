@@ -43,7 +43,7 @@
 新增同一已安装 Greenfield Session 的连续变更合同：
 
 1. 初始不存在动态 Skill 和 MCP Tool。
-2. 新增默认项目 `.vetta/skills` Skill，下一 Model Call 可见。
+2. 新增默认项目 `.astravia/skills` Skill，下一 Model Call 可见。
 3. 修改 Skill 内容，下一 Model Call 只出现新内容。
 4. 新增 MCP Server，下一 Model Call 出现对应 Tool 与精确描述。
 5. 删除 Skill 并移除 MCP Server，下一 Model Call 均不可见。

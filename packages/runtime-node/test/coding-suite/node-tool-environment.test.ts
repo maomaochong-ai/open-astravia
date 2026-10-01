@@ -1,4 +1,4 @@
-import type { RuntimeToolResult } from "@vetta/runtime-core/kernel";
+import type { RuntimeToolResult } from "@astravia/runtime-core/kernel";
 import { describe, expect, it } from "vitest";
 import { type CommandToolExecutor, createNodeCodingToolEnvironment } from "../../src/coding/index.js";
 

@@ -2,7 +2,7 @@ import {
 	type CapabilityBinding,
 	type RuntimeToolDefinition,
 	RuntimeToolExecutionError,
-} from "@vetta/runtime-core/kernel";
+} from "@astravia/runtime-core/kernel";
 import type { CodingToolCatalog, CodingToolCatalogEntry } from "./coding-tool-catalog.js";
 
 export const CODING_TOOL_AVAILABILITY_ERROR_CODES = {

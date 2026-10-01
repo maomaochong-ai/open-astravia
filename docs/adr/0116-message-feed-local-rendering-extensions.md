@@ -14,7 +14,7 @@
 2. UI 位置使用正常 JSX children。`DefaultChatView` 不再创建消息列表和输入框；调用者排列列表、`ChatError` 和 `ChatComposer`。`UserMessage` 只负责正文、附件与用户气泡；`SessionUserMessage` 在外部复用独立 action hooks 装配命令。新增命令不修改列表基座。
 3. 渲染有独立的三个变化点：`MessageRendering` 负责局部消息投影、按 kind 选择组件及消息行；`ContentRendering` 负责按内容块类型替换或装饰默认呈现；`MarkdownDefinition` 负责语法插件、标准元素、自定义 HAST 元素和代码块。投影不写回历史；持久化修改仍调用场景命令。
 4. 扩展是普通 TypeScript 定义和 React 组件，不建立中心命令 union 或全局注册表。消息投影依声明顺序组合；同类 renderer 后者替换前者；普通会话默认配方允许调用者覆盖。Markdown 用 `extendMarkdown` 显式继承，插件有序追加，组件按键覆盖。组件类型和 definition 应保持稳定，避免流式更新重挂载。
-5. Markdown 移至公开 `@vetta-org/theme-ui/markdown` 入口。Chat 与活动面板预览消费同一扩展定义；各自保留流式/预览样式和链接策略。`CodeBlock.Root/Copy/Frame/Language/Content` 共享真实复制状态及代码数据，可只重组工具栏而保留高亮、复制。原 `chat/TextBlockView` 仅转导出，不保留第二套实现。
+5. Markdown 移至公开 `@astravia-org/theme-ui/markdown` 入口。Chat 与活动面板预览消费同一扩展定义；各自保留流式/预览样式和链接策略。`CodeBlock.Root/Copy/Frame/Language/Content` 共享真实复制状态及代码数据，可只重组工具栏而保留高亮、复制。原 `chat/TextBlockView` 仅转导出，不保留第二套实现。
 6. Feed Root 持有虚拟列表 Footer 的 DOM 挂载目标；`MessageFeed.Footer` 使用 Portal 挂载并保留声明位置的 React context。`VirtualList.children` 仅为逐项渲染函数，不再扫描子元素类型。每个 Root 对应一个 VirtualList，Footer 可在包装组件内组合。内部列表使用现有默认布局，外层布局继续使用 `MessageFeedLayout`。
 7. 展开状态与卡片 pending descriptor 缓存在各 Feed scope 内拥有，卸载条目不丢失、切换 scope 重置、并列 Feed 互不污染；卡片 owner 基于该 Feed 的消息而非全局当前会话。宿主 Markdown 环境显式使用列表 cwd；预测与模式由 `AssistantRenderingProvider` 注入，普通会话 adapter 负责读取活动会话 atom。
 8. 普通会话历史命令在点击时绑定目标，跨确认/异步完成不得向新会话回写 transcript、草稿或触发跳转。不改变 Runtime、历史格式、IPC 或分支语义。本轮不增加插件安全沙箱，可信组件和语法插件沿用现有宿主执行边界。

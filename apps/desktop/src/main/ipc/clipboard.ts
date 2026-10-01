@@ -27,7 +27,7 @@ function isUserMessageClipboardWriteRequest(value: unknown): value is UserMessag
  * native clipboard because `ClipboardItem` support varies by platform.
  */
 export function registerClipboardIpc(): () => void {
-	ipcMain.handle("vetta:clipboard:write-image", async (_event, dataUrl: unknown): Promise<void> => {
+	ipcMain.handle("astravia:clipboard:write-image", async (_event, dataUrl: unknown): Promise<void> => {
 		if (typeof dataUrl !== "string" || !dataUrl.startsWith("data:image/")) {
 			throw new Error("Invalid image data URL");
 		}
@@ -35,13 +35,13 @@ export function registerClipboardIpc(): () => void {
 		if (image.isEmpty()) throw new Error("Image data URL decoded to an empty image");
 		clipboard.writeImage(image);
 	});
-	ipcMain.handle("vetta:clipboard:write-user-message", async (_event, request: unknown): Promise<void> => {
+	ipcMain.handle("astravia:clipboard:write-user-message", async (_event, request: unknown): Promise<void> => {
 		if (!isUserMessageClipboardWriteRequest(request)) {
 			throw new Error("Invalid user message clipboard request");
 		}
 		await writeUserMessageClipboard(request);
 	});
-	ipcMain.handle("vetta:clipboard:paste-user-message", async (_event, sessionId: unknown) => {
+	ipcMain.handle("astravia:clipboard:paste-user-message", async (_event, sessionId: unknown) => {
 		if (typeof sessionId !== "string" || sessionId.trim().length === 0) {
 			throw new Error("Invalid clipboard image cache session");
 		}
@@ -49,8 +49,8 @@ export function registerClipboardIpc(): () => void {
 	});
 
 	return () => {
-		ipcMain.removeHandler("vetta:clipboard:write-image");
-		ipcMain.removeHandler("vetta:clipboard:write-user-message");
-		ipcMain.removeHandler("vetta:clipboard:paste-user-message");
+		ipcMain.removeHandler("astravia:clipboard:write-image");
+		ipcMain.removeHandler("astravia:clipboard:write-user-message");
+		ipcMain.removeHandler("astravia:clipboard:paste-user-message");
 	};
 }

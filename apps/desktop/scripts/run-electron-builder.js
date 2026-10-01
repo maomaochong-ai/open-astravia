@@ -6,7 +6,7 @@ import { pathToFileURL } from "node:url";
 import { LINUX_RELEASE_TARGETS } from "./linux-packaging-contract.mjs";
 import { WINDOWS_RELEASE_TARGETS } from "./windows-packaging-contract.mjs";
 
-const buildStageDir = join(tmpdir(), "vetta-desktop-build");
+const buildStageDir = join(tmpdir(), "astravia-desktop-build");
 const builderConfigPath = join(buildStageDir, "electron-builder.json");
 const runtimeCoreLinuxSandboxDir = join(import.meta.dirname, "..", "..", "..", "packages", "runtime-core", "sandbox", "linux");
 const buildInnoInstallerPath = join(import.meta.dirname, "build-inno-installer.mjs");

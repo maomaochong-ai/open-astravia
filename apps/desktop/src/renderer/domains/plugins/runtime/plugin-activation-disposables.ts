@@ -1,4 +1,4 @@
-import type { Disposable } from "@vetta-org/plugin-sdk";
+import type { Disposable } from "@astravia-org/plugin-sdk";
 
 export function trackActivationDisposable(disposable: Disposable, disposers: Array<() => void>): Disposable {
 	let disposed = false;

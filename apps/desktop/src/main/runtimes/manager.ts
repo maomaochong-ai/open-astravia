@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { chmod } from "node:fs/promises";
 import { delimiter, join } from "node:path";
-import { atomicWriteJSON } from "@vetta/toolkit/atomic-write";
+import { atomicWriteJSON } from "@astravia/toolkit/atomic-write";
 import { getAppLogger } from "../logger.js";
 import { downloadToFile } from "./download.js";
 import { GitToolManager } from "./git-tool.js";
@@ -102,7 +102,7 @@ export class RuntimeManager {
 		delete this.data.systemDetection[type];
 	}
 
-	/** 内置 vendor → ~/.vetta/runtimes 首启安装。返回是否完成 seed。 */
+	/** 内置 vendor → ~/.astravia/runtimes 首启安装。返回是否完成 seed。 */
 	private async seedFromVendor(type: RuntimeType): Promise<boolean> {
 		const entry = platformEntry(type);
 		if (!entry) return false;
@@ -321,8 +321,8 @@ export class RuntimeManager {
 				"import sys",
 				"import tempfile",
 				"",
-				"if os.name == 'nt' and os.environ.get('VETTA_WINDOWS_SANDBOX') == '1':",
-				"    def _vetta_mkdtemp(suffix=None, prefix=None, dir=None):",
+				"if os.name == 'nt' and os.environ.get('ASTRAVIA_WINDOWS_SANDBOX') == '1':",
+				"    def _astravia_mkdtemp(suffix=None, prefix=None, dir=None):",
 				"        prefix, suffix, dir, output_type = tempfile._sanitize_params(prefix, suffix, dir)",
 				"        names = tempfile._get_candidate_names()",
 				"        if output_type is bytes:",
@@ -342,7 +342,7 @@ export class RuntimeManager {
 				"            return os.path.abspath(file)",
 				"        raise FileExistsError(errno.EEXIST, 'No usable temporary directory name found')",
 				"",
-				"    tempfile.mkdtemp = _vetta_mkdtemp",
+				"    tempfile.mkdtemp = _astravia_mkdtemp",
 				"",
 			].join("\n"),
 		);
@@ -588,8 +588,8 @@ export class RuntimeManager {
 		if (process.platform === "win32" && this.isReady("python")) {
 			this.writePipConfig();
 			process.env.PIP_CONFIG_FILE = this.pipConfigPath();
-			process.env.VETTA_MANAGED_PYTHON_SITE_PACKAGES = this.pythonSitePackagesDir();
-			process.env.VETTA_MANAGED_PYTHON_SCRIPTS = this.pipScriptsDir();
+			process.env.ASTRAVIA_MANAGED_PYTHON_SITE_PACKAGES = this.pythonSitePackagesDir();
+			process.env.ASTRAVIA_MANAGED_PYTHON_SCRIPTS = this.pipScriptsDir();
 		}
 		process.env.PIP_INDEX_URL = RUNTIME_MANIFEST.mirrors.pipIndexUrl;
 		process.env.PIP_TRUSTED_HOST = RUNTIME_MANIFEST.mirrors.pipTrustedHost;

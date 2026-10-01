@@ -18,16 +18,16 @@ import {
 const packageRoot = path.dirname(fileURLToPath(import.meta.url));
 const mainEntry = path.join(packageRoot, "dist", "main", "index.js");
 const userDataDir = path.join(packageRoot, ".wdio-electron-user-data");
-const configDirName = ".vetta-e2e";
+const configDirName = ".astravia-e2e";
 const require = createRequire(import.meta.url);
 const packageVersion = (JSON.parse(readFileSync(path.join(packageRoot, "package.json"), "utf8")) as {
 	version: string;
 }).version;
 
 /** Set to `1` to use electron-builder unpacked output (`release/*-unpacked`). */
-const usePackaged = process.env.VETTA_E2E_PACKAGED === "1";
-const packagedArtifactRoot = process.env.VETTA_E2E_PACKAGED_ROOT?.trim()
-	? path.resolve(process.env.VETTA_E2E_PACKAGED_ROOT)
+const usePackaged = process.env.ASTRAVIA_E2E_PACKAGED === "1";
+const packagedArtifactRoot = process.env.ASTRAVIA_E2E_PACKAGED_ROOT?.trim()
+	? path.resolve(process.env.ASTRAVIA_E2E_PACKAGED_ROOT)
 	: packageRoot;
 let updateFeedServer: Server | undefined;
 let stagedAppImageRoot: string | undefined;
@@ -57,7 +57,7 @@ function resolveElectronServiceOptions(): {
 
 	if (usePackaged) {
 		if (process.platform === "linux") {
-			// WDIO drives linux-unpacked/Vetta, but electron-updater only enables its
+			// WDIO drives linux-unpacked/Astravia, but electron-updater only enables its
 			// AppImage provider when the runtime supplies APPIMAGE. Stage a copy so
 			// the updater replacement flow cannot mutate the release artifact uploaded after E2E.
 			const staged = stagePackagedE2eAppImage(packagedArtifactRoot, packageVersion);
@@ -66,7 +66,7 @@ function resolveElectronServiceOptions(): {
 			clearLinuxUnpackedPackageType(packagedArtifactRoot);
 		}
 		return {
-			// Windows release/Vetta.exe is a detached stable launcher. ChromeDriver
+			// Windows release/Astravia.exe is a detached stable launcher. ChromeDriver
 			// must drive the versioned Electron executable that it launches.
 			appBinaryPath: resolvePackagedE2eBinaryPath(packagedArtifactRoot),
 			appArgs: isolationArgs,
@@ -87,10 +87,10 @@ function resolveElectronServiceOptions(): {
 }
 
 // Child Electron inherits these: isolated config dir + skip dev DevTools.
-process.env.VETTA_E2E = "1";
-process.env.VETTA_CONFIG_DIR = process.env.VETTA_CONFIG_DIR ?? configDirName;
-// App data roots under VETTA_HOME; user-data-dir only isolates Chromium profile.
-process.env.VETTA_HOME = process.env.VETTA_HOME ?? path.join(homedir(), configDirName);
+process.env.ASTRAVIA_E2E = "1";
+process.env.ASTRAVIA_CONFIG_DIR = process.env.ASTRAVIA_CONFIG_DIR ?? configDirName;
+// App data roots under ASTRAVIA_HOME; user-data-dir only isolates Chromium profile.
+process.env.ASTRAVIA_HOME = process.env.ASTRAVIA_HOME ?? path.join(homedir(), configDirName);
 
 const electronServiceOptions = resolveElectronServiceOptions();
 const specRetryOptions = resolveElectronE2eSpecRetryOptions({
@@ -136,7 +136,7 @@ export const config = {
 		timeout: 120_000,
 	},
 	onPrepare: async () => {
-		if (!usePackaged || process.env.VETTA_E2E_UPDATE_FEED === "0") return;
+		if (!usePackaged || process.env.ASTRAVIA_E2E_UPDATE_FEED === "0") return;
 		const fixture = await startUpdateFeedFixture({
 			version: packageVersion,
 			downloadable: process.platform === "linux",
@@ -144,7 +144,7 @@ export const config = {
 			metadataDelayMs: 1_000,
 		});
 		updateFeedServer = fixture.server;
-		process.env.VETTA_E2E_UPDATE_URL = fixture.url;
+		process.env.ASTRAVIA_E2E_UPDATE_URL = fixture.url;
 		console.log(`[wdio] packaged E2E update feed: ${fixture.url}`);
 	},
 	onComplete: () => {

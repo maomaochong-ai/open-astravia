@@ -23,8 +23,8 @@ import {
 	teamTaskRecovery,
 	transitionTeamMessageDelivery,
 	transitionTeamWorkItem,
-} from "@vetta/agent-team";
-import type { ConversationDocument, PromptAttachmentRef } from "@vetta/runtime-core";
+} from "@astravia/agent-team";
+import type { ConversationDocument, PromptAttachmentRef } from "@astravia/runtime-core";
 import { TeamOperationQueue } from "./team-operation-queue.js";
 
 export interface TeamCollaborationConversationPort {

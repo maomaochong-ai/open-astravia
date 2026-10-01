@@ -1,5 +1,5 @@
+import type { ConversationMessageAppendedEvent, ConversationTurnEvent } from "@astravia/runtime-core";
 import { createConversationUserMessage } from "@shared/conversation";
-import type { ConversationMessageAppendedEvent, ConversationTurnEvent } from "@vetta/runtime-core";
 import { describe, expect, it } from "vitest";
 import {
 	commitConversationUserMessage,

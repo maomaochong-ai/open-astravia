@@ -454,7 +454,7 @@ describe("legacy session migration", () => {
 });
 
 async function createTemporaryRoot(): Promise<string> {
-	const root = await mkdtemp(join(tmpdir(), "vetta-legacy-migration-"));
+	const root = await mkdtemp(join(tmpdir(), "astravia-legacy-migration-"));
 	temporaryRoots.add(root);
 	return root;
 }

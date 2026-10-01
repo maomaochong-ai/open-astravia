@@ -1,5 +1,5 @@
 {
-	"name": "@vetta/runtime-telemetry",
+	"name": "@astravia/runtime-telemetry",
 	"version": "0.0.1",
 	"type": "module",
 	"main": "./dist/index.js",
@@ -25,8 +25,8 @@
 		"@types/node": "^22.10.5"
 	},
 	"dependencies": {
-		"@vetta/agent-core": "workspace:*",
-		"@vetta/runtime-core": "workspace:*",
+		"@astravia/agent-core": "workspace:*",
+		"@astravia/runtime-core": "workspace:*",
 		"@langfuse/otel": "^5.4.1",
 		"@langfuse/tracing": "^5.4.1",
 		"@opentelemetry/sdk-node": "^0.218.0"

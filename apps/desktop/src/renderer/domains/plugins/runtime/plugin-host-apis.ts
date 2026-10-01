@@ -1,6 +1,3 @@
-import type { InstalledPlugin } from "@preload/api";
-import { activeSessionAtom, languageAtom, openUrlInBrowserAtom } from "@shared/store/atoms";
-import { showToast } from "@shared/store/toast-atoms";
 import type {
 	Disposable,
 	OcrClient,
@@ -18,8 +15,11 @@ import type {
 	PluginJobsApi,
 	PluginMediaApi,
 	PluginSecretsApi,
-} from "@vetta-org/plugin-sdk";
-import { resolveCatalogKey, resolvePluginText } from "@vetta-org/plugin-sdk";
+} from "@astravia-org/plugin-sdk";
+import { resolveCatalogKey, resolvePluginText } from "@astravia-org/plugin-sdk";
+import type { InstalledPlugin } from "@preload/api";
+import { activeSessionAtom, languageAtom, openUrlInBrowserAtom } from "@shared/store/atoms";
+import { showToast } from "@shared/store/toast-atoms";
 import { getDefaultStore } from "jotai";
 import { router } from "../../../router";
 import { normalizeBrowserOpenUrl } from "./browser-open-policy";
@@ -81,7 +81,7 @@ export function createConversationApi(plugin: InstalledPlugin, disposers: Array<
 
 export function createFsApi(plugin: InstalledPlugin, capabilitySessionId: string): PluginFsApi {
 	const permissions = createPermissionApi(plugin);
-	const filesystem = window.vetta.plugins.internalCapabilities.filesystem;
+	const filesystem = window.astravia.plugins.internalCapabilities.filesystem;
 	return {
 		readDir: (dirPath) => {
 			permissions.require("fs.read");
@@ -125,12 +125,12 @@ export function createFsApi(plugin: InstalledPlugin, capabilitySessionId: string
 		},
 		saveAs: (defaultFileName, content, encoding, options) => {
 			permissions.require("fs.write");
-			return window.vetta.dialog.saveData(defaultFileName, content, encoding, options);
+			return window.astravia.dialog.saveData(defaultFileName, content, encoding, options);
 		},
 		watchDirectory: (dirPath, listener) => {
 			permissions.require("fs.read");
-			const unsubscribe = window.vetta.fs.onDirChanged(listener);
-			void window.vetta.fs.watchDir(dirPath).catch((error: unknown) => {
+			const unsubscribe = window.astravia.fs.onDirChanged(listener);
+			void window.astravia.fs.watchDir(dirPath).catch((error: unknown) => {
 				unsubscribe();
 				logPluginRuntimeError(
 					"directory watch failed",
@@ -147,7 +147,7 @@ export function createFsApi(plugin: InstalledPlugin, capabilitySessionId: string
 			return {
 				dispose: () => {
 					unsubscribe();
-					void window.vetta.fs.unwatchDir(dirPath);
+					void window.astravia.fs.unwatchDir(dirPath);
 				},
 			};
 		},
@@ -161,7 +161,7 @@ export function createPluginSecretsApi(
 ): PluginSecretsApi {
 	const permissions = createPermissionApi(plugin);
 	const listeners = new Set<(keys: readonly string[]) => void>();
-	const unsub = subscribePluginSecretsChanged(window.vetta.plugins, plugin.id, (keys) => {
+	const unsub = subscribePluginSecretsChanged(window.astravia.plugins, plugin.id, (keys) => {
 		for (const listener of listeners) listener(keys);
 	});
 	disposers.push(() => {
@@ -171,23 +171,23 @@ export function createPluginSecretsApi(
 	return {
 		get(key: string): Promise<string | undefined> {
 			permissions.require("secrets.read");
-			return window.vetta.plugins.secretsGet(capabilitySessionId, key);
+			return window.astravia.plugins.secretsGet(capabilitySessionId, key);
 		},
 		has(key: string): Promise<boolean> {
 			permissions.require("secrets.read");
-			return window.vetta.plugins.secretsHas(capabilitySessionId, key);
+			return window.astravia.plugins.secretsHas(capabilitySessionId, key);
 		},
 		keys(): Promise<string[]> {
 			permissions.require("secrets.read");
-			return window.vetta.plugins.secretsKeys(capabilitySessionId);
+			return window.astravia.plugins.secretsKeys(capabilitySessionId);
 		},
 		set(key: string, value: string): Promise<void> {
 			permissions.require("secrets.write");
-			return window.vetta.plugins.secretsSet(capabilitySessionId, key, value);
+			return window.astravia.plugins.secretsSet(capabilitySessionId, key, value);
 		},
 		delete(key: string): Promise<void> {
 			permissions.require("secrets.write");
-			return window.vetta.plugins.secretsDelete(capabilitySessionId, key);
+			return window.astravia.plugins.secretsDelete(capabilitySessionId, key);
 		},
 		onChange(listener: (keys: readonly string[]) => void): Disposable {
 			listeners.add(listener);
@@ -198,7 +198,7 @@ export function createPluginSecretsApi(
 
 export function createBrowserApi(plugin: InstalledPlugin, capabilitySessionId: string): PluginBrowserApi {
 	const permissions = createPermissionApi(plugin);
-	const browser = window.vetta.plugins.internalCapabilities.browser;
+	const browser = window.astravia.plugins.internalCapabilities.browser;
 	return {
 		open: (url) => {
 			permissions.require("browser.open");
@@ -264,7 +264,7 @@ export function createMediaApi(
 	pendingRuntimeRegistrations: Promise<void>[],
 ): PluginMediaApi {
 	const permissions = createPermissionApi(plugin);
-	const media = window.vetta.plugins.internalCapabilities.media;
+	const media = window.astravia.plugins.internalCapabilities.media;
 	return {
 		registerProvider: (registration) => {
 			permissions.require("media.provider.register");
@@ -281,7 +281,7 @@ export function createMediaApi(
 				handlerId,
 				registration,
 			});
-			const registrationPromise = window.vetta.plugins
+			const registrationPromise = window.astravia.plugins
 				.registerMediaProvider(plugin.id, {
 					id: registration.id,
 					displayName: registration.displayName?.trim() || undefined,
@@ -301,7 +301,7 @@ export function createMediaApi(
 				if (disposed) return;
 				disposed = true;
 				handlerHandle.dispose();
-				void window.vetta.plugins.unregisterMediaProvider(plugin.id, registration.id, activationId);
+				void window.astravia.plugins.unregisterMediaProvider(plugin.id, registration.id, activationId);
 			};
 			disposers.push(dispose);
 			return { dispose };
@@ -312,7 +312,7 @@ export function createMediaApi(
 		},
 		onProvidersChanged: (listener) => {
 			permissions.require("media.generate");
-			const unsubscribe = window.vetta.plugins.onMediaProvidersChanged(listener);
+			const unsubscribe = window.astravia.plugins.onMediaProvidersChanged(listener);
 			return { dispose: unsubscribe };
 		},
 		submit: (request) => {
@@ -330,7 +330,7 @@ export function createOcrApi(
 	pendingRuntimeRegistrations: Promise<void>[],
 ): OcrClient {
 	const permissions = createPermissionApi(plugin);
-	const ocr = window.vetta.plugins.internalCapabilities.ocr;
+	const ocr = window.astravia.plugins.internalCapabilities.ocr;
 	return {
 		registerProvider: (registration) => {
 			permissions.require("ai.ocr.provider.register");
@@ -339,7 +339,7 @@ export function createOcrApi(
 				throw new Error("OCR provider recognize handler is required");
 			const handlerId = `${registration.id}:${crypto.randomUUID()}`;
 			const handler = registerPluginOcrProviderHandler({ pluginId: plugin.id, handlerId, registration });
-			const promise = window.vetta.plugins
+			const promise = window.astravia.plugins
 				.registerOcrProvider(plugin.id, {
 					id: registration.id,
 					displayName: registration.displayName,
@@ -364,7 +364,7 @@ export function createOcrApi(
 				disposed = true;
 				handler.dispose();
 				void registration.dispose?.();
-				void window.vetta.plugins.unregisterOcrProvider(plugin.id, registration.id, activationId);
+				void window.astravia.plugins.unregisterOcrProvider(plugin.id, registration.id, activationId);
 			};
 			disposers.push(dispose);
 			return { dispose };
@@ -375,7 +375,10 @@ export function createOcrApi(
 		},
 		onProvidersChanged: (listener) => {
 			permissions.require("ai.ocr.recognize");
-			return trackActivationDisposable({ dispose: window.vetta.plugins.onOcrProvidersChanged(listener) }, disposers);
+			return trackActivationDisposable(
+				{ dispose: window.astravia.plugins.onOcrProvidersChanged(listener) },
+				disposers,
+			);
 		},
 		recognize: (request, options) => {
 			permissions.require("ai.ocr.recognize");
@@ -406,7 +409,7 @@ function waitForPoll(ms: number, signal?: AbortSignal): Promise<void> {
 
 export function createJobsApi(plugin: InstalledPlugin, capabilitySessionId: string): PluginJobsApi {
 	const permissions = createPermissionApi(plugin);
-	const jobs = window.vetta.plugins.internalCapabilities.jobs;
+	const jobs = window.astravia.plugins.internalCapabilities.jobs;
 	const idOf = (job: string | { id: string }): string => (typeof job === "string" ? job : job.id);
 	return {
 		get: (job) => {
@@ -437,7 +440,7 @@ export function createJobsApi(plugin: InstalledPlugin, capabilitySessionId: stri
 
 export function createArtifactsApi(plugin: InstalledPlugin, capabilitySessionId: string): PluginArtifactsApi {
 	const permissions = createPermissionApi(plugin);
-	const artifacts = window.vetta.plugins.internalCapabilities.artifacts;
+	const artifacts = window.astravia.plugins.internalCapabilities.artifacts;
 	return {
 		persist: async (artifact, destination) => {
 			permissions.require("media.generate");
@@ -466,7 +469,7 @@ export function createGatewayApi(capabilitySessionId: string): PluginGatewayApi 
 		// 同样按 JSON 归一化：请求体也要过 capability 的 CapabilityJsonValue 校验，
 		// body 里带一个 undefined 字段就会让整次调用被拒（见 toJsonValue）。
 		request: (request) =>
-			window.vetta.plugins.gatewayRequest(capabilitySessionId, toJsonValue(request) as typeof request),
+			window.astravia.plugins.gatewayRequest(capabilitySessionId, toJsonValue(request) as typeof request),
 	};
 }
 
@@ -486,7 +489,7 @@ function toJsonValue(value: unknown): unknown {
 export function createStorageApi(plugin: InstalledPlugin, capabilitySessionId: string) {
 	const requireRead = (): void => createPermissionApi(plugin).require("storage.read");
 	const requireWrite = (): void => createPermissionApi(plugin).require("storage.write");
-	return createPluginStorageApi(capabilitySessionId, window.vetta.plugins, requireRead, requireWrite);
+	return createPluginStorageApi(capabilitySessionId, window.astravia.plugins, requireRead, requireWrite);
 }
 
 export function createI18nApi(plugin: InstalledPlugin): PluginI18nApi {
@@ -573,7 +576,7 @@ let spawnExitSubscribed = false;
 function ensureSpawnExitSubscription(): void {
 	if (spawnExitSubscribed) return;
 	spawnExitSubscribed = true;
-	window.vetta.plugins.onCommandSpawnExit((event) => {
+	window.astravia.plugins.onCommandSpawnExit((event) => {
 		const entry = spawnExitListeners.get(event.spawnId);
 		if (!entry) return;
 		spawnExitListeners.delete(event.spawnId);
@@ -635,18 +638,18 @@ export function createCommandApi(
 		run: (file, args, options) => {
 			permissions.require("agent.command.run");
 			const allowed = assertCommandAllowed(file);
-			return window.vetta.plugins.runCommand(capabilitySessionId, allowed, args ?? [], options);
+			return window.astravia.plugins.runCommand(capabilitySessionId, allowed, args ?? [], options);
 		},
 		spawn: async (file, args, options): Promise<PluginCommandSpawnHandle> => {
 			permissions.require("agent.command.spawn");
 			const allowed = assertCommandAllowed(file);
 			ensureSpawnExitSubscription();
-			const result = await window.vetta.plugins.spawnCommand(capabilitySessionId, allowed, args ?? [], options);
+			const result = await window.astravia.plugins.spawnCommand(capabilitySessionId, allowed, args ?? [], options);
 			let stopped = false;
 			const stop = async (): Promise<void> => {
 				if (stopped) return;
 				stopped = true;
-				await window.vetta.plugins.stopCommandSpawn(capabilitySessionId, result.spawnId);
+				await window.astravia.plugins.stopCommandSpawn(capabilitySessionId, result.spawnId);
 			};
 			// 插件卸载/重载时统一回收（主进程在 reload/disable/uninstall 也会兜底清扫）。
 			disposers.push(() => void stop());
@@ -655,7 +658,7 @@ export function createCommandApi(
 				pid: result.pid,
 				port: result.port,
 				stop,
-				status: () => window.vetta.plugins.getCommandSpawnStatus(capabilitySessionId, result.spawnId),
+				status: () => window.astravia.plugins.getCommandSpawnStatus(capabilitySessionId, result.spawnId),
 				onExit: (listener) => {
 					const entry = spawnExitListeners.get(result.spawnId) ?? {
 						pluginId: plugin.id,
@@ -684,7 +687,7 @@ export function createCaptureApi(plugin: InstalledPlugin, disposers: Array<() =>
 	// （主进程在 reload/disable/uninstall 也会兜底清扫）。
 	const sessionKeys = new Set<string>();
 	disposers.push(() => {
-		for (const key of sessionKeys) void window.vetta.plugins.offscreenRelease(plugin.id, key);
+		for (const key of sessionKeys) void window.astravia.plugins.offscreenRelease(plugin.id, key);
 		sessionKeys.clear();
 	});
 	return {
@@ -693,12 +696,12 @@ export function createCaptureApi(plugin: InstalledPlugin, disposers: Array<() =>
 			if (typeof options?.sessionKey === "string" && options.sessionKey.length > 0) {
 				sessionKeys.add(options.sessionKey);
 			}
-			return window.vetta.plugins.offscreenCapture(plugin.id, options);
+			return window.astravia.plugins.offscreenCapture(plugin.id, options);
 		},
 		releaseOffscreen: (sessionKey) => {
 			permissions.require("capture.offscreen");
 			sessionKeys.delete(sessionKey);
-			return window.vetta.plugins.offscreenRelease(plugin.id, sessionKey);
+			return window.astravia.plugins.offscreenRelease(plugin.id, sessionKey);
 		},
 	};
 }

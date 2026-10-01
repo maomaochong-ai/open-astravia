@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Validate plugin.json through @vetta-org/plugin-sdk, then report optional
+ * Validate plugin.json through @astravia-org/plugin-sdk, then report optional
  * authoring recommendations used by the plugin workbench.
  * Usage: node check-manifest.mjs <pluginRoot>
  */
@@ -41,7 +41,7 @@ async function main() {
 
 	let validated;
 	try {
-		const pluginCliPath = join(root, "node_modules", "@vetta-org", "plugin-vite", "dist", "cli.js");
+		const pluginCliPath = join(root, "node_modules", "@astravia-org", "plugin-vite", "dist", "cli.js");
 		const result = await run(
 			process.execPath,
 			[pluginCliPath, "validate", "--root", root],

@@ -13,7 +13,7 @@ export function resolveElectronE2eServiceOptions({ platform = process.platform, 
 }
 
 export function resolveElectronE2eSpecRetryOptions({
-	packaged = process.env.VETTA_E2E_PACKAGED === "1",
+	packaged = process.env.ASTRAVIA_E2E_PACKAGED === "1",
 } = {}) {
 	const retries = packaged ? 1 : 0;
 	return {

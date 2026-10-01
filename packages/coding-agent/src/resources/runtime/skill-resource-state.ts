@@ -2,7 +2,7 @@ import type { ResourceDiagnostic } from "../contracts/diagnostics.js";
 import type { ResourceAccessPort, ResourceFileInfo } from "../contracts/resource-access.js";
 import { loadSkills, type Skill } from "../skills/index.js";
 
-const PROJECT_CONFIG_DIRECTORY = ".vetta";
+const PROJECT_CONFIG_DIRECTORY = ".astravia";
 const FINGERPRINT_READ_CONCURRENCY = 8;
 
 interface SkillPathInspection {

@@ -8,7 +8,7 @@ import { focusInputEditor, insertFileToken, insertImageToken, removeImageToken }
 import { persistBase64Images } from "./editor/persistImages";
 
 async function readFileSize(path: string): Promise<number | undefined> {
-	const stat = await window.vetta.fs.stat(path).catch(() => null);
+	const stat = await window.astravia.fs.stat(path).catch(() => null);
 	return stat && stat.size > 0 ? stat.size : undefined;
 }
 
@@ -37,7 +37,7 @@ export function useInputBarAttachmentModel({
 }) {
 	const handleSelectImages = useCallback(async () => {
 		if (!hasSession) return;
-		const selected = await window.vetta.dialog.selectImages();
+		const selected = await window.astravia.dialog.selectImages();
 		const paths = await persistBase64Images(selected, activeRuntimeId ?? null, "image-dialog");
 		for (const path of paths) insertImageToken(path);
 		focusInputEditor();
@@ -45,7 +45,7 @@ export function useInputBarAttachmentModel({
 
 	const handleSelectFiles = useCallback(async () => {
 		if (!hasSession) return;
-		const paths = await window.vetta.dialog.selectFiles(effectiveCwd || undefined);
+		const paths = await window.astravia.dialog.selectFiles(effectiveCwd || undefined);
 		const additions: Array<{ path: string; name: string; isDirectory: false; sizeBytes?: number }> = [];
 		for (const path of paths) {
 			if (isImagePath(path)) insertImageToken(path);

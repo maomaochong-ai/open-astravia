@@ -24,7 +24,7 @@ describe("createOfficialBatchTasksApi", () => {
 		};
 		Object.defineProperty(globalThis, "window", {
 			configurable: true,
-			value: { vetta: { plugins: { internalCapabilities: { batchTasks } } } },
+			value: { astravia: { plugins: { internalCapabilities: { batchTasks } } } },
 		});
 		const assertOfficial = vi.fn();
 		const api = createOfficialBatchTasksApi(assertOfficial, "capability-session");

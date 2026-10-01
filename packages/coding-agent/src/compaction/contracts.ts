@@ -1,5 +1,5 @@
-import type { AgentMessage } from "@vetta/agent-core";
-import type { ImageContent, TextContent } from "@vetta/ai";
+import type { AgentMessage } from "@astravia/agent-core";
+import type { ImageContent, TextContent } from "@astravia/ai";
 
 export interface CompactionHistoryEntryBase {
 	readonly type: string;

@@ -67,7 +67,7 @@ assistant/toolResult。
 
 ### 1. Agent Core：通用模型调用暂停点
 
-`@vetta/agent-core` 增加三个检查点原因：
+`@astravia/agent-core` 增加三个检查点原因：
 
 - `model_call`：每次模型调用前，transient transformer 已执行。
 - `assistant_result`：自然完成的 assistant 已发出且 Turn End 已观察。

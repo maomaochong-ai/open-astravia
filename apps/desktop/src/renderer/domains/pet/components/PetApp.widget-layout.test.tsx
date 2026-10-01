@@ -24,12 +24,12 @@ describe("PetApp widget layout", () => {
 	afterEach(() => {
 		vi.useRealTimers();
 		vi.unstubAllGlobals();
-		delete window.vettaPet;
+		delete window.astraviaPet;
 	});
 
 	function installPetBridge(): { dispatch: (command: PetCommand) => void } {
 		let handler: ((command: PetCommand) => void) | undefined;
-		window.vettaPet = {
+		window.astraviaPet = {
 			onCommand: (listener) => {
 				handler = listener;
 				return () => {

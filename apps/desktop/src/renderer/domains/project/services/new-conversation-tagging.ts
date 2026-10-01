@@ -12,5 +12,5 @@ export async function applyActiveTagFilterToNewConversation(sessionPath: string)
 	if (!sessionPath) return;
 	const tagId = conversationFilterTagId(getDefaultStore().get(defaultConversationFilterAtom));
 	if (tagId === null) return;
-	await window.vetta.conversationTags.assign({ sessionPath, tagId, assigned: true });
+	await window.astravia.conversationTags.assign({ sessionPath, tagId, assigned: true });
 }

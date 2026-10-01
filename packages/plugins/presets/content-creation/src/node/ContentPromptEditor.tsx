@@ -1,4 +1,4 @@
-import { useTranslation } from "@vetta-org/plugin-sdk";
+import { useTranslation } from "@astravia-org/plugin-sdk";
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { ImportedContentReference } from "../generation/types";
 import { CONTENT_PROMPT_NODE_OPTIMIZATION_PROFILE } from "../prompt-optimization/prompt-optimization-service";

@@ -1,6 +1,6 @@
 import type { ChatConversationItem } from "@shared/store/atoms";
 import type { ConversationParticipantViewModel } from "@shared/conversation";
-import { ChatExportHostView } from "@vetta-org/theme-ui/chat";
+import { ChatExportHostView } from "@astravia-org/theme-ui/chat";
 import { useChatExportHostModel } from "../hooks/useChatExportHostModel";
 import { ExportMessageList } from "./MessageList";
 

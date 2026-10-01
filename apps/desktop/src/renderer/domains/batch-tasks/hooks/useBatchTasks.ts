@@ -22,7 +22,7 @@ export function useBatchTasks() {
 	const { refreshProjects: refreshConfigProjects } = useProjectActions();
 
 	const refreshProjects = useCallback(async () => {
-		const loadedProjects = await window.vetta.batchTasks.getProjects();
+		const loadedProjects = await window.astravia.batchTasks.getProjects();
 		setProjects(loadedProjects);
 	}, [setProjects]);
 
@@ -39,7 +39,7 @@ export function useBatchTasks() {
 			timeoutMinutes?: number;
 			skill?: SelectedSkill;
 		}) => {
-			const project = await window.vetta.batchTasks.createProject(data);
+			const project = await window.astravia.batchTasks.createProject(data);
 			setProjects((prev) => [...prev, project]);
 			await refreshConfigProjects();
 			return project;
@@ -63,7 +63,7 @@ export function useBatchTasks() {
 				skill?: SelectedSkill | null;
 			},
 		) => {
-			await window.vetta.batchTasks.updateProject(projectId, data);
+			await window.astravia.batchTasks.updateProject(projectId, data);
 			setProjects((prev) =>
 				prev.map((p) => {
 					if (p.id !== projectId) return p;
@@ -106,7 +106,7 @@ export function useBatchTasks() {
 			if (project?.tasks.some((task) => task.status === "running")) {
 				throw new Error(t("error.stopFirst"));
 			}
-			await window.vetta.batchTasks.deleteProject(projectId);
+			await window.astravia.batchTasks.deleteProject(projectId);
 			setProjects((prev) => prev.filter((p) => p.id !== projectId));
 			await refreshConfigProjects();
 		},
@@ -129,28 +129,28 @@ export function useBatchTasks() {
 	);
 
 	const runTask = useCallback(async (projectId: string, taskId: string) => {
-		await window.vetta.batchTasks.runTask(projectId, taskId);
+		await window.astravia.batchTasks.runTask(projectId, taskId);
 	}, []);
 
 	const retryTask = useCallback(async (projectId: string, taskId: string) => {
-		await window.vetta.batchTasks.retryTask(projectId, taskId);
+		await window.astravia.batchTasks.retryTask(projectId, taskId);
 	}, []);
 
 	const stopTask = useCallback(async (projectId: string, taskId: string) => {
-		await window.vetta.batchTasks.stopTask(projectId, taskId);
+		await window.astravia.batchTasks.stopTask(projectId, taskId);
 	}, []);
 
 	const resumeTask = useCallback(async (projectId: string, taskId: string) => {
-		await window.vetta.batchTasks.resumeTask(projectId, taskId);
+		await window.astravia.batchTasks.resumeTask(projectId, taskId);
 	}, []);
 
 	const resumeTaskWithText = useCallback(async (projectId: string, taskId: string, text: string) => {
-		await window.vetta.batchTasks.resumeTaskWithText(projectId, taskId, text);
+		await window.astravia.batchTasks.resumeTaskWithText(projectId, taskId, text);
 	}, []);
 
 	const deleteTask = useCallback(
 		async (projectId: string, taskId: string) => {
-			await window.vetta.batchTasks.deleteTask(projectId, taskId);
+			await window.astravia.batchTasks.deleteTask(projectId, taskId);
 			setProjects((prev) =>
 				prev.map((p) =>
 					p.id === projectId ? { ...p, tasks: p.tasks.filter((t) => t.id !== taskId), updatedAt: Date.now() } : p,
@@ -162,38 +162,38 @@ export function useBatchTasks() {
 
 	const batchDelete = useCallback(
 		async (projectId: string) => {
-			await window.vetta.batchTasks.batchDelete(projectId);
+			await window.astravia.batchTasks.batchDelete(projectId);
 			await refreshProjects();
 		},
 		[refreshProjects],
 	);
 
 	const deleteSession = useCallback(async (sessionPath: string) => {
-		await window.vetta.batchTasks.deleteSession(sessionPath);
+		await window.astravia.batchTasks.deleteSession(sessionPath);
 	}, []);
 
 	const batchStart = useCallback(async (projectId: string) => {
-		await window.vetta.batchTasks.batchStart(projectId);
+		await window.astravia.batchTasks.batchStart(projectId);
 	}, []);
 
 	const batchStop = useCallback(async (projectId: string) => {
-		await window.vetta.batchTasks.batchStop(projectId);
+		await window.astravia.batchTasks.batchStop(projectId);
 	}, []);
 
 	const batchReset = useCallback(
 		async (projectId: string) => {
-			await window.vetta.batchTasks.batchReset(projectId);
+			await window.astravia.batchTasks.batchReset(projectId);
 			await refreshProjects();
 		},
 		[refreshProjects],
 	);
 
 	const batchResetFailed = useCallback(async (projectId: string, taskIds: string[]) => {
-		await window.vetta.batchTasks.batchResetFailed(projectId, taskIds);
+		await window.astravia.batchTasks.batchResetFailed(projectId, taskIds);
 	}, []);
 
 	useEffect(() => {
-		const unsubscribe = window.vetta.batchTasks.onTaskEvent((event) => {
+		const unsubscribe = window.astravia.batchTasks.onTaskEvent((event) => {
 			console.log(`[BatchTaskRenderer] Event received: ${event.type}`, event);
 
 			// 维护后端调度器排队中的 taskId 集合

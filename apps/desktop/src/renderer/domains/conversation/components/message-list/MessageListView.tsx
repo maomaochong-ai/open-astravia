@@ -1,4 +1,4 @@
-import { MessageFeed, MessageFeedLayout } from "@vetta-org/theme-ui/chat";
+import { MessageFeed, MessageFeedLayout } from "@astravia-org/theme-ui/chat";
 import { Button } from "@shared/components/ui/button";
 import { useMessageFeedActiveItem } from "@shared/components/message-feed/useMessageFeedActiveItem";
 import { PerfMessageScrollProfiler } from "@shared/lib/perf-message-scroll-profiler";
@@ -14,7 +14,7 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { ListItem, ListRange, SizeFunction } from "react-virtuoso";
-import type { Usage } from "@vetta/ai/protocol";
+import type { Usage } from "@astravia/ai/protocol";
 import { conversationItemRenderKey } from "@shared/conversation";
 import { MessageRow } from "./MessageRendering";
 import { MessageItem, ModelSwitchBoundary, ExportMessageList } from "./MessageItem";

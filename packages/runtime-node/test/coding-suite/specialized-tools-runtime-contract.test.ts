@@ -90,7 +90,7 @@ describe("runtime specialized tool contracts", () => {
 		await writeFile(join(cwd, "source.html"), "<p>test</p>", "utf8");
 		const calls: Array<{ executable: string; args: readonly string[] }> = [];
 		const desktop: DesktopCommandPort = {
-			locate: async () => ({ path: "Vetta.exe" }),
+			locate: async () => ({ path: "Astravia.exe" }),
 			async run(executable, args) {
 				calls.push({ executable, args });
 				return {
@@ -111,7 +111,7 @@ describe("runtime specialized tool contracts", () => {
 
 		expect(calls).toEqual([
 			{
-				executable: "Vetta.exe",
+				executable: "Astravia.exe",
 				args: [
 					"--html-to-pdf",
 					join(cwd, "source.html"),
@@ -188,7 +188,7 @@ describe("runtime specialized tool contracts", () => {
 		const desktopCalls: readonly string[][] = [];
 		const mutableDesktopCalls = desktopCalls as string[][];
 		const desktop: DesktopCommandPort = {
-			locate: async () => ({ path: "Vetta.exe" }),
+			locate: async () => ({ path: "Astravia.exe" }),
 			async run(_executable, args) {
 				mutableDesktopCalls.push([...args]);
 				return { code: 0, stdout: JSON.stringify({ ok: true, output: outputPath }), stderr: "" };
@@ -251,14 +251,14 @@ describe("runtime specialized tool contracts", () => {
 });
 
 async function temporaryDirectory(label: string): Promise<string> {
-	const directory = await mkdtemp(join(tmpdir(), `vetta-specialized-tools-${label}-`));
+	const directory = await mkdtemp(join(tmpdir(), `astravia-specialized-tools-${label}-`));
 	temporaryDirectories.push(directory);
 	return directory;
 }
 
 function successfulDesktop(outputPath: string, prefix = ""): DesktopCommandPort {
 	return {
-		locate: async () => ({ path: "Vetta.exe" }),
+		locate: async () => ({ path: "Astravia.exe" }),
 		run: async () => ({
 			code: 0,
 			stdout: `${prefix}${JSON.stringify({ ok: true, output: outputPath })}`,

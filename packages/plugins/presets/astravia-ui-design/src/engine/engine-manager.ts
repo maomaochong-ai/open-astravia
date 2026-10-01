@@ -1,0 +1,550 @@
+/**
+ * Shared design-engine lifecycle (ADR-0053/0054):
+ *
+ * 1. Migrate the legacy ~/.astravia/design-engine directory into this plugin's
+ *    data namespace, then materialize the engine template there via `node -e`.
+ * 2. One-time `npm ci` through ctx.command.spawn against the materialized
+ *    package-lock.json (the managed runtime env points npm at the configured
+ *    mirror and shared cache — see createPluginCommandEnvironment).
+ * 3. One vite dev server per open design (host-allocated port, {{PORT}}
+ *    substitution), stopped when the canvas leaves the design.
+ */
+import type {
+	Disposable,
+	PluginCommandSpawnExit,
+	PluginCommandSpawnHandle,
+	PluginContext,
+} from "@astravia-org/plugin-sdk";
+import { designPackageJson, needsDependencyInstall, PACKAGE_FILE } from "../astravia-design/design-package";
+import { sanitizeDesignName } from "../astravia-design/scaffold";
+import { ENGINE_FILES, engineFilesHash } from "./engine-files";
+import { ENGINE_VERSION } from "./engine-version";
+import { machineLocalPath, machineOf, qualifyLike, routeOf } from "../history/machine";
+import { base64FromText, transferPayload } from "../shared/payload-transfer";
+
+export type EngineProgress =
+	| { phase: "checking" }
+	| { phase: "materializing" }
+	| { phase: "installing"; outputTail: string }
+	/** 这份设计自己声明的第三方依赖（ADR-0068），与引擎依赖分开报：等的是两件事。 */
+	| { phase: "installing-design"; outputTail: string }
+	| { phase: "starting" };
+
+export interface EngineServer {
+	port: number;
+	handle: PluginCommandSpawnHandle;
+	designDir: string;
+	/** 可重放的退出信号：即使 Canvas 在 HTTP ready 之后才订阅，也不会错过早退。 */
+	whenExited: Promise<PluginCommandSpawnExit>;
+}
+
+const BOOTSTRAP_SCRIPT = [
+	"const fs=require('fs'),p=require('path');",
+	"const root=process.env.ASTRAVIA_DESIGN_ENGINE_ROOT;",
+	"if(!root)throw new Error('ASTRAVIA_DESIGN_ENGINE_ROOT missing');",
+	"const payload=process.env.ASTRAVIA_DESIGN_ENGINE_PAYLOAD;",
+	"if(!payload)throw new Error('ASTRAVIA_DESIGN_ENGINE_PAYLOAD missing');",
+	"const files=JSON.parse(fs.readFileSync(payload,'utf8'));",
+	"for(const[rel,content]of Object.entries(files)){",
+	"const t=p.join(root,rel);fs.mkdirSync(p.dirname(t),{recursive:true});fs.writeFileSync(t,content,'utf8');",
+	"}",
+	"fs.writeFileSync(p.join(root,'.files-hash'),process.env.ASTRAVIA_DESIGN_ENGINE_HASH??'','utf8');",
+	"fs.rmSync(payload,{force:true});",
+	"console.log('ok');",
+].join("");
+
+const MIGRATE_SCRIPT = [
+	"const fs=require('fs'),p=require('path');",
+	"const legacy=process.env.ASTRAVIA_DESIGN_ENGINE_LEGACY,newBase=process.env.ASTRAVIA_DESIGN_ENGINE_BASE;",
+	"if(!legacy||!newBase)throw new Error('engine migration env missing');",
+	"if(!fs.existsSync(legacy)){process.stdout.write('absent');process.exit(0)}",
+	"fs.mkdirSync(p.dirname(newBase),{recursive:true});",
+	"if(!fs.existsSync(newBase)){fs.renameSync(legacy,newBase);process.stdout.write('moved');process.exit(0)}",
+	"for(const ent of fs.readdirSync(legacy,{withFileTypes:true})){",
+	"if(!ent.isDirectory()||!/^\\d+\\.\\d+\\.\\d+$/.test(ent.name))continue;",
+	"const from=p.join(legacy,ent.name),to=p.join(newBase,ent.name);",
+	"if(!fs.existsSync(to))fs.renameSync(from,to);",
+	"}",
+	"if(fs.readdirSync(legacy).length===0)fs.rmdirSync(legacy);",
+	"process.stdout.write('merged');",
+].join("");
+
+const ENGINE_READY_SCRIPT = [
+	"const fs=require('fs'),p=require('path');",
+	"const root=process.env.ASTRAVIA_DESIGN_ENGINE_ROOT;",
+	"if(!root)throw new Error('ASTRAVIA_DESIGN_ENGINE_ROOT missing');",
+	"let hash=null;",
+	"try{hash=fs.readFileSync(p.join(root,'.files-hash'),'utf8')}catch(err){if(err.code!=='ENOENT')throw err}",
+	"const vite=fs.existsSync(p.join(root,'node_modules','vite','package.json'));",
+	"process.stdout.write(JSON.stringify({hash,vite}));",
+].join("");
+
+/**
+ * 删掉插件数据目录下除当前版本外的引擎版本目录。
+ *
+ * 分版本目录是为了让引擎升级不去动可能正在跑的旧树（见 engine-version.ts），代价
+ * 是旧版本会一直堆着——一份 node_modules 就是 90M+，实测两个版本 175M。回收放在
+ * 新版本已经确认能跑之后，所以「装到一半失败」不会把人卡在没有引擎的状态。
+ *
+ * 只删目录名长得像版本号的，别的一律不碰：这个目录是用户的，万一有人往里放了东西
+ * 不该被顺手清掉。
+ */
+const PRUNE_SCRIPT = [
+	"const fs=require('fs'),p=require('path');",
+	"const base=process.env.ASTRAVIA_DESIGN_ENGINE_BASE,keep=process.env.ASTRAVIA_DESIGN_ENGINE_KEEP;",
+	"if(!base||!keep)throw new Error('prune env missing');",
+	"for(const name of fs.readdirSync(base)){",
+	"if(name===keep||!/^\\d+\\.\\d+\\.\\d+$/.test(name))continue;",
+	"fs.rmSync(p.join(base,name),{recursive:true,force:true});",
+	"}",
+	"console.log('ok');",
+].join("");
+
+// 引擎物化在设计稿所在的那台机器上，所以这些缓存都按机器分；同一会话里在本地与
+// 远程项目之间切换时，两边各有一份，不会互相串。
+const homeByMachine = new Map<string, string>();
+const migrationByMachine = new Map<string, Promise<void>>();
+const ensureByMachine = new Map<string, Promise<string>>();
+const servers = new Map<string, EngineServer>();
+
+function engineBaseDir(home: string): string {
+	return `${home}/.astravia/plugin-data/astravia-ui-design/design-engine`;
+}
+
+function legacyEngineBaseDir(home: string): string {
+	return `${home}/.astravia/design-engine`;
+}
+
+async function resolveHome(ctx: PluginContext, route: string): Promise<string> {
+	const machine = machineOf(route);
+	const cached = homeByMachine.get(machine);
+	if (cached) return cached;
+	const result = await ctx.command.run("node", ["-p", "require('os').homedir()"], { cwd: routeOf(route) });
+	const home = result.stdout.trim();
+	if (result.exitCode !== 0 || !home) {
+		// 远端没装 node 时也走这里；说清是哪台机器，否则看起来像本机坏了。
+		const where = machine === "local" ? "this computer" : machine;
+		throw new Error(`the design engine needs node on ${where}: ${result.stderr || result.stdout}`);
+	}
+	homeByMachine.set(machine, home);
+	return home;
+}
+
+/**
+ * 引擎目录。`route` 是设计稿的位置，决定引擎装在哪台机器上——预览服务器要读设计稿，
+ * 两者必须同机。返回的路径带着归属，好让后续命令继续被分流到同一台。
+ */
+export async function engineRootDir(ctx: PluginContext, route: string): Promise<string> {
+	const home = await resolveHome(ctx, route);
+	const machine = machineOf(route);
+	let migration = migrationByMachine.get(machine);
+	if (!migration) {
+		migration = migrateLegacyEngine(ctx, home, route).catch((error: unknown) => {
+			migrationByMachine.delete(machine);
+			throw error;
+		});
+		migrationByMachine.set(machine, migration);
+	}
+	await migration;
+	return qualifyLike(route, `${engineBaseDir(home)}/${ENGINE_VERSION}`);
+}
+
+export async function migrateLegacyEngine(ctx: PluginContext, home: string, route: string): Promise<void> {
+	const result = await ctx.command.run("node", ["-e", MIGRATE_SCRIPT], {
+		cwd: routeOf(route),
+		env: {
+			ASTRAVIA_DESIGN_ENGINE_LEGACY: legacyEngineBaseDir(home),
+			ASTRAVIA_DESIGN_ENGINE_BASE: engineBaseDir(home),
+		},
+		timeoutMs: 30_000,
+	});
+	if (result.exitCode !== 0) {
+		throw new Error(`engine migration failed: ${result.stderr || result.stdout}`);
+	}
+}
+
+
+/** 仅供测试：模板体量与传输方式的回归点，见 test/payload-transfer.test.ts。 */
+export const materializeEngineForTest = (ctx: PluginContext, engineRoot: string, route: string): Promise<void> =>
+	materializeEngine(ctx, engineRoot, route);
+
+async function materializeEngine(ctx: PluginContext, engineRoot: string, route: string): Promise<void> {
+	// 模板有几百 KB，塞不进一个环境变量（Linux 单个字符串上限 128 KB），先分块送成一个文件。
+	const payloadPath = `${machineLocalPath(engineRoot)}.files.json`;
+	await transferPayload(ctx, {
+		route,
+		target: payloadPath,
+		payload: base64FromText(JSON.stringify(ENGINE_FILES)),
+		label: "engine materialize",
+	});
+	const result = await ctx.command.run("node", ["-e", BOOTSTRAP_SCRIPT], {
+		// 用设计稿的位置而不是 engineRoot：cwd 在这里只负责把命令发到对的机器上，而远端执行
+		// 会先 `cd` 进去——引擎目录正是这条命令要创建的东西，此刻它还不存在。
+		cwd: routeOf(route),
+		env: {
+			ASTRAVIA_DESIGN_ENGINE_ROOT: machineLocalPath(engineRoot),
+			ASTRAVIA_DESIGN_ENGINE_PAYLOAD: payloadPath,
+			ASTRAVIA_DESIGN_ENGINE_HASH: engineFilesHash(),
+		},
+		timeoutMs: 30_000,
+	});
+	if (result.exitCode !== 0) {
+		throw new Error(`engine materialize failed: ${result.stderr || result.stdout}`);
+	}
+}
+
+/**
+ * 跑一次 npm 并把输出尾巴喂给进度回调。
+ *
+ * 引擎依赖与设计依赖共用：两者的区别只有 cwd、参数和报给用户的阶段名，而进程收尾
+ * （轮询、退出码、清定时器）一模一样，各写一份迟早只在其中一份里修 bug。
+ */
+async function runNpm(
+	ctx: PluginContext,
+	cwd: string,
+	args: readonly string[],
+	onOutput: (outputTail: string) => void,
+): Promise<string> {
+	const handle = await ctx.command.spawn("npm", [...args], { cwd });
+	let done = false;
+	let lastTail = "";
+	const poll = window.setInterval(() => {
+		void handle.status().then((status) => {
+			if (done) return;
+			lastTail = status.recentOutput.split("\n").filter(Boolean).slice(-3).join("\n");
+			onOutput(lastTail);
+		});
+	}, 1_500);
+	try {
+		await new Promise<void>((resolveInstall, rejectInstall) => {
+			handle.onExit((exit) => {
+				done = true;
+				if (exit.exitCode === 0) resolveInstall();
+				else {
+					void handle.status().then((status) => {
+						const tail = status.recentOutput.split("\n").filter(Boolean).slice(-8).join("\n");
+						rejectInstall(new Error(`npm ${args[0]} exited with ${exit.exitCode ?? exit.signal}\n${tail}`));
+					});
+				}
+			});
+		});
+	} finally {
+		window.clearInterval(poll);
+	}
+	const final = await handle.status().catch(() => null);
+	return final ? final.recentOutput.split("\n").filter(Boolean).slice(-8).join("\n") : lastTail;
+}
+
+async function installDependencies(
+	ctx: PluginContext,
+	engineRoot: string,
+	onProgress: (progress: EngineProgress) => void,
+): Promise<void> {
+	// `ci` 而不是 `install`：模板连 package-lock.json 一起 materialize，所以这里的树
+	// 永远与 lock 同源，不需要再向 registry 解析一遍版本范围。--prefer-offline 让第二个
+	// 引擎版本直接吃托管 npm 缓存。
+	await runNpm(ctx, engineRoot, ["ci", "--no-audit", "--no-fund", "--prefer-offline"], (outputTail) => {
+		onProgress({ phase: "installing", outputTail });
+	});
+}
+
+/**
+ * 把第三方包装进这一份设计（ADR-0068）。
+ *
+ * cwd 是设计包目录本身，所以 npm 会就地改写 `x.astravia-design/package.json` 的 dependencies
+ * 并写出 lock——两者都是设计源码，跟着设计走。装进去的 node_modules 是生成物。
+ *
+ * 不带 `--ignore-scripts`：与用户在自己项目里装依赖同一个信任层级，见 ADR-0068。
+ */
+export async function installDesignDependencies(
+	ctx: PluginContext,
+	designDir: string,
+	packages: readonly string[],
+	onProgress: (progress: EngineProgress) => void,
+): Promise<string> {
+	await ensureDesignPackageFile(ctx, designDir);
+	return runNpm(ctx, designDir, ["install", ...packages, "--no-audit", "--no-fund"], (outputTail) => {
+		onProgress({ phase: "installing-design", outputTail });
+	});
+}
+
+/**
+ * 声明了依赖但还没装（刚从 .astravia-design-share 导入、或从 git clone 下来）时补装一次。
+ *
+ * 放在起 dev server 之前：vite 首次 import 解析不到包就是一帧构建失败，而用户看到的
+ * 是一张红色报错，不知道只是还没装。
+ */
+export async function ensureDesignDependencies(
+	ctx: PluginContext,
+	designDir: string,
+	onProgress: (progress: EngineProgress) => void,
+): Promise<void> {
+	if (!(await needsDependencyInstall(ctx.fs, designDir))) return;
+	onProgress({ phase: "installing-design", outputTail: "" });
+	await runNpm(ctx, designDir, ["install", "--no-audit", "--no-fund"], (outputTail) => {
+		onProgress({ phase: "installing-design", outputTail });
+	});
+}
+
+/** 老设计（ADR-0068 之前建的）没有 package.json，装第一个包时补上。 */
+async function ensureDesignPackageFile(ctx: PluginContext, designDir: string): Promise<void> {
+	if ((await ctx.fs.stat(`${designDir}/${PACKAGE_FILE}`)) !== null) return;
+	const base = designDir.replaceAll("\\", "/").split("/").pop() ?? "design";
+	await ctx.fs.writeFile(`${designDir}/${PACKAGE_FILE}`, designPackageJson(sanitizeDesignName(base)));
+}
+
+async function pruneOldEngines(ctx: PluginContext, route: string): Promise<void> {
+	const home = await resolveHome(ctx, route);
+	await ctx.command.run("node", ["-e", PRUNE_SCRIPT], {
+		cwd: routeOf(route),
+		env: {
+			ASTRAVIA_DESIGN_ENGINE_BASE: engineBaseDir(home),
+			ASTRAVIA_DESIGN_ENGINE_KEEP: ENGINE_VERSION,
+		},
+		timeoutMs: 30_000,
+	});
+}
+
+export async function engineReady(ctx: PluginContext, engineRoot: string, route: string): Promise<boolean> {
+	const result = await ctx.command.run("node", ["-e", ENGINE_READY_SCRIPT], {
+		// 同 materializeEngine：这条命令要回答的正是「引擎目录在不在」，拿它当工作目录会让
+		// 首次检查必然失败在 `cd` 上。
+		cwd: routeOf(route),
+		env: { ASTRAVIA_DESIGN_ENGINE_ROOT: machineLocalPath(engineRoot) },
+		timeoutMs: 30_000,
+	});
+	if (result.exitCode !== 0) {
+		throw new Error(`engine readiness check failed: ${result.stderr || result.stdout}`);
+	}
+	const readiness = JSON.parse(result.stdout) as unknown;
+	if (
+		typeof readiness !== "object" ||
+		readiness === null ||
+		!("hash" in readiness) ||
+		!("vite" in readiness) ||
+		(readiness.hash !== null && typeof readiness.hash !== "string") ||
+		typeof readiness.vite !== "boolean"
+	) {
+		throw new Error("engine readiness check returned invalid output");
+	}
+	return readiness.hash === engineFilesHash() && readiness.vite;
+}
+
+/**
+ * Idempotent, deduplicated across callers. Resolves to the engine root once
+ * files are materialized and node_modules is present.
+ */
+export function ensureEngine(
+	ctx: PluginContext,
+	onProgress: (progress: EngineProgress) => void,
+	route: string,
+): Promise<string> {
+	const machine = machineOf(route);
+	const existing = ensureByMachine.get(machine);
+	if (existing) return existing;
+	const run = async (): Promise<string> => {
+		onProgress({ phase: "checking" });
+		const engineRoot = await engineRootDir(ctx, route);
+		if (await engineReady(ctx, engineRoot, route)) {
+			await pruneOldEngines(ctx, route).catch(() => {
+				// 清不掉只是占着磁盘，不该拦住画布。
+			});
+			return engineRoot;
+		}
+		onProgress({ phase: "materializing" });
+		await materializeEngine(ctx, engineRoot, route);
+		const viteInstalled = await engineReady(ctx, engineRoot, route);
+		if (!viteInstalled) {
+			onProgress({ phase: "installing", outputTail: "" });
+			await installDependencies(ctx, engineRoot, onProgress);
+		}
+		if (!(await engineReady(ctx, engineRoot, route))) {
+			throw new Error("engine install incomplete (vite missing after npm install)");
+		}
+		await pruneOldEngines(ctx, route).catch(() => {
+			// 同上：新版本已经能跑了，回收失败不值得让整条链路失败。
+		});
+		return engineRoot;
+	};
+	const pending = run().catch((error: unknown) => {
+		// Failed attempts must not poison later retries.
+		ensureByMachine.delete(machine);
+		throw error;
+	});
+	ensureByMachine.set(machine, pending);
+	return pending;
+}
+
+async function waitForHttpReady(port: number, timeoutMs: number): Promise<void> {
+	const deadline = Date.now() + timeoutMs;
+	let lastError: unknown = null;
+	while (Date.now() < deadline) {
+		try {
+			const response = await fetch(`http://127.0.0.1:${port}/`, { cache: "no-store" });
+			if (response.ok) return;
+			lastError = new Error(`HTTP ${response.status}`);
+		} catch (error) {
+			lastError = error;
+		}
+		await new Promise((resolveDelay) => window.setTimeout(resolveDelay, 400));
+	}
+	throw new Error(`design engine did not become ready: ${String(lastError)}`);
+}
+
+/**
+ * 把 SDK 的一次性退出事件提升成可重放 Promise，并用 status 补上“进程已退出、监听刚
+ * 注册”的窄竞态。status 在插件重载时可能因旧 capability session 失效而拒绝；此时
+ * 宿主的全局退出事件仍是主路径，所以这里只忽略探测失败。
+ */
+export function waitForSpawnExit(handle: PluginCommandSpawnHandle): Promise<PluginCommandSpawnExit> {
+	return new Promise((resolve) => {
+		let settled = false;
+		let subscription: Disposable | null = null;
+		const finish = (exit: PluginCommandSpawnExit): void => {
+			if (settled) return;
+			settled = true;
+			subscription?.dispose();
+			resolve(exit);
+		};
+		subscription = handle.onExit(finish);
+		if (settled) subscription.dispose();
+		void handle
+			.status()
+			.then((status) => {
+				if (!status.running && status.exit) finish(status.exit);
+			})
+			.catch(() => undefined);
+	});
+}
+
+function describeSpawnExit(exit: PluginCommandSpawnExit): string {
+	return exit.exitCode === null
+		? `design engine exited with signal ${exit.signal ?? "unknown"}`
+		: `design engine exited with code ${exit.exitCode}`;
+}
+
+/** Start (or reuse) the vite dev server serving one design dir. */
+export async function startDesignServer(
+	ctx: PluginContext,
+	designDir: string,
+	onProgress: (progress: EngineProgress) => void,
+): Promise<EngineServer> {
+	const existing = servers.get(designDir);
+	if (existing) {
+		const status = await existing.handle.status();
+		if (status.running) return existing;
+		servers.delete(designDir);
+	}
+	// 预览服务器必须和设计稿同机，否则它读不到任何设计文件。engineRoot 带着归属，宿主据此
+	// 把 vite 起到那台机器上；端口也在那边分配，再由宿主转发回本机——界面只能连本机。
+	const engineRoot = await ensureEngine(ctx, onProgress, designDir);
+	await ensureDesignDependencies(ctx, designDir, onProgress);
+	onProgress({ phase: "starting" });
+	const handle = await ctx.command.spawn(
+		"node",
+		["node_modules/vite/bin/vite.js", "--port", "{{PORT}}", "--strictPort", "--clearScreen", "false"],
+		{
+			cwd: engineRoot,
+			env: { ASTRAVIA_DESIGN_SRC: machineLocalPath(designDir) },
+			allocatePort: true,
+		},
+	);
+	if (handle.port === undefined) {
+		await handle.stop();
+		throw new Error("host did not allocate a port for the design engine");
+	}
+	const server: EngineServer = {
+		port: handle.port,
+		handle,
+		designDir,
+		whenExited: waitForSpawnExit(handle),
+	};
+	servers.set(designDir, server);
+	void server.whenExited.then(() => {
+		if (servers.get(designDir) === server) servers.delete(designDir);
+	});
+	try {
+		await Promise.race([
+			waitForHttpReady(handle.port, 30_000),
+			server.whenExited.then((exit) => {
+				throw new Error(describeSpawnExit(exit));
+			}),
+		]);
+	} catch (error) {
+		const status = await handle.status().catch(() => null);
+		await stopDesignServer(designDir);
+		const tail = status?.recentOutput.split("\n").filter(Boolean).slice(-5).join("\n") ?? "";
+		throw new Error(`${error instanceof Error ? error.message : String(error)}${tail ? `\n${tail}` : ""}`);
+	}
+	return server;
+}
+
+export function getDesignServer(designDir: string): EngineServer | null {
+	return servers.get(designDir) ?? null;
+}
+
+export async function stopDesignServer(designDir: string): Promise<void> {
+	const server = servers.get(designDir);
+	if (!server) return;
+	servers.delete(designDir);
+	await server.handle.stop();
+}
+
+export async function stopAllDesignServers(): Promise<void> {
+	await Promise.all([...servers.keys()].map((designDir) => stopDesignServer(designDir)));
+}
+
+/** One-shot production build of a design (for export snapshots). */
+export async function buildDesign(ctx: PluginContext, designDir: string, outDir: string): Promise<void> {
+	const engineRoot = await ensureEngine(ctx, () => {}, designDir);
+	// 导出快照走的是同一棵依赖树：设计声明了包却没装，这里会以构建失败告终。
+	await ensureDesignDependencies(ctx, designDir, () => {});
+	const handle = await ctx.command.spawn(
+		"node",
+		["node_modules/vite/bin/vite.js", "build", "--outDir", outDir, "--emptyOutDir"],
+		{
+			cwd: engineRoot,
+			env: { ASTRAVIA_DESIGN_SRC: machineLocalPath(designDir) },
+		},
+	);
+	await new Promise<void>((resolveBuild, rejectBuild) => {
+		handle.onExit((exit) => {
+			if (exit.exitCode === 0) resolveBuild();
+			else {
+				void handle.status().then((status) => {
+					const tail = status.recentOutput.split("\n").filter(Boolean).slice(-8).join("\n");
+					rejectBuild(new Error(`vite build failed (${exit.exitCode ?? exit.signal})\n${tail}`));
+				});
+			}
+		});
+	});
+}
+
+/**
+ * Diagnostic snapshot for astravia_design_status.
+ *
+ * The tail is deliberately short and de-ANSI'd: this ships to the model on every
+ * astravia_design_status call, and vite's raw output is mostly colour escapes wrapped
+ * around routine chatter ("Re-optimizing dependencies…"). Eight clean lines
+ * still carry the one thing worth reading here — the last real failure.
+ */
+export async function engineDiagnostics(designDir: string | null): Promise<{
+	running: boolean;
+	port: number | null;
+	recentOutput: string;
+}> {
+	const server = designDir ? servers.get(designDir) : null;
+	if (!server) return { running: false, port: null, recentOutput: "" };
+	const status = await server.handle.status();
+	return {
+		running: status.running,
+		port: server.port,
+		recentOutput: status.recentOutput
+			// biome-ignore lint/suspicious/noControlCharactersInRegex: stripping ANSI escapes is exactly what this does
+			.replace(/\u001b\[[0-9;]*m/g, "")
+			.split("\n")
+			.filter((line) => line.trim().length > 0)
+			.slice(-8)
+			.join("\n"),
+	};
+}

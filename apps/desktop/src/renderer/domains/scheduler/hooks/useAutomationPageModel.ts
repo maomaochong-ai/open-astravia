@@ -68,10 +68,10 @@ export function useAutomationPageModel(): AutomationPageModel {
 	}, [setHeaderTitleHidden]);
 
 	useEffect(() => {
-		void window.vetta.scheduler.getRunningTaskIds().then((ids) => {
+		void window.astravia.scheduler.getRunningTaskIds().then((ids) => {
 			setRunningTaskIds(new Set(ids));
 		});
-		return window.vetta.scheduler.onTaskEvent((event) => {
+		return window.astravia.scheduler.onTaskEvent((event) => {
 			if (event.type === "tasks.changed") return;
 			setRunningTaskIds((prev) => {
 				const next = new Set(prev);

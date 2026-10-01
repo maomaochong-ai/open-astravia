@@ -15,7 +15,7 @@ const formatRaws = (label: string, items: string[]): string =>
 
 /**
  * 渲染本轮任务 prompt。给出每个文件的绝对路径，避免 agent 因 cwd 非知识库根而拼错相对路径。
- * @param root 知识库根目录（默认 ~/.vetta/knowledges）。
+ * @param root 知识库根目录（默认 ~/.astravia/knowledges）。
  */
 export function buildProcessingPrompt(diff: RawsDiff, root: string, tmpDir?: string): string {
 	const rawsBase = rawsDir(root);

@@ -1,4 +1,4 @@
-import type { Api, Model } from "@vetta/ai";
+import type { Api, Model } from "@astravia/ai";
 
 /** Composition 对宿主模型目录的最小依赖。 */
 export interface CodingAgentRuntimeModelSource {

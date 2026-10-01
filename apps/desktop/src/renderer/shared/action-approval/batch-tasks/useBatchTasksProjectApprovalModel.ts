@@ -238,7 +238,7 @@ export function useBatchTasksProjectApprovalModel(): BatchTasksProjectApprovalMo
 			return;
 		}
 		let cancelled = false;
-		void window.vetta.batchTasks
+		void window.astravia.batchTasks
 			.getProjects()
 			.then((listed) => {
 				if (cancelled) return;

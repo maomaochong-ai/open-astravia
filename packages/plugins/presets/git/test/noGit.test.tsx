@@ -5,7 +5,7 @@ import { GitPanel } from "../src/components/GitPanel";
 import { GitSettingsView } from "../src/components/GitSettingsView";
 import { setAiApi, setGitCommand, setStorageApi } from "../src/git/runtime";
 
-vi.mock("@vetta-org/plugin-sdk", () => ({
+vi.mock("@astravia-org/plugin-sdk", () => ({
 	useTranslation: () => ({ t: (key: string) => key, locale: "en" }),
 	useActivityTab: () => ({ cwd: "/repo" }),
 }));

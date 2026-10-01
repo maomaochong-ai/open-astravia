@@ -1,3 +1,4 @@
+import type { QueueCardItem, QueueCardPausedBanner, QueueCardViewLabels } from "@astravia-org/theme-ui/chat";
 import { isCompactingAtom } from "@shared/store/atoms";
 import {
 	getQueueForSession,
@@ -6,7 +7,6 @@ import {
 	messageQueuePausedBySessionAtom,
 	setQueueForSessionAtom,
 } from "@shared/store/message-queue-atoms";
-import type { QueueCardItem, QueueCardPausedBanner, QueueCardViewLabels } from "@vetta-org/theme-ui/chat";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -45,7 +45,7 @@ export function useQueueCardModel(runtimeId: string): QueueCardModel {
 			const byId = new Map(fullItems.map((item) => [item.id, item]));
 			const next = orderedIds.map((id) => byId.get(id)).filter((item) => item !== undefined);
 			setQueue({ runtimeId, items: next });
-			void window.vetta.session.reorderQueuedMessages(runtimeId, [...orderedIds]).catch((err) => {
+			void window.astravia.session.reorderQueuedMessages(runtimeId, [...orderedIds]).catch((err) => {
 				console.warn("[useQueueCardModel] reorder failed", err);
 			});
 		},
@@ -55,7 +55,7 @@ export function useQueueCardModel(runtimeId: string): QueueCardModel {
 	const onRemove = useCallback(
 		(id: string) => {
 			setQueue({ runtimeId, items: fullItems.filter((item) => item.id !== id) });
-			void window.vetta.session.removeQueuedMessage(runtimeId, id).catch((err) => {
+			void window.astravia.session.removeQueuedMessage(runtimeId, id).catch((err) => {
 				console.warn("[useQueueCardModel] remove failed", err);
 			});
 		},
@@ -80,7 +80,7 @@ export function useQueueCardModel(runtimeId: string): QueueCardModel {
 						label: t("inputBar.drawer.queuePaused"),
 						resumeLabel: t("inputBar.drawer.queueResume"),
 						onResume: () => {
-							void window.vetta.session.resumeQueue(runtimeId).catch((err) => {
+							void window.astravia.session.resumeQueue(runtimeId).catch((err) => {
 								console.warn("[useQueueCardModel] resumeQueue failed", err);
 							});
 						},

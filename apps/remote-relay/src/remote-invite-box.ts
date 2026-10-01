@@ -1,5 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
-import { readInviteEnvelope } from "@vetta/remote-control";
+import { readInviteEnvelope } from "@astravia/remote-control";
 import { relayInfo, relayWarn } from "./relay-log.js";
 
 interface Env {
@@ -26,8 +26,8 @@ export const MAX_INVITE_READS = 10;
  */
 export class RemoteInviteBox extends DurableObject<Env> {
 	async fetch(request: Request): Promise<Response> {
-		const boxTag = request.headers.get("X-Vetta-Box-Tag") ?? "";
-		const writerHash = request.headers.get("X-Vetta-Writer-Hash");
+		const boxTag = request.headers.get("X-Astravia-Box-Tag") ?? "";
+		const writerHash = request.headers.get("X-Astravia-Writer-Hash");
 		const stored = await this.current();
 		switch (request.method) {
 			case "PUT": {

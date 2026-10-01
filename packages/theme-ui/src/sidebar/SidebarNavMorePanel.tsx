@@ -1,6 +1,6 @@
 import type { JSX } from "react";
-import type { SidebarNavItem } from "@vetta-org/theme-sdk/sidebar";
-import { cn } from "@vetta-org/ui";
+import type { SidebarNavItem } from "@astravia-org/theme-sdk/sidebar";
+import { cn } from "@astravia-org/ui";
 import { SidebarNavBadgeView } from "./SidebarNavBadgeView";
 import type { SidebarNavDragHandlers, SidebarNavRegion } from "./useSidebarNavDrag";
 import { SidebarNavIcon } from "./SidebarNavIcon";

@@ -1,5 +1,5 @@
+import type { Disposable, PluginContext, PluginPermission } from "@astravia-org/plugin-sdk";
 import type { InstalledPlugin } from "@preload/api";
-import type { Disposable, PluginContext, PluginPermission } from "@vetta-org/plugin-sdk";
 import { logPluginRuntimeWarn } from "./plugin-runtime-log";
 
 export const noopDisposable: Disposable = { dispose: () => {} };

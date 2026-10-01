@@ -125,7 +125,7 @@ const quickPanelSettingsOutputSchema = defineCapabilityOutputSchema(quickPanelSe
 
 export const DOMAIN_SHORTCUT_CAPABILITIES = {
 	GET_SETTINGS: defineCapability<Record<string, never>, ShortcutSettings>({
-		id: "cap.domain.vetta.shortcut.settings.get",
+		id: "cap.domain.astravia.shortcut.settings.get",
 		kind: "query",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -133,7 +133,7 @@ export const DOMAIN_SHORTCUT_CAPABILITIES = {
 		output: shortcutSettingsOutputSchema,
 	}),
 	SET_BINDING: defineCapability<ShortcutBindingInput, ShortcutBindingsResult>({
-		id: "cap.domain.vetta.shortcut.binding.set",
+		id: "cap.domain.astravia.shortcut.binding.set",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -141,7 +141,7 @@ export const DOMAIN_SHORTCUT_CAPABILITIES = {
 		output: shortcutBindingsOutputSchema,
 	}),
 	RESET_BINDING: defineCapability<ShortcutActionInput, ShortcutBindingResetResult>({
-		id: "cap.domain.vetta.shortcut.binding.reset",
+		id: "cap.domain.astravia.shortcut.binding.reset",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -149,7 +149,7 @@ export const DOMAIN_SHORTCUT_CAPABILITIES = {
 		output: shortcutBindingResetOutputSchema,
 	}),
 	RESET_ALL_BINDINGS: defineCapability<Record<string, never>, ShortcutBindingsResult>({
-		id: "cap.domain.vetta.shortcut.binding.reset-all",
+		id: "cap.domain.astravia.shortcut.binding.reset-all",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -162,7 +162,7 @@ export const DOMAIN_SHORTCUT_CAPABILITY_CATALOG = createCapabilityCatalog(Object
 
 export const DOMAIN_QUICK_PANEL_CAPABILITIES = {
 	SET_TRIGGER: defineCapability<QuickPanelTriggerInput, QuickPanelSettings>({
-		id: "cap.domain.vetta.quick-panel.trigger.set",
+		id: "cap.domain.astravia.quick-panel.trigger.set",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -170,7 +170,7 @@ export const DOMAIN_QUICK_PANEL_CAPABILITIES = {
 		output: quickPanelSettingsOutputSchema,
 	}),
 	SET_POST_SEND_BEHAVIOR: defineCapability<QuickPanelPostSendBehaviorInput, QuickPanelSettings>({
-		id: "cap.domain.vetta.quick-panel.post-send-behavior.set",
+		id: "cap.domain.astravia.quick-panel.post-send-behavior.set",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,

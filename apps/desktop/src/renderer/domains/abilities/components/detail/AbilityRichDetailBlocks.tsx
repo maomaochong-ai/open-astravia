@@ -1,5 +1,5 @@
 import type { AbilityComparisonColumn, AbilityDetailBlock } from "@shared/lib/api";
-import { cn } from "@vetta-org/ui";
+import { cn } from "@astravia-org/ui";
 import type { ReactNode } from "react";
 import { GalleryTheater } from "./ability-detail-interactive";
 import { DetailChapterTitle } from "./ability-detail-surface";
@@ -9,7 +9,7 @@ const LOGO_BASENAME = /^(icon|logo)\.(png|jpe?g|webp|gif|svg)$/i;
 function resourceBasename(value: string): string {
 	const normalized = value.trim().replace(/\\/g, "/");
 	try {
-		const path = new URL(normalized, "https://vetta.local/").pathname;
+		const path = new URL(normalized, "https://astravia.local/").pathname;
 		return (path.split("/").pop() ?? normalized).split("?")[0]?.toLowerCase() ?? "";
 	} catch {
 		return (normalized.split("/").pop() ?? normalized).split("?")[0]?.toLowerCase() ?? "";

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import type { AgentProfile } from "@vetta/agent-team";
+import type { AgentProfile } from "@astravia/agent-team";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
@@ -15,7 +15,7 @@ vi.mock("react-i18next", () => ({
 			values ? `${key}:${Object.values(values).join(":")}` : key,
 	}),
 }));
-vi.mock("@vetta-org/ui", () => ({
+vi.mock("@astravia-org/ui", () => ({
 	Button: ({ children, variant: _variant, size: _size, ...props }: { children: ReactNode } & Record<string, unknown>) => (
 		<button type="button" {...props}>
 			{children}

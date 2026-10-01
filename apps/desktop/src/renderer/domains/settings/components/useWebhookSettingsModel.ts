@@ -148,8 +148,8 @@ export function useWebhookSettingsModel(): WebhookSettingsModel {
 
 	const refresh = useCallback(async () => {
 		const [list, providerList] = await Promise.all([
-			window.vetta.webhook.list(),
-			window.vetta.webhook.listProviders(),
+			window.astravia.webhook.list(),
+			window.astravia.webhook.listProviders(),
 		]);
 		setEndpoints(list);
 		setProviders(providerList);
@@ -193,7 +193,7 @@ export function useWebhookSettingsModel(): WebhookSettingsModel {
 
 	const handleToggle = useCallback(
 		async (endpoint: WebhookEndpointPublic, next: boolean) => {
-			const result = await window.vetta.webhook.toggle(endpoint.id, next);
+			const result = await window.astravia.webhook.toggle(endpoint.id, next);
 			if (!result.ok) {
 				setRowMessage((prev) => ({
 					...prev,
@@ -215,7 +215,7 @@ export function useWebhookSettingsModel(): WebhookSettingsModel {
 	const handleDelete = useCallback(
 		async (endpoint: WebhookEndpointPublic) => {
 			if (!window.confirm(t("whDeleteConfirm", { name: endpoint.name }))) return;
-			await window.vetta.webhook.delete(endpoint.id);
+			await window.astravia.webhook.delete(endpoint.id);
 			await refresh();
 			recordSettingsUsage({ tab: "webhook", action: "deleted", target: "endpoint", value: endpoint.kind });
 		},
@@ -227,7 +227,7 @@ export function useWebhookSettingsModel(): WebhookSettingsModel {
 			setTestingId(endpoint.id);
 			setRowMessage((prev) => ({ ...prev, [endpoint.id]: { ok: true, text: t("whSending") } }));
 			try {
-				const result = await window.vetta.webhook.test(endpoint.id);
+				const result = await window.astravia.webhook.test(endpoint.id);
 				setRowMessage((prev) => ({
 					...prev,
 					[endpoint.id]: {
@@ -277,7 +277,7 @@ export function useWebhookSettingsModel(): WebhookSettingsModel {
 				};
 				if (url) patch.webhookUrl = url;
 				if (form.signSecret !== "") patch.signSecret = form.signSecret;
-				const result = await window.vetta.webhook.update(editingId, patch);
+				const result = await window.astravia.webhook.update(editingId, patch);
 				if (!result.ok) {
 					setEditorError(result.error ?? t("whSaveFailed"));
 					return;
@@ -292,7 +292,7 @@ export function useWebhookSettingsModel(): WebhookSettingsModel {
 					enabled: true,
 					...kindOpts,
 				};
-				const result = await window.vetta.webhook.create(input);
+				const result = await window.astravia.webhook.create(input);
 				if (!result.ok) {
 					setEditorError(result.error ?? t("whCreateFailed"));
 					return;

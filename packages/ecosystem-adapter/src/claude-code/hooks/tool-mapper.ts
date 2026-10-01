@@ -2,7 +2,7 @@ import type { EcosystemToolDescriptor } from "../../hooks/runtime.js";
 import type { HookToolIdentity } from "../../hooks/types.js";
 
 /**
- * Map Vetta host tools to Claude Code canonical tool names used by matchers and stdin.
+ * Map Astravia host tools to Claude Code canonical tool names used by matchers and stdin.
  * Team tools (TeamCreate / TeamDelete / SendMessage) are not hosted yet; when they appear as
  * custom tools with those names they pass through unchanged.
  */

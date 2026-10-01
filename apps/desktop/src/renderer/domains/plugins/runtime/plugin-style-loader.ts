@@ -1,5 +1,5 @@
+import type { Disposable } from "@astravia-org/plugin-sdk";
 import type { InstalledPlugin } from "@preload/api";
-import type { Disposable } from "@vetta-org/plugin-sdk";
 
 function stylesheetIdentity(href: string): string {
 	try {
@@ -13,11 +13,11 @@ function stylesheetIdentity(href: string): string {
 }
 
 export function loadPluginStyles(plugin: InstalledPlugin): Disposable {
-	const pluginLayer = `vetta-plugins.${CSS.escape(plugin.id)}`;
+	const pluginLayer = `astravia-plugins.${CSS.escape(plugin.id)}`;
 	const ownedStylesheets = new Set(plugin.styleUrls.map(stylesheetIdentity));
 	const styles = plugin.styleUrls.map((href) => {
 		const style = document.createElement("style");
-		style.dataset.vettaPluginId = plugin.id;
+		style.dataset.astraviaPluginId = plugin.id;
 		style.textContent = `@import ${JSON.stringify(href)} layer(${pluginLayer});`;
 		document.head.append(style);
 		return style;

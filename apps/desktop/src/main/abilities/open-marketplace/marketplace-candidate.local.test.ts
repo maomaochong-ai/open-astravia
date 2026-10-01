@@ -8,9 +8,9 @@ import { parseMarketplaceManifest } from "./marketplace-schema";
 import { OpenMarketplaceService } from "./open-marketplace-service";
 
 const testPaths = vi.hoisted(() => {
-	const root = `${process.env.TEMP ?? process.cwd()}/vetta-marketplace-candidate-${process.pid}-${Math.random().toString(36).slice(2)}`;
-	const previousHome = process.env.VETTA_HOME;
-	if (process.env.VETTA_MARKETPLACE_CANDIDATE_ROOT) process.env.VETTA_HOME = `${root}/home`;
+	const root = `${process.env.TEMP ?? process.cwd()}/astravia-marketplace-candidate-${process.pid}-${Math.random().toString(36).slice(2)}`;
+	const previousHome = process.env.ASTRAVIA_HOME;
+	if (process.env.ASTRAVIA_MARKETPLACE_CANDIDATE_ROOT) process.env.ASTRAVIA_HOME = `${root}/home`;
 	return { root, home: `${root}/home`, resources: `${root}/resources`, previousHome };
 });
 
@@ -30,7 +30,7 @@ vi.mock("../../logger", () => ({
 	getAppLogger: () => ({ debug: vi.fn(), error: vi.fn(), warn: vi.fn(), info: vi.fn() }),
 }));
 
-const candidateRoot = process.env.VETTA_MARKETPLACE_CANDIDATE_ROOT;
+const candidateRoot = process.env.ASTRAVIA_MARKETPLACE_CANDIDATE_ROOT;
 const isolatedRoot = testPaths.root;
 const originalResourcesPath = Object.getOwnPropertyDescriptor(process, "resourcesPath");
 
@@ -45,8 +45,8 @@ afterAll(async () => {
 	vi.unstubAllGlobals();
 	if (originalResourcesPath) Object.defineProperty(process, "resourcesPath", originalResourcesPath);
 	else Reflect.deleteProperty(process, "resourcesPath");
-	if (testPaths.previousHome === undefined) delete process.env.VETTA_HOME;
-	else process.env.VETTA_HOME = testPaths.previousHome;
+	if (testPaths.previousHome === undefined) delete process.env.ASTRAVIA_HOME;
+	else process.env.ASTRAVIA_HOME = testPaths.previousHome;
 	const temporaryBase = resolve(process.env.TEMP ?? process.cwd());
 	const relativeRoot = relative(temporaryBase, resolve(isolatedRoot));
 	if (!relativeRoot || relativeRoot === ".." || relativeRoot.startsWith(`..${sep}`)) {
@@ -57,7 +57,7 @@ afterAll(async () => {
 
 const manifest = candidateRoot
 	? parseMarketplaceManifest(
-			JSON.parse(readFileSync(join(candidateRoot, ".vetta", "marketplace.json"), "utf8")) as unknown,
+			JSON.parse(readFileSync(join(candidateRoot, ".astravia", "marketplace.json"), "utf8")) as unknown,
 		)
 	: undefined;
 function distributionFiles(directory: string, prefix = ""): string[] {
@@ -69,11 +69,11 @@ function distributionFiles(directory: string, prefix = ""): string[] {
 	});
 }
 const entries = candidateRoot ? distributionFiles(candidateRoot) : [];
-const artifactsRoot = process.env.VETTA_MARKETPLACE_CANDIDATE_ARTIFACTS;
+const artifactsRoot = process.env.ASTRAVIA_MARKETPLACE_CANDIDATE_ARTIFACTS;
 const sourceArchive = new AdmZip();
 for (const path of entries) {
 	sourceArchive.addFile(
-		`vetta-official-marketplace-candidate/${path.replaceAll("\\", "/")}`,
+		`astravia-official-marketplace-candidate/${path.replaceAll("\\", "/")}`,
 		readFileSync(join(candidateRoot!, path)),
 	);
 }

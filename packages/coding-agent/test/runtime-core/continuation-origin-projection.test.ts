@@ -1,8 +1,8 @@
-import type { UserMessage } from "@vetta/ai";
+import type { UserMessage } from "@astravia/ai";
 import {
 	applyStoredEventToConversationDocument,
 	createEmptyConversationDocument,
-} from "@vetta/runtime-core/conversation";
+} from "@astravia/runtime-core/conversation";
 import { describe, expect, it } from "vitest";
 import { CodingAgentConversationContextProjector } from "../../src/sessions/projection/conversation-context-projector.js";
 

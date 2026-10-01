@@ -1,4 +1,4 @@
-import type { PluginDefinition } from "@vetta-org/plugin-sdk";
+import type { PluginDefinition } from "@astravia-org/plugin-sdk";
 
 interface PluginModule {
 	default?: PluginDefinition;

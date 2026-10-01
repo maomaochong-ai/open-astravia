@@ -15,7 +15,7 @@ function partialTagSuffixLength(buffer: string, tag: string): number {
 /**
  * Some OpenAI-compatible gateways leak reasoning summaries into `delta.content`
  * wrapped in `<thinking>...</thinking>` instead of putting them in
- * `reasoning_content` (observed on vetta-go for GPT models: only the first
+ * `reasoning_content` (observed on astravia-go for GPT models: only the first
  * summary part reaches `reasoning_content`, the rest are inlined as tagged text).
  * Without this the tags render as literal body text.
  *

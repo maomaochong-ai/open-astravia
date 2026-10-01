@@ -2,13 +2,13 @@
 
 ## Supported versions
 
-This repository is the Open Vetta client. Security fixes land on the `dev` branch and ship with the next desktop release. We do not maintain long-lived patched release lines.
+This repository is the Open Astravia client. Security fixes land on the `dev` branch and ship with the next desktop release. We do not maintain long-lived patched release lines.
 
 ## Reporting a vulnerability
 
 **Do not open a public GitHub issue** for a security report.
 
-Use [GitHub Private Vulnerability Reporting](https://github.com/openvetta/open-vetta/security/advisories/new) so only maintainers see the details.
+Use [GitHub Private Vulnerability Reporting](https://github.com/maomaochong-ai/open-astravia/security/advisories/new) so only maintainers see the details.
 
 Please include:
 
@@ -31,7 +31,7 @@ In scope for this repository:
 
 Out of scope here (do not send to this advisory):
 
-- Vetta Serv (accounts, billing, hosted marketplace) — that is a separate private repository
+- Astravia Serv (accounts, billing, hosted marketplace) — that is a separate private repository
 - Vulnerabilities that exist only in a third-party model provider, MCP server, or user-installed plugin, unless this client fails to enforce a declared permission or ships the vulnerable code
 
-Product privacy and outbound network behavior are summarized in the README [Network Behavior](README.md#network-behavior) section and in [docs.openvetta.com](https://docs.openvetta.com/reference/security-and-data/).
+Product privacy and outbound network behavior are summarized in the README [Network Behavior](README.md#network-behavior) section and in [docs.astravia.dev](https://docs.astravia.dev/reference/security-and-data/).

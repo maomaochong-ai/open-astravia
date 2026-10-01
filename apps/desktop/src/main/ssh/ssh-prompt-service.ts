@@ -1,4 +1,4 @@
-import { isRememberableSshPrompt, type SshPromptKind } from "@vetta/ssh-transport";
+import { isRememberableSshPrompt, type SshPromptKind } from "@astravia/ssh-transport";
 import type { CredentialRef } from "../credentials/credential-vault.js";
 import type { SshAskpassRequest, SshPromptAnswer } from "./askpass-server.js";
 

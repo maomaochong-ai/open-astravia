@@ -1,5 +1,5 @@
 import { createRequire } from "node:module";
-import type { RemoteInputMessage } from "@vetta/remote-desktop";
+import type { RemoteInputMessage } from "@astravia/remote-desktop";
 import { systemPreferences } from "electron";
 import type * as Koffi from "koffi";
 import { getAppLogger } from "../logger.js";

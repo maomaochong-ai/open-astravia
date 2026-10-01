@@ -46,7 +46,7 @@ export function MessageCardsView({ cards, labels, messageId }: MessageCardsViewP
 	if (cards.length === 0) return null;
 	if (cards.length === 1) {
 		return (
-			<div className="flex flex-col gap-2" data-vetta-message-cards={messageId}>
+			<div className="flex flex-col gap-2" data-astravia-message-cards={messageId}>
 				{cards[0]!.body}
 			</div>
 		);
@@ -55,7 +55,7 @@ export function MessageCardsView({ cards, labels, messageId }: MessageCardsViewP
 	const active = cards.find((c) => c.id === activeId) ?? cards[0]!;
 
 	return (
-		<div className="flex flex-col gap-2" data-vetta-message-cards={messageId}>
+		<div className="flex flex-col gap-2" data-astravia-message-cards={messageId}>
 			<div className="flex items-center gap-2">
 				<div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
 					{cards.map((card) => {

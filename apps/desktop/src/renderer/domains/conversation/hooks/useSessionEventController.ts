@@ -1,3 +1,13 @@
+import {
+	isCodingAgentMcpReloadStarted,
+	readCodingAgentBackgroundTasksObservation,
+	readCodingAgentGoalObservation,
+	readCodingAgentMcpReloadFinished,
+	readCodingAgentPlanModeObservation,
+	readCodingAgentSubagentsObservation,
+	readCodingAgentTodoObservation,
+} from "@astravia/coding-agent/session-extensions";
+import type { SessionEvent } from "@astravia/runtime-core";
 import { i18n } from "@shared/i18n";
 import {
 	activeSessionStreamingAtom,
@@ -28,16 +38,6 @@ import {
 	setQueuePausedAtom,
 } from "@shared/store/message-queue-atoms";
 import { showToast } from "@shared/store/toast-atoms";
-import {
-	isCodingAgentMcpReloadStarted,
-	readCodingAgentBackgroundTasksObservation,
-	readCodingAgentGoalObservation,
-	readCodingAgentMcpReloadFinished,
-	readCodingAgentPlanModeObservation,
-	readCodingAgentSubagentsObservation,
-	readCodingAgentTodoObservation,
-} from "@vetta/coding-agent/session-extensions";
-import type { SessionEvent } from "@vetta/runtime-core";
 import { getDefaultStore, useSetAtom } from "jotai";
 import { type MutableRefObject, useCallback, useEffect, useRef } from "react";
 import {
@@ -181,7 +181,7 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 
 	const refreshAfterTurnTerminal = useCallback(
 		(sessionId: string, completed: boolean) => {
-			void window.vetta.session
+			void window.astravia.session
 				.getFullHistory(sessionId)
 				.then((history) => {
 					if (activeSessionRef.current?.runtimeId !== sessionId) return;
@@ -209,12 +209,12 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 			const token = suggestionTokenRef.current.get(rid) ?? 0;
 			void (async () => {
 				try {
-					const config = await window.vetta.config.get();
+					const config = await window.astravia.config.get();
 					if (config.experimental?.promptPrediction !== true) return;
 					const conversation = buildRecentConversation(predictSnapshot);
 					if (!conversation) return;
 					markPredicting(rid, true);
-					const suggestions = await window.vetta.session.nextPromptSuggestions(rid, conversation);
+					const suggestions = await window.astravia.session.nextPromptSuggestions(rid, conversation);
 					if ((suggestionTokenRef.current.get(rid) ?? 0) !== token) return;
 					setPromptSuggestions((previous) => {
 						if (suggestions.length > 0) return { ...previous, [rid]: suggestions };
@@ -365,7 +365,7 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 					// Reload history identities so user bubbles get session entryId / branch siblings
 					// (optimistic messages use synthetic ids and cannot be edited until this).
 					// Matching timelines keep live assistant blocks; mismatched shapes still replace.
-					void window.vetta.session
+					void window.astravia.session
 						.getFullHistory(sessionId)
 						.then((history) => {
 							if (activeSessionRef.current?.runtimeId !== sessionId) return;
@@ -410,13 +410,13 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 							const token = suggestionTokenRef.current.get(rid) ?? 0;
 							void (async () => {
 								try {
-									const cfg = await window.vetta.config.get();
+									const cfg = await window.astravia.config.get();
 									if (cfg.experimental?.promptPrediction !== true) return;
 									const conversation = buildRecentConversation(predictSnapshot);
 									if (!conversation) return;
 									// 进入「生成中」：末条 assistant 操作栏显示闪光提示。
 									markPredicting(rid, true);
-									const suggestions = await window.vetta.session.nextPromptSuggestions(rid, conversation);
+									const suggestions = await window.astravia.session.nextPromptSuggestions(rid, conversation);
 									// 过期判定：该会话期间已开新轮 / 发新 prompt 则丢弃。
 									if ((suggestionTokenRef.current.get(rid) ?? 0) !== token) return;
 									setPromptSuggestions((prev) => {
@@ -608,7 +608,7 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 						event.reason === "manual" &&
 						getQueueForSession(getDefaultStore().get(messageQueueBySessionAtom), sessionId).length === 0
 					) {
-						void window.vetta.session
+						void window.astravia.session
 							.getFullHistory(sessionId)
 							.then((history) => {
 								if (activeSessionRef.current?.runtimeId !== sessionId) return;

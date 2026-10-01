@@ -9,7 +9,7 @@ export function DocsKicker({ children, className }: { children: ReactNode; class
 				className,
 			)}
 		>
-			<span className="size-[0.45rem] shrink-0 rounded-full bg-vetta-coral" aria-hidden="true" />
+			<span className="size-[0.45rem] shrink-0 rounded-full bg-astravia-coral" aria-hidden="true" />
 			{children}
 		</p>
 	);

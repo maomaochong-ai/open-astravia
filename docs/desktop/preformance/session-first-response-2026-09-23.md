@@ -39,5 +39,5 @@
 - 执行 `bun run test:changed -- packages/runtime-core/src/contracts.ts apps/desktop/src/shared/session-event-codec.ts`，覆盖 11 个包。Coding Agent、Runtime Core、Agent Team、Runtime Tools/MCP/Storage/Telemetry/Desktop 的整包测试通过；Runtime Node、CLI 和 Desktop 整包未通过，不能据此宣称全量测试绿灯。
 - 整包失败包括 Windows 本机路径与 POSIX/SSH 测试夹具不匹配、部分用例超时、流式 Markdown 节点断言，以及会话视图测试缺少终端 IPC Mock。本次涉及的 ViewModel 测试已补齐该外部边界并复跑通过；Desktop Runtime capabilities 和配置测试共 12 项在单 worker 下复跑通过。
 - CLI 图片附件用例在整包及同时进行的复跑中达到子进程 20 秒上限。整包结束后，使用修改前的请求执行实现作对照通过（用例约 5.1 秒）；恢复当前实现后同配置复跑也通过（约 5.8 秒）。这是超时复核，不能当作初始化性能对比，也不能断言超时根因已经解决。对照结束已逐字节恢复本次实现。
-- `bun run check` 未全绿：根目录与 Desktop 的 `@vetta/ai/proxy` 路径映射守卫、计划模式提示词触发的旧架构术语守卫、`ensure-workspace-install.mjs` 缺少声明，以及已有流式揭示测试的字符串拼接提示仍存在。这些位置没有本次源码修改；本次新增代码的类型问题已消除。
+- `bun run check` 未全绿：根目录与 Desktop 的 `@astravia/ai/proxy` 路径映射守卫、计划模式提示词触发的旧架构术语守卫、`ensure-workspace-install.mjs` 缺少声明，以及已有流式揭示测试的字符串拼接提示仍存在。这些位置没有本次源码修改；本次新增代码的类型问题已消除。
 - 发布说明校验和本次文件的 `git diff --check` 通过。没有改动初始化扫描、工具权限、插件加载顺序，也没有修改其他工作中的 Git 插件实现。

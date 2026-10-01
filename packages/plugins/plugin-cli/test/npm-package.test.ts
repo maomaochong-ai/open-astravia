@@ -12,7 +12,7 @@ afterEach(async () => {
 });
 
 async function createPackageTarball(): Promise<string> {
-	const fixtureRoot = await mkdtemp(join(tmpdir(), "vetta-plugin-cli-fixture-"));
+	const fixtureRoot = await mkdtemp(join(tmpdir(), "astravia-plugin-cli-fixture-"));
 	temporaryDirectories.push(fixtureRoot);
 	await mkdir(join(fixtureRoot, "package", "release"), { recursive: true });
 	await writeFile(
@@ -20,15 +20,15 @@ async function createPackageTarball(): Promise<string> {
 		JSON.stringify({
 			name: "@example/demo",
 			version: "1.2.0",
-			vetta: {
+			astravia: {
 				schemaVersion: 1,
 				type: "desktop-plugin",
 				pluginId: "demo",
-				archive: "release/vetta-plugin.vettapkg",
+				archive: "release/astravia-plugin.astraviapkg",
 			},
 		}),
 	);
-	await writeFile(join(fixtureRoot, "package", "release", "vetta-plugin.vettapkg"), "package-fixture");
+	await writeFile(join(fixtureRoot, "package", "release", "astravia-plugin.astraviapkg"), "package-fixture");
 	const tarball = join(fixtureRoot, "package.tgz");
 	await createTar({ cwd: fixtureRoot, file: tarball, gzip: true }, ["package"]);
 	return tarball;
@@ -43,7 +43,7 @@ describe("resolveNpmPluginArchive", () => {
 		});
 
 		const result = await resolveNpmPluginArchive("@example/demo@1.2.0", pack);
-		expect(result.packageManifest.vetta.pluginId).toBe("demo");
+		expect(result.packageManifest.astravia.pluginId).toBe("demo");
 		expect(result.expectedSha256).toMatch(/^[a-f0-9]{64}$/u);
 		expect(result.integrity).toBe("sha512-fixture");
 		await result.cleanup();

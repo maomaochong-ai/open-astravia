@@ -4,9 +4,9 @@
 		"outDir": "./dist",
 		"rootDir": "./src",
 		"paths": {
-			"@vetta/coding-agent/function-extensions": ["./src/public-api/function-extensions.ts"],
-			"@vetta/coding-agent/plugin-runtime": ["./src/public-api/plugin-runtime.ts"],
-			"@vetta/coding-agent/session-extensions": ["./src/public-api/session-extensions.ts"]
+			"@astravia/coding-agent/function-extensions": ["./src/public-api/function-extensions.ts"],
+			"@astravia/coding-agent/plugin-runtime": ["./src/public-api/plugin-runtime.ts"],
+			"@astravia/coding-agent/session-extensions": ["./src/public-api/session-extensions.ts"]
 		}
 	},
 	"include": ["src/**/*.ts"],

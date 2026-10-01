@@ -1,8 +1,8 @@
-import { bindCapability, type CapabilityRegistry } from "@vetta/capability-runtime";
-import { type Disposable, FOUNDATION_JOB_CAPABILITIES } from "@vetta-org/capability-sdk";
+import { bindCapability, type CapabilityRegistry } from "@astravia/capability-runtime";
+import { type Disposable, FOUNDATION_JOB_CAPABILITIES } from "@astravia-org/capability-sdk";
 import type { JobManager } from "../jobs/job-manager.js";
 
-const FOUNDATION_JOB_PROVIDER_OWNER = "vetta.foundation.job";
+const FOUNDATION_JOB_PROVIDER_OWNER = "astravia.foundation.job";
 
 export function registerDesktopJobProvider(registry: CapabilityRegistry, jobs: JobManager): Disposable {
 	return registry.registerOwner(FOUNDATION_JOB_PROVIDER_OWNER, [

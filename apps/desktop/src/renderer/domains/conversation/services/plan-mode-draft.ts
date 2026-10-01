@@ -11,7 +11,7 @@ import { getDefaultStore } from "jotai";
 export async function applyDraftPlanMode(runtimeId: string): Promise<void> {
 	const store = getDefaultStore();
 	if (!store.get(draftPlanModeAtom)) return;
-	const state = await window.vetta.session.setPermissionMode(runtimeId, "plan");
+	const state = await window.astravia.session.setPermissionMode(runtimeId, "plan");
 	store.set(planModeStateBySessionAtom, (prev) => ({ ...prev, [runtimeId]: state }));
 	store.set(draftPlanModeAtom, false);
 }

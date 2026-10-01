@@ -1,3 +1,4 @@
+import type { PromptAttachmentRef } from "@astravia/runtime-core";
 import { createConversationUserMessage } from "@shared/conversation";
 import {
 	deriveAttachments,
@@ -20,7 +21,6 @@ import {
 	type StagedSendInput,
 	selectedModelAtom,
 } from "@shared/store/atoms";
-import type { PromptAttachmentRef } from "@vetta/runtime-core";
 import { getDefaultStore } from "jotai";
 import { isUserImageFile, nextId } from "./chat-service";
 

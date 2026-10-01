@@ -25,7 +25,7 @@ describe("McpSetupPrompt", () => {
 				}),
 		);
 		const cancelSetupLogin = vi.fn(async () => undefined);
-		(window as unknown as { vetta: unknown }).vetta = {
+		(window as unknown as { astravia: unknown }).astravia = {
 			mcp: {
 				startSetupLogin,
 				getSetupLoginStatus: vi.fn(async () => ({ state: "unauthenticated" })),

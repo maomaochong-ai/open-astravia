@@ -1,4 +1,4 @@
-import { parseProjectLocation } from "@vetta/ssh-transport/project-uri";
+import { parseProjectLocation } from "@astravia/ssh-transport/project-uri";
 
 /**
  * 「开一个终端并替用户敲一条命令」的请求与它在 tab 载荷里的持久化形状。

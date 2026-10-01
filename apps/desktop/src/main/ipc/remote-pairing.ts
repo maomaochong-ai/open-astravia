@@ -2,20 +2,20 @@ import { BrowserWindow, ipcMain } from "electron";
 import type { DesktopRemoteAccessManager } from "../remote-control/desktop-remote-access-manager.js";
 
 const CHANNELS = {
-	GET_STATE: "vetta:remote-pairing:get-state",
-	CREATE_INVITE: "vetta:remote-pairing:create-invite",
-	CANCEL_INVITE: "vetta:remote-pairing:cancel-invite",
-	SET_CLOUD_ENABLED: "vetta:remote-pairing:set-cloud-enabled",
-	APPROVE: "vetta:remote-pairing:approve",
-	REVOKE_DEVICE: "vetta:remote-pairing:revoke-device",
-	RENAME_DEVICE: "vetta:remote-pairing:rename-device",
-	SET_DESKTOP_CONTROL: "vetta:remote-pairing:set-desktop-control",
-	SET_RELAY: "vetta:remote-pairing:set-relay",
-	TEST_RELAY: "vetta:remote-pairing:test-relay",
+	GET_STATE: "astravia:remote-pairing:get-state",
+	CREATE_INVITE: "astravia:remote-pairing:create-invite",
+	CANCEL_INVITE: "astravia:remote-pairing:cancel-invite",
+	SET_CLOUD_ENABLED: "astravia:remote-pairing:set-cloud-enabled",
+	APPROVE: "astravia:remote-pairing:approve",
+	REVOKE_DEVICE: "astravia:remote-pairing:revoke-device",
+	RENAME_DEVICE: "astravia:remote-pairing:rename-device",
+	SET_DESKTOP_CONTROL: "astravia:remote-pairing:set-desktop-control",
+	SET_RELAY: "astravia:remote-pairing:set-relay",
+	TEST_RELAY: "astravia:remote-pairing:test-relay",
 } as const;
 
 /** Pushed to every window whenever the pairing state changes. */
-const STATE_CHANGED = "vetta:remote-pairing:state-changed";
+const STATE_CHANGED = "astravia:remote-pairing:state-changed";
 
 function asString(value: unknown): string {
 	return typeof value === "string" ? value : "";

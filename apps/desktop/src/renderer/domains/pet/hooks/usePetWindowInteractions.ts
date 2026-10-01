@@ -25,17 +25,17 @@ export function usePetWindowInteractions({
 		isPointOverElement(videoRef.current, clientX, clientY);
 	const updateMousePassthrough = (clientX: number, clientY: number) => {
 		if (isDraggingRef.current) {
-			void window.vettaPet?.setMousePassthrough(false);
+			void window.astraviaPet?.setMousePassthrough(false);
 			return;
 		}
-		void window.vettaPet?.setMousePassthrough(!isPointOverVideo(clientX, clientY));
+		void window.astraviaPet?.setMousePassthrough(!isPointOverVideo(clientX, clientY));
 	};
 
 	const handleWheel = (event: WheelEvent<HTMLDivElement>) => {
 		event.preventDefault();
 		event.stopPropagation();
 		if (actionId) {
-			void window.vettaPet?.resizeVideoByWheel(actionId, event.deltaY);
+			void window.astraviaPet?.resizeVideoByWheel(actionId, event.deltaY);
 		}
 	};
 
@@ -45,13 +45,13 @@ export function usePetWindowInteractions({
 		const dragTarget = event.currentTarget;
 		dragTarget.setPointerCapture(event.pointerId);
 		isDraggingRef.current = true;
-		void window.vettaPet?.setMousePassthrough(false);
-		const moveSessionReady = window.vettaPet?.beginWindowMove() ?? Promise.resolve();
+		void window.astraviaPet?.setMousePassthrough(false);
+		const moveSessionReady = window.astraviaPet?.beginWindowMove() ?? Promise.resolve();
 		let dragFinished = false;
 
 		const handlePointerMove = (moveEvent: PointerEvent) => {
 			moveEvent.preventDefault();
-			void moveSessionReady.then(() => window.vettaPet?.moveWindow());
+			void moveSessionReady.then(() => window.astraviaPet?.moveWindow());
 		};
 		const handlePointerUp = () => {
 			if (dragFinished) return;
@@ -61,7 +61,7 @@ export function usePetWindowInteractions({
 			window.removeEventListener("pointercancel", handlePointerUp);
 			dragTarget.removeEventListener("lostpointercapture", handleLostPointerCapture);
 			isDraggingRef.current = false;
-			void moveSessionReady.then(() => window.vettaPet?.endWindowMove());
+			void moveSessionReady.then(() => window.astraviaPet?.endWindowMove());
 		};
 		const handleLostPointerCapture = (captureEvent: PointerEvent) => {
 			if ((captureEvent.buttons & 1) !== 0) return;
@@ -78,7 +78,7 @@ export function usePetWindowInteractions({
 		handlePointerDown,
 		handlePointerLeave: () => {
 			if (isDraggingRef.current) return;
-			void window.vettaPet?.setMousePassthrough(true);
+			void window.astraviaPet?.setMousePassthrough(true);
 		},
 		handlePointerMove: (event) => updateMousePassthrough(event.clientX, event.clientY),
 		handleWheel,

@@ -236,7 +236,7 @@ export function projectCodingAgentSkillInfo(skill: Skill): CodingAgentSkillInfo 
 function toSkill(contribution: CodingAgentSkillContribution, source: string, cwd: string): Skill {
 	const filePath = contribution.filePath
 		? resolve(cwd, contribution.filePath)
-		: join(cwd, ".vetta", "sdk-skills", safePathSegment(source), safePathSegment(contribution.name), "SKILL.md");
+		: join(cwd, ".astravia", "sdk-skills", safePathSegment(source), safePathSegment(contribution.name), "SKILL.md");
 	return {
 		name: contribution.name,
 		alias: contribution.alias,

@@ -1,4 +1,4 @@
-import { defineRuntimeObservation } from "@vetta/runtime-core/observation";
+import { defineRuntimeObservation } from "@astravia/runtime-core/observation";
 import type { AgentConfigurationFailureCode } from "./configuration-schema.js";
 
 export interface AgentConfigurationObservation {

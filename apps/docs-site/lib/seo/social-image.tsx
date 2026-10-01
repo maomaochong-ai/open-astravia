@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 
 export const socialImageSize = { width: 1200, height: 630 };
-export const socialImageAlt = "Vetta Documentation";
+export const socialImageAlt = "Astravia Documentation";
 export const socialImageContentType = "image/png";
 
 export function createSocialImage(): ImageResponse {
@@ -45,7 +45,7 @@ export function createSocialImage(): ImageResponse {
 						color: "#dd6b55",
 					}}
 				>
-					VETTA
+					ASTRAVIA
 				</div>
 				<div
 					style={{
@@ -92,7 +92,7 @@ export function createSocialImage(): ImageResponse {
 					letterSpacing: 1,
 				}}
 			>
-				<div style={{ display: "flex" }}>docs.openvetta.com</div>
+				<div style={{ display: "flex" }}>docs.astravia.dev</div>
 				<div style={{ display: "flex", color: "#dd6b55", letterSpacing: 3 }}>LOCAL FIRST</div>
 			</div>
 		</div>,

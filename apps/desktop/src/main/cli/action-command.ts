@@ -1,5 +1,5 @@
 import { writeSync } from "node:fs";
-import { ActionRpcError, createActionRpcClient } from "@vetta/action-rpc";
+import { ActionRpcError, createActionRpcClient } from "@astravia/action-rpc";
 import { readLocalRpcServerEndpoint } from "../local-rpc/endpoint-file.js";
 
 export type ActionCliCommand =
@@ -18,20 +18,20 @@ interface ActionCliResponse {
 	};
 }
 
-const HELP_TEXT = `Vetta action command line interface
+const HELP_TEXT = `Astravia action command line interface
 
 Usage:
-  Vetta.exe action search [query] [--domain <domain>]
-  Vetta.exe action describe <action-id>
-  Vetta.exe action run <action-id> [json-input]
-  Vetta.exe action -h
-  Vetta.exe action --help
+  Astravia.exe action search [query] [--domain <domain>]
+  Astravia.exe action describe <action-id>
+  Astravia.exe action run <action-id> [json-input]
+  Astravia.exe action -h
+  Astravia.exe action --help
 
 Description:
-  Operate the running Vetta Desktop app through its local action RPC.
+  Operate the running Astravia Desktop app through its local action RPC.
   The GUI must already be running. Do not guess action ids or parameters
   from memory; discover them at runtime.
-  Built-in actions operate Vetta Desktop itself; plugin-provided actions
+  Built-in actions operate Astravia Desktop itself; plugin-provided actions
   may own other resources, as declared in their usage. Developing a website,
   creating a React project, installing framework plugins, or implementing
   application cron jobs belongs to that project's tools, not App Actions.
@@ -54,10 +54,10 @@ Capability areas (high-level only; live catalog comes from search):
   batch-tasks, scheduler, knowledge, plugins, im, webhook, downloads, updater
 
 Examples:
-  Vetta.exe action search ""
-  Vetta.exe action search "model"
-  Vetta.exe action describe models.query
-  Vetta.exe action run models.query "{\\"operation\\":\\"help\\"}"
+  Astravia.exe action search ""
+  Astravia.exe action search "model"
+  Astravia.exe action describe models.query
+  Astravia.exe action run models.query "{\\"operation\\":\\"help\\"}"
 
 JSON input:
   In PowerShell and POSIX shells, wrap the JSON argument in single quotes.

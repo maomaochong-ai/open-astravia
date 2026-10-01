@@ -1,9 +1,9 @@
 import { agentAvatarUrl } from "@shared/agent-teams/agent-avatar";
-import type { AgentBlueprint, AgentProfile } from "@vetta/agent-team";
+import type { AgentBlueprint, AgentProfile } from "@astravia/agent-team";
 import { agentUnavailableReason, type BlueprintDisplayPlugin } from "../lib/blueprint-display";
-import { Button } from "@vetta-org/ui";
+import { Button } from "@astravia-org/ui";
 import { useTranslation } from "react-i18next";
-import { AgentAvatarView } from "@vetta-org/theme-ui/chat";
+import { AgentAvatarView } from "@astravia-org/theme-ui/chat";
 
 export interface AgentCardProps {
 	readonly agent: AgentProfile;

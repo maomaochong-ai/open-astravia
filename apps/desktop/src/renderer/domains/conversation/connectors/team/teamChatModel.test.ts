@@ -1,9 +1,9 @@
+import type { TeamDefinition, TeamSessionDocument } from "@astravia/agent-team";
+import { createAssistantMessage } from "@astravia/ai";
 import type {
 	DesktopTeamSessionSnapshot,
 	DesktopTeamSessionStreamEvent,
 } from "@preload/api-types/team-conversation-display";
-import type { TeamDefinition, TeamSessionDocument } from "@vetta/agent-team";
-import { createAssistantMessage } from "@vetta/ai";
 import { describe, expect, it } from "vitest";
 import {
 	placeTeamErrorInTimeline,
@@ -23,7 +23,7 @@ const session: TeamSessionDocument = {
 	name: "Team",
 	cwd: "C:/workspace",
 	leaderMemberId: "leader",
-	memberHandles: { leader: "vetta" },
+	memberHandles: { leader: "astravia" },
 	createdAt: 1,
 	updatedAt: 1,
 	events: [],
@@ -32,8 +32,8 @@ const session: TeamSessionDocument = {
 const member: TeamMemberViewModel = {
 	id: "leader",
 	kind: "agent",
-	name: "Vetta",
-	handle: "vetta",
+	name: "Astravia",
+	handle: "astravia",
 	blueprintId: "leader",
 	selected: false,
 	status: "idle",
@@ -48,7 +48,7 @@ const team: TeamDefinition = {
 	members: [
 		{
 			id: "leader",
-			handle: "vetta",
+			handle: "astravia",
 			binding: { kind: "reference", agentProfileId: "missing-profile" },
 		},
 	],
@@ -196,7 +196,7 @@ describe("team chat stream state", () => {
 		const reconciled = placeTeamErrorInTimeline(
 			items,
 			{
-				message: "Error invoking remote method 'vetta:agent-teams:send-message': Error: Internal Server Error",
+				message: "Error invoking remote method 'astravia:agent-teams:send-message': Error: Internal Server Error",
 				turnId: "failed-request",
 				authorId: "leader",
 			},
@@ -1162,14 +1162,14 @@ describe("team chat stream state", () => {
 		const sharedSnapshot = snapshot({
 			messages: [
 				userMessage("unaddressed", "request-1", "team only", 1),
-				userMessage("leader-direct", "request-2", "@vetta direct", 2),
+				userMessage("leader-direct", "request-2", "@astravia direct", 2),
 				userMessage("research-direct", "request-3", "@research direct", 3),
 			],
 			userMessageAnnotations: [
 				{
 					messageEntryId: "leader-direct",
 					participantIds: ["leader"],
-					mentions: [{ participantId: "leader", handle: "vetta", start: 0, end: 6 }],
+					mentions: [{ participantId: "leader", handle: "astravia", start: 0, end: 6 }],
 				},
 				{
 					messageEntryId: "research-direct",
@@ -1353,7 +1353,7 @@ describe("team chat stream state", () => {
 	it("projects user, delegation, and member output into the shared timeline order", () => {
 		const items = projectTeamConversationTimeline({
 			snapshot: snapshot({
-				session: { ...session, memberHandles: { leader: "vetta", reviewer: "reviewer" } },
+				session: { ...session, memberHandles: { leader: "astravia", reviewer: "reviewer" } },
 				messages: [
 					userMessage("user-event", "request", "Review the launch plan", 1),
 					agentMessage("member-event", "request", "reviewer", "Launch risks found", 3),

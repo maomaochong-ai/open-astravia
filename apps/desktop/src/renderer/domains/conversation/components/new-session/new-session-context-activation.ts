@@ -1,6 +1,6 @@
+import type { AgentProfile, TeamDefinition } from "@astravia/agent-team";
+import { parsePluginBlueprintId } from "@astravia/agent-team";
 import type { RegisteredNewSessionContext } from "@shared/store/plugin-atoms";
-import type { AgentProfile, TeamDefinition } from "@vetta/agent-team";
-import { parsePluginBlueprintId } from "@vetta/agent-team";
 
 /**
  * 激活强度：决定多个贡献同时上屏时的 tab 顺序。

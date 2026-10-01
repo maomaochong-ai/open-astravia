@@ -2,7 +2,7 @@
 
 Tool call timing (start time, duration, internal phase breakdown) is persisted as a new `tool_timing` entry in the session jsonl, parallel to `message` / `thinking_level_change` / `model_change` — **not** as new fields on `ToolResultMessage` and **not** under `ToolResultMessage.details`.
 
-The driving requirement is: timing must never be sent to the LLM as context. Provider code only converts `message`-type entries into the API payload, so storing timing in a non-message channel makes the boundary architectural rather than something that has to be re-enforced in every provider's `convertMessages`. Future timing fields can be added without touching `@vetta/ai`.
+The driving requirement is: timing must never be sent to the LLM as context. Provider code only converts `message`-type entries into the API payload, so storing timing in a non-message channel makes the boundary architectural rather than something that has to be re-enforced in every provider's `convertMessages`. Future timing fields can be added without touching `@astravia/ai`.
 
 ## Considered options
 

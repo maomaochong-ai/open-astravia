@@ -14,7 +14,7 @@ const runtimeCalls = vi.hoisted(() => ({
 	subscribeProject: vi.fn(() => () => undefined),
 }));
 
-vi.mock("@vetta-org/plugin-sdk", () => ({
+vi.mock("@astravia-org/plugin-sdk", () => ({
 	useTranslation: () => ({ t: (key: string) => key }),
 }));
 
@@ -27,7 +27,7 @@ interface MockButtonProps extends ComponentProps<"button"> {
 	variant?: string;
 }
 
-vi.mock("@vetta-org/ui", () => ({
+vi.mock("@astravia-org/ui", () => ({
 	Dialog: ({ open, children }: MockDialogProps) => (open ? <div>{children}</div> : null),
 	DialogContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 	DialogDescription: ({ children }: { children: ReactNode }) => <p>{children}</p>,

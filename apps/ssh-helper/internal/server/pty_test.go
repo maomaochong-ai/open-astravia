@@ -93,9 +93,9 @@ func TestPtyEchoesCommandOutput(t *testing.T) {
 	cwd := t.TempDir()
 	id := openPty(t, c, cwd)
 
-	writePty(t, c, id, "printf 'vetta-pty-ok\\n'\n")
+	writePty(t, c, id, "printf 'astravia-pty-ok\\n'\n")
 
-	awaitOutput(t, c, id, "vetta-pty-ok", 20*time.Second)
+	awaitOutput(t, c, id, "astravia-pty-ok", 20*time.Second)
 }
 
 func TestPtyRunsInRequestedDirectory(t *testing.T) {
@@ -201,7 +201,7 @@ func TestPtyFloodKeepsOtherRequestsResponsive(t *testing.T) {
 		}
 	}()
 
-	writePty(t, c, id, "yes vetta-flood\n")
+	writePty(t, c, id, "yes astravia-flood\n")
 
 	deadline := time.Now().Add(3 * time.Second)
 	for time.Now().Before(deadline) {

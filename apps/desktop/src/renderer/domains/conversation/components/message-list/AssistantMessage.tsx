@@ -1,16 +1,16 @@
 import { BotAvatar } from "@shared/components/BotAvatar";
 import type { ConversationParticipantViewModel } from "@shared/conversation";
 import type { ChatAgentMessageViewModel, ChatToolCallPresentationViewModel } from "@shared/store/atoms";
-import { useThemeSurface } from "@vetta-org/theme-sdk/appearance";
-import type { Usage } from "@vetta/ai/protocol";
-import { ThemeSurface } from "@vetta-org/theme-ui/appearance";
+import { useThemeSurface } from "@astravia-org/theme-sdk/appearance";
+import type { Usage } from "@astravia/ai/protocol";
+import { ThemeSurface } from "@astravia-org/theme-ui/appearance";
 import {
 	AssistantMessage as AssistantMessagePrimitive,
 	AgentAvatarView,
 	Message,
 	MessageLayout,
 	StreamingIndicator as ThemeStreamingIndicator,
-} from "@vetta-org/theme-ui/chat";
+} from "@astravia-org/theme-ui/chat";
 import { memo, useId, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useAssistantMessageModel } from "../../hooks/useAssistantMessageModel";
@@ -163,7 +163,7 @@ export const AssistantMessage = memo(function AssistantMessage({
 								<BotAvatar active={isCurrentlyStreaming} />
 							)}
 						</MessageLayout.HeaderLeading>
-						<Message.Author>{participant?.name ?? "Vetta"}</Message.Author>
+						<Message.Author>{participant?.name ?? "Astravia"}</Message.Author>
 						{message.timestamp ? <Message.Meta>{formatTime(message.timestamp)}</Message.Meta> : null}
 						{durationAvailable ? (
 							<>

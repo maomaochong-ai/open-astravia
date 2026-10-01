@@ -60,7 +60,7 @@ README 用于理解意图，实际目录、frontmatter、`hooks.json` 和脚本�
 - `/plugin:command`、`/skill-name`、`/loop`、`/schedule` 等调用形式；
 - `gh`、Git、项目脚本和外部模型 CLI。
 
-标准 `SKILL.md` 目录结构本身与 Vetta 兼容，差异主要在调用期语义，而不是 Markdown 读取。
+标准 `SKILL.md` 目录结构本身与 Astravia 兼容，差异主要在调用期语义，而不是 Markdown 读取。
 
 ### 4.2 Legacy commands
 
@@ -69,7 +69,7 @@ Claude 官方已把 custom commands 合并到 Skills，但仍兼容 `commands/*.
 - `cdt`: `plan-task`、`dev-task`、`full-task`、`auto-task`、`bugfix`
 - `plugin-dev`: `create`、`develop`
 
-这些文件不是 Shell command。它们是带 frontmatter 的提示词工作流，依赖 `$ARGUMENTS`，在 Claude 中形成 slash command。Vetta `plugin.json.commands` 则表示允许插件进程执行的二进制名，两者绝不能按字段名直接映射。
+这些文件不是 Shell command。它们是带 frontmatter 的提示词工作流，依赖 `$ARGUMENTS`，在 Claude 中形成 slash command。Astravia `plugin.json.commands` 则表示允许插件进程执行的二进制名，两者绝不能按字段名直接映射。
 
 ### 4.3 Custom agents
 
@@ -119,7 +119,7 @@ Claude 官方已把 custom commands 合并到 Skills，但仍兼容 `commands/*.
 - teammate idle、wave gate 和 handoff；
 - `~/.claude/teams`、`~/.claude/tasks` 以及项目 `.dev/cdt/<branch>` 状态。
 
-Claude 官方也明确区分 subagent 与 Agent Teams：前者把结果返回 caller，后者有共享任务表和队友直连消息。Vetta 的 root → child 子代理不能直接冒充 Teams。
+Claude 官方也明确区分 subagent 与 Agent Teams：前者把结果返回 caller，后者有共享任务表和队友直连消息。Astravia 的 root → child 子代理不能直接冒充 Teams。
 
 ## 5. 上游自身存在的漂移
 
@@ -132,7 +132,7 @@ Claude 官方也明确区分 subagent 与 Agent Teams：前者把结果返回 ca
 5. marketplace 的 `requires` 字段未声明实际逻辑依赖，例如 `jules-review` 会调用 `council`。
 6. 在 Windows 上运行 `bun scripts/validate-plugins.mjs` 时，marketplace schema、10 个 source path 和 orphan 检查均通过，但 26 个 Skill 全被误报为“missing YAML frontmatter”。实际 frontmatter 存在；原因是 validator 的正则只接受 LF，而当前文件为 CRLF。
 
-这些问题应进入兼容诊断：缺失组件或逻辑依赖要明确警告，不能由 Vetta 静默补猜。
+这些问题应进入兼容诊断：缺失组件或逻辑依赖要明确警告，不能由 Astravia 静默补猜。
 Claude importer 必须先规范化 CRLF/LF 再解析 frontmatter，并保留对应的跨平台 fixture。
 
 ## 6. 兼容优先级

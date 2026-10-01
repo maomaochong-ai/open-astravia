@@ -106,7 +106,7 @@ const DOMAIN_KEYWORDS: Record<string, readonly string[]> = {
 	],
 	projects: ["项目", "project", "会话", "session", "侧边栏", "归档"],
 	general: ["通用", "general", "通知", "workspace", "工作区", "沙盒", "执行模式", "settings"],
-	agent: ["agent", "Agent", "实验", "experimental", "Vetta CLI", "输入预测", "agentSkills"],
+	agent: ["agent", "Agent", "实验", "experimental", "Astravia CLI", "输入预测", "agentSkills"],
 	knowledge: ["知识库", "knowledge", "wiki", "加工", "索引"],
 	plugins: ["插件", "plugin", "扩展"],
 	im: ["im", "claw", "飞书", "微信", "旁路"],

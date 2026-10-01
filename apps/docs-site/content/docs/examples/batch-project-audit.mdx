@@ -19,17 +19,17 @@ description: 用同一套只读规则检查多个独立目录，通过试跑、�
   <li>每个目录都可以由同一条任务独立审计。</li>
   <li>目录中没有另一个正在执行写操作的任务。</li>
   <li>已选出一个风险较低的代表性目录用于试跑。</li>
-  <li>报告文件名 `vetta-project-audit.md` 不会覆盖已有内容。</li>
+  <li>报告文件名 `astravia-project-audit.md` 不会覆盖已有内容。</li>
 </Checklist>
 
 ## 配置共享任务
 
-在 **更多 → 批量任务** 新建项目，第一次只添加一个目录，并发设为 `1`，产物校验填 `vetta-project-audit.md`。
+在 **更多 → 批量任务** 新建项目，第一次只添加一个目录，并发设为 `1`，产物校验填 `astravia-project-audit.md`。
 
 <Plate no="01" title="共享审计任务">
 
 ```text
-审计当前项目的本地开发入口，只生成 vetta-project-audit.md，不修改其他文件。
+审计当前项目的本地开发入口，只生成 astravia-project-audit.md，不修改其他文件。
 
 请检查 README、项目清单、工作区配置和已有脚本，并在报告中写明：
 1. 项目类型与主要运行时；
@@ -40,7 +40,7 @@ description: 用同一套只读规则检查多个独立目录，通过试跑、�
 6. 无法静态确认、需要人工执行的事项。
 
 不要安装依赖，不要运行可能产生外部副作用的命令，不要猜测不存在的脚本。
-完成后确认 vetta-project-audit.md 存在，并重新读取它检查六个部分。
+完成后确认 astravia-project-audit.md 存在，并重新读取它检查六个部分。
 ```
 
 </Plate>
@@ -67,7 +67,7 @@ description: 用同一套只读规则检查多个独立目录，通过试跑、�
 
 ## 预期产物
 
-每个目录顶层各有一份 `vetta-project-audit.md`，报告结构一致，但事实、命令和待确认项来自各自项目。批量看板显示每个子任务的独立状态和会话。
+每个目录顶层各有一份 `astravia-project-audit.md`，报告结构一致，但事实、命令和待确认项来自各自项目。批量看板显示每个子任务的独立状态和会话。
 
 ## 验收结果
 
@@ -85,7 +85,7 @@ description: 用同一套只读规则检查多个独立目录，通过试跑、�
 
 ```text
 只修正当前审计报告中的 [具体问题]。保持只读，不修改项目文件。
-先核对 [README 或配置文件]，再更新 vetta-project-audit.md，并重新检查六个必需部分。
+先核对 [README 或配置文件]，再更新 astravia-project-audit.md，并重新检查六个必需部分。
 ```
 
 <Callout type="warn" title="停止会清理未完成任务">

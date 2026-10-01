@@ -1,4 +1,4 @@
-import type { ImageContent } from "@vetta/ai";
+import type { ImageContent } from "@astravia/ai";
 import type { Args } from "../bootstrap/launch-arguments.js";
 import type { PrintModeOptions } from "../modes/print-mode.js";
 

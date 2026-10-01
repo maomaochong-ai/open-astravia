@@ -1,5 +1,5 @@
+import type { AgentToolUpdateCallback } from "@astravia/agent-core";
 import { type TSchema, Type } from "@sinclair/typebox";
-import type { AgentToolUpdateCallback } from "@vetta/agent-core";
 import { describe, expect, it, vi } from "vitest";
 import type { ExtensionContext } from "../../src/extensions/index.js";
 import {

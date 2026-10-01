@@ -16,7 +16,7 @@ import (
 	"testing"
 	"time"
 
-	"vetta-im-gateway/internal/transport"
+	"astravia-im-gateway/internal/transport"
 )
 
 type rpcCallRecord struct {

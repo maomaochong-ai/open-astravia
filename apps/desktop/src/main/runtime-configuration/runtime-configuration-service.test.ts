@@ -1,8 +1,8 @@
 import {
 	CODING_AGENT_COMPACTION_CONFIGURATION,
 	CODING_AGENT_COMPACTION_CONFIGURATION_ID,
-} from "@vetta/coding-agent/settings";
-import { CODING_IMAGE_CONFIGURATION_ID, VETTA_OCR_CONFIGURATION_ID } from "@vetta/runtime-tools";
+} from "@astravia/coding-agent/settings";
+import { ASTRAVIA_OCR_CONFIGURATION_ID, CODING_IMAGE_CONFIGURATION_ID } from "@astravia/runtime-tools";
 import { describe, expect, it, vi } from "vitest";
 import {
 	DesktopRuntimeConfigurationService,
@@ -36,7 +36,7 @@ describe("DesktopRuntimeConfigurationService", () => {
 		expect(catalog.entries.map(({ configurationId }) => configurationId)).toEqual([
 			CODING_AGENT_COMPACTION_CONFIGURATION_ID,
 			CODING_IMAGE_CONFIGURATION_ID,
-			VETTA_OCR_CONFIGURATION_ID,
+			ASTRAVIA_OCR_CONFIGURATION_ID,
 		]);
 		expect(
 			catalog.entries.find(({ configurationId }) => configurationId === CODING_IMAGE_CONFIGURATION_ID)?.consumers,
@@ -100,7 +100,7 @@ describe("DesktopRuntimeConfigurationService", () => {
 
 	it("persists OCR configuration independently and preserves its local default", async () => {
 		const harness = createHarness();
-		await harness.service.set(VETTA_OCR_CONFIGURATION_ID, { cacheResults: false });
+		await harness.service.set(ASTRAVIA_OCR_CONFIGURATION_ID, { cacheResults: false });
 		expect(harness.readAgentSettings().ocr).toEqual({
 			defaultProviderId: "desktop-app:ppocrv5",
 			remoteProviderPolicy: "ask",
@@ -108,7 +108,7 @@ describe("DesktopRuntimeConfigurationService", () => {
 			defaultOutput: "text",
 		});
 		await expect(
-			harness.service.set(VETTA_OCR_CONFIGURATION_ID, { remoteProviderPolicy: "sometimes" }),
+			harness.service.set(ASTRAVIA_OCR_CONFIGURATION_ID, { remoteProviderPolicy: "sometimes" }),
 		).rejects.toThrow("remote provider policy");
 		await harness.service.close();
 	});

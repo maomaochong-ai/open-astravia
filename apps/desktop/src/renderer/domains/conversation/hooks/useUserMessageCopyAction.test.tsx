@@ -25,7 +25,7 @@ describe("useUserMessageCopyAction", () => {
 
 	it("copies user-message text and images through the rich clipboard contract", async () => {
 		const writeUserMessage = vi.fn(async () => undefined);
-		Object.defineProperty(window, "vetta", {
+		Object.defineProperty(window, "astravia", {
 			configurable: true,
 			value: { clipboard: { writeUserMessage } },
 		});

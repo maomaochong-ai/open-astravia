@@ -7,7 +7,7 @@ describe("DesktopMcpElicitationBroker", () => {
 		const observed = vi.fn();
 		broker.setInteractiveHandler(async (request) => {
 			observed(request);
-			return { action: "accept", content: { name: "Vetta", retries: 2, scopes: ["read"] } };
+			return { action: "accept", content: { name: "Astravia", retries: 2, scopes: ["read"] } };
 		});
 
 		const result = await broker.handle(
@@ -28,7 +28,7 @@ describe("DesktopMcpElicitationBroker", () => {
 
 		expect(result).toEqual({
 			action: "accept",
-			content: { name: "Vetta", retries: 2, scopes: ["read"] },
+			content: { name: "Astravia", retries: 2, scopes: ["read"] },
 		});
 		expect(observed.mock.calls[0]?.[0]).toEqual(
 			expect.objectContaining({

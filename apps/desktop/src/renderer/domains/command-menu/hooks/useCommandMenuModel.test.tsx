@@ -75,7 +75,7 @@ beforeEach(() => {
 	sessionSearchState.results = [];
 	sessionSearchState.loading = false;
 	projectSessions.current = [];
-	Object.defineProperty(window, "vetta", {
+	Object.defineProperty(window, "astravia", {
 		configurable: true,
 		value: {
 			skills: { list: async () => [] },

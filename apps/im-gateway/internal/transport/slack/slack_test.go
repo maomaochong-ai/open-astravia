@@ -16,7 +16,7 @@ import (
 	slackapi "github.com/slack-go/slack"
 	"github.com/slack-go/slack/slackevents"
 
-	"vetta-im-gateway/internal/transport"
+	"astravia-im-gateway/internal/transport"
 )
 
 func TestNew_ValidatesTokenPrefixes(t *testing.T) {
@@ -107,7 +107,7 @@ func TestStripBotMention(t *testing.T) {
 	if got := stripBotMention("<@U123> hello", "U123"); got != "hello" {
 		t.Errorf("got %q", got)
 	}
-	if got := stripBotMention("<@U123|vetta> hi <@U123>", "U123"); got != "hi" {
+	if got := stripBotMention("<@U123|astravia> hi <@U123>", "U123"); got != "hi" {
 		t.Errorf("got %q", got)
 	}
 	// A mention of a different user is user content, not bot noise.
@@ -145,12 +145,12 @@ func TestBuildButtonBlocks(t *testing.T) {
 	if !ok {
 		t.Fatalf("element should be a button, got %T", row0.Elements.ElementSet[1])
 	}
-	if btn.ActionID != "vetta_btn_0_1" || btn.Value != "no" || btn.Text.Text != "No" {
+	if btn.ActionID != "astravia_btn_0_1" || btn.Value != "no" || btn.Text.Text != "No" {
 		t.Errorf("button wrong: %+v", btn)
 	}
 	row1 := blocks[2].(*slackapi.ActionBlock)
 	btn2 := row1.Elements.ElementSet[0].(*slackapi.ButtonBlockElement)
-	if btn2.ActionID != "vetta_btn_1_0" || btn2.Value != "later" {
+	if btn2.ActionID != "astravia_btn_1_0" || btn2.Value != "later" {
 		t.Errorf("row1 button wrong: %+v", btn2)
 	}
 }
@@ -399,7 +399,7 @@ func TestHandleInteractive_BlockAction(t *testing.T) {
 	tr := newTestTransport(t, Options{BotToken: "xoxb-1", AppToken: "xapp-1"})
 	h := &captureHandler{}
 
-	cb := blockActionsCallback("U1", "C1", "1700000002.000300", "vetta_btn_0_1", "no")
+	cb := blockActionsCallback("U1", "C1", "1700000002.000300", "astravia_btn_0_1", "no")
 	if err := tr.handleInteractive(context.Background(), cb, h); err != nil {
 		t.Fatal(err)
 	}
@@ -408,7 +408,7 @@ func TestHandleInteractive_BlockAction(t *testing.T) {
 		t.Fatalf("expected 1 inbound, got %d", len(got))
 	}
 	m := got[0]
-	if m.ActionID != "vetta_btn_0_1" || m.Text != "no" {
+	if m.ActionID != "astravia_btn_0_1" || m.Text != "no" {
 		t.Errorf("action fields wrong: %+v", m)
 	}
 	if m.ChatID != "C1" || m.UserID != "U1" || m.MessageID != "1700000002.000300" {
@@ -657,7 +657,7 @@ func TestSendMessage_ButtonsBecomeBlocks(t *testing.T) {
 		t.Errorf("section text wrong: %+v", blocks[0].Text)
 	}
 	el := blocks[1].Elements[0]
-	if el.Type != "button" || el.ActionID != "vetta_btn_0_0" || el.Value != "go" || el.Text.Text != "Go" {
+	if el.Type != "button" || el.ActionID != "astravia_btn_0_0" || el.Value != "go" || el.Text.Text != "Go" {
 		t.Errorf("button element wrong: %+v", el)
 	}
 }

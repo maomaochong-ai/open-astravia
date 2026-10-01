@@ -14,7 +14,7 @@ const git = (...args: string[]) =>
 let initial: string;
 let latest: string;
 beforeEach(() => {
-	root = mkdtempSync(join(tmpdir(), "vetta-git-history-"));
+	root = mkdtempSync(join(tmpdir(), "astravia-git-history-"));
 	git("init", "-b", "main");
 	git("config", "user.name", "Fixture");
 	git("config", "user.email", "fixture@example.com");
@@ -39,7 +39,7 @@ beforeEach(() => {
 	});
 });
 afterEach(() => {
-	if (root.startsWith(join(tmpdir(), "vetta-git-history-"))) rmSync(root, { recursive: true, force: true });
+	if (root.startsWith(join(tmpdir(), "astravia-git-history-"))) rmSync(root, { recursive: true, force: true });
 });
 
 describe("history commands in an isolated repository", () => {

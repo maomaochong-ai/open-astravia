@@ -12,7 +12,7 @@ afterEach(async () => {
 });
 
 async function stateDir(): Promise<string> {
-	const dir = await mkdtemp(join(tmpdir(), "vetta-relaunch-marker-"));
+	const dir = await mkdtemp(join(tmpdir(), "astravia-relaunch-marker-"));
 	roots.push(dir);
 	return dir;
 }
@@ -32,7 +32,7 @@ describe("update relaunch marker", () => {
 	});
 
 	it("never throws on an unwritable state dir", async () => {
-		expect(() => markPendingUpdateRelaunch("/nonexistent/vetta-state")).not.toThrow();
-		expect(consumePendingUpdateRelaunch("/nonexistent/vetta-state")).toBe(false);
+		expect(() => markPendingUpdateRelaunch("/nonexistent/astravia-state")).not.toThrow();
+		expect(consumePendingUpdateRelaunch("/nonexistent/astravia-state")).toBe(false);
 	});
 });

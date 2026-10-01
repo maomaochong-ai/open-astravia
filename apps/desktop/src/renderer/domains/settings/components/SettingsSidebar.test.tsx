@@ -2,7 +2,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { SettingsSidebarView } from "@vetta-org/theme-ui/settings";
+import { SettingsSidebarView } from "@astravia-org/theme-ui/settings";
 
 const TABS = [
 	{ key: "general", icon: "icon-[a]", label: "通用设置" },
@@ -12,7 +12,7 @@ const TABS = [
 		label: "更多选项",
 		children: [
 			{ key: "workspace:browser/console", icon: "icon-[c]", label: "浏览器操作" },
-			{ key: "workspace:vetta-ui-design/gallery", icon: "icon-[d]", label: "设计" },
+			{ key: "workspace:astravia-ui-design/gallery", icon: "icon-[d]", label: "设计" },
 		],
 	},
 ];
@@ -80,7 +80,7 @@ describe("SettingsSidebarView", () => {
 
 		await userEvent.click(screen.getByText("设计"));
 
-		expect(onSelectChild).toHaveBeenCalledWith("workspace:vetta-ui-design/gallery");
+		expect(onSelectChild).toHaveBeenCalledWith("workspace:astravia-ui-design/gallery");
 		expect(onSelectTab).not.toHaveBeenCalled();
 	});
 
@@ -91,7 +91,7 @@ describe("SettingsSidebarView", () => {
 	});
 
 	it("深链停在某个下级入口时自动展开并高亮它", () => {
-		renderSidebar({ activeChildKey: "workspace:vetta-ui-design/gallery" });
+		renderSidebar({ activeChildKey: "workspace:astravia-ui-design/gallery" });
 
 		// 从列表页或深链进来时，用户要能立刻看出自己停在哪一层。
 		expect(screen.getByText("设计")).toBeTruthy();

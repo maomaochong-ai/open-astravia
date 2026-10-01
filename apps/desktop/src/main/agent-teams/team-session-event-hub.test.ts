@@ -1,6 +1,6 @@
-import type { TeamSessionDocument } from "@vetta/agent-team";
-import { createAssistantMessage } from "@vetta/ai";
-import type { RuntimeHost, RuntimeSessionExecutionObservation, SessionEvent } from "@vetta/runtime-core";
+import type { TeamSessionDocument } from "@astravia/agent-team";
+import { createAssistantMessage } from "@astravia/ai";
+import type { RuntimeHost, RuntimeSessionExecutionObservation, SessionEvent } from "@astravia/runtime-core";
 import { describe, expect, it, vi } from "vitest";
 import type { DesktopTeamSessionStreamEvent } from "../../preload/api-types/team-conversation-display.js";
 import { TeamSessionEventHub } from "./team-session-event-hub.js";

@@ -1,8 +1,8 @@
 import { mkdir, readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { getVettaHomePath } from "@vetta/action-rpc";
-import type { TeamDefinition } from "@vetta/agent-team";
-import { atomicWriteJSONAsync } from "@vetta/toolkit/atomic-write";
+import { getAstraviaHomePath } from "@astravia/action-rpc";
+import type { TeamDefinition } from "@astravia/agent-team";
+import { atomicWriteJSONAsync } from "@astravia/toolkit/atomic-write";
 import { z } from "zod";
 import type { TeamMemberModelPreference, TeamMemberModelSelection } from "../../shared/agent-team-member-model.js";
 
@@ -38,7 +38,7 @@ export class TeamMemberModelPreferences {
 	private loading: Promise<z.infer<typeof DocumentSchema>> | undefined;
 	private mutationTail: Promise<unknown> = Promise.resolve();
 
-	constructor(private readonly path = join(getVettaHomePath(), "agent-teams", "member-model-preferences.json")) {}
+	constructor(private readonly path = join(getAstraviaHomePath(), "agent-teams", "member-model-preferences.json")) {}
 
 	async list(team: TeamDefinition): Promise<Readonly<Record<string, TeamMemberModelPreference>>> {
 		const document = await this.read();

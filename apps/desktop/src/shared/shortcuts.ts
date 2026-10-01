@@ -13,7 +13,7 @@ export interface ShortcutActionDef {
 	scope: "app" | "editor";
 }
 
-export const FILE_EDITOR_SAVE_EVENT = "vetta:file-editor-save";
+export const FILE_EDITOR_SAVE_EVENT = "astravia:file-editor-save";
 
 /** 可配置的全局快捷键动作（白名单）。as const 保留字面量类型。 */
 export const SHORTCUT_ACTIONS = [

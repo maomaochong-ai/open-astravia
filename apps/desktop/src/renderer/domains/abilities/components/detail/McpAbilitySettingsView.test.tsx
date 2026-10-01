@@ -52,7 +52,7 @@ describe("McpAbilitySettingsView", () => {
 		const onSaveBuiltinParameters = vi.fn(async () => undefined);
 		const getSetupLoginStatus = vi.fn(async () => ({ state: "authenticated" as const, username: "小明" }));
 		const clearSetupLogin = vi.fn(async () => ({ state: "unauthenticated" as const }));
-		(window as unknown as { vetta: unknown }).vetta = { mcp: { getSetupLoginStatus, clearSetupLogin } };
+		(window as unknown as { astravia: unknown }).astravia = { mcp: { getSetupLoginStatus, clearSetupLogin } };
 		const model = {
 			mcp: {
 				config: {

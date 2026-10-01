@@ -3,7 +3,7 @@
 ## 目标
 
 在第 150 阶段完成 RuntimeHost 历史修改差分后，本阶段只验证 Extension Command Context 已公开的两个历史能力：
-`navigateTree` 与 `fork`。测试通过真实 Vetta CLI、真实 Extension 模块、真实 RPC 会话和本地 Provider 比较 Legacy 与
+`navigateTree` 与 `fork`。测试通过真实 Astravia CLI、真实 Extension 模块、真实 RPC 会话和本地 Provider 比较 Legacy 与
 Greenfield，不扩大 Extension API，也不把 RuntimeHost 的删除、替换或分支切换能力暴露给 Extension。
 
 ## 架构判断

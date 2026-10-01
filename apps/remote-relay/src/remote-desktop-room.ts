@@ -1,12 +1,12 @@
 import { DurableObject } from "cloudflare:workers";
-import { KEEPALIVE_PING, KEEPALIVE_PONG } from "@vetta/remote-control";
+import { KEEPALIVE_PING, KEEPALIVE_PONG } from "@astravia/remote-control";
 import {
 	encodeRemoteDesktopSignal,
 	parseRemoteDesktopSignal,
 	REMOTE_DESKTOP_PROTOCOL_VERSION,
 	REMOTE_DESKTOP_WEBSOCKET_PROTOCOL,
 	type RemoteDesktopSignal,
-} from "@vetta/remote-desktop/protocol";
+} from "@astravia/remote-desktop/protocol";
 import { relayInfo, relayWarn } from "./relay-log.js";
 
 interface Env {
@@ -34,12 +34,12 @@ export class RemoteDesktopRoom extends DurableObject<Env> {
 	async fetch(request: Request): Promise<Response> {
 		if (request.headers.get("Upgrade")?.toLowerCase() !== "websocket")
 			return response("WebSocket upgrade required", 426);
-		const role = desktopRole(request.headers.get("X-Vetta-Desktop-Role"));
-		const credentialHash = request.headers.get("X-Vetta-Credential-Hash");
-		const roomTag = request.headers.get("X-Vetta-Room-Tag");
+		const role = desktopRole(request.headers.get("X-Astravia-Desktop-Role"));
+		const credentialHash = request.headers.get("X-Astravia-Credential-Hash");
+		const roomTag = request.headers.get("X-Astravia-Room-Tag");
 		if (!role || !credentialHash || !roomTag) return response("Invalid desktop relay request", 400);
 		// The Worker already asked the pair room to vouch for this credential.
-		const authorized = request.headers.get("X-Vetta-Preauthorized") === (role === "host" ? "desktop" : "mobile");
+		const authorized = request.headers.get("X-Astravia-Preauthorized") === (role === "host" ? "desktop" : "mobile");
 		if (!authorized) {
 			relayWarn("desktop_connection_rejected", { roomTag, role, reason: "invalid_pairing" });
 			return response("Pairing authorization failed", 401);

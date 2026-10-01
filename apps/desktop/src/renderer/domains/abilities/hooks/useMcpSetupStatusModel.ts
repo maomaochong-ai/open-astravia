@@ -35,7 +35,7 @@ export function useMcpSetupStatusModel(
 		const run = ++runRef.current;
 		setPhase("checking");
 		setError(undefined);
-		void window.vetta.mcp
+		void window.astravia.mcp
 			.getSetupLoginStatus(item.serverName)
 			.then((status) => {
 				if (run !== runRef.current) return;

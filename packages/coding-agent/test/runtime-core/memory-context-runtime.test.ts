@@ -1,15 +1,15 @@
-import type { Api, AssistantMessage, Message, Model, UserMessage } from "@vetta/ai";
+import type { Api, AssistantMessage, Message, Model, UserMessage } from "@astravia/ai";
 import {
 	applyStoredEventToConversationDocument,
 	type ConversationDocument,
 	createEmptyConversationDocument,
 	createSeededConversationDocument,
-} from "@vetta/runtime-core/conversation";
+} from "@astravia/runtime-core/conversation";
 import type {
 	ContextCompactionRecord,
 	ContextPreparationInput,
 	ConversationContinuationResult,
-} from "@vetta/runtime-core/kernel";
+} from "@astravia/runtime-core/kernel";
 import { describe, expect, it, vi } from "vitest";
 import type { CompactionSettings } from "../../src/compaction/index.js";
 import { DefaultCodingAgentContextRuntime } from "../../src/compaction/runtime/index.js";

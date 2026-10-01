@@ -88,13 +88,13 @@ describe("Pi extension compatibility boundary", () => {
 		).toThrow(PiExtensionCompatibilityError);
 	});
 
-	it("rejects Pi lifecycle events that Vetta cannot yet emit as settled facts", async () => {
+	it("rejects Pi lifecycle events that Astravia cannot yet emit as settled facts", async () => {
 		const fixture = fileURLToPath(new URL("./fixtures/pi-extension-compat/unsupported-event.ts", import.meta.url));
 		const result = await loadPiExtensions([fixture], process.cwd());
 
 		expect(result.extensions).toEqual([]);
 		expect(result.errors[0]?.error).toContain("agent_settled");
-		expect(result.errors[0]?.error).toContain("no equivalent settled Vetta fact");
+		expect(result.errors[0]?.error).toContain("no equivalent settled Astravia fact");
 	});
 
 	it("rejects API members that are not explicitly included in the compatibility profile", async () => {

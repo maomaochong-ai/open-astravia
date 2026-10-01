@@ -7,7 +7,7 @@ vi.mock("../logger.js", () => ({
 	getAppLogger: () => ({ debug: vi.fn(), error: vi.fn(), info: vi.fn(), warn: vi.fn() }),
 }));
 
-import type { TeamSessionDocument } from "@vetta/agent-team";
+import type { TeamSessionDocument } from "@astravia/agent-team";
 import { createLegacyTeamSessionRepository } from "./team-session-repository.js";
 
 const temporaryDirectories: string[] = [];
@@ -20,7 +20,7 @@ afterEach(async () => {
 
 describe("createLegacyTeamSessionRepository", () => {
 	it("reads the previous sidecar format without exposing a new write path", async () => {
-		const root = await mkdtemp(join(tmpdir(), "vetta-team-session-"));
+		const root = await mkdtemp(join(tmpdir(), "astravia-team-session-"));
 		temporaryDirectories.push(root);
 		const repository = createLegacyTeamSessionRepository(root);
 		const session: TeamSessionDocument = {
@@ -55,7 +55,7 @@ describe("createLegacyTeamSessionRepository", () => {
 	});
 
 	it("returns an empty migration catalog when the legacy directory does not exist", async () => {
-		const root = join(tmpdir(), `missing-vetta-team-session-${crypto.randomUUID()}`);
+		const root = join(tmpdir(), `missing-astravia-team-session-${crypto.randomUUID()}`);
 		const repository = createLegacyTeamSessionRepository(root);
 
 		await expect(repository.list?.()).resolves.toEqual([]);

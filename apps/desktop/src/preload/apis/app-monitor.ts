@@ -1,9 +1,9 @@
 import type { IpcRenderer } from "electron";
 import type { DesktopApi } from "../api.js";
 
-const RECORD_EVENT_CHANNEL = "vetta:app-monitor:record-event";
-const GET_ACHIEVEMENT_USAGE_CHANNEL = "vetta:app-monitor:get-achievement-usage";
-const GET_PROMPT_REF_USAGE_CHANNEL = "vetta:app-monitor:get-prompt-ref-usage";
+const RECORD_EVENT_CHANNEL = "astravia:app-monitor:record-event";
+const GET_ACHIEVEMENT_USAGE_CHANNEL = "astravia:app-monitor:get-achievement-usage";
+const GET_PROMPT_REF_USAGE_CHANNEL = "astravia:app-monitor:get-prompt-ref-usage";
 
 export function createAppMonitorApi(ipc: IpcRenderer): Pick<DesktopApi, "appMonitor"> {
 	return {

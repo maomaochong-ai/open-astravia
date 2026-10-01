@@ -6,7 +6,7 @@
 不增加新的观测系统或改变既有 Agent Loop 行为：
 
 1. SDK Host 继续支持显式注入平台中立 tracer；
-2. 未显式注入时，继续由 `VETTA_TRACING=langfuse` 启用 Langfuse 适配器；
+2. 未显式注入时，继续由 `ASTRAVIA_TRACING=langfuse` 启用 Langfuse 适配器；
 3. Greenfield Composition、Runtime Factory 和 Turn Engine 只传递中立合同；
 4. 每个 Turn 使用真实的 Session ID，不复用创建 Composition 时的陈旧身份；
 5. 根 Agent observation、LLM generation、Tool observation、内容捕获和 flush 继续复用 Agent Loop；
@@ -19,7 +19,7 @@ Legacy `createAgentSession` 已有以下行为：
 
 - `options.tracer` 优先于环境自动创建的 Langfuse tracer；
 - 默认 `captureContent: true`、`detail: "standard"`；
-- Trace Name 优先级为显式 option、`VETTA_TRACING_TRACE_NAME`、`"coding-agent run"`；
+- Trace Name 优先级为显式 option、`ASTRAVIA_TRACING_TRACE_NAME`、`"coding-agent run"`；
 - 用户 metadata 之后追加 `app: "coding-agent"`、`cwd` 和真实 `sessionId`；
 - Agent Loop 创建 `agent.run` 根 observation，并按 detail 创建 generation/tool 子 observation；
 - 每次 Agent Loop 结束调用 `flush`，但 Session 不调用 tracer 的 `shutdown`。
@@ -32,7 +32,7 @@ Greenfield 路径此前把三个公开参数标记为 `not-wired`，SDK Host 会
 ### 1. 具体后端只存在于产品 Host
 
 `createLangfuseRuntimeTracerFromEnv` 只在 Coding Agent SDK Host 中调用。Runtime Core 没有增加
-`@vetta/runtime-telemetry` 或 Langfuse 依赖，而是复用 `AgentLoopConfig["tracer"]` 和
+`@astravia/runtime-telemetry` 或 Langfuse 依赖，而是复用 `AgentLoopConfig["tracer"]` 和
 `AgentLoopConfig["tracing"]` 的已有平台中立类型。
 
 接线方向固定为：

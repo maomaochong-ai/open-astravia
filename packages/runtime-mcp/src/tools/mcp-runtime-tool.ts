@@ -1,5 +1,5 @@
+import type { RuntimeToolDefinition, RuntimeToolResult } from "@astravia/runtime-core/kernel";
 import { type TLiteralValue, type TSchema, Type } from "@sinclair/typebox";
-import type { RuntimeToolDefinition, RuntimeToolResult } from "@vetta/runtime-core/kernel";
 import { attachMcpAppDescriptor, type McpAppClientLease, type McpAppExecutionHost } from "../apps/index.js";
 import { isMcpTaskCreatedError } from "../client/index.js";
 import { type IMcpClient, type McpJsonObject, type McpTool, readMcpAppToolMeta } from "../protocol/index.js";

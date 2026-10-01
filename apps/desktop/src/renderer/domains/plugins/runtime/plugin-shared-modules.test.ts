@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createPluginRuntimeShared, pluginSharedModules } from "./plugin-shared-modules";
 
 /**
- * 共享模块的**键就是包名**，而包名改过一次（`@vetta/ui` → `@vetta-org/ui`）。
+ * 共享模块的**键就是包名**，而包名改过一次（`@astravia/ui` → `@astravia-org/ui`）。
  *
  * 市场上已发布的插件在自己的 remoteEntry 里声明的仍是旧名：宿主只提供新名时，它们在共享域
  * 里落空、退回各自打包的那一份，于是宿主与插件各持一份组件实例——样式与状态都会出问题，
@@ -10,12 +10,12 @@ import { createPluginRuntimeShared, pluginSharedModules } from "./plugin-shared-
  */
 describe("plugin shared modules", () => {
 	it("serves the design system under both its current and legacy package name", () => {
-		expect(pluginSharedModules["@vetta-org/ui"].module).toBe(pluginSharedModules["@vetta/ui"].module);
+		expect(pluginSharedModules["@astravia-org/ui"].module).toBe(pluginSharedModules["@astravia/ui"].module);
 	});
 
 	it("serves the host component surface under both names too", () => {
-		expect(pluginSharedModules["@vetta-org/theme-ui/plugin-ui"].module).toBe(
-			pluginSharedModules["@vetta/theme-ui/plugin-ui"].module,
+		expect(pluginSharedModules["@astravia-org/theme-ui/plugin-ui"].module).toBe(
+			pluginSharedModules["@astravia/theme-ui/plugin-ui"].module,
 		);
 	});
 
@@ -26,8 +26,8 @@ describe("plugin shared modules", () => {
 			expect(Object.keys(shared)).toContain(name);
 		}
 		// 共享条目的类型是联合体；取到的这一支带 lib()，它返回的实例必须与新名同一份。
-		const legacy = shared["@vetta/ui"];
+		const legacy = shared["@astravia/ui"];
 		const resolve = (Array.isArray(legacy) ? legacy[0] : legacy) as { lib?: () => unknown } | undefined;
-		expect(resolve?.lib?.()).toBe(pluginSharedModules["@vetta-org/ui"].module);
+		expect(resolve?.lib?.()).toBe(pluginSharedModules["@astravia-org/ui"].module);
 	});
 });

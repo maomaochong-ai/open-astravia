@@ -1,4 +1,4 @@
-import type { SshConnectionStatus } from "@vetta/ssh-transport";
+import type { SshConnectionStatus } from "@astravia/ssh-transport";
 
 /**
  * SSH 主机相关的跨进程广播。
@@ -9,11 +9,11 @@ import type { SshConnectionStatus } from "@vetta/ssh-transport";
  */
 export const SSH_CHANNELS = {
 	/** main → renderer：无载荷，通知「主机列表已变，去重读」。 */
-	HOSTS_CHANGED: "vetta:ssh:hosts-changed",
+	HOSTS_CHANGED: "astravia:ssh:hosts-changed",
 	/** main → renderer：单台主机的连接状态变化。 */
-	HOST_STATUS: "vetta:ssh:host-status",
+	HOST_STATUS: "astravia:ssh:host-status",
 	/** main → renderer：无载荷，通知「端口转发清单已变，去重读」。 */
-	PORT_FORWARDS_CHANGED: "vetta:ssh:port-forwards-changed",
+	PORT_FORWARDS_CHANGED: "astravia:ssh:port-forwards-changed",
 } as const;
 
 export interface SshHostStatusEvent {

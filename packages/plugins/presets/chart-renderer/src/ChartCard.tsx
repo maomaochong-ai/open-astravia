@@ -1,5 +1,5 @@
-import { type PluginCardProps, useTranslation } from "@vetta-org/plugin-sdk";
-import { Button } from "@vetta-org/ui";
+import { type PluginCardProps, useTranslation } from "@astravia-org/plugin-sdk";
+import { Button } from "@astravia-org/ui";
 import {
 	ArcElement,
 	BarElement,

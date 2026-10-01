@@ -19,10 +19,10 @@ ADR-0088 将浏览器进程、profile、策略与生命周期收敛为 Desktop F
 1. Browser 系统插件只向 Agent 贡献按需 Skill，不再注册 `browser_operate` 或其它浏览器专用 Tool。Agent
    通过现有 shell Tool 直接调用 PATH 中的 `agent-browser`。
 2. Desktop 继续把托管 npm 前缀加入 Agent 命令环境 PATH，并在该前缀安装锁定版本的 `agent-browser`。
-   Skill 在首次使用时检查版本、Vetta 私有 `npm_config_prefix` 与浏览器健康状态；CLI 缺失或过旧时自行安装锁定版本，
+   Skill 在首次使用时检查版本、Astravia 私有 `npm_config_prefix` 与浏览器健康状态；CLI 缺失或过旧时自行安装锁定版本，
    浏览器缺失时自行下载 Chrome for Testing。它不得在私有 prefix 缺失时回落系统级全局安装，也不得自动执行绕过
    版本锁定的升级或会清理状态的修复。插件面板继续提供人工安装、升级与诊断兜底。
-3. 每个 Coding Agent Session 的命令环境注入宿主确认的 `VETTA_AGENT_SESSION_ID`。Skill 要求所有浏览器与页面
+3. 每个 Coding Agent Session 的命令环境注入宿主确认的 `ASTRAVIA_AGENT_SESSION_ID`。Skill 要求所有浏览器与页面
    状态操作显式以该值作为 `--session`，并使用 `--pin-tab`；安装、诊断和内置手册读取不绑定 session。同一
    Agent Session 的连续操作复用自己的浏览器；不同 Agent Session 不从 cwd 推导或共享 session。
 4. 同一任务操作多个账号时，以 `<agent-session-id>-<account-key>` 形成独立 upstream session，并用稳定
@@ -40,7 +40,7 @@ Capability 两条执行路径”的结论；ADR-0088 对 Plugin API、Foundation
 
 | 方案 | 未采纳原因 |
 | --- | --- |
-| `vetta browser` 代理 CLI 经 Local RPC 进入 BrowserAutomationService | Agent 仍只能使用 Vetta 重新定义的命令子集；需要维护额外 CLI/RPC 协议，且用户明确不要求与 Plugin API 共享 Session |
+| `astravia browser` 代理 CLI 经 Local RPC 进入 BrowserAutomationService | Agent 仍只能使用 Astravia 重新定义的命令子集；需要维护额外 CLI/RPC 协议，且用户明确不要求与 Plugin API 共享 Session |
 | 继续使用 `browser_operate` | 专用 Tool Schema 常驻，命令面与 upstream 演进重复，预先确定的操作难以利用 CLI batch/chaining |
 | CLI 与 Tool 长期并存 | 模型面对两条等价操作路径，Skill、测试与故障诊断需要维护两套事实源 |
 | 所有 Agent 继续按 workspace 哈希共享 session | 同一项目中的并行会话会互相导航、使 ref 失效并操作错误账号 |
@@ -48,11 +48,11 @@ Capability 两条执行路径”的结论；ADR-0088 对 Plugin API、Foundation
 
 ## 后果
 
-- Agent 获得 upstream 的完整 CLI、JSON、batch、refs、profiles、restore 与版本匹配 Skill，不需要等待 Vetta
+- Agent 获得 upstream 的完整 CLI、JSON、batch、refs、profiles、restore 与版本匹配 Skill，不需要等待 Astravia
   为每个新命令增加 Tool Schema。
-- Browser Skill 的运行时安装属于已请求浏览器任务的准备步骤；自动安装仅限 Vetta 私有 npm prefix 中的锁定 CLI
+- Browser Skill 的运行时安装属于已请求浏览器任务的准备步骤；自动安装仅限 Astravia 私有 npm prefix 中的锁定 CLI
   与缺失的 Chrome for Testing，失败后有限停止并转交插件面板，不扩大为任意系统包安装权限。
-- `VETTA_AGENT_SESSION_ID` 成为 Coding Agent 命令环境的公开宿主合同；宿主提供的值覆盖调用方同名 env。
+- `ASTRAVIA_AGENT_SESSION_ID` 成为 Coding Agent 命令环境的公开宿主合同；宿主提供的值覆盖调用方同名 env。
 - Agent CLI 的 Chrome、daemon 和持久状态不受 `ctx.browser` 的 namespace、revision、取消与关闭生命周期管理；
   故障诊断需要区分 CLI 与 Capability 两条路径。
 - 关闭 Agent Runtime 不等价于立即关闭 CLI daemon；Skill 在任务结束时执行 `agent-browser close`，upstream

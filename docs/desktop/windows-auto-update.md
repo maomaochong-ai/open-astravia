@@ -1,6 +1,6 @@
 # Windows 自动更新、R2 发版与排障
 
-本文记录 Vetta Desktop Windows 自动更新从服务端发版迁移到 R2/GitHub Releases 的最终方案、实现细节、完整验证流程，以及开发期间遇到的问题。它是当前 Windows 更新链路的维护手册。
+本文记录 Astravia Desktop Windows 自动更新从服务端发版迁移到 R2/GitHub Releases 的最终方案、实现细节、完整验证流程，以及开发期间遇到的问题。它是当前 Windows 更新链路的维护手册。
 
 ## 1. 当前结论
 
@@ -22,7 +22,7 @@ Windows 只需要发布一个 EXE 安装包及其 blockmap，不需要为了自�
 
 ### 2.1 已实现
 
-- 更新目标源不与 Vetta 平台绑定。
+- 更新目标源不与 Astravia 平台绑定。
 - R2 与 GitHub Releases 使用相同的客户端更新状态机。
 - Windows 安装与后台更新统一使用 Inno Setup EXE。
 - 后台更新不显示安装向导，不修改卸载注册信息，也不强制关闭正在运行的旧版本。
@@ -42,10 +42,10 @@ Windows 只需要发布一个 EXE 安装包及其 blockmap，不需要为了自�
 
 ## 3. 更新源拓扑
 
-| 构建用途 | `VETTA_UPDATE_PROVIDER` | 更新源 | 建议地址 |
+| 构建用途 | `ASTRAVIA_UPDATE_PROVIDER` | 更新源 | 建议地址 |
 |---|---|---|---|
-| 官方稳定版 | `generic` | R2 + Cloudflare CDN | `https://releases.openvetta.com/desktop/stable` |
-| 本地闭环测试 | `generic` | R2 独立前缀 | `https://releases.openvetta.com/desktop/test` |
+| 官方稳定版 | `generic` | R2 + Cloudflare CDN | `https://releases.astravia.dev/desktop/stable` |
+| 本地闭环测试 | `generic` | R2 独立前缀 | `https://releases.astravia.dev/desktop/test` |
 | 开源版本 | `github` | 公开 GitHub Releases | 仓库 Release |
 | 未配置 provider | (默认) | R2 + Cloudflare CDN | 使用 stable 默认地址 |
 
@@ -55,12 +55,12 @@ R2 推荐对象布局：
 desktop/
   stable/
     latest.yml
-    Vetta-<version>-win-x64.exe
-    Vetta-<version>-win-x64.exe.blockmap
+    Astravia-<version>-win-x64.exe
+    Astravia-<version>-win-x64.exe.blockmap
   test/
     latest.yml
-    Vetta-<version>-win-x64.exe
-    Vetta-<version>-win-x64.exe.blockmap
+    Astravia-<version>-win-x64.exe
+    Astravia-<version>-win-x64.exe.blockmap
 ```
 
 `stable` 和 `test` 必须同时在客户端 URL、R2 前缀和 Cloudflare 路由上保持一致，不能只改其中一个。
@@ -72,11 +72,11 @@ desktop/
 默认安装目录：
 
 ```text
-%LOCALAPPDATA%\Programs\Vetta\
-  Vetta.exe                         # Go 稳定启动器
+%LOCALAPPDATA%\Programs\Astravia\
+  Astravia.exe                         # Go 稳定启动器
   current.json                      # 安装包内置版本指针
   versions\<bundled-version>\       # 随安装包携带的 Electron 应用
-    Vetta.exe
+    Astravia.exe
     resources\app.asar
 ```
 
@@ -85,7 +85,7 @@ desktop/
 ### 4.2 后台更新目录
 
 ```text
-%LOCALAPPDATA%\Vetta\
+%LOCALAPPDATA%\Astravia\
   current.json                      # 后台更新的活动版本指针
   versions\<version>\               # 后台准备的新版本
   installer\<version-pid-time>\     # Inno 临时进度与失败日志
@@ -106,7 +106,7 @@ desktop/
 ### 4.3 差分下载缓存
 
 ```text
-%LOCALAPPDATA%\vetta-updater\
+%LOCALAPPDATA%\astravia-updater\
   installer.exe                     # 当前版本安装包基线
   current.blockmap                  # electron-updater 管理的基线 blockmap
 ```
@@ -125,8 +125,8 @@ desktop/
   -> 20 秒后自动下载（也可手动触发）
   -> electron-updater 校验并差分重建完整 EXE
   -> 提升 EXE 为下一次差分基线
-  -> Inno 静默展开到 %LOCALAPPDATA%\Vetta\versions\<new>
-  -> 校验 Vetta.exe、resources/app.asar、.install-complete
+  -> Inno 静默展开到 %LOCALAPPDATA%\Astravia\versions\<new>
+  -> 校验 Astravia.exe、resources/app.asar、.install-complete
   -> 状态变为 ready，提示更新并重启
   -> 写 current.json（pending=true）
   -> 直接启动新版本 EXE，退出旧版本
@@ -160,8 +160,8 @@ Windows 自定义流程把进度划分为：
 
 点击“更新并重启”不会再次运行安装程序。此时完整版本目录已经准备好，激活动作只做三件事：
 
-1. 原子写入 `%LOCALAPPDATA%\Vetta\current.json`，记录新旧版本并设 `pending=true`。
-2. 使用 `app.relaunch({ execPath: <new Vetta.exe> })` 启动新版本。
+1. 原子写入 `%LOCALAPPDATA%\Astravia\current.json`，记录新旧版本并设 `pending=true`。
+2. 使用 `app.relaunch({ execPath: <new Astravia.exe> })` 启动新版本。
 3. 退出旧版本。
 
 如果新版本在健康确认前退出，用户下次从桌面快捷方式启动时，稳定启动器读取到 pending 并回退上一版本。
@@ -169,17 +169,17 @@ Windows 自定义流程把进度划分为：
 ### 5.4 旧版本清理
 
 - 新版本健康后只保留当前版本和 `previousVersion`。
-- 更早的 `%LOCALAPPDATA%\Vetta\versions\*` 会被物理删除。
+- 更早的 `%LOCALAPPDATA%\Astravia\versions\*` 会被物理删除。
 - 手动重新安装会删除后台活动指针，优先回到安装包内置版本；遗留的后台版本目录可能要到下一次成功更新后才被清理。
 - 正常卸载会删除后台版本目录、安装临时目录和活动指针。
-- `%LOCALAPPDATA%\vetta-updater` 当前不在 Inno 的卸载清理列表中，卸载后可能残留一个安装包缓存；这是已知清理边界。
+- `%LOCALAPPDATA%\astravia-updater` 当前不在 Inno 的卸载清理列表中，卸载后可能残留一个安装包缓存；这是已知清理边界。
 
 ## 6. 为什么使用 EXE，而不是 ZIP
 
 Windows 发布 EXE 的原因：
 
 - 用户首次安装、手动修复安装和自动更新只维护一种产物。
-- Inno 能注册卸载项、快捷方式和 `vetta://` 协议。
+- Inno 能注册卸载项、快捷方式和 `astravia://` 协议。
 - 后台模式可以使用同一 EXE 静默写入指定版本目录。
 - electron-updater 可以对 EXE 生成外置 blockmap，并不要求必须使用 ZIP。
 - 代码签名接入后也只需要签名同一个安装产物。
@@ -198,41 +198,41 @@ Windows 发布 EXE 的原因：
 构建期变量写在已忽略的 `apps/desktop/.env.development`：
 
 ```dotenv
-VETTA_UPDATE_PROVIDER=generic
-VETTA_UPDATE_URL=https://releases.openvetta.com/desktop/test
+ASTRAVIA_UPDATE_PROVIDER=generic
+ASTRAVIA_UPDATE_URL=https://releases.astravia.dev/desktop/test
 ```
 
-构建脚本默认 `VETTA_BUILD_ENV=development`，`prepare-pack.js` 显式调用 `loadBuildEnv()` 读取 `.env.development`；Shell 中显式设置的变量优先级更高。未设置 `VETTA_UPDATE_PROVIDER` 时默认使用 `generic`，更新地址默认为 `https://releases.openvetta.com/desktop/stable`，因此会生成 `app-update.yml`。打包不支持无更新源配置；`VETTA_UPDATE_PROVIDER=none` 会在构建期直接失败。
+构建脚本默认 `ASTRAVIA_BUILD_ENV=development`，`prepare-pack.js` 显式调用 `loadBuildEnv()` 读取 `.env.development`；Shell 中显式设置的变量优先级更高。未设置 `ASTRAVIA_UPDATE_PROVIDER` 时默认使用 `generic`，更新地址默认为 `https://releases.astravia.dev/desktop/stable`，因此会生成 `app-update.yml`。打包不支持无更新源配置；`ASTRAVIA_UPDATE_PROVIDER=none` 会在构建期直接失败。
 
 直接调用底层发布命令时，发布期变量必须写在 Shell 里：
 
 ```bash
-export VETTA_R2_ACCOUNT_ID=<account-id>
-export VETTA_R2_ACCESS_KEY_ID=<access-key-id>
-export VETTA_R2_SECRET_ACCESS_KEY=<secret-access-key>
-export VETTA_R2_BUCKET=vetta-releases
-export VETTA_R2_PREFIX=desktop/test
-export VETTA_UPDATE_URL=https://releases.openvetta.com/desktop/test
+export ASTRAVIA_R2_ACCOUNT_ID=<account-id>
+export ASTRAVIA_R2_ACCESS_KEY_ID=<access-key-id>
+export ASTRAVIA_R2_SECRET_ACCESS_KEY=<secret-access-key>
+export ASTRAVIA_R2_BUCKET=astravia-releases
+export ASTRAVIA_R2_PREFIX=desktop/test
+export ASTRAVIA_UPDATE_URL=https://releases.astravia.dev/desktop/test
 ```
 
-原因：`publish-update-artifacts-r2.mjs` 直接读 `process.env`，不调用 `loadBuildEnv()`；而 `publish:updates:r2` 是 `bun run` 拉起 `node` 子进程，Bun 的 dotenv 自动加载只作用于 Bun 运行时自身的进程，不会传给它 spawn 的 node。凭据缺失时报 `[publish-updates-r2] missing VETTA_R2_ACCOUNT_ID`。
+原因：`publish-update-artifacts-r2.mjs` 直接读 `process.env`，不调用 `loadBuildEnv()`；而 `publish:updates:r2` 是 `bun run` 拉起 `node` 子进程，Bun 的 dotenv 自动加载只作用于 Bun 运行时自身的进程，不会传给它 spawn 的 node。凭据缺失时报 `[publish-updates-r2] missing ASTRAVIA_R2_ACCOUNT_ID`。
 
 推荐使用仓库的一键脚本，它会读取频道配置并把变量显式传给构建和发布子进程：
 
 - `test` 基础配置读取已忽略的 `apps/desktop/.env.development`，兼容现有本地配置。
 - `stable` 基础配置读取 `apps/desktop/.env.production`（本地文件，不纳入版本控制；内容参考 [build-modes.md](./build-modes.md)）。
-- 两个频道都可从 `~/.config/vetta/r2.env` 补充共用 R2 凭据，再由 `~/.config/vetta/r2-test.env` 或 `r2-stable.env` 覆盖频道配置。
+- 两个频道都可从 `~/.config/astravia/r2.env` 补充共用 R2 凭据，再由 `~/.config/astravia/r2-test.env` 或 `r2-stable.env` 覆盖频道配置。
 - 当前 Shell 中显式设置的变量通常优先级最高；但 stable 的服务器、站点、更新 provider/URL、R2 bucket/prefix 始终以 `.env.production` 为准，不能被 `--env-file=.env.development` 覆盖。
 
 频道私有文件示例：
 
 ```dotenv
-VETTA_R2_ACCOUNT_ID=<account-id>
-VETTA_R2_ACCESS_KEY_ID=<access-key-id>
-VETTA_R2_SECRET_ACCESS_KEY=<secret-access-key>
-VETTA_R2_BUCKET=vetta-releases
-VETTA_R2_PREFIX=desktop/test
-VETTA_UPDATE_URL=https://releases.openvetta.com/desktop/test
+ASTRAVIA_R2_ACCOUNT_ID=<account-id>
+ASTRAVIA_R2_ACCESS_KEY_ID=<access-key-id>
+ASTRAVIA_R2_SECRET_ACCESS_KEY=<secret-access-key>
+ASTRAVIA_R2_BUCKET=astravia-releases
+ASTRAVIA_R2_PREFIX=desktop/test
+ASTRAVIA_UPDATE_URL=https://releases.astravia.dev/desktop/test
 ```
 
 R2 Token 只授予目标 Bucket 的对象读写权限。凭据只供发布脚本访问 R2 S3 API，不会写入桌面安装包；安装包只包含公开更新 URL。
@@ -266,14 +266,14 @@ bun scripts/release-windows.mjs stable --skip-publish
 bun scripts/release-windows.mjs stable --yes
 ```
 
-`test` 会设置 `VETTA_BUILD_ENV=development` 并通过 `VETTA_DESKTOP_BUILD_VERSION` 覆盖版本；`stable` 会设置 `VETTA_BUILD_ENV=production`，同时清除外部遗留的版本覆盖值，并用 `.env.production` 强制覆盖服务器、站点和发布目标。Inno 构建完成后还会扫描最终 `app.asar`：必须包含生产服务器/站点地址，且不得包含 `.env.development` 中不同的地址，否则在 R2 上传前终止。
+`test` 会设置 `ASTRAVIA_BUILD_ENV=development` 并通过 `ASTRAVIA_DESKTOP_BUILD_VERSION` 覆盖版本；`stable` 会设置 `ASTRAVIA_BUILD_ENV=production`，同时清除外部遗留的版本覆盖值，并用 `.env.production` 强制覆盖服务器、站点和发布目标。Inno 构建完成后还会扫描最终 `app.asar`：必须包含生产服务器/站点地址，且不得包含 `.env.development` 中不同的地址，否则在 R2 上传前终止。
 
 ### 7.3 手动构建一个更高的测试版本
 
 测试版本可以通过环境变量覆盖，不修改 `package.json`，也不创建 Git tag：
 
 ```powershell
-$env:VETTA_DESKTOP_BUILD_VERSION = "0.5.57"
+$env:ASTRAVIA_DESKTOP_BUILD_VERSION = "0.5.57"
 bun run --cwd apps/desktop dist:win
 ```
 
@@ -287,9 +287,9 @@ Windows 构建产物：
 
 ```text
 apps/desktop/release/
-  Vetta-0.5.57-win-x64.exe
-  Vetta-0.5.57-win-x64.exe.blockmap
-  Vetta-0.5.57-win-x64.exe.files.json
+  Astravia-0.5.57-win-x64.exe
+  Astravia-0.5.57-win-x64.exe.blockmap
+  Astravia-0.5.57-win-x64.exe.files.json
   latest.yml
 ```
 
@@ -305,7 +305,7 @@ bun run --cwd apps/desktop publish:updates:r2
 
 1. 在临时目录以后台模式运行刚构建的 Inno EXE。
 2. 对照 `.files.json` 验证文件数量和每个文件大小。
-3. 验证 `Vetta.exe`、`resources/app.asar` 和 `.install-complete`。
+3. 验证 `Astravia.exe`、`resources/app.asar` 和 `.install-complete`。
 4. 解析 `latest*.yml`，只选择清单实际引用的产物。
 5. 对大文件使用 16 MiB multipart、4 路并发上传。
 6. 通过公开更新域名 HEAD 验证安装包和 blockmap。
@@ -323,7 +323,7 @@ bun run --cwd apps/desktop publish:updates:r2
 ### 7.5 客户端验证
 
 1. 安装并启动一个更低版本的 test 构建。
-2. 确认进程实际路径是该版本的 `Vetta.exe`。
+2. 确认进程实际路径是该版本的 `Astravia.exe`。
 3. 上传更高版本后，在旧客户端点击检查更新，或等待启动检查。
 4. 观察网络阶段、Inno 本地准备阶段以及 ready 弹窗。
 5. 点击更新并重启。
@@ -333,16 +333,16 @@ bun run --cwd apps/desktop publish:updates:r2
 PowerShell 检查示例：
 
 ```powershell
-Get-Content "$env:LOCALAPPDATA\Vetta\current.json"
-Get-ChildItem "$env:LOCALAPPDATA\Vetta\versions"
-Get-CimInstance Win32_Process -Filter "Name = 'Vetta.exe'" |
+Get-Content "$env:LOCALAPPDATA\Astravia\current.json"
+Get-ChildItem "$env:LOCALAPPDATA\Astravia\versions"
+Get-CimInstance Win32_Process -Filter "Name = 'Astravia.exe'" |
   Select-Object ProcessId, ExecutablePath
 ```
 
 成功标准：
 
 - `current.json.version` 是新版本且 `pending=false`。
-- 运行进程来自 `%LOCALAPPDATA%\Vetta\versions\<new>\Vetta.exe`。
+- 运行进程来自 `%LOCALAPPDATA%\Astravia\versions\<new>\Astravia.exe`。
 - 版本目录只保留新版本和上一版本。
 - 主进程日志出现 `differential cache baseline promoted` 和 `downloaded Windows version is ready`。
 - 下一次小版本更新的实际下载量显著小于完整 EXE。
@@ -367,8 +367,8 @@ CDN 命中可减少 R2 Class B 读取；回源未命中仍会产生 R2 操作。
 差分下载要求自定义域名对 EXE 支持标准字节范围请求。应返回 `206 Partial Content` 和正确的 `Content-Range`。
 
 ```powershell
-curl.exe -I "https://releases.openvetta.com/desktop/test/Vetta-<version>-win-x64.exe"
-curl.exe -r 0-1023 -o NUL -D - "https://releases.openvetta.com/desktop/test/Vetta-<version>-win-x64.exe"
+curl.exe -I "https://releases.astravia.dev/desktop/test/Astravia-<version>-win-x64.exe"
+curl.exe -r 0-1023 -o NUL -D - "https://releases.astravia.dev/desktop/test/Astravia-<version>-win-x64.exe"
 ```
 
 第二条响应应为 206。当前 `generic` provider 设置了 `useMultipleRangeRequest=true`：electron-updater 先把相邻变化块合并为下载区间，再把最多 1000 个差分任务中的远程区间放进一个 multipart Range 请求，避免跨地域链路逐个串行请求。
@@ -376,7 +376,7 @@ curl.exe -r 0-1023 -o NUL -D - "https://releases.openvetta.com/desktop/test/Vett
 还必须验证多区间响应：
 
 ```powershell
-curl.exe -H "Range: bytes=0-9,100-109" -o NUL -D - "https://releases.openvetta.com/desktop/test/Vetta-<version>-win-x64.exe"
+curl.exe -H "Range: bytes=0-9,100-109" -o NUL -D - "https://releases.astravia.dev/desktop/test/Astravia-<version>-win-x64.exe"
 ```
 
 响应必须是 `206 Partial Content`，且 `Content-Type` 包含 `multipart/byteranges; boundary=...`。只支持单区间 206 不足以启用 multipart Range。
@@ -396,26 +396,26 @@ curl.exe -H "Range: bytes=0-9,100-109" -o NUL -D - "https://releases.openvetta.c
 
 ### 9.1 R2 stable
 
-正式版本以 `apps/desktop/package.json` 为版本真源，不使用 `VETTA_DESKTOP_BUILD_VERSION` 覆盖。配置：
+正式版本以 `apps/desktop/package.json` 为版本真源，不使用 `ASTRAVIA_DESKTOP_BUILD_VERSION` 覆盖。配置：
 
 ```text
-VETTA_UPDATE_PROVIDER=generic
-VETTA_UPDATE_URL=https://releases.openvetta.com/desktop/stable
-VETTA_R2_PREFIX=desktop/stable
+ASTRAVIA_UPDATE_PROVIDER=generic
+ASTRAVIA_UPDATE_URL=https://releases.astravia.dev/desktop/stable
+ASTRAVIA_R2_PREFIX=desktop/stable
 ```
 
 必须先在 test 完成真实的“旧安装版 → CDN → 新版本 → 重启”闭环，再发布 stable。不要用 stable 通道迭代更新功能。
 
-test 与 stable 是两个独立版本序列：`VETTA_DESKTOP_BUILD_VERSION` 只用于 test 客户端之间的版本比较，不决定正式版从哪个数字开始。正式版只要求高于 stable 通道已经发布的版本，并始终与 `apps/desktop/package.json` 一致。
+test 与 stable 是两个独立版本序列：`ASTRAVIA_DESKTOP_BUILD_VERSION` 只用于 test 客户端之间的版本比较，不决定正式版从哪个数字开始。正式版只要求高于 stable 通道已经发布的版本，并始终与 `apps/desktop/package.json` 一致。
 
 ### 9.2 GitHub Releases
 
 开源包构建配置：
 
 ```text
-VETTA_UPDATE_PROVIDER=github
-VETTA_UPDATE_GITHUB_OWNER=<owner>
-VETTA_UPDATE_GITHUB_REPO=<repository>
+ASTRAVIA_UPDATE_PROVIDER=github
+ASTRAVIA_UPDATE_GITHUB_OWNER=<owner>
+ASTRAVIA_UPDATE_GITHUB_REPO=<repository>
 ```
 
 公开 Release 的客户端读取不需要 GitHub Token。桌面端使用标准 `v<version>` tag；tag 属于 desktop 发版，不应使用 coding-agent 专用 tag 语义。
@@ -460,7 +460,7 @@ const { autoUpdater } = electronUpdater;
 
 **原因**：早期流程把“下载完成”和“安装完成”混在一起，重启阶段仍执行普通安装器；普通模式会展示安装范围、下一步等向导。
 
-**修复**：Inno 新增 `/VETTAUPDATE=true` 后台模式，下载阶段就静默准备新版本目录；重启阶段只切换指针。
+**修复**：Inno 新增 `/ASTRAVIAUPDATE=true` 后台模式，下载阶段就静默准备新版本目录；重启阶段只切换指针。
 
 ### 10.3 没有向导，但重启仍很慢
 
@@ -472,9 +472,9 @@ const { autoUpdater } = electronUpdater;
 
 **原因**：这是旧的“覆盖/卸载当前安装目录”模型与正在运行的文件、旧 NSIS/Inno 安装状态冲突的典型表现，不是 R2 下载问题。
 
-**修复**：后台更新不再卸载或覆盖当前安装目录，而是写入 `%LOCALAPPDATA%\Vetta\versions\<new>`；后台 Inno 设置 `Uninstallable=no`、不创建卸载注册项。
+**修复**：后台更新不再卸载或覆盖当前安装目录，而是写入 `%LOCALAPPDATA%\Astravia\versions\<new>`；后台 Inno 设置 `Uninstallable=no`、不创建卸载注册项。
 
-如果手动执行修复安装仍遇到该提示，应完全退出 Vetta（包括托盘和子进程）后重试。不要把手动修复安装当作正常自动更新步骤。
+如果手动执行修复安装仍遇到该提示，应完全退出 Astravia（包括托盘和子进程）后重试。不要把手动修复安装当作正常自动更新步骤。
 
 ### 10.5 下载停在 90% 或 95%
 
@@ -492,7 +492,7 @@ const { autoUpdater } = electronUpdater;
 
 ready 弹窗只会在以下三项同时存在后出现：
 
-- `<version>\Vetta.exe`
+- `<version>\Astravia.exe`
 - `<version>\resources\app.asar`
 - `<version>\.install-complete`
 
@@ -511,8 +511,8 @@ ready 弹窗只会在以下三项同时存在后出现：
 
 先区分三个阶段：
 
-1. `%LOCALAPPDATA%\Vetta\current.json` 没有写成新版本：激活动作没有完成，检查主进程的 `install failed`。
-2. 指针已更新但没有新版本进程：检查新版本 `Vetta.exe` 是否存在、启动日志和缺失模块错误。
+1. `%LOCALAPPDATA%\Astravia\current.json` 没有写成新版本：激活动作没有完成，检查主进程的 `install failed`。
+2. 指针已更新但没有新版本进程：检查新版本 `Astravia.exe` 是否存在、启动日志和缺失模块错误。
 3. 新版本进程存在但没有窗口：按下一节检查启动器的隐藏窗口问题。
 
 如果用户在后台准备期间主动关闭应用，这是允许的边界情况。detached Inno 可能继续完成版本目录，但本次进程不会再弹 ready 对话框或写活动指针；重新启动旧版本并再次检查/下载时，客户端会复用已经完整的目标版本目录。
@@ -533,7 +533,7 @@ ready 弹窗只会在以下三项同时存在后出现：
 
 - `prepare-pack.js` 显式 staging `electron-updater`、`builder-util-runtime` 等 external 依赖及其生产依赖闭包。
 - coding-agent runtime、agent-rpc CLI 和 cli-host 作为资源进入安装包。
-- 打包前扫描 `dist/main`，若仍有 `@vetta/*` workspace import 会直接失败。
+- 打包前扫描 `dist/main`，若仍有 `@astravia/*` workspace import 会直接失败。
 - R2 发布前 Inno 预检会把版本目录全部展开并按 manifest 校验文件数量与大小。
 
 新增/调整 Vite external 时必须同步检查 `prepare-pack.js` 的 staging 列表，不能只让开发模式通过。
@@ -544,7 +544,7 @@ ready 弹窗只会在以下三项同时存在后出现：
 
 1. 新版本是否严格高于客户端版本。
 2. 客户端安装包内 `app-update.yml` 是否指向 test，而不是 stable/GitHub。
-3. `VETTA_UPDATE_URL` path 是否与 `VETTA_R2_PREFIX` 一致。
+3. `ASTRAVIA_UPDATE_URL` path 是否与 `ASTRAVIA_R2_PREFIX` 一致。
 4. 公网 `latest.yml` 是否已经是新版本。
 5. Cloudflare 是否缓存了旧 `latest.yml`。
 6. `latest.yml` 引用的文件名、大小、SHA-512 是否对应当前 EXE。
@@ -568,8 +568,8 @@ ready 弹窗只会在以下三项同时存在后出现：
 测试链路必须同时使用：
 
 ```text
-VETTA_UPDATE_URL=.../desktop/test
-VETTA_R2_PREFIX=desktop/test
+ASTRAVIA_UPDATE_URL=.../desktop/test
+ASTRAVIA_R2_PREFIX=desktop/test
 ```
 
 当前发布脚本会校验 URL path 与 R2 prefix，并拒绝把版本覆盖值上传到最后一段为 `stable` 的前缀。旧对象无需为每次测试手动删除；版本化文件保留有助于追溯，清理应使用独立生命周期策略。
@@ -610,7 +610,7 @@ VETTA_R2_PREFIX=desktop/test
 ### 12.1 应用日志
 
 ```text
-~/.vetta/desktop-app/logs/main/YYYY-MM-DD.log
+~/.astravia/desktop-app/logs/main/YYYY-MM-DD.log
 ```
 
 重点搜索：
@@ -632,7 +632,7 @@ install failed
 ### 12.2 Inno 失败日志
 
 ```text
-%LOCALAPPDATA%\Vetta\installer\<version-pid-time>\install.log
+%LOCALAPPDATA%\Astravia\installer\<version-pid-time>\install.log
 ```
 
 成功时工作目录会异步删除；失败时刻意保留。重点检查：
@@ -646,11 +646,11 @@ install failed
 
 1. 记录客户端版本、`latest.yml` 版本和更新源 URL。
 2. 记录 `current.json`，不要先手工修改。
-3. 检查正在运行的 `Vetta.exe`/安装器路径。
+3. 检查正在运行的 `Astravia.exe`/安装器路径。
 4. 检查版本目录是否完整。
 5. 查看主进程日志中最后一个 updater 阶段。
 6. 如果 Inno 失败，保存对应 `install.log`。
-7. 检查 `%LOCALAPPDATA%\vetta-updater\installer.exe` 的时间和大小。
+7. 检查 `%LOCALAPPDATA%\astravia-updater\installer.exe` 的时间和大小。
 8. 验证 CDN HEAD、Range 206 和 `latest.yml` 缓存。
 9. 最后再决定重试、手动修复安装或发布更高修复版本。
 
@@ -665,7 +665,7 @@ install failed
 - [ ] 更新 provider/URL 写入目标包。
 - [ ] EXE、blockmap、files manifest、`latest.yml` 属于同一版本。
 - [ ] Inno 本地预检通过，文件数量和大小一致。
-- [ ] 最终包不含未解析的 `@vetta/*` workspace import。
+- [ ] 最终包不含未解析的 `@astravia/*` workspace import。
 
 ### R2/Cloudflare
 

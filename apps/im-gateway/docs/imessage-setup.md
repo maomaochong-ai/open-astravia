@@ -10,7 +10,7 @@ Open **Messages.app** and sign in with the Apple Account that should send and re
 
 Reading `~/Library/Messages/chat.db` is protected by macOS privacy controls.
 
-**System Settings → Privacy & Security → Full Disk Access** → enable it for the app running the gateway (Vetta for desktop use, or your terminal for standalone use).
+**System Settings → Privacy & Security → Full Disk Access** → enable it for the app running the gateway (Astravia for desktop use, or your terminal for standalone use).
 
 Restart the app afterwards; the permission is only picked up on launch.
 

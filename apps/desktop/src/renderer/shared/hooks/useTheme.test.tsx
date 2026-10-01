@@ -12,7 +12,7 @@ const { ThemeController } = await import("../theme/ThemeController.js");
 
 function installThemeApi(setNativeTheme: ReturnType<typeof vi.fn>): void {
 	const subscribe = vi.fn(() => vi.fn());
-	Object.defineProperty(window, "vetta", {
+	Object.defineProperty(window, "astravia", {
 		configurable: true,
 		value: {
 			theme: {

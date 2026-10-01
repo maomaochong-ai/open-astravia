@@ -144,7 +144,7 @@ describe("buildInstalledAbilityEntries", () => {
 			{ name: "commit", alias: "Commit helper", description: "Write commits", source: "market", type: "skill" },
 			{ name: "story", description: "", source: "builtin", type: "scene" },
 		];
-		const plugins = [{ id: "vetta.git", name: "Git" }] as unknown as InstalledPlugin[];
+		const plugins = [{ id: "astravia.git", name: "Git" }] as unknown as InstalledPlugin[];
 		const entries = buildInstalledAbilityEntries({ skills, plugins }, labels);
 
 		expect(entries.map((entry) => entry.title)).toEqual(["Commit helper", "story", "Git"]);
@@ -161,13 +161,13 @@ describe("buildInstalledAbilityEntries", () => {
 		const skills: SkillInfo[] = [
 			{ name: "internal", description: "Hidden", source: "plugin", type: "skill" },
 			{
-				name: "vetta-ui-design",
+				name: "astravia-ui-design",
 				description: "Internal",
 				source: "plugin",
 				type: "skill",
 				presentation: {
 					defaultVisibility: "visible",
-					displayName: "Vetta 设计",
+					displayName: "Astravia 设计",
 					displayDescription: "设计产品界面",
 				},
 			},
@@ -176,8 +176,8 @@ describe("buildInstalledAbilityEntries", () => {
 		const entries = buildInstalledAbilityEntries({ skills, plugins: [] }, labels);
 		expect(entries).toHaveLength(1);
 		expect(entries[0]).toMatchObject({
-			id: "ability:skill:vetta-ui-design",
-			title: "Vetta 设计",
+			id: "ability:skill:astravia-ui-design",
+			title: "Astravia 设计",
 			subtitle: "设计产品界面",
 		});
 	});

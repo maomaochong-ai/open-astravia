@@ -1,6 +1,6 @@
 import type { JSX, ReactNode } from "react";
-import { useThemeComponent } from "@vetta-org/theme-sdk";
-import type { PageHeaderRegionProps } from "@vetta-org/theme-sdk/app-shell";
+import { useThemeComponent } from "@astravia-org/theme-sdk";
+import type { PageHeaderRegionProps } from "@astravia-org/theme-sdk/app-shell";
 import { PageHeaderContent } from "./PageHeaderContent";
 import { PageHeaderFrame } from "./PageHeaderFrame";
 

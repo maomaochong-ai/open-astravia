@@ -28,7 +28,7 @@ export interface RuntimeStatus {
 export type GitInstallGuide =
 	/** macOS：调起系统的命令行开发者工具安装窗口。 */
 	| { kind: "xcode-clt" }
-	/** Windows：下载 MinGit 到 ~/.vetta/runtimes，只在 Vetta 内生效。 */
+	/** Windows：下载 MinGit 到 ~/.astravia/runtimes，只在 Astravia 内生效。 */
 	| { kind: "managed-download"; version: string }
 	/** Linux：给出发行版的包管理器命令；识别不出发行版时为 null。 */
 	| { kind: "package-manager"; command: string | null }
@@ -65,7 +65,7 @@ interface RegistryEntry {
 	verified: boolean;
 }
 
-/** ~/.vetta/runtimes/.cache/registry.json 的形状。 */
+/** ~/.astravia/runtimes/.cache/registry.json 的形状。 */
 export interface RuntimeRegistryData {
 	version: 1;
 	binaries: Partial<Record<RuntimeType, RegistryEntry>>;

@@ -1,5 +1,5 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { createNodeResourceAccess } from "@vetta/runtime-node/host";
+import { createNodeResourceAccess } from "@astravia/runtime-node/host";
 import { homedir, tmpdir } from "os";
 import { join, resolve } from "path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -423,7 +423,7 @@ describe("skills", () => {
 		};
 
 		beforeAll(() => {
-			tmpRoot = mkdtempSync(join(tmpdir(), "vetta-agents-skills-"));
+			tmpRoot = mkdtempSync(join(tmpdir(), "astravia-agents-skills-"));
 			agentsProjectCwd = join(tmpRoot, "project");
 			agentsPriorityCwd = join(tmpRoot, "priority");
 
@@ -438,11 +438,11 @@ describe("skills", () => {
 				"---\nname: loose-root\ndescription: Loose root .md that must be ignored under the subdir-only rule.\n---\n",
 			);
 
-			// priority cwd: same-named skill in both Vetta project (.vetta) and generic (.agents).
+			// priority cwd: same-named skill in both Astravia project (.astravia) and generic (.agents).
 			writeSkill(
 				join(agentsPriorityCwd, CONFIG_DIR_NAME, "skills", "shared-skill"),
 				"shared-skill",
-				"Vetta-native project skill that must win the collision.",
+				"Astravia-native project skill that must win the collision.",
 			);
 			writeSkill(
 				join(agentsPriorityCwd, ".agents", "skills", "shared-skill"),
@@ -481,7 +481,7 @@ describe("skills", () => {
 			expect(skills.some((s) => s.name === "generic-agent-skill")).toBe(false);
 		});
 
-		it("lets a Vetta-native project skill win a name collision over the generic Agent Skill", async () => {
+		it("lets a Astravia-native project skill win a name collision over the generic Agent Skill", async () => {
 			const { skills, diagnostics } = await loadTestSkills({
 				agentDir: emptyAgentDir,
 				cwd: agentsPriorityCwd,
@@ -491,7 +491,7 @@ describe("skills", () => {
 			});
 			const shared = skills.find((s) => s.name === "shared-skill");
 			expect(shared).toBeDefined();
-			// Vetta project dir loads before .agents/skills, so it wins.
+			// Astravia project dir loads before .agents/skills, so it wins.
 			expect(shared?.source).toBe("project");
 			expect(
 				diagnostics.some(

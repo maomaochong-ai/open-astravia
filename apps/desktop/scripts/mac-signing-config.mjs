@@ -19,14 +19,14 @@ export function hasMacSigningEnvironment(env = process.env) {
 }
 
 export function resolveMacSigningConfig(env = process.env) {
-	const skipNotarizeValue = env.VETTA_SKIP_NOTARIZE?.trim();
+	const skipNotarizeValue = env.ASTRAVIA_SKIP_NOTARIZE?.trim();
 	if (skipNotarizeValue && skipNotarizeValue !== "0" && skipNotarizeValue !== "1") {
-		throw new Error('VETTA_SKIP_NOTARIZE must be "0" or "1"');
+		throw new Error('ASTRAVIA_SKIP_NOTARIZE must be "0" or "1"');
 	}
 
 	if (!hasMacSigningEnvironment(env)) {
 		if (skipNotarizeValue === "1") {
-			throw new Error("VETTA_SKIP_NOTARIZE=1 requires macOS signing credentials");
+			throw new Error("ASTRAVIA_SKIP_NOTARIZE=1 requires macOS signing credentials");
 		}
 		return { enabled: false };
 	}

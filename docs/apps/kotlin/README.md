@@ -12,7 +12,7 @@
 
 ## 当前边界
 
-- Android 包名：`org.vetta.android`。
+- Android 包名：`org.astravia.android`。
 - Desktop 与 Android 用 Cloudflare Worker 完成配对和 WebRTC 信令；连接建立后，屏幕、输入和远程控制业务都走 WebRTC，Worker 不承载这些业务数据。P2P 失败时控制业务会退回局域网或中继。
 - Desktop 和 Android 都需要互联网访问；同一 Wi-Fi 适合首轮排障，但不能替代跨 NAT 验证。
 - 远程输入默认关闭，并受 Desktop 操作系统权限和本地能力检测限制。

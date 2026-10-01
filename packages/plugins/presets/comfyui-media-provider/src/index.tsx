@@ -1,4 +1,4 @@
-import { definePlugin } from "@vetta-org/plugin-sdk";
+import { definePlugin } from "@astravia-org/plugin-sdk";
 import type { JSX } from "react";
 import { SettingsView, type SettingsPorts } from "./components/SettingsView.js";
 import { setPluginCtx } from "./plugin-context.js";

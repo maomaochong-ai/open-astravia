@@ -1,8 +1,8 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { runMcpBrowserOAuthFlow } from "@vetta/runtime-mcp";
-import type { runMcpDeviceAuthorizationFlow } from "@vetta/runtime-node/mcp";
+import type { runMcpBrowserOAuthFlow } from "@astravia/runtime-mcp";
+import type { runMcpDeviceAuthorizationFlow } from "@astravia/runtime-node/mcp";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createOAuthCallbackSession } from "./mcp-oauth-host-ui.js";
 import { DesktopMcpOAuthService } from "./mcp-oauth-service.js";

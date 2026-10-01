@@ -21,7 +21,7 @@ export async function persistBase64Images(
 ): Promise<string[]> {
 	if (images.length === 0) return [];
 	try {
-		const persisted = await window.vetta.dialog.persistImages(
+		const persisted = await window.astravia.dialog.persistImages(
 			sessionId || DRAFT_BUCKET,
 			images.map((image) => ({ id: nextId(), data: image.data, mimeType: image.mimeType })),
 		);
@@ -40,7 +40,7 @@ export async function persistImageFiles(
 ): Promise<string[]> {
 	if (files.length === 0) return [];
 	try {
-		const persisted = await window.vetta.dialog.persistImageFiles(sessionId || DRAFT_BUCKET, [...files]);
+		const persisted = await window.astravia.dialog.persistImageFiles(sessionId || DRAFT_BUCKET, [...files]);
 		recordInputImagesAdded(source, persisted);
 		return persisted.map((image) => image.path);
 	} catch (error) {

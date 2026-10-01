@@ -1,6 +1,6 @@
 import { preloadHighlighter } from "@pierre/diffs";
-import { useTranslation } from "@vetta-org/plugin-sdk";
-import { Button } from "@vetta-org/ui";
+import { useTranslation } from "@astravia-org/plugin-sdk";
+import { Button } from "@astravia-org/ui";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { findEntry } from "../git/gitStatus";
 import { resizePanel } from "../git/runtime";

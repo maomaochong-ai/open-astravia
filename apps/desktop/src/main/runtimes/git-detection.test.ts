@@ -79,10 +79,10 @@ describe("detectSystemGit", () => {
 	it("skips excluded directories so the managed copy is not reported as system git", () => {
 		const probe = host({
 			platform: "win32",
-			pathValue: "C:\\Windows\\System32;C:\\Users\\me\\.vetta\\runtimes\\git\\2.55.0.5\\cmd",
-			files: ["C:\\Users\\me\\.vetta\\runtimes\\git\\2.55.0.5\\cmd\\git.exe"],
+			pathValue: "C:\\Windows\\System32;C:\\Users\\me\\.astravia\\runtimes\\git\\2.55.0.5\\cmd",
+			files: ["C:\\Users\\me\\.astravia\\runtimes\\git\\2.55.0.5\\cmd\\git.exe"],
 		});
-		expect(detectSystemGit(probe, ["c:\\users\\me\\.vetta\\runtimes\\git\\2.55.0.5\\cmd\\"])).toBeUndefined();
+		expect(detectSystemGit(probe, ["c:\\users\\me\\.astravia\\runtimes\\git\\2.55.0.5\\cmd\\"])).toBeUndefined();
 	});
 
 	it("finds Git for Windows through a quoted PATH entry", () => {

@@ -5,8 +5,8 @@ import type {
 	DesktopTeamSessionStreamEvent,
 } from "@preload/api-types/team-conversation-display";
 import type { ChatConversationItem } from "@shared/store/atoms";
-import { createAssistantMessage, type AssistantMessage } from "@vetta/ai";
-import { createAgentTeamFixture, type TeamSessionDocument } from "@vetta/agent-team";
+import { createAssistantMessage, type AssistantMessage } from "@astravia/ai";
+import { createAgentTeamFixture, type TeamSessionDocument } from "@astravia/agent-team";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -263,7 +263,7 @@ describe("Team delegation message-to-UI flow", () => {
 		vi.mocked(loadTeamChatBootstrap).mockResolvedValue({ document, sessions: [] });
 		vi.mocked(createTeamChatSession).mockResolvedValue({ document, snapshot: emptySnapshot, sessions: [] });
 		vi.mocked(createReservedTeamChatSession).mockResolvedValue({ document, snapshot: emptySnapshot, sessions: [] });
-		Object.defineProperty(window, "vetta", {
+		Object.defineProperty(window, "astravia", {
 			configurable: true,
 			value: {
 				agentTeams: {
@@ -291,7 +291,7 @@ describe("Team delegation message-to-UI flow", () => {
 
 	it("shows a failed send in the conversation error block without an input-area alert", async () => {
 		let rejectSend: ((reason: Error) => void) | undefined;
-		vi.mocked(window.vetta.agentTeams.sendMessage).mockReturnValueOnce(
+		vi.mocked(window.astravia.agentTeams.sendMessage).mockReturnValueOnce(
 			new Promise((_resolve, reject) => {
 				rejectSend = reject;
 			}),
@@ -302,8 +302,8 @@ describe("Team delegation message-to-UI flow", () => {
 			target: { value: "处理团队任务" },
 		});
 		fireEvent.click(screen.getByRole("button", { name: "发送" }));
-		await waitFor(() => expect(window.vetta.agentTeams.sendMessage).toHaveBeenCalledTimes(1));
-		const requestId = vi.mocked(window.vetta.agentTeams.sendMessage).mock.calls[0]?.[1].requestId;
+		await waitFor(() => expect(window.astravia.agentTeams.sendMessage).toHaveBeenCalledTimes(1));
+		const requestId = vi.mocked(window.astravia.agentTeams.sendMessage).mock.calls[0]?.[1].requestId;
 		if (!requestId) throw new Error("send request id is missing");
 		act(() => {
 			streamListener?.({
@@ -319,7 +319,7 @@ describe("Team delegation message-to-UI flow", () => {
 			});
 		});
 		await act(async () => {
-			rejectSend?.(new Error("Error invoking remote method 'vetta:agent-teams:send-message': Error: Retryable HTTP Error: Internal Server Error"));
+			rejectSend?.(new Error("Error invoking remote method 'astravia:agent-teams:send-message': Error: Retryable HTTP Error: Internal Server Error"));
 		});
 		const error = within(screen.getByTestId("message-list")).getByTestId("conversation-error");
 		expect(error.getAttribute("data-kind")).toBe("server");
@@ -329,8 +329,8 @@ describe("Team delegation message-to-UI flow", () => {
 	});
 
 	it("shows a rejected send in the message list even without a member failure event", async () => {
-		vi.mocked(window.vetta.agentTeams.sendMessage).mockRejectedValueOnce(
-			new Error("Error invoking remote method 'vetta:agent-teams:send-message': Error: Internal Server Error"),
+		vi.mocked(window.astravia.agentTeams.sendMessage).mockRejectedValueOnce(
+			new Error("Error invoking remote method 'astravia:agent-teams:send-message': Error: Internal Server Error"),
 		);
 		render(<TeamFlow />);
 		await waitFor(() => expect(streamListener).toBeTypeOf("function"));
@@ -347,7 +347,7 @@ describe("Team delegation message-to-UI flow", () => {
 
 	it("keeps one stable public timeline from delegation through completion and reopening", async () => {
 		let resolveSend: ((snapshot: DesktopTeamSessionSnapshot) => void) | undefined;
-		vi.mocked(window.vetta.agentTeams.sendMessage).mockReturnValueOnce(
+		vi.mocked(window.astravia.agentTeams.sendMessage).mockReturnValueOnce(
 			new Promise((resolve) => {
 				resolveSend = resolve;
 			}),
@@ -359,10 +359,10 @@ describe("Team delegation message-to-UI flow", () => {
 			target: { value: "实现并验证团队会话" },
 		});
 		fireEvent.click(screen.getByRole("button", { name: "发送" }));
-		await waitFor(() => expect(window.vetta.agentTeams.sendMessage).toHaveBeenCalledTimes(1));
+		await waitFor(() => expect(window.astravia.agentTeams.sendMessage).toHaveBeenCalledTimes(1));
 		expect(screen.getByTestId("user-message").textContent).toBe("实现并验证团队会话");
 		expect(assistantRows()).toHaveLength(1);
-		const requestId = vi.mocked(window.vetta.agentTeams.sendMessage).mock.calls[0]?.[1].requestId;
+		const requestId = vi.mocked(window.astravia.agentTeams.sendMessage).mock.calls[0]?.[1].requestId;
 		if (!requestId) throw new Error("send request id is missing");
 
 		const delegateCall = {
@@ -616,7 +616,7 @@ describe("Team delegation message-to-UI flow", () => {
 			},
 			sessions: [],
 		});
-		vi.mocked(window.vetta.agentTeams.subscribe).mockImplementationOnce(async (_sessionId, listener) => {
+		vi.mocked(window.astravia.agentTeams.subscribe).mockImplementationOnce(async (_sessionId, listener) => {
 			listener({
 				type: "session-snapshot",
 				teamSessionId: session.id,

@@ -12,7 +12,7 @@ describe("sortSkillsForPanel", () => {
 		expect(sorted.map((item) => item.name)).toEqual(["generic-used", "builtin-never"]);
 	});
 
-	it("次数相同再看类别：内置 > 插件 > Vetta 原生 > 通用", () => {
+	it("次数相同再看类别：内置 > 插件 > Astravia 原生 > 通用", () => {
 		const skills = [skill("d", "agents-project"), skill("c", "user"), skill("b", "plugin"), skill("a", "builtin")];
 		expect(sortSkillsForPanel(skills, {}).map((item) => item.name)).toEqual(["a", "b", "c", "d"]);
 	});

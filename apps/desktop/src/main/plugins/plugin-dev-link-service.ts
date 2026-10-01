@@ -5,7 +5,7 @@ import {
 	parsePluginManifest,
 	validatePluginId,
 	validatePluginRelativePath,
-} from "@vetta-org/plugin-sdk/manifest";
+} from "@astravia-org/plugin-sdk/manifest";
 import type {
 	InstalledPlugin,
 	PluginDevWatchState,
@@ -260,5 +260,5 @@ export class PluginDevLinkService {
 
 function toDevPluginUrl(pluginId: string, relativePath: string, token: string): string {
 	const normalized = validatePluginRelativePath(relativePath, "path");
-	return `vetta-plugin://${pluginId}/${normalized}?v=dev&reload=${token}`;
+	return `astravia-plugin://${pluginId}/${normalized}?v=dev&reload=${token}`;
 }

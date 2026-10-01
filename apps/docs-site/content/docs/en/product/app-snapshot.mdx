@@ -5,16 +5,16 @@ description: On macOS, hold the same modifier key on both sides to attach the fo
 
 <Takeaways>
   <li>App Snapshot is macOS only and off by default</li>
-  <li>Capture runs in a separate Vetta Computer Use helper that needs its own permissions</li>
+  <li>Capture runs in a separate Astravia Computer Use helper that needs its own permissions</li>
   <li>A capture becomes an attachment; nothing is sent until you send it</li>
 </Takeaways>
 
-App Snapshot solves the "I cannot describe what is on my screen" problem. Hold the same modifier key on both sides of the keyboard for about 0.25 seconds and Vetta captures the **current foreground window**: a screenshot plus whatever text is readable. The result is attached to the composer, and the main window comes forward on a new session. This is not full-screen recording and not continuous monitoring: it captures once, at the moment you make the gesture.
+App Snapshot solves the "I cannot describe what is on my screen" problem. Hold the same modifier key on both sides of the keyboard for about 0.25 seconds and Astravia captures the **current foreground window**: a screenshot plus whatever text is readable. The result is attached to the composer, and the main window comes forward on a new session. This is not full-screen recording and not continuous monitoring: it captures once, at the moment you make the gesture.
 
 Open **Settings → App Snapshot** (shown on macOS only).
 
 <MediaFrame>
-  <img src="/images/product/app-snapshot.webp" alt="The App Snapshot settings page in Vetta, with the trigger selector and keyboard diagram above and the accessibility and screen recording permission states below" width="1920" height="1275" />
+  <img src="/images/product/app-snapshot.webp" alt="The App Snapshot settings page in Astravia, with the trigger selector and keyboard diagram above and the accessibility and screen recording permission states below" width="1920" height="1275" />
   <figcaption>The trigger decides which key pair to hold; the permissions area shows whether the helper is authorized.</figcaption>
 </MediaFrame>
 
@@ -29,7 +29,7 @@ Open **Settings → App Snapshot** (shown on macOS only).
   <Step>
     ### Authorize the helper
 
-    App Snapshot reads the foreground window through the separate **Vetta Computer Use** helper. The helper is its own permission subject, so authorizing the main Vetta app is not enough. If permissions are incomplete when you enable the feature, Vetta opens the setup window automatically; you can also click **Open permission setup** at any time and drag the icon into the system permission list.
+    App Snapshot reads the foreground window through the separate **Astravia Computer Use** helper. The helper is its own permission subject, so authorizing the main Astravia app is not enough. If permissions are incomplete when you enable the feature, Astravia opens the setup window automatically; you can also click **Open permission setup** at any time and drag the icon into the system permission list.
   </Step>
   <Step>
     ### Confirm the permission state
@@ -44,18 +44,18 @@ Open **Settings → App Snapshot** (shown on macOS only).
 </Steps>
 
 <Callout title="Gesture detection also needs Input Monitoring" type="info">
-  The global gesture shares one keyboard listener with the quick panel. If holding the keys does nothing at all, confirm Vetta is authorized under System Settings › Privacy & Security › Input Monitoring.
+  The global gesture shares one keyboard listener with the quick panel. If holding the keys does nothing at all, confirm Astravia is authorized under System Settings › Privacy & Security › Input Monitoring.
 </Callout>
 
 ## Required permissions
 
 | Permission | Subject | Effect when missing |
 | --- | --- | --- |
-| Accessibility | Vetta Computer Use | No window title, document path, or in-window text |
-| Screen Recording | Vetta Computer Use | No screenshot; only text and metadata remain |
-| Input Monitoring | Vetta | The gesture never fires and nothing responds |
+| Accessibility | Astravia Computer Use | No window title, document path, or in-window text |
+| Screen Recording | Astravia Computer Use | No screenshot; only text and metadata remain |
+| Input Monitoring | Astravia | The gesture never fires and nothing responds |
 
-When both helper permissions are missing, Vetta brings the main window forward and points you to permission settings instead of producing an attachment. When only one is missing, it still captures the other half.
+When both helper permissions are missing, Astravia brings the main window forward and points you to permission settings instead of producing an attachment. When only one is missing, it still captures the other half.
 
 ## What one capture contains
 
@@ -66,7 +66,7 @@ When both helper permissions are missing, Vetta brings the main window forward a
 | Source file path | Accessibility | Path of the document the window is editing, when readable |
 | App name and window title | Accessibility | Used as the attachment card title |
 
-The text layer only uses what Accessibility exposes. When no text is readable, Vetta does not run OCR during capture; it sends the screenshot alone and lets the model read it visually. Screenshots, icons, and text files are written to `~/.vetta/image-cache/appshot/` and follow the same cleanup policy as the image cache, so unused cache directories are removed automatically.
+The text layer only uses what Accessibility exposes. When no text is readable, Astravia does not run OCR during capture; it sends the screenshot alone and lets the model read it visually. Screenshots, icons, and text files are written to `~/.astravia/image-cache/appshot/` and follow the same cleanup policy as the image cache, so unused cache directories are removed automatically.
 
 ## After a capture
 
@@ -77,7 +77,7 @@ The text layer only uses what Accessibility exposes. When no text is readable, V
 
 ## When the gesture does not fire
 
-1. Confirm the foreground window is not Vetta itself: capturing Vetta is deliberately ignored, with a notice.
+1. Confirm the foreground window is not Astravia itself: capturing Astravia is deliberately ignored, with a notice.
 2. Confirm both keys are held **at the same time** for about 0.25 seconds. Pressing them in sequence or tapping them does not trigger.
 3. Confirm the trigger is not set to "Off" and that no other global shortcut has claimed the same pair.
 4. On a capture failure notice, check the **Permissions** area first, then run the setup window again. Reinstalling the app restores a helper that the system quarantined or that went missing.
@@ -87,7 +87,7 @@ The text layer only uses what Accessibility exposes. When no text is readable, V
 
 - Capture is a one-shot action driven by your gesture; nothing records the screen in the background.
 - The scope is the foreground window, not other windows or the rest of the desktop.
-- Snapshots stay in the local `~/.vetta` directory. Their content only reaches the selected model when you send the message.
+- Snapshots stay in the local `~/.astravia` directory. Their content only reaches the selected model when you send the message.
 - With passwords, keys, or customer data on screen, switch windows before the gesture, or remove the attachment before sending.
 
 <Continue>

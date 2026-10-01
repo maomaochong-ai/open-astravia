@@ -63,7 +63,7 @@ function world(platform: NodeJS.Platform, pathValue: string): FakeWorld {
 				binDir: MANAGED_BIN,
 				executablePath: MANAGED_EXE,
 				installDir: join("runtimes", "git", "2.55.0.5"),
-				cacheDir: mkdtempSync(join(tmpdir(), "vetta-git-tool-")),
+				cacheDir: mkdtempSync(join(tmpdir(), "astravia-git-tool-")),
 			},
 		},
 	};
@@ -71,7 +71,7 @@ function world(platform: NodeJS.Platform, pathValue: string): FakeWorld {
 }
 
 describe("GitToolManager on Windows", () => {
-	it("installs MinGit for Vetta when git is missing and puts it at the end of PATH", async () => {
+	it("installs MinGit for Astravia when git is missing and puts it at the end of PATH", async () => {
 		const w = world("win32", "C:\\Windows\\System32");
 		const manager = new GitToolManager(w.deps);
 

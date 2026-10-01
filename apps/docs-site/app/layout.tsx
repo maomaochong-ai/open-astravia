@@ -12,12 +12,12 @@ export const metadata: Metadata = buildRootMetadata();
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
 	const requestHeaders = await headers();
-	const language = getRequestLanguage(new Request("https://docs.openvetta.com/", { headers: requestHeaders }));
+	const language = getRequestLanguage(new Request("https://docs.astravia.dev/", { headers: requestHeaders }));
 
 	return (
 		<html
 			lang={localeConfig[language].htmlLang}
-			className={cn(displaySerif.variable, "scroll-smooth border-t-2 border-vetta-coral")}
+			className={cn(displaySerif.variable, "scroll-smooth border-t-2 border-astravia-coral")}
 			suppressHydrationWarning
 		>
 			<body className="flex min-h-screen flex-col bg-fd-background text-fd-foreground">

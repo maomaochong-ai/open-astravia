@@ -4,7 +4,7 @@ import {
 	DOMAIN_AGENT_SETTINGS_CAPABILITIES,
 	type ImageGenerationSettings,
 	type ImageGenerationSettingsUpdate,
-} from "@vetta-org/capability-sdk";
+} from "@astravia-org/capability-sdk";
 import type { PluginCapabilitySessionAccess } from "../types.js";
 
 export const pluginAgentSettingsMethods = {

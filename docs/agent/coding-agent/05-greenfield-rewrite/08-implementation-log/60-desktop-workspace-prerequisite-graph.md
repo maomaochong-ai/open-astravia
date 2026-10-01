@@ -25,7 +25,7 @@ coding-agent -> 未声明 runtime-core
 runtime-core -> 错误声明 coding-agent
 ```
 
-因此 Desktop 仍先构建 `coding-agent`。此时 TypeScript 从陈旧的 `runtime-core/dist/*.d.ts` 读取旧声明；旧声明又反向导入 `@vetta/coding-agent`，解析到 `coding-agent/dist`。这些待输出的 `.d.ts` 因而同时成为编译输入，触发 `TS5055`。
+因此 Desktop 仍先构建 `coding-agent`。此时 TypeScript 从陈旧的 `runtime-core/dist/*.d.ts` 读取旧声明；旧声明又反向导入 `@astravia/coding-agent`，解析到 `coding-agent/dist`。这些待输出的 `.d.ts` 因而同时成为编译输入，触发 `TS5055`。
 
 当前生产源码的真实方向是：
 

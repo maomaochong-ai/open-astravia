@@ -1,5 +1,5 @@
+import type { RemoteDirectoryEntry } from "@astravia/ssh-transport";
 import type { SshHostSummary } from "@preload/api-types/ssh";
-import type { RemoteDirectoryEntry } from "@vetta/ssh-transport";
 import { useCallback, useEffect, useState } from "react";
 
 export interface RemoteProjectPickerModel {
@@ -30,7 +30,7 @@ export function useRemoteProjectPickerModel(): RemoteProjectPickerModel {
 	const [error, setError] = useState<string | null>(null);
 
 	useEffect(() => {
-		void window.vetta.ssh
+		void window.astravia.ssh
 			.listHosts()
 			.then(setHosts)
 			.finally(() => setHostsLoading(false));
@@ -40,7 +40,7 @@ export function useRemoteProjectPickerModel(): RemoteProjectPickerModel {
 		setBrowsing(true);
 		setError(null);
 		try {
-			const listing = await window.vetta.ssh.listRemoteDirectory({ hostId, remotePath: path });
+			const listing = await window.astravia.ssh.listRemoteDirectory({ hostId, remotePath: path });
 			setRemotePath(listing.remotePath);
 			// 这里在选项目根，普通文件不是可选项，列出来只会让用户误点。
 			// 软链接保留：指向目录的软链接很常见（项目盘挂载、家目录里的快捷方式），

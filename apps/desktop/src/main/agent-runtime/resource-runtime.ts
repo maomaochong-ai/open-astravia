@@ -2,31 +2,31 @@ import { join } from "node:path";
 import type {
 	CodingAgentPromptRuntimeSourceContext,
 	CodingAgentPromptRuntimeSources,
-} from "@vetta/coding-agent/composition";
-import { getAgentDir, getSceneDir, getUserSkillsDir, getVettaHomePath } from "@vetta/coding-agent/config";
+} from "@astravia/coding-agent/composition";
+import { getAgentDir, getAstraviaHomePath, getSceneDir, getUserSkillsDir } from "@astravia/coding-agent/config";
 import {
 	configureThemeRuntime,
 	detectColorMode,
 	detectTerminalBackground,
 	loadThemeFromContent,
-} from "@vetta/coding-agent/extensions";
-import { createCodingAgentNodeExtensionFactoryLoader } from "@vetta/coding-agent/host-services";
+} from "@astravia/coding-agent/extensions";
+import { createCodingAgentNodeExtensionFactoryLoader } from "@astravia/coding-agent/host-services";
 import {
 	createResourcePackageRuntime,
 	createSessionResourceRuntime,
 	type ResourceSettingsPort,
 	type SessionResourceRuntime,
 	type SessionResourceRuntimeOptions,
-} from "@vetta/coding-agent/resources";
-import { createSettingsRuntimeFromStorage, type SettingsRuntime } from "@vetta/coding-agent/settings";
-import { createProjectResourceAccess, resolveProjectSettingsPath } from "@vetta/runtime-desktop";
+} from "@astravia/coding-agent/resources";
+import { createSettingsRuntimeFromStorage, type SettingsRuntime } from "@astravia/coding-agent/settings";
+import { createProjectResourceAccess, resolveProjectSettingsPath } from "@astravia/runtime-desktop";
 import {
 	createNodeCommandExecutor,
 	createNodeResourcePackageHost,
 	NodeScopedTextStorage,
 	nodeTextFileWatchPort,
-} from "@vetta/runtime-node/host";
-import { isSshProjectUri, parseProjectLocation } from "@vetta/ssh-transport";
+} from "@astravia/runtime-node/host";
+import { isSshProjectUri, parseProjectLocation } from "@astravia/ssh-transport";
 import { getSshConnection } from "../ssh/ssh-runtime.js";
 
 interface DesktopResourceRuntimeScope {
@@ -93,7 +93,7 @@ export function createDesktopSessionResourceRuntime(
 		skillLocations: {
 			sceneDir: getSceneDir(),
 			managedSkillsDir: getUserSkillsDir(),
-			manifestPath: host.resourceAccess.paths.join(getVettaHomePath(), "skills-manifest.json"),
+			manifestPath: host.resourceAccess.paths.join(getAstraviaHomePath(), "skills-manifest.json"),
 		},
 	});
 	return isSshProjectUri(options.cwd) ? presentRemotePathsAsSeenByTools(runtime) : runtime;

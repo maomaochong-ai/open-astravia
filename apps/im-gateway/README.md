@@ -1,21 +1,21 @@
 # im-gateway
 
-> Drive your local vetta coding-agent from IM platforms (Feishu first).
+> Drive your local astravia coding-agent from IM platforms (Feishu first).
 
 Bridges instant messaging platforms (Feishu, with Telegram / DingTalk planned) to a locally running [`coding-agent`](../coding-agent) instance. Lets you talk to your local AI from your phone or desktop IM client without opening the desktop app, while keeping all code, tools, and credentials on your machine.
 
 ## Deployment model
 
-`im-gateway` is **embedded** as a sidecar inside `Vetta.app`. End users do **not** install or configure this binary directly — they enable IM bridging from `Settings → IM 集成` in the desktop app, fill in their feishu credentials, and the desktop main process spawns this binary as a child process.
+`im-gateway` is **embedded** as a sidecar inside `Astravia.app`. End users do **not** install or configure this binary directly — they enable IM bridging from `Settings → IM 集成` in the desktop app, fill in their feishu credentials, and the desktop main process spawns this binary as a child process.
 
-The sidecar's lifecycle is strictly bound to the desktop app: completely quitting Vetta (including the tray icon) terminates the sidecar and stops receiving feishu events. There is no `launchd` / `systemd` daemon mode, by design.
+The sidecar's lifecycle is strictly bound to the desktop app: completely quitting Astravia (including the tray icon) terminates the sidecar and stops receiving feishu events. There is no `launchd` / `systemd` daemon mode, by design.
 
 ## Subcommands
 
 | Subcommand | Audience | Purpose |
 |---|---|---|
 | `host` | **End users** (driven by desktop) | Embedded mode. Reads NDJSON config from stdin, emits NDJSON events on stdout. Lifecycle bound to parent process. No filesystem state. |
-| `start` | Developers | Standalone mode. Reads `~/.vetta/im-gateway/config.yaml`. Useful for local debugging of router / bridge / transport without running the full desktop app. |
+| `start` | Developers | Standalone mode. Reads `~/.astravia/im-gateway/config.yaml`. Useful for local debugging of router / bridge / transport without running the full desktop app. |
 | `init` | Developers | Generate yaml config templates for `start` mode. |
 | `status` / `logs` | Developers | Inspect a running `start`-mode process. |
 
@@ -35,13 +35,13 @@ The `host` subcommand is the only one wired into the user deployment path. Every
 └──────────────┘    └─────────────────┘    └────────────────────────┘
                             │                        │
                             ▼                                ▼
-                    ~/.vetta/im-gateway/         ~/.vetta/conversation/
-                    state.json                   .vetta/sessions/<id>.jsonl
+                    ~/.astravia/im-gateway/         ~/.astravia/conversation/
+                    state.json                   .astravia/sessions/<id>.jsonl
                     config.yaml                  (shared with desktop's
                                                   default "对话" project)
 ```
 
-- **All IM sessions live in `~/.vetta/conversation`** — the same default "对话" project desktop uses, so a conversation started in IM shows up in the desktop sidebar (with an "IM" badge) and vice-versa. No `/projects` / `/use` switching.
+- **All IM sessions live in `~/.astravia/conversation`** — the same default "对话" project desktop uses, so a conversation started in IM shows up in the desktop sidebar (with an "IM" badge) and vice-versa. No `/projects` / `/use` switching.
 - **Same session files** as the desktop app — pick up a conversation in IM, continue it on your laptop, single-writer enforced via the `<file>.lock` protocol added to `SessionManager`
 - **Routes by `(im_user, chatID)`** — private chat and group chat are independent sessions for the same user
 - **Process pool** keyed by absolute session path; LRU eviction; one subprocess per active conversation

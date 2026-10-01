@@ -80,7 +80,7 @@ const jobOutputSchema = defineCapabilityOutputSchema(JOB_TYPE, { clean: true });
 
 export const FOUNDATION_JOB_CAPABILITIES = {
 	GET: defineCapability<JobRef, Job>({
-		id: "cap.foundation.vetta.job.get",
+		id: "cap.foundation.astravia.job.get",
 		kind: "query",
 		layer: CAPABILITY_LAYERS.FOUNDATION,
 		version: 1,
@@ -88,7 +88,7 @@ export const FOUNDATION_JOB_CAPABILITIES = {
 		output: jobOutputSchema,
 	}),
 	CANCEL: defineCapability<JobRef, Job>({
-		id: "cap.foundation.vetta.job.cancel",
+		id: "cap.foundation.astravia.job.cancel",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.FOUNDATION,
 		version: 1,

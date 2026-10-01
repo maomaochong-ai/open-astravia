@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const RUNTIME_STATE_KEY = "__vettaPluginHostBridgeRuntimeState_v2";
+const RUNTIME_STATE_KEY = "__astraviaPluginHostBridgeRuntimeState_v2";
 
 vi.mock("@shared/store/atoms", async () => {
 	const { atom } = await import("jotai");
@@ -55,7 +55,7 @@ describe("plugin host bridge HMR lifecycle", () => {
 			respondOcrProvider,
 		};
 		vi.stubGlobal("window", {
-			vetta: {
+			astravia: {
 				plugins,
 				session: { subscribe: async () => () => undefined },
 			},

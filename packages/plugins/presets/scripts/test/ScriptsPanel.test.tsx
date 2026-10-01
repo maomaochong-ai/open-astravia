@@ -1,14 +1,14 @@
 // @vitest-environment jsdom
 import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { __BottomPanelContext, type PluginBottomPanelContextValue } from "@vetta-org/plugin-sdk";
+import { __BottomPanelContext, type PluginBottomPanelContextValue } from "@astravia-org/plugin-sdk";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ScriptsPanel } from "../src/components/ScriptsPanel";
 import { setScriptsFs } from "../src/runtime";
 import type { ScriptsFs } from "../src/scripts/discover";
 
-vi.mock("@vetta-org/plugin-sdk", async (importOriginal) => ({
-	...(await importOriginal<typeof import("@vetta-org/plugin-sdk")>()),
+vi.mock("@astravia-org/plugin-sdk", async (importOriginal) => ({
+	...(await importOriginal<typeof import("@astravia-org/plugin-sdk")>()),
 	useTranslation: () => ({
 		locale: "en",
 		t: (key: string, params?: Record<string, unknown>) => (params ? `${key}:${JSON.stringify(params)}` : key),

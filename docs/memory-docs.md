@@ -1,6 +1,6 @@
 # Claw 记忆系统：实现路径、运作方式与设计取舍
 
-> 适用范围：im-gateway 驱动的 Claw 会话（`~/.vetta/im-gateway/conversation/`）。
+> 适用范围：im-gateway 驱动的 Claw 会话（`~/.astravia/im-gateway/conversation/`）。
 > 决策依据：[ADR-0009](adr/0009-im-gateway-memory-rollover-and-dated-worklog.md)。术语见 [CONTEXT.md](../CONTEXT.md)。
 > 门控：coding-agent 的 `--memory-mode`，默认**关**，且**仅在 `--mode rpc` 下生效**。只有 im-gateway 为 Claw 会话传这个 flag（`host.go: MemoryMode=true`，全仓唯一启用点）；desktop / TUI / CLI 既无 plumbing 传它、即便误传在非 rpc 模式也被忽略，行为完全不变。`memory` 工具更是只在「rpc 模式 + memoryMode + memoryFile」三重门控下注册，从不进入任何默认工具集——所以其他项目**压根不会**看到记忆工具或任何记忆行为。
 
@@ -28,12 +28,12 @@ IM 用户大量时间在飞书/微信聊天，但 Claw 的会话之间过去**�
 
 > L1 解决「跨会话记得」；L2 + rollover 解决「聊爆频繁压缩 + 连续感」；L3 解决「昨天干了什么 / 产物在哪」。
 
-物理布局（`~/.vetta/im-gateway/conversation/` 为会话根，下称 `<root>`）：
+物理布局（`~/.astravia/im-gateway/conversation/` 为会话根，下称 `<root>`）：
 
 ```
 <root>/
 ├── MEMORY.md                      # L1 常驻记忆（稳定路径，与运行 cwd 解耦）
-├── .vetta/sessions/               # L2 所有会话 jsonl（SessionDir，钉死在根）
+├── .astravia/sessions/               # L2 所有会话 jsonl（SessionDir，钉死在根）
 │   ├── 2026-05-29T..._<id1>.jsonl     # 旧会话（rollover 后归档）
 │   └── 2026-05-29T..._<id2>.jsonl     # 新会话（parentSession 指回 id1）
 ├── 2026-05-29/                    # L3 今日日期目录（= agent 运行 cwd）
@@ -58,7 +58,7 @@ im-gateway 收到消息 → `router.forwardToAgent`：
 
 1. `agentCwd()` 计算今日日期目录 `<root>/<YYYY-MM-DD>/`，`MkdirAll` 创建（`internal/router/router.go`）。
 2. `pool.Acquire(cwd=日期目录, sessionPath=该 chat 上次的 jsonl)`。`closeOnIdle` 下每条消息 spawn 新进程。
-3. `local/client.OpenSession` 拼 argv：`--mode rpc --cwd <日期目录> --session <path> --session-dir <root>/.vetta/sessions --enable-host-bridge --memory-mode --memory-file <root>/MEMORY.md`（`internal/hostclient/local/client.go`）。`cmd.Dir = 日期目录`（OS 级 cwd）。
+3. `local/client.OpenSession` 拼 argv：`--mode rpc --cwd <日期目录> --session <path> --session-dir <root>/.astravia/sessions --enable-host-bridge --memory-mode --memory-file <root>/MEMORY.md`（`internal/hostclient/local/client.go`）。`cmd.Dir = 日期目录`（OS 级 cwd）。
 
 ### 3.2 注入 MEMORY.md（L1，冻结快照）
 

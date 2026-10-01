@@ -1,2 +1,2 @@
-export type { AppBackgroundProps } from "@vetta-org/theme-ui/app";
-export { AppBackground } from "@vetta-org/theme-ui/app";
+export type { AppBackgroundProps } from "@astravia-org/theme-ui/app";
+export { AppBackground } from "@astravia-org/theme-ui/app";

@@ -95,14 +95,14 @@ const trPlugin: PluginTextResolver = (_pluginId, raw, catalog) => {
 
 function installedPlugin(overrides?: Partial<InstalledPlugin>): InstalledPlugin {
 	return {
-		id: "cowart-vetta",
+		id: "cowart-astravia",
 		name: "%plugin.name%",
 		description: "%plugin.description%",
 		version: "0.1.7",
 		activeVersion: "0.1.7",
 		pluginApiVersion: "^2.0.0",
-		entryUrl: "vetta-plugin://cowart-vetta/mf-manifest.json",
-		moduleFederation: { remoteName: "cowart_vetta", expose: "./plugin" },
+		entryUrl: "astravia-plugin://cowart-astravia/mf-manifest.json",
+		moduleFederation: { remoteName: "cowart_astravia", expose: "./plugin" },
 		styleUrls: [],
 		permissions: [],
 		grantedPermissions: [],
@@ -139,9 +139,9 @@ describe("buildPluginAbilities", () => {
 			origin: {
 				kind: "github-marketplace" as const,
 				sourceId: "test-source",
-				marketplace: "vetta-open-abilities",
+				marketplace: "astravia-open-abilities",
 				marketplaceVersion: "2026.07.3",
-				repository: "https://github.com/example/vetta-abilities",
+				repository: "https://github.com/example/astravia-abilities",
 			},
 		};
 
@@ -159,9 +159,9 @@ describe("buildSkillAbilities", () => {
 			slug: "open-skill",
 			origin: {
 				kind: "github-marketplace" as const,
-				marketplace: "vetta-open-abilities",
+				marketplace: "astravia-open-abilities",
 				marketplaceVersion: "2026.07.1",
-				repository: "https://github.com/example/vetta-abilities",
+				repository: "https://github.com/example/astravia-abilities",
 			},
 		};
 
@@ -224,7 +224,7 @@ describe("buildSkillAbilities", () => {
 		expect(items.map((item) => [item.slug, item.skillProvenance])).toEqual([
 			["explicit-sdk", { kind: "provided", providerType: "sdk", providerId: "dynamic" }],
 			["plugin-legacy", { kind: "provided", providerType: "plugin", providerId: "design" }],
-			["builtin", { kind: "builtin", providerId: "vetta" }],
+			["builtin", { kind: "builtin", providerId: "astravia" }],
 			["user", { kind: "native", scope: "user" }],
 		]);
 	});
@@ -236,13 +236,13 @@ describe("buildSkillAbilities", () => {
 				localSkills: [
 					{ name: "internal", description: "Internal", source: "plugin", type: "skill" },
 					{
-						name: "vetta-ui-design",
+						name: "astravia-ui-design",
 						description: "Internal description",
 						source: "plugin",
 						type: "skill",
 						presentation: {
 							defaultVisibility: "visible",
-							displayName: "Vetta 设计",
+							displayName: "Astravia 设计",
 							displayDescription: "设计产品界面",
 						},
 					},
@@ -252,8 +252,8 @@ describe("buildSkillAbilities", () => {
 
 		expect(items).toHaveLength(1);
 		expect(items[0]).toMatchObject({
-			slug: "vetta-ui-design",
-			title: "Vetta 设计",
+			slug: "astravia-ui-design",
+			title: "Astravia 设计",
 			description: "设计产品界面",
 		});
 	});
@@ -284,23 +284,23 @@ describe("buildSkillAbilities", () => {
 						description: "",
 						source: "builtin",
 						type: "skill",
-						icon: "vetta-file://local/system-skills/create-skill/assets/icon.svg",
+						icon: "astravia-file://local/system-skills/create-skill/assets/icon.svg",
 					},
 				],
 			}),
 		);
 
-		expect(item?.icon).toBe("vetta-file://local/system-skills/create-skill/assets/icon.svg");
+		expect(item?.icon).toBe("astravia-file://local/system-skills/create-skill/assets/icon.svg");
 	});
 
 	it("uses host plugin icon for plugin-contributed skills", () => {
-		const pluginIcon = "vetta-plugin://vetta-ui-design/versions/0.1.0/icon.png?v=0.1.0";
+		const pluginIcon = "astravia-plugin://astravia-ui-design/versions/0.1.0/icon.png?v=0.1.0";
 		const items = buildSkillAbilities(
 			[],
 			createState({
 				localSkills: [
 					{
-						name: "vetta-ui-design",
+						name: "astravia-ui-design",
 						description: "",
 						source: "plugin",
 						type: "skill",
@@ -359,9 +359,9 @@ describe("buildMcpAbilities", () => {
 			origin: {
 				kind: "github-marketplace" as const,
 				sourceId: "test-source",
-				marketplace: "vetta-open-abilities",
+				marketplace: "astravia-open-abilities",
 				marketplaceVersion: "2026.07.3",
-				repository: "https://github.com/example/vetta-abilities",
+				repository: "https://github.com/example/astravia-abilities",
 			},
 		};
 
@@ -429,15 +429,15 @@ describe("buildMcpAbilities", () => {
 			origin: {
 				kind: "github-marketplace" as const,
 				sourceId: "official",
-				marketplace: "vetta-open-abilities",
+				marketplace: "astravia-open-abilities",
 				marketplaceVersion: "2026.09.1",
-				repository: "https://github.com/example/vetta-abilities",
+				repository: "https://github.com/example/astravia-abilities",
 			},
 			catalogSource: {
 				kind: "github" as const,
 				id: "official",
 				name: "official",
-				repository: "https://github.com/example/vetta-abilities",
+				repository: "https://github.com/example/astravia-abilities",
 			},
 		} as unknown as MarketAbility;
 		const installed = {
@@ -557,15 +557,15 @@ describe("buildMcpAbilities", () => {
 			origin: {
 				kind: "github-marketplace" as const,
 				sourceId: "test-source",
-				marketplace: "vetta-open-abilities",
+				marketplace: "astravia-open-abilities",
 				marketplaceVersion: "2026.07.3",
-				repository: "https://github.com/example/vetta-abilities",
+				repository: "https://github.com/example/astravia-abilities",
 			},
 			catalogSource: {
 				kind: "github" as const,
 				id: "test-source",
 				name: "Test source",
-				repository: "https://github.com/example/vetta-abilities",
+				repository: "https://github.com/example/astravia-abilities",
 			},
 		};
 		const state = createState({

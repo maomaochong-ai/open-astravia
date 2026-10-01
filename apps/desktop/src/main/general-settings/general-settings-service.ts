@@ -5,7 +5,7 @@ import type {
 	NotificationsSettingInput,
 	SandboxCapabilitySnapshot,
 	WorkspaceSettingInput,
-} from "@vetta-org/capability-sdk";
+} from "@astravia-org/capability-sdk";
 import {
 	type DesktopConfig,
 	type DesktopConfigUpdater,

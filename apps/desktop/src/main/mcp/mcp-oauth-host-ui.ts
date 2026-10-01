@@ -1,5 +1,5 @@
 import { createServer, type Server } from "node:http";
-import type { McpDeviceCodeInfo, McpOAuthCallbackSession } from "@vetta/runtime-mcp";
+import type { McpDeviceCodeInfo, McpOAuthCallbackSession } from "@astravia/runtime-mcp";
 import { mainT } from "../i18n/index.js";
 
 export async function createOAuthCallbackSession(): Promise<McpOAuthCallbackSession> {
@@ -107,7 +107,7 @@ export async function createDeviceCodePresentation(
 function renderBrowserResultPage(success: boolean, message?: string): string {
 	const title = mainT(success ? "mcpOAuth.authorizationSuccessful" : "mcpOAuth.authorizationFailed");
 	const detail = success
-		? mainT("mcpOAuth.returnToVetta")
+		? mainT("mcpOAuth.returnToAstravia")
 		: `${message ?? ""} ${mainT("mcpOAuth.closeAndRetry")}`.trim();
 	return `<!doctype html><html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>${escapeHtml(title)}</title></head><body style="font-family:system-ui,sans-serif;padding:2rem;text-align:center"><h1>${escapeHtml(title)}</h1><p>${escapeHtml(detail)}</p>${success ? "<script>setTimeout(() => window.close(), 1500)</script>" : ""}</body></html>`;
 }

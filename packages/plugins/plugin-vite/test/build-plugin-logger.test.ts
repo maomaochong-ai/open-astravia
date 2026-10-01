@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { build } from "vite";
-import { vettaPluginFederation } from "../src/index.js";
+import { astraviaPluginFederation } from "../src/index.js";
 
 const temporaryDirectories: string[] = [];
 const originalFederationTestOverride = process.env.MFE_VITE_NO_TEST_ENV_CHECK;
@@ -29,7 +29,7 @@ describe("plugin logger production binding", () => {
 				root: rootDir,
 				configFile: false,
 				logLevel: "silent",
-				plugins: vettaPluginFederation({
+				plugins: astraviaPluginFederation({
 					name: "logger_fixture",
 					entry: "./src/index.js",
 					package: false,
@@ -41,7 +41,7 @@ describe("plugin logger production binding", () => {
 
 		const output = await readJavaScriptOutput(join(rootDir, "dist"));
 		expect(output).toContain('{id:"logger-fixture",version:"1.2.3"}');
-		expect(output).toContain('from"vetta-host://plugin-sdk"');
+		expect(output).toContain('from"astravia-host://plugin-sdk"');
 		expect(output).not.toContain("Plugin logger is not bound");
 	});
 });
@@ -66,7 +66,7 @@ async function createFixture(): Promise<string> {
 		),
 		writeFile(
 			join(rootDir, "src", "index.js"),
-			`import { logger } from "@vetta-org/plugin-sdk/logger";
+			`import { logger } from "@astravia-org/plugin-sdk/logger";
 export const boundLogger = logger;
 export default { activate() { logger.info("fixture activated"); } };
 `,

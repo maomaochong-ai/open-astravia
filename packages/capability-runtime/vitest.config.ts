@@ -4,7 +4,7 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
 	resolve: {
 		alias: {
-			"@vetta-org/capability-sdk": fileURLToPath(new URL("../capability-sdk/src/index.ts", import.meta.url)),
+			"@astravia-org/capability-sdk": fileURLToPath(new URL("../capability-sdk/src/index.ts", import.meta.url)),
 		},
 	},
 	test: {

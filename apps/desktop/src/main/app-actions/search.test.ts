@@ -9,7 +9,7 @@ function action(id: string, title: string, overrides: Partial<ActionDefinition> 
 		title,
 		summary: title,
 		availability: "gui-renderer",
-		permission: "plugin.vetta-actions.app-action.write",
+		permission: "plugin.astravia-actions.app-action.write",
 		inputSchema: { description: "Object input" },
 		examples: [],
 		validateInput: () => ({}),
@@ -26,8 +26,8 @@ describe("App Action discovery", () => {
 
 	it("returns usage boundaries without indexing exclusions as positive matches", () => {
 		const usage = {
-			target: "Vetta Desktop appearance settings",
-			useWhen: "Change Vetta's own theme.",
+			target: "Astravia Desktop appearance settings",
+			useWhen: "Change Astravia's own theme.",
 			avoidWhen: "Installing webpack plugins or editing a website.",
 			alternatives: "Use the project's package manager and source files.",
 		};

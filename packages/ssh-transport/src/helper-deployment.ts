@@ -62,8 +62,8 @@ export async function connectSshHelper(
 		const binary = await readFile(localPath);
 		const digest = createHash("sha256").update(binary).digest("hex");
 		const home = await connection.resolveHomeDirectory();
-		const directory = `${home.replace(/\/+$/, "")}/.cache/vetta/helper/${HELPER_PROTOCOL_VERSION}`;
-		const remotePath = `${directory}/vetta-ssh-helper`;
+		const directory = `${home.replace(/\/+$/, "")}/.cache/astravia/helper/${HELPER_PROTOCOL_VERSION}`;
+		const remotePath = `${directory}/astravia-ssh-helper`;
 
 		if ((await remoteDigest(connection, remotePath)) !== digest) {
 			await connection.makeDirectory(directory);

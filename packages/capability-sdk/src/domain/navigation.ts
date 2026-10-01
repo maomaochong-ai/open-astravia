@@ -29,7 +29,7 @@ const noOutputSchema = defineCapabilityNoOutputSchema();
 
 export const DOMAIN_NAVIGATION_CAPABILITIES = {
 	OPEN_HOSTED_ROUTE: defineCapability<OpenHostedRouteInput, undefined>({
-		id: "cap.domain.vetta.navigation.open-hosted-route",
+		id: "cap.domain.astravia.navigation.open-hosted-route",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,

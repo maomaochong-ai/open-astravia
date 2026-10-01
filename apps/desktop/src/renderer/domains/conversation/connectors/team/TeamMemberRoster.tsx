@@ -1,5 +1,5 @@
 import { cn } from "@shared/lib/utils";
-import { AgentAvatarView } from "@vetta-org/theme-ui/chat";
+import { AgentAvatarView } from "@astravia-org/theme-ui/chat";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { TeamChatViewModel } from "./teamChatModel";

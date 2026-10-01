@@ -1,6 +1,6 @@
 import { stat } from "node:fs/promises";
 import { join } from "node:path";
-import type { RuntimeHost } from "@vetta/runtime-core";
+import type { RuntimeHost } from "@astravia/runtime-core";
 import { recordBatchProjectCreated } from "../app-monitor/app-monitor-service.js";
 import type { ExecutionModeOverride } from "../execution-mode.js";
 import { readDesktopConfig } from "../ipc/fs.js";

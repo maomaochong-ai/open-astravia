@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to `@vetta/runtime-subagents` are documented in this file.
+All notable changes to `@astravia/runtime-subagents` are documented in this file.
 
 ## [Unreleased]
 

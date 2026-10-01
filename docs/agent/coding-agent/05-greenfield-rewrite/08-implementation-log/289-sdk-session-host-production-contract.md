@@ -14,7 +14,7 @@
 - 会话历史、认证、模型和设置等用户数据；必要时由显式、独立的新迁移器读取旧格式。
 - 模型消息、工具消息、错误、取消、事件顺序、并发约束和资源释放语义。
 - 仍然有效的行为测试场景和数据 fixture；旧实现可以临时作为测试 Oracle，但不能被新生产代码调用。
-- `@vetta/ai` 与经过合同验证的 `@vetta/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
+- `@astravia/ai` 与经过合同验证的 `@astravia/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
 
 ## 明确舍弃（固定）
 
@@ -28,7 +28,7 @@
 
 ## 本阶段与最终目标的关系
 
-第 288 轮已经将 RPC 与 CLI Runtime Host 收口为生产身份，但 `host/sdk-session` 内部仍保留 44 个 `GreenfieldSdk*`、`CodingAgentGreenfield*` 迁移符号，共 281 次引用；两个外围 SDK Host 消费者另有 3 个迁移符号、5 次引用。公开 `@vetta/coding-agent/sdk` 合同已经使用稳定名称，因此本轮只清理 SDK Session Host 的内部生产身份，不改变公开 SDK API。
+第 288 轮已经将 RPC 与 CLI Runtime Host 收口为生产身份，但 `host/sdk-session` 内部仍保留 44 个 `GreenfieldSdk*`、`CodingAgentGreenfield*` 迁移符号，共 281 次引用；两个外围 SDK Host 消费者另有 3 个迁移符号、5 次引用。公开 `@astravia/coding-agent/sdk` 合同已经使用稳定名称，因此本轮只清理 SDK Session Host 的内部生产身份，不改变公开 SDK API。
 
 本轮不修改 Session 创建、恢复、分支、动态 Tool/MCP/Skill、模型切换、Bash、Compaction、重试、事件、统计、存储和释放语义；既有错误码和值字符串保持不变。
 
@@ -51,7 +51,7 @@
 
 ### 上游合同边界
 
-`GreenfieldRuntimeSession` 仍由 `@vetta/runtime-core` 定义，是跨包 Runtime 合同。本轮保留其 24 次引用，没有在 Coding Agent 内创建包装类型或别名。该名称是否调整必须由 `runtime-core` 的独立合同审计决定。
+`GreenfieldRuntimeSession` 仍由 `@astravia/runtime-core` 定义，是跨包 Runtime 合同。本轮保留其 24 次引用，没有在 Coding Agent 内创建包装类型或别名。该名称是否调整必须由 `runtime-core` 的独立合同审计决定。
 
 ### 类型校验判断
 
@@ -89,7 +89,7 @@ filenames=0/0
 - SDK 定向测试：3 个文件、20 项测试通过；
 - 迁移残留门禁：19 项测试通过；
 - Coding Agent 全量：137 个文件通过、1 个文件跳过，935 项通过、17 项跳过；
-- `bun run verify:agent-hosts` 通过：独立 Vetta CLI、IM Gateway、Coding Agent、CLI 和 Desktop 全部通过；
+- `bun run verify:agent-hosts` 通过：独立 Astravia CLI、IM Gateway、Coding Agent、CLI 和 Desktop 全部通过；
 - Desktop 功能套件：119 个文件、501 项通过，另 1 项跳过；
 - 根级 `bun run check` 通过：Root、CLI、Desktop、Admin 类型检查、Biome 和全部质量守卫均通过。
 
@@ -98,7 +98,7 @@ filenames=0/0
 ## 尚未完成的替换
 
 - `public-api/bootstrap.ts` 仍有 `CodingAgentGreenfieldExtensionHostCapabilities` 与 `resolveCodingAgentGreenfieldExtensionCompatibility`，应在下一阶段审计 Extension Host 的生产身份和真实兼容职责；
-- `@vetta/runtime-core` 的 `GreenfieldRuntimeSession` 仍是跨包正式合同，是否改名不能由 Coding Agent 单方面决定；
+- `@astravia/runtime-core` 的 `GreenfieldRuntimeSession` 仍是跨包正式合同，是否改名不能由 Coding Agent 单方面决定；
 - 既有错误码、协议值和历史格式中仍可能包含 `greenfield` 字符串，这些是兼容合同，不能按名称直接删除；
 - Coding Agent 其他测试目录仍存在描述旧/新差异的 Greenfield 基线，需要按领域逐项判断，不能纳入本轮 SDK Host 清理。
 

@@ -1,4 +1,4 @@
-import { useTranslation } from "@vetta-org/plugin-sdk";
+import { useTranslation } from "@astravia-org/plugin-sdk";
 import { useEffect, useMemo, useRef } from "react";
 import type {
 	ContentNodeData,

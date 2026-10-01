@@ -37,7 +37,7 @@ vi.mock("../agent-runtime/host-services.js", () => ({
 
 vi.mock("../ipc/fs.js", () => ({
 	KB_PROCESSING_CWD: "C:/knowledge/processing",
-	KB_PROCESSING_SESSION_DIR: "C:/knowledge/processing/.vetta/sessions",
+	KB_PROCESSING_SESSION_DIR: "C:/knowledge/processing/.astravia/sessions",
 	readDesktopConfig: vi.fn(async () => ({ knowledgeBase: { enabled: false } })),
 }));
 

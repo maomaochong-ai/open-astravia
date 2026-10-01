@@ -1,6 +1,6 @@
 # 支持矩阵与已知缺口
 
-## 1. Vetta 宿主事件 ↔ Claude profile
+## 1. Astravia 宿主事件 ↔ Claude profile
 
 | 事件 | 宿主是否触发 | Claude profile | 首期语义 |
 | --- | --- | --- | --- |
@@ -32,7 +32,7 @@
 | `${CLAUDE_PLUGIN_ROOT}` / `${CLAUDE_PROJECT_DIR}` / `${CLAUDE_PLUGIN_DATA}` | 支持受控展开 |
 | CRLF / LF | 读取时规范化 |
 | 与 Codex `.codex` / `hooks.json` 路径隔离 | 支持（`profileId` + ownership filter） |
-| Vetta `.vetta` / `agentDir` hook 路径 | **已移除**（仅官方布局） |
+| Astravia `.astravia` / `agentDir` hook 路径 | **已移除**（仅官方布局） |
 | 自动扫描 marketplace / 任意插件目录 | **不做**（宿主显式传入） |
 | 插件信任 UI / hash 重授权 | **未做**（后续 desktop 插件加载器） |
 
@@ -41,7 +41,7 @@
 | 场景 | 行为 |
 | --- | --- |
 | `node xxx.cjs` / 非 shell 命令 | 走默认 shell（Windows 为 cmd） |
-| `*.sh` / `bash ...` | 优先 Git Bash / `VETTA_BASH`；找不到则 **spawn_failed** 明确提示，**不回退 cmd** |
+| `*.sh` / `bash ...` | 优先 Git Bash / `ASTRAVIA_BASH`；找不到则 **spawn_failed** 明确提示，**不回退 cmd** |
 | 本机实测 | 无 Git Bash；WSL `system32\bash.exe` 被刻意跳过 |
 | 上游 council/cdt `.sh` | **可加载**，**默认无法在本机原样执行** |
 
@@ -50,7 +50,7 @@
 | 插件 | Hook 层结论 |
 | --- | --- |
 | `council` | SessionStart preflight 协议可适配；需 Bash/`command -v` 才能跑原始脚本。可用 Node fixture 等价验证 context 注入 |
-| `cdt` | UserPromptSubmit block、PreToolUse(Team\*)、Stop 协议可适配。**Teams 工具宿主缺失** → TeamCreate 等 matcher 不会在 Vetta 中触发；`/cdt` block 可用 fixture 验证。Stop wave-gate / session-title 依赖 Teams 状态与 Claude transcript，功能不完整 |
+| `cdt` | UserPromptSubmit block、PreToolUse(Team\*)、Stop 协议可适配。**Teams 工具宿主缺失** → TeamCreate 等 matcher 不会在 Astravia 中触发；`/cdt` block 可用 fixture 验证。Stop wave-gate / session-title 依赖 Teams 状态与 Claude transcript，功能不完整 |
 | 其他 8 个插件 | 无 `hooks/hooks.json`；不在本轮 Hook 范围 |
 
 ## 6. 明确不做（本轮）

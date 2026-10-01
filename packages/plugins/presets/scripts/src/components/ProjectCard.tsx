@@ -1,4 +1,4 @@
-import { useTranslation } from "@vetta-org/plugin-sdk";
+import { useTranslation } from "@astravia-org/plugin-sdk";
 import { type JSX, useState } from "react";
 import type { RunnableScript, ScriptProject, ScriptSource } from "../scripts/model";
 

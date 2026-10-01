@@ -1,5 +1,5 @@
-import { type AssistantMessage, createAssistantMessage } from "@vetta/ai";
-import type { AssistantSessionEvent, SessionEvent } from "@vetta/runtime-core";
+import { type AssistantMessage, createAssistantMessage } from "@astravia/ai";
+import type { AssistantSessionEvent, SessionEvent } from "@astravia/runtime-core";
 import { describe, expect, it } from "vitest";
 import { decodeSessionEvent } from "../../shared/session-event-codec.js";
 import { SLIM_ASSISTANT_PARTIAL, slimSessionEventForIpc } from "./slim-session-event-for-ipc.js";

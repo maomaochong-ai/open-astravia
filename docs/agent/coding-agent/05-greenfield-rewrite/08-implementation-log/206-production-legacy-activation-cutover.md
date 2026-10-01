@@ -47,7 +47,7 @@ Knowledge Processing Session Factory 不再暴露或构造 Legacy factory，生�
 
 ### 4. 测试专用 Legacy 差分基线
 
-生产代码不再导入 `@vetta/coding-agent/legacy/*`。为了继续证明功能没有因架构切换而漂移，新增测试专用 RPC 入口：
+生产代码不再导入 `@astravia/coding-agent/legacy/*`。为了继续证明功能没有因架构切换而漂移，新增测试专用 RPC 入口：
 
 - Legacy/Greenfield Provider、Extension、Print 等差分测试仍可运行真实 Legacy 基线；
 - 该入口只位于测试目录，不会进入生产 selector 或安装产物；
@@ -111,7 +111,7 @@ TypeBox 只用于不可信协议输入的运行时校验；内部 composition �
 
 下一阶段应处理“物理退役与可执行产物归属”，不要继续改宿主行为：
 
-1. 先确定并迁移 `coding-agent` 的 `vetta-agent` bin ownership，保证 Canonical Entrypoint 不再指向 Legacy CLI；
+1. 先确定并迁移 `coding-agent` 的 `astravia-agent` bin ownership，保证 Canonical Entrypoint 不再指向 Legacy CLI；
 2. 删除 `coding-agent` 内部 Legacy main/backend/knowledge execution 实现；
 3. 收缩 package exports 和公开类型，只保留格式识别、迁移与必要的兼容错误合同；
 4. 将测试差分基线改为冻结 fixture 或独立兼容测试包，再移除测试对真实 Legacy 执行实现的依赖；

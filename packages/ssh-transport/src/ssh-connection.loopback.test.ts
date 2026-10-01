@@ -8,7 +8,7 @@ import type { SshConnection } from "./ssh-connection.js";
 import { buildSshHelperForTests, createLoopbackSshConnection } from "./testing.js";
 
 function createRemoteDirectory(): string {
-	return realpathSync(mkdtempSync(join(tmpdir(), "vetta-remote-")));
+	return realpathSync(mkdtempSync(join(tmpdir(), "astravia-remote-")));
 }
 
 const helperBinary = buildSshHelperForTests();

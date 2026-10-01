@@ -1,4 +1,4 @@
-import type { ConfigRecord, VersionedConfigMigration } from "@vetta/toolkit/versioned-config";
+import type { ConfigRecord, VersionedConfigMigration } from "@astravia/toolkit/versioned-config";
 
 /** v2 → v3: add the sanctum growth fields used by the current snapshot. */
 export const cultivationMigration002To3: VersionedConfigMigration = {

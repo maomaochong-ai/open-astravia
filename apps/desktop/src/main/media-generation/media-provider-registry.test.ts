@@ -1,10 +1,10 @@
-import { DOMAIN_MEDIA_CAPABILITIES, MEDIA_PROTOCOL_VERSION, type MediaProviderJob } from "@vetta-org/capability-sdk";
+import { DOMAIN_MEDIA_CAPABILITIES, MEDIA_PROTOCOL_VERSION, type MediaProviderJob } from "@astravia-org/capability-sdk";
 import { describe, expect, it, vi } from "vitest";
-import type { VettaGatewayRequest, VettaGatewayResponse } from "../cloud-bridge.js";
+import type { AstraviaGatewayRequest, AstraviaGatewayResponse } from "../cloud-bridge.js";
 import { JobManager } from "../jobs/job-manager.js";
+import { createAstraviaImageProvider } from "./astravia-image-provider.js";
 import { MediaArtifactStore } from "./media-artifact-store.js";
 import { MediaProviderRegistry } from "./media-provider-registry.js";
-import { createVettaImageProvider } from "./vetta-image-provider.js";
 
 const signal = new AbortController().signal;
 
@@ -482,9 +482,9 @@ describe("MediaProviderRegistry", () => {
 	});
 });
 
-describe("Vetta image provider", () => {
+describe("Astravia image provider", () => {
 	it("maps gateway authentication failures to unauthenticated media jobs", async () => {
-		const provider = createVettaImageProvider(new MediaArtifactStore(), async () => ({
+		const provider = createAstraviaImageProvider(new MediaArtifactStore(), async () => ({
 			ok: false,
 			status: 401,
 			code: -1,
@@ -503,8 +503,8 @@ describe("Vetta image provider", () => {
 	});
 
 	it("owns the gateway route and never accepts one from the caller", async () => {
-		const requests: VettaGatewayRequest[] = [];
-		const requestGateway = async <T>(request: VettaGatewayRequest): Promise<VettaGatewayResponse<T>> => {
+		const requests: AstraviaGatewayRequest[] = [];
+		const requestGateway = async <T>(request: AstraviaGatewayRequest): Promise<AstraviaGatewayResponse<T>> => {
 			requests.push(request);
 			return {
 				ok: true,
@@ -515,7 +515,7 @@ describe("Vetta image provider", () => {
 			};
 		};
 		const artifacts = new MediaArtifactStore();
-		const provider = createVettaImageProvider(artifacts, requestGateway);
+		const provider = createAstraviaImageProvider(artifacts, requestGateway);
 
 		const job = await provider.submit(
 			{

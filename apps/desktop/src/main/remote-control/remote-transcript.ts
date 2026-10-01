@@ -1,12 +1,12 @@
 import { basename } from "node:path";
-import type { Message } from "@vetta/ai";
+import type { Message } from "@astravia/ai";
 import type {
 	CodingAgentQuestionFunctionRequest,
 	CodingAgentQuestionResult,
-} from "@vetta/coding-agent/function-extensions";
-import type { RemoteQuestionRequest, RemoteToolCallSummary, RemoteTranscriptEntry } from "@vetta/remote-control";
-import { sha256Hex } from "@vetta/remote-control";
-import type { HistoryEntry } from "@vetta/runtime-core";
+} from "@astravia/coding-agent/function-extensions";
+import type { RemoteQuestionRequest, RemoteToolCallSummary, RemoteTranscriptEntry } from "@astravia/remote-control";
+import { sha256Hex } from "@astravia/remote-control";
+import type { HistoryEntry } from "@astravia/runtime-core";
 import { RemoteOperationError } from "./remote-error-mapping.js";
 
 const MAX_HISTORY_ENTRIES = 240;

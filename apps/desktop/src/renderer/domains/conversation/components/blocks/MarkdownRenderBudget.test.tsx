@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { MarkdownContent } from "@vetta-org/theme-ui/markdown";
-import type { MarkdownDefinition } from "@vetta-org/theme-ui/markdown";
+import { MarkdownContent } from "@astravia-org/theme-ui/markdown";
+import type { MarkdownDefinition } from "@astravia-org/theme-ui/markdown";
 import { afterEach, expect, it, vi } from "vitest";
 
 const environment = {

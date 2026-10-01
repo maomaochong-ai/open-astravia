@@ -1,5 +1,5 @@
-import { createAgentTeamFixture, createEmptyAgentTeamDocument } from "@vetta/agent-team";
-import { providerModelNotFoundError } from "@vetta/ai";
+import { createAgentTeamFixture, createEmptyAgentTeamDocument } from "@astravia/agent-team";
+import { providerModelNotFoundError } from "@astravia/ai";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { resolveTeamSessionWorkspace } from "../agent-teams/team-workspace.js";
 import { type AgentTeamsIpcDependencies, registerAgentTeamsIpc } from "./agent-teams.js";
@@ -109,13 +109,13 @@ describe("Agent Team IPC contract", () => {
 		// 插件热重载不经过渲染进程，没有这条广播，侧边栏要等到重启 App 才跟上。
 		notify(createEmptyAgentTeamDocument());
 
-		expect(ipc.sent).toEqual(["vetta:agent-teams:changed"]);
+		expect(ipc.sent).toEqual(["astravia:agent-teams:changed"]);
 	});
 
 	it("validates renderer input before invoking the domain service", async () => {
 		const deps = dependencies();
 		registerAgentTeamsIpc(deps);
-		const createAgent = ipc.handlers.get("vetta:agent-teams:create-agent");
+		const createAgent = ipc.handlers.get("astravia:agent-teams:create-agent");
 		if (!createAgent) throw new Error("create-agent handler was not registered");
 
 		expect(() => createAgent({}, { name: "Missing required fields" })).toThrow("Invalid create agent profile input");
@@ -136,7 +136,7 @@ describe("Agent Team IPC contract", () => {
 	it("rejects unknown message fields and removes every registered handler", async () => {
 		const deps = dependencies();
 		const teardown = registerAgentTeamsIpc(deps);
-		const sendMessage = ipc.handlers.get("vetta:agent-teams:send-message");
+		const sendMessage = ipc.handlers.get("astravia:agent-teams:send-message");
 		if (!sendMessage) throw new Error("send-message handler was not registered");
 
 		await expect(
@@ -153,7 +153,7 @@ describe("Agent Team IPC contract", () => {
 		const failure = providerModelNotFoundError("cli-proxy-api.google", "gemini-3.8-flash-high");
 		vi.mocked(deps.sessions.send).mockRejectedValueOnce(failure);
 		registerAgentTeamsIpc(deps);
-		const sendMessage = ipc.handlers.get("vetta:agent-teams:send-message");
+		const sendMessage = ipc.handlers.get("astravia:agent-teams:send-message");
 		if (!sendMessage) throw new Error("send-message handler was not registered");
 
 		await expect(
@@ -168,7 +168,7 @@ describe("Agent Team IPC contract", () => {
 	it("passes an ordinary Conversation bookmark when reopening a Team session", async () => {
 		const deps = dependencies();
 		registerAgentTeamsIpc(deps);
-		const getSession = ipc.handlers.get("vetta:agent-teams:get-session");
+		const getSession = ipc.handlers.get("astravia:agent-teams:get-session");
 		if (!getSession) throw new Error("get-session handler was not registered");
 
 		await getSession({}, { id: "session", coordinationSessionPath: "C:/runtime/session.jsonl" });
@@ -201,7 +201,7 @@ describe("Agent Team IPC contract", () => {
 			sessions: sessionServices as AgentTeamsIpcDependencies["sessions"],
 		};
 		registerAgentTeamsIpc(deps);
-		const getSession = ipc.handlers.get("vetta:agent-teams:get-session");
+		const getSession = ipc.handlers.get("astravia:agent-teams:get-session");
 		if (!getSession) throw new Error("get-session handler was not registered");
 
 		await expect(getSession({}, "session")).resolves.toMatchObject({ display: { memberConversations: [] } });
@@ -222,7 +222,7 @@ describe("Agent Team IPC contract", () => {
 			displayProjection: displayProjection,
 		};
 		registerAgentTeamsIpc({ ...base, sessions: sessionServices as AgentTeamsIpcDependencies["sessions"] });
-		const getSession = ipc.handlers.get("vetta:agent-teams:get-session");
+		const getSession = ipc.handlers.get("astravia:agent-teams:get-session");
 		if (!getSession) throw new Error("get-session handler was not registered");
 
 		await expect(
@@ -243,8 +243,8 @@ describe("Agent Team IPC contract", () => {
 		deps.sessions.listSessions = vi.fn(async () => []);
 		registerAgentTeamsIpc(deps);
 
-		const createSession = ipc.handlers.get("vetta:agent-teams:create-session");
-		const listSessions = ipc.handlers.get("vetta:agent-teams:list-sessions");
+		const createSession = ipc.handlers.get("astravia:agent-teams:create-session");
+		const listSessions = ipc.handlers.get("astravia:agent-teams:list-sessions");
 		if (!createSession || !listSessions) throw new Error("Team session handlers were not registered");
 		await createSession({}, team.id);
 		await listSessions({}, team.id);
@@ -282,7 +282,7 @@ describe("Agent Team IPC contract", () => {
 		];
 		const listSidebarConversations = vi.fn(async () => projected);
 		registerAgentTeamsIpc({ ...deps, listSidebarConversations });
-		const listSidebar = ipc.handlers.get("vetta:agent-teams:list-sidebar-conversations");
+		const listSidebar = ipc.handlers.get("astravia:agent-teams:list-sidebar-conversations");
 		if (!listSidebar) throw new Error("list-sidebar-conversations handler was not registered");
 
 		await expect(listSidebar({})).resolves.toEqual(projected);
@@ -293,8 +293,8 @@ describe("Agent Team IPC contract", () => {
 		const deps = dependencies();
 		registerAgentTeamsIpc(deps);
 		const reference = { id: "session-1", coordinationSessionPath: "C:/sessions/session-1.jsonl" };
-		const renameSession = ipc.handlers.get("vetta:agent-teams:rename-session");
-		const deleteSession = ipc.handlers.get("vetta:agent-teams:delete-session");
+		const renameSession = ipc.handlers.get("astravia:agent-teams:rename-session");
+		const deleteSession = ipc.handlers.get("astravia:agent-teams:delete-session");
 		if (!renameSession || !deleteSession) throw new Error("Team session mutation handlers were not registered");
 
 		await renameSession({}, reference, "Renamed");
@@ -313,7 +313,7 @@ describe("Agent Team IPC contract", () => {
 		deps.sessions.createRecord = vi.fn(async (_team, _document, cwd) => ({ cwd }) as never);
 		registerAgentTeamsIpc(deps);
 
-		const createSessionRecord = ipc.handlers.get("vetta:agent-teams:create-session-record");
+		const createSessionRecord = ipc.handlers.get("astravia:agent-teams:create-session-record");
 		if (!createSessionRecord) throw new Error("create-session-record handler was not registered");
 		await createSessionRecord({}, team.id);
 
@@ -364,7 +364,7 @@ describe("Agent Team IPC contract", () => {
 	it("validates and forwards Team-session model settings", async () => {
 		const deps = dependencies();
 		registerAgentTeamsIpc(deps);
-		const updateModelSettings = ipc.handlers.get("vetta:agent-teams:update-model-settings");
+		const updateModelSettings = ipc.handlers.get("astravia:agent-teams:update-model-settings");
 		if (!updateModelSettings) throw new Error("update-model-settings handler was not registered");
 
 		await updateModelSettings({}, "session", { modelKey: "openai/gpt-5", reasoning: "high" });
@@ -385,8 +385,8 @@ describe("Agent Team IPC contract", () => {
 		const memberId = team.members[0]!.id;
 		deps.store.read = vi.fn(async () => document);
 		registerAgentTeamsIpc(deps);
-		const list = ipc.handlers.get("vetta:agent-teams:list-member-models");
-		const set = ipc.handlers.get("vetta:agent-teams:set-member-model");
+		const list = ipc.handlers.get("astravia:agent-teams:list-member-models");
+		const set = ipc.handlers.get("astravia:agent-teams:set-member-model");
 		if (!list || !set) throw new Error("member model handlers were not registered");
 		await list({}, team.id);
 		expect(deps.memberModels?.list).toHaveBeenCalledWith(team);
@@ -395,11 +395,11 @@ describe("Agent Team IPC contract", () => {
 			modelKey: "provider/model",
 			reasoning: "high",
 		});
-		expect(ipc.sent).toEqual(["vetta:agent-teams:member-models-changed"]);
+		expect(ipc.sent).toEqual(["astravia:agent-teams:member-models-changed"]);
 		expect(ipc.payloads.at(-1)).toEqual([team.id]);
 		ipc.sent.length = 0;
 		await set({}, team.id, memberId, null);
-		expect(ipc.sent).toEqual(["vetta:agent-teams:member-models-changed"]);
+		expect(ipc.sent).toEqual(["astravia:agent-teams:member-models-changed"]);
 		expect(ipc.payloads.at(-1)).toEqual([team.id]);
 		ipc.sent.length = 0;
 		expect(deps.memberModels?.set).toHaveBeenLastCalledWith(team, memberId, null);
@@ -411,7 +411,7 @@ describe("Agent Team IPC contract", () => {
 	it("validates and forwards the Team-scoped execution mode", async () => {
 		const deps = dependencies();
 		registerAgentTeamsIpc(deps);
-		const setExecutionMode = ipc.handlers.get("vetta:agent-teams:set-execution-mode");
+		const setExecutionMode = ipc.handlers.get("astravia:agent-teams:set-execution-mode");
 		if (!setExecutionMode) throw new Error("set-execution-mode handler was not registered");
 
 		await setExecutionMode({}, "session", "sandbox");
@@ -439,7 +439,7 @@ describe("Agent Team IPC contract", () => {
 							name: "Team",
 							cwd: "C:/workspace",
 							leaderMemberId: "leader",
-							memberHandles: { leader: "vetta" },
+							memberHandles: { leader: "astravia" },
 							createdAt: 1,
 							updatedAt: 1,
 							events: [],
@@ -460,7 +460,7 @@ describe("Agent Team IPC contract", () => {
 			once: vi.fn(),
 			removeListener: vi.fn(),
 		};
-		const subscribe = ipc.handlers.get("vetta:agent-teams:subscribe");
+		const subscribe = ipc.handlers.get("astravia:agent-teams:subscribe");
 		if (!subscribe) throw new Error("subscribe handler was not registered");
 		const result = (await subscribe({ sender }, "session")) as {
 			subscriptionId: string;
@@ -479,7 +479,7 @@ describe("Agent Team IPC contract", () => {
 		});
 		await new Promise<void>((resolve) => queueMicrotask(resolve));
 		expect(sender.send).toHaveBeenCalledWith(
-			"vetta:agent-teams:stream-event",
+			"astravia:agent-teams:stream-event",
 			result.subscriptionId,
 			expect.objectContaining({ type: "conversation.agent-message-discard", reason: "completed" }),
 		);
@@ -487,7 +487,7 @@ describe("Agent Team IPC contract", () => {
 		onDestroyed?.();
 		expect(unsubscribe).toHaveBeenCalledOnce();
 
-		const abort = ipc.handlers.get("vetta:agent-teams:abort");
+		const abort = ipc.handlers.get("astravia:agent-teams:abort");
 		if (!abort) throw new Error("abort handler was not registered");
 		await abort({}, "session");
 		expect(deps.sessions.abort).toHaveBeenCalledWith("session");

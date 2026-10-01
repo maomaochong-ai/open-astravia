@@ -1,7 +1,7 @@
 import { RemoteDesktopHost, RemoteDesktopViewer } from "./index.js";
 import type { RemoteDesktopSignal, RemoteInputMessage } from "./types.js";
 
-const resultPrefix = "VETTA_E2E_RESULT:";
+const resultPrefix = "ASTRAVIA_E2E_RESULT:";
 
 void (async () => ({ ...(await run()), ...(await runOnDemand()) }))().then(
 	(result) => {

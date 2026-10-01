@@ -1,4 +1,4 @@
-import type { SshHost } from "@vetta/ssh-transport";
+import type { SshHost } from "@astravia/ssh-transport";
 import { useEffect, useState } from "react";
 
 /**
@@ -28,11 +28,11 @@ export function useSshHosts(enabled = true): { hosts: readonly SshHost[]; loaded
 		if (!enabled) return;
 		let cancelled = false;
 		const refresh = async (): Promise<void> => {
-			const next = await window.vetta.ssh.listHosts();
+			const next = await window.astravia.ssh.listHosts();
 			if (!cancelled) setState({ hosts: next, loaded: true });
 		};
 		void refresh();
-		const offHosts = window.vetta.ssh.onHostsChanged(() => void refresh());
+		const offHosts = window.astravia.ssh.onHostsChanged(() => void refresh());
 		return () => {
 			cancelled = true;
 			offHosts();

@@ -1,6 +1,6 @@
-import { DetailDrawerEnter } from "@vetta-org/theme-ui/overlays";
+import { DetailDrawerEnter } from "@astravia-org/theme-ui/overlays";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { Button } from "@vetta-org/ui";
+import { Button } from "@astravia-org/ui";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { resolveAbilityDetailContent } from "../../lib/ability-presentation";

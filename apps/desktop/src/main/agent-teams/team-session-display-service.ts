@@ -4,8 +4,8 @@ import type {
 	TeamSessionDocument,
 	TeamSessionSnapshot,
 	TeamWorkItem,
-} from "@vetta/agent-team";
-import type { ConversationDocument, RuntimeHost } from "@vetta/runtime-core";
+} from "@astravia/agent-team";
+import type { ConversationDocument, RuntimeHost } from "@astravia/runtime-core";
 import type { DesktopTeamConversationDisplay } from "../../preload/api-types/team-conversation-display.js";
 import type { TeamCollaborationStore } from "./team-collaboration-store.js";
 import { projectTeamConversationDisplay } from "./team-conversation-display.js";

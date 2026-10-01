@@ -13,7 +13,7 @@
 	"styles": ["dist/style.css"],
 	"permissions": ["ui.slot.tool-call", "agent.skills.control", "agent.tools.register", "agent.toolHandler.execute"],
 	"description": "%plugin.description%",
-	"author": "Vetta",
+	"author": "Astravia",
 	"guidingWords": [
 		"%guiding.chart%",
 		"%guiding.bar%",

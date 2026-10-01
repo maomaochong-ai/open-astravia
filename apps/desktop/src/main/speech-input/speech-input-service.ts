@@ -80,7 +80,7 @@ export class SpeechInputService {
 					fileURLToPath(new URL(/* @vite-ignore */ "./speech-input-host.js", import.meta.url)),
 					[],
 					{
-						serviceName: "vetta-speech-input-host",
+						serviceName: "astravia-speech-input-host",
 						stdio: ["ignore", "pipe", "pipe"],
 					},
 				));

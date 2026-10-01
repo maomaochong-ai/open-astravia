@@ -1,6 +1,6 @@
 import { PluginActivityTabPanel } from "@domains/plugins/components/PluginActivityTabPanel";
 import { usePluginTextResolver } from "@domains/plugins/runtime/plugin-i18n";
-import type { ConversationScenario } from "@vetta-org/plugin-sdk";
+import type { ConversationScenario } from "@astravia-org/plugin-sdk";
 import {
 	activeInputActionIdsAtom,
 	pluginActivityTabsAtom,

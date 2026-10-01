@@ -1,10 +1,10 @@
-import type { EcosystemHookContributionSource, EcosystemHookRuntime } from "@vetta/ecosystem-adapter";
+import type { EcosystemHookContributionSource, EcosystemHookRuntime } from "@astravia/ecosystem-adapter";
 import type {
 	AgentFeatureDefinition,
 	ModelCallContributionProvider,
 	RuntimeSnapshotAcquireContext,
 	RuntimeToolDefinition,
-} from "@vetta/runtime-core/kernel";
+} from "@astravia/runtime-core/kernel";
 import type { CodingAgentPromptResourceSource } from "../../runtime-contracts/prompt-runtime.js";
 import { CODING_AGENT_MODEL_TOOL_ORDER } from "../../tool-policy/model-tool-order.js";
 import type { Skill } from "./index.js";

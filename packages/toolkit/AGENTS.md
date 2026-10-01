@@ -6,8 +6,8 @@
 
 新增或修改以下内容前，必须先阅读 [`docs/migrations.md`](docs/migrations.md)：
 
-- 使用 `@vetta/toolkit/versioned-config` 迁移 JSON schema。
-- 使用 `@vetta/toolkit/file-migrations` 调整目录或文件布局。
+- 使用 `@astravia/toolkit/versioned-config` 迁移 JSON schema。
+- 使用 `@astravia/toolkit/file-migrations` 调整目录或文件布局。
 - 为消费方设计 migration 目录、版本文件、校验和回写流程。
 - 修改 Toolkit 迁移 API、类型或示例。
 

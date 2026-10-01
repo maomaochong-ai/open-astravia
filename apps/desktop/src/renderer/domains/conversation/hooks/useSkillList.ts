@@ -1,10 +1,10 @@
-import type { AppMonitorPromptRefUsageMap, SkillInfo } from "@preload/api";
 import {
 	getSkillDisplayDescription,
 	getSkillDisplayName,
 	isSkillVisibleOnSurface,
 	type SkillPresentationSurface,
-} from "@vetta-org/capability-sdk";
+} from "@astravia-org/capability-sdk";
+import type { AppMonitorPromptRefUsageMap, SkillInfo } from "@preload/api";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { filterSkills, sortSkillsForPanel } from "@/shared/skill-ranking";
@@ -53,8 +53,8 @@ async function load(cwd: string | undefined, language: string): Promise<SkillLis
 	const running = inflight.get(key);
 	if (running) return running;
 	const task = Promise.all([
-		window.vetta.skills.list(cwd),
-		window.vetta.appMonitor.getPromptRefUsage().catch(() => ({}) as AppMonitorPromptRefUsageMap),
+		window.astravia.skills.list(cwd),
+		window.astravia.appMonitor.getPromptRefUsage().catch(() => ({}) as AppMonitorPromptRefUsageMap),
 	])
 		.then(([skills, usage]) => {
 			const data: SkillListData = { skills, usage };

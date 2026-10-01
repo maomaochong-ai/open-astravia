@@ -1,2 +1,2 @@
-export type { SidebarPanelProps } from "@vetta-org/theme-ui/sidebar";
-export { SidebarPanel } from "@vetta-org/theme-ui/sidebar";
+export type { SidebarPanelProps } from "@astravia-org/theme-ui/sidebar";
+export { SidebarPanel } from "@astravia-org/theme-ui/sidebar";

@@ -23,10 +23,10 @@ function metadata(version, fileName) {
 }
 
 async function createReleaseDir({ arm64Version = "1.2.3", x64Version = "1.2.3" } = {}) {
-	const releaseDir = await mkdtemp(join(tmpdir(), "vetta-mac-merge-test-"));
+	const releaseDir = await mkdtemp(join(tmpdir(), "astravia-mac-merge-test-"));
 	temporaryRoots.push(releaseDir);
-	await writeFile(join(releaseDir, "latest-mac-arm64.yml"), metadata(arm64Version, "Vetta-1.2.3-arm64-mac.zip"));
-	await writeFile(join(releaseDir, "latest-mac-x64.yml"), metadata(x64Version, "Vetta-1.2.3-mac.zip"));
+	await writeFile(join(releaseDir, "latest-mac-arm64.yml"), metadata(arm64Version, "Astravia-1.2.3-arm64-mac.zip"));
+	await writeFile(join(releaseDir, "latest-mac-x64.yml"), metadata(x64Version, "Astravia-1.2.3-mac.zip"));
 	return releaseDir;
 }
 
@@ -38,9 +38,9 @@ test("merges per-architecture metadata into a single latest-mac.yml", async () =
 	assert.equal(merged.version, "1.2.3");
 	assert.deepEqual(
 		merged.files.map((file) => file.url),
-		["Vetta-1.2.3-mac.zip", "Vetta-1.2.3-arm64-mac.zip"],
+		["Astravia-1.2.3-mac.zip", "Astravia-1.2.3-arm64-mac.zip"],
 	);
-	assert.equal(merged.path, "Vetta-1.2.3-mac.zip");
+	assert.equal(merged.path, "Astravia-1.2.3-mac.zip");
 	const written = parse(await readFile(join(releaseDir, "latest-mac.yml"), "utf8"));
 	assert.equal(written.files.length, 2);
 	const remaining = await readdir(releaseDir);
@@ -53,7 +53,7 @@ test("rejects metadata built from different versions", async () => {
 });
 
 test("does nothing when no per-architecture metadata exists", async () => {
-	const releaseDir = await mkdtemp(join(tmpdir(), "vetta-mac-merge-test-"));
+	const releaseDir = await mkdtemp(join(tmpdir(), "astravia-mac-merge-test-"));
 	temporaryRoots.push(releaseDir);
 	assert.equal(await mergeMacUpdateMetadata({ releaseDir }), null);
 });

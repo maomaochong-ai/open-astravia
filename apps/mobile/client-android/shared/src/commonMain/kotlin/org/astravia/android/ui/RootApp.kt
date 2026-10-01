@@ -1,0 +1,421 @@
+package org.astravia.android.ui
+
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.VisibilityThreshold
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.EditNote
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.VerticalDivider
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.unit.IntOffset
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.viewmodel.CreationExtras
+import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlin.reflect.KClass
+import org.jetbrains.compose.resources.pluralStringResource
+import org.jetbrains.compose.resources.stringResource
+import org.astravia.android.app.AppContainer
+import org.astravia.android.domain.work.IncomingShare
+import org.astravia.android.domain.work.LaunchTarget
+import org.astravia.android.domain.work.MirrorState
+import org.astravia.android.domain.work.PromptDraft
+import org.astravia.android.resources.Res
+import org.astravia.android.resources.new_session_title
+import org.astravia.android.resources.share_skipped
+import org.astravia.android.resources.share_title
+import org.astravia.android.ui.board.TaskBoardSheet
+import org.astravia.android.ui.components.AstraviaInfoDialog
+import org.astravia.android.ui.design.AstraviaMotion
+import org.astravia.android.ui.home.HomeScreen
+import org.astravia.android.ui.home.ProjectScreen
+import org.astravia.android.ui.home.connectComputerDetail
+import org.astravia.android.ui.home.homeEntries
+import org.astravia.android.ui.navigation.HomePage
+import org.astravia.android.ui.navigation.PlatformBackHandler
+import org.astravia.android.ui.navigation.Slot
+import org.astravia.android.ui.pairing.PairingSheet
+import org.astravia.android.ui.pairing.UnlinkedView
+import org.astravia.android.ui.pairing.UnpairedView
+import org.astravia.android.ui.remote.RemoteDesktopScreen
+import org.astravia.android.ui.settings.NotificationSettingsScreen
+import org.astravia.android.ui.settings.SettingsScreen
+import org.astravia.android.ui.shell.HomeBesideMinWidth
+import org.astravia.android.ui.shell.HomeBesideWidth
+import org.astravia.android.ui.shell.HomeDrawer
+import org.astravia.android.ui.shell.LocalHomeBeside
+import org.astravia.android.ui.theme.AstraviaTheme
+import org.astravia.android.ui.theme.astraviaExtra
+import org.astravia.android.ui.work.NewSessionScreen
+import org.astravia.android.ui.work.SessionScreen
+import org.astravia.android.ui.work.WorkViewModel
+
+val LocalAppContainer =
+    staticCompositionLocalOf<AppContainer> {
+        error("AppContainer not provided")
+    }
+
+private class WorkViewModelFactory(
+    private val container: AppContainer,
+) : ViewModelProvider.Factory {
+    @Suppress("UNCHECKED_CAST")
+    override fun <T : ViewModel> create(
+        modelClass: KClass<T>,
+        extras: CreationExtras,
+    ): T = WorkViewModel(container.mirror) as T
+}
+
+private class AppViewModelFactory(
+    private val container: AppContainer,
+) : ViewModelProvider.Factory {
+    @Suppress("UNCHECKED_CAST")
+    override fun <T : ViewModel> create(
+        modelClass: KClass<T>,
+        extras: CreationExtras,
+    ): T = AppViewModel(container) as T
+}
+
+@Composable
+fun RootApp(
+    container: AppContainer = LocalAppContainer.current,
+    pairingInvite: String? = null,
+    onPairingInviteHandled: () -> Unit = {},
+    incomingShare: IncomingShare? = null,
+    onShareHandled: () -> Unit = {},
+    /** A session a notification was tapped for. */
+    openSession: String? = null,
+    onOpenSessionHandled: () -> Unit = {},
+    /** Where a home screen shortcut or the quick settings tile asked to open. */
+    launchTarget: LaunchTarget? = null,
+    onLaunchTargetHandled: () -> Unit = {},
+) {
+    val vm: AppViewModel = viewModel(factory = remember(container) { AppViewModelFactory(container) })
+    val state by vm.state.collectAsState()
+    val work: WorkViewModel = viewModel(factory = remember(container) { WorkViewModelFactory(container) })
+    val workState by work.state.collectAsState()
+    // The desktop's screen, where the pairing has a relay to reach it through.
+    // Only while paired: after an unpairing the computer's screen is out of reach.
+    val viewerUrl = remember(workState.desktop, workState.paired) { container.mirror.viewerUrl() }
+
+    // Home stays beside the slot once the window is wide enough; set as the window is measured.
+    var beside by remember { mutableStateOf(false) }
+    // A back swipe drags the drawer only where Back moves it: open from a chat, shut from Home's first page.
+    var backProgress by remember { mutableStateOf<Float?>(null) }
+    val backMovesDrawer = !beside && !state.showRemote && ((state.drawerOpen && state.homePath.isEmpty()) || (!state.drawerOpen && state.slot is Slot.Session))
+    PlatformBackHandler(
+        enabled = if (beside) state.backEnabledBeside else state.backEnabled,
+        onProgress = { if (backMovesDrawer) backProgress = it },
+        onCancel = { backProgress = null },
+        onBack = {
+            backProgress = null
+            vm.handleBack(beside)
+        },
+    )
+
+    // The desktop link rests in the background (unless kept up for notifications) and reconnects at once when the app returns.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, container) {
+        val observer =
+            LifecycleEventObserver { _, event ->
+                when (event) {
+                    Lifecycle.Event.ON_START -> container.screenStarted()
+                    Lifecycle.Event.ON_STOP -> container.screenStopped()
+                    else -> Unit
+                }
+            }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    LaunchedEffect(pairingInvite) {
+        if (pairingInvite != null) {
+            vm.handlePairingInvite(pairingInvite)
+            onPairingInviteHandled()
+        }
+    }
+
+    LaunchedEffect(openSession) {
+        if (openSession != null) {
+            vm.show(openSession)
+            onOpenSessionHandled()
+        }
+    }
+
+    LaunchedEffect(launchTarget) {
+        when (launchTarget) {
+            null -> return@LaunchedEffect
+            LaunchTarget.NewSession -> vm.startNewSession()
+            LaunchTarget.TaskBoard -> if (workState.paired) vm.openBoard() else vm.openPairing()
+            // Without a paired computer there is no screen to show: pairing comes first.
+            LaunchTarget.RemoteControl ->
+                when {
+                    viewerUrl != null -> vm.openRemote()
+                    !workState.paired -> vm.openPairing()
+                }
+        }
+        onLaunchTargetHandled()
+    }
+
+    // Something shared from another app starts a session: New Session opens with it in the composer.
+    var shareSkipped by remember { mutableStateOf(0) }
+    LaunchedEffect(incomingShare) {
+        val share = incomingShare ?: return@LaunchedEffect
+        val (draft, skipped) = share.into(work.drafts.value[WorkViewModel.NEW_SESSION_DRAFT] ?: PromptDraft())
+        work.setDraft(WorkViewModel.NEW_SESSION_DRAFT, draft)
+        vm.startNewSession()
+        shareSkipped = skipped
+        onShareHandled()
+    }
+
+    // The chat in the slot was deleted, here or on the desktop.
+    val sessionIds = workState.sessions.map { it.id }
+    var knownIds by remember { mutableStateOf(sessionIds) }
+    LaunchedEffect(sessionIds) {
+        val slotted = (state.slot as? Slot.Session)?.let { workState.resolve(it.sessionId) }
+        if (slotted != null && slotted in knownIds && slotted !in sessionIds) vm.startNewSession()
+        knownIds = sessionIds
+    }
+
+    AstraviaTheme(themeMode = state.themeMode) {
+        BoxWithConstraints(Modifier.fillMaxSize().background(MaterialTheme.astraviaExtra.pageBackground)) {
+            // After an unpairing the sessions stay readable, so Home keeps its place.
+            val hasSessions = workState.paired || workState.unlinked != null
+            val wide = maxWidth >= HomeBesideMinWidth && hasSessions
+            LaunchedEffect(wide) { beside = wide }
+            CompositionLocalProvider(LocalHomeBeside provides wide) {
+                if (wide) {
+                    // Wide enough for both: Home keeps its place on the left, the slot fills the rest.
+                    Row(Modifier.fillMaxSize()) {
+                        Box(Modifier.width(HomeBesideWidth).fillMaxHeight()) { HomeStack(state, workState, vm, work, viewerUrl) }
+                        VerticalDivider(color = MaterialTheme.astraviaExtra.border)
+                        Box(Modifier.weight(1f).fillMaxHeight()) { SlotContent(state.slot, workState, vm, work) }
+                    }
+                } else {
+                    HomeDrawer(
+                        open = state.drawerOpen,
+                        enabled = hasSessions,
+                        onOpenChange = { if (it) vm.openDrawer() else vm.closeDrawer() },
+                        closableByDrag = state.homePath.isEmpty(),
+                        backProgress = backProgress,
+                        content = { SlotContent(state.slot, workState, vm, work) },
+                        drawer = { HomeStack(state, workState, vm, work, viewerUrl) },
+                    )
+                }
+                AnimatedVisibility(
+                    state.showRemote,
+                    enter = slideInVertically(AstraviaMotion.snappy(IntOffset.VisibilityThreshold)) { it / 3 } + fadeIn(AstraviaMotion.snappy()),
+                    exit = slideOutVertically(AstraviaMotion.snappy(IntOffset.VisibilityThreshold)) { it / 3 } + fadeOut(AstraviaMotion.snappy()),
+                ) {
+                    RemoteDesktopScreen(workState, viewerUrl, onClose = vm::closeRemote, onScreenOpen = work::setScreenOpen)
+                }
+                if (shareSkipped > 0) {
+                    AstraviaInfoDialog(
+                        title = stringResource(Res.string.share_title),
+                        message = pluralStringResource(Res.plurals.share_skipped, shareSkipped, shareSkipped, PromptDraft.MAX_ATTACHMENTS),
+                        onDismiss = { shareSkipped = 0 },
+                    )
+                }
+                if (state.showBoard) {
+                    TaskBoardSheet(
+                        state = workState,
+                        actions = work,
+                        onOpenSession = vm::show,
+                        onNewSession = vm::startNewSession,
+                        onShowAllSessions = vm::showAllSessions,
+                        onRefresh = work::refresh,
+                        onDismiss = vm::closeBoard,
+                    )
+                }
+                if (state.showPairing) {
+                    PairingSheet(
+                        phase = workState.pairing,
+                        connecting = state.remoteConnecting,
+                        error = state.pairingError,
+                        onScanned = vm::connectDesktop,
+                        onManual = vm::connectDesktopManually,
+                        onCode = vm::connectDesktopWithCode,
+                        inviteFailure = state.inviteFailure,
+                        onCancelPairing = work::cancelPairing,
+                        onDismiss = vm::closePairing,
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** The root slot: one session, or New Session; until a desktop is paired, how to pair. */
+@Composable
+private fun SlotContent(slot: Slot, workState: MirrorState, vm: AppViewModel, work: WorkViewModel) {
+    val drafts by work.drafts.collectAsState()
+    // A new slot starts fresh; the change happens at once, under the drawer as it slides away.
+    key(slot) {
+        when (slot) {
+            is Slot.NewSession ->
+                if (!workState.paired) {
+                    val unlinked = workState.unlinked
+                    when {
+                        unlinked != null -> UnlinkedView(workState.desktop?.desktopName.orEmpty(), unlinked, onPair = vm::openPairing, onOpenHome = vm::openDrawer)
+                        workState.ready -> UnpairedView(onPair = vm::openPairing)
+                    }
+                } else {
+                    val restored = remember { work.takeFailedStart() }
+                    NewSessionScreen(
+                        state = workState,
+                        draft = drafts[WorkViewModel.NEW_SESSION_DRAFT] ?: PromptDraft(),
+                        onDraftChange = { work.setDraft(WorkViewModel.NEW_SESSION_DRAFT, it) },
+                        initialProjectCwd = slot.projectCwd,
+                        restored = restored,
+                        onPrepare = work::prepareNewSession,
+                        onStart = { start ->
+                            var started = ""
+                            work.startSession(start) { vm.returnToNewSession(started, start.projectCwd) }?.let { id ->
+                                started = id
+                                vm.show(id)
+                            }
+                        },
+                        onOpenHome = vm::openDrawer,
+                        onClearError = work::clearError,
+                        onOpenBoard = vm::openBoard,
+                        onOpenSession = vm::show,
+                        onReconnect = work::reconnect,
+                        onPair = vm::openPairing,
+                        onRefreshProjects = work::refreshProjects,
+                        onLoadSkills = work::loadSkills,
+                    )
+                }
+            is Slot.Session ->
+                SessionScreen(
+                    sessionId = slot.sessionId,
+                    state = workState,
+                    draft = drafts[slot.sessionId] ?: PromptDraft(),
+                    actions = work,
+                    onOpenHome = vm::openDrawer,
+                    onPair = vm::openPairing,
+                    headerActions = {
+                        // New Session in the chat's own project.
+                        val id = workState.resolve(slot.sessionId)
+                        IconButton(
+                            onClick = { vm.startNewSession(workState.session(id)?.projectCwd?.takeIf { it != workState.conversationCwd }) },
+                            enabled = !workState.isStarting(slot.sessionId),
+                            modifier = Modifier.testTag("chat.newSession"),
+                        ) { Icon(Icons.Outlined.EditNote, contentDescription = stringResource(Res.string.new_session_title)) }
+                    },
+                )
+        }
+    }
+}
+
+/** Home and the pages pushed over it, sliding in from the right as a navigation stack does. */
+@Composable
+private fun HomeStack(state: AppUiState, workState: MirrorState, vm: AppViewModel, work: WorkViewModel, viewerUrl: String?) {
+    val filter by work.filter.collectAsState()
+    AnimatedContent(
+        targetState = state.homePath,
+        contentKey = { path -> path.size to path.lastOrNull() },
+        transitionSpec = {
+            val spring = AstraviaMotion.snappy(IntOffset.VisibilityThreshold)
+            if (targetState.size >= initialState.size) {
+                (slideInHorizontally(spring) { it } + fadeIn(AstraviaMotion.snappy())) togetherWith
+                    (slideOutHorizontally(spring) { -it / 4 } + fadeOut(AstraviaMotion.snappy()))
+            } else {
+                (slideInHorizontally(spring) { -it / 4 } + fadeIn(AstraviaMotion.snappy())) togetherWith
+                    (slideOutHorizontally(spring) { it } + fadeOut(AstraviaMotion.snappy()))
+            }
+        },
+        label = "home stack",
+    ) { path ->
+        when (val page = path.lastOrNull()) {
+            null ->
+                HomeScreen(
+                    state = workState,
+                    filter = filter,
+                    onFilterChange = work::setFilter,
+                    actions = work,
+                    entries =
+                        homeEntries(
+                            // Filtered to a project: a new session starts there, and the entry says so.
+                            projectName = filter.projectCwd?.let(workState::projectName),
+                            computerName = connectComputerDetail(workState.paired, workState.desktop?.desktopName),
+                            onNewSession = { vm.startNewSession(filter.projectCwd) },
+                            onOpenBoard = vm::openBoard,
+                            onConnect = vm::openPairing,
+                            onRemote = viewerUrl?.let { vm::openRemote },
+                        ),
+                    onClose = vm::closeDrawer,
+                    onOpenSession = vm::show,
+                    onOpenProject = { vm.push(HomePage.Project(it)) },
+                    onOpenSettings = { vm.push(HomePage.Settings) },
+                    onRefresh = work::refresh,
+                    onRefreshProjects = work::refreshProjects,
+                    onReconnect = work::reconnect,
+                    onPair = vm::openPairing,
+                    selected = (state.slot as? Slot.Session)?.let { workState.resolve(it.sessionId) }?.takeIf { LocalHomeBeside.current },
+                )
+            is HomePage.Project ->
+                ProjectScreen(
+                    cwd = page.cwd,
+                    state = workState,
+                    actions = work,
+                    onBack = vm::pop,
+                    onOpenSession = vm::show,
+                    onNewSession = { vm.startNewSession(page.cwd) },
+                    onRefresh = work::refresh,
+                )
+            HomePage.Settings ->
+                SettingsScreen(
+                    state = workState,
+                    themeMode = state.themeMode,
+                    onThemeMode = vm::setThemeMode,
+                    onPreferences = work::setPreferences,
+                    onUnpair = work::unpair,
+                    onPair = vm::openPairing,
+                    onBack = vm::pop,
+                    backgroundLink = state.backgroundLink,
+                    onBackgroundLink = vm::setBackgroundLink,
+                    onOpenRemote = viewerUrl?.let { vm::openRemote },
+                    onOpenNotifications = { vm.push(HomePage.Notifications) },
+                )
+            HomePage.Notifications ->
+                NotificationSettingsScreen(
+                    prefs = state.notifications,
+                    projects = workState.projects,
+                    backgroundLink = state.backgroundLink,
+                    onChange = vm::setNotifications,
+                    onBack = vm::pop,
+                )
+        }
+    }
+}

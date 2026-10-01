@@ -13,7 +13,7 @@ import {
 	type TextContent,
 	type ThinkingBudgets,
 	type Transport,
-} from "@vetta/ai";
+} from "@astravia/ai";
 
 // NEVER convert to top-level import — agent 包可能被浏览器/Vite 消费者引用，
 // node:events 不存在于浏览器。和 openai-codex-responses.ts 处理 node:os 一致。

@@ -1,4 +1,4 @@
-import { useTranslation } from "@vetta-org/plugin-sdk";
+import { useTranslation } from "@astravia-org/plugin-sdk";
 import {
 	Button,
 	Dialog,
@@ -7,14 +7,14 @@ import {
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
-} from "@vetta-org/ui";
+} from "@astravia-org/ui";
 import type { ReactNode } from "react";
 
 /**
  * Shared confirmation for git actions that are awkward or impossible to undo
  * (publishing a branch, discarding changes, resetting the index).
  *
- * `data-vetta-plugin-root` is required: the dialog is portalled to the host's
+ * `data-astravia-plugin-root` is required: the dialog is portalled to the host's
  * document body, outside this plugin's subtree, and without the marker it loses
  * the plugin stylesheet.
  */
@@ -50,7 +50,7 @@ export function ConfirmDialog({
 				if (!next && !busy) onCancel();
 			}}
 		>
-			<DialogContent data-vetta-plugin-root="git" className="max-w-sm">
+			<DialogContent data-astravia-plugin-root="git" className="max-w-sm">
 				<DialogHeader>
 					<DialogTitle>{title}</DialogTitle>
 					{description && <DialogDescription>{description}</DialogDescription>}

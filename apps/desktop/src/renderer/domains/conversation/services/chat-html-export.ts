@@ -85,13 +85,13 @@ function buildShareNav(iconDataUrl: string, nickname?: string): string {
 	const desc = nickname
 		? i18n.t("chat:export.shareNavDescriptionWithNickname", { nickname: escapeHtml(nickname) })
 		: i18n.t("chat:export.shareNavDescription");
-	const icon = iconDataUrl ? `<img class="vetta-share-nav__icon" src="${iconDataUrl}" alt="Vetta" />` : "";
-	return `<nav class="vetta-share-nav" data-share-nav>
-		<div class="vetta-share-nav__inner">
+	const icon = iconDataUrl ? `<img class="astravia-share-nav__icon" src="${iconDataUrl}" alt="Astravia" />` : "";
+	return `<nav class="astravia-share-nav" data-share-nav>
+		<div class="astravia-share-nav__inner">
 			${icon}
-			<div class="vetta-share-nav__meta">
-				<span class="vetta-share-nav__brand">Vetta</span>
-				<span class="vetta-share-nav__desc">${desc}</span>
+			<div class="astravia-share-nav__meta">
+				<span class="astravia-share-nav__brand">Astravia</span>
+				<span class="astravia-share-nav__desc">${desc}</span>
 			</div>
 		</div>
 	</nav>`;
@@ -151,7 +151,7 @@ export async function buildChatHtmlDocument(root: HTMLElement, title: string, ni
 		body { margin: 0; background: var(--background); color: var(--foreground); }
 		[data-export-collapse-panel][hidden] { display: none !important; }
 		.chat-export-document { min-height: 100vh; }
-		.vetta-share-nav {
+		.astravia-share-nav {
 			position: sticky;
 			top: 0;
 			z-index: 50;
@@ -160,14 +160,14 @@ export async function buildChatHtmlDocument(root: HTMLElement, title: string, ni
 			border-bottom: 1px solid transparent;
 			transition: background .25s ease, backdrop-filter .25s ease, border-color .25s ease, box-shadow .25s ease;
 		}
-		.vetta-share-nav.is-scrolled {
+		.astravia-share-nav.is-scrolled {
 			background: color-mix(in srgb, var(--background) 70%, transparent);
 			backdrop-filter: saturate(180%) blur(16px);
 			-webkit-backdrop-filter: saturate(180%) blur(16px);
 			border-bottom-color: var(--border);
 			box-shadow: 0 1px 14px -8px rgba(0, 0, 0, .35);
 		}
-		.vetta-share-nav__inner {
+		.astravia-share-nav__inner {
 			display: flex;
 			align-items: center;
 			gap: 10px;
@@ -177,10 +177,10 @@ export async function buildChatHtmlDocument(root: HTMLElement, title: string, ni
 			padding: 0 20px;
 			box-sizing: border-box;
 		}
-		.vetta-share-nav__icon { width: 30px; height: 30px; border-radius: 8px; flex: none; }
-		.vetta-share-nav__meta { display: flex; flex-direction: column; line-height: 1.25; }
-		.vetta-share-nav__brand { font-weight: 600; font-size: 14px; color: var(--foreground); }
-		.vetta-share-nav__desc { font-size: 12px; color: var(--muted-foreground); }
+		.astravia-share-nav__icon { width: 30px; height: 30px; border-radius: 8px; flex: none; }
+		.astravia-share-nav__meta { display: flex; flex-direction: column; line-height: 1.25; }
+		.astravia-share-nav__brand { font-weight: 600; font-size: 14px; color: var(--foreground); }
+		.astravia-share-nav__desc { font-size: 12px; color: var(--muted-foreground); }
 	</style>
 </head>
 <body class="${escapeHtml(document.body.className)}" style="${escapeHtml(document.body.getAttribute("style") ?? "")}">

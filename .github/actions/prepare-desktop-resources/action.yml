@@ -23,7 +23,7 @@ runs:
       # Warm the complete platform set even if this particular release disables speech.
       # Feature selection remains in the packaging code; cached models are not staged automatically.
       env:
-        VETTA_SPEECH_INPUT_ENABLED: "true"
+        ASTRAVIA_SPEECH_INPUT_ENABLED: "true"
       run: |
         node apps/desktop/scripts/fetch-vendor-runtimes.mjs
         node apps/desktop/scripts/fetch-ocr-models.js

@@ -7,7 +7,7 @@ afterEach(() => {
 
 describe("createOfficialAgentApi", () => {
 	it("routes experimental settings through the plugin capability session", async () => {
-		const settings = { vettaCli: true, promptPrediction: false, agentSkills: true };
+		const settings = { astraviaCli: true, promptPrediction: false, agentSkills: true };
 		const agentSettings = {
 			getExperimental: vi.fn().mockResolvedValue(settings),
 			setExperimental: vi.fn().mockResolvedValue({ ...settings, promptPrediction: true }),
@@ -16,7 +16,7 @@ describe("createOfficialAgentApi", () => {
 		};
 		Object.defineProperty(globalThis, "window", {
 			configurable: true,
-			value: { vetta: { plugins: { internalCapabilities: { agentSettings } } } },
+			value: { astravia: { plugins: { internalCapabilities: { agentSettings } } } },
 		});
 		const assertOfficial = vi.fn();
 		const api = createOfficialAgentApi(assertOfficial, "capability-session");

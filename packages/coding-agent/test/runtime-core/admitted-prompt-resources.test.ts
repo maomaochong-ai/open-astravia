@@ -1,7 +1,7 @@
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createNodeResourceAccess } from "@vetta/runtime-node/host";
+import { createNodeResourceAccess } from "@astravia/runtime-node/host";
 import { expect, it } from "vitest";
 import { AdmittedPromptResources } from "../../src/composition/turn/admitted-prompt-resources.js";
 import { capturePromptResourceSource, capturePromptSkills } from "../../src/model-context/prompt-snapshot.js";

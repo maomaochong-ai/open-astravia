@@ -5,9 +5,9 @@ import { DOMAIN_AI_CAPABILITIES, DOMAIN_AI_CAPABILITY_CATALOG } from "../../src/
 describe("ai domain capabilities", () => {
 	it("uses one stable id per ai operation", () => {
 		expect(Object.values(DOMAIN_AI_CAPABILITIES).map((capability) => capability.id)).toEqual([
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}ai.models.list`,
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}ai.complete`,
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}ai.chat`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}ai.models.list`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}ai.complete`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}ai.chat`,
 		]);
 		expect(DOMAIN_AI_CAPABILITY_CATALOG.some((entry) => entry.id === DOMAIN_AI_CAPABILITIES.CHAT.id)).toBe(true);
 	});

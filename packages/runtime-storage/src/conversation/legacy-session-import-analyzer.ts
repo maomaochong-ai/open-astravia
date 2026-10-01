@@ -1,6 +1,6 @@
+import type { ConversationDocumentEntry } from "@astravia/runtime-core/conversation";
 import { type TSchema, Type } from "@sinclair/typebox";
 import { Value } from "@sinclair/typebox/value";
-import type { ConversationDocumentEntry } from "@vetta/runtime-core/conversation";
 import { CONVERSATION_STORAGE_ERROR_CODES, ConversationStorageError } from "./errors.js";
 import { type LegacySessionDocumentSource, parseLegacySessionDocumentSource } from "./legacy-session-document.js";
 import { ConversationMessageSchema, UserMessageSchema } from "./record-schema.js";

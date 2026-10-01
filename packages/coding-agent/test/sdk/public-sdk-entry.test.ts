@@ -1,7 +1,7 @@
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { Api, Model } from "@vetta/ai";
+import type { Api, Model } from "@astravia/ai";
 import { afterEach, describe, expect, it } from "vitest";
 import {
 	CODING_AGENT_SESSION_CREATE_ERROR_CODES,

@@ -12,14 +12,14 @@ import {
 describe("shortcut and quick panel domain capabilities", () => {
 	it("uses one stable id per shortcut and quick panel operation", () => {
 		expect(Object.values(DOMAIN_SHORTCUT_CAPABILITIES).map((capability) => capability.id)).toEqual([
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}shortcut.settings.get`,
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}shortcut.binding.set`,
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}shortcut.binding.reset`,
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}shortcut.binding.reset-all`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}shortcut.settings.get`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}shortcut.binding.set`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}shortcut.binding.reset`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}shortcut.binding.reset-all`,
 		]);
 		expect(Object.values(DOMAIN_QUICK_PANEL_CAPABILITIES).map((capability) => capability.id)).toEqual([
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}quick-panel.trigger.set`,
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}quick-panel.post-send-behavior.set`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}quick-panel.trigger.set`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}quick-panel.post-send-behavior.set`,
 		]);
 	});
 

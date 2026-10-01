@@ -30,7 +30,7 @@ export function useOAuthLogin(): OAuthLoginModel {
 
 	// 授权成功后归位，避免下次打开弹窗仍停在上一次的等待态。
 	useEffect(() => {
-		return window.vetta.auth.onOAuthCallback(() => {
+		return window.astravia.auth.onOAuthCallback(() => {
 			setPhase("idle");
 			setError("");
 		});
@@ -39,7 +39,7 @@ export function useOAuthLogin(): OAuthLoginModel {
 	// state 校验未通过：浏览器那边显示成功、这边却收不到 token，
 	// 必须把等待态收掉并说明原因，否则用户会一直干等。
 	useEffect(() => {
-		return window.vetta.auth.onOAuthRejected(() => {
+		return window.astravia.auth.onOAuthRejected(() => {
 			setPhase("idle");
 			setError(t("login.rejected"));
 		});
@@ -48,7 +48,7 @@ export function useOAuthLogin(): OAuthLoginModel {
 	const start = useCallback(() => {
 		setError("");
 		setPhase("waiting");
-		window.vetta.auth.startOAuth().catch((e: unknown) => {
+		window.astravia.auth.startOAuth().catch((e: unknown) => {
 			console.error("OAuth login start failed:", e);
 			setPhase("idle");
 			setError(t("login.openFailed"));
@@ -57,7 +57,7 @@ export function useOAuthLogin(): OAuthLoginModel {
 
 	const reopen = useCallback(() => {
 		setError("");
-		window.vetta.auth.reopenOAuth().catch((e: unknown) => {
+		window.astravia.auth.reopenOAuth().catch((e: unknown) => {
 			console.error("OAuth login reopen failed:", e);
 			setError(t("login.openFailed"));
 		});

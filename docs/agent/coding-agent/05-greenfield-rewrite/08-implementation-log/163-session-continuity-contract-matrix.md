@@ -16,8 +16,8 @@
 
 | 语义 | Legacy | Greenfield | 必须保持的事实 |
 | --- | --- | --- | --- |
-| Identity replacement（`new_session`） | 真实 Vetta CLI | 真实 Vetta CLI | 源后台进程终止；源 ownership 释放；目标 ownership 持有；目标 Todo 为空；关闭后目标 ownership 释放 |
-| Storage continuation（memory rollover） | 真实 Vetta CLI | 真实 Vetta CLI | 后台进程继续运行；Todo 内容继续存在；源文件保留；目标文件创建；ownership 原子转移；只产生一次 `session_path_changed`；CLI 关闭后后台进程和目标 ownership 均释放 |
+| Identity replacement（`new_session`） | 真实 Astravia CLI | 真实 Astravia CLI | 源后台进程终止；源 ownership 释放；目标 ownership 持有；目标 Todo 为空；关闭后目标 ownership 释放 |
+| Storage continuation（memory rollover） | 真实 Astravia CLI | 真实 Astravia CLI | 后台进程继续运行；Todo 内容继续存在；源文件保留；目标文件创建；ownership 原子转移；只产生一次 `session_path_changed`；CLI 关闭后后台进程和目标 ownership 均释放 |
 
 这里刻意不要求两类语义采取相同的资源策略：
 
@@ -61,7 +61,7 @@ Todo fixture 在触发 rollover 前被标记为完成。这样合同验证的是
 
 ### 3. 真实 CLI 四象限差分
 
-`agent-runtime-provider-differential.test.ts` 现在使用真实 Vetta RPC CLI、真实 Provider Tool Loop、真实
+`agent-runtime-provider-differential.test.ts` 现在使用真实 Astravia RPC CLI、真实 Provider Tool Loop、真实
 Todo/Shell Tool 和真实 ownership 文件验证两个后端的两类语义。测试不直接调用内部 Store、Manager 或
 Runtime 实现，因此覆盖的是宿主真正能够观察的行为。
 

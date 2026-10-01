@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import type { AgentBlueprint, AgentProfile, AgentProfileUpdateImpact } from "@vetta/agent-team";
+import type { AgentBlueprint, AgentProfile, AgentProfileUpdateImpact } from "@astravia/agent-team";
 import { type ReactNode, useState } from "react";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -13,7 +13,7 @@ vi.mock("react-i18next", () => ({
 			`${key}${options?.name ?? options?.plugin ?? options?.count ?? options?.index ?? ""}`,
 	}),
 }));
-vi.mock("@vetta-org/ui", () => ({
+vi.mock("@astravia-org/ui", () => ({
 	Button: ({ children, ...props }: { children: ReactNode } & Record<string, unknown>) => (
 		<button {...props}>{children}</button>
 	),
@@ -381,8 +381,8 @@ describe("AgentProfileEditor", () => {
 	it("uploads a picture and saves it as the avatar", async () => {
 		const user = userEvent.setup();
 		const onSave = vi.fn(async () => ({ updated: agent, impact }));
-		const uploadAvatar = vi.fn(async () => "vetta-file://local/home/pictures/mine.png");
-		vi.stubGlobal("vetta", { agentTeams: { uploadAvatar } });
+		const uploadAvatar = vi.fn(async () => "astravia-file://local/home/pictures/mine.png");
+		vi.stubGlobal("astravia", { agentTeams: { uploadAvatar } });
 		render(
 			<AgentProfileEditor
 				agent={agent}
@@ -403,7 +403,7 @@ describe("AgentProfileEditor", () => {
 		await waitFor(() =>
 			expect(onSave).toHaveBeenCalledWith(
 				agent,
-				expect.objectContaining({ avatar: "vetta-file://local/home/pictures/mine.png" }),
+				expect.objectContaining({ avatar: "astravia-file://local/home/pictures/mine.png" }),
 			),
 		);
 	});
@@ -411,7 +411,7 @@ describe("AgentProfileEditor", () => {
 	it("keeps the profile unchanged when the upload dialog is cancelled", async () => {
 		const user = userEvent.setup();
 		const onSave = vi.fn(async () => ({ updated: agent, impact }));
-		vi.stubGlobal("vetta", { agentTeams: { uploadAvatar: vi.fn(async () => undefined) } });
+		vi.stubGlobal("astravia", { agentTeams: { uploadAvatar: vi.fn(async () => undefined) } });
 		render(
 			<AgentProfileEditor
 				agent={agent}

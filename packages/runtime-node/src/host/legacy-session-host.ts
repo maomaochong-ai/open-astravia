@@ -3,7 +3,7 @@ import { closeSync, existsSync, openSync, readFileSync, readSync, unlinkSync, wr
 import { appendFile, open, readdir, readFile, realpath, rm, stat } from "node:fs/promises";
 import { hostname } from "node:os";
 import { join, resolve } from "node:path";
-import type { LegacySessionImportEntryNormalizer } from "@vetta/runtime-storage/conversation";
+import type { LegacySessionImportEntryNormalizer } from "@astravia/runtime-storage/conversation";
 import {
 	currentProcessStartedAtMs,
 	isLocalProcessAlive,

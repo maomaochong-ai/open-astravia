@@ -28,8 +28,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"vetta-im-gateway/internal/transport"
-	"vetta-im-gateway/internal/transport/inbox"
+	"astravia-im-gateway/internal/transport"
+	"astravia-im-gateway/internal/transport/inbox"
 )
 
 // MaxInboundAttachmentBytes caps a single inbound media download. Telegram

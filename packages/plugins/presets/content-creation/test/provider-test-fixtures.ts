@@ -2,7 +2,7 @@ import type {
 	PluginNetworkApi,
 	PluginNetworkRequest,
 	PluginNetworkResponse,
-} from "@vetta-org/plugin-sdk";
+} from "@astravia-org/plugin-sdk";
 import type { ContentSettingsReader } from "../src/settings/content-settings";
 import type { ContentProviderGenerationContext } from "../src/generation/types";
 

@@ -8,7 +8,7 @@ describe("installed package root resolution", () => {
 	let fixtureRoot: string;
 
 	beforeEach(() => {
-		fixtureRoot = mkdtempSync(join(tmpdir(), "vetta-installed-package-"));
+		fixtureRoot = mkdtempSync(join(tmpdir(), "astravia-installed-package-"));
 	});
 
 	afterEach(() => {

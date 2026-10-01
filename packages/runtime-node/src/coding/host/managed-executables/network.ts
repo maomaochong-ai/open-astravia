@@ -26,7 +26,7 @@ export async function fetchLatestCodingToolVersion(
 	request: CodingToolHttpRequest = fetch,
 ): Promise<string> {
 	const response = await request(`https://api.github.com/repos/${repository}/releases/latest`, {
-		headers: { "User-Agent": "Vetta-coding-agent" },
+		headers: { "User-Agent": "Astravia-coding-agent" },
 		signal: AbortSignal.timeout(NETWORK_TIMEOUT_MS),
 	});
 	if (!response.ok) throw new Error(`GitHub API error: ${response.status}`);

@@ -1,5 +1,5 @@
+import type { AgentTeamDocument } from "@astravia/agent-team";
 import { useLocalizedAgentTeamDocument } from "@shared/agent-teams/agent-team-localization";
-import type { AgentTeamDocument } from "@vetta/agent-team";
 import { useEffect, useState } from "react";
 
 /**
@@ -23,7 +23,7 @@ let unsubscribeChanged: (() => void) | undefined;
  */
 function watchAgentTeamDocument(): void {
 	if (unsubscribeChanged) return;
-	unsubscribeChanged = window.vetta.agentTeams.onChanged(() => {
+	unsubscribeChanged = window.astravia.agentTeams.onChanged(() => {
 		cached = undefined;
 		// 在途的那趟请求发出得比这次变更早，拿回来的是旧文档；丢掉它重新发一趟。
 		inflight = undefined;
@@ -47,7 +47,7 @@ export function subscribeAgentTeamDocument(listener: () => void): () => void {
 
 /** 拉取名录：已有在途请求时复用它，成功后更新缓存并通知订阅者。失败不写缓存，下次重试。 */
 export function loadAgentTeamDocument(): Promise<AgentTeamDocument> {
-	inflight ??= window.vetta.agentTeams
+	inflight ??= window.astravia.agentTeams
 		.list()
 		.then((document) => {
 			cached = document;

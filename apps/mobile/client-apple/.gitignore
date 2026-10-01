@@ -1,8 +1,8 @@
 build/
-VettaKit/.build/
-VettaKit/.swiftpm/
-VettaRTC/.build/
-VettaRTC/.swiftpm/
+AstraviaKit/.build/
+AstraviaKit/.swiftpm/
+AstraviaRTC/.build/
+AstraviaRTC/.swiftpm/
 *.xcodeproj/xcuserdata/
 *.xcodeproj/project.xcworkspace/xcuserdata/
 DerivedData/

@@ -2,7 +2,7 @@
 
 ## 1. 结论
 
-Vetta 已经有正确的骨架，但一致性边界没有闭合：
+Astravia 已经有正确的骨架，但一致性边界没有闭合：
 
 - Kernel 在 Turn 开始时获取一次 `RuntimeSnapshotLease`，Turn 结束后释放；模型选择也按 Turn 绑定。
 - `AtomicRuntimeSnapshotProvider` 能让旧 generation 在活动 lease 释放前不因普通 retirement 被 dispose；
@@ -159,9 +159,9 @@ ADR-0046 已经规定 Agent Mode 的 runtime/Prompt 重建推迟到下一 Turn�
 ## 6. 外部实现参考的取舍
 
 - Codex 的 `TurnContext + StepContext` 证明了按生命周期拆分快照有效，但它允许旧 Turn 的新 Step 绑定最新
-  MCP；Vetta 不采用这一点。
+  MCP；Astravia 不采用这一点。
 - Grok 的 Plugin Registry snapshot 和 Toolset SwapPolicy 证明了 generation/Turn gate 可落地，但其 MCP、
-  Hub Tool 和 Plugin fan-out 仍有活动 Turn 更新例外；Vetta 只为显式 hard revocation 保留例外。
+  Hub Tool 和 Plugin fan-out 仍有活动 Turn 更新例外；Astravia 只为显式 hard revocation 保留例外。
 
 ## 7. 改造必须保持的不变量
 

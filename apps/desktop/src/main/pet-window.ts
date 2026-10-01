@@ -50,7 +50,7 @@ const appRoot = app.isPackaged ? app.getAppPath() : process.cwd();
 const resDir = app.isPackaged ? appRoot : join(appRoot, "dist");
 const buildDir = app.isPackaged ? join(process.resourcesPath, "build") : join(appRoot, "build");
 const petMediaDir = join(buildDir, "pet");
-const devServerUrl = process.env.VETTA_DESKTOP_DEV_URL;
+const devServerUrl = process.env.ASTRAVIA_DESKTOP_DEV_URL;
 const petPreloadPath = join(resDir, "preload/pet.js");
 const PET_SCREEN_EDGE_MARGIN = 24;
 
@@ -347,7 +347,7 @@ function stopMousePassthroughPolling(): void {
 }
 
 function shouldShowPetDevToolsMenuItem(): boolean {
-	return isDevToolsAllowed() || process.env.VETTA_PET_DEVTOOLS === "1";
+	return isDevToolsAllowed() || process.env.ASTRAVIA_PET_DEVTOOLS === "1";
 }
 
 function destroyPetWindow(): void {

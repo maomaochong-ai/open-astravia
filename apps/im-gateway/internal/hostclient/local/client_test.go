@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"vetta-im-gateway/internal/hostclient"
+	"astravia-im-gateway/internal/hostclient"
 )
 
 // fakeAgent writes a small Go program that mimics the parts of the

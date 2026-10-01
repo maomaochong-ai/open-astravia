@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { pluginBlueprintId } from "@vetta/agent-team";
+import { pluginBlueprintId } from "@astravia/agent-team";
 import { describe, expect, it, vi } from "vitest";
 import type { InstalledPlugin } from "../../preload/api-types/plugins.js";
 import { buildPluginAgentPresets } from "./plugin-agent-presets.js";
@@ -11,11 +11,11 @@ function logger() {
 
 function plugin(overrides: Partial<InstalledPlugin> = {}): InstalledPlugin {
 	return {
-		id: "vetta-ui-design",
+		id: "astravia-ui-design",
 		enabled: true,
 		defaultLocale: "zh",
 		locales: { zh: { "agent.designer.name": "设计师" }, en: { "agent.designer.name": "Designer" } },
-		rootPath: "/plugins/vetta-ui-design",
+		rootPath: "/plugins/astravia-ui-design",
 		agent: {
 			agents: [
 				{
@@ -45,8 +45,8 @@ describe("plugin agent presets", () => {
 
 		expect(agents).toHaveLength(1);
 		const preset = agents[0]!;
-		expect(preset.blueprint.id).toBe(pluginBlueprintId("vetta-ui-design", "designer"));
-		expect(preset.blueprint.source).toEqual({ kind: "plugin", pluginId: "vetta-ui-design" });
+		expect(preset.blueprint.id).toBe(pluginBlueprintId("astravia-ui-design", "designer"));
+		expect(preset.blueprint.source).toEqual({ kind: "plugin", pluginId: "astravia-ui-design" });
 		expect(preset.blueprint.systemPrompt).toBe("You are the design specialist.");
 		expect(preset.blueprint.avatarUrl?.startsWith("data:image/webp;base64,")).toBe(true);
 	});
@@ -110,7 +110,7 @@ describe("plugin agent presets", () => {
 			readBinaryResource,
 		});
 
-		expect(agents[0]?.blueprint.pinnedPlugins).toEqual(["vetta-ui-design"]);
+		expect(agents[0]?.blueprint.pinnedPlugins).toEqual(["astravia-ui-design"]);
 	});
 
 	it("restricts a plugin declaring `own` abilities to its own capabilities", () => {
@@ -127,7 +127,7 @@ describe("plugin agent presets", () => {
 		});
 
 		expect(agents[0]?.blueprint.defaultAbilities.selectionMode).toBe("custom");
-		expect(agents[0]?.blueprint.defaultAbilities.plugins).toEqual(["vetta-ui-design"]);
+		expect(agents[0]?.blueprint.defaultAbilities.plugins).toEqual(["astravia-ui-design"]);
 	});
 
 	it("ignores a disabled plugin so its blueprint disappears with it", () => {
@@ -183,7 +183,7 @@ describe("plugin agent presets", () => {
 		});
 
 		expect(teams).toHaveLength(1);
-		expect(teams[0]?.members[0]?.blueprintId).toBe(pluginBlueprintId("vetta-ui-design", "designer"));
+		expect(teams[0]?.members[0]?.blueprintId).toBe(pluginBlueprintId("astravia-ui-design", "designer"));
 		// 自己插件里的实体引用解析不到就是配置写错了，整支作废才能让作者立刻发现。
 		expect(log.warn).toHaveBeenCalled();
 	});
@@ -333,7 +333,7 @@ describe("plugin agent presets", () => {
 				readBinaryResource,
 			});
 
-			expect(teams[0]?.members[1]?.providerPluginId).toBe("vetta-ui-design");
+			expect(teams[0]?.members[1]?.providerPluginId).toBe("astravia-ui-design");
 		});
 
 		it("gives a borrowed member a brief that lives on the consumer's team", () => {
@@ -370,7 +370,7 @@ describe("plugin agent presets", () => {
 				logger: logger(),
 				// 任务书从声明团队的那个插件里读，不是从供货方。
 				readResource: (plugin, path) =>
-					plugin.id === "vetta-ui-design" && path === "agent/dev-brief.md"
+					plugin.id === "astravia-ui-design" && path === "agent/dev-brief.md"
 						? "Follow the design tokens."
 						: readResource(),
 				readBinaryResource,
@@ -437,15 +437,15 @@ describe("plugin agent presets", () => {
 
 	// 真实 manifest 的守卫：路径写错、提示词文件漏带、头像格式不对，都在这里断掉，
 	// 而不是等用户装上插件后发现智能体压根没出现。
-	describe("the shipped vetta-ui-design manifest", () => {
-		const root = join(process.cwd(), "..", "..", "packages", "plugins", "presets", "vetta-ui-design");
+	describe("the shipped astravia-ui-design manifest", () => {
+		const root = join(process.cwd(), "..", "..", "packages", "plugins", "presets", "astravia-ui-design");
 		const manifest = JSON.parse(readFileSync(join(root, "plugin.json"), "utf-8")) as Record<string, unknown>;
 		const locales = {
 			zh: JSON.parse(readFileSync(join(root, "locales", "zh.json"), "utf-8")) as Record<string, string>,
 			en: JSON.parse(readFileSync(join(root, "locales", "en.json"), "utf-8")) as Record<string, string>,
 		};
 		const installed = {
-			id: "vetta-ui-design",
+			id: "astravia-ui-design",
 			enabled: true,
 			defaultLocale: "zh",
 			locales,
@@ -460,7 +460,7 @@ describe("plugin agent presets", () => {
 			expect(log.warn).not.toHaveBeenCalled();
 			expect(agents).toHaveLength(1);
 			expect(agents[0]?.profileName).toBe("设计师");
-			expect(agents[0]?.blueprint.systemPrompt).toContain("Vetta UI Design skill");
+			expect(agents[0]?.blueprint.systemPrompt).toContain("Astravia UI Design skill");
 			expect(agents[0]?.blueprint.avatarUrl?.startsWith("data:image/webp;base64,")).toBe(true);
 
 			// 宿主不再有内置角色可引用，这个插件也就不再发团队。

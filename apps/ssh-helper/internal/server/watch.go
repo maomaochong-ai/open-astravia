@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"vetta-ssh-helper/internal/protocol"
+	"astravia-ssh-helper/internal/protocol"
 )
 
 // watcher reports changes to the directories the file tree has open.

@@ -1,4 +1,4 @@
-import type { Message } from "@vetta/ai";
+import type { Message } from "@astravia/ai";
 import type { ContextCompositionReport } from "../context-composition/contracts.js";
 import type { HistoryEntry } from "../contracts.js";
 import { selectConversationDocumentMessages } from "../conversation/commands.js";

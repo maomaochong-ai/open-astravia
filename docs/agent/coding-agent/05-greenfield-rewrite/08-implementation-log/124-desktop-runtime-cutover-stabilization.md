@@ -47,7 +47,7 @@ Desktop selector 新增结构化决策：
 - `source`：`default | environment`。
 
 `desktop-runtime-decision.ts` 在进程模块初始化时只解析一次
-`VETTA_DESKTOP_AGENT_RUNTIME`。Runtime 组合和 Knowledge Poller 均直接消费这一个对象，原有
+`ASTRAVIA_DESKTOP_AGENT_RUNTIME`。Runtime 组合和 Knowledge Poller 均直接消费这一个对象，原有
 `resolveDesktopAgentRuntimeBackend` 继续作为兼容函数保留。
 
 ### 2. 增加会话路由观察合同
@@ -77,11 +77,11 @@ Desktop selector 新增结构化决策：
 
 ### 4. 收紧 Coding Agent 宿主服务公开面
 
-新增稳定子路径 `@vetta/coding-agent/host-services`，公开 Desktop 组合仍需使用的
+新增稳定子路径 `@astravia/coding-agent/host-services`，公开 Desktop 组合仍需使用的
 `AuthStorage`、`ModelRegistry` 和 `SettingsManager`。原 `legacy/host-services` 保留为带弃用标记的
 兼容转发，避免本轮删除既有消费者功能。
 
-Desktop 生产组合不再导入 `@vetta/coding-agent/legacy/*`。旧
+Desktop 生产组合不再导入 `@astravia/coding-agent/legacy/*`。旧
 `createLegacyRuntimeHostOptions` 在生产代码中只允许由
 `desktop-legacy-runtime-compatibility.ts` 调用。
 

@@ -1,4 +1,4 @@
-import { type PluginAiModel, useTranslation } from "@vetta-org/plugin-sdk";
+import { type PluginAiModel, useTranslation } from "@astravia-org/plugin-sdk";
 import {
 	Button,
 	Popover,
@@ -9,7 +9,7 @@ import {
 	SelectItem,
 	SelectTrigger,
 	SelectValue,
-} from "@vetta-org/ui";
+} from "@astravia-org/ui";
 import { useState } from "react";
 
 export interface PromptOptimizationControlProps {
@@ -56,7 +56,7 @@ export function PromptOptimizationControl({
 				</Button>
 			</PopoverTrigger>
 			<PopoverContent
-				data-vetta-plugin-root="content-creation"
+				data-astravia-plugin-root="content-creation"
 				align="end"
 				side="bottom"
 				className="w-72"

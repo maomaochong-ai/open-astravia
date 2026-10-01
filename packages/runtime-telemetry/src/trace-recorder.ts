@@ -1,4 +1,4 @@
-import type { RuntimeObservationPort, RuntimeObservationRecord } from "@vetta/runtime-core/observation";
+import type { RuntimeObservationPort, RuntimeObservationRecord } from "@astravia/runtime-core/observation";
 import type {
 	RuntimeObservation,
 	RuntimeObservationStartOptions,

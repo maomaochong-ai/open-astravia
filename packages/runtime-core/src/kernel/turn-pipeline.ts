@@ -1,4 +1,4 @@
-import type { Message, StopReason } from "@vetta/ai";
+import type { Message, StopReason } from "@astravia/ai";
 import type { ConversationDocument, ConversationDocumentReader } from "../conversation/document.js";
 import type { RuntimeFailure } from "../failure-contract.js";
 import { runtimeFailureFromAIErrorDetails } from "../failure-projection.js";

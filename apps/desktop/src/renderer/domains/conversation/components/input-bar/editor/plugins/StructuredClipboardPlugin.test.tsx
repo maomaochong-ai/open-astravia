@@ -53,7 +53,7 @@ describe("StructuredClipboardPlugin", () => {
 			{ kind: "text", text: "12" },
 			{ kind: "member", memberId: "member-1", handle: "flower", label: "Flower", meta: "研发" },
 			{ kind: "text", text: " " },
-			{ kind: "file", path: "C:/Users/admin/.vetta-dev/conversation/content-creation.json", isDirectory: false },
+			{ kind: "file", path: "C:/Users/admin/.astravia-dev/conversation/content-creation.json", isDirectory: false },
 			{ kind: "text", text: " 1212.com" },
 		];
 		selectedEditorSegments(source);
@@ -66,7 +66,7 @@ describe("StructuredClipboardPlugin", () => {
 		} as unknown as ClipboardEvent;
 		act(() => harness.editor?.dispatchCommand(COPY_COMMAND, copyEvent));
 		expect(copyEvent.preventDefault).toHaveBeenCalledOnce();
-		expect(clipboard.get("text/plain")).toBe("12 @flower @C:/Users/admin/.vetta-dev/conversation/content-creation.json 1212.com");
+		expect(clipboard.get("text/plain")).toBe("12 @flower @C:/Users/admin/.astravia-dev/conversation/content-creation.json 1212.com");
 
 		selectedEditorSegments([]);
 		const pasteEvent = {
@@ -86,7 +86,7 @@ describe("StructuredClipboardPlugin", () => {
 		const source: InputSegment[] = [{ kind: "skill", name: "review", alias: "审查" }];
 		selectedEditorSegments([]);
 		render(<StructuredClipboardPlugin />);
-		const html = `<span data-vetta-input-segments="1" data-vetta-input-segments-payload="${encodeURIComponent(serializeInputSegmentsForClipboard(source))}">review</span>`;
+		const html = `<span data-astravia-input-segments="1" data-astravia-input-segments-payload="${encodeURIComponent(serializeInputSegmentsForClipboard(source))}">review</span>`;
 		const pasteEvent = {
 			clipboardData: { getData: (format: string) => (format === "text/html" ? html : "") },
 			preventDefault: vi.fn(),

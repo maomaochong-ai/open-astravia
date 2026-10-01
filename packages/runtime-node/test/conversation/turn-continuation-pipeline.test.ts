@@ -1,7 +1,7 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { AssistantMessage, Message, UserMessage } from "@vetta/ai";
+import type { AssistantMessage, Message, UserMessage } from "@astravia/ai";
 import { afterEach, describe, expect, it } from "vitest";
 import {
 	createAgentSession,
@@ -26,7 +26,7 @@ afterEach(async () => {
 
 describe("TurnPipeline conversation continuation", () => {
 	it("rebinds the active AgentSession and finishes the same turn in the target conversation", async () => {
-		const rootDir = await mkdtemp(join(tmpdir(), "vetta-turn-continuation-"));
+		const rootDir = await mkdtemp(join(tmpdir(), "astravia-turn-continuation-"));
 		temporaryRoots.push(rootDir);
 		const repository = new FileConversationRepository({ rootDir });
 		const eventSink = new RecordingEventSink();
@@ -77,7 +77,7 @@ describe("TurnPipeline conversation continuation", () => {
 	});
 
 	it("records a terminal failure in the target conversation when runtime rebinding fails", async () => {
-		const rootDir = await mkdtemp(join(tmpdir(), "vetta-turn-continuation-failure-"));
+		const rootDir = await mkdtemp(join(tmpdir(), "astravia-turn-continuation-failure-"));
 		temporaryRoots.push(rootDir);
 		const repository = new FileConversationRepository({ rootDir });
 		const pipeline = new TurnPipeline({
@@ -112,7 +112,7 @@ describe("TurnPipeline conversation continuation", () => {
 	});
 
 	it("finalizes compaction only after the continuation transaction and runtime rebinding", async () => {
-		const rootDir = await mkdtemp(join(tmpdir(), "vetta-turn-continuation-finalization-"));
+		const rootDir = await mkdtemp(join(tmpdir(), "astravia-turn-continuation-finalization-"));
 		temporaryRoots.push(rootDir);
 		const repository = new FileConversationRepository({ rootDir });
 		const trace: string[] = [];
@@ -140,7 +140,7 @@ describe("TurnPipeline conversation continuation", () => {
 	});
 
 	it("notifies the context strategy when the continuation transaction fails without running success finalization", async () => {
-		const rootDir = await mkdtemp(join(tmpdir(), "vetta-turn-continuation-store-failure-"));
+		const rootDir = await mkdtemp(join(tmpdir(), "astravia-turn-continuation-store-failure-"));
 		temporaryRoots.push(rootDir);
 		const repository = new FileConversationRepository({ rootDir });
 		const trace: string[] = [];
@@ -174,7 +174,7 @@ describe("TurnPipeline conversation continuation", () => {
 	});
 
 	it("uses post-continuation finalization to stop overflow recovery retry", async () => {
-		const rootDir = await mkdtemp(join(tmpdir(), "vetta-turn-continuation-stop-"));
+		const rootDir = await mkdtemp(join(tmpdir(), "astravia-turn-continuation-stop-"));
 		temporaryRoots.push(rootDir);
 		const repository = new FileConversationRepository({ rootDir });
 		const turnEngine = new CheckpointTurnEngine("assistant_error");

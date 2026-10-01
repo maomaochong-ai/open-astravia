@@ -1,5 +1,5 @@
+import type { ContextRingViewProps } from "@astravia-org/theme-ui/chat";
 import type { SkillInfo } from "@preload/api";
-import type { ContextRingViewProps } from "@vetta-org/theme-ui/chat";
 import type { ConnectorGridItem } from "../../hooks/useConnectorGrid";
 
 export interface SkillListLabels {

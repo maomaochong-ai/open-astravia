@@ -1,4 +1,4 @@
-import type { PluginNetworkRequest, PluginNetworkResponse } from "@vetta-org/plugin-sdk";
+import type { PluginNetworkRequest, PluginNetworkResponse } from "@astravia-org/plugin-sdk";
 import type { InstalledPlugin } from "../../preload/api-types/plugins.js";
 
 const DEFAULT_TIMEOUT_MS = 120_000;

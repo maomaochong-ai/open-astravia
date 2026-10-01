@@ -2,8 +2,8 @@ import { randomUUID } from "node:crypto";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { AssistantMessage } from "@vetta/ai";
-import type { HistoryEntry } from "@vetta/runtime-core";
+import type { AssistantMessage } from "@astravia/ai";
+import type { HistoryEntry } from "@astravia/runtime-core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AnnotationAsk, AnnotationChanged } from "../../shared/message-annotations.js";
 import { annotationContext } from "./context.js";
@@ -47,7 +47,7 @@ describe("message annotation lifecycle", () => {
 	let events: AnnotationChanged[];
 	let request: AnnotationAsk;
 	beforeEach(async () => {
-		directory = await mkdtemp(join(tmpdir(), "vetta-annotations-"));
+		directory = await mkdtemp(join(tmpdir(), "astravia-annotations-"));
 		path = join(directory, "session.jsonl");
 		await writeFile(path, "main transcript");
 		events = [];

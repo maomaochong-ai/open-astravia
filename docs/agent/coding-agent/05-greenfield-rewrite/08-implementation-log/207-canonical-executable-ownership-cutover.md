@@ -4,7 +4,7 @@
 
 本阶段只迁移可执行入口与发布产物的架构所有权，不删除仍作为测试基线的 Legacy Session、Runtime Backend 和 Knowledge 实现：
 
-- `cli-host` 成为 `vetta`、`vetta-agent`、`vetta-agent-rpc` 的唯一所有者；
+- `cli-host` 成为 `astravia`、`astravia-agent`、`astravia-agent-rpc` 的唯一所有者；
 - `coding-agent` 回归能力内核与兼容适配包，不再发布可执行文件；
 - 所有独立编译、全局链接和 SDK 默认 RPC 启动路径指向 Canonical CLI；
 - Legacy CLI 不再通过 package export 或根导出公开；
@@ -14,7 +14,7 @@
 
 第 206 阶段已经让 CLI、Desktop 和 Knowledge Processing 生产宿主无法激活 Legacy，但仍存在四个发布层缺口：
 
-1. `@vetta/coding-agent` 仍声明 `vetta-agent -> dist/cli.js`；
+1. `@astravia/coding-agent` 仍声明 `astravia-agent -> dist/cli.js`；
 2. `coding-agent/src/cli.ts` 仍直接调用 Legacy `main()`；
 3. 独立二进制和全局 link 脚本仍以 `coding-agent/dist/cli.js` 为入口；
 4. `RpcClient` 默认假定当前目录存在 `dist/cli.js`。
@@ -29,17 +29,17 @@
 
 | 命令 | 入口 | 职责 |
 | --- | --- | --- |
-| `vetta` | `dist/cli.js` | 综合 CLI，支持 agent/action/debug 路由 |
-| `vetta-agent` | `dist/agent-cli.js` | Agent 专用 Canonical CLI |
-| `vetta-agent-rpc` | `dist/agent-rpc-cli.js` | stdout 受保护的 JSONL RPC 入口 |
+| `astravia` | `dist/cli.js` | 综合 CLI，支持 agent/action/debug 路由 |
+| `astravia-agent` | `dist/agent-cli.js` | Agent 专用 Canonical CLI |
+| `astravia-agent-rpc` | `dist/agent-rpc-cli.js` | stdout 受保护的 JSONL RPC 入口 |
 
 Agent 专用入口复用现有 intent 分类、control/print/RPC Host 和 requested/effective runtime 映射，没有复制 Agent 功能。
 
 ### 2. Coding Agent 撤销可执行与 Legacy CLI 公开面
 
-`@vetta/coding-agent` 完成以下收缩：
+`@astravia/coding-agent` 完成以下收缩：
 
-- 删除 `bin.vetta-agent`；
+- 删除 `bin.astravia-agent`；
 - 删除 `src/cli.ts`；
 - 删除 `public-api/legacy-cli.ts`；
 - 删除 `./legacy/cli` package export；
@@ -63,7 +63,7 @@ Legacy `main.ts` 暂时保留为测试参照，但已不存在生产 import、pa
 
 ### 4. RpcClient 去除旧布局假设
 
-`RpcClient` 的默认启动目标从相对路径 `dist/cli.js` 改为 PATH 中的 `vetta-agent-rpc`：
+`RpcClient` 的默认启动目标从相对路径 `dist/cli.js` 改为 PATH 中的 `astravia-agent-rpc`：
 
 - 未传 `cliPath` 时直接启动 Canonical RPC 命令；
 - 显式传入 JavaScript `cliPath` 时继续通过 Node 启动，保持既有测试和自定义入口兼容；
@@ -74,7 +74,7 @@ Legacy `main.ts` 暂时保留为测试参照，但已不存在生产 import、pa
 
 ### 5. 测试专用 Legacy 基线
 
-Print 和 RPC 差分测试不再导入已删除的 `@vetta/coding-agent/legacy/cli`。测试目录中的专用入口直接调用内部 `main.ts`：
+Print 和 RPC 差分测试不再导入已删除的 `@astravia/coding-agent/legacy/cli`。测试目录中的专用入口直接调用内部 `main.ts`：
 
 - 不参与 `coding-agent` package exports；
 - 不进入 `cli-host` build；
@@ -86,7 +86,7 @@ Print 和 RPC 差分测试不再导入已删除的 `@vetta/coding-agent/legacy/c
 Legacy retirement gate 现在同时约束：
 
 - `coding-agent` 不得发布任何 bin；
-- `cli-host` 的 `vetta-agent` 必须指向 `dist/agent-cli.js`；
+- `cli-host` 的 `astravia-agent` 必须指向 `dist/agent-cli.js`；
 - 已删除的两个 Legacy CLI 源文件不得恢复；
 - `./legacy/cli` 不得恢复；
 - standalone Agent 产物必须经过统一 compiler，禁止直接编译源入口。
@@ -107,8 +107,8 @@ Legacy 执行边从 10 条降到 7 条：
 
 - Canonical package entrypoint：1 个测试通过；
 - Coding Agent 公开 subpath 与 RpcClient launch：4 个测试通过；
-- Canonical `vetta-agent` 独立 Print/control 产物：18 个测试通过；
-- 默认 `vetta` installed artifact：13 个测试通过；
+- Canonical `astravia-agent` 独立 Print/control 产物：18 个测试通过；
+- 默认 `astravia` installed artifact：13 个测试通过；
 - Quality gates 与 Legacy retirement：58 个测试通过；
 - Legacy retirement guard：7 条执行边、8 条格式边界、98 条 Greenfield shared-core imports，检查通过；
 - standalone compiler guard：检查通过。
@@ -116,11 +116,11 @@ Legacy 执行边从 10 条降到 7 条：
 
 ## 兼容性结论
 
-- 用户已有 `vetta-agent` 命令名保留，但实现所有权迁移到 `cli-host`；
-- `vetta` 和 `vetta-agent-rpc` 行为未改变；
+- 用户已有 `astravia-agent` 命令名保留，但实现所有权迁移到 `cli-host`；
+- `astravia` 和 `astravia-agent-rpc` 行为未改变；
 - `--agent-runtime legacy` 仍可解析，但实际执行 Greenfield；
 - Legacy 会话读取、迁移和显式不兼容错误未改变；
-- 被移除的 `@vetta/coding-agent/legacy/cli`、根 Legacy main 导出和 coding-agent bin 属于公开破坏性变化，发布时应按 minor release 处理。
+- 被移除的 `@astravia/coding-agent/legacy/cli`、根 Legacy main 导出和 coding-agent bin 属于公开破坏性变化，发布时应按 minor release 处理。
 
 ## 下一阶段建议
 

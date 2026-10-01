@@ -13,5 +13,5 @@
 	"styles": ["dist/style.css"],
 	"permissions": ["ui.slot.bottom-panel", "terminal.run", "fs.read"],
 	"description": "%plugin.description%",
-	"author": "Vetta"
+	"author": "Astravia"
 }

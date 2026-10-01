@@ -10,8 +10,8 @@ import {
 	type LsOperations,
 	type ReadOperations,
 	type WriteOperations,
-} from "@vetta/runtime-node/coding";
-import { type SshConnection, SshHelperClosedError, SshHelperError } from "@vetta/ssh-transport";
+} from "@astravia/runtime-node/coding";
+import { type SshConnection, SshHelperClosedError, SshHelperError } from "@astravia/ssh-transport";
 
 /**
  * 把工具的文件端口接到一条 SSH 连接上。
@@ -35,7 +35,7 @@ export interface SshReadOperationsOptions {
 	 * 日志。宿主把它们的**本机路径**交给模型，模型再用 read 去读——项目在远端时，这条
 	 * 路径在远端要么不存在，要么碰巧是另一份无关的文件。落在这些目录下的路径因此改读本机。
 	 *
-	 * 只影响 read。写入与命令始终作用在远端：这些目录由 Vetta 管理，模型不该往里写。
+	 * 只影响 read。写入与命令始终作用在远端：这些目录由 Astravia 管理，模型不该往里写。
 	 */
 	readonly localReadRoots?: readonly string[];
 }

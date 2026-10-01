@@ -1,8 +1,8 @@
+import type { ConversationScenario } from "@astravia-org/plugin-sdk";
 import type { TabBarDragEvent, TabBarItem } from "@shared/components/ui/tab-bar";
 import type { ActivityTabKey } from "@shared/lib/project-profile";
 import type { FloatingActivityTabPlacement } from "@shared/store/atoms";
 import type { ActivityWorkspace } from "@shared/workspace/activity-workspace";
-import type { ConversationScenario } from "@vetta-org/plugin-sdk";
 import type { RefObject } from "react";
 import type { ResolvedActivityTab } from "../../registry/types";
 import type { ActivityTabBounds, ActivityTabPoint } from "../../services/floating-activity-tab";

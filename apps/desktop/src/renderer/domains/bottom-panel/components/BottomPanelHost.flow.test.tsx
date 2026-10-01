@@ -130,7 +130,7 @@ beforeEach(() => {
 		setItem: (key: string, value: string) => void storage.set(key, value),
 	});
 	Object.assign(window, {
-		vetta: { terminal: { capabilities: async () => ({ localPty: false, unavailableReason: "no pty in test" }) } },
+		astravia: { terminal: { capabilities: async () => ({ localPty: false, unavailableReason: "no pty in test" }) } },
 	});
 });
 
@@ -240,7 +240,7 @@ describe("底部面板：常见使用流程", () => {
 		await user.click(screen.getByRole("button", { name: "toggle-bottom-panel" }));
 		await addFromEmptyState(user);
 
-		const raw = localStorage.getItem("vetta-bottom-panel-layout");
+		const raw = localStorage.getItem("astravia-bottom-panel-layout");
 		expect(raw).toContain("/session.json");
 		expect(raw).toContain("plugin:demo:logs");
 	});

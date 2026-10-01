@@ -43,9 +43,9 @@
 
 本机 `C:\develop\github\ai` 的 Google provider 有大量 mock server 功能测试，覆盖 reasoning、thought signature、tool call、usage、finish reason、grounding 和较新的 partial function arguments。这些 fixture 组织和对 request/stream parts 的直接断言值得采用。
 
-但没有照搬其单个超大 `google-language-model.ts`，也没有沿用 TransformStream `flush()` 无条件发 finish 的做法。Vetta 的 Agent 会持久化最终 assistant message，因此本阶段要求至少一个合法 provider chunk 和明确 `finishReason`；terminal 后只允许 usage-only chunk，不允许新的 candidate。缺失终态、terminal 后正文和畸形 wire 数据都有限拒绝。
+但没有照搬其单个超大 `google-language-model.ts`，也没有沿用 TransformStream `flush()` 无条件发 finish 的做法。Astravia 的 Agent 会持久化最终 assistant message，因此本阶段要求至少一个合法 provider chunk 和明确 `finishReason`；terminal 后只允许 usage-only chunk，不允许新的 candidate。缺失终态、terminal 后正文和畸形 wire 数据都有限拒绝。
 
-Vercel 已支持的 partial function arguments、server tools、grounding 和 URL context 不是本次内部重构可顺带加入的功能。当前 Vetta request 没有启用 streamed function arguments；若 provider 意外返回 partial 参数，reducer 明确拒绝，而不是生成重复或不完整工具调用。后续应先扩展公共内容/事件协议，再独立实现这些能力。
+Vercel 已支持的 partial function arguments、server tools、grounding 和 URL context 不是本次内部重构可顺带加入的功能。当前 Astravia request 没有启用 streamed function arguments；若 provider 意外返回 partial 参数，reducer 明确拒绝，而不是生成重复或不完整工具调用。后续应先扩展公共内容/事件协议，再独立实现这些能力。
 
 ## 模块划分
 
@@ -104,12 +104,12 @@ Cloud Code retry 现在区分：
 
 继续使用 TypeBox，不引入 Zod：
 
-- `@vetta/ai` 的 Tool schema、wire pilot、validation error 和测试设施已经围绕 TypeBox。
+- `@astravia/ai` 的 Tool schema、wire pilot、validation error 和测试设施已经围绕 TypeBox。
 - Google SDK 类型与手写 Cloud Code 类型只能提供编译期约束；SDK、代理和 SSE 仍是不可信运行时边界。
 - TypeBox 负责 chunk 字段形状；事件顺序、terminal 唯一性、block 切换和 partial function argument policy 由 reducer 负责。
 - request、client config 和内部状态已经由 TypeScript 类型覆盖，不重复做运行时 schema。
 
-Vercel AI 使用 Zod 与其 Provider Core schema 体系一致，但在 Vetta 同时维护 TypeBox/Zod 两套运行时、错误格式和推导工具只会增加维护成本。除非未来整个公共 schema 体系迁移，否则没有局部引入 Zod 的收益。
+Vercel AI 使用 Zod 与其 Provider Core schema 体系一致，但在 Astravia 同时维护 TypeBox/Zod 两套运行时、错误格式和推导工具只会增加维护成本。除非未来整个公共 schema 体系迁移，否则没有局部引入 Zod 的收益。
 
 ## 测试
 
@@ -137,7 +137,7 @@ Vercel AI 使用 Zod 与其 Provider Core schema 体系一致，但在 Vetta 同
 
 预期主要工作是消除 `google.ts`/`google-vertex.ts` 复制。实际审计发现更重要的是三个入口共享的截断成功、cache token 重复计费、Cloud Code 4xx 误重试和畸形 SSE 静默忽略。这些行为都通过原生合同测试修正，而不是只移动文件。
 
-预期可直接参考 Vercel 的 Google reducer。实际其目标协议包含更多 provider metadata、server tool 和 file part，且允许 flush 合成 finish；直接移植会同时扩大 Vetta 公共协议与本次重构范围。最终只吸收其 fixture-first 测试思想和 transport/schema 分层，不复制其单文件结构与宽松终止行为。
+预期可直接参考 Vercel 的 Google reducer。实际其目标协议包含更多 provider metadata、server tool 和 file part，且允许 flush 合成 finish；直接移植会同时扩大 Astravia 公共协议与本次重构范围。最终只吸收其 fixture-first 测试思想和 transport/schema 分层，不复制其单文件结构与宽松终止行为。
 
 ## 已完成与未完成
 
@@ -152,7 +152,7 @@ Vercel AI 使用 Zod 与其 Provider Core schema 体系一致，但在 Vetta 同
 
 - `adaptApiProvider()` 与 legacy registry 仍服务公共 `stream*()` 兼容和外部扩展，需按 Phase 7 发布周期退出，不能立即删除。
 - Provider 内部 retry 尚未统一上移到 Runtime，attempt telemetry/预算仍不一致。
-- partial function arguments、server tools、grounding、URL context、inline output file 尚无 Vetta 公共协议表示。
+- partial function arguments、server tools、grounding、URL context、inline output file 尚无 Astravia 公共协议表示。
 - live canary 和真实 ADC/OAuth/proxy 行为仍需具备凭据的受控环境验证。
 
 ## 涉及文件

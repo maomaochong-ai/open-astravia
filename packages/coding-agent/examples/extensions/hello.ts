@@ -2,8 +2,8 @@
  * Hello Tool - Minimal custom tool example
  */
 
-import { Type } from "@vetta/ai";
-import type { ExtensionAPI } from "@vetta/coding-agent";
+import { Type } from "@astravia/ai";
+import type { ExtensionAPI } from "@astravia/coding-agent";
 
 export default function (api: ExtensionAPI) {
 	api.registerTool({

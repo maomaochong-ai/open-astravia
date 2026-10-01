@@ -3,7 +3,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { URL } from "node:url";
-import { getVettaHomePath, VETTA_HOME_ENV } from "@vetta/action-rpc";
+import { ASTRAVIA_HOME_ENV, getAstraviaHomePath } from "@astravia/action-rpc";
 import { app, type BrowserWindow, dialog, ipcMain, nativeImage, nativeTheme, protocol, session, shell } from "electron";
 import { APP_RUNTIME_NAME } from "../shared/app-identity.js";
 import { isCloudBuildEnabled } from "../shared/feature-flags.js";
@@ -27,7 +27,7 @@ import { parseHelpCliCommand, runHelpCliCommand } from "./cli/help-command.js";
 import { parseOcrCliCommand, runOcrCliCommand } from "./cli/ocr-command.js";
 import { parsePdfCliCommand, runPdfCliCommand } from "./cli/pdf-command.js";
 import type { CloudMainHandle } from "./cloud/index.js";
-import { ensureDevCliShim, ensureDevVettaCliShim, ensureVettaCommandShim } from "./dev-cli-shim.js";
+import { ensureAstraviaCommandShim, ensureDevAstraviaCliShim, ensureDevCliShim } from "./dev-cli-shim.js";
 import {
 	getDiagnosticsLogPath,
 	installChromiumFetchForMain,
@@ -39,7 +39,7 @@ import { fixPath } from "./fix-path.js";
 import { initAppLanguage } from "./i18n/index.js";
 import { getImHost } from "./im-host/index.js";
 import { syncAppshotGesture } from "./ipc/appshot.js";
-import { persistVettaCliPaths } from "./ipc/fs.js";
+import { persistAstraviaCliPaths } from "./ipc/fs.js";
 import { registerI18nIpc } from "./ipc/i18n.js";
 import {
 	type IpcTeardown,
@@ -110,7 +110,7 @@ import {
 // RuntimeManager.applyEnv() 与 coding-agent 的 bash 执行。详见 fix-path.ts。
 fixPath();
 
-const PROTOCOL = "vetta";
+const PROTOCOL = "astravia";
 // registerSchemesAsPrivileged 整个进程只能调用一次且须在 ready 前：
 // 所有自定义 scheme（插件、主题、应用资源、媒体流）的特权声明在此合并注册。
 protocol.registerSchemesAsPrivileged([
@@ -124,7 +124,7 @@ const isMac = process.platform === "darwin";
 const appRoot = app.isPackaged ? app.getAppPath() : process.cwd();
 const buildDir = join(appRoot, "build");
 const devMainEntryPath = join(appRoot, "dist/main/index.js");
-const packagedCliBinaryName = process.platform === "win32" ? "vetta.exe" : "vetta";
+const packagedCliBinaryName = process.platform === "win32" ? "astravia.exe" : "astravia";
 const packagedCliPlatformTag = `${process.platform}-${process.arch}`;
 const packagedCliAppPath = join(process.resourcesPath, "cli-app", "bin", packagedCliPlatformTag, packagedCliBinaryName);
 // Command-specific parsers run before the top-level help parser so commands
@@ -137,7 +137,7 @@ const helpCliCommand =
 		? parseHelpCliCommand(process.argv)
 		: null;
 // `--agent-rpc` is the IM sidecar's discriminator: when present we
-// short-circuit into @vetta/coding-agent's main and skip every UI/IPC
+// short-circuit into @astravia/coding-agent's main and skip every UI/IPC
 // bring-up below. See cli/agent-rpc-command.ts for the full rationale.
 const agentRpcArgs =
 	pdfCliCommand === null && ocrCliCommand === null && actionCliCommand === null && helpCliCommand === null
@@ -201,22 +201,22 @@ const DEFAULT_REMOTE_RELAY_BASE_URL = "wss://relay.flowerwine.dpdns.org";
 const rendererCdp = configureRendererCdp({
 	isCliMode,
 	isPackaged: app.isPackaged,
-	devServerUrl: process.env.VETTA_DESKTOP_DEV_URL,
-	portValue: process.env.VETTA_DEBUG_CDP_PORT,
+	devServerUrl: process.env.ASTRAVIA_DESKTOP_DEV_URL,
+	portValue: process.env.ASTRAVIA_DEBUG_CDP_PORT,
 });
-process.env[VETTA_HOME_ENV] = getVettaHomePath();
+process.env[ASTRAVIA_HOME_ENV] = getAstraviaHomePath();
 
 if (isCliMode) {
 	const cliUserDataDir =
 		ocrCliCommand !== null
-			? "vetta-ocr-cli"
+			? "astravia-ocr-cli"
 			: pdfCliCommand !== null
-				? "vetta-pdf-cli"
+				? "astravia-pdf-cli"
 				: actionCliCommand !== null
-					? `vetta-action-cli-${process.pid}`
+					? `astravia-action-cli-${process.pid}`
 					: helpCliCommand !== null
-						? `vetta-help-cli-${process.pid}`
-						: `vetta-agent-rpc-${process.pid}`;
+						? `astravia-help-cli-${process.pid}`
+						: `astravia-agent-rpc-${process.pid}`;
 	app.setPath("userData", join(tmpdir(), cliUserDataDir));
 	app.commandLine.appendSwitch("disable-gpu");
 	app.commandLine.appendSwitch("disable-gpu-shader-disk-cache");
@@ -243,7 +243,7 @@ if (isCliMode) {
 
 // app 名字必须在任何 safeStorage 调用之前固定，且开发态与打包版取同一个值：
 // safeStorage 按 app 名字定位主密钥，名字分叉会让两侧各持一把密钥，
-// 共享 ~/.vetta 时表现为凭据"丢失"并互相覆盖（见 shared/app-identity.ts）。
+// 共享 ~/.astravia 时表现为凭据"丢失"并互相覆盖（见 shared/app-identity.ts）。
 app.name = APP_RUNTIME_NAME;
 
 let ipcTeardown: IpcTeardown | undefined;
@@ -259,7 +259,7 @@ function ensureAppMonitorInitialized(): Promise<void> {
 
 function attachMainWindowLifecycle(mainWindow: BrowserWindow): void {
 	const sendWindowMaximizedChanged = () => {
-		mainWindow.webContents.send("vetta:window:maximized-changed", mainWindow.isMaximized());
+		mainWindow.webContents.send("astravia:window:maximized-changed", mainWindow.isMaximized());
 	};
 	mainWindow.on("maximize", sendWindowMaximizedChanged);
 	mainWindow.on("unmaximize", sendWindowMaximizedChanged);
@@ -312,13 +312,13 @@ if (!isCliMode) {
 	}
 }
 
-// 云服务模块句柄：lite 构建（VETTA_CLOUD_ENABLED=false）恒为 null。
+// 云服务模块句柄：lite 构建（ASTRAVIA_CLOUD_ENABLED=false）恒为 null。
 let cloudMain: CloudMainHandle | null = null;
 
 function handleProtocolUrl(rawUrl: string): void {
 	try {
 		const parsed = new URL(rawUrl);
-		// OAuth 回调（vetta://oauth/callback）由 cloud 模块处理；
+		// OAuth 回调（astravia://oauth/callback）由 cloud 模块处理；
 		// lite 构建没有 cloud 模块，深链直接忽略。
 		cloudMain?.handleProtocolUrl(parsed);
 	} catch {
@@ -399,7 +399,7 @@ if (!gotSingleLock) {
 			// Privacy 在 socket 层拦截 Node 默认 fetch 对 192.168.x / 10.x
 			// 等私网地址的访问，OpenAI/Anthropic SDK 在这种情况下只能抛
 			// "Connection error."。必须复用主进程对话页同款的两步规避：
-			// 先触发 TCC 探针让 com.vetta.desktop 拿到 LAN 授权，再把
+			// 先触发 TCC 探针让 com.astravia.desktop 拿到 LAN 授权，再把
 			// globalThis.fetch 换成 electron.net.fetch（Chromium 网络栈，
 			// 不被 LNP 拦截）。PDF / OCR CLI 不需要这条，因为它们不发
 			// 跨进程网络请求。
@@ -432,7 +432,7 @@ if (!gotSingleLock) {
 		const appLifecycle = registerAppLifecycleIpc();
 
 		// 必须放在 whenReady 之后：早于 ready 调用时主进程 bundle identity
-		// 尚未在 launchd/TCC 子系统注册，syscall 关联不到 com.vetta.desktop，
+		// 尚未在 launchd/TCC 子系统注册，syscall 关联不到 com.astravia.desktop，
 		// 探针白发。
 		registerLocalNetworkAccess();
 
@@ -464,16 +464,16 @@ if (!gotSingleLock) {
 				return win;
 			},
 		});
-		const remoteDesktopTarget = process.env.VETTA_REMOTE_DESKTOP_SIGNALING_URL;
-		const remoteDesktopToken = process.env.VETTA_REMOTE_DESKTOP_PAIRING_TOKEN;
+		const remoteDesktopTarget = process.env.ASTRAVIA_REMOTE_DESKTOP_SIGNALING_URL;
+		const remoteDesktopToken = process.env.ASTRAVIA_REMOTE_DESKTOP_PAIRING_TOKEN;
 		if (remoteDesktopTarget && remoteDesktopToken) {
 			void startDesktopRemoteDesktopHost({
 				signalingUrl: remoteDesktopTarget,
 				pairingToken: remoteDesktopToken,
-				inputEnabled: process.env.VETTA_REMOTE_DESKTOP_INPUT_ENABLED === "true",
+				inputEnabled: process.env.ASTRAVIA_REMOTE_DESKTOP_INPUT_ENABLED === "true",
 				appRoot,
 				isPackaged: app.isPackaged,
-				devServerUrl: process.env.VETTA_DESKTOP_DEV_URL,
+				devServerUrl: process.env.ASTRAVIA_DESKTOP_DEV_URL,
 			}).catch((error: unknown) => {
 				mainLog.error("remote desktop host failed to start", error);
 			});
@@ -484,7 +484,7 @@ if (!gotSingleLock) {
 			if (mainWindow.isDestroyed()) return;
 			// 被安装器重启时应用不是活动应用（ShipIt 以守护进程身份拉起），
 			// 窗口 show() 出不来，用户以为没重启。仅这一种情况主动抢焦点。
-			if (consumePendingUpdateRelaunch(getVettaHomePath()) && isMac) {
+			if (consumePendingUpdateRelaunch(getAstraviaHomePath()) && isMac) {
 				app.focus({ steal: true });
 			}
 			// Windows: first ShowWindow may be swallowed by STARTUPINFO SW_HIDE
@@ -514,14 +514,14 @@ if (!gotSingleLock) {
 		if (!app.isPackaged) {
 			const appVersion = getAppVersion();
 			app.setAboutPanelOptions({
-				applicationName: "Vetta",
+				applicationName: "Astravia",
 				applicationVersion: appVersion,
 				version: "",
 			});
 		}
 
 		// Theme IPC
-		ipcMain.handle("vetta:theme:set", (_event, mode: string) => {
+		ipcMain.handle("astravia:theme:set", (_event, mode: string) => {
 			nativeTheme.themeSource = mode as "system" | "light" | "dark";
 			const mainWindow = getMainWindow();
 			if (mainWindow) {
@@ -530,7 +530,7 @@ if (!gotSingleLock) {
 			}
 		});
 
-		ipcMain.handle("vetta:theme:get-native", () => {
+		ipcMain.handle("astravia:theme:get-native", () => {
 			return {
 				source: nativeTheme.themeSource,
 				shouldUseDarkColors: nativeTheme.shouldUseDarkColors,
@@ -543,29 +543,29 @@ if (!gotSingleLock) {
 				if (!isMac) {
 					mainWindow.setBackgroundColor(nativeTheme.shouldUseDarkColors ? "#161616" : "#f5f5f7");
 				}
-				mainWindow.webContents.send("vetta:theme:native-changed", {
+				mainWindow.webContents.send("astravia:theme:native-changed", {
 					shouldUseDarkColors: nativeTheme.shouldUseDarkColors,
 				});
 			}
 		});
 
-		ipcMain.handle("vetta:shell:show-in-folder", async (_event, fullPath: string) => {
+		ipcMain.handle("astravia:shell:show-in-folder", async (_event, fullPath: string) => {
 			await shell.openPath(fullPath);
 		});
 
-		ipcMain.handle("vetta:shell:show-item-in-folder", (_event, fullPath: string) => {
+		ipcMain.handle("astravia:shell:show-item-in-folder", (_event, fullPath: string) => {
 			shell.showItemInFolder(fullPath);
 		});
 
-		ipcMain.handle("vetta:shell:open-external", async (_event, url: string) => {
+		ipcMain.handle("astravia:shell:open-external", async (_event, url: string) => {
 			await openExternalUrl(url);
 		});
 
-		ipcMain.handle("vetta:window:minimize", () => {
+		ipcMain.handle("astravia:window:minimize", () => {
 			getMainWindow()?.minimize();
 		});
 
-		ipcMain.handle("vetta:window:maximize", () => {
+		ipcMain.handle("astravia:window:maximize", () => {
 			const mainWindow = getMainWindow();
 			if (mainWindow?.isMaximized()) {
 				mainWindow.unmaximize();
@@ -574,15 +574,15 @@ if (!gotSingleLock) {
 			}
 		});
 
-		ipcMain.handle("vetta:window:close", () => {
+		ipcMain.handle("astravia:window:close", () => {
 			getMainWindow()?.close();
 		});
 
-		ipcMain.handle("vetta:window:is-maximized", () => {
+		ipcMain.handle("astravia:window:is-maximized", () => {
 			return getMainWindow()?.isMaximized() ?? false;
 		});
 
-		ipcMain.handle("vetta:window:toggle-always-on-top", () => {
+		ipcMain.handle("astravia:window:toggle-always-on-top", () => {
 			const mainWindow = getMainWindow();
 			if (!mainWindow) return false;
 			const next = !mainWindow.isAlwaysOnTop();
@@ -590,7 +590,7 @@ if (!gotSingleLock) {
 			return next;
 		});
 
-		ipcMain.handle("vetta:window:is-always-on-top", () => {
+		ipcMain.handle("astravia:window:is-always-on-top", () => {
 			return getMainWindow()?.isAlwaysOnTop() ?? false;
 		});
 
@@ -598,7 +598,7 @@ if (!gotSingleLock) {
 		// 供「移动UI预览」插件导出渲染图：iframe 内容跨源，渲染端画不出来，
 		// 只能由 Chromium 合成器整体截屏。返回保存路径，取消返回 null。
 		ipcMain.handle(
-			"vetta:window:capture-region",
+			"astravia:window:capture-region",
 			async (
 				event,
 				rect: { x: number; y: number; width: number; height: number },
@@ -622,25 +622,25 @@ if (!gotSingleLock) {
 			},
 		);
 
-		ipcMain.handle("vetta:tray:set-quit-behavior", (_event, hideToTray: boolean) => {
+		ipcMain.handle("astravia:tray:set-quit-behavior", (_event, hideToTray: boolean) => {
 			setHideToTrayOnClose(hideToTray);
 		});
 
-		ipcMain.handle("vetta:tray:get-quit-behavior", () => {
+		ipcMain.handle("astravia:tray:get-quit-behavior", () => {
 			return getHideToTrayOnClose();
 		});
 
-		ipcMain.handle("vetta:tray:set-tooltip", (_event, tooltip: string) => {
+		ipcMain.handle("astravia:tray:set-tooltip", (_event, tooltip: string) => {
 			getTray()?.setToolTip(tooltip);
 		});
 
 		// 注意：channel 名叫 auth 只是历史沿革，实际是通用的「用系统浏览器打开 URL」，
 		// 浏览器面板等非云功能也在用，因此留在宿主、不随 cloud 模块裁剪。
-		ipcMain.handle("vetta:auth:open-external", async (_event, url: string) => {
+		ipcMain.handle("astravia:auth:open-external", async (_event, url: string) => {
 			await openExternalUrl(url);
 		});
 
-		// Vetta 云服务（登录 / 订阅 / 远程模型）：构建期开关。lite 构建下该分支
+		// Astravia 云服务（登录 / 订阅 / 远程模型）：构建期开关。lite 构建下该分支
 		// 被常量折叠，整个 cloud chunk 不进产物。
 		if (isCloudBuildEnabled()) {
 			const { startCloudMain } = await import("./cloud/index.js");
@@ -652,24 +652,24 @@ if (!gotSingleLock) {
 		}
 
 		// 默认「对话」项目目录：保证一直存在。
-		// 顺带把 in-tree session 目录（<cwd>/.vetta/sessions）也建好，
+		// 顺带把 in-tree session 目录（<cwd>/.astravia/sessions）也建好，
 		// 让默认项目走与批量项目一致的会话布局，避免设备相关的编码路径。
 		try {
-			await mkdir(join(getVettaHomePath(), "conversation", ".vetta", "sessions"), { recursive: true });
+			await mkdir(join(getAstraviaHomePath(), "conversation", ".astravia", "sessions"), { recursive: true });
 		} catch (err) {
 			mainLog.error("failed to ensure default conversation dir", err);
 		}
 		// im-gateway 独立 cwd（ADR-0005）：跟桌面「对话」物理分家。先把空目录建好，
 		// 这样 sidecar 启动前 desktop 的 Claw tab 也能正常 listSessions（拿到空列表）。
 		try {
-			await mkdir(join(getVettaHomePath(), "im-gateway", "conversation", ".vetta", "sessions"), {
+			await mkdir(join(getAstraviaHomePath(), "im-gateway", "conversation", ".astravia", "sessions"), {
 				recursive: true,
 			});
 		} catch (err) {
 			mainLog.error("failed to ensure im-gateway conversation dir", err);
 		}
 
-		// 托管运行时(ADR-0011):首启从内置 vendor 拷贝 node/python 到 ~/.vetta/runtimes,
+		// 托管运行时(ADR-0011):首启从内置 vendor 拷贝 node/python 到 ~/.astravia/runtimes,
 		// 再把它们 + 国内镜像源注入全局 process.env。必须早于 getImHost().bootstrap()——
 		// 快速应用已经存在的托管运行时路径；vendor seed、系统探测和 shim 修复放到
 		// 首帧之后执行，避免这些维护工作阻塞窗口出现。
@@ -693,28 +693,28 @@ if (!gotSingleLock) {
 			}
 
 			try {
-				let vettaAppPath: string;
-				let vettaCliPath: string;
+				let astraviaAppPath: string;
+				let astraviaCliPath: string;
 				if (app.isPackaged) {
-					vettaAppPath = process.execPath;
-					vettaCliPath = packagedCliAppPath;
+					astraviaAppPath = process.execPath;
+					astraviaCliPath = packagedCliAppPath;
 				} else {
-					vettaAppPath = await ensureDevCliShim({
+					astraviaAppPath = await ensureDevCliShim({
 						appRoot,
 						electronPath: process.execPath,
 						mainEntryPath: devMainEntryPath,
 					});
-					vettaCliPath = await ensureDevVettaCliShim({
+					astraviaCliPath = await ensureDevAstraviaCliShim({
 						appRoot,
 						cliAppRoot: join(appRoot, "..", "cli-host"),
 					});
 				}
-				process.env.VETTA_DESKTOP_EXE = vettaAppPath;
-				process.env.VETTA_CLI_APP_PATH = vettaCliPath;
-				await ensureVettaCommandShim(vettaCliPath);
-				await persistVettaCliPaths({ vettaAppPath, vettaCliAppPath: vettaCliPath });
+				process.env.ASTRAVIA_DESKTOP_EXE = astraviaAppPath;
+				process.env.ASTRAVIA_CLI_APP_PATH = astraviaCliPath;
+				await ensureAstraviaCommandShim(astraviaCliPath);
+				await persistAstraviaCliPaths({ astraviaAppPath, astraviaCliAppPath: astraviaCliPath });
 			} catch (err) {
-				mainLog.error("failed to install vetta CLI paths", err);
+				mainLog.error("failed to install astravia CLI paths", err);
 			}
 		};
 
@@ -730,8 +730,8 @@ if (!gotSingleLock) {
 		// 手机接入：这里只构造，不开端口、不连中继。restore() 读到已配对设备才会
 		// 真正启动，没有手机时桌面端零负担。
 		const remoteAccessManager = getDesktopRemoteAccessManager(
-			process.env.VETTA_REMOTE_RELAY_BASE_URL ?? DEFAULT_REMOTE_RELAY_BASE_URL,
-			process.env.VETTA_REMOTE_DESKTOP_SIGNALING_URL && process.env.VETTA_REMOTE_DESKTOP_PAIRING_TOKEN
+			process.env.ASTRAVIA_REMOTE_RELAY_BASE_URL ?? DEFAULT_REMOTE_RELAY_BASE_URL,
+			process.env.ASTRAVIA_REMOTE_DESKTOP_SIGNALING_URL && process.env.ASTRAVIA_REMOTE_DESKTOP_PAIRING_TOKEN
 				? undefined
 				: {
 						start: ({ relayBaseUrl, pairingId, desktopSecret, screenOnDemand }) =>
@@ -742,7 +742,7 @@ if (!gotSingleLock) {
 								screenOnDemand,
 								appRoot,
 								isPackaged: app.isPackaged,
-								devServerUrl: process.env.VETTA_DESKTOP_DEV_URL,
+								devServerUrl: process.env.ASTRAVIA_DESKTOP_DEV_URL,
 							}),
 					},
 		);

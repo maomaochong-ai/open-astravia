@@ -7,7 +7,7 @@ vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (key: string) => k
 
 describe("执行模式选择器", () => {
 	beforeEach(() => {
-		(window as unknown as { vetta: unknown }).vetta = {
+		(window as unknown as { astravia: unknown }).astravia = {
 			config: { get: vi.fn(async () => ({ sandbox: { status: "available" } })) },
 		};
 	});

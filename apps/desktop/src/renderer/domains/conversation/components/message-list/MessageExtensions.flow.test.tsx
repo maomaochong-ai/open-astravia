@@ -51,7 +51,7 @@ beforeEach(() => {
 			disconnect() {}
 		},
 	);
-	Object.defineProperty(window, "vetta", {
+	Object.defineProperty(window, "astravia", {
 		configurable: true,
 		value: {
 			skills: { list: async () => [] },
@@ -84,7 +84,7 @@ describe("message extension workflows", () => {
 	it("confirms a streaming fork against the old runtime without aborting or clearing the new composer", async () => {
 		let onStopped: ((payload: { sessionId: string; running: boolean }) => void) | undefined;
 		const abort = vi.fn(async (runtimeId: string) => onStopped?.({ sessionId: runtimeId, running: false }));
-		Object.assign(window.vetta.session, {
+		Object.assign(window.astravia.session, {
 			abort,
 			onRunningChanged: (listener: typeof onStopped) => {
 				onStopped = listener;

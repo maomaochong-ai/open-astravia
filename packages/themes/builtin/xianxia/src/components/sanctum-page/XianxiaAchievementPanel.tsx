@@ -1,5 +1,5 @@
-import { CenterSliceImageDecoration, HorizontalSliceImageFrame, NineSliceImageFrame } from "@vetta-org/theme-ui";
-import { cn } from "@vetta-org/ui";
+import { CenterSliceImageDecoration, HorizontalSliceImageFrame, NineSliceImageFrame } from "@astravia-org/theme-ui";
+import { cn } from "@astravia-org/ui";
 import { motion } from "motion/react";
 import type { CSSProperties, JSX } from "react";
 import { sanctumAchievements, type SanctumAchievement } from "./achievements";

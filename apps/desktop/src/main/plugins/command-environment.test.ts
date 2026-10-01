@@ -58,11 +58,11 @@ describe("plugin command environment", () => {
 
 	it("keeps caller overrides above inherited values and still drops unrelated host env", () => {
 		setEnv("npm_config_registry", "https://registry.example.test/");
-		setEnv("VETTA_SECRET_TOKEN", "must-not-leak");
+		setEnv("ASTRAVIA_SECRET_TOKEN", "must-not-leak");
 
 		const env = createPluginCommandEnvironment({ npm_config_registry: "https://caller.example.test/" });
 
 		expect(env.npm_config_registry).toBe("https://caller.example.test/");
-		expect(env).not.toHaveProperty("VETTA_SECRET_TOKEN");
+		expect(env).not.toHaveProperty("ASTRAVIA_SECRET_TOKEN");
 	});
 });

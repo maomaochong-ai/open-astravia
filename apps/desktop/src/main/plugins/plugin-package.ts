@@ -8,7 +8,7 @@ import {
 	parsePluginManifest,
 	validatePluginRelativePath,
 	validatePluginVersion,
-} from "@vetta-org/plugin-sdk/manifest";
+} from "@astravia-org/plugin-sdk/manifest";
 import AdmZip from "adm-zip";
 import type {
 	InstalledPlugin,
@@ -23,8 +23,8 @@ interface PluginPackageLogger {
 	warn(message: string, error?: unknown): void;
 }
 
-export const VETTA_PLUGIN_PACKAGE_EXTENSION = ".vettapkg";
-export const VETTA_PLUGIN_PACKAGE_MIME_TYPE = "application/vnd.vetta.plugin+zip";
+export const ASTRAVIA_PLUGIN_PACKAGE_EXTENSION = ".astraviapkg";
+export const ASTRAVIA_PLUGIN_PACKAGE_MIME_TYPE = "application/vnd.astravia.plugin+zip";
 const MAX_PLUGIN_MANIFEST_BYTES = 1024 * 1024;
 
 export function resolvePluginIcon(
@@ -64,7 +64,7 @@ export function versionedPluginPath(version: string, relativePath: string): stri
 
 export function toInstalledPluginUrl(pluginId: string, version: string, relativePath: string): string {
 	const normalized = validatePluginRelativePath(relativePath, "path");
-	return `vetta-plugin://${pluginId}/${versionedPluginPath(version, normalized)}?v=${encodeURIComponent(version)}`;
+	return `astravia-plugin://${pluginId}/${versionedPluginPath(version, normalized)}?v=${encodeURIComponent(version)}`;
 }
 
 /**

@@ -10,7 +10,7 @@ For integration inside the same TypeScript process, prefer the [SDK](/developers
 ## Start the process
 
 ```bash
-vetta-agent-rpc --mode rpc \
+astravia-agent-rpc --mode rpc \
   --session-dir /path/to/conversations \
   --provider openai \
   --model openai/gpt-4o
@@ -41,7 +41,7 @@ Use `id` to associate asynchronous responses with requests. Events are not respo
 {"type":"agent_end"}
 ```
 
-The exported types from `@vetta/coding-agent/rpc` are the source of truth for event fields.
+The exported types from `@astravia/coding-agent/rpc` are the source of truth for event fields.
 
 ## Command groups
 

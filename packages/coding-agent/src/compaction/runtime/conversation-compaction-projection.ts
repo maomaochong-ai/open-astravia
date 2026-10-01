@@ -5,15 +5,15 @@ import {
 	type Message,
 	type Model,
 	type UserMessage,
-} from "@vetta/ai";
+} from "@astravia/ai";
 import {
 	applyStoredEventToConversationDocument,
 	type ConversationDocument,
 	type ConversationDocumentEntry,
 	selectConversationDocumentEntries,
 	selectConversationDocumentModelMessages,
-} from "@vetta/runtime-core/conversation";
-import type { ContextCompactionRecord, ContextPreparationInput } from "@vetta/runtime-core/kernel";
+} from "@astravia/runtime-core/conversation";
+import type { ContextCompactionRecord, ContextPreparationInput } from "@astravia/runtime-core/kernel";
 import type { CodingAgentPinnedModelContext } from "../../runtime-contracts/index.js";
 import type { CodingAgentSessionEntry as SessionEntry } from "../../sessions/index.js";
 import { restoreCodingAgentSessionAgentMessageEntry } from "../../sessions/index.js";

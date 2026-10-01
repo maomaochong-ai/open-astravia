@@ -1,8 +1,8 @@
-import type { RuntimeObservationPublisher, RuntimeSessionValueIndex } from "@vetta/runtime-core";
-import type { RuntimeConfigurationSnapshotSource } from "@vetta/runtime-core/configuration";
-import type { ModelCallContributionContext } from "@vetta/runtime-core/kernel";
-import type { McpRuntimeToolSource, McpRuntimeToolView } from "@vetta/runtime-mcp";
-import type { CodingToolResultPolicy } from "@vetta/runtime-tools";
+import type { RuntimeObservationPublisher, RuntimeSessionValueIndex } from "@astravia/runtime-core";
+import type { RuntimeConfigurationSnapshotSource } from "@astravia/runtime-core/configuration";
+import type { ModelCallContributionContext } from "@astravia/runtime-core/kernel";
+import type { McpRuntimeToolSource, McpRuntimeToolView } from "@astravia/runtime-mcp";
+import type { CodingToolResultPolicy } from "@astravia/runtime-tools";
 import {
 	type CodingAgentSessionExecutionRuntime,
 	isCodingAgentSessionExecutionToolName,

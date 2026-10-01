@@ -14,7 +14,7 @@
 - 会话历史、认证、模型和设置等用户数据；必要时由显式、独立的新迁移器读取旧格式。
 - 模型消息、工具消息、错误、取消、事件顺序、并发约束和资源释放语义。
 - 仍然有效的行为测试场景和数据 fixture；旧实现可以临时作为测试 Oracle，但不能被新生产代码调用。
-- `@vetta/ai` 与经过合同验证的 `@vetta/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
+- `@astravia/ai` 与经过合同验证的 `@astravia/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
 
 ## 明确舍弃（固定）
 
@@ -85,13 +85,13 @@
 - 迁移残留门禁：20 项通过；
 - Coding Agent 全量测试通过；
 - CLI 全量与 Coding Agent 全量并行执行时，2 个进程型 CLI 用例超过 5 秒超时；单独复跑该文件 9 项全部通过，确认是并行资源争用；
-- `bun run verify:agent-hosts` 通过：独立 Vetta CLI、IM Gateway、Coding Agent、CLI 和 Desktop 全部通过；
+- `bun run verify:agent-hosts` 通过：独立 Astravia CLI、IM Gateway、Coding Agent、CLI 和 Desktop 全部通过；
 - Desktop 功能套件：119 个文件、501 项通过、1 项跳过；
 - 根级 `bun run check` 通过：Biome、Root/CLI/Desktop/Admin 类型检查和全部质量守卫通过；
 - 本轮没有发送外部真实模型请求。
 
 ## 尚未完成的替换
 
-- `@vetta/runtime-core` 的 `GreenfieldRuntimeSession` 仍是跨包正式合同，不属于本轮 Coding Agent Extension 兼容边界；
+- `@astravia/runtime-core` 的 `GreenfieldRuntimeSession` 仍是跨包正式合同，不属于本轮 Coding Agent Extension 兼容边界；
 - CLI、Desktop 与测试中仍存在作为协议值、历史格式和差异基线的 `greenfield`/`legacy` 文本，必须逐项按所有权审计，不能按字符串批量删除；
 - Desktop 自身的 `greenfield-runtime` 目录和生产身份尚未在本阶段处理；它是下一轮最值得审计的宿主迁移边界，但必须先证明当前实现与旧候选/差异测试之间的真实关系。

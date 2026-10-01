@@ -10,11 +10,11 @@ import (
 	"sync"
 	"time"
 
-	"vetta-im-gateway/internal/bridge"
-	"vetta-im-gateway/internal/command"
-	"vetta-im-gateway/internal/hostclient"
-	"vetta-im-gateway/internal/state"
-	"vetta-im-gateway/internal/transport"
+	"astravia-im-gateway/internal/bridge"
+	"astravia-im-gateway/internal/command"
+	"astravia-im-gateway/internal/hostclient"
+	"astravia-im-gateway/internal/state"
+	"astravia-im-gateway/internal/transport"
 )
 
 // Router is the gateway's central message dispatcher. It implements

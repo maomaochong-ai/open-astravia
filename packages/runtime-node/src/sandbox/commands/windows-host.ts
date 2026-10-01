@@ -4,7 +4,7 @@ import { copyFile, mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { delimiter, dirname, join, resolve as resolvePath } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { ForegroundCommandOperations } from "@vetta/runtime-tools";
+import type { ForegroundCommandOperations } from "@astravia/runtime-tools";
 import { getNodeShellCommandPrefix, prependCommandPrefixes } from "../../coding/host/node-shell.js";
 import { getSandboxShellGrant } from "../sandbox-permissions.js";
 import type { NodeSandboxEnvironment } from "./contracts.js";
@@ -33,12 +33,12 @@ const ENV_WHITELIST = [
 	"PIP_TRUSTED_HOST",
 	"PIP_CONFIG_FILE",
 	"PIP_CACHE_DIR",
-	"VETTA_MANAGED_PYTHON_SITE_PACKAGES",
-	"VETTA_MANAGED_PYTHON_SCRIPTS",
-	"VETTA_HOME",
-	"VETTA_ACTION_RPC_ENDPOINT_FILE",
-	"VETTA_DESKTOP_EXE",
-	"VETTA_CLI_APP_PATH",
+	"ASTRAVIA_MANAGED_PYTHON_SITE_PACKAGES",
+	"ASTRAVIA_MANAGED_PYTHON_SCRIPTS",
+	"ASTRAVIA_HOME",
+	"ASTRAVIA_ACTION_RPC_ENDPOINT_FILE",
+	"ASTRAVIA_DESKTOP_EXE",
+	"ASTRAVIA_CLI_APP_PATH",
 ] as const;
 
 type WindowsSandboxBackend = "auto" | "elevated" | "unelevated";
@@ -59,7 +59,7 @@ export function resolveWindowsSandboxHostPath(explicitPath?: string): string {
 			resolvePath(rootDir, relativeDir, WINDOWS_SANDBOX_HOST_FILENAME),
 		),
 	);
-	const candidates = [explicitPath, process.env.VETTA_WINDOWS_SANDBOX_HOST_PATH, ...autoDetectedCandidates].filter(
+	const candidates = [explicitPath, process.env.ASTRAVIA_WINDOWS_SANDBOX_HOST_PATH, ...autoDetectedCandidates].filter(
 		(value): value is string => typeof value === "string" && value.trim().length > 0,
 	);
 
@@ -69,50 +69,50 @@ export function resolveWindowsSandboxHostPath(explicitPath?: string): string {
 
 	const searched = candidates.map((item) => `  - ${item}`).join("\n");
 	throw new Error(
-		`Windows sandbox host not found. Set VETTA_WINDOWS_SANDBOX_HOST_PATH or place ${WINDOWS_SANDBOX_HOST_FILENAME} in packages/runtime-core/sandbox/bin.` +
+		`Windows sandbox host not found. Set ASTRAVIA_WINDOWS_SANDBOX_HOST_PATH or place ${WINDOWS_SANDBOX_HOST_FILENAME} in packages/runtime-core/sandbox/bin.` +
 			`\nSearched:\n${searched}`,
 	);
 }
 
-function resolveVettaCliAppPath(env: NodeSandboxEnvironment | undefined): string | undefined {
-	const value = env?.VETTA_CLI_APP_PATH ?? process.env.VETTA_CLI_APP_PATH;
+function resolveAstraviaCliAppPath(env: NodeSandboxEnvironment | undefined): string | undefined {
+	const value = env?.ASTRAVIA_CLI_APP_PATH ?? process.env.ASTRAVIA_CLI_APP_PATH;
 	return typeof value === "string" && value.length > 0 && existsSync(value) ? value : undefined;
 }
 
-async function createVettaCliShim(
+async function createAstraviaCliShim(
 	tempRoot: string,
 	env: NodeSandboxEnvironment | undefined,
 ): Promise<string | undefined> {
-	const vettaCliAppPath = resolveVettaCliAppPath(env);
-	if (!vettaCliAppPath) return undefined;
+	const astraviaCliAppPath = resolveAstraviaCliAppPath(env);
+	if (!astraviaCliAppPath) return undefined;
 	const shimDir = join(tempRoot, "bin");
 	await mkdir(shimDir, { recursive: true });
-	await copyFile(vettaCliAppPath, join(shimDir, "vetta.exe"));
+	await copyFile(astraviaCliAppPath, join(shimDir, "astravia.exe"));
 	return shimDir;
 }
 
 function buildSandboxEnv(
 	sourceEnv: NodeSandboxEnvironment | undefined,
 	tempRoot: string,
-	vettaShimDir: string | undefined,
+	astraviaShimDir: string | undefined,
 ): string[] {
 	const baseEnv = sourceEnv ?? process.env;
 	const args: string[] = ["--clear-env"];
 	for (const key of ENV_WHITELIST) {
 		const value =
-			key === "PATH" && vettaShimDir
-				? [vettaShimDir, baseEnv.PATH].filter((item): item is string => Boolean(item)).join(delimiter)
-				: key === "VETTA_CLI_APP_PATH"
-					? resolveVettaCliAppPath(sourceEnv)
+			key === "PATH" && astraviaShimDir
+				? [astraviaShimDir, baseEnv.PATH].filter((item): item is string => Boolean(item)).join(delimiter)
+				: key === "ASTRAVIA_CLI_APP_PATH"
+					? resolveAstraviaCliAppPath(sourceEnv)
 					: baseEnv[key];
 		if (typeof value === "string" && value.length > 0) args.push("--env", `${key}=${value}`);
 	}
-	args.push("--env", `TEMP=${tempRoot}`, "--env", `TMP=${tempRoot}`, "--env", "VETTA_WINDOWS_SANDBOX=1");
+	args.push("--env", `TEMP=${tempRoot}`, "--env", `TMP=${tempRoot}`, "--env", "ASTRAVIA_WINDOWS_SANDBOX=1");
 	return args;
 }
 
 function resolveWindowsSandboxBackend(): WindowsSandboxBackend {
-	const raw = process.env.VETTA_WINDOWS_SANDBOX_BACKEND?.trim().toLowerCase();
+	const raw = process.env.ASTRAVIA_WINDOWS_SANDBOX_BACKEND?.trim().toLowerCase();
 	return raw === "auto" || raw === "elevated" || raw === "unelevated" ? raw : "auto";
 }
 
@@ -143,9 +143,9 @@ export function createWindowsSandboxCommandOperations(sandboxHostPath?: string):
 		exec: (command, cwd, { onData, signal, timeout, env }) =>
 			new Promise<{ exitCode: number | null }>((resolve, reject) => {
 				void (async () => {
-					const tempRoot = await mkdtemp(join(tmpdir(), "vetta-windows-sandbox-"));
+					const tempRoot = await mkdtemp(join(tmpdir(), "astravia-windows-sandbox-"));
 					await mkdir(join(tempRoot, "home"), { recursive: true });
-					const vettaShimDir = await createVettaCliShim(tempRoot, env);
+					const astraviaShimDir = await createAstraviaCliShim(tempRoot, env);
 					const shellCommand = resolveWindowsShellCommand();
 					const policy = buildWindowsSandboxPolicy({
 						cwd,
@@ -167,7 +167,7 @@ export function createWindowsSandboxCommandOperations(sandboxHostPath?: string):
 						policy.tempRoot,
 						"--network",
 						policy.allowNetwork ? "default" : "none",
-						...buildSandboxEnv(env, policy.tempRoot, vettaShimDir),
+						...buildSandboxEnv(env, policy.tempRoot, astraviaShimDir),
 					];
 					for (const root of policy.allowReadRoots) args.push("--read-root", root);
 					for (const root of policy.allowWriteRoots) args.push("--write-root", root);

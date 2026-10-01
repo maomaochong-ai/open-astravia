@@ -1,3 +1,4 @@
+import type { ConversationMessageAppendedEvent, ConversationTurnEvent } from "@astravia/runtime-core";
 import {
 	abortConversationAgentMessage,
 	type ConversationUserMessageViewModel,
@@ -5,7 +6,6 @@ import {
 	createConversationUserMessage,
 } from "@shared/conversation";
 import type { ChatConversationItem } from "@shared/store/atoms";
-import type { ConversationMessageAppendedEvent, ConversationTurnEvent } from "@vetta/runtime-core";
 
 /** Create or adopt only the draft owned by `turnId`. */
 export function startConversationTurn(

@@ -51,7 +51,7 @@ function marketEntry(parameters: Parameter[]): MarketAbility {
 		updated_at: "",
 		configVersion: 2,
 		config: {
-			mcp: { command: "${VETTA_MCP_EXECUTABLE}", args: ["-transport=stdio"] },
+			mcp: { command: "${ASTRAVIA_MCP_EXECUTABLE}", args: ["-transport=stdio"] },
 			mcp_browser_auth: false,
 			mcp_parameters: parameters,
 		},
@@ -75,7 +75,7 @@ function setupHarness(entry: MarketAbility) {
 	const disk = { mcp: { mcpServers: {} } as McpConfigData, ledger: {} as AbilityLedger };
 	// 渲染层持有的台账快照：只有 refresh() 才与磁盘同步，与 useAbilityData 一致。
 	let ledgerSnapshot: AbilityLedger = {};
-	(window as unknown as { vetta: unknown }).vetta = {
+	(window as unknown as { astravia: unknown }).astravia = {
 		mcp: {
 			get: async () => structuredClone(disk.mcp),
 			set: async (next: McpConfigData) => {

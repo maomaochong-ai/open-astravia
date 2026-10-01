@@ -1,2 +1,2 @@
-export type { SidebarNavItemButtonProps } from "@vetta-org/theme-ui/sidebar";
-export { SidebarNavItemButton } from "@vetta-org/theme-ui/sidebar";
+export type { SidebarNavItemButtonProps } from "@astravia-org/theme-ui/sidebar";
+export { SidebarNavItemButton } from "@astravia-org/theme-ui/sidebar";

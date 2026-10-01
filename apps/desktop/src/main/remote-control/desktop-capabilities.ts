@@ -1,4 +1,4 @@
-import type { RemoteCapabilities } from "@vetta/remote-control";
+import type { RemoteCapabilities } from "@astravia/remote-control";
 
 /**
  * What this desktop tells every phone in its handshake, on the LAN and through

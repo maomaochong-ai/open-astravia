@@ -2,7 +2,7 @@ import { cloudEnabled } from "@shared/components/cloud-slots";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { SETTINGS_SECTION } from "../registry";
-import { SegmentedControl } from "@vetta-org/theme-ui/shared";
+import { SegmentedControl } from "@astravia-org/theme-ui/shared";
 import { McpServerRow } from "./McpServerRow";
 import {
 	RemoteMcpDiscoverList,
@@ -78,7 +78,7 @@ function McpDiscoverBody({
 
 	return (
 		<div>
-			{/* MCP 广场来自 Vetta 官方市场；lite 构建无云服务，因此整段隐藏。 */}
+			{/* MCP 广场来自 Astravia 官方市场；lite 构建无云服务，因此整段隐藏。 */}
 			{cloudEnabled && (
 				<section>
 					<div className="mb-3 flex flex-wrap items-center justify-between gap-3">

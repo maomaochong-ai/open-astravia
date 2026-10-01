@@ -1,5 +1,5 @@
-import type { AgentMessage } from "@vetta/agent-core";
-import type { AssistantMessage } from "@vetta/ai";
+import type { AgentMessage } from "@astravia/agent-core";
+import type { AssistantMessage } from "@astravia/ai";
 
 export interface SessionStats {
 	sessionFile: string | undefined;

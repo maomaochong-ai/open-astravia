@@ -1,9 +1,9 @@
-import type { Api, Message, Model } from "@vetta/ai";
+import type { Api, Message, Model } from "@astravia/ai";
 import type {
 	ModelCallFrameCompositionContext,
 	RuntimeSnapshotAcquireContext,
 	RuntimeToolDefinition,
-} from "@vetta/runtime-core/kernel";
+} from "@astravia/runtime-core/kernel";
 import { describe, expect, it } from "vitest";
 import {
 	type AgentPluginRuntimeConfig,

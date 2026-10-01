@@ -6,7 +6,7 @@ import {
 	DialogContent,
 	DialogDescription,
 	DialogTitle,
-} from "@vetta-org/ui";
+} from "@astravia-org/ui";
 import { InputField } from "./SettingsFormFields";
 import { McpDefaultIcon } from "./McpDefaultIcon";
 

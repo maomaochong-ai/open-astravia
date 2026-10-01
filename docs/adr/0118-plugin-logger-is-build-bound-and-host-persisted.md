@@ -6,13 +6,13 @@
 
 ## 背景
 
-插件业务代码可以使用浏览器 `console`，但日志与宿主输出混在一起，缺少稳定的插件身份与模块作用域。把 logger 放进 `PluginContext` 能保证身份可信，却迫使与宿主能力无关的深层模块持续传递 `ctx` 或额外建立容器。直接从共享的 `@vetta-org/plugin-sdk` 导出可变 singleton 又无法区分同时加载的多个插件，并会在开发热更新与重叠 activation 中串号。
+插件业务代码可以使用浏览器 `console`，但日志与宿主输出混在一起，缺少稳定的插件身份与模块作用域。把 logger 放进 `PluginContext` 能保证身份可信，却迫使与宿主能力无关的深层模块持续传递 `ctx` 或额外建立容器。直接从共享的 `@astravia-org/plugin-sdk` 导出可变 singleton 又无法区分同时加载的多个插件，并会在开发热更新与重叠 activation 中串号。
 
 插件由 `plugin-vite` 构建，插件身份与版本已经在 `plugin.json` 中声明并经过同一工具校验；Desktop 也已经拥有持久化、轮转和诊断包日志管线。
 
 ## 决策
 
-1. Plugin API 2.5.0 新增 `@vetta-org/plugin-sdk/logger` 子路径，插件直接导入 `logger`，无需从 `ctx` 获取或传递。
+1. Plugin API 2.5.0 新增 `@astravia-org/plugin-sdk/logger` 子路径，插件直接导入 `logger`，无需从 `ctx` 获取或传递。
 2. `plugin-vite` 在生产构建与开发服务器中把该子路径解析为插件专属虚拟模块。虚拟模块以已校验 manifest 的 `id` 与 `version` 创建不可变 facade，不使用共享的“当前插件”游标。
 3. SDK 根共享模块只持有宿主安装的日志 sink；每个 facade 在调用时把自身不可变身份、级别、作用域、消息和字段提交给 sink。未经过兼容构建工具绑定的公开子路径在使用时明确失败，禁止生成无归属日志。
 4. Desktop 将日志写入既有 Renderer 日志管线，沿用轮转和诊断包；写入前限制大小、处理循环引用，并对常见凭据字段与敏感文本做防御性脱敏。

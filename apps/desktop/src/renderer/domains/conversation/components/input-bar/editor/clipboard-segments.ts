@@ -1,10 +1,10 @@
 import { type InputSegment, segmentsToText } from "@shared/lib/input-tokens";
 
 /** Private renderer-to-renderer format. HTML below is the standard-format fallback. */
-export const INPUT_SEGMENTS_CLIPBOARD_MIME = "application/x-vetta-input-segments";
+export const INPUT_SEGMENTS_CLIPBOARD_MIME = "application/x-astravia-input-segments";
 const INPUT_SEGMENTS_CLIPBOARD_VERSION = 1;
-const INPUT_SEGMENTS_CLIPBOARD_ATTRIBUTE = "data-vetta-input-segments";
-const INPUT_SEGMENTS_CLIPBOARD_PAYLOAD_ATTRIBUTE = "data-vetta-input-segments-payload";
+const INPUT_SEGMENTS_CLIPBOARD_ATTRIBUTE = "data-astravia-input-segments";
+const INPUT_SEGMENTS_CLIPBOARD_PAYLOAD_ATTRIBUTE = "data-astravia-input-segments-payload";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null;

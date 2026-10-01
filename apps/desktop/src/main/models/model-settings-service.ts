@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { getVettaHomePath } from "@vetta/action-rpc";
-import { atomicWriteJSON } from "@vetta/toolkit/atomic-write";
+import { getAstraviaHomePath } from "@astravia/action-rpc";
+import { atomicWriteJSON } from "@astravia/toolkit/atomic-write";
 import type {
 	ModelConfigSnapshot,
 	ModelDefaultResult,
@@ -11,7 +11,7 @@ import type {
 	ModelProviderConfigSnapshot,
 	ModelProviderDetail,
 	ModelProviderUpsertData,
-} from "@vetta-org/capability-sdk";
+} from "@astravia-org/capability-sdk";
 import type { ModelCredentialStore } from "./model-credential-store.js";
 
 export interface ModelsConfig {
@@ -67,7 +67,7 @@ export interface ModelSettingsServiceOptions {
 	readonly onConfigChanged?: (providerIds: readonly string[]) => void;
 }
 
-const MODELS_CONFIG_PATH = join(getVettaHomePath(), "agent", "models.json");
+const MODELS_CONFIG_PATH = join(getAstraviaHomePath(), "agent", "models.json");
 const DEFAULT_MODELS_CONFIG: ModelsConfig = { providers: {} };
 export const MASKED_MODEL_API_KEY = "***";
 

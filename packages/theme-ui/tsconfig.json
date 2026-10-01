@@ -8,10 +8,10 @@
 		"noEmit": true,
 		"types": ["react"],
 		"paths": {
-			"@vetta-org/theme-sdk": ["../theme-sdk/src/index.ts"],
-			"@vetta-org/theme-sdk/*": ["../theme-sdk/src/*"],
-			"@vetta-org/ui": ["../ui/src/index.ts"],
-			"@vetta-org/ui/*": ["../ui/src/*"]
+			"@astravia-org/theme-sdk": ["../theme-sdk/src/index.ts"],
+			"@astravia-org/theme-sdk/*": ["../theme-sdk/src/*"],
+			"@astravia-org/ui": ["../ui/src/index.ts"],
+			"@astravia-org/ui/*": ["../ui/src/*"]
 		}
 	},
 	"include": ["src/**/*.ts", "src/**/*.tsx"],

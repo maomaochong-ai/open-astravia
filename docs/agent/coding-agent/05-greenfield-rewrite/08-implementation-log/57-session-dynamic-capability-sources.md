@@ -70,7 +70,7 @@ refreshCatalog(context)
 
 旧逻辑有两层判断，不能合并：
 
-1. `VETTA_KNOWLEDGE_DISABLED` / 宿主配置决定知识库 capability 是否存在；
+1. `ASTRAVIA_KNOWLEDGE_DISABLED` / 宿主配置决定知识库 capability 是否存在；
 2. `metadata.knowledgeMode` 决定当前普通会话是否暴露 `kb-read`；`kb-processing` 场景例外。
 
 本轮接入的仍是旧 `createKbListTagsTool` 和 `createKbFilterByTagsTool`。通用

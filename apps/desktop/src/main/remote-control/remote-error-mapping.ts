@@ -1,5 +1,5 @@
-import { AI_ERROR_CODES, isAIError } from "@vetta/ai";
-import type { RemoteError } from "@vetta/remote-control";
+import { AI_ERROR_CODES, isAIError } from "@astravia/ai";
+import type { RemoteError } from "@astravia/remote-control";
 
 export class RemoteOperationError extends Error {
 	constructor(

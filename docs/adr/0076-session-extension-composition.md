@@ -11,7 +11,7 @@
 `SessionExtensionComposition` 是初始化、贡献、Endpoint、初始 Observation 与释放的唯一所有者。需要暴露给 RuntimeHost 时，
 统一使用 `createRuntimeSessionExtensionHost()` 投影事件 source，不在产品包重复 Endpoint 转发 Adapter。
 
-在 `@vetta/runtime-core/session-extensions` 定义平台与产品无关的 Session Extension 合同：
+在 `@astravia/runtime-core/session-extensions` 定义平台与产品无关的 Session Extension 合同：
 
 - `SessionExtensionDefinition` 声明稳定 ID、依赖、冲突和实例工厂；Composition 按依赖拓扑确定性初始化。
 - `SessionExtensionInstance` 是 Session 级资源所有者，通过判别联合贡献 Agent Feature、Conversation Document participant、Continuation source、initial observation source、typed service 和 typed endpoint。
@@ -40,7 +40,7 @@ Coding Agent Composition Options 通过 `createSessionExtensionDefinitions(sessi
 
 宿主控制面通过 `SessionExtensionEndpointHost` 和 `RuntimeSessionExtensionHost` 暴露类型化 endpoint。`RuntimeHost.invokeSessionExtension()` 只转发 token、输入和取消信号，不解释具体产品语义；Desktop、CLI、SDK 和 Subagent 通过 Coding Agent 导出的 Todo read/clear token 访问同一个 Extension-owned Runtime。`RuntimeResources.todoController`、`RuntimeSessionTodoController` 与 `RuntimeHost.clearTodos()` 已删除，不保留 Todo 专属兼容别名。
 
-为了维持迟订阅宿主的状态恢复，Extension 可贡献同步的 initial observation source，Composition 统一汇总后由 `RuntimeSessionExtensionHost` 投影。扩展通过 typed observation token 构造 `session.extension` 信封，Runtime Core 只负责附加 Session 元数据和路由 `extensionId/event/payload`，不解释 payload。Coding Agent 的公共 `@vetta/coding-agent/session-extensions` 入口拥有 Todo token、`TodoItem` 与 TypeBox 校验适配器；Desktop 和 CLI 在产品边界验证 payload 后再更新各自的 Todo 视图。
+为了维持迟订阅宿主的状态恢复，Extension 可贡献同步的 initial observation source，Composition 统一汇总后由 `RuntimeSessionExtensionHost` 投影。扩展通过 typed observation token 构造 `session.extension` 信封，Runtime Core 只负责附加 Session 元数据和路由 `extensionId/event/payload`，不解释 payload。Coding Agent 的公共 `@astravia/coding-agent/session-extensions` 入口拥有 Todo token、`TodoItem` 与 TypeBox 校验适配器；Desktop 和 CLI 在产品边界验证 payload 后再更新各自的 Todo 视图。
 
 Runtime Core 的 `TodoItem`、`TodoUpdateEvent` 和 `todo_update` 分支已删除。CLI 与稳定 SDK 可以在自己的产品事件合同中继续使用 `todo_update`，但它们必须从已校验的 Coding Agent observation 映射，不得让该名称反向进入通用 Runtime 协议。
 

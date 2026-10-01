@@ -1,9 +1,9 @@
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import type { CodingToolExecutable, CodingToolExecutableResolver } from "@vetta/runtime-tools/coding";
+import type { CodingToolExecutable, CodingToolExecutableResolver } from "@astravia/runtime-tools/coding";
 
-export type { CodingToolExecutable, CodingToolExecutableResolver } from "@vetta/runtime-tools/coding";
+export type { CodingToolExecutable, CodingToolExecutableResolver } from "@astravia/runtime-tools/coding";
 
 export interface LocalCodingToolExecutableResolverOptions {
 	readonly binDirectory?: string;

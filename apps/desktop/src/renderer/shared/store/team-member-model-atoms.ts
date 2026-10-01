@@ -49,8 +49,8 @@ async function updateTeamMemberModels(get: Getter, set: Setter, action: ModelAct
 	try {
 		const models =
 			action.kind === "load"
-				? await window.vetta.agentTeams.listMemberModels(teamId)
-				: await window.vetta.agentTeams.setMemberModel(teamId, action.memberId, action.selection);
+				? await window.astravia.agentTeams.listMemberModels(teamId)
+				: await window.astravia.agentTeams.setMemberModel(teamId, action.memberId, action.selection);
 		refreshRequested = get(teamMemberModelsAtom)[teamId]?.refreshRequested === true;
 		set(teamMemberModelsAtom, (states) =>
 			states[teamId]?.generation !== generation

@@ -1,4 +1,4 @@
-import { definePlugin } from "@vetta-org/plugin-sdk";
+import { definePlugin } from "@astravia-org/plugin-sdk";
 import { GlobalProbeSlot } from "./GlobalProbeSlot";
 import { ProbePanel } from "./ProbePanel";
 import { setPluginCtx } from "./plugin-context";

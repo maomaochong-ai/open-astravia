@@ -27,7 +27,7 @@ const BASE_STATE: RemotePairingState = {
 	vaultAvailable: true,
 };
 
-function inviteState(inviteUri = "vetta://pair/automatic"): RemotePairingState {
+function inviteState(inviteUri = "astravia://pair/automatic"): RemotePairingState {
 	return {
 		...BASE_STATE,
 		invite: {
@@ -62,7 +62,7 @@ function installRemotePairing(options: {
 	const setRelay = vi.fn(async (url: string | undefined) => ({ ...initial, relayBaseUrl: url ?? initial.relayBaseUrl }));
 	const testRelay = vi.fn(async () => "noInviteCodes" as const);
 	const listeners = new Set<(state: RemotePairingState) => void>();
-	Object.defineProperty(window, "vetta", {
+	Object.defineProperty(window, "astravia", {
 		configurable: true,
 		value: {
 			remotePairing: {
@@ -92,7 +92,7 @@ function installRemotePairing(options: {
 
 afterEach(() => {
 	cleanup();
-	Reflect.deleteProperty(window, "vetta");
+	Reflect.deleteProperty(window, "astravia");
 });
 
 describe("远程连接设置", () => {
@@ -169,7 +169,7 @@ describe("远程连接设置", () => {
 		expect(screen.getByText("remote.pairing.generating")).toBeTruthy();
 		expect(screen.queryByRole("button", { name: "remote.pairing.create" })).toBeNull();
 
-		const next = inviteState("vetta://pair/next");
+		const next = inviteState("astravia://pair/next");
 		act(() =>
 			pendingCreate.resolve({
 				...next,
@@ -187,7 +187,7 @@ describe("远程连接设置", () => {
 	});
 
 	it("已有未过期二维码时直接沿用，不会因重新打开页面而作废", async () => {
-		const { createInvite } = installRemotePairing({ initial: inviteState("vetta://pair/existing") });
+		const { createInvite } = installRemotePairing({ initial: inviteState("astravia://pair/existing") });
 
 		render(<RemotePairingSettings />);
 
@@ -199,7 +199,7 @@ describe("远程连接设置", () => {
 		const createInvite = vi
 			.fn<() => Promise<RemotePairingState>>()
 			.mockRejectedValueOnce(new Error("secret internal failure"))
-			.mockResolvedValueOnce(inviteState("vetta://pair/retry"));
+			.mockResolvedValueOnce(inviteState("astravia://pair/retry"));
 		installRemotePairing({ createInvite });
 		const user = userEvent.setup();
 

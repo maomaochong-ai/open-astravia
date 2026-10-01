@@ -23,10 +23,10 @@ describe("buildSkillTokenMetaMap", () => {
 
 	it("展示名只改变 token 文案，不改变稳定键", () => {
 		const map = buildSkillTokenMetaMap(
-			[{ ...publishAbility, presentation: { displayName: "Vetta 设计" } }],
+			[{ ...publishAbility, presentation: { displayName: "Astravia 设计" } }],
 			new Map(),
 		);
-		expect(map.get("skill:publish-ability")?.label).toBe("Vetta 设计");
+		expect(map.get("skill:publish-ability")?.label).toBe("Astravia 设计");
 	});
 
 	it("内置 skill 的图标走 renderer 静态资源", () => {
@@ -35,28 +35,28 @@ describe("buildSkillTokenMetaMap", () => {
 	});
 
 	it("插件 skill 用列表自带的宿主插件 icon", () => {
-		const icon = "vetta-plugin://vetta-ui-design/versions/0.1.0/icon.png?v=0.1.0";
+		const icon = "astravia-plugin://astravia-ui-design/versions/0.1.0/icon.png?v=0.1.0";
 		const map = buildSkillTokenMetaMap(
-			[{ name: "vetta-ui-design", description: "", source: "plugin", type: "skill", icon }],
+			[{ name: "astravia-ui-design", description: "", source: "plugin", type: "skill", icon }],
 			new Map(),
 		);
-		expect(map.get("skill:vetta-ui-design")).toEqual({ label: "vetta-ui-design", icon });
+		expect(map.get("skill:astravia-ui-design")).toEqual({ label: "astravia-ui-design", icon });
 	});
 
 	it("本地 Skill 或 Provider 图标优先于市场目录，避免离线恢复后换图", () => {
 		const map = buildSkillTokenMetaMap(
 			[
 				{
-					name: "vetta-ui-design",
+					name: "astravia-ui-design",
 					description: "",
 					source: "plugin",
 					type: "skill",
-					icon: "vetta-plugin://vetta-ui-design/icon.png",
+					icon: "astravia-plugin://astravia-ui-design/icon.png",
 				},
 			],
-			new Map([["skill:vetta-ui-design", "solar:layers-bold"]]),
+			new Map([["skill:astravia-ui-design", "solar:layers-bold"]]),
 		);
-		expect(map.get("skill:vetta-ui-design")?.icon).toBe("vetta-plugin://vetta-ui-design/icon.png");
+		expect(map.get("skill:astravia-ui-design")?.icon).toBe("astravia-plugin://astravia-ui-design/icon.png");
 	});
 
 	it("scene 与同名 skill 分别解析，且场景继续使用自己的图标", () => {

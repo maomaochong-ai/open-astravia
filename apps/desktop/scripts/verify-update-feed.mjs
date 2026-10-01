@@ -13,7 +13,7 @@ export const DESKTOP_UPDATE_METADATA_FILES = Object.freeze([
 function requireReleaseVersion(version) {
 	const value = version?.trim().replace(/^v/, "");
 	if (!value || !/^\d+\.\d+\.\d+$/.test(value)) {
-		throw new Error("[verify-update-feed] VETTA_DESKTOP_RELEASE_VERSION must be a semantic version");
+		throw new Error("[verify-update-feed] ASTRAVIA_DESKTOP_RELEASE_VERSION must be a semantic version");
 	}
 	return value;
 }
@@ -130,14 +130,14 @@ function isExecutedDirectly() {
 if (isExecutedDirectly()) {
 	const localMetadataPath = join(import.meta.dirname, "../release/latest.yml");
 	const resolveDirectVersion = async () => {
-		const configured = process.env.VETTA_DESKTOP_RELEASE_VERSION?.trim();
+		const configured = process.env.ASTRAVIA_DESKTOP_RELEASE_VERSION?.trim();
 		if (configured) return configured;
 		try {
 			const document = parse(await readFile(localMetadataPath, "utf8"));
 			return document?.version;
 		} catch (error) {
 			throw new Error(
-				"[verify-update-feed] set VETTA_DESKTOP_RELEASE_VERSION or provide release/latest.yml",
+				"[verify-update-feed] set ASTRAVIA_DESKTOP_RELEASE_VERSION or provide release/latest.yml",
 				{ cause: error },
 			);
 		}

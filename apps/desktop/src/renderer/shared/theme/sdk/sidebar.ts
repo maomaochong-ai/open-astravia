@@ -1,3 +1,4 @@
+export { useSidebarModel } from "@astravia-org/theme-sdk/sidebar";
 export { DefaultSidebar } from "@domains/project/components/sidebar/DefaultSidebar";
 export { MessageCenter } from "@domains/project/components/sidebar/message-center/MessageCenter";
 export { ProjectsPanel } from "@domains/project/components/sidebar/projects/panel/ProjectsPanel";
@@ -23,4 +24,3 @@ export type {
 	SidebarProps,
 	SidebarRegionProps,
 } from "@domains/project/components/sidebar/types";
-export { useSidebarModel } from "@vetta-org/theme-sdk/sidebar";

@@ -133,7 +133,7 @@ CLI Session/Composition/Host 定向套件：5 files, 24 tests passed
 Desktop Backend Pool/Host Capability：2 files, 8 tests passed
 bun run check:quick: passed
 bun run check: passed
-installed standalone Vetta CLI artifact: 1 test passed
+installed standalone Astravia CLI artifact: 1 test passed
 ```
 
 新增门禁覆盖：

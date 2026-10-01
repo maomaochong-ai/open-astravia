@@ -1,9 +1,9 @@
-import type { Api, Model } from "@vetta/ai";
-import type { RuntimeResources } from "@vetta/runtime-core";
-import { createRuntimeSessionExtensionHost } from "@vetta/runtime-core";
-import type { ConversationContinuationResult } from "@vetta/runtime-core/kernel";
-import type { SessionExtensionComposition } from "@vetta/runtime-core/session-extensions";
-import type { McpDeferredToolController } from "@vetta/runtime-mcp";
+import type { Api, Model } from "@astravia/ai";
+import type { RuntimeResources } from "@astravia/runtime-core";
+import { createRuntimeSessionExtensionHost } from "@astravia/runtime-core";
+import type { ConversationContinuationResult } from "@astravia/runtime-core/kernel";
+import type { SessionExtensionComposition } from "@astravia/runtime-core/session-extensions";
+import type { McpDeferredToolController } from "@astravia/runtime-mcp";
 import { CODING_AGENT_BACKGROUND_WORK_RUNTIME_OWNER } from "../../execution/background/background-work-session-extension.js";
 import { CodingAgentBackgroundWorkController } from "../../execution/background/work-controller.js";
 import type { CodingAgentSessionExecutionRuntime } from "../../execution/session/runtime.js";

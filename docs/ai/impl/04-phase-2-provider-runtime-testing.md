@@ -24,7 +24,7 @@ Phase 2 的代码目标已经实现：新的调用语义、隔离注册表、测
 
 ### 2. 可注入 transport
 
-`StreamOptions` 新增标准 `fetch` 注入点，并贯通 OpenAI Completions 与 Anthropic 客户端。`@vetta/ai/testing` 提供：
+`StreamOptions` 新增标准 `fetch` 注入点，并贯通 OpenAI Completions 与 Anthropic 客户端。`@astravia/ai/testing` 提供：
 
 - JSON response。
 - HTTP error response。
@@ -46,7 +46,7 @@ Phase 2 的代码目标已经实现：新的调用语义、隔离注册表、测
 - 脚本耗尽错误。
 - 调用前 abort。
 
-该工具通过 `@vetta/ai/testing` 条件子路径导出，不从生产根入口导出。Phase 4 Agent Functional Suite 和 Phase 5 runtime differential tests 应复用它，不再 mock engine 内部函数。
+该工具通过 `@astravia/ai/testing` 条件子路径导出，不从生产根入口导出。Phase 4 Agent Functional Suite 和 Phase 5 runtime differential tests 应复用它，不再 mock engine 内部函数。
 
 ### 4. Provider 试点与 Conformance
 

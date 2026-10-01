@@ -1,8 +1,8 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
-import type { SandboxShellGrant } from "@vetta/runtime-core/sandbox";
-import type { ForegroundCommandOperations } from "@vetta/runtime-tools";
+import type { SandboxShellGrant } from "@astravia/runtime-core/sandbox";
+import type { ForegroundCommandOperations } from "@astravia/runtime-tools";
 import { afterEach, describe, expect, it } from "vitest";
 import { buildWindowsSandboxPolicy } from "./commands/windows-policy.js";
 import { createNodeSandboxHost } from "./node-sandbox-host.js";
@@ -29,8 +29,8 @@ describe("Node sandbox host", () => {
 	});
 
 	it("resolves workspace boundaries and propagates shell grants through the Node context", async () => {
-		const workspace = await mkdtemp(join(tmpdir(), "vetta-node-sandbox-workspace-"));
-		const outside = await mkdtemp(join(tmpdir(), "vetta-node-sandbox-outside-"));
+		const workspace = await mkdtemp(join(tmpdir(), "astravia-node-sandbox-workspace-"));
+		const outside = await mkdtemp(join(tmpdir(), "astravia-node-sandbox-outside-"));
 		try {
 			const host = createNodeSandboxHost({ platform: "win32", commandOperations: createOperations() });
 			if (!host) throw new Error("Missing Node sandbox host");
@@ -65,7 +65,7 @@ describe("Node sandbox host", () => {
 		expect(policy.allowNetwork).toBe(false);
 		expect(policy.allowReadRoots).toEqual(expect.arrayContaining([cwd, tempRoot, grantRoot]));
 		expect(policy.allowWriteRoots).toEqual(expect.arrayContaining([cwd, tempRoot, grantRoot]));
-		expect(policy.denyReadRoots).toContain(resolve("C:/Users/test/AppData/Roaming/Vetta"));
+		expect(policy.denyReadRoots).toContain(resolve("C:/Users/test/AppData/Roaming/Astravia"));
 		expect(policy.denyWriteRoots).toEqual(policy.denyReadRoots);
 		expect(policy.allowReadRoots).toContain(
 			dirname(resolve("C:/Windows/System32/WindowsPowerShell/v1.0/powershell.exe")),

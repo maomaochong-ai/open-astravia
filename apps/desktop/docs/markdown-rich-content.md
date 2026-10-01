@@ -14,7 +14,7 @@
 
 推荐使用围栏传递 HTML 页面和 SVG，这样可以完整保留源码，包括空行和 Markdown 标记。公式不在普通代码、行内代码中识别；不是所有 LaTeX 宏都受 KaTeX 支持，不合法或过大的公式显示源码。
 
-HTML 可以使用内联样式、脚本、Canvas 和 DOM 事件；可以嵌入 data 图片与字体。它不能访问 Vetta 的文件、账号、会话或宿主 API，也不能加载 CDN、外部图片、网络 API、其他网页或提交表单。需要外部依赖的页面应通过原有浏览器/项目预览功能打开。
+HTML 可以使用内联样式、脚本、Canvas 和 DOM 事件；可以嵌入 data 图片与字体。它不能访问 Astravia 的文件、账号、会话或宿主 API，也不能加载 CDN、外部图片、网络 API、其他网页或提交表单。需要外部依赖的页面应通过原有浏览器/项目预览功能打开。
 
 预览过程中可以随时切换「源码」或复制原文。HTML 的「停止」会销毁运行页面并恢复静态预览；重新运行从头开始，页面输入与脚本状态不会保留。生成中先显示源码，生成完成后再预览。切换源码、滚出可见区域、窗口进入后台、内容被改写或连续运行达到 30 秒时，脚本会停止；返回后需再次点击运行。
 
@@ -43,7 +43,7 @@ node apps/desktop/scripts/markdown-render.bench.mjs
 node apps/desktop/scripts/markdown-isolation.test.mjs
 ```
 
-第二条命令使用 Playwright 的独立无头 Chromium 与临时构建，不连接真实 Vetta 实例。需已安装该版本的 Playwright Chromium；可用 `VETTA_TEST_BROWSER` 选择已安装的浏览器通道。
+第二条命令使用 Playwright 的独立无头 Chromium 与临时构建，不连接真实 Astravia 实例。需已安装该版本的 Playwright Chromium；可用 `ASTRAVIA_TEST_BROWSER` 选择已安装的浏览器通道。
 
 第三条是可重复运行的长消息基准，包含长正文、大表格和长代码，每个场景按 50ms 间隔追加 40 次，输出解析次数、累计解析字符数和 React 渲染耗时；可追加输出 JSON 文件路径。它使用 production profiling 构建与简化样式，衡量渲染计算，不代表真实 Desktop 的 GPU、滚动或完整布局耗时。耗时只用于同机对比，不作为跨机器的硬性测试门槛；组件测试约束解析频率与最终内容完整性。
 

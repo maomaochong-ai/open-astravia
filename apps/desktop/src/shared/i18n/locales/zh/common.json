@@ -1,5 +1,5 @@
 {
-	"appName": "Vetta",
+	"appName": "Astravia",
 	"actions": {
 		"cancel": "取消",
 		"confirm": "确认",
@@ -21,7 +21,7 @@
 	},
 	"updateRestart": {
 		"title": "更新已就绪",
-		"message": "新版本 {{latestVersion}} 已下载完成（当前 {{currentVersion}}）。立即重启 Vetta 以应用更新，或选择\"稍后\"，下次启动会再次提示。",
+		"message": "新版本 {{latestVersion}} 已下载完成（当前 {{currentVersion}}）。立即重启 Astravia 以应用更新，或选择\"稍后\"，下次启动会再次提示。",
 		"later": "稍后",
 		"install": "立即重启"
 	},
@@ -442,8 +442,8 @@
 			"experimentalSectionTitle": "实验功能",
 			"experimentalSectionDescription": "以下开关与设置 → Agent 配置中的实验项一致，可在确认前调整。",
 			"experimentalFields": {
-				"vettaCli": "命令行工具 Vetta CLI",
-				"vettaCliDesc": "允许在终端通过 Vetta CLI 调用本机能力",
+				"astraviaCli": "命令行工具 Astravia CLI",
+				"astraviaCliDesc": "允许在终端通过 Astravia CLI 调用本机能力",
 				"promptPrediction": "输入预测",
 				"promptPredictionDesc": "输入时预估可能的后续内容，可能消耗少量额度",
 				"agentSkills": "Agent 技能扩展",
@@ -991,7 +991,7 @@
 			"title": "授予权限",
 			"subtitle": "授权后可使用截图、自动化与系统通知等能力；均可稍后在设置中完成",
 			"systemSection": "系统权限",
-			"computerUseTitle": "Vetta Computer Use",
+			"computerUseTitle": "Astravia Computer Use",
 			"computerUseDesc": "独立辅助程序负责前台窗口捕获，需单独完成辅助功能与屏幕录制授权",
 			"optionalHint": "权限均为可选，可随时在「设置 › 权限」中调整"
 		},
@@ -1011,7 +1011,7 @@
 			"signedInFallback": "用户"
 		},
 		"welcome": {
-			"title": "欢迎使用 Vetta",
+			"title": "欢迎使用 Astravia",
 			"subtitle": "你的桌面 AI 编程助手已就绪，从一次对话开始吧",
 			"highlights": {
 				"chat": {
@@ -1024,7 +1024,7 @@
 				},
 				"automation": {
 					"title": "自动化",
-					"desc": "定时任务与批量作业，把重复工作交给 Vetta"
+					"desc": "定时任务与批量作业，把重复工作交给 Astravia"
 				}
 			}
 		}

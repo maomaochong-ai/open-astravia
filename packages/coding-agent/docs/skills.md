@@ -4,8 +4,8 @@
 
 ## 发现位置
 
-- 用户：`~/.vetta/skills/`、`~/.vetta/agent/skills/`、`~/.agents/skills/`
-- 项目：`<cwd>/.vetta/skills/`、`<cwd>/.agents/skills/`（可沿祖先到 git 根）
+- 用户：`~/.astravia/skills/`、`~/.astravia/agent/skills/`、`~/.agents/skills/`
+- 项目：`<cwd>/.astravia/skills/`、`<cwd>/.agents/skills/`（可沿祖先到 git 根）
 - 包 / settings `skills` / CLI `--skill`
 - `--no-skills` 关闭发现（显式 `--skill` 仍加载）
 
@@ -33,11 +33,11 @@ description: 一句话说明何时使用
 - 可选：`disable-model-invocation`。`agent_mode` 已废弃（ADR-0071）：容忍存在但无任何运行时语义，不排序、不过滤，请不要在新 Skill 里写它。
 - 安全：Skill 可指示执行任意操作，安装前审查内容。
 
-Desktop 产品界面允许 Skill 在 namespaced metadata 中显式声明图标；这是 Vetta 的呈现扩展，不改变 Agent Skills 的加载、身份或调用语义。值可以是 `solar:*` 图标名、HTTPS URL，或相对于 Skill 目录的 `.avif`、`.gif`、`.ico`、`.jpeg`、`.jpg`、`.png`、`.svg`、`.webp` 文件：
+Desktop 产品界面允许 Skill 在 namespaced metadata 中显式声明图标；这是 Astravia 的呈现扩展，不改变 Agent Skills 的加载、身份或调用语义。值可以是 `solar:*` 图标名、HTTPS URL，或相对于 Skill 目录的 `.avif`、`.gif`、`.ico`、`.jpeg`、`.jpg`、`.png`、`.svg`、`.webp` 文件：
 
 ```yaml
 metadata:
-  vetta:
+  astravia:
     presentation:
       icon: assets/icon.svg
 ```

@@ -7,12 +7,12 @@ export function useScheduledTasks() {
 	const [tasks, setTasks] = useAtom(scheduledTasksAtom);
 
 	const refreshTasks = useCallback(async () => {
-		const loaded = await window.vetta.scheduler.getTasks();
+		const loaded = await window.astravia.scheduler.getTasks();
 		setTasks(loaded);
 	}, [setTasks]);
 
 	useEffect(() => {
-		return window.vetta.scheduler.onTaskEvent((event) => {
+		return window.astravia.scheduler.onTaskEvent((event) => {
 			if (event.type === "tasks.changed") {
 				void refreshTasks();
 			}
@@ -21,7 +21,7 @@ export function useScheduledTasks() {
 
 	const createTask = useCallback(
 		async (data: AutomationTaskInput) => {
-			const task = await window.vetta.scheduler.createTask(data);
+			const task = await window.astravia.scheduler.createTask(data);
 			setTasks((prev) => [...prev, task]);
 			return task;
 		},
@@ -31,7 +31,7 @@ export function useScheduledTasks() {
 	// 主进程会顺带清理暂停原因、重排作业，更新后以它的结果为准。
 	const updateTask = useCallback(
 		async (id: string, patch: AutomationTaskPatch) => {
-			await window.vetta.scheduler.updateTask(id, patch);
+			await window.astravia.scheduler.updateTask(id, patch);
 			await refreshTasks();
 		},
 		[refreshTasks],
@@ -39,7 +39,7 @@ export function useScheduledTasks() {
 
 	const deleteTask = useCallback(
 		async (id: string) => {
-			await window.vetta.scheduler.deleteTask(id);
+			await window.astravia.scheduler.deleteTask(id);
 			setTasks((current) => current.filter((task) => task.id !== id));
 		},
 		[setTasks],
@@ -47,18 +47,18 @@ export function useScheduledTasks() {
 
 	const toggleTask = useCallback(
 		async (id: string) => {
-			await window.vetta.scheduler.toggleTask(id);
+			await window.astravia.scheduler.toggleTask(id);
 			await refreshTasks();
 		},
 		[refreshTasks],
 	);
 
 	const runNow = useCallback(async (id: string) => {
-		await window.vetta.scheduler.runTaskNow(id);
+		await window.astravia.scheduler.runTaskNow(id);
 	}, []);
 
 	const abortTask = useCallback(async (id: string) => {
-		await window.vetta.scheduler.abortTask(id);
+		await window.astravia.scheduler.abortTask(id);
 	}, []);
 
 	const getTask = useCallback((id: string) => tasks.find((t) => t.id === id), [tasks]);

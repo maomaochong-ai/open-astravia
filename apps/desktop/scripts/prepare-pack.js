@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { resolveBuildResourceFilters } from "./build-resource-filters.mjs";
 import { validateDesktopBuildEnvironment } from "./desktop-build-environment.mjs";
-import { DESKTOP_BUILD_OUTPUTS, VETTA_PLUGIN_FILE_ASSOCIATION } from "./desktop-packaging-layout.mjs";
+import { DESKTOP_BUILD_OUTPUTS, ASTRAVIA_PLUGIN_FILE_ASSOCIATION } from "./desktop-packaging-layout.mjs";
 import { LINUX_PACKAGE_METADATA, LINUX_RELEASE_TARGETS } from "./linux-packaging-contract.mjs";
 import { loadBuildEnv } from "./load-build-env.mjs";
 import { resolveInstalledPackageRoot } from "./installed-package-root.mjs";
@@ -24,7 +24,7 @@ import { stageSystemSkills } from "./stage-system-skills.mjs";
 import { stageSystemThemesFromArchives } from "./stage-system-themes.mjs";
 import { stageWindowsSandboxBinaries } from "./windows-sandbox-packaging.mjs";
 
-// 从 .env.<mode>/.env 注入构建期变量（如 VETTA_TENANT），命令行内联优先。
+// 从 .env.<mode>/.env 注入构建期变量（如 ASTRAVIA_TENANT），命令行内联优先。
 const buildEnvMode = loadBuildEnv();
 const buildEnvironment = validateDesktopBuildEnvironment({ env: process.env, mode: buildEnvMode });
 const updatePublishConfig = buildEnvironment.updateConfig;
@@ -32,7 +32,7 @@ const pluginSelection = buildEnvironment.pluginSelection;
 const macSigning = buildEnvironment.macSigning;
 
 const projectRoot = join(import.meta.dirname, "..");
-const buildStageDir = join(tmpdir(), "vetta-desktop-build");
+const buildStageDir = join(tmpdir(), "astravia-desktop-build");
 const imGatewayDir = join(projectRoot, "..", "im-gateway");
 const imGatewayDistDir = join(imGatewayDir, "dist");
 const codingAgentDir = join(projectRoot, "..", "..", "packages", "coding-agent");
@@ -40,11 +40,11 @@ const cliAppDir = join(projectRoot, "..", "cli-host");
 const runtimeCoreWindowsSandboxDir = join(projectRoot, "..", "..", "packages", "runtime-core", "sandbox", "bin");
 const runtimeCoreSandboxDir = join(projectRoot, "..", "..", "packages", "runtime-core", "sandbox", "linux");
 const cliAppCompileTargets = {
-	"darwin-arm64": { platformTag: "darwin-arm64", bunTarget: "bun-darwin-arm64", binaryName: "vetta" },
-	"darwin-x64": { platformTag: "darwin-x64", bunTarget: "bun-darwin-x64", binaryName: "vetta" },
-	"linux-arm64": { platformTag: "linux-arm64", bunTarget: "bun-linux-arm64", binaryName: "vetta" },
-	"linux-x64": { platformTag: "linux-x64", bunTarget: "bun-linux-x64", binaryName: "vetta" },
-	"win32-x64": { platformTag: "win32-x64", bunTarget: "bun-windows-x64", binaryName: "vetta.exe" },
+	"darwin-arm64": { platformTag: "darwin-arm64", bunTarget: "bun-darwin-arm64", binaryName: "astravia" },
+	"darwin-x64": { platformTag: "darwin-x64", bunTarget: "bun-darwin-x64", binaryName: "astravia" },
+	"linux-arm64": { platformTag: "linux-arm64", bunTarget: "bun-linux-arm64", binaryName: "astravia" },
+	"linux-x64": { platformTag: "linux-x64", bunTarget: "bun-linux-x64", binaryName: "astravia" },
+	"win32-x64": { platformTag: "win32-x64", bunTarget: "bun-windows-x64", binaryName: "astravia.exe" },
 };
 const imGatewayTargetByPlatformTag = {
 	"darwin-arm64": { arch: "arm64", os: "darwin" },
@@ -60,9 +60,9 @@ const electronPkgPath = require.resolve("electron/package.json");
 const electronVersion = JSON.parse(readFileSync(electronPkgPath, "utf8")).version;
 
 // 正式发布以 apps/desktop/package.json 为唯一真源。本地更新闭环测试可用
-// VETTA_DESKTOP_BUILD_VERSION 生成更高版本产物，不修改源码版本或创建 tag。
+// ASTRAVIA_DESKTOP_BUILD_VERSION 生成更高版本产物，不修改源码版本或创建 tag。
 const packageVersion = JSON.parse(readFileSync(join(projectRoot, "package.json"), "utf8")).version;
-const buildVersionOverride = process.env.VETTA_DESKTOP_BUILD_VERSION?.trim();
+const buildVersionOverride = process.env.ASTRAVIA_DESKTOP_BUILD_VERSION?.trim();
 const appVersion = buildVersionOverride || packageVersion;
 if (!/^\d+\.\d+\.\d+$/.test(appVersion)) {
 	throw new Error(`[prepare-pack] invalid desktop version: ${appVersion}`);
@@ -74,7 +74,7 @@ const releaseInfo =
 	appVersion === packageVersion ? resolveReleaseInfo(join(projectRoot, "CHANGELOG.md"), appVersion) : undefined;
 
 function resolveCliAppCompileTargets() {
-	const rawTargets = process.env.VETTA_CLI_TARGET_PLATFORMS ?? process.env.VETTA_VENDOR_PLATFORM;
+	const rawTargets = process.env.ASTRAVIA_CLI_TARGET_PLATFORMS ?? process.env.ASTRAVIA_VENDOR_PLATFORM;
 	const platformTags =
 		typeof rawTargets === "string" && rawTargets.trim().length > 0
 			? rawTargets
@@ -138,7 +138,7 @@ console.log(
 		? `[prepare-pack] speech input enabled for ${speechInputBuildConfig.platformTags.join(", ")}`
 		: speechInputBuildConfig.configuredEnabled
 			? `[prepare-pack] speech input skipped for ${speechInputBuildConfig.platformTags.join(", ")}`
-			: "[prepare-pack] speech input disabled by VETTA_SPEECH_INPUT_ENABLED=false",
+			: "[prepare-pack] speech input disabled by ASTRAVIA_SPEECH_INPUT_ENABLED=false",
 );
 
 // 签名配置已经由统一构建环境检查解析；这里仅负责把结果映射到 builder 配置。
@@ -148,7 +148,7 @@ if (!macSigning.enabled) {
 	console.log(`[prepare-pack] macOS 签名与公证已启用（team=${macSigning.teamId}）`);
 } else {
 	console.warn(
-		`[prepare-pack] macOS 已签名但跳过公证（team=${macSigning.teamId}，VETTA_SKIP_NOTARIZE=1）——` +
+		`[prepare-pack] macOS 已签名但跳过公证（team=${macSigning.teamId}，ASTRAVIA_SKIP_NOTARIZE=1）——` +
 			"仅供本地更新闭环，产物不可分发",
 	);
 }
@@ -243,7 +243,7 @@ function assertTerminalPtyBinaryStaged() {
 assertTerminalPtyBinaryStaged();
 
 function assertPackagedMainHasNoWorkspaceImports(mainOutputDir) {
-	const workspaceImportPattern = /^\s*import(?:\s+.+\s+from)?\s+["']@vetta\//;
+	const workspaceImportPattern = /^\s*import(?:\s+.+\s+from)?\s+["']@astravia\//;
 	const invalidImports = [];
 	for (const fileName of readdirSync(mainOutputDir)) {
 		if (!fileName.endsWith(".js")) continue;
@@ -254,8 +254,8 @@ function assertPackagedMainHasNoWorkspaceImports(mainOutputDir) {
 	}
 	if (invalidImports.length > 0) {
 		throw new Error(
-			"[prepare-pack] desktop main output contains external @vetta workspace imports. " +
-				"Rebuild main with VETTA_BUILD_ENV=production before packaging:\n" +
+			"[prepare-pack] desktop main output contains external @astravia workspace imports. " +
+				"Rebuild main with ASTRAVIA_BUILD_ENV=production before packaging:\n" +
 				invalidImports.join("\n"),
 		);
 	}
@@ -280,9 +280,9 @@ if (preparedSpeechModel) {
 // externalized runtime deps must be declared here even though we copy them
 // manually below.
 const appPkg = {
-	name: "vetta",
+	name: "astravia",
 	version: appVersion,
-	description: "Vetta Desktop App",
+	description: "Astravia Desktop App",
 	author: LINUX_PACKAGE_METADATA.author,
 	homepage: LINUX_PACKAGE_METADATA.homepage,
 	license: LINUX_PACKAGE_METADATA.license,
@@ -323,7 +323,7 @@ if (process.platform === "darwin" && !macSigning.enabled) {
 	);
 }
 
-// macOS appshot: swiftc 编译 "Vetta Computer Use.app" 直接落到 staging appshot/，
+// macOS appshot: swiftc 编译 "Astravia Computer Use.app" 直接落到 staging appshot/，
 // 由 resolveExtraResources 带进 Resources/appshot/（filter "**/*" 递归带入
 // .app bundle 内部结构）。仅 darwin host 可编译。
 if (process.platform === "darwin") {
@@ -426,13 +426,13 @@ const stagedSshHelperDir = join(buildStageDir, "ssh-helper");
 rmSync(stagedSshHelperDir, { recursive: true, force: true });
 for (const target of SSH_HELPER_TARGETS) {
 	const outputDir = join(stagedSshHelperDir, `${target.os}-${target.arch}`);
-	const outputPath = join(outputDir, "vetta-ssh-helper");
+	const outputPath = join(outputDir, "astravia-ssh-helper");
 	mkdirSync(outputDir, { recursive: true });
 	console.log(`  -> ${outputPath}`);
 	try {
 		execFileSync(
 			process.platform === "win32" ? "go.exe" : "go",
-			["build", "-trimpath", "-ldflags", "-s -w", "-o", outputPath, "./cmd/vetta-ssh-helper"],
+			["build", "-trimpath", "-ldflags", "-s -w", "-o", outputPath, "./cmd/astravia-ssh-helper"],
 			{
 				cwd: sshHelperDir,
 				env: { ...process.env, CGO_ENABLED: "0", GOARCH: target.arch, GOOS: target.os },
@@ -454,10 +454,10 @@ for (const target of SSH_HELPER_TARGETS) {
 // coding-agent runtime assets (extraResources)
 // =============================================================================
 //
-// The bundled main-*.js (Vite output) contains `@vetta/coding-agent`'s JS
+// The bundled main-*.js (Vite output) contains `@astravia/coding-agent`'s JS
 // but not its on-disk package tree. Stage the full dist plus metadata into
 // Resources/coding-agent/. macOS/Linux agent-rpc-command.ts uses it as
-// VETTA_PACKAGE_DIR for assets; Windows additionally runs a bundled
+// ASTRAVIA_PACKAGE_DIR for assets; Windows additionally runs a bundled
 // cli-app Runtime Selector via ELECTRON_RUN_AS_NODE because GUI Electron
 // stdio is not reliable for RPC.
 const stagedCodingAgentDir = join(buildStageDir, "coding-agent");
@@ -505,12 +505,12 @@ if (!existsSync(bundledAgentRpcCli)) {
 }
 
 // =============================================================================
-// vetta CLI app (extraResources)
+// astravia CLI app (extraResources)
 // =============================================================================
 //
-// The agent-facing `vetta` command is @vetta/cli-host, not the desktop
+// The agent-facing `astravia` command is @astravia/cli-host, not the desktop
 // executable. Stage it into Resources/cli-app/ so Desktop can write
-// ~/.vetta/agent/bin/vetta as a stable shim to this entry.
+// ~/.astravia/agent/bin/astravia as a stable shim to this entry.
 const stagedCliAppDir = join(buildStageDir, "cli-app");
 rmSync(stagedCliAppDir, { recursive: true, force: true });
 mkdirSync(stagedCliAppDir, { recursive: true });
@@ -524,7 +524,7 @@ for (const target of resolveCliAppCompileTargets()) {
 	const stagedCliAppBinDir = join(stagedCliAppDir, "bin", target.platformTag);
 	const stagedCliAppBinary = join(stagedCliAppBinDir, target.binaryName);
 	mkdirSync(stagedCliAppBinDir, { recursive: true });
-	console.log(`[prepare-pack] compiling vetta CLI (${target.platformTag}) -> ${stagedCliAppBinary}`);
+	console.log(`[prepare-pack] compiling astravia CLI (${target.platformTag}) -> ${stagedCliAppBinary}`);
 	execFileSync(process.platform === "win32" ? "bun.exe" : "bun", [
 		join(cliAppDir, "scripts", "compile-standalone.mjs"),
 		"--target",
@@ -581,20 +581,20 @@ if (existsSync(runtimeCoreSandboxDir)) {
 // =============================================================================
 //
 // 把当前构建目标平台的 Node + Python(python-build-standalone)原始归档内置进
-// Resources/vendor/{node,python}/,首启时由 main 进程解压到 ~/.vetta/runtimes/。
+// Resources/vendor/{node,python}/,首启时由 main 进程解压到 ~/.astravia/runtimes/。
 // 这是普通用户「下载下来就有环境」的本体。Node 走 npmmirror、Python 走 GitHub
 // (国内无稳定公共镜像,故必须内置)。构建机有网即可;无法联网的构建可设
-// VETTA_SKIP_VENDOR=1 跳过(产物退化为「面板手动下载」,不推荐发版用)。
+// ASTRAVIA_SKIP_VENDOR=1 跳过(产物退化为「面板手动下载」,不推荐发版用)。
 //
-// 默认按构建宿主平台;跨平台打包请设 VETTA_VENDOR_PLATFORM,取值与
+// 默认按构建宿主平台;跨平台打包请设 ASTRAVIA_VENDOR_PLATFORM,取值与
 // src/main/runtimes/manifest.json 的 platforms 键一致(如 darwin-arm64 /
 // win32-x64 / linux-x64)。
 async function stageVendorRuntimes() {
-	if (process.env.VETTA_SKIP_VENDOR === "1") {
-		console.warn("[prepare-pack] VETTA_SKIP_VENDOR=1 —— 跳过内置运行时,产物将依赖面板手动下载");
+	if (process.env.ASTRAVIA_SKIP_VENDOR === "1") {
+		console.warn("[prepare-pack] ASTRAVIA_SKIP_VENDOR=1 —— 跳过内置运行时,产物将依赖面板手动下载");
 		return;
 	}
-	const platformTag = process.env.VETTA_VENDOR_PLATFORM || `${process.platform}-${process.arch}`;
+	const platformTag = process.env.ASTRAVIA_VENDOR_PLATFORM || `${process.platform}-${process.arch}`;
 	const stagedVendorDir = join(buildStageDir, "vendor");
 	const archives = await prepareVendorRuntimes({ platformTag });
 	for (const { type, def, entry, archivePath } of archives) {
@@ -631,7 +631,7 @@ await stageVendorRuntimes();
 // 系统插件（extraResources）—— ADR-0024
 // =============================================================================
 //
-// build:presets 已为每个 preset 生成 release/<id>-<version>.vettapkg。打包阶段只消费
+// build:presets 已为每个 preset 生成 release/<id>-<version>.astraviapkg。打包阶段只消费
 // zip 制品，校验后解压到 Resources/system-plugins/<id>/，不读取源码 dist。
 // 按 profile + 租户筛选打包进 App 的系统插件。
 console.log(
@@ -701,7 +701,7 @@ function resolveExtraResources() {
 			filter: sandboxFilters,
 		});
 	}
-	// "Vetta Computer Use.app" 仅 darwin 目标需要，且仅 darwin host 能编译（见上方 staging）。
+	// "Astravia Computer Use.app" 仅 darwin 目标需要，且仅 darwin host 能编译（见上方 staging）。
 	if (resolvePlatformFamilies().has("darwin") && process.platform === "darwin") {
 		extraResources.push({
 			from: "appshot",
@@ -723,9 +723,9 @@ const extraResources = resolveExtraResources();
 
 // Write electron-builder config
 const builderConfig = {
-	appId: "com.vetta.desktop",
-	productName: "Vetta",
-	executableName: "Vetta",
+	appId: "com.astravia.desktop",
+	productName: "Astravia",
+	executableName: "Astravia",
 	afterPack: join(projectRoot, "scripts", "windows-version-layout.mjs"),
 	electronVersion,
 	electronLanguages: ["zh-CN", "en-US"],
@@ -734,10 +734,10 @@ const builderConfig = {
 	...(releaseInfo ? { releaseInfo } : {}),
 	files: ["**/*", ...extraResources.map(({ from }) => `!${from}/**/*`)],
 	protocols: {
-		name: "Vetta",
-		schemes: ["vetta"],
+		name: "Astravia",
+		schemes: ["astravia"],
 	},
-	fileAssociations: [VETTA_PLUGIN_FILE_ASSOCIATION],
+	fileAssociations: [ASTRAVIA_PLUGIN_FILE_ASSOCIATION],
 	mac: {
 		target: ["dmg", "zip"],
 		category: "public.app-category.productivity",
@@ -765,7 +765,7 @@ const builderConfig = {
 		// 用户的本地模型（Ollama / LM Studio / vLLM 等）通常监听在局域网
 		// 明文 HTTP（http://192.168.x.x:port）。macOS 14+ 的 TCC 与 ATS 默认
 		// 会静默拦截这种请求，表现为 Finder 双击启动后随机出现 "Connection
-		// error."，而从终端启动 Vetta 时 launchd context 不同会偶发放行。
+		// error."，而从终端启动 Astravia 时 launchd context 不同会偶发放行。
 		// 三个 key 缺一不可：
 		//   - NSAppTransportSecurity.NSAllowsLocalNetworking：放开局域网明文 HTTP
 		//   - NSLocalNetworkUsageDescription：macOS 14+ 触发本地网络权限弹窗
@@ -775,7 +775,7 @@ const builderConfig = {
 				NSAllowsLocalNetworking: true,
 			},
 			NSLocalNetworkUsageDescription:
-				"Vetta 需要访问本地网络以连接你在局域网内运行的 AI 模型服务（如 Ollama、LM Studio、vLLM 等）。",
+				"Astravia 需要访问本地网络以连接你在局域网内运行的 AI 模型服务（如 Ollama、LM Studio、vLLM 等）。",
 			NSBonjourServices: ["_http._tcp", "_https._tcp"],
 		},
 	},
@@ -785,7 +785,7 @@ const builderConfig = {
 	// 位置必须与那里的 ICON_CENTERS_X_2X 对齐）。
 	// 未签名构建为三图标：多出的「修复已损坏.app」由 scripts/build-mac-repair-helper.js
 	// osacompile 生成，用户首次需 control-click → 「打开」绕过 Gatekeeper，
-	// 之后弹原生密码框对 /Applications/Vetta.app 执行 xattr -dr com.apple.quarantine。
+	// 之后弹原生密码框对 /Applications/Astravia.app 执行 xattr -dr com.apple.quarantine。
 	// 签名+公证构建不存在「已损坏」问题，退回两图标常规版式。
 	dmg: {
 		background: "build/background.png",
@@ -794,7 +794,7 @@ const builderConfig = {
 		iconTextSize: 12,
 		contents: macSigning.enabled
 			? [
-					{ x: 180, y: 200, type: "file" }, // Vetta.app（electron-builder 自动填入产物路径）
+					{ x: 180, y: 200, type: "file" }, // Astravia.app（electron-builder 自动填入产物路径）
 					{ x: 480, y: 200, type: "link", path: "/Applications" },
 				]
 			: [
@@ -811,7 +811,7 @@ const builderConfig = {
 	linux: {
 		target: LINUX_RELEASE_TARGETS,
 		category: "Utility",
-		description: "Vetta AI agent desktop application",
+		description: "Astravia AI agent desktop application",
 		icon: "build/icon.png",
 		maintainer: LINUX_PACKAGE_METADATA.maintainer,
 		synopsis: "AI agent desktop application",

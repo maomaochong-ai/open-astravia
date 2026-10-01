@@ -1,5 +1,5 @@
 import { basename, dirname } from "node:path";
-import { RetryableCleanup, type RuntimeHostSession } from "@vetta/runtime-core";
+import { RetryableCleanup, type RuntimeHostSession } from "@astravia/runtime-core";
 import { CodingAgentExtensionObservationAdapter } from "../../adapters/extensions/extension-observation-adapter.js";
 import { createCodingAgentExtensionSessionViewFromSource } from "../../adapters/extensions/runtime-session-view-adapter.js";
 import type { Extension, ExtensionError, ExtensionExecutionHost, ExtensionRuntime } from "../../extensions/index.js";

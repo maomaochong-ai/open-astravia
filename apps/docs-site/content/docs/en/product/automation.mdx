@@ -3,7 +3,7 @@ title: Create an automation
 description: Give a manually verified task to the local scheduler and run it once, daily, or at an interval while checking execution history.
 ---
 
-Automation is for stable, repeatable tasks that do not need to be re-explained every time. Scheduling happens in the desktop client: a fully exited Vetta, a sleeping computer, or a shut-down computer cannot run the schedule.
+Automation is for stable, repeatable tasks that do not need to be re-explained every time. Scheduling happens in the desktop client: a fully exited Astravia, a sleeping computer, or a shut-down computer cannot run the schedule.
 
 ## Verify manually first
 
@@ -80,14 +80,14 @@ The activity panel also shows project-level automation summaries, today's execut
 
 | Symptom | Check |
 | --- | --- |
-| Nothing runs at the scheduled time | Vetta is running, the device is awake, the task is enabled, and the time zone has not changed |
+| Nothing runs at the scheduled time | Astravia is running, the device is awake, the task is enabled, and the time zone has not changed |
 | Model call fails | The model and credentials still work and no quota or rate limit was reached |
 | A file cannot be found | The project did not move and the relative path in the prompt still resolves |
 | Stuck on permission confirmation | The task does not require an interactive high-risk action |
 | Success but no artifact | The prompt requires a real artifact and verification instead of relying only on the final reply |
 
 <Callout type="info" title="Automation is not a resident cloud service">
-  Scheduling currently depends on a running Vetta desktop client. Do not treat desktop automation as an equivalent to a cross-device resident service or server-side SLA.
+  Scheduling currently depends on a running Astravia desktop client. Do not treat desktop automation as an equivalent to a cross-device resident service or server-side SLA.
 </Callout>
 
 For a complete recipe, see [Generate a scheduled project report](/examples/scheduled-project-report/). To run one prompt across several directories, use [Batch tasks](/product/batch-tasks/).

@@ -7,7 +7,7 @@ import { PatchContent } from "../src/components/PatchContent";
 import { setGitCommand } from "../src/git/runtime";
 import type { CommitNode } from "../src/git/types";
 
-vi.mock("@vetta-org/plugin-sdk", () => ({
+vi.mock("@astravia-org/plugin-sdk", () => ({
 	useTranslation: () => ({ t: (key: string) => key, locale: "en" }),
 }));
 
@@ -57,7 +57,7 @@ describe("commit details", () => {
 				: patch(args?.at(-1) ?? ""),
 		}));
 		setGitCommand({ run });
-		localStorage.setItem("vetta-git-view-mode", "tree");
+		localStorage.setItem("astravia-git-view-mode", "tree");
 		const { container } = render(<CommitDetailPane root="/repo" node={node} onClose={() => {}} />);
 		fireEvent.click(await screen.findByRole("button", { name: /second.ts/ }));
 		await waitFor(() => expect(run.mock.calls.some(([, args]) => args?.at(-1) === "src/second.ts")).toBe(true));

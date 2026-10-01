@@ -6,7 +6,7 @@ describe("buildInstallFromPathApprovalInput", () => {
 		const input = buildInstallFromPathApprovalInput(
 			{
 				operation: "install-from-path",
-				path: "C:/tmp/vetta-plugin.zip",
+				path: "C:/tmp/astravia-plugin.zip",
 				source: "npm",
 				expectedSha256: "a".repeat(64),
 				expectedId: "demo",
@@ -18,14 +18,14 @@ describe("buildInstallFromPathApprovalInput", () => {
 					integrity: "sha512-fixture",
 				},
 			},
-			" C:/tmp/vetta-plugin.zip ",
+			" C:/tmp/astravia-plugin.zip ",
 		);
 
 		expect(input).toMatchObject({
 			source: "npm",
 			expectedId: "demo",
 			expectedVersion: "1.2.0",
-			path: "C:/tmp/vetta-plugin.zip",
+			path: "C:/tmp/astravia-plugin.zip",
 			npm: { packageName: "@example/demo", resolvedVersion: "1.2.0" },
 		});
 	});

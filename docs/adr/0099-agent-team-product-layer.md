@@ -12,7 +12,7 @@ Desktop 需要在现有多 Agent Runtime 之上提供可理解、可配置的 Ag
 
 ## 决策
 
-1. 新增 `@vetta/agent-team` 包，持有 Agent Profile、Team Definition、Session Event 和 Context Projection 的纯领域合同。
+1. 新增 `@astravia/agent-team` 包，持有 Agent Profile、Team Definition、Session Event 和 Context Projection 的纯领域合同。
 2. Desktop 主进程使用独立的 Agent Team Store 持久化配置，使用独立的 Session Service 管理每个成员的 Runtime 会话。IPC 仅负责参数校验和路由。
 3. Agent Profile 分为库级 Profile 和团队副本。团队可以跟随库级 Profile 更新，或产生团队作用域的独立 Profile。更新被多个团队引用的 Profile 时，先计算受影响团队，UI 显示提醒。删除库级 Profile 时同样先返回团队影响；用户确认后，Store 原子移除引用、按稳定顺序转交负责人，并删除因此成为空成员的团队，引用集合变化时拒绝使用旧确认结果。
 4. Team Session 只持久化用户消息和成员最终文本结果。Context Projector 根据已投递事件集合生成公开上下文，过滤工具调用、推理过程和当前请求的用户消息。

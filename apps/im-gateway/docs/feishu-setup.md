@@ -66,7 +66,7 @@ The first-milestone gateway only handles private chats. Open Feishu, search for 
 im-gateway init
 ```
 
-This creates `~/.vetta/im-gateway/config.yaml` and `~/.vetta/im-gateway/credentials.yaml`. Edit the config to select Feishu:
+This creates `~/.astravia/im-gateway/config.yaml` and `~/.astravia/im-gateway/credentials.yaml`. Edit the config to select Feishu:
 
 ```yaml
 transport:
@@ -79,8 +79,8 @@ Then put the App ID + App Secret somewhere the gateway can find them. Three opti
 
 ```bash
 # macOS / linux secret service / Windows credential manager
-security add-generic-password -s vetta-im-gateway -a feishu_app_id     -w
-security add-generic-password -s vetta-im-gateway -a feishu_app_secret -w
+security add-generic-password -s astravia-im-gateway -a feishu_app_id     -w
+security add-generic-password -s astravia-im-gateway -a feishu_app_secret -w
 ```
 
 (On Linux use `secret-tool store`; on Windows use the Credential Manager UI or `cmdkey`.)
@@ -117,10 +117,10 @@ You should see a banner like:
 
 ```
 im-gateway dev
-  config:      /Users/you/.vetta/im-gateway/config.yaml
+  config:      /Users/you/.astravia/im-gateway/config.yaml
   transport:   feishu
   credentials: keychain
-  state:       /Users/you/.vetta/im-gateway/state.json
+  state:       /Users/you/.astravia/im-gateway/state.json
   log level:   info
   pool size:   8
 ```
@@ -140,7 +140,7 @@ The gateway is just a single binary. The simplest way to run it in the backgroun
 ```ini
 # ~/.config/systemd/user/im-gateway.service
 [Unit]
-Description=vetta IM gateway
+Description=astravia IM gateway
 After=network-online.target
 
 [Service]

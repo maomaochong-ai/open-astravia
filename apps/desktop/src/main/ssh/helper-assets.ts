@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
-import type { SshHelperTarget } from "@vetta/ssh-transport";
+import type { SshHelperTarget } from "@astravia/ssh-transport";
 
 /**
  * 远端 helper 二进制在本机的位置。
@@ -14,10 +14,10 @@ export function resolveSshHelperBinary(
 	environment: { readonly resourcesPath?: string; readonly cwd: string; readonly override?: string } = {
 		resourcesPath: (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath,
 		cwd: process.cwd(),
-		override: process.env.VETTA_SSH_HELPER_DIR,
+		override: process.env.ASTRAVIA_SSH_HELPER_DIR,
 	},
 ): string | undefined {
-	const relative = join(`${target.os}-${target.arch}`, "vetta-ssh-helper");
+	const relative = join(`${target.os}-${target.arch}`, "astravia-ssh-helper");
 	const candidates = [
 		environment.override ? join(environment.override, relative) : undefined,
 		environment.resourcesPath ? join(environment.resourcesPath, "ssh-helper", relative) : undefined,

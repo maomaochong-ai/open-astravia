@@ -47,9 +47,9 @@ function openAbility(slug: string, sourceId = "official"): OpenMarketplaceAbilit
 		origin: {
 			kind: "github-marketplace",
 			sourceId,
-			marketplace: "vetta-open-abilities",
+			marketplace: "astravia-open-abilities",
 			marketplaceVersion: "2026.07.1",
-			repository: "https://github.com/example/vetta-abilities",
+			repository: "https://github.com/example/astravia-abilities",
 		},
 	};
 }

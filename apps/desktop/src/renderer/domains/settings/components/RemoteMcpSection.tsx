@@ -1,6 +1,6 @@
 import type { MarketMcpServer } from "@shared/lib/api";
-import { Button, cn } from "@vetta-org/ui";
-import { RemoteMcpSectionView } from "@vetta-org/theme-ui/settings";
+import { Button, cn } from "@astravia-org/ui";
+import { RemoteMcpSectionView } from "@astravia-org/theme-ui/settings";
 import { useTranslation } from "react-i18next";
 import { SETTINGS_SECTION } from "../registry";
 import {

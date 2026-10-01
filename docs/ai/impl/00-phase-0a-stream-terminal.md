@@ -61,7 +61,7 @@
 
 ### 3.3 测试源码解析
 
-`packages/agent/vitest.config.ts` 增加 `@vetta/ai -> ../ai/src/index.ts` alias。原因是 Agent 测试原先解析到已构建的 `packages/ai/dist`，新增源码 API 不存在于旧 dist，导致测试实际没有覆盖工作区源码组合。
+`packages/agent/vitest.config.ts` 增加 `@astravia/ai -> ../ai/src/index.ts` alias。原因是 Agent 测试原先解析到已构建的 `packages/ai/dist`，新增源码 API 不存在于旧 dist，导致测试实际没有覆盖工作区源码组合。
 
 该 alias 是测试正确性的必要修复，但也暴露出其他上游 Vitest 配置可能同样混用源码和陈旧 dist。全仓 alias 审计留到测试基础设施阶段处理。
 

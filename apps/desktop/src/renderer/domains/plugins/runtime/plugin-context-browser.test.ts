@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+
+import type { PluginBrowserApi, PluginPermission } from "@astravia-org/plugin-sdk";
 import type { InstalledPlugin } from "@preload/api";
 import {
 	activeSessionAtom,
@@ -6,7 +8,6 @@ import {
 	activityPanelTabByProjectAtom,
 	browserUrlBySessionAtom,
 } from "@shared/store/atoms";
-import type { PluginBrowserApi, PluginPermission } from "@vetta-org/plugin-sdk";
 import { getDefaultStore } from "jotai";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createPluginContext } from "./plugin-context";
@@ -15,7 +16,7 @@ import { PluginLocalContributions } from "./plugin-local-contributions";
 // Route navigation is an external UI effect; keep context assembly and permission checks real.
 vi.mock("../../../router", () => ({ router: { navigate: vi.fn() } }));
 
-type BrowserBridge = Window["vetta"]["plugins"]["internalCapabilities"]["browser"];
+type BrowserBridge = Window["astravia"]["plugins"]["internalCapabilities"]["browser"];
 
 const bridge = {
 	runtimeStatus: vi.fn<BrowserBridge["runtimeStatus"]>().mockResolvedValue({ phase: "ready" }),
@@ -41,7 +42,7 @@ function createContext(permissions: PluginPermission[] = [], grantedPermissions 
 		version: "1.0.0",
 		activeVersion: "1.0.0",
 		pluginApiVersion: "^2.0.0",
-		entryUrl: "vetta-plugin://browser-test/dist/mf-manifest.json",
+		entryUrl: "astravia-plugin://browser-test/dist/mf-manifest.json",
 		moduleFederation: { remoteName: "browser_test", expose: "./plugin" },
 		styleUrls: [],
 		permissions,
@@ -87,7 +88,7 @@ function expectNoBrowserEffects(): void {
 
 beforeEach(() => {
 	vi.clearAllMocks();
-	vi.stubGlobal("vetta", { plugins: { internalCapabilities: { browser: bridge } } });
+	vi.stubGlobal("astravia", { plugins: { internalCapabilities: { browser: bridge } } });
 	store.set(activeSessionAtom, session);
 	store.set(browserUrlBySessionAtom, new Map());
 	store.set(activityPanelOpenAtom, false);

@@ -8,8 +8,8 @@ import {
 	useActiveConversation,
 	usePromptAttachment,
 	useTranslation,
-} from "@vetta-org/plugin-sdk";
-import { Button } from "@vetta-org/ui";
+} from "@astravia-org/plugin-sdk";
+import { Button } from "@astravia-org/ui";
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./style.css";
 import { createImageRepository, type ImageRepository } from "./image-repository";

@@ -1,4 +1,7 @@
-import { defineSessionExtensionService, type SessionExtensionDefinition } from "@vetta/runtime-core/session-extensions";
+import {
+	defineSessionExtensionService,
+	type SessionExtensionDefinition,
+} from "@astravia/runtime-core/session-extensions";
 import {
 	CODING_AGENT_NEXT_PROMPT_SUGGESTIONS,
 	CODING_AGENT_SESSION_ASSISTANCE_EXTENSION_ID,

@@ -17,18 +17,18 @@
  * is used automatically (syntax highlighting, line numbers, truncation warnings).
  *
  * Usage:
- *   vetta -e ./tool-override.ts
+ *   astravia -e ./tool-override.ts
  */
 
+import type { TextContent } from "@astravia/ai";
+import type { ExtensionAPI } from "@astravia/coding-agent";
 import { Type } from "@sinclair/typebox";
-import type { TextContent } from "@vetta/ai";
-import type { ExtensionAPI } from "@vetta/coding-agent";
 import { appendFileSync, constants, readFileSync } from "fs";
 import { access, readFile } from "fs/promises";
 import { homedir } from "os";
 import { join, resolve } from "path";
 
-const LOG_FILE = join(homedir(), ".vetta", "agent", "read-access.log");
+const LOG_FILE = join(homedir(), ".astravia", "agent", "read-access.log");
 
 // Paths that are blocked from reading
 const BLOCKED_PATTERNS = [

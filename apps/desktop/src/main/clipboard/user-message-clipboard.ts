@@ -3,8 +3,8 @@ import { readFile } from "node:fs/promises";
 import { extname } from "node:path";
 import { type Clipboard, clipboard, type NativeImage, nativeImage } from "electron";
 import {
-	extractVettaUserMessageClipboardImages,
-	isVettaUserMessageClipboardHtml,
+	extractAstraviaUserMessageClipboardImages,
+	isAstraviaUserMessageClipboardHtml,
 	USER_MESSAGE_CLIPBOARD_ATTRIBUTE,
 	USER_MESSAGE_CLIPBOARD_IMAGE_ATTRIBUTE,
 	USER_MESSAGE_CLIPBOARD_VERSION,
@@ -98,7 +98,7 @@ async function resolveImageSource(
 	return decodeImageDataUrl(`data:${mimeType};base64,${bytes.toString("base64")}`, dependencies);
 }
 
-/** Write one atomic multi-format clipboard entry for Vetta and external rich-text editors. */
+/** Write one atomic multi-format clipboard entry for Astravia and external rich-text editors. */
 export async function writeUserMessageClipboard(
 	request: UserMessageClipboardWriteRequest,
 	dependencies: UserMessageClipboardDependencies = DEFAULT_DEPENDENCIES,
@@ -114,12 +114,12 @@ export async function writeUserMessageClipboard(
 	});
 }
 
-/** Read only Vetta-authored rich messages; arbitrary clipboard HTML stays in main. */
+/** Read only Astravia-authored rich messages; arbitrary clipboard HTML stays in main. */
 export function readUserMessageClipboard(
 	dependencies: Pick<Clipboard, "readHTML" | "readText"> = clipboard,
 ): UserMessageClipboardReadResult | null {
 	const html = dependencies.readHTML();
-	if (!isVettaUserMessageClipboardHtml(html)) return null;
+	if (!isAstraviaUserMessageClipboardHtml(html)) return null;
 	return { text: dependencies.readText(), html };
 }
 
@@ -141,7 +141,7 @@ export async function pasteUserMessageClipboard(
 ): Promise<UserMessageClipboardPasteResult | null> {
 	const richMessage = readUserMessageClipboard(dependencies.clipboard);
 	if (!richMessage) return null;
-	const encodedImages = extractVettaUserMessageClipboardImages(richMessage.html);
+	const encodedImages = extractAstraviaUserMessageClipboardImages(richMessage.html);
 	if (encodedImages.length === 0) return null;
 	const images = await dependencies.persistImages(
 		sessionId,

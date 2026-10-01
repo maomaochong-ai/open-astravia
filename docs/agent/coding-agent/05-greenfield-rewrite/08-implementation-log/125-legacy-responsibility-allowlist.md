@@ -38,7 +38,7 @@ Legacy 的共享能力”：
 - 实现现有 `RuntimeSharedModelController` Port；
 - `refreshAuth` 保持先设置 Server Token、再等待远程模型刷新；
 - `refreshInBackground` 保持后台刷新语义；
-- 从稳定 `@vetta/coding-agent/runtime-host` 子路径导出。
+- 从稳定 `@astravia/coding-agent/runtime-host` 子路径导出。
 
 原 `LegacyRuntimeSharedModelController` 保留为带弃用标记的兼容子类，旧构造方式和
 `instanceof ModelRegistryRuntimeSharedModelController` 均成立。
@@ -64,8 +64,8 @@ Composition Root 直接使用中性实现构造，不再通过 Legacy 对象转�
 扩展 `check-package-boundaries.mjs`：
 
 - 将 `apps/cli-host` 纳入实际扫描范围；
-- `@vetta/coding-agent/legacy/cli` 只允许出现在 CLI Runtime 选择入口；
-- `@vetta/coding-agent/legacy/*` 的其他生产导入会失败；
+- `@astravia/coding-agent/legacy/cli` 只允许出现在 CLI Runtime 选择入口；
+- `@astravia/coding-agent/legacy/*` 的其他生产导入会失败；
 - Legacy Runtime Adapter 符号只允许存在于 Coding Agent Adapter 目录和 Desktop 单一兼容模块；
 - 新生产模块使用 catch-all Legacy 工厂或直接引入旧 Backend/Catalog/History 会被阻断。
 

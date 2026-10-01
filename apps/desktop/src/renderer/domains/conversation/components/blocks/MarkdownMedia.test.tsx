@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { MarkdownContent } from "@vetta-org/theme-ui/markdown";
-import { MarkdownPreviewView } from "@vetta-org/theme-ui/activity";
+import { MarkdownContent } from "@astravia-org/theme-ui/markdown";
+import { MarkdownPreviewView } from "@astravia-org/theme-ui/activity";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createMarkdownHostFixture } from "./markdown-host.fixture";
 

@@ -18,7 +18,7 @@
 - 会话历史、认证、模型和设置等用户数据；必要时由显式、独立的新迁移器读取旧格式。
 - 模型消息、工具消息、错误、取消、事件顺序、并发约束和资源释放语义。
 - 仍然有效的行为测试场景和数据 fixture；旧实现可以临时作为测试 Oracle，但不能被新生产代码调用。
-- `@vetta/ai` 与经过合同验证的 `@vetta/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
+- `@astravia/ai` 与经过合同验证的 `@astravia/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
 
 ## 明确舍弃（固定）
 
@@ -82,7 +82,7 @@ Tool 参数继续使用既有 TypeBox Schema，这是需要在模型与 Tool 执
 
 ## 行为兼容性验证
 
-- Extension Runtime 与公共子路径定向测试 9 个文件、76 项测试通过，覆盖发现顺序、目录和 package 入口、依赖解析、加载失败、注册冲突、事件变换、Tool 拦截顺序/阻断/失败通知、命令宿主、Greenfield 桥接和 `@vetta/coding-agent/extensions` 导出。
+- Extension Runtime 与公共子路径定向测试 9 个文件、76 项测试通过，覆盖发现顺序、目录和 package 入口、依赖解析、加载失败、注册冲突、事件变换、Tool 拦截顺序/阻断/失败通知、命令宿主、Greenfield 桥接和 `@astravia/coding-agent/extensions` 导出。
 - 根级 `bunx tsgo --noEmit` 在调用方切换后通过。
 - 重写进度门禁通过：旧实现依赖 122、Runtime 反向依赖 0、旧文件 149、兼容导出 0；Extensions 域不再出现在旧依赖域统计中。
 - `bun run check:quick` 与全仓 `bun run check` 均通过，覆盖 Biome、根/CLI/Desktop/Admin 类型检查和全部质量守卫。

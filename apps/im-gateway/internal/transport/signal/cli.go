@@ -53,7 +53,7 @@ var ErrNoLinkURI = errors.New("signal: signal-cli produced no device-link URI (c
 var ErrNotLinked = errors.New("signal: no linked signal-cli account")
 
 // defaultDeviceName is what the user sees under Signal → Linked devices.
-const defaultDeviceName = "Vetta"
+const defaultDeviceName = "Astravia"
 
 // daemonReadyTimeout bounds the wait for the daemon's first successful RPC.
 // signal-cli on a JVM can take several seconds to boot on a cold start; the

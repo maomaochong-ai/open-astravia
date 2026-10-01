@@ -1,4 +1,4 @@
-import { DOMAIN_MODEL_CAPABILITIES } from "@vetta-org/capability-sdk";
+import { DOMAIN_MODEL_CAPABILITIES } from "@astravia-org/capability-sdk";
 import { describe, expect, it, vi } from "vitest";
 import type { ModelCredentialStore } from "./model-credential-store.js";
 import { ModelSettingsService, type ModelsConfig } from "./model-settings-service.js";

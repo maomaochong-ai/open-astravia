@@ -1,4 +1,4 @@
-import type { Api, Model } from "@vetta/ai";
+import type { Api, Model } from "@astravia/ai";
 import type { CompactionResult } from "../compaction/index.js";
 import type { ProviderConfig } from "./provider-contracts.js";
 import type { ExtensionSessionSetup, ExtensionSessionView } from "./session-contracts.js";

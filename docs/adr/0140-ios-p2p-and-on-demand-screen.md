@@ -6,7 +6,7 @@
 
 ## 背景
 
-Android 已能通过 WebRTC 查看和操控电脑，并按 ADR-0135 把会话、聊天、文件等控制消息迁到同一条 P2P 连接的 `vetta-control-v2` 通道上。iPhone 客户端（ADR-0129）只有局域网与中继两条链路，没有远程桌面。
+Android 已能通过 WebRTC 查看和操控电脑，并按 ADR-0135 把会话、聊天、文件等控制消息迁到同一条 P2P 连接的 `astravia-control-v2` 通道上。iPhone 客户端（ADR-0129）只有局域网与中继两条链路，没有远程桌面。
 
 把 Android 的做法原样搬到 iPhone 前，发现它有一个隐藏代价：P2P 控制通道和屏幕视频共用一个 PeerConnection，电脑建连时总把屏幕轨道加进去且从不暂停。只要手机走在 P2P 上，哪怕只是聊天，电脑都在持续截屏、编码、推流：
 
@@ -23,7 +23,7 @@ Android 已能通过 WebRTC 查看和操控电脑，并按 ADR-0135 把会话、
 iPhone 按 ADR-0135 的规则接入：局域网或中继先连通，再升级到 WebRTC 控制通道；P2P 失败时回退，前台时定期重试（超时 12 秒，探测间隔 20 秒）。聊天、会话、文件面板等所有控制消息都走当前优先级最高的链路。
 
 - WebRTC 使用 `webrtc-sdk/Specs`，与 Android 的 `io.github.webrtc-sdk:android` 同源，尽量对齐同一个里程碑版本。
-- `VettaKit` 只放平台无关的部分：信令与输入消息的编解码、`P2PTransport` 协议、通道状态机、坐标换算、键码映射，全部可用假传输单测。真正的 PeerConnection 与视频视图放在单独的 `VettaRTC` target，只有 App 依赖它，`swift test` 不链接 WebRTC 二进制。
+- `AstraviaKit` 只放平台无关的部分：信令与输入消息的编解码、`P2PTransport` 协议、通道状态机、坐标换算、键码映射，全部可用假传输单测。真正的 PeerConnection 与视频视图放在单独的 `AstraviaRTC` target，只有 App 依赖它，`swift test` 不链接 WebRTC 二进制。
 - 进入后台时，iPhone 主动取消画面订阅、发送 `end(peer_closed)` 并关闭 PeerConnection，不申请任何后台保活。回到前台时先走局域网或中继，再重新升级到 P2P；如果切走前停在远程桌面页，就自动重新订阅。
 - 仍然只用 STUN，不引入 TURN。直连失败时，控制消息走中继，远程桌面页提示当前网络无法直连电脑。
 
@@ -82,5 +82,5 @@ iPhone 不和旧电脑建立 P2P，是为了避免一上线就承担常开视频
 
 - 只聊天时，电脑不再截屏，Android 和 iPhone 都省下流量与电量；代价是进入远程桌面时画面会晚几百毫秒出来。
 - 黑屏和操作无响应有了明确原因，不用再靠排查文档逐项猜。
-- iPhone 引入第一个第三方二进制依赖。它只在 App target 中链接，不影响 `VettaKit` 的测试。
+- iPhone 引入第一个第三方二进制依赖。它只在 App target 中链接，不影响 `AstraviaKit` 的测试。
 - 以下内容推迟到后续版本：把电脑剪贴板同步回手机、多显示器切换、画质档位、滚动手势、控制中心按钮。Android 仍是直接触控，是否改成触控板另议。

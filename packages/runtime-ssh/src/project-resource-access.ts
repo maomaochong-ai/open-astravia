@@ -1,12 +1,12 @@
 import { posix } from "node:path";
-import type { NodeResourceAccess } from "@vetta/runtime-node/host";
+import type { NodeResourceAccess } from "@astravia/runtime-node/host";
 import {
 	formatSshProjectUri,
 	isSshProjectUri,
 	parseProjectLocation,
 	type SshConnection,
 	type SshProjectLocation,
-} from "@vetta/ssh-transport";
+} from "@astravia/ssh-transport";
 
 /**
  * 按路径归属分发的资源访问端口：`ssh://<hostId>/…` 走远端，其余走本机。

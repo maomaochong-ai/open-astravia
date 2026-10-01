@@ -1,10 +1,10 @@
+import type { PluginDefinition } from "@astravia-org/plugin-sdk";
 import {
 	createInstance,
 	type ModuleFederation,
 	type ModuleFederationRuntimePlugin,
 } from "@module-federation/enhanced/runtime";
 import type { InstalledPlugin } from "@preload/api";
-import type { PluginDefinition } from "@vetta-org/plugin-sdk";
 import { extractPluginReloadToken, normalizePluginModule } from "./plugin-module-contract";
 import { createPluginRuntimeShared } from "./plugin-shared-modules";
 
@@ -14,7 +14,7 @@ const remoteReloadTokens = new Map<string, string>();
 const pluginDevRuntimePromises = new Map<string, Promise<void>>();
 
 interface PluginDevModuleGlobal {
-	__VETTA_PLUGIN_DEV_MODULES__?: Map<string, unknown>;
+	__ASTRAVIA_PLUGIN_DEV_MODULES__?: Map<string, unknown>;
 }
 
 async function ensurePluginDevRuntime(plugin: InstalledPlugin): Promise<void> {
@@ -22,7 +22,7 @@ async function ensurePluginDevRuntime(plugin: InstalledPlugin): Promise<void> {
 	if (!origin) return;
 	let pending = pluginDevRuntimePromises.get(origin);
 	if (!pending) {
-		pending = import(/* @vite-ignore */ `${origin}/@vetta-plugin-dev-preamble`)
+		pending = import(/* @vite-ignore */ `${origin}/@astravia-plugin-dev-preamble`)
 			.then(() => undefined)
 			.catch((error: unknown) => {
 				pluginDevRuntimePromises.delete(origin);
@@ -34,13 +34,13 @@ async function ensurePluginDevRuntime(plugin: InstalledPlugin): Promise<void> {
 }
 
 function getLatestPluginDevModule(pluginId: string): unknown {
-	return (globalThis as typeof globalThis & PluginDevModuleGlobal).__VETTA_PLUGIN_DEV_MODULES__?.get(pluginId);
+	return (globalThis as typeof globalThis & PluginDevModuleGlobal).__ASTRAVIA_PLUGIN_DEV_MODULES__?.get(pluginId);
 }
 
 /** Propagates the manifest reload token to the federation remote entry URL. */
 function createReloadBustPlugin(): ModuleFederationRuntimePlugin {
 	return {
-		name: "vetta-reload-bust",
+		name: "astravia-reload-bust",
 		afterResolve(args) {
 			const token = remoteReloadTokens.get(args.remoteInfo.name);
 			if (token && args.remoteInfo.entry && !args.remoteInfo.entry.includes("reloadBust=")) {
@@ -54,7 +54,7 @@ function createReloadBustPlugin(): ModuleFederationRuntimePlugin {
 
 function getModuleFederationHost(): ModuleFederation {
 	moduleFederationHost ??= createInstance({
-		name: "vetta_plugin_host",
+		name: "astravia_plugin_host",
 		remotes: [],
 		shared: createPluginRuntimeShared(),
 		shareStrategy: "loaded-first",

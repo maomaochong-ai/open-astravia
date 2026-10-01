@@ -17,7 +17,7 @@ describe("runtime-mcp protocol boundary", () => {
 		expect(
 			findPackageBoundaryViolations(
 				"packages/runtime-mcp/src/client/default-client.ts",
-				'import { createMcpClient } from "@vetta/runtime-node/mcp";',
+				'import { createMcpClient } from "@astravia/runtime-node/mcp";',
 			),
 		).toContainEqual(expect.stringContaining("runtime-mcp protocol must not import platform implementation"));
 	});
@@ -26,7 +26,7 @@ describe("runtime-mcp protocol boundary", () => {
 		expect(
 			findPackageBoundaryViolations(
 				"packages/runtime-mcp/src/client/client-factory.ts",
-				'import type { OAuthClientProvider } from "@modelcontextprotocol/sdk/client/auth.js";\nimport type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";',
+				'import type { OAuthClientProvider } from "@modelcontextprotocol/sdk/client/auth.js";\nimport type { RuntimeToolDefinition } from "@astravia/runtime-core/kernel";',
 			),
 		).toEqual([]);
 	});
@@ -35,13 +35,13 @@ describe("runtime-mcp protocol boundary", () => {
 		expect(
 			findPackageBoundaryViolations(
 				"apps/desktop/src/renderer/chat.ts",
-				'import { selectMcpMediaCandidates } from "@vetta/runtime-mcp";',
+				'import { selectMcpMediaCandidates } from "@astravia/runtime-mcp";',
 			),
-		).toContainEqual(expect.stringContaining("must import MCP runtime values from @vetta/runtime-mcp/browser"));
+		).toContainEqual(expect.stringContaining("must import MCP runtime values from @astravia/runtime-mcp/browser"));
 		expect(
 			findPackageBoundaryViolations(
 				"apps/desktop/src/renderer/chat.ts",
-				'import { selectMcpMediaCandidates } from "@vetta/runtime-mcp/browser";',
+				'import { selectMcpMediaCandidates } from "@astravia/runtime-mcp/browser";',
 			),
 		).toEqual([]);
 	});
@@ -50,13 +50,13 @@ describe("runtime-mcp protocol boundary", () => {
 		expect(
 			findPackageBoundaryViolations(
 				"apps/desktop/src/renderer/chat.ts",
-				'import type { McpToolCallResult } from "@vetta/runtime-mcp";',
+				'import type { McpToolCallResult } from "@astravia/runtime-mcp";',
 			),
 		).toEqual([]);
 		expect(
 			findPackageBoundaryViolations(
 				"apps/desktop/src/renderer/chat.ts",
-				'import { type McpToolCallResult } from "@vetta/runtime-mcp/protocol";',
+				'import { type McpToolCallResult } from "@astravia/runtime-mcp/protocol";',
 			),
 		).toEqual([]);
 	});

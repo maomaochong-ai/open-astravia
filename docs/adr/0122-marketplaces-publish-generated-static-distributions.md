@@ -13,7 +13,7 @@
 采用 Helm chart-releaser 的静态包仓库模式：普通源码 PR 审核代码及能力版本，
 合入市场配置声明的源码分支表示批准发布。已有线上市场使用独立的 `marketplace-source`
 承载新源码，冻结 `main` 作为 schema v2 兼容来源。CI 构建未发布插件版本、校验已发布 Desktop 兼容性、
-上传不可变 .vettapkg，再向 gh-pages 发布生成的 schema v3 目录与资源。
+上传不可变 .astraviapkg，再向 gh-pages 发布生成的 schema v3 目录与资源。
 不新增发布计划协议，不向源码分支回写生成索引，不创建第二个目录 PR。
 
 源码配置 marketplace.source.json 不包含 marketplaceVersion 或 releases；
@@ -25,7 +25,7 @@ Desktop 沿用 GitHub 来源协议读取 gh-pages 的精简归档，插件包按
 旧 schema v1/v2 入口和用户来源配置不自动迁移，`main` 在受支持旧版仍使用期间保持有效；
 确认新分发有效后，新版 Desktop 显式切换到 `gh-pages`。
 
-首个依赖新协议的 Desktop 版本可以在市场发布配置中钉到 OpenVetta 的不可变
+首个依赖新协议的 Desktop 版本可以在市场发布配置中钉到 OpenAstravia 的不可变
 commit，先发布并联调真实 gh-pages 与 Release 制品。该候选只在同版本稳定 Release
 尚不存在时生效，且门禁会从 commit 中核对 Desktop 包版本、Plugin API 和 schema；
 稳定 Release 发布后自动改用 tag 证明，不保留宽泛的跳过开关。

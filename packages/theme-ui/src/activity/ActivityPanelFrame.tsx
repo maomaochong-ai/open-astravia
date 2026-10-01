@@ -1,5 +1,5 @@
 import type { ComponentPropsWithoutRef, JSX, ReactNode } from "react";
-import { cn } from "@vetta-org/ui";
+import { cn } from "@astravia-org/ui";
 import { ThemeSurface } from "../appearance/ThemeSurface";
 
 export interface ActivityPanelFrameProps extends ComponentPropsWithoutRef<"div"> {

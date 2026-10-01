@@ -171,19 +171,19 @@ function classify(abs, text, deferrals) {
 		return { status: "non_goal", rel, lines };
 	}
 	// Host design-system chrome (Dialog/Button implementations) — not business views.
-	// Migration target is @vetta-org/ui when primitives land, not theme-ui business domains.
+	// Migration target is @astravia-org/ui when primitives land, not theme-ui business domains.
 	if (/\/shared\/components\/ui\//.test(rel)) {
 		return {
 			status: "permanent_desktop",
 			rel,
 			lines,
-			reason: "host design-system primitive implementation (chrome); leave until @vetta-org/ui",
+			reason: "host design-system primitive implementation (chrome); leave until @astravia-org/ui",
 		};
 	}
 
-	const hasTheme = /@vetta\/theme-ui/.test(text);
+	const hasTheme = /@astravia\/theme-ui/.test(text);
 	const hasAtom = /useAtom|from ["']jotai|store\/atoms/.test(text);
-	const hasIpc = /window\.vetta/.test(text);
+	const hasIpc = /window\.astravia/.test(text);
 	const hasRouter = /@tanstack\/react-router|useNavigate|useParams|useMatches\b/.test(text);
 	const hasI18n = /react-i18next|useTranslation/.test(text);
 	const hasHostUi = hasValueHostUi(text);
@@ -211,7 +211,7 @@ function classify(abs, text, deferrals) {
 	}
 
 	const isThinReexport =
-		hasTheme && lines <= 45 && !dataHeavy && (/^export \{/.test(text.trim()) || /from ["']@vetta\/theme-ui/.test(text));
+		hasTheme && lines <= 45 && !dataHeavy && (/^export \{/.test(text.trim()) || /from ["']@astravia\/theme-ui/.test(text));
 	const isAdapter =
 		hasTheme &&
 		lines <= 70 &&
@@ -339,7 +339,7 @@ for (const [p, d] of Object.entries(deferrals)) {
 	if (d.kind === "permanent_desktop") {
 		const dataHeavy =
 			/useAtom|from ["']jotai|store\/atoms/.test(text) ||
-			/window\.vetta/.test(text) ||
+			/window\.astravia/.test(text) ||
 			/@tanstack\/react-router|useNavigate|useParams|useMatches\b/.test(text);
 		const jsx = hasJsx(text);
 		const lines = text.split("\n").length;

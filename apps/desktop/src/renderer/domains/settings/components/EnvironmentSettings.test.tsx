@@ -35,7 +35,7 @@ function statusWith(git: GitStatus) {
 	};
 }
 
-function mockVetta(git: GitStatus) {
+function mockAstravia(git: GitStatus) {
 	const api = {
 		runtimes: {
 			getStatus: vi.fn(async () => statusWith(git)),
@@ -45,7 +45,7 @@ function mockVetta(git: GitStatus) {
 		},
 		shell: { openExternal: vi.fn(async () => undefined) },
 	};
-	(window as unknown as { vetta: unknown }).vetta = api;
+	(window as unknown as { astravia: unknown }).astravia = api;
 	return api;
 }
 
@@ -57,7 +57,7 @@ afterEach(() => {
 describe("EnvironmentSettings · Git", () => {
 	it("macOS: opens the system installer, then shows the version after checking again", async () => {
 		const user = userEvent.setup();
-		const api = mockVetta({ available: false, install: { kind: "xcode-clt" } });
+		const api = mockAstravia({ available: false, install: { kind: "xcode-clt" } });
 		render(<EnvironmentSettings />);
 
 		expect(await screen.findByText("environmentGit.missing")).toBeTruthy();
@@ -76,9 +76,9 @@ describe("EnvironmentSettings · Git", () => {
 		expect(screen.queryByRole("button", { name: "environmentGit.installXcode" })).toBeNull();
 	});
 
-	it("Windows: installs MinGit for Vetta and marks it as Vetta-only", async () => {
+	it("Windows: installs MinGit for Astravia and marks it as Astravia-only", async () => {
 		const user = userEvent.setup();
-		const api = mockVetta({ available: false, install: { kind: "managed-download", version: "2.55.0.5" } });
+		const api = mockAstravia({ available: false, install: { kind: "managed-download", version: "2.55.0.5" } });
 		let finish: (value: GitStatus) => void = () => undefined;
 		api.runtimes.installGit.mockImplementationOnce(
 			() =>
@@ -103,7 +103,7 @@ describe("EnvironmentSettings · Git", () => {
 
 	it("Windows: links to the official installer for a system-wide Git", async () => {
 		const user = userEvent.setup();
-		const api = mockVetta({ available: false, install: { kind: "managed-download", version: "2.55.0.5" } });
+		const api = mockAstravia({ available: false, install: { kind: "managed-download", version: "2.55.0.5" } });
 		render(<EnvironmentSettings />);
 
 		await user.click(await screen.findByRole("button", { name: "environmentGit.download" }));
@@ -113,7 +113,7 @@ describe("EnvironmentSettings · Git", () => {
 	it("Linux: shows the package manager command and copies it", async () => {
 		const user = userEvent.setup();
 		const writeText = vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue(undefined);
-		mockVetta({ available: false, install: { kind: "package-manager", command: "sudo apt install git" } });
+		mockAstravia({ available: false, install: { kind: "package-manager", command: "sudo apt install git" } });
 		render(<EnvironmentSettings />);
 
 		expect(await screen.findByText("sudo apt install git")).toBeTruthy();
@@ -126,7 +126,7 @@ describe("EnvironmentSettings · Git", () => {
 
 	it("surfaces a failed install instead of swallowing it", async () => {
 		const user = userEvent.setup();
-		const api = mockVetta({ available: false, install: { kind: "managed-download", version: "2.55.0.5" } });
+		const api = mockAstravia({ available: false, install: { kind: "managed-download", version: "2.55.0.5" } });
 		api.runtimes.installGit.mockRejectedValueOnce(new Error("HTTP 404"));
 		render(<EnvironmentSettings />);
 

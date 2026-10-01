@@ -1,10 +1,10 @@
-import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
+import type { RuntimeToolDefinition } from "@astravia/runtime-core/kernel";
 import type {
 	SubagentCoordinatorPort,
 	SubagentSnapshot,
 	SubagentSpawnRequest,
 	SubagentWaitResult,
-} from "@vetta/runtime-subagents";
+} from "@astravia/runtime-subagents";
 import { describe, expect, it, vi } from "vitest";
 import {
 	createDispatchWorkflowsToolRegistration,

@@ -2,14 +2,14 @@ import type { IpcRenderer } from "electron";
 import type { DesktopApi } from "../api.js";
 
 const WEBHOOK_CHANNELS = {
-	LIST: "vetta:webhook:list",
-	LIST_PROVIDERS: "vetta:webhook:list-providers",
-	CREATE: "vetta:webhook:create",
-	UPDATE: "vetta:webhook:update",
-	DELETE: "vetta:webhook:delete",
-	TOGGLE: "vetta:webhook:toggle",
-	TEST: "vetta:webhook:test",
-	SEND: "vetta:webhook:send",
+	LIST: "astravia:webhook:list",
+	LIST_PROVIDERS: "astravia:webhook:list-providers",
+	CREATE: "astravia:webhook:create",
+	UPDATE: "astravia:webhook:update",
+	DELETE: "astravia:webhook:delete",
+	TOGGLE: "astravia:webhook:toggle",
+	TEST: "astravia:webhook:test",
+	SEND: "astravia:webhook:send",
 } as const;
 
 export function createWebhookApi(ipc: IpcRenderer): Pick<DesktopApi, "webhook"> {

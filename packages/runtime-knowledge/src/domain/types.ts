@@ -2,7 +2,7 @@
  * LLM Wiki 知识库的领域数据模型。
  *
  * 约定见 docs/prd-knowledge-base-llm-wiki.md。对 agent 而言是单一全局库，
- * 物理布局位于 ~/.vetta/knowledges/。frontmatter 是唯一真相源，tags.json /
+ * 物理布局位于 ~/.astravia/knowledges/。frontmatter 是唯一真相源，tags.json /
  * manifest.json 是可从 frontmatter 重建的缓存。
  */
 

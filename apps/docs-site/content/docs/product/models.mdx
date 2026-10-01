@@ -5,7 +5,7 @@ description: 在设置中添加预设或自定义服务商、登记模型并选�
 
 模型配置决定普通会话、知识库加工、批量任务、自动化和 Claw 等路径可用的模型。入口：**设置 → 模型配置**。
 
-配置文件路径：`~/.vetta/agent/models.json`（开发隔离环境可能使用 `VETTA_CONFIG_DIR` 指向的目录）。
+配置文件路径：`~/.astravia/agent/models.json`（开发隔离环境可能使用 `ASTRAVIA_CONFIG_DIR` 指向的目录）。
 
 ## 思考模式
 
@@ -69,7 +69,7 @@ description: 在设置中添加预设或自定义服务商、登记模型并选�
 	| 服务商名称 | `团队代理服务` | 只用于本机识别 |
 	| API 类型 | `OpenAI Compatible` | 必须与上游协议一致 |
 	| Base URL | `https://api.example.com/v1` | 核对是否应包含 `/v1` |
-	| API Key | `env:TEAM_MODEL_KEY` | 环境变量需在 Vetta 进程中可见 |
+	| API Key | `env:TEAM_MODEL_KEY` | 环境变量需在 Astravia 进程中可见 |
 	| 模型 ID | `team-model-id` | 使用接口接受的精确 ID，不是显示名 |
   </Tab>
 </Tabs>

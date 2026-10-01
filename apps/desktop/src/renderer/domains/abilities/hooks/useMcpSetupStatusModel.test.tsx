@@ -21,7 +21,7 @@ describe("useMcpSetupStatusModel", () => {
 					resolveStatus = resolve;
 				}),
 		);
-		(window as unknown as { vetta: unknown }).vetta = { mcp: { getSetupLoginStatus } };
+		(window as unknown as { astravia: unknown }).astravia = { mcp: { getSetupLoginStatus } };
 		const refresh = vi.fn();
 		const { result } = renderHook(() => useMcpSetupStatusModel(item, refresh), { wrapper: StrictMode });
 
@@ -36,7 +36,7 @@ describe("useMcpSetupStatusModel", () => {
 		const getSetupLoginStatus = vi.fn(async () => {
 			throw new Error("browser unavailable");
 		});
-		(window as unknown as { vetta: unknown }).vetta = { mcp: { getSetupLoginStatus } };
+		(window as unknown as { astravia: unknown }).astravia = { mcp: { getSetupLoginStatus } };
 		const { result } = renderHook(() => useMcpSetupStatusModel(item, vi.fn()));
 
 		await waitFor(() => expect(result.current).toMatchObject({ phase: "failed", error: "browser unavailable" }));

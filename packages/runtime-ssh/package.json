@@ -1,5 +1,5 @@
 {
-	"name": "@vetta/runtime-ssh",
+	"name": "@astravia/runtime-ssh",
 	"version": "0.0.1",
 	"description": "Coding Agent tool environment that executes against a remote host over SSH.",
 	"type": "module",
@@ -17,10 +17,10 @@
 		"build": "tsgo -p tsconfig.build.json"
 	},
 	"dependencies": {
-		"@vetta/runtime-core": "workspace:*",
-		"@vetta/runtime-node": "workspace:*",
-		"@vetta/runtime-tools": "workspace:*",
-		"@vetta/ssh-transport": "workspace:*"
+		"@astravia/runtime-core": "workspace:*",
+		"@astravia/runtime-node": "workspace:*",
+		"@astravia/runtime-tools": "workspace:*",
+		"@astravia/ssh-transport": "workspace:*"
 	},
 	"devDependencies": {
 		"@types/node": "^22.10.5",

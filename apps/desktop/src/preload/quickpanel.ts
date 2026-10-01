@@ -14,8 +14,8 @@ import {
 
 // i18n 通道字面量刻意内联（不 import main/ipc/i18n，避免把主进程模块拉进 preload）。
 // 与 src/main/ipc/i18n.ts 保持一致；二者均为全局通道，面板窗口可直接复用。
-const I18N_GET_INITIAL = "vetta:i18n:get-initial-language";
-const I18N_LANGUAGE_CHANGED = "vetta:i18n:language-changed";
+const I18N_GET_INITIAL = "astravia:i18n:get-initial-language";
+const I18N_LANGUAGE_CHANGED = "astravia:i18n:language-changed";
 
 // preload 求值期同步取主进程当前语言（与主窗口同源），供面板 i18n 首帧前读取。
 // get-initial 返回 { preference, language }；面板只需要解析后的 language。
@@ -94,4 +94,4 @@ const api: QuickPanelBridge = {
 	},
 };
 
-contextBridge.exposeInMainWorld("vettaQuickPanel", api);
+contextBridge.exposeInMainWorld("astraviaQuickPanel", api);

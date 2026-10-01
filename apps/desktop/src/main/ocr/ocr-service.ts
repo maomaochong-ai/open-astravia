@@ -1,10 +1,10 @@
 import { randomUUID } from "node:crypto";
 import {
+	ASTRAVIA_OCR_CONFIGURATION,
+	type AstraviaOcrConfiguration,
 	DEFAULT_OCR_PROVIDER_ID,
 	type OcrRemoteProviderPolicy,
-	VETTA_OCR_CONFIGURATION,
-	type VettaOcrConfiguration,
-} from "@vetta/runtime-tools";
+} from "@astravia/runtime-tools";
 import {
 	CAPABILITY_ERROR_CODES,
 	CapabilityError,
@@ -13,7 +13,7 @@ import {
 	type OcrProviderInput,
 	type OcrRequest,
 	type OcrResult,
-} from "@vetta-org/capability-sdk";
+} from "@astravia-org/capability-sdk";
 import type { OcrProviderContext, OcrProviderRegistry } from "./ocr-provider-registry.js";
 
 export interface OcrServiceInputResolver {
@@ -39,12 +39,12 @@ export class OcrService {
 		return this.options.registry.listProviders();
 	}
 
-	readConfiguration(): VettaOcrConfiguration {
+	readConfiguration(): AstraviaOcrConfiguration {
 		const persisted = this.options.readConfiguration();
 		const value = isRecord(persisted)
-			? mergeConfiguration(VETTA_OCR_CONFIGURATION.defaultValue, persisted)
-			: VETTA_OCR_CONFIGURATION.defaultValue;
-		return VETTA_OCR_CONFIGURATION.codec.decode(value);
+			? mergeConfiguration(ASTRAVIA_OCR_CONFIGURATION.defaultValue, persisted)
+			: ASTRAVIA_OCR_CONFIGURATION.defaultValue;
+		return ASTRAVIA_OCR_CONFIGURATION.codec.decode(value);
 	}
 
 	async recognize(request: OcrRequest, options: OcrServiceCallOptions): Promise<OcrResult> {
@@ -134,7 +134,7 @@ function validateResult(result: OcrResult, providerId: string, inputs: readonly 
 	return result;
 }
 
-function mergeConfiguration(base: VettaOcrConfiguration, patch: Record<string, unknown>): Record<string, unknown> {
+function mergeConfiguration(base: AstraviaOcrConfiguration, patch: Record<string, unknown>): Record<string, unknown> {
 	return { ...base, ...patch };
 }
 

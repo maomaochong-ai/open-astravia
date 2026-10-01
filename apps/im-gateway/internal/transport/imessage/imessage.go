@@ -33,8 +33,8 @@ import (
 
 	_ "modernc.org/sqlite"
 
-	"vetta-im-gateway/internal/transport"
-	"vetta-im-gateway/internal/transport/inbox"
+	"astravia-im-gateway/internal/transport"
+	"astravia-im-gateway/internal/transport/inbox"
 )
 
 // pollQuery selects every message row past the cursor, joined to its

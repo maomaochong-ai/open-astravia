@@ -5,7 +5,7 @@ import {
 	type RemoteFrame,
 	type RemoteTransport,
 	type RemoteTransportHandlers,
-} from "@vetta/remote-control";
+} from "@astravia/remote-control";
 
 export interface RendererDataChannelPort {
 	send(message: string): void;

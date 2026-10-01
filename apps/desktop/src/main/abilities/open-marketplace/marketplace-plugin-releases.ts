@@ -1,4 +1,4 @@
-import { isPluginApiCompatible } from "@vetta-org/plugin-sdk/manifest";
+import { isPluginApiCompatible } from "@astravia-org/plugin-sdk/manifest";
 import { compareAppVersions, isAppVersionCompatible } from "./marketplace-compatibility.js";
 import type { MarketplaceAbilityManifest } from "./marketplace-schema.js";
 

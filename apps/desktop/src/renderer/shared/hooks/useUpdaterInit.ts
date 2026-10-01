@@ -11,12 +11,12 @@ export function useUpdaterInit(): void {
 
 	useEffect(() => {
 		let cancelled = false;
-		void window.vetta.updater.getState().then((s) => {
+		void window.astravia.updater.getState().then((s) => {
 			if (cancelled) return;
 			setState(s);
 		});
 
-		const unsubscribe = window.vetta.updater.onStateChanged(setState);
+		const unsubscribe = window.astravia.updater.onStateChanged(setState);
 
 		return () => {
 			cancelled = true;

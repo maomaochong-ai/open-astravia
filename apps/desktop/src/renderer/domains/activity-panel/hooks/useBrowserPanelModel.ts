@@ -1,16 +1,16 @@
+import type { BrowserPanelLabels } from "@astravia-org/theme-ui/activity";
 import {
 	browserUrlByWorkspaceAtom,
 	getBrowserUrlForWorkspace,
 	setBrowserUrlForWorkspaceAtom,
 } from "@shared/store/atoms";
-import type { BrowserPanelLabels } from "@vetta-org/theme-ui/activity";
 import { useAtomValue, useSetAtom } from "jotai";
 import { type FormEvent, type Ref, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useActivityWorkspace } from "../registry/context";
 
 /** 所有会话的内置浏览器共享一份持久 cookie/会话，登录一次到处复用。 */
-const BROWSER_PARTITION = "persist:vetta-browser";
+const BROWSER_PARTITION = "persist:astravia-browser";
 
 /** Electron <webview> 标签运行时方法的最小接口（仅声明本面板用到的）。 */
 interface WebviewElement extends HTMLElement {
@@ -171,7 +171,7 @@ export function useBrowserPanelModel(): BrowserPanelModel {
 	}, []);
 
 	const openExternal = useCallback(() => {
-		if (currentUrl) void window.vetta.auth.openExternal(currentUrl);
+		if (currentUrl) void window.astravia.auth.openExternal(currentUrl);
 	}, [currentUrl]);
 
 	const labels = useMemo(

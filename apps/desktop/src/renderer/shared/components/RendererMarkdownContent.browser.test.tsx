@@ -20,8 +20,8 @@ vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (key: string) => k
 afterEach(cleanup);
 
 const cases = [
-	createActivityWorkspace("C:/projects/vetta", "C:/projects/vetta"),
-	createActivityWorkspace("agent-team:delivery", "C:/projects/vetta"),
+	createActivityWorkspace("C:/projects/astravia", "C:/projects/astravia"),
+	createActivityWorkspace("agent-team:delivery", "C:/projects/astravia"),
 	createActivityWorkspace("conversation:no-project", null),
 ] as const;
 

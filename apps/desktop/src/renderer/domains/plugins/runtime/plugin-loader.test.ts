@@ -1,5 +1,5 @@
+import type { PluginContext, PluginDefinition } from "@astravia-org/plugin-sdk";
 import type { InstalledPlugin } from "@preload/api";
-import type { PluginContext, PluginDefinition } from "@vetta-org/plugin-sdk";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -60,7 +60,7 @@ beforeEach(() => {
 	mocks.events.length = 0;
 	vi.clearAllMocks();
 	vi.stubGlobal("window", {
-		vetta: {
+		astravia: {
 			plugins: {
 				beginAgentContributionsLoad: async () => mocks.events.push("activation:begin"),
 				commitAgentContributionsLoad: async () => mocks.events.push("agent:commit"),

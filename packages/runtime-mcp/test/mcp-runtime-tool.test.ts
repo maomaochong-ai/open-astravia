@@ -1,4 +1,4 @@
-import type { RuntimeToolResult } from "@vetta/runtime-core/kernel";
+import type { RuntimeToolResult } from "@astravia/runtime-core/kernel";
 import { describe, expect, it } from "vitest";
 import type { McpAppExecutionHost } from "../src/apps/index.js";
 import { McpTaskCreatedError } from "../src/client/index.js";
@@ -282,7 +282,7 @@ describe("MCP Runtime Tool result policy", () => {
 			details: {
 				content: [{ type: "text", text: "app result" }],
 				_meta: {
-					"io.vetta/mcpApp": {
+					"io.astravia/mcpApp": {
 						id: "surface-call",
 						resourceUri: "ui://dashboard",
 						mimeType: "text/html;profile=mcp-app",

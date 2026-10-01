@@ -1,4 +1,4 @@
-import { FakeTransport, generateIdentityKeyPair, RemoteConnection } from "@vetta/remote-control";
+import { FakeTransport, generateIdentityKeyPair, RemoteConnection } from "@astravia/remote-control";
 import { describe, expect, it, vi } from "vitest";
 import { DesktopRemoteDeviceHub } from "./desktop-remote-device-hub.js";
 

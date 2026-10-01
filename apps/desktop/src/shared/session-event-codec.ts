@@ -1,4 +1,4 @@
-import type { SessionEvent } from "@vetta/runtime-core";
+import type { SessionEvent } from "@astravia/runtime-core";
 
 const SESSION_EVENT_TYPES = new Set([
 	"session.lifecycle",

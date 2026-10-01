@@ -45,9 +45,10 @@ describe("chatUrlTransform", () => {
 
 describe("normalizeLocalFileLinksInMarkdown", () => {
 	test("repairs the exact Windows deliverable link emitted with spaces and parentheses", () => {
-		const input = "[travel-app.vetd](/C:/Users/admin/Desktop/新建文件夹 (7)/vetta/travel-app.vetd)";
+		const input =
+			"[travel-app.astravia-design](/C:/Users/admin/Desktop/新建文件夹 (7)/astravia/travel-app.astravia-design)";
 		expect(normalizeLocalFileLinksInMarkdown(input)).toBe(
-			"[travel-app.vetd](</C:/Users/admin/Desktop/新建文件夹 (7)/vetta/travel-app.vetd>)",
+			"[travel-app.astravia-design](</C:/Users/admin/Desktop/新建文件夹 (7)/astravia/travel-app.astravia-design>)",
 		);
 	});
 
@@ -57,14 +58,14 @@ describe("normalizeLocalFileLinksInMarkdown", () => {
 	});
 
 	test("rewrites backslash destinations to forward slashes", () => {
-		const input = "[index.html](C:\\Users\\flowerwine\\.vetta\\conversation\\afc54df9\\index.html)";
+		const input = "[index.html](C:\\Users\\flowerwine\\.astravia\\conversation\\afc54df9\\index.html)";
 		const out = normalizeLocalFileLinksInMarkdown(input);
-		expect(out).toBe("[index.html](<C:/Users/flowerwine/.vetta/conversation/afc54df9/index.html>)");
+		expect(out).toBe("[index.html](<C:/Users/flowerwine/.astravia/conversation/afc54df9/index.html>)");
 	});
 
 	test("rewrites angle-bracket destinations", () => {
-		const input = "[a](<C:\\Users\\x\\.vetta\\a.html>)";
-		expect(normalizeLocalFileLinksInMarkdown(input)).toBe("[a](<C:/Users/x/.vetta/a.html>)");
+		const input = "[a](<C:\\Users\\x\\.astravia\\a.html>)";
+		expect(normalizeLocalFileLinksInMarkdown(input)).toBe("[a](<C:/Users/x/.astravia/a.html>)");
 	});
 
 	test("standardizes absolute local links and leaves web links alone", () => {
@@ -126,9 +127,11 @@ describe("classifyMarkdownLink", () => {
 	});
 
 	test("rehype percent-encoded windows path", () => {
-		expect(classifyMarkdownLink("C:%5CUsers%5Cflowerwine%5C.vetta%5Cconversation%5Cafc54df9%5Cindex.html")).toEqual({
+		expect(
+			classifyMarkdownLink("C:%5CUsers%5Cflowerwine%5C.astravia%5Cconversation%5Cafc54df9%5Cindex.html"),
+		).toEqual({
 			type: "file",
-			path: "C:/Users/flowerwine/.vetta/conversation/afc54df9/index.html",
+			path: "C:/Users/flowerwine/.astravia/conversation/afc54df9/index.html",
 		});
 	});
 
@@ -190,7 +193,8 @@ describe("end-to-end: remark parse + urlTransform for user example", () => {
 		const remarkRehype = r2("remark-rehype").default || r2("remark-rehype");
 		const { visit } = r2("unist-util-visit");
 
-		const raw = "[travel-app.vetd](/C:/Users/admin/Desktop/新建文件夹 (7)/vetta/travel-app.vetd)";
+		const raw =
+			"[travel-app.astravia-design](/C:/Users/admin/Desktop/新建文件夹 (7)/astravia/travel-app.astravia-design)";
 		const source = normalizeLocalFileLinksInMarkdown(raw);
 		const processor = unified().use(remarkParse).use(remarkRehype);
 		const tree = processor.runSync(processor.parse(source));
@@ -200,15 +204,15 @@ describe("end-to-end: remark parse + urlTransform for user example", () => {
 		});
 
 		expect(href).toBe(
-			"/C:/Users/admin/Desktop/%E6%96%B0%E5%BB%BA%E6%96%87%E4%BB%B6%E5%A4%B9%20(7)/vetta/travel-app.vetd",
+			"/C:/Users/admin/Desktop/%E6%96%B0%E5%BB%BA%E6%96%87%E4%BB%B6%E5%A4%B9%20(7)/astravia/travel-app.astravia-design",
 		);
 		expect(classifyMarkdownLink(chatUrlTransform(href ?? ""))).toEqual({
 			type: "file",
-			path: "/C:/Users/admin/Desktop/新建文件夹 (7)/vetta/travel-app.vetd",
+			path: "/C:/Users/admin/Desktop/新建文件夹 (7)/astravia/travel-app.astravia-design",
 		});
 	});
 
-	test("backslash path survives and classifies as file with .vetta intact", () => {
+	test("backslash path survives and classifies as file with .astravia intact", () => {
 		const r = createRequire(import.meta.url);
 		const rmPath = r.resolve("react-markdown");
 		const r2 = createRequire(rmPath);
@@ -218,9 +222,9 @@ describe("end-to-end: remark parse + urlTransform for user example", () => {
 		const { visit } = r2("unist-util-visit");
 
 		const BS = "\\";
-		const raw = `[index.html](C:${BS}Users${BS}flowerwine${BS}.vetta${BS}conversation${BS}afc54df9-bcf0-4ec0-9632-0c2a4dde88c7${BS}index.html)`;
+		const raw = `[index.html](C:${BS}Users${BS}flowerwine${BS}.astravia${BS}conversation${BS}afc54df9-bcf0-4ec0-9632-0c2a4dde88c7${BS}index.html)`;
 		const source = normalizeLocalFileLinksInMarkdown(raw);
-		expect(source).toContain("flowerwine/.vetta/");
+		expect(source).toContain("flowerwine/.astravia/");
 
 		const tree = unified().use(remarkParse).use(remarkRehype).runSync(unified().use(remarkParse).parse(source));
 		let href: string | undefined;
@@ -232,7 +236,7 @@ describe("end-to-end: remark parse + urlTransform for user example", () => {
 		expect(transformed).not.toBe("");
 		expect(classifyMarkdownLink(transformed)).toEqual({
 			type: "file",
-			path: "C:/Users/flowerwine/.vetta/conversation/afc54df9-bcf0-4ec0-9632-0c2a4dde88c7/index.html",
+			path: "C:/Users/flowerwine/.astravia/conversation/afc54df9-bcf0-4ec0-9632-0c2a4dde88c7/index.html",
 		});
 	});
 });

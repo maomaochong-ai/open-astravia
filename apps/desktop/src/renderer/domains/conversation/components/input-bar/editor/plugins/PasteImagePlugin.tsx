@@ -15,7 +15,7 @@ import {
 } from "./clipboard-images";
 
 /**
- * 粘贴图片 → 立即落盘 → 插入行内缩略图 token。Vetta 富消息剪贴板还会
+ * 粘贴图片 → 立即落盘 → 插入行内缩略图 token。Astravia 富消息剪贴板还会
  * 恢复正文并用新落盘路径替换旧图片 token；纯文本仍走 Lexical 默认实现。
  */
 export function PasteImagePlugin({
@@ -39,11 +39,11 @@ export function PasteImagePlugin({
 		};
 		const persistClipboardImages = (clipboardImages: ClipboardImages): void => {
 			const persist =
-				clipboardImages.kind === "vetta-message"
+				clipboardImages.kind === "astravia-message"
 					? persistBase64Images(clipboardImages.images, effectiveRuntimeId, "paste")
 					: persistImageFiles(clipboardImages.files, effectiveRuntimeId, "paste");
 			void persist.then((paths) => {
-				if (clipboardImages.kind === "vetta-message") {
+				if (clipboardImages.kind === "astravia-message") {
 					insert(clipboardImages.messageText, paths);
 				} else {
 					insert("", paths);
@@ -58,7 +58,7 @@ export function PasteImagePlugin({
 				const nativeImageFiles = readClipboardImageFiles(event.clipboardData);
 				if (nativeImageFiles.length > 0) {
 					event.preventDefault();
-					void window.vetta.clipboard
+					void window.astravia.clipboard
 						.pasteUserMessage(effectiveRuntimeId ?? "draft")
 						.catch((error: unknown) => {
 							console.warn("[input-editor] rich clipboard paste failed:", error);
@@ -79,7 +79,7 @@ export function PasteImagePlugin({
 				}
 				const clipboardImages = readClipboardImages(event.clipboardData);
 				const hasImages =
-					clipboardImages.kind === "vetta-message"
+					clipboardImages.kind === "astravia-message"
 						? clipboardImages.images.length > 0
 						: clipboardImages.files.length > 0;
 				if (!hasImages) return false;

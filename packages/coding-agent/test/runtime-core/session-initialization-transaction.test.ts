@@ -1,10 +1,10 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { Api, Model } from "@vetta/ai";
-import { RuntimeObservationHub, type RuntimeObservationRecord } from "@vetta/runtime-core";
-import type { ModelCallFrameCompositionContext, RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
-import type { ConversationOwnershipManager } from "@vetta/runtime-storage/conversation";
+import type { Api, Model } from "@astravia/ai";
+import { RuntimeObservationHub, type RuntimeObservationRecord } from "@astravia/runtime-core";
+import type { ModelCallFrameCompositionContext, RuntimeToolDefinition } from "@astravia/runtime-core/kernel";
+import type { ConversationOwnershipManager } from "@astravia/runtime-storage/conversation";
 import { describe, expect, it, vi } from "vitest";
 import type { CodingAgentRuntimeModelSource } from "../../src/adapters/runtime-core/model-runtime-adapter.js";
 import { CODING_AGENT_SESSION_INITIALIZATION_OBSERVATION } from "../../src/composition/contracts/session-initialization-observability.js";

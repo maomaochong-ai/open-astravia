@@ -9,13 +9,13 @@
 
 ## 实施判断
 
-Desktop 已有进程级 `VETTA_DESKTOP_AGENT_RUNTIME` selector，并且缺省、空值和 `legacy` 都解析为
+Desktop 已有进程级 `ASTRAVIA_DESKTOP_AGENT_RUNTIME` selector，并且缺省、空值和 `legacy` 都解析为
 Legacy。Knowledge Poller 再新增一套环境变量或持久配置会产生两个可能互相冲突的 Runtime 决策源。
 
 因此本轮复用既有 selector：
 
 ```text
-VETTA_DESKTOP_AGENT_RUNTIME
+ASTRAVIA_DESKTOP_AGENT_RUNTIME
   -> resolveDesktopAgentRuntimeBackend()
   -> Desktop Knowledge 产品 Factory Resolver
   -> Legacy Factory | Greenfield Factory
@@ -37,7 +37,7 @@ Knowledge 专用 selector。
 - Resolver 只负责产品装配，不读取环境变量、不持有 Session，也不修改 Factory 合同。
 
 Knowledge Poller 在模块初始化时通过既有 Desktop selector 选择 Factory，并记录实际选择。未显式设置
-`VETTA_DESKTOP_AGENT_RUNTIME=greenfield` 时仍使用 Legacy。
+`ASTRAVIA_DESKTOP_AGENT_RUNTIME=greenfield` 时仍使用 Legacy。
 
 ### 多批真实写入差分
 

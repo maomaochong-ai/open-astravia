@@ -1,6 +1,6 @@
+import type { KnowledgeDropOverlayViewProps } from "@astravia-org/theme-ui/overlays";
 import { knowledgeImportDraftAtom } from "@shared/store/atoms";
 import { useMatches, useNavigate } from "@tanstack/react-router";
-import type { KnowledgeDropOverlayViewProps } from "@vetta-org/theme-ui/overlays";
 import { useSetAtom } from "jotai";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -11,7 +11,7 @@ function hasExternalFiles(event: DragEvent): boolean {
 
 function toSourcePaths(dataTransfer: DataTransfer): string[] {
 	return Array.from(dataTransfer.files)
-		.map((file) => window.vetta.fs.pathForFile(file))
+		.map((file) => window.astravia.fs.pathForFile(file))
 		.filter(Boolean);
 }
 

@@ -14,7 +14,7 @@ function parsedRules(cssText: string): CSSRuleList {
 }
 
 function injectedRules(): string[] {
-	return [...document.head.querySelectorAll("style[data-vetta-plugin-nav-icon]")].map(
+	return [...document.head.querySelectorAll("style[data-astravia-plugin-nav-icon]")].map(
 		(style) => style.textContent ?? "",
 	);
 }
@@ -36,9 +36,9 @@ describe("classifyPluginNavIcon", () => {
 	});
 
 	it("treats resolved package paths and remote images as images", () => {
-		expect(classifyPluginNavIcon("vetta-plugin://demo-plugin/assets/logo.svg?v=0.1.0")).toEqual({
+		expect(classifyPluginNavIcon("astravia-plugin://demo-plugin/assets/logo.svg?v=0.1.0")).toEqual({
 			kind: "image",
-			url: "vetta-plugin://demo-plugin/assets/logo.svg?v=0.1.0",
+			url: "astravia-plugin://demo-plugin/assets/logo.svg?v=0.1.0",
 		});
 		expect(classifyPluginNavIcon("https://example.com/logo.png")).toEqual({
 			kind: "image",
@@ -58,9 +58,9 @@ describe("classifyPluginNavIcon", () => {
 
 describe("navIconMaskRule", () => {
 	it("masks the image with currentColor so it follows the theme", () => {
-		const rule = navIconMaskRule("vetta-plugin-nav-icon-1", "vetta-plugin://p/logo.svg");
+		const rule = navIconMaskRule("astravia-plugin-nav-icon-1", "astravia-plugin://p/logo.svg");
 		expect(rule).toContain("background-color:currentColor");
-		expect(rule).toContain('mask-image:url("vetta-plugin://p/logo.svg")');
+		expect(rule).toContain('mask-image:url("astravia-plugin://p/logo.svg")');
 		expect(rule).toContain("-webkit-mask-image:");
 	});
 
@@ -74,8 +74,8 @@ describe("navIconMaskRule", () => {
 
 describe("acquireNavIconClass", () => {
 	it("injects one mask rule and returns its class name", () => {
-		const handle = acquireNavIconClass("vetta-plugin://p/a.svg");
-		expect(handle.className).toMatch(/^vetta-plugin-nav-icon-\d+$/);
+		const handle = acquireNavIconClass("astravia-plugin://p/a.svg");
+		expect(handle.className).toMatch(/^astravia-plugin-nav-icon-\d+$/);
 		expect(injectedRules()).toHaveLength(1);
 		expect(injectedRules()[0]).toContain(handle.className);
 		handle.release();
@@ -83,8 +83,8 @@ describe("acquireNavIconClass", () => {
 	});
 
 	it("shares one rule between identical urls and only drops it when all holders release", () => {
-		const first = acquireNavIconClass("vetta-plugin://p/shared.svg");
-		const second = acquireNavIconClass("vetta-plugin://p/shared.svg");
+		const first = acquireNavIconClass("astravia-plugin://p/shared.svg");
+		const second = acquireNavIconClass("astravia-plugin://p/shared.svg");
 		expect(second.className).toBe(first.className);
 		expect(injectedRules()).toHaveLength(1);
 
@@ -95,8 +95,8 @@ describe("acquireNavIconClass", () => {
 	});
 
 	it("gives different urls different classes", () => {
-		const a = acquireNavIconClass("vetta-plugin://p/a.svg");
-		const b = acquireNavIconClass("vetta-plugin://p/b.svg");
+		const a = acquireNavIconClass("astravia-plugin://p/a.svg");
+		const b = acquireNavIconClass("astravia-plugin://p/b.svg");
 		expect(a.className).not.toBe(b.className);
 		expect(injectedRules()).toHaveLength(2);
 		a.release();
@@ -104,10 +104,10 @@ describe("acquireNavIconClass", () => {
 	});
 
 	it("ignores extra releases instead of removing a live rule", () => {
-		const handle = acquireNavIconClass("vetta-plugin://p/once.svg");
+		const handle = acquireNavIconClass("astravia-plugin://p/once.svg");
 		handle.release();
 		handle.release();
-		const again = acquireNavIconClass("vetta-plugin://p/once.svg");
+		const again = acquireNavIconClass("astravia-plugin://p/once.svg");
 		expect(injectedRules()).toHaveLength(1);
 		again.release();
 		expect(injectedRules()).toHaveLength(0);
@@ -116,8 +116,8 @@ describe("acquireNavIconClass", () => {
 
 describe("resolveNavIcon", () => {
 	it("tints an image by default and exposes no image url", () => {
-		const resolved = resolveNavIcon("vetta-plugin://p/logo.svg", true);
-		expect(resolved?.className).toMatch(/^vetta-plugin-nav-icon-\d+$/);
+		const resolved = resolveNavIcon("astravia-plugin://p/logo.svg", true);
+		expect(resolved?.className).toMatch(/^astravia-plugin-nav-icon-\d+$/);
 		expect(resolved?.imageUrl).toBeUndefined();
 		expect(injectedRules()).toHaveLength(1);
 		resolved?.release();
@@ -125,10 +125,10 @@ describe("resolveNavIcon", () => {
 	});
 
 	it("returns the image url untinted AND still a mask class for older themes", () => {
-		const resolved = resolveNavIcon("vetta-plugin://p/logo.png", false);
-		expect(resolved?.imageUrl).toBe("vetta-plugin://p/logo.png");
+		const resolved = resolveNavIcon("astravia-plugin://p/logo.png", false);
+		expect(resolved?.imageUrl).toBe("astravia-plugin://p/logo.png");
 		// The class is the fallback for themes that do not know `iconUrl`.
-		expect(resolved?.className).toMatch(/^vetta-plugin-nav-icon-\d+$/);
+		expect(resolved?.className).toMatch(/^astravia-plugin-nav-icon-\d+$/);
 		expect(injectedRules()).toHaveLength(1);
 		resolved?.release();
 	});

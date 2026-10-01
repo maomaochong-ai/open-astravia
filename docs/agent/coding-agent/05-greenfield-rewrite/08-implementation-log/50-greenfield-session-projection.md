@@ -86,7 +86,7 @@ create -> prompt -> synchronous state/messages -> dispose
 ### 6. 架构守卫
 
 包边界规则现在覆盖 `runtime-host/greenfield-*`，禁止 Greenfield Backend、事件适配和投影重新导入
-`@vetta/coding-agent`。Legacy Adapter 仍是唯一允许依赖旧实现的边界。
+`@astravia/coding-agent`。Legacy Adapter 仍是唯一允许依赖旧实现的边界。
 
 ## TypeBox / Zod
 

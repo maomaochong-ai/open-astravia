@@ -14,7 +14,7 @@ function yamlForVersion(version, artifact) {
 	return [
 		`version: ${version}`,
 		"files:",
-		`  - url: ${artifact?.name ?? `Vetta-${version}-e2e.test`}`,
+		`  - url: ${artifact?.name ?? `Astravia-${version}-e2e.test`}`,
 		`    size: ${artifact?.body.length ?? 0}`,
 		`    sha512: ${artifact?.sha512 ?? checksum}`,
 		"releaseDate: 2026-01-01T00:00:00.000Z",
@@ -36,9 +36,9 @@ export async function startUpdateFeedFixture(versionOrOptions) {
 	}
 	const artifact = options.downloadable
 		? (() => {
-			const body = Buffer.from("vetta-packaged-e2e-update\n", "utf8");
+			const body = Buffer.from("astravia-packaged-e2e-update\n", "utf8");
 			return {
-				name: "Vetta-e2e-update.AppImage",
+				name: "Astravia-e2e-update.AppImage",
 				body,
 				sha512: createHash("sha512").update(body).digest("base64"),
 			};

@@ -1,4 +1,4 @@
-import type { ManagedMcpRuntimeToolSource, McpRuntimeToolBinding } from "@vetta/runtime-mcp";
+import type { ManagedMcpRuntimeToolSource, McpRuntimeToolBinding } from "@astravia/runtime-mcp";
 import { describe, expect, it, vi } from "vitest";
 import { DesktopMcpResourceManager } from "./mcp-resource-manager.js";
 

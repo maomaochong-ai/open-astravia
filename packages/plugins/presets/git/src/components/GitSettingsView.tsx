@@ -1,5 +1,5 @@
-import { useTranslation } from "@vetta-org/plugin-sdk";
-import { Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Switch } from "@vetta-org/ui";
+import { useTranslation } from "@astravia-org/plugin-sdk";
+import { Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Switch } from "@astravia-org/ui";
 import { useCallback, useEffect, useState } from "react";
 import { getAiApi, getGitCommand } from "../git/runtime";
 import { DEFAULT_SETTINGS, type GitSettings, loadSettings, saveSettings } from "../git/settings";
@@ -153,7 +153,7 @@ export function GitSettingsView(): JSX.Element {
 						<SelectTrigger className="w-56">
 							<SelectValue />
 						</SelectTrigger>
-						<SelectContent data-vetta-plugin-root="git">
+						<SelectContent data-astravia-plugin-root="git">
 							<SelectItem value={FOLLOW_DEFAULT}>{t("settings.modelDefault")}</SelectItem>
 							{models.map((model) => (
 								<SelectItem key={model.modelKey} value={model.modelKey}>

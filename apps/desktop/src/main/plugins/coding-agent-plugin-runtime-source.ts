@@ -1,11 +1,11 @@
-import type { CodingAgentPluginRuntimeSource } from "@vetta/coding-agent/host-services";
+import type { CodingAgentPluginRuntimeSource } from "@astravia/coding-agent/host-services";
 import type {
 	AgentPluginContinuationInvoker,
 	AgentPluginRuntimeConfig,
 	AgentPluginSystemPromptInvoker,
 	AgentPluginToolInvoker,
 	AgentPluginTurnHandlerLeaseProvider,
-} from "@vetta/coding-agent/plugin-runtime";
+} from "@astravia/coding-agent/plugin-runtime";
 
 export interface DesktopCodingAgentPluginRuntimeSourceOptions {
 	readonly build: () => AgentPluginRuntimeConfig | undefined;

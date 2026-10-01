@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { createAgentTeamFixture } from "@vetta/agent-team";
+import { createAgentTeamFixture } from "@astravia/agent-team";
 import type { DesktopTeamSessionSnapshot } from "@preload/api-types/team-conversation-display";
 import { inputValueAtom, selectedModelAtom, reasoningByModelAtom } from "@shared/store/atoms";
 import { act, renderHook, waitFor } from "@testing-library/react";
@@ -43,7 +43,7 @@ describe("useNewSessionTeamDraft", () => {
 		getDefaultStore().set(selectedModelAtom, null);
 		getDefaultStore().set(reasoningByModelAtom, {});
 		vi.spyOn(crypto, "randomUUID").mockReturnValue(reservedSessionId);
-		Object.defineProperty(window, "vetta", {
+		Object.defineProperty(window, "astravia", {
 			configurable: true,
 			value: { agentTeams: { list, createSessionRecord, setExecutionMode, sendMessage } },
 		});

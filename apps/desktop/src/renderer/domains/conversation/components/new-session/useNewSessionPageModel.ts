@@ -1,3 +1,4 @@
+import type { NewSessionHeroIdentity } from "@astravia-org/theme-ui";
 import { useProjectActions } from "@domains/project/hooks/useProjects";
 import { i18n } from "@shared/i18n";
 import {
@@ -27,7 +28,6 @@ import {
 	switchSessionInputDraftScope,
 } from "@shared/store/atoms";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import type { NewSessionHeroIdentity } from "@vetta-org/theme-ui";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -293,11 +293,11 @@ export function useNewSessionPageModel(): NewSessionPageModel {
 	}, [contextLabel, setHeaderTitle, setHeaderTitleBadge, setHeaderTitleHidden, t]);
 
 	useEffect(() => {
-		void window.vetta.window.isAlwaysOnTop().then(setPinned);
+		void window.astravia.window.isAlwaysOnTop().then(setPinned);
 	}, []);
 
 	const handleTogglePin = useCallback(async () => {
-		const next = await window.vetta.window.toggleAlwaysOnTop();
+		const next = await window.astravia.window.toggleAlwaysOnTop();
 		setPinned(next);
 	}, []);
 

@@ -3,7 +3,7 @@
  * Transforms to Message[] only at the LLM call boundary.
  */
 
-import { EventStream, type ToolResultMessage } from "@vetta/ai";
+import { EventStream, type ToolResultMessage } from "@astravia/ai";
 import { streamAssistantResponse } from "./loop/assistant-stream.js";
 import { AgentContextCheckpointFailure, requestContextCheckpoint } from "./loop/context-checkpoint.js";
 import { assertWithinAgentLoopLimit, resolveAgentLoopLimits } from "./loop/limits.js";

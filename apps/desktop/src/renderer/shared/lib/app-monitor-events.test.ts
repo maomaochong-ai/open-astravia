@@ -8,7 +8,7 @@ describe("app monitor image events", () => {
 
 	beforeEach(() => {
 		recordEvent.mockClear();
-		Object.defineProperty(window, "vetta", {
+		Object.defineProperty(window, "astravia", {
 			configurable: true,
 			value: { appMonitor: { recordEvent } },
 		});

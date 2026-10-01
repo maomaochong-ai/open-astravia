@@ -1,5 +1,5 @@
+import type { Message } from "@astravia/ai";
 import { Type } from "@sinclair/typebox";
-import type { Message } from "@vetta/ai";
 import { describe, expect, it } from "vitest";
 import { agentLoop } from "../src/agent-loop.js";
 import type { AgentContext, AgentEvent, AgentLoopConfig, AgentMessage, AgentTool } from "../src/types.js";

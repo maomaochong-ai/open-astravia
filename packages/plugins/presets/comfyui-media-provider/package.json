@@ -1,5 +1,5 @@
 {
-	"name": "@vetta/plugin-comfyui-media-provider",
+	"name": "@astravia/plugin-comfyui-media-provider",
 	"version": "0.1.0",
 	"private": true,
 	"type": "module",
@@ -13,8 +13,8 @@
 		"@testing-library/react": "16.3.2",
 		"@types/react": "^19.1.1",
 		"@types/react-dom": "^19.1.1",
-		"@vetta-org/plugin-sdk": "workspace:*",
-		"@vetta-org/plugin-vite": "workspace:*",
+		"@astravia-org/plugin-sdk": "workspace:*",
+		"@astravia-org/plugin-vite": "workspace:*",
 		"jsdom": "26.1.0",
 		"react": "19.1.1",
 		"react-dom": "19.1.1",

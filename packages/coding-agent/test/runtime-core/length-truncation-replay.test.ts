@@ -1,12 +1,12 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import type { Message } from "@vetta/ai";
-import type { ContinuationPolicyContext } from "@vetta/runtime-core/kernel";
+import type { Message } from "@astravia/ai";
+import type { ContinuationPolicyContext } from "@astravia/runtime-core/kernel";
 import { describe, expect, it } from "vitest";
 import { CodingAgentLengthContinuationSource } from "../../src/composition/turn/length-continuation-source.js";
 
 /**
- * 真实故障回放：vetta-go / ominiroute-antigravity 网关在高思考档下，把整个输出
+ * 真实故障回放：astravia-go / ominiroute-antigravity 网关在高思考档下，把整个输出
  * 预算烧在 thinking 上就回了 MAX_TOKENS，正文零产出。旧实现会连续注入三条
  * "Continue the response from where you stopped."，最终以 turn.failed 收场。
  */

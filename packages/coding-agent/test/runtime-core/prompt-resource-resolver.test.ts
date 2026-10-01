@@ -13,7 +13,7 @@ describe("Coding Agent prompt resource resolver", () => {
 	let root: string;
 
 	beforeEach(() => {
-		root = mkdtempSync(join(tmpdir(), "vetta-greenfield-resources-"));
+		root = mkdtempSync(join(tmpdir(), "astravia-greenfield-resources-"));
 	});
 
 	afterEach(() => {

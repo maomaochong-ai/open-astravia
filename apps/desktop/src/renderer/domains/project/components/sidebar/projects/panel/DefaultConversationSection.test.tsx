@@ -7,7 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // 只关心 section 往会话列表交出的 cwd，其余视图与筛选器都替换成最小替身。
 const sectionProps = vi.fn();
-vi.mock("@vetta-org/theme-ui/project", () => ({
+vi.mock("@astravia-org/theme-ui/project", () => ({
 	DefaultConversationSectionView: (props: { list: ReactNode }): JSX.Element => {
 		sectionProps(props);
 		return <div>{props.list}</div>;
@@ -31,12 +31,12 @@ vi.mock("react-i18next", () => ({
 const { DefaultConversationSection } = await import("./DefaultConversationSection.js");
 
 const DEFAULT_PROJECT: Project = {
-	cwd: "/home/user/.vetta/desktop-app/conversation",
+	cwd: "/home/user/.astravia/desktop-app/conversation",
 	name: "对话",
 	isDefault: true,
 } as Project;
 
-const IM_CWD = "/home/user/.vetta/im-gateway/conversation";
+const IM_CWD = "/home/user/.astravia/im-gateway/conversation";
 
 const CLAW_SESSION: SessionInfo = {
 	id: "claw-1",

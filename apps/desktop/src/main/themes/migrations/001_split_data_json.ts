@@ -1,4 +1,4 @@
-import type { FileMigration } from "@vetta/toolkit/file-migrations";
+import type { FileMigration } from "@astravia/toolkit/file-migrations";
 import {
 	isThemeStorageJson,
 	isValidThemeStorageKey,

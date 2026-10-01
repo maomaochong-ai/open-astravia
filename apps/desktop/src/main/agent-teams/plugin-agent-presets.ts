@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { extname, resolve } from "node:path";
-import type { AgentBlueprint } from "@vetta/agent-team";
-import { EMPTY_AGENT_ABILITIES, pluginBlueprintId } from "@vetta/agent-team";
+import type { AgentBlueprint } from "@astravia/agent-team";
+import { EMPTY_AGENT_ABILITIES, pluginBlueprintId } from "@astravia/agent-team";
 import type { InstalledPlugin } from "../../preload/api-types/plugins.js";
 
 /**
@@ -373,7 +373,7 @@ function readAvatarDataUrl(
 		: readBinaryResource(plugin, relativePath);
 	if (!content) throw new Error(`avatar is missing: ${relativePath}`);
 	if (content.byteLength > MAX_AVATAR_BYTES) throw new Error(`avatar exceeds ${MAX_AVATAR_BYTES} bytes`);
-	// 内联成 data URL 而不是 vetta-plugin:// 地址：系统插件、dev 链接、已安装包各有一套
+	// 内联成 data URL 而不是 astravia-plugin:// 地址：系统插件、dev 链接、已安装包各有一套
 	// URL 规则，头像只有几十 KB，内联能一次绕开三条分支和版本号/reload token 的时序。
 	return `data:${mediaType};base64,${content.toString("base64")}`;
 }

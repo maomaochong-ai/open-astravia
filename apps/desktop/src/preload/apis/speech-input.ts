@@ -3,12 +3,12 @@ import type { DesktopApi } from "../api.js";
 import { onIpcEvent } from "./helper.js";
 
 export const SPEECH_INPUT_CHANNELS = {
-	GET_STATUS: "vetta:speech-input:get-status",
-	START: "vetta:speech-input:start",
-	AUDIO: "vetta:speech-input:audio",
-	STOP: "vetta:speech-input:stop",
-	CANCEL: "vetta:speech-input:cancel",
-	EVENT: "vetta:speech-input:event",
+	GET_STATUS: "astravia:speech-input:get-status",
+	START: "astravia:speech-input:start",
+	AUDIO: "astravia:speech-input:audio",
+	STOP: "astravia:speech-input:stop",
+	CANCEL: "astravia:speech-input:cancel",
+	EVENT: "astravia:speech-input:event",
 } as const;
 
 export function createSpeechInputApi(ipc: IpcRenderer): Pick<DesktopApi, "speechInput"> {

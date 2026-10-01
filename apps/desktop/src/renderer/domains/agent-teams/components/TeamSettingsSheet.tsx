@@ -2,10 +2,10 @@ import { useAgentAvatarResolver } from "@shared/agent-teams/agent-avatar";
 import { useModelOptions } from "@shared/components/ModelSelect/useModelOptions";
 import { useTeamMemberModels } from "@shared/agent-teams/useTeamMemberModels";
 import { resolveReasoning } from "@shared/components/ModelSelect/resolveReasoning";
-import { DEFAULT_TEAM_AUTOMATIC_RETRIES } from "@vetta/agent-team";
-import type { AgentProfile, TeamDefinition, TeamMemberAssignment } from "@vetta/agent-team";
-import { AgentAvatarView } from "@vetta-org/theme-ui/chat";
-import { DetailDrawer, DetailDrawerEnter } from "@vetta-org/theme-ui/overlays";
+import { DEFAULT_TEAM_AUTOMATIC_RETRIES } from "@astravia/agent-team";
+import type { AgentProfile, TeamDefinition, TeamMemberAssignment } from "@astravia/agent-team";
+import { AgentAvatarView } from "@astravia-org/theme-ui/chat";
+import { DetailDrawer, DetailDrawerEnter } from "@astravia-org/theme-ui/overlays";
 import {
 	Button,
 	Dialog,
@@ -20,7 +20,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 	cn,
-} from "@vetta-org/ui";
+} from "@astravia-org/ui";
 import { RendererMarkdownContent } from "@shared/components/RendererMarkdownContent";
 import { type ReactNode, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";

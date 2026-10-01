@@ -9,7 +9,7 @@ import {
 describe("navigation domain capabilities", () => {
 	it("publishes one stable hosted-route navigation command", () => {
 		expect(DOMAIN_NAVIGATION_CAPABILITIES.OPEN_HOSTED_ROUTE.id).toBe(
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}navigation.open-hosted-route`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}navigation.open-hosted-route`,
 		);
 	});
 

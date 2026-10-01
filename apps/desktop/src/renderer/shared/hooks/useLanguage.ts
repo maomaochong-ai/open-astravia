@@ -16,7 +16,7 @@ export function useLanguage(): {
 
 	// 同步主进程广播（含其它窗口 / Agent Action），保持 preference 选中态一致。
 	useEffect(() => {
-		return window.vetta.i18n.onLanguageChanged((state) => {
+		return window.astravia.i18n.onLanguageChanged((state) => {
 			setPreferenceAtom(state.preference);
 			setLanguageAtom(state.language);
 		});
@@ -32,7 +32,7 @@ export function useLanguage(): {
 			setLanguageAtom(resolved);
 			await i18n.changeLanguage(resolved);
 			document.documentElement.lang = resolved;
-			const state = await window.vetta.i18n.setLanguage(preference);
+			const state = await window.astravia.i18n.setLanguage(preference);
 			if (state && typeof state === "object") {
 				setPreferenceAtom(state.preference);
 				setLanguageAtom(state.language);

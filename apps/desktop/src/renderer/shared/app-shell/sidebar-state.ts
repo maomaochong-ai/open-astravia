@@ -1,6 +1,6 @@
+import type { PluginSidebarState } from "@astravia-org/plugin-sdk";
 import { SIDEBAR_NARROW_BREAKPOINT, useNarrowScreen } from "@shared/hooks/useNarrowScreen";
 import { sidebarCollapsedAtom } from "@shared/store/atoms";
-import type { PluginSidebarState } from "@vetta-org/plugin-sdk";
 import { getDefaultStore, useAtomValue } from "jotai";
 import { useMemo } from "react";
 

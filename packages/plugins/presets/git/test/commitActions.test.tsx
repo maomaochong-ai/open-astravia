@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GraphView } from "../src/components/graph/GraphView";
 import { setGitCommand } from "../src/git/runtime";
 
-vi.mock("@vetta-org/plugin-sdk", () => ({ useTranslation: () => ({ t: (key: string) => key, locale: "en" }) }));
+vi.mock("@astravia-org/plugin-sdk", () => ({ useTranslation: () => ({ t: (key: string) => key, locale: "en" }) }));
 const hash = "a".repeat(40);
 const head = "b".repeat(40);
 

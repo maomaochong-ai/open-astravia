@@ -1,4 +1,4 @@
-import type { SubagentSnapshot } from "@vetta/runtime-subagents";
+import type { SubagentSnapshot } from "@astravia/runtime-subagents";
 import { describe, expect, it } from "vitest";
 import {
 	CodingAgentSubagentTodoProjection,

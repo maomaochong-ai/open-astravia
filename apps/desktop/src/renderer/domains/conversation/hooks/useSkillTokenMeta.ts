@@ -29,7 +29,7 @@ async function load(cwd: string | undefined, language: string): Promise<SkillInf
 	const key = cacheKey(cwd, language);
 	const running = inflight.get(key);
 	if (running) return running;
-	const task = window.vetta.skills
+	const task = window.astravia.skills
 		.list(cwd)
 		.then((skills) => {
 			cache.set(key, skills);

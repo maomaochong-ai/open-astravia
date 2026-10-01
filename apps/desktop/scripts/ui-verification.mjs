@@ -32,7 +32,7 @@ import {
 const desktopRoot = join(import.meta.dirname, "..");
 const repoRoot = realpathSync(join(desktopRoot, "..", ".."));
 const workspaceId = createWorkspaceId(repoRoot);
-const runtimeRoot = join(tmpdir(), "vetta-ui-verification", workspaceId);
+const runtimeRoot = join(tmpdir(), "astravia-ui-verification", workspaceId);
 const debugCliPath = join(repoRoot, "apps", "cli-host", "src", "debug-cli.ts");
 const currentScriptPath = fileURLToPath(import.meta.url);
 const runtimeCanaryProviderPath = join(desktopRoot, "scripts", "runtime-canary-provider.ts");
@@ -56,9 +56,9 @@ function resolveVerificationEnv(layout, state) {
 	if (!state?.runtimeCanary) return environment;
 	return {
 		...environment,
-		VETTA_CODING_AGENT_DIR: state.runtimeCanary.agentDir,
-		VETTA_DESKTOP_RUNTIME_CANARY: "1",
-		VETTA_HOME: state.runtimeCanary.vettaHome,
+		ASTRAVIA_CODING_AGENT_DIR: state.runtimeCanary.agentDir,
+		ASTRAVIA_DESKTOP_RUNTIME_CANARY: "1",
+		ASTRAVIA_HOME: state.runtimeCanary.astraviaHome,
 	};
 }
 
@@ -136,7 +136,7 @@ async function inspectCdp(endpoint) {
 			(target) => typeof target.url === "string" && target.url.startsWith("devtools://"),
 		).length;
 		const mainWindow =
-			pages.find((target) => target.title === "Vetta Desktop") ??
+			pages.find((target) => target.title === "Astravia Desktop") ??
 			pages.find((target) => typeof target.url === "string" && target.url.startsWith("http")) ??
 			null;
 		return {
@@ -225,7 +225,7 @@ function createStatusResult(layout, state, uiInfo) {
 		workspaceId,
 		sessionName: layout.sessionName,
 		configDir: layout.configDir,
-		vettaHome: layout.vettaHome,
+		astraviaHome: layout.astraviaHome,
 		userDataDir: layout.userDataDir,
 		artifactDir: layout.artifactDir,
 		logPath: layout.logPath,
@@ -305,11 +305,11 @@ function selectMainWindow(layout, uiInfo) {
 	const mainWindowUrl = uiInfo.mainWindow?.url;
 	const matchingLine = tabListResult.stdout
 		.split(/\r?\n/)
-		.find((line) => line.includes("[Vetta Desktop](") && (!mainWindowUrl || line.includes(mainWindowUrl)));
+		.find((line) => line.includes("[Astravia Desktop](") && (!mainWindowUrl || line.includes(mainWindowUrl)));
 	const index = matchingLine?.match(/^- (\d+):/)?.[1];
-	if (index === undefined) throw new Error("Unable to find the Vetta Desktop renderer tab");
+	if (index === undefined) throw new Error("Unable to find the Astravia Desktop renderer tab");
 	const selectResult = runPlaywright(layout, ["tab-select", index]);
-	if (selectResult.status !== 0) throw new Error("Unable to select the Vetta Desktop renderer tab");
+	if (selectResult.status !== 0) throw new Error("Unable to select the Astravia Desktop renderer tab");
 }
 
 function prepareProfile(layout, sync = false) {
@@ -317,8 +317,8 @@ function prepareProfile(layout, sync = false) {
 	mkdirSync(layout.artifactDir, { recursive: true });
 	if (layout.profile !== "debug") return null;
 	return seedDebugProfile({
-		sourceHome: join(homedir(), ".vetta-dev"),
-		targetHome: layout.vettaHome,
+		sourceHome: join(homedir(), ".astravia-dev"),
+		targetHome: layout.astraviaHome,
 		workspacePath: repoRoot,
 		sync,
 	});
@@ -377,7 +377,7 @@ async function startDetached(layout, runtimeCanaryEnabled) {
 					profile: layout.profile,
 					workspaceId,
 					sessionName: layout.sessionName,
-					vettaHome: layout.vettaHome,
+					astraviaHome: layout.astraviaHome,
 					artifactDir: layout.artifactDir,
 					logPath: layout.logPath,
 					seed,
@@ -427,7 +427,7 @@ async function startRuntimeCanaryProvider(layout) {
 		}
 		const fixture = JSON.parse(readFileSync(readyFilePath, "utf8"));
 		if (
-			typeof fixture?.vettaHome !== "string" ||
+			typeof fixture?.astraviaHome !== "string" ||
 			typeof fixture.agentDir !== "string" ||
 			typeof fixture.workspace !== "string" ||
 			typeof fixture.requestLogPath !== "string" ||
@@ -504,7 +504,7 @@ async function serveHost(layout, runtimeCanaryEnabled) {
 			const restartRequest = runtimeCanary ? readRuntimeCanaryRestartRequest(runtimeCanary.state) : null;
 			if (!restartRequest) break;
 
-			const endpointRemoved = !existsSync(join(runtimeCanary.state.vettaHome, "action-server.json"));
+			const endpointRemoved = !existsSync(join(runtimeCanary.state.astraviaHome, "action-server.json"));
 			const sessionLocksReleased = restartRequest.sessionPaths.every(
 				(sessionPath) => !existsSync(`${sessionPath}.lock`) && !existsSync(`${sessionPath}.owner.lock`),
 			);
@@ -544,7 +544,7 @@ async function serveHost(layout, runtimeCanaryEnabled) {
 						desktopExitCodes,
 						desktopProcessIds,
 						restartCount,
-						endpointRemoved: !existsSync(join(runtimeCanary.state.vettaHome, "action-server.json")),
+						endpointRemoved: !existsSync(join(runtimeCanary.state.astraviaHome, "action-server.json")),
 						providerStopped,
 					},
 					null,
@@ -597,8 +597,8 @@ async function startDesktopVerificationProcess(layout, runtimeCanary, desktopGen
 		cwd: desktopRoot,
 		env: {
 			...resolveVerificationEnv(layout, state),
-			VETTA_DEBUG_CDP_PORT: String(cdpPort),
-			VETTA_DESKTOP_DEV_PORT: String(rendererPort),
+			ASTRAVIA_DEBUG_CDP_PORT: String(cdpPort),
+			ASTRAVIA_DESKTOP_DEV_PORT: String(rendererPort),
 		},
 		stdio: "inherit",
 		windowsHide: true,

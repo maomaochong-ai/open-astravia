@@ -40,7 +40,7 @@ export function useAuth() {
 		if (bootstrappedRef.current) return;
 		bootstrappedRef.current = true;
 		if (token) return;
-		void window.vetta.settings.getServerToken().then((stored) => {
+		void window.astravia.settings.getServerToken().then((stored) => {
 			if (!stored) return;
 			setToken(stored);
 		});
@@ -69,7 +69,7 @@ export function useAuth() {
 
 	// 主进程在 refresh 失败时广播 unauthorized
 	useEffect(() => {
-		return window.vetta.auth.onUnauthorized(() => {
+		return window.astravia.auth.onUnauthorized(() => {
 			logout();
 		});
 	}, [logout]);
@@ -93,18 +93,18 @@ export function useAuth() {
 
 	// Listen for OAuth callback from main process
 	useEffect(() => {
-		const cleanup = window.vetta.auth.onOAuthCallback((data) => {
+		const cleanup = window.astravia.auth.onOAuthCallback((data) => {
 			setToken(data.token);
 			if (data.refreshToken) {
-				void window.vetta.settings.setServerRefreshToken(data.refreshToken);
+				void window.astravia.settings.setServerRefreshToken(data.refreshToken);
 			} else {
 				// 本次登录没带 refresh 时，绝不能留着上一次登录的旧值：它多半已被轮换
 				// 作废，下次刷新出示它会被服务端按重放处理，直接撤掉整条链。
 				// 宁可没有 refresh（access 到期后重新登录一次），也不要一个会踢人的旧值。
-				void window.vetta.settings.setServerRefreshToken(undefined);
+				void window.astravia.settings.setServerRefreshToken(undefined);
 			}
 			setLoginOpen(false);
-			void window.vetta.settings.setServerToken(data.token);
+			void window.astravia.settings.setServerToken(data.token);
 			void fetchCurrentUser(data.token)
 				.then((u) => setUser(u))
 				.catch(console.error);
@@ -126,7 +126,7 @@ export function useAuth() {
 		// 401 时主进程返回 {}，会无条件覆盖旧的远程 providers，
 		// 否则 ModelSelector 仍会展示已失效的线上模型。
 		void modelCatalog.revalidate({ force: true, sources: ["remote"] });
-		void window.vetta.subscription
+		void window.astravia.subscription
 			.getStatus()
 			.then((result) => {
 				// 拉取成功才覆盖；失败(status:null)保持内存态不变，UI 用 localStorage 缓存回退。
@@ -138,7 +138,7 @@ export function useAuth() {
 	// SSE: connect when token is available, disconnect on logout
 	useEffect(() => {
 		if (!token) return;
-		void window.vetta.settings.getServerUrl().then((baseUrl) => {
+		void window.astravia.settings.getServerUrl().then((baseUrl) => {
 			sseClient.connect(baseUrl, token);
 		});
 		const unsubState = sseClient.onStateChange(setSseState);

@@ -1,9 +1,9 @@
-import { vettaPluginFederation } from "@vetta-org/plugin-vite";
+import { astraviaPluginFederation } from "@astravia-org/plugin-vite";
 import { defineConfig } from "vite";
 
 export default defineConfig({
 	plugins: [
-		vettaPluginFederation({
+		astraviaPluginFederation({
 			name: "remotion_renderer",
 			entry: "./src/index.ts",
 			hostUi: true,

@@ -1,4 +1,4 @@
-import type { PluginCommandSpawnHandle, PluginContext } from "@vetta-org/plugin-sdk";
+import type { PluginCommandSpawnHandle, PluginContext } from "@astravia-org/plugin-sdk";
 import { inspectRemotionProject, type RemotionProjectInspection } from "./project";
 
 export interface RemotionStudioServer {

@@ -13,7 +13,7 @@ import (
 
 // Keychain service identifier. The same string is used for every secret the
 // gateway stores so listing the keychain entries is easy for users.
-const keychainService = "vetta-im-gateway"
+const keychainService = "astravia-im-gateway"
 
 // File credentials live alongside config.yaml. Loaded only when keychain is
 // unavailable or empty for a given key.
@@ -141,7 +141,7 @@ func defaultCredentialsPath() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("resolve home dir: %w", err)
 	}
-	return filepath.Join(home, ".vetta", "im-gateway", credentialsFilename), nil
+	return filepath.Join(home, ".astravia", "im-gateway", credentialsFilename), nil
 }
 
 // loadCredentialsFile returns (file, true, nil) when the file exists and was

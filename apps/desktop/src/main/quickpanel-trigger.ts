@@ -302,7 +302,7 @@ export function stopQuickPanelTrigger(): void {
  *
  * 必须 await：worker 需要自己跑完 uIOhook.stop() 才会把原生侧 is_worker_running 清零，
  * 否则进程退出时 uiohook-napi 的 env cleanup hook 会以 SIGTRAP 打死进程
- * （macOS 上就是「Vetta 意外退出」弹窗，详见 uiohook-protocol.ts）。
+ * （macOS 上就是「Astravia 意外退出」弹窗，详见 uiohook-protocol.ts）。
  */
 export function stopAllUiohookConsumers(): Promise<void> {
 	resetQuickPanelState();

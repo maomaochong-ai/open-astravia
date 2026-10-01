@@ -16,7 +16,7 @@
 
 ## Solution
 
-在 `~/.vetta/knowledges/` 下建立一套约定式的 LLM 知识库：
+在 `~/.astravia/knowledges/` 下建立一套约定式的 LLM 知识库：
 
 - 用户把原始文件平铺进 `raws/<source_name>/`（`<source_name>` 是 UI 层的来源分类）；
 - 工程侧惰性轮询（默认 5 分钟，可配）检测 raws 变化，攒批后交给一个**后台 agent 会话**把原始文件加工成带 frontmatter 的 wiki markdown 页（1:1）；
@@ -61,26 +61,26 @@
 30. 作为系统，我想让 frontmatter 是封闭 schema（只允许约定的 10 个字段），以便缓存/检索/迁移都能依赖固定形状。
 31. 作为系统，我想让 `kb_write_page` upsert：传入 id 就地更新（保留 id+created_at、刷新 source_hash+正文+updated_at），无 id 则按 source_hash 新建并分配 id。
 32. 作为用户，我想让每一轮加工是一次 agent 会话，以便能在 UI 里回看 agent 当时做了什么，过程不暗盒。
-33. 作为用户，我想让加工会话自包含在 `~/.vetta/knowledges/processing_records/` 下（仿 conversation 项目的 `.vetta/sessions` 布局），以便知识库整体可搬迁。
+33. 作为用户，我想让加工会话自包含在 `~/.astravia/knowledges/processing_records/` 下（仿 conversation 项目的 `.astravia/sessions` 布局），以便知识库整体可搬迁。
 34. 作为用户，我想让加工会话照常出现在 sidebar 会话列表，以便像普通对话一样浏览。
 35. 作为用户，我想要一轮加工(整批 diff + 上轮孤儿复判)装进一个会话，以便会话数少、上下文共享、成本低。
 36. 作为用户，我想在「知识库设置」里选择加工使用的模型，以便后台加工用便宜/长上下文模型，与主对话模型区分。
 37. 作为用户，我想要「立即扫描+加工」按钮，以便不等轮询周期就触发一次加工。
 38. 作为用户，我想要「重建索引」按钮，以便手动从 frontmatter 重建 tags.json/manifest.json。
-39. 作为用户，我想让「知识库设置」的配置落在 `~/.vetta/settings.json`，以便与现有 desktop 配置统一管理。
+39. 作为用户，我想让「知识库设置」的配置落在 `~/.astravia/settings.json`，以便与现有 desktop 配置统一管理。
 40. 作为开发者，我想把所有加工约定（frontmatter 规则、树组织、indexes 维护、孤儿抢救）写进一个 `kb-processing` skill，以便加工会话加载后行为一致。
 
 ## Implementation Decisions
 
 ### 目录布局与真相源
-- 知识库根：`~/.vetta/knowledges/`。对 agent 是**单一全局库**；`raws/<source_name>/` 的 `<source_name>` 仅是 UI 层的来源分类，不是独立知识库。
+- 知识库根：`~/.astravia/knowledges/`。对 agent 是**单一全局库**；`raws/<source_name>/` 的 `<source_name>` 仅是 UI 层的来源分类，不是独立知识库。
 - 布局：
   - `raws/<source_name>/*.*`：原始文件平铺。
   - `wiki/**/*.md`：加工产物，树形由 LLM 按语义自由组织。
   - `indexes/**/*.md`：LLM 维护的语义导航层（摘要 + 指向 page id）。
   - `tags.json`：缓存 `tag → [id]`。
   - `manifest.json`：缓存 每页 `{id, path, source_path, source_hash, orphaned_at}`。
-  - `processing_records/.vetta/sessions/`：每轮加工的 agent 会话 jsonl。
+  - `processing_records/.astravia/sessions/`：每轮加工的 agent 会话 jsonl。
 - **唯一真相源**：各 wiki md 的 frontmatter。`tags.json` / `manifest.json` 是可随时从 frontmatter 重建的缓存。
 
 ### wiki frontmatter（封闭 schema，仅 10 字段）
@@ -116,12 +116,12 @@
 - `filter_by_tags` 标签捷径；走 `indexes/` 导航；渐进式探索（遍历 wiki 树 + 读页 + 顺 `[[id]]`）；`grep` 全文搜索。
 
 ### 会话集成
-- 新增常量 `KB_PROCESSING_CWD = ~/.vetta/knowledges/processing_records` 与 `KB_PROCESSING_SESSION_DIR = <cwd>/.vetta/sessions`。
+- 新增常量 `KB_PROCESSING_CWD = ~/.astravia/knowledges/processing_records` 与 `KB_PROCESSING_SESSION_DIR = <cwd>/.astravia/sessions`。
 - 在 `resolveSessionDirForCwd()`（desktop `main/ipc/session.ts`，现已处理 `DEFAULT_CONVERSATION_CWD`）注册该 cwd→sessionDir 映射，使加工会话自包含且在 sidebar 透明可发现。
 
 ### desktop「知识库设置」
 - 注册进 settings `registry.ts` 的 `SETTINGS_SECTIONS` → 新建 `KnowledgeBaseSettings.tsx` → 接入 `SETTINGS_CONTENT`。
-- 配置走 `vetta:config:get/set`（preload `system.ts`）落 `~/.vetta/settings.json`，扩展 `DesktopConfigData`。
+- 配置走 `astravia:config:get/set`（preload `system.ts`）落 `~/.astravia/settings.json`，扩展 `DesktopConfigData`。
 - 设置项：轮询间隔下拉（3/5/10/30 min）、加工模型选择、手动按钮（立即扫描+加工 / 重建索引）。
 
 ### 深模块拆分
@@ -159,5 +159,5 @@
 
 - 设计核心张力已对齐：`source_hash` 既是变更探测器又是新建 upsert 键，但**不能**用作内容变更时的 upsert 键（内容变 hash 必变）；跨内容编辑稳定的锚点是 raw 路径，由轮询器在 changed 态解析出旧页 id 交给写入工具，以此保住稳定 id。
 - 孤儿删除时正文里别处对其 `[[id]]` 的引用会变死链，由 n+1 的 agent 复判步骤负责重指或清理。
-- 会话存储照搬 conversation 特殊项目的既有机制（`DEFAULT_CONVERSATION_CWD` = `~/.vetta/conversation`，sessions 落 `<cwd>/.vetta/sessions`），降低新机制风险。
+- 会话存储照搬 conversation 特殊项目的既有机制（`DEFAULT_CONVERSATION_CWD` = `~/.astravia/conversation`，sessions 落 `<cwd>/.astravia/sessions`），降低新机制风险。
 - 加工模型设置直接映射到 `createAgentSession` 的 model 入参。

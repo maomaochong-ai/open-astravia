@@ -96,7 +96,7 @@ RPC transport 会并发启动两个 handler，但先收到的 `switch_session` �
 
 新增 `agent-runtime-session-replacement-admission-differential.test.ts`：
 
-- 使用真实 Vetta RPC CLI 独立可执行产物；
+- 使用真实 Astravia RPC CLI 独立可执行产物；
 - 每个场景分别运行 Legacy 与 Greenfield；
 - 使用真实 Provider HTTP 流、真实 Conversation 文件和 ownership lock；
 - 同一 transport 连续写入 RPC frame，真实触发并发 handler；

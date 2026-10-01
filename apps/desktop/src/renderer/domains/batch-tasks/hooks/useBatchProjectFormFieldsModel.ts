@@ -43,7 +43,7 @@ export function useBatchProjectFormFieldsModel({
 	const folders = value[folderField] ?? [];
 
 	useEffect(() => {
-		void window.vetta.config.get().then((desktopConfig) => {
+		void window.astravia.config.get().then((desktopConfig) => {
 			setDefaultExecutionMode(desktopConfig.defaultExecutionMode ?? "full-access");
 			const capability = desktopConfig.sandbox ?? desktopConfig.linuxSandbox;
 			if (capability?.status === "unavailable") {
@@ -58,7 +58,7 @@ export function useBatchProjectFormFieldsModel({
 
 	const selectFolders = useCallback(() => {
 		void (async () => {
-			const selected = await window.vetta.dialog.selectFolders();
+			const selected = await window.astravia.dialog.selectFolders();
 			if (selected.length > 0) {
 				setField(folderField, compactLines([...folders, ...selected]));
 			}

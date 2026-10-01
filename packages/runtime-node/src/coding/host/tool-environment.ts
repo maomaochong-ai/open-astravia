@@ -1,4 +1,4 @@
-import type { RuntimeConfigurationSnapshotSource } from "@vetta/runtime-core/configuration";
+import type { RuntimeConfigurationSnapshotSource } from "@astravia/runtime-core/configuration";
 import stripAnsi from "strip-ansi";
 import { createNodeCodingToolEnvironment, type NodeCodingToolEnvironment } from "../node-tool-environment.js";
 import type { BackgroundCommandService } from "../shared/background-command-service.js";

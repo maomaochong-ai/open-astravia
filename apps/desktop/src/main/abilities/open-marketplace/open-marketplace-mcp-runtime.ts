@@ -20,10 +20,10 @@ const MAX_ARTIFACT_BYTES = 256 * 1024 * 1024;
 const MAX_ARCHIVE_ENTRIES = 10_000;
 const MAX_UNCOMPRESSED_BYTES = 512 * 1024 * 1024;
 const DOWNLOAD_TIMEOUT_MS = 120_000;
-const RUNTIME_DIRECTORY_TOKEN = `\${VETTA_MCP_RUNTIME_DIR}`;
-const DATA_DIRECTORY_TOKEN = `\${VETTA_MCP_DATA_DIR}`;
-const CACHE_DIRECTORY_TOKEN = `\${VETTA_MCP_CACHE_DIR}`;
-const RUNTIME_URL_TOKEN = `\${VETTA_MCP_URL}`;
+const RUNTIME_DIRECTORY_TOKEN = `\${ASTRAVIA_MCP_RUNTIME_DIR}`;
+const DATA_DIRECTORY_TOKEN = `\${ASTRAVIA_MCP_DATA_DIR}`;
+const CACHE_DIRECTORY_TOKEN = `\${ASTRAVIA_MCP_CACHE_DIR}`;
+const RUNTIME_URL_TOKEN = `\${ASTRAVIA_MCP_URL}`;
 
 type FetchArtifact = (url: string, init?: RequestInit) => Promise<Response>;
 
@@ -145,7 +145,7 @@ async function downloadArtifact(
 	const timer = setTimeout(() => controller.abort(), DOWNLOAD_TIMEOUT_MS);
 	try {
 		const response = await fetchArtifact(url, {
-			headers: { Accept: "application/octet-stream", "User-Agent": "Vetta-Desktop" },
+			headers: { Accept: "application/octet-stream", "User-Agent": "Astravia-Desktop" },
 			redirect: "follow",
 			signal: controller.signal,
 		});

@@ -39,7 +39,7 @@ export function useArchivedProjectsSettingsModel(): ArchivedProjectsSettingsMode
 	const setConfirm = useSetAtom(confirmDialogAtom);
 
 	useEffect(() => {
-		void window.vetta.config.get().then((config) => {
+		void window.astravia.config.get().then((config) => {
 			setArchivedList(config.archivedProjects ?? []);
 		});
 	}, []);

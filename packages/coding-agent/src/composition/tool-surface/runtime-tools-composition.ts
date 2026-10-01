@@ -1,4 +1,4 @@
-import type { RuntimeObservationPublisher } from "@vetta/runtime-core";
+import type { RuntimeObservationPublisher } from "@astravia/runtime-core";
 import {
 	type AgentFeatureDefinition,
 	type CompiledRuntimeSnapshot,
@@ -7,7 +7,7 @@ import {
 	type ModelCallContributionContext,
 	RandomIdGenerator,
 	type RuntimeCapabilityDefinition,
-} from "@vetta/runtime-core/kernel";
+} from "@astravia/runtime-core/kernel";
 import {
 	type BackgroundCommandService,
 	type CodingToolCatalogRefresher,
@@ -17,7 +17,7 @@ import {
 	createCodingToolsFeature,
 	InMemoryCodingToolRegistry,
 	PRESERVE_CODING_TOOL_RESULT_POLICY,
-} from "@vetta/runtime-tools";
+} from "@astravia/runtime-tools";
 import {
 	createTaskOutputToolRegistration,
 	createTaskStopToolRegistration,

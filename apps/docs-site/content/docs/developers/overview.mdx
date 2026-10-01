@@ -9,10 +9,10 @@ description: 根据宿主边界选择插件、主题、SDK、RPC 或 CLI，避�
   <li>跨包只走公开 exports</li>
 </Takeaways>
 
-Vetta 提供从内容能力到完整宿主集成的多层扩展面。先根据目标选择最窄、最稳定的入口，再阅读对应合同。
+Astravia 提供从内容能力到完整宿主集成的多层扩展面。先根据目标选择最窄、最稳定的入口，再阅读对应合同。
 
 <MediaFrame>
-  <img src="/images/product/plugin-workbench.webp" alt="Vetta 插件工作台同时展示移动预览和电子表格预览" width="1536" height="836" />
+  <img src="/images/product/plugin-workbench.webp" alt="Astravia 插件工作台同时展示移动预览和电子表格预览" width="1536" height="836" />
   <figcaption>插件可以进入工作区、文件和消息界面；SDK 与 RPC 则用于在自己的宿主中运行 Agent。</figcaption>
 </MediaFrame>
 
@@ -21,7 +21,7 @@ Vetta 提供从内容能力到完整宿主集成的多层扩展面。先根据�
 <Entries>
   <Entry kicker="SKILL" title="技能">让 Agent 遵循领域流程。运行边界是 Markdown 指令和可选脚本。</Entry>
   <Entry href="/product/mcp/" kicker="MCP" title="连接器">连接外部工具或数据。运行边界是 STDIO 或 HTTP 工具服务。</Entry>
-  <Entry href="/plugins/overview/" kicker="PLUGIN" title="插件">扩展 Vetta 桌面 UI 和 Agent。运行边界是插件宿主与权限模型。</Entry>
+  <Entry href="/plugins/overview/" kicker="PLUGIN" title="插件">扩展 Astravia 桌面 UI 和 Agent。运行边界是插件宿主与权限模型。</Entry>
   <Entry href="/themes/overview/" kicker="THEME" title="主题">改变桌面视觉和主题页面。运行边界是受策展管理的主题模块。</Entry>
   <Entry href="/developers/sdk/" kicker="SDK" title="进程内 SDK">在 TypeScript 进程中嵌入 Agent。同进程、类型化 Session API。</Entry>
   <Entry href="/developers/rpc/" kicker="RPC" title="子进程 RPC">从非 TS 宿主或隔离进程驱动 Agent。stdin/stdout NDJSON。</Entry>
@@ -33,13 +33,13 @@ Vetta 提供从内容能力到完整宿主集成的多层扩展面。先根据�
 <Beats>
   <li>只有提示和步骤时使用 Skill，不要创建插件。</li>
   <li>只需要外部工具协议时使用 MCP，不要依赖桌面内部实现。</li>
-  <li>需要 Vetta UI、文件预览、消息卡片或宿主动作时使用 Plugin。</li>
+  <li>需要 Astravia UI、文件预览、消息卡片或宿主动作时使用 Plugin。</li>
   <li>自己拥有进程生命周期且使用 TypeScript 时优先 SDK。</li>
   <li>需要语言无关、故障隔离或 sidecar 时使用 RPC。</li>
 </Beats>
 
 <Callout type="warn" title="只使用公开入口">
-  跨包集成只能使用 `package.json#exports` 声明的子路径。不要从 `@vetta/coding-agent/src/**` 或其他包的源码目录深度导入。
+  跨包集成只能使用 `package.json#exports` 声明的子路径。不要从 `@astravia/coding-agent/src/**` 或其他包的源码目录深度导入。
 </Callout>
 
 <Continue>

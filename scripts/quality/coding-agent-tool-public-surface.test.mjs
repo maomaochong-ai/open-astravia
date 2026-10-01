@@ -7,7 +7,7 @@ describe("coding-agent Tool public surface boundary", () => {
 	it("rejects concrete Tool forwarding from the package root", () => {
 		const findings = findPackageBoundaryViolations(
 			"packages/coding-agent/src/index.ts",
-			'export { createReadTool, readTool } from "@vetta/runtime-tools/coding";',
+			'export { createReadTool, readTool } from "@astravia/runtime-tools/coding";',
 		);
 
 		expect(findings).toEqual(

@@ -1,5 +1,5 @@
+import type { PluginOfficialApi } from "@astravia-org/plugin-sdk";
 import { prefillNewSessionInputDraft } from "@shared/store/session-input-draft";
-import type { PluginOfficialApi } from "@vetta-org/plugin-sdk";
 import { isAppearanceUiThemeEnabled } from "../../../../shared/feature-flags";
 import {
 	SETTINGS_SECTIONS,

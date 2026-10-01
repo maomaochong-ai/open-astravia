@@ -1,4 +1,4 @@
-# @vetta/ssh-transport
+# @astravia/ssh-transport
 
 远程项目的 SSH 传输层：主机模型、连接复用、远端命令执行与文件操作。
 
@@ -54,7 +54,7 @@ base64（GNU 的 `-d` 与 BSD 的 `-D` 不兼容）。
 ### 传输选系统 OpenSSH
 
 `~/.ssh/config` 的 Include、Match、ProxyJump、ProxyCommand、IdentityAgent、FIDO 安全
-密钥、GSSAPI 全部由它原生支持。用户只要 `ssh host` 能连上，Vetta 就能连上。
+密钥、GSSAPI 全部由它原生支持。用户只要 `ssh host` 能连上，Astravia 就能连上。
 
 `StrictHostKeyChecking` 保持 OpenSSH 默认的 `ask`：首次连接和主机密钥变更必须由用户
 确认，`no` 会让中间人攻击静默通过，`accept-new` 则跳过首次确认。

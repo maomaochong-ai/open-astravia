@@ -1,5 +1,5 @@
-import type { RuntimeSessionCoreAssembly } from "@vetta/runtime-core";
-import { createEmptyConversationDocument } from "@vetta/runtime-core/conversation";
+import type { RuntimeSessionCoreAssembly } from "@astravia/runtime-core";
+import { createEmptyConversationDocument } from "@astravia/runtime-core/conversation";
 import { describe, expect, it } from "vitest";
 import { createCodingAgentExtensionSessionView } from "../../../src/adapters/extensions/runtime-session-view-adapter.js";
 

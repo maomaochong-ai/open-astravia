@@ -80,11 +80,11 @@ export function useSessionViewerPageModel(): SessionViewerPageModel {
 
 		(async () => {
 			try {
-				const initial = await window.vetta.session.openViewer(path);
+				const initial = await window.astravia.session.openViewer(path);
 				if (cancelled) return;
 				setMessages(fullHistoryToChat(initial.history));
 
-				unsubscribe = await window.vetta.session.subscribeViewer(path, (snapshot) => {
+				unsubscribe = await window.astravia.session.subscribeViewer(path, (snapshot) => {
 					setMessages(fullHistoryToChat(snapshot.history));
 				});
 				if (cancelled) unsubscribe?.();

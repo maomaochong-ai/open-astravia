@@ -1,6 +1,6 @@
+import type { RuntimeToolDefinition } from "@astravia/runtime-core/kernel";
 import { type Static, Type } from "@sinclair/typebox";
 import { Value } from "@sinclair/typebox/value";
-import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
 import {
 	DesktopCommandAbortedError,
 	type DesktopCommandPort,
@@ -71,18 +71,18 @@ export function createHtmlToPdfTool(
 			}
 			if (signal.aborted) throw new Error("Operation aborted");
 			const trimmed = result.stdout.trim();
-			if (!trimmed) throw new Error("Vetta Desktop returned empty stdout");
+			if (!trimmed) throw new Error("Astravia Desktop returned empty stdout");
 			const response: unknown = JSON.parse(trimmed);
 			if (!Value.Check(DesktopPdfResponseSchema, response)) {
-				throw new Error("Vetta Desktop returned invalid JSON response");
+				throw new Error("Astravia Desktop returned invalid JSON response");
 			}
 			if (!response.ok) {
 				const message = response.error?.message ?? (result.stderr.trim() || "Unknown PDF generation error");
-				throw new Error(`Vetta Desktop PDF generation failed: ${message}`);
+				throw new Error(`Astravia Desktop PDF generation failed: ${message}`);
 			}
-			if (!response.output) throw new Error("Vetta Desktop did not return an output path");
+			if (!response.output) throw new Error("Astravia Desktop did not return an output path");
 			const staleNote = desktop.staleConfiguredPath
-				? `\nNote: configured vettaAppPath was stale and fallback path was used: ${desktop.staleConfiguredPath}`
+				? `\nNote: configured astraviaAppPath was stale and fallback path was used: ${desktop.staleConfiguredPath}`
 				: "";
 			return {
 				content: [

@@ -2,7 +2,7 @@ import {
 	type PluginShortcutBinding,
 	usePluginShortcutScope,
 	useTranslation,
-} from "@vetta-org/plugin-sdk";
+} from "@astravia-org/plugin-sdk";
 import type { JSX, PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getRegisterShortcutScope } from "./plugin-ui";

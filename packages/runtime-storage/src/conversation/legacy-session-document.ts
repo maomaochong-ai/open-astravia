@@ -1,11 +1,11 @@
-import { Type } from "@sinclair/typebox";
-import { Value } from "@sinclair/typebox/value";
 import type {
 	ConversationDocument,
 	ConversationDocumentCompactionEntry,
 	ConversationDocumentEntry,
 	ConversationDocumentEntryBase,
-} from "@vetta/runtime-core/conversation";
+} from "@astravia/runtime-core/conversation";
+import { Type } from "@sinclair/typebox";
+import { Value } from "@sinclair/typebox/value";
 
 const LegacyHeaderSchema = Type.Object(
 	{

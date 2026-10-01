@@ -30,7 +30,7 @@ if (!existsSync(hostPath)) {
 	app.whenReady().then(() => {
 		const startedAt = Date.now();
 		const child = utilityProcess.fork(hostPath, [], {
-			serviceName: "vetta-speech-input-smoke",
+			serviceName: "astravia-speech-input-smoke",
 			stdio: ["ignore", "pipe", "pipe"],
 		});
 		child.stdout?.pipe(process.stdout);

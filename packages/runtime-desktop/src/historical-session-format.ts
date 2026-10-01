@@ -1,8 +1,8 @@
 import {
 	createCodingAgentHistoricalSessionCatalog,
 	createCodingAgentHistoricalSessionFileHistoryReader,
-} from "@vetta/coding-agent/historical-sessions";
-import type { RuntimeSessionCatalog, RuntimeSessionFileHistoryReader } from "@vetta/runtime-core";
+} from "@astravia/coding-agent/historical-sessions";
+import type { RuntimeSessionCatalog, RuntimeSessionFileHistoryReader } from "@astravia/runtime-core";
 import { createDesktopHistoricalSessionHost } from "./historical-session-host.js";
 
 export interface DesktopHistoricalSessionFormat {

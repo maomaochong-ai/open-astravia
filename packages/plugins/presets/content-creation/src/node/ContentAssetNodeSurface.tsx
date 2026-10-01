@@ -1,4 +1,4 @@
-import { useTranslation } from "@vetta-org/plugin-sdk";
+import { useTranslation } from "@astravia-org/plugin-sdk";
 import type { AssetKind, ContentAsset } from "../project/types";
 import { ContentAssetThumbnail } from "./ContentAssetThumbnail";
 import { NodeKindIcon } from "./NodeKindIcon";

@@ -1,43 +1,43 @@
 import { federation, type ModuleFederationOptions } from "@module-federation/vite";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { parsePluginManifest } from "@vetta-org/plugin-sdk/manifest";
+import { parsePluginManifest } from "@astravia-org/plugin-sdk/manifest";
 import type { Plugin, PluginOption } from "vite";
 import {
-	createVettaPluginDevPlugins,
-	isVettaPluginDevServer,
-	VETTA_PLUGIN_DEV_ENTRY_ID,
+	createAstraviaPluginDevPlugins,
+	isAstraviaPluginDevServer,
+	ASTRAVIA_PLUGIN_DEV_ENTRY_ID,
 } from "./dev-vite-plugins.js";
 import { createPluginBuildWarningFilter } from "./build-warning-filter.js";
 import { createHostThemeBridgePlugin } from "./host-theme.js";
-import { type CreateVettaPluginPackageOptions, createVettaPluginPackage } from "./pack.js";
+import { type CreateAstraviaPluginPackageOptions, createAstraviaPluginPackage } from "./pack.js";
 import { assertPluginPermissionContract } from "./permission-contract.js";
 import { createPluginStyleScopePlugin } from "./style-scope.js";
 import { createPluginLoggerBindingPlugin } from "./plugin-logger.js";
 
-const SHARED_REACT_COMMONJS_BRIDGE_ID = "virtual:vetta-plugin-shared-react-commonjs";
+const SHARED_REACT_COMMONJS_BRIDGE_ID = "virtual:astravia-plugin-shared-react-commonjs";
 const RESOLVED_SHARED_REACT_COMMONJS_BRIDGE_ID = `\0${SHARED_REACT_COMMONJS_BRIDGE_ID}`;
 const STATIC_REACT_REQUIRE_PATTERN = /\brequire\s*\(\s*(["'])react\1\s*\)/gu;
 
-export interface VettaPluginPackageOptions extends Omit<CreateVettaPluginPackageOptions, "rootDir" | "distDir"> {
+export interface AstraviaPluginPackageOptions extends Omit<CreateAstraviaPluginPackageOptions, "rootDir" | "distDir"> {
 	enabled?: boolean;
 }
 
-export interface VettaPluginFederationOptions {
+export interface AstraviaPluginFederationOptions {
 	name: string;
 	expose?: string;
 	entry?: string;
 	manifestFileName?: string;
 	remoteEntryFileName?: string;
-	/** Share the host design-system primitives exposed by `@vetta-org/ui`. */
+	/** Share the host design-system primitives exposed by `@astravia-org/ui`. */
 	hostUi?: boolean;
-	/** Share the narrow host UI contract exposed by `@vetta-org/theme-ui/plugin-ui`. */
+	/** Share the narrow host UI contract exposed by `@astravia-org/theme-ui/plugin-ui`. */
 	hostThemeUi?: boolean;
 	shared?: ModuleFederationOptions["shared"];
-	package?: boolean | VettaPluginPackageOptions;
+	package?: boolean | AstraviaPluginPackageOptions;
 }
 
-export function createVettaPluginFederationConfig(options: VettaPluginFederationOptions): ModuleFederationOptions {
+export function createAstraviaPluginFederationConfig(options: AstraviaPluginFederationOptions): ModuleFederationOptions {
 	const expose = options.expose ?? "./plugin";
 	const entry = options.entry ?? "./src/index.tsx";
 	return {
@@ -51,7 +51,7 @@ export function createVettaPluginFederationConfig(options: VettaPluginFederation
 		},
 		dts: false,
 		shared: {
-			"@vetta-org/plugin-sdk": {
+			"@astravia-org/plugin-sdk": {
 				singleton: true,
 				import: false,
 				requiredVersion: "*",
@@ -75,7 +75,7 @@ export function createVettaPluginFederationConfig(options: VettaPluginFederation
 			...(options.hostUi
 				? {
 						// Host design-system primitives; runtime provided by desktop-app share scope.
-						"@vetta-org/ui": {
+						"@astravia-org/ui": {
 							singleton: true,
 							import: false,
 							requiredVersion: "*",
@@ -85,7 +85,7 @@ export function createVettaPluginFederationConfig(options: VettaPluginFederation
 			...(options.hostThemeUi
 				? {
 						// Host-built UI components (model selector, …); opt in to keep unrelated plugins decoupled.
-						"@vetta-org/theme-ui/plugin-ui": {
+						"@astravia-org/theme-ui/plugin-ui": {
 							singleton: true,
 							import: false,
 							requiredVersion: "*",
@@ -97,9 +97,9 @@ export function createVettaPluginFederationConfig(options: VettaPluginFederation
 	};
 }
 
-function createBuildDefaultsPlugin(entry: string, options: Pick<VettaPluginFederationOptions, "hostUi">): Plugin {
+function createBuildDefaultsPlugin(entry: string, options: Pick<AstraviaPluginFederationOptions, "hostUi">): Plugin {
 	return {
-		name: "vetta-plugin-build-defaults",
+		name: "astravia-plugin-build-defaults",
 		apply: "build",
 		config() {
 			return {
@@ -111,18 +111,18 @@ function createBuildDefaultsPlugin(entry: string, options: Pick<VettaPluginFeder
 					assetsInlineLimit: 32 * 1024,
 					rollupOptions: {
 						input: entry,
-						// Host-provided singletons (see desktop-app plugin-shared-modules + vetta-host protocol).
+						// Host-provided singletons (see desktop-app plugin-shared-modules + astravia-host protocol).
 						external: [
-							"@vetta-org/plugin-sdk",
+							"@astravia-org/plugin-sdk",
 							...(options.hostUi
 								? [
-										"@vetta-org/ui",
+										"@astravia-org/ui",
 										// 旧源码名仍映射到宿主；已构建的旧 remote 则由 Desktop share scope 兼容。
-										"@vetta/ui",
+										"@astravia/ui",
 									]
 								: []),
-							"@vetta-org/theme-ui/plugin-ui",
-							"@vetta/theme-ui/plugin-ui",
+							"@astravia-org/theme-ui/plugin-ui",
+							"@astravia/theme-ui/plugin-ui",
 						],
 						output: {
 							assetFileNames(assetInfo) {
@@ -131,11 +131,11 @@ function createBuildDefaultsPlugin(entry: string, options: Pick<VettaPluginFeder
 									: "assets/[name]-[hash][extname]";
 							},
 							paths: {
-								"@vetta-org/plugin-sdk": "vetta-host://plugin-sdk",
-								"@vetta-org/ui": "vetta-host://ui",
-								"@vetta/ui": "vetta-host://ui",
-								"@vetta-org/theme-ui/plugin-ui": "vetta-host://theme-ui-plugin",
-								"@vetta/theme-ui/plugin-ui": "vetta-host://theme-ui-plugin",
+								"@astravia-org/plugin-sdk": "astravia-host://plugin-sdk",
+								"@astravia-org/ui": "astravia-host://ui",
+								"@astravia/ui": "astravia-host://ui",
+								"@astravia-org/theme-ui/plugin-ui": "astravia-host://theme-ui-plugin",
+								"@astravia/theme-ui/plugin-ui": "astravia-host://theme-ui-plugin",
 							},
 						},
 					},
@@ -150,7 +150,7 @@ function createBuildDefaultsPlugin(entry: string, options: Pick<VettaPluginFeder
 // bindings stable when dependencies such as use-sync-external-store are bundled.
 function createSharedReactCommonJsBridgePlugin(): Plugin {
 	return {
-		name: "vetta-plugin-shared-react-commonjs-bridge",
+		name: "astravia-plugin-shared-react-commonjs-bridge",
 		apply: "build",
 		enforce: "pre",
 		transform(code) {
@@ -175,13 +175,13 @@ export default React;
 	};
 }
 
-function createPackagePlugin(options: VettaPluginPackageOptions): Plugin {
+function createPackagePlugin(options: AstraviaPluginPackageOptions): Plugin {
 	let rootDir = "";
 	let distDir = "";
 	let buildFailed = false;
 
 	return {
-		name: "vetta-plugin-package",
+		name: "astravia-plugin-package",
 		apply: "build",
 		buildStart() {
 			buildFailed = false;
@@ -197,12 +197,12 @@ function createPackagePlugin(options: VettaPluginPackageOptions): Plugin {
 			if (options.enabled === false || buildFailed) {
 				return;
 			}
-			const result = await createVettaPluginPackage({
+			const result = await createAstraviaPluginPackage({
 				...options,
 				rootDir,
 				distDir,
 			});
-			console.log(`[vetta-plugin-vite] Wrote ${result.outputPath} with ${result.files.length} runtime files`);
+			console.log(`[astravia-plugin-vite] Wrote ${result.outputPath} with ${result.files.length} runtime files`);
 		},
 	};
 }
@@ -210,7 +210,7 @@ function createPackagePlugin(options: VettaPluginPackageOptions): Plugin {
 function createPermissionContractPlugin(): Plugin {
 	let rootDir = "";
 	return {
-		name: "vetta-plugin-permission-contract",
+		name: "astravia-plugin-permission-contract",
 		apply: "build",
 		configResolved(config) {
 			rootDir = config.root;
@@ -229,28 +229,28 @@ function createPermissionContractPlugin(): Plugin {
 	};
 }
 
-export function vettaPluginFederation(options: VettaPluginFederationOptions): PluginOption[] {
+export function astraviaPluginFederation(options: AstraviaPluginFederationOptions): PluginOption[] {
 	const packageOptions = typeof options.package === "object" ? options.package : {};
 	const entry = options.entry ?? "./src/index.tsx";
-	const devServer = isVettaPluginDevServer();
+	const devServer = isAstraviaPluginDevServer();
 	const plugins: PluginOption[] = [
 		createPluginBuildWarningFilter(),
 		createHostThemeBridgePlugin(),
 		createPluginLoggerBindingPlugin(),
-		...(devServer ? createVettaPluginDevPlugins(entry) : []),
+		...(devServer ? createAstraviaPluginDevPlugins(entry) : []),
 		createBuildDefaultsPlugin(entry, options),
 		createSharedReactCommonJsBridgePlugin(),
 		...federation({
-			...createVettaPluginFederationConfig(options),
+			...createAstraviaPluginFederationConfig(options),
 			exposes: {
-				[options.expose ?? "./plugin"]: devServer ? VETTA_PLUGIN_DEV_ENTRY_ID : entry,
+				[options.expose ?? "./plugin"]: devServer ? ASTRAVIA_PLUGIN_DEV_ENTRY_ID : entry,
 			},
 		}),
 		createPluginStyleScopePlugin(),
 		createPermissionContractPlugin(),
 	];
 	// 兼容旧宿主的 build-watch 流程：增量构建时不重复打 zip。
-	if (options.package !== false && process.env.VETTA_PLUGIN_DEV_WATCH !== "1") {
+	if (options.package !== false && process.env.ASTRAVIA_PLUGIN_DEV_WATCH !== "1") {
 		plugins.push(createPackagePlugin(packageOptions));
 	}
 	return plugins;

@@ -11,7 +11,7 @@ const MARIO_BLOCK = SPRITE_SIZE * MARIO_UNIT;
 /** 整排 120px，比 Vivi（144/480）窄一档，门槛也按宽度相应收一档。 */
 const MARIO_MIN_SLOT_WIDTH = 420;
 /** 顶没顶过记在本地：换台机器重新顶一次无所谓，不值得占一条设置项。 */
-const MARIO_POPPED_STORAGE_KEY = "vetta-new-session-mario-popped";
+const MARIO_POPPED_STORAGE_KEY = "astravia-new-session-mario-popped";
 
 interface MarioOrnamentProps {
 	autoplay: boolean;

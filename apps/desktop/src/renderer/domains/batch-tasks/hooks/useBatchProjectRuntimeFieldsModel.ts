@@ -1,5 +1,5 @@
+import type { BatchProjectRuntimeFieldsLabels } from "@astravia-org/theme-ui/batch-tasks";
 import type { SessionExecutionMode } from "@shared/store/atoms";
-import type { BatchProjectRuntimeFieldsLabels } from "@vetta-org/theme-ui/batch-tasks";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { normalizeConcurrency, normalizeTimeout } from "../utils/batchProjectFormData";

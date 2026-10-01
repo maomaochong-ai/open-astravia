@@ -7,7 +7,7 @@ import {
 	NodeResourcePackageFiles,
 	NpmResourcePackageRegistry,
 	nodeResourcePackageDigest,
-} from "@vetta/runtime-node/host";
+} from "@astravia/runtime-node/host";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CONFIG_DIR_NAME } from "../src/config.js";
 import type {
@@ -440,7 +440,7 @@ Content`,
 			expect(settings.packages?.[0]).toBe(expected);
 		});
 
-		it("should store project local packages relative to .vetta settings base", () => {
+		it("should store project local packages relative to .astravia settings base", () => {
 			const projectPkgDir = join(tempDir, "project-local-pkg");
 			mkdirSync(join(projectPkgDir, "extensions"), { recursive: true });
 			writeFileSync(join(projectPkgDir, "extensions", "index.ts"), "export default function() {}");
@@ -449,7 +449,7 @@ Content`,
 			expect(added).toBe(true);
 
 			const settings = settingsManager.getProjectSettings();
-			const rel = relative(join(tempDir, ".vetta"), projectPkgDir);
+			const rel = relative(join(tempDir, ".astravia"), projectPkgDir);
 			const expected = rel.startsWith(".") ? rel : `./${rel}`;
 			expect(settings.packages?.[0]).toBe(expected);
 		});

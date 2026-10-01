@@ -1,5 +1,5 @@
+import type { PluginDefinition } from "@astravia-org/plugin-sdk";
 import type { InstalledPlugin } from "@preload/api";
-import type { PluginDefinition } from "@vetta-org/plugin-sdk";
 import { PluginActivationCleanupController } from "./plugin-activation-cleanup";
 import { clearAgentToolLabelsForPlugin } from "./plugin-agent-context";
 import { createPluginContext } from "./plugin-context";
@@ -45,18 +45,18 @@ export async function loadPlugin(plugin: InstalledPlugin, onChanged: () => void)
 		const sessionId = capabilitySessionId;
 		pluginRendererCapabilityHost.closeSession(sessionId);
 		try {
-			await window.vetta.plugins.internalCapabilities.closeSession(sessionId);
+			await window.astravia.plugins.internalCapabilities.closeSession(sessionId);
 		} finally {
 			capabilitySessionId = undefined;
 		}
 	};
 	try {
-		await window.vetta.plugins.beginAgentContributionsLoad(plugin.id, activationId);
+		await window.astravia.plugins.beginAgentContributionsLoad(plugin.id, activationId);
 		stage = "load-definition";
 		definition = await loadPluginDefinition(plugin);
 		const pendingRuntimeRegistrations: Promise<void>[] = [];
 		stage = "open-capability-session";
-		capabilitySessionId = await window.vetta.plugins.internalCapabilities.openSession(plugin.id);
+		capabilitySessionId = await window.astravia.plugins.internalCapabilities.openSession(plugin.id);
 		capabilitySessionDiagnosticId = capabilitySessionId;
 		pluginRendererCapabilityHost.bindSession(capabilitySessionId, plugin);
 		const secretsApi = createPluginSecretsApi(plugin, capabilitySessionId, disposers);
@@ -77,7 +77,7 @@ export async function loadPlugin(plugin: InstalledPlugin, onChanged: () => void)
 		stage = "runtime-registrations";
 		await Promise.all(pendingRuntimeRegistrations);
 		stage = "commit-contributions";
-		await window.vetta.plugins.commitAgentContributionsLoad(plugin.id, activationId);
+		await window.astravia.plugins.commitAgentContributionsLoad(plugin.id, activationId);
 		logPluginRuntimeInfo("activation completed", {
 			...logFields,
 			capabilitySessionId: capabilitySessionDiagnosticId,
@@ -116,7 +116,7 @@ export async function loadPlugin(plugin: InstalledPlugin, onChanged: () => void)
 				}
 			} finally {
 				try {
-					await window.vetta.plugins.clearAgentContributions(plugin.id, activationId);
+					await window.astravia.plugins.clearAgentContributions(plugin.id, activationId);
 				} finally {
 					try {
 						disposeLocalContributions();
@@ -153,14 +153,14 @@ export async function loadPlugin(plugin: InstalledPlugin, onChanged: () => void)
 				);
 			});
 		}
-		await window.vetta.plugins.abortAppActionActivation(plugin.id, activationId).catch((abortError: unknown) => {
+		await window.astravia.plugins.abortAppActionActivation(plugin.id, activationId).catch((abortError: unknown) => {
 			logPluginRuntimeError(
 				"activation rollback stage failed",
 				{ ...logFields, capabilitySessionId: capabilitySessionDiagnosticId, stage: "abort-app-actions" },
 				abortError,
 			);
 		});
-		await window.vetta.plugins.clearAgentContributions(plugin.id, activationId).catch((clearError: unknown) => {
+		await window.astravia.plugins.clearAgentContributions(plugin.id, activationId).catch((clearError: unknown) => {
 			logPluginRuntimeError(
 				"activation rollback stage failed",
 				{

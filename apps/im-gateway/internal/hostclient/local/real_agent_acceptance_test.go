@@ -9,12 +9,12 @@ import (
 	"testing"
 	"time"
 
-	"vetta-im-gateway/internal/hostclient"
+	"astravia-im-gateway/internal/hostclient"
 )
 
 const (
-	realAgentBinaryEnv     = "VETTA_TEST_AGENT_BIN"
-	realAgentPackageDirEnv = "VETTA_TEST_PACKAGE_DIR"
+	realAgentBinaryEnv     = "ASTRAVIA_TEST_AGENT_BIN"
+	realAgentPackageDirEnv = "ASTRAVIA_TEST_PACKAGE_DIR"
 	realAgentReply         = "IM_REAL_AGENT_REPLY"
 	realAgentFileContent   = "IM real Agent tool loop content"
 )
@@ -63,8 +63,8 @@ func TestRealAgent_IMToolLoopAndResume(t *testing.T) {
 		CloseTimeout:     15 * time.Second,
 		ExtraEnv: map[string]string{
 			"NO_COLOR":               "1",
-			"VETTA_CODING_AGENT_DIR": agentDir,
-			"VETTA_PACKAGE_DIR":      packageDir,
+			"ASTRAVIA_CODING_AGENT_DIR": agentDir,
+			"ASTRAVIA_PACKAGE_DIR":      packageDir,
 		},
 	})
 

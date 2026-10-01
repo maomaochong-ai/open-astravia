@@ -1,4 +1,4 @@
-import type { RuntimeHost } from "@vetta/runtime-core";
+import type { RuntimeHost } from "@astravia/runtime-core";
 import { type DesktopRuntimeHealth, DesktopRuntimeLifecycle } from "./lifecycle.js";
 
 export interface DesktopRuntimeComposition {

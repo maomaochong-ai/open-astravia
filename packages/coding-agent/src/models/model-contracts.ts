@@ -6,9 +6,9 @@ import type {
 	OAuthCredentials,
 	OAuthProviderInterface,
 	SimpleStreamOptions,
-} from "@vetta/ai";
+} from "@astravia/ai";
 
-declare module "@vetta/ai" {
+declare module "@astravia/ai" {
 	// biome-ignore lint/correctness/noUnusedVariables: 模块增强的类型参数名必须与原声明一致
 	interface Model<TApi extends Api> {
 		modelId?: string;

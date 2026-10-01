@@ -8,8 +8,8 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("node:fs/promises", () => ({ readFile: mocks.readFile }));
-vi.mock("@vetta/action-rpc", () => ({ getVettaHomePath: () => "C:/test-vetta" }));
-vi.mock("@vetta/toolkit/atomic-write", () => ({ atomicWriteJSON: mocks.atomicWriteJSON }));
+vi.mock("@astravia/action-rpc", () => ({ getAstraviaHomePath: () => "C:/test-astravia" }));
+vi.mock("@astravia/toolkit/atomic-write", () => ({ atomicWriteJSON: mocks.atomicWriteJSON }));
 vi.mock("electron", () => ({
 	BrowserWindow: {
 		getAllWindows: () => [{ isDestroyed: () => false, webContents: { send: mocks.send } }],
@@ -82,6 +82,6 @@ describe("preset catalog background refresh", () => {
 		expect(refreshed.catalogSource).toBe("live");
 		expect(mocks.fetch).toHaveBeenCalledTimes(1);
 		expect(mocks.send).toHaveBeenCalledOnce();
-		expect(mocks.send).toHaveBeenCalledWith("vetta:models:presets-updated");
+		expect(mocks.send).toHaveBeenCalledWith("astravia:models:presets-updated");
 	});
 });

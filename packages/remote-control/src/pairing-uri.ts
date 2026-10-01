@@ -1,7 +1,7 @@
 import { decodePublicKey } from "./crypto.js";
 import { RemoteProtocolError } from "./protocol.js";
 
-export const PAIRING_URI_SCHEME = "vetta";
+export const PAIRING_URI_SCHEME = "astravia";
 export const PAIRING_URI_HOST = "pair";
 export const PAIRING_URI_VERSION = 2;
 
@@ -49,7 +49,7 @@ export function parsePairingUri(text: string): RemotePairingInvite {
 		url.protocol !== `${PAIRING_URI_SCHEME}:` ||
 		(url.host !== PAIRING_URI_HOST && url.pathname !== `//${PAIRING_URI_HOST}`)
 	) {
-		throw new RemoteProtocolError("pairing link must start with vetta://pair");
+		throw new RemoteProtocolError("pairing link must start with astravia://pair");
 	}
 	const params = url.searchParams;
 	if (params.get("v") !== String(PAIRING_URI_VERSION))

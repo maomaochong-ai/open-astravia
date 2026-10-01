@@ -1,5 +1,5 @@
+import type { GuideBadgeSwiperViewProps, GuideBadgeViewItem } from "@astravia-org/theme-ui/chat";
 import { useNavigate } from "@tanstack/react-router";
-import type { GuideBadgeSwiperViewProps, GuideBadgeViewItem } from "@vetta-org/theme-ui/chat";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -15,7 +15,7 @@ interface GuideBadge {
 }
 
 // 首次类 badge 关闭后写入此 localStorage key（JSON 字符串数组），下次启动据此过滤。
-const DISMISSED_KEY = "vetta-guide-badges-dismissed";
+const DISMISSED_KEY = "astravia-guide-badges-dismissed";
 // 自动轮播间隔。
 const ROTATE_INTERVAL = 5000;
 

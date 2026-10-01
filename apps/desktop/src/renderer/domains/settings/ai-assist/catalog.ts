@@ -1,5 +1,5 @@
 /**
- * Surfaces that offer the “Let Vetta configure for you” entry.
+ * Surfaces that offer the “Let Astravia configure for you” entry.
  * Includes settings tabs and main feature pages (knowledge base, batch tasks, automation).
  */
 export type SettingsAiAssistTabId =

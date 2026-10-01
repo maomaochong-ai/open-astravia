@@ -1,8 +1,8 @@
 import {
 	CODING_AGENT_SESSION_INITIALIZATION_OBSERVATION,
 	type CodingAgentSessionInitializationObservation,
-} from "@vetta/coding-agent/composition";
-import { defineRuntimeObservation, type RuntimeObservationRecord } from "@vetta/runtime-core";
+} from "@astravia/coding-agent/composition";
+import { defineRuntimeObservation, type RuntimeObservationRecord } from "@astravia/runtime-core";
 import { describe, expect, it, vi } from "vitest";
 import { createSessionInitializationLogPort } from "./session-initialization-log-port.js";
 

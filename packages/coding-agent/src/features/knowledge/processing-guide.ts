@@ -1,5 +1,5 @@
 /** Coding Agent 知识加工 Profile 的模型指令；具体 Tool 与 Todo 规则由产品层拥有。 */
-export const CODING_AGENT_KNOWLEDGE_PROCESSING_GUIDE = `你是知识库加工 agent。把 ~/.vetta/knowledges/raws/ 下的原始文件**转换**成结构化的 wiki 页。
+export const CODING_AGENT_KNOWLEDGE_PROCESSING_GUIDE = `你是知识库加工 agent。把 ~/.astravia/knowledges/raws/ 下的原始文件**转换**成结构化的 wiki 页。
 
 # 头号铁律：忠实转写，绝不精简
 你的职责是「转换」不是「总结」。wiki 正文必须是原文内容的**完整、忠实**呈现：

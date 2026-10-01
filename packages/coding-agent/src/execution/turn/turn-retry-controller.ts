@@ -1,4 +1,4 @@
-import { ConfigurableRuntimeTurnRetryPolicy, RuntimeTurnRetryCoordinator } from "@vetta/runtime-core";
+import { ConfigurableRuntimeTurnRetryPolicy, RuntimeTurnRetryCoordinator } from "@astravia/runtime-core";
 import type { CodingAgentTurnRetryController, CodingAgentTurnRetryControllerOptions } from "./contracts.js";
 
 /** @deprecated Use RuntimeTurnRetryCoordinator for new integrations. */

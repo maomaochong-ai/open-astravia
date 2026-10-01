@@ -1,4 +1,4 @@
-import type { McpServerConfig } from "@vetta/runtime-mcp";
+import type { McpServerConfig } from "@astravia/runtime-mcp";
 
 export type DesktopMcpResourceScope = "application" | "workspace";
 export type DesktopMcpConfigOrigin = "global" | "project";

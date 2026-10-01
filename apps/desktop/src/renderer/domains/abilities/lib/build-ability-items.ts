@@ -3,6 +3,8 @@
  * installed / localVersion / needsUpdate 一律以安装台账为准（ADR-0049），
  * enabled 才回各自运行时读（skills 清单 / mcp.json / 插件注册表）。
  */
+
+import { getSkillDisplayDescription, getSkillDisplayName, isSkillVisibleOnSurface } from "@astravia-org/capability-sdk";
 import type {
 	AbilityLedger,
 	AbilityLedgerEntry,
@@ -15,7 +17,6 @@ import type {
 } from "@preload/api";
 import type { AbilityMember, MarketAbility } from "@shared/lib/api";
 import { builtinSkillIconUrl } from "@shared/lib/builtin-skill-icons";
-import { getSkillDisplayDescription, getSkillDisplayName, isSkillVisibleOnSurface } from "@vetta-org/capability-sdk";
 import type { TFunction } from "i18next";
 import {
 	type BuiltinMcpPreset,
@@ -217,7 +218,7 @@ export function buildSkillAbilities(market: MarketAbility[], state: LocalAbility
 	}
 
 	// 运行时列出、但不进台账的只读 skill：随 App 分发的内置（source=builtin）走 builtin 来源，
-	// `~/.agents/skills` 里用户自己放的、插件贡献的都是本地来源，不能算 Vetta 内置。
+	// `~/.agents/skills` 里用户自己放的、插件贡献的都是本地来源，不能算 Astravia 内置。
 	for (const skill of localSkills) {
 		if (claimedNames.has(`${skill.type}:${skill.name}`)) continue;
 		if (!isSkillVisibleOnSurface(skill, "abilityCatalog")) continue;
@@ -256,7 +257,7 @@ export function buildSkillAbilities(market: MarketAbility[], state: LocalAbility
 				(skill.source === "plugin" && skill.sourcePluginId
 					? { kind: "provided", providerType: "plugin", providerId: skill.sourcePluginId }
 					: skill.source === "builtin"
-						? { kind: "builtin", providerId: "vetta" }
+						? { kind: "builtin", providerId: "astravia" }
 						: { kind: "native", scope: skill.source }),
 			searchTerms: terms(skill.name, getSkillDisplayName(skill), getSkillDisplayDescription(skill)),
 		});

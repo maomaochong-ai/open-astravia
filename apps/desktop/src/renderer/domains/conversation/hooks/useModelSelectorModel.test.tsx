@@ -44,9 +44,9 @@ beforeEach(() => {
 it("remembers a model picked in a scoped composer as the global new-session preference", () => {
 	// 团队输入框的选择只经 scope 生效时，全局偏好会一直停在一个早已不可用的旧模型上，
 	// 刷新后普通输入框就显示并发送那个模型。
-	localStorage.setItem(SELECTED_MODEL_STORAGE_KEY, "vetta-go/stale");
+	localStorage.setItem(SELECTED_MODEL_STORAGE_KEY, "astravia-go/stale");
 	const store = createStore();
-	store.set(selectedModelAtom, "vetta-go/stale");
+	store.set(selectedModelAtom, "astravia-go/stale");
 	const scope: ModelSelectorScope = {
 		modelKey: "cli-proxy-api.responses/gpt-5.5",
 		onModelSelect: vi.fn(),

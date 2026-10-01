@@ -1,12 +1,12 @@
 import { join } from "node:path";
-import type { AssistantMessage } from "@vetta/ai";
+import type { AssistantMessage } from "@astravia/ai";
 import type {
 	CodingAgentRuntimeComposition,
 	CodingAgentRuntimeToolRegistration,
-} from "@vetta/coding-agent/composition";
-import type { RpcSessionInitialization, RpcSessionState } from "@vetta/coding-agent/rpc";
-import type { RuntimeHostSession, SessionEvent } from "@vetta/runtime-core";
-import { resolveSessionIdFromPath } from "@vetta/runtime-node/conversation";
+} from "@astravia/coding-agent/composition";
+import type { RpcSessionInitialization, RpcSessionState } from "@astravia/coding-agent/rpc";
+import type { RuntimeHostSession, SessionEvent } from "@astravia/runtime-core";
+import { resolveSessionIdFromPath } from "@astravia/runtime-node/conversation";
 import { describe, expect, test, vi } from "vitest";
 import { type CreateImRpcSessionAdapterOptions, createImRpcSessionAdapter } from "../src/rpc/rpc-session-adapter.js";
 import { RpcSessionEventAdapter } from "../src/rpc/rpc-session-event-adapter.js";

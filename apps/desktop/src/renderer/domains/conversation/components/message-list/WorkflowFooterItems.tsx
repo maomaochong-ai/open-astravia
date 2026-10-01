@@ -11,7 +11,7 @@ import {
 	subagentsBySessionAtom,
 	workflowDisplayName,
 } from "@shared/store/atoms";
-import { WorkflowFooterItemsView } from "@vetta-org/theme-ui/chat";
+import { WorkflowFooterItemsView } from "@astravia-org/theme-ui/chat";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -70,7 +70,7 @@ export function WorkflowFooterItems(): JSX.Element | null {
 	const handleStop = useCallback(
 		(id: string) => {
 			if (!runtimeId) return;
-			void window.vetta.session.interruptSubagent?.(runtimeId, id);
+			void window.astravia.session.interruptSubagent?.(runtimeId, id);
 		},
 		[runtimeId],
 	);

@@ -27,7 +27,7 @@ export class MicrophonePcmCapture {
 			}
 			await this.context.audioWorklet.addModule(pcmCaptureWorkletUrl);
 			this.source = this.context.createMediaStreamSource(this.stream);
-			this.worklet = new AudioWorkletNode(this.context, "vetta-pcm-capture", {
+			this.worklet = new AudioWorkletNode(this.context, "astravia-pcm-capture", {
 				numberOfInputs: 1,
 				numberOfOutputs: 1,
 				outputChannelCount: [1],

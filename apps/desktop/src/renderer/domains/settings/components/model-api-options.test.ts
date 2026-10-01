@@ -2,7 +2,7 @@
  * 模型表单的 API 类型下拉选项：空串=继承服务商，配置里的自定义 api 必须原样保留，
  * 否则用户一打开编辑表单，下拉找不到当前值就会把它改写成别的 api。
  */
-import { getApiProviders, registerBuiltInApiProviders } from "@vetta/ai";
+import { getApiProviders, registerBuiltInApiProviders } from "@astravia/ai";
 import { expect, it } from "vitest";
 import { API_OPTIONS, buildModelApiOptions } from "./useModelsSettingsModel";
 
@@ -27,7 +27,7 @@ it("does not duplicate a built-in api that is already selected", () => {
 	expect(options).toHaveLength(API_OPTIONS.length + 1);
 });
 
-it("offers exactly the built-in apis registered by @vetta/ai", () => {
+it("offers exactly the built-in apis registered by @astravia/ai", () => {
 	registerBuiltInApiProviders();
 	const registered = getApiProviders()
 		.map((provider) => provider.api)

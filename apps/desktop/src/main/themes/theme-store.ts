@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { getVettaHomePath } from "@vetta/action-rpc";
+import { getAstraviaHomePath } from "@astravia/action-rpc";
 import { app } from "electron";
 import type { DesktopThemePackage, DesktopThemePackageSource } from "../../preload/api-types/themes.js";
 
@@ -28,7 +28,7 @@ function systemThemesBaseDir(): string {
 }
 
 function remoteThemesBaseDir(): string {
-	return join(getVettaHomePath(), "themes");
+	return join(getAstraviaHomePath(), "themes");
 }
 
 function parseManifest(path: string): ThemeManifest {
@@ -49,7 +49,7 @@ function parseManifest(path: string): ThemeManifest {
 }
 
 function toThemeUrl(source: DesktopThemePackageSource, themeId: string, relativePath: string, version: string): string {
-	return `vetta-theme://${source}--${themeId}/${relativePath.replaceAll("\\", "/")}?v=${encodeURIComponent(version)}`;
+	return `astravia-theme://${source}--${themeId}/${relativePath.replaceAll("\\", "/")}?v=${encodeURIComponent(version)}`;
 }
 
 function toDevelopmentThemeUrl(origin: string, relativePath: string): string {
@@ -67,7 +67,7 @@ function discoverFrom(baseDir: string, source: DesktopThemePackageSource): Deskt
 			if (manifest.id !== entry) continue;
 			const development =
 				!app.isPackaged &&
-				process.env.VETTA_THEME_DEV_SERVER === "1" &&
+				process.env.ASTRAVIA_THEME_DEV_SERVER === "1" &&
 				source === "builtin" &&
 				manifest.development !== undefined
 					? manifest.development

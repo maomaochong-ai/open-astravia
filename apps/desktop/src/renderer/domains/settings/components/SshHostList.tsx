@@ -1,5 +1,5 @@
 import { Button } from "@shared/components/ui/button";
-import type { SshConnectionStatus } from "@vetta/ssh-transport";
+import type { SshConnectionStatus } from "@astravia/ssh-transport";
 import { SshHostForm } from "./SshHostForm";
 import type { SshHostRowMessage, SshHostsSettingsModel } from "./useSshHostsSettingsModel";
 

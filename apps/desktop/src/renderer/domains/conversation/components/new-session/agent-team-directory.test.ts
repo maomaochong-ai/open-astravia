@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import type { AgentTeamDocument } from "@vetta/agent-team";
+import type { AgentTeamDocument } from "@astravia/agent-team";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
 	cachedAgentTeamDocument,
@@ -15,7 +15,7 @@ function document(revision: number): AgentTeamDocument {
 
 function installApi(list: () => Promise<AgentTeamDocument>): { notifyChanged: () => void } {
 	const listeners = new Set<() => void>();
-	Object.defineProperty(window, "vetta", {
+	Object.defineProperty(window, "astravia", {
 		configurable: true,
 		value: {
 			agentTeams: {

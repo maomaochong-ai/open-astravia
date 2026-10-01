@@ -1,4 +1,3 @@
-import type { Static, TSchema } from "@sinclair/typebox";
 import type {
 	AIErrorDetails,
 	AssistantMessage,
@@ -9,7 +8,8 @@ import type {
 	TextContent,
 	ToolCall,
 	ToolResultMessage,
-} from "@vetta/ai";
+} from "@astravia/ai";
+import type { Static, TSchema } from "@sinclair/typebox";
 
 export interface AgentRunLimits {
 	/** Optional model-call cap. Omit it to let the run continue until another terminal condition. */

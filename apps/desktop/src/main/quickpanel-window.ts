@@ -26,7 +26,7 @@ const requireNative = createRequire(import.meta.url);
 const liquidGlass: LiquidGlassApi | null = isMac ? (requireNative("electron-liquid-glass") as LiquidGlassApi) : null;
 const appRoot = app.isPackaged ? app.getAppPath() : process.cwd();
 const resDir = app.isPackaged ? appRoot : join(appRoot, "dist");
-const devServerUrl = process.env.VETTA_DESKTOP_DEV_URL;
+const devServerUrl = process.env.ASTRAVIA_DESKTOP_DEV_URL;
 const quickPanelPreloadPath = join(resDir, "preload/quickpanel.js");
 
 const QUICK_PANEL_WIDTH = 640;

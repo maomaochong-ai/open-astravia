@@ -1,6 +1,6 @@
-# @vetta/runtime-mcp
+# @astravia/runtime-mcp
 
-Vetta 平台无关的 MCP 协议、Port 与 Runtime 状态协调层。
+Astravia 平台无关的 MCP 协议、Port 与 Runtime 状态协调层。
 
 ## 本包拥有
 
@@ -16,13 +16,13 @@ Vetta 平台无关的 MCP 协议、Port 与 Runtime 状态协调层。
 
 - 文件配置、凭证和 OAuth 状态文件读写
 - stdio 子进程、HTTP SDK Client、网络请求和具体 Client Factory
-- SDK OAuth Provider、Device Flow 网络执行和内置 Vetta MCP 组装
+- SDK OAuth Provider、Device Flow 网络执行和内置 Astravia MCP 组装
 - Desktop 回调页面、系统浏览器、配置路径、UI 或交互授权策略
 
-Node 实现由 `@vetta/runtime-node/mcp` 提供；Desktop 专属交互由 `runtime-desktop` 或
+Node 实现由 `@astravia/runtime-node/mcp` 提供；Desktop 专属交互由 `runtime-desktop` 或
 `desktop` Host 适配器提供。`runtime-mcp/src` 不得导入平台 Runtime 或 `node:*`。
 
-浏览器代码只从 `@vetta/runtime-mcp/browser` 导入运行时值。该入口仅包含 MCP App
+浏览器代码只从 `@astravia/runtime-mcp/browser` 导入运行时值。该入口仅包含 MCP App
 Attachment 解析与媒体准入策略，不会把 Agent、Provider 或 Node transport 带入浏览器 bundle；
 类型导入仍可使用其它公开入口。
 

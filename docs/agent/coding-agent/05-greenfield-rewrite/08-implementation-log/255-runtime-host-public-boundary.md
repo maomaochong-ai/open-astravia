@@ -18,7 +18,7 @@
 - 会话历史、认证、模型和设置等用户数据；必要时由显式、独立的新迁移器读取旧格式。
 - 模型消息、工具消息、错误、取消、事件顺序、并发约束和资源释放语义。
 - 仍然有效的行为测试场景和数据 fixture；旧实现可以临时作为测试 Oracle，但不能被新生产代码调用。
-- `@vetta/ai` 与经过合同验证的 `@vetta/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
+- `@astravia/ai` 与经过合同验证的 `@astravia/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
 
 ## 明确舍弃（固定）
 
@@ -41,7 +41,7 @@
 
 ### 1. 建立稳定 Runtime 公共入口
 
-- 新增 `@vetta/coding-agent/runtime` 包子路径，并同步 package exports、根 TypeScript path、Desktop TypeScript path、CLI Vitest alias 和 Desktop Vitest alias。
+- 新增 `@astravia/coding-agent/runtime` 包子路径，并同步 package exports、根 TypeScript path、Desktop TypeScript path、CLI Vitest alias 和 Desktop Vitest alias。
 - 公共入口按 `turn.ts`、`session.ts`、`extensions.ts` 拆分，顶层 `runtime.ts` 只负责转发，避免重新形成大型聚合实现文件。
 - 对外提供 Turn 重试与执行、Session capability、Extension 命令和事件、观察事件适配、资源重载、分支导航、消息投影与 Compaction 的中性接口和工厂。
 - `host-services` 增加模型控制器、MCP Runtime Tool Source 与 Plugin MCP Runtime 的中性工厂；宿主不再直接实例化具体产品类。
@@ -55,8 +55,8 @@
 
 ### 3. 宿主迁移
 
-- CLI Print Session、Agent Session Host、Extension Session Host、RPC Session Adapter 和 IM Runtime Host 改用 `@vetta/coding-agent/runtime`。
-- CLI IM Runtime Host 的 MCP 与 Plugin MCP 组合改用 `@vetta/coding-agent/host-services`。
+- CLI Print Session、Agent Session Host、Extension Session Host、RPC Session Adapter 和 IM Runtime Host 改用 `@astravia/coding-agent/runtime`。
+- CLI IM Runtime Host 的 MCP 与 Plugin MCP 组合改用 `@astravia/coding-agent/host-services`。
 - Desktop Runtime Composition 改用 `host-services` 中的模型与 MCP 工厂，不再实例化具体 Shared Model Controller。
 - CLI 与 Desktop 生产源码对 `runtime-host` 和 `runtime-host/greenfield` 的直接导入归零；内部实现和既有功能仍保留。
 
@@ -73,7 +73,7 @@
 | --- | ---: | ---: | --- |
 | CLI/Desktop 生产 `runtime-host` 导入文件 | 6 | 0 | 迁移到 `runtime` 或 `host-services` |
 | 外部具体 Runtime Adapter 导入 | 多处 | 0 | 门禁按具体类/工厂名审查 |
-| 稳定 Runtime 公共入口 | 0 | 1 | `@vetta/coding-agent/runtime` |
+| 稳定 Runtime 公共入口 | 0 | 1 | `@astravia/coding-agent/runtime` |
 | Legacy execution edge | 0 | 0 | 保持归零 |
 | Runtime backedge | 0 | 0 | 保持归零 |
 | Greenfield product-core edge | 0 | 0 | 保持归零 |

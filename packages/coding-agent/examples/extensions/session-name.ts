@@ -7,7 +7,7 @@
  * Usage: /session-name [name] - set or show session name
  */
 
-import type { ExtensionAPI } from "@vetta/coding-agent";
+import type { ExtensionAPI } from "@astravia/coding-agent";
 
 export default function (api: ExtensionAPI) {
 	api.registerCommand("session-name", {

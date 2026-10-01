@@ -8,7 +8,7 @@
 
 Kernel 已经以 `turnId` 持久化 `turn.started`、`message.appended` 与 Turn 终态，但 RuntimeHost 只把部分 assistant observation 转成公开 `SessionEvent`：用户消息不回流，legacy lifecycle 也没有 Turn 身份。Desktop 因而只能从 `queue.changed` 中某个条目“消失”推断消息已消费，再用模块级 draft、文本与序号猜测它属于哪一轮。
 
-这形成了多个并行事实源：Kernel Turn、队列快照、Renderer streaming 布尔值、全局 draft、乐观消息缓存和异步全量历史。点击“立即发送”时，旧 Turn 的取消、新 Turn 的开始、队列快照和历史回流会交错；任何局部时序调整都只能修复一种排列，并可能让另一个排列出现两个 streaming 回复、旧终态关闭新回复或历史覆盖新消息。openvetta/open-vetta#69 是该结构问题的再次暴露。
+这形成了多个并行事实源：Kernel Turn、队列快照、Renderer streaming 布尔值、全局 draft、乐观消息缓存和异步全量历史。点击“立即发送”时，旧 Turn 的取消、新 Turn 的开始、队列快照和历史回流会交错；任何局部时序调整都只能修复一种排列，并可能让另一个排列出现两个 streaming 回复、旧终态关闭新回复或历史覆盖新消息。maomaochong-ai/open-astravia#69 是该结构问题的再次暴露。
 
 ## 决策
 

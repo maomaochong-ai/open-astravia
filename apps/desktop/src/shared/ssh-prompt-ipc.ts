@@ -6,11 +6,11 @@
  */
 export const SSH_PROMPT_CHANNELS = {
 	/** main → renderer：需要用户回答一次提示。 */
-	REQUEST: "vetta:ssh:prompt-request",
+	REQUEST: "astravia:ssh:prompt-request",
 	/** renderer → main：用户的回答。 */
-	RESPOND: "vetta:ssh:prompt-respond",
+	RESPOND: "astravia:ssh:prompt-respond",
 	/** main → renderer：该提示已失效（连接被取消或超时），关掉界面。 */
-	CANCEL: "vetta:ssh:prompt-cancel",
+	CANCEL: "astravia:ssh:prompt-cancel",
 } as const;
 
 export type SshPromptKindWire = "confirm" | "passphrase" | "password" | "verification-code";

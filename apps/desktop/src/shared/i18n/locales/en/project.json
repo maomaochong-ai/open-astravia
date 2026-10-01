@@ -166,7 +166,7 @@
 	},
 	"exportDialog": {
 		"title": "Export project",
-		"message": "Export project \"{{name}}\"?\n\nThis will package all files under the current project directory, including .vetta/sessions history and batch task working directories and state. File locks (*.lock) are excluded.",
+		"message": "Export project \"{{name}}\"?\n\nThis will package all files under the current project directory, including .astravia/sessions history and batch task working directories and state. File locks (*.lock) are excluded.",
 		"confirm": "Export",
 		"failedTitle": "Export failed",
 		"failedConfirm": "OK"
@@ -210,7 +210,7 @@
 			},
 			"skills": {
 				"title": "Capabilities",
-				"description": "Open the Capabilities page to install skills and connectors that give Vetta more expertise."
+				"description": "Open the Capabilities page to install skills and connectors that give Astravia more expertise."
 			}
 		}
 	},

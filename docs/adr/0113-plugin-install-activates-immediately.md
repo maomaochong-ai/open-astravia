@@ -29,7 +29,7 @@ Accepted
 
 ## 后果
 
-- 升级不再需要第二步动作，GUI 导入、Action 安装与 CLI `add` 一致。`@vetta-org/plugin-cli` 无需改动：它的 pending 提示是条件分支，不再触发；`reload` 命令仍然可用且幂等。
+- 升级不再需要第二步动作，GUI 导入、Action 安装与 CLI `add` 一致。`@astravia-org/plugin-cli` 无需改动：它的 pending 提示是条件分支，不再触发；`reload` 命令仍然可用且幂等。
 - 市场更新流的次序变为「装完即生效 → 权限确认」。这不扩大权限：`grantedPermissions` 仍是旧授权与新声明的交集。
 - 旧注册表里已经存在的 `pendingVersion` 状态，在一次重载或重新安装后收敛。字段本身暂时保留以兼容这些存量记录。
 - ADR-0067 中「升级 pending/reload」的表述随之失效，已同步修订。

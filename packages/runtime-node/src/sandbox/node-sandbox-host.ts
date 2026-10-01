@@ -2,8 +2,8 @@ import type {
 	SandboxPermissionRequest,
 	SandboxSessionGrantEntry,
 	SandboxShellGrant,
-} from "@vetta/runtime-core/sandbox";
-import type { ForegroundCommandOperations } from "@vetta/runtime-tools";
+} from "@astravia/runtime-core/sandbox";
+import type { ForegroundCommandOperations } from "@astravia/runtime-tools";
 import type { NodeSandboxPlatform, NodeSandboxShell } from "./commands/contracts.js";
 import { createLinuxBubblewrapCommandOperations } from "./commands/linux-bubblewrap.js";
 import { createMacosSeatbeltCommandOperations } from "./commands/macos-seatbelt.js";

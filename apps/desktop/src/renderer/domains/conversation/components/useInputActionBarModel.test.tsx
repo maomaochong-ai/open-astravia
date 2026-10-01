@@ -26,7 +26,7 @@ describe("plan mode as an input action", () => {
 		store.set(currentScenarioAtom, "project");
 		store.set(draftPlanModeAtom, false);
 		store.set(planModeStateBySessionAtom, {});
-		Object.defineProperty(window, "vetta", { configurable: true, value: { session: { setPermissionMode } } });
+		Object.defineProperty(window, "astravia", { configurable: true, value: { session: { setPermissionMode } } });
 	});
 	afterEach(cleanup);
 

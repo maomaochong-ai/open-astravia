@@ -1,4 +1,4 @@
-import type { SessionEvent } from "@vetta/runtime-core";
+import type { SessionEvent } from "@astravia/runtime-core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PetCommand } from "../../shared/pet-ipc.js";
 import {

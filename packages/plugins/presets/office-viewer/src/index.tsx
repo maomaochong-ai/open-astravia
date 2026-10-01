@@ -1,4 +1,4 @@
-import { definePlugin } from "@vetta-org/plugin-sdk";
+import { definePlugin } from "@astravia-org/plugin-sdk";
 import { OfficePreview } from "./OfficePreview";
 import { OFFICE_EXTENSIONS } from "./office-formats";
 import "./style.css";

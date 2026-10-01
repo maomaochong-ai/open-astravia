@@ -1,5 +1,5 @@
 import { useState, type JSX } from "react";
-import { Button, Popover, PopoverContent, PopoverTrigger } from "@vetta-org/ui";
+import { Button, Popover, PopoverContent, PopoverTrigger } from "@astravia-org/ui";
 
 export interface KnowledgeSourcePickerViewLabels {
 	readonly addMaterials: string;

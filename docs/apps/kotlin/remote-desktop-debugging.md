@@ -125,7 +125,7 @@ Worker、Desktop 或 APK 更新后，旧 Desktop 隐藏 host 页面可能仍运�
 
 ### 扫码按钮不可用
 
-真机没有 Google Play Services 时，Google Code Scanner 不会工作。改用完整 `vetta://pair?...` URI 手动粘贴。
+真机没有 Google Play Services 时，Google Code Scanner 不会工作。改用完整 `astravia://pair?...` URI 手动粘贴。
 
 ### 只有黑色画面，没有明显异常
 

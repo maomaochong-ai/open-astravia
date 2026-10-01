@@ -69,7 +69,7 @@ Prompt 引用、附件、上下文占用、压缩结果、后台任务、Todo �
 
 - 新增 Prompt、事件和工具独立合同；
 - Session 与创建合同改为导入同目录公共类型；
-- `@vetta/coding-agent/sdk` 显式导出新增稳定类型；
+- `@astravia/coding-agent/sdk` 显式导出新增稳定类型；
 - Prompt 的旧/新类型增加双向编译兼容约束，旧 Session 事件可赋给新事件联合；
 - 编译期断言稳定工具上下文不存在具体 Session/Model 管理器属性。
 

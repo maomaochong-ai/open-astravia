@@ -1,4 +1,4 @@
-import { SettingsSidebarView } from "@vetta-org/theme-ui/settings";
+import { SettingsSidebarView } from "@astravia-org/theme-ui/settings";
 import { prefetchSettingsTab } from "./settings-tab-loaders";
 import type { SettingsPageModel } from "./types";
 

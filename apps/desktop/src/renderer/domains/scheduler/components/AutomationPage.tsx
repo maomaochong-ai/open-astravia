@@ -8,7 +8,7 @@ import { AutomationPageView } from "./AutomationPageView";
 export function AutomationPage(): JSX.Element {
 	const setHeaderRightSlot = useSetAtom(pageHeaderRightSlotAtom);
 
-	// 「让 Vetta 帮您配置」放在标题栏右上角，与知识库等页面一致，不挤占列表区。
+	// 「让 Astravia 帮您配置」放在标题栏右上角，与知识库等页面一致，不挤占列表区。
 	useEffect(() => {
 		setHeaderRightSlot(<SettingsAiAssist tabId="automation" />);
 		return () => setHeaderRightSlot(null);

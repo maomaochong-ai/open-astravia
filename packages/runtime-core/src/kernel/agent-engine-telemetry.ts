@@ -1,4 +1,4 @@
-import type { AgentExecutionEvent, AgentRunResult } from "@vetta/agent-core";
+import type { AgentExecutionEvent, AgentRunResult } from "@astravia/agent-core";
 import {
 	type Api,
 	type AssistantMessage,
@@ -8,7 +8,7 @@ import {
 	type Message,
 	type Model,
 	type SimpleStreamOptions,
-} from "@vetta/ai";
+} from "@astravia/ai";
 import type { RuntimeObservationPublisher } from "../observation/contracts.js";
 import { RUNTIME_EXECUTION_TRACE } from "../observation/execution-trace.js";
 import { runtimeObservationFailure } from "../observation/observation.js";

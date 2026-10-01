@@ -12,7 +12,7 @@ import {
 function themeDevelopmentReload(): Plugin {
 	const themeSourceDir = resolve(__dirname, "../../packages/themes/builtin/xianxia/src");
 	return {
-		name: "vetta-theme-development-reload",
+		name: "astravia-theme-development-reload",
 		configureServer(server) {
 			const reloadRenderer = (file: string): void => {
 				const relativePath = path.relative(themeSourceDir, file);
@@ -36,7 +36,7 @@ function hostApiAccessTransform(): Plugin {
 	const rendererRoot = path.resolve(__dirname, "src/renderer").replaceAll("\\", "/");
 	const hostApiModule = `${rendererRoot}/shared/host-api.ts`;
 	return {
-		name: "vetta-host-api-access",
+		name: "astravia-host-api-access",
 		enforce: "pre",
 		transform(code, id) {
 			const cleanId = id.split("?", 1)[0]?.replaceAll("\\", "/");
@@ -50,7 +50,7 @@ function hostApiAccessTransform(): Plugin {
 			const visit = (node: ts.Node): void => {
 				if (
 					ts.isPropertyAccessExpression(node) &&
-					node.name.text === "vetta" &&
+					node.name.text === "astravia" &&
 					ts.isIdentifier(node.expression) &&
 					node.expression.text === "window"
 				) {
@@ -63,10 +63,10 @@ function hostApiAccessTransform(): Plugin {
 
 			let transformed = code;
 			for (const replacement of replacements.sort((left, right) => right.start - left.start)) {
-				transformed = `${transformed.slice(0, replacement.start)}__vettaHostApi${transformed.slice(replacement.end)}`;
+				transformed = `${transformed.slice(0, replacement.start)}__astraviaHostApi${transformed.slice(replacement.end)}`;
 			}
 			return {
-				code: `import { hostApi as __vettaHostApi } from "@shared/host-api";\n${transformed}`,
+				code: `import { hostApi as __astraviaHostApi } from "@shared/host-api";\n${transformed}`,
 				map: null,
 			};
 		},
@@ -74,41 +74,41 @@ function hostApiAccessTransform(): Plugin {
 }
 
 export default defineConfig(({ mode }) => {
-	const env = loadEnv(mode, process.cwd(), "VETTA_");
+	const env = loadEnv(mode, process.cwd(), "ASTRAVIA_");
 	for (const [key, value] of Object.entries(process.env)) {
-		if (key.startsWith("VETTA_") && value !== undefined) env[key] = value;
+		if (key.startsWith("ASTRAVIA_") && value !== undefined) env[key] = value;
 	}
 	const speechInputBuildConfig = resolveSpeechInputBuildConfig({ env });
 	const themeDevelopmentEnabled =
-		(process.env.VETTA_THEME_DEV_SERVER ?? env.VETTA_THEME_DEV_SERVER) === "1";
-	const rawDevServerPort = process.env.VETTA_DESKTOP_DEV_PORT ?? env.VETTA_DESKTOP_DEV_PORT ?? "3020";
+		(process.env.ASTRAVIA_THEME_DEV_SERVER ?? env.ASTRAVIA_THEME_DEV_SERVER) === "1";
+	const rawDevServerPort = process.env.ASTRAVIA_DESKTOP_DEV_PORT ?? env.ASTRAVIA_DESKTOP_DEV_PORT ?? "3020";
 	const devServerPort = Number(rawDevServerPort);
 	if (!Number.isInteger(devServerPort) || devServerPort < 1 || devServerPort > 65_535) {
-		throw new Error(`Invalid VETTA_DESKTOP_DEV_PORT: ${rawDevServerPort}`);
+		throw new Error(`Invalid ASTRAVIA_DESKTOP_DEV_PORT: ${rawDevServerPort}`);
 	}
-	// 外观「界面主题」区段：默认隐藏；VETTA_SHOW_UI_THEME=true 时展示（shell > .env）
-	const showUiTheme = process.env.VETTA_SHOW_UI_THEME ?? env.VETTA_SHOW_UI_THEME ?? "";
+	// 外观「界面主题」区段：默认隐藏；ASTRAVIA_SHOW_UI_THEME=true 时展示（shell > .env）
+	const showUiTheme = process.env.ASTRAVIA_SHOW_UI_THEME ?? env.ASTRAVIA_SHOW_UI_THEME ?? "";
 	const sentry = createSentryBuildSetup(env, "dist/renderer");
 
 	return {
 		define: {
-			"process.env.VETTA_SHOW_UI_THEME": JSON.stringify(showUiTheme),
-			// 云服务构建期开关：默认 false（lite）；只有 VETTA_CLOUD_ENABLED=true 才产出完全体。
+			"process.env.ASTRAVIA_SHOW_UI_THEME": JSON.stringify(showUiTheme),
+			// 云服务构建期开关：默认 false（lite）；只有 ASTRAVIA_CLOUD_ENABLED=true 才产出完全体。
 			// cloud 分支经常量折叠被整体裁掉（含动态 import 的 chunk）。
-			"process.env.VETTA_CLOUD_ENABLED": JSON.stringify(
-				(process.env.VETTA_CLOUD_ENABLED ?? env.VETTA_CLOUD_ENABLED) === "true" ? "true" : "false",
+			"process.env.ASTRAVIA_CLOUD_ENABLED": JSON.stringify(
+				(process.env.ASTRAVIA_CLOUD_ENABLED ?? env.ASTRAVIA_CLOUD_ENABLED) === "true" ? "true" : "false",
 			),
 			[`process.env.${SPEECH_INPUT_ENABLED_ENV}`]: JSON.stringify(String(speechInputBuildConfig.enabled)),
-			"process.env.VETTA_SENTRY_ENABLED": JSON.stringify(
-				readValue(env, "VETTA_SENTRY_DSN") ? "true" : "false",
+			"process.env.ASTRAVIA_SENTRY_ENABLED": JSON.stringify(
+				readValue(env, "ASTRAVIA_SENTRY_DSN") ? "true" : "false",
 			),
-			"process.env.VETTA_POSTHOG_KEY": JSON.stringify(readValue(env, "VETTA_POSTHOG_KEY") ?? ""),
-			"process.env.VETTA_POSTHOG_HOST": JSON.stringify(readValue(env, "VETTA_POSTHOG_HOST") ?? ""),
-			"process.env.VETTA_POSTHOG_REPLAY_ENABLED": JSON.stringify(
-				readValue(env, "VETTA_POSTHOG_REPLAY_ENABLED") ?? "",
+			"process.env.ASTRAVIA_POSTHOG_KEY": JSON.stringify(readValue(env, "ASTRAVIA_POSTHOG_KEY") ?? ""),
+			"process.env.ASTRAVIA_POSTHOG_HOST": JSON.stringify(readValue(env, "ASTRAVIA_POSTHOG_HOST") ?? ""),
+			"process.env.ASTRAVIA_POSTHOG_REPLAY_ENABLED": JSON.stringify(
+				readValue(env, "ASTRAVIA_POSTHOG_REPLAY_ENABLED") ?? "",
 			),
-			"process.env.VETTA_POSTHOG_REPLAY_SAMPLE_RATE": JSON.stringify(
-				readValue(env, "VETTA_POSTHOG_REPLAY_SAMPLE_RATE") ?? "",
+			"process.env.ASTRAVIA_POSTHOG_REPLAY_SAMPLE_RATE": JSON.stringify(
+				readValue(env, "ASTRAVIA_POSTHOG_REPLAY_SAMPLE_RATE") ?? "",
 			),
 		},
 		plugins: [
@@ -125,10 +125,10 @@ export default defineConfig(({ mode }) => {
 				"@shared": path.resolve(__dirname, "./src/renderer/shared"),
 				"@domains": path.resolve(__dirname, "./src/renderer/domains"),
 				"@cloud": path.resolve(__dirname, "./src/renderer/cloud"),
-				"@vetta-org/theme-sdk": path.resolve(__dirname, "../../packages/theme-sdk/src"),
-				"@vetta-org/theme-ui": path.resolve(__dirname, "../../packages/theme-ui/src"),
-				"@vetta-org/ui": path.resolve(__dirname, "../../packages/ui/src/index.ts"),
-				"@vetta/remote-desktop": path.resolve(__dirname, "../../packages/remote-desktop/src/index.ts"),
+				"@astravia-org/theme-sdk": path.resolve(__dirname, "../../packages/theme-sdk/src"),
+				"@astravia-org/theme-ui": path.resolve(__dirname, "../../packages/theme-ui/src"),
+				"@astravia-org/ui": path.resolve(__dirname, "../../packages/ui/src/index.ts"),
+				"@astravia/remote-desktop": path.resolve(__dirname, "../../packages/remote-desktop/src/index.ts"),
 				"@": path.resolve(__dirname, "./src"),
 			},
 		},

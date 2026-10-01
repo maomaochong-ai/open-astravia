@@ -1,5 +1,5 @@
-import type { ThinkingLevel } from "@vetta/agent-core";
-import type { Api, KnownProvider, Model } from "@vetta/ai";
+import type { ThinkingLevel } from "@astravia/agent-core";
+import type { Api, KnownProvider, Model } from "@astravia/ai";
 import type { CodingAgentModelCatalogView } from "../model-contracts.js";
 import { parseModelPattern } from "./model-pattern.js";
 import type { ScopedModel } from "./model-scope.js";

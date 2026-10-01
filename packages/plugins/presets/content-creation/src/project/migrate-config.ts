@@ -1,4 +1,4 @@
-import { migrateVersionedConfig, type VersionedConfigMigrationResult } from "@vetta/toolkit/versioned-config";
+import { migrateVersionedConfig, type VersionedConfigMigrationResult } from "@astravia/toolkit/versioned-config";
 import { contentProjectMigration001To2 } from "./migrations/001_to_2";
 import { contentProjectMigration002To3 } from "./migrations/002_to_3";
 import { contentProjectMigration003To4 } from "./migrations/003_to_4";

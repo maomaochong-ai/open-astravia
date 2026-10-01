@@ -1,4 +1,4 @@
-import type { SubagentCoordinatorPort } from "@vetta/runtime-subagents";
+import type { SubagentCoordinatorPort } from "@astravia/runtime-subagents";
 import type { CodingAgentWorkflowDispatcherPort } from "../../runtime-contracts/index.js";
 import {
 	CODING_AGENT_MODEL_TOOL_ORDER,
@@ -14,7 +14,7 @@ import {
 	createWaitAgentToolRegistration,
 } from "./tools/index.js";
 
-/** 组装 Coding Agent 工具顺序；协议归 @vetta/runtime-tools，Node 实现归 @vetta/runtime-node。 */
+/** 组装 Coding Agent 工具顺序；协议归 @astravia/runtime-tools，Node 实现归 @astravia/runtime-node。 */
 export function createCodingAgentSubagentRuntimeToolRegistrations(
 	getCoordinator: () => SubagentCoordinatorPort | undefined,
 	getWorkflowDispatcher: () => CodingAgentWorkflowDispatcherPort | undefined,

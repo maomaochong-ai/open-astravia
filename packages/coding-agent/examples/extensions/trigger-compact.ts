@@ -1,4 +1,4 @@
-import type { ExtensionAPI, ExtensionContext } from "@vetta/coding-agent";
+import type { ExtensionAPI, ExtensionContext } from "@astravia/coding-agent";
 
 const COMPACT_THRESHOLD_TOKENS = 100_000;
 

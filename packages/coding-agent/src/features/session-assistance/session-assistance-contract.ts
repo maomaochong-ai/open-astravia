@@ -1,4 +1,4 @@
-import { defineSessionExtensionEndpoint } from "@vetta/runtime-core/session-extensions";
+import { defineSessionExtensionEndpoint } from "@astravia/runtime-core/session-extensions";
 
 export const CODING_AGENT_SESSION_ASSISTANCE_EXTENSION_ID = "coding-agent.session-assistance";
 

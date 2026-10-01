@@ -7,8 +7,8 @@
 # 仓库里的自动化测试都跑在回环夹具上（假 ssh 脚本把命令交给本机 /bin/sh），证明不了
 # 真实 sshd、真实网络、以及目标机器的内核与 shell。这个脚本补的就是那一段。
 #
-# 它按 Vetta 自己的方式部署：同样的目录、同样的权限、同样的 sha256 校验，所以跑通了
-# 就等于 Vetta 在这台机器上也能用。
+# 它按 Astravia 自己的方式部署：同样的目录、同样的权限、同样的 sha256 校验，所以跑通了
+# 就等于 Astravia 在这台机器上也能用。
 set -eu
 
 if [ $# -lt 1 ]; then
@@ -21,8 +21,8 @@ SSH="ssh $* $HOST"
 
 here=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 PROTOCOL_VERSION=$(sed -n 's/^const Version = "\(.*\)"$/\1/p' "$here/internal/protocol/protocol.go")
-REMOTE_DIR="\$HOME/.cache/vetta/helper/$PROTOCOL_VERSION"
-REMOTE_BIN="$REMOTE_DIR/vetta-ssh-helper"
+REMOTE_DIR="\$HOME/.cache/astravia/helper/$PROTOCOL_VERSION"
+REMOTE_BIN="$REMOTE_DIR/astravia-ssh-helper"
 
 step() { printf '\n\033[1m== %s\033[0m\n' "$1"; }
 fail() { printf '\033[31m失败: %s\033[0m\n' "$1" >&2; exit 1; }
@@ -40,12 +40,12 @@ Darwin\ x86_64) target=darwin-amd64 ;;
 Darwin\ arm64) target=darwin-arm64 ;;
 *) fail "不支持的远端平台: ${platform}（远程项目要求 Linux 或 macOS）" ;;
 esac
-binary="$here/dist/$target/vetta-ssh-helper"
+binary="$here/dist/$target/astravia-ssh-helper"
 [ -f "$binary" ] || fail "缺少 ${binary}，先跑 make cross-build"
-echo "  用 dist/$target/vetta-ssh-helper"
+echo "  用 dist/$target/astravia-ssh-helper"
 
-step "2/7 上传并校验（与 Vetta 的部署方式一致）"
-# 走 cat 而不是 scp：Vetta 就是这么传的，远端也未必装了 scp。
+step "2/7 上传并校验（与 Astravia 的部署方式一致）"
+# 走 cat 而不是 scp：Astravia 就是这么传的，远端也未必装了 scp。
 $SSH "mkdir -p $REMOTE_DIR && cat > $REMOTE_BIN && chmod 700 $REMOTE_BIN" <"$binary"
 local_sum=$(shasum -a 256 "$binary" 2>/dev/null | cut -d' ' -f1 || sha256sum "$binary" | cut -d' ' -f1)
 remote_sum=$($SSH "sha256sum $REMOTE_BIN 2>/dev/null || shasum -a 256 $REMOTE_BIN" | grep -oE '[0-9a-f]{64}')
@@ -58,7 +58,7 @@ echo "  $hello"
 expect "$hello" "\"protocolVersion\":\"$PROTOCOL_VERSION\"" "握手没有返回预期的协议版本"
 
 step "4/7 文件读写（写入保留权限位）"
-probe="/tmp/vetta-helper-check-$$"
+probe="/tmp/astravia-helper-check-$$"
 $SSH "printf 'old\n' > $probe.sh && chmod 755 $probe.sh"
 data=$(printf 'new\n' | base64 | tr -d '\n')
 out=$(printf '{"id":1,"method":"fs.writeFile","params":{"path":"%s.sh","data":"%s"}}\n{"id":2,"method":"fs.stat","params":{"path":"%s.sh"}}\n' "$probe" "$data" "$probe" | helper)
@@ -89,7 +89,7 @@ step "6/7 端口转发（设计画布这类预览服务器要用）"
 #
 # 光看 `-O forward` 的退出码不算数：它只是在本机建了个监听，服务端的拒绝要等真的有连接
 # 穿过去才暴露。所以必须连一次——目标选远端 sshd 自己，它一定在监听，读到 SSH 版本号才算通。
-forward_cp=$(mktemp -u "${TMPDIR:-/tmp}/vetta-fwd-XXXXXX")
+forward_cp=$(mktemp -u "${TMPDIR:-/tmp}/astravia-fwd-XXXXXX")
 forward_port=$(awk 'BEGIN{srand();print 20000+int(rand()*20000)}')
 remote_ssh_port=$(${SSH} 'echo "${SSH_CONNECTION##* }"' 2>/dev/null | tr -d '\r')
 case "${remote_ssh_port}" in '' | *[!0-9]*) remote_ssh_port=22 ;; esac
@@ -126,5 +126,5 @@ ${SSH} -o ControlPath="${forward_cp}" -O exit 2>/dev/null || true
 step "7/7 收尾"
 printf '{"id":1,"method":"proc.kill","params":{"id":"%s"}}\n{"id":2,"method":"proc.remove","params":{"id":"%s"}}\n' "$id" "$id" | helper >/dev/null
 $SSH "rm -f $probe.sh"
-printf '\n\033[32m全部通过：这台主机可以作为 Vetta 的远程项目使用。\033[0m\n'
-echo "helper 留在 ${REMOTE_BIN}，删掉它只需 rm -rf \$HOME/.cache/vetta"
+printf '\n\033[32m全部通过：这台主机可以作为 Astravia 的远程项目使用。\033[0m\n'
+echo "helper 留在 ${REMOTE_BIN}，删掉它只需 rm -rf \$HOME/.cache/astravia"

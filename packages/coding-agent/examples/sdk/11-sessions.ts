@@ -5,10 +5,10 @@
  */
 
 import { join } from "node:path";
-import { createCodingAgentSession, createCodingAgentSessionCatalog } from "@vetta/coding-agent/sdk";
+import { createCodingAgentSession, createCodingAgentSessionCatalog } from "@astravia/coding-agent/sdk";
 
 const cwd = process.cwd();
-const conversationDir = join(cwd, ".vetta", "conversations");
+const conversationDir = join(cwd, ".astravia", "conversations");
 const catalog = createCodingAgentSessionCatalog({ cwd, conversationDir });
 
 // In-memory (no persistence)

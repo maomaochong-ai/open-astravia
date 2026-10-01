@@ -8,7 +8,7 @@ import { pipeline } from "node:stream/promises";
 import { pathToFileURL } from "node:url";
 import AdmZip from "adm-zip";
 
-export const VENDOR_CACHE_DIR = join(tmpdir(), "vetta-desktop-vendor-cache");
+export const VENDOR_CACHE_DIR = join(tmpdir(), "astravia-desktop-vendor-cache");
 const manifestPath = join(import.meta.dirname, "../src/main/runtimes/manifest.json");
 
 function readableArchive(path, filename) {
@@ -25,7 +25,7 @@ function readableArchive(path, filename) {
 }
 
 export async function prepareVendorRuntimes({
-	platformTag = process.env.VETTA_VENDOR_PLATFORM || `${process.platform}-${process.arch}`,
+	platformTag = process.env.ASTRAVIA_VENDOR_PLATFORM || `${process.platform}-${process.arch}`,
 	manifest = JSON.parse(readFileSync(manifestPath, "utf8")),
 	cacheDir = VENDOR_CACHE_DIR,
 	fetchImpl = fetch,

@@ -5,9 +5,9 @@ describe("coding tool executable resolver", () => {
 	it("prefers a managed binary over PATH", async () => {
 		const commandLookups: string[] = [];
 		const resolver = createLocalCodingToolExecutableResolver({
-			binDirectory: "C:/vetta/bin",
+			binDirectory: "C:/astravia/bin",
 			platform: "win32",
-			fileExists: (path) => path.replace(/\\/g, "/") === "C:/vetta/bin/rg.exe",
+			fileExists: (path) => path.replace(/\\/g, "/") === "C:/astravia/bin/rg.exe",
 			commandExists: (command) => {
 				commandLookups.push(command);
 				return true;
@@ -15,14 +15,14 @@ describe("coding tool executable resolver", () => {
 		});
 
 		const resolved = await resolver.resolve("rg");
-		expect(resolved?.replace(/\\/g, "/")).toBe("C:/vetta/bin/rg.exe");
+		expect(resolved?.replace(/\\/g, "/")).toBe("C:/astravia/bin/rg.exe");
 		expect(commandLookups).toEqual([]);
 	});
 
 	it("falls back to a PATH command when no managed binary exists", async () => {
 		const commandLookups: string[] = [];
 		const resolver = createLocalCodingToolExecutableResolver({
-			binDirectory: "C:/vetta/bin",
+			binDirectory: "C:/astravia/bin",
 			platform: "win32",
 			fileExists: () => false,
 			commandExists: (command) => {
@@ -37,7 +37,7 @@ describe("coding tool executable resolver", () => {
 
 	it("returns undefined when neither managed binary nor PATH command exists", async () => {
 		const resolver = createLocalCodingToolExecutableResolver({
-			binDirectory: "C:/vetta/bin",
+			binDirectory: "C:/astravia/bin",
 			fileExists: () => false,
 			commandExists: () => false,
 		});
@@ -50,14 +50,14 @@ describe("coding tool executable resolver", () => {
 		let managedAvailable = true;
 		let pathAvailable = true;
 		const resolver = createLocalCodingToolExecutableResolver({
-			binDirectory: "C:/vetta/bin",
+			binDirectory: "C:/astravia/bin",
 			platform: "win32",
 			fileExists: () => managedAvailable,
 			commandExists: () => pathAvailable,
 		});
 
 		const managedPath = await resolver.resolve("rg");
-		expect(managedPath?.replace(/\\/g, "/")).toBe("C:/vetta/bin/rg.exe");
+		expect(managedPath?.replace(/\\/g, "/")).toBe("C:/astravia/bin/rg.exe");
 		managedAvailable = false;
 		await expect(resolver.resolve("rg")).resolves.toBe("rg");
 		pathAvailable = false;

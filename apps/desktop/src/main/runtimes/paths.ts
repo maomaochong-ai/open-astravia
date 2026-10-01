@@ -1,5 +1,5 @@
 import { dirname, join } from "node:path";
-import { getAgentDir } from "@vetta/coding-agent/config";
+import { getAgentDir } from "@astravia/coding-agent/config";
 import manifest from "./manifest.json";
 
 export type RuntimeType = "node" | "python";
@@ -42,17 +42,17 @@ export function runtimeVersion(type: RuntimeType): string {
 	return RUNTIME_MANIFEST[type].version;
 }
 
-/** ~/.vetta —— 与 coding-agent 的 agent 目录同根，尊重 VETTA_CODING_AGENT_DIR 覆盖。 */
-export function vettaRootDir(): string {
+/** ~/.astravia —— 与 coding-agent 的 agent 目录同根，尊重 ASTRAVIA_CODING_AGENT_DIR 覆盖。 */
+export function astraviaRootDir(): string {
 	return dirname(getAgentDir());
 }
 
-/** ~/.vetta/runtimes —— [[托管运行时]] 落地根目录。 */
+/** ~/.astravia/runtimes —— [[托管运行时]] 落地根目录。 */
 export function runtimesDir(): string {
-	return join(vettaRootDir(), "runtimes");
+	return join(astraviaRootDir(), "runtimes");
 }
 
-/** 某运行时某版本的安装目录：~/.vetta/runtimes/<type>/<version>/ */
+/** 某运行时某版本的安装目录：~/.astravia/runtimes/<type>/<version>/ */
 export function installDir(type: RuntimeType, version: string = runtimeVersion(type)): string {
 	return join(runtimesDir(), type, version);
 }
@@ -98,7 +98,7 @@ export function pipCacheDir(): string {
 	return join(runtimesDir(), ".pip-cache");
 }
 
-/** 本地安装登记表路径：~/.vetta/runtimes/.cache/registry.json */
+/** 本地安装登记表路径：~/.astravia/runtimes/.cache/registry.json */
 export function registryPath(): string {
 	return join(runtimesDir(), ".cache", "registry.json");
 }
@@ -134,7 +134,7 @@ export function gitPlatformEntry(): GitPlatformEntry | undefined {
 	return RUNTIME_MANIFEST.git.platforms[currentPlatformTag()];
 }
 
-/** 托管 Git 安装目录：~/.vetta/runtimes/git/<version>/ */
+/** 托管 Git 安装目录：~/.astravia/runtimes/git/<version>/ */
 export function gitInstallDir(version: string = RUNTIME_MANIFEST.git.version): string {
 	return join(runtimesDir(), "git", version);
 }

@@ -1,4 +1,4 @@
-import type { RuntimeHost } from "@vetta/runtime-core";
+import type { RuntimeHost } from "@astravia/runtime-core";
 import { isConversationCwd } from "../conversations/session-paths.js";
 import { DEFAULT_CONVERSATION_CWD, readDesktopConfig } from "../ipc/fs.js";
 import { sameProjectPath } from "../projects/project-path.js";

@@ -81,7 +81,7 @@ desktop / cli-host / other hosts
 
 现有 `Agent` 类暂时作为 standalone 兼容门面；生产 Runtime 不应通过它持有第二份状态。
 
-最终保留 `@vetta/agent-core` 包本身，因为它是可独立测试的无状态执行边界。根入口只导出 engine API；有状态 `Agent` 迁到 `@vetta/agent-core/standalone` 兼容子路径，并按退出条件删除。
+最终保留 `@astravia/agent-core` 包本身，因为它是可独立测试的无状态执行边界。根入口只导出 engine API；有状态 `Agent` 迁到 `@astravia/agent-core/standalone` 兼容子路径，并按退出条件删除。
 
 ### 3.3 `packages/runtime-core`
 
@@ -160,7 +160,7 @@ compat/            Agent 类和旧 loop API
 - 需要不同运行时依赖，例如纯协议包必须不带 Node 依赖。
 - 包内依赖规则无法通过 exports 和 lint guard 可靠维持。
 
-因此第一阶段不直接创建 `@vetta/ai-provider`、`@vetta/ai-provider-utils` 等包。Vercel 的多包结构服务于公共 Provider 生态，不能仅因目录相似就复制。
+因此第一阶段不直接创建 `@astravia/ai-provider`、`@astravia/ai-provider-utils` 等包。Vercel 的多包结构服务于公共 Provider 生态，不能仅因目录相似就复制。
 
 ## 5. 稳定协议与可变实现
 
@@ -182,9 +182,9 @@ compat/            Agent 类和旧 loop API
 
 共享类型按语义所有权归属：
 
-- 模型 Message、ReasoningEffort、usage、tool-call wire types：`@vetta/ai/protocol`。
-- Agent step/run event：`@vetta/agent-core`。
-- Session event、RuntimeMessageEnvelope、ToolPhase observation：`@vetta/runtime-core`。
+- 模型 Message、ReasoningEffort、usage、tool-call wire types：`@astravia/ai/protocol`。
+- Agent step/run event：`@astravia/agent-core`。
+- Session event、RuntimeMessageEnvelope、ToolPhase observation：`@astravia/runtime-core`。
 - RuntimeToolDefinition 及通用工具实现：`runtime-core` 契约与 `runtime-tools` 实现。
 
 上层不得为了获得一个通用枚举而依赖 Agent 根入口。
@@ -239,6 +239,6 @@ interface ContextSectionUsage {
 - 模型调用只实现一个规范化 stream，完整结果由 collect helper 生成。
 - Node 是主测试环境；只有 `protocol`、schema/value 校验和 Web 标准 transport helper 进入选择性的 Edge/Browser 兼容套件。
 
-- `@vetta/agent-core` 继续存在，但只保留无状态 engine。
+- `@astravia/agent-core` 继续存在，但只保留无状态 engine。
 - standalone `Agent` 至少兼容两个锁步发布周期；仓库内调用清零、迁移文档完成、外部消费者核查完成后，在 breaking minor 删除。
 - 上游先迁共享类型，再替换 Turn Engine；避免在新引擎上继续携带旧的类型所有权。

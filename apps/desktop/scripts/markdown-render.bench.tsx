@@ -1,7 +1,7 @@
 import { Profiler } from "react";
 import { createRoot } from "react-dom/client";
-import { MarkdownContent } from "@vetta-org/theme-ui/markdown";
-import type { MarkdownDefinition } from "@vetta-org/theme-ui/markdown";
+import { MarkdownContent } from "@astravia-org/theme-ui/markdown";
+import type { MarkdownDefinition } from "@astravia-org/theme-ui/markdown";
 
 const fixtures = {
 	prose: "A paragraph with **emphasis**, `inline code`, and enough words to represent a long answer.\n\n".repeat(350),

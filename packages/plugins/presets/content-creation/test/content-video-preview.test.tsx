@@ -4,11 +4,11 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ContentVideoPreview } from "../src/node/ContentVideoPreview";
 
-vi.mock("@vetta-org/plugin-sdk", () => ({
+vi.mock("@astravia-org/plugin-sdk", () => ({
 	useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-vi.mock("@vetta-org/ui", () => ({
+vi.mock("@astravia-org/ui", () => ({
 	Slider: ({ "aria-label": ariaLabel }: { "aria-label"?: string }) => (
 		<input type="range" aria-label={ariaLabel} />
 	),

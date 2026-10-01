@@ -1,9 +1,9 @@
-import { Value } from "@sinclair/typebox/value";
-import type { SessionEvent } from "@vetta/runtime-core";
+import type { SessionEvent } from "@astravia/runtime-core";
 import {
 	defineSessionExtensionEndpoint,
 	defineSessionExtensionObservation,
-} from "@vetta/runtime-core/session-extensions";
+} from "@astravia/runtime-core/session-extensions";
+import { Value } from "@sinclair/typebox/value";
 import {
 	CODING_AGENT_PLAN_MODE_EXTENSION_ID,
 	type CodingAgentPermissionMode,

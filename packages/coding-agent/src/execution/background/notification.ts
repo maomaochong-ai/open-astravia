@@ -1,4 +1,4 @@
-import type { BackgroundCommandSnapshot } from "@vetta/runtime-tools";
+import type { BackgroundCommandSnapshot } from "@astravia/runtime-tools";
 
 /** 将通用后台命令快照投影为 Coding Agent 的模型上下文通知。 */
 export function buildCodingAgentBackgroundCommandNotification(task: BackgroundCommandSnapshot): string {

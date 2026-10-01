@@ -1,8 +1,8 @@
 # 证据索引
 
-本页列出评审使用的主要事实源。Vetta 链接指向当前仓库，Pi 链接固定到评审 SHA `936aff00918de1187f085f123c2812d8f2d67745`。
+本页列出评审使用的主要事实源。Astravia 链接指向当前仓库，Pi 链接固定到评审 SHA `936aff00918de1187f085f123c2812d8f2d67745`。
 
-## Vetta：架构与公开合同
+## Astravia：架构与公开合同
 
 - [`coding-agent` 重写边界与规则](../../../packages/coding-agent/AGENTS.md)
 - [`coding-agent` 包说明](../../../packages/coding-agent/README.md)
@@ -15,7 +15,7 @@
 - [RPC 模式合同](../../../packages/coding-agent/docs/rpc.md)
 - [保留 Pi `0.14.2`/`pi-mono` 环境信息的历史 fixture](../../../packages/coding-agent/test/fixtures/before-compaction.jsonl)
 
-## Vetta：Coding Extension
+## Astravia：Coding Extension
 
 - [Extension API contract](../../../packages/coding-agent/src/extensions/api-contracts.ts)
 - [Extension context contract](../../../packages/coding-agent/src/extensions/context-contracts.ts)
@@ -35,7 +35,7 @@
 - [Resource package source parsing](../../../packages/coding-agent/src/resources/packages/source-spec.ts)
 - [动态 Skill/Extension source tests](../../../packages/coding-agent/test/sdk/coding-agent-sdk-dynamic-resources.test.ts)
 
-## Vetta：Runtime
+## Astravia：Runtime
 
 - [`runtime-core` README](../../../packages/runtime-core/README.md)
 - [`runtime-tools` README](../../../packages/runtime-tools/README.md)
@@ -47,7 +47,7 @@
 - [`runtime-storage` README](../../../packages/runtime-storage/README.md)
 - [`runtime-telemetry` README](../../../packages/runtime-telemetry/README.md)
 
-## Vetta：Plugin、权限与宿主
+## Astravia：Plugin、权限与宿主
 
 - [Plugin 总览](../../plugin/README.md)
 - [Plugin manifest](../../plugin/manifest.md)
@@ -98,7 +98,7 @@
 ## 可重复核对方法
 
 ```powershell
-# Vetta 固定点
+# Astravia 固定点
 git rev-parse HEAD
 git show -s --format='%H%n%cI%n%s' HEAD
 

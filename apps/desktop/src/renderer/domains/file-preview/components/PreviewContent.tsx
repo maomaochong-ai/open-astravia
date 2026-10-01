@@ -7,7 +7,7 @@ import {
 	getExtension,
 	getPreviewLabel,
 	type FilePreviewItem,
-} from "@vetta-org/theme-ui/file-preview";
+} from "@astravia-org/theme-ui/file-preview";
 import { useAtomValue } from "jotai";
 import { usePreviewBodyModel } from "../hooks/usePreviewBodyModel";
 import { downloadItem, isPreviewSupported, isTextExtension } from "../preview-utils";

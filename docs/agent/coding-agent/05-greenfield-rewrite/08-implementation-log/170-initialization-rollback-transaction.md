@@ -89,4 +89,4 @@ IM Runtime 启动显式记录以下所有权链：
 
 ## 下一步
 
-第 171 轮建议补充真实 CLI 初始化失败门禁：通过现有 Vetta CLI 启动会话，在可控的 Extension/MCP 启动失败下验证进程退出后无 conversation ownership lock、无 MCP/子进程、无重复 Hook/Extension 生命周期事件，并在同一路径立即重启成功。故障注入只放在测试适配器或测试 fixture，不增加生产配置面。
+第 171 轮建议补充真实 CLI 初始化失败门禁：通过现有 Astravia CLI 启动会话，在可控的 Extension/MCP 启动失败下验证进程退出后无 conversation ownership lock、无 MCP/子进程、无重复 Hook/Extension 生命周期事件，并在同一路径立即重启成功。故障注入只放在测试适配器或测试 fixture，不增加生产配置面。

@@ -1,6 +1,6 @@
 import * as readline from "node:readline";
 import type { Readable, Writable } from "node:stream";
-import type { RpcFrameTransport } from "@vetta/coding-agent/rpc";
+import type { RpcFrameTransport } from "@astravia/coding-agent/rpc";
 
 export class NodeRpcJsonlTransport implements RpcFrameTransport {
 	private reader: readline.Interface | undefined;

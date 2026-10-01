@@ -26,7 +26,7 @@ class HeaderSlotErrorBoundary extends Component<{ slotKey: string; children: Rea
 
 /**
  * 把插件节点放回它自己的 i18n 目录与 CSS @scope 里再交给宿主页头渲染——
- * 插件 CSS 被编译成 `@scope([data-vetta-plugin-root=<id>])`，脱离这层包装
+ * 插件 CSS 被编译成 `@scope([data-astravia-plugin-root=<id>])`，脱离这层包装
  * 时插件的 Tailwind 类会全部失效。
  */
 function HeaderSlot({ pluginId, slotKey, children }: { pluginId: string; slotKey: string; children: ReactNode }) {

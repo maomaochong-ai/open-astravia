@@ -19,14 +19,14 @@ export function useDefaultAgentMode(): {
 
 	useEffect(() => {
 		let disposed = false;
-		void window.vetta.config.get().then((config) => {
+		void window.astravia.config.get().then((config) => {
 			if (disposed) return;
 			// 合法性由主进程按模式注册表校验（ADR-0071）；renderer 不复刻注册表。
 			if (typeof config.defaultAgentMode === "string" && config.defaultAgentMode) {
 				setAtom(config.defaultAgentMode);
 			}
 		});
-		const unsubscribe = window.vetta.session.onAgentModeChanged((mode) => {
+		const unsubscribe = window.astravia.session.onAgentModeChanged((mode) => {
 			setAtom(mode);
 		});
 		return () => {
@@ -39,7 +39,7 @@ export function useDefaultAgentMode(): {
 		async (mode: AgentMode): Promise<void> => {
 			if (mode === defaultAgentMode) return;
 			setAtom(mode);
-			await window.vetta.session.setGlobalAgentMode(mode);
+			await window.astravia.session.setGlobalAgentMode(mode);
 		},
 		[defaultAgentMode, setAtom],
 	);

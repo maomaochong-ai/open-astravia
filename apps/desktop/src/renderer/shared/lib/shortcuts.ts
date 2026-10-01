@@ -19,7 +19,7 @@ export type { ShortcutActionDef } from "@/shared/shortcuts";
 /** @deprecated 使用 ShortcutBindings；保留别名避免旧 import 断裂。 */
 export type ShortcutMap = ShortcutBindings;
 
-const LEGACY_STORAGE_KEY = "vetta-shortcuts";
+const LEGACY_STORAGE_KEY = "astravia-shortcuts";
 
 function bindingsAsRecord(bindings: ShortcutBindings): Record<string, string> {
 	const out: Record<string, string> = {};
@@ -49,7 +49,7 @@ function clearLegacyLocalStorage(): void {
 
 /** 从 desktop-config 加载；若为空则迁移旧 localStorage 一次。 */
 export async function loadShortcutBindings(): Promise<ShortcutBindings> {
-	const config = await window.vetta.config.get();
+	const config = await window.astravia.config.get();
 	const fromConfig = normalizeShortcutBindings(config.shortcuts?.bindings ?? {});
 	if (Object.keys(fromConfig).length > 0) {
 		clearLegacyLocalStorage();
@@ -57,7 +57,7 @@ export async function loadShortcutBindings(): Promise<ShortcutBindings> {
 	}
 	const legacy = readLegacyLocalStorage();
 	if (Object.keys(legacy).length > 0) {
-		await window.vetta.config.set({ shortcuts: { bindings: bindingsAsRecord(legacy) } });
+		await window.astravia.config.set({ shortcuts: { bindings: bindingsAsRecord(legacy) } });
 		clearLegacyLocalStorage();
 		return legacy;
 	}
@@ -68,7 +68,7 @@ export async function loadShortcutBindings(): Promise<ShortcutBindings> {
 /** 整表写入自定义绑定（空对象 = 全部默认）。 */
 export async function saveShortcutBindings(bindings: ShortcutBindings): Promise<void> {
 	const normalized = normalizeShortcutBindings(bindings);
-	await window.vetta.config.set({ shortcuts: { bindings: bindingsAsRecord(normalized) } });
+	await window.astravia.config.set({ shortcuts: { bindings: bindingsAsRecord(normalized) } });
 }
 
 export function getEffectiveShortcut(actionId: string, customMap: ShortcutBindings): string {

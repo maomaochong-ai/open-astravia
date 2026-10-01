@@ -79,4 +79,4 @@ const api: DesktopApi = {
 	...hostGate.api,
 };
 
-contextBridge.exposeInMainWorld("vetta", api);
+contextBridge.exposeInMainWorld("astravia", api);

@@ -22,9 +22,9 @@ const invite = {
 } as const;
 
 describe("pairing uri", () => {
-	it("round-trips an invite through the vetta://pair link", () => {
+	it("round-trips an invite through the astravia://pair link", () => {
 		const uri = buildPairingUri(invite);
-		expect(uri.startsWith("vetta://pair?")).toBe(true);
+		expect(uri.startsWith("astravia://pair?")).toBe(true);
 		expect(parsePairingUri(uri)).toEqual(invite);
 	});
 

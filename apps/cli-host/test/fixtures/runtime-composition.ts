@@ -5,13 +5,13 @@ import {
 	type CodingAgentSessionExecutionEnvironmentFactory,
 	createIsolatedCodingAgentRuntimeHostSession,
 	createCodingAgentRuntimeComposition as createRuntimeComposition,
-} from "@vetta/coding-agent/composition";
-import { getAgentDir } from "@vetta/coding-agent/config";
-import { detectWorkspaceFacts, probeWorkspaceSignals } from "@vetta/coding-agent/model-context";
-import { SettingsRuntime } from "@vetta/coding-agent/settings";
-import type { RuntimeHostSession } from "@vetta/runtime-core";
-import { nodeWorkspaceFactsFileSource } from "@vetta/runtime-node/coding";
-import { createFileConversationPersistence } from "@vetta/runtime-node/conversation";
+} from "@astravia/coding-agent/composition";
+import { getAgentDir } from "@astravia/coding-agent/config";
+import { detectWorkspaceFacts, probeWorkspaceSignals } from "@astravia/coding-agent/model-context";
+import { SettingsRuntime } from "@astravia/coding-agent/settings";
+import type { RuntimeHostSession } from "@astravia/runtime-core";
+import { nodeWorkspaceFactsFileSource } from "@astravia/runtime-node/coding";
+import { createFileConversationPersistence } from "@astravia/runtime-node/conversation";
 import {
 	createCliCodingAgentSessionExecutionEnvironmentFactory,
 	createCliCodingAgentToolEnvironmentFactory,

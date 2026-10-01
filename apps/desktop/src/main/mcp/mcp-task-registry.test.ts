@@ -1,7 +1,7 @@
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { McpTaskExecutionSnapshot } from "@vetta/runtime-mcp";
+import type { McpTaskExecutionSnapshot } from "@astravia/runtime-mcp";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DesktopMcpTaskRegistry } from "./mcp-task-registry.js";
 
@@ -63,7 +63,7 @@ describe("DesktopMcpTaskRegistry", () => {
 });
 
 async function temporaryStatePath(): Promise<string> {
-	const directory = await mkdtemp(join(tmpdir(), "vetta-mcp-task-test-"));
+	const directory = await mkdtemp(join(tmpdir(), "astravia-mcp-task-test-"));
 	temporaryDirectories.push(directory);
 	return join(directory, "state.json");
 }

@@ -1,4 +1,4 @@
-import { TaskListView } from "@vetta-org/theme-ui/scheduler";
+import { TaskListView } from "@astravia-org/theme-ui/scheduler";
 import type { AutomationListFilter } from "../automation-status";
 import { useTaskListModel } from "../hooks/useTaskListModel";
 

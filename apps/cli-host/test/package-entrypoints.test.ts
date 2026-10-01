@@ -18,10 +18,10 @@ describe("canonical executable ownership", () => {
 		const codingAgent = readPackageManifest("../../../packages/coding-agent/package.json");
 
 		expect(cliApp.bin).toEqual({
-			vetta: "dist/cli.js",
-			"vetta-agent": "dist/agent-cli.js",
-			"vetta-cli-app": "dist/cli.js",
-			"vetta-agent-rpc": "dist/agent-rpc-cli.js",
+			astravia: "dist/cli.js",
+			"astravia-agent": "dist/agent-cli.js",
+			"astravia-cli-app": "dist/cli.js",
+			"astravia-agent-rpc": "dist/agent-rpc-cli.js",
 		});
 		expect(codingAgent.bin).toBeUndefined();
 	});

@@ -1,7 +1,7 @@
+import type { AgentTool } from "@astravia/agent-core";
+import type { EcosystemHookRuntime, EcosystemToolDescriptor } from "@astravia/ecosystem-adapter/hooks";
+import type { RuntimeToolDefinition } from "@astravia/runtime-core/kernel";
 import type { TSchema } from "@sinclair/typebox";
-import type { AgentTool } from "@vetta/agent-core";
-import type { EcosystemHookRuntime, EcosystemToolDescriptor } from "@vetta/ecosystem-adapter/hooks";
-import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
 
 export type EcosystemHookAwareTool = AgentTool & { ecosystemHook?: EcosystemToolDescriptor };
 export type EcosystemHookAwareRuntimeTool = RuntimeToolDefinition & {

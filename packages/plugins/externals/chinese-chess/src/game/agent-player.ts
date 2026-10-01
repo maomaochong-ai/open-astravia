@@ -1,4 +1,4 @@
-import type { PluginAiChatMessage, PluginAiChatRequest, PluginAiChatResult, PluginAiToolCall } from "@vetta-org/plugin-sdk";
+import type { PluginAiChatMessage, PluginAiChatRequest, PluginAiChatResult, PluginAiToolCall } from "@astravia-org/plugin-sdk";
 import type { XiangqiEngine } from "./engine";
 import { moveToIccs, parseIccs } from "./notation";
 import type { MoveRecord, Side } from "./types";

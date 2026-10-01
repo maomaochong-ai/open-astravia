@@ -39,7 +39,7 @@ export function useFileTree(cwdOverride?: string | null) {
 		async (dirPath: string) => {
 			setLoadingDirs((prev) => new Set([...prev, dirPath]));
 			try {
-				const entries = await window.vetta.fs.readDir(dirPath);
+				const entries = await window.astravia.fs.readDir(dirPath);
 				setCache((prev) => new Map([...prev, [dirPath, entries as FsEntry[]]]));
 			} catch (err) {
 				console.error("Failed to load directory:", dirPath, err);
@@ -87,7 +87,7 @@ export function useFileTree(cwdOverride?: string | null) {
 	const renameEntry = useCallback(
 		async (oldPath: string, newName: string) => {
 			const newPath = pathJoin(pathDirname(oldPath), newName);
-			await window.vetta.fs.rename(oldPath, newPath);
+			await window.astravia.fs.rename(oldPath, newPath);
 			emitPluginFileExplorerFilesChanged([{ type: "moved", oldPath, path: newPath }]);
 			// Refresh parent directory
 			const parentDir = pathDirname(oldPath);
@@ -98,7 +98,7 @@ export function useFileTree(cwdOverride?: string | null) {
 
 	const deleteEntry = useCallback(
 		async (entryPath: string) => {
-			await window.vetta.fs.delete(entryPath);
+			await window.astravia.fs.delete(entryPath);
 			emitPluginFileExplorerFilesChanged([{ type: "deleted", path: entryPath }]);
 			const parentDir = pathDirname(entryPath);
 			// Remove from cache
@@ -165,7 +165,7 @@ export function useFileTree(cwdOverride?: string | null) {
 			});
 
 			try {
-				await window.vetta.fs.move(srcPath, destDir);
+				await window.astravia.fs.move(srcPath, destDir);
 				emitPluginFileExplorerFilesChanged([{ type: "moved", oldPath: srcPath, path: pathJoin(destDir, name) }]);
 			} catch (err) {
 				console.error("Move failed, refreshing:", err);
@@ -235,13 +235,13 @@ export function useFileTree(cwdOverride?: string | null) {
 		// Start watching new dirs
 		for (const dir of dirsToWatch) {
 			if (!prev.has(dir)) {
-				void window.vetta.fs.watchDir(dir);
+				void window.astravia.fs.watchDir(dir);
 			}
 		}
 		// Stop watching removed dirs
 		for (const dir of prev) {
 			if (!dirsToWatch.has(dir)) {
-				void window.vetta.fs.unwatchDir(dir);
+				void window.astravia.fs.unwatchDir(dir);
 			}
 		}
 
@@ -250,7 +250,7 @@ export function useFileTree(cwdOverride?: string | null) {
 		return () => {
 			// Cleanup on unmount: unwatch all
 			for (const dir of watchedDirsRef.current) {
-				void window.vetta.fs.unwatchDir(dir);
+				void window.astravia.fs.unwatchDir(dir);
 			}
 			watchedDirsRef.current = new Set();
 		};
@@ -264,7 +264,7 @@ export function useFileTree(cwdOverride?: string | null) {
 				void loadDir(dirPath);
 			}
 		});
-		const unsub = window.vetta.fs.onDirChanged((dirPath: string) => {
+		const unsub = window.astravia.fs.onDirChanged((dirPath: string) => {
 			scheduler.notify(dirPath);
 		});
 		return () => {

@@ -1,6 +1,6 @@
 import nodePath from "node:path";
+import type { RuntimeToolDefinition } from "@astravia/runtime-core/kernel";
 import { type Static, Type } from "@sinclair/typebox";
-import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
 import { resolveExistingPath, resolveToCwd } from "../../shared/path-resolution.js";
 import { DOC_TO_PDF_TOOL_DESCRIPTION } from "./description.js";
 

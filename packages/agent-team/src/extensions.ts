@@ -1,4 +1,4 @@
-import type { ConversationMessageRecord } from "@vetta/runtime-core/conversation";
+import type { ConversationMessageRecord } from "@astravia/runtime-core/conversation";
 import type { TeamDefinition, TeamSharedContextRecord } from "./contracts.js";
 import { projectPublicTeamCheckpointContext, projectPublicTeamContext } from "./public-context.js";
 import type { TeamTaskAction } from "./task-control.js";

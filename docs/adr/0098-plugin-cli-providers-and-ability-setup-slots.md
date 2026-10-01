@@ -5,7 +5,7 @@
 
 ## 背景
 
-部分外置能力的上游产品面本来就是面向 Agent 的 CLI。把这类 CLI 再包装成 Vetta Action、MCP 或自定义 Tool，
+部分外置能力的上游产品面本来就是面向 Agent 的 CLI。把这类 CLI 再包装成 Astravia Action、MCP 或自定义 Tool，
 会复制命令协议、上游 Skills 和认证流程，也会让市场插件承担不属于它的执行抽象。另一方面，仅在详情文案中给出
 手工命令无法展示启用后的真实安装进度，也无法承接扫码配置等交互。
 
@@ -27,11 +27,11 @@
 5. Plugin UI 新增 `registerAbilityDetailSlot`。贡献必须明确目标 ability slug，宿主固定将其渲染在详情 Header 与静态营销
    内容之间，并传递 installed/enabled 状态。该 Slot 只在匹配能力详情中出现，不升级为全局浮层。
 6. 二维码由宿主公共 UI API从上游 CLI 输出的完整不透明 URL 生成。插件不得重建、缩短或修改认证 URL；同时提供外部浏览器
-   打开入口。凭据的存储与脱敏继续归上游 CLI，Vetta 不复制 App Secret。
+   打开入口。凭据的存储与脱敏继续归上游 CLI，Astravia 不复制 App Secret。
 
 ## 边界
 
-- CLI Provider 是插件依赖提供者，不是 Vetta Action、MCP、Agent Tool 或新的 Agent 安全门禁。
+- CLI Provider 是插件依赖提供者，不是 Astravia Action、MCP、Agent Tool 或新的 Agent 安全门禁。
 - 安装从用户确认启用后开始；安装进度是可见且可重试的，不伪装成静默安装，也不使用虚假百分比。
 - 本决策不为任意市场能力开放 Shell 脚本。manifest 命令字段仍是裸 executable + argv，入口经过现有跨平台进程启动器。
 - 用户停用插件不会回滚本机 CLI 或上游凭据；再次启用优先探测并复用已有安装。

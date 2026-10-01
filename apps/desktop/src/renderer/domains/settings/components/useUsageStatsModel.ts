@@ -1,5 +1,5 @@
+import type { UsageStatsRange, UsageStatsViewProps } from "@astravia-org/theme-ui/settings";
 import { countUsageStreak, sumUsageTotals } from "@shared/lib/usage-stats";
-import type { UsageStatsRange, UsageStatsViewProps } from "@vetta-org/theme-ui/settings";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useUsageSeries } from "./useUsageSeries";

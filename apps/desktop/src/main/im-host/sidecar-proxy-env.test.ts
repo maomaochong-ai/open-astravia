@@ -60,13 +60,13 @@ describe("sidecar 进程的代理环境", () => {
 	});
 
 	it("仍然继承父进程环境，不是只给代理变量", async () => {
-		process.env.VETTA_PROXY_ENV_PROBE = "inherited";
+		process.env.ASTRAVIA_PROXY_ENV_PROBE = "inherited";
 		const manager = new SidecarManager({ readyTimeoutMs: 5_000, shutdownGraceMs: 50, backoffMs: [10] });
 		await manager.start({ ...baseConfig(), proxyEnv: { HTTPS_PROXY: "http://127.0.0.1:7890" } });
 
 		const env = spawnCalls.at(-1)?.options.env as NodeJS.ProcessEnv;
-		expect(env.VETTA_PROXY_ENV_PROBE).toBe("inherited");
-		delete process.env.VETTA_PROXY_ENV_PROBE;
+		expect(env.ASTRAVIA_PROXY_ENV_PROBE).toBe("inherited");
+		delete process.env.ASTRAVIA_PROXY_ENV_PROBE;
 		await manager.stop();
 	});
 

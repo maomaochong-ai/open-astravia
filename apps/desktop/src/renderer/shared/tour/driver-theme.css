@@ -1,6 +1,6 @@
 /* Align driver.js popover with desktop design tokens (DESIGN.md). */
 
-.driver-popover.vetta-driver-popover {
+.driver-popover.astravia-driver-popover {
 	background-color: var(--popover);
 	color: var(--popover-foreground);
 	border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
@@ -12,31 +12,31 @@
 	padding: 14px 16px 12px;
 }
 
-.driver-popover.vetta-driver-popover .driver-popover-title {
+.driver-popover.astravia-driver-popover .driver-popover-title {
 	font-size: 14px;
 	font-weight: 600;
 	line-height: 1.35;
 	color: var(--foreground);
 }
 
-.driver-popover.vetta-driver-popover .driver-popover-description {
+.driver-popover.astravia-driver-popover .driver-popover-description {
 	font-size: 12px;
 	line-height: 1.55;
 	color: color-mix(in srgb, var(--muted-foreground) 85%, transparent);
 	margin-top: 6px;
 }
 
-.driver-popover.vetta-driver-popover .driver-popover-progress-text {
+.driver-popover.astravia-driver-popover .driver-popover-progress-text {
 	font-size: 11px;
 	color: color-mix(in srgb, var(--muted-foreground) 70%, transparent);
 }
 
-.driver-popover.vetta-driver-popover .driver-popover-navigation-btns {
+.driver-popover.astravia-driver-popover .driver-popover-navigation-btns {
 	gap: 6px;
 }
 
-.driver-popover.vetta-driver-popover .driver-popover-prev-btn,
-.driver-popover.vetta-driver-popover .driver-popover-next-btn {
+.driver-popover.astravia-driver-popover .driver-popover-prev-btn,
+.driver-popover.astravia-driver-popover .driver-popover-next-btn {
 	border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
 	border-radius: 0.5rem;
 	font-size: 12px;
@@ -49,32 +49,32 @@
 	transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
-.driver-popover.vetta-driver-popover .driver-popover-prev-btn:hover,
-.driver-popover.vetta-driver-popover .driver-popover-next-btn:hover {
+.driver-popover.astravia-driver-popover .driver-popover-prev-btn:hover,
+.driver-popover.astravia-driver-popover .driver-popover-next-btn:hover {
 	background-color: var(--accent);
 	border-color: color-mix(in srgb, var(--primary) 35%, transparent);
 }
 
-.driver-popover.vetta-driver-popover .driver-popover-next-btn {
+.driver-popover.astravia-driver-popover .driver-popover-next-btn {
 	background-color: var(--primary);
 	border-color: var(--primary);
 	color: var(--primary-foreground);
 }
 
-.driver-popover.vetta-driver-popover .driver-popover-next-btn:hover {
+.driver-popover.astravia-driver-popover .driver-popover-next-btn:hover {
 	background-color: color-mix(in srgb, var(--primary) 90%, var(--foreground));
 	border-color: color-mix(in srgb, var(--primary) 90%, var(--foreground));
 }
 
 /* Hide driver.js default top-right close control (×). */
-.driver-popover.vetta-driver-popover .driver-popover-close-btn {
+.driver-popover.astravia-driver-popover .driver-popover-close-btn {
 	display: none;
 }
 
-.driver-popover.vetta-driver-popover .driver-popover-arrow-side-left.driver-popover-arrow,
-.driver-popover.vetta-driver-popover .driver-popover-arrow-side-right.driver-popover-arrow,
-.driver-popover.vetta-driver-popover .driver-popover-arrow-side-top.driver-popover-arrow,
-.driver-popover.vetta-driver-popover .driver-popover-arrow-side-bottom.driver-popover-arrow {
+.driver-popover.astravia-driver-popover .driver-popover-arrow-side-left.driver-popover-arrow,
+.driver-popover.astravia-driver-popover .driver-popover-arrow-side-right.driver-popover-arrow,
+.driver-popover.astravia-driver-popover .driver-popover-arrow-side-top.driver-popover-arrow,
+.driver-popover.astravia-driver-popover .driver-popover-arrow-side-bottom.driver-popover-arrow {
 	border-color: var(--popover);
 }
 

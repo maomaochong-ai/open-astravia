@@ -26,9 +26,9 @@ export function connectorTokenText(name: string): string {
  * 路径统一成 `/` 再写入 token。
  *
  * CommonMark 会把正文里的 `\.` / `\U` 等反斜杠当转义吃掉，Windows 路径
- * （尤其含 `.vetta` 的 image-cache）经消息气泡的 markdown 渲染后会断掉，
+ * （尤其含 `.astravia` 的 image-cache）经消息气泡的 markdown 渲染后会断掉，
  * 图片胶囊对不上编号表就会退化成文件名。正斜杠在 Windows 上同样可被
- * 文件系统与 vetta-file 协议识别，模型侧也更稳。
+ * 文件系统与 astravia-file 协议识别，模型侧也更稳。
  */
 export function toTokenPath(path: string): string {
 	return path.replace(/\\/g, "/");

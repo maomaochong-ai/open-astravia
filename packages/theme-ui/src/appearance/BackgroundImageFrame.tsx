@@ -1,6 +1,6 @@
 import { memo, type ComponentPropsWithoutRef, type JSX, type ReactNode } from "react";
-import type { BackgroundImageFrameDecoration } from "@vetta-org/theme-sdk/appearance";
-import { cn } from "@vetta-org/ui";
+import type { BackgroundImageFrameDecoration } from "@astravia-org/theme-sdk/appearance";
+import { cn } from "@astravia-org/ui";
 
 export interface BackgroundImageFrameProps extends ComponentPropsWithoutRef<"div"> {
 	children: ReactNode;

@@ -1,14 +1,14 @@
 // @vitest-environment jsdom
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { MarkdownPreviewView } from "@vetta-org/theme-ui/activity";
+import { MarkdownPreviewView } from "@astravia-org/theme-ui/activity";
 import {
 	CodeBlock,
 	MarkdownContent,
 	MarkdownProvider,
 	defaultMarkdown,
 	extendMarkdown,
-} from "@vetta-org/theme-ui/markdown";
-import type { MarkdownCodeBlockProps } from "@vetta-org/theme-ui/markdown";
+} from "@astravia-org/theme-ui/markdown";
+import type { MarkdownCodeBlockProps } from "@astravia-org/theme-ui/markdown";
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";

@@ -20,7 +20,7 @@
 ## 注册示例
 
 ```ts
-import { definePlugin } from "@vetta-org/plugin-sdk";
+import { definePlugin } from "@astravia-org/plugin-sdk";
 
 export default definePlugin({
   activate(ctx) {
@@ -56,13 +56,13 @@ export default definePlugin({
 
 可信官方插件还可声明 `publicId`，例如 `publicId: "general.query"`。若该 id 已被其它实现占用，后到的注册会被忽略并记日志（先注册为准）。普通插件使用 `publicId` 会被拒绝。门控依据宿主生成的 `trustLevel: "official"`，而不是插件 id 或安装来源；当前随包系统插件会获得该级别，远端和本地插件不会。
 
-官方插件需要读写宿主数据时使用 `ctx.official`。该 API 在 SDK 中可见，但普通插件调用会被宿主拒绝；宿主按领域提供窄 API，并通过 `pluginApiVersion` 做主版本兼容检查。`vetta-actions` 当前要求 `^2.0.0`，旧主版本或高于宿主能力的版本不会激活。
+官方插件需要读写宿主数据时使用 `ctx.official`。该 API 在 SDK 中可见，但普通插件调用会被宿主拒绝；宿主按领域提供窄 API，并通过 `pluginApiVersion` 做主版本兼容检查。`astravia-actions` 当前要求 `^2.0.0`，旧主版本或高于宿主能力的版本不会激活。
 
 ## 模型选择边界
 
 `usage` 是可选的模型可见说明；建议每个 Action 声明。提供时，`target`、`useWhen`、`avoidWhen`、`alternatives` 必须都是非空字符串，宿主在 IPC 边界校验并去除首尾空白。`search` 与 `describe` 均返回这四项，因此模型在选择候选时即可知道作用对象、适用场景、排除场景与替代路径，而不只看到参数 Schema。
 
-官方 `vetta-actions` 的所有 Action 都声明使用边界。需要区分 Vetta 自身的项目、主题、插件和定时任务，与用户正在开发的软件：例如开发网页深色模式应编辑项目样式，不应修改 Vetta 主题。查询能力或解释功能也不等于要求创建、修改或执行。已有对话中明确的目标与操作意图可以继续使用，不应反复确认。
+官方 `astravia-actions` 的所有 Action 都声明使用边界。需要区分 Astravia 自身的项目、主题、插件和定时任务，与用户正在开发的软件：例如开发网页深色模式应编辑项目样式，不应修改 Astravia 主题。查询能力或解释功能也不等于要求创建、修改或执行。已有对话中明确的目标与操作意图可以继续使用，不应反复确认。
 
 检索使用能力名称、关键词、摘要、描述与操作名，不使用内部权限标识，也不索引 `usage`，避免“不要用于安装插件”等排除说明反而成为命中理由。Schema 联合分支中的 `operation` / `type` 常量及枚举仍可用于查找操作。搜索结果只是候选；调用方应核对使用说明，再通过 `describe` 获取参数，不能把命中当作执行指令。缺少 `usage` 时，需从详细说明确认目标，不能推定适用。
 
@@ -93,14 +93,14 @@ export default definePlugin({
 
 ## 迁移状态
 
-全部内置领域已由随包系统插件 `vetta-actions` 提供；Desktop **不再保留静态领域 Action 实现**。
+全部内置领域已由随包系统插件 `astravia-actions` 提供；Desktop **不再保留静态领域 Action 实现**。
 
 Catalog 规则：
 
 - 每个 action id **仅一份**实现。
 - **先注册为准**；后到的同 id 注册只写主进程日志（`action id conflict, keeping first registration`）并忽略。
 - 同一插件 commit 新 activation 时原子替换该 provider 的完整快照，既不被自己的旧注册挡住，也不产生热更新空窗。
-- `vetta-actions` 是 required 系统插件，不能被停用或卸载；未激活时 Catalog 返回 `ACTION_RUNTIME_NOT_READY`，而不是返回一个看似正常的空结果。
+- `astravia-actions` 是 required 系统插件，不能被停用或卸载；未激活时 Catalog 返回 `ACTION_RUNTIME_NOT_READY`，而不是返回一个看似正常的空结果。
 
 ## 独立发布建议
 

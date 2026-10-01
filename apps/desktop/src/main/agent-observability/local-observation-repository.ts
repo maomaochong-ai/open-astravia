@@ -1,6 +1,6 @@
 import { readFile, stat } from "node:fs/promises";
-import { parseRuntimeTraceRecord, type RuntimeTraceRecord, traceObject } from "@vetta/runtime-telemetry";
-import { atomicWriteJSONAsync } from "@vetta/toolkit/atomic-write";
+import { parseRuntimeTraceRecord, type RuntimeTraceRecord, traceObject } from "@astravia/runtime-telemetry";
+import { atomicWriteJSONAsync } from "@astravia/toolkit/atomic-write";
 import type { AgentObservationHealth, AgentObservationPage } from "./contracts.js";
 import { parseAgentObservationQuery } from "./observation-query.js";
 import { correlateAgentTraces } from "./trace-correlation.js";

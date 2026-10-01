@@ -3,7 +3,7 @@ import type {
 	PluginMediaProviderJob,
 	PluginMediaProviderRegistration,
 	PluginNetworkResponse,
-} from "@vetta-org/plugin-sdk";
+} from "@astravia-org/plugin-sdk";
 import { startRemotionServer } from "../engine/engine-manager";
 import { REMOTION_DOCUMENT_MIME_TYPE } from "../render-document";
 

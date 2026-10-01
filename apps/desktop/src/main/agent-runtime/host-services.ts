@@ -2,21 +2,21 @@
 
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { getAgentDir } from "@vetta/coding-agent/config";
+import { getAgentDir } from "@astravia/coding-agent/config";
 import {
 	AuthStorage,
 	type CodingAgentAuthRuntime,
 	type CodingAgentModelRuntime,
 	createCodingAgentModelRuntime,
 	SettingsRuntime,
-} from "@vetta/coding-agent/host-services";
-import { resolveProjectSettingsPath } from "@vetta/runtime-desktop";
+} from "@astravia/coding-agent/host-services";
+import { resolveProjectSettingsPath } from "@astravia/runtime-desktop";
 import {
 	NodeScopedTextStorage,
 	NodeTransactionalTextStorage,
 	nodeConfigurationValueResolver,
 	nodeSyncTextFileSource,
-} from "@vetta/runtime-node/host";
+} from "@astravia/runtime-node/host";
 import { DEFAULT_SERVER_URL } from "../constants.js";
 import { getDesktopModelCredentialStore, type ModelCredentialStore } from "../models/model-credential-store.js";
 import { readModelsConfigSync } from "../models/model-settings-service.js";

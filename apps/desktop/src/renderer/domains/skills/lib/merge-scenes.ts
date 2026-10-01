@@ -90,7 +90,7 @@ export function mergeScenes(
 		});
 	}
 
-	// 用户可以直接维护 ~/.vetta*/scene。没有安装清单的目录仍应可见、可调用，但宿主不
+	// 用户可以直接维护 ~/.astravia*/scene。没有安装清单的目录仍应可见、可调用，但宿主不
 	// 接管其生命周期，避免把手工目录错误地暴露为可启停/卸载的受管安装项。
 	for (const local of listedSkills) {
 		if (local.type !== "scene" || local.source !== "scene") continue;

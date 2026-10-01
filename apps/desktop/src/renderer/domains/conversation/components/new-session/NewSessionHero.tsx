@@ -1,14 +1,14 @@
 import { motion } from "motion/react";
 import { cn } from "@shared/lib/utils";
-import { useThemeComponent } from "@vetta-org/theme-sdk";
+import { useThemeComponent } from "@astravia-org/theme-sdk";
 import type {
 	NewSessionHeroIdentity,
 	NewSessionHeroProps,
 	NewSessionSceneActionState,
 	NewSessionSceneCarouselLabels,
 	NewSessionSceneItem,
-} from "@vetta-org/theme-ui";
-import { AgentAvatarView } from "@vetta-org/theme-ui/chat";
+} from "@astravia-org/theme-ui";
+import { AgentAvatarView } from "@astravia-org/theme-ui/chat";
 import { type CSSProperties, useRef } from "react";
 import { GuideBadgeSwiper } from "../GuideBadgeSwiper";
 import { easeOut } from "./constants";

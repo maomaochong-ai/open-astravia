@@ -1,4 +1,4 @@
-import type { ConfigRecord, VersionedConfigMigration } from "@vetta/toolkit/versioned-config";
+import type { ConfigRecord, VersionedConfigMigration } from "@astravia/toolkit/versioned-config";
 import { DEFAULT_NOTIFICATION_PREFERENCES } from "../../../../shared/notification-preferences.js";
 
 export const migrateDesktopConfigV1ToV2: VersionedConfigMigration = {

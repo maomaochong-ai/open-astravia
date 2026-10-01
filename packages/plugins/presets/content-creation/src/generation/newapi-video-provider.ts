@@ -1,4 +1,4 @@
-import type { PluginNetworkApi } from "@vetta-org/plugin-sdk";
+import type { PluginNetworkApi } from "@astravia-org/plugin-sdk";
 import type { ContentSettingsReader } from "../settings/content-settings";
 import { delay, dimensionsFor, downloadGeneratedContent, readStringSetting, requireStringSetting } from "./adapter-utils";
 import type {

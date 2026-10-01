@@ -1,4 +1,4 @@
-export const PERSIST_IMAGE_FILES_CHANNEL = "vetta:dialog:persist-image-files";
+export const PERSIST_IMAGE_FILES_CHANNEL = "astravia:dialog:persist-image-files";
 
 export interface PersistImageInput {
 	/** Stable id used as the on-disk file name. */

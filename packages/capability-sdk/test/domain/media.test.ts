@@ -13,8 +13,8 @@ import { JOB_STATUSES } from "../../src/foundation.js";
 describe("media domain capabilities", () => {
 	it("uses one stable id per media operation", () => {
 		expect(Object.values(DOMAIN_MEDIA_CAPABILITIES).map((capability) => capability.id)).toEqual([
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}media.provider.list`,
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}media.job.submit`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}media.provider.list`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}media.job.submit`,
 		]);
 	});
 
@@ -26,7 +26,7 @@ describe("media domain capabilities", () => {
 		expect(
 			DOMAIN_MEDIA_CAPABILITIES.SUBMIT.parseInput({
 				ownerId: "image-gen",
-				providerId: "desktop-app:vetta",
+				providerId: "desktop-app:astravia",
 				operation: MEDIA_OPERATIONS.GENERATE,
 				kind: MEDIA_KINDS.IMAGE,
 				mode: MEDIA_GENERATION_MODES.TEXT_TO_IMAGE,
@@ -37,7 +37,7 @@ describe("media domain capabilities", () => {
 			}),
 		).toEqual({
 			ownerId: "image-gen",
-			providerId: "desktop-app:vetta",
+			providerId: "desktop-app:astravia",
 			operation: "generate",
 			kind: "image",
 			mode: "text-to-image",

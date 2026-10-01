@@ -10,7 +10,7 @@ describe("default conversation filter", () => {
 		expect(store.get(defaultConversationFilterAtom)).toBe("claw");
 		expect(
 			parseDefaultConversationFilter(
-				JSON.parse(localStorage.getItem("vetta-default-conversation-filter") as string),
+				JSON.parse(localStorage.getItem("astravia-default-conversation-filter") as string),
 			),
 		).toBe("claw");
 	});

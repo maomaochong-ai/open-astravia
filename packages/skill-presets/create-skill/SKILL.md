@@ -1,11 +1,11 @@
 ---
 name: create-skill
-description: Create or update Vetta-compatible Agent Skills. Use when the user asks to create a skill, add a SKILL.md workflow, register a skill in skills-manifest.json, package a skill in a Vetta plugin, or add a built-in Vetta skill preset.
+description: Create or update Astravia-compatible Agent Skills. Use when the user asks to create a skill, add a SKILL.md workflow, register a skill in skills-manifest.json, package a skill in a Astravia plugin, or add a built-in Astravia skill preset.
 ---
 
-# Create a Vetta Skill
+# Create a Astravia Skill
 
-Create focused Agent Skills that Vetta can execute and display. Treat the Skill files and their registration metadata as one change.
+Create focused Agent Skills that Astravia can execute and display. Treat the Skill files and their registration metadata as one change.
 
 ## Choose the target
 
@@ -13,16 +13,16 @@ Infer the target from the request. If it is ambiguous, ask the user to choose be
 
 | Target | Skill directory | Required registration |
 | --- | --- | --- |
-| Global Vetta product skill | `~/.vetta/skills/<skill-name>/` | Update `~/.vetta/skills-manifest.json`. |
-| Project skill | `<project-root>/.vetta/skills/<skill-name>/` | No global manifest entry; project discovery is directory-based. |
+| Global Astravia product skill | `~/.astravia/skills/<skill-name>/` | Update `~/.astravia/skills-manifest.json`. |
+| Project skill | `<project-root>/.astravia/skills/<skill-name>/` | No global manifest entry; project discovery is directory-based. |
 | Plugin skill | `<plugin-root>/agent/skills/<skill-name>/` | Update `plugin.json` under `agent.skillPaths`. |
-| Built-in Desktop skill | `<vetta-mono>/packages/skill-presets/<skill-name>/` | Update `<vetta-mono>/packages/skill-presets/skills-manifest.json`. |
+| Built-in Desktop skill | `<astravia-mono>/packages/skill-presets/<skill-name>/` | Update `<astravia-mono>/packages/skill-presets/skills-manifest.json`. |
 
-Do not place a global product Skill only in `~/.vetta/agent/skills`; that directory is Agent-compatible but does not provide the Vetta product registration metadata required by the Skills UI.
+Do not place a global product Skill only in `~/.astravia/agent/skills`; that directory is Agent-compatible but does not provide the Astravia product registration metadata required by the Skills UI.
 
 ## Understand the directory protection
 
-Skill and scene roots — `~/.vetta/skills`, `~/.vetta/agent/skills`, `~/.vetta/scene`, `<project-root>/.vetta/skills`, and the `.agents/skills` equivalents — are read-only so that generated artifacts never land in them. Creating a new `<root>/<skill-name>/` directory is exempt: once this session authors that directory, every file inside it stays writable for the rest of the session.
+Skill and scene roots — `~/.astravia/skills`, `~/.astravia/agent/skills`, `~/.astravia/scene`, `<project-root>/.astravia/skills`, and the `.agents/skills` equivalents — are read-only so that generated artifacts never land in them. Creating a new `<root>/<skill-name>/` directory is exempt: once this session authors that directory, every file inside it stays writable for the rest of the session.
 
 An already-installed Skill stays read-only. `write` and `edit` reject its files, and a shell command that touches them returns a warning to move the output out. To change one, edit the source it was installed from — the plugin, the repository preset, or the project directory — or ask the user to uninstall it first. Never work around the rejection with shell redirection.
 
@@ -48,9 +48,9 @@ description: Describe what the Skill does and the user requests that should trig
 Concise workflow instructions.
 ```
 
-## Register a global Vetta Skill
+## Register a global Astravia Skill
 
-Read the full `~/.vetta/skills-manifest.json` before editing it. The file is a root-level JSON object keyed by Skill name. Preserve every existing entry and add or update only the target Skill.
+Read the full `~/.astravia/skills-manifest.json` before editing it. The file is a root-level JSON object keyed by Skill name. Preserve every existing entry and add or update only the target Skill.
 
 Use an entry shaped like this:
 

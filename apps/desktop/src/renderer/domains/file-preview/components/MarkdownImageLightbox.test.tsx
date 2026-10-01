@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { FilePreviewDialogView } from "@vetta-org/theme-ui/file-preview";
+import { FilePreviewDialogView } from "@astravia-org/theme-ui/file-preview";
 import { afterEach, expect, it, vi } from "vitest";
 
 afterEach(cleanup);

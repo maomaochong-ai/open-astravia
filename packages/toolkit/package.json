@@ -1,7 +1,7 @@
 {
-	"name": "@vetta/toolkit",
+	"name": "@astravia/toolkit",
 	"version": "0.0.1",
-	"description": "Shared Node utilities for the Vetta monorepo (config, fs helpers, …).",
+	"description": "Shared Node utilities for the Astravia monorepo (config, fs helpers, …).",
 	"type": "module",
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",

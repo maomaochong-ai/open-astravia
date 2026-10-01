@@ -1,5 +1,5 @@
-import type { AgentMessage } from "@vetta/agent-core";
-import type { AssistantMessage, ToolResultMessage } from "@vetta/ai";
+import type { AgentMessage } from "@astravia/agent-core";
+import type { AssistantMessage, ToolResultMessage } from "@astravia/ai";
 import type { BashExecutionMessage } from "../model-context/index.js";
 import { findRecentUserTurnBoundary } from "./user-turn-boundary.js";
 import { sliceUtf8Start, utf8ByteLength } from "./utf8.js";

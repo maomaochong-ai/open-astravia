@@ -107,8 +107,8 @@ async function copyThroughStaging(
 ): Promise<void> {
 	const destinationDirectory = dirname(destinationPath);
 	const transferId = randomUUID();
-	const stagingPath = join(destinationDirectory, `.vetta-transfer-${transferId}`);
-	const backupPath = join(destinationDirectory, `.vetta-transfer-backup-${transferId}`);
+	const stagingPath = join(destinationDirectory, `.astravia-transfer-${transferId}`);
+	const backupPath = join(destinationDirectory, `.astravia-transfer-backup-${transferId}`);
 	let backedUp = false;
 	try {
 		await copyEntry(sourcePath, stagingPath, isDirectory);

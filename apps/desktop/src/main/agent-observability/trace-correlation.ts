@@ -1,6 +1,6 @@
-import { AGENT_CONFIGURATION_OBSERVATION } from "@vetta/coding-agent/session-extensions";
-import { RUNTIME_EXECUTION_TRACE } from "@vetta/runtime-core/observation";
-import type { RuntimeTraceRecord } from "@vetta/runtime-telemetry";
+import { AGENT_CONFIGURATION_OBSERVATION } from "@astravia/coding-agent/session-extensions";
+import { RUNTIME_EXECUTION_TRACE } from "@astravia/runtime-core/observation";
+import type { RuntimeTraceRecord } from "@astravia/runtime-telemetry";
 
 /** Joins immutable, recorded identities; never consults the current live session/configuration. */
 export function correlateAgentTraces(records: readonly RuntimeTraceRecord[]): RuntimeTraceRecord[] {

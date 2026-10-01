@@ -86,7 +86,7 @@ const projectNoOutputSchema = defineCapabilityNoOutputSchema();
 
 export const DOMAIN_PROJECT_CAPABILITIES = {
 	LIST: defineCapability<Record<string, never>, ProjectListResult>({
-		id: "cap.domain.vetta.project.list",
+		id: "cap.domain.astravia.project.list",
 		kind: "query",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -94,7 +94,7 @@ export const DOMAIN_PROJECT_CAPABILITIES = {
 		output: projectListOutputSchema,
 	}),
 	CREATE: defineCapability<ProjectCreateInput, ProjectEntry>({
-		id: "cap.domain.vetta.project.create",
+		id: "cap.domain.astravia.project.create",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -102,7 +102,7 @@ export const DOMAIN_PROJECT_CAPABILITIES = {
 		output: projectEntryOutputSchema,
 	}),
 	OPEN: defineCapability<ProjectOpenInput, ProjectEntry>({
-		id: "cap.domain.vetta.project.open",
+		id: "cap.domain.astravia.project.open",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -110,7 +110,7 @@ export const DOMAIN_PROJECT_CAPABILITIES = {
 		output: projectEntryOutputSchema,
 	}),
 	RENAME: defineCapability<ProjectRenameInput, ProjectEntry>({
-		id: "cap.domain.vetta.project.rename",
+		id: "cap.domain.astravia.project.rename",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -118,7 +118,7 @@ export const DOMAIN_PROJECT_CAPABILITIES = {
 		output: projectEntryOutputSchema,
 	}),
 	ARCHIVE: defineCapability<ProjectPathInput, undefined>({
-		id: "cap.domain.vetta.project.archive",
+		id: "cap.domain.astravia.project.archive",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -126,7 +126,7 @@ export const DOMAIN_PROJECT_CAPABILITIES = {
 		output: projectNoOutputSchema,
 	}),
 	UNARCHIVE: defineCapability<ProjectPathInput, undefined>({
-		id: "cap.domain.vetta.project.unarchive",
+		id: "cap.domain.astravia.project.unarchive",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -134,7 +134,7 @@ export const DOMAIN_PROJECT_CAPABILITIES = {
 		output: projectNoOutputSchema,
 	}),
 	REMOVE: defineCapability<ProjectPathInput, undefined>({
-		id: "cap.domain.vetta.project.remove",
+		id: "cap.domain.astravia.project.remove",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,

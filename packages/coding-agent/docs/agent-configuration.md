@@ -18,9 +18,9 @@
 
 ## 创建、更新与恢复
 
-Composition 的 Session Options 接受 `agentConfiguration: { template, overrides }`。模板是含 `id/revision/name/configuration` 的完整快照，覆盖字段可省略。类型、严格解析器及默认值由 `@vetta/coding-agent/profile` 导出。
+Composition 的 Session Options 接受 `agentConfiguration: { template, overrides }`。模板是含 `id/revision/name/configuration` 的完整快照，覆盖字段可省略。类型、严格解析器及默认值由 `@astravia/coding-agent/profile` 导出。
 
-`@vetta/coding-agent/session-extensions` 导出 `AGENT_CONFIGURATION_READ`、`AGENT_CONFIGURATION_UPDATE`、`AGENT_CONFIGURATION_CATALOG`。更新携带 `expectedRevision` 和完整 selection，持久化成功后递增 desired revision。资源完成准备且整份 Turn snapshot 捕获成功后才更新 effective revision；状态包含 pending 和安全失败码。保存失败不发布新配置，应用失败拒绝本次执行，修复后可重试。
+`@astravia/coding-agent/session-extensions` 导出 `AGENT_CONFIGURATION_READ`、`AGENT_CONFIGURATION_UPDATE`、`AGENT_CONFIGURATION_CATALOG`。更新携带 `expectedRevision` 和完整 selection，持久化成功后递增 desired revision。资源完成准备且整份 Turn snapshot 捕获成功后才更新 effective revision；状态包含 pending 和安全失败码。保存失败不发布新配置，应用失败拒绝本次执行，修复后可重试。
 
 正在执行的 Turn 保留原版本。模型优先级是本次请求显式选择、会话配置、原有模型状态。模板不能强制覆盖用户本次选择的模型。
 
@@ -33,8 +33,8 @@ Desktop「Agent 配置」设置页中的上下文压缩选项属于全局运行�
 宿主已发布 Coding Agent Definition 并创建 `runtime` 后，可通过公开入口为每个会话分别配置：
 
 ```ts
-import { createCodingAgentRuntimeSessionSelection } from "@vetta/coding-agent/composition";
-import { AGENT_CONFIGURATION_READ, AGENT_CONFIGURATION_UPDATE } from "@vetta/coding-agent/session-extensions";
+import { createCodingAgentRuntimeSessionSelection } from "@astravia/coding-agent/composition";
+import { AGENT_CONFIGURATION_READ, AGENT_CONFIGURATION_UPDATE } from "@astravia/coding-agent/session-extensions";
 
 const session = await runtime.createSession({
   cwd,

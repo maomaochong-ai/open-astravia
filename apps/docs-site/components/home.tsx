@@ -33,7 +33,7 @@ export function HomeTitle({ children }: { children: ReactNode }) {
 
 export function HomeEmphasis({ children }: { children: ReactNode }) {
 	return (
-		<span className="bg-[linear-gradient(transparent_64%,color-mix(in_srgb,var(--color-vetta-coral)_48%,transparent)_64%,color-mix(in_srgb,var(--color-vetta-coral)_48%,transparent)_88%,transparent_88%)]">
+		<span className="bg-[linear-gradient(transparent_64%,color-mix(in_srgb,var(--color-astravia-coral)_48%,transparent)_64%,color-mix(in_srgb,var(--color-astravia-coral)_48%,transparent)_88%,transparent_88%)]">
 			{children}
 		</span>
 	);
@@ -52,7 +52,7 @@ export function HomeActions({ children }: { children: ReactNode }) {
 export function HomePrimary({ href, children }: { href: string; children: ReactNode }) {
 	return (
 		<a
-			className="inline-flex min-h-11 items-center gap-4 rounded-full bg-vetta-ink px-[1.05rem] text-[0.9rem] font-semibold whitespace-nowrap text-vetta-paper no-underline dark:bg-vetta-binding-fg dark:text-vetta-binding [&_span]:transition-transform [&_span]:duration-150 hover:[&_span]:translate-x-[0.2rem]"
+			className="inline-flex min-h-11 items-center gap-4 rounded-full bg-astravia-ink px-[1.05rem] text-[0.9rem] font-semibold whitespace-nowrap text-astravia-paper no-underline dark:bg-astravia-binding-fg dark:text-astravia-binding [&_span]:transition-transform [&_span]:duration-150 hover:[&_span]:translate-x-[0.2rem]"
 			href={href}
 		>
 			{children}
@@ -86,7 +86,7 @@ export function HomeProof({ children, language = "zh" }: { children: ReactNode; 
 
 export function HomeProduct({ children }: { children: ReactNode }) {
 	return (
-		<figure className="relative m-0 grid min-w-0 grid-rows-[auto_1fr_auto] animate-enter overflow-hidden rounded-[10px] border border-fd-border bg-vetta-binding [animation-delay:90ms]">
+		<figure className="relative m-0 grid min-w-0 grid-rows-[auto_1fr_auto] animate-enter overflow-hidden rounded-[10px] border border-fd-border bg-astravia-binding [animation-delay:90ms]">
 			{children}
 		</figure>
 	);
@@ -115,8 +115,8 @@ export function HomeProductCaption({ children }: { children: ReactNode }) {
 export function HomeMascot() {
 	return (
 		<img
-			className="absolute bottom-[3.4rem] left-[0.85rem] z-[1] size-[4.1rem] rounded-full border-[3px] border-fd-background bg-vetta-binding object-cover shadow-[0_10px_28px_color-mix(in_srgb,var(--color-vetta-ink)_16%,transparent)] md:bottom-[3.15rem] md:size-[4.6rem] lg:size-[5.75rem]"
-			src="/images/vetta-app-icon.webp"
+			className="absolute bottom-[3.4rem] left-[0.85rem] z-[1] size-[4.1rem] rounded-full border-[3px] border-fd-background bg-astravia-binding object-cover shadow-[0_10px_28px_color-mix(in_srgb,var(--color-astravia-ink)_16%,transparent)] md:bottom-[3.15rem] md:size-[4.6rem] lg:size-[5.75rem]"
+			src="/images/astravia-app-icon.webp"
 			alt=""
 			width="120"
 			height="120"
@@ -156,7 +156,7 @@ export function HomeSectionHeading({
 
 export function HomeFlow({ children }: { children: ReactNode }) {
 	return (
-		<ol className="relative m-0 grid list-none grid-cols-1 border-t border-fd-border p-0 lg:grid-cols-5 before:absolute before:-top-px before:left-0 before:h-0.5 before:w-full before:bg-vetta-coral lg:before:w-1/5 [&>li]:grid [&>li]:min-h-32 [&>li]:content-start [&>li]:border-b [&>li]:border-s [&>li]:border-fd-border [&>li]:p-[1.15rem] max-lg:[&>li]:border-e lg:[&>li]:min-h-48 [&>li:first-child]:bg-vetta-coral/[0.07] [&>li:last-child]:border-e [&>li>span]:font-mono [&>li>span]:text-[0.65rem] [&>li>span]:tracking-[0.08em] [&>li>span]:text-vetta-coral [&>li>strong]:mt-[2.2rem] [&>li>strong]:font-display [&>li>strong]:text-base [&>li>strong]:font-semibold [&>li>small]:mt-2.5 [&>li>small]:text-[0.72rem] [&>li>small]:leading-[1.65] [&>li>small]:text-fd-muted-foreground">
+		<ol className="relative m-0 grid list-none grid-cols-1 border-t border-fd-border p-0 lg:grid-cols-5 before:absolute before:-top-px before:left-0 before:h-0.5 before:w-full before:bg-astravia-coral lg:before:w-1/5 [&>li]:grid [&>li]:min-h-32 [&>li]:content-start [&>li]:border-b [&>li]:border-s [&>li]:border-fd-border [&>li]:p-[1.15rem] max-lg:[&>li]:border-e lg:[&>li]:min-h-48 [&>li:first-child]:bg-astravia-coral/[0.07] [&>li:last-child]:border-e [&>li>span]:font-mono [&>li>span]:text-[0.65rem] [&>li>span]:tracking-[0.08em] [&>li>span]:text-astravia-coral [&>li>strong]:mt-[2.2rem] [&>li>strong]:font-display [&>li>strong]:text-base [&>li>strong]:font-semibold [&>li>small]:mt-2.5 [&>li>small]:text-[0.72rem] [&>li>small]:leading-[1.65] [&>li>small]:text-fd-muted-foreground">
 			{children}
 		</ol>
 	);
@@ -165,7 +165,7 @@ export function HomeFlow({ children }: { children: ReactNode }) {
 export function HomeInlineLink({ href, children }: { href: string; children: ReactNode }) {
 	return (
 		<a
-			className="mt-6 inline-flex gap-4 text-[0.82rem] font-semibold text-inherit no-underline [&_span]:text-vetta-coral [&_span]:transition-transform [&_span]:duration-150 hover:[&_span]:translate-x-[0.2rem]"
+			className="mt-6 inline-flex gap-4 text-[0.82rem] font-semibold text-inherit no-underline [&_span]:text-astravia-coral [&_span]:transition-transform [&_span]:duration-150 hover:[&_span]:translate-x-[0.2rem]"
 			href={href}
 		>
 			{children}
@@ -181,7 +181,7 @@ export function HomeIndexGroup({ index, title, children }: { index: string; titl
 	return (
 		<div className="min-w-0 border-s border-e border-fd-border">
 			<div className="flex min-h-[5.4rem] items-baseline gap-4 border-b border-fd-border bg-fd-card/55 p-5">
-				<span className="font-mono text-[0.65rem] tracking-[0.08em] text-vetta-coral">{index}</span>
+				<span className="font-mono text-[0.65rem] tracking-[0.08em] text-astravia-coral">{index}</span>
 				<h3 className="m-0 font-display text-[1.2rem] font-semibold">{title}</h3>
 			</div>
 			{children}
@@ -192,13 +192,13 @@ export function HomeIndexGroup({ index, title, children }: { index: string; titl
 export function HomeIndexLink({ href, title, description }: { href: string; title: string; description: string }) {
 	return (
 		<a
-			className="group grid min-h-[4.6rem] grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-1 border-b border-fd-border px-5 py-4 text-inherit no-underline transition-colors hover:bg-vetta-coral/[0.08] md:min-h-20"
+			className="group grid min-h-[4.6rem] grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-1 border-b border-fd-border px-5 py-4 text-inherit no-underline transition-colors hover:bg-astravia-coral/[0.08] md:min-h-20"
 			href={href}
 		>
 			<span className="text-[0.9rem] font-semibold">{title}</span>
 			<small className="col-start-1 text-[0.72rem] leading-[1.55] text-fd-muted-foreground">{description}</small>
 			<b
-				className="col-start-2 row-span-2 self-center text-[0.85rem] font-normal text-vetta-coral transition-transform group-hover:translate-x-[0.15rem] group-hover:-translate-y-[0.15rem]"
+				className="col-start-2 row-span-2 self-center text-[0.85rem] font-normal text-astravia-coral transition-transform group-hover:translate-x-[0.15rem] group-hover:-translate-y-[0.15rem]"
 				aria-hidden="true"
 			>
 				↗
@@ -209,7 +209,7 @@ export function HomeIndexLink({ href, title, description }: { href: string; titl
 
 export function HomeOutcomes({ children }: { children: ReactNode }) {
 	return (
-		<div className="grid grid-cols-1 border-t border-s border-fd-border md:grid-cols-2 [&>div]:grid [&>div]:min-h-56 [&>div]:border-e [&>div]:border-b [&>div]:border-fd-border [&>div]:p-[1.4rem] [&>div]:transition-colors hover:[&>div]:bg-vetta-coral/[0.06] [&>div>span]:font-display [&>div>span]:text-[0.92rem] [&>div>span]:font-semibold [&>div>span]:text-vetta-coral [&>div>h3]:mt-[1.4rem] [&>div>h3]:text-[1.12rem] [&>div>h3]:font-semibold [&>div>p]:mt-[0.7rem] [&>div>p]:mb-6 [&>div>p]:max-w-[28rem] [&>div>p]:text-[0.82rem] [&>div>p]:leading-[1.7] [&>div>p]:text-fd-muted-foreground [&>div>a]:self-end [&>div>a]:text-[0.78rem] [&>div>a]:font-semibold [&>div>a]:text-inherit [&>div>a]:no-underline">
+		<div className="grid grid-cols-1 border-t border-s border-fd-border md:grid-cols-2 [&>div]:grid [&>div]:min-h-56 [&>div]:border-e [&>div]:border-b [&>div]:border-fd-border [&>div]:p-[1.4rem] [&>div]:transition-colors hover:[&>div]:bg-astravia-coral/[0.06] [&>div>span]:font-display [&>div>span]:text-[0.92rem] [&>div>span]:font-semibold [&>div>span]:text-astravia-coral [&>div>h3]:mt-[1.4rem] [&>div>h3]:text-[1.12rem] [&>div>h3]:font-semibold [&>div>p]:mt-[0.7rem] [&>div>p]:mb-6 [&>div>p]:max-w-[28rem] [&>div>p]:text-[0.82rem] [&>div>p]:leading-[1.7] [&>div>p]:text-fd-muted-foreground [&>div>a]:self-end [&>div>a]:text-[0.78rem] [&>div>a]:font-semibold [&>div>a]:text-inherit [&>div>a]:no-underline">
 			{children}
 		</div>
 	);
@@ -219,19 +219,19 @@ export function HomeFooter({ kicker, children }: { kicker: string; children: Rea
 	return (
 		<footer
 			className={cn(
-				"relative w-full overflow-hidden bg-vetta-binding py-[4.5rem] text-vetta-binding-fg md:py-20 lg:pt-20 lg:pb-24",
+				"relative w-full overflow-hidden bg-astravia-binding py-[4.5rem] text-astravia-binding-fg md:py-20 lg:pt-20 lg:pb-24",
 				gutter,
 			)}
 		>
 			<img
-				className="absolute right-5 bottom-[1.4rem] size-[3.4rem] rounded-full border-2 border-vetta-binding-fg/18 object-cover md:top-[3.2rem] md:right-8 md:bottom-auto md:size-[4.5rem] lg:right-14"
-				src="/images/vetta-app-icon.webp"
+				className="absolute right-5 bottom-[1.4rem] size-[3.4rem] rounded-full border-2 border-astravia-binding-fg/18 object-cover md:top-[3.2rem] md:right-8 md:bottom-auto md:size-[4.5rem] lg:right-14"
+				src="/images/astravia-app-icon.webp"
 				alt=""
 				width="72"
 				height="72"
 			/>
-			<DocsKicker className="mx-auto mb-[1.15rem] flex max-w-[78rem] text-vetta-binding-fg/60">{kicker}</DocsKicker>
-			<div className="mx-auto grid max-w-[78rem] grid-cols-1 items-end gap-8 md:gap-16 lg:grid-cols-[1.25fr_0.75fr] [&_h2]:m-0 [&_h2]:font-display [&_h2]:text-[2.15rem] [&_h2]:font-semibold [&_h2]:leading-[1.2] [&_h2]:tracking-[-0.02em] [&_h2]:text-pretty lg:[&_h2]:text-5xl [&>p]:m-0 [&>p]:text-[0.9rem] [&>p]:leading-[1.8] [&>p]:text-vetta-binding-fg/70 [&_a]:text-vetta-coral [&_a]:underline [&_a]:underline-offset-[0.2em]">
+			<DocsKicker className="mx-auto mb-[1.15rem] flex max-w-[78rem] text-astravia-binding-fg/60">{kicker}</DocsKicker>
+			<div className="mx-auto grid max-w-[78rem] grid-cols-1 items-end gap-8 md:gap-16 lg:grid-cols-[1.25fr_0.75fr] [&_h2]:m-0 [&_h2]:font-display [&_h2]:text-[2.15rem] [&_h2]:font-semibold [&_h2]:leading-[1.2] [&_h2]:tracking-[-0.02em] [&_h2]:text-pretty lg:[&_h2]:text-5xl [&>p]:m-0 [&>p]:text-[0.9rem] [&>p]:leading-[1.8] [&>p]:text-astravia-binding-fg/70 [&_a]:text-astravia-coral [&_a]:underline [&_a]:underline-offset-[0.2em]">
 				{children}
 			</div>
 		</footer>

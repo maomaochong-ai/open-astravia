@@ -2,7 +2,7 @@
 
 import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { type AgentProfile, createAgentTeamFixture } from "@vetta/agent-team";
+import { type AgentProfile, createAgentTeamFixture } from "@astravia/agent-team";
 import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NewSessionAgentSelector } from "./NewSessionAgentSelector";
@@ -24,7 +24,7 @@ describe("NewSessionAgentSelector", () => {
 	if (!team || !agent) throw new Error("missing Agent Team fixture");
 
 	function mockCatalog(next = document): void {
-		Object.defineProperty(window, "vetta", {
+		Object.defineProperty(window, "astravia", {
 			configurable: true,
 			value: { agentTeams: { list: vi.fn(async () => next) } },
 		});

@@ -11,15 +11,15 @@ import {
 describe("scheduler domain capabilities", () => {
 	it("uses one stable id per scheduler operation", () => {
 		expect(Object.values(DOMAIN_SCHEDULER_CAPABILITIES).map((capability) => capability.id)).toEqual([
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}scheduler.task.list`,
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}scheduler.task.get`,
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}scheduler.task.history.list`,
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}scheduler.task.create`,
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}scheduler.task.update`,
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}scheduler.task.delete`,
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}scheduler.task.set-enabled`,
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}scheduler.task.run`,
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}scheduler.task.abort`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}scheduler.task.list`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}scheduler.task.get`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}scheduler.task.history.list`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}scheduler.task.create`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}scheduler.task.update`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}scheduler.task.delete`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}scheduler.task.set-enabled`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}scheduler.task.run`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}scheduler.task.abort`,
 		]);
 	});
 

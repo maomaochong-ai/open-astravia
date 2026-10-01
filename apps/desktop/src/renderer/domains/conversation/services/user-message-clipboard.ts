@@ -15,10 +15,10 @@ function blobToDataUrl(blob: Blob): Promise<string> {
 	});
 }
 
-function localPathFromVettaFileUrl(source: string): string | null {
+function localPathFromAstraviaFileUrl(source: string): string | null {
 	try {
 		const url = new URL(source);
-		if (url.protocol !== "vetta-file:") return null;
+		if (url.protocol !== "astravia-file:") return null;
 		let path = decodeURIComponent(url.pathname);
 		if (/^\/[A-Za-z]:\//.test(path)) path = path.slice(1);
 		return path || null;
@@ -29,7 +29,7 @@ function localPathFromVettaFileUrl(source: string): string | null {
 
 async function resolveImageSource(source: string): Promise<UserMessageClipboardImageSource> {
 	if (source.startsWith("data:image/")) return { kind: "data-url", dataUrl: source };
-	const localPath = localPathFromVettaFileUrl(source);
+	const localPath = localPathFromAstraviaFileUrl(source);
 	if (localPath) return { kind: "file-path", path: localPath };
 	const response = await fetch(source);
 	if (!response.ok) throw new Error(`Failed to load clipboard image (${response.status})`);
@@ -45,5 +45,5 @@ export async function copyUserMessageToClipboard(text: string, imageSources: rea
 		return;
 	}
 	const images = await Promise.all(imageSources.map(resolveImageSource));
-	await window.vetta.clipboard.writeUserMessage({ text, images });
+	await window.astravia.clipboard.writeUserMessage({ text, images });
 }

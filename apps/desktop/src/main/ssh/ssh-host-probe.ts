@@ -1,4 +1,4 @@
-import { SshTransportError } from "@vetta/ssh-transport";
+import { SshTransportError } from "@astravia/ssh-transport";
 import { getSshConnection, getSshConnectionManager } from "./ssh-runtime.js";
 
 export interface SshHostProbeResult {
@@ -40,10 +40,10 @@ export async function probeSshHost(hostId: string, signal?: AbortSignal): Promis
 		const result = await connection.exec(
 			[
 				// 模板串里写 `\${`：普通字符串里的 `${` 会被 lint 当成写漏的模板插值。
-				`echo "vetta-shell=\${SHELL:-}"`,
-				`echo "vetta-home=\${HOME:-}"`,
-				'echo "vetta-git=$(command -v git >/dev/null 2>&1 && echo yes || echo no)"',
-				'echo "vetta-rg=$(command -v rg >/dev/null 2>&1 && echo yes || echo no)"',
+				`echo "astravia-shell=\${SHELL:-}"`,
+				`echo "astravia-home=\${HOME:-}"`,
+				'echo "astravia-git=$(command -v git >/dev/null 2>&1 && echo yes || echo no)"',
+				'echo "astravia-rg=$(command -v rg >/dev/null 2>&1 && echo yes || echo no)"',
 			].join("; "),
 			{ signal, timeoutMs: 30_000 },
 		);
@@ -53,10 +53,10 @@ export async function probeSshHost(hostId: string, signal?: AbortSignal): Promis
 			ok: true,
 			os: platform.os,
 			arch: platform.arch,
-			shell: readField(output, "vetta-shell"),
-			homeDirectory: readField(output, "vetta-home"),
-			hasGit: readField(output, "vetta-git") === "yes",
-			hasRipgrep: readField(output, "vetta-rg") === "yes",
+			shell: readField(output, "astravia-shell"),
+			homeDirectory: readField(output, "astravia-home"),
+			hasGit: readField(output, "astravia-git") === "yes",
+			hasRipgrep: readField(output, "astravia-rg") === "yes",
 			error: "",
 		};
 	} catch (error) {

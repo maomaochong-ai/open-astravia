@@ -60,7 +60,7 @@ describe("Quick Panel conversation ownership", () => {
 		mocks.listSessions.mockResolvedValue([owned, ordinary]);
 		mocks.filterUserSessions.mockResolvedValue([ordinary]);
 		registerQuickPanelIpc();
-		const listRecent = ipc.handlers.get("vetta:quickpanel:list-recent");
+		const listRecent = ipc.handlers.get("astravia:quickpanel:list-recent");
 		if (!listRecent) throw new Error("list-recent handler was not registered");
 
 		await expect(listRecent({}, 8)).resolves.toEqual([
@@ -79,7 +79,7 @@ describe("Quick Panel conversation ownership", () => {
 	it("rejects a forged direct-open target owned by Agent Team", async () => {
 		mocks.getOwner.mockResolvedValue({ kind: "agent-team" });
 		registerQuickPanelIpc();
-		const openSession = ipc.handlers.get("vetta:quickpanel:open-session");
+		const openSession = ipc.handlers.get("astravia:quickpanel:open-session");
 		if (!openSession) throw new Error("open-session handler was not registered");
 
 		await expect(openSession({}, { sessionPath: "C:/sessions/team.jsonl", cwd: "C:/workspace" })).rejects.toThrow(

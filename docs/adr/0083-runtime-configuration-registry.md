@@ -16,7 +16,7 @@ Desktop 或 Coding Agent 产品语义。
 
 ## 决策
 
-在 `@vetta/runtime-core/configuration` 建立产品无关的 Runtime Configuration 控制面：
+在 `@astravia/runtime-core/configuration` 建立产品无关的 Runtime Configuration 控制面：
 
 - Configuration Definition 由稳定 id、schemaVersion、可序列化 Descriptor、运行时 Codec、默认值和生效时机构成；
 - Definition Registry 按 Source 管理不可变 revision、lease、原子 Source replace、retire、remove 和 last-known-good；

@@ -1,4 +1,4 @@
-import { SIDEBAR_DOCK_ANIMATION_MS } from "@vetta-org/theme-ui/layout";
+import { SIDEBAR_DOCK_ANIMATION_MS } from "@astravia-org/theme-ui/layout";
 import { startTransition, useEffect, useState } from "react";
 
 /**

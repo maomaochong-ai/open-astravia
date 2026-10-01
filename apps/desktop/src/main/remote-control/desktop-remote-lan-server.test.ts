@@ -9,7 +9,7 @@ import {
 	sha256Hex,
 	toBase64Url,
 	WebSocketRemoteTransport,
-} from "@vetta/remote-control";
+} from "@astravia/remote-control";
 import { afterEach, describe, expect, it } from "vitest";
 import { DesktopRemoteLanServer, LAN_MANUAL_PATH } from "./desktop-remote-lan-server.js";
 import { createDesktopWebSocketFactory } from "./desktop-websocket.js";

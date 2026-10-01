@@ -1,6 +1,6 @@
-import { type CodingAgentBootstrap, prepareCodingAgentPipedStdin } from "@vetta/coding-agent/bootstrap";
-import { VERSION } from "@vetta/coding-agent/config";
-import type { CodingAgentHtmlExportRuntime } from "@vetta/coding-agent/export-html";
+import { type CodingAgentBootstrap, prepareCodingAgentPipedStdin } from "@astravia/coding-agent/bootstrap";
+import { VERSION } from "@astravia/coding-agent/config";
+import type { CodingAgentHtmlExportRuntime } from "@astravia/coding-agent/export-html";
 import chalk from "chalk";
 import { printAgentHelp } from "./agent-help.js";
 import { createCliCodingAgentHtmlExportRuntime } from "./html-export-runtime.js";

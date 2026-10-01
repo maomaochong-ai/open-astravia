@@ -11,8 +11,8 @@
 					"template": "chat-over-canvas",
 					"canvas": "code",
 					"brand_name": "制作插件",
-					"user_prompt": "帮我做一个能在活动面板展示项目指标的 Vetta 插件。",
-					"assistant_reply": "我会先读取内置插件手册，再创建工程、实现扩展点、构建安装包并应用到当前 Vetta。"
+					"user_prompt": "帮我做一个能在活动面板展示项目指标的 Astravia 插件。",
+					"assistant_reply": "我会先读取内置插件手册，再创建工程、实现扩展点、构建安装包并应用到当前 Astravia。"
 				}
 			},
 			{
@@ -24,7 +24,7 @@
 						"description": "说明入口、交互与需要使用的宿主能力。"
 					},
 					{
-						"title": "由 Vetta 实现",
+						"title": "由 Astravia 实现",
 						"description": "根据包内开发手册创建清单、源码、权限和本地化资源。"
 					},
 					{
@@ -48,8 +48,8 @@
 							"template": "chat-over-canvas",
 							"canvas": "code",
 							"brand_name": "Plugin Workbench",
-							"user_prompt": "Build a Vetta plugin that shows project metrics in the activity panel.",
-							"assistant_reply": "I’ll read the bundled plugin manual, scaffold the project, implement the extension, package it, and apply it to this Vetta installation."
+							"user_prompt": "Build a Astravia plugin that shows project metrics in the activity panel.",
+							"assistant_reply": "I’ll read the bundled plugin manual, scaffold the project, implement the extension, package it, and apply it to this Astravia installation."
 						}
 					},
 					{
@@ -61,7 +61,7 @@
 								"description": "Explain the entry point, interaction, and host capabilities you need."
 							},
 							{
-								"title": "Let Vetta implement it",
+								"title": "Let Astravia implement it",
 								"description": "Create the manifest, source, permissions, and locale resources from the bundled manual."
 							},
 							{

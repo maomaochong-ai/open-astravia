@@ -1,5 +1,5 @@
-import type { Api, Model } from "@vetta/ai";
-import type { ConversationDocument, RuntimeHostSession } from "@vetta/runtime-core";
+import type { Api, Model } from "@astravia/ai";
+import type { ConversationDocument, RuntimeHostSession } from "@astravia/runtime-core";
 import { describe, expect, it, vi } from "vitest";
 import type { ExtensionRunner } from "../../../src/extensions/index.js";
 import { CodingAgentBranchNavigationHost } from "../../../src/host/session-history/branch-navigation-host.js";

@@ -1,4 +1,4 @@
-import type { RuntimeSessionCatalog } from "@vetta/runtime-core";
+import type { RuntimeSessionCatalog } from "@astravia/runtime-core";
 import type { CodingAgentConversationPersistenceFactory } from "../../../composition/contracts/index.js";
 import type { CodingAgentSessionStorageTarget } from "../../../public-api/sdk/sdk-create-contract.js";
 

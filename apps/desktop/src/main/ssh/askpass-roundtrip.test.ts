@@ -15,7 +15,7 @@ import {
 const run = promisify(execFile);
 
 /**
- * 端到端验证 OpenSSH 与 Vetta 之间的 askpass 合同。
+ * 端到端验证 OpenSSH 与 Astravia 之间的 askpass 合同。
  *
  * 这条链路上全是只有真跑才会暴露的东西：生成的 shell 脚本有没有可执行位、路径带空格
  * 时引用对不对、答案是不是走 stdout、确认类提示是不是只看退出码。单元测试无法覆盖，
@@ -33,8 +33,8 @@ describe.skipIf(process.platform === "win32")("askpass 与 OpenSSH 的合同", (
 
 	beforeAll(async () => {
 		// 目录名刻意带空格：生成的脚本必须正确引用路径。
-		const home = await mkdtemp(join(tmpdir(), "vetta askpass "));
-		vi.stubEnv("VETTA_HOME", home);
+		const home = await mkdtemp(join(tmpdir(), "astravia askpass "));
+		vi.stubEnv("ASTRAVIA_HOME", home);
 		channel = createSshAskpassChannel((request) => resolver(request));
 		// 传 node 而不是 electron：脚本里的 ELECTRON_RUN_AS_NODE 对 node 无害，
 		// 被测的是脚本本身的拼装与调用方式。
@@ -49,9 +49,9 @@ describe.skipIf(process.platform === "win32")("askpass 与 OpenSSH 的合同", (
 		return run(scriptPath, [prompt], {
 			env: {
 				...process.env,
-				VETTA_ASKPASS_SOCKET: channel.socketPath,
-				VETTA_ASKPASS_TOKEN: channel.token,
-				VETTA_ASKPASS_HOST: "h1",
+				ASTRAVIA_ASKPASS_SOCKET: channel.socketPath,
+				ASTRAVIA_ASKPASS_TOKEN: channel.token,
+				ASTRAVIA_ASKPASS_HOST: "h1",
 				...extraEnv,
 			},
 		});
@@ -107,12 +107,14 @@ describe.skipIf(process.platform === "win32")("askpass 与 OpenSSH 的合同", (
 
 	it("token 不对一律拒绝", async () => {
 		// socket 路径可能出现在进程列表里，光靠路径保密不够。
-		await expect(invoke("password: ", { VETTA_ASKPASS_TOKEN: "wrong" })).rejects.toMatchObject({ code: 1 });
+		await expect(invoke("password: ", { ASTRAVIA_ASKPASS_TOKEN: "wrong" })).rejects.toMatchObject({ code: 1 });
 		expect(resolver).not.toHaveBeenCalled();
 	});
 
 	it("没有回传通道时拒绝，而不是静默放行", async () => {
 		// 这里若退出 0，确认类提示就等于「默认同意」，中间人可以静默通过。
-		await expect(invoke("Are you sure (yes/no)?", { VETTA_ASKPASS_SOCKET: "" })).rejects.toMatchObject({ code: 1 });
+		await expect(invoke("Are you sure (yes/no)?", { ASTRAVIA_ASKPASS_SOCKET: "" })).rejects.toMatchObject({
+			code: 1,
+		});
 	});
 });

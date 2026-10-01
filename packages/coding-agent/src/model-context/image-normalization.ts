@@ -1,5 +1,5 @@
-import type { ImageContent, Message, TextContent } from "@vetta/ai";
-import type { CodingImageResizeConfiguration } from "@vetta/runtime-tools";
+import type { ImageContent, Message, TextContent } from "@astravia/ai";
+import type { CodingImageResizeConfiguration } from "@astravia/runtime-tools";
 
 export interface ModelInputImage {
 	readonly data: string;

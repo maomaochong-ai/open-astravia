@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import type { PluginPermissionApi } from "@vetta-org/plugin-sdk";
+import type { PluginPermissionApi } from "@astravia-org/plugin-sdk";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createPluginAiApi } from "./plugin-ai";
 
@@ -41,7 +41,7 @@ describe("createPluginAiApi streaming", () => {
 		requirePermission.mockClear();
 		bridge.stream.mockClear();
 		bridge.cancelStream.mockClear();
-		Object.defineProperty(window, "vetta", {
+		Object.defineProperty(window, "astravia", {
 			configurable: true,
 			value: { plugins: { internalCapabilities: { ai: bridge } } },
 		});

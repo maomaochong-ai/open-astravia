@@ -56,7 +56,7 @@ export function useProjectsPanelMenusModel(model: ProjectsPanelModel) {
 					variant: "danger",
 					onConfirm: () => {
 						// 会话没了，它留下的标注就是孤儿；与置顶的清理时机保持一致。
-						void window.vetta.conversationTags.forgetConversations([session.path]);
+						void window.astravia.conversationTags.forgetConversations([session.path]);
 						model.actions.deleteSession(session);
 					},
 				});

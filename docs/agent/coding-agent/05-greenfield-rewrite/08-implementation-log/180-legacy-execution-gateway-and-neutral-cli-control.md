@@ -44,12 +44,12 @@ Legacy Runtime。
 
 - 保持 Settings 和 Extension 错误输出不变。
 - 继续返回同一个 `CodingAgentHostBootstrap` 合同。
-- `@vetta/coding-agent/bootstrap` 改为直接导出该中性实现。
+- `@astravia/coding-agent/bootstrap` 改为直接导出该中性实现。
 - 旧根 API 和 `main.ts` 仍转发同一函数引用，保持公开兼容。
 
 ### 2. 建立中性 CLI Control Host
 
-新增 `coding-agent-cli-control.ts` 和公开子路径 `@vetta/coding-agent/cli-control`：
+新增 `coding-agent-cli-control.ts` 和公开子路径 `@astravia/coding-agent/cli-control`：
 
 - `runCodingAgentCliControl(args)` 负责识别并执行全部控制命令。
 - `runCodingAgentCliControlWithBootstrap(bootstrap)` 让旧公开 Legacy 入口继续兼容已经构造好的 Bootstrap。
@@ -62,7 +62,7 @@ Legacy Runtime。
 ### 3. 建立唯一 Legacy 执行 Gateway
 
 CLI App 新增 `legacy-runtime-gateway.ts`，成为唯一允许导入
-`@vetta/coding-agent/legacy/cli` 的生产模块。Gateway 接受穷尽联合：
+`@astravia/coding-agent/legacy/cli` 的生产模块。Gateway 接受穷尽联合：
 
 - `explicit-selection`
 - `extension-compatibility-gap`
@@ -86,14 +86,14 @@ Legacy Agent。
 
 `check-package-boundaries.mjs` 现在要求：
 
-- `@vetta/coding-agent/legacy/cli` 只能由 `legacy-runtime-gateway.ts` 导入。
+- `@astravia/coding-agent/legacy/cli` 只能由 `legacy-runtime-gateway.ts` 导入。
 - CLI App 其他生产模块不能使用 `runLegacyAgent` 或 `runLegacyAgentWithBootstrap`。
 - Greenfield 产品模块继续使用原有更严格的 Legacy startup symbol 守卫，避免重复诊断。
 - Legacy Session Format Adapter 白名单保持不变，格式兼容和执行兼容仍是两个边界。
 
 ### 5. 类型检查闭包
 
-新增的 `@vetta/coding-agent/cli-control` 子路径同时接入：
+新增的 `@astravia/coding-agent/cli-control` 子路径同时接入：
 
 - Coding Agent `package.json` exports。
 - 根 `tsconfig.json` 源码 path map。
@@ -128,7 +128,7 @@ Print 套件扩展控制命令场景，并直接运行正式 `compile-standalone
 ### Package Command 基线修正
 
 移动 Package Command 后运行其既有测试，发现 3 个断言仍写死历史命令名 `pi`，而生产事实源早已是
-`APP_NAME=vetta`。测试改为引用 `APP_NAME`，没有修改 Package Manager 行为；安装、删除、帮助、未知参数和
+`APP_NAME=astravia`。测试改为引用 `APP_NAME`，没有修改 Package Manager 行为；安装、删除、帮助、未知参数和
 缺少 source 共 5 项均通过。
 
 ## TypeBox / Zod 判断

@@ -1,4 +1,4 @@
-import type { UserMessage } from "@vetta/ai";
+import type { UserMessage } from "@astravia/ai";
 import { describe, expect, it, vi } from "vitest";
 import {
 	createAgentSession,

@@ -9,7 +9,7 @@ import {
 	isImageResizeFailure,
 	resizeImage,
 	resizeImageBuffer,
-} from "@vetta/runtime-node/coding";
+} from "@astravia/runtime-node/coding";
 import { describe, expect, it } from "vitest";
 
 // Small 2x2 red PNG image (base64) - generated with ImageMagick

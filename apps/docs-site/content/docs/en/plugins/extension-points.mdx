@@ -34,7 +34,7 @@ Every `ctx.ui` registration maps to its own permission:
 Components use the host's shared React runtime and design tokens. Registration functions return a `Disposable`; release it during deactivation so reloads do not register the same UI twice.
 
 <Callout title="Style through className only" type="warn">
-  A plugin shares one page with the host. Element selectors such as `button`, `div`, or `*` in a stylesheet entry leak into the whole interface, and they leak only on the user's machine. `@vetta-org/plugin-vite` scopes plugin CSS to the plugin root and wires in the host theme tokens, so semantic classes such as `text-foreground` and `bg-card` work directly.
+  A plugin shares one page with the host. Element selectors such as `button`, `div`, or `*` in a stylesheet entry leak into the whole interface, and they leak only on the user's machine. `@astravia-org/plugin-vite` scopes plugin CSS to the plugin root and wires in the host theme tokens, so semantic classes such as `text-foreground` and `bg-card` work directly.
 </Callout>
 
 Panel-style slots (file preview, activity tab, workspace view) must not use viewport-filling fixed overlays, which cover the host's own chrome.

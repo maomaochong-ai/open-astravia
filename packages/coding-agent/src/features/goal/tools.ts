@@ -1,5 +1,5 @@
+import type { RuntimeToolDefinition } from "@astravia/runtime-core/kernel";
 import { type Static, Type } from "@sinclair/typebox";
-import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
 import { CODING_AGENT_MODEL_TOOL_ORDER } from "../../tool-policy/model-tool-order.js";
 import type { CodingAgentGoalStatus } from "./contracts.js";
 import type { CodingAgentGoalRuntime } from "./goal-runtime.js";

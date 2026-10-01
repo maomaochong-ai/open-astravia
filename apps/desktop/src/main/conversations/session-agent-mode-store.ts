@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
-import { atomicWriteJSONAsync } from "@vetta/toolkit/atomic-write";
+import { atomicWriteJSONAsync } from "@astravia/toolkit/atomic-write";
 import { isAgentMode } from "../agent-modes/index.js";
 
 /** 合法值来自 main/agent-modes 的模式注册表（ADR-0071），落盘校验见 normalizeDesktopAgentMode。 */

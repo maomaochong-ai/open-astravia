@@ -18,7 +18,7 @@ function ability(): McpAbility {
 	} as unknown as McpAbility;
 }
 
-function stubVetta(overrides?: {
+function stubAstravia(overrides?: {
 	start?: (serverName: string, requestId: string) => Promise<{ state: "qr_code"; image: string; expiresInSeconds: number }>;
 	status?: () => Promise<{ state: "authenticated" | "unauthenticated" }>;
 }) {
@@ -31,7 +31,7 @@ function stubVetta(overrides?: {
 	const getSetupLoginStatus = vi.fn(
 		overrides?.status ?? (async () => ({ state: "unauthenticated" as const })),
 	);
-	(window as unknown as { vetta: unknown }).vetta = {
+	(window as unknown as { astravia: unknown }).astravia = {
 		mcp: { startSetupLogin, getSetupLoginStatus, cancelSetupLogin },
 	};
 	return { startSetupLogin, cancelSetupLogin, getSetupLoginStatus };
@@ -47,7 +47,7 @@ describe("useMcpSetupLoginModel", () => {
 
 	it("显示二维码，并在完成标志出现后收尾", async () => {
 		let completed = false;
-		const stub = stubVetta({
+		const stub = stubAstravia({
 			status: async () => ({ state: completed ? ("authenticated" as const) : ("unauthenticated" as const) }),
 		});
 		const onCompleted = vi.fn();
@@ -66,7 +66,7 @@ describe("useMcpSetupLoginModel", () => {
 	});
 
 	it("二维码到期后停止轮询并可重新获取", async () => {
-		const stub = stubVetta();
+		const stub = stubAstravia();
 		const { result } = renderHook(() => useMcpSetupLoginModel({ item: ability(), onCompleted: () => {} }));
 		await waitFor(() => expect(result.current.phase).toBe("scanning"));
 
@@ -86,7 +86,7 @@ describe("useMcpSetupLoginModel", () => {
 	});
 
 	it("取码失败时给出原因", async () => {
-		const stub = stubVetta({
+		const stub = stubAstravia({
 			start: async () => {
 				throw new Error("spawn failed");
 			},
@@ -98,7 +98,7 @@ describe("useMcpSetupLoginModel", () => {
 	});
 
 	it("卸载时只取消当前二维码请求", async () => {
-		const stub = stubVetta({
+		const stub = stubAstravia({
 			start: async () => new Promise(() => undefined),
 		});
 		const { unmount } = renderHook(() => useMcpSetupLoginModel({ item: ability(), onCompleted: () => {} }));

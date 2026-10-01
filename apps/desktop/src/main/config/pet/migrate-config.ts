@@ -1,4 +1,4 @@
-import { migrateVersionedConfig, type VersionedConfigMigrationResult } from "@vetta/toolkit/versioned-config";
+import { migrateVersionedConfig, type VersionedConfigMigrationResult } from "@astravia/toolkit/versioned-config";
 import { PET_CONFIG_SCHEMA_VERSION } from "../../../shared/pet-config.js";
 import { petConfigMigration001To2 } from "./migrations/001_to_2.js";
 import { petConfigMigration002To3 } from "./migrations/002_to_3.js";

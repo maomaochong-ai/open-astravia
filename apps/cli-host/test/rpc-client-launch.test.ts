@@ -2,7 +2,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { delimiter, dirname, join } from "node:path";
 import { execPath } from "node:process";
-import { RpcClientError, rpcClientErrorFromResponse } from "@vetta/coding-agent/rpc";
+import { RpcClientError, rpcClientErrorFromResponse } from "@astravia/coding-agent/rpc";
 import { describe, expect, it } from "vitest";
 import { RpcClient, resolveRpcClientProcessLaunch } from "../src/rpc/rpc-client.js";
 
@@ -15,7 +15,7 @@ function nodeRuntimeEnv(): Record<string, string> {
 describe("RpcClient process launch", () => {
 	it("uses the canonical installed RPC executable by default", () => {
 		expect(resolveRpcClientProcessLaunch(undefined, ["--mode", "rpc"])).toEqual({
-			command: "vetta-agent-rpc",
+			command: "astravia-agent-rpc",
 			args: ["--mode", "rpc"],
 		});
 	});

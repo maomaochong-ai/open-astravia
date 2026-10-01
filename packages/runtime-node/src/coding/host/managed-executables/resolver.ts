@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync } from "node:fs";
 import { arch, platform } from "node:os";
 import { join } from "node:path";
-import type { CodingToolExecutable, CodingToolExecutableResolver } from "@vetta/runtime-tools";
+import type { CodingToolExecutable, CodingToolExecutableResolver } from "@astravia/runtime-tools";
 import { defaultCodingToolArchiveOperations, installCodingToolArchive } from "./archive-installer.js";
 import { createCodingToolDownloadPlan, getCodingToolReleaseConfig } from "./catalog.js";
 import { downloadCodingToolArchiveWithRetry, fetchLatestCodingToolVersion } from "./network.js";

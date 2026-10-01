@@ -1,12 +1,12 @@
 import { existsSync, readFileSync, rmSync } from "node:fs";
 import { readFile, rm, stat } from "node:fs/promises";
 import { isAbsolute, join, resolve } from "node:path";
-import { getVettaHomePath } from "@vetta/action-rpc";
+import { getAstraviaHomePath } from "@astravia/action-rpc";
 import {
 	parsePluginCommandNames as parseCommands,
 	parsePluginManifest as parseManifest,
 	validatePluginId,
-} from "@vetta-org/plugin-sdk/manifest";
+} from "@astravia-org/plugin-sdk/manifest";
 import { app, webContents } from "electron";
 import type {
 	InstalledPlugin,
@@ -27,6 +27,7 @@ import { PLUGIN_API_VERSION } from "./plugin-api-version.js";
 import { PluginDevLinkService } from "./plugin-dev-link-service.js";
 import { assertPluginInstallIdentity } from "./plugin-install-options.js";
 import {
+	ASTRAVIA_PLUGIN_PACKAGE_EXTENSION,
 	copyPluginPackage,
 	createInstalledPluginFromManifest,
 	extractPluginArchive,
@@ -34,7 +35,6 @@ import {
 	installedPluginResourceUrl,
 	projectPluginVersion,
 	readPluginLocales,
-	VETTA_PLUGIN_PACKAGE_EXTENSION,
 	validatePluginPackageResources,
 } from "./plugin-package.js";
 import { effectivePluginPermissions, grantDeclaredPluginCommands } from "./plugin-permission-policy.js";
@@ -43,15 +43,15 @@ import { PluginSecretsStore } from "./plugin-secrets-store.js";
 import { SystemPluginCatalog } from "./plugin-system-catalog.js";
 
 export { PLUGIN_API_VERSION } from "./plugin-api-version.js";
-export const CORE_ACTION_PLUGIN_ID = "vetta-actions";
+export const CORE_ACTION_PLUGIN_ID = "astravia-actions";
 
 const REQUIRED_SYSTEM_PLUGIN_IDS = new Set<string>([CORE_ACTION_PLUGIN_ID]);
-const pluginsBaseDir = join(getVettaHomePath(), "plugins");
-const manifestPath = join(getVettaHomePath(), "plugins-manifest.json");
-const tmpBaseDir = join(getVettaHomePath(), "tmp", "plugins");
+const pluginsBaseDir = join(getAstraviaHomePath(), "plugins");
+const manifestPath = join(getAstraviaHomePath(), "plugins-manifest.json");
+const tmpBaseDir = join(getAstraviaHomePath(), "tmp", "plugins");
 const MAX_LOCAL_PLUGIN_PACKAGE_BYTES = 512 * 1024 * 1024;
 // 系统插件的用户态偏好（目前仅停用开关），与用户插件注册表分离（ADR-0024）。
-const systemPrefsPath = join(getVettaHomePath(), "system-plugin-prefs.json");
+const systemPrefsPath = join(getAstraviaHomePath(), "system-plugin-prefs.json");
 const pluginRegistry = new PluginRegistryStore(manifestPath, pluginsBaseDir);
 const systemPluginPreferences = new SystemPluginPreferenceStore(systemPrefsPath);
 
@@ -277,7 +277,7 @@ export async function installPluginFromUrl(url: string, options?: PluginInstallO
 	return installPluginFromArchive(buffer, { ...options, source: "remote" });
 }
 
-/** Install from a local Vetta package path; legacy .zip remains importable. */
+/** Install from a local Astravia package path; legacy .zip remains importable. */
 export async function installPluginFromPath(
 	filePath: string,
 	options?: PluginInstallOptions,
@@ -295,8 +295,8 @@ export async function readPluginPackageFromPath(filePath: string): Promise<Buffe
 		throw new Error(`Plugin archive not found: ${resolved}`);
 	}
 	const lowerPath = resolved.toLowerCase();
-	if (!lowerPath.endsWith(VETTA_PLUGIN_PACKAGE_EXTENSION) && !lowerPath.endsWith(".zip")) {
-		throw new Error(`Plugin path must be a ${VETTA_PLUGIN_PACKAGE_EXTENSION} package or legacy .zip archive`);
+	if (!lowerPath.endsWith(ASTRAVIA_PLUGIN_PACKAGE_EXTENSION) && !lowerPath.endsWith(".zip")) {
+		throw new Error(`Plugin path must be a ${ASTRAVIA_PLUGIN_PACKAGE_EXTENSION} package or legacy .zip archive`);
 	}
 	const info = await stat(resolved);
 	if (!info.isFile() || info.size > MAX_LOCAL_PLUGIN_PACKAGE_BYTES) {
@@ -480,7 +480,7 @@ export function reloadPlugin(id: string): InstalledPlugin {
 	pluginRegistry.write(registry);
 	// 台账（ADR-0049）跟着改写为实际生效的版本。
 	recordAbilityInstall("plugin", plugin.id, plugin.activeVersion);
-	// dev 链接期间：注册表照常收敛到实际版本（否则「应用到 Vetta」的新版本会被吞掉，
+	// dev 链接期间：注册表照常收敛到实际版本（否则「应用到 Astravia」的新版本会被吞掉，
 	// 关热更新后回落旧版本），但返回值与广播叠加 dev 快照（资源仍从工程加载）。
 	if (pluginDevLinkService.has(id)) {
 		return pluginDevLinkService.refresh(id);

@@ -1,5 +1,5 @@
+import type { AgentBlueprint, AgentTeamDocument } from "@astravia/agent-team";
 import { useLocalizedAgentTeamDocument } from "@shared/agent-teams/agent-team-localization";
-import type { AgentBlueprint, AgentTeamDocument } from "@vetta/agent-team";
 import { type Dispatch, type SetStateAction, useCallback, useEffect, useState } from "react";
 import type { BlueprintDisplayPlugin } from "../lib/blueprint-display";
 import type { AgentCapabilityOption } from "../lib/capability-options";
@@ -53,7 +53,7 @@ export function useAgentTeamResources(): AgentTeamResources {
 
 	const reload = useCallback(async () => {
 		try {
-			setDocument(await window.vetta.agentTeams.list());
+			setDocument(await window.astravia.agentTeams.list());
 			setError(undefined);
 		} catch (cause) {
 			setError(agentTeamErrorMessage(cause));
@@ -68,7 +68,7 @@ export function useAgentTeamResources(): AgentTeamResources {
 	 * 头像同样随插件走。
 	 */
 	useEffect(() => {
-		return window.vetta.agentTeams.onChanged(() => {
+		return window.astravia.agentTeams.onChanged(() => {
 			void loadAgentTeamConfigurationResources()
 				.then((resources) => {
 					setDocument(resources.document);

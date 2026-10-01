@@ -1,4 +1,4 @@
-import { useTranslation } from "@vetta-org/plugin-sdk";
+import { useTranslation } from "@astravia-org/plugin-sdk";
 import { type JSX, useEffect, useState } from "react";
 import {
 	CONTENT_SECRET_KEYS,

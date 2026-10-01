@@ -11,10 +11,10 @@ import {
 describe("general settings domain capabilities", () => {
 	it("uses one stable id per general settings operation", () => {
 		expect(Object.values(DOMAIN_GENERAL_SETTINGS_CAPABILITIES).map((capability) => capability.id)).toEqual([
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}general-settings.get`,
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}general-settings.notifications.set`,
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}general-settings.default-execution-mode.set`,
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}general-settings.workspace.set`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}general-settings.get`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}general-settings.notifications.set`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}general-settings.default-execution-mode.set`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}general-settings.workspace.set`,
 		]);
 	});
 

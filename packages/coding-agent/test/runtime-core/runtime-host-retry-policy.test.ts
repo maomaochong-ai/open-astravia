@@ -1,4 +1,4 @@
-import type { RuntimeFailure } from "@vetta/runtime-core";
+import type { RuntimeFailure } from "@astravia/runtime-core";
 import { describe, expect, it, vi } from "vitest";
 import type { CodingAgentRuntimeHostRetrySettings } from "../../src/composition/contracts/index.js";
 import { parseCodingAgentRuntimeSessionConfiguration } from "../../src/composition/contracts/index.js";

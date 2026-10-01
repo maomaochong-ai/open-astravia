@@ -1,12 +1,12 @@
 /**
- * 从 Vetta 能力市场按 slug 下载并安装 skill/scene。
+ * 从 Astravia 能力市场按 slug 下载并安装 skill/scene。
  * 市场下载可匿名；有登录 token 时附带 Authorization。
  */
 import { execSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { getVettaHomePath } from "@vetta/action-rpc";
+import { getAstraviaHomePath } from "@astravia/action-rpc";
 import { recordAbilityInstall } from "../abilities/ability-ledger.js";
 import { getCloudBridge } from "../cloud-bridge.js";
 import { DEFAULT_SERVER_URL } from "../constants.js";
@@ -23,7 +23,7 @@ import {
 } from "./skill-service.js";
 
 const log = getAppLogger("skill-market-install");
-const tmpBaseDir = join(getVettaHomePath(), "tmp");
+const tmpBaseDir = join(getAstraviaHomePath(), "tmp");
 
 export interface MarketAbilityInfo {
 	slug: string;
@@ -57,10 +57,10 @@ function currentToken(): string | undefined {
 }
 
 async function fetchWithOptionalAuth(path: string, accept: string): Promise<Response> {
-	// vetta 官方市场是云服务渠道：lite 构建不可用（github 来源不走这里）。
+	// astravia 官方市场是云服务渠道：lite 构建不可用（github 来源不走这里）。
 	const cloud = getCloudBridge();
 	if (!cloud) {
-		throw new Error("Vetta market is not available in this build");
+		throw new Error("Astravia market is not available in this build");
 	}
 	const url = `${baseUrl()}${path.startsWith("/") ? path : `/${path}`}`;
 	const doFetch = async (token?: string): Promise<Response> => {

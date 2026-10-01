@@ -36,8 +36,8 @@ async function isValidLayoutRoot(root, expectedVersion) {
 		const manifest = JSON.parse(await readFile(join(root, "current.json"), "utf8"));
 		if (manifest?.version !== expectedVersion) return false;
 		await Promise.all([
-			assertNonEmptyFile(join(root, "Vetta.exe")),
-			assertNonEmptyFile(join(root, "versions", expectedVersion, "Vetta.exe")),
+			assertNonEmptyFile(join(root, "Astravia.exe")),
+			assertNonEmptyFile(join(root, "versions", expectedVersion, "Astravia.exe")),
 			assertNonEmptyFile(join(root, "versions", expectedVersion, "resources", "app.asar")),
 		]);
 		return true;
@@ -95,7 +95,7 @@ export async function verifyWindowsPackages({ releaseDir = defaultReleaseDir } =
 	const zipPath = join(releaseDir, zipFileName);
 	await Promise.all([assertNonEmptyFile(msiPath), assertNonEmptyFile(zipPath)]);
 
-	const extractionRoot = await mkdtemp(join(tmpdir(), "vetta-windows-packages-"));
+	const extractionRoot = await mkdtemp(join(tmpdir(), "astravia-windows-packages-"));
 	const msiRoot = join(extractionRoot, "msi");
 	const zipRoot = join(extractionRoot, "zip");
 	await Promise.all([mkdir(msiRoot, { recursive: true }), mkdir(zipRoot, { recursive: true })]);

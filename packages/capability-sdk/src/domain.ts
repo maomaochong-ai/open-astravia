@@ -1,7 +1,7 @@
 import { CAPABILITY_PREFIXES } from "./contracts.js";
 
-/** Stable prefix for Vetta-owned domain capabilities. Prefixes are never authorization rules. */
-export const VETTA_DOMAIN_CAPABILITY_PREFIX = CAPABILITY_PREFIXES.VETTA_DOMAIN;
+/** Stable prefix for Astravia-owned domain capabilities. Prefixes are never authorization rules. */
+export const ASTRAVIA_DOMAIN_CAPABILITY_PREFIX = CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN;
 
 export {
 	type AgentExperimentalSettings,

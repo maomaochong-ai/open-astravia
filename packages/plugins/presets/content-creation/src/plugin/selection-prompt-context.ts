@@ -3,14 +3,14 @@ import { Value } from "@sinclair/typebox/value";
 import {
 	definePluginPromptContext,
 	type PluginPromptAttachment,
-} from "@vetta-org/plugin-sdk";
+} from "@astravia-org/plugin-sdk";
 import { AssetSchema, WorkflowNodeSchema } from "../project/document-schema";
 import { serializeContentProject } from "../project/persistence";
 import type { ContentProjectDocument } from "../project/types";
 import { CONTENT_CREATION_SCHEMA_VERSION } from "../project/types";
 
 export const CONTENT_SELECTION_PROMPT_ATTACHMENT_ID = "content-creation:node-selection";
-const CONTENT_SELECTION_CONTEXT_SCHEMA = "vetta.content-creation.node-selection";
+const CONTENT_SELECTION_CONTEXT_SCHEMA = "astravia.content-creation.node-selection";
 const CONTENT_SELECTION_CONTEXT_VERSION = 1;
 
 function StrictObject<T extends TProperties>(properties: T) {
@@ -28,10 +28,10 @@ const SelectionConnectionSchema = StrictObject({
 });
 
 export const ContentSelectionPromptPayloadSchema = StrictObject({
-	format: Type.Literal("vetta.content-workflow.selection"),
+	format: Type.Literal("astravia.content-workflow.selection"),
 	schemaVersion: Type.Literal(1),
 	project: StrictObject({
-		format: Type.Literal("vetta.content-workflow"),
+		format: Type.Literal("astravia.content-workflow"),
 		schemaVersion: Type.Literal(CONTENT_CREATION_SCHEMA_VERSION),
 		projectId: Type.String(),
 		revision: Type.Number(),
@@ -81,7 +81,7 @@ export function createContentSelectionPromptAttachment(
 		}));
 	const nodeIds = nodes.map((node) => node.id);
 	const payload: ContentSelectionPromptPayload = {
-		format: "vetta.content-workflow.selection",
+		format: "astravia.content-workflow.selection",
 		schemaVersion: 1,
 		project: {
 			format: document.format,

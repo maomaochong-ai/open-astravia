@@ -9,7 +9,7 @@
  */
 
 import * as fs from "node:fs";
-import type { ExtensionAPI } from "@vetta/coding-agent";
+import type { ExtensionAPI } from "@astravia/coding-agent";
 
 export default function (api: ExtensionAPI) {
 	api.on("session_start", async (_event, ctx) => {

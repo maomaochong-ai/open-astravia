@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createConversationSeedDraft, FileConversationRepository } from "@vetta/runtime-node/conversation";
+import { createConversationSeedDraft, FileConversationRepository } from "@astravia/runtime-node/conversation";
 import { afterEach, describe, expect, it } from "vitest";
 import { initializeCodingAgentSessionSetupSeed } from "../../src/sessions/setup/session-setup-seed-initializer.js";
 
@@ -70,7 +70,7 @@ describe("Coding Agent Session setup seed initializer", () => {
 				expect.objectContaining({ type: "label", label: "prompt" }),
 				expect.objectContaining({
 					type: "custom_message",
-					customType: "vetta.legacy_agent_message",
+					customType: "astravia.legacy_agent_message",
 					modelVisible: true,
 				}),
 				expect.objectContaining({ type: "branch_summary", summary: "branch summary" }),

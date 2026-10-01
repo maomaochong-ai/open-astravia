@@ -1,8 +1,8 @@
-import type { RuntimeHost, RuntimeTurnPromptOutcome } from "@vetta/runtime-core";
+import type { RuntimeHost, RuntimeTurnPromptOutcome } from "@astravia/runtime-core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ScheduledTask, TaskExecutionRecord } from "../../shared/automation.js";
 
-const CONVERSATION_CWD = "C:/home/.vetta/conversation";
+const CONVERSATION_CWD = "C:/home/.astravia/conversation";
 const PROJECT_CWD = "C:/workspace/project";
 
 const mocks = vi.hoisted(() => ({

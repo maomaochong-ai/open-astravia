@@ -10,8 +10,8 @@ vi.mock("../AbilityIcon", () => ({ AbilityIcon: () => <span /> }));
 vi.mock("react-i18next", () => ({
 	useTranslation: () => ({ t: (key: string) => key }),
 }));
-vi.mock("@vetta-org/ui", async () => {
-	const actual = await vi.importActual<typeof import("@vetta-org/ui")>("@vetta-org/ui");
+vi.mock("@astravia-org/ui", async () => {
+	const actual = await vi.importActual<typeof import("@astravia-org/ui")>("@astravia-org/ui");
 	return {
 		...actual,
 		Dialog: ({ children, open }: { children?: unknown; open?: boolean }) => (open ? <div>{children as never}</div> : null),
@@ -185,7 +185,7 @@ describe("AbilityDetailBlocks", () => {
 						title: "代码就是设计稿",
 						items: [
 							{ title: "无限画布", description: "在同一设计文档中并排组织多个真实界面画框。" },
-							{ title: "选中后修改", description: "把画框或具体元素交给 Vetta。" },
+							{ title: "选中后修改", description: "把画框或具体元素交给 Astravia。" },
 							{ title: "保存即更新", description: "保存后画布自动加载最新结果。" },
 							{ title: "导出与分享", description: "可导出设计分享包。" },
 							{ title: "设计画廊", description: "侧边栏汇总所有带设计稿的项目。" },
@@ -236,7 +236,7 @@ describe("AbilityDetailBlocks", () => {
 		const { rerender } = render(
 			<AbilityDetailBlocks
 				abilityType="plugin"
-				abilityIcon="vetta-plugin://browser/icon.png"
+				abilityIcon="astravia-plugin://browser/icon.png"
 				blocks={[{ type: "hero", title: "A useful agent", image: "icon.png", image_alt: "Plugin icon" }]}
 			/>,
 		);
@@ -245,7 +245,7 @@ describe("AbilityDetailBlocks", () => {
 		rerender(
 			<AbilityDetailBlocks
 				abilityType="plugin"
-				abilityIcon="vetta-plugin://browser/icon.png"
+				abilityIcon="astravia-plugin://browser/icon.png"
 				blocks={[{ type: "hero", title: "A useful agent", image: "https://example.com/preview.webp", image_alt: "Workspace" }]}
 			/>,
 		);
@@ -258,8 +258,8 @@ describe("shouldShowHeroStill", () => {
 		expect(shouldShowHeroStill(undefined)).toBe(false);
 		expect(shouldShowHeroStill("icon.png")).toBe(false);
 		expect(shouldShowHeroStill("logo.svg")).toBe(false);
-		expect(shouldShowHeroStill("vetta-plugin://browser/icon.png", "vetta-plugin://browser/icon.png")).toBe(false);
+		expect(shouldShowHeroStill("astravia-plugin://browser/icon.png", "astravia-plugin://browser/icon.png")).toBe(false);
 		expect(shouldShowHeroStill("https://cdn.example/preview.webp")).toBe(true);
-		expect(shouldShowHeroStill("presentation/screenshot.png", "vetta-plugin://browser/icon.png")).toBe(true);
+		expect(shouldShowHeroStill("presentation/screenshot.png", "astravia-plugin://browser/icon.png")).toBe(true);
 	});
 });

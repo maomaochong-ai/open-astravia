@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"vetta-im-gateway/internal/hostproto"
-	signalcli "vetta-im-gateway/internal/transport/signal"
+	"astravia-im-gateway/internal/hostproto"
+	signalcli "astravia-im-gateway/internal/transport/signal"
 )
 
 func TestBindCoordinatorKind(t *testing.T) {

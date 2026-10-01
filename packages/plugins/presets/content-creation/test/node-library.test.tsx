@@ -4,7 +4,7 @@ import { CONTENT_NODE_DEFINITIONS } from "../src/node/definitions";
 import { CanvasDock } from "../src/canvas/CanvasDock";
 import { EmptyCanvasStarter, NodeDefinitionGrid } from "../src/canvas/NodeLibrary";
 
-vi.mock("@vetta-org/plugin-sdk", () => ({
+vi.mock("@astravia-org/plugin-sdk", () => ({
 	useTranslation: () => ({ locale: "en", t: (key: string) => key }),
 }));
 

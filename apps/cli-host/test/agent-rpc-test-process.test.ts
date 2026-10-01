@@ -18,7 +18,7 @@ describe("Agent RPC process test fixture", () => {
 					HOME: "C:\\contaminated-home",
 					PATH: "C:\\tools",
 					SECRET_FROM_PARENT: "must-not-pass-through",
-					VETTA_HOME: "C:\\contaminated-vetta-home",
+					ASTRAVIA_HOME: "C:\\contaminated-astravia-home",
 				},
 				overrides: { TEST_OVERRIDE: "enabled" },
 			});
@@ -33,8 +33,8 @@ describe("Agent RPC process test fixture", () => {
 				PATH: "C:\\tools",
 				TEST_OVERRIDE: "enabled",
 				USERPROFILE: fixture.root,
-				VETTA_CODING_AGENT_DIR: fixture.agentDir,
-				VETTA_HOME: join(fixture.root, "home"),
+				ASTRAVIA_CODING_AGENT_DIR: fixture.agentDir,
+				ASTRAVIA_HOME: join(fixture.root, "home"),
 			});
 			expect(env.SECRET_FROM_PARENT).toBeUndefined();
 		} finally {

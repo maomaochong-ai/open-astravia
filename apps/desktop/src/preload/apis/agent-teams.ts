@@ -2,14 +2,14 @@ import type { IpcRenderer } from "electron";
 import type { DesktopApi } from "../api.js";
 import { subscribeById } from "./helper.js";
 
-const STREAM_EVENT = "vetta:agent-teams:stream-event";
-const CHANGED_EVENT = "vetta:agent-teams:changed";
-const MEMBER_MODELS_CHANGED_EVENT = "vetta:agent-teams:member-models-changed";
+const STREAM_EVENT = "astravia:agent-teams:stream-event";
+const CHANGED_EVENT = "astravia:agent-teams:changed";
+const MEMBER_MODELS_CHANGED_EVENT = "astravia:agent-teams:member-models-changed";
 
 export function createAgentTeamsApi(ipc: IpcRenderer): Pick<DesktopApi, "agentTeams"> {
 	return {
 		agentTeams: {
-			list: () => ipc.invoke("vetta:agent-teams:list"),
+			list: () => ipc.invoke("astravia:agent-teams:list"),
 			onChanged: (listener) => {
 				const handler = (): void => listener();
 				ipc.on(CHANGED_EVENT, handler);
@@ -26,37 +26,42 @@ export function createAgentTeamsApi(ipc: IpcRenderer): Pick<DesktopApi, "agentTe
 					ipc.removeListener(MEMBER_MODELS_CHANGED_EVENT, handler);
 				};
 			},
-			listBlueprints: () => ipc.invoke("vetta:agent-teams:list-blueprints"),
-			createAgent: (input) => ipc.invoke("vetta:agent-teams:create-agent", input),
-			updateAgent: (id, input) => ipc.invoke("vetta:agent-teams:update-agent", id, input),
-			deleteAgent: (id, input) => ipc.invoke("vetta:agent-teams:delete-agent", id, input),
-			previewAgentUpdate: (id) => ipc.invoke("vetta:agent-teams:preview-agent-update", id),
-			previewAgentDelete: (id) => ipc.invoke("vetta:agent-teams:preview-agent-delete", id),
-			createTeam: (input) => ipc.invoke("vetta:agent-teams:create-team", input),
-			updateTeam: (id, input) => ipc.invoke("vetta:agent-teams:update-team", id, input),
-			deleteTeam: (id, input) => ipc.invoke("vetta:agent-teams:delete-team", id, input),
-			createSession: (teamId) => ipc.invoke("vetta:agent-teams:create-session", teamId),
+			listBlueprints: () => ipc.invoke("astravia:agent-teams:list-blueprints"),
+			createAgent: (input) => ipc.invoke("astravia:agent-teams:create-agent", input),
+			updateAgent: (id, input) => ipc.invoke("astravia:agent-teams:update-agent", id, input),
+			deleteAgent: (id, input) => ipc.invoke("astravia:agent-teams:delete-agent", id, input),
+			previewAgentUpdate: (id) => ipc.invoke("astravia:agent-teams:preview-agent-update", id),
+			previewAgentDelete: (id) => ipc.invoke("astravia:agent-teams:preview-agent-delete", id),
+			createTeam: (input) => ipc.invoke("astravia:agent-teams:create-team", input),
+			updateTeam: (id, input) => ipc.invoke("astravia:agent-teams:update-team", id, input),
+			deleteTeam: (id, input) => ipc.invoke("astravia:agent-teams:delete-team", id, input),
+			createSession: (teamId) => ipc.invoke("astravia:agent-teams:create-session", teamId),
 			createSessionRecord: (teamId, options) =>
 				options
-					? ipc.invoke("vetta:agent-teams:create-session-record", teamId, options)
-					: ipc.invoke("vetta:agent-teams:create-session-record", teamId),
-			listSessions: (teamId) => ipc.invoke("vetta:agent-teams:list-sessions", teamId),
-			listSidebarConversations: () => ipc.invoke("vetta:agent-teams:list-sidebar-conversations"),
-			renameSession: (reference, name) => ipc.invoke("vetta:agent-teams:rename-session", reference, name),
-			deleteSession: (reference) => ipc.invoke("vetta:agent-teams:delete-session", reference),
-			updateModelSettings: (id, input) => ipc.invoke("vetta:agent-teams:update-model-settings", id, input),
-			listMemberModels: (teamId) => ipc.invoke("vetta:agent-teams:list-member-models", teamId),
+					? ipc.invoke("astravia:agent-teams:create-session-record", teamId, options)
+					: ipc.invoke("astravia:agent-teams:create-session-record", teamId),
+			listSessions: (teamId) => ipc.invoke("astravia:agent-teams:list-sessions", teamId),
+			listSidebarConversations: () => ipc.invoke("astravia:agent-teams:list-sidebar-conversations"),
+			renameSession: (reference, name) => ipc.invoke("astravia:agent-teams:rename-session", reference, name),
+			deleteSession: (reference) => ipc.invoke("astravia:agent-teams:delete-session", reference),
+			updateModelSettings: (id, input) => ipc.invoke("astravia:agent-teams:update-model-settings", id, input),
+			listMemberModels: (teamId) => ipc.invoke("astravia:agent-teams:list-member-models", teamId),
 			setMemberModel: (teamId, memberId, selection) =>
-				ipc.invoke("vetta:agent-teams:set-member-model", teamId, memberId, selection),
-			setExecutionMode: (id, mode) => ipc.invoke("vetta:agent-teams:set-execution-mode", id, mode),
-			getSession: (id) => ipc.invoke("vetta:agent-teams:get-session", id),
+				ipc.invoke("astravia:agent-teams:set-member-model", teamId, memberId, selection),
+			setExecutionMode: (id, mode) => ipc.invoke("astravia:agent-teams:set-execution-mode", id, mode),
+			getSession: (id) => ipc.invoke("astravia:agent-teams:get-session", id),
 			subscribe: (id, handler) =>
-				subscribeById(ipc, "vetta:agent-teams:subscribe", STREAM_EVENT, "vetta:agent-teams:unsubscribe", handler, [
-					id,
-				]),
-			abort: (id) => ipc.invoke("vetta:agent-teams:abort", id),
-			uploadAvatar: () => ipc.invoke("vetta:agent-teams:upload-avatar"),
-			sendMessage: (id, input) => ipc.invoke("vetta:agent-teams:send-message", id, input),
+				subscribeById(
+					ipc,
+					"astravia:agent-teams:subscribe",
+					STREAM_EVENT,
+					"astravia:agent-teams:unsubscribe",
+					handler,
+					[id],
+				),
+			abort: (id) => ipc.invoke("astravia:agent-teams:abort", id),
+			uploadAvatar: () => ipc.invoke("astravia:agent-teams:upload-avatar"),
+			sendMessage: (id, input) => ipc.invoke("astravia:agent-teams:send-message", id, input),
 		},
 	};
 }

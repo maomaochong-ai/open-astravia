@@ -47,7 +47,7 @@ export function buildRemoteCommand(command: string, options: RemoteCommandOption
 	const script = quoteShellArgument(buildRemoteScript(command, options));
 	// `${SHELL:-/bin/sh}`：远端账号可能没设 SHELL（cron、部分容器镜像），缺省回落到 sh。
 	if (options.processToken === undefined) {
-		return `/bin/sh -c 'exec "\${SHELL:-/bin/sh}" -l -c "$1"' vetta ${script}`;
+		return `/bin/sh -c 'exec "\${SHELL:-/bin/sh}" -l -c "$1"' astravia ${script}`;
 	}
 	assertProcessToken(options.processToken);
 	const launcher = [
@@ -67,7 +67,7 @@ export function buildRemoteCommand(command: string, options: RemoteCommandOption
 		`rm -f -- "$f"`,
 		"exit $s",
 	].join("\n");
-	return `/bin/sh -c ${quoteShellArgument(launcher)} vetta ${script}`;
+	return `/bin/sh -c ${quoteShellArgument(launcher)} astravia ${script}`;
 }
 
 /**

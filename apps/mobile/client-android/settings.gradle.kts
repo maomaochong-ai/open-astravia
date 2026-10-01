@@ -1,4 +1,4 @@
-rootProject.name = "vetta-mobile"
+rootProject.name = "astravia-mobile"
 
 pluginManagement {
     repositories {

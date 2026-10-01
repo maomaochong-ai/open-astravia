@@ -59,7 +59,7 @@ Host Bridge 与 Extension UI Bridge 的生产实现已经在 dispose 时清空 p
 
 ## 真实 CLI 合同
 
-Legacy 与 Greenfield IM 使用真实 Vetta CLI 验证以下关闭场景：
+Legacy 与 Greenfield IM 使用真实 Astravia CLI 验证以下关闭场景：
 
 1. Provider 已输出部分事件并保持连接时关闭 stdin；
 2. `im_send_attachment` 已发出 `host_request`、等待 `host_response` 时关闭 stdin；

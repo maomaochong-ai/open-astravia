@@ -12,7 +12,7 @@ function plugin(overrides: Partial<InstalledPlugin> = {}): InstalledPlugin {
 		activeVersion: "1.0.0",
 		pluginApiVersion: "^2.0.0",
 		moduleFederation: { remoteName: "agent_contribution_test", expose: "./plugin" },
-		entryUrl: "vetta-plugin://demo/index.js",
+		entryUrl: "astravia-plugin://demo/index.js",
 		styleUrls: [],
 		permissions: ["agent.hooks.register", "agent.hookHandler.execute", "agent.tools.register"],
 		grantedPermissions: ["agent.hooks.register", "agent.hookHandler.execute", "agent.tools.register"],

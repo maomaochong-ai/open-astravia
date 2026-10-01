@@ -1,4 +1,4 @@
-import { readJsonFile, writeJsonFile, type PluginContext } from "@vetta-org/plugin-sdk";
+import { readJsonFile, writeJsonFile, type PluginContext } from "@astravia-org/plugin-sdk";
 
 /**
  * 插件自己的开关。存插件私有存储，面板读写，Agent handler 同步读（ADR-0105）——

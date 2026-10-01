@@ -1,5 +1,5 @@
 import type { ChildProcess } from "node:child_process";
-import { isSshProjectUri } from "@vetta/ssh-transport";
+import { isSshProjectUri } from "@astravia/ssh-transport";
 import type {
 	InstalledPlugin,
 	PluginCommandRunOptions,

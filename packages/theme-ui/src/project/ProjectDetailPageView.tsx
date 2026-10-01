@@ -1,4 +1,4 @@
-import { Button, cn } from "@vetta-org/ui";
+import { Button, cn } from "@astravia-org/ui";
 import { AnimatePresence, motion } from "motion/react";
 import type { JSX, ReactNode, RefObject } from "react";
 

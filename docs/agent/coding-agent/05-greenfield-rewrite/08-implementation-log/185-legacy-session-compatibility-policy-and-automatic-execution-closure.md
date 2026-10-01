@@ -81,7 +81,7 @@ Legacy Catalog -> shared migration -> Greenfield backend
 ```
 
 不兼容结果抛出带结构化详情的 `DesktopLegacySessionCompatibilityError`，不会调用 Greenfield Backend，也不会创建
-V2 目标。仅在进程通过 `VETTA_DESKTOP_AGENT_RUNTIME=legacy` 显式选择 Legacy 时，旧会话才交给
+V2 目标。仅在进程通过 `ASTRAVIA_DESKTOP_AGENT_RUNTIME=legacy` 显式选择 Legacy 时，旧会话才交给
 `LegacyCodingAgentSessionBackend`。
 
 Desktop 的 Legacy Catalog、History Reader 以及 read/rename/delete 权限保持不变。
@@ -129,7 +129,7 @@ fork、Import Seed 分支投影或 active leaf 选择，遵循外科式修改原
 ## 明确保留
 
 - 显式 CLI `--agent-runtime legacy`；
-- 显式 Desktop `VETTA_DESKTOP_AGENT_RUNTIME=legacy`；
+- 显式 Desktop `ASTRAVIA_DESKTOP_AGENT_RUNTIME=legacy`；
 - Legacy 会话发现、历史读取、导出、重命名和删除；
 - 公开 RPC 兼容类型中的旧 fallback 字面量，供旧客户端过渡。
 

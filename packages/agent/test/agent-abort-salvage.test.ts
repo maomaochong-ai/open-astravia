@@ -1,4 +1,4 @@
-import { type AssistantMessage, LanguageModelStream } from "@vetta/ai";
+import { type AssistantMessage, LanguageModelStream } from "@astravia/ai";
 import { describe, expect, it } from "vitest";
 import { runAgentTurn } from "../src/engine/run-agent-turn.js";
 import type { AgentTurnRequest } from "../src/engine/types.js";

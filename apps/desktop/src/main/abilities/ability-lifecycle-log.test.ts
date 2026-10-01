@@ -41,8 +41,8 @@ describe("ability lifecycle log", () => {
 			abilityId: "demo-plugin",
 			version: "1.2.3",
 			installMode: "marketplace" as const,
-			artifactKind: "vettapkg" as const,
-			artifactName: "demo-plugin-1.2.3.vettapkg",
+			artifactKind: "astraviapkg" as const,
+			artifactName: "demo-plugin-1.2.3.astraviapkg",
 			marketplaceSourceId: "official",
 			marketplaceRepository: "https://github.com/example/market",
 			marketplaceRef: "refa/market-v3",
@@ -67,7 +67,7 @@ describe("ability lifecycle log", () => {
 			expect.objectContaining({
 				abilityId: "demo-plugin",
 				installMode: "marketplace",
-				artifactKind: "vettapkg",
+				artifactKind: "astraviapkg",
 				marketplaceRef: "refa/market-v3",
 			}),
 		);
@@ -80,7 +80,7 @@ describe("ability lifecycle log", () => {
 				abilityType: "plugin",
 				abilityId: "demo-plugin",
 				installMode: "marketplace",
-				artifactKind: "vettapkg",
+				artifactKind: "astraviapkg",
 			},
 			failure,
 		);

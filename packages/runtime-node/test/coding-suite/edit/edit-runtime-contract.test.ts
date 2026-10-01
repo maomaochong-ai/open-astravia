@@ -25,7 +25,7 @@ afterEach(() => {
 });
 
 function createTemporaryDirectory(label: string): string {
-	const directory = mkdtempSync(join(tmpdir(), `vetta-runtime-edit-${label}-`));
+	const directory = mkdtempSync(join(tmpdir(), `astravia-runtime-edit-${label}-`));
 	temporaryDirectories.push(directory);
 	return directory;
 }
@@ -266,7 +266,7 @@ describe("runtime edit tool", () => {
 		expect(readFileSync(join(runtimeDirectory, exactName), "utf-8")).toContain('"招标文件 - 发布稿.docx"');
 	});
 
-	it.each([".vetta/skills/file.txt", ".agents/skills/file.txt"])(
+	it.each([".astravia/skills/file.txt", ".agents/skills/file.txt"])(
 		"preserves protected skill path rejection for %s",
 		async (path) => {
 			const cwd = createTemporaryDirectory("protected");

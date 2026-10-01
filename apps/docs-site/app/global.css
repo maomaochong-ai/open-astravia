@@ -3,62 +3,62 @@
 @import "fumadocs-ui/css/preset.css";
 
 @theme inline {
-	--font-display: var(--font-vetta-serif), "Songti SC", "Noto Serif SC", "Source Han Serif SC", "STSong", serif;
-	--color-vetta-paper: var(--vetta-paper);
-	--color-vetta-ink: var(--vetta-ink);
-	--color-vetta-coral: var(--vetta-coral);
-	--color-vetta-binding: var(--vetta-binding);
-	--color-vetta-binding-fg: var(--vetta-binding-fg);
-	--animate-enter: vetta-enter 420ms ease-out both;
+	--font-display: var(--font-astravia-serif), "Songti SC", "Noto Serif SC", "Source Han Serif SC", "STSong", serif;
+	--color-astravia-paper: var(--astravia-paper);
+	--color-astravia-ink: var(--astravia-ink);
+	--color-astravia-coral: var(--astravia-coral);
+	--color-astravia-binding: var(--astravia-binding);
+	--color-astravia-binding-fg: var(--astravia-binding-fg);
+	--animate-enter: astravia-enter 420ms ease-out both;
 }
 
 @layer base {
 	:root {
-		--vetta-paper: #f3efe4;
-		--vetta-ink: #161c19;
-		--vetta-coral: #dd6b55;
-		--vetta-binding: #17201f;
-		--vetta-binding-fg: #f3efe4;
-		--color-fd-background: var(--vetta-paper);
-		--color-fd-foreground: var(--vetta-ink);
+		--astravia-paper: #f3efe4;
+		--astravia-ink: #161c19;
+		--astravia-coral: #dd6b55;
+		--astravia-binding: #17201f;
+		--astravia-binding-fg: #f3efe4;
+		--color-fd-background: var(--astravia-paper);
+		--color-fd-foreground: var(--astravia-ink);
 		--color-fd-muted: #e7e0d0;
 		--color-fd-muted-foreground: #5c655e;
 		--color-fd-popover: #f7f3e9;
-		--color-fd-popover-foreground: var(--vetta-ink);
+		--color-fd-popover-foreground: var(--astravia-ink);
 		--color-fd-card: #ebe4d5;
-		--color-fd-card-foreground: var(--vetta-ink);
-		--color-fd-border: color-mix(in srgb, var(--vetta-ink) 14%, transparent);
-		--color-fd-primary: var(--vetta-coral);
+		--color-fd-card-foreground: var(--astravia-ink);
+		--color-fd-border: color-mix(in srgb, var(--astravia-ink) 14%, transparent);
+		--color-fd-primary: var(--astravia-coral);
 		--color-fd-primary-foreground: #fff7f3;
 		--color-fd-secondary: #e3dccb;
-		--color-fd-secondary-foreground: var(--vetta-ink);
+		--color-fd-secondary-foreground: var(--astravia-ink);
 		--color-fd-accent: #e6d7c2;
-		--color-fd-accent-foreground: var(--vetta-ink);
-		--color-fd-ring: var(--vetta-coral);
-		--color-fd-overlay: color-mix(in srgb, var(--vetta-ink) 28%, transparent);
+		--color-fd-accent-foreground: var(--astravia-ink);
+		--color-fd-ring: var(--astravia-coral);
+		--color-fd-overlay: color-mix(in srgb, var(--astravia-ink) 28%, transparent);
 		color-scheme: light;
 	}
 
 	.dark {
-		--vetta-paper: #121715;
-		--vetta-ink: #ece6d8;
-		--vetta-coral: #e38774;
-		--color-fd-background: var(--vetta-paper);
-		--color-fd-foreground: var(--vetta-ink);
+		--astravia-paper: #121715;
+		--astravia-ink: #ece6d8;
+		--astravia-coral: #e38774;
+		--color-fd-background: var(--astravia-paper);
+		--color-fd-foreground: var(--astravia-ink);
 		--color-fd-muted: #1c2421;
 		--color-fd-muted-foreground: #9aa39a;
 		--color-fd-popover: #171e1b;
-		--color-fd-popover-foreground: var(--vetta-ink);
+		--color-fd-popover-foreground: var(--astravia-ink);
 		--color-fd-card: #181f1c;
-		--color-fd-card-foreground: var(--vetta-ink);
-		--color-fd-border: color-mix(in srgb, var(--vetta-ink) 12%, transparent);
-		--color-fd-primary: var(--vetta-coral);
+		--color-fd-card-foreground: var(--astravia-ink);
+		--color-fd-border: color-mix(in srgb, var(--astravia-ink) 12%, transparent);
+		--color-fd-primary: var(--astravia-coral);
 		--color-fd-primary-foreground: #1a1210;
 		--color-fd-secondary: #1c2421;
-		--color-fd-secondary-foreground: var(--vetta-ink);
+		--color-fd-secondary-foreground: var(--astravia-ink);
 		--color-fd-accent: #24302b;
-		--color-fd-accent-foreground: var(--vetta-ink);
-		--color-fd-ring: var(--vetta-coral);
+		--color-fd-accent-foreground: var(--astravia-ink);
+		--color-fd-ring: var(--astravia-coral);
 		--color-fd-overlay: color-mix(in srgb, #000 48%, transparent);
 		color-scheme: dark;
 	}
@@ -79,8 +79,8 @@
 	}
 
 	::selection {
-		background: color-mix(in srgb, var(--vetta-coral) 82%, var(--vetta-ink));
-		color: var(--vetta-binding-fg);
+		background: color-mix(in srgb, var(--astravia-coral) 82%, var(--astravia-ink));
+		color: var(--astravia-binding-fg);
 	}
 
 	:focus-visible {
@@ -106,8 +106,8 @@
 	}
 
 	#nd-sidebar a[data-active="true"] {
-		background: color-mix(in srgb, var(--vetta-coral) 12%, transparent);
-		box-shadow: inset 2px 0 0 var(--vetta-coral);
+		background: color-mix(in srgb, var(--astravia-coral) 12%, transparent);
+		box-shadow: inset 2px 0 0 var(--astravia-coral);
 		font-weight: 650;
 	}
 
@@ -192,7 +192,7 @@
 	.docs-article-body > h2::before {
 		content: counter(docs-section, decimal-leading-zero);
 		flex: 0 0 auto;
-		color: var(--vetta-coral);
+		color: var(--astravia-coral);
 		font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 		font-size: 2.35rem;
 		font-weight: 400;
@@ -219,7 +219,7 @@
 		max-width: 2.75rem;
 		height: 2px;
 		margin-left: 5.1rem;
-		background: var(--vetta-coral);
+		background: var(--astravia-coral);
 	}
 
 	.docs-article-body > h3 {
@@ -252,7 +252,7 @@
 		top: 1.15em;
 		width: 0.5rem;
 		height: 1px;
-		background: var(--vetta-coral);
+		background: var(--astravia-coral);
 	}
 
 	.docs-article-body > ol:not(.docs-beats):not(.docs-takeaways):not(.docs-checks) {
@@ -273,7 +273,7 @@
 		position: absolute;
 		left: 0;
 		top: 0.7em;
-		color: var(--vetta-coral);
+		color: var(--astravia-coral);
 		font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 		font-size: 0.64rem;
 		letter-spacing: 0.08em;
@@ -281,13 +281,13 @@
 
 	.docs-article-body a:not([data-card]) {
 		text-decoration-line: underline;
-		text-decoration-color: color-mix(in srgb, var(--vetta-coral) 55%, transparent);
+		text-decoration-color: color-mix(in srgb, var(--astravia-coral) 55%, transparent);
 		text-decoration-thickness: 1px;
 		text-underline-offset: 0.22em;
 	}
 
 	.docs-article-body a:not([data-card]):hover {
-		text-decoration-color: var(--vetta-coral);
+		text-decoration-color: var(--astravia-coral);
 	}
 
 	.docs-article-body :not(pre) > code {
@@ -307,7 +307,7 @@
 	.docs-article-body blockquote {
 		margin-inline: 0;
 		padding: 0.35rem 0 0.35rem 1.25rem;
-		border-inline-start: 2px solid var(--vetta-coral);
+		border-inline-start: 2px solid var(--astravia-coral);
 		color: var(--color-fd-muted-foreground);
 		font-style: normal;
 	}
@@ -320,7 +320,7 @@
 	}
 
 	.docs-article-body thead {
-		border-bottom: 2px solid var(--vetta-ink);
+		border-bottom: 2px solid var(--astravia-ink);
 	}
 
 	.docs-article-body th {
@@ -369,9 +369,9 @@
 	}
 
 	.docs-article-body .fd-step::before {
-		color: var(--vetta-coral);
-		border-color: color-mix(in srgb, var(--vetta-coral) 45%, var(--color-fd-border));
-		background: color-mix(in srgb, var(--vetta-coral) 10%, var(--color-fd-background));
+		color: var(--astravia-coral);
+		border-color: color-mix(in srgb, var(--astravia-coral) 45%, var(--color-fd-border));
+		background: color-mix(in srgb, var(--astravia-coral) 10%, var(--color-fd-background));
 	}
 
 	.docs-article-body .fd-step :is(h2, h3, h4) {
@@ -397,7 +397,7 @@
 		position: absolute;
 		left: 0;
 		top: 0.95rem;
-		color: var(--vetta-coral);
+		color: var(--astravia-coral);
 		font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 		font-size: 0.64rem;
 		letter-spacing: 0.08em;
@@ -435,7 +435,7 @@
 		position: absolute;
 		left: 0;
 		top: 1.05rem;
-		color: var(--vetta-coral);
+		color: var(--astravia-coral);
 		font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 		font-size: 0.64rem;
 		letter-spacing: 0.08em;
@@ -465,11 +465,11 @@
 		top: 1.15rem;
 		width: 0.72rem;
 		height: 0.72rem;
-		border: 1px solid var(--vetta-coral);
+		border: 1px solid var(--astravia-coral);
 	}
 }
 
-@keyframes vetta-enter {
+@keyframes astravia-enter {
 	from {
 		opacity: 0;
 		transform: translateY(0.7rem);

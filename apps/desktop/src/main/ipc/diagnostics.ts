@@ -3,8 +3,8 @@ import { buildDiagnosticsBundle } from "../diagnostics-bundle.js";
 import { getAppLogBaseDir } from "../logger.js";
 
 const DIAGNOSTICS_CHANNELS = {
-	EXPORT: "vetta:diagnostics:export",
-	GET_LOG_DIR: "vetta:diagnostics:get-log-dir",
+	EXPORT: "astravia:diagnostics:export",
+	GET_LOG_DIR: "astravia:diagnostics:get-log-dir",
 } as const;
 
 export { DIAGNOSTICS_CHANNELS };

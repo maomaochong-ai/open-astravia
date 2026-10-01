@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { type Api, getModelReasoningPreset, type Message, type Model } from "@vetta/ai";
-import type { CodingAgentQuestionFunctionRequest } from "@vetta/coding-agent/function-extensions";
+import { type Api, getModelReasoningPreset, type Message, type Model } from "@astravia/ai";
+import type { CodingAgentQuestionFunctionRequest } from "@astravia/coding-agent/function-extensions";
 import type {
 	RemoteDeviceStatus,
 	RemoteDiagnosticsSnapshot,
@@ -15,8 +15,8 @@ import type {
 	RemoteToolEvent,
 	RemoteTranscriptEntry,
 	RemoteUploadKind,
-} from "@vetta/remote-control";
-import { REMOTE_MAX_UPLOAD_BYTES } from "@vetta/remote-control";
+} from "@astravia/remote-control";
+import { REMOTE_MAX_UPLOAD_BYTES } from "@astravia/remote-control";
 import type {
 	HistoryEntry,
 	PromptAttachmentRef,
@@ -24,7 +24,7 @@ import type {
 	SessionEvent,
 	SessionStateSnapshot,
 	SettingsPatch,
-} from "@vetta/runtime-core";
+} from "@astravia/runtime-core";
 import { MultipleSceneReferencesError, prepareInputPrompt } from "../../renderer/shared/lib/input-tokens/prepare.js";
 import type { DesktopSessionHistoryInfo } from "../../shared/session-access.js";
 import type {

@@ -1,4 +1,4 @@
-import type { ReadImageViewProps } from "@vetta-org/theme-ui/chat";
+import type { ReadImageViewProps } from "@astravia-org/theme-ui/chat";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { formatBytes, formatDimensions } from "../components/blocks/tool-views/shared/format";
@@ -50,7 +50,7 @@ export function useReadImageViewModel(image: ToolImagePreviewLike): ReadImageVie
 			showInFolderLabel: t("imagePreview.showInFolderButton"),
 			onOpenOriginal: originalPath
 				? () => {
-						void window.vetta.shell.showItemInFolder(originalPath);
+						void window.astravia.shell.showItemInFolder(originalPath);
 					}
 				: undefined,
 		};

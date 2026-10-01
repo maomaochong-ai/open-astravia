@@ -1,5 +1,5 @@
-import { defineRuntimeAgent, type RuntimeAgentDefinition } from "@vetta/runtime-core";
-import { createDefaultRuntimeCapabilityDefinition } from "@vetta/runtime-core/kernel";
+import { defineRuntimeAgent, type RuntimeAgentDefinition } from "@astravia/runtime-core";
+import { createDefaultRuntimeCapabilityDefinition } from "@astravia/runtime-core/kernel";
 
 export interface PromptAgentOptions {
 	readonly id: string;

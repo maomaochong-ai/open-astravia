@@ -5,7 +5,7 @@
 ## 已落实的说明入口
 
 - Coding Agent 的通用工具选择原则，以及 Skill 索引与 `invoke_skill` 共用的匹配说明。
-- Vetta CLI 指引及 help，区分 Vetta 自身与用户仓库；App Action 的 search / describe 返回 `usage`，包含 `target`、`useWhen`、`avoidWhen`、`alternatives`。
+- Astravia CLI 指引及 help，区分 Astravia 自身与用户仓库；App Action 的 search / describe 返回 `usage`，包含 `target`、`useWhen`、`avoidWhen`、`alternatives`。
 - 官方 17 个域、37 个 Action 的使用说明。插件工具和 Skill 保留原有功能描述及流程，不通过缩窄内容创作等能力来减少误调用；仅纠正已失效的编辑首调确认说明。
 - Action 检索不索引公共权限标识或 usage；仍支持精确 id、域过滤与 Schema 操作名。
 
@@ -15,18 +15,18 @@
 
 | 请求及上下文 | 应采用的路径 | 不应发生 |
 | --- | --- | --- |
-| 当前仓库是网站：“给网页加深色模式” | 修改项目样式和主题逻辑 | 更改 Vetta 外观 |
-| “把 Vetta 窗口切成深色” | 发现并描述 appearance Action，按请求修改 | 编辑网站样式 |
-| “创建 React 项目” | 在约定目录运行脚手架 | 自动创建 Vetta 批量项目 |
-| “把这个目录加到 Vetta 侧边栏” | 查询并调用 projects 对应操作 | 重新生成项目代码 |
-| “在业务代码里实现每天执行的 cron” | 修改业务调度代码 | 创建 Vetta 定时 Agent |
-| “让 Vetta 每天帮我汇总这些资料” | 发现 scheduler，按请求创建任务 | 仅返回 cron 示例而不操作 |
-| “Vetta 定时任务支持什么？” | help / describe / query 后解释 | 创建或立即执行任务以展示功能 |
-| “安装 Vetta 插件” | 搜索返回相关插件管理候选，核对目标 | 因公共 permission 前缀命中所有域 |
-| “给项目装一个 Vite 插件” | 项目包管理与配置 | Vetta 插件安装 Action |
+| 当前仓库是网站：“给网页加深色模式” | 修改项目样式和主题逻辑 | 更改 Astravia 外观 |
+| “把 Astravia 窗口切成深色” | 发现并描述 appearance Action，按请求修改 | 编辑网站样式 |
+| “创建 React 项目” | 在约定目录运行脚手架 | 自动创建 Astravia 批量项目 |
+| “把这个目录加到 Astravia 侧边栏” | 查询并调用 projects 对应操作 | 重新生成项目代码 |
+| “在业务代码里实现每天执行的 cron” | 修改业务调度代码 | 创建 Astravia 定时 Agent |
+| “让 Astravia 每天帮我汇总这些资料” | 发现 scheduler，按请求创建任务 | 仅返回 cron 示例而不操作 |
+| “Astravia 定时任务支持什么？” | help / describe / query 后解释 | 创建或立即执行任务以展示功能 |
+| “安装 Astravia 插件” | 搜索返回相关插件管理候选，核对目标 | 因公共 permission 前缀命中所有域 |
+| “给项目装一个 Vite 插件” | 项目包管理与配置 | Astravia 插件安装 Action |
 | “用当前可用 Skill 处理 PDF” | 加载对应 Skill，再使用其方法 | 安装同名能力或切换设置 |
 | “给当前任务列个执行计划” | 当前会话 todo 或直接说明 | 自动建立持久看板卡或批量项目 |
-| “把这项需求加入 Vetta 看板” | 看板工具 | 仅因创建卡片就认领并运行 |
+| “把这项需求加入 Astravia 看板” | 看板工具 | 仅因创建卡片就认领并运行 |
 | “这几个值谁最大？” | 简短文本或紧凑表格 | 无益的图表渲染 |
 | “把这些月度趋势画成图” | 对话图表 Skill / 工具 | 在用户仓库植入图表组件 |
 | “在这个网站实现趋势图组件” | 修改项目代码 | 调用对话 render_chart 充当实现 |

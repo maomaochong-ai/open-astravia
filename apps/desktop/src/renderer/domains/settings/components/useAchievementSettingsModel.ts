@@ -55,7 +55,7 @@ export function useAchievementSettingsModel(): AchievementSettingsModel {
 	const achievements = selectedSet.achievements;
 
 	useEffect(() => {
-		void window.vetta.appMonitor
+		void window.astravia.appMonitor
 			.getAchievementUsage()
 			.then((stats) => {
 				setUsageStats(stats);

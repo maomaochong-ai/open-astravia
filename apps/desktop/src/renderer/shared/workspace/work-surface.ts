@@ -1,4 +1,4 @@
-import type { ConversationScenario } from "@vetta-org/plugin-sdk";
+import type { ConversationScenario } from "@astravia-org/plugin-sdk";
 
 /**
  * A mounted working surface owns long-lived UI state independently from a

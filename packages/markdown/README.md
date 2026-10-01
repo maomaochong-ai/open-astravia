@@ -1,4 +1,4 @@
-# @vetta/markdown
+# @astravia/markdown
 
 博客正文的共享 Markdown 渲染器。`apps/admin` 的编辑预览与 `apps/site` 的公众页共用同一份实现与样式，保证后台看到的效果就是线上效果。
 
@@ -7,13 +7,13 @@
 ## 用法
 
 ```tsx
-import { MarkdownView } from "@vetta/markdown";
-import "@vetta/markdown/markdown.css";
+import { MarkdownView } from "@astravia/markdown";
+import "@astravia/markdown/markdown.css";
 
 <MarkdownView content={post.content} />;
 ```
 
-样式全部挂在 `.vetta-markdown` 下，颜色取宿主的 shadcn 主题变量（`--foreground` / `--border` / `--primary` / `--muted` …），亮暗主题自动跟随，无需额外配置。
+样式全部挂在 `.astravia-markdown` 下，颜色取宿主的 shadcn 主题变量（`--foreground` / `--border` / `--primary` / `--muted` …），亮暗主题自动跟随，无需额外配置。
 
 ### transformImageSrc
 

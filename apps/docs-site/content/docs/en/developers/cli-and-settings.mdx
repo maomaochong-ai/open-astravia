@@ -9,16 +9,16 @@ The CLI is useful for one-off terminal tasks, JSON event output, and RPC startup
 
 ```bash
 # Default text output
-vetta "Summarize the project structure in the current directory"
+astravia "Summarize the project structure in the current directory"
 
 # Structured JSON event stream
-vetta --mode json "Check the scripts in package.json"
+astravia --mode json "Check the scripts in package.json"
 
 # Choose a model and thinking level
-vetta --model openai/gpt-4o:high "Analyze this failure"
+astravia --model openai/gpt-4o:high "Analyze this failure"
 
 # Resume the most recent session
-vetta --continue "Continue the previous task"
+astravia --continue "Continue the previous task"
 ```
 
 | Option | Description |
@@ -37,12 +37,12 @@ vetta --continue "Continue the previous task"
 
 | Scope | Path |
 | --- | --- |
-| Global | `~/.vetta/agent/settings.json` |
-| Project | `<cwd>/.vetta/settings.json` |
+| Global | `~/.astravia/agent/settings.json` |
+| Project | `<cwd>/.astravia/settings.json` |
 
 Project settings override global settings. Relative paths are resolved from the directory containing their configuration file; absolute paths and `~` are also supported.
 
-Common settings include the default model, thinking level, message queue, context compaction, automatic retry, resource paths, MCP, image processing, personalization, and shell. The schema exported by `@vetta/coding-agent/settings` is the source of truth for all fields.
+Common settings include the default model, thinking level, message queue, context compaction, automatic retry, resource paths, MCP, image processing, personalization, and shell. The schema exported by `@astravia/coding-agent/settings` is the source of truth for all fields.
 
 ## Windows shell
 
@@ -62,11 +62,11 @@ Do not put an API key in `shellCommandPrefix` or in commands that may be logged.
 The CLI can install resources containing extensions, skills, and prompts from npm, Git, or a local source:
 
 ```bash
-vetta install npm:@scope/package@1.2.3
-vetta install git:github.com/example/repo@v1
-vetta list
-vetta update
-vetta remove npm:@scope/package
+astravia install npm:@scope/package@1.2.3
+astravia install git:github.com/example/repo@v1
+astravia list
+astravia update
+astravia remove npm:@scope/package
 ```
 
 Resource packages can execute code. Review their source, version, and permissions before installing them into a long-lived configuration.

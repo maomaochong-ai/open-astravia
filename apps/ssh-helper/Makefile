@@ -2,8 +2,8 @@
 
 BIN_DIR  := bin
 DIST_DIR := dist
-BINARY   := $(BIN_DIR)/vetta-ssh-helper
-PACKAGE  := ./cmd/vetta-ssh-helper
+BINARY   := $(BIN_DIR)/astravia-ssh-helper
+PACKAGE  := ./cmd/astravia-ssh-helper
 # No build version is injected (im-gateway stamps one via -X main.version).
 # The helper's identity is internal/protocol.Version: it names the install
 # directory on the remote host and is what the handshake checks. Whether the
@@ -49,10 +49,10 @@ clean:
 # nothing to do with the desktop platform being built: a macOS build of the app
 # still has to carry the linux-arm64 helper for the machines it connects to.
 #
-# Layout is dist/<os>-<arch>/vetta-ssh-helper rather than im-gateway's flat
+# Layout is dist/<os>-<arch>/astravia-ssh-helper rather than im-gateway's flat
 # dist/<name>-<os>-<arch>, because the file name is also the name it gets on the
-# remote host (installed at ~/.cache/vetta/helper/<protocol version>/
-# vetta-ssh-helper). Keeping both identical makes it obvious what was uploaded.
+# remote host (installed at ~/.cache/astravia/helper/<protocol version>/
+# astravia-ssh-helper). Keeping both identical makes it obvious what was uploaded.
 # apps/desktop's helper-assets.ts looks for dev builds in exactly this layout.
 #
 # CGO is disabled, so the binaries pin neither glibc nor musl: they run on any
@@ -84,14 +84,14 @@ cross-build:
 	@for target in $(CROSS_TARGETS); do \
 		os=$${target%%-*}; \
 		arch=$${target##*-}; \
-		out="$(DIST_DIR)/$$os-$$arch/vetta-ssh-helper"; \
+		out="$(DIST_DIR)/$$os-$$arch/astravia-ssh-helper"; \
 		mkdir -p "$(DIST_DIR)/$$os-$$arch"; \
 		echo "  → $$out"; \
 		CGO_ENABLED=0 GOOS=$$os GOARCH=$$arch \
 			go build -trimpath -ldflags "$(LDFLAGS)" -o $$out $(PACKAGE) || exit 1; \
 	done
 	@echo "cross-build complete: $(DIST_DIR)/"
-	@ls -lh $(DIST_DIR)/*/vetta-ssh-helper
+	@ls -lh $(DIST_DIR)/*/astravia-ssh-helper
 
 dist-clean:
 	rm -rf $(DIST_DIR)

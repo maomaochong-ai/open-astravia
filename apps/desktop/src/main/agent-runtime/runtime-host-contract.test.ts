@@ -1,13 +1,13 @@
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { Api, Message, Model } from "@vetta/ai";
-import { createCodingAgentRuntimeSessionSelection } from "@vetta/coding-agent/composition";
-import type { CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
-import type { ConversationScenario } from "@vetta/coding-agent/profile";
-import { CODING_AGENT_SESSION_PROFILE_STATE_READ } from "@vetta/coding-agent/session-extensions";
-import { type HistoryEntry, RuntimeHost, type SessionEvent } from "@vetta/runtime-core";
-import { DesktopRuntimeBackendPool } from "@vetta/runtime-desktop";
+import type { Api, Message, Model } from "@astravia/ai";
+import { createCodingAgentRuntimeSessionSelection } from "@astravia/coding-agent/composition";
+import type { CodingAgentRuntimeModelSource } from "@astravia/coding-agent/host-services";
+import type { ConversationScenario } from "@astravia/coding-agent/profile";
+import { CODING_AGENT_SESSION_PROFILE_STATE_READ } from "@astravia/coding-agent/session-extensions";
+import { type HistoryEntry, RuntimeHost, type SessionEvent } from "@astravia/runtime-core";
+import { DesktopRuntimeBackendPool } from "@astravia/runtime-desktop";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	startOpenAiResponsesTestServer,
@@ -34,8 +34,8 @@ describe("Desktop RuntimeHost production contract", () => {
 	const fixtures: RuntimeFixture[] = [];
 	beforeEach(async () => {
 		const directory = await temporaryDirectory("desktop-runtime-home-");
-		vi.stubEnv("VETTA_HOME", directory);
-		vi.stubEnv("VETTA_CODING_AGENT_DIR", join(directory, "agent"));
+		vi.stubEnv("ASTRAVIA_HOME", directory);
+		vi.stubEnv("ASTRAVIA_CODING_AGENT_DIR", join(directory, "agent"));
 		vi.stubEnv("USERPROFILE", directory);
 	});
 

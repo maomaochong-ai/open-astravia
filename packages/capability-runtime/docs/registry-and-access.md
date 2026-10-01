@@ -2,11 +2,11 @@
 
 ## 目的
 
-`@vetta/capability-runtime` 是 Capability 合同的通用执行内核。它把“某个 Token 有什么 Provider”与
+`@astravia/capability-runtime` 是 Capability 合同的通用执行内核。它把“某个 Token 有什么 Provider”与
 “某个 Subject 是否持有精确 Grant”组合成一次受控调用，但不定义具体能力，也不知道调用者属于哪个扩展系统。
 
 Token、Schema 和上层系统集成的边界见
-[`@vetta-org/capability-sdk` 的合同与宿主集成文档](../../capability-sdk/docs/contracts-and-host-integration.md)。
+[`@astravia-org/capability-sdk` 的合同与宿主集成文档](../../capability-sdk/docs/contracts-and-host-integration.md)。
 
 一句话边界：
 
@@ -15,11 +15,11 @@ Token、Schema 和上层系统集成的边界见
 ## 与 SDK、Host 的关系
 
 ```text
-@vetta-org/capability-sdk
+@astravia-org/capability-sdk
   Token / Schema / Error / Grant contract
                |
                v
-@vetta/capability-runtime
+@astravia/capability-runtime
   Registry / Hub / Access / Constraint / Audit
                ^
                |
@@ -72,7 +72,7 @@ Runtime 注册 Provider，并把自己的领域服务绑定到 Token。Runtime �
 Runtime 不实现项目、会话、存储或导航，但宿主可以把这些实现绑定进 Registry。例如：
 
 ```ts
-registry.registerOwner("vetta.domain.project", [
+registry.registerOwner("astravia.domain.project", [
   bindCapability(DOMAIN_PROJECT_CAPABILITIES.LIST, {
     execute: () => projectService.list(),
   }),

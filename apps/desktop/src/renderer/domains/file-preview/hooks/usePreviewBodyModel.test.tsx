@@ -30,7 +30,7 @@ describe("usePreviewBodyModel", () => {
 	beforeEach(() => {
 		readFile = vi.fn();
 		readTextPreviewFile = vi.fn();
-		Object.defineProperty(window, "vetta", {
+		Object.defineProperty(window, "astravia", {
 			configurable: true,
 			value: {
 				fs: {

@@ -8,24 +8,24 @@
 
 export const TERMINAL_CHANNELS = {
 	/** 本机 PTY 是否可用（缺预编译二进制时为否），用于决定终端入口是否出现。 */
-	CAPABILITIES: "vetta:terminal:capabilities",
+	CAPABILITIES: "astravia:terminal:capabilities",
 	/** 建终端；返回 terminalId 与订阅前已经产生的输出。 */
-	OPEN: "vetta:terminal:open",
-	WRITE: "vetta:terminal:write",
-	RESIZE: "vetta:terminal:resize",
-	CLOSE: "vetta:terminal:close",
+	OPEN: "astravia:terminal:open",
+	WRITE: "astravia:terminal:write",
+	RESIZE: "astravia:terminal:resize",
+	CLOSE: "astravia:terminal:close",
 	/** 查前台是否还有活进程，关闭确认用。 */
-	FOREGROUND: "vetta:terminal:foreground",
+	FOREGROUND: "astravia:terminal:foreground",
 	/**
 	 * 渲染进程防抖上报 serialize 结果；tabId 为键，跨会话保留。
 	 *
 	 * 关闭 tab 时不主动删快照：删了之后组件卸载还会补写一次，两者会打架；
 	 * 而且那会把终端专属调用塞进通用的关闭路径。留着由总量上限淘汰即可。
 	 */
-	SNAPSHOT_SAVE: "vetta:terminal:snapshot-save",
-	SNAPSHOT_LOAD: "vetta:terminal:snapshot-load",
+	SNAPSHOT_SAVE: "astravia:terminal:snapshot-save",
+	SNAPSHOT_LOAD: "astravia:terminal:snapshot-load",
 	/** main → renderer：单一多路复用频道。 */
-	EVENT: "vetta:terminal:event",
+	EVENT: "astravia:terminal:event",
 } as const;
 
 export interface TerminalCapabilities {

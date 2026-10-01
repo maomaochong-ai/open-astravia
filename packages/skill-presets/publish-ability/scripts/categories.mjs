@@ -27,7 +27,7 @@ async function main() {
 
 	const credentials = loadCredentials();
 	if (!credentials) {
-		fail("未登录：读不到 ~/.vetta/auth.json。请先在 Vetta 客户端登录后重试。");
+		fail("未登录：读不到 ~/.astravia/auth.json。请先在 Astravia 客户端登录后重试。");
 	}
 
 	let response;
@@ -36,7 +36,7 @@ async function main() {
 			headers: { Authorization: `Bearer ${credentials.token}` },
 		});
 	} catch (error) {
-		fail(`无法连接 Vetta 服务（${credentials.baseUrl}）：${error.message}`);
+		fail(`无法连接 Astravia 服务（${credentials.baseUrl}）：${error.message}`);
 	}
 
 	const text = await response.text();

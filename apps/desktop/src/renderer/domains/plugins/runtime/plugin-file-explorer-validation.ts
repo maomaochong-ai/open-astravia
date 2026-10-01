@@ -3,7 +3,7 @@ import type {
 	PluginFileExplorerWhen,
 	PluginFileIconAssociations,
 	PluginFileIconTheme,
-} from "@vetta-org/plugin-sdk";
+} from "@astravia-org/plugin-sdk";
 import { isValidElement } from "react";
 
 function record(value: unknown): Record<string, unknown> {

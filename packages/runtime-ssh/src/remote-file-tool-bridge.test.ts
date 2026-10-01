@@ -2,9 +2,9 @@ import { existsSync, mkdtempSync, readFileSync, realpathSync, writeFileSync } fr
 import { readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
-import type { RuntimeToolResult } from "@vetta/runtime-core/kernel";
-import type { CodingToolRegistration } from "@vetta/runtime-tools";
-import { createLoopbackSshConnection } from "@vetta/ssh-transport/testing";
+import type { RuntimeToolResult } from "@astravia/runtime-core/kernel";
+import type { CodingToolRegistration } from "@astravia/runtime-tools";
+import { createLoopbackSshConnection } from "@astravia/ssh-transport/testing";
 import { describe, expect, it } from "vitest";
 import { createRemoteFileToolRegistrations } from "./remote-file-tool-bridge.js";
 
@@ -49,7 +49,7 @@ function createBridge(remoteCwd: string) {
 
 describe("依赖本机引擎的工具桥接到远端文件", () => {
 	it("产物缺省落在远端的输入旁边，结果里报告的是远端路径", async () => {
-		const remoteCwd = realpathSync(mkdtempSync(join(tmpdir(), "vetta-remote-docs-")));
+		const remoteCwd = realpathSync(mkdtempSync(join(tmpdir(), "astravia-remote-docs-")));
 		writeFileSync(join(remoteCwd, "scan one.txt"), "hello");
 		const run = createBridge(remoteCwd);
 
@@ -60,7 +60,7 @@ describe("依赖本机引擎的工具桥接到远端文件", () => {
 	});
 
 	it("指定的 output 按远端工作目录解析，缺的目录一并建好", async () => {
-		const remoteCwd = realpathSync(mkdtempSync(join(tmpdir(), "vetta-remote-docs-")));
+		const remoteCwd = realpathSync(mkdtempSync(join(tmpdir(), "astravia-remote-docs-")));
 		writeFileSync(join(remoteCwd, "a.txt"), "x");
 		const run = createBridge(remoteCwd);
 
@@ -71,7 +71,7 @@ describe("依赖本机引擎的工具桥接到远端文件", () => {
 	});
 
 	it("本机只在临时目录里处理，用完即清，不往远端多留东西", async () => {
-		const remoteCwd = realpathSync(mkdtempSync(join(tmpdir(), "vetta-remote-docs-")));
+		const remoteCwd = realpathSync(mkdtempSync(join(tmpdir(), "astravia-remote-docs-")));
 		writeFileSync(join(remoteCwd, "a.txt"), "x");
 		seenLocalPaths.length = 0;
 
@@ -83,7 +83,7 @@ describe("依赖本机引擎的工具桥接到远端文件", () => {
 	});
 
 	it("远端没有这个输入时失败，而不是对着一个空文件去跑", async () => {
-		const remoteCwd = realpathSync(mkdtempSync(join(tmpdir(), "vetta-remote-docs-")));
+		const remoteCwd = realpathSync(mkdtempSync(join(tmpdir(), "astravia-remote-docs-")));
 		await expect(createBridge(remoteCwd)({ input: "missing.pdf" })).rejects.toThrow();
 	});
 });

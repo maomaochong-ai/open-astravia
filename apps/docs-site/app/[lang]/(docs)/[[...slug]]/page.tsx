@@ -89,7 +89,7 @@ export default async function Page({ params }: PageProps) {
 							{pageDescription}
 						</DocsDescription>
 					</div>
-					<span className="-mb-px block h-0.5 w-14 bg-vetta-coral" aria-hidden="true" />
+					<span className="-mb-px block h-0.5 w-14 bg-astravia-coral" aria-hidden="true" />
 				</header>
 				<DocsBody className="docs-article-body max-w-[54rem] pt-8">
 					<MDX components={getMDXComponents(language)} />

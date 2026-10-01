@@ -4,7 +4,7 @@ import type { Processor } from "unified";
 
 declare module "micromark-util-types" {
 	interface TokenTypeMap {
-		vettaMath: "vettaMath";
+		astraviaMath: "astraviaMath";
 	}
 }
 
@@ -13,7 +13,7 @@ const tokenize: Tokenizer = (effects, ok, nok) => {
 	let count = 0;
 	return start;
 	function start(code: number | null) {
-		effects.enter("vettaMath");
+		effects.enter("astraviaMath");
 		effects.consume(code);
 		return delimiter;
 	}
@@ -31,7 +31,7 @@ const tokenize: Tokenizer = (effects, ok, nok) => {
 	function end(code: number | null): ReturnType<Tokenizer> | undefined {
 		if (code === closing) {
 			effects.consume(code);
-			effects.exit("vettaMath");
+			effects.exit("astraviaMath");
 			return ok;
 		}
 		if (code === 40 || code === 91) return nok(code);
@@ -48,10 +48,10 @@ const tokenize: Tokenizer = (effects, ok, nok) => {
 export function remarkMathAliases(this: Processor) {
 	const data = this.data();
 	data.micromarkExtensions ??= [];
-	data.micromarkExtensions.push({ text: { 92: { name: "vettaMath", tokenize } } });
+	data.micromarkExtensions.push({ text: { 92: { name: "astraviaMath", tokenize } } });
 	const extension: Extension = {
 		enter: {
-			vettaMath(token) {
+			astraviaMath(token) {
 				const raw = this.sliceSerialize(token);
 				this.enter(
 					{
@@ -68,7 +68,7 @@ export function remarkMathAliases(this: Processor) {
 			},
 		},
 		exit: {
-			vettaMath(token) {
+			astraviaMath(token) {
 				this.exit(token);
 			},
 		},

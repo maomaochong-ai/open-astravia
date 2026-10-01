@@ -46,9 +46,9 @@
 
 ### 不应照搬的部分
 
-- Vercel 同时兼容 Zod 3、Zod 4、Standard Schema、自定义 JSON Schema 和 lazy schema，是公共 SDK 生态兼容需求，不是 Vetta 当前需求。
-- Provider v2/v3/v4 长期并存形成了明显的协议维护成本。Vetta 应采用内部迁移窗口，而不是永久保留多个协议世代。
-- `ToolLoopAgent` 单文件存在大量 generate/stream 对称测试和参数透传测试，覆盖很广，但重复度高。Vetta 应共享场景矩阵，只对真正不同的路径分开测试。
+- Vercel 同时兼容 Zod 3、Zod 4、Standard Schema、自定义 JSON Schema 和 lazy schema，是公共 SDK 生态兼容需求，不是 Astravia 当前需求。
+- Provider v2/v3/v4 长期并存形成了明显的协议维护成本。Astravia 应采用内部迁移窗口，而不是永久保留多个协议世代。
+- `ToolLoopAgent` 单文件存在大量 generate/stream 对称测试和参数透传测试，覆盖很广，但重复度高。Astravia 应共享场景矩阵，只对真正不同的路径分开测试。
 - 大型 inline snapshot 适合保护 Provider 请求形状，不适合保护频繁调整的内部对象。应优先断言语义字段，协议快照只用于稳定 wire contract。
 - 全量 Node/Edge 双跑对本仓库没有直接收益。只对声明为 Web 标准兼容的 `protocol` 和 `provider-kit` 双跑。
 
@@ -66,7 +66,7 @@
 
 ### 新发现
 
-- `coding-agent` 对 `@vetta/agent-core` 的大量依赖主要是 `AgentMessage`、`ThinkingLevel`、`ToolPhase`、`AgentEvent` 等共享类型，而不是执行循环。
+- `coding-agent` 对 `@astravia/agent-core` 的大量依赖主要是 `AgentMessage`、`ThinkingLevel`、`ToolPhase`、`AgentEvent` 等共享类型，而不是执行循环。
 - `ThinkingLevel` 在 `packages/ai` 与 `packages/agent` 已存在重复定义。
 - `ToolPhase` 被 Runtime 事件和 Session 文档使用，实际所有者不是 Agent Engine。
 - `AgentMessage` 混合模型消息与 UI/扩展自定义消息，使模型协议、Session 协议和产品扩展互相耦合。
@@ -74,9 +74,9 @@
 
 ### 最终修正
 
-1. 保留 `@vetta/agent-core` 包，作为 Runtime 与 AI 之间的无状态执行引擎边界；不把它并入已很复杂的 `runtime-core`。
+1. 保留 `@astravia/agent-core` 包，作为 Runtime 与 AI 之间的无状态执行引擎边界；不把它并入已很复杂的 `runtime-core`。
 2. 现有有状态 `Agent` 移到显式 standalone 兼容子路径，根入口停止导出。至少两个锁步发布周期后，如无真实外部消费者则删除 standalone；`agent-core` 包本身继续保留。
-3. 将共享类型按所有权迁移：模型消息和 reasoning 到 `@vetta/ai/protocol`，Session/observation 到 `runtime-core`，工具定义和进度到 Runtime Tool 层。
+3. 将共享类型按所有权迁移：模型消息和 reasoning 到 `@astravia/ai/protocol`，Session/observation 到 `runtime-core`，工具定义和进度到 Runtime Tool 层。
 4. Agent Engine 只接受模型可见 `Message[]`；自定义 Session entry 在 Runtime 投影阶段处理，不再通过 `AgentMessage` 进入模型循环。
 5. 上下文组成报告成为 `ModelCallFrame`/最终调用准备的正式只读产物。现有 Prompt diagnostics 提供 system prompt 明细，Runtime 再补 tools、history、runtime context 和 user input。
 6. 兼容 Adapter 必须有 owner、删除条件和禁新增调用 guard；没有退出条件的 Adapter 不允许进入迁移方案。

@@ -8,9 +8,9 @@ import { fail, isDirectRun, ok, repoRoot, WORKSPACE_PACKAGES } from "./lib.mjs";
 
 const REQUIRED_GLOBAL_DEPENDENCIES = ["tsconfig.base.json", ".env", ".env.*"];
 const REQUIRED_BUILD_INPUTS = ["$TURBO_DEFAULT$", "!test/**", "!tests/**", "!README*", "!CHANGELOG*"];
-const REQUIRED_BUILD_ENV = ["NODE_ENV", "VETTA_PLUGIN_DEV_WATCH", "VETTA_PLUGIN_DOCS_SRC", "VETD_SRC"];
+const REQUIRED_BUILD_ENV = ["NODE_ENV", "ASTRAVIA_PLUGIN_DEV_WATCH", "ASTRAVIA_PLUGIN_DOCS_SRC", "ASTRAVIA_DESIGN_SRC"];
 const REQUIRED_BUILD_OUTPUTS = ["dist/**", "release/**", ".next/**", "!.next/cache/**"];
-const REQUIRED_DESKTOP_BUILD_ENV = ["NODE_ENV", "VETTA_*", "VETD_*"];
+const REQUIRED_DESKTOP_BUILD_ENV = ["NODE_ENV", "ASTRAVIA_*", "ASTRAVIA_DESIGN_*"];
 const REQUIRED_DOCS_BUILD_ENV = ["DOCS_SITE_URL", "NODE_ENV"];
 const PLUGIN_WORKBENCH_DOCS_INPUT = "$TURBO_ROOT$/docs/plugin/**";
 
@@ -29,9 +29,9 @@ export function findTurboConfigurationProblems({
 }) {
 	const problems = [];
 	const build = turboConfig.tasks?.build ?? {};
-	const desktopBuild = turboConfig.tasks?.["@vetta/desktop#build"] ?? {};
-	const docsBuild = turboConfig.tasks?.["@vetta/docs-site#build"] ?? {};
-	const pluginWorkbenchBuild = turboConfig.tasks?.["@vetta/plugin-plugin-workbench#build"] ?? {};
+	const desktopBuild = turboConfig.tasks?.["@astravia/desktop#build"] ?? {};
+	const docsBuild = turboConfig.tasks?.["@astravia/docs-site#build"] ?? {};
+	const pluginWorkbenchBuild = turboConfig.tasks?.["@astravia/plugin-plugin-workbench#build"] ?? {};
 
 	for (const value of missingValues(turboConfig.globalDependencies, REQUIRED_GLOBAL_DEPENDENCIES)) {
 		problems.push(`turbo globalDependencies 缺少 ${value}`);
@@ -78,8 +78,8 @@ export function findTurboConfigurationProblems({
 	if (desktopBuild.cache !== false) {
 		problems.push("Desktop 完整 build 必须保持 cache: false");
 	}
-	if (!desktopBuild.dependsOn?.includes("@vetta-org/plugin-vite#build")) {
-		problems.push("Desktop build 必须显式依赖 @vetta-org/plugin-vite#build");
+	if (!desktopBuild.dependsOn?.includes("@astravia-org/plugin-vite#build")) {
+		problems.push("Desktop build 必须显式依赖 @astravia-org/plugin-vite#build");
 	}
 	if (turboConfig.remoteCache?.enabled !== false) {
 		problems.push("Remote Cache 在完成跨平台与凭证验收前必须保持关闭");
@@ -116,7 +116,7 @@ export function findTurboConfigurationProblems({
 	if (!desktopManifest.scripts?.build?.includes("build:presets:prebuilt")) {
 		problems.push("Desktop build 必须复用 Turbo 已构建的 plugin tooling");
 	}
-	if (!desktopManifest.scripts?.["build:presets:prebuilt"]?.includes("VETTA_SKIP_PLUGIN_TOOLING_BUILD=1")) {
+	if (!desktopManifest.scripts?.["build:presets:prebuilt"]?.includes("ASTRAVIA_SKIP_PLUGIN_TOOLING_BUILD=1")) {
 		problems.push("Desktop 缺少 prebuilt preset 构建入口");
 	}
 

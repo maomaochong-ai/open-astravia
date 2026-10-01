@@ -11,7 +11,7 @@
 
 ## 实施假设
 
-- `@vetta/coding-agent` 根入口是已发布兼容面，仓库内引用减少不代表可以删除。
+- `@astravia/coding-agent` 根入口是已发布兼容面，仓库内引用减少不代表可以删除。
 - 中性 Bootstrap、配置、Knowledge、Profile、资源加载和 RPC 已有明确职责，可以只增加转发入口。
 - Legacy selector、Desktop 旧会话服务及 Runtime 包根兼容转发仍有真实职责，本轮不能伪装成稳定新 API。
 - 本轮只改变模块依赖边界，不改变运行时装配、功能或默认选择。
@@ -23,12 +23,12 @@
 新增以下 package exports，并同步 Root、Desktop TypeScript paths 与 CLI、Desktop Vitest alias：
 
 ```text
-@vetta/coding-agent/bootstrap
-@vetta/coding-agent/config
-@vetta/coding-agent/knowledge
-@vetta/coding-agent/profile
-@vetta/coding-agent/resources
-@vetta/coding-agent/rpc
+@astravia/coding-agent/bootstrap
+@astravia/coding-agent/config
+@astravia/coding-agent/knowledge
+@astravia/coding-agent/profile
+@astravia/coding-agent/resources
+@astravia/coding-agent/rpc
 ```
 
 `bootstrap`、`profile` 和 `rpc` 使用薄 public-api 转发文件；其余子路径直接指向已有所有者模块。所有导出均
@@ -39,7 +39,7 @@
 CLI 的 Greenfield IM Host、RPC Session Adapter 和 Runtime selector 中性 Bootstrap 已迁移到职责子路径。
 Desktop 的配置路径、资源加载、Knowledge namespace、Persona/Profile 和会话配置类型也已迁移。
 
-精确 `@vetta/coding-agent` 根入口的受治理生产消费者从 18 个文件降为 5 个文件：
+精确 `@astravia/coding-agent` 根入口的受治理生产消费者从 18 个文件降为 5 个文件：
 
 1. CLI Runtime selector 的 Legacy 启动回退。
 2. Desktop 旧 Runtime 服务。
@@ -54,7 +54,7 @@ Desktop 的配置路径、资源加载、Knowledge namespace、Persona/Profile �
 包边界检查新增 Coding Agent 根入口规则：
 
 - 覆盖 CLI、Desktop、Runtime Tools 和 Runtime Storage 的生产 `src`。
-- 禁止新增精确 `@vetta/coding-agent` 根入口引用。
+- 禁止新增精确 `@astravia/coding-agent` 根入口引用。
 - 允许显式子路径。
 - 排除测试文件，使根入口兼容合同仍可验证。
 - 对剩余 5 个兼容文件使用带原因的精确路径允许清单。

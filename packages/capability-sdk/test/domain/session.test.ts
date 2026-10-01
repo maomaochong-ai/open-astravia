@@ -5,8 +5,8 @@ import { DOMAIN_SESSION_CAPABILITIES, DOMAIN_SESSION_CAPABILITY_CATALOG } from "
 describe("session domain capabilities", () => {
 	it("uses stable ids for session history and runtime project queries", () => {
 		expect(Object.values(DOMAIN_SESSION_CAPABILITIES).map((capability) => capability.id)).toEqual([
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}session.list`,
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}session.runtime-project.list`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}session.list`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}session.runtime-project.list`,
 		]);
 	});
 

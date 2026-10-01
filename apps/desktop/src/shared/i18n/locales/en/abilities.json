@@ -21,7 +21,7 @@
 	},
 	"group": {
 		"connectors": "Connections",
-		"vettaBuiltin": "Built into Vetta",
+		"astraviaBuiltin": "Built into Astravia",
 		"uncategorized": "Uncategorized"
 	},
 	"search": {
@@ -94,7 +94,7 @@
 		"importSkill": "Import skill archive",
 		"importSkillHint": "Install from a local zip, tar.gz or tgz archive",
 		"importPlugin": "Import plugin package",
-		"importPluginHint": "Install from a local .vettapkg (legacy .zip is supported; must contain plugin.json)",
+		"importPluginHint": "Install from a local .astraviapkg (legacy .zip is supported; must contain plugin.json)",
 		"addMcp": "Add MCP manually",
 		"addMcpHint": "Configure a stdio or HTTP MCP server by hand"
 	},
@@ -108,7 +108,7 @@
 	},
 	"error": {
 		"sourcesFailed": "GitHub sources failed to sync (cached content remains available): {{names}}",
-		"sourcesOutdated": "These sources need a newer Vetta before they can load: {{names}}",
+		"sourcesOutdated": "These sources need a newer Astravia before they can load: {{names}}",
 		"serverFailed": "Cloud marketplace failed to load; other sources remain available",
 		"loadFailed": "Failed to load abilities",
 		"downloadFailed": "Download failed: {{status}}",
@@ -134,7 +134,7 @@
 			"title": "Source",
 			"builtin": "Built into the app",
 			"local": "Added locally",
-			"server": "Vetta ability server",
+			"server": "Astravia ability server",
 			"sameNameTitle": "{{count}} other abilities have the same name",
 			"installConflict": "Another source already occupies this install location. It will not be overwritten automatically; remove the installed item first or wait for an explicit replace flow."
 		},
@@ -283,7 +283,7 @@
 			"back": "Back to ability details",
 			"description": "See which host capabilities this plugin declares. Turning one off blocks the matching host API calls; it does not isolate plugin code in a security sandbox.",
 			"toggleLabel": "Toggle the {{permission}} permission",
-			"hostVerified": "Vetta host API guardrail",
+			"hostVerified": "Astravia host API guardrail",
 			"preview": {
 				"global": "Plugin content can appear in shared app areas that persist across pages",
 				"filePreview": "The plugin can render a specialized content viewer in the file preview area",
@@ -308,7 +308,7 @@
 			},
 			"readOnly": {
 				"install": "This plugin is not installed. These are the permissions it requests; you will confirm the actual grants during installation.",
-				"system": "This is a built-in system plugin. Vetta manages and grants its permissions automatically, so they cannot be disabled individually."
+				"system": "This is a built-in system plugin. Astravia manages and grants its permissions automatically, so they cannot be disabled individually."
 			},
 			"summary": {
 				"requested": "Requested",
@@ -330,7 +330,7 @@
 				"data": "Limited to the data types exposed by the host API. The exact paths or records depend on the plugin call.",
 				"agent": "Applies to host-exposed Agent sessions, prompts, tools, or runtime state.",
 				"execution": "The host performs the operation, while the plugin chooses the command, page, or action to request.",
-				"external": "Can leave Vetta to open a target or make a request. The plugin supplies the destination at call time.",
+				"external": "Can leave Astravia to open a target or make a request. The plugin supplies the destination at call time.",
 				"intelligence": "Uses your configured model or media services, may send plugin-composed input, and may consume service usage."
 			},
 			"disabled": {
@@ -345,7 +345,7 @@
 		"group": {
 			"interface": {
 				"title": "Interface and interaction",
-				"description": "Where the plugin can appear inside Vetta"
+				"description": "Where the plugin can appear inside Astravia"
 			},
 			"projectData": {
 				"title": "Project and app data",
@@ -392,7 +392,7 @@
 			"terminalRun": "Lets the plugin open a terminal in the session's bottom panel and type commands for you. Commands run as you inside the project folder, and everything they do is shown in the terminal.",
 			"captureOffscreen": "Loads content in a hidden page environment and captures an image of it.",
 			"browserRead": "Creates host-managed browser sessions, visits manifest-approved sites, and reads text, structure, and screenshots from signed-in pages.",
-			"browserOpen": "Opens an approved webpage in Vetta's built-in browser without reading or interacting with the page.",
+			"browserOpen": "Opens an approved webpage in Astravia's built-in browser without reading or interacting with the page.",
 			"browserInteract": "Clicks, types, selects, and submits on approved sites and may perform real actions as your account.",
 			"browserProfilePersist": "Keeps an isolated browser profile and its sign-in state for later sessions owned by this plugin.",
 			"browserAttach": "Connects to an already open browser and may access its tabs and sign-in state.",
@@ -422,7 +422,7 @@
 			"storageRead": "Reads persistent data private to this plugin and not directly available to other plugins.",
 			"storageWrite": "Writes persistent data private to this plugin for state or configuration.",
 			"mediaGenerate": "Calls configured image, audio, or other media-generation services.",
-			"mediaProviderRegister": "Registers a media-generation service provided by the plugin with Vetta.",
+			"mediaProviderRegister": "Registers a media-generation service provided by the plugin with Astravia.",
 			"ocrRecognize": "Uses a configured text-recognition service for images explicitly submitted by the plugin.",
 			"ocrProviderRegister": "Registers a text-recognition service provided by the plugin; remote services may upload images.",
 			"secretsRead": "Reads secrets this plugin stored itself, such as API keys.",
@@ -520,7 +520,7 @@
 			"forbidden": "The GitHub credential cannot read this repository",
 			"notFound": "The repository, branch, or marketplace manifest was not found",
 			"rateLimited": "GitHub rate limit reached; try again later",
-			"appOutdated": "This Vetta version is too old; upgrade to {{version}} or newer",
+			"appOutdated": "This Astravia version is too old; upgrade to {{version}} or newer",
 			"ready": "Synced · {{version}}",
 			"failed": "Sync failed; retry available",
 			"cached": "Sync failed; showing cached content"
@@ -543,7 +543,7 @@
 			"repositoryPlaceholder": "owner/repo or https://github.com/owner/repo",
 			"credentialLabel": "GitHub access token (optional)",
 			"credentialPlaceholder": "Fine-grained token, Contents read-only",
-			"credentialHint": "The token stays in this device's secure storage and is never uploaded to Vetta.",
+			"credentialHint": "The token stays in this device's secure storage and is never uploaded to Astravia.",
 			"nameLabel": "Name",
 			"namePlaceholder": "Defaults to the repository name",
 			"refLabel": "Branch",

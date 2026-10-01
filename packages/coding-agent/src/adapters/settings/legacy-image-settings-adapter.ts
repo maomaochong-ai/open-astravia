@@ -5,10 +5,10 @@ import {
 	RuntimeConfigurationSnapshotCoordinator,
 	type RuntimeConfigurationSnapshotLease,
 	type RuntimeConfigurationSnapshotSource,
-} from "@vetta/runtime-core/configuration";
-import type { RuntimeObservationPublisher } from "@vetta/runtime-core/observation";
-import { runtimeObservationFailure } from "@vetta/runtime-core/observation";
-import { CODING_IMAGE_CONFIGURATION } from "@vetta/runtime-tools";
+} from "@astravia/runtime-core/configuration";
+import type { RuntimeObservationPublisher } from "@astravia/runtime-core/observation";
+import { runtimeObservationFailure } from "@astravia/runtime-core/observation";
+import { CODING_IMAGE_CONFIGURATION } from "@astravia/runtime-tools";
 import { CODING_AGENT_CONFIGURATION_ISSUE_OBSERVATION } from "../../model-context/image-settings-observations.js";
 import type { CodingAgentLegacyImageSettingsSource } from "../../model-context/image-settings-source.js";
 

@@ -4,9 +4,9 @@ import { parseMarketplaceManifest } from "./marketplace-schema";
 function validManifest(): Record<string, unknown> {
 	return {
 		schemaVersion: 1,
-		name: "vetta-open-abilities",
+		name: "astravia-open-abilities",
 		marketplaceVersion: "2026.07.1",
-		repository: "https://github.com/example/vetta-abilities",
+		repository: "https://github.com/example/astravia-abilities",
 		minAppVersion: "0.5.11",
 		abilities: [
 			{

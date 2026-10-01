@@ -26,7 +26,7 @@ describe("createOfficialSchedulerApi", () => {
 		};
 		Object.defineProperty(globalThis, "window", {
 			configurable: true,
-			value: { vetta: { plugins: { internalCapabilities: { scheduler } } } },
+			value: { astravia: { plugins: { internalCapabilities: { scheduler } } } },
 		});
 		const assertOfficial = vi.fn();
 		const api = createOfficialSchedulerApi(assertOfficial, "capability-session");

@@ -1,7 +1,7 @@
 import { join } from "node:path";
-import { codingAgentSessionShardPath } from "@vetta/coding-agent/bootstrap";
-import type { RuntimeConversationSessionRoot } from "@vetta/runtime-node/conversation";
-import { isSshProjectUri } from "@vetta/ssh-transport";
+import { codingAgentSessionShardPath } from "@astravia/coding-agent/bootstrap";
+import type { RuntimeConversationSessionRoot } from "@astravia/runtime-node/conversation";
+import { isSshProjectUri } from "@astravia/ssh-transport";
 import {
 	DEFAULT_CONVERSATION_CWD,
 	DEFAULT_CONVERSATION_SESSION_DIR,
@@ -16,17 +16,17 @@ export function resolveDesktopRuntimeSessionRoots(): RuntimeConversationSessionR
 	const config = readConfigSync();
 	// 每个项目认两个会话目录：
 	// 1. 全局分片目录——新会话的落点（见 backend-pool 的 resolveRuntimeScope）；
-	// 2. `<项目>/.vetta/sessions`——存量兼容。会话曾短暂落在这里，直接摘掉会让用户
+	// 2. `<项目>/.astravia/sessions`——存量兼容。会话曾短暂落在这里，直接摘掉会让用户
 	//    这段时间的历史从列表里消失。catalog 在未指定 sessionDir 时并集同一 cwd 的
 	//    全部 root，所以两处能同时列出来，不需要迁移文件。
 	const projectRoots = [...config.projects, ...config.archivedProjects].flatMap(({ path }) =>
-		// 远程项目只有分片目录这一个落点：`<项目>/.vetta/sessions` 是本地存量兼容路径，
+		// 远程项目只有分片目录这一个落点：`<项目>/.astravia/sessions` 是本地存量兼容路径，
 		// 对 `ssh://…` 做 join 会拼出一个既非本地也非远端的假路径。
 		isSshProjectUri(path)
 			? [{ cwd: path, sessionDir: codingAgentSessionShardPath(path) }]
 			: [
 					{ cwd: path, sessionDir: codingAgentSessionShardPath(path) },
-					{ cwd: path, sessionDir: join(path, ".vetta", "sessions") },
+					{ cwd: path, sessionDir: join(path, ".astravia", "sessions") },
 				],
 	);
 	return [

@@ -1,3 +1,5 @@
+import type { PromptAttachmentRef, PromptRequest } from "@astravia/runtime-core";
+import type { PluginPromptContext } from "@astravia-org/plugin-sdk";
 import { waitForPluginHostFirstReady } from "@domains/plugins/runtime/plugin-events";
 import { useProjectActions } from "@domains/project/hooks/useProjects";
 import type { PersistedImageResult } from "@preload/api";
@@ -49,8 +51,6 @@ import {
 	selectedModelAtom,
 	todoItemsBySessionAtom,
 } from "@shared/store/atoms";
-import type { PromptAttachmentRef, PromptRequest } from "@vetta/runtime-core";
-import type { PluginPromptContext } from "@vetta-org/plugin-sdk";
 import { getDefaultStore, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useRef } from "react";
 import {
@@ -200,7 +200,7 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 			let persistedImages: PersistedImageResult[] = [];
 			if (images) {
 				try {
-					persistedImages = await window.vetta.dialog.persistImages(
+					persistedImages = await window.astravia.dialog.persistImages(
 						session.runtimeId,
 						images.map((img) => ({ id: img.id, data: img.data, mimeType: img.mimeType })),
 					);
@@ -290,21 +290,21 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 							resolve();
 						};
 						const timer = setTimeout(finish, 8000);
-						unsubscribe = window.vetta.session.onRunningChanged((p) => {
+						unsubscribe = window.astravia.session.onRunningChanged((p) => {
 							if (p.sessionId === session.runtimeId && p.running === false) finish();
 						});
 						if (!store.get(isStreamingAtom)) {
 							finish();
 							return;
 						}
-						void window.vetta.session.abort(session.runtimeId).catch((err) => {
+						void window.astravia.session.abort(session.runtimeId).catch((err) => {
 							console.error("[useSessionManager.sendMessage] abort before edit failed:", err);
 						});
 					});
 				}
 				try {
-					await window.vetta.session.replaceLastUserMessage(session.runtimeId, pendingEdit.entryId);
-					const history = await window.vetta.session.getFullHistory(session.runtimeId);
+					await window.astravia.session.replaceLastUserMessage(session.runtimeId, pendingEdit.entryId);
+					const history = await window.astravia.session.getFullHistory(session.runtimeId);
 					setChatMessages(fullHistoryToChat(history));
 					store.set(pendingMessageEditAtom, null);
 				} catch (err) {
@@ -368,7 +368,7 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 					const rollback = planFailedResendRollback(store.get(chatMessagesAtom), text);
 					if (rollback) {
 						try {
-							await window.vetta.session.replaceLastUserMessage(session.runtimeId, rollback.entryId);
+							await window.astravia.session.replaceLastUserMessage(session.runtimeId, rollback.entryId);
 							setChatMessages((prev) => prev.slice(0, rollback.truncateFrom));
 						} catch (err) {
 							// 回退失败就按普通追加发送；宁可重复也不丢消息。
@@ -421,7 +421,11 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 					const legacyText = attachments.length
 						? `${attachments.map((attachment) => `@${attachment.path}`).join("\n")}\n${text}`
 						: text;
-					await window.vetta.batchTasks.resumeTaskWithText(pausedBatch.projectId, pausedBatch.taskId, legacyText);
+					await window.astravia.batchTasks.resumeTaskWithText(
+						pausedBatch.projectId,
+						pausedBatch.taskId,
+						legacyText,
+					);
 				} catch (err) {
 					const message = err instanceof Error ? err.message : String(err);
 					console.error("[useSessionManager.sendMessage] resumeTaskWithText rejected:", err);
@@ -441,7 +445,7 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 					const items = todoItemsMapRef.current.get(session.runtimeId) ?? [];
 					if (items.length > 0 && items.every((i) => i.status === "done")) {
 						try {
-							await window.vetta.session.clearTodos(session.runtimeId);
+							await window.astravia.session.clearTodos(session.runtimeId);
 						} catch (err) {
 							console.error("[useSessionManager.sendMessage] clearTodos failed:", err);
 						}
@@ -578,7 +582,7 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 				// 不再让插件集合变化把每次发送挡住最长 5 秒。
 				await waitForPluginHostFirstReady();
 				perfSendMark("prompt-ipc-start", interactionId);
-				const promptPromise = window.vetta.session.prompt(
+				const promptPromise = window.astravia.session.prompt(
 					session.runtimeId,
 					promptReq,
 					interactionId ? { interactionId } : undefined,
@@ -666,7 +670,7 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 
 	const abortMessage = useCallback(async () => {
 		if (!activeSession?.runtimeId) return;
-		await window.vetta.session.abort(activeSession.runtimeId);
+		await window.astravia.session.abort(activeSession.runtimeId);
 	}, [activeSession]);
 
 	// 立即发送某条排队消息。Kernel 原子执行 take → cancel → start；Renderer
@@ -674,7 +678,7 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 	const sendQueuedNow = useCallback(
 		async (runtimeId: string, id: string) => {
 			try {
-				await window.vetta.session.sendQueuedMessageNow(runtimeId, id);
+				await window.astravia.session.sendQueuedMessageNow(runtimeId, id);
 			} catch (err) {
 				const message = err instanceof Error ? err.message : String(err);
 				console.error("[useSessionManager.sendQueuedNow] failed:", err);

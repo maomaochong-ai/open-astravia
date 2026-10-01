@@ -2,8 +2,8 @@ import { randomUUID } from "node:crypto";
 import type { Dirent } from "node:fs";
 import { access, copyFile, cp, mkdir, readdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
-import { getVettaHomePath } from "@vetta/action-rpc";
-import type { PluginPutBlobInput, PluginStoredBlob, PluginStoredBlobRef } from "@vetta-org/plugin-sdk";
+import { getAstraviaHomePath } from "@astravia/action-rpc";
+import type { PluginPutBlobInput, PluginStoredBlob, PluginStoredBlobRef } from "@astravia-org/plugin-sdk";
 
 export type PluginStorageEncoding = "utf8" | "base64";
 export interface PluginStorageWrite {
@@ -51,7 +51,7 @@ function assertPluginId(pluginId: string): void {
 }
 function pluginRoot(pluginId: string): string {
 	assertPluginId(pluginId);
-	return join(getVettaHomePath(), "plugin-data", pluginId);
+	return join(getAstraviaHomePath(), "plugin-data", pluginId);
 }
 function storageMetaRoot(pluginId: string): string {
 	return join(pluginRoot(pluginId), ".storage");
@@ -83,7 +83,7 @@ async function ensurePluginStorage(pluginId: string): Promise<void> {
 	const migration = (async () => {
 		const root = pluginRoot(pluginId);
 		if (!(await pathExists(root))) {
-			const legacyRoot = join(getVettaHomePath(), "plugin-images", pluginId);
+			const legacyRoot = join(getAstraviaHomePath(), "plugin-images", pluginId);
 			if (await pathExists(legacyRoot)) {
 				await mkdir(dirname(root), { recursive: true });
 				await cp(legacyRoot, root, { recursive: true, errorOnExist: true, force: false });
@@ -141,7 +141,7 @@ function normalizeStoragePath(path: string): string {
 	return normalized;
 }
 function mediaUrl(path: string, mimeType: string): string {
-	return `vetta-media://local/stream?path=${encodeURIComponent(path)}&mime=${encodeURIComponent(mimeType)}`;
+	return `astravia-media://local/stream?path=${encodeURIComponent(path)}&mime=${encodeURIComponent(mimeType)}`;
 }
 async function atomicWrite(path: string, data: string | Uint8Array): Promise<void> {
 	await mkdir(dirname(path), { recursive: true });

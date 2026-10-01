@@ -18,7 +18,7 @@ test(
 	"real browser: static HTML, blocked escape/network, inert SVG and bundled formula worker",
 	{ timeout: 60_000 },
 	async () => {
-		const directory = await mkdtemp(join(tmpdir(), "vetta-markdown-test-"));
+		const directory = await mkdtemp(join(tmpdir(), "astravia-markdown-test-"));
 		let browser;
 		let server;
 		try {
@@ -61,7 +61,7 @@ test(
 			});
 			await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
 			const port = server.address().port;
-			browser = await chromium.launch({ headless: true, channel: process.env.VETTA_TEST_BROWSER || undefined });
+			browser = await chromium.launch({ headless: true, channel: process.env.ASTRAVIA_TEST_BROWSER || undefined });
 			const page = await browser.newPage();
 			page.setDefaultTimeout(5000);
 			const external = [];
@@ -72,11 +72,11 @@ test(
 			});
 			await page.goto(`http://127.0.0.1:${port}`);
 			await page.evaluate(() => {
-				window.vetta = { secret: "host-only" };
+				window.astravia = { secret: "host-only" };
 			});
 			const source = `<h1>Page</h1><button onclick="this.textContent='Clicked'">Click</button><output id="result"></output><script>
 		let blocked=false;try{parent.parent.document.getElementById('host').textContent='Escaped'}catch{blocked=true}
-		document.querySelector('#result').textContent=blocked && !window.vetta ? 'Isolated' : 'Escaped';
+		document.querySelector('#result').textContent=blocked && !window.astravia ? 'Isolated' : 'Escaped';
 		fetch('https://blocked.example/request').catch(()=>{});
 		</script><img src="https://blocked.example/image"><iframe src="https://blocked.example/frame"></iframe>`;
 			async function mount() {
@@ -148,7 +148,7 @@ test(
 			if (server) await new Promise((resolve) => server.close(resolve));
 			// Only the exact mkdtemp result created above is removed.
 			assert.equal(dirname(resolve(directory)), resolve(tmpdir()));
-			assert.ok(basename(directory).startsWith("vetta-markdown-test-"));
+			assert.ok(basename(directory).startsWith("astravia-markdown-test-"));
 			await rm(directory, { recursive: true, force: true });
 		}
 	},

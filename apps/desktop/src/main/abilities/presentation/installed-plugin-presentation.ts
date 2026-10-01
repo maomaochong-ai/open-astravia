@@ -20,7 +20,7 @@ export function installedPluginAssetUrl(plugin: InstalledPlugin, absolutePath: s
 	const cacheVersion = plugin.devWatch
 		? Math.trunc(statSync(absolutePath).mtimeMs).toString(36)
 		: encodeURIComponent(plugin.activeVersion);
-	return `vetta-plugin://${plugin.id}/${resourcePath}?v=${cacheVersion}`;
+	return `astravia-plugin://${plugin.id}/${resourcePath}?v=${cacheVersion}`;
 }
 
 export function loadInstalledPluginPackagePresentation(plugin: InstalledPlugin): OpenMarketplacePresentation | null {

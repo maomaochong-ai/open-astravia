@@ -292,9 +292,9 @@ function installMode(options: PluginInstallOptions | undefined, fallback: "manua
 	return fallback;
 }
 
-function artifactKind(value: string): "vettapkg" | "legacy-zip" | "remote-archive" {
+function artifactKind(value: string): "astraviapkg" | "legacy-zip" | "remote-archive" {
 	const lower = value.toLowerCase();
-	if (lower.endsWith(".vettapkg")) return "vettapkg";
+	if (lower.endsWith(".astraviapkg")) return "astraviapkg";
 	if (lower.endsWith(".zip")) return "legacy-zip";
 	return "remote-archive";
 }

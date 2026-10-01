@@ -23,7 +23,7 @@ vi.mock("../../skills/skill-service.js", () => ({
 const temporaryRoots: string[] = [];
 
 async function temporaryRoot(): Promise<string> {
-	const root = await mkdtemp(join(tmpdir(), "vetta-local-presentations-test-"));
+	const root = await mkdtemp(join(tmpdir(), "astravia-local-presentations-test-"));
 	temporaryRoots.push(root);
 	return root;
 }
@@ -51,7 +51,7 @@ function installedPlugin(rootPath: string, overrides: Partial<InstalledPlugin> =
 		version: "1.0.0",
 		activeVersion: "1.0.0",
 		pluginApiVersion: "^2.0.0",
-		entryUrl: "vetta-plugin://feishu/versions/1.0.0/mf-manifest.json",
+		entryUrl: "astravia-plugin://feishu/versions/1.0.0/mf-manifest.json",
 		moduleFederation: { remoteName: "feishu", expose: "./plugin" },
 		styleUrls: [],
 		permissions: [],
@@ -121,8 +121,8 @@ describe("listLocalAbilityPresentations", () => {
 		);
 
 		expect(Object.keys(result).sort()).toEqual(["plugin:feishu", "skill:builtin", "skill:installed"]);
-		expect(result["skill:installed"]?.icon).toContain("vetta-file://local/");
-		expect(result["plugin:feishu"]?.icon).toBe("vetta-plugin://feishu/versions/1.0.0/assets/icon.svg?v=1.0.0");
+		expect(result["skill:installed"]?.icon).toContain("astravia-file://local/");
+		expect(result["plugin:feishu"]?.icon).toBe("astravia-plugin://feishu/versions/1.0.0/assets/icon.svg?v=1.0.0");
 		expect(result["plugin:feishu"]?.detail).toMatchObject({ description: "feishu detail" });
 	});
 

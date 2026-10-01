@@ -1,25 +1,25 @@
 import { existsSync, readFileSync, renameSync } from "node:fs";
 import { join } from "node:path";
-import { getVettaHomePath } from "@vetta/action-rpc";
+import { getAstraviaHomePath } from "@astravia/action-rpc";
 
 /**
  * Detect and import legacy im-gateway configuration written by older
  * versions of the standalone CLI. The new desktop-app embeds im-gateway
- * as a sidecar and stores everything under ~/.vetta/desktop-app/, so
+ * as a sidecar and stores everything under ~/.astravia/desktop-app/, so
  * we walk the legacy paths once on first launch and surface them to the
  * UI as a one-shot import wizard.
  *
  * Legacy paths:
- *   ~/.vetta/im-gateway/config.yaml         (transport selection, paths)
- *   ~/.vetta/im-gateway/credentials.yaml    (feishu app id / secret)
- *   ~/.vetta/im-gateway/state.json          (routing table)
- *   ~/.vetta/desktop-config.json (.imGateway field — historical)
+ *   ~/.astravia/im-gateway/config.yaml         (transport selection, paths)
+ *   ~/.astravia/im-gateway/credentials.yaml    (feishu app id / secret)
+ *   ~/.astravia/im-gateway/state.json          (routing table)
+ *   ~/.astravia/desktop-config.json (.imGateway field — historical)
  *
  * After successful import the yaml files are renamed with .bak suffix
  * so the prompt does not re-fire.
  */
 
-const LEGACY_DIR = join(getVettaHomePath(), "im-gateway");
+const LEGACY_DIR = join(getAstraviaHomePath(), "im-gateway");
 const LEGACY_CONFIG = join(LEGACY_DIR, "config.yaml");
 const LEGACY_CREDENTIALS = join(LEGACY_DIR, "credentials.yaml");
 const LEGACY_STATE = join(LEGACY_DIR, "state.json");

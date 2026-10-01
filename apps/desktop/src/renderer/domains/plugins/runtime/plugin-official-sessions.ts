@@ -1,7 +1,7 @@
+import type { RuntimeSessionAccess } from "@astravia/runtime-core";
+import type { PluginOfficialApi, PluginOfficialSessionAccess } from "@astravia-org/plugin-sdk";
 import type { InstalledPlugin } from "@preload/api";
 import { openSessionFnRef } from "@shared/store/atoms";
-import type { RuntimeSessionAccess } from "@vetta/runtime-core";
-import type { PluginOfficialApi, PluginOfficialSessionAccess } from "@vetta-org/plugin-sdk";
 import { pluginRendererCapabilityHost } from "./plugin-renderer-capability-host";
 import { logPluginRuntimeWarn } from "./plugin-runtime-log";
 
@@ -53,10 +53,10 @@ export function createOfficialSessionsApi(
 				const cwd = assertNonEmpty(input?.cwd, "cwd");
 				// kind "conversation" 走与用户新建会话相同的路径：挂通知订阅、进会话列表，
 				// 这样看板派出去的任务在侧边栏里和手动开的会话长得一样、可被正常接管。
-				const created = await window.vetta.session.create({ cwd }, "conversation");
+				const created = await window.astravia.session.create({ cwd }, "conversation");
 				const title = typeof input?.title === "string" ? input.title.trim() : "";
 				if (title) {
-					await window.vetta.session.rename(created.sessionPath, title).catch((error: unknown) => {
+					await window.astravia.session.rename(created.sessionPath, title).catch((error: unknown) => {
 						logPluginRuntimeWarn(
 							"official session rename after create failed",
 							{
@@ -72,7 +72,7 @@ export function createOfficialSessionsApi(
 				const modelKey = normalizeModelKey(input?.modelKey);
 				if (modelKey) {
 					// 写会话设置而非只钉单轮：用户之后在对话页手动接着聊，也应该还是这个模型。
-					await window.vetta.session.updateSettings(created.sessionId, { modelKey });
+					await window.astravia.session.updateSettings(created.sessionId, { modelKey });
 				}
 				return created;
 			}),
@@ -81,7 +81,7 @@ export function createOfficialSessionsApi(
 				assertNonEmpty(sessionId, "sessionId");
 				assertNonEmpty(text, "text");
 				const modelKey = normalizeModelKey(options?.modelKey);
-				const outcome = await window.vetta.session.prompt(sessionId, {
+				const outcome = await window.astravia.session.prompt(sessionId, {
 					text,
 					...(modelKey ? { modelKey } : {}),
 				});
@@ -101,18 +101,18 @@ export function createOfficialSessionsApi(
 		abort: (sessionId) =>
 			invoke(async () => {
 				assertNonEmpty(sessionId, "sessionId");
-				await window.vetta.session.abort(sessionId);
+				await window.astravia.session.abort(sessionId);
 			}),
 		rename: (sessionPath, name) =>
 			invoke(async () => {
 				assertNonEmpty(sessionPath, "sessionPath");
 				assertNonEmpty(name, "name");
-				await window.vetta.session.rename(sessionPath, name);
+				await window.astravia.session.rename(sessionPath, name);
 			}),
 		list: (cwd) =>
 			invoke(async () => {
 				assertNonEmpty(cwd, "cwd");
-				const sessions = await window.vetta.session.listSessions(cwd);
+				const sessions = await window.astravia.session.listSessions(cwd);
 				return sessions.map((session) => ({
 					path: session.path,
 					cwd: session.cwd,
@@ -121,12 +121,12 @@ export function createOfficialSessionsApi(
 					access: normalizeAccess(session.access),
 				}));
 			}),
-		listRunning: () => invoke(() => window.vetta.session.listRunning()),
-		listRunningCwds: () => invoke(() => window.vetta.session.listRunningCwds()),
+		listRunning: () => invoke(() => window.astravia.session.listRunning()),
+		listRunningCwds: () => invoke(() => window.astravia.session.listRunningCwds()),
 		onRunningChanged: (handler) => {
 			// 订阅本身是同步注册（返回取消函数），仍需先过官方校验，避免非官方插件拿到广播。
 			pluginRendererCapabilityHost.assertOfficialSession(capabilitySessionId);
-			return window.vetta.session.onRunningChanged((payload) => {
+			return window.astravia.session.onRunningChanged((payload) => {
 				handler({
 					sessionPath: payload.sessionPath,
 					running: payload.running,

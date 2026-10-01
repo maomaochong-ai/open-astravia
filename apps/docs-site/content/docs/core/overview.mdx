@@ -1,24 +1,24 @@
 ---
-title: 理解 Vetta 的工作方式
+title: 理解 Astravia 的工作方式
 description: 用工作区、任务、执行、结果和复用五个概念建立完整的产品心智。
 ---
 
 <Takeaways>
-  <li>Vetta 是带边界的本地工作台，不是聊天框</li>
+  <li>Astravia 是带边界的本地工作台，不是聊天框</li>
   <li>五项对象构成一次完整工作</li>
   <li>验收看文件和执行记录，不看自信的总结</li>
 </Takeaways>
 
-Vetta 不是只返回一段答案的聊天框。它把 Agent 放进一个明确的本地工作区，让模型在可检查的权限和工具边界内读取资料、修改文件、执行命令，并把过程和结果保留在会话中。
+Astravia 不是只返回一段答案的聊天框。它把 Agent 放进一个明确的本地工作区，让模型在可检查的权限和工具边界内读取资料、修改文件、执行命令，并把过程和结果保留在会话中。
 
 <MediaFrame>
-  <img src="/images/product/workspace.webp" alt="Vetta 主工作区，左侧管理项目和会话，中间承载任务输入与结果" width="2354" height="1613" />
+  <img src="/images/product/workspace.webp" alt="Astravia 主工作区，左侧管理项目和会话，中间承载任务输入与结果" width="2354" height="1613" />
   <figcaption>一个工作区同时容纳项目上下文、会话历史、Agent 执行和输出文件。</figcaption>
 </MediaFrame>
 
 ## 五个核心对象
 
-<ConceptMap aria-label="Vetta 核心对象关系">
+<ConceptMap aria-label="Astravia 核心对象关系">
   <div><span>01</span><strong>工作区</strong><small>一组本地资料与允许操作的边界</small></div>
   <div><span>02</span><strong>任务</strong><small>目标、上下文、约束和验收条件</small></div>
   <div><span>03</span><strong>会话</strong><small>一次连续工作的消息、工具和状态记录</small></div>
@@ -55,9 +55,9 @@ Vetta 不是只返回一段答案的聊天框。它把 Agent 放进一个明确�
   </Step>
 </Steps>
 
-## Vetta 与普通对话的区别
+## Astravia 与普通对话的区别
 
-<Compare leftTitle="普通模型对话" rightTitle="Vetta 工作流">
+<Compare leftTitle="普通模型对话" rightTitle="Astravia 工作流">
   <CompareRow label="上下文" left="主要依赖粘贴内容" right="项目目录、引用文件、图片、知识和能力共同组成" />
   <CompareRow label="动作" left="生成文字建议" right="可调用本机工具、修改文件和执行确定性动作" />
   <CompareRow label="权限" left="通常不可见" right="沙盒、完全访问和逐次确认显式呈现" />

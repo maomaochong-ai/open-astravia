@@ -16,7 +16,7 @@ export function useTeamSidebarConversations(projectPaths: readonly string[]): {
 		const requestRevision = ++requestRevisionRef.current;
 		// loading 只代表首次加载：Team 发起会话期间会连续派发多次变更事件，
 		// 刷新时若回到 loading，侧栏会整段换成骨架屏再换回，造成闪烁。
-		void window.vetta.agentTeams
+		void window.astravia.agentTeams
 			.listSidebarConversations()
 			.then((next) => {
 				if (requestRevisionRef.current === requestRevision) setConversations(next);

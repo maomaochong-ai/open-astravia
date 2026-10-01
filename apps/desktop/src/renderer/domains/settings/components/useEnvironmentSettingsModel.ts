@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { SETTINGS_SECTION } from "../registry";
 import { recordSettingsUsage } from "./recordSettingsUsage";
 
-type RuntimesStatus = Awaited<ReturnType<typeof window.vetta.runtimes.getStatus>>;
+type RuntimesStatus = Awaited<ReturnType<typeof window.astravia.runtimes.getStatus>>;
 export type EnvironmentRuntimeStatus = RuntimesStatus["node"];
 export type EnvironmentRuntimeKind = "node" | "python";
 
@@ -85,7 +85,7 @@ export function useEnvironmentSettingsModel(): EnvironmentSettingsModel {
 
 	const refresh = useCallback(async () => {
 		try {
-			setStatus(await window.vetta.runtimes.getStatus());
+			setStatus(await window.astravia.runtimes.getStatus());
 		} catch (err) {
 			setError(messageOf(err));
 		}
@@ -100,7 +100,7 @@ export function useEnvironmentSettingsModel(): EnvironmentSettingsModel {
 			setBusy(kind);
 			setError(null);
 			try {
-				await window.vetta.runtimes.reinstall(kind);
+				await window.astravia.runtimes.reinstall(kind);
 				await refresh();
 				recordSettingsUsage({ tab: "environment", action: "reinstalled", target: "runtime", value: kind });
 			} catch (err) {
@@ -117,7 +117,7 @@ export function useEnvironmentSettingsModel(): EnvironmentSettingsModel {
 		setGitBusy("install");
 		setError(null);
 		try {
-			const git = await window.vetta.runtimes.installGit();
+			const git = await window.astravia.runtimes.installGit();
 			setStatus((prev) => (prev ? { ...prev, git } : prev));
 			if (guide === "xcode-clt") setInstallerLaunched(true);
 			recordSettingsUsage({ tab: "environment", action: "added", target: "git", value: guide ?? "unknown" });
@@ -132,7 +132,7 @@ export function useEnvironmentSettingsModel(): EnvironmentSettingsModel {
 		setGitBusy("detect");
 		setError(null);
 		try {
-			setStatus(await window.vetta.runtimes.redetect());
+			setStatus(await window.astravia.runtimes.redetect());
 		} catch (err) {
 			setError(messageOf(err));
 		} finally {
@@ -150,7 +150,7 @@ export function useEnvironmentSettingsModel(): EnvironmentSettingsModel {
 	}, []);
 
 	const openGitDownload = useCallback(() => {
-		void window.vetta.shell.openExternal(GIT_DOWNLOAD_URL).catch((err: unknown) => setError(messageOf(err)));
+		void window.astravia.shell.openExternal(GIT_DOWNLOAD_URL).catch((err: unknown) => setError(messageOf(err)));
 	}, []);
 
 	const labels = useMemo<EnvironmentSettingsModel["labels"]>(

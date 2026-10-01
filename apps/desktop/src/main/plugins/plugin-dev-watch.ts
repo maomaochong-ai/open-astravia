@@ -221,7 +221,7 @@ function spawnPluginDevServer(id: string, entry: DevWatchEntry): void {
 	try {
 		child = spawn("node", [cliPath, "dev", "--root", entry.projectDir], {
 			cwd: entry.projectDir,
-			env: { ...process.env, VETTA_PLUGIN_DEV_WATCH: "1" },
+			env: { ...process.env, ASTRAVIA_PLUGIN_DEV_WATCH: "1" },
 			stdio: ["ignore", "pipe", "pipe"],
 			windowsHide: true,
 		});
@@ -257,7 +257,7 @@ function spawnPluginDevServer(id: string, entry: DevWatchEntry): void {
 	});
 	entry.startupTimer = setTimeout(() => {
 		failAttempt(
-			`plugin dev server did not become ready within ${STARTUP_TIMEOUT_MS / 1000}s; update @vetta-org/plugin-vite`,
+			`plugin dev server did not become ready within ${STARTUP_TIMEOUT_MS / 1000}s; update @astravia-org/plugin-vite`,
 		);
 	}, STARTUP_TIMEOUT_MS);
 	log.info("dev-watch starting", {

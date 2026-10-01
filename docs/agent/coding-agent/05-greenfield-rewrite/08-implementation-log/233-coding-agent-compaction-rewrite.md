@@ -18,7 +18,7 @@
 - 会话历史、认证、模型和设置等用户数据；必要时由显式、独立的新迁移器读取旧格式。
 - 模型消息、工具消息、错误、取消、事件顺序、并发约束和资源释放语义。
 - 仍然有效的行为测试场景和数据 fixture；旧实现可以临时作为测试 Oracle，但不能被新生产代码调用。
-- `@vetta/ai` 与经过合同验证的 `@vetta/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
+- `@astravia/ai` 与经过合同验证的 `@astravia/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
 
 ## 明确舍弃（固定）
 
@@ -60,7 +60,7 @@ Compaction 是围绕最小 Agent 内核组合的产品能力：它决定何时�
 | 保留的旧格式边界 | 8 | 8 | 按迁移需求审计 |
 | 旧格式边界到旧实现的依赖 | 3 | 3 | 0 |
 
-Compaction 的 8 条旧生产依赖和 7 个旧文件已经全部删除。新领域只依赖 `@vetta/agent-core`、`@vetta/ai`、包内 Model Context 与自身合同，没有 SessionManager、SettingsManager、AgentSession、RPC/Desktop 或 Runtime Storage 反向依赖。
+Compaction 的 8 条旧生产依赖和 7 个旧文件已经全部删除。新领域只依赖 `@astravia/agent-core`、`@astravia/ai`、包内 Model Context 与自身合同，没有 SessionManager、SettingsManager、AgentSession、RPC/Desktop 或 Runtime Storage 反向依赖。
 
 ## 行为兼容性验证
 

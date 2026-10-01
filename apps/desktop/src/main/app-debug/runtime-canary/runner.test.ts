@@ -21,7 +21,7 @@ const continueOperationId = "00000000-0000-4000-8000-000000000003";
 const questionOperationId = "00000000-0000-4000-8000-000000000004";
 const interactionId = "00000000-0000-4000-8000-000000000005";
 const cwd = "C:/runtime-canary/workspace";
-const sessionPath = `${cwd}/.vetta/sessions/session.jsonl`;
+const sessionPath = `${cwd}/.astravia/sessions/session.jsonl`;
 
 describe("Runtime Canary runner", () => {
 	it("drives create, continue, list, question and abort through existing Debug capabilities", async () => {

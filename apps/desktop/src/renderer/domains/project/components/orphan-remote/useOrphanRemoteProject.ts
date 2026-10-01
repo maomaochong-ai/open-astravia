@@ -1,6 +1,6 @@
+import type { SshHost } from "@astravia/ssh-transport";
+import { parseProjectLocation } from "@astravia/ssh-transport/project-uri";
 import { useSshHosts } from "@shared/hooks/useSshHost";
-import type { SshHost } from "@vetta/ssh-transport";
-import { parseProjectLocation } from "@vetta/ssh-transport/project-uri";
 import { useCallback, useMemo, useState } from "react";
 
 export type OrphanRebindError =
@@ -55,7 +55,7 @@ export function useOrphanRemoteProject(cwd: string | null | undefined): OrphanRe
 		setRebinding(true);
 		setError(null);
 		try {
-			const result = await window.vetta.ssh.rebindHost({ hostId: effectiveSelection, orphanId: remote.hostId });
+			const result = await window.astravia.ssh.rebindHost({ hostId: effectiveSelection, orphanId: remote.hostId });
 			if (!result.ok) {
 				setError(
 					result.reason === "host-in-use"

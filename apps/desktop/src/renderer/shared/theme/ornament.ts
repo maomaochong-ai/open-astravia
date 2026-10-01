@@ -9,7 +9,7 @@
 
 export type OrnamentId = "mario" | "none" | "vivi";
 
-export const ORNAMENT_STORAGE_KEY = "vetta-hero-ornament";
+export const ORNAMENT_STORAGE_KEY = "astravia-hero-ornament";
 
 /**
  * 默认不挂装饰件。目录里也只收「平时静止、被触发才动一下」的装饰件：常驻无限动画的

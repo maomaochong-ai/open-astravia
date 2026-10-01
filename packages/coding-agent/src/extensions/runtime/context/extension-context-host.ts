@@ -1,4 +1,4 @@
-import type { Api, Model } from "@vetta/ai";
+import type { Api, Model } from "@astravia/ai";
 import { type Theme, theme } from "../../../theme/index.js";
 import type {
 	CompactOptions,

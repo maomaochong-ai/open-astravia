@@ -34,7 +34,7 @@ function marketScene(overrides: Partial<MarketAbility> = {}): MarketAbility {
 		description: "市场描述",
 		license: "MIT",
 		version: "1.0.0",
-		author: "vetta",
+		author: "astravia",
 		icon: "",
 		category: "文档处理",
 		tags: [],

@@ -10,11 +10,11 @@ import { OpenMarketplaceMcpRuntimeInstaller } from "./open-marketplace-mcp-runti
 
 const temporaryRoots: string[] = [];
 const PLATFORM_TAG = "win32-x64";
-const PORT_TOKEN = `\${VETTA_MCP_PORT}`;
-const URL_TOKEN = `\${VETTA_MCP_URL}`;
+const PORT_TOKEN = `\${ASTRAVIA_MCP_PORT}`;
+const URL_TOKEN = `\${ASTRAVIA_MCP_URL}`;
 
 async function temporaryRoot(): Promise<string> {
-	const root = await mkdtemp(join(tmpdir(), "vetta-mcp-runtime-test-"));
+	const root = await mkdtemp(join(tmpdir(), "astravia-mcp-runtime-test-"));
 	temporaryRoots.push(root);
 	return root;
 }
@@ -39,9 +39,9 @@ function runtime(
 		process: {
 			args: [`-port=:${PORT_TOKEN}`],
 			env: {
-				DATA: `\${VETTA_MCP_DATA_DIR}`,
-				CACHE: `\${VETTA_MCP_CACHE_DIR}`,
-				RUNTIME: `\${VETTA_MCP_RUNTIME_DIR}`,
+				DATA: `\${ASTRAVIA_MCP_DATA_DIR}`,
+				CACHE: `\${ASTRAVIA_MCP_CACHE_DIR}`,
+				RUNTIME: `\${ASTRAVIA_MCP_RUNTIME_DIR}`,
 			},
 		},
 		service: { kind: "http-mcp", path: "/mcp", readyTimeoutMs: 300_000 },

@@ -12,7 +12,7 @@ async function fixture(id = "demo-plugin"): Promise<{
 	sourceDir: string;
 	ability: Extract<ReturnType<typeof parseMarketplaceManifest>["abilities"][number], { type: "plugin" }>;
 }> {
-	const root = await mkdtemp(join(tmpdir(), "vetta-open-plugin-test-"));
+	const root = await mkdtemp(join(tmpdir(), "astravia-open-plugin-test-"));
 	temporaryRoots.push(root);
 	const sourceDir = join(root, "abilities", "plugins", "demo-plugin");
 	await mkdir(join(sourceDir, "dist"), { recursive: true });

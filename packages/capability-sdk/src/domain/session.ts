@@ -48,7 +48,7 @@ const sessionHistoryOutputSchema = defineCapabilityOutputSchema(Type.Array(sessi
 
 export const DOMAIN_SESSION_CAPABILITIES = {
 	LIST: defineCapability<SessionListInput, SessionHistoryEntry[]>({
-		id: "cap.domain.vetta.session.list",
+		id: "cap.domain.astravia.session.list",
 		kind: "query",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -56,7 +56,7 @@ export const DOMAIN_SESSION_CAPABILITIES = {
 		output: sessionHistoryOutputSchema,
 	}),
 	LIST_RUNTIME_PROJECTS: defineCapability<Record<string, never>, SessionRuntimeProject[]>({
-		id: "cap.domain.vetta.session.runtime-project.list",
+		id: "cap.domain.astravia.session.runtime-project.list",
 		kind: "query",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,

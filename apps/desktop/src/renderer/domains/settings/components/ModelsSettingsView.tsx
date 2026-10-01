@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { SettingsPageShellView } from "@vetta-org/theme-ui/settings";
+import { SettingsPageShellView } from "@astravia-org/theme-ui/settings";
 import { SettingsAiAssist } from "../ai-assist";
 import { ModelsProvidersSection } from "./ModelsProvidersSection";
 import { PresetProvidersSection } from "./PresetProvidersSection";
@@ -17,7 +17,7 @@ export function ModelsSettingsView({ model }: { model: ModelsSettingsModel }): J
 			footer={
 				model.config ? (
 					<div className="mt-6 text-center text-[11px] text-muted-foreground/60">
-						{t("configFilePath")}: ~/.vetta/agent/models.json
+						{t("configFilePath")}: ~/.astravia/agent/models.json
 					</div>
 				) : undefined
 			}

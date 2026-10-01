@@ -97,7 +97,7 @@ Loomic 主要复用 Excalidraw 原生元素：text、image、rectangle、ellipse
 - 非空画布时放在最右侧对象右边，保留间距并垂直居中；
 - Agent 显式提供 placement 时按指定坐标和尺寸插入。
 
-智能摆放规则简单但稳定，适合 Vetta 的“生成变体自动排布”。
+智能摆放规则简单但稳定，适合 Astravia 的“生成变体自动排布”。
 
 ## 5. Agent 与画布协作
 
@@ -111,7 +111,7 @@ Agent 工具覆盖：
 
 生成工具的 schema 会根据当前已注册模型动态构造枚举和说明。Agent 可先检查画布，再给出 placement；前端通过元素 ID、任务 ID和产物 URL把结果写回。
 
-这说明 Agent 不必只操作节点图，它也可以对自由对象进行空间推理。但 Vetta 仍应让 Agent 通过领域命令而不是直接生成 Excalidraw/React Flow 内部 JSON。
+这说明 Agent 不必只操作节点图，它也可以对自由对象进行空间推理。但 Astravia 仍应让 Agent 通过领域命令而不是直接生成 Excalidraw/React Flow 内部 JSON。
 
 ## 6. Provider 与模型注册
 
@@ -153,7 +153,7 @@ Agent 使用 LangChain/LangGraph，支持 OpenAI、Google Gemini 和 Vertex 配�
 - Agent 等待超时后，worker 仍可继续；
 - 前端通过轮询兜底接收迟到结果。
 
-这部分比其前端直接生成面板更健壮。Vetta 应统一只走任务服务，避免“面板直调”和“Agent 队列”形成两套状态语义。
+这部分比其前端直接生成面板更健壮。Astravia 应统一只走任务服务，避免“面板直调”和“Agent 队列”形成两套状态语义。
 
 ## 8. 应吸收与应避免
 

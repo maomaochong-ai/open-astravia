@@ -1,6 +1,6 @@
-import { type ImageContent, modelsAreEqual, Type } from "@vetta/ai";
-import type { RuntimeHostSession } from "@vetta/runtime-core";
-import type { RuntimeToolDefinition, SessionContextRecord } from "@vetta/runtime-core/kernel";
+import { type ImageContent, modelsAreEqual, Type } from "@astravia/ai";
+import type { RuntimeHostSession } from "@astravia/runtime-core";
+import type { RuntimeToolDefinition, SessionContextRecord } from "@astravia/runtime-core/kernel";
 import type {
 	ExtensionActions,
 	ExtensionError,

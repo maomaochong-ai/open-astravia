@@ -2,7 +2,7 @@ import type {
 	AgentFeatureDefinition,
 	ModelCallContributionProvider,
 	RuntimeToolDefinition,
-} from "@vetta/runtime-core/kernel";
+} from "@astravia/runtime-core/kernel";
 import { PLAN_MODE_INSTRUCTION_ID, renderPlanModeInstructions } from "./plan-mode-instructions.js";
 import type { PlanModeTurnBinding } from "./plan-mode-runtime.js";
 

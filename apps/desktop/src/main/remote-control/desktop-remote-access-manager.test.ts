@@ -1,4 +1,4 @@
-import type { RemoteConnection, RemoteInviteEnvelope, RemoteTransportHandlers } from "@vetta/remote-control";
+import type { RemoteConnection, RemoteInviteEnvelope, RemoteTransportHandlers } from "@astravia/remote-control";
 import {
 	generateIdentityKeyPair,
 	inviteBoxId,
@@ -8,7 +8,7 @@ import {
 	parsePairingUri,
 	type RemoteHello,
 	toBase64Url,
-} from "@vetta/remote-control";
+} from "@astravia/remote-control";
 import { describe, expect, it, vi } from "vitest";
 import type { DesktopConfig } from "../config/desktop-config-store.js";
 import type { CredentialRef } from "../credentials/credential-vault.js";
@@ -322,7 +322,7 @@ describe("DesktopRemoteAccessManager", () => {
 
 		release();
 		await vi.waitFor(() => expect(manager.getState().invite?.code?.status).toBe("ready"));
-		expect(manager.getState().invite?.qrText).toMatch(/^VETTA:\/\/PAIR\//);
+		expect(manager.getState().invite?.qrText).toMatch(/^ASTRAVIA:\/\/PAIR\//);
 		await manager.shutdown();
 	});
 

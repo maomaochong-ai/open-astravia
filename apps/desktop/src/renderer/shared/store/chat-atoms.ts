@@ -1,3 +1,4 @@
+import type { ContextCompactionEligibility, ContextCompositionReport } from "@astravia/runtime-core";
 import type { DesktopMcpElicitationRequest } from "@preload/api";
 import type {
 	AppshotAttachment,
@@ -9,7 +10,6 @@ import type {
 	PendingQuestion,
 } from "@shared/conversation";
 import type { InputSegment } from "@shared/lib/input-tokens";
-import type { ContextCompactionEligibility, ContextCompositionReport } from "@vetta/runtime-core";
 import { atom } from "jotai";
 import { selectAtom } from "jotai/utils";
 import { runningSessionPathsAtom } from "./running-sessions-atoms";
@@ -206,7 +206,7 @@ export const pendingSessionOpenAtom = atom<PendingSessionOpen | null>(null);
 /** 已接受发送、但新会话/runtime 尚未准备好的 UI 过渡态。 */
 export const pendingSessionSendAtom = atom<{ messageId: string; interactionId: string } | null>(null);
 
-const LAST_ACTIVE_SESSION_STORAGE_KEY = "vetta-last-active-session";
+const LAST_ACTIVE_SESSION_STORAGE_KEY = "astravia-last-active-session";
 
 function readLastActiveSession(): LastActiveSession | null {
 	try {
@@ -273,7 +273,7 @@ export const isConversationBusyAtom = atom<boolean>(
 	(get) => get(isStreamingAtom) || get(pendingSessionSendAtom) !== null,
 );
 function getStoredExecutionMode(): SessionExecutionMode {
-	return localStorage.getItem("vetta-session-execution-mode") === "sandbox" ? "sandbox" : "full-access";
+	return localStorage.getItem("astravia-session-execution-mode") === "sandbox" ? "sandbox" : "full-access";
 }
 
 export const sessionExecutionModeAtom = atom<SessionExecutionMode>(getStoredExecutionMode());
@@ -333,12 +333,12 @@ export const promptSuggestionsAtom = atom<Record<string, string[]>>({});
 
 /**
  * 输入预测「生成中」状态，按会话 runtimeId 索引。生成调用在飞时为 true，
- * 用于在该会话末条 assistant 消息的操作栏右侧显示「Vetta 正在预测…」闪光提示。
+ * 用于在该会话末条 assistant 消息的操作栏右侧显示「Astravia 正在预测…」闪光提示。
  */
 export const promptPredictingAtom = atom<Record<string, boolean>>({});
 
 /** 新会话全局模型偏好（localStorage）；已有会话仍以 session settings 为准 pull 覆盖。 */
-export const SELECTED_MODEL_STORAGE_KEY = "vetta-selected-model";
+export const SELECTED_MODEL_STORAGE_KEY = "astravia-selected-model";
 
 /**
  * 当前选中模型，格式 "provider/modelId"。
@@ -353,7 +353,7 @@ export const selectedModelAtom = atom<string | null>(
  * Per-model reasoning level memory: maps modelKey ("provider/modelId") → chosen level value.
  * Persisted to localStorage so each model remembers its last-chosen level across sessions/restart.
  */
-const REASONING_BY_MODEL_KEY = "vetta-reasoning-by-model";
+const REASONING_BY_MODEL_KEY = "astravia-reasoning-by-model";
 function loadReasoningByModel(): Record<string, string> {
 	try {
 		const raw = localStorage.getItem(REASONING_BY_MODEL_KEY);

@@ -43,7 +43,7 @@ export function useNewChatNavigation(): () => void {
 			let targetCwd = newChatCwd;
 			if (!targetCwd) {
 				try {
-					const config = await window.vetta.config.get();
+					const config = await window.astravia.config.get();
 					targetCwd = config.defaultConversationCwd ?? "";
 					if (targetCwd) setDefaultConversationCwd(targetCwd);
 				} catch (error) {

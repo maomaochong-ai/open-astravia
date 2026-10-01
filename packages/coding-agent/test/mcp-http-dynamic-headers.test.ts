@@ -7,7 +7,7 @@
  */
 
 import { createServer, type Server } from "node:http";
-import { HttpMcpClient, type McpHttpServerConfig } from "@vetta/runtime-node/mcp";
+import { HttpMcpClient, type McpHttpServerConfig } from "@astravia/runtime-node/mcp";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 interface RecordedRequest {
@@ -39,7 +39,7 @@ describe("HttpMcpClient dynamic headers", () => {
 				requests.push({
 					method: message.method,
 					authorization: req.headers.authorization,
-					clientVersion: req.headers["x-vetta-client-version"] as string | undefined,
+					clientVersion: req.headers["x-astravia-client-version"] as string | undefined,
 				});
 
 				// notification 无响应
@@ -53,7 +53,7 @@ describe("HttpMcpClient dynamic headers", () => {
 						? {
 								protocolVersion: "2024-11-05",
 								capabilities: { tools: { listChanged: false } },
-								serverInfo: { name: "vetta", version: "1.0.0" },
+								serverInfo: { name: "astravia", version: "1.0.0" },
 							}
 						: message.method === "tools/list"
 							? { tools: [] }
@@ -81,7 +81,7 @@ describe("HttpMcpClient dynamic headers", () => {
 			url: baseUrl,
 			resolveHeaders: () => ({ Authorization: `Bearer ${token}` }),
 		};
-		const client = new HttpMcpClient({ name: "vetta", config });
+		const client = new HttpMcpClient({ name: "astravia", config });
 
 		await client.initialize(INIT_PARAMS);
 		expect(requests.at(-1)?.authorization).toBe("Bearer token-old");
@@ -98,10 +98,10 @@ describe("HttpMcpClient dynamic headers", () => {
 		const config: McpHttpServerConfig = {
 			type: "http",
 			url: baseUrl,
-			headers: { "X-Vetta-Client-Version": "9.9.9" },
+			headers: { "X-Astravia-Client-Version": "9.9.9" },
 			resolveHeaders: () => ({ Authorization: "Bearer t" }),
 		};
-		const client = new HttpMcpClient({ name: "vetta", config });
+		const client = new HttpMcpClient({ name: "astravia", config });
 
 		await client.initialize(INIT_PARAMS);
 
@@ -120,7 +120,7 @@ describe("HttpMcpClient dynamic headers", () => {
 				throw new Error("credential file busy");
 			},
 		};
-		const client = new HttpMcpClient({ name: "vetta", config });
+		const client = new HttpMcpClient({ name: "astravia", config });
 
 		await expect(client.initialize(INIT_PARAMS)).resolves.toBeDefined();
 		expect(requests.at(-1)?.authorization).toBeUndefined();
@@ -129,7 +129,7 @@ describe("HttpMcpClient dynamic headers", () => {
 
 	it("没有解析器时走 SDK 默认 fetch", async () => {
 		const config: McpHttpServerConfig = { type: "http", url: baseUrl };
-		const client = new HttpMcpClient({ name: "vetta", config });
+		const client = new HttpMcpClient({ name: "astravia", config });
 
 		await expect(client.initialize(INIT_PARAMS)).resolves.toBeDefined();
 		await client.close();

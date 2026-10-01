@@ -1,5 +1,5 @@
-import type { Api, AssistantMessage, ManagedFetch, Model, StreamOptions } from "@vetta/ai";
-import { getDefaultAdapterRegistry, LanguageModelStream, setProviderFetchResolver, streamSimple } from "@vetta/ai";
+import type { Api, AssistantMessage, ManagedFetch, Model, StreamOptions } from "@astravia/ai";
+import { getDefaultAdapterRegistry, LanguageModelStream, setProviderFetchResolver, streamSimple } from "@astravia/ai";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { applyDesktopProxy, type ProxyRuntimeOptions } from "./proxy-runtime.js";
 import { DEFAULT_PROXY_CONFIG, type DesktopProxyConfig } from "./proxy-settings.js";

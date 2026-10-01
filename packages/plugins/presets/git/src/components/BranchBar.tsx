@@ -1,4 +1,4 @@
-import { useTranslation } from "@vetta-org/plugin-sdk";
+import { useTranslation } from "@astravia-org/plugin-sdk";
 import {
 	Button,
 	Dialog,
@@ -14,7 +14,7 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 	Input,
-} from "@vetta-org/ui";
+} from "@astravia-org/ui";
 import { useCallback, useEffect, useState } from "react";
 import { listBranches } from "../git/log";
 import { checkoutBranch, createBranch, currentBranch } from "../git/run";
@@ -91,7 +91,7 @@ export function BranchBar({ root }: { root: string }): JSX.Element {
 							<ChevronIcon className="h-3 w-3 shrink-0 text-muted-foreground/70" />
 						</Button>
 					</DropdownMenuTrigger>
-					<DropdownMenuContent align="start" className="max-h-80 overflow-y-auto" data-vetta-plugin-root="git">
+					<DropdownMenuContent align="start" className="max-h-80 overflow-y-auto" data-astravia-plugin-root="git">
 						<DropdownMenuItem onSelect={() => setCreating(true)}>{t("branch.create")}</DropdownMenuItem>
 						{locals.length > 0 && (
 							<>
@@ -120,7 +120,7 @@ export function BranchBar({ root }: { root: string }): JSX.Element {
 			</>
 
 			<Dialog open={creating} onOpenChange={(open) => !open && setCreating(false)}>
-				<DialogContent data-vetta-plugin-root="git" className="max-w-sm">
+				<DialogContent data-astravia-plugin-root="git" className="max-w-sm">
 					<DialogHeader>
 						<DialogTitle>{t("branch.createTitle")}</DialogTitle>
 						<DialogDescription>{t("branch.createDescription")}</DialogDescription>

@@ -12,7 +12,7 @@ import { randomUUID } from "node:crypto";
 import { mkdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import * as knowledge from "@vetta/runtime-knowledge";
+import * as knowledge from "@astravia/runtime-knowledge";
 import { BrowserWindow } from "electron";
 import { AsyncTask, SimpleIntervalJob, ToadScheduler } from "toad-scheduler";
 import { getOrCreateSharedModelRuntime } from "../agent-runtime/host-services.js";
@@ -30,9 +30,9 @@ import { createDesktopKnowledgeProcessingSessionFactory } from "./processing-ses
 import { beginRound, endRound, unlockRaws } from "./raws-lock.js";
 
 /** 加工中状态：广播给渲染层（顶栏「正在建立索引…」徽标）。 */
-export const KB_PROCESSING_CHANGED_CHANNEL = "vetta:kb:processing-changed";
+export const KB_PROCESSING_CHANGED_CHANNEL = "astravia:kb:processing-changed";
 /** 文件加工态可能已变（每批加工完缓存重建后）：渲染层据此重取文件列表状态。 */
-export const KB_STATUSES_CHANGED_CHANNEL = "vetta:kb:statuses-changed";
+export const KB_STATUSES_CHANGED_CHANNEL = "astravia:kb:statuses-changed";
 
 function broadcast(channel: string, payload?: unknown): void {
 	for (const win of BrowserWindow.getAllWindows()) {
@@ -74,7 +74,7 @@ const roundController = new KnowledgeRoundController({
 	},
 	temporaryDirectory: {
 		async create() {
-			const directory = join(tmpdir(), `vetta-kb-${randomUUID()}`);
+			const directory = join(tmpdir(), `astravia-kb-${randomUUID()}`);
 			await mkdir(directory, { recursive: true });
 			return directory;
 		},
@@ -160,7 +160,7 @@ export async function reloadKnowledgePoller(): Promise<void> {
 	const config = await readDesktopConfig();
 	const kb = config.knowledgeBase;
 	// 总开关：关闭时置 env 标志，coding-agent 据此对 agent 屏蔽知识库检索工具。
-	process.env.VETTA_KNOWLEDGE_DISABLED = kb?.enabled === false ? "1" : "";
+	process.env.ASTRAVIA_KNOWLEDGE_DISABLED = kb?.enabled === false ? "1" : "";
 	if (!kb?.enabled) {
 		// 关闭知识库总开关：立即中止正在进行的加工轮，杜绝后台继续读原文/写 wiki。
 		await abortKnowledgeRound();
@@ -180,7 +180,7 @@ export async function reloadKnowledgePoller(): Promise<void> {
 	}
 	// OCR 并发经环境变量传给 coding-agent 的全局 OCR 闸（惰性初始化，首次 OCR 调用时读取）。
 	// 改 ocrConcurrency 后需重启 app 才生效。手动「马上整理」也读它，故不论是否自动都先设好。
-	process.env.VETTA_KB_OCR_CONCURRENCY = String(kb.ocrConcurrency ?? 1);
+	process.env.ASTRAVIA_KB_OCR_CONCURRENCY = String(kb.ocrConcurrency ?? 1);
 	const minutes = kb.pollIntervalMinutes ?? 5;
 	// 0/未设视作「永不自动加工」：保持知识库启用（检索工具、手动整理仍可用），仅不调度后台轮询。
 	if (minutes <= 0) {

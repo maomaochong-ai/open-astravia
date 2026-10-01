@@ -1,6 +1,6 @@
 import type { JSX, ReactNode, RefCallback } from "react";
-import { useThemeSurface } from "@vetta-org/theme-sdk/appearance";
-import { cn } from "@vetta-org/ui";
+import { useThemeSurface } from "@astravia-org/theme-sdk/appearance";
+import { cn } from "@astravia-org/ui";
 import { ThemeSurface } from "../appearance/ThemeSurface";
 import { ResizeHandle } from "../layout/ResizeHandle";
 

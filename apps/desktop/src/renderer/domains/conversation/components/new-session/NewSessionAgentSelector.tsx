@@ -1,9 +1,9 @@
 import { teamMemberAvatarUrls, useAgentAvatarResolver } from "@shared/agent-teams/agent-avatar";
 import { useLocalizedAgentTeamDocument } from "@shared/agent-teams/agent-team-localization";
 import { BotAvatar } from "@shared/components/BotAvatar";
-import { type AgentTeamDocument, listLibraryAgentProfiles } from "@vetta/agent-team";
-import { NewSessionPicker, type NewSessionPickerRootProps } from "@vetta-org/theme-ui/chat";
-import { AvatarStackView } from "@vetta-org/theme-ui/shared";
+import { type AgentTeamDocument, listLibraryAgentProfiles } from "@astravia/agent-team";
+import { NewSessionPicker, type NewSessionPickerRootProps } from "@astravia-org/theme-ui/chat";
+import { AvatarStackView } from "@astravia-org/theme-ui/shared";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { loadAgentTeamDocument } from "./agent-team-directory";

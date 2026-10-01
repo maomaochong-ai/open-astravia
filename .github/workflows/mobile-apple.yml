@@ -18,7 +18,7 @@ on:
 
 jobs:
   build-test:
-    name: VettaKit tests + desktop interop + iOS build
+    name: AstraviaKit tests + desktop interop + iOS build
     runs-on: macos-26
     timeout-minutes: 30
     defaults:
@@ -36,8 +36,8 @@ jobs:
       - name: Install dependencies
         uses: ./.github/actions/install-bun-dependencies
 
-      - name: Test VettaKit
-        working-directory: apps/mobile/client-apple/VettaKit
+      - name: Test AstraviaKit
+        working-directory: apps/mobile/client-apple/AstraviaKit
         run: swift test --no-parallel
 
       - name: Interop with the desktop LAN server and relay
@@ -47,4 +47,4 @@ jobs:
         run: |
           brew install xcodegen
           xcodegen generate
-          xcodebuild build -project Vetta.xcodeproj -scheme Vetta -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO -quiet
+          xcodebuild build -project Astravia.xcodeproj -scheme Astravia -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO -quiet

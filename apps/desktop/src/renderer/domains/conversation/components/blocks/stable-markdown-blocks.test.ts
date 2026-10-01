@@ -1,4 +1,4 @@
-import { splitStableMarkdownBlocks } from "@vetta-org/theme-ui/markdown";
+import { splitStableMarkdownBlocks } from "@astravia-org/theme-ui/markdown";
 import { describe, expect, it } from "vitest";
 
 describe("splitStableMarkdownBlocks", () => {

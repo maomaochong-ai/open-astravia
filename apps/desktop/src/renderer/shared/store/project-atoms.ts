@@ -1,5 +1,5 @@
+import type { RuntimeSessionAccess } from "@astravia/runtime-core";
 import { isSubPath, pathBasename } from "@shared/lib/utils";
-import type { RuntimeSessionAccess } from "@vetta/runtime-core";
 import { atom } from "jotai";
 import { SCHEDULE_SESSION_MARKER } from "../../../shared/scheduled-session";
 import {
@@ -36,7 +36,7 @@ export const defaultConversationCwdAtom = atom<string>("");
 export const defaultImConversationCwdAtom = atom<string>("");
 
 /**
- * 知识库加工特殊项目 cwd（~/.vetta/knowledges/processing_records）。
+ * 知识库加工特殊项目 cwd（~/.astravia/knowledges/processing_records）。
  * 用于判定一条 session 是否是知识库加工 session：session.path 落在该 cwd 的 sessions 目录下。
  */
 export const knowledgeProcessingCwdAtom = atom<string>("");
@@ -122,7 +122,7 @@ export type PinnedSessionPaths = SessionPins;
 export const pinnedSessionPathsAtom = atom<Map<string, number>>(new Map());
 export const setSessionPinnedAtom = atom(null, (get, set, input: { path: string; pinned: boolean }) => {
 	set(pinnedSessionPathsAtom, setSessionPinned(get(pinnedSessionPathsAtom), input));
-	void window.vetta.sessionPins
+	void window.astravia.sessionPins
 		.set(input)
 		.then((snapshot) => set(pinnedSessionPathsAtom, sessionPinsFromSnapshot(snapshot)))
 		.catch(() => {
@@ -135,7 +135,7 @@ export const removePinnedSessionsAtom = atom(null, (get, set, paths: Iterable<st
 	const next = removeSessionPins(current, list);
 	if (next === current) return;
 	set(pinnedSessionPathsAtom, new Map(next));
-	void window.vetta.sessionPins
+	void window.astravia.sessionPins
 		.forget(list)
 		.then((snapshot) => set(pinnedSessionPathsAtom, sessionPinsFromSnapshot(snapshot)))
 		.catch(() => {
@@ -144,7 +144,7 @@ export const removePinnedSessionsAtom = atom(null, (get, set, paths: Iterable<st
 });
 
 /** 旧版本把置顶存在 localStorage；首次同步时交给主进程，之后删掉。 */
-const LEGACY_SIDEBAR_SESSION_PINS_STORAGE_KEY = "vetta-sidebar-session-pins";
+const LEGACY_SIDEBAR_SESSION_PINS_STORAGE_KEY = "astravia-sidebar-session-pins";
 
 export function takeLegacySidebarSessionPins(): SessionPins {
 	try {
@@ -163,7 +163,7 @@ export function clearLegacySidebarSessionPins(): void {
 	}
 }
 
-export const SIDEBAR_WIDTH_STORAGE_KEY = "vetta-sidebar-width";
+export const SIDEBAR_WIDTH_STORAGE_KEY = "astravia-sidebar-width";
 export const SIDEBAR_WIDTH_DEFAULT = 220;
 /** 与 useSidebarModel.MIN_WIDTH 保持一致 */
 export const SIDEBAR_WIDTH_MIN = 180;
@@ -202,7 +202,7 @@ export function conversationFilterSource(filter: DefaultConversationFilter): Def
 	return filter === "claw" ? "claw" : "conversation";
 }
 
-const DEFAULT_CONVERSATION_FILTER_STORAGE_KEY = "vetta-default-conversation-filter";
+const DEFAULT_CONVERSATION_FILTER_STORAGE_KEY = "astravia-default-conversation-filter";
 const DEFAULT_CONVERSATION_FILTER_SCHEMA_VERSION = 1;
 
 interface StoredDefaultConversationFilter {
@@ -254,8 +254,8 @@ export const defaultConversationFilterAtom = atom(
 // Always start expanded on app launch — collapse state is per-session only.
 export const sidebarCollapsedAtom = atom<boolean>(false);
 
-const DEFAULT_WORKSPACE = "~/.vetta/workspace";
-export const workspacePathAtom = atom<string>(localStorage.getItem("vetta-workspace-path") || DEFAULT_WORKSPACE);
+const DEFAULT_WORKSPACE = "~/.astravia/workspace";
+export const workspacePathAtom = atom<string>(localStorage.getItem("astravia-workspace-path") || DEFAULT_WORKSPACE);
 
 export const sessionContextMenuAtom = atom<{
 	x: number;

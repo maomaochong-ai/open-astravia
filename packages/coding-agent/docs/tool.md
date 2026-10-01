@@ -1,6 +1,6 @@
 # 内置 Tool
 
-实现归属 **`@vetta/runtime-tools/coding`**。`coding-agent` 只做产品组合、宿主适配与激活策略，不定义/再导出具体 Tool 工厂。
+实现归属 **`@astravia/runtime-tools/coding`**。`coding-agent` 只做产品组合、宿主适配与激活策略，不定义/再导出具体 Tool 工厂。
 
 ## 新增 Tool
 

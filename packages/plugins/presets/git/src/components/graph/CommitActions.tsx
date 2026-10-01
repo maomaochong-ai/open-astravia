@@ -1,4 +1,4 @@
-import { useTranslation } from "@vetta-org/plugin-sdk";
+import { useTranslation } from "@astravia-org/plugin-sdk";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -6,7 +6,7 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 	Input,
-} from "@vetta-org/ui";
+} from "@astravia-org/ui";
 import { useRef, useState } from "react";
 import type { HeadState, ResetMode } from "../../git/commitActions";
 import { createBranchAtCommit, detachAtCommit, readHeadState, resetToCommit } from "../../git/commitActions";
@@ -96,7 +96,7 @@ export function CommitActions({
 						style={{ left: target.x, top: target.y }}
 					/>
 					<DropdownMenuContent
-						data-vetta-plugin-root="git"
+						data-astravia-plugin-root="git"
 						align="start"
 						sideOffset={0}
 						onCloseAutoFocus={(event) => event.preventDefault()}

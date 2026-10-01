@@ -9,8 +9,8 @@ import {
 describe("download domain capabilities", () => {
 	it("uses stable ids for listing and canceling downloads", () => {
 		expect(Object.values(DOMAIN_DOWNLOAD_CAPABILITIES).map((capability) => capability.id)).toEqual([
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}download.list`,
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}download.cancel`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}download.list`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}download.cancel`,
 		]);
 	});
 

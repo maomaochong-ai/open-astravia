@@ -117,7 +117,7 @@ const BUILTIN_NAV_ITEMS = [
  * 首次使用时的置顶区默认成员：留「能力」「智能体」和设计画廊，其余入口默认收纳。
  * 顺序由 navCatalog 决定（内置在前、插件视图在后），即「新会话 / 能力 / 智能体 / 设计」。
  */
-const DEFAULT_PINNED_NAV_KEYS = ["/abilities", "/agents", workspaceViewNavKey("vetta-ui-design", "gallery")];
+const DEFAULT_PINNED_NAV_KEYS = ["/abilities", "/agents", workspaceViewNavKey("astravia-ui-design", "gallery")];
 
 function loadStoredNavLayout(): SidebarNavLayout {
 	try {
@@ -387,7 +387,7 @@ export function useSidebarModel({
 		let unsub: (() => void) | null = null;
 		void (async () => {
 			try {
-				const unsubFn = await window.vetta.im.subscribeStatus(
+				const unsubFn = await window.astravia.im.subscribeStatus(
 					(s) => setImOnline(s.transport === "online" || s.transport === "connecting"),
 					() => {},
 				);
@@ -398,7 +398,7 @@ export function useSidebarModel({
 				unsub = unsubFn;
 				// Initial push from subscribeStatus races with our listener
 				// attachment, so fetch once explicitly to seed state.
-				const current = await window.vetta.im.getStatus();
+				const current = await window.astravia.im.getStatus();
 				if (!cancelled) setImOnline(current.transport === "online" || current.transport === "connecting");
 			} catch {
 				// ignore; badge stays hidden

@@ -1,6 +1,6 @@
 ---
 name: remotion-video
-description: Create, modify, and render Remotion React video projects in the current Vetta conversation workspace. Use for requests to make programmatic videos, motion graphics, animated explainers, social videos, data videos, or to edit an existing Remotion composition and export it as MP4.
+description: Create, modify, and render Remotion React video projects in the current Astravia conversation workspace. Use for requests to make programmatic videos, motion graphics, animated explainers, social videos, data videos, or to edit an existing Remotion composition and export it as MP4.
 ---
 
 # Remotion Video
@@ -11,7 +11,7 @@ Treat the current workspace root as the Remotion project. Do not create another 
 
 1. Inspect `package.json`, `src/`, `public/`, and existing compositions before editing.
 2. If no project exists, create a standard TypeScript Remotion project directly in the workspace root.
-3. Install dependencies with `npm install`. Vetta Desktop guarantees managed Node and npm; do not assume Bun is available to the packaged app.
+3. Install dependencies with `npm install`. Astravia Desktop guarantees managed Node and npm; do not assume Bun is available to the packaged app.
 4. Build or edit compositions using normal Remotion React APIs.
 5. Call `render_remotion_video` with the exact Composition id after the source is complete.
 6. Report the returned `out/*.mp4` path. Do not claim the render succeeded unless the tool returns `ok: true`.

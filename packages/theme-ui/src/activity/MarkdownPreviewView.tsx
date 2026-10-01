@@ -185,7 +185,7 @@ export const MarkdownPreviewView = memo(function MarkdownPreviewView({
 			),
 			strong: ({ children }) => <strong className="font-semibold text-foreground">{children}</strong>,
 			em: ({ children }) => <em className="italic">{children}</em>,
-			"vetta-svg": ({ node }: { node?: HastElement }) => {
+			"astravia-svg": ({ node }: { node?: HastElement }) => {
 				const source = node?.properties?.source;
 				const rich = labels.rich ?? defaultRichContentLabels;
 				return typeof source === "string" ? <SvgPreview source={source} label={rich.svg} failed={rich.failed} /> : null;

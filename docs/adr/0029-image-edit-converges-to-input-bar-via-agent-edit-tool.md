@@ -8,7 +8,7 @@ ADR-0028 把图像能力拆成两条入口：会话里 agent 调 `generate_image
 
 1. **删除活动面板「图像编辑」选项卡**，编辑统一从 AI 输入栏触发。`generate_image` / `edit_image` 两个内置 tool 都接到[[主进程图像服务]]（`editImage` 后端已存在，只差 agent 侧 tool 包装与 6+ 注册点），[[图像模式]]开启时**两个 tool 都对模型暴露**，agent 自行择一。
 
-2. **agent 自感知生成 vs 编辑**：图像模式开、无 attach 时，隐藏指令让 agent 按 prompt 语义判断——全新主题调 `generate_image`，「在原图上改」调 `edit_image`（source 取上下文 `<vetta-images>` 标记里最近一张图 id）。
+2. **agent 自感知生成 vs 编辑**：图像模式开、无 attach 时，隐藏指令让 agent 按 prompt 语义判断——全新主题调 `generate_image`，「在原图上改」调 `edit_image`（source 取上下文 `<astravia-images>` 标记里最近一张图 id）。
 
 3. **显式编辑走 id 引用、强制 source**：[[图像预览 swiper]] 里点某图「编辑」icon → [[图像编辑 attach]]，发送时注入 `metadata.editImageId`。pipeline 见到它就强制本轮调 `edit_image` 并以该 id 为 source；**只传 id、图像字节不进 LLM 上下文**（承袭 ADR-0028 的 out-of-band 原则）。attach 一次性，编辑轮发出即释放。
 
@@ -29,6 +29,6 @@ ADR-0028 把图像能力拆成两条入口：会话里 agent 调 `generate_image
 - coding-agent 新增 `edit_image` 内置 tool，按既有约定扫齐 `tools/index.ts` 等 6+ 注册点；`ImageToolBackend` 接口加 `edit`，desktop `imageBackend` 补 `edit` 实现（转调 `editImage`）。
 - `input-pipeline` 的图像分支扩展：`editImageId` 存在 → 注入「强制编辑 id=X」指令；仅 `imageMode` → 注入「自感知生成或编辑最近图」指令。`editImageId` 存在即视为图像轮次（无需另开 toggle）。**（软隔离修订：不再按 `imageMode`/`editImageId` 对本轮剥离图像 tool；工具常驻，metadata 只负责隐形意图提示。）**
 - plugin-sdk 新增 `ui.setEditImageAttachment(ref | null)`：插件点编辑 icon 时写入 host 新 atom；InputBar 顶部胶囊区据此渲染缩略图胶囊；`useSessionManager` 发送时读 atom 注入 `metadata.editImageId`，发送后清空。
-- `generate_image` tool-result 的 `<vetta-images>` marker 增加 `rootId` 字段；host 据此做谱系去重、只给最新消息绑 `imageRefs`；生成中的消息透传 in-flight `editImageId` 以便骨架卡直接挂在目标谱系 swiper 最前。
+- `generate_image` tool-result 的 `<astravia-images>` marker 增加 `rootId` 字段；host 据此做谱系去重、只给最新消息绑 `imageRefs`；生成中的消息透传 in-flight `editImageId` 以便骨架卡直接挂在目标谱系 swiper 最前。
 - 移除 image-gen 插件的 `ui.slot.activity-tab` 权限与 `registerActivityTab` 注册、删除 `ImageEditorPanel`。
 - 编辑进会话历史后，重载恢复不再依赖「面板按基准图 id 重新拉谱系」，而是与生成同路——消息携带轻量引用、host 重建 `imageRefs`。

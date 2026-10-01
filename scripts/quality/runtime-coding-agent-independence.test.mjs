@@ -8,13 +8,13 @@ describe("Runtime Coding Agent independence guard", () => {
 				manifests: [
 					{
 						path: "packages/runtime-tools/package.json",
-						content: { dependencies: { "@vetta/runtime-core": "workspace:*" } },
+						content: { dependencies: { "@astravia/runtime-core": "workspace:*" } },
 					},
 				],
 				files: [
 					{
 						path: "packages/runtime-tools/test/tool.test.ts",
-						text: 'import { createRuntime } from "@vetta/runtime-core";',
+						text: 'import { createRuntime } from "@astravia/runtime-core";',
 					},
 				],
 			}),
@@ -27,24 +27,24 @@ describe("Runtime Coding Agent independence guard", () => {
 				manifests: [
 					{
 						path: "packages/runtime-tools/package.json",
-						content: { devDependencies: { "@vetta/coding-agent": "workspace:*" } },
+						content: { devDependencies: { "@astravia/coding-agent": "workspace:*" } },
 					},
 				],
 				files: [
 					{
 						path: "packages/runtime-tools/test/tool.test.ts",
-						text: 'import { host } from "@vetta/coding-agent/host";',
+						text: 'import { host } from "@astravia/coding-agent/host";',
 					},
 					{
 						path: "packages/runtime-tools/vitest.config.ts",
-						text: 'const alias = "@vetta/coding-agent/host";',
+						text: 'const alias = "@astravia/coding-agent/host";',
 					},
 				],
 			}),
 		).toEqual([
-			"packages/runtime-tools/package.json: devDependencies must not declare @vetta/coding-agent",
-			"packages/runtime-tools/test/tool.test.ts:1: Runtime package file depends on @vetta/coding-agent",
-			"packages/runtime-tools/vitest.config.ts:1: Runtime package file depends on @vetta/coding-agent",
+			"packages/runtime-tools/package.json: devDependencies must not declare @astravia/coding-agent",
+			"packages/runtime-tools/test/tool.test.ts:1: Runtime package file depends on @astravia/coding-agent",
+			"packages/runtime-tools/vitest.config.ts:1: Runtime package file depends on @astravia/coding-agent",
 		]);
 	});
 });

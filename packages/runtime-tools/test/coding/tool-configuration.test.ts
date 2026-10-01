@@ -1,16 +1,16 @@
-import { createRuntimeObservationPublisher, type RuntimeObservationRecord } from "@vetta/runtime-core";
+import { createRuntimeObservationPublisher, type RuntimeObservationRecord } from "@astravia/runtime-core";
 import {
 	type RuntimeConfigurationDefinition,
 	type RuntimeConfigurationJsonObject,
 	type RuntimeConfigurationLayerSnapshot,
 	RuntimeConfigurationRegistry,
 	RuntimeConfigurationResolver,
-} from "@vetta/runtime-core/configuration";
+} from "@astravia/runtime-core/configuration";
 import type {
 	RuntimeSnapshotAcquireContext,
 	RuntimeToolDefinition,
 	RuntimeToolExecutionRequest,
-} from "@vetta/runtime-core/kernel";
+} from "@astravia/runtime-core/kernel";
 import { describe, expect, it } from "vitest";
 import {
 	CODING_TOOL_CONFIGURATION_ERROR_CODES,

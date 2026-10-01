@@ -25,7 +25,7 @@ export function useSessionSearch(open: boolean, request: DesktopSessionSearchReq
 		if (!open) return;
 		const timer = window.setTimeout(
 			() => {
-				cancel = window.vetta.session.searchSessions(
+				cancel = window.astravia.session.searchSessions(
 					{ query: query.trim(), sourceKind, projectCwd, modifiedFrom, modifiedBefore, limit },
 					(event) => {
 						if (!active) return;

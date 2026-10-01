@@ -1,5 +1,5 @@
-import type { ContinuationMessage, ContinuationPolicy, ContinuationPolicyContext } from "@vetta/runtime-core/kernel";
-import type { SessionExtensionContinuationSource } from "@vetta/runtime-core/session-extensions";
+import type { ContinuationMessage, ContinuationPolicy, ContinuationPolicyContext } from "@astravia/runtime-core/kernel";
+import type { SessionExtensionContinuationSource } from "@astravia/runtime-core/session-extensions";
 
 export type { CodingAgentContinuationSource } from "../../runtime-contracts/index.js";
 

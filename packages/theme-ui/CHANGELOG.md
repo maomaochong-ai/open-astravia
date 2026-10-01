@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to `@vetta-org/theme-ui` are documented in this file.
+All notable changes to `@astravia-org/theme-ui` are documented in this file.
 
 ## [Unreleased]
 
@@ -23,7 +23,7 @@ All notable changes to `@vetta-org/theme-ui` are documented in this file.
 
 ### Fixed
 
-- 依赖 `@vetta-org/theme-sdk` 与 `@vetta-org/ui` 改用 registry semver。0.1.0 把它们以
+- 依赖 `@astravia-org/theme-sdk` 与 `@astravia-org/ui` 改用 registry semver。0.1.0 把它们以
   `workspace:*` 发了出去，而那是 bun/pnpm 的协议、npm 不认，导致该版本在任何地方都装不上。
   仓库内仍解析到本地包（版本匹配），行为不变。
 
@@ -36,5 +36,5 @@ All notable changes to `@vetta-org/theme-ui` are documented in this file.
 
 ### Changed
 
-- 包名由 `@vetta/theme-ui` 改为 `@vetta-org/theme-ui`：`@vetta` scope 不属于本账号，公开包统一
-  发在 `@vetta-org` 下（与 plugin-sdk / plugin-vite / plugin-cli / ui 一致）。
+- 包名由 `@astravia/theme-ui` 改为 `@astravia-org/theme-ui`：`@astravia` scope 不属于本账号，公开包统一
+  发在 `@astravia-org` 下（与 plugin-sdk / plugin-vite / plugin-cli / ui 一致）。

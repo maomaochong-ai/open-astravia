@@ -13,7 +13,7 @@ vi.mock("react-i18next", () => ({
 
 // 删除确认后还要摘掉该会话的标签标注，走 preload 的 conversationTags 通道。
 const forgetConversations = vi.fn();
-vi.stubGlobal("window", Object.assign(globalThis.window, { vetta: { conversationTags: { forgetConversations } } }));
+vi.stubGlobal("window", Object.assign(globalThis.window, { astravia: { conversationTags: { forgetConversations } } }));
 
 const teamSession = {
 	kind: "agent-team" as const,

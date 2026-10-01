@@ -1,5 +1,5 @@
-import type { AgentProfile, TeamDefinition } from "@vetta/agent-team";
-import { Button } from "@vetta-org/ui";
+import type { AgentProfile, TeamDefinition } from "@astravia/agent-team";
+import { Button } from "@astravia-org/ui";
 import { useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import type { AgentCenterModel } from "../hooks/useAgentCenterModel";

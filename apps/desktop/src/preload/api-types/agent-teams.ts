@@ -16,8 +16,8 @@ import type {
 	UpdateAgentProfileInput,
 	UpdateTeamInput,
 	UpdateTeamSessionModelSettingsInput,
-} from "@vetta/agent-team";
-import type { SessionExecutionMode } from "@vetta/runtime-core";
+} from "@astravia/agent-team";
+import type { SessionExecutionMode } from "@astravia/runtime-core";
 import type { TeamMemberModelPreference, TeamMemberModelSelection } from "../../shared/agent-team-member-model.js";
 import type { DesktopTeamSidebarConversation } from "../../shared/sidebar-conversation.js";
 import type { DesktopTeamSessionSnapshot, DesktopTeamSessionStreamEvent } from "./team-conversation-display.js";

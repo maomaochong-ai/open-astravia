@@ -10,14 +10,14 @@ export type {
 	KnowledgeProcessStatus,
 } from "@shared/types/knowledge-base";
 
-const ACTIVE_KNOWLEDGE_BASE_STORAGE_KEY = "vetta-active-knowledge-base";
-const KNOWLEDGE_VIEW_MODE_STORAGE_KEY = "vetta-knowledge-view-mode";
+const ACTIVE_KNOWLEDGE_BASE_STORAGE_KEY = "astravia-active-knowledge-base";
+const KNOWLEDGE_VIEW_MODE_STORAGE_KEY = "astravia-knowledge-view-mode";
 
 /** 文件区视图：宫格 / 列表。 */
 export type KnowledgeViewMode = "grid" | "list";
 
 /**
- * 知识库列表：磁盘 ~/.vetta/knowledges/raws/ 是唯一真相源。
+ * 知识库列表：磁盘 ~/.astravia/knowledges/raws/ 是唯一真相源。
  * list 仅根层；子目录由 ensureKnowledgeDirLoadedAtom 按层合并进 nodes。
  */
 export const knowledgeBasesAtom = atom<KnowledgeBase[]>([]);
@@ -63,7 +63,7 @@ export const ensureKnowledgeDirLoadedAtom = atom(null, async (get, set, payload:
 
 	const task = (async () => {
 		try {
-			const children = await window.vetta.knowledge.listDir(kbId, relPath);
+			const children = await window.astravia.knowledge.listDir(kbId, relPath);
 			const latest = get(knowledgeBasesAtom);
 			set(
 				knowledgeBasesAtom,
@@ -103,7 +103,7 @@ export const ensureKnowledgePathLoadedAtom = atom(
 export const refreshKnowledgeBasesAtom = atom(null, async (get, set) => {
 	set(knowledgeLoadingAtom, true);
 	const previous = get(knowledgeBasesAtom);
-	const listPromise = window.vetta.knowledge.list().then((bases) => {
+	const listPromise = window.astravia.knowledge.list().then((bases) => {
 		// 根层新数据 + 尽量保留已懒加载的子目录缓存
 		const prevById = new Map(previous.map((b) => [b.id, b]));
 		set(
@@ -115,7 +115,7 @@ export const refreshKnowledgeBasesAtom = atom(null, async (get, set) => {
 			}),
 		);
 	});
-	const statusesPromise = window.vetta.knowledge
+	const statusesPromise = window.astravia.knowledge
 		.fileStatuses()
 		.then((statuses) => {
 			set(knowledgeFileStatusesAtom, statuses);

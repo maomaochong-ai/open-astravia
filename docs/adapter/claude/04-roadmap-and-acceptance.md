@@ -71,7 +71,7 @@
 
 ### M3：Custom agent
 
-目标：20 个 `agents/*.md` 能编译为真实 Vetta child type。
+目标：20 个 `agents/*.md` 能编译为真实 Astravia child type。
 
 工作项：
 
@@ -228,11 +228,11 @@
 
 ## 6. 开始实现前仍需确认的产品决策
 
-1. Claude compatibility bundle 是扩展 Vetta 原生 plugin schema 的 `resource-only` runtime，还是独立安装类型。
+1. Claude compatibility bundle 是扩展 Astravia 原生 plugin schema 的 `resource-only` runtime，还是独立安装类型。
 2. 首发是否承诺 Windows 上原样运行 Bash Hook；若承诺，需要把 POSIX runtime 纳入安装体积和维护范围。
 3. Claude agent 模型别名如何映射到用户配置的 provider/model。
 4. Agent memory 和 worktree 是 M3 首发能力，还是明确 diagnostic 后放到 M6。
 5. Agent Teams 是否允许模型自主提出并在用户确认后创建，还是只允许用户显式命令创建。
 6. 逻辑依赖（例如 `jules-review` → `council`）由 compatibility metadata 补充，还是要求上游修复 marketplace。
 
-默认建议：resource-only Vetta plugin + Windows 托管 POSIX runtime + 用户可配置模型档位 + memory/worktree 后置 + Teams 创建需用户确认 + 依赖先用可审计 metadata 补充并推动上游声明。
+默认建议：resource-only Astravia plugin + Windows 托管 POSIX runtime + 用户可配置模型档位 + memory/worktree 后置 + Teams 创建需用户确认 + 依赖先用可审计 metadata 补充并推动上游声明。

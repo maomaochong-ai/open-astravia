@@ -97,21 +97,21 @@ jobs:
       - name: Build unpacked Desktop package
         working-directory: apps/desktop
         env:
-          VETTA_BUILD_ENV: test
-          VETTA_CLOUD_ENABLED: "false"
-          VETTA_OPEN_MARKETPLACE_REPOSITORY: openvetta/vetta-official-marketplace
-          VETTA_SPEECH_INPUT_ENABLED: "false"
-          VETTA_UPDATE_GITHUB_OWNER: openvetta
-          VETTA_UPDATE_GITHUB_REPO: open-vetta
-          VETTA_UPDATE_PROVIDER: github
+          ASTRAVIA_BUILD_ENV: test
+          ASTRAVIA_CLOUD_ENABLED: "false"
+          ASTRAVIA_OPEN_MARKETPLACE_REPOSITORY: maomaochong-ai/astravia-official-marketplace
+          ASTRAVIA_SPEECH_INPUT_ENABLED: "false"
+          ASTRAVIA_UPDATE_GITHUB_OWNER: maomaochong-ai
+          ASTRAVIA_UPDATE_GITHUB_REPO: open-astravia
+          ASTRAVIA_UPDATE_PROVIDER: github
         run: bun run ${{ matrix.build-command }}
 
       - name: Run packaged Electron smoke and updater E2E
         working-directory: apps/desktop
         env:
-          VETTA_E2E_PACKAGED: "1"
-          VETTA_BUILD_ENV: test
-          VETTA_SPEECH_INPUT_ENABLED: "false"
+          ASTRAVIA_E2E_PACKAGED: "1"
+          ASTRAVIA_BUILD_ENV: test
+          ASTRAVIA_SPEECH_INPUT_ENABLED: "false"
         shell: bash
         run: |
           if [[ "${{ matrix.platform }}" == "Linux" ]]; then

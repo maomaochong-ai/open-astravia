@@ -157,7 +157,7 @@ it("会话 A 仍在流式输出时新建会话 B，A 的事件不得写进 B 的
 		}),
 		updateSettings: vi.fn(async () => undefined),
 	};
-	Object.defineProperty(window, "vetta", {
+	Object.defineProperty(window, "astravia", {
 		configurable: true,
 		value: {
 			batchTasks: { resumeTaskWithText: vi.fn() },

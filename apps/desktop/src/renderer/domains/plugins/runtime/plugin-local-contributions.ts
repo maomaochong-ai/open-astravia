@@ -1,4 +1,3 @@
-import type { InstalledPlugin } from "@preload/api";
 import type {
 	PluginAbilityDetailSlotContribution,
 	PluginActivityTabContribution,
@@ -17,7 +16,8 @@ import type {
 	PluginToolCallSlotContribution,
 	PluginTurnCardContribution,
 	PluginWorkspaceViewContribution,
-} from "@vetta-org/plugin-sdk";
+} from "@astravia-org/plugin-sdk";
+import type { InstalledPlugin } from "@preload/api";
 
 /**
  * 宿主侧补全的上下文区贡献：`canReadDraft` 在注册时按插件权限定下来。

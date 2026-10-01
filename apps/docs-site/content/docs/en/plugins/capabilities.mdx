@@ -3,7 +3,7 @@ title: Plugin capability reference
 description: Find the UI, conversation, Agent, file, network, browser, model, media, and storage APIs on ctx, and the permission boundary of each.
 ---
 
-The plugin API comes from `@vetta-org/plugin-sdk`, the build from `@vetta-org/plugin-vite`, and the scaffold and install commands from `@vetta-org/plugin-cli`. Plugin code runs inside the shared JavaScript realm of the Desktop renderer process; permission declarations serve informed consent and host API gating, not iframe, Worker, or malicious-code sandboxing.
+The plugin API comes from `@astravia-org/plugin-sdk`, the build from `@astravia-org/plugin-vite`, and the scaffold and install commands from `@astravia-org/plugin-cli`. Plugin code runs inside the shared JavaScript realm of the Desktop renderer process; permission declarations serve informed consent and host API gating, not iframe, Worker, or malicious-code sandboxing.
 
 The `ctx` passed to `activate(ctx)` is the single outlet for every capability. On the main-process side the host does not know about "plugins" at all, only about a capability session carrying a grant list, so each call is re-checked, constrained to this plugin's namespace, and recorded for audit.
 

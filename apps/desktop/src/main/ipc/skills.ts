@@ -3,7 +3,7 @@ import { cpSync, existsSync, readdirSync, readFileSync, statSync, writeFileSync 
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join, sep } from "node:path";
-import { getVettaHomePath } from "@vetta/action-rpc";
+import { getAstraviaHomePath } from "@astravia/action-rpc";
 import AdmZip from "adm-zip";
 import { ipcMain } from "electron";
 import { recordAbilityInstall } from "../abilities/ability-ledger.js";
@@ -27,7 +27,7 @@ function assertNonEmptyString(value: unknown, fieldName: string): asserts value 
 	}
 }
 
-const tmpBaseDir = join(getVettaHomePath(), "tmp");
+const tmpBaseDir = join(getAstraviaHomePath(), "tmp");
 
 function findShallowestSkillMd(rootDir: string): string | null {
 	const holder: { best: { path: string; depth: number } | null } = { best: null };
@@ -68,9 +68,9 @@ export function registerSkillsIpc(): () => void {
 		allowProjectRoot(root);
 	}
 
-	ipcMain.handle("vetta:skills:list", async (_event, cwd: unknown) => {
+	ipcMain.handle("astravia:skills:list", async (_event, cwd: unknown) => {
 		const resolvedCwd = typeof cwd === "string" && cwd.trim().length > 0 ? cwd : undefined;
-		// Plugin skill packages live under system-plugins / ~/.vetta/plugins; allow
+		// Plugin skill packages live under system-plugins / ~/.astravia/plugins; allow
 		// roots so slash/detail previews can read SKILL.md via fs IPC if needed.
 		const pluginSkillPaths =
 			pluginAgentContributionService.buildRuntimeConfig()?.skillPathContributions?.flatMap((c) => c.paths) ?? [];
@@ -85,7 +85,7 @@ export function registerSkillsIpc(): () => void {
 	});
 
 	ipcMain.handle(
-		"vetta:skills:install-from-market",
+		"astravia:skills:install-from-market",
 		async (_event, name: unknown, archiveBuffer: unknown, type: unknown, meta: unknown) => {
 			assertNonEmptyString(name, "name");
 			if (!(archiveBuffer instanceof ArrayBuffer) && !Buffer.isBuffer(archiveBuffer)) {
@@ -104,27 +104,27 @@ export function registerSkillsIpc(): () => void {
 	);
 
 	/** Action / 官方插件：按市场 slug 下载并安装能力（skill/scene）。 */
-	ipcMain.handle("vetta:skills:install-from-market-slug", async (_event, type: unknown, slug: unknown) => {
+	ipcMain.handle("astravia:skills:install-from-market-slug", async (_event, type: unknown, slug: unknown) => {
 		assertNonEmptyString(slug, "slug");
 		const itemType: "skill" | "scene" = type === "scene" ? "scene" : "skill";
 		return installSkillFromMarketSlug(itemType, slug);
 	});
 
-	ipcMain.handle("vetta:skills:uninstall", async (_event, name: unknown, type: unknown) => {
+	ipcMain.handle("astravia:skills:uninstall", async (_event, name: unknown, type: unknown) => {
 		assertNonEmptyString(name, "name");
 		await skills.uninstall(name, type === "scene" ? "scene" : type === "skill" ? "skill" : undefined);
 	});
 
-	ipcMain.handle("vetta:skills:toggle", async (_event, name: unknown) => {
+	ipcMain.handle("astravia:skills:toggle", async (_event, name: unknown) => {
 		assertNonEmptyString(name, "name");
 		return skills.toggle(name);
 	});
 
-	ipcMain.handle("vetta:skills:get-market-manifest", async () => {
+	ipcMain.handle("astravia:skills:get-market-manifest", async () => {
 		return skills.getManifest();
 	});
 
-	ipcMain.handle("vetta:skills:get-skill-md-path", async (_event, name: unknown, type: unknown) => {
+	ipcMain.handle("astravia:skills:get-skill-md-path", async (_event, name: unknown, type: unknown) => {
 		assertNonEmptyString(name, "name");
 		const itemType: "skill" | "scene" = type === "scene" ? "scene" : "skill";
 		const skillMd = join(getSkillBaseDir(itemType), name, "SKILL.md");
@@ -145,7 +145,7 @@ export function registerSkillsIpc(): () => void {
 		throw new Error(`SKILL.md 不存在：${skillMd}`);
 	});
 
-	ipcMain.handle("vetta:skills:import-custom", async (_event, archiveBuffer: unknown) => {
+	ipcMain.handle("astravia:skills:import-custom", async (_event, archiveBuffer: unknown) => {
 		if (!(archiveBuffer instanceof ArrayBuffer) && !Buffer.isBuffer(archiveBuffer)) {
 			throw new Error("Invalid archive buffer");
 		}
@@ -186,7 +186,7 @@ export function registerSkillsIpc(): () => void {
 				throw new Error("name 仅允许小写字母、数字、连字符（1–64 字符）");
 			}
 
-			// 类型口径与 agent 侧一致：只认 frontmatter 的 metadata.type，scene 装进 ~/.vetta/scene/。
+			// 类型口径与 agent 侧一致：只认 frontmatter 的 metadata.type，scene 装进 ~/.astravia/scene/。
 			// 装错目录不只是分类不对——agent 是按目录判定场景的，装进 skills/ 就拿不到
 			// tasks.json 锁定 todo 等场景语义。
 			const importType: InstalledSkillType = fm.type === "scene" ? "scene" : "skill";
@@ -239,13 +239,13 @@ export function registerSkillsIpc(): () => void {
 	});
 
 	return () => {
-		ipcMain.removeHandler("vetta:skills:list");
-		ipcMain.removeHandler("vetta:skills:install-from-market");
-		ipcMain.removeHandler("vetta:skills:install-from-market-slug");
-		ipcMain.removeHandler("vetta:skills:uninstall");
-		ipcMain.removeHandler("vetta:skills:toggle");
-		ipcMain.removeHandler("vetta:skills:get-market-manifest");
-		ipcMain.removeHandler("vetta:skills:get-skill-md-path");
-		ipcMain.removeHandler("vetta:skills:import-custom");
+		ipcMain.removeHandler("astravia:skills:list");
+		ipcMain.removeHandler("astravia:skills:install-from-market");
+		ipcMain.removeHandler("astravia:skills:install-from-market-slug");
+		ipcMain.removeHandler("astravia:skills:uninstall");
+		ipcMain.removeHandler("astravia:skills:toggle");
+		ipcMain.removeHandler("astravia:skills:get-market-manifest");
+		ipcMain.removeHandler("astravia:skills:get-skill-md-path");
+		ipcMain.removeHandler("astravia:skills:import-custom");
 	};
 }

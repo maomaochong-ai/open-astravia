@@ -1,6 +1,6 @@
-import { APP_NAME, CONFIG_DIR_NAME } from "@vetta/coding-agent/config";
-import type { ResourcePackageRuntime } from "@vetta/coding-agent/resources";
-import type { SettingsRuntime } from "@vetta/coding-agent/settings";
+import { APP_NAME, CONFIG_DIR_NAME } from "@astravia/coding-agent/config";
+import type { ResourcePackageRuntime } from "@astravia/coding-agent/resources";
+import type { SettingsRuntime } from "@astravia/coding-agent/settings";
 import chalk from "chalk";
 
 type PackageCommand = "install" | "remove" | "update" | "list";

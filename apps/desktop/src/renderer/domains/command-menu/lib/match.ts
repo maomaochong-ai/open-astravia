@@ -1,4 +1,4 @@
-import type { CommandMenuHighlightRange } from "@vetta-org/theme-ui/overlays";
+import type { CommandMenuHighlightRange } from "@astravia-org/theme-ui/overlays";
 import { findSearchTextRanges, normalizeSearchText } from "@/shared/session-search-text";
 
 /**

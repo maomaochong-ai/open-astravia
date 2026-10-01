@@ -1,5 +1,5 @@
-import type { AgentMessage } from "@vetta/agent-core";
-import type { RuntimeMessageEnvelope, RuntimeSessionExecutionObservation } from "@vetta/runtime-core";
+import type { AgentMessage } from "@astravia/agent-core";
+import type { RuntimeMessageEnvelope, RuntimeSessionExecutionObservation } from "@astravia/runtime-core";
 import type {
 	AgentEndEvent,
 	AgentStartEvent,

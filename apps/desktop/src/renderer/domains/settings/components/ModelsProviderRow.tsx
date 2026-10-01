@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
-import { ModelsProviderFormView } from "@vetta-org/theme-ui/settings";
-import { Button, cn } from "@vetta-org/ui";
+import { ModelsProviderFormView } from "@astravia-org/theme-ui/settings";
+import { Button, cn } from "@astravia-org/ui";
 import { ModelsFetchedModelsPanel } from "./ModelsFetchedModelsPanel";
 import { ModelsModelForm } from "./ModelsModelForm";
 import { ModelsProviderForm } from "./ModelsProviderForm";

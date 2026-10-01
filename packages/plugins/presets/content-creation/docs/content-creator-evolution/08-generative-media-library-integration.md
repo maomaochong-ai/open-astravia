@@ -9,7 +9,7 @@
 1. 通用导演层：镜头、时间码、引用素材角色、物理运动、声音和结尾状态。
 2. 场景执行层：打斗、烹饪、UGC、商品组图、品牌系统、空间改造、长视频切片等各自不同的输入、阶段、闸门和失败回退。
 
-Vetta 保留这两层，但不复制 MuAPI CLI、固定模型名、费用、供应商限制或未经 capability registry 声明的能力。融合采用原始改写和产品边界适配；参考仓库为 MIT 许可证。
+Astravia 保留这两层，但不复制 MuAPI CLI、固定模型名、费用、供应商限制或未经 capability registry 声明的能力。融合采用原始改写和产品边界适配；参考仓库为 MIT 许可证。
 
 ## 为什么不创建 57 个顶层 Skill
 
@@ -31,7 +31,7 @@ create-content-campaign
 
 ## 全局能力融合
 
-| 来源能力 | Vetta 实施 |
+| 来源能力 | Astravia 实施 |
 | --- | --- |
 | Director Brief 与镜头语言 | 视频 `reference-role-and-timed-directing.md`，并复用现有 camera/light/sound 与 shot-card references |
 | 多素材 `@image/@video/@audio` 分工 | 转成 capability 驱动的 reference manifest；不假设固定槽位或数量 |
@@ -45,14 +45,14 @@ create-content-campaign
 
 ## Edit 与 Workflow 映射
 
-| Library Skill | 提取的能力 | Vetta 落点 |
+| Library Skill | 提取的能力 | Astravia 落点 |
 | --- | --- | --- |
 | `edit/ai-clipping` | 转录后候选跨度、8 类传播价值评分、重叠去重、平台裁切、少于目标数不补水 | 视频 `camera-social-and-clipping-video-recipes.md` + 质量 `scenario-gates.md` |
-| `workflow` | 先发现/检查工作流、读取必填输入、复用或新建、确认、执行、监控、输出 | 操作 `workflow-discovery-and-execution.md`；以 Vetta 三工具和 revision/confirmation 合同替换 MuAPI CLI/MCP |
+| `workflow` | 先发现/检查工作流、读取必填输入、复用或新建、确认、执行、监控、输出 | 操作 `workflow-discovery-and-execution.md`；以 Astravia 三工具和 revision/confirmation 合同替换 MuAPI CLI/MCP |
 
 ## Motion Skill 逐项映射
 
-| Library Skill | 保留的场景机制 | Vetta 落点 |
+| Library Skill | 保留的场景机制 | Astravia 落点 |
 | --- | --- | --- |
 | `3d-logo-animation` | 先审核立体静帧，再做材质光扫/旋转并保留结尾 logo hold | `product-brand-and-logo-video-recipes.md` |
 | `ai-fight-scene` | 人物 authority + 环境地理 + 16 格高剪辑密度分镜 + 先重试视频层 | `narrative-action-and-tutorial-video-recipes.md` |
@@ -78,7 +78,7 @@ create-content-campaign
 
 ## Social Skill 逐项映射
 
-| Library Skill | 保留的场景机制 | Vetta 落点 |
+| Library Skill | 保留的场景机制 | Astravia 落点 |
 | --- | --- | --- |
 | `instagram-post` | 两秒信息、单焦点 hero、caption 的 hook/body/CTA 结构 | 图片 `brand-and-publishing-recipes.md` |
 | `product-campaign` | 共用商品与视觉 DNA 的 hero、视频和平台衍生 | Campaign `recipe-catalog.md` + `scenario-composition.md` |
@@ -90,7 +90,7 @@ create-content-campaign
 
 ## Visual Skill 逐项映射
 
-| Library Skill | 保留的场景机制 | Vetta 落点 |
+| Library Skill | 保留的场景机制 | Astravia 落点 |
 | --- | --- | --- |
 | `action-figure-generator` | 身份、玩具比例/材质、服装主题、配件和包装分层 | `identity-fashion-and-social-effect-recipes.md` |
 | `ad-creative` | 固定 offer/受众/品牌，按 persuasion hypothesis 生成并先选 copy 方向 | `brand-and-publishing-recipes.md` + Campaign |
@@ -125,7 +125,7 @@ create-content-campaign
 - `muapi` 命令、MCP 工具、API key、endpoint 和轮询脚本。
 - 写死的模型路由、tier、价格、时长、比例、参考数量和审查规则。
 - 将 raster logo 称为矢量、将 AI floor plan 称为施工图、将 personal color board 称为测量结果等过度承诺。
-- 无条件读取网页或用搜索结果生成广告卖点；Vetta 必须有可信来源并把未核实 claim 留给用户审批。
+- 无条件读取网页或用搜索结果生成广告卖点；Astravia 必须有可信来源并把未核实 claim 留给用户审批。
 - 当前三工具和节点 schema 无法执行的自动转录、人脸跟踪、视频水印移除、训练角色等操作。相应 Skill 只保留可检查的计划和 capability gate。
 
 ## 新增文件结构
@@ -154,4 +154,4 @@ agent/skills/
 
 ## 后续边界
 
-这轮增强的是模型的判断和工作流设计能力，不等于 Vetta 已经拥有参考项目中的全部执行器。若要让长视频自动切片、精确 motion transfer、角色训练或 Provider 原生 extension 直接运行，还需要在 capability registry、Provider adapter、领域 schema 和测试中实现对应合同；在此之前 Skill 必须诚实地产出计划、可执行上游和外部步骤说明。
+这轮增强的是模型的判断和工作流设计能力，不等于 Astravia 已经拥有参考项目中的全部执行器。若要让长视频自动切片、精确 motion transfer、角色训练或 Provider 原生 extension 直接运行，还需要在 capability registry、Provider adapter、领域 schema 和测试中实现对应合同；在此之前 Skill 必须诚实地产出计划、可执行上游和外部步骤说明。

@@ -1,5 +1,5 @@
+import type { CardDescriptor } from "@astravia-org/plugin-sdk";
 import type { DesktopMcpAppAttachment } from "@preload/api";
-import type { CardDescriptor } from "@vetta-org/plugin-sdk";
 
 export type ChatErrorKind = "rate_limit" | "quota" | "network" | "auth" | "server" | "unknown";
 

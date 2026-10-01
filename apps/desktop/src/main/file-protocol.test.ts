@@ -1,13 +1,13 @@
 import { mkdtempSync, realpathSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createLoopbackSshConnection, formatLoopbackProjectUri } from "@vetta/ssh-transport/testing";
+import { createLoopbackSshConnection, formatLoopbackProjectUri } from "@astravia/ssh-transport/testing";
 import { describe, expect, it, vi } from "vitest";
 import { createLocalFileUrl } from "../shared/file-protocol.js";
 
 vi.mock("electron", () => ({
 	protocol: { handle: () => undefined },
-	app: { getPath: () => "/tmp/vetta-test-userdata", getAppPath: () => "/tmp/vetta-test-app" },
+	app: { getPath: () => "/tmp/astravia-test-userdata", getAppPath: () => "/tmp/astravia-test-app" },
 }));
 const connection = createLoopbackSshConnection("build-01");
 vi.mock("./ssh/ssh-runtime.js", () => ({ getSshConnection: () => connection }));
@@ -17,11 +17,11 @@ const { allowProjectRoot } = await import("./filesystem/filesystem-service.js");
 
 const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
-describe("vetta-file 协议", () => {
+describe("astravia-file 协议", () => {
 	it("远程项目里的文件能取回，Content-Type 与本机同一套", async () => {
-		// 回归：此前只有 vetta-media 支持远端。同一个插件用 vetta-file 只得到一张破图，
+		// 回归：此前只有 astravia-media 支持远端。同一个插件用 astravia-file 只得到一张破图，
 		// 没有任何提示——两个协议的能力不对称本身就是个陷阱。
-		const remoteRoot = realpathSync(mkdtempSync(join(tmpdir(), "vetta-file-remote-")));
+		const remoteRoot = realpathSync(mkdtempSync(join(tmpdir(), "astravia-file-remote-")));
 		writeFileSync(join(remoteRoot, "shot.png"), PNG);
 		const root = formatLoopbackProjectUri("build-01", remoteRoot);
 		allowProjectRoot(root);
@@ -34,7 +34,7 @@ describe("vetta-file 协议", () => {
 	});
 
 	it("本机文件照旧", async () => {
-		const root = realpathSync(mkdtempSync(join(tmpdir(), "vetta-file-local-")));
+		const root = realpathSync(mkdtempSync(join(tmpdir(), "astravia-file-local-")));
 		writeFileSync(join(root, "shot.png"), PNG);
 		allowProjectRoot(root);
 

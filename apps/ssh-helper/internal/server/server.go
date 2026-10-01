@@ -1,4 +1,4 @@
-// Package server implements the helper side of the Vetta remote-project protocol.
+// Package server implements the helper side of the Astravia remote-project protocol.
 package server
 
 import (
@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"vetta-ssh-helper/internal/protocol"
+	"astravia-ssh-helper/internal/protocol"
 )
 
 // maxFrameBytes bounds one request line. File writes arrive base64-encoded in a

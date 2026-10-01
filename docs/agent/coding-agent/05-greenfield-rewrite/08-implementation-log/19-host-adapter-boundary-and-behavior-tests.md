@@ -16,7 +16,7 @@
   `src/adapters/runtime-tools/executable-resolver.ts`。
 - `src/core/host/executable-resolver.ts` 保留为迁移期转发入口，避免已建立的导出路径立即失效。
 - 新增组合层公共子路径：
-  `@vetta/coding-agent/host`（稳定子路径；内部实现仍在 `adapters/runtime-tools`）。
+  `@astravia/coding-agent/host`（稳定子路径；内部实现仍在 `adapters/runtime-tools`）。
 - 新增行为测试，覆盖：
   - 已有受管可执行文件时不下载。
   - 离线模式不下载。

@@ -1,4 +1,4 @@
-import type { RuntimeHostSession } from "@vetta/runtime-core";
+import type { RuntimeHostSession } from "@astravia/runtime-core";
 import { describe, expect, it, vi } from "vitest";
 import type {
 	CodingAgentRuntimeExtensionEventHost,

@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { getAgentDir } from "@vetta/coding-agent/config";
-import { atomicWriteJSON } from "@vetta/toolkit/atomic-write";
+import { getAgentDir } from "@astravia/coding-agent/config";
+import { atomicWriteJSON } from "@astravia/toolkit/atomic-write";
 import lockfile from "proper-lockfile";
 
 function getSettingsPath(): string {

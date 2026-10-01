@@ -1,5 +1,5 @@
-import type { Api, Message, Model, UserMessage } from "@vetta/ai";
-import type { ContinuationPolicyContext } from "@vetta/runtime-core/kernel";
+import type { Api, Message, Model, UserMessage } from "@astravia/ai";
+import type { ContinuationPolicyContext } from "@astravia/runtime-core/kernel";
 import { describe, expect, it, vi } from "vitest";
 import { CodingAgentContinuationOrchestrator } from "../../src/composition/turn/continuation-orchestrator.js";
 import { CodingAgentLengthContinuationSource } from "../../src/composition/turn/length-continuation-source.js";
@@ -107,7 +107,7 @@ describe("CodingAgentLengthContinuationSource", () => {
 	});
 
 	it("refuses to fake a user turn when the truncated response has no visible output", async () => {
-		// 真实故障形态（vetta-go/ominiroute-antigravity）：预算全烧在 thinking 上，
+		// 真实故障形态（astravia-go/ominiroute-antigravity）：预算全烧在 thinking 上，
 		// 正文零产出就被网关判 MAX_TOKENS。此时注入"从中断处继续"只会再烧三轮。
 		const source = new CodingAgentLengthContinuationSource();
 		const truncated = {

@@ -3,8 +3,8 @@ import type {
 	FileExplorerCreatingEntry,
 	FileExplorerDragEntry,
 	FileExplorerSelectOptions,
-} from "@vetta-org/theme-ui/file-explorer";
-import { FileTreeView } from "@vetta-org/theme-ui/file-explorer";
+} from "@astravia-org/theme-ui/file-explorer";
+import { FileTreeView } from "@astravia-org/theme-ui/file-explorer";
 import type { KeyboardEvent } from "react";
 import { useFileTreeViewModel } from "../hooks/useFileTreeViewModel";
 

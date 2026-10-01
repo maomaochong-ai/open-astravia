@@ -25,10 +25,10 @@ Bun.plugin({
 	},
 });
 
-const infoFile = process.argv[2] ?? resolve(root, "node_modules/.cache/vetta-interop.json");
-const lanPort = Number(process.env.VETTA_INTEROP_LAN_PORT ?? 43210);
-const relayPort = Number(process.env.VETTA_INTEROP_RELAY_PORT ?? 43290);
-process.env.VETTA_FAKE_RELAY_PORT = String(relayPort);
+const infoFile = process.argv[2] ?? resolve(root, "node_modules/.cache/astravia-interop.json");
+const lanPort = Number(process.env.ASTRAVIA_INTEROP_LAN_PORT ?? 43210);
+const relayPort = Number(process.env.ASTRAVIA_INTEROP_RELAY_PORT ?? 43290);
+process.env.ASTRAVIA_FAKE_RELAY_PORT = String(relayPort);
 
 const rc = await import(resolve(root, "packages/remote-control/src/index.ts"));
 const { DesktopRemoteLanServer } = await import(resolve(root, "apps/desktop/src/main/remote-control/desktop-remote-lan-server.ts"));
@@ -64,12 +64,12 @@ function journalFor(deviceId: string) {
 type Summary = Record<string, unknown> & { id: string };
 const sessions: Summary[] = [
 	{ id: "s-report", projectCwd: "/conversations", projectName: "对话", title: "整理上周周报", preview: "把 Jira 里的工单按模块汇总", updatedAt: Date.now() - 3_600_000, status: "completed", live: false },
-	{ id: "s-build", projectCwd: "/Users/dev/vetta", projectName: "vetta", title: "修复桌面端打包脚本", preview: "electron-builder 签名失败", updatedAt: Date.now() - 120_000, status: "running", live: true },
+	{ id: "s-build", projectCwd: "/Users/dev/astravia", projectName: "astravia", title: "修复桌面端打包脚本", preview: "electron-builder 签名失败", updatedAt: Date.now() - 120_000, status: "running", live: true },
 	{ id: "s-docs", projectCwd: "/Users/dev/docs", projectName: "docs", title: "更新安装文档", preview: "链接检查失败：3 个外链 404", updatedAt: Date.now() - 86_400_000, status: "error", live: false },
 	...["整理会议纪要", "翻译发布公告", "排查内存占用", "清理旧分支", "生成月度报表", "核对依赖许可证"].map((title, index) => ({
 		id: `s-old-${index}`,
-		projectCwd: index % 2 ? "/Users/dev/vetta" : "/conversations",
-		projectName: index % 2 ? "vetta" : "对话",
+		projectCwd: index % 2 ? "/Users/dev/astravia" : "/conversations",
+		projectName: index % 2 ? "astravia" : "对话",
 		title,
 		preview: "已完成，结果已同步到电脑。",
 		updatedAt: Date.now() - (2 + index) * 86_400_000,
@@ -77,12 +77,12 @@ const sessions: Summary[] = [
 		live: false,
 	})),
 ];
-// `VETTA_INTEROP_PIN=<id>` starts with that session pinned, for screenshots of the pinned look.
-const pinnedAtStart = sessions.find((entry) => entry.id === process.env.VETTA_INTEROP_PIN);
+// `ASTRAVIA_INTEROP_PIN=<id>` starts with that session pinned, for screenshots of the pinned look.
+const pinnedAtStart = sessions.find((entry) => entry.id === process.env.ASTRAVIA_INTEROP_PIN);
 if (pinnedAtStart) pinnedAtStart.pinnedAt = Date.now();
 const conversationCwd = "/conversations";
 const projects = [
-	{ cwd: "/Users/dev/vetta", name: "vetta" },
+	{ cwd: "/Users/dev/astravia", name: "astravia" },
 	{ cwd: "/Users/dev/docs", name: "docs" },
 ];
 const histories = new Map<string, unknown[]>([
@@ -93,11 +93,11 @@ const histories = new Map<string, unknown[]>([
 	]],
 	["s-build", [{ kind: "user", id: "u2", text: "看看为什么打包签名失败", at: Date.now() - 120_000 }]],
 ]);
-// `VETTA_INTEROP_LONG=<turns>` adds a long chat, for timing how fast a big history opens;
-// `VETTA_INTEROP_STEPS=<n>` gives each turn that many tool-calling steps. Like the desktop,
+// `ASTRAVIA_INTEROP_LONG=<turns>` adds a long chat, for timing how fast a big history opens;
+// `ASTRAVIA_INTEROP_STEPS=<n>` gives each turn that many tool-calling steps. Like the desktop,
 // history is capped at the last 240 entries and tool text at 1200 characters.
-const longTurns = Number(process.env.VETTA_INTEROP_LONG ?? 0);
-const longSteps = Math.max(1, Number(process.env.VETTA_INTEROP_STEPS ?? 1));
+const longTurns = Number(process.env.ASTRAVIA_INTEROP_LONG ?? 0);
+const longSteps = Math.max(1, Number(process.env.ASTRAVIA_INTEROP_STEPS ?? 1));
 if (longTurns > 0) {
 	const start = Date.now() - longTurns * 600_000;
 	const narration = (turn: number, step: number) =>
@@ -128,14 +128,14 @@ if (longTurns > 0) {
 			})),
 		];
 	}).flat();
-	sessions.unshift({ id: "s-long", projectCwd: "/Users/dev/vetta", projectName: "vetta", title: "超长会话", preview: "打包流程逐步排查", updatedAt: Date.now(), status: "completed", live: false });
+	sessions.unshift({ id: "s-long", projectCwd: "/Users/dev/astravia", projectName: "astravia", title: "超长会话", preview: "打包流程逐步排查", updatedAt: Date.now(), status: "completed", live: false });
 	histories.set("s-long", entries.slice(-240));
 }
 
 // ---- Files (ADR-0139) ------------------------------------------------------------------
 // Every session's working directory is one fixture folder, served by the desktop's real
 // file service; its home is the fixture root, so anything outside it is refused.
-const filesHome = join(tmpdir(), "vetta-interop-files");
+const filesHome = join(tmpdir(), "astravia-interop-files");
 const filesCwd = join(filesHome, "session");
 mkdirSync(join(filesCwd, "out"), { recursive: true });
 mkdirSync(join(filesHome, ".ssh"), { recursive: true });
@@ -267,9 +267,9 @@ async function streamReply(deviceId: string, sessionId: string, text: string, no
 		turn.text += chunk;
 		emitAll(deviceId, "session.message", { kind: "assistant_delta", text: chunk }, sessionId);
 	}
-	// `VETTA_INTEROP_LONG_REPLY=1` follows up with a long answer in uneven bursts, as a real
+	// `ASTRAVIA_INTEROP_LONG_REPLY=1` follows up with a long answer in uneven bursts, as a real
 	// model over a real network sends it, to watch how the phone paces and fades it in.
-	if (process.env.VETTA_INTEROP_LONG_REPLY === "1") {
+	if (process.env.ASTRAVIA_INTEROP_LONG_REPLY === "1") {
 		let rest = longReply;
 		while (rest.length > 0) {
 			await delay(40 + Math.random() * 360);
@@ -463,7 +463,7 @@ const lan = new DesktopRemoteLanServer({
 	onDeviceHello: (device: { id: string; mobileIdentityKey?: string }, hello: { identityKey: string }) => {
 		const stored = devices.get(device.id);
 		// UI tests launch a brand-new phone per test with the same invite; let it take the pairing over.
-		const repin = process.env.VETTA_INTEROP_REPIN === "1";
+		const repin = process.env.ASTRAVIA_INTEROP_REPIN === "1";
 		if (!repin && stored?.mobileIdentityKey && stored.mobileIdentityKey !== hello.identityKey) return { kind: "reject", reason: "peer identity does not match the pinned key" };
 		if (stored) stored.mobileIdentityKey = hello.identityKey;
 		return { kind: "approve" };
@@ -520,9 +520,9 @@ async function connectRelay(deviceId: string, secret: string): Promise<void> {
 }
 await connectRelay(primary.id, primary.mobileSecret);
 
-// `VETTA_INTEROP_ASK_AFTER_MS=<ms>` has the running build session ask a question that long after
+// `ASTRAVIA_INTEROP_ASK_AFTER_MS=<ms>` has the running build session ask a question that long after
 // start, so the phone can be sent to the background first and show its notification.
-const askAfterMs = Number(process.env.VETTA_INTEROP_ASK_AFTER_MS ?? 0);
+const askAfterMs = Number(process.env.ASTRAVIA_INTEROP_ASK_AFTER_MS ?? 0);
 if (askAfterMs > 0) {
 	setTimeout(() => {
 		const sessionId = "s-build";

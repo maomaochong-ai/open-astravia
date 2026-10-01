@@ -1,13 +1,13 @@
-import type { HistoryEntry } from "@vetta/runtime-core";
+import type { HistoryEntry } from "@astravia/runtime-core";
 import { describe, expect, it } from "vitest";
 import { keyForPath, toTranscript } from "./remote-transcript.js";
 
 describe("remote transcript conversion", () => {
 	it("derives a stable opaque key that never leaks the path", () => {
-		const key = keyForPath("/Users/me/project/.vetta/sessions/a.jsonl");
+		const key = keyForPath("/Users/me/project/.astravia/sessions/a.jsonl");
 		expect(key).toMatch(/^[0-9a-f]{24}$/);
-		expect(key).toBe(keyForPath("/Users/me/project/.vetta/sessions/a.jsonl"));
-		expect(key).not.toBe(keyForPath("/Users/me/project/.vetta/sessions/b.jsonl"));
+		expect(key).toBe(keyForPath("/Users/me/project/.astravia/sessions/a.jsonl"));
+		expect(key).not.toBe(keyForPath("/Users/me/project/.astravia/sessions/b.jsonl"));
 	});
 
 	it("folds tool results into the assistant entry that issued the call", () => {

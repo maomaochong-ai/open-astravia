@@ -1,4 +1,4 @@
-import { migrateVersionedConfig } from "@vetta/toolkit/versioned-config";
+import { migrateVersionedConfig } from "@astravia/toolkit/versioned-config";
 import { z } from "zod";
 import {
 	CULTIVATION_HISTORY_RETENTION_DAYS,

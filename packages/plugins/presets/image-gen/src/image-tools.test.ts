@@ -10,7 +10,7 @@ import type {
 	PluginMediaArtifact,
 	PluginMediaApi,
 	PluginMediaJob,
-} from "@vetta-org/plugin-sdk";
+} from "@astravia-org/plugin-sdk";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ImageRepository } from "./image-repository";
 import { registerImageTools, selectImageProvider } from "./image-tools";
@@ -83,7 +83,7 @@ describe("image generation media tools", () => {
 		getImageGeneration.mockResolvedValue({});
 		listProviders.mockResolvedValue([
 			{
-				id: "desktop-app:vetta",
+				id: "desktop-app:astravia",
 				ownerId: "desktop-app",
 				protocolVersion: 2,
 				capabilities: [
@@ -131,14 +131,14 @@ describe("image generation media tools", () => {
 		persistArtifact.mockResolvedValue({
 			type: "plugin-blob",
 			blobId: "blob-1",
-			url: "vetta-media://local/blob-1",
+			url: "astravia-media://local/blob-1",
 			mimeType: "image/png",
 			sizeBytes: 128,
 		});
 		const image: PluginImageRef = {
 			id: "blob-1",
 			rootId: "blob-1",
-			url: "vetta-media://local/blob-1",
+			url: "astravia-media://local/blob-1",
 			mimeType: "image/png",
 		};
 		persist.mockResolvedValue(image);
@@ -148,7 +148,7 @@ describe("image generation media tools", () => {
 		).resolves.toMatchObject({ ok: true, images: [image] });
 		expect(submit).toHaveBeenCalledWith({
 			operation: "generate",
-			providerId: "desktop-app:vetta",
+			providerId: "desktop-app:astravia",
 			kind: "image",
 			mode: "text-to-image",
 			prompt: "draw a fox",
@@ -159,8 +159,8 @@ describe("image generation media tools", () => {
 		expect(persistArtifact).toHaveBeenCalledWith(artifact, { type: "plugin-blob" });
 		expect(releaseArtifact).toHaveBeenCalledWith(artifact);
 		expect(persist).toHaveBeenCalledWith(
-			{ id: "blob-1", url: "vetta-media://local/blob-1", mimeType: "image/png" },
-			{ providerId: "desktop-app:vetta", sessionId: "session-1" },
+			{ id: "blob-1", url: "astravia-media://local/blob-1", mimeType: "image/png" },
+			{ providerId: "desktop-app:astravia", sessionId: "session-1" },
 		);
 	});
 
@@ -171,7 +171,7 @@ describe("image generation media tools", () => {
 		});
 		listProviders.mockResolvedValue([
 			{
-				id: "desktop-app:vetta",
+				id: "desktop-app:astravia",
 				ownerId: "desktop-app",
 				protocolVersion: 2,
 				capabilities: [{
@@ -196,14 +196,14 @@ describe("image generation media tools", () => {
 		persistArtifact.mockResolvedValue({
 			type: "plugin-blob",
 			blobId: "blob-preferred",
-			url: "vetta-media://local/blob-preferred",
+			url: "astravia-media://local/blob-preferred",
 			mimeType: "image/png",
 			sizeBytes: 32,
 		});
 		persist.mockResolvedValue({
 			id: "blob-preferred",
 			rootId: "blob-preferred",
-			url: "vetta-media://local/blob-preferred",
+			url: "astravia-media://local/blob-preferred",
 			mimeType: "image/png",
 			providerId: "remote:images",
 		});
@@ -242,14 +242,14 @@ describe("image generation media tools", () => {
 		persistArtifact.mockResolvedValue({
 			type: "plugin-blob",
 			blobId: "blob-3",
-			url: "vetta-media://local/blob-3",
+			url: "astravia-media://local/blob-3",
 			mimeType: "image/webp",
 			sizeBytes: 96,
 		});
 		persist.mockResolvedValue({
 			id: "blob-3",
 			rootId: "blob-3",
-			url: "vetta-media://local/blob-3",
+			url: "astravia-media://local/blob-3",
 			mimeType: "image/webp",
 		});
 
@@ -273,7 +273,7 @@ describe("image generation media tools", () => {
 describe("selectImageProvider", () => {
 	const providers = [
 		{
-			id: "desktop-app:vetta",
+			id: "desktop-app:astravia",
 			ownerId: "desktop-app",
 			protocolVersion: 2 as const,
 			capabilities: [{ operation: "generate" as const, kind: "image" as const, modes: ["text-to-image" as const] }],
@@ -297,7 +297,7 @@ describe("selectImageProvider", () => {
 	});
 
 	it("keeps the built-in provider as the automatic default", () => {
-		expect(selectImageProvider(providers, "text-to-image").id).toBe("desktop-app:vetta");
+		expect(selectImageProvider(providers, "text-to-image").id).toBe("desktop-app:astravia");
 	});
 });
 

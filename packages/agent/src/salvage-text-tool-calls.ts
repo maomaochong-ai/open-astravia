@@ -1,4 +1,4 @@
-import type { AssistantMessage, Tool } from "@vetta/ai";
+import type { AssistantMessage, Tool } from "@astravia/ai";
 
 /**
  * 把「被模型写成正文的工具调用参数」还原成真实 tool call。

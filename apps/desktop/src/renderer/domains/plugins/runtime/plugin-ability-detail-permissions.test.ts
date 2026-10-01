@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
+import type { PluginPermission } from "@astravia-org/plugin-sdk";
 import type { InstalledPlugin } from "@preload/api";
-import type { PluginPermission } from "@vetta-org/plugin-sdk";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadPluginSnapshot } from "../components/plugin-snapshot";
 import { createPluginContext } from "./plugin-context";
@@ -17,7 +17,7 @@ function installedPlugin(grantedPermissions: PluginPermission[] = []): Installed
 		version: "1.0.3",
 		activeVersion: "1.0.3",
 		pluginApiVersion: "^2.0.0",
-		entryUrl: "vetta-plugin://cli-proxy-api/dist/mf-manifest.json",
+		entryUrl: "astravia-plugin://cli-proxy-api/dist/mf-manifest.json",
 		moduleFederation: { remoteName: "cli_proxy_api", expose: "./plugin" },
 		styleUrls: [],
 		permissions: ["ui.slot.ability-detail", "shell.openExternal", "models.manage", "network.fetch"],
@@ -67,7 +67,7 @@ async function activate(plugin: InstalledPlugin) {
 	});
 }
 
-beforeEach(() => vi.stubGlobal("vetta", { plugins: { internalCapabilities: {} } }));
+beforeEach(() => vi.stubGlobal("astravia", { plugins: { internalCapabilities: {} } }));
 afterEach(() => {
 	vi.restoreAllMocks();
 	vi.unstubAllGlobals();

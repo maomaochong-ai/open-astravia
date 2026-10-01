@@ -1,5 +1,8 @@
+import type {
+	RuntimeConfigurationJsonObject,
+	RuntimeConfigurationJsonValue,
+} from "@astravia/runtime-core/configuration";
 import type { DesktopRuntimeConfigurationCatalog } from "@preload/api";
-import type { RuntimeConfigurationJsonObject, RuntimeConfigurationJsonValue } from "@vetta/runtime-core/configuration";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { recordSettingsUsage } from "./recordSettingsUsage";
@@ -59,12 +62,12 @@ export function useRuntimeConfigurationModel(): RuntimeConfigurationModel {
 	useEffect(() => {
 		let cancelled = false;
 		const load = async (): Promise<void> => {
-			const next = await window.vetta.runtimeConfiguration.list();
+			const next = await window.astravia.runtimeConfiguration.list();
 			if (!cancelled) setCatalog(next);
 		};
 		void load();
-		const unsubscribe = window.vetta.runtimeConfiguration.onChanged(() => void load());
-		const unsubscribeProviders = window.vetta.plugins.onOcrProvidersChanged(() => void load());
+		const unsubscribe = window.astravia.runtimeConfiguration.onChanged(() => void load());
+		const unsubscribeProviders = window.astravia.plugins.onOcrProvidersChanged(() => void load());
 		return () => {
 			cancelled = true;
 			unsubscribe();
@@ -74,9 +77,11 @@ export function useRuntimeConfigurationModel(): RuntimeConfigurationModel {
 
 	const update = (configurationId: string, path: readonly string[], value: RuntimeConfigurationJsonValue): void => {
 		setCatalog((current) => (current ? patchCatalog(current, configurationId, path, value) : current));
-		void window.vetta.runtimeConfiguration.set(configurationId, setAtPath({}, path, value)).then(setCatalog, () => {
-			void window.vetta.runtimeConfiguration.list().then(setCatalog);
-		});
+		void window.astravia.runtimeConfiguration
+			.set(configurationId, setAtPath({}, path, value))
+			.then(setCatalog, () => {
+				void window.astravia.runtimeConfiguration.list().then(setCatalog);
+			});
 		recordSettingsUsage({
 			tab: "agent",
 			action: "changed",
@@ -97,7 +102,7 @@ export function useRuntimeConfigurationModel(): RuntimeConfigurationModel {
 				});
 				const fields = schemaFields(entry.descriptor.schema, entry.value).map((field) => ({
 					...field,
-					...(entry.configurationId === "vetta.ocr" && field.schema.type === "enum" && field.schema.enum
+					...(entry.configurationId === "astravia.ocr" && field.schema.type === "enum" && field.schema.enum
 						? {
 								options: field.schema.enum.map((option) => ({
 									value: option,

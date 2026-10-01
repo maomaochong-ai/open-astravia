@@ -14,7 +14,7 @@
 - 会话历史、认证、模型和设置等用户数据；必要时由显式、独立的新迁移器读取旧格式。
 - 模型消息、工具消息、错误、取消、事件顺序、并发约束和资源释放语义。
 - 仍然有效的行为测试场景和数据 fixture；旧实现可以临时作为测试 Oracle，但不能被新生产代码调用。
-- `@vetta/ai` 与经过合同验证的 `@vetta/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
+- `@astravia/ai` 与经过合同验证的 `@astravia/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
 
 ## 明确舍弃（固定）
 
@@ -28,7 +28,7 @@
 
 ## 本阶段与最终目标的关系
 
-前序阶段已经让 CLI、SDK、RPC 与 Desktop 使用 `@vetta/coding-agent/composition` 的稳定公共名称，但
+前序阶段已经让 CLI、SDK、RPC 与 Desktop 使用 `@astravia/coding-agent/composition` 的稳定公共名称，但
 `coding-agent` 内部仍以 `greenfield-runtime-composition.ts`、迁移合同转发文件和 `GreenfieldRuntime*` 合同类型作为
 真实实现身份，外部宿主还需要把稳定名称反向别名成迁移名称。这意味着公共表面已经稳定，内部所有权却仍处于迁移
 状态。
@@ -64,7 +64,7 @@
 - CLI Runtime Host、RPC Session Adapter、插件/MCP/Subagent/Todo 等测试直接使用稳定名称，不再反向别名；
 - SDK Session 工厂、Knowledge Processing、Session Host 和各初始化装配直接依赖 `contracts/index.ts` 与新的根文件；
 - Desktop Backend Pool 与 Candidate 直接使用稳定 Composition 合同，保留既有 Desktop Greenfield 产品候选名称和行为；
-- 没有新增兼容层，也没有修改 `@vetta/coding-agent/composition` 的公开导出集合。
+- 没有新增兼容层，也没有修改 `@astravia/coding-agent/composition` 的公开导出集合。
 
 ### 收紧架构门禁
 

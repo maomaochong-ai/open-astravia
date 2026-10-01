@@ -26,10 +26,10 @@ interface PluginContext {
 
 ## 对话：读状态
 
-hook 直接从 `@vetta-org/plugin-sdk` import、在组件里调用，读当前活动对话并自动 rerender。需要 `agent.session.read`。
+hook 直接从 `@astravia-org/plugin-sdk` import、在组件里调用，读当前活动对话并自动 rerender。需要 `agent.session.read`。
 
 ```tsx
-import { useActiveConversation, useConversationMessages } from "@vetta-org/plugin-sdk";
+import { useActiveConversation, useConversationMessages } from "@astravia-org/plugin-sdk";
 
 function Sidebar() {
   const convo = useActiveConversation();
@@ -139,7 +139,7 @@ ctx.agent.registerTool({
 
 | slug | 场景 |
 |---|---|
-| `conversation` | 普通对话（`~/.vetta/conversation`） |
+| `conversation` | 普通对话（`~/.astravia/conversation`） |
 | `project` | 普通项目中对话 |
 | `im-claw` | Claw IM 对话（飞书/微信网关） |
 | `batch` | 批量任务 |
@@ -426,7 +426,7 @@ interface PluginCommandSpawnHandle {
 - `recentOutput` 是 stdout+stderr 合并环形缓冲（约 64KB 尾部），用于诊断/进度。
 - 端口竞争极小概率存在：配合 `--strictPort` 类参数，启动失败（onExit）后重试一次即可。
 
-示例：`packages/plugins/presets/vetta-ui-design`（设计引擎 vite dev server 与 `npm install`）。
+示例：`packages/plugins/presets/astravia-ui-design`（设计引擎 vite dev server 与 `npm install`）。
 
 ## 离屏截图 capture.offscreen
 
@@ -454,7 +454,7 @@ interface PluginCaptureApi {
 - 会话窗口闲置约 30s 自动回收；插件禁用/卸载/重载、App 退出时统一清扫；每插件并存会话上限 4。
 - `readyExpression` 求值抛错按「未就绪」处理并继续轮询，直到超时。
 
-示例：`packages/plugins/presets/vetta-ui-design` 的画布位图队列（`src/canvas/offscreen-raster.ts`）：一个引擎 dev server 复用一个会话，`prepareScript` 发 `show-frame` 切帧，`readyExpression` 轮询引擎写入的 `window.__vetdPainted`。
+示例：`packages/plugins/presets/astravia-ui-design` 的画布位图队列（`src/canvas/offscreen-raster.ts`）：一个引擎 dev server 复用一个会话，`prepareScript` 发 `show-frame` 切帧，`readyExpression` 轮询引擎写入的 `window.__astraviaDesignPainted`。
 
 ## 文件 API
 
@@ -510,7 +510,7 @@ const response = await ctx.network.request<{ data: unknown[] }>({
 
 ## 插件私有存储 API
 
-`ctx.storage` 是按插件 id 隔离的持久化文件命名空间，物理目录位于 `~/.vetta/plugin-data/<plugin-id>/`。
+`ctx.storage` 是按插件 id 隔离的持久化文件命名空间，物理目录位于 `~/.astravia/plugin-data/<plugin-id>/`。
 公开路径都是相对路径；路径穿越和宿主保留的 `.storage` 路径会被拒绝。调用绑定当前插件的 capability
 session，不能伪造其他插件 id。API 以文件和字节为核心，JSON 只是插件选择的序列化格式。
 
@@ -599,7 +599,7 @@ interface PluginI18nApi {
 ```
 
 ```tsx
-import { useTranslation } from "@vetta-org/plugin-sdk";
+import { useTranslation } from "@astravia-org/plugin-sdk";
 
 function Panel() {
   const { t, locale } = useTranslation(); // 切语言自动 rerender

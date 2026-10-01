@@ -8,7 +8,7 @@ export type {
 	AgentObservationUpdate as RuntimeObservationUpdate,
 	AgentTracer as RuntimeTracer,
 	AgentUsageDetails as RuntimeUsageDetails,
-} from "@vetta/agent-core";
+} from "@astravia/agent-core";
 export { ConsoleRuntimeLogger, type LoggerContext, type RuntimeLogger } from "./logger.js";
 export {
 	createRuntimeObservationLoggerPort,

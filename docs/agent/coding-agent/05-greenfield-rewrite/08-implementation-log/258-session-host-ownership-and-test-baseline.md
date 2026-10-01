@@ -14,7 +14,7 @@
 - 会话历史、认证、模型和设置等用户数据；必要时由显式、独立的新迁移器读取旧格式。
 - 模型消息、工具消息、错误、取消、事件顺序、并发约束和资源释放语义。
 - 仍然有效的行为测试场景和数据 fixture；旧实现可以临时作为测试 Oracle，但不能被新生产代码调用。
-- `@vetta/ai` 与经过合同验证的 `@vetta/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
+- `@astravia/ai` 与经过合同验证的 `@astravia/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
 
 ## 明确舍弃（固定）
 
@@ -37,7 +37,7 @@
 - 新增 `CodingAgentProcessSessionHost`，集中拥有 Runtime、活动 Session、Extension Session、MCP、Turn retry、订阅和分阶段清理。
 - 新增 `CodingAgentExtensionSessionHost`，保留 Extension initialize、reload、session transition、rollback、command binding 和 dispose 语义。
 - 删除 CLI 下原有两个中立 Session Host 文件，以及无消费者的 `GreenfieldImExtensionSessionHost` 转发文件。
-- CLI IM Runtime Host 改为从 `@vetta/coding-agent/composition` 组合两个新宿主；RPC、IM 和 Print Adapter 仍留在 CLI。
+- CLI IM Runtime Host 改为从 `@astravia/coding-agent/composition` 组合两个新宿主；RPC、IM 和 Print Adapter 仍留在 CLI。
 - 删除废弃的 `GreenfieldCliSessionOptions` 类型别名；CLI 与 Desktop 直接使用宿主无关的 `GreenfieldRuntimeSessionOptions`。
 - 将 Extension Session Host 回滚测试迁入 `coding-agent` 包，并改为验证新所有者和新名称。
 - 修复 Coding Agent 既有测试基线：模型凭据命令改用跨平台 Node fixture，初始化 Profile 补齐当前字段，Subagent Child Factory 断言补齐 `AbortSignal`。
@@ -66,5 +66,5 @@
 ## 尚未完成的替换
 
 - `apps/cli-host/src/rpc/greenfield-im-runtime-host.ts` 仍同时承担 Bootstrap 输入映射、Composition 创建、Extension Host 工厂、命令动作装配与协议能力连接；这些都属于 CLI，但文件内职责仍需按边界拆分。
-- `@vetta/coding-agent/composition` 仍暴露较宽的产品组合表面；后续应按真实消费者区分稳定 Session 合同、宿主装配入口和内部实现，但不能恢复 CLI 转发层或旧别名。
+- `@astravia/coding-agent/composition` 仍暴露较宽的产品组合表面；后续应按真实消费者区分稳定 Session 合同、宿主装配入口和内部实现，但不能恢复 CLI 转发层或旧别名。
 - 下一阶段应先拆分 CLI Runtime Host 的启动装配与 RPC capability 连接，保持 `CodingAgentProcessSessionHost` 为唯一进程级能力所有者，并用现有 194 个 CLI 行为测试验证没有功能变化。

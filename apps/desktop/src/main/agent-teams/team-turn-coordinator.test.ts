@@ -4,8 +4,8 @@ import {
 	type TeamMemberTurnAttempt,
 	type TeamSessionDocument,
 	type TeamWorkItem,
-} from "@vetta/agent-team";
-import type { RuntimeHost } from "@vetta/runtime-core";
+} from "@astravia/agent-team";
+import type { RuntimeHost } from "@astravia/runtime-core";
 import { describe, expect, it, vi } from "vitest";
 import type { TeamCollaborationStore } from "./team-collaboration-store.js";
 import type { TeamSessionEventHub } from "./team-session-event-hub.js";

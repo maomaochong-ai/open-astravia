@@ -6,7 +6,7 @@ import { createStore, Provider } from "jotai";
 import { useState } from "react";
 import { I18nextProvider } from "react-i18next";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { getProviderIcon } from "@vetta-org/theme-ui/shared";
+import { getProviderIcon } from "@astravia-org/theme-ui/shared";
 import { localModelsConfigAtom, teamMemberModelsAtom } from "@shared/store/atoms";
 import type {
 	TeamMemberModelPreference,
@@ -98,7 +98,7 @@ beforeEach(() => {
 		},
 	);
 	HTMLElement.prototype.scrollIntoView = vi.fn();
-	Object.defineProperty(window, "vetta", {
+	Object.defineProperty(window, "astravia", {
 		configurable: true,
 		value: {
 			models: { get: async () => config, fetchRemote: async () => ({ providers: {} }) },

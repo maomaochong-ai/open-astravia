@@ -19,7 +19,7 @@ const INHERITED_ENV_KEYS = [
 	"NO_COLOR",
 	// 托管 Node 运行时的 npm 配置（RuntimeManager.applyEnv 写在主进程 process.env 上）。
 	// 不带上这几个键，插件里的 `npm install` 就会绕过配置的镜像源与共享缓存，回落到
-	// 默认 registry —— vetta-ui-design 的设计引擎首次装依赖会因此慢上数倍。
+	// 默认 registry —— astravia-ui-design 的设计引擎首次装依赖会因此慢上数倍。
 	"npm_config_registry",
 	"npm_config_cache",
 	"npm_config_prefix",

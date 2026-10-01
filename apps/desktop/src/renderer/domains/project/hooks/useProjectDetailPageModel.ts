@@ -1,3 +1,4 @@
+import type { ProjectDetailPageViewProps } from "@astravia-org/theme-ui/project";
 import { isMac } from "@shared/lib/platform";
 import { pathBasename } from "@shared/lib/utils";
 import { useShortcutScope } from "@shared/shortcuts";
@@ -11,7 +12,6 @@ import {
 	sessionsMapAtom,
 } from "@shared/store/atoms";
 import { useNavigate, useParams } from "@tanstack/react-router";
-import type { ProjectDetailPageViewProps } from "@vetta-org/theme-ui/project";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -62,7 +62,7 @@ function useAgentsMd(cwd: string) {
 	const load = useCallback(async () => {
 		setLoading(true);
 		try {
-			const result = await window.vetta.fs.readFile(filePath);
+			const result = await window.astravia.fs.readFile(filePath);
 			setContent(result.content);
 			setOriginal(result.content);
 		} catch {
@@ -79,7 +79,7 @@ function useAgentsMd(cwd: string) {
 	const save = useCallback(async () => {
 		setSaveStatus("saving");
 		try {
-			await window.vetta.fs.writeFile(filePath, content);
+			await window.astravia.fs.writeFile(filePath, content);
 			setOriginal(content);
 			setSaveStatus("saved");
 			setTimeout(() => setSaveStatus("idle"), 2000);
@@ -98,7 +98,7 @@ function useCreatedAt(cwd: string) {
 	const [createdAt, setCreatedAt] = useState<number | null>(null);
 
 	useEffect(() => {
-		void window.vetta.fs.stat(cwd).then((result) => {
+		void window.astravia.fs.stat(cwd).then((result) => {
 			if (result) setCreatedAt(result.createdAt);
 		});
 	}, [cwd]);
@@ -149,7 +149,7 @@ export function useProjectDetailPageModel(): ProjectDetailPageModel {
 			confirmLabel: t("exportDialog.confirm"),
 			variant: "default",
 			onConfirm: async () => {
-				const result = await window.vetta.project.export(decodedCwd);
+				const result = await window.astravia.project.export(decodedCwd);
 				if (result && "error" in result) {
 					setConfirm({
 						title: t("exportDialog.failedTitle"),
@@ -227,7 +227,7 @@ export function useProjectDetailPageModel(): ProjectDetailPageModel {
 			void save();
 		},
 		onShowInFolder: () => {
-			void window.vetta.shell.showInFolder(decodedCwd);
+			void window.astravia.shell.showInFolder(decodedCwd);
 		},
 		onToggleActivity: () => setActivityOpen((o) => !o),
 	};

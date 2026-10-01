@@ -1,6 +1,6 @@
 import type { Achievement, AchievementId } from "./achievements";
 
-const STORAGE_KEY = "vetta-achievement-highest-seen";
+const STORAGE_KEY = "astravia-achievement-highest-seen";
 
 function findAchievementIndex(achievements: readonly Achievement[], id: string | null): number {
 	if (!id) return -1;

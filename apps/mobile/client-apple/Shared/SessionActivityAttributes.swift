@@ -1,5 +1,5 @@
 import ActivityKit
-import VettaKit
+import AstraviaKit
 
 /// The Live Activity for the paired desktop's busy sessions, shared by the app,
 /// which starts and updates it, and the widget extension, which draws it.

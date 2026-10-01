@@ -1,7 +1,7 @@
-import { ProviderIcon } from "@vetta-org/theme-ui/shared";
+import { ProviderIcon } from "@astravia-org/theme-ui/shared";
 import { cn } from "@shared/lib/utils";
 import { modelCatalog } from "@shared/store/model-catalog";
-import { ThemeSurface } from "@vetta-org/theme-ui/appearance";
+import { ThemeSurface } from "@astravia-org/theme-ui/appearance";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -12,7 +12,7 @@ import {
 	DropdownMenuSubContent,
 	DropdownMenuSubTrigger,
 	DropdownMenuTrigger,
-} from "@vetta-org/ui";
+} from "@astravia-org/ui";
 import { AnimatePresence, motion } from "motion/react";
 import type { ChangeEvent, KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";

@@ -2,7 +2,7 @@ import {
 	type ThemeStorage,
 	type ThemeStorageStatus,
 	useThemeStorage,
-} from "@vetta-org/theme-sdk";
+} from "@astravia-org/theme-sdk";
 import { useMemo } from "react";
 import { isSameCultivationHistory } from "../cultivation-history";
 import { isSameCultivationSnapshot } from "../computeCultivation";

@@ -1,20 +1,20 @@
 import type { PetActionId } from "./pet-actions.js";
 import type { PetBubbleStyleId } from "./pet-bubbles.js";
 
-export const PET_COMMAND_CHANNEL = "vetta:pet:command";
-export const PET_CONFIG_CHANGED_CHANNEL = "vetta:pet:config-changed";
-export const PET_RESIZE_BY_WHEEL_CHANNEL = "vetta:pet:resize-by-wheel";
-export const PET_RESIZE_VIDEO_BY_WHEEL_CHANNEL = "vetta:pet:resize-video-by-wheel";
-export const PET_BEGIN_WINDOW_MOVE_CHANNEL = "vetta:pet:begin-window-move";
-export const PET_MOVE_WINDOW_BY_CHANNEL = "vetta:pet:move-window-by";
-export const PET_END_WINDOW_MOVE_CHANNEL = "vetta:pet:end-window-move";
-export const PET_BEGIN_WINDOW_RESIZE_CHANNEL = "vetta:pet:begin-window-resize";
-export const PET_SET_WINDOW_SIZE_CHANNEL = "vetta:pet:set-window-size";
-export const PET_SET_CONTENT_SIZE_CHANNEL = "vetta:pet:set-content-size";
-export const PET_END_WINDOW_RESIZE_CHANNEL = "vetta:pet:end-window-resize";
-export const PET_SET_VIDEO_BASE_SIZE_CHANNEL = "vetta:pet:set-video-base-size";
-export const PET_SET_MOUSE_PASSTHROUGH_CHANNEL = "vetta:pet:set-mouse-passthrough";
-export const PET_SET_VIDEO_HITBOX_CHANNEL = "vetta:pet:set-video-hitbox";
+export const PET_COMMAND_CHANNEL = "astravia:pet:command";
+export const PET_CONFIG_CHANGED_CHANNEL = "astravia:pet:config-changed";
+export const PET_RESIZE_BY_WHEEL_CHANNEL = "astravia:pet:resize-by-wheel";
+export const PET_RESIZE_VIDEO_BY_WHEEL_CHANNEL = "astravia:pet:resize-video-by-wheel";
+export const PET_BEGIN_WINDOW_MOVE_CHANNEL = "astravia:pet:begin-window-move";
+export const PET_MOVE_WINDOW_BY_CHANNEL = "astravia:pet:move-window-by";
+export const PET_END_WINDOW_MOVE_CHANNEL = "astravia:pet:end-window-move";
+export const PET_BEGIN_WINDOW_RESIZE_CHANNEL = "astravia:pet:begin-window-resize";
+export const PET_SET_WINDOW_SIZE_CHANNEL = "astravia:pet:set-window-size";
+export const PET_SET_CONTENT_SIZE_CHANNEL = "astravia:pet:set-content-size";
+export const PET_END_WINDOW_RESIZE_CHANNEL = "astravia:pet:end-window-resize";
+export const PET_SET_VIDEO_BASE_SIZE_CHANNEL = "astravia:pet:set-video-base-size";
+export const PET_SET_MOUSE_PASSTHROUGH_CHANNEL = "astravia:pet:set-mouse-passthrough";
+export const PET_SET_VIDEO_HITBOX_CHANNEL = "astravia:pet:set-video-hitbox";
 
 export type PetResizeCorner = "top-left" | "top-right" | "bottom-left" | "bottom-right";
 export type PetCommandSource = "app" | "user" | "config";

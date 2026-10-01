@@ -12,8 +12,8 @@
 
 ## 决策
 
-1. WebRTC host 除视频轨和 `vetta-input-v1` 输入通道外，再创建可靠、有序的 `vetta-control-v2` DataChannel。`@vetta/remote-desktop` 只转发不透明文本，不依赖或解析控制协议。
-2. `@vetta/remote-control` v2 的完整握手和 `sealed` 帧原样运行在该 DataChannel 上。长期身份密钥、临时密钥派生、请求响应、事件序号和恢复语义不变；P2P 传输不降低应用层端到端加密。
+1. WebRTC host 除视频轨和 `astravia-input-v1` 输入通道外，再创建可靠、有序的 `astravia-control-v2` DataChannel。`@astravia/remote-desktop` 只转发不透明文本，不依赖或解析控制协议。
+2. `@astravia/remote-control` v2 的完整握手和 `sealed` 帧原样运行在该 DataChannel 上。长期身份密钥、临时密钥派生、请求响应、事件序号和恢复语义不变；P2P 传输不降低应用层端到端加密。
 3. Android 先按局域网 WebSocket、中继 WebSocket的顺序建立引导连接。Desktop 据此启动 WebRTC host；控制 DataChannel 完成 v2 握手后，Android 静默切换全部业务请求和事件到 P2P，并关闭原控制连接。
 4. Desktop 可以同时保留 P2P、局域网和中继连接，但每个设备的事件只从当前优先级最高的在线链路发送，顺序为 P2P、局域网、中继，避免重复流量。共享事件日志保证切换后的序号连续并补发缺失尾部。
 5. P2P 失败或断开时，Android 自动重新建立局域网或中继控制连接，再尝试新的 WebRTC 会话。云端的 `/v2/desktop` WebSocket继续承担鉴权和信令，不承载屏幕、输入或控制业务载荷。

@@ -7,15 +7,15 @@ import type {
 	CodingAgentQuestionResult,
 	CodingAgentSandboxAuthorizationDecision,
 	CodingAgentSandboxAuthorizationFunctionRequest,
-} from "@vetta/coding-agent/function-extensions";
+} from "@astravia/coding-agent/function-extensions";
 import type {
 	AgentPluginContinuationInvocation,
 	AgentPluginContinuationResult,
 	AgentPluginHandlerResult,
 	AgentPluginSystemPromptInvocation,
 	AgentPluginToolInvocation,
-} from "@vetta/coding-agent/plugin-runtime";
-import { DEFAULT_PERSONA_ID, PERSONAS } from "@vetta/coding-agent/profile";
+} from "@astravia/coding-agent/plugin-runtime";
+import { DEFAULT_PERSONA_ID, PERSONAS } from "@astravia/coding-agent/profile";
 import {
 	CODING_AGENT_BACKGROUND_TASK_KILL,
 	CODING_AGENT_BACKGROUND_TASKS_CLEAR_FINISHED,
@@ -31,11 +31,11 @@ import {
 	CODING_AGENT_SUBAGENTS_READ,
 	CODING_AGENT_TODO_CLEAR,
 	isCodingAgentPermissionMode,
-} from "@vetta/coding-agent/session-extensions";
-import type { SessionEvent, SessionExecutionMode, SettingsPatch } from "@vetta/runtime-core";
-import { sessionExtensionObservation } from "@vetta/runtime-core/session-extensions";
-import { assertProjectSupportsExecutionMode } from "@vetta/runtime-desktop";
-import { isMcpJsonValue, type McpJsonObject } from "@vetta/runtime-mcp";
+} from "@astravia/coding-agent/session-extensions";
+import type { SessionEvent, SessionExecutionMode, SettingsPatch } from "@astravia/runtime-core";
+import { sessionExtensionObservation } from "@astravia/runtime-core/session-extensions";
+import { assertProjectSupportsExecutionMode } from "@astravia/runtime-desktop";
+import { isMcpJsonValue, type McpJsonObject } from "@astravia/runtime-mcp";
 import { BrowserWindow, ipcMain, type WebContents } from "electron";
 import type { DesktopMcpAppResourceRead, DesktopMcpAppToolCall } from "../../shared/mcp-app.js";
 import type { DesktopMcpElicitationResponse, DesktopMcpElicitationValue } from "../../shared/mcp-interaction.js";
@@ -155,101 +155,101 @@ const sessionLog = getAppLogger("session");
 const pluginLog = getAppLogger("plugin");
 
 const CHANNELS = {
-	CREATE: "vetta:session:create",
-	LIST_PROJECTS: "vetta:session:list-projects",
-	LIST_SESSIONS: "vetta:session:list-sessions",
-	SESSIONS_CHANGED: "vetta:session:sessions-changed",
-	PROMPT: "vetta:session:prompt",
-	CONTINUE: "vetta:session:continue",
-	ABORT: "vetta:session:abort",
-	QUEUE_STATE: "vetta:session:queue-state",
-	QUEUE_CONTEXT_COMPACTION: "vetta:session:queue-context-compaction",
-	QUEUE_REMOVE: "vetta:session:queue-remove",
-	QUEUE_REORDER: "vetta:session:queue-reorder",
-	QUEUE_SEND_NOW: "vetta:session:queue-send-now",
-	QUEUE_RESUME: "vetta:session:queue-resume",
-	QUEUE_CLEAR: "vetta:session:queue-clear",
-	CLEAR_TODOS: "vetta:session:clear-todos",
-	SUBSCRIBE: "vetta:session:subscribe",
-	UNSUBSCRIBE: "vetta:session:unsubscribe",
-	UPDATE_SETTINGS: "vetta:session:update-settings",
-	SET_EXECUTION_MODE: "vetta:session:set-execution-mode",
-	SET_GLOBAL_EXECUTION_MODE: "vetta:session:set-global-execution-mode",
+	CREATE: "astravia:session:create",
+	LIST_PROJECTS: "astravia:session:list-projects",
+	LIST_SESSIONS: "astravia:session:list-sessions",
+	SESSIONS_CHANGED: "astravia:session:sessions-changed",
+	PROMPT: "astravia:session:prompt",
+	CONTINUE: "astravia:session:continue",
+	ABORT: "astravia:session:abort",
+	QUEUE_STATE: "astravia:session:queue-state",
+	QUEUE_CONTEXT_COMPACTION: "astravia:session:queue-context-compaction",
+	QUEUE_REMOVE: "astravia:session:queue-remove",
+	QUEUE_REORDER: "astravia:session:queue-reorder",
+	QUEUE_SEND_NOW: "astravia:session:queue-send-now",
+	QUEUE_RESUME: "astravia:session:queue-resume",
+	QUEUE_CLEAR: "astravia:session:queue-clear",
+	CLEAR_TODOS: "astravia:session:clear-todos",
+	SUBSCRIBE: "astravia:session:subscribe",
+	UNSUBSCRIBE: "astravia:session:unsubscribe",
+	UPDATE_SETTINGS: "astravia:session:update-settings",
+	SET_EXECUTION_MODE: "astravia:session:set-execution-mode",
+	SET_GLOBAL_EXECUTION_MODE: "astravia:session:set-global-execution-mode",
 	/** 设置「新会话默认工作模式」。不影响任何已存在会话：mode 在会话创建时固化。 */
-	SET_GLOBAL_AGENT_MODE: "vetta:session:set-global-agent-mode",
+	SET_GLOBAL_AGENT_MODE: "astravia:session:set-global-agent-mode",
 	/** 默认工作模式已变更；仅用于各窗口新会话页 toggle 的显示同步，不改变任何活跃会话的行为。 */
-	AGENT_MODE_CHANGED: "vetta:session:agent-mode-changed",
-	GET_STATE: "vetta:session:get-state",
-	GET_MESSAGES: "vetta:session:get-messages",
-	DELETE: "vetta:session:delete",
-	RENAME: "vetta:session:rename",
-	AUTO_TITLE: "vetta:session:auto-title",
-	NEXT_PROMPT_SUGGESTIONS: "vetta:session:next-prompt-suggestions",
-	DISPOSE: "vetta:session:dispose",
-	GET_FULL_HISTORY: "vetta:session:get-full-history",
-	NAVIGATE_FOR_EDIT: "vetta:session:navigate-for-edit",
-	SWITCH_BRANCH: "vetta:session:switch-branch",
-	DELETE_MESSAGE: "vetta:session:delete-message",
-	REPLACE_LAST_USER_MESSAGE: "vetta:session:replace-last-user-message",
-	FORK_SESSION: "vetta:session:fork-session",
-	GET_SESSION_PATH: "vetta:session:get-session-path",
-	SET_GLOBAL_THINKING: "vetta:session:set-global-thinking-level",
-	GET_GLOBAL_THINKING: "vetta:session:get-global-thinking-level",
-	GET_PERSONAS: "vetta:session:get-personas",
-	GET_AGENT_MODES: "vetta:session:get-agent-modes",
-	GET_PERSONALIZATION: "vetta:session:get-personalization",
-	SET_PERSONALIZATION: "vetta:session:set-personalization",
-	EVENT: "vetta:session:event",
-	QUESTION_REQUEST: "vetta:session:question-request",
-	QUESTION_LIST_PENDING: "vetta:session:question-list-pending",
-	QUESTION_RESOLVED: "vetta:session:question-resolved",
-	QUESTION_RESPONSE: "vetta:session:question-response",
-	PLAN_MODE_GET_STATE: "vetta:session:plan-mode-get-state",
-	PLAN_MODE_SET_PERMISSION_MODE: "vetta:session:plan-mode-set-permission-mode",
-	GOAL_GET_STATE: "vetta:session:goal-get-state",
-	GOAL_START: "vetta:session:goal-start",
-	GOAL_PAUSE: "vetta:session:goal-pause",
-	GOAL_RESUME: "vetta:session:goal-resume",
-	GOAL_CLEAR: "vetta:session:goal-clear",
-	PLAN_REVIEW_REQUEST: "vetta:session:plan-review-request",
-	PLAN_REVIEW_LIST_PENDING: "vetta:session:plan-review-list-pending",
-	PLAN_REVIEW_RESOLVED: "vetta:session:plan-review-resolved",
-	PLAN_REVIEW_RESPONSE: "vetta:session:plan-review-response",
-	MCP_ELICITATION_REQUEST: "vetta:session:mcp-elicitation-request",
-	MCP_ELICITATION_LIST_PENDING: "vetta:session:mcp-elicitation-list-pending",
-	MCP_ELICITATION_RESOLVED: "vetta:session:mcp-elicitation-resolved",
-	MCP_ELICITATION_RESPONSE: "vetta:session:mcp-elicitation-response",
-	MCP_TASKS_CHANGED: "vetta:session:mcp-tasks-changed",
-	MCP_TASKS_LIST: "vetta:session:mcp-tasks-list",
-	MCP_TASKS_CANCEL: "vetta:session:mcp-tasks-cancel",
-	MCP_TASKS_CLEAR_FINISHED: "vetta:session:mcp-tasks-clear-finished",
-	MCP_APP_SURFACE_GET: "vetta:session:mcp-app-surface-get",
-	MCP_APP_CALL_TOOL: "vetta:session:mcp-app-call-tool",
-	MCP_APP_READ_RESOURCE: "vetta:session:mcp-app-read-resource",
-	MCP_APP_RELEASE: "vetta:session:mcp-app-release",
-	SANDBOX_GRANT_REQUEST: "vetta:session:sandbox-grant-request",
-	SANDBOX_GRANT_RESPONSE: "vetta:session:sandbox-grant-response",
-	SANDBOX_GRANTS_LIST: "vetta:session:sandbox-grants-list",
-	SANDBOX_GRANTS_REVOKE: "vetta:session:sandbox-grants-revoke",
-	SANDBOX_GRANTS_REVOKE_ALL: "vetta:session:sandbox-grants-revoke-all",
-	BACKGROUND_TASKS_CLEAR_FINISHED: "vetta:session:background-tasks-clear-finished",
-	BACKGROUND_TASKS_KILL: "vetta:session:background-tasks-kill",
-	SUBAGENT_INTERRUPT: "vetta:session:subagent-interrupt",
-	LIST_RUNNING: "vetta:session:list-running",
+	AGENT_MODE_CHANGED: "astravia:session:agent-mode-changed",
+	GET_STATE: "astravia:session:get-state",
+	GET_MESSAGES: "astravia:session:get-messages",
+	DELETE: "astravia:session:delete",
+	RENAME: "astravia:session:rename",
+	AUTO_TITLE: "astravia:session:auto-title",
+	NEXT_PROMPT_SUGGESTIONS: "astravia:session:next-prompt-suggestions",
+	DISPOSE: "astravia:session:dispose",
+	GET_FULL_HISTORY: "astravia:session:get-full-history",
+	NAVIGATE_FOR_EDIT: "astravia:session:navigate-for-edit",
+	SWITCH_BRANCH: "astravia:session:switch-branch",
+	DELETE_MESSAGE: "astravia:session:delete-message",
+	REPLACE_LAST_USER_MESSAGE: "astravia:session:replace-last-user-message",
+	FORK_SESSION: "astravia:session:fork-session",
+	GET_SESSION_PATH: "astravia:session:get-session-path",
+	SET_GLOBAL_THINKING: "astravia:session:set-global-thinking-level",
+	GET_GLOBAL_THINKING: "astravia:session:get-global-thinking-level",
+	GET_PERSONAS: "astravia:session:get-personas",
+	GET_AGENT_MODES: "astravia:session:get-agent-modes",
+	GET_PERSONALIZATION: "astravia:session:get-personalization",
+	SET_PERSONALIZATION: "astravia:session:set-personalization",
+	EVENT: "astravia:session:event",
+	QUESTION_REQUEST: "astravia:session:question-request",
+	QUESTION_LIST_PENDING: "astravia:session:question-list-pending",
+	QUESTION_RESOLVED: "astravia:session:question-resolved",
+	QUESTION_RESPONSE: "astravia:session:question-response",
+	PLAN_MODE_GET_STATE: "astravia:session:plan-mode-get-state",
+	PLAN_MODE_SET_PERMISSION_MODE: "astravia:session:plan-mode-set-permission-mode",
+	GOAL_GET_STATE: "astravia:session:goal-get-state",
+	GOAL_START: "astravia:session:goal-start",
+	GOAL_PAUSE: "astravia:session:goal-pause",
+	GOAL_RESUME: "astravia:session:goal-resume",
+	GOAL_CLEAR: "astravia:session:goal-clear",
+	PLAN_REVIEW_REQUEST: "astravia:session:plan-review-request",
+	PLAN_REVIEW_LIST_PENDING: "astravia:session:plan-review-list-pending",
+	PLAN_REVIEW_RESOLVED: "astravia:session:plan-review-resolved",
+	PLAN_REVIEW_RESPONSE: "astravia:session:plan-review-response",
+	MCP_ELICITATION_REQUEST: "astravia:session:mcp-elicitation-request",
+	MCP_ELICITATION_LIST_PENDING: "astravia:session:mcp-elicitation-list-pending",
+	MCP_ELICITATION_RESOLVED: "astravia:session:mcp-elicitation-resolved",
+	MCP_ELICITATION_RESPONSE: "astravia:session:mcp-elicitation-response",
+	MCP_TASKS_CHANGED: "astravia:session:mcp-tasks-changed",
+	MCP_TASKS_LIST: "astravia:session:mcp-tasks-list",
+	MCP_TASKS_CANCEL: "astravia:session:mcp-tasks-cancel",
+	MCP_TASKS_CLEAR_FINISHED: "astravia:session:mcp-tasks-clear-finished",
+	MCP_APP_SURFACE_GET: "astravia:session:mcp-app-surface-get",
+	MCP_APP_CALL_TOOL: "astravia:session:mcp-app-call-tool",
+	MCP_APP_READ_RESOURCE: "astravia:session:mcp-app-read-resource",
+	MCP_APP_RELEASE: "astravia:session:mcp-app-release",
+	SANDBOX_GRANT_REQUEST: "astravia:session:sandbox-grant-request",
+	SANDBOX_GRANT_RESPONSE: "astravia:session:sandbox-grant-response",
+	SANDBOX_GRANTS_LIST: "astravia:session:sandbox-grants-list",
+	SANDBOX_GRANTS_REVOKE: "astravia:session:sandbox-grants-revoke",
+	SANDBOX_GRANTS_REVOKE_ALL: "astravia:session:sandbox-grants-revoke-all",
+	BACKGROUND_TASKS_CLEAR_FINISHED: "astravia:session:background-tasks-clear-finished",
+	BACKGROUND_TASKS_KILL: "astravia:session:background-tasks-kill",
+	SUBAGENT_INTERRUPT: "astravia:session:subagent-interrupt",
+	LIST_RUNNING: "astravia:session:list-running",
 	/** 有会话在跑的项目 cwd 列表；会话路径无法反推项目，见处理器上的说明。 */
-	LIST_RUNNING_CWDS: "vetta:session:list-running-cwds",
-	RUNNING_CHANGED: "vetta:session:running-changed",
+	LIST_RUNNING_CWDS: "astravia:session:list-running-cwds",
+	RUNNING_CHANGED: "astravia:session:running-changed",
 	// 某 session 是否有待回答的 ask_user_question；广播给所有窗口（侧栏 + 快捷面板）。
-	PENDING_QUESTION_CHANGED: "vetta:session:pending-question-changed",
-	CLEAR_DEFAULT_CONVERSATION: "vetta:session:clear-default-conversation",
-	CLEAR_DEFAULT_ARTIFACTS: "vetta:session:clear-default-artifacts",
+	PENDING_QUESTION_CHANGED: "astravia:session:pending-question-changed",
+	CLEAR_DEFAULT_CONVERSATION: "astravia:session:clear-default-conversation",
+	CLEAR_DEFAULT_ARTIFACTS: "astravia:session:clear-default-artifacts",
 	// Read-only viewer for sessions we don't want to (or can't) take the
 	// write lock on — currently IM sessions, see ADR-0004. The viewer
 	// reads the .jsonl directly and tails fs.watch for new entries.
-	VIEWER_OPEN: "vetta:session:viewer-open",
-	VIEWER_SUBSCRIBE: "vetta:session:viewer-subscribe",
-	VIEWER_UNSUBSCRIBE: "vetta:session:viewer-unsubscribe",
-	VIEWER_EVENT: "vetta:session:viewer-event",
+	VIEWER_OPEN: "astravia:session:viewer-open",
+	VIEWER_SUBSCRIBE: "astravia:session:viewer-subscribe",
+	VIEWER_UNSUBSCRIBE: "astravia:session:viewer-unsubscribe",
+	VIEWER_EVENT: "astravia:session:viewer-event",
 	PLUGIN_TOOL_REQUEST: PLUGIN_CONTRIBUTION_CHANNELS.TOOL_REQUEST,
 	PLUGIN_TOOL_RESPONSE: PLUGIN_CONTRIBUTION_CHANNELS.TOOL_RESPONSE,
 	PLUGIN_HOST_READY: PLUGIN_CONTRIBUTION_CHANNELS.HOST_READY,
@@ -1268,7 +1268,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 	 *
 	 * 为什么不让调用方拿 LIST_RUNNING 的路径自己反推：会话文件默认落在
 	 * `<agentDir>/sessions/--编码后的 cwd--/` 下，而那个编码把 `/`、`\`、`:` 全压成 `-`
-	 * 且不可逆，`my-project` 与 `my/project` 会撞进同一个分片；`<cwd>/.vetta/sessions`
+	 * 且不可逆，`my-project` 与 `my/project` 会撞进同一个分片；`<cwd>/.astravia/sessions`
 	 * 等别的布局也同时存在。唯一可靠的来源是会话头里的 cwd。
 	 * 运行中的会话通常只有个位数，逐个读头的代价可以忽略。
 	 */
@@ -1280,8 +1280,8 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 
 	ipcMain.handle(CHANNELS.CLEAR_DEFAULT_CONVERSATION, async (_event, scope: unknown) => {
 		// 物理分家后（ADR-0005）每个 scope 对应一个独立 cwd，互不干扰：
-		// - "conversation"：清桌面「对话」cwd 下 .vetta/sessions 内的全部会话（保留产物）
-		// - "claw"：清 IM cwd 下 .vetta/sessions 内的全部会话（保留产物）
+		// - "conversation"：清桌面「对话」cwd 下 .astravia/sessions 内的全部会话（保留产物）
+		// - "claw"：清 IM cwd 下 .astravia/sessions 内的全部会话（保留产物）
 		if (scope !== "conversation" && scope !== "claw") {
 			throw new Error("Invalid scope for clearDefaultConversation");
 		}
@@ -1331,7 +1331,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 	});
 
 	ipcMain.handle(CHANNELS.CLEAR_DEFAULT_ARTIFACTS, async (_event, scope: unknown) => {
-		// 清空「对话」或 Claw cwd 下的产物文件（保留 .vetta 目录，会话不受影响）。
+		// 清空「对话」或 Claw cwd 下的产物文件（保留 .astravia 目录，会话不受影响）。
 		// ADR-0007：UUID 子目录 *就是* session 的运行 cwd，不能整目录删除——否则 header
 		// 仍指向该路径，重开/编辑后 bash、文件树全部 ENOENT。只清空目录内容并保留壳。
 		if (scope !== "conversation" && scope !== "claw") {
@@ -1347,7 +1347,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		}
 		await Promise.all(
 			entries
-				.filter((entry) => entry.name !== ".vetta")
+				.filter((entry) => entry.name !== ".astravia")
 				.map(async (entry) => {
 					const full = join(targetCwd, entry.name);
 					if (entry.isDirectory() && isSessionArtifactDirName(entry.name)) {

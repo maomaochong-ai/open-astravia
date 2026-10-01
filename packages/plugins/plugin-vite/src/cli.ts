@@ -2,9 +2,9 @@
 
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { parsePluginManifest } from "@vetta-org/plugin-sdk/manifest";
-import { startVettaPluginDevServer } from "./dev-server.js";
-import { createVettaPluginPackage } from "./pack.js";
+import { parsePluginManifest } from "@astravia-org/plugin-sdk/manifest";
+import { startAstraviaPluginDevServer } from "./dev-server.js";
+import { createAstraviaPluginPackage } from "./pack.js";
 
 type CliCommand = "dev" | "pack" | "validate";
 
@@ -16,7 +16,7 @@ interface CliOptions {
 function parseCliOptions(argv: string[]): CliOptions {
 	const command = argv[0];
 	if (command !== "dev" && command !== "pack" && command !== "validate") {
-		throw new Error("Usage: vetta-plugin <dev|validate|pack> [--root <plugin-directory>]");
+		throw new Error("Usage: astravia-plugin <dev|validate|pack> [--root <plugin-directory>]");
 	}
 	let rootDir = process.cwd();
 	for (let index = 1; index < argv.length; index += 1) {
@@ -35,7 +35,7 @@ function writeEvent(event: object): void {
 }
 
 async function runDevServer(rootDir: string): Promise<void> {
-	const devServer = await startVettaPluginDevServer(rootDir, writeEvent);
+	const devServer = await startAstraviaPluginDevServer(rootDir, writeEvent);
 	await new Promise<void>((resolvePromise) => {
 		let closing = false;
 		const close = () => {
@@ -65,14 +65,14 @@ async function validateManifest(rootDir: string): Promise<void> {
 async function packPlugin(rootDir: string): Promise<void> {
 	const raw: unknown = JSON.parse(await readFile(resolve(rootDir, "plugin.json"), "utf8"));
 	const manifest = parsePluginManifest(raw);
-	const result = await createVettaPluginPackage({ rootDir });
+	const result = await createAstraviaPluginPackage({ rootDir });
 	process.stdout.write(
 		`${JSON.stringify({
 			ok: true,
 			id: manifest.id,
 			version: manifest.version,
 			packagePath: result.outputPath,
-			// Compatibility for workbench scripts built before .vettapkg became the public format.
+			// Compatibility for workbench scripts built before .astraviapkg became the public format.
 			zipPath: result.outputPath,
 			files: result.files.map((file) => file.archivePath),
 		})}\n`,

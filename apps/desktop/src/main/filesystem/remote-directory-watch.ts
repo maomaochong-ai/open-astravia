@@ -1,4 +1,4 @@
-import { parseProjectLocation, type RemoteDirectoryEntry } from "@vetta/ssh-transport";
+import { parseProjectLocation, type RemoteDirectoryEntry } from "@astravia/ssh-transport";
 import { getSshConnection } from "../ssh/ssh-runtime.js";
 import { assertRemotePathWithinProject } from "./remote-filesystem.js";
 

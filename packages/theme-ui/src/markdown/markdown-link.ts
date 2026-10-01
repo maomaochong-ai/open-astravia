@@ -235,7 +235,7 @@ export function classifyMarkdownLink(href: string | undefined): MarkdownLinkKind
 		return { type: "other", href: trimmed };
 	}
 
-	if (/^(mailto|tel|javascript|data|blob|vetta):/i.test(trimmed)) {
+	if (/^(mailto|tel|javascript|data|blob|astravia):/i.test(trimmed)) {
 		return { type: "other", href: trimmed };
 	}
 

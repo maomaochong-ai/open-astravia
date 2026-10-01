@@ -1,9 +1,9 @@
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { Api, Model, UserMessage } from "@astravia/ai";
+import type { RuntimeTracer } from "@astravia/runtime-telemetry";
 import { Type } from "@sinclair/typebox";
-import type { Api, Model, UserMessage } from "@vetta/ai";
-import type { RuntimeTracer } from "@vetta/runtime-telemetry";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AuthStorage } from "../../src/auth/index.js";
 import { createCodingAgentSessionFromPublicOptions } from "../../src/host/sdk-session/index.js";

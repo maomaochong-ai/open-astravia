@@ -1,6 +1,6 @@
+import type { RuntimeToolDefinition } from "@astravia/runtime-core/kernel";
+import type { BackgroundCommandService, BackgroundCommandStatus } from "@astravia/runtime-tools";
 import { type Static, Type } from "@sinclair/typebox";
-import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
-import type { BackgroundCommandService, BackgroundCommandStatus } from "@vetta/runtime-tools";
 import { truncateBackgroundTaskOutputTail } from "../../output-truncation.js";
 import { TASK_OUTPUT_TOOL_DESCRIPTION } from "./description.js";
 

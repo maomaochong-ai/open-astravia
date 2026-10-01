@@ -1,5 +1,5 @@
 import { Button } from "@shared/components/ui/button";
-import { SettingsPageShellView, SettingSection } from "@vetta-org/theme-ui/settings";
+import { SettingsPageShellView, SettingSection } from "@astravia-org/theme-ui/settings";
 import { SETTINGS_SECTION } from "../registry";
 import { SshHostForm } from "./SshHostForm";
 import { SshHostList } from "./SshHostList";

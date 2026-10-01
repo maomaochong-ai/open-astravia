@@ -1,5 +1,5 @@
 import type { ComponentPropsWithoutRef, JSX, ReactNode } from "react";
-import { cn } from "@vetta-org/ui";
+import { cn } from "@astravia-org/ui";
 
 export interface AppFrameProps extends ComponentPropsWithoutRef<"div"> {
 	children: ReactNode;

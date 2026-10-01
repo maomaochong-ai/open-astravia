@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useThemeComponent } from "@vetta-org/theme-sdk";
+import { useThemeComponent } from "@astravia-org/theme-sdk";
 import { automationDraftFrom } from "@domains/scheduler/automation-draft";
 import { useAutomationDraftDefaults } from "@domains/scheduler/hooks/useAutomationDraftDefaults";
 import type { AutomationTaskInput } from "@preload/api";

@@ -4,9 +4,9 @@
   "profiles": {
     "development": {
       "common": [
-        "vetta-actions",
+        "astravia-actions",
         "preset-agent",
-        "vetta-ui-design",
+        "astravia-ui-design",
         "image-gen",
         "media-viewer",
         "office-viewer",
@@ -22,9 +22,9 @@
     },
     "production": {
       "common": [
-        "vetta-actions",
+        "astravia-actions",
         "preset-agent",
-        "vetta-ui-design",
+        "astravia-ui-design",
         "image-gen",
         "media-viewer",
         "office-viewer",

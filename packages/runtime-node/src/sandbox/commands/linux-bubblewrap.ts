@@ -2,9 +2,9 @@ import { spawn, spawnSync } from "node:child_process";
 import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { delimiter, isAbsolute, join, resolve as resolvePath } from "node:path";
-import { getVettaHomePath } from "@vetta/action-rpc";
-import type { SandboxShellGrant } from "@vetta/runtime-core/sandbox";
-import type { ForegroundCommandOperations } from "@vetta/runtime-tools";
+import { getAstraviaHomePath } from "@astravia/action-rpc";
+import type { SandboxShellGrant } from "@astravia/runtime-core/sandbox";
+import type { ForegroundCommandOperations } from "@astravia/runtime-tools";
 import { getSandboxShellGrant } from "../sandbox-permissions.js";
 import type { NodeSandboxEnvironment, NodeSandboxShell } from "./contracts.js";
 
@@ -25,13 +25,13 @@ const LINUX_ENV_WHITELIST = [
 	"PIP_TRUSTED_HOST",
 	"PIP_CONFIG_FILE",
 	"PIP_CACHE_DIR",
-	"VETTA_HOME",
-	"VETTA_ACTION_RPC_ENDPOINT_FILE",
-	"VETTA_DESKTOP_EXE",
-	"VETTA_CLI_APP_PATH",
+	"ASTRAVIA_HOME",
+	"ASTRAVIA_ACTION_RPC_ENDPOINT_FILE",
+	"ASTRAVIA_DESKTOP_EXE",
+	"ASTRAVIA_CLI_APP_PATH",
 ] as const;
-const SANDBOX_HOME = "/tmp/vetta-home";
-const SANDBOX_BIN_DIR = "/vetta-bin";
+const SANDBOX_HOME = "/tmp/astravia-home";
+const SANDBOX_BIN_DIR = "/astravia-bin";
 const STANDARD_READ_ONLY_ROOTS = ["/usr", "/bin", "/sbin", "/lib", "/lib64", "/etc"] as const;
 
 export interface LinuxBubblewrapCommandOptions {
@@ -63,7 +63,7 @@ function findOnPathUnix(binary: string): string | undefined {
 }
 
 export function resolveLinuxBubblewrapPath(explicitPath?: string): string {
-	const explicitCandidates = [explicitPath, process.env.VETTA_LINUX_BWRAP_PATH].filter(
+	const explicitCandidates = [explicitPath, process.env.ASTRAVIA_LINUX_BWRAP_PATH].filter(
 		(value): value is string => typeof value === "string" && value.trim().length > 0,
 	);
 	for (const candidate of explicitCandidates) {
@@ -78,7 +78,7 @@ export function resolveLinuxBubblewrapPath(explicitPath?: string): string {
 	}
 	const searched = [...explicitCandidates, ...pathCandidates].map((item) => `  - ${item}`).join("\n");
 	throw new Error(
-		"Linux sandbox requires bubblewrap. Install `bwrap`/`bubblewrap` or set VETTA_LINUX_BWRAP_PATH." +
+		"Linux sandbox requires bubblewrap. Install `bwrap`/`bubblewrap` or set ASTRAVIA_LINUX_BWRAP_PATH." +
 			`\nSearched:\n${searched}`,
 	);
 }
@@ -155,11 +155,11 @@ function collectEnvReadOnlyMounts(env: NodeSandboxEnvironment | undefined): {
 		existingDir(env?.NPM_CONFIG_CACHE ?? process.env.NPM_CONFIG_CACHE),
 		existingDir(env?.PIP_CACHE_DIR ?? process.env.PIP_CACHE_DIR),
 	].filter((path): path is string => path !== undefined);
-	const vettaHome = env?.VETTA_HOME ?? process.env.VETTA_HOME;
+	const astraviaHome = env?.ASTRAVIA_HOME ?? process.env.ASTRAVIA_HOME;
 	const endpointFile =
-		env?.VETTA_ACTION_RPC_ENDPOINT_FILE ??
-		process.env.VETTA_ACTION_RPC_ENDPOINT_FILE ??
-		(vettaHome ? join(vettaHome, "action-server.json") : undefined);
+		env?.ASTRAVIA_ACTION_RPC_ENDPOINT_FILE ??
+		process.env.ASTRAVIA_ACTION_RPC_ENDPOINT_FILE ??
+		(astraviaHome ? join(astraviaHome, "action-server.json") : undefined);
 	const files = [
 		env?.npm_config_userconfig ?? process.env.npm_config_userconfig,
 		env?.NPM_CONFIG_USERCONFIG ?? process.env.NPM_CONFIG_USERCONFIG,
@@ -171,45 +171,47 @@ function collectEnvReadOnlyMounts(env: NodeSandboxEnvironment | undefined): {
 	return { dirs, files };
 }
 
-function readConfiguredVettaPaths(env: NodeSandboxEnvironment | undefined): {
-	readonly vettaAppPath?: string;
-	readonly vettaCliAppPath?: string;
+function readConfiguredAstraviaPaths(env: NodeSandboxEnvironment | undefined): {
+	readonly astraviaAppPath?: string;
+	readonly astraviaCliAppPath?: string;
 } {
-	const configPath = join(env?.VETTA_HOME ?? getVettaHomePath(), "desktop-config.json");
+	const configPath = join(env?.ASTRAVIA_HOME ?? getAstraviaHomePath(), "desktop-config.json");
 	try {
 		const parsed = JSON.parse(readFileSync(configPath, "utf-8")) as {
-			vettaAppPath?: unknown;
-			vettaCliAppPath?: unknown;
+			astraviaAppPath?: unknown;
+			astraviaCliAppPath?: unknown;
 		};
 		return {
-			vettaAppPath: typeof parsed.vettaAppPath === "string" ? parsed.vettaAppPath : undefined,
-			vettaCliAppPath: typeof parsed.vettaCliAppPath === "string" ? parsed.vettaCliAppPath : undefined,
+			astraviaAppPath: typeof parsed.astraviaAppPath === "string" ? parsed.astraviaAppPath : undefined,
+			astraviaCliAppPath: typeof parsed.astraviaCliAppPath === "string" ? parsed.astraviaCliAppPath : undefined,
 		};
 	} catch {
 		return {};
 	}
 }
 
-function resolveVettaDesktopExe(env: NodeSandboxEnvironment | undefined): string | undefined {
+function resolveAstraviaDesktopExe(env: NodeSandboxEnvironment | undefined): string | undefined {
 	return existingFile(
-		env?.VETTA_DESKTOP_EXE ?? process.env.VETTA_DESKTOP_EXE ?? readConfiguredVettaPaths(env).vettaAppPath,
+		env?.ASTRAVIA_DESKTOP_EXE ?? process.env.ASTRAVIA_DESKTOP_EXE ?? readConfiguredAstraviaPaths(env).astraviaAppPath,
 	);
 }
 
-function resolveVettaCliAppPath(env: NodeSandboxEnvironment | undefined): string | undefined {
+function resolveAstraviaCliAppPath(env: NodeSandboxEnvironment | undefined): string | undefined {
 	return existingFile(
-		env?.VETTA_CLI_APP_PATH ?? process.env.VETTA_CLI_APP_PATH ?? readConfiguredVettaPaths(env).vettaCliAppPath,
+		env?.ASTRAVIA_CLI_APP_PATH ??
+			process.env.ASTRAVIA_CLI_APP_PATH ??
+			readConfiguredAstraviaPaths(env).astraviaCliAppPath,
 	);
 }
 
-function createVettaCliShim(
+function createAstraviaCliShim(
 	env: NodeSandboxEnvironment | undefined,
 ): { readonly hostDir: string; readonly hostPath: string } | undefined {
-	const vettaCliAppPath = resolveVettaCliAppPath(env);
-	if (!vettaCliAppPath) return undefined;
-	const hostDir = mkdtempSync(join(tmpdir(), "vetta-linux-sandbox-bin-"));
-	const hostPath = join(hostDir, "vetta");
-	writeFileSync(hostPath, ["#!/usr/bin/env sh", `exec "${vettaCliAppPath}" "$@"`, ""].join("\n"), "utf8");
+	const astraviaCliAppPath = resolveAstraviaCliAppPath(env);
+	if (!astraviaCliAppPath) return undefined;
+	const hostDir = mkdtempSync(join(tmpdir(), "astravia-linux-sandbox-bin-"));
+	const hostPath = join(hostDir, "astravia");
+	writeFileSync(hostPath, ["#!/usr/bin/env sh", `exec "${astraviaCliAppPath}" "$@"`, ""].join("\n"), "utf8");
 	chmodSync(hostPath, 0o755);
 	return { hostDir, hostPath };
 }
@@ -220,7 +222,7 @@ export function buildLinuxSandboxArgs(
 	shell: NodeSandboxShell,
 	env: NodeSandboxEnvironment | undefined,
 	grant: SandboxShellGrant | undefined,
-	vettaCliShimPath: string | undefined,
+	astraviaCliShimPath: string | undefined,
 ): string[] {
 	const args: string[] = ["--die-with-parent", "--new-session", "--unshare-pid", "--unshare-ipc", "--unshare-uts"];
 	const createdDirs = new Set<string>();
@@ -232,10 +234,10 @@ export function buildLinuxSandboxArgs(
 		mountedRoots.add(root);
 	}
 	const readOnlyMounts = collectEnvReadOnlyMounts(env);
-	const vettaDesktopExe = resolveVettaDesktopExe(env);
-	const vettaCliAppPath = resolveVettaCliAppPath(env);
-	const vettaDesktopExeDir = vettaDesktopExe ? resolvePath(vettaDesktopExe, "..") : undefined;
-	const vettaCliAppDir = vettaCliAppPath ? resolvePath(vettaCliAppPath, "..") : undefined;
+	const astraviaDesktopExe = resolveAstraviaDesktopExe(env);
+	const astraviaCliAppPath = resolveAstraviaCliAppPath(env);
+	const astraviaDesktopExeDir = astraviaDesktopExe ? resolvePath(astraviaDesktopExe, "..") : undefined;
+	const astraviaCliAppDir = astraviaCliAppPath ? resolvePath(astraviaCliAppPath, "..") : undefined;
 	for (const root of Array.from(new Set([...collectPathDirs(env), ...readOnlyMounts.dirs]))) {
 		if (mountedRoots.has(root)) continue;
 		appendParentDirs(args, root, createdDirs);
@@ -251,13 +253,14 @@ export function buildLinuxSandboxArgs(
 	args.push("--proc", "/proc", "--dev", "/dev", "--tmpfs", "/tmp");
 	appendParentDirs(args, cwd, new Set());
 	args.push("--bind", cwd, cwd);
-	for (const root of [vettaDesktopExeDir, vettaCliAppDir]) {
+	for (const root of [astraviaDesktopExeDir, astraviaCliAppDir]) {
 		if (!root || mountedRoots.has(root)) continue;
 		appendParentDirs(args, root, createdDirs);
 		args.push("--ro-bind", root, root);
 		mountedRoots.add(root);
 	}
-	if (vettaCliShimPath) args.push("--dir", SANDBOX_BIN_DIR, "--ro-bind", vettaCliShimPath, `${SANDBOX_BIN_DIR}/vetta`);
+	if (astraviaCliShimPath)
+		args.push("--dir", SANDBOX_BIN_DIR, "--ro-bind", astraviaCliShimPath, `${SANDBOX_BIN_DIR}/astravia`);
 	for (const root of grant?.allowWriteRoots ?? []) {
 		const normalizedRoot = resolvePath(root);
 		if (!existsSync(normalizedRoot) || mountedRoots.has(normalizedRoot)) continue;
@@ -268,7 +271,7 @@ export function buildLinuxSandboxArgs(
 	args.push("--dir", SANDBOX_HOME);
 
 	const baseEnv = env ?? process.env;
-	const pathValue = vettaCliShimPath
+	const pathValue = astraviaCliShimPath
 		? [SANDBOX_BIN_DIR, baseEnv.PATH].filter((value): value is string => Boolean(value)).join(delimiter)
 		: baseEnv.PATH;
 	args.push("--clearenv");
@@ -276,10 +279,10 @@ export function buildLinuxSandboxArgs(
 		const value =
 			key === "PATH"
 				? pathValue
-				: key === "VETTA_DESKTOP_EXE"
-					? vettaDesktopExe
-					: key === "VETTA_CLI_APP_PATH"
-						? vettaCliAppPath
+				: key === "ASTRAVIA_DESKTOP_EXE"
+					? astraviaDesktopExe
+					: key === "ASTRAVIA_CLI_APP_PATH"
+						? astraviaCliAppPath
 						: baseEnv[key];
 		if (typeof value === "string" && value.length > 0) args.push("--setenv", key, value);
 	}
@@ -298,14 +301,14 @@ export function createLinuxBubblewrapCommandOperations(
 		exec: (command, cwd, { onData, signal, timeout, env }) =>
 			new Promise<{ exitCode: number | null }>((resolve, reject) => {
 				if (!existsSync(cwd)) return reject(new Error(`Working directory does not exist: ${cwd}`));
-				const vettaCliShim = createVettaCliShim(env);
+				const astraviaCliShim = createAstraviaCliShim(env);
 				const args = buildLinuxSandboxArgs(
 					command,
 					cwd,
 					shell,
 					env,
 					getSandboxShellGrant(cwd),
-					vettaCliShim?.hostPath,
+					astraviaCliShim?.hostPath,
 				);
 				const child = spawn(bubblewrapPath, args, { cwd, detached: true, stdio: ["ignore", "pipe", "pipe"] });
 				let timedOut = false;
@@ -326,7 +329,7 @@ export function createLinuxBubblewrapCommandOperations(
 				const cleanup = () => {
 					if (timeoutHandle) clearTimeout(timeoutHandle);
 					signal?.removeEventListener("abort", onAbort);
-					if (vettaCliShim) rmSync(vettaCliShim.hostDir, { recursive: true, force: true });
+					if (astraviaCliShim) rmSync(astraviaCliShim.hostDir, { recursive: true, force: true });
 				};
 				child.on("error", (error) => {
 					cleanup();

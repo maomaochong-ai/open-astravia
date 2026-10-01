@@ -3,7 +3,7 @@ import {
 	pageHeaderRightSlotAtom,
 	pageHeaderTitleAtom,
 } from "@shared/store/atoms";
-import { ChatHeaderActions } from "@vetta-org/theme-ui/chat";
+import { ChatHeaderActions } from "@astravia-org/theme-ui/chat";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { useAtom, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useState } from "react";

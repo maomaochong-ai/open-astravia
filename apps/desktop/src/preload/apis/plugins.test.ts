@@ -2,8 +2,8 @@ import type { IpcRenderer, IpcRendererEvent, WebUtils } from "electron";
 import { describe, expect, it, vi } from "vitest";
 import { createPluginsApi } from "./plugins";
 
-const SECRETS_CHANGED_CHANNEL = "vetta:plugins:secrets:changed";
-const AI_STREAM_EVENT_CHANNEL = "vetta:plugins:capabilities:ai:stream:event";
+const SECRETS_CHANGED_CHANNEL = "astravia:plugins:secrets:changed";
+const AI_STREAM_EVENT_CHANNEL = "astravia:plugins:capabilities:ai:stream:event";
 type IpcListener = Parameters<IpcRenderer["on"]>[1];
 const webUtils = { getPathForFile: vi.fn() } as unknown as WebUtils;
 
@@ -14,7 +14,7 @@ describe("createPluginsApi settings events", () => {
 
 		await plugins.reportAgentContributionHostReady();
 
-		expect(harness.invoke).toHaveBeenCalledWith("vetta:plugins:agent-contribution-host-ready");
+		expect(harness.invoke).toHaveBeenCalledWith("astravia:plugins:agent-contribution-host-ready");
 	});
 
 	it("passes capability sessions to identity-sensitive plugin IPC", async () => {
@@ -30,7 +30,7 @@ describe("createPluginsApi settings events", () => {
 
 		expect(harness.invoke).toHaveBeenNthCalledWith(
 			1,
-			"vetta:plugins:command-run",
+			"astravia:plugins:command-run",
 			"session",
 			"node",
 			["--version"],
@@ -38,22 +38,27 @@ describe("createPluginsApi settings events", () => {
 		);
 		expect(harness.invoke).toHaveBeenNthCalledWith(
 			2,
-			"vetta:plugins:command-spawn",
+			"astravia:plugins:command-spawn",
 			"session",
 			"node",
 			["server.js"],
 			undefined,
 		);
-		expect(harness.invoke).toHaveBeenNthCalledWith(3, "vetta:plugins:command-spawn-stop", "session", "spawn-id");
-		expect(harness.invoke).toHaveBeenNthCalledWith(4, "vetta:plugins:command-spawn-status", "session", "spawn-id");
+		expect(harness.invoke).toHaveBeenNthCalledWith(3, "astravia:plugins:command-spawn-stop", "session", "spawn-id");
+		expect(harness.invoke).toHaveBeenNthCalledWith(4, "astravia:plugins:command-spawn-status", "session", "spawn-id");
 		expect(harness.invoke).toHaveBeenNthCalledWith(
 			5,
-			"vetta:plugins:dev-watch-start",
+			"astravia:plugins:dev-watch-start",
 			"official-session",
 			"target",
 			"C:/plugin-project",
 		);
-		expect(harness.invoke).toHaveBeenNthCalledWith(6, "vetta:plugins:dev-watch-stop", "official-session", "target");
+		expect(harness.invoke).toHaveBeenNthCalledWith(
+			6,
+			"astravia:plugins:dev-watch-stop",
+			"official-session",
+			"target",
+		);
 	});
 
 	it("multiplexes more than ten subscribers through one IPC listener", () => {
@@ -108,12 +113,18 @@ describe("createPluginsApi settings events", () => {
 		await ai.cancelStream("session", "request");
 		harness.emit(AI_STREAM_EVENT_CHANNEL, payload);
 
-		expect(harness.invoke).toHaveBeenNthCalledWith(1, "vetta:plugins:capabilities:ai:stream", "session", "request", {
-			prompt: "question",
-		});
+		expect(harness.invoke).toHaveBeenNthCalledWith(
+			1,
+			"astravia:plugins:capabilities:ai:stream",
+			"session",
+			"request",
+			{
+				prompt: "question",
+			},
+		);
 		expect(harness.invoke).toHaveBeenNthCalledWith(
 			2,
-			"vetta:plugins:capabilities:ai:stream:cancel",
+			"astravia:plugins:capabilities:ai:stream:cancel",
 			"session",
 			"request",
 		);

@@ -111,7 +111,7 @@ export function usePresetProvidersSectionModel({
 		setLoading(true);
 		setError(null);
 		try {
-			const result = await window.vetta.models.listPresets();
+			const result = await window.astravia.models.listPresets();
 			setPresets(result.providers);
 			// 公共目录连缓存都没有时把原因摆出来,别让用户对着 0 个模型猜。
 			if (result.catalogError) {
@@ -134,7 +134,7 @@ export function usePresetProvidersSectionModel({
 	useEffect(() => {
 		void load();
 		// 目录是后台刷新的:拉到新数据后重新列一遍,不必让用户手动重试。
-		return window.vetta.models.onPresetsUpdated(() => void load());
+		return window.astravia.models.onPresetsUpdated(() => void load());
 	}, [load]);
 
 	const rows = useMemo(() => {
@@ -200,7 +200,7 @@ export function usePresetProvidersSectionModel({
 	const copyApiKey = useCallback(
 		async (row: PresetProviderRow): Promise<void> => {
 			try {
-				const copied = await window.vetta.models.copyApiKey(row.id);
+				const copied = await window.astravia.models.copyApiKey(row.id);
 				showToast({
 					variant: copied ? "success" : "error",
 					message: t(copied ? "apiKeyCopied" : "apiKeyCopyFailed"),
@@ -290,7 +290,7 @@ export function usePresetProvidersSectionModel({
 	const refreshCatalog = useCallback(async (): Promise<void> => {
 		setRefreshingCatalog(true);
 		try {
-			const result = await window.vetta.models.refreshPresetCatalog();
+			const result = await window.astravia.models.refreshPresetCatalog();
 			if (result.ok) {
 				console.info(
 					`[preset-providers] models.dev 目录已更新，共 ${result.modelCount} 个模型（${result.elapsedMs}ms）`,
@@ -417,7 +417,7 @@ async function refreshModels(
 	apiKey?: string,
 ): Promise<{ models: NonNullable<ProviderEntry["models"]>; error?: PresetError }> {
 	try {
-		return await window.vetta.models.refreshPresetModels(providerId, apiKey);
+		return await window.astravia.models.refreshPresetModels(providerId, apiKey);
 	} catch (err) {
 		return { models: [], error: { code: "network", detail: err instanceof Error ? err.message : String(err) } };
 	}

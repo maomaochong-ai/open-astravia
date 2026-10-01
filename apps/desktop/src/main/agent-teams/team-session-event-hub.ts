@@ -2,10 +2,10 @@ import {
 	correlateTeamMemberToolExecution,
 	type TeamObservationPublisher,
 	type TeamSessionDocument,
-} from "@vetta/agent-team";
-import { type AssistantMessage, type AssistantMessageEvent, createAssistantMessage } from "@vetta/ai";
-import type { RuntimeHost, RuntimeSessionExecutionObservation, SessionEvent } from "@vetta/runtime-core";
-import type { ConversationMessageStreamEvent } from "@vetta/runtime-core/conversation";
+} from "@astravia/agent-team";
+import { type AssistantMessage, type AssistantMessageEvent, createAssistantMessage } from "@astravia/ai";
+import type { RuntimeHost, RuntimeSessionExecutionObservation, SessionEvent } from "@astravia/runtime-core";
+import type { ConversationMessageStreamEvent } from "@astravia/runtime-core/conversation";
 import type {
 	DesktopTeamActiveStreamEvent,
 	DesktopTeamContextUsageEvent,

@@ -25,7 +25,7 @@ export async function buildDiagnosticsBundle(): Promise<DiagnosticsBundleResult>
 	addRingBuffer(zip);
 	addSystemInfo(zip);
 
-	const zipPath = join(app.getPath("temp"), `vetta-diagnostics-${nowStamp()}.zip`);
+	const zipPath = join(app.getPath("temp"), `astravia-diagnostics-${nowStamp()}.zip`);
 	await zip.writeZipPromise(zipPath);
 	return { zipPath, sizeBytes: (await stat(zipPath)).size };
 }

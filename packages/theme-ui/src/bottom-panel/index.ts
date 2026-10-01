@@ -1,6 +1,6 @@
-import type { ThemeSurfaceConfig } from "@vetta-org/theme-sdk";
+import type { ThemeSurfaceConfig } from "@astravia-org/theme-sdk";
 
-declare module "@vetta-org/theme-sdk" {
+declare module "@astravia-org/theme-sdk" {
 	interface ThemeSurfaceRegistry {
 		readonly "bottomPanel.panel"?: ThemeSurfaceConfig;
 	}

@@ -149,7 +149,7 @@ describe("FileMcpConfigSource", () => {
 		return {
 			root,
 			globalConfigPath: join(root, "agent", "mcp.json"),
-			projectConfigPath: join(root, "project", ".vetta", "mcp.json"),
+			projectConfigPath: join(root, "project", ".astravia", "mcp.json"),
 		};
 	}
 });

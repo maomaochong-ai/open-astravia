@@ -6,7 +6,7 @@
 
 1. 最终 Session/Host/Assembly 返回值必须构造成功后，初始化事务才能提交。
 2. 单个 MCP Server 初始化失败时，失败 Client 及其 stdio 子进程必须立即释放。
-3. 使用真实 Vetta RPC CLI 验证初始化中途失败不会遗留 Extension、Hook、MCP 或 conversation ownership，并能立即恢复同一会话。
+3. 使用真实 Astravia RPC CLI 验证初始化中途失败不会遗留 Extension、Hook、MCP 或 conversation ownership，并能立即恢复同一会话。
 4. 保持现有功能语义，尤其不把 MCP 单服务故障升级为整个 Agent 启动失败。
 
 ## 分析结论

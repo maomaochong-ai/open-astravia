@@ -1,6 +1,6 @@
-import type { AgentProfile } from "@vetta/agent-team";
+import type { AgentProfile } from "@astravia/agent-team";
 import { useAgentAvatarResolver } from "@shared/agent-teams/agent-avatar";
-import { AgentAvatarView } from "@vetta-org/theme-ui/chat";
+import { AgentAvatarView } from "@astravia-org/theme-ui/chat";
 
 export interface AgentAvatarStackProps {
 	readonly agents: readonly AgentProfile[];

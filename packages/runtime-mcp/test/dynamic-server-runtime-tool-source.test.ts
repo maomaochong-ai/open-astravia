@@ -1,4 +1,4 @@
-import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
+import type { RuntimeToolDefinition } from "@astravia/runtime-core/kernel";
 import { describe, expect, it, vi } from "vitest";
 import type { McpDynamicServerSet, McpServerBinding } from "../src/server/index.js";
 import { createMcpDynamicServerRuntimeToolSource, type McpDynamicServerRuntimePort } from "../src/tools/index.js";

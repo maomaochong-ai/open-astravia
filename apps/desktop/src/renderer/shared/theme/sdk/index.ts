@@ -7,7 +7,7 @@ export type {
 	ThemeSurfaceConfig,
 	ThemeSurfaceFrame,
 	ThemeSurfaceSlot,
-} from "@vetta-org/theme-sdk";
-export { ThemeSurface } from "@vetta-org/theme-ui/appearance";
+} from "@astravia-org/theme-sdk";
+export { ThemeSurface } from "@astravia-org/theme-ui/appearance";
 export * from "./app-shell";
 export * from "./sidebar";

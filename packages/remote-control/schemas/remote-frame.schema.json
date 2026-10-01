@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://openvetta.com/schemas/remote-frame.v2.json",
-  "title": "Vetta Remote Control Frame v2",
+  "$id": "https://astravia.dev/schemas/remote-frame.v2.json",
+  "title": "Astravia Remote Control Frame v2",
   "description": "Handshake frames travel in clear; every other frame must be carried inside a sealed envelope after the handshake.",
   "oneOf": [
     { "$ref": "#/$defs/hello" }, { "$ref": "#/$defs/helloAck" }, { "$ref": "#/$defs/pairingPending" }, { "$ref": "#/$defs/peerStatus" },

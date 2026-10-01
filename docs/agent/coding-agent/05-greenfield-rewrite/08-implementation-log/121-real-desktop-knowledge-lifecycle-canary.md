@@ -2,7 +2,7 @@
 
 ## 目标
 
-在不改变 Knowledge 功能语义和默认 Runtime 的前提下，用真实 Desktop 主进程、安装后的 Vetta CLI、
+在不改变 Knowledge 功能语义和默认 Runtime 的前提下，用真实 Desktop 主进程、安装后的 Astravia CLI、
 Action RPC 与审批 UI 验证 Greenfield Knowledge Processing 的生产生命周期：
 
 - 手动整理能够经过真实 Action 注册、审批和执行链路；
@@ -27,7 +27,7 @@ Desktop `before-quit` 在关闭本地 RPC 前立即启动该流程，随后等�
 
 ### 2. 扩展真实 Runtime Canary
 
-Canary 使用隔离的 `VETTA_HOME`、Knowledge 根和确定性 Provider，并通过安装到隔离目录的 `vetta.exe`
+Canary 使用隔离的 `ASTRAVIA_HOME`、Knowledge 根和确定性 Provider，并通过安装到隔离目录的 `astravia.exe`
 执行 `action run knowledge.manage`。审批不是 Debug API 伪造，而是连接当前 Desktop 的 Playwright
 会话，点击真实 Action 审批对话框。
 
@@ -73,7 +73,7 @@ DOM 类型库的问题。该包的公开类型确实引用 `RequestInit`、`Resp
 最后一项是现有持久失败记录与 Monitor 统计口径之间的观察差异。本轮 Canary 同时固定两者，没有借架构
 重构修改产品统计语义。若要统一口径，应作为独立功能修复评审。
 
-默认 `VETTA_DESKTOP_AGENT_RUNTIME` 仍为 Legacy；只有 Canary 的隔离环境显式选择 Greenfield。
+默认 `ASTRAVIA_DESKTOP_AGENT_RUNTIME` 仍为 Legacy；只有 Canary 的隔离环境显式选择 Greenfield。
 
 ## 验证
 

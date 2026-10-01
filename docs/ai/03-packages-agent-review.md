@@ -7,7 +7,7 @@
 1. 一次 Agent run 的模型/工具循环。
 2. 桌面会话控制器，包括可变状态、订阅、steering、follow-up、动态工具和继续执行。
 
-第二层是 Vetta 产品需要的，也是该包最有价值的部分。问题在于两层共享同一套可变对象和事件流终止机制，导致底层异常、宿主握手和 UI 状态互相影响。
+第二层是 Astravia 产品需要的，也是该包最有价值的部分。问题在于两层共享同一套可变对象和事件流终止机制，导致底层异常、宿主握手和 UI 状态互相影响。
 
 ## 做得好的部分
 
@@ -146,7 +146,7 @@ transformContext / convertToLlm / streamFn 抛错
 
 ## 与 Vercel Agent 的关键差异
 
-| 能力 | Vetta `Agent` | Vercel `ToolLoopAgent` |
+| 能力 | Astravia `Agent` | Vercel `ToolLoopAgent` |
 | --- | --- | --- |
 | 长期可变会话状态 | 内建 | 不负责 |
 | steering / follow-up | 内建 | 无直接等价物 |
@@ -157,9 +157,9 @@ transformContext / convertToLlm / streamFn 抛错
 | 工具输入修复 | 文本 salvage 白名单 | `repairToolCall` |
 | 工具并发 | 串行 | 多工具并行 |
 | 工具类型推导 | 局部，事件中退化 | ToolSet 全链路泛型 |
-| 会话检查点 | Vetta 特有 | 无直接等价物 |
+| 会话检查点 | Astravia 特有 | 无直接等价物 |
 
-结论：不应直接用 `ToolLoopAgent` 替换 `packages/agent`。应该借鉴其 run 级停止策略、类型和工具保障，同时保留 Vetta 的会话控制层。
+结论：不应直接用 `ToolLoopAgent` 替换 `packages/agent`。应该借鉴其 run 级停止策略、类型和工具保障，同时保留 Astravia 的会话控制层。
 
 ## 测试评价
 

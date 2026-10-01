@@ -7,7 +7,7 @@ Import the identity-bound `logger` directly from the SDK. It does not need to be
 `PluginContext`:
 
 ```ts
-import { logger } from "@vetta-org/plugin-sdk/logger";
+import { logger } from "@astravia-org/plugin-sdk/logger";
 
 logger.info("Proxy configuration loaded", { provider: "codex" });
 
@@ -15,11 +15,11 @@ const syncLogger = logger.child("sync");
 syncLogger.warn("Remote catalog is unavailable", { retryInMs: 5_000 });
 ```
 
-During development and production builds, `@vetta-org/plugin-vite` reads the validated
+During development and production builds, `@astravia-org/plugin-vite` reads the validated
 `plugin.json` and binds this entry point to the current plugin's `id` and `version`. The desktop
 host adds that identity, bounds and redacts structured fields, and persists the result to the
 Renderer log. On Windows, the default path is
-`%USERPROFILE%\.vetta\desktop-app\logs\render\YYYY-MM-DD.log`.
+`%USERPROFILE%\.astravia\desktop-app\logs\render\YYYY-MM-DD.log`.
 
 The supported levels are `debug`, `info`, `warn`, and `error`. Use the second argument for
 searchable structured fields. Never log tokens, cookies, passwords, full request headers, or user
@@ -27,7 +27,7 @@ content. Host redaction is a final safety net, not a replacement for avoiding se
 the source.
 
 <Callout title="Version requirements" type="info">
-  This entry point requires `@vetta-org/plugin-sdk >= 0.3.7`, `@vetta-org/plugin-vite >= 0.2.3`,
+  This entry point requires `@astravia-org/plugin-sdk >= 0.3.7`, `@astravia-org/plugin-vite >= 0.2.3`,
   and `pluginApiVersion: "^2.5.0"` in `plugin.json`. Existing plugins do not need to migrate and
   continue to load unchanged.
 </Callout>

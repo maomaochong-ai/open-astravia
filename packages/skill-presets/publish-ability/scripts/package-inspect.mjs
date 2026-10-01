@@ -245,7 +245,7 @@ export function inspectPackage(filePath) {
 		root: dir,
 		pluginManifest: pluginAt ? readJson(entries, pluginAt.path) : null,
 		skillFrontmatter: skillText ? parseSkillFrontmatter(skillText) : null,
-		vettaJson: readJson(entries, `${dir}vetta.json`),
+		astraviaJson: readJson(entries, `${dir}astravia.json`),
 		locales,
 	};
 }

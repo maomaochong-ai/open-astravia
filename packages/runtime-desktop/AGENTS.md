@@ -5,8 +5,8 @@
 ## 职责
 
 - 拥有 Desktop Agent Runtime 的进程生命周期、平台组合、会话目录策略和宿主适配。
-- 可以依赖 `@vetta/coding-agent` 的明确公开子入口以及 Runtime 协议包。
-- 不得依赖 `@vetta/desktop` 或深度导入任何应用包；应用服务必须通过窄 Port 注入。
+- 可以依赖 `@astravia/coding-agent` 的明确公开子入口以及 Runtime 协议包。
+- 不得依赖 `@astravia/desktop` 或深度导入任何应用包；应用服务必须通过窄 Port 注入。
 - 不拥有 Agent Loop、Turn Kernel、Coding Agent 产品策略或通用协议。
 - 环境相关实现应按 storage、tools、mcp、model、interaction 等职责组织，禁止形成万能平台服务对象。
 

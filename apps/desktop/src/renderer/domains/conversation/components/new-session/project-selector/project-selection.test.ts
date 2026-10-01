@@ -9,7 +9,7 @@ import {
 	shouldShowSearch,
 } from "./project-selection";
 
-const DEFAULT_CWD = "/home/u/.vetta/conversation";
+const DEFAULT_CWD = "/home/u/.astravia/conversation";
 
 const PROJECTS = [
 	{ cwd: DEFAULT_CWD, name: "对话", type: "normal", isDefault: true },

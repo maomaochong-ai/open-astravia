@@ -1,5 +1,5 @@
 import type { AbilityType } from "@shared/lib/api";
-import { Button, cn, Popover, PopoverContent, PopoverTrigger } from "@vetta-org/ui";
+import { Button, cn, Popover, PopoverContent, PopoverTrigger } from "@astravia-org/ui";
 import { useTranslation } from "react-i18next";
 import { type AbilityFilter, type AbilityProvenanceFilter, EMPTY_ABILITY_FILTER } from "../types";
 

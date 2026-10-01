@@ -2,7 +2,7 @@ import {
 	applyConversationDocumentCommand,
 	type ConversationDocument,
 	createEmptyConversationDocument,
-} from "@vetta/runtime-core";
+} from "@astravia/runtime-core";
 import { describe, expect, it, vi } from "vitest";
 import { CodingAgentTodoRuntime } from "../../../src/features/todo/todo-runtime.js";
 import { createCodingAgentTodoRuntimeToolRegistration } from "../../../src/features/todo/todo-tool-feature.js";

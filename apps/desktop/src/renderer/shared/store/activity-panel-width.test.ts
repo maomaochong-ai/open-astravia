@@ -153,7 +153,7 @@ describe("tab 拖拽期间的宽度请求", () => {
 
 describe("历史 localStorage 记录", () => {
 	it("旧版存的裸数字仍按固定宽度读入", async () => {
-		installStorage({ "vetta-activity-panel-width": "820" });
+		installStorage({ "astravia-activity-panel-width": "820" });
 		setWindowWidth(1600);
 		const atoms = await loadAtoms();
 		const store = createStore();
@@ -162,7 +162,7 @@ describe("历史 localStorage 记录", () => {
 	});
 
 	it('"max" 哨兵值读回拉满态，并按当前窗口求值', async () => {
-		installStorage({ "vetta-activity-panel-width": "max" });
+		installStorage({ "astravia-activity-panel-width": "max" });
 		setWindowWidth(1600);
 		const atoms = await loadAtoms();
 		const store = createStore();

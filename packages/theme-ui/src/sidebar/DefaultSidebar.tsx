@@ -1,7 +1,7 @@
 import type { JSX, ReactNode } from "react";
-import { useThemeComponent } from "@vetta-org/theme-sdk";
-import type { SidebarClassNames, SidebarModel } from "@vetta-org/theme-sdk/sidebar";
-import { cn } from "@vetta-org/ui";
+import { useThemeComponent } from "@astravia-org/theme-sdk";
+import type { SidebarClassNames, SidebarModel } from "@astravia-org/theme-sdk/sidebar";
+import { cn } from "@astravia-org/ui";
 import { ThemeSurface } from "../appearance/ThemeSurface";
 import { SidebarNavigation } from "./SidebarNavigation";
 import type { SidebarNavMorePanelLabels } from "./SidebarNavMorePanel";

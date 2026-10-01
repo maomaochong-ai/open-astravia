@@ -1,4 +1,4 @@
-module vetta-ssh-helper
+module astravia-ssh-helper
 
 go 1.25.3
 

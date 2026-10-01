@@ -1,4 +1,4 @@
-import type { AgentFeatureDefinition, ModelCallContributionProvider } from "@vetta/runtime-core/kernel";
+import type { AgentFeatureDefinition, ModelCallContributionProvider } from "@astravia/runtime-core/kernel";
 import { GOAL_INSTRUCTION_ID, renderGoalInstructions } from "./goal-instructions.js";
 import type { CodingAgentGoalRuntime } from "./goal-runtime.js";
 import { createGoalTools } from "./tools.js";

@@ -30,4 +30,4 @@ class PcmCaptureProcessor extends AudioWorkletProcessor {
 	}
 }
 
-registerProcessor("vetta-pcm-capture", PcmCaptureProcessor);
+registerProcessor("astravia-pcm-capture", PcmCaptureProcessor);

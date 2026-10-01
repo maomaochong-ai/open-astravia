@@ -12,7 +12,7 @@ afterEach(async () => {
 });
 
 async function createStorageIndex(teamId: string, teamName: string): Promise<string> {
-	const root = await mkdtemp(resolve(tmpdir(), "vetta-team-workspace-"));
+	const root = await mkdtemp(resolve(tmpdir(), "astravia-team-workspace-"));
 	temporaryDirectories.push(root);
 	const storageRoot = resolve(root, "agent-teams");
 	await mkdir(storageRoot, { recursive: true });

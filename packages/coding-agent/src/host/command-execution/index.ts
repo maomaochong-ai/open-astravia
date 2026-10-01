@@ -1,4 +1,4 @@
-import { createNodeHostBashExecutor, type NodeHostBashExecutor } from "@vetta/runtime-node/coding";
+import { createNodeHostBashExecutor, type NodeHostBashExecutor } from "@astravia/runtime-node/coding";
 import type { HostBashExecutor } from "./contracts.js";
 import { getDefaultShellCommandPrefix, getShellConfig, getShellEnv } from "./shell-runtime.js";
 

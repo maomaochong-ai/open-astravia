@@ -5,7 +5,7 @@ import test from "node:test";
 import {
 	DESKTOP_BUILD_OUTPUTS,
 	DESKTOP_REQUIRED_SOURCE_FILES,
-	VETTA_PLUGIN_FILE_ASSOCIATION,
+	ASTRAVIA_PLUGIN_FILE_ASSOCIATION,
 } from "./desktop-packaging-layout.mjs";
 
 const desktopRoot = join(import.meta.dirname, "..");
@@ -29,12 +29,12 @@ test("required source entry points exist", () => {
 	}
 });
 
-test("packaged Desktop registers the dedicated Vetta plugin package type", () => {
-	assert.deepEqual(VETTA_PLUGIN_FILE_ASSOCIATION, {
-		ext: "vettapkg",
-		name: "Vetta Plugin Package",
-		description: "Installable Vetta plugin package",
-		mimeType: "application/vnd.vetta.plugin+zip",
+test("packaged Desktop registers the dedicated Astravia plugin package type", () => {
+	assert.deepEqual(ASTRAVIA_PLUGIN_FILE_ASSOCIATION, {
+		ext: "astraviapkg",
+		name: "Astravia Plugin Package",
+		description: "Installable Astravia plugin package",
+		mimeType: "application/vnd.astravia.plugin+zip",
 		role: "Editor",
 	});
 });

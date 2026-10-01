@@ -4,7 +4,7 @@ import {
 	type AiCompleteResult,
 	type AiModelListResult,
 	DOMAIN_AI_CAPABILITIES,
-} from "@vetta-org/capability-sdk";
+} from "@astravia-org/capability-sdk";
 import { PLUGIN_CAPABILITY_PERMISSIONS, type PluginCapabilitySessionAccess } from "../types.js";
 
 export const pluginAiMethods = {

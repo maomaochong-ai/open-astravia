@@ -6,7 +6,7 @@ import { extname, join } from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import type { ReadableStream as NodeReadableStream } from "node:stream/web";
-import type { ArtifactRef } from "@vetta-org/capability-sdk";
+import type { ArtifactRef } from "@astravia-org/capability-sdk";
 
 export interface ArtifactStoreOptions {
 	root?: string;
@@ -46,7 +46,7 @@ export class ArtifactStore {
 	private readonly root: string;
 
 	constructor(options: ArtifactStoreOptions = {}) {
-		this.root = options.root ?? join(tmpdir(), "vetta-artifacts", String(process.pid));
+		this.root = options.root ?? join(tmpdir(), "astravia-artifacts", String(process.pid));
 	}
 
 	async putBase64(ownerId: string, data: string, metadata: ArtifactWriteMetadata): Promise<ArtifactRef> {

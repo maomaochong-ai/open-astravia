@@ -38,7 +38,7 @@ export interface RemoteListenerScan {
  * 三种工具的输出格式互不兼容，而「远端实际有哪一个」只有远端自己知道。让脚本把选中的
  * 工具名打在第一行，解析器就不必靠猜列数来反推格式——猜错的表现是静默少列几个端口。
  */
-const TOOL_MARKER = "@vetta-listeners";
+const TOOL_MARKER = "@astravia-listeners";
 
 /**
  * 列出远端所有 LISTEN 端口的命令。

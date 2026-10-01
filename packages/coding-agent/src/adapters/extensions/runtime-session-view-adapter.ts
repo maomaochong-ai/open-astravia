@@ -1,6 +1,6 @@
-import type { AgentMessage } from "@vetta/agent-core";
-import type { ConversationDocument, RuntimeSessionCoreAssembly } from "@vetta/runtime-core";
-import type { ConversationDocumentEntry } from "@vetta/runtime-core/conversation";
+import type { AgentMessage } from "@astravia/agent-core";
+import type { ConversationDocument, RuntimeSessionCoreAssembly } from "@astravia/runtime-core";
+import type { ConversationDocumentEntry } from "@astravia/runtime-core/conversation";
 import type { ExtensionSessionView as ReadonlySessionManager } from "../../extensions/index.js";
 import {
 	CODING_AGENT_SESSION_VIEW_VERSION,

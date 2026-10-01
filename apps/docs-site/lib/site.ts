@@ -1,19 +1,19 @@
 import { getDocsMessages, localeConfig, type DocsLanguage } from "./i18n";
 
-export const DEFAULT_DOCS_SITE_URL = "https://docs.openvetta.com";
+export const DEFAULT_DOCS_SITE_URL = "https://docs.astravia.dev";
 
 export const site = {
-	name: "Vetta",
-	title: "Vetta 文档",
+	name: "Astravia",
+	title: "Astravia 文档",
 	description:
-		"Vetta 把模型、本地文件和本机工具放进同一个桌面 Agent 工作台。本站提供快速开始、实战示例，以及权限、批量、自动化、插件、主题与 SDK 指南。",
+		"Astravia 把模型、本地文件和本机工具放进同一个桌面 Agent 工作台。本站提供快速开始、实战示例，以及权限、批量、自动化、插件、主题与 SDK 指南。",
 	locale: localeConfig.zh.intlLocale,
 	openGraphLocale: localeConfig.zh.openGraphLocale,
-	marketingUrl: "https://www.openvetta.com",
-	downloadUrl: "https://www.openvetta.com/download",
-	githubUrl: "https://github.com/openvetta/open-vetta",
+	marketingUrl: "https://www.astravia.dev",
+	downloadUrl: "https://www.astravia.dev",
+	githubUrl: "https://github.com/maomaochong-ai/open-astravia",
 	discordUrl: "https://discord.gg/qGqkk22Vg9",
-	logoPath: "/images/vetta-app-icon.webp",
+	logoPath: "/images/astravia-app-icon.webp",
 	ogImagePath: "/opengraph-image/",
 	applicationCategory: "DeveloperApplication",
 	operatingSystem: "Windows, macOS, Linux",
@@ -21,16 +21,16 @@ export const site = {
 
 export const localizedSite = {
 	zh: {
-		title: "Vetta 文档",
+		title: "Astravia 文档",
 		description:
-			"Vetta 把模型、本地文件和本机工具放进同一个桌面 Agent 工作台。本站提供快速开始、实战示例，以及权限、批量、自动化、插件、主题与 SDK 指南。",
+			"Astravia 把模型、本地文件和本机工具放进同一个桌面 Agent 工作台。本站提供快速开始、实战示例，以及权限、批量、自动化、插件、主题与 SDK 指南。",
 		openGraphLocale: localeConfig.zh.openGraphLocale,
 		locale: localeConfig.zh.intlLocale,
 	},
 	en: {
-		title: "Vetta Documentation",
+		title: "Astravia Documentation",
 		description:
-			"Vetta brings models, local files, and machine tools into one desktop Agent workspace. Learn how to get started, build workflows, configure permissions, extend Vetta, and use the SDK.",
+			"Astravia brings models, local files, and machine tools into one desktop Agent workspace. Learn how to get started, build workflows, configure permissions, extend Astravia, and use the SDK.",
 		openGraphLocale: localeConfig.en.openGraphLocale,
 		locale: localeConfig.en.intlLocale,
 	},
@@ -110,7 +110,7 @@ export function getLocalizedSite(language: SiteLanguage = "zh") {
 }
 
 export function getSectionLabel(section: string | undefined, language: SiteLanguage = "zh"): string {
-	return localizedSections[language].labels[section ?? ""] ?? `VETTA / ${getDocsMessages(language).documentation}`;
+	return localizedSections[language].labels[section ?? ""] ?? `ASTRAVIA / ${getDocsMessages(language).documentation}`;
 }
 
 export function getSectionTitle(section: string | undefined, language: SiteLanguage = "zh"): string {

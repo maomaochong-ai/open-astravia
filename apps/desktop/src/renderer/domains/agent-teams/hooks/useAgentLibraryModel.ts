@@ -3,7 +3,7 @@ import {
 	type AgentProfile,
 	type AgentProfileDeleteImpact,
 	listLibraryAgentProfiles,
-} from "@vetta/agent-team";
+} from "@astravia/agent-team";
 import { useCallback, useMemo } from "react";
 import { type AgentTeamResources, agentTeamErrorMessage } from "./useAgentTeamResources";
 
@@ -22,7 +22,7 @@ export function useAgentLibraryModel(resources: AgentTeamResources, copy: AgentL
 		const nextBlueprint = blueprints[0];
 		if (!nextBlueprint) return undefined;
 		try {
-			const created = await window.vetta.agentTeams.createAgent({
+			const created = await window.astravia.agentTeams.createAgent({
 				name: copy.defaultName,
 				description: copy.defaultDescription,
 				mentionHandle: `agent-${libraryAgents.length + 1}`,
@@ -38,13 +38,13 @@ export function useAgentLibraryModel(resources: AgentTeamResources, copy: AgentL
 	}, [blueprints, copy.defaultDescription, copy.defaultName, libraryAgents.length, setDocument, setError]);
 
 	const previewAgent = useCallback(async (agentId: string) => {
-		return window.vetta.agentTeams.previewAgentUpdate(agentId);
+		return window.astravia.agentTeams.previewAgentUpdate(agentId);
 	}, []);
 
 	const previewAgentDelete = useCallback(
 		async (agentId: string) => {
 			try {
-				return await window.vetta.agentTeams.previewAgentDelete(agentId);
+				return await window.astravia.agentTeams.previewAgentDelete(agentId);
 			} catch (cause) {
 				setError(agentTeamErrorMessage(cause));
 				return undefined;
@@ -55,7 +55,7 @@ export function useAgentLibraryModel(resources: AgentTeamResources, copy: AgentL
 
 	const saveAgent = useCallback(
 		async (agent: AgentProfile, input: AgentProfileEditInput) => {
-			const updated = await window.vetta.agentTeams.updateAgent(agent.id, {
+			const updated = await window.astravia.agentTeams.updateAgent(agent.id, {
 				expectedRevision: agent.revision,
 				name: input.name,
 				description: input.description,
@@ -77,12 +77,12 @@ export function useAgentLibraryModel(resources: AgentTeamResources, copy: AgentL
 	const deleteAgent = useCallback(
 		async (agent: AgentProfile, impact: AgentProfileDeleteImpact): Promise<boolean> => {
 			try {
-				await window.vetta.agentTeams.deleteAgent(agent.id, {
+				await window.astravia.agentTeams.deleteAgent(agent.id, {
 					expectedRevision: agent.revision,
 					expectedTeamIds: impact.teams.map((team) => team.teamId),
 					expectedTeamRevisions: Object.fromEntries(impact.teams.map((team) => [team.teamId, team.teamRevision])),
 				});
-				setDocument(await window.vetta.agentTeams.list());
+				setDocument(await window.astravia.agentTeams.list());
 				setError(undefined);
 				return true;
 			} catch (cause) {

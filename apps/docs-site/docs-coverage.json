@@ -58,7 +58,7 @@
 		},
 		{
 			"id": "design-canvas",
-			"source": "packages/plugins/presets/vetta-ui-design",
+			"source": "packages/plugins/presets/astravia-ui-design",
 			"status": "complete",
 			"pages": ["/product/design/"]
 		},

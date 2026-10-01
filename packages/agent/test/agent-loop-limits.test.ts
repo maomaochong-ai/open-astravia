@@ -1,4 +1,4 @@
-import { Type } from "@vetta/ai";
+import { Type } from "@astravia/ai";
 import { describe, expect, it } from "vitest";
 import { agentLoopContinue } from "../src/agent-loop.js";
 import type { AgentContext, AgentEvent, AgentLoopConfig, AgentTool } from "../src/types.js";

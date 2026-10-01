@@ -1,5 +1,5 @@
-import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
-import type { CodingToolRegistration } from "@vetta/runtime-tools";
+import type { RuntimeToolDefinition } from "@astravia/runtime-core/kernel";
+import type { CodingToolRegistration } from "@astravia/runtime-tools";
 import { type ConversationScenario, DEFAULT_SCENARIO, type ToolCategory } from "../profiles/index.js";
 
 /** Coding Agent 在通用 Runtime Tool 注册之上拥有的产品策略元数据。 */

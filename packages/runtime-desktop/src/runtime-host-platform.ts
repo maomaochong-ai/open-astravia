@@ -1,7 +1,11 @@
-import type { RuntimeHostPathServices, RuntimeQueueSidecarStore, RuntimeSandboxGrantStore } from "@vetta/runtime-core";
-import { nodeRuntimeHostPathServices, nodeRuntimeQueueSidecarStore } from "@vetta/runtime-node/host";
-import { nodeSandboxGrantStore } from "@vetta/runtime-node/sandbox";
-import { isSshProjectUri } from "@vetta/ssh-transport";
+import type {
+	RuntimeHostPathServices,
+	RuntimeQueueSidecarStore,
+	RuntimeSandboxGrantStore,
+} from "@astravia/runtime-core";
+import { nodeRuntimeHostPathServices, nodeRuntimeQueueSidecarStore } from "@astravia/runtime-node/host";
+import { nodeSandboxGrantStore } from "@astravia/runtime-node/sandbox";
+import { isSshProjectUri } from "@astravia/ssh-transport";
 
 /**
  * 在本机建目录之前先挡掉远程项目的 cwd。

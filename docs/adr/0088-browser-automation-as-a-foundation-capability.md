@@ -15,7 +15,7 @@ ADR-0079 为首个 Browser 系统插件选择了 Skill + CLI shim：插件自己
 
 ## 决策
 
-1. Desktop 宿主提供 `cap.foundation.vetta.browser.*`。Capability SDK 定义结构化会话、导航、快照、读取、截图、动作与运行时合同；具体引擎通过宿主内部 `BrowserEngine` 端口适配，首个实现继续使用锁定版本的 `agent-browser`。
+1. Desktop 宿主提供 `cap.foundation.astravia.browser.*`。Capability SDK 定义结构化会话、导航、快照、读取、截图、动作与运行时合同；具体引擎通过宿主内部 `BrowserEngine` 端口适配，首个实现继续使用锁定版本的 `agent-browser`。
 2. Plugin SDK 提供 `ctx.browser` facade。插件不能传 namespace、物理 profile 路径或任意引擎 argv。插件身份由 Capability Adapter 注入，会话/profile 在宿主 registry 中按 namespace 隔离。
 3. 权限拆分为 read、interact、persistent profile、attach 与 runtime manage。请求浏览器权限的 manifest 必须声明 `browser.allowedHosts`；session 只能请求该授权的子集。宿主在显式导航前执行策略，并在目标不透明的动作完成后复核实际 URL，越界时关闭 session。attach 和 runtime manage 在插件明确声明且用户授权后可用。
 4. 快照携带 revision，动作可声明其依据的 revision；宿主拒绝过期引用。公共 v1 不提供 JavaScript eval、任意命令执行、Cookie/token 导出或物理路径访问。

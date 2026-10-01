@@ -25,7 +25,7 @@ describe("scopePluginCss", () => {
 			"demo-plugin",
 		);
 
-		expect(result).toContain("@scope ([data-vetta-plugin-root=demo-plugin])");
+		expect(result).toContain("@scope ([data-astravia-plugin-root=demo-plugin])");
 		expect(result).toContain(":scope,:scope.dark");
 		expect(result).toContain(".panel button");
 		expect(result).not.toContain(":root");
@@ -59,9 +59,9 @@ describe("scopePluginCss", () => {
 		// 全局但降级：包在嵌套 layer 里，宿主/插件显式写的 w-4/h-4 才能压过 1em 默认值。
 		expect(parent?.type).toBe("atrule");
 		expect(parent && "name" in parent ? parent.name : undefined).toBe("layer");
-		expect(parent && "params" in parent ? parent.params : undefined).toBe("vetta-plugin-icons");
+		expect(parent && "params" in parent ? parent.params : undefined).toBe("astravia-plugin-icons");
 		expect(parent?.parent).toBe(root);
-		expect(result).toContain("@scope ([data-vetta-plugin-root=demo-plugin])");
+		expect(result).toContain("@scope ([data-astravia-plugin-root=demo-plugin])");
 	});
 
 	it("keeps hoisted Iconify rules inside their original cascade layer", () => {
@@ -77,7 +77,7 @@ describe("scopePluginCss", () => {
 		const layer = iconRule?.parent;
 		const outer = layer?.parent;
 
-		expect(layer && "params" in layer ? layer.params : undefined).toBe("vetta-plugin-icons");
+		expect(layer && "params" in layer ? layer.params : undefined).toBe("astravia-plugin-icons");
 		expect(outer && "params" in outer ? outer.params : undefined).toBe("utilities");
 	});
 

@@ -1,5 +1,5 @@
+import { type AssistantMessage, type AssistantMessageEvent, EventStream, type Model } from "@astravia/ai";
 import { Type } from "@sinclair/typebox";
-import { type AssistantMessage, type AssistantMessageEvent, EventStream, type Model } from "@vetta/ai";
 import { describe, expect, it } from "vitest";
 import { Agent } from "../src/index.js";
 import type { AgentTool } from "../src/types.js";

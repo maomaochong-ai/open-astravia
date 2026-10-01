@@ -1,4 +1,4 @@
-import { useActivityTab, usePromptAttachment, useTranslation } from "@vetta-org/plugin-sdk";
+import { useActivityTab, usePromptAttachment, useTranslation } from "@astravia-org/plugin-sdk";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ContentProjectCommand } from "../project/commands";
 import type { ContentHistoryMetadata, ContentProjectHistoryView } from "../project/history";

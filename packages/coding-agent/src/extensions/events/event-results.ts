@@ -1,4 +1,4 @@
-import type { AgentMessage } from "@vetta/agent-core";
+import type { AgentMessage } from "@astravia/agent-core";
 import type { CompactionResult } from "../../compaction/index.js";
 import type { CustomMessage } from "../../model-context/index.js";
 

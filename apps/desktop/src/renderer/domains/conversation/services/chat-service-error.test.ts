@@ -1,6 +1,6 @@
+import type { AssistantMessage } from "@astravia/ai";
 import { createConversationUserMessage } from "@shared/conversation";
 import type { ErrorBlock } from "@shared/store/atoms";
-import type { AssistantMessage } from "@vetta/ai";
 import { describe, expect, it } from "vitest";
 import { appendError, fullHistoryToChat, historyToChat } from "./chat-service";
 import { reconcileHistoryWithLiveTerminalErrors } from "./terminal-error-reconciliation";

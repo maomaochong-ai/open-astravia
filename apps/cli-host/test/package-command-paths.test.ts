@@ -1,7 +1,7 @@
 import { mkdirSync, readFileSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { APP_NAME, ENV_AGENT_DIR } from "@vetta/coding-agent/config";
+import { APP_NAME, ENV_AGENT_DIR } from "@astravia/coding-agent/config";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { runCodingAgentCliControl } from "../src/coding-agent-cli-control.js";
 import { createCliResourcePackageRuntime, createCliSettingsRuntime } from "../src/coding-agent-resource-runtime.js";

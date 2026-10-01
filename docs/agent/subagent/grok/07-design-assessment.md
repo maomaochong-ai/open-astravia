@@ -108,7 +108,7 @@ Grok 的选择与 **CLI 编码助手** 场景一致：主 Agent 对用户负责�
 
 ## 6. 移植或自研时的可借鉴点
 
-若 vetta-mono 等项目要对齐类似能力，建议优先吸收：
+若 astravia-mono 等项目要对齐类似能力，建议优先吸收：
 
 1. **SpawnContext 参数袋** — 避免子模块依赖巨型 Agent 结构  
 2. **Backend trait** — 工具层与进程内/远程 spawn 解耦  

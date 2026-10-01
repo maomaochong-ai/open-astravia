@@ -1,6 +1,6 @@
 // 主进程 i18next 实例：用于原生菜单（tray / pet 右键）与系统通知文案。
 // 与 renderer 共享同一套 catalog（src/shared/i18n），但这里不接 react，defaultNS=main。
-// 语言偏好真相源是 ~/.vetta/desktop-config.json 的 language 字段（见 ADR-0031），
+// 语言偏好真相源是 ~/.astravia/desktop-config.json 的 language 字段（见 ADR-0031），
 // 取值 system | zh | en；initAppLanguage() 在 app.whenReady 内、建任何菜单之前同步调用。
 
 import { app } from "electron";

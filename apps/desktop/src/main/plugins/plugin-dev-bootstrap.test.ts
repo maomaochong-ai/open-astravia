@@ -81,7 +81,7 @@ describe("plugin development bootstrap", () => {
 		});
 
 		const result = await startConfiguredPluginDevWatches(desktopAppDir, {
-			VETTA_PLUGIN_DEV: "alpha,beta,gamma,delta,epsilon",
+			ASTRAVIA_PLUGIN_DEV: "alpha,beta,gamma,delta,epsilon",
 		});
 
 		expect(result.ready.map((project) => project.id)).toEqual(["alpha", "gamma", "delta", "epsilon"]);

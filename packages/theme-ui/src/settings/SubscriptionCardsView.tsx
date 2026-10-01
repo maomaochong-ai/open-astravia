@@ -1,4 +1,4 @@
-import { cn } from "@vetta-org/ui";
+import { cn } from "@astravia-org/ui";
 import type { JSX, ReactNode } from "react";
 
 export type ModelCost = { cacheRead: number; cacheWrite: number; input: number; output: number };
@@ -153,7 +153,7 @@ function ModelsList({ model }: { model: SubscriptionCardsViewModel }): JSX.Eleme
 	);
 }
 
-function VettaGoCard({
+function AstraviaGoCard({
 	model,
 	beforeWindows,
 	children,
@@ -205,8 +205,8 @@ export function SubscriptionCardsView({
 		) : null;
 	}
 	return (
-		<VettaGoCard model={model} beforeWindows={beforeWindows}>
+		<AstraviaGoCard model={model} beforeWindows={beforeWindows}>
 			{children}
-		</VettaGoCard>
+		</AstraviaGoCard>
 	);
 }

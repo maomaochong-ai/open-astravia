@@ -1,6 +1,6 @@
 import { existsSync, statSync } from "node:fs";
+import type { RuntimeToolDefinition } from "@astravia/runtime-core/kernel";
 import { type Static, Type } from "@sinclair/typebox";
-import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
 import type { CodingToolExecutableResolver } from "../../host/executable-resolver.js";
 import {
 	formatNotFoundPath,

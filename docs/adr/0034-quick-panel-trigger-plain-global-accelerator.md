@@ -8,7 +8,7 @@
 
 ## Consequences
 
-- 配置存 main 进程 desktop config（`~/.vetta/config.json`），不走 renderer `localStorage`——`globalShortcut.register()` 仅 main 可调。
+- 配置存 main 进程 desktop config（`~/.astravia/config.json`），不走 renderer `localStorage`——`globalShortcut.register()` 仅 main 可调。
 - 若日后要补「双击功能键」，是新增原生监听通道的独立工作，不影响本期组合键路径。
 
 ## Status

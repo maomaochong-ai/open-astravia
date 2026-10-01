@@ -1,6 +1,6 @@
-import type { RemoteFileChunk, RemoteFileEntry, RemoteFileInfo } from "@vetta/remote-control";
-import { REMOTE_FILE_CHUNK_BYTES, REMOTE_MAX_FILE_BYTES } from "@vetta/remote-control";
-import { isSshProjectUri } from "@vetta/ssh-transport/project-uri";
+import type { RemoteFileChunk, RemoteFileEntry, RemoteFileInfo } from "@astravia/remote-control";
+import { REMOTE_FILE_CHUNK_BYTES, REMOTE_MAX_FILE_BYTES } from "@astravia/remote-control";
+import { isSshProjectUri } from "@astravia/ssh-transport/project-uri";
 import type { FsEntry } from "../../preload/fs-types.js";
 import type { PreviewFileSource } from "../filesystem/preview-file-source.js";
 import { RemoteOperationError } from "./remote-error-mapping.js";

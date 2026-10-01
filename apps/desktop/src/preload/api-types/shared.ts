@@ -1,4 +1,4 @@
-import type { SessionExecutionMode } from "@vetta/runtime-core";
+import type { SessionExecutionMode } from "@astravia/runtime-core";
 
 export type ExecutionModeOverride = "inherit" | SessionExecutionMode;
 

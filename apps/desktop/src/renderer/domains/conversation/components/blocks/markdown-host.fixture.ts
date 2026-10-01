@@ -1,4 +1,4 @@
-import type { MarkdownHost } from "@vetta-org/theme-ui/markdown";
+import type { MarkdownHost } from "@astravia-org/theme-ui/markdown";
 import { vi } from "vitest";
 
 export function createMarkdownHostFixture() {

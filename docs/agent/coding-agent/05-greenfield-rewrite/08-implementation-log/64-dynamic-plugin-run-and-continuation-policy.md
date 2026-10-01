@@ -113,7 +113,7 @@ Plugin bridge 的 TypeScript 类型不能保证进程外或动态 Plugin 的真�
 同一 Plugin 配置源同时进入默认 Session Prompt Runtime 和动态 Orchestrator。Composition Root 只
 负责装配，不解析 Prompt operation 或续跑优先级。
 
-CLI Vitest 另外补齐 `@vetta/agent-core` 的 workspace 源码映射。此前该测试入口会读取旧 `dist`
+CLI Vitest 另外补齐 `@astravia/agent-core` 的 workspace 源码映射。此前该测试入口会读取旧 `dist`
 声明/实现，无法真实覆盖本轮新增的 continuation 回调消息参数。
 
 ## 测试

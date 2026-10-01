@@ -316,7 +316,7 @@
 		"close": "关闭"
 	},
 	"appshot": {
-		"errorSelfCapture": "Appshot 已忽略：前台窗口是 Vetta 自身",
+		"errorSelfCapture": "Appshot 已忽略：前台窗口是 Astravia 自身",
 		"errorNoPermission": "Appshot 捕获失败：缺少「屏幕录制」与「辅助功能」权限，请在设置的权限管理中授权",
 		"errorHelperFailed": "Appshot 捕获失败，请稍后重试"
 	},
@@ -327,7 +327,7 @@
 	"mcpElicitation": {
 		"title": "MCP 请求信息",
 		"source": "来自 {{server}}",
-		"urlNotice": "只有在你确认后，Vetta 才会在系统浏览器中打开这个地址。",
+		"urlNotice": "只有在你确认后，Astravia 才会在系统浏览器中打开这个地址。",
 		"decline": "拒绝",
 		"openAndContinue": "打开并继续",
 		"submit": "提交",
@@ -419,10 +419,10 @@
 		"write": "写"
 	},
 	"chatExport": {
-		"defaultSessionName": "Vetta 会话"
+		"defaultSessionName": "Astravia 会话"
 	},
 	"chatView": {
-		"defaultSessionTitle": "Vetta 会话",
+		"defaultSessionTitle": "Astravia 会话",
 		"bottomPanelButton": {
 			"closed": "打开底部面板",
 			"open": "关闭底部面板"
@@ -537,7 +537,7 @@
 	"guideBadgeSwiper": {
 		"dismissTooltip": "不再提示",
 		"petFeatureText": "新增桌宠功能，点击前往设置开启",
-		"quickPanelText": "Vetta 支持快捷面板，点击前往设置开启"
+		"quickPanelText": "Astravia 支持快捷面板，点击前往设置开启"
 	},
 	"imagePreview": {
 		"altText": "读取的图片",
@@ -595,13 +595,13 @@
 		},
 		"placeholder": {
 			"defaults": [
-				"向 Vetta 提问，使用 / 唤出技能，@ 引用文件",
+				"向 Astravia 提问，使用 / 唤出技能，@ 引用文件",
 				"描述你想完成的任务，按 ⏎ 发送",
 				"粘贴截图或 @ 引用文件，直接开始"
 			],
 			"noSession": "选择或创建会话以开始",
 			"suggestion": "↵ {{suggestion}}",
-			"thinking": "Vetta 正在思考…"
+			"thinking": "Astravia 正在思考…"
 		},
 		"mention": {
 			"trigger": "指定成员",
@@ -695,7 +695,7 @@
 			}
 		},
 		"assistantMessage": {
-			"predicting": "Vetta 正在预测…",
+			"predicting": "Astravia 正在预测…",
 			"processing": "处理中…",
 			"waiting": "等待模型响应",
 			"preparing": "正在准备请求",
@@ -775,9 +775,9 @@
 		"retryIndicator": "正在重新连接（{{attempt}}/{{maxAttempts}}）",
 		"retryReason": "上次请求失败：{{reason}}",
 		"streamingPhrases": [
-			"Vetta 正在回复…",
+			"Astravia 正在回复…",
 			"请耐心等待…",
-			"Vetta 正在努力工作…"
+			"Astravia 正在努力工作…"
 		],
 		"copyButton": {
 			"copied": "已复制",
@@ -960,7 +960,7 @@
 			"sendFeedback": "发送修改意见",
 			"sendFeedbackWithComments": "发送修改意见（{{count}}）",
 			"stepCommentPlaceholder": "这一步要怎么改…",
-			"subtitle": "批准后 Vetta 会按这份计划开始执行；在此之前不会改动任何内容。",
+			"subtitle": "批准后 Astravia 会按这份计划开始执行；在此之前不会改动任何内容。",
 			"title": "计划待你批准"
 		},
 		"switchFailed": "无法切换计划模式",
@@ -976,7 +976,7 @@
 		"dialog": {
 			"cancel": "取消",
 			"clear": "清除目标",
-			"createDescription": "Vetta 会持续迭代，直到目标完成、受阻或暂停。",
+			"createDescription": "Astravia 会持续迭代，直到目标完成、受阻或暂停。",
 			"manageDescription": "查看当前目标状态，或恢复和清除目标。",
 			"objectiveLabel": "目标",
 			"objectivePlaceholder": "描述一个具体、可验证的最终结果…",
@@ -1003,7 +1003,7 @@
 		"nextButton": "下一步",
 		"questionTabLabel": "问题 {{number}}",
 		"submitButton": "提交",
-		"title": "Vetta 需要你的选择"
+		"title": "Astravia 需要你的选择"
 	},
 	"sandboxGrantsBadge": {
 		"revoke": "撤销",
@@ -1044,7 +1044,7 @@
 			"loadPrefix": "加载失败："
 		},
 		"export": {
-			"defaultTitle": "Vetta 会话"
+			"defaultTitle": "Astravia 会话"
 		},
 		"exportButton": {
 			"title": "导出完整会话 HTML"
@@ -1125,7 +1125,7 @@
 			"dir_tree": "目录树",
 			"dispatch_workflows": "派发工作流",
 			"doc_to_pdf": "转 PDF",
-			"easy_use_vettaApp": "使用应用",
+			"easy_use_astraviaApp": "使用应用",
 			"edit": "修改",
 			"extract_text_from_img": "图片取字",
 			"extract_text_from_pdf": "PDF 取字",
@@ -1161,7 +1161,7 @@
 	},
 	"mcpApp": {
 		"externalAccess": "此 MCP 应用声明访问 {{count}} 个外部域名",
-		"permissionsDenied": "此 MCP 应用请求了设备权限；Vetta 当前未授予这些权限",
+		"permissionsDenied": "此 MCP 应用请求了设备权限；Astravia 当前未授予这些权限",
 		"title": "MCP 应用"
 	},
 	"usageBar": {

@@ -1,4 +1,4 @@
-# Contributing to Open Vetta
+# Contributing to Open Astravia
 
 <p align="center"><b>English</b> · <a href="CONTRIBUTING.zh-CN.md">简体中文</a></p>
 
@@ -6,7 +6,7 @@ Thanks for considering a contribution. This repository is the open-source client
 
 The highest-leverage contributions are usually one folder — a plugin, a skill, a theme, a marketplace entry, or a docs page — not a framework rewrite. This guide tells you where each kind of change goes and what a PR has to clear.
 
-Questions, half-formed ideas, and “is this still maintained?” belong in [GitHub Discussions](https://github.com/openvetta/open-vetta/discussions), not Issues.
+Questions, half-formed ideas, and “is this still maintained?” belong in [GitHub Discussions](https://github.com/maomaochong-ai/open-astravia/discussions), not Issues.
 
 ---
 
@@ -14,15 +14,15 @@ Questions, half-formed ideas, and “is this still maintained?” belong in [Git
 
 | If you want to… | You are adding | Where it lives | Size |
 |---|---|---|---|
-| Add a desktop plugin | a plugin package | [`packages/plugins/`](packages/plugins/) · handbook in [`docs/plugin/`](docs/plugin/) · public guide at [docs.openvetta.com/plugins](https://docs.openvetta.com/plugins/getting-started/) | one package + `plugin.json` |
+| Add a desktop plugin | a plugin package | [`packages/plugins/`](packages/plugins/) · handbook in [`docs/plugin/`](docs/plugin/) · public guide at [docs.astravia.dev/plugins](https://docs.astravia.dev/plugins/getting-started/) | one package + `plugin.json` |
 | Add a reusable way of working | a skill | [`packages/skill-presets/`](packages/skill-presets/) or a GitHub marketplace source — see [`docs/open-marketplace.md`](docs/open-marketplace.md) | one folder with `SKILL.md` |
-| Change how the app looks | a theme | [`packages/themes/`](packages/themes/) · [`docs/theme/`](docs/theme/) · [theme guide](https://docs.openvetta.com/themes/getting-started/) | one theme package |
-| Publish an installable ability | a marketplace entry | [`openvetta/vetta-official-marketplace`](https://github.com/openvetta/vetta-official-marketplace) using [the marketplace format](docs/open-marketplace.md) | one directory + manifest row |
+| Change how the app looks | a theme | [`packages/themes/`](packages/themes/) · [`docs/theme/`](docs/theme/) · [theme guide](https://docs.astravia.dev/themes/getting-started/) | one theme package |
+| Publish an installable ability | a marketplace entry | [`maomaochong-ai/astravia-official-marketplace`](https://github.com/maomaochong-ai/astravia-official-marketplace) using [the marketplace format](docs/open-marketplace.md) | one directory + manifest row |
 | Improve product or developer docs | a docs page | [`apps/docs-site/content/docs/`](apps/docs-site/content/docs/) | one MDX file |
 | Translate UI copy | i18n strings | desktop locale catalogs; never hardcode user-visible text | one PR |
 | Fix a bug or add a product feature | code | `apps/` or `packages/` that already own the behavior | normal PR |
 
-If you are not sure which row you are in, [open a Discussion](https://github.com/openvetta/open-vetta/discussions/new?category=ideas) first.
+If you are not sure which row you are in, [open a Discussion](https://github.com/maomaochong-ai/open-astravia/discussions/new?category=ideas) first.
 
 ---
 
@@ -31,12 +31,12 @@ If you are not sure which row you are in, [open a Discussion](https://github.com
 The short path is in [`QUICKSTART.md`](QUICKSTART.md). TL;DR:
 
 ```bash
-git clone https://github.com/openvetta/open-vetta.git
-cd open-vetta
+git clone https://github.com/maomaochong-ai/open-astravia.git
+cd open-astravia
 git checkout dev
 bun install                 # Bun 1.3+
 cd apps/desktop
-bun run dev                 # Vite renderer + Electron, isolated in ~/.vetta-dev
+bun run dev                 # Vite renderer + Electron, isolated in ~/.astravia-dev
 ```
 
 Do **not** run `bun run dev` or `bun run build` at the repository root — those compile libraries, they do not launch the app. Do **not** run bare `bun test`; use `bun run test:pkg <name>` or `bun scripts/quality/run-vitest.mjs --run <file>`.
@@ -89,7 +89,7 @@ If you are unsure, open a Discussion before writing the code.
 
 ## Security
 
-Report vulnerabilities privately via [GitHub Security Advisories](https://github.com/openvetta/open-vetta/security/advisories/new). Do not file a public issue. Details in [`SECURITY.md`](SECURITY.md).
+Report vulnerabilities privately via [GitHub Security Advisories](https://github.com/maomaochong-ai/open-astravia/security/advisories/new). Do not file a public issue. Details in [`SECURITY.md`](SECURITY.md).
 
 ---
 

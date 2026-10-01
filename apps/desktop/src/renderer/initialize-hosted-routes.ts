@@ -1,4 +1,4 @@
-import type { Disposable, HostedRouteRef } from "@vetta-org/capability-sdk";
+import type { Disposable, HostedRouteRef } from "@astravia-org/capability-sdk";
 import { getDefaultStore } from "jotai";
 import { PLUGIN_RENDERER_ROUTE_NAMESPACE } from "./domains/plugins/runtime/plugin-hosted-route-capability.js";
 import { findWorkspaceView, workspaceViewRef } from "./domains/plugins/runtime/workspace-view-registry.js";

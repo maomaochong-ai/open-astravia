@@ -1,4 +1,4 @@
-import { type AgentTeamExtensionContribution, AgentTeamExtensionRegistryHost } from "@vetta/agent-team";
+import { type AgentTeamExtensionContribution, AgentTeamExtensionRegistryHost } from "@astravia/agent-team";
 import { getAppLogger } from "../logger.js";
 
 const log = getAppLogger("agent-team-extensions");

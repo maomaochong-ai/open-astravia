@@ -1,6 +1,6 @@
 import { join } from "node:path";
-import { getVettaHomePath } from "@vetta/action-rpc";
+import { getAstraviaHomePath } from "@astravia/action-rpc";
 
 export function getKnowledgeRoot(): string {
-	return join(getVettaHomePath(), "knowledges");
+	return join(getAstraviaHomePath(), "knowledges");
 }

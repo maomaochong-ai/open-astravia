@@ -1,4 +1,4 @@
-import { useTranslation } from "@vetta-org/plugin-sdk";
+import { useTranslation } from "@astravia-org/plugin-sdk";
 import { ControlButton, Controls, useReactFlow, useStore } from "@xyflow/react";
 import { formatCanvasZoomPercent } from "./canvas-viewport";
 

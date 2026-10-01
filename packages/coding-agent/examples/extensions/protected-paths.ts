@@ -5,7 +5,7 @@
  * Useful for preventing accidental modifications to sensitive files.
  */
 
-import type { ExtensionAPI } from "@vetta/coding-agent";
+import type { ExtensionAPI } from "@astravia/coding-agent";
 
 export default function (api: ExtensionAPI) {
 	const protectedPaths = [".env", ".git/", "node_modules/"];

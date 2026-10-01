@@ -4,7 +4,7 @@
  * Context files provide project-specific instructions loaded into the system prompt.
  */
 
-import { createCodingAgentSession } from "@vetta/coding-agent/sdk";
+import { createCodingAgentSession } from "@astravia/coding-agent/sdk";
 
 const { session } = await createCodingAgentSession({
 	storage: { kind: "memory" },

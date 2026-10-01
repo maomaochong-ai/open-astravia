@@ -3,16 +3,16 @@ import type { DesktopApi } from "../api.js";
 import { onIpcEvent } from "./helper.js";
 
 const DOWNLOAD_CHANNELS = {
-	START: "vetta:downloads:start",
-	PAUSE: "vetta:downloads:pause",
-	RESUME: "vetta:downloads:resume",
-	CANCEL: "vetta:downloads:cancel",
-	REMOVE: "vetta:downloads:remove",
-	LIST: "vetta:downloads:list",
-	OPEN_FILE: "vetta:downloads:open-file",
-	SHOW_IN_FOLDER: "vetta:downloads:show-in-folder",
-	GET_DEFAULT_DIR: "vetta:downloads:get-default-dir",
-	EVENT: "vetta:downloads:event",
+	START: "astravia:downloads:start",
+	PAUSE: "astravia:downloads:pause",
+	RESUME: "astravia:downloads:resume",
+	CANCEL: "astravia:downloads:cancel",
+	REMOVE: "astravia:downloads:remove",
+	LIST: "astravia:downloads:list",
+	OPEN_FILE: "astravia:downloads:open-file",
+	SHOW_IN_FOLDER: "astravia:downloads:show-in-folder",
+	GET_DEFAULT_DIR: "astravia:downloads:get-default-dir",
+	EVENT: "astravia:downloads:event",
 } as const;
 
 export function createDownloadsApi(ipc: IpcRenderer): Pick<DesktopApi, "downloads"> {

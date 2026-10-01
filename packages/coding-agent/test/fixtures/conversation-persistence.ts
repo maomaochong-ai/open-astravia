@@ -1,6 +1,6 @@
-import type { RuntimeHostSession } from "@vetta/runtime-core";
-import { nodeWorkspaceFactsFileSource } from "@vetta/runtime-node/coding";
-import { createFileConversationPersistence } from "@vetta/runtime-node/conversation";
+import type { RuntimeHostSession } from "@astravia/runtime-core";
+import { nodeWorkspaceFactsFileSource } from "@astravia/runtime-node/coding";
+import { createFileConversationPersistence } from "@astravia/runtime-node/conversation";
 import type {
 	CodingAgentConversationPersistenceFactory,
 	CodingAgentRuntimeComposition,

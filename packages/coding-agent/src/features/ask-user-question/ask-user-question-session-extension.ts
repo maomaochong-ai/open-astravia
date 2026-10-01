@@ -2,7 +2,7 @@ import {
 	defineSessionExtensionService,
 	optionalSessionExtensionFunction,
 	type SessionExtensionDefinition,
-} from "@vetta/runtime-core/session-extensions";
+} from "@astravia/runtime-core/session-extensions";
 import type { ConversationScenario } from "../../profiles/index.js";
 import { CODING_AGENT_MODEL_TOOL_ORDER } from "../../tool-policy/model-tool-order.js";
 import { createCodingAgentAskUserQuestionFeature } from "./ask-user-question-feature.js";

@@ -1,4 +1,4 @@
-import { cn } from "@vetta-org/ui";
+import { cn } from "@astravia-org/ui";
 import type { ComponentPropsWithoutRef } from "react";
 import { forwardRef } from "react";
 import { ProviderIcon } from "../shared/provider-icon";

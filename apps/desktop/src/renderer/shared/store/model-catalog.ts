@@ -13,11 +13,11 @@ export { localModelsConfigAtom } from "./model-catalog-atoms";
  */
 export const modelCatalog: ModelCatalogSync = createModelCatalogSync<ModelsConfigData, Record<string, unknown>>({
 	now: () => Date.now(),
-	loadLocal: () => window.vetta.models.get(),
+	loadLocal: () => window.astravia.models.get(),
 	applyLocal: (config) => getDefaultStore().set(localModelsConfigAtom, config),
 	loadRemote: async () => {
 		// 未登录时主进程直接返回空目录（不发网络请求），写回空表正好与登出行为一致。
-		const result = await window.vetta.models.fetchRemote();
+		const result = await window.astravia.models.fetchRemote();
 		return (result.providers ?? {}) as Record<string, unknown>;
 	},
 	applyRemote: (providers) => getDefaultStore().set(remoteProvidersAtom, providers),

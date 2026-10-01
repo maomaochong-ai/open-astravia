@@ -6,19 +6,19 @@ import {
 	listPluginManifestResources,
 	parsePluginManifest,
 	type PluginManifest,
-} from "@vetta-org/plugin-sdk/manifest";
+} from "@astravia-org/plugin-sdk/manifest";
 import { watch } from "chokidar";
 import { createServer, isCSSRequest, type ViteDevServer } from "vite";
-import { VETTA_PLUGIN_DEV_ENTRY_ID } from "./dev-vite-plugins.js";
+import { ASTRAVIA_PLUGIN_DEV_ENTRY_ID } from "./dev-vite-plugins.js";
 import {
-	emitVettaPluginDevEvent,
-	setVettaPluginDevEventListener,
-	type VettaPluginDevEvent,
-	VETTA_PLUGIN_DEV_PROTOCOL_VERSION,
+	emitAstraviaPluginDevEvent,
+	setAstraviaPluginDevEventListener,
+	type AstraviaPluginDevEvent,
+	ASTRAVIA_PLUGIN_DEV_PROTOCOL_VERSION,
 } from "./dev-events.js";
 import { hasOpaqueResourceQuery } from "./request-query.js";
 
-export interface VettaPluginDevServer {
+export interface AstraviaPluginDevServer {
 	pluginId: string;
 	entryUrl: string;
 	origin: string;
@@ -26,8 +26,8 @@ export interface VettaPluginDevServer {
 }
 
 function debugDevServer(message: string): void {
-	if (process.env.VETTA_PLUGIN_DEV_DEBUG === "1") {
-		process.stderr.write(`[vetta-plugin dev] ${message}\n`);
+	if (process.env.ASTRAVIA_PLUGIN_DEV_DEBUG === "1") {
+		process.stderr.write(`[astravia-plugin dev] ${message}\n`);
 	}
 }
 
@@ -103,8 +103,8 @@ function resolveViteConfigFile(rootDir: string): string | undefined {
 }
 
 function assertDevPluginsConfigured(server: ViteDevServer): void {
-	if (!server.config.plugins.some((plugin) => plugin.name === "vetta-plugin-dev-runtime")) {
-		throw new Error("Vite config must include vettaPluginFederation() to enable the plugin development runtime");
+	if (!server.config.plugins.some((plugin) => plugin.name === "astravia-plugin-dev-runtime")) {
+		throw new Error("Vite config must include astraviaPluginFederation() to enable the plugin development runtime");
 	}
 }
 
@@ -118,7 +118,7 @@ async function assertDevEntryAvailable(entryUrl: string): Promise<void> {
 
 async function assertDevModuleGraphAvailable(server: ViteDevServer, rootDir: string): Promise<void> {
 	const environment = server.environments.client;
-	const pendingUrls = [VETTA_PLUGIN_DEV_ENTRY_ID];
+	const pendingUrls = [ASTRAVIA_PLUGIN_DEV_ENTRY_ID];
 	const transformedUrls = new Set<string>();
 	while (pendingUrls.length > 0) {
 		const moduleUrl = pendingUrls.pop();
@@ -149,12 +149,12 @@ async function assertDevModuleGraphAvailable(server: ViteDevServer, rootDir: str
 	debugDevServer(`transformed ${transformedUrls.size} plugin modules`);
 }
 
-export async function startVettaPluginDevServer(
+export async function startAstraviaPluginDevServer(
 	rootDir: string,
-	onEvent: (event: VettaPluginDevEvent) => void,
-): Promise<VettaPluginDevServer> {
-	process.env.VETTA_PLUGIN_DEV_SERVER = "1";
-	setVettaPluginDevEventListener(onEvent);
+	onEvent: (event: AstraviaPluginDevEvent) => void,
+): Promise<AstraviaPluginDevServer> {
+	process.env.ASTRAVIA_PLUGIN_DEV_SERVER = "1";
+	setAstraviaPluginDevEventListener(onEvent);
 
 	let manifest = await readManifest(rootDir);
 	let watchedResourceRoots = await collectWatchedResourceRoots(rootDir, manifest);
@@ -180,7 +180,7 @@ export async function startVettaPluginDevServer(
 	let refreshTimer: ReturnType<typeof setTimeout> | undefined;
 	const resourceWatcher = watch(watchedResourceRoots, { ignoreInitial: true });
 	resourceWatcher.on("error", (error) => {
-		emitVettaPluginDevEvent({
+		emitAstraviaPluginDevEvent({
 			type: "error",
 			pluginId: manifest.id,
 			message: error instanceof Error ? error.message : String(error),
@@ -201,14 +201,14 @@ export async function startVettaPluginDevServer(
 						resourceWatcher.add(nextWatchedResourceRoots);
 						watchedResourceRoots = nextWatchedResourceRoots;
 					}
-					emitVettaPluginDevEvent({
+					emitAstraviaPluginDevEvent({
 						type: "update",
 						pluginId: manifest.id,
 						reason: "resource",
 						path: relative(rootDir, absolutePath).replaceAll("\\", "/"),
 					});
 				} catch (error) {
-					emitVettaPluginDevEvent({
+					emitAstraviaPluginDevEvent({
 						type: "error",
 						pluginId: manifest.id,
 						message: error instanceof Error ? error.message : String(error),
@@ -234,13 +234,13 @@ export async function startVettaPluginDevServer(
 		debugDevServer("plugin entry ready");
 	} catch (error) {
 		if (refreshTimer) clearTimeout(refreshTimer);
-		setVettaPluginDevEventListener(undefined);
+		setAstraviaPluginDevEventListener(undefined);
 		await Promise.all([resourceWatcher.close(), server.close()]);
 		throw error;
 	}
-	const readyEvent: VettaPluginDevEvent = {
+	const readyEvent: AstraviaPluginDevEvent = {
 		type: "ready",
-		protocolVersion: VETTA_PLUGIN_DEV_PROTOCOL_VERSION,
+		protocolVersion: ASTRAVIA_PLUGIN_DEV_PROTOCOL_VERSION,
 		pluginId: manifest.id,
 		entryUrl,
 		origin,
@@ -253,7 +253,7 @@ export async function startVettaPluginDevServer(
 		origin,
 		async close() {
 			if (refreshTimer) clearTimeout(refreshTimer);
-			setVettaPluginDevEventListener(undefined);
+			setAstraviaPluginDevEventListener(undefined);
 			await Promise.all([resourceWatcher.close(), server.close()]);
 		},
 	};

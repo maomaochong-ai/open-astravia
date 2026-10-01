@@ -10,7 +10,7 @@
 
 - `runtime-mcp` 拥有传输无关的 MCP 协议与配置合同；
 - 不可信 `mcp.json` 通过 TypeBox 校验；
-- 通用文件配置 Source 不知道 Vetta 的产品目录约定；
+- 通用文件配置 Source 不知道 Astravia 的产品目录约定；
 - coding-agent 保留旧入口和默认路径行为；
 - `McpManager` 只增加配置 Source 与 Client Factory 两个测试接缝；
 - 用行为基线证明迁移前后功能没有变化。
@@ -27,7 +27,7 @@ runtime-mcp
   -> model-call MCP feature
 
 coding-agent/core/mcp
-  -> Vetta global/project path compatibility wrapper
+  -> Astravia global/project path compatibility wrapper
   -> stdio and HTTP clients
   -> OAuth flows and token storage
   -> legacy McpManager
@@ -37,8 +37,8 @@ runtime-composition
 ```
 
 协议类型属于 Runtime Feature 的稳定边界；文件配置 Source 是基础设施适配器，不是 Runtime Core。
-它可以放在 `runtime-mcp/config`，但必须通过显式路径和环境参数工作，不能知道 `~/.vetta`、
-项目 `.vetta` 或 Desktop 配置目录。产品路径选择仍由 coding-agent 兼容适配器和宿主负责。
+它可以放在 `runtime-mcp/config`，但必须通过显式路径和环境参数工作，不能知道 `~/.astravia`、
+项目 `.astravia` 或 Desktop 配置目录。产品路径选择仍由 coding-agent 兼容适配器和宿主负责。
 
 ## 3. 实施内容
 
@@ -54,7 +54,7 @@ runtime-composition
 类型中的开放 JSON 值改用 `unknown` 和显式 JSON Object，不新增 `any`。coding-agent 原类型文件变为
 兼容 re-export，因此既有内部和下游导入无需同步改写，运行时也没有新增逻辑。
 
-`@vetta/runtime-mcp` 同时增加根入口、`./protocol` 和 `./config` 导出，独立构建产物包含这些合同。
+`@astravia/runtime-mcp` 同时增加根入口、`./protocol` 和 `./config` 导出，独立构建产物包含这些合同。
 
 ### 3.2 TypeBox 配置解析
 
@@ -162,7 +162,7 @@ providerStopped: true
 desktopExitCode: 0
 ```
 
-真实 Canary 继续使用 Desktop 安装到仓库外的 Vetta CLI 完成会话创建和继续，并覆盖 Desktop
+真实 Canary 继续使用 Desktop 安装到仓库外的 Astravia CLI 完成会话创建和继续，并覆盖 Desktop
 进程重启、会话恢复、Scheduler、Batch、动态 MCP Tool Loop 与最终清理。
 
 ## 7. 结论与下一步

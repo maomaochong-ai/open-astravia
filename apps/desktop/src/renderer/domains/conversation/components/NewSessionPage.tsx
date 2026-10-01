@@ -1,7 +1,7 @@
 import { OrphanRemoteProjectGuard } from "@domains/project/components/orphan-remote/OrphanRemoteProjectGuard";
 import { pageHeaderRightSlotAtom } from "@shared/store/atoms";
 import { useSearch } from "@tanstack/react-router";
-import { useThemeSurface } from "@vetta-org/theme-sdk/appearance";
+import { useThemeSurface } from "@astravia-org/theme-sdk/appearance";
 import { useSetAtom } from "jotai";
 import { useEffect, useMemo } from "react";
 import { NewSessionHeaderActions } from "./new-session/NewSessionHeaderActions";

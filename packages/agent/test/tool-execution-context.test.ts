@@ -6,7 +6,7 @@ import {
 	type Message,
 	type Model,
 	Type,
-} from "@vetta/ai";
+} from "@astravia/ai";
 import { describe, expect, it } from "vitest";
 import { agentLoop } from "../src/agent-loop.js";
 import type { AgentLoopConfig, AgentMessage, AgentTool } from "../src/types.js";

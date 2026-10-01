@@ -1,5 +1,5 @@
+import type { McpHttpAuthProviderFactory } from "@astravia/runtime-mcp/client";
 import type { OAuthClientProvider } from "@modelcontextprotocol/sdk/client/auth.js";
-import type { McpHttpAuthProviderFactory } from "@vetta/runtime-mcp/client";
 import { isMcpAuthRequiredError, McpAuthRequiredError } from "../../client/client-errors.js";
 import type { McpClientHandle } from "../../client/client-handle.js";
 import type {

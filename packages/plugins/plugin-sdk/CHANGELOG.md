@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
+All notable changes to `@astravia-org/plugin-sdk` are documented in this file.
 
 ## [Unreleased]
 
@@ -20,7 +20,7 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 
 - `PluginModelDefinition` exposes `reasoningLevels` and `defaultReasoningLevel`, so model providers can publish their native reasoning choices without losing them at the host's write boundary. Requires the corresponding Desktop capability schema fix.
 
-- 新增 `@vetta-org/plugin-sdk/logger`。配套 `plugin-vite` 会从已校验的 `plugin.json` 为每个插件生成不可变的 `id@version` logger；插件无需持有或传递 `ctx`，日志仍由 Desktop 统一持久化、轮转并纳入诊断信息。使用该入口的插件要求 Plugin API `^2.5.0`。
+- 新增 `@astravia-org/plugin-sdk/logger`。配套 `plugin-vite` 会从已校验的 `plugin.json` 为每个插件生成不可变的 `id@version` logger；插件无需持有或传递 `ctx`，日志仍由 Desktop 统一持久化、轮转并纳入诊断信息。使用该入口的插件要求 Plugin API `^2.5.0`。
 - Media Provider v5 可在 `generate` capability 中声明 `models` / `defaultModelId`；生成请求的 `modelId` 现在由宿主校验。Provider handler 新增 `readInput()`，只读取当前调用输入，供 JSON 内联图片 API 使用。
 - 官方图片设置增加 `textToImageModelId` / `imageToImageModelId`，旧的仅 Provider 配置继续使用该 Provider 的默认模型。
 - 官方插件新增 `ctx.official.agent.getImageGeneration()` / `setImageGeneration()`，用于读取或更新宿主 Agent 的文生图、图生图 Provider 偏好；普通插件仍会被官方能力门控拒绝。
@@ -90,7 +90,7 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
   新增 `optional` 控制解析不到时是否照常发布团队（跨插件引用与角色槽位缺省为 `true`，少一名
   队员而不是少一支团队）。
   装机自带的 `master`/`developer`/`researcher`/`auditor`/`business`（`preset-agent`）与
-  `designer`（`vetta-ui-design`）已对外供货，词表见 `BUILTIN_PLUGIN_AGENT_ROLES`。
+  `designer`（`astravia-ui-design`）已对外供货，词表见 `BUILTIN_PLUGIN_AGENT_ROLES`。
 
   队长仍限定为本插件自己的智能体：它是用户唯一的对话入口，落在别的插件上会让这支团队随那个
   插件一起变成打不开的壳。
@@ -102,9 +102,9 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 
 ### Added
 
-- 手册（`docs/plugin`）随包发布，落在安装后的 `node_modules/@vetta-org/plugin-sdk/docs/`。
-  仓库外的 Agent 因此能读到与本工程实际编译版本一致的合同，不必依赖 Vetta 源码仓库或插件工作台；
-  路径用 `npx vetta-plugin-cli docs` 解析，不要硬编码。
+- 手册（`docs/plugin`）随包发布，落在安装后的 `node_modules/@astravia-org/plugin-sdk/docs/`。
+  仓库外的 Agent 因此能读到与本工程实际编译版本一致的合同，不必依赖 Astravia 源码仓库或插件工作台；
+  路径用 `npx astravia-plugin-cli docs` 解析，不要硬编码。
 
 ## [0.3.0] — 2026-09-14
 
@@ -198,14 +198,14 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 - **`official.sessions.listRunningCwds()`**：当前有会话在跑的项目 cwd（去重）。需要「这个项目忙不忙」时用它，**不要**拿 `listRunning()` 的路径去比对 cwd：会话文件默认落在按 cwd 编码的分片目录里，那个编码把 `/`、`\`、`:` 全压成 `-` 且不可逆，`my-project` 与 `my/project` 会撞进同一个分片。
 - **`official.navigation.open({ target: "new-session", cwd, draft })`**：`draft` 可选，把一段文本预置到该项目新建会话页的输入框（不发送，用户可继续编辑）。文本用输入框自己的行内 token 形态书写（`@skill:名字` / `@mcp:名字` / `@/abs/path`），宿主会渲染成对应的 badge。草稿写在**跳转之前**，因此不会被新会话页的草稿恢复覆盖——「先跳转、再往输入框塞内容」这条路必然被那次恢复冲掉。该 cwd 上已有的未发送草稿会被替换。
 - **`official.navigation.open({ target: "new-session", cwd })`**：跳到某个项目的新建会话页。这是第一个**带参数**的导航目标，`PluginOfficialNavigationOpenInput` 因此新增可选 `cwd`；缺 cwd 或传相对路径会被宿主拒绝，而不是跳到一个空页面。目录（`navigation.help()`）里同步列出该目标。
-- Added the versioned `@vetta-org/plugin-sdk/npm-package` contract for validating npm plugin distribution envelopes and package-contained archive paths; official plugin install summaries now expose active/pending versions and accept host-verified npm identity metadata.
+- Added the versioned `@astravia-org/plugin-sdk/npm-package` contract for validating npm plugin distribution envelopes and package-contained archive paths; official plugin install summaries now expose active/pending versions and accept host-verified npm identity metadata.
 - `ctx.plugin.iconUrl`：宿主从 `plugin.json#icon` 解析后注入的不透明品牌图标；Activity Tab 省略 `icon` 时宿主自动用它填栏。插件不要自行 `import` 包内 png 或拼宿主协议。
 - `definePlugin().activate()` 现在可返回函数或 `Disposable`，宿主会把它绑定到本次 activation，并在对应实例被替换、停用或后续加载失败时清理；热更新中的有状态资源不再依赖无法区分新旧实例的模块级 `deactivate()`。
 - **工作区视图 `ctx.ui.registerWorkspaceView()`**（新权限 `ui.slot.workspace-view`）：插件可以贡献一个**整页 surface**，与内置的「自动化」「知识库」同级——宿主给它一条自己的路由 `/workspace/<pluginId>/<viewId>` 和一个侧边栏导航入口，打开后整个内容区归插件。用于跨会话、跨项目的工作台（看板、控制台、仪表盘）；绑定单次对话的辅助 UI 仍应使用 Activity Tab。配套 `ctx.ui.openWorkspaceView(viewId)` 做程序化跳转。视图 `id` 会进 URL 并参与侧边栏布局持久化，故限定为 `^[a-z0-9][a-z0-9._-]*$`；`icon` 是 **iconify class 字符串**而非 ReactNode（宿主要把它渲染进自己的导航按钮并按 key 持久化布局）。导航入口默认落在侧边栏「更多」收纳里，用户可拖拽排序或 pin 到左上方置顶区。见 ADR-0065。
 - **`official.sessions`**（仅 official 来源插件可用）：后台会话编排 —— `create` / `prompt` / `abort` / `rename` / `list` / `listRunning` / `onRunningChanged` / `open`。与 `ctx.conversation.*` 的分工是：后者作用于**用户当前正在看的**会话，这套 API 按 sessionId 显式寻址、与当前路由无关。会话本体跑在主进程，创建并 prompt 之后即使宿主停在别的页面、插件 UI 未挂载，agent loop 也会继续跑到自然停止点——这是「多任务并发派单」类工作台成立的前提。见 ADR-0065。
-- **宿主成品 UI 组件对插件开放**：新增共享入口 `@vetta-org/theme-ui/plugin-ui`（Module Federation 共享域，与 `@vetta-org/ui` 同一机制），插件拿到的是宿主运行时的**同一份实例**，因此不是「长得像」而是同一个组件。首批开放 `ModelSelectorView`（搜索、provider 分组与图标、云端/默认/视觉徽章、推理档位子菜单）、`ProviderIcon`、`MultiplierTag`。全部为纯展示组件：数据、文案、写回逻辑经 props 注入，插件可在自己的语义下复用（看板给「某张卡」选模型，宿主输入栏给「当前会话」选模型）。清单有意收窄，见 `packages/theme-ui/src/plugin-ui`。
+- **宿主成品 UI 组件对插件开放**：新增共享入口 `@astravia-org/theme-ui/plugin-ui`（Module Federation 共享域，与 `@astravia-org/ui` 同一机制），插件拿到的是宿主运行时的**同一份实例**，因此不是「长得像」而是同一个组件。首批开放 `ModelSelectorView`（搜索、provider 分组与图标、云端/默认/视觉徽章、推理档位子菜单）、`ProviderIcon`、`MultiplierTag`。全部为纯展示组件：数据、文案、写回逻辑经 props 注入，插件可在自己的语义下复用（看板给「某张卡」选模型，宿主输入栏给「当前会话」选模型）。清单有意收窄，见 `packages/theme-ui/src/plugin-ui`。
 - `official.models.list()` 的 provider 摘要新增 `icon`（图标 symbol），配合 `ProviderIcon` 即可渲染出与宿主一致的服务商图标。
-- `official.models.list()` 现在返回**用户实际可选的全部模型**：除本地配置的 provider 外，还包含登录后服务端下发的远程目录（Vetta Go 等，摘要上带 `remote: true`），与宿主输入栏模型选择器同一口径；同一个 `provider/modelId` 以本地为准。`assertModelKeyExists` 同步认这些远程 key（此前会误判为不存在，因为主进程只看得到本地模型配置）。
+- `official.models.list()` 现在返回**用户实际可选的全部模型**：除本地配置的 provider 外，还包含登录后服务端下发的远程目录（Astravia Go 等，摘要上带 `remote: true`），与宿主输入栏模型选择器同一口径；同一个 `provider/modelId` 以本地为准。`assertModelKeyExists` 同步认这些远程 key（此前会误判为不存在，因为主进程只看得到本地模型配置）。
 - `official.sessions` 支持指定模型：`create({ cwd, title, modelKey })` 把模型写进新会话的**会话设置**（后续插件 prompt 与用户在对话页手动接管都用它）；`prompt(sessionId, text, { modelKey })` 只钉住这一轮、不改会话设置。两者都可省略，省略即跟随宿主全局默认模型。可选模型清单来自既有的 `official.models.list()`。
 - `capture.offscreen` 新增 `probeScript` 与结果字段 `probe`：插件可在**截图的同一时刻**对离屏页面求值，把渲染后的 DOM 度量（换行、裁切、空图标位、边缘错位等）与位图一起取回，无需为了量一次布局再渲染一遍。结果经 JSON 往返；求值抛错或不可序列化时 `probe` 为 `undefined`，位图照常返回——探针是搭车的附加信息，不会成为截图失败的原因。
 - **工作区视图导航项角标**：`PluginWorkspaceViewContribution.badge` 声明初始角标，`ctx.ui.setWorkspaceViewBadge(viewId, badge | null)` 运行时更新（权限同为 `ui.slot.workspace-view`）。`PluginNavBadge` 是判别联合：`beta`（宿主预置，渲染与内置「知识库」完全一致、文案由宿主按当前语言给出，插件不必自己翻译）、`text`（支持 `%catalogKey%`）、`count`（超 99 显示 `99+`，归零即消失）、`dot`；各带可选 `tone`（`default` / `accent` / `warning` / `danger`，宿主映射到自己的主题色，插件给不了原始色值）。运行时更新必须走 `setWorkspaceViewBadge` 而不是重新注册——后者会让整页 surface 重挂载。认不出的角标当作「没有角标」，不会让注册失败。
@@ -217,12 +217,12 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 - `PluginStorageApi.putBlobFromFile()`：插件可把用户选择或拖入的真实文件直接交给宿主复制到私有 Blob；preload 负责从 `File` 提取路径，文件字节不进入插件 renderer、不进行 Base64 编码，仍受 `storage.write` 权限约束。
 - `PluginPromptAttachment.context` 结构化、版本化 JSON 上下文与 `lifecycle: "sticky"`：插件可把用户当前选择等应用状态作为可校验对象附到输入栏，宿主发送时冻结快照；`definePluginPromptContext()` 提供 JSON 安全与大小校验，旧的 metadata/instructions 一次性附件保持兼容。
 - `ctx.ai` 宿主管理的文本推理能力：插件通过 `ai.models.list` 获取可用文本模型，通过 `ai.complete` 调用用户已配置的模型。模型解析、凭据注入与请求执行均留在 Desktop 主进程，插件不会接触 API Key；首版契约提供单轮 `systemPrompt + prompt` 完成、推理级别、温度、最大输出和 token 用量。
-- `ctx.media` 宿主媒体协议 v3：支持类型化的生成、工程合成和转码操作；Provider 可从远程 URL、插件 Blob 或工作区文件交付输出，由宿主统一导入为 owner 隔离的临时产物。`onProvidersChanged()` 允许并行激活的消费插件响应 Provider 增删。Desktop 内置的 Vetta 图片 Provider 仍固定在主进程调用网关，插件拿不到 JWT，也不能传任意网关路径（ADR-0059）。
-- `ctx.gateway`（`PluginGatewayApi`）：带当前登录身份调用 Vetta 服务端（ADR-0056）。插件只给出**相对 `/api/v1` 的路径**与 JSON body，服务端地址、`Authorization` 与 401 刷新重试全在宿主主进程完成——插件拿不到 token，也拼不出指向其它接口的绝对 URL；把 JWT 交给插件进程等于开放整个 `/api/v1` 的越权面，因此 SDK 不提供「取 token 自己拼」的口子。业务信封由宿主拆开，返回 `{ ok, status, code, message, data }`，配额用尽/档位无权限这类**不抛异常**（它们是常规业务分支，插件应据此渲染引导）。**该字段可选**：只对随包分发的 official 插件挂载，第三方插件读到 `undefined`，使用前必须判空。这样收口的理由不是防越权（服务端档位授权已限定可用模型、消耗的是用户自己的额度），而是防插件偷跑烧光用户配额——在缺少插件签名与审核机制前，「安装时用户确认」形同虚设。
+- `ctx.media` 宿主媒体协议 v3：支持类型化的生成、工程合成和转码操作；Provider 可从远程 URL、插件 Blob 或工作区文件交付输出，由宿主统一导入为 owner 隔离的临时产物。`onProvidersChanged()` 允许并行激活的消费插件响应 Provider 增删。Desktop 内置的 Astravia 图片 Provider 仍固定在主进程调用网关，插件拿不到 JWT，也不能传任意网关路径（ADR-0059）。
+- `ctx.gateway`（`PluginGatewayApi`）：带当前登录身份调用 Astravia 服务端（ADR-0056）。插件只给出**相对 `/api/v1` 的路径**与 JSON body，服务端地址、`Authorization` 与 401 刷新重试全在宿主主进程完成——插件拿不到 token，也拼不出指向其它接口的绝对 URL；把 JWT 交给插件进程等于开放整个 `/api/v1` 的越权面，因此 SDK 不提供「取 token 自己拼」的口子。业务信封由宿主拆开，返回 `{ ok, status, code, message, data }`，配额用尽/档位无权限这类**不抛异常**（它们是常规业务分支，插件应据此渲染引导）。**该字段可选**：只对随包分发的 official 插件挂载，第三方插件读到 `undefined`，使用前必须判空。这样收口的理由不是防越权（服务端档位授权已限定可用模型、消耗的是用户自己的额度），而是防插件偷跑烧光用户配额——在缺少插件签名与审核机制前，「安装时用户确认」形同虚设。
 
 - `PluginUiApi.openExternal(url)`：把链接交给系统默认浏览器（Electron `shell.openExternal`），不是 App 内置的浏览器面板。只接受 `http:`/`https:`，其余协议宿主直接拒绝。需新权限 `shell.openExternal`。
 - `ctx.capture.offscreen(options)`（`PluginCaptureApi`，新权限 `capture.offscreen`）：宿主主进程用隐藏离屏窗口加载 http(s) 页面并 `capturePage` 出图。与 DOM 克隆类截图（html-to-image）不同，走真实渲染管线，位图与页面在屏显示逐像素一致；`sessionKey` 复用窗口（url 未变跳过重新加载，SPA 切路由零加载），`prepareScript` / `readyExpression` 对接页面自己的就绪信号，`releaseOffscreen(sessionKey)` 主动释放。窗口闲置自动回收，插件禁用/卸载/重载与 App 退出统一清扫。**该字段可选**：旧宿主上 `ctx.capture` 为 `undefined`，使用前判空。
-- Added the public `@vetta-org/plugin-sdk/tailwind-theme.css` host-theme contract for semantic Tailwind colors without importing Desktop component styles.
+- Added the public `@astravia-org/plugin-sdk/tailwind-theme.css` host-theme contract for semantic Tailwind colors without importing Desktop component styles.
 
 ### Changed
 
@@ -235,7 +235,7 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 
 ### Added
 
-- Added the public `@vetta-org/plugin-sdk/manifest` contract, including a TypeBox `PluginManifestSchema`, Schema-derived types, runtime parsing, permission constants, resource discovery, and Plugin API compatibility checks shared by tooling and the Desktop host.
+- Added the public `@astravia-org/plugin-sdk/manifest` contract, including a TypeBox `PluginManifestSchema`, Schema-derived types, runtime parsing, permission constants, resource discovery, and Plugin API compatibility checks shared by tooling and the Desktop host.
 - Added plugin keyboard shortcuts on the host `ShortcutScopeStack`: permission `ui.shortcuts.register`, `ctx.ui.registerShortcutScope()`, types (`PluginShortcutScopeContribution` / `PluginShortcutBinding`), and React helper `usePluginShortcutScope()`. Kind is limited to `surface` | `overlay` | `modal` (`app` stays host-only for configurable global actions).
 - `ctx.command.spawn(file, args?, options?)`：长驻进程能力（ADR-0054）。返回 `PluginCommandSpawnHandle`（`stop()` / `status()` / `onExit()`），`allocatePort: true` 时宿主分配空闲端口并替换 args/env 中的 `{{PORT}}`。需清单 `commands` 声明 + 新权限 `agent.command.spawn`；进程随插件卸载/禁用/重载与 App 退出统一回收。
 - `PluginFsApi.saveAs(defaultFileName, content, encoding?, options?)`：经宿主原生保存对话框把内存字节写到用户选定的路径，返回保存路径（用户取消返回 `null`）。与 `writeFile` 不同，目标不受工程根限制——路径由用户当场在原生框里确认，插件无法静默写盘。需 `fs.write` 权限。
@@ -267,7 +267,7 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 
 ### Changed
 
-- Split `src/index.ts` into domain modules (`scenario`, `permissions`, `ui`, `agent`, `official`, `hooks`, …); package public API is unchanged and still re-exported from `@vetta-org/plugin-sdk`.
+- Split `src/index.ts` into domain modules (`scenario`, `permissions`, `ui`, `agent`, `official`, `hooks`, …); package public API is unchanged and still re-exported from `@astravia-org/plugin-sdk`.
 - Tightened Plugin API 1.1 contracts for official batch-task and scheduler mutations, required system-plugin metadata, and approval operation mappings with explicitly allowed alternative presentations.
 
 ### Added
@@ -289,7 +289,7 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 
 ### Changed
 
-- **npm 包名**：由 `@vetta/plugin-sdk` 更名为 `@vetta-org/plugin-sdk`（发布 scope 与 org `vetta-org` 对齐）。
+- **npm 包名**：由 `@astravia/plugin-sdk` 更名为 `@astravia-org/plugin-sdk`（发布 scope 与 org `astravia-org` 对齐）。
 - 会话页插槽（活动面板插件标签卡、AI 输入栏插件 toggle）现按 `scope_use` 随对话类型显隐，与工具 `scope_use` 同一套场景轴，**fail-closed**：未声明 / 空数组 = 任何会话都不显示。**行为破坏性变更**——既有不声明 `scope_use` 的活动面板标签卡 / 输入栏 toggle 将不再出现，需显式声明（如 `scope_use: ["project", "conversation"]`）。
 - `PluginAgentToolRegistration.scope_use` 类型由 `string[]` 收紧为 `readonly ConversationScenario[]`，声明工具可见场景时获得补全与拼写校验。
 

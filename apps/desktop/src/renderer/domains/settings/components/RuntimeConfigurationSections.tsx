@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { MotionSelect, SettingRow, SettingSection } from "@vetta-org/theme-ui/settings";
-import { Switch } from "@vetta-org/ui";
+import { MotionSelect, SettingRow, SettingSection } from "@astravia-org/theme-ui/settings";
+import { Switch } from "@astravia-org/ui";
 import { IMAGE_CUSTOM_PRESET, type ImageNumericPreset, imageNumericPresets } from "./image-numeric-presets";
 import type { RuntimeConfigurationFieldModel, RuntimeConfigurationModel } from "./useRuntimeConfigurationModel";
 import { SETTINGS_SECTION } from "../registry";

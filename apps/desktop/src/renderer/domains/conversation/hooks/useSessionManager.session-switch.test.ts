@@ -198,7 +198,7 @@ it("切回仍在执行的会话时保留尚未进入历史快照的乐观用户�
 		subscribe: vi.fn(async () => vi.fn()),
 		updateSettings: vi.fn(async () => undefined),
 	};
-	Object.defineProperty(window, "vetta", {
+	Object.defineProperty(window, "astravia", {
 		configurable: true,
 		value: {
 			batchTasks: { resumeTaskWithText: vi.fn() },
@@ -299,7 +299,7 @@ it("新会话先导航并完成一帧绘制，再创建 runtime，同时保留�
 		subscribe: vi.fn(async () => vi.fn()),
 		updateSettings: vi.fn(async () => undefined),
 	};
-	Object.defineProperty(window, "vetta", {
+	Object.defineProperty(window, "astravia", {
 		configurable: true,
 		value: {
 			batchTasks: { resumeTaskWithText: vi.fn() },
@@ -391,7 +391,7 @@ it("已有会话先提交加载态，快速切换时只有最后一次打开可�
 		subscribe: vi.fn(async () => vi.fn()),
 		updateSettings: vi.fn(async () => undefined),
 	};
-	Object.defineProperty(window, "vetta", {
+	Object.defineProperty(window, "astravia", {
 		configurable: true,
 		value: {
 			batchTasks: { resumeTaskWithText: vi.fn() },
@@ -517,7 +517,7 @@ it("会话恢复期间立即接受发送并在订阅就绪后派发到目标 Run
 		subscribe: vi.fn(async () => vi.fn()),
 		updateSettings: vi.fn(async () => undefined),
 	};
-	Object.defineProperty(window, "vetta", {
+	Object.defineProperty(window, "astravia", {
 		configurable: true,
 		value: {
 			batchTasks: { resumeTaskWithText: vi.fn() },
@@ -584,7 +584,7 @@ it("已有会话创建失败时退出加载态并保留可诊断错误", { timeo
 	const { useSessionManager } = await import("./useSessionManager");
 	const store = getDefaultStore();
 	const failure = new Error("restore failed");
-	Object.defineProperty(window, "vetta", {
+	Object.defineProperty(window, "astravia", {
 		configurable: true,
 		value: {
 			batchTasks: { resumeTaskWithText: vi.fn() },
@@ -653,7 +653,7 @@ it("只读历史预览失败时回退到 Runtime 历史水合", { timeout: 10_00
 		subscribe: vi.fn(async () => vi.fn()),
 		updateSettings: vi.fn(async () => undefined),
 	};
-	Object.defineProperty(window, "vetta", {
+	Object.defineProperty(window, "astravia", {
 		configurable: true,
 		value: {
 			batchTasks: { resumeTaskWithText: vi.fn() },
@@ -729,7 +729,7 @@ it("新会话首发不等整轮 prompt 跑完就回填会话状态", { timeout: 
 		subscribe: vi.fn(async () => vi.fn()),
 		updateSettings: vi.fn(async () => undefined),
 	};
-	Object.defineProperty(window, "vetta", {
+	Object.defineProperty(window, "astravia", {
 		configurable: true,
 		value: {
 			batchTasks: { resumeTaskWithText: vi.fn() },

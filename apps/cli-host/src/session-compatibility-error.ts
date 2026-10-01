@@ -1,8 +1,8 @@
 import type {
 	CodingAgentHistoricalSessionIncompatibilityCode,
 	CodingAgentHistoricalSessionMigrationIncompatible,
-} from "@vetta/coding-agent/historical-sessions";
-import type { RpcSessionIncompatibilityFailure } from "@vetta/coding-agent/rpc";
+} from "@astravia/coding-agent/historical-sessions";
+import type { RpcSessionIncompatibilityFailure } from "@astravia/coding-agent/rpc";
 
 export class SessionCompatibilityError extends Error {
 	readonly errorCode: CodingAgentHistoricalSessionIncompatibilityCode;

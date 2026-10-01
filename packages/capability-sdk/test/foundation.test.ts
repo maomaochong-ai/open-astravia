@@ -16,7 +16,9 @@ import {
 
 describe("network and namespaced storage foundation capabilities", () => {
 	it("uses one system-agnostic capability id per operation", () => {
-		expect(FOUNDATION_NETWORK_CAPABILITIES.REQUEST.id).toBe(`${CAPABILITY_PREFIXES.VETTA_FOUNDATION}network.request`);
+		expect(FOUNDATION_NETWORK_CAPABILITIES.REQUEST.id).toBe(
+			`${CAPABILITY_PREFIXES.ASTRAVIA_FOUNDATION}network.request`,
+		);
 		expect(
 			[
 				FOUNDATION_STORAGE_CAPABILITIES.LIST,
@@ -30,15 +32,15 @@ describe("network and namespaced storage foundation capabilities", () => {
 				FOUNDATION_STORAGE_CAPABILITIES.DELETE_BLOB,
 			].map((capability) => capability.id),
 		).toEqual([
-			`${CAPABILITY_PREFIXES.VETTA_FOUNDATION}storage.list`,
-			`${CAPABILITY_PREFIXES.VETTA_FOUNDATION}storage.read-file`,
-			`${CAPABILITY_PREFIXES.VETTA_FOUNDATION}storage.read-snapshot`,
-			`${CAPABILITY_PREFIXES.VETTA_FOUNDATION}storage.commit`,
-			`${CAPABILITY_PREFIXES.VETTA_FOUNDATION}storage.put-blob`,
-			`${CAPABILITY_PREFIXES.VETTA_FOUNDATION}storage.put-blob-from-file`,
-			`${CAPABILITY_PREFIXES.VETTA_FOUNDATION}storage.read-blob`,
-			`${CAPABILITY_PREFIXES.VETTA_FOUNDATION}storage.get-blob-ref`,
-			`${CAPABILITY_PREFIXES.VETTA_FOUNDATION}storage.delete-blob`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_FOUNDATION}storage.list`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_FOUNDATION}storage.read-file`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_FOUNDATION}storage.read-snapshot`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_FOUNDATION}storage.commit`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_FOUNDATION}storage.put-blob`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_FOUNDATION}storage.put-blob-from-file`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_FOUNDATION}storage.read-blob`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_FOUNDATION}storage.get-blob-ref`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_FOUNDATION}storage.delete-blob`,
 		]);
 	});
 
@@ -78,12 +80,12 @@ describe("network and namespaced storage foundation capabilities", () => {
 		expect(
 			FOUNDATION_STORAGE_CAPABILITIES.PUT_BLOB.parseOutput({
 				id: "image",
-				url: "vetta-media://local/image",
+				url: "astravia-media://local/image",
 				mimeType: "image/png",
 			}),
 		).toEqual({
 			id: "image",
-			url: "vetta-media://local/image",
+			url: "astravia-media://local/image",
 			mimeType: "image/png",
 		});
 		expect(() =>

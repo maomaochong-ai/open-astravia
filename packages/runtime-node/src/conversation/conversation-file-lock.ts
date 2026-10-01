@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { FileHandle } from "node:fs/promises";
 import { open, readFile, rm, stat } from "node:fs/promises";
 import { setTimeout as delay } from "node:timers/promises";
-import { CONVERSATION_STORAGE_ERROR_CODES, ConversationStorageError } from "@vetta/runtime-storage/conversation";
+import { CONVERSATION_STORAGE_ERROR_CODES, ConversationStorageError } from "@astravia/runtime-storage/conversation";
 import { nodeErrorCode } from "./node-error-code.js";
 
 const FILE_LOCK_RETRY_COUNT = 100;

@@ -1,6 +1,6 @@
 import type { PermissionKind, PermissionStatus, PermissionsSnapshot } from "@preload/api";
 import { cn } from "@shared/lib/utils";
-import { Button } from "@vetta-org/ui";
+import { Button } from "@astravia-org/ui";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -49,7 +49,7 @@ export function PermissionsStep(): JSX.Element {
 
 	const refresh = useCallback(async () => {
 		try {
-			setSnapshot(await window.vetta.permissions.checkAll());
+			setSnapshot(await window.astravia.permissions.checkAll());
 			setError(null);
 		} catch (err) {
 			setError(err instanceof Error ? err.message : String(err));
@@ -67,7 +67,7 @@ export function PermissionsStep(): JSX.Element {
 
 	const openPane = useCallback(async (kind: PermissionKind) => {
 		try {
-			await window.vetta.permissions.openPane(kind);
+			await window.astravia.permissions.openPane(kind);
 		} catch (err) {
 			setError(err instanceof Error ? err.message : String(err));
 		}
@@ -75,7 +75,7 @@ export function PermissionsStep(): JSX.Element {
 
 	const openComputerUse = useCallback(async () => {
 		try {
-			await window.vetta.appshot.openOnboarding();
+			await window.astravia.appshot.openOnboarding();
 		} catch (err) {
 			setError(err instanceof Error ? err.message : String(err));
 		}

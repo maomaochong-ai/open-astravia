@@ -24,9 +24,9 @@ test("parses the range forms electron-updater uses", () => {
 });
 
 async function startServer(body) {
-	const root = await mkdtemp(join(tmpdir(), "vetta-local-updates-"));
+	const root = await mkdtemp(join(tmpdir(), "astravia-local-updates-"));
 	temporaryRoots.push(root);
-	await writeFile(join(root, "Vetta-1.2.3-arm64-mac.zip"), body);
+	await writeFile(join(root, "Astravia-1.2.3-arm64-mac.zip"), body);
 	const server = createLocalUpdateServer(root);
 	servers.push(server);
 	await new Promise((ready) => server.listen(0, "127.0.0.1", ready));
@@ -38,12 +38,12 @@ test("serves byte ranges as 206 with the correct slice", async () => {
 	const body = "0123456789abcdef";
 	const base = await startServer(body);
 
-	const partial = await fetch(`${base}/Vetta-1.2.3-arm64-mac.zip`, { headers: { Range: "bytes=4-8" } });
+	const partial = await fetch(`${base}/Astravia-1.2.3-arm64-mac.zip`, { headers: { Range: "bytes=4-8" } });
 	assert.equal(partial.status, 206);
 	assert.equal(partial.headers.get("content-range"), `bytes 4-8/${body.length}`);
 	assert.equal(await partial.text(), "456789".slice(0, 5));
 
-	const whole = await fetch(`${base}/Vetta-1.2.3-arm64-mac.zip`);
+	const whole = await fetch(`${base}/Astravia-1.2.3-arm64-mac.zip`);
 	assert.equal(whole.status, 200);
 	assert.equal(whole.headers.get("accept-ranges"), "bytes");
 	assert.equal(await whole.text(), body);
@@ -52,7 +52,7 @@ test("serves byte ranges as 206 with the correct slice", async () => {
 test("rejects unsatisfiable ranges and directory traversal", async () => {
 	const base = await startServer("0123456789");
 
-	const unsatisfiable = await fetch(`${base}/Vetta-1.2.3-arm64-mac.zip`, { headers: { Range: "bytes=99-200" } });
+	const unsatisfiable = await fetch(`${base}/Astravia-1.2.3-arm64-mac.zip`, { headers: { Range: "bytes=99-200" } });
 	assert.equal(unsatisfiable.status, 416);
 
 	const traversal = await fetch(`${base}/../../etc/hosts`);

@@ -4,14 +4,14 @@ status: accepted
 
 # 推理档位改为每模型自由列表 + value 字符串，anthropic 推迟
 
-思考强度原本是**全局**的（desktop 设置页一个 SegmentedControl → `setGlobalThinkingLevel` 广播全会话），而不同模型支持的档位并不一样（同一 provider 下 gpt-5.2 支持 xhigh、更早的 GPT-5 不支持），靠 `@vetta/ai` 里 `supportsXhigh()` / `supportsAdaptiveThinking()` 等**硬编码 model-id 匹配**推断可用集。本次把它改为**每模型独立、跟模型配置走**的 [[推理档位（reasoning level）]]。改动横跨 5 个包、含 DB 迁移、并把 `@vetta/ai` 的 `reasoning` 从固定枚举退化为任意字符串，极难回退，故记此 ADR。
+思考强度原本是**全局**的（desktop 设置页一个 SegmentedControl → `setGlobalThinkingLevel` 广播全会话），而不同模型支持的档位并不一样（同一 provider 下 gpt-5.2 支持 xhigh、更早的 GPT-5 不支持），靠 `@astravia/ai` 里 `supportsXhigh()` / `supportsAdaptiveThinking()` 等**硬编码 model-id 匹配**推断可用集。本次把它改为**每模型独立、跟模型配置走**的 [[推理档位（reasoning level）]]。改动横跨 5 个包、含 DB 迁移、并把 `@astravia/ai` 的 `reasoning` 从固定枚举退化为任意字符串，极难回退，故记此 ADR。
 
 ## 决定
 
 - **数据模型**：模型配置携带 `reasoningLevels: string[]`（**只存 value 字符串**）+ `defaultReasoningLevel: string`。`reasoning:bool` 降级为**派生值**（`reasoningLevels` 非空即 true），列表为唯一真相源。落到 `ProviderModel` / `ProviderTemplateModel`（Go）、models.json / templates.json、coding-agent model-registry、desktop 本地 models.json。
 - **粒度 = 每模型**，不是每 provider、不是全局。同 provider 不同模型档位可不同，这正是废弃硬编码 `supportsXhigh` 的原因。
 - **value 恒为单一字符串**（`minimal/low/medium/high/xhigh` 或任意自定义串）。provider 层按模型 `api` 把它塞进对应字段（openai-responses→`reasoning.effort`、openai-completions/qwen→`reasoning_effort`…）。上层（档位配置 / [[ai input]] / coding-agent）永远只见字符串，不感知协议形状差异。否决「带 kind 判别的 effort/budget 双形」与「任意 JSON payload 片段」——前者加配置负担、后者把 provider 协议细节泄露给配置者。
-- **分层 fallback**：每 `api` 类型在 `@vetta/ai` 内置一份**预设档位列表**，仅作「新建模型预填 + 空列表 fallback」，**是预设、非约束**。模型可自由改写自己的列表（服务端走 admin，本地离线 [[预设模板]] / 手搓 provider 走 desktop 本地配置）。列表为空时 fallback 到该 api 预设。
+- **分层 fallback**：每 `api` 类型在 `@astravia/ai` 内置一份**预设档位列表**，仅作「新建模型预填 + 空列表 fallback」，**是预设、非约束**。模型可自由改写自己的列表（服务端走 admin，本地离线 [[预设模板]] / 手搓 provider 走 desktop 本地配置）。列表为空时 fallback 到该 api 预设。
 - **显示与 i18n**：档位项不存展示文本。desktop 对**已知 value** 映射 i18n key（低/中/高/超高…随语言切换），未知自定义 value 直接展示原文——既支持自定义又不留死文案，符合 ADR-0031 约束。
 - **每模型记忆 + 传输**：desktop 本地记 `modelKey→value` 映射（跨会话/重启保留），随 `PromptRequest` 与 `modelKey` **同行**下发、应用于本轮，保证模型与档位同源一致。**移除**全局 `setGlobalThinkingLevel`/`getGlobalThinkingLevel` 及设置页全局 SegmentedControl。
 - **无全局 off**：删掉 coding-agent 硬编码的 `"off"` 特例；关不关思考由档位列表自决（想允许就在列表放一项 value=off/none）。非推理模型（空列表）在 [[ai input]] 不显示档位选择器。

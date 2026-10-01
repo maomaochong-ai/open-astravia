@@ -1,5 +1,5 @@
-import { McpInputRequiredError, McpTaskCreatedError } from "@vetta/runtime-mcp/client";
-import { MCP_MODERN_PROTOCOL_VERSION } from "@vetta/runtime-mcp/protocol";
+import { McpInputRequiredError, McpTaskCreatedError } from "@astravia/runtime-mcp/client";
+import { MCP_MODERN_PROTOCOL_VERSION } from "@astravia/runtime-mcp/protocol";
 import { describe, expect, it } from "vitest";
 import { ModernStatelessMcpClient } from "../../src/mcp/transports/http/modern-stateless-mcp-client.js";
 
@@ -27,7 +27,7 @@ describe("ModernStatelessMcpClient", () => {
 		const client = new ModernStatelessMcpClient({
 			config: { type: "http", url: "https://mcp.example.test" },
 			name: "fixture",
-			clientInfo: { name: "vetta", version: "1.0.0" },
+			clientInfo: { name: "astravia", version: "1.0.0" },
 			fetch: async (_input, init) => {
 				requests.push({
 					body: JSON.parse(String(init?.body)) as Record<string, unknown>,
@@ -43,7 +43,7 @@ describe("ModernStatelessMcpClient", () => {
 
 		const initialized = await client.initialize({
 			protocolVersion: MCP_MODERN_PROTOCOL_VERSION,
-			clientInfo: { name: "vetta", version: "1.0.0" },
+			clientInfo: { name: "astravia", version: "1.0.0" },
 		});
 		await client.listTools();
 		const result = await client.callTool("render_preview");
@@ -100,7 +100,7 @@ describe("ModernStatelessMcpClient", () => {
 		});
 		await client.initialize({
 			protocolVersion: MCP_MODERN_PROTOCOL_VERSION,
-			clientInfo: { name: "vetta", version: "1.0.0" },
+			clientInfo: { name: "astravia", version: "1.0.0" },
 		});
 		await expect(client.callTool("需要确认")).rejects.toBeInstanceOf(McpInputRequiredError);
 		await expect(client.callTool("queued")).rejects.toBeInstanceOf(McpTaskCreatedError);
@@ -148,7 +148,7 @@ describe("ModernStatelessMcpClient", () => {
 		});
 		await client.initialize({
 			protocolVersion: MCP_MODERN_PROTOCOL_VERSION,
-			clientInfo: { name: "vetta", version: "1" },
+			clientInfo: { name: "astravia", version: "1" },
 		});
 		const result = await client.callTool("interactive");
 		const resumed = requests[2].params as Record<string, unknown>;
@@ -196,7 +196,7 @@ describe("ModernStatelessMcpClient", () => {
 		});
 		await client.initialize({
 			protocolVersion: MCP_MODERN_PROTOCOL_VERSION,
-			clientInfo: { name: "vetta", version: "1" },
+			clientInfo: { name: "astravia", version: "1" },
 		});
 		await expect(client.getTask({ taskId: "task-1" })).resolves.toMatchObject({ status: "completed" });
 		await expect(client.updateTask({ taskId: "task-1", inputResponses: {} })).resolves.toMatchObject({
@@ -240,7 +240,7 @@ describe("ModernStatelessMcpClient", () => {
 		});
 		await client.initialize({
 			protocolVersion: MCP_MODERN_PROTOCOL_VERSION,
-			clientInfo: { name: "vetta", version: "1" },
+			clientInfo: { name: "astravia", version: "1" },
 		});
 
 		expect((await client.listTools()).tools[0]?.name).toBe("tool-1");
@@ -296,7 +296,7 @@ describe("ModernStatelessMcpClient", () => {
 		});
 		await client.initialize({
 			protocolVersion: MCP_MODERN_PROTOCOL_VERSION,
-			clientInfo: { name: "vetta", version: "1" },
+			clientInfo: { name: "astravia", version: "1" },
 		});
 		await expect(client.readResource("fixture://doc")).resolves.toMatchObject({ contents: [{ text: "ok" }] });
 		await expect(client.getPrompt({ name: "review" })).resolves.toMatchObject({ messages: [{ role: "user" }] });
@@ -343,7 +343,7 @@ describe("ModernStatelessMcpClient", () => {
 		});
 		await client.initialize({
 			protocolVersion: MCP_MODERN_PROTOCOL_VERSION,
-			clientInfo: { name: "vetta", version: "1" },
+			clientInfo: { name: "astravia", version: "1" },
 		});
 		await expect(
 			client.listenSubscriptions({ toolsListChanged: true }, (notification) => {

@@ -9,8 +9,8 @@ const projectRoot = join(import.meta.dirname, "..");
 const runtimeCoreLinuxSandboxDir = join(projectRoot, "..", "..", "packages", "runtime-core", "sandbox", "linux");
 const supportedArchs = new Set(["x64", "arm64"]);
 
-const bubblewrapVersion = process.env.VETTA_BWRAP_VERSION?.trim() || "0.11.0";
-const targetArchs = (process.env.VETTA_BWRAP_TARGET_ARCHS?.trim() || process.arch)
+const bubblewrapVersion = process.env.ASTRAVIA_BWRAP_VERSION?.trim() || "0.11.0";
+const targetArchs = (process.env.ASTRAVIA_BWRAP_TARGET_ARCHS?.trim() || process.arch)
 	.split(",")
 	.map((value) => value.trim())
 	.filter(Boolean);
@@ -103,7 +103,7 @@ async function buildForCurrentArch(arch) {
 		return;
 	}
 
-	const workDir = join(tmpdir(), `vetta-bwrap-${bubblewrapVersion}-${arch}`);
+	const workDir = join(tmpdir(), `astravia-bwrap-${bubblewrapVersion}-${arch}`);
 	const archivePath = join(workDir, `bubblewrap-${bubblewrapVersion}.tar.xz`);
 	const sourceDir = join(workDir, `bubblewrap-${bubblewrapVersion}`);
 	const buildDir = join(sourceDir, "_builddir");
@@ -136,8 +136,8 @@ async function buildForCurrentArch(arch) {
 }
 
 async function main() {
-	if (process.env.VETTA_SKIP_BWRAP_BUILD === "true") {
-		console.log("[prepare-bwrap] skipped via VETTA_SKIP_BWRAP_BUILD=true");
+	if (process.env.ASTRAVIA_SKIP_BWRAP_BUILD === "true") {
+		console.log("[prepare-bwrap] skipped via ASTRAVIA_SKIP_BWRAP_BUILD=true");
 		return;
 	}
 

@@ -1,6 +1,6 @@
 # coding-agent 文档
 
-产品组合层 `@vetta/coding-agent` 的用户与集成说明。架构与重写记录见仓库 `docs/agent/coding-agent/`。
+产品组合层 `@astravia/coding-agent` 的用户与集成说明。架构与重写记录见仓库 `docs/agent/coding-agent/`。
 
 | 文档 | 读者 |
 |------|------|

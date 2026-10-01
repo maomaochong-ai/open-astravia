@@ -11,7 +11,7 @@ describe("release vendor download preparation", () => {
 	let archive;
 	let options;
 	beforeEach(() => {
-		root = mkdtempSync(join(tmpdir(), "vetta-vendor-test-"));
+		root = mkdtempSync(join(tmpdir(), "astravia-vendor-test-"));
 		mkdirSync(join(root, "payload"));
 		writeFileSync(join(root, "payload/runtime"), "runtime fixture");
 		execFileSync("tar", ["-czf", "fixture.tar.gz", "-C", join(root, "payload"), "."], { cwd: root });

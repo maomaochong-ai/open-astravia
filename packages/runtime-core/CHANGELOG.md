@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to `@vetta/runtime-core` are documented in this file.
+All notable changes to `@astravia/runtime-core` are documented in this file.
 
 ## [Unreleased]
 
@@ -27,12 +27,12 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 ### Changed
 
 - **破坏性变更**：标准 Kernel Session 流改为在 `channel: "assistant"` 下顶层无损传输
-  `@vetta/ai` 的 `AssistantMessageEvent`，不包进 `assistant.event.event`，也不再生产压平的
+  `@astravia/ai` 的 `AssistantMessageEvent`，不包进 `assistant.event.event`，也不再生产压平的
   message/thinking/toolcall/final 模型事件；
   RuntimeHost 按原顺序重放并附加单调 sequence。旧类型仅保留为迁移期兼容输入。
 - 通用 `SubagentInfo` 不再声明 Coding Agent Todo 进度；产品快照通过对应 Session Extension 合同扩展。
 - **破坏性变更**：Runtime Core 不再声明 Question、Confirmation、Host Interaction 或 Plugin 产品协议；
-  Plugin 合同迁至 `@vetta/coding-agent/plugin-runtime`，用户交互由产品扩展与最终宿主组合。
+  Plugin 合同迁至 `@astravia/coding-agent/plugin-runtime`，用户交互由产品扩展与最终宿主组合。
 
 ### Added
 
@@ -54,7 +54,7 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 
 - Agent Session 新增通用 Snapshot admission commit/rollback，串行协调捕获与 rollout，关闭等待在途捕获；完整快照成功后才提交上层状态。
 
-- 新增不加载 Provider 实现的 `@vetta/runtime-core/failures` 公共入口，供 Renderer 等浏览器宿主读取并校验结构化失败；
+- 新增不加载 Provider 实现的 `@astravia/runtime-core/failures` 公共入口，供 Renderer 等浏览器宿主读取并校验结构化失败；
   AI Error 投影仍由 Runtime 根入口提供。
 - 新增 Session-scoped typed function registry/source：Runtime 只负责 Token、依赖解析、动态注册、在途调用捕获、
   取消与关闭，不解释函数是否用于提问、授权、UI 或其它产品行为。
@@ -81,7 +81,7 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 
 - 新增通用可重试清理控制器，Agent Session、Instance、Runtime、Registry、Host Backend 与平台池在关闭失败后保留
   未完成资源的所有权；再次关闭只重试失败项，不重复释放已完成项。
-- 新增 `@vetta/runtime-core/configuration` 产品无关配置基座：Configuration Definition/Source revision、幂等
+- 新增 `@astravia/runtime-core/configuration` 产品无关配置基座：Configuration Definition/Source revision、幂等
   lease、原子 Source replace、retire/remove、Host 有序 Layer 深合并、逐层 Codec 校验、无效值回退和不可变
   resolved snapshot。配置值不进入 Observation；Tool、MCP 与其它 Capability 通过上层 Adapter 选择性接入。
 - 新增 Source-owned `RuntimeConfigurationLayerRegistry` 与 `RuntimeConfigurationCenter`，统一动态 Layer 的
@@ -100,7 +100,7 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
   编译期 instructions 视为稳定，模型调用期 Contribution 视为易变。基础 Agent 无需 Composer 即可自动获得
   `systemPromptStableLength` 与 block spans；非法 Composer 元数据降级为不缓存，并发布不含正文的 warning
   Observation。
-- 新增 `@vetta/runtime-core/observation` 类型化观测端口、不可覆盖上层 identity 的 scoped Publisher、
+- 新增 `@astravia/runtime-core/observation` 类型化观测端口、不可覆盖上层 identity 的 scoped Publisher、
   Composite/Noop Adapter 与安全错误投影。Agent Registry/Source/Host/Instance/Session、Prompt Frame 和最终
   Tool execution 已接入结构化事件；默认不记录 Prompt、用户内容、Tool 参数/结果或错误 message，Adapter
   同步/异步失败不改变主流程。
@@ -109,7 +109,7 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
   具体日志或 Trace 实现。
 - Definition Source 同步状态的失败摘要只保留 `errorName/errorCode`，不再保存可能含配置正文或凭证的原始
   error message；last-known-good 与失败状态语义不变。
-- 新增 `@vetta/runtime-core/agents` 产品无关多主 Agent 基座：动态 Definition Source、不可变
+- 新增 `@astravia/runtime-core/agents` 产品无关多主 Agent 基座：动态 Definition Source、不可变
   `RuntimeAgentRevision`、幂等 lease、原子多 Agent Registry、retire/remove、Source 全量替换与 newest-wins
   同步器。文件、代码、Plugin、数据库和远端控制面可通过同一 Source Port 发布，失败保留 last-known-good，
   普通更新不影响已有 revision lease。
@@ -202,7 +202,7 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 - 新增平台与产品无关的 Runtime Session 资源索引，统一资源身份绑定、解绑和 Session ID 重绑机制。
 - 新增产品无关的 `RuntimeActiveSessionEventRelay` 与 `RuntimeSessionTransitionCleanup`，统一拥有活动
   Session 切换时的稳定订阅、监听失败隔离，以及已提交切换后的可重试资源释放。
-- 新增 `@vetta/runtime-core/session-extensions` 会话级扩展组合合同，支持依赖/冲突校验、Agent Feature、Conversation Document participant、Continuation source、initial observation source、typed service/endpoint/signal/observation 贡献、同步/异步 endpoint 宿主调用，以及初始化逆序回滚和失败释放重试；合同保持产品与平台无关。
+- 新增 `@astravia/runtime-core/session-extensions` 会话级扩展组合合同，支持依赖/冲突校验、Agent Feature、Conversation Document participant、Continuation source、initial observation source、typed service/endpoint/signal/observation 贡献、同步/异步 endpoint 宿主调用，以及初始化逆序回滚和失败释放重试；合同保持产品与平台无关。
 - **统一 Turn 失败合同**：Provider 返回 `stopReason: "error"` 时统一生成结构化 `turn.failed`，并与对应 assistant error 消息绑定到同一个 turn；实时错误与历史错误携带 `turnId`，Desktop 错误卡片按 turn 幂等投影，避免错误丢失或重复。旧 assistant error 历史保持兼容读取。
 - **失败 prompt 回执保留结构化错误**：`status: "failed"` 的 Runtime prompt 回执现在携带 `error` 与 `turnId`，宿主重试层不会再把已结束的额度/Provider 失败误判为成功并清掉错误事件。
 
@@ -244,7 +244,7 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 - **Greenfield 通用 Runtime Factory 与精确模型凭证绑定**：新增可注入 Repository、Snapshot、Model Runtime 和会话投影资源的组合工厂，统一创建/恢复 AgentSession、TurnPipeline 与 Turn Engine；模型凭证按 Turn 冻结的精确模型解析，prompt 切模与 reasoning 在当前 Turn 绑定前生效。
 - **Greenfield Model Runtime 与 Turn 模型绑定**：新增抽象 Model Catalog/Credential Resolver、Session 级模型事实源和不可变 Turn Model Binding；Greenfield 的 Model Controller、Model View、State Reader 与实际 Turn 执行共享状态，运行时切模只影响后续 Turn且不重建 Capability Snapshot。
 - **Conversation Document 写模型与 Greenfield History Controller**：新增独立 journal/document revision、Runtime-owned 历史命令与 Store Port；Greenfield 支持编辑导航、分支选择、删除、替换、fork 和运行中命名，活动分支会成为下一次 Turn 的真实模型上下文，默认 Legacy 生产入口保持不变。
-- **Conversation Document 与 Greenfield History Read**：新增独立 `@vetta/runtime-core/conversation` 会话树读模型、Kernel Event 增量投影和宿主历史纯投影；Greenfield Core Assembly 交付真实 `historyReader`，保留旧分支、marker 和 timing 读取语义，不提供历史写操作空实现。
+- **Conversation Document 与 Greenfield History Read**：新增独立 `@astravia/runtime-core/conversation` 会话树读模型、Kernel Event 增量投影和宿主历史纯投影；Greenfield Core Assembly 交付真实 `historyReader`，保留旧分支、marker 和 timing 读取语义，不提供历史写操作空实现。
 - **Greenfield Session Projection**：Greenfield Backend 在 create/resume 后从 Repository 初始化同步消息投影，并在持久化消息事件发布后增量更新；新增真实 Lifecycle、Workspace、Turn Control、Event Stream 和 State Reader Core Assembly、动态状态源与可执行能力矩阵，不为缺失的历史写操作、模型、Todo 或后台工作提供空实现。
 - **Session Creation and Storage Boundary**：新增不暴露 SessionManager/customTools/ModelRegistry 的 `RuntimeSessionCreateRequest`，以及独立 `RuntimeSessionCatalog`、`RuntimeSessionFileHistoryReader`、`RuntimeSharedModelController` 进程级合同和 Legacy Adapter；RuntimeHost 不再直接创建旧持久化对象、沙箱工具或操作静态 SessionManager/文件历史，同时保留 create-only Backend、JSONL 列表/重命名/删除、共享模型刷新和 sessionId 延迟绑定行为。
 - **Runtime Session Configuration Port**：新增统一的 `RuntimeSessionConfigurationController` 与旧 Session 适配器，由 Backend Assembly 显式交付 steering/follow-up 输入模式、插件运行时配置和 agent mode 命令；RuntimeHost 不再直接调用旧 AgentSession，并保留 turn 边界延迟应用、busy 跳过、插件失败恢复 pending 后重试及 settings 非空更新语义。
@@ -264,9 +264,9 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 - **RuntimeHost 会话后端创建边界**：新增可注入的 `RuntimeSessionBackend` 与默认 `LegacyCodingAgentSessionBackend`；生产默认行为保持不变，为后续 Greenfield Session Backend 并行接入建立组合根切换点。
 - **Capability Binding 与结构化 Tool Error**：新增按 `sourceId + capabilityId + revision` 标识模型所见能力的稳定绑定，以及从 Runtime Tool 到 Agent Tool Result 的结构化错误桥接。
 - **Model Call Frame**：新增动态贡献合同与调用级 Frame 解析；Feature 实例保持长生命周期，而提示词和工具在每次模型调用前重新物化。
-- **Agent Core Turn Engine Adapter**：新增 `AgentCoreTurnEngine`，将不可变 Runtime Snapshot、标准消息、模型流、Tool Loop、Tool Policy 和取消信号映射到 `@vetta/agent-core`；Runtime Tool 合同补充可取消执行、进度和阶段回报。
+- **Agent Core Turn Engine Adapter**：新增 `AgentCoreTurnEngine`，将不可变 Runtime Snapshot、标准消息、模型流、Tool Loop、Tool Policy 和取消信号映射到 `@astravia/agent-core`；Runtime Tool 合同补充可取消执行、进度和阶段回报。
 - **引用计数 Runtime Snapshot Provider**：新增 `AtomicRuntimeSnapshotProvider` 和 acquire/release lease；Snapshot 热更新只影响后续 Turn，retired Feature 资源在所有活动 Turn 释放后再 dispose。
-- **隔离的 Greenfield Kernel 入口**：新增 `@vetta/runtime-core/kernel`，提供 Session 状态机、固定阶段 Typed Turn Pipeline、确定性 Feature Compiler、不可变 Runtime Snapshot 及存储、上下文和 Turn Engine Port；旧 `RuntimeHost` 生产入口保持不变。
+- **隔离的 Greenfield Kernel 入口**：新增 `@astravia/runtime-core/kernel`，提供 Session 状态机、固定阶段 Typed Turn Pipeline、确定性 Feature Compiler、不可变 Runtime Snapshot 及存储、上下文和 Turn Engine Port；旧 `RuntimeHost` 生产入口保持不变。
 - **`SessionEvent` 新增 `retry.start` / `retry.end`，`ErrorEvent` 新增 `retryAttempts`**：自动重试从此对宿主可见。`auto_retry_start` 此前被翻译成 `error` 事件（导致每次重试都在 UI 里刷一条错误），`auto_retry_end` 则根本没有翻译分支，宿主无从得知重试何时结束。宿主现在可以在退避期显示「正在自动重试 2/3」，并在最终失败的错误上说明「已自动重试 N 次」。
 - **`flushPendingError(sessionId, state)`**：兑现挂起的 assistant 错误，见下方「错误延迟发射」。任何绕过 `RuntimeHost.prompt()` / `continue()` 自行驱动 agent 的路径都必须调用它，否则错误被永久吞掉。
 
@@ -296,7 +296,7 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 - **Agent Core Turn Engine 切换为无状态 Engine**：公共 `AgentCoreTurnEngine` 保持构造契约不变，生产执行改由 `runAgentTurn()` 驱动；动态 Frame、checkpoint、队列、工具进度、Runtime observation 与 tracing 由内部 Adapter 投影。Provider error 与取消分别走失败和 `AbortError`，不再伪装为正常 `completed` 终态；checkpoint 通过事件交付屏障保持消息先交付再持久化的顺序。
 - **模型调用压缩的稳定切点合同**：Context Preparation 现在显式区分最新持久化 Document 与稳定的 compaction source；模型调用按 Turn 进入时分支计算切点、在最新分支提交和投影，assistant result/error 仍读取当前文档。消息身份协调同时把字符串与单一 text block 视为等价 UserMessage 表达，但保留时间戳和其他身份字段。
 - **Greenfield Prompt Adapter 改为 Session 所有**：Adapter 由每个 Runtime Assembly 独立交付，不再由 Backend 全局共享，使 ResourceLoader、TodoStore 等有状态 Prompt 资源可按会话隔离。
-- **Runtime Core 依赖倒置**：生产源码不再导入 `@vetta/coding-agent`；Legacy Session、历史、事件和平台沙箱工具适配器移至 `@vetta/coding-agent/runtime-host`，Desktop 通过显式 Composition Root 保持原生产行为。`RuntimeHost` 不再隐式创建具体 Backend/Catalog/History Reader，缺失组合时返回明确错误。
+- **Runtime Core 依赖倒置**：生产源码不再导入 `@astravia/coding-agent`；Legacy Session、历史、事件和平台沙箱工具适配器移至 `@astravia/coding-agent/runtime-host`，Desktop 通过显式 Composition Root 保持原生产行为。`RuntimeHost` 不再隐式创建具体 Backend/Catalog/History Reader，缺失组合时返回明确错误。
 - **RuntimeHost Assembly 移除裸 Session**：`RuntimeHostSessionAssembly` 与内部 `SessionHandle` 不再暴露或保存旧 `AgentSession`；Legacy Backend 仅在组合时用旧 Session 构造各项 Port，RuntimeHost 注册完成后只持有稳定能力合同，并增加类型门禁防止裸 Session 字段回流。
 - **Runtime Tool 输入类型泛型化**：`RuntimeToolDefinition<TInput>` 与 `RuntimeToolExecutionRequest<TInput>` 可从 TypeBox Schema 保留具体工具参数类型；异构 Runtime Snapshot 边界仍统一擦除为只读对象合同。
 - **Tool Schema 完整冻结**：Feature Compiler 发布 Snapshot 前深拷贝并递归冻结 Tool JSON Schema，避免嵌套 Schema 在 Turn 执行期间被外部修改。

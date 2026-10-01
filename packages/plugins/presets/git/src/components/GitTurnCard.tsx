@@ -1,5 +1,5 @@
-import { useActiveConversation, useTranslation } from "@vetta-org/plugin-sdk";
-import { Button } from "@vetta-org/ui";
+import { useActiveConversation, useTranslation } from "@astravia-org/plugin-sdk";
+import { Button } from "@astravia-org/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { diffStatForEntries, resolveRepoRoot, stagePaths, statusPorcelain, unstageAll } from "../git/run";
 import { collapseByPath, parseStatus } from "../git/parseStatus";

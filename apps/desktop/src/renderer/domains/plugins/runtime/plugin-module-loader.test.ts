@@ -1,5 +1,5 @@
+import type { PluginDefinition } from "@astravia-org/plugin-sdk";
 import type { InstalledPlugin } from "@preload/api";
-import type { PluginDefinition } from "@vetta-org/plugin-sdk";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -35,7 +35,7 @@ describe("loadPluginDefinition", () => {
 		vi.stubGlobal("fetch", fetchMock);
 		const plugin = {
 			id: "single-loader",
-			entryUrl: "vetta-plugin://single-loader/dist/mf-manifest.json?v=1",
+			entryUrl: "astravia-plugin://single-loader/dist/mf-manifest.json?v=1",
 			moduleFederation: { remoteName: "single_loader", expose: "./plugin" },
 		} as unknown as InstalledPlugin;
 

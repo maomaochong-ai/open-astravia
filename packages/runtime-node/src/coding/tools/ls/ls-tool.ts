@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, statSync } from "node:fs";
+import type { RuntimeToolDefinition, RuntimeToolResult } from "@astravia/runtime-core/kernel";
 import { type Static, Type } from "@sinclair/typebox";
-import type { RuntimeToolDefinition, RuntimeToolResult } from "@vetta/runtime-core/kernel";
 import {
 	formatNotFoundPath,
 	localToolPathHost,

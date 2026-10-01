@@ -12,10 +12,10 @@ export function useKnowledgeProcessingBadgeModel(): KnowledgeProcessingBadgeMode
 
 	useEffect(() => {
 		let alive = true;
-		void window.vetta.knowledge.isProcessing().then((v) => {
+		void window.astravia.knowledge.isProcessing().then((v) => {
 			if (alive) setProcessing(v);
 		});
-		const off = window.vetta.knowledge.onProcessingChanged((v) => setProcessing(v));
+		const off = window.astravia.knowledge.onProcessingChanged((v) => setProcessing(v));
 		return () => {
 			alive = false;
 			off();

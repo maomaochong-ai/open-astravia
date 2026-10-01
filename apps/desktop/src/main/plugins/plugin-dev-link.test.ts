@@ -12,7 +12,7 @@ const testPaths = vi.hoisted(() => {
 	};
 });
 
-vi.mock("@vetta/action-rpc", () => ({ getVettaHomePath: () => testPaths.home }));
+vi.mock("@astravia/action-rpc", () => ({ getAstraviaHomePath: () => testPaths.home }));
 vi.mock("electron", () => ({
 	app: { isPackaged: true, resourcesPath: testPaths.resources },
 	webContents: { getAllWebContents: () => [] },
@@ -50,7 +50,7 @@ function createInstalledPlugin(id: string, source: "archive" | "remote"): Instal
 		version: "1.0.0",
 		activeVersion: "1.0.0",
 		pluginApiVersion: "^2.0.0",
-		entryUrl: `vetta-plugin://${id}/versions/1.0.0/dist/mf-manifest.json`,
+		entryUrl: `astravia-plugin://${id}/versions/1.0.0/dist/mf-manifest.json`,
 		moduleFederation: { remoteName: id.replaceAll("-", "_"), expose: "./plugin" },
 		styleUrls: [],
 		permissions: ["ui.slot.global"],

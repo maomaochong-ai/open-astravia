@@ -1,11 +1,11 @@
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { getVettaHomePath } from "@vetta/action-rpc";
+import { getAstraviaHomePath } from "@astravia/action-rpc";
 import type { WebhookEndpointSecret } from "./types.js";
 
 /**
  * Sensitive webhook credentials. Persisted under
- *   ~/.vetta/desktop-app/webhook-credentials.json
+ *   ~/.astravia/desktop-app/webhook-credentials.json
  *
  * Stored as plain JSON with chmod 0600, mirroring the IM credential store.
  * The renderer never reads this file directly — it only sees masked URLs
@@ -14,7 +14,7 @@ import type { WebhookEndpointSecret } from "./types.js";
 
 export type WebhookCredentialsMap = Record<string, WebhookEndpointSecret>;
 
-const DEFAULT_DIR = join(getVettaHomePath(), "desktop-app");
+const DEFAULT_DIR = join(getAstraviaHomePath(), "desktop-app");
 const DEFAULT_FILE = join(DEFAULT_DIR, "webhook-credentials.json");
 
 function ensureDir(dir: string): void {

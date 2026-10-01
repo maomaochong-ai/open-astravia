@@ -27,7 +27,7 @@ export function useUpdateRestartDialogModel(): UpdateRestartDialogModel {
 
 	const handleInstall = () => {
 		setOpen(false);
-		void window.vetta.updater.install();
+		void window.astravia.updater.install();
 	};
 
 	return {

@@ -3,7 +3,7 @@ import type { KnowledgeBase, KnowledgeImportDraft } from "@shared/types/knowledg
 import {
 	KnowledgeImportDialogView,
 	KNOWLEDGE_IMPORT_NEW_BASE,
-} from "@vetta-org/theme-ui/knowledge";
+} from "@astravia-org/theme-ui/knowledge";
 import { knowledgeBaseDisplayName } from "../lib/knowledge-base";
 
 export interface KnowledgeImportConfirmation {

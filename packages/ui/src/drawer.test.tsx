@@ -14,7 +14,7 @@ describe("DrawerContent", () => {
   test("mounts the portal in the caller-provided style boundary", async () => {
     const app = document.createElement("div");
     const pluginRoot = document.createElement("section");
-    pluginRoot.dataset.vettaPluginRoot = "demo";
+    pluginRoot.dataset.astraviaPluginRoot = "demo";
     document.body.append(app, pluginRoot);
     const root = createRoot(app);
 

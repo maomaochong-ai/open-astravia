@@ -2,13 +2,13 @@ import { ipcMain } from "electron";
 import { getDesktopProjectService } from "../projects/project-service-instance.js";
 
 const CHANNELS = {
-	LIST: "vetta:projects:list",
-	CREATE: "vetta:projects:create",
-	OPEN: "vetta:projects:open",
-	RENAME: "vetta:projects:rename",
-	ARCHIVE: "vetta:projects:archive",
-	UNARCHIVE: "vetta:projects:unarchive",
-	REMOVE: "vetta:projects:remove",
+	LIST: "astravia:projects:list",
+	CREATE: "astravia:projects:create",
+	OPEN: "astravia:projects:open",
+	RENAME: "astravia:projects:rename",
+	ARCHIVE: "astravia:projects:archive",
+	UNARCHIVE: "astravia:projects:unarchive",
+	REMOVE: "astravia:projects:remove",
 } as const;
 
 function asString(value: unknown): string {

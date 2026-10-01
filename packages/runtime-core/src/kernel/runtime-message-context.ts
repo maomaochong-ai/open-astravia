@@ -1,4 +1,4 @@
-import type { Message } from "@vetta/ai";
+import type { Message } from "@astravia/ai";
 import type { RuntimeMessageEnvelope } from "../runtime-execution-observation.js";
 
 export function toRuntimeMessageEnvelope(message: Message): RuntimeMessageEnvelope {

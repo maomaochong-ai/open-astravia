@@ -33,7 +33,7 @@
 - `index.ts`：格式兼容公开出口。
 
 原 `legacy-session-services.ts` 不再承载 Catalog 和 History 实现，只保留兼容导出及已弃用的共享模型
-控制器别名。现有公开类名与 `@vetta/coding-agent/runtime-host` 子路径保持不变。
+控制器别名。现有公开类名与 `@astravia/coding-agent/runtime-host` 子路径保持不变。
 
 ### 2. 拆分 Desktop 兼容组合
 

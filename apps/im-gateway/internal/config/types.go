@@ -132,7 +132,7 @@ type IMessageConfig struct {
 // `coding-agent --mode rpc` subprocesses.
 type HostClientConfig struct {
 	// CodingAgentBin is the absolute path to the coding-agent executable.
-	// Empty means "search $PATH for `vetta`" (the binary name installed by
+	// Empty means "search $PATH for `astravia`" (the binary name installed by
 	// packages/coding-agent).
 	CodingAgentBin string `yaml:"codingAgentBin,omitempty"`
 
@@ -144,7 +144,7 @@ type HostClientConfig struct {
 	// to emit its first JSON line before giving up. Zero means use the
 	// default (30s).
 	//
-	// The desktop host spawns Vetta.app itself as the agent, so the FIRST
+	// The desktop host spawns Astravia.app itself as the agent, so the FIRST
 	// session after an app launch or update pays a full Electron + asar cold
 	// start (measured ~10s on a warm-disk arm64 Mac, vs ~1s once cached).
 	// A 10s budget lost that race and surfaced as "handshake timed out" with
@@ -169,17 +169,17 @@ type LoggingConfig struct {
 }
 
 // PathsConfig overrides on-disk file locations. All optional; sane defaults
-// are derived from $HOME/.vetta when fields are empty.
+// are derived from $HOME/.astravia when fields are empty.
 type PathsConfig struct {
 	// ConversationCwd is the absolute cwd shared by all im-gateway IM
 	// sessions (see CONTEXT.md → "im-gateway cwd"). Physically separate
 	// from desktop-app's "对话" cwd so the two sides don't share sessions
-	// or generated artifacts. Defaults to ~/.vetta/im-gateway/conversation.
+	// or generated artifacts. Defaults to ~/.astravia/im-gateway/conversation.
 	ConversationCwd string `yaml:"conversationCwd,omitempty"`
-	State           string `yaml:"state,omitempty"`         // ~/.vetta/im-gateway/state.json
-	LogsDir         string `yaml:"logsDir,omitempty"`       // ~/.vetta/im-gateway/logs/
-	WechatState     string `yaml:"wechatState,omitempty"`   // ~/.vetta/im-gateway/wechat.json
-	WhatsappState   string `yaml:"whatsappState,omitempty"` // ~/.vetta/im-gateway/whatsapp.db
+	State           string `yaml:"state,omitempty"`         // ~/.astravia/im-gateway/state.json
+	LogsDir         string `yaml:"logsDir,omitempty"`       // ~/.astravia/im-gateway/logs/
+	WechatState     string `yaml:"wechatState,omitempty"`   // ~/.astravia/im-gateway/wechat.json
+	WhatsappState   string `yaml:"whatsappState,omitempty"` // ~/.astravia/im-gateway/whatsapp.db
 }
 
 // Credentials carries secret values loaded separately from Config.
@@ -187,7 +187,7 @@ type PathsConfig struct {
 // Loading order (later overrides earlier):
 //  1. OS keychain (macOS Keychain / linux Secret Service / Windows
 //     Credential Manager)
-//  2. ~/.vetta/im-gateway/credentials.yaml (chmod 0600)
+//  2. ~/.astravia/im-gateway/credentials.yaml (chmod 0600)
 //  3. Environment variables (IM_GATEWAY_FEISHU_APP_ID etc.)
 //
 // Source records which mechanism actually provided the values, used in

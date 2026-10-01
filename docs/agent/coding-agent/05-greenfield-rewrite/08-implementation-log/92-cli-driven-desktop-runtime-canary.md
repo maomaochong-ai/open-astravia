@@ -2,7 +2,7 @@
 
 ## 1. 目标
 
-第 91 轮的下一步原计划通过 UI 或 Preload 操作会话。现有 Vetta CLI 已经提供：
+第 91 轮的下一步原计划通过 UI 或 Preload 操作会话。现有 Astravia CLI 已经提供：
 
 - `conversation.create`
 - `conversation.continue`
@@ -15,7 +15,7 @@
 
 本轮作为一个阶段完成：
 
-1. 以独立 Vetta CLI 子进程调用 Desktop Debug RPC。
+1. 以独立 Astravia CLI 子进程调用 Desktop Debug RPC。
 2. 使用本地确定性 OpenAI Responses Provider 执行真实 Greenfield 模型回合。
 3. 通过 CLI 创建、继续和列举持久化会话。
 4. 用 Zod 校验 CLI JSON 输出边界。
@@ -26,7 +26,7 @@
 测试链路如下：
 
 ```text
-独立 bun/vetta CLI 进程
+独立 bun/astravia CLI 进程
   -> endpoint file discovery
   -> Local HTTP Debug RPC
   -> AppDebugRuntime / Conversation Definitions
@@ -65,7 +65,7 @@ Canary 没有直接调用 Debug Definition，也没有直接调用 `RuntimeHost.
 - Runtime Tools Composition；
 - RPC Host Adapter。
 
-所以执行一个只需要 Action RPC 的 `vetta debug`，也会先加载完整 Agent Runtime 图。Canary 首次执行时，
+所以执行一个只需要 Action RPC 的 `astravia debug`，也会先加载完整 Agent Runtime 图。Canary 首次执行时，
 Debug 命令尚未解析，就被无关 Runtime 模块的工作区链接或陈旧构建表面阻断。
 
 ### 3.2 修复
@@ -113,7 +113,7 @@ Greenfield `ConversationFileHeader` schema 已允许 `cwd`，后续 continuation
 Desktop 可以完成首轮，却无法通过既有 `conversation.continue` 找回工作目录，最终报：
 
 ```text
-Session file has no valid Vetta session header.
+Session file has no valid Astravia session header.
 ```
 
 ### 4.2 修复
@@ -196,7 +196,7 @@ bunx vitest --run \
 
 ## 7. 明确未修改
 
-- 没有新增 Vetta CLI 子命令。
+- 没有新增 Astravia CLI 子命令。
 - 没有新增 Debug Capability。
 - 没有新增 UI、Preload 或 IPC 会话入口。
 - 没有修改 RuntimeHost 公共会话操作。
@@ -217,4 +217,4 @@ bunx vitest --run \
 5. 再验证 Scheduler、Batch 与交互会话在真实主进程共存。
 6. 最后验证打包产物中的 CLI、Greenfield 模块和运行时资源闭包。
 
-整个阶段仍应使用 Vetta CLI 控制会话；Playwright 只在确实需要验证 Renderer 展示时使用。
+整个阶段仍应使用 Astravia CLI 控制会话；Playwright 只在确实需要验证 Renderer 展示时使用。

@@ -14,7 +14,7 @@
 - 会话历史、认证、模型和设置等用户数据；必要时由显式、独立的新迁移器读取旧格式。
 - 模型消息、工具消息、错误、取消、事件顺序、并发约束和资源释放语义。
 - 仍然有效的行为测试场景和数据 fixture；旧实现可以临时作为测试 Oracle，但不能被新生产代码调用。
-- `@vetta/ai` 与经过合同验证的 `@vetta/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
+- `@astravia/ai` 与经过合同验证的 `@astravia/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
 
 ## 明确舍弃（固定）
 
@@ -38,7 +38,7 @@
 - 保留旧格式读取能力，并约束历史格式转换与文件写入的唯一所有者。
 - 删除迁移进度、迁移残留、Legacy 执行退休、Composition 行数、Runtime Port 名称表和实施日志格式六组旧门禁及其专用测试。
 - 将持久化和 Subagent 的类型合同移入 `composition/contracts`，消除门禁发现的合同到实现反向依赖；旧实现模块继续 re-export 类型，保持类型入口兼容。
-- 修正 Desktop 测试的 `@vetta/coding-agent/config.js` 非公开子路径导入。
+- 修正 Desktop 测试的 `@astravia/coding-agent/config.js` 非公开子路径导入。
 
 ## 旧实现依赖变化
 

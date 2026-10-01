@@ -22,7 +22,7 @@ export type PluginPromptContextJsonValue =
 
 /** Versioned, JSON-safe application state attached to an outgoing prompt. */
 export interface PluginPromptContext<TPayload extends object = object> {
-	/** Namespaced context contract, for example `vetta.content-creation.node-selection`. */
+	/** Namespaced context contract, for example `astravia.content-creation.node-selection`. */
 	schema: string;
 	version: number;
 	payload: TPayload;

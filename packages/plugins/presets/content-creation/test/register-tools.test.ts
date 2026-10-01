@@ -1,5 +1,5 @@
-import { validateToolArguments, type Tool } from "@vetta/ai";
-import type { PluginAgentToolRegistration, PluginContext } from "@vetta-org/plugin-sdk";
+import { validateToolArguments, type Tool } from "@astravia/ai";
+import type { PluginAgentToolRegistration, PluginContext } from "@astravia-org/plugin-sdk";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ContentGenerationPromptPlanError } from "../src/agent/generation-prompt-plan";
 import { parseContentAgentOperations } from "../src/agent/operations";
@@ -57,7 +57,7 @@ describe("content creation progressive tool surface", () => {
 		graph: { nodes: [{ id: "prompt" }, { id: "image" }], edges: [{ id: "edge" }] },
 	}));
 	const inspect = vi.fn<ContentCreationAgentService["inspect"]>(async (_cwd: string) => ({
-		format: "vetta.content-creation/project",
+		format: "astravia.content-creation/project",
 		schemaVersion: 6,
 		projectId: "project",
 		revision: 2,

@@ -3,7 +3,7 @@ import {
 	type SchedulerCommandResult,
 	type SchedulerExecutionRecord,
 	type SchedulerTask,
-} from "@vetta-org/capability-sdk";
+} from "@astravia-org/capability-sdk";
 import type { PluginCapabilitySessionAccess } from "../types.js";
 
 export const pluginSchedulerMethods = {

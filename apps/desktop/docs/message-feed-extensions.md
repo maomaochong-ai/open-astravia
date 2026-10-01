@@ -10,7 +10,7 @@
 | 自己排列正文和命令 | `UserMessage` + action hooks + `MessageLayout.Footer` |
 | 改消息/消息行 | `MessageRenderingProvider` |
 | 改 thinking、tool_call、text 等内容块 | `ContentRenderingProvider` |
-| 改 Markdown 语法、节点、代码块 | `@vetta-org/theme-ui/markdown` |
+| 改 Markdown 语法、节点、代码块 | `@astravia-org/theme-ui/markdown` |
 
 这些是局部 React 组合 API。没有新增 Plugin SDK manifest 项或全局 renderer 注册服务；Desktop 组件也不是插件可深度导入的公共包入口。
 
@@ -56,8 +56,8 @@ const rendering: MessageRendering = {
 默认渲染现已包含公式、SVG 与隔离 HTML 预览，语法、运行限制和性能预算见 [Markdown 富内容](markdown-rich-content.md)。自定义 `codeBlock` 仍优先于默认富代码块；需要保留内置预览时，应自行明确组合，不能假设覆盖后仍会自动运行默认代码块。
 
 ```tsx
-import { CodeBlock, defaultMarkdown, extendMarkdown, MarkdownProvider } from "@vetta-org/theme-ui/markdown";
-import type { MarkdownCodeBlockProps } from "@vetta-org/theme-ui/markdown";
+import { CodeBlock, defaultMarkdown, extendMarkdown, MarkdownProvider } from "@astravia-org/theme-ui/markdown";
+import type { MarkdownCodeBlockProps } from "@astravia-org/theme-ui/markdown";
 
 function MyCode(props: MarkdownCodeBlockProps) {
   return (

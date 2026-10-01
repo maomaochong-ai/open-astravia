@@ -5,8 +5,8 @@ import {
 	ModelSelectorView,
 	type ModelSelectorLabels,
 	type ModelSelectorOptionView,
-} from "@vetta-org/theme-ui/chat";
-import { fmtMultiplier } from "@vetta-org/theme-ui/shared";
+} from "@astravia-org/theme-ui/chat";
+import { fmtMultiplier } from "@astravia-org/theme-ui/shared";
 import type { JSX } from "react";
 import { useTranslation } from "react-i18next";
 

@@ -1,15 +1,15 @@
 /**
  * Input Transform Example - demonstrates the `input` event for intercepting user input.
  *
- * Start vetta with this extension:
- *   vetta -e ./examples/extensions/input-transform.ts
+ * Start astravia with this extension:
+ *   astravia -e ./examples/extensions/input-transform.ts
  *
  * Then type these inside the agent:
  *   ?quick What is TypeScript?  → "Respond briefly: What is TypeScript?"
  *   ping                        → "pong" (instant, no LLM)
  *   time                        → current time (instant, no LLM)
  */
-import type { ExtensionAPI } from "@vetta/coding-agent";
+import type { ExtensionAPI } from "@astravia/coding-agent";
 
 export default function (api: ExtensionAPI) {
 	api.on("input", async (event, ctx) => {

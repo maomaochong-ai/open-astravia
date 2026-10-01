@@ -1,7 +1,7 @@
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { TeamDefinition } from "@vetta/agent-team";
+import type { TeamDefinition } from "@astravia/agent-team";
 import { afterEach, describe, expect, it } from "vitest";
 import { resolveTeamMemberModel } from "../../shared/agent-team-member-model.js";
 import { TeamMemberModelPreferences } from "./team-member-model-preferences.js";
@@ -26,7 +26,7 @@ const team: TeamDefinition = {
 
 describe("Team member model preferences", () => {
 	it("persists a user override independently of the team definition and restores inheritance", async () => {
-		const root = await mkdtemp(join(tmpdir(), "vetta-team-model-"));
+		const root = await mkdtemp(join(tmpdir(), "astravia-team-model-"));
 		temporary.push(root);
 		const path = join(root, "member-model-preferences.json");
 		const store = new TeamMemberModelPreferences(path);
@@ -41,7 +41,7 @@ describe("Team member model preferences", () => {
 	});
 
 	it("does not apply a saved model when a plugin replaces the member's agent", async () => {
-		const root = await mkdtemp(join(tmpdir(), "vetta-team-model-"));
+		const root = await mkdtemp(join(tmpdir(), "astravia-team-model-"));
 		temporary.push(root);
 		const store = new TeamMemberModelPreferences(join(root, "models.json"));
 		await store.set(team, "member", { modelKey: "provider/model-a" });
@@ -60,7 +60,7 @@ describe("Team member model preferences", () => {
 	});
 
 	it("rejects unknown members and malformed model keys", async () => {
-		const root = await mkdtemp(join(tmpdir(), "vetta-team-model-"));
+		const root = await mkdtemp(join(tmpdir(), "astravia-team-model-"));
 		temporary.push(root);
 		const store = new TeamMemberModelPreferences(join(root, "models.json"));
 		await expect(store.set(team, "missing", { modelKey: "p/m" })).rejects.toThrow("Team member not found");

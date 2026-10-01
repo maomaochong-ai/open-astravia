@@ -11,7 +11,7 @@ export interface SettingsAiAssistProps {
 /**
  * Settings-page entry: compact CTA + intent popover → background conversation with a structured
  * starter prompt. Does not auto-navigate to chat; a fly-orb cue points at the new sidebar session.
- * Write ops still go through vetta action approval after the agent runs.
+ * Write ops still go through astravia action approval after the agent runs.
  */
 export function SettingsAiAssist({ tabId, className }: SettingsAiAssistProps): JSX.Element | null {
 	const { t } = useTranslation("settings");

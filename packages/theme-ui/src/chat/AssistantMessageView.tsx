@@ -129,7 +129,7 @@ export function StreamingIndicator({ phrases }: { phrases: string[] }): JSX.Elem
 export function AssistantMessageStreamingStatus({ label }: { readonly label: string }): JSX.Element {
 	return (
 		<>
-			<span className="vetta-live-dot h-1.5 w-1.5 rounded-full bg-primary/60" />
+			<span className="astravia-live-dot h-1.5 w-1.5 rounded-full bg-primary/60" />
 			<span className="text-[11px] text-muted-foreground/35">{label}</span>
 		</>
 	);

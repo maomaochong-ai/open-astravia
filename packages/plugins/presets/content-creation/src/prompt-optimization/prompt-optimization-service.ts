@@ -1,7 +1,7 @@
 import type {
 	PluginAiApi,
 	PluginAiModelListResult,
-} from "@vetta-org/plugin-sdk";
+} from "@astravia-org/plugin-sdk";
 import type { ContentPromptOptimization } from "../project/types";
 
 const BASE_OPTIMIZATION_SYSTEM_PROMPT = `You improve prompts for AI-assisted content creation.

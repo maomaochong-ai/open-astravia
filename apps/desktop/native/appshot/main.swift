@@ -1,7 +1,7 @@
 // appshot-helper：捕获前台应用窗口——AX 结构化文本 + 源文件路径 + 窗口截图 PNG，
 // stdout 输出单个 JSON（UTF-8）后退出。由 desktop-app 主进程 spawn（见
 // src/main/appshot/），CLI 契约见仓库 appshot 规格。打包为
-// `Vetta Computer Use.app`（scripts/build-appshot-helper.js），独立 bundle id
+// `Astravia Computer Use.app`（scripts/build-appshot-helper.js），独立 bundle id
 // 使其在 TCC（辅助功能/屏幕录制）里是与主 app 分离的授权主体。
 //
 // 三种模式，均先过 self-disclaim（见下）：
@@ -17,9 +17,9 @@
 //    → CGRequestScreenCaptureAccess() + AXIsProcessTrustedWithOptions(prompt:true)，
 //      输出同 --check-permissions 的 JSON 后 exit 0
 //
-// self-disclaim：main 最前面，若 VETTA_CU_DISCLAIMED != "1"，用
+// self-disclaim：main 最前面，若 ASTRAVIA_CU_DISCLAIMED != "1"，用
 // POSIX_SPAWN_SETEXEC + dlsym 拿到的私有符号 responsibility_spawnattrs_setdisclaim
-// re-exec 自己（argv 原样、setenv VETTA_CU_DISCLAIMED=1），使 helper 脱离父进程
+// re-exec 自己（argv 原样、setenv ASTRAVIA_CU_DISCLAIMED=1），使 helper 脱离父进程
 // 责任链、成为独立 TCC 主体。拿不到符号/调用失败则清标记继续正常执行（降级）。
 //
 // 单文件 swiftc 编译（scripts/build-appshot-helper.js）。截图优先
@@ -43,7 +43,7 @@ reexecDisclaimedIfNeeded()
 /// 运行时用 dlsym 探测，取不到或调用失败则清掉标记、静默降级继续正常执行——
 /// 仅权限归属仍挂在父进程下，功能不受影响。
 func reexecDisclaimedIfNeeded() {
-	if ProcessInfo.processInfo.environment["VETTA_CU_DISCLAIMED"] == "1" { return }
+	if ProcessInfo.processInfo.environment["ASTRAVIA_CU_DISCLAIMED"] == "1" { return }
 	guard let handle = dlopen(nil, RTLD_LAZY) else { return }
 	guard let sym = dlsym(handle, "responsibility_spawnattrs_setdisclaim") else { return }
 	typealias SetDisclaimFn = @convention(c) (UnsafeMutablePointer<posix_spawnattr_t?>, Int32) -> Int32
@@ -55,7 +55,7 @@ func reexecDisclaimedIfNeeded() {
 	guard setDisclaim(&attr, 1) == 0 else { return }
 	guard posix_spawnattr_setflags(&attr, Int16(POSIX_SPAWN_SETEXEC)) == 0 else { return }
 
-	setenv("VETTA_CU_DISCLAIMED", "1", 1)
+	setenv("ASTRAVIA_CU_DISCLAIMED", "1", 1)
 
 	let argv: [UnsafeMutablePointer<CChar>?] = CommandLine.arguments.map { strdup($0) } + [nil]
 	var pid: pid_t = 0
@@ -63,7 +63,7 @@ func reexecDisclaimedIfNeeded() {
 	_ = posix_spawn(&pid, executablePath, nil, &attr, argv, environ)
 	// SETEXEC 成功会替换当前进程映像、不会返回到这里；能执行到此说明失败，
 	// 清掉标记继续正常执行（降级路径），并释放 argv 复本。
-	unsetenv("VETTA_CU_DISCLAIMED")
+	unsetenv("ASTRAVIA_CU_DISCLAIMED")
 	for pointer in argv where pointer != nil { free(pointer) }
 }
 

@@ -1,10 +1,10 @@
-import type { PluginOfficialApi } from "@vetta-org/plugin-sdk";
+import type { PluginOfficialApi } from "@astravia-org/plugin-sdk";
 
 export function createOfficialSkillsApi(
 	assertOfficial: () => void,
 	capabilitySessionId: string,
 ): PluginOfficialApi["skills"] {
-	const skills = window.vetta.plugins.internalCapabilities.skills;
+	const skills = window.astravia.plugins.internalCapabilities.skills;
 	return {
 		list: async (cwd) => {
 			assertOfficial();
@@ -25,7 +25,7 @@ export function createOfficialSkillsApi(
 		installFromMarket: async (type, slug) => {
 			assertOfficial();
 			// 市场下载走主进程鉴权/匿名通道，不经 capability session。
-			return window.vetta.skills.installFromMarketSlug(type, slug);
+			return window.astravia.skills.installFromMarketSlug(type, slug);
 		},
 	};
 }

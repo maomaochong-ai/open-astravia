@@ -1,4 +1,4 @@
-export const APP_ASSET_PROTOCOL_SCHEME = "vetta-asset";
+export const APP_ASSET_PROTOCOL_SCHEME = "astravia-asset";
 
 export const APP_ASSET_SCOPES = ["renderer"] as const;
 

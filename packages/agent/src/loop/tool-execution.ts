@@ -1,5 +1,5 @@
+import { type AssistantMessage, type EventStream, type ToolResultMessage, validateToolArguments } from "@astravia/ai";
 import type { TSchema } from "@sinclair/typebox";
-import { type AssistantMessage, type EventStream, type ToolResultMessage, validateToolArguments } from "@vetta/ai";
 import type { AgentObservation } from "../telemetry.js";
 import { AgentToolExecutionError } from "../tool-execution-error.js";
 import type { AgentEvent, AgentLoopConfig, AgentMessage, AgentTool, AgentToolResult, ToolPhase } from "../types.js";

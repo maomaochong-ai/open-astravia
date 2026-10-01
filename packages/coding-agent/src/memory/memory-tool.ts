@@ -1,6 +1,6 @@
+import type { RuntimeToolDefinition } from "@astravia/runtime-core/kernel";
+import { ToolCallDescriptionSchema } from "@astravia/runtime-tools/coding";
 import { type Static, Type } from "@sinclair/typebox";
-import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
-import { ToolCallDescriptionSchema } from "@vetta/runtime-tools/coding";
 import { MEMORY_TOOL_DESCRIPTION } from "./memory-tool-description.js";
 
 export const MemoryToolInputSchema = Type.Object({

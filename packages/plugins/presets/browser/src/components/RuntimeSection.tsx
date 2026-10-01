@@ -1,4 +1,4 @@
-import { useTranslation } from "@vetta-org/plugin-sdk";
+import { useTranslation } from "@astravia-org/plugin-sdk";
 import type { JSX } from "react";
 import { MINIMUM_AGENT_BROWSER_VERSION, type RuntimeStatus } from "../runtime/runtime-controller";
 

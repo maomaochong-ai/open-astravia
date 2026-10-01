@@ -1,3 +1,4 @@
+import { getFileIcon } from "@astravia-org/theme-ui/file-explorer";
 import { useNarrowScreen } from "@shared/hooks/useNarrowScreen";
 import { resolveLocalFilePath } from "@shared/lib/resolve-local-file-path";
 import { isSubPath, pathBasename } from "@shared/lib/utils";
@@ -11,7 +12,6 @@ import {
 	openUrlInActivityWorkspaceAtom,
 	resolvedThemeAtom,
 } from "@shared/store/atoms";
-import { getFileIcon } from "@vetta-org/theme-ui/file-explorer";
 import { atom, useAtomValue, useSetAtom } from "jotai";
 import { selectAtom } from "jotai/utils";
 import { useCallback, useMemo } from "react";

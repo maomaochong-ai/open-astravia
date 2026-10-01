@@ -1,5 +1,5 @@
-import type { TeamSessionDocument, TeamSessionStateRecord } from "@vetta/agent-team";
-import type { RuntimeHost } from "@vetta/runtime-core";
+import type { TeamSessionDocument, TeamSessionStateRecord } from "@astravia/agent-team";
+import type { RuntimeHost } from "@astravia/runtime-core";
 import type { ConversationOwnershipCatalogPort } from "../conversations/conversation-ownership-catalog.js";
 import { TeamOperationQueue } from "./team-operation-queue.js";
 import { registerAgentTeamSessionOwnership } from "./team-ownership-backfill.js";

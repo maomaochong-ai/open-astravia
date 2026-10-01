@@ -1,7 +1,7 @@
 import {
 	ApprovalRawFallback as ThemeApprovalRawFallback,
 	type ApprovalRawFallbackLabels,
-} from "@vetta-org/theme-ui/action-approval";
+} from "@astravia-org/theme-ui/action-approval";
 import { useTranslation } from "react-i18next";
 
 export {
@@ -14,7 +14,7 @@ export {
 	ApprovalValueList,
 	ApprovalValueRow,
 	ApprovalWarningCard,
-} from "@vetta-org/theme-ui/action-approval";
+} from "@astravia-org/theme-ui/action-approval";
 
 /** Desktop adapter: inject i18n labels into theme-ui raw fallback. */
 export function ApprovalRawFallback({

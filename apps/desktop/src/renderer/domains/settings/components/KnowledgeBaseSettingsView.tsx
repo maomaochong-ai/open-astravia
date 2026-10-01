@@ -1,11 +1,11 @@
 import { KnowledgeHowItWorksDialog } from "@shared/components/KnowledgeHowItWorksDialog";
 import { ModelSelect } from "@shared/components/ModelSelect";
-import { Switch } from "@vetta-org/ui";
+import { Switch } from "@astravia-org/ui";
 import { cn } from "@shared/lib/utils";
 import { useMemo, useState } from "react";
 import { SettingsAiAssist } from "../ai-assist";
 import { SETTINGS_SECTION } from "../registry";
-import { MotionSelect, SettingRow, SettingSection } from "@vetta-org/theme-ui/settings";
+import { MotionSelect, SettingRow, SettingSection } from "@astravia-org/theme-ui/settings";
 import type { KnowledgeBaseSettingsModel } from "./useKnowledgeBaseSettingsModel";
 
 export function KnowledgeBaseSettingsView({ model }: { model: KnowledgeBaseSettingsModel }): JSX.Element {

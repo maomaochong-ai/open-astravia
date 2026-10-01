@@ -22,7 +22,7 @@ vi.mock("./runtime", () => ({
 	withWorkbenchFs: (callback: (fs: { stat: typeof mocks.stat }) => unknown) => callback({ stat: mocks.stat }),
 }));
 
-import { applyPluginToVetta } from "./reinstall";
+import { applyPluginToAstravia } from "./reinstall";
 
 const project: ProjectInfo = {
 	dir: "C:/plugins/demo",
@@ -31,7 +31,7 @@ const project: ProjectInfo = {
 	version: "0.1.0",
 	guidingWords: [],
 	permissions: [],
-	packagePath: "C:/plugins/demo/release/demo-0.1.0.vettapkg",
+	packagePath: "C:/plugins/demo/release/demo-0.1.0.astraviapkg",
 };
 
 beforeEach(() => {
@@ -40,12 +40,12 @@ beforeEach(() => {
 	mocks.reload.mockResolvedValue(undefined);
 });
 
-describe("applyPluginToVetta", () => {
+describe("applyPluginToAstravia", () => {
 	it("reports a development server startup failure after applying the plugin", async () => {
 		mocks.startDevWatch.mockRejectedValue(new Error("plugin dev server unavailable"));
 
 		await expect(
-			applyPluginToVetta({ project, workbenchRoot: "C:/workbench", startHotReload: true }),
+			applyPluginToAstravia({ project, workbenchRoot: "C:/workbench", startHotReload: true }),
 		).rejects.toThrow("plugin dev server unavailable");
 		expect(mocks.installFromPath).toHaveBeenCalledWith(project.packagePath, {
 			initiator: "plugin-workbench",

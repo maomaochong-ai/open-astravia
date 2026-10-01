@@ -3,4 +3,4 @@ export {
 	InputField,
 	SelectField,
 	TextareaField,
-} from "@vetta-org/theme-ui/settings";
+} from "@astravia-org/theme-ui/settings";

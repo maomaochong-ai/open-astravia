@@ -14,7 +14,7 @@ const testBundleRoot = join(repositoryRoot, "node_modules", ".cache");
 
 export async function buildAgentRpcExecutable(): Promise<AgentRpcExecutable> {
 	await mkdir(testBundleRoot, { recursive: true });
-	const directory = await mkdtemp(join(testBundleRoot, "vetta-agent-rpc-"));
+	const directory = await mkdtemp(join(testBundleRoot, "astravia-agent-rpc-"));
 	const path = join(directory, "agent-rpc.mjs");
 	try {
 		await runCommand(

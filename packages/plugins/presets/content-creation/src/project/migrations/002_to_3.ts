@@ -1,4 +1,4 @@
-import type { ConfigRecord, VersionedConfigMigration } from "@vetta/toolkit/versioned-config";
+import type { ConfigRecord, VersionedConfigMigration } from "@astravia/toolkit/versioned-config";
 
 function isRecord(value: unknown): value is ConfigRecord {
 	return typeof value === "object" && value !== null && !Array.isArray(value);

@@ -1,5 +1,5 @@
+import type { RuntimeToolDefinition } from "@astravia/runtime-core/kernel";
 import { type Static, Type } from "@sinclair/typebox";
-import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
 import type { TeamSharedHistoryPort } from "./shared-history.js";
 
 const EntryIdSchema = Type.String({ minLength: 1, maxLength: 2048 });

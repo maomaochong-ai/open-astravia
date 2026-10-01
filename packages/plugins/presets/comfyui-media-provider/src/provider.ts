@@ -5,7 +5,7 @@ import type {
 	PluginMediaProviderInput,
 	PluginMediaProviderJob,
 	PluginMediaProviderRegistration,
-} from "@vetta-org/plugin-sdk";
+} from "@astravia-org/plugin-sdk";
 import { ComfyUiClient, outputFile } from "./comfyui-client";
 import { H3_DEFAULT_RESOLUTION, H3_RESOLUTION_IDS, resolveH3ResolutionPreset } from "./h3-resolution";
 import { adaptMinimaxWorkflow } from "./workflow-adapter";

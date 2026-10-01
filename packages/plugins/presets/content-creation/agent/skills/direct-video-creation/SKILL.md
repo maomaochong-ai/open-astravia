@@ -61,4 +61,4 @@ Keep each generator focused on one visually coherent shot unless the inspected m
 
 When materializing the plan on the canvas, use `$operate-content-workflow`'s high-level `configure_video_shot` contract. Pass concrete asset IDs for asset collections, reference upstream image/video generators by future output, and let capability resolution compile business roles to provider slots. Use low-level `configure_generation` only to preserve or repair an existing technical role configuration. Never express first frame, last frame, visual reference, motion reference, or source video as an unlabelled edge.
 
-This method is an original Vetta adaptation informed by Generative-Media-Skills (MIT), visual-skills by Serge Shima (CC BY 4.0, https://github.com/smixs/visual-skills), and ViMax (MIT).
+This method is an original Astravia adaptation informed by Generative-Media-Skills (MIT), visual-skills by Serge Shima (CC BY 4.0, https://github.com/smixs/visual-skills), and ViMax (MIT).

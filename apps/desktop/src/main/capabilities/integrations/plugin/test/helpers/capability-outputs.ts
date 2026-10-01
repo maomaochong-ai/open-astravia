@@ -1,4 +1,4 @@
-import type { CapabilityId } from "@vetta-org/capability-sdk";
+import type { CapabilityId } from "@astravia-org/capability-sdk";
 import {
 	DOMAIN_AGENT_SETTINGS_CAPABILITIES,
 	DOMAIN_AI_CAPABILITIES,
@@ -26,7 +26,7 @@ import {
 	FOUNDATION_NETWORK_CAPABILITIES,
 	FOUNDATION_STORAGE_CAPABILITIES,
 	MEDIA_PROTOCOL_VERSION,
-} from "@vetta-org/capability-sdk";
+} from "@astravia-org/capability-sdk";
 
 function foundationOutput(capabilityId: CapabilityId): unknown {
 	if (capabilityId === FOUNDATION_BROWSER_CAPABILITIES.RUNTIME_STATUS.id) {
@@ -73,7 +73,7 @@ function foundationOutput(capabilityId: CapabilityId): unknown {
 		return {
 			type: "storage-blob",
 			id: "blob",
-			url: "vetta-media://local/blob",
+			url: "astravia-media://local/blob",
 			mimeType: "image/png",
 			sizeBytes: 5,
 		};
@@ -109,7 +109,7 @@ function foundationOutput(capabilityId: CapabilityId): unknown {
 		capabilityId === FOUNDATION_STORAGE_CAPABILITIES.PUT_BLOB.id ||
 		capabilityId === FOUNDATION_STORAGE_CAPABILITIES.GET_BLOB_REF.id
 	) {
-		return { id: "blob", url: "vetta-media://local/blob", mimeType: "image/png" };
+		return { id: "blob", url: "astravia-media://local/blob", mimeType: "image/png" };
 	}
 	if (capabilityId === FOUNDATION_STORAGE_CAPABILITIES.READ_BLOB.id) {
 		return { data: "ZGF0YQ==", mimeType: "image/png" };
@@ -149,7 +149,7 @@ function domainOutput(capabilityId: CapabilityId): unknown {
 	if (capabilityId === DOMAIN_MEDIA_CAPABILITIES.LIST_PROVIDERS.id) {
 		return [
 			{
-				id: "desktop-app:vetta",
+				id: "desktop-app:astravia",
 				ownerId: "desktop-app",
 				protocolVersion: MEDIA_PROTOCOL_VERSION,
 				capabilities: [{ operation: "generate", kind: "image", modes: ["text-to-image", "image-to-image"] }],
@@ -189,7 +189,7 @@ function domainOutput(capabilityId: CapabilityId): unknown {
 		capabilityId === DOMAIN_AGENT_SETTINGS_CAPABILITIES.GET_EXPERIMENTAL.id ||
 		capabilityId === DOMAIN_AGENT_SETTINGS_CAPABILITIES.SET_EXPERIMENTAL.id
 	) {
-		return { vettaCli: true, promptPrediction: false, agentSkills: true };
+		return { astraviaCli: true, promptPrediction: false, agentSkills: true };
 	}
 	if (capabilityId === DOMAIN_GENERAL_SETTINGS_CAPABILITIES.GET.id) {
 		return {
@@ -307,7 +307,7 @@ function domainOutput(capabilityId: CapabilityId): unknown {
 		return [
 			{
 				id: "session",
-				path: "C:/workspace/.vetta/sessions/session.jsonl",
+				path: "C:/workspace/.astravia/sessions/session.jsonl",
 				cwd: "C:/workspace",
 				firstMessage: "hello",
 				modifiedAt: 1,

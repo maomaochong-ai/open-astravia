@@ -44,4 +44,4 @@ Record purpose, audience, publishing surface, aspect ratio, subject, action/pose
 
 Prefer an explicit visual decision over a pile of adjectives. Make each variation change one named axis such as composition, palette, lens, pose, or rendering medium.
 
-This method is an original Vetta adaptation informed by Generative-Media-Skills (MIT), visual-skills by Serge Shima (CC BY 4.0, https://github.com/smixs/visual-skills), and ViMax (MIT).
+This method is an original Astravia adaptation informed by Generative-Media-Skills (MIT), visual-skills by Serge Shima (CC BY 4.0, https://github.com/smixs/visual-skills), and ViMax (MIT).

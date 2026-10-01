@@ -1,6 +1,6 @@
 # Video editing and continuation
 
-Use only when the inspected mode exposes video input. Vetta currently represents video/reference-to-video generation, not every provider's proprietary partial re-render or native extension endpoint. Express unsupported continuation as a new clip with an explicit boundary state.
+Use only when the inspected mode exposes video input. Astravia currently represents video/reference-to-video generation, not every provider's proprietary partial re-render or native extension endpoint. Express unsupported continuation as a new clip with an explicit boundary state.
 
 ## Edit contract
 

@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to `@vetta/runtime-knowledge` are documented in this file.
+All notable changes to `@astravia/runtime-knowledge` are documented in this file.
 
 ## [Unreleased]
 

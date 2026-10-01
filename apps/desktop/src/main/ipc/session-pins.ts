@@ -14,10 +14,10 @@ import {
 } from "../conversations/session-pins-store.js";
 
 const CHANNELS = {
-	LIST: "vetta:session-pins:list",
-	SET: "vetta:session-pins:set",
-	FORGET: "vetta:session-pins:forget",
-	IMPORT: "vetta:session-pins:import",
+	LIST: "astravia:session-pins:list",
+	SET: "astravia:session-pins:set",
+	FORGET: "astravia:session-pins:forget",
+	IMPORT: "astravia:session-pins:import",
 } as const;
 
 function asPaths(value: unknown): string[] {

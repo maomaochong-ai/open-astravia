@@ -8,7 +8,7 @@ import {
 	type PluginMediaJob,
 	type PluginMediaProviderDescriptor,
 	type PluginMediaInput,
-} from "@vetta-org/plugin-sdk";
+} from "@astravia-org/plugin-sdk";
 import type {
 	ContentGenerationMode,
 	ContentGenerationRequest,
@@ -306,7 +306,7 @@ function createModelEntries(provider: PluginMediaProviderDescriptor): HostMediaM
 					modelId: outputKinds.length === 1 ? provider.id : `${provider.id}:${outputKind}`,
 					displayName:
 						provider.displayName ??
-						(provider.id === "desktop-app:vetta" && outputKind === "image" ? "Vetta Image" : provider.id),
+						(provider.id === "desktop-app:astravia" && outputKind === "image" ? "Astravia Image" : provider.id),
 					outputKind,
 					modes,
 					aspectRatios: unique(capabilities.flatMap((capability) => capability.aspectRatios ?? [])),

@@ -8,7 +8,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 	Input,
-} from "@vetta-org/ui";
+} from "@astravia-org/ui";
 
 export interface NewProjectDialogViewLabels {
 	readonly title: string;

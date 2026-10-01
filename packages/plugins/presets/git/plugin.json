@@ -26,5 +26,5 @@
 	],
 	"commands": ["git"],
 	"description": "%plugin.description%",
-	"author": "Vetta"
+	"author": "Astravia"
 }

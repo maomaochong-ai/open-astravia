@@ -7,7 +7,7 @@ import { type RemoteUploadStoreDependencies, safeUploadName, saveRemoteUpload } 
 const roots: string[] = [];
 
 async function store(now = Date.now()): Promise<RemoteUploadStoreDependencies> {
-	const root = await mkdtemp(join(tmpdir(), "vetta-uploads-"));
+	const root = await mkdtemp(join(tmpdir(), "astravia-uploads-"));
 	roots.push(root);
 	let next = 0;
 	return { root, mkdir, readdir, rm, stat, writeFile, now: () => now, id: () => `u${++next}` };

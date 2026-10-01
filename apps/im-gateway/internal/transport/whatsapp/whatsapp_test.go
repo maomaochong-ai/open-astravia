@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"vetta-im-gateway/internal/transport"
+	"astravia-im-gateway/internal/transport"
 )
 
 func TestNewRequiresStatePath(t *testing.T) {

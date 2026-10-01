@@ -1,13 +1,13 @@
 # GitHub 开源能力市场格式
 
-Desktop 从 GitHub 下载配置 ref 的归档，并在本地读取 `.vetta/marketplace.json`。GitHub 不承担搜索、筛选或分页；这些操作全部基于客户端已校验的本地快照完成。
+Desktop 从 GitHub 下载配置 ref 的归档，并在本地读取 `.astravia/marketplace.json`。GitHub 不承担搜索、筛选或分页；这些操作全部基于客户端已校验的本地快照完成。
 
 ## 推荐发布模式：静态分发分支
 
 市场源码与可安装分发分开：新仓库通常由 main 保存能力源码；已有官方市场为避免影响仍读取
-schema v2 的旧版 Desktop，使用独立的 marketplace-source 保存 `.vetta/marketplace.source.json`，并冻结 main 作为兼容来源；
-普通源码 PR 审核通过后，CI 构建未发布的插件版本并上传不可变 `.vettapkg`，
-再生成 gh-pages 上的 `.vetta/marketplace.json`、展示资源和非插件安装文件。
+schema v2 的旧版 Desktop，使用独立的 marketplace-source 保存 `.astravia/marketplace.source.json`，并冻结 main 作为兼容来源；
+普通源码 PR 审核通过后，CI 构建未发布的插件版本并上传不可变 `.astraviapkg`，
+再生成 gh-pages 上的 `.astravia/marketplace.json`、展示资源和非插件安装文件。
 Desktop 的市场来源 ref 配置为 gh-pages，无需另建注册服务或启用 GitHub Pages。
 
 源码配置省略 marketplaceVersion 与插件 releases，插件条目声明 minAppVersion；
@@ -22,8 +22,8 @@ Desktop 的市场来源 ref 配置为 gh-pages，无需另建注册服务或启�
 ## 客户端来源管理
 
 云市场与 GitHub 来源独立启用：开源版只不包含云服务，仍可配置多个 GitHub 仓库；云版可同时浏览两类来源。
-内置官方 GitHub 来源与云市场独立存在。发行方可以通过 `VETTA_OPEN_MARKETPLACE_REPOSITORY` 替换其仓库；
-未配置时使用 OpenVetta 官方仓库。分支由 `VETTA_OPEN_MARKETPLACE_REF` 指定；官方仓库省略时使用
+内置官方 GitHub 来源与云市场独立存在。发行方可以通过 `ASTRAVIA_OPEN_MARKETPLACE_REPOSITORY` 替换其仓库；
+未配置时使用 OpenAstravia 官方仓库。分支由 `ASTRAVIA_OPEN_MARKETPLACE_REF` 指定；官方仓库省略时使用
 `gh-pages`，自定义仓库省略时保留 `main` 兼容行为。归档 URL 可单独配置，否则从仓库与分支推导。
 
 在「能力 → 市场来源」可添加多个仓库，分别设置启用、自动更新和分支，并单独刷新。
@@ -35,7 +35,7 @@ Desktop 的市场来源 ref 配置为 gh-pages，无需另建注册服务或启�
 
 添加私有仓库时，在表单中填写 GitHub fine-grained personal access token（PAT），权限只需要目标仓库的
 `Contents: Read-only`。令牌按来源单独保存到 Desktop 的系统安全存储，不会写入来源配置、市场快照、日志或发送给
-Vetta 服务；界面只显示“已配置”，不会回显令牌。更新或清除来源时可以分别替换或删除令牌。
+Astravia 服务；界面只显示“已配置”，不会回显令牌。更新或清除来源时可以分别替换或删除令牌。
 
 配置令牌后，客户端对 GitHub REST Contents/zipball API 使用 `Authorization: Bearer` 请求头。GitHub 返回的临时归档
 重定向只携带普通下载请求头，不会把令牌转发到签名地址；未配置令牌的公开仓库仍沿用原有匿名 raw/archive 下载路径。
@@ -90,7 +90,7 @@ Vetta 服务；界面只显示“已配置”，不会回显令牌。更新或�
 旧客户端会忽略此可选字段，无需修改 `schemaVersion` 或能力安装版本；内容变更仍须递增 `marketplaceVersion`。
 
 多个来源使用相同 `category` 时仍归为一组，缺少的语言逐项补齐，同一语言保留列表中先出现的非空译名。
-不同分类即使译名相同也不合并。内置的「连接」「Vetta 内置」「未分类」继续使用应用自带的 i18n 文案。
+不同分类即使译名相同也不合并。内置的「连接」「Astravia 内置」「未分类」继续使用应用自带的 i18n 文案。
 
 ## Plugin、MCP 与 Bundle
 
@@ -141,7 +141,7 @@ Plugin 的 `source.path` 指向一个可直接安装的插件目录。目录至�
 上例省略了市场顶层其它必填字段；版本和摘要只展示格式，必须替换成真实发布值。
 `version` 必须等于 `releases[]` 中最高的稳定版本。每个 `minAppVersion` 通常必须是已经
 正式发布且包含相应 Plugin API 的 App 版本。首次联调新协议时，市场发布配置可以把该
-版本显式钉到 OpenVetta 的 40 位不可变 commit；门禁会核对 Desktop 版本、Plugin API
+版本显式钉到 OpenAstravia 的 40 位不可变 commit；门禁会核对 Desktop 版本、Plugin API
 与 schema，并在稳定 Release 存在后自动优先检查正式版本。
 客户端按当前 App 版本和 Plugin API 版本选最高兼容版本；没有兼容版本的插件及依赖
 它的 Bundle 暂不展示。下载安装前后都会检查 ZIP 的摘要与身份，下载后还核对
@@ -156,11 +156,11 @@ Release asset API URL；令牌只送到匹配来源的 GitHub API，不跟随资
 发布 ZIP 后，在将其引用加入正式市场 ref 前运行：
 
 ```bash
-node tools/open-vetta/scripts/release/check-plugin-marketplace-publication.mjs .vetta/marketplace.json
+node tools/open-astravia/scripts/release/check-plugin-marketplace-publication.mjs .astravia/marketplace.json
 ```
 
-上述示例假定市场 CI 已将一个固定版本的 `open-vetta` 检出到 `tools/open-vetta/`；
-同时运行与该版本配套的 `vetta-plugin-cli sync --check`。它核实每个最低 App 版本的
+上述示例假定市场 CI 已将一个固定版本的 `open-astravia` 检出到 `tools/open-astravia/`；
+同时运行与该版本配套的 `astravia-plugin-cli sync --check`。它核实每个最低 App 版本的
 稳定 GitHub Release 或显式固定的首次联调 commit、对应宿主的 Plugin API 和 ZIP 摘要。
 候选配置只在稳定 Release 返回 404 时生效，不能绕过不完整的正式发布。已发布的插件版本不得
 覆盖制品或改变摘要；建议对承载插件 ZIP 的 GitHub 仓库启用 Immutable releases。
@@ -176,7 +176,7 @@ node tools/open-vetta/scripts/release/check-plugin-marketplace-publication.mjs .
 }
 ```
 
-MCP 必须有独立包目录。`marketplace.json` 只通过 `source.path` 指向目录，运行配置与可选的受管运行时声明放在目录内的 `mcp.json`。客户端同步时读取并校验该文件，再在用户安装时准备运行时并把解析后的 `server` 写入 `~/.vetta/agent/mcp.json` 的 `mcpServers[slug]`。索引内联 `config.mcp` 会被拒绝，避免索引与包文件形成两个真相源。
+MCP 必须有独立包目录。`marketplace.json` 只通过 `source.path` 指向目录，运行配置与可选的受管运行时声明放在目录内的 `mcp.json`。客户端同步时读取并校验该文件，再在用户安装时准备运行时并把解析后的 `server` 写入 `~/.astravia/agent/mcp.json` 的 `mcpServers[slug]`。索引内联 `config.mcp` 会被拒绝，避免索引与包文件形成两个真相源。
 
 ```json
 {
@@ -240,11 +240,11 @@ SHA-256；首期支持直接可执行文件与 ZIP，不执行仓库或产物提
     }
   },
   "server": {
-    "command": "${VETTA_MCP_EXECUTABLE}",
+    "command": "${ASTRAVIA_MCP_EXECUTABLE}",
     "args": ["--stdio"],
     "env": {
-      "COOKIES_PATH": "${VETTA_MCP_DATA_DIR}/cookies.json",
-      "BROWSER_CACHE": "${VETTA_MCP_CACHE_DIR}/browser"
+      "COOKIES_PATH": "${ASTRAVIA_MCP_DATA_DIR}/cookies.json",
+      "BROWSER_CACHE": "${ASTRAVIA_MCP_CACHE_DIR}/browser"
     }
   }
 }
@@ -253,11 +253,11 @@ SHA-256；首期支持直接可执行文件与 ZIP，不执行仓库或产物提
 上例中的仓库地址和 SHA-256 仅用于说明字段形状，发布时必须替换为实际 Release
 产物及其校验值；客户端不会接受非 HTTPS 下载地址。
 
-`server.command` 必须精确等于 `${VETTA_MCP_EXECUTABLE}`。`args`、`env` 与 `cwd` 还可以使用：
+`server.command` 必须精确等于 `${ASTRAVIA_MCP_EXECUTABLE}`。`args`、`env` 与 `cwd` 还可以使用：
 
-- `${VETTA_MCP_RUNTIME_DIR}`：当前版本运行目录；
-- `${VETTA_MCP_DATA_DIR}`：升级和卸载运行文件时保留的用户数据目录；
-- `${VETTA_MCP_CACHE_DIR}`：可再生成缓存目录。
+- `${ASTRAVIA_MCP_RUNTIME_DIR}`：当前版本运行目录；
+- `${ASTRAVIA_MCP_DATA_DIR}`：升级和卸载运行文件时保留的用户数据目录；
+- `${ASTRAVIA_MCP_CACHE_DIR}`：可再生成缓存目录。
 
 Desktop 先下载、校验、解包并验证可执行文件，再解析占位符。最终写入 `mcp.json` 的仍是标准 stdio MCP 配置。
 更新失败时保留原版本；卸载默认只移除运行文件，不删除登录态。完整决策见
@@ -303,7 +303,7 @@ Bundle 没有独立安装产物，只组合本来源的成员。成员支持 `sk
   "version": "1.0.0",
   "config": {
     "members": [
-      { "type": "skill", "slug": "hello-vetta" },
+      { "type": "skill", "slug": "hello-astravia" },
       { "type": "mcp", "slug": "context7" },
       { "type": "plugin", "slug": "demo-plugin" }
     ]
@@ -451,7 +451,7 @@ abilities/mcp/context7/
 
 - 新增字段应优先设计为可选字段，不改变已有字段含义。
 - 客户端版本低于 `minAppVersion` 时不会激活新快照；存在旧的兼容快照时继续使用旧快照。
-- 开发期不兼容缺少 `minAppVersion` 或使用旧字段名的 Manifest；直接修改仓库中的 `.vetta/marketplace.json`。
+- 开发期不兼容缺少 `minAppVersion` 或使用旧字段名的 Manifest；直接修改仓库中的 `.astravia/marketplace.json`。
 - 旧 Desktop 不理解 schema v3，且会拒绝整个来源并沿用已有缓存。v3 来源应使用
   单独 ref 或仓库；旧来源保持 v1/v2 和目录构建文件，直到旧客户端退出支持。
 - 当前不使用 `marketplace-index.json`。多版本选择发生在插件条目中，不依赖第二份索引。
@@ -468,20 +468,20 @@ abilities/mcp/context7/
 先在市场源码分支生成本地候选分发：
 
 ```powershell
-$env:VETTA_PYTHON = python -c "import sys; print(sys.executable)"
+$env:ASTRAVIA_PYTHON = python -c "import sys; print(sys.executable)"
 node scripts/marketplace.mjs build --output .marketplace-build/local-e2e
 ```
 
 再在 Desktop 仓库把候选目录和制品目录分别传给隔离测试：
 
 ```powershell
-$env:VETTA_MARKETPLACE_CANDIDATE_ROOT = 'C:\path\to\marketplace\.marketplace-build\local-e2e\site'
-$env:VETTA_MARKETPLACE_CANDIDATE_ARTIFACTS = 'C:\path\to\marketplace\.marketplace-build\local-e2e\artifacts'
+$env:ASTRAVIA_MARKETPLACE_CANDIDATE_ROOT = 'C:\path\to\marketplace\.marketplace-build\local-e2e\site'
+$env:ASTRAVIA_MARKETPLACE_CANDIDATE_ARTIFACTS = 'C:\path\to\marketplace\.marketplace-build\local-e2e\artifacts'
 bun scripts/quality/run-vitest.mjs --run apps/desktop/src/main/abilities/open-marketplace/marketplace-candidate.local.test.ts
 ```
 
-该检查读取生成的精简分发目录和真实 `.vettapkg`，
-以临时 `VETTA_HOME` 走 Desktop 同步、版本选择、下载校验和插件安装，再检查旧版客户端的升级提示。
+该检查读取生成的精简分发目录和真实 `.astraviapkg`，
+以临时 `ASTRAVIA_HOME` 走 Desktop 同步、版本选择、下载校验和插件安装，再检查旧版客户端的升级提示。
 所有网络请求都由本地文件响应替代；不启动日常 Desktop，也不发布仓库或制品。未设置环境变量时该测试跳过。
 
 ## 本地缓存身份
@@ -490,12 +490,12 @@ bun scripts/quality/run-vitest.mjs --run apps/desktop/src/main/abilities/open-ma
 
 同一来源身份下，`marketplaceVersion` 对应的内容仍然不可变。来源身份发生变化时，即使新来源暂时使用相同的 `marketplaceVersion`，也允许下载并建立新的缓存快照。
 
-能力页打开时优先立即返回本地快照，并在后台读取 GitHub 上的 `.vetta/marketplace.json`。只有远端 `marketplaceVersion` 变化时才下载完整仓库归档；更新成功不发送通知，已打开的能力页只静默重读本地快照，未打开时则在下次进入时读取。后台检查失败时继续使用已有快照，不向用户产生干扰；用户主动点击刷新仍会立即执行完整同步并返回结果。
+能力页打开时优先立即返回本地快照，并在后台读取 GitHub 上的 `.astravia/marketplace.json`。只有远端 `marketplaceVersion` 变化时才下载完整仓库归档；更新成功不发送通知，已打开的能力页只静默重读本地快照，未打开时则在下次进入时读取。后台检查失败时继续使用已有快照，不向用户产生干扰；用户主动点击刷新仍会立即执行完整同步并返回结果。
 
 ## 内置来源配置
 
 客户端始终注册内置 GitHub 来源，发行方可以用环境变量替换其坐标：
 
-- `VETTA_OPEN_MARKETPLACE_REPOSITORY`：GitHub 仓库 URL；未设置时使用 Vetta 官方市场仓库。
-- `VETTA_OPEN_MARKETPLACE_REF`：分支或 ref；官方仓库默认 `gh-pages`，发行方 fork 默认 `main`。
-- `VETTA_OPEN_MARKETPLACE_ARCHIVE_URL`：可选归档地址；未设置时根据仓库与 ref 推导。
+- `ASTRAVIA_OPEN_MARKETPLACE_REPOSITORY`：GitHub 仓库 URL；未设置时使用 Astravia 官方市场仓库。
+- `ASTRAVIA_OPEN_MARKETPLACE_REF`：分支或 ref；官方仓库默认 `gh-pages`，发行方 fork 默认 `main`。
+- `ASTRAVIA_OPEN_MARKETPLACE_ARCHIVE_URL`：可选归档地址；未设置时根据仓库与 ref 推导。

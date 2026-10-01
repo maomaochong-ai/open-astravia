@@ -1,4 +1,4 @@
-import type { RuntimeObservationContext } from "@vetta/runtime-core/observation";
+import type { RuntimeObservationContext } from "@astravia/runtime-core/observation";
 
 export type RuntimeTraceState = "running" | "completed" | "error" | "interrupted";
 export type RuntimeTraceMetadata = Readonly<Record<string, string | number | boolean>>;

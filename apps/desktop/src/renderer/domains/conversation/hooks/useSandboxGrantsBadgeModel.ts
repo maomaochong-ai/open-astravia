@@ -1,5 +1,5 @@
-import type { RuntimeSandboxGrantInfo } from "@vetta/runtime-core";
-import type { SandboxGrantsBadgeViewLabels, SandboxGrantViewItem } from "@vetta-org/theme-ui/chat";
+import type { RuntimeSandboxGrantInfo } from "@astravia/runtime-core";
+import type { SandboxGrantsBadgeViewLabels, SandboxGrantViewItem } from "@astravia-org/theme-ui/chat";
 import type { TFunction } from "i18next";
 import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -66,7 +66,7 @@ export function useSandboxGrantsBadgeModel(runtimeIds: readonly string[]): Sandb
 			const results = await Promise.allSettled(
 				runtimeIds.map(async (runtimeId) => ({
 					runtimeId,
-					grants: await window.vetta.session.listSandboxGrants(runtimeId),
+					grants: await window.astravia.session.listSandboxGrants(runtimeId),
 				})),
 			);
 			setGrants(
@@ -106,14 +106,14 @@ export function useSandboxGrantsBadgeModel(runtimeIds: readonly string[]): Sandb
 		async (scopedGrantId: string) => {
 			const scopedGrant = grants.find(({ runtimeId, grant }) => `${runtimeId}:${grant.id}` === scopedGrantId);
 			if (!scopedGrant) return;
-			await window.vetta.session.revokeSandboxGrant(scopedGrant.runtimeId, scopedGrant.grant.id);
+			await window.astravia.session.revokeSandboxGrant(scopedGrant.runtimeId, scopedGrant.grant.id);
 			await refresh();
 		},
 		[grants, refresh],
 	);
 
 	const handleRevokeAll = useCallback(async () => {
-		await Promise.all(runtimeIds.map((runtimeId) => window.vetta.session.revokeAllSandboxGrants(runtimeId)));
+		await Promise.all(runtimeIds.map((runtimeId) => window.astravia.session.revokeAllSandboxGrants(runtimeId)));
 		await refresh();
 	}, [runtimeIds, refresh]);
 

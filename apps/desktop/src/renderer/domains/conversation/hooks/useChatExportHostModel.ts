@@ -12,7 +12,7 @@ function nextPaint(): Promise<void> {
 
 function safeFileName(value: string): string {
 	const normalized = value.trim().replace(/[<>:"/\\|?*\u0000-\u001f]/g, "_");
-	return `${normalized || "Vetta 会话"}.html`;
+	return `${normalized || "Astravia 会话"}.html`;
 }
 
 export interface ChatExportHostModel {
@@ -40,7 +40,7 @@ export function useChatExportHostModel({
 				if (!root || cancelled) return;
 				const html = await buildChatHtmlDocument(root, title, authUser?.nickname);
 				if (cancelled) return;
-				await window.vetta.dialog.saveHtml(safeFileName(title), html);
+				await window.astravia.dialog.saveHtml(safeFileName(title), html);
 			} catch (error) {
 				console.error("[ChatExport] export failed", error);
 				if (!cancelled) {

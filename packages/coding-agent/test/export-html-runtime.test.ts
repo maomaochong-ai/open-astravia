@@ -1,4 +1,4 @@
-import { createSeededConversationDocument } from "@vetta/runtime-core/conversation";
+import { createSeededConversationDocument } from "@astravia/runtime-core/conversation";
 import { describe, expect, it, vi } from "vitest";
 import { APP_NAME } from "../src/config.js";
 import {

@@ -1,4 +1,4 @@
-import type { Api, Message, Model } from "@vetta/ai";
+import type { Api, Message, Model } from "@astravia/ai";
 import { describe, expect, it, vi } from "vitest";
 import { type ModelInputImageProcessor, normalizeModelInputImages } from "../src/model-context/image-normalization.js";
 import { CodingAgentModelCallMessageFinalizer } from "../src/model-context/model-call-message-finalizer.js";

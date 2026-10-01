@@ -1,7 +1,7 @@
 {
-	"name": "@vetta/runtime-mcp",
+	"name": "@astravia/runtime-mcp",
 	"version": "0.0.1",
-	"description": "Platform-neutral MCP protocols and runtime state coordination for Vetta agents",
+	"description": "Platform-neutral MCP protocols and runtime state coordination for Astravia agents",
 	"type": "module",
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
@@ -48,7 +48,7 @@
 	"dependencies": {
 		"@modelcontextprotocol/sdk": "^1.29.0",
 		"@sinclair/typebox": "^0.34.41",
-		"@vetta/runtime-core": "workspace:*"
+		"@astravia/runtime-core": "workspace:*"
 	},
 	"devDependencies": {
 		"typescript": "^5.9.2",

@@ -5,8 +5,8 @@ import type {
 	TeamDefinition,
 	TeamMember,
 	TeamMemberAssignment,
-} from "@vetta/agent-team";
-import { normalizeMentionHandle } from "@vetta/agent-team";
+} from "@astravia/agent-team";
+import { normalizeMentionHandle } from "@astravia/agent-team";
 import type { PluginAgentPreset, PluginTeamPreset, PluginTeamPresetMember } from "./plugin-agent-presets.js";
 
 /**
@@ -426,7 +426,7 @@ function pluginTeamMemberId(pluginId: string, teamId: string, slotKey: string): 
  * 与用户数据本就不该能一眼区分。
  */
 function deterministicId(namespace: string, value: string): string {
-	const digest = createHash("sha256").update(`vetta:plugin-preset:${namespace}:${value}`, "utf8").digest("hex");
+	const digest = createHash("sha256").update(`astravia:plugin-preset:${namespace}:${value}`, "utf8").digest("hex");
 	return [
 		digest.slice(0, 8),
 		digest.slice(8, 12),

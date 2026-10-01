@@ -104,4 +104,4 @@ Greenfield Print 仍缺少图片/`@file`、完整 tool payload、真实 Provider
 
 ## 下一步
 
-下一阶段应以标准 `vetta` CLI 补齐 Greenfield/Legacy Print 的高风险行为差分：先覆盖图片与 `@file`、工具调用完整 payload、Provider 失败/自动重试和 Extension 错误，再覆盖 continue/resume 与安装产物。只修复差分暴露出的兼容问题，不借机改造功能。
+下一阶段应以标准 `astravia` CLI 补齐 Greenfield/Legacy Print 的高风险行为差分：先覆盖图片与 `@file`、工具调用完整 payload、Provider 失败/自动重试和 Extension 错误，再覆盖 continue/resume 与安装产物。只修复差分暴露出的兼容问题，不借机改造功能。

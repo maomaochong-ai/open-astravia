@@ -1,10 +1,10 @@
-import { Type } from "@sinclair/typebox";
-import { formatToolArgumentValidationIssues, ToolArgumentsValidationError, validateToolArguments } from "@vetta/ai";
+import { formatToolArgumentValidationIssues, ToolArgumentsValidationError, validateToolArguments } from "@astravia/ai";
 import type {
 	ModelCallFrameCompositionContext,
 	RuntimeSnapshotAcquireContext,
 	RuntimeToolDefinition,
-} from "@vetta/runtime-core/kernel";
+} from "@astravia/runtime-core/kernel";
+import { Type } from "@sinclair/typebox";
 
 export type RuntimeToolModelSurfacePatch = Partial<
 	Pick<

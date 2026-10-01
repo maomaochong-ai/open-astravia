@@ -1,7 +1,7 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { Api, AssistantMessage, Message, Model, UserMessage } from "@vetta/ai";
+import type { Api, AssistantMessage, Message, Model, UserMessage } from "@astravia/ai";
 import { afterEach, describe, expect, it } from "vitest";
 import {
 	createAgentSession,
@@ -25,7 +25,7 @@ afterEach(async () => {
 
 describe("FileConversationRepository Greenfield projection", () => {
 	it("rehydrates the synchronous core state from a real file repository", async () => {
-		const rootDir = await mkdtemp(join(tmpdir(), "vetta-greenfield-projection-"));
+		const rootDir = await mkdtemp(join(tmpdir(), "astravia-greenfield-projection-"));
 		temporaryRoots.push(rootDir);
 		const createdSession = await createBackend(rootDir).create({ id: "session-1" });
 		const createdAssembly = createdSession.createCoreAssembly();
@@ -65,7 +65,7 @@ describe("FileConversationRepository Greenfield projection", () => {
 	});
 
 	it("persists history control and sends only the selected branch to the turn engine", async () => {
-		const rootDir = await mkdtemp(join(tmpdir(), "vetta-greenfield-history-"));
+		const rootDir = await mkdtemp(join(tmpdir(), "astravia-greenfield-history-"));
 		temporaryRoots.push(rootDir);
 		const turnEngine = new RecordingTurnEngine();
 		const backend = createBackend(rootDir, turnEngine);
@@ -120,7 +120,7 @@ describe("FileConversationRepository Greenfield projection", () => {
 	});
 
 	it("preserves runtime rename while a turn is active", async () => {
-		const rootDir = await mkdtemp(join(tmpdir(), "vetta-greenfield-rename-"));
+		const rootDir = await mkdtemp(join(tmpdir(), "astravia-greenfield-rename-"));
 		temporaryRoots.push(rootDir);
 		const turnEngine = new BlockingTurnEngine();
 		const session = await createBackend(rootDir, turnEngine).create({ id: "session-1" });

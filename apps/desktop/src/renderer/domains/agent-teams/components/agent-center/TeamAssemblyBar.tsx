@@ -1,8 +1,8 @@
-import type { AgentProfile } from "@vetta/agent-team";
+import type { AgentProfile } from "@astravia/agent-team";
 import { useAgentAvatarResolver } from "@shared/agent-teams/agent-avatar";
-import { Button, Input } from "@vetta-org/ui";
+import { Button, Input } from "@astravia-org/ui";
 import { useTranslation } from "react-i18next";
-import { AgentAvatarView } from "@vetta-org/theme-ui/chat";
+import { AgentAvatarView } from "@astravia-org/theme-ui/chat";
 import type { TeamAssemblyDraft } from "../../lib/team-assembly";
 import { AgentAvatarStack } from "./AgentAvatarStack";
 

@@ -1,5 +1,5 @@
-import type { PromptRequest } from "@vetta/runtime-core";
-import type { RuntimeInputRequestPreparationResult, SessionInput } from "@vetta/runtime-core/kernel";
+import type { PromptRequest } from "@astravia/runtime-core";
+import type { RuntimeInputRequestPreparationResult, SessionInput } from "@astravia/runtime-core/kernel";
 import type { CodingAgentPromptRequestAdapter } from "../../src/adapters/runtime-core/prompt-request-adapter.js";
 
 export interface PromptAdapterTestContext {

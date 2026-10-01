@@ -103,12 +103,12 @@ export function useGeneralSettingsModel(): GeneralSettingsModel {
 	const [exportingDiagnostics, setExportingDiagnostics] = useState(false);
 
 	useEffect(() => {
-		void window.vetta.config.get().then((config) => {
+		void window.astravia.config.get().then((config) => {
 			setNotificationsEnabled(config.notificationsEnabled !== false);
 			setNotificationPreferences(config.notificationPreferences);
 			const mode = config.defaultExecutionMode ?? "full-access";
 			setExecutionMode(mode);
-			localStorage.setItem("vetta-session-execution-mode", mode);
+			localStorage.setItem("astravia-session-execution-mode", mode);
 			const capability = config.sandbox ?? config.linuxSandbox;
 			if (capability?.status === "unavailable") {
 				const reason = capability.reason ?? "unknown_error";
@@ -121,19 +121,19 @@ export function useGeneralSettingsModel(): GeneralSettingsModel {
 	}, [setExecutionMode, t]);
 
 	const selectWorkspace = useCallback(async () => {
-		const selected = await window.vetta.dialog.selectFolder();
+		const selected = await window.astravia.dialog.selectFolder();
 		if (!selected) return;
 		setWorkspacePath(selected);
-		localStorage.setItem("vetta-workspace-path", selected);
-		await window.vetta.config.set({ workspacePath: selected });
+		localStorage.setItem("astravia-workspace-path", selected);
+		await window.astravia.config.set({ workspacePath: selected });
 		recordSettingsUsage({ tab: "general", action: "selected", target: "workspace" });
 	}, [setWorkspacePath]);
 
 	const resetWorkspace = useCallback(async () => {
-		const defaultPath = "~/.vetta/workspace";
+		const defaultPath = "~/.astravia/workspace";
 		setWorkspacePath(defaultPath);
-		localStorage.setItem("vetta-workspace-path", defaultPath);
-		await window.vetta.config.set({ workspacePath: defaultPath });
+		localStorage.setItem("astravia-workspace-path", defaultPath);
+		await window.astravia.config.set({ workspacePath: defaultPath });
 		recordSettingsUsage({ tab: "general", action: "reset", target: "workspace" });
 	}, [setWorkspacePath]);
 
@@ -146,18 +146,18 @@ export function useGeneralSettingsModel(): GeneralSettingsModel {
 					confirmLabel: t("closeDebugConfirm"),
 					variant: "danger",
 					onConfirm: () => {
-						void window.vetta.debug.clearDebugDir();
+						void window.astravia.debug.clearDebugDir();
 						setDebugMode(false);
-						localStorage.setItem("vetta-debug-mode", "false");
-						void window.vetta.config.set({ debugMode: false });
+						localStorage.setItem("astravia-debug-mode", "false");
+						void window.astravia.config.set({ debugMode: false });
 						recordSettingsUsage({ tab: "general", action: "disabled", target: "debug-mode" });
 					},
 				});
 				return;
 			}
 			setDebugMode(true);
-			localStorage.setItem("vetta-debug-mode", "true");
-			void window.vetta.config.set({ debugMode: true });
+			localStorage.setItem("astravia-debug-mode", "true");
+			void window.astravia.config.set({ debugMode: true });
 			recordSettingsUsage({ tab: "general", action: "enabled", target: "debug-mode" });
 		},
 		[setConfirmDialog, setDebugMode, t],
@@ -167,7 +167,7 @@ export function useGeneralSettingsModel(): GeneralSettingsModel {
 		if (exportingDiagnostics) return;
 		setExportingDiagnostics(true);
 		try {
-			await window.vetta.diagnostics.exportDiagnosticsPackage();
+			await window.astravia.diagnostics.exportDiagnosticsPackage();
 		} catch (error) {
 			console.error("[GeneralSettings] failed to export diagnostics:", error);
 			setConfirmDialog({
@@ -183,7 +183,7 @@ export function useGeneralSettingsModel(): GeneralSettingsModel {
 
 	const toggleNotifications = useCallback((checked: boolean) => {
 		setNotificationsEnabled(checked);
-		void window.vetta.config.set({ notificationsEnabled: checked });
+		void window.astravia.config.set({ notificationsEnabled: checked });
 		recordSettingsUsage({ tab: "general", action: checked ? "enabled" : "disabled", target: "notifications" });
 	}, []);
 
@@ -191,7 +191,7 @@ export function useGeneralSettingsModel(): GeneralSettingsModel {
 		(update: (current: DesktopNotificationPreferences) => DesktopNotificationPreferences) => {
 			setNotificationPreferences((current) => {
 				const next = update(current);
-				void window.vetta.config.set({ notificationPreferences: next });
+				void window.astravia.config.set({ notificationPreferences: next });
 				return next;
 			});
 		},
@@ -219,13 +219,13 @@ export function useGeneralSettingsModel(): GeneralSettingsModel {
 			if (nextMode === "sandbox" && sandboxUnavailableReason) return;
 			const previousMode = executionMode;
 			setExecutionMode(nextMode);
-			localStorage.setItem("vetta-session-execution-mode", nextMode);
+			localStorage.setItem("astravia-session-execution-mode", nextMode);
 			try {
-				await window.vetta.config.set({ defaultExecutionMode: nextMode });
+				await window.astravia.config.set({ defaultExecutionMode: nextMode });
 				recordSettingsUsage({ tab: "general", action: "changed", target: "execution-mode", value: nextMode });
 			} catch (error) {
 				setExecutionMode(previousMode);
-				localStorage.setItem("vetta-session-execution-mode", previousMode);
+				localStorage.setItem("astravia-session-execution-mode", previousMode);
 				console.error("[GeneralSettings] failed to switch execution mode:", error);
 			}
 		},

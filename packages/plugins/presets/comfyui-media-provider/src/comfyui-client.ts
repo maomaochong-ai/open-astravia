@@ -3,7 +3,7 @@ import type {
 	PluginMediaGenerationMode,
 	PluginMediaProviderHandlerContext,
 	PluginNetworkRequest,
-} from "@vetta-org/plugin-sdk";
+} from "@astravia-org/plugin-sdk";
 import { getSettingsStore } from "./settings/settings-instance.js";
 import { isCompatibleMinimaxPrompt, type ComfyPrompt } from "./workflow-adapter";
 

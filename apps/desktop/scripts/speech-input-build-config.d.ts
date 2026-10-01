@@ -1,4 +1,4 @@
-export const SPEECH_INPUT_ENABLED_ENV: "VETTA_SPEECH_INPUT_ENABLED";
+export const SPEECH_INPUT_ENABLED_ENV: "ASTRAVIA_SPEECH_INPUT_ENABLED";
 
 export interface SpeechInputBuildConfig {
 	configuredEnabled: boolean;

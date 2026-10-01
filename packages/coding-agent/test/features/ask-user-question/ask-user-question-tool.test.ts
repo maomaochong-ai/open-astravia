@@ -1,4 +1,4 @@
-import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
+import type { RuntimeToolDefinition } from "@astravia/runtime-core/kernel";
 import { describe, expect, it, vi } from "vitest";
 import {
 	ASK_USER_QUESTION_TOOL_CATEGORY,

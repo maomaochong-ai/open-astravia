@@ -8,10 +8,10 @@ interface SentryBuildSetup {
 }
 
 export function createSentryBuildSetup(env: Record<string, string>, outputDirectory: string): SentryBuildSetup {
-	const authToken = readValue(env, "VETTA_SENTRY_AUTH_TOKEN");
-	const org = readValue(env, "VETTA_SENTRY_ORG");
-	const project = readValue(env, "VETTA_SENTRY_PROJECT");
-	const release = readValue(env, "VETTA_SENTRY_RELEASE");
+	const authToken = readValue(env, "ASTRAVIA_SENTRY_AUTH_TOKEN");
+	const org = readValue(env, "ASTRAVIA_SENTRY_ORG");
+	const project = readValue(env, "ASTRAVIA_SENTRY_PROJECT");
+	const release = readValue(env, "ASTRAVIA_SENTRY_RELEASE");
 	if (!authToken || !org || !project || !release) return { enabled: false, plugins: [] };
 
 	const outputGlob = resolve(process.cwd(), outputDirectory).replaceAll("\\", "/");
@@ -22,7 +22,7 @@ export function createSentryBuildSetup(env: Record<string, string>, outputDirect
 				authToken,
 				org,
 				project,
-				url: readValue(env, "VETTA_SENTRY_URL"),
+				url: readValue(env, "ASTRAVIA_SENTRY_URL"),
 				telemetry: false,
 				release: {
 					name: release,

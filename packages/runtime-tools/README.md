@@ -1,6 +1,6 @@
-# @vetta/runtime-tools
+# @astravia/runtime-tools
 
-Vetta 平台无关的 Coding Tool 协议包。包根与 `@vetta/runtime-tools/coding` 暴露同一套合同。
+Astravia 平台无关的 Coding Tool 协议包。包根与 `@astravia/runtime-tools/coding` 暴露同一套合同。
 
 ## 本包拥有
 
@@ -18,7 +18,7 @@ Vetta 平台无关的 Coding Tool 协议包。包根与 `@vetta/runtime-tools/co
 通用 Projection 机制不拥有具体工具内容或产品级投影策略。本包也不访问文件系统、进程、网络、Electron
 或宿主全局状态。跨工具共享的协议 Schema 与通用投影机制属于本包；具体模型文案和启用哪些投影由产品层决定。
 Node 环境中的 `read`、`write`、`edit`、`bash`、
-`grep`、PDF/OCR 与子进程实现由 `@vetta/runtime-node/coding` 提供。
+`grep`、PDF/OCR 与子进程实现由 `@astravia/runtime-node/coding` 提供。
 
 ## 组合示例
 

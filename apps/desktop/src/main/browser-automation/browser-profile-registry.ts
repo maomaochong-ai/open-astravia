@@ -2,15 +2,15 @@ import { createHash } from "node:crypto";
 import type { Dirent } from "node:fs";
 import { access, cp, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
-import { getVettaHomePath } from "@vetta/action-rpc";
-import type { BrowserSessionProfile, BrowserSource } from "@vetta-org/capability-sdk";
+import { getAstraviaHomePath } from "@astravia/action-rpc";
+import type { BrowserSessionProfile, BrowserSource } from "@astravia-org/capability-sdk";
 import type {
 	BrowserAutomationLogger,
 	BrowserSessionResources,
 	PersistedBrowserSessionResources,
 } from "./contracts.js";
 
-const HOST_SESSION_ID_PATTERN = /^vetta-[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const HOST_SESSION_ID_PATTERN = /^astravia-[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function namespaceKey(namespace: string): string {
 	return createHash("sha256").update(namespace).digest("hex").slice(0, 24);
@@ -33,7 +33,7 @@ export class BrowserProfileRegistry {
 	private legacyMigration?: Promise<void>;
 
 	constructor(options: BrowserProfileRegistryOptions = {}) {
-		this.baseDirectory = options.baseDirectory ?? join(getVettaHomePath(), "browser-automation", "namespaces");
+		this.baseDirectory = options.baseDirectory ?? join(getAstraviaHomePath(), "browser-automation", "namespaces");
 		this.legacyBrowserPluginProfile = options.legacyBrowserPluginProfile;
 		this.logger = options.logger;
 	}

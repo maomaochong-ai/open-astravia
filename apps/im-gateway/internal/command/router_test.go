@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"vetta-im-gateway/internal/hostclient"
-	"vetta-im-gateway/internal/state"
+	"astravia-im-gateway/internal/hostclient"
+	"astravia-im-gateway/internal/state"
 )
 
 // fakeStore is a minimal in-memory state.Store implementation.
@@ -78,7 +78,7 @@ func defaultEnv() Env {
 	return Env{
 		UserID:          "u1",
 		ChatID:          "c1",
-		ConversationCwd: "/home/u/.vetta/conversation",
+		ConversationCwd: "/home/u/.astravia/conversation",
 		State:           newFakeStore(),
 		HostPool:        &fakePool{},
 	}
@@ -156,7 +156,7 @@ func TestDispatch_Whoami_WithSession(t *testing.T) {
 		UserID: "u1", ChatID: "c1", SessionPath: "/sessions/foo.jsonl",
 	})
 	res, _ := r.Dispatch(context.Background(), env, "/whoami")
-	for _, want := range []string{"u1", "/sessions/foo.jsonl", "/home/u/.vetta/conversation"} {
+	for _, want := range []string{"u1", "/sessions/foo.jsonl", "/home/u/.astravia/conversation"} {
 		if !strings.Contains(res.Reply.Text, want) {
 			t.Errorf("/whoami should contain %q, got:\n%s", want, res.Reply.Text)
 		}

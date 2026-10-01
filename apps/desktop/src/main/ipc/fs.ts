@@ -2,8 +2,8 @@ import type { FSWatcher } from "node:fs";
 import { watch } from "node:fs";
 import { readdir, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { resolveNodeConfigurationValue } from "@vetta/runtime-node/host";
-import { isSshProjectUri } from "@vetta/ssh-transport";
+import { resolveNodeConfigurationValue } from "@astravia/runtime-node/host";
+import { isSshProjectUri } from "@astravia/ssh-transport";
 import { BrowserWindow, clipboard, ipcMain } from "electron";
 import type {
 	McpConfigData,
@@ -45,7 +45,7 @@ import {
 	normalizeQuickPanel,
 	normalizeShortcuts,
 	type ProjectEntry,
-	persistVettaCliPaths,
+	persistAstraviaCliPaths,
 	type QuickPanelConfig,
 	type QuickPanelTrigger,
 	readConfigSync,
@@ -94,11 +94,11 @@ export interface DesktopConfigSnapshot extends Omit<DesktopConfig, "proxy"> {
 	proxy: DesktopProxyConfigSnapshot;
 	sandbox: SandboxCapability;
 	linuxSandbox: LinuxSandboxConfigState;
-	/** 默认「对话」项目的绝对路径（~/.vetta/conversation），主进程已确保目录存在。 */
+	/** 默认「对话」项目的绝对路径（~/.astravia/conversation），主进程已确保目录存在。 */
 	defaultConversationCwd: string;
-	/** im-gateway 自己的 cwd（~/.vetta/im-gateway/conversation）。Claw tab 据此判定一条 session 是否来自 IM。 */
+	/** im-gateway 自己的 cwd（~/.astravia/im-gateway/conversation）。Claw tab 据此判定一条 session 是否来自 IM。 */
 	defaultImConversationCwd: string;
-	/** 知识库加工特殊项目的绝对路径（~/.vetta/knowledges/processing_records）。 */
+	/** 知识库加工特殊项目的绝对路径（~/.astravia/knowledges/processing_records）。 */
 	knowledgeProcessingCwd: string;
 }
 
@@ -115,7 +115,7 @@ export {
 	KB_PROCESSING_CWD,
 	KB_PROCESSING_SESSION_DIR,
 	type KnowledgeBaseConfig,
-	persistVettaCliPaths,
+	persistAstraviaCliPaths,
 	type ProjectEntry,
 	type QuickPanelConfig,
 	type QuickPanelTrigger,
@@ -134,39 +134,39 @@ export type McpServerConfig = McpServerConfigData;
 export type McpConfig = McpConfigData;
 
 const CHANNELS = {
-	READ_DIR: "vetta:fs:read-dir",
-	READ_FILE: "vetta:fs:read-file",
-	READ_EDITABLE_TEXT: "vetta:fs:read-editable-text",
-	SAVE_EDITABLE_TEXT: "vetta:fs:save-editable-text",
-	WRITE_FILE: "vetta:fs:write-file",
-	STAT: "vetta:fs:stat",
-	RENAME: "vetta:fs:rename",
-	DELETE: "vetta:fs:delete",
-	MOVE: "vetta:fs:move",
-	CREATE_ENTRY: "vetta:fs:create-entry",
-	CREATE_DIRECTORY: "vetta:fs:create-directory",
-	LIST_SUB_DIRS: "vetta:fs:list-sub-dirs",
-	LIST_FILES_RECURSIVE: "vetta:fs:list-files-recursive",
-	WATCH_DIR: "vetta:fs:watch-dir",
-	UNWATCH_DIR: "vetta:fs:unwatch-dir",
-	DIR_CHANGED: "vetta:fs:dir-changed",
-	CONFIG_GET: "vetta:config:get",
-	CONFIG_SET: "vetta:config:set",
-	MODELS_GET: "vetta:models:get",
-	MODELS_SET: "vetta:models:set",
-	MODELS_COPY_API_KEY: "vetta:models:copy-api-key",
-	MODELS_PROBE: "vetta:models:probe",
-	MODELS_FETCH_PROVIDER_MODELS: "vetta:models:fetch-provider-models",
-	MCP_GET: "vetta:mcp:get",
-	MCP_SET: "vetta:mcp:set",
-	MCP_LOGIN: "vetta:mcp:login",
-	MCP_LOGOUT: "vetta:mcp:logout",
-	MCP_HAS_AUTH: "vetta:mcp:has-auth",
-	MCP_AUTH_STATUS: "vetta:mcp:auth-status",
-	MCP_GET_SETUP_LOGIN_STATUS: "vetta:mcp:get-setup-login-status",
-	MCP_START_SETUP_LOGIN: "vetta:mcp:start-setup-login",
-	MCP_CANCEL_SETUP_LOGIN: "vetta:mcp:cancel-setup-login",
-	MCP_CLEAR_SETUP_LOGIN: "vetta:mcp:clear-setup-login",
+	READ_DIR: "astravia:fs:read-dir",
+	READ_FILE: "astravia:fs:read-file",
+	READ_EDITABLE_TEXT: "astravia:fs:read-editable-text",
+	SAVE_EDITABLE_TEXT: "astravia:fs:save-editable-text",
+	WRITE_FILE: "astravia:fs:write-file",
+	STAT: "astravia:fs:stat",
+	RENAME: "astravia:fs:rename",
+	DELETE: "astravia:fs:delete",
+	MOVE: "astravia:fs:move",
+	CREATE_ENTRY: "astravia:fs:create-entry",
+	CREATE_DIRECTORY: "astravia:fs:create-directory",
+	LIST_SUB_DIRS: "astravia:fs:list-sub-dirs",
+	LIST_FILES_RECURSIVE: "astravia:fs:list-files-recursive",
+	WATCH_DIR: "astravia:fs:watch-dir",
+	UNWATCH_DIR: "astravia:fs:unwatch-dir",
+	DIR_CHANGED: "astravia:fs:dir-changed",
+	CONFIG_GET: "astravia:config:get",
+	CONFIG_SET: "astravia:config:set",
+	MODELS_GET: "astravia:models:get",
+	MODELS_SET: "astravia:models:set",
+	MODELS_COPY_API_KEY: "astravia:models:copy-api-key",
+	MODELS_PROBE: "astravia:models:probe",
+	MODELS_FETCH_PROVIDER_MODELS: "astravia:models:fetch-provider-models",
+	MCP_GET: "astravia:mcp:get",
+	MCP_SET: "astravia:mcp:set",
+	MCP_LOGIN: "astravia:mcp:login",
+	MCP_LOGOUT: "astravia:mcp:logout",
+	MCP_HAS_AUTH: "astravia:mcp:has-auth",
+	MCP_AUTH_STATUS: "astravia:mcp:auth-status",
+	MCP_GET_SETUP_LOGIN_STATUS: "astravia:mcp:get-setup-login-status",
+	MCP_START_SETUP_LOGIN: "astravia:mcp:start-setup-login",
+	MCP_CANCEL_SETUP_LOGIN: "astravia:mcp:cancel-setup-login",
+	MCP_CLEAR_SETUP_LOGIN: "astravia:mcp:clear-setup-login",
 } as const;
 
 function assertNonEmptyString(value: unknown, fieldName: string): asserts value is string {
@@ -183,7 +183,7 @@ export function registerFsIpc(): () => void {
 	const models = getDesktopModelSettingsService();
 	const disposeModelChanged = onDesktopModelSettingsChanged((providerIds) => {
 		for (const win of BrowserWindow.getAllWindows()) {
-			if (!win.isDestroyed()) win.webContents.send("vetta:models:changed", { providerIds: [...providerIds] });
+			if (!win.isDestroyed()) win.webContents.send("astravia:models:changed", { providerIds: [...providerIds] });
 		}
 	});
 	const shortcuts = getDesktopShortcutService();
@@ -449,8 +449,8 @@ export function registerFsIpc(): () => void {
 						? normalizeAgentMode(patch.defaultAgentMode)
 						: current.defaultAgentMode,
 				debugMode: patch.debugMode ?? current.debugMode,
-				vettaAppPath: patch.vettaAppPath ?? current.vettaAppPath,
-				vettaCliAppPath: patch.vettaCliAppPath ?? current.vettaCliAppPath,
+				astraviaAppPath: patch.astraviaAppPath ?? current.astraviaAppPath,
+				astraviaCliAppPath: patch.astraviaCliAppPath ?? current.astraviaCliAppPath,
 				notificationsEnabled: patch.notificationsEnabled ?? current.notificationsEnabled,
 				notificationPreferences:
 					patch.notificationPreferences !== undefined

@@ -5,12 +5,12 @@
  * change agent behavior based on extension state.
  *
  * Usage:
- * 1. Copy this file to ~/.vetta/agent/extensions/ or your project's .vetta/extensions/
+ * 1. Copy this file to ~/.astravia/agent/extensions/ or your project's .astravia/extensions/
  * 2. Use /pirate to toggle pirate mode
  * 3. When enabled, the agent will respond like a pirate
  */
 
-import type { ExtensionAPI } from "@vetta/coding-agent";
+import type { ExtensionAPI } from "@astravia/coding-agent";
 
 export default function pirateExtension(api: ExtensionAPI) {
 	let pirateMode = false;

@@ -9,32 +9,32 @@ In the tables below, `~` means the current system user's home directory. The des
 
 | Path | Contents |
 | --- | --- |
-| `~/.vetta/agent/settings.json` | Global Coding Agent settings |
-| `~/.vetta/agent/models.json` | Custom providers and model overrides |
-| `~/.vetta/agent/auth.json` | Login, OAuth, or manually configured credentials |
-| `~/.vetta/agent/mcp.json` | MCP server configuration |
-| `~/.vetta/agent/sessions/` | Session files organized by safe cwd |
-| `~/.vetta/abilities.json` | Installed capability index |
-| `~/.vetta/skills/` | User-level skills |
-| `~/.vetta/scene/` | User-level scenes |
-| `~/.vetta/plugins/` | User-level plugins |
+| `~/.astravia/agent/settings.json` | Global Coding Agent settings |
+| `~/.astravia/agent/models.json` | Custom providers and model overrides |
+| `~/.astravia/agent/auth.json` | Login, OAuth, or manually configured credentials |
+| `~/.astravia/agent/mcp.json` | MCP server configuration |
+| `~/.astravia/agent/sessions/` | Session files organized by safe cwd |
+| `~/.astravia/abilities.json` | Installed capability index |
+| `~/.astravia/skills/` | User-level skills |
+| `~/.astravia/scene/` | User-level scenes |
+| `~/.astravia/plugins/` | User-level plugins |
 
-Set `VETTA_CODING_AGENT_DIR` to override the Agent directory. The host, sidecar, and migration tools must use the same value or sessions and configuration will split across directories.
+Set `ASTRAVIA_CODING_AGENT_DIR` to override the Agent directory. The host, sidecar, and migration tools must use the same value or sessions and configuration will split across directories.
 
 ## Project paths
 
 | Path | Contents |
 | --- | --- |
 | `<cwd>/AGENTS.md` | Long-lived project instructions automatically loaded by project sessions |
-| `<cwd>/.vetta/settings.json` | Project overrides for global Agent settings |
-| `<cwd>/.vetta/skills/` | Project-level skills |
-| `<cwd>/.vetta/extensions/` | Project-level Coding Agent extensions |
+| `<cwd>/.astravia/settings.json` | Project overrides for global Agent settings |
+| `<cwd>/.astravia/skills/` | Project-level skills |
+| `<cwd>/.astravia/extensions/` | Project-level Coding Agent extensions |
 
-Relative paths in project settings resolve from the directory containing `.vetta/settings.json`. Project configuration takes precedence over global configuration.
+Relative paths in project settings resolve from the directory containing `.astravia/settings.json`. Project configuration takes precedence over global configuration.
 
 ## Editing and migration rules
 
-1. Prefer the Vetta settings page so runtime validation and related state stay synchronized.
+1. Prefer the Astravia settings page so runtime validation and related state stay synchronized.
 2. Close active sessions before manual edits to avoid racing with a writer.
 3. Never let two processes write the same session file.
 4. Preserve directory structure and file names during migration; do not copy only one session body.

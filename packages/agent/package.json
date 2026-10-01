@@ -1,5 +1,5 @@
 {
-	"name": "@vetta/agent-core",
+	"name": "@astravia/agent-core",
 	"version": "0.0.1",
 	"description": "General-purpose agent with transport abstraction, state management, and attachment support",
 	"type": "module",
@@ -20,7 +20,7 @@
 		"prepublishOnly": "bun run clean && bun run build"
 	},
 	"dependencies": {
-		"@vetta/ai": "workspace:*",
+		"@astravia/ai": "workspace:*",
 		"@sinclair/typebox": "^0.34.41"
 	},
 	"keywords": [

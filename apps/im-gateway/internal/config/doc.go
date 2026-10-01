@@ -3,9 +3,9 @@
 // # Boundary rules
 //
 //   - Non-secret config (transport selection, paths, log level, pool size)
-//     comes from ~/.vetta/im-gateway/config.yaml.
+//     comes from ~/.astravia/im-gateway/config.yaml.
 //   - Secrets (Feishu app secret, etc.) come from a separate loader chain:
-//     OS keychain → ~/.vetta/im-gateway/credentials.yaml (chmod 0600) →
+//     OS keychain → ~/.astravia/im-gateway/credentials.yaml (chmod 0600) →
 //     environment variables. Each successful source is recorded in
 //     Credentials.Source for audit logging.
 //   - This package MUST NOT log secret values. Source provenance is fine;

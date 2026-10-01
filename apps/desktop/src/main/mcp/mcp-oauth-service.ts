@@ -1,17 +1,17 @@
 import { join } from "node:path";
-import { getVettaHomePath } from "@vetta/action-rpc";
-import { McpDeviceCodeRequestError, runMcpBrowserOAuthFlow } from "@vetta/runtime-mcp";
+import { getAstraviaHomePath } from "@astravia/action-rpc";
+import { McpDeviceCodeRequestError, runMcpBrowserOAuthFlow } from "@astravia/runtime-mcp";
 import {
 	createMcpBrowserOAuthSdkSession,
 	FileMcpOAuthStateStore,
 	McpOAuthProvider,
 	runMcpDeviceAuthorizationFlow,
-} from "@vetta/runtime-node/mcp";
+} from "@astravia/runtime-node/mcp";
 import { mainT } from "../i18n/index.js";
 import { openExternalUrl } from "../open-external.js";
 import { createDeviceCodePresentation, createOAuthCallbackSession } from "./mcp-oauth-host-ui.js";
 
-const CLIENT_NAME = "Vetta";
+const CLIENT_NAME = "Astravia";
 const CLIENT_VERSION = "1.0.0";
 const DEFAULT_TIMEOUT_MS = 60_000;
 const AUTH_WAIT_TIMEOUT_MS = 5 * 60_000;
@@ -111,7 +111,7 @@ let desktopMcpOAuthService: DesktopMcpOAuthService | undefined;
 
 export function getDesktopMcpOAuthService(): DesktopMcpOAuthService {
 	desktopMcpOAuthService ??= new DesktopMcpOAuthService({
-		authDirectory: join(getVettaHomePath(), "agent", "mcp-auth"),
+		authDirectory: join(getAstraviaHomePath(), "agent", "mcp-auth"),
 		openUrl: openExternalUrl,
 	});
 	return desktopMcpOAuthService;

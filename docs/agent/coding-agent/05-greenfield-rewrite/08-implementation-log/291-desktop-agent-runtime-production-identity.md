@@ -14,7 +14,7 @@
 - 会话历史、认证、模型和设置等用户数据；必要时由显式、独立的新迁移器读取旧格式。
 - 模型消息、工具消息、错误、取消、事件顺序、并发约束和资源释放语义。
 - 仍然有效的行为测试场景和数据 fixture；旧实现可以临时作为测试 Oracle，但不能被新生产代码调用。
-- `@vetta/ai` 与经过合同验证的 `@vetta/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
+- `@astravia/ai` 与经过合同验证的 `@astravia/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
 
 ## 明确舍弃（固定）
 
@@ -59,7 +59,7 @@
 
 ### 明确保留的 Greenfield/Legacy 语义
 
-- `@vetta/runtime-core` 的 `GreenfieldRuntimeSession` 仍是跨包正式 Session 类型，本轮不修改；
+- `@astravia/runtime-core` 的 `GreenfieldRuntimeSession` 仍是跨包正式 Session 类型，本轮不修改；
 - 历史格式测试中的 Legacy 执行符号只作为禁止回归断言存在；
 - 历史会话数据版本和既有协议判别值不变；
 - 没有引入 Legacy Runtime、自动回退或双后端选择。
@@ -93,7 +93,7 @@
 
 - Desktop Agent Runtime 定向测试：10 个文件、35 项通过；
 - 生产合同清理后的核心复跑：3 个文件、20 项通过；
-- Vetta CLI → Desktop Local RPC → Agent Runtime canary：1 项通过，覆盖创建、继续、列举和持久化会话；
+- Astravia CLI → Desktop Local RPC → Agent Runtime canary：1 项通过，覆盖创建、继续、列举和持久化会话；
 - 迁移残留门禁测试：21 项通过；
 - `bun run check:quick` 通过，Desktop Runtime 迁移文件与身份均为 `0/0`；
 - 根级 `bun run check` 通过：Biome、Root/CLI/Desktop/Admin 类型检查和全部质量守卫通过；

@@ -1,4 +1,4 @@
-import { defineRuntimeObservation, type RuntimeObservationFailure } from "@vetta/runtime-core";
+import { defineRuntimeObservation, type RuntimeObservationFailure } from "@astravia/runtime-core";
 
 export interface McpProtocolObservation {
 	readonly operation: "negotiation" | "request" | "mrtr" | "task" | "app";

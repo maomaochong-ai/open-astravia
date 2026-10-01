@@ -28,7 +28,7 @@ Subagent 和 Runtime Tools 装配整体迁入：
 packages/coding-agent/src/composition
 ```
 
-Coding Agent 新增公开子路径 `@vetta/coding-agent/composition`。迁入实现对 Coding Agent 自身能力使用内部
+Coding Agent 新增公开子路径 `@astravia/coding-agent/composition`。迁入实现对 Coding Agent 自身能力使用内部
 模块引用，对 Runtime 包继续使用稳定公开子路径，避免产品包通过自己的发布根入口反向加载自身产物。
 
 CLI 的过渡转发文件和 Desktop Backend Pool 已直接引用新所有者入口。对应 TypeScript paths 和 Vitest alias
@@ -42,7 +42,7 @@ CLI 的过渡转发文件和 Desktop Backend Pool 已直接引用新所有者入
 - `index.ts`
 - 独立产物校验
 
-`index.ts` 从 `@vetta/coding-agent/composition` 原样转发全部 API，并继续导出原 artifact manifest。
+`index.ts` 从 `@astravia/coding-agent/composition` 原样转发全部 API，并继续导出原 artifact manifest。
 兼容合同验证关键 Factory 和路径解析函数与新所有者是同一引用，而不是行为相似的第二份包装。
 
 包边界守卫要求 `runtime-composition/src` 只能存在上述两个文件，并限制其 workspace 引用只能指向新的
@@ -52,8 +52,8 @@ Composition 子路径。Greenfield 禁止 Legacy Bootstrap 的守卫范围同步
 
 依赖审计确认：
 
-- Coding Agent 使用 `@vetta/runtime-tools/coding`。
-- Coding Agent 使用 `@vetta/runtime-storage/conversation`。
+- Coding Agent 使用 `@astravia/runtime-tools/coding`。
+- Coding Agent 使用 `@astravia/runtime-storage/conversation`。
 - 两个 Runtime 包的根入口仍为兼容性转发到旧 Coding Agent API。
 
 这些入口不能同时用单次包构建表达为无环图。现改为：

@@ -3,7 +3,7 @@ import type {
 	PluginMediaApi,
 	PluginMediaJob,
 	PluginMediaProviderDescriptor,
-} from "@vetta-org/plugin-sdk";
+} from "@astravia-org/plugin-sdk";
 import { describe, expect, it, vi } from "vitest";
 import { HostMediaProvider } from "../src/generation/host-media-provider";
 

@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import "@vetta-org/theme-ui/styles.css";
+@import "@astravia-org/theme-ui/styles.css";
 @plugin "@iconify/tailwind4";
 @source "./**/*.{ts,tsx}";
 

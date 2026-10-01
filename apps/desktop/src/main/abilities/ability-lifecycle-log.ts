@@ -8,7 +8,7 @@ type ResourceLifecycleEvent = Extract<AppMonitorEvent, { type: "resource.lifecyc
 export type AbilityInstallMode = "marketplace" | "manual-package" | "plugin-cli" | "plugin-workbench" | "plugin-api";
 
 export type AbilityArtifactKind =
-	| "vettapkg"
+	| "astraviapkg"
 	| "legacy-zip"
 	| "snapshot-source"
 	| "npm-package"

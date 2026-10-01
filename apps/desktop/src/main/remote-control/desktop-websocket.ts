@@ -1,4 +1,4 @@
-import type { RemoteWebSocket, RemoteWebSocketFactory } from "@vetta/remote-control";
+import type { RemoteWebSocket, RemoteWebSocketFactory } from "@astravia/remote-control";
 import type { RawData } from "ws";
 import NodeWebSocket from "ws";
 

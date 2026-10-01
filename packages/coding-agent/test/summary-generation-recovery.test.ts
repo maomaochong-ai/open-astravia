@@ -1,4 +1,4 @@
-import type { AgentMessage } from "@vetta/agent-core";
+import type { AgentMessage } from "@astravia/agent-core";
 import { describe, expect, it, vi } from "vitest";
 import { generateCompactionSummaryWithRecovery } from "../src/compaction/summary-generation-recovery.js";
 import type { CompactionSummaryInputCandidate } from "../src/compaction/summary-input-degradation.js";

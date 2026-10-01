@@ -1,4 +1,4 @@
-import { type SubagentTypeDefinition, SubagentTypeRegistry } from "@vetta/runtime-subagents";
+import { type SubagentTypeDefinition, SubagentTypeRegistry } from "@astravia/runtime-subagents";
 import type { CodingAgentSubagentProfile } from "../contracts/index.js";
 
 export type { CodingAgentSubagentProfile } from "../contracts/index.js";

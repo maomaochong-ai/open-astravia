@@ -1,4 +1,4 @@
-import { readJsonFile, writeJsonFile, type PluginFsApi, type PluginStorageApi } from "@vetta-org/plugin-sdk";
+import { readJsonFile, writeJsonFile, type PluginFsApi, type PluginStorageApi } from "@astravia-org/plugin-sdk";
 import { joinContentPath } from "../shared/path";
 import { serializeContentProject, serializeContentProjectRuntime } from "./persistence";
 import type { ContentProjectDocument } from "./types";
@@ -18,7 +18,7 @@ function projectFile(cwd: string): string {
 }
 
 function legacyProjectFile(cwd: string): string {
-	return joinContentPath(cwd, ".vetta", "content-creation", "project.json");
+	return joinContentPath(cwd, ".astravia", "content-creation", "project.json");
 }
 
 function runtimeStorageKey(projectId: string): string {

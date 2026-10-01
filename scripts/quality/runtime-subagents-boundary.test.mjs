@@ -19,12 +19,12 @@ describe("Runtime Subagents boundary guard", () => {
 			findRuntimeSubagentsBoundaryViolations({
 				manifest: {
 					path: "packages/runtime-subagents/package.json",
-					content: { dependencies: { "@vetta/runtime-tools": "workspace:*" } },
+					content: { dependencies: { "@astravia/runtime-tools": "workspace:*" } },
 				},
 				files: [],
 			}),
 		).toEqual([
-			"packages/runtime-subagents/package.json: dependencies must not declare workspace dependency @vetta/runtime-tools",
+			"packages/runtime-subagents/package.json: dependencies must not declare workspace dependency @astravia/runtime-tools",
 		]);
 	});
 });

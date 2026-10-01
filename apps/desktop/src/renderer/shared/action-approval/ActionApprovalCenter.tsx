@@ -7,10 +7,10 @@ export function ActionApprovalCenter(): null {
 	const autoReject = useSetAtom(autoRejectActionApprovalAtom);
 
 	useEffect(() => {
-		const disposeRequest = window.vetta.actionApproval.onRequest((request) => {
+		const disposeRequest = window.astravia.actionApproval.onRequest((request) => {
 			enqueue(request);
 		});
-		const disposeTimeout = window.vetta.actionApproval.onTimeout((event) => {
+		const disposeTimeout = window.astravia.actionApproval.onTimeout((event) => {
 			autoReject(event.approvalId);
 		});
 		return () => {

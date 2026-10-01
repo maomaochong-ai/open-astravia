@@ -3,7 +3,7 @@ import {
 	MessageLayout,
 	UserMessage as UserMessagePrimitive,
 	UserMessageContextMenuView,
-} from "@vetta-org/theme-ui/chat";
+} from "@astravia-org/theme-ui/chat";
 import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";

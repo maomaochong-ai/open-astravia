@@ -3,7 +3,7 @@ import {
 	defineRuntimeObservation,
 	RuntimeObservationHub,
 	type RuntimeObservationRecord,
-} from "@vetta/runtime-core";
+} from "@astravia/runtime-core";
 import { describe, expect, it } from "vitest";
 import {
 	createChildCodingAgentObservationOptions,

@@ -9,7 +9,7 @@
 import type { Dirent } from "node:fs";
 import { access, cp, mkdir, readdir, rename, rm, stat } from "node:fs/promises";
 import { basename, dirname, extname, join, relative } from "node:path";
-import * as knowledge from "@vetta/runtime-knowledge";
+import * as knowledge from "@astravia/runtime-knowledge";
 import { getKnowledgeRoot } from "./knowledge-layout.js";
 import { privilegedWrite } from "./raws-lock.js";
 

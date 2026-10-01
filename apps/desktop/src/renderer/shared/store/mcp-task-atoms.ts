@@ -1,7 +1,7 @@
 import type { DesktopMcpTask } from "@preload/api";
 import { atom } from "jotai";
 
-/** Durable MCP protocol Tasks, kept separate from Vetta bash/subagent background work. */
+/** Durable MCP protocol Tasks, kept separate from Astravia bash/subagent background work. */
 export const mcpTasksBySessionAtom = atom<Map<string, DesktopMcpTask[]>>(new Map());
 
 export function groupMcpTasksBySession(tasks: readonly DesktopMcpTask[]): Map<string, DesktopMcpTask[]> {

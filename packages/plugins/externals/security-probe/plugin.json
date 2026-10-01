@@ -29,5 +29,5 @@
 	"commands": ["node"],
 	"defaultLocale": "zh",
 	"description": "%plugin.description%",
-	"author": "Vetta Security"
+	"author": "Astravia Security"
 }

@@ -26,7 +26,7 @@
 
 ## Compatibility corpus
 
-先建立 `packages/coding-agent/test/fixtures/native-extensions/`。每个计划映射的 Tool、状态事件、Provider 和 lifecycle 能力必须先有 Vetta native fixture；Pi fixture 不能替代原生合同测试。
+先建立 `packages/coding-agent/test/fixtures/native-extensions/`。每个计划映射的 Tool、状态事件、Provider 和 lifecycle 能力必须先有 Astravia native fixture；Pi fixture 不能替代原生合同测试。
 
 在 `packages/coding-agent/test/fixtures/pi-extensions/` 建立受控 corpus：
 
@@ -76,7 +76,7 @@ fixture 来源分三类：
 
 纯函数测试不加载 React 或任何 TUI runtime，不启动完整 Agent。
 
-### Vetta native 合同测试
+### Astravia native 合同测试
 
 在加载 Pi module 之前必须覆盖：
 
@@ -122,10 +122,10 @@ Pi adapter 不得重新实现这些测试中的目录、调度或生命周期，
 
 ### 差分测试
 
-Pi 的内部实现不是 Vetta 的依赖，但可以作为行为 oracle。只对 profile 内、完全不依赖 Pi TUI 或真实 Provider 的 fixture 做差分：
+Pi 的内部实现不是 Astravia 的依赖，但可以作为行为 oracle。只对 profile 内、完全不依赖 Pi TUI 或真实 Provider 的 fixture 做差分：
 
 1. 在固定 Pi SHA 上运行 fixture，输出标准化 trace；
-2. 在 Vetta compat 上运行同一作者代码，输出相同 trace 格式；
+2. 在 Astravia compat 上运行同一作者代码，输出相同 trace 格式；
 3. 忽略时间戳、内部 id 等非合同字段；
 4. 比较事件顺序、注册、Tool 输入输出、错误类别和清理。
 
@@ -182,16 +182,16 @@ Pi 的内部实现不是 Vetta 的依赖，但可以作为行为 oracle。只对
 - 新 ADR：native-first、canonical contribution、ACL、trust、兼容 profile 和默认开关；
 - 固定 Pi SHA/Profile 与 corpus manifest；
 - 从 Pi examples/生态中筛选不依赖 TUI 的行为 corpus，并记录排除原因；
-- 现有 Vetta Extension 行为基线测试，以及 native fixture 目录。
+- 现有 Astravia Extension 行为基线测试，以及 native fixture 目录。
 
 退出条件：团队确认公共合同和非目标；没有生产 loader 变更。
 
-### P1：Vetta Native Contribution Catalog 与 Generation
+### P1：Astravia Native Contribution Catalog 与 Generation
 
 交付：
 
 - `contributions/` contracts、draft、compiler、catalog transaction、conflict policy；
-- Vetta native registration 先改为写 draft，再发布到现有 runtime ports；
+- Astravia native registration 先改为写 draft，再发布到现有 runtime ports；
 - generation-owned resource cleanup；
 - stale context/action、atomic reload 和当前行为不变的差分/回归测试。
 
@@ -199,7 +199,7 @@ Pi 的内部实现不是 Vetta 的依赖，但可以作为行为 oracle。只对
 
 退出条件：native Extension 行为通过，failed registration/reload 可以原子回滚，架构边界检查通过。
 
-### P2：Vetta Native Tool 与 Prompt 能力
+### P2：Astravia Native Tool 与 Prompt 能力
 
 交付：
 
@@ -209,9 +209,9 @@ Pi 的内部实现不是 Vetta 的依赖，但可以作为行为 oracle。只对
 - 动态 native Tool registration 到 catalog revision；
 - sequential/in-flight/next-model-call 合同测试。
 
-退出条件：只使用 Vetta native Extension fixture 即可证明 input、prompt、动态发布和回滚，不存在 Pi import。
+退出条件：只使用 Astravia native Extension fixture 即可证明 input、prompt、动态发布和回滚，不存在 Pi import。
 
-### P3：Vetta Native Lifecycle、Context 与 Interaction
+### P3：Astravia Native Lifecycle、Context 与 Interaction
 
 交付：
 
@@ -222,7 +222,7 @@ Pi 的内部实现不是 Vetta 的依赖，但可以作为行为 oracle。只对
 
 退出条件：native event 顺序和交互 Port 在 host matrix 通过；不使用 Pi event name 或 Pi UI 类型。
 
-### P4：Vetta Native 配置型 Provider Ownership
+### P4：Astravia Native 配置型 Provider Ownership
 
 交付：
 
@@ -276,7 +276,7 @@ bun run check            # 一轮代码任务完成后
 ## 发布与回退
 
 - 初始功能开关默认 `off`，profile id 写入诊断和 session metadata；
-- 不把兼容 profile 与 Vetta package version 隐式绑定；
+- 不把兼容 profile 与 Astravia package version 隐式绑定；
 - profile 升级先生成 corpus 差异，再以独立变更发布；
 - catalog transaction 保留上一可用 generation，加载失败自动回退；
 - 删除/禁用 compat 只移除其 owner contribution，不影响 native Extension；

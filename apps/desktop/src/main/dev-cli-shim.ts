@@ -3,16 +3,16 @@ import { accessSync, constants } from "node:fs";
 import { access, chmod, copyFile, mkdir, readdir, readFile, stat, unlink, writeFile } from "node:fs/promises";
 import { basename, delimiter, join } from "node:path";
 import { promisify } from "node:util";
-import { getAgentDir } from "@vetta/coding-agent/config";
+import { getAgentDir } from "@astravia/coding-agent/config";
 
 const execFileAsync = promisify(execFile);
 
 const DEV_CLI_DIR = ".desktop-dev";
-const LAUNCHER_SOURCE_NAME = "vetta-dev-cli-launcher.js";
-const LAUNCHER_BINARY_BASE_NAME = "vetta-dev-cli-launcher";
-const VETTA_CLI_BINARY_BASE_NAME = "vetta-cli-app";
-const VETTA_COMMAND_NAMES = process.platform === "win32" ? ["vetta.exe"] : ["vetta"];
-const WINDOWS_LEGACY_VETTA_COMMAND_NAMES = ["vetta.cmd", "vetta"];
+const LAUNCHER_SOURCE_NAME = "astravia-dev-cli-launcher.js";
+const LAUNCHER_BINARY_BASE_NAME = "astravia-dev-cli-launcher";
+const ASTRAVIA_CLI_BINARY_BASE_NAME = "astravia-cli-app";
+const ASTRAVIA_COMMAND_NAMES = process.platform === "win32" ? ["astravia.exe"] : ["astravia"];
+const WINDOWS_LEGACY_ASTRAVIA_COMMAND_NAMES = ["astravia.cmd", "astravia"];
 
 interface DevCliShimOptions {
 	appRoot: string;
@@ -20,7 +20,7 @@ interface DevCliShimOptions {
 	mainEntryPath: string;
 }
 
-interface DevVettaCliShimOptions {
+interface DevAstraviaCliShimOptions {
 	appRoot: string;
 	cliAppRoot: string;
 }
@@ -145,8 +145,8 @@ function getLauncherBinaryName(): string {
 	return process.platform === "win32" ? `${LAUNCHER_BINARY_BASE_NAME}.exe` : LAUNCHER_BINARY_BASE_NAME;
 }
 
-function getVettaCliBinaryName(): string {
-	return process.platform === "win32" ? `${VETTA_CLI_BINARY_BASE_NAME}.exe` : VETTA_CLI_BINARY_BASE_NAME;
+function getAstraviaCliBinaryName(): string {
+	return process.platform === "win32" ? `${ASTRAVIA_CLI_BINARY_BASE_NAME}.exe` : ASTRAVIA_CLI_BINARY_BASE_NAME;
 }
 
 function resolveBunCommand(): string {
@@ -193,10 +193,10 @@ export async function ensureDevCliShim(options: DevCliShimOptions): Promise<stri
 	return binaryPath;
 }
 
-export async function ensureDevVettaCliShim(options: DevVettaCliShimOptions): Promise<string> {
+export async function ensureDevAstraviaCliShim(options: DevAstraviaCliShimOptions): Promise<string> {
 	const shimDir = join(options.appRoot, DEV_CLI_DIR, getCurrentPlatformArchId());
 	const sourceDir = join(options.cliAppRoot, "src");
-	const binaryPath = join(shimDir, getVettaCliBinaryName());
+	const binaryPath = join(shimDir, getAstraviaCliBinaryName());
 	await mkdir(shimDir, { recursive: true });
 
 	try {
@@ -219,18 +219,18 @@ export async function ensureDevVettaCliShim(options: DevVettaCliShimOptions): Pr
 	return binaryPath;
 }
 
-function createVettaCommandShim(vettaCliAppPath: string): string {
+function createAstraviaCommandShim(astraviaCliAppPath: string): string {
 	if (process.platform === "win32") {
-		return ["@echo off", `"${vettaCliAppPath}" %*`, ""].join("\r\n");
+		return ["@echo off", `"${astraviaCliAppPath}" %*`, ""].join("\r\n");
 	}
 
-	return ["#!/usr/bin/env sh", `exec "${vettaCliAppPath}" "$@"`, ""].join("\n");
+	return ["#!/usr/bin/env sh", `exec "${astraviaCliAppPath}" "$@"`, ""].join("\n");
 }
 
 async function removeLegacyWindowsCommandShims(binDir: string): Promise<void> {
 	if (process.platform !== "win32") return;
 	await Promise.all(
-		WINDOWS_LEGACY_VETTA_COMMAND_NAMES.map(async (name) => {
+		WINDOWS_LEGACY_ASTRAVIA_COMMAND_NAMES.map(async (name) => {
 			try {
 				await unlink(join(binDir, name));
 			} catch {
@@ -240,17 +240,17 @@ async function removeLegacyWindowsCommandShims(binDir: string): Promise<void> {
 	);
 }
 
-export async function ensureVettaCommandShim(vettaCliAppPath: string): Promise<string> {
-	await assertExecutable(vettaCliAppPath);
+export async function ensureAstraviaCommandShim(astraviaCliAppPath: string): Promise<string> {
+	await assertExecutable(astraviaCliAppPath);
 	const binDir = join(getAgentDir(), "bin");
 	await mkdir(binDir, { recursive: true });
 	await removeLegacyWindowsCommandShims(binDir);
-	const shimPaths = VETTA_COMMAND_NAMES.map((name) => join(binDir, name));
+	const shimPaths = ASTRAVIA_COMMAND_NAMES.map((name) => join(binDir, name));
 	await Promise.all(
 		shimPaths.map((shimPath) =>
 			process.platform === "win32" && shimPath.endsWith(".exe")
-				? copyFileIfChanged(vettaCliAppPath, shimPath)
-				: writeFileIfChanged(shimPath, createVettaCommandShim(vettaCliAppPath)),
+				? copyFileIfChanged(astraviaCliAppPath, shimPath)
+				: writeFileIfChanged(shimPath, createAstraviaCommandShim(astraviaCliAppPath)),
 		),
 	);
 	for (const shimPath of shimPaths) {

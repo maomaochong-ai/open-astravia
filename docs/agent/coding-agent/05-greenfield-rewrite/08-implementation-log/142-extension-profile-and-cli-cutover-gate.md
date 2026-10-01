@@ -104,6 +104,6 @@ Greenfield IM Extension 切换已经具备静态完备性、运行时 forward co
 
 ## 下一步
 
-下一阶段应完成安装产物级的默认切换门禁：使用标准安装后的 Vetta CLI 验证相同 Extension Profile，
+下一阶段应完成安装产物级的默认切换门禁：使用标准安装后的 Astravia CLI 验证相同 Extension Profile，
 随后把 IM/RPC 的默认选择从 Legacy 调整为 Greenfield，同时保留显式 `--agent-runtime legacy`、旧会话
 格式回退和未知 Extension 回退。默认值切换应与安装产物测试放在同一阶段，避免只修改选择器常量。

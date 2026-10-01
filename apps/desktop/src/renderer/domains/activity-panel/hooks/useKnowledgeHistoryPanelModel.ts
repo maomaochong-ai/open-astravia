@@ -1,6 +1,6 @@
+import type { KnowledgeHistoryPanelViewLabels, KnowledgeHistorySessionItem } from "@astravia-org/theme-ui/activity";
 import { confirmDialogAtom, type SessionInfo } from "@shared/store/atoms";
 import { useNavigate, useParams } from "@tanstack/react-router";
-import type { KnowledgeHistoryPanelViewLabels, KnowledgeHistorySessionItem } from "@vetta-org/theme-ui/activity";
 import { useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -35,7 +35,7 @@ export function useKnowledgeHistoryPanelModel(cwd: string | null): KnowledgeHist
 			setSessions([]);
 			return;
 		}
-		const list = (await window.vetta.session.listSessions(cwd)) as SessionInfo[];
+		const list = (await window.astravia.session.listSessions(cwd)) as SessionInfo[];
 		setSessions(list);
 	}, [cwd]);
 
@@ -48,7 +48,7 @@ export function useKnowledgeHistoryPanelModel(cwd: string | null): KnowledgeHist
 					if (!cancelled) setSessions([]);
 					return;
 				}
-				const list = (await window.vetta.session.listSessions(cwd)) as SessionInfo[];
+				const list = (await window.astravia.session.listSessions(cwd)) as SessionInfo[];
 				if (!cancelled) setSessions(list);
 			} finally {
 				if (!cancelled) setLoading(false);
@@ -76,7 +76,7 @@ export function useKnowledgeHistoryPanelModel(cwd: string | null): KnowledgeHist
 				void (async () => {
 					setClearing(true);
 					try {
-						await window.vetta.knowledge.clearRecords();
+						await window.astravia.knowledge.clearRecords();
 						setExpanded(false);
 						await reload();
 					} finally {

@@ -1,8 +1,8 @@
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { Api, Model } from "@vetta/ai";
-import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
+import type { Api, Model } from "@astravia/ai";
+import type { RuntimeToolDefinition } from "@astravia/runtime-core/kernel";
 import { afterEach, describe, expect, it } from "vitest";
 import type { CodingAgentRuntimeComposition } from "../../src/composition/index.js";
 import type { AgentPluginRuntimeConfig } from "../../src/model-context/plugin-runtime.js";

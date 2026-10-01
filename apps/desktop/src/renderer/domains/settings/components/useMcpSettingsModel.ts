@@ -217,12 +217,12 @@ export function useMcpSettingsModel(options?: McpSettingsModelOptions): McpSetti
 			setOauthAuthByName({});
 			return;
 		}
-		const status = await window.vetta.mcp.authStatus(oauthNames);
+		const status = await window.astravia.mcp.authStatus(oauthNames);
 		setOauthAuthByName(status);
 	}, []);
 
 	useEffect(() => {
-		void window.vetta.mcp.get().then((loadedConfig) => {
+		void window.astravia.mcp.get().then((loadedConfig) => {
 			configRef.current = loadedConfig;
 			setConfig(loadedConfig);
 			setJsonText(JSON.stringify(loadedConfig, null, 2));
@@ -234,7 +234,7 @@ export function useMcpSettingsModel(options?: McpSettingsModelOptions): McpSetti
 		async (newConfig: McpConfigData) => {
 			setSaving(true);
 			try {
-				await window.vetta.mcp.set(newConfig);
+				await window.astravia.mcp.set(newConfig);
 				configRef.current = newConfig;
 				setConfig(newConfig);
 				setJsonText(JSON.stringify(newConfig, null, 2));
@@ -303,7 +303,7 @@ export function useMcpSettingsModel(options?: McpSettingsModelOptions): McpSetti
 				setSecretsDialogAuthorizing(true);
 				setOauthBusyName(targetName);
 				try {
-					await window.vetta.mcp.login(targetName, {
+					await window.astravia.mcp.login(targetName, {
 						url: next.url,
 						oauthClientId: next.oauthClientId,
 						oauthDeviceFlow: next.oauthDeviceFlow,
@@ -364,7 +364,7 @@ export function useMcpSettingsModel(options?: McpSettingsModelOptions): McpSetti
 		async (name: string) => {
 			setOauthBusyName(name);
 			try {
-				await window.vetta.mcp.login(name);
+				await window.astravia.mcp.login(name);
 				if (config) await refreshOAuthStatus(config);
 				recordSettingsUsage({ tab: "mcp", action: "updated", target: "oauth-login", value: name });
 			} finally {
@@ -378,7 +378,7 @@ export function useMcpSettingsModel(options?: McpSettingsModelOptions): McpSetti
 		async (name: string) => {
 			setOauthBusyName(name);
 			try {
-				await window.vetta.mcp.logout(name);
+				await window.astravia.mcp.logout(name);
 				if (config) await refreshOAuthStatus(config);
 				recordSettingsUsage({ tab: "mcp", action: "updated", target: "oauth-logout", value: name });
 			} finally {
@@ -528,7 +528,7 @@ export function useMcpSettingsModel(options?: McpSettingsModelOptions): McpSetti
 			// 删除配置时一并清掉 OAuth 凭证，避免残留 token
 			if (existing && serverUsesOAuth(name, existing)) {
 				try {
-					await window.vetta.mcp.logout(name);
+					await window.astravia.mcp.logout(name);
 				} catch {
 					// best-effort
 				}
@@ -807,7 +807,7 @@ function formToServer(form: McpServerFormState): McpServerConfigData {
  */
 async function recordMcpAbilityInstall(name: string, options: McpAbilityInstallOptions | undefined): Promise<void> {
 	if (!options?.abilityVersion?.trim()) return;
-	await window.vetta.abilities.recordMcpInstall(name, options.abilityVersion, {
+	await window.astravia.abilities.recordMcpInstall(name, options.abilityVersion, {
 		...(options.origin ? { origin: options.origin } : {}),
 		...(options.configVersion ? { configVersion: options.configVersion } : {}),
 		...(options.catalogId ? { catalogId: options.catalogId } : {}),

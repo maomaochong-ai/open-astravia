@@ -3,7 +3,7 @@ import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { parse, stringify } from "yaml";
 
-// arm64 与 x64 必须分两次构建（内置的 node/python 运行时按 VETTA_VENDOR_PLATFORM
+// arm64 与 x64 必须分两次构建（内置的 node/python 运行时按 ASTRAVIA_VENDOR_PLATFORM
 // 单架构落盘），而 electron-builder 两次都写同一个 latest-mac.yml，后一次会覆盖前
 // 一次。构建产物因此按 latest-mac-<arch>.yml 上传，发布前在这里合并回单一元数据，
 // 否则 electron-updater 的 MacUpdater.filterFilesForArch 会在其中一种架构上找不到

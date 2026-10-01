@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * 把一个本地能力包提交到 Vetta 能力市场。
+ * 把一个本地能力包提交到 Astravia 能力市场。
  *
- * 为什么是脚本而不是 MCP 工具：内建 vetta MCP 是**远程**服务，跑在服务端，摸不到
+ * 为什么是脚本而不是 MCP 工具：内建 astravia MCP 是**远程**服务，跑在服务端，摸不到
  * 用户磁盘上的 .zip / .tar.gz。上传天生是本地动作，所以它走 skill 内置脚本——
  * 脚本由 agent 在用户机器上执行，读文件、组 multipart、直接打服务端接口。
  *
@@ -69,7 +69,7 @@ function buildSuccessMessage(reviewStatus, hasPending) {
 	if (reviewStatus === "approved") {
 		return "提交成功，已上架，市场中立即可见。";
 	}
-	return "提交成功，正在等待管理员审核。审核通过后才会出现在能力市场中，可用内建 vetta MCP 的 list_my_abilities 查看进度与驳回理由。";
+	return "提交成功，正在等待管理员审核。审核通过后才会出现在能力市场中，可用内建 astravia MCP 的 list_my_abilities 查看进度与驳回理由。";
 }
 
 async function main() {
@@ -111,7 +111,7 @@ async function main() {
 
 	const credentials = loadCredentials();
 	if (!credentials) {
-		fail("未登录：读不到 ~/.vetta/auth.json。请先在 Vetta 客户端登录后重试。");
+		fail("未登录：读不到 ~/.astravia/auth.json。请先在 Astravia 客户端登录后重试。");
 	}
 
 	const form = new FormData();
@@ -144,7 +144,7 @@ async function main() {
 			body: form,
 		});
 	} catch (error) {
-		fail(`无法连接 Vetta 服务（${credentials.baseUrl}）：${error.message}`);
+		fail(`无法连接 Astravia 服务（${credentials.baseUrl}）：${error.message}`);
 	}
 
 	const text = await response.text();

@@ -42,8 +42,8 @@ describe("点击消息里的文件路径", () => {
 	});
 
 	it("项目之外的绝对路径保持原样——宿主给出的本机路径也长这样", () => {
-		expect(resolveLocalFilePath("/Users/me/.vetta/image-cache/s1/a.png", project)).toBe(
-			"/Users/me/.vetta/image-cache/s1/a.png",
+		expect(resolveLocalFilePath("/Users/me/.astravia/image-cache/s1/a.png", project)).toBe(
+			"/Users/me/.astravia/image-cache/s1/a.png",
 		);
 		// 只是前缀相同的兄弟目录不算在项目之下。
 		expect(resolveLocalFilePath("/srv/app-secrets/key", project)).toBe("/srv/app-secrets/key");

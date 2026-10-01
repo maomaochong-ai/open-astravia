@@ -1,9 +1,9 @@
+import type { BottomPanelTabViewModel } from "@astravia-org/theme-ui/bottom-panel";
 import {
 	type BottomPanelSessionState,
 	type BottomPanelTabState,
 	collectBottomPanelLeaves,
 } from "@shared/store/bottom-panel-layout";
-import type { BottomPanelTabViewModel } from "@vetta-org/theme-ui/bottom-panel";
 import type { BottomPanelComponentDefinition, BottomPanelTabMeta } from "./types";
 
 export interface ResolvedBottomPanelTab {

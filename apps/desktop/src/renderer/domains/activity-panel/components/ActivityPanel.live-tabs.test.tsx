@@ -67,7 +67,7 @@ describe("activity panel tabs driven by live session state", () => {
 		vi.stubGlobal(
 			"window",
 			Object.assign(globalThis.window, {
-				vetta: {
+				astravia: {
 					ssh: { listPortForwards: async () => [], onPortForwardsChanged: () => () => {} },
 				},
 			}),

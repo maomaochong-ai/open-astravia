@@ -26,7 +26,7 @@ const LOCKED_NAV_KEYS: readonly string[] = [NEW_SESSION_NAV_KEY, EXTENSIONS_NAV_
 /** 置顶区容量上限（含「新会话」）。 */
 export const MAX_PINNED_NAV_ITEMS = 5;
 
-export const SIDEBAR_NAV_LAYOUT_STORAGE_KEY = "vetta-sidebar-nav-layout";
+export const SIDEBAR_NAV_LAYOUT_STORAGE_KEY = "astravia-sidebar-nav-layout";
 
 /**
  * 布局存储版本。默认置顶集合只对「从没记过这个 key」的入口生效，所以给老用户

@@ -1,4 +1,4 @@
-import { McpJsonEditorView } from "@vetta-org/theme-ui/settings";
+import { McpJsonEditorView } from "@astravia-org/theme-ui/settings";
 import { useTranslation } from "react-i18next";
 import { SETTINGS_SECTION } from "../registry";
 import type { McpSettingsModel } from "./useMcpSettingsModel";
@@ -14,7 +14,7 @@ export function McpJsonEditor({ model }: { model: McpSettingsModel }): JSX.Eleme
 				model.clearJsonError();
 			}}
 			jsonError={model.jsonError}
-			configPathHint={`${t("configFilePath")}: ~/.vetta/agent/mcp.json`}
+			configPathHint={`${t("configFilePath")}: ~/.astravia/agent/mcp.json`}
 			placeholder='{ "mcpServers": {} }'
 			saveLabel={model.saving ? t("saving") : t("save")}
 			saving={model.saving}

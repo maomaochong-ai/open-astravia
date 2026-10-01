@@ -68,7 +68,7 @@ describe("useSpeechInput", () => {
 				return () => undefined;
 			}),
 		};
-		Object.defineProperty(window, "vetta", {
+		Object.defineProperty(window, "astravia", {
 			configurable: true,
 			value: { speechInput } as unknown as DesktopApi,
 		});

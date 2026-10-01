@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-const DEFAULT_APP_REPOSITORY = "openvetta/open-vetta";
+const DEFAULT_APP_REPOSITORY = "maomaochong-ai/open-astravia";
 const MAX_ARTIFACT_BYTES = 50 * 1024 * 1024;
 const MAX_REDIRECTS = 5;
 
@@ -21,7 +21,7 @@ function compatibleApi(host, range) {
 }
 
 function headers(token) {
-	return { Accept: "application/vnd.github+json", "User-Agent": "Vetta-Marketplace-Release-Check", ...(token ? { Authorization: `Bearer ${token}` } : {}) };
+	return { Accept: "application/vnd.github+json", "User-Agent": "Astravia-Marketplace-Release-Check", ...(token ? { Authorization: `Bearer ${token}` } : {}) };
 }
 
 async function publishedSource(fetcher, repository, tag, path, token) {
@@ -107,7 +107,7 @@ async function verifyArtifact(fetcher, artifact, repository, token) {
 		response = await fetcher(url, {
 			redirect: "manual",
 			headers: {
-				"User-Agent": "Vetta-Marketplace-Release-Check",
+				"User-Agent": "Astravia-Marketplace-Release-Check",
 				Accept: "application/octet-stream",
 				...(authorization ? { Authorization: authorization } : {}),
 			},

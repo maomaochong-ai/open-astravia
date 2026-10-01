@@ -1,4 +1,4 @@
-import type { PluginAiApi, PluginCommandApi, PluginFsApi, PluginOfficialApi, PluginStorageApi, PluginUiApi } from "@vetta-org/plugin-sdk";
+import type { PluginAiApi, PluginCommandApi, PluginFsApi, PluginOfficialApi, PluginStorageApi, PluginUiApi } from "@astravia-org/plugin-sdk";
 import type { ChangeCode, TurnChangeDelta } from "./types";
 
 /**
@@ -50,7 +50,7 @@ interface GitRuntime {
 	attachedCwds: Set<string>;
 }
 
-const KEY = "__vettaGitPluginRuntime__";
+const KEY = "__astraviaGitPluginRuntime__";
 
 function runtime(): GitRuntime {
 	const g = globalThis as Record<string, unknown>;

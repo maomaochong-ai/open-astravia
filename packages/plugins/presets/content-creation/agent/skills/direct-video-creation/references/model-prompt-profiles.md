@@ -1,6 +1,6 @@
 # Video model prompt profiles
 
-Select from the result of executing `inspect` with `view="capabilities"`. Model names below identify prompt grammar already present in Vetta's catalog; the inspected descriptor remains authoritative for modes, inputs, durations, ratios, and resolutions. Never infer audio, dialogue, first/last-frame, editing, or extension support from a family name alone.
+Select from the result of executing `inspect` with `view="capabilities"`. Model names below identify prompt grammar already present in Astravia's catalog; the inspected descriptor remains authoritative for modes, inputs, durations, ratios, and resolutions. Never infer audio, dialogue, first/last-frame, editing, or extension support from a family name alone.
 
 ## Kling 3 family profile
 
@@ -16,7 +16,7 @@ Keep the prompt compact:
 
 `detailed subject + one movement + 3-5 scene elements + one camera move + light + atmosphere`
 
-Do not overload element count. Use reference/element features only when exposed by the selected mode. If a dedicated negative field is not represented by Vetta's tool contract, do not invent one inside node data.
+Do not overload element count. Use reference/element features only when exposed by the selected mode. If a dedicated negative field is not represented by Astravia's tool contract, do not invent one inside node data.
 
 ## Seedance profile
 
@@ -24,7 +24,7 @@ Use grammatical prose and explicit shot/cut markers when multi-shot behavior is 
 
 `identity/reference role -> duration/intent -> concrete story -> style -> camera -> edit rhythm -> audio -> timestamped generation stages/shots -> light -> composition/final frame`
 
-For a simple single shot, compress to subject, motion, camera, environment, light, and style. Do not paste CLI flags into the prompt; Vetta stores executable duration/resolution separately. Use reference tags only if the active adapter exposes matching semantics.
+For a simple single shot, compress to subject, motion, camera, environment, light, and style. Do not paste CLI flags into the prompt; Astravia stores executable duration/resolution separately. Use reference tags only if the active adapter exposes matching semantics.
 
 ## Veo profile
 

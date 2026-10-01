@@ -1,4 +1,4 @@
-import type { ProjectInfo, RuntimeSessionCatalog, SessionHistoryInfo } from "@vetta/runtime-core";
+import type { ProjectInfo, RuntimeSessionCatalog, SessionHistoryInfo } from "@astravia/runtime-core";
 import type { CodingAgentSessionEntry } from "../contracts/session-entry.js";
 import { parseCodingAgentLegacySessionDocument } from "./document.js";
 import { isLegacySessionHeader } from "./header-reader.js";

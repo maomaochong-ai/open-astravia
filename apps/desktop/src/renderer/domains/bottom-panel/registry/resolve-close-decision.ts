@@ -42,7 +42,7 @@ export async function resolveCloseDecision({
 }: ResolveCloseDecisionInput): Promise<CloseOutcome> {
 	if (!guard) return { kind: "close" };
 
-	const TIMED_OUT = "vetta:close-guard-timeout" as const;
+	const TIMED_OUT = "astravia:close-guard-timeout" as const;
 	let decision: Awaited<ReturnType<BottomPanelWillClose>> | typeof TIMED_OUT;
 	try {
 		decision = await Promise.race<Awaited<ReturnType<BottomPanelWillClose>> | typeof TIMED_OUT>([

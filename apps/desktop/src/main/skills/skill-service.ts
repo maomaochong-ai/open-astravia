@@ -1,8 +1,8 @@
 import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { rm } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { getVettaHomePath } from "@vetta/action-rpc";
-import { resolvePluginText } from "@vetta-org/plugin-sdk";
+import { getAstraviaHomePath } from "@astravia/action-rpc";
+import { resolvePluginText } from "@astravia-org/plugin-sdk";
 import type { AppMonitorResourceOperation } from "../../preload/api-types/app-monitor.js";
 import type { SkillPresentation, SkillProvenance } from "../../preload/api-types/skills.js";
 import { resolveProvidedSkillPresentationIcon } from "../../shared/ability-presentation.js";
@@ -29,9 +29,9 @@ import { shouldListSkill } from "./skill-list-policy.js";
 import { buildPluginSkillSources, findPluginSkillSource, resolvePluginSkillPresentation } from "./skill-provenance.js";
 
 const skillsLog = getAppLogger("skills");
-const skillsBaseDir = join(getVettaHomePath(), "skills");
-const sceneBaseDir = join(getVettaHomePath(), "scene");
-const manifestPath = join(getVettaHomePath(), "skills-manifest.json");
+const skillsBaseDir = join(getAstraviaHomePath(), "skills");
+const sceneBaseDir = join(getAstraviaHomePath(), "scene");
+const manifestPath = join(getAstraviaHomePath(), "skills-manifest.json");
 
 export type InstalledSkillType = "skill" | "scene";
 
@@ -215,7 +215,7 @@ export class SkillService {
 						: (entry?.source === "market" ? entry.marketDescription : entry?.description) || skill.description,
 					source: isBuiltin ? "builtin" : pluginSource ? "plugin" : skill.source,
 					provenance: isBuiltin
-						? { kind: "builtin", providerId: "vetta" }
+						? { kind: "builtin", providerId: "astravia" }
 						: pluginSource
 							? { kind: "provided", providerType: "plugin", providerId: pluginSource.pluginId }
 							: (skill.provenance ?? { kind: "native", scope: skill.source }),

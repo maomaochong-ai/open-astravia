@@ -1,4 +1,4 @@
-import type { AgentFeatureDefinition, ModelCallContributionProvider } from "@vetta/runtime-core/kernel";
+import type { AgentFeatureDefinition, ModelCallContributionProvider } from "@astravia/runtime-core/kernel";
 import { CODING_AGENT_UNATTENDED_TURN_METADATA_KEY } from "./contracts.js";
 import { CODING_AGENT_ASK_USER_QUESTION_TOOL_NAME, createAskUserQuestionToolRegistration } from "./tool/index.js";
 

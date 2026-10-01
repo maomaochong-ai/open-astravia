@@ -1,4 +1,4 @@
-import { HorizontalSliceImageFrame, NineSliceImageFrame } from "@vetta-org/theme-ui";
+import { HorizontalSliceImageFrame, NineSliceImageFrame } from "@astravia-org/theme-ui";
 import {
 	cn,
 	Dialog,
@@ -7,7 +7,7 @@ import {
 	DialogDescription,
 	DialogTitle,
 	DialogTrigger,
-} from "@vetta-org/ui";
+} from "@astravia-org/ui";
 import { motion } from "motion/react";
 import { useEffect, useMemo, useState, type JSX, type ReactNode } from "react";
 import { sanctumPageAssets } from "./assets";

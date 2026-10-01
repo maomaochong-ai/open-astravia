@@ -1,12 +1,12 @@
-import { Type } from "@sinclair/typebox";
-import { Value } from "@sinclair/typebox/value";
 import {
 	type McpDeviceAuthorizationFlowOptions,
 	type McpDeviceAuthorizationFlowResult,
 	type McpDeviceAuthorizationScheduler,
 	type McpDeviceCodeInfo,
 	McpDeviceCodeRequestError,
-} from "@vetta/runtime-mcp/auth";
+} from "@astravia/runtime-mcp/auth";
+import { Type } from "@sinclair/typebox";
+import { Value } from "@sinclair/typebox/value";
 
 const DEFAULT_POLL_TIMEOUT_MS = 5 * 60_000;
 const DEFAULT_INTERVAL_SEC = 5;

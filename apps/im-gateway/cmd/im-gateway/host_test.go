@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
-	"vetta-im-gateway/internal/hostproto"
-	"vetta-im-gateway/internal/transport"
-	"vetta-im-gateway/internal/transport/wechat"
-	"vetta-im-gateway/internal/transport/wechat/ilink"
+	"astravia-im-gateway/internal/hostproto"
+	"astravia-im-gateway/internal/transport"
+	"astravia-im-gateway/internal/transport/wechat"
+	"astravia-im-gateway/internal/transport/wechat/ilink"
 )
 
 // stubTransport is a no-op transport that just blocks Start() until ctx
@@ -155,7 +155,7 @@ func (p *pipeReader) Read(b []byte) (int, error) {
 
 var errEOF = errors.New("EOF")
 
-const testConversationCwd = "/home/u/.vetta/conversation"
+const testConversationCwd = "/home/u/.astravia/conversation"
 
 // TestHost_InitTimeout asserts the sidecar exits non-zero when the parent
 // fails to send an init frame within the timeout.

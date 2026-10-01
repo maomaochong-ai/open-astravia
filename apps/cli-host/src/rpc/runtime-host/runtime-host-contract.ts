@@ -1,13 +1,16 @@
-import type { CodingAgentBootstrap, CodingAgentExtensionCompatibilityAssessment } from "@vetta/coding-agent/bootstrap";
+import type {
+	CodingAgentBootstrap,
+	CodingAgentExtensionCompatibilityAssessment,
+} from "@astravia/coding-agent/bootstrap";
 import type {
 	CodingAgentRuntimeComposition,
 	CodingAgentRuntimeCompositionOptions,
-} from "@vetta/coding-agent/composition";
-import type { CodingAgentHtmlExportRuntime } from "@vetta/coding-agent/export-html";
-import type { CodingAgentHistoricalSessionMigrationIncompatible } from "@vetta/coding-agent/historical-sessions";
-import type { RpcSessionCapabilities } from "@vetta/coding-agent/rpc";
-import type { RuntimeHostSession, RuntimeSessionCatalog } from "@vetta/runtime-core";
-import type { FileConversationOwnershipManagerOptions } from "@vetta/runtime-node/conversation";
+} from "@astravia/coding-agent/composition";
+import type { CodingAgentHtmlExportRuntime } from "@astravia/coding-agent/export-html";
+import type { CodingAgentHistoricalSessionMigrationIncompatible } from "@astravia/coding-agent/historical-sessions";
+import type { RpcSessionCapabilities } from "@astravia/coding-agent/rpc";
+import type { RuntimeHostSession, RuntimeSessionCatalog } from "@astravia/runtime-core";
+import type { FileConversationOwnershipManagerOptions } from "@astravia/runtime-node/conversation";
 import type { CreateCliCodingAgentBootstrapOptions } from "../../coding-agent-bootstrap.js";
 import type { CliPrintSessionAdapter } from "../../print-session-adapter.js";
 

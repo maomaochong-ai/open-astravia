@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
-	"vetta-im-gateway/internal/command"
-	"vetta-im-gateway/internal/hostclient"
-	"vetta-im-gateway/internal/state"
-	"vetta-im-gateway/internal/transport"
+	"astravia-im-gateway/internal/command"
+	"astravia-im-gateway/internal/hostclient"
+	"astravia-im-gateway/internal/state"
+	"astravia-im-gateway/internal/transport"
 )
 
 // =============================================================================
@@ -113,7 +113,7 @@ func itoa(n int) string {
 	return s
 }
 
-const testCwd = "/home/u/.vetta/conversation"
+const testCwd = "/home/u/.astravia/conversation"
 
 func TestRouter_FirstMessageStartsSession_PersistsResolvedPath(t *testing.T) {
 	// First message in a fresh chat: state has no entry yet. Router should

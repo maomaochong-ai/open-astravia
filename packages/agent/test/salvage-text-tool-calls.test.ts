@@ -1,5 +1,5 @@
+import type { AssistantMessage, Tool } from "@astravia/ai";
 import { Type } from "@sinclair/typebox";
-import type { AssistantMessage, Tool } from "@vetta/ai";
 import { describe, expect, it } from "vitest";
 import { salvageTextToolCalls } from "../src/salvage-text-tool-calls.js";
 
@@ -39,7 +39,7 @@ function message(content: AssistantMessage["content"], stopReason: AssistantMess
 		role: "assistant",
 		content,
 		api: "openai-completions",
-		provider: "vetta-go",
+		provider: "astravia-go",
 		model: "gpt-test",
 		usage: {
 			input: 0,

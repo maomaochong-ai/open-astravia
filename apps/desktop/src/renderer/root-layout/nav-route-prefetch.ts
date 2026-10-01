@@ -1,4 +1,4 @@
-import type { SidebarNavItem } from "@vetta-org/theme-sdk/sidebar";
+import type { SidebarNavItem } from "@astravia-org/theme-sdk/sidebar";
 import {
 	loadAbilitiesPage,
 	loadAgentCenterPage,

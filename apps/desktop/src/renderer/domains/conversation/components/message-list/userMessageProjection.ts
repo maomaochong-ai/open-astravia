@@ -1,3 +1,4 @@
+import type { InlineTokenAnnotation } from "@astravia-org/theme-ui/chat";
 import type { ConversationUserMessageViewModel } from "@shared/conversation";
 import {
 	type InputSegment,
@@ -6,9 +7,8 @@ import {
 	serializeInputSegments,
 	toTokenPath,
 } from "@shared/lib/input-tokens";
-import { pathBasename, toVettaFileUrl } from "@shared/lib/utils";
+import { pathBasename, toAstraviaFileUrl } from "@shared/lib/utils";
 import type { FilePreviewItem } from "@shared/store/atoms";
-import type { InlineTokenAnnotation } from "@vetta-org/theme-ui/chat";
 import { isSystemAttachmentPath, isUserImageFile, parseUserPrefixes } from "../../services/chat-service";
 import type { AppshotCardData } from "../AppshotCard";
 
@@ -23,7 +23,7 @@ function isAppshotPath(path: string): boolean {
 }
 
 export function userMessagePreviewSource(item: FilePreviewItem): string {
-	if (item.path) return toVettaFileUrl(item.path);
+	if (item.path) return toAstraviaFileUrl(item.path);
 	return item.url ?? "";
 }
 
@@ -106,7 +106,7 @@ export function projectUserMessage(message: ConversationUserMessageViewModel): U
 			];
 	const copyImageSources = [
 		...imageItems.map(userMessagePreviewSource).filter((source) => source.length > 0),
-		...(appshot?.imagePath ? [toVettaFileUrl(appshot.imagePath)] : []),
+		...(appshot?.imagePath ? [toAstraviaFileUrl(appshot.imagePath)] : []),
 	];
 
 	return {

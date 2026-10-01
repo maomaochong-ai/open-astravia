@@ -1,0 +1,20 @@
+{
+	"plugin.name": "Cowart Canvas",
+	"plugin.description": "Infinite canvas capability pack: Cowart MCP tools + skills, opened from the Astravia activity panel. Adapted from zhongerxin/Cowart.",
+	"tab.label": "Cowart",
+	"panel.title": "Cowart Canvas",
+	"panel.subtitle": "Project-local tldraw canvas (Codex widget → Astravia activity tab)",
+	"panel.cwd": "Project",
+	"panel.noCwd": "No project cwd (open a project conversation)",
+	"panel.storage": "Canvas data dir",
+	"panel.openTab": "Focus this panel",
+	"panel.hintTitle": "How it works in Astravia",
+	"panel.hint1": "“Open Cowart canvas” → open_cowart_canvas, full-width tldraw tab.",
+	"panel.hint2": "Canvas AI actions send follow-ups via conversation.sendPrompt; state under project canvas/.",
+	"panel.hint3": "Agent MCP tools read/write the same canvas files.",
+	"panel.mcpTitle": "MCP tools (plugin-scoped)",
+	"panel.mcpNote": "Runtime server name looks like plugin-cowart-astravia-cowart-mcp.",
+	"guidingWords.openCanvas": "Open the Cowart canvas for this project",
+	"guidingWords.genImage": "Generate an image onto the Cowart canvas",
+	"guidingWords.editAnnotated": "Revise an image from a Cowart annotation screenshot"
+}

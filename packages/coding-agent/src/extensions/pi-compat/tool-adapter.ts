@@ -38,14 +38,14 @@ export function adaptPiToolDefinition(tool: PiCompatibleToolDefinition): Adapted
 			feature: `tool:${tool.name}:context`,
 			status: "host-dependent",
 			detail:
-				"Execution receives the shared Vetta context subset; Pi-only mode/scoped-model/trust fields are absent",
+				"Execution receives the shared Astravia context subset; Pi-only mode/scoped-model/trust fields are absent",
 		},
 	];
 	if (tool.prepareArguments) {
 		features.push({
 			feature: `tool:${tool.name}:prepareArguments`,
 			status: "adapted",
-			detail: "Mapped to Vetta normalizeInput before compatibility schema validation",
+			detail: "Mapped to Astravia normalizeInput before compatibility schema validation",
 		});
 	}
 	if (tool.promptSnippet || (tool.promptGuidelines?.length ?? 0) > 0) {

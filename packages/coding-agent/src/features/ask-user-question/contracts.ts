@@ -1,4 +1,4 @@
-import { defineSessionExtensionFunction } from "@vetta/runtime-core/session-extensions";
+import { defineSessionExtensionFunction } from "@astravia/runtime-core/session-extensions";
 import type {
 	CodingAgentQuestionRequest,
 	CodingAgentQuestionResult,

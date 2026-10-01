@@ -90,21 +90,21 @@ async function abortAndWait(runtimeId: string): Promise<void> {
 			resolve();
 		};
 		const timer = setTimeout(finish, 8000);
-		unsubscribe = window.vetta.session.onRunningChanged((payload) => {
+		unsubscribe = window.astravia.session.onRunningChanged((payload) => {
 			if (payload.sessionId === runtimeId && payload.running === false) finish();
 		});
 		if (targetHasStopped()) {
 			finish();
 			return;
 		}
-		void window.vetta.session.abort(runtimeId).catch((error) => {
+		void window.astravia.session.abort(runtimeId).catch((error) => {
 			console.error("[UserMessage] abort failed:", error);
 		});
 	});
 }
 
 async function reloadChatHistory(runtimeId: string): Promise<void> {
-	const history = await window.vetta.session.getFullHistory(runtimeId);
+	const history = await window.astravia.session.getFullHistory(runtimeId);
 	const store = getDefaultStore();
 	if (store.get(activeSessionAtom)?.runtimeId === runtimeId) {
 		store.set(chatMessagesAtom, fullHistoryToChat(history));
@@ -179,7 +179,7 @@ export function useUserMessageEditAction({
 				}
 				const session = await target;
 				if (!session) return;
-				const history = await window.vetta.session.getFullHistory(session.runtimeId);
+				const history = await window.astravia.session.getFullHistory(session.runtimeId);
 				if (getDefaultStore().get(activeSessionAtom)?.runtimeId !== session.runtimeId) return;
 				for (let index = history.length - 1; index >= 0; index--) {
 					const entry = history[index];
@@ -239,7 +239,7 @@ export function useUserMessageHistoryActions({
 			if (!targetId || targetId === message.entryId) return;
 			getDefaultStore().set(pendingMessageEditAtom, null);
 			runInterruptible("switch", async (session) => {
-				await window.vetta.session.switchBranch(session.runtimeId, targetId);
+				await window.astravia.session.switchBranch(session.runtimeId, targetId);
 				await reloadChatHistory(session.runtimeId);
 			});
 		},
@@ -253,7 +253,7 @@ export function useUserMessageHistoryActions({
 			if (store.get(activeSessionAtom)?.runtimeId === session.runtimeId) {
 				store.set(pendingMessageEditAtom, null);
 			}
-			const { path } = await window.vetta.session.forkSession(session.runtimeId, entryId);
+			const { path } = await window.astravia.session.forkSession(session.runtimeId, entryId);
 			if (store.get(activeSessionAtom)?.runtimeId !== session.runtimeId) return;
 			await openSessionFnRef.current?.(session.cwd, path);
 		});
@@ -295,7 +295,7 @@ export function useUserMessageDeleteAction({
 				if (getDefaultStore().get(activeSessionAtom)?.runtimeId === session.runtimeId) onAbortEdit?.();
 				await abortAndWait(session.runtimeId);
 			}
-			await window.vetta.session.deleteMessage(session.runtimeId, entryId);
+			await window.astravia.session.deleteMessage(session.runtimeId, entryId);
 			if (suppressForOneMinute) {
 				deleteConfirmationSuppressedUntil = Date.now() + DELETE_CONFIRMATION_SUPPRESSION_MS;
 			}

@@ -3,13 +3,13 @@
 Plugin API 2.5.0 起，插件可以从独立 SDK 子路径导入已经绑定身份的 logger：
 
 ```ts
-import { logger } from "@vetta-org/plugin-sdk/logger";
+import { logger } from "@astravia-org/plugin-sdk/logger";
 
 logger.info("Model synchronization completed", { modelCount: 12 });
 logger.error("Model synchronization failed", { channel: "codex", error });
 ```
 
-logger 的 `pluginId` 与版本来自构建时校验过的 `plugin.json`。插件不传 `ctx`，也不能自行声明或覆盖日志身份。`@vetta-org/plugin-vite` 在生产构建与开发服务器中把该子路径替换成当前插件专属的 facade；没有经过兼容构建工具处理时，调用会给出明确错误，不会写出无法归属的日志。
+logger 的 `pluginId` 与版本来自构建时校验过的 `plugin.json`。插件不传 `ctx`，也不能自行声明或覆盖日志身份。`@astravia-org/plugin-vite` 在生产构建与开发服务器中把该子路径替换成当前插件专属的 facade；没有经过兼容构建工具处理时，调用会给出明确错误，不会写出无法归属的日志。
 
 需要区分模块时使用子作用域：
 
@@ -34,8 +34,8 @@ logger 无需权限：它只能写宿主管理的诊断通道，不能选择路�
 
 使用该入口的插件需要：
 
-- `@vetta-org/plugin-sdk >= 0.3.7 < 0.4.0`
-- `@vetta-org/plugin-vite >= 0.2.3 < 0.3.0`
+- `@astravia-org/plugin-sdk >= 0.3.7 < 0.4.0`
+- `@astravia-org/plugin-vite >= 0.2.3 < 0.3.0`
 - `plugin.json#pluginApiVersion` 声明 `^2.5.0`
 
 旧插件不导入 logger 时保持原行为。

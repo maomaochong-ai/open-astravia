@@ -1,5 +1,5 @@
 import type { CSSProperties, JSX } from "react";
-import { cn } from "@vetta-org/ui";
+import { cn } from "@astravia-org/ui";
 import { ActivityStatusDot, ActivityStatusDotStyles } from "../shared/ActivityStatusDot";
 
 export interface TodoStatusItem {

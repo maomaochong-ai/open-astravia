@@ -126,7 +126,7 @@ export function useFeishuBindDialogModel({
 
 	const startBind = useCallback(async () => {
 		setState({ phase: "starting", qrAttempt: 0 });
-		const unsub = await window.vetta.im.feishu.subscribeBind((event: ImFeishuBindEvent) => {
+		const unsub = await window.astravia.im.feishu.subscribeBind((event: ImFeishuBindEvent) => {
 			switch (event.kind) {
 				case "qr":
 					setState((prev) => ({
@@ -167,7 +167,7 @@ export function useFeishuBindDialogModel({
 		});
 		subUnsubRef.current = unsub;
 
-		const result = await window.vetta.im.feishu.startBind();
+		const result = await window.astravia.im.feishu.startBind();
 		if (!result.ok) {
 			setState({ phase: "failed", qrAttempt: 0, error: result.error ?? t("bindStartFailed") });
 		}

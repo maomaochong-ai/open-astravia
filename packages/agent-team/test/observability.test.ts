@@ -1,4 +1,4 @@
-import { createRuntimeObservationPublisher, type RuntimeObservationRecord } from "@vetta/runtime-core/observation";
+import { createRuntimeObservationPublisher, type RuntimeObservationRecord } from "@astravia/runtime-core/observation";
 import { describe, expect, it, vi } from "vitest";
 import {
 	AGENT_TEAM_MEMBER_RUNTIME_LIFECYCLE,

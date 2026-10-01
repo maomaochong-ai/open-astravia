@@ -1,4 +1,4 @@
-import { applyConversationDocumentCommand, createEmptyConversationDocument } from "@vetta/runtime-core";
+import { applyConversationDocumentCommand, createEmptyConversationDocument } from "@astravia/runtime-core";
 import { afterEach, describe, expect, it } from "vitest";
 import {
 	DEFAULT_AGENT_CONFIGURATION,

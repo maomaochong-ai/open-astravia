@@ -1,7 +1,7 @@
 import {
 	PresetProviderModelsListView,
 	type PresetProviderModelsListViewLabels,
-} from "@vetta-org/theme-ui/settings";
+} from "@astravia-org/theme-ui/settings";
 import { useMemo, useState } from "react";
 import type {
 	PresetProviderRow,

@@ -1,3 +1,4 @@
+import { parseProjectLocation } from "@astravia/ssh-transport/project-uri";
 import {
 	activeBottomPanelTab,
 	type BottomPanelSessionState,
@@ -6,7 +7,6 @@ import {
 	latestBottomPanelTabOf,
 } from "@shared/store/atoms";
 import type { WorkSurfaceScope } from "@shared/workspace/work-surface";
-import { parseProjectLocation } from "@vetta/ssh-transport/project-uri";
 import { type Atom, atom, useAtomValue, useSetAtom, type WritableAtom } from "jotai";
 import { useCallback, useMemo } from "react";
 import { TERMINAL_PANEL_ID } from "../builtins";

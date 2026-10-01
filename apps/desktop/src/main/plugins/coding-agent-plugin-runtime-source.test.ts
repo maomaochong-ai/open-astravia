@@ -1,4 +1,4 @@
-import type { AgentPluginRuntimeConfig } from "@vetta/coding-agent/plugin-runtime";
+import type { AgentPluginRuntimeConfig } from "@astravia/coding-agent/plugin-runtime";
 import { describe, expect, it, vi } from "vitest";
 import { DesktopCodingAgentPluginRuntimeSource } from "./coding-agent-plugin-runtime-source.js";
 
@@ -7,7 +7,7 @@ describe("DesktopCodingAgentPluginRuntimeSource", () => {
 		const build = vi.fn((): AgentPluginRuntimeConfig => configuration("initial"));
 		const source = new DesktopCodingAgentPluginRuntimeSource({
 			build,
-			additionalSkillPaths: ["C:/vetta/builtin-skills"],
+			additionalSkillPaths: ["C:/astravia/builtin-skills"],
 			handlerLeaseProvider: { bindForTurn: () => ({ release() {} }) },
 		});
 		const listener = vi.fn();
@@ -15,7 +15,7 @@ describe("DesktopCodingAgentPluginRuntimeSource", () => {
 
 		expect(source.readAgentPlugins()?.skillPathContributions).toEqual([
 			{ pluginId: "initial", paths: ["C:/plugins/initial"] },
-			{ pluginId: "desktop:builtin-skills", paths: ["C:/vetta/builtin-skills"] },
+			{ pluginId: "desktop:builtin-skills", paths: ["C:/astravia/builtin-skills"] },
 		]);
 		expect(source.readAgentPlugins()?.skillPathContributions).toHaveLength(2);
 		expect(build).toHaveBeenCalledOnce();
@@ -55,7 +55,7 @@ describe("DesktopCodingAgentPluginRuntimeSource", () => {
 	});
 
 	it("refreshes built-in Skill paths when a new preset appears after startup", () => {
-		let paths = ["C:/vetta/builtin-skills/create-skill"];
+		let paths = ["C:/astravia/builtin-skills/create-skill"];
 		const source = new DesktopCodingAgentPluginRuntimeSource({
 			build: () => configuration("initial"),
 			additionalSkillPaths: paths,
@@ -66,7 +66,7 @@ describe("DesktopCodingAgentPluginRuntimeSource", () => {
 		source.subscribe(listener);
 		expect(source.readAgentPlugins()?.skillPathContributions?.at(-1)?.paths).toEqual(paths);
 
-		paths = ["C:/vetta/builtin-skills/create-skill", "C:/vetta/builtin-skills/install-ability"];
+		paths = ["C:/astravia/builtin-skills/create-skill", "C:/astravia/builtin-skills/install-ability"];
 		expect(source.readAgentPlugins()?.skillPathContributions?.at(-1)?.paths).toEqual(paths);
 		expect(listener).toHaveBeenCalledOnce();
 	});

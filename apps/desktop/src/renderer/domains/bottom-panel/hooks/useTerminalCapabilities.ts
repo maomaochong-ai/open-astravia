@@ -16,7 +16,7 @@ const OPTIMISTIC: TerminalCapabilities = { localPty: true };
 async function loadCapabilities(): Promise<TerminalCapabilities> {
 	if (cached) return cached;
 	if (!inFlight) {
-		inFlight = window.vetta.terminal
+		inFlight = window.astravia.terminal
 			.capabilities()
 			.then((result) => {
 				cached = result;

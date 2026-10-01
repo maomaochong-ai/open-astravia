@@ -1,4 +1,4 @@
-import type { RuntimeSessionContextDeliveryController } from "@vetta/runtime-core";
+import type { RuntimeSessionContextDeliveryController } from "@astravia/runtime-core";
 import type { HostBashExecutor } from "../host/command-execution/index.js";
 import { type BashExecutionMessage, bashExecutionToText } from "../model-context/index.js";
 import { CODING_AGENT_EXTENDED_MESSAGE_CONTEXT_TYPE } from "../sessions/index.js";

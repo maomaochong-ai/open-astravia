@@ -1,4 +1,4 @@
-const packaged = process.env.VETTA_E2E_PACKAGED === "1";
+const packaged = process.env.ASTRAVIA_E2E_PACKAGED === "1";
 const UPDATE_TIMEOUT_MS = 60_000;
 
 async function focusMainRenderer(): Promise<void> {
@@ -31,7 +31,7 @@ async function activateRendererControl(element: WebdriverIO.Element): Promise<vo
 	await browser.execute((control) => control.click(), element);
 }
 
-describe("Vetta Desktop packaged updater", () => {
+describe("Astravia Desktop packaged updater", () => {
 	(packaged ? it : it.skip)("checks the configured update feed through the settings UI", async () => {
 		await browser.waitUntil(
 			async () => {

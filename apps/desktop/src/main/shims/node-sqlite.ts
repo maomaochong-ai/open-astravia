@@ -7,7 +7,7 @@
  *
  *     import require$$1 from "node:sqlite";   // ← 整个 chunk 直接加载失败
  *
- * 于是 `import("undici")` 永远 reject。因为 `@vetta/ai` 的 http-proxy 用它安装
+ * 于是 `import("undici")` 永远 reject。因为 `@astravia/ai` 的 http-proxy 用它安装
  * `EnvHttpProxyAgent`，打包版里 `HTTP_PROXY` / `HTTPS_PROXY` 静默失效，同时在
  * agent-rpc 子进程 stderr 上刷出 UnhandledPromiseRejectionWarning。
  *

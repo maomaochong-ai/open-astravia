@@ -1,7 +1,7 @@
+import { getSkillDisplayDescription, getSkillDisplayName, isSkillVisibleOnSurface } from "@astravia-org/capability-sdk";
+import { resolvePluginText } from "@astravia-org/plugin-sdk";
 import type { InstalledPlugin, InstalledSkill, McpConfigData, SkillInfo } from "@preload/api";
 import { builtinSkillIconUrl } from "@shared/lib/builtin-skill-icons";
-import { getSkillDisplayDescription, getSkillDisplayName, isSkillVisibleOnSurface } from "@vetta-org/capability-sdk";
-import { resolvePluginText } from "@vetta-org/plugin-sdk";
 import { resolveMcpIcon } from "../../settings/mcp/builtin-mcp-presets";
 
 export type AgentCapabilityKind = "skill" | "scene" | "mcp" | "plugin";

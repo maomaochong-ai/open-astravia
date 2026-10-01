@@ -15,7 +15,7 @@ export interface DesktopClipboardApi {
 	writeImage(dataUrl: string): Promise<void>;
 	/** Atomically writes plain text, rich HTML, and the first native image. */
 	writeUserMessage(request: UserMessageClipboardWriteRequest): Promise<void>;
-	/** Persists a Vetta-authored rich message directly from the native clipboard. */
+	/** Persists a Astravia-authored rich message directly from the native clipboard. */
 	pasteUserMessage(sessionId: string): Promise<UserMessageClipboardPasteResult | null>;
 }
 

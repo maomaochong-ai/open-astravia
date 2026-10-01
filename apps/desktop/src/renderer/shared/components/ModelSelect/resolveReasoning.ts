@@ -1,4 +1,4 @@
-import { getModelReasoningPreset } from "@vetta/ai/reasoning-presets";
+import { getModelReasoningPreset } from "@astravia/ai/reasoning-presets";
 import type { ModelOption } from "./useModelOptions";
 
 export interface ResolvedReasoning {
@@ -11,7 +11,7 @@ export interface ResolvedReasoning {
 /**
  * Resolve a model's selectable reasoning levels:
  *  - explicit `reasoningLevels` from config win;
- *  - otherwise fall back to the api-type preset (source of truth in @vetta/ai);
+ *  - otherwise fall back to the api-type preset (source of truth in @astravia/ai);
  *  - non-reasoning models (no levels, no preset) return null → no selector.
  */
 export function resolveReasoning(option: ModelOption | null | undefined): ResolvedReasoning | null {

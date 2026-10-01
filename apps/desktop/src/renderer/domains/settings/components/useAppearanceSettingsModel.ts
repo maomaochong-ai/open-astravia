@@ -124,7 +124,7 @@ export interface AppearanceSettingsModel {
 	narrow: boolean;
 	ornamentId: OrnamentId;
 	ornamentOptions: AppearanceOrnamentOption[];
-	/** 是否展示「界面主题」区段（`VETTA_SHOW_UI_THEME=true`） */
+	/** 是否展示「界面主题」区段（`ASTRAVIA_SHOW_UI_THEME=true`） */
 	showUiTheme: boolean;
 	sidebarStyle: SidebarStyle;
 	sidebarStyleOptions: AppearanceSidebarStyleOption[];

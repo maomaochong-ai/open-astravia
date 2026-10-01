@@ -132,7 +132,7 @@ tab 顺序按卡片在消息里出现的顺序，默认激活第一个；tab 标
 组件是 `descriptor` 的纯函数——**不要**自己探测「是否在生成中」，由 `pending` 决定画 skeleton 还是内容：
 
 ```tsx
-import type { PluginCardProps } from "@vetta-org/plugin-sdk";
+import type { PluginCardProps } from "@astravia-org/plugin-sdk";
 
 function ImagePreviewCard({ descriptor, pending }: PluginCardProps) {
   const payload = (descriptor.payload ?? {}) as { images?: ImageRef[]; editingImageId?: string };

@@ -1,10 +1,10 @@
-import { Type } from "@sinclair/typebox";
-import { Value } from "@sinclair/typebox/value";
-import type { SessionEvent } from "@vetta/runtime-core";
+import type { SessionEvent } from "@astravia/runtime-core";
 import {
 	defineSessionExtensionEndpoint,
 	defineSessionExtensionObservation,
-} from "@vetta/runtime-core/session-extensions";
+} from "@astravia/runtime-core/session-extensions";
+import { Type } from "@sinclair/typebox";
+import { Value } from "@sinclair/typebox/value";
 import type { CodingAgentGoalSnapshot, CodingAgentGoalState, CodingAgentGoalStatus } from "./contracts.js";
 import { CODING_AGENT_GOAL_EXTENSION_ID } from "./contracts.js";
 import { CodingAgentGoalStateSchema } from "./goal-snapshot.js";

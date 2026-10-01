@@ -1,4 +1,4 @@
-import type { SessionHistoryInfo } from "@vetta/runtime-core";
+import type { SessionHistoryInfo } from "@astravia/runtime-core";
 import {
 	DesktopConversationError,
 	type DesktopConversationService,
@@ -86,7 +86,7 @@ export function createConversationDebugDefinitions(service: DesktopConversationS
 			id: "conversation.list",
 			category: "conversation",
 			title: "List conversations",
-			summary: "List persistent Vetta conversations for a project cwd.",
+			summary: "List persistent Astravia conversations for a project cwd.",
 			keywords: ["conversation", "session", "history", "list"],
 			inputSchema: { description: "Absolute cwd and optional result limit (1-200)." },
 			examples: [{ description: "List recent project conversations", input: { cwd: "C:\\project", limit: 20 } }],
@@ -105,7 +105,7 @@ export function createConversationDebugDefinitions(service: DesktopConversationS
 			id: "conversation.create",
 			category: "conversation",
 			title: "Create conversation",
-			summary: "Create a persistent Vetta conversation and wait for its first agent turn.",
+			summary: "Create a persistent Astravia conversation and wait for its first agent turn.",
 			keywords: ["conversation", "session", "create", "prompt", "agent"],
 			inputSchema: {
 				description:
@@ -147,7 +147,7 @@ export function createConversationDebugDefinitions(service: DesktopConversationS
 			id: "conversation.continue",
 			category: "conversation",
 			title: "Continue conversation",
-			summary: "Open a persistent Vetta session by sessionPath and wait for another agent turn.",
+			summary: "Open a persistent Astravia session by sessionPath and wait for another agent turn.",
 			keywords: ["conversation", "session", "continue", "resume", "prompt", "agent"],
 			inputSchema: {
 				description:
@@ -157,7 +157,7 @@ export function createConversationDebugDefinitions(service: DesktopConversationS
 				{
 					description: "Continue a persistent conversation",
 					input: {
-						sessionPath: "C:\\project\\.vetta\\sessions\\session.jsonl",
+						sessionPath: "C:\\project\\.astravia\\sessions\\session.jsonl",
 						prompt: "Now run the verification.",
 					},
 				},
@@ -192,7 +192,8 @@ export function createConversationDebugDefinitions(service: DesktopConversationS
 			id: "conversation.compact",
 			category: "conversation",
 			title: "Compact conversation context",
-			summary: "Manually compact a persistent Vetta conversation through the production Runtime context controller.",
+			summary:
+				"Manually compact a persistent Astravia conversation through the production Runtime context controller.",
 			keywords: ["conversation", "session", "context", "compact", "debug"],
 			inputSchema: {
 				description:
@@ -201,7 +202,7 @@ export function createConversationDebugDefinitions(service: DesktopConversationS
 			examples: [
 				{
 					description: "Compact an existing conversation",
-					input: { sessionPath: "C:\\project\\.vetta\\sessions\\session.jsonl" },
+					input: { sessionPath: "C:\\project\\.astravia\\sessions\\session.jsonl" },
 				},
 			],
 			validateInput: (input) => validateInput(compactConversationInputSchema, input),

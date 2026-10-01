@@ -1,4 +1,4 @@
-import type { RuntimeHostSession } from "@vetta/runtime-core";
+import type { RuntimeHostSession } from "@astravia/runtime-core";
 import { describe, expect, it, vi } from "vitest";
 import { CodingAgentSdkBashAdapter } from "../../src/host/coding-agent-sdk-bash-adapter.js";
 import { createHostBashExecutor } from "../../src/host/command-execution/index.js";
@@ -28,7 +28,7 @@ describe("CodingAgentSdkBashAdapter", () => {
 		expect(fixture.deliver).toHaveBeenCalledWith(
 			[
 				expect.objectContaining({
-					type: "vetta.legacy_agent_message",
+					type: "astravia.legacy_agent_message",
 					modelVisible: true,
 					display: true,
 				}),

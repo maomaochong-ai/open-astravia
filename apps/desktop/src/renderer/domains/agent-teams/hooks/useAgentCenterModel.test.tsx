@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import type { AgentTeamDocument, TeamDefinition } from "@vetta/agent-team";
+import type { AgentTeamDocument, TeamDefinition } from "@astravia/agent-team";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { useAgentCenterModel } from "./useAgentCenterModel";
@@ -17,7 +17,7 @@ const leader = {
 	name: "设计师",
 	description: "",
 	mentionHandle: "designer",
-	blueprintId: "plugin:vetta-ui-design:designer",
+	blueprintId: "plugin:astravia-ui-design:designer",
 	abilities: { selectionMode: "all", skills: [], mcpServers: [], plugins: [] },
 	scope: { kind: "library" },
 	createdAt: 1,
@@ -42,7 +42,7 @@ function team(id: string, source?: TeamDefinition["source"]): TeamDefinition {
 
 describe("useAgentCenterModel", () => {
 	it("selects a plugin team without entering member recruiting, and still recruits for a user team", async () => {
-		const pluginTeam = team("design-team", { kind: "plugin", pluginId: "vetta-ui-design" });
+		const pluginTeam = team("design-team", { kind: "plugin", pluginId: "astravia-ui-design" });
 		const userTeam = team("my-team");
 		const document = { schemaVersion: 1, revision: 1, agents: [leader], teams: [pluginTeam, userTeam] };
 		mocks.load.mockResolvedValue({
@@ -51,7 +51,7 @@ describe("useAgentCenterModel", () => {
 			plugins: [],
 			capabilities: [],
 		});
-		Object.defineProperty(window, "vetta", {
+		Object.defineProperty(window, "astravia", {
 			configurable: true,
 			value: { agentTeams: { list: vi.fn(), onChanged: () => () => {} } },
 		});

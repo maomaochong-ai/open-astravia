@@ -1,4 +1,4 @@
-import type { RuntimeSession, SessionEvent } from "@vetta/runtime-core";
+import type { RuntimeSession, SessionEvent } from "@astravia/runtime-core";
 import { describe, expect, it, vi } from "vitest";
 import { createCodingAgentSubagentChildHandle } from "../../src/composition/subagent/child-handle.js";
 import { CODING_AGENT_TODO_OBSERVATION } from "../../src/features/todo/todo-session-extension-contract.js";

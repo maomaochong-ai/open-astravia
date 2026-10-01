@@ -43,7 +43,7 @@ function resolveBundledBubblewrapPath(): string {
 
 export function resolveLinuxBubblewrapBinary(): ResolvedLinuxBubblewrapBinary | undefined {
 	const arch = process.arch;
-	const explicitPath = process.env.VETTA_LINUX_BWRAP_PATH?.trim();
+	const explicitPath = process.env.ASTRAVIA_LINUX_BWRAP_PATH?.trim();
 
 	if (explicitPath) {
 		if (!existsSync(explicitPath)) {

@@ -1,4 +1,4 @@
-import type { Api, Model } from "@vetta/ai";
+import type { Api, Model } from "@astravia/ai";
 import { describe, expect, it, vi } from "vitest";
 import { type RuntimeAgentDefinition, RuntimeAgentRuntime } from "../../src/agents/index.js";
 import type { RuntimeSessionAgentSelection } from "../../src/contracts.js";

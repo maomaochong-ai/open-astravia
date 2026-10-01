@@ -1,4 +1,4 @@
-import type { SessionHistoryInfo } from "@vetta/runtime-core";
+import type { SessionHistoryInfo } from "@astravia/runtime-core";
 import { ipcMain } from "electron";
 import {
 	QUICK_PANEL_CHANNELS,

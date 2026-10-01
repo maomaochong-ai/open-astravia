@@ -37,7 +37,7 @@ const USER_ACTION_HOLD_MS = 10_000;
 
 declare global {
 	interface Window {
-		vettaPet?: PetBridge;
+		astraviaPet?: PetBridge;
 	}
 }
 
@@ -163,7 +163,7 @@ export function PetApp(): JSX.Element {
 	}, [actionId]);
 
 	useEffect(() => {
-		return window.vettaPet?.onCommand((command) => {
+		return window.astraviaPet?.onCommand((command) => {
 			if (command.type === "set-state") {
 				appActivityStateRef.current = command.state;
 				appActionIdRef.current = command.actionId;

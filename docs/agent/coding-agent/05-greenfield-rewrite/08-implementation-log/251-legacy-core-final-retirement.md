@@ -18,7 +18,7 @@
 - 会话历史、认证、模型和设置等用户数据；必要时由显式、独立的新迁移器读取旧格式。
 - 模型消息、工具消息、错误、取消、事件顺序、并发约束和资源释放语义。
 - 仍然有效的行为测试场景和数据 fixture；旧实现可以临时作为测试 Oracle，但不能被新生产代码调用。
-- `@vetta/ai` 与经过合同验证的 `@vetta/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
+- `@astravia/ai` 与经过合同验证的 `@astravia/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
 
 ## 明确舍弃（固定）
 
@@ -48,9 +48,9 @@
 ### 2. 迁移真实横切行为
 
 - Ecosystem Hook Tool 包装迁入 `extensions/runtime/ecosystem-hook-tool-wrapper.ts`，保留输入改写、附加上下文、前后置阻断、结果反馈、失败反馈、中止识别和事件顺序。
-- `@vetta/coding-agent/hooks` 改指向 `public-api/hooks.ts`；旧公开签名保持不变。
+- `@astravia/coding-agent/hooks` 改指向 `public-api/hooks.ts`；旧公开签名保持不变。
 - 图片预算迁入 `model-context/image-budget.ts`，保留“未看过图片不驱逐”、已看图片按最近顺序预算、占位文本和不修改原数组的语义。
-- 并发限制器迁入独立 `concurrency` 领域，包根和 `@vetta/coding-agent/concurrency` 保持相同 API；新增 FIFO 与异常释放容量测试。
+- 并发限制器迁入独立 `concurrency` 领域，包根和 `@astravia/coding-agent/concurrency` 保持相同 API；新增 FIFO 与异常释放容量测试。
 
 ### 3. 删除无生产消费者的旧实现
 
@@ -62,7 +62,7 @@
 ### 4. 修正源码消费与测试入口
 
 - 更新 package exports、根/CLI/Desktop TypeScript path maps 和 Vitest aliases，使 `hooks`、`concurrency`、`resources` 解析到新的稳定入口。
-- CLI Greenfield Runtime Host 改为直接从 `@vetta/ecosystem-adapter` 取得 Hook 配置层构造器，避免通过产品包反向中转能力合同。
+- CLI Greenfield Runtime Host 改为直接从 `@astravia/ecosystem-adapter` 取得 Hook 配置层构造器，避免通过产品包反向中转能力合同。
 - 补齐 CLI Vitest 对已有 Host Services、HTML Export 和 Runtime Knowledge 源码入口的解析，使真实宿主测试不依赖残留 `dist`。
 
 ### 5. 建立旧 Core 零回流基线

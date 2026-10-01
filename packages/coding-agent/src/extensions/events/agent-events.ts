@@ -1,5 +1,5 @@
-import type { AgentMessage, ToolPhase } from "@vetta/agent-core";
-import type { Api, AssistantMessageEvent, ImageContent, Model, ToolResultMessage } from "@vetta/ai";
+import type { AgentMessage, ToolPhase } from "@astravia/agent-core";
+import type { Api, AssistantMessageEvent, ImageContent, Model, ToolResultMessage } from "@astravia/ai";
 
 /** Fired before each LLM call. Can modify messages. */
 export interface ContextEvent {

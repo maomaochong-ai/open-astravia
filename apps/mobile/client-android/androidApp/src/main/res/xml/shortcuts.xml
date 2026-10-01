@@ -7,9 +7,9 @@
         android:icon="@drawable/ic_shortcut_new_session"
         android:shortcutShortLabel="@string/shortcut_new_session">
         <intent
-            android:action="org.vetta.android.action.NEW_SESSION"
-            android:targetClass="org.vetta.android.MainActivity"
-            android:targetPackage="org.vetta.android" />
+            android:action="org.astravia.android.action.NEW_SESSION"
+            android:targetClass="org.astravia.android.MainActivity"
+            android:targetPackage="org.astravia.android" />
     </shortcut>
     <shortcut
         android:shortcutId="task_board"
@@ -17,9 +17,9 @@
         android:icon="@drawable/ic_shortcut_task_board"
         android:shortcutShortLabel="@string/shortcut_task_board">
         <intent
-            android:action="org.vetta.android.action.TASK_BOARD"
-            android:targetClass="org.vetta.android.MainActivity"
-            android:targetPackage="org.vetta.android" />
+            android:action="org.astravia.android.action.TASK_BOARD"
+            android:targetClass="org.astravia.android.MainActivity"
+            android:targetPackage="org.astravia.android" />
     </shortcut>
     <shortcut
         android:shortcutId="remote_control"
@@ -27,8 +27,8 @@
         android:icon="@drawable/ic_shortcut_remote_control"
         android:shortcutShortLabel="@string/shortcut_remote_control">
         <intent
-            android:action="org.vetta.android.action.REMOTE_CONTROL"
-            android:targetClass="org.vetta.android.MainActivity"
-            android:targetPackage="org.vetta.android" />
+            android:action="org.astravia.android.action.REMOTE_CONTROL"
+            android:targetClass="org.astravia.android.MainActivity"
+            android:targetPackage="org.astravia.android" />
     </shortcut>
 </shortcuts>

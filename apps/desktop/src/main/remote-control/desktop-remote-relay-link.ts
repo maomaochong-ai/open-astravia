@@ -5,7 +5,7 @@ import {
 	type RemoteIdentityKeyPair,
 	relayControlUrl,
 	WebSocketRemoteTransport,
-} from "@vetta/remote-control";
+} from "@astravia/remote-control";
 import { getAppLogger } from "../logger.js";
 import { DESKTOP_REMOTE_CAPABILITIES } from "./desktop-capabilities.js";
 import { createDesktopWebSocketFactory } from "./desktop-websocket.js";

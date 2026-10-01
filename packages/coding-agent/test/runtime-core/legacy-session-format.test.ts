@@ -1,8 +1,8 @@
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { UserMessage } from "@vetta/ai";
-import { createNodeLegacySessionHost } from "@vetta/runtime-node/host";
+import type { UserMessage } from "@astravia/ai";
+import { createNodeLegacySessionHost } from "@astravia/runtime-node/host";
 import { afterEach, describe, expect, it } from "vitest";
 import { LegacyRuntimeSessionCatalog } from "../../src/sessions/legacy/catalog.js";
 import { LegacyRuntimeSessionFileHistoryReader } from "../../src/sessions/legacy/history-reader.js";
@@ -71,7 +71,7 @@ describe("Legacy session format boundary", () => {
 });
 
 function createTemporaryDirectory(collection: string[]): string {
-	const directory = mkdtempSync(join(tmpdir(), "vetta-legacy-format-"));
+	const directory = mkdtempSync(join(tmpdir(), "astravia-legacy-format-"));
 	collection.push(directory);
 	return directory;
 }

@@ -46,7 +46,7 @@ export function useConnectorGrid(open: boolean, prefetch = false): ConnectorGrid
 	useEffect(() => {
 		if (!open && !prefetch) return;
 		let cancelled = false;
-		void window.vetta.mcp
+		void window.astravia.mcp
 			.get()
 			.then((config) => {
 				if (!cancelled) setServers(config.mcpServers ?? {});

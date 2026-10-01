@@ -1,4 +1,4 @@
-import type { ContextCompositionReport } from "@vetta/runtime-core";
+import type { ContextCompositionReport } from "@astravia/runtime-core";
 import { describe, expect, it } from "vitest";
 import { DefaultCodingAgentContextRuntime } from "../../src/compaction/runtime/context-runtime.js";
 import type { CodingAgentContextRuntime } from "../../src/runtime-contracts/index.js";

@@ -1,7 +1,7 @@
 const { app, BrowserWindow } = require("electron");
 const { join } = require("node:path");
 
-const RESULT_PREFIX = "VETTA_E2E_RESULT:";
+const RESULT_PREFIX = "ASTRAVIA_E2E_RESULT:";
 const timeout = setTimeout(() => finish({ ok: false, error: "Electron WebRTC E2E timed out" }), 20_000);
 
 app.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");

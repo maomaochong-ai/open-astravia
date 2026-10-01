@@ -1,4 +1,4 @@
-import type { Api, Model } from "@vetta/ai";
+import type { Api, Model } from "@astravia/ai";
 import { describe, expect, it } from "vitest";
 import type { CodingAgentRuntimeCompositionOptions } from "../../src/composition/contracts/index.js";
 import { createCodingAgentSessionInitializationProfile } from "../../src/composition/session-initialization/profile.js";

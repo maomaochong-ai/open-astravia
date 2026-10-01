@@ -2,14 +2,14 @@
 
 ## 1. 设计目标
 
-目标不是“让模型大致看懂 Claude Skill”，而是为 Claude Code 资源提供可验证、可诊断、可逐版本升级的宿主兼容层，同时保持 Vetta 原生协议稳定。
+目标不是“让模型大致看懂 Claude Skill”，而是为 Claude Code 资源提供可验证、可诊断、可逐版本升级的宿主兼容层，同时保持 Astravia 原生协议稳定。
 
 设计约束：
 
 1. `ecosystem-adapter` 保持生态协议适配职责，不拥有插件商店 UI、安装目录和用户授权。
 2. `coding-agent` 只接收归一化资源和能力，不扫描 Claude marketplace 缓存。
 3. `desktop` 拥有本地安装、信任、进程环境和插件生命周期。
-4. Claude/Codex/Vetta 三种清单、工具名和 Hook wire contract 不互相冒充。
+4. Claude/Codex/Astravia 三种清单、工具名和 Hook wire contract 不互相冒充。
 5. 首版以 `cc-skills@f5359d9` 契约测试为准，官方扩展功能通过新 profile 增量加入。
 
 ## 2. 分层
@@ -63,7 +63,7 @@ packages/ecosystem-adapter/src/claude/
         └── tool-mapper.ts
 ```
 
-这里的 plugin parser 是纯解析库，不负责把文件安装到 `~/.vetta`，也不执行命令。
+这里的 plugin parser 是纯解析库，不负责把文件安装到 `~/.astravia`，也不执行命令。
 
 ### 2.2 `coding-agent`
 
@@ -143,8 +143,8 @@ interface ClaudePluginBundle {
 
 | 输入 | 行为 |
 | --- | --- |
-| `/skill:name args` | 保留 Vetta 原生行为 |
-| `/name args` | 解析唯一 Claude/Vetta Skill alias |
+| `/skill:name args` | 保留 Astravia 原生行为 |
+| `/name args` | 解析唯一 Claude/Astravia Skill alias |
 | `/plugin:name args` | 解析 plugin scoped contribution |
 | 模型 `Skill(name, args)` | facade 到 `invoke_skill` |
 | 自然语言 | 继续由 description 触发 |
@@ -187,7 +187,7 @@ interface ClaudeBackedSubagentTypeDefinition extends SubagentTypeDefinition {
 
 至少需要以下映射：
 
-| Claude 名 | Vetta 能力 |
+| Claude 名 | Astravia 能力 |
 | --- | --- |
 | `Read` | `read` |
 | `Grep` | `grep` |
@@ -200,7 +200,7 @@ interface ClaudeBackedSubagentTypeDefinition extends SubagentTypeDefinition {
 | `Agent` / `Task` | `spawn_agent` facade；遵守递归策略 |
 | `SendMessage` | root/agent mailbox facade |
 
-映射只解决名称，权限仍按 Vetta 工具对象和 sandbox 强制。
+映射只解决名称，权限仍按 Astravia 工具对象和 sandbox 强制。
 
 ### 5.3 模型与停止边界
 
@@ -266,9 +266,9 @@ claude-code-hooks/2.1.211
 
 ### 7.3 工具名
 
-Hook matcher 与 stdin 使用 Claude canonical name，而不是 Vetta host name。除基础工具映射外，`cc-skills` 还要求：
+Hook matcher 与 stdin 使用 Claude canonical name，而不是 Astravia host name。除基础工具映射外，`cc-skills` 还要求：
 
-| Vetta/兼容能力 | Claude Hook 名 |
+| Astravia/兼容能力 | Claude Hook 名 |
 | --- | --- |
 | team 创建 | `TeamCreate` |
 | team 删除 | `TeamDelete` |
@@ -280,7 +280,7 @@ Teams 尚未实现时，这些工具不存在，`cdt` PreToolUse Hook 也不会�
 
 不要依赖宿主 shell 自行解释所有变量。先做受控的 token substitution，再用明确的 shell/runtime 执行：
 
-| Claude 变量 | Vetta 值 |
+| Claude 变量 | Astravia 值 |
 | --- | --- |
 | `${CLAUDE_PLUGIN_ROOT}` | 当前安装版本只读根 |
 | `${CLAUDE_PLUGIN_DATA}` | 插件持久化数据目录 |
@@ -296,7 +296,7 @@ Windows 上对 `.sh` handler：
 
 ### 8.1 Resource-only bundle
 
-推荐给 Vetta 增加 resource-only plugin/bundle 形态，至少支持：
+推荐给 Astravia 增加 resource-only plugin/bundle 形态，至少支持：
 
 - 无 renderer entry；
 - 声明 Skills、agents、Hooks、MCP；
@@ -304,7 +304,7 @@ Windows 上对 `.sh` handler：
 - 安装后获得稳定 rootPath；
 - 不加载不必要的 Module Federation runtime。
 
-如果短期不改 Vetta plugin schema，可以由 Claude importer 管理独立 compatibility bundle，但不能为方便而伪造 Claude/Vetta 混合 manifest。
+如果短期不改 Astravia plugin schema，可以由 Claude importer 管理独立 compatibility bundle，但不能为方便而伪造 Claude/Astravia 混合 manifest。
 
 ### 8.2 建议权限
 
@@ -321,12 +321,12 @@ Windows 上对 `.sh` handler：
 
 ## 9. 不应采用的实现
 
-1. 把 Claude `.claude-plugin/plugin.json` 直接交给 Vetta plugin store。
-2. 把 Claude `commands` 填入 Vetta `commands`。
+1. 把 Claude `.claude-plugin/plugin.json` 直接交给 Astravia plugin store。
+2. 把 Claude `commands` 填入 Astravia `commands`。
 3. 在 Codex `fca51f6` profile 中加入 Claude 特例。
 4. 仅把 agent Markdown body 注入 root prompt，却宣称 custom agent 已支持。
 5. 用多次 `spawn_agent` 模拟 Agent Teams，却不实现 task graph/mailbox。
 6. 在 Windows 自动翻译 Bash。
 7. 扫描用户 `~/.claude` 后静默执行 Hook；所有来源必须由宿主显式传入并获信任。
-8. 在 Vetta 核心硬编码 `cc-skills` 插件名或工作流语义。
+8. 在 Astravia 核心硬编码 `cc-skills` 插件名或工作流语义。
 

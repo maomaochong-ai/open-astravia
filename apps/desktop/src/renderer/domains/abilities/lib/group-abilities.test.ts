@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+	ABILITY_CATEGORY_ASTRAVIA_BUILTIN,
 	ABILITY_CATEGORY_CONNECTORS,
 	ABILITY_CATEGORY_UNCATEGORIZED,
-	ABILITY_CATEGORY_VETTA_BUILTIN,
 	type SkillAbility,
 } from "../types";
 import { groupAbilities } from "./group-abilities";
@@ -67,7 +67,7 @@ describe("groupAbilities", () => {
 		expect(groups.map((group) => group.category)).toEqual([
 			ABILITY_CATEGORY_CONNECTORS,
 			"General",
-			ABILITY_CATEGORY_VETTA_BUILTIN,
+			ABILITY_CATEGORY_ASTRAVIA_BUILTIN,
 			ABILITY_CATEGORY_UNCATEGORIZED,
 		]);
 		expect(groups[2]?.items.map((item) => item.slug)).toEqual(["builtin-skill"]);
@@ -85,7 +85,7 @@ describe("groupAbilities", () => {
 			ability("market-skill", { category: "Design" }),
 		]);
 
-		expect(groups.map((group) => group.category)).toEqual(["Design", ABILITY_CATEGORY_VETTA_BUILTIN]);
+		expect(groups.map((group) => group.category)).toEqual(["Design", ABILITY_CATEGORY_ASTRAVIA_BUILTIN]);
 		expect(groups[0]?.items.map((item) => item.slug)).toEqual(["market-skill"]);
 	});
 

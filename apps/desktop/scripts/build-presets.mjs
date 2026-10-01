@@ -14,7 +14,7 @@ import {
 	stageSystemPluginsFromArchives,
 } from "./stage-system-plugins.mjs";
 
-// 在读取 VETTA_TENANT 等构建期变量前，从 .env.<mode>/.env 注入（命令行内联优先）。
+// 在读取 ASTRAVIA_TENANT 等构建期变量前，从 .env.<mode>/.env 注入（命令行内联优先）。
 loadBuildEnv();
 
 const desktopAppDir = join(import.meta.dirname, "..");
@@ -188,7 +188,7 @@ if (cache.installHash === installHash && workspaceNodeModulesDirs.every((dir) =>
 	await writeCache(cache);
 }
 
-if (process.env.VETTA_SKIP_PLUGIN_TOOLING_BUILD === "1") {
+if (process.env.ASTRAVIA_SKIP_PLUGIN_TOOLING_BUILD === "1") {
 	console.log("[build-presets] 插件工具包已由 workspace 前置构建完成，跳过");
 } else {
 	for (const name of ["plugin-sdk", "plugin-vite", "plugin-cli"]) {
@@ -224,7 +224,7 @@ for (const name of entries) {
 	const hash = await hashPlugin(name, sharedBuildHash, siblingWorkspacePackages);
 	nextPresetHashes[name] = hash;
 	const manifest = JSON.parse(await readFile(join(presetsDir, name, "plugin.json"), "utf8"));
-	const archivePath = join(presetsDir, name, "release", `${manifest.id}-${manifest.version}.vettapkg`);
+	const archivePath = join(presetsDir, name, "release", `${manifest.id}-${manifest.version}.astraviapkg`);
 	if (cache.presets?.[name] !== hash || !existsSync(archivePath)) {
 		changedEntries.push(name);
 	} else {

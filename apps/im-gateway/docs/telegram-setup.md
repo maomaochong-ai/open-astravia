@@ -37,7 +37,7 @@ telegram:
   botToken: "123456789:AAF..."
 ```
 
-The token may also come from the keychain (service `vetta-im-gateway`, key `telegram_bot_token`) or the `IM_GATEWAY_TELEGRAM_BOT_TOKEN` environment variable.
+The token may also come from the keychain (service `astravia-im-gateway`, key `telegram_bot_token`) or the `IM_GATEWAY_TELEGRAM_BOT_TOKEN` environment variable.
 
 ## 5. Verify
 

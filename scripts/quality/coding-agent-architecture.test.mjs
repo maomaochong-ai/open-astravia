@@ -28,7 +28,7 @@ describe("Coding Agent durable architecture rules", () => {
 		const state = createState([
 			{
 				path: `${SOURCE_ROOT}/composition/contracts/sample.ts`,
-				text: 'import type { RuntimeSession } from "@vetta/runtime-core";',
+				text: 'import type { RuntimeSession } from "@astravia/runtime-core";',
 			},
 			{
 				path: `${SOURCE_ROOT}/memory/runtime.ts`,
@@ -44,7 +44,7 @@ describe("Coding Agent durable architecture rules", () => {
 			},
 			{
 				path: "apps/cli-host/src/runtime.ts",
-				text: 'import { createCodingAgentRuntimeComposition } from "@vetta/coding-agent/composition";',
+				text: 'import { createCodingAgentRuntimeComposition } from "@astravia/coding-agent/composition";',
 			},
 		]);
 		expect(findCodingAgentArchitectureViolations(state)).toEqual([]);
@@ -88,7 +88,7 @@ describe("Coding Agent durable architecture rules", () => {
 			},
 			{
 				path: `${SOURCE_ROOT}/sessions/legacy/reader.ts`,
-				text: 'import { readLegacy } from "@vetta/runtime-node/sessions";',
+				text: 'import { readLegacy } from "@astravia/runtime-node/sessions";',
 			},
 		]);
 		const violations = findCodingAgentArchitectureViolations(state);
@@ -122,11 +122,11 @@ describe("Coding Agent durable architecture rules", () => {
 			[
 				{
 					path: "apps/cli-host/src/public.ts",
-					text: 'import { value } from "@vetta/coding-agent/public/foo";',
+					text: 'import { value } from "@astravia/coding-agent/public/foo";',
 				},
 				{
 					path: "apps/cli-host/src/private.ts",
-					text: 'import { value } from "@vetta/coding-agent/src/private";',
+					text: 'import { value } from "@astravia/coding-agent/src/private";',
 				},
 			],
 			{

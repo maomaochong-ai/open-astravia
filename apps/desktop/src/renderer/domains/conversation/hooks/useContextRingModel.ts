@@ -1,5 +1,5 @@
+import { CONTEXT_RING_CIRCUMFERENCE } from "@astravia-org/theme-ui/chat";
 import { type ContextUsageData, contextUsageAtom, isCompactingAtom } from "@shared/store/atoms";
-import { CONTEXT_RING_CIRCUMFERENCE } from "@vetta-org/theme-ui/chat";
 import { useAtomValue } from "jotai";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";

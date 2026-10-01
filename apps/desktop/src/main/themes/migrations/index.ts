@@ -1,4 +1,4 @@
-import { runFileMigrations } from "@vetta/toolkit/file-migrations";
+import { runFileMigrations } from "@astravia/toolkit/file-migrations";
 import type { getAppLogger } from "../../logger.js";
 import { splitThemeStorageDataJsonMigration } from "./001_split_data_json.js";
 

@@ -74,7 +74,7 @@ export function useAppshotSettingsModel(): AppshotSettingsModel {
 	const [snapshot, setSnapshot] = useState<PermissionsSnapshot | null>(null);
 
 	useEffect(() => {
-		void window.vetta.config.get().then((config) => {
+		void window.astravia.config.get().then((config) => {
 			const appshot = config.appshot;
 			const enabled = appshot?.enabled === true;
 			const gesture = normalizeGesture(appshot?.gesture);
@@ -84,7 +84,7 @@ export function useAppshotSettingsModel(): AppshotSettingsModel {
 
 	const refreshPermissions = useCallback(async () => {
 		try {
-			setSnapshot(await window.vetta.permissions.checkAll());
+			setSnapshot(await window.astravia.permissions.checkAll());
 		} catch (err) {
 			console.warn("[AppshotSettings] permissions check failed", err);
 		}
@@ -98,16 +98,16 @@ export function useAppshotSettingsModel(): AppshotSettingsModel {
 	}, [refreshPermissions]);
 
 	const openOnboarding = useCallback(() => {
-		void window.vetta.appshot.openOnboarding();
+		void window.astravia.appshot.openOnboarding();
 	}, []);
 
 	const handleChange = useCallback(
 		async (next: AppshotSelectValue) => {
 			setValue(next);
-			await window.vetta.config.set(
+			await window.astravia.config.set(
 				next === "none" ? { appshot: { enabled: false } } : { appshot: { enabled: true, gesture: next } },
 			);
-			await window.vetta.appshot.reloadGesture();
+			await window.astravia.appshot.reloadGesture();
 			recordSettingsUsage({
 				tab: "appshot",
 				action: next === "none" ? "disabled" : "changed",
@@ -115,7 +115,7 @@ export function useAppshotSettingsModel(): AppshotSettingsModel {
 				value: next,
 			});
 			if (next !== "none") {
-				const nextSnapshot = await window.vetta.permissions.checkAll().catch(() => null);
+				const nextSnapshot = await window.astravia.permissions.checkAll().catch(() => null);
 				setSnapshot(nextSnapshot);
 				if (
 					nextSnapshot &&

@@ -1,4 +1,4 @@
-import type { RemoteScreenCursor } from "@vetta/remote-control";
+import type { RemoteScreenCursor } from "@astravia/remote-control";
 import {
 	buildInviteQr,
 	buildPairingUri,
@@ -19,7 +19,7 @@ import {
 	sealInvite,
 	sha256Hex,
 	toBase64Url,
-} from "@vetta/remote-control";
+} from "@astravia/remote-control";
 import type { RemoteControlConfig, RemoteControlDeviceRecord } from "../config/desktop-config-store.js";
 import { getAppLogger } from "../logger.js";
 import { DESKTOP_REMOTE_CAPABILITIES } from "./desktop-capabilities.js";

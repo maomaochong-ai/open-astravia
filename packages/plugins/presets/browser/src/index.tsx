@@ -1,4 +1,4 @@
-import { definePlugin } from "@vetta-org/plugin-sdk";
+import { definePlugin } from "@astravia-org/plugin-sdk";
 import type { JSX } from "react";
 import { BrowserConsole, type BrowserConsolePorts } from "./components/BrowserConsole";
 import { BrowserRuntimeController } from "./runtime/runtime-controller";

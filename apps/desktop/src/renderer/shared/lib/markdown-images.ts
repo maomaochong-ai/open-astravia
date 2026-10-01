@@ -34,7 +34,7 @@ export async function resolveMarkdownImage(
 
 export function imageDataForAction(source: string): Promise<string> {
 	if (DATA_IMAGE.test(source) && source.length <= 12_000_000) return Promise.resolve(source);
-	return window.vetta.markdown.imageData(source);
+	return window.astravia.markdown.imageData(source);
 }
 export function imageFileName(data: string): string {
 	if (/^https?:\/\//i.test(data)) {

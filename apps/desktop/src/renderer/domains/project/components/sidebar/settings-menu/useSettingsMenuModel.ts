@@ -78,7 +78,7 @@ export function useRefreshBillingOnOpen(): (open: boolean, userPresent: boolean)
 
 	return (open: boolean, userPresent: boolean): void => {
 		if (!open || !userPresent) return;
-		void window.vetta.subscription
+		void window.astravia.subscription
 			.getStatus()
 			.then((result) => {
 				if (result.status) setSubscriptionStatus(result.status);
@@ -95,6 +95,6 @@ export function useRefreshBillingOnOpen(): (open: boolean, userPresent: boolean)
 export function useSyncUpdateOnOpen(): (open: boolean) => void {
 	return (open: boolean): void => {
 		if (!open) return;
-		void window.vetta.updater.sync().catch(console.error);
+		void window.astravia.updater.sync().catch(console.error);
 	};
 }

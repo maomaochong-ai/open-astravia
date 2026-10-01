@@ -11,7 +11,7 @@ function legacy(overrides: Partial<LegacyScheduledTask> = {}): LegacyScheduledTa
 		cron: "0 9 * * *",
 		isOnce: false,
 		enabled: true,
-		cwd: "C:/home/.vetta/workspace",
+		cwd: "C:/home/.astravia/workspace",
 		executionMode: "sandbox",
 		createdAt: 1,
 		updatedAt: 2,
@@ -47,14 +47,14 @@ describe("legacy automation migration", () => {
 	it("keeps unknown cwd tasks in the conversation and turns the skill into an inline token", () => {
 		const migrated = migrateLegacyTask(
 			legacy({ skill: { name: "daily report", type: "skill" }, modelKey: "anthropic/opus" }),
-			{ conversationCwd: "C:/home/.vetta/conversation", isKnownProject: () => false, now: NOW },
+			{ conversationCwd: "C:/home/.astravia/conversation", isKnownProject: () => false, now: NOW },
 		);
 		expect(migrated).toEqual({
 			id: "legacy",
 			name: "Legacy",
 			prompt: '@skill:"daily report" do it',
 			schedule: { kind: "daily", hour: 9, minute: 0 },
-			runTarget: { mode: "new-session", projectCwd: "C:/home/.vetta/conversation" },
+			runTarget: { mode: "new-session", projectCwd: "C:/home/.astravia/conversation" },
 			model: { key: "anthropic/opus" },
 			enabled: true,
 			createdAt: 1,
@@ -66,7 +66,7 @@ describe("legacy automation migration", () => {
 
 	it("targets a known project and disables one-time tasks whose moment already passed", () => {
 		const migrated = migrateLegacyTask(legacy({ cwd: "C:/repo", cron: "0 9 1 1 *", isOnce: true }), {
-			conversationCwd: "C:/home/.vetta/conversation",
+			conversationCwd: "C:/home/.astravia/conversation",
 			isKnownProject: (cwd) => cwd === "C:/repo",
 			now: NOW,
 		});
@@ -75,7 +75,7 @@ describe("legacy automation migration", () => {
 		expect(migrated.enabled).toBe(true);
 
 		const disabled = migrateLegacyTask(legacy({ cron: "0 9 1 1 *", isOnce: true, enabled: false }), {
-			conversationCwd: "C:/home/.vetta/conversation",
+			conversationCwd: "C:/home/.astravia/conversation",
 			isKnownProject: () => false,
 			now: NOW,
 		});

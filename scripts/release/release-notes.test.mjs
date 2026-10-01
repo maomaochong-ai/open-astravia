@@ -7,13 +7,13 @@ import { desktopVersion, releaseNotesPath, requireReleaseNotes } from "./release
 const roots = [];
 
 function fixtureRoot(version, notesVersions = []) {
-	const root = mkdtempSync(join(tmpdir(), "vetta-release-notes-"));
+	const root = mkdtempSync(join(tmpdir(), "astravia-release-notes-"));
 	roots.push(root);
 	mkdirSync(join(root, "apps/desktop"), { recursive: true });
 	writeFileSync(join(root, "apps/desktop/package.json"), JSON.stringify({ version }));
 	mkdirSync(join(root, ".github/release-notes"), { recursive: true });
 	for (const notesVersion of notesVersions) {
-		writeFileSync(join(root, ".github/release-notes", `v${notesVersion}.md`), `# Vetta ${notesVersion}\n`);
+		writeFileSync(join(root, ".github/release-notes", `v${notesVersion}.md`), `# Astravia ${notesVersion}\n`);
 	}
 	return root;
 }

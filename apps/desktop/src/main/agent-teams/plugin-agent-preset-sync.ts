@@ -1,4 +1,4 @@
-import { pluginBlueprintId } from "@vetta/agent-team";
+import { pluginBlueprintId } from "@astravia/agent-team";
 import type { InstalledPlugin } from "../../preload/api-types/plugins.js";
 import { getAppLogger } from "../logger.js";
 import { listPlugins, onPluginsChanged } from "../plugins/plugin-catalog.js";

@@ -1,4 +1,4 @@
-import type { EcosystemHookAdapterFactory, HookConfigLayer } from "@vetta/ecosystem-adapter";
+import type { EcosystemHookAdapterFactory, HookConfigLayer } from "@astravia/ecosystem-adapter";
 import type {
 	RuntimeAgentDefinition,
 	RuntimeAgentDefinitionSourceRef,
@@ -8,16 +8,16 @@ import type {
 	RuntimeObservationPublisher,
 	RuntimeObservationRouteOptions,
 	SessionConfig,
-} from "@vetta/runtime-core";
-import type { AgentCoreTurnEngineOptions } from "@vetta/runtime-core/kernel";
+} from "@astravia/runtime-core";
+import type { AgentCoreTurnEngineOptions } from "@astravia/runtime-core/kernel";
 import type {
 	SessionExtensionDefinition,
 	SessionExtensionFunctionSource,
-} from "@vetta/runtime-core/session-extensions";
-import type { McpRuntimeToolSource } from "@vetta/runtime-mcp";
-import type { ConversationOwnershipManager } from "@vetta/runtime-storage/conversation";
-import type { SubagentTypeRegistryLike } from "@vetta/runtime-subagents";
-import type { CodingToolResultPolicy } from "@vetta/runtime-tools";
+} from "@astravia/runtime-core/session-extensions";
+import type { McpRuntimeToolSource } from "@astravia/runtime-mcp";
+import type { ConversationOwnershipManager } from "@astravia/runtime-storage/conversation";
+import type { SubagentTypeRegistryLike } from "@astravia/runtime-subagents";
+import type { CodingToolResultPolicy } from "@astravia/runtime-tools";
 import type { CodingAgentKnowledgeRuntime } from "../../features/knowledge/contracts.js";
 import type { CodingAgentTodoRuntime } from "../../features/todo/contracts.js";
 import type { CodingAgentMemoryRolloverRuntime } from "../../memory/index.js";

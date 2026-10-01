@@ -12,11 +12,11 @@ on:
         options: [default, "true", "false"]
         default: default
       server_url:
-        description: "VETTA_SERVER_URL override. Required for a commercial build."
+        description: "ASTRAVIA_SERVER_URL override. Required for a commercial build."
         type: string
         required: false
       site_url:
-        description: "VETTA_SITE_URL override. Empty keeps Environment / repo value."
+        description: "ASTRAVIA_SITE_URL override. Empty keeps Environment / repo value."
         type: string
         required: false
       marketplace_repository:
@@ -28,16 +28,16 @@ on:
         type: string
         required: false
       tenant:
-        description: "VETTA_TENANT override (packages/plugins/tenants.json)."
+        description: "ASTRAVIA_TENANT override (packages/plugins/tenants.json)."
         type: string
         required: false
       speech_input:
-        description: "VETTA_SPEECH_INPUT_ENABLED. default = Environment / repo variable."
+        description: "ASTRAVIA_SPEECH_INPUT_ENABLED. default = Environment / repo variable."
         type: choice
         options: [default, "true", "false"]
         default: default
       channel:
-        description: "Rewrite update URL / R2 prefix to stable or test when those path segments exist. Dedicated VETTA_*_TEST / _STABLE vars win."
+        description: "Rewrite update URL / R2 prefix to stable or test when those path segments exist. Dedicated ASTRAVIA_*_TEST / _STABLE vars win."
         type: choice
         options: [default, stable, test]
         default: default
@@ -46,15 +46,15 @@ on:
         type: string
         required: false
       update_url:
-        description: "VETTA_UPDATE_URL override."
+        description: "ASTRAVIA_UPDATE_URL override."
         type: string
         required: false
       r2_prefix:
-        description: "VETTA_R2_PREFIX override (publish job only)."
+        description: "ASTRAVIA_R2_PREFIX override (publish job only)."
         type: string
         required: false
       release_target:
-        description: "Where a matching tag or stable/test dispatch publishes. default = VETTA_RELEASE_TARGET or github."
+        description: "Where a matching tag or stable/test dispatch publishes. default = ASTRAVIA_RELEASE_TARGET or github."
         type: choice
         options: [default, r2, github]
         default: default
@@ -133,23 +133,23 @@ jobs:
           INPUT_SPEECH_INPUT: ${{ github.event.inputs.speech_input }}
           INPUT_TENANT: ${{ github.event.inputs.tenant }}
           INPUT_UPDATE_URL: ${{ github.event.inputs.update_url }}
-          VAR_CLOUD_ENABLED: ${{ vars.VETTA_CLOUD_ENABLED }}
-          VAR_MARKETPLACE_REPOSITORY: ${{ vars.VETTA_OPEN_MARKETPLACE_REPOSITORY }}
-          VAR_MARKETPLACE_REF: ${{ vars.VETTA_OPEN_MARKETPLACE_REF }}
-          VAR_R2_BUCKET: ${{ vars.VETTA_R2_BUCKET }}
-          VAR_R2_PREFIX: ${{ vars.VETTA_R2_PREFIX }}
-          VAR_R2_PREFIX_STABLE: ${{ vars.VETTA_R2_PREFIX_STABLE }}
-          VAR_R2_PREFIX_TEST: ${{ vars.VETTA_R2_PREFIX_TEST }}
-          VAR_RELEASE_CHANNEL: ${{ vars.VETTA_RELEASE_CHANNEL }}
-          VAR_TEST_BUILD_VERSION: ${{ vars.VETTA_TEST_BUILD_VERSION }}
-          VAR_RELEASE_TARGET: ${{ vars.VETTA_RELEASE_TARGET }}
-          VAR_SERVER_URL: ${{ vars.VETTA_SERVER_URL }}
-          VAR_SITE_URL: ${{ vars.VETTA_SITE_URL }}
-          VAR_SPEECH_INPUT: ${{ vars.VETTA_SPEECH_INPUT_ENABLED }}
-          VAR_TENANT: ${{ vars.VETTA_TENANT }}
-          VAR_UPDATE_URL: ${{ vars.VETTA_UPDATE_URL }}
-          VAR_UPDATE_URL_STABLE: ${{ vars.VETTA_UPDATE_URL_STABLE }}
-          VAR_UPDATE_URL_TEST: ${{ vars.VETTA_UPDATE_URL_TEST }}
+          VAR_CLOUD_ENABLED: ${{ vars.ASTRAVIA_CLOUD_ENABLED }}
+          VAR_MARKETPLACE_REPOSITORY: ${{ vars.ASTRAVIA_OPEN_MARKETPLACE_REPOSITORY }}
+          VAR_MARKETPLACE_REF: ${{ vars.ASTRAVIA_OPEN_MARKETPLACE_REF }}
+          VAR_R2_BUCKET: ${{ vars.ASTRAVIA_R2_BUCKET }}
+          VAR_R2_PREFIX: ${{ vars.ASTRAVIA_R2_PREFIX }}
+          VAR_R2_PREFIX_STABLE: ${{ vars.ASTRAVIA_R2_PREFIX_STABLE }}
+          VAR_R2_PREFIX_TEST: ${{ vars.ASTRAVIA_R2_PREFIX_TEST }}
+          VAR_RELEASE_CHANNEL: ${{ vars.ASTRAVIA_RELEASE_CHANNEL }}
+          VAR_TEST_BUILD_VERSION: ${{ vars.ASTRAVIA_TEST_BUILD_VERSION }}
+          VAR_RELEASE_TARGET: ${{ vars.ASTRAVIA_RELEASE_TARGET }}
+          VAR_SERVER_URL: ${{ vars.ASTRAVIA_SERVER_URL }}
+          VAR_SITE_URL: ${{ vars.ASTRAVIA_SITE_URL }}
+          VAR_SPEECH_INPUT: ${{ vars.ASTRAVIA_SPEECH_INPUT_ENABLED }}
+          VAR_TENANT: ${{ vars.ASTRAVIA_TENANT }}
+          VAR_UPDATE_URL: ${{ vars.ASTRAVIA_UPDATE_URL }}
+          VAR_UPDATE_URL_STABLE: ${{ vars.ASTRAVIA_UPDATE_URL_STABLE }}
+          VAR_UPDATE_URL_TEST: ${{ vars.ASTRAVIA_UPDATE_URL_TEST }}
         run: node scripts/release/resolve-desktop-release-config.mjs --github-output >> "${GITHUB_OUTPUT}"
 
       - name: Write resolved config to the job summary
@@ -240,7 +240,7 @@ jobs:
             command: dist:win
             macArch: ""
           # arm64 与 x64 必须分两次构建：内置的 node/python 运行时按
-          # VETTA_VENDOR_PLATFORM 单架构落盘，一次构建出不了两套。两次都会写同名的
+          # ASTRAVIA_VENDOR_PLATFORM 单架构落盘，一次构建出不了两套。两次都会写同名的
           # latest-mac.yml，因此各自重命名后上传，由发布任务合并回单一元数据。
           # 两个架构各自使用匹配的 GitHub-hosted runner：签名与公证凭据来自 CI Secret，
           # notarytool 只需要网络，不依赖任何一台固定的签名机。
@@ -313,7 +313,7 @@ jobs:
               echo "Runner-provided macOS signing configuration is missing notarization credentials." >&2
               exit 1
             fi
-            echo "VETTA_REQUIRE_MAC_SIGNATURE=1" >> "${GITHUB_ENV}"
+            echo "ASTRAVIA_REQUIRE_MAC_SIGNATURE=1" >> "${GITHUB_ENV}"
             echo "Using macOS signing credentials provided by the runner environment."
             exit 0
           fi
@@ -350,7 +350,7 @@ jobs:
             exit 1
           fi
 
-          CERTIFICATE_PATH="${RUNNER_TEMP}/vetta-developer-id.p12"
+          CERTIFICATE_PATH="${RUNNER_TEMP}/astravia-developer-id.p12"
           API_KEY_PATH="${RUNNER_TEMP}/AuthKey_${SECRET_APPLE_API_KEY_ID}.p8"
           PAYLOAD="${SECRET_MACOS_CERTIFICATE_P12_BASE64}" OUTPUT_PATH="${CERTIFICATE_PATH}" \
             node -e 'require("node:fs").writeFileSync(process.env.OUTPUT_PATH, Buffer.from(process.env.PAYLOAD, "base64"))'
@@ -364,7 +364,7 @@ jobs:
             echo "APPLE_API_KEY_ID=${SECRET_APPLE_API_KEY_ID}"
             echo "APPLE_API_ISSUER=${SECRET_APPLE_API_ISSUER}"
             echo "APPLE_TEAM_ID=${SECRET_APPLE_TEAM_ID}"
-            echo "VETTA_REQUIRE_MAC_SIGNATURE=1"
+            echo "ASTRAVIA_REQUIRE_MAC_SIGNATURE=1"
           } >> "${GITHUB_ENV}"
 
       # release/ 不在版本控制里，actions/checkout 清不掉。复用工作目录的 runner 上
@@ -402,8 +402,8 @@ jobs:
         env:
           # 由 prepare 解析：dispatch 表单 > desktop-production Environment/仓库 Variables。
           # fork 不配任何值就得到开源版。空 optional 键不会写入 GITHUB_ENV。
-          VETTA_UPDATE_GITHUB_OWNER: ${{ github.repository_owner }}
-          VETTA_UPDATE_GITHUB_REPO: ${{ github.event.repository.name }}
+          ASTRAVIA_UPDATE_GITHUB_OWNER: ${{ github.repository_owner }}
+          ASTRAVIA_UPDATE_GITHUB_REPO: ${{ github.event.repository.name }}
         run: bun run ${{ matrix.command }}
 
       - name: Name macOS update metadata per architecture
@@ -495,9 +495,9 @@ jobs:
       - name: Publish artifacts before metadata
         working-directory: apps/desktop
         env:
-          VETTA_R2_ACCOUNT_ID: ${{ secrets.VETTA_R2_ACCOUNT_ID }}
-          VETTA_R2_ACCESS_KEY_ID: ${{ secrets.VETTA_R2_ACCESS_KEY_ID }}
-          VETTA_R2_SECRET_ACCESS_KEY: ${{ secrets.VETTA_R2_SECRET_ACCESS_KEY }}
+          ASTRAVIA_R2_ACCOUNT_ID: ${{ secrets.ASTRAVIA_R2_ACCOUNT_ID }}
+          ASTRAVIA_R2_ACCESS_KEY_ID: ${{ secrets.ASTRAVIA_R2_ACCESS_KEY_ID }}
+          ASTRAVIA_R2_SECRET_ACCESS_KEY: ${{ secrets.ASTRAVIA_R2_SECRET_ACCESS_KEY }}
         run: bun run publish:updates:r2
 
   # R2 目标也要发 GitHub Release：R2 是更新源，GitHub Release 是对外的下载入口和
@@ -555,7 +555,7 @@ jobs:
             echo "Resuming draft release ${TAG}"
             gh release edit "${TAG}" --notes-file "${NOTES_FILE}"
           else
-            gh release create "${TAG}" --draft --notes-file "${NOTES_FILE}" --title "Vetta ${VERSION}" --target "${GITHUB_SHA}"
+            gh release create "${TAG}" --draft --notes-file "${NOTES_FILE}" --title "Astravia ${VERSION}" --target "${GITHUB_SHA}"
           fi
           find apps/desktop/release -maxdepth 1 -type f -print0 \
             | xargs -0 gh release upload "${TAG}" --clobber
@@ -579,10 +579,10 @@ jobs:
         shell: bash
         env:
           BUILD_VERSION: ${{ needs.prepare.outputs.build-version }}
-          VETTA_UPDATE_PROVIDER: generic
-          VETTA_UPDATE_URL: ${{ needs.prepare.outputs.update_url }}
+          ASTRAVIA_UPDATE_PROVIDER: generic
+          ASTRAVIA_UPDATE_URL: ${{ needs.prepare.outputs.update_url }}
         run: |
-          export VETTA_DESKTOP_RELEASE_VERSION="${BUILD_VERSION:-$(node -p "require('./package.json').version")}"
+          export ASTRAVIA_DESKTOP_RELEASE_VERSION="${BUILD_VERSION:-$(node -p "require('./package.json').version")}"
           node scripts/verify-update-feed.mjs
 
   verify-feed-github:
@@ -603,9 +603,9 @@ jobs:
         shell: bash
         env:
           BUILD_VERSION: ${{ needs.prepare.outputs.build-version }}
-          VETTA_UPDATE_PROVIDER: github
-          VETTA_UPDATE_GITHUB_OWNER: ${{ github.repository_owner }}
-          VETTA_UPDATE_GITHUB_REPO: ${{ github.event.repository.name }}
+          ASTRAVIA_UPDATE_PROVIDER: github
+          ASTRAVIA_UPDATE_GITHUB_OWNER: ${{ github.repository_owner }}
+          ASTRAVIA_UPDATE_GITHUB_REPO: ${{ github.event.repository.name }}
         run: |
-          export VETTA_DESKTOP_RELEASE_VERSION="${BUILD_VERSION:-$(node -p "require('./package.json').version")}"
+          export ASTRAVIA_DESKTOP_RELEASE_VERSION="${BUILD_VERSION:-$(node -p "require('./package.json').version")}"
           node scripts/verify-update-feed.mjs

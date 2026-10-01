@@ -10,7 +10,7 @@ import type {
 	ScheduleRecordItem,
 	ScheduleSummaryCardItem,
 	ScheduleTaskControlItem,
-} from "@vetta-org/theme-ui/activity";
+} from "@astravia-org/theme-ui/activity";
 import type { TFunction } from "i18next";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
@@ -94,7 +94,7 @@ export function useScheduleExecutionTabPanelModel(cwd: string): ScheduleExecutio
 	const loadRecords = useCallback(async (targetTasks: ScheduledTask[]) => {
 		const entries = await Promise.all(
 			targetTasks.map(async (task) => {
-				const records = await window.vetta.scheduler.getRecords(task.id);
+				const records = await window.astravia.scheduler.getRecords(task.id);
 				return [task.id, records] as const;
 			}),
 		);
@@ -114,7 +114,7 @@ export function useScheduleExecutionTabPanelModel(cwd: string): ScheduleExecutio
 	}, [projectTasks, loadRecords]);
 
 	useEffect(() => {
-		const unsubscribe = window.vetta.scheduler.onTaskEvent(async () => {
+		const unsubscribe = window.astravia.scheduler.onTaskEvent(async () => {
 			await refreshTasks();
 		});
 		return unsubscribe;

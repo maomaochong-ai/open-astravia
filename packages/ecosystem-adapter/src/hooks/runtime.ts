@@ -186,7 +186,7 @@ export class EcosystemHookRuntime {
 
 	/**
 	 * Best-effort session teardown hook. Cannot block session end.
-	 * `cause` is Vetta-native ({@link SessionEndCause}); Claude wire `reason` is mapped only in the Claude profile.
+	 * `cause` is Astravia-native ({@link SessionEndCause}); Claude wire `reason` is mapped only in the Claude profile.
 	 * Captures session id / transcript path synchronously via {@link baseEvent}.
 	 */
 	async runSessionEnd(cause: SessionEndCause, signal?: AbortSignal): Promise<HookDispatchOutcome> {

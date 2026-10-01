@@ -157,7 +157,7 @@ export function useRemotePairingSettingsModel(): RemotePairingSettingsModel {
 	useEffect(() => {
 		let cancelled = false;
 		// The desktop pushes every change: a phone coming or going, an invite or approval appearing.
-		const unsubscribe = window.vetta.remotePairing.onStateChanged((next) => {
+		const unsubscribe = window.astravia.remotePairing.onStateChanged((next) => {
 			if (cancelled) return;
 			setState(next);
 			setFailure((current) => (current === "load" ? undefined : current));
@@ -165,11 +165,11 @@ export function useRemotePairingSettingsModel(): RemotePairingSettingsModel {
 
 		const initialize = async (): Promise<void> => {
 			try {
-				const current = await window.vetta.remotePairing.getState();
+				const current = await window.astravia.remotePairing.getState();
 				if (cancelled) return;
 				setState(current);
 				if (current.invite || !current.vaultAvailable) return;
-				const next = await window.vetta.remotePairing.createInvite();
+				const next = await window.astravia.remotePairing.createInvite();
 				if (!cancelled) apply(next);
 			} catch {
 				if (!cancelled) setFailure("create");
@@ -231,7 +231,7 @@ export function useRemotePairingSettingsModel(): RemotePairingSettingsModel {
 	// phone or was refreshed is replaced at once. A failure stops it until the person retries.
 	const needsInvite = !initializing && !busy && !failure && !state.invite && state.vaultAvailable;
 	useEffect(() => {
-		if (needsInvite) void run(() => window.vetta.remotePairing.createInvite(), "create");
+		if (needsInvite) void run(() => window.astravia.remotePairing.createInvite(), "create");
 	}, [needsInvite, run]);
 
 	const labels = useMemo<RemotePairingSettingsModel["labels"]>(
@@ -308,25 +308,26 @@ export function useRemotePairingSettingsModel(): RemotePairingSettingsModel {
 
 	const actions = useMemo<RemotePairingSettingsModel["actions"]>(
 		() => ({
-			approve: (id, allow) => void run(() => window.vetta.remotePairing.approve(id, allow)),
+			approve: (id, allow) => void run(() => window.astravia.remotePairing.approve(id, allow)),
 			cancelInvite: () => {
 				renewedFromRef.current = inviteIdRef.current ?? "";
 				setRenewing(true);
-				void run(() => window.vetta.remotePairing.cancelInvite());
+				void run(() => window.astravia.remotePairing.cancelInvite());
 			},
-			createInvite: () => void run(() => window.vetta.remotePairing.createInvite(), "create"),
-			revokeDevice: (id) => void run(() => window.vetta.remotePairing.revokeDevice(id)),
-			setCloudEnabled: (enabled) => void run(() => window.vetta.remotePairing.setCloudEnabled(enabled)),
-			setDesktopControl: (id, enabled) => void run(() => window.vetta.remotePairing.setDesktopControl(id, enabled)),
+			createInvite: () => void run(() => window.astravia.remotePairing.createInvite(), "create"),
+			revokeDevice: (id) => void run(() => window.astravia.remotePairing.revokeDevice(id)),
+			setCloudEnabled: (enabled) => void run(() => window.astravia.remotePairing.setCloudEnabled(enabled)),
+			setDesktopControl: (id, enabled) =>
+				void run(() => window.astravia.remotePairing.setDesktopControl(id, enabled)),
 			setRelay: async (url) => {
 				try {
-					apply(await window.vetta.remotePairing.setRelay(url));
+					apply(await window.astravia.remotePairing.setRelay(url));
 					return true;
 				} catch {
 					return false;
 				}
 			},
-			testRelay: (url) => window.vetta.remotePairing.testRelay(url).catch(() => "unreachable" as const),
+			testRelay: (url) => window.astravia.remotePairing.testRelay(url).catch(() => "unreachable" as const),
 		}),
 		[apply, run],
 	);

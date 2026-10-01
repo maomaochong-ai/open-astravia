@@ -1,7 +1,7 @@
+import { CAPABILITY_ERROR_CODES } from "@astravia-org/capability-sdk";
 import { RendererCapabilityHost } from "@shared/capabilities/renderer-capability-host";
 import { registerHostedRouteCapabilityProvider } from "@shared/hosted-routes/hosted-route-capability-provider";
 import { HostedRouteService } from "@shared/hosted-routes/hosted-route-service";
-import { CAPABILITY_ERROR_CODES } from "@vetta-org/capability-sdk";
 import { describe, expect, it, vi } from "vitest";
 import { PLUGIN_RENDERER_ROUTE_NAMESPACE } from "./plugin-hosted-route-capability.js";
 import { PluginRendererCapabilityHost } from "./plugin-renderer-capability-host.js";

@@ -2,7 +2,7 @@
 
 ## 1. 目标
 
-第 95 轮验证了 `@vetta/runtime-composition` 的 `dist` 闭包和真实 Desktop 主进程 Canary，
+第 95 轮验证了 `@astravia/runtime-composition` 的 `dist` 闭包和真实 Desktop 主进程 Canary，
 但 CLI 仍由源码入口驱动测试，未证明 Desktop 实际分发的单文件可执行程序能够在源码不可见时：
 
 - 启动 Greenfield IM Runtime；
@@ -26,8 +26,8 @@
 process.execPath ./agent-cli.js
 ```
 
-在单文件 Bun 产物中，`process.execPath` 已是 `vetta` 自身，而文件系统中不存在 `agent-cli.js`。
-因此顶层帮助可以运行，`vetta agent --help` 却会挂起并异常退出。
+在单文件 Bun 产物中，`process.execPath` 已是 `astravia` 自身，而文件系统中不存在 `agent-cli.js`。
+因此顶层帮助可以运行，`astravia agent --help` 却会挂起并异常退出。
 
 修复方式：
 
@@ -42,7 +42,7 @@ process.execPath ./agent-cli.js
 
 单文件产物启动 Agent 后，`coding-agent/config.ts` 会从可执行文件所在目录读取 `package.json`。
 但 Desktop 的平台二进制位于 `cli-host/bin/<platform>/`，Windows 安装过程还会只复制
-`vetta.exe` 到用户 bin 目录，因此这个隐式文件依赖并不成立。
+`astravia.exe` 到用户 bin 目录，因此这个隐式文件依赖并不成立。
 
 修复方式：
 

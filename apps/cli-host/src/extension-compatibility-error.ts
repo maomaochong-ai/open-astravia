@@ -1,5 +1,5 @@
-import type { CodingAgentExtensionCompatibilityAssessment } from "@vetta/coding-agent/bootstrap";
-import type { RpcExtensionIncompatibilityFailure } from "@vetta/coding-agent/rpc";
+import type { CodingAgentExtensionCompatibilityAssessment } from "@astravia/coding-agent/bootstrap";
+import type { RpcExtensionIncompatibilityFailure } from "@astravia/coding-agent/rpc";
 
 export class ExtensionCompatibilityError extends Error {
 	readonly errorCode = "extension_incompatible";

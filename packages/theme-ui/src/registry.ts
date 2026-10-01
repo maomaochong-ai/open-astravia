@@ -1,7 +1,7 @@
-import type { ThemeSurfaceConfig } from "@vetta-org/theme-sdk";
+import type { ThemeSurfaceConfig } from "@astravia-org/theme-sdk";
 import type { ComponentType } from "react";
 
-declare module "@vetta-org/theme-sdk" {
+declare module "@astravia-org/theme-sdk" {
 	interface ThemeComponentRegistry {
 		readonly "app.mainContentBackground"?: ComponentType;
 	}

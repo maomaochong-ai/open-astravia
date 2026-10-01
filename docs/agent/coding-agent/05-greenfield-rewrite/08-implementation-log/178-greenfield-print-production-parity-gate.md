@@ -2,7 +2,7 @@
 
 ## 目标
 
-第 177 轮已经把 Print 从 RPC 外围组合中分离，但高风险行为仍缺少标准 CLI 的 Legacy/Greenfield 差分证据。本轮以临时构建的独立 `vetta` CLI 可执行文件覆盖附件、工具调用、Provider 故障、Extension 错误和跨进程继续会话；只修复差分暴露出的兼容问题，不重构既有功能。
+第 177 轮已经把 Print 从 RPC 外围组合中分离，但高风险行为仍缺少标准 CLI 的 Legacy/Greenfield 差分证据。本轮以临时构建的独立 `astravia` CLI 可执行文件覆盖附件、工具调用、Provider 故障、Extension 错误和跨进程继续会话；只修复差分暴露出的兼容问题，不重构既有功能。
 
 ## 审计结论
 

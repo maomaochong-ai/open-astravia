@@ -1,10 +1,10 @@
 import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { getVettaHomePath } from "@vetta/action-rpc";
+import { getAstraviaHomePath } from "@astravia/action-rpc";
 
-const CONFIG_PATH = join(getVettaHomePath(), "desktop-config.json");
-const DEFAULT_WORKSPACE_PATH = join(getVettaHomePath(), "workspace");
+const CONFIG_PATH = join(getAstraviaHomePath(), "desktop-config.json");
+const DEFAULT_WORKSPACE_PATH = join(getAstraviaHomePath(), "workspace");
 
 function expandTilde(p: string): string {
 	if (p.startsWith("~/") || p === "~") {

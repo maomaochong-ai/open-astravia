@@ -1,7 +1,7 @@
 import type {
 	CodingAgentPlanReviewRequest,
 	CodingAgentPlanReviewResult,
-} from "@vetta/coding-agent/function-extensions";
+} from "@astravia/coding-agent/function-extensions";
 
 /** Renderer 侧审批面板的接入点；窗口重建时可替换，挂起的审批不随之丢失。 */
 export interface DesktopPlanReviewPresenter {

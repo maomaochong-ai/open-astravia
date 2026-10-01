@@ -6,4 +6,4 @@ export {
 	type DesktopCommandLocation,
 	type DesktopCommandPort,
 	type DesktopCommandResult,
-} from "@vetta/runtime-tools";
+} from "@astravia/runtime-tools";

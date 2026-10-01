@@ -41,13 +41,13 @@ import {
 } from "../pet/pet-service.js";
 
 const CHANNELS = {
-	GET_CONFIG: "vetta:pet:get-config",
-	SET_CONFIG: "vetta:pet:set-config",
-	SHOW: "vetta:pet:show",
-	HIDE: "vetta:pet:hide",
-	SET_ACTION: "vetta:pet:set-action",
-	GET_DECORATIONS: "vetta:pet:get-decorations",
-	GET_BUBBLE_STYLE_ASSETS: "vetta:pet:get-bubble-style-assets",
+	GET_CONFIG: "astravia:pet:get-config",
+	SET_CONFIG: "astravia:pet:set-config",
+	SHOW: "astravia:pet:show",
+	HIDE: "astravia:pet:hide",
+	SET_ACTION: "astravia:pet:set-action",
+	GET_DECORATIONS: "astravia:pet:get-decorations",
+	GET_BUBBLE_STYLE_ASSETS: "astravia:pet:get-bubble-style-assets",
 } as const;
 
 const PET_RESIZE_CORNERS = new Set<PetResizeCorner>(["top-left", "top-right", "bottom-left", "bottom-right"]);

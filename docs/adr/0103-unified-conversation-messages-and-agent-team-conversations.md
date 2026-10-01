@@ -24,7 +24,7 @@ ADR-0099 将 Team Session 与普通会话存储隔离，ADR-0101 要求 Chat 与
 
 ## 决策
 
-1. 在 `@vetta/runtime-core/conversation` 定义并公开导出
+1. 在 `@astravia/runtime-core/conversation` 定义并公开导出
    `ConversationUserAuthorReference`、`ConversationAgentAuthorReference`、`ConversationAuthorReference`，以及
    User/Agent 严格判别的 `ConversationMessageRecord`。Provider `Message` 不加入 Team 或 UI 字段。
 2. 用户与 Agent 消息保留角色专属结构。附件只属于用户消息；Agent 消息持有 assistant 内容、usage、stop 与错误

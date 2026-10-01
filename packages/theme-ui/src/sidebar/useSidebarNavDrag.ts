@@ -1,9 +1,9 @@
-import type { SidebarNavItem } from "@vetta-org/theme-sdk/sidebar";
+import type { SidebarNavItem } from "@astravia-org/theme-sdk/sidebar";
 import type { DragEvent } from "react";
 import { useCallback, useMemo, useState } from "react";
 
 /** 拖拽载荷的自定义 MIME，避免与文件 / 会话拖拽串台。 */
-export const SIDEBAR_NAV_DRAG_MIME = "application/x-vetta-sidebar-nav";
+export const SIDEBAR_NAV_DRAG_MIME = "application/x-astravia-sidebar-nav";
 
 export type SidebarNavRegion = "pinned" | "more";
 

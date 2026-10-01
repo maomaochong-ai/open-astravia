@@ -1,4 +1,4 @@
-import type { PluginStorageApi } from "@vetta-org/plugin-sdk";
+import type { PluginStorageApi } from "@astravia-org/plugin-sdk";
 
 export interface PluginStorageBridge {
 	storageList(sessionId: string, prefix?: string): ReturnType<PluginStorageApi["list"]>;

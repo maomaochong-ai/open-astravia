@@ -3,7 +3,7 @@ import type {
 	PluginMediaApi,
 	PluginMediaProviderDescriptor,
 	PluginNetworkApi,
-} from "@vetta-org/plugin-sdk";
+} from "@astravia-org/plugin-sdk";
 import type { ContentSettingsReader } from "../settings/content-settings";
 import { GeminiProvider } from "./gemini-provider";
 import { HostMediaProvider } from "./host-media-provider";

@@ -23,7 +23,7 @@ bunx vitest --run test/claude-hooks.test.ts
 - PreToolUse deny + matcher 隔离
 - Stop block + `stop_hook_active` 第二次放行
 
-## 2. Desktop 真机会话（vetta debug）
+## 2. Desktop 真机会话（astravia debug）
 
 前置：
 
@@ -40,7 +40,7 @@ bun apps/cli-host/src/cli.ts debug run ui.info
 
 ```powershell
 $payload = @{
-  cwd = "C:\develop\yiyun\vetta-mono\docs\adapter\claude\fixtures\hook-smoke"
+  cwd = "C:\develop\yiyun\astravia-mono\docs\adapter\claude\fixtures\hook-smoke"
   prompt = "ClaudeHook验收 20260718-SESSION-START。只回复：session hooks ok。不要调用工具。"
   executionMode = "full-access"
   timeoutMs = 180000
@@ -53,7 +53,7 @@ bun apps/cli-host/src/cli.ts debug run conversation.create $payload
 
 - `status: completed`
 - `assistantText: session hooks ok`
-- 主进程日志 `~/.vetta/desktop-app/logs/main/2026-07-18.log`：
+- 主进程日志 `~/.astravia/desktop-app/logs/main/2026-07-18.log`：
 
 ```text
 [ecosystem-hooks] claude handlers loaded {
@@ -61,8 +61,8 @@ bun apps/cli-host/src/cli.ts debug run conversation.create $payload
   total: 3,
   byEvent: { SessionStart: 1, UserPromptSubmit: 1, PreToolUse: 1 },
   sources: [
-    '...\\.vetta\\agent/claude-hooks.json',
-    '...\\fixtures\\hook-smoke\\.vetta/claude-hooks.json'
+    '...\\.astravia\\agent/claude-hooks.json',
+    '...\\fixtures\\hook-smoke\\.astravia/claude-hooks.json'
   ]
 }
 [ecosystem-hooks] dispatch {
@@ -91,7 +91,7 @@ bun apps/cli-host/src/cli.ts debug run conversation.continue '{
   "ok": false,
   "error": {
     "code": "DEBUG_CONVERSATION_FAILED",
-    "message": "CDT requires Agent Teams. Add CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 (fixture; Teams not supported in Vetta yet)."
+    "message": "CDT requires Agent Teams. Add CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 (fixture; Teams not supported in Astravia yet)."
   }
 }
 ```
@@ -135,7 +135,7 @@ bun apps/cli-host/src/cli.ts debug run conversation.continue '{
 
 ## 4. Playwright
 
-已确认 CDP attach 可连到 Electron。主窗口 tab 列表中有 `Vetta Desktop`。
+已确认 CDP attach 可连到 Electron。主窗口 tab 列表中有 `Astravia Desktop`。
 
 本轮业务正确性以 **debug RPC + 主进程日志 + 副作用（文件未写出）** 为准；Playwright 仅作辅助，不作为 Hook 协议通过与否的唯一条件。
 

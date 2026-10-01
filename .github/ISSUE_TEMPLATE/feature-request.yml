@@ -1,5 +1,5 @@
 name: Feature request
-description: Suggest a feature or improvement for Open Vetta.
+description: Suggest a feature or improvement for Open Astravia.
 title: "[Feature]: "
 labels: ["enhancement"]
 body:
@@ -8,7 +8,7 @@ body:
       value: |
         Thanks for the idea.
 
-        If you are still exploring scope or UX, open [Discussions → Ideas](https://github.com/openvetta/open-vetta/discussions/new?category=ideas) first. Use this form when the problem is clear enough to track.
+        If you are still exploring scope or UX, open [Discussions → Ideas](https://github.com/maomaochong-ai/open-astravia/discussions/new?category=ideas) first. Use this form when the problem is clear enough to track.
 
         若想法还在讨论阶段，请先走 Discussions。这里只收已经能说清问题的正式请求。
 

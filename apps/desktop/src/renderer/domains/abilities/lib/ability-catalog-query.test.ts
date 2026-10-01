@@ -182,7 +182,7 @@ describe("queryAbilityCatalog", () => {
 
 		const publicPage = queryAbilityCatalog(allAbilities, { scope: "discover", page: 1, pageSize: 60 });
 
-		// 公开：展示市场能力（不论是否已安装）与 Vetta 内置能力，排除本地未上架的个人技能与手动插件
+		// 公开：展示市场能力（不论是否已安装）与 Astravia 内置能力，排除本地未上架的个人技能与手动插件
 		expect(publicPage.items.map((item) => item.id)).toEqual([
 			installedMarket.id,
 			uninstalledMarket.id,

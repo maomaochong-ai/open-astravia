@@ -42,7 +42,7 @@ export function getDiagnosticsLogPath(): string {
 // mDNS 多播保留作为辅助。
 //
 // 必须在 app.whenReady() 之后调用，否则主进程的 bundle identity 还没在
-// launchd / TCC 子系统里就位，syscall 关联不到 com.vetta.desktop。
+// launchd / TCC 子系统里就位，syscall 关联不到 com.astravia.desktop。
 const UNICAST_PROBE_TARGETS: ReadonlyArray<{ host: string; port: number }> = [
 	{ host: "192.168.0.1", port: 1 },
 	{ host: "10.0.0.1", port: 1 },
@@ -231,7 +231,7 @@ export function installMainDiagnostics(): void {
 	patchFetch();
 
 	// 启动时打印关键 env —— 排查 "终端启动 OK / Finder 启动异常" 这类
-	// launchd vs shell 环境差异问题（PATH / proxy / VETTA_SERVER_URL 等）的
+	// launchd vs shell 环境差异问题（PATH / proxy / ASTRAVIA_SERVER_URL 等）的
 	// 第一手依据。
 	diagnosticsLog.info("startup", {
 		version: app.getVersion(),
@@ -251,7 +251,7 @@ export function installMainDiagnostics(): void {
 			hasHTTPSProxy: !!(process.env.HTTPS_PROXY ?? process.env.https_proxy),
 			hasAllProxy: !!(process.env.ALL_PROXY ?? process.env.all_proxy),
 			NO_PROXY: process.env.NO_PROXY ?? process.env.no_proxy,
-			VETTA_SERVER_URL: process.env.VETTA_SERVER_URL,
+			ASTRAVIA_SERVER_URL: process.env.ASTRAVIA_SERVER_URL,
 		},
 	});
 }

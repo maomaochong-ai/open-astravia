@@ -33,7 +33,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"vetta-im-gateway/internal/transport"
+	"astravia-im-gateway/internal/transport"
 )
 
 // Transport is the mock implementation. Construct via New; the zero value

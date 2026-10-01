@@ -1,13 +1,13 @@
-import { bindCapability, type CapabilityRegistry } from "@vetta/capability-runtime";
+import { bindCapability, type CapabilityRegistry } from "@astravia/capability-runtime";
 import {
 	CAPABILITY_ERROR_CODES,
 	CapabilityError,
 	type Disposable,
 	DOMAIN_MCP_CAPABILITIES,
-} from "@vetta-org/capability-sdk";
+} from "@astravia-org/capability-sdk";
 import { getDesktopMcpSettingsService } from "../mcp/mcp-settings-service.js";
 
-const DOMAIN_MCP_PROVIDER_OWNER = "vetta.domain.mcp";
+const DOMAIN_MCP_PROVIDER_OWNER = "astravia.domain.mcp";
 
 function assertNotAborted(signal: AbortSignal): void {
 	if (signal.aborted) {

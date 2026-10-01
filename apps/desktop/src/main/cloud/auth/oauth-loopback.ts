@@ -3,8 +3,8 @@
  *
  * 自定义 scheme 在开发模式的 macOS/Linux 上根本走不通：dev 跑的是
  * node_modules 里的 Electron.app（bundle id com.github.Electron，Info.plist
- * 没有 CFBundleURLTypes），LaunchServices 只会把 `vetta://` 派发给声明过该
- * scheme 的 bundle——也就是安装版 /Applications/Vetta.app。结果是门户回调
+ * 没有 CFBundleURLTypes），LaunchServices 只会把 `astravia://` 派发给声明过该
+ * scheme 的 bundle——也就是安装版 /Applications/Astravia.app。结果是门户回调
  * 拉起了另一个已安装的应用，开发中的实例永远收不到 token。
  * `app.setAsDefaultProtocolClient` 也救不了：macOS 上它只是把 scheme 的默认
  * handler 指向当前 bundle id，且系统拉起 bundle 时不会带上 dist/main/index.js
@@ -13,7 +13,7 @@
  * 所以开发模式改走 OAuth 标准的 loopback 回调：主进程在 127.0.0.1 上监听一个
  * 临时端口，client_redirect 指向 http://127.0.0.1:<port>/oauth/callback。
  * 门户侧 /api/auth/deep-link-url 对 `to` 不限制 scheme，无需改动。
- * 打包后仍旧走 `vetta://`。
+ * 打包后仍旧走 `astravia://`。
  */
 
 import { createServer } from "node:http";
@@ -25,12 +25,12 @@ const log = getAppLogger("auth");
 const CALLBACK_PATH = "/oauth/callback";
 
 /** dev-only 页面，仅在开发者本机浏览器一闪而过，不进 i18n。 */
-const RESPONSE_HTML = `<!doctype html><meta charset="utf-8"><title>Vetta</title><body style="font:16px system-ui;padding:48px">Authorized. You can close this window.</body>`;
+const RESPONSE_HTML = `<!doctype html><meta charset="utf-8"><title>Astravia</title><body style="font:16px system-ui;padding:48px">Authorized. You can close this window.</body>`;
 
 let callbackUrl: string | null = null;
 let handler: ((url: string) => void) | null = null;
 
-/** 回调统一归一化成 `vetta://oauth/callback?…` 后交给主进程既有的处理入口。 */
+/** 回调统一归一化成 `astravia://oauth/callback?…` 后交给主进程既有的处理入口。 */
 export function setLoopbackCallbackHandler(fn: (url: string) => void): void {
 	handler = fn;
 }
@@ -50,7 +50,7 @@ export function ensureLoopbackCallbackUrl(): Promise<string> {
 				return;
 			}
 			res.writeHead(200, { "content-type": "text/html; charset=utf-8" }).end(RESPONSE_HTML);
-			handler?.(`vetta://oauth/callback${requestUrl.search}`);
+			handler?.(`astravia://oauth/callback${requestUrl.search}`);
 		});
 		next.once("error", reject);
 		next.listen(0, "127.0.0.1", () => {

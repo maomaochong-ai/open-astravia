@@ -1,5 +1,5 @@
-import type { ConversationScenario } from "@vetta-org/plugin-sdk";
-import type { BottomPanelTabStatus } from "@vetta-org/theme-ui/bottom-panel";
+import type { ConversationScenario } from "@astravia-org/plugin-sdk";
+import type { BottomPanelTabStatus } from "@astravia-org/theme-ui/bottom-panel";
 import type { ComponentType, ReactNode } from "react";
 import type { TerminalLaunch } from "../terminal/terminal-launch";
 

@@ -101,8 +101,8 @@ describe("AppActionRuntime logging", () => {
 
 describe("development approval policy", () => {
 	it("does not invoke the approval broker for a write action in dev", async () => {
-		vi.stubEnv("VETTA_CONFIG_DIR", ".vetta-dev");
-		vi.stubEnv("VETTA_DEV_AUTO_APPROVE_ACTIONS", "1");
+		vi.stubEnv("ASTRAVIA_CONFIG_DIR", ".astravia-dev");
+		vi.stubEnv("ASTRAVIA_DEV_AUTO_APPROVE_ACTIONS", "1");
 		const approvalRequester = { request: vi.fn(async () => ({ approved: false })) };
 		const run = vi.fn(async () => ({ status: "ok" as const }));
 		try {
@@ -128,13 +128,13 @@ describe("development approval policy", () => {
 		expect(
 			shouldBypassActionApproval(
 				{ source: "local-server" },
-				{ VETTA_CONFIG_DIR: ".vetta-dev", VETTA_DEV_AUTO_APPROVE_ACTIONS: "1" },
+				{ ASTRAVIA_CONFIG_DIR: ".astravia-dev", ASTRAVIA_DEV_AUTO_APPROVE_ACTIONS: "1" },
 			),
 		).toBe(true);
 		expect(
 			shouldBypassActionApproval(
 				{ source: "local-server" },
-				{ VETTA_CONFIG_DIR: ".vetta-dev", VETTA_DEV_AUTO_APPROVE_ACTIONS: "0" },
+				{ ASTRAVIA_CONFIG_DIR: ".astravia-dev", ASTRAVIA_DEV_AUTO_APPROVE_ACTIONS: "0" },
 			),
 		).toBe(false);
 	});
@@ -143,13 +143,13 @@ describe("development approval policy", () => {
 		expect(
 			shouldBypassActionApproval(
 				{ source: "local-server" },
-				{ VETTA_CONFIG_DIR: ".vetta", VETTA_DEV_AUTO_APPROVE_ACTIONS: "1" },
+				{ ASTRAVIA_CONFIG_DIR: ".astravia", ASTRAVIA_DEV_AUTO_APPROVE_ACTIONS: "1" },
 			),
 		).toBe(false);
 		expect(
 			shouldBypassActionApproval(
 				{ source: "internal" },
-				{ VETTA_CONFIG_DIR: ".vetta-dev", VETTA_DEV_AUTO_APPROVE_ACTIONS: "1" },
+				{ ASTRAVIA_CONFIG_DIR: ".astravia-dev", ASTRAVIA_DEV_AUTO_APPROVE_ACTIONS: "1" },
 			),
 		).toBe(false);
 	});

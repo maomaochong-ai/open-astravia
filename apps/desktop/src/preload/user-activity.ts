@@ -1,4 +1,4 @@
-export const USER_ACTIVITY_CHANNEL = "vetta:app-monitor:user-activity";
+export const USER_ACTIVITY_CHANNEL = "astravia:app-monitor:user-activity";
 export const USER_ACTIVITY_THROTTLE_MS = 15_000;
 
 export interface UserActivityReporter {

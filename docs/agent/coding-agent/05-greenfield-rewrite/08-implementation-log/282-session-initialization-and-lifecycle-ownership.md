@@ -14,7 +14,7 @@
 - 会话历史、认证、模型和设置等用户数据；必要时由显式、独立的新迁移器读取旧格式。
 - 模型消息、工具消息、错误、取消、事件顺序、并发约束和资源释放语义。
 - 仍然有效的行为测试场景和数据 fixture；旧实现可以临时作为测试 Oracle，但不能被新生产代码调用。
-- `@vetta/ai` 与经过合同验证的 `@vetta/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
+- `@astravia/ai` 与经过合同验证的 `@astravia/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
 
 ## 明确舍弃（固定）
 
@@ -126,7 +126,7 @@ Composition->public API edge files=0/0
 Extension Host->Composition edge files=0/0
 ```
 
-`bun run verify:agent-hosts` 通过，完成独立 `vetta.exe` 编译、IM Gateway Go 套件、Coding Agent 功能套件和 Desktop 套件；
+`bun run verify:agent-hosts` 通过，完成独立 `astravia.exe` 编译、IM Gateway Go 套件、Coding Agent 功能套件和 Desktop 套件；
 现有 CLI canary 实际完成持久会话创建、继续和列表读取，最终结果为 `coding-agent, CLI, Desktop, IM` 全部 `ok`。
 本轮没有发送外部真实模型请求。
 

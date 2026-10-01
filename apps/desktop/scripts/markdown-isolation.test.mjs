@@ -9,7 +9,7 @@ import { build } from "vite";
 
 const desktop = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const require = createRequire(join(desktop, "package.json"));
-const directory = await mkdtemp(join(tmpdir(), "vetta-markdown-isolation-"));
+const directory = await mkdtemp(join(tmpdir(), "astravia-markdown-isolation-"));
 try {
 	await build({
 		configFile: false, root: desktop, logLevel: "error",
@@ -31,6 +31,6 @@ try {
 	assert.equal(code, 0);
 } finally {
 	assert.equal(dirname(resolve(directory)), resolve(tmpdir()));
-	assert.ok(basename(directory).startsWith("vetta-markdown-isolation-"));
+	assert.ok(basename(directory).startsWith("astravia-markdown-isolation-"));
 	await rm(directory, { recursive: true, force: true, maxRetries: 3, retryDelay: 200 });
 }

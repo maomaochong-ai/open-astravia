@@ -15,7 +15,7 @@ import {
 const temporaryRoots: string[] = [];
 
 async function createTemporaryRoot(): Promise<string> {
-	const root = await mkdtemp(join(tmpdir(), "vetta-inno-update-"));
+	const root = await mkdtemp(join(tmpdir(), "astravia-inno-update-"));
 	temporaryRoots.push(root);
 	return root;
 }
@@ -24,7 +24,7 @@ function createUpdateInfo(): UpdateInfo {
 	return {
 		version: "1.2.3",
 		files: [],
-		path: "Vetta-1.2.3-win-x64.exe",
+		path: "Astravia-1.2.3-win-x64.exe",
 		sha512: "installer",
 		releaseDate: new Date().toISOString(),
 	};
@@ -33,9 +33,9 @@ function createUpdateInfo(): UpdateInfo {
 function createResolvedFiles(content: Buffer): Array<ResolvedUpdateFileInfo> {
 	return [
 		{
-			url: new URL("https://releases.example.com/Vetta-1.2.3-win-x64.exe"),
+			url: new URL("https://releases.example.com/Astravia-1.2.3-win-x64.exe"),
 			info: {
-				url: "Vetta-1.2.3-win-x64.exe",
+				url: "Astravia-1.2.3-win-x64.exe",
 				sha512: "installer",
 				size: content.length,
 			},
@@ -52,7 +52,7 @@ describe("InnoWindowsUpdateController", () => {
 		const root = await createTemporaryRoot();
 		const storeRoot = join(root, "store");
 		const installer = Buffer.from("inno installer");
-		const installerPath = join(root, "Vetta-1.2.3-win-x64.exe");
+		const installerPath = join(root, "Astravia-1.2.3-win-x64.exe");
 		await writeFile(installerPath, installer);
 		const relaunch = vi.fn();
 		const quit = vi.fn();
@@ -66,7 +66,7 @@ describe("InnoWindowsUpdateController", () => {
 				onProgress(50);
 				const versionDir = join(destinationRoot, "versions", version);
 				await mkdir(join(versionDir, "resources"), { recursive: true });
-				await writeFile(join(versionDir, "Vetta.exe"), "executable");
+				await writeFile(join(versionDir, "Astravia.exe"), "executable");
 				await writeFile(join(versionDir, "resources", "app.asar"), "asar");
 				await writeFile(join(versionDir, ".install-complete"), version);
 			},
@@ -80,7 +80,7 @@ describe("InnoWindowsUpdateController", () => {
 		});
 
 		expect(controller.select(createUpdateInfo(), createResolvedFiles(installer))).toEqual({
-			assetFileName: "Vetta-1.2.3-win-x64.exe",
+			assetFileName: "Astravia-1.2.3-win-x64.exe",
 			totalBytes: installer.length,
 		});
 		const progress = vi.fn();
@@ -89,7 +89,7 @@ describe("InnoWindowsUpdateController", () => {
 			progress,
 			new AbortController().signal,
 		);
-		expect(executablePath).toBe(join(storeRoot, "versions", "1.2.3", "Vetta.exe"));
+		expect(executablePath).toBe(join(storeRoot, "versions", "1.2.3", "Astravia.exe"));
 		expect(progress).toHaveBeenCalledWith(expect.objectContaining({ percent: 95 }));
 		expect(progress).toHaveBeenLastCalledWith(expect.objectContaining({ percent: 100 }));
 
@@ -151,7 +151,7 @@ describe("InnoWindowsUpdateController", () => {
 	it("does not activate an incomplete Inno Setup installation", async () => {
 		const root = await createTemporaryRoot();
 		const storeRoot = join(root, "store");
-		const installerPath = join(root, "Vetta-1.2.3-win-x64.exe");
+		const installerPath = join(root, "Astravia-1.2.3-win-x64.exe");
 		await writeFile(installerPath, "installer");
 		const controller = new InnoWindowsUpdateController({
 			currentVersion: "1.2.2",
@@ -159,7 +159,7 @@ describe("InnoWindowsUpdateController", () => {
 			installInstaller: async (_installerPath, destinationRoot, version) => {
 				const versionDir = join(destinationRoot, "versions", version);
 				await mkdir(versionDir, { recursive: true });
-				await writeFile(join(versionDir, "Vetta.exe"), "incomplete");
+				await writeFile(join(versionDir, "Astravia.exe"), "incomplete");
 			},
 			relaunch: vi.fn(),
 			quit: vi.fn(),
@@ -177,7 +177,7 @@ describe("InnoWindowsUpdateController", () => {
 	it("waits for core files to become visible after a successful Inno installation", async () => {
 		const root = await createTemporaryRoot();
 		const storeRoot = join(root, "store");
-		const installerPath = join(root, "Vetta-1.2.3-win-x64.exe");
+		const installerPath = join(root, "Astravia-1.2.3-win-x64.exe");
 		await writeFile(installerPath, "installer");
 		const controller = new InnoWindowsUpdateController({
 			currentVersion: "1.2.2",
@@ -188,7 +188,7 @@ describe("InnoWindowsUpdateController", () => {
 				await writeFile(join(versionDir, ".install-complete"), version);
 				setTimeout(() => {
 					void Promise.all([
-						writeFile(join(versionDir, "Vetta.exe"), "executable"),
+						writeFile(join(versionDir, "Astravia.exe"), "executable"),
 						writeFile(join(versionDir, "resources", "app.asar"), "asar"),
 					]);
 				}, 10);
@@ -200,13 +200,13 @@ describe("InnoWindowsUpdateController", () => {
 
 		await expect(
 			controller.prepareDownloadedInstaller(installerPath, vi.fn(), new AbortController().signal),
-		).resolves.toEqual([join(storeRoot, "versions", "1.2.3", "Vetta.exe")]);
+		).resolves.toEqual([join(storeRoot, "versions", "1.2.3", "Astravia.exe")]);
 	});
 
 	it("validates installed files through the physical filesystem and restores ASAR handling", async () => {
 		const root = await createTemporaryRoot();
 		const storeRoot = join(root, "store");
-		const installerPath = join(root, "Vetta-1.2.3-win-x64.exe");
+		const installerPath = join(root, "Astravia-1.2.3-win-x64.exe");
 		await writeFile(installerPath, "installer");
 		const originalDescriptor = Object.getOwnPropertyDescriptor(process, "noAsar");
 		const assignments: boolean[] = [];
@@ -227,7 +227,7 @@ describe("InnoWindowsUpdateController", () => {
 				installInstaller: async (_installerPath, destinationRoot, version) => {
 					const versionDir = join(destinationRoot, "versions", version);
 					await mkdir(join(versionDir, "resources"), { recursive: true });
-					await writeFile(join(versionDir, "Vetta.exe"), "executable");
+					await writeFile(join(versionDir, "Astravia.exe"), "executable");
 					await writeFile(join(versionDir, "resources", "app.asar"), "asar");
 					await writeFile(join(versionDir, ".install-complete"), version);
 				},
@@ -249,7 +249,7 @@ describe("InnoWindowsUpdateController", () => {
 	it("rejects a failed installer even when it leaves core files behind", async () => {
 		const root = await createTemporaryRoot();
 		const storeRoot = join(root, "store");
-		const installerPath = join(root, "Vetta-1.2.3-win-x64.exe");
+		const installerPath = join(root, "Astravia-1.2.3-win-x64.exe");
 		await writeFile(installerPath, "installer");
 		const controller = new InnoWindowsUpdateController({
 			currentVersion: "1.2.2",
@@ -257,7 +257,7 @@ describe("InnoWindowsUpdateController", () => {
 			installInstaller: async (_installerPath, destinationRoot, version) => {
 				const versionDir = join(destinationRoot, "versions", version);
 				await mkdir(join(versionDir, "resources"), { recursive: true });
-				await writeFile(join(versionDir, "Vetta.exe"), "executable");
+				await writeFile(join(versionDir, "Astravia.exe"), "executable");
 				await writeFile(join(versionDir, "resources", "app.asar"), "asar");
 				throw new Error("Inno Setup exited with code 5");
 			},
@@ -275,7 +275,7 @@ describe("InnoWindowsUpdateController", () => {
 		const root = await createTemporaryRoot();
 		const storeRoot = join(root, "store");
 		const versionDir = join(storeRoot, "versions", "1.2.3");
-		const installerPath = join(root, "Vetta-1.2.3-win-x64.exe");
+		const installerPath = join(root, "Astravia-1.2.3-win-x64.exe");
 		await mkdir(versionDir, { recursive: true });
 		await writeFile(join(versionDir, "stale.txt"), "stale");
 		await writeFile(installerPath, "installer");
@@ -286,7 +286,7 @@ describe("InnoWindowsUpdateController", () => {
 				const destinationDir = join(destinationRoot, "versions", version);
 				await expect(readFile(join(destinationDir, "stale.txt"), "utf8")).rejects.toThrow();
 				await mkdir(join(destinationDir, "resources"), { recursive: true });
-				await writeFile(join(destinationDir, "Vetta.exe"), "executable");
+				await writeFile(join(destinationDir, "Astravia.exe"), "executable");
 				await writeFile(join(destinationDir, "resources", "app.asar"), "asar");
 				await writeFile(join(destinationDir, ".install-complete"), version);
 			},
@@ -297,20 +297,20 @@ describe("InnoWindowsUpdateController", () => {
 
 		await expect(
 			controller.prepareDownloadedInstaller(installerPath, vi.fn(), new AbortController().signal),
-		).resolves.toEqual([join(versionDir, "Vetta.exe")]);
+		).resolves.toEqual([join(versionDir, "Astravia.exe")]);
 	});
 });
 
 describe("Windows Inno update paths", () => {
 	it("recognizes only executables inside the matching version directory", () => {
-		expect(isVersionedWindowsExecutable("C:\\Vetta\\versions\\1.2.3\\Vetta.exe", "1.2.3")).toBe(true);
-		expect(isVersionedWindowsExecutable("C:\\Vetta\\Vetta.exe", "1.2.3")).toBe(false);
-		expect(isVersionedWindowsExecutable("C:\\Vetta\\versions\\1.2.2\\Vetta.exe", "1.2.3")).toBe(false);
+		expect(isVersionedWindowsExecutable("C:\\Astravia\\versions\\1.2.3\\Astravia.exe", "1.2.3")).toBe(true);
+		expect(isVersionedWindowsExecutable("C:\\Astravia\\Astravia.exe", "1.2.3")).toBe(false);
+		expect(isVersionedWindowsExecutable("C:\\Astravia\\versions\\1.2.2\\Astravia.exe", "1.2.3")).toBe(false);
 	});
 
 	it("uses the stable per-user application root", () => {
 		expect(resolveInnoUpdateStoreRoot("C:\\Users\\test\\AppData\\Local")).toBe(
-			"C:\\Users\\test\\AppData\\Local\\Vetta",
+			"C:\\Users\\test\\AppData\\Local\\Astravia",
 		);
 	});
 
@@ -320,8 +320,8 @@ describe("Windows Inno update paths", () => {
 				"/VERYSILENT",
 				"/SUPPRESSMSGBOXES",
 				"/NOCLOSEAPPLICATIONS",
-				"/VETTAUPDATE=true",
-				"/VETTASTOREROOT=C:\\Store Root",
+				"/ASTRAVIAUPDATE=true",
+				"/ASTRAVIASTOREROOT=C:\\Store Root",
 			]),
 		);
 	});

@@ -1,18 +1,5 @@
-import { useSidebarState } from "@shared/app-shell/sidebar-state";
-import {
-	activeSessionAtom,
-	chatMessagesAtom,
-	inputValueAtom,
-	isStreamingAtom,
-	languageAtom,
-	openSessionFnRef,
-	pluginConversationOverrideAtom,
-	promptAttachmentAtom,
-	selectedModelAtom,
-	sessionExecutionModeAtom,
-} from "@shared/store/atoms";
-import type { Message } from "@vetta/ai";
-import type { SessionEvent } from "@vetta/runtime-core";
+import type { Message } from "@astravia/ai";
+import type { SessionEvent } from "@astravia/runtime-core";
 import type {
 	ConversationEvent,
 	ConversationMessage,
@@ -39,8 +26,21 @@ import type {
 	PluginPromptAttachment,
 	PluginSystemPromptProviderHandler,
 	SendPromptResult,
-} from "@vetta-org/plugin-sdk";
-import { __setPluginHostBridge, PluginAppActionError } from "@vetta-org/plugin-sdk";
+} from "@astravia-org/plugin-sdk";
+import { __setPluginHostBridge, PluginAppActionError } from "@astravia-org/plugin-sdk";
+import { useSidebarState } from "@shared/app-shell/sidebar-state";
+import {
+	activeSessionAtom,
+	chatMessagesAtom,
+	inputValueAtom,
+	isStreamingAtom,
+	languageAtom,
+	openSessionFnRef,
+	pluginConversationOverrideAtom,
+	promptAttachmentAtom,
+	selectedModelAtom,
+	sessionExecutionModeAtom,
+} from "@shared/store/atoms";
 import { getDefaultStore, useAtomValue } from "jotai";
 import { useMemo } from "react";
 import { pluginHandlerGenerationKey as handlerKey } from "./plugin-handler-generation-key.js";
@@ -272,7 +272,7 @@ function startTranslator(): void {
 		runtimeState.currentConversationUnsubscribe = null;
 		emit({ type: "conversation-changed", conversation: snapshot() });
 		if (!runtimeId) return;
-		void window.vetta.session
+		void window.astravia.session
 			.subscribe(runtimeId, translate)
 			.then((unsub) => {
 				// The active session may have changed again before subscribe resolved.
@@ -290,10 +290,10 @@ function startTranslator(): void {
 function startToolRequestListener(): void {
 	if (runtimeState.listenerStarted.toolRequest) return;
 	runtimeState.listenerStarted.toolRequest = true;
-	window.vetta.plugins.onAgentToolRequest((request) => {
+	window.astravia.plugins.onAgentToolRequest((request) => {
 		const entry = agentToolHandlers.get(handlerKey(request.pluginId, request.handlerId, request.activationId));
 		if (!entry) {
-			void window.vetta.plugins.respondAgentTool(request.requestId, {
+			void window.astravia.plugins.respondAgentTool(request.requestId, {
 				error: `Plugin tool handler not found: ${request.pluginId}/${request.handlerId}`,
 			});
 			return;
@@ -324,12 +324,12 @@ function startToolRequestListener(): void {
 			}),
 		).then(
 			(value) =>
-				window.vetta.plugins.respondAgentTool(request.requestId, {
+				window.astravia.plugins.respondAgentTool(request.requestId, {
 					value,
 					effects: execution.effects,
 				}),
 			(error: unknown) =>
-				window.vetta.plugins.respondAgentTool(request.requestId, {
+				window.astravia.plugins.respondAgentTool(request.requestId, {
 					error: error instanceof Error ? error.message : String(error),
 				}),
 		);
@@ -339,10 +339,10 @@ function startToolRequestListener(): void {
 function startHookRequestListener(): void {
 	if (runtimeState.listenerStarted.hookRequest) return;
 	runtimeState.listenerStarted.hookRequest = true;
-	window.vetta.plugins.onAgentHookRequest((request) => {
+	window.astravia.plugins.onAgentHookRequest((request) => {
 		const entry = agentHookHandlers.get(handlerKey(request.pluginId, request.handlerId, request.activationId));
 		if (!entry) {
-			void window.vetta.plugins.respondAgentHook(request.requestId, {
+			void window.astravia.plugins.respondAgentHook(request.requestId, {
 				error: `Plugin hook handler not found: ${request.pluginId}/${request.handlerId}`,
 			});
 			return;
@@ -360,11 +360,11 @@ function startHookRequestListener(): void {
 			}),
 		).then(
 			(value) =>
-				window.vetta.plugins.respondAgentHook(request.requestId, {
+				window.astravia.plugins.respondAgentHook(request.requestId, {
 					value,
 				}),
 			(error: unknown) =>
-				window.vetta.plugins.respondAgentHook(request.requestId, {
+				window.astravia.plugins.respondAgentHook(request.requestId, {
 					error: error instanceof Error ? error.message : String(error),
 				}),
 		);
@@ -374,7 +374,7 @@ function startHookRequestListener(): void {
 function startHookReleaseListener(): void {
 	if (runtimeState.listenerStarted.hookRelease) return;
 	runtimeState.listenerStarted.hookRelease = true;
-	window.vetta.plugins.onAgentHandlerReleased((event) => {
+	window.astravia.plugins.onAgentHandlerReleased((event) => {
 		const key = handlerKey(event.pluginId, event.handlerId, event.activationId);
 		if (event.kind === "tool") releaseHandler(agentToolHandlers, key, event.activationId);
 		else if (event.kind === "hook") releaseHandler(agentHookHandlers, key, event.activationId);
@@ -397,11 +397,11 @@ function releaseHandler<T extends { activationId?: string }>(
 function startAppActionRequestListener(): void {
 	if (runtimeState.listenerStarted.appActionRequest) return;
 	runtimeState.listenerStarted.appActionRequest = true;
-	window.vetta.plugins.onAppActionRequest((request) => {
+	window.astravia.plugins.onAppActionRequest((request) => {
 		const key = handlerKey(request.pluginId, request.handlerId);
 		const entry = appActionHandlers.get(key);
 		if (!entry) {
-			void window.vetta.plugins.respondAppAction(request.requestId, {
+			void window.astravia.plugins.respondAppAction(request.requestId, {
 				error: `Plugin action handler not found: ${request.pluginId}/${request.handlerId}`,
 			});
 			return;
@@ -428,13 +428,13 @@ function startAppActionRequestListener(): void {
 		void Promise.resolve(invocation).then(
 			(value) => {
 				appActionInvocations.delete(request.requestId);
-				return window.vetta.plugins.respondAppAction(request.requestId, {
+				return window.astravia.plugins.respondAppAction(request.requestId, {
 					value: request.phase === "assert-ready" ? null : value,
 				});
 			},
 			(error: unknown) => {
 				appActionInvocations.delete(request.requestId);
-				return window.vetta.plugins.respondAppAction(request.requestId, {
+				return window.astravia.plugins.respondAppAction(request.requestId, {
 					error:
 						error instanceof PluginAppActionError
 							? { code: error.code, message: error.message, details: error.details }
@@ -445,7 +445,7 @@ function startAppActionRequestListener(): void {
 			},
 		);
 	});
-	window.vetta.plugins.onAppActionCancel(({ requestId }) => {
+	window.astravia.plugins.onAppActionCancel(({ requestId }) => {
 		const invocation = appActionInvocations.get(requestId);
 		if (!invocation) return;
 		appActionInvocations.delete(requestId);
@@ -456,10 +456,10 @@ function startAppActionRequestListener(): void {
 function startContinuationRequestListener(): void {
 	if (runtimeState.listenerStarted.continuationRequest) return;
 	runtimeState.listenerStarted.continuationRequest = true;
-	window.vetta.plugins.onContinuationRequest((request) => {
+	window.astravia.plugins.onContinuationRequest((request) => {
 		const entry = continuationHandlers.get(handlerKey(request.pluginId, request.handlerId, request.activationId));
 		if (!entry) {
-			void window.vetta.plugins.respondContinuation(request.requestId, {
+			void window.astravia.plugins.respondContinuation(request.requestId, {
 				error: `Plugin continuation handler not found: ${request.pluginId}/${request.handlerId}`,
 			});
 			return;
@@ -485,12 +485,12 @@ function startContinuationRequestListener(): void {
 			}),
 		).then(
 			(value) =>
-				window.vetta.plugins.respondContinuation(request.requestId, {
+				window.astravia.plugins.respondContinuation(request.requestId, {
 					value,
 					effects: execution.effects,
 				}),
 			(error: unknown) =>
-				window.vetta.plugins.respondContinuation(request.requestId, {
+				window.astravia.plugins.respondContinuation(request.requestId, {
 					error: error instanceof Error ? error.message : String(error),
 				}),
 		);
@@ -500,10 +500,10 @@ function startContinuationRequestListener(): void {
 function startSystemPromptRequestListener(): void {
 	if (runtimeState.listenerStarted.systemPromptRequest) return;
 	runtimeState.listenerStarted.systemPromptRequest = true;
-	window.vetta.plugins.onSystemPromptRequest((request) => {
+	window.astravia.plugins.onSystemPromptRequest((request) => {
 		const entry = systemPromptHandlers.get(handlerKey(request.pluginId, request.handlerId, request.activationId));
 		if (!entry) {
-			void window.vetta.plugins.respondSystemPrompt(request.requestId, {
+			void window.astravia.plugins.respondSystemPrompt(request.requestId, {
 				error: `Plugin system prompt handler not found: ${request.pluginId}/${request.handlerId}`,
 			});
 			return;
@@ -533,13 +533,13 @@ function startSystemPromptRequestListener(): void {
 		).then(
 			(value) => {
 				if (Array.isArray(value)) execution.effects.push(...value);
-				return window.vetta.plugins.respondSystemPrompt(request.requestId, {
+				return window.astravia.plugins.respondSystemPrompt(request.requestId, {
 					value: execution.effects,
 					effects: [],
 				});
 			},
 			(error: unknown) =>
-				window.vetta.plugins.respondSystemPrompt(request.requestId, {
+				window.astravia.plugins.respondSystemPrompt(request.requestId, {
 					error: error instanceof Error ? error.message : String(error),
 				}),
 		);
@@ -549,21 +549,21 @@ function startSystemPromptRequestListener(): void {
 function startMediaProviderRequestListener(): void {
 	if (runtimeState.listenerStarted.mediaProviderRequest) return;
 	runtimeState.listenerStarted.mediaProviderRequest = true;
-	window.vetta.plugins.onMediaProviderRequest((request) => {
+	window.astravia.plugins.onMediaProviderRequest((request) => {
 		const registration = mediaProviderHandlers.get(handlerKey(request.pluginId, request.handlerId));
 		if (!registration) {
-			void window.vetta.plugins.respondMediaProvider(request.requestId, {
+			void window.astravia.plugins.respondMediaProvider(request.requestId, {
 				error: `Plugin media provider handler not found: ${request.pluginId}/${request.handlerId}`,
 			});
 			return;
 		}
 		const context = {
 			invocationId: request.requestId,
-			readInput: (inputId: string) => window.vetta.plugins.readMediaProviderInput(request.requestId, inputId),
+			readInput: (inputId: string) => window.astravia.plugins.readMediaProviderInput(request.requestId, inputId),
 			uploadInput: <T = unknown>(
 				inputId: string,
-				input: Parameters<typeof window.vetta.plugins.uploadMediaProviderInput>[2],
-			) => window.vetta.plugins.uploadMediaProviderInput<T>(request.requestId, inputId, input),
+				input: Parameters<typeof window.astravia.plugins.uploadMediaProviderInput>[2],
+			) => window.astravia.plugins.uploadMediaProviderInput<T>(request.requestId, inputId, input),
 		};
 		let invocation: Promise<PluginMediaProviderJob> | undefined;
 		if (request.operation === "submit") {
@@ -574,15 +574,15 @@ function startMediaProviderRequestListener(): void {
 			invocation = registration.cancelJob?.((request.input as { jobId: string }).jobId, context);
 		}
 		if (!invocation) {
-			void window.vetta.plugins.respondMediaProvider(request.requestId, {
+			void window.astravia.plugins.respondMediaProvider(request.requestId, {
 				error: `Plugin media provider operation is unsupported: ${request.operation}`,
 			});
 			return;
 		}
 		void Promise.resolve(invocation).then(
-			(value) => window.vetta.plugins.respondMediaProvider(request.requestId, { value }),
+			(value) => window.astravia.plugins.respondMediaProvider(request.requestId, { value }),
 			(error: unknown) =>
-				window.vetta.plugins.respondMediaProvider(request.requestId, {
+				window.astravia.plugins.respondMediaProvider(request.requestId, {
 					error: error instanceof Error ? error.message : String(error),
 				}),
 		);
@@ -592,10 +592,10 @@ function startMediaProviderRequestListener(): void {
 function startOcrProviderRequestListener(): void {
 	if (runtimeState.listenerStarted.ocrProviderRequest) return;
 	runtimeState.listenerStarted.ocrProviderRequest = true;
-	window.vetta.plugins.onOcrProviderRequest((request) => {
+	window.astravia.plugins.onOcrProviderRequest((request) => {
 		const registration = ocrProviderHandlers.get(handlerKey(request.pluginId, request.handlerId));
 		if (!registration) {
-			void window.vetta.plugins.respondOcrProvider(request.requestId, {
+			void window.astravia.plugins.respondOcrProvider(request.requestId, {
 				error: `Plugin OCR provider handler not found: ${request.pluginId}/${request.handlerId}`,
 			});
 			return;
@@ -605,28 +605,28 @@ function startOcrProviderRequestListener(): void {
 		const context = {
 			signal: controller.signal,
 			invocationId: request.requestId,
-			getInputUrl: (inputId: string) => window.vetta.plugins.getOcrProviderInputUrl(request.requestId, inputId),
+			getInputUrl: (inputId: string) => window.astravia.plugins.getOcrProviderInputUrl(request.requestId, inputId),
 			uploadInput: <T = unknown>(
 				inputId: string,
-				input: Parameters<typeof window.vetta.plugins.uploadOcrProviderInput>[2],
-			) => window.vetta.plugins.uploadOcrProviderInput<T>(request.requestId, inputId, input),
+				input: Parameters<typeof window.astravia.plugins.uploadOcrProviderInput>[2],
+			) => window.astravia.plugins.uploadOcrProviderInput<T>(request.requestId, inputId, input),
 			reportProgress: (event: OcrProgress) =>
-				void window.vetta.plugins.reportOcrProviderProgress(request.requestId, event),
+				void window.astravia.plugins.reportOcrProviderProgress(request.requestId, event),
 		};
 		void Promise.resolve(registration.recognize(request.input, context)).then(
 			(value: OcrProviderResult) => {
 				ocrProviderInvocations.delete(request.requestId);
-				return window.vetta.plugins.respondOcrProvider(request.requestId, { value });
+				return window.astravia.plugins.respondOcrProvider(request.requestId, { value });
 			},
 			(error: unknown) => {
 				ocrProviderInvocations.delete(request.requestId);
-				return window.vetta.plugins.respondOcrProvider(request.requestId, {
+				return window.astravia.plugins.respondOcrProvider(request.requestId, {
 					error: error instanceof Error ? error.message : String(error),
 				});
 			},
 		);
 	});
-	window.vetta.plugins.onOcrProviderCancel(({ requestId }) => ocrProviderInvocations.get(requestId)?.abort());
+	window.astravia.plugins.onOcrProviderCancel(({ requestId }) => ocrProviderInvocations.get(requestId)?.abort());
 }
 
 export function registerPluginAgentToolHandler(options: {
@@ -785,7 +785,7 @@ const conversation: PluginConversationApi = {
 	},
 	abort: async (): Promise<void> => {
 		const active = store.get(activeSessionAtom);
-		if (active?.runtimeId) await window.vetta.session.abort(active.runtimeId);
+		if (active?.runtimeId) await window.astravia.session.abort(active.runtimeId);
 	},
 	on: (listener: Listener): Disposable => {
 		listeners.add(listener);

@@ -1,7 +1,7 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { FileConversationRepository } from "@vetta/runtime-node/conversation";
+import { FileConversationRepository } from "@astravia/runtime-node/conversation";
 import { afterEach, describe, expect, it } from "vitest";
 import { readTeamConversationDocument } from "./team-session-file-reader.js";
 
@@ -15,7 +15,7 @@ afterEach(async () => {
 
 describe("readTeamConversationDocument", () => {
 	it("reads a coordination document without a Runtime host", async () => {
-		const directory = await mkdtemp(join(tmpdir(), "vetta-team-bootstrap-"));
+		const directory = await mkdtemp(join(tmpdir(), "astravia-team-bootstrap-"));
 		temporaryDirectories.push(directory);
 		const repository = new FileConversationRepository({ rootDir: directory });
 		await repository.create({ sessionId: "team-session", createdAt: 1 });

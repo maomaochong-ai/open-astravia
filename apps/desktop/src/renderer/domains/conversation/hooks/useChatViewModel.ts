@@ -1,3 +1,6 @@
+import { parseProjectLocation } from "@astravia/ssh-transport/project-uri";
+import { useThemeSurface } from "@astravia-org/theme-sdk/appearance";
+import { RemoteSessionBadgeView } from "@astravia-org/theme-ui/chat";
 import { useSshHost } from "@shared/hooks/useSshHost";
 import {
 	activeSessionAtom,
@@ -25,9 +28,6 @@ import {
 	sessionsMapAtom,
 	syncHardIsolationContributionModes,
 } from "@shared/store/atoms";
-import { parseProjectLocation } from "@vetta/ssh-transport/project-uri";
-import { useThemeSurface } from "@vetta-org/theme-sdk/appearance";
-import { RemoteSessionBadgeView } from "@vetta-org/theme-ui/chat";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { selectAtom } from "jotai/utils";
 import { createElement, useCallback, useEffect, useMemo, useRef, useState } from "react";

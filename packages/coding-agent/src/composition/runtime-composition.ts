@@ -2,9 +2,9 @@ import {
 	RuntimeAgentSessionAssemblyBackend,
 	RuntimeOwnershipBinding,
 	type RuntimeSessionCreateRequest,
-} from "@vetta/runtime-core";
-import { selectConversationDocumentModelMessages } from "@vetta/runtime-core/conversation";
-import type { McpRuntimeToolView } from "@vetta/runtime-mcp";
+} from "@astravia/runtime-core";
+import { selectConversationDocumentModelMessages } from "@astravia/runtime-core/conversation";
+import type { McpRuntimeToolView } from "@astravia/runtime-mcp";
 import { CodingAgentRuntimeModelAdapter } from "../adapters/runtime-core/model-runtime-adapter.js";
 import { CodingAgentExtensionToolRuntime } from "../extensions/runtime/extension-tool-runtime.js";
 import { DEFAULT_SCENARIO } from "../profiles/index.js";

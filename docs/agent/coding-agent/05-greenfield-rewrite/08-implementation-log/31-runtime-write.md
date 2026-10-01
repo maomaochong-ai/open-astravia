@@ -9,7 +9,7 @@
 
 ### 1. 独立 Write Tool
 
-在 `@vetta/runtime-tools/coding/tools/write` 下新增独立目录，分别承载：
+在 `@astravia/runtime-tools/coding/tools/write` 下新增独立目录，分别承载：
 
 - TypeScript 工具描述；
 - TypeBox 参数 schema；

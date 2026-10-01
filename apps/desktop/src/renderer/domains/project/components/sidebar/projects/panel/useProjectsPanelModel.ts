@@ -262,7 +262,7 @@ export function useProjectsPanelModel({
 		(session: SidebarConversationInfo) => {
 			if (session.kind === "agent-team") {
 				const wasActive = activeTeamSessionId === session.teamSessionId;
-				void window.vetta.agentTeams
+				void window.astravia.agentTeams
 					.deleteSession({ id: session.teamSessionId, coordinationSessionPath: session.path })
 					.then(() => {
 						notifyTeamSessionsChanged(session.teamId);
@@ -399,7 +399,7 @@ export function useProjectsPanelModel({
 				confirmLabel: t("sidebar.dialogs.clearConfirm"),
 				variant: "danger",
 				onConfirm: async () => {
-					await window.vetta.session.clearDefaultConversation("conversation");
+					await window.astravia.session.clearDefaultConversation("conversation");
 					const removedPaths = new Set(allSessions.map((session) => session.path));
 					removePinnedSessions(removedPaths);
 					if (removedPaths.has(activeSessionPathValue) || (activeSessionCwd === cwd && !removedPaths.size)) {
@@ -435,7 +435,7 @@ export function useProjectsPanelModel({
 				confirmLabel: t("sidebar.dialogs.clearConfirm"),
 				variant: "danger",
 				onConfirm: async () => {
-					await window.vetta.session.clearDefaultConversation("claw");
+					await window.astravia.session.clearDefaultConversation("claw");
 					const removedPaths = new Set(imSessions.map((session) => session.path));
 					removePinnedSessions(removedPaths);
 					if (removedPaths.has(activeSessionPathValue)) {

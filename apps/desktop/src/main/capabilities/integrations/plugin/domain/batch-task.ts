@@ -2,7 +2,7 @@ import {
 	type BatchProject,
 	type BatchTaskCommandResult,
 	DOMAIN_BATCH_TASK_CAPABILITIES,
-} from "@vetta-org/capability-sdk";
+} from "@astravia-org/capability-sdk";
 import type { PluginCapabilitySessionAccess } from "../types.js";
 
 export const pluginBatchTaskMethods = {

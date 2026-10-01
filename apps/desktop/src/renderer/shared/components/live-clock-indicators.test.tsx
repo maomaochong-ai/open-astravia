@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { AssistantMessage, todoLabelSheenClassName } from "@vetta-org/theme-ui/chat";
-import { ActivityStatusDot } from "@vetta-org/theme-ui/shared";
+import { AssistantMessage, todoLabelSheenClassName } from "@astravia-org/theme-ui/chat";
+import { ActivityStatusDot } from "@astravia-org/theme-ui/shared";
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { LIVE_ANIMATION_SELECTORS } from "../lib/live-animations";
@@ -17,7 +17,7 @@ describe("in-progress indicators are matched by the live-animation registry", ()
 	it("streaming status dot", () => {
 		const { container } = render(<AssistantMessage.StreamingStatus label="working" />);
 		const dot = container.querySelector(LIVE_SELECTOR);
-		expect(dot?.className).toContain("vetta-live-dot");
+		expect(dot?.className).toContain("astravia-live-dot");
 		expect(dot?.getAttribute("style")).toBeNull();
 	});
 

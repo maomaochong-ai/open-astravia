@@ -6,9 +6,9 @@ import {
 	type TeamContextImportRecord,
 	type TeamPublicationOperationRecord,
 	type TeamSharedContextCheckpoint,
-} from "@vetta/agent-team";
-import type { CodingAgentPinnedModelContext } from "@vetta/coding-agent/runtime";
-import type { ConversationDocument } from "@vetta/runtime-core/conversation";
+} from "@astravia/agent-team";
+import type { CodingAgentPinnedModelContext } from "@astravia/coding-agent/runtime";
+import type { ConversationDocument } from "@astravia/runtime-core/conversation";
 import type { TeamCollaborationState } from "./team-collaboration-store.js";
 
 /** Owns the Team-to-Coding Agent adapter, without changing either Conversation. */

@@ -1,4 +1,4 @@
-import type { PluginFsApi } from "@vetta-org/plugin-sdk";
+import type { PluginFsApi } from "@astravia-org/plugin-sdk";
 import { describe, expect, it, vi } from "vitest";
 import { ContentAssetImportService } from "../src/generation/asset-import-service";
 import { ContentLocalAssetError, ContentLocalAssetService } from "../src/generation/local-asset-service";

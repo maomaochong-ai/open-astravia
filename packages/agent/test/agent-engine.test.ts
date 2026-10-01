@@ -1,4 +1,3 @@
-import { Type } from "@sinclair/typebox";
 import {
 	AIError,
 	type AssistantMessage,
@@ -7,7 +6,8 @@ import {
 	type Message,
 	type ModelStreamResponse,
 	type ToolCall,
-} from "@vetta/ai";
+} from "@astravia/ai";
+import { Type } from "@sinclair/typebox";
 import { describe, expect, it } from "vitest";
 import { runAgentTurn } from "../src/engine/run-agent-turn.js";
 import type {

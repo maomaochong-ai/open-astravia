@@ -63,7 +63,7 @@ export interface DesktopDialogApi {
 	 */
 	saveCopy(sourcePath: string, options?: DialogSaveCopyOptions): Promise<string | null>;
 	/**
-	 * 把附加图片落盘到 ~/.vetta/image-cache/<sessionId>/，返回路径与压缩文件元数据。
+	 * 把附加图片落盘到 ~/.astravia/image-cache/<sessionId>/，返回路径与压缩文件元数据。
 	 * 用于以 @路径 方式引用图片，避免把 base64 直接塞进上下文。
 	 */
 	persistImages(sessionId: string, images: PersistImageInput[]): Promise<PersistedImageResult[]>;

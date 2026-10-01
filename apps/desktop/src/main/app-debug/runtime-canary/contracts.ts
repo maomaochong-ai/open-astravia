@@ -115,7 +115,7 @@ export const runtimeCanaryConsumersSchema = z
 
 export const runtimeCanaryFixtureSchema = z
 	.object({
-		vettaHome: z.string().min(1),
+		astraviaHome: z.string().min(1),
 		agentDir: z.string().min(1),
 		workspace: z.string().min(1),
 		providerBaseUrl: z.url(),

@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
+
+import type { PluginPermission } from "@astravia-org/plugin-sdk";
 import type { InstalledPlugin } from "@preload/api";
-import type { PluginPermission } from "@vetta-org/plugin-sdk";
 import { createElement, isValidElement, type ReactElement, type ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 import { createPluginFileExplorerApi } from "./plugin-file-explorer-context";
@@ -43,7 +44,7 @@ function createApis(iconUrl?: string) {
 }
 
 function registerEveryEntry(icon?: ReactNode): PluginLocalContributions {
-	const { contributions, fileExplorer, ui } = createApis("vetta-plugin://demo-plugin/assets/logo.png?v=1");
+	const { contributions, fileExplorer, ui } = createApis("astravia-plugin://demo-plugin/assets/logo.png?v=1");
 	ui.registerActivityTab({ id: "activity", label: "Activity", icon, component: () => null });
 	ui.registerNewSessionContext({
 		id: "context",
@@ -81,7 +82,7 @@ describe("plugin contribution default icons", () => {
 	it("inherits the plugin icon at every icon-bearing host entry", () => {
 		const contributions = registerEveryEntry();
 		for (const icon of entryIcons(contributions)) {
-			expectImageIcon(icon, "vetta-plugin://demo-plugin/assets/logo.png?v=1");
+			expectImageIcon(icon, "astravia-plugin://demo-plugin/assets/logo.png?v=1");
 		}
 	});
 

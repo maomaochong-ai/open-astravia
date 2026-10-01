@@ -9,14 +9,14 @@ import (
 	"os/exec"
 	"time"
 
-	"vetta-im-gateway/internal/hostclient"
+	"astravia-im-gateway/internal/hostclient"
 )
 
 // Options configures a Client. Zero values are replaced with the documented
 // defaults from internal/config.
 type Options struct {
 	// Bin is the path to the coding-agent binary. If empty, defaults to
-	// "vetta" (the published binary name) and PATH lookup is used.
+	// "astravia" (the published binary name) and PATH lookup is used.
 	Bin string
 
 	// HandshakeTimeout bounds OpenSession.
@@ -30,16 +30,16 @@ type Options struct {
 	ExtraEnv map[string]string
 
 	// SessionDir, when non-empty, is forwarded as `--session-dir`. The
-	// IM host runtime sets this to `<conversationCwd>/.vetta/sessions/`
+	// IM host runtime sets this to `<conversationCwd>/.astravia/sessions/`
 	// to match desktop-app's `resolveSessionDirForCwd` convention so
 	// IM-created session .jsonl files appear in the desktop sidebar
 	// under the default "对话" project. Empty → coding-agent falls back
-	// to `~/.vetta/agent/sessions/<encoded-cwd>/`.
+	// to `~/.astravia/agent/sessions/<encoded-cwd>/`.
 	SessionDir string
 
 	// BinPrefixArgs are prepended to the spawned subprocess's argv
 	// (after Bin, before --mode rpc). Desktop-app production uses this
-	// to inject `--agent-rpc`, the discriminator that flips Vetta.app
+	// to inject `--agent-rpc`, the discriminator that flips Astravia.app
 	// into coding-agent CLI mode. In dev it carries the Electron main-
 	// entry path. Empty in `im-gateway start` standalone mode.
 	BinPrefixArgs []string
@@ -66,8 +66,8 @@ type Options struct {
 }
 
 const (
-	defaultBin = "vetta"
-	// Cold-start budget: the desktop host's agent binary is Vetta.app itself,
+	defaultBin = "astravia"
+	// Cold-start budget: the desktop host's agent binary is Astravia.app itself,
 	// whose first spawn after launch/update takes ~10s (Electron + asar) vs
 	// ~1s warm. Keep in sync with config.DefaultHandshakeTimeout.
 	defaultHandshakeTimeout = 30 * time.Second

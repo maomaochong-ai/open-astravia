@@ -9,13 +9,13 @@ import {
 } from "./types.js";
 
 const APPROVAL_UI_INPUT_KEY = "approvalUi";
-const DEV_AUTO_APPROVE_ACTIONS_ENV = "VETTA_DEV_AUTO_APPROVE_ACTIONS";
+const DEV_AUTO_APPROVE_ACTIONS_ENV = "ASTRAVIA_DEV_AUTO_APPROVE_ACTIONS";
 const log = getAppLogger("action-runtime");
 
 function isDevelopmentConfigDir(value: string | undefined): boolean {
 	if (!value) return false;
 	const normalized = value.trim().replaceAll("\\", "/").replace(/\/+$/u, "");
-	return normalized === ".vetta-dev" || normalized.endsWith("/.vetta-dev");
+	return normalized === ".astravia-dev" || normalized.endsWith("/.astravia-dev");
 }
 
 /** Explicit development-only approval bypass for local action iteration. */
@@ -26,7 +26,7 @@ export function shouldBypassActionApproval(
 	return (
 		context.source === "local-server" &&
 		environment[DEV_AUTO_APPROVE_ACTIONS_ENV] === "1" &&
-		(environment.VETTA_BUILD_ENV === "development" || isDevelopmentConfigDir(environment.VETTA_CONFIG_DIR))
+		(environment.ASTRAVIA_BUILD_ENV === "development" || isDevelopmentConfigDir(environment.ASTRAVIA_CONFIG_DIR))
 	);
 }
 

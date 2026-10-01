@@ -97,7 +97,7 @@ describe("Desktop release workflow contracts", () => {
 	it("builds and verifies the pinned Windows sandbox before packaging", () => {
 		const sandboxSteps = actionSteps("prepare-windows-sandbox");
 		const checkout = sandboxSteps.find((step) => step.name === "Check out pinned Codex sandbox source");
-		expect(checkout.with.repository).toBe("openvetta/codex");
+		expect(checkout.with.repository).toBe("maomaochong-ai/codex");
 		expect(checkout.with.ref).toMatch(/^[0-9a-f]{40}$/);
 		expect(sandboxSteps.some((step) => step.run?.includes("cargo build --locked"))).toBe(true);
 		expect(sandboxSteps.some((step) => step.run?.includes("--capabilities --json"))).toBe(true);
@@ -222,7 +222,7 @@ describe("Desktop release workflow contracts", () => {
 		expect(workflow).toContain("runs-on: $" + "{{ matrix.runner }}");
 		expect(workflow).toContain("runner: macos-15\n");
 		expect(workflow).toContain("runner: macos-15-intel\n");
-		expect(workflow).not.toContain("vetta-mac");
+		expect(workflow).not.toContain("astravia-mac");
 	});
 
 	it("allows enough wall clock for signing and notarizing both macOS architectures", () => {

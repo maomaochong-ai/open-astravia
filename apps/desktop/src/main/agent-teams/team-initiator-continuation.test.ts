@@ -1,5 +1,5 @@
-import type { TeamSessionDocument, TeamWorkItem } from "@vetta/agent-team";
-import type { SessionContextRecord } from "@vetta/runtime-core/kernel";
+import type { TeamSessionDocument, TeamWorkItem } from "@astravia/agent-team";
+import type { SessionContextRecord } from "@astravia/runtime-core/kernel";
 import { describe, expect, it } from "vitest";
 import type { TeamCollaborationState } from "./team-collaboration-store.js";
 import { planTeamInitiatorContinuation } from "./team-initiator-continuation.js";

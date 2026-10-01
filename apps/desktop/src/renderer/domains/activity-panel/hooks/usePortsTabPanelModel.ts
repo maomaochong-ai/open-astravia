@@ -1,17 +1,17 @@
+import type { RemoteListeningPort } from "@astravia/ssh-transport";
+import { parseProjectLocation } from "@astravia/ssh-transport/project-uri";
+import type {
+	PortRowViewItem,
+	PortScanState,
+	PortsTabPanelViewLabels,
+	PortsTabPanelViewProps,
+} from "@astravia-org/theme-ui/activity";
 import type { PortForward } from "@preload/api-types/ssh";
 import {
 	backgroundTasksBySessionAtom,
 	getBackgroundTasksForSession,
 	openUrlInActivityWorkspaceAtom,
 } from "@shared/store/atoms";
-import type { RemoteListeningPort } from "@vetta/ssh-transport";
-import { parseProjectLocation } from "@vetta/ssh-transport/project-uri";
-import type {
-	PortRowViewItem,
-	PortScanState,
-	PortsTabPanelViewLabels,
-	PortsTabPanelViewProps,
-} from "@vetta-org/theme-ui/activity";
 import { useAtomValue, useSetAtom } from "jotai";
 import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -124,7 +124,7 @@ export function usePortsTabPanelModel(): PortsTabPanelViewProps {
 		const generation = ++scanGeneration.current;
 		setScanState("loading");
 		try {
-			const scan = await window.vetta.ssh.listListeningPorts(hostId);
+			const scan = await window.astravia.ssh.listListeningPorts(hostId);
 			if (generation !== scanGeneration.current) return;
 			setListeners(scan.ports);
 			setScanState(scan.tool === "none" ? "unsupported" : "ready");
@@ -154,7 +154,7 @@ export function usePortsTabPanelModel(): PortsTabPanelViewProps {
 			if (!hostId) return;
 			setErrorMessage(undefined);
 			try {
-				await window.vetta.ssh.openPortForward({
+				await window.astravia.ssh.openPortForward({
 					hostId,
 					remotePort,
 					localPort: options.localPort,
@@ -215,7 +215,7 @@ export function usePortsTabPanelModel(): PortsTabPanelViewProps {
 	const onOpenExternal = useCallback(
 		(remotePort: number) => {
 			const forward = findForward(remotePort);
-			if (forward) void window.vetta.auth.openExternal(formatForwardedUrl(forward.localPort));
+			if (forward) void window.astravia.auth.openExternal(formatForwardedUrl(forward.localPort));
 		},
 		[findForward],
 	);
@@ -256,7 +256,7 @@ export function usePortsTabPanelModel(): PortsTabPanelViewProps {
 
 	const onStop = useCallback(
 		(remotePort: number) => {
-			if (hostId) void window.vetta.ssh.closePortForward({ hostId, remotePort });
+			if (hostId) void window.astravia.ssh.closePortForward({ hostId, remotePort });
 		},
 		[hostId],
 	);
@@ -276,7 +276,7 @@ export function usePortsTabPanelModel(): PortsTabPanelViewProps {
 			setTerminatingPort(port);
 			const name = listener?.processName ?? String(port);
 			try {
-				const result = await window.vetta.ssh.terminateRemoteProcess({
+				const result = await window.astravia.ssh.terminateRemoteProcess({
 					hostId,
 					pid,
 					force: stubbornPids.has(pid),
@@ -286,7 +286,7 @@ export function usePortsTabPanelModel(): PortsTabPanelViewProps {
 					setErrorMessage(t("activityPanel.ports.terminateStubborn", { name }));
 					return;
 				}
-				if (findForward(port)) await window.vetta.ssh.closePortForward({ hostId, remotePort: port });
+				if (findForward(port)) await window.astravia.ssh.closePortForward({ hostId, remotePort: port });
 				await runScan();
 			} catch (error) {
 				setErrorMessage(

@@ -4,7 +4,7 @@
  * 这个工具会拉起整条浏览器渲染流水线并往工作区写 out/，而「把工作区里的东西渲染出来」
  * 与「构建/预览一个应用」在措辞上很接近，误调的代价是分钟级的无用渲染。
  */
-import type { PluginContext } from "@vetta-org/plugin-sdk";
+import type { PluginContext } from "@astravia-org/plugin-sdk";
 import { describe, expect, it } from "vitest";
 import { registerRenderTool } from "../src/tools/render-tool";
 

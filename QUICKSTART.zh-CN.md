@@ -8,19 +8,19 @@
 
 macOS、Windows、Linux 安装包：
 
-**→ [www.openvetta.com/download](https://www.openvetta.com/download)**
+**→ [www.astravia.dev](https://www.astravia.dev)**
 
-官方安装包发布在官网 CDN。本仓库提供源码。安装后引导会带你配置模型（BYOK）和权限。产品文档：[docs.openvetta.com](https://docs.openvetta.com)。
+官方安装包发布在官网 CDN。本仓库提供源码。安装后引导会带你配置模型（BYOK）和权限。产品文档：[docs.astravia.dev](https://docs.astravia.dev)。
 
-从源码检出得到的是 **lite** 构建：无 Vetta 登录、无订阅，密钥留在本机。官方安装包可能是 **full** 构建。两种形态见[构建模式](docs/desktop/build-modes.md)。
+从源码检出得到的是 **lite** 构建：无 Astravia 登录、无订阅，密钥留在本机。官方安装包可能是 **full** 构建。两种形态见[构建模式](docs/desktop/build-modes.md)。
 
 ## 从源码开发
 
 需要 **Bun 1.3+** 和 **Node 20+**。支持 macOS、Windows、Linux。
 
 ```bash
-git clone https://github.com/openvetta/open-vetta.git
-cd open-vetta
+git clone https://github.com/maomaochong-ai/open-astravia.git
+cd open-astravia
 git checkout dev
 bun install
 ```
@@ -32,12 +32,12 @@ cd apps/desktop
 bun run dev
 ```
 
-会同时启动 Vite renderer、主题开发服务器和 Electron。数据目录是 `~/.vetta-dev`，不会动已安装应用的 `~/.vetta`。
+会同时启动 Vite renderer、主题开发服务器和 Electron。数据目录是 `~/.astravia-dev`，不会动已安装应用的 `~/.astravia`。
 
 | 命令 | 数据根 | 什么时候用 |
 |---|---|---|
-| `bun run dev` | `~/.vetta-dev` | 默认沙箱 |
-| `bun run dev:home` | `~/.vetta` | 希望开发构建读写真实用户数据 |
+| `bun run dev` | `~/.astravia-dev` | 默认沙箱 |
+| `bun run dev:home` | `~/.astravia` | 希望开发构建读写真实用户数据 |
 
 仓库**根目录**的 `bun run dev` 只监视核心库，不会启动应用。
 

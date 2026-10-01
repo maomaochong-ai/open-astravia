@@ -9,9 +9,9 @@ Turn generation 内的渐进披露和模型调用级 Prompt/Tool 物化。
 
 ## 注意事项
 
-- `src/` 不得导入或 re-export `@vetta/coding-agent`
+- `src/` 不得导入或 re-export `@astravia/coding-agent`
 - 不在本包解析 Desktop/CLI 产品配置，也不绑定具体 `McpManager`
-- 配置 Source、OAuth Store、Client Factory 与 Server Runtime 只定义 Port；Node 实现位于 `@vetta/runtime-node/mcp`
+- 配置 Source、OAuth Store、Client Factory 与 Server Runtime 只定义 Port；Node 实现位于 `@astravia/runtime-node/mcp`
 - `src/` 不得访问文件系统、进程、网络、凭证、Electron 或宿主全局状态
 - 动态新增、删除、未变化 binding 保留、失败保持和渐进披露必须有独立测试
 - 修改公开 Port 时同步检查 `runtime-composition` 与 coding-agent 的 legacy adapter

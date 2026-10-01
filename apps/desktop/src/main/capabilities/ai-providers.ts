@@ -11,8 +11,8 @@ import {
 	type Tool,
 	type ToolCall,
 	type Usage,
-} from "@vetta/ai";
-import { bindCapability, type CapabilityRegistry } from "@vetta/capability-runtime";
+} from "@astravia/ai";
+import { bindCapability, type CapabilityRegistry } from "@astravia/capability-runtime";
 import {
 	type AiChatInput,
 	type AiChatMessage,
@@ -22,11 +22,11 @@ import {
 	CapabilityError,
 	type Disposable,
 	DOMAIN_AI_CAPABILITIES,
-} from "@vetta-org/capability-sdk";
+} from "@astravia-org/capability-sdk";
 import { getOrCreateSharedModelRuntime } from "../agent-runtime/host-services.js";
 import { getDesktopModelSettingsService } from "../models/model-settings-host.js";
 
-const DOMAIN_AI_PROVIDER_OWNER = "vetta.domain.ai";
+const DOMAIN_AI_PROVIDER_OWNER = "astravia.domain.ai";
 
 function assertNotAborted(signal: AbortSignal): void {
 	if (signal.aborted) {

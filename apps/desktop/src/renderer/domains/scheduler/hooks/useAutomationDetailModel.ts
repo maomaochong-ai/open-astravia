@@ -173,7 +173,7 @@ export function useAutomationDetailModel({
 					return;
 				}
 				// 每次新建会话：打开最近一次有会话的运行。
-				void window.vetta.scheduler.getRecords(task.id).then((records) => {
+				void window.astravia.scheduler.getRecords(task.id).then((records) => {
 					const latest = records.find((record) => record.sessionPath && record.cwd);
 					if (latest?.sessionPath && latest.cwd) void open(latest.cwd, latest.sessionPath);
 				});

@@ -1,5 +1,5 @@
 {
-	"name": "@vetta/capability-runtime",
+	"name": "@astravia/capability-runtime",
 	"version": "0.0.1",
 	"type": "module",
 	"main": "./dist/index.js",
@@ -21,7 +21,7 @@
 		"test": "bun ../../scripts/quality/run-vitest.mjs --run"
 	},
 	"dependencies": {
-		"@vetta-org/capability-sdk": "workspace:*"
+		"@astravia-org/capability-sdk": "workspace:*"
 	},
 	"devDependencies": {
 		"@types/node": "^22.10.5",

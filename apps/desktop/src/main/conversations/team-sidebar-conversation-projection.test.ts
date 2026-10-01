@@ -1,4 +1,4 @@
-import { createAgentTeamFixture } from "@vetta/agent-team";
+import { createAgentTeamFixture } from "@astravia/agent-team";
 import { describe, expect, it, vi } from "vitest";
 import { listTeamSidebarConversations } from "./team-sidebar-conversation-projection.js";
 
@@ -13,7 +13,7 @@ describe("listTeamSidebarConversations", () => {
 		if (!team) throw new Error("missing Team fixture");
 		const result = await listTeamSidebarConversations({
 			readDocument: async () => document,
-			listProjectPaths: async () => ["C:/Projects/Vetta"],
+			listProjectPaths: async () => ["C:/Projects/Astravia"],
 			listSessions: async () => [
 				{
 					id: "project-session",
@@ -22,8 +22,8 @@ describe("listTeamSidebarConversations", () => {
 					createdAt: 1,
 					updatedAt: 3,
 					workspaceKind: "project",
-					workspaceId: "c:/projects/vetta/",
-					cwd: "c:/projects/vetta/",
+					workspaceId: "c:/projects/astravia/",
+					cwd: "c:/projects/astravia/",
 				},
 				{
 					id: "session-workspace",
@@ -52,9 +52,9 @@ describe("listTeamSidebarConversations", () => {
 			expect.objectContaining({
 				teamId: team.id,
 				teamSessionId: "project-session",
-				cwd: "c:/projects/vetta/",
+				cwd: "c:/projects/astravia/",
 				sessionTitle: "Project work",
-				placement: { kind: "project", projectPath: "C:/Projects/Vetta" },
+				placement: { kind: "project", projectPath: "C:/Projects/Astravia" },
 				memberAvatarUrls: expect.any(Array),
 			}),
 			expect.objectContaining({

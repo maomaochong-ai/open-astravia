@@ -14,7 +14,7 @@ Accepted
 
 - 使用固定版本的 Turborepo 作为 Bun/TypeScript workspace 的任务图和本地缓存层。Bun 继续负责 workspace、安装和脚本执行，tsgo、Vite、Next 与 electron-builder 继续生成实际制品。
 - `package.json` 中的内部依赖声明是包图事实源，根 `turbo.json` 的 `build.dependsOn = ["^build"]` 负责依赖优先和可并行执行。删除根 shell/PowerShell 顺序、Desktop 手写包清单与 layer、通用 workspace 哈希缓存及其顺序守卫。
-- 普通构建缓存 `dist/**`、`release/**` 和 `.next/**`；lockfile、内部依赖任务、根 `tsconfig.base.json`、根 `.env*` 和显式构建变量共同决定哈希。任务使用 strict environment mode。普通 build 只声明 `NODE_ENV`、插件打包/文档覆盖变量和 `VETD_SRC`；Docs 与 Desktop 分别声明自己的输出变量，避免运行时秘密或无关变量污染所有包的缓存键。dev 任务继续允许 `VETTA_*`、`VETD_*`、`DOCS_SITE_URL` 与 `NODE_ENV`。
+- 普通构建缓存 `dist/**`、`release/**` 和 `.next/**`；lockfile、内部依赖任务、根 `tsconfig.base.json`、根 `.env*` 和显式构建变量共同决定哈希。任务使用 strict environment mode。普通 build 只声明 `NODE_ENV`、插件打包/文档覆盖变量和 `ASTRAVIA_DESIGN_SRC`；Docs 与 Desktop 分别声明自己的输出变量，避免运行时秘密或无关变量污染所有包的缓存键。dev 任务继续允许 `ASTRAVIA_*`、`ASTRAVIA_DESIGN_*`、`DOCS_SITE_URL` 与 `NODE_ENV`。
 - build 输入以包默认输入为基线，排除包根 `test/**`、`tests/**`、README 与 CHANGELOG；位于 `src/**` 或被生成/打包脚本读取的测试、文档与资源仍然参与哈希，避免为了命中率牺牲输出正确性。plugin-workbench 的同步脚本读取根 `docs/plugin/**`，因此该目录作为它的跨 workspace 显式输入。
 - Desktop 完整 build 设为不可缓存，因为它组合平台语音模型、Preset/Theme staging、生成源码和多个 Vite 入口。正式 workspace 前置构建继续使用 `--force`；开发前置构建允许读取本地缓存。Desktop task 显式依赖 plugin-vite，正式 build 复用已构建的 plugin tooling，不再由 Preset 编排重复构建。
 - Remote Cache 默认关闭，但配置预先要求制品签名。启用属于后续安全和制品兼容决策，必须验证跨平台可移植性、环境变量覆盖、日志中无敏感信息、缓存完整性和失败回退，并提供 `TURBO_REMOTE_CACHE_SIGNATURE_KEY` 后再修改本 ADR。

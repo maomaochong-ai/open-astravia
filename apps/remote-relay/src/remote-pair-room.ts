@@ -7,7 +7,7 @@ import {
 	REMOTE_PROTOCOL_VERSION,
 	type RemoteFrame,
 	type RemoteHello,
-} from "@vetta/remote-control";
+} from "@astravia/remote-control";
 import type { RelayRole } from "./auth.js";
 import { REMOTE_WEBSOCKET_PROTOCOL } from "./auth.js";
 import { relayInfo, relayWarn } from "./relay-log.js";
@@ -52,8 +52,8 @@ export class RemotePairRoom extends DurableObject<Env> {
 	async fetch(request: Request): Promise<Response> {
 		if (request.method === "POST" && new URL(request.url).pathname.endsWith("/authorize")) {
 			// Check-only lookup for the WebRTC room; never registers a fresh room.
-			const role = parseRole(request.headers.get("X-Vetta-Relay-Role"));
-			const credentialHash = request.headers.get("X-Vetta-Credential-Hash");
+			const role = parseRole(request.headers.get("X-Astravia-Relay-Role"));
+			const credentialHash = request.headers.get("X-Astravia-Credential-Hash");
 			if (!role || !credentialHash) return response("Unauthorized", 401);
 			const authorized =
 				role === "desktop"
@@ -64,11 +64,11 @@ export class RemotePairRoom extends DurableObject<Env> {
 		if (request.headers.get("Upgrade")?.toLowerCase() !== "websocket") {
 			return response("WebSocket upgrade required", 426);
 		}
-		const role = parseRole(request.headers.get("X-Vetta-Relay-Role"));
-		const credentialHash = request.headers.get("X-Vetta-Credential-Hash");
-		const roomTag = request.headers.get("X-Vetta-Room-Tag");
+		const role = parseRole(request.headers.get("X-Astravia-Relay-Role"));
+		const credentialHash = request.headers.get("X-Astravia-Credential-Hash");
+		const roomTag = request.headers.get("X-Astravia-Room-Tag");
 		if (!role || !credentialHash || !roomTag) return response("Invalid relay request", 400);
-		const peerHash = request.headers.get("X-Vetta-Peer-Hash") ?? undefined;
+		const peerHash = request.headers.get("X-Astravia-Peer-Hash") ?? undefined;
 		const authorized =
 			role === "desktop"
 				? await this.authorization.authorizeDesktop(credentialHash, peerHash)

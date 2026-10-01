@@ -10,9 +10,9 @@ import {
 	EventStream,
 	type Message,
 	type Model,
-} from "@vetta/ai";
-import type { RuntimeHostSession } from "@vetta/runtime-core";
-import type { RuntimeSnapshotAcquireContext } from "@vetta/runtime-core/kernel";
+} from "@astravia/ai";
+import type { RuntimeHostSession } from "@astravia/runtime-core";
+import type { RuntimeSnapshotAcquireContext } from "@astravia/runtime-core/kernel";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CompactionPreparation } from "../../src/compaction/index.js";
 import type { CodingAgentRuntimeComposition } from "../../src/composition/index.js";

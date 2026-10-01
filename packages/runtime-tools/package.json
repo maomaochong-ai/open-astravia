@@ -1,7 +1,7 @@
 {
-	"name": "@vetta/runtime-tools",
+	"name": "@astravia/runtime-tools",
 	"version": "0.0.1",
-	"description": "Platform-neutral coding tool protocols and catalog logic for Vetta runtimes",
+	"description": "Platform-neutral coding tool protocols and catalog logic for Astravia runtimes",
 	"type": "module",
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
@@ -23,8 +23,8 @@
 	},
 	"dependencies": {
 		"@sinclair/typebox": "^0.34.41",
-		"@vetta/ai": "workspace:*",
-		"@vetta/runtime-core": "workspace:*"
+		"@astravia/ai": "workspace:*",
+		"@astravia/runtime-core": "workspace:*"
 	},
 	"devDependencies": {
 		"@types/node": "^22.10.5",

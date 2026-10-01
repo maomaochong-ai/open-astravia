@@ -1,4 +1,4 @@
-import type { RemoteInputState, RemoteScreenCursor, RemoteScreenStatus } from "@vetta/remote-control";
+import type { RemoteInputState, RemoteScreenCursor, RemoteScreenStatus } from "@astravia/remote-control";
 
 /** The part of a desktop screen host the subscription needs. */
 export interface ScreenShareHost {

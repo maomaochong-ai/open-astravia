@@ -5,22 +5,22 @@ import { DOMAIN_AGENT_SETTINGS_CAPABILITIES, DOMAIN_AGENT_SETTINGS_CAPABILITY_CA
 describe("agent settings domain capabilities", () => {
 	it("uses one stable id per agent settings operation", () => {
 		expect(Object.values(DOMAIN_AGENT_SETTINGS_CAPABILITIES).map((capability) => capability.id)).toEqual([
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}agent-settings.experimental.get`,
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}agent-settings.experimental.set`,
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}agent-settings.image-generation.get`,
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}agent-settings.image-generation.set`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}agent-settings.experimental.get`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}agent-settings.experimental.set`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}agent-settings.image-generation.get`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}agent-settings.image-generation.set`,
 		]);
 	});
 
 	it("validates complete snapshots and non-empty partial updates", () => {
 		expect(
 			DOMAIN_AGENT_SETTINGS_CAPABILITIES.GET_EXPERIMENTAL.parseOutput({
-				vettaCli: true,
+				astraviaCli: true,
 				promptPrediction: false,
 				agentSkills: true,
 				ignored: true,
 			}),
-		).toEqual({ vettaCli: true, promptPrediction: false, agentSkills: true });
+		).toEqual({ astraviaCli: true, promptPrediction: false, agentSkills: true });
 		expect(DOMAIN_AGENT_SETTINGS_CAPABILITIES.SET_EXPERIMENTAL.parseInput({ promptPrediction: true })).toEqual({
 			promptPrediction: true,
 		});
@@ -66,7 +66,7 @@ describe("agent settings domain capabilities", () => {
 		expect(DOMAIN_AGENT_SETTINGS_CAPABILITY_CATALOG[0]?.outputSchema).toMatchObject({
 			type: "object",
 			additionalProperties: false,
-			required: ["vettaCli", "promptPrediction", "agentSkills"],
+			required: ["astraviaCli", "promptPrediction", "agentSkills"],
 		});
 		expect(DOMAIN_AGENT_SETTINGS_CAPABILITY_CATALOG[1]?.inputSchema).toMatchObject({
 			type: "object",

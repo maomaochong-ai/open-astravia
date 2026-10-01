@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
+import type { RuntimeToolDefinition } from "@astravia/runtime-core/kernel";
 import { type Static, Type } from "@sinclair/typebox";
-import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
 import {
 	type AsyncExecutionGate,
 	type CommandProcessPort,
@@ -192,13 +192,13 @@ export function createExtractTextFromPdfTool(
 			const response = parseOcrDesktopResponse(result.stdout);
 			if (!response.ok) {
 				const message = response.error?.message ?? (result.stderr.trim() || "Unknown OCR error");
-				throw new Error(`Vetta Desktop OCR failed: ${message}`);
+				throw new Error(`Astravia Desktop OCR failed: ${message}`);
 			}
-			if (!response.output) throw new Error("Vetta Desktop did not return an output path");
+			if (!response.output) throw new Error("Astravia Desktop did not return an output path");
 			reportPhase?.("read");
 			const document = parseOcrJsonDocument(await readFile(response.output, "utf8"));
 			const staleNote = desktop.staleConfiguredPath
-				? `\nNote: configured vettaAppPath was stale and a fallback path was used: ${desktop.staleConfiguredPath}`
+				? `\nNote: configured astraviaAppPath was stale and a fallback path was used: ${desktop.staleConfiguredPath}`
 				: "";
 			return {
 				content: [

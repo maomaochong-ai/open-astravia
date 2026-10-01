@@ -26,7 +26,7 @@ export function formatPlaywrightAttachFailure(details: PlaywrightAttachFailureDe
   const hints: string[] = [];
   if ((details.devtoolsTargetCount ?? 0) > 0) {
     hints.push(
-      `CDP currently exposes ${details.devtoolsTargetCount} DevTools target(s). If the output stops after <ws connected>, close stale DevTools windows and retry; keep the Vetta Desktop window open.`,
+      `CDP currently exposes ${details.devtoolsTargetCount} DevTools target(s). If the output stops after <ws connected>, close stale DevTools windows and retry; keep the Astravia Desktop window open.`,
     );
   }
   hints.push("Run verify:ui:status:<profile> again before retrying to confirm that the main renderer target is still ready.");

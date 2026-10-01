@@ -15,12 +15,12 @@ export const CAPABILITY_PREFIXES = {
 	ROOT: "cap.",
 	FOUNDATION: "cap.foundation.",
 	DOMAIN: "cap.domain.",
-	VETTA_FOUNDATION: "cap.foundation.vetta.",
-	VETTA_DOMAIN: "cap.domain.vetta.",
+	ASTRAVIA_FOUNDATION: "cap.foundation.astravia.",
+	ASTRAVIA_DOMAIN: "cap.domain.astravia.",
 } as const;
 
 export const CAPABILITY_PUBLISHERS = {
-	VETTA: "vetta",
+	ASTRAVIA: "astravia",
 } as const;
 
 export const CAPABILITY_ERROR_CODES = {

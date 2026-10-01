@@ -16,8 +16,8 @@ Skill、Scene 与 Plugin 保持不同的安装和运行轨道，但它们在能�
 2. `ability.json`、`plugin.json` 与 `SKILL.md` 继续是各自包内的声明事实源。主进程通过针对各格式的 Adapter 解析声明，并执行文件类型、大小、协议与目录越界校验；Renderer 不接收原始本地路径。
 3. 主进程生成以 `<type>:<slug>` 为键的本地呈现读模型，经现有 Ability IPC 一次性下发。该索引不持久化，可从安装清单和包内容重新生成；单个损坏包只降级对应条目。
 4. 图标选择使用共享的显式 Policy：已安装 Plugin 按 `ability.json`、`plugin.json`、市场目录依次回退；Provider 提供的 Skill 按 Skill 自身声明、Provider、市场目录、内置兼容图依次回退。本地已安装声明优先于在线目录，避免目录刷新导致换图。
-5. 普通 Skill 的可选扩展声明为 `metadata.vetta.presentation.icon`。它只影响产品呈现，不改变 Skill 身份、加载、权限或调用语义。宿主不按 Skill 名称或来源猜测品牌图标。
-6. 继续复用现有受限资源协议：Plugin 包内图片映射为 `vetta-plugin://`，其它本地能力图片映射为 `vetta-file://`；不增加第三种资源协议。
+5. 普通 Skill 的可选扩展声明为 `metadata.astravia.presentation.icon`。它只影响产品呈现，不改变 Skill 身份、加载、权限或调用语义。宿主不按 Skill 名称或来源猜测品牌图标。
+6. 继续复用现有受限资源协议：Plugin 包内图片映射为 `astravia-plugin://`，其它本地能力图片映射为 `astravia-file://`；不增加第三种资源协议。
 
 ## 备选方案
 
@@ -30,5 +30,5 @@ Skill、Scene 与 Plugin 保持不同的安装和运行轨道，但它们在能�
 
 - 能力中心、命令区和 Skill 列表可以消费同一套优先级，不再各自解释包内相对路径。
 - 只有 `ability.json` 图标的插件在安装后仍能离线显示图标，其贡献的 Skill 在未单独声明时继承同一个 Provider 图标。
-- 外部全局 Skill 需要由自身包显式提供 `metadata.vetta.presentation.icon` 才有自定义图标；没有声明时继续显示产品默认图，这是可预测的降级行为。
+- 外部全局 Skill 需要由自身包显式提供 `metadata.astravia.presentation.icon` 才有自定义图标；没有声明时继续显示产品默认图，这是可预测的降级行为。
 - 新增呈现来源时应增加独立 Adapter 并接入现有 Policy，不应在 Renderer 或安装器中增加来源特判。

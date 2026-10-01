@@ -1,4 +1,4 @@
-import { cn } from "@vetta-org/ui";
+import { cn } from "@astravia-org/ui";
 import type { JSX } from "react";
 
 /** active 已开启、running 运行中、paused 已暂停、suspended 目标失效而暂停、done 一次性任务已完成。 */

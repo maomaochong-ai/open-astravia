@@ -2,8 +2,8 @@ import type {
 	RuntimeConfigurationSnapshotAcquireContext,
 	RuntimeConfigurationSnapshotLease,
 	RuntimeConfigurationSnapshotSource,
-} from "@vetta/runtime-core/configuration";
-import type { RuntimeObservationPublisher } from "@vetta/runtime-core/observation";
+} from "@astravia/runtime-core/configuration";
+import type { RuntimeObservationPublisher } from "@astravia/runtime-core/observation";
 import { CODING_AGENT_CONFIGURATION_ISSUE_OBSERVATION } from "../../model-context/image-settings-observations.js";
 
 /** Composition 级路由只解析 Session ownership；配置 generation 仍由各 Session 的 Runtime Core Center 持有。 */

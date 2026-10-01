@@ -13,8 +13,8 @@
 ## 决策
 
 1. 电脑生成邀请时额外生成 8 位连接码（Crockford base32，40 bit）与 6 位数字密码，与二维码并存；扫码与局域网手动配对不变。
-2. 密钥为 `PBKDF2-HMAC-SHA256(密码, "vetta-invite-key-v1:" + 连接码, 200000 次, 32 字节)`，用现有的 XChaCha20-Poly1305（关联数据 `vetta-invite-v1`）加密配对 URI，得到 `{v:1, nonce, ciphertext}` 信封。不引入新的加密套件。
-3. 信封存放在中继的 `/v2/invite/<boxId>`，`boxId = base64url(SHA-256("vetta-invite-box-v1:" + 连接码))`。中继只见到连接码的哈希和密文。电脑用随机写入令牌 `PUT` 创建并在邀请被领取、作废或过期时 `DELETE`；信箱最长保存 10 分钟，最多被读取 10 次后自动删除。每个信箱是一个独立的 Durable Object，以 alarm 到期清理。
+2. 密钥为 `PBKDF2-HMAC-SHA256(密码, "astravia-invite-key-v1:" + 连接码, 200000 次, 32 字节)`，用现有的 XChaCha20-Poly1305（关联数据 `astravia-invite-v1`）加密配对 URI，得到 `{v:1, nonce, ciphertext}` 信封。不引入新的加密套件。
+3. 信封存放在中继的 `/v2/invite/<boxId>`，`boxId = base64url(SHA-256("astravia-invite-box-v1:" + 连接码))`。中继只见到连接码的哈希和密文。电脑用随机写入令牌 `PUT` 创建并在邀请被领取、作废或过期时 `DELETE`；信箱最长保存 10 分钟，最多被读取 10 次后自动删除。每个信箱是一个独立的 Durable Object，以 alarm 到期清理。
 4. 手机输入连接码和密码后 `GET` 信箱、本地解密，得到的 URI 与扫码得到的完全相同，之后沿用扫码配对的全部流程（首个领取者绑定、电脑弹出接入通知）。
 
 ## 安全考量
@@ -31,4 +31,4 @@
 
 ## 兼容与验证
 
-新增路由与 Durable Object 需要重新部署中继（新增 migration `v3`）；未部署时电脑只显示二维码，并提示连接码不可用。`@vetta/remote-control` 的测试固定了一组向量（连接码、密码、nonce → boxId 与密文），Android 与 iPhone 用同一组向量校验互通。
+新增路由与 Durable Object 需要重新部署中继（新增 migration `v3`）；未部署时电脑只显示二维码，并提示连接码不可用。`@astravia/remote-control` 的测试固定了一组向量（连接码、密码、nonce → boxId 与密文），Android 与 iPhone 用同一组向量校验互通。

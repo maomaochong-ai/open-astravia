@@ -11,5 +11,5 @@ import { atom } from "jotai";
 /** 本地 models.json 的共享快照，null 表示尚未加载。 */
 export const localModelsConfigAtom = atom<ModelsConfigData | null>(null);
 
-/** 服务端下发的远程 provider catalog（Vetta Go 等）。 */
+/** 服务端下发的远程 provider catalog（Astravia Go 等）。 */
 export const remoteProvidersAtom = atom<Record<string, unknown>>({});

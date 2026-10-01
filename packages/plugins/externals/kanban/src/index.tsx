@@ -1,4 +1,4 @@
-import { definePlugin } from "@vetta-org/plugin-sdk";
+import { definePlugin } from "@astravia-org/plugin-sdk";
 import type { JSX } from "react";
 import { KanbanBoardController } from "./board/board-controller";
 import { boardNavBadge } from "./board/nav-badge";

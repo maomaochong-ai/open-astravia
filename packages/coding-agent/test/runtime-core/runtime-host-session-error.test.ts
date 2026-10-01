@@ -1,4 +1,4 @@
-import { ConversationOwnershipConflictError } from "@vetta/runtime-storage";
+import { ConversationOwnershipConflictError } from "@astravia/runtime-storage";
 import { describe, expect, it } from "vitest";
 import { mapCodingAgentRuntimeSessionCreationError } from "../../src/composition/runtime-host-retry.js";
 

@@ -1,7 +1,7 @@
 import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createAgentTeamFixture } from "@vetta/agent-team";
+import { createAgentTeamFixture } from "@astravia/agent-team";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { agentBlueprintRegistry, resolveAgentBlueprint } from "./agent-blueprint-registry.js";
 import { createAgentTeamFileRepository } from "./agent-team-file-repository.js";
@@ -33,7 +33,7 @@ async function createRepository(): Promise<{
 	readonly repository: ReturnType<typeof createAgentTeamFileRepository>;
 	readonly root: string;
 }> {
-	const root = await mkdtemp(join(tmpdir(), "vetta-agent-teams-"));
+	const root = await mkdtemp(join(tmpdir(), "astravia-agent-teams-"));
 	temporaryDirectories.push(root);
 	return { repository: createAgentTeamFileRepository({ root }), root };
 }

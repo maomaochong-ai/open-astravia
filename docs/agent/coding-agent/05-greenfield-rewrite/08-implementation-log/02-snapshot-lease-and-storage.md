@@ -20,13 +20,13 @@
   - 原子发布新 Snapshot。
   - 使用引用计数延迟释放 retired Snapshot。
   - close 等待活动 Turn 释放 lease。
-- 新增 `@vetta/runtime-storage/conversation`：
+- 新增 `@astravia/runtime-storage/conversation`：
   - `FileConversationRepository`。
   - 稳定存储错误码。
   - 版本化 JSONL 会话事件。
   - 原子 Snapshot 文件写入。
-- 更新 root TypeScript path map，显式解析 `@vetta/runtime-core/kernel`。
-- 扩展包边界守卫，禁止 `runtime-storage/src/conversation` 导入 `@vetta/coding-agent`。
+- 更新 root TypeScript path map，显式解析 `@astravia/runtime-core/kernel`。
+- 扩展包边界守卫，禁止 `runtime-storage/src/conversation` 导入 `@astravia/coding-agent`。
 
 ### 明确未修改
 
@@ -34,7 +34,7 @@
 - 未迁移旧 JSONL 会话格式。
 - 未实现跨进程文件锁。
 - 未实现 Snapshot 读取、选择和自动恢复。
-- 未实现真实 `@vetta/agent-core` Adapter。
+- 未实现真实 `@astravia/agent-core` Adapter。
 - 未迁移 Coding Tools、MCP、Skill、知识库或 Subagent。
 
 ### 新增或修改的合同
@@ -88,19 +88,19 @@
 - Turn Pipeline 在完成、失败和取消路径都会尝试 release Snapshot lease。
 - `runtime-storage` 已开始真正拥有新 Kernel 的会话持久化实现，而不是只 re-export `coding-agent`。
 - 文件仓储的持久化重开、并发版本冲突、错误 Session、Snapshot 版本和损坏尾记录已有自动测试。
-- 新增 Kernel 与 Conversation 源码均没有导入 `@vetta/coding-agent`。
+- 新增 Kernel 与 Conversation 源码均没有导入 `@astravia/coding-agent`。
 
 ### 未解决问题
 
 - `FileConversationRepository` 当前只保证单 Repository 实例内串行写入，跨进程写入需要独立锁协议。
 - Snapshot 目前写入但没有读取和恢复策略。
 - 旧会话格式还没有只读 importer。
-- 旧 `runtime-storage` 包根仍依赖 `@vetta/coding-agent` 以维持兼容导出。
+- 旧 `runtime-storage` 包根仍依赖 `@astravia/coding-agent` 以维持兼容导出。
 - 没有真实 Turn Engine 时，新 Kernel 仍只通过 Fake Engine 执行。
 
 ### 下一步
 
-1. 实现 `@vetta/agent-core` Turn Engine Adapter，并用录制模型流验证标准消息映射。
+1. 实现 `@astravia/agent-core` Turn Engine Adapter，并用录制模型流验证标准消息映射。
 2. 为新会话格式实现 Snapshot 加载和旧格式只读 importer。
 3. 设计跨进程会话 owner/lock 合同，不在 Repository 内静默覆盖冲突。
 4. 在真实 Engine 闭环通过后迁移 Coding Tools Feature。

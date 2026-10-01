@@ -5,7 +5,7 @@ import {
 	prependCommandPrefixes,
 	resolveNodeShell,
 	WINDOWS_POWERSHELL_UTF8_COMMAND_PREFIX,
-} from "@vetta/runtime-node/coding";
+} from "@astravia/runtime-node/coding";
 import { getBinDir, getSettingsPath } from "../node-config.js";
 import { createCodingAgentNodeSettingsRuntime } from "../node-state-services.js";
 

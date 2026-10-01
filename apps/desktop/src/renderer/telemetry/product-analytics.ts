@@ -2,7 +2,7 @@ import posthog from "posthog-js";
 import type { TelemetryContext } from "../../shared/telemetry";
 import { setRendererTelemetryContext } from "./error-monitoring";
 
-const ANONYMOUS_ID_STORAGE_KEY = "vetta-telemetry-anonymous-id";
+const ANONYMOUS_ID_STORAGE_KEY = "astravia-telemetry-anonymous-id";
 const DEFAULT_POSTHOG_HOST = "https://us.i.posthog.com";
 let anonymousId: string | undefined;
 let appSessionId: string | undefined;
@@ -11,8 +11,8 @@ let posthogEnabled = false;
 let telemetryEnabled = false;
 
 export function initializeProductAnalytics(): void {
-	const apiKey = process.env.VETTA_POSTHOG_KEY?.trim();
-	const sentryEnabled = process.env.VETTA_SENTRY_ENABLED === "true";
+	const apiKey = process.env.ASTRAVIA_POSTHOG_KEY?.trim();
+	const sentryEnabled = process.env.ASTRAVIA_SENTRY_ENABLED === "true";
 	if (!apiKey && !sentryEnabled) return;
 	telemetryEnabled = true;
 	appSessionId = crypto.randomUUID();
@@ -20,12 +20,12 @@ export function initializeProductAnalytics(): void {
 	if (apiKey) {
 		try {
 			posthog.init(apiKey, {
-				api_host: process.env.VETTA_POSTHOG_HOST?.trim() || DEFAULT_POSTHOG_HOST,
+				api_host: process.env.ASTRAVIA_POSTHOG_HOST?.trim() || DEFAULT_POSTHOG_HOST,
 				autocapture: false,
 				capture_pageview: false,
 				capture_pageleave: false,
 				capture_exceptions: false,
-				disable_session_recording: process.env.VETTA_POSTHOG_REPLAY_ENABLED !== "true",
+				disable_session_recording: process.env.ASTRAVIA_POSTHOG_REPLAY_ENABLED !== "true",
 				person_profiles: "identified_only",
 				bootstrap: {
 					distinctID: anonymousId,
@@ -92,7 +92,7 @@ function syncContext(): void {
 	};
 	setRendererTelemetryContext(context);
 	try {
-		window.vetta.telemetry.setContext(context);
+		window.astravia.telemetry.setContext(context);
 	} catch {
 		// Telemetry IPC must not affect the renderer lifecycle.
 	}
@@ -125,7 +125,7 @@ function readAnonymousId(): string {
 }
 
 function readReplaySampleRate(): { sampleRate: number } | Record<string, never> {
-	const value = process.env.VETTA_POSTHOG_REPLAY_SAMPLE_RATE?.trim();
+	const value = process.env.ASTRAVIA_POSTHOG_REPLAY_SAMPLE_RATE?.trim();
 	if (!value) return {};
 	const parsed = Number(value);
 	return Number.isFinite(parsed) ? { sampleRate: Math.min(1, Math.max(0, parsed)) } : {};

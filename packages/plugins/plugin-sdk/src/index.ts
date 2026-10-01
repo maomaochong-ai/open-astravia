@@ -1,8 +1,8 @@
 /**
- * @vetta-org/plugin-sdk public surface.
+ * @astravia-org/plugin-sdk public surface.
  *
  * Implementation is split by domain under `src/*.ts`; this barrel re-exports
- * the stable package API. Prefer importing from `@vetta-org/plugin-sdk` rather
+ * the stable package API. Prefer importing from `@astravia-org/plugin-sdk` rather
  * than deep paths.
  */
 

@@ -15,8 +15,8 @@
 
 允许依赖：
 
-- `@vetta/ai/protocol`、模型调用端口。
-- `@vetta/agent-core` engine。
+- `@astravia/ai/protocol`、模型调用端口。
+- `@astravia/agent-core` engine。
 
 负责导出：
 
@@ -43,10 +43,10 @@
 
 | 旧入口 | 新入口 | 上游调整 |
 | --- | --- | --- |
-| `@vetta/agent-core#ThinkingLevel` | `@vetta/ai/protocol#ReasoningEffort` | settings、CLI、model selection 统一命名 |
+| `@astravia/agent-core#ThinkingLevel` | `@astravia/ai/protocol#ReasoningEffort` | settings、CLI、model selection 统一命名 |
 | `AgentMessage` | `Message` / `RuntimeMessageEnvelope` | 模型输入与 Session 自定义 entry 分离 |
 | `AgentEvent` | `AgentExecutionEvent` / `SessionEvent` | SDK/RPC 消费 Runtime SessionEvent |
-| `ToolPhase` | `@vetta/runtime-core#ToolPhase` | observation、document、UI 归 Runtime |
+| `ToolPhase` | `@astravia/runtime-core#ToolPhase` | observation、document、UI 归 Runtime |
 | `AgentTool*` | `RuntimeToolDefinition`/Runtime Tool result | extension tool contracts 迁移 |
 | `StreamFn` | AI model invocation port | composition 不再暴露具体 stream function |
 | `AgentCoreTurnEngineOptions` | `TurnEnginePort`/`ModelRuntimeOptions` | coding composition 不依赖具体实现类 |
@@ -118,7 +118,7 @@ CLI：
 
 - `packages/ai` 不得导入 agent/runtime/app。
 - `packages/agent` 不得导入 runtime/coding/app。
-- `coding-agent` 只有指定 composition adapter 可导入 `@vetta/agent-core`。
+- `coding-agent` 只有指定 composition adapter 可导入 `@astravia/agent-core`。
 - desktop renderer 不得导入 AI Provider 实现或 runtime kernel。
 - compat 目录禁止被新模块导入。
 

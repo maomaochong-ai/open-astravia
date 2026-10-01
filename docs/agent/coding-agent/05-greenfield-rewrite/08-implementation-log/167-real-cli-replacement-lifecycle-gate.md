@@ -2,7 +2,7 @@
 
 ## 目标
 
-第 166 轮已经在 Host/Composition 层补齐 Replacement 的 Extension 与 Hook 副作用。本轮把合同提升到真实 Vetta RPC CLI 可执行入口，在同一进程时间线上联合观察：
+第 166 轮已经在 Host/Composition 层补齐 Replacement 的 Extension 与 Hook 副作用。本轮把合同提升到真实 Astravia RPC CLI 可执行入口，在同一进程时间线上联合观察：
 
 - TypeScript Extension 的 `session_before_switch`、`session_switch`、`session_before_fork`、`session_fork`、`session_shutdown`；
 - 项目级 Codex Hook `SessionStart`；
@@ -15,10 +15,10 @@
 
 ## 兼容配置边界
 
-当前 Codex Hook profile 不支持 `SessionEnd`，不能为了测试虚构该能力。因此测试使用真实的 Vetta 嵌套配置布局：
+当前 Codex Hook profile 不支持 `SessionEnd`，不能为了测试虚构该能力。因此测试使用真实的 Astravia 嵌套配置布局：
 
-- `<cwd>/.vetta/.codex/hooks.json` 记录 `SessionStart`；
-- `<cwd>/.vetta/.claude/settings.json` 记录 `SessionEnd`；
+- `<cwd>/.astravia/.codex/hooks.json` 记录 `SessionStart`；
+- `<cwd>/.astravia/.claude/settings.json` 记录 `SessionEnd`；
 - 两类 Hook command 与 TypeScript Extension 写入同一 JSONL 审计文件。
 
 这同时验证了配置来源所有权：Codex Adapter 只消费 `.codex/hooks.json`，Claude Adapter 只消费 `.claude/settings.json`，Runtime/Host 不解析具体生态 wire payload。
@@ -29,7 +29,7 @@
 
 通用 `GreenfieldRuntimeComposition` 已支持 `hookConfigLayers`，但 Greenfield IM CLI Composition Root 没有像 Legacy SDK 一样调用 `buildDefaultHookConfigLayers`。结果是进程内测试可以收到 Hook，真实 CLI 的 Greenfield 后端却完全忽略用户和项目配置。
 
-修复位于 `greenfield-im-runtime-host.ts`：Composition Root 负责根据 `cwd` 与 Vetta Home 组装默认配置层，再注入通用 Composition。配置发现没有下沉到 Runtime Core。
+修复位于 `greenfield-im-runtime-host.ts`：Composition Root 负责根据 `cwd` 与 Astravia Home 组装默认配置层，再注入通用 Composition。配置发现没有下沉到 Runtime Core。
 
 ### 2. RPC stdin EOF 跳过 `session_shutdown`
 
@@ -66,7 +66,7 @@ Legacy CLI 在构造 `AgentSession` 前已经写入模型和思考级别元数�
 ## 实施范围
 
 - `apps/cli-host/src/rpc/greenfield-im-runtime-host.ts`
-  - 注入默认 Vetta 嵌套 Hook 配置层；
+  - 注入默认 Astravia 嵌套 Hook 配置层；
   - 通过现有 Session Hook Port 保留 CLI 首次 `resume` 兼容语义。
 - `packages/coding-agent/src/modes/rpc/rpc-mode.ts`
   - EOF 与主动关闭统一为一次性 `shutdown → dispose` 生命周期。

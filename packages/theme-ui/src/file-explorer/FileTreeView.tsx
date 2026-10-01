@@ -245,7 +245,7 @@ export function FileTreeView({
 
 	function handleRootDragOver(event: DragEvent): void {
 		const types = Array.from(event.dataTransfer.types);
-		const internal = types.includes("application/vetta-path");
+		const internal = types.includes("application/astravia-path");
 		if (!internal && !types.includes("Files")) return;
 		event.preventDefault();
 		event.dataTransfer.dropEffect = internal ? "move" : "copy";
@@ -260,7 +260,7 @@ export function FileTreeView({
 	function handleRootDrop(event: DragEvent): void {
 		setRootDragOver(false);
 		event.preventDefault();
-		const sourceRaw = event.dataTransfer.getData("application/vetta-path");
+		const sourceRaw = event.dataTransfer.getData("application/astravia-path");
 		if (sourceRaw) {
 			const paths = parseInternalDragPaths(sourceRaw);
 			if (paths.length > 0) onFileMove(paths, rootDir);

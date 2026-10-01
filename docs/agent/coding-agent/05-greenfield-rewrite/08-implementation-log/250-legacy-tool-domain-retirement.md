@@ -18,7 +18,7 @@
 - 会话历史、认证、模型和设置等用户数据；必要时由显式、独立的新迁移器读取旧格式。
 - 模型消息、工具消息、错误、取消、事件顺序、并发约束和资源释放语义。
 - 仍然有效的行为测试场景和数据 fixture；旧实现可以临时作为测试 Oracle，但不能被新生产代码调用。
-- `@vetta/ai` 与经过合同验证的 `@vetta/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
+- `@astravia/ai` 与经过合同验证的 `@astravia/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
 
 ## 明确舍弃（固定）
 
@@ -32,7 +32,7 @@
 
 ## 本阶段与最终目标的关系
 
-- Tool 的实现、TypeBox 输入合同、描述、注册元数据和执行服务继续由独立的 `@vetta/runtime-tools/coding` 拥有；`coding-agent` 只保留宿主端口和产品组合。
+- Tool 的实现、TypeBox 输入合同、描述、注册元数据和执行服务继续由独立的 `@astravia/runtime-tools/coding` 拥有；`coding-agent` 只保留宿主端口和产品组合。
 - 删除的是无生产调用方的旧实现与结构性测试 Oracle，不是工具功能。CLI、SDK、RPC、IM 使用的 Runtime Tool 表面不变。
 - Tool 输入本来就是结构化外部边界，继续使用 TypeBox；本阶段没有为内部已类型化对象额外引入 Zod。
 

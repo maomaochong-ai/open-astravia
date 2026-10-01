@@ -1,5 +1,5 @@
+import type { PluginOfficialApi } from "@astravia-org/plugin-sdk";
 import { i18n } from "@shared/i18n";
-import type { PluginOfficialApi } from "@vetta-org/plugin-sdk";
 import { getDefaultStore } from "jotai";
 import { cursorStyleAtom, resolvedThemeAtom, themeModeAtom, themeNameAtom } from "../../../shared/store/ui-atoms";
 import { applyTheme, MODE_STORAGE_KEY, type ResolvedMode, THEME_STORAGE_KEY } from "../../../shared/theme/apply";
@@ -32,7 +32,7 @@ function getThemeSnapshot() {
 async function resolveMode(mode: "light" | "dark" | "auto"): Promise<ResolvedMode> {
 	if (mode === "auto") {
 		try {
-			const native = await window.vetta.theme.getNative();
+			const native = await window.astravia.theme.getNative();
 			return native.shouldUseDarkColors ? "dark" : "light";
 		} catch {
 			return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
@@ -43,7 +43,7 @@ async function resolveMode(mode: "light" | "dark" | "auto"): Promise<ResolvedMod
 
 export async function getOfficialAppearanceHelp(): Promise<unknown> {
 	const state = getThemeSnapshot();
-	const native = await window.vetta.theme.getNative().catch(() => null);
+	const native = await window.astravia.theme.getNative().catch(() => null);
 	return {
 		type: "help",
 		description:
@@ -59,7 +59,7 @@ export async function getOfficialAppearanceHelp(): Promise<unknown> {
 
 export async function getOfficialAppearanceState(): Promise<unknown> {
 	const state = getThemeSnapshot();
-	const native = await window.vetta.theme.getNative().catch(() => null);
+	const native = await window.astravia.theme.getNative().catch(() => null);
 	return {
 		...state,
 		language: currentLanguage(),
@@ -99,9 +99,9 @@ export async function setOfficialAppearance(input: {
 	if (input.mode !== undefined) {
 		localStorage.setItem(MODE_STORAGE_KEY, input.mode);
 		if (input.mode === "auto") {
-			await window.vetta.theme.set("system").catch(() => {});
+			await window.astravia.theme.set("system").catch(() => {});
 		} else {
-			await window.vetta.theme.set(input.mode).catch(() => {});
+			await window.astravia.theme.set(input.mode).catch(() => {});
 		}
 		const resolved = await resolveMode(input.mode);
 		store.set(themeModeAtom, input.mode);
@@ -112,7 +112,7 @@ export async function setOfficialAppearance(input: {
 		applyTheme(resolved, nextThemeId);
 	}
 
-	const native = await window.vetta.theme.getNative().catch(() => null);
+	const native = await window.astravia.theme.getNative().catch(() => null);
 	return {
 		type: "set",
 		requested: input,
@@ -124,7 +124,7 @@ export async function setOfficialAppearance(input: {
 }
 
 export async function setOfficialLanguage(language: "zh" | "en"): Promise<unknown> {
-	await window.vetta.i18n.setLanguage(language);
+	await window.astravia.i18n.setLanguage(language);
 	return { type: "set-language", language };
 }
 

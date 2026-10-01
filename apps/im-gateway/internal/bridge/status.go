@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"vetta-im-gateway/internal/transport"
+	"astravia-im-gateway/internal/transport"
 )
 
 // Status reactions the bridge attaches to the triggering inbound message on

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
-import type { FileExplorerEntry, FileTreeViewProps } from "@vetta-org/theme-ui/file-explorer";
-import { FileTreeView, findFileTreeElement } from "@vetta-org/theme-ui/file-explorer";
+import type { FileExplorerEntry, FileTreeViewProps } from "@astravia-org/theme-ui/file-explorer";
+import { FileTreeView, findFileTreeElement } from "@astravia-org/theme-ui/file-explorer";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";

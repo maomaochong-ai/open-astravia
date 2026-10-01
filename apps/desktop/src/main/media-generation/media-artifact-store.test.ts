@@ -13,14 +13,14 @@ const storageMocks = vi.hoisted(() => ({
 vi.mock("../plugins/plugin-storage-service.js", () => storageMocks);
 
 const ownerId = "media-consumer";
-const artifactRoot = join(tmpdir(), "vetta-artifacts", String(process.pid));
+const artifactRoot = join(tmpdir(), "astravia-artifacts", String(process.pid));
 
 describe("MediaArtifactStore", () => {
 	let testRoot: string;
 	const stores: MediaArtifactStore[] = [];
 
 	beforeEach(async () => {
-		testRoot = await mkdtemp(join(tmpdir(), "vetta-media-artifact-test-"));
+		testRoot = await mkdtemp(join(tmpdir(), "astravia-media-artifact-test-"));
 		allowProjectRoot(testRoot);
 		storageMocks.getPluginBlobFile.mockReset();
 	});

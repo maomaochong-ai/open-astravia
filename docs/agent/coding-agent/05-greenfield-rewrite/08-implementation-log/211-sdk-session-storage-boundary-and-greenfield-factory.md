@@ -99,7 +99,7 @@ schema 只会制造双份合同。因此本阶段使用穷尽分支和结构化�
 ### runtime-storage
 
 - 新增正式 `InMemoryConversationRepository`；
-- 从 `@vetta/runtime-storage/conversation` 导出；
+- 从 `@astravia/runtime-storage/conversation` 导出；
 - 新增内存仓储行为测试。
 
 ### coding-agent Composition

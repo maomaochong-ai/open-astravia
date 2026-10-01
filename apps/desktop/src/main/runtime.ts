@@ -1,5 +1,5 @@
-import type { RuntimeHost } from "@vetta/runtime-core";
-import { DesktopRuntimeController, type DesktopRuntimeHealth } from "@vetta/runtime-desktop";
+import type { RuntimeHost } from "@astravia/runtime-core";
+import { DesktopRuntimeController, type DesktopRuntimeHealth } from "@astravia/runtime-desktop";
 import { createDesktopRuntimeComposition } from "./agent-runtime/composition.js";
 
 // 进程级共享 RuntimeHost：session IPC、定时任务与批量任务必须复用同一实例，

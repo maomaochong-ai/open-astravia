@@ -10,13 +10,13 @@ describe("isImageSkillIcon", () => {
 		expect(isImageSkillIcon("data:image/png;base64,abc")).toBe(true);
 	});
 
-	test("接受开源市场的 vetta-file 本地图标 URL", () => {
+	test("接受开源市场的 astravia-file 本地图标 URL", () => {
 		expect(
 			isImageSkillIcon(
-				"vetta-file://local/C:/Users/x/.vetta/open-marketplaces/src/snapshots/2026.07.1/abilities/skills/demo/icon.svg?v=2026.07.1",
+				"astravia-file://local/C:/Users/x/.astravia/open-marketplaces/src/snapshots/2026.07.1/abilities/skills/demo/icon.svg?v=2026.07.1",
 			),
 		).toBe(true);
-		expect(isImageSkillIcon("vetta-file://local/home/u/.vetta/icon.png")).toBe(true);
+		expect(isImageSkillIcon("astravia-file://local/home/u/.astravia/icon.png")).toBe(true);
 	});
 
 	test("拒绝 Solar 预设、空串与未识别值", () => {

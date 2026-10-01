@@ -8,7 +8,7 @@ import { syncMarketplaceIndex } from "../src/sync.js";
 const created: string[] = [];
 
 function scratch(): string {
-	const root = mkdtempSync(join(tmpdir(), "vetta-sync-"));
+	const root = mkdtempSync(join(tmpdir(), "astravia-sync-"));
 	created.push(root);
 	mkdirSync(join(root, ".git"), { recursive: true });
 	return root;
@@ -25,14 +25,14 @@ function writeIndex(
 	marketplaceVersion = "1.0.0",
 	indent: string | number = 0,
 ): string {
-	const manifestPath = join(root, ".vetta", "marketplace.json");
+	const manifestPath = join(root, ".astravia", "marketplace.json");
 	write(
 		manifestPath,
 		JSON.stringify({
 			schemaVersion: 2,
 			name: "demo-hub",
 			marketplaceVersion,
-			repository: "https://github.com/openvetta/demo",
+			repository: "https://github.com/maomaochong-ai/demo",
 			minAppVersion: "0.55.0",
 			abilities,
 		}, null, indent) + "\n",
@@ -90,14 +90,14 @@ describe("reconciling the index", () => {
 			minAppVersion: "0.55.0",
 			pluginApiVersion: "^2.5.0",
 			permissions: ["storage.read"],
-			artifact: { url: "https://example.com/demo-1.2.0.vettapkg", sha256: "a".repeat(64) },
+			artifact: { url: "https://example.com/demo-1.2.0.astraviapkg", sha256: "a".repeat(64) },
 		};
-		const manifestPath = join(root, ".vetta", "marketplace.json");
+		const manifestPath = join(root, ".astravia", "marketplace.json");
 		const manifest = {
 			schemaVersion: 3,
 			name: "demo-hub",
 			marketplaceVersion: "1.0.0",
-			repository: "https://github.com/openvetta/demo",
+			repository: "https://github.com/maomaochong-ai/demo",
 			minAppVersion: "0.55.0",
 			abilities: [{ type: "plugin", slug: "demo", name: "Demo", version: "1.2.0", source: { path: "abilities/plugins/demo" }, releases: [release] }],
 		};
@@ -115,7 +115,7 @@ describe("reconciling the index", () => {
 		const root = scratch();
 		const dir = "abilities/plugins/demo";
 		write(join(root, dir, "ability.json"), JSON.stringify({ schemaVersion: 1, type: "plugin", slug: "demo", name: "Demo", version: "1.2.0" }));
-		const manifestPath = join(root, ".vetta", "marketplace.json");
+		const manifestPath = join(root, ".astravia", "marketplace.json");
 		const member = { type: "plugin", slug: "demo", source: { path: dir }, releases: [{
 			version: "1.2.0",
 			minAppVersion: "0.5.58",
@@ -340,7 +340,7 @@ describe("sync command", () => {
 		);
 
 		expect(code).toBe(7);
-		expect(sink.out).toContain("vetta-plugin-cli sync");
+		expect(sink.out).toContain("astravia-plugin-cli sync");
 	});
 
 	it("warns about index drift right after installing, when it is still on the author's mind", async () => {
@@ -348,7 +348,7 @@ describe("sync command", () => {
 		writeIndex(root, [listedPlugin()]);
 		const pluginDir = join(root, "abilities", "plugins", "demo");
 		writePlugin(root, "abilities/plugins/demo", { ...basePluginManifest, version: "1.1.0" });
-		write(join(pluginDir, "release", "demo-1.1.0.vettapkg"), "package");
+		write(join(pluginDir, "release", "demo-1.1.0.astraviapkg"), "package");
 		const sink = { out: "", err: "" };
 
 		const code = await runPluginCommand({ type: "add", source: pluginDir, json: false }, {
@@ -358,7 +358,7 @@ describe("sync command", () => {
 
 		expect(code).toBe(0);
 		// 装完立刻说，而不是等他某天想起来跑 CI。
-		expect(sink.out).toContain("vetta-plugin-cli sync");
+		expect(sink.out).toContain("astravia-plugin-cli sync");
 		expect(sink.out).toContain("1.0.0");
 	});
 
@@ -366,7 +366,7 @@ describe("sync command", () => {
 		const root = scratch();
 		const pluginDir = join(root, "demo");
 		writePlugin(root, "demo", basePluginManifest);
-		write(join(pluginDir, "release", "demo-1.0.0.vettapkg"), "package");
+		write(join(pluginDir, "release", "demo-1.0.0.astraviapkg"), "package");
 		const sink = { out: "", err: "" };
 
 		await runPluginCommand({ type: "add", source: pluginDir, json: false }, {

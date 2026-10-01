@@ -19,7 +19,7 @@ describe("McpElicitationPanel", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		getDefaultStore().set(pendingMcpElicitationsAtom, {});
-		Object.defineProperty(window, "vetta", {
+		Object.defineProperty(window, "astravia", {
 			configurable: true,
 			value: {
 				session: { respondToMcpElicitation },
@@ -44,13 +44,13 @@ describe("McpElicitationPanel", () => {
 		getDefaultStore().set(pendingMcpElicitationsAtom, { "session-1": request });
 		render(<McpElicitationPanel request={request} />);
 
-		await user.type(screen.getByRole("textbox", { name: "Name" }), "Vetta");
+		await user.type(screen.getByRole("textbox", { name: "Name" }), "Astravia");
 		await user.click(screen.getByRole("button", { name: "mcpElicitation.submit" }));
 
 		await waitFor(() =>
 			expect(respondToMcpElicitation).toHaveBeenCalledWith("request-1", {
 				action: "accept",
-				content: { name: "Vetta" },
+				content: { name: "Astravia" },
 			}),
 		);
 		expect(getDefaultStore().get(pendingMcpElicitationsAtom)).toEqual({});

@@ -11,7 +11,7 @@
 					"template": "chat-over-canvas",
 					"canvas": "docs",
 					"user_prompt": "打开项目里的方案文档，我想先确认表格和关键页面。",
-					"assistant_reply": "你可以直接在 Vetta 中预览 PDF、Word、PowerPoint 和电子表格，无需切换到外部应用。"
+					"assistant_reply": "你可以直接在 Astravia 中预览 PDF、Word、PowerPoint 和电子表格，无需切换到外部应用。"
 				}
 			},
 			{
@@ -50,7 +50,7 @@
 							"template": "chat-over-canvas",
 							"canvas": "docs",
 							"user_prompt": "Open the proposal in this project so I can check the tables and key pages.",
-							"assistant_reply": "Preview PDF, Word, PowerPoint, and spreadsheet files in Vetta without switching to another app."
+							"assistant_reply": "Preview PDF, Word, PowerPoint, and spreadsheet files in Astravia without switching to another app."
 						}
 					},
 					{

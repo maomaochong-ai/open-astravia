@@ -4,7 +4,7 @@
 
 ## 架构定位
 
-`@vetta/coding-agent` 定义 Coding Agent 产品：它下接 AI、Agent Core 与各 Runtime 能力域，向平台
+`@astravia/coding-agent` 定义 Coding Agent 产品：它下接 AI、Agent Core 与各 Runtime 能力域，向平台
 Runtime 和应用提供产品 Feature、策略、默认配置和稳定产品 API 映射。它不是通用 Runtime Host，也
 不是最终平台 Composition Root。
 
@@ -17,21 +17,21 @@ Runtime 和应用提供产品 Feature、策略、默认配置和稳定产品 API
 
 本包不拥有：
 
-- 模型 Provider 协议与流式实现，属于 `@vetta/ai`。
-- Agent Kernel、Turn Pipeline 和通用 Port，属于 `@vetta/runtime-core` / `@vetta/agent-core`。
-- Session 创建、恢复、切换、Queue、Snapshot、生命周期事务和通用事件路由，属于 `@vetta/runtime-core`。
-- Coding Tool 协议与纯逻辑属于 `@vetta/runtime-tools`；Node Tool 实现属于 `@vetta/runtime-node`。
-- Conversation Repository 端口属于 `@vetta/runtime-storage`；Node 文件/内存实现属于 `@vetta/runtime-node`。
-- MCP 协议与通用生命周期属于 `@vetta/runtime-mcp`；Node transport、文件和 OAuth 实现属于 `@vetta/runtime-node`。
-- 通用知识库、Subagent 和观测实现，属于对应 `@vetta/runtime-*` 包。
+- 模型 Provider 协议与流式实现，属于 `@astravia/ai`。
+- Agent Kernel、Turn Pipeline 和通用 Port，属于 `@astravia/runtime-core` / `@astravia/agent-core`。
+- Session 创建、恢复、切换、Queue、Snapshot、生命周期事务和通用事件路由，属于 `@astravia/runtime-core`。
+- Coding Tool 协议与纯逻辑属于 `@astravia/runtime-tools`；Node Tool 实现属于 `@astravia/runtime-node`。
+- Conversation Repository 端口属于 `@astravia/runtime-storage`；Node 文件/内存实现属于 `@astravia/runtime-node`。
+- MCP 协议与通用生命周期属于 `@astravia/runtime-mcp`；Node transport、文件和 OAuth 实现属于 `@astravia/runtime-node`。
+- 通用知识库、Subagent 和观测实现，属于对应 `@astravia/runtime-*` 包。
 - CLI、Desktop 或 IM 自身的进程入口、UI 和传输协议。
 - Node/Desktop 环境实现和最终平台 Composition Root，属于现有平台 Runtime 或应用宿主。
 
 ## 依赖方向
 
 - Apps 只能依赖本包在 `package.json#exports` 中声明的公开入口，不得深度导入 `src/`。
-- 本包可以依赖 `@vetta/runtime-*`、`@vetta/ai` 和 `@vetta/agent-core`；Kernel、协议包和 `runtime-node` 不得反向依赖本包，平台 Composition Root（例如 `runtime-desktop`）可以组合本包。
-- 产品 Feature 不得选择 `@vetta/runtime-node` 默认实现；具体实现只允许在现有平台 Composition Root
+- 本包可以依赖 `@astravia/runtime-*`、`@astravia/ai` 和 `@astravia/agent-core`；Kernel、协议包和 `runtime-node` 不得反向依赖本包，平台 Composition Root（例如 `runtime-desktop`）可以组合本包。
+- 产品 Feature 不得选择 `@astravia/runtime-node` 默认实现；具体实现只允许在现有平台 Composition Root
   中选择。迁移期间保留的 Node 接线必须登记并按纵向切片移除。
 - `runtime-contracts/`、`composition/contracts/` 和其他合同文件不得依赖 Composition、Host、Adapter 或 Public API 实现。
 - 产品能力域不得依赖 `composition/` 实现、`adapters/` 或 Public API facade。

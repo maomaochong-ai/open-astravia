@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { convertToPng as convertBase64ToPng } from "@vetta/runtime-node/coding";
+import { convertToPng as convertBase64ToPng } from "@astravia/runtime-node/coding";
 
 import { clipboard } from "./clipboard-native.js";
 

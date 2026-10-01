@@ -9,7 +9,7 @@ const LOW_SIGNAL_PREFIXES = ["[plugin-agent]", "[activity-tab-debug]", "[vite-hm
 export function shouldPersistRendererConsoleMessage(
 	level: RendererConsoleLevel,
 	message: string,
-	verbose = process.env.VETTA_RENDERER_VERBOSE_LOGS === "1",
+	verbose = process.env.ASTRAVIA_RENDERER_VERBOSE_LOGS === "1",
 ): boolean {
 	if (verbose || level === "warn" || level === "error") return true;
 	if (LOW_SIGNAL_PREFIXES.some((prefix) => message.startsWith(prefix))) return false;

@@ -1,11 +1,11 @@
 ---
 name: plugin-workbench
 description: >
-  Create, implement, build, pack, install, reload, and manage Vetta desktop plugins
-  for non-developers. Use whenever the user wants a Vetta plugin, plugin scaffolding,
-  apply a `.vettapkg` package to Vetta, edit plugin.json name/guidingWords, or debug plugin load/install.
+  Create, implement, build, pack, install, reload, and manage Astravia desktop plugins
+  for non-developers. Use whenever the user wants a Astravia plugin, plugin scaffolding,
+  apply a `.astraviapkg` package to Astravia, edit plugin.json name/guidingWords, or debug plugin load/install.
   Requires the Plugin Workbench input-bar toggle (hard isolation). The plugin handbook ships
-  inside the project's own @vetta-org/plugin-sdk; locate it with the bundled CLI's docs command.
+  inside the project's own @astravia-org/plugin-sdk; locate it with the bundled CLI's docs command.
 ---
 
 # 制作插件（完整流水线）
@@ -26,17 +26,17 @@ workbenchRoot = listPlugins() 中 id === "plugin-workbench" 的 rootPath
 
 | 资源 | 绝对路径 |
 | --- | --- |
-| **插件 CLI（内置）** | `{workbenchRoot}/agent/cli/vetta-plugin-cli.js` |
+| **插件 CLI（内置）** | `{workbenchRoot}/agent/cli/astravia-plugin-cli.js` |
 | 文档索引（本 skill 附件） | 本 skill 目录 `references/doc-index.md` |
 | 实现模板摘要 | 本 skill 目录 `references/templates.md` |
 | 标准脚本 | `{workbenchRoot}/scripts/*.mjs` |
 
-**手册不在工作台里**，它随 `@vetta-org/plugin-sdk` 装进**被编辑工程自己的** `node_modules`。
+**手册不在工作台里**，它随 `@astravia-org/plugin-sdk` 装进**被编辑工程自己的** `node_modules`。
 这是刻意的：那份手册与该工程实际编译的 SDK 版本一致，而随 App 发版的内嵌副本做不到。用内置
 CLI 解析它的位置（工程 `npm install` 之后）：
 
 ```bash
-node "{workbenchRoot}/agent/cli/vetta-plugin-cli.js" docs --json
+node "{workbenchRoot}/agent/cli/astravia-plugin-cli.js" docs --json
 ```
 
 返回 `manualDir`（手册目录绝对路径）、`entry`（README.md）、`sdkVersion`，以及当前命中的插件工程。
@@ -90,7 +90,7 @@ node "{workbenchRoot}/agent/cli/vetta-plugin-cli.js" docs --json
 
 1. 用户已打开输入栏 **「制作插件」** toggle（硬隔离；关着则 skill/agent 贡献不可见）。  
 2. 工程在**当前会话 cwd**（或一层子目录），无特殊工场目录。  
-3. 用户插件依赖：`@vetta-org/plugin-sdk` / `@vetta-org/plugin-vite` 用 **registry 已发布 semver**（`init` 默认 sdk `^0.3.1` / vite `^0.2.0`，两者版本独立；若 install 失败问用户 registry/版本）。
+3. 用户插件依赖：`@astravia-org/plugin-sdk` / `@astravia-org/plugin-vite` 用 **registry 已发布 semver**（`init` 默认 sdk `^0.3.1` / vite `^0.2.0`，两者版本独立；若 install 失败问用户 registry/版本）。
 4. 构建用 **托管 Node + npm**；标准脚本封装，禁止随意手搓另一套 pack（除非用户明确要求且你已读 getting-started 的打包约定）。
 
 ---
@@ -103,7 +103,7 @@ node "{workbenchRoot}/agent/cli/vetta-plugin-cli.js" docs --json
 | 展示名 `name` | 用户可见品牌 |
 | `permissions` 列表 | 安全；对照 permissions.md 向用户解释再写入 |
 | 要解决的问题 / MVP 范围 | 避免一次做全家桶 |
-| 是否立即安装到本机 | 构建后是否引导用户在面板点「应用到 Vetta」 |
+| 是否立即安装到本机 | 构建后是否引导用户在面板点「应用到 Astravia」 |
 | 扩展点类型（用户没说时） | activity-tab / 工具 / 引导词 / 预览 / … |
 
 ---
@@ -117,7 +117,7 @@ AskUserQuestion 收齐 §3；对照 README 能力矩阵选定扩展点 → 列�
 ### 4.2 Scaffold
 
 ```bash
-node "{workbenchRoot}/agent/cli/vetta-plugin-cli.js" init --id {id} --name "{name}" "{cwd}/{plugin-id}"
+node "{workbenchRoot}/agent/cli/astravia-plugin-cli.js" init --id {id} --name "{name}" "{cwd}/{plugin-id}"
 cd "{cwd}/{plugin-id}" && npm install
 ```
 
@@ -155,7 +155,7 @@ node "{workbenchRoot}/scripts/check-manifest.mjs" "{pluginRoot}"
 改一个**已安装**的插件前，先 `plugins.query` → `get {id}` 看返回项有没有 `devWatch` 字段：
 
 - **`devWatch` 存在（热更新已开启）**：改完工程源码或 `plugin.json` 即结束——vite watch 构建成功后自动重载；dev 会话内新增 permissions/commands 也会自动放行。**禁止**再走 4.4/4.5 或 reload。若 `devWatch.status === "error"`，提示用户看面板错误或拨一下热更新开关。仅当用户明确要**持久**写入注册表（关热更新/重启后仍生效）时，才用 `workbench_offer_reinstall` 让用户点卡片「重新安装」。
-- **`devWatch` 不存在**：走 4.4→4.5 常规流程（构建打包后引导用户在面板点「应用到 Vetta」）。
+- **`devWatch` 不存在**：走 4.4→4.5 常规流程（构建打包后引导用户在面板点「应用到 Astravia」）。
 
 ### 4.4 构建打包（强制脚本）
 
@@ -163,23 +163,23 @@ node "{workbenchRoot}/scripts/check-manifest.mjs" "{pluginRoot}"
 node "{workbenchRoot}/scripts/build-and-pack.mjs" "{pluginRoot}"
 ```
 
-- 默认：patch bump → `npm install` → `npm run build` → `release/{id}-{version}.vettapkg`
+- 默认：patch bump → `npm install` → `npm run build` → `release/{id}-{version}.astraviapkg`
 - 解析 stdout JSON：`packagePath`、`id`、`version`
 - 失败：读 stderr，按 getting-started / styling 修；缺依赖或 registry 问题 → AskUserQuestion
 
-### 4.5 安装到本机 Vetta（引导用户在面板点击，不要弹确认）
+### 4.5 安装到本机 Astravia（引导用户在面板点击，不要弹确认）
 
 打包完成后**不要调用** `plugins.manage` 的 `install-from-path`（会弹确认 sheet，工作台流程已废弃此路径）。改为告知用户：
 
-> 打开右侧活动面板「制作插件」→ 对应工程卡片 → 点 **「应用到 Vetta」**（面板安装一次完成授权 + 启用，无确认弹窗）。
+> 打开右侧活动面板「制作插件」→ 对应工程卡片 → 点 **「应用到 Astravia」**（面板安装一次完成授权 + 启用，无确认弹窗）。
 
 - 应用成功后面板会**默认开启「热更新」**：之后你改源码即自动构建+重载（§4.3.5），无需再次应用。用户可手动关掉。  
-- 再次应用（热更新被关掉时）：build-and-pack 后再请用户点「应用到 Vetta」（应用后会重新默认开启热更新）。  
+- 再次应用（热更新被关掉时）：build-and-pack 后再请用户点「应用到 Astravia」（应用后会重新默认开启热更新）。  
 - 不可覆盖系统插件 id。
 
 ### 4.6 改 name / guidingWords
 
-只改 **工程源码** `plugin.json`，再 4.4 → 4.5。禁止改 `~/.vetta/plugins/...` 已装目录当真相源。
+只改 **工程源码** `plugin.json`，再 4.4 → 4.5。禁止改 `~/.astravia/plugins/...` 已装目录当真相源。
 
 ### 4.7 卸载 / 重载 / 重新安装
 
@@ -192,9 +192,9 @@ node "{workbenchRoot}/scripts/build-and-pack.mjs" "{pluginRoot}"
 
 Activity Tab「制作插件」（同样受 toggle 硬隔离）：扫描 cwd、构建、应用、卸载、重载、改 name/引导词。与对话同一规则与同一脚本。
 
-每张工程卡片有 **「热更新」开关（已安装后默认开）**：宿主把插件 dev 链接到工程目录并常驻 `vetta-plugin dev`；React / CSS 走 HMR，其余资源定向重载（无需 bump/重打包/手动 reload）。适合迭代调试。
+每张工程卡片有 **「热更新」开关（已安装后默认开）**：宿主把插件 dev 链接到工程目录并常驻 `astravia-plugin dev`；React / CSS 走 HMR，其余资源定向重载（无需 bump/重打包/手动 reload）。适合迭代调试。
 
-已安装时还有 **「重新安装」**（与消息卡按钮同路径）：强制 build-and-pack → 把权限/命令**持久写入注册表** → **刷新整个 Vetta 窗口**。日常改代码 / 改 plugin.json 靠热更新即可（dev 会话内权限声明自动放行）；重新安装用于落盘授权或热更新异常时兜底。首次安装仍用「应用到 Vetta」。
+已安装时还有 **「重新安装」**（与消息卡按钮同路径）：强制 build-and-pack → 把权限/命令**持久写入注册表** → **刷新整个 Astravia 窗口**。日常改代码 / 改 plugin.json 靠热更新即可（dev 会话内权限声明自动放行）；重新安装用于落盘授权或热更新异常时兜底。首次安装仍用「应用到 Astravia」。
 
 ---
 
@@ -229,4 +229,4 @@ Activity Tab「制作插件」（同样受 toggle 硬隔离）：扫描 cwd、�
 - `references/templates.md` — 常见扩展点代码起点  
 
 **再次强调**：实现前先 `docs --json` 拿到 `manualDir`，再 `read` 其中对应的章节。手册随工程自己的
-`@vetta-org/plugin-sdk` 发布，因此它描述的合同就是这个工程即将编译的合同。
+`@astravia-org/plugin-sdk` 发布，因此它描述的合同就是这个工程即将编译的合同。

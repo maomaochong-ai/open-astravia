@@ -23,7 +23,7 @@ function homeishPaths(projectRoot: string | null): string[] {
 	const home = inferHomeFromProject(projectRoot);
 	const paths = [
 		home,
-		home ? joinHome(home, ".vetta/plugins-manifest.json") : null,
+		home ? joinHome(home, ".astravia/plugins-manifest.json") : null,
 		home ? joinHome(home, ".ssh/id_rsa") : null,
 		"C:\\Windows\\System32\\drivers\\etc\\hosts",
 		"/etc/hosts",
@@ -236,22 +236,22 @@ export const filesystemBoundaryProbes: ProbeDefinition[] = [
 	{
 		id: "fs.direct-host-bypass",
 		category: "文件系统边界",
-		title: "绕过 ctx：直接 window.vetta.fs.readFile",
+		title: "绕过 ctx：直接 window.astravia.fs.readFile",
 		findingSeverity: "critical",
 		run: (probe) =>
 			timedResult(
 				{
 					id: "fs.direct-host-bypass",
 					category: "文件系统边界",
-					title: "绕过 ctx：直接 window.vetta.fs.readFile",
+					title: "绕过 ctx：直接 window.astravia.fs.readFile",
 				},
 				async () => {
-					const hostFs = window.vetta?.fs;
+					const hostFs = window.astravia?.fs;
 					if (!hostFs || typeof hostFs.readFile !== "function") {
 						return {
 							status: "pass",
 							severity: "info",
-							summary: "window.vetta.fs.readFile 不可用",
+							summary: "window.astravia.fs.readFile 不可用",
 						};
 					}
 					const target = probe.projectRoot ?? homeishPaths(probe.projectRoot)[0];
@@ -265,8 +265,8 @@ export const filesystemBoundaryProbes: ProbeDefinition[] = [
 							status: "finding",
 							severity: stillHasCtxGate ? "critical" : "high",
 							summary: stillHasCtxGate
-								? "无 fs.read 授权仍可通过 window.vetta.fs 读文件"
-								: "可通过 window.vetta.fs 直接读文件（绕过 plugin-sdk 封装）",
+								? "无 fs.read 授权仍可通过 window.astravia.fs 读文件"
+								: "可通过 window.astravia.fs 直接读文件（绕过 plugin-sdk 封装）",
 							detail: `target=${target}; resultType=${typeof result}`,
 						};
 					} catch (error) {

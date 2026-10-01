@@ -154,8 +154,8 @@ CodingAgentPluginToolRuntime
 
 ### 7. 测试运行入口修正
 
-Coding Agent Vitest 原先只映射了 `@vetta/runtime-core` 和 sandbox 子路径。本轮第一次从 Coding
-Agent 源码运行时引用 Kernel 的值导出，因此补充 `@vetta/runtime-core/kernel` workspace 源码映射。
+Coding Agent Vitest 原先只映射了 `@astravia/runtime-core` 和 sandbox 子路径。本轮第一次从 Coding
+Agent 源码运行时引用 Kernel 的值导出，因此补充 `@astravia/runtime-core/kernel` workspace 源码映射。
 测试不再意外读取旧 `dist`。
 
 ## 测试

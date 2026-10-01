@@ -70,9 +70,9 @@
 在仓库根目录运行：
 
 ```powershell
-$env:VETTA_STARTUP_BENCHMARK_RUNS = '5'
+$env:ASTRAVIA_STARTUP_BENCHMARK_RUNS = '5'
 bun scripts/quality/run-vitest.mjs --config apps/desktop/vitest.config.ts --run --maxWorkers=1 apps/desktop/src/main/agent-runtime/session-startup-performance.test.ts
-Remove-Item Env:VETTA_STARTUP_BENCHMARK_RUNS
+Remove-Item Env:ASTRAVIA_STARTUP_BENCHMARK_RUNS
 ```
 
 输出 `[startup-benchmark]` 为安全的计时数值。`refreshMs` 是各次刷新调用的等待时长之和，优化前并发调用会在串行队列里等待，不能把它与创建时间相加，也不能作为独占 CPU 时间。

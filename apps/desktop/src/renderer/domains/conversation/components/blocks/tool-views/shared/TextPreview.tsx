@@ -1,7 +1,7 @@
 import {
 	TextPreview as ThemeTextPreview,
 	type TextPreviewProps as ThemeTextPreviewProps,
-} from "@vetta-org/theme-ui/chat";
+} from "@astravia-org/theme-ui/chat";
 import { useTranslation } from "react-i18next";
 
 type HostTextPreviewProps = Omit<ThemeTextPreviewProps, "labels">;

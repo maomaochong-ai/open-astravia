@@ -13,13 +13,13 @@ describe("copyUserMessageToClipboard", () => {
 
 	it("forwards persisted image paths without reading or encoding them in the renderer", async () => {
 		const writeUserMessage = vi.fn(async () => undefined);
-		Object.defineProperty(window, "vetta", {
+		Object.defineProperty(window, "astravia", {
 			configurable: true,
 			value: { clipboard: { writeUserMessage } },
 		});
 		const fetchSpy = vi.spyOn(globalThis, "fetch");
 
-		await copyUserMessageToClipboard("hello", ["vetta-file://local/C:/attachments/attachment.png"]);
+		await copyUserMessageToClipboard("hello", ["astravia-file://local/C:/attachments/attachment.png"]);
 
 		expect(writeUserMessage).toHaveBeenCalledWith({
 			text: "hello",

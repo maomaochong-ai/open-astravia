@@ -15,7 +15,7 @@ import type {
 	BrowserSnapshot,
 	BrowserSnapshotInput,
 	BrowserTextContent,
-} from "@vetta-org/capability-sdk";
+} from "@astravia-org/capability-sdk";
 import { assertAllowedBrowserUrl, assertReturnedPageAllowed } from "./browser-policy.js";
 import { browserResourceRef } from "./browser-profile-registry.js";
 import { BrowserSessionRegistry } from "./browser-session-registry.js";
@@ -131,7 +131,7 @@ export class BrowserAutomationService {
 			}
 			await this.reclaimPersistedProfileSessions(input.namespace, profile, source, input.headed ?? true);
 		}
-		const sessionId = `vetta-${randomUUID()}`;
+		const sessionId = `astravia-${randomUUID()}`;
 		const resources = await this.profiles.prepareSession({
 			namespace: input.namespace,
 			sessionId,

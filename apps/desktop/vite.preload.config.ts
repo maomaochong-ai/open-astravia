@@ -11,18 +11,18 @@ const preloadEntries = {
 } as const;
 
 export default defineConfig(({ mode }) => {
-	const entryName = process.env.VETTA_PRELOAD_ENTRY;
+	const entryName = process.env.ASTRAVIA_PRELOAD_ENTRY;
 	if (!entryName || !(entryName in preloadEntries)) {
-		throw new Error(`Invalid VETTA_PRELOAD_ENTRY: ${entryName ?? "missing"}`);
+		throw new Error(`Invalid ASTRAVIA_PRELOAD_ENTRY: ${entryName ?? "missing"}`);
 	}
 	const preloadEntryName = entryName as keyof typeof preloadEntries;
-	const effectiveMode = process.env.VETTA_BUILD_ENV || mode;
-	const env = loadEnv(effectiveMode, process.cwd(), "VETTA_");
+	const effectiveMode = process.env.ASTRAVIA_BUILD_ENV || mode;
+	const env = loadEnv(effectiveMode, process.cwd(), "ASTRAVIA_");
 	const sentry = createSentryBuildSetup(env, "dist/preload");
 	return {
 		define: {
-			"process.env.VETTA_SENTRY_ENABLED": JSON.stringify(
-				readValue(env, "VETTA_SENTRY_DSN") ? "true" : "false",
+			"process.env.ASTRAVIA_SENTRY_ENABLED": JSON.stringify(
+				readValue(env, "ASTRAVIA_SENTRY_DSN") ? "true" : "false",
 			),
 		},
 		plugins: [...sentry.plugins],

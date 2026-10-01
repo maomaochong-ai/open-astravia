@@ -2,7 +2,7 @@
 
 ## 阶段目标
 
-在不改变 CLI、Desktop、SDK、RPC、IM 的会话发现、读取、重命名、删除、迁移、恢复和 fork 行为的前提下，将真实历史 Coding Agent JSONL 兼容能力从运行时 Adapter 杂项中收口到独立 Session 子域，并用安装后的 `vetta` 可执行文件验证第 252 阶段的原生 setup seed 链路。
+在不改变 CLI、Desktop、SDK、RPC、IM 的会话发现、读取、重命名、删除、迁移、恢复和 fork 行为的前提下，将真实历史 Coding Agent JSONL 兼容能力从运行时 Adapter 杂项中收口到独立 Session 子域，并用安装后的 `astravia` 可执行文件验证第 252 阶段的原生 setup seed 链路。
 
 <!-- coding-agent-rewrite-charter:v1:start -->
 ## 重写目标确认（固定）
@@ -18,7 +18,7 @@
 - 会话历史、认证、模型和设置等用户数据；必要时由显式、独立的新迁移器读取旧格式。
 - 模型消息、工具消息、错误、取消、事件顺序、并发约束和资源释放语义。
 - 仍然有效的行为测试场景和数据 fixture；旧实现可以临时作为测试 Oracle，但不能被新生产代码调用。
-- `@vetta/ai` 与经过合同验证的 `@vetta/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
+- `@astravia/ai` 与经过合同验证的 `@astravia/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
 
 ## 明确舍弃（固定）
 
@@ -60,7 +60,7 @@
 - 冻结历史 Session 数据修改调用：`appendFile=1`、`rm=2`，新增写 API、调用点或数量变化均失败。
 - 继续维持 Legacy execution edge、native setup migration edge、format-to-old edge 全部为 0。
 
-### 4. 安装后 vetta CLI 验收
+### 4. 安装后 astravia CLI 验收
 
 - 扩展命令通过真实 `ctx.newSession({ setup })` 写入 session name 和 user message。
 - 测试等待异步扩展命令完成，验证目标只含原生 `conversation.seed`，不含 `conversation.import.seed`，且没有生成旧格式 JSONL。
@@ -84,7 +84,7 @@
 - Coding Agent 定向测试：5 个文件，42 项通过，2 项按环境跳过。
 - Runtime Storage 历史文档投影测试：1 个文件，3 项通过。
 - 质量门禁定向测试：2 个文件，69 项通过。
-- 安装后独立 `vetta` 可执行文件定向测试：1 项通过，覆盖 Extension setup、native seed、进程重启、fork 与再次恢复。
+- 安装后独立 `astravia` 可执行文件定向测试：1 项通过，覆盖 Extension setup、native seed、进程重启、fork 与再次恢复。
 - `bun run check:quick` 通过。
 - `bun run check` 的全仓 Biome、根/CLI/Desktop/Admin 类型检查和全部质量守卫通过。
 

@@ -12,7 +12,7 @@ describe("Prompt template ResourceAccessPort", () => {
 	it("materializes templates in user, project, then explicit source order", async () => {
 		const files = new Map([
 			["/agent/prompts/review.md", promptDocument("Review changes", "User body")],
-			["/workspace/.vetta/prompts/plan.md", "Project body"],
+			["/workspace/.astravia/prompts/plan.md", "Project body"],
 			["/extra/deploy.md", promptDocument("Deploy safely", "Deploy $ARGUMENTS")],
 		]);
 
@@ -42,14 +42,14 @@ describe("Prompt template ResourceAccessPort", () => {
 	it("keeps the first prompt on collision and reports the losing path", async () => {
 		const files = new Map([
 			["/agent/prompts/shared.md", "User winner"],
-			["/workspace/.vetta/prompts/shared.md", "Project loser"],
+			["/workspace/.astravia/prompts/shared.md", "Project loser"],
 		]);
 
 		const result = await loadPromptResources({
 			resourceAccess: createMemoryResourceAccess(files),
 			cwd: "/workspace",
 			agentDir: "/agent",
-			paths: ["/agent/prompts", "/workspace/.vetta/prompts"],
+			paths: ["/agent/prompts", "/workspace/.astravia/prompts"],
 			disabled: false,
 		});
 
@@ -58,10 +58,10 @@ describe("Prompt template ResourceAccessPort", () => {
 		expect(result.diagnostics).toContainEqual(
 			expect.objectContaining({
 				type: "collision",
-				path: "/workspace/.vetta/prompts/shared.md",
+				path: "/workspace/.astravia/prompts/shared.md",
 				collision: expect.objectContaining({
 					winnerPath: "/agent/prompts/shared.md",
-					loserPath: "/workspace/.vetta/prompts/shared.md",
+					loserPath: "/workspace/.astravia/prompts/shared.md",
 				}),
 			}),
 		);

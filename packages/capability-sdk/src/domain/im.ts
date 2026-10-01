@@ -140,7 +140,7 @@ const imAgentModelSettingInputSchema = defineCapabilityInputSchema(imAgentModelS
 
 export const DOMAIN_IM_CAPABILITIES = {
 	GET_STATUS: defineCapability<Record<string, never>, ImStatusSnapshot>({
-		id: "cap.domain.vetta.im.status.get",
+		id: "cap.domain.astravia.im.status.get",
 		kind: "query",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -148,7 +148,7 @@ export const DOMAIN_IM_CAPABILITIES = {
 		output: imStatusSnapshotOutputSchema,
 	}),
 	LIST_LOGS: defineCapability<ImLogListInput, ImLogEntry[]>({
-		id: "cap.domain.vetta.im.log.list",
+		id: "cap.domain.astravia.im.log.list",
 		kind: "query",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -156,7 +156,7 @@ export const DOMAIN_IM_CAPABILITIES = {
 		output: imLogsOutputSchema,
 	}),
 	SET_ENABLED: defineCapability<ImEnabledInput, ImRuntimeStatus>({
-		id: "cap.domain.vetta.im.enabled.set",
+		id: "cap.domain.astravia.im.enabled.set",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -164,7 +164,7 @@ export const DOMAIN_IM_CAPABILITIES = {
 		output: imRuntimeStatusOutputSchema,
 	}),
 	RESTART: defineCapability<Record<string, never>, ImRuntimeStatus>({
-		id: "cap.domain.vetta.im.restart",
+		id: "cap.domain.astravia.im.restart",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -172,7 +172,7 @@ export const DOMAIN_IM_CAPABILITIES = {
 		output: imRuntimeStatusOutputSchema,
 	}),
 	SET_AGENT_MODEL: defineCapability<ImAgentModelSettingInput, ImRuntimeStatus>({
-		id: "cap.domain.vetta.im.agent-model.set",
+		id: "cap.domain.astravia.im.agent-model.set",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,

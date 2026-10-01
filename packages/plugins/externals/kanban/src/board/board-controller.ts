@@ -1,4 +1,4 @@
-import { readJsonFile, writeJsonFile, type PluginContext } from "@vetta-org/plugin-sdk";
+import { readJsonFile, writeJsonFile, type PluginContext } from "@astravia-org/plugin-sdk";
 import {
 	addCard,
 	applyRunningSessions,

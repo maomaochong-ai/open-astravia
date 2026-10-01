@@ -6,7 +6,7 @@ Accepted
 
 ## 背景
 
-`@vetta/coding-agent` 最初承担 Coding Agent 产品组合，但在演进中同时吸收了 Session 生命周期、
+`@astravia/coding-agent` 最初承担 Coding Agent 产品组合，但在演进中同时吸收了 Session 生命周期、
 Runtime Host、平台 Adapter、SDK/RPC Host、历史格式和产品能力。当前 `host`、`composition` 与
 `adapters` 已成为包内最大的三个区域，使“产品语义”退化为无法判断所有权时的默认落点。
 
@@ -15,12 +15,12 @@ Extension 组合。本决策进一步明确 `agent`、`runtime-core` 与 `coding
 
 ## 决策
 
-### `@vetta/agent-core`
+### `@astravia/agent-core`
 
 拥有一次 Agent 执行所需的最小闭环：模型调用与 Tool Loop、消息和工具结果状态转换、流式事件、
 错误、取消、usage 与 stop 传播。它只依赖 AI 协议和自身合同，不依赖 Runtime、产品或平台包。
 
-### `@vetta/runtime-core`
+### `@astravia/runtime-core`
 
 拥有产品无关的多轮运行机制：Session、Turn admission、Queue、Runtime Snapshot、Conversation
 Document、生命周期事务、恢复、资源所有权、Port、Session Extension 组合和通用事件路由。
@@ -28,7 +28,7 @@ Document、生命周期事务、恢复、资源所有权、Port、Session Extens
 `runtime-core` 不定义 Todo、IM、知识库、Coding Prompt、产品 Profile 或其他产品规则，也不访问
 文件系统、进程、数据库、Electron 等具体环境。
 
-### `@vetta/coding-agent`
+### `@astravia/coding-agent`
 
 拥有 Coding Agent 的产品定义，而不是通用 Runtime Host：默认 Profile、Prompt、Mode、产品 Feature、
 Todo、Memory/Knowledge/Skill/Plugin/IM 的产品策略、上下文和 Compaction 策略，以及稳定产品 API 的

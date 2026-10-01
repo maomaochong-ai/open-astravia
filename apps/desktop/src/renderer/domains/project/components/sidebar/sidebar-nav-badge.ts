@@ -1,4 +1,4 @@
-import type { PluginNavBadge } from "@vetta-org/plugin-sdk";
+import type { PluginNavBadge } from "@astravia-org/plugin-sdk";
 import type { SidebarNavBadge } from "./types";
 
 /**

@@ -1,4 +1,4 @@
-import { useTranslation } from "@vetta-org/plugin-sdk";
+import { useTranslation } from "@astravia-org/plugin-sdk";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { graphLog, listBranches } from "../../git/log";
 import { parseLog } from "../../git/parseLog";

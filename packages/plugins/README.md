@@ -1,4 +1,4 @@
-# Vetta Plugins
+# Astravia Plugins
 
 本目录集中维护插件 SDK、构建工具、系统插件和外置插件示例，所有包统一纳入
 仓库根 workspace。
@@ -13,8 +13,8 @@
 
 - `plugin-sdk/`：插件运行时 API 和类型。
 - `plugin-vite/`：插件 Vite 配置与 zip 打包工具。
-- `plugin-cli/`：从 npm 包、本地 .vettapkg（兼容旧 .zip）或 URL 安装插件的公开 CLI。
-- `presets/`：随 Vetta Desktop 发布的系统插件。
+- `plugin-cli/`：从 npm 包、本地 .astraviapkg（兼容旧 .zip）或 URL 安装插件的公开 CLI。
+- `presets/`：随 Astravia Desktop 发布的系统插件。
 - `externals/`：不随 App 打包的外置插件示例。
 
 ## 安装
@@ -38,7 +38,7 @@ bun run build:presets
 开发环境会先把 `development` profile 中当前租户的插件 staging 到
 `apps/desktop/.artifacts/system-plugins/`，再默认为它们建立内存 dev 链接并启动
 开发服务器；关闭 dev 链接时回落 staging。
-Preset 不会安装到 `~/.vetta/plugins`。
+Preset 不会安装到 `~/.astravia/plugins`。
 
 ## 通过 npm 分发外置插件
 
@@ -47,29 +47,29 @@ Preset 不会安装到 `~/.vetta/plugins`。
 
 ```json
 {
-  "name": "@example/vetta-plugin-demo",
+  "name": "@example/astravia-plugin-demo",
   "version": "1.0.0",
-  "files": ["release/vetta-plugin.vettapkg"],
-  "vetta": {
+  "files": ["release/astravia-plugin.astraviapkg"],
+  "astravia": {
     "schemaVersion": 1,
     "type": "desktop-plugin",
     "pluginId": "demo",
-    "archive": "release/vetta-plugin.vettapkg"
+    "archive": "release/astravia-plugin.astraviapkg"
   }
 }
 ```
 
 ```ts
-vettaPluginFederation({
+astraviaPluginFederation({
   name: "demo",
   package: { npmArchive: true }
 });
 ```
 
-发布 npm 包后，用户需要先启动 Vetta Desktop，再执行：
+发布 npm 包后，用户需要先启动 Astravia Desktop，再执行：
 
 ```bash
-npx @vetta-org/plugin-cli add @example/vetta-plugin-demo
+npx @astravia-org/plugin-cli add @example/astravia-plugin-demo
 ```
 
 CLI 使用 `npm pack --ignore-scripts` 获取包，校验 npm 元数据后仅提取声明的 zip；
@@ -80,7 +80,7 @@ Desktop 会再次校验摘要、插件 id 与版本，然后沿用现有授权�
 上游能力本身以 Agent CLI 为产品面时，插件可用 `plugin.json#providers.cli` 声明宿主需要准备的 executable、探测 argv
 和安装命令。用户启用插件后，Desktop 展示真实的检查、安装、验证与失败状态；全部 Provider 就绪前不会发布该插件的
 Agent 贡献。插件 Renderer 通过 `ctx.cliProviders` 订阅状态、重试或启动上游原生配置流程，Agent 则继续通过已有 Shell
-直接使用 CLI，不增加 Vetta Action、MCP 或自定义 Tool。
+直接使用 CLI，不增加 Astravia Action、MCP 或自定义 Tool。
 
 能力专属的安装与配置界面使用 `ctx.ui.registerAbilityDetailSlot`，由宿主固定渲染在匹配 slug 的能力详情页 Header 下方。
 停用或卸载插件会停止宿主持有的进程，但不会卸载全局 CLI 或清除上游凭据。完整决策见

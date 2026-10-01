@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
+import type { PluginServiceStatus } from "@astravia-org/plugin-sdk";
 import type { InstalledPlugin } from "@preload/api";
-import type { PluginServiceStatus } from "@vetta-org/plugin-sdk";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createPluginServiceApi } from "./plugin-service-api";
 
@@ -22,7 +22,7 @@ const plugin = {
 describe("plugin service API activation lifecycle", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		Object.defineProperty(window, "vetta", {
+		Object.defineProperty(window, "astravia", {
 			configurable: true,
 			value: { plugins: { getServiceStatus } },
 		});

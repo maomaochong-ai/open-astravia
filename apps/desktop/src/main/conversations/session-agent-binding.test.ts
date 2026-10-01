@@ -1,7 +1,7 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { AgentProfile, AgentTeamDocument } from "@vetta/agent-team";
+import type { AgentProfile, AgentTeamDocument } from "@astravia/agent-team";
 import { afterEach, describe, expect, it } from "vitest";
 import {
 	readSessionAgentBinding,
@@ -13,7 +13,7 @@ import { resolveSessionAgentProfile } from "./session-agent-profile.js";
 const temporaryRoots: string[] = [];
 
 async function createTemporaryRoot(): Promise<string> {
-	const root = await mkdtemp(join(tmpdir(), "vetta-agent-binding-"));
+	const root = await mkdtemp(join(tmpdir(), "astravia-agent-binding-"));
 	temporaryRoots.push(root);
 	return root;
 }

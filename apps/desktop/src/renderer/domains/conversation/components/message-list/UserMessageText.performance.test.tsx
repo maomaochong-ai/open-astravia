@@ -2,7 +2,7 @@
 
 import { act, cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { UserMessageText } from "@vetta-org/theme-ui/chat";
+import { UserMessageText } from "@astravia-org/theme-ui/chat";
 import { Fragment } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 

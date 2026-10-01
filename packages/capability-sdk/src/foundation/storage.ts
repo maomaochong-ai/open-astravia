@@ -125,7 +125,7 @@ const storageNoOutputSchema = defineCapabilityOutputSchema(Type.Undefined());
 
 export const FOUNDATION_STORAGE_CAPABILITIES = {
 	GET_ALL: defineCapability<StorageGetAllInput, CapabilityJsonMap>({
-		id: "cap.foundation.vetta.storage.get-all",
+		id: "cap.foundation.astravia.storage.get-all",
 		kind: "query",
 		layer: CAPABILITY_LAYERS.FOUNDATION,
 		version: 1,
@@ -133,7 +133,7 @@ export const FOUNDATION_STORAGE_CAPABILITIES = {
 		output: storageJsonMapOutputSchema,
 	}),
 	SET: defineCapability<StorageSetInput, CapabilityJsonMap>({
-		id: "cap.foundation.vetta.storage.set",
+		id: "cap.foundation.astravia.storage.set",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.FOUNDATION,
 		version: 1,
@@ -141,7 +141,7 @@ export const FOUNDATION_STORAGE_CAPABILITIES = {
 		output: storageJsonMapOutputSchema,
 	}),
 	REMOVE: defineCapability<StorageRemoveInput, CapabilityJsonMap>({
-		id: "cap.foundation.vetta.storage.remove",
+		id: "cap.foundation.astravia.storage.remove",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.FOUNDATION,
 		version: 1,
@@ -149,7 +149,7 @@ export const FOUNDATION_STORAGE_CAPABILITIES = {
 		output: storageJsonMapOutputSchema,
 	}),
 	CLEAR: defineCapability<StorageGetAllInput, CapabilityJsonMap>({
-		id: "cap.foundation.vetta.storage.clear",
+		id: "cap.foundation.astravia.storage.clear",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.FOUNDATION,
 		version: 1,
@@ -157,7 +157,7 @@ export const FOUNDATION_STORAGE_CAPABILITIES = {
 		output: storageJsonMapOutputSchema,
 	}),
 	LIST: defineCapability<StorageListInput, string[]>({
-		id: "cap.foundation.vetta.storage.list",
+		id: "cap.foundation.astravia.storage.list",
 		kind: "query",
 		layer: CAPABILITY_LAYERS.FOUNDATION,
 		version: 1,
@@ -165,7 +165,7 @@ export const FOUNDATION_STORAGE_CAPABILITIES = {
 		output: storageStringListOutputSchema,
 	}),
 	READ_FILE: defineCapability<StorageFileReadInput, string | null>({
-		id: "cap.foundation.vetta.storage.read-file",
+		id: "cap.foundation.astravia.storage.read-file",
 		kind: "query",
 		layer: CAPABILITY_LAYERS.FOUNDATION,
 		version: 1,
@@ -176,7 +176,7 @@ export const FOUNDATION_STORAGE_CAPABILITIES = {
 		Readonly<Static<typeof storageSnapshotReadInputType>>,
 		{ revision: string; files: Record<string, string | null> }
 	>({
-		id: "cap.foundation.vetta.storage.read-snapshot",
+		id: "cap.foundation.astravia.storage.read-snapshot",
 		kind: "query",
 		layer: CAPABILITY_LAYERS.FOUNDATION,
 		version: 1,
@@ -190,7 +190,7 @@ export const FOUNDATION_STORAGE_CAPABILITIES = {
 			changedPaths: string[];
 		}
 	>({
-		id: "cap.foundation.vetta.storage.commit",
+		id: "cap.foundation.astravia.storage.commit",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.FOUNDATION,
 		version: 1,
@@ -198,7 +198,7 @@ export const FOUNDATION_STORAGE_CAPABILITIES = {
 		output: storageCommitOutputSchema,
 	}),
 	PUT_BLOB: defineCapability<StorageBlobPutInput, StorageBlobRef>({
-		id: "cap.foundation.vetta.storage.put-blob",
+		id: "cap.foundation.astravia.storage.put-blob",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.FOUNDATION,
 		version: 1,
@@ -206,7 +206,7 @@ export const FOUNDATION_STORAGE_CAPABILITIES = {
 		output: storageBlobRefOutputSchema,
 	}),
 	PUT_BLOB_FROM_FILE: defineCapability<StorageBlobFilePutInput, StorageBlobRef>({
-		id: "cap.foundation.vetta.storage.put-blob-from-file",
+		id: "cap.foundation.astravia.storage.put-blob-from-file",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.FOUNDATION,
 		version: 1,
@@ -214,7 +214,7 @@ export const FOUNDATION_STORAGE_CAPABILITIES = {
 		output: storageBlobRefOutputSchema,
 	}),
 	READ_BLOB: defineCapability<StorageBlobReadInput, StorageBlob | null>({
-		id: "cap.foundation.vetta.storage.read-blob",
+		id: "cap.foundation.astravia.storage.read-blob",
 		kind: "query",
 		layer: CAPABILITY_LAYERS.FOUNDATION,
 		version: 1,
@@ -222,7 +222,7 @@ export const FOUNDATION_STORAGE_CAPABILITIES = {
 		output: storageNullableBlobOutputSchema,
 	}),
 	GET_BLOB_REF: defineCapability<StorageBlobReadInput, StorageBlobRef | null>({
-		id: "cap.foundation.vetta.storage.get-blob-ref",
+		id: "cap.foundation.astravia.storage.get-blob-ref",
 		kind: "query",
 		layer: CAPABILITY_LAYERS.FOUNDATION,
 		version: 1,
@@ -230,7 +230,7 @@ export const FOUNDATION_STORAGE_CAPABILITIES = {
 		output: storageNullableBlobRefOutputSchema,
 	}),
 	DELETE_BLOB: defineCapability<StorageBlobReadInput, undefined>({
-		id: "cap.foundation.vetta.storage.delete-blob",
+		id: "cap.foundation.astravia.storage.delete-blob",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.FOUNDATION,
 		version: 1,

@@ -97,14 +97,14 @@ Write prompts that show a real use of the ability, not placeholders.
 
 ## Shipping `detail` inside the package
 
-`vetta.json` at the package root (next to `SKILL.md` / `plugin.json`) holds exactly the same
+`astravia.json` at the package root (next to `SKILL.md` / `plugin.json`) holds exactly the same
 object as `detail`. It is the second delivery route for the same data: **the `detail` field wins,
 the file is the fallback**, and it is read only when the payload omits `detail` entirely — there
 is no per-field merge between the two.
 
 Use it when the package is the thing being maintained (the description then travels with the
 code and stays right on every re-submission). Use the payload field for one-off submissions or
-for marketplace copy you do not want in the package. A malformed `vetta.json` fails the upload
+for marketplace copy you do not want in the package. A malformed `astravia.json` fails the upload
 rather than being skipped.
 
 ## Multi-language
@@ -164,7 +164,7 @@ A plugin whose package already carries its own translations:
   "detail": {
     "name": "Lottie Studio",
     "description": "用 AI 生成并预览 Lottie 动画",
-    "author": "Vetta Labs",
+    "author": "Astravia Labs",
     "license": "MIT",
     "icon": "solar:magic-stick-3-bold",
     "tags": ["设计", "动画"],

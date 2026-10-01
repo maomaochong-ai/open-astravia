@@ -1,4 +1,4 @@
-import { Input } from "@vetta-org/ui";
+import { Input } from "@astravia-org/ui";
 import type { JSX } from "react";
 
 export interface PresetProviderModelRowView {

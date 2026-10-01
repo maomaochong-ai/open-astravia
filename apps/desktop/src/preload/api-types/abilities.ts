@@ -1,7 +1,7 @@
 import type { McpServerConfigData } from "./mcp.js";
 
 /**
- * 能力安装台账（`~/.vetta/abilities.json`）：desktop 侧「装了哪些能力、什么版本」的单一索引。
+ * 能力安装台账（`~/.astravia/abilities.json`）：desktop 侧「装了哪些能力、什么版本」的单一索引。
  * 它只是索引不是安装位置——产物仍分别落在 skills/ scene/ plugins/、agent/mcp.json，
  * 声明受管运行时的 MCP 另有版本化运行目录（ADR-0049、ADR-0092）。
  * bundle 不进台账：其状态全部由成员派生。

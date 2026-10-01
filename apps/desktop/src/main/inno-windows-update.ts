@@ -8,7 +8,7 @@ import { CancellationError } from "builder-util-runtime";
 import type { ResolvedUpdateFileInfo } from "electron-updater";
 
 const VERSION_PATTERN = /^[0-9A-Za-z][0-9A-Za-z.+-]{0,63}$/;
-const WINDOWS_EXECUTABLE_NAME = "Vetta.exe";
+const WINDOWS_EXECUTABLE_NAME = "Astravia.exe";
 const INSTALL_COMPLETE_FILE_NAME = ".install-complete";
 const PROGRESS_POLL_INTERVAL_MS = 250;
 const INSTALL_VISIBILITY_TIMEOUT_MS = 30_000;
@@ -138,9 +138,9 @@ export function buildInnoUpdateArguments(storeRoot: string, progressPath: string
 		"/NOCLOSEAPPLICATIONS",
 		"/NORESTARTAPPLICATIONS",
 		"/SP-",
-		"/VETTAUPDATE=true",
-		`/VETTASTOREROOT=${storeRoot}`,
-		`/VETTAPROGRESS=${progressPath}`,
+		"/ASTRAVIAUPDATE=true",
+		`/ASTRAVIASTOREROOT=${storeRoot}`,
+		`/ASTRAVIAPROGRESS=${progressPath}`,
 		`/LOG=${logPath}`,
 	];
 }
@@ -277,7 +277,7 @@ export function isVersionedWindowsExecutable(executablePath: string, version: st
 
 export function resolveInnoUpdateStoreRoot(localAppData = process.env.LOCALAPPDATA): string {
 	if (!localAppData) throw new Error("LOCALAPPDATA is unavailable");
-	return win32.resolve(localAppData, "Vetta");
+	return win32.resolve(localAppData, "Astravia");
 }
 
 export class InnoWindowsUpdateController {

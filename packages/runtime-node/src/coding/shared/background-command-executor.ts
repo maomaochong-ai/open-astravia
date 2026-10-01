@@ -1,4 +1,4 @@
-import type { RuntimeToolResult } from "@vetta/runtime-core/kernel";
+import type { RuntimeToolResult } from "@astravia/runtime-core/kernel";
 import type { BackgroundCommandService, BackgroundCommandSnapshot } from "./background-command-service.js";
 import {
 	type CommandExecutionContextOptions,

@@ -5,4 +5,4 @@ export type {
 	WindowControlsComponentProps,
 	WindowControlsModel,
 	WindowControlsProps,
-} from "@vetta-org/theme-sdk/app-shell";
+} from "@astravia-org/theme-sdk/app-shell";

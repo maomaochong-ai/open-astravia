@@ -22,7 +22,7 @@ Desktop 拥有单一原子 checkpoint 文件和有界内存索引，默认保留
 
 查询仅作为主进程可观测模块的内部能力保留，不注册专用 IPC 或 preload API：必须指定 sessionId，可按 Turn、Trace、失败过滤和游标分页。结果保留原生父子关系、身份、版本及安全指标。保留策略可能移除父 Span，查询允许返回独立记录，不伪造完整链路。
 
-远端沿既有 `VETTA_TRACING=langfuse` 显式开启，默认不创建 exporter。原生父子关系保留，额外发送 localTraceId/localSpanId 供本地关联；同一安全投影先于任何本地持久化和远端导出。Desktop Runtime 组合根创建并拥有可观测实例及其 Repository/Recorder，不使用供 UI 查询的全局单例；根 Hub 关闭后显式关闭可观测实例，Hub 的非所有权 Adapter 合同保持不变。
+远端沿既有 `ASTRAVIA_TRACING=langfuse` 显式开启，默认不创建 exporter。原生父子关系保留，额外发送 localTraceId/localSpanId 供本地关联；同一安全投影先于任何本地持久化和远端导出。Desktop Runtime 组合根创建并拥有可观测实例及其 Repository/Recorder，不使用供 UI 查询的全局单例；根 Hub 关闭后显式关闭可观测实例，Hub 的非所有权 Adapter 合同保持不变。
 
 ## 备选与后果
 

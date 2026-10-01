@@ -1,5 +1,5 @@
-import type { SessionExecutionMode } from "@vetta/runtime-core";
-import { isSshProjectUri } from "@vetta/ssh-transport";
+import type { SessionExecutionMode } from "@astravia/runtime-core";
+import { isSshProjectUri } from "@astravia/ssh-transport";
 
 /**
  * 远程项目的执行模式。

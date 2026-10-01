@@ -1,5 +1,5 @@
 {
-	"name": "@vetta-org/theme-sdk",
+	"name": "@astravia-org/theme-sdk",
 	"version": "0.1.0",
 	"type": "module",
 	"main": "./src/index.ts",

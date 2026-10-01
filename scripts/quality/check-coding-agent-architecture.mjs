@@ -9,7 +9,7 @@ const PACKAGE_ROOT = "packages/coding-agent";
 const ROOT_ENTRY = `${SOURCE_ROOT}/index.ts`;
 const COMPOSITION_ENTRY = `${SOURCE_ROOT}/composition/index.ts`;
 const HISTORICAL_ROOT = `${SOURCE_ROOT}/sessions/legacy`;
-const PACKAGE_SPECIFIER = "@vetta/coding-agent";
+const PACKAGE_SPECIFIER = "@astravia/coding-agent";
 
 const DOMAIN_ROOTS = Object.freeze([
 	`${SOURCE_ROOT}/execution/`,
@@ -32,7 +32,7 @@ const COMPOSITION_PUBLIC_SOURCE_ROOTS = Object.freeze([
 	`${SOURCE_ROOT}/sessions/setup/`,
 	`${SOURCE_ROOT}/tool-results/`,
 ]);
-const COMPOSITION_PUBLIC_EXTERNAL_SOURCES = new Set(["@vetta/runtime-storage/conversation"]);
+const COMPOSITION_PUBLIC_EXTERNAL_SOURCES = new Set(["@astravia/runtime-storage/conversation"]);
 
 export function collectCodingAgentArchitectureState({ files, packageJson }) {
 	const normalizedFiles = files.map((file) => ({ ...file, path: normalizePath(file.path) }));
@@ -54,7 +54,7 @@ export function findCodingAgentArchitectureViolations(state) {
 		const target = resolveSourceTarget(edge.path, edge.specifier);
 		if (
 			isAdapterPath(edge.path) &&
-			(edge.specifier.startsWith("node:") || edge.specifier.startsWith("@vetta/runtime-node"))
+			(edge.specifier.startsWith("node:") || edge.specifier.startsWith("@astravia/runtime-node"))
 		) {
 			violations.push(
 				`${edge.path}:${edge.line}: Adapter must consume platform-neutral facts, not a Node implementation`,
@@ -81,7 +81,7 @@ export function findCodingAgentArchitectureViolations(state) {
 		}
 		if (
 			edge.path.startsWith(`${HISTORICAL_ROOT}/`) &&
-			(edge.specifier.startsWith("node:") || edge.specifier.startsWith("@vetta/runtime-node"))
+			(edge.specifier.startsWith("node:") || edge.specifier.startsWith("@astravia/runtime-node"))
 		) {
 			violations.push(
 				`${edge.path}:${edge.line}: historical format policy must consume host-provided file operations`,
@@ -266,7 +266,7 @@ function readCurrentInput() {
 		)
 		.filter((path) => !normalizePath(path).includes("/node_modules/") && !normalizePath(path).includes("/dist/"))
 		.map((path) => ({ path: rel(path), text: readText(path) }))
-		.filter((file) => !file.path.startsWith(`${PACKAGE_ROOT}/`) && file.text.includes("@vetta/coding-agent"));
+		.filter((file) => !file.path.startsWith(`${PACKAGE_ROOT}/`) && file.text.includes("@astravia/coding-agent"));
 	return { files: [...codingAgentFiles, ...consumerFiles], packageJson: JSON.parse(readText(packagePath)) };
 }
 

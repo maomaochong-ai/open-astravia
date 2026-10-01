@@ -1,7 +1,7 @@
 import { rm } from "node:fs/promises";
 import { join } from "node:path";
-import { parseTeamSessionDocument, type TeamSessionDocument } from "@vetta/agent-team";
-import { createVersionedJsonConfigStore } from "@vetta/toolkit/config-store";
+import { parseTeamSessionDocument, type TeamSessionDocument } from "@astravia/agent-team";
+import { createVersionedJsonConfigStore } from "@astravia/toolkit/config-store";
 import { getAppLogger } from "../logger.js";
 import { LEGACY_TEAM_SESSION_ROOT, listLegacyTeamSessionDocuments } from "./team-session-legacy-source.js";
 

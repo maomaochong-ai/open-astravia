@@ -14,7 +14,7 @@ interface Harness {
 function createHarness(): Harness {
 	let now = 1_000;
 	const loadLocal = vi.fn(async () => ({ providers: {} }));
-	const loadRemote = vi.fn(async (): Promise<Record<string, unknown> | null> => ({ "vetta-go": {} }));
+	const loadRemote = vi.fn(async (): Promise<Record<string, unknown> | null> => ({ "astravia-go": {} }));
 	const applyLocal = vi.fn();
 	const applyRemote = vi.fn();
 	const onError = vi.fn();
@@ -53,7 +53,7 @@ describe("createModelCatalogSync", () => {
 		expect(h.loadLocal).toHaveBeenCalledTimes(1);
 		expect(h.loadRemote).toHaveBeenCalledTimes(1);
 		expect(h.applyLocal).toHaveBeenCalledWith({ providers: {} });
-		expect(h.applyRemote).toHaveBeenCalledWith({ "vetta-go": {} });
+		expect(h.applyRemote).toHaveBeenCalledWith({ "astravia-go": {} });
 	});
 
 	it("TTL 内的重复 revalidate 不再打接口", async () => {
@@ -65,11 +65,11 @@ describe("createModelCatalogSync", () => {
 
 	it("TTL 过期后重新拉取，后台改动能被看到", async () => {
 		await h.sync.revalidate();
-		h.loadRemote.mockResolvedValueOnce({ "vetta-go": { models: [{ id: "new-model" }] } });
+		h.loadRemote.mockResolvedValueOnce({ "astravia-go": { models: [{ id: "new-model" }] } });
 		h.setNow(1_000 + 60_001);
 		await h.sync.revalidate();
 		expect(h.loadRemote).toHaveBeenCalledTimes(2);
-		expect(h.applyRemote).toHaveBeenLastCalledWith({ "vetta-go": { models: [{ id: "new-model" }] } });
+		expect(h.applyRemote).toHaveBeenLastCalledWith({ "astravia-go": { models: [{ id: "new-model" }] } });
 	});
 
 	it("force 忽略 TTL", async () => {

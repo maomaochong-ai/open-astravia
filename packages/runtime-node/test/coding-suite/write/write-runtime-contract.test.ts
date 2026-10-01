@@ -23,7 +23,7 @@ afterEach(() => {
 });
 
 function createTemporaryDirectory(label: string): string {
-	const directory = mkdtempSync(join(tmpdir(), `vetta-runtime-write-${label}-`));
+	const directory = mkdtempSync(join(tmpdir(), `astravia-runtime-write-${label}-`));
 	temporaryDirectories.push(directory);
 	return directory;
 }
@@ -101,7 +101,7 @@ describe("runtime write tool", () => {
 		expect(runtimeResult.content[0]).toMatchObject({ text: expect.stringContaining("[Auto-corrected output path:") });
 	});
 
-	it.each([".vetta/skills/output.txt", ".agents/skills/output.txt"])(
+	it.each([".astravia/skills/output.txt", ".agents/skills/output.txt"])(
 		"preserves protected skill path rejection for %s",
 		async (path) => {
 			const cwd = createTemporaryDirectory("protected");

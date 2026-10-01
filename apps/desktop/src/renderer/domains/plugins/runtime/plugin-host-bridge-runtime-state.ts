@@ -10,7 +10,7 @@ import type {
 	PluginContinuationHandler,
 	PluginMediaProviderRegistration,
 	PluginSystemPromptProviderHandler,
-} from "@vetta-org/plugin-sdk";
+} from "@astravia-org/plugin-sdk";
 
 export interface PluginAgentToolHandlerEntry {
 	handler: PluginAgentToolHandler;
@@ -82,7 +82,7 @@ export interface PluginHostBridgeRuntimeState {
 	};
 }
 
-const RUNTIME_STATE_KEY = "__vettaPluginHostBridgeRuntimeState_v2";
+const RUNTIME_STATE_KEY = "__astraviaPluginHostBridgeRuntimeState_v2";
 
 /**
  * Renderer-global ownership keeps IPC listeners and handler closures single-instance when

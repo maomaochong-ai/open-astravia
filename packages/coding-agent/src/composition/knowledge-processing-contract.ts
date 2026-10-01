@@ -1,5 +1,5 @@
-import type { ThinkingLevel } from "@vetta/agent-core";
-import type { WritePageRequest, WritePageResult } from "@vetta/runtime-knowledge";
+import type { ThinkingLevel } from "@astravia/agent-core";
+import type { WritePageRequest, WritePageResult } from "@astravia/runtime-knowledge";
 
 export { CODING_AGENT_KNOWLEDGE_PROCESSING_GUIDE } from "../features/knowledge/processing-guide.js";
 

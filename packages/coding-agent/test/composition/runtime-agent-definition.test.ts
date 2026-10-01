@@ -1,9 +1,9 @@
-import { RuntimeAgentRuntime, type RuntimeAgentSessionDefinition } from "@vetta/runtime-core";
+import { RuntimeAgentRuntime, type RuntimeAgentSessionDefinition } from "@astravia/runtime-core";
 import {
 	type AgentFeatureDefinition,
 	PassthroughContextStrategy,
 	type RuntimeCapabilityDefinition,
-} from "@vetta/runtime-core/kernel";
+} from "@astravia/runtime-core/kernel";
 import { describe, expect, it } from "vitest";
 import {
 	createCodingAgentRuntimeDefinition,

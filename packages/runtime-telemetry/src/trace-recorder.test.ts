@@ -1,4 +1,4 @@
-import { defineRuntimeObservation } from "@vetta/runtime-core/observation";
+import { defineRuntimeObservation } from "@astravia/runtime-core/observation";
 import { describe, expect, it, vi } from "vitest";
 import type { RuntimeObservation, RuntimeTracer } from "./index.js";
 import { parseRuntimeTraceRecord, type RuntimeTraceRecord } from "./trace-record.js";

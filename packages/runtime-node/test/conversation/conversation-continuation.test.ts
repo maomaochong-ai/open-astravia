@@ -1,7 +1,7 @@
 import { mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { AssistantMessage, Message, UserMessage } from "@vetta/ai";
+import type { AssistantMessage, Message, UserMessage } from "@astravia/ai";
 import { afterEach, describe, expect, it } from "vitest";
 import { FailInterruptedTurnRecoveryPolicy } from "../../../runtime-core/src/kernel/index.js";
 import { CONVERSATION_STORAGE_ERROR_CODES, FileConversationRepository } from "../../src/conversation/index.js";
@@ -108,7 +108,7 @@ async function createRepository(): Promise<{
 	readonly repository: FileConversationRepository;
 	readonly rootDir: string;
 }> {
-	const rootDir = await mkdtemp(join(tmpdir(), "vetta-conversation-continuation-"));
+	const rootDir = await mkdtemp(join(tmpdir(), "astravia-conversation-continuation-"));
 	temporaryRoots.push(rootDir);
 	return { repository: new FileConversationRepository({ rootDir }), rootDir };
 }

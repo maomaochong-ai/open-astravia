@@ -1,4 +1,4 @@
-import type { ModelCallContributionContext } from "@vetta/runtime-core/kernel";
+import type { ModelCallContributionContext } from "@astravia/runtime-core/kernel";
 import type { CodingAgentToolActivation } from "../runtime-contracts/index.js";
 
 export interface CodingAgentToolAvailability {

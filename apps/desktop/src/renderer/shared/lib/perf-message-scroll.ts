@@ -2,11 +2,11 @@
  * [PERF-message-scroll] Long-conversation scrolling diagnostics.
  *
  * Enable in Renderer DevTools and reload:
- *   localStorage.setItem("vetta-perf-message-scroll", "1"); location.reload()
+ *   localStorage.setItem("astravia-perf-message-scroll", "1"); location.reload()
  * Disable:
- *   localStorage.removeItem("vetta-perf-message-scroll")
+ *   localStorage.removeItem("astravia-perf-message-scroll")
  * Read the latest report after a gesture:
- *   JSON.parse(sessionStorage.getItem("vetta-perf-message-scroll:last-report") ?? "null")
+ *   JSON.parse(sessionStorage.getItem("astravia-perf-message-scroll:last-report") ?? "null")
  *
  * Each scroll gesture is reported after it has been idle for 1.5 seconds. Reports contain
  * indices, dimensions and timings only; message contents, ids and session paths are excluded.
@@ -14,8 +14,8 @@
 
 import type { ListItem, ListRange } from "react-virtuoso";
 
-const ENABLED_KEY = "vetta-perf-message-scroll";
-const LAST_REPORT_KEY = "vetta-perf-message-scroll:last-report";
+const ENABLED_KEY = "astravia-perf-message-scroll";
+const LAST_REPORT_KEY = "astravia-perf-message-scroll:last-report";
 const IDLE_REPORT_DELAY_MS = 1_500;
 const MAX_EVENTS = 2_500;
 const LARGE_HEIGHT_CORRECTION_PX = 48;

@@ -1,4 +1,4 @@
-import type { HistoryEntry } from "@vetta/runtime-core";
+import type { HistoryEntry } from "@astravia/runtime-core";
 import { describe, expect, it, vi } from "vitest";
 import type { DesktopSessionHistoryInfo } from "../../shared/session-access.js";
 import type { DesktopSessionSearchRequest, DesktopSessionSearchResult } from "../../shared/session-search.js";

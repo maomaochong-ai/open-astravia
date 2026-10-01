@@ -1,5 +1,5 @@
 import type { JSX } from "react";
-import { cn } from "@vetta-org/ui";
+import { cn } from "@astravia-org/ui";
 
 export interface ShowMoreSessionsButtonLabels {
 	/** Fully resolved collapse label. */

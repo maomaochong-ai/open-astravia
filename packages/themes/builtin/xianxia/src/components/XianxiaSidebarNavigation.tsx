@@ -3,8 +3,8 @@ import {
 	SidebarNavigation,
 	type SidebarNavigationProps,
 	type SidebarNavItem,
-} from "@vetta/desktop-theme-ui/sidebar";
-import { useThemePagesModel } from "@vetta-org/theme-sdk/pages";
+} from "@astravia/desktop-theme-ui/sidebar";
+import { useThemePagesModel } from "@astravia-org/theme-sdk/pages";
 import type { JSX } from "react";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 

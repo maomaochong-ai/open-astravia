@@ -1,5 +1,5 @@
-import type { AgentAbilitySelection, AgentBlueprint, AgentProfile, AgentProfileUpdateImpact } from "@vetta/agent-team";
-import { Button, cn, Input, Switch } from "@vetta-org/ui";
+import type { AgentAbilitySelection, AgentBlueprint, AgentProfile, AgentProfileUpdateImpact } from "@astravia/agent-team";
+import { Button, cn, Input, Switch } from "@astravia-org/ui";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { GroupedVirtuoso } from "react-virtuoso";
@@ -13,7 +13,7 @@ import {
 } from "../lib/ability-selection";
 import { AbilityIcon } from "../../abilities/components/AbilityIcon";
 import { useAgentAvatarResolver } from "../../../shared/agent-teams/agent-avatar";
-import { AgentAvatarView } from "@vetta-org/theme-ui/chat";
+import { AgentAvatarView } from "@astravia-org/theme-ui/chat";
 import { AgentAvatarPicker } from "./AgentAvatarPicker";
 
 export type AgentProfileTab = "basic" | "prompt" | "abilities";

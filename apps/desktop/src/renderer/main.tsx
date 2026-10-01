@@ -1,4 +1,4 @@
-import { AppBootLoadingView } from "@vetta-org/theme-ui/app-boot";
+import { AppBootLoadingView } from "@astravia-org/theme-ui/app-boot";
 import { createRoot } from "react-dom/client";
 import { installInactiveWindowAnimationPause } from "./shared/lib/inactive-window-animations";
 import { installLiveAnimations } from "./shared/lib/live-animations";
@@ -32,7 +32,7 @@ const root = createRoot(rootElement, {
 	onCaughtError: captureReactError,
 	onRecoverableError: captureReactError,
 });
-const appReadyPromise = window.vetta.appLifecycle.whenReady();
+const appReadyPromise = window.astravia.appLifecycle.whenReady();
 
 root.render(<AppBootLoadingView />);
 
@@ -40,7 +40,7 @@ root.render(<AppBootLoadingView />);
 const bootPaintedPromise = new Promise<void>((resolve) => {
 	requestAnimationFrame(() => {
 		requestAnimationFrame(() => {
-			window.vetta.appLifecycle.reportRendererBootPainted();
+			window.astravia.appLifecycle.reportRendererBootPainted();
 			resolve();
 		});
 	});

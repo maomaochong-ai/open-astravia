@@ -1,4 +1,4 @@
-import { AI_ERROR_CODES, AIError } from "@vetta/ai";
+import { AI_ERROR_CODES, AIError } from "@astravia/ai";
 import { describe, expect, it } from "vitest";
 import { isSessionError, runtimeError } from "../src/errors.js";
 import { runtimeFailureFromError } from "../src/failure-projection.js";

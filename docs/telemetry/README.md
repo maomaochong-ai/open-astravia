@@ -1,6 +1,6 @@
 # Desktop Telemetry：Sentry 与 PostHog 集成方案
 
-本文档集描述 Vetta desktop 的固定双主系统遥测方案：
+本文档集描述 Astravia desktop 的固定双主系统遥测方案：
 
 > **Sentry 负责工程可靠性，PostHog 负责产品洞察；两者通过统一身份和关联 ID 协作。**
 
@@ -29,7 +29,7 @@
 
 ## 集成原则
 
-1. 业务代码依赖 Vetta 自有的窄接口，不直接调用 Sentry/PostHog SDK。
+1. 业务代码依赖 Astravia 自有的窄接口，不直接调用 Sentry/PostHog SDK。
 2. Sentry/PostHog SDK 只存在于 desktop 的装配层和专用 adapter。
 3. 主 Renderer 建立匿名 ID、App Session ID 和 PostHog Session ID，并通过受限 IPC 同步给 Main/Sentry。
 4. Sentry 保存完整错误；PostHog 只保存低敏感度的“用户遇到错误”产品事件。

@@ -1,6 +1,6 @@
+import type { StoredSessionEvent } from "@astravia/runtime-core/kernel";
 import { type Static, type TSchema, Type } from "@sinclair/typebox";
 import { Value } from "@sinclair/typebox/value";
-import type { StoredSessionEvent } from "@vetta/runtime-core/kernel";
 
 export const LEGACY_CONVERSATION_SCHEMA_VERSION = 1;
 export const CONVERSATION_SCHEMA_VERSION = 2;

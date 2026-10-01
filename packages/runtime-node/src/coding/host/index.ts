@@ -1,4 +1,8 @@
-export type { CodingToolExecutable, CodingToolExecutableResolver } from "@vetta/runtime-tools/coding";
+export type { CodingToolExecutable, CodingToolExecutableResolver } from "@astravia/runtime-tools/coding";
+export {
+	createNodeAstraviaDesktopCommandPort,
+	type NodeAstraviaDesktopCommandPortOptions,
+} from "./astravia-desktop-command-port.js";
 export {
 	createNodeHostBashExecutor,
 	type NodeHostBashExecutionOptions,
@@ -63,7 +67,3 @@ export {
 	createNodeHostCodingToolEnvironment,
 	type NodeHostCodingToolEnvironmentOptions,
 } from "./tool-environment.js";
-export {
-	createNodeVettaDesktopCommandPort,
-	type NodeVettaDesktopCommandPortOptions,
-} from "./vetta-desktop-command-port.js";

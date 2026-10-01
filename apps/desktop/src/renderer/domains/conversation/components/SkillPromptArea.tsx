@@ -1,5 +1,5 @@
 import type { SelectedSkill } from "@shared/store/atoms";
-import { SkillPromptAreaView } from "@vetta-org/theme-ui/chat";
+import { SkillPromptAreaView } from "@astravia-org/theme-ui/chat";
 import { createPortal } from "react-dom";
 import { useSkillPromptAreaModel } from "../hooks/useSkillPromptAreaModel";
 import { SkillPickerPanel } from "./command-panel/SkillPickerPanel";
@@ -13,7 +13,7 @@ interface SkillPromptAreaProps {
 	minHeight?: number;
 	className?: string;
 	autoFocus?: boolean;
-	/** 目标会话/项目 cwd，用于列出项目级 `<cwd>/.agents/skills` 与 `<cwd>/.vetta/skills`。 */
+	/** 目标会话/项目 cwd，用于列出项目级 `<cwd>/.agents/skills` 与 `<cwd>/.astravia/skills`。 */
 	cwd?: string;
 }
 

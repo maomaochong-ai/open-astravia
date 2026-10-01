@@ -3,7 +3,7 @@ import { AGENTS_GUIDE_REVISION } from "./agents-template.js";
 /**
  * 能力市场仓库的骨架。
  *
- * 手写一个合规的 hub 成本不低：`.vetta/marketplace.json` 的必填字段、目录约定、以及那几条
+ * 手写一个合规的 hub 成本不低：`.astravia/marketplace.json` 的必填字段、目录约定、以及那几条
  * 只在别人机器上复现的发布约束，都得先读一遍文档才知道。这里把它变成一条命令。
  *
  * 仓库级 `AGENTS.md` 是关键的一半：落在仓库根的 Agent 需要知道「能力目录才是开发单位、
@@ -11,23 +11,23 @@ import { AGENTS_GUIDE_REVISION } from "./agents-template.js";
  */
 
 export function renderHubAgentsGuide(input: { name: string }): string {
-	return `<!-- vetta-guide-revision: ${AGENTS_GUIDE_REVISION} -->
+	return `<!-- astravia-guide-revision: ${AGENTS_GUIDE_REVISION} -->
 # ${input.name}
 
-Vetta 能力市场仓库。本仓库索引若干**能力**（plugin / mcp / skill / scene / bundle），
+Astravia 能力市场仓库。本仓库索引若干**能力**（plugin / mcp / skill / scene / bundle），
 每个能力是 \`abilities/\` 下的一个自包含目录。
 
 ## 开发时站在能力目录里，不是站在这里
 
-> 仓库根没有 \`node_modules\`，所以在根上执行时用全名 \`@vetta-org/plugin-cli\`；进了能力目录、
-> \`npm install\` 之后，裸命令 \`vetta-plugin-cli\` 才在 \`node_modules/.bin\` 里。
+> 仓库根没有 \`node_modules\`，所以在根上执行时用全名 \`@astravia-org/plugin-cli\`；进了能力目录、
+> \`npm install\` 之后，裸命令 \`astravia-plugin-cli\` 才在 \`node_modules/.bin\` 里。
 
 \`\`\`bash
 cd abilities/plugins/<slug>      # ← 开发单位是这个目录
 npm install
-npx vetta-plugin-cli docs --check-latest   # 手册（随该目录装的 SDK 版本；顺带查是否落后）
-npm run install:vetta            # 装进正在运行的 Vetta
-npx vetta-plugin-cli watch       # 热更新
+npx astravia-plugin-cli docs --check-latest   # 手册（随该目录装的 SDK 版本；顺带查是否落后）
+npm run install:astravia            # 装进正在运行的 Astravia
+npx astravia-plugin-cli watch       # 热更新
 \`\`\`
 
 每个插件目录自带 \`AGENTS.md\`，里面有该读哪些手册、以及不可违反的几条。**先 \`cd\` 进去再动手**：
@@ -39,7 +39,7 @@ npx vetta-plugin-cli watch       # 热更新
 新建一个插件：
 
 \`\`\`bash
-npx @vetta-org/plugin-cli init --id <slug> --name "<Display Name>" abilities/plugins/<slug>
+npx @astravia-org/plugin-cli init --id <slug> --name "<Display Name>" abilities/plugins/<slug>
 \`\`\`
 
 它只创建目录，**不会**动索引——新能力什么时候上架是人的决定。想好了再按下面的方式登记。
@@ -49,8 +49,8 @@ npx @vetta-org/plugin-cli init --id <slug> --name "<Display Name>" abilities/plu
 改完能力后：
 
 \`\`\`bash
-npx @vetta-org/plugin-cli sync          # 对账并回填，看输出
-npx @vetta-org/plugin-cli sync --check  # 只报不写，非零退出（CI 用）
+npx @astravia-org/plugin-cli sync          # 对账并回填，看输出
+npx @astravia-org/plugin-cli sync --check  # 只报不写，非零退出（CI 用）
 \`\`\`
 
 \`sync\` 到底做什么，分三档看清楚——它不是万能的：
@@ -84,7 +84,7 @@ npx @vetta-org/plugin-cli sync --check  # 只报不写，非零退出（CI 用�
 ## 发布
 
 1. 改能力 → 在能力目录里 build
-2. 回仓库根 \`npx @vetta-org/plugin-cli sync\`
+2. 回仓库根 \`npx @astravia-org/plugin-cli sync\`
 3. 提交并推送；客户端在 \`marketplaceVersion\` 变化时拉新快照
 `;
 }
@@ -106,20 +106,20 @@ jobs:
         with:
           node-version: 22
       # 索引与能力包漂移的后果有两种不在作者机器上复现、一种压根不报错，所以在这里拦。
-      - run: npx --yes @vetta-org/plugin-cli sync --check
+      - run: npx --yes @astravia-org/plugin-cli sync --check
 `;
 }
 
 export function renderHubReadme(input: { name: string; repository: string }): string {
 	return `# ${input.name}
 
-A Vetta ability marketplace. Add it in Vetta Desktop under **能力市场 → 添加来源**:
+A Astravia ability marketplace. Add it in Astravia Desktop under **能力市场 → 添加来源**:
 
 \`\`\`
 ${input.repository}
 \`\`\`
 
-Abilities live under \`abilities/\`. The index is \`.vetta/marketplace.json\`; its derived fields are
-maintained by \`npx @vetta-org/plugin-cli sync\`. See \`AGENTS.md\` for the working agreement.
+Abilities live under \`abilities/\`. The index is \`.astravia/marketplace.json\`; its derived fields are
+maintained by \`npx @astravia-org/plugin-cli sync\`. See \`AGENTS.md\` for the working agreement.
 `;
 }

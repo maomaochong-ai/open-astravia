@@ -2,7 +2,7 @@ import {
 	defineSessionExtensionService,
 	optionalSessionExtensionFunction,
 	type SessionExtensionDefinition,
-} from "@vetta/runtime-core/session-extensions";
+} from "@astravia/runtime-core/session-extensions";
 import {
 	CODING_AGENT_SANDBOX_AUTHORIZATION_EXTENSION_ID,
 	CODING_AGENT_SANDBOX_AUTHORIZATION_FUNCTION,

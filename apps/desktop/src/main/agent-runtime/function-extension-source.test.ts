@@ -3,7 +3,7 @@ import {
 	CODING_AGENT_PLAN_REVIEW_FUNCTION,
 	CODING_AGENT_SANDBOX_AUTHORIZATION_FUNCTION,
 	type CodingAgentQuestionFunctionRequest,
-} from "@vetta/coding-agent/function-extensions";
+} from "@astravia/coding-agent/function-extensions";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { getDesktopPlanReviewBroker } from "../conversations/plan-review-broker.js";
 import { getDesktopSandboxAuthorizationBroker } from "../conversations/sandbox-authorization-broker.js";

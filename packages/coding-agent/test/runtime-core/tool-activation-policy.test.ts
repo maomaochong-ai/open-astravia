@@ -1,4 +1,4 @@
-import type { ModelCallContributionContext, SessionContextRecord } from "@vetta/runtime-core/kernel";
+import type { ModelCallContributionContext, SessionContextRecord } from "@astravia/runtime-core/kernel";
 import { describe, expect, it } from "vitest";
 import type { CodingAgentToolActivation } from "../../src/runtime-contracts/index.js";
 import {

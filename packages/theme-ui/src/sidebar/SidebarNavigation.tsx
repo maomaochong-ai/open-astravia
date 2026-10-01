@@ -1,7 +1,7 @@
 import { useMemo, type JSX, type RefCallback } from "react";
-import { useThemeComponent } from "@vetta-org/theme-sdk";
-import type { NavIndicatorBounds, SidebarNavItem } from "@vetta-org/theme-sdk/sidebar";
-import { cn, Popover, PopoverContent, PopoverTrigger } from "@vetta-org/ui";
+import { useThemeComponent } from "@astravia-org/theme-sdk";
+import type { NavIndicatorBounds, SidebarNavItem } from "@astravia-org/theme-sdk/sidebar";
+import { cn, Popover, PopoverContent, PopoverTrigger } from "@astravia-org/ui";
 import { ThemeSurface } from "../appearance/ThemeSurface";
 import { SidebarNavBadgeView } from "./SidebarNavBadgeView";
 import { SidebarNavIcon } from "./SidebarNavIcon";

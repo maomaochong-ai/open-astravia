@@ -24,7 +24,7 @@ afterEach(async () => {
 
 describe("Desktop local RPC endpoint lifecycle", () => {
 	it("publishes complete endpoint documents and does not remove a newer server endpoint", async () => {
-		const root = await mkdtemp(join(tmpdir(), "vetta-local-rpc-"));
+		const root = await mkdtemp(join(tmpdir(), "astravia-local-rpc-"));
 		const endpointFilePath = join(root, "action-server.json");
 		try {
 			const first = await startDesktopLocalRpcServer(runtime, { endpointFilePath });

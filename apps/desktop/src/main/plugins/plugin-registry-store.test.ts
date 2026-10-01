@@ -13,7 +13,7 @@ function plugin(overrides: Partial<InstalledPlugin> = {}): InstalledPlugin {
 		activeVersion: "1.0.0",
 		pluginApiVersion: "^2.0.0",
 		moduleFederation: { remoteName: "registry_test", expose: "./plugin" },
-		entryUrl: "vetta-plugin://demo/index.js",
+		entryUrl: "astravia-plugin://demo/index.js",
 		styleUrls: [],
 		permissions: ["ui.slot.global", "agent.command.run"],
 		grantedPermissions: ["ui.slot.global", "agent.command.run"],
@@ -72,7 +72,7 @@ describe("SystemPluginPreferenceStore", () => {
 });
 
 function withDirectory(run: (directory: string) => void): void {
-	const directory = mkdtempSync(join(tmpdir(), "vetta-plugin-registry-"));
+	const directory = mkdtempSync(join(tmpdir(), "astravia-plugin-registry-"));
 	try {
 		run(directory);
 	} finally {

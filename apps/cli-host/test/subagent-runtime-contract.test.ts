@@ -8,11 +8,11 @@ import {
 	EventStream,
 	type Message,
 	type Model,
-} from "@vetta/ai";
-import type { CodingAgentRuntimeComposition } from "@vetta/coding-agent/composition";
-import type { CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
-import { CODING_AGENT_SUBAGENTS_READ } from "@vetta/coding-agent/session-extensions";
-import type { RuntimeActiveSession } from "@vetta/runtime-core";
+} from "@astravia/ai";
+import type { CodingAgentRuntimeComposition } from "@astravia/coding-agent/composition";
+import type { CodingAgentRuntimeModelSource } from "@astravia/coding-agent/host-services";
+import { CODING_AGENT_SUBAGENTS_READ } from "@astravia/coding-agent/session-extensions";
+import type { RuntimeActiveSession } from "@astravia/runtime-core";
 import { afterEach, describe, expect, it } from "vitest";
 import { createCodingAgentRuntimeComposition } from "./fixtures/runtime-composition.js";
 

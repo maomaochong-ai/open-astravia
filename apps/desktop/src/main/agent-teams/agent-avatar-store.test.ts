@@ -12,7 +12,7 @@ afterEach(async () => {
 });
 
 async function createSource(name: string, bytes: Buffer): Promise<string> {
-	const directory = await mkdtemp(join(tmpdir(), "vetta-avatar-"));
+	const directory = await mkdtemp(join(tmpdir(), "astravia-avatar-"));
 	temporaryDirectories.push(directory);
 	const path = join(directory, name);
 	await writeFile(path, bytes);
@@ -27,7 +27,7 @@ describe("Agent avatar store", () => {
 
 		expect(stored.path.startsWith(agentAvatarRoot())).toBe(true);
 		expect(stored.path.endsWith(".png")).toBe(true);
-		expect(stored.url.startsWith("vetta-file://local/")).toBe(true);
+		expect(stored.url.startsWith("astravia-file://local/")).toBe(true);
 		expect(await readFile(stored.path, "utf8")).toBe("image-bytes");
 	});
 

@@ -1,4 +1,4 @@
-import type { VersionedConfigMigration } from "@vetta/toolkit/versioned-config";
+import type { VersionedConfigMigration } from "@astravia/toolkit/versioned-config";
 
 export const petConfigMigration003To4: VersionedConfigMigration = {
 	fromVersion: 3,

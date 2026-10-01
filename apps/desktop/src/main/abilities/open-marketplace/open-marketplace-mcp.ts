@@ -9,8 +9,8 @@ import { isManagedHttpPath } from "./open-marketplace-managed-http-runtime.js";
 const MCP_MANIFEST_FILE = "mcp.json";
 const PLATFORM_TAG_PATTERN = /^(win32|darwin|linux)-(x64|arm64)$/;
 const SHA256_PATTERN = /^[a-f0-9]{64}$/;
-const RUNTIME_PORT_TOKEN = `\${VETTA_MCP_PORT}`;
-const RUNTIME_URL_TOKEN = `\${VETTA_MCP_URL}`;
+const RUNTIME_PORT_TOKEN = `\${ASTRAVIA_MCP_PORT}`;
+const RUNTIME_URL_TOKEN = `\${ASTRAVIA_MCP_URL}`;
 
 function isSafeRuntimeRelativePath(value: string): boolean {
 	const slashPath = value.replace(/\\/g, "/");

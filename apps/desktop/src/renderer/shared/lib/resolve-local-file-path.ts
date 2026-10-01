@@ -1,5 +1,5 @@
+import { formatSshProjectUri, isSshProjectUri, parseProjectLocation } from "@astravia/ssh-transport/project-uri";
 import { isSubPath, pathJoin, pathNormalize } from "@shared/lib/utils";
-import { formatSshProjectUri, isSshProjectUri, parseProjectLocation } from "@vetta/ssh-transport/project-uri";
 
 function isAbsoluteLocalPath(path: string): boolean {
 	const normalized = pathNormalize(path);

@@ -1,6 +1,6 @@
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
-import { createNodePathBoundaryClassifier } from "@vetta/runtime-node/coding";
+import { createNodePathBoundaryClassifier } from "@astravia/runtime-node/coding";
 import { CONFIG_DIR_NAME } from "../../../identity.js";
 import type { CodingAgentPathPolicyBoundaries } from "../../../tool-policy/path/path-policy-boundaries.js";
 import { getAgentDir, getKnowledgeDir, getSceneDir, getUserSkillsDir } from "../../node-config.js";

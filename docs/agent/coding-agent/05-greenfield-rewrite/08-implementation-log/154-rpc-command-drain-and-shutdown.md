@@ -69,7 +69,7 @@ Extension shutdown 现在由一个共享 Promise 拥有：
 
 ## 真实 CLI 门禁
 
-新增 Legacy/Greenfield 真实 Vetta CLI 测试，覆盖：
+新增 Legacy/Greenfield 真实 Astravia CLI 测试，覆盖：
 
 1. 空闲 `new_session` 后立即 prompt；
 2. 活动 Turn 的 `new_session` 后立即 prompt，并记录 Legacy 的两种历史竞态结果；

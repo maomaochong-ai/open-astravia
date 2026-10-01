@@ -1,5 +1,5 @@
-import { useTranslation } from "@vetta-org/plugin-sdk";
-import { Button } from "@vetta-org/ui";
+import { useTranslation } from "@astravia-org/plugin-sdk";
+import { Button } from "@astravia-org/ui";
 import { useCallback, useEffect, useState } from "react";
 import { commitFileDiff, commitFiles } from "../../git/log";
 import { parseNameStatus } from "../../git/parseLog";
@@ -12,7 +12,7 @@ import { StatusBadge } from "../StatusBadge";
 import { CommitMeta } from "./CommitMeta";
 
 type ViewMode = "tree" | "flat";
-const VIEW_MODE_KEY = "vetta-git-commit-view-mode";
+const VIEW_MODE_KEY = "astravia-git-commit-view-mode";
 
 function basename(path: string): string {
 	const i = path.lastIndexOf("/");

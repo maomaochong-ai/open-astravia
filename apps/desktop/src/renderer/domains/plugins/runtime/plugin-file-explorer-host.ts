@@ -4,7 +4,7 @@ import type {
 	PluginFileExplorerEntry,
 	PluginFileExplorerRevealOptions,
 	PluginWorkspaceRoot,
-} from "@vetta-org/plugin-sdk";
+} from "@astravia-org/plugin-sdk";
 import { logPluginRuntimeError } from "./plugin-runtime-log";
 
 export interface PluginFileExplorerHostAdapter {

@@ -1,4 +1,4 @@
-import { type AIErrorDetails, getAIErrorDetails, isAIError } from "@vetta/ai";
+import { type AIErrorDetails, getAIErrorDetails, isAIError } from "@astravia/ai";
 import type { RuntimeFailure, RuntimeFailureDetails, RuntimeFailureOrigin } from "./failure-contract.js";
 
 /**

@@ -1,6 +1,6 @@
-# @vetta/runtime-desktop
+# @astravia/runtime-desktop
 
-Vetta Agent 的 Desktop 平台 Runtime。该包拥有 Desktop 进程级组合、生命周期和平台适配，位于宿主无关 Runtime 协议与 `desktop` 之间。
+Astravia Agent 的 Desktop 平台 Runtime。该包拥有 Desktop 进程级组合、生命周期和平台适配，位于宿主无关 Runtime 协议与 `desktop` 之间。
 
 依赖方向：
 

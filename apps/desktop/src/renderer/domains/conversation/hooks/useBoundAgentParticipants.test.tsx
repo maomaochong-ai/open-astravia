@@ -3,7 +3,7 @@
 import { renderHook, waitFor } from "@testing-library/react";
 import { DEFAULT_AGENT_PARTICIPANT_ID } from "@shared/conversation";
 import { activeSessionAtom } from "@shared/store/atoms";
-import { createAgentTeamFixture } from "@vetta/agent-team";
+import { createAgentTeamFixture } from "@astravia/agent-team";
 import { createStore, Provider } from "jotai";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -14,7 +14,7 @@ const agent = document.agents.find((candidate) => candidate.name === "Researcher
 if (!agent) throw new Error("missing Agent fixture");
 
 beforeEach(() => {
-	Object.defineProperty(window, "vetta", {
+	Object.defineProperty(window, "astravia", {
 		configurable: true,
 		value: { agentTeams: { list: vi.fn(async () => document) } },
 	});
@@ -52,14 +52,14 @@ describe("useBoundAgentParticipants", () => {
 	it("stays empty for an unbound conversation", async () => {
 		const { result } = renderWithSession();
 
-		await waitFor(() => expect(window.vetta.agentTeams.list).not.toHaveBeenCalled());
+		await waitFor(() => expect(window.astravia.agentTeams.list).not.toHaveBeenCalled());
 		expect(result.current).toBeUndefined();
 	});
 
 	it("falls back to the generic author when the bound Agent was deleted", async () => {
 		const { result } = renderWithSession("deleted-agent");
 
-		await waitFor(() => expect(window.vetta.agentTeams.list).toHaveBeenCalled());
+		await waitFor(() => expect(window.astravia.agentTeams.list).toHaveBeenCalled());
 		expect(result.current).toBeUndefined();
 	});
 });

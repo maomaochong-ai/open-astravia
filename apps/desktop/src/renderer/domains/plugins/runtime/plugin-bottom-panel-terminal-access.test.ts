@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
+
+import type { PluginPermission } from "@astravia-org/plugin-sdk";
 import type { InstalledPlugin } from "@preload/api";
-import type { PluginPermission } from "@vetta-org/plugin-sdk";
 import { describe, expect, it } from "vitest";
 import { PluginLocalContributions } from "./plugin-local-contributions";
 import { createPluginUiApi } from "./plugin-ui-context";

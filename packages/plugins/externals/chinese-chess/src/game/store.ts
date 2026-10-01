@@ -1,4 +1,4 @@
-import type { PluginAiChatMessage } from "@vetta-org/plugin-sdk";
+import type { PluginAiChatMessage } from "@astravia-org/plugin-sdk";
 import { type AgentChatPort, playAgentTurn } from "./agent-player";
 import { replayGame, XiangqiEngine } from "./engine";
 import { parseIccs } from "./notation";

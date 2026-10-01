@@ -1,13 +1,13 @@
-import type { DesktopTeamSessionSnapshot } from "@preload/api-types/team-conversation-display";
 import type {
 	AgentTeamDocument,
 	TeamSessionListItem,
 	TeamSessionReference,
 	TeamSessionWorkspaceSelection,
-} from "@vetta/agent-team";
-import type { SessionExecutionMode } from "@vetta/runtime-core";
+} from "@astravia/agent-team";
+import type { SessionExecutionMode } from "@astravia/runtime-core";
+import type { DesktopTeamSessionSnapshot } from "@preload/api-types/team-conversation-display";
 
-const SESSION_STORAGE_PREFIX = "vetta.agent-team.session.";
+const SESSION_STORAGE_PREFIX = "astravia.agent-team.session.";
 const pendingSessionCreations = new Map<string, Promise<LoadedTeamChatSession>>();
 
 export interface LoadedTeamChatSession {
@@ -31,8 +31,8 @@ export interface CreateReservedTeamChatSessionOptions {
 
 export async function loadTeamChatBootstrap(teamId: string): Promise<TeamChatBootstrap> {
 	const [document, sessions] = await Promise.all([
-		window.vetta.agentTeams.list(),
-		window.vetta.agentTeams.listSessions(teamId),
+		window.astravia.agentTeams.list(),
+		window.astravia.agentTeams.listSessions(teamId),
 	]);
 	if (!document.teams.some((team) => team.id === teamId)) {
 		throw new Error(`Agent team not found: ${teamId}`);
@@ -86,7 +86,7 @@ export async function createReservedTeamChatSession({
 	document,
 	workspace,
 }: CreateReservedTeamChatSessionOptions): Promise<LoadedTeamChatSession> {
-	const snapshot = await window.vetta.agentTeams.createSessionRecord(teamId, {
+	const snapshot = await window.astravia.agentTeams.createSessionRecord(teamId, {
 		sessionId,
 		executionMode,
 		...(workspace ? { workspace } : {}),
@@ -109,7 +109,8 @@ async function createTeamChatSessionInternal(
 	if (document && !document.teams.some((team) => team.id === teamId)) {
 		throw new Error(`Agent team not found: ${teamId}`);
 	}
-	const createSessionRecord = window.vetta.agentTeams.createSessionRecord ?? window.vetta.agentTeams.createSession;
+	const createSessionRecord =
+		window.astravia.agentTeams.createSessionRecord ?? window.astravia.agentTeams.createSession;
 	const snapshot = await createSessionRecord(teamId);
 	const storageKey = `${SESSION_STORAGE_PREFIX}${teamId}`;
 	window.localStorage.setItem(storageKey, JSON.stringify(toReference(snapshot)));
@@ -132,7 +133,7 @@ async function openTeamChatSession(
 		typeof reference === "string"
 			? reference
 			: { id: reference.id, coordinationSessionPath: reference.coordinationSessionPath };
-	const snapshot = await window.vetta.agentTeams.getSession(ipcReference);
+	const snapshot = await window.astravia.agentTeams.getSession(ipcReference);
 	window.localStorage.setItem(storageKey, JSON.stringify(toReference(snapshot)));
 	return { document, snapshot, sessions: withTeamChatSnapshot(sessions, snapshot) };
 }

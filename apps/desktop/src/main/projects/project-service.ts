@@ -1,4 +1,4 @@
-import { parseProjectLocation } from "@vetta/ssh-transport";
+import { parseProjectLocation } from "@astravia/ssh-transport";
 import type { DesktopConfig, DesktopConfigUpdater, ProjectEntry } from "../config/desktop-config-store.js";
 import { sameProjectPath } from "./project-path.js";
 
@@ -128,7 +128,7 @@ export class ProjectService {
 			throw new Error("Project path must be absolute.");
 		}
 		// 项目必须是目录。放进来一个文件不会当场报错，而是等到有人去 readdir 它时才炸
-		// （ENOTDIR），且从此每次扫描都炸一次——现场就出现过一个 v1 时代的 `x.vetd`
+		// （ENOTDIR），且从此每次扫描都炸一次——现场就出现过一个 v1 时代的 `x.astravia-design`
 		// **文件**被登记成项目，之后每轮项目扫描都刷一条主进程 error。
 		if (await this.dependencies.isExistingNonDirectory(path)) {
 			throw new Error("Project path must be a directory.");

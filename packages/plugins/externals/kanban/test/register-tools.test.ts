@@ -1,4 +1,4 @@
-import type { PluginContext } from "@vetta-org/plugin-sdk";
+import type { PluginContext } from "@astravia-org/plugin-sdk";
 import { beforeAll, describe, expect, it } from "vitest";
 import type { KanbanBoardController } from "../src/board/board-controller";
 import { registerKanbanTools } from "../src/register-tools";

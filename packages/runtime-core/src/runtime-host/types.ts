@@ -179,7 +179,7 @@ export interface RuntimeHostOptions {
 	linuxBubblewrapPath?: string;
 	macosSandboxExecPath?: string;
 	/**
-	 * Vetta 远端服务 URL。宿主进程显式注入后，下挂的 createAgentSession 不会再
+	 * Astravia 远端服务 URL。宿主进程显式注入后，下挂的 createAgentSession 不会再
 	 * 回退到 coding-agent 内置的 LAN 默认值，避免主进程内 desktop-app 路径
 	 * （env-injected URL）与 SDK 路径（硬编码 URL）"半边大脑"。
 	 */

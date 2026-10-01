@@ -3,8 +3,8 @@ import {
 	ApprovalImpactCard,
 	ApprovalSettingGroup,
 	ApprovalSettingRow,
-} from "@vetta-org/theme-ui/action-approval";
-import { Switch } from "@vetta-org/ui";
+} from "@astravia-org/theme-ui/action-approval";
+import { Switch } from "@astravia-org/ui";
 import { type ActiveActionApproval, useActionApproval } from "../../useActionApproval";
 import {
 	experimentalFieldLabel,

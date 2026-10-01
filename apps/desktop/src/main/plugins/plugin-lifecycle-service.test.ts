@@ -10,7 +10,7 @@ function installedPlugin(overrides: Partial<InstalledPlugin> = {}): InstalledPlu
 		activeVersion: "1.0.0",
 		pluginApiVersion: "^2.0.0",
 		moduleFederation: { remoteName: "lifecycle_test", expose: "./plugin" },
-		entryUrl: "vetta-plugin://demo/index.js",
+		entryUrl: "astravia-plugin://demo/index.js",
 		styleUrls: [],
 		permissions: [],
 		grantedPermissions: [],
@@ -98,22 +98,22 @@ describe("PluginLifecycleService", () => {
 	it("records plugin-cli package provenance on a completed install", async () => {
 		const harness = createHarness();
 
-		await harness.service.installPath("C:/project/release/demo-1.0.0.vettapkg", {
+		await harness.service.installPath("C:/project/release/demo-1.0.0.astraviapkg", {
 			initiator: "plugin-cli",
 		});
 
 		expect(harness.dependencies.logInstallStarted).toHaveBeenCalledWith({
 			abilityType: "plugin",
 			installMode: "plugin-cli",
-			artifactKind: "vettapkg",
-			artifactName: "demo-1.0.0.vettapkg",
+			artifactKind: "astraviapkg",
+			artifactName: "demo-1.0.0.astraviapkg",
 		});
 		expect(harness.dependencies.recordEvent).toHaveBeenCalledWith(
 			expect.objectContaining({ operation: "installed", resourceId: "demo" }),
 			expect.objectContaining({
 				version: "1.0.0",
 				installMode: "plugin-cli",
-				artifactKind: "vettapkg",
+				artifactKind: "astraviapkg",
 			}),
 		);
 	});

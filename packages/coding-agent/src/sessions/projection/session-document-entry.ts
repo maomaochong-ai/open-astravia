@@ -1,10 +1,10 @@
-import { Type } from "@sinclair/typebox";
-import { Value } from "@sinclair/typebox/value";
-import type { AgentMessage } from "@vetta/agent-core";
+import type { AgentMessage } from "@astravia/agent-core";
 import type {
 	ConversationDocumentCustomMessageEntry,
 	ConversationDocumentEntry,
-} from "@vetta/runtime-core/conversation";
+} from "@astravia/runtime-core/conversation";
+import { Type } from "@sinclair/typebox";
+import { Value } from "@sinclair/typebox/value";
 import {
 	COMPACTION_SUMMARY_PREFIX,
 	COMPACTION_SUMMARY_SUFFIX,
@@ -15,7 +15,7 @@ import {
 import type { CodingAgentSessionEntry, CodingAgentSessionMessageEntry } from "../contracts/session-entry.js";
 import { areStructuredValuesEqual } from "./structural-equality.js";
 
-export const CODING_AGENT_EXTENDED_MESSAGE_CONTEXT_TYPE = "vetta.legacy_agent_message";
+export const CODING_AGENT_EXTENDED_MESSAGE_CONTEXT_TYPE = "astravia.legacy_agent_message";
 
 const TextContentSchema = Type.Object(
 	{ type: Type.Literal("text"), text: Type.String(), textSignature: Type.Optional(Type.String()) },

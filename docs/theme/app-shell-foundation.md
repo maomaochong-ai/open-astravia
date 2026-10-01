@@ -40,7 +40,7 @@ apps/desktop/src/renderer/shared/app-shell/window-controls/
 
 `PageHeader` 是 desktop 内部 connected 容器。它负责：
 
-- 通过 `@vetta-org/theme-sdk/app-shell` 的 `usePageHeaderModel` facade 读取页面头部 model。
+- 通过 `@astravia-org/theme-sdk/app-shell` 的 `usePageHeaderModel` facade 读取页面头部 model。
 - 接入主题 region/component/surface。
 - 在没有 region override 时，把 model 传给 `DefaultPageHeader`。
 
@@ -51,7 +51,7 @@ apps/desktop/src/renderer/shared/app-shell/window-controls/
 窗口控制同理：
 
 - `WindowControls` 是 desktop connected 容器。
-- `useWindowControlsModel` 的主题公开入口来自 `@vetta-org/theme-sdk/app-shell`。
+- `useWindowControlsModel` 的主题公开入口来自 `@astravia-org/theme-sdk/app-shell`。
 - `DefaultWindowControls` 是 props 驱动 view，接收 `WindowControlsComponentProps.model`。
 
 ## Region Override
@@ -97,7 +97,7 @@ components: {
 
 窗口控制按钮组属于 component，不属于 region。它的粒度小于页面头部，但仍然可能被主题整体替换为自定义按钮组。单个按钮继续通过 `app.windowControlButton` 覆盖。
 
-`DefaultWindowControls` 不把 `window.vetta.window.*` 暴露给主题。主题只能通过 `WindowControlsModel.controls[].action` 调用公开动作。
+`DefaultWindowControls` 不把 `window.astravia.window.*` 暴露给主题。主题只能通过 `WindowControlsModel.controls[].action` 调用公开动作。
 
 `WindowControlsModel.controls[]` 只包含窗口控制的语义数据和动作，例如 `kind`、`label`、`action`。图标 class 不属于 model，默认图标由 `WindowControlButton` 根据 `kind` 决定。主题如果替换按钮，可以完全改用自己的图标、图片或动画。
 
@@ -106,8 +106,8 @@ components: {
 主题如果要复用官方 app-shell view，推荐在 region 中调用 SDK hook，再把 model 传入 props 驱动 view：
 
 ```tsx
-import { usePageHeaderModel } from "@vetta-org/theme-sdk/app-shell";
-import { DefaultPageHeader } from "@vetta/desktop-theme-ui/app-shell";
+import { usePageHeaderModel } from "@astravia-org/theme-sdk/app-shell";
+import { DefaultPageHeader } from "@astravia/desktop-theme-ui/app-shell";
 
 export function ThemePageHeader(props: PageHeaderProps) {
   const model = usePageHeaderModel(props);

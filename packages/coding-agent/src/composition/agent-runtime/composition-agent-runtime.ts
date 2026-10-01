@@ -5,7 +5,7 @@ import {
 	RuntimeAgentRuntime,
 	type RuntimeObservationPublisher,
 	type RuntimeSessionAgentSelection,
-} from "@vetta/runtime-core";
+} from "@astravia/runtime-core";
 import type { CodingAgentRuntimeAgentOptions } from "../contracts/index.js";
 import { DEFAULT_CODING_AGENT_RUNTIME_ID } from "../runtime-agent-definition.js";
 import { createCodingAgentExecutionRuntimeDefinition } from "./execution-definition.js";

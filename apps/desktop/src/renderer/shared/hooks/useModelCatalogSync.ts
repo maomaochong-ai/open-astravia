@@ -17,7 +17,7 @@ export function useModelCatalogSync(): void {
 			if (document.visibilityState === "visible") revalidate();
 		};
 		revalidate();
-		const disposeModelChanged = window.vetta.models.onChanged?.(() => {
+		const disposeModelChanged = window.astravia.models.onChanged?.(() => {
 			void modelCatalog.revalidate({ force: true, sources: ["local"] });
 		});
 		window.addEventListener("focus", revalidate);

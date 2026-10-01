@@ -1,5 +1,5 @@
-import type { ConversationDocument, ConversationDocumentStore } from "@vetta/runtime-core/conversation";
-import type { ConversationContinuationStore, ConversationRepository } from "@vetta/runtime-core/kernel";
+import type { ConversationDocument, ConversationDocumentStore } from "@astravia/runtime-core/conversation";
+import type { ConversationContinuationStore, ConversationRepository } from "@astravia/runtime-core/kernel";
 import type { ConversationOwnershipHolder } from "./errors.js";
 
 /** Platform-neutral ownership lease held for a conversation lifetime. */
@@ -31,7 +31,7 @@ export type {
 	ConversationDocumentForkResult,
 	ConversationDocumentReader,
 	ConversationDocumentStore,
-} from "@vetta/runtime-core/conversation";
+} from "@astravia/runtime-core/conversation";
 export type {
 	AppendResult,
 	ContinueConversationInput,
@@ -43,4 +43,4 @@ export type {
 	CreateConversationInput,
 	StoredConversation,
 	StoredSessionEvent,
-} from "@vetta/runtime-core/kernel";
+} from "@astravia/runtime-core/kernel";

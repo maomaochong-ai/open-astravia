@@ -1,6 +1,6 @@
+import type { RequestHistoryItem, RequestHistorySubTabViewLabels } from "@astravia-org/theme-ui/activity";
 import { pathBasename } from "@shared/lib/utils";
 import { activeSessionAtom, filePreviewAtom } from "@shared/store/atoms";
-import type { RequestHistoryItem, RequestHistorySubTabViewLabels } from "@vetta-org/theme-ui/activity";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -47,7 +47,7 @@ export function useRequestHistorySubTabModel(cwd: string): RequestHistorySubTabM
 		}
 		setLoading(true);
 		try {
-			const data = await window.vetta.debug.listRequestFiles(projectName, sessionId);
+			const data = await window.astravia.debug.listRequestFiles(projectName, sessionId);
 			setRawFiles(data);
 		} catch {
 			setRawFiles([]);
@@ -80,7 +80,7 @@ export function useRequestHistorySubTabModel(cwd: string): RequestHistorySubTabM
 	);
 
 	const onShowInFolder = useCallback((filePath: string) => {
-		void window.vetta.shell.showItemInFolder(filePath);
+		void window.astravia.shell.showItemInFolder(filePath);
 	}, []);
 
 	const labels = useMemo<RequestHistorySubTabViewLabels>(

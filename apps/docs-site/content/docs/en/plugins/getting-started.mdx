@@ -1,19 +1,19 @@
 ---
 title: Create your first plugin
-description: Create, build, and install a minimal Vetta desktop plugin.
+description: Create, build, and install a minimal Astravia desktop plugin.
 ---
 
 ## Prerequisites
 
 - Node or Bun.
-- Vetta Desktop, running — installing and hot reload both talk to the live app.
+- Astravia Desktop, running — installing and hot reload both talk to the live app.
 
-You do **not** need a Vetta source checkout.
+You do **not** need a Astravia source checkout.
 
 ## Scaffold in one command
 
 ```bash
-npx @vetta-org/plugin-cli init --id my-plugin --name "My Plugin"
+npx @astravia-org/plugin-cli init --id my-plugin --name "My Plugin"
 cd my-plugin && npm install
 ```
 
@@ -21,12 +21,12 @@ You get `plugin.json`, a Vite + Module Federation config, a Tailwind entry, and 
 brief.
 
 <Callout title="First step for an agent" type="info">
-  The manual ships inside `@vetta-org/plugin-sdk`, so it lands in `node_modules`. **Do not
+  The manual ships inside `@astravia-org/plugin-sdk`, so it lands in `node_modules`. **Do not
   hard-code that path** — a workspace may hoist the dependency to the repository root, and in a
   multi-plugin repository each plugin can pin a different SDK version. Resolve it with a command:
 
   ```bash
-  npx vetta-plugin-cli docs
+  npx astravia-plugin-cli docs
   ```
 
   It prints the manual's absolute path and the SDK version it documents. Because the manual is
@@ -39,14 +39,14 @@ brief.
 ```bash
 npm run dev            # Vite + Module Federation dev server
 npm run validate       # check the manifest against the build output
-npm run install:vetta  # build, package, install into the running desktop app
-npx vetta-plugin-cli watch      # hot reload: the host loads the plugin from this directory
-npx vetta-plugin-cli reload <id>  # switch over when a pending version is reported
-npx vetta-plugin-cli uninstall  # remove it
+npm run install:astravia  # build, package, install into the running desktop app
+npx astravia-plugin-cli watch      # hot reload: the host loads the plugin from this directory
+npx astravia-plugin-cli reload <id>  # switch over when a pending version is reported
+npx astravia-plugin-cli uninstall  # remove it
 ```
 
-`install:vetta` hands the archive to the running desktop app, which validates, authorizes, and
-installs it. It never writes `~/.vetta/plugins` directly.
+`install:astravia` hands the archive to the running desktop app, which validates, authorizes, and
+installs it. It never writes `~/.astravia/plugins` directly.
 
 Installing a newer version is only recorded as pending; the app keeps loading the current active
 version until `reload` switches over. If a code change does not show up, check that `version` in
@@ -69,17 +69,17 @@ version until `reload` switches over. If a code change does not show up, check t
 
 ## Configure the build
 
-Use `@vetta-org/plugin-vite` to configure Module Federation:
+Use `@astravia-org/plugin-vite` to configure Module Federation:
 
 ```ts
 import tailwindcss from "@tailwindcss/vite";
-import { vettaPluginFederation } from "@vetta-org/plugin-vite";
+import { astraviaPluginFederation } from "@astravia-org/plugin-vite";
 import { defineConfig } from "vite";
 
 export default defineConfig({
 	plugins: [
 		tailwindcss(),
-		vettaPluginFederation({
+		astraviaPluginFederation({
 			name: "my_plugin",
 			entry: "./src/index.tsx",
 			expose: "./plugin",
@@ -92,7 +92,7 @@ export default defineConfig({
 ## Create the entry point
 
 ```tsx
-import { definePlugin } from "@vetta-org/plugin-sdk";
+import { definePlugin } from "@astravia-org/plugin-sdk";
 
 function MyPanel() {
 	return <div className="p-3 text-sm text-foreground">Plugin loaded</div>;
@@ -115,7 +115,7 @@ Choose the path for development debugging or release installation:
 
 <Tabs items={["Development", "Release installation"]}>
   <Tab value="Development">
-    Run `bunx vetta-plugin dev` to start the plugin development server, then load it through a Vetta development link. This is useful for quickly checking UI and tool registration, but run the production build and `.vettapkg` installation flow before release.
+    Run `bunx astravia-plugin dev` to start the plugin development server, then load it through a Astravia development link. This is useful for quickly checking UI and tool registration, but run the production build and `.astraviapkg` installation flow before release.
   </Tab>
   <Tab value="Release installation">
     <Steps>
@@ -127,12 +127,12 @@ Choose the path for development debugging or release installation:
       <Step>
         ### Archive the package
 
-        Use the `.vettapkg` extension and ZIP container. Its archive root must contain `plugin.json` and `dist/`. Once Vetta is installed, users can double-click the file to install it.
+        Use the `.astraviapkg` extension and ZIP container. Its archive root must contain `plugin.json` and `dist/`. Once Astravia is installed, users can double-click the file to install it.
       </Step>
       <Step>
         ### Install and enable
 
-        In the **Capabilities** page, open **Add capability → Import plugin package** and select the `.vettapkg` file. Enable it and grant permissions in the **Enable and permissions** dialog.
+        In the **Capabilities** page, open **Add capability → Import plugin package** and select the `.astraviapkg` file. Enable it and grant permissions in the **Enable and permissions** dialog.
       </Step>
       <Step>
         ### Verify loading
@@ -149,11 +149,11 @@ When one repository ships several abilities (plugins, MCP servers, skills, scene
 marketplace:
 
 ```bash
-npx @vetta-org/plugin-cli init hub --name my-market \
+npx @astravia-org/plugin-cli init hub --name my-market \
   --repository https://github.com/me/my-market --min-app-version 0.55.0
 ```
 
-That creates the `.vetta/marketplace.json` index, the `abilities/` layout, a repository-level
+That creates the `.astravia/marketplace.json` index, the `abilities/` layout, a repository-level
 `AGENTS.md`, and CI running `sync --check`. Add abilities by running `init` inside
 `abilities/plugins/<slug>` — **every development command acts on the nearest ability directory**,
 so working inside a marketplace is identical to working on a standalone plugin.
@@ -162,8 +162,8 @@ The index carries fields derived from each ability package, reconciled by a tool
 hand:
 
 ```bash
-npx @vetta-org/plugin-cli sync          # pull derived fields, advance marketplaceVersion
-npx @vetta-org/plugin-cli sync --check  # report only, non-zero exit — for CI
+npx @astravia-org/plugin-cli sync          # pull derived fields, advance marketplaceVersion
+npx @astravia-org/plugin-cli sync --check  # report only, non-zero exit — for CI
 ```
 
 <Callout title="Three constraints that bite remotely" type="warn">

@@ -1,5 +1,5 @@
-import type { ThinkingLevel } from "@vetta/agent-core";
-import { modelsAreEqual } from "@vetta/ai";
+import type { ThinkingLevel } from "@astravia/agent-core";
+import { modelsAreEqual } from "@astravia/ai";
 import chalk from "chalk";
 import { minimatch } from "minimatch";
 import type { CodingAgentModelCatalogView } from "../model-contracts.js";

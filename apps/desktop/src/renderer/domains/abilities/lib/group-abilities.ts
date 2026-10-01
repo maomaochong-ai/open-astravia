@@ -1,13 +1,13 @@
 /**
  * 列表分组：按分类聚合，另把随 App 分发的内置能力单独成组。
  *
- * 顺序固定为「连接 → 各分类 → Vetta 内置 → 未分类」：市场安装的能力都带分类，
+ * 顺序固定为「连接 → 各分类 → Astravia 内置 → 未分类」：市场安装的能力都带分类，
  * `~/.agents/skills` 等本地能力无分类落在最后，内置能力夹在两者之间。
  */
 import {
+	ABILITY_CATEGORY_ASTRAVIA_BUILTIN,
 	ABILITY_CATEGORY_CONNECTORS,
 	ABILITY_CATEGORY_UNCATEGORIZED,
-	ABILITY_CATEGORY_VETTA_BUILTIN,
 	type AbilityGroup,
 	type AbilityItem,
 } from "../types";
@@ -17,7 +17,7 @@ export function groupAbilities(items: AbilityItem[]): AbilityGroup[] {
 	// 不同来源可能只提供部分语言：逐语言补齐，冲突时保留先到的非空译名。
 	const i18nByCategory = new Map<string, Record<string, string>>();
 	for (const item of items) {
-		const key = item.isBuiltin ? ABILITY_CATEGORY_VETTA_BUILTIN : item.category || ABILITY_CATEGORY_UNCATEGORIZED;
+		const key = item.isBuiltin ? ABILITY_CATEGORY_ASTRAVIA_BUILTIN : item.category || ABILITY_CATEGORY_UNCATEGORIZED;
 		const bucket = byCategory.get(key);
 		if (bucket) bucket.push(item);
 		else byCategory.set(key, [item]);
@@ -29,8 +29,8 @@ export function groupAbilities(items: AbilityItem[]): AbilityGroup[] {
 	// 三个合成分组固定位置，其余按规范名排序：分组顺序不随界面语言跳动
 	const connectors = byCategory.get(ABILITY_CATEGORY_CONNECTORS);
 	byCategory.delete(ABILITY_CATEGORY_CONNECTORS);
-	const builtin = byCategory.get(ABILITY_CATEGORY_VETTA_BUILTIN);
-	byCategory.delete(ABILITY_CATEGORY_VETTA_BUILTIN);
+	const builtin = byCategory.get(ABILITY_CATEGORY_ASTRAVIA_BUILTIN);
+	byCategory.delete(ABILITY_CATEGORY_ASTRAVIA_BUILTIN);
 	const uncategorized = byCategory.get(ABILITY_CATEGORY_UNCATEGORIZED);
 	byCategory.delete(ABILITY_CATEGORY_UNCATEGORIZED);
 	const sorted = Array.from(byCategory.entries())
@@ -39,7 +39,7 @@ export function groupAbilities(items: AbilityItem[]): AbilityGroup[] {
 	return [
 		...(connectors ? [{ category: ABILITY_CATEGORY_CONNECTORS, items: connectors }] : []),
 		...sorted,
-		...(builtin ? [{ category: ABILITY_CATEGORY_VETTA_BUILTIN, items: builtin }] : []),
+		...(builtin ? [{ category: ABILITY_CATEGORY_ASTRAVIA_BUILTIN, items: builtin }] : []),
 		...(uncategorized ? [{ category: ABILITY_CATEGORY_UNCATEGORIZED, items: uncategorized }] : []),
 	];
 }

@@ -10,7 +10,7 @@
 
 ## 暴露的问题
 
-真实 Vetta CLI 基线显示，Legacy 在活动 Turn 中切换会话时会先执行 `session_before_switch`，获准后断开旧
+真实 Astravia CLI 基线显示，Legacy 在活动 Turn 中切换会话时会先执行 `session_before_switch`，获准后断开旧
 Agent 事件并中止旧 Turn。Greenfield 原实现则先等待旧 Turn 自然结束，因此面对不结束的 Provider 流会永久阻塞。
 
 同时，原 `waitForIdle` 采用“先读状态、后订阅事件”的顺序。如果终态恰好发生在两步之间，等待者可能永远收不到
@@ -56,7 +56,7 @@ Agent 事件并中止旧 Turn。Greenfield 原实现则先等待旧 Turn 自然�
 
 ## 真实 CLI 差分
 
-新增 Legacy/Greenfield 双后端真实 Vetta CLI 门禁，分别覆盖：
+新增 Legacy/Greenfield 双后端真实 Astravia CLI 门禁，分别覆盖：
 
 1. 活动 Provider 流期间执行 `new_session`；
 2. 活动 Provider 流期间执行 `switch_session`；

@@ -3,11 +3,11 @@
 ## 1. 目标
 
 第 99 轮已经把 MCP 协议合同、TypeBox 配置解析和通用文件配置 Source 迁入
-`@vetta/runtime-mcp`，但具体连接仍位于 `coding-agent/core/mcp`：
+`@astravia/runtime-mcp`，但具体连接仍位于 `coding-agent/core/mcp`：
 
 - `McpClient` 同时承担 stdio JSON-RPC 请求关联和具体子进程通信；
 - `McpProcess` 直接管理 spawn、NDJSON、环境、stderr 和关闭；
-- `HttpMcpClient` 同时依赖官方 SDK、OAuth 文件状态和 Vetta `agentDir`；
+- `HttpMcpClient` 同时依赖官方 SDK、OAuth 文件状态和 Astravia `agentDir`；
 - `McpManager` 虽然已有 Client Factory 接缝，默认工厂仍指向 coding-agent 内部实现。
 
 本轮目标是把连接基础设施迁入 runtime-mcp，同时保持 manager、OAuth 和全部外部行为不变。
@@ -164,7 +164,7 @@ providerStopped: true
 desktopExitCode: 0
 ```
 
-真实 Canary 使用 Desktop 安装到仓库外的 Vetta CLI，覆盖首次会话、继续、ask-user、Scheduler、
+真实 Canary 使用 Desktop 安装到仓库外的 Astravia CLI，覆盖首次会话、继续、ask-user、Scheduler、
 Batch、Desktop 进程重启、会话恢复、MCP Tool Loop 和最终资源清理。
 
 ## 7. 结论与下一步

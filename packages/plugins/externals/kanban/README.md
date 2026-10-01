@@ -52,9 +52,9 @@ UI 和 agent 工具共用同一个 `KanbanBoardController`，所以用户拖一�
 三条都有对应测试：前两条看 `test/dispatch.test.ts`，自动认领看 `test/auto-claim.test.ts`
 （用假 ctx 驱动真实 controller，断言建会话不重叠）。
 
-另有一个渲染层的坑：插件 CSS 被 `@scope` 到 `data-vetta-plugin-root` 根节点，而
+另有一个渲染层的坑：插件 CSS 被 `@scope` 到 `data-astravia-plugin-root` 根节点，而
 Radix Dialog / Popover / DropdownMenu 会 portal 到 `document.body`。**每个 portaled
-content 都必须补挂 `data-vetta-plugin-root="kanban"`**（沿用 content-creation 的模式），
+content 都必须补挂 `data-astravia-plugin-root="kanban"`**（沿用 content-creation 的模式），
 否则弹层内部的工具类全部失效。
 
 ## 开发

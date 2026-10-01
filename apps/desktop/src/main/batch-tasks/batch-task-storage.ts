@@ -1,6 +1,6 @@
 import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { basename, join } from "node:path";
-import type { SessionExecutionMode } from "@vetta/runtime-core";
+import type { SessionExecutionMode } from "@astravia/runtime-core";
 import { type ExecutionModeOverride, normalizeExecutionModeOverride } from "../execution-mode.js";
 import { type DesktopConfig, type ProjectEntry, readDesktopConfig, updateDesktopConfig } from "../ipc/fs.js";
 import { getAppLogger } from "../logger.js";
@@ -79,7 +79,7 @@ const log = getAppLogger("batch-storage");
 // ─── Internal helpers ───
 
 function metaPath(projectDir: string): string {
-	return join(projectDir, ".vetta", "meta.json");
+	return join(projectDir, ".astravia", "meta.json");
 }
 
 async function readProjectMeta(projectDir: string): Promise<BatchProjectMeta | null> {
@@ -99,7 +99,7 @@ async function readProjectMeta(projectDir: string): Promise<BatchProjectMeta | n
 }
 
 async function writeProjectMeta(projectDir: string, meta: BatchProjectMeta): Promise<void> {
-	const dir = join(projectDir, ".vetta");
+	const dir = join(projectDir, ".astravia");
 	await mkdir(dir, { recursive: true });
 	await writeFile(metaPath(projectDir), JSON.stringify(meta, null, 2), "utf-8");
 }
@@ -188,7 +188,7 @@ async function unregisterProjectFromConfig(projectPath: string): Promise<void> {
 }
 
 /**
- * Backfill desktop-config.json with any batch project whose `.vetta/meta.json`
+ * Backfill desktop-config.json with any batch project whose `.astravia/meta.json`
  * exists under `workspacePath` but isn't registered yet (active or archived).
  * Idempotent: safe to call on every discover.
  */
@@ -302,7 +302,7 @@ export async function createProject(
 
 	await writeProjectMeta(projectDir, meta);
 	// Ensure sessions directory exists
-	await mkdir(join(projectDir, ".vetta", "sessions"), { recursive: true });
+	await mkdir(join(projectDir, ".astravia", "sessions"), { recursive: true });
 
 	// Register in desktop-config so the sidebar picks it up. Best-effort: if
 	// the config write fails, the next discoverBatchProjects call will
@@ -463,14 +463,14 @@ export async function resetProjectFiles(projectDir: string): Promise<void> {
 	const meta = await readProjectMeta(projectDir);
 	if (!meta) return;
 
-	// Delete everything in projectDir except .vetta/meta.json
+	// Delete everything in projectDir except .astravia/meta.json
 	const entries = await readdir(projectDir, { withFileTypes: true });
 	for (const entry of entries) {
 		const fullPath = join(projectDir, entry.name);
-		if (entry.name === ".vetta") {
-			// Inside .vetta, delete everything except meta.json
-			const vettaEntries = await readdir(fullPath);
-			for (const ve of vettaEntries) {
+		if (entry.name === ".astravia") {
+			// Inside .astravia, delete everything except meta.json
+			const astraviaEntries = await readdir(fullPath);
+			for (const ve of astraviaEntries) {
 				if (ve === "meta.json") continue;
 				await rm(join(fullPath, ve), { recursive: true, force: true });
 			}
@@ -483,7 +483,7 @@ export async function resetProjectFiles(projectDir: string): Promise<void> {
 	for (const item of meta.items) {
 		await mkdir(join(projectDir, item.name), { recursive: true });
 	}
-	await mkdir(join(projectDir, ".vetta", "sessions"), { recursive: true });
+	await mkdir(join(projectDir, ".astravia", "sessions"), { recursive: true });
 }
 
 export function generateTaskId(): string {

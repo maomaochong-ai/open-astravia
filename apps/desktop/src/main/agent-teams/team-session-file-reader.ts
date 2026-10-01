@@ -1,7 +1,7 @@
 import { dirname } from "node:path";
-import type { HistoryEntry } from "@vetta/runtime-core";
-import { type ConversationDocument, projectConversationDocumentHistory } from "@vetta/runtime-core/conversation";
-import { FileConversationRepository, resolveSessionIdFromPath } from "@vetta/runtime-node/conversation";
+import type { HistoryEntry } from "@astravia/runtime-core";
+import { type ConversationDocument, projectConversationDocumentHistory } from "@astravia/runtime-core/conversation";
+import { FileConversationRepository, resolveSessionIdFromPath } from "@astravia/runtime-node/conversation";
 
 /**
  * Reads a native Conversation directly from its JSONL file. This is deliberately

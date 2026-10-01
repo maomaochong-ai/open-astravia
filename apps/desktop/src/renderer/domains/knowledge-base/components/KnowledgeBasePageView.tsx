@@ -1,7 +1,7 @@
-import { KnowledgeFilesSkeleton } from "@vetta-org/theme-ui/knowledge";
+import { KnowledgeFilesSkeleton } from "@astravia-org/theme-ui/knowledge";
 import { useTranslation } from "react-i18next";
 import { AnimatePresence, motion } from "motion/react";
-import { Button, cn } from "@vetta-org/ui";
+import { Button, cn } from "@astravia-org/ui";
 import { KnowledgeHowItWorksDialog } from "@shared/components/KnowledgeHowItWorksDialog";
 import { SettingsAiAssist } from "../../settings/ai-assist";
 import type { useKnowledgeBasePageModel } from "../hooks/useKnowledgeBasePageModel";

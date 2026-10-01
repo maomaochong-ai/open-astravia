@@ -20,7 +20,7 @@ runs:
         node --input-type=module -e '
           import { appendFileSync } from "node:fs";
           import { join } from "node:path";
-          const root = join(process.env.RUNNER_TEMP, "vetta-packaging-downloads");
+          const root = join(process.env.RUNNER_TEMP, "astravia-packaging-downloads");
           appendFileSync(process.env.GITHUB_OUTPUT, `tools-path=${root}\n`);
           appendFileSync(process.env.GITHUB_ENV, `ELECTRON_CACHE=${join(root, "electron")}\nelectron_config_cache=${join(root, "electron")}\nELECTRON_BUILDER_CACHE=${join(root, "electron-builder")}\n`);
         '

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Install deps, bump patch, vite build, and create a Vetta plugin package.
+ * Install deps, bump patch, vite build, and create a Astravia plugin package.
  * Uses managed Node/npm (ADR-0011). Does not assume bun.
  *
  * Usage: node build-and-pack.mjs <pluginRoot> [--skip-install] [--no-bump]
@@ -59,7 +59,7 @@ function parsePackResult(stdout) {
 			// npm may write non-JSON informational lines before the CLI result.
 		}
 	}
-	throw new Error("vetta-plugin pack did not return a valid result");
+	throw new Error("astravia-plugin pack did not return a valid result");
 }
 
 const args = parseArgs(process.argv.slice(2));
@@ -82,7 +82,7 @@ try {
 
 	await run("npm", ["run", "build"], args.root);
 
-	const pluginCliPath = join(args.root, "node_modules", "@vetta-org", "plugin-vite", "dist", "cli.js");
+	const pluginCliPath = join(args.root, "node_modules", "@astravia-org", "plugin-vite", "dist", "cli.js");
 	const packRun = await run(
 		process.execPath,
 		[pluginCliPath, "pack", "--root", args.root],

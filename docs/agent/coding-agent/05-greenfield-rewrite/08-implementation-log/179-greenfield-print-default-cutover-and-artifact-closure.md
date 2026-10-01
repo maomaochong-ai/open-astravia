@@ -8,7 +8,7 @@
 
 ### 1. 默认切换不能只修改 Runtime Selector
 
-Legacy `SessionManager` 在没有 `--session-dir` 时会按 cwd 计算默认目录；Greenfield 组合此前直接拒绝缺失目录。若只把 `defaultBackend()` 改为 Greenfield，真实的 `vetta --print` 会在启动阶段失败。
+Legacy `SessionManager` 在没有 `--session-dir` 时会按 cwd 计算默认目录；Greenfield 组合此前直接拒绝缺失目录。若只把 `defaultBackend()` 改为 Greenfield，真实的 `astravia --print` 会在启动阶段失败。
 
 会话目录是宿主存储策略，不属于 Agent Kernel。Legacy 和 Greenfield 必须消费同一个宿主解析结果，不能在 CLI 复制路径编码规则。
 
@@ -31,7 +31,7 @@ Legacy `SessionManager` 在没有 `--session-dir` 时会按 cwd 计算默认目�
 - 显式目录原样优先。
 - 未提供目录时沿用既有 cwd 安全编码和 Coding Agent sessions 根目录。
 - 负责创建解析后的默认目录。
-- 通过 `@vetta/coding-agent/bootstrap` 暴露给 CLI Composition Root。
+- 通过 `@astravia/coding-agent/bootstrap` 暴露给 CLI Composition Root。
 
 Legacy `getDefaultSessionDir()` 改为委托该策略，因此旧新 Runtime 不再各自维护默认目录规则。
 
@@ -71,7 +71,7 @@ Standalone 编译入口现在：
 Print 测试不再执行临时 `.mjs` Bundle，而是通过正式 `compile-standalone.mjs` 生成并直接运行仓库外单文件可执行产物。测试进程不注入：
 
 - `--session-dir`。
-- `VETTA_PACKAGE_DIR`。
+- `ASTRAVIA_PACKAGE_DIR`。
 - 工作区 Bun 运行时入口。
 
 18 项场景覆盖默认/显式 Runtime、JSON/Text、piped stdin、附件、完整 Tool Loop、Tool 错误、Provider HTTP/断连/401、retry、Extension 错误与回退、跨进程 continue、旧会话回退和 control 命令。

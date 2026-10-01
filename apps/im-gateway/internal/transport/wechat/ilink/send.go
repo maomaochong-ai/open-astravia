@@ -74,5 +74,5 @@ func generateClientID() (string, error) {
 	if _, err := rand.Read(b[:]); err != nil {
 		return "", err
 	}
-	return "vetta-wechat-" + hex.EncodeToString(b[:]), nil
+	return "astravia-wechat-" + hex.EncodeToString(b[:]), nil
 }

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { BrowserSession, BrowserSessionProfile, BrowserSource } from "@vetta-org/capability-sdk";
+import type { BrowserSession, BrowserSessionProfile, BrowserSource } from "@astravia-org/capability-sdk";
 import type { BrowserSessionRecord, BrowserSessionResources } from "./contracts.js";
 import { BrowserAutomationError } from "./contracts.js";
 
@@ -21,7 +21,7 @@ export class BrowserSessionRegistry {
 		sessionId?: string;
 	}): BrowserSessionRecord {
 		const session: BrowserSession = {
-			id: input.sessionId ?? `vetta-${randomUUID()}`,
+			id: input.sessionId ?? `astravia-${randomUUID()}`,
 			source: input.source,
 			profile: input.profile,
 			headed: input.headed,

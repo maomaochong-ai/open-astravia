@@ -1,4 +1,4 @@
-# @vetta/ai
+# @astravia/ai
 
 Unified LLM API with automatic model discovery, provider configuration, token and cost tracking, and simple context persistence and hand-off to other models mid-session.
 
@@ -93,15 +93,15 @@ Unified LLM API with automatic model discovery, provider configuration, token an
 ## Installation
 
 ```bash
-npm install @vetta/ai
+npm install @astravia/ai
 ```
 
-TypeBox exports are re-exported from `@vetta/ai`: `Type`, `Static`, and `TSchema`.
+TypeBox exports are re-exported from `@astravia/ai`: `Type`, `Static`, and `TSchema`.
 
 ## Quick Start
 
 ```typescript
-import { Type, getModel, stream, complete, Context, Tool, StringEnum } from '@vetta/ai';
+import { Type, getModel, stream, complete, Context, Tool, StringEnum } from '@astravia/ai';
 
 // Fully typed with auto-complete support for both providers and models
 const model = getModel('openai', 'gpt-4o-mini');
@@ -237,7 +237,7 @@ Provider adapters normalize prompt-cache accounting into three disjoint token bu
 Use the shared projections instead of reimplementing denominators or treating unavailable calls as misses:
 
 ```typescript
-import { aggregatePromptCacheUsage, calculatePromptCacheMetrics } from '@vetta/ai';
+import { aggregatePromptCacheUsage, calculatePromptCacheMetrics } from '@astravia/ai';
 
 const metrics = calculatePromptCacheMetrics(response.usage);
 console.log(metrics.tokenHitRate); // null when cache reads are unavailable
@@ -260,7 +260,7 @@ Tools enable LLMs to interact with external systems. This library uses TypeBox s
 ### Defining Tools
 
 ```typescript
-import { Type, Tool, StringEnum } from '@vetta/ai';
+import { Type, Tool, StringEnum } from '@astravia/ai';
 
 // Define tool parameters with TypeBox
 const weatherTool: Tool = {
@@ -388,7 +388,7 @@ Validation failures are instances of `ToolArgumentsValidationError`. Its `issues
 When implementing your own tool execution loop with `stream()` or `complete()`, use `validateToolCall` to validate arguments before passing them to your tools:
 
 ```typescript
-import { stream, validateToolCall, Tool } from '@vetta/ai';
+import { stream, validateToolCall, Tool } from '@astravia/ai';
 
 const tools: Tool[] = [weatherTool, calculatorTool];
 const s = stream(model, { messages, tools });
@@ -442,7 +442,7 @@ Models with vision capabilities can process images. You can check if a model sup
 
 ```typescript
 import { readFileSync } from 'fs';
-import { getModel, complete } from '@vetta/ai';
+import { getModel, complete } from '@astravia/ai';
 
 const model = getModel('openai', 'gpt-4o-mini');
 
@@ -479,7 +479,7 @@ Many models support thinking/reasoning capabilities where they can show their in
 ### Unified Interface (streamSimple/completeSimple)
 
 ```typescript
-import { getModel, streamSimple, completeSimple } from '@vetta/ai';
+import { getModel, streamSimple, completeSimple } from '@astravia/ai';
 
 // Many models across providers support thinking/reasoning
 const model = getModel('anthropic', 'claude-sonnet-4-20250514');
@@ -517,7 +517,7 @@ for (const block of response.content) {
 For fine-grained control, use the provider-specific options:
 
 ```typescript
-import { getModel, complete } from '@vetta/ai';
+import { getModel, complete } from '@astravia/ai';
 
 // OpenAI Reasoning (o1, o3, gpt-5)
 const openaiModel = getModel('openai', 'gpt-5-mini');
@@ -610,7 +610,7 @@ if (message.stopReason === 'error' || message.stopReason === 'aborted') {
 The abort signal allows you to cancel in-progress requests. Aborted requests have `stopReason === 'aborted'`:
 
 ```typescript
-import { getModel, stream } from '@vetta/ai';
+import { getModel, stream } from '@astravia/ai';
 
 const model = getModel('openai', 'gpt-4o-mini');
 const controller = new AbortController();
@@ -708,7 +708,7 @@ A **provider** offers models through a specific API. For example:
 ### Querying Providers and Models
 
 ```typescript
-import { getProviders, getModels, getModel } from '@vetta/ai';
+import { getProviders, getModels, getModel } from '@astravia/ai';
 
 // Get all available providers
 const providers = getProviders();
@@ -734,7 +734,7 @@ console.log(`Using ${model.name} via ${model.api} API`);
 You can create custom models for local inference servers or custom endpoints:
 
 ```typescript
-import { Model, stream } from '@vetta/ai';
+import { Model, stream } from '@astravia/ai';
 
 // Example: Ollama using OpenAI-compatible API
 const ollamaModel: Model<'openai-completions'> = {
@@ -830,7 +830,7 @@ If `compat` is not set, the library falls back to URL-based detection. If `compa
 Models are typed by their API, which keeps the model metadata accurate. Provider-specific option types are enforced when you call the provider functions directly. The generic `stream` and `complete` functions accept `StreamOptions` with additional provider fields.
 
 ```typescript
-import { streamAnthropic, type AnthropicOptions } from '@vetta/ai';
+import { streamAnthropic, type AnthropicOptions } from '@astravia/ai';
 
 // TypeScript knows this is an Anthropic model
 const claude = getModel('anthropic', 'claude-sonnet-4-20250514');
@@ -859,7 +859,7 @@ When messages from one provider are sent to a different provider, the library au
 ### Example: Multi-Provider Conversation
 
 ```typescript
-import { getModel, complete, Context } from '@vetta/ai';
+import { getModel, complete, Context } from '@astravia/ai';
 
 // Start with Claude
 const claude = getModel('anthropic', 'claude-sonnet-4-20250514');
@@ -904,7 +904,7 @@ This enables flexible workflows where you can:
 The `Context` object can be easily serialized and deserialized using standard JSON methods, making it simple to persist conversations, implement chat history, or transfer contexts between services:
 
 ```typescript
-import { Context, getModel, complete } from '@vetta/ai';
+import { Context, getModel, complete } from '@astravia/ai';
 
 // Create and use a context
 const context: Context = {
@@ -941,7 +941,7 @@ const continuation = await complete(newModel, restored);
 The library supports browser environments. You must pass the API key explicitly since environment variables are not available in browsers:
 
 ```typescript
-import { getModel, complete } from '@vetta/ai';
+import { getModel, complete } from '@astravia/ai';
 
 // API key must be passed explicitly in browser
 const model = getModel('anthropic', 'claude-3-5-haiku-20241022');
@@ -1015,7 +1015,7 @@ This only affects direct API calls to `api.anthropic.com` and `api.openai.com`. 
 ### Checking Environment Variables
 
 ```typescript
-import { getEnvApiKey } from '@vetta/ai';
+import { getEnvApiKey } from '@astravia/ai';
 
 // Check if an API key is set in environment variables
 const key = getEnvApiKey('openai');  // checks OPENAI_API_KEY
@@ -1055,7 +1055,7 @@ export GOOGLE_APPLICATION_CREDENTIALS="/path/to/service-account.json"
 ```
 
 ```typescript
-import { getModel, complete } from '@vetta/ai';
+import { getModel, complete } from '@astravia/ai';
 
 (async () => {
   const model = getModel('google-vertex', 'gemini-2.5-flash');
@@ -1076,9 +1076,9 @@ Official docs: [Application Default Credentials](https://cloud.google.com/docs/a
 The quickest way to authenticate:
 
 ```bash
-npx @vetta/ai login              # interactive provider selection
-npx @vetta/ai login anthropic    # login to specific provider
-npx @vetta/ai list               # list available providers
+npx @astravia/ai login              # interactive provider selection
+npx @astravia/ai login anthropic    # login to specific provider
+npx @astravia/ai list               # list available providers
 ```
 
 Credentials are saved to `auth.json` in the current directory.
@@ -1103,13 +1103,13 @@ import {
   // Types
   type OAuthProvider,  // 'anthropic' | 'openai-codex' | 'github-copilot' | 'google-gemini-cli' | 'google-antigravity'
   type OAuthCredentials,
-} from '@vetta/ai';
+} from '@astravia/ai';
 ```
 
 ### Login Flow Example
 
 ```typescript
-import { loginGitHubCopilot } from '@vetta/ai';
+import { loginGitHubCopilot } from '@astravia/ai';
 import { writeFileSync } from 'fs';
 
 const credentials = await loginGitHubCopilot({
@@ -1133,7 +1133,7 @@ writeFileSync('auth.json', JSON.stringify(auth, null, 2));
 Use `getOAuthApiKey()` to get an API key, automatically refreshing if expired:
 
 ```typescript
-import { getModel, complete, getOAuthApiKey } from '@vetta/ai';
+import { getModel, complete, getOAuthApiKey } from '@astravia/ai';
 import { readFileSync, writeFileSync } from 'fs';
 
 // Load your stored credentials

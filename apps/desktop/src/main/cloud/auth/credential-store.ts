@@ -1,5 +1,5 @@
 /**
- * 把登录凭据下沉到 `~/.vetta/auth.json`，供**客户端进程之外**的消费者读取。
+ * 把登录凭据下沉到 `~/.astravia/auth.json`，供**客户端进程之外**的消费者读取。
  *
  * 起因：登录态原本只活在 renderer 的 localStorage 与主进程内存里，而 agent-rpc 子
  * 进程、skill 内置脚本（publish-ability）都读不到。让它们去翻 settings.json 又会把
@@ -22,7 +22,7 @@ const log = getAppLogger("auth");
 
 /**
  * 与外部消费者共用的契约，字段只增不改。
- * 现有读方：coding-agent 的 `core/mcp/vetta-credentials.ts`、
+ * 现有读方：coding-agent 的 `core/mcp/astravia-credentials.ts`、
  * skill-presets 的 `publish-ability/scripts/publish.mjs`。
  */
 interface StoredCredentials {
@@ -31,7 +31,7 @@ interface StoredCredentials {
 }
 
 function credentialsPath(): string {
-	const home = process.env.VETTA_HOME?.trim() || join(homedir(), ".vetta");
+	const home = process.env.ASTRAVIA_HOME?.trim() || join(homedir(), ".astravia");
 	return join(home, "auth.json");
 }
 

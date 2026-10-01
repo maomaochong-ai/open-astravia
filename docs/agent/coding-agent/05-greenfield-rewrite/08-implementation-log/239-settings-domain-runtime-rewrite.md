@@ -18,7 +18,7 @@
 - 会话历史、认证、模型和设置等用户数据；必要时由显式、独立的新迁移器读取旧格式。
 - 模型消息、工具消息、错误、取消、事件顺序、并发约束和资源释放语义。
 - 仍然有效的行为测试场景和数据 fixture；旧实现可以临时作为测试 Oracle，但不能被新生产代码调用。
-- `@vetta/ai` 与经过合同验证的 `@vetta/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
+- `@astravia/ai` 与经过合同验证的 `@astravia/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
 
 ## 明确舍弃（固定）
 
@@ -62,7 +62,7 @@
 ### 4. 调用方与公共边界迁移
 
 - CLI、SDK、AgentSession、资源 Host、Greenfield Adapter 和 Desktop Host 全部切换到 `SettingsRuntime` 合同。
-- 新增显式 `@vetta/coding-agent/settings` 子路径；`host-services` 可向宿主暴露同一合同。
+- 新增显式 `@astravia/coding-agent/settings` 子路径；`host-services` 可向宿主暴露同一合同。
 - 包根不再聚合导出设置实现，宿主服务参数从 `settingsManager` 改为 `settings`，防止新公共 API 延续旧 Manager 语义。
 - 删除 `core/settings-manager.ts` 和对应旧结构测试文件名，不保留 shim；设置示例改用新入口。
 

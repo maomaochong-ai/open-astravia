@@ -32,26 +32,26 @@ export interface SpinProps extends React.ComponentProps<"div"> {
  */
 function SpinKeyframes(): React.JSX.Element {
 	return (
-		<style href="@vetta-org/ui/spin" precedence="default">
-			{`@keyframes vetta-spin-rotate{0%,49.999%,100%{transform:none}50%,99.999%{transform:rotate(90deg)}}` +
-				`@keyframes vetta-spin-shift-left{0%,100%{transform:translateX(0)}50%{transform:scale(.65) translateX(-75%)}}` +
-				`@keyframes vetta-spin-shift-right{0%,100%{transform:translateX(0)}50%{transform:scale(.65) translateX(75%)}}` +
-				`.vetta-spin{position:relative;animation:vetta-spin-rotate calc(var(--vetta-spin-speed) * 2) linear infinite}` +
-				`.vetta-spin::before,.vetta-spin::after{content:"";position:absolute;top:0;left:25%;width:50%;height:100%;background:currentColor;border-radius:100%}` +
-				`.vetta-spin::before{animation:vetta-spin-shift-left var(--vetta-spin-speed) ease infinite}` +
-				`.vetta-spin::after{animation:vetta-spin-shift-right var(--vetta-spin-speed) ease infinite}` +
+		<style href="@astravia-org/ui/spin" precedence="default">
+			{`@keyframes astravia-spin-rotate{0%,49.999%,100%{transform:none}50%,99.999%{transform:rotate(90deg)}}` +
+				`@keyframes astravia-spin-shift-left{0%,100%{transform:translateX(0)}50%{transform:scale(.65) translateX(-75%)}}` +
+				`@keyframes astravia-spin-shift-right{0%,100%{transform:translateX(0)}50%{transform:scale(.65) translateX(75%)}}` +
+				`.astravia-spin{position:relative;animation:astravia-spin-rotate calc(var(--astravia-spin-speed) * 2) linear infinite}` +
+				`.astravia-spin::before,.astravia-spin::after{content:"";position:absolute;top:0;left:25%;width:50%;height:100%;background:currentColor;border-radius:100%}` +
+				`.astravia-spin::before{animation:astravia-spin-shift-left var(--astravia-spin-speed) ease infinite}` +
+				`.astravia-spin::after{animation:astravia-spin-shift-right var(--astravia-spin-speed) ease infinite}` +
 				// 关掉动效时停在两球分离的静止态，避免只剩一个黏在一起的圆点看不出是加载中
 				`@media (prefers-reduced-motion:reduce){` +
-				`.vetta-spin{animation:none}` +
-				`.vetta-spin::before{animation:none;transform:scale(.65) translateX(-75%)}` +
-				`.vetta-spin::after{animation:none;transform:scale(.65) translateX(75%)}}`}
+				`.astravia-spin{animation:none}` +
+				`.astravia-spin::before{animation:none;transform:scale(.65) translateX(-75%)}` +
+				`.astravia-spin::after{animation:none;transform:scale(.65) translateX(75%)}}`}
 		</style>
 	);
 }
 
 function Spin({ className, size = "md", label, style, ...props }: SpinProps): React.JSX.Element {
 	// 每个实例一份 filter id：同页多个 Spin 时 id 不能撞。
-	const filterId = `vetta-spin-ooze-${React.useId().replace(/:/g, "")}`;
+	const filterId = `astravia-spin-ooze-${React.useId().replace(/:/g, "")}`;
 	const width = SIZES[size];
 	// 模糊半径随尺寸缩放，否则小尺寸会糊成一坨、大尺寸黏不起来。
 	const blur = width * 0.156;
@@ -68,10 +68,10 @@ function Spin({ className, size = "md", label, style, ...props }: SpinProps): Re
 		>
 			<SpinKeyframes />
 			<div
-				className="vetta-spin"
+				className="astravia-spin"
 				style={
 					{
-						"--vetta-spin-speed": "0.8s",
+						"--astravia-spin-speed": "0.8s",
 						width: `${width}px`,
 						height: `${width / 2}px`,
 						filter: `url(#${filterId})`,

@@ -1,4 +1,4 @@
-import type { RuntimeMcpClientFactory } from "@vetta/runtime-mcp/client";
+import type { RuntimeMcpClientFactory } from "@astravia/runtime-mcp/client";
 import { isHttpServerConfig } from "../protocol/index.js";
 import { HttpMcpClient } from "../transports/http/index.js";
 import { StdioMcpClient } from "../transports/stdio/index.js";

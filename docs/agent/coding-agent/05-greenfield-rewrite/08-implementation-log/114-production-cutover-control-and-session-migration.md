@@ -56,7 +56,7 @@ CLI、独立 Agent RPC 和 Desktop Agent RPC 入口统一将决策写入 stderr�
 禁止符号为 `createLegacyAgentBootstrap` 和 `runLegacyAgentWithBootstrap`。检查使用 TypeScript AST，注释不会
 误报；selector 本身继续允许持有显式兼容回退。
 
-Legacy reader 合同原先通过 `@vetta/coding-agent/runtime-host` 包入口取得历史投影 Oracle，导致测试收集时
+Legacy reader 合同原先通过 `@astravia/coding-agent/runtime-host` 包入口取得历史投影 Oracle，导致测试收集时
 加载无关 MCP OAuth 组合。测试已改为直接依赖对应历史适配模块，只隔离测试依赖，不修改生产实现或预期结果。
 
 ## 明确未修改

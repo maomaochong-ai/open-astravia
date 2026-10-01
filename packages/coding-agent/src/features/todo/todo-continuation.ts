@@ -1,4 +1,4 @@
-import type { UserMessage } from "@vetta/ai";
+import type { UserMessage } from "@astravia/ai";
 import type { TodoContinuationState } from "./contracts.js";
 
 /**

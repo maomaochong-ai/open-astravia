@@ -1,4 +1,4 @@
-import { Button } from "@vetta-org/ui";
+import { Button } from "@astravia-org/ui";
 import { useId } from "react";
 import type { ReactNode } from "react";
 

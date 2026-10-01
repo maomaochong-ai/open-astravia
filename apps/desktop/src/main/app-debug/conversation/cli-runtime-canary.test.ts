@@ -4,14 +4,14 @@ import { mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { ActionRpcRuntime } from "@vetta/action-rpc";
-import { ACTION_RPC_ENDPOINT_FILE_ENV } from "@vetta/action-rpc";
-import type { Api, Model } from "@vetta/ai";
-import { codingAgentSessionShardPath } from "@vetta/coding-agent/bootstrap";
-import { ENV_AGENT_DIR } from "@vetta/coding-agent/config";
-import type { CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
-import { CatalogRoutedRuntimeSessionAccessResolver, RuntimeHost, type SessionEvent } from "@vetta/runtime-core";
-import { DesktopRuntimeBackendPool, DesktopRuntimeSessionCatalog } from "@vetta/runtime-desktop";
+import type { ActionRpcRuntime } from "@astravia/action-rpc";
+import { ACTION_RPC_ENDPOINT_FILE_ENV } from "@astravia/action-rpc";
+import type { Api, Model } from "@astravia/ai";
+import { codingAgentSessionShardPath } from "@astravia/coding-agent/bootstrap";
+import { ENV_AGENT_DIR } from "@astravia/coding-agent/config";
+import type { CodingAgentRuntimeModelSource } from "@astravia/coding-agent/host-services";
+import { CatalogRoutedRuntimeSessionAccessResolver, RuntimeHost, type SessionEvent } from "@astravia/runtime-core";
+import { DesktopRuntimeBackendPool, DesktopRuntimeSessionCatalog } from "@astravia/runtime-desktop";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import {
@@ -42,12 +42,12 @@ vi.mock("../../app-monitor/app-monitor-service.js", () => ({
 
 vi.mock("../../ipc/fs.js", () => ({
 	allowProjectRoot: () => undefined,
-	DEFAULT_CONVERSATION_CWD: "C:/vetta/conversation",
-	DEFAULT_CONVERSATION_SESSION_DIR: "C:/vetta/conversation/.vetta/sessions",
-	DEFAULT_IM_CONVERSATION_CWD: "C:/vetta/im",
-	DEFAULT_IM_CONVERSATION_SESSION_DIR: "C:/vetta/im/.vetta/sessions",
-	KB_PROCESSING_CWD: "C:/vetta/knowledge",
-	KB_PROCESSING_SESSION_DIR: "C:/vetta/knowledge/.vetta/sessions",
+	DEFAULT_CONVERSATION_CWD: "C:/astravia/conversation",
+	DEFAULT_CONVERSATION_SESSION_DIR: "C:/astravia/conversation/.astravia/sessions",
+	DEFAULT_IM_CONVERSATION_CWD: "C:/astravia/im",
+	DEFAULT_IM_CONVERSATION_SESSION_DIR: "C:/astravia/im/.astravia/sessions",
+	KB_PROCESSING_CWD: "C:/astravia/knowledge",
+	KB_PROCESSING_SESSION_DIR: "C:/astravia/knowledge/.astravia/sessions",
 	readDesktopConfig: async () => ({
 		defaultAgentMode: "work",
 		defaultExecutionMode: "full-access",
@@ -142,7 +142,7 @@ interface CliResult {
 	readonly stderr: string;
 }
 
-describe("Vetta CLI Desktop Runtime canary", { timeout: INTEGRATION_TEST_TIMEOUT_MS }, () => {
+describe("Astravia CLI Desktop Runtime canary", { timeout: INTEGRATION_TEST_TIMEOUT_MS }, () => {
 	const directories: string[] = [];
 	const originalAgentDir = process.env[ENV_AGENT_DIR];
 	let provider: OpenAiResponsesTestServer | undefined;
@@ -167,7 +167,7 @@ describe("Vetta CLI Desktop Runtime canary", { timeout: INTEGRATION_TEST_TIMEOUT
 	}, INTEGRATION_TEST_TIMEOUT_MS);
 
 	it("creates, continues, manually and automatically compacts, and lists persistent conversations", async () => {
-		const root = await temporaryDirectory("vetta-desktop-cli-canary-");
+		const root = await temporaryDirectory("astravia-desktop-cli-canary-");
 		const workspace = join(root, "workspace");
 		const agentDir = join(root, "agent");
 		const endpointFilePath = join(root, "action-server.json");
@@ -221,7 +221,7 @@ describe("Vetta CLI Desktop Runtime canary", { timeout: INTEGRATION_TEST_TIMEOUT
 		const sessionCatalog = new DesktopRuntimeSessionCatalog({
 			resolveRoots: () => [
 				{ cwd: workspace, sessionDir: codingAgentSessionShardPath(workspace) },
-				{ cwd: workspace, sessionDir: join(workspace, ".vetta", "sessions") },
+				{ cwd: workspace, sessionDir: join(workspace, ".astravia", "sessions") },
 			],
 		});
 		const observedCompactions: Array<
@@ -258,7 +258,7 @@ describe("Vetta CLI Desktop Runtime canary", { timeout: INTEGRATION_TEST_TIMEOUT
 		expect(existsSync(endpointFilePath)).toBe(true);
 
 		const createResponse = completedCliResponseSchema.parse(
-			await runVettaDebug(endpointFilePath, "conversation.create", {
+			await runAstraviaDebug(endpointFilePath, "conversation.create", {
 				cwd: workspace,
 				prompt: firstPrompt,
 				executionMode: "full-access",
@@ -274,7 +274,7 @@ describe("Vetta CLI Desktop Runtime canary", { timeout: INTEGRATION_TEST_TIMEOUT
 		expect(existsSync(createResponse.result.sessionPath)).toBe(true);
 
 		const continueResponse = completedCliResponseSchema.parse(
-			await runVettaDebug(endpointFilePath, "conversation.continue", {
+			await runAstraviaDebug(endpointFilePath, "conversation.continue", {
 				sessionPath: createResponse.result.sessionPath,
 				prompt: secondPrompt,
 				executionMode: "full-access",
@@ -290,7 +290,7 @@ describe("Vetta CLI Desktop Runtime canary", { timeout: INTEGRATION_TEST_TIMEOUT
 		});
 
 		const compactResponse = compactCliResponseSchema.parse(
-			await runVettaDebug(endpointFilePath, "conversation.compact", {
+			await runAstraviaDebug(endpointFilePath, "conversation.compact", {
 				sessionPath: createResponse.result.sessionPath,
 				executionMode: "full-access",
 				customInstructions: "Preserve canary decisions",
@@ -313,7 +313,7 @@ describe("Vetta CLI Desktop Runtime canary", { timeout: INTEGRATION_TEST_TIMEOUT
 		expect(compactResponse.result.summaryChars).toBe(persistedCompaction.summary.length);
 
 		const automaticResponse = completedCliResponseSchema.parse(
-			await runVettaDebug(endpointFilePath, "conversation.create", {
+			await runAstraviaDebug(endpointFilePath, "conversation.create", {
 				cwd: workspace,
 				prompt: automaticCompactionPrompt,
 				executionMode: "full-access",
@@ -336,7 +336,7 @@ describe("Vetta CLI Desktop Runtime canary", { timeout: INTEGRATION_TEST_TIMEOUT
 		});
 
 		const automaticContinuationResponse = completedCliResponseSchema.parse(
-			await runVettaDebug(endpointFilePath, "conversation.continue", {
+			await runAstraviaDebug(endpointFilePath, "conversation.continue", {
 				sessionPath: automaticResponse.result.sessionPath,
 				prompt: automaticCompactionContinuation,
 				executionMode: "full-access",
@@ -377,7 +377,7 @@ describe("Vetta CLI Desktop Runtime canary", { timeout: INTEGRATION_TEST_TIMEOUT
 		expect(persistedAutomaticCompaction.summary).toContain(compactionSummary);
 
 		const listResponse = listCliResponseSchema.parse(
-			await runVettaDebug(endpointFilePath, "conversation.list", { cwd: workspace, limit: 20 }),
+			await runAstraviaDebug(endpointFilePath, "conversation.list", { cwd: workspace, limit: 20 }),
 		);
 		expect(listResponse.result).toContainEqual(
 			expect.objectContaining({
@@ -455,14 +455,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-async function runVettaDebug(endpointFilePath: string, debugId: string, input: unknown): Promise<unknown> {
+async function runAstraviaDebug(endpointFilePath: string, debugId: string, input: unknown): Promise<unknown> {
 	const result = await runCli(["debug", "run", debugId, JSON.stringify(input)], {
 		...process.env,
 		[ACTION_RPC_ENDPOINT_FILE_ENV]: endpointFilePath,
 	});
 	if (result.code !== 0) {
 		throw new Error(
-			`Vetta CLI failed with code ${result.code}\nstdout:\n${result.stdout}\nstderr:\n${result.stderr}`,
+			`Astravia CLI failed with code ${result.code}\nstdout:\n${result.stdout}\nstderr:\n${result.stderr}`,
 		);
 	}
 	return JSON.parse(result.stdout) as unknown;
@@ -489,7 +489,7 @@ async function runCli(args: readonly string[], env: NodeJS.ProcessEnv): Promise<
 		child.once("error", reject);
 		child.once("exit", (code, signal) => {
 			if (signal) {
-				reject(new Error(`Vetta CLI exited with signal ${signal}\nstderr:\n${stderr}`));
+				reject(new Error(`Astravia CLI exited with signal ${signal}\nstderr:\n${stderr}`));
 				return;
 			}
 			resolve({ code: code ?? 1, stdout: stdout.trim(), stderr: stderr.trim() });

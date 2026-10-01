@@ -1,4 +1,4 @@
-import type { VersionedConfigMigration } from "@vetta/toolkit/versioned-config";
+import type { VersionedConfigMigration } from "@astravia/toolkit/versioned-config";
 import { DEFAULT_PET_BUBBLE_STYLE_ID } from "../../../../shared/pet-bubbles.js";
 
 export const petConfigMigration002To3: VersionedConfigMigration = {

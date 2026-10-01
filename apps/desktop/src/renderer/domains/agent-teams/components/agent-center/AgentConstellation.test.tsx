@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import type { AgentProfile } from "@vetta/agent-team";
+import type { AgentProfile } from "@astravia/agent-team";
 import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { AgentConstellation } from "./AgentConstellation";

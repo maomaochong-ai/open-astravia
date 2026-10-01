@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { mkdtemp, rm, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { MessageAppendedEvent, TurnCompletedEvent, TurnStartedEvent } from "@vetta/runtime-core/kernel";
+import type { MessageAppendedEvent, TurnCompletedEvent, TurnStartedEvent } from "@astravia/runtime-core/kernel";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
 	ConversationOwnershipConflictError,
@@ -184,7 +184,7 @@ describe("Greenfield runtime session services", () => {
 });
 
 async function createTemporaryRoot(): Promise<string> {
-	const root = await mkdtemp(join(tmpdir(), "vetta-runtime-session-services-"));
+	const root = await mkdtemp(join(tmpdir(), "astravia-runtime-session-services-"));
 	temporaryRoots.push(root);
 	return root;
 }

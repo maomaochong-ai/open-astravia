@@ -6,7 +6,7 @@
  * 已存的那份，空串才表示清除——否则渲染层每次保存都得把明文口令回传一趟。
  */
 
-import { isProxyProtocol, type ProxyProtocol } from "@vetta/ai";
+import { isProxyProtocol, type ProxyProtocol } from "@astravia/ai";
 
 export interface DesktopProxyConfig {
 	enabled: boolean;

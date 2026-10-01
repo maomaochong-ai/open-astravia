@@ -4,7 +4,7 @@ import { createOpenSourceBuildEnvironment } from "./desktop-build-environment.mj
 import { loadBuildEnv } from "./load-build-env.mjs";
 
 const projectRoot = fileURLToPath(new URL("..", import.meta.url));
-const loadedEnvironment = { ...process.env, VETTA_BUILD_ENV: "opensource" };
+const loadedEnvironment = { ...process.env, ASTRAVIA_BUILD_ENV: "opensource" };
 loadBuildEnv({ env: loadedEnvironment, cwd: projectRoot });
 const environment = createOpenSourceBuildEnvironment(loadedEnvironment);
 const forwardedArguments = process.argv.slice(2);

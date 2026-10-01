@@ -1,5 +1,5 @@
+import type { AgentTool } from "@astravia/agent-core";
 import type { TSchema } from "@sinclair/typebox";
-import type { AgentTool } from "@vetta/agent-core";
 import type { ExtensionContext } from "../context-contracts.js";
 import type { ToolCallEvent, ToolCallEventResult, ToolResultEvent, ToolResultEventResult } from "../events/index.js";
 import type { RegisteredTool } from "../runtime-contracts.js";

@@ -1,5 +1,5 @@
-import type { ToolPhase } from "@vetta/agent-core";
-import type { AssistantMessageEvent, Message, ToolResultMessage } from "@vetta/ai";
+import type { ToolPhase } from "@astravia/agent-core";
+import type { AssistantMessageEvent, Message, ToolResultMessage } from "@astravia/ai";
 import type { RuntimeToolResult, SessionContextRecord } from "./kernel/contracts.js";
 
 /** 非外部用户输入的消息来源；缺省的 user 消息视为真实用户输入。 */

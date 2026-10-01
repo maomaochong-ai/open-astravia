@@ -45,7 +45,7 @@ export function isSolarSkillIcon(icon: string | null | undefined): boolean {
  * 可否作为 `<img src>` 渲染。
  *
  * 与能力广场 `isRenderableImageIcon` 对齐：开源市场图标解析后是
- * `vetta-file://local/...`（见 open-marketplace-presentation），只认 http(s)
+ * `astravia-file://local/...`（见 open-marketplace-presentation），只认 http(s)
  * 会让命令面板 / skill 胶囊全部退回默认立方体，看起来像「没有图标」。
  * `solar:` 仍走 Iconify，不进这里。
  */
@@ -54,7 +54,7 @@ export function isImageSkillIcon(icon: string | null | undefined): boolean {
 	const v = icon.trim();
 	if (!v || v.startsWith("solar:")) return false;
 	return (
-		// http(s) / blob / file / vetta-file 等任意 scheme://
+		// http(s) / blob / file / astravia-file 等任意 scheme://
 		v.includes("://") ||
 		v.startsWith("/") ||
 		// `./skills/xxx.png`：宿主内置 Skill 的图标是相对路径（打包后走 file://，vite base 为 "./"）

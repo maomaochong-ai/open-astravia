@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+
+import type { PluginPermission } from "@astravia-org/plugin-sdk";
 import type { InstalledPlugin } from "@preload/api";
 import {
 	activeSessionAtom,
@@ -7,7 +9,6 @@ import {
 	attachedPluginTabsAtom,
 	mountedActivityWorkspacesAtom,
 } from "@shared/store/atoms";
-import type { PluginPermission } from "@vetta-org/plugin-sdk";
 import { getDefaultStore } from "jotai";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PluginLocalContributions } from "./plugin-local-contributions";

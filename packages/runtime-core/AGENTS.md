@@ -20,8 +20,8 @@ Document、生命周期事务、恢复、资源所有权、Port、Session Extens
 
 - 本包是 `desktop` 和 `cli-host` 的直接依赖，接口变更影响所有应用层
 - 公开事件和 Port 是 `coding-agent` 与应用宿主消费的下层合同，变更需同步检查消费者
-- Kernel 与 Runtime 合同必须保持产品无关，不得导入 `@vetta/coding-agent`
-- 生产代码、测试、配置和包清单均不得反向依赖 `@vetta/coding-agent`
+- Kernel 与 Runtime 合同必须保持产品无关，不得导入 `@astravia/coding-agent`
+- 生产代码、测试、配置和包清单均不得反向依赖 `@astravia/coding-agent`
 - Runtime 包拥有实际能力，不是 `coding-agent` 的兼容转发层
 - “可跨平台”不是进入本包的充分条件；包含产品名词或默认产品选择的逻辑仍由产品包拥有
 

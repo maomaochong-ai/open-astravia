@@ -63,22 +63,22 @@ export function initPluginProject(input: InitPluginInput): InitPluginResult {
 			private: true,
 			type: "module",
 			scripts: {
-				dev: "vetta-plugin dev",
+				dev: "astravia-plugin dev",
 				build: "vite build",
 				check: "tsc --noEmit",
-				pack: "vetta-plugin pack",
-				validate: "vetta-plugin validate",
-				docs: "vetta-plugin-cli docs",
-				// 一条命令走完「构建 → 打包 → 装进正在运行的 Vetta」。
-				"install:vetta": "vite build && vetta-plugin pack && vetta-plugin-cli add .",
+				pack: "astravia-plugin pack",
+				validate: "astravia-plugin validate",
+				docs: "astravia-plugin-cli docs",
+				// 一条命令走完「构建 → 打包 → 装进正在运行的 Astravia」。
+				"install:astravia": "vite build && astravia-plugin pack && astravia-plugin-cli add .",
 			},
 			devDependencies: {
 				"@tailwindcss/vite": "^4.1.12",
 				"@types/react": "^19.1.1",
 				"@types/react-dom": "^19.1.1",
-				"@vetta-org/plugin-cli": "^0.1.1",
-				"@vetta-org/plugin-sdk": input.sdkRange ?? DEFAULT_SDK_RANGE,
-				"@vetta-org/plugin-vite": input.viteRange ?? DEFAULT_VITE_RANGE,
+				"@astravia-org/plugin-cli": "^0.1.1",
+				"@astravia-org/plugin-sdk": input.sdkRange ?? DEFAULT_SDK_RANGE,
+				"@astravia-org/plugin-vite": input.viteRange ?? DEFAULT_VITE_RANGE,
 				react: "19.1.1",
 				"react-dom": "19.1.1",
 				tailwindcss: "^4.1.12",
@@ -102,13 +102,13 @@ export function initPluginProject(input: InitPluginInput): InitPluginResult {
 			include: ["src/**/*.ts", "src/**/*.tsx"],
 		}),
 		"vite.config.ts": `import tailwindcss from "@tailwindcss/vite";
-import { vettaPluginFederation } from "@vetta-org/plugin-vite";
+import { astraviaPluginFederation } from "@astravia-org/plugin-vite";
 import { defineConfig } from "vite";
 
 export default defineConfig({
 	plugins: [
 		tailwindcss(),
-		vettaPluginFederation({
+		astraviaPluginFederation({
 			name: "${remote}",
 			entry: "./src/index.tsx",
 		}),
@@ -116,13 +116,13 @@ export default defineConfig({
 	esbuild: { jsx: "automatic", jsxImportSource: "react" },
 });
 `,
-		"src/index.tsx": `import { definePlugin } from "@vetta-org/plugin-sdk";
+		"src/index.tsx": `import { definePlugin } from "@astravia-org/plugin-sdk";
 // Tailwind pipeline only — business CSS here would leak into the host page.
 import "./style.css";
 
 export default definePlugin({
 	activate(ctx) {
-		// Read the manual before adding contributions: npx vetta-plugin-cli docs
+		// Read the manual before adding contributions: npx astravia-plugin-cli docs
 		void ctx;
 	},
 });
@@ -178,7 +178,7 @@ export function refreshAgentsGuide(targetDir: string, options: RefreshGuideOptio
 	const root = resolve(targetDir);
 	const file = join(root, "AGENTS.md");
 	const manifestPath = join(root, "plugin.json");
-	const hubManifestPath = join(root, ".vetta", "marketplace.json");
+	const hubManifestPath = join(root, ".astravia", "marketplace.json");
 
 	let kind: "plugin" | "hub";
 	let content: string;
@@ -214,7 +214,7 @@ function assertSafeToOverwrite(file: string, force: boolean): void {
 	if (force || !existsSync(file)) return;
 	if (readAgentsGuideRevision(readFileSync(file, "utf8")) !== undefined) return;
 	throw new Error(
-		`${file} has no vetta-guide-revision marker, so it looks hand-written rather than scaffolded. ` +
+		`${file} has no astravia-guide-revision marker, so it looks hand-written rather than scaffolded. ` +
 			"Refusing to overwrite it. Review the new template with `--dry-run`, merge what you want by hand, " +
 			"or pass `--force` to replace the file.",
 	);
@@ -268,7 +268,7 @@ export interface InitHubInput {
 	/** 市场名（slug）。 */
 	readonly name: string;
 	readonly repository: string;
-	/** 本市场的能力所支持的最老 Vetta 版本。 */
+	/** 本市场的能力所支持的最老 Astravia 版本。 */
 	readonly minAppVersion: string;
 }
 
@@ -297,7 +297,7 @@ export function initHubRepository(input: InitHubInput): InitHubResult {
 	}
 
 	const root = resolve(input.targetDir);
-	const manifestRelativePath = join(".vetta", "marketplace.json");
+	const manifestRelativePath = join(".astravia", "marketplace.json");
 	if (existsSync(join(root, manifestRelativePath))) {
 		throw new Error(`Refusing to overwrite an existing marketplace at ${root}`);
 	}

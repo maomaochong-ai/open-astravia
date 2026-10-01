@@ -3,30 +3,30 @@ title: Coding Agent API 参考
 description: 按公开导出路径查找 Session、Host、配置、扩展、资源和运行时 API，并遵守生命周期与兼容边界。
 ---
 
-本页是 `@vetta/coding-agent` 的导出地图。具体类型、参数和返回值以安装版本的声明文件为准；示例应只从 `package.json#exports` 中列出的入口导入，不要深度导入 `src/**`。
+本页是 `@astravia/coding-agent` 的导出地图。具体类型、参数和返回值以安装版本的声明文件为准；示例应只从 `package.json#exports` 中列出的入口导入，不要深度导入 `src/**`。
 
 ## 导出路径
 
 | 入口 | 用途 |
 | --- | --- |
-| `@vetta/coding-agent` | 默认产品组合入口 |
-| `@vetta/coding-agent/sdk` | 创建和管理进程内 Session |
-| `@vetta/coding-agent/rpc` | NDJSON RPC 帧、命令和事件合同 |
-| `@vetta/coding-agent/settings` | 全局/项目设置和 Schema |
-| `@vetta/coding-agent/resources` | Skill、Extension、Prompt 等资源来源 |
-| `@vetta/coding-agent/extensions` | Extension 来源与生命周期 |
-| `@vetta/coding-agent/session-extensions` | Session 级扩展能力 |
-| `@vetta/coding-agent/hooks` | Host/Agent 生命周期 Hook |
-| `@vetta/coding-agent/host-services` | 宿主提供的模型、文件和运行时服务 |
-| `@vetta/coding-agent/historical-sessions` | 离线读取和管理历史会话 |
-| `@vetta/coding-agent/bootstrap` | 从启动参数和环境创建宿主配置 |
-| `@vetta/coding-agent/function-extensions` | 函数式扩展来源 |
-| `@vetta/coding-agent/plugin-runtime` | 插件运行时桥接 |
-| `@vetta/coding-agent/export-html` | 会话 HTML 导出 |
-| `@vetta/coding-agent/profile` | Host profile 选择 |
-| `@vetta/coding-agent/cli-guidance` | CLI 入口提示与参数指导 |
-| `@vetta/coding-agent/runtime` | 运行时组合和生命周期接口 |
-| `@vetta/coding-agent/model-context` | 模型上下文和消息输入合同 |
+| `@astravia/coding-agent` | 默认产品组合入口 |
+| `@astravia/coding-agent/sdk` | 创建和管理进程内 Session |
+| `@astravia/coding-agent/rpc` | NDJSON RPC 帧、命令和事件合同 |
+| `@astravia/coding-agent/settings` | 全局/项目设置和 Schema |
+| `@astravia/coding-agent/resources` | Skill、Extension、Prompt 等资源来源 |
+| `@astravia/coding-agent/extensions` | Extension 来源与生命周期 |
+| `@astravia/coding-agent/session-extensions` | Session 级扩展能力 |
+| `@astravia/coding-agent/hooks` | Host/Agent 生命周期 Hook |
+| `@astravia/coding-agent/host-services` | 宿主提供的模型、文件和运行时服务 |
+| `@astravia/coding-agent/historical-sessions` | 离线读取和管理历史会话 |
+| `@astravia/coding-agent/bootstrap` | 从启动参数和环境创建宿主配置 |
+| `@astravia/coding-agent/function-extensions` | 函数式扩展来源 |
+| `@astravia/coding-agent/plugin-runtime` | 插件运行时桥接 |
+| `@astravia/coding-agent/export-html` | 会话 HTML 导出 |
+| `@astravia/coding-agent/profile` | Host profile 选择 |
+| `@astravia/coding-agent/cli-guidance` | CLI 入口提示与参数指导 |
+| `@astravia/coding-agent/runtime` | 运行时组合和生命周期接口 |
+| `@astravia/coding-agent/model-context` | 模型上下文和消息输入合同 |
 
 ## Session 生命周期
 
@@ -58,7 +58,7 @@ create → inspect diagnostics → subscribe → prompt / steer / followUp
 
 ## 兼容策略
 
-1. 在 `package.json` 中固定兼容的 `@vetta/coding-agent` 版本范围。
+1. 在 `package.json` 中固定兼容的 `@astravia/coding-agent` 版本范围。
 2. 启动时记录版本和 diagnostics，遇到未知能力时提供降级或清晰错误。
 3. RPC 宿主按响应和事件分别路由，并处理无 `id` 的事件。
 4. 取消、重试、压缩、工具失败和进程退出都要映射到上层状态。

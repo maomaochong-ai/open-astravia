@@ -12,7 +12,7 @@ describe("createNodeHtmlExportFileAdapters", () => {
 	});
 
 	it("loads the template bundle, writes output, and delegates legacy parsing", () => {
-		const directory = mkdtempSync(join(tmpdir(), "vetta-html-export-"));
+		const directory = mkdtempSync(join(tmpdir(), "astravia-html-export-"));
 		directories.push(directory);
 		mkdirSync(join(directory, "vendor"));
 		for (const [path, content] of [

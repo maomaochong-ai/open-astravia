@@ -1,12 +1,12 @@
 import { join } from "node:path";
-import type { ProjectInfo, RuntimeSessionCatalog, SessionHistoryInfo } from "@vetta/runtime-core";
+import type { ProjectInfo, RuntimeSessionCatalog, SessionHistoryInfo } from "@astravia/runtime-core";
 import { describe, expect, it, vi } from "vitest";
 import { isSessionPathInDirectory, PathFilteredRuntimeSessionCatalog } from "./session-catalog.js";
 
 describe("PathFilteredRuntimeSessionCatalog", () => {
 	it("keeps IM ownership separate from Desktop Runtime ownership", async () => {
 		const catalog = alwaysOwnedCatalog();
-		const sessionDir = join(process.cwd(), "vetta", "im", ".vetta", "sessions");
+		const sessionDir = join(process.cwd(), "astravia", "im", ".astravia", "sessions");
 		const imCatalog = new PathFilteredRuntimeSessionCatalog(catalog, (path) =>
 			isSessionPathInDirectory(path, sessionDir),
 		);
@@ -15,7 +15,7 @@ describe("PathFilteredRuntimeSessionCatalog", () => {
 			(path) => !isSessionPathInDirectory(path, sessionDir),
 		);
 		const imSession = join(sessionDir, "im.conversation.jsonl");
-		const projectSession = join(process.cwd(), "project", ".vetta", "sessions", "project.conversation.jsonl");
+		const projectSession = join(process.cwd(), "project", ".astravia", "sessions", "project.conversation.jsonl");
 
 		await expect(imCatalog.ownsSession(imSession)).resolves.toBe(true);
 		await expect(desktopCatalog.ownsSession(imSession)).resolves.toBe(false);

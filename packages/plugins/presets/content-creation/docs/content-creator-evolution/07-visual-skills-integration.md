@@ -1,20 +1,20 @@
 # visual-skills 融合记录
 
-本轮完整阅读 `visual-skills` 的 `image`、`video` 两个 `SKILL.md` 以及全部 34 份 reference。融合不是复制成一个常驻超级 Prompt，而是保留其“薄入口、强制基础读取、任务形状加载、模型专属语法”的方法，并适配 Vetta 的 capability registry、节点工作流、全局生成确认和三工具控制面。
+本轮完整阅读 `visual-skills` 的 `image`、`video` 两个 `SKILL.md` 以及全部 34 份 reference。融合不是复制成一个常驻超级 Prompt，而是保留其“薄入口、强制基础读取、任务形状加载、模型专属语法”的方法，并适配 Astravia 的 capability registry、节点工作流、全局生成确认和三工具控制面。
 
 来源：Serge Shima 的 [smixs/visual-skills](https://github.com/smixs/visual-skills)，本地快照 `3c55471`，许可证 CC BY 4.0。本项目内容经过重新组织、改写和能力边界适配；署名同时保留在相关 Skill 中。
 
 ## 顶层 Skill 映射
 
-| visual-skills | Vetta | 融合方式 |
+| visual-skills | Astravia | 融合方式 |
 | --- | --- | --- |
 | `image` | `direct-image-creation` | 保留 route-first、模型 Profile、通用规则、任务 reference 和交付前质量检查；输出改为节点 Prompt 与引用计划。 |
 | `video` | `direct-video-creation` | 保留导演/编剧/剪辑复合角色、戏剧检查、模型语法、镜头卡、连续性和失败修复；把时间分段写入视频生成节点 Prompt。 |
-| 外置 `creative-director` 依赖 | `develop-creative-concept` | 在 Vetta 内补齐策略、Big Idea、treatment、beat spine 和概念选择，不让模糊想法直接进入生成。 |
+| 外置 `creative-director` 依赖 | `develop-creative-concept` | 在 Astravia 内补齐策略、Big Idea、treatment、beat spine 和概念选择，不让模糊想法直接进入生成。 |
 
 ## Image reference 覆盖
 
-| 原 reference | Vetta reference |
+| 原 reference | Astravia reference |
 | --- | --- |
 | `models.md`、`gpt-image.md`、`nano-banana.md` | `model-routing.md`、`model-prompt-profiles.md` |
 | `golden-rules.md`、`prompt-framework.md` | `prompt-framework.md`、`production-prompt-skeletons.md` |
@@ -31,7 +31,7 @@
 
 ## Video reference 覆盖
 
-| 原 reference | Vetta reference |
+| 原 reference | Astravia reference |
 | --- | --- |
 | `dramaturgy.md` | `dramaturgy-and-shot-design.md`、`shot-cards-and-rhythm.md` |
 | `universal-rules.md` | `prompting.md`、`continuity-and-references.md`、`quality-checklist.md` |
@@ -58,7 +58,7 @@
 ### 不直接复制
 
 - 模型价格、发布时间、营销描述和快速变化的版本能力。
-- Vetta capability descriptor 未声明的参考数量、音频、对白、首尾帧、partial re-render、native extension 和 Provider UI 开关。
+- Astravia capability descriptor 未声明的参考数量、音频、对白、首尾帧、partial re-render、native extension 和 Provider UI 开关。
 - Provider CLI flags；duration、ratio、resolution 等放入节点字段而不是 Prompt。
 - 参考项目中互相矛盾或过度泛化的固定限制，例如把所有长视频都固定拆成 5 秒片段。
 - 只能由专业 CAD、事实校验或后期系统保证的准确性声明。

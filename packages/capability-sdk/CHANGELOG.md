@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to `@vetta-org/capability-sdk` are documented in this file.
+All notable changes to `@astravia-org/capability-sdk` are documented in this file.
 
 ## [Unreleased]
 
@@ -19,7 +19,7 @@ All notable changes to `@vetta-org/capability-sdk` are documented in this file.
 
 ## [0.1.0] — 2026-09-14
 
-首次发布到 npm。此前它只作为 workspace 包在仓库内被引用，但 `@vetta-org/plugin-sdk`
+首次发布到 npm。此前它只作为 workspace 包在仓库内被引用，但 `@astravia-org/plugin-sdk`
 已经在运行时 import 它的 skill 展示 schema，发布后者必须先发布它。
 
 ### Added

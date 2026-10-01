@@ -5,7 +5,7 @@
 本阶段把第 207 阶段保留的 Legacy 测试参照冻结为版本化观察合同，并彻底删除 Legacy 执行实现，同时严格保留既有会话格式、迁移和 MCP 兼容能力：
 
 - Legacy 执行边从 7 条降为 0；
-- `@vetta/coding-agent` 的 Legacy package exports 从 3 个降为 0；
+- `@astravia/coding-agent` 的 Legacy package exports 从 3 个降为 0；
 - 保留 8 条 Legacy 会话格式与迁移边界；
 - Print、RPC、Provider、工具、会话替换与 Desktop Host 的可观察行为由显式合同或业务断言覆盖；
 - `--agent-runtime legacy` 继续作为兼容输入映射到 Canonical Greenfield Host，不再激活旧实现。
@@ -70,7 +70,7 @@ Print 事件合同最终按真实 Canonical JSONL 输出记录了启动阶段的
 
 ### 4. 收缩 package exports
 
-`@vetta/coding-agent` 删除以下导出：
+`@astravia/coding-agent` 删除以下导出：
 
 - `./legacy/session`；
 - `./legacy/tools`；
@@ -140,7 +140,7 @@ Windows 沙箱内的 Bun/Vitest worker 无法正确处理 file URL，并且集�
 - `--agent-runtime legacy` 参数仍被接受，并明确映射为 Greenfield；
 - 用户已有 Legacy Session 文件仍可读取、迁移或得到显式不兼容错误；
 - MCP 兼容输入不受影响；
-- `@vetta/coding-agent/legacy/session`、`legacy/tools` 和 `legacy/host-services` 已删除，属于公开破坏性变化，发布时应按 minor release 处理；
+- `@astravia/coding-agent/legacy/session`、`legacy/tools` 和 `legacy/host-services` 已删除，属于公开破坏性变化，发布时应按 minor release 处理；
 - Runtime 中已经不存在可被回滚激活的 Legacy 执行后端。
 
 ## 下一阶段建议

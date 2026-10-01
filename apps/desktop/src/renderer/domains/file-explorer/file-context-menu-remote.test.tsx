@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { FileContextMenuView, type FileContextMenuViewProps } from "@vetta-org/theme-ui/file-explorer";
+import { FileContextMenuView, type FileContextMenuViewProps } from "@astravia-org/theme-ui/file-explorer";
 
 const noop = (): void => {};
 const props: FileContextMenuViewProps = {

@@ -3,7 +3,7 @@ import type {
 	RuntimeToolDefinition,
 	RuntimeToolExecutionRequest,
 	RuntimeToolResult,
-} from "@vetta/runtime-core/kernel";
+} from "@astravia/runtime-core/kernel";
 
 export const CODING_AGENT_TOOL_INTERCEPTION_ORDER = {
 	/** 权限闸门最先裁决：被拒绝的调用不应再触发生态 Hook 或扩展事件的副作用。 */

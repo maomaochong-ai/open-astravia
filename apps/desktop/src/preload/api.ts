@@ -149,6 +149,6 @@ export interface DesktopApi {
 
 declare global {
 	interface Window {
-		vetta: DesktopApi;
+		astravia: DesktopApi;
 	}
 }

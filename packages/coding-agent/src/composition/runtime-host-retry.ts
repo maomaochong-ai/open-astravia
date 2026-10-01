@@ -8,12 +8,12 @@ import {
 	type RuntimeTurnRetryPolicy,
 	runtimeError,
 	withRuntimeHostSessionRetry,
-} from "@vetta/runtime-core";
+} from "@astravia/runtime-core";
 import {
 	CONVERSATION_STORAGE_ERROR_CODES,
 	ConversationOwnershipConflictError,
 	ConversationStorageError,
-} from "@vetta/runtime-storage";
+} from "@astravia/runtime-storage";
 import { readCodingAgentTurnFailure } from "../execution/turn/turn-executor.js";
 import type { CodingAgentRuntimeHostRetrySettings } from "./contracts/index.js";
 

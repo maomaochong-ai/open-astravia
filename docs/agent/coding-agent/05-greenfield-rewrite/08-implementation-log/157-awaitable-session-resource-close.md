@@ -77,7 +77,7 @@ RPC Legacy Adapter 与 Legacy Knowledge Processing Port 改为等待 `session.cl
 - `RuntimeManager`：MCP 初始化/关闭竞争、禁止 late runtime rebuild、shutdown 恰好一次；
 - `AgentSession`：资源静默后才关闭 Runtime，Runtime 关闭后才释放 Session lock；
 - Legacy RPC/Knowledge Adapter：验证 awaitable close 委托；
-- 真实 Vetta RPC CLI：模型调用真实 shell/bash 后台任务，关闭 stdin 后验证 PID 消失、exit code 0、ownership lock 为零；
+- 真实 Astravia RPC CLI：模型调用真实 shell/bash 后台任务，关闭 stdin 后验证 PID 消失、exit code 0、ownership lock 为零；
 - 独立安装 CLI 产物：重复同一后台进程与锁释放门禁。
 
 定向测试、快速质量门禁和根目录完整检查均通过。

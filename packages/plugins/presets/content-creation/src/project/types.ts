@@ -1,6 +1,6 @@
-import type { PluginMediaErrorCode } from "@vetta-org/plugin-sdk";
+import type { PluginMediaErrorCode } from "@astravia-org/plugin-sdk";
 
-export const CONTENT_CREATION_FORMAT = "vetta.content-workflow" as const;
+export const CONTENT_CREATION_FORMAT = "astravia.content-workflow" as const;
 export const CONTENT_CREATION_SCHEMA_VERSION = 6 as const;
 export const CONTENT_CREATION_RUNTIME_SCHEMA_VERSION = 1 as const;
 

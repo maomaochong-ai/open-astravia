@@ -2,11 +2,11 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import * as pluginSdk from "../../../../../packages/plugins/plugin-sdk/src/index.js";
 import * as themeUiPlugin from "../../../../../packages/theme-ui/src/plugin-ui/index.js";
-import * as vettaUi from "../../../../../packages/ui/src/index.js";
+import * as astraviaUi from "../../../../../packages/ui/src/index.js";
 
 const protocolSource = readFileSync(new URL("./plugin-protocol.ts", import.meta.url), "utf8");
 
-describe("vetta-host plugin-sdk protocol", () => {
+describe("astravia-host plugin-sdk protocol", () => {
 	it("forwards every public runtime export", () => {
 		const forwardedExports = protocolSource
 			.split(/\r?\n/u)
@@ -18,7 +18,7 @@ describe("vetta-host plugin-sdk protocol", () => {
 	});
 });
 
-describe("vetta-host ui protocol", () => {
+describe("astravia-host ui protocol", () => {
 	it("forwards every public runtime export", () => {
 		const forwardedExports = protocolSource
 			.split(/\r?\n/u)
@@ -26,11 +26,11 @@ describe("vetta-host ui protocol", () => {
 			.filter((name): name is string => name !== undefined)
 			.sort();
 
-		expect(forwardedExports).toEqual(Object.keys(vettaUi).sort());
+		expect(forwardedExports).toEqual(Object.keys(astraviaUi).sort());
 	});
 });
 
-describe("vetta-host theme-ui plugin protocol", () => {
+describe("astravia-host theme-ui plugin protocol", () => {
 	it("forwards every public runtime export", () => {
 		const forwardedExports = protocolSource
 			.split(/\r?\n/u)

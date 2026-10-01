@@ -1,4 +1,4 @@
-# @vetta/remote-control
+# @astravia/remote-control
 
 Platform-neutral remote control protocol, connection lifecycle, diagnostics contract, and deterministic fake transport.
 
@@ -8,7 +8,7 @@ Platform-neutral remote control protocol, connection lifecycle, diagnostics cont
 - End-to-end encryption: X25519 identity + ephemeral keys, HKDF, XChaCha20-Poly1305 sealed envelopes
 - The handshake in both directions (initiator for relay clients and the phone, acceptor for the desktop LAN server), including manual-pairing approval with a six-digit verification code
 - Request/response correlation, event sequencing and the outbound event journal that survives a channel switch
-- The `vetta://pair` invite link carried by the QR code
+- The `astravia://pair` invite link carried by the QR code
 - Connection diagnostics without sensitive payload logging
 - Fake transport and fake relay for deterministic failure and reconnection tests
 

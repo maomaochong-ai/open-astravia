@@ -2,7 +2,7 @@ import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
-import { createVettaPluginPackage } from "../src/pack.js";
+import { createAstraviaPluginPackage } from "../src/pack.js";
 
 const temporaryDirectories: string[] = [];
 
@@ -41,13 +41,13 @@ async function createFederationFixture(options: FederationFixtureOptions): Promi
 	return rootDir;
 }
 
-describe("createVettaPluginPackage", () => {
+describe("createAstraviaPluginPackage", () => {
 	it("packages the federation manifest and remote entry", async () => {
 		const rootDir = await createFederationFixture({ id: "pack-test", version: "0.1.0" });
 		await mkdir(join(rootDir, "locales"), { recursive: true });
 		await writeFile(join(rootDir, "locales", "en.json"), JSON.stringify({ title: "Test" }));
 
-		const result = await createVettaPluginPackage({ rootDir });
+		const result = await createAstraviaPluginPackage({ rootDir });
 
 		expect(result.files.map((file) => file.archivePath)).toEqual([
 			"dist/mf-manifest.json",
@@ -55,7 +55,7 @@ describe("createVettaPluginPackage", () => {
 			"locales/en.json",
 			"plugin.json",
 		]);
-		expect(result.outputPath).toBe(join(rootDir, "release", "pack-test-0.1.0.vettapkg"));
+		expect(result.outputPath).toBe(join(rootDir, "release", "pack-test-0.1.0.astraviapkg"));
 	});
 
 	it("packages ability details and presentation files", async () => {
@@ -73,7 +73,7 @@ describe("createVettaPluginPackage", () => {
 			}),
 		);
 
-		const result = await createVettaPluginPackage({ rootDir });
+		const result = await createAstraviaPluginPackage({ rootDir });
 
 		expect(result.files.map((file) => file.archivePath)).toEqual([
 			"ability.json",
@@ -89,20 +89,20 @@ describe("createVettaPluginPackage", () => {
 		await writeFile(
 			join(rootDir, "package.json"),
 			JSON.stringify({
-				name: "@example/vetta-plugin-npm-pack-test",
+				name: "@example/astravia-plugin-npm-pack-test",
 				version: "0.2.0",
-				vetta: {
+				astravia: {
 					schemaVersion: 1,
 					type: "desktop-plugin",
 					pluginId: "npm-pack-test",
-					archive: "release/vetta-plugin.vettapkg",
+					archive: "release/astravia-plugin.astraviapkg",
 				},
 			}),
 		);
 
-		const result = await createVettaPluginPackage({ rootDir, npmArchive: true });
+		const result = await createAstraviaPluginPackage({ rootDir, npmArchive: true });
 
-		expect(result.npmOutputPath).toBe(join(rootDir, "release", "vetta-plugin.vettapkg"));
+		expect(result.npmOutputPath).toBe(join(rootDir, "release", "astravia-plugin.astraviapkg"));
 		expect(await readFile(result.npmOutputPath!)).toEqual(await readFile(result.outputPath));
 	});
 
@@ -113,16 +113,16 @@ describe("createVettaPluginPackage", () => {
 			JSON.stringify({
 				name: "@example/identity-test",
 				version: "1.0.1",
-				vetta: {
+				astravia: {
 					schemaVersion: 1,
 					type: "desktop-plugin",
 					pluginId: "identity-test",
-					archive: "release/vetta-plugin.vettapkg",
+					archive: "release/astravia-plugin.astraviapkg",
 				},
 			}),
 		);
 
-		await expect(createVettaPluginPackage({ rootDir, npmArchive: true })).rejects.toThrow(
+		await expect(createAstraviaPluginPackage({ rootDir, npmArchive: true })).rejects.toThrow(
 			"must match plugin version",
 		);
 	});
@@ -136,7 +136,7 @@ describe("createVettaPluginPackage", () => {
 				'export function activate(ctx) { ctx.agent.registerSystemPromptProvider({ handler: () => [{ type: "setToolEnabled", toolName: "write", enabled: false }] }); }\n',
 		});
 
-		await expect(createVettaPluginPackage({ rootDir })).rejects.toThrow('requires "agent.tools.control"');
-		await expect(readFile(join(rootDir, "release", "permission-test-1.0.0.vettapkg"))).rejects.toThrow();
+		await expect(createAstraviaPluginPackage({ rootDir })).rejects.toThrow('requires "agent.tools.control"');
+		await expect(readFile(join(rootDir, "release", "permission-test-1.0.0.astraviapkg"))).rejects.toThrow();
 	});
 });

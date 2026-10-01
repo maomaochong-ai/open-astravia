@@ -5,7 +5,7 @@ import type {
 	BrowserSession,
 	BrowserSessionProfile,
 	BrowserSource,
-} from "@vetta-org/capability-sdk";
+} from "@astravia-org/capability-sdk";
 
 export interface BrowserAutomationLogger {
 	info(message: string, fields?: Record<string, unknown>): void;

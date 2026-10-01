@@ -7,7 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 let animationEnd: ((open: boolean) => void) | undefined;
 let latestOverlayClassName: string | undefined;
 
-vi.mock("@vetta-org/ui", () => {
+vi.mock("@astravia-org/ui", () => {
 	type DrawerProps = {
 		children: ReactNode;
 		open: boolean;
@@ -31,7 +31,7 @@ vi.mock("@vetta-org/ui", () => {
 	};
 });
 
-const { DetailDrawer } = await import("@vetta-org/theme-ui/overlays");
+const { DetailDrawer } = await import("@astravia-org/theme-ui/overlays");
 
 /** 能力详情、智能体档案与团队设置共用这枚抽屉壳，生命周期只在这里验证一次。 */
 describe("DetailDrawer", () => {

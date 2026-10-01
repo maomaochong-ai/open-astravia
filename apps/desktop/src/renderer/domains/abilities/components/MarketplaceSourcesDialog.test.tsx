@@ -57,7 +57,7 @@ describe("MarketplaceSourcesDialog", () => {
 	it("官方内置来源不可停用也不可删除，自定义来源仍可管理", async () => {
 		const user = userEvent.setup();
 		renderDialog([
-			source({ id: "vetta-official", name: "Vetta Official", builtin: true }),
+			source({ id: "astravia-official", name: "Astravia Official", builtin: true }),
 			source({ name: "my-abilities" }),
 		]);
 
@@ -120,14 +120,14 @@ describe("MarketplaceSourcesDialog", () => {
 		await user.click(screen.getByText("abilities:sources.actions.add"));
 		await user.type(
 			screen.getByPlaceholderText("abilities:sources.form.repositoryPlaceholder"),
-			"openvetta/vetta-official-marketplace",
+			"maomaochong-ai/astravia-official-marketplace",
 		);
 		await user.type(screen.getByPlaceholderText("abilities:sources.form.credentialPlaceholder"), "github-token");
 		await user.click(screen.getByText("abilities:sources.form.submitAdd"));
 
 		await waitFor(() =>
 			expect(onAdd).toHaveBeenCalledWith({
-				repository: "openvetta/vetta-official-marketplace",
+				repository: "maomaochong-ai/astravia-official-marketplace",
 				ref: "main",
 				credential: "github-token",
 		}),

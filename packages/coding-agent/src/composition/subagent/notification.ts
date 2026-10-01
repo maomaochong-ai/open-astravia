@@ -1,4 +1,4 @@
-import { clipFinalText, type SubagentSnapshot } from "@vetta/runtime-subagents";
+import { clipFinalText, type SubagentSnapshot } from "@astravia/runtime-subagents";
 
 export interface SubagentNotificationPayload {
 	readonly agents: readonly SubagentSnapshot[];

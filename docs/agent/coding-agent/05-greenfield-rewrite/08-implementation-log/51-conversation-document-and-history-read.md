@@ -35,7 +35,7 @@
 - Legacy v1-v3：跳过坏 JSON，首行必须是有效 session header，v1 线性记录确定性补树形 ID。
 
 没有把 Legacy 的宽容解析放进原生 Repository，也没有让新 Runtime Storage 生产代码导入
-`@vetta/coding-agent`。
+`@astravia/coding-agent`。
 
 ### 3. V2 是 envelope 演进，不是自动迁移
 
@@ -46,7 +46,7 @@ V2 event record 新增 `documentEntry`：消息事件记录稳定 `id`、`parent
 
 ### Runtime Core
 
-- 新增 `@vetta/runtime-core/conversation` 子入口。
+- 新增 `@astravia/runtime-core/conversation` 子入口。
 - 新增 `ConversationDocument`、entry union、identity、reader port。
 - 新增统一的 Kernel Event → Document 增量投影，原生 entry id 使用持久化 sequence。
 - 新增 active branch 选择和 Document → `HistoryEntry[]` 纯投影。

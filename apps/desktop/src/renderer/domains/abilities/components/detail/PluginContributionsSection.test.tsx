@@ -39,7 +39,7 @@ describe("PluginContributionsSection", () => {
 									skills: {
 										"public-skill": {
 											defaultVisibility: "visible",
-											displayName: "Vetta 设计",
+											displayName: "Astravia 设计",
 										},
 									},
 								},
@@ -62,7 +62,7 @@ describe("PluginContributionsSection", () => {
 			/>,
 		);
 
-		expect(screen.getByText("Vetta 设计")).toBeTruthy();
+		expect(screen.getByText("Astravia 设计")).toBeTruthy();
 		expect(screen.queryByText("internal-skill")).toBeNull();
 	});
 

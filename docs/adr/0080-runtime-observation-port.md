@@ -15,7 +15,7 @@ Agent/Session/Turn identity，也无法让 OTLP、Langfuse、JSONL、内存记�
 
 ## 决策
 
-在 `@vetta/runtime-core/observation` 建立产品和平台无关的类型化观测端口：
+在 `@astravia/runtime-core/observation` 建立产品和平台无关的类型化观测端口：
 
 - 事件所有者通过 `RuntimeObservationToken<Payload>` 定义自己的稳定事件与强类型安全摘要；Core 不维护
   MCP、Coding Tool 或产品事件的集中枚举。

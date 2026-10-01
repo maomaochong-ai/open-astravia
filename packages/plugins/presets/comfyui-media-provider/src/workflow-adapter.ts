@@ -1,4 +1,4 @@
-import type { PluginMediaGenerationMode, PluginMediaProviderSubmitRequest } from "@vetta-org/plugin-sdk";
+import type { PluginMediaGenerationMode, PluginMediaProviderSubmitRequest } from "@astravia-org/plugin-sdk";
 import {
 	calculateH3CanvasResolution,
 	H3_CANVAS_MULTIPLE,
@@ -67,7 +67,7 @@ function linkedNode(prompt: ComfyPrompt, value: unknown): [string, ComfyPromptNo
 
 function nextNodeId(prompt: ComfyPrompt, prefix: string): string {
 	for (let index = 1; ; index += 1) {
-		const id = `vetta_${prefix}_${index}`;
+		const id = `astravia_${prefix}_${index}`;
 		if (!prompt[id]) return id;
 	}
 }

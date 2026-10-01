@@ -11,8 +11,8 @@ import {
 } from "./packaged-e2e-binary.mjs";
 
 test("Linux unpacked E2E uses the built AppImage as the updater runtime image", async () => {
-	const packageRoot = await mkdtemp(join(tmpdir(), "vetta-packaged-e2e-"));
-	const appImage = join(packageRoot, "release", "Vetta-1.2.3.AppImage");
+	const packageRoot = await mkdtemp(join(tmpdir(), "astravia-packaged-e2e-"));
+	const appImage = join(packageRoot, "release", "Astravia-1.2.3.AppImage");
 	await mkdir(join(packageRoot, "release"), { recursive: true });
 	await writeFile(appImage, "appimage");
 
@@ -24,7 +24,7 @@ test("Linux unpacked E2E uses the built AppImage as the updater runtime image", 
 });
 
 test("Linux packaged E2E rejects unsafe or missing AppImage paths", async () => {
-	const packageRoot = await mkdtemp(join(tmpdir(), "vetta-packaged-e2e-"));
+	const packageRoot = await mkdtemp(join(tmpdir(), "astravia-packaged-e2e-"));
 	try {
 		assert.throws(
 			() => resolvePackagedE2eAppImagePath(packageRoot, "../escape"),
@@ -40,9 +40,9 @@ test("Linux packaged E2E rejects unsafe or missing AppImage paths", async () => 
 });
 
 test("Linux packaged E2E stages an isolated AppImage before updater tests", async () => {
-	const packageRoot = await mkdtemp(join(tmpdir(), "vetta-packaged-e2e-"));
-	const temporaryRoot = await mkdtemp(join(tmpdir(), "vetta-packaged-e2e-stage-"));
-	const releaseAppImage = join(packageRoot, "release", "Vetta-1.2.3.AppImage");
+	const packageRoot = await mkdtemp(join(tmpdir(), "astravia-packaged-e2e-"));
+	const temporaryRoot = await mkdtemp(join(tmpdir(), "astravia-packaged-e2e-stage-"));
+	const releaseAppImage = join(packageRoot, "release", "Astravia-1.2.3.AppImage");
 	await mkdir(join(packageRoot, "release"), { recursive: true });
 	await writeFile(releaseAppImage, "release-appimage");
 
@@ -62,12 +62,12 @@ test("Linux packaged E2E stages an isolated AppImage before updater tests", asyn
 });
 
 test("Windows packaged E2E drives the versioned Electron binary instead of the detached launcher", async () => {
-	const packageRoot = await mkdtemp(join(tmpdir(), "vetta-packaged-e2e-"));
+	const packageRoot = await mkdtemp(join(tmpdir(), "astravia-packaged-e2e-"));
 	const unpackedRoot = join(packageRoot, "release", "win-unpacked");
-	const versionedBinary = join(unpackedRoot, "versions", "1.2.3", "Vetta.exe");
+	const versionedBinary = join(unpackedRoot, "versions", "1.2.3", "Astravia.exe");
 	await mkdir(join(unpackedRoot, "versions", "1.2.3"), { recursive: true });
 	await Promise.all([
-		writeFile(join(unpackedRoot, "Vetta.exe"), "launcher"),
+		writeFile(join(unpackedRoot, "Astravia.exe"), "launcher"),
 		writeFile(join(unpackedRoot, "current.json"), '{"version":"1.2.3"}\n'),
 		writeFile(versionedBinary, "electron"),
 	]);
@@ -80,7 +80,7 @@ test("Windows packaged E2E drives the versioned Electron binary instead of the d
 });
 
 test("Windows packaged E2E rejects an unsafe version pointer", async () => {
-	const packageRoot = await mkdtemp(join(tmpdir(), "vetta-packaged-e2e-"));
+	const packageRoot = await mkdtemp(join(tmpdir(), "astravia-packaged-e2e-"));
 	const unpackedRoot = join(packageRoot, "release", "win-unpacked");
 	await mkdir(unpackedRoot, { recursive: true });
 	await writeFile(join(unpackedRoot, "current.json"), '{"version":"../escape"}\n');
@@ -93,7 +93,7 @@ test("Windows packaged E2E rejects an unsafe version pointer", async () => {
 });
 
 test("Linux packaged E2E drops the deb/rpm package-type marker so the AppImage updater is used", async () => {
-	const packageRoot = await mkdtemp(join(tmpdir(), "vetta-packaged-e2e-"));
+	const packageRoot = await mkdtemp(join(tmpdir(), "astravia-packaged-e2e-"));
 	const resourcesDir = join(packageRoot, "release", "linux-unpacked", "resources");
 	const marker = join(resourcesDir, "package-type");
 	await mkdir(resourcesDir, { recursive: true });

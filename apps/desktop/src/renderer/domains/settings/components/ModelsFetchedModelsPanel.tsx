@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Button, cn } from "@vetta-org/ui";
+import { Button, cn } from "@astravia-org/ui";
 import type { ModelsSettingsModel } from "./useModelsSettingsModel";
 
 /** 展示 `GET {baseUrl}/models` 拉取到的模型 id，默认不勾选，可全选或取消全选后批量写入 provider。 */

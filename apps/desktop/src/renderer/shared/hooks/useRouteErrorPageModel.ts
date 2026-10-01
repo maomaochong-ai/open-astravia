@@ -1,5 +1,5 @@
+import type { RouteErrorPageViewProps } from "@astravia-org/theme-ui/overlays";
 import type { ErrorComponentProps } from "@tanstack/react-router";
-import type { RouteErrorPageViewProps } from "@vetta-org/theme-ui/overlays";
 import { useEffect, useMemo } from "react";
 
 export function useRouteErrorPageModel({

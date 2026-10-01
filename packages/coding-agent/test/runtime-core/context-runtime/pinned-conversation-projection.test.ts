@@ -3,7 +3,7 @@ import {
 	createEmptyConversationDocument,
 	selectConversationDocumentEntries,
 	selectConversationDocumentModelMessages,
-} from "@vetta/runtime-core/conversation";
+} from "@astravia/runtime-core/conversation";
 import { describe, expect, it } from "vitest";
 import { projectPinnedConversationDocument } from "../../../src/compaction/runtime/pinned-conversation-projection.js";
 import { requireCodingAgentPinnedModelContext } from "../../../src/compaction/runtime/pinned-model-context-projection.js";

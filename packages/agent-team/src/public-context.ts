@@ -1,4 +1,4 @@
-import type { ConversationAuthorReference } from "@vetta/runtime-core/conversation";
+import type { ConversationAuthorReference } from "@astravia/runtime-core/conversation";
 import type { TeamSharedContextRecord } from "./contracts.js";
 import type { TeamContextProjectionPolicy } from "./extensions.js";
 

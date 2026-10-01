@@ -26,7 +26,7 @@ interface PluginNotifyOptions {
 
 ```tsx
 // 模块级捕获，供预览 / 面板组件使用
-let notify: import("@vetta-org/plugin-sdk").PluginUiApi["notify"];
+let notify: import("@astravia-org/plugin-sdk").PluginUiApi["notify"];
 
 function PptxPreview({ file }: PluginFilePreviewProps) {
   useEffect(() => {
@@ -203,7 +203,7 @@ useEffect(() => () => ctx.ui.setWorkspaceViewHeader("board", null), []);
 按钮，压在视图自己画的那一带上。视图要让位，就得知道侧边栏此刻什么形态。
 
 ```tsx
-import { useSidebarState } from "@vetta-org/plugin-sdk";
+import { useSidebarState } from "@astravia-org/plugin-sdk";
 
 function Hero() {
   const { collapsed, narrow, visible } = useSidebarState();
@@ -293,7 +293,7 @@ ctx.ui.registerFilePreview({ extensions: ["svg"], component: SvgPreview });
 
 | API | 适用 | 宿主行为 / 限制 |
 | --- | --- | --- |
-| **`getUrl()`** | **二进制 / 可能偏大 / 媒体 / 可流式解析**（PDF、Office zip、音视频、大图） | 返回 `vetta-media://…`（或远程 url）。**支持 Range**；`fetch(url)` 或交给原生 `<audio>`/`pdf.js` 等。**无整文件 10MB 封顶**（相对 IPC 全量读）。 |
+| **`getUrl()`** | **二进制 / 可能偏大 / 媒体 / 可流式解析**（PDF、Office zip、音视频、大图） | 返回 `astravia-media://…`（或远程 url）。**支持 Range**；`fetch(url)` 或交给原生 `<audio>`/`pdf.js` 等。**无整文件 10MB 封顶**（相对 IPC 全量读）。 |
 | **`readBytes()`** | 仅当库**必须**拿到完整 `ArrayBuffer` 且你已接受体积风险 | 经 IPC 全量读盘。**硬上限约 10MB**——更大直接抛错（如 `File too large to preview (>10 MB)`）。base64 往返，内存与序列化成本高。 |
 | **`readText()`** | 明确的小文本（svg 源、json、轻量 xml） | 同样走 IPC；**大文本同样不适合**。 |
 
@@ -381,7 +381,7 @@ ctx.ui.registerActivityTab({
 组件零 props。**面板作用域用 `useActivityTab()` 取 cwd**，不要用 `useActiveConversation().cwd` 代替（项目详情页面板 cwd 是项目的，活动会话可能属于别的项目）：
 
 ```tsx
-import { useActivityTab } from "@vetta-org/plugin-sdk";
+import { useActivityTab } from "@astravia-org/plugin-sdk";
 
 function StatsPanel() {
   const { cwd, active } = useActivityTab();
@@ -477,7 +477,7 @@ ctx.ui.registerBottomPanel({
 组件零 props，实例身份与控制面用 `useBottomPanel()` 取。**名字、图标、状态点都是命令式设置的**，不是「每帧返回 meta」——同一个贡献可以有多个实例，每帧 hook 拿不到实例身份。
 
 ```tsx
-import { useBottomPanel } from "@vetta-org/plugin-sdk";
+import { useBottomPanel } from "@astravia-org/plugin-sdk";
 
 function LogsPanel() {
   const { instanceId, cwd, active, setMeta, setCloseGuard } = useBottomPanel();
@@ -619,7 +619,7 @@ ctx.ui.registerNewSessionContext({
   id: "design-styles",
   label: "%tab.label%",
   // 选中本插件的设计师、或在输入框提到本插件的 skill 时上屏。
-  activateWhen: { agents: ["designer"], skills: ["vetta-ui-design"] },
+  activateWhen: { agents: ["designer"], skills: ["astravia-ui-design"] },
   // 画廊类内容压在输入框宽度里，每一项都会小到看不出风格。
   width: "wide",
   render: (context) => <DesignStyleLibrary context={context} />,
@@ -726,7 +726,7 @@ let registerShortcutScope = ctx.ui.registerShortcutScope.bind(ctx.ui);
 // 或：setRegisterShortcutScope((c) => ctx.ui.registerShortcutScope(c));
 
 // React 组件
-import { usePluginShortcutScope, type PluginShortcutBinding } from "@vetta-org/plugin-sdk";
+import { usePluginShortcutScope, type PluginShortcutBinding } from "@astravia-org/plugin-sdk";
 
 const bindings: PluginShortcutBinding[] = [
   { key: "=", when: "not-editable", run: () => zoomIn() },

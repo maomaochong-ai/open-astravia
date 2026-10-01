@@ -1,4 +1,4 @@
-# OpenVetta Agent Guide
+# OpenAstravia Agent Guide
 
 > 本文件适用于整个仓库。更深目录中的 `AGENTS.md` 可补充或收紧规则；发生冲突时，以离目标文件最近的规则为准。
 >
@@ -6,9 +6,9 @@
 
 ## 项目概览
 
-Vetta 是一套 AI Agent 产品栈。**本仓库是客户端侧的开源仓库**：TypeScript/Bun monorepo、Electron 桌面应用、Swift（iOS）与 Kotlin（Android）移动端、Next.js 文档站，以及 Go 写的 IM 旁路网关。面向外部贡献者的入口是 [`CONTRIBUTING.md`](CONTRIBUTING.md)，不要把本文件当成对外贡献指南。
+Astravia 是一套 AI Agent 产品栈。**本仓库是客户端侧的开源仓库**：TypeScript/Bun monorepo、Electron 桌面应用、Swift（iOS）与 Kotlin（Android）移动端、Next.js 文档站，以及 Go 写的 IM 旁路网关。面向外部贡献者的入口是 [`CONTRIBUTING.md`](CONTRIBUTING.md)，不要把本文件当成对外贡献指南。
 
-服务端（业务 API、管理控制台、官网）在独立的私有仓库 `vetta-serv`，不在此处。涉及计费、配额、订阅、权益的决策文档（ADR-0016/0017/0019/0038/0039/0051/0052/0056）同样只存在于那边——本仓库的 `docs/adr/` 会有对应的编号空洞，这是刻意的，见 `docs/adr/README.md`。
+服务端（业务 API、管理控制台、官网）在独立的私有仓库 `astravia-serv`，不在此处。涉及计费、配额、订阅、权益的决策文档（ADR-0016/0017/0019/0038/0039/0051/0052/0056）同样只存在于那边——本仓库的 `docs/adr/` 会有对应的编号空洞，这是刻意的，见 `docs/adr/README.md`。
 
 顶层目录按「是否被别的包依赖」划分，新增目录必须遵守：
 
@@ -76,7 +76,7 @@ Desktop 主进程部分目录还有更细规则；修改对应目录时必须继
 | 任务 | 首先阅读 |
 | --- | --- |
 | 选择质量门禁与测试范围 | [`docs/dev/quality-gates.md`](docs/dev/quality-gates.md) |
-| 设计、编写或审查测试 | [`.agents/skills/vetta-testing/SKILL.md`](.agents/skills/vetta-testing/SKILL.md) |
+| 设计、编写或审查测试 | [`.agents/skills/astravia-testing/SKILL.md`](.agents/skills/astravia-testing/SKILL.md) |
 | Desktop 启动、调试与 UI 验证（仅在用户明确要求时） | [`docs/dev/README.md`](docs/dev/README.md) |
 | 新增 workspace 包 | [`docs/monorepo-new-package.md`](docs/monorepo-new-package.md) |
 | Plugin SDK、Preset 或外置插件 | [`packages/plugins/README.md`](packages/plugins/README.md) |
@@ -144,7 +144,7 @@ Desktop 主进程部分目录还有更细规则；修改对应目录时必须继
 - 不通过删除功能、降低类型安全或降级依赖来消除类型错误。依赖升级会扩大任务范围时，先说明影响并征得用户同意。
 - 快捷键必须进入现有可配置 keybinding 对象，不得在业务逻辑中写死按键组合。
 - `apps/desktop` 中所有用户可见文案必须走 i18n，包括 label、按钮、placeholder、菜单、通知、title 和 aria 属性。
-- 移动端（`apps/mobile/client-apple`、`apps/mobile/client-android`）同样必须走 i18n：所有用户可见文案同时提供英文与简体中文、跟随系统语言，其他语言回落英文；视图、错误提示和系统权限说明里都不得写死任何语言的字面量。iOS 文案在 `VettaKit` 的 `L10n`（键）与 `Resources/Localizable.xcstrings`（译文）里成对新增，Info.plist 权限说明走 `Vetta/Resources/InfoPlist.xcstrings`；Android 走 Compose Multiplatform 资源 `shared/src/commonMain/composeResources/values/strings.xml`（英文）与 `values-zh-rCN/strings.xml`（中文），非界面代码用 `UiText` 传递文案、由界面解析。
+- 移动端（`apps/mobile/client-apple`、`apps/mobile/client-android`）同样必须走 i18n：所有用户可见文案同时提供英文与简体中文、跟随系统语言，其他语言回落英文；视图、错误提示和系统权限说明里都不得写死任何语言的字面量。iOS 文案在 `AstraviaKit` 的 `L10n`（键）与 `Resources/Localizable.xcstrings`（译文）里成对新增，Info.plist 权限说明走 `Astravia/Resources/InfoPlist.xcstrings`；Android 走 Compose Multiplatform 资源 `shared/src/commonMain/composeResources/values/strings.xml`（英文）与 `values-zh-rCN/strings.xml`（中文），非界面代码用 `UiText` 传递文案、由界面解析。
 - UI 修改遵循现有设计系统和组件模式；交互行为变化应优先抽取可测试的纯逻辑，不默认挂载大型 React 树。
 
 ## AI 与安全边界
@@ -185,7 +185,7 @@ Desktop 主进程部分目录还有更细规则；修改对应目录时必须继
 
 如果代码难以测试正是因为职责混合、I/O 或全局状态耦合，应先按重构规则建立可测试边界，不能把“当前不好测”当作不测试的理由。现有测试框架无法表达风险时，优先补充最小测试基础设施；引入新依赖或高成本环境会明显扩大范围时，先说明方案和影响。
 
-这里的“用户常见使用操作路径或流程”指普通用户通过产品正常入口、在合理默认配置下完成目标的一串操作。应根据本次改动和功能实际支持的能力选择受影响的代表性流程，不要求穷举所有分支；具体识别方法、示例和测试写法见 [`.agents/skills/vetta-testing/SKILL.md`](.agents/skills/vetta-testing/SKILL.md)。
+这里的“用户常见使用操作路径或流程”指普通用户通过产品正常入口、在合理默认配置下完成目标的一串操作。应根据本次改动和功能实际支持的能力选择受影响的代表性流程，不要求穷举所有分支；具体识别方法、示例和测试写法见 [`.agents/skills/astravia-testing/SKILL.md`](.agents/skills/astravia-testing/SKILL.md)。
 
 ### 可以不新增测试
 
@@ -225,7 +225,7 @@ Desktop 主进程部分目录还有更细规则；修改对应目录时必须继
 - 获得 UI 验证授权后，默认使用 `verify:ui:status:dev` / `attach:dev` / `pw:dev` 附着用户已运行的开发环境；只有验证首次启动、空状态、数据迁移、隔离性或用户明确要求新环境时才使用 Fresh。不得仅因 Fresh 是无后缀命令的默认 Profile 就优先启动它。
 - 只有任务或验证明确需要构建产物时才运行相应的 `bun run build:*`，不要把全量构建当作默认反馈循环。
 - 修改 Go 包时，使用该包 README/Makefile 定义的定向测试和检查；根 `bun run check` 不覆盖 Go。
-- 移动端改动同样适用本节全部测试要求，根 `bun run check` 与 Vitest 都不覆盖它们。iOS 修改 `VettaKit` 时运行 `(cd apps/mobile/client-apple/VettaKit && swift test --no-parallel)`，其中 `LocalizationTests` 会拦下缺译文或键不一致；模拟器构建通过即可提交；界面效果由用户在真机上验收，`VettaUITests`（`scripts/ui-test.sh`）不是必做项，除非用户要求不运行。Android 使用 `./gradlew :shared:testAndroidHostTest`。
+- 移动端改动同样适用本节全部测试要求，根 `bun run check` 与 Vitest 都不覆盖它们。iOS 修改 `AstraviaKit` 时运行 `(cd apps/mobile/client-apple/AstraviaKit && swift test --no-parallel)`，其中 `LocalizationTests` 会拦下缺译文或键不一致；模拟器构建通过即可提交；界面效果由用户在真机上验收，`AstraviaUITests`（`scripts/ui-test.sh`）不是必做项，除非用户要求不运行。Android 使用 `./gradlew :shared:testAndroidHostTest`。
 - 文档任务至少核对链接、命令和引用路径；文档专用修改不要求为了形式运行完整 TypeScript 检查。
 
 详细质量门禁见 [`docs/dev/quality-gates.md`](docs/dev/quality-gates.md)，Desktop 验证流程见 [`docs/dev/README.md`](docs/dev/README.md)。
@@ -250,7 +250,7 @@ Desktop 主进程部分目录还有更细规则；修改对应目录时必须继
 
 - 分 `## 新增` / `## 改进` / `## 修复` / `## 其他` 四节，没有内容的小节省略。
 - 面向用户描述影响：说清楚用户会看到什么变化，而不是改了哪个函数；行为有取舍时把代价一并写出来。
-- 关联 PR 或 issue 时统一用 `owner/repo#123` 格式，例如 `openvetta/open-vetta#8`。
+- 关联 PR 或 issue 时统一用 `owner/repo#123` 格式，例如 `maomaochong-ai/open-astravia#8`。
 - 没有用户可感知影响的纯内部改动（内部重构、测试、开发文档）仍要在「其他」留一条，但保持一句话，不要挤占正文。
 - 已发布版本的发布说明不得修改；发现写错另起一条修订说明。
 - 发布说明缺失会让 `desktop-release` 流水线在质量阶段直接失败（`node scripts/release/release-notes.mjs --check`），补不上就没有正文可发。

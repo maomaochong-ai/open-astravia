@@ -1,10 +1,10 @@
-import type { RuntimeDocumentParticipant } from "@vetta/runtime-core";
+import type { RuntimeDocumentParticipant } from "@astravia/runtime-core";
 import {
 	defineSessionExtensionService,
 	defineSessionExtensionSignal,
 	type SessionExtensionDefinition,
 	sessionExtensionObservation,
-} from "@vetta/runtime-core/session-extensions";
+} from "@astravia/runtime-core/session-extensions";
 import {
 	type CodingAgentRuntimeToolRegistration,
 	type CodingAgentToolActivation,

@@ -1,10 +1,10 @@
-import { getReasoningPreset } from "@vetta/ai/reasoning-presets";
+import { getReasoningPreset } from "@astravia/ai/reasoning-presets";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { Button } from "@vetta-org/ui";
+import { Button } from "@astravia-org/ui";
 import { cn } from "@shared/lib/utils";
 import { CheckboxField } from "./McpSettings";
-import { InputField, SelectField } from "@vetta-org/theme-ui/settings";
+import { InputField, SelectField } from "@astravia-org/theme-ui/settings";
 import { CONTEXT_WINDOW_PICKS, MAX_OUTPUT_PICKS, NumberQuickPicks } from "./NumberQuickPicks";
 import {
 	buildModelApiOptions,

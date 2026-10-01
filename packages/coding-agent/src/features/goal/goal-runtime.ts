@@ -1,7 +1,7 @@
-import type { Message } from "@vetta/ai";
-import type { ConversationDocument, RuntimeDocumentParticipantContext } from "@vetta/runtime-core";
-import { selectConversationDocumentEntries } from "@vetta/runtime-core/conversation";
-import type { StoredSessionEvent } from "@vetta/runtime-core/kernel";
+import type { Message } from "@astravia/ai";
+import type { ConversationDocument, RuntimeDocumentParticipantContext } from "@astravia/runtime-core";
+import { selectConversationDocumentEntries } from "@astravia/runtime-core/conversation";
+import type { StoredSessionEvent } from "@astravia/runtime-core/kernel";
 import type {
 	CodingAgentGoalSnapshot,
 	CodingAgentGoalState,

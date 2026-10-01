@@ -10,7 +10,7 @@ describe("edit tool anchor mode", () => {
 	let file: string;
 
 	beforeEach(() => {
-		dir = mkdtempSync(join(tmpdir(), "vetta-edit-anchors-"));
+		dir = mkdtempSync(join(tmpdir(), "astravia-edit-anchors-"));
 		file = join(dir, "sample.ts");
 		writeFileSync(file, ["const a = 1;", "const b = 2;", "const c = 3;", "const d = 4;", "const e = 5;"].join("\n"));
 	});

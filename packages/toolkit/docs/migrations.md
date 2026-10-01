@@ -1,14 +1,14 @@
 # Migration Guide
 
-本指南说明如何选择和使用 `@vetta/toolkit` 的迁移能力，并统一消费包中的目录结构与职责边界。
+本指南说明如何选择和使用 `@astravia/toolkit` 的迁移能力，并统一消费包中的目录结构与职责边界。
 
 ## 选择迁移器
 
 | 场景 | 使用模块 |
 | --- | --- |
-| 单个 JSON 文档通过 `schemaVersion` 演进 | `@vetta/toolkit/versioned-config` |
-| 移动、拆分、合并或删除实际文件和目录 | `@vetta/toolkit/file-migrations` |
-| Node.js 中读取、迁移、校验并回写单个配置文件 | `@vetta/toolkit/config-store` |
+| 单个 JSON 文档通过 `schemaVersion` 演进 | `@astravia/toolkit/versioned-config` |
+| 移动、拆分、合并或删除实际文件和目录 | `@astravia/toolkit/file-migrations` |
+| Node.js 中读取、迁移、校验并回写单个配置文件 | `@astravia/toolkit/config-store` |
 
 不要用文件迁移代替 JSON schema 迁移。一个文档内部字段变化时，应使用 `versioned-config`；只有磁盘布局发生变化时才使用 `file-migrations`。
 
@@ -36,7 +36,7 @@ feature/
 迁移入口保持简短：
 
 ```ts
-import { migrateVersionedConfig, type VersionedConfigMigrationResult } from "@vetta/toolkit/versioned-config";
+import { migrateVersionedConfig, type VersionedConfigMigrationResult } from "@astravia/toolkit/versioned-config";
 import { featureMigration001To2 } from "./migrations/001_to_2";
 import { featureMigration002To3 } from "./migrations/002_to_3";
 import { FEATURE_SCHEMA_VERSION } from "./schema";
@@ -54,7 +54,7 @@ export function migrateFeatureConfig(value: unknown): VersionedConfigMigrationRe
 单次迁移独立保存：
 
 ```ts
-import type { VersionedConfigMigration } from "@vetta/toolkit/versioned-config";
+import type { VersionedConfigMigration } from "@astravia/toolkit/versioned-config";
 
 export const featureMigration001To2: VersionedConfigMigration = {
 	fromVersion: 1,

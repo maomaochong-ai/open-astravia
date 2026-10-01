@@ -31,7 +31,7 @@
 	"form": {
 		"name": "Task title",
 		"namePlaceholder": "Task title (optional)",
-		"promptPlaceholder": "Describe the task and tell Vetta what to do (type / for skills)",
+		"promptPlaceholder": "Describe the task and tell Astravia what to do (type / for skills)",
 		"runTarget": "Run in",
 		"runMode": {
 			"new-session": "New session each time",

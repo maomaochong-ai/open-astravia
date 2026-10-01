@@ -16,7 +16,7 @@ binding 是同步原生调用；若直接在 Electron 主进程中加载和解�
 ## 决策
 
 - 首版平台合同固定为 `win32-x64`。完整构建默认启用语音；设置严格的构建期开关
-  `VETTA_SPEECH_INPUT_ENABLED=false` 可生成不含语音能力的轻量产物。Renderer 仅在构建能力启用且平台为
+  `ASTRAVIA_SPEECH_INPUT_ENABLED=false` 可生成不含语音能力的轻量产物。Renderer 仅在构建能力启用且平台为
   Windows 时显示麦克风入口；其他情况不调用语音 IPC。
 - 使用 `sherpa-onnx-win-x64@1.13.5` 和
   `sherpa-onnx-streaming-zipformer-zh-int8-2025-06-30`。原生运行时进入 Windows 安装包并从 asar 解包；
@@ -55,5 +55,5 @@ binding 是同步原生调用；若直接在 Electron 主进程中加载和解�
 - macOS/Linux 构建不会声明、暂存或解包 Sherpa Windows 二进制，也不会下载模型。
 - 后续增加平台或模型时，应扩展平台化运行时清单与共享 manifest，不在 UI、IPC 或打包器中追加散落分支。
 - Windows 构建依赖模型源可达性；CI 可持久化 `resources/speech-models/` 以减少重复下载，但每次仍校验摘要。
-- Sherpa-ONNX 运行时采用 Apache-2.0。模型会由 Vetta 安装包再分发；正式发布前必须由
+- Sherpa-ONNX 运行时采用 Apache-2.0。模型会由 Astravia 安装包再分发；正式发布前必须由
   产品/法务确认该模型仓库的模型权重使用条款符合目标分发地区和商业场景。

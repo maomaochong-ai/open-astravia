@@ -1,7 +1,7 @@
-Open Vetta
-Copyright 2026 Vetta
+Open Astravia
+Copyright 2026 Astravia
 
-This product includes software developed at Vetta (https://www.openvetta.com).
+This product includes software developed at Astravia (https://www.astravia.dev).
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use
 this file except in compliance with the License. You may obtain a copy of the
@@ -116,7 +116,7 @@ Cowart
 --------------------------------------------------------------------------------
 Source: https://github.com/zhongerxin/Cowart
 
-The plugin at `packages/plugins/externals/cowart-vetta` is adapted from Cowart.
+The plugin at `packages/plugins/externals/cowart-astravia` is adapted from Cowart.
 It resides under `externals/` and is NOT bundled with the application; it
 exists in this repository as a source example only.
 

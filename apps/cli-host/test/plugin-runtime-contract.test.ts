@@ -1,9 +1,12 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { type Api, type AssistantMessage, type AssistantMessageEvent, EventStream, type Model } from "@vetta/ai";
-import type { CodingAgentRuntimeComposition } from "@vetta/coding-agent/composition";
-import type { CodingAgentPluginRuntimeSource, CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
+import { type Api, type AssistantMessage, type AssistantMessageEvent, EventStream, type Model } from "@astravia/ai";
+import type { CodingAgentRuntimeComposition } from "@astravia/coding-agent/composition";
+import type {
+	CodingAgentPluginRuntimeSource,
+	CodingAgentRuntimeModelSource,
+} from "@astravia/coding-agent/host-services";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createCodingAgentRuntimeComposition } from "./fixtures/runtime-composition.js";
 

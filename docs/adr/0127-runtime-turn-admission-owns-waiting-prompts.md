@@ -6,7 +6,7 @@
 
 ## 背景
 
-Agent Team 在启动成员回合前，会把共享上下文 checkpoint 写入成员 Conversation，再发送 prompt。两步分别调用 Runtime 的 `deliverSessionContext(..., "record")` 与 `prompt()`，而两者都要求 Session 空闲。任务取消采用有界等待：业务任务可以已经进入终态，但一个不及时响应 `AbortSignal` 的旧 Turn 仍可能处于 `cancelling`。此时 Team 的成员队列已经释放，下一条“继续”会在共享上下文写入阶段得到 `session_busy`，形成 Team 状态和 Runtime 执行状态之间的竞态（openvetta/open-vetta#29）。
+Agent Team 在启动成员回合前，会把共享上下文 checkpoint 写入成员 Conversation，再发送 prompt。两步分别调用 Runtime 的 `deliverSessionContext(..., "record")` 与 `prompt()`，而两者都要求 Session 空闲。任务取消采用有界等待：业务任务可以已经进入终态，但一个不及时响应 `AbortSignal` 的旧 Turn 仍可能处于 `cancelling`。此时 Team 的成员队列已经释放，下一条“继续”会在共享上下文写入阶段得到 `session_busy`，形成 Team 状态和 Runtime 执行状态之间的竞态（maomaochong-ai/open-astravia#29）。
 
 Team 的成员调度器只能串行化 Team work item，不能证明同一 Runtime Session 没有取消清理、后台入口或宿主操作。由 Team 读取 `isStreaming` 后重试仍是“先检查、后执行”，无法消除竞态。
 

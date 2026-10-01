@@ -1,9 +1,9 @@
 /**
- * 类别权重：内置 > 插件贡献 > Vetta 原生 > 通用 Agent Skill 约定。
+ * 类别权重：内置 > 插件贡献 > Astravia 原生 > 通用 Agent Skill 约定。
  *
  * source 取值来自 main 侧 SkillService.list：`builtin` 与 `plugin` 由它自己判定
  * （内置清单 / 插件贡献路径），其余透传 coding-agent 的 ResourceLoader——
- * `user` / `project` / `scene` / `market` 属 Vetta 原生，`agents-user` /
+ * `user` / `project` / `scene` / `market` 属 Astravia 原生，`agents-user` /
  * `agents-project` 是跨 agent 通用约定（`~/.agents/skills`）。
  */
 const CATEGORY_WEIGHT: Record<string, number> = {

@@ -6,7 +6,7 @@ import type {
 	PluginServiceArtifactPayload,
 	PluginServiceProviderManifest,
 	PluginServiceRuntimeKind,
-} from "@vetta-org/plugin-sdk";
+} from "@astravia-org/plugin-sdk";
 import AdmZip from "adm-zip";
 import { x as extractTar, t as listTar } from "tar";
 

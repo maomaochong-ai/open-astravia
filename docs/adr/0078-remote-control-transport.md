@@ -12,7 +12,7 @@ Android 端目前只有云端 Gateway 客户端，桌面端的本地 RPC 只绑�
 
 ## 决策
 
-新增 `@vetta/remote-control` 作为平台无关的协议和连接生命周期合同。它只定义：
+新增 `@astravia/remote-control` 作为平台无关的协议和连接生命周期合同。它只定义：
 
 - 版本化 JSON 帧、请求/响应关联、事件序号和 ACK；
 - 连接状态转换与断线恢复边界；

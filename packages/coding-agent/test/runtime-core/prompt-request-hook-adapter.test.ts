@@ -4,7 +4,7 @@ import {
 	EcosystemHookRuntime,
 	emptyHookDispatchOutcome,
 	type HookDispatchOutcome,
-} from "@vetta/ecosystem-adapter/hooks";
+} from "@astravia/ecosystem-adapter/hooks";
 import { describe, expect, it, vi } from "vitest";
 import { CodingAgentPromptRequestAdapter } from "../../src/adapters/runtime-core/prompt-request-adapter.js";
 import { preparePrompt } from "./prompt-adapter-test-fixture.js";

@@ -1,6 +1,6 @@
 import type { SshPromptRequestEvent } from "@/shared/ssh-prompt-ipc";
 import { Button } from "@shared/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@vetta-org/ui";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@astravia-org/ui";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -16,13 +16,13 @@ export function SshPromptDialog(): JSX.Element | null {
 	const [remember, setRemember] = useState(false);
 
 	useEffect(() => {
-		const offRequest = window.vetta.ssh.onPromptRequest((event) => {
+		const offRequest = window.astravia.ssh.onPromptRequest((event) => {
 			setValue("");
 			setRemember(false);
 			setRequest(event);
 		});
 		// 连接被取消或超时后主进程会收回提示；不关掉的话用户会对着一个答了也没用的框。
-		const offCancel = window.vetta.ssh.onPromptCancelled((id) => {
+		const offCancel = window.astravia.ssh.onPromptCancelled((id) => {
 			setRequest((current) => (current?.id === id ? null : current));
 		});
 		return () => {
@@ -34,7 +34,7 @@ export function SshPromptDialog(): JSX.Element | null {
 	const respond = useCallback(
 		(ok: boolean) => {
 			if (!request) return;
-			window.vetta.ssh.respondToPrompt({
+			window.astravia.ssh.respondToPrompt({
 				id: request.id,
 				ok,
 				...(ok && request.kind !== "confirm" ? { value } : {}),

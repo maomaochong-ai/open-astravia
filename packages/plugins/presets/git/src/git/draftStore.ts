@@ -1,4 +1,4 @@
-import { readJsonFile, writeJsonFile } from "@vetta-org/plugin-sdk";
+import { readJsonFile, writeJsonFile } from "@astravia-org/plugin-sdk";
 import { getStorageApi } from "./runtime";
 
 /** Plugin-private file holding unsent commit messages, keyed by repo root. */

@@ -1,6 +1,6 @@
 import { pluginFilePreviewsAtom } from "@shared/store/atoms";
-import type { FilePreviewItem, PreviewBodyViewProps } from "@vetta-org/theme-ui/file-preview";
-import { getExtension } from "@vetta-org/theme-ui/file-preview";
+import type { FilePreviewItem, PreviewBodyViewProps } from "@astravia-org/theme-ui/file-preview";
+import { getExtension } from "@astravia-org/theme-ui/file-preview";
 import { useAtomValue } from "jotai";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -66,13 +66,13 @@ export function usePreviewBodyModel(
 		if (!path || pluginPreview || !canLoad) return;
 		const slash = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
 		const dir = slash > 0 ? path.slice(0, slash) : path;
-		void window.vetta.fs.watchDir(dir);
-		const unsub = window.vetta.fs.onDirChanged((changed) => {
+		void window.astravia.fs.watchDir(dir);
+		const unsub = window.astravia.fs.onDirChanged((changed) => {
 			if (changed === dir) setWatchTick((t) => t + 1);
 		});
 		return () => {
 			unsub();
-			void window.vetta.fs.unwatchDir(dir);
+			void window.astravia.fs.unwatchDir(dir);
 		};
 	}, [itemPath, canLoad, pluginPreview]);
 
@@ -138,10 +138,10 @@ async function loadItem(
 ): Promise<Extract<LoadState, { status: "loaded" | "unsupported" }>> {
 	if (path) {
 		if (declaredTextFormat) {
-			const result = await window.vetta.fs.readFile(path);
+			const result = await window.astravia.fs.readFile(path);
 			return { status: "loaded", content: result.content, extension: ext };
 		}
-		const result = await window.vetta.fs.readTextPreviewFile(path);
+		const result = await window.astravia.fs.readTextPreviewFile(path);
 		return result.status === "text"
 			? { status: "loaded", content: result.content, extension: "" }
 			: { status: "unsupported" };

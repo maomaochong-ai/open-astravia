@@ -6,7 +6,7 @@
  * - `pi --mode json "prompt"` - JSON event stream
  */
 
-import type { AssistantMessage, ImageContent } from "@vetta/ai";
+import type { AssistantMessage, ImageContent } from "@astravia/ai";
 import type { CodingAgentPrintOutputPort } from "../runtime-contracts/print-output.js";
 import type { PrintSessionCapabilities } from "./print-session-capabilities.js";
 

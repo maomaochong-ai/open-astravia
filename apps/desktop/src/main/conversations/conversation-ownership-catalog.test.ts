@@ -11,7 +11,7 @@ describe("ConversationOwnershipCatalog", () => {
 	});
 
 	it("projects Team-owned Conversations separately from the ordinary session list", async () => {
-		const root = await mkdtemp(join(tmpdir(), "vetta-conversation-owner-"));
+		const root = await mkdtemp(join(tmpdir(), "astravia-conversation-owner-"));
 		roots.push(root);
 		const path = join(root, "owners.json");
 		const catalog = new ConversationOwnershipCatalog(path);
@@ -66,7 +66,7 @@ describe("ConversationOwnershipCatalog", () => {
 	});
 
 	it("updates an existing path instead of duplicating its owner record", async () => {
-		const root = await mkdtemp(join(tmpdir(), "vetta-conversation-owner-"));
+		const root = await mkdtemp(join(tmpdir(), "astravia-conversation-owner-"));
 		roots.push(root);
 		const catalog = new ConversationOwnershipCatalog(join(root, "owners.json"));
 		const sessionPath = join(root, "coordination.conversation.jsonl");
@@ -91,7 +91,7 @@ describe("ConversationOwnershipCatalog", () => {
 	});
 
 	it("removes every ownership record for a deleted Team session", async () => {
-		const root = await mkdtemp(join(tmpdir(), "vetta-conversation-owner-"));
+		const root = await mkdtemp(join(tmpdir(), "astravia-conversation-owner-"));
 		roots.push(root);
 		const catalog = new ConversationOwnershipCatalog(join(root, "owners.json"));
 		await catalog.register([

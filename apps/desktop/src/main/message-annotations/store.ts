@@ -1,5 +1,5 @@
 import { readFile, rm, stat } from "node:fs/promises";
-import { atomicWriteJSONAsync } from "@vetta/toolkit/atomic-write";
+import { atomicWriteJSONAsync } from "@astravia/toolkit/atomic-write";
 import { z } from "zod";
 import { annotationSchema } from "../../shared/message-annotations.js";
 

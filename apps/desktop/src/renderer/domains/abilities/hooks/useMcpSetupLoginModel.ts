@@ -41,7 +41,7 @@ export function useMcpSetupLoginModel({
 	const cancelActiveRequest = useCallback((): void => {
 		const requestId = activeRequestIdRef.current;
 		activeRequestIdRef.current = undefined;
-		if (requestId) void window.vetta.mcp.cancelSetupLogin(requestId).catch(() => undefined);
+		if (requestId) void window.astravia.mcp.cancelSetupLogin(requestId).catch(() => undefined);
 	}, []);
 
 	const stopTimers = useCallback(() => {
@@ -68,7 +68,7 @@ export function useMcpSetupLoginModel({
 		const poll = (): void => {
 			if (polling || isStale()) return;
 			polling = true;
-			void window.vetta.mcp
+			void window.astravia.mcp
 				.getSetupLoginStatus(serverName)
 				.then((status) => {
 					if (isStale() || status.state !== "authenticated") return;
@@ -90,7 +90,7 @@ export function useMcpSetupLoginModel({
 				});
 		};
 
-		void window.vetta.mcp
+		void window.astravia.mcp
 			.startSetupLogin(serverName, requestId)
 			.then((qrCode) => {
 				if (isStale()) return;

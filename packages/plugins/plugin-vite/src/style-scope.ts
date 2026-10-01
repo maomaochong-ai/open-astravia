@@ -5,7 +5,7 @@ import selectorParser from "postcss-selector-parser";
 import type { Plugin } from "vite";
 import { hasOpaqueResourceQuery } from "./request-query.js";
 
-const PLUGIN_ROOT_ATTRIBUTE = "data-vetta-plugin-root";
+const PLUGIN_ROOT_ATTRIBUTE = "data-astravia-plugin-root";
 const PLUGIN_ID_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
 const KEYFRAMES_PATTERN = /(?:^|-)keyframes$/i;
 const ICONIFY_CLASS_PATTERN = /^icon-\[[a-z0-9]+(?:-[a-z0-9]+)*--[a-z0-9]+(?:-[a-z0-9]+)*\]$/u;
@@ -29,7 +29,7 @@ const ICONIFY_SVG_VALUE_PATTERN = /^url\((?:"|')?data:image\/svg\+xml,/u;
  * 同一 layer 内「未嵌套的规则」优先于其子 layer，因此包一层即可让显式尺寸工具类稳定胜出，
  * 同时保留插件自身不写尺寸时的 1em 默认值。
  */
-const ICONIFY_LAYER_NAME = "vetta-plugin-icons";
+const ICONIFY_LAYER_NAME = "astravia-plugin-icons";
 
 function createPluginRootAttribute(pluginId: string) {
 	return selectorParser.attribute({
@@ -197,7 +197,7 @@ export function createPluginStyleScopePlugin(): Plugin {
 	let pluginId = "";
 	let command: "build" | "serve" = "build";
 	return {
-		name: "vetta-plugin-style-scope",
+		name: "astravia-plugin-style-scope",
 		enforce: "pre",
 		configResolved(config) {
 			pluginId = readPluginId(config.root);

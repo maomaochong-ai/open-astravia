@@ -1,7 +1,7 @@
-import type { SessionEndCause, SessionStartSource } from "@vetta/ecosystem-adapter";
-import type { RuntimeHostSessionBackend, RuntimeObservationHubView } from "@vetta/runtime-core";
-import type { SessionContextRecord } from "@vetta/runtime-core/kernel";
-import type { CodingToolRegistry } from "@vetta/runtime-tools";
+import type { SessionEndCause, SessionStartSource } from "@astravia/ecosystem-adapter";
+import type { RuntimeHostSessionBackend, RuntimeObservationHubView } from "@astravia/runtime-core";
+import type { SessionContextRecord } from "@astravia/runtime-core/kernel";
+import type { CodingToolRegistry } from "@astravia/runtime-tools";
 import type { ConversationScenario } from "../../profiles/index.js";
 import type {
 	CodingAgentExtensionEventBinding,

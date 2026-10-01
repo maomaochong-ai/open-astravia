@@ -1,22 +1,22 @@
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { VETTA_HOME_ENV } from "@vetta/action-rpc";
+import { ASTRAVIA_HOME_ENV } from "@astravia/action-rpc";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const temporaryRoots: string[] = [];
 let previousHome: string | undefined;
 
-/** desktop-config.json 的路径在模块加载时算好，所以每个用例重置模块并重设 VETTA_HOME。 */
+/** desktop-config.json 的路径在模块加载时算好，所以每个用例重置模块并重设 ASTRAVIA_HOME。 */
 async function loadStoreWithConfig(config: Record<string, unknown> | undefined): Promise<
 	typeof import("./desktop-config-store.js") & {
 		readDisk: () => Promise<Record<string, unknown>>;
 		overwriteDisk: (config: Record<string, unknown>) => Promise<void>;
 	}
 > {
-	const home = await mkdtemp(join(tmpdir(), "vetta-config-"));
+	const home = await mkdtemp(join(tmpdir(), "astravia-config-"));
 	temporaryRoots.push(home);
-	process.env[VETTA_HOME_ENV] = home;
+	process.env[ASTRAVIA_HOME_ENV] = home;
 	if (config) {
 		await writeFile(join(home, "desktop-config.json"), JSON.stringify(config), "utf8");
 	}
@@ -30,12 +30,12 @@ async function loadStoreWithConfig(config: Record<string, unknown> | undefined):
 }
 
 beforeEach(() => {
-	previousHome = process.env[VETTA_HOME_ENV];
+	previousHome = process.env[ASTRAVIA_HOME_ENV];
 });
 
 afterEach(async () => {
-	if (previousHome === undefined) delete process.env[VETTA_HOME_ENV];
-	else process.env[VETTA_HOME_ENV] = previousHome;
+	if (previousHome === undefined) delete process.env[ASTRAVIA_HOME_ENV];
+	else process.env[ASTRAVIA_HOME_ENV] = previousHome;
 	await Promise.all(temporaryRoots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
 });
 
@@ -140,7 +140,7 @@ describe("desktop config schema migration", () => {
 });
 
 describe("写回配置不丢本版本不认识的字段", () => {
-	// 新旧版本共用同一份 ~/.vetta：旧版读配置时按白名单解析，不认识的字段（如 0.5.58 之于
+	// 新旧版本共用同一份 ~/.astravia：旧版读配置时按白名单解析，不认识的字段（如 0.5.58 之于
 	// sshHosts）不进内存，随后任何一次写回都会把它从磁盘上抹掉。
 	it("读改写之后，磁盘上未知字段原样保留", async () => {
 		const future = { hosts: [{ id: "h1", target: "user@example" }] };
@@ -220,7 +220,7 @@ describe("写回配置不丢本版本不认识的字段", () => {
 });
 
 describe("SSH 主机单独存放，旧版本整份覆盖 desktop-config 也抹不掉", () => {
-	// 0.5.58 与开发版共用 ~/.vetta：它按自己的白名单重写 desktop-config.json，
+	// 0.5.58 与开发版共用 ~/.astravia：它按自己的白名单重写 desktop-config.json，
 	// 不认识的 sshHosts 随之消失。主机列表放在旧版本不知道的文件里才躲得开。
 	const host = { id: "h1", label: "构建机", target: "build-01", source: "manual" as const };
 

@@ -13,32 +13,32 @@ import {
 } from "./publish-update-artifacts-r2.mjs";
 
 test("contentTypeFor publishes native package formats with package media types", () => {
-	assert.equal(contentTypeFor("vetta_1.2.3_amd64.deb"), "application/vnd.debian.binary-package");
-	assert.equal(contentTypeFor("vetta-1.2.3.x86_64.rpm"), "application/x-rpm");
-	assert.equal(contentTypeFor("Vetta-1.2.3-win-x64.msi"), "application/x-msi");
+	assert.equal(contentTypeFor("astravia_1.2.3_amd64.deb"), "application/vnd.debian.binary-package");
+	assert.equal(contentTypeFor("astravia-1.2.3.x86_64.rpm"), "application/x-rpm");
+	assert.equal(contentTypeFor("Astravia-1.2.3-win-x64.msi"), "application/x-msi");
 });
 
 test("collectArtifacts uploads updater files and matching Windows supplements before metadata", async () => {
-	const directory = await mkdtemp(join(tmpdir(), "vetta-r2-publish-"));
+	const directory = await mkdtemp(join(tmpdir(), "astravia-r2-publish-"));
 	try {
 		await Promise.all([
 			writeFile(
 				join(directory, "latest.yml"),
-				"version: 1.2.3\nfiles:\n  - url: Vetta%20Setup%201.2.3.exe\npath: Vetta Setup 1.2.3.exe\n",
+				"version: 1.2.3\nfiles:\n  - url: Astravia%20Setup%201.2.3.exe\npath: Astravia Setup 1.2.3.exe\n",
 			),
-			writeFile(join(directory, "Vetta Setup 1.2.3.exe"), "installer"),
-			writeFile(join(directory, "Vetta Setup 1.2.3.exe.blockmap"), "blockmap"),
-			writeFile(join(directory, "Vetta-1.2.3-win-x64.msi"), "msi"),
-			writeFile(join(directory, "Vetta-1.2.3-win-x64.zip"), "zip"),
-			writeFile(join(directory, "Vetta Setup 1.2.2.exe"), "stale"),
-			writeFile(join(directory, "Vetta-1.2.2-win-x64.msi"), "stale"),
+			writeFile(join(directory, "Astravia Setup 1.2.3.exe"), "installer"),
+			writeFile(join(directory, "Astravia Setup 1.2.3.exe.blockmap"), "blockmap"),
+			writeFile(join(directory, "Astravia-1.2.3-win-x64.msi"), "msi"),
+			writeFile(join(directory, "Astravia-1.2.3-win-x64.zip"), "zip"),
+			writeFile(join(directory, "Astravia Setup 1.2.2.exe"), "stale"),
+			writeFile(join(directory, "Astravia-1.2.2-win-x64.msi"), "stale"),
 		]);
 
 		assert.deepEqual(await collectArtifacts(directory), [
-			"Vetta Setup 1.2.3.exe",
-			"Vetta Setup 1.2.3.exe.blockmap",
-			"Vetta-1.2.3-win-x64.msi",
-			"Vetta-1.2.3-win-x64.zip",
+			"Astravia Setup 1.2.3.exe",
+			"Astravia Setup 1.2.3.exe.blockmap",
+			"Astravia-1.2.3-win-x64.msi",
+			"Astravia-1.2.3-win-x64.zip",
 			"latest.yml",
 		]);
 	} finally {
@@ -47,7 +47,7 @@ test("collectArtifacts uploads updater files and matching Windows supplements be
 });
 
 test("collectArtifacts uploads the deb and rpm packages listed in Linux metadata", async () => {
-	const directory = await mkdtemp(join(tmpdir(), "vetta-r2-publish-"));
+	const directory = await mkdtemp(join(tmpdir(), "astravia-r2-publish-"));
 	try {
 		await Promise.all([
 			writeFile(
@@ -55,22 +55,22 @@ test("collectArtifacts uploads the deb and rpm packages listed in Linux metadata
 				[
 					"version: 1.2.3",
 					"files:",
-					"  - url: Vetta-1.2.3.AppImage",
-					"  - url: vetta_1.2.3_amd64.deb",
-					"  - url: vetta-1.2.3.x86_64.rpm",
-					"path: Vetta-1.2.3.AppImage",
+					"  - url: Astravia-1.2.3.AppImage",
+					"  - url: astravia_1.2.3_amd64.deb",
+					"  - url: astravia-1.2.3.x86_64.rpm",
+					"path: Astravia-1.2.3.AppImage",
 					"",
 				].join("\n"),
 			),
-			writeFile(join(directory, "Vetta-1.2.3.AppImage"), "appimage"),
-			writeFile(join(directory, "vetta_1.2.3_amd64.deb"), "deb"),
-			writeFile(join(directory, "vetta-1.2.3.x86_64.rpm"), "rpm"),
+			writeFile(join(directory, "Astravia-1.2.3.AppImage"), "appimage"),
+			writeFile(join(directory, "astravia_1.2.3_amd64.deb"), "deb"),
+			writeFile(join(directory, "astravia-1.2.3.x86_64.rpm"), "rpm"),
 		]);
 
 		assert.deepEqual(await collectArtifacts(directory), [
-			"Vetta-1.2.3.AppImage",
-			"vetta-1.2.3.x86_64.rpm",
-			"vetta_1.2.3_amd64.deb",
+			"Astravia-1.2.3.AppImage",
+			"astravia-1.2.3.x86_64.rpm",
+			"astravia_1.2.3_amd64.deb",
 			"latest-linux.yml",
 		]);
 	} finally {
@@ -79,9 +79,9 @@ test("collectArtifacts uploads the deb and rpm packages listed in Linux metadata
 });
 
 test("collectArtifacts rejects metadata that points to a missing artifact", async () => {
-	const directory = await mkdtemp(join(tmpdir(), "vetta-r2-publish-"));
+	const directory = await mkdtemp(join(tmpdir(), "astravia-r2-publish-"));
 	try {
-		await writeFile(join(directory, "latest-linux-arm64.yml"), "version: 1.2.3\npath: Vetta-1.2.3.AppImage\n");
+		await writeFile(join(directory, "latest-linux-arm64.yml"), "version: 1.2.3\npath: Astravia-1.2.3.AppImage\n");
 		await assert.rejects(() => collectArtifacts(directory), /references missing artifact/);
 	} finally {
 		await rm(directory, { recursive: true, force: true });
@@ -89,7 +89,7 @@ test("collectArtifacts rejects metadata that points to a missing artifact", asyn
 });
 
 test("readReleaseVersion requires all updater metadata to use one valid version", async () => {
-	const directory = await mkdtemp(join(tmpdir(), "vetta-r2-publish-"));
+	const directory = await mkdtemp(join(tmpdir(), "astravia-r2-publish-"));
 	try {
 		await Promise.all([
 			writeFile(join(directory, "latest.yml"), "version: 1.2.3\n"),

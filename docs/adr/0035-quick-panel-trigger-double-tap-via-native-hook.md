@@ -1,6 +1,6 @@
 # 快捷面板触发器改回「双击功能键」，引入 uiohook-napi 原生全局监听
 
-推翻 ADR-0034。快捷面板呼出方式改为**双击一个功能键**（设置页单选：不启用 / 双击 ⌘·Ctrl / 双击 ⌥·Alt / 双击 ⇧），全局生效（APP 未聚焦/隐藏时也能唤出）。配置存 `~/.vetta/config.json` 的 `quickPanel.trigger`（`none`|`mod`|`alt`|`shift`，缺省 `none`）。
+推翻 ADR-0034。快捷面板呼出方式改为**双击一个功能键**（设置页单选：不启用 / 双击 ⌘·Ctrl / 双击 ⌥·Alt / 双击 ⇧），全局生效（APP 未聚焦/隐藏时也能唤出）。配置存 `~/.astravia/config.json` 的 `quickPanel.trigger`（`none`|`mod`|`alt`|`shift`，缺省 `none`）。
 
 双击裸功能键超出 Electron `globalShortcut` 能力，故引入 `uiohook-napi`（N-API 原生全局键盘监听，含各平台 prebuild）。`src/main/quickpanel-trigger.ts` 在 main 进程检测「干净点按」（目标功能键按下→抬起且期间无其它键），两次点按间隔 ≤350ms 即 toggle 面板。仅在 `trigger !== "none"` 时 `uIOhook.start()`，默认关=不监听、零开销、不申请权限。
 

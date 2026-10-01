@@ -37,8 +37,8 @@ describe("Coding Agent Node config compatibility facade", () => {
 	});
 
 	it("degrades to an unknown version when the manifest belongs to a host bundle", () => {
-		// Electron 打包后 walk-up 命中 app.asar/package.json（name: "vetta"）。
-		expect(resolveCodingAgentVersion({ name: "vetta", version: "0.5.42" })).toBe("0.0.0");
+		// Electron 打包后 walk-up 命中 app.asar/package.json（name: "astravia"）。
+		expect(resolveCodingAgentVersion({ name: "astravia", version: "0.5.42" })).toBe("0.0.0");
 		expect(resolveCodingAgentVersion(undefined)).toBe("0.0.0");
 		expect(resolveCodingAgentVersion({ name: PACKAGE_NAME })).toBe("0.0.0");
 	});
@@ -48,9 +48,9 @@ describe("Coding Agent Node config compatibility facade", () => {
 	});
 
 	it("honors the explicit Agent directory override", () => {
-		process.env[ENV_AGENT_DIR] = "C:/isolated/vetta-agent";
+		process.env[ENV_AGENT_DIR] = "C:/isolated/astravia-agent";
 
-		expect(getAgentDir()).toBe("C:/isolated/vetta-agent");
+		expect(getAgentDir()).toBe("C:/isolated/astravia-agent");
 	});
 });
 

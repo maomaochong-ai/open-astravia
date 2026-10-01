@@ -56,7 +56,7 @@ function Content({ approval }: { approval: ActiveActionApproval }): JSX.Element 
 
 	useEffect(() => {
 		let cancelled = false;
-		void window.vetta.im
+		void window.astravia.im
 			.getConfig()
 			.then((config) => {
 				if (cancelled) return;

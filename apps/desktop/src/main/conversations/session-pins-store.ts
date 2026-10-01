@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { getVettaHomePath } from "@vetta/action-rpc";
-import { atomicWriteJSON } from "@vetta/toolkit/atomic-write";
+import { getAstraviaHomePath } from "@astravia/action-rpc";
+import { atomicWriteJSON } from "@astravia/toolkit/atomic-write";
 import {
 	emptySessionPins,
 	mergeSessionPins,
@@ -13,14 +13,14 @@ import {
 } from "../../shared/session-pins.js";
 
 /**
- * 会话置顶仓库：~/.vetta/desktop-app/session-pins.json 的单一写者。
+ * 会话置顶仓库：~/.astravia/desktop-app/session-pins.json 的单一写者。
  *
  * 侧边栏和配对的手机都经由这里读写，所以两边看到同一份置顶。启动读一次进
  * 内存，之后所有变更改内存再原子落盘；写入同步、中间没有 await，「读-改-写」
  * 不存在交错窗口。
  */
 
-const DEFAULT_PATH = join(getVettaHomePath(), "desktop-app", "session-pins.json");
+const DEFAULT_PATH = join(getAstraviaHomePath(), "desktop-app", "session-pins.json");
 
 let cache: SessionPins | null = null;
 let cachePath = DEFAULT_PATH;

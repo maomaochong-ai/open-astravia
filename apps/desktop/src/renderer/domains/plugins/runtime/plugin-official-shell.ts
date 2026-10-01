@@ -1,4 +1,4 @@
-import type { PluginOfficialApi } from "@vetta-org/plugin-sdk";
+import type { PluginOfficialApi } from "@astravia-org/plugin-sdk";
 
 /**
  * 在系统文件管理器里定位一个路径。
@@ -13,7 +13,7 @@ export function createOfficialShellApi(assertOfficial: () => void): PluginOffici
 			if (typeof path !== "string" || path.trim().length === 0) {
 				throw new Error("official.shell.showItemInFolder: path is required");
 			}
-			await window.vetta.shell.showItemInFolder(path);
+			await window.astravia.shell.showItemInFolder(path);
 		},
 	};
 }

@@ -2,7 +2,7 @@ import type { Dirent } from "node:fs";
 import { cp, lstat, mkdir, open, readdir, readFile, realpath, rename, rm, stat, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
-import { isSshProjectUri } from "@vetta/ssh-transport";
+import { isSshProjectUri } from "@astravia/ssh-transport";
 import {
 	FILE_EXPLORER_ENTRY_EXISTS_ERROR,
 	getFileExplorerEntryNameIssue,

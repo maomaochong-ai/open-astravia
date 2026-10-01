@@ -1,4 +1,4 @@
-import type { SessionEvent } from "@vetta/runtime-core";
+import type { SessionEvent } from "@astravia/runtime-core";
 import { describe, expect, it } from "vitest";
 import { mapSessionEventToPetPresentation } from "./session-event-action-policy.js";
 

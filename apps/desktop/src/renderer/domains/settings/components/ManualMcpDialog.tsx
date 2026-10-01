@@ -6,8 +6,8 @@ import {
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
-} from "@vetta-org/ui";
-import { JsonConfigInputView } from "@vetta-org/theme-ui/settings";
+} from "@astravia-org/ui";
+import { JsonConfigInputView } from "@astravia-org/theme-ui/settings";
 import { useId } from "react";
 import { useTranslation } from "react-i18next";
 import { SETTINGS_SECTION } from "../registry";

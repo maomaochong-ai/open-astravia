@@ -36,21 +36,21 @@ export function registerSettingsIpc(): () => void {
 		});
 	}
 
-	ipcMain.handle("vetta:settings:get-server-url", () => {
+	ipcMain.handle("astravia:settings:get-server-url", () => {
 		return DEFAULT_SERVER_URL;
 	});
 
-	ipcMain.handle("vetta:settings:get-site-url", () => {
+	ipcMain.handle("astravia:settings:get-site-url", () => {
 		return DEFAULT_SITE_URL;
 	});
 
 	// 预设服务商目录内置在客户端(见 ADR-0050);模型清单取自 models.dev 公共目录,免 key 可见。
-	ipcMain.handle("vetta:models:list-presets", async () => {
+	ipcMain.handle("astravia:models:list-presets", async () => {
 		return listPresetProviders();
 	});
 
 	// 手动刷新某预设服务商的模型列表:只拉不写,由渲染层连同 key 一起落盘。
-	ipcMain.handle("vetta:models:refresh-preset-models", async (_event, providerId: unknown, apiKey: unknown) => {
+	ipcMain.handle("astravia:models:refresh-preset-models", async (_event, providerId: unknown, apiKey: unknown) => {
 		if (typeof providerId !== "string" || !providerId.trim()) {
 			return { models: [], error: { code: "unknown-provider", params: { provider: String(providerId) } } };
 		}
@@ -58,7 +58,7 @@ export function registerSettingsIpc(): () => void {
 	});
 
 	// 手动刷新公共目录:清掉失败冷却强制重拉,错误原样回给渲染层。
-	ipcMain.handle("vetta:models:refresh-preset-catalog", async () => {
+	ipcMain.handle("astravia:models:refresh-preset-catalog", async () => {
 		return refreshPresetCatalog();
 	});
 
@@ -68,9 +68,9 @@ export function registerSettingsIpc(): () => void {
 
 	return () => {
 		stopPresetAutoSync();
-		ipcMain.removeHandler("vetta:settings:get-server-url");
-		ipcMain.removeHandler("vetta:models:list-presets");
-		ipcMain.removeHandler("vetta:models:refresh-preset-catalog");
-		ipcMain.removeHandler("vetta:models:refresh-preset-models");
+		ipcMain.removeHandler("astravia:settings:get-server-url");
+		ipcMain.removeHandler("astravia:models:list-presets");
+		ipcMain.removeHandler("astravia:models:refresh-preset-catalog");
+		ipcMain.removeHandler("astravia:models:refresh-preset-models");
 	};
 }

@@ -23,7 +23,7 @@ async function loadSkillIconMap(token: string | null): Promise<SkillIconMap> {
 	const map = new Map<string, string>();
 	const [server, open] = await Promise.allSettled([
 		token ? fetchMarketAbilities(token) : Promise.resolve([]),
-		window.vetta.abilities.listOpenMarketplaces(),
+		window.astravia.abilities.listOpenMarketplaces(),
 	]);
 	const entries: Array<{ type: string; slug: string; icon: string }> = [];
 	if (server.status === "fulfilled") entries.push(...server.value);

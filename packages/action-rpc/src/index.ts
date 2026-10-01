@@ -1,13 +1,13 @@
 export { createActionRpcClient, createDebugRpcClient } from "./client.js";
 export {
 	ACTION_RPC_ENDPOINT_FILE_ENV,
+	ASTRAVIA_CONFIG_DIR_ENV,
+	ASTRAVIA_HOME_ENV,
 	DEFAULT_CONFIG_DIR_NAME,
 	getActionRpcEndpointFilePath,
-	getVettaConfigDirName,
-	getVettaHomePath,
+	getAstraviaConfigDirName,
+	getAstraviaHomePath,
 	readActionRpcEndpoint,
-	VETTA_CONFIG_DIR_ENV,
-	VETTA_HOME_ENV,
 } from "./endpoint-file.js";
 export { ActionRpcError } from "./errors.js";
 export { parseActionRpcRequest, parseDebugRpcRequest, parseLocalRpcRequest } from "./protocol.js";

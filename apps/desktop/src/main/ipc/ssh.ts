@@ -1,4 +1,4 @@
-import type { SshHostInput } from "@vetta/ssh-transport";
+import type { SshHostInput } from "@astravia/ssh-transport";
 import { ipcMain } from "electron";
 import { getSshPortForwardService } from "../ssh/port-forward-service.js";
 import { probeSshHost } from "../ssh/ssh-host-probe.js";
@@ -7,21 +7,21 @@ import { getSshHostService, listSshConfigAliases } from "../ssh/ssh-host-service
 import { getSshConnection, getSshHostStatus } from "../ssh/ssh-runtime.js";
 
 const CHANNELS = {
-	LIST_HOSTS: "vetta:ssh:list-hosts",
-	CREATE_HOST: "vetta:ssh:create-host",
-	UPDATE_HOST: "vetta:ssh:update-host",
-	REMOVE_HOST: "vetta:ssh:remove-host",
-	REBIND_HOST: "vetta:ssh:rebind-host",
-	IMPORT_CONFIG: "vetta:ssh:import-config",
-	LIST_CONFIG_ALIASES: "vetta:ssh:list-config-aliases",
-	TEST_HOST: "vetta:ssh:test-host",
-	HOST_STATUS: "vetta:ssh:get-host-status",
-	LIST_REMOTE_DIR: "vetta:ssh:list-remote-dir",
-	LIST_LISTENING_PORTS: "vetta:ssh:list-listening-ports",
-	LIST_FORWARDS: "vetta:ssh:list-port-forwards",
-	OPEN_FORWARD: "vetta:ssh:open-port-forward",
-	CLOSE_FORWARD: "vetta:ssh:close-port-forward",
-	TERMINATE_PROCESS: "vetta:ssh:terminate-process",
+	LIST_HOSTS: "astravia:ssh:list-hosts",
+	CREATE_HOST: "astravia:ssh:create-host",
+	UPDATE_HOST: "astravia:ssh:update-host",
+	REMOVE_HOST: "astravia:ssh:remove-host",
+	REBIND_HOST: "astravia:ssh:rebind-host",
+	IMPORT_CONFIG: "astravia:ssh:import-config",
+	LIST_CONFIG_ALIASES: "astravia:ssh:list-config-aliases",
+	TEST_HOST: "astravia:ssh:test-host",
+	HOST_STATUS: "astravia:ssh:get-host-status",
+	LIST_REMOTE_DIR: "astravia:ssh:list-remote-dir",
+	LIST_LISTENING_PORTS: "astravia:ssh:list-listening-ports",
+	LIST_FORWARDS: "astravia:ssh:list-port-forwards",
+	OPEN_FORWARD: "astravia:ssh:open-port-forward",
+	CLOSE_FORWARD: "astravia:ssh:close-port-forward",
+	TERMINATE_PROCESS: "astravia:ssh:terminate-process",
 } as const;
 
 function asString(value: unknown): string {

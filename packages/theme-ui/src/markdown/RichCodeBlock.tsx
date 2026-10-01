@@ -1,5 +1,5 @@
 import { useMarkdownHost } from "./host";
-import { Button } from "@vetta-org/ui";
+import { Button } from "@astravia-org/ui";
 import { memo, useEffect, useMemo, useState } from "react";
 import { CodeBlock } from "./CodeBlock";
 import type { MarkdownCodeBlockProps } from "./definition";

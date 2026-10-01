@@ -9,10 +9,10 @@ import { resolveSystemPluginSelection } from "./stage-system-plugins.mjs";
 const projectRoot = join(import.meta.dirname, "..");
 
 function resolveRendererPort() {
-	const rawPort = process.env.VETTA_DESKTOP_DEV_PORT ?? "3020";
+	const rawPort = process.env.ASTRAVIA_DESKTOP_DEV_PORT ?? "3020";
 	const port = Number(rawPort);
 	if (!Number.isInteger(port) || port < 1 || port > 65_535) {
-		throw new Error(`Invalid VETTA_DESKTOP_DEV_PORT: ${rawPort}`);
+		throw new Error(`Invalid ASTRAVIA_DESKTOP_DEV_PORT: ${rawPort}`);
 	}
 	return port;
 }
@@ -53,10 +53,10 @@ function canConnect(port) {
 }
 
 export function resolveDevLaunchEnvironment(environment = process.env, homeDirectory = homedir()) {
-	const verificationEnabled = environment.VETTA_UI_VERIFICATION === "1";
+	const verificationEnabled = environment.ASTRAVIA_UI_VERIFICATION === "1";
 	const configDir =
-		environment.VETTA_CONFIG_DIR?.trim() || (verificationEnabled ? ".vetta-ui-verify" : ".vetta-dev");
-	const configuredUserDataDir = environment.VETTA_DESKTOP_USER_DATA_DIR?.trim();
+		environment.ASTRAVIA_CONFIG_DIR?.trim() || (verificationEnabled ? ".astravia-ui-verify" : ".astravia-dev");
+	const configuredUserDataDir = environment.ASTRAVIA_DESKTOP_USER_DATA_DIR?.trim();
 	const userDataDir = configuredUserDataDir
 		? resolve(configuredUserDataDir)
 		: join(homeDirectory, configDir, "electron-user-data");
@@ -67,10 +67,10 @@ export function resolveDevPluginIds(
 	environment = process.env,
 	tenantResolver = resolveSystemPluginSelection,
 ) {
-	if (Object.hasOwn(environment, "VETTA_PLUGIN_DEV")) {
-		return environment.VETTA_PLUGIN_DEV ?? "";
+	if (Object.hasOwn(environment, "ASTRAVIA_PLUGIN_DEV")) {
+		return environment.ASTRAVIA_PLUGIN_DEV ?? "";
 	}
-	const tenant = tenantResolver(environment.VETTA_TENANT, "development");
+	const tenant = tenantResolver(environment.ASTRAVIA_TENANT, "development");
 	return tenant.pluginIds ? Array.from(tenant.pluginIds).sort().join(",") : "";
 }
 
@@ -79,7 +79,7 @@ export function resolveDevProcessEnvironment(environment = process.env) {
 		...environment,
 		// Keep local action/plugin iteration frictionless without weakening packaged builds.
 		// Set to "0" when manually testing the approval flow in development.
-		VETTA_DEV_AUTO_APPROVE_ACTIONS: environment.VETTA_DEV_AUTO_APPROVE_ACTIONS ?? "1",
+		ASTRAVIA_DEV_AUTO_APPROVE_ACTIONS: environment.ASTRAVIA_DEV_AUTO_APPROVE_ACTIONS ?? "1",
 	};
 }
 
@@ -91,8 +91,8 @@ async function main() {
 	const { configDir, userDataDir } = resolveDevLaunchEnvironment();
 	const pluginIds = resolveDevPluginIds();
 	const electronArgs = [];
-	if (process.env.VETTA_UI_VERIFICATION === "1") {
-		if (process.env.VETTA_DESKTOP_RUNTIME_CANARY === "1") {
+	if (process.env.ASTRAVIA_UI_VERIFICATION === "1") {
+		if (process.env.ASTRAVIA_DESKTOP_RUNTIME_CANARY === "1") {
 			electronArgs.push("--disable-gpu");
 			electronArgs.push("--no-sandbox");
 		}
@@ -104,9 +104,9 @@ async function main() {
 		cwd: projectRoot,
 		env: {
 			...resolveDevProcessEnvironment(),
-			VETTA_CONFIG_DIR: configDir,
-			VETTA_DESKTOP_DEV_URL: rendererUrl,
-			VETTA_PLUGIN_DEV: pluginIds,
+			ASTRAVIA_CONFIG_DIR: configDir,
+			ASTRAVIA_DESKTOP_DEV_URL: rendererUrl,
+			ASTRAVIA_PLUGIN_DEV: pluginIds,
 		},
 		stdio: "inherit",
 	});

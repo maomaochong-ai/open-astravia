@@ -191,7 +191,7 @@ const noOutput = defineCapabilityNoOutputSchema();
 
 export const FOUNDATION_BROWSER_CAPABILITIES = {
 	RUNTIME_STATUS: defineCapability<BrowserRuntimeStatusInput, BrowserRuntimeStatus>({
-		id: "cap.foundation.vetta.browser.runtime-status",
+		id: "cap.foundation.astravia.browser.runtime-status",
 		kind: "query",
 		layer: CAPABILITY_LAYERS.FOUNDATION,
 		version: 1,
@@ -199,7 +199,7 @@ export const FOUNDATION_BROWSER_CAPABILITIES = {
 		output: runtimeStatusOutput,
 	}),
 	RUNTIME_INSTALL: defineCapability<BrowserRuntimeInstallInput, BrowserRuntimeStatus>({
-		id: "cap.foundation.vetta.browser.runtime-install",
+		id: "cap.foundation.astravia.browser.runtime-install",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.FOUNDATION,
 		version: 1,
@@ -207,7 +207,7 @@ export const FOUNDATION_BROWSER_CAPABILITIES = {
 		output: runtimeStatusOutput,
 	}),
 	SESSION_CREATE: defineCapability<BrowserSessionCreateInput, BrowserSession>({
-		id: "cap.foundation.vetta.browser.session-create",
+		id: "cap.foundation.astravia.browser.session-create",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.FOUNDATION,
 		version: 1,
@@ -215,7 +215,7 @@ export const FOUNDATION_BROWSER_CAPABILITIES = {
 		output: sessionOutput,
 	}),
 	SESSION_GET: defineCapability<BrowserSessionInput, BrowserSession>({
-		id: "cap.foundation.vetta.browser.session-get",
+		id: "cap.foundation.astravia.browser.session-get",
 		kind: "query",
 		layer: CAPABILITY_LAYERS.FOUNDATION,
 		version: 1,
@@ -223,7 +223,7 @@ export const FOUNDATION_BROWSER_CAPABILITIES = {
 		output: sessionOutput,
 	}),
 	SESSION_CLOSE: defineCapability<BrowserSessionInput, undefined>({
-		id: "cap.foundation.vetta.browser.session-close",
+		id: "cap.foundation.astravia.browser.session-close",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.FOUNDATION,
 		version: 1,
@@ -231,7 +231,7 @@ export const FOUNDATION_BROWSER_CAPABILITIES = {
 		output: noOutput,
 	}),
 	NAVIGATE: defineCapability<BrowserNavigateInput, BrowserPageState>({
-		id: "cap.foundation.vetta.browser.navigate",
+		id: "cap.foundation.astravia.browser.navigate",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.FOUNDATION,
 		version: 1,
@@ -239,7 +239,7 @@ export const FOUNDATION_BROWSER_CAPABILITIES = {
 		output: pageStateOutput,
 	}),
 	SNAPSHOT: defineCapability<BrowserSnapshotInput, BrowserSnapshot>({
-		id: "cap.foundation.vetta.browser.snapshot",
+		id: "cap.foundation.astravia.browser.snapshot",
 		kind: "query",
 		layer: CAPABILITY_LAYERS.FOUNDATION,
 		version: 1,
@@ -247,7 +247,7 @@ export const FOUNDATION_BROWSER_CAPABILITIES = {
 		output: snapshotOutput,
 	}),
 	READ_TEXT: defineCapability<BrowserReadTextInput, BrowserTextContent>({
-		id: "cap.foundation.vetta.browser.read-text",
+		id: "cap.foundation.astravia.browser.read-text",
 		kind: "query",
 		layer: CAPABILITY_LAYERS.FOUNDATION,
 		version: 1,
@@ -255,7 +255,7 @@ export const FOUNDATION_BROWSER_CAPABILITIES = {
 		output: textContentOutput,
 	}),
 	SCREENSHOT: defineCapability<BrowserScreenshotInput, BrowserScreenshot>({
-		id: "cap.foundation.vetta.browser.screenshot",
+		id: "cap.foundation.astravia.browser.screenshot",
 		kind: "query",
 		layer: CAPABILITY_LAYERS.FOUNDATION,
 		version: 1,
@@ -263,7 +263,7 @@ export const FOUNDATION_BROWSER_CAPABILITIES = {
 		output: screenshotOutput,
 	}),
 	ACT: defineCapability<BrowserActInput, BrowserActionResult>({
-		id: "cap.foundation.vetta.browser.act",
+		id: "cap.foundation.astravia.browser.act",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.FOUNDATION,
 		version: 1,

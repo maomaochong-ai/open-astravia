@@ -3,8 +3,8 @@ import type {
 	RuntimeAgentInstancePreparationContext,
 	RuntimeAgentSessionDefinition,
 	RuntimeAgentSessionPreparationContext,
-} from "@vetta/runtime-core";
-import type { InstructionBlock } from "@vetta/runtime-core/kernel";
+} from "@astravia/runtime-core";
+import type { InstructionBlock } from "@astravia/runtime-core/kernel";
 
 export const DEFAULT_CODING_AGENT_RUNTIME_ID = "coding-agent";
 

@@ -1,5 +1,5 @@
 import type { DefaultConversationFilter, SessionInfo } from "@shared/store/atoms";
-import { DefaultSessionRowView } from "@vetta-org/theme-ui/project";
+import { DefaultSessionRowView } from "@astravia-org/theme-ui/project";
 import { useDefaultSessionRowModel } from "../../../../hooks/useDefaultSessionRowModel";
 
 interface DefaultSessionRowProps {

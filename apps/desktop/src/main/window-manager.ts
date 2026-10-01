@@ -11,7 +11,7 @@ const isMac = process.platform === "darwin";
 const appRoot = app.isPackaged ? app.getAppPath() : process.cwd();
 const resDir = app.isPackaged ? appRoot : join(appRoot, "dist");
 const buildDir = app.isPackaged ? join(process.resourcesPath, "build") : join(appRoot, "build");
-const devServerUrl = process.env.VETTA_DESKTOP_DEV_URL;
+const devServerUrl = process.env.ASTRAVIA_DESKTOP_DEV_URL;
 const RESIZE_OBSERVER_DELIVERY_WARNING = "ResizeObserver loop completed with undelivered notifications.";
 
 function isChromiumResizeObserverDiagnostic(message: string, line: number, sourceId: string): boolean {
@@ -162,8 +162,8 @@ export async function loadMainWindow(win: BrowserWindow): Promise<void> {
 			await win.loadFile(rendererPath);
 		}
 		windowLog.info("main-renderer-ready", { durationMs: Date.now() - startedAt });
-		// E2E (VETTA_E2E=1): skip auto DevTools so extra windows do not steal WebdriverIO focus.
-		if (app.isPackaged || process.env.VETTA_E2E === "1" || win.isDestroyed()) return;
+		// E2E (ASTRAVIA_E2E=1): skip auto DevTools so extra windows do not steal WebdriverIO focus.
+		if (app.isPackaged || process.env.ASTRAVIA_E2E === "1" || win.isDestroyed()) return;
 		win.webContents.openDevTools({ mode: "detach", activate: true });
 		windowLog.info("open-devtools", { opened: win.webContents.isDevToolsOpened() });
 	} catch (error) {

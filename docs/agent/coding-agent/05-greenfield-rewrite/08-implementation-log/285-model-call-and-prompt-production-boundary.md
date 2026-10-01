@@ -14,7 +14,7 @@
 - 会话历史、认证、模型和设置等用户数据；必要时由显式、独立的新迁移器读取旧格式。
 - 模型消息、工具消息、错误、取消、事件顺序、并发约束和资源释放语义。
 - 仍然有效的行为测试场景和数据 fixture；旧实现可以临时作为测试 Oracle，但不能被新生产代码调用。
-- `@vetta/ai` 与经过合同验证的 `@vetta/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
+- `@astravia/ai` 与经过合同验证的 `@astravia/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
 
 ## 明确舍弃（固定）
 
@@ -118,7 +118,7 @@ Extension Host->Composition edge files=0/0
 - `coding-agent` 全量：137 个文件通过、1 个文件跳过，935 项通过、17 项跳过；
 - 根级 `bun run check:quick` 通过；
 - 根级 `bun run check` 通过，覆盖根、CLI、Desktop、Admin 类型检查、Biome 和全部质量门禁；
-- `bun run verify:agent-hosts` 通过：独立 `vetta.exe` 编译成功，IM Gateway、Coding Agent、CLI、Desktop 全部通过；
+- `bun run verify:agent-hosts` 通过：独立 `astravia.exe` 编译成功，IM Gateway、Coding Agent、CLI、Desktop 全部通过；
 - Desktop 功能套件为 119 个文件、501 项测试通过，另 1 项跳过。
 
 第一次完整类型检查发现两个移动文件仍使用旧目录层级的相对导入，随后改为稳定的 `runtime-contracts` 路径并重新完成全部验证。

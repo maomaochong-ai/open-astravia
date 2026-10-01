@@ -1,4 +1,4 @@
-// Vetta Computer Use 授权引导窗：无边框、居中、置顶的实心背景小窗。
+// Astravia Computer Use 授权引导窗：无边框、居中、置顶的实心背景小窗。
 // 照抄 quickpanel-window.ts 的建窗骨架，但去掉液态玻璃与 blur 自动隐藏——
 // 授权过程中用户需要切到「系统设置」，切走时不应自动关闭引导窗。
 
@@ -13,7 +13,7 @@ const isMac = process.platform === "darwin";
 
 const appRoot = app.isPackaged ? app.getAppPath() : process.cwd();
 const resDir = app.isPackaged ? appRoot : join(appRoot, "dist");
-const devServerUrl = process.env.VETTA_DESKTOP_DEV_URL;
+const devServerUrl = process.env.ASTRAVIA_DESKTOP_DEV_URL;
 const onboardingPreloadPath = join(resDir, "preload/onboarding.js");
 
 const ONBOARDING_WIDTH = 440;

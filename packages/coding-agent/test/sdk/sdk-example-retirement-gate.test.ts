@@ -2,7 +2,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const EXAMPLES_DIRECTORY = new URL("../../examples/sdk/", import.meta.url);
-const BARE_PACKAGE_IMPORT = /from\s+["']@vetta\/coding-agent["']/;
+const BARE_PACKAGE_IMPORT = /from\s+["']@astravia\/coding-agent["']/;
 
 describe("SDK example retirement gate", () => {
 	it("keeps all SDK examples on stable public subpaths", () => {

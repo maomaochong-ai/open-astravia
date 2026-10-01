@@ -1,4 +1,4 @@
-import type { AgentMessage } from "@vetta/agent-core";
+import type { AgentMessage } from "@astravia/agent-core";
 import {
 	type Api,
 	type AssistantMessage,
@@ -7,7 +7,7 @@ import {
 	type Model,
 	type ToolResultMessage,
 	type UserMessage,
-} from "@vetta/ai";
+} from "@astravia/ai";
 import { describe, expect, it } from "vitest";
 import { estimateContextTokens } from "../src/compaction/index.js";
 import { projectModelCallContext } from "../src/compaction/runtime/model-call-context-projection.js";

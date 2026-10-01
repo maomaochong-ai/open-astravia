@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { render } from "@testing-library/react";
-import { SidebarPanel } from "@vetta-org/theme-ui/sidebar";
+import { SidebarPanel } from "@astravia-org/theme-ui/sidebar";
 import { describe, expect, it } from "vitest";
 
 /**

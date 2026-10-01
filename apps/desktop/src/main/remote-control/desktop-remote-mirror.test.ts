@@ -1,5 +1,5 @@
-import type { Message } from "@vetta/ai";
-import type { RemoteEventName, RemoteRequest } from "@vetta/remote-control";
+import type { Message } from "@astravia/ai";
+import type { RemoteEventName, RemoteRequest } from "@astravia/remote-control";
 import type {
 	HistoryEntry,
 	PromptAttachmentRef,
@@ -7,7 +7,7 @@ import type {
 	SessionEvent,
 	SessionStateSnapshot,
 	SettingsPatch,
-} from "@vetta/runtime-core";
+} from "@astravia/runtime-core";
 import { describe, expect, it } from "vitest";
 import type { DesktopSessionHistoryInfo } from "../../shared/session-access.js";
 import type { DesktopConversationSession } from "../conversations/desktop-conversation-service.js";
@@ -22,10 +22,10 @@ interface Emitted {
 	readonly sessionId?: string;
 }
 
-const CONVERSATION_CWD = "/home/me/.vetta/conversation";
+const CONVERSATION_CWD = "/home/me/.astravia/conversation";
 const PROJECT_CWD = "/home/me/project";
-const CONVERSATION_PATH = `${CONVERSATION_CWD}/.vetta/sessions/chat.jsonl`;
-const PROJECT_PATH = `${PROJECT_CWD}/.vetta/sessions/work.jsonl`;
+const CONVERSATION_PATH = `${CONVERSATION_CWD}/.astravia/sessions/chat.jsonl`;
+const PROJECT_PATH = `${PROJECT_CWD}/.astravia/sessions/work.jsonl`;
 
 class FakeRuntime implements RemoteMirrorRuntime {
 	readonly handlers = new Map<string, Set<(event: SessionEvent) => void>>();
@@ -186,7 +186,7 @@ function harness() {
 			listSessions: async (cwd) => entries(cwd),
 			openSession: open,
 			createSession: async (config) => {
-				const path = `${config?.cwd ?? CONVERSATION_CWD}/.vetta/sessions/new.jsonl`;
+				const path = `${config?.cwd ?? CONVERSATION_CWD}/.astravia/sessions/new.jsonl`;
 				runtime.paths.set("rt-new", path);
 				return open(path);
 			},

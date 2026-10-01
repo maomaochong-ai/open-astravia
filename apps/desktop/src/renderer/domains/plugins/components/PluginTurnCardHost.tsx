@@ -49,7 +49,7 @@ export function PluginTurnCardHost(): JSX.Element | null {
 				const CardComponent = card.component;
 				return (
 					<PluginTurnCardErrorBoundary key={card.cardId} cardId={card.cardId}>
-						<div className="contents vetta-plugin" data-vetta-plugin-turn-card={card.cardId}>
+						<div className="contents astravia-plugin" data-astravia-plugin-turn-card={card.cardId}>
 							<PluginI18nBoundary pluginId={card.pluginId}>
 								<CardComponent />
 							</PluginI18nBoundary>

@@ -1,4 +1,4 @@
-import type { TeamTaskSnapshot, TeamWaitTasksResult } from "@vetta/agent-team";
+import type { TeamTaskSnapshot, TeamWaitTasksResult } from "@astravia/agent-team";
 
 /** Installs the listener before reading to close the completion/admission race. */
 export function waitForTeamTasks(input: {

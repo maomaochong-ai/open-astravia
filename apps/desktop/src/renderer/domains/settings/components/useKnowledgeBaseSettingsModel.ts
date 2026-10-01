@@ -105,7 +105,7 @@ export function useKnowledgeBaseSettingsModel(): KnowledgeBaseSettingsModel {
 	const [probeResult, setProbeResult] = useState<KnowledgeProbeResult | null>(null);
 
 	useEffect(() => {
-		void window.vetta.config.get().then((config) => {
+		void window.astravia.config.get().then((config) => {
 			const kb = config.knowledgeBase;
 			setEnabled(kb?.enabled === true);
 			setIntervalMinutes(kb?.pollIntervalMinutes ?? 5);
@@ -123,8 +123,8 @@ export function useKnowledgeBaseSettingsModel(): KnowledgeBaseSettingsModel {
 			processingModelKey?: string;
 			processingModelReasoningLevel?: string;
 		}) => {
-			await window.vetta.config.set({ knowledgeBase: patch });
-			await window.vetta.knowledge.reload();
+			await window.astravia.config.set({ knowledgeBase: patch });
+			await window.astravia.knowledge.reload();
 		},
 		[],
 	);
@@ -194,7 +194,7 @@ export function useKnowledgeBaseSettingsModel(): KnowledgeBaseSettingsModel {
 		setProbeResult(null);
 		try {
 			const ref = { provider: modelKey.slice(0, slash), model: modelKey.slice(slash + 1) };
-			const result = await window.vetta.models.probe(ref);
+			const result = await window.astravia.models.probe(ref);
 			setProbeResult({
 				ok: result.ok,
 				msg: result.ok ? (result.message ?? t("kbTestOk")) : (result.error ?? t("kbTestUnknown")),
@@ -209,7 +209,7 @@ export function useKnowledgeBaseSettingsModel(): KnowledgeBaseSettingsModel {
 		setBusy("scan");
 		setStatus(null);
 		try {
-			const res = await window.vetta.knowledge.scanNow();
+			const res = await window.astravia.knowledge.scanNow();
 			setStatus(
 				res.reason === "no-model" ? t("kbNoModelForProcess") : res.skipped ? t("kbNoChanges") : t("kbProcessing"),
 			);
@@ -225,7 +225,7 @@ export function useKnowledgeBaseSettingsModel(): KnowledgeBaseSettingsModel {
 		setBusy("retry");
 		setStatus(null);
 		try {
-			const res = await window.vetta.knowledge.retryFailed();
+			const res = await window.astravia.knowledge.retryFailed();
 			setStatus(
 				res.reason === "no-model" ? t("kbNoModelForProcess") : res.skipped ? t("kbNoChanges") : t("kbProcessing"),
 			);
@@ -248,7 +248,7 @@ export function useKnowledgeBaseSettingsModel(): KnowledgeBaseSettingsModel {
 					setBusy("clear");
 					setStatus(null);
 					try {
-						await window.vetta.knowledge.clearWiki();
+						await window.astravia.knowledge.clearWiki();
 						setStatus(t("kbCleared"));
 						recordSettingsUsage({ tab: "knowledge", action: "cleared", target: "wiki" });
 					} catch (err) {
@@ -263,9 +263,9 @@ export function useKnowledgeBaseSettingsModel(): KnowledgeBaseSettingsModel {
 
 	const handleOpenRecords = useCallback(async () => {
 		setStatus(null);
-		const config = await window.vetta.config.get();
+		const config = await window.astravia.config.get();
 		const cwd = config.knowledgeProcessingCwd;
-		const list = cwd ? ((await window.vetta.session.listSessions(cwd)) as SessionInfo[]) : [];
+		const list = cwd ? ((await window.astravia.session.listSessions(cwd)) as SessionInfo[]) : [];
 		if (list.length === 0) {
 			setStatus(t("kbNoRecords"));
 			return;

@@ -14,7 +14,7 @@
 - 会话历史、认证、模型和设置等用户数据；必要时由显式、独立的新迁移器读取旧格式。
 - 模型消息、工具消息、错误、取消、事件顺序、并发约束和资源释放语义。
 - 仍然有效的行为测试场景和数据 fixture；旧实现可以临时作为测试 Oracle，但不能被新生产代码调用。
-- `@vetta/ai` 与经过合同验证的 `@vetta/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
+- `@astravia/ai` 与经过合同验证的 `@astravia/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
 
 ## 明确舍弃（固定）
 
@@ -30,17 +30,17 @@
 
 第 295 轮已经使旧执行路径和迁移期兼容垫片归零，但 Runtime Tool Adapter 仍包装 `src/utils/tools-manager.ts`，命令宿主和沙箱仍依赖 `src/utils/shell.ts`。这些文件不是第二套 Agent Runtime，却让新端口继续依赖旧 utility 所有权，且不在既有残留门禁覆盖范围内。
 
-本轮将网络、文件系统、归档、Shell 和进程能力确立为正式宿主基础设施 Adapter，不改变 Runtime Tools 的领域所有权。`@vetta/runtime-tools` 继续只持有工具实现和 `CodingToolExecutableResolver` Port，Coding Agent 负责把本机与网络能力适配到该 Port。
+本轮将网络、文件系统、归档、Shell 和进程能力确立为正式宿主基础设施 Adapter，不改变 Runtime Tools 的领域所有权。`@astravia/runtime-tools` 继续只持有工具实现和 `CodingToolExecutableResolver` Port，Coding Agent 负责把本机与网络能力适配到该 Port。
 
 ## 实施内容
 
 ### 受管可执行文件
 
 - 在 `adapters/runtime-tools/executables` 按发布资产目录、网络边界、归档安装和受管解析器拆分实现；
-- 正式 Resolver 直接实现 `@vetta/runtime-tools` 的 `CodingToolExecutableResolver`，不再声明重复 Port；
+- 正式 Resolver 直接实现 `@astravia/runtime-tools` 的 `CodingToolExecutableResolver`，不再声明重复 Port；
 - 删除旧 `utils/tools-manager.ts` 和只转发 `ensureTool` 的 `adapters/runtime-tools/executable-resolver.ts`；
 - 保留本地安装优先、PATH 查找、离线模式、Android/Termux 拒绝下载、GitHub Release 查询、超时/传输失败重试、HTTP 错误不重试、唯一解压目录、归档清理和失败降级语义；
-- `@vetta/coding-agent/host` 使用 Managed Resolver 名称暴露正式宿主 API，移除迁移期重复类型。
+- `@astravia/coding-agent/host` 使用 Managed Resolver 名称暴露正式宿主 API，移除迁移期重复类型。
 
 ### 命令执行基础设施
 

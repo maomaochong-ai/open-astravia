@@ -1,4 +1,4 @@
-import type { Model, SimpleStreamFunction } from "@vetta/ai";
+import type { Model, SimpleStreamFunction } from "@astravia/ai";
 import { describe, expect, it, vi } from "vitest";
 import { createProviderDebugDefinitions } from "./definitions.js";
 import { listAvailableProviderModels, type ProviderModelListDependencies } from "./models.js";

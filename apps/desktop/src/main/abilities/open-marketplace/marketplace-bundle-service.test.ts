@@ -19,7 +19,7 @@ function archive(version: string, listed = false, broken = false): Buffer {
 	const zip = new AdmZip();
 	const add = (path: string, data: unknown) =>
 		zip.addFile(`market/${path}`, Buffer.from(typeof data === "string" ? data : JSON.stringify(data)));
-	add(".vetta/marketplace.json", {
+	add(".astravia/marketplace.json", {
 		schemaVersion: listed ? 1 : 2,
 		name: "test",
 		marketplaceVersion: version,
@@ -73,7 +73,7 @@ function archive(version: string, listed = false, broken = false): Buffer {
 }
 
 it("keeps installed identities and disabled state when top-level entries become bundle-only, including cache reload and upgrades", async () => {
-	const root = await mkdtemp(join(tmpdir(), "vetta-bundle-service-test-"));
+	const root = await mkdtemp(join(tmpdir(), "astravia-bundle-service-test-"));
 	roots.push(root);
 	let data = archive("1.0.0", true);
 	let installed: Record<string, InstalledSkill> = {};

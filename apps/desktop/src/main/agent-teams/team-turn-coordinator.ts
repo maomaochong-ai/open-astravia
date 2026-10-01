@@ -17,8 +17,8 @@ import {
 	type TeamWorkItem,
 	teamUserMessageId,
 	validateTeamMessageMentions,
-} from "@vetta/agent-team";
-import type { PromptAttachmentRef, RuntimeHost } from "@vetta/runtime-core";
+} from "@astravia/agent-team";
+import type { PromptAttachmentRef, RuntimeHost } from "@astravia/runtime-core";
 import { resolveTeamMemberModel } from "../../shared/agent-team-member-model.js";
 import { stopSessionBackgroundWork } from "../agent-runtime/stop-session-work.js";
 import { getAppLogger } from "../logger.js";

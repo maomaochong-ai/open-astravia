@@ -14,7 +14,7 @@ vi.mock("electron", () => ({
 	},
 }));
 
-vi.mock("@vetta/cli-host", () => ({
+vi.mock("@astravia/cli-host", () => ({
 	runAgentRuntimeCli: runtimeSelector,
 }));
 
@@ -26,7 +26,7 @@ import { runAgentRpcCommand } from "../cli/agent-rpc-command.js";
 import { buildCodingAgentSpec } from "./coding-agent-spec.js";
 
 const originalResourcesPath = Object.getOwnPropertyDescriptor(process, "resourcesPath");
-const originalPackageDir = process.env.VETTA_PACKAGE_DIR;
+const originalPackageDir = process.env.ASTRAVIA_PACKAGE_DIR;
 
 function normalizePathSeparators(value: string): string {
 	return value.replaceAll("\\", "/");
@@ -41,9 +41,9 @@ afterEach(() => {
 		Reflect.deleteProperty(process, "resourcesPath");
 	}
 	if (originalPackageDir === undefined) {
-		delete process.env.VETTA_PACKAGE_DIR;
+		delete process.env.ASTRAVIA_PACKAGE_DIR;
 	} else {
-		process.env.VETTA_PACKAGE_DIR = originalPackageDir;
+		process.env.ASTRAVIA_PACKAGE_DIR = originalPackageDir;
 	}
 });
 

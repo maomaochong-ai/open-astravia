@@ -13,23 +13,23 @@
 #   --yes                   跳过 stable 的二次确认。
 #
 # local 通道用于快速验证更新链路本身：保留签名（Squirrel.Mac 必需）但跳过公证，
-# 省掉每轮 10~30 分钟的 Apple 排队；产物落到 ~/.vetta/local-updates 并由
+# 省掉每轮 10~30 分钟的 Apple 排队；产物落到 ~/.astravia/local-updates 并由
 # `bun run serve:updates:local` 分发。多个版本会累积在该目录——差分下载需要读
 # **旧版本**的 blockmap。未公证产物不可分发，test/stable 的发布门禁会用
 # `stapler validate` 挡住它们。
 #
 # 凭据来自两个文件，都不进仓库：
-#   ~/.config/vetta/mac-signing.env    签名与公证（通道无关）
-#   ~/.config/vetta/r2-<channel>.env   R2 凭据与通道配置（local 通道不需要）
+#   ~/.config/astravia/mac-signing.env    签名与公证（通道无关）
+#   ~/.config/astravia/r2-<channel>.env   R2 凭据与通道配置（local 通道不需要）
 #
-# 构建期的 VETTA_UPDATE_PROVIDER / VETTA_UPDATE_URL 由本脚本直接注入，
+# 构建期的 ASTRAVIA_UPDATE_PROVIDER / ASTRAVIA_UPDATE_URL 由本脚本直接注入，
 # 因此不依赖 apps/desktop/.env.development 里有没有配这两项。
 
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DESKTOP_DIR="${REPO_ROOT}/apps/desktop"
-SIGNING_ENV="${HOME}/.config/vetta/mac-signing.env"
+SIGNING_ENV="${HOME}/.config/astravia/mac-signing.env"
 # 一切都以脚本自身位置为准，不依赖调用者的 cwd。
 cd "${REPO_ROOT}"
 
@@ -97,8 +97,8 @@ esac
 
 # ── 凭据 ──────────────────────────────────────────────────────────────────────
 
-LOCAL_UPDATE_DIR="${VETTA_LOCAL_UPDATE_DIR:-${HOME}/.vetta/local-updates}"
-LOCAL_UPDATE_PORT="${VETTA_LOCAL_UPDATE_PORT:-8080}"
+LOCAL_UPDATE_DIR="${ASTRAVIA_LOCAL_UPDATE_DIR:-${HOME}/.astravia/local-updates}"
+LOCAL_UPDATE_PORT="${ASTRAVIA_LOCAL_UPDATE_PORT:-8080}"
 
 [[ -f "${SIGNING_ENV}" ]] || die "找不到签名凭据 ${SIGNING_ENV}（见 docs/deploy/apple-code-signing.md）"
 # shellcheck source=/dev/null
@@ -106,11 +106,11 @@ source "${SIGNING_ENV}"
 
 if [[ "${CHANNEL}" == "local" ]]; then
 	# 本地通道不碰 R2，也不需要通道凭据文件；跳过公证换取迭代速度。
-	export VETTA_SKIP_NOTARIZE=1
-	export VETTA_UPDATE_URL="http://127.0.0.1:${LOCAL_UPDATE_PORT}"
-	unset VETTA_REQUIRE_MAC_SIGNATURE
+	export ASTRAVIA_SKIP_NOTARIZE=1
+	export ASTRAVIA_UPDATE_URL="http://127.0.0.1:${LOCAL_UPDATE_PORT}"
+	unset ASTRAVIA_REQUIRE_MAC_SIGNATURE
 else
-	CHANNEL_ENV="${HOME}/.config/vetta/r2-${CHANNEL}.env"
+	CHANNEL_ENV="${HOME}/.config/astravia/r2-${CHANNEL}.env"
 	[[ -f "${CHANNEL_ENV}" ]] || die "找不到通道配置 ${CHANNEL_ENV}"
 	# shellcheck source=/dev/null
 	source "${CHANNEL_ENV}"
@@ -121,14 +121,14 @@ fi
 step "前置校验"
 
 if [[ "${CHANNEL}" != "local" ]]; then
-	for name in VETTA_R2_ACCOUNT_ID VETTA_R2_ACCESS_KEY_ID VETTA_R2_SECRET_ACCESS_KEY VETTA_R2_BUCKET VETTA_R2_PREFIX VETTA_UPDATE_URL; do
+	for name in ASTRAVIA_R2_ACCOUNT_ID ASTRAVIA_R2_ACCESS_KEY_ID ASTRAVIA_R2_SECRET_ACCESS_KEY ASTRAVIA_R2_BUCKET ASTRAVIA_R2_PREFIX ASTRAVIA_UPDATE_URL; do
 		[[ -n "${!name:-}" ]] || die "${CHANNEL_ENV} 缺少 ${name}"
 	done
 
-	[[ "${VETTA_R2_PREFIX##*/}" == "${CHANNEL}" ]] ||
-		die "通道不一致：VETTA_R2_PREFIX=${VETTA_R2_PREFIX} 的末段不是 ${CHANNEL}"
-	[[ "${VETTA_UPDATE_URL##*/}" == "${CHANNEL}" ]] ||
-		die "通道不一致：VETTA_UPDATE_URL=${VETTA_UPDATE_URL} 的末段不是 ${CHANNEL}"
+	[[ "${ASTRAVIA_R2_PREFIX##*/}" == "${CHANNEL}" ]] ||
+		die "通道不一致：ASTRAVIA_R2_PREFIX=${ASTRAVIA_R2_PREFIX} 的末段不是 ${CHANNEL}"
+	[[ "${ASTRAVIA_UPDATE_URL##*/}" == "${CHANNEL}" ]] ||
+		die "通道不一致：ASTRAVIA_UPDATE_URL=${ASTRAVIA_UPDATE_URL} 的末段不是 ${CHANNEL}"
 fi
 
 [[ -n "${CSC_LINK:-}${CSC_NAME:-}" ]] || die "${SIGNING_ENV} 缺少 CSC_LINK 或 CSC_NAME"
@@ -162,7 +162,7 @@ if [[ "${CHANNEL}" == "local" ]]; then
 	ONLINE_VERSION="$(awk '/^version:/ { print $2; exit }' "${LOCAL_UPDATE_DIR}/latest-mac.yml" 2>/dev/null || true)"
 else
 	ONLINE_VERSION="$(
-		curl -fsS --max-time 20 "${VETTA_UPDATE_URL}/latest-mac.yml?cachebust=$$" 2>/dev/null |
+		curl -fsS --max-time 20 "${ASTRAVIA_UPDATE_URL}/latest-mac.yml?cachebust=$$" 2>/dev/null |
 			awk '/^version:/ { print $2; exit }'
 	)" || ONLINE_VERSION=""
 fi
@@ -179,12 +179,12 @@ else
 	echo "    ${CHANNEL} 线上还没有 macOS 产物"
 fi
 
-echo "    通道       ${CHANNEL}  ->  ${VETTA_UPDATE_URL}"
+echo "    通道       ${CHANNEL}  ->  ${ASTRAVIA_UPDATE_URL}"
 echo "    版本       ${VERSION}$([[ "${VERSION}" != "${PACKAGE_VERSION}" ]] && echo "（package.json 是 ${PACKAGE_VERSION}，QA 覆盖）" || true)"
 echo "    架构       ${ARCH}"
 echo "    签名身份   ${APPLE_TEAM_ID}"
 if [[ "${CHANNEL}" == "local" ]]; then
-	echo "    公证       跳过（VETTA_SKIP_NOTARIZE=1，产物不可分发）"
+	echo "    公证       跳过（ASTRAVIA_SKIP_NOTARIZE=1，产物不可分发）"
 	echo "    分发目录   ${LOCAL_UPDATE_DIR}"
 fi
 
@@ -202,10 +202,10 @@ fi
 
 # ── 构建 ──────────────────────────────────────────────────────────────────────
 
-export VETTA_UPDATE_PROVIDER="generic"
-export VETTA_DESKTOP_BUILD_VERSION="${VERSION}"
+export ASTRAVIA_UPDATE_PROVIDER="generic"
+export ASTRAVIA_DESKTOP_BUILD_VERSION="${VERSION}"
 # local 通道的产物没有公证票据，stapler 校验必然失败，因此不打开这个门禁。
-[[ "${CHANNEL}" == "local" ]] || export VETTA_REQUIRE_MAC_SIGNATURE=1
+[[ "${CHANNEL}" == "local" ]] || export ASTRAVIA_REQUIRE_MAC_SIGNATURE=1
 
 cd "${DESKTOP_DIR}"
 
@@ -262,20 +262,20 @@ if [[ "${CHANNEL}" == "local" ]]; then
 	echo "  1. 起分发服务（另开一个终端，必须保持运行）："
 	echo "       bun run --cwd apps/desktop serve:updates:local"
 	echo "  2. 首次：装 release/ 里的 DMG 到 /Applications，然后播种差分基线："
-	echo "       cp release/Vetta-${VERSION}-arm64-mac.zip ~/Library/Caches/vetta-updater/update.zip"
+	echo "       cp release/Astravia-${VERSION}-arm64-mac.zip ~/Library/Caches/astravia-updater/update.zip"
 	echo "  3. 再构建一个更高版本，从终端启动旧版验证更新："
-	echo "       /Applications/Vetta.app/Contents/MacOS/Vetta"
+	echo "       /Applications/Astravia.app/Contents/MacOS/Astravia"
 	echo "  详见 docs/desktop/macos-auto-update.md 第 7 节"
 	exit 0
 fi
 
-step "发布到 ${VETTA_UPDATE_URL}"
+step "发布到 ${ASTRAVIA_UPDATE_URL}"
 bun run --cwd "${DESKTOP_DIR}" publish:updates:r2
 
 step "完成：${VERSION} 已发布到 ${CHANNEL}"
 echo
 echo "下一步："
 echo "  1. 装 release/ 里的 DMG 到 /Applications"
-echo "  2. 从终端启动看日志：/Applications/Vetta.app/Contents/MacOS/Vetta"
+echo "  2. 从终端启动看日志：/Applications/Astravia.app/Contents/MacOS/Astravia"
 echo "  3. 发布更高版本后验证更新闭环，重点看进度停在 90% 到 ready 之间的耗时"
 echo "  详见 docs/desktop/macos-auto-update.md 第 7 节"

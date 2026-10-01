@@ -1,24 +1,24 @@
-import { type Static, Type } from "@sinclair/typebox";
 import {
 	defineRuntimeAgent,
 	type RuntimeAgentDefinition,
 	type RuntimeAgentSessionPlan,
 	RuntimeHost,
-} from "@vetta/runtime-core";
+} from "@astravia/runtime-core";
 import {
 	type AgentFeatureDefinition,
 	createDefaultRuntimeCapabilityDefinition,
 	type ModelCallContribution,
 	type ModelCallContributionProvider,
 	type RuntimeToolDefinition,
-} from "@vetta/runtime-core/kernel";
+} from "@astravia/runtime-core/kernel";
 import {
 	createMcpRuntimeToolSynchronizer,
 	type McpRuntimeToolBinding,
 	type McpRuntimeToolSource,
 	type McpRuntimeToolSynchronizer,
 	renderMcpToolsInstruction,
-} from "@vetta/runtime-mcp";
+} from "@astravia/runtime-mcp";
+import { type Static, Type } from "@sinclair/typebox";
 import { acquirePreview, executeTextTool } from "./support/preview.js";
 
 const CatalogSearchInputSchema = Type.Object({ query: Type.String() }, { additionalProperties: false });

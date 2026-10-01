@@ -18,7 +18,7 @@ function plugin(rootPath: string, overrides: Partial<InstalledPlugin> = {}): Ins
 		version: "1.2.3",
 		activeVersion: "1.2.3",
 		pluginApiVersion: "^2.0.0",
-		entryUrl: "vetta-plugin://feishu/versions/1.2.3/mf-manifest.json",
+		entryUrl: "astravia-plugin://feishu/versions/1.2.3/mf-manifest.json",
 		moduleFederation: { remoteName: "feishu", expose: "./plugin" },
 		styleUrls: [],
 		permissions: [],
@@ -41,7 +41,7 @@ function plugin(rootPath: string, overrides: Partial<InstalledPlugin> = {}): Ins
 }
 
 async function createPluginPackage(icon?: string): Promise<string> {
-	const root = await mkdtemp(join(tmpdir(), "vetta-plugin-presentation-test-"));
+	const root = await mkdtemp(join(tmpdir(), "astravia-plugin-presentation-test-"));
 	temporaryRoots.push(root);
 	if (icon) {
 		await mkdir(join(root, "assets"));
@@ -65,7 +65,7 @@ describe("installed plugin presentation", () => {
 		const presentation = loadInstalledPluginPackagePresentation(installed);
 
 		expect(resolveInstalledPluginPresentationIcon(installed, presentation)).toBe(
-			"vetta-plugin://feishu/versions/1.2.3/assets/icon.png?v=1.2.3",
+			"astravia-plugin://feishu/versions/1.2.3/assets/icon.png?v=1.2.3",
 		);
 	});
 

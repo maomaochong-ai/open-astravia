@@ -38,7 +38,7 @@ theme-ui 视图与动画实现），逐条给出 file:line 证据后再动刀。
 | # | 根因 | 证据 |
 | --- | --- | --- |
 | 3.1 | 能力页详情抽屉子树被无条件静态 import，把 react-markdown + **shiki 全量高亮器**（几百 KB 解析/求值）拖进能力页首开 chunk——即使从未打开过详情 | `AbilitiesPage.tsx` → `AbilityDetailSheet` → … → `SyntaxHighlightedCode.tsx` |
-| 3.2 | 设计插件产物是 **853KB 单块** JS + 68KB CSS，App 启动即整包求值：其中 history runner 源码（`?raw`，400KB 字符串）与画布/画廊/导出/预览全部静态打进入口 | `vetta-ui-design/src/index.tsx`、`history/runner-host.ts` |
+| 3.2 | 设计插件产物是 **853KB 单块** JS + 68KB CSS，App 启动即整包求值：其中 history runner 源码（`?raw`，400KB 字符串）与画布/画廊/导出/预览全部静态打进入口 | `astravia-ui-design/src/index.tsx`、`history/runner-host.ts` |
 | 3.3 | 画廊每次进入 `force: true` 绕开 5 分钟 TTL 强拉 300+KB 设计体系清单，且同一挂载内重复调用（activate 时已拉过一次） | `gallery/GalleryView.tsx` |
 | 3.4 | 能力卡首屏最多 60 个远程 `<img>` 无 lazy/async，集中抢主线程与网络 | `AbilityIcon.tsx` |
 | 3.5 | 能力页 chunk 本身首次点击才下载求值，低配机上这段时间完全暴露 | `router.tsx`（React.lazy） |
@@ -79,24 +79,24 @@ theme-ui 视图与动画实现），逐条给出 file:line 证据后再动刀。
 9. **`perf(desktop): 能力页首开剥离详情抽屉子树，图标懒加载`**
    详情抽屉 `React.lazy`（带 `?detail=` 才拉取，请求过后保持挂载）；图标
    `loading=lazy decoding=async`。→ 修 3.1、3.4
-10. **`perf(vetta-ui-design): 入口 chunk 836KB→216KB`**
+10. **`perf(astravia-ui-design): 入口 chunk 836KB→216KB`**
     画布/画廊/导出/预览/截图卡五个 UI 面插件内 React.lazy；runner 400KB `?raw`
-    源码改为首次执行历史命令时动态 import。异步 chunk 经 `vetta-plugin://` 的
+    源码改为首次执行历史命令时动态 import。异步 chunk 经 `astravia-plugin://` 的
     可行性已核实（协议按 standard scheme 服务插件目录任意文件；MF runtime 本就
     用动态 `import()` 拉 exposed chunk）。→ 修 3.2、2.5
-11. **`perf(vetta-ui-design): 进入画廊不再强制拉风格库清单`**
+11. **`perf(astravia-ui-design): 进入画廊不再强制拉风格库清单`**
     挂载自动刷新走 TTL + ETag；仅手动「刷新」才 force。→ 修 3.3
 12. **`perf(desktop): 空闲期预取能力页路由 chunk`**
     RootLayout 挂载后 `requestIdleCallback`（8s 兜底）预取，点击零等待。→ 修 3.5
 
-### 构建产物对比（vetta-ui-design）
+### 构建产物对比（astravia-ui-design）
 
 | chunk | 改前 | 改后 |
 | --- | --- | --- |
 | 入口 index | 836KB（gzip ~236KB） | **216KB（gzip 71KB）** |
 | runner（历史命令首次执行才加载） | —（内嵌入口） | 402KB 按需 |
 | CanvasTab（打开画布才加载） | —（内嵌入口） | 110KB 按需 |
-| ExportMockupDialog / GalleryView / VetdPreview / ScreenshotCard | —（内嵌入口） | 50 / 29 / 10 / 4 KB 按需 |
+| ExportMockupDialog / GalleryView / AstraviaDesignPreview / ScreenshotCard | —（内嵌入口） | 50 / 29 / 10 / 4 KB 按需 |
 
 ## 测试矩阵
 
@@ -113,8 +113,8 @@ theme-ui 视图与动画实现），逐条给出 file:line 证据后再动刀。
 | `apps/desktop/.../input-bar/useDelayedUnmount.test.tsx` | 延迟卸载原语：立即挂载 / 延迟卸载 / 中途取消 |
 | `apps/desktop/.../abilities/AbilitiesPage.lazy-detail.test.tsx` | 无 detail 不求值详情模块、有 detail 懒加载、请求过后保持挂载 |
 | `apps/desktop/.../root-layout/useIdleRoutePrefetch.test.tsx` | 挂载同步段不求值、空闲触发才拉取、卸载取消 |
-| `vetta-ui-design/test/entry-lazy-surfaces.test.ts` | 入口静态 import 闭包不含大件 UI 面与 `?raw` runner（防回归的结构合同） |
-| `vetta-ui-design/test/gallery-catalog-refresh.test.tsx` | 挂载刷新不带 force、手动刷新带 force |
+| `astravia-ui-design/test/entry-lazy-surfaces.test.ts` | 入口静态 import 闭包不含大件 UI 面与 `?raw` runner（防回归的结构合同） |
+| `astravia-ui-design/test/gallery-catalog-refresh.test.tsx` | 挂载刷新不带 force、手动刷新带 force |
 
 同时更新：`useSessionManager.*.test.ts` 三个文件的 plugin-events mock 补齐新导出。
 
@@ -135,11 +135,11 @@ theme-ui 视图与动画实现），逐条给出 file:line 证据后再动刀。
 
 ## 已知残留 / 风险
 
-- `vetta-ui-design/test/design-session.test.ts` 两条用例在本轮改动**之前**即失败
+- `astravia-ui-design/test/design-session.test.ts` 两条用例在本轮改动**之前**即失败
   （fakeCtx 缺 `ctx.command` 导致历史初始化路径抛错），与本轮无关，未扩大范围修复。
 - 指示条与展开/折叠动画由 spring 手感换成 200ms ease-out：视觉上略「直」一点，
   属任务允许的简配；`prefers-reduced-motion` 全部尊重。
-- 插件异步 chunk 依赖 `vetta-plugin://` 协议服务任意 dist 文件——该机制被 MF
+- 插件异步 chunk 依赖 `astravia-plugin://` 协议服务任意 dist 文件——该机制被 MF
   runtime 每次插件加载验证，但若未来协议收紧白名单，需同步放行 `assets/*.js`。
 - 首次冷启动的首轮发送仍会等插件宿主（语义保留）；插件入口瘦身后该窗口显著缩短。
 
@@ -150,7 +150,7 @@ theme-ui 视图与动画实现），逐条给出 file:line 证据后再动刀。
   本机环境问题**（`plugin-dev-watch` 的 macOS `/private` 符号链接路径断言、
   `im-host/coding-agent-spec` 的 Windows 可执行前缀断言在本机 node 下的期望差），
   本轮 diff 未触碰 `src/main`，与改动无关。
-- `vetta-ui-design`：`bunx tsc --noEmit` 绿；`bun run build` 产物如上表；除上述两条
+- `astravia-ui-design`：`bunx tsc --noEmit` 绿；`bun run build` 产物如上表；除上述两条
   既有失败外测试全绿（500+ 通过）。
 - 未运行：真实 Electron E2E / `verify:ui:*`（本轮改动均有组件级合同测试覆盖，
   低层测试可证明；建议下次发版前照常跑一轮启动连通性检查）。

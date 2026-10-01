@@ -1,4 +1,4 @@
-import type { PluginAiModelListResult } from "@vetta-org/plugin-sdk";
+import type { PluginAiModelListResult } from "@astravia-org/plugin-sdk";
 import { createContext, useContext } from "react";
 import type { ChessStore } from "./game/store";
 

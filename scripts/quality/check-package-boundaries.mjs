@@ -44,14 +44,14 @@ const LIB_PREFIXES = [
 ];
 
 const MANIFEST_TRUTH_PACKAGE_NAMES = new Set([
-	"@vetta/coding-agent",
-	"@vetta/runtime-knowledge",
-	"@vetta/runtime-storage",
-	"@vetta/runtime-node",
-	"@vetta/runtime-tools",
-	"@vetta/runtime-desktop",
-	"@vetta/cli-host",
-	"@vetta/desktop",
+	"@astravia/coding-agent",
+	"@astravia/runtime-knowledge",
+	"@astravia/runtime-storage",
+	"@astravia/runtime-node",
+	"@astravia/runtime-tools",
+	"@astravia/runtime-desktop",
+	"@astravia/cli-host",
+	"@astravia/desktop",
 ]);
 
 const RETIRED_CODING_AGENT_TOOL_EXPORTS = new Set([
@@ -201,7 +201,7 @@ function usesDesktopPluginGlobal(filePath, text) {
 	const visit = (node) => {
 		if (
 			ts.isPropertyAccessExpression(node) &&
-			node.name.text === "vetta" &&
+			node.name.text === "astravia" &&
 			ts.isIdentifier(node.expression) &&
 			node.expression.text === "window"
 		) {
@@ -216,7 +216,7 @@ function usesDesktopPluginGlobal(filePath, text) {
 
 function forbiddenAppId(specifier) {
 	const normalized = specifier.replaceAll("\\", "/");
-	for (const packageName of ["@vetta/desktop", "@vetta/cli-host", "@vetta/site", "shadcn-admin"]) {
+	for (const packageName of ["@astravia/desktop", "@astravia/cli-host", "@astravia/site", "shadcn-admin"]) {
 		if (normalized === packageName || normalized.startsWith(`${packageName}/`)) return packageName;
 	}
 	const match = normalized.match(/(?:^|\/)(desktop|cli-host|admin|site)(?:\/|$)/);
@@ -262,10 +262,10 @@ function checkDesktopCliSourceImports(posixPath, specifiers, findings) {
 function checkDesktopRendererMcpImports(posixPath, text, findings) {
 	if (!posixPath.startsWith("apps/desktop/src/renderer/")) return;
 	for (const specifier of collectRuntimeImportSpecifiers(posixPath, text)) {
-		if (specifier === "@vetta/runtime-mcp/browser") continue;
-		if (specifier === "@vetta/runtime-mcp" || specifier.startsWith("@vetta/runtime-mcp/")) {
+		if (specifier === "@astravia/runtime-mcp/browser") continue;
+		if (specifier === "@astravia/runtime-mcp" || specifier.startsWith("@astravia/runtime-mcp/")) {
 			findings.push(
-				`${posixPath}: desktop renderer must import MCP runtime values from @vetta/runtime-mcp/browser (${specifier})`,
+				`${posixPath}: desktop renderer must import MCP runtime values from @astravia/runtime-mcp/browser (${specifier})`,
 			);
 		}
 	}
@@ -275,11 +275,11 @@ function checkPluginDesktopGlobal(posixPath, text, findings) {
 	if (!isPluginPackageFile(posixPath) || posixPath.endsWith(".d.ts")) return;
 	// Explicit exceptions that must touch the host Desktop API surface:
 	// - plugin-workbench: trusted host management UI (install/dev-watch)
-	// - security-probe: intentional audit of window.vetta bypass / trust boundary
+	// - security-probe: intentional audit of window.astravia bypass / trust boundary
 	if (posixPath.startsWith("packages/plugins/presets/plugin-workbench/")) return;
 	if (posixPath.startsWith("packages/plugins/externals/security-probe/")) return;
 	if (usesDesktopPluginGlobal(posixPath, text)) {
-		findings.push(`${posixPath}: plugins must use the public plugin SDK instead of window.vetta`);
+		findings.push(`${posixPath}: plugins must use the public plugin SDK instead of window.astravia`);
 	}
 }
 
@@ -289,13 +289,13 @@ function checkCapabilityLayerImports(posixPath, specifiers, findings) {
 	if (!isCapabilitySdk && !isCapabilityRuntime) return;
 
 	const forbiddenPrefixes = [
-		"@vetta-org/plugin-sdk",
-		"@vetta/action-rpc",
-		"@vetta/desktop",
-		"@vetta-org/theme-sdk",
-		"@vetta-org/theme-ui",
+		"@astravia-org/plugin-sdk",
+		"@astravia/action-rpc",
+		"@astravia/desktop",
+		"@astravia-org/theme-sdk",
+		"@astravia-org/theme-ui",
 	];
-	if (isCapabilitySdk) forbiddenPrefixes.push("@vetta/capability-runtime");
+	if (isCapabilitySdk) forbiddenPrefixes.push("@astravia/capability-runtime");
 	for (const specifier of specifiers) {
 		if (forbiddenPrefixes.some((prefix) => specifier === prefix || specifier.startsWith(`${prefix}/`))) {
 			findings.push(
@@ -310,7 +310,7 @@ function checkPublicSystemSdkImports(posixPath, specifiers, findings) {
 		posixPath.startsWith("packages/theme-sdk/") || posixPath.startsWith("packages/plugins/plugin-sdk/");
 	if (!isPublicSystemSdk) return;
 	for (const specifier of specifiers) {
-		if (specifier.startsWith("@vetta-org/capability-sdk/internal/")) {
+		if (specifier.startsWith("@astravia-org/capability-sdk/internal/")) {
 			findings.push(`${posixPath}: public system SDKs must not expose built-in capability adapters (${specifier})`);
 		}
 	}
@@ -348,7 +348,7 @@ function checkGreenfieldRuntimeImports(posixPath, specifiers, findings) {
 		posixPath.startsWith("packages/runtime-mcp/src/");
 	if (!isGreenfieldRuntime) return;
 	for (const specifier of specifiers) {
-		if (specifier === "@vetta/coding-agent" || specifier.startsWith("@vetta/coding-agent/")) {
+		if (specifier === "@astravia/coding-agent" || specifier.startsWith("@astravia/coding-agent/")) {
 			findings.push(`${posixPath}: greenfield runtime modules must not import coding-agent (${specifier})`);
 		}
 	}
@@ -359,10 +359,10 @@ function checkStorageProtocolImports(posixPath, specifiers, findings) {
 	for (const specifier of specifiers) {
 		if (
 			specifier.startsWith("node:") ||
-			specifier === "@vetta/runtime-node" ||
-			specifier.startsWith("@vetta/runtime-node/") ||
-			specifier === "@vetta/runtime-desktop" ||
-			specifier.startsWith("@vetta/runtime-desktop/")
+			specifier === "@astravia/runtime-node" ||
+			specifier.startsWith("@astravia/runtime-node/") ||
+			specifier === "@astravia/runtime-desktop" ||
+			specifier.startsWith("@astravia/runtime-desktop/")
 		) {
 			findings.push(`${posixPath}: runtime-storage protocol must not import platform implementation (${specifier})`);
 		}
@@ -374,10 +374,10 @@ function checkToolsProtocolImports(posixPath, specifiers, findings) {
 	for (const specifier of specifiers) {
 		if (
 			specifier.startsWith("node:") ||
-			specifier === "@vetta/runtime-node" ||
-			specifier.startsWith("@vetta/runtime-node/") ||
-			specifier === "@vetta/runtime-desktop" ||
-			specifier.startsWith("@vetta/runtime-desktop/")
+			specifier === "@astravia/runtime-node" ||
+			specifier.startsWith("@astravia/runtime-node/") ||
+			specifier === "@astravia/runtime-desktop" ||
+			specifier.startsWith("@astravia/runtime-desktop/")
 		) {
 			findings.push(`${posixPath}: runtime-tools protocol must not import platform implementation (${specifier})`);
 		}
@@ -389,10 +389,10 @@ function checkMcpProtocolImports(posixPath, specifiers, findings) {
 	for (const specifier of specifiers) {
 		if (
 			specifier.startsWith("node:") ||
-			specifier === "@vetta/runtime-node" ||
-			specifier.startsWith("@vetta/runtime-node/") ||
-			specifier === "@vetta/runtime-desktop" ||
-			specifier.startsWith("@vetta/runtime-desktop/")
+			specifier === "@astravia/runtime-node" ||
+			specifier.startsWith("@astravia/runtime-node/") ||
+			specifier === "@astravia/runtime-desktop" ||
+			specifier.startsWith("@astravia/runtime-desktop/")
 		) {
 			findings.push(`${posixPath}: runtime-mcp protocol must not import platform implementation (${specifier})`);
 		}
@@ -404,10 +404,10 @@ function checkRuntimeCorePlatformImports(posixPath, text, specifiers, findings) 
 	for (const specifier of specifiers) {
 		if (
 			specifier.startsWith("node:") ||
-			specifier === "@vetta/runtime-node" ||
-			specifier.startsWith("@vetta/runtime-node/") ||
-			specifier === "@vetta/runtime-desktop" ||
-			specifier.startsWith("@vetta/runtime-desktop/")
+			specifier === "@astravia/runtime-node" ||
+			specifier.startsWith("@astravia/runtime-node/") ||
+			specifier === "@astravia/runtime-desktop" ||
+			specifier.startsWith("@astravia/runtime-desktop/")
 		) {
 			findings.push(
 				`${posixPath}: runtime-core must use host ports instead of platform implementation (${specifier})`,
@@ -495,9 +495,9 @@ function checkCodingAgentRootImports(posixPath, specifiers, findings) {
 		posixPath.startsWith("packages/runtime-tools/src/coding/") ||
 		posixPath.startsWith("packages/runtime-mcp/src/");
 	if (!isInternalConsumer || hasStricterProductionBoundary) return;
-	if (specifiers.includes("@vetta/coding-agent")) {
+	if (specifiers.includes("@astravia/coding-agent")) {
 		findings.push(
-			`${posixPath}: internal consumers must use an explicit @vetta/coding-agent subpath instead of the compatibility root`,
+			`${posixPath}: internal consumers must use an explicit @astravia/coding-agent subpath instead of the compatibility root`,
 		);
 	}
 }
@@ -515,8 +515,8 @@ function checkCodingAgentToolPublicSurfaceBoundary(posixPath, text, findings) {
 			: undefined;
 		if (
 			moduleSpecifier?.includes("core/tools") ||
-			moduleSpecifier === "@vetta/runtime-tools/coding" ||
-			moduleSpecifier?.startsWith("@vetta/runtime-tools/coding/")
+			moduleSpecifier === "@astravia/runtime-tools/coding" ||
+			moduleSpecifier?.startsWith("@astravia/runtime-tools/coding/")
 		) {
 			findings.push(
 				`${posixPath}: coding-agent public surfaces must not forward concrete Tool implementations (${moduleSpecifier})`,
@@ -536,7 +536,7 @@ function checkCodingAgentToolPublicSurfaceBoundary(posixPath, text, findings) {
 }
 
 function workspacePackageName(specifier) {
-	if (!specifier.startsWith("@vetta/") && !specifier.startsWith("@vetta-org/")) return undefined;
+	if (!specifier.startsWith("@astravia/") && !specifier.startsWith("@astravia-org/")) return undefined;
 	return specifier.split("/").slice(0, 2).join("/");
 }
 
@@ -557,7 +557,7 @@ function checkWorkspaceManifestImports(posixPath, specifiers, manifest, findings
 function checkRuntimeCoreImports(posixPath, specifiers, findings) {
 	if (!posixPath.startsWith("packages/runtime-core/src/")) return;
 	for (const specifier of specifiers) {
-		if (specifier === "@vetta/coding-agent" || specifier.startsWith("@vetta/coding-agent/")) {
+		if (specifier === "@astravia/coding-agent" || specifier.startsWith("@astravia/coding-agent/")) {
 			findings.push(`${posixPath}: runtime-core production code must not import coding-agent (${specifier})`);
 		}
 	}
@@ -566,8 +566,9 @@ function checkRuntimeCoreImports(posixPath, specifiers, findings) {
 function checkAgentCoreImports(posixPath, specifiers, findings) {
 	if (!posixPath.startsWith("packages/agent/src/")) return;
 	for (const specifier of specifiers) {
-		const importsRuntime = specifier.startsWith("@vetta/runtime-");
-		const importsCodingAgent = specifier === "@vetta/coding-agent" || specifier.startsWith("@vetta/coding-agent/");
+		const importsRuntime = specifier.startsWith("@astravia/runtime-");
+		const importsCodingAgent =
+			specifier === "@astravia/coding-agent" || specifier.startsWith("@astravia/coding-agent/");
 		if (importsRuntime || importsCodingAgent) {
 			findings.push(`${posixPath}: agent-core must not import runtime or product packages (${specifier})`);
 		}
@@ -604,15 +605,15 @@ export function findDurablePackageBoundaryViolations(posixPath, text, options = 
 export function findDurablePackageManifestBoundaryViolations(manifest) {
 	const findings = [];
 	if (!manifest) return findings;
-	if (manifest.name === "@vetta/agent-core") {
+	if (manifest.name === "@astravia/agent-core") {
 		const productionDependencies = {
 			...manifest.dependencies,
 			...manifest.optionalDependencies,
 			...manifest.peerDependencies,
 		};
 		for (const dependency of Object.keys(productionDependencies)) {
-			if (dependency.startsWith("@vetta/runtime-") || dependency === "@vetta/coding-agent") {
-				findings.push(`@vetta/agent-core: lower-level execution kernel must not depend on ${dependency}`);
+			if (dependency.startsWith("@astravia/runtime-") || dependency === "@astravia/coding-agent") {
+				findings.push(`@astravia/agent-core: lower-level execution kernel must not depend on ${dependency}`);
 			}
 		}
 	}

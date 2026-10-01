@@ -4,9 +4,9 @@ import type { DesktopApi } from "../api.js";
 import { onIpcEvent } from "./helper.js";
 
 const NOTIFICATION_CHANNELS = {
-	SET_FOREGROUND: "vetta:notification:set-foreground-session",
-	NAVIGATE: "vetta:notification:navigate",
-	SOUND: "vetta:notification:sound",
+	SET_FOREGROUND: "astravia:notification:set-foreground-session",
+	NAVIGATE: "astravia:notification:navigate",
+	SOUND: "astravia:notification:sound",
 } as const;
 
 export function createNotificationApi(ipc: IpcRenderer): Pick<DesktopApi, "notification"> {

@@ -1,7 +1,7 @@
 import type { JSX } from "react";
-import { useThemeComponent } from "@vetta-org/theme-sdk";
-import type { WindowControlsComponentProps } from "@vetta-org/theme-sdk/app-shell";
-import { cn } from "@vetta-org/ui";
+import { useThemeComponent } from "@astravia-org/theme-sdk";
+import type { WindowControlsComponentProps } from "@astravia-org/theme-sdk/app-shell";
+import { cn } from "@astravia-org/ui";
 import { ThemeSurface } from "../appearance/ThemeSurface";
 import { WindowControlButton } from "./WindowControlButton";
 

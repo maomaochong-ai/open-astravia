@@ -99,7 +99,7 @@ export class DesktopMcpAppBridge {
 						...(this.options.surface.capabilities.serverTools ? { serverTools: {} } : {}),
 						serverResources: {},
 					},
-					hostInfo: { name: "Vetta Desktop", version: "1" },
+					hostInfo: { name: "Astravia Desktop", version: "1" },
 					hostContext: {
 						displayMode: "inline",
 						availableDisplayModes: ["inline"],
@@ -112,11 +112,11 @@ export class DesktopMcpAppBridge {
 				return {};
 			case "tools/call": {
 				const call = readToolCall(params);
-				return await window.vetta.session.callMcpAppTool({ surfaceId: this.options.surface.id, ...call });
+				return await window.astravia.session.callMcpAppTool({ surfaceId: this.options.surface.id, ...call });
 			}
 			case "resources/read": {
 				const uri = readResourceUri(params);
-				return await window.vetta.session.readMcpAppResource({ surfaceId: this.options.surface.id, uri });
+				return await window.astravia.session.readMcpAppResource({ surfaceId: this.options.surface.id, uri });
 			}
 			case "ui/request-display-mode":
 				assertInlineDisplayMode(params);

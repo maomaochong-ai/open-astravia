@@ -19,7 +19,7 @@
 权限：`ui.slot.activity-tab`（读会话则再加 `agent.session.read`）。
 
 ```tsx
-import { definePlugin } from "@vetta-org/plugin-sdk";
+import { definePlugin } from "@astravia-org/plugin-sdk";
 import "./style.css"; // Tailwind pipeline only
 
 function Panel() {
@@ -76,7 +76,7 @@ ctx.agent.registerTool({
 解析失败时**必须** `notify({ message, error })`（无权限），便于用户复制堆栈：
 
 ```tsx
-import { definePlugin, type PluginFilePreviewProps, type PluginUiApi } from "@vetta-org/plugin-sdk";
+import { definePlugin, type PluginFilePreviewProps, type PluginUiApi } from "@astravia-org/plugin-sdk";
 import { useEffect, useState } from "react";
 import "./style.css";
 
@@ -177,7 +177,7 @@ ctx.ui.registerNewSessionContext({
   id: "design-styles",
   label: "%tab.label%",
   // 至少声明一条激活条件，且只能写本插件自己的智能体 / skill / MCP。
-  activateWhen: { agents: ["designer"], skills: ["vetta-ui-design"] },
+  activateWhen: { agents: ["designer"], skills: ["astravia-ui-design"] },
   width: "wide", // 画廊类内容才用 wide；补充说明用默认的 "input"
   render: (context) => <StyleLibrary context={context} />,
 });
@@ -196,4 +196,4 @@ ctx.ui.registerNewSessionContext({
 - 顶层禁止依赖共享 React 的 JSX（放进组件或 activate 内）
 - 改代码不生效：bump `plugin.json` version + reload
 - **可能失败的路径必须 `ctx.ui.notify({ message, error })`**，禁止吞掉 error — `ui-slots.md` → notify
-- 用户工程依赖用 **registry semver** 的 `@vetta-org/plugin-sdk` / `@vetta-org/plugin-vite`，禁止 `workspace:*`
+- 用户工程依赖用 **registry semver** 的 `@astravia-org/plugin-sdk` / `@astravia-org/plugin-vite`，禁止 `workspace:*`

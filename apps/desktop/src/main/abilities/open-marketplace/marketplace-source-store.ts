@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { getVettaHomePath } from "@vetta/action-rpc";
-import { atomicWriteJSON } from "@vetta/toolkit/atomic-write";
+import { getAstraviaHomePath } from "@astravia/action-rpc";
+import { atomicWriteJSON } from "@astravia/toolkit/atomic-write";
 import type {
 	AddMarketplaceSourceInput,
 	MarketplaceSource,
@@ -128,11 +128,11 @@ function parseSource(value: unknown): MarketplaceSource | null {
 }
 
 function createDefaultSources(now: Date): MarketplaceSource[] {
-	const configuredRepository = process.env.VETTA_OPEN_MARKETPLACE_REPOSITORY?.trim();
-	// 发行方可用 fork 仓库替换官方源；未配置时始终注册 Vetta 官方源。
+	const configuredRepository = process.env.ASTRAVIA_OPEN_MARKETPLACE_REPOSITORY?.trim();
+	// 发行方可用 fork 仓库替换官方源；未配置时始终注册 Astravia 官方源。
 	const normalizedRepository = normalizeGitHubRepository(configuredRepository || OFFICIAL_MARKETPLACE_REPOSITORY);
 	const defaultRef = normalizedRepository === OFFICIAL_MARKETPLACE_REPOSITORY ? OFFICIAL_MARKETPLACE_REF : "main";
-	const ref = validateRef(process.env.VETTA_OPEN_MARKETPLACE_REF, defaultRef);
+	const ref = validateRef(process.env.ASTRAVIA_OPEN_MARKETPLACE_REF, defaultRef);
 	const timestamp = now.toISOString();
 	return [
 		{
@@ -141,7 +141,8 @@ function createDefaultSources(now: Date): MarketplaceSource[] {
 			type: "github",
 			repository: normalizedRepository,
 			archiveUrl:
-				process.env.VETTA_OPEN_MARKETPLACE_ARCHIVE_URL?.trim() || marketplaceArchiveUrl(normalizedRepository, ref),
+				process.env.ASTRAVIA_OPEN_MARKETPLACE_ARCHIVE_URL?.trim() ||
+				marketplaceArchiveUrl(normalizedRepository, ref),
 			ref,
 			enabled: true,
 			builtin: true,
@@ -159,7 +160,7 @@ export class MarketplaceSourceStore {
 	private readonly defaultSources: MarketplaceSource[];
 
 	constructor(options: MarketplaceSourceStoreOptions = {}) {
-		this.filePath = options.filePath ?? join(getVettaHomePath(), "open-marketplaces", "sources.json");
+		this.filePath = options.filePath ?? join(getAstraviaHomePath(), "open-marketplaces", "sources.json");
 		this.now = options.now ?? (() => new Date());
 		this.defaultSources = options.defaultSources ?? createDefaultSources(this.now());
 	}

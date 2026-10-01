@@ -1,5 +1,5 @@
-import type { RuntimeConfigurationSnapshotSource } from "@vetta/runtime-core/configuration";
-import type { AsyncExecutionGate, BackgroundCommandService, CodingToolRegistration } from "@vetta/runtime-tools";
+import type { RuntimeConfigurationSnapshotSource } from "@astravia/runtime-core/configuration";
+import type { AsyncExecutionGate, BackgroundCommandService, CodingToolRegistration } from "@astravia/runtime-tools";
 import type { ConversationScenario } from "../../profiles/index.js";
 
 export interface CodingAgentToolEnvironmentContext {

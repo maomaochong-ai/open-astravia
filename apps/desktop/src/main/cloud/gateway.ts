@@ -1,12 +1,12 @@
-import type { VettaGatewayRequest, VettaGatewayResponse } from "../cloud-bridge.js";
+import type { AstraviaGatewayRequest, AstraviaGatewayResponse } from "../cloud-bridge.js";
 import { DEFAULT_SERVER_URL } from "../constants.js";
 import { readSettings } from "../ipc/settings.js";
 import { getAppLogger } from "../logger.js";
 import { tryRefreshAccessToken } from "./auth-session.js";
 
-export type { VettaGatewayRequest, VettaGatewayResponse };
+export type { AstraviaGatewayRequest, AstraviaGatewayResponse };
 
-const log = getAppLogger("vetta-gateway");
+const log = getAppLogger("astravia-gateway");
 
 const DEFAULT_TIMEOUT_MS = 300_000;
 const MAX_TIMEOUT_MS = 300_000;
@@ -49,7 +49,7 @@ async function readBody(response: Response): Promise<string> {
 	return body;
 }
 
-function unwrap<T>(status: number, body: string): VettaGatewayResponse<T> {
+function unwrap<T>(status: number, body: string): AstraviaGatewayResponse<T> {
 	let envelope: ApiEnvelope<T> | undefined;
 	try {
 		envelope = body.length > 0 ? (JSON.parse(body) as ApiEnvelope<T>) : undefined;
@@ -58,7 +58,7 @@ function unwrap<T>(status: number, body: string): VettaGatewayResponse<T> {
 	}
 	const code = envelope?.code ?? -1;
 	const ok = status >= 200 && status < 300 && code === 0;
-	const result: VettaGatewayResponse<T> = {
+	const result: AstraviaGatewayResponse<T> = {
 		ok,
 		status,
 		code,
@@ -68,11 +68,11 @@ function unwrap<T>(status: number, body: string): VettaGatewayResponse<T> {
 	return result;
 }
 
-/** Authenticated Vetta `/api/v1` transport. Callers never receive the token. */
-export async function requestVettaGateway<T = unknown>(
-	request: VettaGatewayRequest,
+/** Authenticated Astravia `/api/v1` transport. Callers never receive the token. */
+export async function requestAstraviaGateway<T = unknown>(
+	request: AstraviaGatewayRequest,
 	signal?: AbortSignal,
-): Promise<VettaGatewayResponse<T>> {
+): Promise<AstraviaGatewayResponse<T>> {
 	const url = `${baseUrl()}/${resolvePath(request.path)}`;
 	const method = request.method ?? (request.body === undefined ? "GET" : "POST");
 	const body = request.body === undefined ? undefined : JSON.stringify(request.body);

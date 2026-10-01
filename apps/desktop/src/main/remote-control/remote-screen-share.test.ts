@@ -1,4 +1,4 @@
-import type { RemoteScreenStatus } from "@vetta/remote-control";
+import type { RemoteScreenStatus } from "@astravia/remote-control";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { RemoteScreenShare, type ScreenShareHost } from "./remote-screen-share.js";
 

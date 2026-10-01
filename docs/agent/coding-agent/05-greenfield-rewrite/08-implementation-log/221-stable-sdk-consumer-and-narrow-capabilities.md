@@ -32,7 +32,7 @@
 ### Workspace path map 漏掉 SDK 子路径
 
 包的 `exports` 已经存在 `./sdk`，但根 `tsconfig.json` 没有对应源码 path map。示例纳入根 TypeScript include 后，
-`@vetta/coding-agent/sdk` 会被通配符错误解析到不存在的 `packages/coding-agent/src/sdk`。
+`@astravia/coding-agent/sdk` 会被通配符错误解析到不存在的 `packages/coding-agent/src/sdk`。
 
 ## 架构决策
 
@@ -80,7 +80,7 @@ Parser/Adapter 边界增加 TypeBox 校验。
 
 ### 官方示例迁移
 
-以下示例已迁移到 `@vetta/coding-agent/sdk`：
+以下示例已迁移到 `@astravia/coding-agent/sdk`：
 
 - `01-minimal.ts`
 - `03-custom-prompt.ts`
@@ -105,7 +105,7 @@ Context 和 Prompt Template 改用资源值贡献。
 - 原 `docs/sdk.md` 改为包根兼容 API 参考，并在开头指向稳定文档；
 - 包 README 的 Programmatic Usage 改用稳定入口；
 - 示例 README 增加 stable、host-service、compatibility 分类；
-- 根 TypeScript path map 增加 `@vetta/coding-agent/sdk`，保证源码工作区消费者与发布 exports 一致；
+- 根 TypeScript path map 增加 `@astravia/coding-agent/sdk`，保证源码工作区消费者与发布 exports 一致；
 - CHANGELOG 的 `[Unreleased]` 记录新增合同与消费者迁移。
 
 ## 测试中发现并确认的语义

@@ -34,7 +34,7 @@ export const ACTIVITY_PANEL_MIN_CHAT_AREA = 384;
  */
 export const ACTIVITY_PANEL_PREVIEW_MIN_WIDTH = 520;
 
-export const ACTIVITY_PANEL_WIDTH_STORAGE_KEY = "vetta-activity-panel-width";
+export const ACTIVITY_PANEL_WIDTH_STORAGE_KEY = "astravia-activity-panel-width";
 
 /** 当前窗口宽度下，活动面板的最大宽度。 */
 export function activityPanelMaxWidth(windowWidth: number): number {
@@ -243,7 +243,7 @@ function createPersistedCwdStringListAtom(storageKey: string) {
 	);
 }
 
-export const ATTACHED_PLUGIN_TABS_STORAGE_KEY = "vetta-activity-plugin-tabs";
+export const ATTACHED_PLUGIN_TABS_STORAGE_KEY = "astravia-activity-plugin-tabs";
 
 /**
  * 活动面板插件 tab 的 attach 记录：会话 cwd → ["pluginId:tabId"]（见 ADR-0026）。
@@ -252,7 +252,7 @@ export const ATTACHED_PLUGIN_TABS_STORAGE_KEY = "vetta-activity-plugin-tabs";
  */
 export const attachedPluginTabsAtom = createPersistedCwdStringListAtom(ATTACHED_PLUGIN_TABS_STORAGE_KEY);
 
-export const HIDDEN_ACTIVITY_TABS_STORAGE_KEY = "vetta-activity-hidden-tabs";
+export const HIDDEN_ACTIVITY_TABS_STORAGE_KEY = "astravia-activity-hidden-tabs";
 
 /**
  * 用户手动隐藏（收回到"+"下拉）的活动面板 tab：会话 cwd → [tabKey]。
@@ -261,7 +261,7 @@ export const HIDDEN_ACTIVITY_TABS_STORAGE_KEY = "vetta-activity-hidden-tabs";
  */
 export const hiddenActivityTabsAtom = createPersistedCwdStringListAtom(HIDDEN_ACTIVITY_TABS_STORAGE_KEY);
 
-export const ACTIVITY_TAB_ORDER_STORAGE_KEY = "vetta-activity-tab-order";
+export const ACTIVITY_TAB_ORDER_STORAGE_KEY = "astravia-activity-tab-order";
 
 /**
  * 活动面板 tab 的用户拖拽排序：会话 cwd → [tabKey...]。

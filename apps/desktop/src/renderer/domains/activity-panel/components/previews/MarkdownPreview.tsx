@@ -1,6 +1,6 @@
 import { useMarkdownHost } from "@shared/hooks/useMarkdownHost";
 import { pathDirname } from "@shared/lib/utils";
-import { MarkdownPreviewView } from "@vetta-org/theme-ui/activity";
+import { MarkdownPreviewView } from "@astravia-org/theme-ui/activity";
 import { memo } from "react";
 import { useMarkdownLabels } from "@shared/hooks/useMarkdownLabels";
 import { useMarkdownPreviewModel } from "../../hooks/useMarkdownPreviewModel";

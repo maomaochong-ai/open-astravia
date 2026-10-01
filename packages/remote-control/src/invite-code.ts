@@ -19,14 +19,14 @@ import { RemoteProtocolError } from "./protocol.js";
 export const INVITE_CODE_LENGTH = 8;
 export const INVITE_PASSWORD_LENGTH = 6;
 export const INVITE_KDF_ITERATIONS = 200_000;
-export const INVITE_ASSOCIATED_DATA = "vetta-invite-v1";
+export const INVITE_ASSOCIATED_DATA = "astravia-invite-v1";
 /** Longest sealed envelope the relay keeps, as serialized JSON. */
 export const MAX_INVITE_ENVELOPE_CHARS = 8_192;
 
 /** Crockford base32: no I, L, O or U, so a code read aloud or retyped survives. */
 const CODE_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
-const BOX_ID_PREFIX = "vetta-invite-box-v1:";
-const KEY_SALT_PREFIX = "vetta-invite-key-v1:";
+const BOX_ID_PREFIX = "astravia-invite-box-v1:";
+const KEY_SALT_PREFIX = "astravia-invite-key-v1:";
 const NONCE_LENGTH = 24;
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
@@ -86,7 +86,7 @@ export interface InviteQr {
 	readonly relayBaseUrl?: string;
 }
 
-const INVITE_QR_PREFIX = "VETTA://PAIR/";
+const INVITE_QR_PREFIX = "ASTRAVIA://PAIR/";
 
 export function buildInviteQr(invite: InviteQr): string {
 	const text = `${INVITE_QR_PREFIX}${invite.code}/${invite.password}`;

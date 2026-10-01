@@ -145,7 +145,7 @@ export function useAtPanelModel({
 		}
 		let cancelled = false;
 		setLoading(true);
-		void window.vetta.fs.readDir(directory).then(
+		void window.astravia.fs.readDir(directory).then(
 			(result) => {
 				if (cancelled) return;
 				const visible = result.filter((e) => !HIDDEN.has(e.name) && !e.name.startsWith("."));
@@ -175,7 +175,7 @@ export function useAtPanelModel({
 			return;
 		}
 		let cancelled = false;
-		void window.vetta.fs.listFilesRecursive(directory).then(
+		void window.astravia.fs.listFilesRecursive(directory).then(
 			(files) => {
 				if (!cancelled) setAllFiles(files);
 			},

@@ -14,7 +14,7 @@ export type PluginOfficialGeneralSettingsUpdate =
 	| { operation: "set-workspace"; path: string };
 
 export interface PluginOfficialExperimentalSettings {
-	vettaCli: boolean;
+	astraviaCli: boolean;
 	promptPrediction: boolean;
 	agentSkills: boolean;
 }
@@ -299,7 +299,7 @@ export interface PluginOfficialProviderSummary {
 	/** 图标 symbol；配合 `ProviderIcon` 解析为内置图标，无则不画图标。 */
 	icon?: string;
 	/**
-	 * true = 来自登录后服务端下发的远程目录（如 Vetta Go），凭据是账号登录态而非本地
+	 * true = 来自登录后服务端下发的远程目录（如 Astravia Go），凭据是账号登录态而非本地
 	 * API Key，因此不会出现在本地模型配置里，也不可用 `upsertProvider` / `removeProvider` 改。
 	 */
 	remote?: boolean;
@@ -565,7 +565,7 @@ export interface PluginOfficialApi {
 	models: {
 		/**
 		 * 用户当前可选的全部模型：本地配置的 provider **加上**登录后服务端下发的远程目录
-		 * （Vetta Go 等，`remote: true`）。同一个 `provider/modelId` 以本地为准。
+		 * （Astravia Go 等，`remote: true`）。同一个 `provider/modelId` 以本地为准。
 		 * 与宿主输入栏模型选择器同一口径。
 		 */
 		list(): Promise<{ defaultModel: string | null; providers: PluginOfficialProviderSummary[] }>;

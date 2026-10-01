@@ -1,8 +1,8 @@
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
-import type { AssistantMessage, Message, StopReason } from "@vetta/ai";
-import { createCodingAgentRuntimeSessionSelection } from "@vetta/coding-agent/composition";
-import type { RuntimeHost, SessionExecutionMode } from "@vetta/runtime-core";
+import type { AssistantMessage, Message, StopReason } from "@astravia/ai";
+import { createCodingAgentRuntimeSessionSelection } from "@astravia/coding-agent/composition";
+import type { RuntimeHost, SessionExecutionMode } from "@astravia/runtime-core";
 import { monitorRuntimeSession, recordBatchRunStarted } from "../app-monitor/app-monitor-service.js";
 import { resolveExecutionMode } from "../execution-mode.js";
 import { readDesktopConfig } from "../ipc/fs.js";
@@ -472,7 +472,7 @@ async function runTaskInner(
 			sessionId = existingSessionId;
 			sessionPath = existingSessionPath;
 		} else {
-			const sessionDir = join(project.id, ".vetta", "sessions");
+			const sessionDir = join(project.id, ".astravia", "sessions");
 			const taskSystemPrompt = buildTaskSystemPrompt(task);
 			// 为本任务准备私有临时目录。三套环境变量同时设：
 			// TMPDIR 覆盖 macOS / Linux，TEMP + TMP 覆盖 Windows，

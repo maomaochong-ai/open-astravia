@@ -1,4 +1,4 @@
-import type { CodingToolRegistration } from "@vetta/runtime-tools";
+import type { CodingToolRegistration } from "@astravia/runtime-tools";
 import type { CodingAgentSandboxEnvironment } from "../../composition/contracts/session-execution-environment.js";
 import type { CodingAgentSandboxAuthorizationPort } from "./authorization-contract.js";
 import { createSandboxToolRegistrations } from "./tool-utils.js";

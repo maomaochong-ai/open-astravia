@@ -5,22 +5,22 @@ description: 在设置 → Claw 中配置 IM 渠道，选择绑定、凭证或�
 
 消息渠道配置位于 **设置 → Claw** 的 **消息渠道** 区域。当前客户端注册了八种传输渠道；不同渠道的接入方式、平台限制和成熟度不同。同一时间只有一个 **活动渠道**，切换前请确认旧渠道上的任务已结束。
 
-完成渠道配置后，阅读 [Vetta Claw](/product/claw/) 了解总开关、对话模型与会话命令。
+完成渠道配置后，阅读 [Astravia Claw](/product/claw/) 了解总开关、对话模型与会话命令。
 
 ## 渠道总览
 
 | 渠道 | 接入方式 | 适用平台或前置条件 | 当前说明 |
 | --- | --- | --- | --- |
 | 飞书 | 扫码接入，或填写 App ID / App Secret | 飞书开放平台与组织权限 | 稳定入口 |
-| 微信 | QR 绑定 ClawBot | 使用微信扫描并保持 Vetta 运行 | 稳定入口 |
+| 微信 | QR 绑定 ClawBot | 使用微信扫描并保持 Astravia 运行 | 稳定入口 |
 | Telegram | Bot Token | 需要在 BotFather 创建机器人 | 可用，按客户端表单为准 |
 | Slack | Bot Token + App Token | 需要 Socket Mode 与对应 scopes | 可用，按客户端表单为准 |
 | Discord | Bot Token | 需要开启 Message Content Intent | 可用，按客户端表单为准 |
 | Signal | 托管 QR 绑定，或高级 endpoint/account | 托管模式会使用 signal-cli；高级模式需本机服务 | Beta |
-| WhatsApp | QR 绑定 | 需要在 Vetta 中完成扫码并保持桌面运行 | Beta |
+| WhatsApp | QR 绑定 | 需要在 Astravia 中完成扫码并保持桌面运行 | Beta |
 | iMessage | 本机 Messages 数据库与系统权限 | 仅 macOS，需要 Full Disk Access 与 Automation | Beta |
 
-“可用”表示客户端和网关已提供对应配置与传输实现，不代表第三方平台的账号审核、网络可达性或 API 配额由 Vetta 保证。遇到渠道未出现在当前版本界面时，以客户端实际列表为准。
+“可用”表示客户端和网关已提供对应配置与传输实现，不代表第三方平台的账号审核、网络可达性或 API 配额由 Astravia 保证。遇到渠道未出现在当前版本界面时，以客户端实际列表为准。
 
 ## 配置飞书
 
@@ -28,12 +28,12 @@ description: 在设置 → Claw 中配置 IM 渠道，选择绑定、凭证或�
 
 1. 点击飞书卡片上的 **扫码接入**。
 2. 用飞书扫码，在页面上确认应用名称与权限。
-3. 提示创建成功后，Vetta 会自动把活动渠道切到飞书并连接。
+3. 提示创建成功后，Astravia 会自动把活动渠道切到飞书并连接。
 4. 在飞书里搜索机器人的名字，直接私聊发一条消息试试。
 
 如果公司限制自助创建应用，可以让管理员在飞书开放平台建好机器人，把 App ID 与 App Secret 给你，用扫码对话框底部的 **手动填写 App ID / App Secret** 填进来。
 
-机器人只在私聊里工作，账号信息只保存在这台电脑上（`~/.vetta/desktop-app/im-credentials.json`）。收不到消息时依次检查：Claw 总开关是否打开、活动渠道是不是飞书、Vetta 是否还在运行。
+机器人只在私聊里工作，账号信息只保存在这台电脑上（`~/.astravia/desktop-app/im-credentials.json`）。收不到消息时依次检查：Claw 总开关是否打开、活动渠道是不是飞书、Astravia 是否还在运行。
 
 ## 绑定微信
 
@@ -52,10 +52,10 @@ description: 在设置 → Claw 中配置 IM 渠道，选择绑定、凭证或�
 
 - **Telegram**：从 BotFather 获取 Bot Token；可按界面提示限制允许的用户。
 - **Slack**：同时填写 Bot Token 和 App Token，并在 Slack 应用中启用 Socket Mode 及所需 scopes。
-- **Discord**：创建 Bot，开启 Message Content Intent，再把 Token 填入 Vetta。
+- **Discord**：创建 Bot，开启 Message Content Intent，再把 Token 填入 Astravia。
 - **Signal**：默认优先走本机托管的 QR 绑定；只有使用外部 signal-cli 服务时才填写 endpoint 与 E.164 account。
 - **WhatsApp**：点击绑定并扫描二维码；会话状态由网关保存，解除绑定后再更换账号。
-- **iMessage**：在 macOS 系统设置授予 Vetta 访问 Messages 数据与自动化控制的权限；它不需要 Bot Token。
+- **iMessage**：在 macOS 系统设置授予 Astravia 访问 Messages 数据与自动化控制的权限；它不需要 Bot Token。
 
 保存后使用 **测试连接** 或发送一条最小私聊消息。结构校验通过不等于第三方服务已经接受消息；连接状态、实时日志和目标 IM 中的实际回复才是最终验收证据。
 
@@ -64,4 +64,4 @@ description: 在设置 → Claw 中配置 IM 渠道，选择绑定、凭证或�
 - Bot Token、App Token、App Secret 和 OAuth 状态都视为凭证，只在设置页填写，不要放进任务、项目文件或诊断包。
 - 切换活动渠道前先停止或等待当前 Claw 任务，避免把回复发到错误渠道。
 - 解除绑定只清理对应渠道的绑定状态；需要彻底清理时，还要按客户端提示处理网关的本地状态目录。
-- 任何渠道无回复时，先检查 Claw 总开关、活动渠道、Vetta 是否仍在运行、对话模型和实时日志，再缩小到渠道本身。
+- 任何渠道无回复时，先检查 Claw 总开关、活动渠道、Astravia 是否仍在运行、对话模型和实时日志，再缩小到渠道本身。

@@ -1,4 +1,4 @@
-import type { RuntimeSessionCatalog, RuntimeSessionFileHistoryReader } from "@vetta/runtime-core";
+import type { RuntimeSessionCatalog, RuntimeSessionFileHistoryReader } from "@astravia/runtime-core";
 import { LegacyRuntimeSessionCatalog } from "../sessions/legacy/catalog.js";
 import { parseCodingAgentLegacySessionDocument } from "../sessions/legacy/document.js";
 import { LegacyRuntimeSessionFileHistoryReader } from "../sessions/legacy/history-reader.js";

@@ -1,4 +1,4 @@
-import { AGENT_CONFIGURATION_OBSERVATION } from "@vetta/coding-agent/session-extensions";
+import { AGENT_CONFIGURATION_OBSERVATION } from "@astravia/coding-agent/session-extensions";
 import {
 	defineRuntimeObservation,
 	RUNTIME_ACTIVE_SESSION_HOST_OBSERVATION,
@@ -10,7 +10,7 @@ import {
 	type RuntimeHostAgentBackendObservation,
 	type RuntimeHostLifecycleObservation,
 	type RuntimeObservationRecord,
-} from "@vetta/runtime-core";
+} from "@astravia/runtime-core";
 import { describe, expect, it, vi } from "vitest";
 import { createRuntimeLifecycleLogPort } from "./runtime-lifecycle-log-port.js";
 

@@ -1,4 +1,4 @@
-import type { HistoryEntry } from "@vetta/runtime-core";
+import type { HistoryEntry } from "@astravia/runtime-core";
 import type { DesktopSessionSearchMatch } from "../../shared/session-search.js";
 import { createSearchSnippet, normalizeSearchText } from "../../shared/session-search-text.js";
 

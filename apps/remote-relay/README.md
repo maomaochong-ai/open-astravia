@@ -1,12 +1,12 @@
-# Vetta Remote Relay
+# Astravia Remote Relay
 
-Cloudflare Worker and Durable Object implementation for relaying the Vetta remote-control protocol (v2) between one desktop and one paired phone. The relay is the cloud fallback; when both devices share a network the phone connects to the desktop's LAN server directly and the relay only holds an idle, hibernated desktop connection.
+Cloudflare Worker and Durable Object implementation for relaying the Astravia remote-control protocol (v2) between one desktop and one paired phone. The relay is the cloud fallback; when both devices share a network the phone connects to the desktop's LAN server directly and the relay only holds an idle, hibernated desktop connection.
 
 ## Security model
 
 - **One room per paired phone.** The desktop generates a pairing id, its own secret and the phone's secret. The phone receives its secret through the QR code (or a sealed `device.paired` event after a manual approval). The desktop registers the room first, offering its secret and the SHA-256 of the phone's secret; the Worker hashes the desktop secret too, so the Durable Object stores only two digests and can never present either secret.
 - **Secrets travel as WebSocket subprotocols**, never in URLs. Nothing about the offer is logged.
-- **The relay cannot read session traffic.** After each side's plaintext `hello` the room copies the two public keys (identity and ephemeral X25519) into the other side's `hello_ack` and from then on forwards only `sealed` envelopes. Encryption is end to end (`@vetta/remote-control`); a plaintext session frame after the handshake closes the socket with code 4002.
+- **The relay cannot read session traffic.** After each side's plaintext `hello` the room copies the two public keys (identity and ephemeral X25519) into the other side's `hello_ack` and from then on forwards only `sealed` envelopes. Encryption is end to end (`@astravia/remote-control`); a plaintext session frame after the handshake closes the socket with code 4002.
 - **Re-registration is desktop-owned.** A desktop that reconnects with its own secret may replace the stored phone hash (room expiry, rotated credential); a phone can only join a room the desktop already registered.
 - A room expires after 24 hours without any socket. The desktop re-registers on its next connection.
 
@@ -15,17 +15,17 @@ Cloudflare Worker and Durable Object implementation for relaying the Vetta remot
 - `GET /health` returns `{ status, protocolVersion: 2 }`.
 - `GET /v2/relay/:pairingId/:role` upgrades the control WebSocket. `role` is `desktop` or `mobile`.
 - `GET /v2/desktop/:pairingId/:role` upgrades the independent WebRTC signaling channel. `role` is `host` or `viewer`; the pair room vouches for the credential, so the desktop must have registered the room over the control route first.
-- `GET|PUT|DELETE /v2/invite/:boxId` is the connection-code mailbox (ADR-0136). `boxId` is a SHA-256 of the code; the body is an invite sealed with the code and password, which the relay cannot open. `PUT` and `DELETE` need the desktop's `X-Vetta-Invite-Token`; an invite lasts at most 10 minutes and 10 reads.
+- `GET|PUT|DELETE /v2/invite/:boxId` is the connection-code mailbox (ADR-0136). `boxId` is a SHA-256 of the code; the body is an invite sealed with the code and password, which the relay cannot open. `PUT` and `DELETE` need the desktop's `X-Astravia-Invite-Token`; an invite lasts at most 10 minutes and 10 reads.
 
 Control clients offer:
 
 ```text
-vetta.remote.v2
-vetta.pairing.<base64url-secret>
-vetta.peer.<sha256-hex-of-phone-secret>    # desktop only
+astravia.remote.v2
+astravia.pairing.<base64url-secret>
+astravia.peer.<sha256-hex-of-phone-secret>    # desktop only
 ```
 
-The Worker answers with `vetta.remote.v2`. WebRTC signaling uses `vetta.desktop.v1` plus the `vetta.pairing.*` protocol. SDP and ICE are validated and forwarded, never logged; screen pixels and input never pass through the Worker.
+The Worker answers with `astravia.remote.v2`. WebRTC signaling uses `astravia.desktop.v1` plus the `astravia.pairing.*` protocol. SDP and ICE are validated and forwarded, never logged; screen pixels and input never pass through the Worker.
 
 ## Framing
 

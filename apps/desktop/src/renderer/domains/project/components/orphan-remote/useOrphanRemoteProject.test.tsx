@@ -12,7 +12,7 @@ const ssh = {
 		return () => {};
 	}),
 };
-vi.stubGlobal("window", Object.assign(globalThis.window, { vetta: { ssh } }));
+vi.stubGlobal("window", Object.assign(globalThis.window, { astravia: { ssh } }));
 
 const ORPHAN = "0ba4cedd-406f-43d2-addf-422e5b38f125";
 const CWD = `ssh://${ORPHAN}/home/deploy/backups`;

@@ -1,5 +1,5 @@
-import { SegmentedControl } from "@vetta-org/theme-ui/shared";
-import { Button } from "@vetta-org/ui";
+import { SegmentedControl } from "@astravia-org/theme-ui/shared";
+import { Button } from "@astravia-org/ui";
 import { motion } from "motion/react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -9,7 +9,7 @@ import { resolveCategoryLabel } from "../lib/ability-presentation";
 import {
 	ABILITY_CATEGORY_CONNECTORS,
 	ABILITY_CATEGORY_UNCATEGORIZED,
-	ABILITY_CATEGORY_VETTA_BUILTIN,
+	ABILITY_CATEGORY_ASTRAVIA_BUILTIN,
 	EMPTY_ABILITY_FILTER,
 	ENABLE_ABILITY_CATEGORIES,
 	type AbilitiesModel,
@@ -57,7 +57,7 @@ export function AbilitiesPageView({
 			<input
 				ref={pluginFileInputRef}
 				type="file"
-				accept=".vettapkg,application/vnd.vetta.plugin+zip,.zip,application/zip"
+				accept=".astraviapkg,application/vnd.astravia.plugin+zip,.zip,application/zip"
 				className="hidden"
 				onChange={(event) => {
 					const file = event.target.files?.[0];
@@ -195,8 +195,8 @@ export function AbilitiesPageView({
 														? t("group.uncategorized")
 														: group.category === ABILITY_CATEGORY_CONNECTORS
 															? t("group.connectors")
-															: group.category === ABILITY_CATEGORY_VETTA_BUILTIN
-																? t("group.vettaBuiltin")
+															: group.category === ABILITY_CATEGORY_ASTRAVIA_BUILTIN
+																? t("group.astraviaBuiltin")
 																: resolveCategoryLabel(group.category, group.categoryI18n, i18n.language)}
 												</h2>
 												<span className="text-[11px] tabular-nums text-muted-foreground/50">

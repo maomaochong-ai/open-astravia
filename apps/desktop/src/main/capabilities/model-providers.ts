@@ -1,14 +1,14 @@
-import { bindCapability, type CapabilityRegistry } from "@vetta/capability-runtime";
+import { bindCapability, type CapabilityRegistry } from "@astravia/capability-runtime";
 import {
 	CAPABILITY_ERROR_CODES,
 	CapabilityError,
 	type Disposable,
 	DOMAIN_MODEL_CAPABILITIES,
-} from "@vetta-org/capability-sdk";
+} from "@astravia-org/capability-sdk";
 import { getDesktopModelSettingsService } from "../models/model-settings-host.js";
 import { probeModelProvider } from "../models/probe.js";
 
-const DOMAIN_MODEL_PROVIDER_OWNER = "vetta.domain.model";
+const DOMAIN_MODEL_PROVIDER_OWNER = "astravia.domain.model";
 
 function assertNotAborted(signal: AbortSignal): void {
 	if (signal.aborted) {

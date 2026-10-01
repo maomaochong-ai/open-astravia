@@ -1,5 +1,5 @@
 /**
- * Prints the crypto vectors pinned in VettaKit/Tests/VettaKitTests/ProtocolTests.swift,
+ * Prints the crypto vectors pinned in AstraviaKit/Tests/AstraviaKitTests/ProtocolTests.swift,
  * computed by the TypeScript package the desktop uses.
  *
  *   bun apps/mobile/client-apple/scripts/crypto-vectors.ts
@@ -14,7 +14,7 @@ const m = deriveSessionKeys({ role: "mobile", identity: mobileId, ephemeral: mob
 const d = deriveSessionKeys({ role: "desktop", identity: deskId, ephemeral: deskEph, peerIdentityKey: mobileId.publicKey, peerEphemeralKey: mobileEph.publicKey });
 const nonce = Uint8Array.from({ length: 24 }, (_, i) => i + 100);
 const frame = { type: "event", eventId: "e-1", sequence: 1, name: "session.message", sessionId: "s1", payload: { kind: "assistant_delta", text: "你好 world" } } as const;
-const sealed = sealFrame(d.sendKey, frame, "vetta-remote-v2", { randomBytes: () => nonce });
+const sealed = sealFrame(d.sendKey, frame, "astravia-remote-v2", { randomBytes: () => nonce });
 console.log(JSON.stringify({
   mobileIdentitySecret: toBase64Url(mobileId.secretKey), mobileIdentityPublic: toBase64Url(mobileId.publicKey),
   mobileEphemeralSecret: toBase64Url(mobileEph.secretKey), mobileEphemeralPublic: toBase64Url(mobileEph.publicKey),

@@ -1,4 +1,4 @@
-import type { PluginContext } from "@vetta-org/plugin-sdk";
+import type { PluginContext } from "@astravia-org/plugin-sdk";
 import type { KanbanBoardController } from "./board/board-controller";
 import { findCard } from "./board/board-store";
 import { dispatchableCards, snapshotForAgent } from "./board/dispatch";

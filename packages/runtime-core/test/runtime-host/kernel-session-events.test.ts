@@ -1,4 +1,4 @@
-import { AIError, type AssistantMessage } from "@vetta/ai";
+import { AIError, type AssistantMessage } from "@astravia/ai";
 import { describe, expect, it } from "vitest";
 import type { SessionEvent } from "../../src/contracts.js";
 import type { KernelEvent } from "../../src/kernel/index.js";

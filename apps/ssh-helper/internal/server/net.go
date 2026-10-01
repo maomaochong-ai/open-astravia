@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	"vetta-ssh-helper/internal/protocol"
+	"astravia-ssh-helper/internal/protocol"
 )
 
 // Listener is one TCP port in LISTEN state on this host.

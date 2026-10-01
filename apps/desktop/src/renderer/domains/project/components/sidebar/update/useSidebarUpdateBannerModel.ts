@@ -19,13 +19,13 @@ export function useSidebarUpdateBannerModel(): SidebarUpdateBannerModel | null {
 	const [dismissedVersion, setDismissedVersion] = useState<string | null>(null);
 
 	const onRestart = useCallback(() => {
-		void window.vetta.updater.install();
+		void window.astravia.updater.install();
 	}, []);
 
 	// 忽略：隐藏此条，安装交给退出时的自动流程
 	const onDismiss = useCallback(() => {
 		setDismissedVersion(state.latestVersion ?? "");
-		void window.vetta.updater.dismiss();
+		void window.astravia.updater.dismiss();
 	}, [state.latestVersion]);
 
 	if (dismissedVersion !== null && dismissedVersion === (state.latestVersion ?? "")) return null;

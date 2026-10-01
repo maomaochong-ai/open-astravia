@@ -3,12 +3,12 @@ title: Use the Coding Agent SDK
 description: Create Agent sessions inside a TypeScript process, subscribe to events, send tasks, and close resources correctly.
 ---
 
-`@vetta/coding-agent/sdk` is the in-process integration entry point. It provides typed Sessions, Hosts, and offline session catalogs without requiring the CLI or stdout parsing.
+`@astravia/coding-agent/sdk` is the in-process integration entry point. It provides typed Sessions, Hosts, and offline session catalogs without requiring the CLI or stdout parsing.
 
 ## Create a minimal session
 
 ```typescript
-import { createCodingAgentSession } from "@vetta/coding-agent/sdk";
+import { createCodingAgentSession } from "@astravia/coding-agent/sdk";
 
 const { session, diagnostics, modelFallbackMessage } =
   await createCodingAgentSession({
@@ -71,7 +71,7 @@ Declare storage intent when creating the session. Do not let multiple active Ses
 
 Catalogs are separate from active Sessions. Do not open every session just to display a session list.
 
-`CodingAgentHost` is an SDK ownership group, not a multi-agent registry. Each member can have its own cwd, Storage, Tool, MCP, Extension Source, and model resources. To dynamically install, replace, or retire different `agentId` values in one process, use `RuntimeHost.installAgent()` from `@vetta/runtime-core`.
+`CodingAgentHost` is an SDK ownership group, not a multi-agent registry. Each member can have its own cwd, Storage, Tool, MCP, Extension Source, and model resources. To dynamically install, replace, or retire different `agentId` values in one process, use `RuntimeHost.installAgent()` from `@astravia/runtime-core`.
 
 ## Optional product capabilities
 
@@ -94,4 +94,4 @@ Creation options can include:
 4. Put `close()` in `finally` or in the host lifecycle hook.
 5. Import only the public package contract; do not reach into implementation directories.
 
-The declarations exported by `@vetta/coding-agent/sdk` are the source of truth for the complete API.
+The declarations exported by `@astravia/coding-agent/sdk` are the source of truth for the complete API.

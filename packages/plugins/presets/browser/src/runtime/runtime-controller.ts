@@ -1,4 +1,4 @@
-import type { PluginBrowserApi, PluginBrowserRuntimeStatus } from "@vetta-org/plugin-sdk";
+import type { PluginBrowserApi, PluginBrowserRuntimeStatus } from "@astravia-org/plugin-sdk";
 
 /**
  * 面板状态控制器。安装、版本校验和进程生命周期都归宿主 Foundation Capability；

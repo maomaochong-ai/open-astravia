@@ -3,7 +3,7 @@
  * Bundle the published plugin CLI into this package.
  *
  * 取代原先的 sync-plugin-docs.mjs：工作台不再自带一份手册副本。手册随
- * `@vetta-org/plugin-sdk` 进插件工程自己的 node_modules，由 CLI 的 `docs` 命令解析——
+ * `@astravia-org/plugin-sdk` 进插件工程自己的 node_modules，由 CLI 的 `docs` 命令解析——
  * 那份才与被编辑工程实际编译的 SDK 版本一致，而随 App 发版的内嵌副本做不到。
  *
  * 内置而不是 `npx`：工作台是系统插件，随 App 发版，内置让版本关系确定，也不受首次拉包的
@@ -15,9 +15,9 @@ import { fileURLToPath } from "node:url";
 
 const pluginRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const destDir = join(pluginRoot, "agent", "cli");
-const destFile = join(destDir, "vetta-plugin-cli.js");
-const sourceFile = process.env.VETTA_PLUGIN_CLI_DIST
-	? resolve(process.env.VETTA_PLUGIN_CLI_DIST)
+const destFile = join(destDir, "astravia-plugin-cli.js");
+const sourceFile = process.env.ASTRAVIA_PLUGIN_CLI_DIST
+	? resolve(process.env.ASTRAVIA_PLUGIN_CLI_DIST)
 	: resolve(pluginRoot, "../../plugin-cli/dist/cli.js");
 
 async function isFile(path) {

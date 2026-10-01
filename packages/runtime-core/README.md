@@ -1,10 +1,10 @@
-# @vetta/runtime-core
+# @astravia/runtime-core
 
 Runtime contracts and host integration for Agent sessions.
 
 The root entry exposes the production `RuntimeHost`, the Kernel-backed Runtime
 Session implementation, and stable host contracts. Kernel primitives remain
-available through the explicit `@vetta/runtime-core/kernel` entry.
+available through the explicit `@astravia/runtime-core/kernel` entry.
 
 `runtime-core` and the `runtime-storage`, `runtime-tools` and `runtime-mcp`
 protocol packages form the portable Runtime boundary. Concrete filesystem,
@@ -31,7 +31,7 @@ composition is Node-oriented and is not part of this portable boundary.
   listener isolation, transition cleanup and owned-resource shutdown failures
 - acquire/release Runtime Snapshot lifecycle with atomic Feature-topology switching
 - per-model-call prompt and tool materialization through Model Call Contribution Providers
-- `AgentCoreTurnEngine` adapter for the `@vetta/agent-core` model and tool loop
+- `AgentCoreTurnEngine` adapter for the `@astravia/agent-core` model and tool loop
 - session-owned steering/follow-up queues with configurable consumption modes
 - Kernel-backed Runtime Session for prompt/continue/abort, mapped events and repository-backed state
 - synchronous Runtime message/state projection with genuine lifecycle, workspace and core session ports
@@ -90,8 +90,8 @@ fields are quarantined in the Session request factory instead of being spread ac
 - `RuntimeHost`
 - `RuntimeHost.agents` for the built-in `RuntimeAgentRuntime`, Definition Registry, Instance/Session routing, revision leases and Source synchronization
 - `RuntimeHost.agentBackends` and `RuntimeHost.installAgent()` for transactional dynamic admission of heterogeneous main-Agent Backends
-- `@vetta/runtime-core/configuration` for configuration Definition/Source revisions, ordered Host layers, validation codecs and immutable resolved snapshots
-- `@vetta/runtime-core/observation` for domain-owned tokens, scoped publishers, lossless Publisher-to-Port forwarding,
+- `@astravia/runtime-core/configuration` for configuration Definition/Source revisions, ordered Host layers, validation codecs and immutable resolved snapshots
+- `@astravia/runtime-core/observation` for domain-owned tokens, scoped publishers, lossless Publisher-to-Port forwarding,
   hierarchical/dynamic Hub routing, safe Session projection and arbitrary telemetry adapters
 - `RuntimeHostSessionBackend` and `KernelRuntimeSessionBackend` for composition-root session creation
 - `RuntimeAgentSessionAssemblyBackend` and `RuntimeAgentInstancePool` for the standard multi-main-Agent Host path,
@@ -118,14 +118,14 @@ fields are quarantined in the Session request factory instead of being spread ac
   products still own document projection, token estimation and compaction algorithms
 - `RuntimeSessionProjection` for synchronous Conversation Document and host state projection
 - `RuntimeModelRuntime` and `RuntimeModel` for shared Controller/View/State/Turn model state
-- `@vetta/runtime-core/conversation` for the tree-shaped history read model, reader port and host history projection
-- `@vetta/runtime-core/failures` for the browser-safe structured failure contract and untrusted-boundary reader
+- `@astravia/runtime-core/conversation` for the tree-shaped history read model, reader port and host history projection
+- `@astravia/runtime-core/failures` for the browser-safe structured failure contract and untrusted-boundary reader
 - `resumeAgentSession` and `ConversationRecoveryPolicy` for recovery without model or tool replay
 - `RuntimeSessionObservationEvent` and Kernel-to-`SessionEvent` adapters, including provider/model cache observability on `usage.update`
 - generation and agent tracing projections for prompt-cache hit rate, write rate, and observation coverage
 - session event and state contracts from `src/contracts.ts`
 - shared runtime error helpers
-- `@vetta/runtime-core/kernel` for the new `AgentSession`, `TurnPipeline`,
+- `@astravia/runtime-core/kernel` for the new `AgentSession`, `TurnPipeline`,
   `RuntimeCapabilityDefinition`, `FeatureCompiler`, `RuntimeCapabilityComposition`,
   `AtomicRuntimeSnapshotProvider`, `AgentCoreTurnEngine`, `createDefaultRuntimeCapabilityDefinition()` and Port contracts
 
@@ -140,7 +140,7 @@ const conversation = await runtime.createConversation({ cwd });
 for await (const event of conversation.stream("Summarize this project")) {
   if (event.channel !== "assistant") continue;
 
-  // The normalized @vetta/ai AssistantMessageEvent stays at the top level.
+  // The normalized @astravia/ai AssistantMessageEvent stays at the top level.
   // Runtime adds metadata but does not remap its type or payload fields.
   if (event.type === "text_delta") process.stdout.write(event.delta);
 }
@@ -169,9 +169,9 @@ only cancels the waiting request; after admission it cancels the admitted Turn.
 [`examples/multi-agent`](./examples/multi-agent/)。
 
 ```ts
-import { RuntimeHost } from "@vetta/runtime-core";
-import { defineRuntimeAgent } from "@vetta/runtime-core/agents";
-import { createDefaultRuntimeCapabilityDefinition } from "@vetta/runtime-core/kernel";
+import { RuntimeHost } from "@astravia/runtime-core";
+import { defineRuntimeAgent } from "@astravia/runtime-core/agents";
+import { createDefaultRuntimeCapabilityDefinition } from "@astravia/runtime-core/kernel";
 
 const reviewer = defineRuntimeAgent({
   id: "reviewer",

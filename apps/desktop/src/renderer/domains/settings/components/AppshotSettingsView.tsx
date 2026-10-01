@@ -1,10 +1,10 @@
 import { MacKeyboardPreview } from "@shared/components/MacKeyboardPreview";
-import { AppshotSettingsView as ThemeAppshotSettingsView } from "@vetta-org/theme-ui/settings";
+import { AppshotSettingsView as ThemeAppshotSettingsView } from "@astravia-org/theme-ui/settings";
 import { Trans } from "react-i18next";
 import { SETTINGS_SECTION } from "../registry";
 import type { AppshotSelectValue, AppshotSettingsModel } from "./useAppshotSettingsModel";
 
-/** Thin host adapter: i18n Trans + MacKeyboardPreview; Select is @vetta-org/ui inside theme-ui. */
+/** Thin host adapter: i18n Trans + MacKeyboardPreview; Select is @astravia-org/ui inside theme-ui. */
 export function AppshotSettingsView({ model }: { model: AppshotSettingsModel }): JSX.Element {
 	return (
 		<ThemeAppshotSettingsView

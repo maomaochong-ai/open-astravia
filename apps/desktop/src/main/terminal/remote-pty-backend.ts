@@ -1,4 +1,4 @@
-import { parseProjectLocation } from "@vetta/ssh-transport/project-uri";
+import { parseProjectLocation } from "@astravia/ssh-transport/project-uri";
 import { mainT } from "../i18n/index.js";
 import { getSshConnection } from "../ssh/ssh-runtime.js";
 import type { OpenTerminalBackendOptions, TerminalExitEvent } from "./terminal-backend.js";

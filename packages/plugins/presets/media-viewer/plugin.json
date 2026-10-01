@@ -13,5 +13,5 @@
 	"styles": ["dist/style.css"],
 	"permissions": ["ui.slot.file-preview", "ui.shortcuts.register"],
 	"description": "%plugin.description%",
-	"author": "Vetta"
+	"author": "Astravia"
 }

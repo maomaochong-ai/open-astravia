@@ -21,7 +21,7 @@ export interface PluginProject {
 }
 
 export interface PluginHub {
-	/** 含 .vetta/marketplace.json 的仓库根。 */
+	/** 含 .astravia/marketplace.json 的仓库根。 */
 	readonly root: string;
 	readonly manifestPath: string;
 }
@@ -71,10 +71,10 @@ export function findPluginProject(from: string): PluginProject | undefined {
 	return undefined;
 }
 
-/** 从 `from` 向上找最近的能力市场 hub（`.vetta/marketplace.json`）。 */
+/** 从 `from` 向上找最近的能力市场 hub（`.astravia/marketplace.json`）。 */
 export function findPluginHub(from: string): PluginHub | undefined {
 	for (const dir of walkUp(from)) {
-		const manifestPath = join(dir, ".vetta", "marketplace.json");
+		const manifestPath = join(dir, ".astravia", "marketplace.json");
 		if (existsSync(manifestPath)) return { root: dir, manifestPath };
 		if (isBoundary(dir)) return undefined;
 	}
@@ -86,14 +86,14 @@ function isBoundary(dir: string): boolean {
 }
 
 /**
- * 解析随 `@vetta-org/plugin-sdk` 发布的手册目录。
+ * 解析随 `@astravia-org/plugin-sdk` 发布的手册目录。
  *
  * 按 Node 的解析规则逐层找 node_modules，因此工作区把依赖提升到仓库根、或每个插件各装
  * 一份，都能命中正确的那一份——也就是这个工程实际编译所针对的那个 SDK 版本的手册。
  */
 export function resolveManualDir(from: string): string | undefined {
 	for (const dir of walkUp(from)) {
-		const candidate = join(dir, "node_modules", "@vetta-org", "plugin-sdk", "docs");
+		const candidate = join(dir, "node_modules", "@astravia-org", "plugin-sdk", "docs");
 		if (existsSync(join(candidate, "README.md"))) return candidate;
 	}
 	return undefined;

@@ -1,5 +1,5 @@
+import type { PluginOfficialApi, PluginOfficialPluginSummary } from "@astravia-org/plugin-sdk";
 import type { InstalledPlugin } from "@preload/api";
-import type { PluginOfficialApi, PluginOfficialPluginSummary } from "@vetta-org/plugin-sdk";
 
 function summarizePlugin(plugin: InstalledPlugin): PluginOfficialPluginSummary {
 	return {
@@ -22,7 +22,7 @@ export function createOfficialPluginsApi(
 	assertOfficial: () => void,
 	capabilitySessionId: string,
 ): PluginOfficialApi["plugins"] {
-	const pluginSystem = window.vetta.plugins.internalCapabilities.pluginSystem;
+	const pluginSystem = window.astravia.plugins.internalCapabilities.pluginSystem;
 	return {
 		list: async () => {
 			assertOfficial();
@@ -56,19 +56,19 @@ export function createOfficialPluginsApi(
 		},
 		grantPermissions: async (id, permissions) => {
 			assertOfficial();
-			return summarizePlugin(await window.vetta.plugins.grantPermissions(id, permissions));
+			return summarizePlugin(await window.astravia.plugins.grantPermissions(id, permissions));
 		},
 		startDevWatch: async (id, projectDir) => {
 			assertOfficial();
-			return summarizePlugin(await window.vetta.plugins.startDevWatch(capabilitySessionId, id, projectDir));
+			return summarizePlugin(await window.astravia.plugins.startDevWatch(capabilitySessionId, id, projectDir));
 		},
 		stopDevWatch: async (id) => {
 			assertOfficial();
-			await window.vetta.plugins.stopDevWatch(capabilitySessionId, id);
+			await window.astravia.plugins.stopDevWatch(capabilitySessionId, id);
 		},
 		onChanged: (handler) => {
 			assertOfficial();
-			return window.vetta.plugins.onPluginsChanged(handler);
+			return window.astravia.plugins.onPluginsChanged(handler);
 		},
 	};
 }

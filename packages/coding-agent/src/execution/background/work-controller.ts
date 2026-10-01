@@ -1,4 +1,4 @@
-import type { BackgroundCommandService, BackgroundCommandSnapshot } from "@vetta/runtime-tools";
+import type { BackgroundCommandService, BackgroundCommandSnapshot } from "@astravia/runtime-tools";
 import type { CodingAgentSubagentSnapshot } from "../../runtime-contracts/index.js";
 
 export interface CodingAgentSubagentWorkRuntime {

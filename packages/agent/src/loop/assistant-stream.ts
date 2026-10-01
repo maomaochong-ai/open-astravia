@@ -1,4 +1,4 @@
-import { type AssistantMessage, type Context, type EventStream, streamSimple } from "@vetta/ai";
+import { type AssistantMessage, type Context, type EventStream, streamSimple } from "@astravia/ai";
 import { salvageTextToolCalls } from "../salvage-text-tool-calls.js";
 import type { AgentObservation, AgentObservationUpdate } from "../telemetry.js";
 import type { AgentContext, AgentEvent, AgentLoopConfig, AgentMessage, StreamFn } from "../types.js";

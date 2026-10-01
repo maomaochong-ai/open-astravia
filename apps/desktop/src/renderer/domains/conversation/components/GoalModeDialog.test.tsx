@@ -24,7 +24,7 @@ describe("GoalModeDialog", () => {
 		store.set(activeSessionAtom, { runtimeId: "runtime-1", sessionPath: "session.jsonl" } as ActiveSession);
 		store.set(goalStateBySessionAtom, {});
 		store.set(goalDialogOpenAtom, true);
-		Object.defineProperty(window, "vetta", {
+		Object.defineProperty(window, "astravia", {
 			configurable: true,
 			value: { session: { startGoal, resumeGoal, pauseGoal: vi.fn(), clearGoal: vi.fn() } },
 		});

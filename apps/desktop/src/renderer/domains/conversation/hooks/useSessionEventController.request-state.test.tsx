@@ -3,8 +3,8 @@
 import { act, renderHook } from "@testing-library/react";
 import { createConversationUserMessage } from "@shared/conversation";
 import { activeSessionStreamingAtom, chatMessagesAtom } from "@shared/store/atoms";
-import type { AssistantMessage } from "@vetta/ai";
-import type { SessionEvent } from "@vetta/runtime-core";
+import type { AssistantMessage } from "@astravia/ai";
+import type { SessionEvent } from "@astravia/runtime-core";
 import { getDefaultStore } from "jotai";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { resetStreamState, setChatStreamOwner, startAssistantTurn } from "../services/chat-service";
@@ -26,7 +26,7 @@ describe("conversation request preparation", () => {
 		setChatStreamOwner("session-1");
 		store.set(chatMessagesAtom, []);
 		store.set(activeSessionStreamingAtom, false);
-		vi.stubGlobal("vetta", {
+		vi.stubGlobal("astravia", {
 			session: { getFullHistory: () => new Promise(() => undefined) },
 			config: { get: async () => ({ experimental: { promptPrediction: false } }) },
 		});

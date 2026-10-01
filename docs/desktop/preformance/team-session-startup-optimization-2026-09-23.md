@@ -25,7 +25,7 @@
 
 应用启动时确实触发了 MCP 预热，但当前代码只调用 `prewarmMcp({ cwd: DEFAULT_CONVERSATION_CWD })`，并非空闲时预热未来全部工作区。当天启动的默认 scope 预热耗时 21.478 秒。MCP source 缓存按 `cwd + agentDir` 分区，`resolveSessionListCwd()` 只把普通对话子目录归并到默认 scope；团队默认工作区按会话 ID 新建，不在该归并范围。因此这次团队会话在发送时又为自己的工作区初始化了一套 MCP。这是预热没有命中团队路径的直接原因。直接把所有团队会话映射到共同 scope 会改变 MCP 的工作区根和可能的工具访问范围，不能仅为提速如此修改。
 
-这不是 MCP 协议强制的一会话一连接限制，而是当时进程级 `DesktopRuntimeBackendPool` 的缓存键设计。MCP 配置同时来自全局与项目 `.vetta/mcp.json`，还支持 `${PROJECT_ROOT}` 展开；Desktop 向 server 响应的 `roots/list` 也取当前工作目录。因此“整个应用共用一个 MCP 连接”会混合项目配置和工作区根。正确的资源管理边界是：可证明不依赖工作区的 server 由应用级连接池持有，工作区相关 server 继续独立，并在每个会话装配时合并工具视图。实现同时覆盖了工具名冲突、配置刷新、认证 generation 和连接释放。逐 server 的握手、工具与资源发现耗时日志也已加入代码，供重启后的真实入口复核。
+这不是 MCP 协议强制的一会话一连接限制，而是当时进程级 `DesktopRuntimeBackendPool` 的缓存键设计。MCP 配置同时来自全局与项目 `.astravia/mcp.json`，还支持 `${PROJECT_ROOT}` 展开；Desktop 向 server 响应的 `roots/list` 也取当前工作目录。因此“整个应用共用一个 MCP 连接”会混合项目配置和工作区根。正确的资源管理边界是：可证明不依赖工作区的 server 由应用级连接池持有，工作区相关 server 继续独立，并在每个会话装配时合并工具视图。实现同时覆盖了工具名冲突、配置刷新、认证 generation 和连接释放。逐 server 的握手、工具与资源发现耗时日志也已加入代码，供重启后的真实入口复核。
 
 22:23 这次复测从输入触发（22:23:54.896）到协调记录创建（22:24:06.606）用时 11.710 秒；到发送 IPC（22:24:06.929）用时 12.033 秒，到 Renderer 收到模型请求事件（22:24:07.853）用时 12.957 秒。团队历史 bootstrap 在 22:23:55.559 就完成，并未阻塞本次发送；队长 Runtime 调用直到 22:24:07.605 才开始。这与前两次一致，证明之前的受控夹具优化没有消除实际入口的固定等待。此时 Renderer 已热更新到分段日志版本，但 Main 日志仍使用旧的 `team session record created` 格式，说明 Main 未加载新增的 MCP 阶段日志；本次无法从日志直接确认 MCP 初始化耗时。
 
@@ -47,7 +47,7 @@ Desktop Runtime Host
   │    ├─ 内置远程 MCP
   │    └─ 全局且不依赖项目根的 MCP
   ├─ workspace MCP source（按规范化 cwd 隔离）
-  │    ├─ 项目 .vetta/mcp.json
+  │    ├─ 项目 .astravia/mcp.json
   │    ├─ 引用 ${PROJECT_ROOT} 的全局 MCP
   │    └─ resourceScope: "workspace" 的全局 MCP
   └─ session plugin MCP（保持原会话能力选择）
@@ -139,13 +139,13 @@ Desktop Runtime Host
 在仓库根目录运行：
 
 ```powershell
-$env:VETTA_STARTUP_BENCHMARK_RUNS = '5'
-$env:VETTA_TEAM_STARTUP_BENCHMARK = '1'
-$env:VETTA_STARTUP_BENCHMARK_MCP_DELAY_MS = '10000' # 可选：模拟慢 MCP 初始化
+$env:ASTRAVIA_STARTUP_BENCHMARK_RUNS = '5'
+$env:ASTRAVIA_TEAM_STARTUP_BENCHMARK = '1'
+$env:ASTRAVIA_STARTUP_BENCHMARK_MCP_DELAY_MS = '10000' # 可选：模拟慢 MCP 初始化
 node scripts/quality/run-vitest.mjs --config apps/desktop/vitest.config.ts --run --maxWorkers=1 apps/desktop/src/main/agent-runtime/session-startup-performance.test.ts
-Remove-Item Env:VETTA_STARTUP_BENCHMARK_RUNS
-Remove-Item Env:VETTA_TEAM_STARTUP_BENCHMARK
-Remove-Item Env:VETTA_STARTUP_BENCHMARK_MCP_DELAY_MS
+Remove-Item Env:ASTRAVIA_STARTUP_BENCHMARK_RUNS
+Remove-Item Env:ASTRAVIA_TEAM_STARTUP_BENCHMARK
+Remove-Item Env:ASTRAVIA_STARTUP_BENCHMARK_MCP_DELAY_MS
 ```
 
 测试使用真实 `RuntimeHost`、Desktop Backend、资源加载、Turn pipeline、请求序列化与本地 HTTP SSE Provider。它记录 Provider 收到请求、首个 assistant 事件、首个文本增量和完整响应；不设置固定毫秒门槛，避免 CI 负载造成偶发失败。

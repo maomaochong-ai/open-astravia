@@ -8,7 +8,7 @@ import type {
 	RuntimePreparedSessionBinding,
 	RuntimeSessionSeedInitializer,
 	RuntimeSessionSeedTarget,
-} from "@vetta/runtime-core";
+} from "@astravia/runtime-core";
 
 export type CodingAgentSessionTransition<TSession extends RuntimeActiveSession = RuntimeActiveSession> =
 	RuntimeActiveSessionTransition<TSession>;

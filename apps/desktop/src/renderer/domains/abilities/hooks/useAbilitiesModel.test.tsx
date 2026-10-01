@@ -30,14 +30,14 @@ vi.mock("@shared/store/atoms", async () => {
 });
 
 it("keeps an installed plugin package icon visible while the marketplace is offline", async () => {
-	const packageIcon = "vetta-plugin://feishu/versions/1.0.0/assets/icon.png?v=1.0.0";
+	const packageIcon = "astravia-plugin://feishu/versions/1.0.0/assets/icon.png?v=1.0.0";
 	const plugin: InstalledPlugin = {
 		id: "feishu",
 		name: "Feishu",
 		version: "1.0.0",
 		activeVersion: "1.0.0",
 		pluginApiVersion: "^2.0.0",
-		entryUrl: "vetta-plugin://feishu/versions/1.0.0/mf-manifest.json",
+		entryUrl: "astravia-plugin://feishu/versions/1.0.0/mf-manifest.json",
 		moduleFederation: { remoteName: "feishu", expose: "./plugin" },
 		styleUrls: [],
 		permissions: [],
@@ -56,7 +56,7 @@ it("keeps an installed plugin package icon visible while the marketplace is offl
 		trustLevel: "official",
 		rootPath: "C:/plugins/feishu/versions/1.0.0",
 	};
-	Object.defineProperty(window, "vetta", {
+	Object.defineProperty(window, "astravia", {
 		configurable: true,
 		value: {
 			abilities: {
@@ -105,7 +105,7 @@ it("keeps bundle-only members out of discovery and its banner while preserving d
 	};
 	const catalog: OpenMarketplaceCatalog = { sources: [source], snapshots: [snapshot], abilities: snapshot.abilities, failedSourceIds: [] };
 	let installed: Record<string, InstalledSkill> = {};
-	Object.defineProperty(window, "vetta", { configurable: true, value: {
+	Object.defineProperty(window, "astravia", { configurable: true, value: {
 		abilities: {
 			getLedger: async () => ({}), listLocalPresentations: async () => ({}), getOpenMcpSetupStatus: async () => ({}),
 			listOpenMarketplaces: async () => structuredClone(catalog), refreshOpenMarketplaces: async () => structuredClone(catalog),
@@ -144,7 +144,7 @@ it("keeps bundle-only members out of discovery and its banner while preserving d
 	await waitFor(() => expect(result.current.refreshing).toBe(false));
 	installed = { guide: { name: "guide", version: "1.0.0", installedAt: "2026-08-30", enabled: false, source: "market", type: "skill" } };
 	// Supply the stable source identity of an already installed member, as recorded before unlisting.
-	window.vetta.abilities.getLedger = async () => ({ "skill:guide": { type: "skill", version: "1.0.0", configVersion: 1, installedAt: "2026-08-30", origin: base.origin, catalogId: guideId, slug: "guide" } });
+	window.astravia.abilities.getLedger = async () => ({ "skill:guide": { type: "skill", version: "1.0.0", configVersion: 1, installedAt: "2026-08-30", origin: base.origin, catalogId: guideId, slug: "guide" } });
 	act(() => { result.current.setSearchQuery(""); result.current.setScope("mine"); result.current.refresh(); });
 	await waitFor(() => expect(result.current.findById(guideId)).toMatchObject({ id: guideId, installed: true, enabled: false, needsUpdate: true }));
 	expect(result.current.items.filter((item) => item.id === guideId)).toHaveLength(0);
@@ -186,7 +186,7 @@ it("follows the application language broadcast for cached GitHub names, descript
 	};
 	const refreshOpenMarketplaces = vi.fn(async () => { throw new Error("offline"); });
 	let languageChanged!: (state: LanguageState) => void;
-	Object.defineProperty(window, "vetta", {
+	Object.defineProperty(window, "astravia", {
 		configurable: true,
 		value: {
 			i18n: {
@@ -262,7 +262,7 @@ it("seeds the search keyword from an external deep link and lets the page take o
 		],
 	};
 	const catalog: OpenMarketplaceCatalog = { sources: [source], snapshots: [snapshot], abilities: snapshot.abilities, failedSourceIds: [] };
-	Object.defineProperty(window, "vetta", { configurable: true, value: {
+	Object.defineProperty(window, "astravia", { configurable: true, value: {
 		abilities: {
 			getLedger: async () => ({}), listLocalPresentations: async () => ({}), getOpenMcpSetupStatus: async () => ({}),
 			listOpenMarketplaces: async () => structuredClone(catalog), refreshOpenMarketplaces: async () => structuredClone(catalog),
@@ -313,7 +313,7 @@ it("renders abilities in a flat grid by default when ENABLE_ABILITY_CATEGORIES i
 		],
 	};
 	const catalog: OpenMarketplaceCatalog = { sources: [source], snapshots: [snapshot], abilities: snapshot.abilities, failedSourceIds: [] };
-	Object.defineProperty(window, "vetta", { configurable: true, value: {
+	Object.defineProperty(window, "astravia", { configurable: true, value: {
 		abilities: {
 			getLedger: async () => ({}), listLocalPresentations: async () => ({}), getOpenMcpSetupStatus: async () => ({}),
 			listOpenMarketplaces: async () => structuredClone(catalog), refreshOpenMarketplaces: async () => structuredClone(catalog),
@@ -353,7 +353,7 @@ it("filters the list by type through the filter popover and clears it from the e
 		],
 	};
 	const catalog: OpenMarketplaceCatalog = { sources: [source], snapshots: [snapshot], abilities: snapshot.abilities, failedSourceIds: [] };
-	Object.defineProperty(window, "vetta", { configurable: true, value: {
+	Object.defineProperty(window, "astravia", { configurable: true, value: {
 		abilities: {
 			getLedger: async () => ({}), listLocalPresentations: async () => ({}), getOpenMcpSetupStatus: async () => ({}),
 			listOpenMarketplaces: async () => structuredClone(catalog), refreshOpenMarketplaces: async () => structuredClone(catalog),

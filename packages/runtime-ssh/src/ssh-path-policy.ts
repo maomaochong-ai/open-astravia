@@ -1,5 +1,5 @@
-import type { EditPathPolicy, WritePathPolicy } from "@vetta/runtime-node/coding";
-import { normalizeRemotePath } from "@vetta/ssh-transport";
+import type { EditPathPolicy, WritePathPolicy } from "@astravia/runtime-node/coding";
+import { normalizeRemotePath } from "@astravia/ssh-transport";
 
 /**
  * 远端路径的写入策略。
@@ -11,7 +11,7 @@ import { normalizeRemotePath } from "@vetta/ssh-transport";
  * 路径比较也不能用 `node:path`：本机可能是 Windows，而远端路径永远是 POSIX 的。
  * `resolve()` 会把它们拼成反斜杠形式，前缀判断随即失效。
  */
-const PROTECTED_SUBDIRECTORIES = [".vetta/skills", ".agents/skills"];
+const PROTECTED_SUBDIRECTORIES = [".astravia/skills", ".agents/skills"];
 
 export function createSshPathPolicies(remoteCwd: string): {
 	editPathPolicy: EditPathPolicy;
@@ -23,7 +23,7 @@ export function createSshPathPolicies(remoteCwd: string): {
 		const target = normalizeRemotePath(absolutePath);
 		for (const protectedRoot of protectedRoots) {
 			if (target === protectedRoot || target.startsWith(`${protectedRoot}/`)) {
-				return `${protectedRoot} is managed by Vetta and is read-only.`;
+				return `${protectedRoot} is managed by Astravia and is read-only.`;
 			}
 		}
 		return undefined;

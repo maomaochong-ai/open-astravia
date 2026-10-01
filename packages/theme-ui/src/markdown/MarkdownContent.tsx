@@ -289,7 +289,7 @@ export const MarkdownContent = memo(function MarkdownContent({
 				);
 			},
 			strong: ({ children }) => <strong className="font-semibold text-foreground">{children}</strong>,
-			"vetta-svg": ({ node }: { node?: HastElement }) => {
+			"astravia-svg": ({ node }: { node?: HastElement }) => {
 				const source = node?.properties?.source;
 				const rich = labelsRef.current.rich ?? defaultRichContentLabels;
 				return typeof source === "string" ? <SvgPreview source={source} label={rich.svg} failed={rich.failed} live /> : null;

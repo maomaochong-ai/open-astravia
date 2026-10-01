@@ -1,4 +1,4 @@
-# @vetta/toolkit
+# @astravia/toolkit
 
 Monorepo-wide **Node utilities** — not product business logic.
 
@@ -8,22 +8,22 @@ Start with versioned JSON config + atomic file writes. More shared tools can lan
 
 ```ts
 // workspace
-"@vetta/toolkit": "workspace:*"
+"@astravia/toolkit": "workspace:*"
 ```
 
 ## Modules
 
 | Import | Purpose |
 |--------|---------|
-| `@vetta/toolkit` | All public APIs |
-| `@vetta/toolkit/versioned-config` | Pure `schemaVersion` migration runner (no fs) |
-| `@vetta/toolkit/config-store` | Versioned JSON file store (Node) |
-| `@vetta/toolkit/atomic-write` | Atomic write file/JSON (Node) |
+| `@astravia/toolkit` | All public APIs |
+| `@astravia/toolkit/versioned-config` | Pure `schemaVersion` migration runner (no fs) |
+| `@astravia/toolkit/config-store` | Versioned JSON file store (Node) |
+| `@astravia/toolkit/atomic-write` | Atomic write file/JSON (Node) |
 
 ## Versioned config (any package)
 
 ```ts
-import { migrateVersionedConfig } from "@vetta/toolkit/versioned-config";
+import { migrateVersionedConfig } from "@astravia/toolkit/versioned-config";
 
 const { config, migrated } = migrateVersionedConfig(raw, {
   currentVersion: 4,
@@ -37,7 +37,7 @@ const { config, migrated } = migrateVersionedConfig(raw, {
 ## JSON store (Node only)
 
 ```ts
-import { createVersionedJsonConfigStore } from "@vetta/toolkit/config-store";
+import { createVersionedJsonConfigStore } from "@astravia/toolkit/config-store";
 
 const store = createVersionedJsonConfigStore<MyConfig>({
   path: "/path/to/config.json",

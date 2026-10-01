@@ -20,12 +20,12 @@
 
 - `adb devices` 显示 `unauthorized` 时，真正的修复是接受手机 RSA 授权，而不是反复安装 APK。
 - Windows 环境下常用路径是 `%LOCALAPPDATA%\Android\Sdk\platform-tools\adb.exe`。
-- 构建成功不等于手机安装成功，必须单独确认设备状态和包名 `org.vetta.android`。
+- 构建成功不等于手机安装成功，必须单独确认设备状态和包名 `org.astravia.android`。
 
 ### 登录与扫码
 
 - 当前手机 UI 的远程连接入口位于登录后的“发现 → 远程连接”，所以业务 API 登录问题和 Relay 配对问题要分开判断。
-- Google Code Scanner 依赖 Google Play Services；部分真机应准备完整 `vetta://pair?...` URI 的手动输入路径。
+- Google Code Scanner 依赖 Google Play Services；部分真机应准备完整 `astravia://pair?...` URI 的手动输入路径。
 - 二维码重新生成会撤销旧配对，测试时不能为了“刷新状态”连续生成。
 
 ## 3. 黑屏故障复盘
@@ -77,7 +77,7 @@ EglRenderer: Frames received: 0. Rendered: 0.
 
 - AI HTTP proxy 测试因为 `undici` 构造器环境差异失败。
 - Runtime 测试找不到 Windows sandbox host 二进制。
-- Desktop 测试桩缺少 `window.vetta.session.openViewer`。
+- Desktop 测试桩缺少 `window.astravia.session.openViewer`。
 
 这些失败不能归因于 WebRTC 修复；远程桌面包、Worker、Android 构建和完整静态 `check` 仍需单独报告。
 

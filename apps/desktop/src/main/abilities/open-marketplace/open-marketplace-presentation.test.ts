@@ -11,7 +11,7 @@ async function createFixture(): Promise<{
 	root: string;
 	ability: ReturnType<typeof parseMarketplaceManifest>["abilities"][number];
 }> {
-	const root = await mkdtemp(join(tmpdir(), "vetta-open-presentation-test-"));
+	const root = await mkdtemp(join(tmpdir(), "astravia-open-presentation-test-"));
 	temporaryRoots.push(root);
 	await mkdir(join(root, "assets"), { recursive: true });
 	const manifest = parseMarketplaceManifest({
@@ -113,15 +113,15 @@ describe("loadOpenMarketplacePresentation", () => {
 
 		const presentation = loadOpenMarketplacePresentation(root, ability, "2026.07.8");
 
-		expect(presentation?.icon).toMatch(/^vetta-file:\/\/local\/.+\?v=2026\.07\.8$/);
+		expect(presentation?.icon).toMatch(/^astravia-file:\/\/local\/.+\?v=2026\.07\.8$/);
 		expect(presentation?.detail.blocks).toHaveLength(11);
 		expect(presentation?.detail.blocks?.[0]).toMatchObject({
 			type: "hero",
-			image: expect.stringContaining("vetta-file://local/"),
+			image: expect.stringContaining("astravia-file://local/"),
 		});
 		expect(presentation?.detail.blocks?.[1]).toMatchObject({
 			type: "feature-grid",
-			items: [{ icon: expect.stringContaining("vetta-file://local/") }],
+			items: [{ icon: expect.stringContaining("astravia-file://local/") }],
 		});
 		expect(presentation?.detail.blocks?.[3]).toMatchObject({
 			type: "showcase",
@@ -135,7 +135,7 @@ describe("loadOpenMarketplacePresentation", () => {
 		});
 		expect(presentation?.detail.blocks?.[5]).toMatchObject({
 			type: "gallery",
-			items: [{ src: expect.stringContaining("vetta-file://local/") }],
+			items: [{ src: expect.stringContaining("astravia-file://local/") }],
 		});
 		expect(presentation?.detail.blocks?.[6]).toEqual({ type: "stats", items: [{ value: "3", label: "Steps" }] });
 		expect(presentation?.detail.blocks?.[7]).toEqual({

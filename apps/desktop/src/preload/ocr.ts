@@ -52,15 +52,15 @@ export interface OcrBridge {
 }
 
 const bridge: OcrBridge = {
-	notifyReady: (sessionId) => ipcRenderer.send("vetta:ocr:ready", { sessionId }),
+	notifyReady: (sessionId) => ipcRenderer.send("astravia:ocr:ready", { sessionId }),
 	onStart: (handler) => {
-		ipcRenderer.on("vetta:ocr:start", (_event, payload: OcrStartPayload) => {
+		ipcRenderer.on("astravia:ocr:start", (_event, payload: OcrStartPayload) => {
 			handler(payload);
 		});
 	},
-	reportProgress: (sessionId, event) => ipcRenderer.send("vetta:ocr:progress", { sessionId, event }),
-	reportDone: (sessionId, result) => ipcRenderer.send("vetta:ocr:done", { sessionId, result }),
-	reportError: (sessionId, code, message) => ipcRenderer.send("vetta:ocr:error", { sessionId, code, message }),
+	reportProgress: (sessionId, event) => ipcRenderer.send("astravia:ocr:progress", { sessionId, event }),
+	reportDone: (sessionId, result) => ipcRenderer.send("astravia:ocr:done", { sessionId, result }),
+	reportError: (sessionId, code, message) => ipcRenderer.send("astravia:ocr:error", { sessionId, code, message }),
 };
 
-contextBridge.exposeInMainWorld("__vettaOcr", bridge);
+contextBridge.exposeInMainWorld("__astraviaOcr", bridge);

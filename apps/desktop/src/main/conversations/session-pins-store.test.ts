@@ -15,7 +15,7 @@ import {
 const roots: string[] = [];
 
 function tempFile(): string {
-	const root = mkdtempSync(join(tmpdir(), "vetta-pins-"));
+	const root = mkdtempSync(join(tmpdir(), "astravia-pins-"));
 	roots.push(root);
 	resetSessionPinsCache();
 	return join(root, "session-pins.json");

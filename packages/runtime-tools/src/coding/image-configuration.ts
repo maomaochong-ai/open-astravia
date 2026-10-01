@@ -1,4 +1,7 @@
-import type { RuntimeConfigurationDefinition, RuntimeConfigurationJsonObject } from "@vetta/runtime-core/configuration";
+import type {
+	RuntimeConfigurationDefinition,
+	RuntimeConfigurationJsonObject,
+} from "@astravia/runtime-core/configuration";
 
 export const CODING_IMAGE_CONFIGURATION_ID = "coding.images";
 

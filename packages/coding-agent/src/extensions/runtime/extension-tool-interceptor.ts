@@ -1,4 +1,4 @@
-import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
+import type { RuntimeToolDefinition } from "@astravia/runtime-core/kernel";
 import type { ExtensionRunner } from "../../extensions/index.js";
 import { DynamicContributionCatalog } from "../../interception/contribution-catalog.js";
 import {

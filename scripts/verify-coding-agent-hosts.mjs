@@ -41,18 +41,18 @@ const platformTag = `${process.platform}-${process.arch}`;
 const compileTarget = compileTargets[platformTag];
 if (!compileTarget) throw new Error(`Unsupported host acceptance platform: ${platformTag}`);
 
-const artifactRoot = await mkdtemp(join(tmpdir(), "vetta-agent-host-acceptance-"));
-const binaryPath = join(artifactRoot, process.platform === "win32" ? "vetta.exe" : "vetta");
+const artifactRoot = await mkdtemp(join(tmpdir(), "astravia-agent-host-acceptance-"));
+const binaryPath = join(artifactRoot, process.platform === "win32" ? "astravia.exe" : "astravia");
 try {
 	await run(
-		"standalone Vetta CLI compilation",
+		"standalone Astravia CLI compilation",
 		process.execPath,
 		[compileScript, "--target", compileTarget, "--outfile", binaryPath],
 		repositoryRoot,
 	);
 	await run("IM Gateway and real Agent suite", "go", ["test", "./...", "-count=1"], imGatewayDir, {
-		VETTA_TEST_AGENT_BIN: binaryPath,
-		VETTA_TEST_PACKAGE_DIR: packageDir,
+		ASTRAVIA_TEST_AGENT_BIN: binaryPath,
+		ASTRAVIA_TEST_PACKAGE_DIR: packageDir,
 	});
 } finally {
 	await rm(artifactRoot, { force: true, recursive: true });

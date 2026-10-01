@@ -5,7 +5,7 @@ import {
 	createLoopbackSshConnection,
 	formatLoopbackProjectUri,
 	toLoopbackRemotePath,
-} from "@vetta/ssh-transport/testing";
+} from "@astravia/ssh-transport/testing";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const connection = createLoopbackSshConnection();
@@ -20,7 +20,7 @@ describe("远程项目会话的资源发现", () => {
 		if (!windowsFixture) return;
 		if (
 			dirname(windowsFixture) !== parse(tmpdir()).root ||
-			!basename(windowsFixture).startsWith("vetta-remote-project-")
+			!basename(windowsFixture).startsWith("astravia-remote-project-")
 		) {
 			throw new Error(`Unexpected loopback fixture path: ${windowsFixture}`);
 		}
@@ -28,13 +28,13 @@ describe("远程项目会话的资源发现", () => {
 		windowsFixture = undefined;
 	});
 	it("读到远端项目自己的 AGENTS.md 与项目技能，不读本机的", async () => {
-		const testHome = mkdtempSync(join(tmpdir(), "vetta-resource-home-"));
-		vi.stubEnv("VETTA_HOME", testHome);
+		const testHome = mkdtempSync(join(tmpdir(), "astravia-resource-home-"));
+		vi.stubEnv("ASTRAVIA_HOME", testHome);
 		vi.stubEnv(process.platform === "win32" ? "USERPROFILE" : "HOME", testHome);
 		// Keep the loopback project outside the developer's home directory on Windows:
 		// discovery walks ancestors, which may contain a large personal .agents tree.
 		const fixtureParent = process.platform === "win32" ? parse(tmpdir()).root : tmpdir();
-		const remoteRoot = realpathSync(mkdtempSync(join(fixtureParent, "vetta-remote-project-")));
+		const remoteRoot = realpathSync(mkdtempSync(join(fixtureParent, "astravia-remote-project-")));
 		if (process.platform === "win32") windowsFixture = remoteRoot;
 		mkdirSync(join(remoteRoot, ".agents/skills/deploy"), { recursive: true });
 		writeFileSync(join(remoteRoot, "AGENTS.md"), "REMOTE-PROJECT-RULES\n");
@@ -42,7 +42,7 @@ describe("远程项目会话的资源发现", () => {
 			join(remoteRoot, ".agents/skills/deploy/SKILL.md"),
 			"---\nname: deploy\ndescription: Deploy the remote service.\n---\n\nRun the deploy script.\n",
 		);
-		const agentDir = mkdtempSync(join(tmpdir(), "vetta-agent-dir-"));
+		const agentDir = mkdtempSync(join(tmpdir(), "astravia-agent-dir-"));
 		const remotePath = toLoopbackRemotePath(remoteRoot);
 
 		const { resourceSource } = await createDesktopPromptRuntimeSources({

@@ -1,6 +1,6 @@
 import { Button } from "@shared/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@shared/components/ui/popover";
-import { aggregatePromptCacheUsage, type Usage } from "@vetta/ai/protocol";
+import { aggregatePromptCacheUsage, type Usage } from "@astravia/ai/protocol";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 

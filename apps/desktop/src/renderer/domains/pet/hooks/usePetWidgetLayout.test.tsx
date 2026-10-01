@@ -39,7 +39,7 @@ describe("usePetWidgetLayout", () => {
 		vi.stubGlobal("ResizeObserver", FakeResizeObserver);
 		setContentSize = vi.fn().mockResolvedValue(undefined);
 		setVideoHitbox = vi.fn().mockResolvedValue(undefined);
-		window.vettaPet = {
+		window.astraviaPet = {
 			onCommand: () => () => undefined,
 			resizeByWheel: async () => undefined,
 			resizeVideoByWheel: async () => undefined,
@@ -60,7 +60,7 @@ describe("usePetWidgetLayout", () => {
 
 	afterEach(() => {
 		vi.unstubAllGlobals();
-		delete window.vettaPet;
+		delete window.astraviaPet;
 	});
 
 	it("reports the sprite hitbox and widget content size so the main process can shrink the overlay window", () => {

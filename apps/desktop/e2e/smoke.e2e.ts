@@ -1,11 +1,11 @@
 /**
  * Desktop Electron batch-1 smoke: boot contract / config isolation / main-process mock probe.
  * Does not cover product UI. Requires dist/ artifacts, or release/*-unpacked when
- * VETTA_E2E_PACKAGED=1.
+ * ASTRAVIA_E2E_PACKAGED=1.
  */
 
-const EXPECTED_CONFIG_DIR = process.env.VETTA_CONFIG_DIR ?? ".vetta-e2e";
-const EXPECTED_VETTA_HOME = process.env.VETTA_HOME;
+const EXPECTED_CONFIG_DIR = process.env.ASTRAVIA_CONFIG_DIR ?? ".astravia-e2e";
+const EXPECTED_ASTRAVIA_HOME = process.env.ASTRAVIA_HOME;
 
 function normalizePath(p: string): string {
 	return p.replaceAll("\\", "/").replace(/\/+$/, "").toLowerCase();
@@ -24,7 +24,7 @@ async function waitForRendererReady(): Promise<void> {
 	);
 }
 
-describe("Vetta Desktop smoke — boot contract", () => {
+describe("Astravia Desktop smoke — boot contract", () => {
 	it("main process is ready and has at least one live window", async () => {
 		const snapshot = await browser.electron.execute((electron) => {
 			const windows = electron.BrowserWindow.getAllWindows().filter((win) => !win.isDestroyed());
@@ -91,24 +91,24 @@ describe("Vetta Desktop smoke — boot contract", () => {
 	});
 });
 
-describe("Vetta Desktop smoke — config isolation", () => {
+describe("Astravia Desktop smoke — config isolation", () => {
 	it("E2E env vars are injected into the main process", async () => {
 		const env = await browser.electron.execute(() => {
 			return {
-				vettaE2e: process.env.VETTA_E2E,
-				configDir: process.env.VETTA_CONFIG_DIR,
-				vettaHome: process.env.VETTA_HOME,
+				astraviaE2e: process.env.ASTRAVIA_E2E,
+				configDir: process.env.ASTRAVIA_CONFIG_DIR,
+				astraviaHome: process.env.ASTRAVIA_HOME,
 			};
 		});
 
-		expect(env.vettaE2e).toBe("1");
+		expect(env.astraviaE2e).toBe("1");
 		expect(env.configDir).toBe(EXPECTED_CONFIG_DIR);
-		expect(env.vettaHome).toBeTruthy();
-		if (EXPECTED_VETTA_HOME) {
-			expect(normalizePath(env.vettaHome ?? "")).toBe(normalizePath(EXPECTED_VETTA_HOME));
+		expect(env.astraviaHome).toBeTruthy();
+		if (EXPECTED_ASTRAVIA_HOME) {
+			expect(normalizePath(env.astraviaHome ?? "")).toBe(normalizePath(EXPECTED_ASTRAVIA_HOME));
 		} else {
 			// Without an explicit override, home must still use the isolated config dir name.
-			expect(normalizePath(env.vettaHome ?? "")).toContain(normalizePath(EXPECTED_CONFIG_DIR));
+			expect(normalizePath(env.astraviaHome ?? "")).toContain(normalizePath(EXPECTED_CONFIG_DIR));
 		}
 	});
 
@@ -119,10 +119,10 @@ describe("Vetta Desktop smoke — config isolation", () => {
 	});
 });
 
-describe("Vetta Desktop smoke — main-process mock probe", () => {
+describe("Astravia Desktop smoke — main-process mock probe", () => {
 	it("can mock dialog.showOpenDialogSync and intercept the call", async () => {
 		const mockShowOpenDialog = await browser.electron.mock("dialog", "showOpenDialogSync");
-		await mockShowOpenDialog.mockReturnValue(["vetta-e2e-selection"]);
+		await mockShowOpenDialog.mockReturnValue(["astravia-e2e-selection"]);
 
 		await browser.electron.execute((electron) => {
 			// Call tracking is the contract here. Do not also serialize the mocked array

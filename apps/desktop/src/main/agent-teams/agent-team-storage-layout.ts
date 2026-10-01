@@ -3,8 +3,8 @@ import type { Dirent } from "node:fs";
 import { existsSync } from "node:fs";
 import { mkdir, readdir, readFile, rename, rm, rmdir } from "node:fs/promises";
 import { dirname, join, relative, resolve, sep } from "node:path";
-import { codingAgentSessionShardPath } from "@vetta/coding-agent/bootstrap";
-import { atomicWriteFileAsync, atomicWriteJSONAsync } from "@vetta/toolkit/atomic-write";
+import { codingAgentSessionShardPath } from "@astravia/coding-agent/bootstrap";
+import { atomicWriteFileAsync, atomicWriteJSONAsync } from "@astravia/toolkit/atomic-write";
 
 export const AGENT_TEAM_STORAGE_LAYOUT_VERSION = 2;
 export const AGENT_TEAM_TEAMS_DIRECTORY = "teams";
@@ -46,7 +46,7 @@ const LEGACY_ID_MAPPINGS: Readonly<Record<string, string>> = Object.freeze({
 	"builtin:team:research": "9c975a15-1a00-4b1d-b646-0c1d76c43e3c",
 	"builtin:team:growth": "742016f1-0f8b-4d9f-a86b-6863ed6cb58a",
 	"builtin:team:strategy": "6efa6897-3e38-499c-92b4-ceeb5725b069",
-	"builtin:team:vetta": "7d8383c0-c0da-47cc-8952-bb28e6d3af54",
+	"builtin:team:astravia": "7d8383c0-c0da-47cc-8952-bb28e6d3af54",
 	"builtin:member:dev:master": "5331fb94-0f3a-45c5-9ba1-32048a5067d3",
 	"builtin:member:dev:architect": "062e9186-ca1a-42d7-9d1d-66731b8ce17b",
 	"builtin:member:dev:executor": "09221fe5-ce98-4555-a294-6d78e29b87b4",
@@ -87,7 +87,7 @@ const LEGACY_TEAM_NAMES: Readonly<Record<string, string>> = Object.freeze({
 	"builtin:team:research": "Deep Research",
 	"builtin:team:growth": "Growth & Content",
 	"builtin:team:strategy": "Biz Strategy",
-	"builtin:team:vetta": "Vetta Team",
+	"builtin:team:astravia": "Astravia Team",
 });
 
 export interface AgentTeamStorageIndex {
@@ -462,15 +462,15 @@ async function rewritePersistedReferences(
 	idMappings: Readonly<Record<string, string>>,
 ): Promise<void> {
 	if (pathMappings.length === 0 && Object.keys(idMappings).length === 0) return;
-	const vettaHome = dirname(root);
+	const astraviaHome = dirname(root);
 	const candidates = [
 		agentTeamDefinitionsRoot(root),
 		agentTeamAgentsRoot(root),
 		agentTeamWorkspacesRoot(root),
 		join(root, ORPHANED_DIRECTORY),
 		...pathMappings.map((mapping) => mapping.target),
-		join(vettaHome, "desktop-app", "agent-teams", "sessions"),
-		join(vettaHome, "conversation-ownership.v1.json"),
+		join(astraviaHome, "desktop-app", "agent-teams", "sessions"),
+		join(astraviaHome, "conversation-ownership.v1.json"),
 	];
 	for (const candidate of new Set(candidates)) await rewriteReferences(candidate, pathMappings, idMappings);
 }
@@ -644,7 +644,7 @@ function migrateLegacyId(id: string): string {
 	const replacement = LEGACY_ID_MAPPINGS[id];
 	if (replacement !== undefined) return replacement;
 	if (!/^builtin:(?:agent|team|member):/u.test(id)) return id;
-	const digest = createHash("sha256").update(`open-vetta:retired-agent-team-id:${id}`, "utf8").digest("hex");
+	const digest = createHash("sha256").update(`open-astravia:retired-agent-team-id:${id}`, "utf8").digest("hex");
 	const variant = ((Number.parseInt(digest[16]!, 16) & 0x3) | 0x8).toString(16);
 	return `${digest.slice(0, 8)}-${digest.slice(8, 12)}-5${digest.slice(13, 16)}-${variant}${digest.slice(17, 20)}-${digest.slice(20, 32)}`;
 }

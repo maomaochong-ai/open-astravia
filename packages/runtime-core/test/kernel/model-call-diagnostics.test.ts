@@ -1,4 +1,4 @@
-import type { AssistantMessage, Context, LanguageModelStreamEvent, ModelStreamResponse } from "@vetta/ai";
+import type { AssistantMessage, Context, LanguageModelStreamEvent, ModelStreamResponse } from "@astravia/ai";
 import { describe, expect, it } from "vitest";
 import { withPromptCacheDiagnostics } from "../../src/kernel/model-call-diagnostics.js";
 

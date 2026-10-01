@@ -1,5 +1,5 @@
-import { useTranslation } from "@vetta-org/plugin-sdk";
-import { Popover, PopoverContent, PopoverTrigger } from "@vetta-org/ui";
+import { useTranslation } from "@astravia-org/plugin-sdk";
+import { Popover, PopoverContent, PopoverTrigger } from "@astravia-org/ui";
 import type { ReactNode } from "react";
 import { useCallback, useRef, useState } from "react";
 import { resolveSupportedModelOption } from "../generation/model-options";
@@ -76,7 +76,7 @@ export function ContentVideoGenerationSettings({
 			{open ? (
 				<PopoverContent
 					ref={contentRef}
-					data-vetta-plugin-root="content-creation"
+					data-astravia-plugin-root="content-creation"
 					align="start"
 					side="top"
 					sideOffset={10}

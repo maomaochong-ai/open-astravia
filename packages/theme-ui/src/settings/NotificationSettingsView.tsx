@@ -1,5 +1,5 @@
 import type { JSX } from "react";
-import { Button, Switch } from "@vetta-org/ui";
+import { Button, Switch } from "@astravia-org/ui";
 import { MotionSelect } from "./MotionSelect";
 import { SettingRow, SettingSection, type SettingSectionMeta } from "./SettingChrome";
 

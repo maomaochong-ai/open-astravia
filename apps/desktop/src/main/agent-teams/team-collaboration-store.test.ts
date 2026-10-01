@@ -4,8 +4,8 @@ import {
 	createTeamSharedContextGeneration,
 	TEAM_RECOVERY_EXHAUSTED,
 	type TeamSessionDocument,
-} from "@vetta/agent-team";
-import { type ConversationDocument, createEmptyConversationDocument } from "@vetta/runtime-core";
+} from "@astravia/agent-team";
+import { type ConversationDocument, createEmptyConversationDocument } from "@astravia/runtime-core";
 import { describe, expect, it } from "vitest";
 import { TeamCollaborationStore } from "./team-collaboration-store.js";
 

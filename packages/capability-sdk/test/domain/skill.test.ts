@@ -13,10 +13,10 @@ import {
 describe("skill domain capabilities", () => {
 	it("uses one stable id per skill operation", () => {
 		expect(Object.values(DOMAIN_SKILL_CAPABILITIES).map((capability) => capability.id)).toEqual([
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}skill.list`,
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}skill.installed.list`,
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}skill.installed.set-enabled`,
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}skill.installed.uninstall`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}skill.list`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}skill.installed.list`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}skill.installed.set-enabled`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}skill.installed.uninstall`,
 		]);
 	});
 
@@ -107,14 +107,14 @@ describe("skill domain capabilities", () => {
 				source: "plugin",
 				type: "skill",
 				sourcePluginId: "feishu",
-				icon: "vetta-plugin://feishu/versions/1.2.3/assets/icon.png",
+				icon: "astravia-plugin://feishu/versions/1.2.3/assets/icon.png",
 				ignored: true,
 			},
 		]);
 
 		expect(skill).toMatchObject({
 			sourcePluginId: "feishu",
-			icon: "vetta-plugin://feishu/versions/1.2.3/assets/icon.png",
+			icon: "astravia-plugin://feishu/versions/1.2.3/assets/icon.png",
 		});
 		expect(skill).not.toHaveProperty("ignored");
 	});
@@ -136,16 +136,16 @@ describe("skill domain capabilities", () => {
 	it("resolves provider presentation independently for each product surface", () => {
 		const [skill] = DOMAIN_SKILL_CAPABILITIES.LIST.parseOutput([
 			{
-				name: "vetta-ui-design",
+				name: "astravia-ui-design",
 				alias: "Internal alias",
 				description: "Internal description",
 				source: "plugin",
 				type: "skill",
-				provenance: { kind: "provided", providerType: "plugin", providerId: "vetta-ui-design" },
+				provenance: { kind: "provided", providerType: "plugin", providerId: "astravia-ui-design" },
 				presentation: {
 					defaultVisibility: "hidden",
 					surfaces: { agentConfiguration: "visible", skillPicker: "hidden" },
-					displayName: "Vetta 设计",
+					displayName: "Astravia 设计",
 					displayDescription: "设计产品界面",
 				},
 			},
@@ -157,7 +157,7 @@ describe("skill domain capabilities", () => {
 		expect(isSkillVisibleOnSurface(skill, "skillPicker")).toBe(false);
 		expect(isSkillVisibleOnSurface(skill, "commandPalette")).toBe(false);
 		expect(isSkillVisibleOnSurface(skill, "pluginDetail")).toBe(false);
-		expect(getSkillDisplayName(skill)).toBe("Vetta 设计");
+		expect(getSkillDisplayName(skill)).toBe("Astravia 设计");
 		expect(getSkillDisplayDescription(skill)).toBe("设计产品界面");
 	});
 

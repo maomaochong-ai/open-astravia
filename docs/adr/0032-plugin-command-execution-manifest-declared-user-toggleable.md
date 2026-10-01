@@ -39,8 +39,8 @@ python / node 后续复用同一出口，不为各运行时另开专用 API。
 
 - 这是把「任意命令执行」能力交给 renderer 插件——靠 manifest 白名单 + 用户开关而非沙箱兜底，
   契合现有「一方 / 策展、经审核上架」的信任模型，不适用于任意第三方不可信代码。
-- 落地需扫齐多处注册点：主进程 IPC handler、preload api-types、`@vetta-org/plugin-sdk` 出口、
-  `plugin-protocol.ts` 的 `vetta-host://plugin-sdk` shim、权限 / 命令门控、renderer ctx 构建、
+- 落地需扫齐多处注册点：主进程 IPC handler、preload api-types、`@astravia-org/plugin-sdk` 出口、
+  `plugin-protocol.ts` 的 `astravia-host://plugin-sdk` shim、权限 / 命令门控、renderer ctx 构建、
   manifest schema 与插件配置页 UI。漏一处会导致插件加载失败且 `check` 抓不到。
 - 二进制粒度意味着声明了 `git` 即放开 `git push` / `git reset`；约束改由「用户可关命令」+「插件
   自身只调只读子命令」承担，而非平台强制。
@@ -49,7 +49,7 @@ python / node 后续复用同一出口，不为各运行时另开专用 API。
 已落地的关键形状（首版）：
 
 - API：`ctx.command.run(file, args?, opts?) → { stdout, stderr, exitCode }`，`opts: { cwd?, env?, timeoutMs? }`。
-- IPC：`vetta:plugins:command-run`（带 pluginId），执行在 `main/plugins/command-runner.ts`，execFile
+- IPC：`astravia:plugins:command-run`（带 pluginId），执行在 `main/plugins/command-runner.ts`，execFile
   shell=false、timeout 默认 30s/上限 120s、maxBuffer 10MB、env 合并 `process.env`。
 - manifest：顶层 `commands: string[]`（二进制名）；存进 `InstalledPlugin.declaredCommands` /
   `grantedCommandNames`。用户插件存注册表、系统插件存 `system-plugin-prefs.json` 的 `disabledCommands`。

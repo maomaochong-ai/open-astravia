@@ -1,11 +1,11 @@
-import type { RuntimeObservationPublisher } from "@vetta/runtime-core";
+import type { RuntimeObservationPublisher } from "@astravia/runtime-core";
 import {
 	type RuntimeResourceContext,
 	type RuntimeSessionMarkerIndex,
 	type RuntimeSessionValueIndex,
 	runtimeFailureFromError,
-} from "@vetta/runtime-core";
-import { sessionExtensionObservation } from "@vetta/runtime-core/session-extensions";
+} from "@astravia/runtime-core";
+import { sessionExtensionObservation } from "@astravia/runtime-core/session-extensions";
 import {
 	createMcpDeferredToolController,
 	createMcpRuntimeToolSynchronizer,
@@ -14,7 +14,7 @@ import {
 	type McpRuntimeToolSnapshot,
 	type McpRuntimeToolSource,
 	type McpRuntimeToolView,
-} from "@vetta/runtime-mcp";
+} from "@astravia/runtime-mcp";
 import type { CodingAgentPluginMcpRuntime, CodingAgentToolActivation } from "../../runtime-contracts/index.js";
 import { CODING_AGENT_MCP_RELOAD_FINISHED, CODING_AGENT_MCP_RELOAD_STARTED } from "./mcp-session-extension-contract.js";
 

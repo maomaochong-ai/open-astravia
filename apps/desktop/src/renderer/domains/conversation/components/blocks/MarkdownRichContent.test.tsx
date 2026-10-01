@@ -2,8 +2,8 @@ import { createMarkdownHostFixture } from "./markdown-host.fixture";
 import type { ComponentProps } from "react";
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { MarkdownContent, MarkdownHostProvider } from "@vetta-org/theme-ui/markdown";
-import { MarkdownPreviewView } from "@vetta-org/theme-ui/activity";
+import { MarkdownContent, MarkdownHostProvider } from "@astravia-org/theme-ui/markdown";
+import { MarkdownPreviewView } from "@astravia-org/theme-ui/activity";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderFormula } from "../../../../../../../../packages/theme-ui/src/markdown/math-render";
 import { RichCodeBlock as RichCodeBlockView } from "../../../../../../../../packages/theme-ui/src/markdown/RichCodeBlock";

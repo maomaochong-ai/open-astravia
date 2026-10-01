@@ -1,4 +1,4 @@
-import { useTranslation } from "@vetta-org/plugin-sdk";
+import { useTranslation } from "@astravia-org/plugin-sdk";
 import type { ChangeCode } from "../git/types";
 
 const CODE_META: Record<ChangeCode, { label: string; color: string; titleKey: string }> = {

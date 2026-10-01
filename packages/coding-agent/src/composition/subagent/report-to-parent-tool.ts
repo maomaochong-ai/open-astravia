@@ -1,5 +1,5 @@
+import type { RuntimeToolDefinition } from "@astravia/runtime-core/kernel";
 import { type Static, Type } from "@sinclair/typebox";
-import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
 import type { CodingAgentRuntimeToolRegistration } from "../../runtime-contracts/index.js";
 
 export const SUBAGENT_REPORT_TO_PARENT_TOOL_NAME = "report_to_parent";

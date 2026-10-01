@@ -2,9 +2,9 @@ import {
 	applyConversationDocumentCommand,
 	type ConversationDocument,
 	createEmptyConversationDocument,
-} from "@vetta/runtime-core";
-import type { ModelCallContributionContext } from "@vetta/runtime-core/kernel";
-import { SessionExtensionComposition } from "@vetta/runtime-core/session-extensions";
+} from "@astravia/runtime-core";
+import type { ModelCallContributionContext } from "@astravia/runtime-core/kernel";
+import { SessionExtensionComposition } from "@astravia/runtime-core/session-extensions";
 import { afterEach, describe, expect, it } from "vitest";
 import {
 	CODING_AGENT_GOAL_CLEAR,

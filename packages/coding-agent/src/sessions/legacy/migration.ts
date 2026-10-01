@@ -4,7 +4,7 @@ import {
 	ConversationStorageError,
 	LegacySessionImportError,
 	type LegacySessionImportIssueCode,
-} from "@vetta/runtime-storage/conversation";
+} from "@astravia/runtime-storage/conversation";
 import { normalizeCodingAgentLegacySessionEntry } from "./entry-normalizer.js";
 import type { LegacySessionMigrationHost } from "./host-contracts.js";
 

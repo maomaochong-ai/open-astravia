@@ -5,31 +5,31 @@ import { onIpcEvent, onIpcVoidEvent } from "./helper.js";
 export function createAbilitiesApi(ipc: IpcRenderer): Pick<DesktopApi, "abilities"> {
 	return {
 		abilities: {
-			getLedger: () => ipc.invoke("vetta:abilities:get-ledger"),
-			listLocalPresentations: () => ipc.invoke("vetta:abilities:list-local-presentations"),
+			getLedger: () => ipc.invoke("astravia:abilities:get-ledger"),
+			listLocalPresentations: () => ipc.invoke("astravia:abilities:list-local-presentations"),
 			recordMcpInstall: (runtimeName, version, metadata) =>
-				ipc.invoke("vetta:abilities:record-mcp-install", runtimeName, version, metadata),
-			listOpenMarketplace: () => ipc.invoke("vetta:abilities:list-open-marketplace"),
-			refreshOpenMarketplace: () => ipc.invoke("vetta:abilities:refresh-open-marketplace"),
-			listOpenMarketplaces: () => ipc.invoke("vetta:abilities:list-open-marketplaces"),
-			refreshOpenMarketplaces: () => ipc.invoke("vetta:abilities:refresh-open-marketplaces"),
-			listMarketplaceSources: () => ipc.invoke("vetta:abilities:list-marketplace-sources"),
-			addMarketplaceSource: (input) => ipc.invoke("vetta:abilities:add-marketplace-source", input),
-			updateMarketplaceSource: (id, input) => ipc.invoke("vetta:abilities:update-marketplace-source", id, input),
+				ipc.invoke("astravia:abilities:record-mcp-install", runtimeName, version, metadata),
+			listOpenMarketplace: () => ipc.invoke("astravia:abilities:list-open-marketplace"),
+			refreshOpenMarketplace: () => ipc.invoke("astravia:abilities:refresh-open-marketplace"),
+			listOpenMarketplaces: () => ipc.invoke("astravia:abilities:list-open-marketplaces"),
+			refreshOpenMarketplaces: () => ipc.invoke("astravia:abilities:refresh-open-marketplaces"),
+			listMarketplaceSources: () => ipc.invoke("astravia:abilities:list-marketplace-sources"),
+			addMarketplaceSource: (input) => ipc.invoke("astravia:abilities:add-marketplace-source", input),
+			updateMarketplaceSource: (id, input) => ipc.invoke("astravia:abilities:update-marketplace-source", id, input),
 			clearMarketplaceSourceCredential: (id) =>
-				ipc.invoke("vetta:abilities:clear-marketplace-source-credential", id),
-			removeMarketplaceSource: (id) => ipc.invoke("vetta:abilities:remove-marketplace-source", id),
-			refreshMarketplaceSource: (id) => ipc.invoke("vetta:abilities:refresh-marketplace-source", id),
+				ipc.invoke("astravia:abilities:clear-marketplace-source-credential", id),
+			removeMarketplaceSource: (id) => ipc.invoke("astravia:abilities:remove-marketplace-source", id),
+			refreshMarketplaceSource: (id) => ipc.invoke("astravia:abilities:refresh-marketplace-source", id),
 			onOpenMarketplacesUpdated: (handler) =>
-				onIpcVoidEvent(ipc, "vetta:abilities:open-marketplaces-updated", handler),
+				onIpcVoidEvent(ipc, "astravia:abilities:open-marketplaces-updated", handler),
 			installOpenAbility: (type, slug, sourceId) =>
-				ipc.invoke("vetta:abilities:install-open-ability", type, slug, sourceId),
+				ipc.invoke("astravia:abilities:install-open-ability", type, slug, sourceId),
 			prepareOpenMcpAbility: (slug, sourceId) =>
-				ipc.invoke("vetta:abilities:prepare-open-mcp-ability", slug, sourceId),
-			onMcpRuntimeProgress: (handler) => onIpcEvent(ipc, "vetta:abilities:mcp-runtime-progress", handler),
-			getOpenMcpSetupStatus: () => ipc.invoke("vetta:abilities:get-open-mcp-setup-status"),
+				ipc.invoke("astravia:abilities:prepare-open-mcp-ability", slug, sourceId),
+			onMcpRuntimeProgress: (handler) => onIpcEvent(ipc, "astravia:abilities:mcp-runtime-progress", handler),
+			getOpenMcpSetupStatus: () => ipc.invoke("astravia:abilities:get-open-mcp-setup-status"),
 			removeOpenMcpRuntime: (slug, sourceId) =>
-				ipc.invoke("vetta:abilities:remove-open-mcp-runtime", slug, sourceId),
+				ipc.invoke("astravia:abilities:remove-open-mcp-runtime", slug, sourceId),
 		},
 	};
 }

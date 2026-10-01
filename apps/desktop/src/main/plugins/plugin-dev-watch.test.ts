@@ -13,13 +13,13 @@ afterEach(async () => {
 describe("plugin development watch", () => {
 	it("resolves the CLI through the project module graph", async () => {
 		const projectRoot = join(testRoot, "installed");
-		const packageDir = join(projectRoot, "node_modules", "@vetta-org", "plugin-vite");
+		const packageDir = join(projectRoot, "node_modules", "@astravia-org", "plugin-vite");
 		await mkdir(join(packageDir, "dist"), { recursive: true });
 		await writeFile(join(projectRoot, "package.json"), JSON.stringify({ type: "module" }));
 		await writeFile(
 			join(packageDir, "package.json"),
 			JSON.stringify({
-				name: "@vetta-org/plugin-vite",
+				name: "@astravia-org/plugin-vite",
 				version: "1.0.0",
 				type: "module",
 				exports: {
@@ -46,13 +46,13 @@ describe("plugin development watch", () => {
 
 	it("reports an installed plugin-vite version without the public CLI export", async () => {
 		const projectRoot = join(testRoot, "incompatible");
-		const packageDir = join(projectRoot, "node_modules", "@vetta-org", "plugin-vite");
+		const packageDir = join(projectRoot, "node_modules", "@astravia-org", "plugin-vite");
 		await mkdir(join(packageDir, "dist"), { recursive: true });
 		await writeFile(join(projectRoot, "package.json"), JSON.stringify({ type: "module" }));
 		await writeFile(
 			join(packageDir, "package.json"),
 			JSON.stringify({
-				name: "@vetta-org/plugin-vite",
+				name: "@astravia-org/plugin-vite",
 				version: "0.0.5",
 				type: "module",
 				exports: { ".": { import: "./dist/index.js" } },

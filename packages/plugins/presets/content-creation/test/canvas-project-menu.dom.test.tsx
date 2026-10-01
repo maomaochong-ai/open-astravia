@@ -7,7 +7,7 @@ import { CanvasProjectMenu } from "../src/canvas/CanvasProjectMenu";
 import type { ContentModelDescriptor } from "../src/generation/types";
 import { createContentProject } from "../src/project/types";
 
-vi.mock("@vetta-org/plugin-sdk", () => ({
+vi.mock("@astravia-org/plugin-sdk", () => ({
 	useTranslation: () => ({
 		t: (key: string, values?: { count?: number }) =>
 			values?.count === undefined ? key : `${key}:${values.count}`,
@@ -21,7 +21,7 @@ interface DropdownState {
 
 const DropdownContext = createContext<DropdownState | null>(null);
 
-vi.mock("@vetta-org/ui", () => ({
+vi.mock("@astravia-org/ui", () => ({
 	DropdownMenu: ({ children }: { children: ReactNode }) => {
 		const [open, setOpen] = useState(false);
 		return <DropdownContext.Provider value={{ open, setOpen }}>{children}</DropdownContext.Provider>;

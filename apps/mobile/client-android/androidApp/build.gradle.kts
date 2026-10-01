@@ -20,11 +20,11 @@ dependencies {
 }
 
 android {
-    namespace = "org.vetta.android"
+    namespace = "org.astravia.android"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
     defaultConfig {
-        applicationId = "org.vetta.android"
+        applicationId = "org.astravia.android"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1

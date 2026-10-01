@@ -101,7 +101,7 @@ export function useCommandPanelModel({
 		removeInputTrigger();
 		onClose();
 		focusInputEditor();
-		void window.vetta.session.queueContextCompaction(activeSession.runtimeId).catch((error) => {
+		void window.astravia.session.queueContextCompaction(activeSession.runtimeId).catch((error) => {
 			console.warn("[useCommandPanelModel] queue context compaction failed", error);
 			showToast({
 				variant: "error",

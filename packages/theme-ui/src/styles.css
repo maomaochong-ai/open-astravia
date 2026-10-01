@@ -48,7 +48,7 @@
 }
 
 /* ─── 「进行中」指示器 ───
-   .processing-shimmer / .vetta-live-dot / .tool-call-shimmer-text / .send-button-ripple-* /
+   .processing-shimmer / .astravia-live-dot / .tool-call-shimmer-text / .send-button-ripple-* /
    .todo-label-sheen / .todo-marker-spin / .activity-dot-* 这些类在 CSS 里只写静止态，
    不写 infinite 关键帧：macOS 主窗口带毛玻璃，页面每出一帧系统都要整窗重合成，各自 60fps 的
    呼吸/波纹叠在一起足以把 GPU 顶到几成。呼吸由宿主（apps/desktop shared/lib/live-animations.ts）

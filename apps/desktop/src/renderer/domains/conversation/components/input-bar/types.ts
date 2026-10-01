@@ -1,11 +1,11 @@
+import type { CodingAgentPlanReviewRequest } from "@astravia/coding-agent/function-extensions";
+import type { BottomPanelTabViewModel } from "@astravia-org/theme-ui/bottom-panel";
+import type { InputBarContextMenuViewProps, SessionDropZoneViewProps } from "@astravia-org/theme-ui/chat";
 import type { SkillInfo } from "@preload/api";
 import type { InputSegment } from "@shared/lib/input-tokens";
 import type { AppshotAttachment } from "@shared/store/atoms";
 import type { TodoItem } from "@shared/store/todo-atoms";
 import type { WorkSurfaceScope } from "@shared/workspace/work-surface";
-import type { CodingAgentPlanReviewRequest } from "@vetta/coding-agent/function-extensions";
-import type { BottomPanelTabViewModel } from "@vetta-org/theme-ui/bottom-panel";
-import type { InputBarContextMenuViewProps, SessionDropZoneViewProps } from "@vetta-org/theme-ui/chat";
 import type { ComponentProps, MouseEvent, ReactNode } from "react";
 import type { ConnectorGridItem } from "../../hooks/useConnectorGrid";
 import type { ContextRingModel } from "../../hooks/useContextRingModel";

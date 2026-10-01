@@ -23,7 +23,10 @@ describe("desktop signaling websocket", () => {
 		await signaling.connect({ onSignal: () => undefined, onClose: () => undefined });
 
 		expect(url).toBe("wss://relay.test/v1/desktop/pairing_abcdefghijklmnopqrstuvwx/host");
-		expect(protocols).toEqual([REMOTE_DESKTOP_WEBSOCKET_PROTOCOL, "vetta.pairing.secret_abcdefghijklmnopqrstuvwxyz"]);
+		expect(protocols).toEqual([
+			REMOTE_DESKTOP_WEBSOCKET_PROTOCOL,
+			"astravia.pairing.secret_abcdefghijklmnopqrstuvwxyz",
+		]);
 	});
 
 	it("accepts the query-style pairing fragment used by QR pairing", async () => {
@@ -43,7 +46,7 @@ describe("desktop signaling websocket", () => {
 		await signaling.connect({ onSignal: () => undefined, onClose: () => undefined });
 
 		expect(url).toBe("wss://relay.test/v1/desktop/pairing_abcdefghijklmnopqrstuvwx/viewer");
-		expect(protocols).toEqual([REMOTE_DESKTOP_WEBSOCKET_PROTOCOL, "vetta.pairing.mobile_resume"]);
+		expect(protocols).toEqual([REMOTE_DESKTOP_WEBSOCKET_PROTOCOL, "astravia.pairing.mobile_resume"]);
 	});
 
 	it("reports a drop only for an open socket and can connect again after it", async () => {

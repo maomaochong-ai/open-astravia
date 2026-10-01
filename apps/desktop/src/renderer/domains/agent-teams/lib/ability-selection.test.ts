@@ -1,4 +1,4 @@
-import type { AgentAbilitySelection } from "@vetta/agent-team";
+import type { AgentAbilitySelection } from "@astravia/agent-team";
 import { describe, expect, it } from "vitest";
 import {
 	abilityKeyForKind,

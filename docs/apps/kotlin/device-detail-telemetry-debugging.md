@@ -34,10 +34,10 @@ Desktop diagnostics()
 涉及的主要源码：
 
 - `apps/desktop/src/main/remote-control/desktop-conversation-remote-operations.ts`
-- `apps/mobile/client-android/shared/src/commonMain/kotlin/org/vetta/android/domain/remote/link/DesktopLink.kt`
-- `apps/mobile/client-android/shared/src/commonMain/kotlin/org/vetta/android/domain/work/DesktopMirror.kt`
-- `apps/mobile/client-android/shared/src/commonMain/kotlin/org/vetta/android/domain/device/DesktopGateway.kt`
-- `apps/mobile/client-android/shared/src/commonMain/kotlin/org/vetta/android/ui/connect/ConnectScreens.kt`
+- `apps/mobile/client-android/shared/src/commonMain/kotlin/org/astravia/android/domain/remote/link/DesktopLink.kt`
+- `apps/mobile/client-android/shared/src/commonMain/kotlin/org/astravia/android/domain/work/DesktopMirror.kt`
+- `apps/mobile/client-android/shared/src/commonMain/kotlin/org/astravia/android/domain/device/DesktopGateway.kt`
+- `apps/mobile/client-android/shared/src/commonMain/kotlin/org/astravia/android/ui/connect/ConnectScreens.kt`
 
 `DesktopDevice.viewerUrl` 是 WebRTC viewer 地址，含配对凭据，只用于桌面预览，不能出现在系统信息卡片中。连接时长由 `onlineSinceEpochMs` 在界面按秒计算。
 
@@ -158,12 +158,12 @@ Set-Location apps/mobile/client-android
 
 ```powershell
 $adb = "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe"
-$apk = "C:\develop\yiyun\vetta\open-vetta\apps\kotlin\androidApp\build\outputs\apk\debug\androidApp-debug.apk"
+$apk = "C:\develop\yiyun\astravia\open-astravia\apps\kotlin\androidApp\build\outputs\apk\debug\androidApp-debug.apk"
 
 & $adb devices
 & $adb install -r $apk
-& $adb shell am force-stop org.vetta.android
-& $adb shell monkey -p org.vetta.android -c android.intent.category.LAUNCHER 1
+& $adb shell am force-stop org.astravia.android
+& $adb shell monkey -p org.astravia.android -c android.intent.category.LAUNCHER 1
 ```
 
 `install -r` 保留 SharedPreferences 与配对记录。重启 APP 后桌面镜像会用保存的配对自动重连，短暂显示“正在连接”属正常；只有解除配对或电脑端撤销后才需要重新扫码。
@@ -173,12 +173,12 @@ $apk = "C:\develop\yiyun\vetta\open-vetta\apps\kotlin\androidApp\build\outputs\a
 使用临时目录，避免把真实桌面内容留在仓库：
 
 ```powershell
-$probeDir = Join-Path $env:TEMP "vetta-mobile-probe"
+$probeDir = Join-Path $env:TEMP "astravia-mobile-probe"
 New-Item -ItemType Directory -Force $probeDir | Out-Null
 
 & $adb exec-out screencap -p > (Join-Path $probeDir "device-detail.png")
-& $adb shell uiautomator dump /sdcard/vetta-device-detail.xml
-& $adb pull /sdcard/vetta-device-detail.xml (Join-Path $probeDir "device-detail.xml")
+& $adb shell uiautomator dump /sdcard/astravia-device-detail.xml
+& $adb pull /sdcard/astravia-device-detail.xml (Join-Path $probeDir "device-detail.xml")
 ```
 
 只提取验收字段，不把完整 XML 输出到终端：
@@ -225,7 +225,7 @@ rg -n "osLabel|totalmem|cpus" apps/desktop/dist/main -g '*.js'
 
 ```powershell
 Get-CimInstance Win32_Process |
-  Where-Object { $_.Name -eq 'electron.exe' -and $_.CommandLine -match 'open-vetta' } |
+  Where-Object { $_.Name -eq 'electron.exe' -and $_.CommandLine -match 'open-astravia' } |
   Select-Object ProcessId, ParentProcessId, CommandLine
 ```
 

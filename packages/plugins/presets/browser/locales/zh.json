@@ -21,7 +21,7 @@
 	"console.retry": "重试",
 	"console.recheck": "重新检查",
 	"console.installHint": "首次使用需要安装浏览器自动化运行时（约 90MB）。若系统未安装 Chrome，还会额外下载 Chrome for Testing。",
-	"console.outdatedHint": "检测到 agent-browser {{found}}，本插件需要 {{required}} 或更高。点击「升级」会安装插件锁定的版本到 Vetta 自己的运行时目录，不会改动你机器上已有的全局安装。",
+	"console.outdatedHint": "检测到 agent-browser {{found}}，本插件需要 {{required}} 或更高。点击「升级」会安装插件锁定的版本到 Astravia 自己的运行时目录，不会改动你机器上已有的全局安装。",
 	"console.chromeFound": "已检测到系统 Chrome，将直接复用，无需额外下载。",
 	"console.chromeMissing": "未检测到系统 Chrome，需要再下载一次 Chrome for Testing 才能开始使用。",
 	"console.readyHint": "agent-browser CLI 已可用。直接在对话里让 Agent 打开网页；每个 Agent 会话会使用独立的浏览器 session。",

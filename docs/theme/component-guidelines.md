@@ -62,7 +62,7 @@ export interface SidebarNavItemButtonProps
 interface BadProps {
   atom: PrimitiveAtom<State>;
   navigate: NavigateFn;
-  ipc: typeof window.vetta;
+  ipc: typeof window.astravia;
   rawProject: InternalProjectRecord;
   icon: "icon-[mdi--close]";
   rowClassName: "px-2";
@@ -87,7 +87,7 @@ Region 组件可以：
 
 - 自由新增主题自己的 UI。
 - 重排默认组件。
-- 复用 `@vetta-org/theme-ui` 或桌面端公开 UI 出口中的 public primitives。
+- 复用 `@astravia-org/theme-ui` 或桌面端公开 UI 出口中的 public primitives。
 - 使用 `ThemeSurface` 接入装饰层。
 
 Region 组件不应该：
@@ -222,14 +222,14 @@ Dialog 和 Drawer 的根层通常由基础 UI 组件提供 `fixed` 定位。主�
 
 Theme SDK 是主题唯一应依赖的应用协议 API。它不承载具体 UI 实现。
 
-`@vetta-org/theme-sdk` 可以导出：
+`@astravia-org/theme-sdk` 可以导出：
 
 - 主题模块、registry、appearance 配置类型。
 - provider、resolver hook 和 host bridge。
 - public model hook 的 facade 类型和 hook 入口。
 - region/component props contract。
 
-`@vetta-org/theme-sdk` 不导出：
+`@astravia-org/theme-sdk` 不导出：
 
 - 默认 UI 组件。
 - 具体主题组件。
@@ -237,11 +237,11 @@ Theme SDK 是主题唯一应依赖的应用协议 API。它不承载具体 UI �
 - 访问 Jotai、router、IPC 的真实 hook 实现。
 - Jotai atom。
 - router 实例。
-- `window.vetta.*`。
+- `window.astravia.*`。
 - domain 私有 hook。
 - 仍在重构中的内部组件。
 
-`@vetta-org/theme-ui` 可以导出：
+`@astravia-org/theme-ui` 可以导出：
 
 - `ThemeSurface`。
 - `CornerImageFrame`。
@@ -249,7 +249,7 @@ Theme SDK 是主题唯一应依赖的应用协议 API。它不承载具体 UI �
 - 不绑定应用内部数据的布局 primitive。
 - 接收 `model` / `actions` props 的官方默认 view 组件。
 
-desktop 可以额外提供窄口径的官方 UI primitive 出口，例如 `@vetta/desktop-theme-ui/sidebar`。这类出口只应导出稳定的 props-driven 子组件和类型，例如 `SidebarNavigation`、`SidebarNavItemButton`、`SidebarNavigationProps`、`SidebarNavItem`；不要从该出口导出完整 sidebar connected container 或会牵出整个领域依赖树的组件。
+desktop 可以额外提供窄口径的官方 UI primitive 出口，例如 `@astravia/desktop-theme-ui/sidebar`。这类出口只应导出稳定的 props-driven 子组件和类型，例如 `SidebarNavigation`、`SidebarNavItemButton`、`SidebarNavigationProps`、`SidebarNavItem`；不要从该出口导出完整 sidebar connected container 或会牵出整个领域依赖树的组件。
 
 具体主题组件应放在主题包内。新增主题不应修改 SDK；只有协议、registry、host 能力变化时才修改 SDK。
 
@@ -270,8 +270,8 @@ UI 包导出组件时，要同步导出 props 类型。主题作者不应该通�
 主题使用的 hook 应从 SDK 导入：
 
 ```ts
-import { useSidebarModel } from "@vetta-org/theme-sdk/sidebar";
-import { usePageHeaderModel } from "@vetta-org/theme-sdk/app-shell";
+import { useSidebarModel } from "@astravia-org/theme-sdk/sidebar";
+import { usePageHeaderModel } from "@astravia-org/theme-sdk/app-shell";
 ```
 
 这些 hook 是 facade。它们只读取 `ThemeHostProvider` 中应用注入的能力，并返回稳定 model。真实实现仍留在 desktop，可以访问内部 store、router 和 IPC，但这些细节不能穿透到主题包。
@@ -279,8 +279,8 @@ import { usePageHeaderModel } from "@vetta-org/theme-sdk/app-shell";
 主题如果要复用官方 UI，推荐在主题 region 中先调用 SDK hook，再把 model 作为 props 传给官方 view：
 
 ```tsx
-import { useSidebarModel } from "@vetta-org/theme-sdk/sidebar";
-import { DefaultSidebar } from "@vetta/desktop-theme-ui/sidebar";
+import { useSidebarModel } from "@astravia-org/theme-sdk/sidebar";
+import { DefaultSidebar } from "@astravia/desktop-theme-ui/sidebar";
 
 export function ThemeSidebar(props: SidebarProps) {
   const model = useSidebarModel(props);

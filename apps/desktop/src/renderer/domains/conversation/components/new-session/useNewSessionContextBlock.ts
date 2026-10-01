@@ -1,7 +1,7 @@
+import type { PluginNewSessionContext } from "@astravia-org/plugin-sdk";
 import { deriveSkillNames, parseInputSegments } from "@shared/lib/input-tokens";
 import { inputValueAtom, promptAttachmentAtom } from "@shared/store/atoms";
 import { pluginNewSessionContextsAtom } from "@shared/store/plugin-atoms";
-import type { PluginNewSessionContext } from "@vetta-org/plugin-sdk";
 import { useAtomValue, useSetAtom } from "jotai";
 import type { ReactNode } from "react";
 import { useCallback, useMemo } from "react";

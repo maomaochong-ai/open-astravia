@@ -20,7 +20,7 @@ import {
 	isDefaultBottomPanelState,
 } from "./bottom-panel-layout";
 
-export const BOTTOM_PANEL_STORAGE_KEY = "vetta-bottom-panel-layout";
+export const BOTTOM_PANEL_STORAGE_KEY = "astravia-bottom-panel-layout";
 
 /** 保留最近使用的会话数；超出丢最旧的，避免 Record 随会话数无限膨胀。 */
 export const BOTTOM_PANEL_SESSION_LIMIT = 50;

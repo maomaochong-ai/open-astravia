@@ -9,7 +9,7 @@
 
 ### 1. 独立 Edit Tool 目录
 
-在 `@vetta/runtime-tools/coding/tools/edit` 下按职责新增：
+在 `@astravia/runtime-tools/coding/tools/edit` 下按职责新增：
 
 - TypeScript 工具描述；
 - TypeBox schema；

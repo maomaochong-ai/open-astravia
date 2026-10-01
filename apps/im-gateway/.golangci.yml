@@ -59,7 +59,7 @@ formatters:
   settings:
     goimports:
       local-prefixes:
-        - vetta-im-gateway
+        - astravia-im-gateway
   exclusions:
     generated: lax
     paths:

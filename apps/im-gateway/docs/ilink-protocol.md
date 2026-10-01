@@ -233,7 +233,7 @@ For each bound account (`ilink_bot_id`):
 | `<accountId>.sync.json` | `get_updates_buf` (long-poll cursor) | rolled forward on every successful getupdates |
 | `<accountId>.context-tokens.json` | per-peer `{userId: contextToken}` map | refreshed on every inbound |
 
-For our embedded use, we collapse all of these into a single `~/.vetta/im-gateway/wechat-<accountId>.json` written atomically. Single-account is the M1 assumption; the multi-account case can be added later by keying on `ilink_bot_id`.
+For our embedded use, we collapse all of these into a single `~/.astravia/im-gateway/wechat-<accountId>.json` written atomically. Single-account is the M1 assumption; the multi-account case can be added later by keying on `ilink_bot_id`.
 
 ## 5. Long-Poll Loop (pseudocode)
 
@@ -272,7 +272,7 @@ The protocol itself does **not** appear to expose remaining quota in any respons
 | Typing indicator | Adds complexity (5–8s heartbeat goroutine); cosmetic |
 | Streaming responses | User explicitly excluded from current scope |
 | Multi-account | Single bind on M1, lift later |
-| Slash commands / pairing handshake | OpenClaw-specific; we route to vetta agents directly |
+| Slash commands / pairing handshake | OpenClaw-specific; we route to astravia agents directly |
 | Group chat | Not supported by upstream protocol AFAICT; all msgs are 1v1 |
 
 ## 8. Risks Captured From Source

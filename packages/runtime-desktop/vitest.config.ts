@@ -5,140 +5,140 @@ export default defineConfig({
 	resolve: {
 		alias: [
 			{
-				find: "@vetta/runtime-core/configuration",
+				find: "@astravia/runtime-core/configuration",
 				replacement: fileURLToPath(new URL("../runtime-core/src/configuration/index.ts", import.meta.url)),
 			},
 			{
-				find: "@vetta/runtime-core/observation",
+				find: "@astravia/runtime-core/observation",
 				replacement: fileURLToPath(new URL("../runtime-core/src/observation/index.ts", import.meta.url)),
 			},
 			{
-				find: "@vetta/runtime-node/conversation/legacy",
+				find: "@astravia/runtime-node/conversation/legacy",
 				replacement: fileURLToPath(new URL("../runtime-node/src/conversation/legacy.ts", import.meta.url)),
 			},
 			{
-				find: "@vetta/agent-core",
+				find: "@astravia/agent-core",
 				replacement: fileURLToPath(new URL("../agent/src/index.ts", import.meta.url)),
 			},
 			{
-				find: "@vetta/ecosystem-adapter/hooks",
+				find: "@astravia/ecosystem-adapter/hooks",
 				replacement: fileURLToPath(new URL("../ecosystem-adapter/src/hooks/index.ts", import.meta.url)),
 			},
 			{
-				find: "@vetta/ecosystem-adapter",
+				find: "@astravia/ecosystem-adapter",
 				replacement: fileURLToPath(new URL("../ecosystem-adapter/src/index.ts", import.meta.url)),
 			},
 			{
-				find: "@vetta/coding-agent/bootstrap",
+				find: "@astravia/coding-agent/bootstrap",
 				replacement: fileURLToPath(new URL("../coding-agent/src/public-api/bootstrap.ts", import.meta.url)),
 			},
 			{
-				find: "@vetta/coding-agent/composition",
+				find: "@astravia/coding-agent/composition",
 				replacement: fileURLToPath(new URL("../coding-agent/src/composition/index.ts", import.meta.url)),
 			},
 			{
-				find: "@vetta/coding-agent/model-context",
+				find: "@astravia/coding-agent/model-context",
 				replacement: fileURLToPath(new URL("../coding-agent/src/public-api/model-context.ts", import.meta.url)),
 			},
 			{
-				find: "@vetta/coding-agent/historical-sessions",
+				find: "@astravia/coding-agent/historical-sessions",
 				replacement: fileURLToPath(
 					new URL("../coding-agent/src/public-api/historical-sessions.ts", import.meta.url),
 				),
 			},
 			{
-				find: "@vetta/coding-agent/hooks",
+				find: "@astravia/coding-agent/hooks",
 				replacement: fileURLToPath(new URL("../coding-agent/src/public-api/hooks.ts", import.meta.url)),
 			},
 			{
-				find: "@vetta/coding-agent/host-services",
+				find: "@astravia/coding-agent/host-services",
 				replacement: fileURLToPath(new URL("../coding-agent/src/public-api/host-services.ts", import.meta.url)),
 			},
-			{ find: "@vetta/ai", replacement: fileURLToPath(new URL("../ai/src/index.ts", import.meta.url)) },
+			{ find: "@astravia/ai", replacement: fileURLToPath(new URL("../ai/src/index.ts", import.meta.url)) },
 			{
-				find: "@vetta/runtime-core/kernel",
+				find: "@astravia/runtime-core/kernel",
 				replacement: fileURLToPath(new URL("../runtime-core/src/kernel/index.ts", import.meta.url)),
 			},
 			{
-				find: "@vetta/runtime-core/conversation",
+				find: "@astravia/runtime-core/conversation",
 				replacement: fileURLToPath(new URL("../runtime-core/src/conversation/index.ts", import.meta.url)),
 			},
 			{
-				find: "@vetta/runtime-core/sandbox",
+				find: "@astravia/runtime-core/sandbox",
 				replacement: fileURLToPath(new URL("../runtime-core/src/sandbox/index.ts", import.meta.url)),
 			},
 			{
-				find: "@vetta/runtime-core/session-extensions",
+				find: "@astravia/runtime-core/session-extensions",
 				replacement: fileURLToPath(
 					new URL("../runtime-core/src/session-extensions/index.ts", import.meta.url),
 				),
 			},
 			{
-				find: "@vetta/runtime-core/failures",
+				find: "@astravia/runtime-core/failures",
 				replacement: fileURLToPath(new URL("../runtime-core/src/failures.ts", import.meta.url)),
 			},
 			{
-				find: "@vetta/runtime-knowledge",
+				find: "@astravia/runtime-knowledge",
 				replacement: fileURLToPath(new URL("../runtime-knowledge/src/index.ts", import.meta.url)),
 			},
 			{
-				find: "@vetta/runtime-subagents",
+				find: "@astravia/runtime-subagents",
 				replacement: fileURLToPath(new URL("../runtime-subagents/src/index.ts", import.meta.url)),
 			},
 			{
-				find: "@vetta/runtime-tools/coding",
+				find: "@astravia/runtime-tools/coding",
 				replacement: fileURLToPath(new URL("../runtime-tools/src/coding/index.ts", import.meta.url)),
 			},
 			{
-				find: "@vetta/runtime-tools",
+				find: "@astravia/runtime-tools",
 				replacement: fileURLToPath(new URL("../runtime-tools/src/index.ts", import.meta.url)),
 			},
 			{
-				find: "@vetta/runtime-storage/conversation",
+				find: "@astravia/runtime-storage/conversation",
 				replacement: fileURLToPath(new URL("../runtime-storage/src/conversation/index.ts", import.meta.url)),
 			},
 			{
-				find: "@vetta/runtime-node/conversation",
+				find: "@astravia/runtime-node/conversation",
 				replacement: fileURLToPath(new URL("../runtime-node/src/conversation/index.ts", import.meta.url)),
 			},
 			{
-				find: "@vetta/runtime-node/host",
+				find: "@astravia/runtime-node/host",
 				replacement: fileURLToPath(new URL("../runtime-node/src/host/index.ts", import.meta.url)),
 			},
 			{
-				find: "@vetta/runtime-node/sandbox",
+				find: "@astravia/runtime-node/sandbox",
 				replacement: fileURLToPath(new URL("../runtime-node/src/sandbox/index.ts", import.meta.url)),
 			},
 			{
-				find: "@vetta/runtime-node/coding",
+				find: "@astravia/runtime-node/coding",
 				replacement: fileURLToPath(new URL("../runtime-node/src/coding/index.ts", import.meta.url)),
 			},
 			{
-				find: "@vetta/runtime-node/mcp",
+				find: "@astravia/runtime-node/mcp",
 				replacement: fileURLToPath(new URL("../runtime-node/src/mcp/index.ts", import.meta.url)),
 			},
 			{
-				find: "@vetta/runtime-core",
+				find: "@astravia/runtime-core",
 				replacement: fileURLToPath(new URL("../runtime-core/src/index.ts", import.meta.url)),
 			},
 			{
-				find: "@vetta/runtime-mcp/auth",
+				find: "@astravia/runtime-mcp/auth",
 				replacement: fileURLToPath(new URL("../runtime-mcp/src/auth/index.ts", import.meta.url)),
 			},
 			{
-				find: "@vetta/runtime-mcp/client",
+				find: "@astravia/runtime-mcp/client",
 				replacement: fileURLToPath(new URL("../runtime-mcp/src/client/index.ts", import.meta.url)),
 			},
 			{
-				find: "@vetta/runtime-mcp/config",
+				find: "@astravia/runtime-mcp/config",
 				replacement: fileURLToPath(new URL("../runtime-mcp/src/config/index.ts", import.meta.url)),
 			},
 			{
-				find: "@vetta/runtime-mcp/protocol",
+				find: "@astravia/runtime-mcp/protocol",
 				replacement: fileURLToPath(new URL("../runtime-mcp/src/protocol/index.ts", import.meta.url)),
 			},
 			{
-				find: "@vetta/runtime-mcp",
+				find: "@astravia/runtime-mcp",
 				replacement: fileURLToPath(new URL("../runtime-mcp/src/index.ts", import.meta.url)),
 			},
 		],

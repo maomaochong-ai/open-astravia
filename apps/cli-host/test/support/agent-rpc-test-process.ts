@@ -78,7 +78,7 @@ export async function acquireAgentRpcExecutable(): Promise<AgentRpcExecutable> {
 }
 
 export async function createAgentRpcFixture(options: CreateAgentRpcFixtureOptions = {}): Promise<AgentRpcFixture> {
-	const root = await mkdtemp(join(tmpdir(), "vetta-agent-rpc-fixture-"));
+	const root = await mkdtemp(join(tmpdir(), "astravia-agent-rpc-fixture-"));
 	const fixture = {
 		root,
 		agentDir: join(root, "agent"),
@@ -189,9 +189,9 @@ export function createAgentRpcProcessEnv(
 		LOCALAPPDATA: join(fixture.root, "local-app-data"),
 		NO_COLOR: "1",
 		USERPROFILE: fixture.root,
-		VETTA_CODING_AGENT_DIR: fixture.agentDir,
-		VETTA_HOME: join(fixture.root, "home"),
-		VETTA_PACKAGE_DIR: join(repositoryRoot, "packages", "coding-agent"),
+		ASTRAVIA_CODING_AGENT_DIR: fixture.agentDir,
+		ASTRAVIA_HOME: join(fixture.root, "home"),
+		ASTRAVIA_PACKAGE_DIR: join(repositoryRoot, "packages", "coding-agent"),
 		...options.overrides,
 	};
 }

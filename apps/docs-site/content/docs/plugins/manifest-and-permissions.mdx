@@ -3,9 +3,9 @@ title: 清单与权限
 description: 声明插件身份、加载入口、样式、权限、命令、网络范围和 Agent 贡献，并理解授权与校验流程。
 ---
 
-`plugin.json` 位于 `.vettapkg` 插件包的 ZIP 容器根目录（或归档内唯一的顶层文件夹里）。宿主在加载代码前用它校验身份、兼容性和权限，因此清单必须与构建产物一致。
+`plugin.json` 位于 `.astraviapkg` 插件包的 ZIP 容器根目录（或归档内唯一的顶层文件夹里）。宿主在加载代码前用它校验身份、兼容性和权限，因此清单必须与构建产物一致。
 
-清单结构的唯一实现是 `@vetta-org/plugin-sdk/manifest` 导出的 TypeBox Schema：`PluginManifestSchema` 可直接序列化为 JSON Schema，`parsePluginManifest()` 负责校验、默认值、去重、相对路径归一化和跨字段约束。Schema 有意允许未知字段，这样更高版本清单不会被旧宿主直接拒绝。
+清单结构的唯一实现是 `@astravia-org/plugin-sdk/manifest` 导出的 TypeBox Schema：`PluginManifestSchema` 可直接序列化为 JSON Schema，`parsePluginManifest()` 负责校验、默认值、去重、相对路径归一化和跨字段约束。Schema 有意允许未知字段，这样更高版本清单不会被旧宿主直接拒绝。
 
 ```json
 {
@@ -124,7 +124,7 @@ description: 声明插件身份、加载入口、样式、权限、命令、网�
 
 ## 安装目录与版本
 
-用户插件按版本存放在 `~/.vetta/plugins/<id>/versions/<version>/`。安装一个更新版本只被记录为 pending，应用继续加载当前活动版本，直到触发 reload 才切换。调试时改了代码要提升 `version` 并 reload 才稳妥生效。
+用户插件按版本存放在 `~/.astravia/plugins/<id>/versions/<version>/`。安装一个更新版本只被记录为 pending，应用继续加载当前活动版本，直到触发 reload 才切换。调试时改了代码要提升 `version` 并 reload 才稳妥生效。
 
 系统插件不进这个目录，随应用发布、每次启动从只读目录重新发现，声明的权限自动全量授予且用户不可撤销。
 
@@ -192,7 +192,7 @@ description: 声明插件身份、加载入口、样式、权限、命令、网�
 只声明插件实际使用的权限，声明越小用户授权越省心、审核越快。开发时先从最小清单开始，调用宿主 API 报权限错误时确认该行为确实必要，再增加对应权限并重新走安装授权。不要为了省事复制其他插件的完整权限数组。
 
 <Callout title="构建期就会对账" type="info">
-  `@vetta-org/plugin-vite` 在构建和打包时扫描最终 JavaScript 产物，检出 `registerTool`、`registerHook`、`registerSystemPromptProvider`、`registerContinuationProvider`、运行时工具开关等调用点，以及清单里的 `agent.toolPolicy`，缺少对应权限会直接终止构建。界面槽位不在这条校验里，缺权限只在运行时静默跳过，需要对照[扩展点](/plugins/extension-points/)核对。
+  `@astravia-org/plugin-vite` 在构建和打包时扫描最终 JavaScript 产物，检出 `registerTool`、`registerHook`、`registerSystemPromptProvider`、`registerContinuationProvider`、运行时工具开关等调用点，以及清单里的 `agent.toolPolicy`，缺少对应权限会直接终止构建。界面槽位不在这条校验里，缺权限只在运行时静默跳过，需要对照[扩展点](/plugins/extension-points/)核对。
 </Callout>
 
 ## 发布前检查
@@ -201,7 +201,7 @@ description: 声明插件身份、加载入口、样式、权限、命令、网�
   <Step>
     ### 检查归档结构
 
-    解压最终 `.vettapkg`，确认 `plugin.json` 在 ZIP 容器根目录或唯一的顶层文件夹里，清单引用的入口、样式、技能和提示词文件都存在。
+    解压最终 `.astraviapkg`，确认 `plugin.json` 在 ZIP 容器根目录或唯一的顶层文件夹里，清单引用的入口、样式、技能和提示词文件都存在。
   </Step>
   <Step>
     ### 验证权限提示

@@ -1,4 +1,4 @@
-import { cn } from "@vetta-org/ui";
+import { cn } from "@astravia-org/ui";
 import { motion } from "motion/react";
 import type { JSX, ReactNode } from "react";
 

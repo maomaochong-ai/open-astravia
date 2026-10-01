@@ -14,11 +14,11 @@ export function useRunningSessionsSync(): void {
 	const setRunningSessionPaths = useSetAtom(runningSessionPathsAtom);
 	useEffect(() => {
 		let cancelled = false;
-		void window.vetta.session.listRunning().then((paths) => {
+		void window.astravia.session.listRunning().then((paths) => {
 			if (cancelled) return;
 			setRunningSessionPaths(new Set(paths));
 		});
-		const unsubscribe = window.vetta.session.onRunningChanged(({ sessionPath, running }) => {
+		const unsubscribe = window.astravia.session.onRunningChanged(({ sessionPath, running }) => {
 			setRunningSessionPaths((prev: Set<string>) => {
 				const had = prev.has(sessionPath);
 				if (running && had) return prev;

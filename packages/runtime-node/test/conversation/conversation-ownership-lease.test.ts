@@ -120,7 +120,7 @@ describe("FileConversationOwnershipManager", () => {
 });
 
 async function temporaryConversationPath(): Promise<string> {
-	const root = await mkdtemp(join(tmpdir(), "vetta-conversation-owner-"));
+	const root = await mkdtemp(join(tmpdir(), "astravia-conversation-owner-"));
 	temporaryRoots.push(root);
 	return join(root, "session.conversation.jsonl");
 }

@@ -14,7 +14,7 @@ export interface SshHost {
 	 * 连接目标：`~/.ssh/config` 里的别名，或 `user@host`。
 	 *
 	 * 优先让用户填别名：别名背后的 ProxyJump、ProxyCommand、IdentityAgent 等一整套
-	 * 配置由 OpenSSH 自己解析，Vetta 不需要复刻一份必然与之漂移的实现。
+	 * 配置由 OpenSSH 自己解析，Astravia 不需要复刻一份必然与之漂移的实现。
 	 */
 	readonly target: string;
 	/** 仅在未使用 ssh config 别名、且端口非 22 时需要。 */

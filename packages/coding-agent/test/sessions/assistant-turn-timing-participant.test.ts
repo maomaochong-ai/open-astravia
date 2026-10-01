@@ -1,4 +1,4 @@
-import type { StoredSessionEvent } from "@vetta/runtime-core/kernel";
+import type { StoredSessionEvent } from "@astravia/runtime-core/kernel";
 import { describe, expect, it, vi } from "vitest";
 import {
 	ASSISTANT_TURN_TIMING_TYPE,

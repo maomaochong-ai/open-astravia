@@ -1,9 +1,9 @@
-import type { RuntimeConfigurationSnapshotSource } from "@vetta/runtime-core/configuration";
+import type { RuntimeConfigurationSnapshotSource } from "@astravia/runtime-core/configuration";
 import {
 	CODING_IMAGE_CONFIGURATION,
 	type CodingToolRegistration,
 	withCodingToolConfiguration,
-} from "@vetta/runtime-tools";
+} from "@astravia/runtime-tools";
 import { createReadTool, type ReadToolInput, type ReadToolOptions } from "./read-tool.js";
 
 export interface ReadToolRegistrationOptions extends ReadToolOptions {

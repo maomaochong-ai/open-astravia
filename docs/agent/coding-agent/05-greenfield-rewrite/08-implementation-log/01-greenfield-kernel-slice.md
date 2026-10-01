@@ -16,7 +16,7 @@
 
 ### 修改范围
 
-- 新增 `@vetta/runtime-core/kernel` 独立导出入口。
+- 新增 `@astravia/runtime-core/kernel` 独立导出入口。
 - 新增 `packages/runtime-core/src/kernel/`：
   - `contracts.ts`
   - `errors.ts`
@@ -28,7 +28,7 @@
 - 新增 `packages/runtime-core/test/kernel/`：
   - `turn-pipeline.test.ts`
   - `feature-compiler.test.ts`
-- 扩展包边界守卫，禁止 `runtime-core/src/kernel` 导入 `@vetta/coding-agent`。
+- 扩展包边界守卫，禁止 `runtime-core/src/kernel` 导入 `@astravia/coding-agent`。
 - 更新 `runtime-core` 包入口、README 和 CHANGELOG。
 
 ### 明确未修改
@@ -36,7 +36,7 @@
 - 未修改旧 `RuntimeHost`、旧 `contracts.ts` 及现有生产调用链。
 - 未切换 Desktop、CLI、RPC 或 IM。
 - 未删除 `coding-agent` 旧代码。
-- 未实现 `@vetta/agent-core` 的生产 Turn Engine Adapter。
+- 未实现 `@astravia/agent-core` 的生产 Turn Engine Adapter。
 - 未实现文件会话仓储、上下文摘要器、输入队列、steering 或事件 AsyncIterable。
 - 未迁移 Tool、MCP、Skill、知识库和 Subagent。
 
@@ -93,13 +93,13 @@
 - 新 Kernel 已能独立执行 Fake Engine 驱动的完整 Turn。
 - Session 并发、取消、关闭、Pipeline 顺序、持久化终止和 Engine 协议错误已有自动测试。
 - Feature Compiler 的确定性、冲突、失败回滚、只读 Snapshot 和 dispose 已有自动测试。
-- 新 Kernel 源码没有导入 `@vetta/coding-agent`，并由质量守卫持续约束。
+- 新 Kernel 源码没有导入 `@astravia/coding-agent`，并由质量守卫持续约束。
 - 旧生产入口未受影响。
 
 ### 未解决问题
 
-- `runtime-core` 包级依赖中仍存在旧 `@vetta/coding-agent`，因为旧 `RuntimeHost` 尚未迁移。
-- 新 Kernel 还没有真实 `@vetta/agent-core` Adapter。
+- `runtime-core` 包级依赖中仍存在旧 `@astravia/coding-agent`，因为旧 `RuntimeHost` 尚未迁移。
+- 新 Kernel 还没有真实 `@astravia/agent-core` Adapter。
 - `ConversationRepository` 还没有位于 `runtime-storage` 的生产实现。
 - 当前 `AgentSession.send()` 对并发输入采用拒绝策略，输入队列和 steering 需在后续合同中实现。
 - Snapshot 尚未支持后台编译后在 Turn 边界原子交换。
@@ -108,6 +108,6 @@
 ### 下一步
 
 1. 在 `runtime-storage` 实现版本化 Conversation Repository 和恢复测试。
-2. 实现 `@vetta/agent-core` Turn Engine Adapter。
+2. 实现 `@astravia/agent-core` Turn Engine Adapter。
 3. 增加 Runtime Snapshot 原子 Provider，验证当前 Turn 不受热更新影响。
 4. 再迁移 Coding Tools Feature，不提前接入 MCP、Skill 和知识库。

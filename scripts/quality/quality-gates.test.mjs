@@ -168,14 +168,14 @@ describe("source path maps", () => {
 	it("ignores CSS and wildcard exports", () => {
 		expect(
 			collectTypeScriptExportEntries({
-				name: "@vetta/example",
+				name: "@astravia/example",
 				exports: {
 					".": { types: "./dist/index.d.ts", import: "./dist/index.js" },
 					"./theme.css": "./src/theme.css",
 					"./*": "./dist/*",
 				},
 			}),
-		).toEqual([{ specifier: "@vetta/example", sourceRel: "src/index.ts", types: "./dist/index.d.ts" }]);
+		).toEqual([{ specifier: "@astravia/example", sourceRel: "src/index.ts", types: "./dist/index.d.ts" }]);
 	});
 
 	it("requires an explicit root path map to the source file", () => {
@@ -183,7 +183,7 @@ describe("source path maps", () => {
 			{
 				dir: "packages/runtime-mcp",
 				manifest: {
-					name: "@vetta/runtime-mcp",
+					name: "@astravia/runtime-mcp",
 					exports: {
 						"./auth": { types: "./dist/auth/index.d.ts", import: "./dist/auth/index.js" },
 					},
@@ -192,11 +192,11 @@ describe("source path maps", () => {
 		];
 
 		expect(findSourcePathMapViolations({ paths: {}, packages, fileExists: () => true })).toEqual([
-			"@vetta/runtime-mcp/auth: root tsconfig.json is missing an explicit source path map to ./packages/runtime-mcp/src/auth/index.ts",
+			"@astravia/runtime-mcp/auth: root tsconfig.json is missing an explicit source path map to ./packages/runtime-mcp/src/auth/index.ts",
 		]);
 		expect(
 			findSourcePathMapViolations({
-				paths: { "@vetta/runtime-mcp/auth": ["./packages/runtime-mcp/src/auth/index.ts"] },
+				paths: { "@astravia/runtime-mcp/auth": ["./packages/runtime-mcp/src/auth/index.ts"] },
 				packages,
 				fileExists: () => true,
 			}),
@@ -208,7 +208,7 @@ describe("source path maps", () => {
 			{
 				dir: "packages/coding-agent",
 				manifest: {
-					name: "@vetta/coding-agent",
+					name: "@astravia/coding-agent",
 					exports: {
 						"./plugin-runtime": {
 							types: "./dist/public-api/plugin-runtime.d.ts",
@@ -218,22 +218,24 @@ describe("source path maps", () => {
 				},
 			},
 		];
-		const importedSpecifiers = ["@vetta/coding-agent/plugin-runtime"];
+		const importedSpecifiers = ["@astravia/coding-agent/plugin-runtime"];
 
 		expect(
 			findImportedSourcePathMapViolations({
-				paths: { "@vetta/coding-agent/*": ["../../packages/coding-agent/src/*"] },
+				paths: { "@astravia/coding-agent/*": ["../../packages/coding-agent/src/*"] },
 				importedSpecifiers,
 				packages,
 				configDir: "apps/desktop",
 			}),
 		).toEqual([
-			"@vetta/coding-agent/plugin-runtime: apps/desktop/tsconfig.json maps to ../../packages/coding-agent/src/plugin-runtime, expected ../../packages/coding-agent/src/public-api/plugin-runtime.ts",
+			"@astravia/coding-agent/plugin-runtime: apps/desktop/tsconfig.json maps to ../../packages/coding-agent/src/plugin-runtime, expected ../../packages/coding-agent/src/public-api/plugin-runtime.ts",
 		]);
 		expect(
 			findImportedSourcePathMapViolations({
 				paths: {
-					"@vetta/coding-agent/plugin-runtime": ["../../packages/coding-agent/src/public-api/plugin-runtime.ts"],
+					"@astravia/coding-agent/plugin-runtime": [
+						"../../packages/coding-agent/src/public-api/plugin-runtime.ts",
+					],
 				},
 				importedSpecifiers,
 				packages,
@@ -310,7 +312,7 @@ describe("affected package selection", () => {
 			expect.arrayContaining(["coding-agent", "ecosystem-adapter", "desktop"]),
 		);
 		expect(expandTestablePackages(["plugin-sdk"])).toEqual(
-			expect.arrayContaining(["presets/image-gen", "presets/vetta-ui-design", "desktop"]),
+			expect.arrayContaining(["presets/image-gen", "presets/astravia-ui-design", "desktop"]),
 		);
 	});
 
@@ -515,13 +517,15 @@ describe("affected package selection", () => {
 	});
 
 	it("keeps packages with test prerequisites on targeted tests", () => {
-		const plan = createImpactTestPlan(["packages/plugins/presets/vetta-ui-design/src/vetd/tool-gate.ts"]);
+		const plan = createImpactTestPlan([
+			"packages/plugins/presets/astravia-ui-design/src/astravia-design/tool-gate.ts",
+		]);
 		expect(plan.selectionErrors).toEqual([]);
 		expect(plan.targets).toMatchObject([
 			{
-				key: "presets/vetta-ui-design",
+				key: "presets/astravia-ui-design",
 				prerequisites: [["run", "build:runner"]],
-				relatedSources: ["src/vetd/tool-gate.ts"],
+				relatedSources: ["src/astravia-design/tool-gate.ts"],
 			},
 		]);
 		expect(plan.targets.every((target) => !("full" in target))).toBe(true);
@@ -576,14 +580,14 @@ describe("affected package selection", () => {
 		const dependencies = buildableTestDependencies(Object.keys(TESTABLE_PACKAGES));
 		expect(dependencies).toEqual(
 			expect.arrayContaining([
-				"@vetta/action-rpc",
-				"@vetta/runtime-storage",
-				"@vetta-org/plugin-sdk",
-				"@vetta/toolkit",
+				"@astravia/action-rpc",
+				"@astravia/runtime-storage",
+				"@astravia-org/plugin-sdk",
+				"@astravia/toolkit",
 			]),
 		);
 		expect(dependencies).not.toEqual(
-			expect.arrayContaining(["@vetta/desktop", "@vetta/docs-site", "@vetta/remote-relay"]),
+			expect.arrayContaining(["@astravia/desktop", "@astravia/docs-site", "@astravia/remote-relay"]),
 		);
 	});
 });
@@ -645,7 +649,7 @@ describe("CI unit test coverage", () => {
 		expect(kotlinWorkflow).toContain(":androidApp:assembleDebug");
 	});
 
-	it("tests VettaKit, the desktop interop and the iOS build when the Apple client or the protocol changes", () => {
+	it("tests AstraviaKit, the desktop interop and the iOS build when the Apple client or the protocol changes", () => {
 		expect(appleWorkflow).toContain('      - "apps/mobile/client-apple/**"');
 		expect(appleWorkflow).toContain('      - "packages/remote-control/**"');
 		expect(appleWorkflow).toContain("swift test --no-parallel");
@@ -665,9 +669,9 @@ describe("durable package boundaries", () => {
 
 	it("blocks application imports from reusable packages and ignores import-looking comments", () => {
 		const file = "packages/ai/src/example.ts";
-		expect(check(file, 'import "@vetta/desktop";')).toHaveLength(1);
-		expect(check(file, 'const host = await import("@vetta/cli-host/runtime");')).toHaveLength(1);
-		expect(check(file, '// import host from "@vetta/desktop";')).toEqual([]);
+		expect(check(file, 'import "@astravia/desktop";')).toHaveLength(1);
+		expect(check(file, 'const host = await import("@astravia/cli-host/runtime");')).toHaveLength(1);
+		expect(check(file, '// import host from "@astravia/desktop";')).toEqual([]);
 	});
 
 	it("blocks production imports from test trees but allows tests to share fixtures", () => {
@@ -677,21 +681,21 @@ describe("durable package boundaries", () => {
 	});
 
 	it("keeps plugin code behind the public SDK and Desktop behind exported CLI contracts", () => {
-		expect(check("packages/plugins/externals/example/src/index.ts", "window.vetta.fs.readFile(path);")).toHaveLength(
-			1,
-		);
+		expect(
+			check("packages/plugins/externals/example/src/index.ts", "window.astravia.fs.readFile(path);"),
+		).toHaveLength(1);
 		expect(check("apps/desktop/src/main/example.ts", 'import "../../../../cli-host/src/cli";')).toHaveLength(1);
 	});
 
 	it("keeps Desktop renderer MCP runtime values on the browser-safe entry", () => {
 		const file = "apps/desktop/src/renderer/example.ts";
-		expect(check(file, 'import { connect } from "@vetta/runtime-mcp";')).toHaveLength(1);
-		expect(check(file, 'import { connect } from "@vetta/runtime-mcp/browser";')).toEqual([]);
-		expect(check(file, 'import type { Config } from "@vetta/runtime-mcp";')).toEqual([]);
+		expect(check(file, 'import { connect } from "@astravia/runtime-mcp";')).toHaveLength(1);
+		expect(check(file, 'import { connect } from "@astravia/runtime-mcp/browser";')).toEqual([]);
+		expect(check(file, 'import type { Config } from "@astravia/runtime-mcp";')).toEqual([]);
 	});
 
 	it("keeps capability identifiers and schemas owned by capability definitions", () => {
-		expect(check("packages/ai/src/example.ts", 'const id = "cap.domain.vetta.example.read";')).toHaveLength(1);
+		expect(check("packages/ai/src/example.ts", 'const id = "cap.domain.astravia.example.read";')).toHaveLength(1);
 		expect(
 			check(
 				"packages/capability-sdk/src/domain/example.ts",
@@ -702,32 +706,35 @@ describe("durable package boundaries", () => {
 
 	it("keeps runtime protocols and runtime-core platform neutral", () => {
 		expect(check("packages/runtime-storage/src/index.ts", 'import { readFile } from "node:fs";')).toHaveLength(1);
-		expect(check("packages/runtime-tools/src/index.ts", 'import "@vetta/runtime-node";')).toHaveLength(1);
-		expect(check("packages/runtime-mcp/src/index.ts", 'import "@vetta/runtime-desktop";')).toHaveLength(1);
+		expect(check("packages/runtime-tools/src/index.ts", 'import "@astravia/runtime-node";')).toHaveLength(1);
+		expect(check("packages/runtime-mcp/src/index.ts", 'import "@astravia/runtime-desktop";')).toHaveLength(1);
 		expect(check("packages/runtime-core/src/index.ts", "const bytes = Buffer.from('x');")).toHaveLength(1);
 	});
 
 	it("keeps product semantics and Coding Agent dependencies above the generic runtimes", () => {
 		expect(check("packages/runtime-core/src/index.ts", "const enableSubagents = true;")).toHaveLength(1);
-		expect(check("packages/runtime-core/src/index.ts", 'import "@vetta/coding-agent/sdk";')).toHaveLength(1);
-		expect(check("packages/agent/src/index.ts", 'import "@vetta/runtime-core";')).toHaveLength(1);
+		expect(check("packages/runtime-core/src/index.ts", 'import "@astravia/coding-agent/sdk";')).toHaveLength(1);
+		expect(check("packages/agent/src/index.ts", 'import "@astravia/runtime-core";')).toHaveLength(1);
 	});
 
 	it("requires explicit Coding Agent subpaths and does not publish concrete tools", () => {
-		expect(check("apps/desktop/src/main/example.ts", 'import "@vetta/coding-agent";')).toHaveLength(1);
+		expect(check("apps/desktop/src/main/example.ts", 'import "@astravia/coding-agent";')).toHaveLength(1);
 		expect(
-			check("packages/coding-agent/src/index.ts", 'export { createReadTool } from "@vetta/runtime-tools/coding";'),
+			check(
+				"packages/coding-agent/src/index.ts",
+				'export { createReadTool } from "@astravia/runtime-tools/coding";',
+			),
 		).not.toEqual([]);
 	});
 
 	it("requires selected workspace imports to be declared in their manifest", () => {
-		const manifest = { name: "@vetta/runtime-storage", dependencies: {} };
-		expect(check("packages/runtime-storage/src/index.ts", 'import "@vetta/action-rpc";', { manifest })).toHaveLength(
-			1,
-		);
+		const manifest = { name: "@astravia/runtime-storage", dependencies: {} };
 		expect(
-			check("packages/runtime-storage/src/index.ts", 'import "@vetta/action-rpc";', {
-				manifest: { ...manifest, dependencies: { "@vetta/action-rpc": "workspace:*" } },
+			check("packages/runtime-storage/src/index.ts", 'import "@astravia/action-rpc";', { manifest }),
+		).toHaveLength(1);
+		expect(
+			check("packages/runtime-storage/src/index.ts", 'import "@astravia/action-rpc";', {
+				manifest: { ...manifest, dependencies: { "@astravia/action-rpc": "workspace:*" } },
 			}),
 		).toEqual([]);
 	});
@@ -735,14 +742,14 @@ describe("durable package boundaries", () => {
 	it("keeps agent-core manifests below runtime and product packages", () => {
 		expect(
 			findDurablePackageManifestBoundaryViolations({
-				name: "@vetta/agent-core",
-				dependencies: { "@vetta/runtime-core": "workspace:*" },
+				name: "@astravia/agent-core",
+				dependencies: { "@astravia/runtime-core": "workspace:*" },
 			}),
 		).toHaveLength(1);
 		expect(
 			findDurablePackageManifestBoundaryViolations({
-				name: "@vetta/agent-core",
-				dependencies: { "@vetta/ai": "workspace:*" },
+				name: "@astravia/agent-core",
+				dependencies: { "@astravia/ai": "workspace:*" },
 			}),
 		).toEqual([]);
 	});
@@ -772,13 +779,18 @@ describe("Turborepo build orchestration", () => {
 			expect.arrayContaining(["dist/**", "release/**", ".next/**", "!.next/cache/**"]),
 		);
 		expect(turboConfig.tasks.build.env).toEqual(
-			expect.arrayContaining(["NODE_ENV", "VETTA_PLUGIN_DEV_WATCH", "VETTA_PLUGIN_DOCS_SRC", "VETD_SRC"]),
+			expect.arrayContaining([
+				"NODE_ENV",
+				"ASTRAVIA_PLUGIN_DEV_WATCH",
+				"ASTRAVIA_PLUGIN_DOCS_SRC",
+				"ASTRAVIA_DESIGN_SRC",
+			]),
 		);
-		const docsBuild = turboConfig.tasks["@vetta/docs-site#build"];
+		const docsBuild = turboConfig.tasks["@astravia/docs-site#build"];
 		expect(docsBuild.env).toEqual(["DOCS_SITE_URL", "NODE_ENV"]);
 		expect(docsBuild.dependsOn).toContain("^build");
 		expect(docsBuild.outputs).toContain(".next/**");
-		const pluginWorkbenchBuild = turboConfig.tasks["@vetta/plugin-plugin-workbench#build"];
+		const pluginWorkbenchBuild = turboConfig.tasks["@astravia/plugin-plugin-workbench#build"];
 		expect(pluginWorkbenchBuild.inputs).toContain("$TURBO_ROOT$/docs/plugin/**");
 		expect(pluginWorkbenchBuild.dependsOn).toContain("^build");
 		expect(pluginWorkbenchBuild.outputs).toContain("release/**");
@@ -786,14 +798,14 @@ describe("Turborepo build orchestration", () => {
 	});
 
 	it("keeps Desktop build and remote cache outside the initial cache boundary", () => {
-		expect(turboConfig.tasks["@vetta/desktop#build"]).toMatchObject({
+		expect(turboConfig.tasks["@astravia/desktop#build"]).toMatchObject({
 			cache: false,
 		});
-		expect(turboConfig.tasks["@vetta/desktop#build"].dependsOn).toEqual(
-			expect.arrayContaining(["^build", "@vetta-org/plugin-vite#build"]),
+		expect(turboConfig.tasks["@astravia/desktop#build"].dependsOn).toEqual(
+			expect.arrayContaining(["^build", "@astravia-org/plugin-vite#build"]),
 		);
-		expect(turboConfig.tasks["@vetta/desktop#build"].env).toEqual(
-			expect.arrayContaining(["NODE_ENV", "VETTA_*", "VETD_*"]),
+		expect(turboConfig.tasks["@astravia/desktop#build"].env).toEqual(
+			expect.arrayContaining(["NODE_ENV", "ASTRAVIA_*", "ASTRAVIA_DESIGN_*"]),
 		);
 		expect(turboConfig.remoteCache).toEqual({ enabled: false, signature: true });
 	});
@@ -801,11 +813,11 @@ describe("Turborepo build orchestration", () => {
 	it("routes root builds through Turbo while preserving preset orchestration", () => {
 		expect(rootManifest.devDependencies.turbo).toMatch(/^\d+\.\d+\.\d+$/);
 		expect(rootManifest.scripts.build).toContain("turbo run build");
-		expect(rootManifest.scripts.build).toContain("--filter=@vetta-org/plugin-vite");
+		expect(rootManifest.scripts.build).toContain("--filter=@astravia-org/plugin-vite");
 		expect(rootManifest.scripts.build).toContain("build:preset:prebuilt");
-		expect(rootManifest.scripts["build:desktop"]).toContain("--filter=@vetta/desktop");
-		expect(rootManifest.scripts["build:cli"]).toContain("--filter=@vetta/cli-host");
-		expect(rootManifest.scripts["build:cli"]).toContain("--filter=@vetta-org/plugin-vite");
+		expect(rootManifest.scripts["build:desktop"]).toContain("--filter=@astravia/desktop");
+		expect(rootManifest.scripts["build:cli"]).toContain("--filter=@astravia/cli-host");
+		expect(rootManifest.scripts["build:cli"]).toContain("--filter=@astravia-org/plugin-vite");
 		expect(rootManifest.scripts["build:cli"]).toContain("build:preset:prebuilt");
 		expect(rootManifest.scripts["build:docs"]).toContain("turbo run build");
 		expect(rootManifest.scripts["build:preset"]).toBe("bun run --cwd apps/desktop build:presets");

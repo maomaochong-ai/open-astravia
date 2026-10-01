@@ -11,7 +11,7 @@ describe("Skill discovery ResourceAccessPort", () => {
 	it("materializes ordered Skill and Scene content without host filesystem access", async () => {
 		const files = new Map([
 			["/agent/skills/user/SKILL.md", skillDocument("user", "User body")],
-			["/workspace/.vetta/skills/project/SKILL.md", skillDocument("project", "Project body")],
+			["/workspace/.astravia/skills/project/SKILL.md", skillDocument("project", "Project body")],
 			["/scene/deploy/SKILL.md", skillDocument("deploy", "Deploy body")],
 			["/scene/deploy/tasks.json", JSON.stringify(["prepare", "publish"])],
 			["/workspace/.agents/skills/generic/SKILL.md", skillDocument("generic", "Generic body")],

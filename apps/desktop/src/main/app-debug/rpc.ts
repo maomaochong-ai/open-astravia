@@ -1,4 +1,4 @@
-import { ActionRpcError, type DebugRpcRuntime } from "@vetta/action-rpc";
+import { ActionRpcError, type DebugRpcRuntime } from "@astravia/action-rpc";
 import { getAppLogger } from "../logger.js";
 import type { AppDebugRuntime } from "./runtime.js";
 import { DebugError, type JsonValue } from "./types.js";

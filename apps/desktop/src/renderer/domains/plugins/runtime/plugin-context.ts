@@ -1,6 +1,6 @@
+import type { PluginContext, PluginSecretsApi } from "@astravia-org/plugin-sdk";
 import type { InstalledPlugin } from "@preload/api";
 import { defaultAgentModeAtom } from "@shared/store/atoms";
-import type { PluginContext, PluginSecretsApi } from "@vetta-org/plugin-sdk";
 import { getDefaultStore } from "jotai";
 import { createPluginAgentApi, createPluginAppActionsApi } from "./plugin-agent-context";
 import { createPluginAiApi } from "./plugin-ai";

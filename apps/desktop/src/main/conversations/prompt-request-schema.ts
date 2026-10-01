@@ -1,6 +1,6 @@
 import { isAbsolute } from "node:path";
-import type { PromptRequest } from "@vetta/runtime-core";
-import { isSshProjectUri, parseProjectLocation } from "@vetta/ssh-transport";
+import type { PromptRequest } from "@astravia/runtime-core";
+import { isSshProjectUri, parseProjectLocation } from "@astravia/ssh-transport";
 import { z } from "zod";
 
 export const promptResourceRefSchema = z

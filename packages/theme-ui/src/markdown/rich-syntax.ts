@@ -74,7 +74,7 @@ export function remarkRichMarkup() {
 					if ((children[index + count - 1].position?.end.offset ?? 0) <= end) {
 						children.splice(index, count, {
 							type: "richSvg",
-							data: { hName: "vetta-svg", hProperties: { source: markdown.slice(start, end) } },
+							data: { hName: "astravia-svg", hProperties: { source: markdown.slice(start, end) } },
 							children: [],
 						});
 					}

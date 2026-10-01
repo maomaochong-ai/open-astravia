@@ -5,7 +5,7 @@ import {
 	EventStream,
 	type Model,
 	type UserMessage,
-} from "@vetta/ai";
+} from "@astravia/ai";
 import { describe, expect, it } from "vitest";
 import {
 	AgentCoreTurnEngine,

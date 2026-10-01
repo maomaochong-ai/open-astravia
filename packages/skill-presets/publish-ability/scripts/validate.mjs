@@ -414,10 +414,10 @@ export function crossCheckPackage(input, pkg) {
 		crossCheckSkill(input, pkg, errors, warnings);
 	}
 
-	// vetta.json 与 payload.detail 是同一份数据的两条投递路径，且是**整体二选一**：
+	// astravia.json 与 payload.detail 是同一份数据的两条投递路径，且是**整体二选一**：
 	// 传了 detail，包内那份连一个字段都不会被读到
-	if (pkg.vettaJson && input.detail) {
-		warnings.push("包内的 vetta.json 被整体忽略：payload 提供了 detail，两者不做逐字段合并");
+	if (pkg.astraviaJson && input.detail) {
+		warnings.push("包内的 astravia.json 被整体忽略：payload 提供了 detail，两者不做逐字段合并");
 	}
 
 	return { errors, warnings };

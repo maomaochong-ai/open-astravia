@@ -1,12 +1,12 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { Api, Model, OpenAICompletionsCompat } from "@vetta/ai";
+import type { Api, Model, OpenAICompletionsCompat } from "@astravia/ai";
 import {
 	clearNodeConfigurationValueCache,
 	nodeConfigurationValueResolver,
 	nodeSyncTextFileSource,
-} from "@vetta/runtime-node/host";
+} from "@astravia/runtime-node/host";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import type { AuthStorage } from "../src/auth/index.js";
 import {

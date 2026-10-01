@@ -1,10 +1,10 @@
 import { existsSync } from "node:fs";
-import { CODING_AGENT_UNATTENDED_TURN_METADATA_KEY } from "@vetta/coding-agent/function-extensions";
+import { CODING_AGENT_UNATTENDED_TURN_METADATA_KEY } from "@astravia/coding-agent/function-extensions";
 import {
 	CODING_AGENT_PERMISSION_MODE_SET,
 	CODING_AGENT_PLAN_MODE_STATE_READ,
-} from "@vetta/coding-agent/session-extensions";
-import type { PromptRequest, RuntimeHost, SessionExecutionMode } from "@vetta/runtime-core";
+} from "@astravia/coding-agent/session-extensions";
+import type { PromptRequest, RuntimeHost, SessionExecutionMode } from "@astravia/runtime-core";
 import { prepareInputPrompt } from "../../renderer/shared/lib/input-tokens/prepare.js";
 import type { AutomationSuspendReason, ScheduledTask, TaskExecutionRecord } from "../../shared/automation.js";
 import { formatScheduleSessionName } from "../../shared/scheduled-session.js";

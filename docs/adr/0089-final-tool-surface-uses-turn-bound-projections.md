@@ -16,7 +16,7 @@ MCP 和组合调用链逐层传递，会让模型展示策略侵入执行合同�
 
 ## 决策
 
-1. `@vetta/runtime-tools` 提供平台中立的 `RuntimeToolProjectionPipeline`。Projector 按稳定 `order + id`
+1. `@astravia/runtime-tools` 提供平台中立的 `RuntimeToolProjectionPipeline`。Projector 按稳定 `order + id`
    排序，对 Tool Definition 做不可变投影；重复 id、非法顺序和试图改变稳定 Tool 名称均 fail-fast。
 2. Projection 只能修改模型表面字段：`label`、静态 `description`、`inputSchema`、`modelOrder`、
    `contextSource` 和 `contextCategory`。`name`、执行函数、binding、激活、权限与副作用归原所有者，不能通过

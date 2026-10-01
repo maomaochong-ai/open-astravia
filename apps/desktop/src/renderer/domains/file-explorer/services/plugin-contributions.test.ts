@@ -50,12 +50,20 @@ describe("file explorer plugin contributions", () => {
 	});
 
 	it("matches extensions on directories too, so bundle dirs can be decorated", () => {
-		const bundle = { name: "login-app.vetd", path: "/w/login-app.vetd", isDirectory: true, size: 0, modifiedAt: 1 };
-		expect(matchesFileExplorerWhen(bundle, { resourceType: "directory", extensions: ["vetd"] })).toBe(true);
-		expect(matchesFileExplorerWhen(bundle, { extensions: ["vetd"] })).toBe(true);
-		expect(matchesFileExplorerWhen(bundle, { extensions: ["vetdz"] })).toBe(false);
+		const bundle = {
+			name: "login-app.astravia-design",
+			path: "/w/login-app.astravia-design",
+			isDirectory: true,
+			size: 0,
+			modifiedAt: 1,
+		};
+		expect(matchesFileExplorerWhen(bundle, { resourceType: "directory", extensions: ["astravia-design"] })).toBe(
+			true,
+		);
+		expect(matchesFileExplorerWhen(bundle, { extensions: ["astravia-design"] })).toBe(true);
+		expect(matchesFileExplorerWhen(bundle, { extensions: ["astravia-designz"] })).toBe(false);
 		// 显式要文件的匹配器不受影响。
-		expect(matchesFileExplorerWhen(bundle, { resourceType: "file", extensions: ["vetd"] })).toBe(false);
+		expect(matchesFileExplorerWhen(bundle, { resourceType: "file", extensions: ["astravia-design"] })).toBe(false);
 	});
 
 	it("sorts actions by ascending order without mutating the registry", () => {

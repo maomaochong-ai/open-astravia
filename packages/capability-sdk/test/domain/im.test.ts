@@ -11,11 +11,11 @@ import {
 describe("IM domain capabilities", () => {
 	it("uses one stable id per IM operation", () => {
 		expect(Object.values(DOMAIN_IM_CAPABILITIES).map((capability) => capability.id)).toEqual([
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}im.status.get`,
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}im.log.list`,
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}im.enabled.set`,
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}im.restart`,
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}im.agent-model.set`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}im.status.get`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}im.log.list`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}im.enabled.set`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}im.restart`,
+			`${CAPABILITY_PREFIXES.ASTRAVIA_DOMAIN}im.agent-model.set`,
 		]);
 	});
 

@@ -1,3 +1,10 @@
+import type { AssistantMessage } from "@astravia/ai";
+import type { AssistantSessionEvent, HistoryEntry } from "@astravia/runtime-core";
+import type {
+	ConversationAgentMessageEvent,
+	ConversationToolExecutionEvent,
+} from "@astravia/runtime-core/conversation";
+import type { RuntimeToolResult } from "@astravia/runtime-core/kernel";
 import type { DesktopTeamToolExecutionEvent } from "@preload/api-types/team-conversation-display";
 import {
 	type ConversationMessageEventState,
@@ -7,10 +14,6 @@ import {
 	reduceConversationMessageEvent,
 } from "@shared/conversation";
 import type { ChatConversationItem } from "@shared/store/atoms";
-import type { AssistantMessage } from "@vetta/ai";
-import type { AssistantSessionEvent, HistoryEntry } from "@vetta/runtime-core";
-import type { ConversationAgentMessageEvent, ConversationToolExecutionEvent } from "@vetta/runtime-core/conversation";
-import type { RuntimeToolResult } from "@vetta/runtime-core/kernel";
 import { fullHistoryToChat, handleToolEnd, handleToolPhase, handleToolStart, resetStreamState } from "./chat-service";
 import { conversationAssistantMessageId } from "./conversation-message-identity";
 

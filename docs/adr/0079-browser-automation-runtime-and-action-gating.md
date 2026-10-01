@@ -12,7 +12,7 @@ status: accepted
 
 **其二，能力面以什么形式暴露给模型。** 最初的实现走清单式 MCP（`agent.mcpServers`）。实测 `--tools core` 是 29 个工具、约 54.8KB 的 JSON Schema（≈13.7k token），`--tools all` 则是 64 个工具、约 29.8k token。上游给**每个**工具都完整重复了一遍全局选项（`allowedDomains` / `extraArgs` / `idleTimeout` / `namespace` / `restore`…），平均每个工具约 470 token，其中大半是重复内容。这份开销是静态清单贡献，**每个会话每一轮常驻**，与用户这轮是否碰浏览器无关。更糟的是职责重叠：`agent_browser_read` 的描述是「Fetch a URL as agent-readable text」，与网页搜索/抓取几乎完全同义，模型在两者之间摇摆。
 
-**其三，危险动作的门禁放在哪。** agent-browser 自带三层防护，但其中两层在 Vetta 的运行形态下不可用：
+**其三，危险动作的门禁放在哪。** agent-browser 自带三层防护，但其中两层在 Astravia 的运行形态下不可用：
 
 - `--allowed-domains`（域名白名单 + WebRTC 围栏）与 `--profile`、`--cdp`、`--auto-connect` 在上游是**互斥**的——带 profile 或附着已有浏览器启动时，页面可能在围栏建立前就跑起来，上游因此直接拒绝该组合。而这两种浏览器来源正是本插件仅有的两种模式。
 - `--confirm-actions` 的人机确认走 TTY，且上游明确规定非 TTY 时一律自动拒绝。插件 spawn 出来的都是无 TTY 子进程，这条路等价于「全部拒绝」。
@@ -21,7 +21,7 @@ status: accepted
 
 **1. 系统插件可以把外部原生二进制作为「运行时按需获取的依赖」，获取通道是宿主已有的托管 npm。**
 
-插件在 `plugin.json#commands` 声明 `npm` 与目标二进制名，首次使用时用 `ctx.command.spawn` 执行 `npm i -g <pkg>@<锁定版本>`。产物落在 `~/.vetta/runtimes/.npm-global/bin`，该目录已由 `RuntimeManager.applyEnv()` 前置进主进程 PATH，并且 `createPluginCommandEnvironment` 会透传 `npm_config_registry` / `npm_config_cache`，因此自动复用已配置的镜像源与共享缓存。
+插件在 `plugin.json#commands` 声明 `npm` 与目标二进制名，首次使用时用 `ctx.command.spawn` 执行 `npm i -g <pkg>@<锁定版本>`。产物落在 `~/.astravia/runtimes/.npm-global/bin`，该目录已由 `RuntimeManager.applyEnv()` 前置进主进程 PATH，并且 `createPluginCommandEnvironment` 会透传 `npm_config_registry` / `npm_config_cache`，因此自动复用已配置的镜像源与共享缓存。
 
 必须用 `spawn` 而非 `run`：`run` 被宿主 clamp 在 120s，百兆级下载必然超时。`spawn` 句柄没有流式 stdout，安装进度只能轮询 `status().recentOutput`（约 64KB 环形尾部）。
 

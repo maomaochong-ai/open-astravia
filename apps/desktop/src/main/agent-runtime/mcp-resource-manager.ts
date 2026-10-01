@@ -4,7 +4,7 @@ import type {
 	McpRuntimeToolBinding,
 	McpRuntimeToolSource,
 	McpRuntimeToolView,
-} from "@vetta/runtime-mcp";
+} from "@astravia/runtime-mcp";
 
 export interface DesktopMcpResourceManagerScope {
 	readonly cwd: string;

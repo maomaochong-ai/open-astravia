@@ -52,7 +52,7 @@ Plugin 身份或插件权限名称。
 
 Remotion Provider 声明自己接受的工程文档 MIME（例如插件私有的 `application/vnd.example.remotion-project+json`）与输出 MIME。消费方提交该文档和素材，Provider 内部负责 bundle、选择 composition、校验 props、渲染以及把输出文件交回宿主。
 
-composition、React 组件、Remotion 版本和渲染选项属于工程文档 schema 或 Provider 配置，不进入 Vetta 公共类型。以后替换为其他渲染引擎时，只需注册接受相应工程 MIME 的 `compose` Provider。
+composition、React 组件、Remotion 版本和渲染选项属于工程文档 schema 或 Provider 配置，不进入 Astravia 公共类型。以后替换为其他渲染引擎时，只需注册接受相应工程 MIME 的 `compose` Provider。
 
 ## 结果
 

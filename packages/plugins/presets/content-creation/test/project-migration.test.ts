@@ -14,7 +14,7 @@ describe("content project migrations", () => {
 					kind: "image",
 					name: "Reference",
 					mimeType: "image/png",
-					url: "vetta-media://stale-path",
+					url: "astravia-media://stale-path",
 					createdAt: "2026-01-01T00:00:00.000Z",
 				},
 			],

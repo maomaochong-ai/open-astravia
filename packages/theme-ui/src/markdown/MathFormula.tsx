@@ -1,4 +1,4 @@
-import { Button } from "@vetta-org/ui";
+import { Button } from "@astravia-org/ui";
 import type { MarkdownLabels } from "./rich-labels";
 import { memo, useEffect, useRef, useState } from "react";
 import { requestFormula } from "./math-client";

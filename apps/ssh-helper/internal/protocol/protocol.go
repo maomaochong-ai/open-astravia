@@ -1,4 +1,4 @@
-// Package protocol defines the wire format spoken between the Vetta desktop
+// Package protocol defines the wire format spoken between the Astravia desktop
 // app and the helper running on a remote project host.
 //
 // Framing is newline-delimited JSON over the SSH channel's stdio. Binary

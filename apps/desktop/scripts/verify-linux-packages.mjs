@@ -8,7 +8,7 @@ import { parse } from "yaml";
 const execFileAsync = promisify(execFile);
 const packageDir = resolve(import.meta.dirname, "..");
 const defaultReleaseDir = join(packageDir, "release");
-const requiredPayloadPaths = ["/opt/Vetta/Vetta", "/opt/Vetta/resources/package-type"];
+const requiredPayloadPaths = ["/opt/Astravia/Astravia", "/opt/Astravia/resources/package-type"];
 
 function requireValue(value, label) {
 	if (typeof value !== "string" || value.trim().length === 0) {
@@ -74,8 +74,8 @@ function verifyIdentity(format, actual, expected) {
 }
 
 export function verifyLinuxPackageInspection({ expectedVersion, deb, rpm }) {
-	verifyIdentity("Debian", deb, { name: "vetta", version: expectedVersion, arch: "amd64" });
-	verifyIdentity("RPM", rpm, { name: "vetta", version: expectedVersion, arch: "x86_64" });
+	verifyIdentity("Debian", deb, { name: "astravia", version: expectedVersion, arch: "amd64" });
+	verifyIdentity("RPM", rpm, { name: "astravia", version: expectedVersion, arch: "x86_64" });
 	verifyPayload("Debian", deb.paths);
 	verifyPayload("RPM", rpm.paths);
 }

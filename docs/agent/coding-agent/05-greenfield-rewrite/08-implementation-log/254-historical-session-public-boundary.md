@@ -18,7 +18,7 @@
 - 会话历史、认证、模型和设置等用户数据；必要时由显式、独立的新迁移器读取旧格式。
 - 模型消息、工具消息、错误、取消、事件顺序、并发约束和资源释放语义。
 - 仍然有效的行为测试场景和数据 fixture；旧实现可以临时作为测试 Oracle，但不能被新生产代码调用。
-- `@vetta/ai` 与经过合同验证的 `@vetta/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
+- `@astravia/ai` 与经过合同验证的 `@astravia/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
 
 ## 明确舍弃（固定）
 
@@ -41,7 +41,7 @@
 
 ### 1. 独立历史会话公共入口
 
-- 新增 `@vetta/coding-agent/historical-sessions` 子路径。
+- 新增 `@astravia/coding-agent/historical-sessions` 子路径。
 - 公共入口只暴露 catalog/history reader 工厂、迁移函数和使用 `HistoricalSession` 命名的迁移结果类型。
 - 工厂返回 `runtime-core` 中立接口，不导出 `LegacyRuntimeSessionCatalog` 和 `LegacyRuntimeSessionFileHistoryReader` 具体类。
 - 历史 record normalizer、lease、document reader 等格式细节继续留在 `sessions/legacy` 内部。
@@ -80,7 +80,7 @@
 - CLI 历史迁移与锁冲突定向测试：2 个文件，10 项通过。
 - Runtime Core 会话服务定向测试：1 个文件，4 项通过。
 - 质量门禁定向测试：2 个文件，69 项通过。
-- 安装后独立 `vetta` 可执行文件：2 项通过，覆盖历史会话迁移、进程重启复用、不可表示格式显式失败和源文件不变。
+- 安装后独立 `astravia` 可执行文件：2 项通过，覆盖历史会话迁移、进程重启复用、不可表示格式显式失败和源文件不变。
 - `bun run check:quick` 通过；历史边界统计为 14，未分类为 0，历史数据修改调用仍为 3。
 - `bun run check` 通过，覆盖全仓 Biome、根/CLI/Desktop/Admin 类型检查和全部质量守卫。
 

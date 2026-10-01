@@ -1,6 +1,6 @@
 ---
 title: 安装、升级与数据迁移
-description: 选择正确的 Vetta 构建、完成升级，并安全迁移项目、会话和本地配置。
+description: 选择正确的 Astravia 构建、完成升级，并安全迁移项目、会话和本地配置。
 ---
 
 <Takeaways>
@@ -11,9 +11,9 @@ description: 选择正确的 Vetta 构建、完成升级，并安全迁移项目
 
 ## 选择安装来源
 
-普通用户应从[下载页](https://openvetta.com/download)获取与当前操作系统和架构匹配的安装包。仓库当前面向 Windows、macOS 和 Linux；下载页没有列出的平台或架构没有可替代的安装包。
+普通用户应从[下载页](https://astravia.dev/download)获取与当前操作系统和架构匹配的安装包。仓库当前面向 Windows、macOS 和 Linux；下载页没有列出的平台或架构没有可替代的安装包。
 
-Windows x64 提供三种格式：普通用户优先使用 Inno `.exe` 安装器，它接入应用内自动更新；需要标准 Windows Installer 部署时使用 `.msi`；不希望安装时可解压 `.zip` 后直接运行 `Vetta.exe`。MSI 和 ZIP 是补充下载格式，应用内自动更新仍通过 Inno 安装器完成。
+Windows x64 提供三种格式：普通用户优先使用 Inno `.exe` 安装器，它接入应用内自动更新；需要标准 Windows Installer 部署时使用 `.msi`；不希望安装时可解压 `.zip` 后直接运行 `Astravia.exe`。MSI 和 ZIP 是补充下载格式，应用内自动更新仍通过 Inno 安装器完成。
 
 Linux 当前发布 x64 架构的三种格式：AppImage 适合免安装运行，DEB 适合 Debian/Ubuntu，RPM 适合 Fedora/RHEL 系发行版。下载后可按格式安装：
 
@@ -21,14 +21,14 @@ Linux 当前发布 x64 架构的三种格式：AppImage 适合免安装运行，
 VERSION=x.y.z # 替换为下载的版本号
 
 # Debian / Ubuntu
-sudo apt install "./vetta_${VERSION}_amd64.deb"
+sudo apt install "./astravia_${VERSION}_amd64.deb"
 
 # Fedora / RHEL 系；当前直接下载的 RPM 尚未做 GPG 签名
-sudo dnf install --nogpgcheck "./vetta-${VERSION}.x86_64.rpm"
+sudo dnf install --nogpgcheck "./astravia-${VERSION}.x86_64.rpm"
 
 # AppImage
-chmod +x "./Vetta-${VERSION}.AppImage"
-"./Vetta-${VERSION}.AppImage"
+chmod +x "./Astravia-${VERSION}.AppImage"
+"./Astravia-${VERSION}.AppImage"
 ```
 
 DEB/RPM 当前是通过 HTTPS 直接分发的安装包，不是 APT/DNF 软件源。安装后，应用更新器会继续选择与当前安装方式相同的包格式。
@@ -42,7 +42,7 @@ DEB/RPM 当前是通过 HTTPS 直接分发的安装包，不是 APT/DNF 软件�
 | 模式 | 登录与云服务 | 能力来源 | 共同能力 |
 | --- | --- | --- | --- |
 | 开源版 / serv-less | 不包含账户、订阅和远程模型目录 | GitHub 能力源 | 本地会话、BYOK、插件、主题、IM、知识库 |
-| 商业版 / Vetta Serv | 可包含登录、组织、订阅和官方目录 | 官方服务端能力源 | 本地会话、BYOK、插件、主题、IM、知识库 |
+| 商业版 / Astravia Serv | 可包含登录、组织、订阅和官方目录 | 官方服务端能力源 | 本地会话、BYOK、插件、主题、IM、知识库 |
 
 不要把一个模式的服务端地址、Marketplace 配置或更新配置复制到另一个模式。构建模式和环境变量属于发布者配置；终端用户只需要按下载来源使用对应安装包。
 
@@ -53,17 +53,17 @@ DEB/RPM 当前是通过 HTTPS 直接分发的安装包，不是 APT/DNF 软件�
   <li>没有仍在运行的任务、批量任务或知识库后台加工。</li>
   <li>重要会话已经等待写入完成，未处于持续重试或等待权限状态。</li>
   <li>如果使用 IM、Webhook 或自动化，已经记录当前开关、渠道和任务状态。</li>
-  <li>凭证由系统或 Vetta 配置存储保护，不把 `models.json`、Token 或 Cookie 复制到备份说明中。</li>
+  <li>凭证由系统或 Astravia 配置存储保护，不把 `models.json`、Token 或 Cookie 复制到备份说明中。</li>
 </Checklist>
 
-安装新版本通常会保留本地配置和数据目录。升级后若出现模型、插件或运行时异常，先在设置中重新验证对应能力，再查看[配置与数据路径](/reference/configuration-paths/)和[故障排查](/troubleshooting/)；不要先删除整个 `~/.vetta` 目录。
+安装新版本通常会保留本地配置和数据目录。升级后若出现模型、插件或运行时异常，先在设置中重新验证对应能力，再查看[配置与数据路径](/reference/configuration-paths/)和[故障排查](/troubleshooting/)；不要先删除整个 `~/.astravia` 目录。
 
 ## 迁移哪些内容
 
 | 内容 | 迁移建议 | 注意事项 |
 | --- | --- | --- |
 | 项目文件 | 使用 Git、项目导出或文件系统备份 | 这是任务真实产物的首要副本 |
-| 项目级 `.vetta/` | 与项目一起迁移 | 保留目录结构，确认其中没有凭证 |
+| 项目级 `.astravia/` | 与项目一起迁移 | 保留目录结构，确认其中没有凭证 |
 | 普通会话 | 迁移对应会话目录及元数据 | 不要让两个进程同时写同一会话 |
 | 模型、MCP 和其它设置 | 优先通过设置页重新配置 | 手工迁移前脱敏，并核对版本兼容性 |
 | 凭证与 OAuth 状态 | 不复制到公开或跨设备文档 | 按目标设备重新登录或重新授权 |
@@ -74,7 +74,7 @@ DEB/RPM 当前是通过 HTTPS 直接分发的安装包，不是 APT/DNF 软件�
 
 ## 升级后的验收
 
-1. 启动 Vetta，确认能打开一个已知项目。
+1. 启动 Astravia，确认能打开一个已知项目。
 2. 显式选择一个模型，发送最小测试消息。
 3. 打开一个历史会话，确认消息和产物可读取。
 4. 如果使用插件、MCP、知识库或自动化，逐项执行一次只读或测试操作。

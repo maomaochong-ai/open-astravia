@@ -1,4 +1,8 @@
-import { type CapabilityAccessAuditEvent, CapabilityAccessController, CapabilityHub } from "@vetta/capability-runtime";
+import {
+	type CapabilityAccessAuditEvent,
+	CapabilityAccessController,
+	CapabilityHub,
+} from "@astravia/capability-runtime";
 import { ArtifactStore } from "../artifacts/artifact-store.js";
 import { getBrowserAutomationService } from "../browser-automation/index.js";
 import { JobManager } from "../jobs/job-manager.js";

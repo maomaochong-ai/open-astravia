@@ -1,4 +1,4 @@
-import { bindCapability, type CapabilityRegistry } from "@vetta/capability-runtime";
+import { bindCapability, type CapabilityRegistry } from "@astravia/capability-runtime";
 import {
 	CAPABILITY_ERROR_CODES,
 	CapabilityError,
@@ -11,7 +11,7 @@ import {
 	FOUNDATION_NETWORK_CAPABILITIES,
 	FOUNDATION_STORAGE_CAPABILITIES,
 	parseCapabilityJsonValue,
-} from "@vetta-org/capability-sdk";
+} from "@astravia-org/capability-sdk";
 import { persistArtifact } from "../artifacts/artifact-persistence.js";
 import type { ArtifactStore } from "../artifacts/artifact-store.js";
 import type { BrowserAutomationService } from "../browser-automation/index.js";
@@ -56,10 +56,10 @@ import { themeIdFromStorageCapabilityNamespace } from "./integrations/theme-capa
 import { registerDesktopJobProvider } from "./job-provider.js";
 import { toPluginNetworkCapabilityError } from "./plugin-network-error.js";
 
-const FOUNDATION_STORAGE_PROVIDER_OWNER = "vetta.foundation.storage";
-const FOUNDATION_FILESYSTEM_PROVIDER_OWNER = "vetta.foundation.filesystem";
-const FOUNDATION_NETWORK_STORAGE_PROVIDER_OWNER = "vetta.foundation.network-storage";
-const FOUNDATION_ARTIFACT_PROVIDER_OWNER = "vetta.foundation.artifact";
+const FOUNDATION_STORAGE_PROVIDER_OWNER = "astravia.foundation.storage";
+const FOUNDATION_FILESYSTEM_PROVIDER_OWNER = "astravia.foundation.filesystem";
+const FOUNDATION_NETWORK_STORAGE_PROVIDER_OWNER = "astravia.foundation.network-storage";
+const FOUNDATION_ARTIFACT_PROVIDER_OWNER = "astravia.foundation.artifact";
 
 interface NamespacedStorageBackend {
 	clear(namespace: string): Promise<CapabilityJsonMap>;

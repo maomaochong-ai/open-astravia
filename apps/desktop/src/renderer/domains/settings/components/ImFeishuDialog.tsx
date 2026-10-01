@@ -1,6 +1,6 @@
-import { Button } from "@vetta-org/ui";
+import { Button } from "@astravia-org/ui";
 import { useTranslation } from "react-i18next";
-import { ImFeishuDialogView } from "@vetta-org/theme-ui/settings";
+import { ImFeishuDialogView } from "@astravia-org/theme-ui/settings";
 import { ImChannelGuideButton } from "./ImChannelGuideButton";
 import type { ImBridgeSettingsModel } from "./useImBridgeSettingsModel";
 

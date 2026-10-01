@@ -6,17 +6,17 @@ import test from "node:test";
 import { createWindowsVersionLayout, validateLayoutVersion } from "./windows-version-layout.mjs";
 
 test("createWindowsVersionLayout keeps launcher, pointer, and NSIS compatibility directory at root", async () => {
-	const directory = await mkdtemp(join(tmpdir(), "vetta-version-layout-"));
+	const directory = await mkdtemp(join(tmpdir(), "astravia-version-layout-"));
 	await mkdir(join(directory, "resources"), { recursive: true });
-	await writeFile(join(directory, "Vetta.exe"), "electron");
+	await writeFile(join(directory, "Astravia.exe"), "electron");
 	await writeFile(join(directory, "resources", "app.asar"), "asar");
-	const launcherPath = join(directory, "VettaLauncher.exe");
+	const launcherPath = join(directory, "AstraviaLauncher.exe");
 	await writeFile(launcherPath, "launcher");
 
 	await createWindowsVersionLayout(directory, "1.2.3", launcherPath);
 
-	assert.equal(await readFile(join(directory, "Vetta.exe"), "utf8"), "launcher");
-	assert.equal(await readFile(join(directory, "versions", "1.2.3", "Vetta.exe"), "utf8"), "electron");
+	assert.equal(await readFile(join(directory, "Astravia.exe"), "utf8"), "launcher");
+	assert.equal(await readFile(join(directory, "versions", "1.2.3", "Astravia.exe"), "utf8"), "electron");
 	assert.equal((await stat(join(directory, "resources"))).isDirectory(), true);
 	assert.deepEqual(JSON.parse(await readFile(join(directory, "current.json"), "utf8")), { version: "1.2.3" });
 });

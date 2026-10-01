@@ -1,11 +1,11 @@
-import type { PluginOfficialApi } from "@vetta-org/plugin-sdk";
+import type { PluginOfficialApi } from "@astravia-org/plugin-sdk";
 
 export function createOfficialProjectsApi(
 	assertOfficial: () => void,
 	capabilitySessionId: string,
 ): PluginOfficialApi["projects"] {
-	const projects = window.vetta.plugins.internalCapabilities.projects;
-	const sessions = window.vetta.plugins.internalCapabilities.sessions;
+	const projects = window.astravia.plugins.internalCapabilities.projects;
+	const sessions = window.astravia.plugins.internalCapabilities.sessions;
 	return {
 		list: async () => {
 			assertOfficial();

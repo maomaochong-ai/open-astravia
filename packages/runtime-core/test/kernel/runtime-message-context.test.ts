@@ -1,4 +1,4 @@
-import type { UserMessage } from "@vetta/ai";
+import type { UserMessage } from "@astravia/ai";
 import { describe, expect, it } from "vitest";
 import { reconcileRuntimeMessageEnvelopes } from "../../src/kernel/runtime-message-context.js";
 import type { RuntimeMessageEnvelope } from "../../src/runtime-execution-observation.js";

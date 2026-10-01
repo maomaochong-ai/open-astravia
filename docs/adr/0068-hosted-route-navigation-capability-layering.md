@@ -32,7 +32,7 @@ Desktop 自己的 UI 可以直接调用该服务；跨扩展边界的调用必�
 
 ### 2. Capability 层只定义并保护可序列化命令
 
-`@vetta-org/capability-sdk` 定义通用引用：
+`@astravia-org/capability-sdk` 定义通用引用：
 
 ```ts
 interface HostedRouteRef {
@@ -42,7 +42,7 @@ interface HostedRouteRef {
 }
 ```
 
-`cap.domain.vetta.navigation.open-hosted-route` 是唯一导航命令。它不枚举 Plugin/Theme，不包含 URL、Router、
+`cap.domain.astravia.navigation.open-hosted-route` 是唯一导航命令。它不枚举 Plugin/Theme，不包含 URL、Router、
 组件或回调。Desktop Provider 只负责把已授权命令委托给 `HostedRouteService`；Registry、精确 Grant、撤销、
 取消和审计由 Capability Runtime 执行。
 

@@ -1,5 +1,5 @@
+import type { CapabilityAccessSessionFactory } from "@astravia-org/capability-sdk";
 import { rendererCapabilityHost } from "@shared/capabilities/renderer-capability-host";
-import type { CapabilityAccessSessionFactory } from "@vetta-org/capability-sdk";
 import {
 	createThemeRendererHostedRouteSession,
 	type ThemeRendererHostedRouteSession,

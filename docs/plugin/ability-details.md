@@ -23,7 +23,7 @@ my-plugin/
 └── dist/
 ```
 
-`@vetta-org/plugin-vite` 发现根目录的 `ability.json` 后，会把它和整个 `presentation/` 目录打进插件 zip。
+`@astravia-org/plugin-vite` 发现根目录的 `ability.json` 后，会把它和整个 `presentation/` 目录打进插件 zip。
 因此，插件的 Markdown 与图片展示资源应放在 `presentation/` 下。
 
 ## 最小详情

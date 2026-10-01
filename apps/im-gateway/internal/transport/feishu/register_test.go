@@ -249,11 +249,11 @@ func TestRegister_RequiresQRCallback(t *testing.T) {
 func TestBuildRegisterQRURL_CarriesPresetAndAddons(t *testing.T) {
 	minimal := false
 	raw, err := buildRegisterQRURL("https://example.test/app?code=ABCD", RegisterOptions{
-		Source:     "vetta-im-gateway",
+		Source:     "astravia-im-gateway",
 		CreateOnly: true,
 		// createOnly wins on the landing page, but both may travel.
 		AppID:     "cli_existing",
-		AppPreset: &RegisterAppPreset{Name: "Vetta", Desc: "desc", Avatar: []string{"https://example.test/a.png"}},
+		AppPreset: &RegisterAppPreset{Name: "Astravia", Desc: "desc", Avatar: []string{"https://example.test/a.png"}},
 		Addons: &RegisterAddons{
 			Preset: &minimal,
 			Scopes: &RegisterScopes{Tenant: []string{"im:message:send_as_bot"}},
@@ -272,8 +272,8 @@ func TestBuildRegisterQRURL_CarriesPresetAndAddons(t *testing.T) {
 		"code":       "ABCD",
 		"from":       "sdk",
 		"tp":         "sdk",
-		"source":     "vetta-im-gateway",
-		"name":       "Vetta",
+		"source":     "astravia-im-gateway",
+		"name":       "Astravia",
 		"desc":       "desc",
 		"avatar":     "https://example.test/a.png",
 		"createOnly": "true",

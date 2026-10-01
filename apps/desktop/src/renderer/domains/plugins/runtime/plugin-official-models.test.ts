@@ -45,7 +45,7 @@ describe("createOfficialModelsApi", () => {
 		};
 		Object.defineProperty(globalThis, "window", {
 			configurable: true,
-			value: { vetta: { plugins: { internalCapabilities: { models } } } },
+			value: { astravia: { plugins: { internalCapabilities: { models } } } },
 		});
 		const assertOfficial = vi.fn();
 		const api = createOfficialModelsApi(assertOfficial, "capability-session");
@@ -90,19 +90,19 @@ function stubInternalModels(): { list: ReturnType<typeof vi.fn>; validateModelKe
 	};
 	Object.defineProperty(globalThis, "window", {
 		configurable: true,
-		value: { vetta: { plugins: { internalCapabilities: { models: api } } } },
+		value: { astravia: { plugins: { internalCapabilities: { models: api } } } },
 	});
 	return api;
 }
 
 describe("official.models 合并远程目录", () => {
-	it("列出登录后下发的远程 provider（Vetta Go），并标记 remote", async () => {
+	it("列出登录后下发的远程 provider（Astravia Go），并标记 remote", async () => {
 		stubInternalModels();
-		await setRemoteProviders({ "vetta-go": { models: [{ id: "opus-5", name: "Opus 5" }] } });
+		await setRemoteProviders({ "astravia-go": { models: [{ id: "opus-5", name: "Opus 5" }] } });
 
 		const result = await createOfficialModelsApi(() => undefined, "s").list();
-		const go = result.providers.find((provider) => provider.id === "vetta-go");
-		expect(go).toMatchObject({ displayName: "Vetta Go", remote: true, modelCount: 1 });
+		const go = result.providers.find((provider) => provider.id === "astravia-go");
+		expect(go).toMatchObject({ displayName: "Astravia Go", remote: true, modelCount: 1 });
 		expect(go?.models[0]).toMatchObject({ id: "opus-5", name: "Opus 5" });
 		// 本地 provider 原样保留
 		expect(result.providers.find((provider) => provider.id === "openai")?.models).toHaveLength(1);
@@ -122,10 +122,10 @@ describe("official.models 合并远程目录", () => {
 
 	it("远程模型的 key 校验不落到主进程（主进程不认识它们）", async () => {
 		const internal = stubInternalModels();
-		await setRemoteProviders({ "vetta-go": { models: [{ id: "opus-5" }] } });
+		await setRemoteProviders({ "astravia-go": { models: [{ id: "opus-5" }] } });
 		const api = createOfficialModelsApi(() => undefined, "s");
 
-		await api.assertModelKeyExists("vetta-go/opus-5");
+		await api.assertModelKeyExists("astravia-go/opus-5");
 		expect(internal.validateModelKey).not.toHaveBeenCalled();
 
 		await api.assertModelKeyExists("openai/gpt-5");

@@ -1,4 +1,4 @@
-import type { AgentProfile, TeamDefinition } from "@vetta/agent-team";
+import type { AgentProfile, TeamDefinition } from "@astravia/agent-team";
 import type { TFunction } from "i18next";
 
 /** Names and descriptions are persisted team data, not localization keys. */

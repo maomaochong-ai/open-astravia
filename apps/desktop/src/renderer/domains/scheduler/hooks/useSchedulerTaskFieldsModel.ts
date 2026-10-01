@@ -73,7 +73,7 @@ export function useSchedulerTaskFieldsModel({
 		}
 		let cancelled = false;
 		setSessionsLoading(true);
-		void window.vetta.session
+		void window.astravia.session
 			.listSessions(projectCwd)
 			.then((listed) => {
 				if (cancelled) return;
@@ -99,7 +99,7 @@ export function useSchedulerTaskFieldsModel({
 	}, [projectCwd, sameSession]);
 
 	useEffect(() => {
-		void window.vetta.webhook
+		void window.astravia.webhook
 			.list()
 			.then((endpoints) =>
 				setWebhooks(

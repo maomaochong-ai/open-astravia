@@ -30,7 +30,7 @@ describe("PetSpeechBubble", () => {
 	it("reserves space around the bubble surface for decorations and shadow", () => {
 		const { container } = render(
 			<PetSpeechBubble
-				decorUrl="vetta-media://bubble/decor.png"
+				decorUrl="astravia-media://bubble/decor.png"
 				message={{ text: "正在处理任务" }}
 				styleId="stoat_spring_festival_corner_border_set"
 			/>,

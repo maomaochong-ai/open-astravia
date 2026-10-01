@@ -19,17 +19,17 @@ Prepare 2–5 independent project directories with representative structures. Do
   <li>Each directory can be audited independently by the same task.</li>
   <li>No other task is currently writing to the directories.</li>
   <li>A lower-risk representative directory is ready for the dry run.</li>
-  <li>`vetta-project-audit.md` will not overwrite an existing report.</li>
+  <li>`astravia-project-audit.md` will not overwrite an existing report.</li>
 </Checklist>
 
 ## Configure the shared task
 
-In **More → Batch tasks**, create a project. Add one directory first, set concurrency to `1`, and set artifact verification to `vetta-project-audit.md`.
+In **More → Batch tasks**, create a project. Add one directory first, set concurrency to `1`, and set artifact verification to `astravia-project-audit.md`.
 
 <Plate no="01" title="Shared audit task">
 
 ```text
-Audit the local development entry points of the current project. Create only vetta-project-audit.md and do not modify other files.
+Audit the local development entry points of the current project. Create only astravia-project-audit.md and do not modify other files.
 
 Read the README, project manifests, workspace configuration, and existing scripts. In the report, describe:
 1. The project type and primary runtime;
@@ -40,7 +40,7 @@ Read the README, project manifests, workspace configuration, and existing script
 6. Items that cannot be confirmed statically and require manual execution.
 
 Do not install dependencies, run commands that may have external side effects, or guess scripts that do not exist.
-When finished, confirm vetta-project-audit.md exists and reread it to check all six sections.
+When finished, confirm astravia-project-audit.md exists and reread it to check all six sections.
 ```
 
 </Plate>
@@ -67,7 +67,7 @@ When finished, confirm vetta-project-audit.md exists and reread it to check all 
 
 ## Expected result
 
-Each directory contains one `vetta-project-audit.md`. The report structure is consistent while commands, facts, and pending items come from the individual project. The batch view shows independent task and session state.
+Each directory contains one `astravia-project-audit.md`. The report structure is consistent while commands, facts, and pending items come from the individual project. The batch view shows independent task and session state.
 
 ## Acceptance checklist
 
@@ -85,7 +85,7 @@ When one directory fails, open its session and inspect the reason. Correct the s
 
 ```text
 Fix only [specific problem] in the current audit report. Keep the task read-only and do not modify project files.
-Check [README or configuration file] first, then update vetta-project-audit.md and recheck all six required sections.
+Check [README or configuration file] first, then update astravia-project-audit.md and recheck all six required sections.
 ```
 
 <Callout type="warn" title="Stopping clears unfinished work">

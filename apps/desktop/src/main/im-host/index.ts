@@ -755,7 +755,7 @@ export class ImHost {
 
 	/**
 	 * Drop the linked Signal device. When the sidecar is running on
-	 * signal it also clears the Vetta-owned signal-cli data; otherwise
+	 * signal it also clears the Astravia-owned signal-cli data; otherwise
 	 * only the cached flag is wiped so the UI updates.
 	 */
 	async signalLogout(): Promise<{ ok: boolean; error?: string }> {
@@ -1219,7 +1219,7 @@ export class ImHost {
 	/**
 	 * Signal slot. With no endpoint configured the sidecar runs signal-cli
 	 * itself, so we hand it the executable we resolved (a launched .app has
-	 * a minimal PATH, and the sidecar inherits it) plus a Vetta-owned
+	 * a minimal PATH, and the sidecar inherits it) plus a Astravia-owned
 	 * config directory that an unbind may safely clear.
 	 */
 	private buildSignalConfig(): SignalConfig {

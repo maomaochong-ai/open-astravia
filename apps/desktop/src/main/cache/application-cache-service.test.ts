@@ -8,7 +8,7 @@ import { ApplicationCacheService } from "./application-cache-service";
 let rootDir: string;
 
 beforeEach(async () => {
-	rootDir = await mkdtemp(join(tmpdir(), "vetta-application-cache-test-"));
+	rootDir = await mkdtemp(join(tmpdir(), "astravia-application-cache-test-"));
 });
 
 afterEach(async () => {

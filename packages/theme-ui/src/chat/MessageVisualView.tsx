@@ -1,4 +1,4 @@
-import { cn } from "@vetta-org/ui";
+import { cn } from "@astravia-org/ui";
 import { Slot } from "radix-ui";
 import { forwardRef, type ComponentPropsWithoutRef } from "react";
 import { useMessageRootContext } from "./MessageView";

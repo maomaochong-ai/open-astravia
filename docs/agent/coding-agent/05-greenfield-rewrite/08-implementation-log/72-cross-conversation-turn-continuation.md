@@ -173,7 +173,7 @@ repository root
 最终被 admin 本地缺失的 `@types/d3-*`、`@types/estree` 和 `@types/json-schema` 声明文件阻断。
 这是依赖安装状态问题，本轮没有删除或降级 admin 代码/类型来规避。
 
-本轮同时补齐 runtime-storage Vitest 对 `@vetta/runtime-core/kernel` 的源码 alias；此前无法收集的
+本轮同时补齐 runtime-storage Vitest 对 `@astravia/runtime-core/kernel` 的源码 alias；此前无法收集的
 `legacy-session-document-reader.test.ts` 已恢复执行，九个 Conversation 测试文件全部通过。
 
 ## 7. 结果

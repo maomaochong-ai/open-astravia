@@ -1,4 +1,4 @@
-import { readJsonFile, writeJsonFile } from "@vetta-org/plugin-sdk";
+import { readJsonFile, writeJsonFile } from "@astravia-org/plugin-sdk";
 import { getPluginCtx } from "../plugin-context.js";
 import { ProviderSettingsStore } from "./provider-settings.js";
 

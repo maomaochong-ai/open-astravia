@@ -1,4 +1,7 @@
-import { defineSessionExtensionService, type SessionExtensionDefinition } from "@vetta/runtime-core/session-extensions";
+import {
+	defineSessionExtensionService,
+	type SessionExtensionDefinition,
+} from "@astravia/runtime-core/session-extensions";
 import type { CodingAgentPluginConfigurationRuntime } from "./plugin-configuration-runtime.js";
 import {
 	CODING_AGENT_PLUGIN_CONFIGURATION_APPLY,

@@ -1,6 +1,6 @@
-import type { AgentMessage } from "@vetta/agent-core";
-import type { AssistantMessage } from "@vetta/ai";
-import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
+import type { AgentMessage } from "@astravia/agent-core";
+import type { AssistantMessage } from "@astravia/ai";
+import type { RuntimeToolDefinition } from "@astravia/runtime-core/kernel";
 import type { CodingAgentSessionStats, CodingAgentToolInfo } from "../../public-api/sdk/sdk-session-contract.js";
 
 export function toSdkToolInfo(tools: ReadonlyMap<string, RuntimeToolDefinition>): CodingAgentToolInfo[] {

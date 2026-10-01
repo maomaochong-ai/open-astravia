@@ -2,33 +2,33 @@ import { existsSync } from "node:fs";
 import { mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import type { Api, Model } from "@vetta/ai";
-import { resolveCodingAgentSessionDir } from "@vetta/coding-agent/bootstrap";
+import type { Api, Model } from "@astravia/ai";
+import { resolveCodingAgentSessionDir } from "@astravia/coding-agent/bootstrap";
 import {
 	type CodingAgentRuntimeCompositionOptions,
 	createCodingAgentRuntimeComposition,
 	createCodingAgentRuntimeSessionSelection,
 	publishCodingAgentExecutionRuntimeDefinition,
-} from "@vetta/coding-agent/composition";
-import type { EcosystemHookAdapterFactory } from "@vetta/coding-agent/hooks";
-import type { CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
-import type { ConversationScenario } from "@vetta/coding-agent/profile";
-import { CODING_AGENT_SESSION_PROFILE_STATE_READ } from "@vetta/coding-agent/session-extensions";
+} from "@astravia/coding-agent/composition";
+import type { EcosystemHookAdapterFactory } from "@astravia/coding-agent/hooks";
+import type { CodingAgentRuntimeModelSource } from "@astravia/coding-agent/host-services";
+import type { ConversationScenario } from "@astravia/coding-agent/profile";
+import { CODING_AGENT_SESSION_PROFILE_STATE_READ } from "@astravia/coding-agent/session-extensions";
 import {
 	RuntimeHost as BaseRuntimeHost,
 	RuntimeAgentRuntime,
 	RuntimeObservationHub,
 	type SessionConfig,
-} from "@vetta/runtime-core";
-import type { McpRuntimeToolSource } from "@vetta/runtime-mcp";
-import { createInMemoryConversationPersistence } from "@vetta/runtime-node/conversation";
-import type { CodingToolResultPolicy } from "@vetta/runtime-tools";
+} from "@astravia/runtime-core";
+import type { McpRuntimeToolSource } from "@astravia/runtime-mcp";
+import { createInMemoryConversationPersistence } from "@astravia/runtime-node/conversation";
+import type { CodingToolResultPolicy } from "@astravia/runtime-tools";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { DesktopRuntimeBackendPool } from "./backend-pool.js";
 import { DesktopRuntimeSessionCatalog } from "./session-catalog.js";
 
-/** `getAgentDir()` 的环境变量开关；缺省会话落点由它决定，测试不得写进真实 `~/.vetta/agent`。 */
-const AGENT_DIR_ENV = "VETTA_CODING_AGENT_DIR";
+/** `getAgentDir()` 的环境变量开关；缺省会话落点由它决定，测试不得写进真实 `~/.astravia/agent`。 */
+const AGENT_DIR_ENV = "ASTRAVIA_CODING_AGENT_DIR";
 
 interface CodingAgentTestSessionConfig extends SessionConfig {
 	readonly scenario?: ConversationScenario;
@@ -235,7 +235,7 @@ describe("DesktopRuntimeBackendPool", () => {
 	});
 
 	/**
-	 * 普通项目的会话产物**不落在用户工程目录里**：写进 `<cwd>/.vetta/sessions` 会在
+	 * 普通项目的会话产物**不落在用户工程目录里**：写进 `<cwd>/.astravia/sessions` 会在
 	 * 用户仓库里长出未跟踪文件（还可能被 `git add -A` 误提交）。缺省落点是 agent 目录
 	 * 下按 cwd 编码分片的全局目录，与 CLI/SDK 宿主一致。
 	 */
@@ -257,7 +257,7 @@ describe("DesktopRuntimeBackendPool", () => {
 		const globalShard = resolveCodingAgentSessionDir(cwd);
 
 		expect(dirname(runtime.getSessionPath(created.sessionId) ?? "")).toBe(globalShard);
-		expect(existsSync(join(cwd, ".vetta", "sessions"))).toBe(false);
+		expect(existsSync(join(cwd, ".astravia", "sessions"))).toBe(false);
 
 		const catalog = new DesktopRuntimeSessionCatalog({
 			resolveRoots: () => [{ cwd, sessionDir: globalShard }],

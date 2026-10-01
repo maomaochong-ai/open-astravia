@@ -2,7 +2,7 @@ import {
 	SchedulerEditApprovalDrawerView as ThemeSchedulerEditApprovalDrawerView,
 	type SchedulerEditApprovalDrawerViewLabels,
 	type SchedulerEditApprovalDrawerViewProps as ThemeProps,
-} from "@vetta-org/theme-ui/action-approval";
+} from "@astravia-org/theme-ui/action-approval";
 import {
 	canSubmitSchedulerApproval,
 	SchedulerApprovalFields,

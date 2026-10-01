@@ -51,7 +51,7 @@
 - Extension Session Host、RPC Session Adapter 和最终 IM Runtime Host 使用同一关闭合同。
 - Host Tool 注销、Active Session、Composition、Extension、MCP source 分阶段清理；一个失败不会阻止其他资源释放。
 - RPC Adapter 与最终 Runtime Host 继续抛出原有聚合错误文案，没有新增协议字段。
-- CLI Vitest 增加 `@vetta/coding-agent/config` 与 `@vetta/coding-agent/hooks` 的源码 alias，使真实 Greenfield IM Runtime Host 测试能够从 package root 独立执行，不依赖陈旧 `dist`。
+- CLI Vitest 增加 `@astravia/coding-agent/config` 与 `@astravia/coding-agent/hooks` 的源码 alias，使真实 Greenfield IM Runtime Host 测试能够从 package root 独立执行，不依赖陈旧 `dist`。
 
 ## 兼容性判断
 

@@ -1,0 +1,16 @@
+{
+	"id": "astravia-actions",
+	"name": "%plugin.name%",
+	"icon": "icon.png",
+	"version": "0.1.1",
+	"pluginApiVersion": "^2.0.0",
+	"entry": "dist/mf-manifest.json",
+	"moduleFederation": {
+		"remoteName": "astravia_actions",
+		"expose": "./plugin"
+	},
+	"permissions": ["app.actions.register", "app.actionHandler.execute"],
+	"description": "%plugin.description%",
+	"author": "Astravia",
+	"defaultLocale": "zh"
+}

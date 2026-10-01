@@ -74,13 +74,13 @@ export function useAbilityData(): AbilityData {
 
 	const loadLocalState = useCallback(async () => {
 		return Promise.all([
-			window.vetta.abilities.getLedger(),
-			window.vetta.abilities.listLocalPresentations(),
-			window.vetta.skills.getMarketManifest(),
-			window.vetta.skills.list(),
+			window.astravia.abilities.getLedger(),
+			window.astravia.abilities.listLocalPresentations(),
+			window.astravia.skills.getMarketManifest(),
+			window.astravia.skills.list(),
 			// 能力市场不按工作模式过滤：另一模式下已装的插件仍要出现在「我的」。
-			window.vetta.plugins.listAll(),
-			window.vetta.abilities.getOpenMcpSetupStatus(),
+			window.astravia.plugins.listAll(),
+			window.astravia.abilities.getOpenMcpSetupStatus(),
 		]);
 	}, []);
 
@@ -102,7 +102,7 @@ export function useAbilityData(): AbilityData {
 
 			const local = loadLocalState();
 
-			// 市场浏览无需登录；有 token 时仍带上。lite 构建无 vetta 官方市场，
+			// 市场浏览无需登录；有 token 时仍带上。lite 构建无 astravia 官方市场，
 			// 只保留 github 开放市场（openMarketplaces）与本地来源。
 			const remote = cloudEnabled ? fetchMarketAbilities(token) : Promise.resolve([]);
 			const openResultPromise = loadOpen(forceOpenMarketplaceRefresh);

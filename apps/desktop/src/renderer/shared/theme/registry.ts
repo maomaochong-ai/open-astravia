@@ -1,3 +1,5 @@
+import type { NewSessionHeroProps } from "@astravia-org/theme-ui";
+import type { ModelSelectorView } from "@astravia-org/theme-ui/chat";
 import type { LoginPopoverView } from "@cloud/auth/components/LoginPopoverView";
 import type { ActivityPanelFrame } from "@domains/activity-panel/components/activity-panel/ActivityPanelFrame";
 import type { AtPanelView } from "@domains/conversation/components/at-panel/AtPanelView";
@@ -31,11 +33,9 @@ import type { WindowControlButton, WindowControlsComponentProps } from "@shared/
 import type { DrawerCard } from "@shared/components/DrawerCard";
 import type { UpdateRestartDialogView } from "@shared/components/UpdateRestartDialogView";
 import type { ConfirmDialogView } from "@shared/components/ui/ConfirmDialogView";
-import type { NewSessionHeroProps } from "@vetta-org/theme-ui";
-import type { ModelSelectorView } from "@vetta-org/theme-ui/chat";
 import type { ComponentType } from "react";
 
-declare module "@vetta-org/theme-sdk" {
+declare module "@astravia-org/theme-sdk" {
 	interface ThemeRegionRegistry {
 		readonly "app.pageHeader"?: ComponentType<PageHeaderRegionProps>;
 		readonly sidebar?: ComponentType<SidebarRegionProps>;

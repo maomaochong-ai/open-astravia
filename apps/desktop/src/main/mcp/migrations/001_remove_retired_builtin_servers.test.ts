@@ -1,7 +1,7 @@
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { runFileMigrations } from "@vetta/toolkit/file-migrations";
+import { runFileMigrations } from "@astravia/toolkit/file-migrations";
 import { describe, expect, it } from "vitest";
 import type { McpConfigData } from "../../../preload/api-types/mcp.js";
 import {
@@ -53,7 +53,7 @@ describe("removeRetiredBuiltinMcpServers", () => {
 	});
 
 	it("clears legacy config, ledger and OAuth state only once", async () => {
-		const root = await mkdtemp(join(tmpdir(), "vetta-mcp-migration-"));
+		const root = await mkdtemp(join(tmpdir(), "astravia-mcp-migration-"));
 		const agentDirectory = join(root, "agent");
 		const authDirectory = join(agentDirectory, "mcp-auth");
 		const configPath = join(agentDirectory, "mcp.json");
@@ -113,7 +113,7 @@ describe("removeRetiredBuiltinMcpServers", () => {
 	});
 
 	it("keeps ledger and OAuth state for a same-name custom server", async () => {
-		const root = await mkdtemp(join(tmpdir(), "vetta-mcp-migration-custom-"));
+		const root = await mkdtemp(join(tmpdir(), "astravia-mcp-migration-custom-"));
 		const agentDirectory = join(root, "agent");
 		const authDirectory = join(agentDirectory, "mcp-auth");
 		try {

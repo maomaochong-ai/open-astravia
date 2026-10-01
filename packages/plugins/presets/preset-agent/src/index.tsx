@@ -1,4 +1,4 @@
-import { definePlugin } from "@vetta-org/plugin-sdk";
+import { definePlugin } from "@astravia-org/plugin-sdk";
 
 /**
  * 纯预设插件：三个人设完全由 plugin.json 的 `agent.agents` 声明，宿主在装载 manifest 时

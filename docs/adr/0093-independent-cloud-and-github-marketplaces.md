@@ -12,7 +12,7 @@ Desktop 曾以云功能开关决定是否注册内置 GitHub 市场，导致云�
 ## 决策
 
 1. 云开关只控制云服务的构建与请求。GitHub 多源功能在所有模式可用，但商业版默认不包含 GitHub 仓库。
-   两种版本均仅由 `VETTA_OPEN_MARKETPLACE_REPOSITORY` 显式声明内置来源，未配置或空白时不注册；
+   两种版本均仅由 `ASTRAVIA_OPEN_MARKETPLACE_REPOSITORY` 显式声明内置来源，未配置或空白时不注册；
    运行时、构建和发布脚本都不兜底仓库地址，也不清空商业版的显式配置。
 2. 复用 `MarketplaceSourceStore` / `OpenMarketplaceManager`，不建立通用 Provider 框架或第二套安装路径。
    默认源坐标来自环境变量；默认配置协调提取为纯策略，文件存储继续拥有持久化。

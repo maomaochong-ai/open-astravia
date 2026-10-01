@@ -4,7 +4,7 @@ import { createRequire } from "node:module";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { build } from "vite";
-import { vettaPluginFederation } from "../src/index.js";
+import { astraviaPluginFederation } from "../src/index.js";
 
 const temporaryDirectories: string[] = [];
 const originalFederationTestOverride = process.env.MFE_VITE_NO_TEST_ENV_CHECK;
@@ -14,7 +14,7 @@ const contentCreationRequire = createRequire(
 const xyflowRequire = createRequire(contentCreationRequire.resolve("@xyflow/react/package.json"));
 const zustandRequire = createRequire(xyflowRequire.resolve("zustand/package.json"));
 const pluginSdkRoot = fileURLToPath(new URL("../../plugin-sdk", import.meta.url));
-const vettaUiRoot = fileURLToPath(new URL("../../../ui", import.meta.url));
+const astraviaUiRoot = fileURLToPath(new URL("../../../ui", import.meta.url));
 
 beforeEach(() => {
 	process.env.MFE_VITE_NO_TEST_ENV_CHECK = "true";
@@ -26,7 +26,7 @@ afterEach(async () => {
 	else process.env.MFE_VITE_NO_TEST_ENV_CHECK = originalFederationTestOverride;
 });
 
-describe("vettaPluginFederation production build", () => {
+describe("astraviaPluginFederation production build", () => {
 	it("keeps legacy UI source imports host-provided without requiring the renamed package locally", async () => {
 		const rootDir = await createLegacyUiFixture();
 		const originalCwd = process.cwd();
@@ -38,7 +38,7 @@ describe("vettaPluginFederation production build", () => {
 				root: rootDir,
 				configFile: false,
 				logLevel: "silent",
-				plugins: vettaPluginFederation({
+				plugins: astraviaPluginFederation({
 					name: "legacy_ui_fixture",
 					entry: "./src/index.js",
 					hostUi: true,
@@ -56,7 +56,7 @@ describe("vettaPluginFederation production build", () => {
 		const sources = await Promise.all(
 			assets.filter((file) => file.endsWith(".js")).map((file) => readFile(join(rootDir, "dist", "assets", file), "utf8")),
 		);
-		expect(sources.join("\n")).toContain("vetta-host://ui");
+		expect(sources.join("\n")).toContain("astravia-host://ui");
 	});
 
 	it(
@@ -70,7 +70,7 @@ describe("vettaPluginFederation production build", () => {
 					root: rootDir,
 					configFile: false,
 					logLevel: "silent",
-					plugins: vettaPluginFederation({
+					plugins: astraviaPluginFederation({
 						name: "shared_react_fixture",
 						entry: "./src/index.js",
 						package: false,
@@ -134,7 +134,7 @@ async function createLegacyUiFixture(): Promise<string> {
 		),
 		writeFile(
 			join(rootDir, "src", "index.js"),
-			`import { Button } from "@vetta/ui";
+			`import { Button } from "@astravia/ui";
 export const LegacyButton = Button;
 export default { activate() {} };
 `,
@@ -185,7 +185,7 @@ export default { activate() {} };
 }
 
 async function installDefaultSharedDependencies(rootDir: string): Promise<void> {
-	await mkdir(join(rootDir, "node_modules", "@vetta-org"), { recursive: true });
+	await mkdir(join(rootDir, "node_modules", "@astravia-org"), { recursive: true });
 	await Promise.all([
 		symlink(dirname(contentCreationRequire.resolve("react/package.json")), join(rootDir, "node_modules", "react"), "junction"),
 		symlink(
@@ -193,7 +193,7 @@ async function installDefaultSharedDependencies(rootDir: string): Promise<void> 
 			join(rootDir, "node_modules", "react-dom"),
 			"junction",
 		),
-		symlink(pluginSdkRoot, join(rootDir, "node_modules", "@vetta-org", "plugin-sdk"), "junction"),
-		symlink(vettaUiRoot, join(rootDir, "node_modules", "@vetta-org", "ui"), "junction"),
+		symlink(pluginSdkRoot, join(rootDir, "node_modules", "@astravia-org", "plugin-sdk"), "junction"),
+		symlink(astraviaUiRoot, join(rootDir, "node_modules", "@astravia-org", "ui"), "junction"),
 	]);
 }

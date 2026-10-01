@@ -5,21 +5,21 @@ import {
 	loadSkillsFromDir,
 	type ResourceDiagnostic,
 	type Skill,
-} from "@vetta/coding-agent/resources";
+} from "@astravia/coding-agent/resources";
 import {
 	defineRuntimeAgent,
 	type RuntimeAgentDefinition,
 	type RuntimeAgentSessionPlan,
 	RuntimeHost,
-} from "@vetta/runtime-core";
+} from "@astravia/runtime-core";
 import {
 	type AgentFeatureDefinition,
 	createDefaultRuntimeCapabilityDefinition,
 	type ModelCallContribution,
 	type ModelCallContributionProvider,
 	type RuntimeToolDefinition,
-} from "@vetta/runtime-core/kernel";
-import { createNodeResourceAccess } from "@vetta/runtime-node/host";
+} from "@astravia/runtime-core/kernel";
+import { createNodeResourceAccess } from "@astravia/runtime-node/host";
 import { acquirePreview, executeTextTool } from "./support/preview.js";
 
 const resourceAccess = createNodeResourceAccess();

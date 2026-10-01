@@ -1,4 +1,4 @@
-import type { Message, TextContent } from "@vetta/ai";
+import type { Message, TextContent } from "@astravia/ai";
 import type { SessionEvent } from "../contracts.js";
 import { runtimeError } from "../errors.js";
 import type { RuntimeFailure } from "../failure-contract.js";

@@ -1,4 +1,4 @@
-import { Button, cn } from "@vetta-org/ui";
+import { Button, cn } from "@astravia-org/ui";
 import type { JSX } from "react";
 
 interface ToolbarButtonProps {

@@ -30,7 +30,7 @@ const requiredOrtFiles = new Set(["ort-wasm-simd-threaded.jsep.mjs", "ort-wasm-s
 // given absolute src globs, which scatters files into deep directories.
 function copyOcrRunnerAssets(): Plugin {
 	return {
-		name: "vetta-ocr-runner-copy-assets",
+		name: "astravia-ocr-runner-copy-assets",
 		apply: "build",
 		generateBundle(_options, bundle) {
 			for (const [fileName, item] of Object.entries(bundle)) {

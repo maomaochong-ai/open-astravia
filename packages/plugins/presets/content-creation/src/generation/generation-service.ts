@@ -1,4 +1,4 @@
-import { PluginMediaError } from "@vetta-org/plugin-sdk";
+import { PluginMediaError } from "@astravia-org/plugin-sdk";
 import type {
 	ContentAsset,
 	ContentNode,

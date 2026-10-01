@@ -15,7 +15,7 @@ import {
 	sealInvite,
 } from "../src/index.js";
 
-const URI = "vetta://pair?v=2&p=abcdefghijklmnop&s=secret";
+const URI = "astravia://pair?v=2&p=abcdefghijklmnop&s=secret";
 
 describe("invite codes", () => {
 	it("makes eight-character codes and six-digit passwords", () => {
@@ -56,7 +56,7 @@ describe("invite codes", () => {
 
 	it("matches the vector the phones check against", async () => {
 		const nonce = new Uint8Array(24).map((_, index) => index);
-		const envelope = await sealInvite("vetta://pair?v=2", "K7Q29MXD", "482913", () => nonce);
+		const envelope = await sealInvite("astravia://pair?v=2", "K7Q29MXD", "482913", () => nonce);
 		expect(inviteBoxId("K7Q29MXD")).toBe(BOX_ID);
 		expect(envelope).toEqual({ v: 1, nonce: "AAECAwQFBgcICQoLDA0ODxAREhMUFRYX", ciphertext: CIPHERTEXT });
 	});
@@ -77,12 +77,12 @@ describe("invite codes", () => {
 			password: "482913",
 			relayBaseUrl: "wss://relay.mine.test",
 		});
-		expect(parseInviteQr(" vetta://pair/k7q2-9mxd/482913 ")).toEqual({ code: "K7Q29MXD", password: "482913" });
-		expect(parseInviteQr("vetta://pair?v=2&id=abc")).toBeUndefined();
-		expect(parseInviteQr("VETTA://PAIR/K7Q29MXD")).toBeUndefined();
-		expect(parseInviteQr("VETTA://PAIR/K7Q29MXD/48291")).toBeUndefined();
-		expect(parseInviteQr("VETTA://PAIR/K7Q29MXD/482913/extra")).toBeUndefined();
-		expect(parseInviteQr("VETTA://PAIR/K7Q29MXD/482913?relay=https%3A%2F%2Fevil.test")).toBeUndefined();
+		expect(parseInviteQr(" astravia://pair/k7q2-9mxd/482913 ")).toEqual({ code: "K7Q29MXD", password: "482913" });
+		expect(parseInviteQr("astravia://pair?v=2&id=abc")).toBeUndefined();
+		expect(parseInviteQr("ASTRAVIA://PAIR/K7Q29MXD")).toBeUndefined();
+		expect(parseInviteQr("ASTRAVIA://PAIR/K7Q29MXD/48291")).toBeUndefined();
+		expect(parseInviteQr("ASTRAVIA://PAIR/K7Q29MXD/482913/extra")).toBeUndefined();
+		expect(parseInviteQr("ASTRAVIA://PAIR/K7Q29MXD/482913?relay=https%3A%2F%2Fevil.test")).toBeUndefined();
 	});
 
 	it("rejects malformed envelopes", () => {
@@ -93,7 +93,7 @@ describe("invite codes", () => {
 	});
 });
 
-const QR = "VETTA://PAIR/K7Q29MXD/482913";
-const QR_WITH_RELAY = "VETTA://PAIR/K7Q29MXD/482913?relay=wss%3A%2F%2Frelay.mine.test";
+const QR = "ASTRAVIA://PAIR/K7Q29MXD/482913";
+const QR_WITH_RELAY = "ASTRAVIA://PAIR/K7Q29MXD/482913?relay=wss%3A%2F%2Frelay.mine.test";
 const BOX_ID = "oe8sfyla3JaUnRAk_OqKI8DJvl48e8IfsfQ1SK6dMS4";
 const CIPHERTEXT = "7v0nMbc3Dzwj2xiCL-L0UvCWmf7PDe03MwwUW09QZzU";

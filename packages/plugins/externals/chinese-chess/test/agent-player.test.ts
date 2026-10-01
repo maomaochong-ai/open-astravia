@@ -1,4 +1,4 @@
-import type { PluginAiChatRequest, PluginAiChatResult } from "@vetta-org/plugin-sdk";
+import type { PluginAiChatRequest, PluginAiChatResult } from "@astravia-org/plugin-sdk";
 import { describe, expect, it } from "vitest";
 import { buildTurnMessage, pickFallbackMove, playAgentTurn } from "../src/game/agent-player";
 import { XiangqiEngine } from "../src/game/engine";

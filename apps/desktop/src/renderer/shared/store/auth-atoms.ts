@@ -14,8 +14,8 @@ export interface AuthUser {
 }
 
 // 迁移旧版本遗留的明文凭据；登录 token 此后只保存在 renderer 内存与主进程凭据存储中。
-localStorage.removeItem("vetta-auth-token");
-localStorage.removeItem("vetta-refresh-token");
+localStorage.removeItem("astravia-auth-token");
+localStorage.removeItem("astravia-refresh-token");
 
 export const authTokenAtom = atom<string | null>(null);
 export const authUserAtom = atom<AuthUser | null>(null);
@@ -32,15 +32,15 @@ export const loginPopoverOpenAtom = atom<boolean>(false);
  * 登出入口不渲染，本 atom 不可达。
  */
 export const cloudLogoutAtom = atom(null, (get, set) => {
-	void window.vetta.settings
+	void window.astravia.settings
 		.getServerRefreshToken()
 		.then((storedRefresh) => logoutOnServer(storedRefresh))
 		// 服务端登出失败（网络等）不阻塞本地登出，只留痕
 		.catch((err) => console.warn("[cloudLogout] logoutOnServer failed:", err))
-		.finally(() => window.vetta.settings.setServerRefreshToken(undefined));
+		.finally(() => window.astravia.settings.setServerRefreshToken(undefined));
 	set(authTokenAtom, null);
 	set(authUserAtom, null);
-	void window.vetta.settings.setServerToken(undefined);
+	void window.astravia.settings.setServerToken(undefined);
 	set(remoteProvidersAtom, {});
 	get(sseClientAtom).disconnect();
 });
@@ -50,9 +50,9 @@ export const cloudLogoutAtom = atom(null, (get, set) => {
 
 export { remoteProvidersAtom } from "./model-catalog-atoms";
 
-// ─── Subscription status (Vetta Go 套餐，ADR-0016 离线回退) ───
+// ─── Subscription status (Astravia Go 套餐，ADR-0016 离线回退) ───
 
-const SUBSCRIPTION_CACHE_KEY = "vetta-subscription-flags";
+const SUBSCRIPTION_CACHE_KEY = "astravia-subscription-flags";
 
 interface CachedSubscriptionFlags {
 	go_enabled: boolean;

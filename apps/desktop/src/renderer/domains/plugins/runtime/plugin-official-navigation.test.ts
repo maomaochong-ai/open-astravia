@@ -94,13 +94,13 @@ describe("createOfficialNavigationApi", () => {
 		// 断言顺序：跳转发生时草稿必须已经在 map 里，否则新会话页的草稿恢复会把它冲掉。
 		stubWindowHash((hash) => {
 			hashes.push(hash);
-			expect(loadSessionInputDraft(newSessionInputDraftKey(cwd)).text).toBe("@skill:vetta-ui-design ");
+			expect(loadSessionInputDraft(newSessionInputDraftKey(cwd)).text).toBe("@skill:astravia-ui-design ");
 		});
 
-		await navigation.open({ target: "new-session", cwd, draft: "@skill:vetta-ui-design " });
+		await navigation.open({ target: "new-session", cwd, draft: "@skill:astravia-ui-design " });
 
 		expect(hashes).toHaveLength(1);
-		expect(loadSessionInputDraft(newSessionInputDraftKey(cwd)).text).toBe("@skill:vetta-ui-design ");
+		expect(loadSessionInputDraft(newSessionInputDraftKey(cwd)).text).toBe("@skill:astravia-ui-design ");
 	});
 
 	it("ignores a blank draft and drafts on targets that have no input box", async () => {
@@ -113,7 +113,7 @@ describe("createOfficialNavigationApi", () => {
 		stubWindowHash(() => {});
 
 		await navigation.open({ target: "new-session", cwd: "/w/blank", draft: "   " });
-		await navigation.open({ target: "plugins", draft: "@skill:vetta-ui-design " });
+		await navigation.open({ target: "plugins", draft: "@skill:astravia-ui-design " });
 
 		expect(loadSessionInputDraft(newSessionInputDraftKey("/w/blank")).text).toBe("");
 	});

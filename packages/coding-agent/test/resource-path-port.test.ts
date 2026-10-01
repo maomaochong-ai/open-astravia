@@ -31,7 +31,7 @@ describe("resource path host contract", () => {
 	});
 
 	it("keeps Skill parent-directory pattern semantics", () => {
-		const baseDir = "/workspace/.vetta/skills";
+		const baseDir = "/workspace/.astravia/skills";
 		const alpha = `${baseDir}/alpha/SKILL.md`;
 		const beta = `${baseDir}/beta/SKILL.md`;
 
@@ -44,7 +44,7 @@ describe("resource path host contract", () => {
 
 	it("attributes metadata using the injected workspace path semantics", () => {
 		const index = new ResourceMetadataIndex(paths, "/workspace/project", "/agent");
-		index.addDefault("/workspace/project/.vetta/skills/review/SKILL.md");
+		index.addDefault("/workspace/project/.astravia/skills/review/SKILL.md");
 		index.addDefault("/agent/prompts/review.md");
 		index.apply(
 			[
@@ -56,7 +56,7 @@ describe("resource path host contract", () => {
 			["/workspace/project/extensions/custom/prompts/review.md"],
 		);
 
-		expect(index.get().get("/workspace/project/.vetta/skills/review/SKILL.md")).toMatchObject({
+		expect(index.get().get("/workspace/project/.astravia/skills/review/SKILL.md")).toMatchObject({
 			scope: "project",
 		});
 		expect(index.get().get("/agent/prompts/review.md")).toMatchObject({ scope: "user" });

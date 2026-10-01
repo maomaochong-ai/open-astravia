@@ -14,10 +14,10 @@
 
 当前 CLI 与 Desktop 的默认 Agent Runtime 已经是 Greenfield，但 Legacy 执行仍然可以通过显式兼容入口被激活：
 
-- CLI 的 Legacy selector 通过 `legacy-runtime-gateway.ts` 调用 `@vetta/coding-agent/legacy/cli`；
+- CLI 的 Legacy selector 通过 `legacy-runtime-gateway.ts` 调用 `@astravia/coding-agent/legacy/cli`；
 - Desktop Runtime Composition 通过 `desktop-legacy-execution-compatibility.ts` 创建 Legacy Session Backend；
 - Desktop Knowledge Processing Factory 仍保留 Legacy Knowledge Session 分支；
-- `@vetta/coding-agent` 仍公开根入口和四个 `./legacy/*` package exports；
+- `@astravia/coding-agent` 仍公开根入口和四个 `./legacy/*` package exports；
 - 独立 `coding-agent` CLI 仍由 `src/cli.ts` 进入 `src/main.ts`。
 
 同时，旧会话读取与迁移并不等于旧 Agent 执行。Greenfield 恢复历史会话仍需要格式识别、历史读取、租约和迁移适配器，因此不能按文件名中的 `legacy` 进行整体删除。
@@ -122,7 +122,7 @@
 
 目前距离删除 Legacy 执行仍有六个明确阻塞项：
 
-1. 独立 `@vetta/coding-agent` binary 仍进入 `dist/cli.js` 对应的 Legacy main；
+1. 独立 `@astravia/coding-agent` binary 仍进入 `dist/cli.js` 对应的 Legacy main；
 2. CLI 仍支持显式 Legacy Agent Runtime 选择；
 3. Desktop 仍支持通过运行时配置选择 Legacy；
 4. Desktop Knowledge Processing 仍保留 Legacy Session Factory；
@@ -142,7 +142,7 @@ CLI runtime selection、Greenfield host session backend、IM legacy migration
 Desktop runtime selector、composition boundary、legacy migration、knowledge factory
   4 files passed, 12 tests passed
 
-Vetta CLI print mode
+Astravia CLI print mode
   1 file passed, 18 tests passed
 
 Quality guards

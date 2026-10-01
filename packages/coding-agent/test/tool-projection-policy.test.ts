@@ -1,5 +1,5 @@
-import type { ModelCallFrameCompositionContext, RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
-import { TOOL_CALL_DESCRIPTION_TEXT } from "@vetta/runtime-tools";
+import type { ModelCallFrameCompositionContext, RuntimeToolDefinition } from "@astravia/runtime-core/kernel";
+import { TOOL_CALL_DESCRIPTION_TEXT } from "@astravia/runtime-tools";
 import { describe, expect, it } from "vitest";
 import { createCodingAgentToolProjectionPipeline } from "../src/tool-policy/tool-projection-policy.js";
 

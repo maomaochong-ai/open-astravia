@@ -1,7 +1,7 @@
 import { mkdtempSync, realpathSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createLoopbackSshConnection, formatLoopbackProjectUri } from "@vetta/ssh-transport/testing";
+import { createLoopbackSshConnection, formatLoopbackProjectUri } from "@astravia/ssh-transport/testing";
 import { describe, expect, it, vi } from "vitest";
 
 const connection = createLoopbackSshConnection("build-01");
@@ -32,7 +32,7 @@ const { getPluginCommandSpawnStatus, spawnPluginCommand, stopPluginCommandSpawn 
 );
 
 function createRemoteProject(): { dir: string; uri: string } {
-	const dir = realpathSync(mkdtempSync(join(tmpdir(), "vetta-remote-spawn-")));
+	const dir = realpathSync(mkdtempSync(join(tmpdir(), "astravia-remote-spawn-")));
 	return { dir, uri: formatLoopbackProjectUri("build-01", dir) };
 }
 
@@ -109,7 +109,7 @@ describe("插件的长驻进程与远程项目", () => {
 	});
 
 	it("本地项目照旧，并且报得出真实进程号", async () => {
-		const dir = realpathSync(mkdtempSync(join(tmpdir(), "vetta-local-spawn-")));
+		const dir = realpathSync(mkdtempSync(join(tmpdir(), "astravia-local-spawn-")));
 		const started = await spawnPluginCommand("demo", process.execPath, ["-e", "process.stdout.write('local')"], {
 			cwd: dir,
 		});

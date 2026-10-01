@@ -1,6 +1,6 @@
+import type { CodingAgentPlan } from "@astravia/coding-agent/session-extensions";
 import type { PlanStatusTone } from "@shared/components/PlanStatusBadge";
 import { planModeStateBySessionAtom } from "@shared/store/atoms";
-import type { CodingAgentPlan } from "@vetta/coding-agent/session-extensions";
 import { useAtomValue } from "jotai";
 import { useTranslation } from "react-i18next";
 import { useActivityRuntimeIds } from "../registry/context";

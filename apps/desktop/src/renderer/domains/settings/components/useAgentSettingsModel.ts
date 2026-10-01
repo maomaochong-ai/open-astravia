@@ -38,7 +38,7 @@ export interface AgentSettingsModel {
 		setPersonaId: (value: string) => void;
 		toggleAgentSkills: (checked: boolean) => void;
 		togglePromptPrediction: (checked: boolean) => void;
-		toggleVettaCli: (checked: boolean) => void;
+		toggleAstraviaCli: (checked: boolean) => void;
 	};
 	agentSkillsEnabled: boolean;
 	customPrompt: string;
@@ -50,7 +50,7 @@ export interface AgentSettingsModel {
 	promptPredictionEnabled: boolean;
 	saving: boolean;
 	selectedPersona?: PersonaOption;
-	vettaCliEnabled: boolean;
+	astraviaCliEnabled: boolean;
 }
 
 interface AgentSettingsLabels {
@@ -84,39 +84,39 @@ export function useAgentSettingsModel(): AgentSettingsModel {
 	const [applied, setApplied] = useState({ personaId: "default", customPrompt: "" });
 	const [saving, setSaving] = useState(false);
 	const [justSaved, setJustSaved] = useState(false);
-	const [vettaCliEnabled, setVettaCliEnabled] = useState(true);
+	const [astraviaCliEnabled, setAstraviaCliEnabled] = useState(true);
 	const [promptPredictionEnabled, setPromptPredictionEnabled] = useState(false);
 	const [agentSkillsEnabled, setAgentSkillsEnabled] = useState(true);
 
 	useEffect(() => {
-		void window.vetta.session.getPersonas().then(setPersonas);
-		void window.vetta.session.getPersonalization().then((config) => {
+		void window.astravia.session.getPersonas().then(setPersonas);
+		void window.astravia.session.getPersonalization().then((config) => {
 			setPersonaId(config.personaId);
 			setCustomPrompt(config.customPrompt);
 			setApplied(config);
 		});
-		void window.vetta.config.get().then((config) => {
-			setVettaCliEnabled(config.experimental?.vettaCli === true);
+		void window.astravia.config.get().then((config) => {
+			setAstraviaCliEnabled(config.experimental?.astraviaCli === true);
 			setPromptPredictionEnabled(config.experimental?.promptPrediction === true);
 			setAgentSkillsEnabled(config.experimental?.agentSkills !== false);
 		});
 	}, []);
 
-	const toggleVettaCli = useCallback((checked: boolean) => {
-		setVettaCliEnabled(checked);
-		void window.vetta.config.set({ experimental: { vettaCli: checked } });
-		recordSettingsUsage({ tab: "agent", action: checked ? "enabled" : "disabled", target: "vetta-cli" });
+	const toggleAstraviaCli = useCallback((checked: boolean) => {
+		setAstraviaCliEnabled(checked);
+		void window.astravia.config.set({ experimental: { astraviaCli: checked } });
+		recordSettingsUsage({ tab: "agent", action: checked ? "enabled" : "disabled", target: "astravia-cli" });
 	}, []);
 
 	const togglePromptPrediction = useCallback((checked: boolean) => {
 		setPromptPredictionEnabled(checked);
-		void window.vetta.config.set({ experimental: { promptPrediction: checked } });
+		void window.astravia.config.set({ experimental: { promptPrediction: checked } });
 		recordSettingsUsage({ tab: "agent", action: checked ? "enabled" : "disabled", target: "prompt-prediction" });
 	}, []);
 
 	const toggleAgentSkills = useCallback((checked: boolean) => {
 		setAgentSkillsEnabled(checked);
-		void window.vetta.config.set({ experimental: { agentSkills: checked } });
+		void window.astravia.config.set({ experimental: { agentSkills: checked } });
 		recordSettingsUsage({ tab: "agent", action: checked ? "enabled" : "disabled", target: "agent-skills" });
 	}, []);
 
@@ -130,7 +130,7 @@ export function useAgentSettingsModel(): AgentSettingsModel {
 		const startedAt = performance.now();
 		try {
 			const next = { personaId, customPrompt };
-			await window.vetta.session.setPersonalization(next);
+			await window.astravia.session.setPersonalization(next);
 			setApplied(next);
 			recordSettingsUsage({
 				tab: "agent",
@@ -179,7 +179,7 @@ export function useAgentSettingsModel(): AgentSettingsModel {
 			setPersonaId,
 			toggleAgentSkills,
 			togglePromptPrediction,
-			toggleVettaCli,
+			toggleAstraviaCli,
 		},
 		agentSkillsEnabled,
 		customPrompt,
@@ -191,6 +191,6 @@ export function useAgentSettingsModel(): AgentSettingsModel {
 		promptPredictionEnabled,
 		saving,
 		selectedPersona,
-		vettaCliEnabled,
+		astraviaCliEnabled,
 	};
 }

@@ -1,4 +1,4 @@
-import type { CodingAgentAuthRuntime } from "@vetta/coding-agent/host-services";
+import type { CodingAgentAuthRuntime } from "@astravia/coding-agent/host-services";
 import type { CredentialVault } from "../credentials/credential-vault.js";
 import { getDesktopCredentialVault } from "../credentials/desktop-credential-vault.js";
 import { getAppLogger } from "../logger.js";

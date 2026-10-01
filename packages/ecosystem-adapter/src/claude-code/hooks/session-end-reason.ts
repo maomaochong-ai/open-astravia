@@ -2,7 +2,7 @@ import type { SessionEndCause } from "../../hooks/types.js";
 
 /**
  * Claude Code SessionEnd stdin / settings matcher `reason` values.
- * Only used inside the Claude profile — never as Vetta host API.
+ * Only used inside the Claude profile — never as Astravia host API.
  *
  * @see https://docs.anthropic.com/en/docs/claude-code/hooks
  */
@@ -15,9 +15,9 @@ export type ClaudeSessionEndReason =
 	| "other";
 
 /**
- * Map Vetta session-end cause → Claude wire `reason` for stdin + matcher.
+ * Map Astravia session-end cause → Claude wire `reason` for stdin + matcher.
  *
- * | Vetta cause       | Claude reason | Rationale |
+ * | Astravia cause       | Claude reason | Rationale |
  * |-------------------|---------------|-----------|
  * | new_session       | clear         | Leave current transcript for a blank session |
  * | fork_session      | clear         | Old session is abandoned for a new branch id |

@@ -11,11 +11,11 @@ export function resolvePluginDevCliPath(projectDir: string): string {
 	const resolvedProjectDir = resolve(projectDir);
 	const projectRequire = createRequire(join(resolvedProjectDir, "package.json"));
 	try {
-		return projectRequire.resolve("@vetta-org/plugin-vite/cli");
+		return projectRequire.resolve("@astravia-org/plugin-vite/cli");
 	} catch (error) {
 		if (moduleErrorCode(error) === "ERR_PACKAGE_PATH_NOT_EXPORTED") {
 			throw new Error(
-				`The installed plugin-vite does not expose its development CLI; update @vetta-org/plugin-vite in ${resolvedProjectDir}`,
+				`The installed plugin-vite does not expose its development CLI; update @astravia-org/plugin-vite in ${resolvedProjectDir}`,
 				{ cause: error },
 			);
 		}

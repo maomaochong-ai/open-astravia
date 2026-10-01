@@ -25,7 +25,7 @@ export function useBoundAgentParticipants(): readonly ConversationParticipantVie
 			return;
 		}
 		let cancelled = false;
-		void window.vetta.agentTeams
+		void window.astravia.agentTeams
 			.list()
 			.then((document) => {
 				if (cancelled) return;

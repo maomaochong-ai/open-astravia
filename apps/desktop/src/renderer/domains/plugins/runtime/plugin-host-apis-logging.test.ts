@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
+import type { ConversationEvent, PluginPermission } from "@astravia-org/plugin-sdk";
 import type { InstalledPlugin } from "@preload/api";
-import type { ConversationEvent, PluginPermission } from "@vetta-org/plugin-sdk";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -52,7 +52,7 @@ describe("plugin host API diagnostics", () => {
 	it("identifies the plugin and capability session when directory watching fails", async () => {
 		const unsubscribe = vi.fn();
 		Object.assign(window, {
-			vetta: {
+			astravia: {
 				fs: {
 					onDirChanged: vi.fn(() => unsubscribe),
 					watchDir: vi.fn(async () => {
@@ -83,7 +83,7 @@ describe("plugin host API diagnostics", () => {
 	it("attributes a failing command exit callback without blocking the host event", async () => {
 		let emitExit: ((event: { spawnId: string; exitCode: number | null; signal: string | null }) => void) | undefined;
 		Object.assign(window, {
-			vetta: {
+			astravia: {
 				plugins: {
 					onCommandSpawnExit: vi.fn((listener) => {
 						emitExit = listener;

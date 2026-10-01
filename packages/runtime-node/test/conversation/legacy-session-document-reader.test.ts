@@ -28,7 +28,7 @@ describe("LegacySessionDocumentReader", () => {
 				id: "timing",
 				parentId: "user-b",
 				timestamp: "2026-01-01T00:00:07.000Z",
-				customType: "vetta.assistant_turn_timing",
+				customType: "astravia.assistant_turn_timing",
 				data: { startedAt: 1, endedAt: 3, durationMs: 2 },
 			},
 			{

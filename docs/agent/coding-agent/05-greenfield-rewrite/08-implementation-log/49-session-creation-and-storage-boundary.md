@@ -48,7 +48,7 @@
 
 ### 5. RuntimeHost 依赖方向
 
-`runtime-host.ts` 已不再导入 `@vetta/coding-agent`。默认组合仍使用 Legacy Adapter，因此生产默认行为不变。
+`runtime-host.ts` 已不再导入 `@astravia/coding-agent`。默认组合仍使用 Legacy Adapter，因此生产默认行为不变。
 
 `RuntimeHostOptions.modelRegistry` 暂时保留为向后兼容输入，由组合阶段立刻适配成 `RuntimeSharedModelController`；它不再进入 Runtime 创建请求或 SessionHandle。
 
@@ -56,8 +56,8 @@
 
 包边界检查新增精确规则：
 
-- `runtime-host.ts` 禁止导入 `@vetta/coding-agent`；
-- `session-services.ts` 禁止导入 `@vetta/coding-agent`；
+- `runtime-host.ts` 禁止导入 `@astravia/coding-agent`；
+- `session-services.ts` 禁止导入 `@astravia/coding-agent`；
 - Legacy Adapter 文件仍允许依赖旧包，明确作为兼容边界。
 
 ## 测试

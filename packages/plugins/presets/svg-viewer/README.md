@@ -1,6 +1,6 @@
 # SVG Viewer Plugin
 
-A trusted Vetta **system plugin** (ADR-0024) that previews `.svg` files in the
+A trusted Astravia **system plugin** (ADR-0024) that previews `.svg` files in the
 activity panel file preview, demonstrating the **file preview slot**
 (`ui.slot.file-preview`).
 

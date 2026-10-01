@@ -12,7 +12,7 @@ import { parse } from "yaml";
 const execFileAsync = promisify(execFile);
 const packageDir = resolve(import.meta.dirname, "..");
 const defaultReleaseDir = join(packageDir, "release");
-const expectedBundleIdentifier = "com.vetta.desktop";
+const expectedBundleIdentifier = "com.astravia.desktop";
 
 function getArtifactFileName(value) {
 	if (typeof value !== "string" || value.length === 0) {
@@ -113,7 +113,7 @@ async function verifySignedZip(zipPath, expectedVersion) {
 	if (process.platform !== "darwin") {
 		throw new Error("[verify-mac-update] signed Mac verification must run on macOS");
 	}
-	const extractDir = await mkdtemp(join(tmpdir(), "vetta-mac-update-"));
+	const extractDir = await mkdtemp(join(tmpdir(), "astravia-mac-update-"));
 	try {
 		await execFileAsync("ditto", ["-x", "-k", zipPath, extractDir]);
 		const appPath = await findTopLevelApp(extractDir);
@@ -156,7 +156,7 @@ export async function verifyMacUpdate({ releaseDir = defaultReleaseDir, requireS
 	const zipArtifacts = await verifyBlockmaps(artifacts);
 
 	const shouldVerifySignature =
-		requireSignature ?? process.env.VETTA_REQUIRE_MAC_SIGNATURE === "1";
+		requireSignature ?? process.env.ASTRAVIA_REQUIRE_MAC_SIGNATURE === "1";
 	if (shouldVerifySignature) {
 		for (const artifact of zipArtifacts) await verifySignedZip(artifact.filePath, document.version);
 		console.info(`[verify-mac-update] signed and notarized Mac update verified: ${document.version}`);

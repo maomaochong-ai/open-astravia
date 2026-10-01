@@ -1,7 +1,7 @@
 {
-	"name": "@vetta/remote-desktop",
+	"name": "@astravia/remote-desktop",
 	"version": "0.0.1",
-	"description": "WebRTC screen and remote input contracts for Vetta",
+	"description": "WebRTC screen and remote input contracts for Astravia",
 	"type": "module",
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",

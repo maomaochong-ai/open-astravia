@@ -16,7 +16,7 @@ Claude Code 官方当前提供 30 个 Hook 事件和 `command`、`http`、`mcp_t
 - `PreToolUse`
 - `Stop`
 
-这些配置全部是同步 `command` handler。因此，Vetta 首期不需要追求官方全量兼容；应先新增独立的 Claude Hook profile，复用现有 dispatcher/executor，精确实现上述四个事件、同步命令执行、matcher、stdin/stdout/stderr、退出码和最小结构化决策。
+这些配置全部是同步 `command` handler。因此，Astravia 首期不需要追求官方全量兼容；应先新增独立的 Claude Hook profile，复用现有 dispatcher/executor，精确实现上述四个事件、同步命令执行、matcher、stdin/stdout/stderr、退出码和最小结构化决策。
 
 需要明确：Hook 协议兼容不等于插件功能完整兼容。`council` 的 `SessionStart` 预检可以独立工作；`cdt` 的三个阻断 Hook 和 `Stop` Hook 都依赖 Agent Teams、团队工具和团队状态，即使能正确加载，也只能给出能力诊断，不能让 CDT 完整运行。
 
@@ -148,7 +148,7 @@ Claude Hook 配置分为三层：事件、matcher group、handler。插件配置
 scripts/preflight.sh
 ```
 
-脚本检查 `codex`、`qwen`、`omp`、`opencode` 是否存在。如果存在缺失项，它向 stdout 输出提醒但仍返回成功。这是最适合首个验收用例的 Hook：不修改状态、不阻止用户操作，也不依赖 Vetta 工具映射。
+脚本检查 `codex`、`qwen`、`omp`、`opencode` 是否存在。如果存在缺失项，它向 stdout 输出提醒但仍返回成功。这是最适合首个验收用例的 Hook：不修改状态、不阻止用户操作，也不依赖 Astravia 工具映射。
 
 ### cdt
 
@@ -164,9 +164,9 @@ scripts/preflight.sh
 | `Stop` | 无 | `check-wave-gate-handoff.sh` | 返回 `decision: "block"`，要求主代理检查未交接任务 |
 | `Stop` | 无 | `set-session-title.sh` | 直接向 Claude transcript 追加自定义标题事件 |
 
-CDT 的 `Stop` 兼容尤其需要谨慎：Vetta 必须在 Hook 阻止停止后继续模型循环，并在重入时发送 `stop_hook_active: true`。否则同一个 Hook 会反复阻止停止。`set-session-title.sh` 直接依赖 Claude transcript JSONL 私有格式，不能在 Vetta 中原样视为有效功能；应诊断为“脚本可执行，但目标 transcript 协议不兼容”，未来改用 Vetta 会话标题 API。
+CDT 的 `Stop` 兼容尤其需要谨慎：Astravia 必须在 Hook 阻止停止后继续模型循环，并在重入时发送 `stop_hook_active: true`。否则同一个 Hook 会反复阻止停止。`set-session-title.sh` 直接依赖 Claude transcript JSONL 私有格式，不能在 Astravia 中原样视为有效功能；应诊断为“脚本可执行，但目标 transcript 协议不兼容”，未来改用 Astravia 会话标题 API。
 
-## Vetta 首期兼容范围
+## Astravia 首期兼容范围
 
 ### H0：加载与安全边界
 
@@ -201,7 +201,7 @@ CDT 的 `Stop` 兼容尤其需要谨慎：Vetta 必须在 Hook 阻止停止后�
 - `PermissionRequest`（已实现：沙箱权限 UI 前；allow/deny 短路）
 - `PreCompact`（已实现）
 - `PostCompact`（已实现）
-- `SessionEnd`（已实现：宿主用 Vetta `SessionEndCause`（`new_session` / `switch_session` / `fork_session` / `dispose`）；Claude profile 映射为 stdin/matcher 的 `reason`（`clear` / `resume` / `other` 等）；不可阻断拆会话）
+- `SessionEnd`（已实现：宿主用 Astravia `SessionEndCause`（`new_session` / `switch_session` / `fork_session` / `dispose`）；Claude profile 映射为 stdin/matcher 的 `reason`（`clear` / `resume` / `other` 等）；不可阻断拆会话）
 
 其中 `PostToolUse` 和 `PostToolUseFailure` 适合格式化、审计和反馈，是普通 Skill/插件最常见的扩展点；它们不应被宣称可以撤销已经发生的工具副作用。
 
@@ -213,7 +213,7 @@ CDT 的 `Stop` 兼容尤其需要谨慎：Vetta 必须在 Hook 阻止停止后�
 - Worktree 和 MCP Elicitation Hook。
 - settings 多来源合并与 managed policy。
 - Claude transcript 私有格式写入。
-- Claude 工具名和 Vetta 工具名的完整一一映射。
+- Claude 工具名和 Astravia 工具名的完整一一映射。
 
 ## Matcher 兼容建议
 
@@ -223,11 +223,11 @@ CDT 的 `Stop` 兼容尤其需要谨慎：Vetta 必须在 Hook 阻止停止后�
 2. 简单名称以及 `|`/`,` 分隔：精确名称集合。
 3. 含其他特殊字符：JavaScript 正则表达式。
 
-`PreToolUse` 不能直接拿 Claude 工具名匹配 Vetta 内部实现名。应在 Claude profile 中维护稳定的兼容工具名，例如把 Vetta 的命令执行、文件读取、文件写入和子代理入口映射为 Claude 侧 `Bash`、`Read`、`Write`/`Edit`、`Agent`。无法可靠映射的工具必须显示诊断。
+`PreToolUse` 不能直接拿 Claude 工具名匹配 Astravia 内部实现名。应在 Claude profile 中维护稳定的兼容工具名，例如把 Astravia 的命令执行、文件读取、文件写入和子代理入口映射为 Claude 侧 `Bash`、`Read`、`Write`/`Edit`、`Agent`。无法可靠映射的工具必须显示诊断。
 
 ## Windows 运行边界
 
-本基线六个 Hook 脚本全部是 `.sh`，还依赖 Bash、`jq`、`grep`、`sed`、`stat` 和 `git`。Vetta 当前 Windows Hook runner 使用 `cmd.exe`，不能原样执行。
+本基线六个 Hook 脚本全部是 `.sh`，还依赖 Bash、`jq`、`grep`、`sed`、`stat` 和 `git`。Astravia 当前 Windows Hook runner 使用 `cmd.exe`，不能原样执行。
 
 首期采用以下策略：
 
@@ -235,7 +235,7 @@ CDT 的 `Stop` 兼容尤其需要谨慎：Vetta 必须在 Hook 阻止停止后�
 2. 检测 Git Bash 或系统 Bash，并检测脚本声明或实际依赖的命令。
 3. 缺少 Bash、`jq` 等运行条件时，插件仍可安装，但 Hook 标记为不可运行并显示原因。
 4. 不自动将 Bash 转译为 PowerShell。
-5. 后续若 Vetta 提供托管 POSIX runtime，仍通过同一 executor 接口接入。
+5. 后续若 Astravia 提供托管 POSIX runtime，仍通过同一 executor 接口接入。
 
 ## 建议模块边界
 
@@ -305,5 +305,5 @@ Claude plugin Hook loader
 - [Automate workflows with hooks](https://code.claude.com/docs/en/hooks-guide)
 - [Claude Code Plugins reference](https://code.claude.com/docs/en/plugins-reference)
 - [`cc-skills` Hook 资源盘点](./01-cc-skills-inventory.md)
-- [Vetta 兼容性矩阵](./02-compatibility-matrix.md)
-- [Vetta 目标架构](./03-target-architecture.md)
+- [Astravia 兼容性矩阵](./02-compatibility-matrix.md)
+- [Astravia 目标架构](./03-target-architecture.md)

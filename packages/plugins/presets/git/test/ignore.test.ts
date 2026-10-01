@@ -1,4 +1,4 @@
-import type { PluginFsApi } from "@vetta-org/plugin-sdk";
+import type { PluginFsApi } from "@astravia-org/plugin-sdk";
 import { beforeEach, describe, expect, it } from "vitest";
 import { appendToGitignore } from "../src/git/ignore";
 import { setFsApi } from "../src/git/runtime";

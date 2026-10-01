@@ -52,11 +52,11 @@
 
                 <data
                     android:host="pair"
-                    android:scheme="vetta" />
+                    android:scheme="astravia" />
                 <!-- Android matches schemes case by case; a code-only QR code is upper case (ADR-0138). -->
                 <data
                     android:host="PAIR"
-                    android:scheme="VETTA" />
+                    android:scheme="ASTRAVIA" />
             </intent-filter>
             <!-- Text, pictures and files shared from other apps start a session. -->
             <intent-filter>
@@ -75,7 +75,7 @@
         <service
             android:name=".NewSessionTileService"
             android:exported="true"
-            android:icon="@drawable/ic_stat_vetta"
+            android:icon="@drawable/ic_stat_astravia"
             android:label="@string/app_name"
             android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
             <intent-filter>
@@ -85,7 +85,7 @@
 
         <!-- The home screen widget with the sessions waiting on the user and in progress. -->
         <receiver
-            android:name="org.vetta.android.app.SessionsWidget"
+            android:name="org.astravia.android.app.SessionsWidget"
             android:exported="false"
             android:label="@string/app_name">
             <intent-filter>
@@ -98,13 +98,13 @@
 
         <!-- Keeps the desktop link up in the background so session notifications can arrive. -->
         <service
-            android:name="org.vetta.android.app.LinkService"
+            android:name="org.astravia.android.app.LinkService"
             android:exported="false"
             android:foregroundServiceType="remoteMessaging" />
 
         <!-- Answers a desktop question from a session notification's buttons or typed reply. -->
         <receiver
-            android:name="org.vetta.android.app.QuestionReplyReceiver"
+            android:name="org.astravia.android.app.QuestionReplyReceiver"
             android:exported="false" />
 
         <!-- Hands the system camera a file to write a composer photo into. -->

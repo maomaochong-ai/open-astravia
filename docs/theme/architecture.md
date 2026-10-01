@@ -36,7 +36,7 @@ Region override
 
 ```txt
 App Data Center
-  Jotai atoms、router、window.vetta IPC、业务 hooks、权限、持久化
+  Jotai atoms、router、window.astravia IPC、业务 hooks、权限、持久化
 
 UI Abstract Layer
   model hooks、view model、actions、region/slot/component contract
@@ -50,7 +50,7 @@ UI Implementation Layer
 数据层由应用维护。主题不应直接访问：
 
 - 内部 Jotai atom。
-- `window.vetta.*`。
+- `window.astravia.*`。
 - router 原始细节。
 - domain 内部 hook。
 - 文件系统、网络、权限等底层能力。
@@ -59,9 +59,9 @@ UI Implementation Layer
 
 主题**自有**小型状态（进度、偏好）通过独立的 storage host 能力持久化，而不是复用应用业务 store：
 
-- SDK：`useThemeStorage` / `useThemeStorageValue`（`@vetta-org/theme-sdk/storage`）。
+- SDK：`useThemeStorage` / `useThemeStorageValue`（`@astravia-org/theme-sdk/storage`）。
 - Host：按当前 `theme.meta.id` 隔离，主题不能指定其他 themeId。
-- 落盘：main 进程 `~/.vetta/desktop-app/themes/<themeId>/data.json`。
+- 落盘：main 进程 `~/.astravia/desktop-app/themes/<themeId>/data.json`。
 
 详见 [主题自有数据存储](./storage.md)。
 
@@ -268,7 +268,7 @@ Component override 的 props 必须与默认 fallback 组件兼容。需要作�
 
 ### Theme Route Model
 
-主题需要根据当前页面做视觉判断或受控导航时，应使用 `@vetta-org/theme-sdk` 暴露的 `useThemeRouteModel()`。它只返回稳定路由语义，例如 `pathname` 和 `area`，不暴露 TanStack Router 实例、route match、内部 params 或 search。
+主题需要根据当前页面做视觉判断或受控导航时，应使用 `@astravia-org/theme-sdk` 暴露的 `useThemeRouteModel()`。它只返回稳定路由语义，例如 `pathname` 和 `area`，不暴露 TanStack Router 实例、route match、内部 params 或 search。
 
 `area` 适合主题判断页面场景，例如给 `automation`、`batchTasks`、`knowledgeBase`、`skills` 等宿主页面添加主内容背景。`navigate` 只接受 desktop 明确允许的目标，不支持任意路径跳转。主题不应直接 import router，也不应通过 `window.location` 或 body class 反推业务状态。
 
@@ -339,7 +339,7 @@ SDK 不应导出：
 - 访问 Jotai、router、IPC 的真实 hook 实现。
 - Jotai atom。
 - router 实例。
-- `window.vetta.*`。
+- `window.astravia.*`。
 - domain 私有 hook。
 - 尚未稳定的内部组件。
 
@@ -349,9 +349,9 @@ UI 组件应进入独立 UI 包或主题包，而不是进入 SDK。当前公共
 packages/theme-ui/
 ```
 
-`@vetta-org/theme-ui` 是可选依赖，主题可以复用它，也可以完全自定义 UI。新增可复用组件的具体标准见 [组件设计要求](./component-guidelines.md)。
+`@astravia-org/theme-ui` 是可选依赖，主题可以复用它，也可以完全自定义 UI。新增可复用组件的具体标准见 [组件设计要求](./component-guidelines.md)。
 
-进入 `@vetta-org/theme-ui` 或官方默认 UI 包的组件应优先是 props-driven view。调用 SDK hook 的 connected container 留在 desktop，作为应用默认入口和 host adapter 的一部分。
+进入 `@astravia-org/theme-ui` 或官方默认 UI 包的组件应优先是 props-driven view。调用 SDK hook 的 connected container 留在 desktop，作为应用默认入口和 host adapter 的一部分。
 
 SDK hook 必须是 facade。真实实现由应用通过 `ThemeHostProvider` 注入：
 
@@ -366,7 +366,7 @@ SDK hook 必须是 facade。真实实现由应用通过 `ThemeHostProvider` 注�
 主题调用：
 
 ```ts
-import { useSidebarModel } from "@vetta-org/theme-sdk/sidebar";
+import { useSidebarModel } from "@astravia-org/theme-sdk/sidebar";
 ```
 
 但 SDK 内部不直接 import desktop 的 store、router、IPC 或 domain 私有 hook。
@@ -376,7 +376,7 @@ import { useSidebarModel } from "@vetta-org/theme-sdk/sidebar";
 主题不能：
 
 - 直接 import 内部 atom。
-- 直接调用 `window.vetta.*`。
+- 直接调用 `window.astravia.*`。
 - 复制删除、登录、导入、导航等业务逻辑。
 - 绕过 i18n。
 - 绕过 desktop 的 `DESIGN.md` 约束。
@@ -405,8 +405,8 @@ import { useSidebarModel } from "@vetta-org/theme-sdk/sidebar";
 远程主题包应基于公开 SDK 编写：
 
 ```ts
-import type { ThemeModule } from "@vetta-org/theme-sdk";
-import { ThemeSurface } from "@vetta-org/theme-ui/appearance";
+import type { ThemeModule } from "@astravia-org/theme-sdk";
+import { ThemeSurface } from "@astravia-org/theme-ui/appearance";
 ```
 
 不应依赖：
@@ -419,8 +419,8 @@ import { useProjects } from "@domains/project/hooks/useProjects";
 远程加载需要：
 
 - React / ReactDOM 单例共享。
-- `@vetta-org/theme-sdk` 单例共享。
-- 可选 `@vetta-org/theme-ui` 单例共享。
+- `@astravia-org/theme-sdk` 单例共享。
+- 可选 `@astravia-org/theme-ui` 单例共享。
 - SDK 版本声明和能力声明。
 - ErrorBoundary。
 - 加载失败回退默认 UI。

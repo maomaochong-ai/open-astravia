@@ -14,7 +14,7 @@
 - 会话历史、认证、模型和设置等用户数据；必要时由显式、独立的新迁移器读取旧格式。
 - 模型消息、工具消息、错误、取消、事件顺序、并发约束和资源释放语义。
 - 仍然有效的行为测试场景和数据 fixture；旧实现可以临时作为测试 Oracle，但不能被新生产代码调用。
-- `@vetta/ai` 与经过合同验证的 `@vetta/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
+- `@astravia/ai` 与经过合同验证的 `@astravia/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
 
 ## 明确舍弃（固定）
 
@@ -46,7 +46,7 @@
 - Runtime Host、合同、Session Assembly、RPC Capabilities、Session Adapter、Event Adapter、Print Adapter 和 IM Session Selection 全部改用职责名称；
 - Runtime Host 内部分支由迁移期的 `greenfield` / `greenfield-im` 改为 `rpc` / `im`，对外准备结果与协议值不变；
 - IM Session Adapter 改为统一 `CliRpcSessionAdapter` 的显式工厂，不再通过废弃子类表达 Profile 差异；
-- 历史会话导入直接调用 `@vetta/coding-agent/historical-sessions`，删除 CLI 内纯别名迁移文件；
+- 历史会话导入直接调用 `@astravia/coding-agent/historical-sessions`，删除 CLI 内纯别名迁移文件；
 - CLI 包入口停止暴露废弃的 IM Event/Session Adapter 包装，只暴露正式 Runtime Host API。
 
 ### 删除迁移兼容层
@@ -101,7 +101,7 @@ Extension Host->Composition edge files=0/0
 - CLI 全量：34 个文件、183 项测试通过；
 - 根级 `bun run check:quick` 通过；
 - 根级 `bun run check` 通过，覆盖 Root、CLI、Desktop、Admin 类型检查、Biome 和全部质量门禁；
-- `bun run verify:agent-hosts` 通过：独立 `vetta.exe`、IM Gateway、Coding Agent、CLI、Desktop 全部通过；
+- `bun run verify:agent-hosts` 通过：独立 `astravia.exe`、IM Gateway、Coding Agent、CLI、Desktop 全部通过；
 - Desktop 功能套件：119 个文件、501 项通过，另 1 项跳过。
 
 首次 `check:quick` 发现格式问题，以及 Legacy Format/Package Boundary 门禁仍依赖已删除的旧路径。迁移门禁路径、补充正式 Host allowlist 并格式化后通过。首次新增残留门禁测试的预期多计算了文件路径文本引用，修正为只统计源码内容中的真实引用后，全部质量测试通过。本轮没有发送外部真实模型请求。
@@ -110,7 +110,7 @@ Extension Host->Composition edge files=0/0
 
 - `host/sdk-session` 内仍有大量 `GreenfieldSdk*`、`CodingAgentGreenfield*` 迁移身份和类型别名；需要逐层区分公开 SDK 合同、内部 Capability Port、Runtime Binding 与真实 Adapter；
 - `public-api/bootstrap.ts` 仍暴露 `CodingAgentGreenfieldExtensionHostCapabilities` 和 `resolveCodingAgentGreenfieldExtensionCompatibility`，需与 SDK Host 一起审计，避免只做表面改名；
-- 上游 `@vetta/runtime-core` 的 `GreenfieldRuntimeSession` 是跨包合同，不能在 Coding Agent 内单方面替换；应先确认其生产稳定身份和消费者范围；
+- 上游 `@astravia/runtime-core` 的 `GreenfieldRuntimeSession` 是跨包合同，不能在 Coding Agent 内单方面替换；应先确认其生产稳定身份和消费者范围；
 - CLI 与 Coding Agent 的测试名称仍保留部分 Greenfield 字样，用于描述冻结的行为基线；后续只能在不丢失 Legacy/新实现差异证据的前提下整理。
 
 下一阶段应集中收口 SDK Session Host 的生产身份：先建立公开 SDK 合同与内部 Port 的映射，再删除纯类型别名和迁移命名，最后用 SDK、CLI、Desktop 与 IM 宿主验收证明行为不变。不能批量字符串替换，也不能改变 `runtime-core` 的跨包合同。

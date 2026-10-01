@@ -47,12 +47,12 @@ function createPiApi(
 		events: undefined,
 		on(event, handler): void {
 			if (!SUPPORTED_PI_EVENTS.has(event)) {
-				throw unsupported(`event:${event}`, `Pi event '${event}' has no equivalent settled Vetta fact`);
+				throw unsupported(`event:${event}`, `Pi event '${event}' has no equivalent settled Astravia fact`);
 			}
 			recordFeature({
 				feature: `event:${event}`,
 				status: "host-dependent",
-				detail: "Payload uses the native Vetta event pipeline; handler context is limited to the shared subset",
+				detail: "Payload uses the native Astravia event pipeline; handler context is limited to the shared subset",
 			});
 			const register = api.on as unknown as (
 				eventType: string,
@@ -91,7 +91,7 @@ function createPiApi(
 		registerProvider(name): void {
 			throw unsupported(
 				`provider:${name}`,
-				`Pi provider '${name}' is disabled until Vetta provider ownership and unregister semantics are available`,
+				`Pi provider '${name}' is disabled until Astravia provider ownership and unregister semantics are available`,
 			);
 		},
 	};

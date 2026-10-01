@@ -6,7 +6,7 @@ description: Install and manage skills, scenes, MCP connectors, plugins, and cap
 The **Capabilities** page at `/abilities` is the extension entry point. It adds skills, scenes, MCP connectors, plugins, and capability bundles to an Agent.
 
 <MediaFrame portrait>
-  <img src="/images/product/capabilities.webp" alt="Vetta Capabilities page showing connectors, skills, and plugins" width="1024" height="1365" />
+  <img src="/images/product/capabilities.webp" alt="Astravia Capabilities page showing connectors, skills, and plugins" width="1024" height="1365" />
   <figcaption>Use **Discover** to find capabilities and **My capabilities** to inspect installed items, configuration, permissions, and updates.</figcaption>
 </MediaFrame>
 
@@ -72,19 +72,19 @@ Select **Add capability** to choose one of these sources:
 | --- | --- |
 | Import skill archive | Local `zip`, `tar.gz`, or `tgz` |
 | Import plugin archive | Local ZIP with `plugin.json` at its root |
-| Add external repository | GitHub `owner/repo` containing `.vetta/marketplace.json`; it syncs immediately |
+| Add external repository | GitHub `owner/repo` containing `.astravia/marketplace.json`; it syncs immediately |
 | Add MCP manually | Configure a STDIO or HTTP MCP server |
 
 Import only trusted sources. If an external repository fails to sync, the app may retain its last usable content and show an error.
 
-The Vetta official source (`openvetta/vetta-official-marketplace`) ships with the app as a built-in source: it is always enabled and cannot be disabled or removed. Sources you add yourself can be disabled or removed at any time.
+The Astravia official source (`maomaochong-ai/astravia-official-marketplace`) ships with the app as a built-in source: it is always enabled and cannot be disabled or removed. Sources you add yourself can be disabled or removed at any time.
 
 ## Management and troubleshooting
 
 - **Disable** keeps the installation but stops using it.
 - **Remove** uninstalls the local capability.
 - **Update / reload** is for new versions and development debugging.
-- If another source already owns the same capability ID, Vetta does not overwrite it automatically; confirm the source in the details view.
-- MCP is written to `~/.vetta/agent/mcp.json`; skills, scenes, and plugins are stored under `~/.vetta/skills`, `~/.vetta/scene`, and `~/.vetta/plugins`. The installation index is `~/.vetta/abilities.json`.
+- If another source already owns the same capability ID, Astravia does not overwrite it automatically; confirm the source in the details view.
+- MCP is written to `~/.astravia/agent/mcp.json`; skills, scenes, and plugins are stored under `~/.astravia/skills`, `~/.astravia/scene`, and `~/.astravia/plugins`. The installation index is `~/.astravia/abilities.json`.
 
 For plugin development, read [Plugin development](/plugins/overview/). For an external tool service, read [MCP connectors](/product/mcp/).

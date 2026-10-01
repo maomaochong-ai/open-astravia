@@ -1,6 +1,10 @@
 import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { type McpOAuthStateStore, type McpOAuthStoredState, parseMcpOAuthStoredState } from "@vetta/runtime-mcp/auth";
+import {
+	type McpOAuthStateStore,
+	type McpOAuthStoredState,
+	parseMcpOAuthStoredState,
+} from "@astravia/runtime-mcp/auth";
 
 export interface FileMcpOAuthStateStoreOptions {
 	/** Explicit credential directory; product-specific directory resolution stays in the caller. */

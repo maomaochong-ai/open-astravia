@@ -10,12 +10,12 @@
  * which can be cheaper/faster than the main conversation model.
  *
  * Usage:
- *   vetta --extension examples/extensions/custom-compaction.ts
+ *   astravia --extension examples/extensions/custom-compaction.ts
  */
 
-import { complete } from "@vetta/ai";
-import type { ExtensionAPI } from "@vetta/coding-agent";
-import { convertToLlm, serializeConversation } from "@vetta/coding-agent";
+import { complete } from "@astravia/ai";
+import type { ExtensionAPI } from "@astravia/coding-agent";
+import { convertToLlm, serializeConversation } from "@astravia/coding-agent";
 
 export default function (api: ExtensionAPI) {
 	api.on("session_before_compact", async (event, ctx) => {

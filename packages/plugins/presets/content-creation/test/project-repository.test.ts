@@ -1,4 +1,4 @@
-import type { PluginFsApi, PluginStorageApi } from "@vetta-org/plugin-sdk";
+import type { PluginFsApi, PluginStorageApi } from "@astravia-org/plugin-sdk";
 import { describe, expect, it } from "vitest";
 import { createContentProject } from "../src/project/types";
 import { PluginContentProjectRepository } from "../src/project/repository";
@@ -68,7 +68,7 @@ describe("PluginContentProjectRepository", () => {
 		expect(harness.files.has("C:\\project\\content-creation.json")).toBe(true);
 		const visible = JSON.parse(harness.files.get("C:\\project\\content-creation.json") ?? "") as Record<string, unknown>;
 		expect(visible).toMatchObject({
-			format: "vetta.content-workflow",
+			format: "astravia.content-workflow",
 			projectId: project.projectId,
 			schemaVersion: 6,
 			workflow: { title: "Untitled content workflow", objective: "", deliverables: [] },
@@ -88,7 +88,7 @@ describe("PluginContentProjectRepository", () => {
 		const harness = createFsHarness();
 		const repository = new PluginContentProjectRepository(harness.fs, createStorage().storage);
 		const project = createContentProject("C:\\project");
-		harness.files.set("C:\\project\\.vetta\\content-creation\\project.json", JSON.stringify(project));
+		harness.files.set("C:\\project\\.astravia\\content-creation\\project.json", JSON.stringify(project));
 
 		expect(await repository.read("C:\\project")).toMatchObject({ document: { projectId: project.projectId } });
 		expect(harness.files.has("C:\\project\\content-creation.json")).toBe(true);

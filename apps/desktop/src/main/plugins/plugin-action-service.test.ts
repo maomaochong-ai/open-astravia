@@ -17,7 +17,7 @@ vi.mock("../logger.js", () => ({
 }));
 
 vi.mock("./plugin-catalog.js", () => ({
-	CORE_ACTION_PLUGIN_ID: "vetta-actions",
+	CORE_ACTION_PLUGIN_ID: "astravia-actions",
 	getPluginSettings: () => ({}),
 	listPlugins: () => [
 		{
@@ -118,7 +118,7 @@ describe("PluginActionService provider identity", () => {
 		);
 		const payload = requirePayload(sent[0]);
 
-		expect(sent[0]?.channel).toBe("vetta:plugins:app-action-request");
+		expect(sent[0]?.channel).toBe("astravia:plugins:app-action-request");
 		expect(payload.pluginId).toBe("action-provider");
 		expect(payload.requestId).not.toBe("caller-request");
 		expect(payload).not.toHaveProperty("source");

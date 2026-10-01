@@ -1,6 +1,6 @@
 import {
 	PetSettingsView as ThemePetSettingsView,
-} from "@vetta-org/theme-ui/settings";
+} from "@astravia-org/theme-ui/settings";
 import { SettingsAiAssist } from "../ai-assist";
 import { SETTINGS_SECTION } from "../registry";
 import { PetBubbleStylePreview } from "./PetBubbleStylePreview";

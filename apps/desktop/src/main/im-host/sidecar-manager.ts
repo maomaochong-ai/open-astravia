@@ -178,7 +178,7 @@ export interface SidecarConfig {
 	state: SessionStateEntry[];
 	/**
 	 * Tells the sidecar which binary + prefix args to use when spawning
-	 * coding-agent for each IM session. Required in production (no `vetta`
+	 * coding-agent for each IM session. Required in production (no `astravia`
 	 * on PATH); the dev path populates it too so behavior matches.
 	 */
 	codingAgent?: CodingAgentSpec;

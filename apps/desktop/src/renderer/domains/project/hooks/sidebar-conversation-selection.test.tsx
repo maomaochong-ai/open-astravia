@@ -78,7 +78,7 @@ describe("sidebar conversation selection", () => {
 					onNewSession: noop,
 					onRenameSession: noop,
 					onSelectSession: noop,
-					project: { cwd: ordinarySession.cwd, name: "OpenVetta", sessionCount: sessions.length, type: "normal" },
+					project: { cwd: ordinarySession.cwd, name: "OpenAstravia", sessionCount: sessions.length, type: "normal" },
 					sessions,
 				}),
 			{ wrapper },
@@ -115,7 +115,7 @@ describe("sidebar conversation selection", () => {
 					onNewSession: noop,
 					onRenameSession: noop,
 					onSelectSession: noop,
-					project: { cwd: ordinarySession.cwd, name: "OpenVetta", sessionCount: 1, type: "normal" },
+					project: { cwd: ordinarySession.cwd, name: "OpenAstravia", sessionCount: 1, type: "normal" },
 					sessions: [teamSession],
 				}),
 			{ wrapper: runningWrapper(teamSession.path) },
@@ -171,7 +171,7 @@ describe("sidebar conversation selection", () => {
 					onNewSession: noop,
 					onRenameSession: noop,
 					onSelectSession: noop,
-					project: { cwd: ordinarySession.cwd, name: "OpenVetta", sessionCount: 1, type: "normal" },
+					project: { cwd: ordinarySession.cwd, name: "OpenAstravia", sessionCount: 1, type: "normal" },
 					sessions: [teamSession],
 				}),
 			{ wrapper: ({ children }) => <Provider store={store}>{children}</Provider> },
@@ -198,7 +198,7 @@ describe("sidebar conversation selection", () => {
 
 	it("renames a Team session through the Team service from either sidebar placement", async () => {
 		const renameSession = vi.fn(async () => ({}) as never);
-		Object.defineProperty(window, "vetta", {
+		Object.defineProperty(window, "astravia", {
 			configurable: true,
 			value: { agentTeams: { renameSession } },
 		});

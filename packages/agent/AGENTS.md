@@ -8,7 +8,7 @@
 usage 和 stop 传播。
 
 本包不拥有 Session 生命周期、Turn admission、Queue、Runtime Snapshot、产品 Feature、持久化或平台
-I/O。它只依赖 `@vetta/ai` 和自身合同，不得依赖 `@vetta/runtime-*`、`@vetta/coding-agent` 或应用宿主。
+I/O。它只依赖 `@astravia/ai` 和自身合同，不得依赖 `@astravia/runtime-*`、`@astravia/coding-agent` 或应用宿主。
 
 ## 关键模块
 

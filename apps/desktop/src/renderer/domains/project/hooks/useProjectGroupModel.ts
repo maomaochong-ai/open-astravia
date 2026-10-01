@@ -1,3 +1,5 @@
+import { isSshProjectUri } from "@astravia/ssh-transport/project-uri";
+import { DEFAULT_VISIBLE_SESSIONS } from "@astravia-org/theme-ui/project";
 import { notifyTeamSessionsChanged } from "@shared/agent-teams/team-session-events";
 import { pathBasename } from "@shared/lib/utils";
 import type { Project, ProjectType } from "@shared/store/atoms";
@@ -11,8 +13,6 @@ import {
 	sessionContextMenuAtom,
 	sessionDisplayLabel,
 } from "@shared/store/atoms";
-import { isSshProjectUri } from "@vetta/ssh-transport/project-uri";
-import { DEFAULT_VISIBLE_SESSIONS } from "@vetta-org/theme-ui/project";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -235,7 +235,7 @@ export function useProjectGroupModel({
 				onRenameSession(projectCwd, session.path, name);
 				return;
 			}
-			void window.vetta.agentTeams
+			void window.astravia.agentTeams
 				.renameSession({ id: session.teamSessionId, coordinationSessionPath: session.path }, name)
 				.then(() => {
 					notifyTeamSessionsChanged(session.teamId);

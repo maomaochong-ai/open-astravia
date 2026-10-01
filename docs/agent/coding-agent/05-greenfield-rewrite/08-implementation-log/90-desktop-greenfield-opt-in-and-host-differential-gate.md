@@ -51,7 +51,7 @@ Desktop 的交互会话、Scheduler、Batch 和插件配置必须共享一个 Ru
 Desktop 新增的 Catalog Adapter 只负责：
 
 - 从当前项目配置动态解析会话根；
-- 为普通项目补齐 `cwd/.vetta/sessions` 默认目录；
+- 为普通项目补齐 `cwd/.astravia/sessions` 默认目录；
 - 用路径过滤视图区分 IM 与 Desktop Greenfield 路由。
 
 没有把 Desktop 项目配置或路径规则下沉到 `runtime-storage` / `runtime-core`。
@@ -61,8 +61,8 @@ Desktop 新增的 Catalog Adapter 只负责：
 新增启动环境变量：
 
 ```text
-VETTA_DESKTOP_AGENT_RUNTIME=legacy
-VETTA_DESKTOP_AGENT_RUNTIME=greenfield
+ASTRAVIA_DESKTOP_AGENT_RUNTIME=legacy
+ASTRAVIA_DESKTOP_AGENT_RUNTIME=greenfield
 ```
 
 语义：
@@ -95,7 +95,7 @@ VETTA_DESKTOP_AGENT_RUNTIME=greenfield
 新项目未传 `sessionDir` 时使用：
 
 ```text
-<cwd>/.vetta/sessions
+<cwd>/.astravia/sessions
 ```
 
 恢复已有会话时以 `sessionPath` 的父目录作为真实 Conversation Directory，避免项目路径、

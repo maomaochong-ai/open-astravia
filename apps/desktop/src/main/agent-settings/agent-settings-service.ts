@@ -3,7 +3,7 @@ import type {
 	AgentExperimentalSettingsUpdate,
 	ImageGenerationSettings,
 	ImageGenerationSettingsUpdate,
-} from "@vetta-org/capability-sdk";
+} from "@astravia-org/capability-sdk";
 import {
 	type DesktopConfig,
 	type DesktopConfigUpdater,
@@ -21,7 +21,7 @@ export interface AgentSettingsServiceOptions {
 function normalizeAgentExperimentalSettings(value: unknown): AgentExperimentalSettings {
 	const settings = normalizeExperimental(value);
 	return {
-		vettaCli: settings.vettaCli ?? true,
+		astraviaCli: settings.astraviaCli ?? true,
 		promptPrediction: settings.promptPrediction ?? false,
 		agentSkills: settings.agentSkills ?? true,
 	};

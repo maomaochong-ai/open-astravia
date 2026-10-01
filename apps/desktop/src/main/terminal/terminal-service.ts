@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { parseProjectLocation } from "@vetta/ssh-transport/project-uri";
+import { parseProjectLocation } from "@astravia/ssh-transport/project-uri";
 import {
 	clampTerminalSize,
 	type OpenTerminalRequest,

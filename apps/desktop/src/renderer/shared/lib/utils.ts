@@ -1,4 +1,4 @@
-import { isSshProjectUri } from "@vetta/ssh-transport/project-uri";
+import { isSshProjectUri } from "@astravia/ssh-transport/project-uri";
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { createLocalFileUrl } from "@/shared/file-protocol";
@@ -92,9 +92,9 @@ export function pathNormalize(path: string): string {
 }
 
 /**
- * Map a local absolute path to the privileged vetta-file:// scheme (ADR-0027).
+ * Map a local absolute path to the privileged astravia-file:// scheme (ADR-0027).
  * Do not use file:// — Electron renderer blocks it ("Not allowed to load local resource").
  */
-export function toVettaFileUrl(path: string): string {
+export function toAstraviaFileUrl(path: string): string {
 	return createLocalFileUrl(pathNormalize(path));
 }

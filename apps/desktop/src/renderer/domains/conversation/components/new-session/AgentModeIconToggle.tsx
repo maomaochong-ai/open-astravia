@@ -35,7 +35,7 @@ export function AgentModeIconToggle({ className }: { className?: string }): JSX.
 
 	useEffect(() => {
 		let disposed = false;
-		void window.vetta.session
+		void window.astravia.session
 			.getAgentModes()
 			.then((fetched) => {
 				if (!disposed && fetched.length > 0) setModes(fetched);

@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { renameSync, rmSync, writeFileSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import type { ConversationDocument, ConversationDocumentEntry } from "@vetta/runtime-core/conversation";
+import type { ConversationDocument, ConversationDocumentEntry } from "@astravia/runtime-core/conversation";
 import {
 	CONVERSATION_SCHEMA_VERSION,
 	CONVERSATION_STORAGE_ERROR_CODES,
@@ -10,7 +10,7 @@ import {
 	type ConversationSeedRecord,
 	ConversationStorageError,
 	isConversationSeedRecord,
-} from "@vetta/runtime-storage/conversation";
+} from "@astravia/runtime-storage/conversation";
 import {
 	documentFromFile,
 	encodeConversationSessionId,

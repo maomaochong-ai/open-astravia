@@ -2,7 +2,7 @@
 
 ## 阶段目标
 
-在不改变 CLI、Desktop、SDK、RPC、IM 的 Agent 功能与协议的前提下，删除 `@vetta/coding-agent/runtime-host` 和 `@vetta/coding-agent/runtime-host/greenfield` 两个过渡公共出口，使宿主和测试只依赖用途明确的稳定合同；同时验证运行中 MCP、Tool 与 Skill 资源变化仍能在后续模型调用中生效。
+在不改变 CLI、Desktop、SDK、RPC、IM 的 Agent 功能与协议的前提下，删除 `@astravia/coding-agent/runtime-host` 和 `@astravia/coding-agent/runtime-host/greenfield` 两个过渡公共出口，使宿主和测试只依赖用途明确的稳定合同；同时验证运行中 MCP、Tool 与 Skill 资源变化仍能在后续模型调用中生效。
 
 <!-- coding-agent-rewrite-charter:v1:start -->
 ## 重写目标确认（固定）
@@ -18,7 +18,7 @@
 - 会话历史、认证、模型和设置等用户数据；必要时由显式、独立的新迁移器读取旧格式。
 - 模型消息、工具消息、错误、取消、事件顺序、并发约束和资源释放语义。
 - 仍然有效的行为测试场景和数据 fixture；旧实现可以临时作为测试 Oracle，但不能被新生产代码调用。
-- `@vetta/ai` 与经过合同验证的 `@vetta/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
+- `@astravia/ai` 与经过合同验证的 `@astravia/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
 
 ## 明确舍弃（固定）
 
@@ -55,19 +55,19 @@
 
 ### 3. 保持动态 Skill 行为
 
-- Session Resource Runtime 每次 Skill 更新都会重新考虑项目和用户默认 Skill 根目录，因此会话启动时尚不存在的 `.vetta/skills` 目录在后续创建后也能被发现。
+- Session Resource Runtime 每次 Skill 更新都会重新考虑项目和用户默认 Skill 根目录，因此会话启动时尚不存在的 `.astravia/skills` 目录在后续创建后也能被发现。
 - Resource Runtime 通过中性 `ResourceSettingsPort` 读取同一份 Settings Runtime，动态发现仍遵循原有禁用规则和项目级覆盖优先级。
 - 新增同一会话内“目录缺失、创建、修改、删除”的测试，验证下一 Turn 的 Skill 投影依次为无、v1、v2、无。
 
 ### 4. 修正真实 CLI 验证边界
 
-- Desktop 的 Vetta CLI canary 将工作目录修正为仓库根目录，使独立 CLI 进程通过真实 workspace 配置解析稳定 Coding Agent 子路径。
+- Desktop 的 Astravia CLI canary 将工作目录修正为仓库根目录，使独立 CLI 进程通过真实 workspace 配置解析稳定 Coding Agent 子路径。
 - canary 继续验证创建会话、继续会话和持久化会话列表，不以直接调用内部工厂替代产品入口。
 
 ### 5. 防回退质量门禁
 
 - Package Boundary Guard 新增退役 `runtime-host` 子路径审查，覆盖源码/测试 import、TypeScript/Vitest alias 和 package exports。
-- Quality Gate 增加反例，验证旧测试导入、旧别名和旧 manifest export 会失败，而稳定 `@vetta/coding-agent/runtime` 入口继续允许。
+- Quality Gate 增加反例，验证旧测试导入、旧别名和旧 manifest export 会失败，而稳定 `@astravia/coding-agent/runtime` 入口继续允许。
 - Coding Agent 重写进度基线新增 Runtime Host export 指标，固定为 0。
 
 ## 旧实现依赖变化
@@ -89,7 +89,7 @@
 - Coding Agent 组合与公共 API 定向测试：4 个文件，11 项通过。
 - Coding Agent 资源加载测试：1 个文件，18 项通过，覆盖动态 Skill 创建、修改、删除、禁用覆盖和项目优先级。
 - CLI 相关定向测试：11 个文件，35 项通过，覆盖 Subagent、动态 MCP、Plugin MCP、Extension、Hook、Todo 与 Session Host。
-- Desktop 相关定向测试：6 个文件，25 项通过，覆盖模型调用帧差异、后端池、能力、历史行为差异和真实 Vetta CLI 会话 canary。
+- Desktop 相关定向测试：6 个文件，25 项通过，覆盖模型调用帧差异、后端池、能力、历史行为差异和真实 Astravia CLI 会话 canary。
 - 质量门禁定向测试：3 个文件，84 项通过。
 - `bun run check:quick` 通过，确认 Runtime Host exports、外部 Runtime Host 导入、旧实现边和 Runtime 反向依赖均为 0。
 - 根 `bun run check` 通过，覆盖全仓 Biome、根/CLI/Desktop/Admin 类型检查与全部质量守卫。

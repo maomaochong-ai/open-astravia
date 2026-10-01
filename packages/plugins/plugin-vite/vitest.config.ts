@@ -4,7 +4,7 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
 	resolve: {
 		alias: {
-			"@vetta-org/plugin-sdk/manifest": fileURLToPath(
+			"@astravia-org/plugin-sdk/manifest": fileURLToPath(
 				new URL("../plugin-sdk/src/manifest.ts", import.meta.url),
 			),
 		},

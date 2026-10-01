@@ -99,7 +99,7 @@
 | [89-subagent-state-journal-and-recovery.md](./08-implementation-log/89-subagent-state-journal-and-recovery.md) | Subagent 增量状态日志、确定性恢复、delivery 去重与 transcript ownership 门禁 |
 | [90-desktop-greenfield-opt-in-and-host-differential-gate.md](./08-implementation-log/90-desktop-greenfield-opt-in-and-host-differential-gate.md) | Desktop 进程级 Greenfield Backend Pool、显式 opt-in、Catalog/访问路由与 Legacy/Greenfield 宿主差分门禁 |
 | [91-desktop-real-turn-and-runtime-consumer-canary.md](./08-implementation-log/91-desktop-real-turn-and-runtime-consumer-canary.md) | Desktop 真实 Provider Tool Loop、动态外围能力、三类 RuntimeHost 消费者与生产选择诊断门禁 |
-| [92-cli-driven-desktop-runtime-canary.md](./08-implementation-log/92-cli-driven-desktop-runtime-canary.md) | 独立 Vetta CLI 驱动的 Desktop Greenfield 会话创建、继续、列举与 CWD 身份持久化门禁 |
+| [92-cli-driven-desktop-runtime-canary.md](./08-implementation-log/92-cli-driven-desktop-runtime-canary.md) | 独立 Astravia CLI 驱动的 Desktop Greenfield 会话创建、继续、列举与 CWD 身份持久化门禁 |
 | [93-real-desktop-process-runtime-canary.md](./08-implementation-log/93-real-desktop-process-runtime-canary.md) | 真实 Desktop 主进程 Greenfield Canary、CLI 会话闭环、优雅退出与取消清理门禁 |
 | [94-desktop-runtime-consumer-lifecycle.md](./08-implementation-log/94-desktop-runtime-consumer-lifecycle.md) | Desktop 交互/Scheduler/Batch 多消费者共存、异步合同与进程级退出所有权门禁 |
 | [95-runtime-composition-package-and-artifact-closure.md](./08-implementation-log/95-runtime-composition-package-and-artifact-closure.md) | Greenfield Composition Root 归位、CLI 兼容边界与独立 `dist` 产物闭包 |

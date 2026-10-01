@@ -21,7 +21,7 @@
 	"console.retry": "Retry",
 	"console.recheck": "Re-check",
 	"console.installHint": "First use requires installing the browser automation runtime (~90MB). If no Chrome is installed, Chrome for Testing is downloaded as well.",
-	"console.outdatedHint": "Found agent-browser {{found}}, but this plugin needs {{required}} or newer. Upgrade installs the pinned version into Vetta's own runtime directory and leaves your existing global install untouched.",
+	"console.outdatedHint": "Found agent-browser {{found}}, but this plugin needs {{required}} or newer. Upgrade installs the pinned version into Astravia's own runtime directory and leaves your existing global install untouched.",
 	"console.chromeFound": "System Chrome detected; it will be reused, no extra download needed.",
 	"console.chromeMissing": "No system Chrome detected. One more download (Chrome for Testing) is needed before you can start.",
 	"console.readyHint": "The agent-browser CLI is ready. Ask the agent to open a page; every Agent conversation uses an independent browser session.",

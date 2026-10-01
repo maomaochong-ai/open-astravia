@@ -1,7 +1,7 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { BrowserAction, BrowserRuntimeStatus } from "@vetta-org/capability-sdk";
+import type { BrowserAction, BrowserRuntimeStatus } from "@astravia-org/capability-sdk";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { BrowserAutomationService } from "./browser-automation-service.js";
 import { BrowserProfileRegistry } from "./browser-profile-registry.js";
@@ -63,7 +63,7 @@ describe("BrowserAutomationService", () => {
 	let service: BrowserAutomationService;
 
 	beforeEach(async () => {
-		temporaryDirectory = await mkdtemp(join(tmpdir(), "vetta-browser-service-test-"));
+		temporaryDirectory = await mkdtemp(join(tmpdir(), "astravia-browser-service-test-"));
 		engine = new FakeBrowserEngine();
 		logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
 		service = new BrowserAutomationService({
@@ -163,7 +163,7 @@ describe("BrowserAutomationService", () => {
 
 	it("reclaims a persisted session before reopening its profile after a host restart", async () => {
 		const profiles = new BrowserProfileRegistry({ baseDirectory: temporaryDirectory });
-		const staleSessionId = "vetta-11111111-1111-4111-8111-111111111111";
+		const staleSessionId = "astravia-11111111-1111-4111-8111-111111111111";
 		await profiles.prepareSession({
 			namespace: "publisher",
 			sessionId: staleSessionId,

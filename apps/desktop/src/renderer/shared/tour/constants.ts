@@ -1,6 +1,6 @@
 /** Product tour localStorage keys — each tour runs at most once. */
-export const SIDEBAR_TOUR_STORAGE_KEY = "vetta.tour.sidebar.completed";
-export const CAPABILITIES_TOUR_STORAGE_KEY = "vetta.tour.capabilities.completed";
+export const SIDEBAR_TOUR_STORAGE_KEY = "astravia.tour.sidebar.completed";
+export const CAPABILITIES_TOUR_STORAGE_KEY = "astravia.tour.capabilities.completed";
 
 /** DOM anchors via data-tour attribute. */
 export const TOUR_ANCHORS = {

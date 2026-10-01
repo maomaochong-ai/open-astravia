@@ -1,4 +1,4 @@
-import type { SubagentSpawnRequest } from "@vetta/runtime-subagents";
+import type { SubagentSpawnRequest } from "@astravia/runtime-subagents";
 import type { CodingAgentSubagentSnapshot } from "../public-api/sdk/subagent-contract.js";
 
 export type {

@@ -1,6 +1,6 @@
 import type { DesktopThemePackage } from "@preload/api";
-import { DEFAULT_THEME_MODULE, ThemeProvider, type ThemeModule } from "@vetta-org/theme-sdk";
-import { AppBootLoadingView } from "@vetta-org/theme-ui/app";
+import { DEFAULT_THEME_MODULE, ThemeProvider, type ThemeModule } from "@astravia-org/theme-sdk";
+import { AppBootLoadingView } from "@astravia-org/theme-ui/app";
 import {
 	type ErrorInfo,
 	type ReactNode,
@@ -16,7 +16,7 @@ import { ThemeRuntimeContext } from "./ThemeRuntimeContext";
 import { loadThemePackage } from "./themeLoader";
 import type { ThemeRuntimeValue } from "./types";
 
-const UI_THEME_STORAGE_KEY = "vetta-ui-theme";
+const UI_THEME_STORAGE_KEY = "astravia-ui-theme";
 const DEFAULT_UI_THEME_ID = "default";
 
 function getStoredUiThemeId(): string {
@@ -42,7 +42,7 @@ export function ThemeRuntimeProvider({ children }: { children: ReactNode }): JSX
 		const start = performance.now();
 		console.info(`[theme-runtime] selectTheme "${themeId}"`);
 		const listStart = performance.now();
-		const themes = await window.vetta.themes.list();
+		const themes = await window.astravia.themes.list();
 		console.debug(`[theme-runtime] themes.list complete count=${themes.length} elapsed=${formatMs(listStart)}`);
 		setAvailableThemes(themes);
 		if (themeId === DEFAULT_THEME_MODULE.meta.id) {

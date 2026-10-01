@@ -1,5 +1,5 @@
-import type { ImageContent } from "@vetta/ai";
-import type { PromptAttachmentRef, PromptResourceRef } from "@vetta/runtime-core";
+import type { ImageContent } from "@astravia/ai";
+import type { PromptAttachmentRef, PromptResourceRef } from "@astravia/runtime-core";
 
 export type CodingAgentPromptInputSource = "interactive" | "rpc" | "extension";
 

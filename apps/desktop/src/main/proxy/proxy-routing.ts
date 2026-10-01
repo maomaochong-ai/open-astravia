@@ -2,8 +2,8 @@
  * 「这次模型请求该不该走应用代理」的唯一判定（纯逻辑，无 I/O）。
  */
 
-import { type Api, supportsProviderFetchInjection } from "@vetta/ai";
-import { shouldBypassProxy } from "@vetta/ai/proxy";
+import { type Api, supportsProviderFetchInjection } from "@astravia/ai";
+import { shouldBypassProxy } from "@astravia/ai/proxy";
 
 export interface ProxyRoutingDecisionInput {
 	/** 应用代理是否已配置并启用（含配置无效的情况——无效也要接管，好让请求显式失败）。 */

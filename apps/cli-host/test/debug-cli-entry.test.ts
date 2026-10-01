@@ -13,7 +13,7 @@ describe("lightweight Debug CLI entry", () => {
 		});
 
 		expect(result.status, result.stderr).toBe(0);
-		expect(result.stdout).toContain("Vetta Debug command line interface");
+		expect(result.stdout).toContain("Astravia Debug command line interface");
 		expect(result.stderr).toBe("");
 	});
 });

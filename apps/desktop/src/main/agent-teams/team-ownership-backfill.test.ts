@@ -1,4 +1,4 @@
-import type { TeamSessionDocument } from "@vetta/agent-team";
+import type { TeamSessionDocument } from "@astravia/agent-team";
 import { describe, expect, it, vi } from "vitest";
 import type {
 	ConversationOwnershipCatalogPort,

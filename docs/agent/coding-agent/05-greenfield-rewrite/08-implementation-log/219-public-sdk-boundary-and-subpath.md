@@ -4,7 +4,7 @@
 
 本阶段把已经闭合的 Greenfield SDK 能力提升为正式、独立的产品 API，同时避免立即替换旧根入口：
 
-1. 增加 `@vetta/coding-agent/sdk` 公共子路径；
+1. 增加 `@astravia/coding-agent/sdk` 公共子路径；
 2. 公共命名不再携带 Greenfield 迁移术语；
 3. 创建参数只接受值对象、存储意图和窄宿主能力；
 4. 创建结果不暴露 Extension Runtime 或产品管理器；
@@ -15,7 +15,7 @@
 
 ### Greenfield 工厂位于错误的公共入口
 
-`createGreenfieldAgentSession` 只能从 `@vetta/coding-agent/bootstrap` 使用。Bootstrap 是宿主装配入口，不应成为
+`createGreenfieldAgentSession` 只能从 `@astravia/coding-agent/bootstrap` 使用。Bootstrap 是宿主装配入口，不应成为
 普通 SDK 消费者的依赖路径。
 
 ### 创建合同仍继承 Legacy 对象图
@@ -32,7 +32,7 @@ SDK 结果合同。
 
 ### 双入口迁移
 
-新增 `@vetta/coding-agent/sdk`，公开 `createCodingAgentSession`。新入口使用产品名称，内部仍委托现有 Greenfield
+新增 `@astravia/coding-agent/sdk`，公开 `createCodingAgentSession`。新入口使用产品名称，内部仍委托现有 Greenfield
 Host Adapter 和 Composition Root。
 
 包根旧 `createAgentSession` 不改名、不包装、不切换返回类型。需要旧具体管理器注入的调用方继续使用兼容入口，
@@ -129,7 +129,7 @@ Zod。存储目标继续由既有解析器做语义校验；不可信的自定�
 - 包根旧 `createAgentSession` 和 `AgentSession` 仍存在；
 - 旧 SDK 文档和示例本阶段不迁移；
 - 需要具体管理器注入的高级兼容场景没有伪装成新公共合同；
-- 新 SDK 暂不从包根重导出，调用方必须显式选择 `@vetta/coding-agent/sdk`；
+- 新 SDK 暂不从包根重导出，调用方必须显式选择 `@astravia/coding-agent/sdk`；
 - 之前的方案文档不更新，本文件只记录本阶段实际实施过程。
 
 ## 阶段结论

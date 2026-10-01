@@ -7,7 +7,7 @@ import { createNodeResultArtifactStorage } from "./result-artifact-storage.js";
 
 describe("Node result artifact storage", () => {
 	it("writes coding and MCP results with stable session-scoped names", async () => {
-		const root = await mkdtemp(join(tmpdir(), "vetta-result-artifacts-"));
+		const root = await mkdtemp(join(tmpdir(), "astravia-result-artifacts-"));
 		try {
 			const storage = createNodeResultArtifactStorage({
 				codingRoot: join(root, "tool-results"),
@@ -43,7 +43,7 @@ describe("Node result artifact storage", () => {
 	});
 
 	it("deletes both result kinds for only the requested session", async () => {
-		const root = await mkdtemp(join(tmpdir(), "vetta-result-cleaner-"));
+		const root = await mkdtemp(join(tmpdir(), "astravia-result-cleaner-"));
 		try {
 			const storage = createNodeResultArtifactStorage({
 				codingRoot: join(root, "tool-results"),

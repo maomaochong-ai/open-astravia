@@ -1,5 +1,5 @@
-import { type PluginAudioMetadata, type PluginPreviewFile, useTranslation } from "@vetta-org/plugin-sdk";
-import { Slider } from "@vetta-org/ui";
+import { type PluginAudioMetadata, type PluginPreviewFile, useTranslation } from "@astravia-org/plugin-sdk";
+import { Slider } from "@astravia-org/ui";
 import { motion } from "motion/react";
 import type { JSX } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";

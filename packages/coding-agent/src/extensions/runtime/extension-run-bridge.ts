@@ -1,5 +1,5 @@
-import type { AgentMessage } from "@vetta/agent-core";
-import type { ImageContent } from "@vetta/ai";
+import type { AgentMessage } from "@astravia/agent-core";
+import type { ImageContent } from "@astravia/ai";
 import type {
 	AgentRunPreparationContext,
 	AgentRunPreparationResult,
@@ -7,7 +7,7 @@ import type {
 	RuntimeSnapshotAcquireContext,
 	RuntimeToolDefinition,
 	SessionInput,
-} from "@vetta/runtime-core/kernel";
+} from "@astravia/runtime-core/kernel";
 import type { CodingAgentToolInterceptor } from "../../interception/tool/contracts.js";
 import type { CodingAgentExtensionRunnerPort } from "../../runtime-contracts/index.js";
 import type { InputEventResult, InputSource } from "../index.js";

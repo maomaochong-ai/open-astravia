@@ -1,6 +1,6 @@
 package wechat
 
-import "vetta-im-gateway/internal/transport/wechat/ilink"
+import "astravia-im-gateway/internal/transport/wechat/ilink"
 
 // CLIStateStore is the subset of the wechat state store that the CLI
 // (`im-gateway wechat login|status|logout`) needs. It exists so the CLI

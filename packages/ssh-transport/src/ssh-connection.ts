@@ -179,7 +179,7 @@ export class SshConnection {
 		// 给的 timeout 是按「这条命令该跑多久」定的——几十秒——会在用户还在输密码时
 		// 把 ssh 杀掉。探测结果有缓存，之后的调用不会多一次往返。
 		await this.probePlatform(options.signal);
-		const processToken = `vetta-exec-${randomBytes(8).toString("hex")}`;
+		const processToken = `astravia-exec-${randomBytes(8).toString("hex")}`;
 		// 取消与超时都收到这里统一处理，因为两者要做同一件事：**立刻**去远端把进程组杀掉。
 		// 没有 pty，掐掉本地 ssh 并不会让远端进程结束；而等本地 ssh 自己退出再去杀也不行——
 		// 远端进程还攥着通道的 stdout，本地 ssh 可能就一直等在那里。
@@ -287,7 +287,7 @@ export class SshConnection {
 			helper.call("fs.writeFile", { path: remotePath, data: Buffer.from(content).toString("base64") }),
 		);
 		if (viaHelper) return;
-		const command = buildWriteFileCommand(remotePath, `.vetta-tmp-${Date.now().toString(36)}`);
+		const command = buildWriteFileCommand(remotePath, `.astravia-tmp-${Date.now().toString(36)}`);
 		await this.runChecked(command, { signal, stdin: content });
 	}
 

@@ -102,7 +102,7 @@ export function useProjectActions() {
 			const activeLoad = sessionLoadPromises.get(cwd);
 			if (activeLoad) return activeLoad;
 			setSessionLoadingCwds((prev) => new Set(prev).add(cwd));
-			const loadPromise = window.vetta.session
+			const loadPromise = window.astravia.session
 				.listSessions(cwd)
 				.then((sessions: SessionInfo[]) =>
 					setSessionsMap((prev) => {
@@ -149,7 +149,7 @@ export function useProjectActions() {
 	useEffect(() => {
 		if (!imSubscribed) {
 			imSubscribed = true;
-			window.vetta.im.onSessionChanged(() => {
+			window.astravia.im.onSessionChanged(() => {
 				// Claw 会话写在独立的 IM cwd 下（ADR-0005），fs watcher 监听的也是它；
 				// 桌面「对话」cwd 不会被 sidecar 写，但保留刷新以兼容历史路径。
 				const imCwd = store.get(defaultImConversationCwdAtom);
@@ -160,7 +160,7 @@ export function useProjectActions() {
 		}
 		if (!sessionListSubscribed) {
 			sessionListSubscribed = true;
-			window.vetta.session.onSessionsChanged(({ cwd, sessionPath, session }) => {
+			window.astravia.session.onSessionsChanged(({ cwd, sessionPath, session }) => {
 				if (session && isUsableFirstMessage(session.firstMessage)) {
 					setSessionsMap((prev) => {
 						const sessions = prev.get(cwd) ?? [];
@@ -199,13 +199,13 @@ export function useProjectActions() {
 	const refreshProjects = useCallback(async () => {
 		try {
 			// Read project list from app-specific config file (not shared with CLI)
-			const config = await window.vetta.config.get();
+			const config = await window.astravia.config.get();
 			const entries = config.projects.map((entry) => ({ cwd: entry.path, name: entry.name, sessionCount: 0 }));
 
 			// Read meta.json for each project in parallel to determine type
 			const metaResults = await Promise.all(
 				entries.map(async (entry) => {
-					const meta = await window.vetta.project.readMeta(entry.cwd);
+					const meta = await window.astravia.project.readMeta(entry.cwd);
 					const rawType = meta?.type as string | undefined;
 					const type: ProjectType = rawType === "batch" ? rawType : "normal";
 					return { ...entry, type };
@@ -251,7 +251,7 @@ export function useProjectActions() {
 	useEffect(() => {
 		if (projectsChangedSubscribed) return;
 		projectsChangedSubscribed = true;
-		window.vetta.config.onProjectsChanged(() => {
+		window.astravia.config.onProjectsChanged(() => {
 			void refreshProjectsRef.current();
 		});
 		// 同上：刻意不退订，订阅与 renderer 同寿命。
@@ -260,7 +260,7 @@ export function useProjectActions() {
 	/** Create a new project directory in workspace and register it; returns resolved cwd. */
 	const createProject = useCallback(
 		async (name: string): Promise<string> => {
-			const entry = await window.vetta.project.create({ name });
+			const entry = await window.astravia.project.create({ name });
 			await refreshProjects();
 			setExpandedProjects((prev) => new Set([...prev, entry.path]));
 			return entry.path;
@@ -276,7 +276,7 @@ export function useProjectActions() {
 	 */
 	const openProjectPath = useCallback(
 		async (path: string): Promise<string> => {
-			await window.vetta.project.open({ path });
+			await window.astravia.project.open({ path });
 			await refreshProjects();
 			setExpandedProjects((prev) => new Set([...prev, path]));
 			await loadSessions(path);
@@ -287,7 +287,7 @@ export function useProjectActions() {
 
 	/** Open an existing directory and register it */
 	const openProject = useCallback(async () => {
-		const cwd = await window.vetta.dialog.selectFolder();
+		const cwd = await window.astravia.dialog.selectFolder();
 		if (!cwd) return null;
 		return openProjectPath(cwd);
 	}, [openProjectPath]);
@@ -338,7 +338,7 @@ export function useProjectActions() {
 		async (cwd: string) => {
 			// 默认「对话」项目不允许从列表中移除。
 			if (cwd === store.get(defaultConversationCwdAtom)) return;
-			await window.vetta.project.remove(cwd);
+			await window.astravia.project.remove(cwd);
 			await refreshProjects();
 		},
 		[refreshProjects, store],
@@ -347,7 +347,7 @@ export function useProjectActions() {
 	const archiveProject = useCallback(
 		async (cwd: string) => {
 			if (cwd === store.get(defaultConversationCwdAtom)) return;
-			await window.vetta.project.archive(cwd);
+			await window.astravia.project.archive(cwd);
 			await refreshProjects();
 		},
 		[refreshProjects, store],
@@ -355,19 +355,19 @@ export function useProjectActions() {
 
 	const unarchiveProject = useCallback(
 		async (cwd: string) => {
-			await window.vetta.project.unarchive(cwd);
+			await window.astravia.project.unarchive(cwd);
 			await refreshProjects();
 		},
 		[refreshProjects],
 	);
 
 	const deleteArchivedProject = useCallback(async (cwd: string) => {
-		await window.vetta.project.remove(cwd);
+		await window.astravia.project.remove(cwd);
 	}, []);
 
 	const deleteSession = useCallback(
 		async (_cwd: string, sessionPath: string) => {
-			await window.vetta.session.delete(sessionPath);
+			await window.astravia.session.delete(sessionPath);
 			removePinnedSessions([sessionPath]);
 			// 自动化的执行记录与绑定关系由主进程在删除会话时一并处理；这里只驱动
 			// 正在展示的执行历史重新拉取。
@@ -452,7 +452,7 @@ export function useProjectActions() {
 
 	const renameSession = useCallback(
 		async (cwd: string, sessionPath: string, name: string) => {
-			await window.vetta.session.rename(sessionPath, name);
+			await window.astravia.session.rename(sessionPath, name);
 			applyLocalRename(cwd, sessionPath, name);
 		},
 		[applyLocalRename],

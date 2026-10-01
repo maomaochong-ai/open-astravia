@@ -6,12 +6,12 @@
 
 | 仓库 | 路径 | Commit | 日期 |
 | --- | --- | --- | --- |
-| Vetta Mono | `C:\develop\yiyun\vetta-mono` | `2fae6596e18fc58c3b23e6d910ed327fa1a3eb66` | 2026-08-09 |
+| Astravia Mono | `C:\develop\yiyun\astravia-mono` | `2fae6596e18fc58c3b23e6d910ed327fa1a3eb66` | 2026-08-09 |
 | Vercel AI SDK | `C:\develop\github\ai` | `63db19387ba71ec50820d146658ae720ab50c80b` | 2026-08-07 |
 
 对比采用“职责对齐”，而不是只比较同名包：
 
-| Vetta | 对照仓库中的对应职责 |
+| Astravia | 对照仓库中的对应职责 |
 | --- | --- |
 | `packages/ai` 的公共类型与流协议 | `packages/provider` |
 | `packages/ai` 的校验、SSE、重试和错误处理 | `packages/provider-utils` |
@@ -19,7 +19,7 @@
 | `packages/agent` 的模型循环与工具执行 | `packages/ai/src/generate-text/*` 与 `packages/ai/src/agent/*` |
 | `Agent` 的长会话状态与 steering/follow-up | 对照仓库没有完全等价的单一组件 |
 
-因此，Vercel 的 `packages/ai` 代码量远大于 Vetta 的 `packages/ai` 并不能直接说明质量差异；两者包名相同，但职责不同。
+因此，Vercel 的 `packages/ai` 代码量远大于 Astravia 的 `packages/ai` 并不能直接说明质量差异；两者包名相同，但职责不同。
 
 ## 代码规模
 
@@ -27,8 +27,8 @@
 
 | 模块 | 生产文件 | 生产代码行 | 测试文件 | 测试代码行 |
 | --- | ---: | ---: | ---: | ---: |
-| Vetta `packages/ai` | 77 | 9,088 | 38 | 8,217 |
-| Vetta `packages/agent` | 13 | 2,101 | 10 | 2,201 |
+| Astravia `packages/ai` | 77 | 9,088 | 38 | 8,217 |
+| Astravia `packages/agent` | 13 | 2,101 | 10 | 2,201 |
 | Vercel `packages/provider` | 240 | 9,074 | 1 | 99 |
 | Vercel `packages/provider-utils` | 152 | 8,241 | 91 | 13,114 |
 | Vercel `packages/ai` | 335 | 34,992 | 148 | 117,096 |
@@ -37,7 +37,7 @@
 
 Vercel 的协议包测试少，是因为大量协议行为由 Provider 工具、具体 Provider 和核心编排层验证；不能孤立地用 `packages/provider` 的测试数量评价其覆盖。
 
-## 当前 Vetta 调用链
+## 当前 Astravia 调用链
 
 ```mermaid
 flowchart TD
@@ -82,7 +82,7 @@ flowchart TD
 - Provider-specific options 和 metadata 按 Provider 命名空间透传。
 - HTTP、响应 schema、安全 JSON 解析、重试和错误分类集中在 `provider-utils`。
 - `ToolLoopAgent` 本身较薄，复用 `generateText` / `streamText` 的成熟循环。
-- Agent 调用默认是一次性操作；它不负责 Vetta 那种长期可变的桌面会话对象。
+- Agent 调用默认是一次性操作；它不负责 Astravia 那种长期可变的桌面会话对象。
 
 ## 审计维度
 
@@ -112,4 +112,4 @@ flowchart TD
 
 - 没有运行需要真实 Provider 凭据的跨 Provider E2E，因此不评价当前每个模型的线上可用率。
 - 没有进行 bundle analyzer 或多浏览器实测；浏览器相关结论是基于入口依赖和副作用的架构风险判断。
-- 对照仓库是指定本地快照，不代表其他版本，也不意味着其设计全部适合 Vetta。
+- 对照仓库是指定本地快照，不代表其他版本，也不意味着其设计全部适合 Astravia。

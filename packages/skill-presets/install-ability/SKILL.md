@@ -1,31 +1,31 @@
 ---
 name: install-ability
-description: 在本机 Vetta 中安装能力——插件（plugin）、Skill/场景（scene）与 MCP 服务器。用户说「装一个插件 / install plugin / 从能力市场安装 / 加一个 MCP server / 配置 MCP / 装个 skill」，或插件装完没生效、需要 reload、pending 版本没应用时使用。不用于安装 npm 依赖、IDE 插件、浏览器扩展，也不用于开发插件（那是 plugin-workbench）或创作 Skill（那是 create-skill）。
+description: 在本机 Astravia 中安装能力——插件（plugin）、Skill/场景（scene）与 MCP 服务器。用户说「装一个插件 / install plugin / 从能力市场安装 / 加一个 MCP server / 配置 MCP / 装个 skill」，或插件装完没生效、需要 reload、pending 版本没应用时使用。不用于安装 npm 依赖、IDE 插件、浏览器扩展，也不用于开发插件（那是 plugin-workbench）或创作 Skill（那是 create-skill）。
 metadata:
   version: 1.0.0
-  author: Vetta
+  author: Astravia
   category: 开发
 ---
 
-# 在 Vetta 中安装能力
+# 在 Astravia 中安装能力
 
-Vetta 的能力分三种，安装路径互不相同。**先分类，再动手**。
+Astravia 的能力分三种，安装路径互不相同。**先分类，再动手**。
 
 | 用户给的东西 | 类型 | 安装路径 |
 | --- | --- | --- |
-| npm 包名、`.zip`、http(s) zip 链接、本地插件工程目录 | 插件 | `vetta-plugin-cli add` → 按需 `reload`（§2） |
+| npm 包名、`.zip`、http(s) zip 链接、本地插件工程目录 | 插件 | `astravia-plugin-cli add` → 按需 `reload`（§2） |
 | 能力市场里的插件条目 | 插件 | 引导用户在能力市场页安装（§2.6） |
 | 能力市场里的 skill / scene（有 slug） | Skill / 场景 | `skills.manage install-from-market`（§3） |
 | 用户自己写的 / 仓库里的 SKILL.md | Skill / 场景 | 交给 `create-skill` skill（§3.2） |
 | `command` + `args`，或一个 MCP 的 http url | MCP | `mcp.manage upsert`（§4） |
 
-分不清时**先问用户**，不要凭包名猜类型：npm 上的 `@modelcontextprotocol/server-*` 是 MCP，不是 Vetta 插件。
+分不清时**先问用户**，不要凭包名猜类型：npm 上的 `@modelcontextprotocol/server-*` 是 MCP，不是 Astravia 插件。
 
 ## 1. 通用前置
 
 - **只在用户明确要求安装时执行**。当前任务缺某个工具，不构成自行安装能力的理由。
 - 所有写操作都会弹宿主审批。用户拒绝就**停下并如实报告**，不要改走别的路子达成同一效果。
-- **禁止直接改注册表**：`~/.vetta/plugins/`、`~/.vetta/plugins-manifest.json`、`~/.vetta/skills-manifest.json`（市场安装的部分）、`~/.vetta/agent/mcp.json` 都由宿主维护，手写会与宿主状态错位。
+- **禁止直接改注册表**：`~/.astravia/plugins/`、`~/.astravia/plugins-manifest.json`、`~/.astravia/skills-manifest.json`（市场安装的部分）、`~/.astravia/agent/mcp.json` 都由宿主维护，手写会与宿主状态错位。
 - 安装源来自用户。第三方 zip / http 链接在安装前把来源念给用户确认一次。
 
 ## 2. 插件
@@ -33,8 +33,8 @@ Vetta 的能力分三种，安装路径互不相同。**先分类，再动手**�
 ### 2.1 命令入口
 
 ```bash
-npx @vetta-org/plugin-cli add <npm-package|./local.zip|https://…/x.zip|.>
-npx @vetta-org/plugin-cli reload <plugin-id>
+npx @astravia-org/plugin-cli add <npm-package|./local.zip|https://…/x.zip|.>
+npx @astravia-org/plugin-cli reload <plugin-id>
 ```
 
 `.` 表示「当前插件工程」（会先 pack）。加 `--json` 便于解析结果。
@@ -42,10 +42,10 @@ npx @vetta-org/plugin-cli reload <plugin-id>
 npx 不可用或离线时，用系统插件「制作插件」内置的同一份 CLI：先 `plugins.query` → `{"operation":"get","id":"plugin-workbench"}` 取 `rootPath`，再
 
 ```bash
-node "{workbenchRoot}/agent/cli/vetta-plugin-cli.js" add <source> --json
+node "{workbenchRoot}/agent/cli/astravia-plugin-cli.js" add <source> --json
 ```
 
-CLI 不直接写插件目录，它把请求交给正在运行的宿主校验、审批、安装。npm 包会以关闭生命周期脚本的方式下载，只解出 `package.json#vetta.archive` 声明的那个归档。
+CLI 不直接写插件目录，它把请求交给正在运行的宿主校验、审批、安装。npm 包会以关闭生命周期脚本的方式下载，只解出 `package.json#astravia.archive` 声明的那个归档。
 
 ### 2.2 安装后必须重载（本 skill 的核心）
 
@@ -53,13 +53,13 @@ CLI 不直接写插件目录，它把请求交给正在运行的宿主校验、�
 - **覆盖升级已装插件**：宿主把新版本挂成 **pending**，输出
 
   ```
-  Installed <id>@<old>. Update <new> is pending reload. Run `vetta-plugin-cli reload <id>` to apply it.
+  Installed <id>@<old>. Update <new> is pending reload. Run `astravia-plugin-cli reload <id>` to apply it.
   ```
 
   此刻插件**仍在跑旧代码**。安装动作没有完成，必须立刻重载：
 
   ```bash
-  npx @vetta-org/plugin-cli reload <plugin-id>
+  npx @astravia-org/plugin-cli reload <plugin-id>
   ```
 
 `--json` 下的判据（不要靠读人类文案）：
@@ -78,7 +78,7 @@ reload 走与 UI 相同的宿主审批流，用户确认后新版本才生效。
 - 返回项含 `devWatch` → 热更新已开启，源码构建成功后自动重载。**不要** reload、不要重装。
 - 无 `devWatch` → 走 §2.1 / §2.2 常规流程。
 
-开发迭代（不是安装）可以直接开热更新：在插件工程目录 `npx @vetta-org/plugin-cli watch`，`--stop` 关闭。
+开发迭代（不是安装）可以直接开热更新：在插件工程目录 `npx @astravia-org/plugin-cli watch`，`--stop` 关闭。
 
 ### 2.4 没有 CLI 时的等价调用
 
@@ -87,11 +87,11 @@ plugins.manage {"operation":"install-from-url","url":"https://…/x.zip"}
 plugins.manage {"operation":"reload","id":"<plugin-id>"}
 ```
 
-本地路径安装用 `install-from-path`（zip 绝对路径 + `"enable": true`）。若目标是「制作插件」工作台里的工程，改为引导用户点面板的「应用到 Vetta」，那条路径不弹确认。
+本地路径安装用 `install-from-path`（zip 绝对路径 + `"enable": true`）。若目标是「制作插件」工作台里的工程，改为引导用户点面板的「应用到 Astravia」，那条路径不弹确认。
 
 ### 2.5 退出码
 
-`0` 成功 · `2` 参数错 · `3` 连不上宿主（Vetta 没运行，或 `VETTA_CONFIG_DIR`/`VETTA_HOME` 指到了别的环境）· `4` 宿主拒绝（权限、id 冲突、系统插件不可覆盖）· `5` 其它失败。遇到 `3` 先让用户确认 Vetta 桌面端在前台运行，不要反复重试。
+`0` 成功 · `2` 参数错 · `3` 连不上宿主（Astravia 没运行，或 `ASTRAVIA_CONFIG_DIR`/`ASTRAVIA_HOME` 指到了别的环境）· `4` 宿主拒绝（权限、id 冲突、系统插件不可覆盖）· `5` 其它失败。遇到 `3` 先让用户确认 Astravia 桌面端在前台运行，不要反复重试。
 
 ### 2.6 能力市场里的插件
 
@@ -115,7 +115,7 @@ Skill 不需要 reload，装完即进入能力页。校验：`skills.query {"ope
 
 ### 3.2 本地 / 自己写的 Skill
 
-不要在这里手搓目录和清单——按 `create-skill` skill 的流程做（全局 `~/.vetta/skills/<name>/`、项目 `<root>/.vetta/skills/<name>/`、插件 `agent/skills/<name>/` 各有各的注册方式）。
+不要在这里手搓目录和清单——按 `create-skill` skill 的流程做（全局 `~/.astravia/skills/<name>/`、项目 `<root>/.astravia/skills/<name>/`、插件 `agent/skills/<name>/` 各有各的注册方式）。
 
 ### 3.3 启停与卸载
 

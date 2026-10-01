@@ -1,5 +1,5 @@
-import type { RuntimeSessionAgentSelection, SessionConfig } from "@vetta/runtime-core";
-import { RuntimeHost, RuntimeHostSession } from "@vetta/runtime-core";
+import type { RuntimeSessionAgentSelection, SessionConfig } from "@astravia/runtime-core";
+import { RuntimeHost, RuntimeHostSession } from "@astravia/runtime-core";
 import type { ConversationScenario } from "../profiles/index.js";
 import type {
 	CodingAgentRuntimeAgentReference,

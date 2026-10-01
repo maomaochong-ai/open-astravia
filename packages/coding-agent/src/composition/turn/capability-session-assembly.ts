@@ -1,5 +1,5 @@
-import type { EcosystemHookRuntime } from "@vetta/ecosystem-adapter";
-import type { RuntimeModel } from "@vetta/runtime-core";
+import type { EcosystemHookRuntime } from "@astravia/ecosystem-adapter";
+import type { RuntimeModel } from "@astravia/runtime-core";
 import type {
 	AgentFeatureDefinition,
 	ContinuationPolicyContext,
@@ -7,10 +7,10 @@ import type {
 	RuntimeCapabilityDefinition,
 	RuntimeSnapshotProvider,
 	RuntimeToolDefinition,
-} from "@vetta/runtime-core/kernel";
-import type { SessionExtensionContinuationSource } from "@vetta/runtime-core/session-extensions";
-import type { McpDeferredToolController } from "@vetta/runtime-mcp";
-import { guardCodingToolRegistration } from "@vetta/runtime-tools";
+} from "@astravia/runtime-core/kernel";
+import type { SessionExtensionContinuationSource } from "@astravia/runtime-core/session-extensions";
+import type { McpDeferredToolController } from "@astravia/runtime-mcp";
+import { guardCodingToolRegistration } from "@astravia/runtime-tools";
 import { createEcosystemToolInterceptor } from "../../adapters/ecosystem/tool-interceptor-adapter.js";
 import { CodingAgentPromptRequestAdapter } from "../../adapters/runtime-core/prompt-request-adapter.js";
 import { CodingAgentLegacyImageSettingsRuntime } from "../../adapters/settings/legacy-image-settings-adapter.js";

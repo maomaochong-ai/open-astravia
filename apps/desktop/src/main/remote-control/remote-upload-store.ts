@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { getVettaHomePath } from "@vetta/action-rpc";
-import type { RemoteUploadKind } from "@vetta/remote-control";
+import { getAstraviaHomePath } from "@astravia/action-rpc";
+import type { RemoteUploadKind } from "@astravia/remote-control";
 
 const UPLOAD_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const MAX_NAME_CHARS = 80;
@@ -26,7 +26,7 @@ export interface RemoteUploadStoreDependencies {
 }
 
 const DEFAULT_DEPENDENCIES: RemoteUploadStoreDependencies = {
-	root: join(getVettaHomePath(), "remote-uploads"),
+	root: join(getAstraviaHomePath(), "remote-uploads"),
 	mkdir,
 	readdir,
 	rm,

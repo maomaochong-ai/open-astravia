@@ -1,4 +1,4 @@
-import type { SessionEvent } from "@vetta/runtime-core";
+import type { SessionEvent } from "@astravia/runtime-core";
 import { sanitizeRuntimeErrorMessage } from "./session-error-logger.js";
 
 type RuntimeSessionCompactionEvent = Extract<SessionEvent, { readonly type: "compaction.start" | "compaction.end" }>;

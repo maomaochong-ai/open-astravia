@@ -1,0 +1,20 @@
+{
+	"plugin.name": "Cowart 画布",
+	"plugin.description": "无限画布（tldraw）能力包：聚合 Cowart MCP 工具与技能，在 Astravia 活动面板中打开画布工作区。改编自 zhongerxin/Cowart。",
+	"tab.label": "Cowart",
+	"panel.title": "Cowart 画布",
+	"panel.subtitle": "项目本地 tldraw 无限画布（Codex widget → Astravia 活动面板）",
+	"panel.cwd": "当前项目",
+	"panel.noCwd": "未绑定项目目录（打开项目对话后可用）",
+	"panel.storage": "画布数据目录",
+	"panel.openTab": "聚焦本面板",
+	"panel.hintTitle": "在 Astravia 中的用法",
+	"panel.hint1": "「打开 Cowart 画布」→ open_cowart_canvas，活动面板全宽 tldraw。",
+	"panel.hint2": "画布 AI 操作通过 conversation.sendPrompt 回灌对话；状态落在项目 canvas/。",
+	"panel.hint3": "Agent 侧仍可用插件内聚 MCP（get/insert 等）读写同一套 canvas 文件。",
+	"panel.mcpTitle": "MCP 工具（插件内聚）",
+	"panel.mcpNote": "运行时 server 名形如 plugin-cowart-astravia-cowart-mcp。",
+	"guidingWords.openCanvas": "打开当前项目的 Cowart 画布",
+	"guidingWords.genImage": "在 Cowart 画布上按提示生成一张图",
+	"guidingWords.editAnnotated": "根据 Cowart 标注截图生成修订图"
+}

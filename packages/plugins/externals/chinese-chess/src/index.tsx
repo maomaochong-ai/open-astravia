@@ -1,4 +1,4 @@
-import { definePlugin } from "@vetta-org/plugin-sdk";
+import { definePlugin } from "@astravia-org/plugin-sdk";
 import type { JSX } from "react";
 import { ChessView } from "./components/ChessView";
 import { createChessRuntime } from "./host";

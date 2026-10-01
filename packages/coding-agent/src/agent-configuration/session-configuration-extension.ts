@@ -1,6 +1,6 @@
-import type { RuntimeObservationPublisher } from "@vetta/runtime-core/observation";
-import type { SessionExtensionDefinition } from "@vetta/runtime-core/session-extensions";
-import { defineSessionExtensionService } from "@vetta/runtime-core/session-extensions";
+import type { RuntimeObservationPublisher } from "@astravia/runtime-core/observation";
+import type { SessionExtensionDefinition } from "@astravia/runtime-core/session-extensions";
+import { defineSessionExtensionService } from "@astravia/runtime-core/session-extensions";
 import type { AgentConfigurationSelection } from "./configuration-schema.js";
 import { AgentSessionConfiguration } from "./session-configuration.js";
 import {

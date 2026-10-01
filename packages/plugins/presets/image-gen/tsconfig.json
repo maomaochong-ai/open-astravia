@@ -10,8 +10,8 @@
 		"moduleResolution": "bundler",
 		"baseUrl": ".",
 		"paths": {
-			"@vetta-org/plugin-sdk": ["../../plugin-sdk/src/index.ts"],
-			"@vetta-org/plugin-sdk/*": ["../../plugin-sdk/src/*"]
+			"@astravia-org/plugin-sdk": ["../../plugin-sdk/src/index.ts"],
+			"@astravia-org/plugin-sdk/*": ["../../plugin-sdk/src/*"]
 		},
 		"isolatedModules": true,
 		"jsx": "react-jsx",

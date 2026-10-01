@@ -11,7 +11,7 @@
 					"template": "chat-over-canvas",
 					"canvas": "code",
 					"user_prompt": "帮我创建一个用于审查 API 兼容性的 Skill。",
-					"assistant_reply": "我会先确定触发条件和工作流，再生成符合 Vetta 规范的 SKILL.md 与所需资源。"
+					"assistant_reply": "我会先确定触发条件和工作流，再生成符合 Astravia 规范的 SKILL.md 与所需资源。"
 				}
 			},
 			{

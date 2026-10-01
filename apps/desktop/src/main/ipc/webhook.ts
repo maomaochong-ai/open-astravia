@@ -3,14 +3,14 @@ import type { WebhookCreateInput, WebhookMessage, WebhookUpdatePatch } from "../
 import { getWebhookManager } from "../webhook/index.js";
 
 const CHANNELS = {
-	LIST: "vetta:webhook:list",
-	LIST_PROVIDERS: "vetta:webhook:list-providers",
-	CREATE: "vetta:webhook:create",
-	UPDATE: "vetta:webhook:update",
-	DELETE: "vetta:webhook:delete",
-	TOGGLE: "vetta:webhook:toggle",
-	TEST: "vetta:webhook:test",
-	SEND: "vetta:webhook:send",
+	LIST: "astravia:webhook:list",
+	LIST_PROVIDERS: "astravia:webhook:list-providers",
+	CREATE: "astravia:webhook:create",
+	UPDATE: "astravia:webhook:update",
+	DELETE: "astravia:webhook:delete",
+	TOGGLE: "astravia:webhook:toggle",
+	TEST: "astravia:webhook:test",
+	SEND: "astravia:webhook:send",
 } as const;
 
 function assertNonEmptyString(value: unknown, field: string): asserts value is string {

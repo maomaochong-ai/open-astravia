@@ -9,7 +9,7 @@ import { installRuntimeArchive, installRuntimeDirectory } from "./runtime-archiv
 let testRoot = "";
 
 beforeEach(async () => {
-	testRoot = await mkdtemp(join(tmpdir(), "vetta-runtime-archive-"));
+	testRoot = await mkdtemp(join(tmpdir(), "astravia-runtime-archive-"));
 });
 
 afterEach(async () => {

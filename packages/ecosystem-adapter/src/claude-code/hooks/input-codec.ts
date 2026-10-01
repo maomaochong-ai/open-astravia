@@ -18,7 +18,7 @@ export function encodeClaudeHookInput(request: HookRequest): string {
 				model: request.model,
 			});
 		case "SessionEnd":
-			// Wire field stays Claude's `reason`; host uses Vetta `cause`.
+			// Wire field stays Claude's `reason`; host uses Astravia `cause`.
 			return JSON.stringify({
 				...common,
 				reason: toClaudeSessionEndReason(request.cause),

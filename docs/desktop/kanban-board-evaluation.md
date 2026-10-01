@@ -23,7 +23,7 @@
 | 主题页 `ThemePageDefinition` | ❌ 属于主题体系，插件用不了。但它是**很好的形状参照**：扩展方拥有整页、宿主只提供路由与兜底 |
 | **新增工作区视图** | ✅ 与内置页同级；有独立路由可深链；入口进侧边栏可编排 |
 
-术语上选 **Workspace View（工作区视图）** 而非沿用 VS Code 的 "View Container"：VS Code 的 View Container 是**侧边栏内的容器**，而这里是**整页内容区**，直接借用会误导插件作者。Vetta 已有的插槽命名（Global Slot / Activity Tab / Turn Card）都是「位置 + 形态」，Workspace View 与之同构。
+术语上选 **Workspace View（工作区视图）** 而非沿用 VS Code 的 "View Container"：VS Code 的 View Container 是**侧边栏内的容器**，而这里是**整页内容区**，直接借用会误导插件作者。Astravia 已有的插槽命名（Global Slot / Activity Tab / Turn Card）都是「位置 + 形态」，Workspace View 与之同构。
 
 ### 2.2 为什么看板不复用 batch-tasks 引擎
 
@@ -35,7 +35,7 @@ batch-tasks 已经有队列、并发、每任务一会话，看起来很接近�
 
 看板需要并发派出多个后台任务并观察状态，而 `ctx.conversation.*` 只作用于用户当前正在看的会话。
 
-实现上有两条路：新开主进程 IPC 通道，或封装 renderer 已有的 `window.vetta.session.*`。选后者，因为：
+实现上有两条路：新开主进程 IPC 通道，或封装 renderer 已有的 `window.astravia.session.*`。选后者，因为：
 
 - renderer **已经**持有等价能力，新开通道等于把同一能力实现两遍，还扩大了 preload 暴露面。
 - `official.navigation` 已经是同类先例（renderer-only official API），有既成模式可循。
@@ -128,7 +128,7 @@ batch-tasks 已经有队列、并发、每任务一会话，看起来很接近�
 ### 落地化修复（真 bug）
 
 1. **图标全部缺失**：首版插件 CSS 只引了 `tailwindcss/utilities.css`，没有 theme 层（`h-4`/`rounded-lg` 等 spacing 工具类生成不出来）也没有 `@iconify/tailwind4` 插件（所有 `icon-[solar--*]` 类不存在）。对齐 `image-gen` 的三段式引入后，产物 CSS 从 10.5KB 增至 62KB（含图标数据）。
-2. **弹层内部样式丢失**：插件 CSS 被 `@scope` 到 `data-vetta-plugin-root` 根节点，而 Radix Dialog/Popover/DropdownMenu portal 到 `document.body`，逃出了 scope。按 `content-creation` 的既有模式在每个 portaled content 上补挂 `data-vetta-plugin-root="kanban"`。
+2. **弹层内部样式丢失**：插件 CSS 被 `@scope` 到 `data-astravia-plugin-root` 根节点，而 Radix Dialog/Popover/DropdownMenu portal 到 `document.body`，逃出了 scope。按 `content-creation` 的既有模式在每个 portaled content 上补挂 `data-astravia-plugin-root="kanban"`。
 
 ### 视觉体系
 

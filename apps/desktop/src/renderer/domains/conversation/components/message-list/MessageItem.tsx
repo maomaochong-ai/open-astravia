@@ -5,10 +5,10 @@ import {
 	MessageLayout,
 	MessageVisual,
 	ModelSwitchBoundaryView,
-} from "@vetta-org/theme-ui/chat";
+} from "@astravia-org/theme-ui/chat";
 import { forwardRef, memo } from "react";
 import { useTranslation } from "react-i18next";
-import type { Usage } from "@vetta/ai/protocol";
+import type { Usage } from "@astravia/ai/protocol";
 import type { ChatConversationItem } from "./types";
 import type { ConversationParticipantViewModel } from "@shared/conversation";
 import { AssistantMessage } from "./AssistantMessage";

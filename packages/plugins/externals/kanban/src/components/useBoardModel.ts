@@ -57,7 +57,7 @@ export function useBoardModel(controller: KanbanBoardController): BoardModel {
 			setBoard(next);
 			setLoading(false);
 		});
-		// 与 board 分开刷：模型清单不是看板数据，且远程目录（Vetta Go）随登录态变化。
+		// 与 board 分开刷：模型清单不是看板数据，且远程目录（Astravia Go）随登录态变化。
 		void controller.refreshModels().then((next) => {
 			if (cancelled) return;
 			setModels(next);

@@ -133,8 +133,8 @@ describe("remote desktop host negotiation", () => {
 		);
 
 		await host.start(fakeStream(), { waitForPeerReady: true });
-		expect(peer.createDataChannel).toHaveBeenNthCalledWith(1, "vetta-input-v1", { ordered: true });
-		expect(peer.createDataChannel).toHaveBeenNthCalledWith(2, "vetta-control-v2", { ordered: true });
+		expect(peer.createDataChannel).toHaveBeenNthCalledWith(1, "astravia-input-v1", { ordered: true });
+		expect(peer.createDataChannel).toHaveBeenNthCalledWith(2, "astravia-control-v2", { ordered: true });
 		const control = peer.channels[1];
 		control.onopen?.(new Event("open"));
 		expect(opened).toHaveBeenCalledOnce();

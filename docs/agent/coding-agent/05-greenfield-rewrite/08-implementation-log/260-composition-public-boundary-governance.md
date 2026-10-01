@@ -14,7 +14,7 @@
 - 会话历史、认证、模型和设置等用户数据；必要时由显式、独立的新迁移器读取旧格式。
 - 模型消息、工具消息、错误、取消、事件顺序、并发约束和资源释放语义。
 - 仍然有效的行为测试场景和数据 fixture；旧实现可以临时作为测试 Oracle，但不能被新生产代码调用。
-- `@vetta/ai` 与经过合同验证的 `@vetta/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
+- `@astravia/ai` 与经过合同验证的 `@astravia/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
 
 ## 明确舍弃（固定）
 
@@ -28,7 +28,7 @@
 
 ## 本阶段与最终目标的关系
 
-第 259 阶段完成 CLI Runtime Host 拆分后，`@vetta/coding-agent/composition` 成为 CLI 与 Desktop 直接使用的产品组合边界。初始引用统计显示 39 个导出中只有 14 个被生产代码直接导入，但进一步审计发现，很多未直接导入的类型仍构成公开类、工厂和回调的参数或返回合同，不能按引用数机械删除。
+第 259 阶段完成 CLI Runtime Host 拆分后，`@astravia/coding-agent/composition` 成为 CLI 与 Desktop 直接使用的产品组合边界。初始引用统计显示 39 个导出中只有 14 个被生产代码直接导入，但进一步审计发现，很多未直接导入的类型仍构成公开类、工厂和回调的参数或返回合同，不能按引用数机械删除。
 
 本阶段只移除能够证明是包内实现的 5 个符号，并冻结剩余 34 个完整公开签名。这样既收窄公共面，也避免为了追求较小数字破坏宿主可使用的类型合同。
 
@@ -39,7 +39,7 @@
 - 将 Coding Tools Composition 的 9 个行为用例从 `cli-host` 迁入 `coding-agent`，继续覆盖默认工具顺序、按场景激活、显式 fail-closed 工具和外部工具探测行为。
 - 保留公开类和工厂签名所依赖的 Active Session、Runtime controls、Knowledge Processing 与 Session Host 合同；没有根据仓库内直接引用数删除必要类型。
 - 重写进度守卫使用 TypeScript AST 收集 `composition/index.ts` 的具名导出，冻结 34 个允许项和精确基线。
-- 守卫覆盖 CLI 测试，并禁止 Coding Agent 包外通过 `@vetta/coding-agent/composition/*` 深层导入实现。
+- 守卫覆盖 CLI 测试，并禁止 Coding Agent 包外通过 `@astravia/coding-agent/composition/*` 深层导入实现。
 - 未引入 TypeBox 或 Zod：本阶段校验的是 TypeScript 模块导出和静态依赖，不涉及不可信运行时输入。
 
 ## 旧实现依赖变化

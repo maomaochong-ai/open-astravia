@@ -18,7 +18,7 @@
 - 会话历史、认证、模型和设置等用户数据；必要时由显式、独立的新迁移器读取旧格式。
 - 模型消息、工具消息、错误、取消、事件顺序、并发约束和资源释放语义。
 - 仍然有效的行为测试场景和数据 fixture；旧实现可以临时作为测试 Oracle，但不能被新生产代码调用。
-- `@vetta/ai` 与经过合同验证的 `@vetta/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
+- `@astravia/ai` 与经过合同验证的 `@astravia/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
 
 ## 明确舍弃（固定）
 
@@ -62,7 +62,7 @@
 
 - 本阶段最初由 `host/coding-agent-resource-runtime.ts` 集中连接设置、命令、Registry、资源包 Runtime 与 Session Resource
   Runtime；后续可移植性阶段已删除该隐式 Node 组合入口，CLI、Desktop 与 SDK 分别在应用宿主内完成具体装配。
-- `@vetta/coding-agent/resources` 的 `public-api/resources.ts` 当前只公开可移植合同和显式构造器；Desktop TypeScript path map
+- `@astravia/coding-agent/resources` 的 `public-api/resources.ts` 当前只公开可移植合同和显式构造器；Desktop TypeScript path map
   继续指向该源码入口。
 - 包根不再导出 `DefaultPackageManager` 和 `DefaultResourceLoader`，测试验证这两个旧内部对象不会重新暴露。
 - 删除 `core/package-manager.ts` 与 `core/resource-loader.ts`，没有兼容转发文件。

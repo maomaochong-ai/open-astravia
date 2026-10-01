@@ -5,12 +5,12 @@
  * Uses device code flow with PKCE for secure browser-based authentication.
  *
  * Usage:
- *   vetta -e ./packages/coding-agent/examples/extensions/custom-provider-qwen-cli
+ *   astravia -e ./packages/coding-agent/examples/extensions/custom-provider-qwen-cli
  *   # Then /login qwen-cli, or set QWEN_CLI_API_KEY=...
  */
 
-import type { OAuthCredentials, OAuthLoginCallbacks } from "@vetta/ai";
-import type { ExtensionAPI } from "@vetta/coding-agent";
+import type { OAuthCredentials, OAuthLoginCallbacks } from "@astravia/ai";
+import type { ExtensionAPI } from "@astravia/coding-agent";
 
 // =============================================================================
 // Constants

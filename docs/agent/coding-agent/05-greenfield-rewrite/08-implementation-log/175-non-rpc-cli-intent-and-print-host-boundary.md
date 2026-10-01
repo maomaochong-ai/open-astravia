@@ -9,7 +9,7 @@
 1. 先区分 control、print、rpc 三类 CLI 意图，不把所有非 RPC 调用等同为会话 Runtime。
 2. 让 Print Host 依赖最小能力合同，不再直接认识 `AgentSession`。
 3. 用 Legacy 适配器保留现有 Print 行为，本轮不切换 Greenfield。
-4. 通过标准 `vetta` CLI 进程验证 text、JSON、管道 stdin 和 help 行为。
+4. 通过标准 `astravia` CLI 进程验证 text、JSON、管道 stdin 和 help 行为。
 
 ## 审计结论
 
@@ -20,14 +20,14 @@
 | 意图 | 典型入口 | 是否需要会话 Turn |
 | --- | --- | --- |
 | control | `--help`、`--version`、`--list-models`、`--export`、包管理命令 | 不一定；至少不能等同于 Runtime backend 选择 |
-| print | `--print`、`--mode text/json`、带 stdin 的 `vetta agent` | 是 |
+| print | `--print`、`--mode text/json`、带 stdin 的 `astravia agent` | 是 |
 | rpc | `--mode rpc` | 是，并已默认 Greenfield |
 
 因此“非 RPC 默认 Legacy”只能是当前会话执行兼容策略，不能继续充当 CLI 意图模型。
 
 ### 2. 空参数不能在静态分类阶段判为 control
 
-是否存在管道输入只有进程读取 stdin 后才能知道；`vetta agent` 的空 Agent 参数既可能没有输入，也可能承载 piped prompt。静态分类若把空参数当作 control，会提前绕过 Print 路径并破坏管道功能。因此无显式 control/RPC 标记时保持 print-compatible。
+是否存在管道输入只有进程读取 stdin 后才能知道；`astravia agent` 的空 Agent 参数既可能没有输入，也可能承载 piped prompt。静态分类若把空参数当作 control，会提前绕过 Print 路径并破坏管道功能。因此无显式 control/RPC 标记时保持 print-compatible。
 
 ### 3. Print 模式只需要五项能力
 
@@ -81,12 +81,12 @@ CLI 组合仍创建原有 `AgentSession`，随后包装为适配器交给 Print 
 
 ### 标准 CLI 进程测试
 
-从 `apps/cli-host/src/cli.ts` 构建标准 `vetta` 测试入口，连接本地 OpenAI Responses fixture，验证：
+从 `apps/cli-host/src/cli.ts` 构建标准 `astravia` 测试入口，连接本地 OpenAI Responses fixture，验证：
 
 - `--print` 仍通过 Legacy Session 返回最终文本。
 - `--mode json` 仍产生 JSON 事件和模型响应。
-- `vetta agent` 的 piped stdin 在没有显式 mode 时仍进入 Print。
-- `vetta agent --help` 正常输出帮助，且不产生 `[agent-runtime]` 会话决策。
+- `astravia agent` 的 piped stdin 在没有显式 mode 时仍进入 Print。
+- `astravia agent --help` 正常输出帮助，且不产生 `[agent-runtime]` 会话决策。
 - 既有普通 RPC Runtime 选择回归继续通过。
 
 测试同时发现既有 JSON Print stdout 会出现 `[skills] loaded` 诊断文本。该现象不是本轮引入；为遵守“架构重构不改变功能”，本轮没有顺手迁移日志通道，测试只提取并验证 JSON 事件。若要保证严格 JSONL，需要作为独立兼容修复评估全部 stdout 日志来源。
@@ -108,7 +108,7 @@ CLI 组合仍创建原有 `AgentSession`，随后包装为适配器交给 Print 
 
 - Print Host 纯合同：1 项通过。
 - CLI intent 分类：15 项通过。
-- 标准 Vetta 非 RPC CLI：4 项通过。
+- 标准 Astravia 非 RPC CLI：4 项通过。
 - 既有 Runtime 选择回归：10 项通过。
 - 定向测试合计：4 个文件、30 项通过。
 - `bun run check:quick` 通过，包含 package boundary 和 standalone CLI build guard。

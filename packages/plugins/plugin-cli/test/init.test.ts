@@ -13,15 +13,15 @@ import { initHubRepository, initPluginProject, refreshAgentsGuide } from "../src
 const created: string[] = [];
 
 function scratch(): string {
-	const root = mkdtempSync(join(tmpdir(), "vetta-plugin-init-"));
+	const root = mkdtempSync(join(tmpdir(), "astravia-plugin-init-"));
 	created.push(root);
 	mkdirSync(join(root, ".git"), { recursive: true });
 	return root;
 }
 
 function hub(root: string): string {
-	const manifestPath = join(root, ".vetta", "marketplace.json");
-	mkdirSync(join(root, ".vetta"), { recursive: true });
+	const manifestPath = join(root, ".astravia", "marketplace.json");
+	mkdirSync(join(root, ".astravia"), { recursive: true });
 	writeFileSync(
 		manifestPath,
 		JSON.stringify({ schemaVersion: 2, name: "demo-hub", marketplaceVersion: "1", abilities: [] }),
@@ -70,12 +70,12 @@ describe("scaffolding a project", () => {
 			devDependencies: Record<string, string>;
 		};
 		// 一条命令走完构建到安装，Agent 不需要记住产物路径。
-		expect(pkg.scripts["install:vetta"]).toContain("vetta-plugin-cli add .");
-		expect(pkg.devDependencies["@vetta-org/plugin-sdk"]).toMatch(/^\^\d/);
+		expect(pkg.scripts["install:astravia"]).toContain("astravia-plugin-cli add .");
+		expect(pkg.devDependencies["@astravia-org/plugin-sdk"]).toMatch(/^\^\d/);
 
 		const brief = readFileSync(join(result.root, "AGENTS.md"), "utf8");
 		// 说明书只指路，不复述合同——手册才是真源，而且随 SDK 版本走。
-		expect(brief).toContain("vetta-plugin-cli docs");
+		expect(brief).toContain("astravia-plugin-cli docs");
 		expect(brief).not.toContain("agent/docs/plugin");
 	});
 
@@ -142,7 +142,7 @@ describe("scaffolding a marketplace repository", () => {
 			minAppVersion: "0.55.0",
 		});
 
-		const manifest = JSON.parse(readFileSync(join(result.root, ".vetta", "marketplace.json"), "utf8")) as Record<
+		const manifest = JSON.parse(readFileSync(join(result.root, ".astravia", "marketplace.json"), "utf8")) as Record<
 			string,
 			unknown
 		>;
@@ -164,7 +164,7 @@ describe("scaffolding a marketplace repository", () => {
 		// 落在仓库根的 Agent 最需要知道的两件事。
 		expect(brief).toContain("cd abilities/plugins");
 		// 仓库根没有 node_modules，裸 bin 解析不到，必须写全名。
-		expect(brief).toContain("npx @vetta-org/plugin-cli sync");
+		expect(brief).toContain("npx @astravia-org/plugin-cli sync");
 	});
 
 	it("keeps dist publishable by not ignoring it", () => {
@@ -284,7 +284,7 @@ describe("refreshing the agent brief in an existing directory", () => {
 		writeFileSync(join(root, "AGENTS.md"), "# hand written\n", "utf8");
 
 		expect(refreshAgentsGuide(root, { force: true }).written).toBe(true);
-		expect(readFileSync(join(root, "AGENTS.md"), "utf8")).toContain("vetta-guide-revision");
+		expect(readFileSync(join(root, "AGENTS.md"), "utf8")).toContain("astravia-guide-revision");
 	});
 
 	it("dry-run returns the new brief without touching the file", () => {
@@ -297,7 +297,7 @@ describe("refreshing the agent brief in an existing directory", () => {
 
 		// dry-run 要在「拒绝覆盖」的目录上也能用——它正是人工合并的入口。
 		expect(result.written).toBe(false);
-		expect(result.content).toContain("vetta-guide-revision");
+		expect(result.content).toContain("astravia-guide-revision");
 		expect(readFileSync(join(root, "AGENTS.md"), "utf8")).toBe(handWritten);
 	});
 
@@ -334,8 +334,8 @@ describe("refreshing the agent brief in an existing directory", () => {
 		expect(content).toContain("npm run build");
 		// 照着不存在的 script 跑只会得到一句 "Missing script"。
 		expect(content).not.toContain("npm run dev");
-		expect(content).not.toContain("npm run install:vetta");
-		expect(content).toContain("vetta-plugin-cli add .");
+		expect(content).not.toContain("npm run install:astravia");
+		expect(content).toContain("astravia-plugin-cli add .");
 	});
 
 	it("refuses a directory that is neither", () => {

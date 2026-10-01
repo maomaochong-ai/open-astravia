@@ -1,4 +1,4 @@
-import type { PluginContext } from "@vetta-org/plugin-sdk";
+import type { PluginContext } from "@astravia-org/plugin-sdk";
 
 // activate 时持有 ctx，供组件调用 conversation API（插件 tab 组件零 props，
 // ctx 只在 activate 入参出现）。

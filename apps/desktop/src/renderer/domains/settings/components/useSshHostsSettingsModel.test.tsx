@@ -22,7 +22,7 @@ const ssh = {
 	onHostStatusChanged: vi.fn(() => () => {}),
 };
 
-vi.stubGlobal("window", Object.assign(globalThis.window, { vetta: { ssh } }));
+vi.stubGlobal("window", Object.assign(globalThis.window, { astravia: { ssh } }));
 
 const host = { id: "h1", label: "构建机", target: "build-01", source: "manual" as const, status: "disconnected" as const };
 

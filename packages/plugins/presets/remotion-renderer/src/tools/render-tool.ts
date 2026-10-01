@@ -1,4 +1,4 @@
-import type { PluginContext, PluginMediaArtifact } from "@vetta-org/plugin-sdk";
+import type { PluginContext, PluginMediaArtifact } from "@astravia-org/plugin-sdk";
 import { createRemotionRenderDocument, REMOTION_DOCUMENT_MIME_TYPE } from "../render-document";
 
 interface RenderRemotionInput {
@@ -101,10 +101,10 @@ export function registerRenderTool(ctx: PluginContext): void {
 			}
 
 			const jobId = crypto.randomUUID();
-			const jobsDir = joinPath(session.cwd, ".vetta/remotion/jobs");
+			const jobsDir = joinPath(session.cwd, ".astravia/remotion/jobs");
 			const outDir = joinPath(session.cwd, "out");
-			await ensureDirectory(ctx, joinPath(session.cwd, ".vetta"));
-			await ensureDirectory(ctx, joinPath(session.cwd, ".vetta/remotion"));
+			await ensureDirectory(ctx, joinPath(session.cwd, ".astravia"));
+			await ensureDirectory(ctx, joinPath(session.cwd, ".astravia/remotion"));
 			await ensureDirectory(ctx, jobsDir);
 			await ensureDirectory(ctx, outDir);
 			const documentPath = joinPath(jobsDir, `${jobId}.json`);

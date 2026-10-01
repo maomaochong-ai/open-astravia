@@ -1,11 +1,11 @@
-import type { Api, Model } from "@vetta/ai";
+import type { Api, Model } from "@astravia/ai";
 import {
 	type RuntimeHostSessionAssembly,
 	RuntimeObservationHub,
 	type RuntimeSessionCreateRequest,
-} from "@vetta/runtime-core";
-import type { SessionContextRecord } from "@vetta/runtime-core/kernel";
-import type { McpRuntimeToolSource, McpRuntimeToolView } from "@vetta/runtime-mcp";
+} from "@astravia/runtime-core";
+import type { SessionContextRecord } from "@astravia/runtime-core/kernel";
+import type { McpRuntimeToolSource, McpRuntimeToolView } from "@astravia/runtime-mcp";
 import { describe, expect, it, vi } from "vitest";
 import type {
 	CodingAgentRuntimeComposition,

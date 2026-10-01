@@ -7,8 +7,8 @@ import { validateOpenMarketplaceMcp } from "./open-marketplace-mcp";
 
 const temporaryRoots: string[] = [];
 const DEMO_API_KEY_PLACEHOLDER = `\${DEMO_API_KEY}`;
-const PORT_TOKEN = `\${VETTA_MCP_PORT}`;
-const URL_TOKEN = `\${VETTA_MCP_URL}`;
+const PORT_TOKEN = `\${ASTRAVIA_MCP_PORT}`;
+const URL_TOKEN = `\${ASTRAVIA_MCP_URL}`;
 
 async function fixture(
 	server: Record<string, unknown>,
@@ -23,7 +23,7 @@ async function fixture(
 		args?: string[];
 	},
 ) {
-	const root = await mkdtemp(join(tmpdir(), "vetta-open-mcp-test-"));
+	const root = await mkdtemp(join(tmpdir(), "astravia-open-mcp-test-"));
 	temporaryRoots.push(root);
 	await mkdir(root, { recursive: true });
 	await writeFile(
@@ -304,6 +304,6 @@ describe("validateOpenMarketplaceMcp", () => {
 			},
 		);
 
-		expect(() => validateOpenMarketplaceMcp(root, ability)).toThrow(/VETTA_MCP_PORT/);
+		expect(() => validateOpenMarketplaceMcp(root, ability)).toThrow(/ASTRAVIA_MCP_PORT/);
 	});
 });

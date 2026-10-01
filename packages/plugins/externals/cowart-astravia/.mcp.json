@@ -1,0 +1,14 @@
+{
+	"mcpServers": {
+		"cowart-mcp": {
+			"displayName": "Cowart Canvas MCP",
+			"description": "Project-backed Cowart canvas state and image tools for Astravia.",
+			"command": "node",
+			"args": ["./scripts/start-mcp.mjs"],
+			"cwd": ".",
+			"env": {
+				"COWART_ASTRAVIA": "1"
+			}
+		}
+	}
+}

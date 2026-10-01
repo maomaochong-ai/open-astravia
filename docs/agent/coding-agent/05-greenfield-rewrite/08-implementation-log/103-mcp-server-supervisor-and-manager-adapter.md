@@ -3,7 +3,7 @@
 ## 1. 目标
 
 第 99 至 102 轮已经把 MCP 协议、配置 Source、Client/Transport、OAuth Store/Provider 和交互式
-OAuth 用例迁入 `@vetta/runtime-mcp`，但 `coding-agent` 的 `McpManager` 仍拥有约 700 行通用运行时逻辑：
+OAuth 用例迁入 `@astravia/runtime-mcp`，但 `coding-agent` 的 `McpManager` 仍拥有约 700 行通用运行时逻辑：
 
 - Server 初始化、状态转换和 Tool/Resource discovery；
 - 静态配置与插件配置的覆盖；
@@ -80,7 +80,7 @@ interface McpDynamicServerSet {
 - restart、disconnect、enable、disable、reload、shutdown；
 - Server View/Binding、状态和统计查询。
 
-Supervisor 不导入 Coding Agent，不解析产品目录，不打开浏览器，不包含 GitHub/Vetta 策略，也不生成
+Supervisor 不导入 Coding Agent，不解析产品目录，不打开浏览器，不包含 GitHub/Astravia 策略，也不生成
 `AgentTool`。认证错误识别、配置 Source、Client Factory 和 diagnostic sink 均通过显式依赖注入。
 
 ## 5. Coding Agent 兼容适配层
@@ -132,7 +132,7 @@ runtime-mcp 完整套件：9 files, 33 tests passed
 coding-agent MCP 相关套件：7 files, 40 tests passed
 bun run check:quick: passed
 bun run check: passed
-installed standalone Vetta CLI artifact: 1 test passed
+installed standalone Astravia CLI artifact: 1 test passed
 ```
 
 Runtime 独立测试覆盖失败隔离、discovery 降级、状态统计、文件差量 reconcile、无效配置保留、动态
@@ -151,7 +151,7 @@ monorepo tsgo、CLI、Desktop、Admin 和 guards 全部通过，本轮没有越�
 第二次 `check:quick` 通过。完整 `bun run check` 随后一次通过，没有通过放宽类型、`any`、内联类型
 import 或跳过子项目检查绕过门禁。
 
-独立安装态测试使用仓库已有 Vetta CLI 构建和两个可执行进程完成同一 Conversation 的创建与恢复，
+独立安装态测试使用仓库已有 Astravia CLI 构建和两个可执行进程完成同一 Conversation 的创建与恢复，
 验证新增 `runtime-mcp/server` 导出进入真实依赖闭包，而不只在 Vitest 源码 alias 下工作。
 
 ## 10. 结果与下一步

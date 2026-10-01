@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { InstalledPlugin, PluginManifest } from "../../preload/api-types/plugins.js";
-import { findVettaPluginPackagePath, PluginPackageOpenService } from "./plugin-package-open-service.js";
+import { findAstraviaPluginPackagePath, PluginPackageOpenService } from "./plugin-package-open-service.js";
 
 const manifest: PluginManifest = {
 	id: "demo",
@@ -34,16 +34,16 @@ function harness(confirm = true) {
 describe("PluginPackageOpenService", () => {
 	it("queues a startup package and installs it only after Desktop is ready", async () => {
 		const { dependencies, service } = harness();
-		expect(service.enqueue("C:/Downloads/demo.VETTAPKG")).toBe(true);
+		expect(service.enqueue("C:/Downloads/demo.ASTRAVIAPKG")).toBe(true);
 		await service.waitForIdle();
 		expect(dependencies.inspect).not.toHaveBeenCalled();
 
 		service.markReady();
 		await service.waitForIdle();
 
-		expect(dependencies.inspect).toHaveBeenCalledWith("C:/Downloads/demo.VETTAPKG");
-		expect(dependencies.confirm).toHaveBeenCalledWith("C:/Downloads/demo.VETTAPKG", manifest);
-		expect(dependencies.install).toHaveBeenCalledWith("C:/Downloads/demo.VETTAPKG", manifest);
+		expect(dependencies.inspect).toHaveBeenCalledWith("C:/Downloads/demo.ASTRAVIAPKG");
+		expect(dependencies.confirm).toHaveBeenCalledWith("C:/Downloads/demo.ASTRAVIAPKG", manifest);
+		expect(dependencies.install).toHaveBeenCalledWith("C:/Downloads/demo.ASTRAVIAPKG", manifest);
 		expect(dependencies.notifyInstalled).toHaveBeenCalledWith(installed);
 		expect(dependencies.revealApp).toHaveBeenCalledOnce();
 	});
@@ -51,7 +51,7 @@ describe("PluginPackageOpenService", () => {
 	it("does not install when the user cancels the package confirmation", async () => {
 		const { dependencies, service } = harness(false);
 		service.markReady();
-		service.enqueue("C:/Downloads/demo.vettapkg");
+		service.enqueue("C:/Downloads/demo.astraviapkg");
 		await service.waitForIdle();
 
 		expect(dependencies.install).not.toHaveBeenCalled();
@@ -62,38 +62,38 @@ describe("PluginPackageOpenService", () => {
 		const { dependencies, service } = harness();
 		dependencies.inspect.mockRejectedValueOnce(new Error("invalid package"));
 		service.markReady();
-		service.enqueue("C:/Downloads/broken.vettapkg");
-		service.enqueue("C:/Downloads/demo.vettapkg");
+		service.enqueue("C:/Downloads/broken.astraviapkg");
+		service.enqueue("C:/Downloads/demo.astraviapkg");
 		await service.waitForIdle();
 
 		expect(dependencies.notifyError).toHaveBeenCalledWith(
-			"C:/Downloads/broken.vettapkg",
+			"C:/Downloads/broken.astraviapkg",
 			expect.objectContaining({ message: "invalid package" }),
 			undefined,
 		);
-		expect(dependencies.install).toHaveBeenCalledWith("C:/Downloads/demo.vettapkg", manifest);
+		expect(dependencies.install).toHaveBeenCalledWith("C:/Downloads/demo.astraviapkg", manifest);
 	});
 
 	it("keeps the inspected identity when package installation fails", async () => {
 		const { dependencies, service } = harness();
 		dependencies.install.mockRejectedValueOnce(new Error("copy failed"));
 		service.markReady();
-		service.enqueue("C:/Downloads/demo.vettapkg");
+		service.enqueue("C:/Downloads/demo.astraviapkg");
 		await service.waitForIdle();
 
 		expect(dependencies.notifyError).toHaveBeenCalledWith(
-			"C:/Downloads/demo.vettapkg",
+			"C:/Downloads/demo.astraviapkg",
 			expect.objectContaining({ message: "copy failed" }),
 			manifest,
 		);
 	});
 });
 
-describe("findVettaPluginPackagePath", () => {
+describe("findAstraviaPluginPackagePath", () => {
 	it("recognizes only the dedicated package extension", () => {
-		expect(findVettaPluginPackagePath(["electron.exe", "app.js", "C:/Downloads/demo.vettapkg"])).toBe(
-			"C:/Downloads/demo.vettapkg",
+		expect(findAstraviaPluginPackagePath(["electron.exe", "app.js", "C:/Downloads/demo.astraviapkg"])).toBe(
+			"C:/Downloads/demo.astraviapkg",
 		);
-		expect(findVettaPluginPackagePath(["electron.exe", "C:/Downloads/demo.zip"])).toBeUndefined();
+		expect(findAstraviaPluginPackagePath(["electron.exe", "C:/Downloads/demo.zip"])).toBeUndefined();
 	});
 });

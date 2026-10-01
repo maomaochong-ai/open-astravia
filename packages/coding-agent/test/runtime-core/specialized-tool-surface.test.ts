@@ -1,8 +1,8 @@
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { CodingToolRegistration } from "@astravia/runtime-tools";
 import { Type } from "@sinclair/typebox";
-import type { CodingToolRegistration } from "@vetta/runtime-tools";
 import { afterEach, describe, expect, it } from "vitest";
 import { createCodingAgentSpecializedToolRegistrations } from "../../src/composition/tool-surface/specialized-tools.js";
 import {

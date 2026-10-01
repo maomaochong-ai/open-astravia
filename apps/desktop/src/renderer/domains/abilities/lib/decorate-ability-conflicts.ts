@@ -5,8 +5,8 @@ function normalizedName(item: AbilityItem): string {
 }
 
 /**
- * 通用 Agent Skill 目录（`~/.agents/skills`、`<cwd>/.agents/skills`）不受 Vetta 托管，
- * 其同名条目按 ADR-0020 一律让位于 Vetta 原生 skill，因此不占安装位、不判冲突。
+ * 通用 Agent Skill 目录（`~/.agents/skills`、`<cwd>/.agents/skills`）不受 Astravia 托管，
+ * 其同名条目按 ADR-0020 一律让位于 Astravia 原生 skill，因此不占安装位、不判冲突。
  */
 function occupiesInstallSlot(item: AbilityItem): boolean {
 	if (item.type !== "skill" && item.type !== "scene") return true;

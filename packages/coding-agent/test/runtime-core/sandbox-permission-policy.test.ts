@@ -1,4 +1,4 @@
-import type { SandboxPermissionRequest } from "@vetta/runtime-core/sandbox";
+import type { SandboxPermissionRequest } from "@astravia/runtime-core/sandbox";
 import { describe, expect, it, vi } from "vitest";
 import type { CodingAgentSandboxAuthorizationPort } from "../../src/execution/sandbox/authorization-contract.js";
 import {

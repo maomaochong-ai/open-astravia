@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { MessageSelectionContextMenuView } from "@vetta-org/theme-ui/chat";
+import { MessageSelectionContextMenuView } from "@astravia-org/theme-ui/chat";
 import { useMessageSelectionContextMenu } from "../../hooks/useMessageSelectionContextMenu";
 import { useAnnotations } from "../annotations/AnnotationScope";
 import { useTranslation } from "react-i18next";

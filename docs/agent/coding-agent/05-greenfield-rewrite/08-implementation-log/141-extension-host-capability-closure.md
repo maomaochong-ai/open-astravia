@@ -125,5 +125,5 @@ Greenfield IM 的 Extension 选择现在按宿主真实能力判断。需要承�
 ## 下一步
 
 下一阶段应进行 Greenfield IM Extension 切换门禁收口：枚举仍会导致 `legacy-extension` 的实际注册，
-建立真实 Vetta CLI/RPC 会话差分清单，并只处理当前 Profile 可观察的剩余缺口。交互式 Shortcut 和
+建立真实 Astravia CLI/RPC 会话差分清单，并只处理当前 Profile 可观察的剩余缺口。交互式 Shortcut 和
 Message Renderer 应留给未来独立 Greenfield UI Host，不进入这一迁移链路。

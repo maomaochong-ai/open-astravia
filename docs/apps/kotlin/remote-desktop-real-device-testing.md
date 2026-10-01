@@ -56,18 +56,18 @@ $adb = "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe"
 从仓库根目录进入移动端：
 
 ```powershell
-Set-Location "C:\develop\yiyun\vetta\open-vetta\apps\mobile\client-android"
+Set-Location "C:\develop\yiyun\astravia\open-astravia\apps\mobile\client-android"
 .\gradlew.bat :androidApp:assembleDebug --no-daemon
 ```
 
 安装当前 Debug APK：
 
 ```powershell
-$repo = "C:\develop\yiyun\vetta\open-vetta"
+$repo = "C:\develop\yiyun\astravia\open-astravia"
 $apk = "$repo\apps\mobile\client-android\androidApp\build\outputs\apk\debug\androidApp-debug.apk"
 & $adb install -r $apk
-& $adb shell am force-stop org.vetta.android
-& $adb shell monkey -p org.vetta.android -c android.intent.category.LAUNCHER 1
+& $adb shell am force-stop org.astravia.android
+& $adb shell monkey -p org.astravia.android -c android.intent.category.LAUNCHER 1
 ```
 
 如果电脑同时连接了模拟器和多台手机，先记录 `devices` 输出中的序列号，并为后续每条命令加上 `-s <serial>`：
@@ -75,8 +75,8 @@ $apk = "$repo\apps\mobile\client-android\androidApp\build\outputs\apk\debug\andr
 ```powershell
 $serial = "你的真机序列号"
 & $adb -s $serial install -r $apk
-& $adb -s $serial shell am force-stop org.vetta.android
-& $adb -s $serial shell monkey -p org.vetta.android -c android.intent.category.LAUNCHER 1
+& $adb -s $serial shell am force-stop org.astravia.android
+& $adb -s $serial shell monkey -p org.astravia.android -c android.intent.category.LAUNCHER 1
 ```
 
 如果安装报 `INSTALL_FAILED_USER_RESTRICTED` 或手机弹出“禁止通过 USB 安装”，在手机上允许“USB 安装/通过 USB 安装应用”（部分厂商还要求关闭“仅充电”安全限制），保持屏幕解锁后重新执行安装。这个错误表示系统拦截了安装授权，不是 APK 构建失败。
@@ -90,8 +90,8 @@ $serial = "你的真机序列号"
 $testApk = "$repo\apps\mobile\client-android\shared\build\outputs\apk\androidTest\shared-androidTest.apk"
 & $adb -s $serial install -r $testApk
 & $adb -s $serial shell am instrument -w -r `
-  -e class 'org.vetta.android.ui.EntryAndProfileScreenTest,org.vetta.android.ui.MainScreenInteractionsTest,org.vetta.android.ui.DesktopConversationScreenTest' `
-  org.vetta.android.shared.test/androidx.test.runner.AndroidJUnitRunner
+  -e class 'org.astravia.android.ui.EntryAndProfileScreenTest,org.astravia.android.ui.MainScreenInteractionsTest,org.astravia.android.ui.DesktopConversationScreenTest' `
+  org.astravia.android.shared.test/androidx.test.runner.AndroidJUnitRunner
 ```
 
 测试 APK 安装受限时，先完成上面的 USB 安装授权；如果暂时不能授权，仍可继续使用主 APK 做手工真机验收，不能把未执行的自动化结果当作通过。
@@ -99,7 +99,7 @@ $testApk = "$repo\apps\mobile\client-android\shared\build\outputs\apk\androidTes
 只有在旧数据导致登录、配对或配置无法判断时才清空数据：
 
 ```powershell
-& $adb -s $serial shell pm clear org.vetta.android
+& $adb -s $serial shell pm clear org.astravia.android
 ```
 
 清空数据会移除登录状态、手机身份密钥和本地配对信息。
@@ -109,7 +109,7 @@ $testApk = "$repo\apps\mobile\client-android\shared\build\outputs\apk\androidTes
 真实 UI 验证使用仓库提供的隔离实例，避免读取或修改日常 Desktop 配置：
 
 ```powershell
-Set-Location "C:\develop\yiyun\vetta\open-vetta"
+Set-Location "C:\develop\yiyun\astravia\open-astravia"
 bun run verify:ui:start:fresh
 bun run verify:ui:status
 ```
@@ -148,10 +148,10 @@ bun run verify:ui:stop
 ```powershell
 & $adb -s $serial shell cmd package query-activities `
   -a android.intent.action.VIEW `
-  -d 'vetta://pair?invalid=1'
+  -d 'astravia://pair?invalid=1'
 ```
 
-结果应唯一指向 `org.vetta.android.MainActivity`。打开真实邀请时必须将完整 URI 作为一个加引号的参数传入，并避免把它打印到终端、CI 日志或测试报告：
+结果应唯一指向 `org.astravia.android.MainActivity`。打开真实邀请时必须将完整 URI 作为一个加引号的参数传入，并避免把它打印到终端、CI 日志或测试报告：
 
 ```powershell
 $invite = '<由隔离 Desktop 当前二维码安全解码得到的完整 URI>'
@@ -159,7 +159,7 @@ $quotedInvite = '"' + $invite + '"'
 & $adb -s $serial shell am start -W `
   -a android.intent.action.VIEW `
   -d $quotedInvite `
-  org.vetta.android
+  org.astravia.android
 $invite = $null
 ```
 
@@ -207,7 +207,7 @@ $invite = $null
 ```powershell
 & $adb -s $serial logcat -c
 & $adb -s $serial logcat -v time |
-  Select-String "VettaRemote|org.webrtc.Logging|AndroidRuntime|FATAL EXCEPTION"
+  Select-String "AstraviaRemote|org.webrtc.Logging|AndroidRuntime|FATAL EXCEPTION"
 ```
 
 预期的关键顺序是：

@@ -143,7 +143,7 @@ export function createLocalPresentationAssetUrl(absolutePath: string, assetRevis
 		.map((segment) => encodeURIComponent(segment))
 		.join("/");
 	const prefix = pathname.startsWith("/") ? "" : "/";
-	return `vetta-file://local${prefix}${pathname}?v=${encodeURIComponent(assetRevision)}`;
+	return `astravia-file://local${prefix}${pathname}?v=${encodeURIComponent(assetRevision)}`;
 }
 
 export function resolvePresentationImageReference(

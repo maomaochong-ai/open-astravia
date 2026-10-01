@@ -2,8 +2,8 @@ import {
 	InMemoryRuntimeSessionMarkerIndex,
 	InMemoryRuntimeSessionValueIndex,
 	type RuntimeResourceContext,
-} from "@vetta/runtime-core";
-import type { McpDeferredToolController } from "@vetta/runtime-mcp";
+} from "@astravia/runtime-core";
+import type { McpDeferredToolController } from "@astravia/runtime-mcp";
 import type { CodingAgentSessionExecutionRuntime } from "../../execution/session/runtime.js";
 import type { CodingAgentExtensionRunBridge } from "../../extensions/runtime/extension-run-bridge.js";
 import type { CodingAgentSessionConfigurationState } from "../../host/session-configuration/configuration-state.js";

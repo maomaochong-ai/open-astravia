@@ -10,7 +10,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createLoopbackSshConnection, formatLoopbackProjectUri } from "@vetta/ssh-transport/testing";
+import { createLoopbackSshConnection, formatLoopbackProjectUri } from "@astravia/ssh-transport/testing";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const connection = createLoopbackSshConnection();
@@ -28,7 +28,7 @@ describe("远程项目的文件树：用户在面板里的一串常见操作", (
 	let root: string;
 
 	beforeEach(() => {
-		remoteRoot = realpathSync(mkdtempSync(join(tmpdir(), "vetta-remote-tree-")));
+		remoteRoot = realpathSync(mkdtempSync(join(tmpdir(), "astravia-remote-tree-")));
 		mkdirSync(join(remoteRoot, "src"));
 		mkdirSync(join(remoteRoot, "node_modules/pkg"), { recursive: true });
 		writeFileSync(join(remoteRoot, "src/main.ts"), "export {};\n");

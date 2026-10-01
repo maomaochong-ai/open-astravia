@@ -1,4 +1,4 @@
-import type { SshConnectionStatus } from "@vetta/ssh-transport";
+import type { SshConnectionStatus } from "@astravia/ssh-transport";
 import { BrowserWindow } from "electron";
 import { SSH_CHANNELS, type SshHostStatusEvent } from "../../shared/ssh-ipc.js";
 

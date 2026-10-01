@@ -94,15 +94,15 @@ export function useSshHostsSettingsModel(): SshHostsSettingsModel {
 	const [importing, setImporting] = useState(false);
 
 	const refresh = useCallback(async () => {
-		setHosts(await window.vetta.ssh.listHosts());
+		setHosts(await window.astravia.ssh.listHosts());
 	}, []);
 
 	useEffect(() => {
 		void refresh().finally(() => setLoading(false));
 		// 主机状态由后台动作（工具调用、文件树刷新）改变，不经过本页面；没有这条订阅
 		// 列表会一直停在打开设置页那一刻的状态上。
-		const offHosts = window.vetta.ssh.onHostsChanged(() => void refresh());
-		const offStatus = window.vetta.ssh.onHostStatusChanged(({ hostId, status }) => {
+		const offHosts = window.astravia.ssh.onHostsChanged(() => void refresh());
+		const offStatus = window.astravia.ssh.onHostStatusChanged(({ hostId, status }) => {
 			setHosts((previous) => previous.map((host) => (host.id === hostId ? { ...host, status } : host)));
 		});
 		return () => {
@@ -151,8 +151,8 @@ export function useSshHostsSettingsModel(): SshHostsSettingsModel {
 		setSaving(true);
 		setFormError(null);
 		try {
-			if (editingId === "new") await window.vetta.ssh.createHost(input);
-			else await window.vetta.ssh.updateHost({ ...input, id: editingId });
+			if (editingId === "new") await window.astravia.ssh.createHost(input);
+			else await window.astravia.ssh.updateHost({ ...input, id: editingId });
 			setEditingId(null);
 			await refresh();
 		} catch (error) {
@@ -171,7 +171,7 @@ export function useSshHostsSettingsModel(): SshHostsSettingsModel {
 				return rest;
 			});
 			try {
-				const outcome = classifyProbe(await window.vetta.ssh.testHost(host.id));
+				const outcome = classifyProbe(await window.astravia.ssh.testHost(host.id));
 				// 连上了就只说连上了。远端缺 rg / fd 不在这里提——测连接的时刻对此无从下手，
 				// 而真正用到搜索工具时，远端执行层会点名是哪台主机缺了哪个命令
 				// （packages/runtime-ssh/src/ssh-tool-process.ts）。
@@ -200,7 +200,7 @@ export function useSshHostsSettingsModel(): SshHostsSettingsModel {
 				confirmLabel: t("sshRemove"),
 				variant: "danger",
 				onConfirm: () => {
-					void window.vetta.ssh
+					void window.astravia.ssh
 						.removeHost(host.id)
 						.then(() => refresh())
 						.catch((error: unknown) => {
@@ -219,8 +219,8 @@ export function useSshHostsSettingsModel(): SshHostsSettingsModel {
 	const importFromConfig = useCallback(async () => {
 		setImporting(true);
 		try {
-			const aliases = await window.vetta.ssh.listConfigAliases();
-			const added = await window.vetta.ssh.importFromConfig(aliases);
+			const aliases = await window.astravia.ssh.listConfigAliases();
+			const added = await window.astravia.ssh.importFromConfig(aliases);
 			await refresh();
 			setConfirm({
 				title: t("sshImportFromConfig"),

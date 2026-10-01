@@ -1,9 +1,9 @@
-export const VETTA_PLUGIN_DEV_PROTOCOL_VERSION = 1;
+export const ASTRAVIA_PLUGIN_DEV_PROTOCOL_VERSION = 1;
 
-export type VettaPluginDevEvent =
+export type AstraviaPluginDevEvent =
 	| {
 			type: "ready";
-			protocolVersion: typeof VETTA_PLUGIN_DEV_PROTOCOL_VERSION;
+			protocolVersion: typeof ASTRAVIA_PLUGIN_DEV_PROTOCOL_VERSION;
 			pluginId: string;
 			entryUrl: string;
 			origin: string;
@@ -21,14 +21,14 @@ export type VettaPluginDevEvent =
 			message: string;
 		};
 
-type VettaPluginDevEventListener = (event: VettaPluginDevEvent) => void;
+type AstraviaPluginDevEventListener = (event: AstraviaPluginDevEvent) => void;
 
-let listener: VettaPluginDevEventListener | undefined;
+let listener: AstraviaPluginDevEventListener | undefined;
 
-export function setVettaPluginDevEventListener(nextListener: VettaPluginDevEventListener | undefined): void {
+export function setAstraviaPluginDevEventListener(nextListener: AstraviaPluginDevEventListener | undefined): void {
 	listener = nextListener;
 }
 
-export function emitVettaPluginDevEvent(event: VettaPluginDevEvent): void {
+export function emitAstraviaPluginDevEvent(event: AstraviaPluginDevEvent): void {
 	listener?.(event);
 }

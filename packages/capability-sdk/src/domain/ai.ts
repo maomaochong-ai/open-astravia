@@ -162,7 +162,7 @@ const aiChatOutputSchema = defineCapabilityOutputSchema(aiChatResultType, { clea
 
 export const DOMAIN_AI_CAPABILITIES = {
 	LIST_MODELS: defineCapability<Record<string, never>, AiModelListResult>({
-		id: "cap.domain.vetta.ai.models.list",
+		id: "cap.domain.astravia.ai.models.list",
 		kind: "query",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -170,7 +170,7 @@ export const DOMAIN_AI_CAPABILITIES = {
 		output: aiModelListOutputSchema,
 	}),
 	COMPLETE: defineCapability<AiCompleteInput, AiCompleteResult, AiCompleteEvent>({
-		id: "cap.domain.vetta.ai.complete",
+		id: "cap.domain.astravia.ai.complete",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -179,7 +179,7 @@ export const DOMAIN_AI_CAPABILITIES = {
 		event: aiCompleteEventSchema,
 	}),
 	CHAT: defineCapability<AiChatInput, AiChatResult>({
-		id: "cap.domain.vetta.ai.chat",
+		id: "cap.domain.astravia.ai.chat",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,

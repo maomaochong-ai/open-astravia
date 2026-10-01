@@ -14,7 +14,7 @@
 - 会话历史、认证、模型和设置等用户数据；必要时由显式、独立的新迁移器读取旧格式。
 - 模型消息、工具消息、错误、取消、事件顺序、并发约束和资源释放语义。
 - 仍然有效的行为测试场景和数据 fixture；旧实现可以临时作为测试 Oracle，但不能被新生产代码调用。
-- `@vetta/ai` 与经过合同验证的 `@vetta/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
+- `@astravia/ai` 与经过合同验证的 `@astravia/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
 
 ## 明确舍弃（固定）
 
@@ -60,7 +60,7 @@
 
 新增 `runtime-subagents-boundary` 门禁并接入 `check:guards` 与 `test:quality`：
 
-- `workspace dependencies=0`：调度内核不得声明任何 `@vetta/*` workspace 依赖；
+- `workspace dependencies=0`：调度内核不得声明任何 `@astravia/*` workspace 依赖；
 - `tool protocol tokens=0`：生产源码不得包含具体 Subagent 工具名、通知投影或工具描述接口；
 - 既有 Runtime 到 Coding Agent 反向依赖继续保持 `0`。
 

@@ -1,5 +1,5 @@
-import type { ConversationDocument } from "@vetta/runtime-core";
-import type { ConversationDocumentEntry } from "@vetta/runtime-core/conversation";
+import type { ConversationDocument } from "@astravia/runtime-core";
+import type { ConversationDocumentEntry } from "@astravia/runtime-core/conversation";
 import { CODING_AGENT_SESSION_VIEW_VERSION } from "../sessions/index.js";
 import type {
 	HtmlExportOptions,

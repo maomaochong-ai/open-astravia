@@ -1,12 +1,12 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { getVettaHomePath } from "@vetta/action-rpc";
-import { atomicWriteJSON } from "@vetta/toolkit/atomic-write";
+import { getAstraviaHomePath } from "@astravia/action-rpc";
+import { atomicWriteJSON } from "@astravia/toolkit/atomic-write";
 import { type ImTransportSelector, isImTransportSelector } from "./channels.js";
 
 /**
  * Non-secret IM bridge configuration. Stored in plaintext under
- *   ~/.vetta/desktop-app/im-config.json
+ *   ~/.astravia/desktop-app/im-config.json
  *
  * Sensitive fields (App Secret, Verification Token, Encrypt Key, bot
  * tokens) live in credential-store.ts; this file only carries the toggles
@@ -23,7 +23,7 @@ export type { ImTransportSelector };
 /**
  * Optional override telling coding-agent which model to use for IM
  * sessions. When undefined, IM sessions fall back to whatever model the
- * user's agent settings (`~/.vetta/agent/settings.json`) point at — same
+ * user's agent settings (`~/.astravia/agent/settings.json`) point at — same
  * behaviour as the desktop "对话" page. When set, the spec is forwarded
  * to the spawned agent-rpc subprocess via `--model <provider>:<model>`
  * (or just `<model>` if provider is omitted).
@@ -99,7 +99,7 @@ export interface ImConfig {
 	agentModel?: ImAgentModelRef;
 }
 
-const DEFAULT_PATH = join(getVettaHomePath(), "desktop-app", "im-config.json");
+const DEFAULT_PATH = join(getAstraviaHomePath(), "desktop-app", "im-config.json");
 
 export function defaultImConfigPath(): string {
 	return DEFAULT_PATH;
@@ -203,11 +203,11 @@ export function saveImConfig(config: ImConfig, filePath = DEFAULT_PATH): void {
 
 /**
  * Default absolute path the sidecar uses for the wechat credentials JSON.
- * Lives next to im-config.json so all desktop-app vetta state is in one
+ * Lives next to im-config.json so all desktop-app astravia state is in one
  * directory and survives reinstalls in the usual place.
  */
 export function defaultWechatStatePath(): string {
-	return join(getVettaHomePath(), "desktop-app", "im-wechat.json");
+	return join(getAstraviaHomePath(), "desktop-app", "im-wechat.json");
 }
 
 /**
@@ -216,17 +216,17 @@ export function defaultWechatStatePath(): string {
  * defaultWechatStatePath().
  */
 export function defaultWhatsappStatePath(): string {
-	return join(getVettaHomePath(), "desktop-app", "im-whatsapp.db");
+	return join(getAstraviaHomePath(), "desktop-app", "im-whatsapp.db");
 }
 
 /**
  * Default `--config` directory handed to signal-cli in managed mode.
  *
  * Deliberately NOT signal-cli's own default (~/.local/share/signal-cli):
- * keeping Vetta's linked device in a directory we own means unbinding here
+ * keeping Astravia's linked device in a directory we own means unbinding here
  * can clear it without touching a signal-cli install the user set up for
  * their own purposes.
  */
 export function defaultSignalConfigDir(): string {
-	return join(getVettaHomePath(), "desktop-app", "im-signal-cli");
+	return join(getAstraviaHomePath(), "desktop-app", "im-signal-cli");
 }

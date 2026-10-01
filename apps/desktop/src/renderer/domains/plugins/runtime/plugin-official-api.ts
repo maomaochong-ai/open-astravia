@@ -1,5 +1,5 @@
+import type { PluginOfficialApi } from "@astravia-org/plugin-sdk";
 import type { InstalledPlugin } from "@preload/api";
-import type { PluginOfficialApi } from "@vetta-org/plugin-sdk";
 import { createOfficialAgentApi } from "./plugin-official-agent";
 import { createOfficialAppearanceApi } from "./plugin-official-appearance";
 import { createOfficialBatchTasksApi } from "./plugin-official-batch-tasks";

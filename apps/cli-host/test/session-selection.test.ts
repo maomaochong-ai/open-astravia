@@ -1,4 +1,4 @@
-import type { RuntimeSessionCatalog, SessionHistoryInfo } from "@vetta/runtime-core";
+import type { RuntimeSessionCatalog, SessionHistoryInfo } from "@astravia/runtime-core";
 import { describe, expect, it, vi } from "vitest";
 import { resolveImSessionPath } from "../src/rpc/im-session-selection.js";
 

@@ -4,11 +4,11 @@
 
 export const APPSHOT_CHANNELS = {
 	/** settings → main invoke：配置变更后热重载手势监听 */
-	RELOAD_GESTURE: "vetta:appshot:reload-gesture",
+	RELOAD_GESTURE: "astravia:appshot:reload-gesture",
 	/** main → 主窗口 renderer event：捕获完成，附件就绪 */
-	CAPTURED: "vetta:appshot:captured",
+	CAPTURED: "astravia:appshot:captured",
 	/** main → 主窗口 renderer event：捕获失败/被忽略 */
-	CAPTURE_ERROR: "vetta:appshot:capture-error",
+	CAPTURE_ERROR: "astravia:appshot:capture-error",
 } as const;
 
 export interface AppshotCapturedPayload {

@@ -1,7 +1,7 @@
+import { supportsProviderFetchInjection } from "@astravia/ai/protocol";
+import { shouldBypassProxy } from "@astravia/ai/proxy";
+import type { ProxyProviderRowView } from "@astravia-org/theme-ui/settings";
 import type { DesktopProxyConfigPatchData, DesktopProxyProtocol } from "@preload/api-types/config";
-import { supportsProviderFetchInjection } from "@vetta/ai/protocol";
-import { shouldBypassProxy } from "@vetta/ai/proxy";
-import type { ProxyProviderRowView } from "@vetta-org/theme-ui/settings";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -92,7 +92,7 @@ export function useProxySettingsModel(): ProxySettingsModel {
 	const commitTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
 	useEffect(() => {
-		void window.vetta.config.get().then((config) => {
+		void window.astravia.config.get().then((config) => {
 			const proxy = config.proxy;
 			if (!proxy) return;
 			setPasswordStored(proxy.passwordConfigured);
@@ -110,7 +110,7 @@ export function useProxySettingsModel(): ProxySettingsModel {
 	// 这个 effect 只加载数据，刻意不依赖 `t`：i18n 的 `t` 每次渲染都可能是新引用，
 	// 带上它会让列表在每次渲染后被重新拉取，用户刚拨的开关立刻被覆盖回去。
 	useEffect(() => {
-		void window.vetta.models.get().then((config) => {
+		void window.astravia.models.get().then((config) => {
 			setProviders(
 				Object.entries(config.providers ?? {}).map(([id, provider]) => {
 					// 上游在本机或内网时，这一跳根本没出网，开关没有意义。
@@ -138,7 +138,7 @@ export function useProxySettingsModel(): ProxySettingsModel {
 	}, []);
 
 	const commit = useCallback((patch: DesktopProxyConfigPatchData) => {
-		void window.vetta.config.set({ proxy: patch });
+		void window.astravia.config.set({ proxy: patch });
 	}, []);
 
 	/** 文本字段：先更新草稿保证输入跟手，落盘推迟到停止输入之后。 */
@@ -186,10 +186,10 @@ export function useProxySettingsModel(): ProxySettingsModel {
 					current.map((provider) => (provider.id === providerId ? { ...provider, useProxy } : provider)),
 				);
 				void (async () => {
-					const config = await window.vetta.models.get();
+					const config = await window.astravia.models.get();
 					const provider = config.providers?.[providerId];
 					if (!provider) return;
-					await window.vetta.models.set({
+					await window.astravia.models.set({
 						...config,
 						providers: { ...config.providers, [providerId]: { ...provider, useProxy } },
 					});

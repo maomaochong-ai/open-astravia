@@ -1,5 +1,5 @@
-import { useThemeComponent } from "@vetta-org/theme-sdk";
-import { AppearancePickerApprovalView as ThemeAppearancePickerApprovalView } from "@vetta-org/theme-ui/action-approval";
+import { useThemeComponent } from "@astravia-org/theme-sdk";
+import { AppearancePickerApprovalView as ThemeAppearancePickerApprovalView } from "@astravia-org/theme-ui/action-approval";
 import { AppearanceActionPicker } from "./AppearanceActionPicker";
 import { AppearanceApprovalDrawerView } from "./AppearanceApprovalDrawerView";
 import type { AppearancePickerApprovalModel } from "./useAppearancePickerApprovalModel";

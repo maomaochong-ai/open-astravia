@@ -1,4 +1,4 @@
-import type { ConversationDocument } from "@vetta/runtime-core";
+import type { ConversationDocument } from "@astravia/runtime-core";
 
 export interface ExportedToolInfo {
 	readonly name: string;

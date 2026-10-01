@@ -11,7 +11,7 @@ afterEach(async () => {
 });
 
 async function createPath(): Promise<string> {
-	const directory = await mkdtemp(join(tmpdir(), "vetta-config-store-"));
+	const directory = await mkdtemp(join(tmpdir(), "astravia-config-store-"));
 	directories.push(directory);
 	return join(directory, "config.json");
 }

@@ -1,4 +1,4 @@
-import type { AssistantMessage, UserMessage } from "@vetta/ai";
+import type { AssistantMessage, UserMessage } from "@astravia/ai";
 import type { PromptAttachmentRef } from "../contracts.js";
 
 /** Stable reference to a user who authored a Conversation message. */

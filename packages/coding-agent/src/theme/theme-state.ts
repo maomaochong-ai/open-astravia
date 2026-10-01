@@ -3,7 +3,7 @@ import type { Theme } from "./theme.js";
 import { loadTheme, registerTheme } from "./theme-catalog.js";
 import { loadThemeFromContent } from "./theme-factory.js";
 
-const THEME_KEY = Symbol.for("@vetta/coding-agent:theme");
+const THEME_KEY = Symbol.for("@astravia/coding-agent:theme");
 
 export const theme: Theme = new Proxy({} as Theme, {
 	get(_target, property) {

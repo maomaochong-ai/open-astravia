@@ -2,9 +2,9 @@
 
 ## 评审对象
 
-本评审中的“Vetta”主要指以下实现：
+本评审中的“Astravia”主要指以下实现：
 
-- `@vetta/coding-agent` 的公开 SDK、Extension API、资源加载与宿主组合；
+- `@astravia/coding-agent` 的公开 SDK、Extension API、资源加载与宿主组合；
 - `runtime-core`、`runtime-tools`、`runtime-mcp`、`runtime-subagents`、`runtime-storage`、`runtime-telemetry`；
 - Desktop Plugin SDK、manifest、权限与 capability runtime；
 - CLI、Desktop、IM/RPC 等宿主如何消费这些能力。
@@ -17,11 +17,11 @@
 
 | 对象 | 版本/提交 | 提交时间 | 用途 |
 | --- | --- | --- | --- |
-| Vetta | `972647ba26f2bea3f70b3eb2fc1bc9547567235d` | 2026-08-10 | 当前实现基线 |
+| Astravia | `972647ba26f2bea3f70b3eb2fc1bc9547567235d` | 2026-08-10 | 当前实现基线 |
 | Pi current | `936aff00918de1187f085f123c2812d8f2d67745`，package `0.84.1` | 2026-08-09 | 当前对比基线 |
 | Pi historical | tag `v0.14.2`，`33a2bcf2031f732a1305b19721b97c69e9bf2c02` | 2025-12-08 | 重写来源的近似历史基线 |
 
-Vetta 的历史 fixtures 中保留了 Pi `0.14.2` 及原始 `pi-mono` 路径信息，因此本评审以 `v0.14.2` 作为“从 Pi 重写”的可验证近似点。它不等价于逐提交的 fork-base；若要做代码血缘审计，应另行使用完整 Git 历史做 patch-id/内容相似度分析。
+Astravia 的历史 fixtures 中保留了 Pi `0.14.2` 及原始 `pi-mono` 路径信息，因此本评审以 `v0.14.2` 作为“从 Pi 重写”的可验证近似点。它不等价于逐提交的 fork-base；若要做代码血缘审计，应另行使用完整 Git 历史做 patch-id/内容相似度分析。
 
 Pi 上游地址以 [earendil-works/pi](https://github.com/earendil-works/pi) 为准；旧的 `badlogic/pi-mono` 地址会重定向。所有上游源码引用均固定到上述 SHA，防止 `main` 后续变化让结论失真。
 

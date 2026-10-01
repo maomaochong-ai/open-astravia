@@ -2,7 +2,7 @@ import { execFile, spawnSync } from "node:child_process";
 import { accessSync, constants, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { isAbsolute, join, resolve as resolvePath } from "node:path";
-import type { SessionExecutionMode } from "@vetta/runtime-core";
+import type { SessionExecutionMode } from "@astravia/runtime-core";
 import { type LinuxSandboxBackend, resolveLinuxBubblewrapBinary } from "./binary-resolver.js";
 import { resolveWindowsSandboxHostBinary } from "./windows-binary-resolver.js";
 
@@ -38,7 +38,7 @@ export interface LinuxSandboxCapability extends SandboxCapability {
 }
 
 const STANDARD_READ_ONLY_ROOTS = ["/usr", "/bin", "/sbin", "/lib", "/lib64", "/etc"] as const;
-const PROBE_HOME = "/tmp/vetta-probe-home";
+const PROBE_HOME = "/tmp/astravia-probe-home";
 const WINDOWS_PROBE_TIMEOUT_MS = 10000;
 
 interface WindowsHostCapabilitiesJson {
@@ -136,7 +136,7 @@ function findOnPathUnix(binary: string): string | undefined {
 }
 
 function resolveMacosSandboxExecPath(): string | undefined {
-	const explicitPath = process.env.VETTA_MACOS_SANDBOX_EXEC_PATH?.trim();
+	const explicitPath = process.env.ASTRAVIA_MACOS_SANDBOX_EXEC_PATH?.trim();
 	if (explicitPath) {
 		if (isAbsolute(explicitPath)) {
 			if (!existsSync(explicitPath)) {
@@ -361,8 +361,8 @@ async function probeWindowsSandbox(): Promise<SandboxCapability> {
 		};
 	}
 
-	const probeRoot = mkdtempSync(join(tmpdir(), "vetta-windows-sandbox-probe-"));
-	const outsideRoot = mkdtempSync(join(homedir(), ".vetta-windows-sandbox-outside-"));
+	const probeRoot = mkdtempSync(join(tmpdir(), "astravia-windows-sandbox-probe-"));
+	const outsideRoot = mkdtempSync(join(homedir(), ".astravia-windows-sandbox-outside-"));
 	try {
 		const workspaceRoot = join(probeRoot, "workspace");
 		const tempRoot = join(probeRoot, "temp");

@@ -1,4 +1,4 @@
-import type { PromptResourceRef } from "@vetta/runtime-core";
+import type { PromptResourceRef } from "@astravia/runtime-core";
 import { createSkillHookContribution, readSkillInvocationDocument } from "../skills/skill-document.js";
 import type { PromptResourceExpansion, PromptResourceExpansionDependencies } from "./contracts.js";
 

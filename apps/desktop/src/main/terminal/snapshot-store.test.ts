@@ -11,7 +11,7 @@ import {
 } from "./snapshot-store.js";
 
 async function createStore(): Promise<{ store: TerminalSnapshotStore; rootDir: string }> {
-	const cacheRoot = await mkdtemp(join(tmpdir(), "vetta-snapshot-"));
+	const cacheRoot = await mkdtemp(join(tmpdir(), "astravia-snapshot-"));
 	const namespace = new ApplicationCacheService(cacheRoot).namespace("terminal-scrollback");
 	return { store: new TerminalSnapshotStore(namespace), rootDir: namespace.rootDir };
 }
@@ -50,9 +50,9 @@ describe("TerminalSnapshotStore", () => {
 	it("写入后能读回", async () => {
 		const { store } = await createStore();
 
-		await store.save("tab-1", "vetta-output");
+		await store.save("tab-1", "astravia-output");
 
-		await expect(store.load("tab-1")).resolves.toBe("vetta-output");
+		await expect(store.load("tab-1")).resolves.toBe("astravia-output");
 	});
 
 	it("没有快照时返回 undefined 而不是抛错", async () => {

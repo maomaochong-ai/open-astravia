@@ -1,5 +1,3 @@
-import type { InstalledPlugin } from "@preload/api";
-import { resolvePluginContributionIcon } from "@shared/lib/plugin-icon";
 import type {
 	Disposable,
 	PluginContext,
@@ -7,7 +5,9 @@ import type {
 	PluginFileExplorerDecorationProvider,
 	PluginFileExplorerToolbarContribution,
 	PluginFileIconTheme,
-} from "@vetta-org/plugin-sdk";
+} from "@astravia-org/plugin-sdk";
+import type { InstalledPlugin } from "@preload/api";
+import { resolvePluginContributionIcon } from "@shared/lib/plugin-icon";
 import {
 	getPluginFileExplorerSelection,
 	getPluginFileExplorerWorkspaceRoots,

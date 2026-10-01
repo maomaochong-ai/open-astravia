@@ -3,7 +3,7 @@ import type {
 	CapabilityExecutionContext,
 	CapabilityHandler,
 	CapabilityToken,
-} from "@vetta-org/capability-sdk";
+} from "@astravia-org/capability-sdk";
 
 export interface CapabilityProviderBinding {
 	readonly token: AnyCapabilityToken;

@@ -3,7 +3,7 @@ import type {
 	PluginNetworkApi,
 	PluginNetworkRequest,
 	PluginNetworkResponse,
-} from "@vetta-org/plugin-sdk";
+} from "@astravia-org/plugin-sdk";
 import type { ContentSettingsReader } from "../src/settings/content-settings";
 import { describe, expect, it } from "vitest";
 import { OpenAiImageProvider } from "../src/generation/openai-image-provider";

@@ -1,8 +1,8 @@
 import { AnimatePresence, motion } from "motion/react";
 import type { JSX, ReactNode } from "react";
-import { useThemeComponent } from "@vetta-org/theme-sdk";
-import type { PageHeaderContentProps as SdkPageHeaderContentProps } from "@vetta-org/theme-sdk/app-shell";
-import { cn } from "@vetta-org/ui";
+import { useThemeComponent } from "@astravia-org/theme-sdk";
+import type { PageHeaderContentProps as SdkPageHeaderContentProps } from "@astravia-org/theme-sdk/app-shell";
+import { cn } from "@astravia-org/ui";
 import { PageHeaderSidebarTrigger } from "./PageHeaderSidebarTrigger";
 import { PageHeaderTitle } from "./PageHeaderTitle";
 import { PageHeaderWindowActions } from "./PageHeaderWindowActions";

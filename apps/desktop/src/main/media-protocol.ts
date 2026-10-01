@@ -2,8 +2,8 @@ import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
 import { extname, isAbsolute, join, relative, resolve } from "node:path";
 import { Readable } from "node:stream";
-import { getVettaHomePath } from "@vetta/action-rpc";
-import { isSshProjectUri } from "@vetta/ssh-transport";
+import { getAstraviaHomePath } from "@astravia/action-rpc";
+import { isSshProjectUri } from "@astravia/ssh-transport";
 import { type CustomScheme, protocol } from "electron";
 import { assertPathReadableForPreview } from "./filesystem/filesystem-service.js";
 import { openRemoteMediaSource } from "./filesystem/remote-filesystem.js";
@@ -17,7 +17,7 @@ import { createEphemeralMediaToken, resolveEphemeralMediaToken } from "./media-t
  * URL 形态：既有媒体使用 `?path=`；需要跨越不可信插件边界的临时输入使用
  * `?token=`。令牌只在主进程内映射到路径并短时过期，避免把绝对路径暴露给插件。
  */
-export const MEDIA_PROTOCOL_SCHEME = "vetta-media";
+export const MEDIA_PROTOCOL_SCHEME = "astravia-media";
 
 /** Creates a short-lived opaque media URL for a host-controlled file. */
 export function createEphemeralMediaUrl(path: string, mimeType: string, ttlMs = 10 * 60_000): string {
@@ -55,7 +55,7 @@ const MEDIA_MIME: Record<string, string> = {
 	pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
 };
 const MIME_TYPE_PATTERN = /^[a-z0-9][a-z0-9!#$&^_.+-]*\/[a-z0-9][a-z0-9!#$&^_.+-]*$/i;
-const PLUGIN_DATA_ROOT = resolve(join(getVettaHomePath(), "plugin-data"));
+const PLUGIN_DATA_ROOT = resolve(join(getAstraviaHomePath(), "plugin-data"));
 
 function isPluginDataPath(path: string): boolean {
 	const relation = relative(PLUGIN_DATA_ROOT, resolve(path));

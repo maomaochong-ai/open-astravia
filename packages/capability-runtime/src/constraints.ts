@@ -1,4 +1,8 @@
-import { CAPABILITY_CONSTRAINT_KINDS, type CapabilityConstraint, type CapabilityId } from "@vetta-org/capability-sdk";
+import {
+	CAPABILITY_CONSTRAINT_KINDS,
+	type CapabilityConstraint,
+	type CapabilityId,
+} from "@astravia-org/capability-sdk";
 
 export interface CapabilityConstraintEvaluation {
 	readonly capabilityId: CapabilityId;

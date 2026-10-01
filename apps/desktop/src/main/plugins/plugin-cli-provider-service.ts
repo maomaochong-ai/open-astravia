@@ -1,5 +1,5 @@
 import { type ChildProcess, execFile } from "node:child_process";
-import type { PluginCliProviderManifest, PluginCliProviderStatus } from "@vetta-org/plugin-sdk";
+import type { PluginCliProviderManifest, PluginCliProviderStatus } from "@astravia-org/plugin-sdk";
 import { webContents } from "electron";
 import type {
 	PluginCommandRunOptions,

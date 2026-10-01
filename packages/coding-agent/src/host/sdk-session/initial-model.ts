@@ -1,6 +1,6 @@
 import { join } from "node:path";
-import type { ThinkingLevel } from "@vetta/agent-core";
-import type { Api, Model } from "@vetta/ai";
+import type { ThinkingLevel } from "@astravia/agent-core";
+import type { Api, Model } from "@astravia/ai";
 import { type CodingAgentModelRuntime, DEFAULT_THINKING_LEVEL, findInitialModel } from "../../models/index.js";
 import type { CreateCodingAgentSessionOptions } from "../../public-api/sdk/index.js";
 import type { SettingsRuntime } from "../../settings/index.js";

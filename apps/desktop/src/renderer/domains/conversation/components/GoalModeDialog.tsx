@@ -1,6 +1,6 @@
 import { Button } from "@shared/components/ui/button";
 import { Textarea } from "@shared/components/ui/textarea";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@vetta-org/ui";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@astravia-org/ui";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useGoalModeModel } from "../hooks/useGoalModeModel";

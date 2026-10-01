@@ -7,7 +7,7 @@ import { toClaudeSessionEndReason } from "./session-end-reason.js";
  * - only letters, digits, `_`, `-`, spaces, `,`, `|` → exact tokens split by `|` or `,`
  * - otherwise → unanchored JavaScript RegExp
  * UserPromptSubmit / Stop ignore matchers (always fire).
- * SessionEnd matchers use Claude wire `reason` (mapped from Vetta cause), not host cause ids.
+ * SessionEnd matchers use Claude wire `reason` (mapped from Astravia cause), not host cause ids.
  */
 export function matchesClaudeHook(request: HookRequest, matcher: string | undefined): boolean {
 	const inputs = matcherInputs(request);

@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import type { RuntimeHost } from "@vetta/runtime-core";
+import type { RuntimeHost } from "@astravia/runtime-core";
 import {
 	type AutomationSessionLink,
 	type AutomationTaskCreateRequest,

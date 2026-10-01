@@ -13,7 +13,7 @@ function plugin(overrides: Partial<InstalledPlugin> = {}): InstalledPlugin {
 		activeVersion: "1.0.0",
 		pluginApiVersion: "^2.0.0",
 		moduleFederation: { remoteName: "runtime_config_test", expose: "./plugin" },
-		entryUrl: "vetta-plugin://demo/index.js",
+		entryUrl: "astravia-plugin://demo/index.js",
 		styleUrls: [],
 		permissions: ["agent.tools.register", "agent.toolHandler.execute"],
 		grantedPermissions: ["agent.tools.register", "agent.toolHandler.execute"],

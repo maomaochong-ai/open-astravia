@@ -1,5 +1,5 @@
-import { providerAuthenticationError } from "@vetta/ai";
-import type { RuntimeHostSession } from "@vetta/runtime-core";
+import { providerAuthenticationError } from "@astravia/ai";
+import type { RuntimeHostSession } from "@astravia/runtime-core";
 import { createCodingAgentExtensionSessionViewFromSource } from "../../adapters/extensions/runtime-session-view-adapter.js";
 import { collectEntriesForBranchSummary, generateBranchSummary } from "../../compaction/index.js";
 import type { SessionBeforeTreeResult, TreePreparation } from "../../extensions/index.js";

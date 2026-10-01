@@ -32,7 +32,7 @@ describe("createOfficialSkillsApi", () => {
 		Object.defineProperty(globalThis, "window", {
 			configurable: true,
 			value: {
-				vetta: {
+				astravia: {
 					plugins: { internalCapabilities: { skills } },
 					skills: { installFromMarketSlug },
 				},

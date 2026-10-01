@@ -19,7 +19,7 @@ export function isIgnorableThirdPartyClientDirective(warning: Rollup.RollupLog):
  */
 export function createPluginBuildWarningFilter(): Plugin {
 	return {
-		name: "vetta-plugin-build-warning-filter",
+		name: "astravia-plugin-build-warning-filter",
 		apply: "build",
 		onLog(level, log) {
 			if (level === "warn" && isIgnorableThirdPartyClientDirective(log)) return false;

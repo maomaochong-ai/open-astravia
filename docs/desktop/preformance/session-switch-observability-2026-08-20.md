@@ -40,14 +40,14 @@
 在 Desktop Renderer DevTools Console 执行：
 
 ```js
-localStorage.setItem("vetta-perf-session-switch", "1");
+localStorage.setItem("astravia-perf-session-switch", "1");
 location.reload();
 ```
 
 完成复现后关闭，避免持续采集浏览器 long task：
 
 ```js
-localStorage.removeItem("vetta-perf-session-switch");
+localStorage.removeItem("astravia-perf-session-switch");
 location.reload();
 ```
 
@@ -60,8 +60,8 @@ location.reload();
 
 | 日志 | 文件 | 关联字段 | 作用 |
 | --- | --- | --- | --- |
-| `[PERF-session-switch]` | `~/.vetta/desktop-app/logs/render/YYYY-MM-DD.log` | `interactionId` | Renderer 阶段、前 5 帧、long task 与 MessageList React 提交 |
-| `session creation trace` | `~/.vetta/desktop-app/logs/main/YYYY-MM-DD.log` | `interactionId`、`sessionId` | Desktop 包装层与 `runtime-create` 总耗时 |
+| `[PERF-session-switch]` | `~/.astravia/desktop-app/logs/render/YYYY-MM-DD.log` | `interactionId` | Renderer 阶段、前 5 帧、long task 与 MessageList React 提交 |
+| `session creation trace` | `~/.astravia/desktop-app/logs/main/YYYY-MM-DD.log` | `interactionId`、`sessionId` | Desktop 包装层与 `runtime-create` 总耗时 |
 | `session initialization trace` | 同上 | `sessionId` | Coding Agent 初始化的细阶段与 create/resume 类型 |
 
 先用 Renderer 行中的 `interactionId` 查 Main 的 `session creation trace`，再用该行返回的 `sessionId`
@@ -116,7 +116,7 @@ Renderer 使用单行 JSON，既能在 DevTools 搜索，也能由诊断包或�
 
 ## 2026-08-20 根因与修复
 
-`.vetta-dev` 历史会话冷切换基线为 `4337.7ms`。其中 `runtime-create` 为 `3434.9ms`，进一步下钻发现
+`.astravia-dev` 历史会话冷切换基线为 `4337.7ms`。其中 `runtime-create` 为 `3434.9ms`，进一步下钻发现
 `initial-system-prompt` 为 `2053ms`、`prompt-runtime` 为 `1151ms`。前者是在资源刚完成 `reload()` 后，
 初始化预览又通过 Turn binding 重复执行资源 freshness scan。
 
@@ -139,7 +139,7 @@ Renderer 使用单行 JSON，既能在 DevTools 搜索，也能由诊断包或�
 
 复测数据见同任务 `.ai/desktop-session-switch-performance/README.md`；该目录为本地实施记录，不进入发布制品。
 
-同一 `.vetta-dev` 历史会话环境的最终 cold-switch 样本：
+同一 `.astravia-dev` 历史会话环境的最终 cold-switch 样本：
 
 | 指标 | 修复前 | 修复后 | 变化 |
 | --- | ---: | ---: | ---: |

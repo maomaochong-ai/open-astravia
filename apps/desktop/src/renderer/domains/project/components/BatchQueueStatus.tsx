@@ -1,5 +1,5 @@
 import type { BatchProject } from "@shared/store/atoms";
-import { BatchQueueStatusView } from "@vetta-org/theme-ui/project";
+import { BatchQueueStatusView } from "@astravia-org/theme-ui/project";
 import { useBatchQueueStatusModel } from "../hooks/useBatchQueueStatusModel";
 
 interface BatchQueueStatusProps {

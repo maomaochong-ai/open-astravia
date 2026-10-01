@@ -11,7 +11,7 @@ describe("createPluginModelsApi", () => {
 		const models = { replaceOwnedProviders: vi.fn(async () => undefined) };
 		Object.defineProperty(globalThis, "window", {
 			configurable: true,
-			value: { vetta: { plugins: { internalCapabilities: { models } } } },
+			value: { astravia: { plugins: { internalCapabilities: { models } } } },
 		});
 		const permissions = { require: vi.fn(), has: vi.fn(() => true) };
 		const api = createPluginModelsApi(permissions, "capability-session");
@@ -28,7 +28,7 @@ describe("createPluginModelsApi", () => {
 		const models = { listOwnedProviders: vi.fn(async () => published) };
 		Object.defineProperty(globalThis, "window", {
 			configurable: true,
-			value: { vetta: { plugins: { internalCapabilities: { models } } } },
+			value: { astravia: { plugins: { internalCapabilities: { models } } } },
 		});
 		const permissions = { require: vi.fn(), has: vi.fn(() => true) };
 		const api = createPluginModelsApi(permissions, "capability-session");

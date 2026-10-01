@@ -3,7 +3,7 @@ import { useMemo } from "react";
 
 /** Same icon set the change tree renders, so a file looks identical everywhere. */
 const ICON_SET = "complete";
-const SPRITE_ELEMENT_ID = "vetta-git-file-icon-sprite";
+const SPRITE_ELEMENT_ID = "astravia-git-file-icon-sprite";
 
 const resolver = createFileTreeIconResolver({ set: ICON_SET, colored: true });
 

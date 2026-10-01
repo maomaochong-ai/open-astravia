@@ -171,7 +171,7 @@ store、session store）等多处的 `"work" | "coding"` 硬编码联合类型�
 
 - **行为不变。** 用户可见行为、模式提示词正文、会话持久化格式（存的一直是 mode id 字符串）与历史
   会话兼容性均无变化。
-- **公共 API 破坏性变更。** `@vetta/coding-agent/profile` 不再导出模式注册表相关符号。仓库内唯一
+- **公共 API 破坏性变更。** `@astravia/coding-agent/profile` 不再导出模式注册表相关符号。仓库内唯一
   消费者是 desktop，已同步切换；外部 SDK 使用者若依赖这些符号，需自带注册表并改用 `resolveModePrompt`。
 - **回归防线。** 注入漏接不会产生类型错误、模式提示词会静默消失，因此钉了两层：
   `composition-boundary.test.ts` 在生产装配源码层断言注入存在，

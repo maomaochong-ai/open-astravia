@@ -1,5 +1,5 @@
 import { stat } from "node:fs/promises";
-import { parseProjectLocation } from "@vetta/ssh-transport";
+import { parseProjectLocation } from "@astravia/ssh-transport";
 import { readDesktopConfig, updateDesktopConfig } from "../config/desktop-config-store.js";
 import { allowProjectRoot, createFilesystemDirectory } from "../filesystem/filesystem-service.js";
 import { getDesktopSchedulerServiceIfReady } from "../scheduler/scheduler-service.js";

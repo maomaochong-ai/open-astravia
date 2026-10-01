@@ -34,7 +34,7 @@ export function usePlanModeModel(): PlanModeModel {
 				return;
 			}
 			try {
-				const state = await window.vetta.session.setPermissionMode(runtimeId, next ? "plan" : "default");
+				const state = await window.astravia.session.setPermissionMode(runtimeId, next ? "plan" : "default");
 				setStates((prev) => ({ ...prev, [runtimeId]: state }));
 			} catch (error) {
 				console.error("[PlanMode] failed to switch permission mode:", error);

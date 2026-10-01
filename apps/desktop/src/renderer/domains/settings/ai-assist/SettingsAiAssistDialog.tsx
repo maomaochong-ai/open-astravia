@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { SettingsAiAssistDialogView } from "@vetta-org/theme-ui/settings";
+import { SettingsAiAssistDialogView } from "@astravia-org/theme-ui/settings";
 
 export interface SettingsAiAssistDialogProps {
 	contextLabel: string;

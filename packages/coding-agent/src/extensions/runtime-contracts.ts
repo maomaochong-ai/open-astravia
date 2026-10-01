@@ -1,5 +1,5 @@
-import type { ThinkingLevel } from "@vetta/agent-core";
-import type { Api, ImageContent, Model, TextContent } from "@vetta/ai";
+import type { ThinkingLevel } from "@astravia/agent-core";
+import type { Api, ImageContent, Model, TextContent } from "@astravia/ai";
 import type { CustomMessage } from "../model-context/index.js";
 import type { MessageRenderer, RegisteredCommand } from "./api-contracts.js";
 import type { CompactOptions, ContextUsage, ExtensionContext } from "./context-contracts.js";

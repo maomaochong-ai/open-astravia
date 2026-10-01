@@ -1,4 +1,4 @@
-import type { Api, AssistantMessage, Message, Model, UserMessage } from "@vetta/ai";
+import type { Api, AssistantMessage, Message, Model, UserMessage } from "@astravia/ai";
 import { describe, expect, it, vi } from "vitest";
 import type { ContextCompositionReport } from "../../src/context-composition/index.js";
 import type { PromptRequest, SessionEvent } from "../../src/contracts.js";

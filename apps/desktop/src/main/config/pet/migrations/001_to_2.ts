@@ -1,4 +1,4 @@
-import type { ConfigRecord, VersionedConfigMigration } from "@vetta/toolkit/versioned-config";
+import type { ConfigRecord, VersionedConfigMigration } from "@astravia/toolkit/versioned-config";
 import { PET_ACTIONS, type PetActionId } from "../../../../shared/pet-actions.js";
 
 const PET_ACTION_LEGACY_ID_MIGRATION: Record<string, PetActionId> = {

@@ -1,4 +1,4 @@
-import type { Transport } from "@vetta/ai";
+import type { Transport } from "@astravia/ai";
 
 export interface CompactionSettings {
 	enabled?: boolean;

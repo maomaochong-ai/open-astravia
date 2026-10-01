@@ -15,7 +15,7 @@ import {
 	type RemoteIdentityKeyPair,
 	sha256Hex,
 	WebSocketRemoteTransport,
-} from "@vetta/remote-control";
+} from "@astravia/remote-control";
 import { type WebSocket as NodeWebSocket, WebSocketServer } from "ws";
 import { getAppLogger } from "../logger.js";
 import { DESKTOP_REMOTE_CAPABILITIES } from "./desktop-capabilities.js";

@@ -1,6 +1,5 @@
-import type { OAuthClientProvider } from "@modelcontextprotocol/sdk/client/auth.js";
-import type { McpClientHandle } from "@vetta/runtime-mcp/client";
-import { McpAuthRequiredError, McpInputRequiredError, McpTaskCreatedError } from "@vetta/runtime-mcp/client";
+import type { McpClientHandle } from "@astravia/runtime-mcp/client";
+import { McpAuthRequiredError, McpInputRequiredError, McpTaskCreatedError } from "@astravia/runtime-mcp/client";
 import type {
 	JsonRpcRequest,
 	JsonRpcResponse,
@@ -30,7 +29,7 @@ import type {
 	McpToolsListResult,
 	McpUpdateTaskParams,
 	McpUpdateTaskResult,
-} from "@vetta/runtime-mcp/protocol";
+} from "@astravia/runtime-mcp/protocol";
 import {
 	isMcpDiscoverResult,
 	isMcpPromptGetResult,
@@ -44,7 +43,8 @@ import {
 	isMcpToolsListResult,
 	MCP_SUBSCRIPTION_ID_META_KEY,
 	resolveMcpInputRequests,
-} from "@vetta/runtime-mcp/protocol";
+} from "@astravia/runtime-mcp/protocol";
+import type { OAuthClientProvider } from "@modelcontextprotocol/sdk/client/auth.js";
 import { runMcpMrtrRequest } from "../../interaction/mrtr-request-coordinator.js";
 import { CacheableMcpResultStore } from "./cacheable-result-store.js";
 

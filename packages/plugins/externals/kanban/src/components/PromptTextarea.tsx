@@ -1,5 +1,5 @@
-import { useTranslation } from "@vetta-org/plugin-sdk";
-import { cn, Popover, PopoverAnchor, PopoverContent } from "@vetta-org/ui";
+import { useTranslation } from "@astravia-org/plugin-sdk";
+import { cn, Popover, PopoverAnchor, PopoverContent } from "@astravia-org/ui";
 import {
 	forwardRef,
 	useCallback,
@@ -225,7 +225,7 @@ export const PromptTextarea = forwardRef<PromptTextareaHandle, PromptTextareaPro
 				</div>
 			</PopoverAnchor>
 			<PopoverContent
-				data-vetta-plugin-root="kanban"
+				data-astravia-plugin-root="kanban"
 				align="start"
 				side="top"
 				sideOffset={6}

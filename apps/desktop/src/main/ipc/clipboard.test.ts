@@ -6,7 +6,8 @@ const mocks = vi.hoisted(() => ({
 	write: vi.fn(),
 	writeImage: vi.fn(),
 	readHTML: vi.fn(
-		() => '<div data-vetta-user-message="1"><img data-vetta-clipboard-image src="data:image/png;base64,AQID"></div>',
+		() =>
+			'<div data-astravia-user-message="1"><img data-astravia-clipboard-image src="data:image/png;base64,AQID"></div>',
 	),
 	readText: vi.fn(() => "hello"),
 	persistImageCache: vi.fn(async () => [
@@ -51,7 +52,7 @@ describe("clipboard IPC", () => {
 
 	it("validates and forwards the rich user-message clipboard contract", async () => {
 		const teardown = registerClipboardIpc();
-		const handler = mocks.handlers.get("vetta:clipboard:write-user-message");
+		const handler = mocks.handlers.get("astravia:clipboard:write-user-message");
 		expect(handler).toBeDefined();
 
 		await expect(handler?.({}, { text: "hello", images: ["not-an-image"] })).rejects.toThrow(
@@ -60,22 +61,22 @@ describe("clipboard IPC", () => {
 		await handler?.({}, { text: "hello", images: [{ kind: "data-url", dataUrl: "data:image/png;base64,AQID" }] });
 		expect(mocks.write).toHaveBeenCalledWith({
 			text: "hello",
-			html: expect.stringContaining('data-vetta-user-message="1"'),
+			html: expect.stringContaining('data-astravia-user-message="1"'),
 			image: expect.objectContaining({ isEmpty: expect.any(Function) }),
 		});
-		await expect(mocks.handlers.get("vetta:clipboard:paste-user-message")?.({}, "session-1")).resolves.toEqual({
+		await expect(mocks.handlers.get("astravia:clipboard:paste-user-message")?.({}, "session-1")).resolves.toEqual({
 			text: "hello",
 			images: [{ path: "C:/cache/copied.png", format: "png", sizeBytes: 3, width: 1, height: 1 }],
 		});
 		expect(mocks.persistImageCache).toHaveBeenCalledWith("session-1", [
 			expect.objectContaining({ data: "AQID", mimeType: "image/png" }),
 		]);
-		await expect(mocks.handlers.get("vetta:clipboard:paste-user-message")?.({}, "")).rejects.toThrow(
+		await expect(mocks.handlers.get("astravia:clipboard:paste-user-message")?.({}, "")).rejects.toThrow(
 			"Invalid clipboard image cache session",
 		);
 
 		teardown();
-		expect(mocks.removeHandler).toHaveBeenCalledWith("vetta:clipboard:write-user-message");
-		expect(mocks.removeHandler).toHaveBeenCalledWith("vetta:clipboard:paste-user-message");
+		expect(mocks.removeHandler).toHaveBeenCalledWith("astravia:clipboard:write-user-message");
+		expect(mocks.removeHandler).toHaveBeenCalledWith("astravia:clipboard:paste-user-message");
 	});
 });

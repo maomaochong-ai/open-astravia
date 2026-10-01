@@ -32,7 +32,7 @@ Platform behavior and current publishing specs can change; treat inspected/proje
 
 ## Long-form video to short clips
 
-Current Vetta can produce a source-range selection and crop specification. Transcription, highlight ranking, automatic face tracking, trimming, or final rendering may require capabilities not exposed by the content workflow. Inspect before execution.
+Current Astravia can produce a source-range selection and crop specification. Transcription, highlight ranking, automatic face tracking, trimming, or final rendering may require capabilities not exposed by the content workflow. Inspect before execution.
 
 When supported, use this pipeline:
 

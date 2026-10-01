@@ -1,11 +1,11 @@
-import { VETTA_CLI_GUIDANCE } from "@vetta/coding-agent/cli-guidance";
-import { createCodingAgentRuntimeSessionSelection } from "@vetta/coding-agent/composition";
-import type { AgentConfigurationSelection, ConversationScenario } from "@vetta/coding-agent/profile";
+import { ASTRAVIA_CLI_GUIDANCE } from "@astravia/coding-agent/cli-guidance";
+import { createCodingAgentRuntimeSessionSelection } from "@astravia/coding-agent/composition";
+import type { AgentConfigurationSelection, ConversationScenario } from "@astravia/coding-agent/profile";
 import type {
 	CodingAgentPinnedModelContextBinder,
 	CodingAgentRuntimeToolRegistration,
-} from "@vetta/coding-agent/runtime";
-import type { SessionConfig } from "@vetta/runtime-core";
+} from "@astravia/coding-agent/runtime";
+import type { SessionConfig } from "@astravia/runtime-core";
 import { allowProjectRoot, readDesktopConfig } from "../ipc/fs.js";
 import { type DesktopAgentMode, LEGACY_SESSION_AGENT_MODE, readSessionAgentMode } from "./session-agent-mode-store.js";
 import {
@@ -86,10 +86,10 @@ export async function resolveDesktopSessionConfig(
 	const enableBackgroundTasks = source === "interactive" && scenario !== "batch";
 	const includeAgentSkills = config?.includeAgentSkills ?? desktopConfig.experimental?.agentSkills !== false;
 	const appendSystemPrompt =
-		isConversation && desktopConfig.experimental?.vettaCli === true
+		isConversation && desktopConfig.experimental?.astraviaCli === true
 			? config?.appendSystemPrompt
-				? `${config.appendSystemPrompt}\n\n${VETTA_CLI_GUIDANCE}`
-				: VETTA_CLI_GUIDANCE
+				? `${config.appendSystemPrompt}\n\n${ASTRAVIA_CLI_GUIDANCE}`
+				: ASTRAVIA_CLI_GUIDANCE
 			: config?.appendSystemPrompt;
 	const agentMode = await resolveSessionAgentMode(
 		config?.sessionPath,

@@ -11,8 +11,8 @@
  *
  * Save modes (tool param, env var, or config file):
  *   save=none     - Don't save to disk (default)
- *   save=project  - Save to <repo>/.vetta/generated-images/
- *   save=global   - Save to ~/.vetta/agent/generated-images/
+ *   save=project  - Save to <repo>/.astravia/generated-images/
+ *   save=global   - Save to ~/.astravia/agent/generated-images/
  *   save=custom   - Save to saveDir param or PI_IMAGE_SAVE_DIR
  *
  * Environment variables:
@@ -20,8 +20,8 @@
  *   PI_IMAGE_SAVE_DIR   - Directory for custom save mode
  *
  * Config files (project overrides global):
- *   ~/.vetta/agent/extensions/antigravity-image-gen.json
- *   <repo>/.vetta/extensions/antigravity-image-gen.json
+ *   ~/.astravia/agent/extensions/antigravity-image-gen.json
+ *   <repo>/.astravia/extensions/antigravity-image-gen.json
  *   Example: { "save": "global" }
  */
 
@@ -30,9 +30,9 @@ import { existsSync, readFileSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { StringEnum } from "@astravia/ai";
+import type { ExtensionAPI } from "@astravia/coding-agent";
 import { type Static, Type } from "@sinclair/typebox";
-import { StringEnum } from "@vetta/ai";
-import type { ExtensionAPI } from "@vetta/coding-agent";
 
 const PROVIDER = "google-antigravity";
 
@@ -182,8 +182,10 @@ function readConfigFile(path: string): ExtensionConfig {
 }
 
 function loadConfig(cwd: string): ExtensionConfig {
-	const globalConfig = readConfigFile(join(homedir(), ".vetta", "agent", "extensions", "antigravity-image-gen.json"));
-	const projectConfig = readConfigFile(join(cwd, ".vetta", "extensions", "antigravity-image-gen.json"));
+	const globalConfig = readConfigFile(
+		join(homedir(), ".astravia", "agent", "extensions", "antigravity-image-gen.json"),
+	);
+	const projectConfig = readConfigFile(join(cwd, ".astravia", "extensions", "antigravity-image-gen.json"));
 	return { ...globalConfig, ...projectConfig };
 }
 
@@ -198,11 +200,11 @@ function resolveSaveConfig(params: ToolParams, cwd: string): SaveConfig {
 	}
 
 	if (mode === "project") {
-		return { mode, outputDir: join(cwd, ".vetta", "generated-images") };
+		return { mode, outputDir: join(cwd, ".astravia", "generated-images") };
 	}
 
 	if (mode === "global") {
-		return { mode, outputDir: join(homedir(), ".vetta", "agent", "generated-images") };
+		return { mode, outputDir: join(homedir(), ".astravia", "agent", "generated-images") };
 	}
 
 	if (mode === "custom") {

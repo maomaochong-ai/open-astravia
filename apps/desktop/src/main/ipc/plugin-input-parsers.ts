@@ -2,7 +2,7 @@ import {
 	PLUGIN_CODING_AGENT_HOOK_EVENT_NAMES,
 	type PluginAppActionUsage,
 	type PluginCodingAgentHookEventName,
-} from "@vetta-org/plugin-sdk";
+} from "@astravia-org/plugin-sdk";
 import type {
 	PluginAppActionApproval,
 	PluginAppActionRegistration,

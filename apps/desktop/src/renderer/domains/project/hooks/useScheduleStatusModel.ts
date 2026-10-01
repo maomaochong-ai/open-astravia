@@ -1,6 +1,6 @@
+import type { ScheduleStatusViewProps, ScheduleTaskItemView } from "@astravia-org/theme-ui/project";
 import { describeSchedule } from "@domains/scheduler/components/schedule-picker/describe-schedule";
 import { useScheduledTasks } from "@domains/scheduler/hooks/useScheduledTasks";
-import type { ScheduleStatusViewProps, ScheduleTaskItemView } from "@vetta-org/theme-ui/project";
 import type { TFunction } from "i18next";
 import { useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -23,7 +23,7 @@ export function useScheduleStatusModel(cwd: string): ScheduleStatusViewProps | n
 	}, [refreshTasks]);
 
 	useEffect(() => {
-		const unsubscribe = window.vetta.scheduler.onTaskEvent(() => {
+		const unsubscribe = window.astravia.scheduler.onTaskEvent(() => {
 			void refreshTasks();
 		});
 		return unsubscribe;

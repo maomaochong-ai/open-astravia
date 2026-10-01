@@ -1,4 +1,4 @@
-import { streamSimple } from "@vetta/ai";
+import { streamSimple } from "@astravia/ai";
 import { getOrCreateSharedModelRuntime } from "../agent-runtime/host-services.js";
 import { getDesktopProviderObservationRuntime } from "../agent-runtime/provider-observation.js";
 import { getBatchTaskExecutorState } from "../batch-tasks/batch-task-executor.js";

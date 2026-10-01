@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { ModelSelectorView, type ModelSelectorViewProps } from "@vetta-org/theme-ui/chat";
-import { DetailDrawer } from "@vetta-org/theme-ui/overlays";
+import { ModelSelectorView, type ModelSelectorViewProps } from "@astravia-org/theme-ui/chat";
+import { DetailDrawer } from "@astravia-org/theme-ui/overlays";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 class ResizeObserverStub {

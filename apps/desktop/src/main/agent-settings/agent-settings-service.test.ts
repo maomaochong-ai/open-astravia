@@ -12,7 +12,7 @@ function createConfig(): DesktopConfig {
 		defaultExecutionMode: "full-access",
 		notificationsEnabled: true,
 		notificationPreferences: DEFAULT_NOTIFICATION_PREFERENCES,
-		experimental: { vettaCli: false, promptPrediction: false, agentSkills: true },
+		experimental: { astraviaCli: false, promptPrediction: false, agentSkills: true },
 		imageGeneration: {},
 	};
 }
@@ -25,7 +25,7 @@ describe("AgentSettingsService", () => {
 		});
 
 		await expect(service.getExperimental()).resolves.toEqual({
-			vettaCli: true,
+			astraviaCli: true,
 			promptPrediction: false,
 			agentSkills: true,
 		});
@@ -41,13 +41,13 @@ describe("AgentSettingsService", () => {
 		});
 
 		await expect(service.setExperimental({ promptPrediction: true })).resolves.toEqual({
-			vettaCli: false,
+			astraviaCli: false,
 			promptPrediction: true,
 			agentSkills: true,
 		});
 		expect(await updateConfig.mock.results[0]?.value).toEqual({
 			...createConfig(),
-			experimental: { vettaCli: false, promptPrediction: true, agentSkills: true },
+			experimental: { astraviaCli: false, promptPrediction: true, agentSkills: true },
 		});
 	});
 

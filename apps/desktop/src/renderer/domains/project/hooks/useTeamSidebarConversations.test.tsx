@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 import { useTeamSidebarConversations } from "./useTeamSidebarConversations";
 
 function stubSidebarConversations(list: () => Promise<unknown[]>): void {
-	Object.defineProperty(window, "vetta", {
+	Object.defineProperty(window, "astravia", {
 		configurable: true,
 		value: { agentTeams: { listSidebarConversations: list } },
 	});

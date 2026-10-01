@@ -1,4 +1,4 @@
-import type { MediaProviderDescriptor } from "@vetta-org/capability-sdk";
+import type { MediaProviderDescriptor } from "@astravia-org/capability-sdk";
 
 export interface AudioMetadata {
 	/** 内嵌标签标题，无则渲染端回退文件名 */

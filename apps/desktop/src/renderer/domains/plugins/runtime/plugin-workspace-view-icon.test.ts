@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
+
+import type { PluginPermission } from "@astravia-org/plugin-sdk";
 import type { InstalledPlugin } from "@preload/api";
-import type { PluginPermission } from "@vetta-org/plugin-sdk";
 import { describe, expect, it } from "vitest";
 import { PluginLocalContributions } from "./plugin-local-contributions";
 import { createPluginUiApi } from "./plugin-ui-context";
@@ -36,14 +37,14 @@ function registeredIconUrl(contributions: PluginLocalContributions): string | un
 }
 
 function maskRuleFor(className: string): string | undefined {
-	return [...document.head.querySelectorAll("style[data-vetta-plugin-nav-icon]")]
+	return [...document.head.querySelectorAll("style[data-astravia-plugin-nav-icon]")]
 		.map((style) => style.textContent ?? "")
 		.find((text) => text.includes(className));
 }
 
 describe("workspace view navigation icon", () => {
 	it("keeps an explicitly declared Iconify class as-is", () => {
-		const { contributions, ui } = createUi("vetta-plugin://demo-plugin/assets/logo.svg?v=1");
+		const { contributions, ui } = createUi("astravia-plugin://demo-plugin/assets/logo.svg?v=1");
 		ui.registerWorkspaceView({
 			id: "board",
 			label: "Board",
@@ -54,13 +55,13 @@ describe("workspace view navigation icon", () => {
 	});
 
 	it("falls back to the plugin's own packaged logo, masked so it follows the theme color", () => {
-		const { contributions, ui } = createUi("vetta-plugin://demo-plugin/assets/logo.svg?v=1");
+		const { contributions, ui } = createUi("astravia-plugin://demo-plugin/assets/logo.svg?v=1");
 		const handle = ui.registerWorkspaceView({ id: "board", label: "Board", component: () => null });
 
 		const icon = registeredIcon(contributions);
-		expect(icon).toMatch(/^vetta-plugin-nav-icon-\d+$/);
+		expect(icon).toMatch(/^astravia-plugin-nav-icon-\d+$/);
 		const rule = maskRuleFor(icon as string);
-		expect(rule).toContain('mask-image:url("vetta-plugin://demo-plugin/assets/logo.svg?v=1")');
+		expect(rule).toContain('mask-image:url("astravia-plugin://demo-plugin/assets/logo.svg?v=1")');
 		expect(rule).toContain("background-color:currentColor");
 
 		// The generated rule must go away with the contribution.
@@ -73,7 +74,7 @@ describe("workspace view navigation icon", () => {
 		ui.registerWorkspaceView({ id: "board", label: "Board", component: () => null });
 		const icon = registeredIcon(contributions);
 		expect(icon).toBe("icon-[solar--crown-bold]");
-		expect(maskRuleFor("vetta-plugin-nav-icon")).toBeUndefined();
+		expect(maskRuleFor("astravia-plugin-nav-icon")).toBeUndefined();
 	});
 
 	it("leaves the icon unset when the plugin declares no logo at all", () => {
@@ -83,22 +84,22 @@ describe("workspace view navigation icon", () => {
 	});
 
 	it("keeps a packaged logo tinted by default, exposing no image url", () => {
-		const { contributions, ui } = createUi("vetta-plugin://demo-plugin/assets/logo.svg?v=1");
+		const { contributions, ui } = createUi("astravia-plugin://demo-plugin/assets/logo.svg?v=1");
 		ui.registerWorkspaceView({ id: "board", label: "Board", component: () => null });
-		expect(registeredIcon(contributions)).toMatch(/^vetta-plugin-nav-icon-\d+$/);
+		expect(registeredIcon(contributions)).toMatch(/^astravia-plugin-nav-icon-\d+$/);
 		expect(registeredIconUrl(contributions)).toBeUndefined();
 	});
 
 	it("iconTint:false keeps the logo in full color and still ships a mask fallback", () => {
-		const { contributions, ui } = createUi("vetta-plugin://demo-plugin/assets/logo.png?v=1");
+		const { contributions, ui } = createUi("astravia-plugin://demo-plugin/assets/logo.png?v=1");
 		ui.registerWorkspaceView({ id: "board", label: "Board", iconTint: false, component: () => null });
-		expect(registeredIconUrl(contributions)).toBe("vetta-plugin://demo-plugin/assets/logo.png?v=1");
+		expect(registeredIconUrl(contributions)).toBe("astravia-plugin://demo-plugin/assets/logo.png?v=1");
 		// Themes that do not know `iconUrl` still get a renderable class.
-		expect(registeredIcon(contributions)).toMatch(/^vetta-plugin-nav-icon-\d+$/);
+		expect(registeredIcon(contributions)).toMatch(/^astravia-plugin-nav-icon-\d+$/);
 	});
 
 	it("iconTint:false does not turn an Iconify class into an image", () => {
-		const { contributions, ui } = createUi("vetta-plugin://p/logo.svg");
+		const { contributions, ui } = createUi("astravia-plugin://p/logo.svg");
 		ui.registerWorkspaceView({
 			id: "board",
 			label: "Board",

@@ -1,4 +1,4 @@
-import type { PluginFsApi } from "@vetta-org/plugin-sdk";
+import type { PluginFsApi } from "@astravia-org/plugin-sdk";
 import { describe, expect, it } from "vitest";
 import { inspectRemotionProject, resolveRemotionCliBin } from "../src/studio/project";
 

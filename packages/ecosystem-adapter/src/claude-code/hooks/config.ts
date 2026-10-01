@@ -28,7 +28,7 @@ export interface ClaudeHookDiscoveryResult {
 	diagnostics: HookDiagnostic[];
 }
 
-/** Events Vetta host can fire and this profile can load. */
+/** Events Astravia host can fire and this profile can load. */
 const SUPPORTED_EVENT_NAMES: readonly HookEventName[] = [
 	"SessionStart",
 	"SessionEnd",
@@ -102,7 +102,7 @@ export function isClaudeOwnedSource(source: HookConfigSource): boolean {
 	const normalized = source.path.replace(/\\/g, "/").toLowerCase();
 	// Claude Code plugin layout
 	if (normalized.endsWith("/hooks/hooks.json")) return true;
-	// Claude settings under any .claude dir (including .vetta/.claude)
+	// Claude settings under any .claude dir (including .astravia/.claude)
 	if (normalized.endsWith("/.claude/settings.json")) return true;
 	if (normalized.endsWith("/.claude/settings.local.json")) return true;
 	return false;
@@ -188,7 +188,7 @@ function appendDocument(
 		if (!SUPPORTED_EVENT_SET.has(eventName)) {
 			diagnostics.push({
 				code: "unsupported_event",
-				message: `unsupported Claude hook event ${JSON.stringify(eventName)} in this Vetta profile (${CLAUDE_CODE_HOOK_PROFILE_ID})`,
+				message: `unsupported Claude hook event ${JSON.stringify(eventName)} in this Astravia profile (${CLAUDE_CODE_HOOK_PROFILE_ID})`,
 				sourcePath,
 			});
 			continue;

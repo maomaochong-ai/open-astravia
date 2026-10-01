@@ -1,4 +1,10 @@
-import { AI_ERROR_CODES, AIError, AssistantMessageEventStream, type Model, type SimpleStreamFunction } from "@vetta/ai";
+import {
+	AI_ERROR_CODES,
+	AIError,
+	AssistantMessageEventStream,
+	type Model,
+	type SimpleStreamFunction,
+} from "@astravia/ai";
 import { describe, expect, it, vi } from "vitest";
 import { createProviderDebugDefinitions } from "./definitions.js";
 import { type ProviderPreflightDependencies, type ProviderPreflightError, runProviderPreflight } from "./preflight.js";

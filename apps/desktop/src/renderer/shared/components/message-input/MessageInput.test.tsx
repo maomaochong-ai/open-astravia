@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
 
 import { cleanup, render, screen } from "@testing-library/react";
-import { MessageInput } from "@vetta-org/theme-ui/chat";
+import { MessageInput } from "@astravia-org/theme-ui/chat";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@vetta-org/theme-sdk/appearance", () => ({ useThemeSurface: () => undefined }));
+vi.mock("@astravia-org/theme-sdk/appearance", () => ({ useThemeSurface: () => undefined }));
 
 afterEach(cleanup);
 
@@ -74,7 +74,7 @@ describe("MessageInput compound primitives", () => {
 		);
 
 		const surface = screen.getByTestId("surface");
-		expect(surface.getAttribute("data-vetta-drop-scope")).toBe("input");
+		expect(surface.getAttribute("data-astravia-drop-scope")).toBe("input");
 		expect(surface.className).toContain("input-card");
 		expect(surface.querySelector('[data-theme-surface="chat.inputBar"]')).toBeTruthy();
 	});

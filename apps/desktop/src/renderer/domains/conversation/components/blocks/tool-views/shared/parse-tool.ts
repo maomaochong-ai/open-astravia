@@ -1,6 +1,6 @@
+import { resolvePluginText } from "@astravia-org/plugin-sdk";
 import { i18n } from "@shared/i18n";
 import { languageAtom, pluginAgentToolLabelsAtom, pluginI18nByIdAtom, type ToolCallBlock } from "@shared/store/atoms";
-import { resolvePluginText } from "@vetta-org/plugin-sdk";
 import { getDefaultStore } from "jotai";
 import { shortenPath } from "./format";
 
@@ -109,7 +109,7 @@ export function toolIcon(name: string): string {
 			return "icon-[mdi--comment-question-outline]";
 		case "exit_plan_mode":
 			return "icon-[solar--checklist-minimalistic-linear]";
-		case "easy_use_vettaApp":
+		case "easy_use_astraviaApp":
 			return "icon-[mdi--application-cog-outline]";
 		case "kb_write_page":
 			return "icon-[mdi--book-edit-outline]";
@@ -177,7 +177,7 @@ export function toolLabel(block: ToolCallBlock, aliased = false): { name: string
 				typeof first.header === "string" ? first.header : typeof first.question === "string" ? first.question : "";
 			detail = questions.length > 1 ? `${head} +${questions.length - 1}` : head;
 		}
-	} else if (name === "easy_use_vettaApp") {
+	} else if (name === "easy_use_astraviaApp") {
 		const actionId = args.actionId;
 		if (typeof actionId === "string") detail = actionId;
 	} else if (name === "kb_write_page") {

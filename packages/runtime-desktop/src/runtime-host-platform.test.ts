@@ -16,7 +16,7 @@ let previousCwd: string;
 
 beforeEach(() => {
 	previousCwd = process.cwd();
-	workingDirectory = mkdtempSync(join(tmpdir(), "vetta-host-platform-"));
+	workingDirectory = mkdtempSync(join(tmpdir(), "astravia-host-platform-"));
 	// 相对路径是相对进程 cwd 建的，所以必须真的切进去才能观察到症状。
 	process.chdir(workingDirectory);
 });

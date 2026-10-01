@@ -1,4 +1,4 @@
-import type { CodingAgentQuestionFunctionRequest } from "@vetta/coding-agent/function-extensions";
+import type { CodingAgentQuestionFunctionRequest } from "@astravia/coding-agent/function-extensions";
 import { describe, expect, it } from "vitest";
 import { DesktopUserQuestionBroker } from "./user-question-broker.js";
 

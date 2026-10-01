@@ -6,8 +6,8 @@ import type {
 	TeamMemberAssignment,
 	UpdateTeamInput,
 	UpdateTeamMemberInput,
-} from "@vetta/agent-team";
-import { DEFAULT_TEAM_AUTOMATIC_RETRIES, isTeamRetryLimit } from "@vetta/agent-team";
+} from "@astravia/agent-team";
+import { DEFAULT_TEAM_AUTOMATIC_RETRIES, isTeamRetryLimit } from "@astravia/agent-team";
 
 /**
  * 「拉拢」编队时的草稿。它只按 Agent 身份记录阵容，成员绑定与 leader 归属

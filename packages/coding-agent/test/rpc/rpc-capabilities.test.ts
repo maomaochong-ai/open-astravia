@@ -1,4 +1,4 @@
-import type { RuntimeSessionContextDeliveryController } from "@vetta/runtime-core";
+import type { RuntimeSessionContextDeliveryController } from "@astravia/runtime-core";
 import { describe, expect, it, vi } from "vitest";
 import type { CodingAgentTurnRetryEvent } from "../../src/execution/turn/contracts.js";
 import { readCodingAgentTurnFailure } from "../../src/execution/turn/turn-executor.js";
@@ -33,7 +33,7 @@ describe("Coding Agent RPC capabilities", () => {
 		expect(deliver).toHaveBeenCalledWith(
 			[
 				expect.objectContaining({
-					type: "vetta.legacy_agent_message",
+					type: "astravia.legacy_agent_message",
 					modelVisible: true,
 					display: true,
 				}),

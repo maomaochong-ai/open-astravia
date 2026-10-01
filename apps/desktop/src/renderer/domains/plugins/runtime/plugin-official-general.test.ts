@@ -22,7 +22,7 @@ describe("createOfficialGeneralApi", () => {
 		};
 		Object.defineProperty(globalThis, "window", {
 			configurable: true,
-			value: { vetta: { plugins: { internalCapabilities: { generalSettings } } } },
+			value: { astravia: { plugins: { internalCapabilities: { generalSettings } } } },
 		});
 		const assertOfficial = vi.fn();
 		const api = createOfficialGeneralApi(assertOfficial, "capability-session");

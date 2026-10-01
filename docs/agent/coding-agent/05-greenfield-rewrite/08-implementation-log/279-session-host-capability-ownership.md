@@ -14,7 +14,7 @@
 - 会话历史、认证、模型和设置等用户数据；必要时由显式、独立的新迁移器读取旧格式。
 - 模型消息、工具消息、错误、取消、事件顺序、并发约束和资源释放语义。
 - 仍然有效的行为测试场景和数据 fixture；旧实现可以临时作为测试 Oracle，但不能被新生产代码调用。
-- `@vetta/ai` 与经过合同验证的 `@vetta/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
+- `@astravia/ai` 与经过合同验证的 `@astravia/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
 
 ## 明确舍弃（固定）
 
@@ -59,7 +59,7 @@
 
 ### 保持公共合同稳定
 
-`@vetta/coding-agent/runtime` 的下列公共名称和结构保持不变：
+`@astravia/coding-agent/runtime` 的下列公共名称和结构保持不变：
 
 - `createCodingAgentRuntimeBranchNavigationHost`；
 - `createCodingAgentRuntimeResourceReloadHost`；
@@ -125,7 +125,7 @@ GOFLAGS="-p=1 -parallel=1" bun run verify:agent-hosts
 ok (coding-agent, CLI, Desktop, IM)
 ```
 
-其中独立 Vetta CLI 可执行文件编译成功，IM Gateway Go 测试通过，Desktop 验收为 119 个测试文件通过、501 个
+其中独立 Astravia CLI 可执行文件编译成功，IM Gateway Go 测试通过，Desktop 验收为 119 个测试文件通过、501 个
 测试通过、1 个跳过。本轮是内部所有权迁移，没有发送外部真实模型请求。
 
 ## 尚未完成的替换

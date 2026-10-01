@@ -2,9 +2,9 @@ import type {
 	ConversationDocument,
 	RuntimeDocumentParticipant,
 	RuntimeDocumentParticipantContext,
-} from "@vetta/runtime-core";
-import type { StoredSessionEvent } from "@vetta/runtime-core/kernel";
-import type { SubagentDeliveryMarker } from "@vetta/runtime-subagents";
+} from "@astravia/runtime-core";
+import type { StoredSessionEvent } from "@astravia/runtime-core/kernel";
+import type { SubagentDeliveryMarker } from "@astravia/runtime-subagents";
 import { z } from "zod";
 import type { CodingAgentSubagentSnapshot } from "../../runtime-contracts/index.js";
 import { createLocalSubagentId } from "./local-id.js";

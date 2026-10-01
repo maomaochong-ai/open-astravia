@@ -1,6 +1,6 @@
-import { useThemeRouteModel } from "@vetta-org/theme-sdk";
-import { HorizontalSliceImageDecoration, NineSliceImageFrame } from "@vetta-org/theme-ui";
-import { cn } from "@vetta-org/ui";
+import { useThemeRouteModel } from "@astravia-org/theme-sdk";
+import { HorizontalSliceImageDecoration, NineSliceImageFrame } from "@astravia-org/theme-ui";
+import { cn } from "@astravia-org/ui";
 import { motion } from "motion/react";
 import { useEffect, useRef, type JSX } from "react";
 import { sanctumPageAssets } from "./assets";

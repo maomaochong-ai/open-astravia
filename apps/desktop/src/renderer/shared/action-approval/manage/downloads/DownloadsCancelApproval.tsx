@@ -45,7 +45,7 @@ function DownloadsCancelApprovalContent({ approval }: { approval: ActiveActionAp
 	useEffect(() => {
 		if (!input?.id) return;
 		let cancelled = false;
-		void window.vetta.downloads
+		void window.astravia.downloads
 			.list()
 			.then((items) => {
 				if (cancelled) return;

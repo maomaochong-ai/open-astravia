@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { InputBarPlaceholder } from "@vetta-org/theme-ui/chat";
+import { InputBarPlaceholder } from "@astravia-org/theme-ui/chat";
 import { act, cleanup, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";

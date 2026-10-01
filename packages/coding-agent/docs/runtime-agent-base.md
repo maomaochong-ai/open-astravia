@@ -1,6 +1,6 @@
 # Coding Agent 与多主 Agent 基座
 
-本文说明生产 `CodingAgentRuntimeComposition` 如何使用 `@vetta/runtime-core/agents`。它补充
+本文说明生产 `CodingAgentRuntimeComposition` 如何使用 `@astravia/runtime-core/agents`。它补充
 [Runtime Core 自定义 Agent 指南](../../runtime-core/docs/custom-agents.md)：后者解释通用基座，本文只解释 Coding Agent
 这个复杂产品 Agent 的接线、配置和生命周期。唯一 Host 的所有权决策见
 [ADR-0084](../../../docs/adr/0084-runtime-host-owns-agent-control-plane.md)。
@@ -48,7 +48,7 @@ CLI、SDK 或测试直接调用 Composition 时，不传 `agentRuntime` 即可�
 Session、Instance、控制面和产品 Hub。它是模块化运行方式，不会产生第二个 `RuntimeHost`。
 
 ```ts
-import { createCodingAgentRuntimeComposition } from "@vetta/coding-agent/composition";
+import { createCodingAgentRuntimeComposition } from "@astravia/coding-agent/composition";
 
 const composition = await createCodingAgentRuntimeComposition({
   ...codingAgentPlatformOptions,
@@ -76,8 +76,8 @@ Session Host。
 ```ts
 import {
   publishCodingAgentExecutionRuntimeDefinition,
-} from "@vetta/coding-agent/composition";
-import { RuntimeHost, RuntimeObservationHub } from "@vetta/runtime-core";
+} from "@astravia/coding-agent/composition";
+import { RuntimeHost, RuntimeObservationHub } from "@astravia/runtime-core";
 
 const applicationHub = new RuntimeObservationHub();
 const host = new RuntimeHost({
@@ -134,7 +134,7 @@ MCP 配置格式或平台连接。
 import {
   createCodingAgentExecutionRuntimeDefinition,
   publishCodingAgentExecutionRuntimeDefinition,
-} from "@vetta/coding-agent/composition";
+} from "@astravia/coding-agent/composition";
 
 const revision2 = createCodingAgentExecutionRuntimeDefinition({
   id: "coding-agent",
@@ -234,7 +234,7 @@ Session observation 的失败通过 `coding-agent.subagent.issue` 汇入同一�
 
 Session Extension 的 Definition 排序、初始化回滚、Service/Signal/Endpoint、Document Participant、continuation、迟订阅状态与
 逆序释放全部由 Runtime Core 的 `SessionExtensionComposition` 持有，并通过标准 RuntimeHost Adapter 暴露控制面。Pi
-compatibility 仍是 Coding Agent 的第三方协议反腐层；只有已经存在 Vetta native 合同且能满足原子注册、Turn generation 和
+compatibility 仍是 Coding Agent 的第三方协议反腐层；只有已经存在 Astravia native 合同且能满足原子注册、Turn generation 和
 owned teardown 的子集才会映射。Pi TUI、近似事件以及尚无稳定所有权的 flag/provider/event-bus 明确 fail-closed。
 
 ## 生命周期与特殊说明

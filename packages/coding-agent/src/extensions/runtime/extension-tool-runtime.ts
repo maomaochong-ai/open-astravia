@@ -1,11 +1,11 @@
-import type { Static, TSchema } from "@sinclair/typebox";
-import { Value } from "@sinclair/typebox/value";
 import type {
 	ModelCallFrame,
 	ModelCallFrameCompositionContext,
 	RuntimeSnapshotAcquireContext,
 	RuntimeToolDefinition,
-} from "@vetta/runtime-core/kernel";
+} from "@astravia/runtime-core/kernel";
+import type { Static, TSchema } from "@sinclair/typebox";
+import { Value } from "@sinclair/typebox/value";
 import { type ContributionLease, DynamicContributionCatalog } from "../../interception/contribution-catalog.js";
 import { applySystemPromptOperations, type SystemPromptDraft } from "../../model-context/index.js";
 import { ALL_SCENARIOS, resolveToolCategory } from "../../profiles/index.js";

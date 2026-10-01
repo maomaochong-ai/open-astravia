@@ -7,7 +7,7 @@ import {
 	registerApiProvider,
 	registerOAuthProvider,
 	type SimpleStreamOptions,
-} from "@vetta/ai";
+} from "@astravia/ai";
 import {
 	type CodingAgentConfigurationValueResolver,
 	literalCodingAgentConfigurationValueResolver,
@@ -24,7 +24,7 @@ export interface CreateCodingAgentModelRuntimeOptions {
 	readonly configFileSource?: ModelConfigFileSource;
 	readonly remoteSource?: RemoteModelSourceOptions;
 	readonly configurationValueResolver?: CodingAgentConfigurationValueResolver;
-	/** 仅用于确定性测试或嵌入式宿主；生产默认读取 @vetta/ai 目录。 */
+	/** 仅用于确定性测试或嵌入式宿主；生产默认读取 @astravia/ai 目录。 */
 	readonly builtInModels?: readonly Model<Api>[];
 }
 

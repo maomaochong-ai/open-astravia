@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { type FileHandle, mkdir, open } from "node:fs/promises";
 import { isAbsolute, join, relative, resolve } from "node:path";
-import { isSshProjectUri } from "@vetta/ssh-transport";
+import { isSshProjectUri } from "@astravia/ssh-transport";
 import {
 	DEFAULT_CONVERSATION_CWD,
 	DEFAULT_CONVERSATION_SESSION_DIR,

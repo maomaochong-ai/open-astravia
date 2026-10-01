@@ -27,7 +27,7 @@ export async function listDesktopSessionSearchSources(): Promise<SessionSearchSo
 	for (const { path, name } of config.projects) {
 		let batch = false;
 		try {
-			const meta: unknown = JSON.parse(await readFile(join(path, ".vetta", "meta.json"), "utf8"));
+			const meta: unknown = JSON.parse(await readFile(join(path, ".astravia", "meta.json"), "utf8"));
 			batch = typeof meta === "object" && meta !== null && Reflect.get(meta, "type") === "batch";
 		} catch {
 			/* Missing project metadata denotes a regular project. */

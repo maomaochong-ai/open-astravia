@@ -2,7 +2,7 @@
 
 import { act, renderHook } from "@testing-library/react";
 import { contextUsageAtom } from "@shared/store/atoms";
-import type { ContextCompositionReport } from "@vetta/runtime-core";
+import type { ContextCompositionReport } from "@astravia/runtime-core";
 import { createStore, Provider } from "jotai";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";

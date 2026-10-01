@@ -28,7 +28,7 @@ describe("新会话页纹理", () => {
 	});
 
 	it("存了别处写进来的脏值时回落到网格，而不是画不出东西", () => {
-		window.localStorage.setItem("vetta-new-session-texture", "not-a-texture");
+		window.localStorage.setItem("astravia-new-session-texture", "not-a-texture");
 
 		expect(isNewSessionTextureId("not-a-texture")).toBe(false);
 		expect(getStoredNewSessionTextureId()).toBe("grid");

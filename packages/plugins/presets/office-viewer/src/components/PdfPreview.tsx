@@ -1,4 +1,4 @@
-import { type PluginFilePreviewProps, useTranslation } from "@vetta-org/plugin-sdk";
+import { type PluginFilePreviewProps, useTranslation } from "@astravia-org/plugin-sdk";
 import * as pdfjsLib from "pdfjs-dist";
 import workerSource from "pdfjs-dist/build/pdf.worker.min.mjs?raw";
 import { useCallback, useEffect, useRef, useState, type JSX } from "react";

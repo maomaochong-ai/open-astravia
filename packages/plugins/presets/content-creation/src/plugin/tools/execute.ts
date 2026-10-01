@@ -1,6 +1,6 @@
 import { Kind, type TSchema } from "@sinclair/typebox";
 import { Value } from "@sinclair/typebox/value";
-import type { PluginContext } from "@vetta-org/plugin-sdk";
+import type { PluginContext } from "@astravia-org/plugin-sdk";
 import type { ContentCreationAgentService } from "../../agent/service";
 import type { ContentLocalAssetService } from "../../generation/local-asset-service";
 import type { ContentRunApprovalStore } from "../run-approval";

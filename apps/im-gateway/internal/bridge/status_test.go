@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"vetta-im-gateway/internal/hostclient"
-	"vetta-im-gateway/internal/transport"
+	"astravia-im-gateway/internal/hostclient"
+	"astravia-im-gateway/internal/transport"
 )
 
 // reactingTransport extends fakeTransport with the optional Reactor

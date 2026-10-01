@@ -4,8 +4,8 @@
  * Provides a typed API over an injected RPC transport.
  */
 
-import type { AgentEvent, AgentMessage, ThinkingLevel } from "@vetta/agent-core";
-import type { ImageContent } from "@vetta/ai";
+import type { AgentEvent, AgentMessage, ThinkingLevel } from "@astravia/agent-core";
+import type { ImageContent } from "@astravia/ai";
 import { RpcClientError, rpcClientErrorFromResponse } from "./rpc-client-error.js";
 import { RPC_FAILURE_CODES } from "./rpc-failure.js";
 import type {

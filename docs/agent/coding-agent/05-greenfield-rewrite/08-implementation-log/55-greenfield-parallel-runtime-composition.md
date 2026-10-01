@@ -49,9 +49,9 @@ continue，没有改变该功能语义。
 
 ### 5. Greenfield 需要窄公共入口
 
-如果 CLI 从 `@vetta/coding-agent/runtime-host` 大桶入口导入两个 Greenfield Adapter，会连带加载
+如果 CLI 从 `@astravia/coding-agent/runtime-host` 大桶入口导入两个 Greenfield Adapter，会连带加载
 Legacy Session、平台 sandbox 和宿主模块。新增
-`@vetta/coding-agent/runtime-host/greenfield` 窄入口，使并行组合只依赖模型与 prompt 适配器。
+`@astravia/coding-agent/runtime-host/greenfield` 窄入口，使并行组合只依赖模型与 prompt 适配器。
 
 ### 6. 本轮不需要 TypeBox 或 Zod
 
@@ -73,7 +73,7 @@ Legacy Session、平台 sandbox 和宿主模块。新增
 
 - 新增 Model Registry Adapter，复用既有刷新、可用模型、精确查找、凭证、server token 和远端模型能力。
 - 新增 Prompt Adapter，将已支持字段映射为 Runtime Session Input，对未迁移字段 fail closed。
-- 新增窄公共入口 `@vetta/coding-agent/runtime-host/greenfield`，不要求消费者加载 Legacy 大桶入口。
+- 新增窄公共入口 `@astravia/coding-agent/runtime-host/greenfield`，不要求消费者加载 Legacy 大桶入口。
 
 ### CLI 并行 Composition Root
 

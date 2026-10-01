@@ -9,9 +9,9 @@ import type {
 	McpToolResultOffloadDetails,
 	RuntimeMcpClientFactory,
 	RuntimeMcpClientFactoryOptions,
-} from "@vetta/runtime-mcp";
-import { createMcpToolResultPolicy, DEFAULT_MCP_MAX_INLINE_RESULT_BYTES } from "@vetta/runtime-mcp";
-import { createNodeMcpSupervisor, NodeMcpToolResultArtifactStore } from "@vetta/runtime-node/mcp";
+} from "@astravia/runtime-mcp";
+import { createMcpToolResultPolicy, DEFAULT_MCP_MAX_INLINE_RESULT_BYTES } from "@astravia/runtime-mcp";
+import { createNodeMcpSupervisor, NodeMcpToolResultArtifactStore } from "@astravia/runtime-node/mcp";
 import { describe, expect, it, vi } from "vitest";
 import type { EcosystemHookAwareRuntimeTool } from "../src/adapters/ecosystem/tool-interceptor-adapter.js";
 import { createCodingAgentMcpRuntimeToolSource } from "../src/mcp/runtime/tool-source.js";
@@ -76,7 +76,7 @@ describe("Coding Agent native MCP runtime source", () => {
 	});
 
 	it("uses an explicitly injected Host file policy for large results", async () => {
-		const agentDir = await mkdtemp(join(tmpdir(), "vetta-native-mcp-"));
+		const agentDir = await mkdtemp(join(tmpdir(), "astravia-native-mcp-"));
 		const source = new StaticConfigSource({ search: { command: "search" } });
 		const originalText = `start-${"x".repeat(DEFAULT_MCP_MAX_INLINE_RESULT_BYTES)}-end`;
 		const client = new FakeClient(originalText);

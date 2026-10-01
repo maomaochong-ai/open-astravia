@@ -1,5 +1,5 @@
-import type { AgentMessage } from "@vetta/agent-core";
-import type { ToolResultMessage, UserMessage } from "@vetta/ai";
+import type { AgentMessage } from "@astravia/agent-core";
+import type { ToolResultMessage, UserMessage } from "@astravia/ai";
 import { describe, expect, it } from "vitest";
 import { reduceContextByPressure } from "../src/compaction/context-pressure-reduction.js";
 

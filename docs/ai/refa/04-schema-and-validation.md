@@ -85,7 +85,7 @@ Vercel 的 `Schema<T>` 同时支持 JSON Schema、Zod 3/4、Standard Schema、la
 - schema vendor 能力差异和 `$ref` 策略。
 - 更大的测试矩阵。
 
-Vetta 控制所有一方包，不需要让每个内部调用者自由选择 schema vendor。现在引入同类抽象只会把单一规范变成永久兼容层。
+Astravia 控制所有一方包，不需要让每个内部调用者自由选择 schema vendor。现在引入同类抽象只会把单一规范变成永久兼容层。
 
 ## 7. 必测内容
 

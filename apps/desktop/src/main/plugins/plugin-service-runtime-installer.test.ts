@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { PluginServiceProviderManifest } from "@vetta-org/plugin-sdk";
+import type { PluginServiceProviderManifest } from "@astravia-org/plugin-sdk";
 import AdmZip from "adm-zip";
 import { c as createTar } from "tar";
 import { afterEach, describe, expect, it } from "vitest";
@@ -38,7 +38,7 @@ function service(
 }
 
 async function createRoot(): Promise<string> {
-	const root = await mkdtemp(join(tmpdir(), "vetta-plugin-service-installer-"));
+	const root = await mkdtemp(join(tmpdir(), "astravia-plugin-service-installer-"));
 	temporaryDirectories.push(root);
 	return root;
 }

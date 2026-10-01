@@ -28,7 +28,7 @@
 
 ### 1. name：动词化、具体、无歧义
 
-模型对工具名做的第一件事是语义联想。`render_chart` 好于 `chart`；`vetd_create` 带产品前缀避免
+模型对工具名做的第一件事是语义联想。`render_chart` 好于 `chart`；`astravia_design_create` 带产品前缀避免
 与通用词碰撞；`content_creation_edit` 一眼可知归属与动作。坏名字（`process`、`handle_data`）
 迫使模型完全依赖 description，等于自废一半匹配信号。
 
@@ -40,10 +40,10 @@
 ```text
 ✅ Use for a standalone design mockup or edits to an existing design canvas.
    For working UI code in a repository, use that project's framework instead.
-❌ Provides vetd document scaffolding and frame management capabilities.
+❌ Provides astravia-design document scaffolding and frame management capabilities.
 ```
 
-参数上同理：`vetd_create` 要求调用前先判断 `product` 品类，并把判断依据写进参数
+参数上同理：`astravia_design_create` 要求调用前先判断 `product` 品类，并把判断依据写进参数
 description——「Take it from the user's request in whatever language they wrote it」。
 这把一次容易做错的隐式判断变成了 schema 强制的显式判断。
 
@@ -59,7 +59,7 @@ Only for standalone visual exploration decoupled from any codebase,
 when the user asked for a design/mockup rather than working code.
 ```
 
-（`vetd_create`，packages/plugins/presets/vetta-ui-design/src/tools.ts）
+（`astravia_design_create`，packages/plugins/presets/astravia-ui-design/src/tools.ts）
 
 ```text
 Do NOT use to read or move media that belongs to the user's codebase — assets a
@@ -73,7 +73,7 @@ with the ordinary file tools instead.
 
 - **给替代路径，不只给禁令。** "别用我"之后必须跟"改用什么"，否则模型在无路可走时还是会用你。
 - **针对真实误调场景写**，不是防御性堆砌。问自己：模型最可能在哪句用户指令上错选我？
-  （`vetd_create` 的答案是"写个页面"——注释里就是这么记录的。）
+  （`astravia_design_create` 的答案是"写个页面"——注释里就是这么记录的。）
 - **与 mode md 的路线声明对齐措辞。** 宿主的 coding.md 用 "design-exploration tools /
   standalone design documents / canvas mockups" 这类**类别措辞**描述次要路线（宿主永不点名
   具体插件）；你的反向触发段把自己归入类别（"standalone visual exploration"），两边就接上了。
@@ -85,7 +85,7 @@ with the ordinary file tools instead.
 ### 4. 工具返回值：被低估的最强引导面
 
 description 与返回值承担不同职责：前者帮助选择，后者提供执行后状态和恢复依据。返回值仍可能被截断或压缩，
-不能假定模型每次都完整阅读。范本是 `vetd_status`：
+不能假定模型每次都完整阅读。范本是 `astravia_design_status`：
 
 - 返回里带 `sharedShell`（已有的公共外壳与组件清单）+ 一句 note："This design already has
   shared UI — reuse it instead of writing a second copy."。这解决了"模型一屏一屏写、写到第三屏
@@ -112,14 +112,14 @@ Skill 走渐进披露：清单里只有 name + description（每轮都在 prompt
   不要为了防误调用删减功能、把创意与审查能力限定为已有工作流，或要求用户显式点名 Skill。任务匹配应由选择层结合用户目标与上下文完成。
 - **规则、流程、约束全部放正文。** 任何"你想让模型每次用你的工具前都知道"的长内容，都属于
   skill 正文而不是工具 description；用工具 description 的一句话把模型引到 skill
-  （"invoke the vetta-ui-design skill for the rules before writing any of them"）。
+  （"invoke the astravia-ui-design skill for the rules before writing any of them"）。
 - frontmatter 的 `agent_mode` 已废弃，写了会被忽略。
 - 选用相关 Skill 后，正常执行完成用户目标所需的步骤；加载方法本身不代表授权执行与目标无关的动作。
 
 ## App Action 的发现说明
 
 App Action 还应声明 `usage.target`、`useWhen`、`avoidWhen`、`alternatives`，随 search / describe 返回。
-例如 Vetta 主题设置与网站深色模式、Vetta 定时 Agent 与业务 cron、插件安装与插件源码开发，需要明确区分。
+例如 Astravia 主题设置与网站深色模式、Astravia 定时 Agent 与业务 cron、插件安装与插件源码开发，需要明确区分。
 检索候选不是执行指令；查询/解释不等于修改，不要先调用写入 Action 再把意图判断交给审批框。
 usage 不参与权限决策，也不进入正向检索文本。合同见 [app-actions.md](./app-actions.md#模型选择边界)。
 
@@ -171,7 +171,7 @@ usage 不参与权限决策，也不进入正向检索文本。合同见 [app-ac
 - [ ] 没有写 `agent_mode`，没有在 handler 里读 `getAgentMode()`
 - [ ] （宿主侧）构成新路线的能力更新了 mode md 类别措辞 / facts 探测，并保持零插件点名
 
-## Vetta 扩展设计的八荣八耻
+## Astravia 扩展设计的八荣八耻
 
 - 以描述任务为荣，以罗列功能为耻。
 - 以指明何时别用为荣，以逢场必荐自己为耻。

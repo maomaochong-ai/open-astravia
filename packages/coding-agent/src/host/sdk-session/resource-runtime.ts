@@ -2,7 +2,7 @@ import {
 	createNodeCommandExecutor,
 	createNodeResourcePackageHost,
 	nodeTextFileWatchPort,
-} from "@vetta/runtime-node/host";
+} from "@astravia/runtime-node/host";
 import type {
 	SessionResourceRuntime,
 	SessionResourceRuntimeOptions,
@@ -17,7 +17,7 @@ import {
 	loadThemeFromContent,
 } from "../../theme/index.js";
 import { createCodingAgentNodeExtensionFactoryLoader } from "../extensions/node-extension-factory-loader.js";
-import { getSceneDir, getUserSkillsDir, getVettaHomePath } from "../node-config.js";
+import { getAstraviaHomePath, getSceneDir, getUserSkillsDir } from "../node-config.js";
 
 export interface CreateCodingAgentSdkSessionResourceRuntimeOptions
 	extends Omit<
@@ -63,7 +63,7 @@ export function createCodingAgentSdkSessionResourceRuntime(
 		skillLocations: {
 			sceneDir: getSceneDir(),
 			managedSkillsDir: getUserSkillsDir(),
-			manifestPath: host.resourceAccess.paths.join(getVettaHomePath(), "skills-manifest.json"),
+			manifestPath: host.resourceAccess.paths.join(getAstraviaHomePath(), "skills-manifest.json"),
 		},
 	});
 }

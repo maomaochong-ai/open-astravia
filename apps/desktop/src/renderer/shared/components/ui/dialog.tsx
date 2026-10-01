@@ -9,4 +9,4 @@ export {
 	DialogPortal,
 	DialogTitle,
 	DialogTrigger,
-} from "@vetta-org/ui";
+} from "@astravia-org/ui";

@@ -4,11 +4,11 @@ import { resolveSystemPluginSelection } from "./stage-system-plugins.mjs";
 import { resolveUpdatePublishConfig } from "./resolve-update-publish-config.mjs";
 
 export const OPEN_SOURCE_BUILD_DEFAULTS = Object.freeze({
-	VETTA_BUILD_ENV: "opensource",
-	VETTA_CLOUD_ENABLED: "false",
-	VETTA_UPDATE_PROVIDER: "github",
-	VETTA_UPDATE_GITHUB_OWNER: "openvetta",
-	VETTA_UPDATE_GITHUB_REPO: "open-vetta",
+	ASTRAVIA_BUILD_ENV: "opensource",
+	ASTRAVIA_CLOUD_ENABLED: "false",
+	ASTRAVIA_UPDATE_PROVIDER: "github",
+	ASTRAVIA_UPDATE_GITHUB_OWNER: "maomaochong-ai",
+	ASTRAVIA_UPDATE_GITHUB_REPO: "open-astravia",
 });
 
 const SUPPORTED_PLATFORM_TAGS = new Set([
@@ -19,12 +19,12 @@ const SUPPORTED_PLATFORM_TAGS = new Set([
 	"win32-x64",
 ]);
 const OPTIONAL_BOOLEAN_KEYS = [
-	"VETTA_MAIN_SOURCEMAP",
-	"VETTA_POSTHOG_REPLAY_ENABLED",
-	"VETTA_SHOW_UI_THEME",
+	"ASTRAVIA_MAIN_SOURCEMAP",
+	"ASTRAVIA_POSTHOG_REPLAY_ENABLED",
+	"ASTRAVIA_SHOW_UI_THEME",
 ];
-const OPTIONAL_ZERO_ONE_KEYS = ["VETTA_REQUIRE_MAC_SIGNATURE"];
-const SAMPLE_RATE_KEYS = ["VETTA_POSTHOG_REPLAY_SAMPLE_RATE", "VETTA_SENTRY_TRACES_SAMPLE_RATE"];
+const OPTIONAL_ZERO_ONE_KEYS = ["ASTRAVIA_REQUIRE_MAC_SIGNATURE"];
+const SAMPLE_RATE_KEYS = ["ASTRAVIA_POSTHOG_REPLAY_SAMPLE_RATE", "ASTRAVIA_SENTRY_TRACES_SAMPLE_RATE"];
 const MARKETPLACE_REF_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,127}$/;
 const GITHUB_COORDINATE_PATTERN = /^[A-Za-z0-9_.-]+$/;
 
@@ -73,29 +73,29 @@ function validateHttpUrl(
 }
 
 function validateMarketplaceRepository(env, errors) {
-	const repository = readValue(env, "VETTA_OPEN_MARKETPLACE_REPOSITORY");
+	const repository = readValue(env, "ASTRAVIA_OPEN_MARKETPLACE_REPOSITORY");
 	if (repository && !/^([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)$/.test(repository)) {
 		try {
 			const url = new URL(repository.replace(/\.git$/i, "").replace(/\/$/, ""));
 			const segments = url.pathname.split("/").filter(Boolean);
 			if (url.protocol !== "https:" || url.hostname.toLowerCase() !== "github.com" || segments.length !== 2) {
 				errors.push(
-					"VETTA_OPEN_MARKETPLACE_REPOSITORY must be a GitHub owner/repo or https://github.com/owner/repo",
+					"ASTRAVIA_OPEN_MARKETPLACE_REPOSITORY must be a GitHub owner/repo or https://github.com/owner/repo",
 				);
 			}
 		} catch {
 			errors.push(
-				"VETTA_OPEN_MARKETPLACE_REPOSITORY must be a GitHub owner/repo or https://github.com/owner/repo",
+				"ASTRAVIA_OPEN_MARKETPLACE_REPOSITORY must be a GitHub owner/repo or https://github.com/owner/repo",
 			);
 		}
 	}
 
-	const ref = readValue(env, "VETTA_OPEN_MARKETPLACE_REF");
+	const ref = readValue(env, "ASTRAVIA_OPEN_MARKETPLACE_REF");
 	if (ref && (!MARKETPLACE_REF_PATTERN.test(ref) || ref.includes("..") || ref.startsWith("/") || ref.endsWith("/"))) {
-		errors.push("VETTA_OPEN_MARKETPLACE_REF is invalid");
+		errors.push("ASTRAVIA_OPEN_MARKETPLACE_REF is invalid");
 	}
-	if (readValue(env, "VETTA_OPEN_MARKETPLACE_ARCHIVE_URL")) {
-		validateHttpUrl(env, "VETTA_OPEN_MARKETPLACE_ARCHIVE_URL", errors, { httpsOnly: true });
+	if (readValue(env, "ASTRAVIA_OPEN_MARKETPLACE_ARCHIVE_URL")) {
+		validateHttpUrl(env, "ASTRAVIA_OPEN_MARKETPLACE_ARCHIVE_URL", errors, { httpsOnly: true });
 	}
 }
 
@@ -107,8 +107,8 @@ function parsePlatformList(env, key, errors) {
 		errors.push(`${key} must contain at least one platform tag`);
 		return [];
 	}
-	if (key === "VETTA_VENDOR_PLATFORM" && values.length !== 1) {
-		errors.push("VETTA_VENDOR_PLATFORM must contain exactly one platform tag");
+	if (key === "ASTRAVIA_VENDOR_PLATFORM" && values.length !== 1) {
+		errors.push("ASTRAVIA_VENDOR_PLATFORM must contain exactly one platform tag");
 	}
 	for (const value of new Set(values)) {
 		if (!SUPPORTED_PLATFORM_TAGS.has(value)) {
@@ -120,9 +120,9 @@ function parsePlatformList(env, key, errors) {
 }
 
 function resolveTargetPlatformTags(env, platform, arch, errors) {
-	const vendor = parsePlatformList(env, "VETTA_VENDOR_PLATFORM", errors);
-	const cli = parsePlatformList(env, "VETTA_CLI_TARGET_PLATFORMS", errors);
-	const gateway = parsePlatformList(env, "VETTA_IM_GATEWAY_TARGET_PLATFORMS", errors);
+	const vendor = parsePlatformList(env, "ASTRAVIA_VENDOR_PLATFORM", errors);
+	const cli = parsePlatformList(env, "ASTRAVIA_CLI_TARGET_PLATFORMS", errors);
+	const gateway = parsePlatformList(env, "ASTRAVIA_IM_GATEWAY_TARGET_PLATFORMS", errors);
 	const effective = gateway ?? cli ?? vendor ?? [`${platform}-${arch}`];
 	for (const value of effective) {
 		if (!SUPPORTED_PLATFORM_TAGS.has(value)) {
@@ -131,9 +131,9 @@ function resolveTargetPlatformTags(env, platform, arch, errors) {
 	}
 	if (vendor) {
 		const target = vendor[0];
-		if (target && cli && !cli.includes(target)) errors.push("VETTA_CLI_TARGET_PLATFORMS must include VETTA_VENDOR_PLATFORM");
+		if (target && cli && !cli.includes(target)) errors.push("ASTRAVIA_CLI_TARGET_PLATFORMS must include ASTRAVIA_VENDOR_PLATFORM");
 		if (target && gateway && !gateway.includes(target)) {
-			errors.push("VETTA_IM_GATEWAY_TARGET_PLATFORMS must include VETTA_VENDOR_PLATFORM");
+			errors.push("ASTRAVIA_IM_GATEWAY_TARGET_PLATFORMS must include ASTRAVIA_VENDOR_PLATFORM");
 		}
 	}
 	return effective;
@@ -144,17 +144,17 @@ function validateUpdateConfiguration(updateConfig, productionUrls, errors) {
 	if (updateConfig.provider === "generic") {
 		const url = new URL(updateConfig.url);
 		if (productionUrls && url.protocol !== "https:") {
-			errors.push("VETTA_UPDATE_URL must use https for a production build");
+			errors.push("ASTRAVIA_UPDATE_URL must use https for a production build");
 		}
-		if (url.username || url.password) errors.push("VETTA_UPDATE_URL must not contain credentials");
-		if (url.search || url.hash) errors.push("VETTA_UPDATE_URL must not contain a query or fragment");
+		if (url.username || url.password) errors.push("ASTRAVIA_UPDATE_URL must not contain credentials");
+		if (url.search || url.hash) errors.push("ASTRAVIA_UPDATE_URL must not contain a query or fragment");
 		return;
 	}
 	if (!GITHUB_COORDINATE_PATTERN.test(updateConfig.owner)) {
-		errors.push("VETTA_UPDATE_GITHUB_OWNER must be a valid GitHub owner");
+		errors.push("ASTRAVIA_UPDATE_GITHUB_OWNER must be a valid GitHub owner");
 	}
 	if (!GITHUB_COORDINATE_PATTERN.test(updateConfig.repo)) {
-		errors.push("VETTA_UPDATE_GITHUB_REPO must be a valid GitHub repository name");
+		errors.push("ASTRAVIA_UPDATE_GITHUB_REPO must be a valid GitHub repository name");
 	}
 }
 
@@ -165,47 +165,47 @@ function validateTelemetry(env, productionUrls, errors) {
 		const parsed = Number(value);
 		if (!Number.isFinite(parsed) || parsed < 0 || parsed > 1) errors.push(`${key} must be between 0 and 1`);
 	}
-	if (readValue(env, "VETTA_SENTRY_DSN")) {
-		validateHttpUrl(env, "VETTA_SENTRY_DSN", errors, {
+	if (readValue(env, "ASTRAVIA_SENTRY_DSN")) {
+		validateHttpUrl(env, "ASTRAVIA_SENTRY_DSN", errors, {
 			httpsOnly: productionUrls,
 			allowCredentials: true,
 		});
 	}
-	if (readValue(env, "VETTA_SENTRY_URL")) {
-		validateHttpUrl(env, "VETTA_SENTRY_URL", errors, { httpsOnly: productionUrls });
+	if (readValue(env, "ASTRAVIA_SENTRY_URL")) {
+		validateHttpUrl(env, "ASTRAVIA_SENTRY_URL", errors, { httpsOnly: productionUrls });
 	}
-	if (readValue(env, "VETTA_POSTHOG_HOST")) {
-		validateHttpUrl(env, "VETTA_POSTHOG_HOST", errors, { httpsOnly: productionUrls });
+	if (readValue(env, "ASTRAVIA_POSTHOG_HOST")) {
+		validateHttpUrl(env, "ASTRAVIA_POSTHOG_HOST", errors, { httpsOnly: productionUrls });
 	}
-	const telemetryEnvironment = readValue(env, "VETTA_TELEMETRY_ENVIRONMENT");
+	const telemetryEnvironment = readValue(env, "ASTRAVIA_TELEMETRY_ENVIRONMENT");
 	if (telemetryEnvironment && !["development", "staging", "production"].includes(telemetryEnvironment)) {
-		errors.push("VETTA_TELEMETRY_ENVIRONMENT must be development, staging, or production");
+		errors.push("ASTRAVIA_TELEMETRY_ENVIRONMENT must be development, staging, or production");
 	}
-	const posthogKey = readValue(env, "VETTA_POSTHOG_KEY");
+	const posthogKey = readValue(env, "ASTRAVIA_POSTHOG_KEY");
 	if (posthogKey && !posthogKey.startsWith("phc_")) {
-		errors.push("VETTA_POSTHOG_KEY must be a PostHog project API key starting with phc_");
+		errors.push("ASTRAVIA_POSTHOG_KEY must be a PostHog project API key starting with phc_");
 	}
 
-	const uploadKeys = ["VETTA_SENTRY_AUTH_TOKEN", "VETTA_SENTRY_ORG", "VETTA_SENTRY_PROJECT"];
+	const uploadKeys = ["ASTRAVIA_SENTRY_AUTH_TOKEN", "ASTRAVIA_SENTRY_ORG", "ASTRAVIA_SENTRY_PROJECT"];
 	if (uploadKeys.some((key) => readValue(env, key))) {
-		for (const key of [...uploadKeys, "VETTA_SENTRY_RELEASE"]) {
+		for (const key of [...uploadKeys, "ASTRAVIA_SENTRY_RELEASE"]) {
 			if (!readValue(env, key)) errors.push(`${key} is required when Sentry source-map upload is configured`);
 		}
 	}
-	if (readValue(env, "VETTA_POSTHOG_REPLAY_ENABLED") === "true" && !readValue(env, "VETTA_POSTHOG_KEY")) {
-		errors.push("VETTA_POSTHOG_KEY is required when VETTA_POSTHOG_REPLAY_ENABLED=true");
+	if (readValue(env, "ASTRAVIA_POSTHOG_REPLAY_ENABLED") === "true" && !readValue(env, "ASTRAVIA_POSTHOG_KEY")) {
+		errors.push("ASTRAVIA_POSTHOG_KEY is required when ASTRAVIA_POSTHOG_REPLAY_ENABLED=true");
 	}
 }
 
 export function createOpenSourceBuildEnvironment(env = process.env) {
 	const next = { ...env, ...OPEN_SOURCE_BUILD_DEFAULTS };
-	next.VETTA_SERVER_URL = "";
-	next.VETTA_SITE_URL = "";
+	next.ASTRAVIA_SERVER_URL = "";
+	next.ASTRAVIA_SITE_URL = "";
 	for (const key of [
-		"VETTA_OPEN_MARKETPLACE_REPOSITORY",
-		"VETTA_OPEN_MARKETPLACE_REF",
-		"VETTA_UPDATE_GITHUB_OWNER",
-		"VETTA_UPDATE_GITHUB_REPO",
+		"ASTRAVIA_OPEN_MARKETPLACE_REPOSITORY",
+		"ASTRAVIA_OPEN_MARKETPLACE_REF",
+		"ASTRAVIA_UPDATE_GITHUB_OWNER",
+		"ASTRAVIA_UPDATE_GITHUB_REPO",
 	]) {
 		const configured = readValue(env, key);
 		if (configured) next[key] = configured;
@@ -215,12 +215,12 @@ export function createOpenSourceBuildEnvironment(env = process.env) {
 
 export function validateDesktopBuildEnvironment({
 	env = process.env,
-	mode = env.VETTA_BUILD_ENV?.trim() || "production",
+	mode = env.ASTRAVIA_BUILD_ENV?.trim() || "production",
 	platform = process.platform,
 	arch = process.arch,
 } = {}) {
 	const errors = [];
-	const cloudFlag = validateExactFlag(env, "VETTA_CLOUD_ENABLED", ["true", "false"], errors, { required: true });
+	const cloudFlag = validateExactFlag(env, "ASTRAVIA_CLOUD_ENABLED", ["true", "false"], errors, { required: true });
 	for (const key of OPTIONAL_BOOLEAN_KEYS) validateExactFlag(env, key, ["true", "false"], errors);
 	for (const key of OPTIONAL_ZERO_ONE_KEYS) validateExactFlag(env, key, ["0", "1"], errors);
 
@@ -240,7 +240,7 @@ export function validateDesktopBuildEnvironment({
 
 	let pluginSelection;
 	try {
-		pluginSelection = resolveSystemPluginSelection(env.VETTA_TENANT, "production");
+		pluginSelection = resolveSystemPluginSelection(env.ASTRAVIA_TENANT, "production");
 	} catch (error) {
 		errors.push(error instanceof Error ? error.message : String(error));
 	}
@@ -248,18 +248,18 @@ export function validateDesktopBuildEnvironment({
 	const productionUrls = mode === "production";
 	validateUpdateConfiguration(updateConfig, productionUrls, errors);
 	if (cloudFlag === "true") {
-		validateHttpUrl(env, "VETTA_SERVER_URL", errors, { required: true, httpsOnly: productionUrls });
-		if (readValue(env, "VETTA_SITE_URL")) {
-			validateHttpUrl(env, "VETTA_SITE_URL", errors, { httpsOnly: productionUrls });
+		validateHttpUrl(env, "ASTRAVIA_SERVER_URL", errors, { required: true, httpsOnly: productionUrls });
+		if (readValue(env, "ASTRAVIA_SITE_URL")) {
+			validateHttpUrl(env, "ASTRAVIA_SITE_URL", errors, { httpsOnly: productionUrls });
 		}
 		if (updateConfig && updateConfig.provider !== "generic") {
-			errors.push("commercial builds must use VETTA_UPDATE_PROVIDER=generic");
+			errors.push("commercial builds must use ASTRAVIA_UPDATE_PROVIDER=generic");
 		}
 	} else if (cloudFlag === "false") {
-		if (readValue(env, "VETTA_SERVER_URL")) errors.push("VETTA_SERVER_URL must be empty for an open-source build");
-		if (readValue(env, "VETTA_SITE_URL")) errors.push("VETTA_SITE_URL must be empty for an open-source build");
+		if (readValue(env, "ASTRAVIA_SERVER_URL")) errors.push("ASTRAVIA_SERVER_URL must be empty for an open-source build");
+		if (readValue(env, "ASTRAVIA_SITE_URL")) errors.push("ASTRAVIA_SITE_URL must be empty for an open-source build");
 		if (updateConfig && updateConfig.provider !== "github") {
-			errors.push("open-source builds must use VETTA_UPDATE_PROVIDER=github");
+			errors.push("open-source builds must use ASTRAVIA_UPDATE_PROVIDER=github");
 		}
 	}
 	validateMarketplaceRepository(env, errors);
@@ -269,11 +269,11 @@ export function validateDesktopBuildEnvironment({
 	try {
 		macSigning = resolveMacSigningConfig(env);
 		if (
-			readValue(env, "VETTA_REQUIRE_MAC_SIGNATURE") === "1" &&
+			readValue(env, "ASTRAVIA_REQUIRE_MAC_SIGNATURE") === "1" &&
 			platformTags.some((tag) => tag.startsWith("darwin-")) &&
 			(!macSigning.enabled || !macSigning.notarize)
 		) {
-			errors.push("VETTA_REQUIRE_MAC_SIGNATURE=1 requires macOS signing and notarization");
+			errors.push("ASTRAVIA_REQUIRE_MAC_SIGNATURE=1 requires macOS signing and notarization");
 		}
 	} catch (error) {
 		errors.push(error instanceof Error ? error.message : String(error));

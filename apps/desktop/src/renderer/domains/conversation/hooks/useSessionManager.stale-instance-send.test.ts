@@ -130,7 +130,7 @@ it("陈旧实例的 sendMessage 仍应发给当前激活会话，而不是该实
 		subscribe: vi.fn(async () => vi.fn()),
 		updateSettings: vi.fn(async () => undefined),
 	};
-	Object.defineProperty(window, "vetta", {
+	Object.defineProperty(window, "astravia", {
 		configurable: true,
 		value: {
 			batchTasks: { resumeTaskWithText: vi.fn() },

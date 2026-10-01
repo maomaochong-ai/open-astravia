@@ -6,7 +6,7 @@
  */
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("@vetta-org/plugin-sdk", () => ({
+vi.mock("@astravia-org/plugin-sdk", () => ({
 	useTranslation: () => ({
 		// 直接回 key，好让断言锁住「显示了哪条文案」而不是具体译文；带参的补出参数值，
 		// 这样「检测到 0.25.4」这种关键信息仍然可断言。
@@ -102,13 +102,13 @@ function buttonWithText(host: HTMLElement, text: string): HTMLButtonElement | un
 }
 
 describe("页头图标", () => {
-	it("走 vetta-plugin:// 协议，而不是打包器生成的资源路径", () => {
+	it("走 astravia-plugin:// 协议，而不是打包器生成的资源路径", () => {
 		// 回归：`import icon from "../../icon.png"` 在 dev 链接下会变成插件 dev server 上的
 		// 路径 URL，但 remote 跑在宿主页面里、按宿主 origin 解析，开发态图标直接 404 空白。
 		const { host, cleanup } = renderConsole();
 		const img = host.querySelector("img");
 		expect(img?.getAttribute("src")).toBe(PLUGIN_ICON_URL);
-		expect(PLUGIN_ICON_URL.startsWith("vetta-plugin://")).toBe(true);
+		expect(PLUGIN_ICON_URL.startsWith("astravia-plugin://")).toBe(true);
 		cleanup();
 	});
 });

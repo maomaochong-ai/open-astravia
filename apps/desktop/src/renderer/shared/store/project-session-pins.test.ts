@@ -18,7 +18,7 @@ const sessionPins = {
 beforeEach(() => {
 	vi.clearAllMocks();
 	localStorage.clear();
-	Object.defineProperty(window, "vetta", { configurable: true, value: { sessionPins } });
+	Object.defineProperty(window, "astravia", { configurable: true, value: { sessionPins } });
 });
 
 describe("sidebar session pins", () => {
@@ -49,7 +49,7 @@ describe("sidebar session pins", () => {
 
 	it("reads and clears the pins an older version kept in localStorage", () => {
 		localStorage.setItem(
-			"vetta-sidebar-session-pins",
+			"astravia-sidebar-session-pins",
 			JSON.stringify({ schemaVersion: 1, pins: [{ path: "old", pinnedAt: 7 }] }),
 		);
 		expect([...takeLegacySidebarSessionPins()]).toEqual([["old", 7]]);

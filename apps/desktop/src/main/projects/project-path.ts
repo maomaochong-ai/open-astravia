@@ -1,4 +1,4 @@
-import { sameProjectLocation } from "@vetta/ssh-transport";
+import { sameProjectLocation } from "@astravia/ssh-transport";
 
 /**
  * 项目身份比较。

@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
 	spawn: vi.fn(),
-	resolveCli: vi.fn(() => "C:/plugin/node_modules/@vetta-org/plugin-vite/dist/cli.js"),
+	resolveCli: vi.fn(() => "C:/plugin/node_modules/@astravia-org/plugin-vite/dist/cli.js"),
 	setLink: vi.fn(),
 	setServer: vi.fn(),
 	setStatus: vi.fn(),

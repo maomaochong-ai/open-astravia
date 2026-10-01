@@ -1,5 +1,5 @@
-import type { UserMessage } from "@vetta/ai";
-import type { ContextCompactionRecord } from "@vetta/runtime-core/kernel";
+import type { UserMessage } from "@astravia/ai";
+import type { ContextCompactionRecord } from "@astravia/runtime-core/kernel";
 import { COMPACTION_SUMMARY_PREFIX, COMPACTION_SUMMARY_SUFFIX } from "../../model-context/index.js";
 import type { CodingAgentContextRuntimeOptions } from "../../runtime-contracts/index.js";
 import { appendCompactionWorkState, type CompactionResult } from "../index.js";

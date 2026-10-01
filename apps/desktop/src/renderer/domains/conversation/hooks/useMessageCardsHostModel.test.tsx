@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, render, renderHook, screen } from "@testing-library/react";
 import { createConversationAgentMessage, type ConversationAgentMessageViewModel } from "@shared/conversation";
-import type { CardDescriptor } from "@vetta-org/plugin-sdk";
+import type { CardDescriptor } from "@astravia-org/plugin-sdk";
 import { createStore, Provider, useAtomValue } from "jotai";
 import { isValidElement, type ReactElement, type ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -34,7 +34,7 @@ function streamingMessage(text: string): ConversationAgentMessageViewModel {
 			{
 				type: "tool_call",
 				toolCallId: "tc-1",
-				toolName: "vetd_screenshot",
+				toolName: "astravia_design_screenshot",
 				args: { frame: "Hero" },
 				status: "pending",
 			},
@@ -122,7 +122,7 @@ describe("useMessageCardsHostModel", () => {
 	it("在途 tool call 的骨架卡不因 pendingFor 中途返回 null 而消失", () => {
 		// pendingFor 是插件回调，读插件自己的模块级状态；它在相邻两帧返回不同结果是常态。
 		let ready = true;
-		const renderers = [renderer(() => (ready ? descriptor("vetd#Hero") : null))];
+		const renderers = [renderer(() => (ready ? descriptor("astravia-design#Hero") : null))];
 		const first = streamingMessage("a");
 		const { store, wrapper } = setup(renderers, [first]);
 
@@ -144,7 +144,7 @@ describe("useMessageCardsHostModel", () => {
 	});
 
 	it("流式重建消息但卡片内容不变时，rawCards 与 cards 复用旧引用", () => {
-		const renderers = [renderer(() => descriptor("vetd#Hero"))];
+		const renderers = [renderer(() => descriptor("astravia-design#Hero"))];
 		const first = streamingMessage("a");
 		const { store, wrapper } = setup(renderers, [first]);
 
@@ -174,14 +174,14 @@ describe("useMessageCardsHostModel", () => {
 				{
 					type: "tool_call",
 					toolCallId: "tc-0",
-					toolName: "vetd_screenshot",
+					toolName: "astravia_design_screenshot",
 					args: { frame: "Hero" },
 					status: "success",
-					cards: [descriptor("vetd#Hero")],
+					cards: [descriptor("astravia-design#Hero")],
 				},
 			],
 		});
-		const renderers = [renderer(() => descriptor("vetd#Hero"))];
+		const renderers = [renderer(() => descriptor("astravia-design#Hero"))];
 		const newer = streamingMessage("a");
 		const { wrapper } = setup(renderers, [older, newer]);
 
@@ -193,7 +193,7 @@ describe("useMessageCardsHostModel", () => {
 	});
 
 	it("tool call 落定后释放骨架记忆，改用结果里的真实卡片", () => {
-		const renderers = [renderer(() => descriptor("vetd#Hero"))];
+		const renderers = [renderer(() => descriptor("astravia-design#Hero"))];
 		const pending = streamingMessage("a");
 		const { store, wrapper } = setup(renderers, [pending]);
 
@@ -213,10 +213,10 @@ describe("useMessageCardsHostModel", () => {
 				{
 					type: "tool_call",
 					toolCallId: "tc-1",
-					toolName: "vetd_screenshot",
+					toolName: "astravia_design_screenshot",
 					args: { frame: "Hero" },
 					status: "success",
-					cards: [descriptor("vetd#Hero")],
+					cards: [descriptor("astravia-design#Hero")],
 				},
 			],
 		};

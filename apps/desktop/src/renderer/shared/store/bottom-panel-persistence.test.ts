@@ -217,10 +217,10 @@ describe("新会话主键迁移", () => {
 	it("把 new:cwd 上的面板改挂到真实 sessionPath", () => {
 		const states = new Map([["new:/repo", oneTabState()]]);
 
-		const next = renameBottomPanelStateKey(states, "new:/repo", "/repo/.vetta/s1.json");
+		const next = renameBottomPanelStateKey(states, "new:/repo", "/repo/.astravia/s1.json");
 
 		expect(next.has("new:/repo")).toBe(false);
-		expect(next.get("/repo/.vetta/s1.json")).toEqual(oneTabState());
+		expect(next.get("/repo/.astravia/s1.json")).toEqual(oneTabState());
 	});
 
 	it("源主键没有面板时只是清掉旧键", () => {

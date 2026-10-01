@@ -9,10 +9,10 @@ description: Process independent directories with one task configuration, observ
   <li>Artifact rules are stronger evidence than a model reply</li>
 </Takeaways>
 
-Batch tasks apply a method that already works to several directories. They do not automatically split one complex workflow into dependent steps. Instead, Vetta creates an independent subtask and session for each target, then runs them under a concurrency limit.
+Batch tasks apply a method that already works to several directories. They do not automatically split one complex workflow into dependent steps. Instead, Astravia creates an independent subtask and session for each target, then runs them under a concurrency limit.
 
 <MediaFrame>
-  <img src="/images/product/batch-tasks.webp" alt="Vetta batch task board showing multiple directory tasks running and waiting" width="1536" height="1152" />
+  <img src="/images/product/batch-tasks.webp" alt="Astravia batch task board showing multiple directory tasks running and waiting" width="1536" height="1152" />
   <figcaption>One configuration fans out into independent tasks; the board shows global state while each session keeps execution detail.</figcaption>
 </MediaFrame>
 
@@ -111,8 +111,8 @@ Open **More → Batch tasks**, select **New project**, and configure:
   <div><span>Shared configuration</span><strong>Prompt · model · concurrency 2 · artifact rule</strong></div>
   <BatchTasks>
     <span className="border-t-[#3f9f70]">Directory A<br /><small>Complete</small></span>
-    <span className="border-t-vetta-coral">Directory B<br /><small>Running</small></span>
-    <span className="border-t-vetta-coral">Directory C<br /><small>Running</small></span>
+    <span className="border-t-astravia-coral">Directory B<br /><small>Running</small></span>
+    <span className="border-t-astravia-coral">Directory C<br /><small>Running</small></span>
     <span className="border-t-[#c59a37]">Directory D<br /><small>Waiting</small></span>
     <span className="border-t-[#c95454]">Directory E<br /><small>Failed</small></span>
   </BatchTasks>

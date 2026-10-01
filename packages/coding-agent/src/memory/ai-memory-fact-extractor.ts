@@ -1,5 +1,5 @@
-import type { AgentMessage } from "@vetta/agent-core";
-import { completeSimple } from "@vetta/ai";
+import type { AgentMessage } from "@astravia/agent-core";
+import { completeSimple } from "@astravia/ai";
 import type { MemoryFactExtractionInput, MemoryFactExtractor } from "./memory-fact-extractor.js";
 
 const FLUSH_SYSTEM_PROMPT =

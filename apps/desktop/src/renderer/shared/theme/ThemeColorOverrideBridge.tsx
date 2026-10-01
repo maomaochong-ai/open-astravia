@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef } from "react";
-import { useThemeAppearance } from "@vetta-org/theme-sdk/appearance";
+import { useThemeAppearance } from "@astravia-org/theme-sdk/appearance";
 import { useThemeActions } from "../hooks/useTheme";
 import { applyStoredTheme, setThemeColorOverrides } from "./apply";
 

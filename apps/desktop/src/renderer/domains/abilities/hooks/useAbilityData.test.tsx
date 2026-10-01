@@ -100,7 +100,7 @@ beforeEach(() => {
 	mocks.fetchMarket.mockResolvedValue([]);
 	api.listOpenMarketplaces.mockResolvedValue(catalog());
 	api.refreshOpenMarketplaces.mockResolvedValue(catalog("x-api-mcp"));
-	Object.defineProperty(window, "vetta", {
+	Object.defineProperty(window, "astravia", {
 		configurable: true,
 		value: {
 			abilities: api,

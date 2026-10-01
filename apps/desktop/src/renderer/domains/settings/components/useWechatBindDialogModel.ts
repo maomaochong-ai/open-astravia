@@ -118,7 +118,7 @@ export function useWechatBindDialogModel({
 
 	const startBind = useCallback(async () => {
 		setState({ phase: "starting", qrAttempt: 0 });
-		const unsub = await window.vetta.im.wechat.subscribeBind((event: ImWechatBindEvent) => {
+		const unsub = await window.astravia.im.wechat.subscribeBind((event: ImWechatBindEvent) => {
 			switch (event.kind) {
 				case "qr":
 					setState((prev) => ({
@@ -163,7 +163,7 @@ export function useWechatBindDialogModel({
 		});
 		subUnsubRef.current = unsub;
 
-		const result = await window.vetta.im.wechat.startBind();
+		const result = await window.astravia.im.wechat.startBind();
 		if (!result.ok) {
 			setState({
 				phase: "failed",

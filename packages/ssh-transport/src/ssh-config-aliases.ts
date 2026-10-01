@@ -2,7 +2,7 @@
  * 从 `~/.ssh/config` 里挑出可以直接用作连接目标的别名。
  *
  * 这里**只**提取别名，不解析它背后的 HostName、Port、ProxyJump、IdentityFile。
- * 那些参数在连接时由 OpenSSH 自己解析，Vetta 缓存一份副本只会与用户后续的修改漂移，
+ * 那些参数在连接时由 OpenSSH 自己解析，Astravia 缓存一份副本只会与用户后续的修改漂移，
  * 并且要连带实现 Include、Match 和 `%h`/`%p` 展开——那是一整个必然落后于 OpenSSH 的
  * 实现，正是选系统 ssh 要避开的东西。
  */

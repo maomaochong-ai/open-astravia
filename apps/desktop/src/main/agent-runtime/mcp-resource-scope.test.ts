@@ -1,4 +1,4 @@
-import type { McpServerConfig } from "@vetta/runtime-mcp";
+import type { McpServerConfig } from "@astravia/runtime-mcp";
 import { describe, expect, it } from "vitest";
 import { resolveDesktopMcpServerResourceScope } from "./mcp-resource-scope.js";
 

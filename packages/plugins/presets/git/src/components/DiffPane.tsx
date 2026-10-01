@@ -1,5 +1,5 @@
-import { useTranslation } from "@vetta-org/plugin-sdk";
-import { Button } from "@vetta-org/ui";
+import { useTranslation } from "@astravia-org/plugin-sdk";
+import { Button } from "@astravia-org/ui";
 import { useEffect, useState } from "react";
 import { fileDiff } from "../git/run";
 import type { ChangeEntry, ChangeSection } from "../git/types";
@@ -15,7 +15,7 @@ function basename(path: string): string {
 
 /** Right-hand diff view for the selected change. Loads the patch and renders it. */
 /** 记住上次选择的 diff 版式，跨文件与跨会话保持一致。 */
-const DIFF_STYLE_KEY = "vetta-git-diff-style";
+const DIFF_STYLE_KEY = "astravia-git-diff-style";
 
 export function DiffPane({
 	root,

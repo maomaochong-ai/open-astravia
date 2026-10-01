@@ -9,7 +9,7 @@ import {
 } from "./windows-sandbox-packaging.mjs";
 
 function withSandboxFixture(run) {
-	const root = mkdtempSync(join(tmpdir(), "vetta-windows-sandbox-packaging-"));
+	const root = mkdtempSync(join(tmpdir(), "astravia-windows-sandbox-packaging-"));
 	try {
 		return run({ root, sourceDir: join(root, "source"), destinationDir: join(root, "destination") });
 	} finally {

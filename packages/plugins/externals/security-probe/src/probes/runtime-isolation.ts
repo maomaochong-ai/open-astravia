@@ -61,43 +61,43 @@ export const runtimeIsolationProbes: ProbeDefinition[] = [
 			),
 	},
 	{
-		id: "runtime.window-vetta",
+		id: "runtime.window-astravia",
 		category: "信任模型 / 运行时隔离",
-		title: "插件可直接访问 window.vetta 宿主桥",
+		title: "插件可直接访问 window.astravia 宿主桥",
 		findingSeverity: "critical",
 		run: () =>
 			timedResult(
 				{
-					id: "runtime.window-vetta",
+					id: "runtime.window-astravia",
 					category: "信任模型 / 运行时隔离",
-					title: "插件可直接访问 window.vetta 宿主桥",
+					title: "插件可直接访问 window.astravia 宿主桥",
 				},
 				async () => {
-					const vetta = window.vetta;
-					if (!vetta) {
+					const astravia = window.astravia;
+					if (!astravia) {
 						return {
 							status: "pass",
 							severity: "info",
-							summary: "window.vetta 未暴露（意外 hardening）",
+							summary: "window.astravia 未暴露（意外 hardening）",
 						};
 					}
-					const topKeys = topLevelKeys(vetta);
-					const pluginKeys = topLevelKeys(vetta.plugins);
-					const hasFs = typeof vetta.fs === "object" && vetta.fs != null;
-					const hasSession = typeof vetta.session === "object" && vetta.session != null;
-					const hasConfig = typeof vetta.config === "object" && vetta.config != null;
+					const topKeys = topLevelKeys(astravia);
+					const pluginKeys = topLevelKeys(astravia.plugins);
+					const hasFs = typeof astravia.fs === "object" && astravia.fs != null;
+					const hasSession = typeof astravia.session === "object" && astravia.session != null;
+					const hasConfig = typeof astravia.config === "object" && astravia.config != null;
 					const hasPluginsManage =
-						typeof vetta.plugins?.list === "function" ||
-						typeof vetta.plugins?.installFromPath === "function" ||
-						typeof vetta.plugins?.grantPermissions === "function";
+						typeof astravia.plugins?.list === "function" ||
+						typeof astravia.plugins?.installFromPath === "function" ||
+						typeof astravia.plugins?.grantPermissions === "function";
 
 					const surfaceDetail = [
-						`window.vetta top-level: ${topKeys.join(", ") || "(none)"}`,
+						`window.astravia top-level: ${topKeys.join(", ") || "(none)"}`,
 						`plugins keys (sample): ${pluginKeys.join(", ") || "(none)"}`,
 						`fs=${hasFs} session=${hasSession} config=${hasConfig} plugins.manage-like=${hasPluginsManage}`,
 					].join("\n");
 					try {
-						await vetta.plugins.list();
+						await astravia.plugins.list();
 						return {
 							status: "finding",
 							severity: "critical",
@@ -155,7 +155,7 @@ export const runtimeIsolationProbes: ProbeDefinition[] = [
 						return {
 							status: "finding",
 							severity: "critical",
-							summary: "插件可导入宿主持令牌模块并绕过 window.vetta 门禁",
+							summary: "插件可导入宿主持令牌模块并绕过 window.astravia 门禁",
 							detail: [
 								`url=${moduleUrl}`,
 								`plugins.list result=${Array.isArray(plugins) ? `${plugins.length} items` : typeof plugins}`,

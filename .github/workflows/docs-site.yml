@@ -3,7 +3,7 @@
 # - PR / push touching apps/docs-site: `next build`
 # - Typecheck and tests are owned by the repository quality workflow.
 # - Push to `dev` with docs-site changes: Vercel production
-#   (https://vetta-docs.vercel.app). Unrelated monorepo commits are skipped
+#   (https://astravia-docs.vercel.app). Unrelated monorepo commits are skipped
 #   by apps/docs-site/vercel.json ignoreCommand (turbo query affected).
 # - Other branches and PRs: Vercel preview deployments, same ignore rule.
 #

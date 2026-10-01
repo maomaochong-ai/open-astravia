@@ -5,7 +5,7 @@
 	"typeNoun": {
 		"scene": "scenes"
 	},
-	"subtitle": "Install and enable the capabilities you need to give Vetta more expertise",
+	"subtitle": "Install and enable the capabilities you need to give Astravia more expertise",
 	"search": {
 		"placeholder": "Search {{noun}}..."
 	},
@@ -61,7 +61,7 @@
 			},
 			"scope": {
 				"title": "Public / Personal",
-				"description": "Public browses available capabilities and Vetta built-in abilities. Personal manages universal skills and manually installed capabilities — enable, configure, or remove."
+				"description": "Public browses available capabilities and Astravia built-in abilities. Personal manages universal skills and manually installed capabilities — enable, configure, or remove."
 			},
 			"list": {
 				"title": "Capability cards",
@@ -72,15 +72,15 @@
 	"builtin": {
 		"create-skill": {
 			"name": "Create Skill",
-			"description": "Create or update an Agent Skill that follows the Vetta spec: place the files, register it in skills-manifest.json, or update the plugin config."
+			"description": "Create or update an Agent Skill that follows the Astravia spec: place the files, register it in skills-manifest.json, or update the plugin config."
 		},
 		"install-ability": {
 			"name": "Install Ability",
-			"description": "Install plugins, Skills/scenes, and MCP servers into this machine's Vetta, reloading right away when a plugin upgrade leaves a pending version."
+			"description": "Install plugins, Skills/scenes, and MCP servers into this machine's Astravia, reloading right away when a plugin upgrade leaves a pending version."
 		},
 		"publish-ability": {
 			"name": "Publish Ability",
-			"description": "Submit a skill, scene, MCP server, plugin, or ability bundle to the Vetta marketplace, covering required fields, localization, and the review flow."
+			"description": "Submit a skill, scene, MCP server, plugin, or ability bundle to the Astravia marketplace, covering required fields, localization, and the review flow."
 		}
 	}
 }

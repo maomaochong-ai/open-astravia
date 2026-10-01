@@ -19,7 +19,7 @@ import type { BuiltinMcpPreset } from "../settings/mcp/builtin-mcp-presets";
 
 /**
  * 能力市场分区：
- * - "discover" / "public"：公开能力（市场条目 + Vetta 内置能力）
+ * - "discover" / "public"：公开能力（市场条目 + Astravia 内置能力）
  * - "mine" / "personal"：个人能力（通用 skill + 手动安装的能力）
  */
 export type AbilityScope = "discover" | "mine" | "public" | "personal";
@@ -52,9 +52,9 @@ export const ABILITY_CATEGORY_CONNECTORS = "__connectors__";
 /**
  * 分组 key：随 App 分发的内置能力（`isBuiltin`：skill-presets、通用 Agent、系统插件）。
  * 与用户自己安装的能力（市场 / `~/.agents/skills`）分开成组，展示名走
- * `abilities:group.vettaBuiltin`。
+ * `abilities:group.astraviaBuiltin`。
  */
-export const ABILITY_CATEGORY_VETTA_BUILTIN = "__vetta_builtin__";
+export const ABILITY_CATEGORY_ASTRAVIA_BUILTIN = "__astravia_builtin__";
 
 /**
  * 是否按分类分组展示能力列表。
@@ -86,7 +86,7 @@ export interface AbilityBase {
 	catalogSource: AbilityCatalogSource;
 	title: string;
 	description: string;
-	/** 已解析的图标值：空 / `solar:xxx` / 绝对 URL / `vetta-plugin://…`。 */
+	/** 已解析的图标值：空 / `solar:xxx` / 绝对 URL / `astravia-plugin://…`。 */
 	icon?: string;
 	/** 分类的规范名；未分类为空串。它是分组与筛选的 key，展示名另见 `categoryI18n`。 */
 	category: string;

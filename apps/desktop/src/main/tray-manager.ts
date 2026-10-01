@@ -48,7 +48,7 @@ function buildTrayMenu(): Electron.Menu {
 			toggleItem,
 			{ type: "separator" },
 			{
-				label: mainT("tray.quitVetta"),
+				label: mainT("tray.quitAstravia"),
 				click: () => {
 					(app as typeof app & { isQuitting?: boolean }).isQuitting = true;
 					if (tray) {
@@ -100,7 +100,7 @@ export function createTray(): void {
 
 	tray = new Tray(trayIcon);
 	log.info("Created successfully");
-	tray.setToolTip("Vetta");
+	tray.setToolTip("Astravia");
 	tray.setContextMenu(buildTrayMenu());
 
 	// Mac 状态栏惯例：左/右键都由 setContextMenu 默认弹菜单，不另绑 click。

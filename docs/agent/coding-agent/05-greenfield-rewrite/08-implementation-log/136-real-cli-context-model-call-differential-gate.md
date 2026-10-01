@@ -2,7 +2,7 @@
 
 ## 目标
 
-以真实 Vetta RPC CLI 进程作为验收入口，用同一组 Extension、设置和 Provider fixture 分别驱动
+以真实 Astravia RPC CLI 进程作为验收入口，用同一组 Extension、设置和 Provider fixture 分别驱动
 Legacy 与 Greenfield，验证第 135 轮建立的无损消息身份与最终模型消息边界没有改变既有功能。
 测试必须覆盖工具循环、自动压缩、跨进程恢复和运行期图片设置，而不是只验证进程内 Adapter。
 

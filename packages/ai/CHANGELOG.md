@@ -8,7 +8,7 @@
 - 工具参数校验失败新增公开的 `ToolArgumentsValidationError` 与结构化 `issues`；跨 UI/日志边界可使用
   `formatToolArgumentValidationIssues()` 返回不含原始参数的字段级摘要，原有详细 `message` 保持兼容。
 - `PromptCacheDiagnostics` 新增隐私安全的逐块系统提示词与逐工具指纹，并报告具体 ID/名称的新增、删除、内容和顺序变化；诊断不持久化 Prompt 正文、工具描述或 Schema。
-- `@vetta/ai/testing` 新增非干扰式 Provider 观测中间件、统一脱敏合同与隔离 Registry 流入口；测试宿主可按 metadata、payload、wire 三档记录真实请求、响应及缓存 usage，而不修改全局 Adapter Registry。
+- `@astravia/ai/testing` 新增非干扰式 Provider 观测中间件、统一脱敏合同与隔离 Registry 流入口；测试宿主可按 metadata、payload、wire 三档记录真实请求、响应及缓存 usage，而不修改全局 Adapter Registry。
 - `PromptCacheDiagnostics` 新增跨调用消息谱系、追加兼容状态及分段变化原因，可区分正常历史追加与稳定系统提示词、工具或历史重写导致的缓存前缀失效；旧 usage 记录保持兼容。
 - `Usage` 新增向后兼容的 `cacheUsageReporting`，区分真实零命中与 Provider 未上报；Anthropic、Bedrock、OpenAI 和 Google 原生适配器现在声明每次调用的缓存观测级别，并公开统一的单次与多调用缓存指标投影。
 - AI 根入口现在公开导出 Provider credential/error 合同，Runtime 模型绑定与 Provider 适配器可以共享同一套认证失败类型，而不需要深度导入实现目录。
@@ -26,8 +26,8 @@
 
 - 新增 `zai-openai-completions` 与 `zhipu-openai-completions` provider 变体，复用 OpenAI Chat Completions 流式实现并内置 GLM 思考控制：下发 `thinking: { type: "enabled" | "disabled" }`，启用时将模型配置的 `reasoning_effort`（含 `none` / `minimal` / `low` / `medium` / `high` / `max`）原样透传；同时新增 `zhipu` KnownProvider 与 `ZHIPU_API_KEY` 识别。
 - 新增 `openai-completions-deepseek` provider 变体（DeepSeek 直连），照搬 qwen/nvidia 的 thinkingFormat 模式：v4 统一模型（deepseek-v4-flash / deepseek-v4-pro）通过 `thinking: { type: "enabled" | "disabled", reasoning_effort }` 控制思考，`reasoning_effort` 取值 `high`/`max` 按模型配置透传；无推理请求时下发 `thinking: { type: "disabled" }`。reasoning 输出（`reasoning_content`）与工具轮的 reasoning 回传规则复用既有 `openai-completions` 逻辑。同时新增 `deepseek` KnownProvider 与 `DEEPSEEK_API_KEY` 环境变量识别。
-- 新增 `@vetta/ai/protocol` 稳定协议子路径，集中导出 Provider 中立的消息、工具、usage、reasoning、终止原因、流事件与结构化 AI 错误类型；旧根入口保持兼容 re-export。
-- 新增隔离的 `LanguageModelAdapter`/`AdapterRegistry`、`@vetta/ai/testing` 脚本模型与可控 Provider transport；OpenAI Completions 和 Anthropic 试点增加 TypeBox wire 校验及无网络 conformance 覆盖。
+- 新增 `@astravia/ai/protocol` 稳定协议子路径，集中导出 Provider 中立的消息、工具、usage、reasoning、终止原因、流事件与结构化 AI 错误类型；旧根入口保持兼容 re-export。
+- 新增隔离的 `LanguageModelAdapter`/`AdapterRegistry`、`@astravia/ai/testing` 脚本模型与可控 Provider transport；OpenAI Completions 和 Anthropic 试点增加 TypeBox wire 校验及无网络 conformance 覆盖。
 - `Context` 新增可选字段 `systemPromptStableLength`：声明 `systemPrompt` 中会话内逐字不变的前缀长度。Anthropic provider 据此把 system 拆成「稳定前缀（打 `cache_control`）+ 易变尾段（不打）」两个 text block，使会话内变化的模式/人设/日期段落不再作废整段 system 前缀缓存；OAuth 分支同样生效。未声明该字段、或 `cacheRetention: "none"`、或切分点落在正文两端时保持单 block 原行为，其他 provider 忽略该字段。
 
 ### Changed
@@ -81,7 +81,7 @@
 - 修复 Google/Vertex 缺失 `finishReason`、terminal 后继续输出和畸形 Gemini chunk 被错误视为成功的问题；修复 cached input 同时计入 `input` 与 `cacheRead` 导致的 token/成本重复计算。Gemini CLI 畸形 SSE JSON 不再静默跳过，非重试型 4xx 不再误重试，HTTP status 进入稳定错误分类。
 - 修复 Anthropic/Bedrock 空流、缺失 `message_stop`/`messageStop`、未闭合或乱序 content block 被错误视为成功的问题；Bedrock streamed exception 与 AWS SDK `$metadata.httpStatusCode` 现在会保留状态码并映射到稳定错误类型，调用前和流中取消通过原生失败通道拒绝。
 - 修复 Responses 流对空流、缺失终态、畸形 SSE/WebSocket JSON、乱序或交错 output item 静默成功/错配的问题；`response.incomplete` 现在稳定映射为 `length`，`response.failed` 和取消通过原生失败通道拒绝。Codex `sessionId` 同时写入 `conversation_id`、`session_id`、`prompt_cache_key` 与 `prompt_cache_retention: "in-memory"`，避免会话缓存身份不完整。
-- 修复部分 OpenAI 兼容网关把推理摘要泄漏到 `delta.content` 时，`<thinking>...</thinking>` 被当作正文渲染的问题。实测 vetta-go 的 GPT 系模型（hellox-gpt-5.6-luna）在有多段 reasoning summary 时，只把第一段放进 `reasoning_content`，其余段落带标签塞进 `content`。`openai-completions` 流式解析新增 `ThinkingTagSplitter`：在消息尚未产出任何实际正文前，把 content 中的 `<thinking>` 包裹段剥离并并入思考块（支持标签跨 delta 切分）；一旦出现真实正文，后续 `<thinking>` 一律按字面量保留，避免误吃模型正文里讨论该标签的场景。
+- 修复部分 OpenAI 兼容网关把推理摘要泄漏到 `delta.content` 时，`<thinking>...</thinking>` 被当作正文渲染的问题。实测 astravia-go 的 GPT 系模型（hellox-gpt-5.6-luna）在有多段 reasoning summary 时，只把第一段放进 `reasoning_content`，其余段落带标签塞进 `content`。`openai-completions` 流式解析新增 `ThinkingTagSplitter`：在消息尚未产出任何实际正文前，把 content 中的 `<thinking>` 包裹段剥离并并入思考块（支持标签跨 delta 切分）；一旦出现真实正文，后续 `<thinking>` 一律按字面量保留，避免误吃模型正文里讨论该标签的场景。
 - 修复通过通用 `openai-completions` 通道接入的推理型 DeepSeek 模型（在 admin 里当普通 openai-completions 模型 + 勾选 reasoning 配置，而非内置 `openai-completions-deepseek`）思考档位选「关闭」仍然思考的回归。上一次改动把通用分支的「off」无条件归一为 `reasoning_effort: "none"` 下发给所有端点，但 `none` 是 OpenAI gpt-5 系专有的关思考值，DeepSeek / 聚合网关 / vLLM 等后端不认、直接忽略，导致思考关不掉。现仅在 `api.openai.com` 官方端点下发 `none`，其余端点的「off」恢复为省略 `reasoning_effort` 字段，让后端回落到非思考默认。
 - 修复自建 vLLM / SGLang 部署的 Qwen 模型思考档位选「关闭」仍然思考的回归。`qwen` thinkingFormat 分支此前只下发顶层 `enable_thinking`，而自建 vLLM/SGLang 只认 `chat_template_kwargs.enable_thinking`（顶层参数被静默丢弃），关闭指令对这类后端从未生效——之前是靠同时下发的 `reasoning_effort: "none"` 关掉的，`reasoning_effort: "none"` 被移除后彻底失效。改为同时下发顶层 `enable_thinking` 与 `chat_template_kwargs.enable_thinking`，兼顾 DashScope（读顶层）与自建 vLLM/SGLang（读 chat_template_kwargs）。
 - 修复通过通用 `openai-completions` 通道接入的自定义推理模型（如自建端点上的 qwen3.6）报 `400 Unexpected message role` 的问题。原 `detectCompat` 对所有非"已知非标准"端点默认 `supportsDeveloperRole: true`，导致带 `reasoning` 的模型把系统提示词以 OpenAI 专有的 `developer` 角色下发，而多数 OpenAI 兼容后端（vLLM、SGLang、Qwen、llama.cpp 等）的 chat template 只认 system/user/assistant/tool，直接 400。改为仅对真正支持 `developer` 的端点（`openai` provider、`github-copilot`、`api.openai.com`）默认开启，其余端点回落到通用的 `system` 角色。
@@ -188,7 +188,7 @@
 ### Fixed
 
 - Set OpenAI Responses API requests to `store: false` by default to avoid server-side history logging ([#1308](https://github.com/badlogic/pi-mono/issues/1308))
-- Re-exported TypeBox `Type`, `Static`, and `TSchema` from `@vetta/ai` to match documentation and avoid duplicate TypeBox type identity issues in pnpm setups ([#1338](https://github.com/badlogic/pi-mono/issues/1338))
+- Re-exported TypeBox `Type`, `Static`, and `TSchema` from `@astravia/ai` to match documentation and avoid duplicate TypeBox type identity issues in pnpm setups ([#1338](https://github.com/badlogic/pi-mono/issues/1338))
 - Fixed Bedrock adaptive thinking handling for Claude Opus 4.6 with interleaved thinking beta responses ([#1323](https://github.com/badlogic/pi-mono/pull/1323) by [@markusylisiurunen](https://github.com/markusylisiurunen))
 - Fixed `AWS_BEDROCK_SKIP_AUTH` environment detection to avoid `process` access in non-Node.js environments
 
@@ -639,7 +639,7 @@
 
 ### Breaking Changes
 
-- **Agent API moved**: All agent functionality (`agentLoop`, `agentLoopContinue`, `AgentContext`, `AgentEvent`, `AgentTool`, `AgentToolResult`, etc.) has moved to `@vetta/agent-core`. Import from that package instead of `@vetta/ai`.
+- **Agent API moved**: All agent functionality (`agentLoop`, `agentLoopContinue`, `AgentContext`, `AgentEvent`, `AgentTool`, `AgentToolResult`, etc.) has moved to `@astravia/agent-core`. Import from that package instead of `@astravia/ai`.
 
 ### Added
 

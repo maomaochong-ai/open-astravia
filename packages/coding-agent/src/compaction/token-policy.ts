@@ -1,5 +1,5 @@
-import type { AgentMessage } from "@vetta/agent-core";
-import type { AssistantMessage, Usage } from "@vetta/ai";
+import type { AgentMessage } from "@astravia/agent-core";
+import type { AssistantMessage, Usage } from "@astravia/ai";
 import type { CompactionHistoryEntry, CompactionSettings } from "./contracts.js";
 
 export function calculateContextTokens(usage: Usage): number {

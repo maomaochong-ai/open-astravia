@@ -1,5 +1,5 @@
-import { InputField } from "@vetta-org/theme-ui/settings";
-import { Button } from "@vetta-org/ui";
+import { InputField } from "@astravia-org/theme-ui/settings";
+import { Button } from "@astravia-org/ui";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { existingSecretValues } from "../../../settings/mcp/builtin-mcp-presets";
@@ -58,7 +58,7 @@ export function McpAbilitySettingsView({
 		setClearing(true);
 		setError(undefined);
 		try {
-			await window.vetta.mcp.clearSetupLogin(item.serverName);
+			await window.astravia.mcp.clearSetupLogin(item.serverName);
 			setConfirmClear(false);
 			status?.retry();
 			model.refresh();

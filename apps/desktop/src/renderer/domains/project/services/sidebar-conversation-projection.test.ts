@@ -62,10 +62,10 @@ describe("projectSidebarConversations", () => {
 	});
 
 	it("places project Team conversations only in their canonical project bucket", () => {
-		const projectTeam = team({ placement: { kind: "project", projectPath: "C:/Projects/Vetta" } });
+		const projectTeam = team({ placement: { kind: "project", projectPath: "C:/Projects/Astravia" } });
 
 		expect(
-			projectSidebarConversations([], [projectTeam], { kind: "project", projectPath: "c:\\projects\\vetta\\" }),
+			projectSidebarConversations([], [projectTeam], { kind: "project", projectPath: "c:\\projects\\astravia\\" }),
 		).toHaveLength(1);
 		expect(projectSidebarConversations([], [projectTeam], { kind: "default" })).toHaveLength(0);
 	});

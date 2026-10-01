@@ -39,7 +39,7 @@ Greenfield Desktop Canary ─┘
 ```
 
 两次运行复用同一确定性 Provider 行为、source 内容、Knowledge Action、真实审批和生命周期步骤，但各自
-拥有隔离的 `VETTA_HOME`、workspace、端口、安装 CLI 与持久文件。顺序执行避免两个 Electron/Provider
+拥有隔离的 `ASTRAVIA_HOME`、workspace、端口、安装 CLI 与持久文件。顺序执行避免两个 Electron/Provider
 fixture 争用宿主资源。
 
 差分器默认拒绝任何合同差异，只声明两项允许差异：
@@ -74,7 +74,7 @@ processing(true)
 - 每次操作都从 `/json/list` 重新发现当前 Desktop 主窗口；
 - 明确排除 Pet、Quick Panel、Onboarding 和 `devtools://` 页面；
 - 审批通过真实 DOM 按钮触发，不绕过 Action Approval；
-- 通知回调通过 preload 暴露的 `window.vetta.knowledge` API 注册；
+- 通知回调通过 preload 暴露的 `window.astravia.knowledge` API 注册；
 - Desktop 重启后重新发现页面，不保留失效连接。
 
 该改动只属于 Canary 驱动层，没有修改审批、Knowledge 或 Runtime 产品实现，也没有新增 Playwright 运行时
@@ -97,7 +97,7 @@ processing(true)
 
 ## 明确未修改
 
-- `VETTA_DESKTOP_AGENT_RUNTIME` 默认值仍为 Legacy；
+- `ASTRAVIA_DESKTOP_AGENT_RUNTIME` 默认值仍为 Legacy；
 - Provider/批次直接抛错不进入最终 failure reconciliation 的既有行为未修改；
 - Provider HTTP 失败写入 `failures.json`、但 Monitor `filesFailed` 仍为 0 的既有口径未修改；
 - Tool、Prompt、Todo、Writer、批次/并发算法、Action 结果和通知时序未修改；

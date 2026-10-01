@@ -21,7 +21,7 @@ Grant/Session 合同。具体 Provider、系统权限映射、Session 生命周�
   `desktop` 导入 Token 并注册 Provider 实现。
 - Capability 必须表达稳定的 query/command，输入输出必须可由现有 Schema 机制描述并在运行时校验。
   React 组件、回调、DOM 节点、Router 实例和其他进程内对象不得进入 Capability 输入输出。
-- Foundation 只承载与 Vetta 产品领域无关的平台原语；项目、会话等稳定应用服务属于 Domain。
+- Foundation 只承载与 Astravia 产品领域无关的平台原语；项目、会话等稳定应用服务属于 Domain。
   导航等 Renderer 行为只有形成跨系统稳定合同并完成独立评审后才可提升为 Domain Capability；
   Plugin/Theme/Action 的 contribution、manifest、生命周期和系统权限语义不属于通用 Capability 合同。
 - 本包不得新增 Plugin、Theme、Action 或某个宿主专用 Adapter，也不得出现其 manifest、permission、

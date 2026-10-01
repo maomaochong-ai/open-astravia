@@ -26,8 +26,8 @@ describe("UI verification profiles", () => {
     const firstDebug = resolveProfileLayout({ ...shared, profile: "debug" });
     const nextDebug = resolveProfileLayout({ ...shared, profile: "debug" });
 
-    expect(firstFresh.vettaHome).not.toBe(nextFresh.vettaHome);
-    expect(firstDebug.vettaHome).toBe(nextDebug.vettaHome);
+    expect(firstFresh.astraviaHome).not.toBe(nextFresh.astraviaHome);
+    expect(firstDebug.astraviaHome).toBe(nextDebug.astraviaHome);
     expect(firstFresh.userDataDir).not.toBe(firstDebug.userDataDir);
   });
 
@@ -39,11 +39,11 @@ describe("UI verification profiles", () => {
       homeDirectory: root,
       runtimeRoot: join(root, "runtime"),
     });
-    const environment = createProfileEnvironment(layout, { VETTA_UI_VERIFICATION: "stale" });
+    const environment = createProfileEnvironment(layout, { ASTRAVIA_UI_VERIFICATION: "stale" });
 
     expect(layout.statePath).toBeNull();
-    expect(layout.vettaHome).toBe(join(root, ".vetta-dev"));
-    expect(environment.VETTA_UI_VERIFICATION).toBeUndefined();
+    expect(layout.astraviaHome).toBe(join(root, ".astravia-dev"));
+    expect(environment.ASTRAVIA_UI_VERIFICATION).toBeUndefined();
   });
 });
 
@@ -78,7 +78,7 @@ describe("debug profile seeding", () => {
     const result = seedDebugProfile({
       sourceHome,
       targetHome,
-      workspacePath: "C:/workspace/vetta",
+      workspacePath: "C:/workspace/astravia",
     });
 
     expect(result).toMatchObject({ seeded: true, modelsCopied: true, credentialsCopied: 1 });
@@ -101,7 +101,7 @@ describe("debug profile seeding", () => {
 
     const desktopConfig = readJson(join(targetHome, "desktop-config.json")) as Record<string, unknown>;
     expect(desktopConfig).toMatchObject({
-      projects: [resolve("C:/workspace/vetta")],
+      projects: [resolve("C:/workspace/astravia")],
       notificationsEnabled: false,
       debugMode: true,
       language: "zh",
@@ -152,7 +152,7 @@ describe("debug profile seeding", () => {
 });
 
 function temporaryDirectory(name: string): string {
-  const path = join(tmpdir(), `vetta-ui-profile-${name}-${crypto.randomUUID()}`);
+  const path = join(tmpdir(), `astravia-ui-profile-${name}-${crypto.randomUUID()}`);
   mkdirSync(path, { recursive: true });
   temporaryPaths.push(path);
   return path;

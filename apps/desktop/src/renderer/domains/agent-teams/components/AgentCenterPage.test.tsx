@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { confirmDialogAtom } from "@shared/store/atoms";
-import type { AgentProfileDeleteImpact } from "@vetta/agent-team";
+import type { AgentProfileDeleteImpact } from "@astravia/agent-team";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";

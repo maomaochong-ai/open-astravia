@@ -16,13 +16,13 @@
 + 可替换的 Infrastructure
 ```
 
-重构完成后，新增 Skill、MCP、知识库、Memory、Subagent 或新的宿主入口，不应修改 Session 主流程和 `@vetta/agent-core`。
+重构完成后，新增 Skill、MCP、知识库、Memory、Subagent 或新的宿主入口，不应修改 Session 主流程和 `@astravia/agent-core`。
 
 ## 2. 非目标
 
 本方案不建议：
 
-- 重写 `@vetta/ai` 或 `@vetta/agent-core`；
+- 重写 `@astravia/ai` 或 `@astravia/agent-core`；
 - 一次性移动全部目录；
 - 立即新增多个 workspace 包；
 - 立即删除现有 SDK 导出；
@@ -42,8 +42,8 @@ flowchart TB
     Registry["Capability Registry"]
     Kernel["Session Kernel"]
     Turn["Turn Executor"]
-    Agent["@vetta/agent-core"]
-    AI["@vetta/ai"]
+    Agent["@astravia/agent-core"]
+    AI["@astravia/ai"]
     Repo["SessionRepositoryPort"]
     Infra["JSONL Repository"]
 
@@ -87,7 +87,7 @@ accept request
 → validate prerequisites
 → compose instructions
 → resolve tools and policies
-→ call @vetta/agent-core
+→ call @astravia/agent-core
 → persist and emit
 → settle capability lifecycle
 ```
@@ -113,7 +113,7 @@ Registry 不负责实现具体能力。
 
 - 选择具体 Adapter、Repository 和 Infrastructure；
 - 根据 Profile 注册 Capability；
-- 创建 `@vetta/agent-core`；
+- 创建 `@astravia/agent-core`；
 - 创建 Session Kernel；
 - 建立生命周期和释放顺序。
 
@@ -156,7 +156,7 @@ interface CapabilityContribution {
 3. Contribution 使用只读数据；
 4. 同类 Contribution 的排序规则固定；
 5. Capability 不获得完整 `AgentSession`；
-6. Tool 最终统一转换为 `@vetta/agent-core` 的 `AgentTool`。
+6. Tool 最终统一转换为 `@astravia/agent-core` 的 `AgentTool`。
 
 ### 4.1 避免继续使用布尔模式
 

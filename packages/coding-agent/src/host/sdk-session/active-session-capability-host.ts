@@ -1,6 +1,6 @@
-import type { ImageContent, TextContent } from "@vetta/ai";
-import type { RuntimeActiveSessionHost, RuntimeHostSession } from "@vetta/runtime-core";
-import type { SessionContextRecord } from "@vetta/runtime-core/kernel";
+import type { ImageContent, TextContent } from "@astravia/ai";
+import type { RuntimeActiveSessionHost, RuntimeHostSession } from "@astravia/runtime-core";
+import type { SessionContextRecord } from "@astravia/runtime-core/kernel";
 import { createCodingAgentExtensionSessionViewFromSource } from "../../adapters/extensions/runtime-session-view-adapter.js";
 import type { CodingAgentRuntimeSessionOptions } from "../../composition/contracts/index.js";
 import type {

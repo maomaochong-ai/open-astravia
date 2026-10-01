@@ -13,7 +13,7 @@ vi.mock("react-i18next", () => ({
 
 const { useDefaultSessionListModel } = await import("./useDefaultSessionListModel.js");
 
-const CWD = "/home/user/.vetta/desktop-app/conversation";
+const CWD = "/home/user/.astravia/desktop-app/conversation";
 
 function session(path: string): SidebarConversationInfo {
 	return {

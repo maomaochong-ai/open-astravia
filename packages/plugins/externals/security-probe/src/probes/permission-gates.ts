@@ -1,4 +1,4 @@
-import { writeJsonFile, type PluginPermission } from "@vetta-org/plugin-sdk";
+import { writeJsonFile, type PluginPermission } from "@astravia-org/plugin-sdk";
 import type { ProbeDefinition } from "./types";
 import { errorMessage, isPermissionDenied, timedResult } from "./types";
 

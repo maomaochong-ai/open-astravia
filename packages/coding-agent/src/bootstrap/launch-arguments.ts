@@ -1,6 +1,6 @@
 /** Coding Agent launch arguments shared by CLI bootstrap and Extension flag discovery. */
 
-import type { ThinkingLevel } from "@vetta/agent-core";
+import type { ThinkingLevel } from "@astravia/agent-core";
 import {
 	CODING_AGENT_BUILT_IN_TOOL_NAMES,
 	type CodingAgentBuiltInToolName,

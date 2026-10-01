@@ -1,5 +1,5 @@
 {
-	"name": "@vetta/plugin-chinese-chess",
+	"name": "@astravia/plugin-chinese-chess",
 	"version": "0.1.0",
 	"private": true,
 	"type": "module",
@@ -17,8 +17,8 @@
 		"@types/node": "^22.10.5",
 		"@types/react": "^19.1.1",
 		"@types/react-dom": "^19.1.1",
-		"@vetta-org/plugin-sdk": "workspace:*",
-		"@vetta-org/plugin-vite": "workspace:*",
+		"@astravia-org/plugin-sdk": "workspace:*",
+		"@astravia-org/plugin-vite": "workspace:*",
 		"jsdom": "26.1.0",
 		"react": "19.1.1",
 		"react-dom": "19.1.1",

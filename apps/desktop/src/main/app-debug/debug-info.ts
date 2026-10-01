@@ -22,7 +22,7 @@ export function createDebugInfoDefinition(): DebugDefinition {
 		id: "debug.info",
 		category: "system",
 		title: "Debug runtime information",
-		summary: "Confirm that the development-only Vetta Debug namespace is available.",
+		summary: "Confirm that the development-only Astravia Debug namespace is available.",
 		keywords: ["debug", "development", "runtime", "status"],
 		inputSchema: { description: "An empty JSON object." },
 		examples: [{ description: "Read Debug runtime information", input: {} }],

@@ -1,7 +1,7 @@
 import { mkdtempSync, realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { buildSshHelperForTests, createLoopbackSshConnection } from "@vetta/ssh-transport/testing";
+import { buildSshHelperForTests, createLoopbackSshConnection } from "@astravia/ssh-transport/testing";
 import { describe, expect, it, vi } from "vitest";
 import { createSshBackgroundCommandHost } from "./ssh-background-command-host.js";
 
@@ -13,7 +13,7 @@ function start(connection: ReturnType<typeof createLoopbackSshConnection>, comma
 	const onError = vi.fn();
 	const process = createSshBackgroundCommandHost(connection).processOperations.spawn({
 		command,
-		cwd: realpathSync(mkdtempSync(join(tmpdir(), "vetta-remote-task-"))),
+		cwd: realpathSync(mkdtempSync(join(tmpdir(), "astravia-remote-task-"))),
 		env: {},
 		onOutput: (text) => output.push(text),
 		onExit,

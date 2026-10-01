@@ -1,4 +1,4 @@
-import type { TeamTaskSnapshot } from "@vetta/agent-team";
+import type { TeamTaskSnapshot } from "@astravia/agent-team";
 import { describe, expect, it } from "vitest";
 import { waitForTeamTasks } from "./team-task-waiter.js";
 

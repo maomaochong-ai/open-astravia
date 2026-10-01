@@ -1,6 +1,6 @@
-name: Vetta
+name: Astravia
 options:
-  bundleIdPrefix: com.openvetta
+  bundleIdPrefix: com.astravia
   deploymentTarget:
     iOS: "26.0"
   createIntermediateGroups: true
@@ -17,34 +17,34 @@ settings:
     CURRENT_PROJECT_VERSION: "1"
     CODE_SIGN_STYLE: Automatic
 packages:
-  VettaKit:
-    path: VettaKit
-  VettaRTC:
-    path: VettaRTC
+  AstraviaKit:
+    path: AstraviaKit
+  AstraviaRTC:
+    path: AstraviaRTC
 targets:
-  Vetta:
+  Astravia:
     type: application
     platform: iOS
     sources:
-      - path: Vetta
+      - path: Astravia
       - path: Shared
     dependencies:
-      - package: VettaKit
-      - package: VettaRTC
-      - target: VettaWidgets
+      - package: AstraviaKit
+      - package: AstraviaRTC
+      - target: AstraviaWidgets
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.openvetta.mobile
-        PRODUCT_NAME: Vetta
+        PRODUCT_BUNDLE_IDENTIFIER: com.astravia.mobile
+        PRODUCT_NAME: Astravia
         TARGETED_DEVICE_FAMILY: "1"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
-        INFOPLIST_FILE: Vetta/Resources/Info.plist
+        INFOPLIST_FILE: Astravia/Resources/Info.plist
         ENABLE_PREVIEWS: YES
     info:
-      path: Vetta/Resources/Info.plist
+      path: Astravia/Resources/Info.plist
       properties:
-        CFBundleDisplayName: Vetta
+        CFBundleDisplayName: Astravia
         CFBundleDevelopmentRegion: en
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
@@ -60,66 +60,66 @@ targets:
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
         CFBundleURLTypes:
-          - CFBundleURLName: com.openvetta.mobile.pair
+          - CFBundleURLName: com.astravia.mobile.pair
             CFBundleURLSchemes:
-              - vetta
-        NSCameraUsageDescription: Vetta uses the camera to scan the pairing code on your computer and to take photos you send.
-        NSPhotoLibraryUsageDescription: Vetta shows your latest photos in the attach sheet so you can send one with a tap.
-        NSMicrophoneUsageDescription: Vetta uses the microphone while you hold the message field to dictate.
-        NSSpeechRecognitionUsageDescription: Vetta turns what you say into text for your message.
-        NSLocalNetworkUsageDescription: Vetta needs local network access to connect directly to your computer on the same Wi-Fi.
+              - astravia
+        NSCameraUsageDescription: Astravia uses the camera to scan the pairing code on your computer and to take photos you send.
+        NSPhotoLibraryUsageDescription: Astravia shows your latest photos in the attach sheet so you can send one with a tap.
+        NSMicrophoneUsageDescription: Astravia uses the microphone while you hold the message field to dictate.
+        NSSpeechRecognitionUsageDescription: Astravia turns what you say into text for your message.
+        NSLocalNetworkUsageDescription: Astravia needs local network access to connect directly to your computer on the same Wi-Fi.
         NSBonjourServices:
-          - _vetta._tcp
+          - _astravia._tcp
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
         NSSupportsLiveActivities: true
         UIBackgroundModes:
           - fetch
         BGTaskSchedulerPermittedIdentifiers:
-          - com.openvetta.mobile.refresh
-  VettaWidgets:
+          - com.astravia.mobile.refresh
+  AstraviaWidgets:
     type: app-extension
     platform: iOS
     sources:
-      - path: VettaWidgets
+      - path: AstraviaWidgets
       - path: Shared
     dependencies:
-      - package: VettaKit
+      - package: AstraviaKit
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.openvetta.mobile.widgets
-        PRODUCT_NAME: VettaWidgets
+        PRODUCT_BUNDLE_IDENTIFIER: com.astravia.mobile.widgets
+        PRODUCT_NAME: AstraviaWidgets
         TARGETED_DEVICE_FAMILY: "1"
-        INFOPLIST_FILE: VettaWidgets/Info.plist
+        INFOPLIST_FILE: AstraviaWidgets/Info.plist
     info:
-      path: VettaWidgets/Info.plist
+      path: AstraviaWidgets/Info.plist
       properties:
-        CFBundleDisplayName: Vetta
+        CFBundleDisplayName: Astravia
         CFBundleDevelopmentRegion: en
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
-  VettaUITests:
+  AstraviaUITests:
     type: bundle.ui-testing
     platform: iOS
     sources:
-      - path: VettaUITests
+      - path: AstraviaUITests
     dependencies:
-      - target: Vetta
+      - target: Astravia
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.openvetta.mobile.uitests
-        TEST_TARGET_NAME: Vetta
+        PRODUCT_BUNDLE_IDENTIFIER: com.astravia.mobile.uitests
+        TEST_TARGET_NAME: Astravia
         GENERATE_INFOPLIST_FILE: YES
         SWIFT_DEFAULT_ACTOR_ISOLATION: nonisolated
 schemes:
-  Vetta:
+  Astravia:
     build:
       targets:
-        Vetta: all
-        VettaUITests: [test]
+        Astravia: all
+        AstraviaUITests: [test]
     test:
       targets:
-        - VettaUITests
+        - AstraviaUITests
       gatherCoverageData: false

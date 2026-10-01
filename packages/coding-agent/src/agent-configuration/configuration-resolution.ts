@@ -1,5 +1,5 @@
-import type { RuntimeConfigurationSnapshotLease } from "@vetta/runtime-core/configuration";
-import { RuntimeConfigurationRegistry, RuntimeConfigurationResolver } from "@vetta/runtime-core/configuration";
+import type { RuntimeConfigurationSnapshotLease } from "@astravia/runtime-core/configuration";
+import { RuntimeConfigurationRegistry, RuntimeConfigurationResolver } from "@astravia/runtime-core/configuration";
 import {
 	AGENT_CONFIGURATION_DEFINITION,
 	type AgentConfigurationDocument,

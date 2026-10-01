@@ -1,4 +1,4 @@
-import { useTranslation } from "@vetta-org/plugin-sdk";
+import { useTranslation } from "@astravia-org/plugin-sdk";
 import { type JSX, useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { parseIccs } from "../game/notation";
 import { useChessRuntime } from "../runtime-context";

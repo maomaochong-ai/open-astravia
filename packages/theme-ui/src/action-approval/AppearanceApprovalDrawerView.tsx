@@ -7,7 +7,7 @@ import {
 	DrawerFooter,
 	DrawerHeader,
 	DrawerTitle,
-} from "@vetta-org/ui";
+} from "@astravia-org/ui";
 import { ThemeSurface } from "../appearance/ThemeSurface";
 
 export interface AppearanceApprovalDrawerViewLabels {

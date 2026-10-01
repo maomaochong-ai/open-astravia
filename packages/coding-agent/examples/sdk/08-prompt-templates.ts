@@ -4,8 +4,8 @@
  * File-based templates that inject content when invoked with /templatename.
  */
 
-import type { CodingAgentPromptTemplateContribution } from "@vetta/coding-agent/sdk";
-import { createCodingAgentSession } from "@vetta/coding-agent/sdk";
+import type { CodingAgentPromptTemplateContribution } from "@astravia/coding-agent/sdk";
+import { createCodingAgentSession } from "@astravia/coding-agent/sdk";
 
 // Define custom templates
 const deployTemplate: CodingAgentPromptTemplateContribution = {

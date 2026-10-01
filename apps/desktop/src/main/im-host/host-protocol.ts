@@ -1,5 +1,5 @@
 /**
- * TypeScript counterpart of vetta-im-gateway/internal/hostproto.
+ * TypeScript counterpart of astravia-im-gateway/internal/hostproto.
  *
  * Defines the NDJSON frames exchanged with the im-gateway sidecar over its
  * stdin/stdout pipes. Frames flowing parent → child are written to the
@@ -82,8 +82,8 @@ export interface FeishuConfig {
  *   - `enabled`: tells the sidecar to select wechat as the active transport
  *   - `statePath`: absolute path to the persistent credentials JSON,
  *     letting the parent override the wechat package's default
- *     `~/.vetta/im-gateway/wechat.json` so the file lives next to other
- *     desktop-app vetta data.
+ *     `~/.astravia/im-gateway/wechat.json` so the file lives next to other
+ *     desktop-app astravia data.
  */
 export interface WechatConfig {
 	enabled: boolean;
@@ -193,15 +193,15 @@ export interface SessionStateEntry {
  * but the parent should never rely on that.
  *
  * `conversationCwd` is the absolute cwd shared by all IM sessions
- * (`DEFAULT_IM_CONVERSATION_CWD`, `~/.vetta/im-gateway/conversation`). It
+ * (`DEFAULT_IM_CONVERSATION_CWD`, `~/.astravia/im-gateway/conversation`). It
  * is physically separate from desktop-app's "对话" cwd (ADR-0005) so the
  * two sides don't share sessions or generated artifacts.
  */
 /**
  * Overrides how the sidecar invokes the coding-agent subprocess. When
- * omitted, the sidecar falls back to `vetta` on PATH — only valid in dev
+ * omitted, the sidecar falls back to `astravia` on PATH — only valid in dev
  * where workspace linking puts it there. Production must populate this so
- * the sidecar can spawn the packaged Vetta.app executable (which detects
+ * the sidecar can spawn the packaged Astravia.app executable (which detects
  * `--agent-rpc` in argv and short-circuits into coding-agent's main).
  *
  * Final argv: [bin, ...prefixArgs, "--mode", "rpc", "--cwd", <cwd>, ...].
@@ -217,7 +217,7 @@ export interface CodingAgentSpec {
 	runAsNode?: boolean;
 	/**
 	 * Forwarded to the spawned coding-agent subprocess as
-	 * `VETTA_PACKAGE_DIR`. The agent's `getPackageDir()` falls back to
+	 * `ASTRAVIA_PACKAGE_DIR`. The agent's `getPackageDir()` falls back to
 	 * walking up `__dirname` to find `package.json`, which lands on the
 	 * host bundle's tree once coding-agent is Vite-bundled into Electron's
 	 * main process. Setting this explicitly points at the staged
@@ -226,8 +226,8 @@ export interface CodingAgentSpec {
 	 */
 	packageDir?: string;
 	/**
-	 * Forwarded as `VETTA_SERVER_URL`. coding-agent's main.ts reads this env
-	 * ahead of `~/.vetta/agent/settings.json`, so an IM-session subprocess
+	 * Forwarded as `ASTRAVIA_SERVER_URL`. coding-agent's main.ts reads this env
+	 * ahead of `~/.astravia/agent/settings.json`, so an IM-session subprocess
 	 * uses the host's compile-time gateway URL instead of any stale
 	 * `serverUrl` left in the settings file (e.g. from a previous dev/LAN
 	 * login). Without it, prod desktop-app + stale settings produced

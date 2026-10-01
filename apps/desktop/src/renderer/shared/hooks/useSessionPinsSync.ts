@@ -23,15 +23,15 @@ export function useSessionPinsSync(): void {
 		const legacy = takeLegacySidebarSessionPins();
 		const load =
 			legacy.size > 0
-				? window.vetta.sessionPins.importLegacy(toSessionPinsSnapshot(legacy)).then((snapshot) => {
+				? window.astravia.sessionPins.importLegacy(toSessionPinsSnapshot(legacy)).then((snapshot) => {
 						clearLegacySidebarSessionPins();
 						return snapshot;
 					})
-				: window.vetta.sessionPins.list();
+				: window.astravia.sessionPins.list();
 		void load.then(apply).catch(() => {
 			// 读不到就维持空置顶：侧边栏照常按时间排序，不阻塞。
 		});
-		const unsubscribe = window.vetta.sessionPins.onChanged(apply);
+		const unsubscribe = window.astravia.sessionPins.onChanged(apply);
 		return () => {
 			disposed = true;
 			unsubscribe();

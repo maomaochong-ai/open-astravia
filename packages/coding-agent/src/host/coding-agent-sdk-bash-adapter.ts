@@ -1,4 +1,4 @@
-import type { RuntimeHostSession, SessionEvent } from "@vetta/runtime-core";
+import type { RuntimeHostSession, SessionEvent } from "@astravia/runtime-core";
 import { type BashExecutionMessage, bashExecutionToText } from "../model-context/index.js";
 import { CODING_AGENT_EXTENDED_MESSAGE_CONTEXT_TYPE } from "../sessions/index.js";
 import type { HostBashExecutor, HostBashResult } from "./command-execution/index.js";

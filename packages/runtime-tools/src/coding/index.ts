@@ -54,12 +54,12 @@ export {
 	type CodingToolConfigurationObservation,
 } from "./observations.js";
 export {
+	ASTRAVIA_OCR_CONFIGURATION,
+	ASTRAVIA_OCR_CONFIGURATION_ID,
+	type AstraviaOcrConfiguration,
 	DEFAULT_OCR_PROVIDER_ID,
 	type OcrDefaultOutput,
 	type OcrRemoteProviderPolicy,
-	VETTA_OCR_CONFIGURATION,
-	VETTA_OCR_CONFIGURATION_ID,
-	type VettaOcrConfiguration,
 } from "./ocr-configuration.js";
 export { TOOL_CALL_DESCRIPTION_TEXT, ToolCallDescriptionSchema } from "./tool-call-description.js";
 export {

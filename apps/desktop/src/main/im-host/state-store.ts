@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { getVettaHomePath } from "@vetta/action-rpc";
-import { atomicWriteJSON } from "@vetta/toolkit/atomic-write";
+import { getAstraviaHomePath } from "@astravia/action-rpc";
+import { atomicWriteJSON } from "@astravia/toolkit/atomic-write";
 import type { SessionStateEntry } from "./host-protocol.js";
 
 /**
@@ -10,7 +10,7 @@ import type { SessionStateEntry } from "./host-protocol.js";
  * apply them here and atomically rewrite the file. On sidecar (re)start we
  * read this file and replay the snapshot via the init frame.
  *
- * Path: ~/.vetta/desktop-app/im-state.json
+ * Path: ~/.astravia/desktop-app/im-state.json
  *
  * Schema v3: keyed by (userId, chatId). v3 supersedes v2 in everything but
  * version number — ADR-0005 split im-gateway's cwd from the desktop "对话"
@@ -24,7 +24,7 @@ export interface ImStateFile {
 }
 
 const STATE_VERSION = 3;
-const DEFAULT_PATH = join(getVettaHomePath(), "desktop-app", "im-state.json");
+const DEFAULT_PATH = join(getAstraviaHomePath(), "desktop-app", "im-state.json");
 
 export function defaultImStatePath(): string {
 	return DEFAULT_PATH;

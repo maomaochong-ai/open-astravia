@@ -4,7 +4,7 @@
  * 单独放在 shared 是为了让「只想拼一个 URL」的模块不必 import 主进程的协议实现——
  * 那条链会把 electron 的 `app` 一路拖进来，测试里直接炸。
  */
-export const FILE_PROTOCOL_SCHEME = "vetta-file";
+export const FILE_PROTOCOL_SCHEME = "astravia-file";
 
 /**
  * 把本地绝对路径映射成可直接作 `<img>`/`<iframe>` src 的 URL。

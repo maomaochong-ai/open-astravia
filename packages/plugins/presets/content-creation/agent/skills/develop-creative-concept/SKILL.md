@@ -22,4 +22,4 @@ Read [references/creative-brief-and-strategy.md](references/creative-brief-and-s
 
 Return the normalized brief, concept territories, recommendation with tradeoffs, selected treatment if a direction is chosen, non-negotiable visual anchors, unresolved production decisions, and explicit next-stage acceptance criteria. Keep a concept distinct from a prompt: prompts are downstream execution artifacts.
 
-This method is an original Vetta adaptation informed by visual-skills by Serge Shima (CC BY 4.0, https://github.com/smixs/visual-skills) and Generative-Media-Skills (MIT).
+This method is an original Astravia adaptation informed by visual-skills by Serge Shima (CC BY 4.0, https://github.com/smixs/visual-skills) and Generative-Media-Skills (MIT).

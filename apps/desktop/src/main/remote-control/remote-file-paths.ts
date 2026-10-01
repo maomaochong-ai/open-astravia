@@ -1,5 +1,5 @@
 import { fileURLToPath } from "node:url";
-import { formatSshProjectUri, isSshProjectUri, parseProjectLocation } from "@vetta/ssh-transport/project-uri";
+import { formatSshProjectUri, isSshProjectUri, parseProjectLocation } from "@astravia/ssh-transport/project-uri";
 import { RemoteOperationError } from "./remote-error-mapping.js";
 
 /**
@@ -172,8 +172,8 @@ const HOME_SECRETS = [
 	"Library/Cookies",
 ];
 
-/** Under `~/.vetta` only these hold things the phone should see: session workspaces, uploads, knowledge. */
-const VETTA_READABLE = new Set(["conversation", "workspace", "im-gateway", "knowledges", "remote-uploads"]);
+/** Under `~/.astravia` only these hold things the phone should see: session workspaces, uploads, knowledge. */
+const ASTRAVIA_READABLE = new Set(["conversation", "workspace", "im-gateway", "knowledges", "remote-uploads"]);
 
 function segments(value: string): string[] {
 	return value.split(/[\\/]+/).filter(Boolean);
@@ -196,6 +196,6 @@ export function isBlockedForPhone(target: string, context: Pick<RemotePathContex
 	const rel = segments(path.relative(home, target));
 	const relText = rel.join("/");
 	if (HOME_SECRETS.some((secret) => relText === secret || relText.startsWith(`${secret}/`))) return true;
-	if (rel[0] === ".vetta") return rel.length < 2 || !VETTA_READABLE.has(rel[1] ?? "");
+	if (rel[0] === ".astravia") return rel.length < 2 || !ASTRAVIA_READABLE.has(rel[1] ?? "");
 	return false;
 }

@@ -1,5 +1,5 @@
-import type { AgentMessage, ToolPhase } from "@vetta/agent-core";
-import type { ImageContent, TextContent } from "@vetta/ai";
+import type { AgentMessage, ToolPhase } from "@astravia/agent-core";
+import type { ImageContent, TextContent } from "@astravia/ai";
 
 /** Extension-facing compatibility version; native persistence has its own schema version. */
 export const CODING_AGENT_SESSION_VIEW_VERSION = 3;

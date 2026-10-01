@@ -1,12 +1,12 @@
 import { posix } from "node:path";
-import { REMOTE_FILE_CHUNK_BYTES, REMOTE_MAX_FILE_BYTES } from "@vetta/remote-control";
+import { REMOTE_FILE_CHUNK_BYTES, REMOTE_MAX_FILE_BYTES } from "@astravia/remote-control";
 import { describe, expect, it } from "vitest";
 import type { FsEntry } from "../../preload/fs-types.js";
 import type { PreviewFileSource } from "../filesystem/preview-file-source.js";
 import { type RemoteFileSystem, RemoteFiles } from "./remote-files.js";
 
 const HOME = "/Users/me";
-const CWD = "/Users/me/.vetta/conversation/s1";
+const CWD = "/Users/me/.astravia/conversation/s1";
 
 interface FakeFile {
 	bytes: Buffer;

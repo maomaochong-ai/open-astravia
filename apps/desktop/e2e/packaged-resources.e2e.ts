@@ -1,6 +1,6 @@
-const packaged = process.env.VETTA_E2E_PACKAGED === "1";
+const packaged = process.env.ASTRAVIA_E2E_PACKAGED === "1";
 
-describe("Vetta Desktop packaged resources", () => {
+describe("Astravia Desktop packaged resources", () => {
 	(packaged ? it : it.skip)("loads the remote desktop host entry from the packaged layout", async () => {
 		const result = await browser.electron.execute(async (electron) => {
 			const appRoot = electron.app.getAppPath();

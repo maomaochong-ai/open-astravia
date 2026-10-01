@@ -2,7 +2,7 @@
 
 ## 1. 目标
 
-第 93 轮已经证明真实 Desktop 主进程可以通过独立 Vetta CLI 完成 Greenfield 会话闭环。本轮把
+第 93 轮已经证明真实 Desktop 主进程可以通过独立 Astravia CLI 完成 Greenfield 会话闭环。本轮把
 验证范围扩展到同一进程内的三个真实 `RuntimeHost` 消费者：
 
 1. 交互会话；
@@ -188,7 +188,7 @@ bun run verify:ui:debug -- runtime-canary
 
 下一阶段应进入独立可执行产物闭包验证：
 
-1. 验证编译后的 Desktop Main、Vetta CLI 与 Greenfield 模块不依赖源码路径或开发态隐式解析。
+1. 验证编译后的 Desktop Main、Astravia CLI 与 Greenfield 模块不依赖源码路径或开发态隐式解析。
 2. 在独立产物中复跑真实 Provider、交互会话和多消费者退出门禁。
 3. 验证 Tool 描述、Skill、MCP 配置、模型配置和运行时资源均进入正确产物边界。
 4. 增加进程重启后的 Session Catalog 与未完成会话恢复检查。

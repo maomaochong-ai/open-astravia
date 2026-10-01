@@ -14,7 +14,7 @@
 - 会话历史、认证、模型和设置等用户数据；必要时由显式、独立的新迁移器读取旧格式。
 - 模型消息、工具消息、错误、取消、事件顺序、并发约束和资源释放语义。
 - 仍然有效的行为测试场景和数据 fixture；旧实现可以临时作为测试 Oracle，但不能被新生产代码调用。
-- `@vetta/ai` 与经过合同验证的 `@vetta/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
+- `@astravia/ai` 与经过合同验证的 `@astravia/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
 
 ## 明确舍弃（固定）
 
@@ -28,13 +28,13 @@
 
 ## 本阶段与最终目标的关系
 
-第 261 阶段把包根收口为 Extension 作者门面，但独立可执行产物只验证了不依赖 Vetta 公共模块的外部 Extension。普通 RPC 测试又把 Jiti 打进单文件 `.mjs` 后交给外部 Bun 执行，这不是实际发布形态，并在 Windows 上稳定触发 Bun 段错误，掩盖了真正需要验证的公共入口兼容性。
+第 261 阶段把包根收口为 Extension 作者门面，但独立可执行产物只验证了不依赖 Astravia 公共模块的外部 Extension。普通 RPC 测试又把 Jiti 打进单文件 `.mjs` 后交给外部 Bun 执行，这不是实际发布形态，并在 Windows 上稳定触发 Bun 段错误，掩盖了真正需要验证的公共入口兼容性。
 
 本阶段把测试责任重新对齐：普通 RPC 产物只验证运行时行为，真实 `bun build --compile` 安装产物负责验证零外部依赖和外部 Extension 加载。功能与协议不变。
 
 ## 实施内容
 
-- 为独立产物中的 Extension 虚拟模块补齐 `@vetta/coding-agent/extensions`，与包根共享同一稳定 Extension facade。
+- 为独立产物中的 Extension 虚拟模块补齐 `@astravia/coding-agent/extensions`，与包根共享同一稳定 Extension facade。
 - 扩展现有 installed-artifact 回归：外部 TypeScript Extension 同时从包根和 `./extensions` 子路径导入并执行 `createEventBus`，之后继续验证事件、工具、命令、原生会话创建、恢复和不兼容失败。
 - 普通 RPC 测试 bundle 将 Jiti 保持为外部测试依赖，并把临时文件放入 `node_modules/.cache`；这避免测试一个不发布的 bundled-Jiti `.mjs` 组合。
 - installed-artifact 的 metafile 断言继续要求发布二进制外部导入为 `0`，因此测试夹具的 external 设置不会降低真实产物的独立性要求。

@@ -1,5 +1,5 @@
 import type { JSX, MouseEvent } from "react";
-import { Button } from "@vetta-org/ui";
+import { Button } from "@astravia-org/ui";
 
 export interface BatchTaskActionButtonViewProps {
 	readonly disabled?: boolean;

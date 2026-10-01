@@ -2,14 +2,14 @@
  * [PERF-session-switch] 已有会话打开链路的本地诊断。
  *
  * 打开方式（Renderer DevTools Console）：
- *   localStorage.setItem("vetta-perf-session-switch", "1"); location.reload()
- * 关闭：localStorage.removeItem("vetta-perf-session-switch")
+ *   localStorage.setItem("astravia-perf-session-switch", "1"); location.reload()
+ * 关闭：localStorage.removeItem("astravia-perf-session-switch")
  *
  * 关闭诊断时只生成 privacy-safe interaction id，用来关联 Main 进程已有的
  * `session creation trace`；不会安装 PerformanceObserver、计时器或输出 Renderer 日志。
  */
 
-const ENABLED_KEY = "vetta-perf-session-switch";
+const ENABLED_KEY = "astravia-perf-session-switch";
 const MAX_REPORT_DELAY_MS = 15_000;
 const COMPLETION_REPORT_DELAY_MS = 1_000;
 const TRACKED_FRAME_COUNT = 5;

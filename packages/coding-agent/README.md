@@ -1,6 +1,6 @@
-# @vetta/coding-agent
+# @astravia/coding-agent
 
-Vetta Coding Agent 的能力、策略与稳定 API 语义层。
+Astravia Coding Agent 的能力、策略与稳定 API 语义层。
 
 会话独占 Agent Instance，并支持[配置模板、会话覆盖与版本恢复](./docs/agent-configuration.md)。
 
@@ -17,16 +17,16 @@ IM、Compaction 与工具策略。平台 Runtime 负责选择环境实现并完�
 CLI / Desktop / IM
         |
         v
-@vetta/coding-agent       Coding Agent Feature、策略与 API 语义
+@astravia/coding-agent       Coding Agent Feature、策略与 API 语义
         |
-        +--> @vetta/runtime-core       Kernel、Turn、事件与 Port
-        +--> @vetta/runtime-tools      工具协议与动态工具目录
-        +--> @vetta/runtime-storage    Conversation 持久化协议
-        +--> @vetta/runtime-mcp        MCP 协议、Port 与状态协调
-        +--> @vetta/runtime-knowledge  知识库能力
-        +--> @vetta/runtime-subagents  子 Agent 能力
-        +--> @vetta/runtime-telemetry  观测能力
-        +--> @vetta/ai                 模型与 Provider 协议
+        +--> @astravia/runtime-core       Kernel、Turn、事件与 Port
+        +--> @astravia/runtime-tools      工具协议与动态工具目录
+        +--> @astravia/runtime-storage    Conversation 持久化协议
+        +--> @astravia/runtime-mcp        MCP 协议、Port 与状态协调
+        +--> @astravia/runtime-knowledge  知识库能力
+        +--> @astravia/runtime-subagents  子 Agent 能力
+        +--> @astravia/runtime-telemetry  观测能力
+        +--> @astravia/ai                 模型与 Provider 协议
 ```
 
 依赖方向按职责分层：应用和平台 Runtime 组合 `coding-agent` 与具体环境实现。`coding-agent` 依赖
@@ -52,12 +52,12 @@ Registry、Backend admission 和 Conversation Session 生命周期根只有 `run
 
 ## 本包不拥有
 
-- 模型 Provider 的协议与流式响应实现，属于 `@vetta/ai`
-- Agent Kernel、Turn 和通用 Port，属于 `@vetta/runtime-core`
-- 工具注册、Catalog、激活与绑定协议属于 `@vetta/runtime-tools`
-- `read`、`write`、`edit`、`bash` 等 Node 工具实现属于 `@vetta/runtime-node`
-- Conversation Repository 协议属于 `@vetta/runtime-storage`，Node 文件/内存实现属于 `@vetta/runtime-node`
-- MCP 协议、Port 和通用生命周期状态机属于 `@vetta/runtime-mcp`；Node transport、文件与 OAuth 实现属于 `@vetta/runtime-node`
+- 模型 Provider 的协议与流式响应实现，属于 `@astravia/ai`
+- Agent Kernel、Turn 和通用 Port，属于 `@astravia/runtime-core`
+- 工具注册、Catalog、激活与绑定协议属于 `@astravia/runtime-tools`
+- `read`、`write`、`edit`、`bash` 等 Node 工具实现属于 `@astravia/runtime-node`
+- Conversation Repository 协议属于 `@astravia/runtime-storage`，Node 文件/内存实现属于 `@astravia/runtime-node`
+- MCP 协议、Port 和通用生命周期状态机属于 `@astravia/runtime-mcp`；Node transport、文件与 OAuth 实现属于 `@astravia/runtime-node`
 - Desktop UI、CLI 进程入口或 IM 传输协议，分别属于对应应用包
 - 最终平台 Composition Root 与 Node 文件、进程、网络、锁和动态模块加载实现
 
@@ -131,26 +131,26 @@ Prompt、Tool、MCP 与 Extension；Conversation continuation 会同步重绑基
 
 包根仅保留稳定 Extension API。其他能力使用显式子路径：
 
-- `@vetta/coding-agent/composition`：Coding Agent Feature、策略组合、生产
+- `@astravia/coding-agent/composition`：Coding Agent Feature、策略组合、生产
   `createCodingAgentExecutionRuntimeDefinition()` 与低层 `createCodingAgentRuntimeDefinition()` Adapter；平台实现由宿主
   注入。Definition Adapter 在产品层把 Prompt Profile 消解为普通 Instruction，Tool、MCP、模型和 Session Extension 由
   完整 Session assembler 提供，Runtime Registry 不接收 Profile 字段
-- `@vetta/coding-agent/model-context`：工作区事实等产品上下文规则；文件访问由宿主注入
-- `@vetta/coding-agent/bootstrap`：平台无关的启动编排；Settings、Auth、Model 与 Resource 实现由宿主注入
-- `@vetta/coding-agent/runtime`：Runtime 产品入口
-- `@vetta/coding-agent/sdk`：嵌入式会话 API
-- `@vetta/coding-agent/rpc`：平台无关的 RPC Frame、命令分发、桥接和会话能力合同；传输、进程退出与请求 ID
-  由宿主注入。CLI 的 Node JSONL 适配位于 `@vetta/cli-host`，不属于协议核心
-- `@vetta/coding-agent/extensions`：扩展合同
-- `@vetta/coding-agent/host`：Node Tool Host 兼容入口，不得作为新产品能力依赖
-- `@vetta/coding-agent/resources`：Skill、提示词等资源入口
-- `@vetta/coding-agent/settings`：设置入口
-- `@vetta/coding-agent/historical-sessions`：历史会话读取
+- `@astravia/coding-agent/model-context`：工作区事实等产品上下文规则；文件访问由宿主注入
+- `@astravia/coding-agent/bootstrap`：平台无关的启动编排；Settings、Auth、Model 与 Resource 实现由宿主注入
+- `@astravia/coding-agent/runtime`：Runtime 产品入口
+- `@astravia/coding-agent/sdk`：嵌入式会话 API
+- `@astravia/coding-agent/rpc`：平台无关的 RPC Frame、命令分发、桥接和会话能力合同；传输、进程退出与请求 ID
+  由宿主注入。CLI 的 Node JSONL 适配位于 `@astravia/cli-host`，不属于协议核心
+- `@astravia/coding-agent/extensions`：扩展合同
+- `@astravia/coding-agent/host`：Node Tool Host 兼容入口，不得作为新产品能力依赖
+- `@astravia/coding-agent/resources`：Skill、提示词等资源入口
+- `@astravia/coding-agent/settings`：设置入口
+- `@astravia/coding-agent/historical-sessions`：历史会话读取
 
 应用不得深度导入 `src/` 或未导出的内部文件。新增公开入口前，应先确认它是跨包稳定合同，
 而不是某个组合实现的便利函数。
 
-`@vetta/coding-agent/config` 保留为历史 Node 配置门面。产品常量位于无副作用的内部 `identity.ts`，
+`@astravia/coding-agent/config` 保留为历史 Node 配置门面。产品常量位于无副作用的内部 `identity.ts`，
 Node 包目录探测、环境目录解析和 manifest 读取位于 `host/node-config.ts`；产品域不得直接导入配置门面。
 
 ## 功能兼容原则

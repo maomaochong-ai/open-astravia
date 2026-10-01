@@ -1,10 +1,10 @@
-# Vetta 能力与 Claude Code 兼容差距
+# Astravia 能力与 Claude Code 兼容差距
 
-## 1. 当前 Vetta 可复用基础
+## 1. 当前 Astravia 可复用基础
 
 ### 1.1 Skills
 
-Vetta 已实现 Agent Skills 的核心加载模型：
+Astravia 已实现 Agent Skills 的核心加载模型：
 
 - 递归发现子目录 `SKILL.md`；
 - 支持用户、项目、`.agents/skills` 与显式 `skillPaths`；
@@ -16,7 +16,7 @@ Vetta 已实现 Agent Skills 的核心加载模型：
 
 ### 1.2 Subagents
 
-Vetta 已有可扩展的 `SubagentTypeRegistry` 和独立 child session：
+Astravia 已有可扩展的 `SubagentTypeRegistry` 和独立 child session：
 
 - root 可 `spawn_agent`、`wait_agent`、`list_agents`、`interrupt_agent`、`send_message`、`followup_task`；
 - child 有独立 transcript、usage 和生命周期状态；
@@ -29,7 +29,7 @@ Vetta 已有可扩展的 `SubagentTypeRegistry` 和独立 child session：
 
 ### 1.3 Hooks
 
-`@vetta/ecosystem-adapter` 已把通用 runtime 与 Codex wire profile 分开：
+`@astravia/ecosystem-adapter` 已把通用 runtime 与 Codex wire profile 分开：
 
 - 通用层管理 session/turn、adapter 聚合、Stop continuation 安全阀；
 - dispatcher 管理 matcher、并发 handler、命令执行和 effect 聚合；
@@ -41,11 +41,11 @@ Vetta 已有可扩展的 `SubagentTypeRegistry` 和独立 child session：
 
 ## 2. 总体兼容矩阵
 
-| Claude Code 能力 | Vetta 当前状态 | `cc-skills` 影响 | 结论 |
+| Claude Code 能力 | Astravia 当前状态 | `cc-skills` 影响 | 结论 |
 | --- | --- | --- | --- |
 | 目录式 `SKILL.md` | 已支持 | 26 个 Skill 可被发现 | 可复用 |
-| Plugin skills 自动发现 | 通过 Vetta `agent.skillPaths` 支持 | 需要先包装/导入 Claude plugin | 需 importer |
-| `/skill-name` | Vetta 标准为 `/skill:name` | 上游文档和 commands 使用 `/name` | 需输入 alias |
+| Plugin skills 自动发现 | 通过 Astravia `agent.skillPaths` 支持 | 需要先包装/导入 Claude plugin | 需 importer |
+| `/skill-name` | Astravia 标准为 `/skill:name` | 上游文档和 commands 使用 `/name` | 需输入 alias |
 | `$ARGUMENTS` | 不替换，只把 args 另行附加 | 7 个 commands 直接依赖 | 需兼容展开器 |
 | 动态命令上下文 | 未实现 | 当前仓库使用较少，但属于 Claude Skill 语义 | 后续 profile |
 | `user-invocable` | parser 忽略 | background reference Skill 可能错误出现在菜单 | 需保留字段 |
@@ -54,21 +54,21 @@ Vetta 已有可扩展的 `SubagentTypeRegistry` 和独立 child session：
 | `commands/*.md` | 无 Claude command loader | 7 个 slash workflow 不可见 | 转换为 Skill contribution |
 | `agents/*.md` | 无资源 loader | 20 个 agent 不注册 | 编译到 subagent registry |
 | agent 模型/maxTurns/memory | type 定义不具备完整字段 | review 成本、能力和停止边界丢失 | 扩展 type/factory |
-| Claude `Agent` / `Task` | 只有 Vetta `spawn_agent` schema | 上游工具调用名与参数不匹配 | 兼容 facade |
+| Claude `Agent` / `Task` | 只有 Astravia `spawn_agent` schema | 上游工具调用名与参数不匹配 | 兼容 facade |
 | Agent Teams | 未支持 | `cdt` 核心不可运行 | 新建一等运行时 |
 | Claude command hooks | 通用执行器可复用 | 两份 Hook 配置可作为首批目标 | 新 Claude profile |
 | `${CLAUDE_PLUGIN_ROOT}` | 未作为 Claude 变量解析 | 所有 Hook 命令找不到脚本 | importer 注入并跨平台展开 |
 | Bash + `jq` Hook | Windows runner 是 `cmd.exe` | `.sh` 不能运行 | 托管 POSIX 或明确平台限制 |
 | Claude marketplace | 未支持 | 不能直接添加 `cc-skills` marketplace | 新 marketplace importer |
-| Vetta plugin zip | 已支持，但清单语义不同 | 不能把 Claude plugin.json 当 Vetta 清单 | 必须隔离解析 |
-| MCP | Vetta 插件 MCP 已支持 | 本快照无 `.mcp.json`，CDT 文档却声明存在 | 预留并诊断缺失 |
+| Astravia plugin zip | 已支持，但清单语义不同 | 不能把 Claude plugin.json 当 Astravia 清单 | 必须隔离解析 |
+| MCP | Astravia 插件 MCP 已支持 | 本快照无 `.mcp.json`，CDT 文档却声明存在 | 预留并诊断缺失 |
 | Hook 可观测性 | 已有 run summary/info | 可复用 | 增加来源与权限展示 |
 
 ## 3. 插件清单存在硬冲突
 
-Claude 与 Vetta 都有名为 `plugin.json` 的文件，但不是同一协议：
+Claude 与 Astravia 都有名为 `plugin.json` 的文件，但不是同一协议：
 
-| 项目 | Claude Code | Vetta |
+| 项目 | Claude Code | Astravia |
 | --- | --- | --- |
 | 路径 | `.claude-plugin/plugin.json`，可选 | zip 根 `plugin.json`，必需 |
 | 最小字段 | manifest 存在时只要求 `name` | `id/name/version/pluginApiVersion/runtime/entry` 等 |
@@ -76,30 +76,30 @@ Claude 与 Vetta 都有名为 `plugin.json` 的文件，但不是同一协议：
 | `commands` | Markdown workflow 文件/目录 | 可执行二进制 allowlist |
 | `skills` | Claude component path | `agent.skillPaths` |
 | `agents` | custom subagent 定义 | 当前无等价 manifest 字段 |
-| `hooks` | Claude lifecycle handlers | 当前无 Vetta 原生插件清单字段 |
-| runtime/entry | 不需要前端运行时 | 当前 Vetta 插件必须提供 |
+| `hooks` | Claude lifecycle handlers | 当前无 Astravia 原生插件清单字段 |
+| runtime/entry | 不需要前端运行时 | 当前 Astravia 插件必须提供 |
 
-因此不能做“字段改名后写一个 Vetta plugin.json”的浅转换。尤其不能把 Claude `commands` 写进 Vetta `commands`，否则会把 Markdown 路径误当成可执行文件授权。
+因此不能做“字段改名后写一个 Astravia plugin.json”的浅转换。尤其不能把 Claude `commands` 写进 Astravia `commands`，否则会把 Markdown 路径误当成可执行文件授权。
 
-推荐 importer 先生成中立的 resource graph；Vetta 安装元数据与 Claude 原始 manifest 并存，分别保留原始哈希和来源。
+推荐 importer 先生成中立的 resource graph；Astravia 安装元数据与 Claude 原始 manifest 并存，分别保留原始哈希和来源。
 
 ## 4. Skill 语义差距
 
 ### 4.1 调用名和命名空间
 
-Claude plugin skill 有插件命名空间，并提供 `/name` 风格入口；Vetta 当前以全局 Skill name 去重，先加载者胜，并显式使用 `/skill:name`。
+Claude plugin skill 有插件命名空间，并提供 `/name` 风格入口；Astravia 当前以全局 Skill name 去重，先加载者胜，并显式使用 `/skill:name`。
 
 如果直接加载 10 个插件：
 
 - 同名 Skill 只能留下第一份；
-- 用户照上游文档输入 `/council`、`/pm:next` 不会进入 Vetta Skill expansion；
+- 用户照上游文档输入 `/council`、`/pm:next` 不会进入 Astravia Skill expansion；
 - plugin 内的 `Skill(...)` 引用无法稳定解析到同插件资源。
 
 兼容层需要内部 canonical id，例如 `claude:<marketplace>:<plugin>:<skill>`，同时维护用户入口 alias。只有在 alias 无冲突时才暴露短名；冲突时必须要求 scoped name。
 
 ### 4.2 参数
 
-Vetta `invoke_skill({ name, args })` 会在 Skill 正文后附加 `User arguments`，但不会替换正文中的 `$ARGUMENTS`。Claude legacy commands 和 Skill 明确依赖占位符替换。
+Astravia `invoke_skill({ name, args })` 会在 Skill 正文后附加 `User arguments`，但不会替换正文中的 `$ARGUMENTS`。Claude legacy commands 和 Skill 明确依赖占位符替换。
 
 需要在读取原始正文后、注入模型前执行一次确定性 substitution：
 
@@ -110,33 +110,33 @@ Vetta `invoke_skill({ name, args })` 会在 Skill 正文后附加 `User argument
 
 ### 4.3 权限与 fork
 
-`allowed-tools` 在 Claude 中是 Skill 活跃期的预授权，不是工具 allowlist；Vetta 当前完全忽略。`context: fork` 和 `agent` 决定 Skill 在隔离 agent 中执行，也不是普通描述字段。
+`allowed-tools` 在 Claude 中是 Skill 活跃期的预授权，不是工具 allowlist；Astravia 当前完全忽略。`context: fork` 和 `agent` 决定 Skill 在隔离 agent 中执行，也不是普通描述字段。
 
 这三者必须进入结构化 Skill runtime，不能只留在注入文本中。
 
 ## 5. Custom agent 差距
 
-Vetta 现有 registry 是正确落点，但需补字段与资源加载：
+Astravia 现有 registry 是正确落点，但需补字段与资源加载：
 
-| Claude agent 字段 | Vetta 当前承载 | 缺口 |
+| Claude agent 字段 | Astravia 当前承载 | 缺口 |
 | --- | --- | --- |
 | `name` / `description` | registry id/description | 支持 plugin scoped id |
 | Markdown body | `systemPromptAddon` | 可映射 |
-| `tools` | `createBuiltinTools` | 需要 Claude → Vetta 工具解析和 MCP 精确选择 |
+| `tools` | `createBuiltinTools` | 需要 Claude → Astravia 工具解析和 MCP 精确选择 |
 | `disallowedTools` | prefix deny | 需要精确 tool policy，不只 prefix |
 | `model` | child 继承 parent model | 需要 type/调用级 model resolver |
 | `maxTurns` | 无 | 需要 child turn budget |
 | `skills` | 无预加载字段 | 需要按 scoped id 注入 Skill 正文 |
 | `memory` | 无 | 需要定义是否支持、路径和读写权限 |
-| `background` | Vetta spawn 默认后台 | 需保留显式策略 |
+| `background` | Astravia spawn 默认后台 | 需保留显式策略 |
 | `isolation: worktree` | 无 | 后续能力；本基线不是核心依赖 |
 | `permissionMode` | child 继承 session config | 需要宿主权限收窄规则 |
 
-此外，Claude `Agent`/旧 `Task` tool schema 与 Vetta `spawn_agent` 不同。兼容 facade 应在 adapter 层归一参数，实际执行仍调用统一 coordinator，不复制第二套 child runtime。
+此外，Claude `Agent`/旧 `Task` tool schema 与 Astravia `spawn_agent` 不同。兼容 facade 应在 adapter 层归一参数，实际执行仍调用统一 coordinator，不复制第二套 child runtime。
 
 ## 6. Agent Teams 不能由 subagent 替代
 
-Vetta 当前 child：
+Astravia 当前 child：
 
 - 由 root 创建；
 - 结果和通知返回 root；
@@ -170,7 +170,7 @@ Agent Teams 则要求 lead、teammate、共享 task list、owner/dependency 自�
 - 每个事件的 JSON output；
 - exit code 2 对不同事件的效果。
 
-### 7.2 官方当前面大于 Vetta 事件联合
+### 7.2 官方当前面大于 Astravia 事件联合
 
 Claude 官方当前文档列出约 30 个事件，包括 `Setup`、`UserPromptExpansion`、`PostToolUseFailure`、`PostToolBatch`、`PermissionDenied`、`TaskCreated`、`TaskCompleted`、`TeammateIdle`、`InstructionsLoaded`、`ConfigChange`、`CwdChanged`、`FileChanged`、`WorktreeCreate/Remove`、`SessionEnd`、MCP elicitation 等。
 
@@ -178,7 +178,7 @@ Claude 官方当前文档列出约 30 个事件，包括 `Setup`、`UserPromptEx
 
 ### 7.3 脚本环境
 
-本快照的 Hook 使用 `${CLAUDE_PLUGIN_ROOT}` 和 `.sh`。当前 Vetta：
+本快照的 Hook 使用 `${CLAUDE_PLUGIN_ROOT}` 和 `.sh`。当前 Astravia：
 
 - `HookConfigSource.env` 可以注入变量；
 - Unix shell 可展开 `${CLAUDE_PLUGIN_ROOT}`；

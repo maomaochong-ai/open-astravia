@@ -5,14 +5,14 @@ import {
 	type MediaArtifact,
 	type MediaInput,
 	type MediaProviderJob,
-} from "@vetta-org/capability-sdk";
+} from "@astravia-org/capability-sdk";
 import type {
 	PluginMediaInputUploadRequest,
 	PluginMediaProviderJob,
 	PluginMediaProviderSubmitRequest,
 	PluginMediaTransferResponse,
 	PluginPermission,
-} from "@vetta-org/plugin-sdk";
+} from "@astravia-org/plugin-sdk";
 import type { WebContents } from "electron";
 import type {
 	InstalledPlugin,

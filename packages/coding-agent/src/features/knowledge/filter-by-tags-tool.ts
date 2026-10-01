@@ -1,6 +1,6 @@
+import type { RuntimeToolDefinition } from "@astravia/runtime-core/kernel";
+import { ToolCallDescriptionSchema } from "@astravia/runtime-tools/coding";
 import { type Static, Type } from "@sinclair/typebox";
-import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
-import { ToolCallDescriptionSchema } from "@vetta/runtime-tools/coding";
 import type { ConversationScenario } from "../../profiles/index.js";
 import type { CodingAgentRuntimeToolRegistration } from "../../runtime-contracts/index.js";
 import type { CodingAgentKnowledgePage, CodingAgentKnowledgeQueryOperations } from "./contracts.js";

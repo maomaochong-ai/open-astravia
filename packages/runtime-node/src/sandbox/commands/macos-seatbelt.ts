@@ -3,13 +3,13 @@ import { existsSync, realpathSync } from "node:fs";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
 import { delimiter, isAbsolute, join } from "node:path";
-import { getVettaConfigDirName } from "@vetta/action-rpc";
-import type { SandboxShellGrant } from "@vetta/runtime-core/sandbox";
-import type { ForegroundCommandOperations } from "@vetta/runtime-tools";
+import { getAstraviaConfigDirName } from "@astravia/action-rpc";
+import type { SandboxShellGrant } from "@astravia/runtime-core/sandbox";
+import type { ForegroundCommandOperations } from "@astravia/runtime-tools";
 import { getSandboxShellGrant } from "../sandbox-permissions.js";
 import type { NodeSandboxEnvironment, NodeSandboxShell } from "./contracts.js";
 
-const MACOS_ENV_WHITELIST = ["PATH", "LANG", "LC_ALL", "TERM", "VETTA_CLI_APP_PATH"] as const;
+const MACOS_ENV_WHITELIST = ["PATH", "LANG", "LC_ALL", "TERM", "ASTRAVIA_CLI_APP_PATH"] as const;
 
 export interface MacosSeatbeltCommandOptions {
 	readonly sandboxExecPath?: string;
@@ -40,7 +40,7 @@ function findOnPathUnix(binary: string): string | undefined {
 }
 
 export function resolveMacosSandboxExecPath(explicitPath?: string): string {
-	const candidate = explicitPath?.trim() || process.env.VETTA_MACOS_SANDBOX_EXEC_PATH?.trim();
+	const candidate = explicitPath?.trim() || process.env.ASTRAVIA_MACOS_SANDBOX_EXEC_PATH?.trim();
 	if (candidate) {
 		if (isAbsolute(candidate) && existsSync(candidate)) return candidate;
 		const resolved = findOnPathUnix(candidate);
@@ -84,7 +84,7 @@ export function buildMacosSandboxProfile(cwd: string, tempRoot: string, grant: S
 		join(homeDir, ".docker"),
 		join(homeDir, ".config", "gcloud"),
 		join(homeDir, "Library", "Keychains"),
-		join(homeDir, getVettaConfigDirName()),
+		join(homeDir, getAstraviaConfigDirName()),
 		join(homeDir, ".pi"),
 	].filter((path) => path !== realCwd && !realCwd.startsWith(`${path}/`));
 	const grantWriteRoots = (grant?.allowWriteRoots ?? []).filter((path) => existsSync(path)).map(normalizeExistingPath);
@@ -103,23 +103,27 @@ export function buildMacosSandboxProfile(cwd: string, tempRoot: string, grant: S
 	].join("\n");
 }
 
-function resolveVettaCliAppPath(env: NodeSandboxEnvironment | undefined): string | undefined {
-	const value = env?.VETTA_CLI_APP_PATH ?? process.env.VETTA_CLI_APP_PATH;
+function resolveAstraviaCliAppPath(env: NodeSandboxEnvironment | undefined): string | undefined {
+	const value = env?.ASTRAVIA_CLI_APP_PATH ?? process.env.ASTRAVIA_CLI_APP_PATH;
 	return typeof value === "string" && value.length > 0 && existsSync(value) ? value : undefined;
 }
 
-async function createVettaCliShim(
+async function createAstraviaCliShim(
 	tempRoot: string,
 	env: NodeSandboxEnvironment | undefined,
 ): Promise<string | undefined> {
-	const vettaCliAppPath = resolveVettaCliAppPath(env);
-	if (!vettaCliAppPath) return undefined;
+	const astraviaCliAppPath = resolveAstraviaCliAppPath(env);
+	if (!astraviaCliAppPath) return undefined;
 	const shimDir = join(tempRoot, "bin");
 	await mkdir(shimDir, { recursive: true });
-	await writeFile(join(shimDir, "vetta"), ["#!/usr/bin/env sh", `exec "${vettaCliAppPath}" "$@"`, ""].join("\n"), {
-		encoding: "utf8",
-		mode: 0o755,
-	});
+	await writeFile(
+		join(shimDir, "astravia"),
+		["#!/usr/bin/env sh", `exec "${astraviaCliAppPath}" "$@"`, ""].join("\n"),
+		{
+			encoding: "utf8",
+			mode: 0o755,
+		},
+	);
 	return shimDir;
 }
 
@@ -127,16 +131,16 @@ function buildSandboxEnv(
 	cwd: string,
 	tempRoot: string,
 	env: NodeSandboxEnvironment | undefined,
-	vettaShimDir: string | undefined,
+	astraviaShimDir: string | undefined,
 ): NodeJS.ProcessEnv {
 	const baseEnv = env ?? process.env;
 	const nextEnv: NodeJS.ProcessEnv = {};
 	for (const key of MACOS_ENV_WHITELIST) {
 		const value =
-			key === "PATH" && vettaShimDir
-				? [vettaShimDir, baseEnv.PATH].filter((item): item is string => Boolean(item)).join(delimiter)
-				: key === "VETTA_CLI_APP_PATH"
-					? resolveVettaCliAppPath(env)
+			key === "PATH" && astraviaShimDir
+				? [astraviaShimDir, baseEnv.PATH].filter((item): item is string => Boolean(item)).join(delimiter)
+				: key === "ASTRAVIA_CLI_APP_PATH"
+					? resolveAstraviaCliAppPath(env)
 					: baseEnv[key];
 		if (typeof value === "string" && value.length > 0) nextEnv[key] = value;
 	}
@@ -156,16 +160,16 @@ export function createMacosSeatbeltCommandOperations(
 			new Promise<{ exitCode: number | null }>((resolve, reject) => {
 				void (async () => {
 					if (!existsSync(cwd)) return reject(new Error(`Working directory does not exist: ${cwd}`));
-					const tempRoot = await mkdtemp(join(tmpdir(), "vetta-macos-sandbox-"));
+					const tempRoot = await mkdtemp(join(tmpdir(), "astravia-macos-sandbox-"));
 					await mkdir(join(tempRoot, "home"), { recursive: true });
 					await mkdir(join(tempRoot, "tmp"), { recursive: true });
-					const vettaShimDir = await createVettaCliShim(tempRoot, env);
+					const astraviaShimDir = await createAstraviaCliShim(tempRoot, env);
 					const profilePath = join(tempRoot, "profile.sb");
 					await writeFile(profilePath, buildMacosSandboxProfile(cwd, tempRoot, getSandboxShellGrant(cwd)), "utf8");
 					const child = spawn(sandboxExecPath, ["-f", profilePath, shell.executable, ...shell.args, command], {
 						cwd,
 						detached: true,
-						env: buildSandboxEnv(cwd, tempRoot, env, vettaShimDir),
+						env: buildSandboxEnv(cwd, tempRoot, env, astraviaShimDir),
 						stdio: ["ignore", "pipe", "pipe"],
 					});
 					let timedOut = false;

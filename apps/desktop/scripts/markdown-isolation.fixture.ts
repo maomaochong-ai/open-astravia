@@ -19,7 +19,7 @@ try {
 	assert.ok(preview);
 	if (preview.webContents.isLoading()) await new Promise<void>((resolve) => preview.webContents.once("did-finish-load", () => resolve()));
 	assert.notEqual(preview.webContents.getOSProcessId(), owner.webContents.getOSProcessId());
-	assert.equal(await preview.webContents.executeJavaScript("typeof require + ':' + typeof window.vetta"), "undefined:undefined");
+	assert.equal(await preview.webContents.executeJavaScript("typeof require + ':' + typeof window.astravia"), "undefined:undefined");
 	assert.equal(await preview.webContents.executeJavaScript("document.querySelector('button').click(); document.querySelector('button').textContent"), "42");
 	assert.equal(await preview.webContents.executeJavaScript("window.open('https://example.com') === null"), true);
 	assert.equal(await preview.webContents.executeJavaScript("fetch('https://example.com').then(()=>false,()=>true)"), true);

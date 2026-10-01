@@ -1,6 +1,6 @@
+import type { CodingAgentGoalState } from "@astravia/coding-agent/session-extensions";
 import { activeSessionAtom, goalDialogOpenAtom, goalStateBySessionAtom } from "@shared/store/atoms";
 import { showToast } from "@shared/store/toast-atoms";
-import type { CodingAgentGoalState } from "@vetta/coding-agent/session-extensions";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -52,19 +52,19 @@ export function useGoalModeModel(): GoalModeModel {
 	);
 
 	const start = useCallback(
-		(objective: string) => run(() => window.vetta.session.startGoal(runtimeId!, objective)),
+		(objective: string) => run(() => window.astravia.session.startGoal(runtimeId!, objective)),
 		[run, runtimeId],
 	);
 	const pause = useCallback(
-		() => (state ? run(() => window.vetta.session.pauseGoal(runtimeId!, state.goalId)) : Promise.resolve()),
+		() => (state ? run(() => window.astravia.session.pauseGoal(runtimeId!, state.goalId)) : Promise.resolve()),
 		[run, runtimeId, state],
 	);
 	const resume = useCallback(
-		() => (state ? run(() => window.vetta.session.resumeGoal(runtimeId!, state.goalId)) : Promise.resolve()),
+		() => (state ? run(() => window.astravia.session.resumeGoal(runtimeId!, state.goalId)) : Promise.resolve()),
 		[run, runtimeId, state],
 	);
 	const clear = useCallback(
-		() => (state ? run(() => window.vetta.session.clearGoal(runtimeId!, state.goalId)) : Promise.resolve()),
+		() => (state ? run(() => window.astravia.session.clearGoal(runtimeId!, state.goalId)) : Promise.resolve()),
 		[run, runtimeId, state],
 	);
 	const onToggle = useCallback(() => {

@@ -1,4 +1,4 @@
-import { PLUGIN_PERMISSIONS, type PluginPermission } from "@vetta-org/plugin-sdk";
+import { PLUGIN_PERMISSIONS, type PluginPermission } from "@astravia-org/plugin-sdk";
 import { getWorkbenchFs, getWorkbenchPlugins, withWorkbenchFs } from "./runtime";
 
 const pluginPermissionSet = new Set<string>(PLUGIN_PERMISSIONS);
@@ -62,7 +62,7 @@ export async function discoverProjects(cwd: string): Promise<ProjectInfo[]> {
 		const permissions = Array.isArray(manifest.permissions)
 			? manifest.permissions.filter(isPluginPermission)
 			: [];
-		const packagePath = joinPath(dir, "release", `${id}-${version}.vettapkg`);
+		const packagePath = joinPath(dir, "release", `${id}-${version}.astraviapkg`);
 		let packageExists = false;
 		try {
 			packageExists = (await fs.stat(packagePath)) != null;

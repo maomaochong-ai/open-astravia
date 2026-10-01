@@ -2,14 +2,14 @@
  * 会话置顶的纯领域模型。
  *
  * 置顶按会话文件路径记录，与会话内容无关（重命名只追加 name 条目，路径不变）。
- * 主进程仓库 `~/.vetta/desktop-app/session-pins.json` 是唯一写者，侧边栏与配对的
+ * 主进程仓库 `~/.astravia/desktop-app/session-pins.json` 是唯一写者，侧边栏与配对的
  * 手机都读它；这里只放不依赖 fs/electron 的纯函数，两个进程共用同一套语义。
  */
 
 export const SESSION_PINS_SCHEMA_VERSION = 1;
 
 /** 置顶变更广播通道：主进程在每次写盘后推送最新快照。 */
-export const SESSION_PINS_CHANGED_CHANNEL = "vetta:session-pins:changed";
+export const SESSION_PINS_CHANGED_CHANNEL = "astravia:session-pins:changed";
 
 /** 会话路径 → 置顶时间（epoch ms），越新越靠前。 */
 export type SessionPins = ReadonlyMap<string, number>;

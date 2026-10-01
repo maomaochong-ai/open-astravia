@@ -1,5 +1,5 @@
 import { cn } from "@shared/lib/utils";
-import { Button } from "@vetta-org/ui";
+import { Button } from "@astravia-org/ui";
 import { AnimatePresence, LayoutGroup, motion } from "motion/react";
 import type { SetupWizardModel } from "../hooks/useSetupWizard";
 import type { SetupWizardStepId } from "../steps";

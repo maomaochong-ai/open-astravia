@@ -1,11 +1,11 @@
-import type { Message, UserMessage } from "@vetta/ai";
+import type { Message, UserMessage } from "@astravia/ai";
 import type {
 	ContinuationPolicy,
 	ContinuationPolicyContext,
 	ModelCallFrameCompositionContext,
 	RuntimeSnapshotAcquireContext,
 	RuntimeToolDefinition,
-} from "@vetta/runtime-core/kernel";
+} from "@astravia/runtime-core/kernel";
 import type {
 	AgentPluginContinuationContribution,
 	AgentPluginContinuationResult,

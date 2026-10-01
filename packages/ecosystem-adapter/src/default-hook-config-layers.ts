@@ -5,25 +5,25 @@ import { LATEST_CODEX_HOOK_PROFILE_ID } from "./codex/hooks/latest/profile.js";
 import type { HookConfigLayer, HookConfigSource } from "./hooks/types.js";
 
 /** Project / user config directory basename (brand default). */
-export const VETTA_HOOK_CONFIG_DIR_NAME = ".vetta";
+export const ASTRAVIA_HOOK_CONFIG_DIR_NAME = ".astravia";
 
 export interface BuildDefaultHookConfigLayersOptions {
 	/** Session project working directory. */
 	cwd: string;
 	/**
-	 * Vetta user data root.
-	 * Default: `~/.vetta` (HOME / USERPROFILE / os.homedir()).
-	 * Coding Agent should pass `getVettaHomePath()` so `VETTA_HOME` applies.
+	 * Astravia user data root.
+	 * Default: `~/.astravia` (HOME / USERPROFILE / os.homedir()).
+	 * Coding Agent should pass `getAstraviaHomePath()` so `ASTRAVIA_HOME` applies.
 	 */
-	vettaHome?: string;
+	astraviaHome?: string;
 	/**
-	 * Project config directory name under cwd. Default: `.vetta`.
+	 * Project config directory name under cwd. Default: `.astravia`.
 	 * Override only for tests or non-standard layouts.
 	 */
 	configDirName?: string;
 	/**
 	 * Override home directory (tests). Default: HOME / USERPROFILE / os.homedir().
-	 * Used only when `vettaHome` is omitted.
+	 * Used only when `astraviaHome` is omitted.
 	 */
 	homeDir?: string;
 	/** Environment for HOME resolution. Default process.env. */
@@ -31,17 +31,17 @@ export interface BuildDefaultHookConfigLayersOptions {
 }
 
 /**
- * Build host config layers for ecosystem hook discovery under Vetta paths only.
+ * Build host config layers for ecosystem hook discovery under Astravia paths only.
  *
- * Mirrors official Codex/Claude directory layout **inside** Vetta roots:
+ * Mirrors official Codex/Claude directory layout **inside** Astravia roots:
  *
  * 1. User:
- *    - `<vettaHome>/.codex/hooks.json`
- *    - `<vettaHome>/.claude/settings.json`
+ *    - `<astraviaHome>/.codex/hooks.json`
+ *    - `<astraviaHome>/.claude/settings.json`
  * 2. Project:
- *    - `<cwd>/.vetta/.codex/hooks.json`
- *    - `<cwd>/.vetta/.claude/settings.json`
- *    - `<cwd>/.vetta/.claude/settings.local.json`
+ *    - `<cwd>/.astravia/.codex/hooks.json`
+ *    - `<cwd>/.astravia/.claude/settings.json`
+ *    - `<cwd>/.astravia/.claude/settings.local.json`
  *
  * Does **not** read top-level official homes (`~/.codex`, `~/.claude`, project
  * `.codex` / `.claude` at cwd root). Hosts that need those must pass explicit layers.
@@ -54,38 +54,38 @@ export interface BuildDefaultHookConfigLayersOptions {
 export function buildDefaultHookConfigLayers(options: BuildDefaultHookConfigLayersOptions): HookConfigLayer[] {
 	const env = options.env ?? process.env;
 	const homeDir = options.homeDir ?? resolveHomeDir(env);
-	const vettaHome = options.vettaHome ?? join(homeDir, VETTA_HOOK_CONFIG_DIR_NAME);
-	const configDirName = options.configDirName ?? VETTA_HOOK_CONFIG_DIR_NAME;
-	const projectVettaDir = join(options.cwd, configDirName);
+	const astraviaHome = options.astraviaHome ?? join(homeDir, ASTRAVIA_HOOK_CONFIG_DIR_NAME);
+	const configDirName = options.configDirName ?? ASTRAVIA_HOOK_CONFIG_DIR_NAME;
+	const projectAstraviaDir = join(options.cwd, configDirName);
 
-	const userCodexDir = join(vettaHome, ".codex");
-	const userClaudeDir = join(vettaHome, ".claude");
-	const projectCodexDir = join(projectVettaDir, ".codex");
-	const projectClaudeDir = join(projectVettaDir, ".claude");
+	const userCodexDir = join(astraviaHome, ".codex");
+	const userClaudeDir = join(astraviaHome, ".claude");
+	const projectCodexDir = join(projectAstraviaDir, ".codex");
+	const projectClaudeDir = join(projectAstraviaDir, ".claude");
 
 	return [
 		{
 			directory: userCodexDir,
 			enabled: true,
-			label: "vetta-user-codex",
+			label: "astravia-user-codex",
 			sources: [codexSource(join(userCodexDir, "hooks.json"))],
 		},
 		{
 			directory: userClaudeDir,
 			enabled: true,
-			label: "vetta-user-claude",
+			label: "astravia-user-claude",
 			sources: [claudeSource(join(userClaudeDir, "settings.json"))],
 		},
 		{
 			directory: projectCodexDir,
 			enabled: true,
-			label: "vetta-project-codex",
+			label: "astravia-project-codex",
 			sources: [codexSource(join(projectCodexDir, "hooks.json"))],
 		},
 		{
 			directory: projectClaudeDir,
 			enabled: true,
-			label: "vetta-project-claude",
+			label: "astravia-project-claude",
 			sources: [
 				claudeSource(join(projectClaudeDir, "settings.json")),
 				claudeSource(join(projectClaudeDir, "settings.local.json")),

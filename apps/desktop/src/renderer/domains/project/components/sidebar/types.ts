@@ -10,4 +10,4 @@ export type {
 	SidebarNavItem,
 	SidebarProps,
 	SidebarRegionProps,
-} from "@vetta-org/theme-sdk/sidebar";
+} from "@astravia-org/theme-sdk/sidebar";

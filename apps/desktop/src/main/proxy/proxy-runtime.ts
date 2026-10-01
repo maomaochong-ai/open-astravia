@@ -21,7 +21,7 @@ import {
 	NO_PROXY_HOSTS,
 	resolveProxyConfig,
 	setProviderFetchResolver,
-} from "@vetta/ai";
+} from "@astravia/ai";
 import { getAppLogger } from "../logger.js";
 import { decideProxyRouting } from "./proxy-routing.js";
 import type { DesktopProxyConfig } from "./proxy-settings.js";

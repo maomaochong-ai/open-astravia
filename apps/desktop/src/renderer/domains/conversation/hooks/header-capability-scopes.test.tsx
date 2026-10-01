@@ -7,7 +7,7 @@ import {
 	backgroundTasksBySessionAtom,
 	subagentsBySessionAtom,
 } from "@shared/store/atoms";
-import type { RuntimeSandboxGrantInfo } from "@vetta/runtime-core";
+import type { RuntimeSandboxGrantInfo } from "@astravia/runtime-core";
 import { createStore, Provider } from "jotai";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -34,7 +34,7 @@ function grant(runtimeId: string, id: string, createdAt: number): RuntimeSandbox
 
 beforeEach(() => {
 	Object.assign(window, {
-		vetta: {
+		astravia: {
 			session: {
 				listSandboxGrants: vi.fn(async (runtimeId: string) => [grant(runtimeId, `grant-${runtimeId}`, Date.now())]),
 				revokeSandboxGrant: vi.fn(async () => {}),
@@ -78,18 +78,18 @@ describe("header capability scopes", () => {
 		await waitFor(() => expect(result.current?.count).toBe(2));
 		act(() => result.current?.onRevoke("runtime-b:grant-runtime-b"));
 		await waitFor(() =>
-			expect(window.vetta.session.revokeSandboxGrant).toHaveBeenCalledWith("runtime-b", "grant-runtime-b"),
+			expect(window.astravia.session.revokeSandboxGrant).toHaveBeenCalledWith("runtime-b", "grant-runtime-b"),
 		);
 
 		act(() => result.current?.onRevokeAll());
-		await waitFor(() => expect(window.vetta.session.revokeAllSandboxGrants).toHaveBeenCalledTimes(2));
-		expect(window.vetta.session.revokeAllSandboxGrants).toHaveBeenCalledWith("runtime-a");
-		expect(window.vetta.session.revokeAllSandboxGrants).toHaveBeenCalledWith("runtime-b");
+		await waitFor(() => expect(window.astravia.session.revokeAllSandboxGrants).toHaveBeenCalledTimes(2));
+		expect(window.astravia.session.revokeAllSandboxGrants).toHaveBeenCalledWith("runtime-a");
+		expect(window.astravia.session.revokeAllSandboxGrants).toHaveBeenCalledWith("runtime-b");
 		unmount();
 	});
 
 	it("keeps grants from healthy Runtimes when another Runtime is unavailable", async () => {
-		vi.mocked(window.vetta.session.listSandboxGrants).mockImplementation(async (runtimeId) => {
+		vi.mocked(window.astravia.session.listSandboxGrants).mockImplementation(async (runtimeId) => {
 			if (runtimeId === "runtime-a") throw new Error("runtime unavailable");
 			return [grant(runtimeId, `grant-${runtimeId}`, Date.now())];
 		});

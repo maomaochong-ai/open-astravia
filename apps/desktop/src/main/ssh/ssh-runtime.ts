@@ -1,14 +1,14 @@
 import { mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { getVettaHomePath } from "@vetta/action-rpc";
+import { getAstraviaHomePath } from "@astravia/action-rpc";
 import {
 	buildControlPath,
 	createNodeSshProcessRunner,
 	type SshConnection,
 	SshConnectionManager,
 	type SshConnectionStatus,
-} from "@vetta/ssh-transport";
+} from "@astravia/ssh-transport";
 import { readConfigSync } from "../config/desktop-config-store.js";
 import { getAppLogger } from "../logger.js";
 import { resolveAskpassEnvironment } from "./askpass-runtime.js";
@@ -23,12 +23,12 @@ let manager: SshConnectionManager | undefined;
  * ControlMaster socket 的存放目录。
  *
  * 这是个 Unix domain socket 路径，`sun_path` 在 macOS 上只有 104 字节。优先放在
- * Vetta 主目录下（通常很短），但用户的家目录可能很长——例如域账号或中文用户名——
+ * Astravia 主目录下（通常很短），但用户的家目录可能很长——例如域账号或中文用户名——
  * 那时退回 `/tmp`。两者都超长时 buildControlPath 会抛，让失败在连接前就暴露出来，
  * 而不是变成一次原因完全看不出的连接超时。
  */
 function resolveControlDirectory(): string {
-	const candidates = [join(getVettaHomePath(), "ssh"), join(tmpdir(), "vetta-ssh")];
+	const candidates = [join(getAstraviaHomePath(), "ssh"), join(tmpdir(), "astravia-ssh")];
 	for (const candidate of candidates) {
 		try {
 			mkdirSync(candidate, { recursive: true, mode: 0o700 });

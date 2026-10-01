@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
+
+import type { PluginFileExplorerEntry } from "@astravia-org/plugin-sdk";
 import type { InstalledPlugin } from "@preload/api";
-import type { PluginFileExplorerEntry } from "@vetta-org/plugin-sdk";
 import { describe, expect, it, vi } from "vitest";
 import { createPluginFileExplorerApi } from "./plugin-file-explorer-context";
 import { validateFileExplorerDecoration } from "./plugin-file-explorer-validation";

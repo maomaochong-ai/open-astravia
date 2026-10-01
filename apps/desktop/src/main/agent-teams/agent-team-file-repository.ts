@@ -1,16 +1,16 @@
 import type { Dirent } from "node:fs";
 import { mkdir, readdir, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
-import { getVettaHomePath } from "@vetta/action-rpc";
+import { getAstraviaHomePath } from "@astravia/action-rpc";
 import type {
 	AgentProfile,
 	AgentTeamDocument,
 	AgentTeamExtensionRegistry,
 	TeamDefinition,
 	TeamMember,
-} from "@vetta/agent-team";
-import { DEFAULT_AGENT_TEAM_EXTENSIONS, parseAgentTeamDocument } from "@vetta/agent-team";
-import { atomicWriteFileAsync, atomicWriteJSONAsync } from "@vetta/toolkit/atomic-write";
+} from "@astravia/agent-team";
+import { DEFAULT_AGENT_TEAM_EXTENSIONS, parseAgentTeamDocument } from "@astravia/agent-team";
+import { atomicWriteFileAsync, atomicWriteJSONAsync } from "@astravia/toolkit/atomic-write";
 import { getAppLogger } from "../logger.js";
 import { agentBlueprintRegistry, resolveAgentBlueprint } from "./agent-blueprint-registry.js";
 import {
@@ -29,7 +29,7 @@ import { dropRetiredHostPresets } from "./retired-host-presets.js";
 
 const log = getAppLogger("agent-teams");
 
-const TEAMS_DIR = join(getVettaHomePath(), "agent-teams");
+const TEAMS_DIR = join(getAstraviaHomePath(), "agent-teams");
 const INITIALIZED_MARKER = ".initialized";
 const INDEX_FILE = "index.json";
 /** 团队目录下存放成员任务书长文本的位置，一名成员一个 Markdown 文件。 */

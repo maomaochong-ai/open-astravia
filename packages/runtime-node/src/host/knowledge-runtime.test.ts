@@ -1,7 +1,7 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { WritePageRequest } from "@vetta/runtime-knowledge";
+import type { WritePageRequest } from "@astravia/runtime-knowledge";
 import { afterEach, describe, expect, it } from "vitest";
 import { createNodeKnowledgeRuntime } from "./knowledge-runtime.js";
 

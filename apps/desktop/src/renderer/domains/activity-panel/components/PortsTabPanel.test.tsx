@@ -3,7 +3,7 @@ import type { PortForward } from "@preload/api-types/ssh";
 import { activityPanelTabByProjectAtom, backgroundTasksBySessionAtom, browserUrlByWorkspaceAtom } from "@shared/store/atoms";
 import type { BackgroundTask } from "@shared/store/background-tasks-atoms";
 import { createActivityWorkspace } from "@shared/workspace/activity-workspace";
-import type { RemoteListenerScan } from "@vetta/ssh-transport";
+import type { RemoteListenerScan } from "@astravia/ssh-transport";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createStore, Provider } from "jotai";
@@ -59,7 +59,7 @@ const ssh = {
 
 const openExternal = vi.fn(async () => {});
 
-vi.stubGlobal("window", Object.assign(globalThis.window, { vetta: { ssh, auth: { openExternal } } }));
+vi.stubGlobal("window", Object.assign(globalThis.window, { astravia: { ssh, auth: { openExternal } } }));
 
 function renderPanel(store = createStore(), cwd = REMOTE_CWD) {
 	const workspace = createActivityWorkspace(cwd, cwd, ["runtime-1"]);

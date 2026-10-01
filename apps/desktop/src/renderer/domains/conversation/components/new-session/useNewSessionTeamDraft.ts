@@ -1,3 +1,5 @@
+import type { AgentTeamDocument, SendTeamMessageInput, TeamDefinition } from "@astravia/agent-team";
+import type { PromptAttachmentRef, SessionExecutionMode } from "@astravia/runtime-core";
 import { useLocalizedAgentTeamDocument } from "@shared/agent-teams/agent-team-localization";
 import { agentDisplayName } from "@shared/agent-teams/agent-team-presentation";
 import {
@@ -17,8 +19,6 @@ import {
 	reasoningByModelAtom,
 	selectedModelAtom,
 } from "@shared/store/atoms";
-import type { AgentTeamDocument, SendTeamMessageInput, TeamDefinition } from "@vetta/agent-team";
-import type { PromptAttachmentRef, SessionExecutionMode } from "@vetta/runtime-core";
 import { useAtomValue, useStore } from "jotai";
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState, useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
@@ -146,7 +146,7 @@ export function useNewSessionTeamDraft({
 		if (loadRef.current) return loadRef.current;
 		setLoading(true);
 		setError(null);
-		const request = window.vetta.agentTeams
+		const request = window.astravia.agentTeams
 			.list()
 			.then((next) => {
 				setDocument(next);
@@ -309,11 +309,11 @@ export function useNewSessionTeamDraft({
 		return {
 			setDraft: setDraftAndAttachments,
 			selectFiles: async () =>
-				addAttachments((await window.vetta.dialog.selectFiles()).map((path) => toAttachment(path, "file"))),
+				addAttachments((await window.astravia.dialog.selectFiles()).map((path) => toAttachment(path, "file"))),
 			selectImages: async () =>
 				addAttachments(
-					(await persistBase64Images(await window.vetta.dialog.selectImages(), null, "image-dialog")).map((path) =>
-						toAttachment(path, "image"),
+					(await persistBase64Images(await window.astravia.dialog.selectImages(), null, "image-dialog")).map(
+						(path) => toAttachment(path, "image"),
 					),
 				),
 			removeAttachment,

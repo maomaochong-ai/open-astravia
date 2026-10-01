@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import { useActiveConversation } from "@vetta-org/plugin-sdk";
+import { useActiveConversation } from "@astravia-org/plugin-sdk";
 import { getPluginCtx } from "./plugin-context";
 import { ALL_PROBES, runAllProbes, summarizeResults, type ProbeResult, type ProbeStatus } from "./probes";
 
@@ -128,7 +128,7 @@ export function ProbePanel({ compact = false }: { compact?: boolean }) {
 				<h2 className="text-[15px] font-bold">插件系统安全探针</h2>
 				<p className="mt-[6px] text-[12px] leading-[1.45] text-[var(--muted-foreground)]">
 					按 ADR-0023，插件与宿主同 renderer、无沙箱。本工具探测权限门控、路径/存储隔离、官方 API
-					边界与 <code className="text-[11px]">window.vetta</code> 暴露面。默认不破坏用户数据；写探测仅触及
+					边界与 <code className="text-[11px]">window.astravia</code> 暴露面。默认不破坏用户数据；写探测仅触及
 					plugin storage 或预期应失败的路径。
 				</p>
 				<p className="mt-[4px] text-[11px] text-[var(--muted-foreground)]">
@@ -201,7 +201,7 @@ export function ProbePanel({ compact = false }: { compact?: boolean }) {
 						<ol className="list-decimal space-y-[4px] pl-[18px]">
 							<li>仅授予 UI 权限，运行一次 — 验证各 API deny 路径。</li>
 							<li>逐步授予 fs / storage / network / command，观察边界探测结果。</li>
-							<li>重点查看标记为「发现」的项：同 renderer 暴露、window.vetta 旁路、homedir 读、SSRF。</li>
+							<li>重点查看标记为「发现」的项：同 renderer 暴露、window.astravia 旁路、homedir 读、SSRF。</li>
 						</ol>
 					</div>
 				) : null}

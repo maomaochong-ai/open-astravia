@@ -1,7 +1,7 @@
 import {
 	ConsecutiveFailureCircuitBreaker,
 	type ConsecutiveFailureCircuitBreakerOptions,
-} from "@vetta/runtime-core/kernel";
+} from "@astravia/runtime-core/kernel";
 
 /** @deprecated Use Runtime Core's general consecutive-failure circuit breaker. */
 export type CircuitBreakerOptions = Required<

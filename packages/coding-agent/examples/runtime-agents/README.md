@@ -1,16 +1,16 @@
 # Runtime Agent Capability Examples
 
-这组示例承接 [`@vetta/runtime-core` 的基础多 Agent 示例](../../../runtime-core/examples/README.md)，展示如何在产品
+这组示例承接 [`@astravia/runtime-core` 的基础多 Agent 示例](../../../runtime-core/examples/README.md)，展示如何在产品
 组合层为不同主 Agent 接入 MCP、Skill、Tool 和 Session Extension。它们只使用公开入口，不连接真实模型或远端服务。
 
 ## 为什么放在 Coding Agent
 
 ```text
 应用 / 产品组合根
-├── @vetta/coding-agent/resources   Skill 发现、索引与调用语义
-├── @vetta/runtime-mcp              MCP Source、同步与渐进披露
-├── @vetta/runtime-node/host        文件/进程等 Node Host adapter
-└── @vetta/runtime-core             Agent、Session、Extension 与 Turn Snapshot
+├── @astravia/coding-agent/resources   Skill 发现、索引与调用语义
+├── @astravia/runtime-mcp              MCP Source、同步与渐进披露
+├── @astravia/runtime-node/host        文件/进程等 Node Host adapter
+└── @astravia/runtime-core             Agent、Session、Extension 与 Turn Snapshot
 ```
 
 `runtime-core` 不解析 `SKILL.md`，也不认识 MCP transport。把示例放在这里可以保持依赖方向正确，同时展示最终产品如何把

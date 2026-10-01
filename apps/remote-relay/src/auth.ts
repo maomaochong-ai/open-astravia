@@ -1,4 +1,4 @@
-import { parseOfferedProtocols, REMOTE_WEBSOCKET_PROTOCOL } from "@vetta/remote-control";
+import { parseOfferedProtocols, REMOTE_WEBSOCKET_PROTOCOL } from "@astravia/remote-control";
 
 export { REMOTE_WEBSOCKET_PROTOCOL };
 
@@ -43,7 +43,7 @@ export function parseInviteRoute(pathname: string): { readonly boxId: string } |
 
 /** The desktop's token for replacing or withdrawing its own invite. */
 export function inviteWriterToken(headers: Headers): string | undefined {
-	const token = headers.get("X-Vetta-Invite-Token");
+	const token = headers.get("X-Astravia-Invite-Token");
 	return token && pairingSecretPattern.test(token) ? token : undefined;
 }
 

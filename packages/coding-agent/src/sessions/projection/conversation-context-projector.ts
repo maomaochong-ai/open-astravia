@@ -1,7 +1,7 @@
-import type { AgentMessage } from "@vetta/agent-core";
-import type { Message } from "@vetta/ai";
-import type { ConversationDocument, RuntimeMessageEnvelope } from "@vetta/runtime-core";
-import type { ConversationContextProjector } from "@vetta/runtime-core/kernel";
+import type { AgentMessage } from "@astravia/agent-core";
+import type { Message } from "@astravia/ai";
+import type { ConversationDocument, RuntimeMessageEnvelope } from "@astravia/runtime-core";
+import type { ConversationContextProjector } from "@astravia/runtime-core/kernel";
 import { convertToLlm } from "../../model-context/index.js";
 import type {
 	CodingAgentCustomMessageEntry as CustomMessageEntry,

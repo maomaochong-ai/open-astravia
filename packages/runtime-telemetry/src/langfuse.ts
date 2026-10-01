@@ -27,7 +27,7 @@ export function createLangfuseRuntimeTracer(options: LangfuseRuntimeTracerOption
 		const { serviceName, ...processorOptions } = options;
 		spanProcessor = new LangfuseSpanProcessor(processorOptions);
 		sdk = new NodeSDK({
-			serviceName: serviceName ?? "vetta-agent",
+			serviceName: serviceName ?? "astravia-agent",
 			spanProcessors: [spanProcessor],
 		});
 		sdk.start();
@@ -37,7 +37,7 @@ export function createLangfuseRuntimeTracer(options: LangfuseRuntimeTracerOption
 }
 
 export function createLangfuseRuntimeTracerFromEnv(env: NodeJS.ProcessEnv = process.env): RuntimeTracer | undefined {
-	if (env.VETTA_TRACING !== "langfuse") {
+	if (env.ASTRAVIA_TRACING !== "langfuse") {
 		return undefined;
 	}
 
@@ -47,7 +47,7 @@ export function createLangfuseRuntimeTracerFromEnv(env: NodeJS.ProcessEnv = proc
 		secretKey: env.LANGFUSE_SECRET_KEY,
 		environment: env.LANGFUSE_TRACING_ENVIRONMENT,
 		release: env.LANGFUSE_RELEASE,
-		serviceName: env.OTEL_SERVICE_NAME ?? "vetta-agent",
+		serviceName: env.OTEL_SERVICE_NAME ?? "astravia-agent",
 	});
 }
 

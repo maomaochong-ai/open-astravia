@@ -1,5 +1,5 @@
-import type { ForegroundCommandOperations } from "@vetta/runtime-tools";
-import { type SshConnection, SshOperationAbortedError } from "@vetta/ssh-transport";
+import type { ForegroundCommandOperations } from "@astravia/runtime-tools";
+import { type SshConnection, SshOperationAbortedError } from "@astravia/ssh-transport";
 
 /**
  * Agent 的 bash 工具在远端执行。

@@ -35,7 +35,7 @@ afterEach(async () => {
 });
 
 async function makeTempDir(): Promise<string> {
-	const dir = await mkdtemp(join(tmpdir(), "vetta-claude-hooks-"));
+	const dir = await mkdtemp(join(tmpdir(), "astravia-claude-hooks-"));
 	tempDirs.push(dir);
 	return dir;
 }
@@ -518,7 +518,7 @@ process.stdin.on("end", () => {
 		expect(second).toEqual([]);
 	});
 
-	it("SessionEnd maps Vetta cause to Claude reason for matcher and stdin", async () => {
+	it("SessionEnd maps Astravia cause to Claude reason for matcher and stdin", async () => {
 		const { root, claudeDir } = await writeHookProject({
 			"session-end.cjs": `
 let data = "";

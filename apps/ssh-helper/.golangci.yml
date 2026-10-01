@@ -53,7 +53,7 @@ formatters:
   settings:
     goimports:
       local-prefixes:
-        - vetta-ssh-helper
+        - astravia-ssh-helper
   exclusions:
     generated: lax
     paths:

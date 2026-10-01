@@ -1,5 +1,5 @@
 <resources>
-    <string name="widget_title" translatable="false">Vetta</string>
+    <string name="widget_title" translatable="false">Astravia</string>
     <string name="widget_description">Sessions waiting on you and in progress</string>
     <string name="widget_unpaired">Not connected</string>
     <string name="widget_unpaired_hint">Tap to pair with your computer</string>

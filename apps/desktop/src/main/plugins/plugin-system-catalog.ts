@@ -5,7 +5,7 @@ import {
 	parsePluginCommandNames,
 	parsePluginManifest,
 	validatePluginRelativePath,
-} from "@vetta-org/plugin-sdk/manifest";
+} from "@astravia-org/plugin-sdk/manifest";
 import type { InstalledPlugin, PluginLocales, PluginManifest } from "../../preload/api-types/plugins.js";
 import { readPluginLocales, resolvePluginIcon } from "./plugin-package.js";
 import type { SystemPluginPreferenceStore } from "./plugin-registry-store.js";
@@ -180,7 +180,7 @@ export class SystemPluginCatalog {
 		const cacheVersion = this.dependencies.isPackaged
 			? version
 			: this.resourceCacheVersion(pluginId, normalized, version);
-		return `vetta-plugin://${pluginId}/${normalized}?v=${encodeURIComponent(cacheVersion)}`;
+		return `astravia-plugin://${pluginId}/${normalized}?v=${encodeURIComponent(cacheVersion)}`;
 	}
 
 	private resourceCacheVersion(pluginId: string, relativePath: string, version: string): string {

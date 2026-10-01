@@ -6,10 +6,10 @@ import {
 	createCodingAgentEditPathPolicy,
 	createCodingAgentSessionCommandEnvironment,
 	createCodingAgentWritePathPolicy,
-} from "@vetta/coding-agent/composition";
-import { CONFIG_DIR_NAME, getKnowledgeDir, getSceneDir, getUserSkillsDir } from "@vetta/coding-agent/config";
-import { CODING_AGENT_READ_TOOL_OPTIONS } from "@vetta/coding-agent/host";
-import type { SettingsRuntime } from "@vetta/coding-agent/settings";
+} from "@astravia/coding-agent/composition";
+import { CONFIG_DIR_NAME, getKnowledgeDir, getSceneDir, getUserSkillsDir } from "@astravia/coding-agent/config";
+import { CODING_AGENT_READ_TOOL_OPTIONS } from "@astravia/coding-agent/host";
+import type { SettingsRuntime } from "@astravia/coding-agent/settings";
 import {
 	createNodeFileToolRegistrations,
 	createNodeHostCodingToolEnvironment,
@@ -19,7 +19,7 @@ import {
 	createNodeShellEnvironment,
 	getNodeShellCommandPrefix,
 	resolveNodeShell,
-} from "@vetta/runtime-node/coding";
+} from "@astravia/runtime-node/coding";
 
 export interface CliCodingAgentToolEnvironmentOptions {
 	readonly agentDir: string;

@@ -1,6 +1,6 @@
-import { Button } from "@vetta-org/ui";
+import { Button } from "@astravia-org/ui";
 
-import { ThemeSurface } from "@vetta-org/theme-ui/appearance";
+import { ThemeSurface } from "@astravia-org/theme-ui/appearance";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { QuestionItem, QuestionPanelViewProps } from "./types";

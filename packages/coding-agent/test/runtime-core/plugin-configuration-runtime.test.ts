@@ -1,4 +1,4 @@
-import { SessionExtensionComposition } from "@vetta/runtime-core/session-extensions";
+import { SessionExtensionComposition } from "@astravia/runtime-core/session-extensions";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CodingAgentSessionConfigurationState } from "../../src/host/session-configuration/configuration-state.js";
 import type { AgentPluginRuntimeConfig } from "../../src/model-context/plugin-runtime.js";

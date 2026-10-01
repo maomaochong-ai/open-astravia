@@ -8,7 +8,7 @@ import { pathToFileURL } from "node:url";
 // 拉下大批改动后依赖清单常常变了，dev 只编译不装包会直接起不来。
 // 这里按依赖清单指纹判断是否需要 bun install，无变化时跳过，避免每次启动多等数秒。
 const defaultRepoRoot = join(import.meta.dirname, "..", "..", "..");
-const stampName = ".vetta-install-stamp";
+const stampName = ".astravia-install-stamp";
 
 async function expandWorkspace(repoRoot, pattern) {
 	if (!pattern.endsWith("/*")) return [pattern];

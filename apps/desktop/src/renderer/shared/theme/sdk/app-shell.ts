@@ -5,10 +5,10 @@ import type {
 	PageHeaderWindowActions,
 	WindowControlButton,
 	WindowControlsComponentProps,
-} from "@vetta-org/theme-ui/app-shell";
+} from "@astravia-org/theme-ui/app-shell";
 import type { ComponentType } from "react";
 
-export { usePageHeaderModel, useWindowControlsModel } from "@vetta-org/theme-sdk/app-shell";
+export { usePageHeaderModel, useWindowControlsModel } from "@astravia-org/theme-sdk/app-shell";
 export type {
 	DefaultPageHeaderProps,
 	PageHeaderActionGroupProps,
@@ -28,7 +28,7 @@ export type {
 	WindowControlsComponentProps,
 	WindowControlsModel,
 	WindowControlsProps,
-} from "@vetta-org/theme-ui/app-shell";
+} from "@astravia-org/theme-ui/app-shell";
 export {
 	DefaultPageHeader,
 	DefaultWindowControls,
@@ -39,9 +39,9 @@ export {
 	PageHeaderTitle,
 	PageHeaderWindowActions,
 	WindowControlButton,
-} from "@vetta-org/theme-ui/app-shell";
+} from "@astravia-org/theme-ui/app-shell";
 
-declare module "@vetta-org/theme-sdk" {
+declare module "@astravia-org/theme-sdk" {
 	interface ThemeComponentRegistry {
 		readonly "app.pageHeaderContent"?: ComponentType<PageHeaderContentProps>;
 		readonly "app.pageHeaderSidebarTrigger"?: typeof PageHeaderSidebarTrigger;

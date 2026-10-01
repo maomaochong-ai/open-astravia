@@ -19,7 +19,7 @@
    - 定义 `RuntimeSessionBackend`；
    - 定义当前兼容期使用的 `RuntimeSession` 与创建参数别名；
    - 实现默认 `LegacyCodingAgentSessionBackend`，继续委托旧
-     `@vetta/coding-agent.createAgentSession`。
+     `@astravia/coding-agent.createAgentSession`。
 2. `RuntimeHostOptions` 新增可选 `sessionBackend` 注入点。
 3. `RuntimeHost` 不再直接调用 `createAgentSession`，统一通过注入后端创建会话；未注入
    时自动使用旧兼容后端。
@@ -28,7 +28,7 @@
    - `cli` 场景仍启用子代理；
    - 创建后仍绑定扩展 UI Context 并安装永久流缓冲订阅；
    - 销毁会话仍释放订阅并调用底层 session dispose。
-5. 从 `@vetta/runtime-core` 根入口导出后端合同与旧兼容实现，供宿主组合根显式注入。
+5. 从 `@astravia/runtime-core` 根入口导出后端合同与旧兼容实现，供宿主组合根显式注入。
 
 ## 明确未修改
 

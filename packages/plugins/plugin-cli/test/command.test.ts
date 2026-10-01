@@ -26,7 +26,7 @@ describe("plugin add command", () => {
 			{ type: "add", source: "@example/demo@1.2.0", json: false },
 			{
 				resolveNpmArchive: vi.fn().mockResolvedValue({
-					archivePath: "C:/tmp/vetta-plugin.vettapkg",
+					archivePath: "C:/tmp/astravia-plugin.astraviapkg",
 					cleanup,
 					expectedSha256: "a".repeat(64),
 					integrity: "sha512-test",
@@ -34,11 +34,11 @@ describe("plugin add command", () => {
 					packageManifest: {
 						name: "@example/demo",
 						version: "1.2.0",
-						vetta: {
+						astravia: {
 							schemaVersion: 1,
 							type: "desktop-plugin",
 							pluginId: "demo",
-							archive: "release/vetta-plugin.vettapkg",
+							archive: "release/astravia-plugin.astraviapkg",
 						},
 					},
 				}),
@@ -52,7 +52,7 @@ describe("plugin add command", () => {
 		expect(runAction).toHaveBeenCalledWith("plugins.manage", {
 			operation: "install-from-path",
 			initiator: "plugin-cli",
-			path: "C:/tmp/vetta-plugin.vettapkg",
+			path: "C:/tmp/astravia-plugin.astraviapkg",
 			enable: true,
 			source: "npm",
 			expectedSha256: "a".repeat(64),

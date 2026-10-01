@@ -32,7 +32,7 @@ function installImStub(): { current: ImBridgeConfig; payloads: ImSetConfigPayloa
 		current: baseConfig(),
 		payloads: [],
 	};
-	Object.defineProperty(window, "vetta", {
+	Object.defineProperty(window, "astravia", {
 		configurable: true,
 		value: {
 			im: {

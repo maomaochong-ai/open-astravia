@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from "node:fs/promises";
+import type { RuntimeToolDefinition } from "@astravia/runtime-core/kernel";
 import { type Static, Type } from "@sinclair/typebox";
-import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
 import {
 	localToolPathHost,
 	resolveToCwd,

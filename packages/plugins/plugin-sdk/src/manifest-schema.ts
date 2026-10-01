@@ -1,5 +1,5 @@
 import { Type, type Static } from "@sinclair/typebox";
-import { SkillSurfaceVisibilitySchema, SkillVisibilitySchema } from "@vetta-org/capability-sdk";
+import { SkillSurfaceVisibilitySchema, SkillVisibilitySchema } from "@astravia-org/capability-sdk";
 import { PLUGIN_PERMISSIONS } from "./permissions.js";
 
 const NON_WHITESPACE_PATTERN = "\\S";
@@ -443,7 +443,7 @@ export const PluginManifestSchema = Type.Object(
 	{
 		$id: "PluginManifest",
 		additionalProperties: true,
-		description: "Vetta desktop plugin manifest (plugin.json).",
+		description: "Astravia desktop plugin manifest (plugin.json).",
 	},
 );
 

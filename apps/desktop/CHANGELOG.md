@@ -17,7 +17,7 @@
 
 - 展开/收起左侧边栏不再掉帧：过渡期不再逐帧改变内容区宽度，而是布局一步到位、侧边栏用位移滑入滑出。插件的整页工作区视图（靠 `ResizeObserver` 做自适应的宫格、缩放预览、虚拟列表）改善最明显——一次收缩从掉 4-7 帧、175ms 长任务降到最多掉 1 帧、无长任务。代价是内容的换列与换行在点击瞬间完成，不再跟着滑动渐变。
 
-- Plugin API 提升至 2.5：插件可直接从 `@vetta-org/plugin-sdk/logger` 导入由构建工具绑定身份的结构化 logger；Desktop 会为日志添加插件版本与作用域、限制大小、脱敏常见敏感字段，并写入现有 Renderer 日志与诊断管线，无需逐层传递 `ctx`。
+- Plugin API 提升至 2.5：插件可直接从 `@astravia-org/plugin-sdk/logger` 导入由构建工具绑定身份的结构化 logger；Desktop 会为日志添加插件版本与作用域、限制大小、脱敏常见敏感字段，并写入现有 Renderer 日志与诊断管线，无需逐层传递 `ctx`。
 
 - 图片生成设置现在直接选择具体模型，并保留暂时不可用的选择；Media Provider 可发布模型目录，宿主会解析默认模型、拒绝不支持的显式模型，并为需要 JSON 内联图片的 Provider 提供受调用范围约束的输入读取。
 
@@ -54,7 +54,7 @@
 
 - 插件 Skill 改为默认隐藏的内部实现；插件可显式公开指定 Skill，并按能力中心、智能体配置、命令菜单和 Skill 选择器分别控制可见性及本地化展示名。隐藏不会影响 Agent 调用或既有配置（ADR-0110）。
 
-- 能力市场内置 Vetta 官方 GitHub 来源（`openvetta/vetta-official-marketplace`）：未配置发行方仓库的构建也会注册该来源，且不可停用、不可删除，界面以锁定图标替代启停开关；发行方仍可用 `VETTA_OPEN_MARKETPLACE_REPOSITORY` 把内置来源换成自己的 fork，用户自行添加的来源不受影响。已存在的来源目录若缺少该内置来源（含历史上“注册过一次就不再恢复”的记录），启动时会自动补回。
+- 能力市场内置 Astravia 官方 GitHub 来源（`maomaochong-ai/astravia-official-marketplace`）：未配置发行方仓库的构建也会注册该来源，且不可停用、不可删除，界面以锁定图标替代启停开关；发行方仍可用 `ASTRAVIA_OPEN_MARKETPLACE_REPOSITORY` 把内置来源换成自己的 fork，用户自行添加的来源不受影响。已存在的来源目录若缺少该内置来源（含历史上“注册过一次就不再恢复”的记录），启动时会自动补回。
 
 - 修复对不上规范历史的乐观用户气泡永久残留：这类气泡此前每次对账都会被重新追加到消息列表末尾，造成重复与错位；现在最多再撑过三次对账即清除，落盘较慢的正常消息仍会一直保留到确认。
 
@@ -226,7 +226,7 @@
 - Agent Team 内置成员现在使用 9 个可选 WebP 头像，头像选择会复用成员头像组件并持久化到 Agent 配置。
 
 - GitHub 能力市场来源支持私有仓库：可为每个来源配置 GitHub fine-grained PAT（仅需 `Contents: Read-only`）。令牌使用
-  Desktop 系统安全存储加密保存，不进入来源配置、快照、日志或 Vetta 服务；GitHub REST manifest/zipball 请求支持认证，
+  Desktop 系统安全存储加密保存，不进入来源配置、快照、日志或 Astravia 服务；GitHub REST manifest/zipball 请求支持认证，
   签名归档重定向不会转发令牌，并将认证、权限、未找到和限流错误显示为来源状态。
 
 - Agent Team 成员的实时工具执行现在通过共享 Conversation 消息流投影到普通工具卡片；输入区同时复用普通会话的命令/At 面板、触发器和语音入口，At 面板可组合注入成员候选并将带样式的 `@handle` token 插入编辑器，Todo 活动页签按团队 workspace 作用域打开。
@@ -258,7 +258,7 @@
   控制台做了嵌入修正（`insertCSS`）：把宿主语义色映射到 baguette 的三层配色来源上——设备页所有玻璃面
   （顶栏、左右下角浮动按钮、各类 rail 与 sheet、下拉浮层）的 `--nv-*`；列表页与侧栏视图的 `:root` 令牌
   （逐条 `!important`，因为页面会在运行时再注入一份 `:root`）；以及侧栏视图里写死浅色字面量的卡片头、
-  折叠标题、次级按钮与提示条。整个控制台因此跟随 Vetta 明暗切换，它自带的明暗按钮随之隐藏（已成死控件）；顶栏的布局与 overflow 一概不覆盖
+  折叠标题、次级按钮与提示条。整个控制台因此跟随 Astravia 明暗切换，它自带的明暗按钮随之隐藏（已成死控件）；顶栏的布局与 overflow 一概不覆盖
   （它高度写死且自带折叠机制，换行会让控件溢出到设备画面上并使折叠判定失效，`overflow` 则会把折叠
   菜单的下拉浮层裁掉），只沿链路解除 `min-width`，在 260px 起的各种面板宽度下都不再溢出、也不再把
   内容区撑出横向滚动；右缘悬浮工具条与
@@ -276,7 +276,7 @@
 
 - 插件可声明宿主管理的 CLI Provider：启用后按真实阶段检查、安装并验证 executable，Provider 就绪前不发布该插件的
   Agent 贡献；新增能力详情设置 Slot、安装状态订阅、重试、上游配置进程与二维码生成 API。Agent 仍通过既有 Shell
-  直接调用 CLI，不新增 Vetta Action、MCP 或自定义 Tool；停用/卸载不会移除全局 CLI。见 ADR-0098。
+  直接调用 CLI，不新增 Astravia Action、MCP 或自定义 Tool；停用/卸载不会移除全局 CLI。见 ADR-0098。
 
 - Agent 本地可观测持久化 Agent/模型/工具 Span 与安全事件，保留父子关系、实例/定义/配置版本及用量，供宿主内部查询。默认保留 7 天、5000 条、16 MiB；存储故障通过安全日志与内部健康状态报告，远端导出沿显式 Langfuse 开关启用且不发送正文。
 
@@ -284,7 +284,7 @@
 
 - 会话搜索新增时间筛选：今天、近 7 天、近 30 天、本月及自定义日期，默认不限；按本地时区的会话最后消息时间筛选，结束日包含全天，支持单边日期并提示无效范围。搜索结果与渐进批次统一从新到旧排列、显示最后消息时间，并持续保留最新 100 条，避免先找到的旧标题挤掉稍后命中的新会话；时间条件沿用折叠、移除和重置交互。
 - 侧边栏会话支持本机置顶与取消置顶；顶部按钮栏新增悬浮搜索面板，检索会话标题、用户消息和 Agent 文本回复，不索引工具调用、工具结果、思考及非文本内容，支持对话类型和项目筛选，默认全部。历史解析与检索在独立 Worker 中渐进返回结果，切换条件或关闭面板会取消旧请求；缓存和结果列表设有容量上限，读取失败和结果截断均有提示。项目名称取代结果右侧的项目类型标签，置顶按钮位于标签左侧且不独占摘要列；筛选默认收起为图标，已选条件可见、可移除并可一键重置。标题与命中摘要高亮关键词；摘要保留长关键词并兼容 Unicode 字符长度变化，首次搜索显示中央进度说明，持续搜索提示固定在结果列表上方。
-- App Action 的 search / describe 新增作用对象、适用场景、排除场景与替代路径说明；官方 37 个 Action 全部提供，CLI 指引明确区分操作 Vetta 与开发用户项目。
+- App Action 的 search / describe 新增作用对象、适用场景、排除场景与替代路径说明；官方 37 个 Action 全部提供，CLI 指引明确区分操作 Astravia 与开发用户项目。
 - GitHub 能力市场支持格式 v2 的 bundle 包路径成员：只有顶层注册的能力独立展示，未上架成员仍可在套装内
   查看、选择安装，并在「我的」中更新、启停和卸载；身份与原有安装台账保持兼容。见 ADR-0094。
 - 开源市场 MCP Ability 新增声明式受管二进制安装：市场可按平台声明 HTTPS 单文件或 ZIP 与固定 SHA-256，Desktop
@@ -306,8 +306,8 @@
   Agent Settings 与 Plugin Settings 各自的持久化 Adapter 负责。没有配置的 Tool 不显示空条目。
 - 侧边栏导航项支持**原色图片图标**：`SidebarNavItem` 新增可选 `iconUrl`，设置后导航项以 `<img>` 渲染而不染色，插件可用 `registerWorkspaceView({ iconTint: false })` 让自己的彩色 Logo 保持原样（`svg` / `png` / `webp` 等任意图像资源）。`icon` 仍是必填的 class 字符串并同时下发 mask 版本，因此不认识 `iconUrl` 的主题（含替换了 `sidebar.navItem` 组件的主题）继续渲染单色图标，不受影响。缺省仍为单色，与内置导航项保持一致。
 - 插件工作区视图未声明 `icon` 时回落到插件自己的 `plugin.json` Logo（此前固定落到一个通用 widget 图标）：包内图片由宿主生成 mask class 承载，跟随主题前景色着色，因此自带图形的插件不必再去 Iconify 集合里找近似图标。导航项 `icon` 仍是 class 字符串，主题层（含第三方主题）无需改动。
-- 新增通用浏览器自动化能力与系统插件**浏览器操作（Browser Use）**：插件可经 `ctx.browser` 使用宿主管理、按 namespace 隔离的 session 和持久 profile，manifest 权限与 `browser.allowedHosts` 在主进程逐次校验。Agent 则通过 Skill 直接调用锁定版本的 `agent-browser` CLI，每个 Coding Agent Session 以 `VETTA_AGENT_SESSION_ID` 使用独立 upstream session，不与其它 Agent 任务或 Plugin API 共享活跃页面。Skill 会在 Vetta 私有 npm prefix 中自动安装缺失或过旧的锁定 CLI，并按健康检查补装 Chrome for Testing；插件面板保留人工安装与诊断兜底。公共 `ctx.browser` v1 继续提供导航、快照、文本读取和类型化动作，并新增仅展示型 `ctx.browser.open()` 将 HTTP(S) 页面打开到 Desktop 内置 Browser Panel。见 ADR-0088、ADR-0090。
-- 插件 AI 能力新增无状态多轮对话 capability `cap.domain.vetta.ai.chat`（`ctx.ai.chat`）：插件自持全量消息转写（user / assistant / toolResult），可携带仅本次请求可见的插件内部工具；模型触发工具调用时按 `stopReason: "toolUse"` 原样返回 `toolCalls`，由插件在自身 loop 内执行。权限沿用 `ai.complete`，宿主不保存任何插件会话状态。
+- 新增通用浏览器自动化能力与系统插件**浏览器操作（Browser Use）**：插件可经 `ctx.browser` 使用宿主管理、按 namespace 隔离的 session 和持久 profile，manifest 权限与 `browser.allowedHosts` 在主进程逐次校验。Agent 则通过 Skill 直接调用锁定版本的 `agent-browser` CLI，每个 Coding Agent Session 以 `ASTRAVIA_AGENT_SESSION_ID` 使用独立 upstream session，不与其它 Agent 任务或 Plugin API 共享活跃页面。Skill 会在 Astravia 私有 npm prefix 中自动安装缺失或过旧的锁定 CLI，并按健康检查补装 Chrome for Testing；插件面板保留人工安装与诊断兜底。公共 `ctx.browser` v1 继续提供导航、快照、文本读取和类型化动作，并新增仅展示型 `ctx.browser.open()` 将 HTTP(S) 页面打开到 Desktop 内置 Browser Panel。见 ADR-0088、ADR-0090。
+- 插件 AI 能力新增无状态多轮对话 capability `cap.domain.astravia.ai.chat`（`ctx.ai.chat`）：插件自持全量消息转写（user / assistant / toolResult），可携带仅本次请求可见的插件内部工具；模型触发工具调用时按 `stopReason: "toolUse"` 原样返回 `toolCalls`，由插件在自身 loop 内执行。权限沿用 `ai.complete`，宿主不保存任何插件会话状态。
 
 ### Fixed
 
@@ -319,7 +319,7 @@
 - Desktop 客户端日志保留 App Action、插件激活等用户操作链路及所有 warning/error，同时不再默认持久化逐条插件注册、
   活动页签解析、主题加载和常规 Vite HMR 等高频内部信息；App Action 与 Skill 日志只记录安全的类型、计数、耗时和
   稳定错误码，不再写入完整输入、异常正文、Skill 名称或工作区绝对路径。需要完整 Renderer 开发诊断时可设置
-  `VETTA_RENDERER_VERBOSE_LOGS=1`。
+  `ASTRAVIA_RENDERER_VERBOSE_LOGS=1`。
 - 修复 GitHub 能力市场更新插件时清空已有授权、导致详情配置等插件功能消失的问题；更新保留仍被声明的已有权限，首次安装和新增权限仍需用户确认。详情页缺少配置面板权限时显示原因和权限检查入口，已有空授权记录需用户重新确认，不会静默补授。
 - 能力页在更新插件时会明确展示“正在更新 / 正在重载新版本”阶段，更新完成后自动重载并确认结果；手动重载入口上移到详情页头，保留给主动刷新和失败恢复使用。
 - Agent Team 共享上下文改从持久 checkpoint 与成员交付回执恢复，Turn 结束或 Runtime 重建后仍可供手动压缩使用；不再依赖活动 Turn 内存 Map，也不会把另一成员的新版本或变化后的自定义策略结果当作原上下文。回执持久化成功后才推进成员引用，失败可重新准入。
@@ -360,13 +360,13 @@
 - 修复开发态 Renderer 整页热刷新时，已注册的 Plugin Agent Tool 仍会被主进程发往尚未恢复监听器的新页面、请求静默丢失并等满工具超时的问题；主进程现在在导航开始时立即终止在途工具调用，加载期间快速返回可重试错误，并在插件宿主完成加载后通过显式握手恢复分发。工具自身的取消、注册 generation 与插件定向 HMR 行为保持不变。
 - 修复 Browser Use 首次启动 `agent-browser` daemon 时因继承输出管道导致调用永久等待，以及 Desktop 异常退出后旧 daemon
   继续占用持久 profile、下次启动 Chrome 静默退出的问题；宿主现在按 CLI 进程退出及时结算命令，超时/取消立即完成，
-  正常退出会等待浏览器会话关闭，重启后首次使用同一 profile 会精确回收 Vetta 自有旧会话而保留登录态数据。
+  正常退出会等待浏览器会话关闭，重启后首次使用同一 profile 会精确回收 Astravia 自有旧会话而保留登录态数据。
 - 修复侧边栏点击较早的会话后，该会话因恢复过程更新 JSONL 文件时间而突然跳到列表顶部、时间变成「刚刚」的问题；
   会话排序和相对时间现在取最后一条用户或助手消息的时间，纯打开不再伪造新的活动时间。
 
 - 修复消息列表中的用户消息含图片时，复制后粘贴回输入框只剩文本、图片无法还原的问题；消息复制现在以同一份
   系统剪贴板条目写入纯文本、富文本和图片，支持多图并保持图片 token 顺序。复制本地图片不再经过 Renderer
-  重复读取、base64 编码和 Main 进程 PNG 重编码；粘贴 Vetta 富消息现在由 Main 直接解析并落盘，只向 Renderer
+  重复读取、base64 编码和 Main 进程 PNG 重编码；粘贴 Astravia 富消息现在由 Main 直接解析并落盘，只向 Renderer
   返回路径和压缩文件元数据，监控统计也复用该元数据，不再为同一批图片额外解码像素。大图粘贴不会再因跨进程
   往返搬运 base64 或监控重复解码而长时间阻塞输入线程、制造大量临时内存；普通截图和外部图片的兼容路径也改为
   文件路径或二进制字节直传，并在单次编辑器事务中批量插入全部图片，避免逐图触发 React 渲染与 DOM commit。
@@ -374,9 +374,9 @@
 - 修复创建新会话时 Desktop 同时把 RuntimeHost Observation Publisher 与同一个应用 Hub parent 注入 Coding Agent，
   导致 Composition 以“双上游”拒绝初始化的问题。现在 RuntimeHost Publisher 是唯一上游，Hub 的局部路由、容量和故障诊断配置仍保留。
 - 修复消息下方存在插件卡片时，Agent 流式输出期间整页持续抖动：宿主此前把插件的 `pendingFor` 回调结果当作每帧渲染的唯一事实源，该回调读插件自身状态、相邻两帧可能返回 `null` 或不同 `key`，导致在途工具的骨架卡在「有 / 没有」之间反复翻转、卡片区高度来回跳。现在同一个在途 tool call 只认第一次合成成功的 descriptor 直到它落定，卡片归属表与本条消息的原始卡片列表在内容不变时复用旧引用，卡片子树不再随每个 token 重建。同 `key` 只挂在最后产出它的消息下这一语义保持不变。
-- 修复 Vetta UI Design 的设计预览进程在插件热重载或异常退出后，Canvas 仍持有旧 localhost 端口并为每个画框重复报 `ERR_CONNECTION_REFUSED`：进程退出现在会立即撤掉旧端口消费者并有限退避重启，离屏截图同时作为失联后备探针；一分钟内连续失败超过三次才停止自动恢复并显示可手动重试的错误。
+- 修复 Astravia UI Design 的设计预览进程在插件热重载或异常退出后，Canvas 仍持有旧 localhost 端口并为每个画框重复报 `ERR_CONNECTION_REFUSED`：进程退出现在会立即撤掉旧端口消费者并有限退避重启，离屏截图同时作为失联后备探针；一分钟内连续失败超过三次才停止自动恢复并显示可手动重试的错误。
 - 修复开发态页面热刷新后 Plugin Agent 工具、Hook 与动态 Prompt handler 偶发统一报 `handler not found`：插件宿主 bridge 的 handler 表、IPC listener guard 与会话订阅现在由 renderer 全局单例持有，模块被 HMR 重新求值时不会再创建一套空 registry 和重复监听器；正式的 activation / Turn generation 隔离与释放语义保持不变。
-- 修复 Vetta UI Design 渲染机检把同一行的 checkbox + 文案、tab 下划线等多个 DOM rect 误判成文字换行，以及把 `items-center` / baseline 布局中正常的 top edge 差异误判成错位的问题；重复截同一画框前会清除旧绘制完成标记，避免复用离屏窗口时读到上一轮画面。
+- 修复 Astravia UI Design 渲染机检把同一行的 checkbox + 文案、tab 下划线等多个 DOM rect 误判成文字换行，以及把 `items-center` / baseline 布局中正常的 top edge 差异误判成错位的问题；重复截同一画框前会清除旧绘制完成标记，避免复用离屏窗口时读到上一轮画面。
 
 ### Changed
 
@@ -432,7 +432,7 @@
   阶段耗时聚合，关闭子 Hub 不关闭应用 Hub。
 - 流式期间进行中的思考卡片不再提升到消息末尾，改为就地渲染在该 thinking 原本所在的位置（包括某个阶段组内部）：正文仍在约 3 行高的窗口里随流式内容缓动上滚、上下边缘渐隐，但它跟随所属阶段组的折叠状态，组收起时不再从组里跑到消息底部。思考结束后同一位置换回「思考」折叠条；由于卡片不再脱离原位常驻，最短可见时长与出场动画一并移除。
 - 新会话的自动标题改在首条消息通过 Runtime 校验并进入 Turn 时立即异步生成，不再等待 Agent 回答完成；标题生成只依赖用户已发布的消息，并由主进程统一覆盖前台聊天、插件发送与调试会话入口。
-- Vetta UI Design 的 UI 验证支持一次选择多张或全部画框：源码机检每批只跑一次、截图复用专用离屏会话，并返回一张可一次读取的总览图；单帧调用保持兼容。验证状态会按画框记录源码保鲜度，并在画面和问题连续两次不变时提示停止盲改；`vetd_status` 也不再把 source-only 的空 `issues` 当作 UI 已验证。
+- Astravia UI Design 的 UI 验证支持一次选择多张或全部画框：源码机检每批只跑一次、截图复用专用离屏会话，并返回一张可一次读取的总览图；单帧调用保持兼容。验证状态会按画框记录源码保鲜度，并在画面和问题连续两次不变时提示停止盲改；`astravia_design_status` 也不再把 source-only 的空 `issues` 当作 UI 已验证。
 
 - 工作模式注册表迁入 Desktop（`src/main/agent-modes/`，ADR-0071 归属修订）：`modes/*.md` 是唯一事实源，
   经 `bun run generate:agent-modes` 内联成注册表，模式提示词正文在会话创建时按固化的 `agentMode` 注入
@@ -445,7 +445,7 @@
 
 - Agent 消息流式渲染时，进行中的思考被提升到消息最下方，以一块轻量卡片常驻展示：不管它属于哪个（通常是折叠着的）阶段组，都能直接看到正文在约 3 行高的窗口里随流式内容持续缓动上滚、上下边缘渐隐。卡片只有圆角与淡背景、无边框无标题栏，有展开/收起的入场与出场动画，并保证至少可见 1.5 秒——模型吐字很快时思考不会一闪而过；停留期间又开始新一段思考会就地换成新内容并重新计时，卡片全程不卸载，因此不闪。思考结束后卡片消失，内容回到原位的「思考」折叠条（原位不与卡片重复渲染）。开启「减少动态效果」时窗口只贴底不做缓动；导出快照不含该卡片。
 
-- 长会话达到 8 轮后，会话区域左侧会悬浮出提问目录（不占消息列宽度）：刻度标出每条提问，悬停时刻度向右加宽并预览最多三行提问正文、点击跳转；点图标在刻度右侧展开可搜索的提问列表，跳转后目录保持打开，点空白处、关闭或 Esc 再收起。会话区窄于 52rem 时整条目录自动隐藏，避免压住右对齐气泡。不再按「轮次 / 你 / Vetta」铺开双栏时间线。导航复用虚拟列表索引，跳转时会暂停自动追底，回到底部后恢复正常跟随。
+- 长会话达到 8 轮后，会话区域左侧会悬浮出提问目录（不占消息列宽度）：刻度标出每条提问，悬停时刻度向右加宽并预览最多三行提问正文、点击跳转；点图标在刻度右侧展开可搜索的提问列表，跳转后目录保持打开，点空白处、关闭或 Esc 再收起。会话区窄于 52rem 时整条目录自动隐藏，避免压住右对齐气泡。不再按「轮次 / 你 / Astravia」铺开双栏时间线。导航复用虚拟列表索引，跳转时会暂停自动追底，回到底部后恢复正常跟随。
 
 - Claw 的飞书渠道改为扫码接入：在「设置 → Claw → 飞书」点「扫码接入」，用飞书扫码并在页面上确认应用名称与权限，飞书就会替你创建机器人应用——所需权限与 `im.message.receive_v1` 事件订阅已预填，App ID 与 App Secret 由桥接回传后自动存到本机凭据（`im-credentials.json`，权限 0600），不必再去开放平台创建应用、开机器人能力、勾权限、发版本、抄两串密钥。Lark 租户会自动把 API 域名钉到 `open.larksuite.com`。原先手填 App ID / App Secret 的表单保留在扫码对话框底部的「手动填写」入口，供不允许自助创建应用的企业使用。飞书渠道描述符的凭据形态相应改为 `scan-or-static`：未配置凭据时 sidecar 停在 `awaiting_bind` 等待扫码，而不是拒绝启动。
 
@@ -455,12 +455,12 @@
 - Claw 渠道网格补齐 Slack、WhatsApp 品牌图标，并更新飞书图标。
 - Claw 每个渠道的配置对话框（飞书 / 微信 / Signal / 通用渠道）标题旁新增「使用说明」入口，点开是一个二级引导弹窗：编号步骤 + 可复制的命令或地址 + 提醒块，视觉与「知识库是怎么工作的」同一套。八个渠道的手册内容与 `apps/im-gateway/docs/*-setup.md` 对齐，中英文齐备。
 - Claw 的 Signal 渠道改为扫码接入：装好 signal-cli 后，在「设置 → Claw → Signal」点「扫码连接」，用手机 Signal 的「已关联的设备」扫码即可，桌面端会自动找到 signal-cli、托管 daemon 并回填账号号码，不再需要手填服务地址与 E.164 号码。未安装 signal-cli 时对话框直接给出本平台的安装命令。原先「连接自建 signal-cli 服务」的表单保留在对话框底部的高级入口。
-- IM 桥接主进程新增六个渠道的协议与配置合同：Telegram、Slack、Discord、Signal（静态凭证）、WhatsApp（扫码配对，含 `vetta:im:whatsapp:*` 绑定 IPC）与 iMessage（macOS 本地权限）。渠道能力收敛到 `im-host/channels.ts` 描述符注册表，测试连接按渠道分派校验；本次仅覆盖主进程与 preload 合同层，设置页 UI 与 i18n 文案随后续任务提供。
+- IM 桥接主进程新增六个渠道的协议与配置合同：Telegram、Slack、Discord、Signal（静态凭证）、WhatsApp（扫码配对，含 `astravia:im:whatsapp:*` 绑定 IPC）与 iMessage（macOS 本地权限）。渠道能力收敛到 `im-host/channels.ts` 描述符注册表，测试连接按渠道分派校验；本次仅覆盖主进程与 preload 合同层，设置页 UI 与 i18n 文案随后续任务提供。
 
 - 新增可选的手机远程接入宿主：Desktop 可主动连接 Cloudflare Worker 中继，将本地对话会话暴露为受版本化协议约束的远程请求；屏幕画面和鼠标键盘输入使用独立 WebRTC 通道，输入默认关闭并由本地配置显式授权。
-- 开发环境的 Vetta Debug 新增只读 `provider.models.list`，可刷新并列出 Runtime 当前可用的本地模型与登录后远程模型；
+- 开发环境的 Astravia Debug 新增只读 `provider.models.list`，可刷新并列出 Runtime 当前可用的本地模型与登录后远程模型；
   返回值只包含模型身份、来源和公开能力元数据，不读取凭据、不发起模型请求。
-- 开发环境的 Vetta Debug 新增 `conversation.compact`，可对持久会话手动执行生产 Runtime 的上下文压缩；
+- 开发环境的 Astravia Debug 新增 `conversation.compact`，可对持久会话手动执行生产 Runtime 的上下文压缩；
   Desktop 主进程同时记录自动/手动压缩的阈值、Token、结果、耗时和脱敏失败原因，打包环境不注册该调试命令。
 - 插件工作区视图页头支持沉浸模式（`immersive`）：页头浮在视图之上、视图占满全高，拖拽区与侧边栏触发器仍在最上层。设计画廊首页据此把 Hero 铺到窗口顶端，页头不再在顶部推出一条空带。
 - 插件工作区视图可以接管宿主页头：宿主按当前路由应用插件推来的标题隐藏与左右两簇内容（渲染在该插件的 i18n 目录与 CSS 作用域内，出错只吃掉这一簇）。设计画廊据此把「设计 / 搜索 / 刷新 / 导入 / 新建」搬进顶栏，页面顶部不再出现「应用名 + 插件顶栏」两条叠加的栏。
@@ -477,19 +477,19 @@
 
 ### Fixed
 
-- 修复插件动态系统提示词返回未授权操作时，IPC response handler 同步抛错并留下未决 Promise、随后只能等待超时的问题；响应校验失败现在会立即以 Promise rejection 传回 Runtime。Vetta UI Design 同时补齐动态工具开关权限并升级插件版本，使新权限能进入安装授权流程。
+- 修复插件动态系统提示词返回未授权操作时，IPC response handler 同步抛错并留下未决 Promise、随后只能等待超时的问题；响应校验失败现在会立即以 Promise rejection 传回 Runtime。Astravia UI Design 同时补齐动态工具开关权限并升级插件版本，使新权限能进入安装授权流程。
 - 修复提问目录点击刻度后高亮落到上一条提问的问题：当前提问不再取 Virtuoso 的已渲染范围起点（含 overscan 撑出的视窗外条目），改为按实测偏移与 scrollTop 求真正贴着视窗顶部的那条消息。
 
 - 修复提问目录搜索面板在提问较长时出现横向滚动条的问题：列表改为横向不可滚动，超出宽度的提问与匹配片段一律省略号截断。
 
 - 修复飞书扫码接入后「机器人连上了但发消息没反应」：扫码创建出来的应用可能没有生效的事件订阅，桥接会在连上之后自动把投递方式设为长连接并补上接收消息事件；补配置失败时把平台原因写进 Claw 的状态栏与日志，并提示去开放平台手动开启，而不是停在一个看似正常的「已连接」上。
 
-- 修复 Agent 在后台会话调用 `vetd_create` 时，设计标签错误写入当前前台项目、导致目标会话的标签列表缺少「设计」的问题；Activity Tab 宿主命令现在可按显式 cwd 写入 attach 与 active-tab 状态。
+- 修复 Agent 在后台会话调用 `astravia_design_create` 时，设计标签错误写入当前前台项目、导致目标会话的标签列表缺少「设计」的问题；Activity Tab 宿主命令现在可按显式 cwd 写入 attach 与 active-tab 状态。
 - 修复 Linux packaged E2E 真正启动应用后的两项误报：unpacked 可执行文件现在使用同批构建的 AppImage 作为更新器运行上下文，主进程 mock 探针改用同步 Electron API，避免 CDP 在异步 mock Promise 跨进程返回前将其回收。
 - 修复 Desktop packaged E2E 的后续三平台失败：构建产物默认禁止 `electron-builder` 在 CI 中隐式发布，打包矩阵显式安装 IM gateway 所需的 Go 工具链与 Linux Electron 所需的 ALSA 运行时；Ubuntu 24.04+ CI 通过 Electron Service 为测试可执行文件安装作用域受限的 AppArmor profile；Windows E2E 直接驱动版本目录中的 Electron 而不是会分离子进程的稳定启动器。
-- 修复配置了系统代理时 Claw 无法连接海外 IM 平台：im-gateway sidecar 是 Go 进程，只认 `HTTPS_PROXY` / `HTTP_PROXY` / `NO_PROXY` 环境变量，不读 macOS 与 Windows 的系统代理设置；而 Electron 自己会跟随系统代理。于是在「系统里配了代理但没有导出对应环境变量」的机器上，Vetta 本体联网正常、sidecar 却直连并被重置，Discord 表现为 `Get "https://discord.com/api/v9/gateway": EOF`，其余需要代理的渠道同样连不上。现在主进程用 Electron 自己的 `session.resolveProxy()` 解析代理，并把结果作为环境变量注入 sidecar 进程；父进程已显式设置代理时以其为准、不覆盖，解析失败则按直连处理、不阻塞桥接启动。受进程级环境变量所限，逐主机返回不同结果的 PAC 脚本只会应用其中一条。
+- 修复配置了系统代理时 Claw 无法连接海外 IM 平台：im-gateway sidecar 是 Go 进程，只认 `HTTPS_PROXY` / `HTTP_PROXY` / `NO_PROXY` 环境变量，不读 macOS 与 Windows 的系统代理设置；而 Electron 自己会跟随系统代理。于是在「系统里配了代理但没有导出对应环境变量」的机器上，Astravia 本体联网正常、sidecar 却直连并被重置，Discord 表现为 `Get "https://discord.com/api/v9/gateway": EOF`，其余需要代理的渠道同样连不上。现在主进程用 Electron 自己的 `session.resolveProxy()` 解析代理，并把结果作为环境变量注入 sidecar 进程；父进程已显式设置代理时以其为准、不覆盖，解析失败则按直连处理、不阻塞桥接启动。受进程级环境变量所限，逐主机返回不同结果的 PAC 脚本只会应用其中一条。
 - 修复 Claw 渠道配置对话框保存时损坏 Discord 与 Slack 的允许列表：读取时把「用户允许列表」和「服务器/频道允许列表」合并显示在同一个输入框，保存时却把全部内容写回用户允许列表。后果是服务器 ID 或频道 ID 被当成用户 ID，网关据此丢弃全部私聊消息且不产生任何日志，表现为「显示在线但机器人不回消息」；同时原有的服务器/频道允许列表被清空。现在输入框只呈现并写回用户允许列表，服务器/频道允许列表原样保留。
-- 修复 Vetta Claw 设置页切换消息渠道、更换对话模型后界面不更新（重开设置页才看到新值）的问题：写入成功后的配置刷新只回填了对话框表单，没有把最新配置写回页面状态。
+- 修复 Astravia Claw 设置页切换消息渠道、更换对话模型后界面不更新（重开设置页才看到新值）的问题：写入成功后的配置刷新只回填了对话框表单，没有把最新配置写回页面状态。
 - 修复干净 CI 环境下 Desktop 三平台打包烟测无法进入 packaged E2E：打包前现在统一按 workspace 依赖图生成声明与产物，Windows 不再使用漂移的独立构建顺序；Linux runner 同时显式安装 Bubblewrap 源码构建依赖。
 - 修复启用语音输入能力后手机桌面预览完全黑屏的问题：全局媒体权限策略此前只允许主窗口麦克风，导致远程桌面隐藏宿主的 `getDisplayMedia` 在屏幕源选择前被拒绝。现在仅对白名单中的远程桌面主 Frame 放行 Electron 屏幕捕获的两阶段权限请求，仍拒绝其摄像头、音频、子 Frame 及其它 Renderer 请求；屏幕源授权、拒绝和枚举失败也有脱敏日志可查。
 - 修复手机成功连接但桌面预览始终为空的问题：此前 Desktop 在二维码生成时立即发送一次 WebRTC offer，手机稍后进入预览时 Worker 会因 viewer 尚未在线而丢失该 offer 并关闭 host。现在 Worker 在双方信令端点都在线后发送不可由客户端伪造的 `peer_ready` 事件，Desktop 收到后才发起协商；Android 同时保证本地 description 成功后再发送 answer，并在 renderer 延迟创建时补挂视频轨。
@@ -505,21 +505,21 @@
 
 - 对话与 Agent Team 共用可组合的 `MessageInput`：输入能力通过 Radix 风格 Compound Components 直接在 JSX 中增删与排序，不再依赖固定 `regions` prop 或中央能力注册表；Team 附件以结构化引用进入成员 Runtime，不再拼接进用户文本。见 ADR-0100。
 
-- 用户发送消息后，Vetta 会在模型首个内容到达前立即显示带头像、名称与等待耗时的 Assistant 消息头；thinking、工具或正文到达后在同一条消息内接管。运行时间改为由消息的绝对开始时间派生，切换会话后继续累计，并按秒、分、小时自适应显示。
+- 用户发送消息后，Astravia 会在模型首个内容到达前立即显示带头像、名称与等待耗时的 Assistant 消息头；thinking、工具或正文到达后在同一条消息内接管。运行时间改为由消息的绝对开始时间派生，切换会话后继续累计，并按秒、分、小时自适应显示。
 - Work 模式的折叠工具组在 Agent 运行期间改为显示当前工具阶段、调用说明或最新 thinking 摘要，不再长期停留在笼统的「正在处理」；并行调用优先展示仍在执行的工具，阶段完成后恢复稳定的阶段总结，完整工具与思考内容仍保留在展开区。
-- 重做 Vetta Claw 设置页：新增概览卡直接展示当前活动渠道、连接状态、总开关与对话模型；渠道网格改为自适应列宽，飞书、微信、Telegram、Discord、Signal、iMessage 使用品牌图标资源，Slack 与 WhatsApp 暂用单色图标，活动渠道用 ring 高亮、未配置渠道走虚线弱化态，整卡点击即切换活动渠道、右下角齿轮进配置，替代过去每卡两个等权重按钮；保存与切换的成功/失败结果改为在页面上以提示条呈现（此前只有飞书对话框内可见，主页面开关失败是静默的）；状态与日志收敛为一条紧凑信息栏。渠道名称、图标与配置入口收敛到单一渠道表，新增渠道只需增加一行。
+- 重做 Astravia Claw 设置页：新增概览卡直接展示当前活动渠道、连接状态、总开关与对话模型；渠道网格改为自适应列宽，飞书、微信、Telegram、Discord、Signal、iMessage 使用品牌图标资源，Slack 与 WhatsApp 暂用单色图标，活动渠道用 ring 高亮、未配置渠道走虚线弱化态，整卡点击即切换活动渠道、右下角齿轮进配置，替代过去每卡两个等权重按钮；保存与切换的成功/失败结果改为在页面上以提示条呈现（此前只有飞书对话框内可见，主页面开关失败是静默的）；状态与日志收敛为一条紧凑信息栏。渠道名称、图标与配置入口收敛到单一渠道表，新增渠道只需增加一行。
 - Desktop 打包新增跨平台环境前置检查，在清理和编译前统一校验开源/商业版本、服务端与更新源、Marketplace、目标平台、遥测参数和 macOS 签名组合；新增 `dist:opensource` 作为 Windows、macOS、Linux 共用的开源版构建入口，GitHub Releases 与开源版、R2 与商业版不再允许混用。
 - Desktop 正式发布 Action 新增独立质量门禁：根检查、质量脚本测试和 packaging 合同测试全部通过后才启动平台矩阵；R2/GitHub 发布完成后验证三平台公开更新 feed 与其引用的安装包可读；默认手动构建只保留临时 Artifact，手动 `test` / `stable` 发布与 tag 发布走同一发布门禁。
 - Desktop packaged E2E 扩展到 Windows、macOS、Linux：真实启动 unpacked 应用并通过 renderer updater bridge 检查本地隔离 feed，发布矩阵在上传产物前即可发现启动、`app-update.yml`、feed 请求和 IPC 回归；本地 feed 不会触碰真实生产更新源。
-- Desktop 发布 workflow 支持通过 `workflow_dispatch` 发布隔离的 R2 `test` 通道；`build_version` 只允许用于 test channel 并注入 `VETTA_DESKTOP_BUILD_VERSION`，测试升级候选不会覆盖 stable，R2 凭据使用独立的 `desktop-test` Environment。
+- Desktop 发布 workflow 支持通过 `workflow_dispatch` 发布隔离的 R2 `test` 通道；`build_version` 只允许用于 test channel 并注入 `ASTRAVIA_DESKTOP_BUILD_VERSION`，测试升级候选不会覆盖 stable，R2 凭据使用独立的 `desktop-test` Environment。
 - 新增 `desktop-upgrade-e2e` workflow：从 test channel 基线包开始，在 Windows、macOS、Linux runner 上真实安装、检查更新、下载、退出、重启并校验候选版本；失败时保留应用日志和升级状态，生产 stable 不参与该验收。
 - Desktop 打包未配置更新源时默认使用官方 stable 更新源，并在显式传入不支持的 `none` provider 时于构建期失败，避免安装包缺少 `app-update.yml` 导致检查更新时报 `ENOENT`。
-- 打包版不再向终端用户暴露开发者工具入口：应用不再沿用 Electron 默认菜单，改为自建应用菜单——macOS 保留完整的应用/编辑/视图/窗口菜单（复制粘贴等 Edit role 不受影响），但打包版的「视图」不再包含重新加载、强制重新加载和切换开发者工具；Windows/Linux 打包版直接不装配应用菜单，对应快捷键一并失效。桌宠右键菜单的 DevTools 项沿用同一门禁。开发态行为不变，打包版排障可用 `VETTA_DEVTOOLS=1` 启动重新打开这些入口。
+- 打包版不再向终端用户暴露开发者工具入口：应用不再沿用 Electron 默认菜单，改为自建应用菜单——macOS 保留完整的应用/编辑/视图/窗口菜单（复制粘贴等 Edit role 不受影响），但打包版的「视图」不再包含重新加载、强制重新加载和切换开发者工具；Windows/Linux 打包版直接不装配应用菜单，对应快捷键一并失效。桌宠右键菜单的 DevTools 项沿用同一门禁。开发态行为不变，打包版排障可用 `ASTRAVIA_DEVTOOLS=1` 启动重新打开这些入口。
 - 自动更新不再只在启动时检查一次：应用保持运行时每 2 小时后台重查一次；系统从睡眠唤醒、以及用户打开侧边栏底部的设置菜单时也会机会性补查一次（距上次检查不足 30 分钟则跳过）。所有后台补查只在空闲或上次检查出错时发起，不会打断已经在下载或已就绪的更新。长期不退出应用的用户不再长时间收不到新版本提示。
 - 子代理与工作流活动面板新增实时 Todo、Token/费用、结构化目标和分类错误展示；状态图标统一为 Solar，运行/失败使用主题语义色，选择与状态变化使用 200ms 过渡，并补齐长内容与水平溢出处理。
 
 - 设置-账户的「Token 活动」在「累计」模式下改用平滑面积曲线（保单调的三次插值，陡升段不会出现向下过冲的假回落）：累计值单调递增，方块矩阵只能表达相对当前窗口最大值的强度，越用越接近整屏填满。曲线从首次有用量的那一天起画，不再为了凑格子在左侧铺一段无信息的零平线，也不像方块模式那样丢弃最早的历史（超出宽度时等距降采样）。「每日」「每周」仍是方块矩阵，悬停 tooltip 与月份刻度保持不变。
-- 侧边栏移除「项目」与「对话」之间的分栏拖拽条：两个区块改为共用同一个滚动区，按内容自然排布，不再有可拖拽的高度分配、展开项目时的自动占比调整，以及分栏比例的本地持久化（`vetta-sidebar-projects-split-ratio`，旧值不再读取）。
+- 侧边栏移除「项目」与「对话」之间的分栏拖拽条：两个区块改为共用同一个滚动区，按内容自然排布，不再有可拖拽的高度分配、展开项目时的自动占比调整，以及分栏比例的本地持久化（`astravia-sidebar-projects-split-ratio`，旧值不再读取）。
 - 助手消息底部的复制按钮图标换成 `solar:copy-linear`（复制成功后的对勾不变）。
 - 对话页助手消息底部的「本轮 Token」面板改为点击展开（此前 hover 即弹出），图标换成 `solar:chart-square-linear`。面板重排：缓存命中率提升为顶部主指标（大号数字，与缓存读取同色），总计 Token 并列右侧；读写观测覆盖率与前缀诊断（稳定/动态提示词字符、前缀状态、变化提示词块与工具、请求前缀指纹等）统一收进默认折叠的「更多参数」。构成条指标改名为输入 / 缓存命中 / 缓存写入 / 输出，Token 数值统一按 K、M 缩写显示（精确值移到 title），数值为 0 时显示「--」。消息列表滚动时面板自动关闭，不再挂在错位的锚点上。
 - 低配机性能手术（详见 `docs/desktop/sidebar-perf-081826.md`）：
@@ -539,7 +539,7 @@
 
 ### Fixed
 
-- 修复 macOS 上 ⌘Q 退出应用后系统弹出「Vetta 意外退出」崩溃弹窗的问题（进程实际以 SIGTRAP 结束）。
+- 修复 macOS 上 ⌘Q 退出应用后系统弹出「Astravia 意外退出」崩溃弹窗的问题（进程实际以 SIGTRAP 结束）。
   根因是全局键盘监听：主进程既在 worker 线程里 `uIOhook.start()`，又在主线程 import `uiohook-napi`
   只为取键码常量，于是两个 Node Environment 各注册了一份 napi 清理钩子，而原生侧的「监听中」标志是
   进程级共享的；退出时主线程那份钩子会替 worker 调 `hook_stop()`，对已失效的 CFRunLoopRef 取运行模式即崩溃。
@@ -573,5 +573,5 @@
 - 新会话页在「对话」与待创建项目下进入时，右侧活动面板默认收起，不再继承其它页面记忆的展开态
   （面板此时只有「选择项目」空态）；用户在该 scope 下手动展开仍然有效。
 - 「对话」上下文里的文件面板不再暴露各会话工作区的 uuid 内部目录：目录列举（文件树与 @文件补全）在
-  `~/.vetta/conversation` 根这一层隐藏 uuid 命名的工作区子目录（老产物文件仍可见，文件权限边界不变）；
+  `~/.astravia/conversation` 根这一层隐藏 uuid 命名的工作区子目录（老产物文件仍可见，文件权限边界不变）；
   新会话页在「不指定项目」与待创建项目下，活动面板文件页改为显示「选择项目」空态，而不是列出 conversation 根。

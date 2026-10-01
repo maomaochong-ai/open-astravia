@@ -1,7 +1,7 @@
 {
-	"name": "@vetta/runtime-storage",
+	"name": "@astravia/runtime-storage",
 	"version": "0.0.1",
-	"description": "Platform-neutral conversation storage contracts and schemas for Vetta runtimes",
+	"description": "Platform-neutral conversation storage contracts and schemas for Astravia runtimes",
 	"type": "module",
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
@@ -23,7 +23,7 @@
 	},
 	"dependencies": {
 		"@sinclair/typebox": "^0.34.41",
-		"@vetta/runtime-core": "workspace:*"
+		"@astravia/runtime-core": "workspace:*"
 	},
 	"devDependencies": {
 		"typescript": "^5.9.2",

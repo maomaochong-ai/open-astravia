@@ -1,4 +1,4 @@
-import { defineRuntimeObservation, type RuntimeObservationFailure } from "@vetta/runtime-core";
+import { defineRuntimeObservation, type RuntimeObservationFailure } from "@astravia/runtime-core";
 
 export interface McpRuntimeObservation {
 	readonly operation: "tool.sync" | "tool.dispose";

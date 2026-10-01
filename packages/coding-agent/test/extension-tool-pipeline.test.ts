@@ -1,5 +1,5 @@
+import type { AgentTool } from "@astravia/agent-core";
 import { Type } from "@sinclair/typebox";
-import type { AgentTool } from "@vetta/agent-core";
 import { describe, expect, it } from "vitest";
 import type {
 	ExtensionToolPipelineHost,

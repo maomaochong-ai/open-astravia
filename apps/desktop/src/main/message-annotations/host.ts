@@ -1,4 +1,4 @@
-import { type Message, streamSimple } from "@vetta/ai";
+import { type Message, streamSimple } from "@astravia/ai";
 import { getOrCreateSharedModelRuntime } from "../agent-runtime/host-services.js";
 import { getSharedRuntime } from "../runtime.js";
 import { ANNOTATION_SYSTEM_PROMPT } from "./context.js";

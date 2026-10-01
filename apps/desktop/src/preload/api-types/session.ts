@@ -1,4 +1,4 @@
-import type { Message } from "@vetta/ai";
+import type { Message } from "@astravia/ai";
 import type {
 	CodingAgentPlanReviewRequest,
 	CodingAgentPlanReviewResult,
@@ -6,14 +6,14 @@ import type {
 	CodingAgentQuestionResult,
 	CodingAgentSandboxAuthorizationDecision,
 	CodingAgentSandboxAuthorizationFunctionRequest,
-} from "@vetta/coding-agent/function-extensions";
-import type { ConversationScenario } from "@vetta/coding-agent/profile";
+} from "@astravia/coding-agent/function-extensions";
+import type { ConversationScenario } from "@astravia/coding-agent/profile";
 import type {
 	CodingAgentGoalSnapshot,
 	CodingAgentGoalState,
 	CodingAgentPermissionMode,
 	CodingAgentPlanModeState,
-} from "@vetta/coding-agent/session-extensions";
+} from "@astravia/coding-agent/session-extensions";
 import type {
 	HistoryEntry,
 	ProjectInfo,
@@ -26,7 +26,7 @@ import type {
 	SessionExecutionMode,
 	SessionStateSnapshot,
 	SettingsPatch,
-} from "@vetta/runtime-core";
+} from "@astravia/runtime-core";
 import type { DesktopMcpAppResourceRead, DesktopMcpAppSurface, DesktopMcpAppToolCall } from "../../shared/mcp-app.js";
 import type {
 	DesktopMcpElicitationRequest,
@@ -276,13 +276,13 @@ export interface DesktopSessionApi {
 	): () => void;
 	/**
 	 * 清空默认「对话」或 Claw 项目的全部会话（保留产物），按 scope 分流（物理 cwd 分家，ADR-0005）：
-	 * - "conversation"：清桌面「对话」cwd 的 .vetta/sessions
-	 * - "claw"：清 IM cwd 的 .vetta/sessions
+	 * - "conversation"：清桌面「对话」cwd 的 .astravia/sessions
+	 * - "claw"：清 IM cwd 的 .astravia/sessions
 	 * 主进程会先 dispose 本 scope 涉及的 session handle；若该 scope 仍有运行中的会话则抛错拒绝。
 	 */
 	clearDefaultConversation(scope: "conversation" | "claw"): Promise<void>;
 	/**
-	 * 清空默认「对话」或 Claw 项目 cwd 下的产物文件（保留 .vetta 目录，会话不受影响）。
+	 * 清空默认「对话」或 Claw 项目 cwd 下的产物文件（保留 .astravia 目录，会话不受影响）。
 	 */
 	clearDefaultArtifacts(scope: "conversation" | "claw"): Promise<void>;
 	/**

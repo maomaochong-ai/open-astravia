@@ -4,7 +4,7 @@ status: accepted
 
 # 个性化走 settings.json 结构字段 + 独立懒重建，不复用 APPEND_SYSTEM.md
 
-[[个性化]]（设置页「Agent配置」最上方的 [[人设]] 选择 + [[自定义指令]] textarea）本质是「往系统提示词末尾追加文本」。coding-agent 已存在一条同语义的机制：`~/.vetta/agent/APPEND_SYSTEM.md`（及项目级 `.vetta/APPEND_SYSTEM.md`），由 `resource-loader` 发现后注入 `buildSystemPrompt({ appendSystemPrompt })`。直觉上个性化可以直接把「人设+自定义指令」拼成文本写进该文件，零新增注入管线。
+[[个性化]]（设置页「Agent配置」最上方的 [[人设]] 选择 + [[自定义指令]] textarea）本质是「往系统提示词末尾追加文本」。coding-agent 已存在一条同语义的机制：`~/.astravia/agent/APPEND_SYSTEM.md`（及项目级 `.astravia/APPEND_SYSTEM.md`），由 `resource-loader` 发现后注入 `buildSystemPrompt({ appendSystemPrompt })`。直觉上个性化可以直接把「人设+自定义指令」拼成文本写进该文件，零新增注入管线。
 
 但两点否决了复用：① `APPEND_SYSTEM.md` 只在 session 初始化和显式 `reload()` 时读盘，**没有 per-prompt 懒重载**（prompt 入口只懒重载了 skills/MCP/image budget）；个性化要求「应用后下一轮 prompt 即生效」，复用也得新增懒重载逻辑，省不掉。② 文件是无结构纯文本，UI 无法可靠反推「当前选中哪个人设」，且会与用户手改该文件相互覆盖。
 
@@ -12,7 +12,7 @@ status: accepted
 
 个性化独立成一套，不碰 `APPEND_SYSTEM.md`：
 
-- **存储**：写 `~/.vetta/agent/settings.json` 的 `personalization` 块 `{ personaId, customPrompt }`，与 `image budget` 的 `maxRecentImages` 同文件不同字段。人设正文不进 settings——settings 只存 `personaId`。
+- **存储**：写 `~/.astravia/agent/settings.json` 的 `personalization` 块 `{ personaId, customPrompt }`，与 `image budget` 的 `maxRecentImages` 同文件不同字段。人设正文不进 settings——settings 只存 `personaId`。
 - **人设来源**：coding-agent `src/core/personas/*.md` 为唯一编辑来源（一人设一个 md，frontmatter 存 `id/label/description`、正文存提示词）。构建期 `scripts/generate-personas.mjs` 内联成 `personas-data.ts`，`personas.ts` 合成注册表——**运行时零文件系统依赖**（coding-agent 被 desktop 打进 bundle，`__dirname` 读盘会失效，曾先用读盘导致 desktop 只显示「默认」）。desktop 经 IPC 拉清单渲染选择器，改预设对存量用户自动生效。`default`（no-op、无正文）不落 md、在代码里合成并置顶。
 - **注入**：在 `buildSystemPrompt` 拼到系统提示词末尾，顺序 `APPEND_SYSTEM.md → 人设 → 自定义指令`（recency 最高）。`personaId="default"` 且 `customPrompt` 为空时一字不加，行为与未开启完全一致。
 - **生效**：[[个性化懒重建]]。desktop 写盘后**不** fan-out 重建；coding-agent 在 `prompt()` 入口对 `personalization` 块做签名比对（缓存上次签名，相等走 fast-path、无副作用），变化才重建系统提示词。语义复刻 MCP 懒重建。
@@ -27,5 +27,5 @@ status: accepted
 
 ## 后续若改变主意
 
-- 若个性化需要项目级覆盖（当前仅全局），按 MCP/SYSTEM.md 的双层模型加 `.vetta/` 项目级 settings 覆盖，注入顺序与签名比对相应扩展，不影响本 ADR 的全局层；
+- 若个性化需要项目级覆盖（当前仅全局），按 MCP/SYSTEM.md 的双层模型加 `.astravia/` 项目级 settings 覆盖，注入顺序与签名比对相应扩展，不影响本 ADR 的全局层；
 - 若人设数量增长到需要用户自定义人设（而非仅选预设），注册表可扩展为「内置 + 用户自定义」两源，settings 仍只存 `personaId`，注入路径不变。

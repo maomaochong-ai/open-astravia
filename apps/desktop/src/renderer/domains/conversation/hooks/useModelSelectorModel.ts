@@ -1,3 +1,5 @@
+import type { ModelSelectorViewProps } from "@astravia-org/theme-ui/chat";
+import { fmtMultiplier } from "@astravia-org/theme-ui/shared";
 import { resolveReasoning } from "@shared/components/ModelSelect/resolveReasoning";
 import { type ModelOption, useModelOptions } from "@shared/components/ModelSelect/useModelOptions";
 import {
@@ -8,8 +10,6 @@ import {
 	selectedModelAtom,
 } from "@shared/store/atoms";
 import { modelCatalog } from "@shared/store/model-catalog";
-import type { ModelSelectorViewProps } from "@vetta-org/theme-ui/chat";
-import { fmtMultiplier } from "@vetta-org/theme-ui/shared";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -145,7 +145,7 @@ export function useModelSelectorModel({
 			setSelectedModel(key);
 			persistSelectedModel(key);
 			if (!scope && updateActiveSession && activeSession?.runtimeId) {
-				void window.vetta.session.updateSettings(activeSession.runtimeId, { modelKey: key });
+				void window.astravia.session.updateSettings(activeSession.runtimeId, { modelKey: key });
 			}
 		},
 		[setSelectedModel, activeSession, updateActiveSession, scope, options],

@@ -6,17 +6,17 @@ import {
 	createCodingAgentEditPathPolicy,
 	createCodingAgentSessionCommandEnvironment,
 	createCodingAgentWritePathPolicy,
-} from "@vetta/coding-agent/composition";
+} from "@astravia/coding-agent/composition";
 import {
 	CONFIG_DIR_NAME,
 	getAgentDir,
+	getAstraviaHomePath,
 	getKnowledgeDir,
 	getSceneDir,
 	getUserSkillsDir,
-	getVettaHomePath,
-} from "@vetta/coding-agent/config";
-import { CODING_AGENT_READ_TOOL_OPTIONS } from "@vetta/coding-agent/host";
-import { SettingsRuntime } from "@vetta/coding-agent/settings";
+} from "@astravia/coding-agent/config";
+import { CODING_AGENT_READ_TOOL_OPTIONS } from "@astravia/coding-agent/host";
+import { SettingsRuntime } from "@astravia/coding-agent/settings";
 import {
 	createNodeFileToolRegistrations,
 	createNodeHostCodingToolEnvironment,
@@ -27,10 +27,10 @@ import {
 	createNodeSpecializedToolRegistrations,
 	getNodeShellCommandPrefix,
 	resolveNodeShell,
-} from "@vetta/runtime-node/coding";
-import { NodeScopedTextStorage } from "@vetta/runtime-node/host";
-import { createSshCodingToolEnvironment, createSshPathPolicies } from "@vetta/runtime-ssh";
-import { parseProjectLocation } from "@vetta/ssh-transport";
+} from "@astravia/runtime-node/coding";
+import { NodeScopedTextStorage } from "@astravia/runtime-node/host";
+import { createSshCodingToolEnvironment, createSshPathPolicies } from "@astravia/runtime-ssh";
+import { parseProjectLocation } from "@astravia/ssh-transport";
 import { resolveProjectSettingsPath } from "./project-settings-path.js";
 import { resolveDesktopSshConnection } from "./ssh-connection-resolver.js";
 
@@ -184,14 +184,14 @@ function createDesktopNodeToolHost(cwd: string, configuredAgentDir?: string) {
 /**
  * 远程会话里仍要从本机读取的目录：宿主交给模型的本机路径都落在这几处。
  *
- * - Vetta 主目录：粘贴图片的缓存、用户技能、场景、会话产物。
+ * - Astravia 主目录：粘贴图片的缓存、用户技能、场景、会话产物。
  * - agent 目录：通常在主目录之下，自定义位置时单独列出。
  * - 系统临时目录：被截断的命令输出的完整日志、远端后台任务的本地日志。
  * - 应用资源目录：随应用分发的预设插件技能。
  */
 function resolveLocalReadRoots(configuredAgentDir: string | undefined): readonly string[] {
 	const roots = [
-		getVettaHomePath(),
+		getAstraviaHomePath(),
 		configuredAgentDir ?? getAgentDir(),
 		getUserSkillsDir(),
 		getSceneDir(),

@@ -18,7 +18,7 @@
 - 会话历史、认证、模型和设置等用户数据；必要时由显式、独立的新迁移器读取旧格式。
 - 模型消息、工具消息、错误、取消、事件顺序、并发约束和资源释放语义。
 - 仍然有效的行为测试场景和数据 fixture；旧实现可以临时作为测试 Oracle，但不能被新生产代码调用。
-- `@vetta/ai` 与经过合同验证的 `@vetta/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
+- `@astravia/ai` 与经过合同验证的 `@astravia/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
 
 ## 明确舍弃（固定）
 
@@ -40,7 +40,7 @@
 
 - 新增 `coding-agent-mcp-supervisor.ts`，只负责注入全局/项目配置路径、MCP 客户端身份、凭证目录和诊断回调。
 - 文件 MCP 与插件 MCP 均直接组合 `McpServerSupervisor`、Runtime Client Factory、动态 Server Source 和 Runtime Tool Source。
-- HTTP 连接继续读取 `~/.vetta/agent/mcp-auth` 的已有凭证；stdio、HTTP、OAuth Provider 与协议实现不在 Coding Agent 重复实现。
+- HTTP 连接继续读取 `~/.astravia/agent/mcp-auth` 的已有凭证；stdio、HTTP、OAuth Provider 与协议实现不在 Coding Agent 重复实现。
 - 插件 MCP 指纹留在插件组合职责内，继续保持排序无关和配置变化可检测，不恢复旧 Manager。
 
 ### 2. 把交互式 OAuth 明确归属 Desktop 宿主

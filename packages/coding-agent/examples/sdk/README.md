@@ -1,7 +1,7 @@
 # SDK Examples
 
-Programmatic usage through the stable `@vetta/coding-agent/sdk` entry. Concrete authentication, model and settings
-services use the stable Host adapter in `@vetta/coding-agent/host-services`.
+Programmatic usage through the stable `@astravia/coding-agent/sdk` entry. Concrete authentication, model and settings
+services use the stable Host adapter in `@astravia/coding-agent/host-services`.
 
 ## Examples
 
@@ -30,14 +30,14 @@ bun examples/sdk/01-minimal.ts
 
 ```typescript
 import { join } from "node:path";
-import { getModel } from "@vetta/ai";
+import { getModel } from "@astravia/ai";
 import {
   createCodingAgentSession,
   createCodingAgentSessionCatalog,
-} from "@vetta/coding-agent/sdk";
+} from "@astravia/coding-agent/sdk";
 
 const cwd = process.cwd();
-const conversationDir = join(cwd, ".vetta", "conversations");
+const conversationDir = join(cwd, ".astravia", "conversations");
 const model = getModel("anthropic", "claude-opus-4-5");
 
 const { session, diagnostics } = await createCodingAgentSession({
@@ -71,7 +71,7 @@ await session.prompt("Hello");
 | Option | Default | Description |
 |--------|---------|-------------|
 | `cwd` | `process.cwd()` | Working directory |
-| `agentDir` | Vetta agent directory | Configuration and discovered resources |
+| `agentDir` | Astravia agent directory | Configuration and discovered resources |
 | `storage` | In-memory | Memory, native file creation or native file resume |
 | `model` | Settings or first available | Model value selected for the Session |
 | `thinkingLevel` | Settings default | Reasoning level |
@@ -84,7 +84,7 @@ await session.prompt("Hello");
 
 Credential storage, custom provider registration and persistent settings are host concerns. Import `AuthStorage`,
 `ModelRegistry`, `SettingsRuntime` and `createCodingAgentHostWithServices` from
-`@vetta/coding-agent/host-services`. The Host owns its Sessions while the caller continues to own the concrete shared
+`@astravia/coding-agent/host-services`. The Host owns its Sessions while the caller continues to own the concrete shared
 services. Complete loader and composition replacement remains on the package-root compatibility API.
 
 ## Events

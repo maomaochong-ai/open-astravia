@@ -1,4 +1,4 @@
-import type { RemoteInviteEnvelope } from "@vetta/remote-control";
+import type { RemoteInviteEnvelope } from "@astravia/remote-control";
 
 /**
  * The relay's invite mailbox (ADR-0136) as the desktop uses it: put a sealed invite
@@ -17,7 +17,7 @@ export function createRemoteInviteMailbox(fetchImpl: typeof fetch = fetch): Remo
 		async publish(boxUrl, token, envelope, ttlMs) {
 			const response = await fetchImpl(boxUrl, {
 				method: "PUT",
-				headers: { "Content-Type": "application/json", "X-Vetta-Invite-Token": token },
+				headers: { "Content-Type": "application/json", "X-Astravia-Invite-Token": token },
 				body: JSON.stringify({ envelope, ttlMs }),
 				signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
 			});
@@ -26,7 +26,7 @@ export function createRemoteInviteMailbox(fetchImpl: typeof fetch = fetch): Remo
 		async withdraw(boxUrl, token) {
 			await fetchImpl(boxUrl, {
 				method: "DELETE",
-				headers: { "X-Vetta-Invite-Token": token },
+				headers: { "X-Astravia-Invite-Token": token },
 				signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
 			});
 		},

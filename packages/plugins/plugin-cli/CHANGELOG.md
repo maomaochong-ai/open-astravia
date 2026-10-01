@@ -1,12 +1,12 @@
 # Changelog
 
-All notable changes to `@vetta-org/plugin-cli` are documented in this file.
+All notable changes to `@astravia-org/plugin-cli` are documented in this file.
 
 ## Unreleased
 
 ### Changed
 
-- `add` and `add .` now use the dedicated `.vettapkg` plugin package format. Existing `.zip` files remain accepted as a compatibility import path.
+- `add` and `add .` now use the dedicated `.astraviapkg` plugin package format. Existing `.zip` files remain accepted as a compatibility import path.
 
 - `add` now identifies itself to Desktop so ability lifecycle logs distinguish CLI installs from manual package imports and marketplace installs.
 
@@ -20,7 +20,7 @@ All notable changes to `@vetta-org/plugin-cli` are documented in this file.
   版本戳」判成过期并给出这条命令——两者合起来是在引导用户删掉自己的文件。已知造成一个能力市场
   仓库根部 443 行手写市场规范被整份替换。
 
-  没有 `vetta-guide-revision` 标记的文件现在一律拒绝覆盖（退出码 7），要覆盖得显式 `--force`；
+  没有 `astravia-guide-revision` 标记的文件现在一律拒绝覆盖（退出码 7），要覆盖得显式 `--force`；
   新增 `--dry-run` 把新模板打到 stdout 供人工合并。`docs` 对无标记文件改口为「看起来是手写的，
   请手动合并」，只有**带标记且落后**的才会被称作 stale 并给出刷新命令。
 
@@ -28,8 +28,8 @@ All notable changes to `@vetta-org/plugin-cli` are documented in this file.
   `defaultLocale` 从 `locales/` 解析；解析不到退回插件 id。
 
 - 说明书的命令清单改为读 `package.json` 的 `scripts`，只列真实存在的。老工程和自定义工程未必有
-  `dev` / `install:vetta`，照着跑只会得到一句 "Missing script"；没有 `install:vetta` 时改列
-  `vetta-plugin-cli add .`。
+  `dev` / `install:astravia`，照着跑只会得到一句 "Missing script"；没有 `install:astravia` 时改列
+  `astravia-plugin-cli add .`。
 
 - 更正 hub `AGENTS.md` 对 `sync` 的两处描述：`marketplaceVersion` 只在 semver 或纯整数时才推得动
   （`YYYY.MM.DD-NN` 这类会报出来要手改），`config.api_version` / `permissions` / `commands`
@@ -47,8 +47,8 @@ All notable changes to `@vetta-org/plugin-cli` are documented in this file.
 
 ### Added
 
-- `AGENTS.md` 带版本戳（`<!-- vetta-guide-revision: N -->`），`docs` 每次比对并在落后时打印
-  `This brief is stale ... npx @vetta-org/plugin-cli init --refresh-guide`。此前「说明书旧了」
+- `AGENTS.md` 带版本戳（`<!-- astravia-guide-revision: N -->`），`docs` 每次比对并在落后时打印
+  `This brief is stale ... npx @astravia-org/plugin-cli init --refresh-guide`。此前「说明书旧了」
   只能靠人记得，而这正是它凝固的原因。没有 `AGENTS.md` 的工程不提示——「没有」不是「旧」。
 
 ## [0.1.4] — 2026-09-14
@@ -87,19 +87,19 @@ All notable changes to `@vetta-org/plugin-cli` are documented in this file.
 
 - `sync` no longer writes `config.api_version` / `config.permissions` / `config.commands` into the index. The host overwrites the whole `config` with values derived from `plugin.json` when it builds the catalog, so a copy in the index is unread, drift-prone noise; a copy that already disagrees with the package is now reported instead.
 - `sync` resolves bundle members, so their directories are no longer reported as unlisted abilities. The index's `abilities` array holds independently listed entries; bundle members deliberately stay out of it and carry their metadata in the package's own `ability.json`.
-- Command examples now use the full package name wherever the command runs before `npm install` or at a repository root, where the `vetta-plugin-cli` bin is not on `node_modules/.bin` and npx would resolve it as a package name.
+- Command examples now use the full package name wherever the command runs before `npm install` or at a repository root, where the `astravia-plugin-cli` bin is not on `node_modules/.bin` and npx would resolve it as a package name.
 
 ## [Unreleased]
 
 ### Added
 
-- Added `vetta-plugin-cli init --id <plugin-id>`: scaffolds a buildable plugin project together with an `AGENTS.md` brief, so any coding agent can bootstrap in an unfamiliar directory without host-side knowledge. Inside a marketplace hub (`.vetta/marketplace.json`) the new plugin is also listed there, with a repository-relative `source.path`.
-- Added `vetta-plugin-cli docs`: prints the absolute path of the manual shipped inside the installed `@vetta-org/plugin-sdk`, plus the SDK version it documents and the plugin/hub the command resolved. Nobody has to hard-code a `node_modules` path that workspace hoisting can move.
-- Added `vetta-plugin-cli init hub`: scaffolds a conformant ability marketplace repository — index skeleton, `abilities/{plugins,mcp,skills,scenes}/`, a repository-level `AGENTS.md`, and a CI workflow that runs `sync --check`.
-- Added `vetta-plugin-cli sync` (and `--check` for CI): reconciles a marketplace repository's `.vetta/marketplace.json` against each ability directory — version, api version, permissions and commands are pulled from the packages, missing build output and slug mismatches are reported, and `marketplaceVersion` is advanced so clients actually pick the update up. Ability directories that are not listed are reported, never added. `docs` and `add .` now point at it the moment it becomes relevant.
-- Added `vetta-plugin-cli uninstall [plugin-id]`: removes a plugin through the Desktop approval path, inferring the target from the current directory when no id is given.
-- Added `vetta-plugin-cli watch` (and `--stop`): asks the running Desktop to load the nearest plugin from its project directory, so source edits take effect without a build → pack → install round trip.
+- Added `astravia-plugin-cli init --id <plugin-id>`: scaffolds a buildable plugin project together with an `AGENTS.md` brief, so any coding agent can bootstrap in an unfamiliar directory without host-side knowledge. Inside a marketplace hub (`.astravia/marketplace.json`) the new plugin is also listed there, with a repository-relative `source.path`.
+- Added `astravia-plugin-cli docs`: prints the absolute path of the manual shipped inside the installed `@astravia-org/plugin-sdk`, plus the SDK version it documents and the plugin/hub the command resolved. Nobody has to hard-code a `node_modules` path that workspace hoisting can move.
+- Added `astravia-plugin-cli init hub`: scaffolds a conformant ability marketplace repository — index skeleton, `abilities/{plugins,mcp,skills,scenes}/`, a repository-level `AGENTS.md`, and a CI workflow that runs `sync --check`.
+- Added `astravia-plugin-cli sync` (and `--check` for CI): reconciles a marketplace repository's `.astravia/marketplace.json` against each ability directory — version, api version, permissions and commands are pulled from the packages, missing build output and slug mismatches are reported, and `marketplaceVersion` is advanced so clients actually pick the update up. Ability directories that are not listed are reported, never added. `docs` and `add .` now point at it the moment it becomes relevant.
+- Added `astravia-plugin-cli uninstall [plugin-id]`: removes a plugin through the Desktop approval path, inferring the target from the current directory when no id is given.
+- Added `astravia-plugin-cli watch` (and `--stop`): asks the running Desktop to load the nearest plugin from its project directory, so source edits take effect without a build → pack → install round trip.
 - `add` now accepts a plugin project directory (`add .`) and resolves the archive that project packed, instead of treating the directory as an archive path.
 
-- Added `npx @vetta-org/plugin-cli add <npm-package>` with script-free npm resolution, package-envelope validation, archive integrity binding, and installation through the running Vetta Desktop Action RPC.
-- Added `vetta-plugin-cli reload <plugin-id>` so pending plugin updates can be applied through the Desktop approval and lifecycle path.
+- Added `npx @astravia-org/plugin-cli add <npm-package>` with script-free npm resolution, package-envelope validation, archive integrity binding, and installation through the running Astravia Desktop Action RPC.
+- Added `astravia-plugin-cli reload <plugin-id>` so pending plugin updates can be applied through the Desktop approval and lifecycle path.

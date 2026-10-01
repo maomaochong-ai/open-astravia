@@ -46,7 +46,7 @@ describe("useInputBarContextMenuModel", () => {
 			text: "before @C:/old/copied.png after",
 			images: [{ path: "C:/persisted/copied.png", format: "png", sizeBytes: 3 }],
 		});
-		Object.defineProperty(window, "vetta", {
+		Object.defineProperty(window, "astravia", {
 			configurable: true,
 			value: {
 				clipboard: {

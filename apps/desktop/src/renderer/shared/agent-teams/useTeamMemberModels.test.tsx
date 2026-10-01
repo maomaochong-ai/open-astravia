@@ -23,7 +23,7 @@ beforeEach(() => {
 	list.mockReset().mockResolvedValue({});
 	save.mockReset().mockResolvedValue(pinned);
 	changed = new Set();
-	Object.defineProperty(window, "vetta", {
+	Object.defineProperty(window, "astravia", {
 		configurable: true,
 		value: {
 			agentTeams: {

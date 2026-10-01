@@ -89,7 +89,7 @@ export function BashTerminalStatusDot(): JSX.Element {
 	return (
 		<span
 			className={`h-1.5 w-1.5 shrink-0 rounded-full ${
-				failed ? "bg-destructive/70" : pending ? "vetta-live-dot bg-primary/60" : "bg-muted-foreground/40"
+				failed ? "bg-destructive/70" : pending ? "astravia-live-dot bg-primary/60" : "bg-muted-foreground/40"
 			}`}
 		/>
 	);

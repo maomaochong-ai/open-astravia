@@ -5,12 +5,12 @@ import {
 	type McpServerInteractionHandlers,
 	McpServerSupervisor,
 	type RuntimeMcpClientFactory,
-} from "@vetta/runtime-mcp";
-import type { McpConfigSource } from "@vetta/runtime-mcp/config";
+} from "@astravia/runtime-mcp";
+import type { McpConfigSource } from "@astravia/runtime-mcp/config";
 import {
 	buildBuiltinMcpServers,
 	FileMcpOAuthStateStore,
-	loadVettaCredentials,
+	loadAstraviaCredentials,
 	McpOAuthProvider,
 } from "./auth/index.js";
 import { createMcpClient } from "./client/index.js";
@@ -47,7 +47,7 @@ export function createNodeMcpSupervisor(options: NodeMcpSupervisorOptions): Node
 		options.configSource ??
 		new FileMcpConfigSource({
 			globalConfigPath: join(options.agentDir, "mcp.json"),
-			projectConfigPath: join(options.projectRoot, options.projectConfigDirectoryName ?? ".vetta", "mcp.json"),
+			projectConfigPath: join(options.projectRoot, options.projectConfigDirectoryName ?? ".astravia", "mcp.json"),
 			projectRoot: options.projectRoot,
 		});
 	const oauthStore = new FileMcpOAuthStateStore({ authDirectory: join(options.agentDir, "mcp-auth") });
@@ -58,7 +58,7 @@ export function createNodeMcpSupervisor(options: NodeMcpSupervisorOptions): Node
 				? {}
 				: buildBuiltinMcpServers({
 						clientVersion: options.clientVersion,
-						loadCredentials: () => loadVettaCredentials(options.agentDir),
+						loadCredentials: () => loadAstraviaCredentials(options.agentDir),
 					}),
 		configSource,
 		clientFactory: (name, config, clientOptions) =>
@@ -72,13 +72,13 @@ export function createNodeMcpSupervisor(options: NodeMcpSupervisorOptions): Node
 						redirectUri: oauthStore.load(serverName)?.redirectUri ?? PLACEHOLDER_REDIRECT_URI,
 						onRedirect: () => undefined,
 						store: oauthStore,
-						clientName: options.oauthClientName ?? "Vetta",
+						clientName: options.oauthClientName ?? "Astravia",
 						clientId: httpConfig.oauthClientId,
 					});
 				},
 			}),
 		protocolVersion: MCP_PROTOCOL_VERSION,
-		clientInfo: { name: options.clientName ?? "vetta", version: options.clientVersion },
+		clientInfo: { name: options.clientName ?? "astravia", version: options.clientVersion },
 		enabled: options.enabled,
 		debug: options.debug,
 		onDiagnostic: options.onDiagnostic,

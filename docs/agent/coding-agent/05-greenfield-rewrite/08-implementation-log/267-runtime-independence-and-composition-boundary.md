@@ -14,7 +14,7 @@
 - 会话历史、认证、模型和设置等用户数据；必要时由显式、独立的新迁移器读取旧格式。
 - 模型消息、工具消息、错误、取消、事件顺序、并发约束和资源释放语义。
 - 仍然有效的行为测试场景和数据 fixture；旧实现可以临时作为测试 Oracle，但不能被新生产代码调用。
-- `@vetta/ai` 与经过合同验证的 `@vetta/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
+- `@astravia/ai` 与经过合同验证的 `@astravia/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
 
 ## 明确舍弃（固定）
 
@@ -35,9 +35,9 @@
 ### 阶段一：Runtime 反向依赖归零
 
 - 将 `runtime-tools` 的命令 Host 和路径 Policy 测试 fixture 下沉到该包自己的 `test/support`，不再从 `coding-agent` 测试或源码取实现。
-- 删除 `runtime-tools` Vitest 中的 Coding Agent 源码 alias，以及 `runtime-core`、`runtime-storage`、`runtime-tools` manifest 中的 `@vetta/coding-agent` 开发依赖。
+- 删除 `runtime-tools` Vitest 中的 Coding Agent 源码 alias，以及 `runtime-core`、`runtime-storage`、`runtime-tools` manifest 中的 `@astravia/coding-agent` 开发依赖。
 - 在 Coding Agent 包内新增真实产品命令 Host 与路径 Policy 的合同测试，确保测试 fixture 独立化没有跳过产品 Adapter 验证。
-- 新增常驻独立性守卫，扫描 7 个 Runtime 包的 manifest、源码、测试和配置；任何对 `@vetta/coding-agent` 或其源码路径的依赖都会失败。
+- 新增常驻独立性守卫，扫描 7 个 Runtime 包的 manifest、源码、测试和配置；任何对 `@astravia/coding-agent` 或其源码路径的依赖都会失败。
 
 ### 阶段二：包职责文档校准
 
@@ -48,7 +48,7 @@
 
 ### 阶段三：Composition 公共面收口
 
-- 审计 `@vetta/coding-agent/composition` 的全部 34 个导出及工作区消费者。
+- 审计 `@astravia/coding-agent/composition` 的全部 34 个导出及工作区消费者。
 - 删除 15 个没有外部消费者的辅助类型重导出；内部模块仍可保留其实现类型，不为公共面制造兼容负担。
 - 将公共导出基线固定为 19 项，并继续禁止包外深层导入 Composition 内部模块。
 

@@ -5,7 +5,7 @@ import {
 	type PluginBottomPanelCloseRequest,
 	type PluginBottomPanelMeta,
 	type PluginBottomPanelTerminalRequest,
-} from "@vetta-org/plugin-sdk";
+} from "@astravia-org/plugin-sdk";
 import { type JSX, useMemo } from "react";
 import { PluginI18nBoundary } from "../../plugins/runtime/plugin-i18n";
 import { useBottomPanelInstance } from "../registry/instance-context";
@@ -48,7 +48,7 @@ export function PluginBottomPanelSlot({ panel }: { panel: RegisteredBottomPanel 
 	);
 
 	return (
-		<div className="flex min-h-0 flex-1 flex-col overflow-hidden" data-vetta-plugin-bottom-panel={panelKey}>
+		<div className="flex min-h-0 flex-1 flex-col overflow-hidden" data-astravia-plugin-bottom-panel={panelKey}>
 			<PluginI18nBoundary pluginId={panel.pluginId}>
 				<__BottomPanelContext.Provider value={contextValue}>
 					<PanelComponent />

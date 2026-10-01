@@ -68,7 +68,7 @@ describe("Runtime Session resource close", () => {
 		}
 	}, 30_000);
 
-	it("waits for a background Bash process to exit before the Vetta CLI releases ownership", async () => {
+	it("waits for a background Bash process to exit before the Astravia CLI releases ownership", async () => {
 		const server = await startOpenAiResponsesTestServer((_request, index) =>
 			index === 0
 				? {

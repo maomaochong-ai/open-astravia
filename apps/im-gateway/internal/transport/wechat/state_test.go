@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"vetta-im-gateway/internal/transport/wechat/ilink"
+	"astravia-im-gateway/internal/transport/wechat/ilink"
 )
 
 func TestStateStore_RoundTrip(t *testing.T) {

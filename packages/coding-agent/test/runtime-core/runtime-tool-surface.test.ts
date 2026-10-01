@@ -1,5 +1,5 @@
-import type { ModelCallContributionContext, RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
-import type { McpRuntimeToolBinding, McpRuntimeToolView } from "@vetta/runtime-mcp";
+import type { ModelCallContributionContext, RuntimeToolDefinition } from "@astravia/runtime-core/kernel";
+import type { McpRuntimeToolBinding, McpRuntimeToolView } from "@astravia/runtime-mcp";
 import { describe, expect, it } from "vitest";
 import { CodingAgentCompositionResourceRegistry } from "../../src/composition/session-lifecycle/resource-registry.js";
 import { createCodingAgentRuntimeToolSurface } from "../../src/composition/tool-surface/runtime-tool-surface.js";

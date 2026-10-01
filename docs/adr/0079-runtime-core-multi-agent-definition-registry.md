@@ -16,7 +16,7 @@ Coding 产品语义，阻碍不同 Agent 自定义 Tool、MCP、Prompt、模型�
 
 ## 决策
 
-不新增 workspace 包，在 `@vetta/runtime-core/agents` 建立产品无关的多主 Agent 控制面：
+不新增 workspace 包，在 `@astravia/runtime-core/agents` 建立产品无关的多主 Agent 控制面：
 
 - `RuntimeAgentDefinition` 是可执行 Agent 的工厂合同；它按 Instance 创建独立的能力定义、模型绑定、
   Session Extension 和资源释放边界。简单 Agent 可直接返回静态组合，Coding Agent 可执行复杂的实例装配。

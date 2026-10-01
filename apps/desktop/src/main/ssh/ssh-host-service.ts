@@ -1,4 +1,4 @@
-import { normalizeSshHostInput, type SshHost, type SshHostInput } from "@vetta/ssh-transport";
+import { normalizeSshHostInput, type SshHost, type SshHostInput } from "@astravia/ssh-transport";
 
 export interface SshHostServiceDependencies {
 	readonly readHosts: () => Promise<SshHost[]>;
@@ -141,7 +141,7 @@ export class SshHostService {
 	 *
 	 * 只新增，不覆盖：`manual` 的条目是用户手工调过的，被导入改回去等于悄悄丢掉
 	 * 他的修改；已存在的 `ssh-config` 条目也保持原样，因为别名背后的参数由 OpenSSH
-	 * 在连接时解析，Vetta 这边不需要缓存一份必然漂移的副本。
+	 * 在连接时解析，Astravia 这边不需要缓存一份必然漂移的副本。
 	 */
 	async importFromSshConfig(aliases: readonly string[]): Promise<SshHost[]> {
 		const hosts = await this.list();

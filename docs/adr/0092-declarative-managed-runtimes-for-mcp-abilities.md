@@ -22,22 +22,22 @@ Desktop 已由 ADR-0011 管理 Node/Python 运行时并重定向包源，Open Ma
 1. `mcp.json schemaVersion: 2` 可以声明一个可选的 `runtime`。首期唯一 provider 是 `managed-binary`：按
    `win32|darwin|linux` 与 `x64|arm64` 选择 HTTPS 产物，要求字面量 SHA-256，并支持单文件或 ZIP。
 2. 市场清单不得声明或执行安装脚本。ZIP 拒绝绝对路径、目录逃逸、符号链接、加密条目、过多条目和超量展开；下载
-   有大小与超时上限。Server 的 `command` 必须精确等于 `${VETTA_MCP_EXECUTABLE}`，由主进程安装完成后解析为绝对路径。
-3. 运行文件按 Ability 来源、slug 和版本隔离，落在 `~/.vetta/abilities/mcp/<identity>/runtime/versions/<version>/`。
+   有大小与超时上限。Server 的 `command` 必须精确等于 `${ASTRAVIA_MCP_EXECUTABLE}`，由主进程安装完成后解析为绝对路径。
+3. 运行文件按 Ability 来源、slug 和版本隔离，落在 `~/.astravia/abilities/mcp/<identity>/runtime/versions/<version>/`。
    `data/` 与 `cache/` 位于版本目录之外；更新运行时不能覆盖 Cookie、登录态和其它用户数据。
 4. 安装采用同盘 staging。下载、哈希、解包、可执行文件存在性和权限校验全部完成后才替换目标版本；失败保留已安装
    版本。卸载只删除 `runtime/`，默认保留 `data/` 与 `cache/`。
-5. 安装器属于 Desktop 的 Ability 领域。`@vetta/runtime-mcp` 继续只消费标准 stdio/HTTP 配置，不感知市场、下载或安装。
+5. 安装器属于 Desktop 的 Ability 领域。`@astravia/runtime-mcp` 继续只消费标准 stdio/HTTP 配置，不感知市场、下载或安装。
    IPC 只负责输入校验和调用领域服务。
 6. 现有 `schemaVersion: 1`、远程 HTTP 和普通 stdio 配置保持兼容。Node/Python MCP 继续受益于 ADR-0011 的托管运行时；
    在获得足够真实包样本、能够定义锁定依赖和无任意脚本的可复现合同前，不新增万能 package recipe。
 
 ## 运行时占位符
 
-- `${VETTA_MCP_EXECUTABLE}`：只能作为 `server.command` 的完整值，也可在参数或环境变量中引用。
-- `${VETTA_MCP_RUNTIME_DIR}`：当前版本的只读运行目录。
-- `${VETTA_MCP_DATA_DIR}`：跨版本保留的用户数据目录。
-- `${VETTA_MCP_CACHE_DIR}`：跨版本的可再生成缓存目录。
+- `${ASTRAVIA_MCP_EXECUTABLE}`：只能作为 `server.command` 的完整值，也可在参数或环境变量中引用。
+- `${ASTRAVIA_MCP_RUNTIME_DIR}`：当前版本的只读运行目录。
+- `${ASTRAVIA_MCP_DATA_DIR}`：跨版本保留的用户数据目录。
+- `${ASTRAVIA_MCP_CACHE_DIR}`：跨版本的可再生成缓存目录。
 
 主进程在安装时解析这些值，最终写入的仍是普通 MCP stdio 配置，不把安装合同传入 Agent Runtime。
 

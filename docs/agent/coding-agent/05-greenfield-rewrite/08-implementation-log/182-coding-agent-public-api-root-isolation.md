@@ -3,7 +3,7 @@
 ## 目标
 
 第 181 轮已经把自动 Legacy Session 回退收窄到真实的旧格式兼容缺口，但仓库内部仍有测试通过
-`@vetta/coding-agent` 根入口获取会话、工具、Extension、RPC 和宿主服务。根入口同时承担外部 SDK
+`@astravia/coding-agent` 根入口获取会话、工具、Extension、RPC 和宿主服务。根入口同时承担外部 SDK
 兼容面和内部模块总汇编，导致内部消费者可以绕过已经建立的分层边界。
 
 本轮目标是：
@@ -25,9 +25,9 @@
 
 ### 2. 缺失的三个职责入口
 
-- `@vetta/coding-agent/extensions`：Extension runner、事件和合同类型。
-- `@vetta/coding-agent/legacy/session`：`AgentSession`、`SessionManager` 及旧会话类型。
-- `@vetta/coding-agent/legacy/tools`：仍由兼容 Runtime 使用的旧工具工厂和后台任务类型。
+- `@astravia/coding-agent/extensions`：Extension runner、事件和合同类型。
+- `@astravia/coding-agent/legacy/session`：`AgentSession`、`SessionManager` 及旧会话类型。
+- `@astravia/coding-agent/legacy/tools`：仍由兼容 Runtime 使用的旧工具工厂和后台任务类型。
 
 `extensions` 是中性的能力合同；`legacy/session` 和 `legacy/tools` 则通过路径名称明确标记兼容实现，避免新
 Runtime 无意依赖旧内核。
@@ -35,7 +35,7 @@ Runtime 无意依赖旧内核。
 ### 3. 根入口仍是外部兼容面
 
 本轮没有删除或改名根入口的任何 export。SDK 示例、第三方 Extension 和既有用户代码仍可继续从
-`@vetta/coding-agent` 导入。内部隔离不等于外部 Breaking Change，后续是否收缩根入口需要独立版本决策。
+`@astravia/coding-agent` 导入。内部隔离不等于外部 Breaking Change，后续是否收缩根入口需要独立版本决策。
 
 ## 实施内容
 
@@ -100,7 +100,7 @@ RPC wire 或持久化 schema。现有类型系统足以表达这些合同，因�
 
 ## 明确未修改
 
-- 没有删除或收缩 `@vetta/coding-agent` 根入口的外部 API。
+- 没有删除或收缩 `@astravia/coding-agent` 根入口的外部 API。
 - 没有改变 Tool、Prompt、Skill、MCP、Knowledge、Memory、模型调用或 Extension 行为。
 - 没有改变工具名称、参数 schema、描述或执行结果。
 - 没有改变 Legacy Gateway、自动回退策略或显式 `--agent-runtime legacy`。

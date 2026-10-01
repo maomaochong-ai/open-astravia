@@ -1,4 +1,4 @@
-import type { AssistantMessage } from "@vetta/ai";
+import type { AssistantMessage } from "@astravia/ai";
 import { describe, expect, it } from "vitest";
 import { projectAgentEvent } from "../src/runtime/state-projection.js";
 import type { AgentMessage, AgentState } from "../src/types.js";

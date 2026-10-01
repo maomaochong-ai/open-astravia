@@ -1,12 +1,12 @@
 import { constants } from "node:fs";
 import { access as fsAccess, readFile as fsReadFile } from "node:fs/promises";
 import { extname } from "node:path";
-import { type Static, Type } from "@sinclair/typebox";
 import {
 	type RuntimeToolDefinition,
 	RuntimeToolExecutionError,
 	type RuntimeToolResult,
-} from "@vetta/runtime-core/kernel";
+} from "@astravia/runtime-core/kernel";
+import { type Static, Type } from "@sinclair/typebox";
 import { renderAnchoredLines } from "../../shared/anchors.js";
 import { localToolPathHost, resolveReadPath, type ToolPathHost } from "../../shared/path-resolution.js";
 import { decodeTextBuffer } from "../../shared/text-decoding.js";

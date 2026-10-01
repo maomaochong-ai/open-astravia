@@ -1,9 +1,9 @@
-import type { RuntimeSessionExecutionObservation } from "@vetta/runtime-core";
+import type { RuntimeSessionExecutionObservation } from "@astravia/runtime-core";
 import {
 	defineRuntimeObservation,
 	type RuntimeObservationFailure,
 	type RuntimeObservationPublisher,
-} from "@vetta/runtime-core/observation";
+} from "@astravia/runtime-core/observation";
 
 export interface TeamObservationCorrelation {
 	readonly teamId: string;

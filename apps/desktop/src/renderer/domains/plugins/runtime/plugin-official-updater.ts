@@ -1,10 +1,10 @@
-import type { PluginOfficialApi } from "@vetta-org/plugin-sdk";
+import type { PluginOfficialApi } from "@astravia-org/plugin-sdk";
 
 export function createOfficialUpdaterApi(
 	assertOfficial: () => void,
 	capabilitySessionId: string,
 ): PluginOfficialApi["updater"] {
-	const updater = window.vetta.plugins.internalCapabilities.updater;
+	const updater = window.astravia.plugins.internalCapabilities.updater;
 	return {
 		getState: async () => {
 			assertOfficial();

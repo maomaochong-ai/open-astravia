@@ -11,7 +11,7 @@ export function createTestForegroundCommandHost(cwd: string) {
 	return {
 		operations: localForegroundCommandOperations,
 		environment: () => ({ ...process.env }),
-		protectedDirectories: [resolve(cwd, ".vetta", "skills"), resolve(cwd, ".agents", "skills")],
+		protectedDirectories: [resolve(cwd, ".astravia", "skills"), resolve(cwd, ".agents", "skills")],
 	};
 }
 

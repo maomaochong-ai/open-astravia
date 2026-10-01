@@ -1,4 +1,4 @@
-import { RetryableCleanup } from "@vetta/runtime-core";
+import { RetryableCleanup } from "@astravia/runtime-core";
 import type { CodingAgentCompositionResourceRegistry } from "./resource-registry.js";
 
 export interface CodingAgentCompositionShutdownOptions {

@@ -6,7 +6,7 @@ import {
 	type SlideHandle,
 	type ZipParseLimits,
 } from "@aiden0z/pptx-renderer";
-import { type PluginFilePreviewProps, useTranslation } from "@vetta-org/plugin-sdk";
+import { type PluginFilePreviewProps, useTranslation } from "@astravia-org/plugin-sdk";
 import { useCallback, useEffect, useRef, useState, type JSX } from "react";
 import { fetchFileBytes } from "../utils/file";
 import { ErrorState, LoadingState } from "./PreviewState";

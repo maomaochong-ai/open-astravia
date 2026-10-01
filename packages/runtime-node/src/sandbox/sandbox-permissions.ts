@@ -2,14 +2,14 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { randomUUID } from "node:crypto";
 import { homedir, tmpdir } from "node:os";
 import { dirname, isAbsolute, join, relative, resolve as resolvePath } from "node:path";
-import { getVettaConfigDirName } from "@vetta/action-rpc";
-import type { RuntimeSandboxGrantStore } from "@vetta/runtime-core";
+import { getAstraviaConfigDirName } from "@astravia/action-rpc";
+import type { RuntimeSandboxGrantStore } from "@astravia/runtime-core";
 import type {
 	SandboxPermissionCapability,
 	SandboxPermissionRequest,
 	SandboxSessionGrantEntry,
 	SandboxShellGrant,
-} from "@vetta/runtime-core/sandbox";
+} from "@astravia/runtime-core/sandbox";
 
 interface SandboxShellGrantContext {
 	cwd: string;
@@ -161,7 +161,7 @@ export function getSandboxDenyRoots(): string[] {
 		join(homeDir, ".gnupg"),
 		join(homeDir, ".kube"),
 		join(homeDir, ".docker"),
-		join(homeDir, getVettaConfigDirName(), "agent"),
+		join(homeDir, getAstraviaConfigDirName(), "agent"),
 		join(homeDir, ".pi"),
 	];
 	if (process.platform === "darwin") {
@@ -169,7 +169,7 @@ export function getSandboxDenyRoots(): string[] {
 	}
 	if (process.platform === "win32") {
 		const appData = process.env.APPDATA;
-		if (appData) roots.push(join(appData, "gcloud"), join(appData, "Vetta"));
+		if (appData) roots.push(join(appData, "gcloud"), join(appData, "Astravia"));
 	}
 	return Array.from(new Set(roots.map((root) => resolvePath(root))));
 }

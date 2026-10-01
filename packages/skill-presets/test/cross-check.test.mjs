@@ -16,7 +16,7 @@ function pluginPkg(overrides = {}) {
 			defaultLocale: "zh",
 		},
 		skillFrontmatter: null,
-		vettaJson: null,
+		astraviaJson: null,
 		locales: {
 			zh: { "plugin.name": "演示", "plugin.description": "中文简介" },
 			en: { "plugin.name": "Demo", "plugin.description": "English intro" },
@@ -107,7 +107,7 @@ describe("skill / scene", () => {
 			root: "",
 			pluginManifest: null,
 			skillFrontmatter: { name: "my-skill", metadata: { tags: ["a", "b"] } },
-			vettaJson: null,
+			astraviaJson: null,
 			locales: {},
 			...overrides,
 		};
@@ -133,11 +133,11 @@ describe("skill / scene", () => {
 	});
 });
 
-describe("vetta.json 与 payload.detail", () => {
+describe("astravia.json 与 payload.detail", () => {
 	it("两者同时存在时提醒包内那份被整体忽略", () => {
-		const { warnings } = crossCheckPackage(pluginInput({}), pluginPkg({ vettaJson: { name: "包里的" } }));
+		const { warnings } = crossCheckPackage(pluginInput({}), pluginPkg({ astraviaJson: { name: "包里的" } }));
 
-		expect(warnings.some((w) => w.includes("vetta.json 被整体忽略"))).toBe(true);
+		expect(warnings.some((w) => w.includes("astravia.json 被整体忽略"))).toBe(true);
 	});
 });
 

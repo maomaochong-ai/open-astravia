@@ -16,12 +16,12 @@ const bunExecutable = process.platform === "win32" ? "bun.exe" : "bun";
 const requireFromDesktop = createRequire(desktopPackagePath);
 const { parse: parseEnv } = requireFromDesktop("dotenv");
 const stableEnvironmentKeys = [
-	"VETTA_SERVER_URL",
-	"VETTA_SITE_URL",
-	"VETTA_UPDATE_PROVIDER",
-	"VETTA_UPDATE_URL",
-	"VETTA_R2_BUCKET",
-	"VETTA_R2_PREFIX",
+	"ASTRAVIA_SERVER_URL",
+	"ASTRAVIA_SITE_URL",
+	"ASTRAVIA_UPDATE_PROVIDER",
+	"ASTRAVIA_UPDATE_URL",
+	"ASTRAVIA_R2_BUCKET",
+	"ASTRAVIA_R2_PREFIX",
 ];
 
 function usage(exitCode = 1) {
@@ -35,8 +35,8 @@ function usage(exitCode = 1) {
   --skip-publish  构建并校验产物，但不上传 R2
   --yes           跳过 stable 发布前的版本号确认
 
-配置优先级：当前 Shell > ~/.config/vetta/r2-<channel>.env
-            > ~/.config/vetta/r2.env > desktop-app 对应环境文件
+配置优先级：当前 Shell > ~/.config/astravia/r2-<channel>.env
+            > ~/.config/astravia/r2.env > desktop-app 对应环境文件
 
 test 读取 apps/desktop/.env.development，且必须显式指定版本；
 stable 的服务器、站点和发布目标强制读取 .env.production，版本只取 package.json。`);
@@ -93,8 +93,8 @@ function loadEnvironment(channel) {
 	const inheritedEnvironment = { ...process.env };
 	const environmentFiles = [
 		join(desktopDir, channel === "stable" ? ".env.production" : ".env.development"),
-		join(homedir(), ".config", "vetta", "r2.env"),
-		join(homedir(), ".config", "vetta", `r2-${channel}.env`),
+		join(homedir(), ".config", "astravia", "r2.env"),
+		join(homedir(), ".config", "astravia", `r2-${channel}.env`),
 	];
 	const loadedFiles = [];
 	for (const filePath of environmentFiles) {
@@ -135,13 +135,13 @@ function updateUrlPrefix(value) {
 	try {
 		url = new URL(value);
 	} catch {
-		fail(`VETTA_UPDATE_URL 不是合法 URL：${value}`);
+		fail(`ASTRAVIA_UPDATE_URL 不是合法 URL：${value}`);
 	}
 	if (url.protocol !== "https:" && url.protocol !== "http:") {
-		fail("VETTA_UPDATE_URL 必须使用 http 或 https");
+		fail("ASTRAVIA_UPDATE_URL 必须使用 http 或 https");
 	}
 	if (url.username || url.password || url.search || url.hash) {
-		fail("VETTA_UPDATE_URL 不能包含凭据、查询参数或 hash");
+		fail("ASTRAVIA_UPDATE_URL 不能包含凭据、查询参数或 hash");
 	}
 	return decodeURIComponent(url.pathname)
 		.split("/")
@@ -167,7 +167,7 @@ function isGreaterVersion(candidate, current) {
 
 function resolveInnoCompiler() {
 	const candidates = [
-		process.env.VETTA_INNO_SETUP_COMPILER?.trim(),
+		process.env.ASTRAVIA_INNO_SETUP_COMPILER?.trim(),
 		process.env.LOCALAPPDATA
 			? join(process.env.LOCALAPPDATA, "Programs", "Inno Setup 6", "ISCC.exe")
 			: undefined,
@@ -177,7 +177,7 @@ function resolveInnoCompiler() {
 			: undefined,
 	].filter(Boolean);
 	const compiler = candidates.find((candidate) => existsSync(candidate));
-	if (!compiler) fail("找不到 Inno Setup 6；请安装后重试，或设置 VETTA_INNO_SETUP_COMPILER");
+	if (!compiler) fail("找不到 Inno Setup 6；请安装后重试，或设置 ASTRAVIA_INNO_SETUP_COMPILER");
 	return compiler;
 }
 
@@ -227,7 +227,7 @@ async function verifyPackagedStableEnvironment(version) {
 	if (!existsSync(appAsarPath)) fail(`找不到待校验的 app.asar：${appAsarPath}`);
 
 	const expectedEnvironment = new Map(
-		["VETTA_SERVER_URL", "VETTA_SITE_URL"].map((name) => [name, requireEnvironment(name)]),
+		["ASTRAVIA_SERVER_URL", "ASTRAVIA_SITE_URL"].map((name) => [name, requireEnvironment(name)]),
 	);
 	const developmentEnvironmentPath = join(desktopDir, ".env.development");
 	const developmentEnvironment = existsSync(developmentEnvironmentPath)
@@ -289,23 +289,23 @@ async function main() {
 	}
 	parseVersion(version, "目标");
 
-	process.env.VETTA_UPDATE_PROVIDER = "generic";
-	process.env.VETTA_BUILD_ENV = options.channel === "stable" ? "production" : "development";
-	const updateUrl = requireEnvironment("VETTA_UPDATE_URL");
-	const r2Prefix = normalizePrefix(requireEnvironment("VETTA_R2_PREFIX"));
+	process.env.ASTRAVIA_UPDATE_PROVIDER = "generic";
+	process.env.ASTRAVIA_BUILD_ENV = options.channel === "stable" ? "production" : "development";
+	const updateUrl = requireEnvironment("ASTRAVIA_UPDATE_URL");
+	const r2Prefix = normalizePrefix(requireEnvironment("ASTRAVIA_R2_PREFIX"));
 	const urlPrefix = updateUrlPrefix(updateUrl);
 	if (r2Prefix !== urlPrefix) {
-		fail(`通道路径不一致：VETTA_R2_PREFIX=${r2Prefix}，VETTA_UPDATE_URL path=${urlPrefix}`);
+		fail(`通道路径不一致：ASTRAVIA_R2_PREFIX=${r2Prefix}，ASTRAVIA_UPDATE_URL path=${urlPrefix}`);
 	}
 	if (r2Prefix.split("/").at(-1) !== options.channel) {
-		fail(`VETTA_R2_PREFIX=${r2Prefix} 的末段不是 ${options.channel}`);
+		fail(`ASTRAVIA_R2_PREFIX=${r2Prefix} 的末段不是 ${options.channel}`);
 	}
 	if (!options.skipPublish) {
 		for (const name of [
-			"VETTA_R2_ACCOUNT_ID",
-			"VETTA_R2_ACCESS_KEY_ID",
-			"VETTA_R2_SECRET_ACCESS_KEY",
-			"VETTA_R2_BUCKET",
+			"ASTRAVIA_R2_ACCOUNT_ID",
+			"ASTRAVIA_R2_ACCESS_KEY_ID",
+			"ASTRAVIA_R2_SECRET_ACCESS_KEY",
+			"ASTRAVIA_R2_BUCKET",
 		]) {
 			requireEnvironment(name);
 		}
@@ -318,8 +318,8 @@ async function main() {
 	console.log(
 		`    版本       ${version}${version !== packageVersion ? `（package.json 是 ${packageVersion}，QA 覆盖）` : ""}`,
 	);
-	console.log(`    构建环境   ${process.env.VETTA_BUILD_ENV}`);
-	console.log(`    服务地址   ${process.env.VETTA_SERVER_URL}`);
+	console.log(`    构建环境   ${process.env.ASTRAVIA_BUILD_ENV}`);
+	console.log(`    服务地址   ${process.env.ASTRAVIA_SERVER_URL}`);
 	console.log(`    Inno       ${innoCompiler}`);
 	console.log(`    线上版本   ${onlineVersion ?? "尚无 Windows 产物"}`);
 	console.log(`    配置文件   ${loadedFiles.length > 0 ? loadedFiles.join("，") : "仅使用当前 Shell"}`);
@@ -336,8 +336,8 @@ async function main() {
 	}
 
 	const childEnvironment = { ...process.env };
-	if (options.channel === "test") childEnvironment.VETTA_DESKTOP_BUILD_VERSION = version;
-	else delete childEnvironment.VETTA_DESKTOP_BUILD_VERSION;
+	if (options.channel === "test") childEnvironment.ASTRAVIA_DESKTOP_BUILD_VERSION = version;
+	else delete childEnvironment.ASTRAVIA_DESKTOP_BUILD_VERSION;
 
 	step("清理 desktop-app/release/");
 	await rm(releaseDir, { recursive: true, force: true });

@@ -1,4 +1,4 @@
-import type { CommandProcessPort, DesktopCommandResult } from "@vetta/runtime-node/coding";
+import type { CommandProcessPort, DesktopCommandResult } from "@astravia/runtime-node/coding";
 import { describe, expect, it } from "vitest";
 import { createNodeDocToPdfOperations } from "../../src/coding/host/doc-to-pdf-operations.js";
 

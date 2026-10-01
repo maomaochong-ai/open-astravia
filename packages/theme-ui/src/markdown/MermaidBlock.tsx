@@ -1,4 +1,4 @@
-import { Button } from "@vetta-org/ui";
+import { Button } from "@astravia-org/ui";
 import { memo, useEffect, useState } from "react";
 import { CodeBlock } from "./CodeBlock";
 import type { MarkdownCodeBlockProps } from "./definition";

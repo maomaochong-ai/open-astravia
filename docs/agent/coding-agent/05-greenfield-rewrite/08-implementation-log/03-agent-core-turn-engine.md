@@ -6,7 +6,7 @@
 
 ### 目标
 
-让新 Kernel 的 Execution 阶段使用现有 `@vetta/agent-core` 模型与 Tool Loop，同时保持依赖方向和运行快照边界：
+让新 Kernel 的 Execution 阶段使用现有 `@astravia/agent-core` 模型与 Tool Loop，同时保持依赖方向和运行快照边界：
 
 - `runtime-core -> agent-core -> ai`。
 - `agent-core` 不知道 Session、Repository、Feature 或 Coding 产品。
@@ -67,7 +67,7 @@ Policy 拒绝不会调用工具实现，也不会直接中断整个 Tool Loop；
 - 未迁移旧 Coding Tools。
 - 未启用 steering、follow-up 或输入队列。
 - 未把流式 text/thinking delta 加入 Kernel 事实事件。
-- 未改变旧 `@vetta/agent-core` 的 API 或 Tool Loop。
+- 未改变旧 `@astravia/agent-core` 的 API 或 Tool Loop。
 - 未把 Model Registry 或具体 Provider 放进 Runtime Snapshot。
 
 ### 测试

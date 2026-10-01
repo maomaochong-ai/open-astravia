@@ -1,5 +1,5 @@
-import type { UserMessage } from "@vetta/ai";
-import type { ContinuationPolicyContext } from "@vetta/runtime-core/kernel";
+import type { UserMessage } from "@astravia/ai";
+import type { ContinuationPolicyContext } from "@astravia/runtime-core/kernel";
 import type { CodingAgentContinuationSource } from "../../runtime-contracts/index.js";
 import type { CodingAgentGoalRuntime } from "./goal-runtime.js";
 

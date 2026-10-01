@@ -12,10 +12,10 @@ describe("resolveDesktopRemoteDesktopHostPaths", () => {
 
 	it("uses dist for development", () => {
 		expect(
-			resolveDesktopRemoteDesktopHostPaths({ appRoot: "C:/open-vetta/apps/desktop", isPackaged: false }),
+			resolveDesktopRemoteDesktopHostPaths({ appRoot: "C:/open-astravia/apps/desktop", isPackaged: false }),
 		).toEqual({
-			preloadPath: join("C:/open-vetta/apps/desktop", "dist", "preload", "remote-desktop.js"),
-			pagePath: join("C:/open-vetta/apps/desktop", "dist", "renderer", "remote-desktop-host.html"),
+			preloadPath: join("C:/open-astravia/apps/desktop", "dist", "preload", "remote-desktop.js"),
+			pagePath: join("C:/open-astravia/apps/desktop", "dist", "renderer", "remote-desktop-host.html"),
 		});
 	});
 });

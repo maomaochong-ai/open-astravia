@@ -1,6 +1,6 @@
 # Global Slot Demo Plugin
 
-This example demonstrates a trusted desktop UI plugin that renders through Vetta's global slot.
+This example demonstrates a trusted desktop UI plugin that renders through Astravia's global slot.
 It also shows a TypeScript system prompt provider, skill paths, tool policies,
 a JS-registered agent tool, and an opt-in continuation provider.
 
@@ -15,11 +15,11 @@ bun run build
 The installable archive is written to:
 
 ```text
-packages/plugins/externals/global-slot-demo/release/global-slot-demo-0.1.0.vettapkg
+packages/plugins/externals/global-slot-demo/release/global-slot-demo-0.1.0.astraviapkg
 ```
 
 The archive contains only runtime files required by the desktop host. Module Federation build metadata remains in `dist/` for diagnostics, but is not included in the zip.
-`@vetta-org/plugin-vite` creates the archive automatically after `vite build`; no separate packaging script is required.
+`@astravia-org/plugin-vite` creates the archive automatically after `vite build`; no separate packaging script is required.
 
 ## Install From Renderer DevTools
 
@@ -27,10 +27,10 @@ After opening the desktop app, run:
 
 ```js
 const file = await window.showOpenFilePicker({
-  types: [{ description: "Vetta plugin", accept: { "application/vnd.vetta.plugin+zip": [".vettapkg"] } }]
+  types: [{ description: "Astravia plugin", accept: { "application/vnd.astravia.plugin+zip": [".astraviapkg"] } }]
 });
 const buffer = await (await file[0].getFile()).arrayBuffer();
-await window.vetta.plugins.installFromArchive(buffer, {
+await window.astravia.plugins.installFromArchive(buffer, {
   grantedPermissions: [
     "ui.slot.global",
     "agent.systemPrompt.write",
@@ -43,7 +43,7 @@ await window.vetta.plugins.installFromArchive(buffer, {
     "fs.write"
   ]
 });
-await window.vetta.plugins.setEnabled("global-slot-demo", true);
+await window.astravia.plugins.setEnabled("global-slot-demo", true);
 ```
 
 The settings page can also install and enable the generated zip from the plugin management UI.
@@ -51,7 +51,7 @@ The settings page can also install and enable the generated zip from the plugin 
 ## Notes
 
 - The plugin is built as a Module Federation remote and exposes `./plugin`.
-- `@vetta-org/plugin-vite` supplies the default Vite Module Federation and Rollup configuration for Vetta plugins.
+- `@astravia-org/plugin-vite` supplies the default Vite Module Federation and Rollup configuration for Astravia plugins.
 - `src/index.tsx` registers `fiction-system-prompt` with `ctx.agent.registerSystemPromptProvider(...)`.
   - The provider runs before every Agent run and receives current plugin settings, session, model, conversation, runtime tool, and trigger snapshots.
   - It demonstrates all five prompt operations: add, replace, update, disable, and remove.
@@ -63,6 +63,6 @@ The settings page can also install and enable the generated zip from the plugin 
 - `src/index.tsx` registers `fiction-next-step` with `ctx.agent.registerContinuationProvider(...)`. It is disabled by default through the `continuationDemoEnabled` plugin setting. When enabled, it injects one short next-step request per session and uses `idempotencyKey` to prevent duplicate continuation.
 - Tailwind CSS is compiled inside the plugin through `@tailwindcss/vite`; only utilities are imported, so the plugin does not inject Tailwind Preflight into the host.
 - React is shared by the desktop host through Module Federation, so it is a plugin development dependency only.
-- `@vetta-org/plugin-sdk` is provided by the host and remains external.
+- `@astravia-org/plugin-sdk` is provided by the host and remains external.
 - The plugin declares `ui.slot.global`, `agent.systemPrompt.write`, `agent.skills.control`, `agent.tools.control`, `agent.tools.register`, `agent.toolHandler.execute`, `agent.continuation.register`, `fs.read`, and `fs.write`; without these grants, the corresponding UI, agent contribution, tool registration, continuation provider, or file operation is ignored.
-- Tailwind classes reference Vetta CSS variables such as `--primary` and `--popover`, so the plugin follows the active host theme.
+- Tailwind classes reference Astravia CSS variables such as `--primary` and `--popover`, so the plugin follows the active host theme.

@@ -59,7 +59,7 @@ Vercel AI 仓库的 Provider 测试大量使用受控 mock server、录制响应
 
 ### 4.1 AI 公共 testkit
 
-新增 `@vetta/ai/testkit` 子路径，提供：
+新增 `@astravia/ai/testkit` 子路径，提供：
 
 - `canonicalizeAssistantMessage()`：规范最终 Assistant 消息。
 - `canonicalizeAssistantRun()`：规范一次流式运行的结果与事件。
@@ -101,15 +101,15 @@ canonicalization 处理的是仓库内部强类型对象，不是外部不可信
 
 ## 6. 类型解析偏差
 
-AI testkit 子路径加入 package export 后，包内测试可运行，但根 TypeScript 检查首次失败：NodeNext 解析无法从 workspace 源码推导 `@vetta/ai/testkit`。
+AI testkit 子路径加入 package export 后，包内测试可运行，但根 TypeScript 检查首次失败：NodeNext 解析无法从 workspace 源码推导 `@astravia/ai/testkit`。
 
 实际修复是在根 `tsconfig.json` 增加精确 path mapping：
 
 ```json
-"@vetta/ai/testkit": ["./packages/ai/src/testkit/index.ts"]
+"@astravia/ai/testkit": ["./packages/ai/src/testkit/index.ts"]
 ```
 
-不能只保留 `@vetta/ai/*` 泛型映射，因为现有 workspace path 结构与 package 子路径并非自然一一对应。该映射同时使 Agent 测试类型检查与 Vitest alias 保持一致。
+不能只保留 `@astravia/ai/*` 泛型映射，因为现有 workspace path 结构与 package 子路径并非自然一一对应。该映射同时使 Agent 测试类型检查与 Vitest alias 保持一致。
 
 ## 7. 测试证据
 

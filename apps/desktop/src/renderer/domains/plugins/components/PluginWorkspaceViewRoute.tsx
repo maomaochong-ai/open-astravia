@@ -82,8 +82,8 @@ export function PluginWorkspaceViewSurface({
 	const viewKey = `${view.pluginId}:${view.viewId}`;
 	return (
 		<div
-			className="vetta-plugin relative flex h-full w-full flex-1 flex-col overflow-hidden"
-			data-vetta-plugin-workspace-view={viewKey}
+			className="astravia-plugin relative flex h-full w-full flex-1 flex-col overflow-hidden"
+			data-astravia-plugin-workspace-view={viewKey}
 		>
 			<WorkspaceViewErrorBoundary fallback={<WorkspaceViewMessage text={t("workspaceView.failed")} />} viewKey={viewKey}>
 				<PluginI18nBoundary pluginId={view.pluginId}>

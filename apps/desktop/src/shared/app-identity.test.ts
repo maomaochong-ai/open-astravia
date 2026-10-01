@@ -12,7 +12,7 @@ function readPackageSource(relativePath: string): string {
 describe("app runtime name", () => {
 	// 打包版的 app 名字来自 asar 内写入的 package.json，开发态由 main.ts 覆盖。
 	// 两者一旦分叉，safeStorage 就会在开发与打包环境派生出不同的主密钥，
-	// 共享 ~/.vetta 时表现为“API key 丢失”，且互相覆盖对方的密文。
+	// 共享 ~/.astravia 时表现为“API key 丢失”，且互相覆盖对方的密文。
 	it("matches the name written into the packaged app package.json", () => {
 		const preparePack = readPackageSource("scripts/prepare-pack.js");
 		const appPkgName = /const appPkg = \{[^}]*?\bname:\s*"([^"]+)"/s.exec(preparePack)?.[1];

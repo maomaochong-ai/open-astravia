@@ -238,7 +238,7 @@ const batchTaskIdsInputSchema = defineCapabilityInputSchema(batchTaskIdsInputTyp
 
 export const DOMAIN_BATCH_TASK_CAPABILITIES = {
 	LIST_PROJECTS: defineCapability<Record<string, never>, BatchProject[]>({
-		id: "cap.domain.vetta.batch-task.project.list",
+		id: "cap.domain.astravia.batch-task.project.list",
 		kind: "query",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -246,7 +246,7 @@ export const DOMAIN_BATCH_TASK_CAPABILITIES = {
 		output: batchProjectsOutputSchema,
 	}),
 	GET_PROJECT: defineCapability<BatchProjectIdInput, BatchProject>({
-		id: "cap.domain.vetta.batch-task.project.get",
+		id: "cap.domain.astravia.batch-task.project.get",
 		kind: "query",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -254,7 +254,7 @@ export const DOMAIN_BATCH_TASK_CAPABILITIES = {
 		output: batchProjectOutputSchema,
 	}),
 	CREATE_PROJECT: defineCapability<BatchProjectCreateInput, BatchProject>({
-		id: "cap.domain.vetta.batch-task.project.create",
+		id: "cap.domain.astravia.batch-task.project.create",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -262,7 +262,7 @@ export const DOMAIN_BATCH_TASK_CAPABILITIES = {
 		output: batchProjectOutputSchema,
 	}),
 	UPDATE_PROJECT: defineCapability<BatchProjectUpdateInput, BatchProject>({
-		id: "cap.domain.vetta.batch-task.project.update",
+		id: "cap.domain.astravia.batch-task.project.update",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -270,7 +270,7 @@ export const DOMAIN_BATCH_TASK_CAPABILITIES = {
 		output: batchProjectOutputSchema,
 	}),
 	DELETE_PROJECT: defineCapability<BatchProjectIdInput, BatchTaskCommandResult>({
-		id: "cap.domain.vetta.batch-task.project.delete",
+		id: "cap.domain.astravia.batch-task.project.delete",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -278,7 +278,7 @@ export const DOMAIN_BATCH_TASK_CAPABILITIES = {
 		output: batchTaskCommandOutputSchema,
 	}),
 	RUN_TASK: defineCapability<BatchTaskIdInput, BatchTaskCommandResult>({
-		id: "cap.domain.vetta.batch-task.task.run",
+		id: "cap.domain.astravia.batch-task.task.run",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -286,7 +286,7 @@ export const DOMAIN_BATCH_TASK_CAPABILITIES = {
 		output: batchTaskCommandOutputSchema,
 	}),
 	RETRY_TASK: defineCapability<BatchTaskIdInput, BatchTaskCommandResult>({
-		id: "cap.domain.vetta.batch-task.task.retry",
+		id: "cap.domain.astravia.batch-task.task.retry",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -294,7 +294,7 @@ export const DOMAIN_BATCH_TASK_CAPABILITIES = {
 		output: batchTaskCommandOutputSchema,
 	}),
 	STOP_TASK: defineCapability<BatchTaskIdInput, BatchTaskCommandResult>({
-		id: "cap.domain.vetta.batch-task.task.stop",
+		id: "cap.domain.astravia.batch-task.task.stop",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -302,7 +302,7 @@ export const DOMAIN_BATCH_TASK_CAPABILITIES = {
 		output: batchTaskCommandOutputSchema,
 	}),
 	DELETE_TASK: defineCapability<BatchTaskIdInput, BatchTaskCommandResult>({
-		id: "cap.domain.vetta.batch-task.task.delete",
+		id: "cap.domain.astravia.batch-task.task.delete",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -310,7 +310,7 @@ export const DOMAIN_BATCH_TASK_CAPABILITIES = {
 		output: batchTaskCommandOutputSchema,
 	}),
 	RESUME_TASK: defineCapability<BatchTaskIdInput, BatchTaskCommandResult>({
-		id: "cap.domain.vetta.batch-task.task.resume",
+		id: "cap.domain.astravia.batch-task.task.resume",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -318,7 +318,7 @@ export const DOMAIN_BATCH_TASK_CAPABILITIES = {
 		output: batchTaskCommandOutputSchema,
 	}),
 	RESUME_TASK_WITH_TEXT: defineCapability<BatchTaskResumeInput, BatchTaskCommandResult>({
-		id: "cap.domain.vetta.batch-task.task.resume-with-text",
+		id: "cap.domain.astravia.batch-task.task.resume-with-text",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -326,7 +326,7 @@ export const DOMAIN_BATCH_TASK_CAPABILITIES = {
 		output: batchTaskCommandOutputSchema,
 	}),
 	DELETE_TASK_SESSION: defineCapability<BatchTaskIdInput, BatchTaskCommandResult>({
-		id: "cap.domain.vetta.batch-task.task.session.delete",
+		id: "cap.domain.astravia.batch-task.task.session.delete",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -334,7 +334,7 @@ export const DOMAIN_BATCH_TASK_CAPABILITIES = {
 		output: batchTaskCommandOutputSchema,
 	}),
 	DELETE_ALL_TASKS: defineCapability<BatchProjectIdInput, BatchTaskCommandResult>({
-		id: "cap.domain.vetta.batch-task.project.task.delete-all",
+		id: "cap.domain.astravia.batch-task.project.task.delete-all",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -342,7 +342,7 @@ export const DOMAIN_BATCH_TASK_CAPABILITIES = {
 		output: batchTaskCommandOutputSchema,
 	}),
 	START_PROJECT: defineCapability<BatchProjectIdInput, BatchTaskCommandResult>({
-		id: "cap.domain.vetta.batch-task.project.start",
+		id: "cap.domain.astravia.batch-task.project.start",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -350,7 +350,7 @@ export const DOMAIN_BATCH_TASK_CAPABILITIES = {
 		output: batchTaskCommandOutputSchema,
 	}),
 	STOP_PROJECT: defineCapability<BatchProjectIdInput, BatchTaskCommandResult>({
-		id: "cap.domain.vetta.batch-task.project.stop",
+		id: "cap.domain.astravia.batch-task.project.stop",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -358,7 +358,7 @@ export const DOMAIN_BATCH_TASK_CAPABILITIES = {
 		output: batchTaskCommandOutputSchema,
 	}),
 	RESET_PROJECT: defineCapability<BatchProjectIdInput, BatchTaskCommandResult>({
-		id: "cap.domain.vetta.batch-task.project.reset",
+		id: "cap.domain.astravia.batch-task.project.reset",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -366,7 +366,7 @@ export const DOMAIN_BATCH_TASK_CAPABILITIES = {
 		output: batchTaskCommandOutputSchema,
 	}),
 	RESET_FAILED_TASKS: defineCapability<BatchTaskIdsInput, BatchTaskCommandResult>({
-		id: "cap.domain.vetta.batch-task.project.failed-task.reset",
+		id: "cap.domain.astravia.batch-task.project.failed-task.reset",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,

@@ -24,7 +24,7 @@ export function useSpeechInput(enabled: boolean): SpeechInputModel {
 	useEffect(() => {
 		if (!buildEnabled || !isWindows) return;
 		let active = true;
-		const unsubscribe = window.vetta.speechInput.onEvent((event) => {
+		const unsubscribe = window.astravia.speechInput.onEvent((event) => {
 			if (!active) return;
 			if (event.type === "status") setStatus(event.status);
 			if (event.type === "partial") replaceSpeechText(event.text);
@@ -37,14 +37,14 @@ export function useSpeechInput(enabled: boolean): SpeechInputModel {
 				setStatus((current) => ({ ...current, phase: "error", errorCode: event.code }));
 			}
 		});
-		void window.vetta.speechInput.getStatus().then((next) => {
+		void window.astravia.speechInput.getStatus().then((next) => {
 			if (active) setStatus(next);
 		});
 		return () => {
 			active = false;
 			unsubscribe();
 			void captureRef.current?.stop();
-			if (sessionIdRef.current) void window.vetta.speechInput.cancel(sessionIdRef.current);
+			if (sessionIdRef.current) void window.astravia.speechInput.cancel(sessionIdRef.current);
 			clearSpeechText();
 		};
 	}, [buildEnabled]);
@@ -55,7 +55,7 @@ export function useSpeechInput(enabled: boolean): SpeechInputModel {
 		const capture = captureRef.current;
 		captureRef.current = null;
 		await capture?.stop();
-		if (sessionId) await window.vetta.speechInput.stop(sessionId);
+		if (sessionId) await window.astravia.speechInput.stop(sessionId);
 		clearSpeechText();
 	}, []);
 
@@ -70,21 +70,21 @@ export function useSpeechInput(enabled: boolean): SpeechInputModel {
 			}
 			let readyStatus = status;
 			if (status.phase === "error") {
-				readyStatus = await window.vetta.speechInput.getStatus();
+				readyStatus = await window.astravia.speechInput.getStatus();
 				setStatus(readyStatus);
 			}
 			if (readyStatus.phase !== "ready") return;
 
-			const { sessionId } = await window.vetta.speechInput.start();
+			const { sessionId } = await window.astravia.speechInput.start();
 			sessionIdRef.current = sessionId;
 			const capture = new MicrophonePcmCapture();
 			captureRef.current = capture;
 			try {
-				await capture.start((samples) => window.vetta.speechInput.pushAudio(sessionId, samples));
+				await capture.start((samples) => window.astravia.speechInput.pushAudio(sessionId, samples));
 			} catch {
 				captureRef.current = null;
 				sessionIdRef.current = null;
-				await window.vetta.speechInput.cancel(sessionId);
+				await window.astravia.speechInput.cancel(sessionId);
 				setStatus((current) => ({
 					...current,
 					phase: "error",

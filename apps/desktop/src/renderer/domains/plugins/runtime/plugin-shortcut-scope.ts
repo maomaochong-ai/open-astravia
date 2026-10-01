@@ -1,4 +1,4 @@
-import type { PluginShortcutBinding, PluginShortcutScopeKind } from "@vetta-org/plugin-sdk";
+import type { PluginShortcutBinding, PluginShortcutScopeKind } from "@astravia-org/plugin-sdk";
 import type { ShortcutBinding, ShortcutScopeKind } from "../../../shared/shortcuts";
 import { getShortcutScopeStack } from "../../../shared/shortcuts";
 

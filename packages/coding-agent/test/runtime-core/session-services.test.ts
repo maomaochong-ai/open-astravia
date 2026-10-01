@@ -9,8 +9,8 @@ import {
 	RuntimeHost,
 	type RuntimeSessionCatalog,
 	type RuntimeSessionFileHistoryReader,
-} from "@vetta/runtime-core";
-import { createNodeLegacySessionHost } from "@vetta/runtime-node/host";
+} from "@astravia/runtime-core";
+import { createNodeLegacySessionHost } from "@astravia/runtime-node/host";
 import { describe, expect, it, vi } from "vitest";
 import {
 	createCodingAgentHistoricalSessionCatalog,
@@ -167,7 +167,7 @@ describe("runtime host process services", () => {
 	});
 
 	it("preserves legacy JSONL listing, history, rename and deletion behavior", async () => {
-		const root = await mkdtemp(join(tmpdir(), "vetta-runtime-core-"));
+		const root = await mkdtemp(join(tmpdir(), "astravia-runtime-core-"));
 		const sessionDir = join(root, "sessions");
 		const sessionPath = join(sessionDir, "legacy-session.jsonl");
 		try {

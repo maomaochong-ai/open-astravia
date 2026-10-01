@@ -51,7 +51,7 @@ Canary 使用专用 Electron user data 目录。仅在该隔离模式下增加�
 
 Desktop 当前使用既有 `McpManager` 作为宿主反腐适配器，读取既有 `mcp.json` 并提供
 `McpRuntimeToolSource` 合同。Greenfield Runtime Core 不依赖 `McpManager`，也不负责解析 Desktop
-配置。`@vetta/runtime-mcp` 作为 Desktop 的直接 workspace 依赖显式声明，不再依靠传递依赖。
+配置。`@astravia/runtime-mcp` 作为 Desktop 的直接 workspace 依赖显式声明，不再依靠传递依赖。
 
 ### 2.4 重启后重新装配动态能力
 

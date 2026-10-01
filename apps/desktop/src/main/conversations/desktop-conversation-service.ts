@@ -1,7 +1,7 @@
 import { stat } from "node:fs/promises";
 import { extname, isAbsolute, resolve } from "node:path";
-import type { AgentTeamDocument } from "@vetta/agent-team";
-import { CODING_AGENT_SESSION_TITLE_GENERATE } from "@vetta/coding-agent/session-extensions";
+import type { AgentTeamDocument } from "@astravia/agent-team";
+import { CODING_AGENT_SESSION_TITLE_GENERATE } from "@astravia/coding-agent/session-extensions";
 import {
 	isSessionError,
 	type PromptRequest,
@@ -12,9 +12,9 @@ import {
 	type RuntimeTurnPromptOutcome,
 	runtimeFailureFromAIErrorDetails,
 	type SessionEvent,
-} from "@vetta/runtime-core";
-import { resolveProjectExecutionMode, sanitizeRuntimeErrorMessage } from "@vetta/runtime-desktop";
-import { isSshProjectUri, normalizeProjectCwd } from "@vetta/ssh-transport";
+} from "@astravia/runtime-core";
+import { resolveProjectExecutionMode, sanitizeRuntimeErrorMessage } from "@astravia/runtime-desktop";
+import { isSshProjectUri, normalizeProjectCwd } from "@astravia/ssh-transport";
 import { type DesktopSessionHistoryInfo, UNAVAILABLE_RUNTIME_SESSION_ACCESS } from "../../shared/session-access.js";
 import { agentTeamStore } from "../agent-teams/agent-team-store.js";
 import { ensureLegacyAgentTeamOwnershipCatalog } from "../agent-teams/team-ownership-backfill.js";
@@ -323,9 +323,13 @@ export class DesktopConversationService {
 		}
 		const header = await readDesktopSessionHeader(absolutePath);
 		if (!header) {
-			throw new DesktopConversationError("INVALID_SESSION_PATH", "Session file has no valid Vetta session header.", {
-				sessionPath: absolutePath,
-			});
+			throw new DesktopConversationError(
+				"INVALID_SESSION_PATH",
+				"Session file has no valid Astravia session header.",
+				{
+					sessionPath: absolutePath,
+				},
+			);
 		}
 		return this.createSession(
 			{

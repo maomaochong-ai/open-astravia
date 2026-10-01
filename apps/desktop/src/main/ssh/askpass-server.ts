@@ -3,7 +3,7 @@ import { rmSync } from "node:fs";
 import { createServer, type Server, type Socket } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { classifySshPrompt, type SshPromptKind } from "@vetta/ssh-transport";
+import { classifySshPrompt, type SshPromptKind } from "@astravia/ssh-transport";
 
 export interface SshPromptAnswer {
 	/** false 表示用户取消或拒绝确认；askpass 会以非零退出让 ssh 放弃本次认证。 */
@@ -45,7 +45,7 @@ export interface SshAskpassChannel {
 export function createSshAskpassChannel(resolve: SshPromptResolver): SshAskpassChannel {
 	const token = randomBytes(32).toString("hex");
 	// 路径要短：Unix socket 的 sun_path 在 macOS 上只有 104 字节。
-	const socketPath = join(tmpdir(), `vetta-askpass-${randomBytes(8).toString("hex")}.sock`);
+	const socketPath = join(tmpdir(), `astravia-askpass-${randomBytes(8).toString("hex")}.sock`);
 	rmSync(socketPath, { force: true });
 
 	const server: Server = createServer((socket) => handleConnection(socket, token, resolve));

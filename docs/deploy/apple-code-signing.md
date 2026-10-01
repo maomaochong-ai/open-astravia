@@ -1,6 +1,6 @@
 # Apple 证书申请与 macOS 签名/公证手册
 
-面向 Vetta 桌面端 macOS 发版：从零申请公司主体的 Apple 开发者账号，拿到 **Developer ID Application** 证书与公证凭据，注入构建，直到用户双击 DMG 不再看到「已损坏」。
+面向 Astravia 桌面端 macOS 发版：从零申请公司主体的 Apple 开发者账号，拿到 **Developer ID Application** 证书与公证凭据，注入构建，直到用户双击 DMG 不再看到「已损坏」。
 
 构建侧改动见 `apps/desktop/scripts/prepare-pack.js` 的 `resolveMacSigning()`。**只要环境变量齐全就自动开启签名+公证，一个都不设就是现在的未签名产物**，不需要改代码。
 
@@ -13,7 +13,7 @@
 | 产物 | 用途 | 来源 |
 |---|---|---|
 | Apple Developer Program 会员资格（Organization） | 前提，$99/年 | developer.apple.com |
-| **Developer ID Application** 证书 + 私钥（`.p12`） | 给 `Vetta.app` 签名 | 开发者后台创建，本机钥匙串导出 |
+| **Developer ID Application** 证书 + 私钥（`.p12`） | 给 `Astravia.app` 签名 | 开发者后台创建，本机钥匙串导出 |
 | **Team ID**（10 位，如 `A1B2C3D4E5`） | 公证时指定团队 | 开发者后台 Membership 页 |
 | App Store Connect **API Key**（`.p8`）或 **App 专用密码** | 提交公证 | App Store Connect / appleid.apple.com |
 
@@ -71,7 +71,7 @@ Apple 用邓白氏（D-U-N-S）编号核验公司法人存在，个人账号不�
 2. 菜单 → 证书助理 → **从证书颁发机构请求证书**
 3. 填写：
    - 用户电子邮件地址：注册用的公司邮箱
-   - 常用名称：随便写，如 `Vetta Developer ID`
+   - 常用名称：随便写，如 `Astravia Developer ID`
    - CA 电子邮件地址：**留空**
    - 请求方式：勾选 **存储到磁盘**，并勾选 **让我指定密钥对信息**
 4. 下一步，密钥大小 **2048 位**，算法 **RSA**
@@ -147,7 +147,7 @@ export APPLE_API_KEY="$HOME/secrets/AuthKey_XXXXXXXXXX.p8"
 
 cd apps/desktop
 bun run dist:mac
-VETTA_REQUIRE_MAC_SIGNATURE=1 bun run verify:updates:mac
+ASTRAVIA_REQUIRE_MAC_SIGNATURE=1 bun run verify:updates:mac
 ```
 
 CI 上 `CSC_LINK` 可以直接放 base64：`export CSC_LINK="$(base64 -i developer-id.p12)"`。
@@ -170,7 +170,7 @@ CI 上 `CSC_LINK` 可以直接放 base64：`export CSC_LINK="$(base64 -i develop
 |---|---|
 | `developer-id.p12` | 签名私钥 |
 | `AuthKey_<KeyID>.p8` | 公证密钥 |
-| `~/.config/vetta/mac-signing.env` | 复制过去，`VETTA_SIGNING_DIR` 改成新机器上的实际目录 |
+| `~/.config/astravia/mac-signing.env` | 复制过去，`ASTRAVIA_SIGNING_DIR` 改成新机器上的实际目录 |
 
 凭据放在移动硬盘、且挂载点相同的话，env 文件一个字都不用改。
 
@@ -179,7 +179,7 @@ CI 上 `CSC_LINK` 可以直接放 base64：`export CSC_LINK="$(base64 -i develop
 就绪自检：
 
 ```bash
-source ~/.config/vetta/mac-signing.env      # 不报「找不到 ...」= 路径对
+source ~/.config/astravia/mac-signing.env      # 不报「找不到 ...」= 路径对
 security find-identity -v -p codesigning    # 1 valid identity
 xcrun notarytool history --key "$APPLE_API_KEY" --key-id "$APPLE_API_KEY_ID" --issuer "$APPLE_API_ISSUER"
 ```
@@ -197,20 +197,20 @@ xcrun notarytool history --key "$APPLE_API_KEY" --key-id "$APPLE_API_KEY_ID" --i
 | `APPLE_API_ISSUER` | App Store Connect Issuer ID |
 | `APPLE_TEAM_ID` | Developer Program Team ID |
 
-macOS 在 matrix 里是 `dist:mac:arm64` 与 `dist:mac:x64` 两个任务（内置的 node/python 运行时按 `VETTA_VENDOR_PLATFORM` 单架构落盘，一次构建出不了两套），分别跑在 `macos-15` 与 `macos-15-intel` 托管 runner 上，两者各自签名公证并校验，产物元数据以 `latest-mac-<arch>.yml` 上传，由发布任务的 `merge:updates:mac` 合并回单一 `latest-mac.yml`。
+macOS 在 matrix 里是 `dist:mac:arm64` 与 `dist:mac:x64` 两个任务（内置的 node/python 运行时按 `ASTRAVIA_VENDOR_PLATFORM` 单架构落盘，一次构建出不了两套），分别跑在 `macos-15` 与 `macos-15-intel` 托管 runner 上，两者各自签名公证并校验，产物元数据以 `latest-mac-<arch>.yml` 上传，由发布任务的 `merge:updates:mac` 合并回单一 `latest-mac.yml`。
 
-公证不需要专用签名机：`notarytool` 只是把签好名的产物传给 Apple 换票据，托管 runner 有网络即可。工作流会在 runner 的临时目录还原 `.p12` 和 `.p8`（`chmod 600`），仅通过环境变量传给 electron-builder，构建结束随 runner 销毁。完全没有这些 Secrets 时，tag 和手动构建都允许生成未签名包；只配置一部分仍会直接失败，避免产出「签了名但没公证」的半成品。反过来，**只要 Secrets 配齐，非发布的 `workflow_dispatch` 演练也会签名并公证**，因为开关只看凭据完整性；想快速验证构建可以设 `VETTA_SKIP_NOTARIZE=1` 只签名不公证。凭据齐全时会设置 `VETTA_REQUIRE_MAC_SIGNATURE=1`，构建后自动校验 ZIP 内应用的签名、Gatekeeper 接受状态和公证票据。正式启用签名后，发布负责人还应把“macOS 必须签名”设为发布策略，不能继续把未签名包当成最终交付物。
+公证不需要专用签名机：`notarytool` 只是把签好名的产物传给 Apple 换票据，托管 runner 有网络即可。工作流会在 runner 的临时目录还原 `.p12` 和 `.p8`（`chmod 600`），仅通过环境变量传给 electron-builder，构建结束随 runner 销毁。完全没有这些 Secrets 时，tag 和手动构建都允许生成未签名包；只配置一部分仍会直接失败，避免产出「签了名但没公证」的半成品。反过来，**只要 Secrets 配齐，非发布的 `workflow_dispatch` 演练也会签名并公证**，因为开关只看凭据完整性；想快速验证构建可以设 `ASTRAVIA_SKIP_NOTARIZE=1` 只签名不公证。凭据齐全时会设置 `ASTRAVIA_REQUIRE_MAC_SIGNATURE=1`，构建后自动校验 ZIP 内应用的签名、Gatekeeper 接受状态和公证票据。正式启用签名后，发布负责人还应把“macOS 必须签名”设为发布策略，不能继续把未签名包当成最终交付物。
 
 ## 5. 验证
 
-拿到 `apps/desktop/release/Vetta-<version>.dmg` 后逐条跑：
+拿到 `apps/desktop/release/Astravia-<version>.dmg` 后逐条跑：
 
 ```bash
 # 1. 挂载 DMG
-hdiutil attach release/Vetta-*.dmg
+hdiutil attach release/Astravia-*.dmg
 
 # 2. 公证票据已钉进 app
-xcrun stapler validate /Volumes/Vetta*/Vetta.app
+xcrun stapler validate /Volumes/Astravia*/Astravia.app
 # 期望：The validate action worked!
 #
 # 注意校验对象是 app 不是 DMG：electron-builder 的顺序是「签 app → 公证 app →
@@ -220,20 +220,20 @@ xcrun stapler validate /Volumes/Vetta*/Vetta.app
 # app 已钉票据，装好后离线启动不受影响。
 
 # 3. 检查 app 签名
-codesign -dv --verbose=4 /Volumes/Vetta*/Vetta.app
+codesign -dv --verbose=4 /Volumes/Astravia*/Astravia.app
 # 期望：Authority=Developer ID Application: <公司名> (<TeamID>)
 #       flags 里含 runtime（= hardened runtime 生效）
 #       TeamIdentifier=<TeamID>，不是 not set
 
 # 4. 深度校验所有嵌套二进制
-codesign --verify --deep --strict --verbose=2 /Volumes/Vetta*/Vetta.app
+codesign --verify --deep --strict --verbose=2 /Volumes/Astravia*/Astravia.app
 # 期望：valid on disk / satisfies its Designated Requirement
 
 # 5. Gatekeeper 放行
-spctl -a -vvv -t install /Volumes/Vetta*/Vetta.app
+spctl -a -vvv -t install /Volumes/Astravia*/Astravia.app
 # 期望：accepted，source=Notarized Developer ID
 
-hdiutil detach /Volumes/Vetta*
+hdiutil detach /Volumes/Astravia*
 ```
 
 最后必须做一次**真机端到端验证**：把 DMG 上传到 CDN，从**另一台没装过开发者证书的 Mac** 用浏览器下载（一定要走浏览器，`scp`/AirDrop 不会打 quarantine 标记，测不出问题），拖入 `/Applications` 双击——应该直接启动，不出现任何「已损坏」「无法验证开发者」弹窗。
@@ -250,14 +250,14 @@ hdiutil detach /Volumes/Vetta*
 
 **公证返回 `Invalid`，`xcrun notarytool log <submissionId>` 显示 `The binary is not signed with a valid Developer ID certificate`**
 
-产物里有没签到的嵌套 Mach-O 二进制。Vetta 在 `Contents/Resources/` 下带了 `im-gateway`、`cli-host`、`vendor/node`、`vendor/python`、`appshot` 等一堆可执行文件，日志会指出具体是哪个路径。查看完整日志：
+产物里有没签到的嵌套 Mach-O 二进制。Astravia 在 `Contents/Resources/` 下带了 `im-gateway`、`cli-host`、`vendor/node`、`vendor/python`、`appshot` 等一堆可执行文件，日志会指出具体是哪个路径。查看完整日志：
 
 ```bash
 xcrun notarytool log <submissionId> \
   --key "$APPLE_API_KEY" --key-id "$APPLE_API_KEY_ID" --issuer "$APPLE_API_ISSUER"
 ```
 
-排查时可以先 `VETTA_SKIP_VENDOR=1 bun run dist:mac` 把内置运行时摘掉，确认是不是 vendor 里的二进制导致，再针对性处理。
+排查时可以先 `ASTRAVIA_SKIP_VENDOR=1 bun run dist:mac` 把内置运行时摘掉，确认是不是 vendor 里的二进制导致，再针对性处理。
 
 **公证返回 `Invalid`，日志说 `The executable does not have the hardened runtime enabled`**
 
@@ -270,7 +270,7 @@ xcrun notarytool log <submissionId> \
 **公证通过但用户仍报「已损坏」**
 
 - 先确认用户下载的是**新版本**——已发布的旧 DMG 不会追溯获得票据
-- 让用户跑 `xattr -l /Applications/Vetta.app`，若只有 `com.apple.quarantine` 而 app 是公证过的，通常是下载过程被网络中间设备改写导致签名失效，换直链或换网络重下
+- 让用户跑 `xattr -l /Applications/Astravia.app`，若只有 `com.apple.quarantine` 而 app 是公证过的，通常是下载过程被网络中间设备改写导致签名失效，换直链或换网络重下
 
 **`Team ID` 填错**
 

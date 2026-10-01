@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { dirname, join } from "node:path";
-import type { CodingAgentBootstrap } from "@vetta/coding-agent/bootstrap";
+import type { CodingAgentBootstrap } from "@astravia/coding-agent/bootstrap";
 import {
 	type CodingAgentMemoryRuntimeFactoryOptions,
 	type CodingAgentRuntimeComposition,
@@ -11,13 +11,13 @@ import {
 	createCodingAgentRuntimeComposition,
 	createCodingAgentRuntimeHostSessionConfig,
 	createCodingAgentSessionSetupSeedInitializer,
-} from "@vetta/coding-agent/composition";
-import { getKnowledgeDir, getVettaHomePath } from "@vetta/coding-agent/config";
+} from "@astravia/coding-agent/composition";
+import { getAstraviaHomePath, getKnowledgeDir } from "@astravia/coding-agent/config";
 import {
 	createCodingAgentMcpRuntimeToolSource,
 	createCodingAgentPluginMcpRuntime,
-} from "@vetta/coding-agent/host-services";
-import { detectWorkspaceFacts, probeWorkspaceSignals } from "@vetta/coding-agent/model-context";
+} from "@astravia/coding-agent/host-services";
+import { detectWorkspaceFacts, probeWorkspaceSignals } from "@astravia/coding-agent/model-context";
 import {
 	type CodingAgentRuntimeExtensionEventHost,
 	type CodingAgentRuntimeExtensionSessionHost,
@@ -27,17 +27,17 @@ import {
 	createCodingAgentRuntimeExtensionEventHost,
 	createCodingAgentRuntimeExtensionSessionHost,
 	createCodingAgentRuntimeResourceReloadHost,
-} from "@vetta/coding-agent/runtime";
-import { buildDefaultHookConfigLayers } from "@vetta/ecosystem-adapter";
+} from "@astravia/coding-agent/runtime";
+import { buildDefaultHookConfigLayers } from "@astravia/ecosystem-adapter";
 import {
 	InitializationRollbackScope,
 	RuntimeActiveSessionHost,
 	RuntimeHost,
 	type RuntimeHostSession,
 	type RuntimeSessionCatalog,
-} from "@vetta/runtime-core";
-import { createMcpToolResultPolicy } from "@vetta/runtime-mcp";
-import { nodeModelInputImageProcessor, nodeWorkspaceFactsFileSource } from "@vetta/runtime-node/coding";
+} from "@astravia/runtime-core";
+import { createMcpToolResultPolicy } from "@astravia/runtime-mcp";
+import { nodeModelInputImageProcessor, nodeWorkspaceFactsFileSource } from "@astravia/runtime-node/coding";
 import {
 	createConversationSeedDraft,
 	createFileConversationPersistence,
@@ -45,13 +45,13 @@ import {
 	type FileConversationOwnershipManagerOptions,
 	resolveConversationFilePath,
 	resolveSessionIdFromPath,
-} from "@vetta/runtime-node/conversation";
+} from "@astravia/runtime-node/conversation";
 import {
 	createLoopbackSessionAffinityStream,
 	createNodeKnowledgeRuntime,
 	createNodeResultArtifactStorage,
 	NodeTextFileStorage,
-} from "@vetta/runtime-node/host";
+} from "@astravia/runtime-node/host";
 import {
 	createCliCodingAgentSessionExecutionEnvironmentFactory,
 	createCliCodingAgentToolEnvironmentFactory,
@@ -146,18 +146,18 @@ export async function createCliSessionAssembly(options: CliSessionAssemblyOption
 			initialModel: options.initialModel,
 			initialThinkingLevel: options.initialThinkingLevel,
 			streamFn: createLoopbackSessionAffinityStream(),
-			ocrMaxConcurrent: resolvePositiveInteger(process.env.VETTA_KB_OCR_CONCURRENCY),
+			ocrMaxConcurrent: resolvePositiveInteger(process.env.ASTRAVIA_KB_OCR_CONCURRENCY),
 			cwd: bootstrap.cwd,
 			workspaceFacts: detectWorkspaceFacts(bootstrap.cwd, (cwd) =>
 				probeWorkspaceSignals(cwd, nodeWorkspaceFactsFileSource),
 			),
 			agentDir: bootstrap.agentDir,
 			knowledgeRuntime:
-				process.env.VETTA_KNOWLEDGE_DISABLED === "1" ? undefined : createNodeKnowledgeRuntime(getKnowledgeDir()),
+				process.env.ASTRAVIA_KNOWLEDGE_DISABLED === "1" ? undefined : createNodeKnowledgeRuntime(getKnowledgeDir()),
 			createMemoryRolloverRuntime: createCliMemoryRolloverRuntime,
 			hookConfigLayers: buildDefaultHookConfigLayers({
 				cwd: bootstrap.cwd,
-				vettaHome: getVettaHomePath(),
+				astraviaHome: getAstraviaHomePath(),
 			}),
 			scenario,
 			activation:

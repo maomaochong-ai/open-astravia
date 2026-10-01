@@ -5,8 +5,8 @@
  * tool that queues a follow-up command to trigger reload.
  */
 
+import type { ExtensionAPI } from "@astravia/coding-agent";
 import { Type } from "@sinclair/typebox";
-import type { ExtensionAPI } from "@vetta/coding-agent";
 
 export default function (api: ExtensionAPI) {
 	// Command entrypoint for reload.

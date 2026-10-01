@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({
 		close: vi.fn(async () => {}),
 	},
 	server: {
-		config: { plugins: [{ name: "vetta-plugin-dev-runtime" }] },
+		config: { plugins: [{ name: "astravia-plugin-dev-runtime" }] },
 		resolvedUrls: { local: ["http://127.0.0.1:4100/"] },
 		environments: {
 			client: {
@@ -31,7 +31,7 @@ vi.mock("vite", () => ({
 	isCSSRequest: (id: string) => id.split("?", 1)[0].endsWith(".css"),
 }));
 
-import { startVettaPluginDevServer } from "../src/dev-server.js";
+import { startAstraviaPluginDevServer } from "../src/dev-server.js";
 
 const projectDir = join(process.cwd(), `.tmp-plugin-dev-watcher-${process.pid}`);
 
@@ -58,7 +58,7 @@ describe("plugin development resource watcher", () => {
 		vi.stubGlobal("fetch", vi.fn(async () => new Response("{}", { status: 200 })));
 
 		const events: unknown[] = [];
-		const server = await startVettaPluginDevServer(projectDir, (event) => events.push(event));
+		const server = await startAstraviaPluginDevServer(projectDir, (event) => events.push(event));
 
 		expect(server.origin).toBe("http://127.0.0.1:4100");
 		expect(events).toContainEqual({
@@ -69,7 +69,7 @@ describe("plugin development resource watcher", () => {
 			origin: "http://127.0.0.1:4100",
 		});
 		expect(mocks.server.environments.client.transformRequest).toHaveBeenCalledWith(
-			"virtual:vetta-plugin-dev-entry",
+			"virtual:astravia-plugin-dev-entry",
 		);
 		await server.close();
 	});

@@ -8,7 +8,7 @@
  *   npx tsx test.ts claude-sonnet-4-5-20250929 --thinking
  */
 
-import { type Api, type Context, type Model, registerApiProvider, streamSimple } from "@vetta/ai";
+import { type Api, type Context, type Model, registerApiProvider, streamSimple } from "@astravia/ai";
 import { readFileSync } from "fs";
 import { homedir } from "os";
 import { join } from "path";
@@ -28,7 +28,7 @@ async function main() {
 	}
 
 	// Read auth
-	const authPath = join(homedir(), ".vetta", "agent", "auth.json");
+	const authPath = join(homedir(), ".astravia", "agent", "auth.json");
 	const authData = JSON.parse(readFileSync(authPath, "utf-8"));
 	const gitlabCred = authData["gitlab-duo"];
 	if (!gitlabCred?.access) {

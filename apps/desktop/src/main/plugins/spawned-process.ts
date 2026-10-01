@@ -1,5 +1,5 @@
 import { type ChildProcess, execFile } from "node:child_process";
-import { isSshProjectUri, parseProjectLocation } from "@vetta/ssh-transport";
+import { isSshProjectUri, parseProjectLocation } from "@astravia/ssh-transport";
 import { getSshPortForwardService } from "../ssh/port-forward-service.js";
 import { getSshConnection } from "../ssh/ssh-runtime.js";
 import { createPluginCommandEnvironment } from "./command-environment.js";

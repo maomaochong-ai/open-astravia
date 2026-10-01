@@ -29,7 +29,7 @@ export function useRemoteMcpSectionModel({
 	const [busy, setBusy] = useState<string | null>(null);
 
 	const load = useCallback(() => {
-		// lite 构建无 vetta 市场：不发请求也不提示登录（对应 UI 区段整体隐藏）。
+		// lite 构建无 astravia 市场：不发请求也不提示登录（对应 UI 区段整体隐藏）。
 		if (!cloudEnabled) {
 			setItems([]);
 			return;

@@ -22,7 +22,7 @@ describe("in-progress indicators declare no animation of their own", () => {
 	test("theme-ui styles carry no infinite keyframes for the indicator classes", () => {
 		expect(ruleBody(stylesCss, ".processing-shimmer")).not.toMatch(/animation\s*:/);
 		expect(stylesCss).not.toContain("@keyframes processing-shimmer");
-		expect(stylesCss).not.toContain("--vetta-live-phase");
+		expect(stylesCss).not.toContain("--astravia-live-phase");
 	});
 
 	test("send button ripple rings rest invisible and are animated by the host", () => {

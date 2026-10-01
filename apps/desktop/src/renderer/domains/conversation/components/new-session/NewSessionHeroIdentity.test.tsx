@@ -2,7 +2,7 @@
 
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { createAgentTeamFixture } from "@vetta/agent-team";
+import { createAgentTeamFixture } from "@astravia/agent-team";
 import { createElement, type ReactNode, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { resetAgentTeamDirectoryForTest } from "./agent-team-directory";
@@ -34,7 +34,7 @@ function domProps(props: Record<string, unknown>): Record<string, unknown> {
 }
 vi.mock("../GuideBadgeSwiper", () => ({ GuideBadgeSwiper: () => null }));
 vi.mock("./ornament/HeroOrnamentSlot", () => ({ HeroOrnamentSlot: () => null }));
-vi.mock("@vetta-org/theme-sdk", () => ({ useThemeComponent: (_key: string, fallback: unknown) => fallback }));
+vi.mock("@astravia-org/theme-sdk", () => ({ useThemeComponent: (_key: string, fallback: unknown) => fallback }));
 vi.mock("react-i18next", () => ({
 	useTranslation: () => ({
 		t: (key: string, values?: Record<string, number>) =>
@@ -75,7 +75,7 @@ describe("new session hero identity", () => {
 
 	beforeEach(() => {
 		resetAgentTeamDirectoryForTest();
-		Object.defineProperty(window, "vetta", {
+		Object.defineProperty(window, "astravia", {
 			configurable: true,
 			value: { agentTeams: { list: vi.fn(async () => document), onChanged: () => () => {} } },
 		});
@@ -130,7 +130,7 @@ describe("new session hero identity", () => {
 
 	it("leaves the avatar row alone when the team fits", async () => {
 		const smallTeam = { ...team, members: team.members.slice(0, 2) };
-		Object.defineProperty(window, "vetta", {
+		Object.defineProperty(window, "astravia", {
 			configurable: true,
 			value: {
 				agentTeams: { list: vi.fn(async () => ({ ...document, teams: [smallTeam] })), onChanged: () => () => {} },

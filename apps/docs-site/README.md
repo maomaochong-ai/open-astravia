@@ -1,6 +1,6 @@
-# Vetta Docs Site
+# Astravia Docs Site
 
-Vetta 的公开产品与开发者文档站，使用 Next.js 和 Fumadocs 构建。
+Astravia 的公开产品与开发者文档站，使用 Next.js 和 Fumadocs 构建。
 
 ## 内容边界
 
@@ -54,7 +54,7 @@ Fumadocs 搜索索引由站点内容生成，因此需要通过构建后的站�
 多语言实现分为三层，新增语言时不要在组件中添加 `language === ...` 分支：
 
 - Fumadocs 自带的搜索、目录、分页和侧边栏文案在 `lib/i18n.ts` 通过 `defineI18n().translations().extend(uiTranslations())` 注册。
-- Vetta 自定义 UI 文案集中在同一文件的 `messages` 字典中，并通过 `satisfies Record<DocsLanguage, DocsMessages>` 检查每种语言是否补齐。
+- Astravia 自定义 UI 文案集中在同一文件的 `messages` 字典中，并通过 `satisfies Record<DocsLanguage, DocsMessages>` 检查每种语言是否补齐。
 - 页面标题、描述和侧边栏名称必须来自对应语言目录的 MDX 与 `meta.json`；不再维护独立的英文标题映射。
 
 新增语言的顺序是：先准备完整的语言目录，再在 `lib/i18n.ts` 注册语言和 locale 元数据，补齐 `messages`、页面 MDX、`meta.json` 和内容检查，最后才将该语言加入公开支持列表。生产环境使用 `fallbackLanguage: null`，缺页直接暴露为不可用，不会混入其他语言内容。
@@ -82,13 +82,13 @@ Fumadocs 搜索索引由站点内容生成，因此需要通过构建后的站�
 
 公开站点由 Vercel Git 集成自动发布，不必再跑 `vercel deploy`。
 
-- 项目：`vetta-docs`，Root Directory 为 `apps/docs-site`
-- 生产分支：`dev` → https://vetta-docs.vercel.app
+- 项目：`astravia-docs`，Root Directory 为 `apps/docs-site`
+- 生产分支：`dev` → https://astravia-docs.vercel.app
 - PR 与其他分支：Preview 部署
 - 是否跳过未受影响的提交由 Vercel 项目自身的 monorepo 检测负责；不要添加依赖 Git 历史的 `ignoreCommand`，因为上传阶段会排除 `.git`
 
 GitHub Actions [`.github/workflows/docs-site.yml`](../../.github/workflows/docs-site.yml) 在同样的路径变更上跑 typecheck、测试和 `next build`，不重复执行 `vercel deploy`。
 
-默认 canonical 为 `https://docs.openvetta.com`；其他环境可通过 `DOCS_SITE_URL` 覆盖。
+默认 canonical 为 `https://docs.astravia.dev`；其他环境可通过 `DOCS_SITE_URL` 覆盖。
 
 仓库根 [`.vercelignore`](../../.vercelignore) 会作用于整个 Vercel 上传。顶层目录规则必须以 `/` 锚定，尤其不能使用未锚定的 `docs`：它会同时排除 `apps/docs-site/content/docs`，使构建表面成功但 sitemap、LLM 索引和全部文档路由为空。部署合同由 `test/deployment.test.ts` 守护。

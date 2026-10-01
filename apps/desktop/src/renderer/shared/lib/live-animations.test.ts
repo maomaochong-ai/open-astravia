@@ -64,7 +64,7 @@ describe("installLiveAnimations", () => {
 
 	it("attaches to indicators mounted later and cancels when they unmount or lose the class", async () => {
 		uninstall = installLiveAnimations();
-		const dot = mount("vetta-live-dot");
+		const dot = mount("astravia-live-dot");
 		const label = mount("todo-label-sheen");
 		await flush();
 		expect(created.map((entry) => entry.element)).toEqual([dot, label]);

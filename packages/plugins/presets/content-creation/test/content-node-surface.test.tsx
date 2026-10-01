@@ -2,11 +2,11 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { ContentNodeSurface } from "../src/node/ContentNodeSurface";
 
-vi.mock("@vetta-org/plugin-sdk", () => ({
+vi.mock("@astravia-org/plugin-sdk", () => ({
 	useTranslation: () => ({ locale: "en", t: (key: string) => key }),
 }));
 
-vi.mock("@vetta-org/ui", () => ({
+vi.mock("@astravia-org/ui", () => ({
 	Spin: ({ label }: { label?: string }) => <span data-testid="spin">{label}</span>,
 	Slider: ({ "aria-label": ariaLabel }: { "aria-label"?: string }) => <span data-slider aria-label={ariaLabel} />,
 }));

@@ -1,4 +1,4 @@
-import type { SessionEvent } from "@vetta/runtime-core";
+import type { SessionEvent } from "@astravia/runtime-core";
 
 export type SessionTurnNotificationOutcome = "completed" | "failed";
 

@@ -8,7 +8,7 @@ import { InputBar } from "./InputBar";
 
 const captured = vi.hoisted(() => ({ model: vi.fn() }));
 
-vi.mock("@vetta-org/theme-sdk", () => ({ useThemeComponent: (_slot: string, component: unknown) => component }));
+vi.mock("@astravia-org/theme-sdk", () => ({ useThemeComponent: (_slot: string, component: unknown) => component }));
 vi.mock("./input-bar/InputBarView", () => ({
 	InputBarView: ({ model, children }: { model: InputBarModel; children: ReactNode }) => {
 		captured.model(model);

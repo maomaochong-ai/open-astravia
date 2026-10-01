@@ -5,9 +5,9 @@ import (
 	"errors"
 	"sync"
 
-	"vetta-im-gateway/internal/hostproto"
-	"vetta-im-gateway/internal/transport/wechat"
-	"vetta-im-gateway/internal/transport/wechat/ilink"
+	"astravia-im-gateway/internal/hostproto"
+	"astravia-im-gateway/internal/transport/wechat"
+	"astravia-im-gateway/internal/transport/wechat/ilink"
 )
 
 // errAwaitingBind is the sentinel buildHostTransport returns when a

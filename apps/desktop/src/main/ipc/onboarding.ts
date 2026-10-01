@@ -1,5 +1,5 @@
-// Vetta Computer Use 授权引导窗 IPC：查/请求 helper 权限、拖拽授权、显示/关闭引导窗。
-// OPEN_PANE 复用 permissions.ts 已注册的同名全局通道（vetta:permissions:open-pane），
+// Astravia Computer Use 授权引导窗 IPC：查/请求 helper 权限、拖拽授权、显示/关闭引导窗。
+// OPEN_PANE 复用 permissions.ts 已注册的同名全局通道（astravia:permissions:open-pane），
 // 本文件不重复注册该 handler。
 
 import { existsSync } from "node:fs";
@@ -14,7 +14,7 @@ import { macTrayIconPath } from "../window-manager.js";
 const log = getAppLogger("onboarding-ipc");
 
 // 主窗口 → main：唤出引导窗。字面量与 preload/apis/appshot.ts 的 openOnboarding() 保持一致。
-const SHOW_ONBOARDING_CHANNEL = "vetta:onboarding:show";
+const SHOW_ONBOARDING_CHANNEL = "astravia:onboarding:show";
 
 function sendPermissionsUpdated(perms: HelperPermissions): void {
 	const win = getOnboardingWindow();

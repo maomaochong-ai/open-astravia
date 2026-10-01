@@ -2,8 +2,8 @@ import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { isAbsolute, join, relative } from "node:path";
-import { ACTION_RPC_ENDPOINT_FILE_ENV, VETTA_HOME_ENV } from "@vetta/action-rpc";
-import { parseWikiPage } from "@vetta/runtime-knowledge";
+import { ACTION_RPC_ENDPOINT_FILE_ENV, ASTRAVIA_HOME_ENV } from "@astravia/action-rpc";
+import { parseWikiPage } from "@astravia/runtime-knowledge";
 import { z } from "zod";
 import {
 	RUNTIME_CANARY_BATCH_PROMPT,
@@ -131,21 +131,21 @@ const knowledgeMonitorSchema = z
 try {
 	const statePath = readArgument("--state-file");
 	const state = runtimeCanaryHostStateSchema.parse(JSON.parse(await readFile(statePath, "utf8")));
-	const endpointFilePath = join(state.runtimeCanary.vettaHome, "action-server.json");
+	const endpointFilePath = join(state.runtimeCanary.astraviaHome, "action-server.json");
 	await waitFor(
 		() => existsSync(state.runtimeCanary.installedCliPath),
 		30_000,
-		"Timed out waiting for Desktop to install the standalone Vetta CLI",
+		"Timed out waiting for Desktop to install the standalone Astravia CLI",
 	);
 	if (!isOutside(repoRoot, state.runtimeCanary.installedCliPath)) {
 		throw new Error(`Runtime Canary CLI must be installed outside the repository: ${state.runtimeCanary.installedCliPath}`);
 	}
 	const invokeDebug: RuntimeCanaryDebugInvoker = async (debugId, input) =>
-		await runVettaDebug(
+		await runAstraviaDebug(
 			state.runtimeCanary.installedCliPath,
 			state.runtimeCanary.workspace,
 			endpointFilePath,
-			state.runtimeCanary.vettaHome,
+			state.runtimeCanary.astraviaHome,
 			debugId,
 			input,
 		);
@@ -242,11 +242,11 @@ try {
 	await rm(pendingRawPath, { force: true });
 
 	const restartedInvokeDebug: RuntimeCanaryDebugInvoker = async (debugId, input) =>
-		await runVettaDebug(
+		await runAstraviaDebug(
 			activeRestartedState.runtimeCanary.installedCliPath,
 			activeRestartedState.runtimeCanary.workspace,
 			endpointFilePath,
-			activeRestartedState.runtimeCanary.vettaHome,
+			activeRestartedState.runtimeCanary.astraviaHome,
 			debugId,
 			input,
 		);
@@ -361,7 +361,7 @@ try {
 		throw new Error("Restarted Runtime Canary prompts were not persisted to the conversation");
 	}
 	const monitor = knowledgeMonitorSchema.parse(
-		JSON.parse(await readFile(join(state.runtimeCanary.vettaHome, "app-monitor", "summary.json"), "utf8")),
+		JSON.parse(await readFile(join(state.runtimeCanary.astraviaHome, "app-monitor", "summary.json"), "utf8")),
 	);
 	if (
 		monitor.knowledgeBase.processingRounds !== 3 ||
@@ -449,11 +449,11 @@ async function waitForKnowledgeActionProvider(
 ): Promise<void> {
 	await waitFor(
 		async () => {
-			const result = await runVettaAction(
+			const result = await runAstraviaAction(
 				state.runtimeCanary.installedCliPath,
 				state.runtimeCanary.workspace,
 				endpointFilePath,
-				state.runtimeCanary.vettaHome,
+				state.runtimeCanary.astraviaHome,
 				["search", "knowledge"],
 			);
 			return result.code === 0 && result.stdout.includes("knowledge.manage");
@@ -467,11 +467,11 @@ async function startApprovedKnowledgeScan(
 	state: RuntimeCanaryHostState,
 	endpointFilePath: string,
 ): Promise<{ readonly result: Promise<ProcessResult> }> {
-	const result = runVettaAction(
+	const result = runAstraviaAction(
 		state.runtimeCanary.installedCliPath,
 		state.runtimeCanary.workspace,
 		endpointFilePath,
-		state.runtimeCanary.vettaHome,
+		state.runtimeCanary.astraviaHome,
 		["run", "knowledge.manage", JSON.stringify({ operation: "scan-now" })],
 	);
 	await approveNextKnowledgeAction(state.cdpPort);
@@ -522,8 +522,8 @@ async function installKnowledgeNotificationAudit(cdpPort: number, reset: boolean
 				record,
 				processingHandler,
 				statusesHandler,
-				offProcessing: window.vetta.knowledge.onProcessingChanged(processingHandler),
-				offStatuses: window.vetta.knowledge.onStatusesChanged(statusesHandler),
+				offProcessing: window.astravia.knowledge.onProcessingChanged(processingHandler),
+				offStatuses: window.astravia.knowledge.onStatusesChanged(statusesHandler),
 			};
 			return true;
 		})()`,
@@ -553,7 +553,7 @@ async function evaluateRenderer<T>(cdpPort: number, expression: string, schema: 
 			candidate.type === "page" && candidate.webSocketDebuggerUrl !== undefined && isMainRendererUrl(candidate.url),
 	);
 	const targetWebSocketUrl = target?.webSocketDebuggerUrl;
-	if (!targetWebSocketUrl) throw new Error("Vetta main Renderer CDP target was not found");
+	if (!targetWebSocketUrl) throw new Error("Astravia main Renderer CDP target was not found");
 
 	return await new Promise<T>((resolve, reject) => {
 		const requestId = 1;
@@ -622,7 +622,7 @@ function isMainRendererUrl(url: string): boolean {
 function parseSuccessfulKnowledgeScan(result: ProcessResult): z.infer<typeof knowledgeScanResultSchema> {
 	if (result.code !== 0) {
 		throw new Error(
-			`Vetta Knowledge Action failed with code ${result.code}\nstdout:\n${result.stdout}\nstderr:\n${result.stderr}`,
+			`Astravia Knowledge Action failed with code ${result.code}\nstdout:\n${result.stdout}\nstderr:\n${result.stderr}`,
 		);
 	}
 	const envelope = actionCliSuccessSchema.parse(JSON.parse(result.stdout));
@@ -639,17 +639,17 @@ function normalizeKnowledgeScan(
 	return { operation: result.operation, skipped: false };
 }
 
-async function runVettaAction(
+async function runAstraviaAction(
 	installedCliPath: string,
 	cwd: string,
 	endpointFilePath: string,
-	vettaHome: string,
+	astraviaHome: string,
 	args: string[],
 ): Promise<ProcessResult> {
 	return await runProcess(installedCliPath, ["action", ...args], cwd, {
 		...process.env,
 		[ACTION_RPC_ENDPOINT_FILE_ENV]: endpointFilePath,
-		[VETTA_HOME_ENV]: vettaHome,
+		[ASTRAVIA_HOME_ENV]: astraviaHome,
 	});
 }
 
@@ -759,7 +759,7 @@ function processingStates(
 }
 
 async function listKnowledgeSessionPaths(knowledgeRoot: string): Promise<string[]> {
-	const sessionDirectory = join(knowledgeRoot, "processing_records", ".vetta", "sessions");
+	const sessionDirectory = join(knowledgeRoot, "processing_records", ".astravia", "sessions");
 	if (!existsSync(sessionDirectory)) return [];
 	const entries = await readdir(sessionDirectory, { withFileTypes: true });
 	return entries
@@ -777,26 +777,26 @@ async function readJsonFile<T>(path: string, schema: z.ZodType<T>): Promise<T> {
 	return schema.parse(JSON.parse(await readFile(path, "utf8")));
 }
 
-async function runVettaDebug(
+async function runAstraviaDebug(
 	installedCliPath: string,
 	cwd: string,
 	endpointFilePath: string,
-	vettaHome: string,
+	astraviaHome: string,
 	debugId: string,
 	input: unknown,
 ): Promise<unknown> {
 	const result = await runProcess(installedCliPath, ["debug", "run", debugId, JSON.stringify(input)], cwd, {
 		...process.env,
 		[ACTION_RPC_ENDPOINT_FILE_ENV]: endpointFilePath,
-		[VETTA_HOME_ENV]: vettaHome,
+		[ASTRAVIA_HOME_ENV]: astraviaHome,
 	});
 	if (result.code !== 0) {
 		throw new Error(
-			`Vetta CLI failed with code ${result.code}\nstdout:\n${result.stdout}\nstderr:\n${result.stderr}`,
+			`Astravia CLI failed with code ${result.code}\nstdout:\n${result.stdout}\nstderr:\n${result.stderr}`,
 		);
 	}
 	const parsed = JSON.parse(result.stdout) as { ok?: unknown; result?: unknown };
-	if (parsed.ok !== true) throw new Error(`Vetta CLI returned an unsuccessful response: ${result.stdout}`);
+	if (parsed.ok !== true) throw new Error(`Astravia CLI returned an unsuccessful response: ${result.stdout}`);
 	return parsed.result;
 }
 

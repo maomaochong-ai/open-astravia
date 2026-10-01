@@ -1,3 +1,4 @@
+import type { CodingAgentPlanReviewRequest } from "@astravia/coding-agent/function-extensions";
 import type {
 	DesktopMcpElicitationRequest,
 	DesktopMcpTask,
@@ -5,7 +6,6 @@ import type {
 	DesktopUserQuestionRequest,
 } from "@preload/api";
 import { useMatches, useNavigate } from "@tanstack/react-router";
-import type { CodingAgentPlanReviewRequest } from "@vetta/coding-agent/function-extensions";
 import { getDefaultStore, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { FILE_EDITOR_SAVE_EVENT } from "@/shared/shortcuts";
@@ -202,12 +202,12 @@ export function useRootLayoutModel(): RootLayoutModel {
 	// 时报其 sessionPath，否则 null。主进程据此 + 窗口聚焦态做系统通知抑制判定。
 	useEffect(() => {
 		const sessionPath = currentPath === "/" ? activeSession?.sessionPath || null : null;
-		void window.vetta.notification.setForegroundSession(sessionPath);
+		void window.astravia.notification.setForegroundSession(sessionPath);
 	}, [currentPath, activeSession]);
 
 	// 点击系统通知 → 主进程已前台化窗口，这里把对应 session 打开并路由到聊天页。
 	useEffect(() => {
-		return window.vetta.notification.onNavigate((payload) => {
+		return window.astravia.notification.onNavigate((payload) => {
 			if (payload.type === "agent-turn-complete" || payload.type === "agent-question-pending") {
 				void openSession(payload.cwd, payload.sessionPath);
 				return;
@@ -220,7 +220,7 @@ export function useRootLayoutModel(): RootLayoutModel {
 
 	useEffect(
 		() =>
-			window.vetta.notification.onSound(({ soundId, volume }) => {
+			window.astravia.notification.onSound(({ soundId, volume }) => {
 				void playNotificationSound(soundId, volume);
 			}),
 		[],
@@ -229,7 +229,7 @@ export function useRootLayoutModel(): RootLayoutModel {
 	// 快捷面板回车 → 主进程已据 postSendBehavior 处理窗口聚焦，这里在默认「对话」目录下
 	// 新建会话并直接发送 prompt（复用通知路由同款 openSession + sendMessage）。
 	useEffect(() => {
-		return window.vetta.quickPanel.onRunPrompt(({ text }) => {
+		return window.astravia.quickPanel.onRunPrompt(({ text }) => {
 			const cwd = defaultConversationCwd;
 			if (!cwd || !text.trim()) return;
 			void (async () => {
@@ -245,7 +245,7 @@ export function useRootLayoutModel(): RootLayoutModel {
 
 	useEffect(() => {
 		const store = getDefaultStore();
-		const unsubCaptured = window.vetta.appshot.onCaptured((payload) => {
+		const unsubCaptured = window.astravia.appshot.onCaptured((payload) => {
 			store.set(appshotAttachmentAtom, {
 				id: payload.id,
 				appName: payload.appName,
@@ -264,7 +264,7 @@ export function useRootLayoutModel(): RootLayoutModel {
 			}
 			store.set(focusInputRequestAtom, (previous) => previous + 1);
 		});
-		const unsubCaptureError = window.vetta.appshot.onCaptureError((payload) => {
+		const unsubCaptureError = window.astravia.appshot.onCaptureError((payload) => {
 			const message =
 				payload.reason === "self-capture"
 					? i18n.t("chat:appshot.errorSelfCapture")
@@ -285,9 +285,9 @@ export function useRootLayoutModel(): RootLayoutModel {
 		() =>
 			syncPendingInteractions<DesktopUserQuestionRequest>(
 				{
-					onRequest: (handler) => window.vetta.session.onQuestionRequest(handler),
-					onResolved: (handler) => window.vetta.session.onQuestionResolved(handler),
-					listPending: () => window.vetta.session.listPendingQuestions(),
+					onRequest: (handler) => window.astravia.session.onQuestionRequest(handler),
+					onResolved: (handler) => window.astravia.session.onQuestionResolved(handler),
+					listPending: () => window.astravia.session.listPendingQuestions(),
 				},
 				setPendingQuestions,
 				(error) => console.warn("[RootLayout] sync pending questions failed", error),
@@ -300,9 +300,9 @@ export function useRootLayoutModel(): RootLayoutModel {
 		() =>
 			syncPendingInteractions<DesktopMcpElicitationRequest>(
 				{
-					onRequest: (handler) => window.vetta.session.onMcpElicitationRequest(handler),
-					onResolved: (handler) => window.vetta.session.onMcpElicitationResolved(handler),
-					listPending: () => window.vetta.session.listPendingMcpElicitations(),
+					onRequest: (handler) => window.astravia.session.onMcpElicitationRequest(handler),
+					onResolved: (handler) => window.astravia.session.onMcpElicitationResolved(handler),
+					listPending: () => window.astravia.session.listPendingMcpElicitations(),
 				},
 				setPendingMcpElicitations,
 				(error) => console.warn("[RootLayout] sync pending MCP elicitations failed", error),
@@ -315,9 +315,9 @@ export function useRootLayoutModel(): RootLayoutModel {
 		() =>
 			syncPendingInteractions<CodingAgentPlanReviewRequest>(
 				{
-					onRequest: (handler) => window.vetta.session.onPlanReviewRequest(handler),
-					onResolved: (handler) => window.vetta.session.onPlanReviewResolved(handler),
-					listPending: () => window.vetta.session.listPendingPlanReviews(),
+					onRequest: (handler) => window.astravia.session.onPlanReviewRequest(handler),
+					onResolved: (handler) => window.astravia.session.onPlanReviewResolved(handler),
+					listPending: () => window.astravia.session.listPendingPlanReviews(),
 				},
 				setPendingPlanReviews,
 				(error) => console.warn("[RootLayout] sync pending plan reviews failed", error),
@@ -333,10 +333,10 @@ export function useRootLayoutModel(): RootLayoutModel {
 			latest = tasks;
 			setMcpTasks(groupMcpTasksBySession(tasks));
 		};
-		const unsubscribe = window.vetta.session.onMcpTasksChanged((event: DesktopMcpTasksChangedEvent) => {
+		const unsubscribe = window.astravia.session.onMcpTasksChanged((event: DesktopMcpTasksChangedEvent) => {
 			if (active) apply(event.tasks);
 		});
-		void window.vetta.session
+		void window.astravia.session
 			.listMcpTasks()
 			.then((snapshot) => {
 				if (active && latest === undefined) apply(snapshot);
@@ -348,11 +348,15 @@ export function useRootLayoutModel(): RootLayoutModel {
 		};
 	}, [setMcpTasks]);
 
-	const grantQueueRef = useRef<Parameters<Parameters<typeof window.vetta.session.onSandboxGrantRequest>[0]>[0][]>([]);
+	const grantQueueRef = useRef<Parameters<Parameters<typeof window.astravia.session.onSandboxGrantRequest>[0]>[0][]>(
+		[],
+	);
 	const grantActiveRef = useRef(false);
 
 	useEffect(() => {
-		const showGrant = (request: Parameters<Parameters<typeof window.vetta.session.onSandboxGrantRequest>[0]>[0]) => {
+		const showGrant = (
+			request: Parameters<Parameters<typeof window.astravia.session.onSandboxGrantRequest>[0]>[0],
+		) => {
 			grantActiveRef.current = true;
 			const showNext = () => {
 				const nextRequest = grantQueueRef.current.shift();
@@ -369,25 +373,25 @@ export function useRootLayoutModel(): RootLayoutModel {
 				message: request.message,
 				sensitive: request.sensitive,
 				onConfirm: () => {
-					void window.vetta.session.respondToSandboxGrant(request.requestId, "allow_once");
+					void window.astravia.session.respondToSandboxGrant(request.requestId, "allow_once");
 					setSandboxPermissionDrawer(null);
 					showNext();
 				},
 				onCancel: () => {
-					void window.vetta.session.respondToSandboxGrant(request.requestId, "deny");
+					void window.astravia.session.respondToSandboxGrant(request.requestId, "deny");
 					setSandboxPermissionDrawer(null);
 					showNext();
 				},
 				onAllowSession: request.sensitive
 					? undefined
 					: () => {
-							void window.vetta.session.respondToSandboxGrant(request.requestId, "allow_session");
+							void window.astravia.session.respondToSandboxGrant(request.requestId, "allow_session");
 							setSandboxPermissionDrawer(null);
 							showNext();
 						},
 			});
 		};
-		return window.vetta.session.onSandboxGrantRequest((request) => {
+		return window.astravia.session.onSandboxGrantRequest((request) => {
 			if (grantActiveRef.current) {
 				grantQueueRef.current.push(request);
 				return;
@@ -404,12 +408,12 @@ export function useRootLayoutModel(): RootLayoutModel {
 		// 会话与自动化的归属由主进程按执行记录与任务配置算出；任务或记录变化后整体重拉，
 		// 保证会话组、换绑后的旧会话、被删除的会话都与主进程一致。
 		const refreshLinks = (): void => {
-			void window.vetta.scheduler.getSessionLinks().then((links) => {
+			void window.astravia.scheduler.getSessionLinks().then((links) => {
 				setAutomationSessionLinks(new Map(links.map((link) => [link.sessionPath, link])));
 			});
 		};
 		refreshLinks();
-		return window.vetta.scheduler.onTaskEvent((event) => {
+		return window.astravia.scheduler.onTaskEvent((event) => {
 			if (event.type !== "task.started") {
 				refreshLinks();
 				return;

@@ -1,4 +1,4 @@
-import type { CodingAgentAuthRuntime } from "@vetta/coding-agent/host-services";
+import type { CodingAgentAuthRuntime } from "@astravia/coding-agent/host-services";
 import { describe, expect, it, vi } from "vitest";
 import {
 	type CredentialRefProviders,

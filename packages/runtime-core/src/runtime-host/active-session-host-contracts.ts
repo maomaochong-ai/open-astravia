@@ -1,4 +1,4 @@
-import type { Message } from "@vetta/ai";
+import type { Message } from "@astravia/ai";
 import type { PromptRequest, SessionEvent } from "../contracts.js";
 import type { RuntimeObservationPublisher } from "../observation/index.js";
 import type { SessionExtensionEndpointToken } from "../session-extensions/contracts.js";

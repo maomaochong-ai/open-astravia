@@ -35,7 +35,7 @@ function Content({ approval }: { approval: ActiveActionApproval }): JSX.Element 
 	useEffect(() => {
 		if (!input?.id) return;
 		let cancelled = false;
-		void window.vetta.webhook.list().then((items) => {
+		void window.astravia.webhook.list().then((items) => {
 			if (!cancelled) setEndpoint(items.find((item) => item.id === input.id) ?? null);
 		}).catch(() => undefined);
 		return () => { cancelled = true; };

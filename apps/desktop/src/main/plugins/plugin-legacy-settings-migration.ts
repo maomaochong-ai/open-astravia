@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, renameSync } from "node:fs";
 import { join } from "node:path";
-import { getVettaHomePath } from "@vetta/action-rpc";
+import { getAstraviaHomePath } from "@astravia/action-rpc";
 import { readPluginFile, writePluginFile } from "./plugin-storage-service.js";
 
 /**
@@ -29,7 +29,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  * 已存在同名 storage 记录的插件跳过，避免覆盖插件自己写过的新配置。
  */
 export async function migrateLegacyPluginSettings(logger: MigrationLogger): Promise<void> {
-	const legacyPath = join(getVettaHomePath(), LEGACY_FILE_NAME);
+	const legacyPath = join(getAstraviaHomePath(), LEGACY_FILE_NAME);
 	if (!existsSync(legacyPath)) return;
 
 	let parsed: unknown;
@@ -56,7 +56,7 @@ export async function migrateLegacyPluginSettings(logger: MigrationLogger): Prom
 	}
 
 	try {
-		renameSync(legacyPath, join(getVettaHomePath(), MIGRATED_FILE_NAME));
+		renameSync(legacyPath, join(getAstraviaHomePath(), MIGRATED_FILE_NAME));
 	} catch (error) {
 		logger.warn("failed to archive legacy plugin settings file", error);
 		return;

@@ -1,4 +1,4 @@
-import type { PluginContext, PluginPermission } from "@vetta-org/plugin-sdk";
+import type { PluginContext, PluginPermission } from "@astravia-org/plugin-sdk";
 
 /** Probe outcome semantics for the security audit UI. */
 export type ProbeStatus =

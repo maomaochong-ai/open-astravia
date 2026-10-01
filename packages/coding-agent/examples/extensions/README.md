@@ -1,6 +1,6 @@
 # Extension Examples
 
-Coding Agent Extension 示例。扩展契约从 `@vetta/coding-agent` 导入。
+Coding Agent Extension 示例。扩展契约从 `@astravia/coding-agent` 导入。
 
 当前产品宿主为 print / RPC / SDK（交互式 TUI 已移除）。`ctx.ui` 方法在 RPC 宿主下会转发到 Desktop 等宿主；无 UI 宿主时多数为 no-op 或默认拒绝。
 
@@ -95,7 +95,7 @@ Coding Agent Extension 示例。扩展契约从 `@vetta/coding-agent` 导入。
 完整文档见 [docs/extensions.md](../../docs/extensions.md)。
 
 ```typescript
-import type { ExtensionAPI } from "@vetta/coding-agent";
+import type { ExtensionAPI } from "@astravia/coding-agent";
 import { Type } from "@sinclair/typebox";
 
 export default function (api: ExtensionAPI) {

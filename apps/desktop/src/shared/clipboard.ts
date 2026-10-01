@@ -1,8 +1,8 @@
 import type { PersistedImageResult } from "./image-cache.js";
 
 export const USER_MESSAGE_CLIPBOARD_VERSION = "1";
-export const USER_MESSAGE_CLIPBOARD_ATTRIBUTE = "data-vetta-user-message";
-export const USER_MESSAGE_CLIPBOARD_IMAGE_ATTRIBUTE = "data-vetta-clipboard-image";
+export const USER_MESSAGE_CLIPBOARD_ATTRIBUTE = "data-astravia-user-message";
+export const USER_MESSAGE_CLIPBOARD_IMAGE_ATTRIBUTE = "data-astravia-clipboard-image";
 
 export type UserMessageClipboardImageSource =
 	| { kind: "data-url"; dataUrl: string }
@@ -30,7 +30,7 @@ export interface UserMessageClipboardPasteResult {
 	images: PersistedImageResult[];
 }
 
-export function isVettaUserMessageClipboardHtml(html: string): boolean {
+export function isAstraviaUserMessageClipboardHtml(html: string): boolean {
 	return html.includes(`${USER_MESSAGE_CLIPBOARD_ATTRIBUTE}="${USER_MESSAGE_CLIPBOARD_VERSION}"`);
 }
 
@@ -53,8 +53,8 @@ function extensionForMimeType(mimeType: string): string {
 	}
 }
 
-export function extractVettaUserMessageClipboardImages(html: string): UserMessageClipboardEncodedImage[] {
-	if (!isVettaUserMessageClipboardHtml(html)) return [];
+export function extractAstraviaUserMessageClipboardImages(html: string): UserMessageClipboardEncodedImage[] {
+	if (!isAstraviaUserMessageClipboardHtml(html)) return [];
 	const imageAttributePattern = new RegExp(
 		`\\b${USER_MESSAGE_CLIPBOARD_IMAGE_ATTRIBUTE}(?:\\s*=\\s*(?:""|'')\\s*)?(?=\\s|/?>)`,
 		"i",

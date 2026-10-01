@@ -1,4 +1,4 @@
-import type { PluginCommandSpawnHandle, PluginContext } from "@vetta-org/plugin-sdk";
+import type { PluginCommandSpawnHandle, PluginContext } from "@astravia-org/plugin-sdk";
 import { ENGINE_FILES, engineFilesHash } from "./engine-files";
 
 export interface RemotionEngineServer {
@@ -49,7 +49,7 @@ async function resolveHome(ctx: PluginContext): Promise<string> {
 }
 
 async function engineRoot(ctx: PluginContext): Promise<string> {
-	return `${await resolveHome(ctx)}/.vetta/plugin-data/remotion-renderer/engine/${ENGINE_VERSION}`;
+	return `${await resolveHome(ctx)}/.astravia/plugin-data/remotion-renderer/engine/${ENGINE_VERSION}`;
 }
 
 async function isReady(ctx: PluginContext, root: string): Promise<boolean> {

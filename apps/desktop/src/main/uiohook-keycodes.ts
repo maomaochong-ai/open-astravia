@@ -5,7 +5,7 @@
 // napi_add_env_cleanup_hook(AddonCleanUp)。该 hook 读的是进程级静态
 // is_worker_running——它由 worker 线程里真正 start() 的那份 addon 置位，于是主线程
 // 退出时会替 worker「代跑」uiohook_worker_stop()，对早已失效的 CFRunLoopRef 调
-// CFRunLoopCopyCurrentMode，进程必然 SIGTRAP（macOS 弹「Vetta 意外退出」）。
+// CFRunLoopCopyCurrentMode，进程必然 SIGTRAP（macOS 弹「Astravia 意外退出」）。
 // 主线程只需要几个键码常量，没有任何理由把原生 addon 载进来。
 //
 // 数值与 uiohook-napi 的一致性由 uiohook-keycodes.test.ts 锁定。

@@ -10,7 +10,7 @@
 
 | 源 | 配置位置 | 谁拥有 |
 | --- | --- | --- |
-| **全局** | 用户 `~/.vetta/agent/mcp.json` | 用户设置页可编辑 |
+| **全局** | 用户 `~/.astravia/agent/mcp.json` | 用户设置页可编辑 |
 | **项目** | 项目侧 MCP 配置（若有） | 项目 |
 | **插件** | `plugin.json` → `agent.mcpServers` | 插件包；**不写**用户 mcp.json |
 
@@ -114,7 +114,7 @@
 
 ## 打包
 
-`vettaPluginFederation` 打包时，若声明了 `agent.mcpServers`：
+`astraviaPluginFederation` 打包时，若声明了 `agent.mcpServers`：
 
 - 字符串路径：打入该 `.mcp.json`
 - 约定目录 **`mcp/`** 一并打入
@@ -149,4 +149,4 @@ App 继承可信 Renderer 能力或 MCP 凭据。
 
 ## 参考实现
 
-- `packages/plugins/externals/cowart-vetta`：活动面板 + 插件内聚 MCP（画布工具）
+- `packages/plugins/externals/cowart-astravia`：活动面板 + 插件内聚 MCP（画布工具）

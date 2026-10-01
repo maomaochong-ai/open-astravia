@@ -2,27 +2,27 @@
 
 ## 所有权决策
 
-Pi Extension 兼容属于 `@vetta/coding-agent` 的产品扩展边界：
+Pi Extension 兼容属于 `@astravia/coding-agent` 的产品扩展边界：
 
 - 它理解 Pi 的 Extension、Package、事件和宿主语义；
-- 它把第三方协议转换成 Vetta 稳定产品合同；
-- `runtime-core`、`runtime-tools` 和 `@vetta/ai` 不应认识 Pi 包名或 Pi 类型。
-- `@vetta/coding-agent` 不新增 `pi-tui` 依赖；兼容 loader 也不为它提供 virtual module。
+- 它把第三方协议转换成 Astravia 稳定产品合同；
+- `runtime-core`、`runtime-tools` 和 `@astravia/ai` 不应认识 Pi 包名或 Pi 类型。
+- `@astravia/coding-agent` 不新增 `pi-tui` 依赖；兼容 loader 也不为它提供 virtual module。
 
-第一阶段不新增 workspace package。兼容代码放入 `packages/coding-agent/src/extensions/pi-compat/`，canonical contribution 放在 `src/extensions/contributions/`。当兼容层需要被多个产品包独立消费、或依赖集合明显独立后，再按新增包规范提取 `@vetta/pi-extension-compat`；现在提前拆包只会增加 exports/build/path-map 成本。
+第一阶段不新增 workspace package。兼容代码放入 `packages/coding-agent/src/extensions/pi-compat/`，canonical contribution 放在 `src/extensions/contributions/`。当兼容层需要被多个产品包独立消费、或依赖集合明显独立后，再按新增包规范提取 `@astravia/pi-extension-compat`；现在提前拆包只会增加 exports/build/path-map 成本。
 
 这不是恢复被禁止的通用 `src/compat/`：`pi-compat` 是一个有明确外部协议、单向转换和删除条件的 Anti-Corruption Layer，输出只能是当前 Extension contribution contract。
 
 ## Native-first 架构门槛
 
-`contributions/` 和 `lifecycle/` 先服务 Vetta native Extension，不依赖 `pi-compat`。实施顺序必须满足：
+`contributions/` 和 `lifecycle/` 先服务 Astravia native Extension，不依赖 `pi-compat`。实施顺序必须满足：
 
 1. native registration 从旧 Map 迁移到 draft/catalog；
 2. native Tool、Event、Provider 和 Context 合同通过回归测试；
 3. `runtime-core` 只增加产品无关的窄 Port，例如 Tool `validateInput`；
 4. Pi facade 最后编译到同一 contribution，不得直接调用 Runner、ModelRuntime 或 ToolRuntime 实现。
 
-完整原生能力分解见 [Vetta 原生能力先行方案](07-vetta-native-first.md)。如果某项 Pi capability 找不到已经批准的 native contribution/port，compatibility compiler 必须将其标成 unsupported，而不是在 adapter 内添加第二套实现。
+完整原生能力分解见 [Astravia 原生能力先行方案](07-astravia-native-first.md)。如果某项 Pi capability 找不到已经批准的 native contribution/port，compatibility compiler 必须将其标成 unsupported，而不是在 adapter 内添加第二套实现。
 
 ## 核心架构
 
@@ -35,16 +35,16 @@ flowchart LR
   N --> C["Compatibility compiler"]
   C --> R["Canonical ContributionSet"]
   R --> T["Atomic catalog transaction"]
-  T --> V["Vetta Extension Runtime ports"]
+  T --> V["Astravia Extension Runtime ports"]
 
-  X["Vetta native ExtensionAPI"] --> NA["Native registration adapter"]
+  X["Astravia native ExtensionAPI"] --> NA["Native registration adapter"]
   NA --> D
   H["Host capability profile"] --> C
   G["Generation scope"] --> A
   G --> T
 ```
 
-关键改进是让 Vetta native 与 Pi compat 共享 `ContributionDraft -> ContributionSet -> DynamicContributionCatalog`，而不是让 Pi adapter 直接修改现有多个 `Map`。这里复用 ADR-0062 的 Catalog；Extension adapter 只负责 identity/owner 到既有 source replacement 的转换，不实现第二个通用 Catalog。
+关键改进是让 Astravia native 与 Pi compat 共享 `ContributionDraft -> ContributionSet -> DynamicContributionCatalog`，而不是让 Pi adapter 直接修改现有多个 `Map`。这里复用 ADR-0062 的 Catalog；Extension adapter 只负责 identity/owner 到既有 source replacement 的转换，不实现第二个通用 Catalog。
 
 Native path 是事实源和行为基线：Pi path 只比 native path 多 module/schema/event shape 转换，不拥有 catalog transaction、Tool scheduler、prompt compiler、session transition 或 Provider lifecycle。
 
@@ -75,7 +75,7 @@ interface ContributionIdentity {
 
 IR 不出现 Pi `ExtensionAPI`、`pi-tui`、Pi `ModelRegistry`、TypeBox 1 `TSchema` 或具体 loader 对象。结构化交互是 context action port，不是可注册 UI contribution。
 
-为了保持 Vetta native Extension 的既有行为，`ShortcutContribution` 和 `HostPresentationContribution` 可以承载当前 Vetta host 的 shortcut/message renderer/tool renderer binding，但它们明确标记 `origin: "vetta-native"`，只由 native registration adapter 生成，不进入 Runtime Core。Pi compatibility compiler 没有生成这两种 contribution 的权限；Pi renderer 仍被剥离或拒绝。
+为了保持 Astravia native Extension 的既有行为，`ShortcutContribution` 和 `HostPresentationContribution` 可以承载当前 Astravia host 的 shortcut/message renderer/tool renderer binding，但它们明确标记 `origin: "astravia-native"`，只由 native registration adapter 生成，不进入 Runtime Core。Pi compatibility compiler 没有生成这两种 contribution 的权限；Pi renderer 仍被剥离或拒绝。
 
 `ContributionSet` 必须是不可变快照；动态注册通过新 transaction 生成新 revision，而不是原地修改已发布对象。执行中的 Turn 继续持有本次需要的稳定 binding，下一 model call 观察新 revision。
 
@@ -87,7 +87,7 @@ packages/coding-agent/src/extensions/
     contracts.ts                 # Canonical discriminated unions
     source-info.ts               # 统一来源与 identity
     draft.ts                     # 注册阶段可变 draft，仅本 generation 可写
-    native-registration.ts       # 现有 Vetta ExtensionAPI -> draft
+    native-registration.ts       # 现有 Astravia ExtensionAPI -> draft
     normalize.ts                 # 名称、Schema、默认值与 JSON-safe 归一化
     compiler.ts                  # draft + host profile -> immutable set/report
     catalog-adapter.ts           # typed contribution -> ADR-0062 Catalog source replacement
@@ -133,7 +133,7 @@ packages/coding-agent/src/extensions/
 
     events/
       definitions.ts             # 显式事件兼容表
-      projectors.ts              # Vetta event -> Pi event
+      projectors.ts              # Astravia event -> Pi event
       result-folders.ts          # handler result chaining/short-circuit
 
     schema/
@@ -170,7 +170,7 @@ typebox[/compile|/value]
 @sinclair/typebox[/compile|/value]
 ```
 
-`@earendil-works/pi-tui`、`@mariozechner/pi-tui` 及其 subpath 明确不在映射表中，遇到 runtime import 时返回 `PI_COMPAT_EXCLUDED_TUI_IMPORT`。Pi AI 的 `/oauth`、`/providers/all` 也不在首个 profile。每个其他 specifier 的 facade 独立声明支持 exports；未支持 export 应在调用时抛稳定 `PI_COMPAT_UNSUPPORTED_EXPORT`，不能把 Vetta 包根整体伪装成 Pi。
+`@earendil-works/pi-tui`、`@mariozechner/pi-tui` 及其 subpath 明确不在映射表中，遇到 runtime import 时返回 `PI_COMPAT_EXCLUDED_TUI_IMPORT`。Pi AI 的 `/oauth`、`/providers/all` 也不在首个 profile。每个其他 specifier 的 facade 独立声明支持 exports；未支持 export 应在调用时抛稳定 `PI_COMPAT_UNSUPPORTED_EXPORT`，不能把 Astravia 包根整体伪装成 Pi。
 
 ### Registration Draft
 
@@ -241,7 +241,7 @@ interface PiEventDefinition {
 
 ### Context Facades
 
-Pi Extension 看到的是兼容 facade，不是 Vetta 内部对象：
+Pi Extension 看到的是兼容 facade，不是 Astravia 内部对象：
 
 - `ReadonlySessionManagerFacade` 从 canonical conversation/session view 投影；
 - `ModelRegistryFacade` 提供查询和 credential resolution，写入走 Provider contribution；
@@ -251,12 +251,12 @@ Pi Extension 看到的是兼容 facade，不是 Vetta 内部对象：
 
 ## 公开入口
 
-先从 `@vetta/coding-agent/extensions` 兼容演进 Vetta native contract：Tool input normalization/prompt metadata、原生状态事件、Provider unregister、generation/source diagnostics。现有字段保持兼容，新字段均为 optional 或新增方法，并检查所有宿主消费者。
+先从 `@astravia/coding-agent/extensions` 兼容演进 Astravia native contract：Tool input normalization/prompt metadata、原生状态事件、Provider unregister、generation/source diagnostics。现有字段保持兼容，新字段均为 optional 或新增方法，并检查所有宿主消费者。
 
-Pi 接入使用显式 `@vetta/coding-agent/extensions/pi-compat` subpath，避免 native Extension loader/API 意外获得 Pi facade。该入口只导出窄类型与显式 loader：
+Pi 接入使用显式 `@astravia/coding-agent/extensions/pi-compat` subpath，避免 native Extension loader/API 意外获得 Pi facade。该入口只导出窄类型与显式 loader：
 
-- `@vetta/coding-agent/extensions/pi-compat`：显式 Pi loader、兼容状态、报告、inspect options；
-- `@vetta/coding-agent/bootstrap`：在现有 `extensionRequirements` 中携带 origin/profile；
+- `@astravia/coding-agent/extensions/pi-compat`：显式 Pi loader、兼容状态、报告、inspect options；
+- `@astravia/coding-agent/bootstrap`：在现有 `extensionRequirements` 中携带 origin/profile；
 - SDK create options：只增加 `piCompatibility?: "off" | "strict" | "host-aware"`，默认是否开启由产品决策明确指定。
 
 不要公开底层 module loader、draft、compiler class 或 Pi facade 具体实现；只公开按 profile 加载并返回报告的高层入口。
@@ -266,7 +266,7 @@ Pi 接入使用显式 `@vetta/coding-agent/extensions/pi-compat` subpath，避�
 ```text
 pi-compat -> extension contributions -> runtime-contracts
           -> resources contracts
-          -> @vetta/ai public values（仅 adapter）
+          -> @astravia/ai public values（仅 adapter）
 
 composition -> pi-compat factory + catalog adapter
 runtime-*  -X-> pi-compat

@@ -12,7 +12,7 @@ import (
 	"sort"
 	"strings"
 
-	"vetta-ssh-helper/internal/protocol"
+	"astravia-ssh-helper/internal/protocol"
 )
 
 // Entry describes one filesystem object. Kind never follows symlinks unless the
@@ -228,7 +228,7 @@ func fsWriteFile(p writeFileParams) (any, *protocol.Error) {
 		}
 	}
 	// Same directory, so the rename stays on one filesystem and is atomic.
-	temp, err := os.CreateTemp(filepath.Dir(target), "."+filepath.Base(target)+".vetta-tmp-*")
+	temp, err := os.CreateTemp(filepath.Dir(target), "."+filepath.Base(target)+".astravia-tmp-*")
 	if err != nil {
 		return nil, mapFsError(err)
 	}

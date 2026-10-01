@@ -1,4 +1,4 @@
-import { type PluginToolCallSlotProps, useTranslation } from "@vetta-org/plugin-sdk";
+import { type PluginToolCallSlotProps, useTranslation } from "@astravia-org/plugin-sdk";
 import { ChartVisual } from "./ChartCard";
 
 type ChartArgs = {

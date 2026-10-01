@@ -1,4 +1,4 @@
-import type { ConversationDocumentEntry } from "@vetta/runtime-core/conversation";
+import type { ConversationDocumentEntry } from "@astravia/runtime-core/conversation";
 import { describe, expect, it } from "vitest";
 import { documentFromFile, parseConversationFile } from "../../src/conversation/conversation-file-codec.js";
 import { CONVERSATION_STORAGE_ERROR_CODES, ConversationStorageError } from "../../src/conversation/index.js";

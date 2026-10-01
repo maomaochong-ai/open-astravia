@@ -135,7 +135,7 @@ export function useSignalBindDialogModel({
 
 	const startBind = useCallback(async () => {
 		setState({ phase: "starting", qrAttempt: 0 });
-		const unsub = await window.vetta.im.signal.subscribeBind((event: ImSignalBindEvent) => {
+		const unsub = await window.astravia.im.signal.subscribeBind((event: ImSignalBindEvent) => {
 			switch (event.kind) {
 				case "qr":
 					setState((prev) => ({
@@ -174,7 +174,7 @@ export function useSignalBindDialogModel({
 		});
 		subUnsubRef.current = unsub;
 
-		const result = await window.vetta.im.signal.startBind();
+		const result = await window.astravia.im.signal.startBind();
 		if (!result.ok) {
 			setState({ phase: "failed", qrAttempt: 0, error: result.error ?? t("bindStartFailed") });
 		}

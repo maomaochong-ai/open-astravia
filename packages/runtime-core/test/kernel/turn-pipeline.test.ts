@@ -1,4 +1,4 @@
-import type { Api, AssistantMessage, Message, Model, UserMessage } from "@vetta/ai";
+import type { Api, AssistantMessage, Message, Model, UserMessage } from "@astravia/ai";
 import { describe, expect, it } from "vitest";
 import {
 	type ConversationDocument,

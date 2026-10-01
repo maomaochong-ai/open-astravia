@@ -19,7 +19,7 @@ export interface NodeSshProcessRunnerOptions {
  *
  * 选系统 ssh 而不是 ssh2 这类纯 JS 实现：`~/.ssh/config` 的 Include、Match、
  * ProxyJump、ProxyCommand、IdentityAgent、FIDO 安全密钥、GSSAPI 全部由它原生支持。
- * 用户只要 `ssh host` 能连上，Vetta 就能连上；自己实现这套等于长期追着 OpenSSH 的
+ * 用户只要 `ssh host` 能连上，Astravia 就能连上；自己实现这套等于长期追着 OpenSSH 的
  * 行为打补丁。
  */
 export function createNodeSshProcessRunner(options: NodeSshProcessRunnerOptions = {}): SshProcessRunner {

@@ -5,8 +5,8 @@ import {
 	CODING_AGENT_GOAL_UPDATE,
 	type CodingAgentGoalSnapshot,
 	type CodingAgentGoalState,
-} from "@vetta/coding-agent/session-extensions";
-import type { RuntimeHost } from "@vetta/runtime-core";
+} from "@astravia/coding-agent/session-extensions";
+import type { RuntimeHost } from "@astravia/runtime-core";
 
 type GoalRuntimeHost = Pick<RuntimeHost, "abort" | "continue" | "getState" | "invokeSessionExtension">;
 

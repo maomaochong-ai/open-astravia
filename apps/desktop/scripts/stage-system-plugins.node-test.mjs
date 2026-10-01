@@ -68,20 +68,20 @@ test("development and packaging scripts pin their system plugin profiles without
 
 	assert.match(
 		packageJson.scripts["build:presets:dev"],
-		/VETTA_SYSTEM_PLUGIN_PROFILE=development/,
+		/ASTRAVIA_SYSTEM_PLUGIN_PROFILE=development/,
 	);
-	assert.match(packageJson.scripts["build:pack"], /VETTA_SYSTEM_PLUGIN_PROFILE=production/);
-	assert.match(packageJson.scripts["prepare:pack"], /VETTA_SYSTEM_PLUGIN_PROFILE=production/);
+	assert.match(packageJson.scripts["build:pack"], /ASTRAVIA_SYSTEM_PLUGIN_PROFILE=production/);
+	assert.match(packageJson.scripts["prepare:pack"], /ASTRAVIA_SYSTEM_PLUGIN_PROFILE=production/);
 	assert.match(packageJson.scripts.build, /bun run build:presets:prebuilt/);
-	assert.match(packageJson.scripts["build:presets:prebuilt"], /VETTA_SKIP_PLUGIN_TOOLING_BUILD=1/);
+	assert.match(packageJson.scripts["build:presets:prebuilt"], /ASTRAVIA_SKIP_PLUGIN_TOOLING_BUILD=1/);
 	const productionWorkspaceBuild = packageJson.scripts["prepare:workspace"];
 	const developmentWorkspaceBuild = packageJson.scripts["prepare:workspace:dev"];
 	for (const script of [productionWorkspaceBuild, developmentWorkspaceBuild]) {
 		assert.match(script, /^turbo run build /);
 		assert.match(script, /--cwd \.\.\/\.\./);
-		assert.match(script, /--filter=@vetta\/desktop\.\.\./);
-		assert.match(script, /--filter=@vetta-org\/plugin-vite\.\.\./);
-		assert.match(script, /--filter=!@vetta\/desktop/);
+		assert.match(script, /--filter=@astravia\/desktop\.\.\./);
+		assert.match(script, /--filter=@astravia-org\/plugin-vite\.\.\./);
+		assert.match(script, /--filter=!@astravia\/desktop/);
 		assert.doesNotMatch(script, /--env-mode=loose/);
 	}
 	assert.match(productionWorkspaceBuild, /--force/);

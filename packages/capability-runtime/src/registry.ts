@@ -9,7 +9,7 @@ import {
 	type CapabilityToken,
 	capabilityPublisherFromId,
 	type Disposable,
-} from "@vetta-org/capability-sdk";
+} from "@astravia-org/capability-sdk";
 import type { CapabilityProviderBinding } from "./provider.js";
 
 interface ProviderEntry {
@@ -56,10 +56,10 @@ export class CapabilityRegistry {
 		options: CapabilityModuleRegistrationOptions = {},
 	): Disposable {
 		const trust = options.trust ?? CAPABILITY_MODULE_TRUST_LEVELS.EXTERNAL;
-		if (module.publisher === CAPABILITY_PUBLISHERS.VETTA && trust !== CAPABILITY_MODULE_TRUST_LEVELS.BUILT_IN) {
+		if (module.publisher === CAPABILITY_PUBLISHERS.ASTRAVIA && trust !== CAPABILITY_MODULE_TRUST_LEVELS.BUILT_IN) {
 			throw new CapabilityError(
 				CAPABILITY_ERROR_CODES.RESERVED_PUBLISHER,
-				`Capability publisher ${CAPABILITY_PUBLISHERS.VETTA} is reserved for built-in modules`,
+				`Capability publisher ${CAPABILITY_PUBLISHERS.ASTRAVIA} is reserved for built-in modules`,
 			);
 		}
 

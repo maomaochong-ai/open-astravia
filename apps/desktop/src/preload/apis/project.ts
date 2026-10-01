@@ -2,16 +2,16 @@ import type { IpcRenderer } from "electron";
 import type { DesktopApi } from "../api.js";
 
 const CHANNELS = {
-	EXPORT: "vetta:project:export",
-	IMPORT: "vetta:project:import",
-	READ_META: "vetta:project:read-meta",
-	LIST: "vetta:projects:list",
-	CREATE: "vetta:projects:create",
-	OPEN: "vetta:projects:open",
-	RENAME: "vetta:projects:rename",
-	ARCHIVE: "vetta:projects:archive",
-	UNARCHIVE: "vetta:projects:unarchive",
-	REMOVE: "vetta:projects:remove",
+	EXPORT: "astravia:project:export",
+	IMPORT: "astravia:project:import",
+	READ_META: "astravia:project:read-meta",
+	LIST: "astravia:projects:list",
+	CREATE: "astravia:projects:create",
+	OPEN: "astravia:projects:open",
+	RENAME: "astravia:projects:rename",
+	ARCHIVE: "astravia:projects:archive",
+	UNARCHIVE: "astravia:projects:unarchive",
+	REMOVE: "astravia:projects:remove",
 } as const;
 
 export function createProjectApi(ipc: IpcRenderer): Pick<DesktopApi, "project"> {

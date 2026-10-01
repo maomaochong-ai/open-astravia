@@ -67,7 +67,7 @@ Sentry Electron 的跨进程、原生崩溃和 source map 能力，以及 PostHo
 - Sentry/PostHog 专用 adapter；
 - release 构建脚本。
 
-领域组件、hook 和 service 只调用 Vetta 自有接口。
+领域组件、hook 和 service 只调用 Astravia 自有接口。
 
 ### 决策 B：错误与产品分析使用独立契约
 
@@ -88,7 +88,7 @@ PostHog marker 不包含 message、stacktrace 或业务 payload；它不是第�
 
 ### 决策 D：PostHog Replay 默认最大隐私
 
-Vetta 会展示源码、终端、聊天、prompt、模型输出和本机路径。Replay 必须默认：
+Astravia 会展示源码、终端、聊天、prompt、模型输出和本机路径。Replay 必须默认：
 
 - 遮罩全部 input；
 - 遮罩全部文本；
@@ -98,9 +98,9 @@ Vetta 会展示源码、终端、聊天、prompt、模型输出和本机路径�
 
 如果最大隐私下 Replay 价值不足，优先增加结构化产品事件，不降低隐私标准。
 
-### 决策 E：共同标识由 Vetta 定义
+### 决策 E：共同标识由 Astravia 定义
 
-不能用 PostHog distinct_id、PostHog session ID 或 Sentry event ID 作为 Vetta 的主身份。Vetta 定义：
+不能用 PostHog distinct_id、PostHog session ID 或 Sentry event ID 作为 Astravia 的主身份。Astravia 定义：
 
 - anonymousUserId；
 - appSessionId；

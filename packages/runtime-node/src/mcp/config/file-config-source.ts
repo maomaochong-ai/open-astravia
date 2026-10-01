@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, statSync } from "node:fs";
-import type { McpConfigSource } from "@vetta/runtime-mcp/config";
+import type { McpConfigSource } from "@astravia/runtime-mcp/config";
 import type { McpConfig, McpServerConfig } from "../protocol/index.js";
 import { isHttpServerConfig } from "../protocol/index.js";
 import { parseMcpConfig } from "./schemas.js";

@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 
+import { parseCapabilityJsonValue } from "@astravia-org/capability-sdk";
+import type { PluginNetworkResponse } from "@astravia-org/plugin-sdk";
 import type { InstalledPlugin } from "@preload/api";
-import { parseCapabilityJsonValue } from "@vetta-org/capability-sdk";
-import type { PluginNetworkResponse } from "@vetta-org/plugin-sdk";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createPluginNetworkApi } from "./plugin-network-api";
 
@@ -20,7 +20,7 @@ const plugin = {
 describe("plugin network API", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		Object.defineProperty(window, "vetta", {
+		Object.defineProperty(window, "astravia", {
 			configurable: true,
 			value: { plugins: { networkRequest } },
 		});

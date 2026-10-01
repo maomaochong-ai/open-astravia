@@ -167,8 +167,8 @@ return <SidebarRenderer model={model} onOpenSession={props.onOpenSession} />;
 
 已落地点：
 
-- `@vetta-org/theme-sdk/storage`：`useThemeStorage`、`useThemeStorageValue`。
-- desktop host + preload IPC + `~/.vetta/desktop-app/themes/<themeId>/data.json`。
+- `@astravia-org/theme-sdk/storage`：`useThemeStorage`、`useThemeStorageValue`。
+- desktop host + preload IPC + `~/.astravia/desktop-app/themes/<themeId>/data.json`。
 
 暂不做：
 
@@ -180,7 +180,7 @@ return <SidebarRenderer model={model} onOpenSession={props.onOpenSession} />;
 
 远程主题包应在本地 API 稳定后再接入。
 
-主题包未来不是通过 npm 安装进应用，而是在应用运行时动态加载。主题作者可以在开发期依赖 `@vetta-org/theme-sdk` 的类型和 `@vetta-org/theme-ui` 的可选组件；运行时由应用主题加载器提供这些 shared singleton。
+主题包未来不是通过 npm 安装进应用，而是在应用运行时动态加载。主题作者可以在开发期依赖 `@astravia-org/theme-sdk` 的类型和 `@astravia-org/theme-ui` 的可选组件；运行时由应用主题加载器提供这些 shared singleton。
 
 主题包需要 manifest：
 
@@ -199,8 +199,8 @@ interface ThemePackageManifest {
 运行时要求：
 
 - React 单例共享。
-- `@vetta-org/theme-sdk` 单例共享。
-- 可选 `@vetta-org/theme-ui` 单例共享。
+- `@astravia-org/theme-sdk` 单例共享。
+- 可选 `@astravia-org/theme-ui` 单例共享。
 - SDK 版本检查。
 - ErrorBoundary。
 - 加载失败回退默认 UI。

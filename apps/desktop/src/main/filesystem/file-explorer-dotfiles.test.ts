@@ -16,7 +16,7 @@ afterEach(async () => {
 
 describe("file explorer dotfiles", () => {
 	it("lists dotfiles and folders, including after create and rename, without reading their contents", async () => {
-		directory = await mkdtemp(join(tmpdir(), "vetta-explorer-dotfiles-"));
+		directory = await mkdtemp(join(tmpdir(), "astravia-explorer-dotfiles-"));
 		allowProjectRoot(directory);
 		await mkdir(join(directory, ".github"));
 		await writeFile(join(directory, ".env"), "fixture-only");

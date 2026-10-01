@@ -3,13 +3,13 @@
 ## 1. 目标
 
 第 100 轮已经将 MCP Client、stdio 子进程和 HTTP SDK Transport 迁入
-`@vetta/runtime-mcp`，但 OAuth SDK Provider 仍直接依赖 coding-agent 的文件函数和
+`@astravia/runtime-mcp`，但 OAuth SDK Provider 仍直接依赖 coding-agent 的文件函数和
 `getAgentDir()`。这使通用 OAuth 状态机无法独立组合或使用内存 Store 测试。
 
 本轮目标是拆分三类职责：
 
 - runtime-mcp 拥有 OAuth 状态合同、Store Port、显式目录文件适配器和 SDK Provider；
-- coding-agent 继续决定 Vetta Agent 数据目录，并保留全部旧导出；
+- coding-agent 继续决定 Astravia Agent 数据目录，并保留全部旧导出；
 - 浏览器、localhost callback、Device Flow、Manager 和 Desktop IPC 保持不动。
 
 ## 2. 迁移前行为基线
@@ -82,7 +82,7 @@ Provider 和内存 Store 接收已经类型化的状态，不重复执行 TypeBo
 - pretty JSON 与结尾换行；
 - access/refresh token 检测。
 
-产品层仍负责把 `<agentDir>/mcp-auth` 作为目录传入，因此 runtime-mcp 没有获得 Vetta 用户目录策略。
+产品层仍负责把 `<agentDir>/mcp-auth` 作为目录传入，因此 runtime-mcp 没有获得 Astravia 用户目录策略。
 
 ## 6. SDK Provider 迁移
 
@@ -97,8 +97,8 @@ Provider 和内存 Store 接收已经类型化的状态，不重复执行 TypeBo
 - credential scope 失效；
 - authorization redirect 回调委托。
 
-审计中发现最初迁移版本在 runtime Provider 内保留了默认客户端名 `Vetta`。这会造成产品身份反向
-渗入通用包，因此改为要求显式 `clientName`。coding-agent 兼容包装继续默认传入 `Vetta`，旧行为不变。
+审计中发现最初迁移版本在 runtime Provider 内保留了默认客户端名 `Astravia`。这会造成产品身份反向
+渗入通用包，因此改为要求显式 `clientName`。coding-agent 兼容包装继续默认传入 `Astravia`，旧行为不变。
 
 ## 7. Coding Agent 兼容层
 
@@ -145,7 +145,7 @@ installed standalone CLI artifact: 1 test passed
 ```
 
 完整检查覆盖 Biome、monorepo `tsgo`、CLI 独立类型检查、Desktop `tsc`、Admin `tsc -b`、包边界、
-构建顺序和 standalone CLI build guard。安装态测试使用仓库已有 Vetta CLI，在两个独立可执行进程间
+构建顺序和 standalone CLI build guard。安装态测试使用仓库已有 Astravia CLI，在两个独立可执行进程间
 创建并恢复同一会话，验证新增 runtime-mcp export 已进入实际产物。
 
 ## 10. 结果与下一步

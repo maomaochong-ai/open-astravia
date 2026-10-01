@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"vetta-im-gateway/internal/hostclient"
+	"astravia-im-gateway/internal/hostclient"
 )
 
 type bufferWriteCloser struct {

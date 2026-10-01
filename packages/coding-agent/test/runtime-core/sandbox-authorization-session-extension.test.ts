@@ -1,5 +1,8 @@
-import type { SandboxPermissionRequest } from "@vetta/runtime-core/sandbox";
-import { SessionExtensionComposition, SessionExtensionFunctionRegistry } from "@vetta/runtime-core/session-extensions";
+import type { SandboxPermissionRequest } from "@astravia/runtime-core/sandbox";
+import {
+	SessionExtensionComposition,
+	SessionExtensionFunctionRegistry,
+} from "@astravia/runtime-core/session-extensions";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CODING_AGENT_SANDBOX_AUTHORIZATION_FUNCTION } from "../../src/execution/sandbox/authorization-contract.js";
 import {

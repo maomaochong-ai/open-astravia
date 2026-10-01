@@ -1,5 +1,5 @@
-import type { ToolPhase } from "@vetta/agent-core";
-import type { AssistantMessage, UserMessage } from "@vetta/ai";
+import type { ToolPhase } from "@astravia/agent-core";
+import type { AssistantMessage, UserMessage } from "@astravia/ai";
 import type { PromptAttachmentRef } from "../contracts.js";
 import type { ContextCompactionRecord, StoredSessionEvent } from "../kernel/contracts.js";
 import type { RuntimeMessageOrigin } from "../runtime-execution-observation.js";

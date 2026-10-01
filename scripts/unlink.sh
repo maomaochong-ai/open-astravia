@@ -4,7 +4,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 PACKAGE_DIR="$ROOT_DIR/packages/coding-agent"
-PACKAGE_NAME="@vetta/coding-agent"
+PACKAGE_NAME="@astravia/coding-agent"
 BUN_BIN="${BUN_BIN:-bun}"
 
 if [[ ! -d "$PACKAGE_DIR" ]]; then

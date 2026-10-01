@@ -29,7 +29,7 @@ const REGISTRY: ReadonlyArray<readonly [selector: string, spec: LiveAnimationSpe
 	// 运行中的工具名：1 ↔ 0.55 呼吸。
 	[".tool-call-shimmer-text", { keyframes: [{ opacity: 1 }, { opacity: 0.55 }, { opacity: 1 }] }],
 	// 运行中的小圆点：1 ↔ 0.4 呼吸。
-	[".vetta-live-dot", { keyframes: [{ opacity: 1 }, { opacity: 0.4 }, { opacity: 1 }] }],
+	[".astravia-live-dot", { keyframes: [{ opacity: 1 }, { opacity: 0.4 }, { opacity: 1 }] }],
 	// 进行中待办标签：1 ↔ 0.6 呼吸。
 	[".todo-label-sheen", { keyframes: [{ opacity: 1 }, { opacity: 0.6 }, { opacity: 1 }] }],
 	// 进行中待办的转弧：16 步一圈。

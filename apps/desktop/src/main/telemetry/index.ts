@@ -16,8 +16,8 @@ let posthogClient: PostHog | null = null;
 
 export function initializeMainTelemetry(options: { enabled: boolean }): void {
 	if (initialized || !options.enabled) return;
-	const posthogKey = readEnv("VETTA_POSTHOG_KEY");
-	const sentryEnabled = readEnv("VETTA_SENTRY_DSN") !== undefined;
+	const posthogKey = readEnv("ASTRAVIA_POSTHOG_KEY");
+	const sentryEnabled = readEnv("ASTRAVIA_SENTRY_DSN") !== undefined;
 	if (!posthogKey && !sentryEnabled) return;
 	initialized = true;
 	initializeMainErrorMonitoring();
@@ -25,7 +25,7 @@ export function initializeMainTelemetry(options: { enabled: boolean }): void {
 	if (posthogKey) {
 		try {
 			posthogClient = new PostHog(posthogKey, {
-				host: readEnv("VETTA_POSTHOG_HOST") ?? DEFAULT_POSTHOG_HOST,
+				host: readEnv("ASTRAVIA_POSTHOG_HOST") ?? DEFAULT_POSTHOG_HOST,
 				enableExceptionAutocapture: false,
 				flushInterval: 10_000,
 				privacyMode: true,

@@ -17,16 +17,16 @@ import { getStoredSidebarStyle, type SidebarStyle } from "../theme/sidebar-style
 // ─── i18n ───
 // 初值取主进程同步暴露的语言状态（preference + 解析后 language）。
 // 切换写主进程，见 useLanguage。
-const initialState = typeof window !== "undefined" ? window.vetta?.i18n?.initialState : undefined;
+const initialState = typeof window !== "undefined" ? window.astravia?.i18n?.initialState : undefined;
 const initialPreference: LanguagePreference = isLanguagePreference(initialState?.preference)
 	? initialState.preference
-	: isLanguagePreference(typeof window !== "undefined" ? window.vetta?.i18n?.initialLanguagePreference : undefined)
-		? (window.vetta!.i18n.initialLanguagePreference as LanguagePreference)
+	: isLanguagePreference(typeof window !== "undefined" ? window.astravia?.i18n?.initialLanguagePreference : undefined)
+		? (window.astravia!.i18n.initialLanguagePreference as LanguagePreference)
 		: DEFAULT_LANGUAGE_PREFERENCE;
 const initialResolved: AppLanguage = isSupportedLanguage(initialState?.language)
 	? initialState.language
-	: isSupportedLanguage(typeof window !== "undefined" ? window.vetta?.i18n?.initialLanguage : undefined)
-		? (window.vetta!.i18n.initialLanguage as AppLanguage)
+	: isSupportedLanguage(typeof window !== "undefined" ? window.astravia?.i18n?.initialLanguage : undefined)
+		? (window.astravia!.i18n.initialLanguage as AppLanguage)
 		: DEFAULT_LANGUAGE;
 
 /** 用户语言偏好（含 system）；设置/引导页选中态。 */
@@ -72,10 +72,10 @@ export type SettingsTab =
 // ─── Theme ───
 
 export type ThemeMode = "light" | "dark" | "auto";
-export const themeModeAtom = atom<ThemeMode>((localStorage.getItem("vetta-theme") as ThemeMode) || "dark");
+export const themeModeAtom = atom<ThemeMode>((localStorage.getItem("astravia-theme") as ThemeMode) || "dark");
 export const resolvedThemeAtom = atom<"light" | "dark">("dark");
 export const themeNameAtom = atom<string>(
-	resolveThemeId(localStorage.getItem("vetta-color-theme") || DEFAULT_THEME_ID),
+	resolveThemeId(localStorage.getItem("astravia-color-theme") || DEFAULT_THEME_ID),
 );
 export type { CursorStyle };
 export const cursorStyleAtom = atom<CursorStyle>(getStoredCursorStyle());

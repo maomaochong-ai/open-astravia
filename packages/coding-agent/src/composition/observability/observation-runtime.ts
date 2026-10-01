@@ -3,7 +3,7 @@ import {
 	RuntimeObservationHub,
 	type RuntimeObservationPort,
 	type RuntimeObservationPublisher,
-} from "@vetta/runtime-core";
+} from "@astravia/runtime-core";
 import type { CodingAgentObservationHubOptions } from "../contracts/index.js";
 
 export interface CodingAgentObservationRuntime {

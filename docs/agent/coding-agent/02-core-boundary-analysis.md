@@ -2,7 +2,7 @@
 
 > 状态：设计基线  
 > 日期：2026-07-25  
-> 范围：AI 模型原语、`@vetta/ai`、`@vetta/agent-core` 与 `packages/coding-agent` 的职责边界
+> 范围：AI 模型原语、`@astravia/ai`、`@astravia/agent-core` 与 `packages/coding-agent` 的职责边界
 
 ## 1. 核心结论
 
@@ -10,15 +10,15 @@
 
 但这里的“内核”不能等同于模型调用或 Tool Loop，因为仓库已经存在两层更基础的实现：
 
-- `@vetta/ai` 负责模型协议与 Provider 适配；
-- `@vetta/agent-core` 负责 Agent Loop、Tool 执行编排和基础状态事件。
+- `@astravia/ai` 负责模型协议与 Provider 适配；
+- `@astravia/agent-core` 负责 Agent Loop、Tool 执行编排和基础状态事件。
 
 因此，`coding-agent` 真正需要保留的内核价值是：
 
 1. 管理一个长期 Session 的生命周期；
 2. 在每个 Turn 开始前组合有效能力；
 3. 将能力贡献转换成 Prompt、Context、Tool、Policy 和生命周期行为；
-4. 调用 `@vetta/agent-core` 完成模型与 Tool Loop；
+4. 调用 `@astravia/agent-core` 完成模型与 Tool Loop；
 5. 对外发布稳定事件，并通过 Port 保存状态。
 
 Skill、MCP、知识库、Memory、Subagent、IM 和 Coding Tools 都不是内核本身。它们应作为 Capability、Profile、Adapter 或 Infrastructure 接入。
@@ -96,7 +96,7 @@ Agent Loop 负责：
 4. 将 Tool Result 追加到消息；
 5. 再次调用模型，直到得到终止结果。
 
-这部分已经由 `@vetta/agent-core` 实现，`coding-agent` 不应重新实现一套。
+这部分已经由 `@astravia/agent-core` 实现，`coding-agent` 不应重新实现一套。
 
 ### 3.5 Session
 
@@ -189,13 +189,13 @@ input → model calls search tool → tool result → model
 
 ### 5.1 已经正确分离的部分
 
-`@vetta/ai` 当前已经承担：
+`@astravia/ai` 当前已经承担：
 
 - Provider 请求和响应适配；
 - 统一 Message、Tool、流式事件和模型元数据；
 - Provider 认证辅助和 Token/Usage 表达。
 
-`@vetta/agent-core` 当前已经承担：
+`@astravia/agent-core` 当前已经承担：
 
 - `Agent` 状态；
 - `transformContext` 和 `convertToLlm`；
@@ -232,7 +232,7 @@ input → model calls search tool → tool result → model
 - 接收结构化 Turn Request；
 - 解析本轮启用的 Capability；
 - 按固定阶段收集 Prompt、Context、Tool 和 Policy；
-- 调用 `@vetta/agent-core`；
+- 调用 `@astravia/agent-core`；
 - 完成本轮清理。
 
 ### 6.3 Capability 编排
@@ -278,8 +278,8 @@ flowchart TB
     Profiles["Profiles: Coding / Knowledge / Automation"]
     Capabilities["Capabilities: Tools / Skill / MCP / Memory / Subagent"]
     Kernel["coding-agent Session Kernel<br/>Turn + Capability orchestration"]
-    Agent["@vetta/agent-core<br/>Agent Loop"]
-    AI["@vetta/ai<br/>Model protocol"]
+    Agent["@astravia/agent-core<br/>Agent Loop"]
+    AI["@astravia/ai<br/>Model protocol"]
     Infra["Infrastructure<br/>JSONL / MCP transport / Auth / Filesystem"]
 
     Adapters --> Kernel
@@ -293,8 +293,8 @@ flowchart TB
 
 依赖规则：
 
-1. `@vetta/ai` 不知道 Agent、Session 和 Capability；
-2. `@vetta/agent-core` 不知道 Coding、MCP、Skill、Knowledge 和 IM；
+1. `@astravia/ai` 不知道 Agent、Session 和 Capability；
+2. `@astravia/agent-core` 不知道 Coding、MCP、Skill、Knowledge 和 IM；
 3. Session Kernel 不知道任何具体 Capability 名称；
 4. Capability 只依赖公开合同和窄 Port；
 5. Adapter 只通过 Session API 和 Event 集成；
@@ -317,6 +317,6 @@ flowchart TB
 
 本项目中的 `coding-agent` 应采用下面的定义：
 
-> `coding-agent` 是建立在 `@vetta/agent-core` 之上的 Session 内核与能力编排器；“coding”由默认 Profile 表达，而不是由内核中的业务条件分支表达。
+> `coding-agent` 是建立在 `@astravia/agent-core` 之上的 Session 内核与能力编排器；“coding”由默认 Profile 表达，而不是由内核中的业务条件分支表达。
 
 这一定义允许同一个内核服务 CLI、Desktop、IM 和自动化任务，也允许 Skill、MCP、知识库、Memory 与 Subagent 独立组合、替换和演进。

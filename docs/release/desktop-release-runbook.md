@@ -1,6 +1,6 @@
 # Desktop 发布与自动更新流程
 
-本文是 Vetta Desktop 发布流程的维护手册。它记录当前 GitHub Actions、构建配置解析器、R2/GitHub 发布和自动更新验收之间的关系，供下一次排查或修改发布链路时快速恢复上下文。
+本文是 Astravia Desktop 发布流程的维护手册。它记录当前 GitHub Actions、构建配置解析器、R2/GitHub 发布和自动更新验收之间的关系，供下一次排查或修改发布链路时快速恢复上下文。
 
 ## 事实源
 
@@ -97,21 +97,21 @@ flowchart LR
 
 | 变量 | 说明 |
 | --- | --- |
-| `VETTA_RELEASE_TARGET` | 默认发布目标，商业版通常为 `r2`，开源 fork 为 `github` |
-| `VETTA_RELEASE_CHANNEL` | 默认 channel；正式环境建议为 `stable` 或留空由 tag 语义决定 |
-| `VETTA_CLOUD_ENABLED` | 商业版 `true`，开源版 `false` |
-| `VETTA_SERVER_URL` | 商业版必填，必须是 HTTPS |
-| `VETTA_SITE_URL` | 商业版站点地址，可选但应与部署环境一致 |
-| `VETTA_TENANT` | 租户标识，可选 |
-| `VETTA_SPEECH_INPUT_ENABLED` | `true` 或 `false` |
-| `VETTA_UPDATE_PROVIDER` | R2 使用 `generic`，GitHub 使用 `github`；通常由 target 推导 |
-| `VETTA_UPDATE_URL` | 默认更新源根路径 |
-| `VETTA_UPDATE_URL_STABLE` / `_TEST` | stable/test 专用公开更新 URL，优先于通用 URL |
-| `VETTA_R2_BUCKET` | R2 bucket |
-| `VETTA_R2_PREFIX` | 默认 R2 prefix |
-| `VETTA_R2_PREFIX_STABLE` / `_TEST` | stable/test 专用 prefix，必须与公开 URL path 对应 |
-| `VETTA_TEST_BUILD_VERSION` | 仅 test 可使用；手动表单的 `build_version` 优先级更高 |
-| `VETTA_OPEN_MARKETPLACE_REPOSITORY` | 仅开源版使用的 Marketplace 地址 |
+| `ASTRAVIA_RELEASE_TARGET` | 默认发布目标，商业版通常为 `r2`，开源 fork 为 `github` |
+| `ASTRAVIA_RELEASE_CHANNEL` | 默认 channel；正式环境建议为 `stable` 或留空由 tag 语义决定 |
+| `ASTRAVIA_CLOUD_ENABLED` | 商业版 `true`，开源版 `false` |
+| `ASTRAVIA_SERVER_URL` | 商业版必填，必须是 HTTPS |
+| `ASTRAVIA_SITE_URL` | 商业版站点地址，可选但应与部署环境一致 |
+| `ASTRAVIA_TENANT` | 租户标识，可选 |
+| `ASTRAVIA_SPEECH_INPUT_ENABLED` | `true` 或 `false` |
+| `ASTRAVIA_UPDATE_PROVIDER` | R2 使用 `generic`，GitHub 使用 `github`；通常由 target 推导 |
+| `ASTRAVIA_UPDATE_URL` | 默认更新源根路径 |
+| `ASTRAVIA_UPDATE_URL_STABLE` / `_TEST` | stable/test 专用公开更新 URL，优先于通用 URL |
+| `ASTRAVIA_R2_BUCKET` | R2 bucket |
+| `ASTRAVIA_R2_PREFIX` | 默认 R2 prefix |
+| `ASTRAVIA_R2_PREFIX_STABLE` / `_TEST` | stable/test 专用 prefix，必须与公开 URL path 对应 |
+| `ASTRAVIA_TEST_BUILD_VERSION` | 仅 test 可使用；手动表单的 `build_version` 优先级更高 |
+| `ASTRAVIA_OPEN_MARKETPLACE_REPOSITORY` | 仅开源版使用的 Marketplace 地址 |
 
 Sentry 和 PostHog 是可选能力，不是商业版本的强制发布条件。配置其中任一能力时，必须满足对应字段的完整性和 URL/采样率校验；源映射上传凭据只放 Actions Secrets，不放 Variables 或 dispatch 表单。
 
@@ -120,9 +120,9 @@ Sentry 和 PostHog 是可选能力，不是商业版本的强制发布条件。�
 R2 发布需要：
 
 ```text
-VETTA_R2_ACCOUNT_ID
-VETTA_R2_ACCESS_KEY_ID
-VETTA_R2_SECRET_ACCESS_KEY
+ASTRAVIA_R2_ACCOUNT_ID
+ASTRAVIA_R2_ACCESS_KEY_ID
+ASTRAVIA_R2_SECRET_ACCESS_KEY
 ```
 
 macOS 正式签名/公证使用以下 CI Secrets（构建跑在 `macos-15` / `macos-15-intel` 托管 runner 上）：
@@ -179,8 +179,8 @@ GitHub target 的手动发布会以当前 workflow SHA 创建对应版本 Releas
 
 1. 使用 `desktop-release` 手动运行发布 test 基线：选择 `release_target=r2`、`channel=test`，填写当前基线版本的 `build_version`，例如 `0.5.46`。
 2. 再运行一次相同 workflow，发布更高版本的 test 候选，例如 `0.5.47`。
-3. 确认两次运行都通过构建、R2 上传和公开 feed 校验，并且版本化安装包仍保留在 `VETTA_R2_PREFIX_TEST`。
-4. 确认 `desktop-test` Environment 的 `VETTA_UPDATE_URL_TEST` 与 `VETTA_R2_PREFIX_TEST` 对应同一个公开 feed。通常不需要在升级 workflow 中手动填写 `update_url`。
+3. 确认两次运行都通过构建、R2 上传和公开 feed 校验，并且版本化安装包仍保留在 `ASTRAVIA_R2_PREFIX_TEST`。
+4. 确认 `desktop-test` Environment 的 `ASTRAVIA_UPDATE_URL_TEST` 与 `ASTRAVIA_R2_PREFIX_TEST` 对应同一个公开 feed。通常不需要在升级 workflow 中手动填写 `update_url`。
 
 ### 触发真实升级验证
 
@@ -190,7 +190,7 @@ GitHub target 的手动发布会以当前 workflow SHA 创建对应版本 Releas
 | --- | --- |
 | `baseline_version` | 已发布的 test 基线，例如 `0.5.46` |
 | `candidate_version` | 已发布的更高 test 候选，例如 `0.5.47` |
-| `update_url` | 可留空，默认读取 `desktop-test` Environment 的 `VETTA_UPDATE_URL_TEST` |
+| `update_url` | 可留空，默认读取 `desktop-test` Environment 的 `ASTRAVIA_UPDATE_URL_TEST` |
 | `notes` | 可选，仅写入本次运行摘要 |
 
 workflow 会在 Windows、macOS、Linux runner 上并行执行，分别：
@@ -243,14 +243,14 @@ R2 的 `latest*.yml` 不能先于安装包公开。版本化安装包和旧版 b
 
 通常表示旧包没有更新 provider 或更新源配置。当前构建入口会默认使用官方 stable 更新源，但应检查：
 
-- `VETTA_UPDATE_PROVIDER` 是否为 `generic` 或 `github`；
-- `VETTA_UPDATE_URL` 是否为 HTTPS 且无凭据/query/hash；
+- `ASTRAVIA_UPDATE_PROVIDER` 是否为 `generic` 或 `github`；
+- `ASTRAVIA_UPDATE_URL` 是否为 HTTPS 且无凭据/query/hash；
 - 是否误设置了不支持的 `none`；
 - 安装包是否来自旧版本或错误的 build 环境。
 
 ### test 发布后 stable 客户端看不到更新
 
-这是预期隔离行为。test 包必须使用 test URL，stable 包只读取 stable URL。检查 job summary、`VETTA_UPDATE_URL_TEST`、`VETTA_R2_PREFIX_TEST` 和 CDN path 是否一致。
+这是预期隔离行为。test 包必须使用 test URL，stable 包只读取 stable URL。检查 job summary、`ASTRAVIA_UPDATE_URL_TEST`、`ASTRAVIA_R2_PREFIX_TEST` 和 CDN path 是否一致。
 
 ### feed 有 metadata 但客户端下载失败
 
@@ -258,7 +258,7 @@ R2 的 `latest*.yml` 不能先于安装包公开。版本化安装包和旧版 b
 
 ### macOS 发布 job 没有上传
 
-发布型 job 缺少签名/公证凭据会主动失败，这是保护 stable/test feed 的门禁，不应通过关闭 `VETTA_REQUIRE_MAC_SIGNATURE` 绕过。
+发布型 job 缺少签名/公证凭据会主动失败，这是保护 stable/test feed 的门禁，不应通过关闭 `ASTRAVIA_REQUIRE_MAC_SIGNATURE` 绕过。
 
 ### 手动运行没有发布
 

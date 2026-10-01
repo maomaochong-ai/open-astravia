@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { RuntimeConfigurationJsonObject, RuntimeConfigurationJsonValue } from "@vetta/runtime-core/configuration";
-import { CODING_IMAGE_CONFIGURATION } from "@vetta/runtime-tools";
+import type { RuntimeConfigurationJsonObject, RuntimeConfigurationJsonValue } from "@astravia/runtime-core/configuration";
+import { CODING_IMAGE_CONFIGURATION } from "@astravia/runtime-tools";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { DesktopRuntimeConfigurationCatalog } from "@preload/api";
 import { IMAGE_NUMERIC_PRESETS } from "./image-numeric-presets";
@@ -91,7 +91,7 @@ describe("Agent 设置的上下文压缩配置", () => {
 		const set = vi.fn(async (_configurationId: string, patch: Record<string, unknown>) =>
 			catalog({ ...compactionValue, ...patch }),
 		);
-		(window as unknown as { vetta: unknown }).vetta = {
+		(window as unknown as { astravia: unknown }).astravia = {
 			runtimeConfiguration: {
 				list: vi.fn(async () => catalog()),
 				set,
@@ -202,7 +202,7 @@ function installImageConfiguration(value: RuntimeConfigurationJsonObject = CODIN
 		current = mergePatch(current, patch);
 		return imageCatalog(current);
 	});
-	(window as unknown as { vetta: unknown }).vetta = {
+	(window as unknown as { astravia: unknown }).astravia = {
 		runtimeConfiguration: {
 			list: vi.fn(async () => imageCatalog(current)),
 			set,

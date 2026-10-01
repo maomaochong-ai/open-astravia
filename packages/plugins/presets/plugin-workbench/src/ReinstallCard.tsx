@@ -1,8 +1,8 @@
-import { type PluginCardProps, useTranslation } from "@vetta-org/plugin-sdk";
-import { Button } from "@vetta-org/ui";
+import { type PluginCardProps, useTranslation } from "@astravia-org/plugin-sdk";
+import { Button } from "@astravia-org/ui";
 import { useState, type ReactNode } from "react";
 import { findProjectById, type ProjectInfo } from "./project";
-import { reinstallPluginToVetta } from "./reinstall";
+import { reinstallPluginToAstravia } from "./reinstall";
 
 /** Card type — must match tool return `cards[].type` and registerCardRenderer. */
 export const REINSTALL_CARD_TYPE = "plugin-workbench:reinstall";
@@ -71,7 +71,7 @@ export function ReinstallCard({ descriptor, pending }: PluginCardProps): ReactNo
 					permissions: payload.permissions ?? [],
 					packagePath: null,
 				} satisfies ProjectInfo);
-			await reinstallPluginToVetta(project);
+			await reinstallPluginToAstravia(project);
 			// page reloads on success
 		} catch (err) {
 			setError(err instanceof Error ? err.message : String(err));

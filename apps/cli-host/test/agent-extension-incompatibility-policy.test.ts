@@ -1,4 +1,7 @@
-import type { CodingAgentBootstrap, CodingAgentExtensionCompatibilityAssessment } from "@vetta/coding-agent/bootstrap";
+import type {
+	CodingAgentBootstrap,
+	CodingAgentExtensionCompatibilityAssessment,
+} from "@astravia/coding-agent/bootstrap";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { runAgentRuntimeCli } from "../src/agent-runtime-selection.js";
 
@@ -12,7 +15,7 @@ const runtimeMocks = vi.hoisted(() => ({
 	runRpc: vi.fn<() => Promise<void>>(),
 }));
 
-vi.mock("@vetta/coding-agent/bootstrap", () => ({
+vi.mock("@astravia/coding-agent/bootstrap", () => ({
 	resolveCodingAgentSessionDir: () => "C:/test/conversations",
 }));
 

@@ -8,7 +8,7 @@ import { RendererMarkdownContent } from "@shared/components/RendererMarkdownCont
 import { pendingScrollToEntryAtom } from "@shared/store/atoms";
 import type { ActiveSession } from "@shared/store/atoms";
 import { useShortcutScope } from "@shared/shortcuts";
-import { AnnotationComposer, AnnotationHistoryView, AnnotationTurnView } from "@vetta-org/theme-ui/chat";
+import { AnnotationComposer, AnnotationHistoryView, AnnotationTurnView } from "@astravia-org/theme-ui/chat";
 import { useAnnotationModel } from "./useAnnotationModel";
 import type { MessageAnnotation } from "../../../../../shared/message-annotations";
 

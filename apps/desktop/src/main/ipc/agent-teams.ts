@@ -4,7 +4,7 @@ import type {
 	TeamSessionDocument,
 	TeamSessionReference,
 	TeamSessionSnapshot,
-} from "@vetta/agent-team";
+} from "@astravia/agent-team";
 import {
 	parseCreateAgentProfileInput,
 	parseCreateTeamInput,
@@ -14,8 +14,8 @@ import {
 	parseUpdateAgentProfileInput,
 	parseUpdateTeamInput,
 	parseUpdateTeamSessionModelSettingsInput,
-} from "@vetta/agent-team";
-import type { SessionExecutionMode } from "@vetta/runtime-core";
+} from "@astravia/agent-team";
+import type { SessionExecutionMode } from "@astravia/runtime-core";
 import { dialog, ipcMain, webContents } from "electron";
 import type {
 	DesktopTeamConversationDisplay,
@@ -37,36 +37,36 @@ import { getAppLogger } from "../logger.js";
 const log = getAppLogger("agent-teams-ipc");
 
 const CHANNELS = {
-	LIST: "vetta:agent-teams:list",
-	BLUEPRINTS: "vetta:agent-teams:list-blueprints",
-	CREATE_AGENT: "vetta:agent-teams:create-agent",
-	UPDATE_AGENT: "vetta:agent-teams:update-agent",
-	DELETE_AGENT: "vetta:agent-teams:delete-agent",
-	PREVIEW_AGENT: "vetta:agent-teams:preview-agent-update",
-	PREVIEW_AGENT_DELETE: "vetta:agent-teams:preview-agent-delete",
-	CREATE_TEAM: "vetta:agent-teams:create-team",
-	UPDATE_TEAM: "vetta:agent-teams:update-team",
-	DELETE_TEAM: "vetta:agent-teams:delete-team",
-	CREATE_SESSION: "vetta:agent-teams:create-session",
-	CREATE_SESSION_RECORD: "vetta:agent-teams:create-session-record",
-	LIST_SESSIONS: "vetta:agent-teams:list-sessions",
-	LIST_SIDEBAR_CONVERSATIONS: "vetta:agent-teams:list-sidebar-conversations",
-	RENAME_SESSION: "vetta:agent-teams:rename-session",
-	DELETE_SESSION: "vetta:agent-teams:delete-session",
-	UPDATE_MODEL_SETTINGS: "vetta:agent-teams:update-model-settings",
-	LIST_MEMBER_MODELS: "vetta:agent-teams:list-member-models",
-	SET_MEMBER_MODEL: "vetta:agent-teams:set-member-model",
-	SET_EXECUTION_MODE: "vetta:agent-teams:set-execution-mode",
-	GET_SESSION: "vetta:agent-teams:get-session",
-	SEND_MESSAGE: "vetta:agent-teams:send-message",
-	SUBSCRIBE: "vetta:agent-teams:subscribe",
-	UNSUBSCRIBE: "vetta:agent-teams:unsubscribe",
-	ABORT: "vetta:agent-teams:abort",
-	UPLOAD_AVATAR: "vetta:agent-teams:upload-avatar",
+	LIST: "astravia:agent-teams:list",
+	BLUEPRINTS: "astravia:agent-teams:list-blueprints",
+	CREATE_AGENT: "astravia:agent-teams:create-agent",
+	UPDATE_AGENT: "astravia:agent-teams:update-agent",
+	DELETE_AGENT: "astravia:agent-teams:delete-agent",
+	PREVIEW_AGENT: "astravia:agent-teams:preview-agent-update",
+	PREVIEW_AGENT_DELETE: "astravia:agent-teams:preview-agent-delete",
+	CREATE_TEAM: "astravia:agent-teams:create-team",
+	UPDATE_TEAM: "astravia:agent-teams:update-team",
+	DELETE_TEAM: "astravia:agent-teams:delete-team",
+	CREATE_SESSION: "astravia:agent-teams:create-session",
+	CREATE_SESSION_RECORD: "astravia:agent-teams:create-session-record",
+	LIST_SESSIONS: "astravia:agent-teams:list-sessions",
+	LIST_SIDEBAR_CONVERSATIONS: "astravia:agent-teams:list-sidebar-conversations",
+	RENAME_SESSION: "astravia:agent-teams:rename-session",
+	DELETE_SESSION: "astravia:agent-teams:delete-session",
+	UPDATE_MODEL_SETTINGS: "astravia:agent-teams:update-model-settings",
+	LIST_MEMBER_MODELS: "astravia:agent-teams:list-member-models",
+	SET_MEMBER_MODEL: "astravia:agent-teams:set-member-model",
+	SET_EXECUTION_MODE: "astravia:agent-teams:set-execution-mode",
+	GET_SESSION: "astravia:agent-teams:get-session",
+	SEND_MESSAGE: "astravia:agent-teams:send-message",
+	SUBSCRIBE: "astravia:agent-teams:subscribe",
+	UNSUBSCRIBE: "astravia:agent-teams:unsubscribe",
+	ABORT: "astravia:agent-teams:abort",
+	UPLOAD_AVATAR: "astravia:agent-teams:upload-avatar",
 } as const;
 
 /** 主进程推给渲染进程的「配置已变」：插件装卸与热重载会在用户没动手的情况下改动配置。 */
-const CHANGED_EVENT = "vetta:agent-teams:changed";
+const CHANGED_EVENT = "astravia:agent-teams:changed";
 
 function requiredString(value: unknown, field: string): string {
 	if (typeof value !== "string" || value.trim().length === 0) throw new Error(`${field} must be a non-empty string`);
@@ -232,7 +232,7 @@ export function registerAgentTeamsIpc(
 			requiredString(memberId, "memberId"),
 			parseTeamMemberModelSelection(value),
 		);
-		broadcastChanged("vetta:agent-teams:member-models-changed", id);
+		broadcastChanged("astravia:agent-teams:member-models-changed", id);
 		return models;
 	});
 	ipcMain.handle(CHANNELS.CREATE_SESSION, async (_event, teamId: unknown) => {
@@ -407,7 +407,7 @@ export function registerAgentTeamsIpc(
 				.then(async () => {
 					if (event.sender.isDestroyed()) return;
 					event.sender.send(
-						"vetta:agent-teams:stream-event",
+						"astravia:agent-teams:stream-event",
 						subscriptionId,
 						await enrichTeamEvent(payload, displayProjection),
 					);

@@ -1,5 +1,5 @@
-import { createRuntimeObservationPublisher, type RuntimeObservationRecord } from "@vetta/runtime-core";
-import type { RuntimeSnapshotAcquireContext, RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
+import { createRuntimeObservationPublisher, type RuntimeObservationRecord } from "@astravia/runtime-core";
+import type { RuntimeSnapshotAcquireContext, RuntimeToolDefinition } from "@astravia/runtime-core/kernel";
 import { describe, expect, it } from "vitest";
 import {
 	CODING_TOOL_AVAILABILITY_ERROR_CODES,

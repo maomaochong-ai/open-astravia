@@ -14,8 +14,8 @@
 
 ## 决策
 
-- 目标模式实现为 `@vetta/coding-agent` 的 Session Extension，由它唯一持有目标状态、Conversation Document 快照、模型工具、动态指令和 continuation source。
-- `@vetta/runtime-core` 继续提供通用的 Session Extension、文档参与者和 continuation 编排，不认识目标语义。
+- 目标模式实现为 `@astravia/coding-agent` 的 Session Extension，由它唯一持有目标状态、Conversation Document 快照、模型工具、动态指令和 continuation source。
+- `@astravia/runtime-core` 继续提供通用的 Session Extension、文档参与者和 continuation 编排，不认识目标语义。
 - 目标状态包括 `active`、`paused`、`blocked`、`usage_limited` 与 `complete`，并记录已用 Token、累计执行时间和自动续跑次数；目标模式本身不设置 Token 预算。
 - 模型通过 `get_goal`、`create_goal` 和 `update_goal` 访问目标。模型只能把目标更新为完成、阻塞或暂停；恢复、清除与预算选择属于用户控制面。
 - Goal continuation 排在锁定 Todo 之后、Plugin 与 Stop Hook 之前。现有输入队列仍负责保证普通用户输入优先。

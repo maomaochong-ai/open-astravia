@@ -51,7 +51,7 @@ export interface DesktopProjectApi {
 	export(projectDir: string): Promise<ProjectExportSuccess | ProjectExportError>;
 	/** Import a project from a zip via native open dialog. `null` = user cancelled. */
 	import(): Promise<ProjectImportSuccess | ProjectExportError | null>;
-	/** Read a project's `.vetta/meta.json` (used to detect project type). `null` if absent. */
+	/** Read a project's `.astravia/meta.json` (used to detect project type). `null` if absent. */
 	readMeta(projectDir: string): Promise<Record<string, unknown> | null>;
 	/** Active and archived projects plus the configured workspace root. */
 	list(): Promise<ProjectListSnapshot>;

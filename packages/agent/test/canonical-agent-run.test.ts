@@ -1,4 +1,4 @@
-import type { AssistantMessageEvent } from "@vetta/ai";
+import type { AssistantMessageEvent } from "@astravia/ai";
 import { describe, expect, it } from "vitest";
 import type { AgentEvent } from "../src/types.js";
 import { createAssistantMessage } from "./support/agent-loop-fixtures.js";

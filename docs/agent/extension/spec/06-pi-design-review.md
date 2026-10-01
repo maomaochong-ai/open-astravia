@@ -2,7 +2,7 @@
 
 ## 先回答核心问题
 
-Pi 的生态价值证明了它的**作者合同和分发方式有市场验证**，不证明它的内部结构就是 Vetta 最好的实现方式。
+Pi 的生态价值证明了它的**作者合同和分发方式有市场验证**，不证明它的内部结构就是 Astravia 最好的实现方式。
 
 本方案要兼容的是：
 
@@ -25,11 +25,11 @@ Pi 的生态价值证明了它的**作者合同和分发方式有市场验证**�
 
 Pi 用一个 Extension factory、统一 `pi.register*` 与 `pi.on` 覆盖 Tool、Command、Shortcut、Flag、Renderer、Provider 和事件。作者不需要先理解多个内部 runtime package，学习成本低。大量 examples 也形成了可搜索的事实文档。
 
-Vetta 应吸收“一个作者入口、明确 capability”的体验，但内部仍可编译到多个 runtime port。
+Astravia 应吸收“一个作者入口、明确 capability”的体验，但内部仍可编译到多个 runtime port。
 
 ### Package 与资源生态
 
-Extension、Skill、Prompt Template、Theme 能从 package metadata 被发现，并有 source 信息。Vetta 已经能识别 package `pi` resource entries，这为兼容生态提供了很好的起点，无需另造安装格式；兼容 profile 只消费 Extension、Skill 和 Prompt，Theme 明确排除。
+Extension、Skill、Prompt Template、Theme 能从 package metadata 被发现，并有 source 信息。Astravia 已经能识别 package `pi` resource entries，这为兼容生态提供了很好的起点，无需另造安装格式；兼容 profile 只消费 Extension、Skill 和 Prompt，Theme 明确排除。
 
 ### Loader 的现实兼容性
 
@@ -41,39 +41,39 @@ Pi 当前 loader 同时支持 `@earendil-works/*`、`@mariozechner/*`、TypeBox 
 
 Pi 已经补充 active/stale 检查、event bus subscription ownership、factory cache invalidation、动态 Tool refresh、Provider 注销和 replacement context 回归测试。这些都是早期 fork 后的重要合同级演进。
 
-Vetta 应把这些能力下沉为通用 generation/catalog 语义，而不是只在 Pi runner 中打补丁。
+Astravia 应把这些能力下沉为通用 generation/catalog 语义，而不是只在 Pi runner 中打补丁。
 
 ### Project trust
 
 project-local Extension 是可执行代码，Pi 在加载前建立 trust gate 是正确方向。它不是 sandbox，但能避免进入陌生目录就自动执行项目代码。
 
-Vetta 采用开放受信执行模型后，这条边界更加重要：开放模型意味着清楚地决定是否执行，而不是取消 trust。
+Astravia 采用开放受信执行模型后，这条边界更加重要：开放模型意味着清楚地决定是否执行，而不是取消 trust。
 
 ## 为什么不兼容 Pi TUI
 
 这不是阶段优先级，而是产品边界：
 
 1. Pi `Component`、Theme、keybinding、terminal redraw 和 focus lifecycle 是具体终端实现，不是 Agent 行为协议；
-2. Vetta 同时存在 Desktop、CLI、RPC 和 SDK，复制 Pi TUI 会制造只对一个宿主成立的第二套 UI runtime；
+2. Astravia 同时存在 Desktop、CLI、RPC 和 SDK，复制 Pi TUI 会制造只对一个宿主成立的第二套 UI runtime；
 3. Desktop 展示扩展已有 Plugin SDK 和宿主能力体系，不应通过 Pi renderer 绕过其 i18n、权限和生命周期；
 4. Tool renderer、message renderer 和 Theme 不影响模型 Tool 执行，剥离它们比建设 component bridge 更可维护；
 5. runtime import `pi-tui` 的扩展无法只靠 shape adapter 正确执行，应稳定拒绝，而不是提供行为不完整的假实现。
 
-可以兼容的 `notify/select/confirm/input` 只是字符串和结果组成的结构化交互，由 Vetta 自己渲染；这不构成 Pi TUI 兼容。
+可以兼容的 `notify/select/confirm/input` 只是字符串和结果组成的结构化交互，由 Astravia 自己渲染；这不构成 Pi TUI 兼容。
 
-## 为什么先扩展 Vetta，再兼容 Pi
+## 为什么先扩展 Astravia，再兼容 Pi
 
-Vetta 已经有 model-call Tool snapshot、Session Tool overlay、结构化 prompt draft、transition transaction 和配置型 Provider。这些能力比 Pi adapter 更接近正确 owner，但尚未通过统一 contribution/generation 串起来。
+Astravia 已经有 model-call Tool snapshot、Session Tool overlay、结构化 prompt draft、transition transaction 和配置型 Provider。这些能力比 Pi adapter 更接近正确 owner，但尚未通过统一 contribution/generation 串起来。
 
 如果先写 Pi adapter：
 
-- 动态 Tool refresh 会绕过 Vetta native registration；
+- 动态 Tool refresh 会绕过 Astravia native registration；
 - `prepareArguments` 和 TypeBox 1 validator 会形成 Pi 专属执行路径；
 - Pi lifecycle event 会从近似状态临时派生，native Extension 反而无法使用；
 - Provider unregister 只能在 compat 层补偿，ModelRuntime 仍不知道 owner；
 - 同一个 bug 需要 native tests 和 Pi tests 两套修复。
 
-因此先增加 Vetta 原生 catalog、Tool validator/prompt、事实事件和 Provider owner，再让 Pi adapter 做投影。判断一个新增能力是否合理的简单标准是：**删除 `pi-compat` 后，它是否仍然能让 Vetta native Extension、SDK 或宿主受益。**不能通过这个标准的能力不应进入 Vetta 核心。
+因此先增加 Astravia 原生 catalog、Tool validator/prompt、事实事件和 Provider owner，再让 Pi adapter 做投影。判断一个新增能力是否合理的简单标准是：**删除 `pi-compat` 后，它是否仍然能让 Astravia native Extension、SDK 或宿主受益。**不能通过这个标准的能力不应进入 Astravia 核心。
 
 ## Pi 设计的局限
 
@@ -123,13 +123,13 @@ Project trust 只能回答“用户是否允许运行这段代码”，不能限
 
 | 方案 | 生态覆盖 | 实施成本 | 长期维护 | 宿主独立 | 主要问题 |
 | --- | --- | --- | --- | --- | --- |
-| A. Pi 包名直接 alias 到 Vetta API | 低到中 | 低 | 差 | 差 | 同名异义、Schema/生命周期问题只在运行时暴露 |
+| A. Pi 包名直接 alias 到 Astravia API | 低到中 | 低 | 差 | 差 | 同名异义、Schema/生命周期问题只在运行时暴露 |
 | B. 直接依赖 Pi coding-agent/runner | 高 | 中 | 差 | 差 | 两套 Agent/Session/Tool 核心，破坏包边界，升级被上游绑定 |
 | C. 独立进程/IPC 运行 Pi Extension | 中 | 很高 | 中 | 中 | 函数、TUI component、stream callback 难跨进程；作者行为难以 lossless |
 | D. Native-first + ACL + canonical contribution IR | 行为子集可演进 | 中到高 | 好 | 好 | 前期需建立 native IR、事务目录和 corpus |
 | E. 手工移植精选 Extension | 低 | 持续累积 | 中 | 好 | 不是生态兼容，用户仍无法直接使用第三方包 |
 
-推荐 D，并严格要求 native fixture 先于 Pi fixture。C 可以在未来用于不需要 UI/函数对象的远程扩展协议或高隔离任务，但不是 Pi Extension ABI 的自然实现。A 可作为探索 spike，不能成为生产架构。B 看似最兼容，实际上会把 Vetta 重写后的运行时边界重新合并。
+推荐 D，并严格要求 native fixture 先于 Pi fixture。C 可以在未来用于不需要 UI/函数对象的远程扩展协议或高隔离任务，但不是 Pi Extension ABI 的自然实现。A 可作为探索 spike，不能成为生产架构。B 看似最兼容，实际上会把 Astravia 重写后的运行时边界重新合并。
 
 ## 比 Pi 更进一步的设计
 
@@ -147,9 +147,9 @@ Tool、Provider、subscription、command、timer/disposer 都归属于 extension
 
 ### 作者 API 与领域 IR 解耦
 
-Pi API、Vetta native API，未来甚至 declarative manifest，都可以编译为同一 contribution IR。新增宿主只消费 IR，不实现新的 Pi facade；新增作者 API 也不修改 Agent loop。
+Pi API、Astravia native API，未来甚至 declarative manifest，都可以编译为同一 contribution IR。新增宿主只消费 IR，不实现新的 Pi facade；新增作者 API 也不修改 Agent loop。
 
-IR、catalog 和 lifecycle 首先由 Vetta native API 使用。Pi adapter 只是另一个 producer，不能成为 contribution 字段或运行时语义的唯一消费者。
+IR、catalog 和 lifecycle 首先由 Astravia native API 使用。Pi adapter 只是另一个 producer，不能成为 contribution 字段或运行时语义的唯一消费者。
 
 ### 原子注册和可回退更新
 
@@ -182,7 +182,7 @@ specifier allowlist/denylist、event mapping、host matrix 和 corpus 结果应�
 ## 事实来源
 
 - Pi 固定版本的 [Extension types](https://github.com/earendil-works/pi/blob/936aff00918de1187f085f123c2812d8f2d67745/packages/coding-agent/src/core/extensions/types.ts)、[loader](https://github.com/earendil-works/pi/blob/936aff00918de1187f085f123c2812d8f2d67745/packages/coding-agent/src/core/extensions/loader.ts) 与 [runner](https://github.com/earendil-works/pi/blob/936aff00918de1187f085f123c2812d8f2d67745/packages/coding-agent/src/core/extensions/runner.ts)
-- Vetta 当前 [Extension registration](../../../../packages/coding-agent/src/extensions/runtime/registration/extension-registration.ts)、[Extension runner](../../../../packages/coding-agent/src/extensions/runtime/extension-runner.ts) 与 [host compatibility contracts](../../../../packages/coding-agent/src/host/extensions/compatibility/contracts.ts)
+- Astravia 当前 [Extension registration](../../../../packages/coding-agent/src/extensions/runtime/registration/extension-registration.ts)、[Extension runner](../../../../packages/coding-agent/src/extensions/runtime/extension-runner.ts) 与 [host compatibility contracts](../../../../packages/coding-agent/src/host/extensions/compatibility/contracts.ts)
 - 完整路径和版本基线见[证据索引](../06-evidence-index.md)
 
-最终判断是：**先把有独立产品价值的能力建设成 Vetta native contract，再拿 Pi 中可被这些合同表达的生态行为做映射；明确舍弃 TUI 和协议不等价能力。**
+最终判断是：**先把有独立产品价值的能力建设成 Astravia native contract，再拿 Pi 中可被这些合同表达的生态行为做映射；明确舍弃 TUI 和协议不等价能力。**

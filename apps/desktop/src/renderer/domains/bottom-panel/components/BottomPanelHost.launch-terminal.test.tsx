@@ -9,7 +9,7 @@ import {
 	pluginBottomPanelsAtom,
 	type RegisteredBottomPanel,
 } from "@shared/store/atoms";
-import { useBottomPanel } from "@vetta-org/plugin-sdk";
+import { useBottomPanel } from "@astravia-org/plugin-sdk";
 import { createStore, Provider, useSetAtom } from "jotai";
 import { type JSX, useEffect, useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -130,7 +130,7 @@ function PluginScriptsPanel(): JSX.Element {
 
 function setup(localPty: boolean, panels: RegisteredBottomPanel[] = [scriptsPanel]) {
 	const capabilities = vi.fn(async () => ({ localPty }));
-	Object.assign(window, { vetta: { terminal: { capabilities } } });
+	Object.assign(window, { astravia: { terminal: { capabilities } } });
 	const store = createStore();
 	store.set(pluginBottomPanelsAtom, panels);
 	render(

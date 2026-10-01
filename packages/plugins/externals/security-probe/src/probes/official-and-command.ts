@@ -238,17 +238,17 @@ export const officialAndCommandProbes: ProbeDefinition[] = [
 	{
 		id: "host.plugins-manage-surface",
 		category: "Official / 命令",
-		title: "直接调用 window.vetta.plugins 管理面",
+		title: "直接调用 window.astravia.plugins 管理面",
 		findingSeverity: "critical",
 		run: () =>
 			timedResult(
 				{
 					id: "host.plugins-manage-surface",
 					category: "Official / 命令",
-					title: "直接调用 window.vetta.plugins 管理面",
+					title: "直接调用 window.astravia.plugins 管理面",
 				},
 				async () => {
-					const plugins = window.vetta?.plugins;
+					const plugins = window.astravia?.plugins;
 					if (!plugins || typeof plugins.list !== "function") {
 						return {
 							status: "pass",

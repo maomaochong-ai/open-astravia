@@ -1,6 +1,6 @@
-import type { AgentBlueprint, AgentProfile, AgentResourceSource } from "@vetta/agent-team";
-import { parsePluginBlueprintId } from "@vetta/agent-team";
-import { resolvePluginText } from "@vetta-org/plugin-sdk";
+import type { AgentBlueprint, AgentProfile, AgentResourceSource } from "@astravia/agent-team";
+import { parsePluginBlueprintId } from "@astravia/agent-team";
+import { resolvePluginText } from "@astravia-org/plugin-sdk";
 
 export interface BlueprintDisplayPlugin {
 	readonly id: string;

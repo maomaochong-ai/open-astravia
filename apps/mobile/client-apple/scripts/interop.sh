@@ -4,8 +4,8 @@
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 root="$(cd "$here/../../../.." && pwd)"
-info="$(mktemp -t vetta-interop).json"
-log="$(mktemp -t vetta-interop-log)"
+info="$(mktemp -t astravia-interop).json"
+log="$(mktemp -t astravia-interop-log)"
 bun "$here/interop-desktop.ts" "$info" >"$log" 2>&1 &
 harness=$!
 trap 'kill $harness 2>/dev/null || true; rm -f "$info"' EXIT
@@ -15,5 +15,5 @@ for _ in $(seq 1 100); do
 	sleep 0.1
 done
 [[ -s "$info" ]] || { echo "interop harness did not start"; cat "$log"; exit 1; }
-cd "$root/apps/mobile/client-apple/VettaKit"
-VETTA_INTEROP_FILE="$info" swift test --no-parallel --filter InteropTests
+cd "$root/apps/mobile/client-apple/AstraviaKit"
+ASTRAVIA_INTEROP_FILE="$info" swift test --no-parallel --filter InteropTests

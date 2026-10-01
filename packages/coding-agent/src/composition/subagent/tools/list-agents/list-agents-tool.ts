@@ -1,7 +1,7 @@
+import type { RuntimeToolDefinition } from "@astravia/runtime-core/kernel";
+import type { SubagentCoordinatorPort } from "@astravia/runtime-subagents";
+import { ToolCallDescriptionSchema } from "@astravia/runtime-tools/coding";
 import { type Static, Type } from "@sinclair/typebox";
-import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
-import type { SubagentCoordinatorPort } from "@vetta/runtime-subagents";
-import { ToolCallDescriptionSchema } from "@vetta/runtime-tools/coding";
 import { LIST_AGENTS_TOOL_DESCRIPTION } from "./description.js";
 
 export const ListAgentsToolInputSchema = Type.Object({

@@ -54,7 +54,7 @@ describe("createSystemApi fs preview contract", () => {
 			images: [{ path: "C:\\cache\\one.png", format: "png", sizeBytes: 3 }],
 		};
 		const invoke = vi.fn(async (channel: string) =>
-			channel === "vetta:clipboard:paste-user-message" ? pasteResult : undefined,
+			channel === "astravia:clipboard:paste-user-message" ? pasteResult : undefined,
 		);
 		const api = createSystemApi({ invoke } as unknown as IpcRenderer, {} as WebUtils);
 		const request = {
@@ -64,9 +64,9 @@ describe("createSystemApi fs preview contract", () => {
 
 		await api.clipboard.writeUserMessage(request);
 
-		expect(invoke).toHaveBeenCalledWith("vetta:clipboard:write-user-message", request);
+		expect(invoke).toHaveBeenCalledWith("astravia:clipboard:write-user-message", request);
 		await expect(api.clipboard.pasteUserMessage("session-1")).resolves.toEqual(pasteResult);
-		expect(invoke).toHaveBeenCalledWith("vetta:clipboard:paste-user-message", "session-1");
+		expect(invoke).toHaveBeenCalledWith("astravia:clipboard:paste-user-message", "session-1");
 	});
 });
 
@@ -79,8 +79,8 @@ describe("createSystemApi MCP setup login contract", () => {
 		await api.mcp.cancelSetupLogin("qr-request-1");
 		await api.mcp.clearSetupLogin("xiaohongshu-mcp");
 
-		expect(invoke).toHaveBeenNthCalledWith(1, "vetta:mcp:start-setup-login", "xiaohongshu-mcp", "qr-request-1");
-		expect(invoke).toHaveBeenNthCalledWith(2, "vetta:mcp:cancel-setup-login", "qr-request-1");
-		expect(invoke).toHaveBeenNthCalledWith(3, "vetta:mcp:clear-setup-login", "xiaohongshu-mcp");
+		expect(invoke).toHaveBeenNthCalledWith(1, "astravia:mcp:start-setup-login", "xiaohongshu-mcp", "qr-request-1");
+		expect(invoke).toHaveBeenNthCalledWith(2, "astravia:mcp:cancel-setup-login", "qr-request-1");
+		expect(invoke).toHaveBeenNthCalledWith(3, "astravia:mcp:clear-setup-login", "xiaohongshu-mcp");
 	});
 });

@@ -1,5 +1,5 @@
-import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
-import type { McpRuntimeToolDescriptor } from "@vetta/runtime-mcp";
+import type { RuntimeToolDefinition } from "@astravia/runtime-core/kernel";
+import type { McpRuntimeToolDescriptor } from "@astravia/runtime-mcp";
 import type { AgentPluginRuntimeConfig } from "../model-context/plugin-runtime.js";
 import type {
 	CodingAgentPromptResourceResolver,

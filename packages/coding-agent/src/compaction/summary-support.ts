@@ -2,8 +2,8 @@
  * Shared utilities for compaction and branch summarization.
  */
 
-import type { AgentMessage } from "@vetta/agent-core";
-import type { Message } from "@vetta/ai";
+import type { AgentMessage } from "@astravia/agent-core";
+import type { Message } from "@astravia/ai";
 
 // ============================================================================
 // File Operation Tracking

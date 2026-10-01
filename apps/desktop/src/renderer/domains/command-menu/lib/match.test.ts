@@ -81,7 +81,7 @@ describe("matchCommandMenuEntry", () => {
 	});
 
 	it("returns merged highlight ranges when two tokens cover the same span", () => {
-		const match = matchCommandMenuEntry({ title: "openvetta" }, ["open", "openv"]);
+		const match = matchCommandMenuEntry({ title: "maomaochong-ai" }, ["open", "openv"]);
 		expect(match?.titleHighlights).toEqual([{ start: 0, end: 5 }]);
 	});
 

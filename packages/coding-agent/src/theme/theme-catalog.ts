@@ -4,7 +4,7 @@ import { isThemeDocument, parseThemeDocument, type ThemeDocument } from "./schem
 import type { Theme } from "./theme.js";
 import { createTheme } from "./theme-factory.js";
 
-const BUILTIN_THEMES_KEY = Symbol.for("@vetta/coding-agent/builtin-theme-documents");
+const BUILTIN_THEMES_KEY = Symbol.for("@astravia/coding-agent/builtin-theme-documents");
 let builtinThemes: Record<string, ThemeDocument> = {
 	dark: parseThemeDocument("built-in dark", BUILTIN_THEME_DOCUMENTS.dark),
 	light: parseThemeDocument("built-in light", BUILTIN_THEME_DOCUMENTS.light),

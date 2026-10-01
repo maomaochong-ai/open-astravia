@@ -1,4 +1,4 @@
-import { AutomationPageView as ThemeAutomationPageView } from "@vetta-org/theme-ui/scheduler";
+import { AutomationPageView as ThemeAutomationPageView } from "@astravia-org/theme-ui/scheduler";
 import { useTranslation } from "react-i18next";
 import type { AutomationPageModel } from "../hooks/useAutomationPageModel";
 import { AutomationDetailPane } from "./AutomationDetailPane";

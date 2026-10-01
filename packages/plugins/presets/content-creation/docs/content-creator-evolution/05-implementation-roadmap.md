@@ -107,7 +107,7 @@
 - Skill 输出符合 CreativeBrief/ProductionPlan 合同；
 - 资源 token 有上限并纳入 benchmark。
 
-许可证注意：若改编 visual-skills 的具体文字或模板，需要履行 CC BY 4.0 署名；更稳妥的方式是依据 Vetta 自有 rubric 重新撰写，并记录参考来源。
+许可证注意：若改编 visual-skills 的具体文字或模板，需要履行 CC BY 4.0 署名；更稳妥的方式是依据 Astravia 自有 rubric 重新撰写，并记录参考来源。
 
 ## Phase 5：候选、评审与修订闭环
 

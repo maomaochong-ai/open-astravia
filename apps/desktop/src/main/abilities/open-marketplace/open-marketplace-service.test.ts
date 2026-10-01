@@ -14,9 +14,9 @@ vi.mock("../../logger", () => ({ getAppLogger: () => marketplaceLog }));
 
 const temporaryRoots: string[] = [];
 const APP_VERSION = "0.5.11";
-const originalRepository = process.env.VETTA_OPEN_MARKETPLACE_REPOSITORY;
-const originalRef = process.env.VETTA_OPEN_MARKETPLACE_REF;
-const originalArchiveUrl = process.env.VETTA_OPEN_MARKETPLACE_ARCHIVE_URL;
+const originalRepository = process.env.ASTRAVIA_OPEN_MARKETPLACE_REPOSITORY;
+const originalRef = process.env.ASTRAVIA_OPEN_MARKETPLACE_REF;
+const originalArchiveUrl = process.env.ASTRAVIA_OPEN_MARKETPLACE_ARCHIVE_URL;
 
 function restoreEnvironment(name: string, value: string | undefined): void {
 	if (value === undefined) delete process.env[name];
@@ -24,7 +24,7 @@ function restoreEnvironment(name: string, value: string | undefined): void {
 }
 
 async function temporaryRoot(): Promise<string> {
-	const root = await mkdtemp(join(tmpdir(), "vetta-open-marketplace-test-"));
+	const root = await mkdtemp(join(tmpdir(), "astravia-open-marketplace-test-"));
 	temporaryRoots.push(root);
 	return root;
 }
@@ -44,9 +44,9 @@ function archive(options?: {
 	const description = options?.description ?? "Demo ability";
 	const manifest = {
 		schemaVersion: 1,
-		name: "vetta-open-abilities",
+		name: "astravia-open-abilities",
 		marketplaceVersion,
-		repository: "https://github.com/example/vetta-abilities",
+		repository: "https://github.com/example/astravia-abilities",
 		minAppVersion: options?.minAppVersion ?? APP_VERSION,
 		abilities: [
 			{
@@ -65,14 +65,14 @@ function archive(options?: {
 		],
 	};
 	const zip = new AdmZip();
-	zip.addFile("vetta-abilities-main/.vetta/marketplace.json", Buffer.from(JSON.stringify(manifest)));
+	zip.addFile("astravia-abilities-main/.astravia/marketplace.json", Buffer.from(JSON.stringify(manifest)));
 	zip.addFile(
-		"vetta-abilities-main/abilities/skills/demo-skill/SKILL.md",
+		"astravia-abilities-main/abilities/skills/demo-skill/SKILL.md",
 		Buffer.from(`---\nname: demo-skill\ndescription: Demo ability\nversion: ${packageVersion}\n---\n\n# Demo\n`),
 	);
 	if (options?.withPresentation) {
 		zip.addFile(
-			"vetta-abilities-main/abilities/skills/demo-skill/ability.json",
+			"astravia-abilities-main/abilities/skills/demo-skill/ability.json",
 			Buffer.from(
 				JSON.stringify({
 					schemaVersion: 1,
@@ -85,7 +85,7 @@ function archive(options?: {
 			),
 		);
 		zip.addFile(
-			"vetta-abilities-main/abilities/skills/demo-skill/icon.svg",
+			"astravia-abilities-main/abilities/skills/demo-skill/icon.svg",
 			Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"/>'),
 		);
 	}
@@ -95,9 +95,9 @@ function archive(options?: {
 function pluginBundleArchive(pluginId = "demo-plugin"): Buffer {
 	const manifest = {
 		schemaVersion: 1,
-		name: "vetta-open-abilities",
+		name: "astravia-open-abilities",
 		marketplaceVersion: "2026.07.3",
-		repository: "https://github.com/example/vetta-abilities",
+		repository: "https://github.com/example/astravia-abilities",
 		minAppVersion: APP_VERSION,
 		abilities: [
 			{
@@ -142,14 +142,17 @@ function pluginBundleArchive(pluginId = "demo-plugin"): Buffer {
 		commands: ["git"],
 	};
 	const zip = new AdmZip();
-	zip.addFile("vetta-abilities-main/.vetta/marketplace.json", Buffer.from(JSON.stringify(manifest)));
+	zip.addFile("astravia-abilities-main/.astravia/marketplace.json", Buffer.from(JSON.stringify(manifest)));
 	zip.addFile(
-		"vetta-abilities-main/abilities/plugins/demo-plugin/plugin.json",
+		"astravia-abilities-main/abilities/plugins/demo-plugin/plugin.json",
 		Buffer.from(JSON.stringify(pluginManifest)),
 	);
-	zip.addFile("vetta-abilities-main/abilities/plugins/demo-plugin/dist/index.js", Buffer.from("export default {};\n"));
 	zip.addFile(
-		"vetta-abilities-main/abilities/mcp/context7/mcp.json",
+		"astravia-abilities-main/abilities/plugins/demo-plugin/dist/index.js",
+		Buffer.from("export default {};\n"),
+	);
+	zip.addFile(
+		"astravia-abilities-main/abilities/mcp/context7/mcp.json",
 		Buffer.from(
 			JSON.stringify({
 				schemaVersion: 1,
@@ -179,9 +182,9 @@ function versionedPluginArchive(bundleOnly = false): Buffer {
 	];
 	const manifest = {
 		schemaVersion: 3,
-		name: "vetta-open-abilities",
+		name: "astravia-open-abilities",
 		marketplaceVersion: "2026.09.18-2",
-		repository: "https://github.com/example/vetta-abilities",
+		repository: "https://github.com/example/astravia-abilities",
 		minAppVersion: "0.5.57",
 		abilities: [
 			...(!bundleOnly
@@ -214,11 +217,11 @@ function versionedPluginArchive(bundleOnly = false): Buffer {
 		],
 	};
 	const zip = new AdmZip();
-	zip.addFile("vetta-abilities-main/.vetta/marketplace.json", Buffer.from(JSON.stringify(manifest)));
-	zip.addFile("vetta-abilities-main/abilities/plugins/demo-plugin/README.md", Buffer.from("Demo"));
+	zip.addFile("astravia-abilities-main/.astravia/marketplace.json", Buffer.from(JSON.stringify(manifest)));
+	zip.addFile("astravia-abilities-main/abilities/plugins/demo-plugin/README.md", Buffer.from("Demo"));
 	if (bundleOnly)
 		zip.addFile(
-			"vetta-abilities-main/abilities/plugins/demo-plugin/ability.json",
+			"astravia-abilities-main/abilities/plugins/demo-plugin/ability.json",
 			Buffer.from(
 				JSON.stringify({
 					schemaVersion: 1,
@@ -281,7 +284,7 @@ function streamingResponse(
 }
 
 function manifestResponse(buffer: Buffer): Response {
-	const entry = new AdmZip(buffer).getEntry("vetta-abilities-main/.vetta/marketplace.json");
+	const entry = new AdmZip(buffer).getEntry("astravia-abilities-main/.astravia/marketplace.json");
 	if (!entry) throw new Error("Marketplace manifest fixture is missing");
 	const body = entry.getData();
 	return new Response(new Uint8Array(body), {
@@ -291,7 +294,7 @@ function manifestResponse(buffer: Buffer): Response {
 }
 
 function githubManifestResponse(buffer: Buffer): Response {
-	const entry = new AdmZip(buffer).getEntry("vetta-abilities-main/.vetta/marketplace.json");
+	const entry = new AdmZip(buffer).getEntry("astravia-abilities-main/.astravia/marketplace.json");
 	if (!entry) throw new Error("Marketplace manifest fixture is missing");
 	const content = entry.getData().toString("base64");
 	const body = JSON.stringify({ content, encoding: "base64" });
@@ -303,16 +306,16 @@ function githubManifestResponse(buffer: Buffer): Response {
 
 beforeEach(() => {
 	marketplaceLog.error.mockClear();
-	process.env.VETTA_OPEN_MARKETPLACE_REPOSITORY = "https://github.com/example/vetta-abilities";
-	process.env.VETTA_OPEN_MARKETPLACE_REF = "main";
-	delete process.env.VETTA_OPEN_MARKETPLACE_ARCHIVE_URL;
+	process.env.ASTRAVIA_OPEN_MARKETPLACE_REPOSITORY = "https://github.com/example/astravia-abilities";
+	process.env.ASTRAVIA_OPEN_MARKETPLACE_REF = "main";
+	delete process.env.ASTRAVIA_OPEN_MARKETPLACE_ARCHIVE_URL;
 });
 
 afterEach(async () => {
 	await Promise.all(temporaryRoots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
-	restoreEnvironment("VETTA_OPEN_MARKETPLACE_REPOSITORY", originalRepository);
-	restoreEnvironment("VETTA_OPEN_MARKETPLACE_REF", originalRef);
-	restoreEnvironment("VETTA_OPEN_MARKETPLACE_ARCHIVE_URL", originalArchiveUrl);
+	restoreEnvironment("ASTRAVIA_OPEN_MARKETPLACE_REPOSITORY", originalRepository);
+	restoreEnvironment("ASTRAVIA_OPEN_MARKETPLACE_REF", originalRef);
+	restoreEnvironment("ASTRAVIA_OPEN_MARKETPLACE_ARCHIVE_URL", originalArchiveUrl);
 });
 
 describe("OpenMarketplaceService", () => {
@@ -376,7 +379,7 @@ describe("OpenMarketplaceService", () => {
 		const snapshot = await service.refresh();
 		expect(snapshot.error).toBeUndefined();
 		expect(fetchArchive).toHaveBeenCalledWith(
-			"https://api.github.com/repos/example/vetta-abilities/zipball/main",
+			"https://api.github.com/repos/example/astravia-abilities/zipball/main",
 			expect.anything(),
 		);
 	});
@@ -406,7 +409,7 @@ describe("OpenMarketplaceService", () => {
 		expect(snapshot.marketplaceVersion).toBe("2026.07.1");
 		await vi.waitFor(() => expect(fetchManifest).toHaveBeenCalledOnce());
 		expect(fetchManifest).toHaveBeenCalledWith(
-			"https://api.github.com/repos/example/vetta-abilities/contents/.vetta/marketplace.json?ref=main",
+			"https://api.github.com/repos/example/astravia-abilities/contents/.astravia/marketplace.json?ref=main",
 			expect.objectContaining({ redirect: "follow" }),
 		);
 	});
@@ -468,9 +471,9 @@ describe("OpenMarketplaceService", () => {
 								},
 				}),
 			);
-			zip.addFile("vetta-abilities-main/abilities/skills/demo-skill/README.md", Buffer.from("English detail"));
+			zip.addFile("astravia-abilities-main/abilities/skills/demo-skill/README.md", Buffer.from("English detail"));
 			zip.addFile(
-				"vetta-abilities-main/abilities/skills/demo-skill/detail.zh.json",
+				"astravia-abilities-main/abilities/skills/demo-skill/detail.zh.json",
 				Buffer.from(JSON.stringify({ schemaVersion: 1, blocks })),
 			);
 			const options = { appVersion: APP_VERSION, rootDir, fetchArchive: async () => response(zip.toBuffer()) };
@@ -592,7 +595,7 @@ describe("OpenMarketplaceService", () => {
 		expect(prepareMcpAbility).toHaveBeenCalledOnce();
 		expect(prepareMcpAbility.mock.calls[0]?.[0]).toContain(join("snapshots", "2026.07.3"));
 		expect(prepareMcpAbility.mock.calls[0]?.[1]).toMatchObject({ type: "mcp", slug: "context7" });
-		expect(prepareMcpAbility.mock.calls[0]?.[2]).toBe("vetta-official");
+		expect(prepareMcpAbility.mock.calls[0]?.[2]).toBe("astravia-official");
 	});
 
 	it("validates and activates a GitHub repository snapshot", async () => {
@@ -607,12 +610,12 @@ describe("OpenMarketplaceService", () => {
 		const snapshot = await service.refresh();
 
 		expect(snapshot.error).toBeUndefined();
-		expect(snapshot.sourceId).toBe("vetta-official");
+		expect(snapshot.sourceId).toBe("astravia-official");
 		expect(snapshot.marketplaceVersion).toBe("2026.07.1");
 		expect(snapshot.abilities[0]).toMatchObject({
 			slug: "demo-skill",
 			configVersion: 2,
-			origin: { kind: "github-marketplace", marketplace: "vetta-open-abilities", ref: "main" },
+			origin: { kind: "github-marketplace", marketplace: "astravia-open-abilities", ref: "main" },
 		});
 		const stored = await readFile(
 			join(rootDir, "snapshots", "2026.07.1", "abilities", "skills", "demo-skill", "SKILL.md"),
@@ -622,7 +625,7 @@ describe("OpenMarketplaceService", () => {
 		const state: unknown = JSON.parse(await readFile(join(rootDir, "state.json"), "utf-8"));
 		expect(state).toMatchObject({
 			schemaVersion: 1,
-			sourceId: "vetta-official",
+			sourceId: "astravia-official",
 			ref: "main",
 			marketplaceVersion: "2026.07.1",
 		});
@@ -641,7 +644,7 @@ describe("OpenMarketplaceService", () => {
 		for (const [index, version] of ["2026.07.1", "2026.07.2", "2026.07.3"].entries()) {
 			const historicalDir = join(rootDir, "snapshots", version);
 			await cp(activeDir, historicalDir, { recursive: true });
-			const manifestPath = join(historicalDir, ".vetta", "marketplace.json");
+			const manifestPath = join(historicalDir, ".astravia", "marketplace.json");
 			const manifest = JSON.parse(await readFile(manifestPath, "utf-8")) as Record<string, unknown>;
 			await writeFile(manifestPath, JSON.stringify({ ...manifest, marketplaceVersion: version }));
 			const age = new Date(Date.now() - [96, 12, 6][index]! * 60 * 60 * 1000);
@@ -786,7 +789,7 @@ describe("OpenMarketplaceService", () => {
 			slug: "context7",
 			configVersion: 3,
 			config: { mcp: { type: "http", url: "https://mcp.context7.com/mcp" } },
-			origin: { kind: "github-marketplace", sourceId: "vetta-official" },
+			origin: { kind: "github-marketplace", sourceId: "astravia-official" },
 		});
 		expect(bundle?.config.members).toEqual([
 			{
@@ -827,8 +830,8 @@ describe("OpenMarketplaceService", () => {
 		expect(marketplaceLog.error).toHaveBeenCalledWith(
 			"marketplace sync failed",
 			expect.objectContaining({
-				sourceId: "vetta-official",
-				repository: "https://github.com/example/vetta-abilities",
+				sourceId: "astravia-official",
+				repository: "https://github.com/example/astravia-abilities",
 				ref: "main",
 				operation: "refresh",
 				errorCode: "sync-failed",
@@ -959,7 +962,7 @@ describe("OpenMarketplaceService", () => {
 		expect(snapshot.error).toBeUndefined();
 		await vi.waitFor(() => expect(fetchManifest).toHaveBeenCalledOnce());
 		expect(fetchManifest).toHaveBeenCalledWith(
-			"https://github.com/example/vetta-abilities/raw/refs/heads/main/.vetta/marketplace.json",
+			"https://github.com/example/astravia-abilities/raw/refs/heads/main/.astravia/marketplace.json",
 			expect.objectContaining({ redirect: "follow" }),
 		);
 		expect(fetchArchive).not.toHaveBeenCalled();
@@ -1040,7 +1043,7 @@ describe("OpenMarketplaceService", () => {
 
 		const empty = await service.listCached();
 
-		expect(empty).toMatchObject({ sourceId: "vetta-official", abilities: [], stale: true });
+		expect(empty).toMatchObject({ sourceId: "astravia-official", abilities: [], stale: true });
 		expect(fetchArchive).not.toHaveBeenCalled();
 	});
 

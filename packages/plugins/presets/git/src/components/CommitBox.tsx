@@ -1,5 +1,5 @@
-import { useTranslation } from "@vetta-org/plugin-sdk";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@vetta-org/ui";
+import { useTranslation } from "@astravia-org/plugin-sdk";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@astravia-org/ui";
 import type { KeyboardEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { resolveDiffScope } from "../git/aiContext";
@@ -197,7 +197,7 @@ export function CommitBox({ root, groups }: { root: string; groups: StatusGroups
 				/>
 
 				<div className="flex items-center gap-2 px-1.5 pb-1">
-					{/* 与宿主设置里的「让 Vetta 帮您配置」同款：透明底、主题色文字，不跟提交按钮抢。 */}
+					{/* 与宿主设置里的「让 Astravia 帮您配置」同款：透明底、主题色文字，不跟提交按钮抢。 */}
 					<button
 						type="button"
 						disabled={pending !== null || (!generating && !hasAnyChange)}
@@ -243,7 +243,7 @@ export function CommitBox({ root, groups }: { root: string; groups: StatusGroups
 							<ChevronIcon className="h-3.5 w-3.5" />
 						</button>
 					</DropdownMenuTrigger>
-					<DropdownMenuContent align="end" data-vetta-plugin-root="git">
+					<DropdownMenuContent align="end" data-astravia-plugin-root="git">
 						<DropdownMenuItem disabled={!canCommit} onSelect={commitAndPush}>
 							{t("commit.andPush")}
 						</DropdownMenuItem>

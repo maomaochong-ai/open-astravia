@@ -4,7 +4,7 @@
 
 第 175 轮已经把 Print 从具体 `AgentSession` 反转为最小能力合同，但生产组合仍只有 Legacy 适配器。若直接复用 RPC 适配器，JSON Print 会丢失完整 message、turn 和 tool 事件；若继续把输入准备留在 Legacy `main`，Greenfield 又无法等价处理 stdin、`@file` 和多条消息。
 
-本轮目标是建立显式 opt-in 的 Greenfield Print 候选路径，并用标准 `vetta` CLI 与 Legacy 做真实差分；默认 Print 继续使用 Legacy。
+本轮目标是建立显式 opt-in 的 Greenfield Print 候选路径，并用标准 `astravia` CLI 与 Legacy 做真实差分；默认 Print 继续使用 Legacy。
 
 ## 审计结论
 
@@ -47,11 +47,11 @@ Legacy `main` 改为消费该结果，原有消息顺序和图片传递不变；
 
 ### 显式候选入口
 
-标准 Vetta CLI 现在支持：
+标准 Astravia CLI 现在支持：
 
 ```text
-vetta --agent-runtime greenfield --print "prompt"
-vetta --agent-runtime greenfield --mode json "prompt"
+astravia --agent-runtime greenfield --print "prompt"
+astravia --agent-runtime greenfield --mode json "prompt"
 ```
 
 无 `--agent-runtime` 的 Print 仍默认 Legacy；`greenfield-im` 仍只接受 RPC。
@@ -66,7 +66,7 @@ vetta --agent-runtime greenfield --mode json "prompt"
 
 ## 测试
 
-标准 `vetta` CLI 进程测试覆盖：
+标准 `astravia` CLI 进程测试覆盖：
 
 - 默认 Legacy text Print。
 - 显式 Greenfield text Print。

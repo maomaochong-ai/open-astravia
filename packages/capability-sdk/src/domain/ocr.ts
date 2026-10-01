@@ -186,7 +186,7 @@ export type OcrResult = Readonly<Static<typeof output>>;
 
 export const DOMAIN_OCR_CAPABILITIES = {
 	LIST_PROVIDERS: defineCapability<Record<string, never>, OcrProviderDescriptor[]>({
-		id: "cap.domain.vetta.ocr.provider.list",
+		id: "cap.domain.astravia.ocr.provider.list",
 		kind: "query",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
@@ -194,7 +194,7 @@ export const DOMAIN_OCR_CAPABILITIES = {
 		output: defineCapabilityOutputSchema(Type.Array(descriptor), { clean: true }),
 	}),
 	RECOGNIZE: defineCapability<OcrRequest, OcrResult>({
-		id: "cap.domain.vetta.ocr.recognize",
+		id: "cap.domain.astravia.ocr.recognize",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,

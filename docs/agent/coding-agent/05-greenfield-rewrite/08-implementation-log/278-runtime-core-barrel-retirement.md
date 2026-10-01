@@ -14,7 +14,7 @@
 - 会话历史、认证、模型和设置等用户数据；必要时由显式、独立的新迁移器读取旧格式。
 - 模型消息、工具消息、错误、取消、事件顺序、并发约束和资源释放语义。
 - 仍然有效的行为测试场景和数据 fixture；旧实现可以临时作为测试 Oracle，但不能被新生产代码调用。
-- `@vetta/ai` 与经过合同验证的 `@vetta/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
+- `@astravia/ai` 与经过合同验证的 `@astravia/agent-core` 等独立下层能力，除非单独审计证明其合同不满足目标。
 
 ## 明确舍弃（固定）
 
@@ -50,7 +50,7 @@
 
 生产代码 14 个调用方和测试 22 个调用方改为直接依赖职责所有者：
 
-- Hook Runtime 直接依赖 `@vetta/ecosystem-adapter`；
+- Hook Runtime 直接依赖 `@astravia/ecosystem-adapter`；
 - Memory Rollover 与 Memory Feature 直接依赖 `memory` 域；
 - Context Runtime 直接依赖 `context-runtime`；
 - Model、Prompt、MCP、Plugin、Todo、Subagent、Extension Bridge 和 Sandbox Tool 分别依赖各自实现模块；
@@ -118,7 +118,7 @@ GOFLAGS="-p=1 -parallel=1" bun run verify:agent-hosts
 ok (coding-agent, CLI, Desktop, IM)
 ```
 
-其中 Desktop 验收为 119 个测试文件通过、501 个测试通过、1 个跳过；独立 Vetta CLI 可执行文件编译和 IM
+其中 Desktop 验收为 119 个测试文件通过、501 个测试通过、1 个跳过；独立 Astravia CLI 可执行文件编译和 IM
 Gateway Go 测试同时通过。
 
 ## 尚未完成的替换

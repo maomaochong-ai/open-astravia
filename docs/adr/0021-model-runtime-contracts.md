@@ -1,6 +1,6 @@
 # Model runtime contracts and provider routing
 
-`@vetta/ai` owns the stable boundary between a model call and provider-specific transports. Provider adapters may differ in wire protocol, but consumers must not need to know whether the call used OpenAI-compatible, Anthropic, Google, or another transport.
+`@astravia/ai` owns the stable boundary between a model call and provider-specific transports. Provider adapters may differ in wire protocol, but consumers must not need to know whether the call used OpenAI-compatible, Anthropic, Google, or another transport.
 
 ## Decision
 

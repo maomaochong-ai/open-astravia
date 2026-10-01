@@ -18,7 +18,7 @@ memory-mode 下启用三层：
 
 2. **[[session rollover]] 取代 [[Layer2 压缩]]**（阈值 ~70%）：保留免费的 [[Layer1 microcompact]]；到阈值不在原 jsonl 原地 LLM 压缩，而是 flush → 复用 compaction 现成逻辑生成「近期尾巴（`keepRecentTokens` ~20k）+ 摘要」→ 写进**新 jsonl**，`SessionHeader.parentSession` 指回旧文件。承接进新会话 = 尾巴 + 摘要 + MEMORY.md。rollover 时 coding-agent 发 path-changed 事件，im-gateway 更新路由 state。`session_search`（借 parentSession 链跨 jsonl 回溯）延后二期，一期只留指针。
 
-3. **[[日期工作史]]**：agent 运行 cwd 设为今日日期目录 `<im-gateway cwd>/<YYYY-MM-DD>/`（写 `./` 落今日、读 `../<昨天>/` 回溯），与 [[im-gateway inbox]] 日期目录同构；每个日期目录一份 [[JOURNAL.md]]（每 turn-end append 一行 + rollover 写一段）。「问 agent 昨天干了什么」由 agent 自助翻昨日目录成立；产物即记忆。flush/摘要模板须显式收录关键产物及路径，这才让「跨 rollover 记住产物」真正成立。`--session-dir` 须钉死为绝对 `<cwd>/.vetta/sessions/`，不随日期 run-cwd 漂。
+3. **[[日期工作史]]**：agent 运行 cwd 设为今日日期目录 `<im-gateway cwd>/<YYYY-MM-DD>/`（写 `./` 落今日、读 `../<昨天>/` 回溯），与 [[im-gateway inbox]] 日期目录同构；每个日期目录一份 [[JOURNAL.md]]（每 turn-end append 一行 + rollover 写一段）。「问 agent 昨天干了什么」由 agent 自助翻昨日目录成立；产物即记忆。flush/摘要模板须显式收录关键产物及路径，这才让「跨 rollover 记住产物」真正成立。`--session-dir` 须钉死为绝对 `<cwd>/.astravia/sessions/`，不随日期 run-cwd 漂。
 
 ## 关键取舍
 

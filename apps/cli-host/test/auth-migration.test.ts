@@ -1,9 +1,9 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { ENV_AGENT_DIR } from "@vetta/coding-agent/config";
-import { AuthStorage } from "@vetta/coding-agent/host-services";
-import { NodeTransactionalTextStorage, nodeConfigurationValueResolver } from "@vetta/runtime-node/host";
+import { ENV_AGENT_DIR } from "@astravia/coding-agent/config";
+import { AuthStorage } from "@astravia/coding-agent/host-services";
+import { NodeTransactionalTextStorage, nodeConfigurationValueResolver } from "@astravia/runtime-node/host";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { migrateAuthToAuthJson, runMigrations } from "../src/startup-migrations.js";
 

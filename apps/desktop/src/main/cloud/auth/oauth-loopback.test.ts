@@ -7,7 +7,7 @@ vi.mock("../../logger.js", () => ({
 const { ensureLoopbackCallbackUrl, setLoopbackCallbackHandler } = await import("./oauth-loopback.js");
 
 describe("oauth loopback callback", () => {
-	it("把 loopback 回调归一化成 vetta:// 形式交给 handler", async () => {
+	it("把 loopback 回调归一化成 astravia:// 形式交给 handler", async () => {
 		const received: string[] = [];
 		setLoopbackCallbackHandler((url) => received.push(url));
 
@@ -18,7 +18,7 @@ describe("oauth loopback callback", () => {
 		expect(response.status).toBe(200);
 		await response.text();
 
-		expect(received).toEqual(["vetta://oauth/callback?state=s1&access_token=t1&refresh_token=r1"]);
+		expect(received).toEqual(["astravia://oauth/callback?state=s1&access_token=t1&refresh_token=r1"]);
 	});
 
 	it("复用同一个端口", async () => {

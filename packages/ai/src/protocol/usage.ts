@@ -99,7 +99,7 @@ export interface PromptCacheUsageLike {
 }
 
 export interface PromptCacheMetrics {
-	/** All prompt tokens under Vetta's disjoint input/read/write accounting. */
+	/** All prompt tokens under Astravia's disjoint input/read/write accounting. */
 	promptTokens: number;
 	/** Whether cache reads are observable for this usage record. */
 	readObserved: boolean;
@@ -130,7 +130,7 @@ export interface PromptCacheUsageSummary {
 }
 
 /**
- * Calculates provider-neutral prompt-cache metrics from Vetta usage semantics.
+ * Calculates provider-neutral prompt-cache metrics from Astravia usage semantics.
  * `input`, `cacheRead`, and `cacheWrite` are disjoint, so all three form the
  * prompt-token denominator. Output tokens never participate in cache rates.
  */

@@ -1,4 +1,4 @@
-import type { RuntimeSessionCatalog, SessionHistoryInfo } from "@vetta/runtime-core";
+import type { RuntimeSessionCatalog, SessionHistoryInfo } from "@astravia/runtime-core";
 
 export interface ResolveImSessionPathOptions {
 	readonly explicitSessionPath?: string;

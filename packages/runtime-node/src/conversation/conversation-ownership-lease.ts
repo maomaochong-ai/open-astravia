@@ -3,14 +3,14 @@ import type { FileHandle } from "node:fs/promises";
 import { mkdir, open, readFile, rm, stat, utimes } from "node:fs/promises";
 import { hostname } from "node:os";
 import { dirname } from "node:path";
-import { Type } from "@sinclair/typebox";
-import { Value } from "@sinclair/typebox/value";
 import {
 	ConversationOwnershipConflictError,
 	type ConversationOwnershipHolder,
 	type ConversationOwnershipLease,
 	type ConversationOwnershipManager,
-} from "@vetta/runtime-storage/conversation";
+} from "@astravia/runtime-storage/conversation";
+import { Type } from "@sinclair/typebox";
+import { Value } from "@sinclair/typebox/value";
 import { nodeErrorCode } from "./node-error-code.js";
 import { currentProcessStartedAtMs, isLocalProcessAlive, readLocalProcessStartedAtMs } from "./process-identity.js";
 

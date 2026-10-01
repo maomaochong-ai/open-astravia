@@ -23,10 +23,10 @@ import (
 
 	"go.uber.org/zap"
 
-	"vetta-im-gateway/internal/config"
-	"vetta-im-gateway/internal/logger"
-	"vetta-im-gateway/internal/transport/wechat"
-	"vetta-im-gateway/internal/transport/wechat/ilink"
+	"astravia-im-gateway/internal/config"
+	"astravia-im-gateway/internal/logger"
+	"astravia-im-gateway/internal/transport/wechat"
+	"astravia-im-gateway/internal/transport/wechat/ilink"
 )
 
 // runWechat is the entry point dispatched from main.go for the `wechat`
@@ -70,7 +70,7 @@ func printWechatUsage(w *os.File) {
 
 func runWechatLogin(args []string) int {
 	fs := flag.NewFlagSet("wechat login", flag.ContinueOnError)
-	configPath := fs.String("config", "", "path to config.yaml (default: ~/.vetta/im-gateway/config.yaml)")
+	configPath := fs.String("config", "", "path to config.yaml (default: ~/.astravia/im-gateway/config.yaml)")
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}

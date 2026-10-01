@@ -1,4 +1,4 @@
-import type { AssistantMessage } from "@vetta/ai";
+import type { AssistantMessage } from "@astravia/ai";
 
 /** Public Team history may contain text and tool calls, never private reasoning. */
 export function publicAssistantMessage(message: AssistantMessage): AssistantMessage {

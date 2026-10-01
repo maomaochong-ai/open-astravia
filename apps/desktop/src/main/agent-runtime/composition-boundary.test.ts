@@ -16,8 +16,8 @@ const productionSources = {
 describe("Desktop Runtime composition boundary", () => {
 	it("keeps deprecated coding-agent subpaths out of the production composition", () => {
 		for (const [name, source] of Object.entries(productionSources)) {
-			expect(source, name).not.toContain("@vetta/coding-agent/legacy/");
-			expect(source, name).not.toContain("@vetta/coding-agent/runtime-host");
+			expect(source, name).not.toContain("@astravia/coding-agent/legacy/");
+			expect(source, name).not.toContain("@astravia/coding-agent/runtime-host");
 		}
 	});
 

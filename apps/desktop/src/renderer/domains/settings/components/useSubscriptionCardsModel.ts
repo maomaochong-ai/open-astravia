@@ -8,7 +8,7 @@ import { useTranslation } from "react-i18next";
 import { recordSettingsUsage } from "./recordSettingsUsage";
 
 /** 官网定价页（升级套餐外链目标） */
-const PRICING_URL = "https://openvetta.com/pricing";
+const PRICING_URL = "https://astravia.dev/pricing";
 
 export type ModelCost = { cacheRead: number; cacheWrite: number; input: number; output: number };
 export type RemoteModel = {
@@ -78,7 +78,7 @@ export function useSubscriptionCardsModel(): SubscriptionCardsModel {
 		try {
 			const [, sub] = await Promise.all([
 				modelCatalog.revalidate({ force: true, sources: ["remote"] }),
-				window.vetta.subscription.getStatus(),
+				window.astravia.subscription.getStatus(),
 			]);
 			if (sub.status) setSubscriptionStatus(sub.status);
 			recordSettingsUsage({ tab: "subscription", action: "refreshed", target: "status" });
@@ -90,7 +90,7 @@ export function useSubscriptionCardsModel(): SubscriptionCardsModel {
 	}, [setSubscriptionStatus]);
 
 	useEffect(() => {
-		void window.vetta.subscription
+		void window.astravia.subscription
 			.getStatus()
 			.then((sub) => {
 				if (sub.status) setSubscriptionStatus(sub.status);
@@ -104,7 +104,7 @@ export function useSubscriptionCardsModel(): SubscriptionCardsModel {
 	}, []);
 
 	const remoteEntries = Object.entries(remoteProviders as Record<string, RemoteProvider>);
-	const goProvider = remoteEntries.find(([name]) => name === "vetta-go")?.[1];
+	const goProvider = remoteEntries.find(([name]) => name === "astravia-go")?.[1];
 	const showGoCard = subscriptionStatus.active && subscriptionStatus.go_enabled;
 
 	const labels = useMemo(
@@ -140,7 +140,7 @@ export function useSubscriptionCardsModel(): SubscriptionCardsModel {
 
 	const handleUpgrade = useCallback(() => {
 		// ADR-0051：desktop 不内嵌收银台（3DS/银行跳转在 BrowserWindow 里不可靠），外链官网定价页
-		void window.vetta.shell.openExternal(PRICING_URL);
+		void window.astravia.shell.openExternal(PRICING_URL);
 		recordSettingsUsage({ tab: "subscription", action: "selected", target: "upgrade-pricing-link" });
 	}, []);
 

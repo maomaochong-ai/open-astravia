@@ -1,5 +1,5 @@
-import type { AgentFeatureDefinition, ModelCallContributionContext } from "@vetta/runtime-core/kernel";
-import type { CodingToolRegistration } from "@vetta/runtime-tools";
+import type { AgentFeatureDefinition, ModelCallContributionContext } from "@astravia/runtime-core/kernel";
+import type { CodingToolRegistration } from "@astravia/runtime-tools";
 import {
 	type CodingAgentKnowledgeWriteOperations,
 	createCodingAgentKnowledgeWritePageToolRegistration,

@@ -12,14 +12,14 @@
  * - Organize with subdirectories: Group related rules (e.g., frontend/, backend/)
  *
  * Usage:
- * 1. Copy this file to ~/.vetta/agent/extensions/ or your project's .vetta/extensions/
+ * 1. Copy this file to ~/.astravia/agent/extensions/ or your project's .astravia/extensions/
  * 2. Create .claude/rules/ folder in your project root
  * 3. Add .md files with your rules
  */
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import type { ExtensionAPI } from "@vetta/coding-agent";
+import type { ExtensionAPI } from "@astravia/coding-agent";
 
 /**
  * Recursively find all .md files in a directory

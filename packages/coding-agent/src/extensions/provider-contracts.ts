@@ -6,7 +6,7 @@ import type {
 	OAuthCredentials,
 	OAuthLoginCallbacks,
 	SimpleStreamOptions,
-} from "@vetta/ai";
+} from "@astravia/ai";
 
 /** Configuration for registering a provider via pi.registerProvider(). */
 export interface ProviderConfig {

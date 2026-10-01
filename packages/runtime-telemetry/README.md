@@ -1,4 +1,4 @@
-# @vetta/runtime-telemetry
+# @astravia/runtime-telemetry
 
 Minimal telemetry contract for runtime and host packages.
 
@@ -9,7 +9,7 @@ Minimal telemetry contract for runtime and host packages.
 - structured logger context shape
 - platform-neutral `RuntimeTracer` / `RuntimeObservation` interfaces
 - `RuntimeObservationPort` adapters for structured logs and flat tracer events
-- optional Langfuse exporter in `@vetta/runtime-telemetry/langfuse`
+- optional Langfuse exporter in `@astravia/runtime-telemetry/langfuse`
 
 ## What It Does Not Own
 
@@ -19,21 +19,21 @@ Minimal telemetry contract for runtime and host packages.
 ## Langfuse
 
 ```ts
-import { createLangfuseRuntimeTracerFromEnv } from "@vetta/runtime-telemetry/langfuse";
+import { createLangfuseRuntimeTracerFromEnv } from "@astravia/runtime-telemetry/langfuse";
 
 const tracer = createLangfuseRuntimeTracerFromEnv();
 ```
 
-Set `VETTA_TRACING=langfuse` plus Langfuse credentials (`LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, optional `LANGFUSE_BASE_URL`) to enable it.
+Set `ASTRAVIA_TRACING=langfuse` plus Langfuse credentials (`LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, optional `LANGFUSE_BASE_URL`) to enable it.
 
 ## Runtime Observation adapters
 
 ```ts
-import { RuntimeObservationHub } from "@vetta/runtime-core/observation";
+import { RuntimeObservationHub } from "@astravia/runtime-core/observation";
 import {
   createRuntimeObservationLoggerPort,
   createRuntimeObservationTracerPort,
-} from "@vetta/runtime-telemetry";
+} from "@astravia/runtime-telemetry";
 
 const hub = new RuntimeObservationHub();
 hub.attach(createRuntimeObservationLoggerPort({ logger }), { id: "log" });

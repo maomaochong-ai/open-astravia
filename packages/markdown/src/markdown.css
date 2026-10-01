@@ -1,32 +1,32 @@
 /**
  * 博客正文排版。所有颜色走 shadcn 主题变量（--foreground / --muted-foreground / --border / --primary /
  * --muted / --card），admin 与 site 各自的亮/暗主题都能直接继承，不在这里写死任何具体色值。
- * 全部选择器都挂在 .vetta-markdown 下，避免污染宿主页面。
+ * 全部选择器都挂在 .astravia-markdown 下，避免污染宿主页面。
  */
 
-.vetta-markdown {
+.astravia-markdown {
 	color: var(--foreground);
 	font-size: 1rem;
 	line-height: 1.75;
 	overflow-wrap: break-word;
 }
 
-.vetta-markdown > *:first-child {
+.astravia-markdown > *:first-child {
 	margin-top: 0;
 }
 
-.vetta-markdown > *:last-child {
+.astravia-markdown > *:last-child {
 	margin-bottom: 0;
 }
 
 /* ── 标题 ── */
 
-.vetta-markdown h1,
-.vetta-markdown h2,
-.vetta-markdown h3,
-.vetta-markdown h4,
-.vetta-markdown h5,
-.vetta-markdown h6 {
+.astravia-markdown h1,
+.astravia-markdown h2,
+.astravia-markdown h3,
+.astravia-markdown h4,
+.astravia-markdown h5,
+.astravia-markdown h6 {
 	margin: 2em 0 0.75em;
 	font-weight: 600;
 	line-height: 1.3;
@@ -34,41 +34,41 @@
 	scroll-margin-top: 6rem;
 }
 
-.vetta-markdown h1 {
+.astravia-markdown h1 {
 	font-size: 1.875em;
 }
 
-.vetta-markdown h2 {
+.astravia-markdown h2 {
 	font-size: 1.5em;
 	padding-bottom: 0.3em;
 	border-bottom: 1px solid var(--border);
 }
 
-.vetta-markdown h3 {
+.astravia-markdown h3 {
 	font-size: 1.25em;
 }
 
-.vetta-markdown h4 {
+.astravia-markdown h4 {
 	font-size: 1.05em;
 }
 
-.vetta-markdown h5,
-.vetta-markdown h6 {
+.astravia-markdown h5,
+.astravia-markdown h6 {
 	font-size: 1em;
 	color: var(--muted-foreground);
 }
 
 /* ── 段落与行内 ── */
 
-.vetta-markdown p {
+.astravia-markdown p {
 	margin: 1.15em 0;
 }
 
-.vetta-markdown strong {
+.astravia-markdown strong {
 	font-weight: 600;
 }
 
-.vetta-markdown a {
+.astravia-markdown a {
 	color: var(--primary);
 	text-decoration: underline;
 	text-underline-offset: 0.2em;
@@ -76,11 +76,11 @@
 	transition: text-decoration-color 150ms ease;
 }
 
-.vetta-markdown a:hover {
+.astravia-markdown a:hover {
 	text-decoration-color: var(--primary);
 }
 
-.vetta-markdown hr {
+.astravia-markdown hr {
 	margin: 2.5em 0;
 	border: 0;
 	border-top: 1px solid var(--border);
@@ -88,36 +88,36 @@
 
 /* ── 列表 ── */
 
-.vetta-markdown ul,
-.vetta-markdown ol {
+.astravia-markdown ul,
+.astravia-markdown ol {
 	margin: 1.15em 0;
 	padding-left: 1.5em;
 }
 
-.vetta-markdown ul {
+.astravia-markdown ul {
 	list-style: disc;
 }
 
-.vetta-markdown ol {
+.astravia-markdown ol {
 	list-style: decimal;
 }
 
-.vetta-markdown li {
+.astravia-markdown li {
 	margin: 0.4em 0;
 }
 
-.vetta-markdown li > ul,
-.vetta-markdown li > ol {
+.astravia-markdown li > ul,
+.astravia-markdown li > ol {
 	margin: 0.4em 0;
 }
 
 /* GFM 任务列表：去掉项目符号，复选框与文字基线对齐 */
-.vetta-markdown li:has(> input[type="checkbox"]) {
+.astravia-markdown li:has(> input[type="checkbox"]) {
 	list-style: none;
 	margin-left: -1.35em;
 }
 
-.vetta-markdown li > input[type="checkbox"] {
+.astravia-markdown li > input[type="checkbox"] {
 	margin-right: 0.5em;
 	vertical-align: middle;
 	accent-color: var(--primary);
@@ -125,37 +125,37 @@
 
 /* ── 引用 ── */
 
-.vetta-markdown blockquote {
+.astravia-markdown blockquote {
 	margin: 1.5em 0;
 	padding: 0.25em 0 0.25em 1.15em;
 	border-left: 3px solid color-mix(in srgb, var(--primary) 55%, transparent);
 	color: var(--muted-foreground);
 }
 
-.vetta-markdown blockquote > *:first-child {
+.astravia-markdown blockquote > *:first-child {
 	margin-top: 0;
 }
 
-.vetta-markdown blockquote > *:last-child {
+.astravia-markdown blockquote > *:last-child {
 	margin-bottom: 0;
 }
 
 /* ── 代码 ── */
 
-.vetta-markdown code {
+.astravia-markdown code {
 	font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 	font-size: 0.875em;
 }
 
 /* 行内代码（pre 里的块级代码在下面单独覆写） */
-.vetta-markdown :not(pre) > code {
+.astravia-markdown :not(pre) > code {
 	padding: 0.15em 0.4em;
 	border-radius: 0.35em;
 	background: color-mix(in srgb, var(--muted-foreground) 16%, transparent);
 	word-break: break-word;
 }
 
-.vetta-markdown pre {
+.astravia-markdown pre {
 	margin: 1.5em 0;
 	padding: 1em 1.15em;
 	border: 1px solid var(--border);
@@ -165,7 +165,7 @@
 	line-height: 1.6;
 }
 
-.vetta-markdown pre > code {
+.astravia-markdown pre > code {
 	display: block;
 	padding: 0;
 	background: none;
@@ -174,38 +174,38 @@
 
 /* ── 表格 ── */
 
-.vetta-markdown-table-scroll {
+.astravia-markdown-table-scroll {
 	margin: 1.5em 0;
 	overflow-x: auto;
 	border: 1px solid var(--border);
 	border-radius: 0.75em;
 }
 
-.vetta-markdown table {
+.astravia-markdown table {
 	width: 100%;
 	border-collapse: collapse;
 	font-size: 0.925em;
 }
 
-.vetta-markdown th,
-.vetta-markdown td {
+.astravia-markdown th,
+.astravia-markdown td {
 	padding: 0.6em 0.9em;
 	text-align: left;
 	border-bottom: 1px solid var(--border);
 }
 
-.vetta-markdown tr:last-child > td {
+.astravia-markdown tr:last-child > td {
 	border-bottom: 0;
 }
 
-.vetta-markdown thead th {
+.astravia-markdown thead th {
 	background: color-mix(in srgb, var(--muted-foreground) 10%, transparent);
 	font-weight: 600;
 }
 
 /* ── 图片 ── */
 
-.vetta-markdown img {
+.astravia-markdown img {
 	display: block;
 	max-width: 100%;
 	height: auto;
@@ -219,58 +219,58 @@
  * （那些文件写死背景色，会和上面的 pre 背景打架）。
  */
 
-.vetta-markdown .hljs-comment,
-.vetta-markdown .hljs-quote {
+.astravia-markdown .hljs-comment,
+.astravia-markdown .hljs-quote {
 	color: color-mix(in srgb, var(--muted-foreground) 85%, transparent);
 	font-style: italic;
 }
 
-.vetta-markdown .hljs-keyword,
-.vetta-markdown .hljs-selector-tag,
-.vetta-markdown .hljs-literal,
-.vetta-markdown .hljs-doctag {
+.astravia-markdown .hljs-keyword,
+.astravia-markdown .hljs-selector-tag,
+.astravia-markdown .hljs-literal,
+.astravia-markdown .hljs-doctag {
 	color: oklch(0.62 0.18 305);
 }
 
-.vetta-markdown .hljs-string,
-.vetta-markdown .hljs-regexp,
-.vetta-markdown .hljs-addition {
+.astravia-markdown .hljs-string,
+.astravia-markdown .hljs-regexp,
+.astravia-markdown .hljs-addition {
 	color: oklch(0.6 0.15 150);
 }
 
-.vetta-markdown .hljs-number,
-.vetta-markdown .hljs-symbol,
-.vetta-markdown .hljs-bullet {
+.astravia-markdown .hljs-number,
+.astravia-markdown .hljs-symbol,
+.astravia-markdown .hljs-bullet {
 	color: oklch(0.65 0.16 45);
 }
 
-.vetta-markdown .hljs-title,
-.vetta-markdown .hljs-section,
-.vetta-markdown .hljs-name {
+.astravia-markdown .hljs-title,
+.astravia-markdown .hljs-section,
+.astravia-markdown .hljs-name {
 	color: oklch(0.62 0.16 250);
 }
 
-.vetta-markdown .hljs-attr,
-.vetta-markdown .hljs-attribute,
-.vetta-markdown .hljs-variable,
-.vetta-markdown .hljs-template-variable {
+.astravia-markdown .hljs-attr,
+.astravia-markdown .hljs-attribute,
+.astravia-markdown .hljs-variable,
+.astravia-markdown .hljs-template-variable {
 	color: oklch(0.65 0.14 200);
 }
 
-.vetta-markdown .hljs-type,
-.vetta-markdown .hljs-built_in,
-.vetta-markdown .hljs-class .hljs-title {
+.astravia-markdown .hljs-type,
+.astravia-markdown .hljs-built_in,
+.astravia-markdown .hljs-class .hljs-title {
 	color: oklch(0.68 0.14 85);
 }
 
-.vetta-markdown .hljs-deletion {
+.astravia-markdown .hljs-deletion {
 	color: oklch(0.6 0.18 25);
 }
 
-.vetta-markdown .hljs-emphasis {
+.astravia-markdown .hljs-emphasis {
 	font-style: italic;
 }
 
-.vetta-markdown .hljs-strong {
+.astravia-markdown .hljs-strong {
 	font-weight: 600;
 }

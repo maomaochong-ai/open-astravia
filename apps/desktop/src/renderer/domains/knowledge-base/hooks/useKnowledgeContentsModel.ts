@@ -120,7 +120,7 @@ export function useKnowledgeContentsModel({ knowledgeBase, search }: UseKnowledg
 		setNavTarget(null);
 	}, [navTarget, path, setNavTarget, knowledgeBase.nodes, setPath]);
 
-	useEffect(() => window.vetta.knowledge.onStatusesChanged(() => void refresh()), [refresh]);
+	useEffect(() => window.astravia.knowledge.onStatusesChanged(() => void refresh()), [refresh]);
 
 	// 进入目录 / 深链跳转：按路径链逐层 listDir。依赖 pathKey（内容）而非 path 引用。
 	useEffect(() => {
@@ -221,7 +221,7 @@ export function useKnowledgeContentsModel({ knowledgeBase, search }: UseKnowledg
 				onConfirm: () => {
 					void (async () => {
 						for (const id of ids) {
-							await window.vetta.knowledge.deleteEntry(knowledgeBase.id, id).catch(() => {});
+							await window.astravia.knowledge.deleteEntry(knowledgeBase.id, id).catch(() => {});
 						}
 						clearSelection();
 						await refresh();
@@ -241,7 +241,7 @@ export function useKnowledgeContentsModel({ knowledgeBase, search }: UseKnowledg
 				confirmLabel: t("settings:kbWikiDeleteConfirm"),
 				onConfirm: () => {
 					void (async () => {
-						await window.vetta.knowledge.deleteWiki(knowledgeBase.id, ids).catch(() => {});
+						await window.astravia.knowledge.deleteWiki(knowledgeBase.id, ids).catch(() => {});
 						clearSelection();
 						await refresh();
 					})();
@@ -256,7 +256,7 @@ export function useKnowledgeContentsModel({ knowledgeBase, search }: UseKnowledg
 			const node = renameNode;
 			setRenameNode(null);
 			if (!node) return;
-			void window.vetta.knowledge.renameEntry(knowledgeBase.id, node.id, newName).then(() => refresh());
+			void window.astravia.knowledge.renameEntry(knowledgeBase.id, node.id, newName).then(() => refresh());
 		},
 		[renameNode, knowledgeBase.id, refresh],
 	);

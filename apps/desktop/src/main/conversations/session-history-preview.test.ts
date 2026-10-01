@@ -1,4 +1,4 @@
-import type { HistoryEntry } from "@vetta/runtime-core";
+import type { HistoryEntry } from "@astravia/runtime-core";
 import { describe, expect, it } from "vitest";
 import { selectSessionHistoryPreview } from "./session-history-preview.js";
 

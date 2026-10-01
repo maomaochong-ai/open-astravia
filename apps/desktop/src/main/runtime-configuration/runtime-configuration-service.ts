@@ -4,15 +4,15 @@ import {
 	CODING_AGENT_COMPACTION_CONFIGURATION_ID,
 	type CodingAgentCompactionConfiguration,
 	type ResolvedCompactionSettings,
-} from "@vetta/coding-agent/settings";
+} from "@astravia/coding-agent/settings";
 import {
 	projectRuntimeConfigurationCatalog,
 	RuntimeConfigurationCenter,
 	type RuntimeConfigurationJsonObject,
 	type RuntimeConfigurationJsonValue,
-} from "@vetta/runtime-core/configuration";
-import { CODING_IMAGE_CONFIGURATION, VETTA_OCR_CONFIGURATION } from "@vetta/runtime-tools";
-import type { OcrProviderDescriptor } from "@vetta-org/capability-sdk";
+} from "@astravia/runtime-core/configuration";
+import { ASTRAVIA_OCR_CONFIGURATION, CODING_IMAGE_CONFIGURATION } from "@astravia/runtime-tools";
+import type { OcrProviderDescriptor } from "@astravia-org/capability-sdk";
 import type {
 	DesktopRuntimeConfigurationCatalog,
 	DesktopRuntimeConfigurationConsumer,
@@ -59,7 +59,7 @@ export class DesktopRuntimeConfigurationService {
 							Object.freeze({
 								...entry,
 								descriptor:
-									entry.configurationId === VETTA_OCR_CONFIGURATION.id
+									entry.configurationId === ASTRAVIA_OCR_CONFIGURATION.id
 										? enrichOcrDescriptor(entry.descriptor, this.dependencies.listOcrProviders?.() ?? [])
 										: entry.descriptor,
 								consumers: Object.freeze(resolveConsumers(entry.configurationId)),
@@ -98,7 +98,7 @@ export class DesktopRuntimeConfigurationService {
 		if (
 			configurationId !== CODING_AGENT_COMPACTION_CONFIGURATION.id &&
 			configurationId !== CODING_IMAGE_CONFIGURATION.id &&
-			configurationId !== VETTA_OCR_CONFIGURATION.id
+			configurationId !== ASTRAVIA_OCR_CONFIGURATION.id
 		) {
 			throw new Error(`Runtime Configuration is not editable: ${configurationId}`);
 		}
@@ -140,7 +140,7 @@ export class DesktopRuntimeConfigurationService {
 			});
 			this.center.definitions.upsert({
 				source: BUILTIN_DEFINITION_SOURCE,
-				definition: VETTA_OCR_CONFIGURATION,
+				definition: ASTRAVIA_OCR_CONFIGURATION,
 			});
 			this.builtinPublished = true;
 		}
@@ -154,7 +154,7 @@ export class DesktopRuntimeConfigurationService {
 		const images = settings.images;
 		if (isRecord(images)) values[CODING_IMAGE_CONFIGURATION.id] = toJsonObject(images);
 		const ocr = settings.ocr;
-		if (isRecord(ocr)) values[VETTA_OCR_CONFIGURATION.id] = toJsonObject(ocr);
+		if (isRecord(ocr)) values[ASTRAVIA_OCR_CONFIGURATION.id] = toJsonObject(ocr);
 		const revision = hashJson(values);
 		this.center.layers.replaceSource({ id: DESKTOP_LAYER_SOURCE_ID, revision }, [
 			{
@@ -241,7 +241,7 @@ function resolveConsumers(configurationId: string): DesktopRuntimeConfigurationC
 	if (configurationId === CODING_AGENT_COMPACTION_CONFIGURATION_ID) {
 		return [{ kind: "runtime", id: "context-compaction", support: "native" }];
 	}
-	if (configurationId === VETTA_OCR_CONFIGURATION.id) {
+	if (configurationId === ASTRAVIA_OCR_CONFIGURATION.id) {
 		return [
 			{ kind: "tool", id: "extract_text_from_img", support: "native" },
 			{ kind: "runtime", id: "plugin-ocr", support: "native" },

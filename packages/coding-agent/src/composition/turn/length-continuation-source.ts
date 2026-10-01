@@ -1,5 +1,5 @@
-import type { AssistantMessage, UserMessage } from "@vetta/ai";
-import type { ContinuationPolicyContext } from "@vetta/runtime-core/kernel";
+import type { AssistantMessage, UserMessage } from "@astravia/ai";
+import type { ContinuationPolicyContext } from "@astravia/runtime-core/kernel";
 import type { CodingAgentContinuationSource } from "../../runtime-contracts/index.js";
 
 export const DEFAULT_CODING_AGENT_LENGTH_CONTINUATION_ATTEMPTS = 3;

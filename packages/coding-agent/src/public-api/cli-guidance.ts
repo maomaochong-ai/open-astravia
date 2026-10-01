@@ -1,1 +1,1 @@
-export { VETTA_CLI_GUIDANCE } from "../model-context/system-prompt-policy.js";
+export { ASTRAVIA_CLI_GUIDANCE } from "../model-context/system-prompt-policy.js";

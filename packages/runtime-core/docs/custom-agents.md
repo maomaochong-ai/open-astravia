@@ -1,6 +1,6 @@
 # 自定义 Agent 指南
 
-本文说明如何基于 `@vetta/runtime-core` 创建、发布、运行和动态更新多个平级主 Agent。这里的 Agent
+本文说明如何基于 `@astravia/runtime-core` 创建、发布、运行和动态更新多个平级主 Agent。这里的 Agent
 不是由某个主 Agent 派发的子 Agent；每个 Agent 都有独立的 Definition、revision、Instance、Session、Prompt、
 Tool、MCP、模型绑定、扩展与观测作用域。
 
@@ -37,13 +37,13 @@ RuntimeHost
 import {
   defineRuntimeAgent,
   type RuntimeAgentDefinition,
-} from "@vetta/runtime-core/agents";
-import { RuntimeHost } from "@vetta/runtime-core";
+} from "@astravia/runtime-core/agents";
+import { RuntimeHost } from "@astravia/runtime-core";
 import {
   createDefaultRuntimeCapabilityDefinition,
   resolveModelCallFrame,
   type RuntimeTurnModelBindingProvider,
-} from "@vetta/runtime-core/kernel";
+} from "@astravia/runtime-core/kernel";
 
 function createReviewerAgent(
   modelBindingProvider: RuntimeTurnModelBindingProvider,
@@ -128,7 +128,7 @@ Runtime 自动重试默认关闭。产品或宿主可以使用同一通用协调
 import {
   ConfigurableRuntimeTurnRetryPolicy,
   RuntimeTurnRetryCoordinator,
-} from "@vetta/runtime-core";
+} from "@astravia/runtime-core";
 
 const retry = new RuntimeTurnRetryCoordinator({
   policy: new ConfigurableRuntimeTurnRetryPolicy({
@@ -164,7 +164,7 @@ Compaction Committer 和 Session Context Controller 会统一处理取消、持�
 import {
   ConsecutiveFailureCircuitBreaker,
   RuntimeContextUsageTracker,
-} from "@vetta/runtime-core/kernel";
+} from "@astravia/runtime-core/kernel";
 
 const usage = new RuntimeContextUsageTracker({
   estimateDocumentTokens: (document) => estimateMyAgentDocument(document),
@@ -219,7 +219,7 @@ Agent 间协作，应由更上层的编排产品显式连接它们，而不是�
 Agent Instance/Session 生命周期：
 
 ```ts
-import { RuntimeAgentSessionAssemblyBackend, RuntimeHost } from "@vetta/runtime-core";
+import { RuntimeAgentSessionAssemblyBackend, RuntimeHost } from "@astravia/runtime-core";
 
 const host = new RuntimeHost({
   createSessionBackend({ agents, observationPublisher }) {
@@ -379,7 +379,7 @@ const session = await instance.createSession({
 import type {
   AgentFeatureDefinition,
   RuntimeToolDefinition,
-} from "@vetta/runtime-core/kernel";
+} from "@astravia/runtime-core/kernel";
 
 const currentTimeTool: RuntimeToolDefinition = {
   name: "current_time",
@@ -419,7 +419,7 @@ const currentTimeFeature: AgentFeatureDefinition = {
 
 ## 接入 MCP
 
-Runtime Core 不认识 MCP server 配置或 transport。`@vetta/runtime-mcp` 把 MCP Tool 投影成通用
+Runtime Core 不认识 MCP server 配置或 transport。`@astravia/runtime-mcp` 把 MCP Tool 投影成通用
 `RuntimeToolDefinition`；具体 stdio/HTTP 连接、OAuth、进程和文件读取由平台宿主实现。
 
 下面展示 Session 内的基本组合方式。`mcpSource` 是宿主创建的 `McpRuntimeToolSource`，不是配置文件本身：
@@ -429,12 +429,12 @@ import {
   createMcpRuntimeToolSynchronizer,
   renderMcpToolsInstruction,
   type McpRuntimeToolSource,
-} from "@vetta/runtime-mcp";
+} from "@astravia/runtime-mcp";
 import type {
   AgentFeatureDefinition,
   RuntimeToolDefinition,
-} from "@vetta/runtime-core/kernel";
-import type { RuntimeObservationPublisher } from "@vetta/runtime-core/observation";
+} from "@astravia/runtime-core/kernel";
+import type { RuntimeObservationPublisher } from "@astravia/runtime-core/observation";
 
 function createMcpFeature(
   mcpSource: McpRuntimeToolSource,
@@ -517,7 +517,7 @@ MCP 凭证、server fingerprint、Tool 参数和结果不得进入默认 Observa
 import {
   RuntimeAgentDefinitionSynchronizer,
   type RuntimeAgentDefinitionSource,
-} from "@vetta/runtime-core/agents";
+} from "@astravia/runtime-core/agents";
 
 const source: RuntimeAgentDefinitionSource = {
   id: "workspace-config",
@@ -695,8 +695,8 @@ Instruction、Feature、Policy 或 Extension。
 最简单的宿主仍可直接向 Host 注入一个抽象 Port。JSONL、OTLP、Langfuse、Metrics 或 UI 面板都是 Port 的具体实现：
 
 ```ts
-import { RuntimeHost } from "@vetta/runtime-core";
-import type { RuntimeObservationPort } from "@vetta/runtime-core/observation";
+import { RuntimeHost } from "@astravia/runtime-core";
+import type { RuntimeObservationPort } from "@astravia/runtime-core/observation";
 
 const observationPort: RuntimeObservationPort = {
   record(record) {
@@ -727,8 +727,8 @@ const host = new RuntimeHost({ observationPort });
 需要模块独立观测、动态 Adapter 或多层汇聚时，使用开箱即用的 `RuntimeObservationHub`：
 
 ```ts
-import { RuntimeAgentRuntime } from "@vetta/runtime-core/agents";
-import { RuntimeObservationHub } from "@vetta/runtime-core/observation";
+import { RuntimeAgentRuntime } from "@astravia/runtime-core/agents";
+import { RuntimeObservationHub } from "@astravia/runtime-core/observation";
 
 const agentHub = new RuntimeObservationHub({ maxPendingRecords: 1_000 });
 const localRoute = agentHub.attach(localMemoryPort, {
@@ -765,7 +765,7 @@ Definition、Instance 和 Session 工厂收到的 `observationPublisher` 已绑�
 `agentId/revisionId/instanceId/sessionId`，自定义能力可以定义自己的安全事件：
 
 ```ts
-import { defineRuntimeObservation } from "@vetta/runtime-core/observation";
+import { defineRuntimeObservation } from "@astravia/runtime-core/observation";
 
 const REVIEW_INDEX_OBSERVATION = defineRuntimeObservation<{
   readonly phase: "started" | "completed";
@@ -789,13 +789,13 @@ Tool Policy、Composer、显式重试策略或领域 Interceptor。自定义 pay
 Tool 参数/结果、凭证、错误 message 或 stack。
 
 现有 Session 业务事件不能原样写入 Hub；使用 `publishRuntimeSessionObservation()` 时只会得到
-`runtime.session.event` 的安全摘要。日志与 Trace 的现成 Adapter 位于 `@vetta/runtime-telemetry`：
+`runtime.session.event` 的安全摘要。日志与 Trace 的现成 Adapter 位于 `@astravia/runtime-telemetry`：
 
 ```ts
 import {
   createRuntimeObservationLoggerPort,
   createRuntimeObservationTracerPort,
-} from "@vetta/runtime-telemetry";
+} from "@astravia/runtime-telemetry";
 
 applicationHub.attach(createRuntimeObservationLoggerPort({ logger }), {
   id: "structured-log",

@@ -23,4 +23,4 @@ Read [references/scenario-gates.md](references/scenario-gates.md) for logos and 
 
 Report: verdict, must-pass failures, strongest qualities, evidence by rubric dimension, primary cause hypothesis, next change, and invariants to preserve. For variants, rank them against the same criteria and explain the tradeoff; do not average away a hard failure.
 
-This method is an original Vetta adaptation informed by visual-skills by Serge Shima (CC BY 4.0) and ViMax (MIT).
+This method is an original Astravia adaptation informed by visual-skills by Serge Shima (CC BY 4.0) and ViMax (MIT).

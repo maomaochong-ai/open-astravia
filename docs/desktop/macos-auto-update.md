@@ -1,6 +1,6 @@
 # macOS 自动更新、R2 发版与排障
 
-本文是 Vetta Desktop macOS 更新链路的维护手册，与 [`windows-auto-update.md`](./windows-auto-update.md) 平行。两端共用同一套更新源配置、发布脚本、状态机和 CI 编排；差异集中在安装机制与产物形态，本文只展开 macOS 侧。
+本文是 Astravia Desktop macOS 更新链路的维护手册，与 [`windows-auto-update.md`](./windows-auto-update.md) 平行。两端共用同一套更新源配置、发布脚本、状态机和 CI 编排；差异集中在安装机制与产物形态，本文只展开 macOS 侧。
 
 ## 1. 当前结论
 
@@ -44,23 +44,23 @@ macOS 需要发布两种产物：**ZIP 供自动更新**（Squirrel.Mac 只认 Z
 desktop/
   stable/
     latest-mac.yml
-    Vetta-<version>-mac.zip              # x64 更新包
-    Vetta-<version>-mac.zip.blockmap
-    Vetta-<version>.dmg                  # x64 首装包
-    Vetta-<version>-arm64-mac.zip        # arm64 更新包
-    Vetta-<version>-arm64-mac.zip.blockmap
-    Vetta-<version>-arm64.dmg            # arm64 首装包
+    Astravia-<version>-mac.zip              # x64 更新包
+    Astravia-<version>-mac.zip.blockmap
+    Astravia-<version>.dmg                  # x64 首装包
+    Astravia-<version>-arm64-mac.zip        # arm64 更新包
+    Astravia-<version>-arm64-mac.zip.blockmap
+    Astravia-<version>-arm64.dmg            # arm64 首装包
 ```
 
 `latest.yml`（Windows）与 `latest-mac.yml`（macOS）是同一前缀下两份独立清单，互不影响，两个平台可以独立发版。
 
 ## 4. 双架构与元数据合并
 
-内置的 node / python 运行时按 `VETTA_VENDOR_PLATFORM` **单架构落盘**，一次 electron-builder 调用出不了两套正确产物，因此 arm64 与 x64 必须分两次构建：
+内置的 node / python 运行时按 `ASTRAVIA_VENDOR_PLATFORM` **单架构落盘**，一次 electron-builder 调用出不了两套正确产物，因此 arm64 与 x64 必须分两次构建：
 
 ```json
-"dist:mac:arm64": "cross-env VETTA_VENDOR_PLATFORM=darwin-arm64 VETTA_CLI_TARGET_PLATFORMS=darwin-arm64 ... --arch arm64"
-"dist:mac:x64":   "cross-env VETTA_VENDOR_PLATFORM=darwin-x64   VETTA_CLI_TARGET_PLATFORMS=darwin-x64   ... --arch x64"
+"dist:mac:arm64": "cross-env ASTRAVIA_VENDOR_PLATFORM=darwin-arm64 ASTRAVIA_CLI_TARGET_PLATFORMS=darwin-arm64 ... --arch arm64"
+"dist:mac:x64":   "cross-env ASTRAVIA_VENDOR_PLATFORM=darwin-x64   ASTRAVIA_CLI_TARGET_PLATFORMS=darwin-x64   ... --arch x64"
 ```
 
 而 electron-builder 两次都写同名的 `latest-mac.yml`（`getUpdateInfoFileName` 只给 Linux 加架构后缀），多架构合并只发生在**单个进程的内存里**，分两次构建时后一次会直接覆盖前一次。
@@ -130,13 +130,13 @@ desktop/
 | **旧版** blockmap | 把新版 URL 里的版本号替换成旧版号推出来（`Provider.getBlockMapFiles`），因此**旧版本的 blockmap 不能从 R2 删掉** |
 | 本地基线 `update.zip` | electron-updater 每次下载完成后复制一份 |
 
-缓存目录由 `app-update.yml` 的 `updaterCacheDirName` 决定，当前是 `vetta-updater`，与 Windows 的 `%LOCALAPPDATA%\vetta-updater\` 同名：
+缓存目录由 `app-update.yml` 的 `updaterCacheDirName` 决定，当前是 `astravia-updater`，与 Windows 的 `%LOCALAPPDATA%\astravia-updater\` 同名：
 
 ```text
-~/Library/Caches/vetta-updater/
+~/Library/Caches/astravia-updater/
   update.zip                                  # 差分基线
   pending/                                    # 下载中的新版本
-~/Library/Caches/com.vetta.desktop.ShipIt/    # Squirrel 暂存区
+~/Library/Caches/com.astravia.desktop.ShipIt/    # Squirrel 暂存区
 ```
 
 **从 DMG 安装后的第一次更新必定是全量下载**，日志会打 `Unable to locate previous update.zip for differential download (is this first install?)`。因为 `MacUpdater` 只在 electron-updater 完成一次下载后才写 `update.zip`，而 DMG 安装不经过它。Windows 靠 Inno 安装器的 `SeedUpdaterDifferentialCache()` 播种基线，macOS 没有等价物，也做不出来——基线必须与线上 ZIP 逐字节一致，无法从已安装的 `.app` 反推。第二次更新起才走差分。
@@ -144,10 +144,10 @@ desktop/
 测试时可以手工播种，跳过那一轮全量（ZIP 必须正是当前已安装版本的那一份）：
 
 ```bash
-mkdir -p ~/Library/Caches/vetta-updater
-cp release/Vetta-<installed-version>-arm64-mac.zip ~/Library/Caches/vetta-updater/update.zip
+mkdir -p ~/Library/Caches/astravia-updater
+cp release/Astravia-<installed-version>-arm64-mac.zip ~/Library/Caches/astravia-updater/update.zip
 # 核对与线上清单一致
-shasum -a 512 -b ~/Library/Caches/vetta-updater/update.zip | awk '{print $1}' | xxd -r -p | base64
+shasum -a 512 -b ~/Library/Caches/astravia-updater/update.zip | awk '{print $1}' | xxd -r -p | base64
 ```
 
 反过来要复现全量下载，删掉 `update.zip` 即可。
@@ -179,9 +179,9 @@ scripts/release-mac.sh test  --version 0.5.60 --skip-publish    # 构建与校�
 
 `--check-only` 之外的任何调用都会先 `rm -rf release/` 再构建，别拿真实版本号试探参数。
 
-脚本会自动 `source` 两个凭据文件，并直接注入构建期的 `VETTA_UPDATE_PROVIDER` / `VETTA_UPDATE_URL`，**因此不依赖 `.env.development` 里有没有配这两项**。
+脚本会自动 `source` 两个凭据文件，并直接注入构建期的 `ASTRAVIA_UPDATE_PROVIDER` / `ASTRAVIA_UPDATE_URL`，**因此不依赖 `.env.development` 里有没有配这两项**。
 
-前置校验包括：凭据文件存在且字段完整、钥匙串里有可用签名身份、`VETTA_R2_PREFIX` 与 `VETTA_UPDATE_URL` 的末段都等于目标通道、版本号格式合法、**版本严格高于该通道线上已有版本**（同名版本化对象禁止覆盖）。`stable` 额外拒绝 `--version`（正式版本以 `package.json` 为唯一真源）并要求输入版本号二次确认。
+前置校验包括：凭据文件存在且字段完整、钥匙串里有可用签名身份、`ASTRAVIA_R2_PREFIX` 与 `ASTRAVIA_UPDATE_URL` 的末段都等于目标通道、版本号格式合法、**版本严格高于该通道线上已有版本**（同名版本化对象禁止覆盖）。`stable` 额外拒绝 `--version`（正式版本以 `package.json` 为唯一真源）并要求输入版本号二次确认。
 
 下面各节是这个脚本每一步在做什么，手动排查时按需单独执行。
 
@@ -204,28 +204,28 @@ scripts/release-mac.sh local --version 0.5.62
 bun run --cwd apps/desktop serve:updates:local
 
 # 3. 播种差分基线（第一次需要，之后 electron-updater 会自动维护）
-cp apps/desktop/release/Vetta-0.5.62-arm64-mac.zip ~/Library/Caches/vetta-updater/update.zip
+cp apps/desktop/release/Astravia-0.5.62-arm64-mac.zip ~/Library/Caches/astravia-updater/update.zip
 
 # 4. 改点东西，出下一版
 scripts/release-mac.sh local --version 0.5.63
 
 # 5. 从终端启动 0.5.62 验证
-/Applications/Vetta.app/Contents/MacOS/Vetta
+/Applications/Astravia.app/Contents/MacOS/Astravia
 ```
 
 两个细节决定这个通道能不能测差分：
 
-- **产物累积不清空**。`~/.vetta/local-updates` 只覆盖 `latest-mac.yml`，旧版本的 zip 与 blockmap 全部保留——差分要读旧版 blockmap（见 5.4）。
+- **产物累积不清空**。`~/.astravia/local-updates` 只覆盖 `latest-mac.yml`，旧版本的 zip 与 blockmap 全部保留——差分要读旧版 blockmap（见 5.4）。
 - **分发服务必须支持 Range**。`scripts/serve-local-updates.mjs` 自己实现了 206；不要随手换成 `python3 -m http.server`，它会无视 Range 头返回 200 全量，差分要么退化要么失败，测出来的结论是假的。
 
-想临时压缩签名耗时，可以再叠 `VETTA_SKIP_VENDOR=1`——更新链路不依赖内置 node/python，而它们解压后是几千个待签名的 Mach-O。
+想临时压缩签名耗时，可以再叠 `ASTRAVIA_SKIP_VENDOR=1`——更新链路不依赖内置 node/python，而它们解压后是几千个待签名的 Mach-O。
 
 ### 7.1 前提：签名凭据
 
 macOS 的本地闭环**必须有 Developer ID 证书**，未签名包走不到暂存阶段（原生 `autoUpdater` 报 `Could not get code signature for running application`）。
 
 ```bash
-source ~/.config/vetta/mac-signing.env
+source ~/.config/astravia/mac-signing.env
 security find-identity -v -p codesigning        # 期望 1 valid identity
 ```
 
@@ -237,37 +237,37 @@ security find-identity -v -p codesigning        # 期望 1 valid identity
 
 ```dotenv
 # apps/desktop/.env.development
-VETTA_UPDATE_PROVIDER=generic
-VETTA_UPDATE_URL=https://releases.openvetta.com/desktop/test
+ASTRAVIA_UPDATE_PROVIDER=generic
+ASTRAVIA_UPDATE_URL=https://releases.astravia.dev/desktop/test
 ```
 
 ```bash
-export VETTA_R2_ACCOUNT_ID=<account-id>
-export VETTA_R2_ACCESS_KEY_ID=<access-key-id>
-export VETTA_R2_SECRET_ACCESS_KEY=<secret-access-key>
-export VETTA_R2_BUCKET=vetta-releases
-export VETTA_R2_PREFIX=desktop/test
-export VETTA_UPDATE_URL=https://releases.openvetta.com/desktop/test
-export VETTA_REQUIRE_MAC_SIGNATURE=1
+export ASTRAVIA_R2_ACCOUNT_ID=<account-id>
+export ASTRAVIA_R2_ACCESS_KEY_ID=<access-key-id>
+export ASTRAVIA_R2_SECRET_ACCESS_KEY=<secret-access-key>
+export ASTRAVIA_R2_BUCKET=astravia-releases
+export ASTRAVIA_R2_PREFIX=desktop/test
+export ASTRAVIA_UPDATE_URL=https://releases.astravia.dev/desktop/test
+export ASTRAVIA_REQUIRE_MAC_SIGNATURE=1
 ```
 
 ### 7.3 构建测试版本
 
-与 Windows 一样用 `VETTA_DESKTOP_BUILD_VERSION` 覆盖版本号，不改 `package.json`、不打 tag：
+与 Windows 一样用 `ASTRAVIA_DESKTOP_BUILD_VERSION` 覆盖版本号，不改 `package.json`、不打 tag：
 
 ```bash
 cd apps/desktop
 rm -rf release                                  # 残留清单会让发布脚本判定版本不唯一
-VETTA_DESKTOP_BUILD_VERSION=0.5.60 bun run dist:mac:arm64
-VETTA_REQUIRE_MAC_SIGNATURE=1 bun run verify:updates:mac
+ASTRAVIA_DESKTOP_BUILD_VERSION=0.5.60 bun run dist:mac:arm64
+ASTRAVIA_REQUIRE_MAC_SIGNATURE=1 bun run verify:updates:mac
 ```
 
 只测本机架构时到此为止。要同时发双架构，复现 CI 的重命名与合并：
 
 ```bash
 mv release/latest-mac.yml release/latest-mac-arm64.yml
-VETTA_DESKTOP_BUILD_VERSION=0.5.60 bun run dist:mac:x64
-VETTA_REQUIRE_MAC_SIGNATURE=1 bun run verify:updates:mac
+ASTRAVIA_DESKTOP_BUILD_VERSION=0.5.60 bun run dist:mac:x64
+ASTRAVIA_REQUIRE_MAC_SIGNATURE=1 bun run verify:updates:mac
 mv release/latest-mac.yml release/latest-mac-x64.yml
 bun run merge:updates:mac
 ```
@@ -284,10 +284,10 @@ bun run merge:updates:mac
 2. 每个产物存在，且大小与 SHA-512 与清单一致。
 3. 顶层 `path` / `sha512` 与对应产物一致。
 4. 每个 ZIP 都有非空 `.blockmap`。
-5. `VETTA_REQUIRE_MAC_SIGNATURE=1` 时，用 `ditto` 解包每个 ZIP，校验：
+5. `ASTRAVIA_REQUIRE_MAC_SIGNATURE=1` 时，用 `ditto` 解包每个 ZIP，校验：
    - 顶层有且只有一个 `.app`
    - `CFBundleShortVersionString` 与清单版本一致
-   - `CFBundleIdentifier` 是 `com.vetta.desktop`
+   - `CFBundleIdentifier` 是 `com.astravia.desktop`
    - `codesign --verify --deep --strict`
    - `spctl -a -t exec`（Gatekeeper 接受）
    - `xcrun stapler validate`（公证票据已钉入）
@@ -307,7 +307,7 @@ bun run publish:updates:r2
 ### 7.6 客户端验证
 
 1. 安装一个更低版本的 test 构建到 `/Applications`（必须是 `/Applications`，Squirrel 需要能写 app bundle 所在目录）。
-2. 从终端启动以便看日志：`/Applications/Vetta.app/Contents/MacOS/Vetta`
+2. 从终端启动以便看日志：`/Applications/Astravia.app/Contents/MacOS/Astravia`
 3. 上传更高版本后，等待启动检查或手动点检查更新。
 4. 观察三行日志的时间间隔：
 
@@ -365,14 +365,14 @@ APPLE_TEAM_ID
 
 签名步骤仍会优先使用 runner 环境已提供的凭据，只有在 runner 没提供时才回退到上述 Secret——这条分支留给本地或自持签名机，托管 runner 上永远走 Secret 路径。两者都没有时，tag 发版直接失败，`workflow_dispatch` 允许产出未签名测试包。
 
-注意：只要 Secret 配齐，**非发布的 `workflow_dispatch` 演练也会签名并公证**，因为开关只看凭据是否完整。想快速验证构建可以设 `VETTA_SKIP_NOTARIZE=1` 只签名不公证。
+注意：只要 Secret 配齐，**非发布的 `workflow_dispatch` 演练也会签名并公证**，因为开关只看凭据是否完整。想快速验证构建可以设 `ASTRAVIA_SKIP_NOTARIZE=1` 只签名不公证。
 
 ### 9.3 CI 上的 macOS 流程
 
 ```text
 tag v<version>
   -> 校验 tag 名与 apps/desktop/package.json 版本一致
-  -> 读取签名凭据，打开 VETTA_REQUIRE_MAC_SIGNATURE=1
+  -> 读取签名凭据，打开 ASTRAVIA_REQUIRE_MAC_SIGNATURE=1
   -> 清理上一轮的 release/（复用工作目录的 runner 才会有残留）
   -> dist:mac:<arch>
   -> latest-mac.yml 改名为 latest-mac-<arch>.yml
@@ -421,7 +421,7 @@ tag v<version>
 **① launchd 作业状态**——最有信息量的一个：
 
 ```bash
-launchctl print "gui/$(id -u)/com.vetta.desktop.ShipIt"
+launchctl print "gui/$(id -u)/com.astravia.desktop.ShipIt"
 ```
 
 | 看到什么 | 含义 |
@@ -429,12 +429,12 @@ launchctl print "gui/$(id -u)/com.vetta.desktop.ShipIt"
 | 报错「Could not find service」 | Squirrel 还没提交作业。应用退得太早（交棒后立刻 `app.exit(0)` 实测只需 41ms）。 |
 | `runs = 0` + `port = 0x0` + `active = 0` | 作业提交了但从没被启动。它是按需 mach service，需要有人连上去或 `launchctl kickstart`。 |
 | `runs = 1` + `last exit code = 0` | ShipIt 跑过了，去看它的日志。 |
-| `state = running` 但版本没变 | ShipIt 在等目标进程退出——检查是不是还有 Vetta 进程活着。 |
+| `state = running` 但版本没变 | ShipIt 在等目标进程退出——检查是不是还有 Astravia 进程活着。 |
 
 **② ShipIt 自己的日志**——Squirrel 只在作业真正 spawn 后才创建这两个文件，**文件不存在本身就是结论**：
 
 ```bash
-cat ~/Library/Caches/com.vetta.desktop.ShipIt/ShipIt_stderr.log
+cat ~/Library/Caches/com.astravia.desktop.ShipIt/ShipIt_stderr.log
 ```
 
 成功的样子：
@@ -442,15 +442,15 @@ cat ~/Library/Caches/com.vetta.desktop.ShipIt/ShipIt_stderr.log
 ```text
 Detected this as an install request
 Beginning installation
-Moved bundle contents from ... to file:///Applications/Vetta.app/
+Moved bundle contents from ... to file:///Applications/Astravia.app/
 Installation completed successfully
-Successfully launched application at file:///Applications/Vetta.app/
+Successfully launched application at file:///Applications/Astravia.app/
 ```
 
 **③ 待安装状态**（安装完成后会被清掉）：
 
 ```bash
-plutil -p ~/Library/Caches/com.vetta.desktop.ShipIt/ShipItState.plist
+plutil -p ~/Library/Caches/com.astravia.desktop.ShipIt/ShipItState.plist
 ```
 
 `updateBundleURL` 指向暂存的新 bundle，可以直接读它的 `Info.plist` 确认暂存的是哪个版本；`launchAfterInstallation` 决定装完是否自动拉起。
@@ -458,11 +458,11 @@ plutil -p ~/Library/Caches/com.vetta.desktop.ShipIt/ShipItState.plist
 **手动推进一次卡住的安装**（也是验证「问题只出在没人启动作业」的最快方式）：
 
 ```bash
-launchctl kickstart "gui/$(id -u)/com.vetta.desktop.ShipIt"
-pkill -f "Vetta.app/Contents/MacOS/Vetta"   # ShipIt 必须等目标退出才替换
+launchctl kickstart "gui/$(id -u)/com.astravia.desktop.ShipIt"
+pkill -f "Astravia.app/Contents/MacOS/Astravia"   # ShipIt 必须等目标退出才替换
 ```
 
-**别用应用窗口判断应用是否还在跑。** 单实例锁会让新启动的实例退出并把老进程的窗口调出来，看着像「重启了但版本没变」，实际是同一个老进程。用 `pgrep -f "Vetta.app/Contents/MacOS/Vetta"` 看 pid，并和 `launchctl print` 里的 `submitted by Vetta[pid]` 对照。
+**别用应用窗口判断应用是否还在跑。** 单实例锁会让新启动的实例退出并把老进程的窗口调出来，看着像「重启了但版本没变」，实际是同一个老进程。用 `pgrep -f "Astravia.app/Contents/MacOS/Astravia"` 看 pid，并和 `launchctl print` 里的 `submitted by Astravia[pid]` 对照。
 
 ### 10.3 提示重启过早出现（暂存尚未完成）
 
@@ -479,7 +479,7 @@ pkill -f "Vetta.app/Contents/MacOS/Vetta"   # ShipIt 必须等目标退出才替
 ### 10.5 用户报「已损坏」
 
 - 先确认下载的是**新版本**——已发布的旧 DMG 不会追溯获得公证票据。
-- 让用户跑 `xattr -l /Applications/Vetta.app`，若只有 `com.apple.quarantine` 而 app 是公证过的，通常是下载过程被网络中间设备改写导致签名失效，换直链或换网络重下。
+- 让用户跑 `xattr -l /Applications/Astravia.app`，若只有 `com.apple.quarantine` 而 app 是公证过的，通常是下载过程被网络中间设备改写导致签名失效，换直链或换网络重下。
 - 其余排查见 `../deploy/apple-code-signing.md` 第 6 节。
 
 ### 10.6 公证报 vendor 运行时未签名
@@ -487,7 +487,7 @@ pkill -f "Vetta.app/Contents/MacOS/Vetta"   # ShipIt 必须等目标退出才替
 **现象**：`notarytool` 返回 `Invalid`，issues 里全是这种路径：
 
 ```
-Vetta.app/Contents/Resources/vendor/python/cpython-...tar.gz/cpython-...tar/python/bin/python3.13
+Astravia.app/Contents/Resources/vendor/python/cpython-...tar.gz/cpython-...tar/python/bin/python3.13
   The binary is not signed with a valid Developer ID certificate.
   The signature does not include a secure timestamp.
   The executable does not have the hardened runtime enabled.
@@ -505,14 +505,14 @@ Vetta.app/Contents/Resources/vendor/python/cpython-...tar.gz/cpython-...tar/pyth
 
 ### 10.7 公证返回 Invalid（其它嵌套二进制）
 
-产物里有没签到的嵌套 Mach-O 二进制。`Contents/Resources/` 下带了 `im-gateway`、`cli-host`、`vendor/node`、`vendor/python`、`appshot` 等一堆可执行文件，用 `xcrun notarytool log <submissionId>` 看具体路径。排查时可先 `VETTA_SKIP_VENDOR=1` 摘掉内置运行时缩小范围。
+产物里有没签到的嵌套 Mach-O 二进制。`Contents/Resources/` 下带了 `im-gateway`、`cli-host`、`vendor/node`、`vendor/python`、`appshot` 等一堆可执行文件，用 `xcrun notarytool log <submissionId>` 看具体路径。排查时可先 `ASTRAVIA_SKIP_VENDOR=1` 摘掉内置运行时缩小范围。
 
 ## 11. 日志与诊断
 
 ### 11.1 应用日志
 
 ```text
-~/.vetta/desktop-app/logs/main/YYYY-MM-DD.log
+~/.astravia/desktop-app/logs/main/YYYY-MM-DD.log
 ```
 
 重点搜索：
@@ -527,7 +527,7 @@ download failed
 install failed
 ```
 
-打包应用的 stdout 只有从终端启动才看得到：`/Applications/Vetta.app/Contents/MacOS/Vetta`。
+打包应用的 stdout 只有从终端启动才看得到：`/Applications/Astravia.app/Contents/MacOS/Astravia`。
 
 不要记录 R2 Secret、Access Key、Authorization 或 Cookie。
 
@@ -570,11 +570,11 @@ install failed
 ### 构建
 
 - [ ] 版本号高于已发布版本。
-- [ ] stable 使用 `package.json` 正式版本；test 才使用 `VETTA_DESKTOP_BUILD_VERSION` 覆盖。
+- [ ] stable 使用 `package.json` 正式版本；test 才使用 `ASTRAVIA_DESKTOP_BUILD_VERSION` 覆盖。
 - [ ] 签名凭据齐全，`security find-identity` 有 1 valid identity。
 - [ ] arm64 与 x64 都已构建，且属于同一版本。
 - [ ] `merge:updates:mac` 已执行，`latest-mac.yml` 同时引用两套 ZIP 与 DMG。
-- [ ] `VETTA_REQUIRE_MAC_SIGNATURE=1 bun run verify:updates:mac` 通过。
+- [ ] `ASTRAVIA_REQUIRE_MAC_SIGNATURE=1 bun run verify:updates:mac` 通过。
 
 ### R2/Cloudflare
 
