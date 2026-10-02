@@ -1,0 +1,157 @@
+name: Upload Desktop Release to R2
+
+description: |
+  Downloads the assets of a published GitHub Desktop release and uploads
+  every installer, zip, dmg, AppImage, deb and rpm to the Cloudflare R2
+  bucket `astravia-downloads` under `app/v{version}/`.  The website
+  download page links to these R2 objects.
+
+  Triggers automatically when a draft release is promoted to published
+  (desktop-release's publish-github job does this at the end).  It can
+  also be run manually via workflow_dispatch for any existing tag.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Override tag / version (default: match the release that triggered this run)"
+        type: string
+        required: false
+      bucket:
+        description: "R2 bucket name (default: Secrets.ASTRAVIA_R2_BUCKET)"
+        type: string
+        required: false
+        default: astravia-downloads
+      prefix:
+        description: "R2 object prefix (default: app/v{version}/)"
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: upload-r2-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  upload:
+    name: upload ${{ github.ref_name || inputs.version }} → R2
+    if: startsWith(github.event.release.tag_name || inputs.version || '', 'v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve tag, version and object prefix
+        id: resolve
+        shell: bash
+        run: |
+          if [[ -n "${{ github.event.release.tag_name }}" ]]; then
+            TAG="${{ github.event.release.tag_name }}"
+          elif [[ -n "${{ inputs.version }}" ]]; then
+            TAG="v${{ inputs.version }}"
+          else
+            echo "::error::No release tag or input version provided."
+            exit 1
+          fi
+          VERSION="${TAG#v}"
+          PREFIX="${{ inputs.prefix }}"
+          if [[ -z "${PREFIX}" ]]; then
+            PREFIX="app/v${VERSION}"
+          fi
+          echo "tag=${TAG}" >> "${GITHUB_OUTPUT}"
+          echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
+          echo "prefix=${PREFIX}" >> "${GITHUB_OUTPUT}"
+          echo "Resolved: tag=${TAG} version=${VERSION} prefix=${PREFIX}"
+
+      - name: Set up rclone
+        uses: rclone/rclone@latest
+        with:
+          version: v1.69.1
+
+      - name: Configure R2 remote
+        shell: bash
+        env:
+          ACCOUNT_ID: ${{ secrets.ASTRAVIA_R2_ACCOUNT_ID }}
+          ACCESS_KEY_ID: ${{ secrets.ASTRAVIA_R2_ACCESS_KEY_ID }}
+          SECRET_ACCESS_KEY: ${{ secrets.ASTRAVIA_R2_SECRET_ACCESS_KEY }}
+        run: |
+          cat > "${HOME}/.config/rclone/rclone.conf" <<EOF
+          [r2]
+          type = s3
+          provider = Cloudflare
+          endpoint = https://${ACCOUNT_ID}.r2.cloudflarestorage.com
+          env_auth = false
+          access_key_id = ${ACCESS_KEY_ID}
+          secret_access_key = ${SECRET_ACCESS_KEY}
+          no_check_bucket = true
+          chunk_size = 32M
+          EOF
+          rclone version
+          echo "rclone config written to ${HOME}/.config/rclone/rclone.conf"
+
+      - name: Verify R2 bucket is reachable
+        shell: bash
+        env:
+          BUCKET: ${{ secrets.ASTRAVIA_R2_BUCKET }}
+        run: |
+          rclone lsd "r2:${BUCKET}" --max-depth 0
+          echo "Bucket ${BUCKET} reachable."
+
+      - name: Download release assets from GitHub
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.resolve.outputs.tag }}
+        run: |
+          rm -rf /tmp/astravia-release && mkdir -p /tmp/astravia-release
+          cd /tmp/astravia-release
+          gh release download "${TAG}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --pattern '*' \
+            --clobber
+          echo "Downloaded $(ls -1 | wc -l) assets:"
+          ls -1
+
+      - name: Upload assets to R2
+        shell: bash
+        env:
+          BUCKET: ${{ secrets.ASTRAVIA_R2_BUCKET }}
+          PREFIX: ${{ steps.resolve.outputs.prefix }}
+          PUBLISH_PREFIX: ${{ secrets.ASTRAVIA_R2_BUCKET }}
+        run: |
+          echo "Uploading to r2:${BUCKET}/${PREFIX}/"
+          rclone copyto \
+            /tmp/astravia-release \
+            "r2:${BUCKET}/${PREFIX}" \
+            --verbose \
+            --transfers 4 \
+            --checkers 4 \
+            --multi-thread-streams 4 \
+            --create-empty-src-dirs=false
+          echo "---"
+          echo "Uploaded objects:"
+          rclone ls "r2:${BUCKET}/${PREFIX}" | tail -30
+
+      - name: Summarise release destination
+        shell: bash
+        env:
+          TAG: ${{ steps.resolve.outputs.tag }}
+          VERSION: ${{ steps.resolve.outputs.version }}
+          PREFIX: ${{ steps.resolve.outputs.prefix }}
+          BUCKET: ${{ secrets.ASTRAVIA_R2_BUCKET }}
+        run: |
+          # Cloudflare R2 public URL (if bucket has public access enabled)
+          echo "## Release → R2 Upload Summary" >> "${GITHUB_STEP_SUMMARY}"
+          echo "" >> "${GITHUB_STEP_SUMMARY}"
+          echo "- Release tag: \`${TAG}\`" >> "${GITHUB_STEP_SUMMARY}"
+          echo "- Release version: \`${VERSION}\`" >> "${GITHUB_STEP_SUMMARY}"
+          echo "- R2 bucket: \`${BUCKET}\`" >> "${GITHUB_STEP_SUMMARY}"
+          echo "- R2 object prefix: \`${PREFIX}/\`" >> "${GITHUB_STEP_SUMMARY}"
+          echo "- Total objects uploaded:" >> "${GITHUB_STEP_SUMMARY}"
+          rclone lsd "r2:${BUCKET}/${PREFIX}" 2>/dev/null >> "${GITHUB_STEP_SUMMARY}" \
+            || rclone ls "r2:${BUCKET}/${PREFIX}" | wc -l >> "${GITHUB_STEP_SUMMARY}"
