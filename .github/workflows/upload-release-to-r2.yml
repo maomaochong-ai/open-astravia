@@ -39,7 +39,6 @@ concurrency:
 jobs:
   upload:
     name: upload ${{ github.ref_name || inputs.version }} → R2
-    if: startsWith(github.event.release.tag_name || inputs.version || '', 'v')
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
