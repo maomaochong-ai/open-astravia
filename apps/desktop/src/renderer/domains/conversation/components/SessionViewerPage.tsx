@@ -12,7 +12,7 @@ import { useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useSessionViewerPageModel } from "../hooks/useSessionViewerPageModel";
 import { ChatExportHost } from "./ChatExportHost";
-import { MessageList } from "./MessageList";
+import { TranscriptConversation } from "./TranscriptConversation";
 
 /** Read-only viewer for external and child sessions. */
 export function SessionViewerPage(): JSX.Element {
@@ -110,12 +110,7 @@ export function SessionViewerPage(): JSX.Element {
 				) : null
 			}
 			messageList={
-				<MessageList
-					messages={model.messages}
-					workspace={workspace}
-					isStreaming={false}
-					sessionId={model.path || null}
-				/>
+				<TranscriptConversation feedKey={model.path || null} messages={model.messages} workspace={workspace} />
 			}
 			activityPanel={
 				model.isKnowledge ? (

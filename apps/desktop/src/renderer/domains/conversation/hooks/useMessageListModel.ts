@@ -2,20 +2,15 @@ import { useModelOptions } from "@shared/components/ModelSelect/useModelOptions"
 import { useMemo, useRef } from "react";
 import type { ModelSwitchLabel } from "../components/message-list/message-list-derived";
 import { collectModelSwitchLabels, userModelSwitchFingerprint } from "../components/message-list/message-list-derived";
-import type { MessageListModel, MessageListProps } from "../components/message-list/types";
+import type { MessageListModel, MessageListModelInput } from "../components/message-list/types";
 import type { MessageListScrollModel } from "./useMessageListScrollModel";
 
-const EMPTY_PARTICIPANTS: NonNullable<MessageListProps["participants"]> = [];
+const EMPTY_PARTICIPANTS: NonNullable<MessageListModelInput["participants"]> = [];
 
 export function useMessageListModel(
-	{
-		messages,
-		isStreaming,
-		participants,
-		onTeamMemberOpen,
-	}: Pick<MessageListProps, "messages" | "isStreaming" | "participants" | "onTeamMemberOpen">,
+	{ messages, isStreaming, participants, onTeamMemberOpen }: MessageListModelInput,
 	scroll: MessageListScrollModel,
-	derivationMessages: MessageListProps["messages"],
+	derivationMessages: MessageListModelInput["messages"],
 ): MessageListModel {
 	const resolvedParticipants = participants ?? EMPTY_PARTICIPANTS;
 	const { options, labelFor } = useModelOptions();
