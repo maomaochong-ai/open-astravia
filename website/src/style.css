@@ -65,8 +65,8 @@
 	--accent-soft: rgba(0, 0, 0, 0.05);
 	--grad: linear-gradient(120deg, #000000 0%, #3d3d3d 100%);
 	--nav-bg: rgba(255, 255, 255, 0.82);
-	--btn-bg: #000000;
-	--btn-bg-hover: #2f2f2f;
+	--btn-bg: #1a1c24;
+	--btn-bg-hover: #2f3240;
 	--btn-fg: #ffffff;
 	--code-bg: #f4f5f8;
 	--code-fg: #1a1c24;
@@ -2405,7 +2405,6 @@ html.theme-transition *::after {
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
-	overflow: hidden;
 	padding: 60px 24px 80px;
 }
 .download-theater-beams {
@@ -2569,7 +2568,7 @@ html.theme-transition *::after {
 		opacity 0.2s var(--ease);
 }
 .dl__others.is-open {
-	max-height: 260px;
+	max-height: none;
 	opacity: 1;
 }
 .dl__others-list {
