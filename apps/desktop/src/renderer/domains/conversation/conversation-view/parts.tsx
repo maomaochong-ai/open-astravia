@@ -197,33 +197,33 @@ export function ConversationMessages({ children }: { readonly children?: ReactNo
 
 	return (
 		<ConversationUsagesContext.Provider value={sessionUsagesRef.current}>
-		<MessageFeedLayout.Viewport>
-			<PerfMessageScrollProfiler>
-				<MessageFeedLayout.Virtualizer asChild>
-					<MessageFeed.VirtualList
-						key={virtualizerKey}
-						virtuosoRef={scroll.virtuosoRef}
-						restoreStateFrom={scroll.restoreStateFrom}
-						scrollerRef={scroll.scrollerRef}
-						items={messages}
-						getKey={conversationItemRenderKey}
-						atBottomStateChange={scroll.onAtBottomChange}
-						totalListHeightChanged={handleTotalListHeightChange}
-						followOutput={scroll.followOutput}
-						atBottomThreshold={80}
-						itemsRendered={onItemsRendered}
-						{...(diagnosticsEnabled ? { rangeChanged: handleRangeChanged } : {})}
-						overscan={0}
-						increaseViewportBy={VIEWPORT_BUFFER}
-						heightEstimates={heightEstimates}
-						itemSize={itemSize}
-						initialTopMostItemIndex={scroll.initialTopMostItemIndex}
-					>
-						{(message, index) => itemContent(index, message)}
-					</MessageFeed.VirtualList>
-				</MessageFeedLayout.Virtualizer>
-			</PerfMessageScrollProfiler>
-		</MessageFeedLayout.Viewport>
+			<MessageFeedLayout.Viewport>
+				<PerfMessageScrollProfiler>
+					<MessageFeedLayout.Virtualizer asChild>
+						<MessageFeed.VirtualList
+							key={virtualizerKey}
+							virtuosoRef={scroll.virtuosoRef}
+							restoreStateFrom={scroll.restoreStateFrom}
+							scrollerRef={scroll.scrollerRef}
+							items={messages}
+							getKey={conversationItemRenderKey}
+							atBottomStateChange={scroll.onAtBottomChange}
+							totalListHeightChanged={handleTotalListHeightChange}
+							followOutput={scroll.followOutput}
+							atBottomThreshold={80}
+							itemsRendered={onItemsRendered}
+							{...(diagnosticsEnabled ? { rangeChanged: handleRangeChanged } : {})}
+							overscan={0}
+							increaseViewportBy={VIEWPORT_BUFFER}
+							heightEstimates={heightEstimates}
+							itemSize={itemSize}
+							initialTopMostItemIndex={scroll.initialTopMostItemIndex}
+						>
+							{(message, index) => itemContent(index, message)}
+						</MessageFeed.VirtualList>
+					</MessageFeedLayout.Virtualizer>
+				</PerfMessageScrollProfiler>
+			</MessageFeedLayout.Viewport>
 		</ConversationUsagesContext.Provider>
 	);
 }
