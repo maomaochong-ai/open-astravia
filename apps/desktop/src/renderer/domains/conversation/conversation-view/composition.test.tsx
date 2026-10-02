@@ -41,10 +41,14 @@ vi.mock("@vetta-org/theme-ui/chat", () => ({
 	},
 }));
 
-vi.mock("../components/message-list/MessageItem", () => ({
-	MessageItem: ({ message }: { message: ChatConversationItem }) => <div data-testid="default-item">{message.id}</div>,
-	ModelSwitchBoundary: () => null,
-}));
+vi.mock("../components/message-list/MessageItem", () => ({ ModelSwitchBoundary: () => null }));
+vi.mock("./defaults", async () => {
+	const { useMessage } = await import("./message-scope");
+	function DefaultRow() {
+		return <div data-testid="default-item">{useMessage().id}</div>;
+	}
+	return { DefaultUserMessage: DefaultRow, DefaultAgentMessage: DefaultRow, DefaultEventMessage: DefaultRow };
+});
 
 const messages: ChatConversationItem[] = [
 	createConversationUserMessage({ id: "u1", text: "question" }),
@@ -104,7 +108,7 @@ afterEach(() => {
 });
 
 describe("Conversation.Messages templates", () => {
-	it("renders each kind from its template and falls back to the default rendering for the rest", () => {
+	it("renders each kind from its template and falls back to the read-only default for the rest", () => {
 		render(
 			<View>
 				<ConversationMessages>

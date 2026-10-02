@@ -7,7 +7,6 @@ import type { ConversationParticipantViewModel } from "@shared/conversation";
 import { AssistantMessage } from "./AssistantMessage";
 import { TeamMemberReplyCard } from "./TeamMemberReplyCard";
 import { ReadonlyUserMessage } from "./ReadonlyUserMessage";
-import { useMessageRendering } from "./MessageRendering";
 import { CompactionBoundary, DelegationNotice } from "./TimelineEventViews";
 
 export const ModelSwitchBoundary = memo(function ModelSwitchBoundary({ from, to }: { from: string; to: string }) {
@@ -29,14 +28,8 @@ export interface MessageItemProps {
 	sessionUsages?: readonly Usage[];
 }
 
-export const MessageItem = memo(function MessageItem(props: MessageItemProps) {
-	const definition = useMessageRendering();
-	const message = definition.project?.(props.message) ?? props.message;
-	const Renderer = definition.renderers?.[message.kind] ?? DefaultMessageItem;
-	return <Renderer {...props} message={message} />;
-});
-
-export const DefaultMessageItem = memo(function DefaultMessageItem({
+/** A message from explicit props, outside a conversation feed (export). */
+export const MessageItem = memo(function MessageItem({
 	message,
 	isTailMessage,
 	isStreaming,

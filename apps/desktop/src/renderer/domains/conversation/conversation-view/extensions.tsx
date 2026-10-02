@@ -1,3 +1,4 @@
+import type { ContentBlock } from "@shared/conversation";
 import type { ChatConversationItem } from "@shared/store/chat-atoms";
 import {
 	type ComponentType,
@@ -26,6 +27,16 @@ export interface ConversationExtension {
 	readonly decorateRow?: ComponentType<ConversationRowDecoratorProps>;
 	/** State this extension shares with its own parts through `useConversationExtensionValue`. */
 	readonly value?: unknown;
+	/** Replaces or decorates how a content block type renders; the later registered extension wins. */
+	readonly renderBlock?: Partial<Record<ContentBlock["type"], ComponentType<ConversationBlockRendererProps>>>;
+}
+
+export interface ConversationBlockRendererProps {
+	readonly block: ContentBlock;
+	readonly isStreamingTail?: boolean;
+	readonly exportMode?: boolean;
+	/** The default presentation; a renderer may return it, wrap it or replace it. */
+	readonly children: ReactNode;
 }
 
 interface ExtensionRegistry {
@@ -86,6 +97,19 @@ export function useConversationExtensionValue<T>(id: string): T | undefined {
 export function useOptionalConversationExtensionValue<T>(id: string): T | undefined {
 	const registry = useContext(ExtensionRegistryContext);
 	return registry?.extensions.find((extension) => extension.id === id)?.value as T | undefined;
+}
+
+/** The registered renderer for a block type, if any; also usable outside a conversation (export). */
+export function useConversationBlockRenderer(
+	type: ContentBlock["type"],
+): ComponentType<ConversationBlockRendererProps> | undefined {
+	const registry = useContext(ExtensionRegistryContext);
+	if (!registry) return undefined;
+	for (let index = registry.extensions.length - 1; index >= 0; index--) {
+		const renderer = registry.extensions[index].renderBlock?.[type];
+		if (renderer) return renderer;
+	}
+	return undefined;
 }
 
 /** Applies every registered row decorator around one message row's content. */

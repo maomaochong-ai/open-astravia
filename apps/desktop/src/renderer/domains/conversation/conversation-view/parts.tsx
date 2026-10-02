@@ -15,9 +15,9 @@ import { useTranslation } from "react-i18next";
 import type { ListRange, SizeFunction } from "react-virtuoso";
 import { buildMessageHeightEstimates, createMessageItemSizeRecorder } from "../components/message-list/message-height-estimates";
 import { collectAgentUsages } from "../components/message-list/message-list-derived";
-import { MessageItem, ModelSwitchBoundary } from "../components/message-list/MessageItem";
-import { MessageRow } from "../components/message-list/MessageRendering";
+import { ModelSwitchBoundary } from "../components/message-list/MessageItem";
 import { MessageTimeline } from "../components/message-list/MessageTimeline";
+import { DefaultAgentMessage, DefaultEventMessage, DefaultUserMessage } from "./defaults";
 import { ConversationRowDecorations } from "./extensions";
 import { ConversationMessageScope } from "./message-scope";
 import { type MessageTemplates, useMessageTemplates } from "./templates";
@@ -25,6 +25,34 @@ import { ConversationUsagesContext } from "./usages";
 import { useConversationViewport } from "./viewport-frame";
 
 const VIEWPORT_BUFFER = { top: 320, bottom: 80 };
+
+/** Templates for kinds the composition does not declare: read-only content with a copy action. */
+const DEFAULT_TEMPLATES: Readonly<Record<ChatConversationItem["kind"], ReactNode>> = {
+	user: <DefaultUserMessage />,
+	agent: <DefaultAgentMessage />,
+	event: <DefaultEventMessage />,
+};
+
+/** Spacing and scroll anchor of one row; the last user message keeps room for its actions. */
+function MessageRow({
+	message,
+	isLast,
+	children,
+}: {
+	readonly message: ChatConversationItem;
+	readonly isLast: boolean;
+	readonly children: ReactNode;
+}) {
+	return (
+		<div
+			tabIndex={-1}
+			data-entry-id={message.entryId ?? message.id}
+			className={isLast && message.kind === "user" ? "pb-9" : "pb-5"}
+		>
+			{children}
+		</div>
+	);
+}
 
 interface VirtualizerIdentityState {
 	readonly feedKey: string | null;
@@ -77,25 +105,13 @@ const TemplateRow = memo(function TemplateRow({ template, ...row }: TemplateRowP
 /**
  * The virtualized message rows. Declare `<Conversation.UserMessage>`,
  * `<Conversation.AgentMessage>` or `<Conversation.EventMessage>` as children to
- * give a kind its own structure; kinds without a template use the default rendering.
+ * give a kind its own structure; kinds without a template render read-only.
  */
 export function ConversationMessages({ children }: { readonly children?: ReactNode }) {
 	const { model, onItemsRendered } = useConversationViewport("Conversation.Messages");
 	const templates: MessageTemplates = useMessageTemplates(children);
-	const {
-		isStreaming,
-		messages,
-		modelSwitchLabels,
-		scroll,
-		tailMessageId,
-		participantsById,
-		participants,
-		onTeamMemberOpen,
-		feedKey,
-		deferredContentReady,
-		pendingLabel,
-		onAbort,
-	} = model;
+	const { messages, modelSwitchLabels, scroll, tailMessageId, participantsById, feedKey, deferredContentReady } =
+		model;
 	const diagnosticsEnabled = perfMessageScrollEnabled();
 	const virtualizerKey = useMessageVirtualizerKey(feedKey, messages);
 	const heightEstimates = useMemo(() => buildMessageHeightEstimates(messages, feedKey), [messages, feedKey]);
@@ -142,57 +158,23 @@ export function ConversationMessages({ children }: { readonly children?: ReactNo
 			const participant = message.kind === "agent" ? participantsById.get(message.authorId) : undefined;
 			const isTail = message.id === tailMessageId;
 			const isLastUserMessage = message.id === lastUserMessageId;
-			const template = templates[message.kind];
 			return (
 				<MessageRow message={message} isLast={index === messages.length - 1}>
 					{modelSwitchLabel && <ModelSwitchBoundary {...modelSwitchLabel} />}
 					<ConversationRowDecorations message={message}>
-						{template !== undefined ? (
-							<TemplateRow
-								template={template}
-								message={message}
-								index={index}
-								isTail={isTail}
-								isLastUserMessage={isLastUserMessage}
-								{...(participant ? { participant } : {})}
-							/>
-						) : (
-							<MessageItem
-								message={message}
-								isTailMessage={isTail}
-								isStreaming={isStreaming}
-								isLastUserMessage={isLastUserMessage}
-								onAbortEdit={onAbort}
-								participant={participant}
-								pendingLabel={
-									message.kind === "agent" &&
-									(message.phase === "pending" ||
-										(message.phase === "streaming" && message.blocks.length === 0 && !message.text))
-										? pendingLabel
-										: undefined
-								}
-								participants={participants}
-								sessionUsages={message.kind === "agent" ? sessionUsagesRef.current : undefined}
-								onTeamMemberOpen={onTeamMemberOpen}
-							/>
-						)}
+						<TemplateRow
+							template={templates[message.kind] ?? DEFAULT_TEMPLATES[message.kind]}
+							message={message}
+							index={index}
+							isTail={isTail}
+							isLastUserMessage={isLastUserMessage}
+							{...(participant ? { participant } : {})}
+						/>
 					</ConversationRowDecorations>
 				</MessageRow>
 			);
 		},
-		[
-			isStreaming,
-			lastUserMessageId,
-			messages.length,
-			modelSwitchLabels,
-			onAbort,
-			pendingLabel,
-			tailMessageId,
-			onTeamMemberOpen,
-			participants,
-			participantsById,
-			templates,
-		],
+		[lastUserMessageId, messages.length, modelSwitchLabels, tailMessageId, participantsById, templates],
 	);
 
 	return (

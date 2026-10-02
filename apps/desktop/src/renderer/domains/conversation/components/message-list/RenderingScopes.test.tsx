@@ -4,7 +4,8 @@ import { createConversationAgentMessage } from "@shared/conversation";
 import { RendererMarkdownScope } from "@shared/components/RendererMarkdownScope";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useAssistantMessageModel } from "../../hooks/useAssistantMessageModel";
-import { ContentRenderingProvider } from "./ContentRendering";
+import { useMemo } from "react";
+import { ConversationExtensionRegistry, useConversationExtension } from "../../conversation-view/extensions";
 import { SegmentRenderer } from "./MessageBlockSegments";
 import { MessageExpansionScope, useExpansion } from "./expansionStore";
 
@@ -59,18 +60,27 @@ describe("feed rendering boundaries", () => {
 			onOpenUrl: () => undefined,
 		};
 		const segment = { type: "single" as const, block };
+		function ReplaceText() {
+			useConversationExtension(
+				useMemo(() => ({ id: "replace-text", renderBlock: { text: () => <aside>Replacement</aside> } }), []),
+			);
+			return null;
+		}
 		const view = render(
 			<RendererMarkdownScope value={environment}>
-				<ContentRenderingProvider renderers={{ text: () => <aside>Replacement</aside> }}>
+				<ConversationExtensionRegistry>
 					<SegmentRenderer segment={segment} />
-				</ContentRenderingProvider>
+					<ReplaceText />
+				</ConversationExtensionRegistry>
 			</RendererMarkdownScope>,
 		);
 		expect(screen.getByText("Replacement")).toBeTruthy();
 		expect(screen.queryByText("Original")).toBeNull();
 		view.rerender(
 			<RendererMarkdownScope value={environment}>
-				<SegmentRenderer segment={segment} />
+				<ConversationExtensionRegistry>
+					<SegmentRenderer segment={segment} />
+				</ConversationExtensionRegistry>
 			</RendererMarkdownScope>,
 		);
 		expect(screen.getByText("Original").tagName).toBe("STRONG");

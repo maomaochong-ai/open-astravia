@@ -47,10 +47,8 @@ export function ConversationViewport({ children }: { readonly children: ReactNod
 			...listModel,
 			feedKey: feed.key,
 			deferredContentReady,
-			...(feed.pendingLabel ? { pendingLabel: feed.pendingLabel } : {}),
-			...(feed.capabilities.abort ? { onAbort: feed.capabilities.abort } : {}),
 		}),
-		[listModel, feed.key, deferredContentReady, feed.pendingLabel, feed.capabilities.abort],
+		[listModel, feed.key, deferredContentReady],
 	);
 	return (
 		<MessageCardsScope scope={feed.key} messages={derivationMessages}>

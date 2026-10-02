@@ -6,7 +6,7 @@ import { createConversationAgentMessage, createConversationUserMessage } from "@
 import userEvent from "@testing-library/user-event";
 import { type ComponentProps, Fragment, type ReactNode, useEffect } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { MessageListModel, MessageListProps } from "../components/message-list/types";
+import type { MessageListModel } from "../components/message-list/types";
 import { ConversationExtensionRegistry } from "./extensions";
 import { ConversationFooter, ConversationMessages, ConversationScrollToBottom, ConversationTimelineRail } from "./parts";
 import { ConversationViewportFrame } from "./viewport-frame";
@@ -14,18 +14,14 @@ import { ConversationViewportFrame } from "./viewport-frame";
 /** The default composition the old MessageListView rendered, driven by a prepared model. */
 function MessageListView({
 	model,
-	onAbort,
 	children,
 	deferredContentReady,
 	sessionId = null,
-	pendingLabel,
 }: {
 	model: MessageListModel;
-	onAbort: MessageListProps["onAbort"];
 	children?: ReactNode;
 	deferredContentReady: boolean;
-	sessionId?: MessageListProps["sessionId"];
-	pendingLabel?: string;
+	sessionId?: string | null;
 }) {
 	return (
 		<ConversationExtensionRegistry>
@@ -34,8 +30,6 @@ function MessageListView({
 					...model,
 					feedKey: sessionId ?? null,
 					deferredContentReady,
-					...(pendingLabel ? { pendingLabel } : {}),
-					...(onAbort ? { onAbort } : {}),
 				}}
 			>
 				<ConversationMessages />
@@ -126,17 +120,20 @@ vi.mock("../hooks/useMessageSelectionContextMenu", () => ({
 }));
 
 vi.mock("../components/message-list/MessageItem", () => ({
-	ExportMessageList: () => null,
-	MessageItem: (props: { message: { id: string }; pendingLabel?: string }) => {
-		captured.messageItemProps.push(props as Record<string, unknown>);
-		return (
-			<div data-testid="full-message" data-pending-label={props.pendingLabel}>
-				{props.message.id}
-			</div>
-		);
-	},
 	ModelSwitchBoundary: ({ from, to }: { from: string; to: string }) => <div>{`${from} → ${to}`}</div>,
 }));
+vi.mock("./defaults", async () => {
+	const { useContext } = await import("react");
+	const { useMessageRow } = await import("./message-scope");
+	const { ConversationUsagesContext } = await import("./usages");
+	function Row() {
+		const row = useMessageRow();
+		const sessionUsages = useContext(ConversationUsagesContext);
+		captured.messageItemProps.push({ ...row, sessionUsages });
+		return <div data-testid="full-message">{row.message.id}</div>;
+	}
+	return { DefaultUserMessage: Row, DefaultAgentMessage: Row, DefaultEventMessage: Row };
+});
 vi.mock("../components/message-list/MessageTimeline", () => ({
 	MessageTimeline: ({ onNavigate }: { onNavigate: (index: number) => void }) => (
 		<button type="button" onClick={() => onNavigate(3)}>
@@ -172,7 +169,6 @@ function props(
 			participantsById: new Map(),
 			participants: [],
 		},
-		onAbort: vi.fn(),
 		sessionId: "/sessions/a.jsonl",
 		deferredContentReady,
 	};
@@ -321,32 +317,6 @@ describe("MessageListView virtualization", () => {
 
 		expect(screen.getByTestId("full-message")).toBe(visibleRow);
 		expect(visibleRow.textContent).toBe("persisted-message");
-	});
-
-	it("只把处理阶段文案传给尚未开始输出的待回复消息", () => {
-		const waiting = props(true, true);
-		waiting.pendingLabel = "团队正在加载";
-		waiting.model.messages = [
-			createConversationAgentMessage({ id: "waiting-message", phase: "pending", text: "", blocks: [] }),
-		];
-		const { rerender } = render(<MessageListView {...waiting} />);
-
-		expect(screen.getByTestId("full-message").getAttribute("data-pending-label")).toBe("团队正在加载");
-		waiting.pendingLabel = "正在创建会话";
-		waiting.model.messages = [
-			createConversationAgentMessage({ id: "waiting-message", phase: "streaming", text: "", blocks: [] }),
-		];
-		rerender(<MessageListView {...waiting} />);
-		expect(screen.getByTestId("full-message").getAttribute("data-pending-label")).toBe("正在创建会话");
-
-		const streaming = props(true, true);
-		streaming.pendingLabel = "等待模型响应";
-		streaming.model.messages = [
-			createConversationAgentMessage({ id: "waiting-message", phase: "streaming", text: "回答", blocks: [] }),
-		];
-		rerender(<MessageListView {...streaming} />);
-
-		expect(screen.getByTestId("full-message").getAttribute("data-pending-label")).toBeNull();
 	});
 
 	it("空会话保留固定布局参数并提供空高度表", () => {

@@ -16,8 +16,6 @@ export interface ConversationViewportModel extends MessageListModel {
 	readonly feedKey: string | null;
 	/** Non-critical derivations (timeline, full usage totals) are ready. */
 	readonly deferredContentReady: boolean;
-	readonly pendingLabel?: string;
-	readonly onAbort?: () => void;
 }
 
 interface ConversationViewportState {

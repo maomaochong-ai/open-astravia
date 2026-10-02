@@ -16,16 +16,30 @@ vi.mock("../components/MessageCardsHost", () => ({ MessageCardsHost: () => null 
 
 const reply = createConversationAgentMessage({ id: "a1", text: "answer", blocks: [] });
 
-function Row({ predicting = false, children }: { readonly predicting?: boolean; readonly children: ReactNode }) {
+function Row({
+	predicting = false,
+	streaming = false,
+	pendingLabel,
+	message = reply,
+	children,
+}: {
+	readonly predicting?: boolean;
+	readonly streaming?: boolean;
+	readonly pendingLabel?: string;
+	readonly message?: typeof reply;
+	readonly children: ReactNode;
+}) {
 	const feed = createConversationFeed({
 		key: "conversation",
-		items: atom<readonly ChatConversationItem[]>([reply]),
+		items: atom<readonly ChatConversationItem[]>([message]),
 		predicting: atom(predicting),
+		streaming: atom(streaming),
 		workspace: { id: "/repo", cwd: "/repo", runtimeIds: [] },
+		...(pendingLabel ? { pendingLabel } : {}),
 	});
 	return (
 		<ConversationFeedContext.Provider value={feed}>
-			<ConversationMessageScope row={{ message: reply, index: 0, isTail: true, isLastUserMessage: false }}>
+			<ConversationMessageScope row={{ message, index: 0, isTail: true, isLastUserMessage: false }}>
 				{children}
 			</ConversationMessageScope>
 		</ConversationFeedContext.Provider>
@@ -60,6 +74,29 @@ describe("AgentMessage parts", () => {
 		);
 		expect(screen.getByText("answer")).toBeTruthy();
 		expect(screen.queryByRole("button", { name: "messageList.copyButton.copy" })).toBeNull();
+	});
+
+	it("labels only a reply that has produced no output with the feed's pending label", () => {
+		const template = (
+			<AgentMessage.Root>
+				<AgentMessage.Header />
+			</AgentMessage.Root>
+		);
+		const waiting = createConversationAgentMessage({ id: "a1", phase: "pending", text: "", blocks: [] });
+		const { rerender } = render(
+			<Row streaming pendingLabel="团队正在加载" message={waiting}>
+				{template}
+			</Row>,
+		);
+		expect(screen.getByText("团队正在加载")).toBeTruthy();
+
+		const answering = createConversationAgentMessage({ id: "a1", phase: "streaming", text: "回答", blocks: [] });
+		rerender(
+			<Row streaming pendingLabel="团队正在加载" message={answering}>
+				{template}
+			</Row>,
+		);
+		expect(screen.queryByText("团队正在加载")).toBeNull();
 	});
 
 	it("shows the prediction status only when the feed is predicting", () => {

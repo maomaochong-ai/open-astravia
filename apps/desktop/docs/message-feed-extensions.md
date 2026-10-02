@@ -8,8 +8,8 @@
 | Conversation 消息的只读列表、导航与流式跟随 | Desktop 的 `MessageList` |
 | 普通会话的编辑、分叉、删除、分支切换及运行 Footer | `SessionConversation`（由 `Conversation.*` 部件组合，见 ADR-0147） |
 | 自己排列正文和命令 | `UserMessage` + action hooks + `MessageLayout.Footer` |
-| 改消息/消息行 | `MessageRenderingProvider` |
-| 改 thinking、tool_call、text 等内容块 | `ContentRenderingProvider` |
+| 改某类消息的结构 | `Conversation.UserMessage` / `AgentMessage` / `EventMessage` 模板 |
+| 改 thinking、tool_call、text 等内容块 | 注册 `renderBlock` 的会话扩展 |
 | 改 Markdown 语法、节点、代码块 | `@vetta-org/theme-ui/markdown` |
 
 这些是局部 React 组合 API。没有新增 Plugin SDK manifest 项或全局 renderer 注册服务；Desktop 组件也不是插件可深度导入的公共包入口。
@@ -36,20 +36,9 @@ Desktop 内部可以从 `@domains/conversation/components/message-list` 的统�
 
 ## 消息与内容块
 
-在目标列表外包 `MessageRenderingProvider value={definition}`：
+某类消息要换结构，就在 `Conversation.Messages` 里声明该类的模板并放入需要的部件；没有声明模板的类型按只读默认模板渲染（正文加复制）。模板只改变展示，不修改源消息。
 
-```tsx
-const rendering: MessageRendering = {
-  project: message => message.kind === "user"
-    ? { ...message, text: decorate(message.text) }
-    : message,
-  renderers: { user: CustomUserMessage },
-};
-```
-
-投影只改变展示，不修改源消息。自定义 renderer 收到投影后的完整 `MessageItemProps`；不匹配的类型使用默认呈现。嵌套 Provider 保留未覆盖的类型；投影从外向内执行；同类型组件和 row 明确后者覆盖。需要组合多个配置时也可调用 `extendMessageRendering`。
-
-`ContentRenderingProvider renderers={{ text: CustomText }}` 在真实 segment 渲染入口生效，包括阶段组中的工具和思考。组件收到 `block`、`isStreamingTail`、`exportMode` 和默认呈现 `children`。返回 children 可装饰默认实现，返回其他 JSX 可替换它；不应直接修改 block。需要声明式语法处理时优先使用 Markdown 层，不要把文本重新解析塞进消息列表。
+内容块用扩展替换：在 `Conversation.Root` 下放一个调用 `useConversationExtension({ id, renderBlock: { text: CustomText } })` 的组件。它在真实 segment 渲染入口生效，包括阶段组中的工具和思考；组件收到 `block`、`isStreamingTail`、`exportMode` 和默认呈现 `children`，返回 children 可装饰默认实现，返回其他 JSX 可替换它；同一类型以后注册的扩展为准。不应直接修改 block。需要声明式语法处理时优先使用 Markdown 层，不要把文本重新解析塞进消息列表。
 
 ## Markdown 定义
 
