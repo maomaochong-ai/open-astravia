@@ -28,6 +28,28 @@ describe("Conversation message architecture guard", () => {
 		).toEqual(["apps/desktop/src/renderer/example.ts:1: compaction must be a timeline event, not a message role"]);
 	});
 
+	it("keeps composable conversation parts free of global session state", () => {
+		expect(
+			findConversationMessageArchitectureViolations([
+				{
+					path: "apps/desktop/src/renderer/domains/conversation/conversation-view/parts.tsx",
+					text: [
+						'import type { ChatConversationItem } from "@shared/store/chat-atoms";',
+						'import { activeSessionAtom } from "@shared/store/atoms";',
+						"openSessionFnRef.current?.(cwd);",
+					].join("\n"),
+				},
+				{
+					path: "apps/desktop/src/renderer/domains/conversation/conversation-view/parts.test.tsx",
+					text: 'import { activeSessionAtom } from "@shared/store/atoms";',
+				},
+			]),
+		).toEqual([
+			"apps/desktop/src/renderer/domains/conversation/conversation-view/parts.tsx:2: composable conversation parts take data and capabilities from the feed, not global state (ADR-0147)",
+			"apps/desktop/src/renderer/domains/conversation/conversation-view/parts.tsx:3: composable conversation parts take data and capabilities from the feed, not global state (ADR-0147)",
+		]);
+	});
+
 	it("routes message list writes through the conversation feed reducer", () => {
 		expect(
 			findConversationMessageArchitectureViolations([

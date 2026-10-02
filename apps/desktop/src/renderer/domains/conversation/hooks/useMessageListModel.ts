@@ -8,7 +8,12 @@ import type { MessageListScrollModel } from "./useMessageListScrollModel";
 const EMPTY_PARTICIPANTS: NonNullable<MessageListProps["participants"]> = [];
 
 export function useMessageListModel(
-	{ messages, isStreaming, participants, onTeamMemberOpen }: MessageListProps,
+	{
+		messages,
+		isStreaming,
+		participants,
+		onTeamMemberOpen,
+	}: Pick<MessageListProps, "messages" | "isStreaming" | "participants" | "onTeamMemberOpen">,
 	scroll: MessageListScrollModel,
 	derivationMessages: MessageListProps["messages"],
 ): MessageListModel {

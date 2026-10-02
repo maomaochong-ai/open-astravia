@@ -6,7 +6,46 @@ import { createConversationAgentMessage, createConversationUserMessage } from "@
 import userEvent from "@testing-library/user-event";
 import { type ComponentProps, Fragment, type ReactNode, useEffect } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { MessageListView } from "./MessageListView";
+import type { MessageListModel, MessageListProps } from "../components/message-list/types";
+import { ConversationExtensionRegistry } from "./extensions";
+import { ConversationFooter, ConversationMessages, ConversationScrollToBottom, ConversationTimelineRail } from "./parts";
+import { ConversationViewportFrame } from "./viewport-frame";
+
+/** The default composition the old MessageListView rendered, driven by a prepared model. */
+function MessageListView({
+	model,
+	onAbort,
+	children,
+	deferredContentReady,
+	sessionId = null,
+	pendingLabel,
+}: {
+	model: MessageListModel;
+	onAbort: MessageListProps["onAbort"];
+	children?: ReactNode;
+	deferredContentReady: boolean;
+	sessionId?: MessageListProps["sessionId"];
+	pendingLabel?: string;
+}) {
+	return (
+		<ConversationExtensionRegistry>
+			<ConversationViewportFrame
+				model={{
+					...model,
+					feedKey: sessionId ?? null,
+					deferredContentReady,
+					...(pendingLabel ? { pendingLabel } : {}),
+					...(onAbort ? { onAbort } : {}),
+				}}
+			>
+				<ConversationMessages />
+				<ConversationFooter>{children}</ConversationFooter>
+				<ConversationTimelineRail />
+				<ConversationScrollToBottom />
+			</ConversationViewportFrame>
+		</ConversationExtensionRegistry>
+	);
+}
 
 const captured = vi.hoisted(() => ({
 	virtuosoProps: undefined as Record<string, unknown> | undefined,
@@ -78,7 +117,7 @@ vi.mock("@vetta-org/theme-ui/chat", () => ({
 	MessageSelectionContextMenuView: () => null,
 }));
 
-vi.mock("../../hooks/useMessageSelectionContextMenu", () => ({
+vi.mock("../hooks/useMessageSelectionContextMenu", () => ({
 	useMessageSelectionContextMenu: () => ({
 		containerRef: { current: null },
 		contextMenu: null,
@@ -86,12 +125,12 @@ vi.mock("../../hooks/useMessageSelectionContextMenu", () => ({
 	}),
 }));
 
-vi.mock("../SuggestionBubbles", () => ({ SuggestionBubbles: () => null }));
-vi.mock("./ForkOriginBanner", () => ({
+vi.mock("../components/SuggestionBubbles", () => ({ SuggestionBubbles: () => null }));
+vi.mock("../components/message-list/ForkOriginBanner", () => ({
 	ForkOriginBanner: () => null,
 	resolveForkOriginPlacement: () => null,
 }));
-vi.mock("./MessageItem", () => ({
+vi.mock("../components/message-list/MessageItem", () => ({
 	ExportMessageList: () => null,
 	MessageItem: (props: { message: { id: string }; pendingLabel?: string }) => {
 		captured.messageItemProps.push(props as Record<string, unknown>);
@@ -103,8 +142,8 @@ vi.mock("./MessageItem", () => ({
 	},
 	ModelSwitchBoundary: ({ from, to }: { from: string; to: string }) => <div>{`${from} → ${to}`}</div>,
 }));
-vi.mock("./MessageListFooter", () => ({ MessageListFooter: () => null }));
-vi.mock("./MessageTimeline", () => ({
+vi.mock("../components/message-list/MessageListFooter", () => ({ MessageListFooter: () => null }));
+vi.mock("../components/message-list/MessageTimeline", () => ({
 	MessageTimeline: ({ onNavigate }: { onNavigate: (index: number) => void }) => (
 		<button type="button" onClick={() => onNavigate(3)}>
 			message timeline
