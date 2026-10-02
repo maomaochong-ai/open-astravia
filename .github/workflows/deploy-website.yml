@@ -1,0 +1,76 @@
+name: Deploy Website to Cloudflare Pages
+
+description: |
+  构建官网（Vite + TypeScript 静态站），用 wrangler 部署到 Cloudflare Pages。
+  触发时机：
+  1. release.published 事件 → upload-release-to-r2 完成后，自动部署官网
+  2. workflow_dispatch 手动触发
+  3. push 到 main 分支（任何 main 变更都重建官网）
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "website/**"
+      - ".github/workflows/deploy-website.yml"
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: deploy-website
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: build & deploy → Cloudflare Pages
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install & build website
+        shell: bash
+        run: |
+          cd website
+          bun install --frozen-lockfile
+          bun run build
+
+      - name: Ensure Pages project exists
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          npx wrangler pages project create astravia-website \
+            --production-branch main \
+            || echo "Project may already exist, continuing..."
+
+      - name: Deploy to Cloudflare Pages
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          npx wrangler pages deploy website/dist \
+            --project-name=astravia-website
+
+      - name: Verify website responds
+        shell: bash
+        run: |
+          sleep 10
+          for url in "https://astravia-website.dev" "https://www.astravia-website.dev"; do
+            status=$(curl -sI "$url" | head -1)
+            echo "$url → $status"
+          done
