@@ -2,7 +2,7 @@ import { activeSessionAtom } from "@shared/store/atoms";
 import { atom, useAtomValue } from "jotai";
 import { selectAtom } from "jotai/utils";
 import { useMemo } from "react";
-import { Conversation, createConversationFeed } from "../conversation-view";
+import { Conversation, createConversationFeed, SubagentCardsExtension } from "../conversation-view";
 import { ExportMessageList } from "./message-list/MessageItem";
 import type { MessageListProps } from "./message-list/types";
 
@@ -64,6 +64,7 @@ export function MessageList(props: MessageListProps): JSX.Element {
 				<Conversation.TimelineRail />
 				<Conversation.ScrollToBottom />
 			</Conversation.Viewport>
+			<SubagentCardsExtension />
 		</Conversation.Root>
 	);
 }

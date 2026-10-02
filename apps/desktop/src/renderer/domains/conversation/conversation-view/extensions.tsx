@@ -82,6 +82,12 @@ export function useConversationExtensionValue<T>(id: string): T | undefined {
 	return extensions.find((extension) => extension.id === id)?.value as T | undefined;
 }
 
+/** Like `useConversationExtensionValue`, for parts that also render outside a conversation (e.g. export). */
+export function useOptionalConversationExtensionValue<T>(id: string): T | undefined {
+	const registry = useContext(ExtensionRegistryContext);
+	return registry?.extensions.find((extension) => extension.id === id)?.value as T | undefined;
+}
+
 /** Applies every registered row decorator around one message row's content. */
 export function ConversationRowDecorations({ message, children }: ConversationRowDecoratorProps) {
 	const { extensions } = useRegistry("Conversation row");

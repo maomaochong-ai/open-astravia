@@ -1,7 +1,7 @@
 import type { ConversationParticipantViewModel } from "@shared/conversation";
 import type { ActivityWorkspace } from "@shared/workspace/activity-workspace";
 import { SuggestionBubbles } from "../components/SuggestionBubbles";
-import { Conversation, EventMessage } from "../conversation-view";
+import { Conversation, EventMessage, SubagentCardsExtension } from "../conversation-view";
 import {
 	AgentAnnotationMarkers,
 	ForkOriginExtension,
@@ -61,6 +61,7 @@ export function SessionConversation({
 					</Conversation.Viewport>
 				</SessionSelectionMenu>
 			</SessionAnnotations>
+			<SubagentCardsExtension />
 			<ForkOriginExtension />
 			<AgentAnnotationMarkers />
 		</Conversation.Root>

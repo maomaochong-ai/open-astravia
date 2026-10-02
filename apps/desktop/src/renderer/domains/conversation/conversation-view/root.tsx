@@ -2,7 +2,6 @@ import { RendererMarkdownScope } from "@shared/components/RendererMarkdownScope"
 import { useRendererMarkdownModel } from "@shared/hooks/useRendererMarkdownModel";
 import type { ReactNode } from "react";
 import { MessageExpansionScope } from "../components/message-list/expansionStore";
-import { SubagentCardsScope } from "../components/message-list/SubagentCardsScope";
 import { ConversationExtensionRegistry } from "./extensions";
 import { type ConversationFeed, ConversationFeedContext } from "./feed";
 
@@ -22,9 +21,7 @@ export function ConversationRoot({
 		<ConversationFeedContext.Provider value={feed}>
 			<ConversationExtensionRegistry>
 				<RendererMarkdownScope value={markdown}>
-					<SubagentCardsScope sessionId={feed.capabilities.subagentRuntimeId ?? null}>
-						<MessageExpansionScope scope={feed.key}>{children}</MessageExpansionScope>
-					</SubagentCardsScope>
+					<MessageExpansionScope scope={feed.key}>{children}</MessageExpansionScope>
 				</RendererMarkdownScope>
 			</ConversationExtensionRegistry>
 		</ConversationFeedContext.Provider>

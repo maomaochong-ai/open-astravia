@@ -35,6 +35,7 @@ export type { ConversationCapabilities, ConversationFeed, ConversationFeedInput,
 export { createConversationFeed, useConversationCapability, useConversationFeed } from "./feed";
 export type { ConversationMessageRow } from "./message-scope";
 export { useMessage, useMessageRow } from "./message-scope";
+export { SubagentCardsExtension } from "./subagent-cards";
 export { UserMessage, useUserMessage } from "./user-message";
 export type { ConversationViewportModel } from "./viewport-frame";
 export { ConversationViewportFrame, useConversationViewport } from "./viewport-frame";
