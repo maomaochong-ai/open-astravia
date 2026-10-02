@@ -132,7 +132,7 @@ function UserMessageActions({ children }: { readonly children?: ReactNode }) {
 
 /** One row of action buttons; collapses when none of its actions apply. */
 function UserMessageActionBar({ children }: { readonly children?: ReactNode }) {
-	return <div className="flex h-6 items-center justify-end gap-1 whitespace-nowrap empty:hidden">{children}</div>;
+	return <UserMessagePrimitive.ActionBar>{children}</UserMessagePrimitive.ActionBar>;
 }
 
 function UserMessageCopyAction() {
@@ -207,38 +207,21 @@ const UserMessageBranchSwitcher = withCommands(function BranchSwitcher({ command
 		return () => pin("branch", false);
 	}, [history.canSwitch, pin]);
 	if (!history.canSwitch) return null;
-	const previous = t("messageList.branch.prev");
-	const next = t("messageList.branch.next");
 	return (
-		<div className="flex h-6 items-center justify-end gap-1 whitespace-nowrap">
-			<span className="inline-flex items-center gap-0.5 text-[11px] text-muted-foreground/70">
-				<UserMessagePrimitive.Action
-					onClick={history.onPrevious}
-					disabled={history.branchIndex <= 0}
-					title={previous}
-					aria-label={previous}
-				>
-					<span className="icon-[solar--alt-arrow-left-linear] h-3.5 w-3.5" />
-				</UserMessagePrimitive.Action>
-				<span
-					className="min-w-[2.5rem] text-center tabular-nums"
-					title={t("messageList.branch.position", {
-						current: history.branchIndex + 1,
-						total: history.branchTotal,
-					})}
-				>
-					{history.branchIndex + 1}/{history.branchTotal}
-				</span>
-				<UserMessagePrimitive.Action
-					onClick={history.onNext}
-					disabled={history.branchIndex >= history.branchTotal - 1}
-					title={next}
-					aria-label={next}
-				>
-					<span className="icon-[solar--alt-arrow-right-linear] h-3.5 w-3.5" />
-				</UserMessagePrimitive.Action>
-			</span>
-		</div>
+		<UserMessagePrimitive.BranchSwitcher
+			index={history.branchIndex}
+			total={history.branchTotal}
+			onPrevious={history.onPrevious}
+			onNext={history.onNext}
+			labels={{
+				previous: t("messageList.branch.prev"),
+				next: t("messageList.branch.next"),
+				position: t("messageList.branch.position", {
+					current: history.branchIndex + 1,
+					total: history.branchTotal,
+				}),
+			}}
+		/>
 	);
 });
 

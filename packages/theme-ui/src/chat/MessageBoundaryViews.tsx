@@ -1,4 +1,7 @@
 import type { JSX } from "react";
+import { MessageLayout } from "./MessageLayoutView";
+import { Message } from "./MessageView";
+import { MessageVisual } from "./MessageVisualView";
 
 export interface CompactionBoundaryViewProps {
 	label: string;
@@ -14,6 +17,24 @@ export function CompactionBoundaryView({ label }: CompactionBoundaryViewProps): 
 			</span>
 			<div className="h-px flex-1 bg-muted-foreground/15" />
 		</div>
+	);
+}
+
+export interface DelegationNoticeViewProps {
+	label: string;
+}
+
+/** A task handed to another agent, as a centered notice in the timeline. */
+export function DelegationNoticeView({ label }: DelegationNoticeViewProps): JSX.Element {
+	return (
+		<Message.Root>
+			<MessageLayout.Event>
+				<MessageVisual.EventBubble>
+					<span className="icon-[solar--forward-linear] h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+					<span className="truncate">{label}</span>
+				</MessageVisual.EventBubble>
+			</MessageLayout.Event>
+		</Message.Root>
 	);
 }
 
