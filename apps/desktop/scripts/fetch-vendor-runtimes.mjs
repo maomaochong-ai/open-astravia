@@ -15,7 +15,13 @@ function readableArchive(path, filename) {
 	if (!existsSync(path)) return false;
 	try {
 		// GNU tar (Linux and Git Bash) cannot read the Windows Node ZIP.
-		if (filename.endsWith(".zip")) return new AdmZip(path).test();
+		if (filename.endsWith(".zip")) {
+		try {
+			return new AdmZip(path).getEntries().length > 0;
+		} catch {
+			return false;
+		}
+	}
 		// A drive-letter archive argument is interpreted as a remote host by GNU tar.
 		execFileSync("tar", ["-tf", basename(path)], { cwd: dirname(path), stdio: "ignore" });
 		return true;
