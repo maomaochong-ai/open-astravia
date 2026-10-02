@@ -211,7 +211,7 @@ jobs:
         run: node scripts/release/release-notes.mjs --check
 
       - name: Run repository checks
-        run: bun run check
+        run: bun run check:full
 
       - name: Test quality and release configuration
         run: bun run test:quality

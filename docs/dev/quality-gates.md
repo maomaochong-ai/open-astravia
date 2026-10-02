@@ -8,10 +8,12 @@
 |------|------|--------|------|
 | 提交前（快） | `bun run check:precommit`（husky 自动） | 每次 commit | staged 私钥/冲突标记 + 只读 Biome；不会改写工作区或把未暂存 hunk 加入提交 |
 | 开发中（快） | `bun run check:quick` | 一轮编辑后 | 准确合并分支已提交差异、暂存、未暂存和未跟踪文件；对变更文件运行 Biome，并只运行命中范围的架构守卫；不做类型检查 |
-| 完整本地/PR | `bun run check` | 一轮代码任务完成、交付或开 PR 前一次 | 对显式源码根运行 Biome，并行执行根 `tsgo`、增量 desktop `tsc`、docs check 与全量架构守卫 |
+| 日常任务 | `bun run check:lint -- <file...>` / `bun run check:quick -- <file...>` | 只检查当前任务影响范围 | 变更文件 Biome，quick 额外执行相关守卫；不默认扫描全仓，类型检查按受影响合同选择 |
+| 组合检查 | `bun run check` | 需要完整类型和守卫检查时 | 变更文件 Biome，并行执行根 `tsgo`、增量 desktop `tsc`、docs check 与全量架构守卫 |
+| 显式全量 | `bun run check:full` | 用户要求全量核查、CI 或发布 | 对显式源码根运行 Biome，并行执行全部类型检查和架构守卫 |
 | 构建声明消费 | `bun run check:types:build-surfaces` | workspace 前置声明生成后 | 按 `cli-host/tsconfig.build.json` 验证真实包声明消费；会拒绝陈旧 `dist/*.d.ts` |
-| 质量脚本测试 | `bun run test:quality` | 修改 `scripts/quality`、workflow 或插件清单 | 变更选择、插件清单、发布流程与包边界规则 |
-| 全量单元测试 | `bun run test:full`（`test` / `test:unit` 为别名） | 明确需要全仓验证 | 先由 Turbo 生成测试消费的 workspace 依赖产物，再顺序运行所有声明 `test` 的 TypeScript workspace |
+| 质量脚本测试 | `bun run test:impact -- <file...>`；全量质量脚本使用 `test:quality` | 修改 `scripts/quality`、workflow 或插件清单 | 只运行命中的脚本、插件清单或发布流程合同测试 |
+| 全量单元测试 | `bun run test:full` | 明确需要全仓验证 | 先由 Turbo 生成测试消费的 workspace 依赖产物，再顺序运行所有声明 `test` 的 TypeScript workspace |
 | 按包 | `bun run test:pkg <name>` | 改单包 | 例：`test:pkg ai` |
 | 按任务影响 | `bun run test:impact -- <file...>` | 日常实现与 Agent 任务 | 直接运行显式测试和 Vitest 依赖相关测试；无法可靠选择时直接失败 |
 | 按变更 | `bun run test:changed` | 提 PR 前可选 | 合并已提交/工作区/未跟踪改动；只运行变更文件的直接、Vitest 关联或显式映射测试，无法定向时失败，永不退化为整包或全仓测试 |
@@ -25,7 +27,7 @@
 scripts/quality/
   lib.mjs                      共享工具
   precommit.mjs                快路径编排
-  check-lint.mjs               显式源码根的全量 Biome 入口
+  check-lint.mjs               默认按变更选择 Biome；--full 显式扫描源码根
   check-guards.mjs             并行全量守卫入口
   check-quick.mjs              按完整 Git 工作区差异做快速检查
   check-private-keys.mjs       私钥形态检测
@@ -52,22 +54,27 @@ knip.config.ts                 Knip（可选）
 |--------|------|
 | `build` / `build:all` | 由 Turborepo 按 workspace manifest 构建库或完整 Desktop 依赖图；Preset 仍走专用制品流程 |
 | `build:desktop` / `build:cli` / `build:docs` / `build:preset` | 构建指定产品或制品，依赖包由任务图自动补齐 |
-| `check:lint` / `check:lint:fix` | 对显式源码根执行 Biome 只读检查 / 写回，避免扫描无关目录 |
+| `check:lint` / `check:lint:fix` | 默认对变更文件执行 Biome 只读检查 / 写回；支持显式文件和 `--base`，配置变更扩大检查范围 |
+| `check:lint:full` | 显式对全部源码根运行 Biome；全量修复使用 `check:lint:fix --full` |
 | `check:types` | 并行执行根 `tsgo`、带持久增量缓存的 desktop `tsc` 与 docs check；CLI 已包含在根 `tsconfig` 中 |
 | `check:types:build-surfaces` | 使用 CLI build config 验证上游 workspace `dist/*.d.ts` 的真实消费面；要求先生成当前声明 |
 | `check:guards` | 并行执行私钥、冲突标记、包边界等全量守卫 |
 | `check:staged` | 仅 staged Biome |
 | `check:precommit` | husky 使用的快路径 |
 | `check:quick` | 变更文件 Biome + 按路径选择的 guards；Biome 配置变化时自动回退全量 Biome |
-| `check` | 并行 lint + types + guards（只读） |
-| `fix` | Biome 全量格式化与安全修复 |
+| `check` | 并行变更 lint + 全部 types + 全部 guards（只读） |
+| `check:full` | 并行全量 lint + types + guards（只读），CI/发布入口 |
+| `fix` | Biome 变更文件格式化与安全修复；全量需显式 `--full` |
 | `vitest` | 用 Node 启动仓库 Vitest；等价于 `bun scripts/quality/run-vitest.mjs` |
 | `test:quality` | 质量脚本定向测试 |
-| `test:full`（`test` / `test:unit`） | 显式全量入口；从 workspace manifest 自动发现并顺序运行所有声明 `test` 的包 |
+| `test` / `test:unit` | 默认按任务影响选择，等价于 `test:impact`；支持显式文件 |
+| `test:full` | 显式全量入口；从 workspace manifest 自动发现并顺序运行所有声明 `test` 的包 |
 | `test:pkg` | 见 `bun run test:pkg --list` |
 | `test:impact` | 显式任务文件走直接及 Vitest `related` 测试；无法可靠选择时失败，不退化为包级或全仓测试 |
 | `test:changed` | 默认比较 `origin/dev`；`--base origin/main` 可改基线；复用 `test:impact` 的文件级选择并补充锁文件依赖闭包分析 |
 | `deadcode` / `deadcode:report` | Knip 严格 / 仅报告 |
+
+测试选择优先采用已审查的源码到合同测试映射，未映射源码和公共导出继续使用 Vitest 依赖分析。Google 的共享请求构建由 Google/Vertex 原生适配器合同测试覆盖；目标 Feature、Runtime 和 Extension 由目标状态测试、目标执行集成测试及续跑测试覆盖，避免公共入口将其他供应商或 SDK 测试全部关联进来。映射测试缺失会直接失败；改变这些源码的合同或调用链时必须重新审查映射。
 
 ### 单测覆盖率（可选，不进门禁）
 
@@ -174,7 +181,7 @@ workspace 包声明解析。因此，上游源码修改但 `dist/*.d.ts` 尚未�
 
 ## CI
 
-`.github/workflows/quality.yml` 负责通用 TypeScript 质量门禁：冻结依赖安装、`bun run check`、质量脚本测试、Runtime 合同检查，并在 Ubuntu 与 Windows 上运行 `test:changed` 选出的直接、关联或显式合同测试。Linux 覆盖可移植逻辑，Windows 保留路径、进程和 Bun/Node 兼容性覆盖；macOS 特有的生产行为由 path-filtered Desktop packaged E2E 与 Apple 客户端 workflow 验证，不再把所有可移植单测重复跑第三遍。各平台按操作系统、架构和锁文件复用 Bun 下载缓存，但每次都由冻结锁文件重新生成根 `node_modules`；不得跨 Runner 恢复 `node_modules`。完整 Git 历史用于计算 PR base，同一 PR 或分支的新提交会取消旧运行。
+`.github/workflows/quality.yml` 负责通用 TypeScript 质量门禁：冻结依赖安装、`bun run check:full`、质量脚本测试、Runtime 合同检查，并在 Ubuntu 与 Windows 上运行 `test:changed` 选出的直接、关联或显式合同测试。Linux 覆盖可移植逻辑，Windows 保留路径、进程和 Bun/Node 兼容性覆盖；macOS 特有的生产行为由 path-filtered Desktop packaged E2E 与 Apple 客户端 workflow 验证，不再把所有可移植单测重复跑第三遍。各平台按操作系统、架构和锁文件复用 Bun 下载缓存，但每次都由冻结锁文件重新生成根 `node_modules`；不得跨 Runner 恢复 `node_modules`。完整 Git 历史用于计算 PR base，同一 PR 或分支的新提交会取消旧运行。
 
 非 Bun workspace 由独立的 path-filtered workflow 覆盖：`.github/workflows/im-gateway.yml` 对 Go Gateway 执行 tidy、vet、build、test、接口纪律和 golangci-lint；`.github/workflows/kotlin.yml` 对 `apps/mobile/client-android` 执行 Android host tests 和 debug APK 构建；`.github/workflows/mobile-apple.yml` 对 `apps/mobile/client-apple` 执行 VettaKit 单元测试、与桌面端真实 LAN 服务器的 interop 测试和 iOS 模拟器构建，协议包 `packages/remote-control` 变化时同样触发。这些 path-filtered workflow 只在分支 push 或 PR 中对应目录或 workflow 自身变化时运行，不响应 tag push。
 
@@ -187,7 +194,7 @@ bun run verify:desktop:contracts
 bun run test:desktop:packaging
 ```
 
-正式 Desktop 发布 workflow 还会在平台矩阵前运行 `bun run check`、`bun run test:quality` 与 `bun run test:desktop:packaging`；每个平台构建后运行 packaged smoke/updater E2E，发布 R2/GitHub 后通过 `apps/desktop/scripts/verify-update-feed.mjs` 检查公开更新 feed。手动 `workflow_dispatch` 默认只验证本地产物；`channel=test` 或 `channel=stable` 的发布型手动运行会进入与 tag 相同的发布门禁和公开 feed 检查。
+正式 Desktop 发布 workflow 还会在平台矩阵前运行 `bun run check:full`、`bun run test:quality` 与 `bun run test:desktop:packaging`；每个平台构建后运行 packaged smoke/updater E2E，发布 R2/GitHub 后通过 `apps/desktop/scripts/verify-update-feed.mjs` 检查公开更新 feed。手动 `workflow_dispatch` 默认只验证本地产物；`channel=test` 或 `channel=stable` 的发布型手动运行会进入与 tag 相同的发布门禁和公开 feed 检查。
 
 需要验证真实生产布局时运行 packaged smoke 与 updater E2E（当前平台需先生成对应 `release/*-unpacked` 目录）：
 
@@ -227,17 +234,21 @@ Windows、macOS、Linux runner 上真实安装基线包，驱动现有 updater �
 bun scripts/quality/run-vitest.mjs --run packages/ai/test/provider-retry-policy.test.ts
 bun run check:quick -- packages/ai/src/providers/retry-policy.ts packages/ai/test/provider-retry-policy.test.ts
 
-# 任务完成：显式列出本次修改文件；完整 check 已覆盖 quick 的静态检查，无需紧邻重复执行
+# 任务完成：显式列出本次修改文件；已通过且未再修改的检查无需重复执行
 bun run test:impact -- packages/ai/src/providers/retry-policy.ts packages/ai/test/provider-retry-policy.test.ts
-bun run check
+bun run check:quick -- packages/ai/src/providers/retry-policy.ts packages/ai/test/provider-retry-policy.test.ts
+# 按受影响的 TypeScript 合同补充类型检查
 
 # 改多个包 / 不确定范围
 bun run test:changed
 bun run check:quick
-bun run check
 
 # 改 Desktop UI（默认不启动 verify:ui）
-bun run check
+bun run check:quick -- <本次文件...>
+# 需要时执行 Desktop 项目类型检查
+
+# 用户明确要求全量核查、CI 或发布
+bun run check:full
 
 # 仅当用户明确要求 UI 验收时
 bun run verify:ui:start:fresh

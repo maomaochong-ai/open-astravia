@@ -96,7 +96,7 @@ describe("Desktop release workflow contracts", () => {
 
 	it("runs quality and packaging tests before the platform matrix", () => {
 		expect(workflow).toContain("  quality:");
-		expect(workflow).toContain("run: bun run check");
+		expect(workflow).toMatch(/run: bun run check:full\r?\n/);
 		expect(workflow).toContain("run: bun run test:quality");
 		expect(workflow).toContain("run: bun run verify:desktop:contracts");
 		expect(workflow).toContain("run: bun run test:desktop:packaging");

@@ -518,6 +518,44 @@ describe("affected package selection", () => {
 		]);
 	});
 
+	it("selects Google and goal contracts without unrelated provider or SDK tests", () => {
+		const files = [
+			"packages/ai/src/providers/google-stream/request.ts",
+			"packages/ai/test/google-native-adapters.test.ts",
+			"packages/coding-agent/src/features/goal/goal-feature.ts",
+			"packages/coding-agent/src/features/goal/goal-runtime.ts",
+			"packages/coding-agent/src/features/goal/goal-session-extension.ts",
+			"packages/coding-agent/test/composition/goal-execution.test.ts",
+			"packages/coding-agent/test/features/goal/goal-session-extension.test.ts",
+		];
+		const impact = createImpactTestPlan(files);
+		expect(impact.selectionErrors).toEqual([]);
+		expect(impact.targets).toMatchObject([
+			{ key: "ai", directTests: ["test/google-native-adapters.test.ts"], relatedSources: [] },
+			{
+				key: "coding-agent",
+				directTests: [
+					"test/composition/continuation-orchestration.test.ts",
+					"test/composition/goal-execution.test.ts",
+					"test/features/goal/goal-session-extension.test.ts",
+				],
+				relatedSources: [],
+			},
+		]);
+		expect(createChangedTestPlan(files)).toEqual(impact);
+	});
+
+	it.each([
+		"packages/ai/src/providers/google-stream/request.ts",
+		"packages/coding-agent/src/features/goal/goal-feature.ts",
+		"packages/coding-agent/src/features/goal/goal-runtime.ts",
+		"packages/coding-agent/src/features/goal/goal-session-extension.ts",
+	])("fails a reviewed contract mapping with a missing test: %s", (file) => {
+		const plan = createImpactTestPlan([file], (path) => path === file);
+		expect(plan.selectionErrors).toContain(`${file} has an invalid explicit test mapping`);
+		expect(plan.targets).toEqual([]);
+	});
+
 	it("keeps packages with test prerequisites on targeted tests", () => {
 		const plan = createImpactTestPlan(["packages/plugins/presets/vetta-ui-design/src/vetd/tool-gate.ts"]);
 		expect(plan.selectionErrors).toEqual([]);
@@ -620,10 +658,22 @@ describe("CI unit test coverage", () => {
 		expect(installAction).not.toContain("actions/cache");
 	});
 
-	it("keeps the local full-test entry point sequential and discovery-based", () => {
+	it("defaults to affected tests and keeps explicit full tests sequential and discovery-based", () => {
 		expect(rootManifest.scripts["test:full"]).toBe("bun run scripts/quality/test-pkg.mjs --all");
-		expect(rootManifest.scripts.test).toBe("bun run test:full");
-		expect(rootManifest.scripts["test:unit"]).toBe("bun run test:full");
+		expect(rootManifest.scripts.test).toBe("bun run test:impact");
+		expect(rootManifest.scripts["test:unit"]).toBe("bun run test:impact");
+	});
+
+	it("keeps full lint explicit for CI and publication while local lint selects changes", () => {
+		expect(rootManifest.scripts["check:lint"]).toBe("bun run scripts/quality/check-lint.mjs");
+		expect(rootManifest.scripts["check:lint:full"]).toBe("bun run scripts/quality/check-lint.mjs --full");
+		expect(rootManifest.scripts["check:full"]).toContain("bun run check:lint:full");
+		expect(rootManifest.scripts["check:full"]).toContain("bun run check:types");
+		expect(rootManifest.scripts["check:full"]).toContain("bun run check:guards");
+		expect(rootManifest.scripts.prepublishOnly).toContain("bun run check:full");
+		expect(workflow).toMatch(/run: bun run check:full\r?\n/);
+		const release = readFileSync(join(repoRoot, "scripts/release-desktop.mjs"), "utf8");
+		expect(release).toContain('["run", "check:lint:full"]');
 	});
 
 	it("does not duplicate checks already owned by the repository quality workflow", () => {
