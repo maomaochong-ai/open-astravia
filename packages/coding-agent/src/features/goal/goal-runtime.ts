@@ -20,6 +20,7 @@ export class CodingAgentGoalRuntime {
 	private readonly listeners = new Set<CodingAgentGoalUpdateListener>();
 	private documentContext: RuntimeDocumentParticipantContext | undefined;
 	private readonly pendingSnapshots: CodingAgentGoalSnapshot[] = [];
+	private pendingSnapshotWrites = 0;
 	private persistenceTail: Promise<void> = Promise.resolve();
 	private latestPersistence: Promise<void> = Promise.resolve();
 	private activeTurn = false;
@@ -119,7 +120,8 @@ export class CodingAgentGoalRuntime {
 	}
 
 	onDocumentChanged(document: ConversationDocument): void {
-		if (this.pendingSnapshots.length > 0) return;
+		// Earlier queued snapshots must not overwrite a newer user or tool update.
+		if (this.pendingSnapshots.length > 0 || this.pendingSnapshotWrites > 0) return;
 		this.restore(latestGoalSnapshot(document) ?? null);
 	}
 
@@ -277,14 +279,19 @@ export class CodingAgentGoalRuntime {
 		if (!context) return;
 		const snapshot = this.pendingSnapshots.splice(0).at(-1);
 		if (snapshot === undefined) return;
-		const operation = this.persistenceTail.then(() =>
-			context.appendCustomEntry({
-				entryId: this.options.createId(),
-				customType: GOAL_SNAPSHOT_TYPE,
-				data: snapshot,
-				timestamp: new Date(this.options.now()).toISOString(),
-			}),
-		);
+		this.pendingSnapshotWrites += 1;
+		const operation = this.persistenceTail
+			.then(() =>
+				context.appendCustomEntry({
+					entryId: this.options.createId(),
+					customType: GOAL_SNAPSHOT_TYPE,
+					data: snapshot,
+					timestamp: new Date(this.options.now()).toISOString(),
+				}),
+			)
+			.finally(() => {
+				this.pendingSnapshotWrites -= 1;
+			});
 		this.latestPersistence = operation;
 		this.persistenceTail = operation.catch(() => undefined);
 	}

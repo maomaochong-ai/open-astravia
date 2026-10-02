@@ -35,11 +35,23 @@ describe("Coding Agent goal session extension", () => {
 		const prepared = await composition.features[0]?.prepare({ signal });
 		if (!prepared) return { composition };
 		disposals.push(() => prepared.dispose());
-		const provider = (await prepared.contribute({ signal })).modelCallProviders?.[0];
+		const contribution = await prepared.contribute({ signal });
+		const provider = contribution.modelCallProviders?.[0];
 		if (!provider) throw new Error("Expected goal model-call provider");
+		const startup = contribution.contextProviders?.[0];
+		if (!startup) throw new Error("Expected goal startup context provider");
 		return {
 			composition,
 			contribute: () => provider.contribute({ signal } as ModelCallContributionContext),
+			provideStartup: (requestSignal = signal) =>
+				startup.provide(
+					{
+						sessionId: "s",
+						turnId: "t",
+						conversation: { sessionId: "s", createdAt: 1, version: 0, messages: [], events: [] },
+					},
+					requestSignal,
+				),
 		};
 	}
 
@@ -92,6 +104,24 @@ describe("Coding Agent goal session extension", () => {
 		expect(composition.invokeSync(CODING_AGENT_GOAL_STATE_READ, undefined)).toBeNull();
 	});
 
+	it.each(["paused", "blocked", "complete"] as const)("does not start a %s goal", async (status) => {
+		const session = await createSession();
+		expect(await session.provideStartup?.()).toEqual([]);
+		const goal = session.composition.invokeSync(CODING_AGENT_GOAL_CREATE, { objective: "Test" });
+		session.composition.invokeSync(CODING_AGENT_GOAL_UPDATE, { goalId: goal.goalId, status });
+		expect(await session.provideStartup?.()).toEqual([]);
+		session.composition.invokeSync(CODING_AGENT_GOAL_CLEAR, { goalId: goal.goalId });
+		expect(await session.provideStartup?.()).toEqual([]);
+	});
+
+	it("honors cancellation before providing goal startup context", async () => {
+		const session = await createSession();
+		session.composition.invokeSync(CODING_AGENT_GOAL_CREATE, { objective: "Test" });
+		const controller = new AbortController();
+		controller.abort();
+		await expect(session.provideStartup?.(controller.signal)).rejects.toMatchObject({ name: "AbortError" });
+	});
+
 	it("lets the model create an explicitly requested goal and mark it complete through typed tools", async () => {
 		const session = await createSession();
 		const contribution = await session.contribute?.();
@@ -131,6 +161,7 @@ describe("CodingAgentGoalRuntime persistence and accounting", () => {
 	function createRuntime(initial: ConversationDocument, nowValues: number[] = [1]) {
 		let document = initial;
 		let entry = 0;
+		const statesAfterWrite: Array<ReturnType<CodingAgentGoalRuntime["readState"]>> = [];
 		const runtime = new CodingAgentGoalRuntime({
 			createId: () => `goal-${++entry}`,
 			now: () => nowValues.shift() ?? 1,
@@ -139,9 +170,10 @@ describe("CodingAgentGoalRuntime persistence and accounting", () => {
 			appendCustomEntry: async (customEntry) => {
 				document = applyConversationDocumentCommand(document, { type: "custom.append", ...customEntry }).document;
 				runtime.onDocumentChanged(document);
+				statesAfterWrite.push(runtime.readState());
 			},
 		});
-		return { runtime, readDocument: () => document };
+		return { runtime, readDocument: () => document, statesAfterWrite };
 	}
 
 	it("persists goals and restores the current branch snapshot", async () => {
@@ -155,6 +187,34 @@ describe("CodingAgentGoalRuntime persistence and accounting", () => {
 		});
 		const resumed = createRuntime(first.readDocument());
 		expect(resumed.runtime.readState()).toMatchObject({ objective: "Persist me", status: "paused" });
+	});
+
+	it("keeps the latest resumed state while earlier snapshots are still being persisted", async () => {
+		const fixture = createRuntime(createEmptyConversationDocument({ sessionId: "s", createdAt: 1 }));
+		const goal = fixture.runtime.create("Resume without losing the active state");
+		fixture.runtime.update(goal.goalId, "paused");
+		fixture.runtime.update(goal.goalId, "active");
+
+		await fixture.runtime.flush();
+
+		expect(fixture.statesAfterWrite.every((state) => state?.status === "active")).toBe(true);
+		expect(fixture.runtime.readState()).toMatchObject({ status: "active", continuationCount: 0 });
+		expect(fixture.readDocument().entries.at(-1)).toMatchObject({ data: { status: "active" } });
+	});
+
+	it("allows document restoration after a snapshot write fails", async () => {
+		const document = createEmptyConversationDocument({ sessionId: "s", createdAt: 1 });
+		const runtime = new CodingAgentGoalRuntime({ createId: () => "goal", now: () => 1 });
+		runtime.initialize(document, {
+			appendCustomEntry: async () => {
+				throw new Error("Snapshot write failed");
+			},
+		});
+		runtime.create("Test failed persistence");
+		await expect(runtime.flush()).rejects.toThrow("Snapshot write failed");
+		runtime.onDocumentChanged(document);
+		expect(runtime.readState()).toBeNull();
+		await runtime.dispose();
 	});
 
 	it("tracks assistant usage without imposing a token budget", async () => {
