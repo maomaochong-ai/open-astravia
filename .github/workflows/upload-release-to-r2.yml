@@ -129,7 +129,6 @@ jobs:
         env:
           BUCKET: ${{ secrets.ASTRAVIA_R2_BUCKET }}
           PREFIX: ${{ steps.resolve.outputs.prefix }}
-          PUBLISH_PREFIX: ${{ secrets.ASTRAVIA_R2_BUCKET }}
         run: |
           echo "Uploading to r2:${BUCKET}/${PREFIX}/"
           rclone copyto \
@@ -137,9 +136,7 @@ jobs:
             "r2:${BUCKET}/${PREFIX}" \
             --verbose \
             --transfers 4 \
-            --checkers 4 \
-            --multi-thread-streams 4 \
-            --create-empty-src-dirs=false
+            --checkers 4
           echo "---"
           echo "Uploaded objects:"
           rclone ls "r2:${BUCKET}/${PREFIX}" | tail -30
