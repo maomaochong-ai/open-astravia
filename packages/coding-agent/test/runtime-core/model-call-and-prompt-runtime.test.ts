@@ -802,24 +802,24 @@ describe("Coding Agent model call and prompt runtime", () => {
 			appendSystemPrompt: "First append",
 			contextFiles: [{ content: "First repository instruction" }],
 			memory: expect.stringContaining("First memory v1"),
-			personalization: "First persona v1",
+			personalization: expect.stringContaining("First persona v1"),
 		});
 		expect(firstCall.modePrompt).toBeTruthy();
 		expect(secondCall).toMatchObject({
 			customPrompt: "First session prompt v1",
 			memory: expect.stringContaining("First memory v1"),
-			personalization: "First persona v1",
+			personalization: expect.stringContaining("First persona v1"),
 		});
 		expect(secondCall.modePrompt).toBeTruthy();
 		expect(nextTurnCall).toMatchObject({
 			customPrompt: "First session prompt v2",
 			memory: expect.stringContaining("First memory v2"),
-			personalization: "First persona v2",
+			personalization: expect.stringContaining("First persona v2"),
 		});
 		expect(nextTurnCall.modePrompt).toBe("");
 		expect(isolatedCall).toMatchObject({
 			customPrompt: "Second session prompt",
-			personalization: "Second persona",
+			personalization: expect.stringContaining("Second persona"),
 		});
 		expect(firstRefresh).toHaveBeenCalledTimes(2);
 		expect(firstContextRefresh).toHaveBeenCalledTimes(2);

@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -29,15 +28,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.PushPin
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Folder
-import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -54,7 +46,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.UriHandler
@@ -75,20 +66,12 @@ import org.vetta.android.resources.Res
 import org.vetta.android.resources.chat_compacted
 import org.vetta.android.resources.chat_composer_placeholder
 import org.vetta.android.resources.chat_loading_history
-import org.vetta.android.resources.chat_more
-import org.vetta.android.resources.chat_resync
 import org.vetta.android.resources.chat_scroll_to_bottom
 import org.vetta.android.resources.confirm
 import org.vetta.android.resources.files_title
-import org.vetta.android.resources.session_name
-import org.vetta.android.resources.session_pin
-import org.vetta.android.resources.session_rename
-import org.vetta.android.resources.session_rename_title
-import org.vetta.android.resources.session_unpin
 import org.vetta.android.resources.unlinked_not_cached
 import org.vetta.android.resources.unlinked_readonly
 import org.vetta.android.resources.work_unpaired_scan
-import org.vetta.android.ui.components.VettaTextInputDialog
 import org.vetta.android.ui.design.GlassCapsuleButton
 import org.vetta.android.ui.design.GlassCircleButton
 import org.vetta.android.ui.design.VettaMotion
@@ -120,7 +103,6 @@ fun SessionScreen(
     val active = transcript.sessionState.status.isActive
     val blocks = remember(transcript.items, active) { ChatTurns.build(transcript.items, waiting = active) }
     val listState = rememberLazyListState()
-    var renaming by rememberSaveable { mutableStateOf<String?>(null) }
     val files = remember(sessionId) { actions.files(sessionId) }
     var filesOpen by remember { mutableStateOf(false) }
     // A desktop file being previewed, as the link or listing named it.
@@ -182,16 +164,16 @@ fun SessionScreen(
                 )
             }
             headerActions()
-            SessionMenu(
-                enabled = !starting,
-                online = state.online,
-                pinned = state.session(id)?.pinned == true,
-                onResync = { actions.resync(id) },
-                onRename = { renaming = state.session(id)?.title.orEmpty() },
-                onTogglePin = { actions.setPinned(id, state.session(id)?.pinned != true) },
-                // The desktop's activity panel, starting with its files (ADR-0139).
-                onOpenFiles = files?.takeIf { state.link.desktop?.fileRead == true }?.let { { filesOpen = true } },
-            )
+            // The desktop's files (ADR-0139). Pin, rename, and refresh live on the session list.
+            if (files != null && state.link.desktop?.fileRead == true) {
+                IconButton(
+                    onClick = { filesOpen = true },
+                    enabled = !starting && state.online,
+                    modifier = Modifier.testTag("chat.files"),
+                ) {
+                    Icon(Icons.Outlined.Folder, contentDescription = stringResource(Res.string.files_title))
+                }
+            }
         }
         // A link to a file on the desktop opens it here; web links go to the system as before.
         val systemLinks = LocalUriHandler.current
@@ -281,19 +263,6 @@ fun SessionScreen(
     if (filesOpen && files != null) FilesPanel(files, onOpenFile = { previewing = it }, onDismiss = { filesOpen = false }, active = active)
     previewing?.let { href -> if (files != null) FilePreviewScreen(files, href, onDismiss = { previewing = null }, active = active) }
 
-    renaming?.let { title ->
-        VettaTextInputDialog(
-            title = stringResource(Res.string.session_rename_title),
-            value = title,
-            label = stringResource(Res.string.session_name),
-            onValueChange = { renaming = it },
-            onConfirm = {
-                actions.rename(id, title)
-                renaming = null
-            },
-            onDismiss = { renaming = null },
-        )
-    }
     MirrorErrorDialog(state.lastError, actions::clearError)
 }
 
@@ -343,65 +312,6 @@ private fun modelDetail(state: RemoteSessionState, current: RemoteModelOption?, 
     val name = current?.name ?: state.model ?: desktopName.orEmpty()
     val level = ModelChoice.shownLevel(state.thinkingLevel, current)
     return if (level != null) "$name · ${levelLabel(level)}" else name
-}
-
-@Composable
-private fun SessionMenu(
-    enabled: Boolean,
-    online: Boolean,
-    pinned: Boolean,
-    onResync: () -> Unit,
-    onRename: () -> Unit,
-    onTogglePin: () -> Unit,
-    onOpenFiles: (() -> Unit)? = null,
-) {
-    var open by remember { mutableStateOf(false) }
-    Box {
-        IconButton(onClick = { open = true }, enabled = enabled, modifier = Modifier.testTag("chat.more")) {
-            Icon(Icons.Filled.MoreVert, contentDescription = stringResource(Res.string.chat_more))
-        }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            DropdownMenuItem(
-                text = { Text(stringResource(Res.string.chat_resync)) },
-                leadingIcon = { Icon(Icons.Filled.Refresh, contentDescription = null) },
-                onClick = {
-                    open = false
-                    onResync()
-                },
-            )
-            // The desktop's own sidebar actions, so it shows the same title and pin.
-            DropdownMenuItem(
-                text = { Text(stringResource(Res.string.session_rename)) },
-                leadingIcon = { Icon(Icons.Outlined.Edit, contentDescription = null) },
-                enabled = online,
-                onClick = {
-                    open = false
-                    onRename()
-                },
-            )
-            DropdownMenuItem(
-                text = { Text(stringResource(if (pinned) Res.string.session_unpin else Res.string.session_pin)) },
-                leadingIcon = { Icon(if (pinned) Icons.Filled.PushPin else Icons.Outlined.PushPin, contentDescription = null) },
-                enabled = online,
-                onClick = {
-                    open = false
-                    onTogglePin()
-                },
-            )
-            if (onOpenFiles != null) {
-                DropdownMenuItem(
-                    text = { Text(stringResource(Res.string.files_title)) },
-                    leadingIcon = { Icon(Icons.Outlined.Folder, contentDescription = null) },
-                    enabled = online,
-                    onClick = {
-                        open = false
-                        onOpenFiles()
-                    },
-                    modifier = Modifier.testTag("chat.files"),
-                )
-            }
-        }
-    }
 }
 
 /** The alert for a failed desktop action, worded in the phone's language. */

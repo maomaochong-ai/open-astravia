@@ -11,7 +11,7 @@ import {
 	createCodingAgentPluginMcpRuntime,
 } from "@vetta/coding-agent/host-services";
 import type { AgentPluginRuntimeConfig } from "@vetta/coding-agent/plugin-runtime";
-import { ALL_SCENARIOS, type ConversationScenario } from "@vetta/coding-agent/profile";
+import { ALL_SCENARIOS, type ConversationScenario, getPersonaPrompt } from "@vetta/coding-agent/profile";
 import { RuntimeHost } from "@vetta/runtime-core";
 import { DesktopRuntimeBackendPool } from "@vetta/runtime-desktop";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
@@ -291,6 +291,54 @@ describe("Desktop RuntimeHost model-call frame contract", () => {
 		const systemPrompt = collectStringValues(observeRequest(server, 0).body.input).join("\n");
 		expect(systemPrompt).toContain(getModePrompt("coding"));
 		expect(systemPrompt).not.toContain(getModePrompt("work"));
+	}, 30_000);
+
+	// 用户在设置里选了「交互」人设并写了自定义指令，再开 Coding 模式会话：Coding 的「默认直接动手」与人设的
+	// 「先征得授权」相反，模型必须能从同一份系统提示词里读到裁决规则，而不是靠出现顺序猜。
+	it("resolves the Coding mode vs Interactive persona conflict inside the composed system prompt", async () => {
+		const cwd = await temporaryDirectory("desktop-frame-persona-workspace-");
+		const server = await createServer();
+		const model = { ...MODEL, baseUrl: server.baseUrl };
+		const agentStateDir = await temporaryDirectory("desktop-frame-persona-agent-");
+		await writeFile(
+			join(agentStateDir, "settings.json"),
+			JSON.stringify({ personalization: { personaId: "interactive", customPrompt: "Answer in bullet points." } }),
+		);
+		const fixture = createRuntimeFixture("runtime", agentStateDir, model);
+		fixtures.push(fixture);
+
+		const created = await fixture.runtime.createSession({
+			cwd,
+			agentDir: agentStateDir,
+			sessionDir: await temporaryDirectory("desktop-frame-persona-sessions-"),
+			model,
+			thinkingLevel: "off",
+			agent: createCodingAgentRuntimeSessionSelection({
+				scenario: "conversation",
+				agentMode: "coding",
+				includeAgentSkills: false,
+			}),
+			executionMode: "full-access",
+		});
+		await fixture.runtime.prompt(created.sessionId, { text: "Refactor the parser" });
+
+		const systemPrompt = collectStringValues(observeRequest(server, 0).body.input).join("\n");
+		const modeAt = systemPrompt.indexOf(getModePrompt("coding"));
+		const personaAt = systemPrompt.indexOf(getPersonaPrompt("interactive"));
+		const customAt = systemPrompt.indexOf("# User custom instructions\n\nAnswer in bullet points.");
+		expect(modeAt).toBeGreaterThanOrEqual(0);
+		expect(personaAt).toBeGreaterThan(modeAt);
+		expect(customAt).toBeGreaterThan(personaAt);
+		// 裁决规则在核心 guidelines 里，模式与人设两侧也各自点明谁让步。
+		expect(systemPrompt).toContain("Instruction precedence:");
+		expect(systemPrompt).toContain("how much to confirm before acting");
+		expect(getModePrompt("coding")).toContain(
+			"ask you to confirm before acting, follow them instead of this default",
+		);
+		expect(getPersonaPrompt("interactive")).toContain("replaces any default to act autonomously");
+		// 身份只由核心块声明一次。
+		expect(systemPrompt.match(/Your name is Vetta/g)).toHaveLength(1);
+		expect(systemPrompt).not.toMatch(/You are "Interactive"/);
 	}, 30_000);
 
 	async function observeBackends(

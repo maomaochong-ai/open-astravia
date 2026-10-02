@@ -150,6 +150,7 @@ fun HomeScreen(
     var searchActive by rememberSaveable { mutableStateOf(false) }
     val searching = searchActive || query.isNotEmpty()
     var deleting by remember { mutableStateOf<RemoteSessionSummary?>(null) }
+    var renaming by remember { mutableStateOf<RemoteSessionSummary?>(null) }
     var pickingProject by remember { mutableStateOf(false) }
     val focus = LocalFocusManager.current
     val listState = rememberLazyListState()
@@ -261,6 +262,7 @@ fun HomeScreen(
                             actions = actions,
                             onOpen = { onOpenSession(session.id) },
                             onDelete = { deleting = session },
+                            onRename = { renaming = session },
                             selected = session.id == selected,
                             modifier = Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null, placementSpec = VettaMotion.snappy()),
                         )
@@ -285,6 +287,7 @@ fun HomeScreen(
         )
     }
     SessionDeleteDialog(deleting, actions) { deleting = null }
+    SessionRenameDialog(renaming, actions) { renaming = null }
     if (pickingProject) {
         ProjectSheet(
             state = state,

@@ -85,7 +85,7 @@ import org.vetta.android.ui.design.VettaSheet
 import org.vetta.android.ui.design.hasGlyph
 import org.vetta.android.ui.design.springClickable
 import org.vetta.android.ui.design.statusLabel
-import org.vetta.android.ui.home.ProjectIcon
+import org.vetta.android.ui.home.SessionProjectLine
 import org.vetta.android.ui.home.SessionDeleteDialog
 import org.vetta.android.ui.i18n.relativeTimeLabel
 import org.vetta.android.ui.theme.vettaExtra
@@ -310,7 +310,7 @@ private fun Modifier.lifted(shape: Shape): Modifier =
         .background(MaterialTheme.colorScheme.surface)
         .border(0.75.dp, MaterialTheme.vettaExtra.border, shape)
 
-/** One session on the board, with the same pin and delete menu as Home's list. */
+/** One session on the board. A long press offers pin and delete. */
 @Composable
 private fun OverviewSession(
     session: RemoteSessionSummary,
@@ -354,8 +354,9 @@ private fun OverviewSession(
 
 /**
  * A session in the overview: a status mark, the title, the last message, then the
- * project and how long ago it moved. [compact] is the new-session glance, one line
- * of the message. The row itself has no surface; the section around it does.
+ * project with its folder icon and, after the name, how long ago it moved. [compact]
+ * is the new-session glance, one line of the message. The row itself has no surface;
+ * the section around it does.
  */
 @Composable
 fun OverviewRow(
@@ -394,19 +395,13 @@ fun OverviewRow(
             }
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    title,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = if (compact) 1 else 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
-                )
-                if (time != null) {
-                    Text(time, style = MaterialTheme.typography.labelMedium, color = colors.ink2, maxLines = 1)
-                }
-            }
+            Text(
+                title,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
+                maxLines = if (compact) 1 else 2,
+                overflow = TextOverflow.Ellipsis,
+            )
             if (preview != null) {
                 Text(
                     preview,
@@ -416,12 +411,7 @@ fun OverviewRow(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            if (project != null) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Icon(ProjectIcon, contentDescription = null, tint = colors.faint, modifier = Modifier.size(12.dp))
-                    Text(project, style = MaterialTheme.typography.labelMedium, color = colors.faint, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
-            }
+            SessionProjectLine(session.id, project, time, colors.faint)
         }
     }
 }

@@ -232,7 +232,9 @@ Work 在切到代码路线时则完全没有 Coding 的 git 安全等底线约�
 - `partials/narration.md`：所有模式都用 `progress` 分阶段叙事。只有面向用户的成品（文档、图片、PDF、
   附件、卡片）放在阶段外；为完成任务而改动源码、配置等工作文件属于过程，留在阶段内。
 - `partials/deliverables-list.md`：本轮改动过任何文件就必须附改动文件清单（绝对路径链接 + 改动说明），
-  Work 原先的交付物名称清单废弃。
+  Work 原先的交付物名称清单废弃。（后续修订：该 partial 与 coding-agent 核心 guidelines 中的交付物规则
+  重复且格式互相矛盾，已删除；清单规则只由 `system-prompt-policy.ts` 的 `DELIVERABLES_GUIDANCE` 定义，
+  对无模式的桌面场景同样生效。）
 - `partials/code-discipline.md`：改动精准、先验证后下结论、git 安全。Work 在代码路线小节引用。
 
 `narration` 字段从 frontmatter、生成脚本、注册表类型与 `GET_AGENT_MODES` IPC 中移除，renderer 固定走阶段
