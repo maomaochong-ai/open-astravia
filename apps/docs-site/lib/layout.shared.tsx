@@ -1,5 +1,5 @@
 import { BrandMark } from "@/components/brand-mark";
-import { DiscordGlyph } from "@/components/discord";
+import { CommunityGlyph } from "@/components/community";
 import { getDocsMessages, type DocsLanguage } from "@/lib/i18n";
 import { site } from "@/lib/site";
 import type { BaseLayoutProps } from "fumadocs-ui/layouts/shared";
@@ -17,10 +17,10 @@ export function baseOptions(language: DocsLanguage): BaseLayoutProps {
 		links: [
 			{
 				type: "icon",
-				url: site.discordUrl,
-				text: "Discord",
-				label: "Discord",
-				icon: <DiscordGlyph />,
+				url: site.communityUrl,
+				text: text.community,
+				label: text.community,
+				icon: <CommunityGlyph />,
 				external: true,
 			},
 			{

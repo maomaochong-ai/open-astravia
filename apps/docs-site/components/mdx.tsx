@@ -1,3 +1,4 @@
+import { CommunityInvite } from "@/components/community";
 import {
 	BatchFlow,
 	BatchTasks,
@@ -91,6 +92,7 @@ export function getMDXComponents(language: DocsLanguage = "zh", components?: MDX
 		Card: DocsCard,
 		Cards: DocsCards,
 		DocsKicker,
+		CommunityInvite,
 		Takeaways: (props) => <ReadingTakeaways {...props} language={language} />,
 		Kit,
 		KitItem,

@@ -101,6 +101,23 @@ describe("documentation content model", () => {
 		expect(englishHome).not.toContain("Let your Agent <br />");
 	});
 
+	it("keeps the community invite in a single source of truth", () => {
+		const invitePattern = /https:\/\/(?:discord\.gg\/|discord\.com\/invite\/|pd\.qq\.com\/s\/)/u;
+
+		for (const path of listContentFiles()) {
+			expect(readFileSync(path, "utf8"), path).not.toMatch(invitePattern);
+		}
+
+		const layoutSource = readFileSync(resolve(appRoot, "lib/layout.shared.tsx"), "utf8");
+		expect(layoutSource).toContain("site.communityUrl");
+		// The platform name differs per language, so it belongs to the message dictionary.
+		expect(layoutSource).toContain("text.community");
+		expect(readDocsFile("index.mdx")).toContain("<CommunityInvite>");
+		expect(readDocsFile("en/index.mdx")).toContain("<CommunityInvite>");
+		// The MDX pages refer to the component by name, so it must stay registered to render a link.
+		expect(readFileSync(resolve(appRoot, "components/mdx.tsx"), "utf8")).toContain("CommunityInvite");
+	});
+
 	it("keeps every referenced public image available", () => {
 		const references = new Set<string>();
 		const imagePattern =

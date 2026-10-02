@@ -66,6 +66,7 @@ export interface DocsMessages {
 	viewMarkdown: string;
 	downloadApp: string;
 	website: string;
+	community: string;
 	homeProofAria: string;
 	optional: string;
 	websiteDescription: string;
@@ -94,6 +95,7 @@ export const messages = {
 		viewMarkdown: "查看 Markdown",
 		downloadApp: "下载客户端",
 		website: "官网",
+		community: "QQ 频道",
 		homeProofAria: "Astravia 核心特征",
 		optional: "可选入口",
 		websiteDescription: "产品介绍与下载",
@@ -119,6 +121,7 @@ export const messages = {
 		viewMarkdown: "View Markdown",
 		downloadApp: "Download app",
 		website: "Website",
+		community: "QQ Channel",
 		homeProofAria: "Astravia core benefits",
 		optional: "Optional",
 		websiteDescription: "Product information and downloads",

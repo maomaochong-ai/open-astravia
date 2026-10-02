@@ -12,7 +12,9 @@ export const site = {
 	marketingUrl: "https://www.astravia.dev",
 	downloadUrl: "https://www.astravia.dev",
 	githubUrl: "https://github.com/maomaochong-ai/open-astravia",
-	discordUrl: "https://discord.gg/qGqkk22Vg9",
+	// Community invite shared by the sidebar and the homepage footer. Content
+	// files read it through `CommunityInvite` instead of hardcoding the link.
+	communityUrl: "https://pd.qq.com/s/e131nprec?b=9",
 	logoPath: "/images/astravia-app-icon.webp",
 	ogImagePath: "/opengraph-image/",
 	applicationCategory: "DeveloperApplication",

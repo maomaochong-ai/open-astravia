@@ -185,19 +185,48 @@
 						<header class="section__head reveal">
 							<p class="section__kicker">STORIES FROM THE APP</p>
 							<h2 class="section__title">真实功能，一屏一屏地看</h2>
-							<p class="section__lead">下面每个卡片都是星轨 Astravia 桌面端的真实功能页面——侧边栏、顶栏、消息气泡、工具调用、能力市场，全部还原。</p>
+							<p class="section__lead">每个节点都是星轨 Astravia 桌面端的真实功能页面——滚动左侧时间线，右侧窗口随之切换。</p>
 						</header>
 
-						<div class="story__nodes">
+						<div class="story__layout">
 
-							<!-- NODE 01: 对话工作区 -->
-							<article class="story__node" data-story-node="0">
-								<div class="story__node-copy">
-									<span class="story__node-num">01</span>
-									<h3 class="story__node-title">对话工作区</h3>
-									<p class="story__node-desc">自然语言驱动的端到端 AI 开发闭环——从输入需求到工具执行、代码产出，同屏可见。</p>
-								</div>
-								<div class="story__mock">
+							<!-- 左侧时间线 -->
+							<aside class="story__timeline" role="tablist" aria-label="产品故事">
+								<button class="story__tl-item is-active" role="tab" aria-selected="true" data-story-index="0">
+									<span class="story__tl-num">01</span>
+									<div class="story__tl-body">
+										<h3 class="story__tl-title">对话工作区</h3>
+										<p class="story__tl-desc">端到端 AI 开发闭环——需求、工具、代码同屏可见。</p>
+									</div>
+								</button>
+								<button class="story__tl-item" role="tab" aria-selected="false" data-story-index="1">
+									<span class="story__tl-num">02</span>
+									<div class="story__tl-body">
+										<h3 class="story__tl-title">设计 · 可视化生成 UI</h3>
+										<p class="story__tl-desc">画布上拖拽组件，AI 实时生成可运行代码——所见即所得。</p>
+									</div>
+								</button>
+								<button class="story__tl-item" role="tab" aria-selected="false" data-story-index="2">
+									<span class="story__tl-num">03</span>
+									<div class="story__tl-body">
+										<h3 class="story__tl-title">自动化 · 让 AI 按计划运行</h3>
+										<p class="story__tl-desc">内置 Cron 调度，任务在托盘后台常驻——配置一次，永久自动。</p>
+									</div>
+								</button>
+								<button class="story__tl-item" role="tab" aria-selected="false" data-story-index="3">
+									<span class="story__tl-num">04</span>
+									<div class="story__tl-body">
+										<h3 class="story__tl-title">能力市场 · 给 Agent 加本事</h3>
+										<p class="story__tl-desc">Skill、MCP、插件、场景、知识库——一键启用，无限扩展。</p>
+									</div>
+								</button>
+							</aside>
+
+							<!-- 右侧 sticky stage -->
+							<div class="story__stage">
+
+								<!-- MOCK 01: 对话 -->
+								<div class="story__mock is-active" data-story-mock="0">
 									<figure class="am-window">
 										<div class="am-win-bar">
 											<span class="am-win-dots"><i></i><i></i><i></i></span>
@@ -245,16 +274,9 @@
 										</div>
 									</figure>
 								</div>
-							</article>
 
-							<!-- NODE 02: 设计面板 -->
-							<article class="story__node story__node--alt" data-story-node="1">
-								<div class="story__node-copy">
-									<span class="story__node-num">02</span>
-									<h3 class="story__node-title">设计 · 可视化生成 UI</h3>
-									<p class="story__node-desc">在画布里拖拽组件、排列栅格，AI 实时生成可运行代码——所见即所得。</p>
-								</div>
-								<div class="story__mock">
+								<!-- MOCK 02: 设计 -->
+								<div class="story__mock" data-story-mock="1">
 									<figure class="am-window">
 										<div class="am-win-bar"><span class="am-win-dots"><i></i><i></i><i></i></span><span class="am-win-title">星轨 Astravia — 设计</span></div>
 										<div class="am-win-body">
@@ -309,16 +331,9 @@
 										</div>
 									</figure>
 								</div>
-							</article>
 
-							<!-- NODE 03: 自动化 -->
-							<article class="story__node" data-story-node="2">
-								<div class="story__node-copy">
-									<span class="story__node-num">03</span>
-									<h3 class="story__node-title">自动化 · 让 AI 按计划运行</h3>
-									<p class="story__node-desc">内置 Cron 调度器，任务在系统托盘后台常驻——配置一次，永久自动。</p>
-								</div>
-								<div class="story__mock">
+								<!-- MOCK 03: 自动化 -->
+								<div class="story__mock" data-story-mock="2">
 									<figure class="am-window">
 										<div class="am-win-bar"><span class="am-win-dots"><i></i><i></i><i></i></span><span class="am-win-title">星轨 Astravia — 自动化</span></div>
 										<div class="am-win-body">
@@ -362,16 +377,9 @@
 										</div>
 									</figure>
 								</div>
-							</article>
 
-							<!-- NODE 04: 能力市场 -->
-							<article class="story__node story__node--alt" data-story-node="3">
-								<div class="story__node-copy">
-									<span class="story__node-num">04</span>
-									<h3 class="story__node-title">能力市场 · 给 Agent 加本事</h3>
-									<p class="story__node-desc">Skill、MCP 连接器、插件、场景模板、知识库——一键启用，无限扩展。</p>
-								</div>
-								<div class="story__mock">
+								<!-- MOCK 04: 能力 -->
+								<div class="story__mock" data-story-mock="3">
 									<figure class="am-window">
 										<div class="am-win-bar"><span class="am-win-dots"><i></i><i></i><i></i></span><span class="am-win-title">星轨 Astravia — 能力</span></div>
 										<div class="am-win-body">
@@ -398,8 +406,8 @@
 										</div>
 									</figure>
 								</div>
-							</article>
 
+							</div>
 						</div>
 					</div>
 				</section>
