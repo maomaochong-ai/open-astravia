@@ -4,6 +4,7 @@ import {
 	chatMessagesAtom,
 	isConversationBusyAtom,
 	pendingScrollToEntryAtom,
+	promptPredictingAtom,
 } from "@shared/store/atoms";
 import type { ActivityWorkspace } from "@shared/workspace/activity-workspace";
 import { useAtomValue, useSetAtom } from "jotai";
@@ -41,6 +42,10 @@ export function useSessionConversationFeed({
 	const scrollEntry = useAtomValue(pendingScrollToEntryAtom);
 	const setScrollEntry = useSetAtom(pendingScrollToEntryAtom);
 	const onScrollTargetReached = useCallback(() => setScrollEntry(null), [setScrollEntry]);
+	const predicting = useMemo(
+		() => selectAtom(promptPredictingAtom, (map) => (runtimeId ? Boolean(map[runtimeId]) : false)),
+		[runtimeId],
+	);
 	// Subagent cards belong to the Runtime only once the shown session is that Runtime's.
 	const subagentRuntimeId = key && key === sessionPath ? (runtimeId ?? undefined) : undefined;
 	return useMemo(
@@ -49,6 +54,7 @@ export function useSessionConversationFeed({
 				key,
 				items: chatMessagesAtom,
 				streaming: isConversationBusyAtom,
+				predicting,
 				workspace,
 				...(participants ? { participants } : {}),
 				...(pendingLabel ? { pendingLabel } : {}),
@@ -59,6 +65,16 @@ export function useSessionConversationFeed({
 					...(subagentRuntimeId ? { subagentRuntimeId } : {}),
 				},
 			}),
-		[key, workspace, participants, pendingLabel, scrollEntry, onScrollTargetReached, abort, subagentRuntimeId],
+		[
+			key,
+			predicting,
+			workspace,
+			participants,
+			pendingLabel,
+			scrollEntry,
+			onScrollTargetReached,
+			abort,
+			subagentRuntimeId,
+		],
 	);
 }

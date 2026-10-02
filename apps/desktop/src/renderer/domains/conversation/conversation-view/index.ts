@@ -26,6 +26,8 @@ export const Conversation = {
 	ScrollToBottom: ConversationScrollToBottom,
 } as const;
 
+export type { AgentMessageInput } from "./agent-message";
+export { AgentMessage, AgentMessageProvider, useAgentMessage } from "./agent-message";
 export type { ConversationExtension, ConversationRowDecoratorProps } from "./extensions";
 export { useConversationExtension, useConversationExtensionValue } from "./extensions";
 export type { ConversationCapabilities, ConversationFeed, ConversationFeedInput, UserMessageCommands } from "./feed";

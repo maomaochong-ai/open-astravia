@@ -9,6 +9,7 @@ import {
 	SessionSelectionMenu,
 	SessionWaitingFooter,
 } from "./session-extensions";
+import { SessionAgentMessage } from "./SessionAgentMessage";
 import { SessionUserMessage } from "./SessionUserMessage";
 import { useSessionConversationFeed } from "./useSessionConversationFeed";
 
@@ -40,6 +41,9 @@ export function SessionConversation({
 							<Conversation.UserMessage>
 								<SessionUserMessage />
 							</Conversation.UserMessage>
+							<Conversation.AgentMessage>
+								<SessionAgentMessage />
+							</Conversation.AgentMessage>
 						</Conversation.Messages>
 						<Conversation.Footer>
 							<SessionWaitingFooter />

@@ -56,6 +56,8 @@ export interface ConversationFeed {
 	readonly key: string | null;
 	readonly items: Atom<readonly ChatConversationItem[]>;
 	readonly streaming: Atom<boolean>;
+	/** The Runtime is predicting the next prompt after the newest reply. */
+	readonly predicting: Atom<boolean>;
 	/** Where links and file references in the messages resolve. */
 	readonly workspace: ActivityWorkspace;
 	readonly participants: readonly ConversationParticipantViewModel[];
@@ -67,13 +69,14 @@ export interface ConversationFeed {
 }
 
 const NO_PARTICIPANTS: readonly ConversationParticipantViewModel[] = [];
-const NOT_STREAMING = atom(false);
+const NEVER = atom(false);
 
 export interface ConversationFeedInput {
 	readonly key: string | null;
 	readonly items: Atom<readonly ChatConversationItem[]>;
 	readonly workspace: ActivityWorkspace;
 	readonly streaming?: Atom<boolean>;
+	readonly predicting?: Atom<boolean>;
 	readonly participants?: readonly ConversationParticipantViewModel[];
 	readonly pendingLabel?: string;
 	readonly scrollTarget?: ConversationFeed["scrollTarget"];
@@ -84,7 +87,8 @@ export function createConversationFeed(input: ConversationFeedInput): Conversati
 	return {
 		key: input.key,
 		items: input.items,
-		streaming: input.streaming ?? NOT_STREAMING,
+		streaming: input.streaming ?? NEVER,
+		predicting: input.predicting ?? NEVER,
 		workspace: input.workspace,
 		participants: input.participants ?? NO_PARTICIPANTS,
 		...(input.pendingLabel ? { pendingLabel: input.pendingLabel } : {}),

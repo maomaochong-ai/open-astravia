@@ -3,7 +3,6 @@ import { fireEvent, render, renderHook, screen } from "@testing-library/react";
 import { createConversationAgentMessage } from "@shared/conversation";
 import { RendererMarkdownScope } from "@shared/components/RendererMarkdownScope";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { AssistantRenderingProvider } from "./AssistantRendering";
 import { useAssistantMessageModel } from "../../hooks/useAssistantMessageModel";
 import { ContentRenderingProvider } from "./ContentRendering";
 import { SegmentRenderer } from "./MessageBlockSegments";
@@ -78,7 +77,7 @@ describe("feed rendering boundaries", () => {
 		expect(block.text).toBe("**Original**");
 	});
 
-	it("takes prediction from its explicit scope, never from a different active feed", () => {
+	it("shows prediction only on a finished tail reply of a predicting conversation", () => {
 		const input = {
 			message: createConversationAgentMessage({ id: "assistant", text: "Done", blocks: [] }),
 			expanded: true,
@@ -86,17 +85,14 @@ describe("feed rendering boundaries", () => {
 			isStreaming: false,
 			isTailMessage: true,
 		};
-		const standalone = renderHook(() => useAssistantMessageModel(input));
-		expect(standalone.result.current.isPredicting).toBe(false);
-		const scoped = renderHook(() => useAssistantMessageModel(input), {
-			wrapper: ({ children }) => (
-				<AssistantRenderingProvider value={{ predicting: true }}>
-					{children}
-				</AssistantRenderingProvider>
-			),
-		});
-		expect(scoped.result.current.isPredicting).toBe(true);
-		expect(standalone.result.current.isPredicting).toBe(false);
+		expect(renderHook(() => useAssistantMessageModel(input)).result.current.isPredicting).toBe(false);
+		expect(renderHook(() => useAssistantMessageModel({ ...input, predicting: true })).result.current.isPredicting).toBe(
+			true,
+		);
+		expect(
+			renderHook(() => useAssistantMessageModel({ ...input, predicting: true, isTailMessage: false })).result.current
+				.isPredicting,
+		).toBe(false);
 	});
 
 	it("collapses team execution cards while keeping the leader's final summary visible", () => {

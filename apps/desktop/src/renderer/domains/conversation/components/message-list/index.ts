@@ -4,9 +4,6 @@ export { SessionConversation } from "../../session-conversation/SessionConversat
 export { SessionUserMessage } from "../../session-conversation/SessionUserMessage";
 export { ChatComposer, ChatError, DefaultChatView } from "../chat-view/DefaultChatView";
 export { ExportMessageList, MessageList } from "../MessageList";
-export { SessionAssistantRendering } from "../SessionAssistantRendering";
-export type { AssistantRendering } from "./AssistantRendering";
-export { AssistantRenderingProvider } from "./AssistantRendering";
 export type { ContentRendererProps, ContentRenderers } from "./ContentRendering";
 export { ContentRenderingProvider } from "./ContentRendering";
 export type { MessageItemProps } from "./MessageItem";

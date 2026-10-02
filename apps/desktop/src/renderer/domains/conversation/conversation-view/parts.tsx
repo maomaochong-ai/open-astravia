@@ -21,6 +21,7 @@ import { MessageTimeline } from "../components/message-list/MessageTimeline";
 import { ConversationRowDecorations } from "./extensions";
 import { ConversationMessageScope } from "./message-scope";
 import { type MessageTemplates, useMessageTemplates } from "./templates";
+import { ConversationUsagesContext } from "./usages";
 import { useConversationViewport } from "./viewport-frame";
 
 const VIEWPORT_BUFFER = { top: 320, bottom: 80 };
@@ -195,6 +196,7 @@ export function ConversationMessages({ children }: { readonly children?: ReactNo
 	);
 
 	return (
+		<ConversationUsagesContext.Provider value={sessionUsagesRef.current}>
 		<MessageFeedLayout.Viewport>
 			<PerfMessageScrollProfiler>
 				<MessageFeedLayout.Virtualizer asChild>
@@ -222,6 +224,7 @@ export function ConversationMessages({ children }: { readonly children?: ReactNo
 				</MessageFeedLayout.Virtualizer>
 			</PerfMessageScrollProfiler>
 		</MessageFeedLayout.Viewport>
+		</ConversationUsagesContext.Provider>
 	);
 }
 

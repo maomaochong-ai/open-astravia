@@ -30,7 +30,7 @@ Desktop 内部可以从 `@domains/conversation/components/message-list` 的统�
 </DefaultChatView>
 ```
 
-`MessageList` 的 children 进入滚动 Footer，不会挂载普通会话命令。普通会话由 `SessionConversation` 显式组合 `Conversation.*` 部件与会话扩展；`ChatView` 另用 `SessionAssistantRendering` 为列表和导出注入预测/叙事状态。独立列表默认 staged 且不预测，可用 `AssistantRenderingProvider` 显式提供该来源的状态。
+`MessageList` 的 children 进入滚动 Footer，不会挂载普通会话命令。普通会话由 `SessionConversation` 显式组合 `Conversation.*` 部件与会话扩展；回复由 `AgentMessage.*` 部件组成（标题、折叠条、内容、操作栏、用量、预测状态、卡片），模板里不放的部件就不显示；「预测下一条输入」状态来自数据源的 `predicting`，独立列表默认不预测。
 
 编辑、分叉、删除由数据源的 `userMessageCommands` 能力提供（普通会话的实现在 `session-conversation/session-user-message-commands.ts`），`SessionUserMessage` 用 `UserMessage.*` 部件排列它们；数据源不提供该能力时这些部件不渲染。其他场景可用自己的事件处理器与 `UserMessage` 的 children 组合；不需要为了增加命令修改 `MessageList`。现成普通会话 action hooks 依赖普通会话 adapter，不能拿去修改 Team 历史。
 

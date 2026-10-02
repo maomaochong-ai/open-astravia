@@ -3,7 +3,6 @@ import type { ChatAgentMessageViewModel } from "@shared/store/atoms";
 import { pluginToolCallSlotsAtom } from "@shared/store/atoms";
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
-import { useAssistantRendering } from "../components/message-list/AssistantRendering";
 import {
 	findLastProcessBlockIndex,
 	getAssistantFoldData,
@@ -20,6 +19,8 @@ interface AssistantMessageModelInput {
 	isStreaming: boolean;
 	isTailMessage: boolean;
 	message: ChatAgentMessageViewModel;
+	/** The Runtime is predicting the next prompt; shown on the tail reply once it has finished. */
+	predicting?: boolean;
 }
 
 export function useAssistantMessageModel({
@@ -28,8 +29,8 @@ export function useAssistantMessageModel({
 	isStreaming,
 	isTailMessage,
 	message,
+	predicting = false,
 }: AssistantMessageModelInput): AssistantMessageModel {
-	const { predicting: isRuntimePredicting } = useAssistantRendering();
 	const toolCallSlots = useAtomValue(pluginToolCallSlotsAtom);
 	const customToolNames = useMemo(() => new Set(toolCallSlots.map((slot) => slot.toolName)), [toolCallSlots]);
 	const presentationToolCallIds = useMemo(
@@ -117,7 +118,7 @@ export function useAssistantMessageModel({
 		exportProcessSegments,
 		foldData,
 		isCurrentlyStreaming,
-		isPredicting: isTailMessage && !isCurrentlyStreaming && isRuntimePredicting,
+		isPredicting: isTailMessage && !isCurrentlyStreaming && predicting,
 		liveThinkingId,
 		workFoldCount,
 		segments,

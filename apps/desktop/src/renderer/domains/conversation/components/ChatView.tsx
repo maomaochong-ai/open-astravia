@@ -16,7 +16,6 @@ import { SandboxGrantsBadge } from "./SandboxGrantsBadge";
 import { ChatHeaderNewSessionButton } from "./chat-view/ChatHeaderNewSessionButton";
 import { DefaultChatView, ChatComposer } from "./chat-view/DefaultChatView";
 import { SessionConversation } from "../session-conversation/SessionConversation";
-import { SessionAssistantRendering } from "./SessionAssistantRendering";
 import { DefaultInputBarConnector } from "./input-bar/DefaultInputBarConnector";
 import type { ChatViewProps } from "./chat-view/types";
 
@@ -134,16 +133,14 @@ export function ChatView(props: ChatViewProps): JSX.Element {
 					: undefined
 			}
 		>
-			<SessionAssistantRendering>
-				<SessionFeed
-					workspace={workspace}
-					pendingLabel={model.pendingLabel}
-					sessionId={model.sessionId}
-					participants={participants}
-					onSend={props.onSend}
-					onAbort={onAbort}
-				/>
-			</SessionAssistantRendering>
+			<SessionFeed
+				workspace={workspace}
+				pendingLabel={model.pendingLabel}
+				sessionId={model.sessionId}
+				participants={participants}
+				onSend={props.onSend}
+				onAbort={onAbort}
+			/>
 			<DefaultChatComposer {...props} workSurface={model.workSurface} />
 		</DefaultChatView>
 	);
