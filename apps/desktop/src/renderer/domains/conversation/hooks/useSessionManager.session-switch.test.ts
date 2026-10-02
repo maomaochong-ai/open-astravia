@@ -429,7 +429,7 @@ it("已有会话先提交加载态，快速切换时只有最后一次打开可�
 	expect(store.get(activeSessionAtom)).toBeNull();
 	expect(store.get(chatMessagesAtom)).toEqual([]);
 	expect(sessionApi.create).not.toHaveBeenCalled();
-	expect(sessionApi.openViewer).toHaveBeenCalledWith(firstSessionPath, { tailTurns: 2 });
+	expect(sessionApi.openViewer).toHaveBeenCalledWith(firstSessionPath);
 
 	let secondOpening: Promise<void> | undefined;
 	await act(async () => {

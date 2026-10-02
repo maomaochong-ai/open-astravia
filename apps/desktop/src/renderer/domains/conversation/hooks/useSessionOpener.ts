@@ -276,12 +276,15 @@ export function useSessionOpener(): SessionOpenerController {
 			// lock-free viewer path so the first meaningful content can render before Runtime
 			// capabilities, state and the live subscription begin restoring.
 			// Runtime hydration below remains canonical and will reconcile streaming drafts.
+			// The whole history is presented at once: the virtualized list sizes and places
+			// rows from the items it starts with, and history inserted above shown rows later
+			// cannot be placed without visible corrections while scrolling up (ADR-0147).
 			let previewPresentation: Promise<void> | undefined;
 			if (stageExistingSessionOpen) {
 				markSessionSwitch("session-preview-history-start");
 				const previewRevision = nextConversationHistoryRevision();
 				previewPresentation = window.vetta.session
-					.openViewer(sessionPath, { tailTurns: 2 })
+					.openViewer(sessionPath)
 					.then(async (snapshot) => {
 						markSessionSwitch("session-preview-history-loaded");
 						if (myOpenToken !== getOpenSessionToken()) {
@@ -419,7 +422,7 @@ export function useSessionOpener(): SessionOpenerController {
 				runtimeId: sessionId,
 				...(createResult.agentProfileId ? { agentProfileId: createResult.agentProfileId } : {}),
 			};
-			// Existing-session UI already follows pendingSessionOpen and the tail preview.
+			// Existing-session UI already follows pendingSessionOpen and the history read from its file.
 			// Keep Runtime identity out of presentation state until getState can commit the
 			// complete session snapshot once. New sessions still need the early identity to
 			// enter ChatView and dispatch their first prompt immediately.
@@ -486,7 +489,7 @@ export function useSessionOpener(): SessionOpenerController {
 					attach();
 					return;
 				}
-				// An idle session's tail preview already owns the first screen; mapping the
+				// An idle session's file history already owns the first screen; mapping the
 				// whole history waits for idle time and any events queue behind it in order.
 				holdFeedWrites(sessionId);
 				perfSendMark("session-history-loaded", interactionId);
@@ -552,7 +555,7 @@ export function useSessionOpener(): SessionOpenerController {
 
 			// Start canonical history and Runtime state together, but only state belongs to
 			// readiness. Full-history mapping and presentation are deferred until after the
-			// session is interactive; the tail preview already owns the first screen.
+			// session is interactive; the history read from its file already owns the first screen.
 			perfSendMark("session-state-load-start", interactionId);
 			markSessionSwitch("session-hydration-start");
 			const statePromise = window.vetta.session.getState(sessionId);

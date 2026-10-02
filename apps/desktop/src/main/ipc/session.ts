@@ -60,7 +60,6 @@ import { getDesktopPlanReviewBroker } from "../conversations/plan-review-broker.
 import { parsePromptRequest } from "../conversations/prompt-request-schema.js";
 import type { DesktopCodingAgentSessionConfig } from "../conversations/resolve-session-config.js";
 import { getDesktopSandboxAuthorizationBroker } from "../conversations/sandbox-authorization-broker.js";
-import { selectSessionHistoryPreview } from "../conversations/session-history-preview.js";
 import { isConversationSubCwd, readSessionCwdFromHeader } from "../conversations/session-paths.js";
 import { listRuntimeSessionProjects, listSessionHistory } from "../conversations/session-query-service.js";
 import { slimSessionEventForIpc } from "../conversations/slim-session-event-for-ipc.js";
@@ -1750,19 +1749,9 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 	const viewerSubs = new Map<string, ViewerSub>();
 	let viewerSeq = 0;
 
-	ipcMain.handle(CHANNELS.VIEWER_OPEN, async (_event, path: unknown, options?: unknown) => {
+	ipcMain.handle(CHANNELS.VIEWER_OPEN, async (_event, path: unknown) => {
 		assertNonEmptyString(path, "path");
-		const snapshot = runtime.readSessionHistoryFromFile(resolve(path));
-		if (options === undefined) return snapshot;
-		if (!options || typeof options !== "object" || Array.isArray(options)) {
-			throw new TypeError("options must be an object");
-		}
-		const tailTurns = (options as { tailTurns?: unknown }).tailTurns;
-		if (tailTurns === undefined) return snapshot;
-		if (!Number.isInteger(tailTurns) || (tailTurns as number) < 1 || (tailTurns as number) > 10) {
-			throw new TypeError("options.tailTurns must be an integer between 1 and 10");
-		}
-		return { history: selectSessionHistoryPreview(snapshot.history, tailTurns as number) };
+		return runtime.readSessionHistoryFromFile(resolve(path));
 	});
 
 	ipcMain.handle(CHANNELS.VIEWER_SUBSCRIBE, async (_event, path: unknown) => {

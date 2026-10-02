@@ -205,10 +205,7 @@ export function createSessionApi(ipc: IpcRenderer): Pick<DesktopApi, "session"> 
 			onRunningChanged: (handler) => onIpcEvent(ipc, CHANNELS.RUNNING_CHANGED, handler),
 			clearDefaultConversation: (scope) => ipc.invoke(CHANNELS.CLEAR_DEFAULT_CONVERSATION, scope),
 			clearDefaultArtifacts: (scope) => ipc.invoke(CHANNELS.CLEAR_DEFAULT_ARTIFACTS, scope),
-			openViewer: (path, options) =>
-				options === undefined
-					? ipc.invoke(CHANNELS.VIEWER_OPEN, path)
-					: ipc.invoke(CHANNELS.VIEWER_OPEN, path, options),
+			openViewer: (path) => ipc.invoke(CHANNELS.VIEWER_OPEN, path),
 			subscribeViewer: (path, handler) =>
 				subscribeById(ipc, CHANNELS.VIEWER_SUBSCRIBE, CHANNELS.VIEWER_EVENT, CHANNELS.VIEWER_UNSUBSCRIBE, handler, [
 					path,

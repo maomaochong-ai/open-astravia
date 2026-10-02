@@ -114,7 +114,7 @@ afterEach(() => {
 });
 
 describe("SessionConversation keeps its list mounted and its rows in place", () => {
-	it("while an existing session opens: preview, Runtime identity, then full history", async () => {
+	it("while an existing session opens: file history, Runtime identity, then canonical history", async () => {
 		const store = createStore();
 		render(
 			<Provider store={store}>
@@ -126,9 +126,9 @@ describe("SessionConversation keeps its list mounted and its rows in place", () 
 		await act(async () => {
 			resetConversationFeed(store);
 			store.set(pendingSessionOpenAtom, { cwd: B.cwd, sessionPath: B.sessionPath, interactionId: "open" });
-			dispatchConversationFeed({ type: "history.loaded", items: history.slice(-4), revision: 1 }, store);
+			dispatchConversationFeed({ type: "history.loaded", items: history, revision: 1 }, store);
 		});
-		const mountsAfterPreview = virtualizer.mounts;
+		const mountsAfterOpen = virtualizer.mounts;
 		const tail = screen.getByText("question 9");
 		const tailIndex = virtualIndexOf("question 9");
 
@@ -136,19 +136,18 @@ describe("SessionConversation keeps its list mounted and its rows in place", () 
 			bindConversationFeed(B.runtimeId, store);
 			store.set(activeSessionAtom, B);
 		});
-		expect(virtualizer.mounts).toBe(mountsAfterPreview);
+		expect(virtualizer.mounts).toBe(mountsAfterOpen);
 		expect(screen.getByText("question 9")).toBe(tail);
 
 		await act(async () => {
 			dispatchConversationFeed({ type: "feed.attached", runtimeId: B.runtimeId, items: history, revision: 2 }, store);
 			store.set(pendingSessionOpenAtom, null);
 		});
-		expect(virtualizer.mounts).toBe(mountsAfterPreview);
+		expect(virtualizer.mounts).toBe(mountsAfterOpen);
 		expect(screen.getByText("question 9")).toBe(tail);
-		// Earlier history arrives above the preview: the shown rows keep their index, so the
-		// virtualizer keeps their sizes and the scroll offset instead of showing other rows.
+		// The list starts with the whole history; the canonical history only confirms it, so
+		// no row changes the index the virtualizer sizes and places it by.
 		expect(virtualIndexOf("question 9")).toBe(tailIndex);
-		expect(Number(virtualIndexOf("question 0"))).toBe(Number(tailIndex) - 18);
 	});
 
 	it("while the first message of a new session gets its session", async () => {
