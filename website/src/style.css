@@ -1454,6 +1454,405 @@ code {
 @keyframes am-card-in {
 	to { opacity: 1; transform: none; }
 }
+
+
+/* ===== Node 01: 对话工作区 — 完整流程动画 ===== */
+.am-view.is-animating[data-step="0"] .am-phase-user {
+	animation: am-fade-up 0.5s 0.1s ease both;
+}
+.am-view.is-animating[data-step="0"] .am-phase-think {
+	animation: am-fade-up 0.4s 0.6s ease both;
+}
+.am-view.is-animating[data-step="0"] .am-phase-tools .am-tool-card[data-tool="0"] {
+	animation: am-tool-in 0.4s 1.2s ease both;
+}
+.am-view.is-animating[data-step="0"] .am-phase-tools .am-tool-card[data-tool="1"] {
+	animation: am-tool-in 0.4s 1.45s ease both;
+}
+.am-view.is-animating[data-step="0"] .am-phase-tools .am-tool-card[data-tool="2"] {
+	animation: am-tool-in 0.4s 1.7s ease both;
+}
+.am-view.is-animating[data-step="0"] .am-phase-tools .am-tool-status--ok {
+	animation: am-tool-check 0.3s 1.9s ease both;
+}
+.am-view.is-animating[data-step="0"] .am-phase-result {
+	animation: am-fade-up 0.5s 2.1s ease both;
+}
+.am-view.is-animating[data-step="0"] .am-md--line {
+	animation: am-fade-up 0.4s 2.2s ease both;
+}
+.am-view.is-animating[data-step="0"] .am-code-block {
+	animation: am-fade-up 0.5s 2.35s ease both;
+}
+
+/* ===== Node 02: 设计面板 ===== */
+.am-nav-icon--design { background: #ec4899; }
+.am-design-body {
+	display: flex;
+	flex: 1;
+	gap: 0;
+	overflow: hidden;
+}
+.am-design-palette {
+	width: 110px;
+	flex-shrink: 0;
+	padding: 12px 10px;
+	border-right: 1px solid #2a2d38;
+	background: #14161e;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+.am-palette-label {
+	font-size: 10px;
+	color: #5a6070;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	margin-top: 4px;
+}
+.am-palette-label--mt { margin-top: 14px; }
+.am-palette-items {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+.am-palette-item {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 6px 8px;
+	border-radius: 6px;
+	font-size: 11px;
+	color: #8a90a0;
+	cursor: pointer;
+	transition: background 0.15s;
+}
+.am-palette-item:hover { background: #1a1c24; color: #dce0ea; }
+.am-palette-item-icon { font-size: 13px; }
+
+.am-design-canvas {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	padding: 14px;
+	gap: 8px;
+	background: #0e1018;
+}
+.am-canvas-frame {
+	flex: 1;
+	border: 1px solid #2a2d38;
+	border-radius: 8px;
+	padding: 12px;
+	background: repeating-linear-gradient(45deg, #14161e, #14161e 6px, #171924 6px, #171924 12px);
+}
+.am-canvas-browser {
+	background: #14161e;
+	border-radius: 6px;
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+}
+.am-canvas-urlbar {
+	font-size: 9px;
+	font-family: var(--font-mono);
+	color: #5a6070;
+	padding: 6px 10px;
+	border-bottom: 1px solid #2a2d38;
+	background: #1a1c24;
+}
+.am-canvas-inner {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding: 12px;
+}
+.am-canvas-block {
+	opacity: 0;
+}
+.am-view.is-animating[data-step="1"] .am-canvas-block {
+	animation: am-fade-up 0.5s ease both;
+}
+.am-view.is-animating[data-step="1"] .am-canvas-block--title { animation-delay: 0.1s; }
+.am-view.is-animating[data-step="1"] .am-canvas-block--text { animation-delay: 0.25s; }
+.am-view.is-animating[data-step="1"] .am-canvas-block--btn { animation-delay: 0.4s; }
+.am-view.is-animating[data-step="1"] .am-canvas-block--btn-secondary { animation-delay: 0.5s; }
+.am-view.is-animating[data-step="1"] .am-canvas-block--card { animation-delay: 0.7s; }
+.am-canvas-block--title {
+	height: 16px;
+	width: 70%;
+	background: #dce0ea;
+	border-radius: 3px;
+}
+.am-canvas-block--text {
+	height: 10px;
+	width: 90%;
+	background: #5a6070;
+	border-radius: 2px;
+}
+.am-canvas-row {
+	display: flex;
+	gap: 8px;
+}
+.am-canvas-block--btn {
+	height: 24px;
+	width: 80px;
+	background: #6366f1;
+	border-radius: 6px;
+}
+.am-canvas-block--btn-secondary {
+	height: 24px;
+	width: 80px;
+	background: #2a2d38;
+	border-radius: 6px;
+	border: 1px solid #3a3d48;
+}
+.am-canvas-block--card {
+	flex: 1;
+	background: #1a1c24;
+	border: 1px solid #2a2d38;
+	border-radius: 8px;
+}
+.am-canvas-status {
+	font-size: 10px;
+	color: #8a90a0;
+	font-family: var(--font-mono);
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+.am-canvas-status-dot {
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	background: #22c55e;
+	animation: am-think 1.5s ease-in-out infinite;
+}
+
+.am-design-props {
+	width: 120px;
+	flex-shrink: 0;
+	padding: 12px 10px;
+	border-left: 1px solid #2a2d38;
+	background: #14161e;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+.am-prop-group {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+.am-prop-row {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+.am-prop-row > span {
+	font-size: 10px;
+	color: #5a6070;
+}
+.am-prop-bar {
+	height: 4px;
+	background: #2a2d38;
+	border-radius: 2px;
+	overflow: hidden;
+}
+.am-prop-bar-fill {
+	height: 100%;
+	width: 65%;
+	background: #6366f1;
+	border-radius: 2px;
+}
+.am-prop-colors {
+	display: flex;
+	gap: 6px;
+}
+.am-prop-color {
+	width: 14px;
+	height: 14px;
+	border-radius: 4px;
+	cursor: pointer;
+}
+.am-prop-slider {
+	height: 3px;
+	background: #2a2d38;
+	border-radius: 2px;
+	position: relative;
+}
+.am-prop-slider::after {
+	content: "";
+	position: absolute;
+	right: 0;
+	top: -2px;
+	width: 7px;
+	height: 7px;
+	background: #8184f8;
+	border-radius: 50%;
+}
+.am-ai-suggestion {
+	padding: 8px 10px;
+	background: #1a1c24;
+	border: 1px solid #2a2d38;
+	border-radius: 6px;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+.am-ai-suggestion-title {
+	font-size: 10px;
+	font-weight: 600;
+	color: #8184f8;
+}
+.am-ai-suggestion-body {
+	font-size: 10px;
+	color: #8a90a0;
+	line-height: 1.5;
+}
+
+/* ===== Node 03: 自动化 ===== */
+.am-nav-icon--auto { background: #22c55e; }
+.am-auto-body {
+	flex: 1;
+	display: flex;
+	padding: 14px;
+	gap: 14px;
+	overflow: hidden;
+}
+.am-auto-list {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+.am-auto-list-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+.am-auto-list-title {
+	font-size: 11px;
+	font-weight: 600;
+	color: #dce0ea;
+}
+.am-auto-create-btn {
+	padding: 4px 10px;
+	font-size: 10px;
+	background: #6366f1;
+	color: #fff;
+	border: none;
+	border-radius: 4px;
+	cursor: pointer;
+}
+.am-auto-task {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 10px 12px;
+	background: #1a1c24;
+	border: 1px solid #2a2d38;
+	border-radius: 8px;
+	opacity: 0;
+}
+.am-view.is-animating[data-step="2"] .am-auto-task {
+	animation: am-fade-up 0.4s ease both;
+}
+.am-view.is-animating[data-step="2"] .am-auto-task[data-task="0"] { animation-delay: 0.1s; }
+.am-view.is-animating[data-step="2"] .am-auto-task[data-task="1"] { animation-delay: 0.2s; }
+.am-view.is-animating[data-step="2"] .am-auto-task[data-task="2"] { animation-delay: 0.3s; }
+.am-view.is-animating[data-step="2"] .am-auto-task[data-task="3"] { animation-delay: 0.4s; }
+.am-auto-task-icon {
+	font-size: 18px;
+}
+.am-auto-task-body { flex: 1; }
+.am-auto-task-name {
+	font-size: 11.5px;
+	font-weight: 500;
+	color: #dce0ea;
+}
+.am-auto-task-meta {
+	font-size: 9px;
+	color: #5a6070;
+	font-family: var(--font-mono);
+	margin-top: 2px;
+}
+.am-auto-task-status {
+	font-size: 9px;
+	padding: 2px 8px;
+	border-radius: 10px;
+	font-family: var(--font-mono);
+}
+.am-auto-task-status--running {
+	background: rgba(34, 197, 94, 0.15);
+	color: #22c55e;
+}
+.am-auto-task-status--paused {
+	background: rgba(138, 144, 160, 0.15);
+	color: #8a90a0;
+}
+
+.am-auto-create {
+	width: 180px;
+	flex-shrink: 0;
+	padding: 14px;
+	background: #14161e;
+	border: 1px solid #2a2d38;
+	border-radius: 10px;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+.am-auto-create-title {
+	font-size: 11px;
+	font-weight: 600;
+	color: #dce0ea;
+}
+.am-auto-create-form {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+.am-auto-field {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+.am-auto-field > span {
+	font-size: 9px;
+	color: #5a6070;
+}
+.am-auto-input {
+	padding: 6px 10px;
+	background: #1a1c24;
+	border: 1px solid #2a2d38;
+	border-radius: 4px;
+	font-size: 11px;
+	color: #dce0ea;
+}
+.am-auto-input--mono { font-family: var(--font-mono); font-size: 10px; }
+.am-auto-submit {
+	margin-top: auto;
+	padding: 7px;
+	background: #6366f1;
+	color: #fff;
+	border: none;
+	border-radius: 6px;
+	font-size: 11px;
+	cursor: pointer;
+}
+
+/* ===== Step 04: 能力 — 侧边栏设计/自动化 nav icon ===== */
+.am-nav-icon--batch { background: #f59e0b; }
+.am-nav-icon--abilities { background: #ec4899; }
+.am-nav-icon--kb { background: #06b6d4; }
+.am-nav-icon--settings { background: #8b5cf6; }
+
+/* ===== Node 04 能力面板卡片动画 ===== */
+.am-view.is-animating[data-step="3"] .am-ability-card {
+	animation: am-card-in 0.5s ease both;
+}
 .am-ability-icon {
 	font-size: 20px;
 }
