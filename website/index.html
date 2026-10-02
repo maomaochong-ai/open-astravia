@@ -233,37 +233,37 @@
 								<span class="hero__window-dots" aria-hidden="true"><i></i><i></i><i></i></span>
 								<span class="story__window-title" id="storyWindowTitle">星轨 Astravia · 会话工作区</span>
 							</div>
-\t\t\t\t\t\t\t<!-- 4 个 HTML Mock View，按 data-step 控制可见性 -->
-\t\t\t\t\t\t\t<div class="story__app-mockup">
+							<!-- 4 个 HTML Mock View，按 data-step 控制可见性 -->
+							<div class="story__app-mockup">
 
-\t\t\t\t\t\t\t\t<!-- 通用：App 窗口骨架 -->
-\t\t\t\t\t\t\t\t<div class="am-skeleton">
-\t\t\t\t\t\t\t\t\t<!-- 侧边栏 -->
-\t\t\t\t\t\t\t\t\t<aside class="am-sidebar">
-\t\t\t\t\t\t\t\t\t\t<div class="am-sidebar-brand">
-\t\t\t\t\t\t\t\t\t\t\t<div class="am-sidebar-logo"></div>
-\t\t\t\t\t\t\t\t\t\t\t<span class="am-sidebar-name">星轨 Astravia</span>
-\t\t\t\t\t\t\t\t\t\t</div>
-\t\t\t\t\t\t\t\t\t\t<nav class="am-sidebar-nav">
-\t\t\t\t\t\t\t\t\t\t\t<button class="am-nav-item am-nav-item--active" data-nav="chat" type="button"><span class="am-nav-icon am-nav-icon--chat"></span><span>对话</span></button>
-\t\t\t\t\t\t\t\t\t\t\t<button class="am-nav-item" data-nav="design" type="button"><span class="am-nav-icon am-nav-icon--design"></span><span>设计</span></button>
-\t\t\t\t\t\t\t\t\t\t\t<button class="am-nav-item" data-nav="automation" type="button"><span class="am-nav-icon am-nav-icon--auto"></span><span>自动化</span></button>
-\t\t\t\t\t\t\t\t\t\t\t<button class="am-nav-item" data-nav="batch" type="button"><span class="am-nav-icon am-nav-icon--batch"></span><span>批量任务</span></button>
-\t\t\t\t\t\t\t\t\t\t\t<button class="am-nav-item" data-nav="abilities" type="button"><span class="am-nav-icon am-nav-icon--abilities"></span><span>能力</span></button>
-\t\t\t\t\t\t\t\t\t\t\t<button class="am-nav-item" data-nav="knowledge" type="button"><span class="am-nav-icon am-nav-icon--kb"></span><span>知识库</span></button>
-\t\t\t\t\t\t\t\t\t\t</nav>
-\t\t\t\t\t\t\t\t\t\t<div class="am-sidebar-footer"></div>
-\t\t\t\t\t\t\t\t\t</aside>
-\t\t\t\t\t\t\t\t\t<main class="am-main">
+								<!-- 通用：App 窗口骨架 -->
+								<div class="am-skeleton">
+									<!-- 侧边栏 -->
+									<aside class="am-sidebar">
+										<div class="am-sidebar-brand">
+											<div class="am-sidebar-logo"></div>
+											<span class="am-sidebar-name">星轨 Astravia</span>
+										</div>
+										<nav class="am-sidebar-nav">
+											<button class="am-nav-item am-nav-item--active" data-nav="chat" type="button"><span class="am-nav-icon am-nav-icon--chat"></span><span>对话</span></button>
+											<button class="am-nav-item" data-nav="design" type="button"><span class="am-nav-icon am-nav-icon--design"></span><span>设计</span></button>
+											<button class="am-nav-item" data-nav="automation" type="button"><span class="am-nav-icon am-nav-icon--auto"></span><span>自动化</span></button>
+											<button class="am-nav-item" data-nav="batch" type="button"><span class="am-nav-icon am-nav-icon--batch"></span><span>批量任务</span></button>
+											<button class="am-nav-item" data-nav="abilities" type="button"><span class="am-nav-icon am-nav-icon--abilities"></span><span>能力</span></button>
+											<button class="am-nav-item" data-nav="knowledge" type="button"><span class="am-nav-icon am-nav-icon--kb"></span><span>知识库</span></button>
+										</nav>
+										<div class="am-sidebar-footer"></div>
+									</aside>
+									<main class="am-main">
 
-\t\t\t\t\t\t\t\t\t\t<!-- Node 01：对话工作区（完整流程合一） -->
-\t\t\t\t\t\t\t\t\t\t<section class="am-view am-view--chat-flow" data-step="0">
-\t\t\t\t\t\t\t\t\t\t\t<div class="am-page-header"><span class="am-page-title">新会话</span></div>
-\t\t\t\t\t\t\t\t\t\t\t<div class="am-chat-flow">
-\t\t\t\t\t\t\t\t\t\t\t\t<div class="am-msg am-msg--user"><div class="am-msg-avatar am-avatar--user">我</div><div class="am-msg-bubble am-msg-bubble--user">帮我写一个 Python 脚本读取 CSV 文件并统计各列数值分布</div></div>
-\t\t\t\t\t\t\t\t\t\t\t\t<div class="am-msg am-msg--assistant am-msg--thinking"><div class="am-msg-avatar am-avatar--ai">AI</div><div class="am-msg-bubble am-msg-bubble--ai"><div class="am-thinking-dots"><span></span><span></span><span></span></div><div class="am-thinking-label">思考中 · 规划执行步骤</div></div></div>
-\t\t\t\t\t\t\t\t\t\t\t\t<div class="am-msg am-msg--assistant"><div class="am-msg-avatar am-avatar--ai">AI</div><div class="am-msg-bubble am-msg-bubble--tools"><div class="am-tool-card" data-tool="0"><div class="am-tool-icon am-tool-icon--write">✎</div><div class="am-tool-body"><div class="am-tool-name">write_file</div><div class="am-tool-meta">script.py · 2.1KB</div></div><div class="am-tool-status am-tool-status--ok">✓</div></div><div class="am-tool-card" data-tool="1"><div class="am-tool-icon am-tool-icon--run">▸</div><div class="am-tool-body"><div class="am-tool-name">run_command</div><div class="am-tool-meta">python script.py · 1.8s</div></div><div class="am-tool-status am-tool-status--ok">✓</div></div><div class="am-tool-card" data-tool="2"><div class="am-tool-icon am-tool-icon--read">≡</div><div class="am-tool-body"><div class="am-tool-name">read_file</div><div class="am-tool-meta">output.json · 已读取</div></div><div class="am-tool-status am-tool-status--ok">✓</div></div></div></div>
-\t\t\t\t\t\t\t\t\t\t\t\t<div class="am-msg am-msg--assistant"><div class="am-msg-avatar am-avatar--ai">AI</div><div class="am-msg-bubble am-msg-bubble--ai am-msg-bubble--markdown"><p class="am-md am-md--line">已创建 <code class="am-code-inline">script.py</code>，核心逻辑如下：</p><pre class="am-code-block"><code><span class="am-kw">import</span> <span class="am-id">pandas</span> <span class="am-kw">as</span> <span class="am-id">pd</span>
+										<!-- Node 01：对话工作区（完整流程合一） -->
+										<section class="am-view am-view--chat-flow" data-step="0">
+											<div class="am-page-header"><span class="am-page-title">新会话</span></div>
+											<div class="am-chat-flow">
+												<div class="am-msg am-msg--user"><div class="am-msg-avatar am-avatar--user">我</div><div class="am-msg-bubble am-msg-bubble--user">帮我写一个 Python 脚本读取 CSV 文件并统计各列数值分布</div></div>
+												<div class="am-msg am-msg--assistant am-msg--thinking"><div class="am-msg-avatar am-avatar--ai">AI</div><div class="am-msg-bubble am-msg-bubble--ai"><div class="am-thinking-dots"><span></span><span></span><span></span></div><div class="am-thinking-label">思考中 · 规划执行步骤</div></div></div>
+												<div class="am-msg am-msg--assistant"><div class="am-msg-avatar am-avatar--ai">AI</div><div class="am-msg-bubble am-msg-bubble--tools"><div class="am-tool-card" data-tool="0"><div class="am-tool-icon am-tool-icon--write">✎</div><div class="am-tool-body"><div class="am-tool-name">write_file</div><div class="am-tool-meta">script.py · 2.1KB</div></div><div class="am-tool-status am-tool-status--ok">✓</div></div><div class="am-tool-card" data-tool="1"><div class="am-tool-icon am-tool-icon--run">▸</div><div class="am-tool-body"><div class="am-tool-name">run_command</div><div class="am-tool-meta">python script.py · 1.8s</div></div><div class="am-tool-status am-tool-status--ok">✓</div></div><div class="am-tool-card" data-tool="2"><div class="am-tool-icon am-tool-icon--read">≡</div><div class="am-tool-body"><div class="am-tool-name">read_file</div><div class="am-tool-meta">output.json · 已读取</div></div><div class="am-tool-status am-tool-status--ok">✓</div></div></div></div>
+												<div class="am-msg am-msg--assistant"><div class="am-msg-avatar am-avatar--ai">AI</div><div class="am-msg-bubble am-msg-bubble--ai am-msg-bubble--markdown"><p class="am-md am-md--line">已创建 <code class="am-code-inline">script.py</code>，核心逻辑如下：</p><pre class="am-code-block"><code><span class="am-kw">import</span> <span class="am-id">pandas</span> <span class="am-kw">as</span> <span class="am-id">pd</span>
 
 <span class="am-kw">def</span> <span class="am-fn">analyze</span>(csv_path):
     df = pd.<span class="am-fn">read_csv</span>(csv_path)
@@ -271,94 +271,94 @@
     <span class="am-kw">for</span> col <span class="am-kw">in</span> df.<span class="am-id">columns</span>:
         summary[col] = {<span class="am-str">"mean"</span>: df[col].<span class="am-fn">mean</span>(), <span class="am-str">"std"</span>: df[col].<span class="am-fn">std</span>()}
     <span class="am-kw">return</span> summary</code></pre></div></div>
-\t\t\t\t\t\t\t\t\t\t\t</div>
-\t\t\t\t\t\t\t\t\t\t\t<div class="am-inputbar">
-\t\t\t\t\t\t\t\t\t\t\t\t<div class="am-inputbar-inner"><span class="am-inputbar-text">继续追问或调整...</span><span class="am-inputbar-cursor"></span></div>
-\t\t\t\t\t\t\t\t\t\t\t\t<button class="am-send-btn" type="button"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg></button>
-\t\t\t\t\t\t\t\t\t\t\t</div>
-\t\t\t\t\t\t\t\t\t\t</section>
+											</div>
+											<div class="am-inputbar">
+												<div class="am-inputbar-inner"><span class="am-inputbar-text">继续追问或调整...</span><span class="am-inputbar-cursor"></span></div>
+												<button class="am-send-btn" type="button"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg></button>
+											</div>
+										</section>
 
-\t\t\t\t\t\t\t\t\t\t<!-- Node 02：设计面板 -->
-\t\t\t\t\t\t\t\t\t\t<section class="am-view am-view--design" data-step="1">
-\t\t\t\t\t\t\t\t\t\t\t<div class="am-page-header"><span class="am-page-title">设计</span><span class="am-page-sub">可视化 UI 生成</span></div>
-\t\t\t\t\t\t\t\t\t\t\t<div class="am-design-body">
-\t\t\t\t\t\t\t\t\t\t\t\t<aside class="am-design-palette">
-\t\t\t\t\t\t\t\t\t\t\t\t\t<div class="am-palette-label">组件库</div>
-\t\t\t\t\t\t\t\t\t\t\t\t\t<div class="am-palette-items">
-\t\t\t\t\t\t\t\t\t\t\t\t\t\t<div class="am-palette-item"><div class="am-palette-item-icon">▭</div><span>容器</span></div>
-\t\t\t\t\t\t\t\t\t\t\t\t\t\t<div class="am-palette-item"><div class="am-palette-item-icon">🔘</div><span>按钮</span></div>
-\t\t\t\t\t\t\t\t\t\t\t\t\t\t<div class="am-palette-item"><div class="am-palette-item-icon">🖼</div><span>图片</span></div>
-\t\t\t\t\t\t\t\t\t\t\t\t\t\t<div class="am-palette-item"><div class="am-palette-item-icon">▥</div><span>栅格</span></div>
-\t\t\t\t\t\t\t\t\t\t\t\t\t\t<div class="am-palette-item"><div class="am-palette-item-icon">⬜</div><span>输入框</span></div>
-\t\t\t\t\t\t\t\t\t\t\t\t\t</div>
-\t\t\t\t\t\t\t\t\t\t\t\t</aside>
-\t\t\t\t\t\t\t\t\t\t\t\t<div class="am-design-canvas">
-\t\t\t\t\t\t\t\t\t\t\t\t\t<div class="am-canvas-frame">
-\t\t\t\t\t\t\t\t\t\t\t\t\t\t<div class="am-canvas-browser">
-\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t<div class="am-canvas-urlbar">https://astravia.dev/download</div>
-\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t<div class="am-canvas-inner">
-\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t<div class="am-canvas-block am-canvas-block--title am-phase-1"></div>
-\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t<div class="am-canvas-block am-canvas-block--text am-phase-2"></div>
-\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t<div class="am-canvas-row"><div class="am-canvas-block am-canvas-block--btn am-phase-3"></div><div class="am-canvas-block am-canvas-block--btn-secondary am-phase-4"></div></div>
-\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t<div class="am-canvas-block am-canvas-block--card am-phase-5"></div>
-\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t</div>
-\t\t\t\t\t\t\t\t\t\t\t\t\t\t</div>
-\t\t\t\t\t\t\t\t\t\t\t\t\t</div>
-\t\t\t\t\t\t\t\t\t\t\t\t\t<div class="am-canvas-status"><span class="am-canvas-status-dot"></span>AI 实时生成代码</div>
-\t\t\t\t\t\t\t\t\t\t\t\t</div>
-\t\t\t\t\t\t\t\t\t\t\t\t<aside class="am-design-props">
-\t\t\t\t\t\t\t\t\t\t\t\t\t<div class="am-palette-label">属性</div>
-\t\t\t\t\t\t\t\t\t\t\t\t\t<div class="am-prop-group">
-\t\t\t\t\t\t\t\t\t\t\t\t\t\t<div class="am-prop-row"><span>宽度</span><div class="am-prop-bar"><div class="am-prop-bar-fill"></div></div></div>
-\t\t\t\t\t\t\t\t\t\t\t\t\t\t<div class="am-prop-row"><span>颜色</span><div class="am-prop-colors"><i class="am-prop-color" style="background:#6366f1"></i><i class="am-prop-color" style="background:#22c55e"></i><i class="am-prop-color" style="background:#f59e0b"></i></div></div>
-\t\t\t\t\t\t\t\t\t\t\t\t\t\t<div class="am-prop-row"><span>圆角</span><div class="am-prop-slider"></div></div>
-\t\t\t\t\t\t\t\t\t\t\t\t\t</div>
-\t\t\t\t\t\t\t\t\t\t\t\t\t<div class="am-palette-label am-palette-label--mt">AI 建议</div>
-\t\t\t\t\t\t\t\t\t\t\t\t\t<div class="am-ai-suggestion"><div class="am-ai-suggestion-title">✦ 建议优化排版层次</div><div class="am-ai-suggestion-body">标题区域可增加 16px 上边距，按钮组改为居中对齐</div></div>
-\t\t\t\t\t\t\t\t\t\t\t\t</aside>
-\t\t\t\t\t\t\t\t\t\t\t</div>
-\t\t\t\t\t\t\t\t\t\t</section>
+										<!-- Node 02：设计面板 -->
+										<section class="am-view am-view--design" data-step="1">
+											<div class="am-page-header"><span class="am-page-title">设计</span><span class="am-page-sub">可视化 UI 生成</span></div>
+											<div class="am-design-body">
+												<aside class="am-design-palette">
+													<div class="am-palette-label">组件库</div>
+													<div class="am-palette-items">
+														<div class="am-palette-item"><div class="am-palette-item-icon">▭</div><span>容器</span></div>
+														<div class="am-palette-item"><div class="am-palette-item-icon">🔘</div><span>按钮</span></div>
+														<div class="am-palette-item"><div class="am-palette-item-icon">🖼</div><span>图片</span></div>
+														<div class="am-palette-item"><div class="am-palette-item-icon">▥</div><span>栅格</span></div>
+														<div class="am-palette-item"><div class="am-palette-item-icon">⬜</div><span>输入框</span></div>
+													</div>
+												</aside>
+												<div class="am-design-canvas">
+													<div class="am-canvas-frame">
+														<div class="am-canvas-browser">
+															<div class="am-canvas-urlbar">https://astravia.dev/download</div>
+															<div class="am-canvas-inner">
+																<div class="am-canvas-block am-canvas-block--title am-phase-1"></div>
+																<div class="am-canvas-block am-canvas-block--text am-phase-2"></div>
+																<div class="am-canvas-row"><div class="am-canvas-block am-canvas-block--btn am-phase-3"></div><div class="am-canvas-block am-canvas-block--btn-secondary am-phase-4"></div></div>
+																<div class="am-canvas-block am-canvas-block--card am-phase-5"></div>
+															</div>
+														</div>
+													</div>
+													<div class="am-canvas-status"><span class="am-canvas-status-dot"></span>AI 实时生成代码</div>
+												</div>
+												<aside class="am-design-props">
+													<div class="am-palette-label">属性</div>
+													<div class="am-prop-group">
+														<div class="am-prop-row"><span>宽度</span><div class="am-prop-bar"><div class="am-prop-bar-fill"></div></div></div>
+														<div class="am-prop-row"><span>颜色</span><div class="am-prop-colors"><i class="am-prop-color" style="background:#6366f1"></i><i class="am-prop-color" style="background:#22c55e"></i><i class="am-prop-color" style="background:#f59e0b"></i></div></div>
+														<div class="am-prop-row"><span>圆角</span><div class="am-prop-slider"></div></div>
+													</div>
+													<div class="am-palette-label am-palette-label--mt">AI 建议</div>
+													<div class="am-ai-suggestion"><div class="am-ai-suggestion-title">✦ 建议优化排版层次</div><div class="am-ai-suggestion-body">标题区域可增加 16px 上边距，按钮组改为居中对齐</div></div>
+												</aside>
+											</div>
+										</section>
 
-\t\t\t\t\t\t\t\t\t\t<!-- Node 03：自动化 -->
-\t\t\t\t\t\t\t\t\t\t<section class="am-view am-view--automation" data-step="2">
-\t\t\t\t\t\t\t\t\t\t\t<div class="am-page-header"><span class="am-page-title">自动化</span><span class="am-page-sub">让 AI 按计划自动执行</span></div>
-\t\t\t\t\t\t\t\t\t\t\t<div class="am-auto-body">
-\t\t\t\t\t\t\t\t\t\t\t\t<div class="am-auto-list">
-\t\t\t\t\t\t\t\t\t\t\t\t\t<div class="am-auto-list-header"><span class="am-auto-list-title">运行中的任务</span><button class="am-auto-create-btn" type="button">+ 新建任务</button></div>
-\t\t\t\t\t\t\t\t\t\t\t\t\t<div class="am-auto-task" data-task="0"><div class="am-auto-task-icon">📧</div><div class="am-auto-task-body"><div class="am-auto-task-name">每日邮件摘要</div><div class="am-auto-task-meta">cron: 0 9 * * * · 每天 9:00</div></div><div class="am-auto-task-status am-auto-task-status--running">运行中</div></div>
-\t\t\t\t\t\t\t\t\t\t\t\t\t<div class="am-auto-task" data-task="1"><div class="am-auto-task-icon">📁</div><div class="am-auto-task-body"><div class="am-auto-task-name">周报自动整理</div><div class="am-auto-task-meta">cron: 0 10 * * 1 · 每周一 10:00</div></div><div class="am-auto-task-status am-auto-task-status--running">运行中</div></div>
-\t\t\t\t\t\t\t\t\t\t\t\t\t<div class="am-auto-task" data-task="2"><div class="am-auto-task-icon">📊</div><div class="am-auto-task-body"><div class="am-auto-task-name">数据备份上传</div><div class="am-auto-task-meta">cron: 0 2 * * * · 每天 2:00</div></div><div class="am-auto-task-status am-auto-task-status--paused">已暂停</div></div>
-\t\t\t\t\t\t\t\t\t\t\t\t\t<div class="am-auto-task" data-task="3"><div class="am-auto-task-icon">🔔</div><div class="am-auto-task-body"><div class="am-auto-task-name">日程提醒</div><div class="am-auto-task-meta">托盘常驻 · 实时监听</div></div><div class="am-auto-task-status am-auto-task-status--running">运行中</div></div>
-\t\t\t\t\t\t\t\t\t\t\t\t</div>
-\t\t\t\t\t\t\t\t\t\t\t\t<div class="am-auto-create">
-\t\t\t\t\t\t\t\t\t\t\t\t\t<div class="am-auto-create-title">创建新的自动化任务</div>
-\t\t\t\t\t\t\t\t\t\t\t\t\t<div class="am-auto-create-form">
-\t\t\t\t\t\t\t\t\t\t\t\t\t\t<label class="am-auto-field"><span>任务名称</span><div class="am-auto-input">项目周报助手</div></label>
-\t\t\t\t\t\t\t\t\t\t\t\t\t\t<label class="am-auto-field"><span>触发方式</span><div class="am-auto-input">Cron 定时</div></label>
-\t\t\t\t\t\t\t\t\t\t\t\t\t\t<label class="am-auto-field"><span>Cron 表达式</span><div class="am-auto-input am-auto-input--mono">0 17 * * 5</div></label>
-\t\t\t\t\t\t\t\t\t\t\t\t\t</div>
-\t\t\t\t\t\t\t\t\t\t\t\t\t<button class="am-auto-submit" type="button">保存并启用</button>
-\t\t\t\t\t\t\t\t\t\t\t\t</div>
-\t\t\t\t\t\t\t\t\t\t\t</div>
-\t\t\t\t\t\t\t\t\t\t</section>
+										<!-- Node 03：自动化 -->
+										<section class="am-view am-view--automation" data-step="2">
+											<div class="am-page-header"><span class="am-page-title">自动化</span><span class="am-page-sub">让 AI 按计划自动执行</span></div>
+											<div class="am-auto-body">
+												<div class="am-auto-list">
+													<div class="am-auto-list-header"><span class="am-auto-list-title">运行中的任务</span><button class="am-auto-create-btn" type="button">+ 新建任务</button></div>
+													<div class="am-auto-task" data-task="0"><div class="am-auto-task-icon">📧</div><div class="am-auto-task-body"><div class="am-auto-task-name">每日邮件摘要</div><div class="am-auto-task-meta">cron: 0 9 * * * · 每天 9:00</div></div><div class="am-auto-task-status am-auto-task-status--running">运行中</div></div>
+													<div class="am-auto-task" data-task="1"><div class="am-auto-task-icon">📁</div><div class="am-auto-task-body"><div class="am-auto-task-name">周报自动整理</div><div class="am-auto-task-meta">cron: 0 10 * * 1 · 每周一 10:00</div></div><div class="am-auto-task-status am-auto-task-status--running">运行中</div></div>
+													<div class="am-auto-task" data-task="2"><div class="am-auto-task-icon">📊</div><div class="am-auto-task-body"><div class="am-auto-task-name">数据备份上传</div><div class="am-auto-task-meta">cron: 0 2 * * * · 每天 2:00</div></div><div class="am-auto-task-status am-auto-task-status--paused">已暂停</div></div>
+													<div class="am-auto-task" data-task="3"><div class="am-auto-task-icon">🔔</div><div class="am-auto-task-body"><div class="am-auto-task-name">日程提醒</div><div class="am-auto-task-meta">托盘常驻 · 实时监听</div></div><div class="am-auto-task-status am-auto-task-status--running">运行中</div></div>
+												</div>
+												<div class="am-auto-create">
+													<div class="am-auto-create-title">创建新的自动化任务</div>
+													<div class="am-auto-create-form">
+														<label class="am-auto-field"><span>任务名称</span><div class="am-auto-input">项目周报助手</div></label>
+														<label class="am-auto-field"><span>触发方式</span><div class="am-auto-input">Cron 定时</div></label>
+														<label class="am-auto-field"><span>Cron 表达式</span><div class="am-auto-input am-auto-input--mono">0 17 * * 5</div></label>
+													</div>
+													<button class="am-auto-submit" type="button">保存并启用</button>
+												</div>
+											</div>
+										</section>
 
-\t\t\t\t\t\t\t\t\t\t<!-- Node 04：能力面板 -->
-\t\t\t\t\t\t\t\t\t\t<section class="am-view am-view--abilities" data-step="3">
-\t\t\t\t\t\t\t\t\t\t\t<div class="am-page-header"><span class="am-page-title">能力</span><span class="am-page-sub">给 Agent 加点本事</span></div>
-\t\t\t\t\t\t\t\t\t\t\t<div class="am-abilities-grid">
-\t\t\t\t\t\t\t\t\t\t\t\t<div class="am-ability-card" data-card="0"><div class="am-ability-icon">⚡</div><div class="am-ability-name">代码技能</div><div class="am-ability-desc">读写文件 · 执行命令 · 调试构建</div><div class="am-ability-badge">已启用</div></div>
-\t\t\t\t\t\t\t\t\t\t\t\t<div class="am-ability-card" data-card="1"><div class="am-ability-icon">🔌</div><div class="am-ability-name">MCP 连接器</div><div class="am-ability-desc">为 AI 接入外部工具与服务</div><div class="am-ability-badge">3 已连接</div></div>
-\t\t\t\t\t\t\t\t\t\t\t\t<div class="am-ability-card" data-card="2"><div class="am-ability-icon">📚</div><div class="am-ability-name">知识库</div><div class="am-ability-desc">本地文档加工成可检索索引</div><div class="am-ability-badge">2 个知识集</div></div>
-\t\t\t\t\t\t\t\t\t\t\t\t<div class="am-ability-card" data-card="3"><div class="am-ability-icon">🎯</div><div class="am-ability-name">场景模板</div><div class="am-ability-desc">一键启动特定工作流</div><div class="am-ability-badge">5 个场景</div></div>
-\t\t\t\t\t\t\t\t\t\t\t\t<div class="am-ability-card" data-card="4"><div class="am-ability-icon">🔁</div><div class="am-ability-name">自动化</div><div class="am-ability-desc">Cron 定时任务在托盘后台运行</div><div class="am-ability-badge">已启用</div></div>
-\t\t\t\t\t\t\t\t\t\t\t\t<div class="am-ability-card" data-card="5"><div class="am-ability-icon">📦</div><div class="am-ability-name">批量任务</div><div class="am-ability-desc">一次配置，批量处理多个目录</div><div class="am-ability-badge">就绪</div></div>
-\t\t\t\t\t\t\t\t\t\t\t</div>
-\t\t\t\t\t\t\t\t\t\t</section>
+										<!-- Node 04：能力面板 -->
+										<section class="am-view am-view--abilities" data-step="3">
+											<div class="am-page-header"><span class="am-page-title">能力</span><span class="am-page-sub">给 Agent 加点本事</span></div>
+											<div class="am-abilities-grid">
+												<div class="am-ability-card" data-card="0"><div class="am-ability-icon">⚡</div><div class="am-ability-name">代码技能</div><div class="am-ability-desc">读写文件 · 执行命令 · 调试构建</div><div class="am-ability-badge">已启用</div></div>
+												<div class="am-ability-card" data-card="1"><div class="am-ability-icon">🔌</div><div class="am-ability-name">MCP 连接器</div><div class="am-ability-desc">为 AI 接入外部工具与服务</div><div class="am-ability-badge">3 已连接</div></div>
+												<div class="am-ability-card" data-card="2"><div class="am-ability-icon">📚</div><div class="am-ability-name">知识库</div><div class="am-ability-desc">本地文档加工成可检索索引</div><div class="am-ability-badge">2 个知识集</div></div>
+												<div class="am-ability-card" data-card="3"><div class="am-ability-icon">🎯</div><div class="am-ability-name">场景模板</div><div class="am-ability-desc">一键启动特定工作流</div><div class="am-ability-badge">5 个场景</div></div>
+												<div class="am-ability-card" data-card="4"><div class="am-ability-icon">🔁</div><div class="am-ability-name">自动化</div><div class="am-ability-desc">Cron 定时任务在托盘后台运行</div><div class="am-ability-badge">已启用</div></div>
+												<div class="am-ability-card" data-card="5"><div class="am-ability-icon">📦</div><div class="am-ability-name">批量任务</div><div class="am-ability-desc">一次配置，批量处理多个目录</div><div class="am-ability-badge">就绪</div></div>
+											</div>
+										</section>
 
-\t\t\t\t\t\t\t\t\t</main>
-\t\t\t\t\t\t\t\t</div>
-\t\t\t\t\t\t\t</div>
-\t\t\t\t\t\t</figure>						</figure>
+									</main>
+								</div>
+							</div>
+						</figure>
 					</div>
 				</div>
 			</div>
