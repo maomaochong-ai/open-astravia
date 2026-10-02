@@ -73,18 +73,18 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           for domain in "astravia.dev" "www.astravia.dev"; do
-            echo "Binding $domain to astravia-website..."
-            npx wrangler pages domain add astravia-website "$domain" \
-              || echo "Domain $domain may already exist or needs DNS setup, continuing..."
+            echo ">>> Binding $domain to astravia-website ..."
+            npx wrangler pages domain add astravia-website "$domain"
+            echo "<<< Done binding $domain"
           done
 
-      - name: Verify website responds
+      - name: Verify website responds (custom domain)
         shell: bash
         run: |
-          sleep 15
-          # 用 Cloudflare 自动分配的 pages.dev 子域名验证（自定义域名需要手动在 Dashboard 绑定）
-          url="https://astravia-website.pages.dev"
-          status=$(curl -sI "$url" | head -1 || echo "FETCH_FAILED")
-          echo "$url → $status"
-          # exit 0 不让 curl 404 导致 workflow 失败（首次部署后 CDN 同步需要时间）
+          sleep 20
+          for url in "https://www.astravia.dev" "https://astravia.dev" "https://astravia-website.pages.dev"; do
+            status=$(curl -sI "$url" | head -1 || echo "FETCH_FAILED")
+            echo "$url → $status"
+          done
+          # exit 0 兜底：DNS 传播需要时间，不要阻塞 workflow
           exit 0
