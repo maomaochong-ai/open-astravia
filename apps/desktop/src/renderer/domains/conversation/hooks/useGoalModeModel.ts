@@ -8,7 +8,7 @@ import {
 } from "@shared/store/atoms";
 import { showToast } from "@shared/store/toast-atoms";
 import type { CodingAgentGoalState } from "@vetta/coding-agent/session-extensions";
-import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
+import { getDefaultStore, useAtomValue, useSetAtom, useStore } from "jotai";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { StartNewSessionGoal } from "../services/goal-mode-entry";
@@ -30,6 +30,7 @@ export interface GoalModeModel {
 
 export function useGoalModeModel(startNewSessionGoal?: StartNewSessionGoal): GoalModeModel {
 	const { t } = useTranslation("chat");
+	const store = useStore();
 	const runtimeId = useAtomValue(activeSessionAtom)?.runtimeId;
 	const states = useAtomValue(goalStateBySessionAtom);
 	const setStates = useSetAtom(goalStateBySessionAtom);
@@ -45,9 +46,11 @@ export function useGoalModeModel(startNewSessionGoal?: StartNewSessionGoal): Goa
 			if (!runtimeId || busyRef.current) return false;
 			busyRef.current = true;
 			setBusy(true);
+			const updates = trackGoalUpdates(store);
 			try {
 				const next = await operation();
 				setStates((previous) => {
+					if (updates.changed(runtimeId)) return previous;
 					const updated = { ...previous };
 					if (next) updated[runtimeId] = next;
 					else delete updated[runtimeId];
@@ -59,11 +62,12 @@ export function useGoalModeModel(startNewSessionGoal?: StartNewSessionGoal): Goa
 				showToast({ variant: "error", message: t("goalMode.operationFailed") });
 				return false;
 			} finally {
+				updates.dispose();
 				busyRef.current = false;
 				setBusy(false);
 			}
 		},
-		[runtimeId, setStates, t],
+		[runtimeId, setStates, store, t],
 	);
 
 	const start = useCallback(
@@ -75,21 +79,25 @@ export function useGoalModeModel(startNewSessionGoal?: StartNewSessionGoal): Goa
 			if (!startNewSessionGoal) return false;
 			busyRef.current = true;
 			setBusy(true);
+			const updates = trackGoalUpdates(store);
 			try {
 				const started = await startNewSessionGoal(objective);
 				if (!started) return false;
-				setStates((previous) => ({ ...previous, [started.sessionId]: started.state }));
+				setStates((previous) =>
+					updates.changed(started.sessionId) ? previous : { ...previous, [started.sessionId]: started.state },
+				);
 				return true;
 			} catch (error) {
 				console.error("[GoalMode] new-session goal start failed:", error);
 				showToast({ variant: "error", message: t("goalMode.operationFailed") });
 				return false;
 			} finally {
+				updates.dispose();
 				busyRef.current = false;
 				setBusy(false);
 			}
 		},
-		[run, runtimeId, setStates, startNewSessionGoal, t],
+		[run, runtimeId, setStates, startNewSessionGoal, store, t],
 	);
 	const submitDraft = useCallback(
 		async (overrideText?: string): Promise<boolean> => {
@@ -132,4 +140,19 @@ export function useGoalModeModel(startNewSessionGoal?: StartNewSessionGoal): Goa
 		() => ({ state, composing, canCompose, busy, onToggleCompose, submitDraft, pause, resume, clear }),
 		[state, composing, canCompose, busy, onToggleCompose, submitDraft, pause, resume, clear],
 	);
+}
+
+function trackGoalUpdates(store: ReturnType<typeof useStore>) {
+	let previous = store.get(goalStateBySessionAtom);
+	const changedSessions = new Set<string>();
+	// Command replies can contain the pre-execution snapshot. Observe until the
+	// reply settles, including clears and navigation that unmounts the caller.
+	const unsubscribe = store.sub(goalStateBySessionAtom, () => {
+		const next = store.get(goalStateBySessionAtom);
+		for (const sessionId of new Set([...Object.keys(previous), ...Object.keys(next)])) {
+			if (previous[sessionId] !== next[sessionId]) changedSessions.add(sessionId);
+		}
+		previous = next;
+	});
+	return { changed: (sessionId: string) => changedSessions.has(sessionId), dispose: unsubscribe };
 }
