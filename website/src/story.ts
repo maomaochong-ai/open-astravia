@@ -1,205 +1,130 @@
 /**
  * 产品故事：Scroll-driven 动画
- * 滚动进度直接驱动 SVG 元素和左侧文案的切换，动画与滚动速度完全同步。
+ * 滚动进度驱动：左侧文案切换 + 右侧 5 个 HTML Mock View 切换。
+ * 每个 step 切换时，给对应 view 加 is-active class 触发 CSS 动画。
  */
-
-// TS DOM lib 尚未收录 scroll-driven animation 相关属性
-type ScrollTimelineStyle = CSSStyleDeclaration & {
-	viewTimelineName?: string;
-	viewTimelineAxis?: string;
-	animationTimeline?: string;
-	animationRange?: string;
-};
 
 export function initStory() {
 	const section = document.querySelector<HTMLElement>("#story");
 	const fill = document.querySelector<HTMLElement>("[data-story-progress]");
 	const dots = Array.from(document.querySelectorAll<HTMLButtonElement>("[data-story-dot]"));
 	const copies = Array.from(document.querySelectorAll<HTMLElement>("[data-story-copy]"));
-	const svg = document.querySelector<SVGElement>(".story__svg");
-	const appMockup = document.querySelector<HTMLElement>(".story__app-mockup");
+	const views = Array.from(document.querySelectorAll<HTMLElement>(".am-view"));
+	const sidebarItems = Array.from(document.querySelectorAll<HTMLElement>(".am-nav-item"));
+	const windowTitle = document.getElementById("storyWindowTitle");
 
-	if (!section || !fill || dots.length === 0 || copies.length !== dots.length || !svg) return;
+	if (!section || !fill || dots.length === 0 || copies.length !== dots.length || views.length !== dots.length) return;
 
 	const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 	const stepCount = dots.length;
 
-	// SVG 元素分组
-	const msgUser = svg.querySelector<SVGElement>("[data-step='0']");
-	const msgAssistant = svg.querySelector<SVGElement>("[data-step='1']");
-	const msgTool = svg.querySelector<SVGElement>("[data-step='2']");
-	const msgResult = svg.querySelector<SVGElement>("[data-step='3']");
-	const highlights = Array.from(svg.querySelectorAll<SVGElement>("[data-step]"));
-	const sidebarNavs = Array.from(svg.querySelectorAll<SVGElement>(".story__sidebar-nav"));
-	const sidebarTexts = Array.from(svg.querySelectorAll<SVGTextElement>(".story__sidebar-text"));
+	// Step → 侧边栏高亮项映射（data-nav attribute）
+	const NAV_BY_STEP: Record<number, string> = {
+		0: "chat", // 新会话
+		1: "chat", // 思考中（同 chat）
+		2: "chat", // 工具执行（同 chat）
+		3: "chat", // 结果（同 chat）
+		4: "abilities", // 能力面板
+	};
 
-	// 步骤 → 侧边栏导航项映射（0=新会话，1=新会话，2=批量任务，3=新会话，4=知识库）
-	const navByStep = [0, 0, 2, 0, 3];
+	const TITLES_BY_STEP: Record<number, string> = {
+		0: "星轨 Astravia · 会话工作区",
+		1: "星轨 Astravia · 会话工作区",
+		2: "星轨 Astravia · 会话工作区",
+		3: "星轨 Astravia · 会话工作区",
+		4: "星轨 Astravia · 能力",
+	};
 
-	// CSS scroll-timeline 支持检测
-	const hasScrollTimeline = "ScrollTimeline" in window;
-
-	if (hasScrollTimeline && !reduceMotion) {
-		// 使用原生 CSS scroll-driven animation
-		const sectionStyle = section.style as ScrollTimelineStyle;
-		sectionStyle.viewTimelineName = "--story-progress";
-		sectionStyle.viewTimelineAxis = "block";
-
-		if (fill) {
-			const fillStyle = fill.style as ScrollTimelineStyle;
-			fillStyle.animationName = "story-fill";
-			fillStyle.animationTimeline = "--story-progress";
-			fillStyle.animationRange = "contain 0% contain 100%";
-			fillStyle.animationFillMode = "both";
-		}
-
-		// SVG 元素随滚动渐入
-		const svgSteps: [SVGElement | null, string][] = [
-			[msgUser, "story-step-0"],
-			[msgAssistant, "story-step-1"],
-			[msgTool, "story-step-2"],
-			[msgResult, "story-step-3"],
-		];
-
-		svgSteps.forEach(([el, name]) => {
-			if (el) {
-				const elStyle = el.style as ScrollTimelineStyle;
-				elStyle.animationName = name;
-				elStyle.animationTimeline = "--story-progress";
-				elStyle.animationFillMode = "both";
-			}
-		});
-
-		// 注入 keyframes
-		const styleSheet = document.createElement("style");
-		styleSheet.textContent = `
-			@keyframes story-fill {
-				from { transform: translateX(-50%) scaleY(0); }
-				to { transform: translateX(-50%) scaleY(1); }
-			}
-			@keyframes story-step-0 {
-				0%, 10% { opacity: 1; }
-				20%, 100% { opacity: 0.4; }
-			}
-			@keyframes story-step-1 {
-				0%, 20% { opacity: 0; }
-				25%, 30% { opacity: 1; }
-				35%, 100% { opacity: 0.3; }
-			}
-			@keyframes story-step-2 {
-				0%, 35% { opacity: 0; }
-				40%, 50% { opacity: 1; }
-				55%, 100% { opacity: 0.3; }
-			}
-			@keyframes story-step-3 {
-				0%, 55% { opacity: 0; }
-				60%, 75% { opacity: 1; }
-				80%, 100% { opacity: 0.3; }
-			}
-		`;
-		document.head.appendChild(styleSheet);
-
-		// JS 只处理左侧文案和圆点的切换
-		let ticking = false;
-		const onScroll = () => {
-			if (ticking) return;
-			ticking = true;
-			requestAnimationFrame(() => {
-				const rect = section.getBoundingClientRect();
-				const viewport = window.innerHeight;
-				const progress = Math.min(1, Math.max(0, (viewport * 0.5 - rect.top) / Math.max(1, rect.height)));
-				const index = Math.min(stepCount - 1, Math.max(0, Math.floor(progress * stepCount)));
-				updateUI(index);
-				ticking = false;
-			});
-		};
-		window.addEventListener("scroll", onScroll, { passive: true });
-		window.addEventListener("resize", onScroll);
-		onScroll();
-	} else {
-		// Fallback: 纯 JS 驱动
-		let ticking = false;
-		const onScroll = () => {
-			if (ticking) return;
-			ticking = true;
-			requestAnimationFrame(() => {
-				const rect = section.getBoundingClientRect();
-				const viewport = window.innerHeight;
-				const progress = Math.min(1, Math.max(0, (viewport * 0.5 - rect.top) / Math.max(1, rect.height)));
-				fill.style.transform = `translateX(-50%) scaleY(${progress})`;
-				const index = Math.min(stepCount - 1, Math.max(0, Math.floor(progress * stepCount)));
-				updateUI(index);
-				updateSVG(index, progress);
-				ticking = false;
-			});
-		};
-
-		const updateSVG = (_index: number, progress: number) => {
-			const stepProgress = (progress * stepCount) % 1;
-			const currentStep = Math.floor(progress * stepCount);
-
-			// 每个元素在对应步骤渐入
-			const opacities: Record<number, number> = {};
-			for (let i = 0; i < stepCount; i++) {
-				if (i < currentStep) {
-					opacities[i] = 0.3; // 过去的步骤变淡
-				} else if (i === currentStep) {
-					opacities[i] = 0.3 + stepProgress * 0.7; // 当前步骤渐入
-				} else {
-					opacities[i] = 0; // 未来的步骤隐藏
-				}
-			}
-
-			if (msgUser) msgUser.style.opacity = String(opacities[0] ?? 0);
-			if (msgAssistant) msgAssistant.style.opacity = String(opacities[1] ?? 0);
-			if (msgTool) msgTool.style.opacity = String(opacities[2] ?? 0);
-			if (msgResult) msgResult.style.opacity = String(opacities[3] ?? 0);
-
-			// 高亮框跟随当前步骤
-			highlights.forEach((h) => {
-				const step = Number(h.dataset.step);
-				h.style.opacity = step === currentStep ? "1" : "0";
-			});
-		};
-
-		window.addEventListener("scroll", onScroll, { passive: true });
-		window.addEventListener("resize", onScroll);
-		onScroll();
-	}
+	// 当前 step，用于去抖
+	let currentStep = -1;
 
 	function updateUI(index: number) {
+		if (index === currentStep) return;
+		currentStep = index;
+
+		// 左侧圆点 + 文案
 		for (let i = 0; i < stepCount; i++) {
 			const isActive = i === index;
 			dots[i].classList.toggle("is-active", isActive);
 			dots[i].setAttribute("aria-current", isActive ? "step" : "false");
 			copies[i].classList.toggle("is-active", isActive);
 		}
-		// 步骤 04-05：由手绘示意切换到真实界面截图
-		if (appMockup) appMockup.classList.toggle("is-result", index >= 3);
 
-		// 更新 SVG 侧边栏高亮
-		const activeNavIndex = navByStep[index];
-		sidebarNavs.forEach((nav, i) => {
-			if (i === activeNavIndex) {
-				nav.setAttribute("fill", "#2a2a2a");
-				sidebarTexts[i].setAttribute("fill", "#ffffff");
-				sidebarTexts[i].setAttribute("font-weight", "500");
-			} else {
-				nav.setAttribute("fill", "transparent");
-				sidebarTexts[i].setAttribute("fill", "#8e9199");
-				sidebarTexts[i].setAttribute("font-weight", "400");
+		// 右侧 Mock View：隐藏所有 → 激活当前
+		for (const view of views) {
+			const viewStep = Number(view.dataset.step);
+			view.classList.toggle("is-active", viewStep === index);
+			// 重置动画（移除再添加 class），让每次切回都触发动画
+			if (viewStep === index) {
+				view.classList.remove("is-animating");
+				// 强制 reflow 让动画重置
+				void view.offsetWidth;
+				view.classList.add("is-animating");
 			}
-		});
+		}
+
+		// 侧边栏高亮切换
+		const activeNav = NAV_BY_STEP[index];
+		for (const item of sidebarItems) {
+			item.classList.toggle("am-nav-item--active", item.dataset.nav === activeNav);
+		}
+
+		// 窗口标题更新
+		if (windowTitle) windowTitle.textContent = TITLES_BY_STEP[index] ?? "星轨 Astravia";
 	}
 
-	// 点击步骤点：平滑滚动到对应位置
+	// 滚动进度 → step index
+	function progressToStep(progress: number): number {
+		return Math.min(stepCount - 1, Math.max(0, Math.floor(progress * stepCount)));
+	}
+
+	if (reduceMotion) {
+		// 无动画：直接在 IntersectionObserver 触发时显示第一个 step
+		const observer = new IntersectionObserver(
+			(entries) => {
+				for (const entry of entries) {
+					if (entry.isIntersecting) {
+						updateUI(0);
+						observer.disconnect();
+						return;
+					}
+				}
+			},
+			{ threshold: 0.1 },
+		);
+		observer.observe(section);
+		return;
+	}
+
+	// 滚动驱动（fallback：纯 JS）
+	let ticking = false;
+	const onScroll = () => {
+		if (ticking) return;
+		ticking = true;
+		requestAnimationFrame(() => {
+			const rect = section.getBoundingClientRect();
+			const viewport = window.innerHeight;
+			const progress = Math.min(1, Math.max(0, (viewport * 0.5 - rect.top) / Math.max(1, rect.height)));
+
+			// 进度填充条
+			fill.style.transform = `translateX(-50%) scaleY(${progress})`;
+
+			updateUI(progressToStep(progress));
+			ticking = false;
+		});
+	};
+
+	window.addEventListener("scroll", onScroll, { passive: true });
+	window.addEventListener("resize", onScroll);
+	onScroll();
+
+	// 点击步骤点：平滑滚动
 	for (const dot of dots) {
 		dot.addEventListener("click", () => {
 			const index = Number(dot.dataset.storyDot ?? 0);
 			const rect = section.getBoundingClientRect();
 			const target = window.scrollY + rect.top + (index / (stepCount - 1)) * rect.height - window.innerHeight * 0.5;
-			window.scrollTo({ top: Math.max(0, target), behavior: reduceMotion ? "auto" : "smooth" });
-			// 点击后立即更新 UI
+			window.scrollTo({ top: Math.max(0, target), behavior: "smooth" });
 			updateUI(index);
 		});
 	}

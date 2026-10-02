@@ -361,6 +361,9 @@ function initConstellation() {
 	const BASE = `https://dl.astravia.dev/app/v${VERSION}`;
 	const navDownload = document.querySelector<HTMLAnchorElement>(".nav__download");
 	const heroDownload = document.querySelector<HTMLAnchorElement>(".hero .btn--primary.btn--lg");
+	const dlPrimary = document.getElementById("dlPrimary") as HTMLAnchorElement;
+	const dlPrimaryText = document.getElementById("dlPrimaryText");
+	const dlPrimaryVersion = document.getElementById("dlPrimaryVersion");
 
 	let primaryHref: string;
 	let primaryLabel: string;

@@ -238,127 +238,218 @@
 						<figure class="story__window">
 							<div class="story__window-bar">
 								<span class="hero__window-dots" aria-hidden="true"><i></i><i></i><i></i></span>
-								<span class="story__window-title">星轨 Astravia · 会话工作区</span>
+								<span class="story__window-title" id="storyWindowTitle">星轨 Astravia · 会话工作区</span>
 							</div>
-							<!-- SVG Mockup: 应用界面 -->
+							<!-- 5 个 HTML Mock View，按 data-step 控制可见性 -->
 							<div class="story__app-mockup">
-								<svg aria-hidden="true" viewBox="0 0 556 470" fill="none" xmlns="http://www.w3.org/2000/svg" class="story__svg">
-									<!-- 背景网格 -->
-									<defs>
-										<pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-											<path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(255,255,255,0.03)" stroke-width="1"/>
-										</pattern>
-									</defs>
-									<rect width="556" height="470" fill="url(#grid)"/>
 
-									<!-- 窗口容器 -->
-									<rect x="40" y="20" width="476" height="430" rx="12" fill="#0c0c0f" stroke="#1e1e24" stroke-width="1"/>
-
-									<!-- 窗口标题栏 -->
-									<rect x="40" y="20" width="476" height="40" rx="12" fill="#101014"/>
-									<rect x="40" y="48" width="476" height="12" fill="#101014"/>
-									<circle cx="56" cy="40" r="4" fill="#2b2b33"/>
-									<circle cx="70" cy="40" r="4" fill="#2b2b33"/>
-									<circle cx="84" cy="40" r="4" fill="#2b2b33"/>
-									<text x="160" y="45" fill="#565964" font-size="11" font-family="IBM Plex Mono">星轨 Astravia · 会话工作区</text>
-
+								<!-- 通用：App 窗口骨架（侧边栏 + 顶栏 + 主内容壳） -->
+								<div class="am-skeleton">
 									<!-- 侧边栏 -->
-									<rect x="40" y="60" width="100" height="390" fill="#101014"/>
-									<text x="56" y="90" fill="#e9e9ec" font-size="12" font-weight="600" font-family="Hanken Grotesk">Astravia</text>
+									<aside class="am-sidebar">
+										<div class="am-sidebar-brand">
+											<div class="am-sidebar-logo"></div>
+											<span class="am-sidebar-name">星轨 Astravia</span>
+										</div>
+										<nav class="am-sidebar-nav">
+											<button class="am-nav-item am-nav-item--active" data-nav="chat" type="button"><span class="am-nav-icon am-nav-icon--chat"></span><span>对话</span></button>
+											<button class="am-nav-item" data-nav="automation" type="button"><span class="am-nav-icon am-nav-icon--auto"></span><span>自动化</span></button>
+											<button class="am-nav-item" data-nav="batch" type="button"><span class="am-nav-icon am-nav-icon--batch"></span><span>批量任务</span></button>
+											<button class="am-nav-item" data-nav="abilities" type="button"><span class="am-nav-icon am-nav-icon--abilities"></span><span>能力</span></button>
+											<button class="am-nav-item" data-nav="knowledge" type="button"><span class="am-nav-icon am-nav-icon--kb"></span><span>知识库</span></button>
+											<button class="am-nav-item" data-nav="settings" type="button"><span class="am-nav-icon am-nav-icon--settings"></span><span>设置</span></button>
+										</nav>
+										<div class="am-sidebar-footer"></div>
+									</aside>
+									<!-- 主内容区（5 个 view 叠放，按 step 切换） -->
+									<main class="am-main">
 
-									<!-- 侧边栏导航项 -->
-									<rect class="story__sidebar-nav" x="48" y="108" width="84" height="28" rx="6" fill="#1e1e24"/>
-									<text class="story__sidebar-text" x="60" y="127" fill="#ffffff" font-size="11" font-weight="500" font-family="Hanken Grotesk">新会话</text>
+										<!-- Step 01：新会话 · 输入中 -->
+										<section class="am-view am-view--chat-empty" data-step="0">
+											<div class="am-page-header">
+												<span class="am-page-title">新会话</span>
+											</div>
+											<div class="am-chat-empty-state">
+												<div class="am-chat-empty-icon"></div>
+												<p class="am-chat-empty-title">想做点什么？</p>
+												<div class="am-chat-quick-cards">
+													<div class="am-quick-card"><span class="am-quick-icon">📄</span>写文档或报告</div>
+													<div class="am-quick-card"><span class="am-quick-icon">💻</span>代码开发与调试</div>
+													<div class="am-quick-card"><span class="am-quick-icon">📊</span>数据分析查询</div>
+												</div>
+											</div>
+											<!-- 输入栏 + 打字光标 -->
+											<div class="am-inputbar">
+												<div class="am-inputbar-inner">
+													<span class="am-inputbar-text" id="amTypingText">帮我写一个 Python 脚本读取 CSV 文件并统计各列数值分布</span>
+													<span class="am-inputbar-cursor"></span>
+												</div>
+												<button class="am-send-btn" type="button">
+													<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+												</button>
+											</div>
+										</section>
 
-									<rect class="story__sidebar-nav" x="48" y="144" width="84" height="24" rx="4" fill="transparent"/>
-									<text class="story__sidebar-text" x="60" y="160" fill="#8e9199" font-size="11" font-family="Hanken Grotesk">自动化</text>
+										<!-- Step 02：AI 思考中 -->
+										<section class="am-view am-view--thinking" data-step="1">
+											<div class="am-page-header"><span class="am-page-title">新会话</span></div>
+											<div class="am-chat-flow">
+												<!-- 用户消息 -->
+												<div class="am-msg am-msg--user">
+													<div class="am-msg-avatar am-avatar--user">我</div>
+													<div class="am-msg-bubble am-msg-bubble--user">帮我写一个 Python 脚本读取 CSV 文件并统计各列数值分布</div>
+												</div>
+												<!-- AI 思考中 -->
+												<div class="am-msg am-msg--assistant am-msg--thinking">
+													<div class="am-msg-avatar am-avatar--ai">AI</div>
+													<div class="am-msg-bubble am-msg-bubble--ai">
+														<div class="am-thinking-dots">
+															<span></span><span></span><span></span>
+														</div>
+														<div class="am-thinking-label">思考中 · 正在检索工具与规划步骤</div>
+													</div>
+												</div>
+											</div>
+											<div class="am-inputbar">
+												<div class="am-inputbar-inner"><span class="am-inputbar-placeholder">向星轨提问...</span></div>
+												<button class="am-send-btn" type="button" disabled>
+													<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+												</button>
+											</div>
+										</section>
 
-									<rect class="story__sidebar-nav" x="48" y="176" width="84" height="24" rx="4" fill="transparent"/>
-									<text class="story__sidebar-text" x="60" y="192" fill="#8e9199" font-size="11" font-family="Hanken Grotesk">批量任务</text>
+										<!-- Step 03：工具执行 -->
+										<section class="am-view am-view--tooling" data-step="2">
+											<div class="am-page-header"><span class="am-page-title">新会话</span></div>
+											<div class="am-chat-flow">
+												<div class="am-msg am-msg--user">
+													<div class="am-msg-avatar am-avatar--user">我</div>
+													<div class="am-msg-bubble am-msg-bubble--user">帮我写一个 Python 脚本读取 CSV 文件并统计各列数值分布</div>
+												</div>
+												<!-- 工具调用链 -->
+												<div class="am-msg am-msg--assistant">
+													<div class="am-msg-avatar am-avatar--ai">AI</div>
+													<div class="am-msg-bubble am-msg-bubble--tools">
+														<!-- Tool card 1 -->
+														<div class="am-tool-card am-tool-card--fade" data-tool="0">
+															<div class="am-tool-icon am-tool-icon--write">✎</div>
+															<div class="am-tool-body">
+																<div class="am-tool-name">write_file</div>
+																<div class="am-tool-meta">script.py · 2.1KB</div>
+															</div>
+															<div class="am-tool-status am-tool-status--ok">✓</div>
+														</div>
+														<!-- Tool card 2 -->
+														<div class="am-tool-card am-tool-card--fade" data-tool="1">
+															<div class="am-tool-icon am-tool-icon--run">▸</div>
+															<div class="am-tool-body">
+																<div class="am-tool-name">run_command</div>
+																<div class="am-tool-meta">python script.py · 1.8s</div>
+															</div>
+															<div class="am-tool-status am-tool-status--ok">✓</div>
+														</div>
+														<!-- Tool card 3 -->
+														<div class="am-tool-card am-tool-card--fade" data-tool="2">
+															<div class="am-tool-icon am-tool-icon--read">≡</div>
+															<div class="am-tool-body">
+																<div class="am-tool-name">read_file</div>
+																<div class="am-tool-meta">output.json · 已读取</div>
+															</div>
+															<div class="am-tool-status am-tool-status--ok">✓</div>
+														</div>
+													</div>
+												</div>
+											</div>
+											<div class="am-inputbar">
+												<div class="am-inputbar-inner"><span class="am-inputbar-placeholder">向星轨提问...</span></div>
+												<button class="am-send-btn" type="button" disabled>
+													<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+												</button>
+											</div>
+										</section>
 
-									<rect class="story__sidebar-nav" x="48" y="208" width="84" height="24" rx="4" fill="transparent"/>
-									<text class="story__sidebar-text" x="60" y="224" fill="#8e9199" font-size="11" font-family="Hanken Grotesk">知识库</text>
+										<!-- Step 04：结果展示 -->
+										<section class="am-view am-view--result" data-step="3">
+											<div class="am-page-header"><span class="am-page-title">新会话</span></div>
+											<div class="am-chat-flow">
+												<div class="am-msg am-msg--user">
+													<div class="am-msg-avatar am-avatar--user">我</div>
+													<div class="am-msg-bubble am-msg-bubble--user">帮我写一个 Python 脚本读取 CSV 文件并统计各列数值分布</div>
+												</div>
+												<div class="am-msg am-msg--assistant">
+													<div class="am-msg-avatar am-avatar--ai">AI</div>
+													<div class="am-msg-bubble am-msg-bubble--ai am-msg-bubble--markdown">
+														<p class="am-md am-md--line">已创建 <code class="am-code-inline">script.py</code>，包含以下功能：</p>
+														<pre class="am-code-block"><code><span class="am-kw">import</span> <span class="am-id">pandas</span> <span class="am-kw">as</span> <span class="am-id">pd</span>
+<span class="am-kw">import</span> <span class="am-id">json</span>
 
-									<!-- 主内容区 -->
-									<rect x="140" y="60" width="376" height="390" fill="#08080a"/>
+<span class="am-kw">def</span> <span class="am-fn">analyze</span>(csv_path):
+    df = pd.<span class="am-fn">read_csv</span>(csv_path)
+    summary = {}
+    <span class="am-kw">for</span> col <span class="am-kw">in</span> df.<span class="am-id">columns</span>:
+        <span class="am-kw">if</span> pd.api.types.<span class="am-fn">is_numeric_dtype</span>(df[col]):
+            summary[col] = {
+                <span class="am-str">"mean"</span>: df[col].<span class="am-fn">mean</span>(),
+                <span class="am-str">"std"</span>: df[col].<span class="am-fn">std</span>(),
+                <span class="am-str">"min"</span>: df[col].<span class="am-fn">min</span>(),
+                <span class="am-str">"max"</span>: df[col].<span class="am-fn">max</span>(),
+            }
+    <span class="am-kw">return</span> summary</code></pre>
+													</div>
+												</div>
+											</div>
+											<div class="am-inputbar">
+												<div class="am-inputbar-inner"><span class="am-inputbar-placeholder">继续追问或调整...</span></div>
+												<button class="am-send-btn" type="button">
+													<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+												</button>
+											</div>
+										</section>
 
-									<!-- 消息区域 -->
-									<!-- 用户消息 -->
-									<g class="story__svg-msg-user" data-step="0">
-										<rect x="160" y="84" width="240" height="36" rx="10" fill="#1e1e24"/>
-										<text x="176" y="107" fill="#e9e9ec" font-size="11" font-family="Hanken Grotesk">帮我写一个 Python 脚本读取 CSV</text>
-									</g>
+										<!-- Step 05：能力面板 -->
+										<section class="am-view am-view--abilities" data-step="4">
+											<div class="am-page-header"><span class="am-page-title">能力</span><span class="am-page-sub">给 Agent 加点本事</span></div>
+											<div class="am-abilities-grid">
+												<div class="am-ability-card am-ability-card--fade" data-card="0">
+													<div class="am-ability-icon">⚡</div>
+													<div class="am-ability-name">代码技能</div>
+													<div class="am-ability-desc">读写文件 · 执行命令 · 调试构建</div>
+													<div class="am-ability-badge">已启用</div>
+												</div>
+												<div class="am-ability-card am-ability-card--fade" data-card="1">
+													<div class="am-ability-icon">🔌</div>
+													<div class="am-ability-name">MCP 连接器</div>
+													<div class="am-ability-desc">为 AI 接入外部工具与服务</div>
+													<div class="am-ability-badge">3 已连接</div>
+												</div>
+												<div class="am-ability-card am-ability-card--fade" data-card="2">
+													<div class="am-ability-icon">📚</div>
+													<div class="am-ability-name">知识库</div>
+													<div class="am-ability-desc">本地文档加工成可检索索引</div>
+													<div class="am-ability-badge">2 个知识集</div>
+												</div>
+												<div class="am-ability-card am-ability-card--fade" data-card="3">
+													<div class="am-ability-icon">🎯</div>
+													<div class="am-ability-name">场景模板</div>
+													<div class="am-ability-desc">一键启动特定工作流</div>
+													<div class="am-ability-badge">5 个场景</div>
+												</div>
+												<div class="am-ability-card am-ability-card--fade" data-card="4">
+													<div class="am-ability-icon">🔁</div>
+													<div class="am-ability-name">自动化</div>
+													<div class="am-ability-desc">Cron 定时任务在托盘后台运行</div>
+													<div class="am-ability-badge">已启用</div>
+												</div>
+												<div class="am-ability-card am-ability-card--fade" data-card="5">
+													<div class="am-ability-icon">📦</div>
+													<div class="am-ability-name">批量任务</div>
+													<div class="am-ability-desc">一次配置，批量处理多个目录</div>
+													<div class="am-ability-badge">就绪</div>
+												</div>
+											</div>
+										</section>
 
-									<!-- AI 思考中 -->
-									<g class="story__svg-msg-assistant" data-step="1" style="opacity:0">
-										<rect x="160" y="132" width="200" height="44" rx="10" fill="#101014" stroke="#1e1e24" stroke-width="1"/>
-										<circle cx="176" cy="148" r="3" fill="#ffffff">
-											<animate attributeName="opacity" values="1;0.3;1" dur="1.2s" repeatCount="indefinite"/>
-										</circle>
-										<circle cx="188" cy="148" r="3" fill="#ffffff">
-											<animate attributeName="opacity" values="0.3;1;0.3" dur="1.2s" repeatCount="indefinite" begin="0.15s"/>
-										</circle>
-										<circle cx="200" cy="148" r="3" fill="#ffffff">
-											<animate attributeName="opacity" values="1;0.3;1" dur="1.2s" repeatCount="indefinite" begin="0.3s"/>
-										</circle>
-										<text x="176" y="166" fill="#565964" font-size="9" font-family="IBM Plex Mono">思考中...</text>
-									</g>
-
-									<!-- 工具调用卡片 -->
-									<g class="story__svg-msg-tool" data-step="2" style="opacity:0">
-										<rect x="160" y="188" width="260" height="44" rx="8" fill="#0c0c0f" stroke="#1e1e24" stroke-width="1"/>
-										<!-- 工具图标 -->
-										<rect x="172" y="200" width="14" height="14" rx="3" fill="#a6a6a6"/>
-										<!-- 工具名称 -->
-										<text x="194" y="210" fill="#e9e9ec" font-size="10" font-weight="500" font-family="IBM Plex Mono">write_file</text>
-										<text x="194" y="222" fill="#565964" font-size="8" font-family="IBM Plex Mono">script.py · 2.1s</text>
-										<!-- 成功标记 -->
-										<circle cx="400" cy="210" r="8" fill="#2b2b33"/>
-										<text x="396" y="214" fill="#e9e9ec" font-size="10" font-family="Hanken Grotesk">✓</text>
-									</g>
-
-									<!-- 完整结果 -->
-									<g class="story__svg-msg-result" data-step="3" style="opacity:0">
-										<rect x="160" y="244" width="280" height="56" rx="10" fill="#101014" stroke="#1e1e24" stroke-width="1"/>
-										<text x="176" y="264" fill="#e9e9ec" font-size="11" font-family="Hanken Grotesk">已创建 script.py，包含以下功能：</text>
-										<rect x="172" y="272" width="256" height="18" rx="3" fill="#0b0b0e"/>
-										<text x="180" y="285" fill="#c9c9c9" font-size="9" font-family="IBM Plex Mono">import pandas as pd</text>
-									</g>
-
-									<!-- 输入栏 -->
-									<g class="story__svg-inputbar">
-										<rect x="160" y="400" width="340" height="36" rx="18" fill="#101014" stroke="#1e1e24" stroke-width="1"/>
-										<text x="180" y="423" fill="#565964" font-size="11" font-family="Hanken Grotesk">向 Astravia 提问...</text>
-										<!-- 发送按钮 -->
-										<circle cx="480" cy="418" r="12" fill="#ffffff"/>
-										<path d="M476 414l8 4-8 4" stroke="#08080a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-									</g>
-
-									<!-- 步骤高亮覆盖层 -->
-									<g class="story__svg-highlight" data-step="0">
-										<rect x="154" y="394" width="352" height="48" rx="22" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-dasharray="4 4" opacity="0.5">
-											<animate attributeName="opacity" values="0.5;0.15;0.5" dur="2s" repeatCount="indefinite"/>
-										</rect>
-									</g>
-									<g class="story__svg-highlight" data-step="1" style="opacity:0">
-										<rect x="154" y="126" width="212" height="56" rx="14" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-dasharray="4 4" opacity="0.5"/>
-									</g>
-									<g class="story__svg-highlight" data-step="2" style="opacity:0">
-										<rect x="154" y="182" width="272" height="56" rx="12" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-dasharray="4 4" opacity="0.5"/>
-									</g>
-									<g class="story__svg-highlight" data-step="3" style="opacity:0">
-										<rect x="154" y="238" width="292" height="68" rx="14" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-dasharray="4 4" opacity="0.5"/>
-									</g>
-									<g class="story__svg-highlight" data-step="4" style="opacity:0">
-										<rect x="154" y="394" width="352" height="48" rx="22" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-dasharray="4 4" opacity="0.5">
-											<animate attributeName="opacity" values="0.5;0.15;0.5" dur="2s" repeatCount="indefinite"/>
-										</rect>
-									</g>
-								</svg>
-
-								<!-- 步骤 04-05：交叉淡入真实界面（与深色手绘示意同色系，切换无闪白） -->
-								<div class="story__shot">
-									<img class="story__shot-img" src="/app/app-dark.webp" alt="星轨 Astravia 会话工作区真实界面：消息流、工具调用与结果同屏" width="1680" height="1051" loading="lazy" decoding="async" />
+									</main>
 								</div>
 							</div>
 						</figure>
