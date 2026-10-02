@@ -851,7 +851,7 @@ code {
 .am-window { margin: 0; display: block; }
 .am-win-bar {
 	display: flex; align-items: center; gap: 12px;
-	padding: 10px 14px; background: var(--mock-elev); border-bottom: 1px solid var(--accent);
+	padding: 10px 14px; background: var(--mock-elev); border-bottom: 1px solid var(--mock-line);
 }
 .am-win-dots { display: flex; gap: 6px; }
 .am-win-dots i { width: 10px; height: 10px; border-radius: 50%; display: block; }
@@ -885,7 +885,7 @@ code {
 	transition: background 0.15s, color 0.15s;
 }
 .am-sb-item:hover { background: var(--mock-line-soft); color: var(--mock-fg); }
-.am-sb-item.is-active { background: var(--mock-line-soft); color: #ffffff; }
+.am-sb-item.is-active { background: var(--mock-accent-soft); color: var(--accent); }
 .am-sb-ico { font-size: 13px; opacity: 0.85; }
 
 /* Main content */
