@@ -1,4 +1,4 @@
-import { createContext, useContext, useId, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useSetAtom } from "jotai";
 import { useTranslation } from "react-i18next";
@@ -21,15 +21,46 @@ interface AnnotationActions {
 const AnnotationContext = createContext<AnnotationActions | null>(null);
 export const useAnnotations = () => useContext(AnnotationContext);
 
-/** Session-scoped connector; the panel survives virtualized message rows and closes on session change. */
+/**
+ * Annotations of `session` for the messages in `children`. The panel and its
+ * state belong to one session and live beside the children, keyed by the
+ * session: switching sessions resets them without remounting the message list.
+ * Without a session the children see no annotation actions.
+ */
 export function AnnotationScope({
 	session,
 	sourceEntryIds,
 	children,
 }: {
-	session: ActiveSession;
+	session: ActiveSession | null;
 	sourceEntryIds: readonly string[];
 	children: ReactNode;
+}) {
+	const [actions, setActions] = useState<AnnotationActions | null>(null);
+	return (
+		<AnnotationContext.Provider value={actions}>
+			{children}
+			{session ? (
+				<AnnotationPanel
+					key={session.sessionPath}
+					session={session}
+					sourceEntryIds={sourceEntryIds}
+					onActions={setActions}
+				/>
+			) : null}
+		</AnnotationContext.Provider>
+	);
+}
+
+/** One session's annotation panel; it publishes stable actions for the message list. */
+function AnnotationPanel({
+	session,
+	sourceEntryIds,
+	onActions,
+}: {
+	session: ActiveSession;
+	sourceEntryIds: readonly string[];
+	onActions: (actions: AnnotationActions | null) => void;
 }) {
 	const model = useAnnotationModel(session);
 	const { t } = useTranslation("chat");
@@ -59,8 +90,8 @@ export function AnnotationScope({
 		active: model.open,
 		bindings: [{ key: "escape", run: () => model.setOpen(false) }],
 	});
-	const actions: AnnotationActions = {
-		notes: model.notes,
+	const commands = useRef<Omit<AnnotationActions, "notes">>({ ask: () => {}, show: () => {}, history });
+	commands.current = {
 		ask: (entryId, quote, origin) => {
 			if (model.note || model.target?.entryId !== entryId || model.target?.quote !== quote)
 				model.setTarget({ id: crypto.randomUUID(), entryId, quote });
@@ -75,13 +106,21 @@ export function AnnotationScope({
 		},
 		history,
 	};
+	// Stable entry points: message rows re-render when the notes change, not on every panel render.
+	const ask = useCallback<AnnotationActions["ask"]>((...args) => commands.current.ask(...args), []);
+	const show = useCallback<AnnotationActions["show"]>((...args) => commands.current.show(...args), []);
+	const openHistory = useCallback<AnnotationActions["history"]>((...args) => commands.current.history(...args), []);
+	const actions = useMemo<AnnotationActions>(
+		() => ({ notes: model.notes, ask, show, history: openHistory }),
+		[model.notes, ask, show, openHistory],
+	);
+	useLayoutEffect(() => onActions(actions), [actions, onActions]);
+	useLayoutEffect(() => () => onActions(null), [onActions]);
 	const turns = model.note?.turns ?? [];
 	const last = turns.at(-1);
 	const sourceAvailable = model.target && sourceEntryIds.includes(model.target.entryId);
 	return (
-		<AnnotationContext.Provider value={actions}>
-			{children}
-			<Popover open={model.open} onOpenChange={model.setOpen}>
+		<Popover open={model.open} onOpenChange={model.setOpen}>
 				<PopoverAnchor asChild>
 					<span
 						aria-hidden="true"
@@ -228,6 +267,5 @@ export function AnnotationScope({
 					)}
 				</PopoverContent>
 			</Popover>
-		</AnnotationContext.Provider>
 	);
 }

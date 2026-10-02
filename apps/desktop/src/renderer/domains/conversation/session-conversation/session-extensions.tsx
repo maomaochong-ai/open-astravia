@@ -17,7 +17,9 @@ import {
 
 /**
  * Saved annotations of the shown session. Its panel survives virtualized rows,
- * so it wraps the viewport; it is inert while another session is shown.
+ * so it wraps the viewport; it is inert while another session is shown. The
+ * wrapper is the same element either way: changing which session is active
+ * must never remount the message list.
  */
 export function SessionAnnotations({ children }: { readonly children: ReactNode }) {
 	const feed = useConversationFeed("SessionAnnotations");
@@ -27,9 +29,8 @@ export function SessionAnnotations({ children }: { readonly children: ReactNode 
 		() => items.flatMap((message) => (message.entryId ? [message.entryId] : [])),
 		[items],
 	);
-	if (!session || session.sessionPath !== feed.key) return <>{children}</>;
 	return (
-		<AnnotationScope key={session.sessionPath} session={session} sourceEntryIds={sourceEntryIds}>
+		<AnnotationScope session={session?.sessionPath === feed.key ? session : null} sourceEntryIds={sourceEntryIds}>
 			{children}
 		</AnnotationScope>
 	);
