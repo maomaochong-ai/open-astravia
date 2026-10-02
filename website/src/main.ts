@@ -356,27 +356,35 @@ function initConstellation() {
 		}
 	});
 
-	// 下载链接
-	const dlPrimary = document.getElementById("dlPrimary") as HTMLAnchorElement;
-	const dlPrimaryText = document.getElementById("dlPrimaryText");
-	const dlPrimaryVersion = document.getElementById("dlPrimaryVersion");
+	// 下载链接（4 处同步更新：nav、hero CTA、下载区 primary、版本标签）
+	const VERSION = "0.5.60";
+	const BASE = `https://dl.astravia.dev/app/v${VERSION}`;
+	const navDownload = document.querySelector<HTMLAnchorElement>(".nav__download");
+	const heroDownload = document.querySelector<HTMLAnchorElement>(".hero .btn--primary.btn--lg");
+
+	let primaryHref: string;
+	let primaryLabel: string;
 	if (isMac && /ARM|arm64|aarch64/i.test(ua)) {
-		dlPrimary.href = "https://dl.astravia.dev/app/v0.5.60/Astravia-0.5.60-arm64.dmg";
-		dlPrimaryText!.textContent = "MAC ARM64 (APPLE SILICON)";
-		dlPrimaryVersion!.textContent = "v0.5.60 · DMG";
+		primaryHref = `${BASE}/Astravia-${VERSION}-arm64.dmg`;
+		primaryLabel = "MAC ARM64 (APPLE SILICON)";
 	} else if (isMac) {
-		dlPrimary.href = "https://dl.astravia.dev/app/v0.5.60/Astravia-0.5.60.dmg";
-		dlPrimaryText!.textContent = "MAC X64 (INTEL)";
-		dlPrimaryVersion!.textContent = "v0.5.60 · DMG";
+		primaryHref = `${BASE}/Astravia-${VERSION}.dmg`;
+		primaryLabel = "MAC X64 (INTEL)";
 	} else if (isWin) {
-		dlPrimary.href = "https://dl.astravia.dev/app/v0.5.60/Astravia-0.5.60-win-x64.exe";
-		dlPrimaryText!.textContent = "WINDOWS X64";
-		dlPrimaryVersion!.textContent = "v0.5.60 · EXE";
+		primaryHref = `${BASE}/Astravia-${VERSION}-win-x64.exe`;
+		primaryLabel = "WINDOWS X64";
 	} else {
-		dlPrimary.href = "https://dl.astravia.dev/app/v0.5.60/Astravia-0.5.60.AppImage";
-		dlPrimaryText!.textContent = "LINUX X64";
-		dlPrimaryVersion!.textContent = "v0.5.60 · AppImage";
+		primaryHref = `${BASE}/Astravia-${VERSION}.AppImage`;
+		primaryLabel = "LINUX X64";
 	}
+
+	dlPrimary.href = primaryHref;
+	dlPrimaryText!.textContent = primaryLabel;
+	dlPrimaryVersion!.textContent = `v${VERSION}`;
+
+	// 导航栏 + Hero CTA 同样跟随 OS 切换
+	if (navDownload) navDownload.href = primaryHref;
+	if (heroDownload) heroDownload.href = primaryHref;
 
 	// 其他版本展开/收起 + 实时跟随定位
 	if (toggle && others) {
