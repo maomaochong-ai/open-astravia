@@ -749,6 +749,7 @@ code {
 .story {
 	position: relative;
 	overflow: hidden;
+	background: var(--tint);
 }
 .story__bg {
 	position: absolute;
