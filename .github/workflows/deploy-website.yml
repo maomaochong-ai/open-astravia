@@ -66,6 +66,26 @@ jobs:
           npx wrangler pages deploy website/dist \
             --project-name=astravia-website
 
+      - name: Bind custom domains via Cloudflare API
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          PROJECT="astravia-website"
+          API="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PROJECT/domains"
+
+          for domain in "www.astravia.dev" "astravia.dev"; do
+            echo ">>> Binding $domain ..."
+            RESP=$(curl -sS -X POST "$API" \
+              -H "Content-Type: application/json" \
+              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+              -d "{\"name\": \"$domain\"}")
+            echo "$RESP" | python3 -c "import sys,json; d=json.load(sys.stdin); print('✅ Added!' if d.get('success') else f'⚠️  {d.get(\"errors\",[{\"message\":\"unknown\"}])[0].get(\"message\",\"\")}')"
+            # 不让 "已存在" 阻塞 workflow
+            true
+          done
+
       - name: Verify website responds
         shell: bash
         run: |
