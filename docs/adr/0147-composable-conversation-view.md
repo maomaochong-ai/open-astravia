@@ -2,7 +2,7 @@
 
 ## 状态
 
-已接受，实施中（承接 ADR-0146：数据正确性由 feed reducer 保证，本 ADR 处理视图如何复用与组合）。
+已接受，已实施（承接 ADR-0146：数据正确性由 feed reducer 保证，本 ADR 处理视图如何复用与组合）。
 
 ## 背景
 
@@ -108,3 +108,16 @@ theme-ui 已有一批 Radix 风格的无数据原语（`MessageFeed.Root / Virtu
 - 新场景（例如侧栏实时预览子 agent）只需构造一个 feed 并选择要放的部件，不改通用组件。
 - 功能的有无由组合决定，能力的有无由数据源决定，两者都不再经过 props 或全局状态。
 - 迁移期间新旧两种用法并存；兼容外壳在第 4 步结束时删除。
+
+## 实施记录
+
+- **数据层**：`ConversationFeed`（消息、流式与预测状态为 atom，能力集中在 `capabilities`）；`useSessionConversationFeed` 服务当前会话，`useSnapshotConversationFeed` 服务调用方已持有的消息（查看器、工作流子会话、Team）。
+- **组合层**：`Conversation.*` 排布、`UserMessage.*` / `AgentMessage.*` / `EventMessage.*` 消息部件；未声明模板的类型用只读默认模板。行模板按结构签名稳定，行组件只在本行消息变化时重渲。
+- **扩展**：`useConversationExtension` 注册 `decorateRow`、`renderBlock`、`value`；批注标记、分叉来源提示、子 agent 卡片已是扩展。原 `MessageRendering` / `AssistantRendering` / `ContentRendering` 三个隐式上下文已删除：消息结构由模板决定，预测状态由数据源提供，内容块替换为 `renderBlock`。
+- **原语层**：Team 成员回复卡、委派提示、用户消息操作栏与分支切换移入 theme-ui。
+- **使用方**：普通会话（`SessionConversation`）、查看器与工作流面板（`TranscriptConversation`）、Team（`TeamConversation`）均为显式组合；`MessageList` 兼容外壳已删除。
+- **约束**：`check:guards` 禁止组合层读取全局 store 或 `*FnRef`，禁止 `components/message-list` 与 `components/blocks` 读取当前活动会话或 `*FnRef`；会话专属部件放在 `session-conversation/`。
+- **与原计划的差异**：
+  - 导出（`ExportMessageList`）在会话视图之外渲染，仍用按 props 组装的 `MessageItem`，内部复用同一套 `AgentMessage` 部件。
+  - 查看器、工作流面板与 Team 不挂子 agent 卡片扩展：此前这些视图只有在恰好展示当前活动会话时才显示卡片。
+  - 普通会话命令（`useUserMessageActions`）内部仍读写会话全局状态，只是改由数据源能力暴露给部件；把它们改为纯粹依赖数据源是后续工作。
