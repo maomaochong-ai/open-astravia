@@ -66,6 +66,18 @@ jobs:
           npx wrangler pages deploy website/dist \
             --project-name=astravia-website
 
+      - name: Ensure custom domains are bound
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          for domain in "astravia.dev" "www.astravia.dev"; do
+            echo "Binding $domain to astravia-website..."
+            npx wrangler pages project domain create astravia-website "$domain" \
+              || echo "Domain $domain may already exist or needs DNS setup, continuing..."
+          done
+
       - name: Verify website responds
         shell: bash
         run: |
