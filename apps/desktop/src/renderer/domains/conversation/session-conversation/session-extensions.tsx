@@ -4,8 +4,8 @@ import { useAtomValue } from "jotai";
 import { type ReactNode, useMemo } from "react";
 import { AnnotationMessageMarker } from "../components/annotations/AnnotationMenus";
 import { AnnotationScope } from "../components/annotations/AnnotationScope";
-import { ForkOriginBanner, resolveForkOriginPlacement } from "../components/message-list/ForkOriginBanner";
-import { MessageListFooter } from "../components/message-list/MessageListFooter";
+import { ForkOriginBanner, resolveForkOriginPlacement } from "./ForkOriginBanner";
+import { MessageListFooter } from "./MessageListFooter";
 import { SessionSelection } from "../components/message-list/SessionSelection";
 import {
 	type ConversationRowDecoratorProps,

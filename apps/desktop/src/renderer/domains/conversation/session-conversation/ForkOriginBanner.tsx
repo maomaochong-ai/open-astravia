@@ -10,7 +10,7 @@ import { getDefaultStore, useAtomValue } from "jotai";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import type { ConversationUserMessageViewModel } from "@shared/conversation";
-import type { ChatConversationItem } from "./types";
+import type { ChatConversationItem } from "../components/message-list/types";
 
 interface ForkOriginBannerProps {
 	/** Source user message text for preview (the forked bubble). */

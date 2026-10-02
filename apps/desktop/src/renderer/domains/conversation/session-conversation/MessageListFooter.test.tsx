@@ -32,8 +32,8 @@ vi.mock("@vetta-org/theme-ui/chat", async (importOriginal) => ({
 		Waiting: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 	},
 }));
-vi.mock("../../../plugins/components/PluginTurnCardHost", () => ({ PluginTurnCardHost: () => null }));
-vi.mock("./AssistantMessage", () => ({ StreamingIndicator: () => null }));
+vi.mock("../../plugins/components/PluginTurnCardHost", () => ({ PluginTurnCardHost: () => null }));
+vi.mock("../components/message-list/AssistantMessage", () => ({ StreamingIndicator: () => null }));
 vi.mock("./WorkflowFooterItems", () => ({ WorkflowFooterItems: () => null }));
 
 import { retryProgressAtom } from "@shared/store/atoms";

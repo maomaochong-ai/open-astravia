@@ -3,9 +3,9 @@ import { MessageListFooter as MessageListFooterPrimitive } from "@vetta-org/them
 import { useAtomValue } from "jotai";
 import { memo } from "react";
 import { useTranslation } from "react-i18next";
-import { PluginTurnCardHost } from "../../../plugins/components/PluginTurnCardHost";
-import { classifyChatError } from "../../services/classifyChatError";
-import { StreamingIndicator } from "./AssistantMessage";
+import { PluginTurnCardHost } from "../../plugins/components/PluginTurnCardHost";
+import { classifyChatError } from "../services/classifyChatError";
+import { StreamingIndicator } from "../components/message-list/AssistantMessage";
 import { WorkflowFooterItems } from "./WorkflowFooterItems";
 
 export const MessageListFooter = memo(function MessageListFooter({

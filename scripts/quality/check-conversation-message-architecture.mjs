@@ -32,6 +32,19 @@ export function findConversationMessageArchitectureViolations(files) {
 			file.path.startsWith("apps/desktop/src/renderer/domains/conversation/conversation-view/") &&
 			!isTest &&
 			!/\.fixture\.[cm]?[jt]sx?$/u.test(file.path);
+		const isSharedMessageRendering =
+			/^apps\/desktop\/src\/renderer\/domains\/conversation\/components\/(?:message-list|blocks)\//u.test(
+				file.path,
+			) && !isTest;
+		if (isSharedMessageRendering) {
+			for (const [index, line] of file.text.split(/\r?\n/u).entries()) {
+				if (/\bactiveSessionAtom\b|\b\w+FnRef\b/u.test(line)) {
+					violations.push(
+						`${file.path}:${index + 1}: shared message rendering serves every feed; session-only parts belong in session-conversation (ADR-0147)`,
+					);
+				}
+			}
+		}
 		if (isComposableView) {
 			for (const [index, line] of file.text.split(/\r?\n/u).entries()) {
 				const readsGlobalStore = /^import\s+(?!type\b)[^;]*from\s+["']@shared\/store\//u.test(line);

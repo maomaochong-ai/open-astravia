@@ -113,4 +113,24 @@ describe("Conversation message architecture guard", () => {
 			"apps/desktop/src/renderer/domains/conversation/connectors/team/TeamChatView.tsx: Team connector must compose the shared conversation recipe",
 		]);
 	});
+
+	it("keeps the active session out of shared message rendering", () => {
+		expect(
+			findConversationMessageArchitectureViolations([
+				{
+					path: "apps/desktop/src/renderer/domains/conversation/components/message-list/Banner.tsx",
+					text: ["const session = useAtomValue(activeSessionAtom);", 'openSessionFnRef.current?.("/a");'].join(
+						"\n",
+					),
+				},
+				{
+					path: "apps/desktop/src/renderer/domains/conversation/session-conversation/Banner.tsx",
+					text: "const session = useAtomValue(activeSessionAtom);",
+				},
+			]),
+		).toEqual([
+			"apps/desktop/src/renderer/domains/conversation/components/message-list/Banner.tsx:1: shared message rendering serves every feed; session-only parts belong in session-conversation (ADR-0147)",
+			"apps/desktop/src/renderer/domains/conversation/components/message-list/Banner.tsx:2: shared message rendering serves every feed; session-only parts belong in session-conversation (ADR-0147)",
+		]);
+	});
 });

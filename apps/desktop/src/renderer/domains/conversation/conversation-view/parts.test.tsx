@@ -125,11 +125,6 @@ vi.mock("../hooks/useMessageSelectionContextMenu", () => ({
 	}),
 }));
 
-vi.mock("../components/SuggestionBubbles", () => ({ SuggestionBubbles: () => null }));
-vi.mock("../components/message-list/ForkOriginBanner", () => ({
-	ForkOriginBanner: () => null,
-	resolveForkOriginPlacement: () => null,
-}));
 vi.mock("../components/message-list/MessageItem", () => ({
 	ExportMessageList: () => null,
 	MessageItem: (props: { message: { id: string }; pendingLabel?: string }) => {
@@ -142,7 +137,6 @@ vi.mock("../components/message-list/MessageItem", () => ({
 	},
 	ModelSwitchBoundary: ({ from, to }: { from: string; to: string }) => <div>{`${from} → ${to}`}</div>,
 }));
-vi.mock("../components/message-list/MessageListFooter", () => ({ MessageListFooter: () => null }));
 vi.mock("../components/message-list/MessageTimeline", () => ({
 	MessageTimeline: ({ onNavigate }: { onNavigate: (index: number) => void }) => (
 		<button type="button" onClick={() => onNavigate(3)}>
