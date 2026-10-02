@@ -67,10 +67,12 @@ jobs:
           echo "prefix=${PREFIX}" >> "${GITHUB_OUTPUT}"
           echo "Resolved: tag=${TAG} version=${VERSION} prefix=${PREFIX}"
 
-      - name: Set up rclone
-        uses: rclone/rclone@latest
-        with:
-          version: v1.69.1
+      - name: Install rclone
+        shell: bash
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq rclone
+          rclone version
 
       - name: Configure R2 remote
         shell: bash
