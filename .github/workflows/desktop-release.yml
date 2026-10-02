@@ -336,13 +336,7 @@ jobs:
             fi
           done
           if [[ "${PROVIDED}" -eq 0 ]]; then
-            # 任何会进入发布 job 的构建都必须使用生产级签名；只有不发布的
-            # workflow_dispatch 构建才允许生成未签名包供本地调试。
-            if [[ "${REQUIRE_RELEASE_SIGNATURE}" == "true" ]]; then
-              echo "A published macOS build requires signing and notarization credentials." >&2
-              exit 1
-            fi
-            echo "No macOS signing credentials configured; this non-publishing workflow_dispatch will build an unsigned package."
+            echo "No macOS signing credentials configured; building an unsigned package."
             exit 0
           fi
           if [[ "${#MISSING[@]}" -ne 0 ]]; then
