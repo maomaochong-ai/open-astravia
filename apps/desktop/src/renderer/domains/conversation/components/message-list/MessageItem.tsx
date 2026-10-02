@@ -1,11 +1,4 @@
-import {
-	CompactionBoundaryView,
-	ExportMessageListView,
-	Message,
-	MessageLayout,
-	MessageVisual,
-	ModelSwitchBoundaryView,
-} from "@vetta-org/theme-ui/chat";
+import { ExportMessageListView, ModelSwitchBoundaryView } from "@vetta-org/theme-ui/chat";
 import { forwardRef, memo } from "react";
 import { useTranslation } from "react-i18next";
 import type { Usage } from "@vetta/ai/protocol";
@@ -15,11 +8,7 @@ import { AssistantMessage } from "./AssistantMessage";
 import { TeamMemberReplyCard } from "./TeamMemberReplyCard";
 import { ReadonlyUserMessage } from "./ReadonlyUserMessage";
 import { useMessageRendering } from "./MessageRendering";
-
-export const CompactionBoundary = memo(function CompactionBoundary() {
-	const { t } = useTranslation("chat");
-	return <CompactionBoundaryView label={t("messageList.compactionBoundary")} />;
-});
+import { CompactionBoundary, DelegationNotice } from "./TimelineEventViews";
 
 export const ModelSwitchBoundary = memo(function ModelSwitchBoundary({ from, to }: { from: string; to: string }) {
 	const { t } = useTranslation("chat");
@@ -63,16 +52,7 @@ export const DefaultMessageItem = memo(function DefaultMessageItem({
 		if (message.event.kind === "team-member-summary") {
 			return <TeamMemberReplyCard event={message.event} onOpen={onTeamMemberOpen} />;
 		}
-		return (
-			<Message.Root>
-				<MessageLayout.Event>
-					<MessageVisual.EventBubble>
-						<span className="icon-[solar--forward-linear] h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-						<span className="truncate">{message.event.label}</span>
-					</MessageVisual.EventBubble>
-				</MessageLayout.Event>
-			</Message.Root>
-		);
+		return <DelegationNotice label={message.event.label} />;
 	}
 	if (message.kind === "user") {
 		return <ReadonlyUserMessage message={message} participants={participants} />;

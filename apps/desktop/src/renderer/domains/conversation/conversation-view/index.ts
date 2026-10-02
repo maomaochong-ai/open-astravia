@@ -28,6 +28,7 @@ export const Conversation = {
 
 export type { AgentMessageInput } from "./agent-message";
 export { AgentMessage, AgentMessageProvider, useAgentMessage } from "./agent-message";
+export { EventMessage } from "./event-message";
 export type { ConversationExtension, ConversationRowDecoratorProps } from "./extensions";
 export { useConversationExtension, useConversationExtensionValue } from "./extensions";
 export type { ConversationCapabilities, ConversationFeed, ConversationFeedInput, UserMessageCommands } from "./feed";
