@@ -4,10 +4,12 @@ import { createConversationUserMessage } from "@shared/conversation";
 import { RendererMarkdownScope } from "@shared/components/RendererMarkdownScope";
 import {
 	activeSessionAtom,
+	activeSessionStreamingAtom,
 	appshotAttachmentAtom,
 	chatMessagesAtom,
 	confirmDialogAtom,
 	inputValueAtom,
+	isConversationBusyAtom,
 	mentionedFilesAtom,
 	openSessionFnRef,
 	pendingMessageEditAtom,
@@ -16,9 +18,12 @@ import {
 } from "@shared/store/atoms";
 import { getDefaultStore } from "jotai";
 import { initI18n, i18n } from "@shared/i18n";
-import type { ReactNode } from "react";
+import { type ReactNode, useMemo } from "react";
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
-import { SessionUserMessage } from "./SessionUserMessage";
+import { createConversationFeed, ConversationFeedContext } from "../../conversation-view/feed";
+import { ConversationMessageScope } from "../../conversation-view/message-scope";
+import { sessionUserMessageCommands } from "../../session-conversation/session-user-message-commands";
+import { SessionUserMessage } from "../../session-conversation/SessionUserMessage";
 import { MessageItem } from "./MessageItem";
 import { MessageRenderingDefaults, MessageRenderingProvider } from "./MessageRendering";
 
@@ -39,6 +44,28 @@ const openSession = vi.fn(async () => undefined);
 
 function Scope({ children }: { children: ReactNode }) {
 	return <RendererMarkdownScope value={markdown}>{children}</RendererMarkdownScope>;
+}
+
+/** The session's user message template inside the active session's feed, as the session view mounts it. */
+function SessionUserRow({ abort }: { abort?: () => void }) {
+	const feed = useMemo(
+		() =>
+			createConversationFeed({
+				key: session.sessionPath,
+				items: chatMessagesAtom,
+				streaming: isConversationBusyAtom,
+				workspace: { id: session.cwd, cwd: session.cwd, runtimeIds: [session.runtimeId] },
+				capabilities: { userMessageCommands: sessionUserMessageCommands, ...(abort ? { abort } : {}) },
+			}),
+		[abort],
+	);
+	return (
+		<ConversationFeedContext.Provider value={feed}>
+			<ConversationMessageScope row={{ message, index: 0, isTail: true, isLastUserMessage: true }}>
+				<SessionUserMessage />
+			</ConversationMessageScope>
+		</ConversationFeedContext.Provider>
+	);
 }
 
 beforeEach(() => {
@@ -65,6 +92,7 @@ beforeEach(() => {
 	getFullHistory.mockClear();
 	openSession.mockClear();
 	store.set(activeSessionAtom, session);
+	store.set(activeSessionStreamingAtom, false);
 	store.set(pendingSessionCreationAtom, null);
 	store.set(pendingSessionOpenAtom, null);
 	store.set(inputValueAtom, "");
@@ -94,9 +122,10 @@ describe("message extension workflows", () => {
 			},
 		});
 		const onAbortEdit = vi.fn();
+		store.set(activeSessionStreamingAtom, true);
 		const view = render(
 			<Scope>
-				<SessionUserMessage message={message} isLastUserMessage isStreaming onAbortEdit={onAbortEdit} />
+				<SessionUserRow abort={onAbortEdit} />
 			</Scope>,
 		);
 		fireEvent.click(screen.getByRole("button", { name: "分叉为新会话" }));
@@ -122,7 +151,7 @@ describe("message extension workflows", () => {
 	it("stages an edit without changing history, then forks through the session extension", async () => {
 		render(
 			<Scope>
-				<SessionUserMessage message={message} isLastUserMessage />
+				<SessionUserRow />
 			</Scope>,
 		);
 		fireEvent.click(screen.getByRole("button", { name: "编辑" }));
@@ -149,7 +178,7 @@ describe("message extension workflows", () => {
 	it("binds confirmed deletion to the original session without replacing the newly opened transcript", async () => {
 		const view = render(
 			<Scope>
-				<SessionUserMessage message={message} isLastUserMessage />
+				<SessionUserRow />
 			</Scope>,
 		);
 		fireEvent.contextMenu(screen.getByText("Original message"));

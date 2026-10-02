@@ -28,9 +28,10 @@ export const Conversation = {
 
 export type { ConversationExtension, ConversationRowDecoratorProps } from "./extensions";
 export { useConversationExtension, useConversationExtensionValue } from "./extensions";
-export type { ConversationCapabilities, ConversationFeed, ConversationFeedInput } from "./feed";
+export type { ConversationCapabilities, ConversationFeed, ConversationFeedInput, UserMessageCommands } from "./feed";
 export { createConversationFeed, useConversationCapability, useConversationFeed } from "./feed";
 export type { ConversationMessageRow } from "./message-scope";
 export { useMessage, useMessageRow } from "./message-scope";
+export { UserMessage, useUserMessage } from "./user-message";
 export type { ConversationViewportModel } from "./viewport-frame";
 export { ConversationViewportFrame, useConversationViewport } from "./viewport-frame";

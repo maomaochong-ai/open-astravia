@@ -1,8 +1,35 @@
-import type { ConversationParticipantViewModel } from "@shared/conversation";
+import type { ConversationParticipantViewModel, ConversationUserMessageViewModel } from "@shared/conversation";
 import type { ChatConversationItem } from "@shared/store/chat-atoms";
 import type { ActivityWorkspace } from "@shared/workspace/activity-workspace";
 import { type Atom, atom } from "jotai";
 import { createContext, useContext } from "react";
+
+/**
+ * Commands on a user message. Each is a hook so a part can follow state the
+ * command owns (e.g. an edit in progress); parts call them unconditionally from
+ * a child that only mounts when the capability exists.
+ */
+export interface UserMessageCommands {
+	/** Replace the last user message: fills the composer, replaced on send. */
+	readonly useEdit: (
+		message: ConversationUserMessageViewModel,
+		isLastUserMessage: boolean,
+	) => { readonly available: boolean; readonly pending: boolean; readonly onEdit: () => void };
+	/** Switch between sibling branches and fork a new conversation from a message. */
+	readonly useHistory: (message: ConversationUserMessageViewModel) => {
+		readonly canSwitch: boolean;
+		readonly branchIndex: number;
+		readonly branchTotal: number;
+		readonly onPrevious: () => void;
+		readonly onNext: () => void;
+		readonly forkAvailable: boolean;
+		readonly onFork: () => void;
+	};
+	readonly useDelete: (message: ConversationUserMessageViewModel) => {
+		readonly available: boolean;
+		readonly onDelete: () => void;
+	};
+}
 
 /**
  * What the Runtime behind a conversation lets the view do. A part that needs a
@@ -10,6 +37,7 @@ import { createContext, useContext } from "react";
  * feed stays read-only however it is composed (ADR-0147).
  */
 export interface ConversationCapabilities {
+	readonly userMessageCommands?: UserMessageCommands;
 	/** Stop the running Turn, e.g. before replacing the last user message. */
 	readonly abort?: () => void;
 	/** Open the conversation of a Team member. */

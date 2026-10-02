@@ -6,7 +6,7 @@
 | --- | --- |
 | 任意数据源、完全自定义消息结构 | theme-ui 的 `MessageFeed` + `MessageFeedLayout` |
 | Conversation 消息的只读列表、导航与流式跟随 | Desktop 的 `MessageList` |
-| 普通会话的编辑、分叉、删除、分支切换及运行 Footer | `SessionMessageList` |
+| 普通会话的编辑、分叉、删除、分支切换及运行 Footer | `SessionConversation`（由 `Conversation.*` 部件组合，见 ADR-0147） |
 | 自己排列正文和命令 | `UserMessage` + action hooks + `MessageLayout.Footer` |
 | 改消息/消息行 | `MessageRenderingProvider` |
 | 改 thinking、tool_call、text 等内容块 | `ContentRenderingProvider` |
@@ -30,9 +30,9 @@ Desktop 内部可以从 `@domains/conversation/components/message-list` 的统�
 </DefaultChatView>
 ```
 
-`MessageList` 的 children 进入滚动 Footer，不会挂载普通会话命令。普通会话由 `SessionMessageList` 添加默认能力；`ChatView` 另用 `SessionAssistantRendering` 为列表和导出注入预测/叙事状态。独立列表默认 staged 且不预测，可用 `AssistantRenderingProvider` 显式提供该来源的状态。
+`MessageList` 的 children 进入滚动 Footer，不会挂载普通会话命令。普通会话由 `SessionConversation` 显式组合 `Conversation.*` 部件与会话扩展；`ChatView` 另用 `SessionAssistantRendering` 为列表和导出注入预测/叙事状态。独立列表默认 staged 且不预测，可用 `AssistantRenderingProvider` 显式提供该来源的状态。
 
-编辑、分叉、删除的实现位于 `useUserMessageActions` 和 `SessionUserMessage`，不是 Feed 的内置 command 集合。其他场景可用自己的事件处理器与 `UserMessage` 的 children 组合；不需要为了增加命令修改 `MessageList`。现成普通会话 action hooks 依赖普通会话 adapter，不能拿去修改 Team 历史。
+编辑、分叉、删除由数据源的 `userMessageCommands` 能力提供（普通会话的实现在 `session-conversation/session-user-message-commands.ts`），`SessionUserMessage` 用 `UserMessage.*` 部件排列它们；数据源不提供该能力时这些部件不渲染。其他场景可用自己的事件处理器与 `UserMessage` 的 children 组合；不需要为了增加命令修改 `MessageList`。现成普通会话 action hooks 依赖普通会话 adapter，不能拿去修改 Team 历史。
 
 ## 消息与内容块
 
@@ -47,7 +47,7 @@ const rendering: MessageRendering = {
 };
 ```
 
-投影只改变展示，不修改源消息。自定义 renderer 收到投影后的完整 `MessageItemProps`；不匹配的类型使用默认呈现。嵌套 Provider 保留未覆盖的类型；投影从外向内执行；同类型组件和 row 明确后者覆盖。`SessionMessageList` 的默认配置不会遮住调用者提供的覆盖。需要组合多个配置时也可调用 `extendMessageRendering`。
+投影只改变展示，不修改源消息。自定义 renderer 收到投影后的完整 `MessageItemProps`；不匹配的类型使用默认呈现。嵌套 Provider 保留未覆盖的类型；投影从外向内执行；同类型组件和 row 明确后者覆盖。需要组合多个配置时也可调用 `extendMessageRendering`。
 
 `ContentRenderingProvider renderers={{ text: CustomText }}` 在真实 segment 渲染入口生效，包括阶段组中的工具和思考。组件收到 `block`、`isStreamingTail`、`exportMode` 和默认呈现 `children`。返回 children 可装饰默认实现，返回其他 JSX 可替换它；不应直接修改 block。需要声明式语法处理时优先使用 Markdown 层，不要把文本重新解析塞进消息列表。
 
@@ -81,7 +81,7 @@ const markdown = extendMarkdown(defaultMarkdown, {
 });
 
 <MarkdownProvider definition={markdown}>
-  <SessionMessageList messages={messages} sessionId={sessionId} isStreaming={running} />
+  <SessionConversation sessionId={sessionId} workspace={workspace} />
 </MarkdownProvider>
 ```
 

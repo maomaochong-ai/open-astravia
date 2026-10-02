@@ -4,11 +4,11 @@ import userEvent from "@testing-library/user-event";
 import { createStore, Provider } from "jotai";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { RendererMarkdownScope } from "@shared/components/RendererMarkdownScope";
-import { activeSessionAtom, inputValueAtom, pendingScrollToEntryAtom } from "@shared/store/atoms";
+import { activeSessionAtom, chatMessagesAtom, inputValueAtom, pendingScrollToEntryAtom } from "@shared/store/atoms";
 import { AnnotationScope } from "./AnnotationScope";
 import { AnnotationMessageMarker } from "./AnnotationMenus";
 import { SessionSelection } from "../message-list/SessionSelection";
-import { SessionMessageList } from "../SessionMessageList";
+import { SessionConversation } from "../../session-conversation/SessionConversation";
 import type { ReactNode } from "react";
 import type { ChatConversationItem } from "@shared/store/atoms";
 import type {
@@ -122,6 +122,7 @@ describe("Q&A note interaction", () => {
 		const store = createStore();
 		store.set(activeSessionAtom, session);
 		store.set(inputValueAtom, "Main draft");
+		store.set(chatMessagesAtom, [message]);
 		const view = render(
 			<Provider store={store}>
 				<RendererMarkdownScope
@@ -134,9 +135,7 @@ describe("Q&A note interaction", () => {
 					}}
 				>
 					{feedSessionPath ? (
-						<SessionMessageList
-							messages={[message]}
-							isStreaming={false}
+						<SessionConversation
 							sessionId={feedSessionPath}
 							workspace={{ id: session.cwd, cwd: session.cwd, runtimeIds: [session.runtimeId] }}
 						/>
