@@ -66,25 +66,13 @@ jobs:
           npx wrangler pages deploy website/dist \
             --project-name=astravia-website
 
-      - name: Ensure custom domains are bound
-        shell: bash
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: |
-          for domain in "astravia.dev" "www.astravia.dev"; do
-            echo ">>> Binding $domain to astravia-website ..."
-            npx wrangler pages domain add astravia-website "$domain"
-            echo "<<< Done binding $domain"
-          done
-
-      - name: Verify website responds (custom domain)
+      - name: Verify website responds
         shell: bash
         run: |
           sleep 20
-          for url in "https://www.astravia.dev" "https://astravia.dev" "https://astravia-website.pages.dev"; do
+          for url in "https://astravia-website.pages.dev" "https://www.astravia.dev" "https://astravia.dev"; do
             status=$(curl -sI "$url" | head -1 || echo "FETCH_FAILED")
             echo "$url → $status"
           done
-          # exit 0 兜底：DNS 传播需要时间，不要阻塞 workflow
+          # exit 0 兜底：DNS 传播需要时间，不阻塞 workflow
           exit 0
