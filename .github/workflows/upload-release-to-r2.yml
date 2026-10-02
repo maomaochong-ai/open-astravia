@@ -52,7 +52,13 @@ jobs:
           if [[ -n "${{ github.event.release.tag_name }}" ]]; then
             TAG="${{ github.event.release.tag_name }}"
           elif [[ -n "${{ inputs.version }}" ]]; then
-            TAG="v${{ inputs.version }}"
+            RAW="${{ inputs.version }}"
+            # 输入可以是 "0.5.60" 或 "v0.5.60"
+            if [[ "${RAW}" == v* ]]; then
+              TAG="${RAW}"
+            else
+              TAG="v${RAW}"
+            fi
           else
             echo "::error::No release tag or input version provided."
             exit 1
