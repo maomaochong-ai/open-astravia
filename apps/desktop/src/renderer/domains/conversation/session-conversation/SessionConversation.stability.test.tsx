@@ -22,30 +22,45 @@ vi.mock("react-i18next", () => ({
 	useTranslation: () => ({ t: (key: string) => key, i18n: { language: "en" } }),
 }));
 vi.mock("../hooks/useSkillTokenMeta", () => ({ useSkillTokenMeta: () => () => undefined }));
-// jsdom has no layout: replace only the external virtualizer and count how often the list mounts.
+// jsdom has no layout: replace only the external virtualizer, numbering items the way
+// Virtuoso does (from `firstItemIndex`), and count how often the list mounts.
 vi.mock("react-virtuoso", async () => {
 	const { useEffect: useMountEffect } = await import("react");
 	return {
 		Virtuoso: ({
 			data,
+			firstItemIndex = 0,
 			itemContent,
+			computeItemKey,
 		}: {
 			data: readonly ChatConversationItem[];
+			firstItemIndex?: number;
 			itemContent: (index: number, item: ChatConversationItem) => ReactNode;
+			computeItemKey: (index: number, item: ChatConversationItem) => string;
 		}) => {
 			useMountEffect(() => {
 				virtualizer.mounts += 1;
 			}, []);
 			return (
 				<div>
-					{data.map((item, index) => (
-						<div key={item.renderKey ?? item.id}>{itemContent(index, item)}</div>
-					))}
+					{data.map((item, position) => {
+						const index = firstItemIndex + position;
+						return (
+							<div key={computeItemKey(index, item)} data-item-index={index}>
+								{itemContent(index, item)}
+							</div>
+						);
+					})}
 				</div>
 			);
 		},
 	};
 });
+
+/** The index Virtuoso positions, measures and scrolls the row of `text` by. */
+function virtualIndexOf(text: string): string | null {
+	return screen.getByText(text).closest("[data-item-index]")?.getAttribute("data-item-index") ?? null;
+}
 
 const B = { cwd: "/project", sessionPath: "/history/b.jsonl", runtimeId: "runtime-b" };
 
@@ -98,7 +113,7 @@ afterEach(() => {
 	vi.unstubAllGlobals();
 });
 
-describe("SessionConversation keeps its list mounted", () => {
+describe("SessionConversation keeps its list mounted and its rows in place", () => {
 	it("while an existing session opens: preview, Runtime identity, then full history", async () => {
 		const store = createStore();
 		render(
@@ -115,6 +130,7 @@ describe("SessionConversation keeps its list mounted", () => {
 		});
 		const mountsAfterPreview = virtualizer.mounts;
 		const tail = screen.getByText("question 9");
+		const tailIndex = virtualIndexOf("question 9");
 
 		await act(async () => {
 			bindConversationFeed(B.runtimeId, store);
@@ -129,6 +145,10 @@ describe("SessionConversation keeps its list mounted", () => {
 		});
 		expect(virtualizer.mounts).toBe(mountsAfterPreview);
 		expect(screen.getByText("question 9")).toBe(tail);
+		// Earlier history arrives above the preview: the shown rows keep their index, so the
+		// virtualizer keeps their sizes and the scroll offset instead of showing other rows.
+		expect(virtualIndexOf("question 9")).toBe(tailIndex);
+		expect(Number(virtualIndexOf("question 0"))).toBe(Number(tailIndex) - 18);
 	});
 
 	it("while the first message of a new session gets its session", async () => {

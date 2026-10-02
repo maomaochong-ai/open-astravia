@@ -218,7 +218,7 @@ describe("MessageListView virtualization", () => {
 			field: "offsetHeight" | "offsetWidth",
 		) => number;
 		const element = document.createElement("div");
-		element.dataset.itemIndex = "0";
+		element.dataset.index = "0";
 		Object.defineProperty(element, "offsetHeight", { configurable: true, value: 460 });
 
 		expect(itemSize(element, "offsetHeight")).toBe(460);

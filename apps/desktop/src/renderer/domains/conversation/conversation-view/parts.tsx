@@ -121,7 +121,7 @@ export function ConversationMessages({ children }: { readonly children?: ReactNo
 		return (element, field) => {
 			const measured = measure(element, field);
 			if (field !== "offsetHeight") return measured;
-			const index = Number.parseInt(element.dataset.itemIndex ?? "", 10);
+			const index = Number.parseInt(element.dataset.index ?? "", 10);
 			const estimated = Number.isInteger(index) ? heightEstimates[index] : undefined;
 			if (estimated !== undefined) perfMessageScrollRecordItemSize(index, estimated, measured);
 			return measured;
