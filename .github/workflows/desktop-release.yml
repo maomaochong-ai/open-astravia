@@ -62,6 +62,10 @@ on:
         description: "Shown on the run summary. Not a secret; do not paste keys."
         type: string
         required: false
+      auto_promote:
+        description: "Publish R2 update metadata automatically once every platform build succeeds. Off = run desktop-promote yourself."
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -76,6 +80,7 @@ jobs:
       should-build: ${{ steps.scope.outputs.should-build }}
       should-publish: ${{ steps.config.outputs.should_publish }}
       build-version: ${{ steps.config.outputs.build_version }}
+      release-version: ${{ steps.version.outputs.release-version }}
       channel: ${{ steps.config.outputs.channel }}
       cloud_enabled: ${{ steps.config.outputs.cloud_enabled }}
       marketplace_repository: ${{ steps.config.outputs.marketplace_repository }}
@@ -151,6 +156,14 @@ jobs:
           VAR_UPDATE_URL_STABLE: ${{ vars.VETTA_UPDATE_URL_STABLE }}
           VAR_UPDATE_URL_TEST: ${{ vars.VETTA_UPDATE_URL_TEST }}
         run: node scripts/release/resolve-desktop-release-config.mjs --github-output >> "${GITHUB_OUTPUT}"
+
+      - name: Resolve release version
+        if: steps.scope.outputs.should-build == 'true'
+        id: version
+        shell: bash
+        env:
+          BUILD_VERSION: ${{ steps.config.outputs.build_version }}
+        run: echo "release-version=${BUILD_VERSION:-$(node -p "require('./apps/desktop/package.json').version")}" >> "${GITHUB_OUTPUT}"
 
       - name: Write resolved config to the job summary
         if: steps.scope.outputs.should-build == 'true'
@@ -467,3 +480,17 @@ jobs:
             -name "*.AppImage" -o -name "*.blockmap" -o -name "*.deb" -o -name "*.dmg" \
             -o -name "*.exe" -o -name "*.msi" -o -name "*.rpm" -o -name "*.zip" \) -print0 \
             | xargs -0 gh release upload "${TAG}" --clobber
+
+  # 全部平台构建成功后自动上线更新清单；任一平台失败时跳过，修好后重跑失败的平台会一并重跑本任务。
+  # 以 GitHub Release 为更新源的构建没有 R2 暂存目录，仍需手动处理清单。
+  promote:
+    name: promote update metadata
+    needs: [prepare, build]
+    if: needs.prepare.outputs.should-publish == 'true' && needs.prepare.outputs.release_target == 'r2' && github.event.inputs.auto_promote != 'false'
+    permissions:
+      contents: write
+    uses: ./.github/workflows/desktop-promote.yml
+    with:
+      version: ${{ needs.prepare.outputs.release-version }}
+      channel: ${{ needs.prepare.outputs.channel }}
+    secrets: inherit

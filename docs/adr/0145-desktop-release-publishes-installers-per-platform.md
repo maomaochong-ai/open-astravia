@@ -34,3 +34,10 @@ Accepted
 CI 不再让任何客户端看到新版本，漏做手动上线步骤时用户收不到更新；线上 feed 的可达性检查移到
 `desktop-promote` 上线之后执行。构建任务需要写 Release 的权限。
 操作步骤见 [发版下载与失败恢复](../desktop/release-ci.md)。
+
+## 修订：全部平台成功后自动上线（0.5.61）
+
+手动运行 `desktop-promote` 容易遗漏，且它本身已经完成合并、哈希核对与防降级。`desktop-release` 增加
+`promote` 任务，在全部平台构建成功后以 reusable workflow 调用 `desktop-promote`；任一平台失败则不上线，
+线上保持旧版本。手动发版可关闭 `auto_promote` 回到手动上线；GitHub Release 更新源仍需手动处理清单。
+上文「CI 不再让任何客户端看到新版本」相应改为「只有全部平台成功后才让客户端看到新版本」。

@@ -2,9 +2,9 @@
 
 实现入口：[desktop-release.yml](../../.github/workflows/desktop-release.yml)。
 
-## 各平台构建完即发布安装包，更新清单由开发者上线
+## 各平台构建完即发布安装包，全部成功后自动上线更新清单
 
-流水线只有 `prepare` → `quality` → `build <platform>` 三段。每个平台构建成功后在同一个任务里：
+流水线分 `prepare` → `quality` → `build <platform>` → `promote` 四段。每个平台构建成功后在同一个任务里：
 
 1. 校验更新清单与安装包（`verify-update-artifacts`，macOS 含签名与公证）；Windows 的校验会真实安装一遍，发版跳过。
 2. 上传 Actions 制品 `desktop-<platform>`（安装包、blockmap 与 `latest*.yml`，保留 30 天）。
@@ -13,20 +13,23 @@
 4. 非 test 渠道：第一个完成的平台创建 GitHub Release（正文取发布说明），其余平台追加安装包与 blockmap；
    不上传 `latest*.yml`。
 
-因此不再等四个平台全部完成才开始发布，Release 页面会随各平台完成逐步补齐。代价是：
+因此不再等四个平台全部完成才开始发布，Release 页面会随各平台完成逐步补齐，刚创建时只有先完成的平台的安装包。
 
-- **CI 不会让任何客户端看到新版本。** R2 客户端要等你把清单放到 `<prefix>/` 下；
-  以 GitHub Release 为更新源的开源版要等你把清单上传到 Release。
-- Release 刚创建时只有先完成的平台的安装包。
+R2 目标在**全部平台构建成功后**由 `promote` 任务自动调用 desktop-promote 上线清单，用户从这时开始收到新版本：
+
+- 任一平台失败时 `promote` 跳过，线上清单保持旧版本；修好后在原运行里 **Re-run failed jobs**，
+  失败的平台和 `promote` 会一起重跑。也可以先手动运行 desktop-promote，只上线已经成功的平台。
+- 手动发版（`workflow_dispatch`）可取消勾选 `auto_promote`，构建完只暂存清单，之后再手动上线。
+- 以 GitHub Release 为更新源的构建（开源版）没有 R2 暂存目录，不会自动上线，需要按下文手动处理。
 
 ### 上线更新清单：desktop-promote
 
-需要的平台都构建完成后，在 **Actions → desktop-promote → Run workflow** 填写：
+发版流程会自动调用它；需要手动上线（关闭了自动上线、只上线部分平台或重新上线）时，在 **Actions → desktop-promote → Run workflow** 填写：
 
 | 输入 | 说明 |
 | --- | --- |
 | `version` | 要上线的版本，如 `0.5.60` |
-| `channel` | `stable` 或 `test`，决定 R2 目录与更新地址（与发版解析规则相同） |
+| `channel` | `stable`、`test` 或 `default`（沿用仓库变量 `VETTA_RELEASE_CHANNEL`），决定 R2 目录与更新地址，解析规则与发版相同 |
 | `platforms` | 默认 `windows,mac,linux`；只写部分平台时，其余平台的线上清单保持不变 |
 | `dry_run` | 只校验不发布，可先勾选跑一次看结果 |
 
