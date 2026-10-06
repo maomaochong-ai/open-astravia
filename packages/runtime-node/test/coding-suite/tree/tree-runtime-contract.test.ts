@@ -127,7 +127,7 @@ describe("runtime tree tool", () => {
 		});
 	});
 
-	it("resolves fd on every execution and preserves unavailable-fd errors", async () => {
+	it("resolves fd on every execution and reports actionable guidance when fd is unavailable", async () => {
 		let resolutions = 0;
 		const runtime = createTreeTool(process.cwd(), {
 			operations: createOperations().runtime,
@@ -140,7 +140,7 @@ describe("runtime tree tool", () => {
 		});
 		for (let attempt = 0; attempt < 2; attempt += 1) {
 			await expect(runtime.execute(runtimeRequest({}))).rejects.toThrow(
-				"fd is not available and could not be downloaded",
+				/fd is not available and could not be downloaded.*(brew install fd|apt install fd-find)/,
 			);
 		}
 		expect(resolutions).toBe(2);
