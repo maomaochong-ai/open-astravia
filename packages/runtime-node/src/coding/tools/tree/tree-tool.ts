@@ -2,6 +2,7 @@ import { existsSync, statSync } from "node:fs";
 import type { RuntimeToolDefinition } from "@astravia/runtime-core/kernel";
 import { type Static, Type } from "@sinclair/typebox";
 import type { CodingToolExecutableResolver } from "../../host/executable-resolver.js";
+import { formatMissingCodingToolError } from "../../shared/missing-executable.js";
 import {
 	formatNotFoundPath,
 	localToolPathHost,
@@ -109,7 +110,7 @@ export function createTreeTool(cwd: string, options: TreeToolOptions = {}): Runt
 			const stats = await operations.stat(searchPath);
 			if (!stats.isDirectory()) throw new Error(`Not a directory: ${searchPath}`);
 			const resolvedFdPath = options.executableResolver ? await options.executableResolver.resolve("fd") : fdPath;
-			if (!resolvedFdPath) throw new Error("fd is not available and could not be downloaded");
+			if (!resolvedFdPath) throw new Error(formatMissingCodingToolError("fd"));
 
 			const directoryResult = await operations.runFd(
 				resolvedFdPath,
