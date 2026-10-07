@@ -146,7 +146,13 @@ export function useStreamingDisplayText(text: string, active: boolean): Streamin
 			if (displayRef.current.length >= target.length) lastAdvanceAtRef.current = now;
 			if (displayRef.current.length < target.length) {
 				tickTimerRef.current = window.setTimeout(reveal, REVEAL_TICK_MS);
-			} else if (final) {
+			} else {
+				// 追平即进入 settle：不只等 final。任务执行中两次工具调用之间（模型已停輓、
+				// 消息仍处于流式态）的这段静默里，「最新短语略暗」不该一直挂着——它表达的是
+				// 「还在流出」，静默超过 STREAMING_SETTLE_MS 就恢复全亮。新文本到达时布局效果
+				// 里的 clearTimeoutRef(settleTimerRef) 会取消本计时，压暗随下一次放出重新出现；
+				// 因此语义从「流结束后收尾」变为「静止即全亮」，与 CSS 注释「撤掉包裹类就恢复
+				// 全亮，DOM 不动」的承诺一致，不重建 DOM、不重放淡入。
 				settle();
 			}
 		},
