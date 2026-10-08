@@ -770,6 +770,12 @@
 			"unavailable": "未上报"
 		},
 		"compactionBoundary": "上下文已压缩",
+		"compactionCard": {
+			"tokens": "已压缩 {{tokens}} tokens",
+			"compacting": "正在压缩…",
+			"viewSummary": "查看摘要",
+			"hideSummary": "收起摘要"
+		},
 		"modelSwitched": "模型已从 {{from}} 切换为 {{to}}",
 		"compactionIndicator": "正在压缩上下文...",
 		"retryIndicator": "正在重新连接（{{attempt}}/{{maxAttempts}}）",
@@ -883,7 +889,11 @@
 			"completed": "{{count}} 个工具调用完成",
 			"inProgress": "{{completed}}/{{total}} 个工具调用",
 			"thinking": "{{count}} 个思考过程"
-		}
+		},
+		"tokens": "已压缩 {{tokens}} tokens",
+		"compacting": "正在压缩…",
+		"viewSummary": "查看摘要",
+		"hideSummary": "收起摘要"
 	},
 	"modelSelector": {
 		"defaultBadge": "默认",
