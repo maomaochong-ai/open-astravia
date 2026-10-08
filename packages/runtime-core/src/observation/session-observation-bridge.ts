@@ -168,6 +168,9 @@ export function projectRuntimeSessionObservation(
 				...(event.contextWindow === undefined ? {} : { contextWindow: event.contextWindow }),
 				...(event.thresholdTokens === undefined ? {} : { thresholdTokens: event.thresholdTokens }),
 			};
+		case "compaction.delta":
+			// 内容安全投影不带正文：只报增量字符数（正文经 SessionEvent 通道给 UI）。
+			return { ...base, characterCount: event.text.length };
 		case "compaction.end":
 			return {
 				...base,

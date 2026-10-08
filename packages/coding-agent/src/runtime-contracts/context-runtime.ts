@@ -17,7 +17,12 @@ import type {
 	SessionContextRecord,
 	TurnObserver,
 } from "@astravia/runtime-core/kernel";
-import type { CompactionPreparation, CompactionResult, CompactionSettings } from "../compaction/index.js";
+import type {
+	CompactionPreparation,
+	CompactionResult,
+	CompactionSettings,
+	CompactionSummaryGenerationOptions,
+} from "../compaction/index.js";
 import type { CompactionWorkStateSnapshot } from "../compaction/work-state-recovery.js";
 import type { CodingAgentMemoryCompactionPolicy } from "../memory/index.js";
 import type { CodingAgentCompactionEntry, CodingAgentSessionEntry } from "../sessions/index.js";
@@ -68,6 +73,7 @@ export interface CodingAgentContextRuntimeOptions {
 		apiKey: string,
 		customInstructions: string | undefined,
 		signal: AbortSignal,
+		generationOptions?: CompactionSummaryGenerationOptions,
 	) => Promise<CompactionResult>;
 	readonly extensionRuntime?: CodingAgentCompactionExtensionRuntime;
 	readonly memoryRollover?: CodingAgentMemoryCompactionPolicy;
@@ -151,5 +157,6 @@ export interface CodingAgentCompactionRuntimeOptions {
 		apiKey: string,
 		customInstructions: string | undefined,
 		signal: AbortSignal,
+		generationOptions?: CompactionSummaryGenerationOptions,
 	) => Promise<CompactionResult>;
 }
