@@ -273,6 +273,34 @@ import Testing
 		manager.stop()
 	}
 
+	@Test func triesP2pLessOftenWhileItKeepsFailingAndAfreshOnANewNetwork() async throws {
+		let link = makeLink()
+		let desktop = FakeDesktop()
+		desktop.mobileIdentityKey = link.identity.publicKey
+		var options = ChannelManagerOptions(desktop: desktopRecord(desktop), link: link, createTransport: desktop.createTransport)
+		options.p2pTarget = viewer
+		options.p2pTimeoutMs = 50
+		options.p2pProbeIntervalMs = 100
+		var attempts: [Double] = []
+		options.createP2pTransport = { _ in
+			attempts.append(WallClock.nowMs())
+			return DeadTransport()
+		}
+		let manager = ChannelManager(options: options)
+		manager.start()
+		#expect(await eventually { manager.snapshot.channel == .lan })
+		try #require(desktop.onlineAcceptor()).emitEvent(.deviceStatus, payload: deviceStatus(screen: true))
+		#expect(await eventually { attempts.count == 4 })
+		let gaps = zip(attempts.dropFirst(), attempts).map { $0 - $1 }
+		#expect(gaps[1] > gaps[0] * 1.5 && gaps[2] > gaps[1] * 1.5, "each failure waits longer: \(gaps)")
+
+		// Waiting out the next, longest gap would take ~850 ms; a new network tries at once.
+		let before = attempts.count
+		manager.networkChanged()
+		#expect(await eventually(timeoutMs: 300) { attempts.count > before })
+		manager.stop()
+	}
+
 	@Test func buildsTheViewerUrlWithTheSecretInTheFragment() {
 		#expect(PairingURI.desktopViewerUrl(relayBaseUrl: "wss://relay.example", pairingId: "pair-1", mobileSecret: "a+b/c")
 			== "wss://relay.example/v2/desktop/pair-1/viewer#pairing=a%2Bb%2Fc")

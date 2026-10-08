@@ -11,7 +11,11 @@ public struct ChannelManagerOptions {
 	/// The relay's viewer signaling for this desktop (`PairingURI.desktopViewerUrl`).
 	public var p2pTarget: String?
 	public var p2pTimeoutMs: Double = 12_000
+	/// The wait after the first failed P2P attempt; it doubles with each further failure.
 	public var p2pProbeIntervalMs: Double = 20_000
+	/// The longest wait between P2P attempts while they keep failing (cellular behind a
+	/// strict NAT, say): each attempt makes the desktop reload its capture page.
+	public var p2pMaxProbeIntervalMs: Double = 300_000
 	public var lanBudgetMs: Double = 1_500
 	public var lanProbeIntervalMs: Double = 20_000
 	/// How long to wait before opening a new standby behind P2P after the last one dropped.
@@ -80,6 +84,8 @@ public final class ChannelManager {
 	private var reconnectTimer: Task<Void, Never>?
 	private var probeTimer: Task<Void, Never>?
 	private var p2pTask: Task<Void, Never>?
+	/// P2P attempts failed in a row since the last success, network change or return to the foreground.
+	private var p2pFailures = 0
 	private var standbyTimer: Task<Void, Never>?
 	private var rttTimer: Task<Void, Never>?
 	private var backoffMs: Double = 1_000
@@ -117,6 +123,7 @@ public final class ChannelManager {
 		if snapshot.status == .online {
 			if active?.channel == .relay { Task { await probeLan() } }
 			if active?.channel != .p2p {
+				p2pFailures = 0
 				clearP2pProbe()
 				launchP2pProbe()
 			}
@@ -133,6 +140,7 @@ public final class ChannelManager {
 		guard running else { return }
 		clearReconnect()
 		backoffMs = 1_000
+		p2pFailures = 0
 		guard snapshot.status == .online, let active else {
 			Task { await attempt() }
 			return
@@ -142,7 +150,11 @@ public final class ChannelManager {
 			scheduleStandby(afterMs: 0)
 			return
 		}
-		Task { await switchOver(from: active) }
+		clearP2pProbe()
+		Task {
+			await switchOver(from: active)
+			launchP2pProbe()
+		}
 	}
 
 	private func switchOver(from previous: Candidate) async {
@@ -170,6 +182,7 @@ public final class ChannelManager {
 			if let active, active.channel == .p2p { dropActive(active, reason: "background") }
 		} else {
 			if active?.channel == .relay { scheduleProbe() }
+			p2pFailures = 0
 			launchP2pProbe()
 		}
 	}
@@ -310,7 +323,8 @@ public final class ChannelManager {
 	}
 
 	/// Upgrades an established LAN or relay link to the WebRTC control channel, and keeps
-	/// trying every `p2pProbeIntervalMs` while it cannot. Only in the foreground, and only
+	/// trying while it cannot, waiting twice as long after each failure up to
+	/// `p2pMaxProbeIntervalMs`. Only in the foreground, and only
 	/// with a desktop that captures on demand: an older one streams its screen for as long
 	/// as the link is up (ADR-0140).
 	private func launchP2pProbe() {
@@ -324,13 +338,16 @@ public final class ChannelManager {
 			let online = await self.waitOnline(candidate, timeoutMs: self.options.p2pTimeoutMs)
 			if !Task.isCancelled, online, self.running, self.foreground, current == self.generation, self.active != nil, self.active?.channel != .p2p {
 				self.p2pTask = nil
+				self.p2pFailures = 0
 				self.adopt(candidate)
 				return
 			}
 			candidate.dispose()
 			candidate.connection.close()
 			guard !Task.isCancelled else { return }
-			try? await Task.sleep(nanoseconds: UInt64(self.options.p2pProbeIntervalMs * 1_000_000))
+			let delay = min(self.options.p2pProbeIntervalMs * pow(2, Double(self.p2pFailures)), self.options.p2pMaxProbeIntervalMs)
+			self.p2pFailures += 1
+			try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000))
 			guard !Task.isCancelled else { return }
 			self.p2pTask = nil
 			self.launchP2pProbe()
