@@ -19,6 +19,8 @@ import {
 	shouldCompact,
 	shouldPrefire,
 } from "../index.js";
+import { computePrefireLeadPercent } from "../prefire.js";
+import { resolveCompactionSummaryModel } from "../summary-model.js";
 import type { CompactionPrefireCache } from "./compaction-prefire-cache.js";
 import type { CodingAgentCompactionRecordFactoryOptions } from "./compaction-record-factory.js";
 import { createCodingAgentCompactionRecord } from "./compaction-record-factory.js";
@@ -35,6 +37,7 @@ import { applyPinnedModelContext } from "./pinned-model-context-projection.js";
 
 export interface CodingAgentAutomaticCompactionStrategyOptions {
 	readonly resolveApiKey: CodingAgentContextRuntimeOptions["resolveApiKey"];
+	readonly resolveSummaryModel?: CodingAgentContextRuntimeOptions["resolveSummaryModel"];
 	readonly hookRuntime: CodingAgentContextRuntimeOptions["hookRuntime"];
 	readonly memoryRollover: CodingAgentContextRuntimeOptions["memoryRollover"];
 	readonly generateCompaction: NonNullable<CodingAgentContextRuntimeOptions["generateCompaction"]>;
@@ -47,6 +50,8 @@ export interface CodingAgentAutomaticCompactionStrategyOptions {
 
 /** Coding-specific automatic compaction policy used behind Runtime Core's ContextStrategy contract. */
 export class CodingAgentAutomaticCompactionStrategy {
+	/** 会话级：上一次模型调用的上下文估算（增速记忆，见调用处注释）。 */
+	private lastEstimateTokens: number | undefined;
 	constructor(private readonly options: CodingAgentAutomaticCompactionStrategyOptions) {}
 
 	async prepare(
@@ -92,6 +97,13 @@ export class CodingAgentAutomaticCompactionStrategy {
 		const estimate = estimateContextTokens(measuredMessages);
 		const assembledTokens = estimateContextTokens(callMessages).tokens;
 		this.options.recordEstimatedTokens(assembledTokens);
+		// 会话级增速记忆：本策略实例随会话存活，最近两次估算之差即最近一轮的
+		// 上下文增量——prefire 预热窗口据此自适应（增速快则更早预热）。
+		const growthTokens =
+			this.lastEstimateTokens !== undefined && estimate.tokens > this.lastEstimateTokens
+				? estimate.tokens - this.lastEstimateTokens
+				: undefined;
+		this.lastEstimateTokens = estimate.tokens;
 		if (reason === "turn_start") return unchanged(callMessages, assembledTokens);
 		if (!model || !input.document || contextWindow <= 0 || !settings.enabled) {
 			return unchanged(callMessages, assembledTokens);
@@ -103,8 +115,19 @@ export class CodingAgentAutomaticCompactionStrategy {
 
 		if (reason === "assistant_error" && !overflow) return unchanged(callMessages, assembledTokens);
 		if (!overflow && !shouldCompact(estimate.tokens, contextWindow, settings)) {
-			if (shouldPrefire(estimate.tokens, contextWindow, settings)) {
-				this.options.prefire.start(entries, settings, model, input.modelBinding?.credential);
+			if (
+				shouldPrefire(
+					estimate.tokens,
+					contextWindow,
+					settings,
+					computePrefireLeadPercent(growthTokens, contextWindow),
+				)
+			) {
+				void resolveCompactionSummaryModel(model, this.options.resolveSummaryModel).then((resolved) => {
+					// 换绑后主模型 credential 不跨 provider；prefire 内部按需 resolveApiKey 兜底。
+					const credential = resolved.swapped ? undefined : input.modelBinding?.credential;
+					this.options.prefire.start(entries, settings, resolved.model, credential);
+				});
 			}
 			return unchanged(callMessages, assembledTokens);
 		}
@@ -129,17 +152,24 @@ export class CodingAgentAutomaticCompactionStrategy {
 		}
 
 		try {
-			const apiKey = input.modelBinding?.credential
-				? await input.modelBinding.credential.resolve()
-				: await this.options.resolveApiKey(model);
+			// 摘要模型分级：宿主注入解析时换绑到轻量模型；换绑后主模型的
+			// modelBinding.credential 不能跨 provider 使用，改走 resolveApiKey。
+			const summaryModel = await resolveCompactionSummaryModel(model, this.options.resolveSummaryModel);
+			const boundCredential = summaryModel.swapped ? undefined : input.modelBinding?.credential;
+			const apiKey = boundCredential
+				? await boundCredential.resolve()
+				: await this.options.resolveApiKey(summaryModel.model);
 			if (!apiKey) {
 				await input.reportObservation({
 					type: "compaction.end",
 					success: false,
 					reason: compactionReason,
-					errorMessage: `No API key for ${model.provider}`,
+					errorMessage: `No API key for ${summaryModel.model.provider}`,
 					failure: runtimeFailureFromError(
-						providerAuthenticationError(model, `No credentials configured for ${model.provider}/${model.id}`),
+						providerAuthenticationError(
+							summaryModel.model,
+							`No credentials configured for ${summaryModel.model.provider}/${summaryModel.model.id}`,
+						),
 					),
 					source: "agent",
 				});
@@ -189,10 +219,13 @@ export class CodingAgentAutomaticCompactionStrategy {
 				return unchanged(callMessages, assembledTokens);
 			}
 			const prefired = extensionResult?.compaction ? undefined : this.options.prefire.take(entries);
+			// 摘要生成期间的流式增量：prefire 命中或扩展接管时无增量（后台预热不重发）。
 			const result =
 				extensionResult?.compaction ??
 				prefired ??
-				(await this.options.generateCompaction(preparation, model, apiKey, undefined, signal));
+				(await this.options.generateCompaction(preparation, summaryModel.model, apiKey, undefined, signal, {
+					onSummaryDelta: (text) => input.reportObservation({ type: "compaction.delta", text, source: "agent" }),
+				}));
 			signal.throwIfAborted();
 			const record = createCodingAgentCompactionRecord(
 				result,
