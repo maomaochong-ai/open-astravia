@@ -13,8 +13,8 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -31,7 +31,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.Password
-import androidx.compose.material.icons.filled.QrCode2
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -45,12 +44,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.inset
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -67,7 +69,6 @@ import org.vetta.android.resources.pair_code_hint
 import org.vetta.android.resources.pair_connecting
 import org.vetta.android.resources.pair_invite
 import org.vetta.android.resources.pair_manual
-import org.vetta.android.resources.pair_scan
 import org.vetta.android.resources.pair_scan_hint
 import org.vetta.android.resources.pair_title
 import org.vetta.android.resources.pair_troubleshoot
@@ -92,17 +93,18 @@ import org.vetta.android.ui.design.VettaSheet
 import org.vetta.android.ui.design.springClickable
 import org.vetta.android.ui.design.springContentSize
 import org.vetta.android.ui.i18n.resolve
-import org.vetta.android.ui.remote.rememberPairingScanner
+import org.vetta.android.ui.remote.PairingCameraPreview
 import org.vetta.android.ui.work.BotAvatar
 import org.vetta.android.ui.work.ManualPairDialog
 import org.vetta.android.ui.work.workColors
 
 /**
- * Pairing, as a sheet over whatever is showing (the iPhone's `PairView`): the scan frame
- * opens the camera, and the page follows the pairing as it goes: connecting, then the
- * code to check on the computer, or why it failed. A connection code and password from
- * the computer work when the phone is elsewhere, and typing the computer's address when
- * both are on one network. Closing the sheet stops a pairing under way.
+ * Pairing, as a sheet over whatever is showing (the iPhone's `PairView`): the frame is
+ * the camera, so pointing it at the computer's code pairs straight away. The page then
+ * follows the pairing: connecting, the code to check on the computer, or why it failed.
+ * A connection code and password from the computer work when the phone is elsewhere,
+ * and typing the computer's address when both are on one network. Closing the sheet
+ * stops a pairing under way.
  */
 @Composable
 fun PairingSheet(
@@ -120,8 +122,9 @@ fun PairingSheet(
     var manualOpen by remember { mutableStateOf(false) }
     var codeOpen by remember { mutableStateOf(false) }
     var helpOpen by remember { mutableStateOf(false) }
-    val scan = rememberPairingScanner(onScanned)
     val waiting = phase as? PairingPhase.AwaitingApproval
+    // A code or address sheet covers the frame; keep the camera off so a code behind it is not paired.
+    val scanning = waiting == null && !connecting && !manualOpen && !codeOpen
     VettaSheet(onDismiss = onDismiss, title = stringResource(Res.string.pair_title), expanded = true) {
         Column(
             Modifier
@@ -132,7 +135,7 @@ fun PairingSheet(
                 .springContentSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            ScanFrame(active = !connecting && waiting == null, onClick = scan, modifier = Modifier.padding(top = 16.dp))
+            ScanFrame(scanning = scanning, onScanned = onScanned, modifier = Modifier.padding(top = 16.dp))
             AnimatedContent(
                 waiting,
                 transitionSpec = { fadeIn(VettaMotion.snappy()) togetherWith fadeOut(VettaMotion.snappy()) },
@@ -174,20 +177,12 @@ fun PairingSheet(
             }
             Spacer(Modifier.height(32.dp))
             GlassCapsuleButton(
-                text = stringResource(Res.string.pair_scan),
-                icon = Icons.Filled.QrCodeScanner,
-                prominent = true,
-                enabled = !connecting,
-                onClick = scan,
-                modifier = Modifier.fillMaxWidth(),
-                tag = "pair.scan",
-            )
-            GlassCapsuleButton(
                 text = stringResource(Res.string.pair_invite),
                 icon = Icons.Filled.Password,
+                prominent = true,
                 enabled = !connecting,
                 onClick = { codeOpen = true },
-                modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                modifier = Modifier.fillMaxWidth(),
                 tag = "pair.invite",
             )
             GlassCapsuleButton(
@@ -256,44 +251,62 @@ private fun VerificationCode(code: String?, onCancel: () -> Unit) {
 }
 
 /**
- * The viewfinder: white-on-ink corner brackets around a QR glyph with a scan line
- * sweeping down while it waits; a tap opens the camera.
+ * The viewfinder: corner brackets over the camera, and a scan line while the preview
+ * is showing.
  */
 @Composable
-private fun ScanFrame(active: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun ScanFrame(scanning: Boolean, onScanned: (String) -> Unit, modifier: Modifier = Modifier) {
+    var live by remember { mutableStateOf(false) }
+    val showLine = live
     val colors = MaterialTheme.workColors
     val sweep by rememberInfiniteTransition(label = "scan").animateFloat(0.08f, 0.92f, infiniteRepeatable(tween(1_800, easing = LinearEasing), RepeatMode.Reverse), label = "scan line")
-    GlassSurface(
-        modifier.size(220.dp).springClickable(enabled = active, highlight = RoundedCornerShape(36.dp), onClick = onClick).testTag("pair.frame"),
-        shape = RoundedCornerShape(36.dp),
-    ) {
-        Icon(Icons.Filled.QrCode2, contentDescription = null, tint = colors.faint.copy(alpha = 0.5f), modifier = Modifier.size(96.dp))
-        val ink = MaterialTheme.colorScheme.onSurface
-        val line = colors.green
-        Canvas(Modifier.fillMaxSize().padding(22.dp)) {
-            val arm = size.minDimension * 0.22f
-            val stroke = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round)
-            val w = size.width
-            val h = size.height
-            listOf(
-                Offset(0f, 0f) to Pair(Offset(arm, 0f), Offset(0f, arm)),
-                Offset(w, 0f) to Pair(Offset(w - arm, 0f), Offset(w, arm)),
-                Offset(0f, h) to Pair(Offset(arm, h), Offset(0f, h - arm)),
-                Offset(w, h) to Pair(Offset(w - arm, h), Offset(w, h - arm)),
-            ).forEach { (corner, ends) ->
-                drawLine(ink, corner, ends.first, stroke.width, stroke.cap)
-                drawLine(ink, corner, ends.second, stroke.width, stroke.cap)
-            }
-            if (active) {
-                val y = h * sweep
-                drawRoundRect(
-                    Brush.horizontalGradient(listOf(line.copy(alpha = 0f), line, line.copy(alpha = 0f))),
-                    topLeft = Offset(w * 0.08f, y - 1.5.dp.toPx()),
-                    size = Size(w * 0.84f, 3.dp.toPx()),
-                    cornerRadius = CornerRadius(2.dp.toPx()),
-                )
-            }
+    val line = colors.green
+    GlassSurface(modifier.size(220.dp).testTag("pair.frame"), shape = RoundedCornerShape(36.dp)) {
+        Box(
+            Modifier.fillMaxSize().drawWithContent {
+                drawContent()
+                val edge = 22.dp.toPx()
+                inset(edge) {
+                    val stroke = 4.dp.toPx()
+                    // A dark edge under the white stroke, so the brackets stay visible on the
+                    // glass and on whatever the camera is looking at.
+                    cornerBrackets(Color.Black.copy(alpha = 0.45f), stroke + 2.dp.toPx())
+                    cornerBrackets(Color.White, stroke)
+                    if (showLine) {
+                        val y = size.height * sweep
+                        drawRoundRect(
+                            Brush.horizontalGradient(listOf(line.copy(alpha = 0f), line, line.copy(alpha = 0f))),
+                            topLeft = Offset(size.width * 0.08f, y - 1.5.dp.toPx()),
+                            size = Size(size.width * 0.84f, 3.dp.toPx()),
+                            cornerRadius = CornerRadius(2.dp.toPx()),
+                        )
+                    }
+                }
+            },
+        ) {
+            PairingCameraPreview(
+                active = scanning,
+                onScanned = onScanned,
+                onLive = { if (it != live) live = it },
+                modifier = Modifier.fillMaxSize(),
+            )
         }
+    }
+}
+
+private fun DrawScope.cornerBrackets(color: Color, widthPx: Float) {
+    val arm = size.minDimension * 0.22f
+    val cap = StrokeCap.Round
+    val w = size.width
+    val h = size.height
+    listOf(
+        Offset(0f, 0f) to Pair(Offset(arm, 0f), Offset(0f, arm)),
+        Offset(w, 0f) to Pair(Offset(w - arm, 0f), Offset(w, arm)),
+        Offset(0f, h) to Pair(Offset(arm, h), Offset(0f, h - arm)),
+        Offset(w, h) to Pair(Offset(w - arm, h), Offset(w, h - arm)),
+    ).forEach { (corner, ends) ->
+        drawLine(color, corner, ends.first, widthPx, cap)
+        drawLine(color, corner, ends.second, widthPx, cap)
     }
 }
 
