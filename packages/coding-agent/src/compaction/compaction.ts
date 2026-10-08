@@ -15,6 +15,7 @@ import {
 	createCustomMessage,
 } from "../model-context/index.js";
 import type { CompactionEntry, CompactionHistoryEntry, CompactionResult, CompactionSettings } from "./contracts.js";
+import { buildMechanicalLedger, type MechanicalLedger } from "./mechanical-ledger.js";
 import {
 	type CompactionSummaryGenerationRecoveryOptions,
 	generateCompactionSummaryWithRecovery,
@@ -44,6 +45,8 @@ import { estimateContextTokens, estimateTokens } from "./token-policy.js";
 export interface CompactionDetails {
 	readFiles: string[];
 	modifiedFiles: string[];
+	/** 机械账本（R1）：确定性事实，零 LLM；见 mechanical-ledger.ts。 */
+	ledger?: MechanicalLedger;
 }
 
 /**
@@ -499,6 +502,9 @@ export interface CompactionPreparation {
 	previousSummary?: string;
 	/** File operations extracted from messagesToSummarize */
 	fileOps: FileOperations;
+	/** 会话路径条目与上一次压缩索引（机械账本的历史清单吸收要用）。 */
+	pathEntries: readonly CompactionHistoryEntry[];
+	prevCompactionIndex: number;
 	/** Compaction settions from settings.jsonl	*/
 	settings: CompactionSettings;
 }
@@ -581,6 +587,8 @@ export function prepareCompaction(
 		tokensBefore,
 		previousSummary,
 		fileOps,
+		pathEntries,
+		prevCompactionIndex,
 		settings,
 	};
 }
@@ -627,6 +635,8 @@ export async function compact(
 		tokensBefore,
 		previousSummary,
 		fileOps,
+		pathEntries,
+		prevCompactionIndex,
 		settings,
 	} = preparation;
 
@@ -681,11 +691,16 @@ export async function compact(
 		throw new Error("First kept entry has no UUID - session may need migration");
 	}
 
+	// 机械账本（滚动压缩 R1）：确定性事实先行落位——与叙述摘要同源输入、
+	// 零 LLM 可独立验证。挂在 details.ledger：投影/UI 可用，叙述摘要失败时
+	// 账本仍在（详情层不空手而归）。
+	const ledger = buildMechanicalLedger(messagesToSummarize, pathEntries, prevCompactionIndex);
+
 	return {
 		summary,
 		firstKeptEntryId,
 		tokensBefore,
-		details: { readFiles, modifiedFiles } as CompactionDetails,
+		details: { readFiles, modifiedFiles, ledger } as CompactionDetails & { ledger: MechanicalLedger },
 	};
 }
 
