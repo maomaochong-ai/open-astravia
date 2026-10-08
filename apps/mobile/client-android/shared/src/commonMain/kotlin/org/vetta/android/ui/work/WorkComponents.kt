@@ -1,7 +1,10 @@
 package org.vetta.android.ui.work
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.setValue
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
@@ -27,6 +30,19 @@ fun describe(indicator: LinkIndicator): String =
         is LinkIndicator.Reconnecting -> pluralStringResource(Res.plurals.link_reconnecting, indicator.attempt, indicator.attempt)
         LinkIndicator.Offline -> stringResource(Res.string.link_offline)
     }
+
+/** Tells the link a screen showing its latency appeared (true) or went away (false). */
+val LocalWatchLatency = staticCompositionLocalOf<(Boolean) -> Unit> { {} }
+
+/** While this is shown the link's latency is measured every couple of seconds instead of rarely. */
+@Composable
+fun WatchLatency() {
+    val current by rememberUpdatedState(LocalWatchLatency.current)
+    DisposableEffect(Unit) {
+        current(true)
+        onDispose { current(false) }
+    }
+}
 
 /** How the phone reaches the desktop, with the latency when it is known. */
 @Composable

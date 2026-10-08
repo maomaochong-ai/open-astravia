@@ -94,6 +94,7 @@ import org.vetta.android.ui.design.form.custom
 import org.vetta.android.ui.design.form.picker
 import org.vetta.android.ui.design.form.toggle
 import org.vetta.android.ui.theme.vettaExtra
+import org.vetta.android.ui.work.WatchLatency
 import org.vetta.android.ui.work.describe
 import org.vetta.android.ui.work.linkDetail
 import org.vetta.android.ui.work.workColors
@@ -124,6 +125,7 @@ fun SettingsScreen(
     /** Opens the page choosing which session news becomes a notification. */
     onOpenNotifications: () -> Unit = {},
 ) {
+    WatchLatency()
     var confirmUnpair by remember { mutableStateOf(false) }
     val preferences = state.preferences
     Column(

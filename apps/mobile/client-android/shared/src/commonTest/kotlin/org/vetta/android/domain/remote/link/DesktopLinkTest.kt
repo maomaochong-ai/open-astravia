@@ -4,6 +4,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
@@ -283,6 +284,42 @@ class DesktopLinkTest {
             link.start()
             assertTrue(eventually { link.snapshot.value.channel == LinkChannel.Relay })
             assertTrue(link.snapshot.value.lastError != DesktopLink.UNKNOWN_PAIRING, "another computer may hold the old address")
+        }
+
+    @Test
+    fun measuresTheLatencyWithItsOwnProbeOnlyAndOftenWhileWatched() =
+        runTest {
+            val desktop = FakeDesktop(backgroundScope)
+            var probes = 0
+            desktop.handler = { request ->
+                if (request.method == RemoteRequestMethod.DiagnosticsSnapshot) {
+                    probes += 1
+                    delay(40)
+                } else {
+                    delay(900)
+                }
+                respond(request.requestId, buildJsonObject {})
+            }
+            val link = link(desktop)
+            link.start()
+            assertTrue(eventually { link.snapshot.value.rttMs != null })
+            assertEquals(40L, link.snapshot.value.rttMs)
+
+            val slow = async { link.request(RemoteRequestMethod.SessionList) }
+            assertTrue(eventually { slow.isCompleted })
+            assertEquals(40L, link.snapshot.value.rttMs, "the desktop's work on a request is not the link's latency")
+
+            val before = probes
+            advanceTimeBy(10_000)
+            runCurrent()
+            assertEquals(before, probes, "with nothing showing it, measured every 15 s")
+
+            link.setLatencyWatched(true)
+            runCurrent()
+            assertEquals(before + 1, probes, "a screen showing it gets a fresh figure at once")
+            advanceTimeBy(4_100)
+            runCurrent()
+            assertEquals(before + 3, probes, "then every 2 s")
         }
 
     @Test

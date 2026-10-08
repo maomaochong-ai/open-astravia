@@ -68,7 +68,10 @@ data class DesktopLinkOptions(
     val p2pProbeIntervalMs: Long = 20_000,
     val requestTimeoutMs: Long = 30_000,
     val maxBackoffMs: Long = 30_000,
-    val rttSampleIntervalMs: Long = 30_000,
+    /** In the foreground, how often the round trip is measured while no screen shows it. */
+    val rttSampleIntervalMs: Long = 15_000,
+    /** How often it is measured while a screen shows it ([DesktopLink.setLatencyWatched]). */
+    val rttWatchedIntervalMs: Long = 2_000,
     /** How long a request waits for a recovering connection to catch up. */
     val recoveryWaitMs: Long = 3_000,
     val logger: RemoteLogger = NoopRemoteLogger,
@@ -119,6 +122,8 @@ class DesktopLink(
     private var attemptJob: Job? = null
     private var reconnectJob: Job? = null
     private var rttJob: Job? = null
+    private val rttWindow = RttWindow()
+    private var latencyWatched = false
     private var probeJob: Job? = null
     private var p2pJob: Job? = null
     private var backoffMs = INITIAL_BACKOFF_MS
@@ -161,6 +166,17 @@ class DesktopLink(
         }
     }
 
+    /**
+     * A screen showing the latency appeared or went away: it is measured every couple of
+     * seconds while one does, and starts with a fresh figure instead of one up to an
+     * interval old.
+     */
+    fun setLatencyWatched(value: Boolean) {
+        if (latencyWatched == value) return
+        latencyWatched = value
+        if (value && rttJob != null) startRttSampling(clearWindow = false)
+    }
+
     fun stop() {
         running = false
         generation += 1
@@ -193,9 +209,9 @@ class DesktopLink(
             }
         }
         if (connection.state.value != RemoteConnectionState.Online) throw LinkOfflineException()
-        val result = connection.request(method, payload, sessionId)
-        if (active === candidate) publish(_snapshot.value.copy(rttMs = connection.snapshot().lastRttMs))
-        return result
+        // Not taken as the latency: a request's round trip includes the desktop's work on it,
+        // hundreds of milliseconds for a session list, which made the figure jump.
+        return connection.request(method, payload, sessionId)
     }
 
     private fun launchAttempt() {
@@ -526,21 +542,27 @@ class DesktopLink(
         reconnectJob = null
     }
 
-    private fun startRttSampling() {
+    /** A new channel starts a new window: its route, and so its latency, differs. */
+    private fun startRttSampling(clearWindow: Boolean = true) {
         stopRttSampling()
+        if (clearWindow) rttWindow.clear()
         rttJob =
             scope.launch {
                 sampleRtt()
                 while (isActive) {
-                    delay(options.rttSampleIntervalMs)
+                    delay(if (latencyWatched) options.rttWatchedIntervalMs else options.rttSampleIntervalMs)
                     if (foreground && _snapshot.value.isUsable) sampleRtt()
                 }
             }
     }
 
-    /** One `diagnostics.snapshot`: its round trip is the latency, its payload the desktop's facts. */
+    /**
+     * One `diagnostics.snapshot`: its round trip is the latency, its payload the desktop's facts.
+     * The desktop answers it from memory, so the round trip is the link's own.
+     */
     private suspend fun sampleRtt() {
         val candidate = active ?: return
+        val startedAt = options.now()
         val result =
             try {
                 candidate.connection.request(RemoteRequestMethod.DiagnosticsSnapshot)
@@ -552,7 +574,7 @@ class DesktopLink(
         if (active !== candidate) return
         publish(
             _snapshot.value.copy(
-                rttMs = candidate.connection.snapshot().lastRttMs,
+                rttMs = rttWindow.add(maxOf(0, options.now() - startedAt)),
                 diagnostics = readDiagnostics(result) ?: _snapshot.value.diagnostics,
             ),
         )

@@ -56,6 +56,7 @@ import org.vetta.android.resources.remote_rotate
 import org.vetta.android.resources.remote_screen_permission_denied
 import org.vetta.android.ui.design.GlassCircleButton
 import org.vetta.android.ui.theme.LightSystemBarIcons
+import org.vetta.android.ui.work.WatchLatency
 import org.vetta.android.ui.work.describe
 import org.vetta.android.ui.work.linkDetail
 
@@ -70,6 +71,8 @@ import org.vetta.android.ui.work.linkDetail
  */
 @Composable
 fun RemoteDesktopScreen(state: MirrorState, viewerUrl: String?, onClose: () -> Unit, onScreenOpen: (Boolean) -> Unit = {}) {
+    // The header shows the control link's latency.
+    WatchLatency()
     DisposableEffect(Unit) {
         onScreenOpen(true)
         onDispose { onScreenOpen(false) }
