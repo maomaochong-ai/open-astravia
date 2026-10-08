@@ -73,6 +73,9 @@ describe.each(["bash", "shell"] as const)("runtime %s command adapter", (toolNam
 			inputSchema: CommandToolInputSchema,
 		});
 		expect(runtime.tool.description).toContain("managed background execution");
+		// 每次调用都是独立 shell：模型必须被告知 cwd/env 不跨调用延续（issue #4）。
+		expect(runtime.tool.description).toContain("new, independent shell process");
+		expect(runtime.tool.description).toContain("NOT carried over");
 
 		const input = { command: "echo command", timeout: 7 };
 		const runtimeUpdates: unknown[] = [];
