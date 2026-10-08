@@ -43,7 +43,7 @@
    规则会在所有存量工程里就地凝固。
 2. **`packages/plugins/plugin-sdk/CHANGELOG.md`**——追加到 `[Unreleased]` 或新版本段，说明**为什么**，
    不是罗列改了什么。破坏性改动要给迁移路径。
-3. **`plugin-sdk/package.json` 的 `version`**——纯增量走 patch。注意 `plugin-vite` 的 peer 范围
+3. **`plugin-sdk/package.json` 的 `version`**——同一批未发布的对外合同变更只提升一次版本：源码版本仍等于已发布版本时提升一次，已有待发布版本则沿用。后续修改、测试、构建和联调不再递增，发布前也不额外加号。纯增量走 patch。注意 `plugin-vite` 的 peer 范围
    （当前 `>=0.3.0 <0.4.0`），跨 minor 要连它一起改、一起发。
 4. **`PLUGIN_API_VERSION`**（`apps/desktop/src/main/plugins/plugin-api-version.ts`）——**只要新增了清单字段就必须推**。
    清单校验对未知字段 fail-closed，用了新字段的插件装到旧宿主上是整份清单被拒、插件根本装不上；

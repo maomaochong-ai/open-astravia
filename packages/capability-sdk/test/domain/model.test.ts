@@ -3,10 +3,11 @@ import { CAPABILITY_ERROR_CODES, CAPABILITY_PREFIXES } from "../../src/contracts
 import { DOMAIN_MODEL_CAPABILITIES, DOMAIN_MODEL_CAPABILITY_CATALOG } from "../../src/domain.js";
 
 describe("model domain capabilities", () => {
-	it("preserves reasoning declarations through both provider write contracts", () => {
+	it("preserves reasoning and chat input declarations through both provider write contracts", () => {
 		const model = {
 			id: "gpt-6-astra",
 			reasoning: true,
+			input: ["text", "image"],
 			reasoningLevels: ["low", "medium", "high", "xhigh", "max"],
 			defaultReasoningLevel: "medium",
 		};
@@ -20,17 +21,22 @@ describe("model domain capabilities", () => {
 		expect(replace.providers.responses?.models).toEqual([model]);
 	});
 
-	it.each([{ reasoningLevels: "xhigh" }, { reasoningLevels: [42] }, { defaultReasoningLevel: 42 }])(
-		"rejects malformed reasoning declarations: %j",
-		(fields) => {
-			expect(() =>
-				DOMAIN_MODEL_CAPABILITIES.UPSERT_PROVIDER.parseInput({
-					provider: "cpa",
-					data: { models: [{ id: "gpt-6-astra", ...fields }] },
-				}),
-			).toThrow();
-		},
-	);
+	it.each([
+		{ input: "image" },
+		{ input: [] },
+		{ input: ["audio"] },
+		{ input: ["image", "image"] },
+		{ reasoningLevels: "xhigh" },
+		{ reasoningLevels: [42] },
+		{ defaultReasoningLevel: 42 },
+	])("rejects malformed reasoning declarations: %j", (fields) => {
+		expect(() =>
+			DOMAIN_MODEL_CAPABILITIES.UPSERT_PROVIDER.parseInput({
+				provider: "cpa",
+				data: { models: [{ id: "gpt-6-astra", ...fields }] },
+			}),
+		).toThrow();
+	});
 
 	it("uses one stable id per model operation", () => {
 		expect(Object.values(DOMAIN_MODEL_CAPABILITIES).map((capability) => capability.id)).toEqual([

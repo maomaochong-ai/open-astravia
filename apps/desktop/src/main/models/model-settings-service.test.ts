@@ -36,7 +36,7 @@ function createCredentialStore(initial: Record<string, string> = {}): ModelCrede
 }
 
 describe("ModelSettingsService", () => {
-	it("persists plugin reasoning choices through capability parsing and model read-back", async () => {
+	it("persists plugin reasoning and chat input choices through capability parsing and model read-back", async () => {
 		let config: ModelsConfig = { providers: {} };
 		const service = new ModelSettingsService({
 			readConfig: async () => config,
@@ -51,6 +51,7 @@ describe("ModelSettingsService", () => {
 			reasoning: true,
 			reasoningLevels: ["low", "medium", "high", "xhigh", "max"],
 			defaultReasoningLevel: "medium",
+			input: ["text", "image"],
 		}));
 		const input = DOMAIN_MODEL_CAPABILITIES.REPLACE_OWNED_PROVIDERS.parseInput({
 			owner: "cli-proxy-api",
