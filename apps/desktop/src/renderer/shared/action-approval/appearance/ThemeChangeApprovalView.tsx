@@ -1,5 +1,5 @@
 import { useThemeComponent } from "@vetta-org/theme-sdk";
-import { ThemeChangeApprovalView as ThemeThemeChangeApprovalView } from "@vetta-org/theme-ui/action-approval";
+import { ThemeChangeApprovalView as ThemeThemeChangeApprovalView } from "@vetta-org/theme-ui/action-approval/ThemeChangeApprovalView";
 import { AppearanceActionPicker } from "./AppearanceActionPicker";
 import { AppearanceApprovalDrawerView } from "./AppearanceApprovalDrawerView";
 import type { ThemeChangeApprovalModel } from "./useThemeChangeApprovalModel";

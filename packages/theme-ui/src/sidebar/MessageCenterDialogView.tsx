@@ -1,7 +1,7 @@
 import type { JSX, ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Dialog as DialogPrimitive } from "radix-ui";
-import { Button } from "@vetta-org/ui";
+import { Button } from "@vetta-org/ui/button";
 
 export const MESSAGE_CENTER_DIALOG_SPRING = {
 	type: "spring" as const,

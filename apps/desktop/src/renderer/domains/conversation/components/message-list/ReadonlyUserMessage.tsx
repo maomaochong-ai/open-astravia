@@ -1,5 +1,6 @@
 import type { ConversationUserMessageViewModel } from "@shared/conversation";
-import { MessageLayout, UserMessageContextMenuView } from "@vetta-org/theme-ui/chat";
+import { MessageLayout } from "@vetta-org/theme-ui/chat/MessageLayoutView";
+import { UserMessageContextMenuView } from "@vetta-org/theme-ui/chat/UserMessageContextMenuView";
 import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useUserMessageContextMenu, useUserMessageCopyAction } from "../../hooks/useUserMessageActions";

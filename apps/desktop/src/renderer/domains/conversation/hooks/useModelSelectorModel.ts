@@ -9,7 +9,7 @@ import {
 } from "@shared/store/atoms";
 import { modelCatalog } from "@shared/store/model-catalog";
 import type { ModelSelectorViewProps } from "@vetta-org/theme-ui/chat";
-import { fmtMultiplier } from "@vetta-org/theme-ui/shared";
+import { fmtMultiplier } from "@vetta-org/theme-ui/shared/MultiplierTag";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";

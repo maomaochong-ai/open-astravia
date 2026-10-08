@@ -28,7 +28,7 @@ vi.mock("react-i18next", () => ({
 }));
 
 const view = vi.hoisted(() => ({ props: undefined as Record<string, unknown> | undefined }));
-vi.mock("@vetta-org/theme-ui/chat", async (importOriginal) => {
+vi.mock("@vetta-org/theme-ui/chat/TeamMemberReplyCardView", async (importOriginal) => {
 	const actual = await importOriginal<typeof ThemeChat>();
 	return {
 		...actual,

@@ -1,4 +1,4 @@
-import { isEditableKeyboardTarget } from "@vetta-org/theme-ui/file-preview";
+import { isEditableKeyboardTarget } from "@vetta-org/theme-ui/file-preview/keyboard-target";
 import { matchesShortcut } from "../lib/platform";
 
 /**

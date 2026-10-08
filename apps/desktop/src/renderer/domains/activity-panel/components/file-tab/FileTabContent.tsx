@@ -1,6 +1,6 @@
 import { FilesPanel } from "@domains/file-explorer/components/FilesPanel";
 import { FilePreviewView } from "@domains/file-preview/components/FilePreviewView";
-import { FileTabContentView } from "@vetta-org/theme-ui/activity";
+import { FileTabContentView } from "@vetta-org/theme-ui/activity/FileTabContentView";
 import { useFileTabContentModel } from "../../hooks/useFileTabContentModel";
 
 interface FileTabContentProps {

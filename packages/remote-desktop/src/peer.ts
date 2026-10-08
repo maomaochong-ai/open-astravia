@@ -17,7 +17,8 @@ export interface RemoteDesktopHostStartOptions {
 	 *
 	 * While the peer connection is up, a `peer_ready` is taken as the same viewer
 	 * rejoining signaling (after a relay restart, say) and the connection is kept; only
-	 * if the connection then drops is the viewer treated as replaced.
+	 * if the connection then fails, or stays disconnected for a few seconds, is the viewer
+	 * treated as replaced.
 	 */
 	readonly onViewerReplaced?: () => void;
 	/** Every change of the peer connection's state, e.g. to decide what a signaling drop means. */
@@ -37,6 +38,8 @@ export interface RemoteDesktopTextChannelHandlers {
 
 export const REMOTE_DESKTOP_CONTROL_CHANNEL = "vetta-control-v2";
 const MAX_CONTROL_MESSAGE_CHARS = 1_500_000;
+/** How long a rejoined viewer may stay disconnected before it counts as replaced; the phone gives up after as long. */
+const VIEWER_DISCONNECT_GRACE_MS = 5_000;
 
 export class RemoteDesktopHost {
 	private readonly peer: RTCPeerConnection;
@@ -57,6 +60,7 @@ export class RemoteDesktopHost {
 	private onConnectionStateChange: ((state: RTCPeerConnectionState) => void) | undefined;
 	/** A viewer came online while connected: it rejoined, unless the connection drops after all. */
 	private viewerRejoined = false;
+	private rejoinGrace: ReturnType<typeof setTimeout> | undefined;
 
 	constructor(
 		private readonly options: RemoteDesktopPeerOptions,
@@ -81,11 +85,17 @@ export class RemoteDesktopHost {
 			const state = this.peer.connectionState;
 			this.logger.info("remote desktop host peer state", { sessionId: options.sessionId, state });
 			this.onConnectionStateChange?.(state);
-			if (this.viewerRejoined && state !== "connected" && this.onViewerReplaced && !this.closed) {
-				this.viewerRejoined = false;
-				this.logger.info("remote desktop viewer replaced", { sessionId: options.sessionId, state });
-				this.onViewerReplaced();
+			if (!this.viewerRejoined || !this.onViewerReplaced || this.closed) return;
+			if (state === "connected") {
+				this.clearRejoinGrace();
+				return;
 			}
+			// A brief network blip that ICE recovers from is still the same viewer.
+			if (state === "disconnected") {
+				this.rejoinGrace ??= setTimeout(() => this.viewerGone(state), VIEWER_DISCONNECT_GRACE_MS);
+				return;
+			}
+			this.viewerGone(state);
 		};
 	}
 
@@ -157,9 +167,24 @@ export class RemoteDesktopHost {
 		if (frame.type === "end") this.close(frame.reason);
 	}
 
+	/** The rejoined viewer's connection is gone for good: it was a new viewer after all. */
+	private viewerGone(state: RTCPeerConnectionState): void {
+		this.clearRejoinGrace();
+		if (!this.viewerRejoined || !this.onViewerReplaced || this.closed) return;
+		this.viewerRejoined = false;
+		this.logger.info("remote desktop viewer replaced", { sessionId: this.options.sessionId, state });
+		this.onViewerReplaced();
+	}
+
+	private clearRejoinGrace(): void {
+		if (this.rejoinGrace) clearTimeout(this.rejoinGrace);
+		this.rejoinGrace = undefined;
+	}
+
 	close(reason: Extract<RemoteDesktopSignal, { type: "end" }>["reason"] = "completed"): void {
 		if (this.closed) return;
 		this.closed = true;
+		this.clearRejoinGrace();
 		this.inputChannel?.close();
 		this.controlChannel?.close();
 		for (const sender of this.peer.getSenders()) sender.track?.stop();

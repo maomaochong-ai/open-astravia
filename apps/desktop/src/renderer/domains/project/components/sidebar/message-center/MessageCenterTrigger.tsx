@@ -1,4 +1,4 @@
-import { MessageCenterTriggerView } from "@vetta-org/theme-ui/sidebar";
+import { MessageCenterTriggerView } from "@vetta-org/theme-ui/sidebar/MessageCenterTriggerView";
 import { useTranslation } from "react-i18next";
 
 export function MessageCenterTrigger({

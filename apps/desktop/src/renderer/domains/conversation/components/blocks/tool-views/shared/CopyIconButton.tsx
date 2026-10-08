@@ -1,7 +1,5 @@
-import {
-	CopyIconButton as ThemeCopyIconButton,
-	type CopyIconButtonProps as ThemeCopyIconButtonProps,
-} from "@vetta-org/theme-ui/chat";
+import { CopyIconButton as ThemeCopyIconButton } from "@vetta-org/theme-ui/chat/CopyIconButton";
+import type { CopyIconButtonProps as ThemeCopyIconButtonProps } from "@vetta-org/theme-ui/chat";
 import { useTranslation } from "react-i18next";
 
 type HostCopyIconButtonProps = Omit<ThemeCopyIconButtonProps, "labels">;

@@ -1,4 +1,4 @@
-import { ReadImageView as ThemeReadImageView } from "@vetta-org/theme-ui/chat";
+import { ReadImageView as ThemeReadImageView } from "@vetta-org/theme-ui/chat/ReadImageView";
 import {
 	useReadImageViewModel,
 	type ToolImagePreviewLike,

@@ -1,8 +1,5 @@
 import type { FilePreviewContext, FilePreviewItem } from "@vetta-org/theme-ui/file-preview";
-import {
-	FilePreviewDialogView as ThemeFilePreviewDialogView,
-	ThumbnailView,
-} from "@vetta-org/theme-ui/file-preview";
+import { FilePreviewDialogView as ThemeFilePreviewDialogView, ThumbnailView } from "@vetta-org/theme-ui/file-preview/FilePreviewDialogView";
 import { useImageSrc } from "../hooks/useLightboxImageModel";
 import { LightboxImage } from "./LightboxImage";
 import { PreviewBody } from "./PreviewContent";

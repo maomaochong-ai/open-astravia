@@ -1,4 +1,6 @@
-import { Button, Input, Switch } from "@vetta-org/ui";
+import { Button } from "@vetta-org/ui/button";
+import { Input } from "@vetta-org/ui/input";
+import { Switch } from "@vetta-org/ui/switch";
 import type { JSX, KeyboardEvent } from "react";
 import { useEffect, useId, useRef, useState } from "react";
 import { ProviderIcon } from "../shared/provider-icon";

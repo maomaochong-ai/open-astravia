@@ -4178,13 +4178,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Direct"
+            "value": "Peer-to-peer (P2P)"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "直连"
+            "value": "P2P 直连"
           }
         }
       }

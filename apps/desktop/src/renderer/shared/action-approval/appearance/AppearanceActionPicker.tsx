@@ -1,12 +1,7 @@
 import { STOAT_CURSOR_PREVIEW_URL, type CursorStyle } from "@shared/theme/cursor";
 import { THEMES } from "@shared/theme/themes";
-import {
-	AppearanceActionPickerView,
-	type AppearanceCursorOption,
-	type AppearanceModeOption,
-	type AppearanceThemeMode,
-	type AppearanceThemePreview,
-} from "@vetta-org/theme-ui/action-approval";
+import { AppearanceActionPickerView } from "@vetta-org/theme-ui/action-approval/AppearanceActionPickerView";
+import type { AppearanceCursorOption, AppearanceModeOption, AppearanceThemeMode, AppearanceThemePreview } from "@vetta-org/theme-ui/action-approval";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 

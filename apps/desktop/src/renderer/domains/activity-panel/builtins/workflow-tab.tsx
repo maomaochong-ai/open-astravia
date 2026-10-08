@@ -1,16 +1,15 @@
-import {
-	getSubagentsForSession,
-	isSubagentActive,
-	isWorkflowTask,
-	subagentsBySessionAtom,
-} from "@shared/store/atoms";
+import { getSubagentsForSession, isSubagentActive, isWorkflowTask, subagentsBySessionAtom } from "@shared/store/atoms";
 import { useAtomValue } from "jotai";
-import { useMemo } from "react";
+import { lazy, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { WorkflowTabPanel } from "../components/WorkflowTabPanel";
+
 import { useActivityRuntimeIds } from "../registry/context";
 import type { ActivityTabDefinition } from "../registry/types";
 import { collectRuntimeItems } from "../services/runtime-scope";
+
+const WorkflowTabPanel = lazy(() =>
+	import("../components/WorkflowTabPanel").then((module) => ({ default: module.WorkflowTabPanel })),
+);
 
 function WorkflowActivityTab(): JSX.Element {
 	return <WorkflowTabPanel />;

@@ -1,9 +1,7 @@
 import type { ConversationUserMessageViewModel } from "@shared/conversation";
-import {
-	MessageLayout,
-	UserMessage as UserMessagePrimitive,
-	UserMessageContextMenuView,
-} from "@vetta-org/theme-ui/chat";
+import { MessageLayout } from "@vetta-org/theme-ui/chat/MessageLayoutView";
+import { UserMessage as UserMessagePrimitive } from "@vetta-org/theme-ui/chat/UserMessageView";
+import { UserMessageContextMenuView } from "@vetta-org/theme-ui/chat/UserMessageContextMenuView";
 import {
 	createContext,
 	type ReactNode,

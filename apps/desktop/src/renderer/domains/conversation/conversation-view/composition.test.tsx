@@ -18,7 +18,7 @@ const renders = vi.hoisted(() => ({ userBubble: 0 }));
 
 vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 
-vi.mock("@vetta-org/theme-ui/chat", () => ({
+vi.mock("@vetta-org/theme-ui/chat/MessageFeedView", () => ({
 	MessageFeed: {
 		Root: ({ children }: { children: ReactNode }) => <>{children}</>,
 		VirtualList: (props: {
@@ -237,3 +237,5 @@ describe("capabilities", () => {
 		expect(screen.getByRole("button", { name: "stop" })).toBeTruthy();
 	});
 });
+
+vi.mock("@vetta-org/theme-ui/chat/MessageFeedLayoutView", () => import("@vetta-org/theme-ui/chat/MessageFeedView"));

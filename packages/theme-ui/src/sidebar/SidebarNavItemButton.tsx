@@ -1,6 +1,6 @@
 import { forwardRef, type ComponentPropsWithoutRef, type JSX } from "react";
 import type { SidebarNavItem } from "@vetta-org/theme-sdk/sidebar";
-import { cn } from "@vetta-org/ui";
+import { cn } from "@vetta-org/ui/utils";
 import { SidebarNavBadgeView } from "./SidebarNavBadgeView";
 import { SidebarNavIcon } from "./SidebarNavIcon";
 

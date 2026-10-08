@@ -1,5 +1,5 @@
 import { useThemeSurface } from "@vetta-org/theme-sdk/appearance";
-import { cn } from "@vetta-org/ui";
+import { cn } from "@vetta-org/ui/utils";
 import { Slot } from "radix-ui";
 import type { ComponentPropsWithoutRef, JSX, ReactNode } from "react";
 import { createContext, forwardRef, useContext } from "react";

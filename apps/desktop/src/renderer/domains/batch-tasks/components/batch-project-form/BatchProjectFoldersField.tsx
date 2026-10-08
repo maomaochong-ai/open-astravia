@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { BatchProjectFoldersFieldView } from "@vetta-org/theme-ui/batch-tasks";
+import { BatchProjectFoldersFieldView } from "@vetta-org/theme-ui/batch-tasks/BatchProjectFoldersFieldView";
 
 export function BatchProjectFoldersField({
 	emptyText,

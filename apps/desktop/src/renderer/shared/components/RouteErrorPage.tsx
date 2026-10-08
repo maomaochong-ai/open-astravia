@@ -1,5 +1,5 @@
 import { Link, type ErrorComponentProps } from "@tanstack/react-router";
-import { RouteErrorPageView } from "@vetta-org/theme-ui/overlays";
+import { RouteErrorPageView } from "@vetta-org/theme-ui/overlays/RouteErrorPageView";
 import { useRouteErrorPageModel } from "../hooks/useRouteErrorPageModel";
 import { Button } from "./ui/button";
 

@@ -8,7 +8,28 @@ export function createPluginModelsApi(permissions: PluginPermissionApi, capabili
 		},
 		listOwnedProviders: async () => {
 			permissions.require("models.manage");
-			return window.vetta.plugins.internalCapabilities.models.listOwnedProviders(capabilitySessionId);
+			const providers =
+				await window.vetta.plugins.internalCapabilities.models.listOwnedProviders(capabilitySessionId);
+			return Object.fromEntries(
+				Object.entries(providers).map(([id, { models: sourceModels, ...provider }]) => [
+					id,
+					{
+						...provider,
+						...(sourceModels === undefined
+							? {}
+							: {
+									models: sourceModels.map(({ input, ...model }) => {
+										// Historical settings accept arbitrary strings; only return chat inputs
+										// that the plugin write contract can round-trip on the next snapshot.
+										const supported = input?.filter(
+											(value): value is "text" | "image" => value === "text" || value === "image",
+										);
+										return { ...model, ...(supported?.length ? { input: [...new Set(supported)] } : {}) };
+									}),
+								}),
+					},
+				]),
+			);
 		},
 	};
 }

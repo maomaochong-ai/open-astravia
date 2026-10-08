@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { cn } from "@shared/lib/utils";
 import { useThemeComponent } from "@vetta-org/theme-sdk";
 import type { NewSessionHeroIdentity } from "@vetta-org/theme-ui";
-import { NewSessionPageLayoutView } from "@vetta-org/theme-ui/chat";
+import { NewSessionPageLayoutView } from "@vetta-org/theme-ui/chat/NewSessionPageLayoutView";
 import {
 	PANEL_REVEAL_DURATION,
 	PANEL_REVEAL_EASE,

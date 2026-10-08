@@ -1,6 +1,6 @@
 import type { ComponentPropsWithoutRef, JSX } from "react";
 import { useThemeSurface, type ThemeSurfaceSlot } from "@vetta-org/theme-sdk/appearance";
-import { cn } from "@vetta-org/ui";
+import { cn } from "@vetta-org/ui/utils";
 import { BackgroundImageDecoration } from "./BackgroundImageFrame";
 import { CornerImageDecoration } from "./CornerImageFrame";
 import { HorizontalSliceImageDecoration } from "./HorizontalSliceImageFrame";

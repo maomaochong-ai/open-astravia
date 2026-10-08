@@ -1,9 +1,14 @@
+import { lazy } from "react";
 import { debugModeAtom } from "@shared/store/atoms";
 import { useAtomValue } from "jotai";
 import { useTranslation } from "react-i18next";
-import { DebugTabPanel } from "../components/DebugTabPanel";
+
 import { useActivityPanelCwd } from "../registry/context";
 import type { ActivityTabDefinition } from "../registry/types";
+
+const DebugTabPanel = lazy(() =>
+	import("../components/DebugTabPanel").then((module) => ({ default: module.DebugTabPanel })),
+);
 
 function DebugActivityTab(): JSX.Element | null {
 	const cwd = useActivityPanelCwd();

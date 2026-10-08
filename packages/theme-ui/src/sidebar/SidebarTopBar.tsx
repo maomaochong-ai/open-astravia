@@ -1,5 +1,5 @@
 import type { JSX, ReactNode } from "react";
-import { cn } from "@vetta-org/ui";
+import { cn } from "@vetta-org/ui/utils";
 import { isMac } from "../utils/platform";
 
 export interface SidebarTopBarClassNames {

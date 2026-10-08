@@ -1,4 +1,4 @@
-import { ConversationTagEditorDialogView } from "@vetta-org/theme-ui/project";
+import { ConversationTagEditorDialogView } from "@vetta-org/theme-ui/project/ConversationTagEditorDialogView";
 import { useConversationTagEditorModel } from "../hooks/useConversationTagEditorModel";
 
 export function ConversationTagEditorDialog(): JSX.Element | null {

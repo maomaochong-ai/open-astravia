@@ -1,4 +1,4 @@
-import { WebhookDeleteApprovalView as ThemeView } from "@vetta-org/theme-ui/action-approval";
+import { WebhookDeleteApprovalView as ThemeView } from "@vetta-org/theme-ui/action-approval/WebhookDeleteApprovalView";
 import { useTranslation } from "react-i18next";
 import { ManageActionApprovalFrameView } from "../ManageActionApprovalFrameView";
 import type { WebhookDeleteApprovalModel } from "./useWebhookDeleteApprovalModel";

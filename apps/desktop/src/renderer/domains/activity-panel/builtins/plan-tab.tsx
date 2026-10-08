@@ -1,7 +1,12 @@
+import { lazy } from "react";
 import { useTranslation } from "react-i18next";
-import { PlanTabPanel } from "../components/PlanTabPanel";
+
 import { useActivityPlan } from "../hooks/usePlanTabPanelModel";
 import type { ActivityTabDefinition } from "../registry/types";
+
+const PlanTabPanel = lazy(() =>
+	import("../components/PlanTabPanel").then((module) => ({ default: module.PlanTabPanel })),
+);
 
 export const planTabDefinition: ActivityTabDefinition = {
 	id: "plan",

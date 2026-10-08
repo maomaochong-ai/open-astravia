@@ -1,4 +1,4 @@
-import { Button } from "@vetta-org/ui";
+import { Button } from "@vetta-org/ui/button";
 
 export function ChatHeaderExportAction({
 	disabled,

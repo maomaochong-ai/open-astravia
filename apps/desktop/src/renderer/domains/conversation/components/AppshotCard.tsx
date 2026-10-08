@@ -1,4 +1,4 @@
-import { AppshotCardView } from "@vetta-org/theme-ui/chat";
+import { AppshotCardView } from "@vetta-org/theme-ui/chat/AppshotCardView";
 import { useAppshotCardModel } from "../hooks/useAppshotCardModel";
 
 /** Appshot 附件展示数据（输入框待发送 / 已发送消息共用）。 */

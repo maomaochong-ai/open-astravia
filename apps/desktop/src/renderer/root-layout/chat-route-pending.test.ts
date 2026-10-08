@@ -15,6 +15,10 @@ describe("shouldShowChatRoutePending", () => {
 		expect(shouldShowChatRoutePending(startupState)).toBe(true);
 	});
 
+	it("等待默认对话目录时不提前挂载即将被重定向的 ChatView", () => {
+		expect(shouldShowChatRoutePending({ ...startupState, hasDefaultConversation: false })).toBe(true);
+	});
+
 	it.each([
 		["已有会话打开", { hasPendingSessionOpen: true }],
 		["新会话创建", { hasPendingSessionCreation: true }],

@@ -12,6 +12,8 @@ import type { InputSegment } from "@shared/lib/input-tokens";
 import type { ContextCompactionEligibility, ContextCompositionReport } from "@vetta/runtime-core";
 import { atom } from "jotai";
 import { selectAtom } from "jotai/utils";
+import type { LastActiveSession } from "./last-active-session-storage";
+import { LAST_ACTIVE_SESSION_STORAGE_KEY, readLastActiveSession } from "./last-active-session-storage";
 import { runningSessionPathsAtom } from "./running-sessions-atoms";
 
 export type TeamMemberSummaryEventViewModel = {
@@ -123,10 +125,7 @@ export interface PendingScrollToEntry {
 
 export const pendingScrollToEntryAtom = atom<PendingScrollToEntry | null>(null);
 
-export interface LastActiveSession {
-	cwd: string;
-	sessionPath: string;
-}
+export type { LastActiveSession } from "./last-active-session-storage";
 
 export type SessionExecutionMode = "sandbox" | "full-access";
 export type ExecutionModeOverride = "inherit" | SessionExecutionMode;
@@ -261,24 +260,6 @@ export const pendingSessionCreationAtom = atom<PendingSessionCreation | null>(nu
 export const pendingSessionOpenAtom = atom<PendingSessionOpen | null>(null);
 /** 已接受发送、但新会话/runtime 尚未准备好的 UI 过渡态。 */
 export const pendingSessionSendAtom = atom<{ messageId: string; interactionId: string } | null>(null);
-
-const LAST_ACTIVE_SESSION_STORAGE_KEY = "vetta-last-active-session";
-
-function readLastActiveSession(): LastActiveSession | null {
-	try {
-		const raw = localStorage.getItem(LAST_ACTIVE_SESSION_STORAGE_KEY);
-		if (!raw) return null;
-		const value = JSON.parse(raw) as Partial<LastActiveSession>;
-		if (typeof value.cwd !== "string" || !value.cwd || typeof value.sessionPath !== "string" || !value.sessionPath) {
-			localStorage.removeItem(LAST_ACTIVE_SESSION_STORAGE_KEY);
-			return null;
-		}
-		return { cwd: value.cwd, sessionPath: value.sessionPath };
-	} catch {
-		localStorage.removeItem(LAST_ACTIVE_SESSION_STORAGE_KEY);
-		return null;
-	}
-}
 
 const lastActiveSessionStorageAtom = atom<LastActiveSession | null>(readLastActiveSession());
 

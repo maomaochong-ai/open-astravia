@@ -1,13 +1,11 @@
 import { PerfSendProfiler } from "@shared/lib/perf-send";
 import { useThemeComponent } from "@vetta-org/theme-sdk";
 import { useThemeSurface } from "@vetta-org/theme-sdk/appearance";
-import {
-	MessageInput,
-	InputBarContextMenuView,
-	InputBarPlaceholder,
-} from "@vetta-org/theme-ui/chat";
-import { BottomPanelPillsView } from "@vetta-org/theme-ui/bottom-panel";
-import { useDelayedUnmount } from "@vetta-org/theme-ui/shared";
+import { MessageInput } from "@vetta-org/theme-ui/chat/MessageInputView";
+import { InputBarContextMenuView } from "@vetta-org/theme-ui/chat/InputBarContextMenuView";
+import { InputBarPlaceholder } from "@vetta-org/theme-ui/chat/InputBarPlaceholder";
+import { BottomPanelPillsView } from "@vetta-org/theme-ui/bottom-panel/BottomPanelView";
+import { useDelayedUnmount } from "@vetta-org/theme-ui/shared/useDelayedUnmount";
 import { AnimatePresence, motion } from "motion/react";
 import { createPortal } from "react-dom";
 import { ActionButtonBar } from "../ActionButtonBar";

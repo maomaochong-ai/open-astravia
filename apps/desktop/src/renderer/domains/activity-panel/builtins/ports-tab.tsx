@@ -1,8 +1,13 @@
+import { lazy } from "react";
 import { useTranslation } from "react-i18next";
-import { PortsTabPanel } from "../components/PortsTabPanel";
+
 import { useActivityWorkspace } from "../registry/context";
 import type { ActivityTabDefinition } from "../registry/types";
 import { useRemoteProjectHostId, useSshPortForwards } from "../hooks/useSshPortForwards";
+
+const PortsTabPanel = lazy(() =>
+	import("../components/PortsTabPanel").then((module) => ({ default: module.PortsTabPanel })),
+);
 
 function PortsActivityTab(): JSX.Element {
 	return <PortsTabPanel />;

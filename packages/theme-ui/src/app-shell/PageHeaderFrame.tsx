@@ -1,7 +1,7 @@
 import type { ComponentPropsWithoutRef, JSX, ReactNode } from "react";
 import { ThemeSurface } from "../appearance/ThemeSurface";
 import { isMac } from "../utils/platform";
-import { cn } from "@vetta-org/ui";
+import { cn } from "@vetta-org/ui/utils";
 
 export interface PageHeaderFrameProps extends ComponentPropsWithoutRef<"div"> {
 	children: ReactNode;

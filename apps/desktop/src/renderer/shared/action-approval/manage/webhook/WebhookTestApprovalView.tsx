@@ -1,4 +1,4 @@
-import { WebhookTestApprovalView as ThemeView } from "@vetta-org/theme-ui/action-approval";
+import { WebhookTestApprovalView as ThemeView } from "@vetta-org/theme-ui/action-approval/WebhookTestApprovalView";
 import { useTranslation } from "react-i18next";
 import { ManageActionApprovalFrameView } from "../ManageActionApprovalFrameView";
 import type { WebhookTestApprovalModel } from "./useWebhookTestApprovalModel";

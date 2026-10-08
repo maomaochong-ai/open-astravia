@@ -9,6 +9,7 @@ struct VettaApp: App {
 	@State private var notifier: SessionNotifier
 	@State private var model: AppModel
 	@State private var grace = BackgroundGrace()
+	@State private var network: NetworkWatcher
 	@Environment(\.scenePhase) private var scenePhase
 	/// UI tests start from a clean slate, and a permission prompt would stop them.
 	private let ephemeral: Bool
@@ -23,6 +24,7 @@ struct VettaApp: App {
 		_notifier = State(initialValue: notifier)
 		let model = VettaApp.makeModel(ephemeral: ephemeral, signals: ephemeral ? nil : notifier)
 		_model = State(initialValue: model)
+		_network = State(initialValue: NetworkWatcher { model.networkChanged() })
 		// Here rather than in the view: a tap on the Live Activity may launch the app with no window.
 		AnswerQuestionHandler.run = { sessionId, requestId, question, choice in
 			notifier.answering(sessionId, choice: choice)

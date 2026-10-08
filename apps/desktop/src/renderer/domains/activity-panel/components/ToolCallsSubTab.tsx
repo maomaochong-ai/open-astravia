@@ -1,4 +1,4 @@
-import { ToolCallsSubTabView } from "@vetta-org/theme-ui/activity";
+import { ToolCallsSubTabView } from "@vetta-org/theme-ui/activity/ToolCallsSubTabView";
 import { useToolCallsSubTabModel } from "../hooks/useToolCallsSubTabModel";
 
 export function ToolCallsSubTab({ cwd: _cwd }: { cwd: string }): JSX.Element {

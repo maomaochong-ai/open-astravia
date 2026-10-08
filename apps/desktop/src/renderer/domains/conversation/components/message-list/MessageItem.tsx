@@ -1,4 +1,5 @@
-import { ExportMessageListView, ModelSwitchBoundaryView } from "@vetta-org/theme-ui/chat";
+import { ExportMessageListView } from "@vetta-org/theme-ui/chat/ExportMessageListView";
+import { ModelSwitchBoundaryView } from "@vetta-org/theme-ui/chat/MessageBoundaryViews";
 import { forwardRef, memo } from "react";
 import { useTranslation } from "react-i18next";
 import type { Usage } from "@vetta/ai/protocol";

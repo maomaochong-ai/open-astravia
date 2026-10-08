@@ -1,4 +1,4 @@
-import { cn } from "@vetta-org/ui";
+import { cn } from "@vetta-org/ui/utils";
 import type { JSX, ReactNode } from "react";
 
 export type DebugSubTab = "tool-calls" | "request-history";

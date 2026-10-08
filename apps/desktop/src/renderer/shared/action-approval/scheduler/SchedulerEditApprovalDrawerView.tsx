@@ -1,8 +1,5 @@
-import {
-	SchedulerEditApprovalDrawerView as ThemeSchedulerEditApprovalDrawerView,
-	type SchedulerEditApprovalDrawerViewLabels,
-	type SchedulerEditApprovalDrawerViewProps as ThemeProps,
-} from "@vetta-org/theme-ui/action-approval";
+import { SchedulerEditApprovalDrawerView as ThemeSchedulerEditApprovalDrawerView } from "@vetta-org/theme-ui/action-approval/SchedulerEditApprovalDrawerView";
+import type { SchedulerEditApprovalDrawerViewLabels, SchedulerEditApprovalDrawerViewProps as ThemeProps } from "@vetta-org/theme-ui/action-approval";
 import {
 	canSubmitSchedulerApproval,
 	SchedulerApprovalFields,

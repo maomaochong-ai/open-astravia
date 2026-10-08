@@ -36,7 +36,7 @@ import type {
 	FileExplorerSelectOptions,
 	FilesPanelViewProps,
 } from "@vetta-org/theme-ui/file-explorer";
-import { findFileTreeElement } from "@vetta-org/theme-ui/file-explorer";
+import { findFileTreeElement } from "@vetta-org/theme-ui/file-explorer/file-tree-dom";
 import { getDefaultStore, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";

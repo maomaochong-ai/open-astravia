@@ -1,12 +1,14 @@
-import {
-	browserUrlByWorkspaceAtom,
-	getBrowserUrlForWorkspace,
-} from "@shared/store/atoms";
+import { lazy } from "react";
+import { browserUrlByWorkspaceAtom, getBrowserUrlForWorkspace } from "@shared/store/atoms";
 import { useAtomValue } from "jotai";
 import { useTranslation } from "react-i18next";
-import { BrowserPanel } from "../components/BrowserPanel";
+
 import { useActivityWorkspace } from "../registry/context";
 import type { ActivityTabDefinition } from "../registry/types";
+
+const BrowserPanel = lazy(() =>
+	import("../components/BrowserPanel").then((module) => ({ default: module.BrowserPanel })),
+);
 
 function BrowserActivityTab(): JSX.Element {
 	return <BrowserPanel />;

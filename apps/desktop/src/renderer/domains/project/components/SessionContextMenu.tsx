@@ -1,5 +1,5 @@
 import type { SessionContextMenuSession } from "@shared/store/atoms";
-import { SessionContextMenuView } from "@vetta-org/theme-ui/project";
+import { SessionContextMenuView } from "@vetta-org/theme-ui/project/SessionContextMenuView";
 import { createPortal } from "react-dom";
 import { useSessionContextMenuModel } from "../hooks/useSessionContextMenuModel";
 

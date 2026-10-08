@@ -1,5 +1,6 @@
 import type { Project } from "@shared/store/atoms";
-import { ProjectGroupView, SessionRowView } from "@vetta-org/theme-ui/project";
+import { ProjectGroupView } from "@vetta-org/theme-ui/project/ProjectGroupView";
+import { SessionRowView } from "@vetta-org/theme-ui/project/SessionRowView";
 import { memo, useCallback } from "react";
 import {
 	type ProjectGroupSessionView,

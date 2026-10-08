@@ -3,13 +3,11 @@ import type { ConversationParticipantViewModel } from "@shared/conversation";
 import type { ChatAgentMessageViewModel, ChatToolCallPresentationViewModel } from "@shared/store/chat-atoms";
 import type { Usage } from "@vetta/ai/protocol";
 import { useThemeSurface } from "@vetta-org/theme-sdk/appearance";
-import { ThemeSurface } from "@vetta-org/theme-ui/appearance";
-import {
-	AgentAvatarView,
-	AssistantMessage as AssistantMessagePrimitive,
-	Message,
-	MessageLayout,
-} from "@vetta-org/theme-ui/chat";
+import { ThemeSurface } from "@vetta-org/theme-ui/appearance/ThemeSurface";
+import { AgentAvatarView } from "@vetta-org/theme-ui/chat/AgentAvatarView";
+import { AssistantMessage as AssistantMessagePrimitive } from "@vetta-org/theme-ui/chat/AssistantMessageView";
+import { Message } from "@vetta-org/theme-ui/chat/MessageView";
+import { MessageLayout } from "@vetta-org/theme-ui/chat/MessageLayoutView";
 import { useAtomValue } from "jotai";
 import { createContext, type ReactNode, useCallback, useContext, useId, useMemo } from "react";
 import { useTranslation } from "react-i18next";

@@ -1,5 +1,5 @@
 import { TranscriptConversation } from "@domains/conversation/components/TranscriptConversation";
-import { WorkflowTabPanelView } from "@vetta-org/theme-ui/activity";
+import { WorkflowTabPanelView } from "@vetta-org/theme-ui/activity/WorkflowTabPanelView";
 import { useWorkflowTabPanelModel } from "../hooks/useWorkflowTabPanelModel";
 import { useActivityWorkspace } from "../registry/context";
 

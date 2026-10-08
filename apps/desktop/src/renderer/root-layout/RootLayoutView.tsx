@@ -1,11 +1,14 @@
 import { Outlet } from "@tanstack/react-router";
 import { cn } from "@shared/lib/utils";
 import { PerfSendProfiler } from "@shared/lib/perf-send";
-import { ThemeSurface } from "@vetta-org/theme-ui/appearance";
-import { RouteContentLoadingView } from "@vetta-org/theme-ui/app";
-import { AppFrame, MainContentFrame, SidebarDock, SidebarOverlay } from "@vetta-org/theme-ui/layout";
+import { ThemeSurface } from "@vetta-org/theme-ui/appearance/ThemeSurface";
+import { RouteContentLoadingView } from "@vetta-org/theme-ui/app/RouteContentLoadingView";
+import { AppFrame } from "@vetta-org/theme-ui/layout/AppFrame";
+import { MainContentFrame } from "@vetta-org/theme-ui/layout/MainContentFrame";
+import { SidebarDock } from "@vetta-org/theme-ui/layout/SidebarDock";
+import { SidebarOverlay } from "@vetta-org/theme-ui/layout/SidebarOverlay";
 import { useThemeComponent, useThemeSurface } from "@vetta-org/theme-sdk";
-import { memo, useCallback, useEffect } from "react";
+import { memo, useCallback } from "react";
 import { CommandMenu } from "../domains/command-menu/components/CommandMenu";
 import { useActiveWorkspaceViewHeader } from "../domains/plugins/components/WorkspaceViewHeaderSlot";
 import { Sidebar } from "../domains/project/components/sidebar/Sidebar";
@@ -58,19 +61,7 @@ export function RootLayoutView({ model }: RootLayoutViewProps): JSX.Element {
 	const ensureSidebarVisible = useCallback(() => {
 		if (narrow) actions.openOverlay();
 	}, [actions.openOverlay, narrow]);
-	useEffect(() => {
-		if (routePending) return;
-		let contentPaintFrame = 0;
-		const layoutFrame = requestAnimationFrame(() => {
-			contentPaintFrame = requestAnimationFrame(() => {
-				window.vetta.appLifecycle.reportRendererContentPainted();
-			});
-		});
-		return () => {
-			cancelAnimationFrame(layoutFrame);
-			if (contentPaintFrame !== 0) cancelAnimationFrame(contentPaintFrame);
-		};
-	}, [routePending]);
+
 	const pageHeader =
 		pageLayout === "content" ? (
 			<PerfSendProfiler id="PageHeader">

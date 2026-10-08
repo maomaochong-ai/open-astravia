@@ -1,6 +1,6 @@
 import { Fragment, useState, type JSX } from "react";
-import { Popover, PopoverContent, PopoverTrigger } from "@vetta-org/ui";
-import { cn } from "@vetta-org/ui";
+import { Popover, PopoverContent, PopoverTrigger } from "@vetta-org/ui/popover";
+import { cn } from "@vetta-org/ui/utils";
 
 export interface SidebarFilterSelectOption {
 	readonly value: string;

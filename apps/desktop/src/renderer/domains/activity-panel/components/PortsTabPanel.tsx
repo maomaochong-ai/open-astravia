@@ -1,4 +1,4 @@
-import { PortsTabPanelView } from "@vetta-org/theme-ui/activity";
+import { PortsTabPanelView } from "@vetta-org/theme-ui/activity/PortsTabPanelView";
 import { usePortsTabPanelModel } from "../hooks/usePortsTabPanelModel";
 
 /**

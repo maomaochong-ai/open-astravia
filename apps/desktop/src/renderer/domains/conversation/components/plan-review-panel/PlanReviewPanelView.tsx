@@ -1,6 +1,6 @@
 import { Textarea } from "@shared/components/ui/textarea";
-import { ThemeSurface } from "@vetta-org/theme-ui/appearance";
-import { Button } from "@vetta-org/ui";
+import { ThemeSurface } from "@vetta-org/theme-ui/appearance/ThemeSurface";
+import { Button } from "@vetta-org/ui/button";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { composePlanFeedback, type PlanSegment, splitPlanIntoSegments } from "../../services/plan-review";
 import { MarkdownContent } from "../blocks/TextBlock";

@@ -1,4 +1,4 @@
-import { CompactionBoundaryView, DelegationNoticeView } from "@vetta-org/theme-ui/chat";
+import { CompactionBoundaryView, DelegationNoticeView } from "@vetta-org/theme-ui/chat/MessageBoundaryViews";
 import { memo } from "react";
 import { useTranslation } from "react-i18next";
 

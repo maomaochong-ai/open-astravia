@@ -4,6 +4,8 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 
 ## [Unreleased]
 
+- `PluginModelDefinition.input` 可声明 `text` / `image`。Desktop 模型写入合同同步保留该字段，修复网关已声明图像输入但模型注册后仍退回纯文本的问题；省略时仍采用宿主默认，旧宿主可能清除该字段。
+
 - 底部面板实例新增 `useBottomPanel().openTerminal({ command, cwd?, label? })` 与 `revealInstance(instanceId)`，配套权限 `terminal.run`，要求 Plugin API `^2.8.0`。脚本运行器一类插件此前只能用 `command.spawn` 轮询 64KB 的输出尾巴：没有伪终端、不能输入、没有颜色，也不支持远程项目。现在由宿主开内置终端、把命令敲进用户的 shell，交互、分屏、关闭确认与远程终端都直接复用；命令只在终端首次启动时敲一次，重开会话不会重跑。
 
 - `ctx.fs.listFilesRecursive(rootPath, options?)` 新增可选的 `names`（只返回这些文件名）与 `ignoredDirectories`（在宿主默认之外再跳过的目录），本地与 `ssh://` 远程项目都在遍历时就筛好。此前只能列出全部文件再自己筛，而结果有 10,000 条上限：在 monorepo 里找所有 `package.json` 时，无关源码会先把上限占满，排在后面的项目直接漏掉。要求 Plugin API `^2.8.0`；旧宿主忽略 `options` 并返回全部文件，需要兼容旧宿主的插件应自行再筛一次。

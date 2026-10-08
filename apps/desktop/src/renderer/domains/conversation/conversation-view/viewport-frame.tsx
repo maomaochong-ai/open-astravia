@@ -5,7 +5,8 @@ import {
 	perfMessageScrollRecordRenderedItems,
 } from "@shared/lib/perf-message-scroll";
 import type { ChatConversationItem } from "@shared/store/chat-atoms";
-import { MessageFeed, MessageFeedLayout } from "@vetta-org/theme-ui/chat";
+import { MessageFeed } from "@vetta-org/theme-ui/chat/MessageFeedView";
+import { MessageFeedLayout } from "@vetta-org/theme-ui/chat/MessageFeedLayoutView";
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo } from "react";
 import type { ListItem } from "react-virtuoso";
 import type { MessageListModel } from "../components/message-list/types";

@@ -1,1 +1,1 @@
-export { Button, buttonVariants } from "@vetta-org/ui";
+export { Button, buttonVariants } from "@vetta-org/ui/button";

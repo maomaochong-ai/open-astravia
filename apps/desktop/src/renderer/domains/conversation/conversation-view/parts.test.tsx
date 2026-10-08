@@ -67,7 +67,7 @@ vi.mock("react-virtuoso", () => ({
 	},
 }));
 
-vi.mock("@vetta-org/theme-ui/chat", () => ({
+vi.mock("@vetta-org/theme-ui/chat/MessageFeedView", () => ({
 	MessageFeed: {
 		Root: ({ children }: { children: ReactNode }) => <>{children}</>,
 		VirtualList: (props: Record<string, unknown>) => {
@@ -418,3 +418,5 @@ function usage(overrides: Pick<Usage, "input" | "output">): Usage {
 		cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
 	};
 }
+
+vi.mock("@vetta-org/theme-ui/chat/MessageFeedLayoutView", () => import("@vetta-org/theme-ui/chat/MessageFeedView"));

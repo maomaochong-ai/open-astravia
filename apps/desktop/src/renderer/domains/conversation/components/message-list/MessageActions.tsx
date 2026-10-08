@@ -1,9 +1,4 @@
-import {
-	CopyButton as ThemeCopyButton,
-	formatDuration,
-	formatTime,
-	RelativeTimeLabel,
-} from "@vetta-org/theme-ui/chat";
+import { CopyButton as ThemeCopyButton, formatDuration, formatTime, RelativeTimeLabel } from "@vetta-org/theme-ui/chat/MessageActions";
 import { useTranslation } from "react-i18next";
 
 export { formatDuration, formatTime, RelativeTimeLabel };

@@ -1,5 +1,8 @@
 import type { JSX, ReactNode } from "react";
-import { Button, Dialog, DialogContent, Drawer, DrawerContent, cn } from "@vetta-org/ui";
+import { Button } from "@vetta-org/ui/button";
+import { Dialog, DialogContent } from "@vetta-org/ui/dialog";
+import { Drawer, DrawerContent } from "@vetta-org/ui/drawer";
+import { cn } from "@vetta-org/ui/utils";
 import { ThemeSurface } from "../appearance/ThemeSurface";
 
 /**

@@ -1,6 +1,6 @@
 import { AuroraTexture } from "@shared/components/aurora/AuroraTexture";
 import { RippleTexture } from "@shared/components/ripple/RippleTexture";
-import { NewSessionBackground } from "@vetta-org/theme-ui/chat";
+import { NewSessionBackground } from "@vetta-org/theme-ui/chat/NewSessionBackground";
 import type { ComponentType } from "react";
 
 /**

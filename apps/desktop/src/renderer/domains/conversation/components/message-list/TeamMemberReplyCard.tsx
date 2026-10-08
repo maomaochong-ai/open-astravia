@@ -1,5 +1,5 @@
 import type { ChatTimelineEventViewModel } from "@shared/store/atoms";
-import { TeamMemberReplyCardView } from "@vetta-org/theme-ui/chat";
+import { TeamMemberReplyCardView } from "@vetta-org/theme-ui/chat/TeamMemberReplyCardView";
 import { useTranslation } from "react-i18next";
 import { formatTurnDuration } from "./turnDuration";
 

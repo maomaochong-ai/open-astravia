@@ -1,7 +1,12 @@
+import { lazy } from "react";
 import { useTranslation } from "react-i18next";
-import { FileTabContent } from "../components/file-tab/FileTabContent";
+
 import { useActivityPanelCwd } from "../registry/context";
 import type { ActivityTabDefinition } from "../registry/types";
+
+const FileTabContent = lazy(() =>
+	import("../components/file-tab/FileTabContent").then((module) => ({ default: module.FileTabContent })),
+);
 
 function FileActivityTab(): JSX.Element {
 	const cwd = useActivityPanelCwd();

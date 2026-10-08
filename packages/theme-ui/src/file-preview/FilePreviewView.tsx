@@ -1,4 +1,4 @@
-import { cn } from "@vetta-org/ui";
+import { cn } from "@vetta-org/ui/utils";
 import { useCallback, useState, type JSX, type ReactNode } from "react";
 import type { FilePreviewContext, FilePreviewItem } from "./types";
 

@@ -1,4 +1,4 @@
-import { Button } from "@vetta-org/ui";
+import { Button } from "@vetta-org/ui/button";
 import { memo, useEffect, useRef, useState } from "react";
 import { useMarkdownHost } from "./host";
 import type { MarkdownLabels } from "./rich-labels";

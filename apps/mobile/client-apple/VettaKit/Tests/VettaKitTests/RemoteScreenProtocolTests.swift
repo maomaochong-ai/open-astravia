@@ -49,7 +49,7 @@ import Testing
 	@Test func namesEveryWayThePhoneReachesTheComputer() {
 		L10n.pin(language: "zh-Hans")
 		defer { L10n.pin(language: nil) }
-		#expect(LinkChannel.p2p.label == "直连")
+		#expect(LinkChannel.p2p.label == "P2P 直连")
 		#expect(Set([LinkChannel.p2p, .lan, .relay].map(\.label)).count == 3)
 	}
 }
