@@ -1,6 +1,7 @@
+import { REMOTE_MAX_TOOL_RESULT_CHARS } from "@vetta/remote-control";
 import type { HistoryEntry } from "@vetta/runtime-core";
 import { describe, expect, it } from "vitest";
-import { keyForPath, toTranscript } from "./remote-transcript.js";
+import { findToolResult, keyForPath, toTranscript } from "./remote-transcript.js";
 
 describe("remote transcript conversion", () => {
 	it("derives a stable opaque key that never leaks the path", () => {
@@ -88,5 +89,54 @@ describe("remote transcript conversion", () => {
 			["a2", "Connection error."],
 			["e-1", "Connection error."],
 		]);
+	});
+
+	describe("findToolResult", () => {
+		const result = (toolCallId: string, text: string, isError = false) => ({
+			type: "message",
+			message: {
+				role: "toolResult",
+				toolCallId,
+				toolName: "jsk_focus_parcels",
+				content: [{ type: "text", text }],
+				isError,
+				timestamp: 1,
+			},
+		});
+
+		it("returns the whole result that history and events cut to a preview", () => {
+			const text = JSON.stringify({
+				results: Array.from({ length: 200 }, (_, id) => ({ id, name: `parcel ${id}` })),
+			});
+			expect(text.length).toBeGreaterThan(1_200);
+			const history = [result("t1", text)] as unknown as HistoryEntry[];
+
+			expect(toTranscript(history)).toEqual([]);
+			expect(findToolResult(history, "t1")).toEqual({
+				toolCallId: "t1",
+				toolName: "jsk_focus_parcels",
+				result: text,
+				isError: false,
+			});
+		});
+
+		it("prefers the newest result when a call id repeats and keeps the error flag", () => {
+			const history = [
+				result("t1", "old"),
+				result("t2", "other"),
+				result("t1", "new", true),
+			] as unknown as HistoryEntry[];
+			expect(findToolResult(history, "t1")).toMatchObject({ result: "new", isError: true });
+		});
+
+		it("answers not_found for an unknown or still running call", () => {
+			const history = [result("t1", "done")] as unknown as HistoryEntry[];
+			expect(() => findToolResult(history, "t9")).toThrow(expect.objectContaining({ code: "not_found" }));
+		});
+
+		it("refuses a result that would not fit a sealed frame", () => {
+			const history = [result("t1", "x".repeat(REMOTE_MAX_TOOL_RESULT_CHARS + 1))] as unknown as HistoryEntry[];
+			expect(() => findToolResult(history, "t1")).toThrow(expect.objectContaining({ code: "too_large" }));
+		});
 	});
 });

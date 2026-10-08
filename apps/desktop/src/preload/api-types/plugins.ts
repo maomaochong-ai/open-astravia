@@ -304,6 +304,7 @@ export interface PluginAppActionRegistration {
 	activationId: string;
 	hasAssertReady: boolean;
 	timeoutMs?: number;
+	remote?: boolean;
 }
 
 export interface PluginAppActionInvocationRequest {

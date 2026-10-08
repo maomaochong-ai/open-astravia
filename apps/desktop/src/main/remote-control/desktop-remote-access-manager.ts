@@ -1006,6 +1006,8 @@ export class DesktopRemoteAccessManager {
 			runningSessionCount: this.options.runningSessionCount(),
 			fileRead: DESKTOP_REMOTE_CAPABILITIES.fileRead === true,
 			screen: DESKTOP_REMOTE_CAPABILITIES.screen === true,
+			toolResult: DESKTOP_REMOTE_CAPABILITIES.toolResult === true,
+			actions: DESKTOP_REMOTE_CAPABILITIES.actions === true,
 			...(device ? { desktopControl: device.desktopControl !== false } : {}),
 			...(this.config.cloudEnabled && this.config.relayBaseUrl ? { relayBaseUrl: this.config.relayBaseUrl } : {}),
 		};
