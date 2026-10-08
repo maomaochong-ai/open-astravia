@@ -163,6 +163,46 @@ import Testing
 		manager.stop()
 	}
 
+	@Test func aDroppedP2pLinkNeverShowsTheDesktopOffline() async throws {
+		let link = makeLink()
+		let desktop = FakeDesktop()
+		desktop.mobileIdentityKey = link.identity.publicKey
+		var reachable = true
+		let (manager, _) = manager(desktop, link: link, p2pReachable: { reachable })
+		var seen: [LinkIndicator] = []
+		manager.subscribe { seen.append(LinkIndicator($0)) }
+		manager.start()
+		#expect(await eventually { manager.snapshot.channel == .lan })
+		try #require(desktop.onlineAcceptor()).emitEvent(.deviceStatus, payload: deviceStatus(screen: true))
+		#expect(await eventually { manager.snapshot.channel == .p2p })
+		seen.removeAll()
+
+		reachable = false
+		desktop.acceptors.last?.close()
+		#expect(await eventually(timeoutMs: 4_000) { manager.snapshot.channel == .lan && manager.snapshot.isUsable })
+		#expect(!seen.contains(.offline), "falling back from P2P is not a disconnect: \(seen)")
+		manager.stop()
+	}
+
+	@Test func goingToTheBackgroundOnP2pNeverShowsTheDesktopOffline() async throws {
+		let link = makeLink()
+		let desktop = FakeDesktop()
+		desktop.mobileIdentityKey = link.identity.publicKey
+		let (manager, _) = manager(desktop, link: link)
+		var seen: [LinkIndicator] = []
+		manager.subscribe { seen.append(LinkIndicator($0)) }
+		manager.start()
+		#expect(await eventually { manager.snapshot.channel == .lan })
+		try #require(desktop.onlineAcceptor()).emitEvent(.deviceStatus, payload: deviceStatus(screen: true))
+		#expect(await eventually { manager.snapshot.channel == .p2p })
+		seen.removeAll()
+
+		manager.setForeground(false)
+		#expect(await eventually { manager.snapshot.channel == .lan })
+		#expect(!seen.contains(.offline), "closing P2P in the background is not a disconnect: \(seen)")
+		manager.stop()
+	}
+
 	@Test func buildsTheViewerUrlWithTheSecretInTheFragment() {
 		#expect(PairingURI.desktopViewerUrl(relayBaseUrl: "wss://relay.example", pairingId: "pair-1", mobileSecret: "a+b/c")
 			== "wss://relay.example/v2/desktop/pair-1/viewer#pairing=a%2Bb%2Fc")

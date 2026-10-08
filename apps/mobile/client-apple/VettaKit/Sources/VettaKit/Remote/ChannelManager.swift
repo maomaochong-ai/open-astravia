@@ -291,6 +291,17 @@ public final class ChannelManager {
 		stopRttSampling()
 		candidate.dispose()
 		candidate.connection.close()
+		// P2P is only an upgrade over a LAN or relay that most likely still works: fall back
+		// at once instead of showing the desktop offline and waiting out a backoff.
+		if candidate.channel == .p2p {
+			var next = snapshot
+			next.status = .connecting
+			next.channel = nil
+			next.peerOnline = false
+			publish(next)
+			Task { await attempt() }
+			return
+		}
 		var next = snapshot
 		next.status = .offline
 		next.channel = nil
