@@ -43,6 +43,7 @@ import {
 	keyForPath,
 	lastUserTimestamp,
 	modelLabel,
+	pageTranscript,
 	preview,
 	previousUserTimestamp,
 	readQuestionResult,
@@ -249,7 +250,8 @@ export class DesktopRemoteMirror {
 			}
 			case "session.history": {
 				const handle = this.requireHandle(request.sessionId);
-				return { entries: this.historyFor(handle), state: this.stateFor(handle) };
+				const page = pageTranscript(this.historyFor(handle), asRecord(request.payload));
+				return { entries: page.entries, hasMore: page.hasMore, state: this.stateFor(handle) };
 			}
 			case "session.prompt": {
 				const handle = this.requireHandle(request.sessionId);

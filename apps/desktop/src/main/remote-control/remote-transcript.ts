@@ -14,8 +14,25 @@ import { REMOTE_MAX_TOOL_RESULT_CHARS, sha256Hex } from "@vetta/remote-control";
 import type { HistoryEntry } from "@vetta/runtime-core";
 import { RemoteOperationError } from "./remote-error-mapping.js";
 
-const MAX_HISTORY_ENTRIES = 240;
 const PREVIEW_CHARS = 1_200;
+/** A phone that asks for no page size, as phones did before paging, gets this many of the newest entries. */
+const LEGACY_PAGE_ENTRIES = 240;
+const MAX_PAGE_ENTRIES = 120;
+/**
+ * A page's entries in UTF-8 bytes. Sealed and base64-encoded it stays well under the
+ * relay's and the P2P channel's 1.5 MB per frame; a long chat sent whole went over and
+ * was dropped, so the phone waited out the request and showed the history as failed.
+ */
+const PAGE_BUDGET_BYTES = 400 * 1024;
+/** What one entry's reply and thinking keep when that entry alone is past the budget. */
+const OVERSIZED_TEXT_CHARS = 100_000;
+const OVERSIZED_THINKING_CHARS = 20_000;
+
+export interface TranscriptPage {
+	readonly entries: RemoteTranscriptEntry[];
+	/** Older entries exist before the page; the phone asks for them with `before`. */
+	readonly hasMore: boolean;
+}
 
 /** Pure conversions between runtime history/questions and the phone-facing contract. */
 
@@ -101,7 +118,60 @@ export function toTranscript(history: readonly HistoryEntry[]): RemoteTranscript
 			}
 		}
 	}
-	return entries.length > MAX_HISTORY_ENTRIES ? entries.slice(entries.length - MAX_HISTORY_ENTRIES) : entries;
+	return entries;
+}
+
+/**
+ * The newest entries before `before` (the whole transcript's end when absent), at most
+ * `limit` and within a frame's budget. A page starts at a user message when that costs at
+ * most half of it, so a turn split across two pages does not show up as two turns until
+ * the older page comes; a longer turn is split, and joins up once its start arrives.
+ * An unknown `before` is an empty page: the transcript it came from is gone.
+ */
+export function pageTranscript(
+	entries: readonly RemoteTranscriptEntry[],
+	request: { readonly limit?: unknown; readonly before?: unknown },
+): TranscriptPage {
+	const paged = typeof request.limit === "number" && Number.isFinite(request.limit);
+	const limit = paged
+		? Math.max(1, Math.min(MAX_PAGE_ENTRIES, Math.floor(request.limit as number)))
+		: LEGACY_PAGE_ENTRIES;
+	let end = entries.length;
+	if (typeof request.before === "string") {
+		end = entries.findIndex((entry) => entry.id === request.before);
+		if (end < 0) return { entries: [], hasMore: false };
+	}
+	const page: RemoteTranscriptEntry[] = [];
+	let bytes = 0;
+	let start = end;
+	while (start > 0 && page.length < limit) {
+		const entry = fitEntry(entries[start - 1] as RemoteTranscriptEntry);
+		const size = Buffer.byteLength(JSON.stringify(entry));
+		if (page.length > 0 && bytes + size > PAGE_BUDGET_BYTES) break;
+		page.unshift(entry);
+		bytes += size;
+		start -= 1;
+	}
+	if (start > 0 && page[0]?.kind !== "user") {
+		const firstUser = page.findIndex((entry) => entry.kind === "user");
+		// A turn longer than half a page stays split: cut, the page would hold little else.
+		if (firstUser > 0 && firstUser <= page.length / 2) {
+			page.splice(0, firstUser);
+			start += firstUser;
+		}
+	}
+	return { entries: page, hasMore: start > 0 };
+}
+
+/** Cuts the reply and thinking of an entry too big for any page on its own. */
+function fitEntry(entry: RemoteTranscriptEntry): RemoteTranscriptEntry {
+	if (entry.kind !== "assistant" || Buffer.byteLength(JSON.stringify(entry)) <= PAGE_BUDGET_BYTES) return entry;
+	const clip = (text: string, max: number) => (text.length > max ? `${text.slice(0, max)}…` : text);
+	return {
+		...entry,
+		text: clip(entry.text, OVERSIZED_TEXT_CHARS),
+		thinking: entry.thinking === undefined ? undefined : clip(entry.thinking, OVERSIZED_THINKING_CHARS),
+	};
 }
 
 export function toRemoteQuestion(request: CodingAgentQuestionFunctionRequest): RemoteQuestionRequest {

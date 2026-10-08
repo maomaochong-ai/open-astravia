@@ -302,7 +302,12 @@ export interface RemoteRequestPayloads {
 	readonly "session.list": { readonly projectCwd?: string; readonly limit?: number } | undefined;
 	readonly "session.create": { readonly projectCwd?: string } | undefined;
 	readonly "session.open": undefined;
-	readonly "session.history": undefined;
+	/**
+	 * Without `limit`, the newest 240 entries, as phones before paging expect. With it, a page
+	 * of at most `limit` entries ending just before the entry `before` names (the newest when
+	 * absent); pages are also cut to fit one frame.
+	 */
+	readonly "session.history": { readonly limit?: number; readonly before?: string } | undefined;
 	/** `attachments` are `uploadId`s returned by `session.upload` for the same session. */
 	readonly "session.prompt": { readonly text: string; readonly attachments?: readonly string[] };
 	readonly "session.upload": {
@@ -361,6 +366,8 @@ export interface RemoteResponsePayloads {
 	readonly "session.open": { readonly session: RemoteSessionSummary; readonly state: RemoteSessionState };
 	readonly "session.history": {
 		readonly entries: readonly RemoteTranscriptEntry[];
+		/** Older entries exist; ask with `before` set to the first entry's id. Older desktops leave it out. */
+		readonly hasMore?: boolean;
 		readonly state: RemoteSessionState;
 	};
 	readonly "session.prompt": { readonly accepted: true };
