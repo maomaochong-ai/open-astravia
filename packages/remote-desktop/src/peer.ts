@@ -1,6 +1,7 @@
 import type { RemoteDesktopPeerOptions } from "./peer-types.js";
 import { NOOP_REMOTE_DESKTOP_LOGGER } from "./peer-types.js";
 import { decodeRemoteDesktopSignal, encodeRemoteInputMessage, parseRemoteInputMessage } from "./protocol.js";
+import { isSoftwareEncoder, screenScaleDown } from "./screen-scale.js";
 import type { RemoteDesktopSignal, RemoteInputCommand, RemoteInputMessage } from "./types.js";
 import { REMOTE_DESKTOP_PROTOCOL_VERSION } from "./types.js";
 
@@ -62,6 +63,8 @@ export class RemoteDesktopHost {
 	/** A viewer came online while connected: it rejoined, unless the connection drops after all. */
 	private viewerRejoined = false;
 	private rejoinGrace: ReturnType<typeof setTimeout> | undefined;
+	/** Chromium fell back from the hardware encoder; the picture is sent smaller meanwhile. */
+	private softwareEncoder = false;
 
 	constructor(
 		private readonly options: RemoteDesktopPeerOptions,
@@ -163,7 +166,7 @@ export class RemoteDesktopHost {
 			this.logger.info("remote desktop answer applied", { sessionId: this.options.sessionId });
 			// Encodings exist only once negotiated: a screen shared for the whole session is tuned here.
 			for (const sender of this.peer.getSenders?.() ?? []) {
-				if (sender.track?.kind === "video") await tuneScreenSender(sender);
+				if (sender.track?.kind === "video") await tuneScreenSender(sender, this.scaleFor(sender.track));
 			}
 			return;
 		}
@@ -224,7 +227,33 @@ export class RemoteDesktopHost {
 		if (track) track.contentHint = "detail";
 		await this.screenSender.replaceTrack(track);
 		if (previous && previous !== track) previous.stop();
-		if (track) await tuneScreenSender(this.screenSender);
+		if (track) await tuneScreenSender(this.screenSender, this.scaleFor(track));
+	}
+
+	/**
+	 * Which encoder the screen goes through, from the stats. Chromium can drop from the
+	 * hardware encoder to its software one partway through a session; the picture is then
+	 * sent smaller until the hardware one is back. WebRTC sets the encoder up again when
+	 * the size changes, trying the hardware one first, so that can also bring it back.
+	 */
+	async noteEncoder(implementation: string): Promise<void> {
+		const software = isSoftwareEncoder(implementation);
+		if (this.closed || software === this.softwareEncoder) return;
+		this.softwareEncoder = software;
+		this.logger.info("remote desktop encoder changed", {
+			sessionId: this.options.sessionId,
+			encoder: implementation,
+			software,
+		});
+		const sender = this.screenSender ?? this.peer.getSenders().find((entry) => entry.track?.kind === "video");
+		if (sender?.track) await tuneScreenSender(sender, this.scaleFor(sender.track));
+	}
+
+	private scaleFor(track: MediaStreamTrack): number {
+		const settings = typeof track.getSettings === "function" ? track.getSettings() : undefined;
+		const capture =
+			settings?.width && settings.height ? { width: settings.width, height: settings.height } : undefined;
+		return screenScaleDown(capture, this.softwareEncoder);
 	}
 
 	sendControl(message: string): void {
@@ -498,14 +527,18 @@ const SCREEN_MAX_BITRATE = 12_000_000;
  * A phone zooms in to read the screen and drags things across it, so text should stay
  * sharp and motion smooth. "balanced" trades a little of each under load instead of
  * dropping frames to hold full resolution, which made dragging stutter (ADR-0140).
- * Best effort; a browser without these parameters keeps its defaults.
+ * `scale` sends the picture smaller than captured. Best effort; a browser without these
+ * parameters keeps its defaults.
  */
-async function tuneScreenSender(sender: RTCRtpSender): Promise<void> {
+async function tuneScreenSender(sender: RTCRtpSender, scale: number): Promise<void> {
 	if (typeof sender.getParameters !== "function") return;
 	try {
 		const parameters = sender.getParameters();
 		parameters.degradationPreference = "balanced";
-		for (const encoding of parameters.encodings ?? []) encoding.maxBitrate = SCREEN_MAX_BITRATE;
+		for (const encoding of parameters.encodings ?? []) {
+			encoding.maxBitrate = SCREEN_MAX_BITRATE;
+			encoding.scaleResolutionDownBy = scale;
+		}
 		await sender.setParameters(parameters);
 	} catch {
 		// Unsupported here: the defaults still work.

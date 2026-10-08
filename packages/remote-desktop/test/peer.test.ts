@@ -261,6 +261,34 @@ describe("remote desktop host screen on demand", () => {
 		expect(peer.createOffer).toHaveBeenCalledOnce();
 	});
 
+	it("sends the screen smaller while Chromium encodes it in software, and full size once hardware is back", async () => {
+		const peer = fakePeerConnection();
+		const logger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn() };
+		const host = new RemoteDesktopHost(
+			{ sessionId: "pairing_0123456789abcdefghijklmnop", createPeerConnection: () => peer.connection, logger },
+			() => undefined,
+			() => undefined,
+		);
+		await host.start();
+		const track = { ...fakeTrack(), kind: "video", getSettings: () => ({ width: 2560, height: 1600 }) };
+		await host.replaceScreen(track as unknown as MediaStreamTrack);
+		expect(peer.sender.parameters).toMatchObject({ encodings: [{ scaleResolutionDownBy: 1 }] });
+
+		await host.noteEncoder("OpenH264");
+		expect(peer.sender.parameters).toMatchObject({ encodings: [{ scaleResolutionDownBy: 1.33 }] });
+		expect(logger.info).toHaveBeenCalledWith(
+			"remote desktop encoder changed",
+			expect.objectContaining({ software: true }),
+		);
+
+		const calls = peer.sender.setParameters.mock.calls.length;
+		await host.noteEncoder("OpenH264");
+		expect(peer.sender.setParameters.mock.calls.length).toBe(calls);
+
+		await host.noteEncoder("MediaFoundationVideoEncodeAccelerator");
+		expect(peer.sender.parameters).toMatchObject({ encodings: [{ scaleResolutionDownBy: 1 }] });
+	});
+
 	it("refuses to swap the screen of a session started with a fixed stream", async () => {
 		const peer = fakePeerConnection();
 		const host = new RemoteDesktopHost(
@@ -299,7 +327,11 @@ function fakePeerConnection(): {
 	readonly addTransceiver: ReturnType<typeof vi.fn>;
 	readonly setCodecPreferences: ReturnType<typeof vi.fn>;
 	readonly setRemoteDescription: ReturnType<typeof vi.fn>;
-	readonly sender: { track: MediaStreamTrack | null; parameters: Record<string, unknown> };
+	readonly sender: {
+		track: MediaStreamTrack | null;
+		parameters: Record<string, unknown>;
+		readonly setParameters: ReturnType<typeof vi.fn>;
+	};
 	readonly setConnectionState: (state: RTCPeerConnectionState) => void;
 } {
 	const createOffer = vi.fn(async () => ({ type: "offer" as const, sdp: "v=0\r\n" }));
