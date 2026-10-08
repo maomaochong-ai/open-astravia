@@ -121,7 +121,10 @@ struct RemoteDesktopScreen: View {
 	@ViewBuilder
 	private func screen(insets: UIEdgeInsets) -> some View {
 		if let session = liveSession, blocker == nil {
-			RemoteScreenView(track: session.videoTrack, interactive: interactive, insets: insets, cursor: model.screenCursor) { session.send($0) }
+			RemoteScreenView(
+				track: session.videoTrack, interactive: interactive, insets: insets, cursor: model.screenCursor,
+				onView: { session.showView(width: $0, height: $1) }
+			) { session.send($0) }
 				.accessibilityIdentifier("remote.screen")
 		} else {
 			VStack(spacing: 14) {

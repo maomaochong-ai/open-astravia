@@ -63,6 +63,13 @@ import Testing
 		#expect(try RemoteDesktopProtocol.encode(.text("你好 👋"), sequence: 5) == #"{"sequence":5,"text":"你好 👋","type":"text"}"#)
 	}
 
+	@Test func tellsTheDesktopHowLargeTheScreenIsShown() throws {
+		#expect(RemoteDesktopProtocol.viewChannel == "vetta-view-v1")
+		#expect(try RemoteDesktopProtocol.encodeView(width: 1440, height: 900) == #"{"height":900,"width":1440}"#)
+		#expect(throws: RemoteProtocolError.self) { try RemoteDesktopProtocol.encodeView(width: 0, height: 900) }
+		#expect(throws: RemoteProtocolError.self) { try RemoteDesktopProtocol.encodeView(width: 1440, height: 70_000) }
+	}
+
 	@Test func refusesInputTheDesktopWouldRefuse() {
 		#expect(throws: RemoteProtocolError.self) { try RemoteDesktopProtocol.encode(.pointerMove(x: 1.2, y: 0), sequence: 1) }
 		#expect(throws: RemoteProtocolError.self) { try RemoteDesktopProtocol.encode(.pointerScroll(deltaX: 0, deltaY: 5_000), sequence: 1) }
