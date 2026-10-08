@@ -1,5 +1,6 @@
 import type { AgentMessage } from "@astravia/agent-core";
 import type { AssistantMessage, Usage } from "@astravia/ai";
+import { ContextEstimateCalibration } from "./context-estimate-calibration.js";
 import type { CompactionHistoryEntry, CompactionSettings } from "./contracts.js";
 
 export function calculateContextTokens(usage: Usage): number {
@@ -52,12 +53,50 @@ export function estimateContextTokens(messages: readonly AgentMessage[]): Contex
 	for (let index = usageInfo.index + 1; index < messages.length; index++) {
 		trailingTokens += estimateTokens(messages[index]);
 	}
+	const overhead = estimateProviderOverhead(messages, usageInfo.index);
 	return {
-		tokens: usageTokens + trailingTokens,
+		tokens: usageTokens + trailingTokens + overhead,
 		usageTokens,
 		trailingTokens,
 		lastUsageIndex: usageInfo.index,
 	};
+}
+
+/**
+ * 用会话内最近两个 assistant usage 锚点估算「逐字口径看不见的固定开销」
+ * （系统提示词、工具 schema、缓存写放大计入 usage 而不计入逐字估算）。
+ *
+ * 锚点从消息列表自身推导：第 j 条 assistant 的 usage 对应携带 messages[0..j-1]
+ * 的请求，残差 = usage − 逐字估算(messages[0..j-1])。比例带外的锚点拒收，
+ * 连续向下突变冻结（见 context-estimate-calibration.ts）。只补低估、不缩小。
+ */
+function estimateProviderOverhead(messages: readonly AgentMessage[], lastUsageIndex: number): number {
+	// 前缀累积估算：prefixEstimates[i] = estimate(messages[0..i-1])
+	const prefixEstimates: number[] = [];
+	let cumulative = 0;
+	for (const message of messages) {
+		prefixEstimates.push(cumulative);
+		cumulative += estimateTokens(message);
+	}
+
+	// 取最近两个 usage 锚点（含 lastUsageIndex），按时间顺序喂给校准器
+	const usageIndexes: number[] = [];
+	for (let index = lastUsageIndex; index >= 0 && usageIndexes.length < 2; index -= 1) {
+		const usage = getAssistantUsage(messages[index]);
+		if (usage) usageIndexes.push(index);
+	}
+	usageIndexes.reverse();
+
+	const calibration = new ContextEstimateCalibration();
+	for (const index of usageIndexes) {
+		calibration.record({
+			estimateTokens: prefixEstimates[index] ?? 0,
+			usageTokens: calculateContextTokens(getAssistantUsage(messages[index]) as Usage),
+		});
+	}
+	const rawPrefix = prefixEstimates[lastUsageIndex] ?? 0;
+	const correctedPrefix = calibration.correct(rawPrefix);
+	return Math.max(0, correctedPrefix - rawPrefix);
 }
 
 export function getCompactThreshold(contextWindow: number, settings: CompactionSettings): number {
