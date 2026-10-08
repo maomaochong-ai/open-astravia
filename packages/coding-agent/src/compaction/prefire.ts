@@ -13,8 +13,33 @@
 import type { CompactionHistoryEntry, CompactionResult, CompactionSettings } from "./contracts.js";
 import { getCompactThreshold } from "./token-policy.js";
 
-/** 阈值前多少个百分点（相对 context window）开始 prefire。 */
+/** 阈值前多少个百分点（相对 context window）开始 prefire：慢速会话的缺省值。 */
 export const PREFIRE_LEAD_PERCENT = 10;
+
+/** lead 自适应上限：预热窗口过大时被保留的尾巴相应变大（差额受 lead 约束），封顶 25%。 */
+export const PREFIRE_LEAD_PERCENT_MAX = 25;
+
+/** 触发自适应的增速门槛：单次模型调用增量超过窗口的 5% 才值得加宽预热窗口。 */
+const ADAPTIVE_GROWTH_TRIGGER_PERCENT = 5;
+
+/**
+ * lead 自适应：按最近一次模型调用的上下文增量加宽预热窗口。
+ *
+ * 固定 10% 的失败模式：工具密集会话单轮可增数万 token，会话可能从「窗口外」
+ * 一步跳到「阈值之上」——prefire 从未启动，后台预热的机会被整轮跳过。
+ * 增速越快，越早开始预热；增速慢（或缺历史）维持缺省 10%。
+ *
+ * 规则：增量超过窗口 5%（门槛，避免小波动抖动）时，lead 提升到
+ * 「增量占窗口百分比的 2 倍」（预留：预热本身要跑一轮，窗口需容得下
+ * 再涨一轮），封顶 25%。无历史（growth 缺省/非正/窗口非法）返回缺省。
+ */
+export function computePrefireLeadPercent(growthTokens: number | undefined, contextWindow: number): number {
+	if (growthTokens === undefined || !Number.isFinite(growthTokens) || growthTokens <= 0) return PREFIRE_LEAD_PERCENT;
+	if (!Number.isFinite(contextWindow) || contextWindow <= 0) return PREFIRE_LEAD_PERCENT;
+	const growthPercent = (growthTokens / contextWindow) * 100;
+	if (growthPercent < ADAPTIVE_GROWTH_TRIGGER_PERCENT) return PREFIRE_LEAD_PERCENT;
+	return Math.min(PREFIRE_LEAD_PERCENT_MAX, Math.max(PREFIRE_LEAD_PERCENT, Math.ceil(growthPercent * 2)));
+}
 
 export interface PrefireCache {
 	fingerprint: string;
@@ -67,9 +92,14 @@ export function isPrefireCacheValid(cache: PrefireCache, pathEntries: readonly C
  * 是否应启动 prefire：已越过「阈值 - lead」但尚未到阈值。
  * 到阈值后由正式压缩接管，prefire 不再启动。
  */
-export function shouldPrefire(contextTokens: number, contextWindow: number, settings: CompactionSettings): boolean {
+export function shouldPrefire(
+	contextTokens: number,
+	contextWindow: number,
+	settings: CompactionSettings,
+	leadPercent: number = PREFIRE_LEAD_PERCENT,
+): boolean {
 	if (contextWindow <= 0) return false;
 	const threshold = getCompactThreshold(contextWindow, settings);
-	const lead = Math.floor((contextWindow * PREFIRE_LEAD_PERCENT) / 100);
+	const lead = Math.floor((contextWindow * leadPercent) / 100);
 	return contextTokens >= threshold - lead && contextTokens < threshold;
 }
