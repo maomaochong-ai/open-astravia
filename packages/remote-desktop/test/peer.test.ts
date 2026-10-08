@@ -1,5 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
-import { RemoteDesktopHost } from "../src/index.js";
+import { REMOTE_DESKTOP_ICE_SERVERS, RemoteDesktopHost } from "../src/index.js";
+
+describe("remote desktop ICE servers", () => {
+	it("uses STUN only, with a server reachable in mainland China first", () => {
+		const urls = REMOTE_DESKTOP_ICE_SERVERS.flatMap((server) => [server.urls].flat());
+		expect(urls.length).toBeGreaterThan(1);
+		expect(urls.every((url) => url.startsWith("stun:"))).toBe(true);
+		expect(REMOTE_DESKTOP_ICE_SERVERS.some((server) => server.credential !== undefined)).toBe(false);
+		expect(urls[0]).not.toContain("google");
+	});
+});
 
 describe("remote desktop host negotiation", () => {
 	it("waits for a relay peer-ready event before sending the offer", async () => {

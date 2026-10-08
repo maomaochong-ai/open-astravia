@@ -1,5 +1,5 @@
 import type { RemoteDesktopSignal } from "@vetta/remote-desktop";
-import { RemoteDesktopHost, WebSocketRemoteDesktopSignaling } from "@vetta/remote-desktop";
+import { REMOTE_DESKTOP_ICE_SERVERS, RemoteDesktopHost, WebSocketRemoteDesktopSignaling } from "@vetta/remote-desktop";
 
 declare global {
 	interface Window {
@@ -134,6 +134,9 @@ const stream = onDemand ? undefined : await navigator.mediaDevices.getDisplayMed
 host = new RemoteDesktopHost(
 	{
 		sessionId,
+		// Without STUN this machine offered only its local addresses, so a phone on
+		// another network had to find it from its own checks alone.
+		rtcConfiguration: { iceServers: [...REMOTE_DESKTOP_ICE_SERVERS] },
 		logger: {
 			debug: (message, fields) => console.debug(line(message, fields)),
 			info: (message, fields) => console.info(line(message, fields)),
