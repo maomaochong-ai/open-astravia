@@ -78,9 +78,42 @@ describe("remote desktop host negotiation", () => {
 		expect(peer.createOffer).toHaveBeenCalledOnce();
 
 		// It was a new viewer after all: the old one's connection goes away.
-		peer.setConnectionState("disconnected");
+		peer.setConnectionState("failed");
 		expect(replaced).toHaveBeenCalledOnce();
-		expect(states).toEqual(["connected", "disconnected"]);
+		expect(states).toEqual(["connected", "failed"]);
+	});
+
+	it("rides out a brief disconnect of a rejoined viewer, and starts over once it lasts", async () => {
+		vi.useFakeTimers();
+		try {
+			const peer = fakePeerConnection();
+			const replaced = vi.fn();
+			const host = new RemoteDesktopHost(
+				{ sessionId: "pairing_0123456789abcdefghijklmnop", createPeerConnection: () => peer.connection },
+				() => undefined,
+				() => undefined,
+			);
+			await host.start(undefined, { waitForPeerReady: true, onViewerReplaced: replaced });
+			await host.acceptSignal({ type: "peer_ready", protocolVersion: 1 });
+			peer.setConnectionState("connected");
+			await host.acceptSignal({ type: "peer_ready", protocolVersion: 1 });
+
+			// A network blip: ICE recovers on its own.
+			peer.setConnectionState("disconnected");
+			await vi.advanceTimersByTimeAsync(3_000);
+			peer.setConnectionState("connected");
+			await vi.advanceTimersByTimeAsync(10_000);
+			expect(replaced).not.toHaveBeenCalled();
+
+			// Gone for good this time.
+			peer.setConnectionState("disconnected");
+			await vi.advanceTimersByTimeAsync(4_900);
+			expect(replaced).not.toHaveBeenCalled();
+			await vi.advanceTimersByTimeAsync(200);
+			expect(replaced).toHaveBeenCalledOnce();
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it("takes a phone's constrained-baseline H.264 answer as baseline so the desktop encodes in hardware", async () => {
