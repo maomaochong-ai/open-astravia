@@ -71,6 +71,8 @@ import org.vetta.android.resources.settings_title
 import org.vetta.android.resources.theme_dark
 import org.vetta.android.resources.theme_light
 import org.vetta.android.resources.theme_system
+import org.vetta.android.resources.unlinked_description
+import org.vetta.android.resources.unlinked_pill
 import org.vetta.android.resources.version_number
 import org.vetta.android.resources.work_settings_haptics
 import org.vetta.android.resources.work_settings_live_thinking
@@ -223,6 +225,10 @@ fun SettingsScreen(
 /**
  * Phone and computer as one picture. Details stay open. While the link is up, one dot
  * drifts from the computer to the phone; that motion is the connected mark.
+ *
+ * [MirrorState.desktop] stays after an unpairing so earlier sessions keep their name.
+ * Only [MirrorState.paired] means the link still exists. A stored computer with
+ * [MirrorState.unlinked] set is not "connecting".
  */
 @Composable
 private fun LinkCard(
@@ -233,19 +239,22 @@ private fun LinkCard(
     onOpenRemote: (() -> Unit)?,
 ) {
     val desktop = state.desktop
-    val paired = desktop != null
+    val linked = state.paired
+    val unlinked = state.unlinked != null
     val indicator = LinkIndicator.of(state.link)
-    val up = paired && indicator == LinkIndicator.Online
+    val up = linked && indicator == LinkIndicator.Online
     val statusColor =
-        if (indicator == LinkIndicator.Offline && paired) {
+        if (indicator == LinkIndicator.Offline && linked) {
             MaterialTheme.workColors.red
         } else {
             MaterialTheme.workColors.ink2
         }
+    val computerName =
+        desktop?.desktopName?.takeIf { linked || unlinked } ?: stringResource(Res.string.settings_link_computer)
     Section {
         custom {
             Column(
-                Modifier.fillMaxWidth().padding(bottom = if (paired) 8.dp else 0.dp),
+                Modifier.fillMaxWidth().padding(bottom = if (linked) 8.dp else 0.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Row(
@@ -255,8 +264,10 @@ private fun LinkCard(
                     Box(Modifier.weight(1f), contentAlignment = Alignment.TopCenter) {
                         DeviceNode(
                             icon = Icons.Filled.Laptop,
-                            name = desktop?.desktopName ?: stringResource(Res.string.settings_link_computer),
-                            present = paired,
+                            name = computerName,
+                            // A remembered computer stays readable. Only a computer we never
+                            // paired is the faint placeholder.
+                            present = linked || unlinked,
                         )
                     }
                     // The bridge sits on the icon, not on the name underneath it.
@@ -269,38 +280,22 @@ private fun LinkCard(
                         )
                     }
                 }
-                if (!paired) {
-                    Text(
-                        stringResource(Res.string.work_unpaired_description),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(top = 12.dp, bottom = 4.dp),
-                    )
-                    Box(
-                        Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, bottom = 18.dp, top = 4.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        GlassCapsuleButton(
-                            text = stringResource(Res.string.work_settings_scan),
-                            onClick = onPair,
-                            icon = Icons.Outlined.QrCodeScanner,
-                            height = 44.dp,
-                            tag = "settings.scan",
+                when {
+                    unlinked -> UnlinkedNotice(onPair)
+                    !linked -> UnpairedNotice(onPair)
+                    !up ->
+                        Text(
+                            describe(indicator),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
+                            color = statusColor,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(top = 14.dp, bottom = 8.dp),
                         )
-                    }
-                } else if (!up) {
-                    Text(
-                        describe(indicator),
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium,
-                        color = statusColor,
-                        modifier = Modifier.padding(top = 14.dp, bottom = 8.dp),
-                    )
                 }
             }
         }
-        if (paired) {
+        if (linked) {
             if (state.online) {
                 custom {
                     val running = state.link.desktop?.runningSessionCount ?: 0
@@ -350,6 +345,59 @@ private fun LinkCard(
                 tag = "settings.haptics",
             )
         }
+    }
+}
+
+/** Never paired: how to connect, and the scan button. */
+@Composable
+private fun UnpairedNotice(onPair: () -> Unit) {
+    Text(
+        stringResource(Res.string.work_unpaired_description),
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        textAlign = TextAlign.Center,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(top = 12.dp, bottom = 4.dp),
+    )
+    ScanToConnect(onPair)
+}
+
+/**
+ * Unpaired, with the computer still remembered. The line stays dashed.
+ * The words say the pairing is over, not that it is starting.
+ */
+@Composable
+private fun UnlinkedNotice(onPair: () -> Unit) {
+    Text(
+        stringResource(Res.string.unlinked_pill),
+        style = MaterialTheme.typography.bodyMedium,
+        fontWeight = FontWeight.Medium,
+        color = MaterialTheme.colorScheme.onSurface,
+        textAlign = TextAlign.Center,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(top = 14.dp),
+    )
+    Text(
+        stringResource(Res.string.unlinked_description),
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        textAlign = TextAlign.Center,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(top = 6.dp, bottom = 4.dp),
+    )
+    ScanToConnect(onPair)
+}
+
+@Composable
+private fun ScanToConnect(onPair: () -> Unit) {
+    Box(
+        Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, bottom = 18.dp, top = 4.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        GlassCapsuleButton(
+            text = stringResource(Res.string.work_settings_scan),
+            onClick = onPair,
+            icon = Icons.Outlined.QrCodeScanner,
+            height = 44.dp,
+            tag = "settings.scan",
+        )
     }
 }
 
