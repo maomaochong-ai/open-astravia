@@ -6,6 +6,7 @@ import {
 	parseAgentConfigurationSelection,
 } from "../../agent-configuration/configuration-schema.js";
 import type { CodingAgentKnowledgeWriteOperations } from "../../features/knowledge/contracts.js";
+import type { RecallEntry } from "../../features/recall/index.js";
 import type {
 	AgentPluginContinuationInvoker,
 	AgentPluginRuntimeConfig,
@@ -69,6 +70,11 @@ export interface CodingAgentRuntimeSessionOptions {
 	readonly initialTodoLockSource?: CodingAgentInitialTodoLockSource;
 	/** 产品会话自己的 Knowledge Writer；普通会话继续使用 Composition 默认实现。 */
 	readonly knowledgePageWriter?: CodingAgentKnowledgeWriteOperations;
+	/**
+	 * recall 工具的会话历史读取通道：宿主注入后 recall 工具才注册（把被压缩的
+	 * 原始条目读回给模型）。不注入则模型界面零变化。见 features/recall/。
+	 */
+	readonly recallReader?: (sessionId: string) => Promise<readonly RecallEntry[]> | readonly RecallEntry[];
 	/** 由产品宿主校验并适配的 Session 私有工具；同名定义覆盖进程级 Extension 工具。 */
 	readonly sessionTools?: readonly CodingAgentSessionToolRegistration[];
 	/** 仅由产品宿主为单个 Session 注入的中立 Runtime Tool 注册。 */
