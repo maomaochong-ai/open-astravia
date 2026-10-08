@@ -155,6 +155,8 @@ function rolloverPreparation(): CodingAgentMemoryRolloverPreparation {
 		isSplitTurn: false,
 		tokensBefore: 70,
 		fileOps: { read: new Set(), written: new Set(), edited: new Set() },
+		pathEntries: [],
+		prevCompactionIndex: -1,
 		settings: settings(),
 	};
 	return {

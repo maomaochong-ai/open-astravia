@@ -65,6 +65,8 @@ describe("buildTurnLedgerEntry（逐轮记账）", () => {
 	it("一轮三消息 → 一条账目：叙述 + 机械（计数/token）齐全", () => {
 		const turnMessages = [user("跑构建"), assistantUsage(5000), toolResult("build ok")];
 		const e = buildTurnLedgerEntry(3, turnMessages, "完成了构建并验证产物", () => new Date("2026-10-08T01:00:00Z"));
+		expect(e).toBeDefined();
+		if (!e) throw new Error("预期本轮应产出账目");
 		expect(e.turn).toBe(3);
 		expect(e.narrative).toContain("构建");
 		expect(e.mechanical.messageCounts).toEqual({ user: 1, assistant: 1, toolResult: 1 });
