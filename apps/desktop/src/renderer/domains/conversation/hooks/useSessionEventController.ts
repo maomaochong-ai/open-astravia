@@ -16,6 +16,7 @@ import {
 	backgroundTasksBySessionAtom,
 	type ChatConversationItem,
 	chatMessagesAtom,
+	compactionLiveSummaryAtom,
 	contextCompactionEligibilityAtom,
 	contextUsageAtom,
 	goalStateBySessionAtom,
@@ -93,6 +94,7 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 	const setContextUsage = useSetAtom(contextUsageAtom);
 	const setCompactionEligibility = useSetAtom(contextCompactionEligibilityAtom);
 	const setIsCompacting = useSetAtom(isCompactingAtom);
+	const setCompactionLiveSummary = useSetAtom(compactionLiveSummaryAtom);
 	const setIsReloadingMcp = useSetAtom(isReloadingMcpAtom);
 	const setBackgroundTasks = useSetAtom(backgroundTasksBySessionAtom);
 	const setSubagents = useSetAtom(subagentsBySessionAtom);
@@ -588,12 +590,20 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 			// ── Compaction start ──
 			if (event.type === "compaction.start") {
 				setIsCompacting(true);
+				setCompactionLiveSummary(null);
+				return;
+			}
+
+			// ── Compaction summary delta（实时压缩渲染的流式源）──
+			if (event.type === "compaction.delta") {
+				setCompactionLiveSummary((previous) => (previous ?? "") + event.text);
 				return;
 			}
 
 			// ── Compaction end ──
 			if (event.type === "compaction.end") {
 				setIsCompacting(false);
+				setCompactionLiveSummary(null);
 				if (event.success) {
 					const sessionPath = activeSessionRef.current?.sessionPath;
 					if (sessionPath) clearCachedContextComposition(sessionPath);
@@ -730,6 +740,7 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 			setBackgroundTasks,
 			setChatMessages,
 			setContextUsage,
+			setCompactionLiveSummary,
 			setIsCompacting,
 			setIsReloadingMcp,
 			setLastTurnUsage,
