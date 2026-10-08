@@ -54,7 +54,7 @@ describe("runtime find tool", () => {
 				input: { pattern: "*.ts" },
 				signal: new AbortController().signal,
 			}),
-		).rejects.toThrow("fd is not available and could not be downloaded");
+		).rejects.toThrow(/fd is not available and could not be downloaded.*(brew install fd|apt install fd-find)/);
 		expect(resolvedTools).toEqual(["fd"]);
 	});
 
@@ -78,7 +78,7 @@ describe("runtime find tool", () => {
 					input: { pattern: "*.ts" },
 					signal: new AbortController().signal,
 				}),
-			).rejects.toThrow("fd is not available and could not be downloaded");
+			).rejects.toThrow(/fd is not available and could not be downloaded.*(brew install fd|apt install fd-find)/);
 		}
 
 		expect(resolutions).toBe(2);
