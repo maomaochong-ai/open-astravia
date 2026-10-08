@@ -63,6 +63,7 @@ public final class RemoteScreenSurface: UIView, UIGestureRecognizerDelegate, RTC
 	private static let moveThreshold: CGFloat = 3
 
 	private let video = RTCMTLVideoView()
+	private lazy var renderer = RemoteVideoRenderer(sink: video)
 	private let cursorArrow = makeArrow()
 	private let cursorImage = CALayer()
 	private var track: RTCVideoTrack?
@@ -121,9 +122,9 @@ public final class RemoteScreenSurface: UIView, UIGestureRecognizerDelegate, RTC
 
 	func attach(_ next: RTCVideoTrack?) {
 		guard next !== track else { return }
-		track?.remove(video)
+		track?.remove(renderer)
 		track = next
-		next?.add(video)
+		next?.add(renderer)
 	}
 
 	// MARK: Layout

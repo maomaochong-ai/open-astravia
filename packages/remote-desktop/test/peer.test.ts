@@ -12,6 +12,34 @@ describe("remote desktop ICE servers", () => {
 });
 
 describe("remote desktop host negotiation", () => {
+	it.each(["failed", "closed"] as const)(
+		"releases control when the peer becomes %s before its data channel closes",
+		async (state) => {
+			const peer = fakePeerConnection();
+			const closed: string[] = [];
+			const host = new RemoteDesktopHost(
+				{ sessionId: "pairing_0123456789abcdefghijklmnop", createPeerConnection: () => peer.connection },
+				() => undefined,
+				() => undefined,
+				{ onMessage: () => undefined, onClose: (reason) => closed.push(reason ?? "") },
+			);
+			await host.start(undefined, { waitForPeerReady: true });
+			await host.acceptSignal({ type: "peer_ready", protocolVersion: 1 });
+			const control = peer.channels[1];
+			Object.defineProperty(control, "readyState", { value: "open", configurable: true });
+			peer.setConnectionState("connected");
+			host.sendControl("before interruption");
+			peer.setConnectionState("disconnected");
+			expect(closed).toEqual([]);
+			peer.setConnectionState(state);
+			expect(closed).toEqual([`peer ${state}`]);
+			expect(() => host.sendControl("after interruption")).toThrow("not open");
+			control.onclose?.(new Event("close"));
+			expect(closed).toHaveLength(1);
+			host.close();
+		},
+	);
+
 	it("waits for a relay peer-ready event before sending the offer", async () => {
 		const peer = fakePeerConnection();
 		const sent: unknown[] = [];

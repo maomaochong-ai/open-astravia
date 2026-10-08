@@ -5,6 +5,41 @@ import VettaKit
 @testable import VettaRTC
 
 final class RemoteScreenSurfaceTests: XCTestCase {
+	private final class FrameSink: NSObject, RTCVideoRenderer {
+		// These tests invoke the worker callbacks synchronously on one thread.
+		nonisolated(unsafe) var frames: [RTCVideoFrame?] = []
+		nonisolated(unsafe) var size = CGSize.zero
+		func setSize(_ size: CGSize) { self.size = size }
+		func renderFrame(_ frame: RTCVideoFrame?) { frames.append(frame) }
+	}
+
+	@MainActor func testFramesWithoutPresentationTimesRemainDistinctForTheMetalRenderer() throws {
+		var pixels: CVPixelBuffer?
+		XCTAssertEqual(CVPixelBufferCreate(kCFAllocatorDefault, 16, 16, kCVPixelFormatType_32BGRA, nil, &pixels), kCVReturnSuccess)
+		let buffer = RTCCVPixelBuffer(pixelBuffer: try XCTUnwrap(pixels))
+		let sink = FrameSink()
+		let renderer = RemoteVideoRenderer(sink: sink)
+		renderer.setSize(CGSize(width: 16, height: 16))
+		let immediate = RTCVideoFrame(buffer: buffer, rotation: ._90, timeStampNs: 0)
+		immediate.timeStamp = 1234
+		renderer.renderFrame(immediate)
+		renderer.renderFrame(immediate)
+		let first = try XCTUnwrap(sink.frames[0])
+		let second = try XCTUnwrap(sink.frames[1])
+		XCTAssertGreaterThan(first.timeStampNs, 0, "Metal starts with lastFrameTimeNs = 0 and otherwise drops every immediate frame")
+		XCTAssertGreaterThan(second.timeStampNs, first.timeStampNs, "successive immediate frames must not look like duplicates")
+		XCTAssertTrue(first.buffer === buffer)
+		XCTAssertEqual(first.rotation, ._90)
+		XCTAssertEqual(first.timeStamp, 1234)
+		XCTAssertEqual(immediate.timeStampNs, 0, "do not change the frame shared with other sinks")
+		let timed = RTCVideoFrame(buffer: buffer, rotation: ._0, timeStampNs: 999)
+		renderer.renderFrame(timed)
+		renderer.renderFrame(nil)
+		XCTAssertTrue(sink.frames[2] === timed, "normal presentation times keep their scheduling and deduplication")
+		XCTAssertNil(sink.frames[3])
+		XCTAssertEqual(sink.size, CGSize(width: 16, height: 16))
+	}
+
 	@MainActor private final class PanSample: UIPanGestureRecognizer {
 		var phase: UIGestureRecognizer.State = .possible
 		var travel = CGPoint.zero

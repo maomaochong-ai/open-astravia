@@ -47,6 +47,7 @@ export class RemoteDesktopHost {
 	private readonly pendingIce: RTCIceCandidateInit[] = [];
 	private inputChannel: RTCDataChannel | undefined;
 	private controlChannel: RTCDataChannel | undefined;
+	private controlClosed = false;
 	/** Set when started without a stream: the screen comes and goes through `replaceScreen`. */
 	private screenSender: RTCRtpSender | undefined;
 	private lastInputSequence = 0;
@@ -84,6 +85,9 @@ export class RemoteDesktopHost {
 		this.peer.onconnectionstatechange = () => {
 			const state = this.peer.connectionState;
 			this.logger.info("remote desktop host peer state", { sessionId: options.sessionId, state });
+			// ICE failure can leave SCTP reporting "open". Retire the control route
+			// without waiting for a DataChannel close event that may never arrive.
+			if (state === "failed" || state === "closed") this.closeControl(`peer ${state}`);
 			this.onConnectionStateChange?.(state);
 			if (!this.viewerRejoined || !this.onViewerReplaced || this.closed) return;
 			if (state === "connected") {
@@ -221,17 +225,20 @@ export class RemoteDesktopHost {
 	}
 
 	sendControl(message: string): void {
-		if (!this.controlChannel || this.controlChannel.readyState !== "open") {
+		if (this.closed || this.controlClosed || !this.controlChannel || this.controlChannel.readyState !== "open") {
 			throw new Error("remote control channel is not open");
 		}
 		this.controlChannel.send(message);
 	}
 
 	private configureControlChannel(channel: RTCDataChannel): void {
-		channel.onopen = () => this.control?.onOpen?.();
-		channel.onclose = () => this.control?.onClose?.("data channel closed");
-		channel.onerror = () => this.control?.onClose?.("data channel failed");
+		channel.onopen = () => {
+			if (!this.controlClosed) this.control?.onOpen?.();
+		};
+		channel.onclose = () => this.closeControl("data channel closed");
+		channel.onerror = () => this.closeControl("data channel failed");
 		channel.onmessage = (event) => {
+			if (this.controlClosed) return;
 			if (typeof event.data !== "string" || event.data.length > MAX_CONTROL_MESSAGE_CHARS) {
 				this.logger.warn("remote desktop invalid control payload rejected", { sessionId: this.options.sessionId });
 				channel.close();
@@ -239,6 +246,12 @@ export class RemoteDesktopHost {
 			}
 			this.control?.onMessage(event.data);
 		};
+	}
+
+	private closeControl(reason: string): void {
+		if (this.controlClosed) return;
+		this.controlClosed = true;
+		this.control?.onClose?.(reason);
 	}
 
 	private configureInputChannel(channel: RTCDataChannel): void {

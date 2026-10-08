@@ -306,4 +306,15 @@ import Testing
 			== "wss://relay.example/v2/desktop/pair-1/viewer#pairing=a%2Bb%2Fc")
 		#expect(RemoteDesktopProtocol.splitTarget(PairingURI.desktopViewerUrl(relayBaseUrl: "wss://r", pairingId: "p", mobileSecret: "a+b/c")).token == "a+b/c")
 	}
+
+	@Test func configuresOneScreenTargetForTheLinkAndItsViewer() {
+		let desktop = FakeDesktop()
+		let record = desktopRecord(desktop)
+		let options = ChannelManagerOptions(desktop: record, link: makeLink(), createTransport: desktop.createTransport)
+		#expect(options.p2pTarget == PairingURI.desktopViewerUrl(relayBaseUrl: "wss://relay.example", pairingId: record.pairingId, mobileSecret: record.mobileSecret))
+		for relay in [nil, ""] as [String?] {
+			let local = ChannelManagerOptions(desktop: desktopRecord(desktop, relay: relay), link: makeLink(), createTransport: desktop.createTransport)
+			#expect(local.p2pTarget == nil)
+		}
+	}
 }

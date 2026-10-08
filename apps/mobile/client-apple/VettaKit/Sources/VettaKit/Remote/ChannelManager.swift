@@ -34,6 +34,9 @@ public struct ChannelManagerOptions {
 		self.desktop = desktop
 		self.link = link
 		self.createTransport = createTransport
+		if let relay = desktop.relayBaseUrl, !relay.isEmpty {
+			p2pTarget = PairingURI.desktopViewerUrl(relayBaseUrl: relay, pairingId: desktop.pairingId, mobileSecret: desktop.mobileSecret)
+		}
 	}
 }
 

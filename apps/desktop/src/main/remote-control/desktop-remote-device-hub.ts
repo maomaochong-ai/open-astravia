@@ -133,16 +133,7 @@ export class DesktopRemoteDeviceHub {
 	/** Sequences one event for a device and delivers it on its best live link. */
 	async emit(deviceId: string, name: RemoteEventName, payload?: unknown, sessionId?: string): Promise<RemoteEvent> {
 		const entry = this.entry(deviceId);
-		const sequence = entry.journal.nextSequence();
-		const event: RemoteEvent = {
-			type: "event",
-			eventId: `${deviceId}-event-${sequence}`,
-			sequence,
-			name,
-			sessionId,
-			payload,
-		};
-		entry.journal.remember(event);
+		const event = this.recordEvent(deviceId, name, payload, sessionId);
 		for (const link of preferredOnlineLinks(entry.links)) {
 			try {
 				await link.connection.deliverEvent(event);
@@ -151,6 +142,34 @@ export class DesktopRemoteDeviceHub {
 				log.debug("remote event delivery failed", { deviceId, channel: link.channel, error: describe(error) });
 			}
 		}
+		return event;
+	}
+
+	/** Bootstrap reaches the new link even while a vanished process's P2P route looks online. */
+	async emitToLink(
+		deviceId: string,
+		link: RemoteDeviceLink,
+		name: RemoteEventName,
+		payload?: unknown,
+	): Promise<RemoteEvent> {
+		if (!this.devices.get(deviceId)?.links.has(link)) throw new Error("remote link is no longer attached");
+		const event = this.recordEvent(deviceId, name, payload);
+		await link.connection.deliverEvent(event);
+		return event;
+	}
+
+	private recordEvent(deviceId: string, name: RemoteEventName, payload?: unknown, sessionId?: string): RemoteEvent {
+		const journal = this.entry(deviceId).journal;
+		const sequence = journal.nextSequence();
+		const event: RemoteEvent = {
+			type: "event",
+			eventId: `${deviceId}-event-${sequence}`,
+			sequence,
+			name,
+			sessionId,
+			payload,
+		};
+		journal.remember(event);
 		return event;
 	}
 
