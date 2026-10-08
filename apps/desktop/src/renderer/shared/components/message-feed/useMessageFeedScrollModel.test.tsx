@@ -470,7 +470,13 @@ describe("useMessageFeedScrollModel", () => {
 		expect(result.current.followOutput).toBe("auto");
 	});
 
-	it("keeps one end-aligned tail location while an empty session hydrates", () => {
+	it("lands on the newest message when a session hydrates after mounting empty", () => {
+		const frames: FrameRequestCallback[] = [];
+		vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+			frames.push(callback);
+			return frames.length;
+		});
+		vi.stubGlobal("cancelAnimationFrame", vi.fn());
 		const { result, rerender } = renderHook(
 			({ items }: { items: Array<{ id: string }> }) =>
 				useMessageFeedScrollModel({
@@ -480,12 +486,32 @@ describe("useMessageFeedScrollModel", () => {
 				}),
 			{ initialProps: { items: [] as Array<{ id: string }> } },
 		);
+		const scrollToIndex = vi.fn();
+		(result.current.virtuosoRef as { current: VirtuosoHandle | null }).current = {
+			scrollToIndex,
+		} as unknown as VirtuosoHandle;
 
 		expect(result.current.initialTopMostItemIndex).toEqual({ index: "LAST", align: "end" });
+		expect(scrollToIndex).not.toHaveBeenCalled();
 
 		rerender({ items: Array.from({ length: 25 }, (_, index) => ({ id: `message-${index}` })) });
+		act(() => {
+			for (const callback of frames.splice(0)) callback(0);
+		});
 
+		// 空列表上的 initialTopMostItemIndex 不会生效，历史到位后必须主动落到最新消息。
 		expect(result.current.initialTopMostItemIndex).toEqual({ index: "LAST", align: "end" });
+		expect(scrollToIndex).toHaveBeenCalledTimes(1);
+		expect(scrollToIndex).toHaveBeenCalledWith({ index: "LAST", align: "end", behavior: "auto" });
+		expect(result.current.followOutput).toBe("auto");
+
+		rerender({ items: Array.from({ length: 26 }, (_, index) => ({ id: `message-${index}` })) });
+		act(() => {
+			for (const callback of frames.splice(0)) callback(0);
+		});
+
+		// 补位只发生一次，后续增长交给跟随循环，不再重复发起定位。
+		expect(scrollToIndex).toHaveBeenCalledTimes(1);
 	});
 
 	it("does not issue a second tail scroll when switching sessions", () => {

@@ -110,6 +110,7 @@ export function useMessageFeedScrollModel<T>({
 	const virtuosoRef = useRef<VirtuosoHandle>(null);
 	const itemIdentity = getItemIdentity(items, getItemKey);
 	const initialViewportSelectionRef = useRef<InitialViewportSelection | null>(null);
+	const pendingInitialTailRef = useRef(false);
 	if (initialViewportSelectionRef.current === null || initialViewportSelectionRef.current.resetKey !== resetKey) {
 		// Virtuoso 的 restoreStateFrom 是初始化输入。会话先以空列表挂载、随后再补齐历史时，
 		// 不应在中途注入旧快照或改写初始索引，否则会覆盖正在进行的底部定位。
@@ -119,6 +120,9 @@ export function useMessageFeedScrollModel<T>({
 			snapshot,
 			initialTopMostItemIndex: snapshot === undefined ? INITIAL_TAIL_LOCATION : undefined,
 		};
+		// initialTopMostItemIndex 只在挂载那一刻生效，作用在空列表上时定位不到任何消息：
+		// 切换会话时列表先被清空，历史补齐后必须补一次尾部落地，否则会停在顶部（issue #7）。
+		pendingInitialTailRef.current = items.length === 0 && snapshot === undefined && !initialTargetKey;
 	}
 	const { initialTopMostItemIndex, snapshot: restoreStateFrom } = initialViewportSelectionRef.current;
 	const scrollerElementRef = useRef<HTMLElement | null>(null);
@@ -367,6 +371,19 @@ export function useMessageFeedScrollModel<T>({
 			virtuosoRef.current?.scrollToIndex({ index, align: "center", behavior: "smooth" });
 		});
 	}, [getItemKey, initialTargetKey, items, onInitialTargetHandled, setShouldFollowBottom]);
+
+	// 空列表挂载后历史才补齐时，initialTopMostItemIndex 早已错过生效时机，这里补一次尾部落地。
+	// 命中缓存快照或指定了 initialTargetKey 时不适用：两者有各自的定位语义。
+	useEffect(() => {
+		if (!pendingInitialTailRef.current || initialTargetKey || items.length === 0) return;
+		pendingInitialTailRef.current = false;
+		browsingHistoryRef.current = false;
+		lastUserScrollDirectionRef.current = null;
+		setShouldFollowBottom(true);
+		requestAnimationFrame(() => {
+			virtuosoRef.current?.scrollToIndex({ index: "LAST", align: "end", behavior: "auto" });
+		});
+	}, [initialTargetKey, items.length, setShouldFollowBottom]);
 
 	useEffect(() => {
 		void items;
