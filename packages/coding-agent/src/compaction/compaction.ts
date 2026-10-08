@@ -6,8 +6,8 @@
  */
 
 import type { AgentMessage } from "@astravia/agent-core";
-import type { Api, Model } from "@astravia/ai";
-import { completeSimple, normalizeAssistantMessageError } from "@astravia/ai";
+import type { Api, AssistantMessage, Model } from "@astravia/ai";
+import { completeSimple, normalizeAssistantMessageError, streamSimple } from "@astravia/ai";
 import {
 	convertToLlm,
 	createBranchSummaryMessage,
@@ -402,6 +402,30 @@ function extractSummaryFromResponse(text: string): string {
  */
 export interface CompactionSummaryGenerationOptions extends CompactionSummaryGenerationRecoveryOptions {
 	readonly completion?: typeof completeSimple;
+	/**
+	 * 摘要流式回调：设置后（且未显式注入 completion 时）改用 streamSimple 逐事件消费，
+	 * 每段 text_delta 到达即回调；拼接即全量摘要。UI 的「实时压缩渲染」由此驱动。
+	 */
+	onSummaryDelta?: (delta: string) => void | Promise<void>;
+}
+
+/**
+ * 流式摘要完成器：包装 streamSimple，逐事件转发 text_delta 给 onDelta，
+ * 返回值与 completeSimple 同构（终态 AssistantMessage），可直接注入 completion 位。
+ * streamer 参数仅供测试注入伪事件流。
+ */
+export async function deltaForwardingCompletion(
+	model: Model<Api>,
+	context: Parameters<typeof completeSimple>[1],
+	options?: Parameters<typeof completeSimple>[2],
+	onDelta?: (delta: string) => void | Promise<void>,
+	streamer: typeof streamSimple = streamSimple,
+): Promise<AssistantMessage> {
+	const stream = streamer(model, context, options);
+	for await (const event of stream) {
+		if (event.type === "text_delta") await onDelta?.(event.delta);
+	}
+	return stream.result();
 }
 
 export async function generateSummary(
@@ -441,7 +465,12 @@ export async function generateSummary(
 				basePrompt,
 				previousSummary,
 				customInstructions,
-				completion: generationOptions.completion ?? completeSimple,
+				completion:
+					generationOptions.completion ??
+					(generationOptions.onSummaryDelta
+						? (model, context, options) =>
+								deltaForwardingCompletion(model, context, options, generationOptions.onSummaryDelta)
+						: completeSimple),
 				// 摘要是「复读并提炼」任务，不需要高强度推理：high 档的思考预算在推理模型上
 				// 可达数十秒，占压缩总耗时的大头，却换不来摘要质量的可感知差异。
 				reasoning: "low",
@@ -683,7 +712,12 @@ async function generateTurnPrefixSummary(
 				maxTokens,
 				signal,
 				basePrompt: TURN_PREFIX_SUMMARIZATION_PROMPT,
-				completion: generationOptions.completion ?? completeSimple,
+				completion:
+					generationOptions.completion ??
+					(generationOptions.onSummaryDelta
+						? (model, context, options) =>
+								deltaForwardingCompletion(model, context, options, generationOptions.onSummaryDelta)
+						: completeSimple),
 				errorPrefix: "Turn prefix summarization failed",
 			}),
 		signal,
@@ -701,7 +735,8 @@ interface CompleteSummaryCandidateOptions {
 	readonly previousSummary?: string;
 	readonly customInstructions?: string;
 	readonly completion: typeof completeSimple;
-	readonly reasoning?: "high";
+	/** 摘要生成的推理档：摘要是提炼任务，默认 low（见 generateSummary 内注释）。 */
+	readonly reasoning?: "low" | "high";
 	readonly errorPrefix: string;
 }
 

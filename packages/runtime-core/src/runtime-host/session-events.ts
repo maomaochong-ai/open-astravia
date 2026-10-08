@@ -162,6 +162,8 @@ export function mapRuntimeSessionObservationEvent(
 				contextWindow: event.contextWindow,
 				thresholdTokens: event.thresholdTokens,
 			};
+		case "compaction.delta":
+			return { ...base, type: event.type, text: event.text };
 		case "compaction.end":
 			return {
 				...base,

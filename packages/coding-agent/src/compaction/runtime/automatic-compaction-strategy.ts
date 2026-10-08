@@ -189,10 +189,13 @@ export class CodingAgentAutomaticCompactionStrategy {
 				return unchanged(callMessages, assembledTokens);
 			}
 			const prefired = extensionResult?.compaction ? undefined : this.options.prefire.take(entries);
+			// 摘要生成期间的流式增量：prefire 命中或扩展接管时无增量（后台预热不重发）。
 			const result =
 				extensionResult?.compaction ??
 				prefired ??
-				(await this.options.generateCompaction(preparation, model, apiKey, undefined, signal));
+				(await this.options.generateCompaction(preparation, model, apiKey, undefined, signal, {
+					onSummaryDelta: (text) => input.reportObservation({ type: "compaction.delta", text, source: "agent" }),
+				}));
 			signal.throwIfAborted();
 			const record = createCodingAgentCompactionRecord(
 				result,

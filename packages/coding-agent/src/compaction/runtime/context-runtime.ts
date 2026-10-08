@@ -84,8 +84,8 @@ export class DefaultCodingAgentContextRuntime
 		this.now = options.now ?? Date.now;
 		const generateCompaction =
 			options.generateCompaction ??
-			((preparation, model, apiKey, customInstructions, signal) =>
-				compact(preparation, model, apiKey, customInstructions, signal));
+			((preparation, model, apiKey, customInstructions, signal, generationOptions) =>
+				compact(preparation, model, apiKey, customInstructions, signal, generationOptions));
 		const circuitBreaker = new ConsecutiveFailureCircuitBreaker({ now: this.now });
 		this.usage = new RuntimeContextUsageTracker({
 			estimateDocumentTokens: (document) =>
