@@ -31,7 +31,12 @@ export type TeamMemberSummaryEventViewModel = {
 };
 
 export type ChatTimelineEventViewModel =
-	| { readonly kind: "compaction"; readonly summary: string }
+	| {
+			readonly kind: "compaction";
+			readonly summary: string;
+			/** 压缩前的上下文 token 数（历史投影可得；账目行展示用）。 */
+			readonly tokensBefore?: number;
+	  }
 	| { readonly kind: "delegation"; readonly label: string; readonly requestId: string; readonly timestamp: number }
 	| TeamMemberSummaryEventViewModel;
 
@@ -298,6 +303,9 @@ export const contextUsageAtom = atom<ContextUsageData | null>(null);
 
 /** Whether context compaction is currently in progress */
 export const isCompactingAtom = atom<boolean>(false);
+
+/** 压缩进行中的摘要流式文本（compaction.delta 逐段累积）；null = 不在压缩或无增量。 */
+export const compactionLiveSummaryAtom = atom<string | null>(null);
 
 /** 当前会话由 Runtime 计算的压缩资格；不属于新会话草稿。 */
 export const contextCompactionEligibilityAtom = atom<ContextCompactionEligibility>({ status: "unknown" });

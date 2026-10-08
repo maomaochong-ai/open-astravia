@@ -6,6 +6,7 @@ import {
 	MessageVisual,
 	ModelSwitchBoundaryView,
 } from "@astravia-org/theme-ui/chat";
+import { CompactionCard } from "./CompactionCard.js";
 import { forwardRef, memo } from "react";
 import { useTranslation } from "react-i18next";
 import type { Usage } from "@astravia/ai/protocol";
@@ -59,7 +60,14 @@ export const DefaultMessageItem = memo(function DefaultMessageItem({
 	exportMode = false,
 }: MessageItemProps) {
 	if (message.kind === "event") {
-		if (message.event.kind === "compaction") return <CompactionBoundary />;
+		if (message.event.kind === "compaction") {
+			return (
+				<CompactionCard
+					summary={message.event.summary}
+					tokensBefore={message.event.tokensBefore}
+				/>
+			);
+		}
 		if (message.event.kind === "team-member-summary") {
 			return <TeamMemberReplyCard event={message.event} onOpen={onTeamMemberOpen} />;
 		}

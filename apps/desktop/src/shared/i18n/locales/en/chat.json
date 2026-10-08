@@ -770,6 +770,12 @@
 			"unavailable": "Not reported"
 		},
 		"compactionBoundary": "Context compacted",
+		"compactionCard": {
+			"tokens": "Compacted {{tokens}} tokens",
+			"compacting": "Compacting…",
+			"viewSummary": "View summary",
+			"hideSummary": "Hide summary"
+		},
 		"modelSwitched": "Switched model from {{from}} to {{to}}",
 		"compactionIndicator": "Compacting context...",
 		"retryIndicator": "Reconnecting ({{attempt}}/{{maxAttempts}})",
@@ -883,7 +889,11 @@
 			"completed": "{{count}} tool calls completed",
 			"inProgress": "{{completed}}/{{total}} tool calls",
 			"thinking": "{{count}} thinking steps"
-		}
+		},
+		"tokens": "Compacted {{tokens}} tokens",
+		"compacting": "Compacting…",
+		"viewSummary": "View summary",
+		"hideSummary": "Hide summary"
 	},
 	"modelSelector": {
 		"defaultBadge": "Default",
