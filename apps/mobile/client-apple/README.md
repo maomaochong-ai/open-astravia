@@ -43,12 +43,19 @@ open Vetta.xcodeproj
 ```bash
 cd apps/mobile/client-apple
 (cd VettaKit && swift test --no-parallel)   # 单元测试：加密兼容、协议、连接、双通道、配对、转写、缓存、AppModel
-xcodebuild test -project Vetta.xcodeproj -scheme Vetta -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -only-testing:VettaRTCTests CODE_SIGNING_ALLOWED=NO # UIKit 远程手势组件测试
+xcodebuild test -project Vetta.xcodeproj -scheme Vetta -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -only-testing:VettaRTCTests # 视频帧时间戳与 UIKit 远程手势测试
+scripts/screen-test.sh                      # 真实 WebRTC 视频：画面变化、点击回传、关闭后重新打开（需 bun install）
 scripts/interop.sh                          # 与 apps/desktop 的真实 LAN 服务器和假中继对跑（需 bun install）
 scripts/ui-test.sh                          # 模拟器（默认 iPhone 17 Pro）上跑 UI 测试，深浅色各截一套图到 build/ui-shots
 ```
 
 若命令行 SwiftPM 只复制 `.xcstrings`，导致文案测试读到键名，先在 `VettaKit` 目录运行 `xcrun xcstringstool compile Sources/VettaKit/Resources/Localizable.xcstrings --output-directory "$(swift build --show-bin-path)/VettaKit_VettaKit.bundle"`，再重跑 `swift test --no-parallel`。这只编译测试构建目录中的资源，App 构建由 Xcode 自动处理。
+
+`screen-test.sh` 使用临时配对、内存存储和独立 Electron 数据目录，只发送合成画布，不截取真实桌面或注入系统输入。测试从抽屉打开远程桌面，检查截图中的红蓝画面持续变化、点击经 DataChannel 回到主机后画面变绿，再关闭并重新打开检查恢复；仅有帧率而没有画面也会失败。截图保存在 Xcode 测试结果中，夹具日志在 `build/screen-logs`。该夹具每次只接一部新手机，测试脚本在退出时自动清理进程与临时目录。
+
+模拟器 App 也要保留 Xcode 默认签名，不要用 `CODE_SIGNING_ALLOWED=NO` 构建后覆盖日常调试安装；缺少模拟器的 `application-identifier` entitlement 会让钥匙串返回 `-34018`，内存存储测试无法发现这个问题。合成视频测试只证明编解码与交互通路；真实远程桌面验收还需通过正常配对入口连接实际电脑、看到屏幕内容随操作变化，并检查 App 重启后配对仍有效。
+
+外网访问开关不能替代 macOS 的系统录屏授权。开发环境从终端或 IDE 启动时，macOS 可能将 Electron 的录屏请求归属于启动它的应用，例如 Orca；只给正式版 Vetta 或 Electron 授权仍可能被拒绝。先核对当前进程的 TCC 日志中 `AUTHREQ_ATTRIBUTION` 与 `AUTHREQ_SUBJECT`，确认实际授权对象，再由用户决定是否授权；不要仅按进程名称猜测。权限调整后按系统提示重启相关开发进程，并重新打开手机远程页面验证真实画面。
 
 UI 测试只构建一次，再按外观各跑一遍。每个用例都是一部新手机、自己完成配对（夹具在 UI 测试里允许新手机顶替旧配对），彼此独立，按界面划分：工作列表、聊天与模型菜单、失败的一轮、新会话与附件及提问、设置。改哪块界面就只跑那块：`scripts/ui-test.sh --fast --only testChatMergesRepliesAndSwitchesModel`（逗号分隔可跑多个），只跑深色、不截图；一批界面改动完成时再完整跑一次深浅两套并看截图。
 

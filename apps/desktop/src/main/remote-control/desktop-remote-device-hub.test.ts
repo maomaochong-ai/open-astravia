@@ -32,11 +32,40 @@ function link(hub: DesktopRemoteDeviceHub, deviceId: string, channel: "p2p" | "l
 		expectedPeerIdentityKey: phoneIdentity.publicKey,
 		journal: hub.journalFor(deviceId),
 	});
-	hub.attach(deviceId, { channel, connection: desktop });
-	return { phone, desktop, phoneTransport };
+	const attached = { channel, connection: desktop };
+	hub.attach(deviceId, attached);
+	return { phone, desktop, phoneTransport, attached };
 }
 
 describe("DesktopRemoteDeviceHub", () => {
+	it("only initializes a link attached to that device and preserves the shared journal", async () => {
+		const hub = new DesktopRemoteDeviceHub({
+			handleRequest: async () => ({}),
+			toRemoteError: () => ({ code: "internal_error", message: "boom", retryable: false }),
+		});
+		const lan = link(hub, "device-1", "lan");
+		const seen: number[] = [];
+		lan.phone.onEvent((event) => {
+			if (event.type === "remote-event") seen.push(event.event.sequence);
+		});
+		try {
+			await lan.desktop.connect();
+			await lan.phone.connect();
+			await vi.waitFor(() => expect(lan.desktop.getSnapshot().state).toBe("online"));
+			const event = await hub.emitToLink("device-1", lan.attached, "device.status", { screen: true });
+			await vi.waitFor(() => expect(seen).toEqual([event.sequence]));
+			expect(hub.journalFor("device-1").lastSequence).toBe(event.sequence);
+			await expect(hub.emitToLink("device-2", lan.attached, "device.status")).rejects.toThrow("no longer attached");
+			hub.detach("device-1", lan.attached);
+			await expect(hub.emitToLink("device-1", lan.attached, "device.status")).rejects.toThrow("no longer attached");
+			expect(hub.journalFor("device-1").lastSequence).toBe(event.sequence);
+		} finally {
+			await hub.dropAll();
+			await lan.phone.close();
+			await lan.desktop.close();
+		}
+	});
+
 	it.each([undefined, "lan", "p2p"] as const)(
 		"updates relay presence while the desktop stays in the room (other channel: %s)",
 		async (otherChannel) => {

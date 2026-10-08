@@ -1,6 +1,7 @@
 import type { RemoteInviteEnvelope, RemoteTransportHandlers } from "@vetta/remote-control";
 import {
 	FakeRelay,
+	FakeTransport,
 	generateIdentityKeyPair,
 	inviteBoxId,
 	normalizeInviteCode,
@@ -208,6 +209,80 @@ function hello(identityKey: string, deviceName = "iPhone"): RemoteHello {
 }
 
 describe("DesktopRemoteAccessManager", () => {
+	it("sends initialization to the reconnecting phone while an old link still appears online", async () => {
+		const pairingId = "a".repeat(24);
+		const phoneIdentity = generateIdentityKeyPair();
+		const { manager, relayLinks, store } = harness({
+			cloudEnabled: true,
+			devices: [
+				{
+					id: pairingId,
+					name: "iPhone",
+					mobileSecretHash: "h",
+					mobileIdentityKey: toBase64Url(phoneIdentity.publicKey),
+					createdAt: 1,
+				},
+			],
+		});
+		store.putRelaySecret(pairingId, "relay-secret");
+		await manager.restore();
+		const options = relayLinks[0]!.options;
+		const phones: RemoteConnection[] = [];
+		const open = async (resumeFrom: number) => {
+			const phoneTransport = new FakeTransport();
+			const desktopTransport = new FakeTransport();
+			phoneTransport.connectPeer(desktopTransport);
+			const connection = new RemoteConnection(desktopTransport, {
+				role: "desktop",
+				handshake: "accept",
+				deviceId: "desktop",
+				deviceName: "MacBook",
+				identity: options.identity,
+				capabilities: { chat: true, sessionRead: true, screen: true },
+				journal: options.journal,
+				expectedPeerIdentityKey: phoneIdentity.publicKey,
+				onHello: () => ({ kind: "approve" }),
+			});
+			const phone = new RemoteConnection(phoneTransport, {
+				role: "mobile",
+				deviceId: "phone",
+				deviceName: "iPhone",
+				identity: phoneIdentity,
+				capabilities: { chat: true, sessionRead: true, screen: true },
+				resumeFrom,
+				expectedPeerIdentityKey: options.identity.publicKey,
+			});
+			phones.push(phone);
+			const statuses: number[] = [];
+			phone.onEvent((event) => {
+				if (event.type === "remote-event" && event.event.name === "device.status")
+					statuses.push(event.event.sequence);
+			});
+			options.onConnection(connection);
+			await connection.connect();
+			await phone.connect();
+			return { phone, statuses };
+		};
+		try {
+			const previous = await open(0);
+			await vi.waitFor(() => expect(previous.statuses).toHaveLength(1));
+			const resumed = await open(previous.statuses[0]!);
+			// The previous process vanished without closing its transport. Its route
+			// still wins ordinary traffic, but cannot receive this phone's bootstrap.
+			await vi.waitFor(() => expect(resumed.statuses).toHaveLength(1));
+			expect(resumed.statuses[0]).toBeGreaterThan(previous.statuses[0]!);
+			await expect(resumed.phone.request("screen.subscribe", { active: true })).resolves.toMatchObject({
+				screen: "streaming",
+			});
+			await expect(resumed.phone.request("screen.subscribe", { active: false })).resolves.toMatchObject({
+				screen: "stopped",
+			});
+		} finally {
+			await manager.shutdown();
+			for (const phone of phones) await phone.close();
+		}
+	});
+
 	it("starts nothing when no phone is paired", async () => {
 		const { manager, lanServers, relayLinks, vault } = harness();
 		await manager.restore();

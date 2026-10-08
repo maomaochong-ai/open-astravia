@@ -59,6 +59,9 @@ public final class AppModel {
 	public private(set) var ready = false
 	public private(set) var paired = false
 	public private(set) var desktop: StoredDesktop?
+	/// The same signaling target used by the current link, cleared when it detaches.
+	/// A view must not reread Keychain to locate an already authenticated session.
+	public private(set) var remoteDesktopTarget: String?
 	public private(set) var link: LinkSnapshot = .offline
 	public private(set) var sessions: [RemoteSessionSummary] = [] {
 		didSet { sessionsChanged(from: oldValue) }
@@ -327,6 +330,7 @@ public final class AppModel {
 			self?.pairingStore.update(key) { $0.lanEndpoints = endpoints }
 		}
 		platform.configureManager?(&options)
+		remoteDesktopTarget = options.p2pTarget
 		let manager = ChannelManager(options: options)
 		self.manager = manager
 		unsubscribe.append(manager.subscribe { [weak self] next in
@@ -358,17 +362,11 @@ public final class AppModel {
 		unsubscribe.removeAll()
 		manager?.stop()
 		manager = nil
+		remoteDesktopTarget = nil
 		screen = nil
 	}
 
 	// MARK: Remote desktop
-
-	/// The relay's viewer signaling for the paired desktop's screen and the P2P channel;
-	/// nil without a relay to reach it through.
-	public var remoteDesktopTarget: String? {
-		guard let record = pairingStore.getCurrent(), let relay = record.relayBaseUrl, !relay.isEmpty else { return nil }
-		return PairingURI.desktopViewerUrl(relayBaseUrl: relay, pairingId: record.pairingId, mobileSecret: record.mobileSecret)
-	}
 
 	/// A screen showing the link's latency appeared or went away; it is measured often while one does.
 	public func watchLatency(_ watching: Bool) {
