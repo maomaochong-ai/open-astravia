@@ -210,6 +210,7 @@ describe("remote desktop host negotiation", () => {
 		await host.start(fakeStream(), { waitForPeerReady: true });
 		expect(peer.createDataChannel).toHaveBeenNthCalledWith(1, "vetta-input-v1", { ordered: true });
 		expect(peer.createDataChannel).toHaveBeenNthCalledWith(2, "vetta-control-v2", { ordered: true });
+		expect(peer.createDataChannel).toHaveBeenNthCalledWith(3, "vetta-view-v1", { ordered: true });
 		const control = peer.channels[1];
 		control.onopen?.(new Event("open"));
 		expect(opened).toHaveBeenCalledOnce();
@@ -287,6 +288,36 @@ describe("remote desktop host screen on demand", () => {
 
 		await host.noteEncoder("MediaFoundationVideoEncodeAccelerator");
 		expect(peer.sender.parameters).toMatchObject({ encodings: [{ scaleResolutionDownBy: 1 }] });
+	});
+
+	it("sends the screen no larger than the phone says it shows it", async () => {
+		const peer = fakePeerConnection();
+		const logger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn() };
+		const host = new RemoteDesktopHost(
+			{ sessionId: "pairing_0123456789abcdefghijklmnop", createPeerConnection: () => peer.connection, logger },
+			() => undefined,
+			() => undefined,
+		);
+		await host.start();
+		const track = { ...fakeTrack(), kind: "video", getSettings: () => ({ width: 2560, height: 1600 }) };
+		await host.replaceScreen(track as unknown as MediaStreamTrack);
+		const view = peer.channels[1];
+
+		view.onmessage?.({ data: '{"width":1440,"height":900}' } as MessageEvent);
+		await vi.waitFor(() =>
+			expect(peer.sender.parameters).toMatchObject({ encodings: [{ scaleResolutionDownBy: 1.5 }] }),
+		);
+
+		// Zoomed in: full size again.
+		view.onmessage?.({ data: '{"width":4320,"height":2700}' } as MessageEvent);
+		await vi.waitFor(() =>
+			expect(peer.sender.parameters).toMatchObject({ encodings: [{ scaleResolutionDownBy: 1 }] }),
+		);
+
+		const calls = peer.sender.setParameters.mock.calls.length;
+		view.onmessage?.({ data: '{"width":-1}' } as MessageEvent);
+		expect(logger.warn).toHaveBeenCalledWith("remote desktop invalid view rejected", expect.anything());
+		expect(peer.sender.setParameters.mock.calls.length).toBe(calls);
 	});
 
 	it("refuses to swap the screen of a session started with a fixed stream", async () => {

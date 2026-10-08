@@ -75,6 +75,15 @@ export type RemoteInputMessage =
 			readonly sentAt: number;
 	  };
 
+/**
+ * How large the phone shows the whole screen right now, in the phone's own pixels with its
+ * zoom applied. The desktop sends no more detail than that (`vetta-view-v1`).
+ */
+export interface RemoteViewMessage {
+	readonly width: number;
+	readonly height: number;
+}
+
 export type RemoteInputCommand = {
 	[T in RemoteInputMessage as T["type"]]: Omit<T, "sequence">;
 }[RemoteInputMessage["type"]];

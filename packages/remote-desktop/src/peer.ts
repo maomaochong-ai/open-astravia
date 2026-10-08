@@ -1,6 +1,12 @@
 import type { RemoteDesktopPeerOptions } from "./peer-types.js";
 import { NOOP_REMOTE_DESKTOP_LOGGER } from "./peer-types.js";
-import { decodeRemoteDesktopSignal, encodeRemoteInputMessage, parseRemoteInputMessage } from "./protocol.js";
+import {
+	decodeRemoteDesktopSignal,
+	encodeRemoteInputMessage,
+	parseRemoteInputMessage,
+	parseRemoteViewMessage,
+} from "./protocol.js";
+import type { ScreenSize } from "./screen-scale.js";
 import { isSoftwareEncoder, screenScaleDown } from "./screen-scale.js";
 import type { RemoteDesktopSignal, RemoteInputCommand, RemoteInputMessage } from "./types.js";
 import { REMOTE_DESKTOP_PROTOCOL_VERSION } from "./types.js";
@@ -38,6 +44,11 @@ export interface RemoteDesktopTextChannelHandlers {
 }
 
 export const REMOTE_DESKTOP_CONTROL_CHANNEL = "vetta-control-v2";
+/**
+ * The phone says how large it shows the screen (`RemoteViewMessage`). The desktop opens it,
+ * so a phone only sends where a desktop listens; older phones close it.
+ */
+export const REMOTE_DESKTOP_VIEW_CHANNEL = "vetta-view-v1";
 const MAX_CONTROL_MESSAGE_CHARS = 1_500_000;
 /** How long a rejoined viewer may stay disconnected before it counts as replaced; the phone gives up after as long. */
 const VIEWER_DISCONNECT_GRACE_MS = 5_000;
@@ -65,6 +76,9 @@ export class RemoteDesktopHost {
 	private rejoinGrace: ReturnType<typeof setTimeout> | undefined;
 	/** Chromium fell back from the hardware encoder; the picture is sent smaller meanwhile. */
 	private softwareEncoder = false;
+	private viewChannel: RTCDataChannel | undefined;
+	/** How large the phone last said it shows the screen; unknown until it says. */
+	private shown: ScreenSize | undefined;
 
 	constructor(
 		private readonly options: RemoteDesktopPeerOptions,
@@ -132,6 +146,8 @@ export class RemoteDesktopHost {
 			this.controlChannel = this.peer.createDataChannel(REMOTE_DESKTOP_CONTROL_CHANNEL, { ordered: true });
 			this.configureControlChannel(this.controlChannel);
 		}
+		this.viewChannel = this.peer.createDataChannel(REMOTE_DESKTOP_VIEW_CHANNEL, { ordered: true });
+		this.configureViewChannel(this.viewChannel);
 		this.started = true;
 		this.onViewerReplaced = startOptions.onViewerReplaced;
 		this.onConnectionStateChange = startOptions.onConnectionStateChange;
@@ -197,6 +213,7 @@ export class RemoteDesktopHost {
 		this.clearRejoinGrace();
 		this.inputChannel?.close();
 		this.controlChannel?.close();
+		this.viewChannel?.close();
 		for (const sender of this.peer.getSenders()) sender.track?.stop();
 		this.peer.close();
 		void this.sendSignal({
@@ -245,6 +262,10 @@ export class RemoteDesktopHost {
 			encoder: implementation,
 			software,
 		});
+		await this.rescaleScreen();
+	}
+
+	private async rescaleScreen(): Promise<void> {
 		const sender = this.screenSender ?? this.peer.getSenders().find((entry) => entry.track?.kind === "video");
 		if (sender?.track) await tuneScreenSender(sender, this.scaleFor(sender.track));
 	}
@@ -253,7 +274,21 @@ export class RemoteDesktopHost {
 		const settings = typeof track.getSettings === "function" ? track.getSettings() : undefined;
 		const capture =
 			settings?.width && settings.height ? { width: settings.width, height: settings.height } : undefined;
-		return screenScaleDown(capture, this.softwareEncoder);
+		return screenScaleDown(capture, this.softwareEncoder, this.shown);
+	}
+
+	private configureViewChannel(channel: RTCDataChannel): void {
+		channel.onmessage = (event) => {
+			if (this.closed) return;
+			try {
+				if (typeof event.data !== "string") throw new Error("binary view message");
+				this.shown = parseRemoteViewMessage(event.data);
+			} catch {
+				this.logger.warn("remote desktop invalid view rejected", { sessionId: this.options.sessionId });
+				return;
+			}
+			void this.rescaleScreen();
+		};
 	}
 
 	sendControl(message: string): void {
