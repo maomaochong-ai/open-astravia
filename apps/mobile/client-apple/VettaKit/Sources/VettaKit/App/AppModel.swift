@@ -283,6 +283,12 @@ public final class AppModel {
 		manager?.refresh()
 	}
 
+	/// The phone moved to another network: the link follows at once instead of waiting for a
+	/// keepalive to find the old sockets dead.
+	public func networkChanged() {
+		manager?.networkChanged()
+	}
+
 	private func attachManager(_ record: DesktopRecord) {
 		detachManager()
 		let key = record.desktopIdentityKey

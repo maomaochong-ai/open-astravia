@@ -37,7 +37,7 @@ describe("Desktop release workflow contracts", () => {
 
 	it("publishes each platform's installers as soon as it is built", () => {
 		expect(jobs.build.strategy["fail-fast"]).toBe(false);
-		expect(Object.keys(jobs)).toEqual(["prepare", "quality", "build"]);
+		expect(Object.keys(jobs)).toEqual(["prepare", "quality", "build", "promote"]);
 		expect(workflow).not.toContain("release-build-");
 		expect(workflow).not.toContain("test:e2e:packaged");
 		expect(workflow).not.toContain("download-artifact");
@@ -60,8 +60,8 @@ describe("Desktop release workflow contracts", () => {
 		expect(jobs.build.permissions).toEqual({ contents: "write" });
 	});
 
-	// 更新清单决定客户端何时看到新版本，由开发者手动上线；CI 只上传安装包。
-	it("never publishes update metadata to a live update source", () => {
+	// 构建任务只上传安装包与暂存清单；清单上线集中在 desktop-promote。
+	it("never publishes update metadata from a platform build", () => {
 		const buildSteps = jobs.build.steps;
 		const r2 = buildSteps.find((step) => step.name === "Publish installers to R2 and stage update metadata");
 		expect(r2.if).toContain("needs.prepare.outputs.release_target == 'r2'");
@@ -74,24 +74,45 @@ describe("Desktop release workflow contracts", () => {
 		expect(workflow).not.toContain("verify-update-feed");
 	});
 
-	// 上线清单会让用户开始收到新版本，只能手动触发，并与构建使用同一套 R2 目标解析。
-	it("promotes staged update metadata only through a manual workflow", () => {
+	// 上线清单会让用户开始收到新版本：全部平台成功后自动调用，也保留手动入口，
+	// 并与构建使用同一套 R2 目标解析。
+	it("promotes staged update metadata through one reusable workflow", () => {
 		const promote = parse(
 			readFileSync(join(import.meta.dirname, "../../.github/workflows/desktop-promote.yml"), "utf8"),
 		);
-		expect(Object.keys(promote.on)).toEqual(["workflow_dispatch"]);
-		expect(promote.on.workflow_dispatch.inputs.version.required).toBe(true);
-		expect(promote.on.workflow_dispatch.inputs.dry_run.default).toBe(false);
+		expect(Object.keys(promote.on).sort()).toEqual(["workflow_call", "workflow_dispatch"]);
+		for (const trigger of ["workflow_call", "workflow_dispatch"]) {
+			expect(promote.on[trigger].inputs.version.required).toBe(true);
+			expect(promote.on[trigger].inputs.dry_run.default).toBe(false);
+		}
+		expect(promote.jobs.promote.concurrency.group).toBe("desktop-promote-$" + "{{ inputs.channel }}");
 		const steps = promote.jobs.promote.steps;
 		const resolve = steps.find((step) => step.name === "Resolve R2 update target");
 		expect(resolve.env.INPUT_RELEASE_TARGET).toBe("r2");
+		expect(resolve.env.VAR_RELEASE_CHANNEL).toBe("$" + "{{ vars.VETTA_RELEASE_CHANNEL }}");
 		expect(resolve.run).toContain("resolve-desktop-release-config.mjs --export-env");
 		const run = steps.find((step) => step.name === "Promote staged update metadata");
 		expect(run.run).toContain("node scripts/promote-update-metadata-r2.mjs");
 		expect(run.run).toContain("--dry-run");
 		const attach = steps.find((step) => step.name === "Attach promoted metadata to GitHub Release");
-		expect(attach.if).toContain("dry_run != 'true'");
-		expect(attach.if).toContain("channel != 'test'");
+		expect(attach.if).toContain("!inputs.dry_run");
+		expect(attach.if).toContain("inputs.channel != 'test'");
+		expect(JSON.stringify(promote)).not.toContain("github.event.inputs");
+	});
+
+	it("promotes automatically only after every platform build succeeds", () => {
+		expect(jobs.promote.needs).toEqual(["prepare", "build"]);
+		expect(jobs.promote.uses).toBe("./.github/workflows/desktop-promote.yml");
+		expect(jobs.promote.if).toContain("needs.prepare.outputs.should-publish == 'true'");
+		expect(jobs.promote.if).toContain("needs.prepare.outputs.release_target == 'r2'");
+		expect(jobs.promote.if).toContain("github.event.inputs.auto_promote != 'false'");
+		expect(jobs.promote.if).not.toContain("always()");
+		expect(jobs.promote.if).not.toContain("failure()");
+		expect(jobs.promote.with.version).toBe("$" + "{{ needs.prepare.outputs.release-version }}");
+		expect(jobs.promote.with.channel).toBe("$" + "{{ needs.prepare.outputs.channel }}");
+		expect(jobs.promote.secrets).toBe("inherit");
+		expect(jobs.promote.permissions).toEqual({ contents: "write" });
+		expect(parse(workflow).on.workflow_dispatch.inputs.auto_promote.default).toBe(true);
 	});
 
 	it("runs quality and packaging tests before the platform matrix", () => {

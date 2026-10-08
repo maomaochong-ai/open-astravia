@@ -21,6 +21,7 @@ import Testing
 		options.p2pTarget = viewer
 		options.p2pTimeoutMs = 300
 		options.p2pProbeIntervalMs = 200
+		options.standbyRetryMs = 100
 		options.createP2pTransport = { target in
 			targets.append(target)
 			if !p2pReachable() { return DeadTransport() }
@@ -160,6 +161,143 @@ import Testing
 		reachable = false
 		desktop.acceptors.last?.close()
 		#expect(await eventually(timeoutMs: 4_000) { manager.snapshot.channel == .lan && manager.snapshot.isUsable })
+		manager.stop()
+	}
+
+	@Test func aDroppedP2pLinkNeverShowsTheDesktopOffline() async throws {
+		let link = makeLink()
+		let desktop = FakeDesktop()
+		desktop.mobileIdentityKey = link.identity.publicKey
+		var reachable = true
+		let (manager, _) = manager(desktop, link: link, p2pReachable: { reachable })
+		var seen: [LinkIndicator] = []
+		manager.subscribe { seen.append(LinkIndicator($0)) }
+		manager.start()
+		#expect(await eventually { manager.snapshot.channel == .lan })
+		try #require(desktop.onlineAcceptor()).emitEvent(.deviceStatus, payload: deviceStatus(screen: true))
+		#expect(await eventually { manager.snapshot.channel == .p2p })
+		seen.removeAll()
+
+		reachable = false
+		desktop.acceptors.last?.close()
+		#expect(await eventually(timeoutMs: 4_000) { manager.snapshot.channel == .lan && manager.snapshot.isUsable })
+		#expect(!seen.contains(.offline), "falling back from P2P is not a disconnect: \(seen)")
+		manager.stop()
+	}
+
+	@Test func goingToTheBackgroundOnP2pNeverShowsTheDesktopOffline() async throws {
+		let link = makeLink()
+		let desktop = FakeDesktop()
+		desktop.mobileIdentityKey = link.identity.publicKey
+		let (manager, _) = manager(desktop, link: link)
+		var seen: [LinkIndicator] = []
+		manager.subscribe { seen.append(LinkIndicator($0)) }
+		manager.start()
+		#expect(await eventually { manager.snapshot.channel == .lan })
+		try #require(desktop.onlineAcceptor()).emitEvent(.deviceStatus, payload: deviceStatus(screen: true))
+		#expect(await eventually { manager.snapshot.channel == .p2p })
+		seen.removeAll()
+
+		manager.setForeground(false)
+		#expect(await eventually { manager.snapshot.channel == .lan })
+		#expect(!seen.contains(.offline), "closing P2P in the background is not a disconnect: \(seen)")
+		manager.stop()
+	}
+
+	@Test func keepsTheLanAsAStandbyWhileOnP2p() async throws {
+		let link = makeLink()
+		let desktop = FakeDesktop()
+		desktop.mobileIdentityKey = link.identity.publicKey
+		let (manager, _) = manager(desktop, link: link)
+		manager.start()
+		#expect(await eventually { manager.snapshot.channel == .lan })
+		let lan = try #require(desktop.onlineAcceptor())
+		try lan.emitEvent(.deviceStatus, payload: deviceStatus(screen: true))
+		#expect(await eventually { manager.snapshot.channel == .p2p })
+		await sleep(ms: 100)
+		#expect(lan.state == .online, "the LAN stays up behind P2P")
+		manager.stop()
+	}
+
+	@Test func aDroppedP2pLinkHandsOverToTheStandbyWithoutReconnecting() async throws {
+		let link = makeLink()
+		let desktop = FakeDesktop()
+		desktop.mobileIdentityKey = link.identity.publicKey
+		var reachable = true
+		let (manager, _) = manager(desktop, link: link, p2pReachable: { reachable })
+		var seen: [LinkSnapshot] = []
+		manager.subscribe { seen.append($0) }
+		manager.start()
+		#expect(await eventually { manager.snapshot.channel == .lan })
+		let lan = try #require(desktop.onlineAcceptor())
+		try lan.emitEvent(.deviceStatus, payload: deviceStatus(screen: true))
+		#expect(await eventually { manager.snapshot.channel == .p2p })
+		let p2p = try #require(desktop.acceptors.last)
+		var received: [Int] = []
+		manager.onEvent { received.append($0.sequence) }
+		try p2p.emitEvent(.sessionList, payload: .object([:]))
+		#expect(await eventually { received.count == 1 })
+		// Sent over P2P as it died, so never arrived: the standby must catch it up.
+		let lost = RemoteEvent(eventId: "desktop-1-event-lost", sequence: desktop.journal.nextSequence(), name: .sessionList, sessionId: nil, payload: .object([:]))
+		desktop.journal.remember(lost)
+		let opened = desktop.opened.count
+		seen.removeAll()
+
+		reachable = false
+		p2p.close()
+		#expect(await eventually { manager.snapshot.channel == .lan })
+		#expect(seen.allSatisfy { $0.status == .online }, "the switch never leaves the link: \(seen.map(\.status))")
+		#expect(desktop.opened.count == opened, "no new LAN connection")
+		#expect(await eventually { received.contains(lost.sequence) }, "what P2P lost is replayed on the LAN")
+		try lan.emitEvent(.sessionList, payload: .object([:]))
+		#expect(await eventually { received.count == 3 })
+		#expect(received == received.sorted() && Set(received).count == 3)
+		manager.stop()
+	}
+
+	@Test func rebuildsTheStandbyWhenItDrops() async throws {
+		let link = makeLink()
+		let desktop = FakeDesktop()
+		desktop.mobileIdentityKey = link.identity.publicKey
+		let (manager, _) = manager(desktop, link: link)
+		manager.start()
+		#expect(await eventually { manager.snapshot.channel == .lan })
+		let lan = try #require(desktop.onlineAcceptor())
+		try lan.emitEvent(.deviceStatus, payload: deviceStatus(screen: true))
+		#expect(await eventually { manager.snapshot.channel == .p2p })
+		let opened = desktop.opened.count
+
+		lan.close()
+		#expect(await eventually { desktop.opened.count > opened }, "a new standby is opened")
+		#expect(manager.snapshot.channel == .p2p)
+		manager.stop()
+	}
+
+	@Test func triesP2pLessOftenWhileItKeepsFailingAndAfreshOnANewNetwork() async throws {
+		let link = makeLink()
+		let desktop = FakeDesktop()
+		desktop.mobileIdentityKey = link.identity.publicKey
+		var options = ChannelManagerOptions(desktop: desktopRecord(desktop), link: link, createTransport: desktop.createTransport)
+		options.p2pTarget = viewer
+		options.p2pTimeoutMs = 50
+		options.p2pProbeIntervalMs = 100
+		var attempts: [Double] = []
+		options.createP2pTransport = { _ in
+			attempts.append(WallClock.nowMs())
+			return DeadTransport()
+		}
+		let manager = ChannelManager(options: options)
+		manager.start()
+		#expect(await eventually { manager.snapshot.channel == .lan })
+		try #require(desktop.onlineAcceptor()).emitEvent(.deviceStatus, payload: deviceStatus(screen: true))
+		#expect(await eventually { attempts.count == 4 })
+		let gaps = zip(attempts.dropFirst(), attempts).map { $0 - $1 }
+		#expect(gaps[1] > gaps[0] * 1.5 && gaps[2] > gaps[1] * 1.5, "each failure waits longer: \(gaps)")
+
+		// Waiting out the next, longest gap would take ~850 ms; a new network tries at once.
+		let before = attempts.count
+		manager.networkChanged()
+		#expect(await eventually(timeoutMs: 300) { attempts.count > before })
 		manager.stop()
 	}
 

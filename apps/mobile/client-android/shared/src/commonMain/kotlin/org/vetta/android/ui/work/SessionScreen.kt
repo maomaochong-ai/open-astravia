@@ -164,8 +164,9 @@ fun SessionScreen(
                 )
             }
             headerActions()
-            // The desktop's files (ADR-0139). Pin, rename, and refresh live on the session list.
-            if (files != null && state.link.desktop?.fileRead == true) {
+            // The desktop's files (ADR-0139). The folder stays in the corner; an older desktop
+            // explains itself when the panel opens. Pin, rename, and refresh live on the session list.
+            if (files != null) {
                 IconButton(
                     onClick = { filesOpen = true },
                     enabled = !starting && state.online,
