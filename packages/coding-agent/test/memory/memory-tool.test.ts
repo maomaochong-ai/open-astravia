@@ -32,17 +32,35 @@ describe("Memory tool contract", () => {
 	it("keeps add, replace and result projection behavior", async () => {
 		const runtime = createMemoryToolRegistration({ operations: createOperations() }).tool;
 		expect(await execute(runtime, { action: "add", content: "Uses Bun" })).toEqual({
-			content: [{ type: "text", text: "memory add ok — 1 entry, 8/4000 chars.\n\nCurrent memory:\n1. Uses Bun" }],
-			details: { action: "add", entryCount: 1, chars: 8, limit: 4_000 },
+			content: [
+				{
+					type: "text",
+					text: "memory add ok — user scope, 1 entry, 8/4000 chars.\n\nCurrent memory:\n1. Uses Bun",
+				},
+			],
+			details: { action: "add", scope: "user", file: "MEMORY.md", entryCount: 1, chars: 8, limit: 4_000 },
 		});
 		expect(await execute(runtime, { action: "replace", match: "Bun", content: "Uses Bun workspaces" })).toEqual({
 			content: [
 				{
 					type: "text",
-					text: "memory replace ok — 1 entry, 19/4000 chars.\n\nCurrent memory:\n1. Uses Bun workspaces",
+					text: "memory replace ok — user scope, 1 entry, 19/4000 chars.\n\nCurrent memory:\n1. Uses Bun workspaces",
 				},
 			],
-			details: { action: "replace", entryCount: 1, chars: 19, limit: 4_000 },
+			details: { action: "replace", scope: "user", file: "MEMORY.md", entryCount: 1, chars: 19, limit: 4_000 },
+		});
+	});
+
+	it("echoes the scope a write landed in", async () => {
+		const runtime = createMemoryToolRegistration({ operations: createOperations() }).tool;
+		expect(await execute(runtime, { action: "add", content: "Prefers tabs", scope: "project" })).toEqual({
+			content: [
+				{
+					type: "text",
+					text: "memory add ok — project scope, 1 entry, 12/4000 chars.\n\nCurrent memory:\n1. Prefers tabs",
+				},
+			],
+			details: { action: "add", scope: "project", file: "MEMORY.md", entryCount: 1, chars: 12, limit: 4_000 },
 		});
 	});
 });
@@ -70,7 +88,13 @@ function createOperations(): MemoryToolOperations {
 				const index = entries.findIndex((entry) => entry.includes(input.match ?? ""));
 				if (index >= 0) entries.splice(index, 1);
 			}
-			return { entries: [...entries], chars: entries.join("\n\n§\n\n").length, limit: 4_000 };
+			return {
+				entries: [...entries],
+				chars: entries.join("\n\n§\n\n").length,
+				limit: 4_000,
+				scope: input.scope ?? "user",
+				file: "MEMORY.md",
+			};
 		},
 	};
 }

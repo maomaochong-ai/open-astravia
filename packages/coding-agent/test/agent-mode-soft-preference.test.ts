@@ -85,10 +85,7 @@ function dependencies(skills: readonly Skill[], agentMode: string | undefined) {
 		mcpManager: undefined,
 		cwd: "/workspace",
 		settingsManager: { getPersonalization: () => ({ personaId: "", customPrompt: "" }) },
-		memoryMode: false,
-		memoryFile: undefined,
-		memorySnapshot: "",
-		memoryCharLimit: 0,
+		memory: undefined,
 		agentMode,
 		// 模式注册表归宿主所有（ADR-0071 修订）：这里注入一个最小解析器，验证的是
 		// 「mode 只落到 modePrompt 上」这条不变量，与具体注册表内容无关。

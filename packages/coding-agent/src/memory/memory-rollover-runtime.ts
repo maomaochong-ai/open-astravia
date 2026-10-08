@@ -12,8 +12,9 @@ import type {
 	CodingAgentMemoryRolloverOrchestratorOptions,
 	CodingAgentMemoryRolloverPreparation,
 	CodingAgentMemoryRolloverRuntime,
+	CodingAgentMemoryScopeSnapshot,
 } from "./memory-runtime-contract.js";
-import { MemoryDocumentStore } from "./memory-store.js";
+import { MemoryDocumentStore, type MemoryScopeBinding, ScopedMemoryStore } from "./memory-store.js";
 import { createMemoryToolRegistration } from "./memory-tool-registration.js";
 
 export class CodingAgentMemoryRolloverOrchestrator implements CodingAgentMemoryRolloverRuntime {
@@ -22,7 +23,8 @@ export class CodingAgentMemoryRolloverOrchestrator implements CodingAgentMemoryR
 	private readonly memoryFile: string;
 	private readonly cwd: string;
 	private readonly memoryCharLimit: number;
-	private readonly frozenMemorySnapshot: string;
+	private readonly projectStore: MemoryDocumentStore;
+	private readonly scopes: readonly CodingAgentMemoryScopeSnapshot[];
 	private readonly flushMemory: NonNullable<CodingAgentMemoryRolloverOrchestratorOptions["flushMemory"]>;
 	private readonly appendTurnJournal: NonNullable<CodingAgentMemoryRolloverOrchestratorOptions["appendTurnJournal"]>;
 	private readonly appendRolloverJournal: NonNullable<
@@ -34,10 +36,30 @@ export class CodingAgentMemoryRolloverOrchestrator implements CodingAgentMemoryR
 		this.memoryFile = options.memoryFile;
 		this.cwd = options.cwd;
 		this.memoryCharLimit = options.memoryCharLimit ?? DEFAULT_MEMORY_CHAR_LIMIT;
-		const store = new MemoryDocumentStore({ storage: options.memoryStorage, charLimit: this.memoryCharLimit });
+		const bindings: MemoryScopeBinding[] = [];
+		if (options.userMemoryFile !== undefined && options.userMemoryStorage !== undefined) {
+			bindings.push({
+				scope: "user",
+				file: options.userMemoryFile,
+				store: new MemoryDocumentStore({
+					storage: options.userMemoryStorage,
+					charLimit: this.memoryCharLimit,
+				}),
+			});
+		}
+		this.projectStore = new MemoryDocumentStore({
+			storage: options.memoryStorage,
+			charLimit: this.memoryCharLimit,
+		});
+		bindings.push({ scope: "project", file: this.memoryFile, store: this.projectStore });
+		// 快照在会话开始时冻结一次：提示词缓存因此保持稳定（ADR-0009）。
+		this.scopes = bindings.map((binding) => ({
+			scope: binding.scope,
+			file: binding.file,
+			snapshot: binding.store.readContent(),
+		}));
 		const journal = new MemoryJournalWriter(options.journalStorage);
-		const flushService = new MemoryFlushService(store, new AiMemoryFactExtractor());
-		this.frozenMemorySnapshot = store.readContent();
+		const flushService = new MemoryFlushService(this.projectStore, new AiMemoryFactExtractor());
 		this.flushMemory =
 			options.flushMemory ??
 			((input) =>
@@ -50,20 +72,25 @@ export class CodingAgentMemoryRolloverOrchestrator implements CodingAgentMemoryR
 		this.appendTurnJournal = options.appendTurnJournal ?? ((cwd, message) => journal.appendTurn(cwd, message));
 		this.appendRolloverJournal =
 			options.appendRolloverJournal ?? ((cwd, summary) => journal.appendRollover(cwd, summary));
-		this.toolRegistration = createMemoryToolRegistration({ operations: store });
+		this.toolRegistration = createMemoryToolRegistration({
+			// 缺省写入最有持久性的已配置作用域：单作用域宿主行为不变。
+			operations: new ScopedMemoryStore({
+				defaultScope: bindings.some((binding) => binding.scope === "user") ? "user" : "project",
+				bindings,
+			}),
+		});
 	}
 
 	readPromptMemory(): CodingAgentMemoryPromptState {
 		return {
 			enabled: true,
-			file: this.memoryFile,
-			snapshot: this.frozenMemorySnapshot,
 			charLimit: this.memoryCharLimit,
+			scopes: this.scopes,
 		};
 	}
 
 	renderPromptMemory(): string {
-		return renderMemoryForPrompt(this.memoryFile, this.frozenMemorySnapshot, this.memoryCharLimit);
+		return renderMemoryForPrompt(this.scopes, this.memoryCharLimit);
 	}
 
 	adjustCompactionSettings(

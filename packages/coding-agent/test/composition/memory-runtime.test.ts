@@ -29,6 +29,7 @@ type MemoryRuntimeOverrides = Pick<
 function createFileMemoryRuntime(
 	options: CodingAgentMemoryRuntimeFactoryOptions,
 	overrides: MemoryRuntimeOverrides = {},
+	userMemoryFile?: string,
 ): CodingAgentMemoryRolloverOrchestrator {
 	const memoryFile = options.memoryFile ?? join(options.cwd, "MEMORY.md");
 	return new CodingAgentMemoryRolloverOrchestrator({
@@ -36,6 +37,7 @@ function createFileMemoryRuntime(
 		memoryFile,
 		memoryStorage: new NodeTextFileStorage(memoryFile),
 		journalStorage: new NodeTextFileStorage(join(options.cwd, "JOURNAL.md")),
+		...(userMemoryFile ? { userMemoryFile, userMemoryStorage: new NodeTextFileStorage(userMemoryFile) } : {}),
 		...overrides,
 	});
 }
@@ -151,6 +153,66 @@ describe("Greenfield CLI memory runtime", () => {
 		expect(calls[0]?.systemPrompt).not.toContain("# Persistent Memory");
 		await expect(composition.flushMemory(session.sessionId)).resolves.toBe(0);
 		await expect(readFile(join(workspace, "JOURNAL.md"), "utf8")).rejects.toThrow();
+		await session.dispose();
+	});
+
+	it("writes user-scope memories outside the workspace while the prompt shows both scopes", async () => {
+		const agentDir = await temporaryRoot("greenfield-user-memory-agent-");
+		const workspace = await temporaryRoot("greenfield-user-memory-workspace-");
+		const conversations = await temporaryRoot("greenfield-user-memory-conversations-");
+		const userMemoryFile = join(agentDir, "MEMORY.md");
+		await writeFile(userMemoryFile, "The user is left-handed.", "utf8");
+		const calls: Array<{ readonly systemPrompt: string }> = [];
+		const responses = [
+			assistantMessage(
+				[
+					{
+						type: "toolCall",
+						id: "memory-1",
+						name: "memory",
+						arguments: { description: "Remember the editor", action: "add", content: "The user prefers Neovim." },
+					},
+				],
+				"toolUse",
+			),
+			assistantMessage([{ type: "text", text: "Memory saved." }]),
+		];
+		let responseIndex = 0;
+		const composition = await createCodingAgentRuntimeComposition({
+			conversationDir: conversations,
+			modelRegistry: modelRegistry(),
+			initialModel: MODEL,
+			initialThinkingLevel: "off",
+			cwd: workspace,
+			enableSubagents: false,
+			activation: { mode: "explicit", toolNames: [] },
+			createMemoryRolloverRuntime: (runtimeOptions) => createFileMemoryRuntime(runtimeOptions, {}, userMemoryFile),
+			resolveSystemPromptOptions: () => ({ customPrompt: "User memory Coding Agent", scenario: "im-claw" }),
+			streamFn: (_model, context) => {
+				calls.push({ systemPrompt: context.systemPrompt ?? "" });
+				const response = responses[responseIndex];
+				responseIndex += 1;
+				if (!response) throw new Error("Missing recorded response");
+				return new RecordedAssistantStream(response);
+			},
+		});
+		compositions.push(composition);
+		const session = await composition.createSession({
+			sessionId: "user-memory-session",
+			cwd: workspace,
+			memoryMode: true,
+			memoryFile: join(workspace, "MEMORY.md"),
+		});
+
+		const result = await session.prompt({ text: "Remember my editor preference" });
+
+		expect(result.status).toBe("completed");
+		expect(calls[0]?.systemPrompt).toContain("The user is left-handed.");
+		expect(calls[0]?.systemPrompt).toContain(`<memory scope="user" path="${userMemoryFile}"`);
+		expect(calls[0]?.systemPrompt).toContain(`<memory scope="project" path="${join(workspace, "MEMORY.md")}"`);
+		// 默认作用域是用户级：写入落在 agent 目录，而不是本次会话的工作目录。
+		expect(await readFile(userMemoryFile, "utf8")).toContain("The user prefers Neovim.");
+		await expect(readFile(join(workspace, "MEMORY.md"), "utf8")).rejects.toThrow();
 		await session.dispose();
 	});
 

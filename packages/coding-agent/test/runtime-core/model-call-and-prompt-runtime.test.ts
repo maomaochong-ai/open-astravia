@@ -756,9 +756,8 @@ describe("Coding Agent model call and prompt runtime", () => {
 			resolveModePrompt: (mode) => (mode ? `prompt for ${mode}` : ""),
 			readMemory: () => ({
 				enabled: true,
-				file: "C:\\first\\MEMORY.md",
-				snapshot: firstMemory,
 				charLimit: 4_000,
+				scopes: [{ scope: "project", file: "C:\\first\\MEMORY.md", snapshot: firstMemory }],
 			}),
 		});
 		const second = new CodingAgentPromptRuntime({

@@ -3,6 +3,7 @@ import {
 	applyMemoryDocumentOperation,
 	MemoryDocumentStore,
 	parseMemoryEntries,
+	ScopedMemoryStore,
 	serializeMemoryEntries,
 } from "../../src/memory/index.js";
 import { createMemoryTextStorage, readMemoryTextStorage } from "../fixtures/memory-storage.js";
@@ -47,5 +48,55 @@ describe("Memory document and file store", () => {
 			limit: 4_000,
 		});
 		expect(readMemoryTextStorage(storage)).toBe("Uses Bun");
+	});
+
+	it("routes writes to the requested scope and reports where they landed", () => {
+		const projectStorage = createMemoryTextStorage("Project fact");
+		const userStorage = createMemoryTextStorage();
+		const store = new ScopedMemoryStore({
+			defaultScope: "user",
+			bindings: [
+				{ scope: "user", file: "/agent/MEMORY.md", store: new MemoryDocumentStore({ storage: userStorage }) },
+				{
+					scope: "project",
+					file: "/workspace/MEMORY.md",
+					store: new MemoryDocumentStore({ storage: projectStorage }),
+				},
+			],
+		});
+
+		expect(store.apply("add", { content: "Prefers Bun" })).toEqual({
+			entries: ["Prefers Bun"],
+			chars: 11,
+			limit: 4_000,
+			scope: "user",
+			file: "/agent/MEMORY.md",
+		});
+		expect(readMemoryTextStorage(userStorage)).toBe("Prefers Bun");
+		expect(readMemoryTextStorage(projectStorage)).toBe("Project fact");
+
+		expect(store.apply("add", { content: "Uses TypeScript", scope: "project" })).toMatchObject({
+			scope: "project",
+			file: "/workspace/MEMORY.md",
+			entries: ["Project fact", "Uses TypeScript"],
+		});
+		expect(readMemoryTextStorage(projectStorage)).toBe("Project fact\n\n§\n\nUses TypeScript");
+	});
+
+	it("rejects a scope this session does not bind", () => {
+		const store = new ScopedMemoryStore({
+			defaultScope: "project",
+			bindings: [
+				{
+					scope: "project",
+					file: "/workspace/MEMORY.md",
+					store: new MemoryDocumentStore({ storage: createMemoryTextStorage() }),
+				},
+			],
+		});
+
+		expect(() => store.apply("add", { content: "x", scope: "user" })).toThrow(
+			'memory add: the "user" scope is not available in this session (available: "project").',
+		);
 	});
 });

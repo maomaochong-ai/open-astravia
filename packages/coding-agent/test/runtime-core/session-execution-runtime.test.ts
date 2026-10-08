@@ -123,7 +123,7 @@ describe("CodingAgentSessionExecutionRuntime", () => {
 		}
 	});
 
-	it("isolates background tasks and publishes session observations plus model-visible notifications", async () => {
+	it("isolates background tasks and publishes session observations plus model-visible non-conversation notifications", async () => {
 		const first = createRuntimeFixture("session-first");
 		const second = createRuntimeFixture("session-second");
 		const command = process.platform === "win32" ? "Write-Output done" : "true";
@@ -151,11 +151,12 @@ describe("CodingAgentSessionExecutionRuntime", () => {
 				),
 			).toBe(true);
 			expect(second.observations).toEqual([]);
+			// 通知要唤醒模型（modelVisible），但不得作为对话消息插入用户的聊天流（display）。
 			expect(first.records).toEqual([
 				expect.objectContaining({
 					type: "task-notification",
 					modelVisible: true,
-					display: true,
+					display: false,
 				}),
 			]);
 			expect(second.records).toEqual([]);

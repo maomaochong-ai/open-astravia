@@ -1,3 +1,4 @@
+import type { CodingAgentMemoryPromptState } from "../memory/index.js";
 import type { ConversationScenario } from "../profiles/index.js";
 import { getPersonaPrompt } from "../profiles/index.js";
 import type { SessionResourceRuntime } from "../resources/index.js";
@@ -35,10 +36,8 @@ export interface SystemPromptSourceDependencies {
 	/** 会话创建时固化的工作区性质事实；undefined 表示未探测到或探测失败。 */
 	workspaceFacts?: string;
 	settingsManager: PersonalizationSettingsSource;
-	memoryMode: boolean;
-	memoryFile: string | undefined;
-	memorySnapshot: string;
-	memoryCharLimit: number;
+	/** 会话开始时冻结的记忆快照；undefined = 本次会话未启用记忆。 */
+	memory?: CodingAgentMemoryPromptState;
 	agentMode?: string;
 	/** 宿主注入的 mode 提示词解析器；缺省 = 不追加 mode block。 */
 	resolveModePrompt?: CodingAgentModePromptResolver;
@@ -71,8 +70,8 @@ export function resolveSystemPromptOptionsFromSources(
 				description: tool.description || "Tool from MCP server",
 			})) ?? [];
 	const memory =
-		dependencies.memoryMode && dependencies.memoryFile
-			? renderMemoryForPrompt(dependencies.memoryFile, dependencies.memorySnapshot, dependencies.memoryCharLimit)
+		dependencies.memory?.enabled && dependencies.memory.scopes.length > 0
+			? renderMemoryForPrompt(dependencies.memory.scopes, dependencies.memory.charLimit)
 			: undefined;
 
 	return {

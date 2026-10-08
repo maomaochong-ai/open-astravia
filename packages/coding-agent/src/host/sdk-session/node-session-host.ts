@@ -36,7 +36,14 @@ import { CodingAgentSdkExtensionTransitionAdapter } from "../coding-agent-sdk-ex
 import { CodingAgentSdkResourceSourceAdapter } from "../coding-agent-sdk-resource-source-adapter.js";
 import { resolveCodingAgentSessionDir } from "../coding-agent-session-storage.js";
 import { createCodingAgentExtensionEventHost } from "../extensions/event-host.js";
-import { getAgentDir, getAstraviaHomePath, getExportTemplateDir, getKnowledgeDir, VERSION } from "../node-config.js";
+import {
+	getAgentDir,
+	getAstraviaHomePath,
+	getExportTemplateDir,
+	getKnowledgeDir,
+	getUserMemoryPath,
+	VERSION,
+} from "../node-config.js";
 import { createCodingAgentNodeSettingsRuntime } from "../node-state-services.js";
 import { createCodingAgentNodeSessionExecutionEnvironment } from "../tool-environment/node/node-session-execution-environment.js";
 import { createCodingAgentNodeToolEnvironment } from "../tool-environment/node/node-tool-environment.js";
@@ -251,12 +258,15 @@ async function createCodingAgentSdkSessionComposition(
 				process.env.ASTRAVIA_KNOWLEDGE_DISABLED === "1" ? undefined : createNodeKnowledgeRuntime(getKnowledgeDir()),
 			createMemoryRolloverRuntime: (memoryOptions) => {
 				const memoryFile = memoryOptions.memoryFile ?? join(memoryOptions.cwd, "MEMORY.md");
+				const userMemoryFile = getUserMemoryPath();
 				return createCodingAgentMemoryRolloverRuntime({
 					cwd: memoryOptions.cwd,
 					memoryFile,
 					memoryCharLimit: memoryOptions.memoryCharLimit,
 					memoryStorage: new NodeTextFileStorage(memoryFile),
 					journalStorage: new NodeTextFileStorage(join(memoryOptions.cwd, "JOURNAL.md")),
+					userMemoryFile,
+					userMemoryStorage: new NodeTextFileStorage(userMemoryFile),
 				});
 			},
 			modelRegistry,

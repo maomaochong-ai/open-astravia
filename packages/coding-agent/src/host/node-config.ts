@@ -155,6 +155,14 @@ export function getAgentDir(): string {
 	return configuredDirectory ? expandHomeDirectory(configuredDirectory) : join(getAstraviaHomePath(), "agent");
 }
 
+/**
+ * 用户级 MEMORY.md：与其它 agent 级状态同目录，因此 `ASTRAVIA_AGENT_DIR` 覆盖对
+ * 所有宿主一致生效（issue #8）。
+ */
+export function getUserMemoryPath(): string {
+	return join(getAgentDir(), "MEMORY.md");
+}
+
 export function getCustomThemesDir(): string {
 	return join(getAgentDir(), "themes");
 }

@@ -12,7 +12,7 @@ import {
 	createCodingAgentRuntimeHostSessionConfig,
 	createCodingAgentSessionSetupSeedInitializer,
 } from "@astravia/coding-agent/composition";
-import { getAstraviaHomePath, getKnowledgeDir } from "@astravia/coding-agent/config";
+import { getAstraviaHomePath, getKnowledgeDir, getUserMemoryPath } from "@astravia/coding-agent/config";
 import {
 	createCodingAgentMcpRuntimeToolSource,
 	createCodingAgentPluginMcpRuntime,
@@ -78,12 +78,15 @@ export interface CliSessionAssemblyOptions {
 
 function createCliMemoryRolloverRuntime(options: CodingAgentMemoryRuntimeFactoryOptions) {
 	const memoryFile = options.memoryFile ?? join(options.cwd, "MEMORY.md");
+	const userMemoryFile = getUserMemoryPath();
 	return createCodingAgentMemoryRolloverRuntime({
 		cwd: options.cwd,
 		memoryFile,
 		memoryCharLimit: options.memoryCharLimit,
 		memoryStorage: new NodeTextFileStorage(memoryFile),
 		journalStorage: new NodeTextFileStorage(join(options.cwd, "JOURNAL.md")),
+		userMemoryFile,
+		userMemoryStorage: new NodeTextFileStorage(userMemoryFile),
 	});
 }
 

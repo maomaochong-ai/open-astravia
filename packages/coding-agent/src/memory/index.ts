@@ -32,13 +32,22 @@ export type {
 	CodingAgentMemoryRolloverOrchestratorOptions,
 	CodingAgentMemoryRolloverPreparation,
 	CodingAgentMemoryRolloverRuntime,
+	CodingAgentMemoryScopeSnapshot,
 } from "./memory-runtime-contract.js";
 export { createCodingAgentMemoryRuntimeFeature } from "./memory-runtime-feature.js";
+export {
+	DEFAULT_MEMORY_SCOPE,
+	MEMORY_SCOPE_GUIDANCE,
+	type MemoryScope,
+} from "./memory-scope.js";
 export type { MemoryTextStorage } from "./memory-storage.js";
 export {
 	MemoryDocumentStore,
+	type MemoryScopeBinding,
 	type MemoryStore,
 	type MemoryStoreOptions,
+	ScopedMemoryStore,
+	type ScopedMemoryStoreOptions,
 } from "./memory-store.js";
 export {
 	createMemoryTool,
