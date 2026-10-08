@@ -5,6 +5,8 @@
 
 import "./style.css";
 
+import { initDownloadLinks, initDownloadPlatformHighlight } from "./download-links";
+
 import { initStory } from "./story";
 
 const NAV = document.querySelector<HTMLElement>(".nav");
@@ -245,6 +247,7 @@ function initDownload() {
 	}
 }
 
+
 initNavScroll();
 initNavToggle();
 initReveal();
@@ -255,6 +258,7 @@ initThemeToggle();
 
 initFaq();
 initDownload();
+initDownloadLinks();
 
 initStory();
 
@@ -343,51 +347,7 @@ function initConstellation() {
 	}
 
 	// 平台检测高亮
-	const ua = navigator.userAgent;
-	const isMac = /Mac/i.test(ua) && !/iPhone|iPad|iPod/i.test(ua);
-	const isWin = /Win/i.test(ua);
-	const iconMap: Record<string, string> = { macos: "ollama", windows: "kimi", linux: "grok" };
-	const platform = isMac && /ARM|arm64|aarch64/i.test(ua) ? "macos" : isMac ? "macos" : isWin ? "windows" : "linux";
-	document.querySelectorAll(".dl-platform-icon").forEach((el) => {
-		const htmlEl = el as HTMLElement;
-		if (htmlEl.dataset.p === iconMap[platform]) {
-			htmlEl.style.opacity = "0.6";
-			htmlEl.style.borderColor = "var(--accent)";
-		}
-	});
-
-	// 下载链接（4 处同步更新：nav、hero CTA、下载区 primary、版本标签）
-	const VERSION = "0.5.60";
-	const BASE = `https://dl.astravia.dev/app/v${VERSION}`;
-	const navDownload = document.querySelector<HTMLAnchorElement>(".nav__download");
-	const heroDownload = document.querySelector<HTMLAnchorElement>(".hero .btn--primary.btn--lg");
-	const dlPrimary = document.getElementById("dlPrimary") as HTMLAnchorElement;
-	const dlPrimaryText = document.getElementById("dlPrimaryText");
-	const dlPrimaryVersion = document.getElementById("dlPrimaryVersion");
-
-	let primaryHref: string;
-	let primaryLabel: string;
-	if (isMac && /ARM|arm64|aarch64/i.test(ua)) {
-		primaryHref = `${BASE}/Astravia-${VERSION}-arm64.dmg`;
-		primaryLabel = "MAC ARM64 (APPLE SILICON)";
-	} else if (isMac) {
-		primaryHref = `${BASE}/Astravia-${VERSION}.dmg`;
-		primaryLabel = "MAC X64 (INTEL)";
-	} else if (isWin) {
-		primaryHref = `${BASE}/Astravia-${VERSION}-win-x64.exe`;
-		primaryLabel = "WINDOWS X64";
-	} else {
-		primaryHref = `${BASE}/Astravia-${VERSION}.AppImage`;
-		primaryLabel = "LINUX X64";
-	}
-
-	dlPrimary.href = primaryHref;
-	dlPrimaryText!.textContent = primaryLabel;
-	dlPrimaryVersion!.textContent = `v${VERSION}`;
-
-	// 导航栏 + Hero CTA 同样跟随 OS 切换
-	if (navDownload) navDownload.href = primaryHref;
-	if (heroDownload) heroDownload.href = primaryHref;
+	initDownloadPlatformHighlight();
 
 	// 其他版本展开/收起 + 实时跟随定位
 	if (toggle && others) {
