@@ -3,6 +3,7 @@ import type { RuntimeToolDefinition, RuntimeToolResult } from "@astravia/runtime
 import { type Static, Type } from "@sinclair/typebox";
 import { Minimatch } from "minimatch";
 import type { CodingToolExecutableResolver } from "../../host/executable-resolver.js";
+import { formatMissingCodingToolError } from "../../shared/missing-executable.js";
 import {
 	formatNotFoundPath,
 	localToolPathHost,
@@ -265,7 +266,7 @@ export function createGlobTool(cwd: string, options: GlobToolOptions = {}): Runt
 			if (request.signal.aborted) throw new Error("Operation aborted");
 			const resolvedRgPath = options.executableResolver ? await options.executableResolver.resolve("rg") : rgPath;
 			if (!resolvedRgPath) {
-				throw new Error("ripgrep (rg) is not available and could not be downloaded");
+				throw new Error(formatMissingCodingToolError("rg"));
 			}
 			const matcher = new Minimatch(pattern, { dot: true });
 			const { paths, limitReached } = await runRipgrepFiles({

@@ -51,7 +51,9 @@ describe("runtime grep tool", () => {
 				input: { pattern: "never-called" },
 				signal: new AbortController().signal,
 			}),
-		).rejects.toThrow("ripgrep (rg) is not available and could not be downloaded");
+		).rejects.toThrow(
+			/ripgrep \(rg\) is not available and could not be downloaded.*(brew install ripgrep|apt install ripgrep)/,
+		);
 		expect(resolvedTools).toEqual(["rg"]);
 	});
 
@@ -78,7 +80,9 @@ describe("runtime grep tool", () => {
 					input: { pattern: "never-called" },
 					signal: new AbortController().signal,
 				}),
-			).rejects.toThrow("ripgrep (rg) is not available and could not be downloaded");
+			).rejects.toThrow(
+				/ripgrep \(rg\) is not available and could not be downloaded.*(brew install ripgrep|apt install ripgrep)/,
+			);
 		}
 
 		expect(resolutions).toBe(2);

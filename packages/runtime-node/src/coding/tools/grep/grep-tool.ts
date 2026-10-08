@@ -4,6 +4,7 @@ import type { RuntimeToolDefinition, RuntimeToolResult } from "@astravia/runtime
 import { type Static, Type } from "@sinclair/typebox";
 import type { CodingToolExecutableResolver } from "../../host/executable-resolver.js";
 import { anchorLineHash } from "../../shared/anchors.js";
+import { formatMissingCodingToolError } from "../../shared/missing-executable.js";
 import {
 	formatNotFoundPath,
 	localToolPathHost,
@@ -158,7 +159,7 @@ export function createGrepTool(cwd: string, options: GrepToolOptions = {}): Runt
 
 			const resolvedRgPath = options.executableResolver ? await options.executableResolver.resolve("rg") : rgPath;
 			if (!resolvedRgPath) {
-				throw new Error("ripgrep (rg) is not available and could not be downloaded");
+				throw new Error(formatMissingCodingToolError("rg"));
 			}
 
 			return runRipgrep({
