@@ -38,6 +38,7 @@ import { RemoteOperationError } from "./remote-error-mapping.js";
 import type { RemoteFiles } from "./remote-files.js";
 import {
 	describe,
+	findToolResult,
 	keyForPath,
 	lastUserTimestamp,
 	modelLabel,
@@ -325,6 +326,14 @@ export class DesktopRemoteMirror {
 				return await this.options.files.stat(this.requireHandle(request.sessionId).cwd, request.payload);
 			case "file.read":
 				return await this.options.files.read(this.requireHandle(request.sessionId).cwd, request.payload);
+			case "tool.result": {
+				const handle = this.requireHandle(request.sessionId);
+				const toolCallId = asRecord(request.payload).toolCallId;
+				if (typeof toolCallId !== "string" || !toolCallId) {
+					throw new RemoteOperationError("invalid_frame", "toolCallId is required");
+				}
+				return findToolResult(this.readHistory(handle), toolCallId);
+			}
 		}
 	}
 
@@ -978,16 +987,18 @@ export class DesktopRemoteMirror {
 	}
 
 	private historyFor(handle: SessionHandle): RemoteTranscriptEntry[] {
-		let history: HistoryEntry[];
+		return toTranscript(this.readHistory(handle));
+	}
+
+	private readHistory(handle: SessionHandle): HistoryEntry[] {
 		try {
-			history = handle.sessionId
+			return handle.sessionId
 				? this.options.runtime.getFullHistory(handle.sessionId)
 				: this.options.runtime.readSessionHistoryFromFile(handle.path).history;
 		} catch (error) {
 			log.debug("remote history read failed", { error: describe(error) });
-			history = this.options.runtime.readSessionHistoryFromFile(handle.path).history;
+			return this.options.runtime.readSessionHistoryFromFile(handle.path).history;
 		}
-		return toTranscript(history);
 	}
 
 	private async emitMessage(key: string, payload: RemoteMessageEvent): Promise<void> {

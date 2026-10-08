@@ -19,6 +19,7 @@ export interface RemoteCapabilities {
 	readonly terminal?: boolean;
 	readonly screen?: boolean;
 	readonly input?: boolean;
+	readonly toolResult?: boolean;
 }
 
 /**
@@ -93,7 +94,8 @@ export type RemoteRequestMethod =
 	| "file.list"
 	| "file.stat"
 	| "file.read"
-	| "screen.subscribe";
+	| "screen.subscribe"
+	| "tool.result";
 
 export interface RemoteRequest {
 	readonly type: "request";
@@ -160,7 +162,7 @@ export interface RemoteError {
 		| "internal_error"
 		/** The file lies outside what the phone may read (ADR-0139). */
 		| "forbidden"
-		/** The file is larger than a phone may preview. */
+		/** The file is larger than a phone may preview, or a tool result exceeds `REMOTE_MAX_TOOL_RESULT_CHARS`. */
 		| "too_large"
 		/** The file changed between two chunks of one `file.read`; read it again from the start. */
 		| "file_changed";

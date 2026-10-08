@@ -26,12 +26,14 @@ export type {
 	RemoteToolCallSummary,
 	RemoteToolEvent,
 	RemoteToolPhase,
+	RemoteToolResult,
 	RemoteTranscriptEntry,
 	RemoteUploadKind,
 } from "./api.js";
 export {
 	REMOTE_FILE_CHUNK_BYTES,
 	REMOTE_MAX_FILE_BYTES,
+	REMOTE_MAX_TOOL_RESULT_CHARS,
 	REMOTE_MAX_UPLOAD_BYTES,
 	readDevicePaired,
 	readDeviceStatus,

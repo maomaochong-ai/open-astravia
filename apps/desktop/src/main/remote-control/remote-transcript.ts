@@ -4,8 +4,13 @@ import type {
 	CodingAgentQuestionFunctionRequest,
 	CodingAgentQuestionResult,
 } from "@vetta/coding-agent/function-extensions";
-import type { RemoteQuestionRequest, RemoteToolCallSummary, RemoteTranscriptEntry } from "@vetta/remote-control";
-import { sha256Hex } from "@vetta/remote-control";
+import type {
+	RemoteQuestionRequest,
+	RemoteToolCallSummary,
+	RemoteToolResult,
+	RemoteTranscriptEntry,
+} from "@vetta/remote-control";
+import { REMOTE_MAX_TOOL_RESULT_CHARS, sha256Hex } from "@vetta/remote-control";
 import type { HistoryEntry } from "@vetta/runtime-core";
 import { RemoteOperationError } from "./remote-error-mapping.js";
 
@@ -125,6 +130,25 @@ export function readQuestionResult(payload: Record<string, unknown>): CodingAgen
 		}))
 		.filter((answer) => answer.question.length > 0);
 	return { cancelled: payload.cancelled, answers };
+}
+
+/**
+ * A tool call's whole result for `tool.result`, where history and events carry a preview.
+ * The newest result wins should a call id ever repeat.
+ */
+export function findToolResult(history: readonly HistoryEntry[], toolCallId: string): RemoteToolResult {
+	for (let index = history.length - 1; index >= 0; index -= 1) {
+		const entry = history[index];
+		if (entry?.type !== "message" || entry.message.role !== "toolResult") continue;
+		const message = entry.message;
+		if (message.toolCallId !== toolCallId) continue;
+		const result = textOf(message.content);
+		if (result.length > REMOTE_MAX_TOOL_RESULT_CHARS) {
+			throw new RemoteOperationError("too_large", "Tool result is too large to send");
+		}
+		return { toolCallId, toolName: message.toolName, result, isError: message.isError };
+	}
+	throw new RemoteOperationError("not_found", "Tool result was not found");
 }
 
 export function textOf(content: Message["content"]): string {

@@ -61,6 +61,7 @@ describe("remote control JSON Schema", () => {
 			"file.stat",
 			"file.read",
 			"screen.subscribe",
+			"tool.result",
 		]) {
 			expect(validate({ type: "request", requestId: "r1", method, sessionId: "s1", payload: {} })).toBe(true);
 		}

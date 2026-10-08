@@ -17,7 +17,8 @@
       "type": "object", "additionalProperties": false, "required": ["chat", "sessionRead"],
       "properties": {
         "chat": { "type": "boolean" }, "sessionRead": { "type": "boolean" }, "fileRead": { "type": "boolean" },
-        "fileWrite": { "type": "boolean" }, "terminal": { "type": "boolean" }, "screen": { "type": "boolean" }, "input": { "type": "boolean" }
+        "fileWrite": { "type": "boolean" }, "terminal": { "type": "boolean" }, "screen": { "type": "boolean" }, "input": { "type": "boolean" },
+        "toolResult": { "type": "boolean" }
       }
     },
     "error": {
@@ -67,7 +68,7 @@
       "type": "object", "additionalProperties": false, "required": ["type", "requestId", "method"],
       "properties": {
         "type": { "const": "request" }, "requestId": { "$ref": "#/$defs/id" },
-        "method": { "enum": ["project.list", "session.list", "session.create", "session.open", "session.history", "session.prompt", "session.upload", "model.list", "skill.list", "session.configure", "session.rename", "session.pin", "session.delete", "session.respond", "session.abort", "session.resume", "diagnostics.snapshot", "file.list", "file.stat", "file.read", "screen.subscribe"] },
+        "method": { "enum": ["project.list", "session.list", "session.create", "session.open", "session.history", "session.prompt", "session.upload", "model.list", "skill.list", "session.configure", "session.rename", "session.pin", "session.delete", "session.respond", "session.abort", "session.resume", "diagnostics.snapshot", "file.list", "file.stat", "file.read", "screen.subscribe", "tool.result"] },
         "sessionId": { "$ref": "#/$defs/id" }, "payload": true
       }
     },
