@@ -22,6 +22,7 @@ import {
 import {
 	type CompactionSummaryInputCandidate,
 	createCompactionSummaryInputCandidates,
+	prefilterSummaryCandidates,
 } from "./summary-input-degradation.js";
 import {
 	buildSummaryGenerationPrompt,
@@ -421,7 +422,13 @@ export async function generateSummary(
 	// Use update prompt if we have a previous summary, otherwise initial prompt
 	const basePrompt = previousSummary ? UPDATE_SUMMARIZATION_PROMPT : SUMMARIZATION_PROMPT;
 
-	const candidates = createCompactionSummaryInputCandidates(currentMessages);
+	// 预检：用与触发判定同源的逐字口径先估每个档位，超预算的档直接跳过，
+	// 避免长会话 full 档「发出去等 provider 报错再降级」的瀑布式空跑。
+	const candidates = prefilterSummaryCandidates(
+		createCompactionSummaryInputCandidates(currentMessages),
+		model.contextWindow,
+		maxTokens,
+	);
 	return generateCompactionSummaryWithRecovery(
 		candidates,
 		(candidate) =>
