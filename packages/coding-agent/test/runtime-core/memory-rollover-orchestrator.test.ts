@@ -10,7 +10,7 @@ import {
 	type CodingAgentMemoryRolloverPreparation,
 	createCodingAgentMemoryRuntimeFeature,
 } from "../../src/memory/index.js";
-import { createMemoryTextStorage } from "../fixtures/memory-storage.js";
+import { createMemoryTextStorage, readMemoryTextStorage } from "../fixtures/memory-storage.js";
 
 const temporaryRoots: string[] = [];
 
@@ -34,9 +34,8 @@ describe("CodingAgentMemoryRolloverOrchestrator", () => {
 
 		expect(runtime.readPromptMemory()).toEqual({
 			enabled: true,
-			file: memoryFile,
-			snapshot: "original memory",
 			charLimit: 123,
+			scopes: [{ scope: "project", file: memoryFile, snapshot: "original memory" }],
 		});
 		expect(runtime.adjustCompactionSettings(settings(), 100_001)).toEqual({
 			enabled: true,
@@ -44,6 +43,57 @@ describe("CodingAgentMemoryRolloverOrchestrator", () => {
 			minFreePercent: 30,
 			keepRecentTokens: 20_000,
 		});
+	});
+
+	it("binds a user-level scope and routes memory writes to it by default", async () => {
+		const workspace = await temporaryRoot();
+		const userMemoryFile = join(await temporaryRoot(), "MEMORY.md");
+		const userMemoryStorage = createMemoryTextStorage("Prefers Bun");
+		const projectMemoryStorage = createMemoryTextStorage();
+		const runtime = new CodingAgentMemoryRolloverOrchestrator({
+			memoryFile: join(workspace, "MEMORY.md"),
+			cwd: workspace,
+			memoryStorage: projectMemoryStorage,
+			journalStorage: createMemoryTextStorage(),
+			userMemoryFile,
+			userMemoryStorage,
+		});
+		const tool = runtime.toolRegistration.tool;
+
+		expect(runtime.readPromptMemory()).toEqual({
+			enabled: true,
+			charLimit: 4_000,
+			scopes: [
+				{ scope: "user", file: userMemoryFile, snapshot: "Prefers Bun" },
+				{ scope: "project", file: join(workspace, "MEMORY.md"), snapshot: "" },
+			],
+		});
+
+		// 不传 scope 时默认落用户级记忆：跨工作目录/对话共享（issue #8）。
+		await tool.execute({
+			sessionId: "session",
+			turnId: "turn",
+			toolCallId: "memory",
+			input: { action: "add", content: "Uses tabs" },
+			signal: new AbortController().signal,
+		});
+		expect(readMemoryTextStorage(userMemoryStorage)).toBe("Prefers Bun\n\n§\n\nUses tabs");
+		expect(readMemoryTextStorage(projectMemoryStorage)).toBe("");
+
+		await tool.execute({
+			sessionId: "session",
+			turnId: "turn",
+			toolCallId: "memory",
+			input: { action: "add", content: "Runs bun test", scope: "project" },
+			signal: new AbortController().signal,
+		});
+		expect(readMemoryTextStorage(projectMemoryStorage)).toBe("Runs bun test");
+		// 快照仍是会话开始时冻结的内容，新写入只会在下个会话进提示词（ADR-0009）。
+		expect(runtime.readPromptMemory().scopes[0]?.snapshot).toBe("Prefers Bun");
+
+		const prompt = runtime.renderPromptMemory();
+		expect(prompt).toContain(`<memory scope="user" path="${userMemoryFile}"`);
+		expect(prompt).toContain(`<memory scope="project" path="${join(workspace, "MEMORY.md")}"`);
 	});
 
 	it("keeps MEMORY flush failures best-effort and exposes only a generic continuation directive", async () => {
