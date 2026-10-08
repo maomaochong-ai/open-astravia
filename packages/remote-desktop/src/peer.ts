@@ -155,7 +155,10 @@ export class RemoteDesktopHost {
 		}
 		if (frame.sessionId !== this.options.sessionId) throw new Error("remote desktop signal session mismatch");
 		if (frame.type === "answer") {
-			await this.peer.setRemoteDescription({ type: "answer", sdp: answerForHardwareEncoding(frame.sdp) });
+			await this.peer.setRemoteDescription({
+				type: "answer",
+				sdp: answerWithStartBitrate(answerForHardwareEncoding(frame.sdp)),
+			});
 			await this.flushPendingIce();
 			this.logger.info("remote desktop answer applied", { sessionId: this.options.sessionId });
 			// Encodings exist only once negotiated: a screen shared for the whole session is tuned here.
@@ -468,6 +471,24 @@ function preferHardwareCodec(transceiver: RTCRtpTransceiver): void {
  */
 function answerForHardwareEncoding(sdp: string): string {
 	return sdp.replace(/(profile-level-id=)42e0([0-9a-f]{2})/gi, "$14200$2");
+}
+
+/**
+ * Where the bandwidth estimate starts. WebRTC starts at 300 kbps and climbs over seconds,
+ * while one frame of a large screen is hundreds of KB, so on every new connection the
+ * first frames queued for one to two seconds. The estimate still backs off on a slower link.
+ */
+const SCREEN_START_BITRATE_KBPS = 4_000;
+
+/** Sets the start on each video codec of the answer: the sending side reads it from there. */
+function answerWithStartBitrate(sdp: string): string {
+	const video = new Set<string>();
+	for (const match of sdp.matchAll(/^a=rtpmap:(\d+) (?:H264|H265|VP8|VP9|AV1)\//gim)) video.add(match[1] ?? "");
+	return sdp.replace(/^a=fmtp:(\d+) [^\r\n]*/gm, (line, payload: string) =>
+		video.has(payload) && !line.includes("x-google-start-bitrate")
+			? `${line};x-google-start-bitrate=${SCREEN_START_BITRATE_KBPS}`
+			: line,
+	);
 }
 
 /** The most the screen may spend: sharp text at a large capture, still well within a LAN. */

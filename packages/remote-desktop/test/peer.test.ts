@@ -154,7 +154,7 @@ describe("remote desktop host negotiation", () => {
 		}
 	});
 
-	it("takes a phone's constrained-baseline H.264 answer as baseline so the desktop encodes in hardware", async () => {
+	it("takes a phone's H.264 answer as baseline for the hardware encoder, starting the estimate high", async () => {
 		const peer = fakePeerConnection();
 		const host = new RemoteDesktopHost(
 			{ sessionId: "pairing_0123456789abcdefghijklmnop", createPeerConnection: () => peer.connection },
@@ -174,6 +174,8 @@ describe("remote desktop host negotiation", () => {
 				"a=fmtp:108 level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f",
 				"a=rtpmap:127 H264/90000",
 				"a=fmtp:127 level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=640c1f",
+				"a=rtpmap:109 rtx/90000",
+				"a=fmtp:109 apt=108",
 				"",
 			].join("\r\n"),
 		});
@@ -183,9 +185,11 @@ describe("remote desktop host negotiation", () => {
 			sdp: [
 				"v=0",
 				"a=rtpmap:108 H264/90000",
-				"a=fmtp:108 level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42001f",
+				"a=fmtp:108 level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42001f;x-google-start-bitrate=4000",
 				"a=rtpmap:127 H264/90000",
-				"a=fmtp:127 level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=640c1f",
+				"a=fmtp:127 level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=640c1f;x-google-start-bitrate=4000",
+				"a=rtpmap:109 rtx/90000",
+				"a=fmtp:109 apt=108",
 				"",
 			].join("\r\n"),
 		});
