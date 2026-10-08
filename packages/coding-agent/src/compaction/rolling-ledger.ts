@@ -126,7 +126,12 @@ export function assembleRollingSummary(
 	for (let index = distant.length - 1; index >= 0; index -= 1) {
 		const entry = distant[index];
 		if (entry === undefined) continue;
-		const cost = estimateTokens({ role: "custom", content: narrativeOf(entry), timestamp: 0 });
+		const cost = estimateTokens({
+			role: "custom",
+			customType: "rolling-narrative",
+			content: narrativeOf(entry),
+			timestamp: 0,
+		} as Parameters<typeof estimateTokens>[0]);
 		if (used + cost > budget && absorbed.length > 0) {
 			truncated = index + 1;
 			break;
