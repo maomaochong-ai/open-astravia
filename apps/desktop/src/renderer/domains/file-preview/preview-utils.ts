@@ -1,5 +1,5 @@
 import type { FilePreviewItem } from "@vetta-org/theme-ui/file-preview";
-import { getExtension } from "@vetta-org/theme-ui/file-preview";
+import { getExtension } from "@vetta-org/theme-ui/file-preview/types";
 
 const TEXT_EXTENSIONS = new Set([
 	"md",

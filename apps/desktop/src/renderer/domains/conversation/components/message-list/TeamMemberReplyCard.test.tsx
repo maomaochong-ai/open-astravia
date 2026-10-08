@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import type * as ThemeChat from "@vetta-org/theme-ui/chat";
+import type { ComponentProps } from "react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ChatTimelineEventViewModel } from "@shared/store/atoms";
 
 vi.mock("react-i18next", () => ({
@@ -25,10 +27,17 @@ vi.mock("react-i18next", () => ({
 	}),
 }));
 
-vi.mock("@vetta-org/theme-ui/chat", () => ({
-	AgentAvatarView: () => <span data-testid="member-avatar" />,
-	LiveThinkingView: ({ text }: { text: string }) => <div data-testid="live-thinking">{text}</div>,
-}));
+const view = vi.hoisted(() => ({ props: undefined as Record<string, unknown> | undefined }));
+vi.mock("@vetta-org/theme-ui/chat/TeamMemberReplyCardView", async (importOriginal) => {
+	const actual = await importOriginal<typeof ThemeChat>();
+	return {
+		...actual,
+		TeamMemberReplyCardView: (props: ComponentProps<typeof actual.TeamMemberReplyCardView>) => {
+			view.props = props as unknown as Record<string, unknown>;
+			return <actual.TeamMemberReplyCardView {...props} />;
+		},
+	};
+});
 
 import { TeamMemberReplyCard } from "./TeamMemberReplyCard";
 
@@ -46,36 +55,42 @@ const event: Extract<ChatTimelineEventViewModel, { kind: "team-member-summary" }
 	durationSeconds: 42,
 };
 
+afterEach(cleanup);
+
 describe("TeamMemberReplyCard", () => {
-	it("keeps identity and status visible while collapsed, and reveals activity on click", () => {
+	it("maps a member summary onto the card's labels and opens that member", () => {
 		const onOpen = vi.fn();
 		render(<TeamMemberReplyCard event={event} onOpen={onOpen} />);
 
-		const avatar = screen.getByTestId("member-avatar");
-		const memberName = screen.getByText("研究员");
-		expect(avatar.parentElement).toBe(memberName.parentElement);
-		expect(avatar.parentElement?.className).toContain("items-center");
-		expect(screen.getByTestId("team-member-reply-card").contains(avatar)).toBe(true);
-		expect(screen.getByText("42秒")).toBeTruthy();
-		// 默认折叠：只留身份行，活动详情不渲染。
+		expect(view.props).toMatchObject({
+			memberName: "研究员",
+			state: "streaming",
+			statusLabel: "正在思考",
+			durationLabel: "42秒",
+			activity: "正在检查配置和边界条件",
+			thinking: "正在检查配置和边界条件",
+			recentLabel: "最近：读取项目配置",
+			openLabel: "打开 研究员 的成员会话",
+		});
+		(view.props?.onOpen as () => void)();
+		expect(onOpen).toHaveBeenCalledWith("member-1");
+	});
+
+	it("reveals the member's live activity when expanded", () => {
+		render(<TeamMemberReplyCard event={event} />);
 		const toggle = screen.getByRole("button", { expanded: false });
-		expect(screen.queryByTestId("live-thinking")).toBeNull();
 		expect(screen.queryByText("最近：读取项目配置")).toBeNull();
 
 		fireEvent.click(toggle);
 		expect(screen.getByRole("button", { expanded: true })).toBe(toggle);
-		expect(screen.getByTestId("live-thinking").textContent).toContain("正在检查配置");
-		expect(screen.getByTestId("live-thinking").parentElement?.className).toContain("overflow-y-auto");
 		expect(screen.getByText("最近：读取项目配置")).toBeTruthy();
-		expect(screen.getByTestId("live-thinking").parentElement?.parentElement?.className).toContain("max-h-[240px]");
+	});
 
-		fireEvent.click(toggle);
-		expect(screen.queryByTestId("live-thinking")).toBeNull();
+	it("prefers the result once completed and offers no open action without a handler", () => {
+		render(<TeamMemberReplyCard event={{ ...event, state: "completed", result: "结论", currentKind: undefined }} />);
 
-		const openButton = screen.getByRole("button", { name: "打开 研究员 的成员会话" });
-		expect(openButton.className).toContain("h-7");
-		expect(openButton.className).toContain("w-7");
-		fireEvent.click(openButton);
-		expect(onOpen).toHaveBeenCalledWith("member-1");
+		expect(view.props).toMatchObject({ statusLabel: "已完成", activity: "结论" });
+		expect(view.props).not.toHaveProperty("thinking");
+		expect(view.props).not.toHaveProperty("onOpen");
 	});
 });

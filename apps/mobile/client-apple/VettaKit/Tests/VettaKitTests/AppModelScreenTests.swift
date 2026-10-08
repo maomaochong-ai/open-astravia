@@ -95,6 +95,21 @@ import Testing
 		#expect(model.screen == nil)
 	}
 
+	@Test func keepsWatchingWhenTheDesktopMovesToAnotherRelay() async throws {
+		let subscriptions = Subscriptions()
+		let (model, desktop) = try await pairedModel(capturesOnDemand: true, subscriptions: subscriptions)
+		defer { model.unpair() }
+		model.setScreenOpen(true)
+		#expect(await eventually { subscriptions.active == [true] && model.screen != nil })
+		let connection = try #require(subscriptions.connection)
+		try connection.emitEvent(.deviceStatus, payload: ["deviceName": "MacBook Pro", "lanEndpoints": [], "relayEnabled": true, "runningSessionCount": 0, "screen": true, "relayBaseUrl": "wss://relay.mine.test"])
+		#expect(await eventually { model.desktop?.relayBaseUrl == "wss://relay.mine.test" && subscriptions.active == [true, true] && model.screen != nil })
+		#expect(model.remoteDesktopTarget?.hasPrefix("wss://relay.mine.test/") == true)
+		model.setScreenOpen(false)
+		#expect(await eventually { subscriptions.active == [true, true, false] })
+		withExtendedLifetime(desktop) {}
+	}
+
 	@Test func pointsTheRemoteDesktopAtTheRelayViewer() async throws {
 		let subscriptions = Subscriptions()
 		let (model, desktop) = try await pairedModel(capturesOnDemand: true, subscriptions: subscriptions)

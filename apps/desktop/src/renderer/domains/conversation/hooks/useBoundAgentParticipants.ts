@@ -9,7 +9,7 @@ import { useEffect, useState } from "react";
  * 会话绑定了单个 Agent 时，把它折成消息列表的参与者名单。
  *
  * 普通会话只有一个 Agent 作者（{@link DEFAULT_AGENT_PARTICIPANT_ID}），因此名单最多一人；
- * MessageListView 按 authorId 对号入座后，回合头像与昵称就换成该 Agent 的，
+ * 消息列表按 authorId 对号入座后，回合头像与昵称就换成该 Agent 的，
  * 未绑定时返回 undefined，渲染回落到通用机器人头像。
  */
 export function useBoundAgentParticipants(): readonly ConversationParticipantViewModel[] | undefined {

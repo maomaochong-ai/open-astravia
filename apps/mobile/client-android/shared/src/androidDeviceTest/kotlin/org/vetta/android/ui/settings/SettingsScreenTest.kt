@@ -7,6 +7,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
@@ -28,9 +29,14 @@ import org.vetta.android.domain.remote.link.LinkStatus
 import org.vetta.android.domain.remote.pairing.StoredDesktop
 import org.vetta.android.domain.work.MirrorState
 import org.vetta.android.resources.Res
+import org.vetta.android.resources.latency
+import org.vetta.android.resources.link_connected
 import org.vetta.android.resources.link_latency
+import org.vetta.android.resources.settings_link_phone
+import org.vetta.android.resources.work_settings_load
 import org.vetta.android.resources.work_settings_load_value
 import org.vetta.android.resources.work_settings_unpair
+import org.vetta.android.resources.work_unpaired_description
 import org.vetta.android.ui.str
 import org.vetta.android.ui.theme.VettaTheme
 
@@ -63,7 +69,13 @@ class SettingsScreenTest {
             }
         }
         composeRule.onNodeWithText("MacBook Pro").assertIsDisplayed()
+        composeRule.onNodeWithText(phoneModel()).assertIsDisplayed()
+        composeRule.onNodeWithText(str(Res.string.settings_link_phone)).assertDoesNotExist()
+        composeRule.onNodeWithText(str(Res.string.link_connected)).assertDoesNotExist()
+        composeRule.onAllNodesWithTag("settings.computer").assertCountEquals(0)
+        composeRule.onNodeWithText(str(Res.string.latency)).assertIsDisplayed()
         composeRule.onNodeWithText(str(Res.string.link_latency, 42)).assertIsDisplayed()
+        composeRule.onNodeWithText(str(Res.string.work_settings_load)).assertIsDisplayed()
         composeRule.onNodeWithText(str(Res.plurals.work_settings_load_value, 2)).assertIsDisplayed()
 
         // The desktop asks for no confirmations yet: no choice is offered that would change nothing.
@@ -72,6 +84,19 @@ class SettingsScreenTest {
         composeRule.onNodeWithTag("settings.liveThinking").performScrollTo().performClick()
         composeRule.onNodeWithTag("settings.liveThinking").assertIsOff()
         assertEquals(false, state.preferences.liveThinking)
+    }
+
+    @Test
+    fun switchesTheAppearance() {
+        var mode by mutableStateOf(ThemeMode.Light)
+        composeRule.setContent {
+            VettaTheme(mode) {
+                SettingsScreen(MirrorState(ready = true), mode, { mode = it }, {}, onUnpair = {}, onPair = {}, onBack = {})
+            }
+        }
+        composeRule.onNodeWithTag("settings.theme.dark").performScrollTo().performClick()
+        assertEquals(ThemeMode.Dark, mode)
+        composeRule.onNodeWithTag("settings.theme.dark").assertIsSelected()
     }
 
     @Test
@@ -97,6 +122,7 @@ class SettingsScreenTest {
                 SettingsScreen(MirrorState(ready = true), ThemeMode.Light, {}, {}, onUnpair = {}, onPair = { pairing += 1 }, onBack = {})
             }
         }
+        composeRule.onNodeWithText(str(Res.string.work_unpaired_description)).assertIsDisplayed()
         composeRule.onNodeWithTag("settings.scan").performClick()
         assertEquals(1, pairing)
         composeRule.onAllNodesWithTag("settings.unpair").assertCountEquals(0)

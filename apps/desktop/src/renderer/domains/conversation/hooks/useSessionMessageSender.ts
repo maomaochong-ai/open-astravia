@@ -53,16 +53,9 @@ import type { PromptAttachmentRef, PromptRequest } from "@vetta/runtime-core";
 import type { PluginPromptContext } from "@vetta-org/plugin-sdk";
 import { getDefaultStore, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useRef } from "react";
-import {
-	appendError,
-	fullHistoryToChat,
-	isUserImageFile,
-	nextId,
-	startAssistantTurn,
-	toChatErrorDetails,
-} from "../services/chat-service";
+import { fullHistoryToChat, isUserImageFile, nextId, toChatErrorDetails } from "../services/chat-service";
+import { claimUnboundConversationFeed, dispatchConversationFeed } from "../services/conversation-feed-store";
 import { planFailedResendRollback } from "../services/failed-resend-rollback";
-import { discardOptimisticUserMessage, rememberOptimisticUserMessage } from "../services/optimistic-user-message-cache";
 import { applyDraftPlanMode } from "../services/plan-mode-draft";
 import { getSessionRuntimeWhenReady } from "../services/session-runtime-readiness";
 import {
@@ -101,7 +94,6 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 	const todoItemsMap = useAtomValue(todoItemsBySessionAtom);
 	const batchProjects = useAtomValue(batchProjectsAtom);
 	const defaultConversationCwd = useAtomValue(defaultConversationCwdAtom);
-	const setChatMessages = useSetAtom(chatMessagesAtom);
 	const setActiveSessionStreaming = useSetAtom(activeSessionStreamingAtom);
 	const setPromptSuggestions = useSetAtom(promptSuggestionsAtom);
 	const setRetryProgress = useSetAtom(retryProgressAtom);
@@ -183,6 +175,7 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 				});
 			}
 			perfSendMark("sender-enter", interactionId);
+			claimUnboundConversationFeed(session.runtimeId);
 			const rawText = stagedInput?.rawText ?? (hasOverride ? override : inputValue.trim());
 			let preparedInput: ReturnType<typeof prepareInputPrompt>;
 			try {
@@ -190,7 +183,12 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 			} catch (error) {
 				if (!(error instanceof MultipleSceneReferencesError)) throw error;
 				const message = i18n.t("chat:inputBar.error.multipleScenes");
-				setChatMessages((prev) => appendError(prev, message));
+				dispatchConversationFeed({
+					type: "error.appended",
+					runtimeId: session.runtimeId,
+					message,
+					timestamp: Date.now(),
+				});
 				return { status: "failed", error: { message } };
 			}
 			const images = !hasOverride && attachedImages.length > 0 ? attachedImages : undefined;
@@ -238,15 +236,14 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 			}
 			const attachments = [...attachmentsByPath.values()];
 			const text = hasOverride ? rawText : preparedInput.text;
-			if (stagedInput && imagePaths.length > 0) {
-				const stagedId = stagedInput.optimisticMessage.id;
-				setChatMessages((messages) =>
-					messages.map((message) =>
-						message.id === stagedId && message.kind === "user"
-							? { ...message, attachments, images: undefined }
-							: message,
-					),
-				);
+			if (stagedInput) {
+				// The staged bubble is already on screen; it gains the final attachment references.
+				dispatchConversationFeed({
+					type: "user.updated",
+					runtimeId: session.runtimeId,
+					id: stagedInput.optimisticMessage.id,
+					patch: { attachments, ...(imagePaths.length > 0 ? { images: undefined } : {}) },
+				});
 			}
 			recordInputContextUsed({
 				files: hasOverride ? [] : mentionedFiles,
@@ -305,13 +302,18 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 				try {
 					await window.vetta.session.replaceLastUserMessage(session.runtimeId, pendingEdit.entryId);
 					const history = await window.vetta.session.getFullHistory(session.runtimeId);
-					setChatMessages(fullHistoryToChat(history));
+					dispatchConversationFeed({ type: "feed.replaced", items: fullHistoryToChat(history) });
 					store.set(pendingMessageEditAtom, null);
 				} catch (err) {
 					const message = err instanceof Error ? err.message : String(err);
 					console.error("[useSessionManager.sendMessage] replaceLastUserMessage failed:", err);
 					store.set(pendingMessageEditAtom, null);
-					setChatMessages((prev) => appendError(prev, message));
+					dispatchConversationFeed({
+						type: "error.appended",
+						runtimeId: session.runtimeId,
+						message,
+						timestamp: Date.now(),
+					});
 					return;
 				}
 			}
@@ -357,7 +359,6 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 			let optimisticUserMsgId: string | undefined;
 			if (!streaming && stagedInput) {
 				optimisticUserMsgId = stagedInput.optimisticMessage.id;
-				rememberOptimisticUserMessage(session.runtimeId, createUserSnapshot(optimisticUserMsgId), []);
 			} else if (!streaming) {
 				// 失败重发去重（ADR-0060）：上一轮在 prompt 前置阶段就失败、什么都没产出，
 				// 且本次原样重发时，先 replaceLastUserMessage 回退再发，避免 jsonl 双份
@@ -365,11 +366,15 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 				// 判据见 planFailedResendRollback——后端是硬删子树，收不紧会连带销毁
 				// 「跑了很久才失败」那一轮的全部产出。
 				if (!pendingEdit) {
-					const rollback = planFailedResendRollback(store.get(chatMessagesAtom), text);
+					const messages = store.get(chatMessagesAtom);
+					const rollback = planFailedResendRollback(messages, text);
 					if (rollback) {
 						try {
 							await window.vetta.session.replaceLastUserMessage(session.runtimeId, rollback.entryId);
-							setChatMessages((prev) => prev.slice(0, rollback.truncateFrom));
+							const fromId = messages[rollback.truncateFrom]?.id;
+							if (fromId) {
+								dispatchConversationFeed({ type: "items.truncated", runtimeId: session.runtimeId, fromId });
+							}
 						} catch (err) {
 							// 回退失败就按普通追加发送；宁可重复也不丢消息。
 							console.warn("[useSessionManager.sendMessage] resend dedupe failed:", err);
@@ -377,9 +382,8 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 					}
 				}
 				const userMsg = createUserSnapshot(nextId("user"));
-				rememberOptimisticUserMessage(session.runtimeId, userMsg, store.get(chatMessagesAtom));
 				perfSendMark("optimistic-append", interactionId);
-				setChatMessages((prev) => [...prev, userMsg]);
+				dispatchConversationFeed({ type: "user.sent", runtimeId: session.runtimeId, message: userMsg });
 				optimisticUserMsgId = userMsg.id;
 			}
 
@@ -422,10 +426,31 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 						? `${attachments.map((attachment) => `@${attachment.path}`).join("\n")}\n${text}`
 						: text;
 					await window.vetta.batchTasks.resumeTaskWithText(pausedBatch.projectId, pausedBatch.taskId, legacyText);
+					// The resumed Turn appends this text under its own message id; the bubble
+					// is shown again from that durable message instead of being matched by text.
+					if (optimisticUserMsgId) {
+						dispatchConversationFeed({
+							type: "user.discarded",
+							runtimeId: session.runtimeId,
+							id: optimisticUserMsgId,
+						});
+					}
 				} catch (err) {
 					const message = err instanceof Error ? err.message : String(err);
 					console.error("[useSessionManager.sendMessage] resumeTaskWithText rejected:", err);
-					setChatMessages((prev) => appendError(prev, message));
+					if (optimisticUserMsgId) {
+						dispatchConversationFeed({
+							type: "user.failed",
+							runtimeId: session.runtimeId,
+							id: optimisticUserMsgId,
+						});
+					}
+					dispatchConversationFeed({
+						type: "error.appended",
+						runtimeId: session.runtimeId,
+						message,
+						timestamp: Date.now(),
+					});
 				}
 				await loadSessions(session.cwd);
 				return;
@@ -455,7 +480,12 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 				await applyDraftPlanMode(session.runtimeId);
 			} catch (err) {
 				console.error("[useSessionManager.sendMessage] applyDraftPlanMode failed:", err);
-				setChatMessages((prev) => appendError(prev, err instanceof Error ? err.message : String(err)));
+				dispatchConversationFeed({
+					type: "error.appended",
+					runtimeId: session.runtimeId,
+					message: err instanceof Error ? err.message : String(err),
+					timestamp: Date.now(),
+				});
 				return;
 			}
 
@@ -470,11 +500,11 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 				// Queued messages stay out of the timeline until the Kernel appends them,
 				// but their editor-only metadata must survive that wait under the same ID.
 				hiddenOptimisticMessageId = promptMessageId;
-				rememberOptimisticUserMessage(
-					session.runtimeId,
-					createUserSnapshot(hiddenOptimisticMessageId),
-					store.get(chatMessagesAtom),
-				);
+				dispatchConversationFeed({
+					type: "user.queued",
+					runtimeId: session.runtimeId,
+					message: createUserSnapshot(hiddenOptimisticMessageId),
+				});
 			}
 			if (attachments.length > 0 || pendingEdit) {
 				promptReq.attachments = attachments;
@@ -570,7 +600,7 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 			try {
 				if (stagedInput) {
 					getDefaultStore().set(pendingSessionSendAtom, null);
-					setChatMessages((prev) => startAssistantTurn(prev, Date.now()));
+					dispatchConversationFeed({ type: "turn.pending", startedAt: Date.now() });
 					setActiveSessionStreaming(true);
 				}
 				perfSendMark("await-plugin-host", interactionId);
@@ -589,23 +619,42 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 				if (outcome?.status === "queued") {
 					if (optimisticUserMsgId) {
 						// 以为空闲实则已在跑：消息已入 kernel 队列，撤掉抢先的乐观气泡，
-						// 待消费时经 queue.changed 重新上屏，保证顺序与模型可见一致。
-						const staleId = optimisticUserMsgId;
-						setChatMessages((prev) => prev.filter((m) => m.id !== staleId));
+						// 待 Kernel 追加同一 id 的消息时重新上屏，保证顺序与模型可见一致。
+						dispatchConversationFeed({
+							type: "user.deferred",
+							runtimeId: session.runtimeId,
+							id: optimisticUserMsgId,
+						});
 					}
 					sendResult = { status: "queued", queueItemId: outcome.queueItemId };
 				} else if (outcome?.status === "failed") {
 					if (hiddenOptimisticMessageId) {
-						discardOptimisticUserMessage(session.runtimeId, hiddenOptimisticMessageId);
+						dispatchConversationFeed({
+							type: "user.discarded",
+							runtimeId: session.runtimeId,
+							id: hiddenOptimisticMessageId,
+						});
+					}
+					if (optimisticUserMsgId && !outcome.turnId) {
+						dispatchConversationFeed({
+							type: "user.failed",
+							runtimeId: session.runtimeId,
+							id: optimisticUserMsgId,
+						});
 					}
 					// A terminal failure is a normal prompt receipt, not a rejected IPC call.
 					// Render it here as the authoritative fallback when the event stream is
-					// delayed or lost. appendError deduplicates the later error event by turnId.
+					// delayed or lost. The feed merges the later error event by turnId.
 					const message =
 						outcome.error?.message?.trim() || i18n.t("chat:messageList.errorBlock.kinds.unknown.title");
-					setChatMessages((prev) =>
-						appendError(prev, message, undefined, outcome.turnId, toChatErrorDetails(outcome.error)),
-					);
+					dispatchConversationFeed({
+						type: "error.appended",
+						runtimeId: session.runtimeId,
+						message,
+						timestamp: Date.now(),
+						...(outcome.turnId ? { turnId: outcome.turnId } : {}),
+						details: toChatErrorDetails(outcome.error),
+					});
 					setActiveSessionStreaming(false);
 					setRetryProgress(null);
 					sendResult = { status: "failed", error: { message } };
@@ -614,7 +663,15 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 				}
 			} catch (err) {
 				if (hiddenOptimisticMessageId) {
-					discardOptimisticUserMessage(session.runtimeId, hiddenOptimisticMessageId);
+					dispatchConversationFeed({
+						type: "user.discarded",
+						runtimeId: session.runtimeId,
+						id: hiddenOptimisticMessageId,
+					});
+				}
+				// The rejected send never reached the Runtime; it must not come back as unconfirmed.
+				if (optimisticUserMsgId) {
+					dispatchConversationFeed({ type: "user.failed", runtimeId: session.runtimeId, id: optimisticUserMsgId });
 				}
 				// RuntimeHost.prompt 现在会先把 prompt 期同步抛错（"No model
 				// selected" / "No API key found" / "Agent is already processing"
@@ -626,11 +683,12 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 				// 气泡，杜绝「按了发送但屏幕完全没反应」的死寂体验。
 				const message = err instanceof Error ? err.message : String(err);
 				console.error("[useSessionManager.sendMessage] prompt rejected:", err);
-				setChatMessages((prev) => {
-					const last = prev.at(-1);
-					const lastError = last?.kind === "agent" ? last.blocks.at(-1) : undefined;
-					if (last?.kind === "agent" && lastError?.type === "error" && lastError.text === message) return prev;
-					return appendError(prev, message);
+				// The feed shows a failure reported by both this rejection and its error event once.
+				dispatchConversationFeed({
+					type: "error.appended",
+					runtimeId: session.runtimeId,
+					message,
+					timestamp: Date.now(),
 				});
 				// 被拒绝的 prompt 没有开启 turn，也就不会有 agent_end 来收尾。本次发送开启的
 				// 流式态（新会话暂存发送会抢先置为 true）必须在这里退出，否则界面一直“处理中”，
@@ -654,7 +712,6 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 			// Virtuoso footer 重挂载（footer 内的插件 turn 卡会因此闪烁/重查）。
 			setAttachedImages,
 			setMentionedFiles,
-			setChatMessages,
 			loadSessions,
 			ensureLocalSession,
 			setPromptSuggestions,
@@ -671,20 +728,15 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 
 	// 立即发送某条排队消息。Kernel 原子执行 take → cancel → start；Renderer
 	// 只等待带 Turn/message 身份的事实事件，不在本地猜测消费或中断时机。
-	const sendQueuedNow = useCallback(
-		async (runtimeId: string, id: string) => {
-			try {
-				await window.vetta.session.sendQueuedMessageNow(runtimeId, id);
-			} catch (err) {
-				const message = err instanceof Error ? err.message : String(err);
-				console.error("[useSessionManager.sendQueuedNow] failed:", err);
-				if (getDefaultStore().get(activeSessionAtom)?.runtimeId === runtimeId) {
-					setChatMessages((prev) => appendError(prev, message));
-				}
-			}
-		},
-		[setChatMessages],
-	);
+	const sendQueuedNow = useCallback(async (runtimeId: string, id: string) => {
+		try {
+			await window.vetta.session.sendQueuedMessageNow(runtimeId, id);
+		} catch (err) {
+			const message = err instanceof Error ? err.message : String(err);
+			console.error("[useSessionManager.sendQueuedNow] failed:", err);
+			dispatchConversationFeed({ type: "error.appended", runtimeId, message, timestamp: Date.now() });
+		}
+	}, []);
 
 	return { sendMessage, abortMessage, sendQueuedNow };
 }

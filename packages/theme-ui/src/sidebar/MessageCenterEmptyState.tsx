@@ -1,6 +1,6 @@
 import { motion } from "motion/react";
 import type { JSX } from "react";
-import { cn } from "@vetta-org/ui";
+import { cn } from "@vetta-org/ui/utils";
 
 export interface MessageCenterEmptyStateProps {
 	text: string;

@@ -1,4 +1,5 @@
-import { ProjectsLoadingView, ProjectsPanelView } from "@vetta-org/theme-ui/project";
+import { ProjectsLoadingView } from "@vetta-org/theme-ui/project/ProjectsLoadingView";
+import { ProjectsPanelView } from "@vetta-org/theme-ui/project/ProjectsPanelView";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { DefaultConversationSection } from "./DefaultConversationSection";

@@ -1,7 +1,11 @@
+// @vitest-environment jsdom
+
+import { createConversationFeedState } from "@shared/store/chat-atoms";
 import type { AssistantMessage, Usage } from "@vetta/ai";
-import type { HistoryEntry } from "@vetta/runtime-core";
+import type { HistoryEntry, SessionEvent } from "@vetta/runtime-core";
 import { describe, expect, it } from "vitest";
-import { ensureDraft, finalizeMessage, fullHistoryToChat, historyToChat, resetStreamState } from "./chat-service";
+import { fullHistoryToChat, historyToChat } from "./chat-service";
+import { reduceConversationFeed } from "./conversation-feed";
 
 describe("chat message usage projection", () => {
 	it("keeps ordinary conversation tool calls and their raw results in the UI block", () => {
@@ -75,12 +79,25 @@ describe("chat message usage projection", () => {
 
 		expect(fullHistoryToChat(entries)[1]).toMatchObject({ kind: "agent", usages: [first, second] });
 
-		resetStreamState();
-		const [draft] = ensureDraft([]);
-		const afterFirst = finalizeMessage(draft, [{ type: "text", text: "working" }], first);
-		const afterSecond = finalizeMessage(afterFirst, [{ type: "text", text: "done" }], second);
-		expect(afterSecond[0]).toMatchObject({ kind: "agent", usages: [first, second] });
-		resetStreamState();
+		const done = (message: AssistantMessage, modelCallIndex: number): SessionEvent =>
+			({
+				schemaVersion: 1,
+				sessionId: "runtime-1",
+				eventId: `done-${modelCallIndex}`,
+				timestamp: 3,
+				channel: "assistant",
+				source: "agent",
+				turnId: "turn-1",
+				modelCallIndex,
+				type: "done",
+				reason: "stop",
+				message,
+			}) as SessionEvent;
+		const live = reduceConversationFeed(createConversationFeedState(), {
+			type: "runtime.events",
+			events: [done(assistant("working", first), 0), done(assistant("done", second), 1)],
+		});
+		expect(live.items[0]).toMatchObject({ kind: "agent", usages: [first, second] });
 	});
 });
 

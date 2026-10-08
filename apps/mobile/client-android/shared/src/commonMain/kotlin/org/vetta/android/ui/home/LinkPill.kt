@@ -8,6 +8,7 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,6 +37,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -58,6 +60,7 @@ import org.vetta.android.ui.design.GlassCapsuleButton
 import org.vetta.android.ui.design.VettaMotion
 import org.vetta.android.ui.design.springClickable
 import org.vetta.android.ui.design.springContentSize
+import org.vetta.android.ui.theme.vettaExtra
 import org.vetta.android.ui.work.describe
 import org.vetta.android.ui.work.linkDetail
 import org.vetta.android.ui.work.workColors
@@ -70,13 +73,15 @@ private sealed interface PillPhase {
 }
 
 /**
- * The computer and how the phone reaches it, as a capsule (the iPhone's `LinkPill`):
- * black with a tick while online, spinning while connecting, red with a cross once the
- * link has failed. Its colour, mark and width morph from one state to the next. Tapping
- * explains the link and, offline, offers a reconnect; unpaired, it opens pairing.
+ * The computer and how the phone reaches it, as a capsule beside Home's title and in
+ * place of the composer until the link is up. Tapping explains the link and, offline,
+ * offers a reconnect; unpaired, it opens pairing.
  *
- * [compact] is the chip beside Home's title: the same states, drawn shorter so it sits
- * on the title line.
+ * No solid fill. Next to the wordmark a black or white slab reads as a primary button.
+ * A hairline keeps the tap target visible, and the mark (tick, spinner, cross) is the
+ * status. Offline adds a faint red wash so a dead link is still obvious.
+ *
+ * [compact] sits on Home's title line, drawn shorter.
  */
 @Composable
 fun LinkPill(
@@ -95,18 +100,19 @@ fun LinkPill(
     val online = phase == PillPhase.Link(LinkIndicator.Online)
     var open by remember { mutableStateOf(false) }
     val fill by animateColorAsState(
-        when {
-            online -> colors.pill
-            offline -> colors.red.copy(alpha = 0.18f)
-            else -> colors.card2
-        },
+        if (offline) colors.red.copy(alpha = 0.08f) else Color.Transparent,
         VettaMotion.snappy(),
         label = "pill fill",
     )
+    val stroke by animateColorAsState(
+        if (offline) colors.red.copy(alpha = 0.35f) else MaterialTheme.vettaExtra.border,
+        VettaMotion.snappy(),
+        label = "pill stroke",
+    )
     val ink by animateColorAsState(
         when {
-            online -> colors.pillInk
             offline -> colors.red
+            online -> MaterialTheme.colorScheme.onSurface
             else -> colors.ink2
         },
         VettaMotion.snappy(),
@@ -129,6 +135,7 @@ fun LinkPill(
                 .height(height)
                 .clip(CircleShape)
                 .background(fill)
+                .border(0.75.dp, stroke, CircleShape)
                 .springClickable(highlight = CircleShape) { if (paired) open = true else onPair() }
                 .semantics {
                     contentDescription = label

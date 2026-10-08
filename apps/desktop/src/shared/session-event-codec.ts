@@ -1,49 +1,54 @@
+import type { AssistantMessageEvent } from "@vetta/ai";
 import type { SessionEvent } from "@vetta/runtime-core";
 
-const SESSION_EVENT_TYPES = new Set([
-	"session.lifecycle",
-	"conversation.turn.started",
-	"conversation.turn.completed",
-	"conversation.turn.cancelled",
-	"conversation.turn.failed",
-	"conversation.message.appended",
-	"model.request.started",
-	"session.path_changed",
-	"message.delta",
-	"thinking.delta",
-	"message.final",
-	"toolcall.start",
-	"toolcall.args",
-	"tool.start",
-	"tool.update",
-	"tool.phase",
-	"tool.end",
-	"usage.update",
-	"error",
-	"session.extension",
-	"active_tools_update",
-	"compaction.start",
-	"compaction.end",
-	"retry.start",
-	"retry.end",
-	"queue.changed",
-	"session.context.state",
-]);
+type RuntimeSessionEventType = Exclude<SessionEvent, { readonly channel: "assistant" }>["type"];
 
-const ASSISTANT_EVENT_TYPES = new Set([
-	"start",
-	"text_start",
-	"text_delta",
-	"text_end",
-	"thinking_start",
-	"thinking_delta",
-	"thinking_end",
-	"toolcall_start",
-	"toolcall_delta",
-	"toolcall_end",
-	"done",
-	"error",
-]);
+/**
+ * Exhaustive by construction: `satisfies Record<…>` fails to compile when the
+ * contract gains or loses an event type, so this allowlist cannot drift.
+ */
+const RUNTIME_EVENT_TYPES = {
+	"session.lifecycle": true,
+	"conversation.turn.started": true,
+	"conversation.turn.completed": true,
+	"conversation.turn.cancelled": true,
+	"conversation.turn.failed": true,
+	"conversation.message.appended": true,
+	"model.request.started": true,
+	"session.path_changed": true,
+	"tool.start": true,
+	"tool.update": true,
+	"tool.phase": true,
+	"tool.end": true,
+	"usage.update": true,
+	error: true,
+	"session.extension": true,
+	active_tools_update: true,
+	"compaction.start": true,
+	"compaction.end": true,
+	"retry.start": true,
+	"retry.end": true,
+	"queue.changed": true,
+	"session.context.state": true,
+} satisfies Record<RuntimeSessionEventType, true>;
+
+const ASSISTANT_EVENT_TYPE_KEYS = {
+	start: true,
+	text_start: true,
+	text_delta: true,
+	text_end: true,
+	thinking_start: true,
+	thinking_delta: true,
+	thinking_end: true,
+	toolcall_start: true,
+	toolcall_delta: true,
+	toolcall_end: true,
+	done: true,
+	error: true,
+} satisfies Record<AssistantMessageEvent["type"], true>;
+
+const SESSION_EVENT_TYPES: ReadonlySet<string> = new Set(Object.keys(RUNTIME_EVENT_TYPES));
+const ASSISTANT_EVENT_TYPES: ReadonlySet<string> = new Set(Object.keys(ASSISTANT_EVENT_TYPE_KEYS));
 
 function record(value: unknown): Record<string, unknown> | undefined {
 	return value !== null && typeof value === "object" && !Array.isArray(value)

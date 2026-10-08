@@ -176,11 +176,18 @@ export function useMessageFeedScrollModel<T>({
 				: { resetKey: currentResetKey, enabled: shouldFollow },
 		);
 	}, []);
+	// Only a position the reader chose is remembered. While the feed follows its tail the
+	// viewport may be anywhere on the way to the bottom (estimated heights, content still
+	// measuring); remembering that would bring the feed back mid-way with following off.
 	const captureState = useCallback(() => {
 		const key = stateKeyRef.current;
 		const itemCount = stateItemCountRef.current;
 		const identity = stateItemIdentityRef.current;
 		if (!key || itemCount === 0) return;
+		if (shouldFollowBottomRef.current) {
+			feedStateCache.delete(key);
+			return;
+		}
 		const handle = virtuosoRef.current;
 		if (!handle || typeof handle.getState !== "function") return;
 		handle.getState((snapshot) => cacheFeedState(key, itemCount, identity, snapshot));

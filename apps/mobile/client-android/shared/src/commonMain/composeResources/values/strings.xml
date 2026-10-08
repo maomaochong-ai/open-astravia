@@ -4,12 +4,18 @@
     <string name="app_name">Vetta</string>
     <string name="appearance">Appearance</string>
     <string name="back">Back</string>
-    <string name="board_empty">No tasks yet</string>
-    <string name="board_empty_description">Sessions you start show up here, grouped by project.</string>
+    <string name="board_empty">Nothing needs you on this computer</string>
+    <string name="board_empty_description">Sessions waiting on you, still running, or just stopped show up here.</string>
     <plurals name="board_more">
         <item quantity="one">%1$d more</item>
         <item quantity="other">%1$d more</item>
     </plurals>
+    <string name="board_section_running">In progress</string>
+    <string name="board_section_running_empty">Nothing is running</string>
+    <string name="board_section_stopped">Just stopped</string>
+    <string name="board_section_stopped_empty">Nothing just stopped</string>
+    <string name="board_section_waiting">Waiting on you</string>
+    <string name="board_section_waiting_empty">Nothing is waiting on you</string>
     <string name="board_stale">Showing the last synced state</string>
     <string name="board_view_all">View all</string>
     <string name="camera_permission_required">Camera access is needed to scan</string>
@@ -260,7 +266,11 @@
     <string name="session_unpin">Unpin</string>
     <string name="settings_background_link">Stay connected in the background</string>
     <string name="settings_background_link_denied">Allow notifications for Vetta in the system settings to use this.</string>
-    <string name="settings_background_link_hint">Get notified when a session needs you, finishes or fails, even with Vetta closed. A small notification stays while connected, and it uses a little more battery.</string>
+    <string name="settings_background_link_hint">Still notifies you after you close the app. One notification stays up, and battery use rises a little.</string>
+    <string name="settings_link_computer">Computer</string>
+    <string name="settings_link_idle">Not connected yet</string>
+    <string name="settings_link_phone">This phone</string>
+    <string name="settings_notification_rules">Notification rules</string>
     <string name="settings_title">Settings</string>
     <plurals name="share_skipped">
         <item quantity="one">%1$d item couldn’t be added: it may be too large, or a message holds at most %2$d attachments.</item>

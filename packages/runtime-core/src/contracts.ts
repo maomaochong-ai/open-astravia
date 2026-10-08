@@ -88,48 +88,6 @@ export interface SessionPathChangedEvent extends SessionEventBase {
 	reason: string;
 }
 
-export interface MessageDeltaEvent extends SessionEventBase {
-	type: "message.delta";
-	delta: string;
-}
-
-export interface ThinkingDeltaEvent extends SessionEventBase {
-	type: "thinking.delta";
-	delta: string;
-}
-
-export interface MessageFinalEvent extends SessionEventBase {
-	type: "message.final";
-	message: Message;
-}
-
-export interface ToolCallGeneratingEvent extends SessionEventBase {
-	type: "toolcall.start";
-	toolCallId: string;
-	toolName: string;
-}
-
-/**
- * The model is still generating this tool call, and streaming its arguments has
- * revealed at least one more fully-parsed key. Emitted once per key growth, not
- * per token.
- *
- * Why it exists: for `edit`/`write` the expensive part is generating the
- * arguments (a whole file body), while executing them takes milliseconds. UI
- * keyed off {@link ToolStartEvent} therefore only learns the target once the
- * work is essentially over. The target path is normally the first key in the
- * argument object, so it lands here seconds earlier.
- *
- * Partial by construction: keys may still be missing and values of the
- * in-flight key are not included. {@link ToolStartEvent} stays authoritative.
- */
-export interface ToolCallArgsEvent extends SessionEventBase {
-	type: "toolcall.args";
-	toolCallId: string;
-	toolName: string;
-	args: Readonly<Record<string, unknown>>;
-}
-
 export interface ToolStartEvent extends SessionEventBase {
 	type: "tool.start";
 	toolCallId: string;
@@ -287,11 +245,6 @@ export type SessionEvent =
 	| ConversationMessageAppendedEvent
 	| SessionPathChangedEvent
 	| AssistantSessionEvent
-	| MessageDeltaEvent
-	| ThinkingDeltaEvent
-	| MessageFinalEvent
-	| ToolCallGeneratingEvent
-	| ToolCallArgsEvent
 	| ToolStartEvent
 	| ToolUpdateEvent
 	| ToolPhaseEvent
@@ -342,6 +295,15 @@ export interface QueueChangedEvent extends SessionEventBase {
 	snapshot: unknown;
 }
 
+/** Result of {@link SessionFacade.attach}. */
+export interface SessionAttachment {
+	readonly unsubscribe: () => void;
+	/** Durable history. Messages of `runningTurnId` are rebuilt from the replayed events instead. */
+	readonly history: HistoryEntry[];
+	/** Turn replayed from its start through the handler; absent when the Session is idle. */
+	readonly runningTurnId?: string;
+}
+
 export interface SessionStateSnapshot {
 	sessionId: string;
 	contextState?: SessionContextState;
@@ -351,8 +313,6 @@ export interface SessionStateSnapshot {
 	thinkingLevel: ThinkingLevel;
 	executionMode: SessionExecutionMode;
 	isStreaming: boolean;
-	/** Timestamp (ms) for the current agent_start, if this session is streaming. */
-	currentTurnStartedAt?: number;
 	messageCount: number;
 	/** Context window usage percentage (0-100), or null if unknown */
 	contextPercent: number | null;
@@ -567,6 +527,12 @@ export interface SessionFacade {
 		signal?: AbortSignal,
 	): Promise<Output>;
 	subscribe(sessionId: string, handler: (event: SessionEvent) => void): () => void;
+	/**
+	 * Subscribe and read history as one snapshot: the running Turn is replayed from
+	 * its start through `handler`, and `history` is read in the same synchronous
+	 * step, so history plus events has neither a gap nor an overlap.
+	 */
+	attach(sessionId: string, handler: (event: SessionEvent) => void): SessionAttachment;
 	updateSettings(sessionId: string, partialSettings: SettingsPatch): Promise<void>;
 	/** Update thinking level for ALL open sessions at once. */
 	updateGlobalThinkingLevel(level: ThinkingLevel): void;

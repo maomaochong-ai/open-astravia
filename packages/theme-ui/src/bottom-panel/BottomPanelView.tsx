@@ -1,4 +1,4 @@
-import { cn } from "@vetta-org/ui";
+import { cn } from "@vetta-org/ui/utils";
 import type { ComponentPropsWithoutRef, JSX, ReactNode } from "react";
 import { ThemeSurface } from "../appearance/ThemeSurface";
 import { ActivityStatusDotStyles } from "../shared/ActivityStatusDot";

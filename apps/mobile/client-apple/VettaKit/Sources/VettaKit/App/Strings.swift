@@ -66,6 +66,7 @@ public enum L10n {
 		public static var unpairedScan: String { tr("home.unpairedScan") }
 		public static var search: String { tr("home.search") }
 		public static var taskBoard: String { tr("home.taskBoard") }
+		public static var connectComputer: String { tr("home.connectComputer") }
 		public static var tasks: String { tr("home.tasks") }
 		public static var pickProject: String { tr("home.pickProject") }
 		public static var allSessions: String { tr("home.allSessions") }

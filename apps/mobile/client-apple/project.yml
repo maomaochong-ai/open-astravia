@@ -14,7 +14,7 @@ settings:
     SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
     SWIFT_APPROACHABLE_CONCURRENCY: YES
     MARKETING_VERSION: "1.0.0"
-    CURRENT_PROJECT_VERSION: "1"
+    CURRENT_PROJECT_VERSION: "2"
     CODE_SIGN_STYLE: Automatic
 packages:
   VettaKit:
@@ -100,6 +100,19 @@ targets:
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
+  VettaRTCTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: VettaRTC/Tests/VettaRTCTests
+    dependencies:
+      - package: VettaRTC
+      - package: VettaKit
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.openvetta.mobile.rtctests
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_DEFAULT_ACTOR_ISOLATION: nonisolated
   VettaUITests:
     type: bundle.ui-testing
     platform: iOS
@@ -119,7 +132,9 @@ schemes:
       targets:
         Vetta: all
         VettaUITests: [test]
+        VettaRTCTests: [test]
     test:
       targets:
         - VettaUITests
+        - VettaRTCTests
       gatherCoverageData: false

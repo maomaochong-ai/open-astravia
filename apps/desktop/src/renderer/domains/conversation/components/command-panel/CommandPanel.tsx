@@ -2,9 +2,12 @@ import type { SkillInfo } from "@preload/api";
 import { useThemeComponent } from "@vetta-org/theme-sdk";
 import { useCommandPanelModel } from "../../hooks/useCommandPanelModel";
 import type { ConnectorGridItem } from "../../hooks/useConnectorGrid";
+import type { InputActionBarModel } from "../useInputActionBarModel";
 import { CommandPanelView } from "./CommandPanelView";
 
 export interface CommandPanelProps {
+	/** 已由输入框 Connector 装配时直接复用，确保面板和激活胶囊来自同一动作模型。 */
+	inputActions?: InputActionBarModel;
 	open: boolean;
 	onClose: () => void;
 	/** icon 是从市场目录解析出的那张图，交给调用方在行内胶囊上复用。 */

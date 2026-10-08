@@ -5,6 +5,7 @@ import type {
 	PromptRequest,
 	RuntimeQueuePromptIfRunningOutcome,
 	RuntimeTurnPromptOutcome,
+	SessionAttachment,
 	SessionEvent,
 	SessionExecutionMode,
 	SessionStateSnapshot,
@@ -272,6 +273,17 @@ export class RuntimeHostSessionOperations {
 		return this.options.events.subscribe(sessionKey, this.requireSession(sessionId), handler);
 	}
 
+	attach(sessionId: string, handler: (event: SessionEvent) => void): SessionAttachment {
+		const sessionKey = this.options.directory.resolveSessionKey(sessionId);
+		const handle = this.requireSession(sessionId);
+		// Registration, whole-Turn replay and the history read happen without yielding,
+		// so no event can land between the snapshot and the subscription.
+		const unsubscribe = this.options.events.subscribe(sessionKey, handle, handler, { replay: "turn" });
+		const history = [...handle.historyReader.readHistory()];
+		const runningTurnId = this.options.events.readCurrentTurnId(sessionKey);
+		return { unsubscribe, history, ...(runningTurnId ? { runningTurnId } : {}) };
+	}
+
 	subscribeExecutionObservations(
 		sessionId: string,
 		handler: (observation: RuntimeSessionExecutionObservation) => Promise<void> | void,
@@ -332,7 +344,6 @@ export class RuntimeHostSessionOperations {
 	}
 
 	getState(sessionId: string): SessionStateSnapshot {
-		const sessionKey = this.options.directory.resolveSessionKey(sessionId);
 		const handle = this.requireSession(sessionId);
 		const state = handle.stateReader.readState();
 		return {
@@ -342,7 +353,6 @@ export class RuntimeHostSessionOperations {
 			thinkingLevel: state.thinkingLevel,
 			executionMode: handle.executionMode,
 			isStreaming: state.isStreaming,
-			currentTurnStartedAt: this.options.events.readCurrentTurnStartedAt(sessionKey),
 			messageCount: state.messageCount,
 			...(state.contextState ? { contextState: state.contextState } : {}),
 			contextPercent: state.contextPercent,

@@ -1,10 +1,10 @@
-import { MessageList } from "@domains/conversation/components/MessageList";
-import { WorkflowTabPanelView } from "@vetta-org/theme-ui/activity";
+import { TranscriptConversation } from "@domains/conversation/components/TranscriptConversation";
+import { WorkflowTabPanelView } from "@vetta-org/theme-ui/activity/WorkflowTabPanelView";
 import { useWorkflowTabPanelModel } from "../hooks/useWorkflowTabPanelModel";
 import { useActivityWorkspace } from "../registry/context";
 
 /**
- * Workflow activity tab (ADR-0044): switcher + read-only 1:1 MessageList of
+ * Workflow activity tab (ADR-0044): switcher + read-only 1:1 transcript of
  * the selected workflow child session.
  */
 export function WorkflowTabPanel(): JSX.Element {
@@ -18,11 +18,11 @@ export function WorkflowTabPanel(): JSX.Element {
 			noTranscriptLabel={model.noTranscriptLabel}
 			hasTranscript={model.messages.length > 0}
 			messageList={
-				<MessageList
+				<TranscriptConversation
+					feedKey={model.selected?.sessionFile ?? null}
 					messages={model.messages}
 					workspace={workspace}
 					isStreaming={model.selected?.status === "running"}
-					sessionId={model.selected?.sessionFile ?? null}
 				/>
 			}
 			onSelect={model.onSelect}

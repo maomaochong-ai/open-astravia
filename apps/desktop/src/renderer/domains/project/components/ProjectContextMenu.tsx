@@ -1,5 +1,5 @@
 import type { Project } from "@shared/store/atoms";
-import { ProjectContextMenuView } from "@vetta-org/theme-ui/project";
+import { ProjectContextMenuView } from "@vetta-org/theme-ui/project/ProjectContextMenuView";
 import { createPortal } from "react-dom";
 import { useProjectContextMenuModel } from "../hooks/useProjectContextMenuModel";
 

@@ -46,10 +46,6 @@ function samePresentation(left: EffectivePresentation | undefined, right: Effect
 }
 
 function assistantStopReason(event: SessionEvent): string | undefined {
-	if (event.type === "message.final") {
-		const stopReason = (event.message as unknown as { stopReason?: unknown }).stopReason;
-		return typeof stopReason === "string" ? stopReason : undefined;
-	}
 	if (event.channel === "assistant" && event.type === "done") return event.message.stopReason;
 	if (event.channel === "assistant" && event.type === "error") return "error";
 	return undefined;
@@ -259,9 +255,6 @@ export class PetSessionPresentationController {
 	}
 
 	private isAssistantFinal(event: SessionEvent): boolean {
-		return (
-			event.type === "message.final" ||
-			(event.channel === "assistant" && (event.type === "done" || event.type === "error"))
-		);
+		return event.channel === "assistant" && (event.type === "done" || event.type === "error");
 	}
 }

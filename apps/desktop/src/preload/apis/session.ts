@@ -1,7 +1,7 @@
 import type { IpcRenderer } from "electron";
 import { decodeSessionEvent } from "../../shared/session-event-codec.js";
 import type { DesktopApi } from "../api.js";
-import { onIpcEvent, subscribeById } from "./helper.js";
+import { attachById, onIpcEvent, subscribeById } from "./helper.js";
 import { subscribeSessionSearch } from "./session-search.js";
 
 const CHANNELS = {
@@ -21,6 +21,7 @@ const CHANNELS = {
 	QUEUE_CLEAR: "vetta:session:queue-clear",
 	CLEAR_TODOS: "vetta:session:clear-todos",
 	SUBSCRIBE: "vetta:session:subscribe",
+	ATTACH: "vetta:session:attach",
 	UNSUBSCRIBE: "vetta:session:unsubscribe",
 	UPDATE_SETTINGS: "vetta:session:update-settings",
 	SET_EXECUTION_MODE: "vetta:session:set-execution-mode",
@@ -122,6 +123,16 @@ export function createSessionApi(ipc: IpcRenderer): Pick<DesktopApi, "session"> 
 					[sessionId],
 					decodeSessionEvent,
 				),
+			attach: (sessionId, handlers) =>
+				attachById(
+					ipc,
+					CHANNELS.ATTACH,
+					CHANNELS.EVENT,
+					CHANNELS.UNSUBSCRIBE,
+					handlers,
+					[sessionId],
+					decodeSessionEvent,
+				),
 			onQuestionRequest: (handler) => onIpcEvent(ipc, CHANNELS.QUESTION_REQUEST, handler),
 			listPendingQuestions: () => ipc.invoke(CHANNELS.QUESTION_LIST_PENDING),
 			onQuestionResolved: (handler) => onIpcEvent(ipc, CHANNELS.QUESTION_RESOLVED, handler),
@@ -194,10 +205,7 @@ export function createSessionApi(ipc: IpcRenderer): Pick<DesktopApi, "session"> 
 			onRunningChanged: (handler) => onIpcEvent(ipc, CHANNELS.RUNNING_CHANGED, handler),
 			clearDefaultConversation: (scope) => ipc.invoke(CHANNELS.CLEAR_DEFAULT_CONVERSATION, scope),
 			clearDefaultArtifacts: (scope) => ipc.invoke(CHANNELS.CLEAR_DEFAULT_ARTIFACTS, scope),
-			openViewer: (path, options) =>
-				options === undefined
-					? ipc.invoke(CHANNELS.VIEWER_OPEN, path)
-					: ipc.invoke(CHANNELS.VIEWER_OPEN, path, options),
+			openViewer: (path) => ipc.invoke(CHANNELS.VIEWER_OPEN, path),
 			subscribeViewer: (path, handler) =>
 				subscribeById(ipc, CHANNELS.VIEWER_SUBSCRIBE, CHANNELS.VIEWER_EVENT, CHANNELS.VIEWER_UNSUBSCRIBE, handler, [
 					path,

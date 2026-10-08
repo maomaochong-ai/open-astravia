@@ -1,20 +1,8 @@
-import {
-	ApprovalRawFallback as ThemeApprovalRawFallback,
-	type ApprovalRawFallbackLabels,
-} from "@vetta-org/theme-ui/action-approval";
+import { ApprovalRawFallback as ThemeApprovalRawFallback } from "@vetta-org/theme-ui/action-approval/ApprovalParts";
+import type { ApprovalRawFallbackLabels } from "@vetta-org/theme-ui/action-approval";
 import { useTranslation } from "react-i18next";
 
-export {
-	ApprovalFormField,
-	ApprovalImpactCard,
-	ApprovalSettingGroup,
-	ApprovalSettingRow,
-	ApprovalTargetCard,
-	ApprovalToggleIntentCard,
-	ApprovalValueList,
-	ApprovalValueRow,
-	ApprovalWarningCard,
-} from "@vetta-org/theme-ui/action-approval";
+export { ApprovalFormField, ApprovalImpactCard, ApprovalSettingGroup, ApprovalSettingRow, ApprovalTargetCard, ApprovalToggleIntentCard, ApprovalValueList, ApprovalValueRow, ApprovalWarningCard } from "@vetta-org/theme-ui/action-approval/ApprovalParts";
 
 /** Desktop adapter: inject i18n labels into theme-ui raw fallback. */
 export function ApprovalRawFallback({

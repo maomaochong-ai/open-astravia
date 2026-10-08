@@ -1,7 +1,11 @@
-import { loadNewSessionPage } from "./domains/conversation/components/loadNewSessionPage";
+import { createRetryableLoader, loadNewSessionPage } from "./domains/conversation/components/loadNewSessionPage";
 
 /** Shared by React.lazy routes and navigation intent prefetch. No page mounts here. */
 export { loadNewSessionPage };
+
+export const loadChatPage = createRetryableLoader(async () => ({
+	default: (await import("./domains/conversation/components/ChatPage")).ChatPage,
+}));
 
 export const loadAbilitiesPage = async () => ({
 	default: (await import("./domains/abilities/components/AbilitiesPage")).AbilitiesPage,

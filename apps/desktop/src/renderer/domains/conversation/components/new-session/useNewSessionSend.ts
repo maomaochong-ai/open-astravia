@@ -1,9 +1,10 @@
 import { perfSendBegin, perfSendMark } from "@shared/lib/perf-send";
 import type { OpenSessionOptions, SendMessageOptions, SessionExecutionMode } from "@shared/store/atoms";
-import { chatMessagesAtom, pendingSessionSendAtom } from "@shared/store/atoms";
+import { pendingSessionSendAtom } from "@shared/store/atoms";
 import { getDefaultStore } from "jotai";
 import { useCallback, useRef } from "react";
-import { startAssistantTurn } from "../../services/chat-service";
+import { dispatchConversationFeed } from "../../services/conversation-feed-store";
+import type { StartNewSessionGoal } from "../../services/goal-mode-entry";
 import { restoreStagedNewSessionSend, stageNewSessionSend } from "../../services/staged-new-session-send";
 import type { SendInteractionContext } from "../input-bar/types";
 
@@ -32,6 +33,7 @@ interface NewSessionSendOptions {
 
 export function useNewSessionSend(options: NewSessionSendOptions): {
 	readonly send: (overrideText?: string, context?: SendInteractionContext) => Promise<void>;
+	readonly startGoal: StartNewSessionGoal;
 } {
 	const sendingRef = useRef(false);
 	const { cwd, executionMode, prepareCwd, openSession, sendMessage, agentProfileId } = options;
@@ -54,7 +56,7 @@ export function useNewSessionSend(options: NewSessionSendOptions): {
 				});
 				// 发送意图确认后立即建立 assistant 草稿，头像/名称与暂停按钮同帧出现；
 				// 后续 session.create、订阅和 prompt 只负责让该草稿进入正式流式生命周期。
-				getDefaultStore().set(chatMessagesAtom, (prev) => startAssistantTurn(prev, Date.now()));
+				dispatchConversationFeed({ type: "turn.pending", startedAt: Date.now() });
 				await openSession(targetCwd, undefined, executionMode, {
 					interactionId,
 					...(agentProfileId ? { agentProfileId } : {}),
@@ -77,5 +79,34 @@ export function useNewSessionSend(options: NewSessionSendOptions): {
 		[agentProfileId, cwd, executionMode, prepareCwd, openSession, sendMessage],
 	);
 
-	return { send };
+	const startGoal = useCallback<StartNewSessionGoal>(
+		async (objective) => {
+			if (sendingRef.current) return null;
+			sendingRef.current = true;
+			const interactionId = perfSendBegin("new-session-goal");
+			perfSendMark("new-session-goal-submit", interactionId);
+			try {
+				const targetCwd = prepareCwd ? await prepareCwd() : cwd;
+				if (!targetCwd) return null;
+				let startPromise: ReturnType<StartNewSessionGoal> | undefined;
+				await openSession(targetCwd, undefined, executionMode, {
+					interactionId,
+					...(agentProfileId ? { agentProfileId } : {}),
+					navigateBeforeCreate: true,
+					onPromptReady: (sessionId) => {
+						startPromise = window.vetta.session
+							.startGoal(sessionId, objective)
+							.then((state) => ({ sessionId, state }));
+						return startPromise;
+					},
+				});
+				return startPromise ? await startPromise : null;
+			} finally {
+				sendingRef.current = false;
+			}
+		},
+		[agentProfileId, cwd, executionMode, openSession, prepareCwd],
+	);
+
+	return { send, startGoal };
 }

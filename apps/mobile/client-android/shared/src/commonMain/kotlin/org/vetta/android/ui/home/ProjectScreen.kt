@@ -79,6 +79,7 @@ fun ProjectScreen(
             ?: state.projects.firstOrNull { it.cwd == cwd }?.name
             ?: cwd.trimEnd('/', '\\').substringAfterLast('/').substringAfterLast('\\')
     var deleting by remember { mutableStateOf<RemoteSessionSummary?>(null) }
+    var renaming by remember { mutableStateOf<RemoteSessionSummary?>(null) }
     var refreshing by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val page = MaterialTheme.vettaExtra.pageBackground
@@ -128,6 +129,7 @@ fun ProjectScreen(
                             actions = actions,
                             onOpen = { onOpenSession(session.id) },
                             onDelete = { deleting = session },
+                            onRename = { renaming = session },
                             showsProject = false,
                             modifier = Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null, placementSpec = VettaMotion.snappy()),
                         )
@@ -149,4 +151,5 @@ fun ProjectScreen(
         NewSessionButton(onNewSession, Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 12.dp))
     }
     SessionDeleteDialog(deleting, actions) { deleting = null }
+    SessionRenameDialog(renaming, actions) { renaming = null }
 }

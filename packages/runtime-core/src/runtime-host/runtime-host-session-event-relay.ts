@@ -33,7 +33,6 @@ export interface RuntimeHostSessionEventRelayOptions {
  * subscriber/observer 失败隔离为安全 Observation。
  */
 export class RuntimeHostSessionEventRelay {
-	private readonly currentTurnStartedAt = new Map<string, number>();
 	private readonly inFlightBuffers = new Map<string, InFlightBuffer>();
 	private readonly inFlightUnsubscribers = new Map<string, () => void>();
 	private readonly externalSubscribers = new Map<string, Set<(event: SessionEvent) => void>>();
@@ -67,8 +66,8 @@ export class RuntimeHostSessionEventRelay {
 			if (event.type === "queue.changed") {
 				this.options.queueSidecar.persist(handle.lifecycle.sessionPath, event);
 			}
+			recordTurnReplay(buffer, event);
 			if (event.type === "session.lifecycle" && event.phase === "agent_start") {
-				this.currentTurnStartedAt.set(sessionKey, event.timestamp);
 				buffer.turnStartedAt = event.timestamp;
 				buffer.events = [];
 				buffer.isActive = true;
@@ -79,7 +78,6 @@ export class RuntimeHostSessionEventRelay {
 			} else if (event.channel !== "assistant" && event.type === "error" && buffer.isActive) {
 				buffer.terminalReason = "error";
 			} else if (event.type === "session.lifecycle" && event.phase === "agent_end") {
-				this.currentTurnStartedAt.delete(sessionKey);
 				buffer.events = [];
 				buffer.isActive = false;
 				this.markRunning(
@@ -89,20 +87,25 @@ export class RuntimeHostSessionEventRelay {
 					buffer.terminalReason ?? "agent_end",
 				);
 				buffer.terminalReason = undefined;
-			} else if (event.type === "message.final" || event.type === "usage.update") {
+			} else if (event.type === "usage.update") {
+				// A persisted assistant message ends the in-flight part of this model call.
 				buffer.events = [];
-				if (event.type === "message.final" && event.message.role === "assistant") {
-					if (event.message.stopReason === "aborted") buffer.terminalReason = "aborted";
-					else if (event.message.stopReason === "error") buffer.terminalReason = "error";
-					else buffer.terminalReason = undefined;
-				}
 			} else if (event.type === "model.request.started" && buffer.isActive) {
+				buffer.events.push(event);
+			} else if (
+				(event.type === "tool.start" || event.type === "tool.phase" || event.type === "tool.end") &&
+				buffer.isActive
+			) {
+				// Tool execution state is display-only and never persisted as a partial record;
+				// a subscriber joining mid-Turn needs it to show running and finished tools.
 				buffer.events.push(event);
 			} else if (event.channel === "assistant" && buffer.isActive) {
 				buffer.events.push(event);
 				if (event.type === "error") buffer.terminalReason = "error";
-				else if (event.type === "done" && event.message.stopReason === "aborted") {
-					buffer.terminalReason = "aborted";
+				else if (event.type === "done") {
+					// A later model call that finishes normally means the Turn recovered from
+					// an earlier failed attempt; only the last call decides the Turn outcome.
+					buffer.terminalReason = event.message.stopReason === "aborted" ? "aborted" : undefined;
 				}
 			}
 			this.notifyExternalSubscribers(sessionKey, event);
@@ -110,7 +113,17 @@ export class RuntimeHostSessionEventRelay {
 		this.inFlightUnsubscribers.set(sessionKey, unsubscribe);
 	}
 
-	subscribe(sessionKey: string, handle: RuntimeHostSessionRecord, handler: (event: SessionEvent) => void): () => void {
+	/**
+	 * `replay: "model-call"` (default) replays the part of the current model call that
+	 * is not persisted yet. `replay: "turn"` replays the whole running Turn, so a
+	 * subscriber can rebuild it from events alone and never merge it with history.
+	 */
+	subscribe(
+		sessionKey: string,
+		handle: RuntimeHostSessionRecord,
+		handler: (event: SessionEvent) => void,
+		options: { readonly replay?: "model-call" | "turn" } = {},
+	): () => void {
 		const canonicalSessionId = handle.lifecycle.sessionId;
 		this.notifyExternalSubscriber(sessionKey, handler, lifecycleSessionEvent(canonicalSessionId, "created"));
 
@@ -129,7 +142,8 @@ export class RuntimeHostSessionEventRelay {
 		});
 		const contextState = this.contextStateEvents.get(sessionKey);
 		if (contextState) this.notifyExternalSubscriber(sessionKey, handler, contextState);
-		this.replayInFlight(sessionKey, canonicalSessionId, handler);
+		if (options.replay === "turn") this.replayTurn(sessionKey, handler);
+		else this.replayInFlight(sessionKey, canonicalSessionId, handler);
 
 		let externals = this.externalSubscribers.get(sessionKey);
 		if (!externals) {
@@ -155,8 +169,9 @@ export class RuntimeHostSessionEventRelay {
 		this.notifyExternalSubscribers(sessionKey, sequencedEvent);
 	}
 
-	readCurrentTurnStartedAt(sessionKey: string): number | undefined {
-		return this.currentTurnStartedAt.get(sessionKey);
+	/** Identity of the Turn currently running in this Session, from `conversation.turn.*` facts. */
+	readCurrentTurnId(sessionKey: string): string | undefined {
+		return this.inFlightBuffers.get(sessionKey)?.turn?.turnId;
 	}
 
 	getRunningSessionPaths(): string[] {
@@ -175,7 +190,6 @@ export class RuntimeHostSessionEventRelay {
 		this.inFlightBuffers.delete(sessionKey);
 		this.externalSubscribers.delete(sessionKey);
 		this.externalSubscriberActiveToolFingerprints.delete(sessionKey);
-		this.currentTurnStartedAt.delete(sessionKey);
 		this.nextSequences.delete(sessionKey);
 		this.contextStateEvents.delete(sessionKey);
 		this.markRunning(sessionPath, false, sessionId);
@@ -185,6 +199,14 @@ export class RuntimeHostSessionEventRelay {
 		const buffer = this.inFlightBuffers.get(sessionKey);
 		if (!buffer?.isActive) return;
 		for (const event of buffer.events) {
+			this.notifyExternalSubscriber(sessionKey, handler, event);
+		}
+	}
+
+	private replayTurn(sessionKey: string, handler: (event: SessionEvent) => void): void {
+		const turn = this.inFlightBuffers.get(sessionKey)?.turn;
+		if (!turn) return;
+		for (const event of coalesceStreamFragments(turn.events)) {
 			this.notifyExternalSubscriber(sessionKey, handler, event);
 		}
 	}
@@ -270,4 +292,68 @@ export class RuntimeHostSessionEventRelay {
 		this.inFlightUnsubscribers.get(sessionKey)?.();
 		this.inFlightUnsubscribers.delete(sessionKey);
 	}
+}
+
+/** Track the running Turn's events from `conversation.turn.*` facts for whole-Turn replay. */
+function recordTurnReplay(buffer: InFlightBuffer, event: SessionEvent): void {
+	if (event.type === "conversation.turn.started") {
+		buffer.turn = { turnId: event.turnId, events: [event] };
+		return;
+	}
+	const turn = buffer.turn;
+	if (!turn) return;
+	if (
+		event.type === "conversation.turn.completed" ||
+		event.type === "conversation.turn.cancelled" ||
+		event.type === "conversation.turn.failed"
+	) {
+		if (event.turnId === turn.turnId) buffer.turn = undefined;
+		return;
+	}
+	if (belongsToTurnReplay(event, turn.turnId)) turn.events.push(event);
+}
+
+/** Everything needed to rebuild the running Turn's messages; durable history covers the rest. */
+function belongsToTurnReplay(event: SessionEvent, turnId: string): boolean {
+	if (event.channel === "assistant") return event.turnId === undefined || event.turnId === turnId;
+	switch (event.type) {
+		case "conversation.message.appended":
+			return event.turnId === turnId && event.message.role === "user";
+		case "model.request.started":
+			return event.turnId === turnId;
+		case "error":
+			return event.turnId === turnId;
+		case "tool.start":
+		case "tool.phase":
+		case "tool.end":
+			return true;
+		default:
+			return false;
+	}
+}
+
+/**
+ * Merge adjacent deltas of the same content part into one event carrying the
+ * later event's identity and partial snapshot. A long Turn then replays in a
+ * few events per content part instead of one per token.
+ */
+export function coalesceStreamFragments(events: readonly SessionEvent[]): SessionEvent[] {
+	const result: SessionEvent[] = [];
+	for (const event of events) {
+		const previous = result.at(-1);
+		if (
+			previous?.channel === "assistant" &&
+			event.channel === "assistant" &&
+			(event.type === "text_delta" || event.type === "thinking_delta" || event.type === "toolcall_delta") &&
+			previous.type === event.type &&
+			previous.turnId === event.turnId &&
+			previous.modelCallIndex === event.modelCallIndex &&
+			previous.contentIndex === event.contentIndex
+		) {
+			result[result.length - 1] = { ...event, delta: `${previous.delta}${event.delta}` } as SessionEvent;
+			continue;
+		}
+		result.push(event);
+	}
+	return result;
 }

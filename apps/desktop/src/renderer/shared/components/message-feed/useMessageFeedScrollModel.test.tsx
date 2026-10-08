@@ -377,6 +377,7 @@ describe("useMessageFeedScrollModel", () => {
 
 		act(() => result.current.scrollerRef(element));
 		act(() => {
+			element.dispatchEvent(new WheelEvent("wheel", { deltaY: -120 }));
 			element.dispatchEvent(new Event("scroll"));
 			element.dispatchEvent(new Event("scroll"));
 			element.dispatchEvent(new Event("scroll"));
@@ -545,6 +546,10 @@ describe("useMessageFeedScrollModel", () => {
 		} as unknown as VirtuosoHandle;
 		const element = document.createElement("div");
 		act(() => first.result.current.scrollerRef(element));
+		// The reader scrolls up into the history: that position is worth coming back to.
+		act(() => {
+			element.dispatchEvent(new WheelEvent("wheel", { deltaY: -120 }));
+		});
 		first.unmount();
 
 		const second = renderHook(() =>
@@ -578,5 +583,34 @@ describe("useMessageFeedScrollModel", () => {
 
 		expect(progressive.result.current.restoreStateFrom).toBeUndefined();
 		progressive.unmount();
+	});
+
+	it("does not remember a position while the feed follows its tail", () => {
+		vi.stubGlobal(
+			"ResizeObserver",
+			class {
+				observe() {}
+				disconnect() {}
+			},
+		);
+		const resetKey = `feed-tail-${Math.random()}`;
+		const items = [{ id: "message-1" }, { id: "message-2" }];
+		const first = renderHook(() => useMessageFeedScrollModel({ active: false, items, resetKey }));
+		// Mid-way to the bottom while heights are still being measured.
+		(first.result.current.virtuosoRef as { current: VirtuosoHandle | null }).current = {
+			getState: (callback: (state: { scrollTop: number; ranges: [] }) => void) =>
+				callback({ scrollTop: 120, ranges: [] }),
+		} as unknown as VirtuosoHandle;
+		act(() => first.result.current.scrollerRef(document.createElement("div")));
+		first.unmount();
+
+		const second = renderHook(() => useMessageFeedScrollModel({ active: false, items, resetKey }));
+
+		expect(second.result.current).toMatchObject({
+			followOutput: "auto",
+			restoreStateFrom: undefined,
+			initialTopMostItemIndex: { index: "LAST", align: "end" },
+		});
+		second.unmount();
 	});
 });

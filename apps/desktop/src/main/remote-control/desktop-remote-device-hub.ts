@@ -72,7 +72,7 @@ export class DesktopRemoteDeviceHub {
 			if (event.type === "state") {
 				if (event.state === "online") this.markLinkOnline(deviceId, entry, link);
 				else if (event.state === "closed" || event.state === "failed") this.detach(deviceId, link);
-				else if (event.state === "reconnecting") this.reevaluate(deviceId, entry);
+				else if (event.state === "connecting" || event.state === "reconnecting") this.reevaluate(deviceId, entry);
 				this.handlers.onLinksChanged?.(deviceId);
 			}
 		});

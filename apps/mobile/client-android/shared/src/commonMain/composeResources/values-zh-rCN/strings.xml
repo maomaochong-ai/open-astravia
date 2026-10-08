@@ -4,11 +4,17 @@
     <string name="app_name">Vetta</string>
     <string name="appearance">外观</string>
     <string name="back">返回</string>
-    <string name="board_empty">还没有任务</string>
-    <string name="board_empty_description">开始的会话会按项目出现在这里。</string>
+    <string name="board_empty">这台电脑现在没有要处理的事</string>
+    <string name="board_empty_description">等你回复、还在进行，或刚刚停下来的会话会出现在这里。</string>
     <plurals name="board_more">
         <item quantity="other">还有 %1$d 条</item>
     </plurals>
+    <string name="board_section_running">正在进行</string>
+    <string name="board_section_running_empty">没有正在进行的会话</string>
+    <string name="board_section_stopped">刚刚停下来</string>
+    <string name="board_section_stopped_empty">最近没有停下来的会话</string>
+    <string name="board_section_waiting">等你回复</string>
+    <string name="board_section_waiting_empty">没有在等你回复的会话</string>
     <string name="board_stale">显示的是上次同步的状态</string>
     <string name="board_view_all">查看全部</string>
     <string name="camera_permission_required">需要相机权限才能扫码</string>
@@ -251,7 +257,11 @@
     <string name="session_unpin">取消置顶</string>
     <string name="settings_background_link">后台保持连接</string>
     <string name="settings_background_link_denied">需要先在系统设置里允许 Vetta 发送通知。</string>
-    <string name="settings_background_link_hint">关掉 App 后，会话需要你决策、完成或出错时也会通知你。保持连接期间通知栏会常驻一条提示，耗电会略有增加。</string>
+    <string name="settings_background_link_hint">关掉后仍会通知你。通知栏留一条提示，耗电略增。</string>
+    <string name="settings_link_computer">电脑</string>
+    <string name="settings_link_idle">还没连上</string>
+    <string name="settings_link_phone">这台手机</string>
+    <string name="settings_notification_rules">通知规则</string>
     <string name="settings_title">设置</string>
     <plurals name="share_skipped">
         <item quantity="other">有 %1$d 项没能加入：可能文件太大，或者一条消息最多只能带 %2$d 个附件。</item>

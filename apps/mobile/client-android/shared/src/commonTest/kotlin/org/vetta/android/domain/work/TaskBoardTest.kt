@@ -7,119 +7,78 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class TaskBoardTest {
-    private fun session(id: String, status: RemoteSessionStatus = RemoteSessionStatus.Completed, cwd: String, at: Long) =
-        RemoteSessionSummary(id, cwd, cwd.drop(1), id, null, at, status, false)
+    private val now = 10_000_000_000L
+
+    private fun session(
+        id: String,
+        status: RemoteSessionStatus = RemoteSessionStatus.Completed,
+        at: Long,
+        cwd: String = "/$id",
+    ) = RemoteSessionSummary(id, cwd, id, id, null, at, status, false)
 
     @Test
-    fun ranksWaitingThenRunningThenConversationsThenDone() {
-        val sessions =
-            listOf(
-                session("done", cwd = "/done", at = 90),
-                session("run", RemoteSessionStatus.Running, cwd = "/run", at = 10),
-                session("chat", cwd = "/conv", at = 1),
-                session("wait", RemoteSessionStatus.WaitingInput, cwd = "/wait", at = 5),
+    fun splitsOpenWorkFromWhatJustStopped() {
+        val overview =
+            TaskBoard.overview(
+                listOf(
+                    session("old", at = now - TaskBoard.STOPPED_WINDOW_MS - 1),
+                    session("untimed", at = 0),
+                    session("done", at = now - 1_000),
+                    session("failed", RemoteSessionStatus.Error, at = now - 2_000),
+                    session("aborted", RemoteSessionStatus.Aborted, at = now - 3_000),
+                    session("idle", RemoteSessionStatus.Idle, at = now - 4_000),
+                    session("run", RemoteSessionStatus.Running, at = now - 500),
+                    session("think", RemoteSessionStatus.Thinking, at = now - 100),
+                    session("ask", RemoteSessionStatus.WaitingInput, at = now - 50),
+                    session("askOlder", RemoteSessionStatus.WaitingInput, at = now - 5_000),
+                ),
+                now,
             )
-        val cards = TaskBoard.cards(sessions, conversationCwd = "/conv")
-        assertEquals(listOf("/wait", "/run", "/conv", "/done"), cards.map { it.cwd })
-        assertEquals(listOf(100, 10, 5, 1), cards.map { it.score })
+        assertEquals(listOf("ask", "askOlder"), overview.waiting.map { it.id })
+        assertEquals(listOf("think", "run"), overview.running.map { it.id })
+        assertEquals(listOf("done", "failed", "aborted", "idle"), overview.stopped.map { it.id })
+        assertEquals(listOf("ask", "askOlder"), overview.glance().map { it.id })
     }
 
     @Test
-    fun scoresAddUpSoWaitingAndRunningOutranksWaitingAlone() {
-        val sessions =
-            listOf(
-                session("w1", RemoteSessionStatus.WaitingInput, cwd = "/a", at = 50),
-                session("w2", RemoteSessionStatus.WaitingInput, cwd = "/b", at = 1),
-                session("r2", RemoteSessionStatus.Thinking, cwd = "/b", at = 2),
+    fun glanceFillsWithRunningOnceWaitingRunsOut() {
+        val overview =
+            TaskBoard.overview(
+                listOf(
+                    session("ask", RemoteSessionStatus.WaitingInput, at = now - 10),
+                    session("run", RemoteSessionStatus.Running, at = now),
+                    session("other", RemoteSessionStatus.Running, at = now - 20),
+                ),
+                now,
             )
-        val cards = TaskBoard.cards(sessions, conversationCwd = "/conv")
-        assertEquals(listOf("/b", "/a"), cards.map { it.cwd })
-        assertEquals(110, cards[0].score)
+        assertEquals(listOf("ask", "run"), overview.glance().map { it.id })
     }
 
     @Test
-    fun conversationsFollowTheirSessionsAndLeadTheirTier() {
-        val sessions =
-            listOf(
-                session("w", RemoteSessionStatus.WaitingInput, cwd = "/a", at = 99),
-                session("chat", RemoteSessionStatus.WaitingInput, cwd = "/conv", at = 1),
-            )
-        val cards = TaskBoard.cards(sessions, conversationCwd = "/conv")
-        assertEquals(listOf("/conv", "/a"), cards.map { it.cwd })
-        assertEquals(105, cards[0].score)
-        assertTrue(cards[0].isConversation)
+    fun keepsTheFiveNewestStoppedSessionsInsideADay() {
+        val sessions = (1..6).map { session("s$it", at = now - it * 1_000L) }
+        val overview = TaskBoard.overview(sessions, now)
+        assertEquals(listOf("s1", "s2", "s3", "s4", "s5"), overview.stopped.map { it.id })
+        assertTrue(overview.waiting.isEmpty())
+        assertTrue(overview.running.isEmpty())
     }
 
     @Test
-    fun sameScoreGoesMostRecentFirst() {
-        val sessions = listOf(session("old", cwd = "/old", at = 1), session("new", cwd = "/new", at = 2))
-        assertEquals(listOf("/new", "/old"), TaskBoard.cards(sessions, conversationCwd = "/conv").map { it.cwd })
+    fun aSessionUpdatedExactlyADayAgoStillCounts() {
+        val edge = session("edge", at = now - TaskBoard.STOPPED_WINDOW_MS)
+        assertEquals(listOf("edge"), TaskBoard.overview(listOf(edge), now).stopped.map { it.id })
     }
 
     @Test
-    fun activeCardListsWaitingThenRunningThenFillsUpWithTheNewestOthers() {
-        val sessions =
-            listOf(
-                session("done", cwd = "/a", at = 100),
-                session("run", RemoteSessionStatus.Running, cwd = "/a", at = 50),
-                session("wait", RemoteSessionStatus.WaitingInput, cwd = "/a", at = 10),
-                session("error", RemoteSessionStatus.Error, cwd = "/a", at = 60),
-                session("old", cwd = "/a", at = 1),
-            )
-        val card = TaskBoard.cards(sessions, conversationCwd = "/conv")[0]
-        assertEquals(listOf("wait", "run", "done"), card.sessions.map { it.id })
-        assertEquals(1, card.waiting)
-        assertEquals(1, card.running)
-        assertEquals(100, card.updatedAt)
+    fun clearWhenNothingIsOpenOrRecentlyStopped() {
+        val overview = TaskBoard.overview(listOf(session("old", at = now - TaskBoard.STOPPED_WINDOW_MS - 5)), now)
+        assertTrue(overview.clear)
+        assertTrue(overview.glance().isEmpty())
     }
 
     @Test
-    fun doneCardListsItsNewestThreeCountingErrorsAsDone() {
-        val sessions = (1..5).map { session("s$it", if (it == 5) RemoteSessionStatus.Error else RemoteSessionStatus.Completed, cwd = "/a", at = it.toLong()) }
-        val card = TaskBoard.cards(sessions, conversationCwd = "/conv")[0]
-        assertEquals(listOf("s5", "s4", "s3"), card.sessions.map { it.id })
-        assertEquals(1, card.score)
-        assertEquals(0, card.hidden)
-    }
-
-    @Test
-    fun capsActiveSessionsAndCountsTheRest() {
-        val sessions = (1..8).map { session("r$it", RemoteSessionStatus.Running, cwd = "/a", at = it.toLong()) }
-        val card = TaskBoard.cards(sessions, conversationCwd = "/conv")[0]
-        assertEquals(TaskBoard.ACTIVE_LIMIT, card.sessions.size, "enough active ones leave no room for finished ones")
-        assertEquals("r8", card.sessions.first().id)
-        assertEquals(3, card.hidden)
-    }
-
-    @Test
-    fun keepsOnlyTheNewestAllDoneProjectsButEveryActiveOne() {
-        val sessions =
-            (1..9).map { session("d$it", cwd = "/d$it", at = it.toLong()) } +
-                session("chat", cwd = "/conv", at = 0) +
-                (1..8).map { session("r$it", RemoteSessionStatus.Running, cwd = "/r$it", at = it.toLong()) }
-        val cards = TaskBoard.cards(sessions, conversationCwd = "/conv")
-        assertEquals(8, cards.count { it.active })
-        assertTrue(cards.any { it.isConversation }, "the conversations are not a project and stay")
-        assertEquals(listOf("/d9", "/d8", "/d7", "/d6", "/d5", "/d4"), cards.filter { !it.active && !it.isConversation }.map { it.cwd })
-    }
-
-    @Test
-    fun showsNothingUntilTheConversationBucketIsKnown() {
-        assertTrue(TaskBoard.cards(listOf(session("x", cwd = "/a", at = 1)), conversationCwd = null).isEmpty())
-    }
-
-    @Test
-    fun columnsFillTheShortestFirst() {
-        val sessions =
-            listOf(
-                session("a1", RemoteSessionStatus.Running, cwd = "/a", at = 9),
-                session("a2", RemoteSessionStatus.Running, cwd = "/a", at = 8),
-                session("a3", RemoteSessionStatus.Running, cwd = "/a", at = 7),
-                session("b1", RemoteSessionStatus.Running, cwd = "/b", at = 6),
-                session("c1", RemoteSessionStatus.Running, cwd = "/c", at = 5),
-                session("d1", RemoteSessionStatus.Running, cwd = "/d", at = 4),
-            )
-        val columns = TaskBoard.columns(TaskBoard.cards(sessions, conversationCwd = "/conv"), count = 2)
-        assertEquals(listOf(listOf("/a", "/d"), listOf("/b", "/c")), columns.map { column -> column.map { it.cwd } })
+    fun anUpdateInTheFutureStillCountsAsJustStopped() {
+        val ahead = session("ahead", at = now + 5_000)
+        assertEquals(listOf("ahead"), TaskBoard.overview(listOf(ahead), now).stopped.map { it.id })
     }
 }

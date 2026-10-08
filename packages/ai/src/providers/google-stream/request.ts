@@ -1,4 +1,5 @@
 import type { GenerateContentConfig, GenerateContentParameters, ThinkingConfig } from "@google/genai";
+import { AI_ERROR_CODES, AIError } from "../../protocol/index.js";
 import type { Context, Model, StreamOptions } from "../../types.js";
 import { sanitizeSurrogates } from "../../utils/sanitize-unicode.js";
 import { convertMessages, convertTools, mapToolChoice } from "../google-shared.js";
@@ -44,5 +45,14 @@ export function buildGoogleGenerateContentParams<TApi extends GoogleApi>(
 		config.abortSignal = options.signal;
 	}
 
-	return { model: model.id, contents: convertMessages(model, context), config };
+	const contents = convertMessages(model, context);
+	if (contents.length === 0) {
+		throw new AIError(AI_ERROR_CODES.INVALID_REQUEST, "Google model requests require non-empty contents", {
+			provider: model.provider,
+			modelId: model.id,
+			phase: "request",
+			retryable: false,
+		});
+	}
+	return { model: model.id, contents, config };
 }

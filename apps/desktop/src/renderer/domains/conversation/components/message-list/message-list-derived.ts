@@ -36,10 +36,21 @@ export interface ModelSwitchLabel {
 	readonly to: string;
 }
 
-export function collectAgentUsages(messages: readonly ChatConversationItem[]): readonly Usage[] {
+/**
+ * All model-call usages of the session. Returns `previous` when nothing changed:
+ * every assistant row receives this list, so a new array on each streamed delta
+ * would re-render all of them although usage only grows once per model call.
+ */
+export function collectAgentUsages(
+	messages: readonly ChatConversationItem[],
+	previous?: readonly Usage[],
+): readonly Usage[] {
 	const usages: Usage[] = [];
 	for (const message of messages) {
 		if (message.kind === "agent" && message.usages) usages.push(...message.usages);
+	}
+	if (previous && previous.length === usages.length && previous.every((usage, index) => usage === usages[index])) {
+		return previous;
 	}
 	return usages;
 }

@@ -99,7 +99,7 @@ describe("message height estimates", () => {
 			blocks: [{ type: "text", id: "measured-text", text: "short" }],
 		});
 		const element = document.createElement("div");
-		element.dataset.itemIndex = "0";
+		element.dataset.index = "0";
 		Object.defineProperty(element, "offsetHeight", { configurable: true, value: 2_645 });
 
 		const itemSize = createMessageItemSizeRecorder([initial], scope);
@@ -127,7 +127,7 @@ describe("message height estimates", () => {
 		const scope = "remeasured-conversation";
 		const itemSize = createMessageItemSizeRecorder([item], scope);
 		const element = document.createElement("div");
-		element.dataset.itemIndex = "0";
+		element.dataset.index = "0";
 		let measuredHeight = 460;
 		Object.defineProperty(element, "offsetHeight", {
 			configurable: true,

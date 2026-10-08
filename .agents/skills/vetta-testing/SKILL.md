@@ -120,10 +120,10 @@ bun run check:quick
 bun run check
 ```
 
-选择与改动相称的最小充分范围：先跑定向测试，一轮编辑后跑 `check:quick`，涉及多个包或范围不明确时跑 `test:changed`，代码任务完成后跑一次 `check`。`check` 不运行测试，不能替代行为测试。
+选择与改动相称的最小充分范围：先跑定向测试，一轮编辑后针对任务文件跑 `check:quick`，涉及多个包或范围不明确时跑 `test:changed`。代码任务完成后确认影响范围内的测试、lint、守卫和必要的类型检查通过，不默认扫描全仓，也不重复已通过且未再修改的检查。全量核查使用显式的 `check:full` / `check:lint:full`；Biome 或 EditorConfig 配置变更按配置影响扩大 lint 范围。`check` 不运行测试，不能替代行为测试。
 
 交付时说明覆盖了哪些用户流程或合同、实际运行了哪些测试与检查、哪些未运行及原因、剩余风险和兼容性影响。不得声称未执行的验证已经通过。
 
 ## Skill 维护
 
-`.agents/skills/vetta-testing/SKILL.md` 是事实源。修改本 Skill 时同步更新 `.claude/skills/vetta-testing/SKILL.md`，并验证两份文件内容一致。
+`.agents/skills/vetta-testing/SKILL.md` 是事实源。`.claude/skills` 为指向 `../.agents/skills` 的 Git 符号链接（Windows 可能检出为目标路径文本）；修改时核对这一指向，不创建独立副本。

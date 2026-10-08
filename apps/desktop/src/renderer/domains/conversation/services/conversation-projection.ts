@@ -2,23 +2,13 @@ import type { DesktopTeamToolExecutionEvent } from "@preload/api-types/team-conv
 import {
 	type ConversationMessageEventState,
 	createConversationAgentMessage,
-	DEFAULT_AGENT_PARTICIPANT_ID,
 	projectAssistantMessageBlocks,
-	reduceConversationMessageEvent,
 } from "@shared/conversation";
 import type { ChatConversationItem } from "@shared/store/atoms";
 import type { AssistantMessage } from "@vetta/ai";
-import type { AssistantSessionEvent, HistoryEntry } from "@vetta/runtime-core";
-import type { ConversationAgentMessageEvent, ConversationToolExecutionEvent } from "@vetta/runtime-core/conversation";
+import type { ConversationToolExecutionEvent } from "@vetta/runtime-core/conversation";
 import type { RuntimeToolResult } from "@vetta/runtime-core/kernel";
-import { fullHistoryToChat, handleToolEnd, handleToolPhase, handleToolStart, resetStreamState } from "./chat-service";
-import { conversationAssistantMessageId } from "./conversation-message-identity";
-
-interface QueuedAssistantEvent {
-	readonly event: AssistantSessionEvent;
-	readonly sequence: number;
-	readonly messageId: string;
-}
+import { withToolCallEnded, withToolCallPhase, withToolCallStarted } from "./chat-service";
 
 export interface ConversationToolExecutionProjection {
 	readonly messageId: string;
@@ -30,104 +20,6 @@ export interface ConversationToolExecutionProjection {
 	readonly startedAt?: number;
 	readonly durationMs?: number;
 	readonly phases?: readonly { readonly label: string; readonly atMs: number }[];
-}
-
-/**
- * Chat connector for the shared identity-scoped Conversation message reducer.
- * Runtime events remain lossless; batching changes only React commit frequency.
- */
-export class ConversationProjection {
-	private pendingAssistantEvents: QueuedAssistantEvent[] = [];
-	private lastHostSequence: number | undefined;
-	private localSequence = 0;
-	private rawAssistantStream = false;
-	private readonly turnSegments = new Map<string, number>();
-
-	projectHistory(history: HistoryEntry[]): ChatConversationItem[] {
-		return fullHistoryToChat(history);
-	}
-
-	beginTurn(turnId: string): string {
-		if (!this.turnSegments.has(turnId)) this.turnSegments.set(turnId, 0);
-		return this.messageIdForTurn(turnId);
-	}
-
-	advanceTurnSegment(turnId: string): string {
-		this.turnSegments.set(turnId, (this.turnSegments.get(turnId) ?? 0) + 1);
-		return this.messageIdForTurn(turnId);
-	}
-
-	messageIdForTurn(turnId: string): string {
-		return conversationAssistantMessageId(turnId, this.turnSegments.get(turnId) ?? 0);
-	}
-
-	enqueue(event: AssistantSessionEvent, messageIdOverride?: string): void {
-		if (
-			event.sequence !== undefined &&
-			this.lastHostSequence !== undefined &&
-			event.sequence <= this.lastHostSequence
-		) {
-			return;
-		}
-		if (event.sequence !== undefined) this.lastHostSequence = event.sequence;
-		this.localSequence = Math.max(this.localSequence + 1, event.sequence ?? 0);
-		this.rawAssistantStream = true;
-		const turnId = event.turnId ?? "legacy-unscoped";
-		this.pendingAssistantEvents.push({
-			event,
-			sequence: this.localSequence,
-			messageId: messageIdOverride ?? this.messageIdForTurn(turnId),
-		});
-	}
-
-	endTurn(turnId: string): void {
-		this.turnSegments.delete(turnId);
-	}
-
-	hasRawAssistantStream(): boolean {
-		return this.rawAssistantStream;
-	}
-
-	hasPendingEvents(): boolean {
-		return this.pendingAssistantEvents.length > 0;
-	}
-
-	flush(messages: ChatConversationItem[]): ChatConversationItem[] {
-		const pending = this.pendingAssistantEvents;
-		this.pendingAssistantEvents = [];
-		if (pending.length === 0) return messages;
-
-		let next = messages;
-		const states = new Map<string, ConversationMessageEventState>();
-		for (const queued of pending) {
-			let state = states.get(queued.messageId);
-			if (!state) {
-				const existing = next.find(
-					(item): item is Extract<ChatConversationItem, { readonly kind: "agent" }> =>
-						item.kind === "agent" && item.id === queued.messageId,
-				);
-				state = existing ? { conversationId: queued.event.sessionId, sequence: -1, message: existing } : undefined;
-			}
-			state = reduceConversationMessageEvent(state, toConversationEnvelope(queued));
-			states.set(queued.messageId, state);
-			const index = next.findIndex((item) => item.kind === "agent" && item.id === state.message.id);
-			if (index < 0) next = [...next, state.message];
-			else {
-				next = [...next];
-				next[index] = state.message;
-			}
-		}
-		return next;
-	}
-
-	reset(): void {
-		this.pendingAssistantEvents = [];
-		this.lastHostSequence = undefined;
-		this.localSequence = 0;
-		this.rawAssistantStream = false;
-		this.turnSegments.clear();
-		resetStreamState();
-	}
 }
 
 /**
@@ -147,32 +39,35 @@ export function projectConversationAgentMessage(input: {
 	const { message, messageId, entryId, turnId, authorId, timestamp, executions = [] } = input;
 	const phase = message.stopReason === "aborted" ? "aborted" : message.stopReason === "error" ? "failed" : "completed";
 	const toolStatus = phase === "aborted" ? "cancelled" : phase === "failed" ? "error" : "pending";
-	let items: ChatConversationItem[] = [
-		createConversationAgentMessage({
-			id: messageId,
-			entryId: entryId ?? messageId,
-			turnId: turnId ?? messageId,
-			authorId: authorId,
-			timestamp: timestamp ?? message.timestamp,
-			phase,
-			text: message.content.flatMap((part) => (part.type === "text" ? [part.text] : [])).join(""),
-			blocks: projectAssistantMessageBlocks(message, messageId, toolStatus),
-		}),
-	];
+	let projected = createConversationAgentMessage({
+		id: messageId,
+		entryId: entryId ?? messageId,
+		turnId: turnId ?? messageId,
+		authorId: authorId,
+		timestamp: timestamp ?? message.timestamp,
+		phase,
+		text: message.content.flatMap((part) => (part.type === "text" ? [part.text] : [])).join(""),
+		blocks: projectAssistantMessageBlocks(message, messageId, toolStatus),
+	});
 	for (const execution of executions.filter((item) => item.messageId === messageId)) {
-		const current = items[0];
-		const hasCall =
-			current?.kind === "agent" &&
-			current.blocks.some((block) => block.type === "tool_call" && block.toolCallId === execution.toolCallId);
+		const hasCall = projected.blocks.some(
+			(block) => block.type === "tool_call" && block.toolCallId === execution.toolCallId,
+		);
 		if (!hasCall) {
-			items = handleToolStart(items, execution.toolCallId, execution.toolName, execution.args, execution.startedAt);
+			projected = withToolCallStarted(
+				projected,
+				execution.toolCallId,
+				execution.toolName,
+				execution.args,
+				execution.startedAt,
+			);
 		}
 		for (const phase of execution.phases ?? []) {
-			items = handleToolPhase(items, execution.toolCallId, phase.label, phase.atMs);
+			projected = withToolCallPhase(projected, execution.toolCallId, phase.label, phase.atMs);
 		}
 		if (execution.result) {
-			items = handleToolEnd(
-				items,
+			projected = withToolCallEnded(
+				projected,
 				execution.toolCallId,
 				execution.result,
 				execution.isError === true,
@@ -186,9 +81,7 @@ export function projectConversationAgentMessage(input: {
 			);
 		}
 	}
-	const result = items[0];
-	if (!result) throw new Error("Assistant message projection produced no message");
-	return result;
+	return projected;
 }
 
 /**
@@ -222,34 +115,30 @@ export function reduceConversationToolExecutionEvent(
 	let message = base;
 	switch (event.event.type) {
 		case "start":
-			message = requireAgentMessage(
-				handleToolStart(
-					[base],
-					event.event.toolCallId,
-					event.event.toolName,
-					asRecord(event.event.args),
-					event.event.startedAt,
-				)[0],
+			message = withToolCallStarted(
+				base,
+				event.event.toolCallId,
+				event.event.toolName,
+				asRecord(event.event.args),
+				event.event.startedAt,
 			);
 			break;
 		case "phase":
-			message = requireAgentMessage(
-				handleToolPhase([base], event.event.toolCallId, event.event.label, event.event.atMs)[0],
-			);
+			message = withToolCallPhase(base, event.event.toolCallId, event.event.label, event.event.atMs);
 			break;
 		case "end": {
-			const started = base.blocks.some(
-				(block) => block.type === "tool_call" && block.toolCallId === event.event.toolCallId,
-			)
-				? [base]
-				: handleToolStart([base], event.event.toolCallId, event.event.toolName, {}, event.event.startedAt);
-			message = requireAgentMessage(
-				handleToolEnd(started, event.event.toolCallId, event.event.result, event.event.isError, {
-					startedAt: event.event.startedAt,
-					durationMs: event.event.durationMs,
-					phases: [...event.event.phases],
-				})[0],
+			const started = withToolCallStarted(
+				base,
+				event.event.toolCallId,
+				event.event.toolName,
+				{},
+				event.event.startedAt,
 			);
+			message = withToolCallEnded(started, event.event.toolCallId, event.event.result, event.event.isError, {
+				startedAt: event.event.startedAt,
+				durationMs: event.event.durationMs,
+				phases: [...event.event.phases],
+			});
 			break;
 		}
 		case "update":
@@ -260,28 +149,8 @@ export function reduceConversationToolExecutionEvent(
 	return { conversationId: event.conversationId, sequence: event.sequence, message };
 }
 
-function requireAgentMessage(message: ChatConversationItem | undefined) {
-	if (!message || message.kind !== "agent")
-		throw new Error("Tool execution projection did not produce an Agent message");
-	return message;
-}
-
 function asRecord(value: unknown): Record<string, unknown> {
 	return typeof value === "object" && value !== null && !Array.isArray(value)
 		? (value as Record<string, unknown>)
 		: {};
-}
-
-function toConversationEnvelope(queued: QueuedAssistantEvent): ConversationAgentMessageEvent {
-	const { event, sequence } = queued;
-	return {
-		type: "conversation.agent-message-event",
-		conversationId: event.sessionId,
-		messageId: queued.messageId,
-		turnId: event.turnId ?? queued.messageId,
-		author: { kind: "agent", id: DEFAULT_AGENT_PARTICIPANT_ID },
-		sequence,
-		timestamp: event.timestamp,
-		event,
-	};
 }

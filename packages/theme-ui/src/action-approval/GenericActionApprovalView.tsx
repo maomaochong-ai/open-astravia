@@ -1,13 +1,6 @@
 import { useState, type JSX } from "react";
-import {
-	Button,
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-} from "@vetta-org/ui";
+import { Button } from "@vetta-org/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@vetta-org/ui/dialog";
 import { ThemeSurface } from "../appearance/ThemeSurface";
 
 export interface GenericActionApprovalField {

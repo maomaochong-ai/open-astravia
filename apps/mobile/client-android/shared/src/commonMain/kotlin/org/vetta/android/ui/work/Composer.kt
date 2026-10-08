@@ -3,11 +3,13 @@ package org.vetta.android.ui.work
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -113,10 +115,11 @@ private sealed interface ComposerNotice {
 }
 
 /**
- * The composer shared by New Session and the chat, laid out like Telegram: a
- * round attach button, then the message field that grows with its text (Return
- * adds a line), then the voice button. Send appears inside the field once there is
- * something to send; while the agent works, Stop takes its place. The voice button
+ * The composer shared by New Session and the chat. The message field grows with
+ * its text (Return adds a line). Attach sits inside the field on the left, voice
+ * inside on the right. Send sits outside, to the right of the field, once there is
+ * something to send, scaling as the field gives up that width in 250ms and takes it
+ * back in 300ms; while the agent works, Stop takes its place. The voice button
  * slides a "Hold to talk" button out under the field: holding it dictates, and
  * letting go puts the words in the field without sending them, to edit first.
  */
@@ -238,24 +241,25 @@ fun Composer(
         Row(
             Modifier.alpha(if (dictation.listening) 0.15f else 1f),
             verticalAlignment = Alignment.Bottom,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            // A plain round button at the field's one-line height.
-            IconButton(
-                onClick = { sheet = true },
-                enabled = enabled,
-                modifier = Modifier.size(48.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surface).testTag("composer.attach"),
-            ) { Icon(Icons.Filled.Add, contentDescription = stringResource(Res.string.chat_attach)) }
             Row(
                 Modifier
                     .weight(1f)
+                    .testTag("composer.box")
                     .clip(RoundedCornerShape(24.dp))
                     .background(MaterialTheme.colorScheme.surface)
                     .border(1.dp, MaterialTheme.vettaExtra.border, RoundedCornerShape(24.dp))
-                    .padding(start = 16.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
+                    .padding(horizontal = 6.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.Bottom,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
+                IconButton(
+                    onClick = { sheet = true },
+                    enabled = enabled,
+                    modifier = Modifier.size(36.dp).testTag("composer.attach"),
+                ) {
+                    Icon(Icons.Filled.Add, contentDescription = stringResource(Res.string.chat_attach), modifier = Modifier.size(22.dp))
+                }
                 Box(Modifier.weight(1f).heightIn(min = 36.dp).padding(vertical = 8.dp), contentAlignment = Alignment.CenterStart) {
                     if (draft.text.isEmpty()) {
                         // Read out as the field's own label instead, so a screen reader names the field.
@@ -278,39 +282,55 @@ fun Composer(
                                 .testTag("composer.field"),
                     )
                 }
-                val buttonColors = IconButtonDefaults.filledIconButtonColors(containerColor = colors.pill, contentColor = colors.pillInk)
-                if (busy) {
-                    FilledIconButton(onClick = onStop, enabled = enabled, modifier = Modifier.size(36.dp).testTag("composer.stop"), shape = CircleShape, colors = buttonColors) {
-                        Icon(Icons.Filled.Stop, contentDescription = stringResource(Res.string.stop), modifier = Modifier.size(18.dp))
-                    }
-                } else {
-                    AnimatedVisibility(enabled && draft.canSend, enter = fadeIn() + scaleIn(), exit = fadeOut() + scaleOut()) {
-                        FilledIconButton(onClick = { onSend(draft) }, modifier = Modifier.size(36.dp).testTag("composer.send"), shape = CircleShape, colors = buttonColors) {
-                            Icon(Icons.AutoMirrored.Filled.Send, contentDescription = stringResource(Res.string.send), modifier = Modifier.size(18.dp))
+                IconButton(
+                    onClick = {
+                        if (voice) {
+                            voice = false
+                            focus.requestFocus()
+                            keyboard?.show()
+                        } else {
+                            voice = true
+                            keyboard?.hide()
+                            focusManager.clearFocus()
                         }
-                    }
+                    },
+                    enabled = enabled,
+                    modifier = Modifier.size(36.dp).testTag("composer.voice"),
+                ) {
+                    Icon(
+                        if (voice) Icons.Filled.Keyboard else Icons.Filled.Mic,
+                        contentDescription = stringResource(if (voice) Res.string.chat_dictation_keyboard else Res.string.chat_dictation_voice),
+                        modifier = Modifier.size(22.dp),
+                    )
                 }
             }
-            // Voice, or back to the keyboard while "Hold to talk" is out.
-            IconButton(
-                onClick = {
-                    if (voice) {
-                        voice = false
-                        focus.requestFocus()
-                        keyboard?.show()
-                    } else {
-                        voice = true
-                        keyboard?.hide()
-                        focusManager.clearFocus()
-                    }
-                },
-                enabled = enabled,
-                modifier = Modifier.size(48.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surface).testTag("composer.voice"),
+            val buttonColors = IconButtonDefaults.filledIconButtonColors(containerColor = colors.pill, contentColor = colors.pillInk)
+            // Width is part of the transition: the field narrows in 250ms as the button arrives and widens in 300ms as it leaves.
+            AnimatedVisibility(
+                visible = busy || (enabled && draft.canSend),
+                enter = fadeIn(tween(250)) + scaleIn(tween(250)) + expandHorizontally(tween(250), expandFrom = Alignment.End),
+                exit = fadeOut(tween(300)) + scaleOut(tween(300)) + shrinkHorizontally(tween(300), shrinkTowards = Alignment.End),
             ) {
-                Icon(
-                    if (voice) Icons.Filled.Keyboard else Icons.Filled.Mic,
-                    contentDescription = stringResource(if (voice) Res.string.chat_dictation_keyboard else Res.string.chat_dictation_voice),
-                )
+                if (busy) {
+                    FilledIconButton(
+                        onClick = onStop,
+                        enabled = enabled,
+                        modifier = Modifier.padding(start = 8.dp).size(48.dp).testTag("composer.stop"),
+                        shape = CircleShape,
+                        colors = buttonColors,
+                    ) {
+                        Icon(Icons.Filled.Stop, contentDescription = stringResource(Res.string.stop), modifier = Modifier.size(22.dp))
+                    }
+                } else {
+                    FilledIconButton(
+                        onClick = { onSend(draft) },
+                        modifier = Modifier.padding(start = 8.dp).size(48.dp).testTag("composer.send"),
+                        shape = CircleShape,
+                        colors = buttonColors,
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.Send, contentDescription = stringResource(Res.string.send), modifier = Modifier.size(22.dp))
+                    }
+                }
             }
         }
         AnimatedVisibility(voice && enabled, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {

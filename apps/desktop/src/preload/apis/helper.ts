@@ -14,6 +14,53 @@ export function onIpcVoidEvent(ipc: IpcRenderer, channel: string, handler: () =>
 	return () => ipc.removeListener(channel, listener);
 }
 
+/**
+ * Like {@link subscribeById}, for subscriptions whose reply carries a snapshot.
+ * Events the main process sent before the reply are held until `onSnapshot` ran,
+ * so the caller applies the snapshot before any event that follows it.
+ */
+export async function attachById<T, Snapshot>(
+	ipc: IpcRenderer,
+	attachChannel: string,
+	eventChannel: string,
+	unsubscribeChannel: string,
+	handlers: { readonly onSnapshot: (snapshot: Snapshot) => void; readonly onEvent: (data: T) => void },
+	args: unknown[],
+	decode: (data: unknown) => T = (data) => data as T,
+): Promise<() => void> {
+	let subscriptionId: string | undefined;
+	const buffered: Array<{ readonly incomingId: string; readonly data: unknown }> = [];
+	const listener = (_event: IpcRendererEvent, incomingId: string, data: unknown) => {
+		if (subscriptionId === undefined) {
+			buffered.push({ incomingId, data });
+			return;
+		}
+		if (incomingId === subscriptionId) handlers.onEvent(decode(data));
+	};
+	ipc.on(eventChannel, listener);
+	let snapshot: Snapshot;
+	try {
+		const response = (await ipc.invoke(attachChannel, ...args)) as {
+			subscriptionId: string;
+			snapshot: Snapshot;
+		};
+		subscriptionId = response.subscriptionId;
+		snapshot = response.snapshot;
+	} catch (error) {
+		ipc.removeListener(eventChannel, listener);
+		throw error;
+	}
+	handlers.onSnapshot(snapshot);
+	for (const event of buffered) {
+		if (event.incomingId === subscriptionId) handlers.onEvent(decode(event.data));
+	}
+	buffered.length = 0;
+	return () => {
+		ipc.removeListener(eventChannel, listener);
+		void ipc.invoke(unsubscribeChannel, subscriptionId);
+	};
+}
+
 export async function subscribeById<T>(
 	ipc: IpcRenderer,
 	subscribeChannel: string,

@@ -3,4 +3,4 @@ export type {
 	GenericActionApprovalViewLabels,
 	GenericActionApprovalViewProps,
 } from "@vetta-org/theme-ui/action-approval";
-export { GenericActionApprovalView } from "@vetta-org/theme-ui/action-approval";
+export { GenericActionApprovalView } from "@vetta-org/theme-ui/action-approval/GenericActionApprovalView";

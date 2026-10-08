@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { RemoteConnectionEvent, RemoteHelloDecision } from "../src/index.js";
 import {
 	FakeRelay,
@@ -334,6 +334,81 @@ describe("RemoteConnection through a relay", () => {
 		await settle();
 		await expect(phone.request("diagnostics.snapshot")).resolves.toEqual({ ok: true });
 		expect(phone.getSnapshot().lastRttMs).toBe(25);
+	});
+
+	it.each(["mobile", "desktop"] as const)(
+		"waits for a new handshake when the relay's %s disconnects",
+		async (role) => {
+			vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+			const { phone, host } = relayPair(new FakeRelay());
+			const leaving = role === "mobile" ? phone : host;
+			const staying = role === "mobile" ? host : phone;
+			const events = collect(staying);
+			try {
+				await host.connect();
+				await phone.connect();
+				await vi.advanceTimersByTimeAsync(0);
+				const received = new Promise<void>((resolve) => {
+					const unsubscribe = leaving.onEvent((event) => {
+						if (event.type !== "remote-request") return;
+						unsubscribe();
+						resolve();
+					});
+				});
+				const pending = staying.request("session.list");
+				const rejected = expect(pending).rejects.toThrow("remote peer is offline");
+				await received;
+				await leaving.close();
+				await rejected;
+				expect(staying.getSnapshot()).toMatchObject({ state: "connecting", pendingRequestCount: 0 });
+				expect(events.slice(-2)).toEqual([
+					{ type: "state", state: "connecting" },
+					{ type: "peer-status", online: false },
+				]);
+				await expect(staying.request("session.list")).rejects.toThrow("remote connection is connecting");
+
+				// Only the departing endpoint reconnects; the parked endpoint keeps its transport.
+				await leaving.connect();
+				await vi.advanceTimersByTimeAsync(0);
+				expect(staying.getSnapshot()).toMatchObject({ state: "online", reconnectCount: 0 });
+				leaving.onEvent((event) => {
+					if (event.type === "remote-request") {
+						void leaving.respond(event.request.requestId, { success: true, payload: { resumed: true } });
+					}
+				});
+				await expect(staying.request("session.list")).resolves.toEqual({ resumed: true });
+			} finally {
+				await phone.close();
+				await host.close();
+				vi.useRealTimers();
+			}
+		},
+	);
+
+	it("ignores duplicate offline notices and does not treat a presence notice as a handshake", async () => {
+		vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+		const { mobileTransport, desktopTransport } = directPair();
+		const phoneIdentity = generateIdentityKeyPair();
+		const phone = mobile(mobileTransport, { identity: phoneIdentity });
+		const host = desktop(desktopTransport, { expectedPeerIdentityKey: phoneIdentity.publicKey });
+		const events = collect(host);
+		try {
+			await host.connect();
+			await phone.connect();
+			await vi.advanceTimersByTimeAsync(0);
+			expect(host.getSnapshot().state).toBe("online");
+			events.length = 0;
+			await mobileTransport.send({ type: "peer_status", online: false });
+			await mobileTransport.send({ type: "peer_status", online: false });
+			await mobileTransport.send({ type: "peer_status", online: true });
+			expect(events.filter((event) => event.type === "state")).toEqual([{ type: "state", state: "connecting" }]);
+			expect(host.getSnapshot().state).toBe("connecting");
+			await expect(host.request("session.list")).rejects.toThrow("remote connection is connecting");
+		} finally {
+			await phone.close();
+			await host.close();
+			vi.useRealTimers();
+		}
 	});
 
 	it("rejects pending requests when the relay reports the peer offline", async () => {

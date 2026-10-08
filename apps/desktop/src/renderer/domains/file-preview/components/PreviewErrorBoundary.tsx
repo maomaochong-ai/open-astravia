@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { PreviewErrorBoundary as ThemePreviewErrorBoundary } from "@vetta-org/theme-ui/file-preview";
+import { PreviewErrorBoundary as ThemePreviewErrorBoundary } from "@vetta-org/theme-ui/file-preview/PreviewErrorBoundary";
 
 interface Props {
 	resetKey?: unknown;

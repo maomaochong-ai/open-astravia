@@ -7,7 +7,8 @@ import VettaKit
 /// finger moves the pointer from where it is, anywhere on the screen, picture or not; a
 /// tap clicks and a two-finger tap right-clicks where the pointer is; holding a finger
 /// half a second presses the button, so moving then drags. Two fingers pinch to zoom
-/// the picture and move it; the picture never moves otherwise. The pointer is drawn by
+/// the picture; a two-finger pan scrolls the desktop at 1x and moves the enlarged picture.
+/// The pointer is drawn by
 /// the phone the moment the finger moves, in the shape the desktop shows.
 public struct RemoteScreenView: UIViewRepresentable {
 	let track: RTCVideoTrack?
@@ -71,6 +72,7 @@ public final class RemoteScreenSurface: UIView, UIGestureRecognizerDelegate, RTC
 	/// The one finger moving the pointer, while it is the only finger down.
 	private var finger: UITouch?
 	private var fingerTravel: CGFloat = 0
+	private var twoFingerGesture = RemoteTwoFingerGesture()
 	private var lastPinchScale: CGFloat = 1
 	private var lastTwoFingerTranslation: CGPoint = .zero
 	private let tapFeel = UIImpactFeedbackGenerator(style: .light)
@@ -288,37 +290,50 @@ public final class RemoteScreenSurface: UIView, UIGestureRecognizerDelegate, RTC
 		}
 	}
 
-	@objc private func pinched(_ recognizer: UIPinchGestureRecognizer) {
+	@objc func pinched(_ recognizer: UIPinchGestureRecognizer) {
 		switch recognizer.state {
 		case .began:
 			lastPinchScale = 1
+			twoFingerGesture.beginPinch()
 		case .changed:
+			guard twoFingerGesture.transformsPicture else { return }
 			let factor = recognizer.scale / lastPinchScale
 			lastPinchScale = recognizer.scale
 			let rect = pictureRect
 			let location = recognizer.location(in: self)
 			viewport = viewport.transformed(factor: factor, focusX: location.x - rect.minX, focusY: location.y - rect.minY, moveX: 0, moveY: 0, width: rect.width, height: rect.height)
 			applyViewport()
+		case .ended, .cancelled, .failed:
+			twoFingerGesture.endPinch()
 		default:
 			break
 		}
 	}
 
-	@objc private func twoFingersMoved(_ recognizer: UIPanGestureRecognizer) {
+	@objc func twoFingersMoved(_ recognizer: UIPanGestureRecognizer) {
 		let translation = recognizer.translation(in: self)
 		switch recognizer.state {
 		case .began:
 			lastTwoFingerTranslation = translation
+			twoFingerGesture.beginPan(zoomed: viewport.zoomed)
 		case .changed:
+			let dx = translation.x - lastTwoFingerTranslation.x
+			let dy = translation.y - lastTwoFingerTranslation.y
+			lastTwoFingerTranslation = translation
+			guard twoFingerGesture.transformsPicture else {
+				if interactive, let command = twoFingerGesture.scroll(travel: dy) { onInput([command]) }
+				return
+			}
 			let rect = pictureRect
 			let location = recognizer.location(in: self)
 			viewport = viewport.transformed(
 				factor: 1, focusX: location.x - rect.minX, focusY: location.y - rect.minY,
-				moveX: translation.x - lastTwoFingerTranslation.x, moveY: translation.y - lastTwoFingerTranslation.y,
+				moveX: dx, moveY: dy,
 				width: rect.width, height: rect.height
 			)
-			lastTwoFingerTranslation = translation
 			applyViewport()
+		case .ended, .cancelled, .failed:
+			twoFingerGesture.endPan()
 		default:
 			break
 		}

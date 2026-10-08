@@ -3,6 +3,24 @@ import { describe, expect, it } from "vitest";
 import { collectAgentUsages, collectModelSwitchLabels, userModelSwitchFingerprint } from "./message-list-derived";
 
 describe("message-list-derived", () => {
+	it("keeps the session usage list while streaming text adds no usage, so rows stay memoized", () => {
+		const usage = { input: 1, output: 1 } as never;
+		const done = createConversationAgentMessage({ id: "a1", text: "done", blocks: [], usages: [usage] });
+		const first = collectAgentUsages([done, createConversationAgentMessage({ id: "a2", text: "st", blocks: [] })]);
+		const streamed = collectAgentUsages(
+			[done, createConversationAgentMessage({ id: "a2", text: "streaming", blocks: [] })],
+			first,
+		);
+		expect(streamed).toBe(first);
+
+		const nextUsage = { input: 2, output: 2 } as never;
+		const withNewCall = collectAgentUsages(
+			[done, createConversationAgentMessage({ id: "a2", text: "streaming", blocks: [], usages: [nextUsage] })],
+			first,
+		);
+		expect(withNewCall).toEqual([usage, nextUsage]);
+	});
+
 	it("keeps the model-switch fingerprint stable while only the assistant tail grows", () => {
 		const user = createConversationUserMessage({
 			id: "u1",

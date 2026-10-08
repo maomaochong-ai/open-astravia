@@ -64,6 +64,23 @@ private const val MAX_CONTROL_MESSAGE_BYTES = 1_500_000
 private const val TRACE_STEPS = 8
 
 /**
+ * STUN only, no TURN (ADR-0135). Mainland servers first: Google's is reachable there
+ * only through a proxy, which reports the proxy's address instead of the phone's.
+ * Kept in step with the desktop's `REMOTE_DESKTOP_ICE_SERVERS`.
+ */
+private val ICE_SERVERS = listOf(
+    listOf("stun:stun.miwifi.com:3478", "stun:stun.chat.bilibili.com:3478", "stun:stun.hitv.com:3478"),
+    listOf("stun:stun.cloudflare.com:3478", "stun:stun.l.google.com:19302"),
+)
+
+/**
+ * Shows each frame as soon as it is decoded. WebRTC's default jitter buffer smooths
+ * playback for video calls, and a desktop's bursty frames (tiny while still, hundreds
+ * of KB when a window moves) made it hold frames 100 to 300 ms on a 1 ms network.
+ */
+private const val FIELD_TRIALS = "WebRTC-ForcePlayoutDelay/min_ms:0,max_ms:0/"
+
+/**
  * One WebRTC session with the paired desktop, set up through the relay's viewer signaling.
  * Once connected directly it no longer needs the relay: if signaling drops (the relay
  * restarts, say) it reopens in the background and the link stays up.
@@ -244,7 +261,7 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
     private suspend fun run() {
         try {
             PeerConnectionFactory.initialize(
-                PeerConnectionFactory.InitializationOptions.builder(context).createInitializationOptions(),
+                PeerConnectionFactory.InitializationOptions.builder(context).setFieldTrials(FIELD_TRIALS).createInitializationOptions(),
             )
             factory = PeerConnectionFactory.builder()
                 .setVideoDecoderFactory(org.webrtc.DefaultVideoDecoderFactory(eglBase.eglBaseContext))
@@ -295,9 +312,7 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
     }
 
     private fun createPeerConnection() {
-        val configuration = PeerConnection.RTCConfiguration(listOf(
-            PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer(),
-        ))
+        val configuration = PeerConnection.RTCConfiguration(ICE_SERVERS.map { PeerConnection.IceServer.builder(it).createIceServer() })
         configuration.sdpSemantics = PeerConnection.SdpSemantics.UNIFIED_PLAN
         peerConnection = factory?.createPeerConnection(configuration, object : PeerConnection.Observer {
             override fun onSignalingChange(state: PeerConnection.SignalingState) = Unit
@@ -470,7 +485,8 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
         }
 
         override suspend fun close() {
-            channel?.close()
+            // A stopped session has disposed the channel, and closing it then throws.
+            if (!owner.isStopped) channel?.close()
             channelClosed("remote control data channel closed")
             owner.stop()
         }

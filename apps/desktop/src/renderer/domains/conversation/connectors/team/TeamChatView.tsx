@@ -1,10 +1,10 @@
 import { DefaultChatView, ChatComposer } from "../../components/chat-view/DefaultChatView";
-import { MessageList } from "../../components/MessageList";
 import { createActivityWorkspace } from "@shared/workspace/activity-workspace";
 import type { ActivityWorkspace } from "@shared/workspace/activity-workspace";
 import type { WorkSurfaceScope } from "@shared/workspace/work-surface";
 import { memo, useMemo } from "react";
 import { TeamComposerConnector } from "./TeamComposerConnector";
+import { TeamConversation } from "./TeamConversation";
 import { TeamMemberRoster } from "./TeamMemberRoster";
 import {
 	isTeamChatStreaming,
@@ -44,14 +44,14 @@ const TeamTimelinePane = memo(function TeamTimelinePane({
 	readonly onOpenMember: (memberId: string) => void;
 }): JSX.Element {
 	return (
-		<MessageList
+		<TeamConversation
+			feedKey={feedKey}
 			messages={messages}
 			workspace={workspace}
 			isStreaming={isStreaming}
-			sessionId={feedKey}
 			participants={members}
-			pendingLabel={pendingLabel}
-			onTeamMemberOpen={onOpenMember}
+			{...(pendingLabel ? { pendingLabel } : {})}
+			onOpenMember={onOpenMember}
 		/>
 	);
 });

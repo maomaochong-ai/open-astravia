@@ -81,7 +81,10 @@ export function createCodingAgentGoalSessionExtension(
 					{ kind: "document-participant", participant: withoutDisposal(runtime) },
 					...(supported
 						? [
-								{ kind: "agent-feature" as const, feature: createCodingAgentGoalFeature(runtime) },
+								{
+									kind: "agent-feature" as const,
+									feature: createCodingAgentGoalFeature(runtime, () => context.clock.now()),
+								},
 								{
 									kind: "continuation-source" as const,
 									source: {

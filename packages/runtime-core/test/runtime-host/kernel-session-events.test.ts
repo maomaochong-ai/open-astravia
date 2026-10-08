@@ -36,7 +36,14 @@ describe("Greenfield KernelEvent to SessionEvent adapter", () => {
 			type: "session.observation",
 			sessionId: "session-1",
 			turnId: "turn-1",
-			observation: { type: "message.delta", delta: "partial", source: "agent" },
+			observation: {
+				type: "tool.phase",
+				toolCallId: "call-1",
+				toolName: "bash",
+				label: "partial",
+				atMs: 5,
+				source: "tool",
+			},
 			timestamp: 123,
 		});
 
@@ -44,9 +51,11 @@ describe("Greenfield KernelEvent to SessionEvent adapter", () => {
 		expect(events[0]).toMatchObject({
 			sessionId: "session-1",
 			timestamp: 123,
-			source: "agent",
-			type: "message.delta",
-			delta: "partial",
+			source: "tool",
+			type: "tool.phase",
+			toolCallId: "call-1",
+			label: "partial",
+			atMs: 5,
 		});
 	});
 

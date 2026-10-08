@@ -1,11 +1,8 @@
 import { useTranslation } from "react-i18next";
-import {
-	fmtMultiplier,
-	MultiplierTag as ThemeMultiplierTag,
-} from "@vetta-org/theme-ui/shared";
+import { fmtMultiplier, MultiplierTag as ThemeMultiplierTag } from "@vetta-org/theme-ui/shared/MultiplierTag";
 import type { ModelOption } from "./useModelOptions";
 
-export { fmtMultiplier } from "@vetta-org/theme-ui/shared";
+export { fmtMultiplier } from "@vetta-org/theme-ui/shared/MultiplierTag";
 
 /** Desktop adapter: i18n for free/multiplier labels. */
 export function MultiplierTag({

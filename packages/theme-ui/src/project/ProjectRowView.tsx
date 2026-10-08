@@ -1,4 +1,4 @@
-import { cn } from "@vetta-org/ui";
+import { cn } from "@vetta-org/ui/utils";
 import type { JSX, Ref } from "react";
 import { RunningPulseDot } from "../sidebar/RunningPulseDot";
 import { PROJECT_TYPE_ICONS, type ProjectTypeIconKey, REMOTE_PROJECT_ICON } from "./types";

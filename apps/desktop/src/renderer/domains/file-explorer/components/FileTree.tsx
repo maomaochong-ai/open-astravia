@@ -4,7 +4,7 @@ import type {
 	FileExplorerDragEntry,
 	FileExplorerSelectOptions,
 } from "@vetta-org/theme-ui/file-explorer";
-import { FileTreeView } from "@vetta-org/theme-ui/file-explorer";
+import { FileTreeView } from "@vetta-org/theme-ui/file-explorer/FileTreeView";
 import type { KeyboardEvent } from "react";
 import { useFileTreeViewModel } from "../hooks/useFileTreeViewModel";
 

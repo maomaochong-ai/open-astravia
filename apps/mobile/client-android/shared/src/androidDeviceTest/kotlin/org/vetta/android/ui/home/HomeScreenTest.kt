@@ -8,14 +8,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performTouchInput
+import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -40,8 +44,10 @@ import org.vetta.android.resources.Res
 import org.vetta.android.resources.app_name
 import org.vetta.android.resources.home_connect_computer
 import org.vetta.android.resources.link_connected
+import org.vetta.android.resources.save
 import org.vetta.android.resources.session_delete
 import org.vetta.android.resources.session_pin
+import org.vetta.android.resources.session_rename
 import org.vetta.android.resources.work_clear_filters
 import org.vetta.android.resources.work_empty_filtered
 import org.vetta.android.resources.work_group_waiting
@@ -65,7 +71,9 @@ class HomeScreenTest {
 
         override fun resync(sessionId: String) = Unit
 
-        override fun rename(sessionId: String, title: String) = Unit
+        override fun rename(sessionId: String, title: String) {
+            calls += "rename $sessionId $title"
+        }
 
         override fun setPinned(sessionId: String, pinned: Boolean) {
             calls += "pin $sessionId $pinned"
@@ -240,6 +248,25 @@ class HomeScreenTest {
     }
 
     @Test
+    fun sessionRowShowsTimeAndProjectUnderTheTitle() {
+        setHome()
+        val row = composeRule.onNodeWithTag("session.run").fetchSemanticsNode().boundsInRoot
+        val meta = composeRule.onNodeWithTag("session.run.meta", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        assertTrue(meta.top > row.top, "time and project sit under the title")
+        assertTrue(meta.bottom <= row.bottom)
+        val icon = composeRule.onNodeWithTag("session.run.projectIcon", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        val project = composeRule.onNodeWithTag("session.run.project", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        val time = composeRule.onNodeWithTag("session.run.time", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        assertTrue(icon.right <= project.left, "the folder icon stays in front of the project")
+        assertTrue(project.right <= time.left, "the time sits after the project")
+        composeRule.onNodeWithTag("session.done.projectIcon", useUnmergedTree = true).assertDoesNotExist()
+        composeRule.onNodeWithTag("session.done.time", useUnmergedTree = true).assertIsDisplayed()
+        composeRule.onAllNodesWithText("vetta", useUnmergedTree = true).assertCountEquals(2)
+        composeRule.onAllNodesWithText("对话", useUnmergedTree = true).assertCountEquals(0)
+        composeRule.onNodeWithTag("session.done.meta", useUnmergedTree = true).assertIsDisplayed()
+    }
+
+    @Test
     fun ordersPinnedThenWaitingThenNewestAndOpensARow() {
         var opened: String? = null
         setHome(onOpenSession = { opened = it })
@@ -287,16 +314,30 @@ class HomeScreenTest {
     }
 
     @Test
-    fun longPressPinsAndDeleteAsksFirst() {
+    fun sessionMenuPinsRenamesAndDeleteAsksFirst() {
         val actions = RecordingActions()
-        setHome(actions = actions)
+        var opened: String? = null
+        setHome(actions = actions, onOpenSession = { opened = it })
         composeRule.onNodeWithTag("session.done").performTouchInput { longClick() }
+        composeRule.onNodeWithText(str(Res.string.session_pin)).assertDoesNotExist()
+        composeRule.onNodeWithText(str(Res.string.session_rename)).assertDoesNotExist()
+        opened = null
+
+        composeRule.onNodeWithTag("session.done.more").performClick()
+        assertEquals(null, opened, "the menu does not open the session")
         composeRule.onNodeWithText(str(Res.string.session_pin)).performClick()
         assertEquals("pin done true", actions.calls.last())
 
-        composeRule.onNodeWithTag("session.done").performTouchInput { longClick() }
+        composeRule.onNodeWithTag("session.done.more").performClick()
+        composeRule.onNodeWithText(str(Res.string.session_rename)).performClick()
+        composeRule.onNode(hasSetTextAction()).performTextReplacement("月报")
+        Espresso.closeSoftKeyboard()
+        composeRule.onNodeWithText(str(Res.string.save)).performClick()
+        assertEquals("rename done 月报", actions.calls.last())
+
+        composeRule.onNodeWithTag("session.done.more").performClick()
         composeRule.onNodeWithText(str(Res.string.session_delete)).performClick()
-        assertEquals(1, actions.calls.size, "delete waits for the confirmation")
+        assertEquals(2, actions.calls.size, "delete waits for the confirmation")
         composeRule.onNodeWithText(str(Res.string.session_delete)).performClick()
         assertEquals("delete done", actions.calls.last())
     }

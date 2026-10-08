@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { cn } from "@shared/lib/utils";
 import { useThemeComponent } from "@vetta-org/theme-sdk";
 import type { NewSessionHeroIdentity } from "@vetta-org/theme-ui";
-import { NewSessionPageLayoutView } from "@vetta-org/theme-ui/chat";
+import { NewSessionPageLayoutView } from "@vetta-org/theme-ui/chat/NewSessionPageLayoutView";
 import {
 	PANEL_REVEAL_DURATION,
 	PANEL_REVEAL_EASE,
@@ -26,6 +26,7 @@ import { createActivityWorkspace } from "@shared/workspace/activity-workspace";
 import { TeamComposerConnector } from "../../connectors/team/TeamComposerConnector";
 import type { TeamChatActions, TeamChatViewModel } from "../../connectors/team/teamChatModel";
 import { isTeamTarget, type NewSessionTargetKey } from "./target";
+import type { StartNewSessionGoal } from "../../services/goal-mode-entry";
 
 
 /** 命令区展开时输入栏下移的距离：面板向上生长，下方留白同步收掉。 */
@@ -48,6 +49,7 @@ interface NewSessionPageViewProps {
 	onSelectPendingProject: (name: string) => void;
 	onSelectProject: (cwd: string | null) => void;
 	onSend: (overrideText?: string, context?: SendInteractionContext) => Promise<void>;
+	onStartGoal: StartNewSessionGoal;
 	preparingProject: boolean;
 	projectOptions: readonly ProjectOption[];
 	projectSelection: ProjectSelection;
@@ -76,6 +78,7 @@ export function NewSessionPageView({
 	onSelectPendingProject,
 	onSelectProject,
 	onSend,
+	onStartGoal,
 	preparingProject,
 	projectOptions,
 	projectSelection,
@@ -191,6 +194,7 @@ export function NewSessionPageView({
 							<DefaultInputBarConnector
 								onSend={onSend}
 								onAbort={onAbort}
+								startNewSessionGoal={onStartGoal}
 								cwdOverride={cwd}
 								onExpandedChange={onCommandPanelExpandedChange}
 								sendPending={preparingProject ? { label: preparingLabel } : undefined}

@@ -233,7 +233,8 @@ export function createMessageItemSizeRecorder(
 	return (element, field) => {
 		const size = element[field];
 		if (field !== "offsetHeight" || size <= 0) return size;
-		const index = Number.parseInt(element.dataset.itemIndex ?? "", 10);
+		// `data-index` is the position in `items`; `data-item-index` is the list's anchored index.
+		const index = Number.parseInt(element.dataset.index ?? "", 10);
 		const item = Number.isInteger(index) ? items[index] : undefined;
 		if (item) cacheMeasuredHeight(measurementKey(scope, item), size);
 		return size;

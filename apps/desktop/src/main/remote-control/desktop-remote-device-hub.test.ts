@@ -1,4 +1,4 @@
-import { FakeTransport, generateIdentityKeyPair, RemoteConnection } from "@vetta/remote-control";
+import { FakeRelay, FakeTransport, generateIdentityKeyPair, RemoteConnection } from "@vetta/remote-control";
 import { describe, expect, it, vi } from "vitest";
 import { DesktopRemoteDeviceHub } from "./desktop-remote-device-hub.js";
 
@@ -37,6 +37,86 @@ function link(hub: DesktopRemoteDeviceHub, deviceId: string, channel: "p2p" | "l
 }
 
 describe("DesktopRemoteDeviceHub", () => {
+	it.each([undefined, "lan", "p2p"] as const)(
+		"updates relay presence while the desktop stays in the room (other channel: %s)",
+		async (otherChannel) => {
+			vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+			const presence: boolean[] = [];
+			const channels: string[][] = [];
+			const hub: DesktopRemoteDeviceHub = new DesktopRemoteDeviceHub({
+				handleRequest: async (_deviceId, request) => ({ method: request.method }),
+				toRemoteError: () => ({ code: "internal_error", message: "boom", retryable: false }),
+				onDeviceOnline: () => presence.push(true),
+				onDeviceOffline: () => presence.push(false),
+				onLinksChanged: (deviceId) => channels.push(hub.onlineChannels(deviceId)),
+			});
+			const relay = new FakeRelay();
+			const phone = new RemoteConnection(relay.createTransport("device-1", "mobile"), {
+				role: "mobile",
+				deviceId: "phone",
+				deviceName: "Phone",
+				capabilities,
+				identity: generateIdentityKeyPair(),
+			});
+			const desktop = new RemoteConnection(relay.createTransport("device-1", "desktop"), {
+				role: "desktop",
+				deviceId: "desktop",
+				deviceName: "Desktop",
+				capabilities,
+				identity: generateIdentityKeyPair(),
+				journal: hub.journalFor("device-1"),
+			});
+			hub.attach("device-1", { channel: "relay", connection: desktop });
+			const other = otherChannel ? link(hub, "device-1", otherChannel) : undefined;
+			try {
+				await desktop.connect();
+				await phone.connect();
+				await vi.advanceTimersByTimeAsync(0);
+				expect(channels.at(-1)).toEqual(["relay"]);
+				await expect(phone.request("session.list")).resolves.toEqual({ method: "session.list" });
+				if (other) {
+					await other.desktop.connect();
+					await other.phone.connect();
+					await vi.advanceTimersByTimeAsync(0);
+				}
+
+				// A brief relay interruption must not report the device offline.
+				await phone.close();
+				await vi.advanceTimersByTimeAsync(4_999);
+				await phone.connect();
+				await vi.advanceTimersByTimeAsync(1);
+				expect(presence).toEqual([true]);
+
+				await phone.close();
+				await vi.advanceTimersByTimeAsync(4_999);
+				expect(hub.isOnline("device-1")).toBe(true);
+				await vi.advanceTimersByTimeAsync(1);
+				if (other) {
+					expect(hub.isOnline("device-1")).toBe(true);
+					expect(channels.at(-1)).toEqual([otherChannel]);
+					expect(presence).toEqual([true]);
+					await other.phone.close();
+					await vi.advanceTimersByTimeAsync(5_000);
+				}
+				expect(hub.isOnline("device-1")).toBe(false);
+				expect(channels.at(-1)).toEqual([]);
+				expect(presence).toEqual([true, false]);
+
+				await phone.connect();
+				await vi.advanceTimersByTimeAsync(0);
+				expect(hub.isOnline("device-1")).toBe(true);
+				expect(channels.at(-1)).toEqual(["relay"]);
+				expect(presence).toEqual([true, false, true]);
+				await expect(phone.request("session.list")).resolves.toEqual({ method: "session.list" });
+			} finally {
+				await hub.dropAll();
+				await phone.close();
+				await other?.phone.close();
+				vi.useRealTimers();
+			}
+		},
+	);
+
 	it("delivers through the best link without duplicating events and routes requests back", async () => {
 		const online: string[] = [];
 		const hub = new DesktopRemoteDeviceHub(

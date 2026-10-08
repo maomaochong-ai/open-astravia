@@ -30,7 +30,7 @@ jobs:
         uses: ./.github/actions/install-bun-dependencies
 
       - name: Run quality checks
-        run: bun run check
+        run: bun run check:full
 
       - name: Test quality scripts
         run: bun run test:quality

@@ -12,6 +12,8 @@ import type { InputSegment } from "@shared/lib/input-tokens";
 import type { ContextCompactionEligibility, ContextCompositionReport } from "@vetta/runtime-core";
 import { atom } from "jotai";
 import { selectAtom } from "jotai/utils";
+import type { LastActiveSession } from "./last-active-session-storage";
+import { LAST_ACTIVE_SESSION_STORAGE_KEY, readLastActiveSession } from "./last-active-session-storage";
 import { runningSessionPathsAtom } from "./running-sessions-atoms";
 
 export type TeamMemberSummaryEventViewModel = {
@@ -123,10 +125,7 @@ export interface PendingScrollToEntry {
 
 export const pendingScrollToEntryAtom = atom<PendingScrollToEntry | null>(null);
 
-export interface LastActiveSession {
-	cwd: string;
-	sessionPath: string;
-}
+export type { LastActiveSession } from "./last-active-session-storage";
 
 export type SessionExecutionMode = "sandbox" | "full-access";
 export type ExecutionModeOverride = "inherit" | SessionExecutionMode;
@@ -184,7 +183,63 @@ export interface SelectedSkill {
 
 export type { AppshotAttachment, MentionedFile } from "@shared/conversation";
 
-export const chatMessagesAtom = atom<ChatConversationItem[]>([]);
+/**
+ * The active conversation feed (ADR-0146). Every write goes through
+ * `reduceConversationFeed`; the message list is a read-only projection of it.
+ */
+export interface ConversationFeedState {
+	/** Runtime that owns this feed; runtime-scoped writes for any other Runtime are ignored. */
+	readonly runtimeId: string | null;
+	/** Display order. */
+	readonly items: readonly ChatConversationItem[];
+	/** Ids confirmed by the latest applied durable history snapshot. */
+	readonly durableIds: ReadonlySet<string>;
+	/** Token of the applied history snapshot; responses to older requests are ignored. */
+	readonly historyRevision: number;
+	/** Last applied Runtime event sequence of the current subscription. */
+	readonly sequence: number;
+	/** Sends queued behind a running Turn: editor-only metadata waiting for the Kernel append. */
+	readonly queuedUsers: readonly ConversationUserMessageViewModel[];
+	/** Turn currently streaming, from `conversation.turn.*` facts. */
+	readonly activeTurnId: string | null;
+	/** Counter for renderer-local item ids (drafts before a Turn exists, local errors). */
+	readonly localSequence: number;
+}
+
+export function createConversationFeedState(runtimeId: string | null = null): ConversationFeedState {
+	return {
+		runtimeId,
+		items: [],
+		durableIds: new Set(),
+		historyRevision: 0,
+		sequence: 0,
+		queuedUsers: [],
+		activeTurnId: null,
+		localSequence: 0,
+	};
+}
+
+export const conversationFeedAtom = atom<ConversationFeedState>(createConversationFeedState());
+
+/**
+ * Read-only view of the active feed's items. Direct writes replace the items
+ * wholesale and keep only the durable marks that still apply; they exist for
+ * fixtures and must not be used by production writers.
+ */
+export const chatMessagesAtom = atom(
+	(get) => get(conversationFeedAtom).items as ChatConversationItem[],
+	(get, set, update: ChatConversationItem[] | ((previous: ChatConversationItem[]) => ChatConversationItem[])) => {
+		const feed = get(conversationFeedAtom);
+		const items = typeof update === "function" ? update(feed.items as ChatConversationItem[]) : update;
+		if (items === feed.items) return;
+		const ids = new Set(items.map((item) => item.id));
+		set(conversationFeedAtom, {
+			...feed,
+			items,
+			durableIds: new Set([...feed.durableIds].filter((id) => ids.has(id))),
+		});
+	},
+);
 
 /** Pending latest-message replacement, deferred until send. */
 export const pendingMessageEditAtom = atom<PendingMessageEdit | null>(null);
@@ -205,24 +260,6 @@ export const pendingSessionCreationAtom = atom<PendingSessionCreation | null>(nu
 export const pendingSessionOpenAtom = atom<PendingSessionOpen | null>(null);
 /** 已接受发送、但新会话/runtime 尚未准备好的 UI 过渡态。 */
 export const pendingSessionSendAtom = atom<{ messageId: string; interactionId: string } | null>(null);
-
-const LAST_ACTIVE_SESSION_STORAGE_KEY = "vetta-last-active-session";
-
-function readLastActiveSession(): LastActiveSession | null {
-	try {
-		const raw = localStorage.getItem(LAST_ACTIVE_SESSION_STORAGE_KEY);
-		if (!raw) return null;
-		const value = JSON.parse(raw) as Partial<LastActiveSession>;
-		if (typeof value.cwd !== "string" || !value.cwd || typeof value.sessionPath !== "string" || !value.sessionPath) {
-			localStorage.removeItem(LAST_ACTIVE_SESSION_STORAGE_KEY);
-			return null;
-		}
-		return { cwd: value.cwd, sessionPath: value.sessionPath };
-	} catch {
-		localStorage.removeItem(LAST_ACTIVE_SESSION_STORAGE_KEY);
-		return null;
-	}
-}
 
 const lastActiveSessionStorageAtom = atom<LastActiveSession | null>(readLastActiveSession());
 
@@ -423,7 +460,7 @@ export interface OpenSessionOptions {
 	 * finishes. Dispatched, never awaited: the first prompt's IPC only settles when the
 	 * whole turn ends, so awaiting it would hold Session hydration for the turn.
 	 */
-	onPromptReady?: () => void | Promise<void>;
+	onPromptReady?: (sessionId: string) => unknown;
 	/**
 	 * For a new session, render the chat route and yield a paint before starting
 	 * runtime creation. Existing-session opens ignore this option.

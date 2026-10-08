@@ -1,12 +1,15 @@
 import { createRootRoute, createRoute, createRouter, createHashHistory, redirect } from "@tanstack/react-router";
-import { lazy } from "react";
-import { RouteContentLoadingView } from "@vetta-org/theme-ui/app";
+import type { ErrorComponentProps } from "@tanstack/react-router";
+import { InitialRoutePaint } from "./root-layout/InitialRoutePaint";
+import { lazyRoutePage } from "./root-layout/lazy-route-page";
+import { RouteContentLoadingView } from "@vetta-org/theme-ui/app/RouteContentLoadingView";
 import { RootLayout } from "./App";
 import {
 	loadAbilitiesPage,
 	loadAgentCenterPage,
 	loadAutomationPage,
 	loadBatchTasksPage,
+	loadChatPage,
 	loadKnowledgeBasePage,
 	loadNewSessionPage,
 	loadPluginWorkspaceViewRoute,
@@ -14,36 +17,39 @@ import {
 	loadSettingsPage,
 } from "./route-page-loaders";
 import { RouteErrorPage } from "./shared/components/RouteErrorPage";
+
 import {
 	PLUGIN_HOSTED_ROUTE_PATH,
 	THEME_HOSTED_ROUTE_PATH,
 } from "./shared/hosted-routes/hosted-route-descriptors";
 
-const ChatPage = lazy(async () => ({
-	default: (await import("./domains/conversation/components/ChatPage")).ChatPage,
-}));
-const NewSessionPage = lazy(loadNewSessionPage);
-const SessionViewerPage = lazy(async () => ({
+function RouteErrorWithPaint(props: ErrorComponentProps): JSX.Element {
+	return <><RouteErrorPage {...props} /><InitialRoutePaint /></>;
+}
+
+const ChatPage = lazyRoutePage(loadChatPage);
+const NewSessionPage = lazyRoutePage(loadNewSessionPage);
+const SessionViewerPage = lazyRoutePage(async () => ({
 	default: (await import("./domains/conversation/components/SessionViewerPage")).SessionViewerPage,
 }));
-const AutomationPage = lazy(loadAutomationPage);
-const BatchTasksPage = lazy(loadBatchTasksPage);
-const AbilitiesPage = lazy(loadAbilitiesPage);
-const AgentCenterPage = lazy(loadAgentCenterPage);
-const TeamChatPage = lazy(async () => ({
+const AutomationPage = lazyRoutePage(loadAutomationPage);
+const BatchTasksPage = lazyRoutePage(loadBatchTasksPage);
+const AbilitiesPage = lazyRoutePage(loadAbilitiesPage);
+const AgentCenterPage = lazyRoutePage(loadAgentCenterPage);
+const TeamChatPage = lazyRoutePage(async () => ({
 	default: (await import("./domains/conversation/connectors/team/TeamChatPage")).TeamChatPage,
 }));
-const ScenesPage = lazy(loadScenesPage);
-const SettingsPage = lazy(loadSettingsPage);
-const ProjectDetailPage = lazy(async () => ({
+const ScenesPage = lazyRoutePage(loadScenesPage);
+const SettingsPage = lazyRoutePage(loadSettingsPage);
+const ProjectDetailPage = lazyRoutePage(async () => ({
 	default: (await import("./domains/project/components/ProjectDetailPage")).ProjectDetailPage,
 }));
-const KnowledgeBasePage = lazy(loadKnowledgeBasePage);
-const KnowledgeBaseListPage = lazy(async () => ({
+const KnowledgeBasePage = lazyRoutePage(loadKnowledgeBasePage);
+const KnowledgeBaseListPage = lazyRoutePage(async () => ({
 	default: (await import("./domains/knowledge-base/components/KnowledgeBaseListPage")).KnowledgeBaseListPage,
 }));
-const PluginWorkspaceViewRoute = lazy(loadPluginWorkspaceViewRoute);
-const ThemePageRoute = lazy(async () => ({
+const PluginWorkspaceViewRoute = lazyRoutePage(loadPluginWorkspaceViewRoute);
+const ThemePageRoute = lazyRoutePage(async () => ({
 	default: (await import("./shared/theme/pages/ThemePageRoute")).ThemePageRoute,
 }));
 
@@ -299,7 +305,7 @@ export const router = createRouter({
 	routeTree,
 	history: createHashHistory(),
 	defaultNotFoundComponent: ChatPage,
-	defaultErrorComponent: RouteErrorPage,
+	defaultErrorComponent: RouteErrorWithPaint,
 	defaultPendingComponent: RouteContentLoadingView,
 });
 

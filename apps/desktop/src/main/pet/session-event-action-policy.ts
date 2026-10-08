@@ -1,3 +1,4 @@
+import type { AssistantMessage } from "@vetta/ai";
 import { readCodingAgentBackgroundTasksObservation } from "@vetta/coding-agent/session-extensions";
 import type { SessionEvent } from "@vetta/runtime-core";
 import type { BackgroundCommandSnapshot } from "@vetta/runtime-tools";
@@ -122,7 +123,7 @@ function normalizeBodyText(value: string, maxLength = MAX_BODY_TEXT_LENGTH): str
 	return normalized.length <= maxLength ? normalized : `${normalized.slice(0, maxLength - 1)}…`;
 }
 
-function getAssistantBody(message: Extract<SessionEvent, { type: "message.final" }>["message"]): string | undefined {
+function getAssistantBody(message: AssistantMessage): string | undefined {
 	if (message.role !== "assistant" || !Array.isArray(message.content)) return undefined;
 	const text = message.content
 		.filter((part): part is { type: "text"; text: string } => {
@@ -226,13 +227,11 @@ const sessionPetActionRules: readonly SessionPetActionRule[] = [
 		name: "assistant-final-body",
 		resolve: (event) => {
 			const message =
-				event.type === "message.final"
+				event.channel === "assistant" && event.type === "done"
 					? event.message
-					: event.channel === "assistant" && event.type === "done"
-						? event.message
-						: event.channel === "assistant" && event.type === "error"
-							? event.error
-							: undefined;
+					: event.channel === "assistant" && event.type === "error"
+						? event.error
+						: undefined;
 			if (!message) return null;
 			const body = getAssistantBody(message);
 			return body

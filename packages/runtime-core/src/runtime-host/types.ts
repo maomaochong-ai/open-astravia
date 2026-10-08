@@ -85,10 +85,12 @@ export interface RuntimeHostSessionRecord {
  *
  * Events retain their original order and original AssistantMessageEvent payload.
  * They are cleared when the corresponding assistant message is durably appended
- * (`message.final` in the current compatibility event plane). `isActive` flips
- * on at `agent_start` and off at `agent_end`.
+ * (its `usage.update`). `isActive` flips on at `agent_start` and off at
+ * `agent_end`.
  */
 export interface InFlightBuffer {
+	/** Events of the running Turn from `conversation.turn.started` on, for whole-Turn replay. */
+	turn?: { readonly turnId: string; readonly events: SessionEvent[] };
 	turnStartedAt: number;
 	events: SessionEvent[];
 	isActive: boolean;

@@ -1,15 +1,7 @@
-import {
-	Button,
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-	Switch,
-} from "@vetta-org/ui";
+import { Button } from "@vetta-org/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@vetta-org/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@vetta-org/ui/select";
+import { Switch } from "@vetta-org/ui/switch";
 import { useId, type JSX } from "react";
 
 export interface FileExplorerSettingsViewProps {

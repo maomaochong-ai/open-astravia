@@ -52,7 +52,8 @@ export function buildPersonalizationBlock(settings: PersonalizationSettingsSourc
 	const parts: string[] = [];
 	const personaPrompt = getPersonaPrompt(personaId);
 	if (personaPrompt.trim()) parts.push(personaPrompt.trim());
-	if (customPrompt.trim()) parts.push(customPrompt.trim());
+	// 加标题让用户文本有边界，也让指令优先级里的 "custom instructions" 有明确指代。
+	if (customPrompt.trim()) parts.push(`# User custom instructions\n\n${customPrompt.trim()}`);
 	return parts.length > 0 ? parts.join("\n\n") : undefined;
 }
 

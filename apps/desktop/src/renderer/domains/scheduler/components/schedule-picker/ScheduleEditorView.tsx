@@ -1,4 +1,5 @@
-import { cn, Popover, PopoverContent, PopoverTrigger } from "@vetta-org/ui";
+import { cn } from "@vetta-org/ui/utils";
+import { Popover, PopoverContent, PopoverTrigger } from "@vetta-org/ui/popover";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {

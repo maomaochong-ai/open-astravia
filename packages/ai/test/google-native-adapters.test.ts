@@ -1,7 +1,7 @@
 import { Type } from "@sinclair/typebox";
 import { describe, expect, it, vi } from "vitest";
 import type { AssistantMessage, Context, LanguageModelStreamEvent, Model, ModelStreamResponse } from "../src/index.js";
-import { AI_ERROR_CODES, type AIError } from "../src/protocol/index.js";
+import { AI_ERROR_CODES, type AIError, createAssistantMessage } from "../src/protocol/index.js";
 import { createGoogleAdapter, type GoogleContentSender } from "../src/providers/google.js";
 import { googleGeminiCliAdapter } from "../src/providers/google-gemini-cli.js";
 import { createGoogleVertexAdapter, type GoogleVertexContentSender } from "../src/providers/google-vertex.js";
@@ -16,6 +16,50 @@ const googleModel = createModel("google-generative-ai", "google");
 const vertexModel = createModel("google-vertex", "google-vertex");
 const cliModel = createModel("google-gemini-cli", "google-gemini-cli");
 const cliApiKey = JSON.stringify({ token: "test-token", projectId: "test-project" });
+
+describe.each([
+	[
+		"Google",
+		googleModel,
+		(context: Context, send: GoogleContentSender) =>
+			createGoogleAdapter({ send }).stream({ model: googleModel, context }),
+	],
+	[
+		"Vertex",
+		vertexModel,
+		(context: Context, send: GoogleVertexContentSender) =>
+			createGoogleVertexAdapter({ send }).stream({ model: vertexModel, context }),
+	],
+] as const)("%s empty request validation", (_name, model, createAdapter) => {
+	it.each([
+		["no messages", []],
+		["empty user parts", [{ role: "user", content: [], timestamp: 1 }]],
+		[
+			"filtered assistant content",
+			[createAssistantMessage({ api: model.api, provider: model.provider, model: model.id })],
+		],
+	] satisfies Array<[string, Context["messages"]]>)("rejects %s before transport", async (_case, messages) => {
+		const send = vi.fn(async () => chunks([]));
+		const response = await createAdapter({ systemPrompt: "Goal", messages }, send);
+		const events: LanguageModelStreamEvent[] = [];
+		const collect = async () => {
+			for await (const event of response.events) events.push(event);
+		};
+
+		await expect(Promise.all([collect(), response.result])).rejects.toMatchObject({
+			code: AI_ERROR_CODES.INVALID_REQUEST,
+			phase: "request",
+			retryable: false,
+			provider: model.provider,
+			modelId: model.id,
+		});
+		expect(events.at(-1)).toMatchObject({
+			type: "error",
+			failure: { code: AI_ERROR_CODES.INVALID_REQUEST, phase: "request", retryable: false },
+		});
+		expect(send).not.toHaveBeenCalled();
+	});
+});
 
 describe("Google Generative AI native adapter", () => {
 	it("uses the normalized provider message in the terminal error event", async () => {

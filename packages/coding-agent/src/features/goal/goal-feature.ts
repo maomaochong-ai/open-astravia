@@ -1,12 +1,34 @@
-import type { AgentFeatureDefinition, ModelCallContributionProvider } from "@vetta/runtime-core/kernel";
+import type {
+	AgentFeatureDefinition,
+	ContextProvider,
+	ModelCallContributionProvider,
+} from "@vetta/runtime-core/kernel";
 import { GOAL_INSTRUCTION_ID, renderGoalInstructions } from "./goal-instructions.js";
 import type { CodingAgentGoalRuntime } from "./goal-runtime.js";
 import { createGoalTools } from "./tools.js";
 
 const GOAL_INSTRUCTION_PRIORITY = 950;
 
-export function createCodingAgentGoalFeature(runtime: CodingAgentGoalRuntime): AgentFeatureDefinition {
+export function createCodingAgentGoalFeature(
+	runtime: CodingAgentGoalRuntime,
+	now: () => number,
+): AgentFeatureDefinition {
 	const tools = createGoalTools(runtime);
+	const startupContext: ContextProvider = {
+		id: "coding-agent.goal-start",
+		async provide(input, signal) {
+			signal.throwIfAborted();
+			if (input.input || runtime.readState()?.status !== "active") return [];
+			// Continue has no user input; provide a transient trigger even when history is empty.
+			return [
+				{
+					role: "user",
+					content: "Begin working toward the active goal defined in the system instructions.",
+					timestamp: now(),
+				},
+			];
+		},
+	};
 	const provider = (): ModelCallContributionProvider => ({
 		id: "coding-agent.goal",
 		bindForTurn: () => provider(),
@@ -36,7 +58,7 @@ export function createCodingAgentGoalFeature(runtime: CodingAgentGoalRuntime): A
 			return {
 				async contribute(contributionContext) {
 					contributionContext.signal.throwIfAborted();
-					return { modelCallProviders: [provider()] };
+					return { modelCallProviders: [provider()], contextProviders: [startupContext] };
 				},
 				async dispose() {},
 			};

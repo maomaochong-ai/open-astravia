@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		04032F6FE25AFFC90FF24235 /* BoardSummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2E57343C2D36E3BE44AE2C2 /* BoardSummary.swift */; };
 		0AF6F5BEB9F459E2AC4F9F2C /* SelectableText.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BB05311664030A073FAB0BD /* SelectableText.swift */; };
+		1455060CE6AFA8129543AEFC /* VettaKit in Frameworks */ = {isa = PBXBuildFile; productRef = 5479FB7081D823446C19030A /* VettaKit */; };
 		1751F6BEC22BE28DE42676E2 /* MarkdownView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7F30E48D0595CE66EF6B8A3 /* MarkdownView.swift */; };
 		1BC2ADDD25F6F424A36E542A /* SessionActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42C75DA38A656366214CFA8E /* SessionActivityAttributes.swift */; };
 		1C3ED9E212F22BF40A83A827 /* SessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7040E8A21BCC88B0A703712D /* SessionView.swift */; };
@@ -22,6 +23,7 @@
 		3E04872F62E0280B58E31A31 /* SessionActivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFEE4568B92E6D902969658A /* SessionActivityWidget.swift */; };
 		4F34BF649619CE972ED4CC8E /* InvitePairView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FCDD8D1166D2CB44460EADA /* InvitePairView.swift */; };
 		4F47D45F4A52DF51462C2294 /* VettaWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 405CD81A957E334A0D0E01F1 /* VettaWidgets.swift */; };
+		538E84FF2050A297B5E09CE6 /* NetworkWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3A4CA2973D6C669B7ECEB91 /* NetworkWatcher.swift */; };
 		553F60767299442FEB0D3C01 /* ChatInputBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC4528B8445F4DFE1B3DAC95 /* ChatInputBar.swift */; };
 		557A05454FD9578BF19AECC7 /* TaskBoardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D2A6611E2835A451FE4B4D4 /* TaskBoardView.swift */; };
 		55F1AF1E8FA861B3D929EABE /* LiveActivityController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 614A36D1F328D128D29D23BE /* LiveActivityController.swift */; };
@@ -30,8 +32,12 @@
 		63581B8EDAF81E8D93112759 /* KeyboardWarmup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 673796C16D0A139458E920DF /* KeyboardWarmup.swift */; };
 		6673CF5C1F7565B1C508CB2F /* AnswerQuestionIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2602407278F3CD5FBB62062A /* AnswerQuestionIntent.swift */; };
 		66D6CE7F264FF96A2319C757 /* SessionActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42C75DA38A656366214CFA8E /* SessionActivityAttributes.swift */; };
+		74AFF2CCE51868A8C24DC633 /* VettaRTC in Frameworks */ = {isa = PBXBuildFile; productRef = 922F00843BC108D20D89AC8D /* VettaRTC */; };
+		7817043EE92EDBA7254220A4 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = D9EC3367723DEC9190E6178F /* PrivacyInfo.xcprivacy */; };
 		7DA488FEBA0742A13F504CD6 /* VettaWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = DB8ACE598BF9B55DF98CD7C1 /* VettaWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		813D408653DD808E19EC3B45 /* RemoteScreenSurfaceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7906FD97A76864E972B9C2AA /* RemoteScreenSurfaceTests.swift */; };
 		8CB51BACBD63840B98FE330F /* QuestionPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1571266B7208052D80E40A95 /* QuestionPanel.swift */; };
+		952C4B56D7EE26BBF1659623 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A7F83033C41560D540A7083F /* PrivacyInfo.xcprivacy */; };
 		97373277B2BCFF1BA7983CE2 /* ModelSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0D2A6C73F7E73DC53077670 /* ModelSheet.swift */; };
 		97E3DC8E241B2B6E710580AC /* PairView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5FE60E74C2993F10053947E /* PairView.swift */; };
 		99925AFD6476F200F1186F5D /* NewSessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14FB7C60CF7BBB386D64B42C /* NewSessionView.swift */; };
@@ -96,6 +102,7 @@
 		0FCDD8D1166D2CB44460EADA /* InvitePairView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvitePairView.swift; sourceTree = "<group>"; };
 		14FB7C60CF7BBB386D64B42C /* NewSessionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewSessionView.swift; sourceTree = "<group>"; };
 		1571266B7208052D80E40A95 /* QuestionPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuestionPanel.swift; sourceTree = "<group>"; };
+		18F2D561C63B8FF31A04B705 /* VettaRTCTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = VettaRTCTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		2602407278F3CD5FBB62062A /* AnswerQuestionIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnswerQuestionIntent.swift; sourceTree = "<group>"; };
 		3336215DCCD9B5B8DB739834 /* SkillSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillSheet.swift; sourceTree = "<group>"; };
 		379D80CBC3E02B088693F66B /* FilesPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilesPanel.swift; sourceTree = "<group>"; };
@@ -110,6 +117,7 @@
 		6D2A6611E2835A451FE4B4D4 /* TaskBoardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskBoardView.swift; sourceTree = "<group>"; };
 		7040E8A21BCC88B0A703712D /* SessionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionView.swift; sourceTree = "<group>"; };
 		71BB21C509A581D37A42B7FC /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		7906FD97A76864E972B9C2AA /* RemoteScreenSurfaceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteScreenSurfaceTests.swift; sourceTree = "<group>"; };
 		7CE6378E652FA83EE0F754E0 /* VettaUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = VettaUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		8754BC022E2DA6BE46766DE0 /* VettaUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VettaUITests.swift; sourceTree = "<group>"; };
 		91E9CDFB90F37D5D32E27EAA /* DictationHaptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationHaptics.swift; sourceTree = "<group>"; };
@@ -124,6 +132,7 @@
 		A5B834FE35ABAA6C5DE654BC /* ProjectView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectView.swift; sourceTree = "<group>"; };
 		A5FE60E74C2993F10053947E /* PairView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairView.swift; sourceTree = "<group>"; };
 		A611A3DDE7F1EC89CAD12F7F /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		A7F83033C41560D540A7083F /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		AE556B5F31422EA43BDF8294 /* ProjectSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectSheet.swift; sourceTree = "<group>"; };
 		AFA10FF588C2F944AE4E2E90 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		B43B0EEECDDBB2807AA280EF /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -134,11 +143,13 @@
 		C2E57343C2D36E3BE44AE2C2 /* BoardSummary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardSummary.swift; sourceTree = "<group>"; };
 		CA39B1C0456D27FC25D9A90B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		CC87D827140BB66CD638FD48 /* Vetta.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Vetta.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D9EC3367723DEC9190E6178F /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		DB8ACE598BF9B55DF98CD7C1 /* VettaWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = VettaWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		DDD1656ECA9BA0A1442B19A3 /* SessionCards.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionCards.swift; sourceTree = "<group>"; };
 		E33BB88AA6F56D2A00716432 /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
 		E7F30E48D0595CE66EF6B8A3 /* MarkdownView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownView.swift; sourceTree = "<group>"; };
 		F0D2A6C73F7E73DC53077670 /* ModelSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelSheet.swift; sourceTree = "<group>"; };
+		F3A4CA2973D6C669B7ECEB91 /* NetworkWatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkWatcher.swift; sourceTree = "<group>"; };
 		F48CB4F31FE51D7DCA191DCA /* HomeDrawer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeDrawer.swift; sourceTree = "<group>"; };
 		F4BD5077EC35B7196CE6FE34 /* ProjectRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectRow.swift; sourceTree = "<group>"; };
 		F4DEB394450DD49397D674E7 /* VettaRTC */ = {isa = PBXFileReference; lastKnownFileType = folder; name = VettaRTC; path = VettaRTC; sourceTree = SOURCE_ROOT; };
@@ -163,9 +174,26 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		ECC13EC8D10DF60B38C01064 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				74AFF2CCE51868A8C24DC633 /* VettaRTC in Frameworks */,
+				1455060CE6AFA8129543AEFC /* VettaKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		050AAB9410B471D0A95F5898 /* Tests */ = {
+			isa = PBXGroup;
+			children = (
+				DC995D48EC40340B6FB1E4FF /* VettaRTCTests */,
+			);
+			path = Tests;
+			sourceTree = "<group>";
+		};
 		2E921D2E6EE93050053FBA5C /* Platform */ = {
 			isa = PBXGroup;
 			children = (
@@ -175,6 +203,7 @@
 				673796C16D0A139458E920DF /* KeyboardWarmup.swift */,
 				E33BB88AA6F56D2A00716432 /* KeychainStore.swift */,
 				614A36D1F328D128D29D23BE /* LiveActivityController.swift */,
+				F3A4CA2973D6C669B7ECEB91 /* NetworkWatcher.swift */,
 				4351D91117ED64F564EE2106 /* QRScannerView.swift */,
 				6972B8060DA17716B70449AD /* SessionNotifier.swift */,
 				9A223D846ECA782112079EA4 /* SpeechDictation.swift */,
@@ -206,6 +235,7 @@
 			isa = PBXGroup;
 			children = (
 				AFA10FF588C2F944AE4E2E90 /* Info.plist */,
+				A7F83033C41560D540A7083F /* PrivacyInfo.xcprivacy */,
 				BFEE4568B92E6D902969658A /* SessionActivityWidget.swift */,
 				405CD81A957E334A0D0E01F1 /* VettaWidgets.swift */,
 			);
@@ -220,6 +250,14 @@
 				9958F311B813AAB23E9A6D69 /* VettaApp.swift */,
 			);
 			path = App;
+			sourceTree = "<group>";
+		};
+		B011B2BAE533BC541E90F1CC /* VettaRTC */ = {
+			isa = PBXGroup;
+			children = (
+				050AAB9410B471D0A95F5898 /* Tests */,
+			);
+			path = VettaRTC;
 			sourceTree = "<group>";
 		};
 		B37F2678FD8E312DE1FAF6C9 /* Shared */ = {
@@ -256,6 +294,7 @@
 				E766375413A6BA08F9BC81C4 /* Packages */,
 				B37F2678FD8E312DE1FAF6C9 /* Shared */,
 				69A3FC572E58344E92287B38 /* Vetta */,
+				B011B2BAE533BC541E90F1CC /* VettaRTC */,
 				EEFE447349E9D6DB3D640B2B /* VettaUITests */,
 				7D68FD074C12E12CADD12C98 /* VettaWidgets */,
 				D707FF29580CD53D08C85A11 /* Products */,
@@ -266,10 +305,19 @@
 			isa = PBXGroup;
 			children = (
 				CC87D827140BB66CD638FD48 /* Vetta.app */,
+				18F2D561C63B8FF31A04B705 /* VettaRTCTests.xctest */,
 				7CE6378E652FA83EE0F754E0 /* VettaUITests.xctest */,
 				DB8ACE598BF9B55DF98CD7C1 /* VettaWidgets.appex */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		DC995D48EC40340B6FB1E4FF /* VettaRTCTests */ = {
+			isa = PBXGroup;
+			children = (
+				7906FD97A76864E972B9C2AA /* RemoteScreenSurfaceTests.swift */,
+			);
+			path = VettaRTCTests;
 			sourceTree = "<group>";
 		};
 		E766375413A6BA08F9BC81C4 /* Packages */ = {
@@ -316,6 +364,7 @@
 				B43B0EEECDDBB2807AA280EF /* Assets.xcassets */,
 				CA39B1C0456D27FC25D9A90B /* Info.plist */,
 				A13EF44F614DFAF09BEA92D8 /* InfoPlist.xcstrings */,
+				D9EC3367723DEC9190E6178F /* PrivacyInfo.xcprivacy */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -340,6 +389,26 @@
 			productName = VettaUITests;
 			productReference = 7CE6378E652FA83EE0F754E0 /* VettaUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		B9DFC0CB9B81F02F5A21FE0C /* VettaRTCTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 3B8C704885B216ED45A3A152 /* Build configuration list for PBXNativeTarget "VettaRTCTests" */;
+			buildPhases = (
+				C58E15511FC7E72EC2022224 /* Sources */,
+				ECC13EC8D10DF60B38C01064 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = VettaRTCTests;
+			packageProductDependencies = (
+				922F00843BC108D20D89AC8D /* VettaRTC */,
+				5479FB7081D823446C19030A /* VettaKit */,
+			);
+			productName = VettaRTCTests;
+			productReference = 18F2D561C63B8FF31A04B705 /* VettaRTCTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
 		};
 		EFF47FAFC9162FC5F0E8FD23 /* Vetta */ = {
 			isa = PBXNativeTarget;
@@ -369,6 +438,7 @@
 			buildConfigurationList = E3906BC9AA36095ACE3C4918 /* Build configuration list for PBXNativeTarget "VettaWidgets" */;
 			buildPhases = (
 				88E54516BB4AF9A089C1878D /* Sources */,
+				BCC61F68AC9D9BEE6EFD8523 /* Resources */,
 				7B602BC0994DD8C693D65626 /* Frameworks */,
 			);
 			buildRules = (
@@ -395,6 +465,9 @@
 					6B17FFF7D8EC56DB20D70966 = {
 						ProvisioningStyle = Automatic;
 						TestTargetID = EFF47FAFC9162FC5F0E8FD23;
+					};
+					B9DFC0CB9B81F02F5A21FE0C = {
+						ProvisioningStyle = Automatic;
 					};
 					EFF47FAFC9162FC5F0E8FD23 = {
 						ProvisioningStyle = Automatic;
@@ -425,6 +498,7 @@
 			targets = (
 				EFF47FAFC9162FC5F0E8FD23 /* Vetta */,
 				FBB0B79794FE516CED4C7A39 /* VettaWidgets */,
+				B9DFC0CB9B81F02F5A21FE0C /* VettaRTCTests */,
 				6B17FFF7D8EC56DB20D70966 /* VettaUITests */,
 			);
 		};
@@ -437,6 +511,15 @@
 			files = (
 				29BC275076D8A1DC3A573BBB /* Assets.xcassets in Resources */,
 				A4C727247A724BC396D2EF75 /* InfoPlist.xcstrings in Resources */,
+				7817043EE92EDBA7254220A4 /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BCC61F68AC9D9BEE6EFD8523 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				952C4B56D7EE26BBF1659623 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -485,6 +568,7 @@
 				55F1AF1E8FA861B3D929EABE /* LiveActivityController.swift in Sources */,
 				1751F6BEC22BE28DE42676E2 /* MarkdownView.swift in Sources */,
 				97373277B2BCFF1BA7983CE2 /* ModelSheet.swift in Sources */,
+				538E84FF2050A297B5E09CE6 /* NetworkWatcher.swift in Sources */,
 				99925AFD6476F200F1186F5D /* NewSessionView.swift in Sources */,
 				97E3DC8E241B2B6E710580AC /* PairView.swift in Sources */,
 				F28E4179CBE02483F7D37374 /* ProjectRow.swift in Sources */,
@@ -505,6 +589,14 @@
 				557A05454FD9578BF19AECC7 /* TaskBoardView.swift in Sources */,
 				31B8554CEA1268D8C84793F6 /* Theme.swift in Sources */,
 				3D463C9C2C3233BBCDE99B95 /* VettaApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C58E15511FC7E72EC2022224 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				813D408653DD808E19EC3B45 /* RemoteScreenSurfaceTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -650,7 +742,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -692,6 +784,40 @@
 			};
 			name = Release;
 		};
+		D8B56AD33C71B4B87C5DFFA0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.openvetta.mobile.rtctests;
+				SDKROOT = iphoneos;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = nonisolated;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		D921771C7D3CA29C7FF3CEA8 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.openvetta.mobile.rtctests;
+				SDKROOT = iphoneos;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = nonisolated;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
 		EC650186AB77277F1F53C9B4 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 01B829A0AD28FC1C65D8E276 /* Signing.xcconfig */;
@@ -728,7 +854,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
@@ -769,6 +895,15 @@
 			buildConfigurations = (
 				EC650186AB77277F1F53C9B4 /* Debug */,
 				9FA0759C6B1223B375F8F64C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		3B8C704885B216ED45A3A152 /* Build configuration list for PBXNativeTarget "VettaRTCTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D921771C7D3CA29C7FF3CEA8 /* Debug */,
+				D8B56AD33C71B4B87C5DFFA0 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
@@ -815,6 +950,14 @@
 
 /* Begin XCSwiftPackageProductDependency section */
 		05B476E54D0DEE49013A2B42 /* VettaRTC */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = VettaRTC;
+		};
+		5479FB7081D823446C19030A /* VettaKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = VettaKit;
+		};
+		922F00843BC108D20D89AC8D /* VettaRTC */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = VettaRTC;
 		};

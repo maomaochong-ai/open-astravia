@@ -257,8 +257,6 @@ describe("RPC session event compatibility", () => {
 		const frames = [
 			...adapter.map(sessionEvent({ type: "session.lifecycle", phase: "agent_start" })),
 			...adapter.map(sessionEvent({ type: "session.lifecycle", phase: "turn_start" })),
-			...adapter.map(sessionEvent({ type: "message.delta", delta: "hello" })),
-			...adapter.map(sessionEvent({ type: "thinking.delta", delta: "reason" })),
 			...adapter.map(
 				sessionEvent({
 					type: "tool.start",
@@ -296,14 +294,6 @@ describe("RPC session event compatibility", () => {
 		expect(frames).toEqual([
 			{ type: "agent_start" },
 			{ type: "turn_start", turnIndex: 0, timestamp: 100 },
-			{
-				type: "message_update",
-				assistantMessageEvent: { type: "text_delta", contentIndex: 0, delta: "hello" },
-			},
-			{
-				type: "message_update",
-				assistantMessageEvent: { type: "thinking_delta", contentIndex: 0, delta: "reason" },
-			},
 			{
 				type: "tool_execution_start",
 				toolCallId: "call-1",
@@ -488,8 +478,6 @@ function createInitialization(): RpcSessionInitialization {
 function sessionEvent(
 	event:
 		| { readonly type: "session.lifecycle"; readonly phase: "agent_start" | "turn_start" | "turn_end" | "agent_end" }
-		| { readonly type: "message.delta"; readonly delta: string }
-		| { readonly type: "thinking.delta"; readonly delta: string }
 		| {
 				readonly type: "tool.start";
 				readonly toolCallId: string;

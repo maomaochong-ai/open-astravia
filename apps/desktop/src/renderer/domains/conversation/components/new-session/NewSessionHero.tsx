@@ -8,7 +8,7 @@ import type {
 	NewSessionSceneCarouselLabels,
 	NewSessionSceneItem,
 } from "@vetta-org/theme-ui";
-import { AgentAvatarView } from "@vetta-org/theme-ui/chat";
+import { AgentAvatarView } from "@vetta-org/theme-ui/chat/AgentAvatarView";
 import { type CSSProperties, useRef } from "react";
 import { GuideBadgeSwiper } from "../GuideBadgeSwiper";
 import { easeOut } from "./constants";

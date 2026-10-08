@@ -4,6 +4,7 @@ import { getDefaultStore } from "jotai";
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { withSessionAttach } from "./session-attach.fixture";
 
 const mocks = vi.hoisted(() => ({
 	applyLocalRename: vi.fn(),
@@ -136,7 +137,7 @@ it("陈旧实例的 sendMessage 仍应发给当前激活会话，而不是该实
 			batchTasks: { resumeTaskWithText: vi.fn() },
 			config: { get: vi.fn() },
 			dialog: { persistImages: vi.fn() },
-			session: sessionApi,
+			session: withSessionAttach(sessionApi),
 		},
 	});
 

@@ -27,9 +27,42 @@ export function findConversationMessageArchitectureViolations(files) {
 		if (file.path.startsWith("packages/agent-team/") && /@vetta\/runtime-subagents/u.test(file.text)) {
 			violations.push(`${file.path}: Agent Team must not depend on the private subagent runtime`);
 		}
+		const isTest = /\.test\.[cm]?[jt]sx?$/u.test(file.path);
+		const isComposableView =
+			file.path.startsWith("apps/desktop/src/renderer/domains/conversation/conversation-view/") &&
+			!isTest &&
+			!/\.fixture\.[cm]?[jt]sx?$/u.test(file.path);
+		const isSharedMessageRendering =
+			/^apps\/desktop\/src\/renderer\/domains\/conversation\/components\/(?:message-list|blocks)\//u.test(
+				file.path,
+			) && !isTest;
+		if (isSharedMessageRendering) {
+			for (const [index, line] of file.text.split(/\r?\n/u).entries()) {
+				if (/\bactiveSessionAtom\b|\b\w+FnRef\b/u.test(line)) {
+					violations.push(
+						`${file.path}:${index + 1}: shared message rendering serves every feed; session-only parts belong in session-conversation (ADR-0147)`,
+					);
+				}
+			}
+		}
+		if (isComposableView) {
+			for (const [index, line] of file.text.split(/\r?\n/u).entries()) {
+				const readsGlobalStore = /^import\s+(?!type\b)[^;]*from\s+["']@shared\/store\//u.test(line);
+				if (readsGlobalStore || /\b\w+FnRef\b/u.test(line)) {
+					violations.push(
+						`${file.path}:${index + 1}: composable conversation parts take data and capabilities from the feed, not global state (ADR-0147)`,
+					);
+				}
+			}
+		}
 		for (const [index, line] of file.text.split(/\r?\n/u).entries()) {
 			if (/\brole\s*:\s*["']compaction["']/u.test(line)) {
 				violations.push(`${file.path}:${index + 1}: compaction must be a timeline event, not a message role`);
+			}
+			if (!isTest && /(?:\buseSetAtom\(|\buseAtom\(|\bset\()\s*chatMessagesAtom\b/u.test(line)) {
+				violations.push(
+					`${file.path}:${index + 1}: write the message list through dispatchConversationFeed, not chatMessagesAtom (ADR-0146)`,
+				);
 			}
 		}
 	}

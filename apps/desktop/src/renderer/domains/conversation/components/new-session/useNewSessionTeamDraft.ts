@@ -1,3 +1,4 @@
+import { useAgentAvatarResolver } from "@shared/agent-teams/agent-avatar";
 import { useLocalizedAgentTeamDocument } from "@shared/agent-teams/agent-team-localization";
 import { agentDisplayName } from "@shared/agent-teams/agent-team-presentation";
 import {
@@ -63,6 +64,7 @@ export function useNewSessionTeamDraft({
 	onSent,
 }: NewSessionTeamDraftOptions): NewSessionTeamDraftResult {
 	const { t } = useTranslation(["agent-teams", "chat"]);
+	const resolveAvatar = useAgentAvatarResolver();
 	const selectedModel = useAtomValue(selectedModelAtom);
 	const reasoningByModel = useAtomValue(reasoningByModelAtom);
 	const store = useStore();
@@ -178,11 +180,20 @@ export function useNewSessionTeamDraft({
 
 	const members = useMemo(
 		() =>
-			resolveTeamMembers(document, team, selectedMemberIds, {}, (profileId, fallback) => {
-				const profile = document?.agents.find((candidate) => candidate.id === profileId);
-				return profile ? agentDisplayName(profile, t) : fallback;
-			}),
-		[document, selectedMemberIds, t, team],
+			resolveTeamMembers(
+				document,
+				team,
+				selectedMemberIds,
+				{},
+				(profileId, fallback) => {
+					const profile = document?.agents.find((candidate) => candidate.id === profileId);
+					return profile ? agentDisplayName(profile, t) : fallback;
+				},
+				new Set(),
+				[],
+				resolveAvatar,
+			),
+		[document, resolveAvatar, selectedMemberIds, t, team],
 	);
 	const setDraftAndAttachments = useCallback(
 		(next: string, segments?: readonly InputSegment[]) => {

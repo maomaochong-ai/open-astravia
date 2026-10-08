@@ -263,10 +263,66 @@ export function UserMessageFrame({
 	);
 }
 
+/** One row of actions under a user bubble; collapses when none of its actions render. */
+export function UserMessageActionBar({ children }: { readonly children?: ReactNode }): JSX.Element {
+	return <div className="flex h-6 items-center justify-end gap-1 whitespace-nowrap empty:hidden">{children}</div>;
+}
+
+export interface UserMessageBranchSwitcherLabels {
+	readonly previous: string;
+	readonly next: string;
+	/** Full description of the position, e.g. "Branch 2 of 3". */
+	readonly position: string;
+}
+
+/** Previous / next between sibling branches of a user message, with the current position. */
+export function UserMessageBranchSwitcher({
+	index,
+	total,
+	onPrevious,
+	onNext,
+	labels,
+}: {
+	/** Zero-based index of the shown branch. */
+	readonly index: number;
+	readonly total: number;
+	readonly onPrevious: () => void;
+	readonly onNext: () => void;
+	readonly labels: UserMessageBranchSwitcherLabels;
+}): JSX.Element {
+	return (
+		<div className="flex h-6 items-center justify-end gap-1 whitespace-nowrap">
+			<span className="inline-flex items-center gap-0.5 text-[11px] text-muted-foreground/70">
+				<UserMessageAction
+					onClick={onPrevious}
+					disabled={index <= 0}
+					title={labels.previous}
+					aria-label={labels.previous}
+				>
+					<span className="icon-[solar--alt-arrow-left-linear] h-3.5 w-3.5" />
+				</UserMessageAction>
+				<span className="min-w-[2.5rem] text-center tabular-nums" title={labels.position}>
+					{index + 1}/{total}
+				</span>
+				<UserMessageAction
+					onClick={onNext}
+					disabled={index >= total - 1}
+					title={labels.next}
+					aria-label={labels.next}
+				>
+					<span className="icon-[solar--alt-arrow-right-linear] h-3.5 w-3.5" />
+				</UserMessageAction>
+			</span>
+		</div>
+	);
+}
+
 export const UserMessage = {
 	Frame: UserMessageFrame,
 	Text: UserMessageText,
 	Action: UserMessageAction,
+	ActionBar: UserMessageActionBar,
+	BranchSwitcher: UserMessageBranchSwitcher,
 	SkillBadge: SkillBadgeView,
 	SettingsAssistBadge: SettingsAssistBadgeView,
 } as const;

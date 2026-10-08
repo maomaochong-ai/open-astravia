@@ -349,17 +349,35 @@ function extractAskUserQuestion(detailsRecord: Record<string, unknown>): AskUser
  * Used for history loading only — tool_call blocks get status "success"
  * because history messages are already complete.
  */
-export function messageToBlocks(content: unknown, toolStatus: ToolCallBlock["status"] = "success"): ContentBlock[] {
+/**
+ * Block ids follow the live stream contract `<messageId>:<type>:<index in message>`,
+ * so the same message projected from history and from events keeps its DOM rows.
+ */
+function historyBlockId(owner: HistoryBlockOwner, type: string, offset: number): string {
+	return `${owner.id}:${type}:${owner.startIndex + offset}`;
+}
+
+interface HistoryBlockOwner {
+	readonly id: string;
+	readonly startIndex: number;
+}
+
+export function messageToBlocks(
+	content: unknown,
+	toolStatus: ToolCallBlock["status"] = "success",
+	owner?: HistoryBlockOwner,
+): ContentBlock[] {
+	const blockId = (type: string, offset: number) => (owner ? historyBlockId(owner, type, offset) : nextId("blk"));
 	if (typeof content === "string") {
-		return content ? [{ type: "text", id: nextId("blk"), text: content }] : [];
+		return content ? [{ type: "text", id: blockId("text", 0), text: content }] : [];
 	}
 	if (!Array.isArray(content)) return [];
 	const blocks: ContentBlock[] = [];
 	for (const part of content as Array<Record<string, unknown>>) {
 		if (part.type === "text" && typeof part.text === "string") {
-			blocks.push({ type: "text", id: nextId("blk"), text: part.text });
+			blocks.push({ type: "text", id: blockId("text", blocks.length), text: part.text });
 		} else if (part.type === "thinking" && typeof part.thinking === "string") {
-			blocks.push({ type: "thinking", id: nextId("blk"), text: part.thinking });
+			blocks.push({ type: "thinking", id: blockId("thinking", blocks.length), text: part.thinking });
 		} else if (part.type === "toolCall" && typeof part.name === "string" && part.name !== "") {
 			// Skip empty-name toolCall parts left behind by old provider parser bugs
 			// (OpenAI-compat placeholder frames produced ghost {id:"", name:""} blocks
@@ -386,6 +404,7 @@ export function messageToBlocks(content: unknown, toolStatus: ToolCallBlock["sta
  * 历史这条路只能在这里折叠。
  */
 function pushHistoryError(
+	ownerId: string,
 	blocks: ContentBlock[],
 	errorMessage: string,
 	turnId?: string,
@@ -420,7 +439,7 @@ function pushHistoryError(
 	}
 	blocks.push({
 		type: "error",
-		id: nextId("blk"),
+		id: `${ownerId}:error:${blocks.length}`,
 		text: errorMessage,
 		kind,
 		...(turnId ? { turnId } : {}),
@@ -450,7 +469,7 @@ function createDeferredHistoryErrors() {
 		},
 		flush(): void {
 			for (const { target, message, details } of pending) {
-				pushHistoryError(target.blocks!, message, undefined, details);
+				pushHistoryError(target.id, target.blocks!, message, undefined, details);
 				if (!target.text) target.text = message;
 			}
 			pending = [];
@@ -520,7 +539,10 @@ export function historyToChat(
 			const target = currentAssistant();
 			if (target.timestamp === undefined) target.timestamp = m.timestamp;
 			if (m.usage) target.usages = [...(target.usages ?? []), m.usage];
-			const blocks = messageToBlocks(m.content, m.stopReason === "aborted" ? "cancelled" : "success");
+			const blocks = messageToBlocks(m.content, m.stopReason === "aborted" ? "cancelled" : "success", {
+				id: target.id,
+				startIndex: target.blocks!.length,
+			});
 			for (const b of blocks) {
 				if (b.type === "tool_call") toolCallIndex.set(b.toolCallId, b);
 			}
@@ -676,6 +698,7 @@ export function fullHistoryToChat(entries: HistoryEntry[]): ChatConversationItem
 			historyErrors.flush();
 			const target = entry.turnId ? assistantForDurableError(entry.turnId, entry.message) : currentAssistant();
 			pushHistoryError(
+				target.id,
 				target.blocks!,
 				entry.message,
 				entry.turnId,
@@ -756,7 +779,10 @@ export function fullHistoryToChat(entries: HistoryEntry[]): ChatConversationItem
 				target.entryId = entryId;
 				if (!turnId) target.id = entryId;
 			}
-			const blocks = messageToBlocks(m.content, m.stopReason === "aborted" ? "cancelled" : "success");
+			const blocks = messageToBlocks(m.content, m.stopReason === "aborted" ? "cancelled" : "success", {
+				id: target.id,
+				startIndex: target.blocks!.length,
+			});
 			for (const b of blocks) {
 				if (b.type === "tool_call") toolCallIndex.set(b.toolCallId, b);
 			}
@@ -836,18 +862,6 @@ export function getOpenSessionToken(): number {
 	return openSessionToken;
 }
 
-function requireAgentMessage(item: ChatConversationItem | undefined): ConversationAgentMessageViewModel {
-	if (item?.kind !== "agent") throw new Error("Expected an Agent conversation message");
-	return item;
-}
-
-/**
- * ID of the current "draft" assistant message being streamed.
- * - Set when the first delta (text or thinking) of a turn arrives.
- * - Cleared when message.final finalizes the message.
- */
-let draftId: string | null = null;
-
 /** Monotonically increasing counter for unique message IDs. */
 let idCounter = 0;
 export function nextId(prefix: string): string {
@@ -857,326 +871,42 @@ export function nextId(prefix: string): string {
 /** Per-session cache for turn stats (survives session switching). Key = sessionPath. */
 export const turnStatsCache = new Map<string, { outputSpeed: number; durationSeconds: number }>();
 
-/** Reset streaming state (when switching sessions). */
-export function resetStreamState(): void {
-	draftId = null;
+/** Index of the assistant message that owns `toolCallId`, searching newest first. */
+export function findToolCallMessageIndex(items: readonly ChatConversationItem[], toolCallId: string): number {
+	for (let index = items.length - 1; index >= 0; index--) {
+		const item = items[index];
+		if (
+			item.kind === "agent" &&
+			item.blocks.some((block) => block.type === "tool_call" && block.toolCallId === toolCallId)
+		)
+			return index;
+	}
+	return -1;
 }
 
-function activateAssistantTurn(
-	prev: ChatConversationItem[],
-	startedAt: number,
-	restorePendingTools: boolean,
-): ChatConversationItem[] {
-	const last = prev.at(-1);
-	if (last?.kind !== "agent") {
-		return ensureDraft(prev, startedAt)[0];
-	}
-	// The renderer may create the assistant draft before runtime agent_start.
-	// The later event adopts that draft; it must not reset the visible timer.
-	if (last.phase === "streaming" && last.endedAt === undefined) {
-		draftId = last.id;
-		return prev;
-	}
-
-	draftId = last.id;
-	const blocks = restorePendingTools
-		? last.blocks?.map((block) =>
-				block.type === "tool_call" && block.result === undefined ? { ...block, status: "pending" as const } : block,
-			)
-		: last.blocks;
-	const copy = [...prev];
-	copy[copy.length - 1] = {
-		...last,
-		phase: "streaming",
-		startedAt,
-		modelRequestStartedAt: restorePendingTools ? last.modelRequestStartedAt : undefined,
-		timestamp: last.timestamp ?? startedAt,
-		endedAt: undefined,
-		durationSeconds: undefined,
-		blocks,
-	};
-	return copy;
-}
-
-/** Project agent_start into the message list before the provider emits its first content event. */
-export function startAssistantTurn(prev: ChatConversationItem[], startedAt: number): ChatConversationItem[] {
-	return activateAssistantTurn(prev, startedAt, false);
-}
-
-/** Restore the live assistant draft and unresolved tool state after switching back to a running session. */
-export function restoreAssistantTurn(prev: ChatConversationItem[], startedAt: number): ChatConversationItem[] {
-	return activateAssistantTurn(prev, startedAt, true);
-}
-
-/** Absolute start time for the assistant draft that currently owns the tail of the conversation. */
-export function getActiveAssistantTurnStartedAt(messages: ChatConversationItem[]): number | undefined {
-	const last = messages.at(-1);
-	return last?.kind === "agent" && last.endedAt === undefined ? last.startedAt : undefined;
-}
-
-/** Finish the current assistant turn using its message-owned absolute start time. */
-export function finishAssistantTurn(prev: ChatConversationItem[], endedAt: number): ChatConversationItem[] {
-	for (let index = prev.length - 1; index >= 0; index--) {
-		const message = prev[index];
-		if (message.kind !== "agent" || message.startedAt === undefined || message.endedAt !== undefined) continue;
-		const copy = [...prev];
-		copy[index] = {
-			...message,
-			phase: message.blocks.some((block) => block.type === "error") ? "failed" : "completed",
-			endedAt,
-			durationSeconds: Math.max(0, endedAt - message.startedAt) / 1000,
-		};
-		return copy;
-	}
-	return prev;
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// Immutable state update helpers
-// ═══════════════════════════════════════════════════════════════════════════════
-
-/**
- * Ensure a draft assistant message exists for the current turn.
- * Returns [newMessages, draftIndex]. Creates a new draft if needed.
- */
-export function ensureDraft(
-	prev: ChatConversationItem[],
-	startedAt: number = Date.now(),
-): [ChatConversationItem[], number] {
-	if (draftId) {
-		// Find existing draft
-		for (let i = prev.length - 1; i >= 0; i--) {
-			if (prev[i].id === draftId) {
-				return [[...prev], i];
-			}
-		}
-		// Draft ID is stale — fall through to create new
-	}
-
-	// Create new draft
-	const id = nextId("draft");
-	draftId = id;
-	const draftTimestamp = startedAt;
-	const draft = createConversationAgentMessage({
-		id,
-		phase: "streaming",
-		text: "",
-		blocks: [],
-		timestamp: draftTimestamp,
-		startedAt: draftTimestamp,
-	});
-	const copy = [...prev, draft];
-	return [copy, copy.length - 1];
-}
-
-/**
- * Append a text delta to a draft message's last text block (or create one).
- */
-export function appendTextDelta(prev: ChatConversationItem[], delta: string): ChatConversationItem[] {
-	const [msgs, idx] = ensureDraft(prev);
-	const msg = requireAgentMessage(msgs[idx]);
-	const blocks = [...msg.blocks];
-	const last = blocks.at(-1);
-
-	if (last?.type === "text") {
-		blocks[blocks.length - 1] = { ...last, text: last.text + delta };
-	} else {
-		blocks.push({ type: "text", id: nextId("blk"), text: delta });
-	}
-
-	msgs[idx] = { ...msg, text: `${msg.text ?? ""}${delta}`, blocks };
-	return msgs;
-}
-
-/**
- * Append a thinking delta to a draft message's last thinking block (or create one).
- */
-export function appendThinkingDelta(prev: ChatConversationItem[], delta: string): ChatConversationItem[] {
-	const [msgs, idx] = ensureDraft(prev);
-	const msg = requireAgentMessage(msgs[idx]);
-	const blocks = [...msg.blocks];
-	const last = blocks.at(-1);
-
-	if (last?.type === "thinking") {
-		blocks[blocks.length - 1] = { ...last, text: last.text + delta };
-	} else {
-		blocks.push({ type: "thinking", id: nextId("blk"), text: delta });
-	}
-
-	msgs[idx] = { ...msg, blocks };
-	return msgs;
-}
-
-/**
- * Finalize the current draft with the complete message content.
- *
- * An agent turn can produce multiple message.final events (one per LLM call
- * in the agent loop). All content accumulates into a single assistant message.
- *
- * Strategy:
- * - Keep ALL existing blocks on the message (from previous LLM calls in this turn).
- * - The current LLM call's content was already streamed via deltas, so the
- *   blocks are already present. We use the final message to ensure tool_call
- *   blocks exist with correct args.
- * - draftId is NOT cleared here — it persists until resetStreamState() at agent_end.
- */
-export function finalizeMessage(prev: ChatConversationItem[], content: unknown, usage?: Usage): ChatConversationItem[] {
-	const copy = [...prev];
-
-	// Parse tool calls from the final message
-	const finalToolCalls: Array<{ id: string; name: string; args: Record<string, unknown> }> = [];
-	if (Array.isArray(content)) {
-		for (const part of content as Array<Record<string, unknown>>) {
-			if (part.type === "toolCall" && typeof part.name === "string") {
-				finalToolCalls.push({
-					id: String(part.id ?? ""),
-					name: String(part.name),
-					args: (part.arguments as Record<string, unknown>) ?? {},
-				});
-			}
-		}
-	}
-
-	// Find the target message (draft or last assistant)
-	let targetIdx = -1;
-	if (draftId) {
-		for (let i = copy.length - 1; i >= 0; i--) {
-			if (copy[i].id === draftId) {
-				targetIdx = i;
-				break;
-			}
-		}
-	}
-	if (targetIdx === -1) {
-		// No draft — find last assistant message or create one
-		for (let i = copy.length - 1; i >= 0; i--) {
-			if (copy[i].kind === "agent") {
-				targetIdx = i;
-				break;
-			}
-		}
-		if (targetIdx === -1) {
-			const id = nextId("final");
-			draftId = id;
-			const draftTimestamp = Date.now();
-			copy.push(
-				createConversationAgentMessage({
-					id,
-					phase: "streaming",
-					text: "",
-					blocks: [],
-					timestamp: draftTimestamp,
-					startedAt: draftTimestamp,
-				}),
-			);
-			targetIdx = copy.length - 1;
-		}
-	}
-
-	const msg = requireAgentMessage(copy[targetIdx]);
-	const blocks = [...msg.blocks];
-
-	// Collect existing tool_call IDs
-	const existingToolIds = new Set<string>();
-	for (const b of blocks) {
-		if (b.type === "tool_call") existingToolIds.add(b.toolCallId);
-	}
-
-	// Merge tool calls: update existing or add new
-	for (const tc of finalToolCalls) {
-		if (existingToolIds.has(tc.id)) {
-			const idx = blocks.findIndex((b) => b.type === "tool_call" && b.toolCallId === tc.id);
-			if (idx !== -1) {
-				const existing = blocks[idx] as ToolCallBlock;
-				if (Object.keys(existing.args).length === 0 && Object.keys(tc.args).length > 0) {
-					blocks[idx] = { ...existing, args: tc.args };
-				}
-			}
-		} else {
-			blocks.push({
-				type: "tool_call",
-				toolCallId: tc.id,
-				toolName: tc.name,
-				args: tc.args,
-				status: "pending",
-			});
-		}
-	}
-
-	// Update text from all text blocks
-	const text = blocks
-		.filter((b) => b.type === "text")
-		.map((b) => (b as { text: string }).text)
-		.join("");
-
-	copy[targetIdx] = {
-		...msg,
-		text,
-		blocks,
-		...(usage ? { usages: [...(msg.usages ?? []), usage] } : {}),
-	};
-
-	// Do NOT clear draftId — the agent turn may continue with more LLM calls.
-	// draftId is cleared by resetStreamState() at agent_start/agent_end.
-	return copy;
-}
-
-/**
- * Handle tool.start: find or create a tool_call block on the last assistant message.
- */
-export function handleToolStart(
-	prev: ChatConversationItem[],
+/** Record tool.start on one assistant message; returns the same object when nothing changes. */
+export function withToolCallStarted(
+	message: ConversationAgentMessageViewModel,
 	toolCallId: string,
 	toolName: string,
 	args: Record<string, unknown>,
 	startedAt?: number,
-): ChatConversationItem[] {
-	// First: search for a finalized message from the current turn (not a draft)
-	// or the current draft. We only want to attach to the LAST assistant message
-	// that belongs to the current turn, not older history messages.
-	const lastMsg = prev.length > 0 ? prev[prev.length - 1] : null;
-
-	// If the last message is an assistant message, attach to it
-	if (lastMsg?.kind === "agent") {
-		const blocks = [...lastMsg.blocks];
-
-		// Check if this tool_call block already exists (from toolcall.start or message.final)
-		const existing = blocks.findIndex((b) => b.type === "tool_call" && b.toolCallId === toolCallId);
-		if (existing !== -1) {
-			const block = blocks[existing] as ToolCallBlock;
-			const argsChanged = Object.keys(args).length > 0 && block.args !== args;
-			const startedAtChanged = startedAt !== undefined && block.startedAt === undefined;
-			if (argsChanged || startedAtChanged) {
-				blocks[existing] = {
-					...block,
-					args: argsChanged ? args : block.args,
-					startedAt: startedAtChanged ? startedAt : block.startedAt,
-				};
-				const copy = [...prev];
-				copy[copy.length - 1] = { ...lastMsg, blocks };
-				return copy;
-			}
-			return prev;
-		}
-
-		blocks.push({
-			type: "tool_call",
-			toolCallId,
-			toolName,
-			args,
-			status: "pending",
-			startedAt,
-		});
-
-		const copy = [...prev];
-		copy[copy.length - 1] = { ...lastMsg, blocks };
-		return copy;
+): ConversationAgentMessageViewModel {
+	const blocks = [...message.blocks];
+	// The block usually exists already from the streamed assistant tool call.
+	const existing = blocks.findIndex((b) => b.type === "tool_call" && b.toolCallId === toolCallId);
+	if (existing !== -1) {
+		const block = blocks[existing] as ToolCallBlock;
+		const argsChanged = Object.keys(args).length > 0 && block.args !== args;
+		const startedAtChanged = startedAt !== undefined && block.startedAt === undefined;
+		if (!argsChanged && !startedAtChanged) return message;
+		blocks[existing] = {
+			...block,
+			args: argsChanged ? args : block.args,
+			startedAt: startedAtChanged ? startedAt : block.startedAt,
+		};
+		return { ...message, blocks };
 	}
-
-	// No recent assistant message — use ensureDraft to keep one turn = one message
-	const [msgs, idx] = ensureDraft(prev);
-	const msg = requireAgentMessage(msgs[idx]);
-	const blocks = [...msg.blocks];
 	blocks.push({
 		type: "tool_call",
 		toolCallId,
@@ -1185,233 +915,61 @@ export function handleToolStart(
 		status: "pending",
 		startedAt,
 	});
-	msgs[idx] = { ...msg, blocks };
-	return msgs;
+	return { ...message, blocks };
 }
 
-/**
- * Handle tool.end: find the matching tool_call block and update it with the result.
- */
-export function handleToolEnd(
-	prev: ChatConversationItem[],
+/** Record tool.end on one assistant message; returns the same object when the call is absent. */
+export function withToolCallEnded(
+	message: ConversationAgentMessageViewModel,
 	toolCallId: string,
 	result: unknown,
 	isError: boolean,
 	timing?: { startedAt: number; durationMs: number; phases: Array<{ label: string; atMs: number }> },
-): ChatConversationItem[] {
-	const resultText = extractResultText(result);
+): ConversationAgentMessageViewModel {
+	const blockIdx = message.blocks.findIndex((b) => b.type === "tool_call" && b.toolCallId === toolCallId);
+	if (blockIdx === -1) return message;
 	const imagePreviews = extractToolImagePreviews(result, undefined);
-	const imagePreview = imagePreviews[0];
-	const audioPreviews = extractToolAudioPreviews(result, undefined);
-	const mcpApp = extractToolMcpApp(result, undefined);
-	const uiDetails = extractToolUiDetails(result, undefined);
-	const cards = extractToolCards(result, undefined);
-
-	// Search backwards for the matching tool_call block
-	for (let i = prev.length - 1; i >= 0; i--) {
-		const msg = prev[i];
-		if (msg.kind !== "agent") continue;
-
-		const blockIdx = msg.blocks.findIndex((b) => b.type === "tool_call" && b.toolCallId === toolCallId);
-		if (blockIdx === -1) continue;
-
-		const copy = [...prev];
-		const blocks = [...msg.blocks];
-		const block = blocks[blockIdx] as ToolCallBlock;
-		blocks[blockIdx] = {
-			...block,
-			status: isError ? "error" : "success",
-			result: resultText,
-			imagePreview,
-			imagePreviews,
-			audioPreviews,
-			mcpApp,
-			uiDetails,
-			cards,
-			isError,
-			startedAt: timing?.startedAt ?? block.startedAt,
-			durationMs: timing?.durationMs ?? block.durationMs,
-			phases: timing?.phases ?? block.phases,
-			// Clear currentPhase — execution is over, the badge is no longer "live".
-			currentPhase: undefined,
-		};
-		copy[i] = { ...msg, blocks };
-		return copy;
-	}
-
-	return prev;
+	const blocks = [...message.blocks];
+	const block = blocks[blockIdx] as ToolCallBlock;
+	blocks[blockIdx] = {
+		...block,
+		status: isError ? "error" : "success",
+		result: extractResultText(result),
+		imagePreview: imagePreviews[0],
+		imagePreviews,
+		audioPreviews: extractToolAudioPreviews(result, undefined),
+		mcpApp: extractToolMcpApp(result, undefined),
+		uiDetails: extractToolUiDetails(result, undefined),
+		cards: extractToolCards(result, undefined),
+		isError,
+		startedAt: timing?.startedAt ?? block.startedAt,
+		durationMs: timing?.durationMs ?? block.durationMs,
+		phases: timing?.phases ?? block.phases,
+		// Clear currentPhase — execution is over, the badge is no longer "live".
+		currentPhase: undefined,
+	};
+	return { ...message, blocks };
 }
 
 /**
- * Handle tool.phase: append a phase boundary to the matching tool_call block
- * while it's still streaming, and mark it as the live "currentPhase" for header
- * display. Both are out-of-band metadata — never sent to the LLM.
+ * Record tool.phase on one assistant message: append a phase boundary and mark it
+ * as the live "currentPhase" for header display. Both are out-of-band metadata —
+ * never sent to the LLM.
  */
-export function handleToolPhase(
-	prev: ChatConversationItem[],
+export function withToolCallPhase(
+	message: ConversationAgentMessageViewModel,
 	toolCallId: string,
 	label: string,
 	atMs: number,
-): ChatConversationItem[] {
-	for (let i = prev.length - 1; i >= 0; i--) {
-		const msg = prev[i];
-		if (msg.kind !== "agent") continue;
-
-		const blockIdx = msg.blocks.findIndex((b) => b.type === "tool_call" && b.toolCallId === toolCallId);
-		if (blockIdx === -1) continue;
-
-		const copy = [...prev];
-		const blocks = [...msg.blocks];
-		const block = blocks[blockIdx] as ToolCallBlock;
-		blocks[blockIdx] = {
-			...block,
-			phases: [...(block.phases ?? []), { label, atMs }],
-			currentPhase: label,
-		};
-		copy[i] = { ...msg, blocks };
-		return copy;
-	}
-
-	return prev;
-}
-
-/**
- * Append an error block to the current draft assistant message.
- *
- * @param attempts 这条错误发出前自动重试过的次数（runtime-core 随 error 事件带出）。
- */
-export function appendError(
-	prev: ChatConversationItem[],
-	errorMessage: string,
-	attempts?: number,
-	turnId?: string,
-	details?: ChatErrorDetails,
-): ChatConversationItem[] {
-	let msgs: ChatConversationItem[];
-	let idx = turnId ? prev.findIndex((item) => item.kind === "agent" && item.turnId === turnId) : -1;
-	if (idx >= 0) msgs = [...prev];
-	else if (turnId) {
-		msgs = [
-			...prev,
-			createConversationAgentMessage({
-				id: conversationAssistantMessageId(turnId, 0),
-				turnId,
-				phase: "streaming",
-				text: "",
-				blocks: [],
-				timestamp: Date.now(),
-				startedAt: Date.now(),
-			}),
-		];
-		idx = msgs.length - 1;
-	} else {
-		[msgs, idx] = ensureDraft(prev);
-	}
-	const msg = requireAgentMessage(msgs[idx]);
-	const blocks = [...msg.blocks];
-	if (turnId) {
-		const existingIndex = blocks.findIndex((block) => block.type === "error" && block.turnId === turnId);
-		const existing = existingIndex >= 0 ? blocks[existingIndex] : undefined;
-		if (existing?.type === "error") {
-			blocks[existingIndex] = {
-				...existing,
-				text: errorMessage,
-				...(attempts ? { attempts } : {}),
-				...(details ? { details: { ...existing.details, ...details } } : {}),
-			};
-			msgs[idx] = { ...msg, text: msg.text || errorMessage, blocks };
-			return msgs;
-		}
-	}
-	blocks.push({
-		type: "error",
-		id: nextId("blk"),
-		...(turnId ? { turnId } : {}),
-		text: errorMessage,
-		kind: classifyChatError(errorMessage),
-		...(attempts ? { attempts } : {}),
-		...(details ? { details } : {}),
-	});
-	msgs[idx] = { ...msg, text: msg.text || errorMessage, blocks };
-	return msgs;
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// Ref-based variants (for components that manage their own draft state)
-// ═══════════════════════════════════════════════════════════════════════════════
-
-function ensureDraftWithRef(
-	prev: ChatConversationItem[],
-	draftIdRef: { current: string | null },
-): [ChatConversationItem[], number] {
-	if (draftIdRef.current) {
-		for (let i = prev.length - 1; i >= 0; i--) {
-			if (prev[i].id === draftIdRef.current) {
-				return [[...prev], i];
-			}
-		}
-	}
-	const id = nextId("draft");
-	draftIdRef.current = id;
-	const draftTimestamp = Date.now();
-	const draft = createConversationAgentMessage({
-		id,
-		phase: "streaming",
-		text: "",
-		blocks: [],
-		timestamp: draftTimestamp,
-		startedAt: draftTimestamp,
-	});
-	const copy = [...prev, draft];
-	return [copy, copy.length - 1];
-}
-
-export function clearDraftMessage(
-	prev: ChatConversationItem[],
-	draftIdRef: { current: string | null },
-): ChatConversationItem[] {
-	const did = draftIdRef.current;
-	if (!did) return prev;
-	const idx = prev.findIndex((m) => m.id === did);
-	if (idx === -1) return prev;
-	const copy = [...prev];
-	copy.splice(idx, 1);
-	draftIdRef.current = null;
-	return copy;
-}
-
-export function appendTextDeltaWithRef(
-	prev: ChatConversationItem[],
-	delta: string,
-	draftIdRef: { current: string | null },
-): ChatConversationItem[] {
-	const [msgs, idx] = ensureDraftWithRef(prev, draftIdRef);
-	const msg = requireAgentMessage(msgs[idx]);
-	const blocks = [...msg.blocks];
-	const last = blocks.at(-1);
-	if (last?.type === "text") {
-		blocks[blocks.length - 1] = { ...last, text: last.text + delta };
-	} else {
-		blocks.push({ type: "text", id: nextId("blk"), text: delta });
-	}
-	msgs[idx] = { ...msg, text: `${msg.text ?? ""}${delta}`, blocks };
-	return msgs;
-}
-
-export function appendThinkingDeltaWithRef(
-	prev: ChatConversationItem[],
-	delta: string,
-	draftIdRef: { current: string | null },
-): ChatConversationItem[] {
-	const [msgs, idx] = ensureDraftWithRef(prev, draftIdRef);
-	const msg = requireAgentMessage(msgs[idx]);
-	const blocks = [...msg.blocks];
-	const last = blocks.at(-1);
-	if (last?.type === "thinking") {
-		blocks[blocks.length - 1] = { ...last, text: last.text + delta };
-	} else {
-		blocks.push({ type: "thinking", id: nextId("blk"), text: delta });
-	}
-	msgs[idx] = { ...msg, blocks };
-	return msgs;
+): ConversationAgentMessageViewModel {
+	const blockIdx = message.blocks.findIndex((b) => b.type === "tool_call" && b.toolCallId === toolCallId);
+	if (blockIdx === -1) return message;
+	const blocks = [...message.blocks];
+	const block = blocks[blockIdx] as ToolCallBlock;
+	blocks[blockIdx] = {
+		...block,
+		phases: [...(block.phases ?? []), { label, atMs }],
+		currentPhase: label,
+	};
+	return { ...message, blocks };
 }

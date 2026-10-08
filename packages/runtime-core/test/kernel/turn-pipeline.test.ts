@@ -151,8 +151,9 @@ class CompletingTurnEngine implements TurnEnginePort {
 		yield {
 			type: "observation",
 			observation: {
-				type: "message.delta",
-				delta: "partial",
+				type: "assistant.event",
+				modelCallIndex: 0,
+				event: { type: "text_delta", contentIndex: 0, delta: "partial", partial: this.response },
 				source: "agent",
 			},
 		};
@@ -300,8 +301,9 @@ describe("greenfield runtime kernel", () => {
 				sessionId: "session-1",
 				turnId: "turn-1",
 				observation: {
-					type: "message.delta",
-					delta: "partial",
+					type: "assistant.event",
+					modelCallIndex: 0,
+					event: { type: "text_delta", delta: "partial" },
 					source: "agent",
 				},
 			},
@@ -1183,8 +1185,14 @@ describe("greenfield runtime kernel", () => {
 				yield {
 					type: "observation",
 					observation: {
-						type: "message.delta",
-						delta: "partial",
+						type: "assistant.event",
+						modelCallIndex: 0,
+						event: {
+							type: "text_delta",
+							contentIndex: 0,
+							delta: "partial",
+							partial: abortedAssistantMessage,
+						},
 						source: "agent",
 					},
 				};

@@ -60,7 +60,6 @@ import { getDesktopPlanReviewBroker } from "../conversations/plan-review-broker.
 import { parsePromptRequest } from "../conversations/prompt-request-schema.js";
 import type { DesktopCodingAgentSessionConfig } from "../conversations/resolve-session-config.js";
 import { getDesktopSandboxAuthorizationBroker } from "../conversations/sandbox-authorization-broker.js";
-import { selectSessionHistoryPreview } from "../conversations/session-history-preview.js";
 import { isConversationSubCwd, readSessionCwdFromHeader } from "../conversations/session-paths.js";
 import { listRuntimeSessionProjects, listSessionHistory } from "../conversations/session-query-service.js";
 import { slimSessionEventForIpc } from "../conversations/slim-session-event-for-ipc.js";
@@ -171,6 +170,7 @@ const CHANNELS = {
 	QUEUE_CLEAR: "vetta:session:queue-clear",
 	CLEAR_TODOS: "vetta:session:clear-todos",
 	SUBSCRIBE: "vetta:session:subscribe",
+	ATTACH: "vetta:session:attach",
 	UNSUBSCRIBE: "vetta:session:unsubscribe",
 	UPDATE_SETTINGS: "vetta:session:update-settings",
 	SET_EXECUTION_MODE: "vetta:session:set-execution-mode",
@@ -1550,23 +1550,20 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		return snap != null;
 	});
 
-	ipcMain.handle(CHANNELS.SUBSCRIBE, async (_event, sessionId: unknown) => {
-		assertNonEmptyString(sessionId, "sessionId");
-		const subscriptionId = `${sessionId}:${randomUUID()}`;
-		const unsubscribe = runtime.subscribe(sessionId, (runtimeEvent: SessionEvent) => {
+	const forwardSessionEvents =
+		(sessionId: string, subscriptionId: string) =>
+		(runtimeEvent: SessionEvent): void => {
 			// Debug mode: intercept events for request history recording
 			try {
 				if (runtimeEvent.type === "session.lifecycle" && runtimeEvent.phase === "turn_start") {
 					turnStartMap.set(sessionId, Date.now());
 				}
 				const assistantMessage =
-					runtimeEvent.type === "message.final"
+					runtimeEvent.channel === "assistant" && runtimeEvent.type === "done"
 						? runtimeEvent.message
-						: runtimeEvent.channel === "assistant" && runtimeEvent.type === "done"
-							? runtimeEvent.message
-							: runtimeEvent.channel === "assistant" && runtimeEvent.type === "error"
-								? runtimeEvent.error
-								: undefined;
+						: runtimeEvent.channel === "assistant" && runtimeEvent.type === "error"
+							? runtimeEvent.error
+							: undefined;
 				if (assistantMessage && readConfigSync().debugMode) {
 					const cwd = sessionCwdMap.get(sessionId);
 					if (cwd) {
@@ -1600,9 +1597,10 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 			// 此处提前 bail，避免把事件 buffer 灌进死掉的渲染端。
 			if (webContents.isDestroyed()) return;
 			webContents.send(CHANNELS.EVENT, subscriptionId, slimSessionEventForIpc(runtimeEvent));
-		});
-		subscriptionMap.set(subscriptionId, unsubscribe);
+		};
 
+	/** Session-wide state that is pushed only on change; a new subscriber needs it replayed once. */
+	const replaySessionRegistries = async (sessionId: string, subscriptionId: string): Promise<void> => {
 		// 回放后台任务快照：注册表在主进程内存中跨 renderer 重载存活，但
 		// 后台任务扩展观察只在状态变化时推送——renderer 刷新后 atom
 		// 清空，若不回放，无输出的运行中任务（如 sleep）要等到结束才再现。
@@ -1654,8 +1652,33 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 				...sessionExtensionObservation(CODING_AGENT_SUBAGENTS_OBSERVATION, subagents),
 			});
 		}
+	};
 
+	ipcMain.handle(CHANNELS.SUBSCRIBE, async (_event, sessionId: unknown) => {
+		assertNonEmptyString(sessionId, "sessionId");
+		const subscriptionId = `${sessionId}:${randomUUID()}`;
+		subscriptionMap.set(
+			subscriptionId,
+			runtime.subscribe(sessionId, forwardSessionEvents(sessionId, subscriptionId)),
+		);
+		await replaySessionRegistries(sessionId, subscriptionId);
 		return { subscriptionId };
+	});
+
+	// Subscribe and read history as one snapshot (ADR-0146): the running Turn is replayed
+	// from its start before this reply, and the preload holds those events until the
+	// renderer has applied the snapshot.
+	ipcMain.handle(CHANNELS.ATTACH, async (_event, sessionId: unknown) => {
+		assertNonEmptyString(sessionId, "sessionId");
+		const subscriptionId = `${sessionId}:${randomUUID()}`;
+		const attachment = runtime.attach(sessionId, forwardSessionEvents(sessionId, subscriptionId));
+		subscriptionMap.set(subscriptionId, attachment.unsubscribe);
+		const snapshot = {
+			history: attachment.history,
+			...(attachment.runningTurnId ? { runningTurnId: attachment.runningTurnId } : {}),
+		};
+		await replaySessionRegistries(sessionId, subscriptionId);
+		return { subscriptionId, snapshot };
 	});
 
 	ipcMain.handle(CHANNELS.UNSUBSCRIBE, async (_event, subscriptionId: unknown) => {
@@ -1726,19 +1749,9 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 	const viewerSubs = new Map<string, ViewerSub>();
 	let viewerSeq = 0;
 
-	ipcMain.handle(CHANNELS.VIEWER_OPEN, async (_event, path: unknown, options?: unknown) => {
+	ipcMain.handle(CHANNELS.VIEWER_OPEN, async (_event, path: unknown) => {
 		assertNonEmptyString(path, "path");
-		const snapshot = runtime.readSessionHistoryFromFile(resolve(path));
-		if (options === undefined) return snapshot;
-		if (!options || typeof options !== "object" || Array.isArray(options)) {
-			throw new TypeError("options must be an object");
-		}
-		const tailTurns = (options as { tailTurns?: unknown }).tailTurns;
-		if (tailTurns === undefined) return snapshot;
-		if (!Number.isInteger(tailTurns) || (tailTurns as number) < 1 || (tailTurns as number) > 10) {
-			throw new TypeError("options.tailTurns must be an integer between 1 and 10");
-		}
-		return { history: selectSessionHistoryPreview(snapshot.history, tailTurns as number) };
+		return runtime.readSessionHistoryFromFile(resolve(path));
 	});
 
 	ipcMain.handle(CHANNELS.VIEWER_SUBSCRIBE, async (_event, path: unknown) => {

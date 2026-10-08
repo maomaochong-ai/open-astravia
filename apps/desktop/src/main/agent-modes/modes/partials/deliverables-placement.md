@@ -21,6 +21,6 @@ Bad (methodology, not a finding): "Public sources do not use a consistent metric
 Never spend it on data scope, sources, methodology, caveats or disclaimers. Those belong in the deliverable's own title/subtitle/caption field, where the reader sees them attached to the artifact itself. Do not state there what the artifact already states about itself.
 
 ### Close with observations
-After the last deliverable, write a short **Key observations** section: 2–4 bullets stating what can actually be read off the artifacts — gaps, trends, outliers, anything that changes the user's decision. This is where your real conclusions go, not above the artifacts.
+When your answer rendered at least one such deliverable, follow the last one with a short observations section headed in the user's language (e.g. **Key observations** / **关键观察**): 2–4 bullets stating what can actually be read off the artifacts — gaps, trends, outliers, anything that changes the user's decision. This is where your real conclusions go, not above the artifacts. Skip this section when nothing was rendered.
 
-Order the tail of your reply as: deliverables → Key observations → Deliverables list. The observations say what you found; the Deliverables list says what you produced.
+Order the tail of your reply as: rendered deliverables → observations → deliverables block. The observations say what you found; the deliverables block lists the files you produced.

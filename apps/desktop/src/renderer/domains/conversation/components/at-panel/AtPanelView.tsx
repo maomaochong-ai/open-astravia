@@ -4,4 +4,4 @@ export type {
 	AtPanelLabels,
 	AtPanelViewProps,
 } from "@vetta-org/theme-ui/chat";
-export { AtPanelView } from "@vetta-org/theme-ui/chat";
+export { AtPanelView } from "@vetta-org/theme-ui/chat/AtPanelView";

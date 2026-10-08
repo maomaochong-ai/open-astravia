@@ -4,6 +4,7 @@ import {
 	DEFAULT_RATE_PER_MS,
 	planReveal,
 	REVEAL_TICK_MS,
+	STREAMING_IDLE_SETTLE_MS,
 	STREAMING_SETTLE_MS,
 	STREAMING_STALL_FLUSH_MS,
 	splitStreamingSegments,
@@ -118,6 +119,15 @@ export function useStreamingDisplayText(text: string, active: boolean): Streamin
 		}, STREAMING_SETTLE_MS);
 	}, []);
 
+	/** 已追平但流未结束：静默一会儿后只撤暗色，保留 streamedRef，新文本到达时布局效果会重新挂上。 */
+	const settleIdle = useCallback((): void => {
+		if (settleTimerRef.current !== null) return;
+		settleTimerRef.current = window.setTimeout(() => {
+			settleTimerRef.current = null;
+			setAnimateChunks(false);
+		}, STREAMING_IDLE_SETTLE_MS);
+	}, []);
+
 	const reveal = useCallback(
 		function reveal(): void {
 			clearTimeoutRef(tickTimerRef);
@@ -148,9 +158,11 @@ export function useStreamingDisplayText(text: string, active: boolean): Streamin
 				tickTimerRef.current = window.setTimeout(reveal, REVEAL_TICK_MS);
 			} else if (final) {
 				settle();
+			} else {
+				settleIdle();
 			}
 		},
-		[settle],
+		[settle, settleIdle],
 	);
 
 	useEffect(
@@ -183,7 +195,8 @@ export function useStreamingDisplayText(text: string, active: boolean): Streamin
 		}
 
 		clearTimeoutRef(settleTimerRef);
-		setAnimateChunks(true);
+		// 只在有新内容要放时挂暗色：空闲撤暗后回合才结束（文本没变）时不能再暗一下。
+		if (textChanged || shown.length < text.length) setAnimateChunks(true);
 		const now = Date.now();
 		if (textChanged || lastArrivalAtRef.current === 0) {
 			lastArrivalAtRef.current = now;

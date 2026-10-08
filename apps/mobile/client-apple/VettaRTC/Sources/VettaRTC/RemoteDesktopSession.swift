@@ -50,10 +50,16 @@ public final class RemoteDesktopSession {
 	@ObservationIgnored private var statsTask: Task<Void, Never>?
 	@ObservationIgnored private var signalingRetry = SignalingRetry()
 	@ObservationIgnored private var reconnectTask: Task<Void, Never>?
+	@ObservationIgnored private var disconnectTask: Task<Void, Never>?
 	/// The running totals at the last sample, to average over the last second only.
 	@ObservationIgnored private var lastTotals: FrameTotals?
 
+	/// How long a direct link may stay disconnected before the session gives it up.
+	private static let disconnectGraceSeconds = 5.0
+
 	private static let factory: RTCPeerConnectionFactory = {
+		// Desktop interaction favors immediate display over smoothing bursty video frames.
+		RTCPeerConnectionFactory.configureFieldTrials("WebRTC-ForcePlayoutDelay/min_ms:0,max_ms:0/")
 		RTCInitializeSSL()
 		return RTCPeerConnectionFactory(encoderFactory: RTCDefaultVideoEncoderFactory(), decoderFactory: RTCDefaultVideoDecoderFactory())
 	}()
@@ -80,7 +86,11 @@ public final class RemoteDesktopSession {
 		let delegate = PeerDelegate(owner: self)
 		self.delegate = delegate
 		let configuration = RTCConfiguration()
-		configuration.iceServers = [RTCIceServer(urlStrings: ["stun:stun.l.google.com:19302"])]
+		// STUN only (ADR-0135), kept in step with Android and REMOTE_DESKTOP_ICE_SERVERS.
+		configuration.iceServers = [
+			RTCIceServer(urlStrings: ["stun:stun.miwifi.com:3478", "stun:stun.chat.bilibili.com:3478", "stun:stun.hitv.com:3478"]),
+			RTCIceServer(urlStrings: ["stun:stun.cloudflare.com:3478", "stun:stun.l.google.com:19302"]),
+		]
 		configuration.sdpSemantics = .unifiedPlan
 		configuration.continualGatheringPolicy = .gatherContinually
 		let constraints = RTCMediaConstraints(mandatoryConstraints: nil, optionalConstraints: nil)
@@ -121,6 +131,8 @@ public final class RemoteDesktopSession {
 		statsTask = nil
 		reconnectTask?.cancel()
 		reconnectTask = nil
+		disconnectTask?.cancel()
+		disconnectTask = nil
 		stats = nil
 		socket?.cancel(with: .normalClosure, reason: nil)
 		socket = nil
@@ -271,9 +283,20 @@ public final class RemoteDesktopSession {
 		note("ICE \(Self.name(state))")
 		switch state {
 		case .connected, .completed:
+			disconnectTask?.cancel()
+			disconnectTask = nil
 			if phase == .connecting {
 				phase = .connected
 				sampleStats()
+			}
+		case .disconnected:
+			// ICE only calls it failed after about 30 seconds, all the while the control channel
+			// is silent; give a blip a few seconds, then end so the link falls back to the LAN or relay.
+			guard phase == .connected, disconnectTask == nil else { return }
+			disconnectTask = Task { [weak self] in
+				try? await Task.sleep(for: .seconds(Self.disconnectGraceSeconds))
+				guard !Task.isCancelled, let self, self.phase == .connected else { return }
+				self.stop(reason: "WebRTC ICE disconnected")
 			}
 		case .failed, .closed:
 			if phase != .stopped { stop(reason: "WebRTC ICE \(state == .failed ? "failed" : "closed")") }

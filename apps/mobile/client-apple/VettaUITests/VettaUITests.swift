@@ -16,6 +16,28 @@ final class VettaUITests: XCTestCase {
 		continueAfterFailure = false
 	}
 
+	@MainActor func testConnectComputerFromTheDrawerKeepsTheCurrentChat() throws {
+		let invite = try XCTUnwrap(invite, "run through scripts/ui-test.sh to provide a desktop")
+		let app = XCUIApplication()
+		app.launchArguments = ["-VettaEphemeralStorage", "-VettaPairURI", invite, "-VettaOpenSession", "s-report"] + chinese
+		app.launch()
+		XCTAssertTrue(app.buttons["chat.modelMenu"].waitForExistence(timeout: 15))
+		let drawer = app.buttons["drawer.open"]
+		XCTAssertTrue(drawer.waitForExistence(timeout: 15))
+		drawer.tap()
+		let connect = app.buttons["home.connect"]
+		XCTAssertTrue(connect.waitForExistence(timeout: 5))
+		XCTAssertTrue(connect.label.contains("连接电脑"))
+		XCTAssertTrue(connect.label.contains("Interop MacBook Pro"))
+		connect.tap()
+		XCTAssertTrue(app.buttons["pair.invite"].waitForExistence(timeout: 5))
+		XCTAssertTrue(app.buttons["pair.manual"].exists)
+		app.buttons["pair.close"].tap()
+		XCTAssertTrue(connect.waitForExistence(timeout: 5))
+		app.buttons["home.close"].tap()
+		XCTAssertTrue(app.buttons["chat.modelMenu"].waitForExistence(timeout: 5), "closing pairing returns to the open chat")
+	}
+
 	@MainActor func testGuidesToPairingOnFirstLaunch() {
 		let app = XCUIApplication()
 		app.launchArguments = ["-VettaEphemeralStorage"] + chinese

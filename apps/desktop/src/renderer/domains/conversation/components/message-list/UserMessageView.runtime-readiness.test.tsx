@@ -21,24 +21,12 @@ vi.mock("react-i18next", () => ({
 	}),
 }));
 vi.mock("../../hooks/useSkillTokenMeta", () => ({ useSkillTokenMeta: () => vi.fn() }));
-vi.mock("../../hooks/useUserMessageActions", () => ({
-	useUserMessageEditAction: () => ({ available: true, pending: false, onEdit }),
-	useUserMessageHistoryActions: () => ({
-		branchIndex: 0,
-		branchTotal: 2,
-		canSwitch: true,
-		forkAvailable: true,
-		onFork,
-		onNext: onBranchNext,
-		onPrevious: vi.fn(),
-	}),
-	useUserMessageDeleteAction: () => ({ available: false, onDelete: vi.fn() }),
-	useUserMessageCopyAction: () => vi.fn(async () => undefined),
-	useUserMessageContextMenu: () => ({ model: null, onContextMenu: vi.fn() }),
-}));
 
+import { createConversationFeed, ConversationFeedContext, type UserMessageCommands } from "../../conversation-view/feed";
+import { ConversationMessageScope } from "../../conversation-view/message-scope";
+import { SessionUserMessage } from "../../session-conversation/SessionUserMessage";
+import { atom } from "jotai";
 import { UserMessage } from "./UserMessage";
-import { SessionUserMessage } from "./SessionUserMessage";
 import { TokenChip } from "../input-bar/editor/nodes/TokenChip";
 
 beforeAll(() => {
@@ -53,13 +41,35 @@ beforeAll(() => {
 
 afterAll(() => vi.unstubAllGlobals());
 
+const commands: UserMessageCommands = {
+	useEdit: () => ({ available: true, pending: false, onEdit }),
+	useHistory: () => ({
+		branchIndex: 0,
+		branchTotal: 2,
+		canSwitch: true,
+		forkAvailable: true,
+		onFork,
+		onNext: onBranchNext,
+		onPrevious: vi.fn(),
+	}),
+	useDelete: () => ({ available: false, onDelete: vi.fn() }),
+};
+
 it("Runtime 恢复期间消息操作保持可用并立即接受点击", async () => {
 	const user = userEvent.setup();
+	const message = createConversationUserMessage({ id: "user-1", text: "message" });
+	const feed = createConversationFeed({
+		key: "session",
+		items: atom([message]),
+		workspace: { id: "/repo", cwd: "/repo", runtimeIds: [] },
+		capabilities: { userMessageCommands: commands },
+	});
 	render(
-		<SessionUserMessage
-			message={createConversationUserMessage({ id: "user-1", text: "message" })}
-			isLastUserMessage
-		/>,
+		<ConversationFeedContext.Provider value={feed}>
+			<ConversationMessageScope row={{ message, index: 0, isTail: true, isLastUserMessage: true }}>
+				<SessionUserMessage />
+			</ConversationMessageScope>
+		</ConversationFeedContext.Provider>,
 	);
 
 	expect((screen.getByLabelText("edit") as HTMLButtonElement).disabled).toBe(false);

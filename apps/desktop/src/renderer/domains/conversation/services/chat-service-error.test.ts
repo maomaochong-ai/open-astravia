@@ -1,9 +1,23 @@
+// @vitest-environment jsdom
+
 import { createConversationUserMessage } from "@shared/conversation";
-import type { ErrorBlock } from "@shared/store/atoms";
+import type { ChatConversationItem, ErrorBlock } from "@shared/store/chat-atoms";
+import { type ConversationFeedState, createConversationFeedState } from "@shared/store/chat-atoms";
 import type { AssistantMessage } from "@vetta/ai";
 import { describe, expect, it } from "vitest";
-import { appendError, fullHistoryToChat, historyToChat } from "./chat-service";
-import { reconcileHistoryWithLiveTerminalErrors } from "./terminal-error-reconciliation";
+import { fullHistoryToChat, historyToChat } from "./chat-service";
+import { type ConversationFeedAction, reduceConversationFeed } from "./conversation-feed";
+
+function feedWith(...actions: ConversationFeedAction[]): ConversationFeedState {
+	return actions.reduce(reduceConversationFeed, createConversationFeedState());
+}
+
+function feedError(
+	message: string,
+	options: Omit<Extract<ConversationFeedAction, { type: "error.appended" }>, "type" | "message" | "timestamp"> = {},
+): ConversationFeedAction {
+	return { type: "error.appended", message, timestamp: 1, ...options };
+}
 
 /** 会话文件里一条失败的 assistant message。 */
 function failed(errorMessage: string) {
@@ -32,7 +46,7 @@ function durableAssistant(overrides: Partial<AssistantMessage>): AssistantMessag
 	};
 }
 
-function errorBlocksOf(messages: ReturnType<typeof historyToChat>): ErrorBlock[] {
+function errorBlocksOf(messages: readonly ChatConversationItem[]): ErrorBlock[] {
 	return messages.flatMap((message) =>
 		message.kind === "agent" ? message.blocks.filter((block): block is ErrorBlock => block.type === "error") : [],
 	);
@@ -101,33 +115,32 @@ describe("历史回放的错误折叠", () => {
 	});
 });
 
-describe("appendError", () => {
+describe("feed error blocks", () => {
 	it("写入时归类，并记下自动重试次数", () => {
-		const messages = appendError([], "429 rate limit", 3);
-		const block = errorBlocksOf(messages).at(-1) as ErrorBlock;
+		const block = errorBlocksOf(feedWith(feedError("429 rate limit", { attempts: 3 })).items).at(-1) as ErrorBlock;
 
 		expect(block.kind).toBe("rate_limit");
 		expect(block.attempts).toBe(3);
 	});
 
 	it("没重试过时不写 attempts", () => {
-		const messages = appendError([], "401 Unauthorized");
-		const block = errorBlocksOf(messages).at(-1) as ErrorBlock;
+		const block = errorBlocksOf(feedWith(feedError("401 Unauthorized")).items).at(-1) as ErrorBlock;
 
 		expect(block.kind).toBe("auth");
 		expect(block.attempts).toBeUndefined();
 	});
 
 	it("同一 turn 重放错误事件时保持单个错误块", () => {
-		const once = appendError([], "503 unavailable", undefined, "turn-1");
-		const twice = appendError(once, "503 unavailable", 1, "turn-1", {
-			code: "TRANSPORT_FAILED",
-			origin: "provider",
-			statusCode: 503,
-			provider: "deepseek",
-		});
-		expect(errorBlocksOf(twice)).toHaveLength(1);
-		expect(errorBlocksOf(twice)[0]).toMatchObject({
+		const twice = feedWith(
+			feedError("503 unavailable", { turnId: "turn-1" }),
+			feedError("503 unavailable", {
+				turnId: "turn-1",
+				attempts: 1,
+				details: { code: "TRANSPORT_FAILED", origin: "provider", statusCode: 503, provider: "deepseek" },
+			}),
+		);
+		expect(errorBlocksOf(twice.items)).toHaveLength(1);
+		expect(errorBlocksOf(twice.items)[0]).toMatchObject({
 			turnId: "turn-1",
 			attempts: 1,
 			details: { code: "TRANSPORT_FAILED", origin: "provider", statusCode: 503, provider: "deepseek" },
@@ -242,22 +255,27 @@ describe("fullHistoryToChat error entries", () => {
 	});
 });
 
-describe("reconcileHistoryWithLiveTerminalErrors", () => {
-	it("preserves a live terminal error when the agent_end history snapshot is stale", () => {
-		const live = appendError(
-			[createConversationUserMessage({ id: "user-live", text: "hello" })],
-			"provider quota exhausted",
-			undefined,
-			"turn-1",
-			{ code: "AI_BILLING_REQUIRED", provider: "deepseek", retryable: false },
+describe("durable history arriving after a live terminal error", () => {
+	it("keeps the live error when the history snapshot does not contain it yet", () => {
+		const live = feedWith(
+			{ type: "user.sent", message: createConversationUserMessage({ id: "user-1", text: "hello" }) },
+			feedError("provider quota exhausted", {
+				turnId: "turn-1",
+				details: { code: "AI_BILLING_REQUIRED", provider: "deepseek", retryable: false },
+			}),
 		);
 		const staleHistory = fullHistoryToChat([
-			{ type: "message", entryId: "user-1", message: { role: "user", content: "hello", timestamp: 1 } },
+			{
+				type: "message",
+				entryId: "user-1",
+				messageId: "user-1",
+				message: { role: "user", content: "hello", timestamp: 1 },
+			},
 		]);
 
-		const reconciled = reconcileHistoryWithLiveTerminalErrors(staleHistory, live);
+		const reconciled = reduceConversationFeed(live, { type: "history.loaded", items: staleHistory, revision: 1 });
 
-		expect(errorBlocksOf(reconciled)).toEqual([
+		expect(errorBlocksOf(reconciled.items)).toEqual([
 			expect.objectContaining({
 				turnId: "turn-1",
 				text: "provider quota exhausted",
@@ -266,11 +284,14 @@ describe("reconcileHistoryWithLiveTerminalErrors", () => {
 		]);
 	});
 
-	it("deduplicates a terminal error already present in canonical history", () => {
-		const live = appendError([], "provider quota exhausted", 2, "turn-1", {
-			code: "AI_BILLING_REQUIRED",
-			provider: "deepseek",
-		});
+	it("shows a terminal error already present in history once, keeping its live retry count", () => {
+		const live = feedWith(
+			feedError("provider quota exhausted", {
+				turnId: "turn-1",
+				attempts: 2,
+				details: { code: "AI_BILLING_REQUIRED", provider: "deepseek" },
+			}),
+		);
 		const history = fullHistoryToChat([
 			{
 				type: "error",
@@ -282,9 +303,9 @@ describe("reconcileHistoryWithLiveTerminalErrors", () => {
 			},
 		]);
 
-		const reconciled = reconcileHistoryWithLiveTerminalErrors(history, live);
+		const reconciled = reduceConversationFeed(live, { type: "history.loaded", items: history, revision: 1 });
 
-		expect(errorBlocksOf(reconciled)).toHaveLength(1);
-		expect(errorBlocksOf(reconciled)[0]).toMatchObject({ turnId: "turn-1", attempts: 2 });
+		expect(errorBlocksOf(reconciled.items)).toHaveLength(1);
+		expect(errorBlocksOf(reconciled.items)[0]).toMatchObject({ turnId: "turn-1", attempts: 2 });
 	});
 });

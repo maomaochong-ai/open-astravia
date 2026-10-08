@@ -12,14 +12,16 @@ import { windowsSupplementalArtifactNames } from "./windows-packaging-contract.m
 const projectRoot = join(import.meta.dirname, "..");
 const releaseDir = join(projectRoot, "release");
 const multipartPartSize = 16 * 1024 * 1024;
+// 更新清单短缓存，上线后客户端一分钟内看到新版本；安装包按版本命名，长期不可变。
+export const METADATA_CACHE_CONTROL = "public, max-age=60, s-maxage=60, must-revalidate";
 
-function requireEnv(key) {
+export function requireEnv(key) {
 	const value = process.env[key]?.trim();
 	if (!value) throw new Error(`[publish-updates-r2] missing ${key}`);
 	return value;
 }
 
-function normalizePrefix(rawPrefix) {
+export function normalizePrefix(rawPrefix) {
 	return rawPrefix
 		.split("/")
 		.map((part) => part.trim())
@@ -200,6 +202,12 @@ async function inspectVersionedObject(client, bucket, key, filePath, contentLeng
 	}
 }
 
+// 待发布的更新清单放在客户端读不到的子目录里，由开发者检查、合并 macOS 两份清单后
+// 自行复制到正式目录；安装包本身按版本命名，提前上传不会被任何客户端拿到。
+export function stagedMetadataPrefix(prefix, releaseVersion) {
+	return posix.join(prefix, "pending", releaseVersion);
+}
+
 async function uploadFile({ client, bucket, prefix, fileName, isMetadata }) {
 	const filePath = join(releaseDir, fileName);
 	const fileStat = await stat(filePath);
@@ -225,7 +233,7 @@ async function uploadFile({ client, bucket, prefix, fileName, isMetadata }) {
 			ContentLength: fileStat.size,
 			ContentType: contentTypeFor(fileName),
 			CacheControl: isMetadata
-				? "public, max-age=60, s-maxage=60, must-revalidate"
+				? METADATA_CACHE_CONTROL
 				: "public, max-age=31536000, immutable",
 			...(sha512 ? { Metadata: { sha512 } } : {}),
 		},
@@ -259,7 +267,7 @@ async function verifyPublicFiles(baseUrl, fileNames) {
 	}
 }
 
-export async function main() {
+export async function main({ stageMetadata = process.argv.includes("--stage-metadata") } = {}) {
 	const accountId = requireEnv("VETTA_R2_ACCOUNT_ID");
 	const accessKeyId = requireEnv("VETTA_R2_ACCESS_KEY_ID");
 	const secretAccessKey = requireEnv("VETTA_R2_SECRET_ACCESS_KEY");
@@ -283,6 +291,14 @@ export async function main() {
 		await uploadFile({ client, bucket, prefix, fileName, isMetadata: false });
 	}
 	await verifyPublicFiles(updateUrl, artifactFiles);
+	if (stageMetadata) {
+		const metadataPrefix = stagedMetadataPrefix(prefix, releaseVersion);
+		for (const fileName of metadataFiles) {
+			await uploadFile({ client, bucket, prefix: metadataPrefix, fileName, isMetadata: true });
+		}
+		console.log(`[publish-updates-r2] staged update metadata under ${metadataPrefix}/; publish it manually`);
+		return;
+	}
 	for (const fileName of metadataFiles) {
 		await uploadFile({ client, bucket, prefix, fileName, isMetadata: true });
 	}

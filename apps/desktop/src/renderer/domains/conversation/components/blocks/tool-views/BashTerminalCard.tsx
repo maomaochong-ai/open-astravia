@@ -1,6 +1,4 @@
-import {
-	BashTerminal,
-} from "@vetta-org/theme-ui/chat";
+import { BashTerminal } from "@vetta-org/theme-ui/chat/BashTerminalCard";
 import { useTranslation } from "react-i18next";
 import { formatPhases, formatStartedAt, formatDurationPrecise } from "./shared/format";
 import { bashHeaderLabel } from "./shared/parse-tool";

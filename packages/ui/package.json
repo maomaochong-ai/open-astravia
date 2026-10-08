@@ -12,9 +12,47 @@
 		"./utils": {
 			"types": "./src/utils.ts",
 			"import": "./src/utils.ts"
+		},
+		"./button": {
+			"types": "./src/button.tsx",
+			"import": "./src/button.tsx"
+		},
+		"./dialog": {
+			"types": "./src/dialog.tsx",
+			"import": "./src/dialog.tsx"
+		},
+		"./drawer": {
+			"types": "./src/drawer.tsx",
+			"import": "./src/drawer.tsx"
+		},
+		"./dropdown-menu": {
+			"types": "./src/dropdown-menu.tsx",
+			"import": "./src/dropdown-menu.tsx"
+		},
+		"./input": {
+			"types": "./src/input.tsx",
+			"import": "./src/input.tsx"
+		},
+		"./popover": {
+			"types": "./src/popover.tsx",
+			"import": "./src/popover.tsx"
+		},
+		"./select": {
+			"types": "./src/select.tsx",
+			"import": "./src/select.tsx"
+		},
+		"./slider": {
+			"types": "./src/slider.tsx",
+			"import": "./src/slider.tsx"
+		},
+		"./switch": {
+			"types": "./src/switch.tsx",
+			"import": "./src/switch.tsx"
 		}
 	},
-	"files": ["src"],
+	"files": [
+		"src"
+	],
 	"publishConfig": {
 		"access": "public",
 		"registry": "https://registry.npmjs.org/"

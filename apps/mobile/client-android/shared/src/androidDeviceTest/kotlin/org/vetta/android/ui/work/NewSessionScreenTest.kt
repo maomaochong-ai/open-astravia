@@ -14,8 +14,11 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Rule
 import org.junit.runner.RunWith
 import org.vetta.android.app.ThemeMode
+import org.vetta.android.core.nowEpochMs
 import org.vetta.android.domain.remote.RemoteModelOption
 import org.vetta.android.domain.remote.RemoteProjectSummary
+import org.vetta.android.domain.remote.RemoteSessionStatus
+import org.vetta.android.domain.remote.RemoteSessionSummary
 import org.vetta.android.domain.remote.link.LinkSnapshot
 import org.vetta.android.domain.remote.link.LinkStatus
 import org.vetta.android.domain.work.MirrorState
@@ -28,6 +31,7 @@ import org.vetta.android.ui.str
 import org.vetta.android.ui.theme.VettaTheme
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 @RunWith(AndroidJUnit4::class)
 class NewSessionScreenTest {
@@ -92,5 +96,35 @@ class NewSessionScreenTest {
         // The link pill stands where the composer goes until the computer answers.
         composeRule.onNodeWithTag("link.status").assertIsDisplayed()
         composeRule.onNodeWithTag("composer.field").assertDoesNotExist()
+    }
+
+    @Test
+    fun glanceOpensTheSessionThatNeedsYouAndTheRestOfTheBoard() {
+        val now = nowEpochMs()
+        val withWork =
+            online.copy(
+                sessionsLoaded = true,
+                sessions =
+                    listOf(
+                        RemoteSessionSummary("ask", "/code/app", "登录项目", "修复登录页", "要不要继续", now, RemoteSessionStatus.WaitingInput, false),
+                        RemoteSessionSummary("extra", "/code/docs", "文档", "补一篇说明", "第三件在等", now - 2_000, RemoteSessionStatus.WaitingInput, false),
+                        RemoteSessionSummary("run", "/code/web", "官网", "打包脚本", "签名失败", now - 1_000, RemoteSessionStatus.Running, false),
+                    ),
+            )
+        var opened: String? = null
+        var board = false
+        composeRule.setContent {
+            VettaTheme(ThemeMode.Light) {
+                NewSessionScreen(withWork, PromptDraft(), {}, null, null, {}, {}, {}, {}, onOpenBoard = { board = true }, onOpenSession = { opened = it })
+            }
+        }
+        composeRule.onNodeWithText("修复登录页").assertIsDisplayed()
+        composeRule.onNodeWithText("要不要继续").assertIsDisplayed()
+        composeRule.onNodeWithText("补一篇说明").assertIsDisplayed()
+        composeRule.onNodeWithText("打包脚本").assertDoesNotExist()
+        composeRule.onNodeWithTag("session.ask").performClick()
+        assertEquals("ask", opened)
+        composeRule.onNodeWithTag("newSession.board").performClick()
+        assertTrue(board)
     }
 }

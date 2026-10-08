@@ -4,10 +4,12 @@ import { createConversationUserMessage } from "@shared/conversation";
 import { RendererMarkdownScope } from "@shared/components/RendererMarkdownScope";
 import {
 	activeSessionAtom,
+	activeSessionStreamingAtom,
 	appshotAttachmentAtom,
 	chatMessagesAtom,
 	confirmDialogAtom,
 	inputValueAtom,
+	isConversationBusyAtom,
 	mentionedFilesAtom,
 	openSessionFnRef,
 	pendingMessageEditAtom,
@@ -16,11 +18,13 @@ import {
 } from "@shared/store/atoms";
 import { getDefaultStore } from "jotai";
 import { initI18n, i18n } from "@shared/i18n";
-import type { ReactNode } from "react";
+import { type ReactNode, useMemo } from "react";
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
-import { SessionUserMessage } from "./SessionUserMessage";
+import { createConversationFeed, ConversationFeedContext } from "../../conversation-view/feed";
+import { ConversationMessageScope } from "../../conversation-view/message-scope";
+import { sessionUserMessageCommands } from "../../session-conversation/session-user-message-commands";
+import { SessionUserMessage } from "../../session-conversation/SessionUserMessage";
 import { MessageItem } from "./MessageItem";
-import { MessageRenderingDefaults, MessageRenderingProvider } from "./MessageRendering";
 
 const markdown = {
 	theme: "light" as const,
@@ -39,6 +43,28 @@ const openSession = vi.fn(async () => undefined);
 
 function Scope({ children }: { children: ReactNode }) {
 	return <RendererMarkdownScope value={markdown}>{children}</RendererMarkdownScope>;
+}
+
+/** The session's user message template inside the active session's feed, as the session view mounts it. */
+function SessionUserRow({ abort }: { abort?: () => void }) {
+	const feed = useMemo(
+		() =>
+			createConversationFeed({
+				key: session.sessionPath,
+				items: chatMessagesAtom,
+				streaming: isConversationBusyAtom,
+				workspace: { id: session.cwd, cwd: session.cwd, runtimeIds: [session.runtimeId] },
+				capabilities: { userMessageCommands: sessionUserMessageCommands, ...(abort ? { abort } : {}) },
+			}),
+		[abort],
+	);
+	return (
+		<ConversationFeedContext.Provider value={feed}>
+			<ConversationMessageScope row={{ message, index: 0, isTail: true, isLastUserMessage: true }}>
+				<SessionUserMessage />
+			</ConversationMessageScope>
+		</ConversationFeedContext.Provider>
+	);
 }
 
 beforeEach(() => {
@@ -65,6 +91,7 @@ beforeEach(() => {
 	getFullHistory.mockClear();
 	openSession.mockClear();
 	store.set(activeSessionAtom, session);
+	store.set(activeSessionStreamingAtom, false);
 	store.set(pendingSessionCreationAtom, null);
 	store.set(pendingSessionOpenAtom, null);
 	store.set(inputValueAtom, "");
@@ -94,9 +121,10 @@ describe("message extension workflows", () => {
 			},
 		});
 		const onAbortEdit = vi.fn();
+		store.set(activeSessionStreamingAtom, true);
 		const view = render(
 			<Scope>
-				<SessionUserMessage message={message} isLastUserMessage isStreaming onAbortEdit={onAbortEdit} />
+				<SessionUserRow abort={onAbortEdit} />
 			</Scope>,
 		);
 		fireEvent.click(screen.getByRole("button", { name: "分叉为新会话" }));
@@ -122,7 +150,7 @@ describe("message extension workflows", () => {
 	it("stages an edit without changing history, then forks through the session extension", async () => {
 		render(
 			<Scope>
-				<SessionUserMessage message={message} isLastUserMessage />
+				<SessionUserRow />
 			</Scope>,
 		);
 		fireEvent.click(screen.getByRole("button", { name: "编辑" }));
@@ -149,7 +177,7 @@ describe("message extension workflows", () => {
 	it("binds confirmed deletion to the original session without replacing the newly opened transcript", async () => {
 		const view = render(
 			<Scope>
-				<SessionUserMessage message={message} isLastUserMessage />
+				<SessionUserRow />
 			</Scope>,
 		);
 		fireEvent.contextMenu(screen.getByText("Original message"));
@@ -168,46 +196,4 @@ describe("message extension workflows", () => {
 		await waitFor(() => expect(deleteMessage).toHaveBeenCalledWith("runtime-a", "entry-a"));
 		expect(store.get(chatMessagesAtom)).toEqual([other]);
 	});
-
-	it("projects and replaces only the locally scoped message without changing its source", () => {
-		const definition = {
-			project: (item: typeof message) => ({ ...item, text: "Projected message" }),
-		};
-		render(
-			<Scope>
-				<MessageRenderingProvider
-					value={{ project: (item) => (item.kind === "user" ? definition.project(item) : item) }}
-				>
-					<MessageItem message={message} isStreaming={false} isTailMessage />
-				</MessageRenderingProvider>
-				<MessageItem message={message} isStreaming={false} isTailMessage />
-			</Scope>,
-		);
-		expect(screen.getByText("Projected message")).toBeTruthy();
-		expect(screen.getByText("Original message")).toBeTruthy();
-		expect(message.text).toBe("Original message");
-	});
-});
-it("layers caller overrides over a default recipe without dropping an outer projection", () => {
-	const defaults = { renderers: { user: () => <p>Default recipe</p> } };
-	const extension = {
-		renderers: {
-			user: ({ message: item }: { message: typeof message | { kind: string } }) => (
-				<p>{item.kind === "user" && "text" in item ? item.text : ""}</p>
-			),
-		},
-	};
-	render(
-		<MessageRenderingProvider
-			value={{ project: (item) => (item.kind === "user" ? { ...item, text: "Projected by caller" } : item) }}
-		>
-			<MessageRenderingProvider value={extension}>
-				<MessageRenderingDefaults value={defaults}>
-					<MessageItem message={message} isStreaming={false} isTailMessage />
-				</MessageRenderingDefaults>
-			</MessageRenderingProvider>
-		</MessageRenderingProvider>,
-	);
-	expect(screen.getByText("Projected by caller")).toBeTruthy();
-	expect(screen.queryByText("Default recipe")).toBeNull();
 });

@@ -1,4 +1,5 @@
-import { Button, Popover, PopoverContent, PopoverTrigger } from "@vetta-org/ui";
+import { Button } from "@vetta-org/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@vetta-org/ui/popover";
 import type { JSX, ReactNode } from "react";
 import { useEffect, useId, useRef, useState } from "react";
 import { ModelSelectorTrigger } from "./ModelSelectorTrigger";

@@ -121,7 +121,7 @@ public enum InviteCode {
 	/// The pairing link inside; throws when the password (or code) is wrong. The key is
 	/// stretched on purpose (200 000 rounds), so it is derived off the main actor.
 	public static func open(_ envelope: Envelope, code: String, password: String) async throws -> String {
-		let key = await Task.detached { key(code: code, password: password) }.value
+		let key = await Task.detached { Self.key(code: code, password: password) }.value
 		let plaintext: Data
 		do {
 			plaintext = try RemoteCrypto.xchachaOpen(
