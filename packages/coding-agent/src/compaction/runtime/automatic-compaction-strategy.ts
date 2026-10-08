@@ -19,6 +19,7 @@ import {
 	shouldCompact,
 	shouldPrefire,
 } from "../index.js";
+import { computePrefireLeadPercent } from "../prefire.js";
 import type { CompactionPrefireCache } from "./compaction-prefire-cache.js";
 import type { CodingAgentCompactionRecordFactoryOptions } from "./compaction-record-factory.js";
 import { createCodingAgentCompactionRecord } from "./compaction-record-factory.js";
@@ -47,6 +48,8 @@ export interface CodingAgentAutomaticCompactionStrategyOptions {
 
 /** Coding-specific automatic compaction policy used behind Runtime Core's ContextStrategy contract. */
 export class CodingAgentAutomaticCompactionStrategy {
+	/** 会话级：上一次模型调用的上下文估算（增速记忆，见调用处注释）。 */
+	private lastEstimateTokens: number | undefined;
 	constructor(private readonly options: CodingAgentAutomaticCompactionStrategyOptions) {}
 
 	async prepare(
@@ -92,6 +95,13 @@ export class CodingAgentAutomaticCompactionStrategy {
 		const estimate = estimateContextTokens(measuredMessages);
 		const assembledTokens = estimateContextTokens(callMessages).tokens;
 		this.options.recordEstimatedTokens(assembledTokens);
+		// 会话级增速记忆：本策略实例随会话存活，最近两次估算之差即最近一轮的
+		// 上下文增量——prefire 预热窗口据此自适应（增速快则更早预热）。
+		const growthTokens =
+			this.lastEstimateTokens !== undefined && estimate.tokens > this.lastEstimateTokens
+				? estimate.tokens - this.lastEstimateTokens
+				: undefined;
+		this.lastEstimateTokens = estimate.tokens;
 		if (reason === "turn_start") return unchanged(callMessages, assembledTokens);
 		if (!model || !input.document || contextWindow <= 0 || !settings.enabled) {
 			return unchanged(callMessages, assembledTokens);
@@ -103,7 +113,14 @@ export class CodingAgentAutomaticCompactionStrategy {
 
 		if (reason === "assistant_error" && !overflow) return unchanged(callMessages, assembledTokens);
 		if (!overflow && !shouldCompact(estimate.tokens, contextWindow, settings)) {
-			if (shouldPrefire(estimate.tokens, contextWindow, settings)) {
+			if (
+				shouldPrefire(
+					estimate.tokens,
+					contextWindow,
+					settings,
+					computePrefireLeadPercent(growthTokens, contextWindow),
+				)
+			) {
 				this.options.prefire.start(entries, settings, model, input.modelBinding?.credential);
 			}
 			return unchanged(callMessages, assembledTokens);
