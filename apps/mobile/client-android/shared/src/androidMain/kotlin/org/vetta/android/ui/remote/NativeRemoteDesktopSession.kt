@@ -64,6 +64,13 @@ private const val MAX_CONTROL_MESSAGE_BYTES = 1_500_000
 private const val TRACE_STEPS = 8
 
 /**
+ * Shows each frame as soon as it is decoded. WebRTC's default jitter buffer smooths
+ * playback for video calls, and a desktop's bursty frames (tiny while still, hundreds
+ * of KB when a window moves) made it hold frames 100 to 300 ms on a 1 ms network.
+ */
+private const val FIELD_TRIALS = "WebRTC-ForcePlayoutDelay/min_ms:0,max_ms:0/"
+
+/**
  * One WebRTC session with the paired desktop, set up through the relay's viewer signaling.
  * Once connected directly it no longer needs the relay: if signaling drops (the relay
  * restarts, say) it reopens in the background and the link stays up.
@@ -244,7 +251,7 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
     private suspend fun run() {
         try {
             PeerConnectionFactory.initialize(
-                PeerConnectionFactory.InitializationOptions.builder(context).createInitializationOptions(),
+                PeerConnectionFactory.InitializationOptions.builder(context).setFieldTrials(FIELD_TRIALS).createInitializationOptions(),
             )
             factory = PeerConnectionFactory.builder()
                 .setVideoDecoderFactory(org.webrtc.DefaultVideoDecoderFactory(eglBase.eglBaseContext))
