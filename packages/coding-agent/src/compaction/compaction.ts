@@ -413,7 +413,10 @@ export async function generateSummary(
 	previousSummary?: string,
 	generationOptions: CompactionSummaryGenerationOptions = {},
 ): Promise<string> {
-	const maxTokens = Math.floor(0.8 * reserveTokens);
+	// 摘要输出预算：收敛到 8k（且不超过 reserve 的 1/4）。旧值 0.8×reserve（默认 28.8k）
+	// 让模型倾向写超长摘要，生成时间随输出长度线性放大；4k–8k 已足够承载
+	// 「会话压缩摘要 + 文件账目」的密度，超出部分对下一窗口的边际价值很低。
+	const maxTokens = Math.min(8000, Math.floor(0.25 * reserveTokens));
 
 	// Use update prompt if we have a previous summary, otherwise initial prompt
 	const basePrompt = previousSummary ? UPDATE_SUMMARIZATION_PROMPT : SUMMARIZATION_PROMPT;
@@ -432,7 +435,9 @@ export async function generateSummary(
 				previousSummary,
 				customInstructions,
 				completion: generationOptions.completion ?? completeSimple,
-				reasoning: "high",
+				// 摘要是「复读并提炼」任务，不需要高强度推理：high 档的思考预算在推理模型上
+				// 可达数十秒，占压缩总耗时的大头，却换不来摘要质量的可感知差异。
+				reasoning: "low",
 				errorPrefix: "Summarization failed",
 			}),
 		signal,
@@ -659,7 +664,8 @@ async function generateTurnPrefixSummary(
 	signal?: AbortSignal,
 	generationOptions: CompactionSummaryGenerationOptions = {},
 ): Promise<string> {
-	const maxTokens = Math.floor(0.5 * reserveTokens); // Smaller budget for turn prefix
+	// 与主摘要同理收敛（轮前缀更短）：一半轮次的前缀摘要 4k 封顶绰绰有余。
+	const maxTokens = Math.min(4000, Math.floor(0.25 * reserveTokens));
 	return generateCompactionSummaryWithRecovery(
 		createCompactionSummaryInputCandidates(messages),
 		(candidate) =>
