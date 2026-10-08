@@ -58,6 +58,8 @@ public final class RemoteDesktopSession {
 	private static let disconnectGraceSeconds = 5.0
 
 	private static let factory: RTCPeerConnectionFactory = {
+		// Desktop interaction favors immediate display over smoothing bursty video frames.
+		RTCPeerConnectionFactory.configureFieldTrials("WebRTC-ForcePlayoutDelay/min_ms:0,max_ms:0/")
 		RTCInitializeSSL()
 		return RTCPeerConnectionFactory(encoderFactory: RTCDefaultVideoEncoderFactory(), decoderFactory: RTCDefaultVideoDecoderFactory())
 	}()
@@ -84,7 +86,11 @@ public final class RemoteDesktopSession {
 		let delegate = PeerDelegate(owner: self)
 		self.delegate = delegate
 		let configuration = RTCConfiguration()
-		configuration.iceServers = [RTCIceServer(urlStrings: ["stun:stun.l.google.com:19302"])]
+		// STUN only (ADR-0135), kept in step with Android and REMOTE_DESKTOP_ICE_SERVERS.
+		configuration.iceServers = [
+			RTCIceServer(urlStrings: ["stun:stun.miwifi.com:3478", "stun:stun.chat.bilibili.com:3478", "stun:stun.hitv.com:3478"]),
+			RTCIceServer(urlStrings: ["stun:stun.cloudflare.com:3478", "stun:stun.l.google.com:19302"]),
+		]
 		configuration.sdpSemantics = .unifiedPlan
 		configuration.continualGatheringPolicy = .gatherContinually
 		let constraints = RTCMediaConstraints(mandatoryConstraints: nil, optionalConstraints: nil)

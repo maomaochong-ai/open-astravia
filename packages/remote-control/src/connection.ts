@@ -258,7 +258,15 @@ export class RemoteConnection {
 				else this.protocolViolation("unexpected pairing_pending");
 				return;
 			case "peer_status":
-				if (!safeFrame.online) this.rejectPending("remote peer is offline");
+				if (!safeFrame.online) {
+					this.rejectPending("remote peer is offline");
+					if (this.state === "online" || this.state === "recovering") {
+						this.keys = undefined;
+						this.earlySealed.length = 0;
+						// The relay socket stays parked; only a fresh handshake can make its peer online again.
+						this.setState("connecting");
+					}
+				}
 				this.emit({ type: "peer-status", online: safeFrame.online });
 				return;
 			case "sealed":
