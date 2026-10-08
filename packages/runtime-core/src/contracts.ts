@@ -275,6 +275,13 @@ export interface RuntimeSandboxGrantInfo {
 	createdAt: number;
 }
 
+/** 压缩摘要的流式增量：摘要生成期间逐段发出，UI 据此实时渲染「正在总结什么」。 */
+export interface CompactionDeltaEvent extends SessionEventBase {
+	type: "compaction.delta";
+	/** 本次增量的摘要文本片段（拼接即全量）。 */
+	text: string;
+}
+
 export type SessionEvent =
 	| (SessionEventBase & {
 			readonly type: "model.request.started";
@@ -301,6 +308,7 @@ export type SessionEvent =
 	| SessionExtensionEvent
 	| ActiveToolsUpdateEvent
 	| CompactionStartEvent
+	| CompactionDeltaEvent
 	| CompactionEndEvent
 	| RetryStartEvent
 	| RetryEndEvent
