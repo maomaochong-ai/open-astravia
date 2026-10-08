@@ -80,6 +80,7 @@ private val ICE_SERVERS = listOf(
  * Shows each frame as soon as it is decoded. WebRTC's default jitter buffer smooths
  * playback for video calls, and a desktop's bursty frames (tiny while still, hundreds
  * of KB when a window moves) made it hold frames 100 to 300 ms on a 1 ms network.
+ * The factory reads its own trials: set only through `initialize`, this one was ignored.
  */
 private const val FIELD_TRIALS = "WebRTC-ForcePlayoutDelay/min_ms:0,max_ms:0/"
 
@@ -293,6 +294,7 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
                 PeerConnectionFactory.InitializationOptions.builder(context).setFieldTrials(FIELD_TRIALS).createInitializationOptions(),
             )
             factory = PeerConnectionFactory.builder()
+                .setFieldTrials(FIELD_TRIALS)
                 .setVideoDecoderFactory(org.webrtc.DefaultVideoDecoderFactory(eglBase.eglBaseContext))
                 .setVideoEncoderFactory(org.webrtc.DefaultVideoEncoderFactory(eglBase.eglBaseContext, true, true))
                 .createPeerConnectionFactory()
