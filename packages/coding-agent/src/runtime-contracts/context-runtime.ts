@@ -66,6 +66,12 @@ export type CodingAgentPinnedModelContextBinder = (
 export interface CodingAgentContextRuntimeOptions {
 	readonly hookRuntime: ContextHookRuntime;
 	readonly resolveApiKey: (model: Model<Api>) => Promise<string | undefined> | string | undefined;
+	/**
+	 * 压缩摘要模型分级（可选）：宿主注入「主模型 → 摘要模型」解析，摘要生成
+	 * 换绑到轻量模型；未注入/返回 undefined 跟随主模型。换绑后 credential 按
+	 * 摘要模型自己的 provider 解析（见 summary-model.ts）。
+	 */
+	readonly resolveSummaryModel?: (primary: Model<Api>) => Model<Api> | undefined | Promise<Model<Api> | undefined>;
 	readonly resolveSettings?: () => CompactionSettings;
 	readonly generateCompaction?: (
 		preparation: CompactionPreparation,
