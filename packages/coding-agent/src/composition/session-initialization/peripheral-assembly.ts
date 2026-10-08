@@ -121,6 +121,7 @@ export async function createCodingAgentSessionPeripheralAssembly(
 		...createCodingAgentSpecializedToolRegistrations({
 			platformRegistrations: platformSpecializedToolRegistrations,
 			knowledgePageWriter: sessionOptions.knowledgePageWriter ?? profile.knowledgeRuntime?.write,
+			recallReader: sessionOptions.recallReader,
 		}),
 		...(sessionOptions.sessionRuntimeTools ?? []),
 	];
