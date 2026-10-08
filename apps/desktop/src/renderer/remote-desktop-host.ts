@@ -1,5 +1,11 @@
 import type { RemoteDesktopSignal } from "@vetta/remote-desktop";
-import { REMOTE_DESKTOP_ICE_SERVERS, RemoteDesktopHost, WebSocketRemoteDesktopSignaling } from "@vetta/remote-desktop";
+import {
+	REMOTE_DESKTOP_ICE_SERVERS,
+	RemoteDesktopHost,
+	SCREEN_TARGET_FPS,
+	WebSocketRemoteDesktopSignaling,
+	watchScreenStream,
+} from "@vetta/remote-desktop";
 
 declare global {
 	interface Window {
@@ -25,56 +31,26 @@ const onDemand = params.get("screen") === "demand";
 // Sharp enough to read zoomed-in text, small enough for the hardware encoder to keep up at
 // full frame rate, so dragging stays smooth.
 const SCREEN_CAPTURE: DisplayMediaStreamOptions = {
-	video: { width: { max: 2560 }, height: { max: 1600 }, frameRate: { max: 60 } },
+	video: { width: { max: 2560 }, height: { max: 1600 }, frameRate: { max: SCREEN_TARGET_FPS } },
 	audio: false,
 };
 
 // While the screen is shared, how it is being sent: codec, encoder, frame rate, size, what
 // holds it back, how long each frame takes to encode and what the phone asked to be resent.
 // Counts and timing only (packages/remote-desktop/AGENTS.md).
-let statsTimer: ReturnType<typeof setInterval> | undefined;
-let lastEncode: { frames: number; seconds: number } | undefined;
-const logStats = async (): Promise<void> => {
-	const current = host;
-	if (!current) return;
-	const reports = new Map<string, Record<string, unknown>>();
-	(await current.getStats()).forEach((report: Record<string, unknown>) => {
-		reports.set(String(report.id), report);
-	});
-	for (const report of reports.values()) {
-		if (report.type !== "outbound-rtp" || report.kind !== "video") continue;
-		const pair = [...reports.values()].find((entry) => entry.type === "candidate-pair" && entry.nominated === true);
-		const encode = { frames: number(report.framesEncoded) ?? 0, seconds: number(report.totalEncodeTime) ?? 0 };
-		const frames = encode.frames - (lastEncode?.frames ?? 0);
-		const encodeMs = lastEncode && frames > 0 ? ((encode.seconds - lastEncode.seconds) / frames) * 1000 : undefined;
-		lastEncode = encode;
-		if (typeof report.encoderImplementation === "string") void current.noteEncoder(report.encoderImplementation);
-		console.info(
-			line("remote desktop stream", {
-				codec: typeof report.codecId === "string" ? reports.get(report.codecId)?.mimeType : undefined,
-				encoder: report.encoderImplementation,
-				framesPerSecond: report.framesPerSecond,
-				width: report.frameWidth,
-				height: report.frameHeight,
-				limitedBy: report.qualityLimitationReason,
-				encodeMs: encodeMs === undefined ? undefined : Math.round(encodeMs),
-				keyFrames: report.keyFramesEncoded,
-				pli: report.pliCount,
-				nack: report.nackCount,
-				targetKbps: kbps(report.targetBitrate),
-				availableKbps: kbps(pair?.availableOutgoingBitrate),
-				roundTripMs:
-					typeof pair?.currentRoundTripTime === "number"
-						? Math.round(pair.currentRoundTripTime * 1000)
-						: undefined,
-			}),
-		);
-	}
-};
+let stopStats: (() => void) | undefined;
 const watchStats = (streaming: boolean): void => {
-	if (statsTimer) clearInterval(statsTimer);
-	lastEncode = undefined;
-	statsTimer = streaming ? setInterval(() => void logStats().catch(() => undefined), 5_000) : undefined;
+	stopStats?.();
+	stopStats = streaming
+		? watchScreenStream(
+				() => host?.sampleScreen() ?? Promise.resolve(undefined),
+				(sample) => console.info(line("remote desktop stream", { ...sample, framesPerSecond: sample.encodedFps })),
+				(error) =>
+					console.warn(
+						line("remote desktop stats failed", { error: error instanceof Error ? error.name : "unknown" }),
+					),
+			)
+		: undefined;
 };
 
 const signaling = new WebSocketRemoteDesktopSignaling(target);
@@ -222,6 +198,7 @@ const removeScreenListener = onDemand
 window.addEventListener(
 	"beforeunload",
 	() => {
+		stopStats?.();
 		removeControlListener?.();
 		removeScreenListener?.();
 	},
@@ -232,12 +209,4 @@ if (onDemand) window.vettaRemoteDesktop?.screenReady();
 /** The main process only sees console text, so fields go in as JSON. */
 function line(message: string, fields?: unknown): string {
 	return fields === undefined ? message : `${message} ${JSON.stringify(fields)}`;
-}
-
-function number(value: unknown): number | undefined {
-	return typeof value === "number" ? value : undefined;
-}
-
-function kbps(value: unknown): number | undefined {
-	return typeof value === "number" ? Math.round(value / 1000) : undefined;
 }

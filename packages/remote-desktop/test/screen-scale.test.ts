@@ -1,7 +1,21 @@
 import { describe, expect, it } from "vitest";
-import { isSoftwareEncoder, screenScaleDown } from "../src/screen-scale.js";
+import { evenScreenScale, isSoftwareEncoder, screenScaleDown } from "../src/screen-scale.js";
 
 describe("remote desktop screen scale", () => {
+	it("keeps fractional scaling within the budget and gives hardware H.264 even dimensions", () => {
+		for (const capture of [
+			{ width: 2560, height: 1600 },
+			{ width: 1920, height: 1080 },
+			{ width: 1365, height: 768 },
+		]) {
+			for (const scale of [1, 1.25, 1.34, 1.5, 1.675, 1.953125, 2]) {
+				const safe = evenScreenScale(capture, scale);
+				expect(safe).toBeGreaterThanOrEqual(scale);
+				expect(Math.round(capture.width / safe) % 2).toBe(0);
+				expect(Math.round(capture.height / safe) % 2).toBe(0);
+			}
+		}
+	});
 	it("tells Chromium's software encoders from the hardware ones", () => {
 		expect(isSoftwareEncoder("OpenH264")).toBe(true);
 		expect(isSoftwareEncoder("libvpx")).toBe(true);
@@ -14,7 +28,7 @@ describe("remote desktop screen scale", () => {
 	});
 
 	it("halves the software encoder's work on a large screen, and leaves a small one as is", () => {
-		expect(screenScaleDown({ width: 2560, height: 1600 }, true)).toBe(1.33);
+		expect(screenScaleDown({ width: 2560, height: 1600 }, true)).toBe(1.34);
 		expect(screenScaleDown({ width: 1920, height: 1080 }, true)).toBe(1);
 	});
 
@@ -31,7 +45,7 @@ describe("remote desktop screen scale", () => {
 
 	it("takes whichever is smaller of what the phone shows and what software can encode", () => {
 		const capture = { width: 2560, height: 1600 };
-		expect(screenScaleDown(capture, true, { width: 2304, height: 1440 })).toBe(1.33);
+		expect(screenScaleDown(capture, true, { width: 2304, height: 1440 })).toBe(1.34);
 		expect(screenScaleDown(capture, true, { width: 1000, height: 625 })).toBe(2);
 	});
 

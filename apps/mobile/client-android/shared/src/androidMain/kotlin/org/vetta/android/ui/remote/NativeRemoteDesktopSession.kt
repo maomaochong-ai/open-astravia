@@ -410,6 +410,7 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
         if (statsJob?.isActive == true) return
         statsJob =
             scope.launch {
+                var sampleCount = 0
                 while (!stopped) {
                     val peer = peerConnection ?: break
                     val entries = CompletableDeferred<List<RemoteStreamStats.Entry>>()
@@ -419,6 +420,22 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
                     val (next, totals) = RemoteStreamStats.read(entries.await(), lastTotals)
                     lastTotals = totals
                     _stats.value = next
+                    // Correlate with the desktop's five-second stream log and WebRTC's EglRenderer log.
+                    if (next.framesDecoded != null && sampleCount++ % 5 == 0) {
+                        PlatformRemoteLogger.info("native WebRTC stream", mapOf(
+                            "framesPerSecond" to next.framesPerSecond,
+                            "width" to next.frameWidth,
+                            "height" to next.frameHeight,
+                            "decoder" to next.decoder,
+                            "framesReceived" to next.framesReceived,
+                            "framesDecoded" to next.framesDecoded,
+                            "framesDropped" to next.framesDropped,
+                            "freezeCount" to next.freezeCount,
+                            "decodeMs" to next.decodeMs,
+                            "jitterBufferMs" to next.jitterBufferMs,
+                            "roundTripMs" to next.roundTripMs,
+                        ))
+                    }
                     delay(1_000)
                 }
             }

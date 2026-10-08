@@ -1,10 +1,25 @@
 const { app, BrowserWindow } = require("electron");
-const { join } = require("node:path");
+const { basename, join, resolve, sep } = require("node:path");
+const { mkdtempSync, rmSync } = require("node:fs");
+const { tmpdir } = require("node:os");
 
 const RESULT_PREFIX = "VETTA_E2E_RESULT:";
-const timeout = setTimeout(() => finish({ ok: false, error: "Electron WebRTC E2E timed out" }), 20_000);
+const profile = mkdtempSync(join(tmpdir(), "vetta-webrtc-e2e-"));
+app.setPath("userData", profile);
+app.on("quit", () => {
+	if (!resolve(profile).startsWith(`${resolve(tmpdir())}${sep}`) || !basename(profile).startsWith("vetta-webrtc-e2e-")) return;
+	try { rmSync(profile, { recursive: true, force: true }); } catch { /* Chromium may retain handles until process exit. */ }
+});
+const timeout = setTimeout(() => finish({ ok: false, error: "Electron WebRTC E2E timed out" }), 40_000);
 
 app.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");
+// Match the Desktop host's version-scoped Windows configuration (ADR-0149).
+if (process.platform === "win32" && process.versions.chrome?.split(".")[0] === "132") {
+	app.commandLine.appendSwitch("disable-features", "KeepEncoderInstanceOnRelease");
+}
+// Expose hardware codec statistics using a synthetic camera; no physical device is accessed.
+app.commandLine.appendSwitch("use-fake-device-for-media-stream");
+app.commandLine.appendSwitch("use-fake-ui-for-media-stream");
 
 app.whenReady().then(async () => {
 	const window = new BrowserWindow({

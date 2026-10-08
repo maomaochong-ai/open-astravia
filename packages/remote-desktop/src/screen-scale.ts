@@ -35,5 +35,16 @@ export function screenScaleDown(capture: ScreenSize | undefined, softwareEncoder
 		scale = VIEW_STEPS.reduce((best, step) => (step <= fits ? step : best), 1);
 	}
 	if (softwareEncoder) scale = Math.max(scale, Math.sqrt((capture.width * capture.height) / SOFTWARE_MAX_PIXELS));
-	return Math.round(scale * 100) / 100;
+	return Math.ceil(scale * 100) / 100;
+}
+
+/** Chromium rounds scaled dimensions; an odd result makes hardware H.264 reject InitEncode. */
+export function evenScreenScale(capture: ScreenSize | undefined, scale: number): number {
+	if (!capture || capture.width < 2 || capture.height < 2) return scale;
+	for (let width = Math.floor(capture.width / scale / 2) * 2; width >= 2; width -= 2) {
+		const candidate = capture.width / width;
+		const height = Math.round(capture.height / candidate);
+		if (height >= 2 && height % 2 === 0) return candidate;
+	}
+	return scale;
 }

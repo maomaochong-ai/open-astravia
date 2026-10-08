@@ -21,6 +21,9 @@ export {
 	parseRemoteViewMessage,
 	RemoteDesktopProtocolError,
 } from "./protocol.js";
+export { SCREEN_TARGET_FPS } from "./screen-adaptation.js";
+export { watchScreenStream } from "./screen-monitor.js";
+export type { ScreenStreamSample } from "./screen-stats.js";
 export type {
 	RemoteDesktopSignalingHandlers,
 	RemoteDesktopWebSocket,

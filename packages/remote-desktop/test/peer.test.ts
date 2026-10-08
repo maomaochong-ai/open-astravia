@@ -227,6 +227,184 @@ describe("remote desktop host negotiation", () => {
 });
 
 describe("remote desktop host screen on demand", () => {
+	it("ignores a pending statistics read from an unsubscribed screen after reopening", async () => {
+		const peer = fakePeerConnection();
+		const host = new RemoteDesktopHost(
+			{ sessionId: "pairing_0123456789abcdefghijklmnop", createPeerConnection: () => peer.connection },
+			() => undefined,
+			() => undefined,
+		);
+		await host.start();
+		await host.replaceScreen({
+			...fakeTrack(),
+			getSettings: () => ({ width: 2560, height: 1600 }),
+		} as unknown as MediaStreamTrack);
+		let finish: (stats: RTCStatsReport) => void = () => undefined;
+		peer.setStats(
+			new Promise<RTCStatsReport>((resolve) => {
+				finish = resolve;
+			}),
+		);
+		const reading = host.sampleScreen();
+		await host.replaceScreen(null);
+		await host.replaceScreen({
+			...fakeTrack(),
+			getSettings: () => ({ width: 2560, height: 1600 }),
+		} as unknown as MediaStreamTrack);
+		finish(
+			new Map([
+				[
+					"old",
+					{ id: "old", type: "outbound-rtp", kind: "video", timestamp: 1000, encoderImplementation: "OpenH264" },
+				],
+			]) as unknown as RTCStatsReport,
+		);
+		expect(await reading).toBeUndefined();
+		expect(peer.sender.parameters).toMatchObject({ encodings: [{ scaleResolutionDownBy: 1 }] });
+		host.close();
+	});
+	it("keeps control through viewing, zoom, overload, recovery and re-subscription", async () => {
+		const peer = fakePeerConnection();
+		const host = new RemoteDesktopHost(
+			{ sessionId: "pairing_0123456789abcdefghijklmnop", createPeerConnection: () => peer.connection },
+			() => undefined,
+			() => undefined,
+			{ onMessage: () => undefined },
+		);
+		await host.start();
+		const track = {
+			...fakeTrack(),
+			kind: "video",
+			getSettings: () => ({ width: 2560, height: 1600 }),
+		} as unknown as MediaStreamTrack;
+		await host.replaceScreen(track);
+		Object.defineProperty(peer.channels[1], "readyState", { value: "open" });
+		host.sendControl("viewing");
+		peer.channels[2].onmessage?.({ data: '{"width":1440,"height":900}' } as MessageEvent);
+		await vi.waitFor(() =>
+			expect(peer.sender.parameters).toMatchObject({ encodings: [{ scaleResolutionDownBy: 2560 / 1706 }] }),
+		);
+		peer.channels[2].onmessage?.({ data: '{"width":3000,"height":1875}' } as MessageEvent);
+		let frames = 0;
+		let encode = 0;
+		for (let second = 0; second <= 16; second++) {
+			const overloaded = second <= 3;
+			frames += overloaded ? 4 : 30;
+			encode += overloaded ? 0.12 : 0.3;
+			peer.setStats(
+				new Map([
+					[
+						"out",
+						{
+							id: "out",
+							type: "outbound-rtp",
+							kind: "video",
+							timestamp: second * 1000,
+							framesEncoded: frames,
+							totalEncodeTime: encode,
+							framesPerSecond: overloaded ? 4 : 30,
+							encoderImplementation: "OpenH264",
+							mediaSourceId: "source",
+							qualityLimitationReason: overloaded ? "bandwidth" : "none",
+						},
+					],
+					["source", { id: "source", framesPerSecond: 30 }],
+				]) as unknown as RTCStatsReport,
+			);
+			await host.sampleScreen();
+			if (second === 3)
+				expect(peer.sender.parameters).toMatchObject({ encodings: [{ scaleResolutionDownBy: 2560 / 1526 }] });
+		}
+		expect(peer.sender.parameters).toMatchObject({ encodings: [{ scaleResolutionDownBy: 2560 / 1910 }] });
+		host.sendControl("recovered");
+		await host.replaceScreen(null);
+		expect(track.stop).toHaveBeenCalledOnce();
+		await host.replaceScreen({ ...fakeTrack(), kind: "video" } as unknown as MediaStreamTrack);
+		host.sendControl("reopened");
+		expect(peer.channels[1].send).toHaveBeenLastCalledWith("reopened");
+		expect(peer.createOffer).toHaveBeenCalledOnce();
+		host.close();
+	});
+
+	it("serializes zoom writes, coalesces duplicate sizes and retries rejected parameters", async () => {
+		const peer = fakePeerConnection();
+		const logger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn() };
+		const host = new RemoteDesktopHost(
+			{ sessionId: "pairing_0123456789abcdefghijklmnop", createPeerConnection: () => peer.connection, logger },
+			() => undefined,
+			() => undefined,
+		);
+		await host.start();
+		await host.replaceScreen({
+			...fakeTrack(),
+			kind: "video",
+			getSettings: () => ({ width: 2560, height: 1600 }),
+		} as unknown as MediaStreamTrack);
+		let finish: () => void = () => undefined;
+		peer.sender.setParameters.mockImplementationOnce(
+			(next: Record<string, unknown>) =>
+				new Promise<void>((resolve) => {
+					finish = () => {
+						peer.sender.parameters = next;
+						resolve();
+					};
+				}),
+		);
+		const view = peer.channels[1];
+		view.onmessage?.({ data: '{"width":640,"height":400}' } as MessageEvent);
+		await Promise.resolve();
+		const pendingCalls = peer.sender.setParameters.mock.calls.length;
+		view.onmessage?.({ data: '{"width":4320,"height":2700}' } as MessageEvent);
+		view.onmessage?.({ data: '{"width":4320,"height":2700}' } as MessageEvent);
+		await Promise.resolve();
+		expect(peer.sender.setParameters.mock.calls).toHaveLength(pendingCalls);
+		finish();
+		await vi.waitFor(() =>
+			expect(peer.sender.parameters).toMatchObject({ encodings: [{ scaleResolutionDownBy: 1 }] }),
+		);
+		expect(peer.sender.setParameters.mock.calls).toHaveLength(pendingCalls + 1);
+		peer.sender.setParameters.mockRejectedValueOnce(
+			new DOMException("stale transaction", "InvalidModificationError"),
+		);
+		await host.noteEncoder("OpenH264");
+		expect(logger.warn).toHaveBeenCalledWith(
+			"remote desktop video parameters rejected",
+			expect.objectContaining({ error: "InvalidModificationError" }),
+		);
+		await host.noteEncoder("OpenH264");
+		expect(peer.sender.parameters).toMatchObject({ encodings: [{ scaleResolutionDownBy: 2560 / 1910 }] });
+		host.close();
+	});
+
+	it("discards late stats and releases a track when closing during replacement", async () => {
+		const peer = fakePeerConnection();
+		const host = new RemoteDesktopHost(
+			{ sessionId: "pairing_0123456789abcdefghijklmnop", createPeerConnection: () => peer.connection },
+			() => undefined,
+			() => undefined,
+		);
+		await host.start();
+		let finish: () => void = () => undefined;
+		peer.sender.replaceTrack.mockImplementationOnce(
+			(track: MediaStreamTrack) =>
+				new Promise<void>((resolve) => {
+					finish = () => {
+						peer.sender.track = track;
+						resolve();
+					};
+				}),
+		);
+		const track = fakeTrack();
+		const replacing = host.replaceScreen(track);
+		await Promise.resolve();
+		host.close();
+		finish();
+		await replacing;
+		expect(track.stop).toHaveBeenCalledOnce();
+		expect(peer.sender.setParameters).not.toHaveBeenCalled();
+		expect(await host.sampleScreen()).toBeUndefined();
+	});
+
 	it("opens with an empty video slot and swaps the screen in and out without renegotiating", async () => {
 		const peer = fakePeerConnection();
 		const host = new RemoteDesktopHost(
@@ -247,8 +425,8 @@ describe("remote desktop host screen on demand", () => {
 		expect(peer.sender.track).toBe(first);
 		expect(first.contentHint).toBe("detail");
 		expect(peer.sender.parameters).toMatchObject({
-			degradationPreference: "balanced",
-			encodings: [{ maxBitrate: 12_000_000 }],
+			degradationPreference: "maintain-framerate",
+			encodings: [{ maxBitrate: 12_000_000, maxFramerate: 30 }],
 		});
 
 		const second = fakeTrack();
@@ -276,7 +454,7 @@ describe("remote desktop host screen on demand", () => {
 		expect(peer.sender.parameters).toMatchObject({ encodings: [{ scaleResolutionDownBy: 1 }] });
 
 		await host.noteEncoder("OpenH264");
-		expect(peer.sender.parameters).toMatchObject({ encodings: [{ scaleResolutionDownBy: 1.33 }] });
+		expect(peer.sender.parameters).toMatchObject({ encodings: [{ scaleResolutionDownBy: 2560 / 1910 }] });
 		expect(logger.info).toHaveBeenCalledWith(
 			"remote desktop encoder changed",
 			expect.objectContaining({ software: true }),
@@ -305,7 +483,7 @@ describe("remote desktop host screen on demand", () => {
 
 		view.onmessage?.({ data: '{"width":1440,"height":900}' } as MessageEvent);
 		await vi.waitFor(() =>
-			expect(peer.sender.parameters).toMatchObject({ encodings: [{ scaleResolutionDownBy: 1.5 }] }),
+			expect(peer.sender.parameters).toMatchObject({ encodings: [{ scaleResolutionDownBy: 2560 / 1706 }] }),
 		);
 
 		// Zoomed in: full size again.
@@ -362,8 +540,10 @@ function fakePeerConnection(): {
 		track: MediaStreamTrack | null;
 		parameters: Record<string, unknown>;
 		readonly setParameters: ReturnType<typeof vi.fn>;
+		readonly replaceTrack: ReturnType<typeof vi.fn>;
 	};
 	readonly setConnectionState: (state: RTCPeerConnectionState) => void;
+	readonly setStats: (stats: RTCStatsReport | Promise<RTCStatsReport>) => void;
 } {
 	const createOffer = vi.fn(async () => ({ type: "offer" as const, sdp: "v=0\r\n" }));
 	const channels: RTCDataChannel[] = [];
@@ -394,10 +574,15 @@ function fakePeerConnection(): {
 	const setCodecPreferences = vi.fn();
 	const setRemoteDescription = vi.fn(async () => undefined);
 	const addTransceiver = vi.fn(() => ({ sender, setCodecPreferences }));
+	let stats: RTCStatsReport | Promise<RTCStatsReport> = new Map() as unknown as RTCStatsReport;
 	const connection = {
 		addTransceiver,
 		addIceCandidate: vi.fn(async () => undefined),
-		addTrack: vi.fn(),
+		addTrack: vi.fn((track: MediaStreamTrack) => {
+			sender.track = track;
+			return sender;
+		}),
+		getStats: vi.fn(async () => stats),
 		close: vi.fn(),
 		connectionState: "new",
 		createDataChannel,
@@ -423,11 +608,14 @@ function fakePeerConnection(): {
 			(connection as { connectionState: RTCPeerConnectionState }).connectionState = state;
 			connection.onconnectionstatechange?.(new Event("connectionstatechange"));
 		},
+		setStats(value) {
+			stats = value;
+		},
 	};
 }
 
 function fakeStream(): MediaStream {
-	const track = { stop: vi.fn() } as unknown as MediaStreamTrack;
+	const track = { kind: "video", stop: vi.fn() } as unknown as MediaStreamTrack;
 	return {
 		getTracks: () => [track],
 		getVideoTracks: () => [track],

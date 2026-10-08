@@ -16,6 +16,11 @@ data class RemoteStreamStats(
     val jitterBufferMs: Double? = null,
     /** How long the phone takes to decode a frame, on average. */
     val decodeMs: Double? = null,
+    val decoder: String? = null,
+    val framesReceived: Double? = null,
+    val framesDecoded: Double? = null,
+    val framesDropped: Double? = null,
+    val freezeCount: Double? = null,
 ) {
     enum class Route {
         /** Both ends on the same network. */
@@ -79,6 +84,11 @@ data class RemoteStreamStats(
                     framesPerSecond = number(video, "framesPerSecond"),
                     frameWidth = number(video, "frameWidth")?.toInt(),
                     frameHeight = number(video, "frameHeight")?.toInt(),
+                    decoder = text(video, "decoderImplementation"),
+                    framesReceived = number(video, "framesReceived"),
+                    framesDecoded = number(video, "framesDecoded"),
+                    framesDropped = number(video, "framesDropped"),
+                    freezeCount = number(video, "freezeCount"),
                 )
             if (previous != null) {
                 val frames = totals.jitterFrames - previous.jitterFrames

@@ -26,6 +26,10 @@ class RemoteStreamStatsTest {
                     "jitterBufferEmittedCount" to jitterFrames,
                     "totalDecodeTime" to decodeTime,
                     "framesDecoded" to decoded,
+                    "framesReceived" to decoded + 2,
+                    "framesDropped" to 2L,
+                    "freezeCount" to 1L,
+                    "decoderImplementation" to "test-hardware-decoder",
                 ),
             ),
         )
@@ -37,6 +41,11 @@ class RemoteStreamStatsTest {
         assertEquals(8.0, first.roundTripMs!!, 0.001)
         assertEquals(60.0, first.framesPerSecond)
         assertEquals(1920 to 1080, first.frameWidth to first.frameHeight)
+        assertEquals("test-hardware-decoder", first.decoder)
+        assertEquals(102.0, first.framesReceived)
+        assertEquals(100.0, first.framesDecoded)
+        assertEquals(2.0, first.framesDropped)
+        assertEquals(1.0, first.freezeCount)
         assertNull(first.jitterBufferMs, "a first sample has nothing to average against")
 
         val (second, _) = RemoteStreamStats.read(sample(2.2, 160.0, 0.8, 160.0), previous = totals)
