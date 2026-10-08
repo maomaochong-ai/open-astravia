@@ -86,10 +86,11 @@ public final class RemoteDesktopSession {
 		let delegate = PeerDelegate(owner: self)
 		self.delegate = delegate
 		let configuration = RTCConfiguration()
-		// STUN only (ADR-0135), kept in step with Android and REMOTE_DESKTOP_ICE_SERVERS.
+		// STUN only (ADR-0135), kept in step with Android and REMOTE_DESKTOP_ICE_SERVERS: only
+		// servers reachable in mainland China without a proxy. One a proxy carries (Google,
+		// Cloudflare) can answer first with the proxy's exit, and the link then goes through it.
 		configuration.iceServers = [
 			RTCIceServer(urlStrings: ["stun:stun.miwifi.com:3478", "stun:stun.chat.bilibili.com:3478", "stun:stun.hitv.com:3478"]),
-			RTCIceServer(urlStrings: ["stun:stun.cloudflare.com:3478", "stun:stun.l.google.com:19302"]),
 		]
 		configuration.sdpSemantics = .unifiedPlan
 		configuration.continualGatheringPolicy = .gatherContinually
