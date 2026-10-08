@@ -146,7 +146,9 @@ export class CodingAgentSessionExecutionRuntime {
 						type: "task-notification",
 						content: [{ type: "text", text: buildCodingAgentBackgroundCommandNotification(task) }],
 						modelVisible: true,
-						display: true,
+						// 任务完成通知是内部控制信号：模型需要被唤醒，但它不该作为对话消息插入用户
+						// 的聊天流，用户通过后台任务面板与角标获知结果（issue #3）。
+						display: false,
 					},
 				])
 				.catch((error: unknown) => {

@@ -3,6 +3,18 @@ import type { Api, AssistantMessage, Message, Model, ToolCall, ToolResultMessage
 const UNSUPPORTED_IMAGE_INPUT_NOTICE = "Image content omitted because the current model does not support image input.";
 
 /**
+ * 孤儿工具调用的占位结果。工具结果确实丢失时，必须告诉模型「这次调用的结果不可用」
+ * 以及是哪一个调用，而不是给出一句无从判断的空结果（issue #3）。
+ */
+function missingToolResultText(toolName: string): string {
+	return (
+		`No result was recorded for the "${toolName}" tool call, so its output is unavailable ` +
+		"(the call was interrupted, cancelled, or its result was lost before it was stored). " +
+		"Re-run the tool if you still need that output."
+	);
+}
+
+/**
  * Normalize tool call ID for cross-provider compatibility.
  * OpenAI Responses API generates IDs that are 450+ chars with special characters like `|`.
  * Anthropic APIs require IDs matching ^[a-zA-Z0-9_-]+$ (max 64 chars).
@@ -138,7 +150,7 @@ export function transformMessages<TApi extends Api>(
 							role: "toolResult",
 							toolCallId: tc.id,
 							toolName: tc.name,
-							content: [{ type: "text", text: "No result provided" }],
+							content: [{ type: "text", text: missingToolResultText(tc.name) }],
 							isError: true,
 							timestamp: Date.now(),
 						} as ToolResultMessage);
@@ -188,7 +200,7 @@ export function transformMessages<TApi extends Api>(
 							role: "toolResult",
 							toolCallId: tc.id,
 							toolName: tc.name,
-							content: [{ type: "text", text: "No result provided" }],
+							content: [{ type: "text", text: missingToolResultText(tc.name) }],
 							isError: true,
 							timestamp: Date.now(),
 						} as ToolResultMessage);
