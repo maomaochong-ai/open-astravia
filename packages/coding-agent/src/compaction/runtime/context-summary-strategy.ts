@@ -56,6 +56,9 @@ export class CodingAgentContextSummaryStrategy {
 			tokensBefore,
 			...(input.previousSummary === undefined ? {} : { previousSummary: input.previousSummary }),
 			fileOps: createFileOps(),
+			// 临时上下文摘要（非会话压缩）：无路径条目，账本走空历史。
+			pathEntries: [],
+			prevCompactionIndex: -1,
 			settings,
 		};
 		const result = await this.options.generateCompaction(
