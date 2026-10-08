@@ -125,6 +125,40 @@ public final class ChannelManager {
 		Task { await attempt() }
 	}
 
+	/// The phone moved to another network (Wi-Fi to cellular, say). Sockets on the old one
+	/// may be dead without knowing it until a keepalive fails, so open the best link on the
+	/// new one now and switch over, keeping the old one until then. Behind P2P only the
+	/// standby is rebuilt: ICE moves or gives up the P2P link on its own.
+	public func networkChanged() {
+		guard running else { return }
+		clearReconnect()
+		backoffMs = 1_000
+		guard snapshot.status == .online, let active else {
+			Task { await attempt() }
+			return
+		}
+		if active.channel == .p2p {
+			clearStandby()
+			scheduleStandby(afterMs: 0)
+			return
+		}
+		Task { await switchOver(from: active) }
+	}
+
+	private func switchOver(from previous: Candidate) async {
+		let current = generation
+		var found = await raceLan(current)
+		if found == nil, current == generation { found = await connectRelay(current) }
+		guard let found else { return }
+		guard current == generation, running, active === previous else {
+			found.dispose()
+			found.connection.close()
+			return
+		}
+		adopt(found)
+		if found.channel == .relay { scheduleProbe() }
+	}
+
 	/// In the background the P2P link closes at once, so the desktop stops its capture and
 	/// frees the connection instead of waiting for ICE to time out; the link falls back to
 	/// the LAN or relay, and upgrades again in the foreground.
@@ -332,11 +366,12 @@ public final class ChannelManager {
 	}
 
 	/// Opens a new standby behind P2P a little later: the LAN if it answers, else the relay.
-	private func scheduleStandby() {
+	private func scheduleStandby(afterMs delay: Double? = nil) {
 		guard running, standbyTimer == nil else { return }
 		let current = generation
+		let delay = delay ?? options.standbyRetryMs
 		standbyTimer = Task { [weak self] in
-			try? await Task.sleep(nanoseconds: UInt64((self?.options.standbyRetryMs ?? 5_000) * 1_000_000))
+			if delay > 0 { try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000)) }
 			guard !Task.isCancelled, let self else { return }
 			var found = await self.raceLan(current)
 			if found == nil, !Task.isCancelled, current == self.generation { found = await self.connectRelay(current) }

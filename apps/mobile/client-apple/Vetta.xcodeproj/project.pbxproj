@@ -22,6 +22,7 @@
 		3E04872F62E0280B58E31A31 /* SessionActivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFEE4568B92E6D902969658A /* SessionActivityWidget.swift */; };
 		4F34BF649619CE972ED4CC8E /* InvitePairView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FCDD8D1166D2CB44460EADA /* InvitePairView.swift */; };
 		4F47D45F4A52DF51462C2294 /* VettaWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 405CD81A957E334A0D0E01F1 /* VettaWidgets.swift */; };
+		538E84FF2050A297B5E09CE6 /* NetworkWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3A4CA2973D6C669B7ECEB91 /* NetworkWatcher.swift */; };
 		553F60767299442FEB0D3C01 /* ChatInputBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC4528B8445F4DFE1B3DAC95 /* ChatInputBar.swift */; };
 		557A05454FD9578BF19AECC7 /* TaskBoardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D2A6611E2835A451FE4B4D4 /* TaskBoardView.swift */; };
 		55F1AF1E8FA861B3D929EABE /* LiveActivityController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 614A36D1F328D128D29D23BE /* LiveActivityController.swift */; };
@@ -143,6 +144,7 @@
 		E33BB88AA6F56D2A00716432 /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
 		E7F30E48D0595CE66EF6B8A3 /* MarkdownView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownView.swift; sourceTree = "<group>"; };
 		F0D2A6C73F7E73DC53077670 /* ModelSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelSheet.swift; sourceTree = "<group>"; };
+		F3A4CA2973D6C669B7ECEB91 /* NetworkWatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkWatcher.swift; sourceTree = "<group>"; };
 		F48CB4F31FE51D7DCA191DCA /* HomeDrawer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeDrawer.swift; sourceTree = "<group>"; };
 		F4BD5077EC35B7196CE6FE34 /* ProjectRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectRow.swift; sourceTree = "<group>"; };
 		F4DEB394450DD49397D674E7 /* VettaRTC */ = {isa = PBXFileReference; lastKnownFileType = folder; name = VettaRTC; path = VettaRTC; sourceTree = SOURCE_ROOT; };
@@ -179,6 +181,7 @@
 				673796C16D0A139458E920DF /* KeyboardWarmup.swift */,
 				E33BB88AA6F56D2A00716432 /* KeychainStore.swift */,
 				614A36D1F328D128D29D23BE /* LiveActivityController.swift */,
+				F3A4CA2973D6C669B7ECEB91 /* NetworkWatcher.swift */,
 				4351D91117ED64F564EE2106 /* QRScannerView.swift */,
 				6972B8060DA17716B70449AD /* SessionNotifier.swift */,
 				9A223D846ECA782112079EA4 /* SpeechDictation.swift */,
@@ -501,6 +504,7 @@
 				55F1AF1E8FA861B3D929EABE /* LiveActivityController.swift in Sources */,
 				1751F6BEC22BE28DE42676E2 /* MarkdownView.swift in Sources */,
 				97373277B2BCFF1BA7983CE2 /* ModelSheet.swift in Sources */,
+				538E84FF2050A297B5E09CE6 /* NetworkWatcher.swift in Sources */,
 				99925AFD6476F200F1186F5D /* NewSessionView.swift in Sources */,
 				97E3DC8E241B2B6E710580AC /* PairView.swift in Sources */,
 				F28E4179CBE02483F7D37374 /* ProjectRow.swift in Sources */,
