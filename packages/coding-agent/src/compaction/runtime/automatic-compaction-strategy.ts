@@ -20,6 +20,7 @@ import {
 	shouldPrefire,
 } from "../index.js";
 import { computePrefireLeadPercent } from "../prefire.js";
+import { resolveCompactionSummaryModel } from "../summary-model.js";
 import type { CompactionPrefireCache } from "./compaction-prefire-cache.js";
 import type { CodingAgentCompactionRecordFactoryOptions } from "./compaction-record-factory.js";
 import { createCodingAgentCompactionRecord } from "./compaction-record-factory.js";
@@ -36,6 +37,7 @@ import { applyPinnedModelContext } from "./pinned-model-context-projection.js";
 
 export interface CodingAgentAutomaticCompactionStrategyOptions {
 	readonly resolveApiKey: CodingAgentContextRuntimeOptions["resolveApiKey"];
+	readonly resolveSummaryModel?: CodingAgentContextRuntimeOptions["resolveSummaryModel"];
 	readonly hookRuntime: CodingAgentContextRuntimeOptions["hookRuntime"];
 	readonly memoryRollover: CodingAgentContextRuntimeOptions["memoryRollover"];
 	readonly generateCompaction: NonNullable<CodingAgentContextRuntimeOptions["generateCompaction"]>;
@@ -121,7 +123,11 @@ export class CodingAgentAutomaticCompactionStrategy {
 					computePrefireLeadPercent(growthTokens, contextWindow),
 				)
 			) {
-				this.options.prefire.start(entries, settings, model, input.modelBinding?.credential);
+				void resolveCompactionSummaryModel(model, this.options.resolveSummaryModel).then((resolved) => {
+					// 换绑后主模型 credential 不跨 provider；prefire 内部按需 resolveApiKey 兜底。
+					const credential = resolved.swapped ? undefined : input.modelBinding?.credential;
+					this.options.prefire.start(entries, settings, resolved.model, credential);
+				});
 			}
 			return unchanged(callMessages, assembledTokens);
 		}
@@ -146,17 +152,24 @@ export class CodingAgentAutomaticCompactionStrategy {
 		}
 
 		try {
-			const apiKey = input.modelBinding?.credential
-				? await input.modelBinding.credential.resolve()
-				: await this.options.resolveApiKey(model);
+			// 摘要模型分级：宿主注入解析时换绑到轻量模型；换绑后主模型的
+			// modelBinding.credential 不能跨 provider 使用，改走 resolveApiKey。
+			const summaryModel = await resolveCompactionSummaryModel(model, this.options.resolveSummaryModel);
+			const boundCredential = summaryModel.swapped ? undefined : input.modelBinding?.credential;
+			const apiKey = boundCredential
+				? await boundCredential.resolve()
+				: await this.options.resolveApiKey(summaryModel.model);
 			if (!apiKey) {
 				await input.reportObservation({
 					type: "compaction.end",
 					success: false,
 					reason: compactionReason,
-					errorMessage: `No API key for ${model.provider}`,
+					errorMessage: `No API key for ${summaryModel.model.provider}`,
 					failure: runtimeFailureFromError(
-						providerAuthenticationError(model, `No credentials configured for ${model.provider}/${model.id}`),
+						providerAuthenticationError(
+							summaryModel.model,
+							`No credentials configured for ${summaryModel.model.provider}/${summaryModel.model.id}`,
+						),
 					),
 					source: "agent",
 				});
@@ -210,7 +223,7 @@ export class CodingAgentAutomaticCompactionStrategy {
 			const result =
 				extensionResult?.compaction ??
 				prefired ??
-				(await this.options.generateCompaction(preparation, model, apiKey, undefined, signal, {
+				(await this.options.generateCompaction(preparation, summaryModel.model, apiKey, undefined, signal, {
 					onSummaryDelta: (text) => input.reportObservation({ type: "compaction.delta", text, source: "agent" }),
 				}));
 			signal.throwIfAborted();
