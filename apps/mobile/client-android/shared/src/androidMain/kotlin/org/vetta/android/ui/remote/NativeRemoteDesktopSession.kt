@@ -60,6 +60,9 @@ import org.webrtc.VideoTrack
 private const val PROTOCOL_VERSION = 1
 private const val INPUT_CHANNEL = "vetta-input-v1"
 private const val CONTROL_CHANNEL = "vetta-control-v2"
+
+/** Opened by desktops that send the picture no larger than this phone shows it. */
+private const val VIEW_CHANNEL = "vetta-view-v1"
 private const val MAX_CONTROL_MESSAGE_BYTES = 1_500_000
 private const val TRACE_STEPS = 8
 
@@ -97,6 +100,10 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
     private var inputChannel: DataChannel? = null
     private var controlChannel: DataChannel? = null
     private var controlTransport: NativeRemoteControlTransport? = null
+    private var viewChannel: DataChannel? = null
+
+    /** How large the whole desktop is shown, in pixels with zoom applied; sent again once the channel opens. */
+    @Volatile private var shown: IntSize? = null
     private var sequence = 1L
     private var renderer: SurfaceViewRenderer? = null
     private var remoteVideoTrack: VideoTrack? = null
@@ -186,6 +193,7 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
         _stats.value = null
         inputChannel?.dispose()
         controlChannel?.dispose()
+        viewChannel?.dispose()
         peerConnection?.dispose()
         factory?.dispose()
         signaling?.cancel()
@@ -250,6 +258,27 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
             put("sequence", sequence++)
             put("text", text)
         })
+    }
+
+    /**
+     * Tells the desktop how large the whole picture is shown, zoom included, so it sends no
+     * more detail than that. Desktops that do not open the view channel keep the full size.
+     */
+    fun showView(size: IntSize) {
+        if (size.width <= 0 || size.height <= 0) return
+        shown = size
+        sendView()
+    }
+
+    private fun sendView() {
+        val size = shown ?: return
+        val channel = viewChannel ?: return
+        if (channel.state() != DataChannel.State.OPEN) return
+        val payload = buildJsonObject {
+            put("width", size.width)
+            put("height", size.height)
+        }
+        channel.send(DataChannel.Buffer(java.nio.ByteBuffer.wrap(payload.toString().toByteArray()), false))
     }
 
     private fun sendInput(payload: JsonObject) {
@@ -343,6 +372,17 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
                     CONTROL_CHANNEL -> {
                         controlChannel = channel
                         controlTransport?.bind(channel)
+                    }
+                    VIEW_CHANNEL -> {
+                        viewChannel = channel
+                        channel.registerObserver(object : DataChannel.Observer {
+                            override fun onBufferedAmountChange(previousAmount: Long) = Unit
+                            override fun onStateChange() {
+                                if (channel.state() == DataChannel.State.OPEN) sendView()
+                            }
+                            override fun onMessage(buffer: DataChannel.Buffer) = Unit
+                        })
+                        sendView()
                     }
                     else -> channel.close()
                 }
