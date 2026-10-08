@@ -609,7 +609,7 @@ export function fullHistoryToChat(entries: HistoryEntry[]): ChatConversationItem
 				kind: "event",
 				id: entry.entryId ?? `hist-compact-${messages.length}`,
 				entryId: entry.entryId,
-				event: { kind: "compaction", summary: entry.summary },
+				event: { kind: "compaction", summary: entry.summary, tokensBefore: entry.tokensBefore },
 				timestamp: new Date(entry.timestamp).getTime(),
 			});
 			continue;
