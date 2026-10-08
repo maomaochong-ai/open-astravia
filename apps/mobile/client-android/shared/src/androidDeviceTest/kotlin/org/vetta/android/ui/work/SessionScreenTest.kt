@@ -325,7 +325,7 @@ class SessionScreenTest {
                     LinkSnapshot(
                         LinkStatus.Online,
                         peerOnline = true,
-                        desktop = RemoteDeviceStatus("desk", null, emptyList(), false, 0, fileRead = true),
+                        desktop = RemoteDeviceStatus("desk", null, emptyList(), false, 0),
                     ),
             )
         composeRule.setContent {
