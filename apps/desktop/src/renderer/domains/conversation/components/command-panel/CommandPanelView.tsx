@@ -1,5 +1,5 @@
-import { ThemeSurface } from "@vetta-org/theme-ui/appearance";
-import { ContextRingView } from "@vetta-org/theme-ui/chat";
+import { ThemeSurface } from "@vetta-org/theme-ui/appearance/ThemeSurface";
+import { ContextRingView } from "@vetta-org/theme-ui/chat/ContextRingView";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useEffect, useState } from "react";
 import { ConnectorGrid } from "./ConnectorGrid";

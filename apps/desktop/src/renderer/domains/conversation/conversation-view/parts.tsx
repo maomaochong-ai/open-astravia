@@ -9,7 +9,8 @@ import {
 } from "@shared/lib/perf-message-scroll";
 import type { ChatConversationItem } from "@shared/store/chat-atoms";
 import type { Usage } from "@vetta/ai/protocol";
-import { MessageFeed, MessageFeedLayout } from "@vetta-org/theme-ui/chat";
+import { MessageFeed } from "@vetta-org/theme-ui/chat/MessageFeedView";
+import { MessageFeedLayout } from "@vetta-org/theme-ui/chat/MessageFeedLayoutView";
 import { memo, type ReactNode, useCallback, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import type { ListRange, SizeFunction } from "react-virtuoso";

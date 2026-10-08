@@ -11,7 +11,7 @@ import {
 	openUrlInActivityWorkspaceAtom,
 	resolvedThemeAtom,
 } from "@shared/store/atoms";
-import { getFileIcon } from "@vetta-org/theme-ui/file-explorer";
+import { getFileIcon } from "@vetta-org/theme-ui/shared/fileIcons";
 import { atom, useAtomValue, useSetAtom } from "jotai";
 import { selectAtom } from "jotai/utils";
 import { useCallback, useMemo } from "react";

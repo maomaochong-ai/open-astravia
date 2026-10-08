@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type JSX } from "react";
-import { Button, cn } from "@vetta-org/ui";
+import { Button } from "@vetta-org/ui/button";
+import { cn } from "@vetta-org/ui/utils";
 
 export interface ShortcutRecorderViewProps {
 	readonly value: string;

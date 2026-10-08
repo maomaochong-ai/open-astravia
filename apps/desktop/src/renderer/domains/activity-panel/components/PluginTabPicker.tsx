@@ -1,9 +1,6 @@
 import { useTranslation } from "react-i18next";
-import {
-	DEFAULT_PLUGIN_TAB_ICON,
-	PluginTabPickerView,
-	type HiddenTabEntryView,
-} from "@vetta-org/theme-ui/activity";
+import { DEFAULT_PLUGIN_TAB_ICON, PluginTabPickerView } from "@vetta-org/theme-ui/activity/PluginTabPickerView";
+import type { HiddenTabEntryView } from "@vetta-org/theme-ui/activity";
 
 export { DEFAULT_PLUGIN_TAB_ICON };
 

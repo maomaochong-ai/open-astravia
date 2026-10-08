@@ -1,14 +1,7 @@
 import type { JSX, ReactNode } from "react";
-import {
-	Button,
-	Drawer,
-	DrawerContent,
-	DrawerDescription,
-	DrawerFooter,
-	DrawerHeader,
-	DrawerTitle,
-	cn,
-} from "@vetta-org/ui";
+import { Button } from "@vetta-org/ui/button";
+import { Drawer, DrawerContent, DrawerDescription, DrawerFooter, DrawerHeader, DrawerTitle } from "@vetta-org/ui/drawer";
+import { cn } from "@vetta-org/ui/utils";
 import { ThemeSurface } from "../appearance/ThemeSurface";
 
 export interface SchedulerEditApprovalDrawerViewLabels {

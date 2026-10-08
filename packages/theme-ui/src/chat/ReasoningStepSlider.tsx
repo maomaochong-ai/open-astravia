@@ -1,4 +1,5 @@
-import { Button, Slider } from "@vetta-org/ui";
+import { Button } from "@vetta-org/ui/button";
+import { Slider } from "@vetta-org/ui/slider";
 import type { JSX } from "react";
 import { useEffect, useState } from "react";
 

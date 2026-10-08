@@ -1,4 +1,4 @@
-import { FilesPanelView } from "@vetta-org/theme-ui/file-explorer";
+import { FilesPanelView } from "@vetta-org/theme-ui/file-explorer/FilesPanelView";
 import { useFilesPanelModel } from "../hooks/useFilesPanelModel";
 
 interface FilesPanelProps {

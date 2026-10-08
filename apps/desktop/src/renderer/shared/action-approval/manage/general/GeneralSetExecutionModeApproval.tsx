@@ -1,8 +1,6 @@
 import { useState } from "react";
-import {
-	GeneralSetExecutionModeApprovalView,
-	type ExecutionModeOption,
-} from "@vetta-org/theme-ui/action-approval";
+import { GeneralSetExecutionModeApprovalView } from "@vetta-org/theme-ui/action-approval/GeneralSetExecutionModeApprovalView";
+import type { ExecutionModeOption } from "@vetta-org/theme-ui/action-approval";
 import { type ActiveActionApproval, useActionApproval } from "../../useActionApproval";
 import { formatExecutionMode } from "../../approvalCopy";
 import { useManageApprovalFrame } from "../useManageApprovalShell";

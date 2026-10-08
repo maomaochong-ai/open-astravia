@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import { Button } from "@vetta-org/ui";
+import { Button } from "@vetta-org/ui/button";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { type OrphanRemoteProject, useOrphanRemoteProject } from "./useOrphanRemoteProject";

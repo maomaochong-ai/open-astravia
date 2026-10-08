@@ -1,4 +1,5 @@
-import { cn, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@vetta-org/ui";
+import { cn } from "@vetta-org/ui/utils";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@vetta-org/ui/select";
 import type { ReactNode } from "react";
 
 /** 分组卡片：组标题 + 圆角卡片，卡片内的行以细线分隔。 */

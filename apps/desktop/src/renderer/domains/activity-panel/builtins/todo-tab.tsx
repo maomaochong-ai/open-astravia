@@ -1,11 +1,15 @@
 import { getTodoItemsForSession, todoItemsBySessionAtom } from "@shared/store/atoms";
 import { useAtomValue } from "jotai";
-import { useMemo } from "react";
+import { lazy, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { TodoTabPanel } from "../components/TodoTabPanel";
+
 import { useActivityRuntimeIds } from "../registry/context";
 import type { ActivityTabDefinition } from "../registry/types";
 import { collectRuntimeItems } from "../services/runtime-scope";
+
+const TodoTabPanel = lazy(() =>
+	import("../components/TodoTabPanel").then((module) => ({ default: module.TodoTabPanel })),
+);
 
 function TodoActivityTab(): JSX.Element {
 	return <TodoTabPanel />;

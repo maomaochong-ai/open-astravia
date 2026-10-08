@@ -1,5 +1,6 @@
 import { AppBootLoadingView } from "@vetta-org/theme-ui/app-boot";
 import { createRoot } from "react-dom/client";
+import { preloadStartupPage } from "./root-layout/preload-startup-page";
 import { installInactiveWindowAnimationPause } from "./shared/lib/inactive-window-animations";
 import { installLiveAnimations } from "./shared/lib/live-animations";
 import { applyPlatformAttribute } from "./shared/lib/platform";
@@ -46,6 +47,7 @@ const bootPaintedPromise = new Promise<void>((resolve) => {
 	});
 });
 const renderAppPromise = import("./renderApp");
+if (import.meta.env.DEV) void preloadStartupPage(window.location.hash);
 
 void Promise.all([appReadyPromise, bootPaintedPromise, renderAppPromise])
 	.then(([, , { renderApp }]) => {

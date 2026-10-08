@@ -1,7 +1,7 @@
 import type { ConversationParticipantViewModel } from "@shared/conversation";
 import type { ChatAgentMessageViewModel } from "@shared/store/atoms";
 import type { Usage } from "@vetta/ai/protocol";
-import { StreamingIndicator as ThemeStreamingIndicator } from "@vetta-org/theme-ui/chat";
+import { StreamingIndicator as ThemeStreamingIndicator } from "@vetta-org/theme-ui/chat/AssistantMessageView";
 import { memo } from "react";
 import { useTranslation } from "react-i18next";
 import { AgentMessageBody, AgentMessageProvider } from "../../conversation-view/agent-message";

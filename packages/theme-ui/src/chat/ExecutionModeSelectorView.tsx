@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from "motion/react";
 import type { JSX } from "react";
-import { Popover, PopoverContent, PopoverTrigger, cn } from "@vetta-org/ui";
+import { Popover, PopoverContent, PopoverTrigger } from "@vetta-org/ui/popover";
+import { cn } from "@vetta-org/ui/utils";
 import { ThemeSurface } from "../appearance/ThemeSurface";
 
 export interface ExecutionModeOptionView {

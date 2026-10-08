@@ -1,20 +1,10 @@
 import { ModelSelect } from "@shared/components/ModelSelect";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@vetta-org/ui";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@vetta-org/ui/select";
 import { useMemo, useState } from "react";
-import { Switch } from "@vetta-org/ui";
+import { Switch } from "@vetta-org/ui/switch";
 import { type ActiveActionApproval, useActionApproval } from "../../useActionApproval";
 import { knowledgeBaseFieldLabel } from "../../approvalCopy";
-import {
-	ApprovalImpactCard,
-	ApprovalSettingGroup,
-	ApprovalSettingRow,
-} from "@vetta-org/theme-ui/action-approval";
+import { ApprovalImpactCard, ApprovalSettingGroup, ApprovalSettingRow } from "@vetta-org/theme-ui/action-approval/ApprovalParts";
 import { ApprovalRawFallback } from "../ApprovalParts";
 import { useManageApprovalFrame } from "../useManageApprovalShell";
 

@@ -1,12 +1,5 @@
-import {
-	Button,
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-} from "@vetta-org/ui";
+import { Button } from "@vetta-org/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@vetta-org/ui/dialog";
 import { useTranslation } from "react-i18next";
 import { useRemoteProjectPickerModel } from "./useRemoteProjectPickerModel";
 

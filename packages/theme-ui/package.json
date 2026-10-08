@@ -121,9 +121,695 @@
 			"types": "./src/scheduler/index.ts",
 			"import": "./src/scheduler/index.ts"
 		},
-		"./styles.css": "./src/styles.css"
+		"./styles.css": "./src/styles.css",
+		"./action-approval/AppearanceActionPickerView": {
+			"types": "./src/action-approval/AppearanceActionPickerView.tsx",
+			"import": "./src/action-approval/AppearanceActionPickerView.tsx"
+		},
+		"./action-approval/AppearanceApprovalDrawerView": {
+			"types": "./src/action-approval/AppearanceApprovalDrawerView.tsx",
+			"import": "./src/action-approval/AppearanceApprovalDrawerView.tsx"
+		},
+		"./action-approval/AppearancePickerApprovalView": {
+			"types": "./src/action-approval/AppearancePickerApprovalView.tsx",
+			"import": "./src/action-approval/AppearancePickerApprovalView.tsx"
+		},
+		"./action-approval/ApprovalParts": {
+			"types": "./src/action-approval/ApprovalParts.tsx",
+			"import": "./src/action-approval/ApprovalParts.tsx"
+		},
+		"./action-approval/BatchTasksApprovalFrameView": {
+			"types": "./src/action-approval/BatchTasksApprovalFrameView.tsx",
+			"import": "./src/action-approval/BatchTasksApprovalFrameView.tsx"
+		},
+		"./action-approval/BatchTasksExecutionApprovalView": {
+			"types": "./src/action-approval/BatchTasksExecutionApprovalView.tsx",
+			"import": "./src/action-approval/BatchTasksExecutionApprovalView.tsx"
+		},
+		"./action-approval/BatchTasksTaskApprovalView": {
+			"types": "./src/action-approval/BatchTasksTaskApprovalView.tsx",
+			"import": "./src/action-approval/BatchTasksTaskApprovalView.tsx"
+		},
+		"./action-approval/GeneralSetExecutionModeApprovalView": {
+			"types": "./src/action-approval/GeneralSetExecutionModeApprovalView.tsx",
+			"import": "./src/action-approval/GeneralSetExecutionModeApprovalView.tsx"
+		},
+		"./action-approval/GenericActionApprovalView": {
+			"types": "./src/action-approval/GenericActionApprovalView.tsx",
+			"import": "./src/action-approval/GenericActionApprovalView.tsx"
+		},
+		"./action-approval/ManageActionApprovalFrameView": {
+			"types": "./src/action-approval/ManageActionApprovalFrameView.tsx",
+			"import": "./src/action-approval/ManageActionApprovalFrameView.tsx"
+		},
+		"./action-approval/NavigationOpenApprovalView": {
+			"types": "./src/action-approval/NavigationOpenApprovalView.tsx",
+			"import": "./src/action-approval/NavigationOpenApprovalView.tsx"
+		},
+		"./action-approval/SchedulerActionApprovalDialogView": {
+			"types": "./src/action-approval/SchedulerActionApprovalDialogView.tsx",
+			"import": "./src/action-approval/SchedulerActionApprovalDialogView.tsx"
+		},
+		"./action-approval/SchedulerEditApprovalDrawerView": {
+			"types": "./src/action-approval/SchedulerEditApprovalDrawerView.tsx",
+			"import": "./src/action-approval/SchedulerEditApprovalDrawerView.tsx"
+		},
+		"./action-approval/SchedulerUpdateApprovalView": {
+			"types": "./src/action-approval/SchedulerUpdateApprovalView.tsx",
+			"import": "./src/action-approval/SchedulerUpdateApprovalView.tsx"
+		},
+		"./action-approval/ThemeChangeApprovalView": {
+			"types": "./src/action-approval/ThemeChangeApprovalView.tsx",
+			"import": "./src/action-approval/ThemeChangeApprovalView.tsx"
+		},
+		"./action-approval/WebhookDeleteApprovalView": {
+			"types": "./src/action-approval/WebhookDeleteApprovalView.tsx",
+			"import": "./src/action-approval/WebhookDeleteApprovalView.tsx"
+		},
+		"./action-approval/WebhookTestApprovalView": {
+			"types": "./src/action-approval/WebhookTestApprovalView.tsx",
+			"import": "./src/action-approval/WebhookTestApprovalView.tsx"
+		},
+		"./activity/ActivityPanel": {
+			"types": "./src/activity/ActivityPanel.tsx",
+			"import": "./src/activity/ActivityPanel.tsx"
+		},
+		"./activity/ActivityPanelFrame": {
+			"types": "./src/activity/ActivityPanelFrame.tsx",
+			"import": "./src/activity/ActivityPanelFrame.tsx"
+		},
+		"./activity/BackgroundTasksTabPanelView": {
+			"types": "./src/activity/BackgroundTasksTabPanelView.tsx",
+			"import": "./src/activity/BackgroundTasksTabPanelView.tsx"
+		},
+		"./activity/BatchProgressTabPanelView": {
+			"types": "./src/activity/BatchProgressTabPanelView.tsx",
+			"import": "./src/activity/BatchProgressTabPanelView.tsx"
+		},
+		"./activity/BrowserPanelView": {
+			"types": "./src/activity/BrowserPanelView.tsx",
+			"import": "./src/activity/BrowserPanelView.tsx"
+		},
+		"./activity/DebugTabPanelView": {
+			"types": "./src/activity/DebugTabPanelView.tsx",
+			"import": "./src/activity/DebugTabPanelView.tsx"
+		},
+		"./activity/FileTabContentView": {
+			"types": "./src/activity/FileTabContentView.tsx",
+			"import": "./src/activity/FileTabContentView.tsx"
+		},
+		"./activity/FloatingActivityTabView": {
+			"types": "./src/activity/FloatingActivityTabView.tsx",
+			"import": "./src/activity/FloatingActivityTabView.tsx"
+		},
+		"./activity/KnowledgeHistoryPanelView": {
+			"types": "./src/activity/KnowledgeHistoryPanelView.tsx",
+			"import": "./src/activity/KnowledgeHistoryPanelView.tsx"
+		},
+		"./activity/PluginTabPickerView": {
+			"types": "./src/activity/PluginTabPickerView.tsx",
+			"import": "./src/activity/PluginTabPickerView.tsx"
+		},
+		"./activity/PortsTabPanelView": {
+			"types": "./src/activity/PortsTabPanelView.tsx",
+			"import": "./src/activity/PortsTabPanelView.tsx"
+		},
+		"./activity/RequestHistorySubTabView": {
+			"types": "./src/activity/RequestHistorySubTabView.tsx",
+			"import": "./src/activity/RequestHistorySubTabView.tsx"
+		},
+		"./activity/TodoTabPanelView": {
+			"types": "./src/activity/TodoTabPanelView.tsx",
+			"import": "./src/activity/TodoTabPanelView.tsx"
+		},
+		"./activity/ToolCallsSubTabView": {
+			"types": "./src/activity/ToolCallsSubTabView.tsx",
+			"import": "./src/activity/ToolCallsSubTabView.tsx"
+		},
+		"./activity/WorkflowTabPanelView": {
+			"types": "./src/activity/WorkflowTabPanelView.tsx",
+			"import": "./src/activity/WorkflowTabPanelView.tsx"
+		},
+		"./app-shell/DefaultPageHeader": {
+			"types": "./src/app-shell/DefaultPageHeader.tsx",
+			"import": "./src/app-shell/DefaultPageHeader.tsx"
+		},
+		"./app-shell/DefaultWindowControls": {
+			"types": "./src/app-shell/DefaultWindowControls.tsx",
+			"import": "./src/app-shell/DefaultWindowControls.tsx"
+		},
+		"./app-shell/PageHeaderActionGroup": {
+			"types": "./src/app-shell/PageHeaderActionGroup.tsx",
+			"import": "./src/app-shell/PageHeaderActionGroup.tsx"
+		},
+		"./app-shell/PageHeaderContent": {
+			"types": "./src/app-shell/PageHeaderContent.tsx",
+			"import": "./src/app-shell/PageHeaderContent.tsx"
+		},
+		"./app-shell/PageHeaderFrame": {
+			"types": "./src/app-shell/PageHeaderFrame.tsx",
+			"import": "./src/app-shell/PageHeaderFrame.tsx"
+		},
+		"./app-shell/PageHeaderSidebarTrigger": {
+			"types": "./src/app-shell/PageHeaderSidebarTrigger.tsx",
+			"import": "./src/app-shell/PageHeaderSidebarTrigger.tsx"
+		},
+		"./app-shell/PageHeaderTitle": {
+			"types": "./src/app-shell/PageHeaderTitle.tsx",
+			"import": "./src/app-shell/PageHeaderTitle.tsx"
+		},
+		"./app-shell/PageHeaderWindowActions": {
+			"types": "./src/app-shell/PageHeaderWindowActions.tsx",
+			"import": "./src/app-shell/PageHeaderWindowActions.tsx"
+		},
+		"./app-shell/WindowControlButton": {
+			"types": "./src/app-shell/WindowControlButton.tsx",
+			"import": "./src/app-shell/WindowControlButton.tsx"
+		},
+		"./app/AppBackground": {
+			"types": "./src/app/AppBackground.tsx",
+			"import": "./src/app/AppBackground.tsx"
+		},
+		"./app/AppBootLoadingView": {
+			"types": "./src/app/AppBootLoadingView.tsx",
+			"import": "./src/app/AppBootLoadingView.tsx"
+		},
+		"./app/RouteContentLoadingView": {
+			"types": "./src/app/RouteContentLoadingView.tsx",
+			"import": "./src/app/RouteContentLoadingView.tsx"
+		},
+		"./appearance/ThemeSurface": {
+			"types": "./src/appearance/ThemeSurface.tsx",
+			"import": "./src/appearance/ThemeSurface.tsx"
+		},
+		"./batch-tasks/BatchProjectArtifactFieldView": {
+			"types": "./src/batch-tasks/BatchProjectArtifactFieldView.tsx",
+			"import": "./src/batch-tasks/BatchProjectArtifactFieldView.tsx"
+		},
+		"./batch-tasks/BatchProjectFoldersFieldView": {
+			"types": "./src/batch-tasks/BatchProjectFoldersFieldView.tsx",
+			"import": "./src/batch-tasks/BatchProjectFoldersFieldView.tsx"
+		},
+		"./batch-tasks/BatchProjectNameFieldView": {
+			"types": "./src/batch-tasks/BatchProjectNameFieldView.tsx",
+			"import": "./src/batch-tasks/BatchProjectNameFieldView.tsx"
+		},
+		"./batch-tasks/BatchProjectNotificationFieldView": {
+			"types": "./src/batch-tasks/BatchProjectNotificationFieldView.tsx",
+			"import": "./src/batch-tasks/BatchProjectNotificationFieldView.tsx"
+		},
+		"./batch-tasks/BatchProjectRuntimeFieldsView": {
+			"types": "./src/batch-tasks/BatchProjectRuntimeFieldsView.tsx",
+			"import": "./src/batch-tasks/BatchProjectRuntimeFieldsView.tsx"
+		},
+		"./bottom-panel/BottomPanelView": {
+			"types": "./src/bottom-panel/BottomPanelView.tsx",
+			"import": "./src/bottom-panel/BottomPanelView.tsx"
+		},
+		"./chat/ActionButtonBarView": {
+			"types": "./src/chat/ActionButtonBarView.tsx",
+			"import": "./src/chat/ActionButtonBarView.tsx"
+		},
+		"./chat/AgentAvatarView": {
+			"types": "./src/chat/AgentAvatarView.tsx",
+			"import": "./src/chat/AgentAvatarView.tsx"
+		},
+		"./chat/AppshotCardView": {
+			"types": "./src/chat/AppshotCardView.tsx",
+			"import": "./src/chat/AppshotCardView.tsx"
+		},
+		"./chat/AskUserQuestionView": {
+			"types": "./src/chat/AskUserQuestionView.tsx",
+			"import": "./src/chat/AskUserQuestionView.tsx"
+		},
+		"./chat/AssistantMessageView": {
+			"types": "./src/chat/AssistantMessageView.tsx",
+			"import": "./src/chat/AssistantMessageView.tsx"
+		},
+		"./chat/AtPanelView": {
+			"types": "./src/chat/AtPanelView.tsx",
+			"import": "./src/chat/AtPanelView.tsx"
+		},
+		"./chat/BashTerminalCard": {
+			"types": "./src/chat/BashTerminalCard.tsx",
+			"import": "./src/chat/BashTerminalCard.tsx"
+		},
+		"./chat/ChatHeaderActionsView": {
+			"types": "./src/chat/ChatHeaderActionsView.tsx",
+			"import": "./src/chat/ChatHeaderActionsView.tsx"
+		},
+		"./chat/ContextRingView": {
+			"types": "./src/chat/ContextRingView.tsx",
+			"import": "./src/chat/ContextRingView.tsx"
+		},
+		"./chat/CopyIconButton": {
+			"types": "./src/chat/CopyIconButton.tsx",
+			"import": "./src/chat/CopyIconButton.tsx"
+		},
+		"./chat/DrawerCard": {
+			"types": "./src/chat/DrawerCard.tsx",
+			"import": "./src/chat/DrawerCard.tsx"
+		},
+		"./chat/EditDiffView": {
+			"types": "./src/chat/EditDiffView.tsx",
+			"import": "./src/chat/EditDiffView.tsx"
+		},
+		"./chat/ExecutionModeSelectorView": {
+			"types": "./src/chat/ExecutionModeSelectorView.tsx",
+			"import": "./src/chat/ExecutionModeSelectorView.tsx"
+		},
+		"./chat/ExportMessageListView": {
+			"types": "./src/chat/ExportMessageListView.tsx",
+			"import": "./src/chat/ExportMessageListView.tsx"
+		},
+		"./chat/GuideBadgeSwiperView": {
+			"types": "./src/chat/GuideBadgeSwiperView.tsx",
+			"import": "./src/chat/GuideBadgeSwiperView.tsx"
+		},
+		"./chat/InlineModelPicker": {
+			"types": "./src/chat/InlineModelPicker.tsx",
+			"import": "./src/chat/InlineModelPicker.tsx"
+		},
+		"./chat/InputBarBackground": {
+			"types": "./src/chat/InputBarBackground.tsx",
+			"import": "./src/chat/InputBarBackground.tsx"
+		},
+		"./chat/InputBarContextMenuView": {
+			"types": "./src/chat/InputBarContextMenuView.tsx",
+			"import": "./src/chat/InputBarContextMenuView.tsx"
+		},
+		"./chat/InputBarPlaceholder": {
+			"types": "./src/chat/InputBarPlaceholder.tsx",
+			"import": "./src/chat/InputBarPlaceholder.tsx"
+		},
+		"./chat/InputBarToolbarButton": {
+			"types": "./src/chat/InputBarToolbarButton.tsx",
+			"import": "./src/chat/InputBarToolbarButton.tsx"
+		},
+		"./chat/KnowledgeToolViews": {
+			"types": "./src/chat/KnowledgeToolViews.tsx",
+			"import": "./src/chat/KnowledgeToolViews.tsx"
+		},
+		"./chat/LiveThinkingView": {
+			"types": "./src/chat/LiveThinkingView.tsx",
+			"import": "./src/chat/LiveThinkingView.tsx"
+		},
+		"./chat/MessageActions": {
+			"types": "./src/chat/MessageActions.tsx",
+			"import": "./src/chat/MessageActions.tsx"
+		},
+		"./chat/MessageBlockSegmentsView": {
+			"types": "./src/chat/MessageBlockSegmentsView.tsx",
+			"import": "./src/chat/MessageBlockSegmentsView.tsx"
+		},
+		"./chat/MessageBoundaryViews": {
+			"types": "./src/chat/MessageBoundaryViews.tsx",
+			"import": "./src/chat/MessageBoundaryViews.tsx"
+		},
+		"./chat/MessageCardsView": {
+			"types": "./src/chat/MessageCardsView.tsx",
+			"import": "./src/chat/MessageCardsView.tsx"
+		},
+		"./chat/MessageFeedLayoutView": {
+			"types": "./src/chat/MessageFeedLayoutView.tsx",
+			"import": "./src/chat/MessageFeedLayoutView.tsx"
+		},
+		"./chat/MessageFeedView": {
+			"types": "./src/chat/MessageFeedView.tsx",
+			"import": "./src/chat/MessageFeedView.tsx"
+		},
+		"./chat/MessageInputView": {
+			"types": "./src/chat/MessageInputView.tsx",
+			"import": "./src/chat/MessageInputView.tsx"
+		},
+		"./chat/MessageLayoutView": {
+			"types": "./src/chat/MessageLayoutView.tsx",
+			"import": "./src/chat/MessageLayoutView.tsx"
+		},
+		"./chat/MessageTimelineView": {
+			"types": "./src/chat/MessageTimelineView.tsx",
+			"import": "./src/chat/MessageTimelineView.tsx"
+		},
+		"./chat/MessageView": {
+			"types": "./src/chat/MessageView.tsx",
+			"import": "./src/chat/MessageView.tsx"
+		},
+		"./chat/MessageVisualView": {
+			"types": "./src/chat/MessageVisualView.tsx",
+			"import": "./src/chat/MessageVisualView.tsx"
+		},
+		"./chat/ModelConfiguration": {
+			"types": "./src/chat/ModelConfiguration.tsx",
+			"import": "./src/chat/ModelConfiguration.tsx"
+		},
+		"./chat/ModelSelectorView": {
+			"types": "./src/chat/ModelSelectorView.tsx",
+			"import": "./src/chat/ModelSelectorView.tsx"
+		},
+		"./chat/NewSessionBackground": {
+			"types": "./src/chat/NewSessionBackground.tsx",
+			"import": "./src/chat/NewSessionBackground.tsx"
+		},
+		"./chat/NewSessionPageLayoutView": {
+			"types": "./src/chat/NewSessionPageLayoutView.tsx",
+			"import": "./src/chat/NewSessionPageLayoutView.tsx"
+		},
+		"./chat/NewSessionPicker": {
+			"types": "./src/chat/NewSessionPicker.tsx",
+			"import": "./src/chat/NewSessionPicker.tsx"
+		},
+		"./chat/ProgressGroupView": {
+			"types": "./src/chat/ProgressGroupView.tsx",
+			"import": "./src/chat/ProgressGroupView.tsx"
+		},
+		"./chat/ProjectSelectorView": {
+			"types": "./src/chat/ProjectSelectorView.tsx",
+			"import": "./src/chat/ProjectSelectorView.tsx"
+		},
+		"./chat/QueueCardView": {
+			"types": "./src/chat/QueueCardView.tsx",
+			"import": "./src/chat/QueueCardView.tsx"
+		},
+		"./chat/ReadImageView": {
+			"types": "./src/chat/ReadImageView.tsx",
+			"import": "./src/chat/ReadImageView.tsx"
+		},
+		"./chat/SandboxPermissionCard": {
+			"types": "./src/chat/SandboxPermissionCard.tsx",
+			"import": "./src/chat/SandboxPermissionCard.tsx"
+		},
+		"./chat/SendButton": {
+			"types": "./src/chat/SendButton.tsx",
+			"import": "./src/chat/SendButton.tsx"
+		},
+		"./chat/SkillPromptAreaView": {
+			"types": "./src/chat/SkillPromptAreaView.tsx",
+			"import": "./src/chat/SkillPromptAreaView.tsx"
+		},
+		"./chat/TeamMemberReplyCardView": {
+			"types": "./src/chat/TeamMemberReplyCardView.tsx",
+			"import": "./src/chat/TeamMemberReplyCardView.tsx"
+		},
+		"./chat/ThinkingBlockView": {
+			"types": "./src/chat/ThinkingBlockView.tsx",
+			"import": "./src/chat/ThinkingBlockView.tsx"
+		},
+		"./chat/TodoStatusBarView": {
+			"types": "./src/chat/TodoStatusBarView.tsx",
+			"import": "./src/chat/TodoStatusBarView.tsx"
+		},
+		"./chat/ToolCallBlockView": {
+			"types": "./src/chat/ToolCallBlockView.tsx",
+			"import": "./src/chat/ToolCallBlockView.tsx"
+		},
+		"./chat/UserMessageContextMenuView": {
+			"types": "./src/chat/UserMessageContextMenuView.tsx",
+			"import": "./src/chat/UserMessageContextMenuView.tsx"
+		},
+		"./chat/UserMessageView": {
+			"types": "./src/chat/UserMessageView.tsx",
+			"import": "./src/chat/UserMessageView.tsx"
+		},
+		"./chat/WriteContentView": {
+			"types": "./src/chat/WriteContentView.tsx",
+			"import": "./src/chat/WriteContentView.tsx"
+		},
+		"./file-explorer/ConfirmDeleteDialogView": {
+			"types": "./src/file-explorer/ConfirmDeleteDialogView.tsx",
+			"import": "./src/file-explorer/ConfirmDeleteDialogView.tsx"
+		},
+		"./file-explorer/FileContextMenuView": {
+			"types": "./src/file-explorer/FileContextMenuView.tsx",
+			"import": "./src/file-explorer/FileContextMenuView.tsx"
+		},
+		"./file-explorer/FileExplorerSettingsView": {
+			"types": "./src/file-explorer/FileExplorerSettingsView.tsx",
+			"import": "./src/file-explorer/FileExplorerSettingsView.tsx"
+		},
+		"./file-explorer/FileTreeView": {
+			"types": "./src/file-explorer/FileTreeView.tsx",
+			"import": "./src/file-explorer/FileTreeView.tsx"
+		},
+		"./file-explorer/FilesPanelView": {
+			"types": "./src/file-explorer/FilesPanelView.tsx",
+			"import": "./src/file-explorer/FilesPanelView.tsx"
+		},
+		"./file-explorer/file-tree-dom": {
+			"types": "./src/file-explorer/file-tree-dom.ts",
+			"import": "./src/file-explorer/file-tree-dom.ts"
+		},
+		"./file-preview/FilePreviewDialogView": {
+			"types": "./src/file-preview/FilePreviewDialogView.tsx",
+			"import": "./src/file-preview/FilePreviewDialogView.tsx"
+		},
+		"./file-preview/FilePreviewView": {
+			"types": "./src/file-preview/FilePreviewView.tsx",
+			"import": "./src/file-preview/FilePreviewView.tsx"
+		},
+		"./file-preview/LightboxImageView": {
+			"types": "./src/file-preview/LightboxImageView.tsx",
+			"import": "./src/file-preview/LightboxImageView.tsx"
+		},
+		"./file-preview/PluginFilePreviewView": {
+			"types": "./src/file-preview/PluginFilePreviewView.tsx",
+			"import": "./src/file-preview/PluginFilePreviewView.tsx"
+		},
+		"./file-preview/PreviewBodyView": {
+			"types": "./src/file-preview/PreviewBodyView.tsx",
+			"import": "./src/file-preview/PreviewBodyView.tsx"
+		},
+		"./file-preview/PreviewErrorBoundary": {
+			"types": "./src/file-preview/PreviewErrorBoundary.tsx",
+			"import": "./src/file-preview/PreviewErrorBoundary.tsx"
+		},
+		"./file-preview/TextFileEditorView": {
+			"types": "./src/file-preview/TextFileEditorView.tsx",
+			"import": "./src/file-preview/TextFileEditorView.tsx"
+		},
+		"./file-preview/keyboard-target": {
+			"types": "./src/file-preview/keyboard-target.ts",
+			"import": "./src/file-preview/keyboard-target.ts"
+		},
+		"./file-preview/types": {
+			"types": "./src/file-preview/types.ts",
+			"import": "./src/file-preview/types.ts"
+		},
+		"./layout/AppFrame": {
+			"types": "./src/layout/AppFrame.tsx",
+			"import": "./src/layout/AppFrame.tsx"
+		},
+		"./layout/MainContentFrame": {
+			"types": "./src/layout/MainContentFrame.tsx",
+			"import": "./src/layout/MainContentFrame.tsx"
+		},
+		"./layout/SidebarDock": {
+			"types": "./src/layout/SidebarDock.tsx",
+			"import": "./src/layout/SidebarDock.tsx"
+		},
+		"./layout/SidebarOverlay": {
+			"types": "./src/layout/SidebarOverlay.tsx",
+			"import": "./src/layout/SidebarOverlay.tsx"
+		},
+		"./markdown/InlineTokenChip": {
+			"types": "./src/markdown/InlineTokenChip.tsx",
+			"import": "./src/markdown/InlineTokenChip.tsx"
+		},
+		"./markdown/MarkdownContent": {
+			"types": "./src/markdown/MarkdownContent.tsx",
+			"import": "./src/markdown/MarkdownContent.tsx"
+		},
+		"./overlays/CommandMenuView": {
+			"types": "./src/overlays/CommandMenuView.tsx",
+			"import": "./src/overlays/CommandMenuView.tsx"
+		},
+		"./overlays/ConfirmDialogView": {
+			"types": "./src/overlays/ConfirmDialogView.tsx",
+			"import": "./src/overlays/ConfirmDialogView.tsx"
+		},
+		"./overlays/KnowledgeDropOverlayView": {
+			"types": "./src/overlays/KnowledgeDropOverlayView.tsx",
+			"import": "./src/overlays/KnowledgeDropOverlayView.tsx"
+		},
+		"./overlays/RouteErrorPageView": {
+			"types": "./src/overlays/RouteErrorPageView.tsx",
+			"import": "./src/overlays/RouteErrorPageView.tsx"
+		},
+		"./overlays/ToasterView": {
+			"types": "./src/overlays/ToasterView.tsx",
+			"import": "./src/overlays/ToasterView.tsx"
+		},
+		"./overlays/UpdateRestartDialogView": {
+			"types": "./src/overlays/UpdateRestartDialogView.tsx",
+			"import": "./src/overlays/UpdateRestartDialogView.tsx"
+		},
+		"./project/BatchQueueStatusView": {
+			"types": "./src/project/BatchQueueStatusView.tsx",
+			"import": "./src/project/BatchQueueStatusView.tsx"
+		},
+		"./project/ConversationTagEditorDialogView": {
+			"types": "./src/project/ConversationTagEditorDialogView.tsx",
+			"import": "./src/project/ConversationTagEditorDialogView.tsx"
+		},
+		"./project/DefaultConversationSectionView": {
+			"types": "./src/project/DefaultConversationSectionView.tsx",
+			"import": "./src/project/DefaultConversationSectionView.tsx"
+		},
+		"./project/DefaultSessionListView": {
+			"types": "./src/project/DefaultSessionListView.tsx",
+			"import": "./src/project/DefaultSessionListView.tsx"
+		},
+		"./project/DefaultSessionRowView": {
+			"types": "./src/project/DefaultSessionRowView.tsx",
+			"import": "./src/project/DefaultSessionRowView.tsx"
+		},
+		"./project/NewProjectDialogView": {
+			"types": "./src/project/NewProjectDialogView.tsx",
+			"import": "./src/project/NewProjectDialogView.tsx"
+		},
+		"./project/ProjectContextMenuView": {
+			"types": "./src/project/ProjectContextMenuView.tsx",
+			"import": "./src/project/ProjectContextMenuView.tsx"
+		},
+		"./project/ProjectGroupView": {
+			"types": "./src/project/ProjectGroupView.tsx",
+			"import": "./src/project/ProjectGroupView.tsx"
+		},
+		"./project/ProjectsLoadingView": {
+			"types": "./src/project/ProjectsLoadingView.tsx",
+			"import": "./src/project/ProjectsLoadingView.tsx"
+		},
+		"./project/ProjectsPanelMenusView": {
+			"types": "./src/project/ProjectsPanelMenusView.tsx",
+			"import": "./src/project/ProjectsPanelMenusView.tsx"
+		},
+		"./project/ProjectsPanelView": {
+			"types": "./src/project/ProjectsPanelView.tsx",
+			"import": "./src/project/ProjectsPanelView.tsx"
+		},
+		"./project/SessionContextMenuView": {
+			"types": "./src/project/SessionContextMenuView.tsx",
+			"import": "./src/project/SessionContextMenuView.tsx"
+		},
+		"./project/SessionRowView": {
+			"types": "./src/project/SessionRowView.tsx",
+			"import": "./src/project/SessionRowView.tsx"
+		},
+		"./project/SidebarProjectsSectionView": {
+			"types": "./src/project/SidebarProjectsSectionView.tsx",
+			"import": "./src/project/SidebarProjectsSectionView.tsx"
+		},
+		"./project/types": {
+			"types": "./src/project/types.ts",
+			"import": "./src/project/types.ts"
+		},
+		"./settings/ShortcutRecorderView": {
+			"types": "./src/settings/ShortcutRecorderView.tsx",
+			"import": "./src/settings/ShortcutRecorderView.tsx"
+		},
+		"./shared/AvatarStackView": {
+			"types": "./src/shared/AvatarStackView.tsx",
+			"import": "./src/shared/AvatarStackView.tsx"
+		},
+		"./shared/BotAvatar": {
+			"types": "./src/shared/BotAvatar.tsx",
+			"import": "./src/shared/BotAvatar.tsx"
+		},
+		"./shared/MultiplierTag": {
+			"types": "./src/shared/MultiplierTag.tsx",
+			"import": "./src/shared/MultiplierTag.tsx"
+		},
+		"./shared/TabBar": {
+			"types": "./src/shared/TabBar.tsx",
+			"import": "./src/shared/TabBar.tsx"
+		},
+		"./shared/fileIcons": {
+			"types": "./src/shared/fileIcons.ts",
+			"import": "./src/shared/fileIcons.ts"
+		},
+		"./shared/provider-icon/index": {
+			"types": "./src/shared/provider-icon/index.tsx",
+			"import": "./src/shared/provider-icon/index.tsx"
+		},
+		"./shared/useDelayedUnmount": {
+			"types": "./src/shared/useDelayedUnmount.ts",
+			"import": "./src/shared/useDelayedUnmount.ts"
+		},
+		"./sidebar/AddProjectMenuPopoverView": {
+			"types": "./src/sidebar/AddProjectMenuPopoverView.tsx",
+			"import": "./src/sidebar/AddProjectMenuPopoverView.tsx"
+		},
+		"./sidebar/AddProjectMenuTriggerView": {
+			"types": "./src/sidebar/AddProjectMenuTriggerView.tsx",
+			"import": "./src/sidebar/AddProjectMenuTriggerView.tsx"
+		},
+		"./sidebar/DefaultSidebar": {
+			"types": "./src/sidebar/DefaultSidebar.tsx",
+			"import": "./src/sidebar/DefaultSidebar.tsx"
+		},
+		"./sidebar/MessageCenterDialogView": {
+			"types": "./src/sidebar/MessageCenterDialogView.tsx",
+			"import": "./src/sidebar/MessageCenterDialogView.tsx"
+		},
+		"./sidebar/MessageCenterEmptyState": {
+			"types": "./src/sidebar/MessageCenterEmptyState.tsx",
+			"import": "./src/sidebar/MessageCenterEmptyState.tsx"
+		},
+		"./sidebar/MessageCenterTabs": {
+			"types": "./src/sidebar/MessageCenterTabs.tsx",
+			"import": "./src/sidebar/MessageCenterTabs.tsx"
+		},
+		"./sidebar/MessageCenterTriggerView": {
+			"types": "./src/sidebar/MessageCenterTriggerView.tsx",
+			"import": "./src/sidebar/MessageCenterTriggerView.tsx"
+		},
+		"./sidebar/NotificationMessageListView": {
+			"types": "./src/sidebar/NotificationMessageListView.tsx",
+			"import": "./src/sidebar/NotificationMessageListView.tsx"
+		},
+		"./sidebar/ProjectsPanelEmptyState": {
+			"types": "./src/sidebar/ProjectsPanelEmptyState.tsx",
+			"import": "./src/sidebar/ProjectsPanelEmptyState.tsx"
+		},
+		"./sidebar/SettingsMenuAccountSection": {
+			"types": "./src/sidebar/SettingsMenuAccountSection.tsx",
+			"import": "./src/sidebar/SettingsMenuAccountSection.tsx"
+		},
+		"./sidebar/SettingsMenuDivider": {
+			"types": "./src/sidebar/SettingsMenuDivider.tsx",
+			"import": "./src/sidebar/SettingsMenuDivider.tsx"
+		},
+		"./sidebar/SettingsMenuQuotaSection": {
+			"types": "./src/sidebar/SettingsMenuQuotaSection.tsx",
+			"import": "./src/sidebar/SettingsMenuQuotaSection.tsx"
+		},
+		"./sidebar/SettingsMenuSettingsItem": {
+			"types": "./src/sidebar/SettingsMenuSettingsItem.tsx",
+			"import": "./src/sidebar/SettingsMenuSettingsItem.tsx"
+		},
+		"./sidebar/SettingsMenuThemeSection": {
+			"types": "./src/sidebar/SettingsMenuThemeSection.tsx",
+			"import": "./src/sidebar/SettingsMenuThemeSection.tsx"
+		},
+		"./sidebar/SettingsMenuTriggerView": {
+			"types": "./src/sidebar/SettingsMenuTriggerView.tsx",
+			"import": "./src/sidebar/SettingsMenuTriggerView.tsx"
+		},
+		"./sidebar/SidebarFilterSelectView": {
+			"types": "./src/sidebar/SidebarFilterSelectView.tsx",
+			"import": "./src/sidebar/SidebarFilterSelectView.tsx"
+		},
+		"./sidebar/SidebarTopBar": {
+			"types": "./src/sidebar/SidebarTopBar.tsx",
+			"import": "./src/sidebar/SidebarTopBar.tsx"
+		},
+		"./skills/skill-icon": {
+			"types": "./src/skills/skill-icon.tsx",
+			"import": "./src/skills/skill-icon.tsx"
+		}
 	},
-	"files": ["src"],
+	"files": [
+		"src"
+	],
 	"publishConfig": {
 		"access": "public",
 		"registry": "https://registry.npmjs.org/"

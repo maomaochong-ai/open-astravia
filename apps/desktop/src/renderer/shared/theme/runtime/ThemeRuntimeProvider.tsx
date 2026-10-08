@@ -1,6 +1,6 @@
 import type { DesktopThemePackage } from "@preload/api";
 import { DEFAULT_THEME_MODULE, ThemeProvider, type ThemeModule } from "@vetta-org/theme-sdk";
-import { AppBootLoadingView } from "@vetta-org/theme-ui/app";
+import { AppBootLoadingView } from "@vetta-org/theme-ui/app/AppBootLoadingView";
 import {
 	type ErrorInfo,
 	type ReactNode,
@@ -13,7 +13,6 @@ import {
 import { ThemeErrorBoundary } from "./ThemeErrorBoundary";
 import { themeRendererCapabilityHost } from "../pages/theme-renderer-capability-host";
 import { ThemeRuntimeContext } from "./ThemeRuntimeContext";
-import { loadThemePackage } from "./themeLoader";
 import type { ThemeRuntimeValue } from "./types";
 
 const UI_THEME_STORAGE_KEY = "vetta-ui-theme";
@@ -67,6 +66,7 @@ export function ThemeRuntimeProvider({ children }: { children: ReactNode }): JSX
 		setStatus("loading");
 		try {
 			const loadStart = performance.now();
+			const { loadThemePackage } = await import("./themeLoader");
 			const loaded = await loadThemePackage(descriptor);
 			console.debug(`[theme-runtime] loadThemePackage awaited "${descriptor.id}" elapsed=${formatMs(loadStart)}`);
 			disposeRef.current();

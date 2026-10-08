@@ -1,4 +1,4 @@
-import { DebugTabPanelView } from "@vetta-org/theme-ui/activity";
+import { DebugTabPanelView } from "@vetta-org/theme-ui/activity/DebugTabPanelView";
 import { useDebugTabPanelModel } from "../hooks/useDebugTabPanelModel";
 import { ToolCallsSubTab } from "./ToolCallsSubTab";
 import { RequestHistorySubTab } from "./RequestHistorySubTab";

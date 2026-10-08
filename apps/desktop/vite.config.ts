@@ -125,9 +125,6 @@ export default defineConfig(({ mode }) => {
 				"@shared": path.resolve(__dirname, "./src/renderer/shared"),
 				"@domains": path.resolve(__dirname, "./src/renderer/domains"),
 				"@cloud": path.resolve(__dirname, "./src/renderer/cloud"),
-				"@vetta-org/theme-sdk": path.resolve(__dirname, "../../packages/theme-sdk/src"),
-				"@vetta-org/theme-ui": path.resolve(__dirname, "../../packages/theme-ui/src"),
-				"@vetta-org/ui": path.resolve(__dirname, "../../packages/ui/src/index.ts"),
 				"@vetta/remote-desktop": path.resolve(__dirname, "../../packages/remote-desktop/src/index.ts"),
 				"@": path.resolve(__dirname, "./src"),
 			},
@@ -154,6 +151,9 @@ export default defineConfig(({ mode }) => {
 			host: "127.0.0.1",
 			port: devServerPort,
 			strictPort: true,
+			warmup: {
+				clientFiles: ["./main.tsx", "./renderApp.tsx", "./domains/conversation/components/NewSessionPage.tsx"],
+			},
 		},
 	};
 });

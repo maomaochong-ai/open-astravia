@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from "motion/react";
 import type { JSX } from "react";
-import { cn } from "@vetta-org/ui";
+import { cn } from "@vetta-org/ui/utils";
 import { MESSAGE_CENTER_SPRING } from "./ChatMessageListView";
 import { MessageCenterEmptyState } from "./MessageCenterEmptyState";
 import { MessageCenterToolbarButton } from "./MessageCenterToolbarButton";

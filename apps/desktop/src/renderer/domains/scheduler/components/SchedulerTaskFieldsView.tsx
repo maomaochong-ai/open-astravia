@@ -1,6 +1,7 @@
 import { SkillPromptArea } from "@domains/conversation/components/SkillPromptArea";
 import { ModelSelect } from "@shared/components/ModelSelect";
-import { cn, Switch } from "@vetta-org/ui";
+import { cn } from "@vetta-org/ui/utils";
+import { Switch } from "@vetta-org/ui/switch";
 import { useRef } from "react";
 import { useTranslation } from "react-i18next";
 import type { AutomationNotifyWhen, AutomationRunTargetMode } from "../../../../shared/automation";

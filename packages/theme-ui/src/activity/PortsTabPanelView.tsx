@@ -1,4 +1,5 @@
-import { Button, cn } from "@vetta-org/ui";
+import { Button } from "@vetta-org/ui/button";
+import { cn } from "@vetta-org/ui/utils";
 import { type FormEvent, type JSX, type ReactNode, useState } from "react";
 
 export type PortForwardViewStatus = "active" | "reconnecting" | "failed";

@@ -1,10 +1,10 @@
 import { useThemeRegion } from "@vetta-org/theme-sdk";
 import { usePageHeaderModel } from "@vetta-org/theme-sdk/app-shell";
-import { DefaultPageHeader } from "@vetta-org/theme-ui/app-shell";
+import { DefaultPageHeader } from "@vetta-org/theme-ui/app-shell/DefaultPageHeader";
 import { WindowControls } from "@shared/app-shell/window-controls";
 import type { PageHeaderProps } from "./types";
 
-export { DefaultPageHeader } from "@vetta-org/theme-ui/app-shell";
+export { DefaultPageHeader } from "@vetta-org/theme-ui/app-shell/DefaultPageHeader";
 
 export function PageHeader(props: PageHeaderProps): JSX.Element {
 	const model = usePageHeaderModel(props);

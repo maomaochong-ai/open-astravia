@@ -1,12 +1,8 @@
 import { FILE_EDITOR_SAVE_EVENT } from "@/shared/shortcuts";
 import { FS_EDITABLE_TEXT_ERROR } from "@/preload/fs-types";
-import {
-	getExtension,
-	TextFileEditorView,
-	type FilePreviewItem,
-	type TextFileEditorMode,
-	type TextFileEditorViewState,
-} from "@vetta-org/theme-ui/file-preview";
+import { getExtension } from "@vetta-org/theme-ui/file-preview/types";
+import { TextFileEditorView } from "@vetta-org/theme-ui/file-preview/TextFileEditorView";
+import type { FilePreviewItem, TextFileEditorMode, TextFileEditorViewState } from "@vetta-org/theme-ui/file-preview";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useTextFileEditor } from "../hooks/useTextFileEditor";

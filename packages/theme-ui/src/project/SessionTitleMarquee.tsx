@@ -1,4 +1,4 @@
-import { cn } from "@vetta-org/ui";
+import { cn } from "@vetta-org/ui/utils";
 import { type CSSProperties, type JSX, useRef, useState } from "react";
 
 interface SessionTitleMarqueeProps {

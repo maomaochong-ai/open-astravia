@@ -2,13 +2,10 @@ import type { ConversationParticipantViewModel, ConversationUserMessageViewModel
 import { toTokenPath } from "@shared/lib/input-tokens";
 import { pathBasename } from "@shared/lib/utils";
 import { filePreviewAtom } from "@shared/store/atoms";
-import {
-	Message,
-	MessageLayout,
-	MessageVisual,
-	SettingsAssistBadgeView,
-	UserMessage as UserMessagePrimitive,
-} from "@vetta-org/theme-ui/chat";
+import { Message } from "@vetta-org/theme-ui/chat/MessageView";
+import { MessageLayout } from "@vetta-org/theme-ui/chat/MessageLayoutView";
+import { MessageVisual } from "@vetta-org/theme-ui/chat/MessageVisualView";
+import { SettingsAssistBadgeView, UserMessage as UserMessagePrimitive } from "@vetta-org/theme-ui/chat/UserMessageView";
 import { useSetAtom } from "jotai";
 import { memo, useMemo } from "react";
 import type { MouseEventHandler, ReactNode } from "react";

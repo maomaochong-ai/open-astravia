@@ -1,6 +1,6 @@
 import type { DefaultConversationFilter, Project } from "@shared/store/atoms";
 import { cn } from "@shared/lib/utils";
-import { DefaultConversationSectionView } from "@vetta-org/theme-ui/project";
+import { DefaultConversationSectionView } from "@vetta-org/theme-ui/project/DefaultConversationSectionView";
 import { DefaultConversationFilterSelect } from "../../filters/SidebarFilterSelect";
 import { useDefaultConversationSectionModel } from "../../../../hooks/useDefaultConversationSectionModel";
 import { DefaultSessionList } from "./DefaultSessionList";

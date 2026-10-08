@@ -171,6 +171,15 @@ Set `VETTA_CONFIG_DIR` on the command line, not in `.env.development`: the dev l
 Node and never reads `.env` files, so a value placed there would only reach the vite-inlined main
 process and would disagree with the launcher-derived Chromium profile.
 
+Renderer startup uses granular public UI entrypoints so unopened views do not expand the initial
+module graph. Vite resolves these workspace packages through their `exports` and warms the startup
+entries while Electron starts; source edits still use normal HMR. Default-theme startup defers the
+remote theme runtime, and global overlay views load after the initial route paints while approval
+requests are already being queued. Development startup prefetches the selected chat/new-session page
+in parallel with the shell, without mounting it or bypassing session restoration. Idle route prefetch
+and the main-process content-ready signal also wait for that route paint. Activity tab metadata stays available, while each built-in tab
+loads its content on demand and preserves it across floating/docked transitions. See [ADR-0148](../../docs/adr/0148-desktop-startup-granular-ui-imports.md).
+
 Main-process sourcemaps are disabled by default to keep startup builds fast. Set
 `VETTA_MAIN_SOURCEMAP=true` when source-mapped Electron stack traces are needed.
 

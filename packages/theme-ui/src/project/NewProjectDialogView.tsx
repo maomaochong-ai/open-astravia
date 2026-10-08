@@ -1,14 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type JSX } from "react";
-import {
-	Button,
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-	Input,
-} from "@vetta-org/ui";
+import { Button } from "@vetta-org/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@vetta-org/ui/dialog";
+import { Input } from "@vetta-org/ui/input";
 
 export interface NewProjectDialogViewLabels {
 	readonly title: string;

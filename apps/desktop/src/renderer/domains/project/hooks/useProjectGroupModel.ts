@@ -12,7 +12,7 @@ import {
 	sessionDisplayLabel,
 } from "@shared/store/atoms";
 import { isSshProjectUri } from "@vetta/ssh-transport/project-uri";
-import { DEFAULT_VISIBLE_SESSIONS } from "@vetta-org/theme-ui/project";
+import { DEFAULT_VISIBLE_SESSIONS } from "@vetta-org/theme-ui/project/types";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
