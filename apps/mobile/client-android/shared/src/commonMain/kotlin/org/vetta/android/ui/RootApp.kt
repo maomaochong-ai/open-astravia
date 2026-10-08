@@ -80,7 +80,6 @@ import org.vetta.android.ui.theme.VettaTheme
 import org.vetta.android.ui.theme.vettaExtra
 import org.vetta.android.ui.work.NewSessionScreen
 import org.vetta.android.ui.work.SessionScreen
-import org.vetta.android.ui.work.LocalWatchLatency
 import org.vetta.android.ui.work.WorkViewModel
 
 val LocalAppContainer =
@@ -215,7 +214,7 @@ fun RootApp(
             val hasSessions = workState.paired || workState.unlinked != null
             val wide = maxWidth >= HomeBesideMinWidth && hasSessions
             LaunchedEffect(wide) { beside = wide }
-            CompositionLocalProvider(LocalHomeBeside provides wide, LocalWatchLatency provides work::watchLatency) {
+            CompositionLocalProvider(LocalHomeBeside provides wide) {
                 if (wide) {
                     // Wide enough for both: Home keeps its place on the left, the slot fills the rest.
                     Row(Modifier.fillMaxSize()) {

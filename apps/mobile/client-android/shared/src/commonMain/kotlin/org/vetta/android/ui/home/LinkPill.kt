@@ -61,7 +61,6 @@ import org.vetta.android.ui.design.VettaMotion
 import org.vetta.android.ui.design.springClickable
 import org.vetta.android.ui.design.springContentSize
 import org.vetta.android.ui.theme.vettaExtra
-import org.vetta.android.ui.work.WatchLatency
 import org.vetta.android.ui.work.describe
 import org.vetta.android.ui.work.linkDetail
 import org.vetta.android.ui.work.workColors
@@ -163,7 +162,6 @@ fun LinkPill(
             }
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            if (online) WatchLatency()
             Column(Modifier.widthIn(min = 200.dp, max = 280.dp).padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(description, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)

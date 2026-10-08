@@ -89,11 +89,6 @@ class WorkViewModel(private val mirror: DesktopMirror) : ViewModel(), WorkAction
         mirror.refreshLink()
     }
 
-    /** A screen showing the link's latency appeared or went away. */
-    fun watchLatency(watching: Boolean) {
-        mirror.watchLatency(watching)
-    }
-
     /** The remote screen opened or closed; the desktop captures only in between. */
     fun setScreenOpen(open: Boolean) {
         mirror.setScreenOpen(open)

@@ -68,10 +68,11 @@ data class DesktopLinkOptions(
     val p2pProbeIntervalMs: Long = 20_000,
     val requestTimeoutMs: Long = 30_000,
     val maxBackoffMs: Long = 30_000,
-    /** In the foreground, how often the round trip is measured while no screen shows it. */
-    val rttSampleIntervalMs: Long = 15_000,
-    /** How often it is measured while a screen shows it ([DesktopLink.setLatencyWatched]). */
-    val rttWatchedIntervalMs: Long = 2_000,
+    /**
+     * In the foreground, how often the round trip is measured: often enough that the figure
+     * is current whenever someone looks, for a request of under a kilobyte.
+     */
+    val rttSampleIntervalMs: Long = 2_000,
     /** How long a request waits for a recovering connection to catch up. */
     val recoveryWaitMs: Long = 3_000,
     val logger: RemoteLogger = NoopRemoteLogger,
@@ -123,7 +124,6 @@ class DesktopLink(
     private var reconnectJob: Job? = null
     private var rttJob: Job? = null
     private val rttWindow = RttWindow()
-    private var latencyWatched = false
     private var probeJob: Job? = null
     private var p2pJob: Job? = null
     private var backoffMs = INITIAL_BACKOFF_MS
@@ -164,17 +164,6 @@ class DesktopLink(
             if (active?.channel == LinkChannel.Relay && probeJob?.isActive != true) scheduleProbe()
             if (active != null && active?.channel != LinkChannel.P2p) launchP2pProbe()
         }
-    }
-
-    /**
-     * A screen showing the latency appeared or went away: it is measured every couple of
-     * seconds while one does, and starts with a fresh figure instead of one up to an
-     * interval old.
-     */
-    fun setLatencyWatched(value: Boolean) {
-        if (latencyWatched == value) return
-        latencyWatched = value
-        if (value && rttJob != null) startRttSampling(clearWindow = false)
     }
 
     fun stop() {
@@ -543,14 +532,14 @@ class DesktopLink(
     }
 
     /** A new channel starts a new window: its route, and so its latency, differs. */
-    private fun startRttSampling(clearWindow: Boolean = true) {
+    private fun startRttSampling() {
         stopRttSampling()
-        if (clearWindow) rttWindow.clear()
+        rttWindow.clear()
         rttJob =
             scope.launch {
                 sampleRtt()
                 while (isActive) {
-                    delay(if (latencyWatched) options.rttWatchedIntervalMs else options.rttSampleIntervalMs)
+                    delay(options.rttSampleIntervalMs)
                     if (foreground && _snapshot.value.isUsable) sampleRtt()
                 }
             }

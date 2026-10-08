@@ -227,9 +227,6 @@ class DesktopMirror(
     /** The remote screen is open; the desktop captures only while it is and the app is in front. */
     private var screenOpen = false
 
-    /** How many screens show the link's latency right now. */
-    private var latencyWatchers = 0
-
     /** The desktop answers `screen.subscribe`, from its last `device.status`. */
     private var desktopScreen = false
     private var newSessionModelsLoad: Deferred<Unit>? = null
@@ -263,12 +260,6 @@ class DesktopMirror(
         link?.setForeground(value)
         if (value && !wasActive) link?.refresh()
         if (screenOpen && value != wasActive) syncScreen()
-    }
-
-    /** A screen showing the link's latency appeared or went away; it is measured often while one does. */
-    fun watchLatency(watching: Boolean) {
-        latencyWatchers = maxOf(0, latencyWatchers + if (watching) 1 else -1)
-        link?.setLatencyWatched(latencyWatchers > 0)
     }
 
     /** The remote screen opened or closed: the desktop starts or stops capturing (ADR-0140). */
@@ -465,7 +456,6 @@ class DesktopMirror(
                 scope.launch { next.events.collect(::handleEvent) },
             )
         next.setForeground(active)
-        next.setLatencyWatched(latencyWatchers > 0)
         next.start()
     }
 

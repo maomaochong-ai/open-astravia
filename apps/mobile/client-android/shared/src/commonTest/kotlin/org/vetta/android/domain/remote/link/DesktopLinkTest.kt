@@ -287,7 +287,7 @@ class DesktopLinkTest {
         }
 
     @Test
-    fun measuresTheLatencyWithItsOwnProbeOnlyAndOftenWhileWatched() =
+    fun measuresTheLatencyWithItsOwnProbeEveryTwoSeconds() =
         runTest {
             val desktop = FakeDesktop(backgroundScope)
             var probes = 0
@@ -310,16 +310,15 @@ class DesktopLinkTest {
             assertEquals(40L, link.snapshot.value.rttMs, "the desktop's work on a request is not the link's latency")
 
             val before = probes
-            advanceTimeBy(10_000)
-            runCurrent()
-            assertEquals(before, probes, "with nothing showing it, measured every 15 s")
-
-            link.setLatencyWatched(true)
-            runCurrent()
-            assertEquals(before + 1, probes, "a screen showing it gets a fresh figure at once")
             advanceTimeBy(4_100)
             runCurrent()
-            assertEquals(before + 3, probes, "then every 2 s")
+            assertEquals(before + 2, probes, "measured every 2 s in the foreground")
+
+            link.setForeground(false)
+            val background = probes
+            advanceTimeBy(10_000)
+            runCurrent()
+            assertEquals(background, probes, "not measured in the background")
         }
 
     @Test
