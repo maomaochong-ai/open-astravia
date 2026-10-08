@@ -32,8 +32,8 @@ struct SessionView: View {
 	@State private var heldPage: OlderPage?
 	/// The panel the More menu opened.
 	@State private var panel: SessionPanel?
-	/// A desktop file a reply linked to, being previewed.
-	@State private var linkedFile: LinkedFile?
+	/// A desktop file a reply linked to, being previewed, and the link action that opens it.
+	@State private var links = ReplyLinks()
 	/// Reads each reply aloud as it is written.
 	@AppStorage(ReadAloud.autoReadKey) private var autoRead = true
 	/// How much of the latest reply has gone to the reader.
@@ -71,7 +71,7 @@ struct SessionView: View {
 							.task(id: "\(transcript.items.first?.id ?? "") \(userScrolled)") { if userScrolled { loadOlder() } }
 					}
 					ForEach(rows[first..<split]) { row in
-						rowView(row)
+						chatRow(row)
 							.onAppear {
 								if row.id == prefetch, userScrolled { loadOlder() }
 							}
@@ -81,7 +81,7 @@ struct SessionView: View {
 					if split < rows.endIndex {
 						VStack(alignment: .leading, spacing: 0) {
 							ForEach(rows[split...]) { row in
-								rowView(row)
+								chatRow(row)
 							}
 						}
 						.frame(minHeight: pinned ? max(0, viewport - 16) : nil, alignment: .top)
@@ -103,16 +103,12 @@ struct SessionView: View {
 				.padding(.bottom, 16)
 				// A live turn's new pieces and, once it ends, its copy button ease in instead of popping.
 				.animation(.easeOut(duration: 0.3), value: Self.liveShape(rows))
+				// A reply streaming in holds its fade-in still while the chat scrolls.
+				.environment(\.chatScrolling, scrolling)
 				// Tapping the conversation puts the keyboard away; buttons inside keep their own taps.
 				.contentShape(Rectangle())
 				.onTapGesture { dismissKeyboard() }
 			}
-			// A reply's link to a desktop file opens it here; web links still go to Safari.
-			.environment(\.openURL, OpenURLAction { url in
-				guard case let .desktopFile(href) = ReplyLink.classify(url) else { return .systemAction }
-				linkedFile = LinkedFile(href: href)
-				return .handled
-			})
 			// Opens on the newest line, but streaming never moves the conversation: following
 			// a reply that grows every frame kept the scroll view animating and stuttered.
 			.defaultScrollAnchor(.bottom, for: .initialOffset)
@@ -269,7 +265,7 @@ struct SessionView: View {
 		.sheet(item: $panel) { panel in
 			SessionPanelSheet(panel: panel, sessionId: id)
 		}
-		.sheet(item: $linkedFile) { file in
+		.sheet(item: $links.file) { file in
 			NavigationStack {
 				FilePreviewScreen(sessionId: id, path: file.href, title: file.title)
 			}
@@ -322,6 +318,16 @@ struct SessionView: View {
 		model.insertOlder(id, page)
 	}
 
+	/// A row that updates only when what it shows changes: streaming changes the
+	/// transcript many times a second, and every row on screen used to update with it.
+	private func chatRow(_ row: ChatLine) -> some View {
+		// A turn's header names what the agent is doing while it streams.
+		let note: String? = if case .head(_, _, true, _, _) = row { transcript.sessionState.detail ?? "" } else { nil }
+		return ChatRowBox(row: row, note: note, links: links) { rowView(row) }
+			.equatable()
+			.transition(row.isFoot ? .opacity.combined(with: .offset(y: 4)) : .identity)
+	}
+
 	@ViewBuilder
 	private func rowView(_ row: ChatLine) -> some View {
 		switch row {
@@ -348,7 +354,6 @@ struct SessionView: View {
 			.padding(.leading, -7)
 			.padding(.bottom, 20)
 			.frame(maxWidth: .infinity, alignment: .leading)
-			.transition(.opacity.combined(with: .offset(y: 4)))
 		}
 	}
 
@@ -393,6 +398,41 @@ private struct OlderHistoryRow: View {
 		}
 		.frame(maxWidth: .infinity, minHeight: 44)
 		.padding(.bottom, 8)
+	}
+}
+
+/// One chat row, compared by what it shows; its content is only built when that changes.
+private struct ChatRowBox<Content: View>: View, Equatable {
+	let row: ChatLine
+	let note: String?
+	let links: ReplyLinks
+	@ViewBuilder let content: () -> Content
+
+	// Set per row rather than on the chat: set there, it counted as changed on every
+	// update of the chat, and every text on screen then updated with each streamed word.
+	var body: some View { content().environment(\.openURL, links.action) }
+
+	static func == (lhs: Self, rhs: Self) -> Bool {
+		lhs.row == rhs.row && lhs.note == rhs.note
+	}
+}
+
+private extension ChatLine {
+	var isFoot: Bool { if case .foot = self { true } else { false } }
+}
+
+/// Opens a reply's link to a desktop file in the chat; web links still go to Safari.
+@Observable
+private final class ReplyLinks {
+	var file: LinkedFile?
+	@ObservationIgnored private(set) var action = OpenURLAction { _ in .systemAction }
+
+	init() {
+		action = OpenURLAction { [weak self] url in
+			guard case let .desktopFile(href) = ReplyLink.classify(url) else { return .systemAction }
+			self?.file = LinkedFile(href: href)
+			return .handled
+		}
 	}
 }
 

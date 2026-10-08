@@ -435,13 +435,16 @@ struct StreamingMarkdown: View {
 	var live: Bool
 	@State private var clock = RevealClock()
 	@Environment(\.accessibilityReduceMotion) private var reduceMotion
+	@Environment(\.chatScrolling) private var scrolling
 
 	var body: some View {
 		let target = text.count
 		if reduceMotion || !clock.started && !live {
 			MarkdownView(text: text)
 		} else {
-			TimelineView(.animation(minimumInterval: 1.0 / 60, paused: clock.idle && !clock.behind(target))) { context in
+			// Holds still while the chat scrolls: laying the reply out again every frame took
+			// the main thread from the scroll, which stuttered. It catches up once it stops.
+			TimelineView(.animation(minimumInterval: 1.0 / 60, paused: scrolling || clock.idle && !clock.behind(target))) { context in
 				let reveal = clock.advance(to: context.date.timeIntervalSinceReferenceDate, target: target)
 				// Once the reply is over and every character has faded in, it becomes selectable.
 				let settled = !live && !reveal.animating(toward: target)
@@ -453,6 +456,11 @@ struct StreamingMarkdown: View {
 			}
 		}
 	}
+}
+
+extension EnvironmentValues {
+	/// The chat is being dragged or still gliding.
+	@Entry var chatScrolling = false
 }
 
 /// Holds a `StreamReveal` across frames. Advancing is not observed, so frames
