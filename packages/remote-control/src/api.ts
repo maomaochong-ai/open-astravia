@@ -101,6 +101,9 @@ export interface RemoteToolCallSummary {
  */
 export const REMOTE_MAX_TOOL_RESULT_CHARS = 512 * 1024;
 
+/** Most characters of serialized JSON one `action.run` returns, for the same reason. */
+export const REMOTE_MAX_ACTION_RESULT_CHARS = 512 * 1024;
+
 /** `tool.result`: a tool call's whole result, where events and history carry a preview. */
 export interface RemoteToolResult {
 	readonly toolCallId: string;
@@ -271,6 +274,12 @@ export interface RemoteDeviceStatus {
 	 * for the whole text. Older desktops leave it out and drop the link on that method.
 	 */
 	readonly toolResult?: boolean;
+	/**
+	 * Whether the desktop answers `action.run` for the plugin actions it offers to phones
+	 * (read-only ones a plugin registered with `remote: true`). Older desktops leave it out
+	 * and drop the link on that method.
+	 */
+	readonly actions?: boolean;
 }
 
 /** Sealed follow-up to a manual pairing approval; carries the long-lived credential. */
@@ -341,6 +350,8 @@ export interface RemoteRequestPayloads {
 	};
 	/** One tool call of the session, by the `toolCallId` its events and history carry. */
 	readonly "tool.result": { readonly toolCallId: string };
+	/** A plugin action offered to phones, by its global id, e.g. `plugin.jsk-map.scene-geometry`. */
+	readonly "action.run": { readonly actionId: string; readonly input?: unknown };
 }
 
 export interface RemoteResponsePayloads {
@@ -369,6 +380,7 @@ export interface RemoteResponsePayloads {
 	readonly "file.read": RemoteFileChunk;
 	readonly "screen.subscribe": RemoteScreenStatus;
 	readonly "tool.result": RemoteToolResult;
+	readonly "action.run": { readonly result: unknown };
 }
 
 export interface RemoteEventPayloads {
@@ -576,6 +588,7 @@ export function readDeviceStatus(value: unknown): RemoteDeviceStatus | undefined
 		fileRead: value.fileRead === true,
 		screen: value.screen === true,
 		toolResult: value.toolResult === true,
+		actions: value.actions === true,
 	};
 }
 

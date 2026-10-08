@@ -20,6 +20,7 @@ export interface RemoteCapabilities {
 	readonly screen?: boolean;
 	readonly input?: boolean;
 	readonly toolResult?: boolean;
+	readonly actions?: boolean;
 }
 
 /**
@@ -95,7 +96,8 @@ export type RemoteRequestMethod =
 	| "file.stat"
 	| "file.read"
 	| "screen.subscribe"
-	| "tool.result";
+	| "tool.result"
+	| "action.run";
 
 export interface RemoteRequest {
 	readonly type: "request";

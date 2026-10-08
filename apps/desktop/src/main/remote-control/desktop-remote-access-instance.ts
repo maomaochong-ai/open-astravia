@@ -23,6 +23,7 @@ import type { DesktopRemoteDesktopController } from "./desktop-remote-access-man
 import { DesktopRemoteAccessManager } from "./desktop-remote-access-manager.js";
 import { DesktopRemoteMirror } from "./desktop-remote-mirror.js";
 import { readMacCursor } from "./mac-cursor.js";
+import type { RemoteActionHost } from "./remote-actions.js";
 import { RemoteDeviceStore } from "./remote-device-store.js";
 import { RemoteFiles } from "./remote-files.js";
 import { scaleImageForPhone } from "./remote-image-scale.js";
@@ -40,6 +41,7 @@ let manager: DesktopRemoteAccessManager | undefined;
 export function getDesktopRemoteAccessManager(
 	defaultRelayBaseUrl?: string,
 	remoteDesktop?: DesktopRemoteDesktopController,
+	actions?: RemoteActionHost,
 ): DesktopRemoteAccessManager {
 	manager ??= new DesktopRemoteAccessManager({
 		store: new RemoteDeviceStore({
@@ -106,6 +108,7 @@ export function getDesktopRemoteAccessManager(
 				},
 				onCatalogChanged: (listener) => onConversationListChanged(() => listener()),
 				hardware: desktopHardware,
+				actions,
 			}),
 	});
 	return manager;

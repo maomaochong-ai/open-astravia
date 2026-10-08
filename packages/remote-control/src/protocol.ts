@@ -39,6 +39,7 @@ const requestMethods = new Set([
 	"file.read",
 	"screen.subscribe",
 	"tool.result",
+	"action.run",
 ]);
 const eventNames = new Set([
 	"device.status",
@@ -134,6 +135,7 @@ function capabilities(value: unknown): RemoteCapabilities {
 		input: input.input === undefined ? undefined : requiredBoolean(input.input, "capabilities.input"),
 		toolResult:
 			input.toolResult === undefined ? undefined : requiredBoolean(input.toolResult, "capabilities.toolResult"),
+		actions: input.actions === undefined ? undefined : requiredBoolean(input.actions, "capabilities.actions"),
 	};
 }
 

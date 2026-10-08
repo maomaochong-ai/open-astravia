@@ -50,6 +50,7 @@ describe("remote protocol v2", () => {
 			"file.read",
 			"screen.subscribe",
 			"tool.result",
+			"action.run",
 		]) {
 			expect(decodeRemoteFrame({ type: "request", requestId: "r1", method, sessionId: "s1" })).toMatchObject({
 				method,

@@ -34,6 +34,7 @@ import type {
 import type { DesktopSessionCommands } from "../conversations/desktop-session-commands.js";
 import type { DesktopUserQuestionBroker } from "../conversations/user-question-broker.js";
 import { getAppLogger } from "../logger.js";
+import { type RemoteActionHost, runRemoteAction } from "./remote-actions.js";
 import { RemoteOperationError } from "./remote-error-mapping.js";
 import type { RemoteFiles } from "./remote-files.js";
 import {
@@ -114,6 +115,8 @@ export interface DesktopRemoteMirrorOptions {
 	/** Sessions were created, renamed or deleted on the desktop. */
 	readonly onCatalogChanged?: (listener: () => void) => () => void;
 	readonly hardware?: () => { cpu?: string; ram?: string };
+	/** Plugin actions offered to phones (`action.run`); absent where the App Action system is not up. */
+	readonly actions?: RemoteActionHost;
 	/** Streamed text is batched at this interval so a long answer costs tens of frames, not thousands. */
 	readonly coalesceMs?: number;
 	readonly listRefreshMs?: number;
@@ -334,6 +337,9 @@ export class DesktopRemoteMirror {
 				}
 				return findToolResult(this.readHistory(handle), toolCallId);
 			}
+			case "action.run":
+				if (!this.options.actions) throw new RemoteOperationError("not_found", "Action is not offered to phones");
+				return runRemoteAction(this.options.actions, request.payload);
 		}
 	}
 

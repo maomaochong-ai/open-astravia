@@ -745,6 +745,10 @@ if (!gotSingleLock) {
 								devServerUrl: process.env.VETTA_DESKTOP_DEV_URL,
 							}),
 					},
+			{
+				get: (actionId) => actionSystem.catalog.get(actionId),
+				run: (actionId, input, context) => actionSystem.runtime.run(actionId, input, context),
+			},
 		);
 
 		// Register IPC handlers

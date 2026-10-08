@@ -228,6 +228,12 @@ describe("remote api payload readers", () => {
 		expect(readDeviceStatus(base)?.toolResult).toBe(false);
 	});
 
+	it("treats a desktop that does not mention actions as unable to answer action.run", () => {
+		const base = { deviceName: "Mac", lanEndpoints: [], relayEnabled: true, runningSessionCount: 0 };
+		expect(readDeviceStatus({ ...base, actions: true })?.actions).toBe(true);
+		expect(readDeviceStatus(base)?.actions).toBe(false);
+	});
+
 	it("reads the pointer's shape and keeps its hot spot inside the image", () => {
 		expect(
 			readScreenCursor({ image: "iVBOR", width: 28, height: 40, hotspotX: 5, hotspotY: 50, screenWidth: 1512 }),
