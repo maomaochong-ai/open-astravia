@@ -64,13 +64,13 @@ private const val MAX_CONTROL_MESSAGE_BYTES = 1_500_000
 private const val TRACE_STEPS = 8
 
 /**
- * STUN only, no TURN (ADR-0135). Mainland servers first: Google's is reachable there
- * only through a proxy, which reports the proxy's address instead of the phone's.
- * Kept in step with the desktop's `REMOTE_DESKTOP_ICE_SERVERS`.
+ * STUN only, no TURN (ADR-0135), and only servers reachable in mainland China without a
+ * proxy: one a proxy carries (Google, Cloudflare) can answer first with the proxy's exit
+ * as this phone's address, and the link then goes through it. Kept in step with the
+ * desktop's `REMOTE_DESKTOP_ICE_SERVERS`.
  */
 private val ICE_SERVERS = listOf(
     listOf("stun:stun.miwifi.com:3478", "stun:stun.chat.bilibili.com:3478", "stun:stun.hitv.com:3478"),
-    listOf("stun:stun.cloudflare.com:3478", "stun:stun.l.google.com:19302"),
 )
 
 /**

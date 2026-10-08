@@ -2,12 +2,12 @@ import { describe, expect, it, vi } from "vitest";
 import { REMOTE_DESKTOP_ICE_SERVERS, RemoteDesktopHost } from "../src/index.js";
 
 describe("remote desktop ICE servers", () => {
-	it("uses STUN only, with a server reachable in mainland China first", () => {
+	it("uses STUN only, and no server a proxy would carry", () => {
 		const urls = REMOTE_DESKTOP_ICE_SERVERS.flatMap((server) => [server.urls].flat());
 		expect(urls.length).toBeGreaterThan(1);
 		expect(urls.every((url) => url.startsWith("stun:"))).toBe(true);
 		expect(REMOTE_DESKTOP_ICE_SERVERS.some((server) => server.credential !== undefined)).toBe(false);
-		expect(urls[0]).not.toContain("google");
+		expect(urls.filter((url) => /google|cloudflare/.test(url))).toEqual([]);
 	});
 });
 
