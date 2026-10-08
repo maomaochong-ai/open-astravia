@@ -25,6 +25,10 @@ struct SessionView: View {
 	@State private var panel: SessionPanel?
 	/// A desktop file a reply linked to, being previewed.
 	@State private var linkedFile: LinkedFile?
+	/// Reads each reply aloud as it is written.
+	@AppStorage(ReadAloud.autoReadKey) private var autoRead = true
+	/// How much of the latest reply has gone to the reader.
+	@State private var speechFeed = SpeechFeed()
 
 	/// The desktop's id; a chat opened by New Session starts on a local one.
 	private var id: String { model.resolve(sessionId) }
@@ -169,6 +173,16 @@ struct SessionView: View {
 			}
 		}
 		.animation(.snappy, value: transcript.pendingQuestion?.requestId)
+		// The feed moves on even with reading off, so turning it on does not read out a backlog.
+		.onChange(of: SpeechSource.latest(rows), initial: true) { _, source in
+			guard let source else { return }
+			let lines = speechFeed.next(source)
+			if autoRead { ReadAloud.shared.enqueue(lines, turnId: source.turnId) }
+		}
+		.onChange(of: autoRead) { _, on in
+			if !on { ReadAloud.shared.stop() }
+		}
+		.onDisappear { ReadAloud.shared.stop() }
 		.navigationBarTitleDisplayMode(.inline)
 		// The composer takes the bottom edge; a tab bar under it would stack two glass bars.
 		.toolbar {
@@ -197,6 +211,7 @@ struct SessionView: View {
 							.disabled(!available || !model.online)
 						}
 					}
+					Toggle(L10n.Chat.autoRead, systemImage: "speaker.wave.2", isOn: $autoRead)
 					Button(L10n.Chat.resync, systemImage: "arrow.clockwise") { Task { await model.resync(id) } }
 					// The desktop's own sidebar actions, so it shows the same title and pin.
 					Button(L10n.Session.rename, systemImage: "pencil") {
@@ -265,11 +280,16 @@ struct SessionView: View {
 			TurnPieceView(segment: segment, live: live, activity: activity)
 				.padding(.bottom, ends ? 20 : 10)
 				.frame(maxWidth: .infinity, alignment: .leading)
-		case let .foot(_, conclusion):
-			TurnCopyButton(conclusion: conclusion)
-				.padding(.bottom, 20)
-				.frame(maxWidth: .infinity, alignment: .leading)
-				.transition(.opacity.combined(with: .offset(y: 4)))
+		case let .foot(id, conclusion):
+			// The first icon lines up with the text above it.
+			HStack(spacing: 4) {
+				TurnCopyButton(conclusion: conclusion)
+				TurnReadButton(turnId: id, conclusion: conclusion)
+			}
+			.padding(.leading, -7)
+			.padding(.bottom, 20)
+			.frame(maxWidth: .infinity, alignment: .leading)
+			.transition(.opacity.combined(with: .offset(y: 4)))
 		}
 	}
 

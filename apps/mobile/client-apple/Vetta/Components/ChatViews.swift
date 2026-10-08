@@ -309,13 +309,49 @@ struct TurnCopyButton: View {
 				withAnimation { copied = false }
 			}
 		} label: {
-			Label(copied ? L10n.Chat.copied : L10n.Chat.copy, systemImage: copied ? "checkmark" : "doc.on.doc")
-				.font(.caption)
-				.foregroundStyle(.secondary)
-				.contentTransition(.symbolEffect(.replace))
+			Image(systemName: copied ? "checkmark" : "doc.on.doc")
+				.modifier(TurnActionIcon())
 		}
 		.buttonStyle(.plain)
+		.accessibilityLabel(copied ? L10n.Chat.copied : L10n.Chat.copy)
 		.accessibilityIdentifier("turn.copy")
+	}
+}
+
+/// Reads a finished turn's closing answer aloud; tapped again while it reads, stops.
+struct TurnReadButton: View {
+	var turnId: String
+	var conclusion: String
+	private var reader = ReadAloud.shared
+
+	init(turnId: String, conclusion: String) {
+		self.turnId = turnId
+		self.conclusion = conclusion
+	}
+
+	var body: some View {
+		let reading = reader.turnId == turnId
+		Button {
+			reader.toggle(turnId: turnId, markdown: conclusion)
+		} label: {
+			Image(systemName: reading ? "stop.circle" : "speaker.wave.2")
+				.modifier(TurnActionIcon())
+		}
+		.buttonStyle(.plain)
+		.accessibilityLabel(reading ? L10n.Chat.stopReading : L10n.Chat.readAloud)
+		.accessibilityIdentifier("turn.read")
+	}
+}
+
+/// The icons under a finished turn: small, quiet, with room enough to tap.
+private struct TurnActionIcon: ViewModifier {
+	func body(content: Content) -> some View {
+		content
+			.font(.footnote)
+			.foregroundStyle(.secondary)
+			.contentTransition(.symbolEffect(.replace))
+			.frame(width: 28, height: 28)
+			.contentShape(.rect)
 	}
 }
 
