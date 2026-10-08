@@ -102,8 +102,6 @@ public final class AppModel {
 	@ObservationIgnored private var active = true
 	/// The remote desktop page is open; the desktop captures only while it is and the app is in front.
 	@ObservationIgnored private var screenOpen = false
-	/// How many screens show the link's latency right now.
-	@ObservationIgnored private var latencyWatchers = 0
 	@ObservationIgnored private var newSessionModelsLoad: Task<Void, Never>?
 	/// Sessions `startSession` just sent their first prompt to; see `openSession`.
 	@ObservationIgnored private var freshSessions: Set<String> = []
@@ -337,7 +335,6 @@ public final class AppModel {
 		})
 		unsubscribe.append(manager.onEvent { [weak self] event in self?.handleEvent(event) })
 		manager.setForeground(active)
-		manager.setLatencyWatched(latencyWatchers > 0)
 		manager.start()
 	}
 
@@ -368,12 +365,6 @@ public final class AppModel {
 	public var remoteDesktopTarget: String? {
 		guard let record = pairingStore.getCurrent(), let relay = record.relayBaseUrl, !relay.isEmpty else { return nil }
 		return PairingURI.desktopViewerUrl(relayBaseUrl: relay, pairingId: record.pairingId, mobileSecret: record.mobileSecret)
-	}
-
-	/// A screen showing the link's latency appeared or went away; it is measured often while one does.
-	public func watchLatency(_ watching: Bool) {
-		latencyWatchers = max(0, latencyWatchers + (watching ? 1 : -1))
-		manager?.setLatencyWatched(latencyWatchers > 0)
 	}
 
 	/// The remote desktop page opened or closed: the desktop starts or stops capturing (ADR-0140).

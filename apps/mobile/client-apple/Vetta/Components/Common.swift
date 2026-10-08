@@ -102,8 +102,6 @@ struct LinkPill: View {
 			}
 			.padding(16)
 			.presentationCompactAdaptation(.popover)
-			.onAppear { model.watchLatency(true) }
-			.onDisappear { model.watchLatency(false) }
 		}
 	}
 

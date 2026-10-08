@@ -23,10 +23,9 @@ public struct ChannelManagerOptions {
 	public var keepaliveIntervalMs: Double = 25_000
 	public var requestTimeoutMs: Double = 30_000
 	public var maxBackoffMs: Double = 30_000
-	/// In the foreground, how often the round trip is measured while no screen shows it.
-	public var rttSampleIntervalMs: Double = 15_000
-	/// How often it is measured while a screen shows it (`setLatencyWatched`).
-	public var rttWatchedIntervalMs: Double = 2_000
+	/// In the foreground, how often the round trip is measured: often enough that the figure
+	/// is current whenever someone looks, for a request of under a kilobyte.
+	public var rttSampleIntervalMs: Double = 2_000
 	/// How long a request waits for a recovering connection to catch up.
 	public var recoveryWaitMs: Double = 3_000
 	public var now: () -> Double = WallClock.nowMs
@@ -53,6 +52,9 @@ public final class ChannelManager {
 		var unsubscribe: (() -> Void)?
 		/// Listens while this candidate is the active link, or the standby behind P2P.
 		var watch: (() -> Void)?
+		/// A latency probe is waiting on this connection; its answer no longer matters once
+		/// the candidate is replaced.
+		var probing = false
 		init(channel: LinkChannel, connection: RemoteConnection) {
 			self.channel = channel
 			self.connection = connection
@@ -92,7 +94,6 @@ public final class ChannelManager {
 	private var standbyTimer: Task<Void, Never>?
 	private var rttTimer: Task<Void, Never>?
 	private var rttWindow = RttWindow()
-	private var latencyWatched = false
 	private var backoffMs: Double = 1_000
 	private var reconnectAttempt = 0
 
@@ -190,15 +191,6 @@ public final class ChannelManager {
 			p2pFailures = 0
 			launchP2pProbe()
 		}
-	}
-
-	/// A screen showing the latency appeared or went away: it is measured every couple of
-	/// seconds while one does, and starts with a fresh figure instead of one up to an
-	/// interval old.
-	public func setLatencyWatched(_ value: Bool) {
-		guard latencyWatched != value else { return }
-		latencyWatched = value
-		if value, rttTimer != nil { startRttSampling(clearWindow: false, measureNow: true) }
 	}
 
 	public func stop() {
@@ -327,7 +319,9 @@ public final class ChannelManager {
 		candidate.dispose()
 		Task {
 			let deadline = options.now() + 10_000
-			while candidate.connection.snapshot.pendingRequestCount > 0, options.now() < deadline {
+			// A latency probe is not waited for: only its round trip mattered, and a desktop
+			// slow to answer it would hold the old channel open for the full deadline.
+			while candidate.connection.snapshot.pendingRequestCount > (candidate.probing ? 1 : 0), options.now() < deadline {
 				try? await Task.sleep(nanoseconds: 50_000_000)
 			}
 			candidate.connection.close()
@@ -671,15 +665,14 @@ public final class ChannelManager {
 		probeTimer = nil
 	}
 
-	/// Measures every interval, and at once when `measureNow`. A new channel starts a new
-	/// window: its route, and so its latency, differs.
-	private func startRttSampling(clearWindow: Bool = true, measureNow: Bool = false) {
+	/// Measures every interval. A new channel starts a new window: its route, and so its
+	/// latency, differs.
+	private func startRttSampling() {
 		stopRttSampling()
-		if clearWindow { rttWindow.clear() }
+		rttWindow.clear()
 		rttTimer = Task { [weak self] in
-			if measureNow { await self?.sampleRtt() }
 			while !Task.isCancelled {
-				guard let interval = self.map({ $0.latencyWatched ? $0.options.rttWatchedIntervalMs : $0.options.rttSampleIntervalMs }) else { return }
+				guard let interval = self?.options.rttSampleIntervalMs else { return }
 				try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000))
 				guard !Task.isCancelled, let self else { return }
 				await self.sampleRtt()
@@ -692,6 +685,8 @@ public final class ChannelManager {
 	private func sampleRtt() async {
 		guard let active, snapshot.isUsable, foreground else { return }
 		let startedAt = options.now()
+		active.probing = true
+		defer { active.probing = false }
 		guard (try? await active.connection.request(.diagnosticsSnapshot)) != nil,
 		      !Task.isCancelled, self.active === active else { return }
 		var next = snapshot
