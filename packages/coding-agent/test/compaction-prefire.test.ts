@@ -1,10 +1,12 @@
 import { describe, expect, test } from "vitest";
 import {
+	computePrefireLeadPercent,
 	DEFAULT_COMPACTION_SETTINGS,
 	fingerprintCompactionPrefix,
 	getCompactThreshold,
 	isPrefireCacheValid,
 	PREFIRE_LEAD_PERCENT,
+	PREFIRE_LEAD_PERCENT_MAX,
 	type PrefireCache,
 	shouldPrefire,
 } from "../src/compaction/index.js";
@@ -96,5 +98,38 @@ describe("shouldPrefire", () => {
 
 	test("never fires without a context window", () => {
 		expect(shouldPrefire(1000, 0, settings)).toBe(false);
+	});
+});
+
+describe("computePrefireLeadPercent（lead 自适应）", () => {
+	const window = 200_000;
+
+	test("无历史/非正增量/非法窗口：维持缺省 10%", () => {
+		expect(computePrefireLeadPercent(undefined, window)).toBe(PREFIRE_LEAD_PERCENT);
+		expect(computePrefireLeadPercent(0, window)).toBe(PREFIRE_LEAD_PERCENT);
+		expect(computePrefireLeadPercent(-5_000, window)).toBe(PREFIRE_LEAD_PERCENT);
+		expect(computePrefireLeadPercent(20_000, 0)).toBe(PREFIRE_LEAD_PERCENT);
+	});
+
+	test("增量低于门槛（<5% 窗口）不抖动：维持缺省", () => {
+		// 4% 增量 = 8k token < 5% 门槛
+		expect(computePrefireLeadPercent(8_000, window)).toBe(PREFIRE_LEAD_PERCENT);
+	});
+
+	test("高增速加宽窗口：增量 10% 窗口 → lead 20%（×2）", () => {
+		expect(computePrefireLeadPercent(20_000, window)).toBe(20);
+	});
+
+	test("封顶 25%：增量 20% 窗口（×2=40）被 cap", () => {
+		expect(computePrefireLeadPercent(40_000, window)).toBe(PREFIRE_LEAD_PERCENT_MAX);
+	});
+
+	test("shouldPrefire 接受自适应 lead：高增速下窗口外更早开始预热", () => {
+		const settings = DEFAULT_COMPACTION_SETTINGS;
+		const threshold = getCompactThreshold(window, settings);
+		// 缺省 lead=10%（带宽 20k）时在带外：离阈值 22k
+		expect(shouldPrefire(threshold - 22_000, window, settings)).toBe(false);
+		// 增量 20k（10% 窗口）→ lead 20%（带宽 40k）→ 同一点进入带内
+		expect(shouldPrefire(threshold - 22_000, window, settings, 20)).toBe(true);
 	});
 });
