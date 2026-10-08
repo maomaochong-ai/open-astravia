@@ -117,6 +117,11 @@ export type RuntimeSessionObservationEvent = RuntimeSessionObservationBase &
 				readonly thresholdTokens?: number;
 		  }
 		| {
+				readonly type: "compaction.delta";
+				/** 本次增量的摘要文本片段（拼接即全量）。 */
+				readonly text: string;
+		  }
+		| {
 				readonly type: "compaction.end";
 				readonly success: boolean;
 				readonly reason?: "threshold" | "overflow" | "manual";
