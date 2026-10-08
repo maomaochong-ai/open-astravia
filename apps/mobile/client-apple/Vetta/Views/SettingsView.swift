@@ -34,6 +34,9 @@ struct SettingsView: View {
 		}
 		.navigationTitle(L10n.Settings.title)
 		.navigationBarTitleDisplayMode(.large)
+		// The computer section shows the latency.
+		.onAppear { model.watchLatency(true) }
+		.onDisappear { model.watchLatency(false) }
 		.alert(L10n.Settings.unpair, isPresented: $confirmUnpair) {
 			Button(L10n.Common.cancel, role: .cancel) {}
 			Button(L10n.Settings.unpair, role: .destructive) { model.unpair() }

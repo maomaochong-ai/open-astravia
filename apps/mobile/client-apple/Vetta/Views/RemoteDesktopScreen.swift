@@ -95,12 +95,15 @@ struct RemoteDesktopScreen: View {
 		.defersSystemGestures(on: .all)
 		.onAppear {
 			model.setScreenOpen(true)
+			// The header shows the control link's latency.
+			model.watchLatency(true)
 			OrientationLock.allow(.allButUpsideDown, turn: .portrait)
 			// The screen stays on while the desktop is being watched.
 			UIApplication.shared.isIdleTimerDisabled = true
 		}
 		.onDisappear {
 			model.setScreenOpen(false)
+			model.watchLatency(false)
 			OrientationLock.allow(.portrait)
 			UIApplication.shared.isIdleTimerDisabled = false
 		}
