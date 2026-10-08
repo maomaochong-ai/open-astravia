@@ -16,6 +16,11 @@ Platform-neutral remote control protocol, connection lifecycle, diagnostics cont
 
 Only `hello`, `hello_ack`, `pairing_pending` and `peer_status` travel in clear; a relay reads `hello` to check the role and copies both public keys into the peer's `hello_ack`. Every request, response, event, ack and resume is carried inside a `sealed` frame that neither the relay nor a LAN sniffer can open. An endpoint that receives a plaintext session frame after the handshake closes the link.
 
+When the relay reports `peer_status: false`, an established connection returns to `connecting`,
+rejects pending requests and discards its session keys while keeping the relay transport open.
+Only a new validated handshake restores `online`; a presence notice alone cannot do so.
+Desktop aggregates live channels per device and retains its five-second offline grace period.
+
 ## Does not own
 
 - Android or Electron UI

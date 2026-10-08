@@ -1,11 +1,13 @@
-import type { RemoteConnection, RemoteInviteEnvelope, RemoteTransportHandlers } from "@vetta/remote-control";
+import type { RemoteInviteEnvelope, RemoteTransportHandlers } from "@vetta/remote-control";
 import {
+	FakeRelay,
 	generateIdentityKeyPair,
 	inviteBoxId,
 	normalizeInviteCode,
 	openInvite,
 	parseInviteQr,
 	parsePairingUri,
+	RemoteConnection,
 	type RemoteHello,
 	toBase64Url,
 } from "@vetta/remote-control";
@@ -383,6 +385,74 @@ describe("DesktopRemoteAccessManager", () => {
 		await manager.cancelInvite();
 		await vi.waitFor(() => expect(states.at(-1)).toMatchObject({ invite: undefined, devices: [] }));
 		stop();
+	});
+
+	it("pushes relay disconnect and reconnect to settings and releases the idle mirror", async () => {
+		vi.useFakeTimers();
+		const pairingId = "a".repeat(24);
+		const phoneIdentity = generateIdentityKeyPair();
+		const { manager, relayLinks, store, mirrors } = harness(
+			{
+				cloudEnabled: true,
+				devices: [
+					{
+						id: pairingId,
+						name: "Phone",
+						mobileSecretHash: "h",
+						mobileIdentityKey: toBase64Url(phoneIdentity.publicKey),
+						createdAt: 1,
+					},
+				],
+			},
+			{ hubGraceMs: 5_000 },
+		);
+		const states: RemoteAccessState[] = [];
+		const unsubscribe = manager.onStateChanged((state) => states.push(state));
+		let phone: RemoteConnection | undefined;
+		try {
+			store.putRelaySecret(pairingId, "relay-secret");
+			await manager.restore();
+			const options = relayLinks[0]!.options;
+			const relay = new FakeRelay();
+			const host = new RemoteConnection(relay.createTransport(pairingId, "desktop"), {
+				...options,
+				role: "desktop",
+				capabilities: { chat: true, sessionRead: true },
+				expectedPeerIdentityKey: phoneIdentity.publicKey,
+			});
+			phone = new RemoteConnection(relay.createTransport(pairingId, "mobile"), {
+				role: "mobile",
+				deviceId: "phone",
+				deviceName: "Phone",
+				capabilities: { chat: true, sessionRead: true },
+				identity: phoneIdentity,
+				expectedPeerIdentityKey: options.identity.publicKey,
+			});
+			options.onConnection(host);
+			await host.connect();
+			await phone.connect();
+			await vi.advanceTimersByTimeAsync(1);
+			expect(states.at(-1)?.devices[0]).toMatchObject({ online: true, channels: ["relay"] });
+			expect(mirrors.at(-1)).toEqual({ started: true, stopped: false });
+			await expect(phone.request("session.list")).resolves.toEqual({});
+
+			await phone.close();
+			await vi.advanceTimersByTimeAsync(5_001);
+			expect(states.at(-1)?.devices[0]).toMatchObject({ online: false, channels: [] });
+			expect(mirrors.at(-1)?.stopped).toBe(true);
+			expect(relayLinks[0]?.stopped).toBe(false);
+
+			await phone.connect();
+			await vi.advanceTimersByTimeAsync(1);
+			expect(states.at(-1)?.devices[0]).toMatchObject({ online: true, channels: ["relay"] });
+			expect(mirrors.at(-1)).toEqual({ started: true, stopped: false });
+			await expect(phone.request("session.list")).resolves.toEqual({});
+		} finally {
+			unsubscribe();
+			await manager.shutdown();
+			await phone?.close();
+			vi.useRealTimers();
+		}
 	});
 
 	it("revoking the last phone tears every transport down again", async () => {
