@@ -50,8 +50,12 @@ public final class RemoteDesktopSession {
 	@ObservationIgnored private var statsTask: Task<Void, Never>?
 	@ObservationIgnored private var signalingRetry = SignalingRetry()
 	@ObservationIgnored private var reconnectTask: Task<Void, Never>?
+	@ObservationIgnored private var disconnectTask: Task<Void, Never>?
 	/// The running totals at the last sample, to average over the last second only.
 	@ObservationIgnored private var lastTotals: FrameTotals?
+
+	/// How long a direct link may stay disconnected before the session gives it up.
+	private static let disconnectGraceSeconds = 5.0
 
 	private static let factory: RTCPeerConnectionFactory = {
 		RTCInitializeSSL()
@@ -121,6 +125,8 @@ public final class RemoteDesktopSession {
 		statsTask = nil
 		reconnectTask?.cancel()
 		reconnectTask = nil
+		disconnectTask?.cancel()
+		disconnectTask = nil
 		stats = nil
 		socket?.cancel(with: .normalClosure, reason: nil)
 		socket = nil
@@ -271,9 +277,20 @@ public final class RemoteDesktopSession {
 		note("ICE \(Self.name(state))")
 		switch state {
 		case .connected, .completed:
+			disconnectTask?.cancel()
+			disconnectTask = nil
 			if phase == .connecting {
 				phase = .connected
 				sampleStats()
+			}
+		case .disconnected:
+			// ICE only calls it failed after about 30 seconds, all the while the control channel
+			// is silent; give a blip a few seconds, then end so the link falls back to the LAN or relay.
+			guard phase == .connected, disconnectTask == nil else { return }
+			disconnectTask = Task { [weak self] in
+				try? await Task.sleep(for: .seconds(Self.disconnectGraceSeconds))
+				guard !Task.isCancelled, let self, self.phase == .connected else { return }
+				self.stop(reason: "WebRTC ICE disconnected")
 			}
 		case .failed, .closed:
 			if phase != .stopped { stop(reason: "WebRTC ICE \(state == .failed ? "failed" : "closed")") }
