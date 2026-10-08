@@ -485,7 +485,8 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
         }
 
         override suspend fun close() {
-            channel?.close()
+            // A stopped session has disposed the channel, and closing it then throws.
+            if (!owner.isStopped) channel?.close()
             channelClosed("remote control data channel closed")
             owner.stop()
         }
