@@ -308,6 +308,12 @@ public final class AppModel {
 		freshSessions = []
 		fileCache.removeAll()
 		link = .offline
+		startManager(record)
+	}
+
+	/// Rebuilds only the link; route changes must preserve the open chat and its drafts.
+	private func startManager(_ record: DesktopRecord) {
+		let key = record.desktopIdentityKey
 		var options = ChannelManagerOptions(desktop: record, link: identity, createTransport: platform.createTransport)
 		options.onSequence = { [weak self] sequence in
 			self?.pairingStore.update(key) {
@@ -330,6 +336,18 @@ public final class AppModel {
 		unsubscribe.append(manager.onEvent { [weak self] event in self?.handleEvent(event) })
 		manager.setForeground(active)
 		manager.start()
+	}
+
+	private func followRelay(_ relay: String?) {
+		guard let relay,
+		      let record = pairingStore.getCurrent(), record.desktopIdentityKey == desktopKey,
+		      record.relayBaseUrl != relay else { return }
+		pairingStore.update(record.desktopIdentityKey) { $0.relayBaseUrl = relay }
+		guard let moved = pairingStore.getCurrent() else { return }
+		detachManager()
+		desktop = moved.stored
+		link = .offline
+		startManager(moved)
 	}
 
 	private func detachManager() {
@@ -370,7 +388,7 @@ public final class AppModel {
 				// `cursor`: this phone draws the pointer itself and wants its shape.
 				let result = try await manager.request(.screenSubscribe, payload: ["active": .bool(wanted), "cursor": .bool(wanted)])
 				// A later open or close has its own answer coming.
-				guard wanted == (self.screenOpen && self.active) else { return }
+				guard self.manager === manager, wanted == (self.screenOpen && self.active) else { return }
 				self.screen = wanted ? RemoteAPI.readScreenStatus(result) : nil
 			} catch {
 				log.error("screen subscription failed: \(String(describing: type(of: error)), privacy: .public)")
@@ -487,6 +505,7 @@ public final class AppModel {
 			transcripts = transcripts.mapValues { TranscriptReducer.reduce($0, .resync) }
 			Task { await refreshSessions() }
 		case .deviceStatus:
+			followRelay(RemoteAPI.readDeviceStatus(event.payload)?.relayBaseUrl)
 			// Sent on every connection: a desktop that lost the phone for a moment forgot it was watching.
 			if screenOpen, active { syncScreen() }
 		case .screenStatus:

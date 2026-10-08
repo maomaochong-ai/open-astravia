@@ -29,6 +29,20 @@
             buildForAnalyzing = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
+               BlueprintIdentifier = "B9DFC0CB9B81F02F5A21FE0C"
+               BuildableName = "VettaRTCTests.xctest"
+               BlueprintName = "VettaRTCTests"
+               ReferencedContainer = "container:Vetta.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "NO"
+            buildForProfiling = "NO"
+            buildForArchiving = "NO"
+            buildForAnalyzing = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
                BlueprintIdentifier = "6B17FFF7D8EC56DB20D70966"
                BuildableName = "VettaUITests.xctest"
                BlueprintName = "VettaUITests"
@@ -61,6 +75,17 @@
                BlueprintIdentifier = "6B17FFF7D8EC56DB20D70966"
                BuildableName = "VettaUITests.xctest"
                BlueprintName = "VettaUITests"
+               ReferencedContainer = "container:Vetta.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "B9DFC0CB9B81F02F5A21FE0C"
+               BuildableName = "VettaRTCTests.xctest"
+               BlueprintName = "VettaRTCTests"
                ReferencedContainer = "container:Vetta.xcodeproj">
             </BuildableReference>
          </TestableReference>

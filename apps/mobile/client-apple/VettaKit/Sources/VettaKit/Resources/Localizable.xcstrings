@@ -1858,6 +1858,23 @@
         }
       }
     },
+    "home.connectComputer": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connect computer"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "连接电脑"
+          }
+        }
+      }
+    },
     "home.conversation": {
       "extractionState": "manual",
       "localizations": {
@@ -3469,13 +3486,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Move a finger to move the pointer · tap to click · two-finger tap to right-click · hold to drag · two fingers zoom and move the picture"
+            "value": "Move a finger to move the pointer · tap to click · two-finger tap to right-click · hold to drag · two fingers scroll, pinch to zoom, then pan the enlarged picture"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "单指移动光标 · 轻点点击 · 双指轻点右键 · 按住拖动 · 双指缩放和移动画面"
+            "value": "单指移动光标 · 轻点点击 · 双指轻点右键 · 按住拖动 · 双指滚动，捏合缩放，放大后平移画面"
           }
         }
       }

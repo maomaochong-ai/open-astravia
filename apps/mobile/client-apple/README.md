@@ -35,15 +35,20 @@ open Vetta.xcodeproj
 - iOS 首次连接电脑的局域网地址会弹「本地网络」权限，必须允许；`Info.plist` 已声明 `NSLocalNetworkUsageDescription` 与 `NSAllowsLocalNetworking`（局域网明文 `ws://`）。
 - 扫码需要相机权限；模拟器没有相机，可用下文的 `-VettaPairURI` 或手动输入 IP 配对。
 - `vetta://pair?...` 链接可直接唤起 App 完成配对。
+- 配对页也支持连接码与密码、自建中继地址；已连接时可从首页抽屉的「连接电脑」重新打开配对。电脑在状态事件中公布新中继地址后，手机会保存并重连，保留正在查看的聊天。
+- 远程桌面双指滑动在未放大时滚动电脑内容，放大后平移画面；捏合缩放。只读权限下不会向电脑发送滚动操作。
 
 ## 验证
 
 ```bash
 cd apps/mobile/client-apple
 (cd VettaKit && swift test --no-parallel)   # 单元测试：加密兼容、协议、连接、双通道、配对、转写、缓存、AppModel
+xcodebuild test -project Vetta.xcodeproj -scheme Vetta -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -only-testing:VettaRTCTests CODE_SIGNING_ALLOWED=NO # UIKit 远程手势组件测试
 scripts/interop.sh                          # 与 apps/desktop 的真实 LAN 服务器和假中继对跑（需 bun install）
 scripts/ui-test.sh                          # 模拟器（默认 iPhone 17 Pro）上跑 UI 测试，深浅色各截一套图到 build/ui-shots
 ```
+
+若命令行 SwiftPM 只复制 `.xcstrings`，导致文案测试读到键名，先在 `VettaKit` 目录运行 `xcrun xcstringstool compile Sources/VettaKit/Resources/Localizable.xcstrings --output-directory "$(swift build --show-bin-path)/VettaKit_VettaKit.bundle"`，再重跑 `swift test --no-parallel`。这只编译测试构建目录中的资源，App 构建由 Xcode 自动处理。
 
 UI 测试只构建一次，再按外观各跑一遍。每个用例都是一部新手机、自己完成配对（夹具在 UI 测试里允许新手机顶替旧配对），彼此独立，按界面划分：工作列表、聊天与模型菜单、失败的一轮、新会话与附件及提问、设置。改哪块界面就只跑那块：`scripts/ui-test.sh --fast --only testChatMergesRepliesAndSwitchesModel`（逗号分隔可跑多个），只跑深色、不截图；一批界面改动完成时再完整跑一次深浅两套并看截图。
 
