@@ -34,7 +34,7 @@ function textEvent(delta: string, contentIndex = 0): AssistantMessageEvent {
 		type: "text_delta",
 		contentIndex,
 		delta,
-		partial: { role: "assistant", content: [], timestamp: Date.now() } as AssistantMessage,
+		partial: { role: "assistant", content: [], timestamp: Date.now() } as unknown as AssistantMessage,
 	} as AssistantMessageEvent;
 }
 
