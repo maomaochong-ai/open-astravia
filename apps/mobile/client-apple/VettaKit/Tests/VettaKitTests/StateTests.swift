@@ -312,6 +312,11 @@ import Testing
 				try? connection.respond(requestId: request.requestId, success: true, payload: ["session": created])
 			case .sessionOpen:
 				try? connection.respond(requestId: request.requestId, success: true, payload: ["session": sessions[0], "state": ["status": "idle"]])
+			case .sessionHistory where request.sessionId == "s-paged":
+				// Two pages: the newest is asked for by size alone, the older one by the entry it ends before.
+				let older = request.payload?["before"]?.stringValue == "u2"
+				let entry: JSONValue = older ? ["kind": "user", "id": "u1", "text": "更早的问题", "at": 1] : ["kind": "user", "id": "u2", "text": "新问题", "at": 2]
+				try? connection.respond(requestId: request.requestId, success: true, payload: ["entries": [entry], "hasMore": .bool(!older), "state": ["status": "idle"]])
 			case .sessionHistory:
 				try? connection.respond(requestId: request.requestId, success: true, payload: ["entries": [["kind": "user", "id": "u1", "text": "旧问题", "at": 1]], "state": ["status": "idle"]])
 			case .sessionPrompt:
@@ -655,6 +660,38 @@ import Testing
 
 		await model.openSession("s2")
 		#expect(log.entries.contains { $0.method == .sessionHistory && $0.sessionId == "s2" }, "only the first opening skips history")
+	}
+
+	@Test func pagesOlderHistoryInAsTheChatAsks() async throws {
+		let log = RequestLog()
+		let desktop = scriptedDesktop(recording: log)
+		let model = AppModel(platform: .memory(createTransport: desktop.createTransport))
+		model.start()
+		let invite = PairingURI.build(RemotePairingInvite(pairingId: "pair-1234567890abcdef", mobileSecret: "secret-1234567890abcdef", desktopIdentityKey: desktop.identityKey, desktopName: "MacBook Pro", lanEndpoints: ["192.168.1.20:43117"]))
+		#expect(await model.pairWithCode(invite))
+		#expect(await eventually { model.online })
+
+		await model.openSession("s-paged")
+		#expect(model.transcript("s-paged").items.map(\.id) == ["u2"])
+		#expect(model.transcript("s-paged").hasOlder)
+		let first = try #require(log.entries.last { $0.method == .sessionHistory })
+		#expect(first.payload?["limit"]?.numberValue == 40)
+		#expect(first.payload?["before"] == nil)
+
+		let page = try #require(await model.fetchOlder("s-paged"))
+		#expect(model.transcript("s-paged").items.map(\.id) == ["u2"], "the chat puts the page in when it is ready")
+		model.insertOlder("s-paged", page)
+		#expect(model.transcript("s-paged").items.map(\.id) == ["u1", "u2"])
+		#expect(!model.transcript("s-paged").hasOlder)
+		model.insertOlder("s-paged", page)
+		#expect(model.transcript("s-paged").items.map(\.id) == ["u1", "u2"], "a page goes in only above what it was fetched for")
+		let requests = log.entries.count
+		#expect(await model.fetchOlder("s-paged") == nil)
+		#expect(log.entries.count == requests, "nothing older is left to ask for")
+
+		// An older desktop says nothing about more; the chat then holds the whole history.
+		await model.openSession("s1")
+		#expect(!model.transcript("s1").hasOlder)
 	}
 
 	@Test func aStartThatCannotReachTheDesktopReportsBack() async throws {

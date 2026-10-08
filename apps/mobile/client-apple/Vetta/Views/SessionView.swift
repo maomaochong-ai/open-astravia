@@ -21,6 +21,15 @@ struct SessionView: View {
 	@State private var viewport: CGFloat = 0
 	/// Far enough from the end to offer a jump there.
 	@State private var farFromEnd = false
+	/// The row at the top of the screen, which stays put while an older page goes in above it.
+	@State private var topRow: String?
+	/// Older history waits for the user to scroll: the list lays its top out once as the
+	/// chat opens, and a page fetched then went in before the chat had settled at its end.
+	@State private var userScrolled = false
+	/// The chat is being dragged or still gliding; an older page then waits for it to stop.
+	@State private var scrolling = false
+	/// An older page that came while the chat was scrolling.
+	@State private var heldPage: OlderPage?
 	/// The panel the More menu opened.
 	@State private var panel: SessionPanel?
 	/// A desktop file a reply linked to, being previewed.
@@ -47,11 +56,25 @@ struct SessionView: View {
 		let latestUser = latest < rows.endIndex ? rows[latest].id : nil
 		// Only an exchange sent from here is laid out as one piece; any other stays lazy row by row.
 		let split = pinned && latestUser != pinnedAfter ? latest : rows.endIndex
+		// The chat's opening time waits for the chat's start. Above an older page it would
+		// also hold the scroll to the top, where each page pulled in the next at once.
+		let first = transcript.hasOlder && rows.first.map { if case .timestamp = $0 { true } else { false } } == true ? 1 : 0
+		// The next page is fetched a few rows before the top, so it is in by the time the user gets there.
+		let prefetch = transcript.hasOlder && first + Self.prefetchDepth < split ? rows[first + Self.prefetchDepth].id : nil
 		ScrollViewReader { proxy in
 			ScrollView {
 				LazyVStack(alignment: .leading, spacing: 0) {
-					ForEach(rows[..<split]) { row in
+					// Older history comes a page at a time as this scrolls into view, like a
+					// messenger's; a long chat fetched and laid out whole took long or failed.
+					if transcript.hasOlder {
+						OlderHistoryRow(failed: model.olderFailed.contains(id)) { loadOlder() }
+							.task(id: "\(transcript.items.first?.id ?? "") \(userScrolled)") { if userScrolled { loadOlder() } }
+					}
+					ForEach(rows[first..<split]) { row in
 						rowView(row)
+							.onAppear {
+								if row.id == prefetch, userScrolled { loadOlder() }
+							}
 					}
 					// An exchange sent from here takes at least a screen, so its
 					// message can sit at the top while the reply is still short.
@@ -74,6 +97,7 @@ struct SessionView: View {
 					}
 					Color.clear.frame(height: 1).id("bottom")
 				}
+				.scrollTargetLayout()
 				.padding(.horizontal, 20)
 				.padding(.top, 8)
 				.padding(.bottom, 16)
@@ -92,6 +116,15 @@ struct SessionView: View {
 			// Opens on the newest line, but streaming never moves the conversation: following
 			// a reply that grows every frame kept the scroll view animating and stuttered.
 			.defaultScrollAnchor(.bottom, for: .initialOffset)
+			.scrollPosition(id: $topRow, anchor: .top)
+			.onScrollPhaseChange { _, phase in
+				scrolling = phase.isScrolling
+				if phase == .interacting, !userScrolled { userScrolled = true }
+				if !scrolling, let page = heldPage {
+					heldPage = nil
+					insertOlder(page)
+				}
+			}
 			.scrollDismissesKeyboard(.interactively)
 			// A geometry change, not a scroll one: that fires only on a change, which left a
 			// chat nothing had moved yet with no height to put the sent message at the top.
@@ -262,6 +295,32 @@ struct SessionView: View {
 	}
 
 	private static let latestExchange = "latest-exchange"
+	private static let prefetchDepth = 10
+
+	/// Fetches the page above the oldest row. It goes in at once unless the chat is
+	/// scrolling: the scroll view keeps the rows on screen in place only while still.
+	private func loadOlder() {
+		guard heldPage == nil else { return }
+		Task {
+			guard let page = await model.fetchOlder(id) else { return }
+			if scrolling { heldPage = page } else { insertOlder(page) }
+		}
+	}
+
+	/// The scroll view keeps the top row in place only if the row is still there: a turn
+	/// cut by the page boundary gets a new header once its start arrives, and losing the
+	/// row put the chat back at the top, which fetched the next page, and the next.
+	private func insertOlder(_ page: OlderPage) {
+		if let top = topRow {
+			let active = transcript.sessionState.status.isActive
+			let before = ChatLines.build(transcript.items, waiting: active).lines.map(\.id)
+			let after = Set(ChatLines.build(TranscriptReducer.reduce(transcript, .older(entries: page.entries, hasOlder: page.hasOlder)).items, waiting: active).lines.map(\.id))
+			if !after.contains(top), let index = before.firstIndex(of: top) {
+				topRow = before[index...].first(where: after.contains)
+			}
+		}
+		model.insertOlder(id, page)
+	}
 
 	@ViewBuilder
 	private func rowView(_ row: ChatLine) -> some View {
@@ -313,6 +372,27 @@ private enum ChatViewport {
 
 	nonisolated static func farFromEnd(_ geometry: ScrollGeometry) -> Bool {
 		ChatScroll.offersJump(below: geometry.contentSize.height - geometry.visibleRect.maxY, viewport: geometry.containerSize.height)
+	}
+}
+
+/// Where older history is fetched, at the top of the chat.
+private struct OlderHistoryRow: View {
+	var failed: Bool
+	var retry: () -> Void
+
+	var body: some View {
+		Group {
+			if failed {
+				Button(L10n.Common.retry, systemImage: "arrow.clockwise", action: retry)
+					.font(.system(size: 13))
+					.foregroundStyle(Theme.dim)
+			} else {
+				ProgressView()
+					.accessibilityLabel(L10n.Chat.loadingHistory)
+			}
+		}
+		.frame(maxWidth: .infinity, minHeight: 44)
+		.padding(.bottom, 8)
 	}
 }
 
