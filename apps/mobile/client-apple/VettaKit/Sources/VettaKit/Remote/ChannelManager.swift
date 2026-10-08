@@ -14,6 +14,8 @@ public struct ChannelManagerOptions {
 	public var p2pProbeIntervalMs: Double = 20_000
 	public var lanBudgetMs: Double = 1_500
 	public var lanProbeIntervalMs: Double = 20_000
+	/// How long to wait before opening a new standby behind P2P after the last one dropped.
+	public var standbyRetryMs: Double = 5_000
 	public var keepaliveIntervalMs: Double = 25_000
 	public var requestTimeoutMs: Double = 30_000
 	public var maxBackoffMs: Double = 30_000
@@ -34,13 +36,16 @@ public struct ChannelManagerOptions {
 /// periodically and the link switches back silently. Once either is online, the
 /// link upgrades to the WebRTC control channel in the foreground, as Android's
 /// `DesktopLink` does (ADR-0135), but only with a desktop that captures its screen
-/// on demand (ADR-0140). The event sequence lives here, so a switch never replays
-/// or drops.
+/// on demand (ADR-0140). Behind P2P the LAN or relay link stays open as a standby, so a
+/// dropped P2P link hands over without reconnecting. The event sequence lives here, so a
+/// switch never replays or drops.
 public final class ChannelManager {
 	private final class Candidate {
 		let channel: LinkChannel
 		let connection: RemoteConnection
 		var unsubscribe: (() -> Void)?
+		/// Listens while this candidate is the active link, or the standby behind P2P.
+		var watch: (() -> Void)?
 		init(channel: LinkChannel, connection: RemoteConnection) {
 			self.channel = channel
 			self.connection = connection
@@ -49,11 +54,20 @@ public final class ChannelManager {
 		func dispose() {
 			unsubscribe?()
 			unsubscribe = nil
+			unwatch()
+		}
+
+		func unwatch() {
+			watch?()
+			watch = nil
 		}
 	}
 
 	public private(set) var snapshot: LinkSnapshot = .offline
 	private var active: Candidate?
+	/// The LAN or relay link kept open behind P2P, so a dropped P2P link hands over at once.
+	/// The desktop sends only on the best link (P2P), so it costs no more than its keepalive.
+	private var standby: Candidate?
 	private var lanEndpoints: [String]
 	public private(set) var sequence: Int
 	private let listeners = Listeners<LinkSnapshot>()
@@ -66,6 +80,7 @@ public final class ChannelManager {
 	private var reconnectTimer: Task<Void, Never>?
 	private var probeTimer: Task<Void, Never>?
 	private var p2pTask: Task<Void, Never>?
+	private var standbyTimer: Task<Void, Never>?
 	private var rttTimer: Task<Void, Never>?
 	private var backoffMs: Double = 1_000
 	private var reconnectAttempt = 0
@@ -132,6 +147,7 @@ public final class ChannelManager {
 		clearProbe()
 		clearP2pProbe()
 		stopRttSampling()
+		clearStandby()
 		let previous = active
 		active = nil
 		if let previous {
@@ -195,8 +211,16 @@ public final class ChannelManager {
 		reconnectAttempt = 0
 		clearReconnect()
 		if candidate.channel == .lan { clearProbe() }
-		if let previous { retire(previous) }
-		candidate.connection.onEvent { [weak self, weak candidate] event in
+		if let previous {
+			if candidate.channel == .p2p, previous.channel != .p2p {
+				keepAsStandby(previous)
+			} else {
+				retire(previous)
+			}
+		}
+		if candidate === standby { standby = nil }
+		candidate.unwatch()
+		candidate.watch = candidate.connection.onEvent { [weak self, weak candidate] event in
 			guard let self, let candidate, self.active === candidate else { return }
 			switch event {
 			case let .remoteEvent(remote):
@@ -279,6 +303,68 @@ public final class ChannelManager {
 		}
 	}
 
+	private func keepAsStandby(_ candidate: Candidate) {
+		clearStandby()
+		standby = candidate
+		candidate.unwatch()
+		candidate.watch = candidate.connection.onEvent { [weak self, weak candidate] event in
+			guard let self, let candidate, self.standby === candidate, case let .state(state) = event,
+			      state == .reconnecting || state == .failed || state == .closed else { return }
+			self.standby = nil
+			candidate.dispose()
+			candidate.connection.close()
+			self.scheduleStandby()
+		}
+	}
+
+	/// The standby, if it is still up; one that is not is closed.
+	private func takeStandby() -> Candidate? {
+		standbyTimer?.cancel()
+		standbyTimer = nil
+		guard let candidate = standby else { return nil }
+		standby = nil
+		guard candidate.connection.state == .online else {
+			candidate.dispose()
+			candidate.connection.close()
+			return nil
+		}
+		return candidate
+	}
+
+	/// Opens a new standby behind P2P a little later: the LAN if it answers, else the relay.
+	private func scheduleStandby() {
+		guard running, standbyTimer == nil else { return }
+		let current = generation
+		standbyTimer = Task { [weak self] in
+			try? await Task.sleep(nanoseconds: UInt64((self?.options.standbyRetryMs ?? 5_000) * 1_000_000))
+			guard !Task.isCancelled, let self else { return }
+			var found = await self.raceLan(current)
+			if found == nil, !Task.isCancelled, current == self.generation { found = await self.connectRelay(current) }
+			self.standbyTimer = nil
+			guard let found else {
+				if !Task.isCancelled, current == self.generation, self.active?.channel == .p2p { self.scheduleStandby() }
+				return
+			}
+			guard !Task.isCancelled, current == self.generation, self.running, self.active?.channel == .p2p, self.standby == nil else {
+				found.dispose()
+				found.connection.close()
+				return
+			}
+			self.keepAsStandby(found)
+		}
+	}
+
+	private func clearStandby() {
+		standbyTimer?.cancel()
+		standbyTimer = nil
+		let previous = standby
+		standby = nil
+		if let previous {
+			previous.dispose()
+			previous.connection.close()
+		}
+	}
+
 	private func clearP2pProbe() {
 		p2pTask?.cancel()
 		p2pTask = nil
@@ -293,7 +379,14 @@ public final class ChannelManager {
 		candidate.connection.close()
 		// P2P is only an upgrade over a LAN or relay that most likely still works: fall back
 		// at once instead of showing the desktop offline and waiting out a backoff.
+		if candidate.channel == .p2p, let standby = takeStandby() {
+			// Events the desktop sent over P2P as it died never arrived: catch up on the standby.
+			standby.connection.resume(after: sequence)
+			adopt(standby)
+			return
+		}
 		if candidate.channel == .p2p {
+			clearStandby()
 			var next = snapshot
 			next.status = .connecting
 			next.channel = nil
