@@ -5,6 +5,7 @@ import {
 	createCodingAgentKnowledgeWritePageToolRegistration,
 } from "../../features/knowledge/index.js";
 import { createProgressToolRegistration } from "../../features/progress/index.js";
+import { createRecallToolRegistration, type RecallEntry } from "../../features/recall/index.js";
 import {
 	type CodingAgentRuntimeToolRegistration,
 	type CodingAgentToolActivation,
@@ -16,6 +17,11 @@ import { declareCodingAgentPlatformTool } from "../../tool-policy/platform-tool-
 export interface CodingAgentSpecializedToolOptions {
 	readonly platformRegistrations?: readonly CodingToolRegistration[];
 	readonly knowledgePageWriter?: CodingAgentKnowledgeWriteOperations;
+	/**
+	 * recall（读回被压缩历史）的会话读取通道；宿主注入后工具才注册。
+	 * 见 features/recall/tool/recall-tool.ts 头注释。
+	 */
+	readonly recallReader?: (sessionId: string) => Promise<readonly RecallEntry[]> | readonly RecallEntry[];
 }
 
 export interface CodingAgentSpecializedToolFeatureOptions {
@@ -44,6 +50,7 @@ export function createCodingAgentSpecializedToolRegistrations(
 					}),
 				]
 			: []),
+		...(options.recallReader ? [createRecallToolRegistration({ readEntries: options.recallReader })] : []),
 	];
 }
 
