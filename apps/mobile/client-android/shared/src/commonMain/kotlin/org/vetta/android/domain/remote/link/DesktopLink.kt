@@ -68,7 +68,11 @@ data class DesktopLinkOptions(
     val p2pProbeIntervalMs: Long = 20_000,
     val requestTimeoutMs: Long = 30_000,
     val maxBackoffMs: Long = 30_000,
-    val rttSampleIntervalMs: Long = 30_000,
+    /**
+     * In the foreground, how often the round trip is measured: often enough that the figure
+     * is current whenever someone looks, for a request of under a kilobyte.
+     */
+    val rttSampleIntervalMs: Long = 2_000,
     /** How long a request waits for a recovering connection to catch up. */
     val recoveryWaitMs: Long = 3_000,
     val logger: RemoteLogger = NoopRemoteLogger,
@@ -119,6 +123,7 @@ class DesktopLink(
     private var attemptJob: Job? = null
     private var reconnectJob: Job? = null
     private var rttJob: Job? = null
+    private val rttWindow = RttWindow()
     private var probeJob: Job? = null
     private var p2pJob: Job? = null
     private var backoffMs = INITIAL_BACKOFF_MS
@@ -193,9 +198,9 @@ class DesktopLink(
             }
         }
         if (connection.state.value != RemoteConnectionState.Online) throw LinkOfflineException()
-        val result = connection.request(method, payload, sessionId)
-        if (active === candidate) publish(_snapshot.value.copy(rttMs = connection.snapshot().lastRttMs))
-        return result
+        // Not taken as the latency: a request's round trip includes the desktop's work on it,
+        // hundreds of milliseconds for a session list, which made the figure jump.
+        return connection.request(method, payload, sessionId)
     }
 
     private fun launchAttempt() {
@@ -526,8 +531,10 @@ class DesktopLink(
         reconnectJob = null
     }
 
+    /** A new channel starts a new window: its route, and so its latency, differs. */
     private fun startRttSampling() {
         stopRttSampling()
+        rttWindow.clear()
         rttJob =
             scope.launch {
                 sampleRtt()
@@ -538,9 +545,13 @@ class DesktopLink(
             }
     }
 
-    /** One `diagnostics.snapshot`: its round trip is the latency, its payload the desktop's facts. */
+    /**
+     * One `diagnostics.snapshot`: its round trip is the latency, its payload the desktop's facts.
+     * The desktop answers it from memory, so the round trip is the link's own.
+     */
     private suspend fun sampleRtt() {
         val candidate = active ?: return
+        val startedAt = options.now()
         val result =
             try {
                 candidate.connection.request(RemoteRequestMethod.DiagnosticsSnapshot)
@@ -552,7 +563,7 @@ class DesktopLink(
         if (active !== candidate) return
         publish(
             _snapshot.value.copy(
-                rttMs = candidate.connection.snapshot().lastRttMs,
+                rttMs = rttWindow.add(maxOf(0, options.now() - startedAt)),
                 diagnostics = readDiagnostics(result) ?: _snapshot.value.diagnostics,
             ),
         )

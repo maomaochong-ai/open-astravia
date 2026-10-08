@@ -24,7 +24,8 @@ import type { RemoteControlConfig, RemoteControlDeviceRecord } from "../config/d
 import { getAppLogger } from "../logger.js";
 import { DESKTOP_REMOTE_CAPABILITIES } from "./desktop-capabilities.js";
 import type { DesktopRemoteDesktopHostHandle } from "./desktop-remote-desktop-host.js";
-import { DesktopRemoteDeviceHub, type RemoteChannel } from "./desktop-remote-device-hub.js";
+import type { RemoteChannel, RemoteDeviceLink } from "./desktop-remote-device-hub.js";
+import { DesktopRemoteDeviceHub } from "./desktop-remote-device-hub.js";
 import { DesktopRemoteLanServer, type LanAcceptedLink, type LanDeviceCredential } from "./desktop-remote-lan-server.js";
 import type { DesktopRemoteMirror } from "./desktop-remote-mirror.js";
 import { DesktopRemoteRelayLink } from "./desktop-remote-relay-link.js";
@@ -220,7 +221,7 @@ export class DesktopRemoteAccessManager {
 						: this.requireMirror().handleRequest(request),
 				toRemoteError,
 				onLinkOnline: (deviceId, link) =>
-					void this.handleLinkOnline(deviceId, link.channel, link.connection).catch((error: unknown) =>
+					void this.handleLinkOnline(deviceId, link).catch((error: unknown) =>
 						log.warn("remote link online handling failed", { error: describe(error) }),
 					),
 				onDeviceOnline: (deviceId, link) =>
@@ -784,11 +785,8 @@ export class DesktopRemoteAccessManager {
 
 	// ---- hub callbacks ----
 
-	private async handleLinkOnline(
-		deviceId: string,
-		channel: RemoteChannel,
-		connection: RemoteConnection,
-	): Promise<void> {
+	private async handleLinkOnline(deviceId: string, link: RemoteDeviceLink): Promise<void> {
+		const { channel, connection } = link;
 		const device = this.config.devices.find((entry) => entry.id === deviceId);
 		if (!device) return;
 		const snapshot = connection.getSnapshot();
@@ -812,7 +810,7 @@ export class DesktopRemoteAccessManager {
 		} catch (error) {
 			log.warn("remote device last-seen save failed", { pairingId: deviceId.slice(0, 6), error: describe(error) });
 		}
-		await this.hub.emit(deviceId, "device.status", this.deviceStatus(deviceId)).catch(() => undefined);
+		await this.hub.emitToLink(deviceId, link, "device.status", this.deviceStatus(deviceId)).catch(() => undefined);
 		log.info("remote link online", { pairingId: deviceId.slice(0, 6), channel });
 		// The screen may have gone while this link was reconnecting; the phone never counted as
 		// offline (the grace period covers a brief absence), so nothing else would bring it back.

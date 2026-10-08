@@ -4,6 +4,14 @@ import Testing
 
 /// The remote desktop page against a scripted desktop (ADR-0140).
 @Suite(.serialized) struct AppModelScreenTests {
+	final class InterruptedSecrets: KeyValueStore {
+		private let values = MemoryKeyValueStore()
+		var readable = true
+		func get(_ key: String) -> String? { readable ? values.get(key) : nil }
+		func set(_ key: String, _ value: String) { values.set(key, value) }
+		func remove(_ key: String) { values.remove(key) }
+	}
+
 	final class Subscriptions {
 		var active: [Bool] = []
 		var cursor: [Bool] = []
@@ -11,7 +19,7 @@ import Testing
 	}
 
 	/// Returns the desktop too: its connections hold it weakly, so it must outlive the test's requests.
-	private func pairedModel(capturesOnDemand: Bool, subscriptions: Subscriptions) async throws -> (AppModel, FakeDesktop) {
+	private func pairedModel(capturesOnDemand: Bool, subscriptions: Subscriptions, secrets: KeyValueStore? = nil, p2p: Bool = false) async throws -> (AppModel, FakeDesktop) {
 		let desktop = FakeDesktop()
 		desktop.onHello = { _ in .approve }
 		desktop.onRequest = { connection, request in
@@ -34,12 +42,42 @@ import Testing
 				try? connection.respond(requestId: request.requestId, success: true, payload: [:])
 			}
 		}
-		let model = AppModel(platform: .memory(createTransport: desktop.createTransport))
+		var platform = AppPlatform.memory(createTransport: desktop.createTransport)
+		if let secrets { platform.secrets = secrets }
+		if p2p {
+			platform.configureManager = { options in
+				options.p2pTarget = PairingURI.desktopViewerUrl(relayBaseUrl: "wss://relay.example", pairingId: options.desktop.pairingId, mobileSecret: options.desktop.mobileSecret)
+				options.createP2pTransport = { target in desktop.createTransport("p2p:\(target)", TransportOptions()) }
+			}
+		}
+		let model = AppModel(platform: platform)
 		model.start()
 		let invite = PairingURI.build(RemotePairingInvite(pairingId: "pair-1234567890abcdef", mobileSecret: "secret-1234567890abcdef", desktopIdentityKey: desktop.identityKey, desktopName: "MacBook Pro", lanEndpoints: ["192.168.1.20:43117"], relayBaseUrl: "wss://relay.example"))
 		#expect(await model.pairWithCode(invite))
 		#expect(await eventually { model.link.desktop != nil })
 		return (model, desktop)
+	}
+
+	@Test func keepsTheActiveScreenTargetWhenKeychainReadsBecomeUnavailable() async throws {
+		let secrets = InterruptedSecrets()
+		let subscriptions = Subscriptions()
+		let (model, desktop) = try await pairedModel(capturesOnDemand: true, subscriptions: subscriptions, secrets: secrets, p2p: true)
+		defer { withExtendedLifetime(desktop) {} }
+		#expect(await eventually { model.link.channel == .p2p })
+		let target = try #require(model.remoteDesktopTarget)
+		secrets.readable = false
+
+		// The live connection already owns its credential; opening its screen must
+		// not interpret an unrelated Keychain read failure as a disabled relay.
+		model.setScreenOpen(true)
+		#expect(await eventually { model.screen?.screen == .streaming })
+		#expect(model.remoteDesktopTarget == target)
+		#expect(model.link.channel == .p2p)
+		model.setScreenOpen(false)
+		model.setScreenOpen(true)
+		#expect(model.remoteDesktopTarget == target)
+		model.unpair()
+		#expect(model.remoteDesktopTarget == nil, "unpairing must discard the live credential")
 	}
 
 	@Test func subscribesOnlyWhileThePageIsOpenAndTheAppIsInFront() async throws {

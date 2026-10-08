@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		02CB573D8CC2A4AA6ACAF10C /* RemoteScreenUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBA9C8EF1F4C2BF45C99573D /* RemoteScreenUITests.swift */; };
 		04032F6FE25AFFC90FF24235 /* BoardSummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2E57343C2D36E3BE44AE2C2 /* BoardSummary.swift */; };
 		0AF6F5BEB9F459E2AC4F9F2C /* SelectableText.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BB05311664030A073FAB0BD /* SelectableText.swift */; };
 		1455060CE6AFA8129543AEFC /* VettaKit in Frameworks */ = {isa = PBXBuildFile; productRef = 5479FB7081D823446C19030A /* VettaKit */; };
@@ -137,6 +138,7 @@
 		AFA10FF588C2F944AE4E2E90 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		B43B0EEECDDBB2807AA280EF /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B4DC1B7D2C79A79205B17759 /* VettaKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = VettaKit; path = VettaKit; sourceTree = SOURCE_ROOT; };
+		BBA9C8EF1F4C2BF45C99573D /* RemoteScreenUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteScreenUITests.swift; sourceTree = "<group>"; };
 		BC4528B8445F4DFE1B3DAC95 /* ChatInputBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatInputBar.swift; sourceTree = "<group>"; };
 		BFEE4568B92E6D902969658A /* SessionActivityWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionActivityWidget.swift; sourceTree = "<group>"; };
 		C1BE9D81A5B38AA4126608EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -332,6 +334,7 @@
 		EEFE447349E9D6DB3D640B2B /* VettaUITests */ = {
 			isa = PBXGroup;
 			children = (
+				BBA9C8EF1F4C2BF45C99573D /* RemoteScreenUITests.swift */,
 				8754BC022E2DA6BE46766DE0 /* VettaUITests.swift */,
 			);
 			path = VettaUITests;
@@ -541,6 +544,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				02CB573D8CC2A4AA6ACAF10C /* RemoteScreenUITests.swift in Sources */,
 				27D72F0CEFD735EE582C685D /* VettaUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
