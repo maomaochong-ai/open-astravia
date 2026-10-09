@@ -43,6 +43,9 @@ const PLUGIN_MANIFESTS_TEST = "scripts/quality/plugin-manifests.test.mjs";
 const WORKFLOW_CONTRACT_TESTS = new Map([
 	[".github/workflows/desktop-packaged.yml", "scripts/quality/desktop-packaging-scope.test.mjs"],
 	[".github/workflows/desktop-release.yml", "scripts/quality/desktop-release-workflow.test.mjs"],
+	[".github/workflows/pr-quality.yml", "scripts/quality/pr-quality.test.mjs"],
+	[".github/workflows/pr-automation.yml", "scripts/quality/pr-auto-merge.test.mjs"],
+	[".github/workflows/promote-dev-to-main.yml", "scripts/quality/promote-dev-to-main.test.mjs"],
 ]);
 
 /**

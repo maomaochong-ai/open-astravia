@@ -1,0 +1,57 @@
+name: promote-dev-to-main
+
+# `dev` is verified by the same workflows that verify `main`, so a green `dev`
+# head can move `main` forward without a second review. `workflow_run` only
+# fires for pushes, which a merge made with the default GITHUB_TOKEN does not
+# produce; the schedule and the dispatch sent by pr-auto-merge.mjs cover that
+# case, and either way the script refuses to promote an unverified commit.
+
+on:
+  workflow_run:
+    workflows:
+      - quality
+      - desktop-packaged
+      - im-gateway
+      - kotlin
+      - mobile-apple
+      - docs-site
+    types:
+      - completed
+    branches:
+      - dev
+  schedule:
+    - cron: "23 3 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "只评估并输出结论，不改动分支"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+jobs:
+  promote:
+    name: Promote dev to main
+    if: vars.ASTRAVIA_AUTOMATION_ENABLED != 'false'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    permissions:
+      contents: write
+      pull-requests: write
+      checks: read
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Promote the verified dev head
+        env:
+          GITHUB_TOKEN: ${{ secrets.ASTRAVIA_AUTOMATION_TOKEN || secrets.GITHUB_TOKEN }}
+          PROMOTION_DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run == 'true' }}
+        run: node scripts/quality/promote-dev-to-main.mjs

@@ -76,6 +76,7 @@ Desktop 主进程部分目录还有更细规则；修改对应目录时必须继
 | 任务 | 首先阅读 |
 | --- | --- |
 | 选择质量门禁与测试范围 | [`docs/dev/quality-gates.md`](docs/dev/quality-gates.md) |
+| 贡献者 PR 的约定检查、自动合并与 dev→main 推进 | [`docs/dev/pr-automation.md`](docs/dev/pr-automation.md) |
 | 设计、编写或审查测试 | [`.agents/skills/astravia-testing/SKILL.md`](.agents/skills/astravia-testing/SKILL.md) |
 | Desktop 启动、调试与 UI 验证（仅在用户明确要求时） | [`docs/dev/README.md`](docs/dev/README.md) |
 | 新增 workspace 包 | [`docs/monorepo-new-package.md`](docs/monorepo-new-package.md) |

@@ -1,0 +1,77 @@
+name: pr-automation
+
+# Labels, the sticky conventions comment and the merge decision. Like
+# pr-quality.yml this workflow only reads the pull request through the API and
+# never checks out or runs contributor code, so `pull_request_target` is safe
+# here. The kill switch is the repository variable ASTRAVIA_AUTOMATION_ENABLED.
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - edited
+      - reopened
+      - synchronize
+      - ready_for_review
+      - converted_to_draft
+      - labeled
+      - unlabeled
+  workflow_run:
+    workflows:
+      - quality
+      - desktop-packaged
+      - im-gateway
+      - kotlin
+      - mobile-apple
+      - docs-site
+    types:
+      - completed
+
+permissions:
+  contents: read
+
+jobs:
+  triage:
+    name: PR triage
+    if: github.event_name == 'pull_request_target' && vars.ASTRAVIA_AUTOMATION_ENABLED != 'false'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+
+      - name: Sync labels and the conventions comment
+        env:
+          GITHUB_TOKEN: ${{ secrets.ASTRAVIA_AUTOMATION_TOKEN || secrets.GITHUB_TOKEN }}
+        run: node scripts/quality/pr-quality.mjs --sync
+
+  merge:
+    name: Auto-merge
+    if: vars.ASTRAVIA_AUTOMATION_ENABLED != 'false'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    concurrency:
+      group: ${{ github.workflow }}-merge
+      cancel-in-progress: false
+
+    permissions:
+      contents: write
+      pull-requests: write
+      checks: read
+      actions: write
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Merge pull requests whose checks are green
+        env:
+          GITHUB_TOKEN: ${{ secrets.ASTRAVIA_AUTOMATION_TOKEN || secrets.GITHUB_TOKEN }}
+        run: node scripts/quality/pr-auto-merge.mjs
