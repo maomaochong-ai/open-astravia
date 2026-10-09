@@ -374,7 +374,7 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
                     peer.getStats { report ->
                         entries.complete(report.statsMap.values.map { RemoteStreamStats.Entry(it.id, it.type, it.members) })
                     }
-                    val (next, totals) = RemoteStreamStats.read(entries.await(), lastTotals)
+                    val (next, totals) = RemoteStreamStats.read(entries.await(), lastTotals, remoteNetworkInterfaces())
                     lastTotals = totals
                     _stats.value = next
                     delay(1_000)

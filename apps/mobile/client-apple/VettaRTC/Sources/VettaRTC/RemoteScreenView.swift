@@ -62,7 +62,7 @@ public final class RemoteScreenSurface: UIView, UIGestureRecognizerDelegate, RTC
 	/// A finger has to travel this far before it moves the pointer, so a tap does not nudge it.
 	private static let moveThreshold: CGFloat = 3
 
-	private let video = RTCMTLVideoView()
+	private let video = RemoteMetalVideoView()
 	private lazy var renderer = RemoteVideoRenderer(sink: video)
 	private let cursorArrow = makeArrow()
 	private let cursorImage = CALayer()

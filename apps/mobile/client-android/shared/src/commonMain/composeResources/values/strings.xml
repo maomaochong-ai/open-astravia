@@ -241,6 +241,8 @@
     <string name="remote_frames_per_second">%1$d fps</string>
     <string name="remote_picture_delay">Picture ≈%1$d ms</string>
     <string name="remote_round_trip">Latency %1$d ms</string>
+    <string name="remote_route_direct">Peer-to-peer (network undetermined)</string>
+    <string name="remote_route_vpn">Direct over VPN</string>
     <string name="remote_route_internet">Direct over the internet</string>
     <string name="remote_route_lan">Direct on LAN</string>
     <string name="remote_route_relayed">Relayed</string>

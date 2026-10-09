@@ -39,6 +39,7 @@ struct RemoteDesktopScreen: View {
 						VStack(spacing: 6) {
 							if let summary = statsLine {
 								Text(summary)
+									.accessibilityIdentifier("remote.stats")
 									.font(.caption2.monospacedDigit())
 									.foregroundStyle(.white.opacity(0.8))
 									.padding(.horizontal, 10)
@@ -251,6 +252,7 @@ struct RemoteDesktopScreen: View {
 				.lineLimit(1)
 				.accessibilityAddTraits(.isHeader)
 			Text(statsLine ?? (model.online ? (model.link.channel?.label ?? L10n.Common.online) : L10n.Common.offline))
+				.accessibilityIdentifier("remote.stats")
 				.font(.caption.monospacedDigit())
 				.foregroundStyle(.white.opacity(0.6))
 				.lineLimit(1)

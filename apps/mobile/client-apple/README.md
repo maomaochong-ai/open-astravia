@@ -37,13 +37,14 @@ open Vetta.xcodeproj
 - `vetta://pair?...` 链接可直接唤起 App 完成配对。
 - 配对页也支持连接码与密码、自建中继地址；已连接时可从首页抽屉的「连接电脑」重新打开配对。电脑在状态事件中公布新中继地址后，手机会保存并重连，保留正在查看的聊天。
 - 远程桌面双指滑动在未放大时滚动电脑内容，放大后平移画面；捏合缩放。只读权限下不会向电脑发送滚动操作。
+- 远程桌面的网络标签来自视频 transport 实际选中的 ICE 连接：结合原生 WebRTC 的网卡/VPN 信息与系统网卡真实掩码识别局域网、公网和 VPN；TURN 候选显示中继。网络切换不复用旧候选；地址隐藏、网卡证据不足或私网跨子网等不能确定范围的情况显示“P2P 直连（网络待确认）”。地址仅在内存中用于判断，不写入日志或缓存。
 
 ## 验证
 
 ```bash
 cd apps/mobile/client-apple
 (cd VettaKit && swift test --no-parallel)   # 单元测试：加密兼容、协议、连接、双通道、配对、转写、缓存、AppModel
-xcodebuild test -project Vetta.xcodeproj -scheme Vetta -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -only-testing:VettaRTCTests # 视频帧时间戳与 UIKit 远程手势测试
+xcodebuild test -project Vetta.xcodeproj -scheme Vetta -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -only-testing:VettaRTCTests # 视频帧时间戳、Metal 绘制尺寸/刷新率与 UIKit 远程手势测试
 scripts/screen-test.sh                      # 真实 WebRTC 视频：画面变化、点击回传、关闭后重新打开（需 bun install）
 scripts/interop.sh                          # 与 apps/desktop 的真实 LAN 服务器和假中继对跑（需 bun install）
 scripts/ui-test.sh                          # 模拟器（默认 iPhone 17 Pro）上跑 UI 测试，深浅色各截一套图到 build/ui-shots

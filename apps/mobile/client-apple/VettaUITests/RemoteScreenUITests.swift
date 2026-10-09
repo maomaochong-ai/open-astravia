@@ -13,6 +13,7 @@ final class RemoteScreenUITests: XCTestCase {
 		app.launch()
 		openScreen(app)
 		assertVideoChanges(app)
+		assertNetworkStats(app)
 		// The fixture turns green only when an input arrives over the real DataChannel.
 		app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
 		XCTAssertTrue(waitForColors(app, [.green]), "a tap must reach the host and change the transmitted video")
@@ -21,6 +22,7 @@ final class RemoteScreenUITests: XCTestCase {
 		XCTAssertTrue(app.buttons["home.remote"].waitForExistence(timeout: 5))
 		app.buttons["home.remote"].tap()
 		assertVideoChanges(app)
+		assertNetworkStats(app)
 		app.buttons["remote.close"].tap()
 	}
 
@@ -35,6 +37,19 @@ final class RemoteScreenUITests: XCTestCase {
 	@MainActor private func assertVideoChanges(_ app: XCUIApplication) {
 		XCTAssertTrue(waitForColors(app, [.red, .blue]), "video must display distinct frames, not a black or frozen surface")
 		attach(app, name: "remote-video-updating")
+	}
+
+	@MainActor private func assertNetworkStats(_ app: XCUIApplication) {
+		let label = app.staticTexts["remote.stats"]
+		let predicate = NSPredicate { _, _ in
+			guard label.exists else { return false }
+			// The local fixture can select a physical, tunnel, or loopback interface.
+			// It has no TURN server; loopback has no physical-LAN evidence.
+			return ["局域网直连", "VPN 直连", "P2P 直连（网络待确认）"].contains { label.label.contains($0) }
+				&& label.label.contains("延迟")
+		}
+		XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: predicate, object: nil)], timeout: 10), .completed,
+			"the real SDK statistics must reach the visible network label, including after reopening")
 	}
 
 	private enum Color: Hashable { case red, blue, green }

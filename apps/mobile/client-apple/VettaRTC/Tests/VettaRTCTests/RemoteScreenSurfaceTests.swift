@@ -1,3 +1,4 @@
+import MetalKit
 import UIKit
 import XCTest
 import VettaKit
@@ -72,6 +73,76 @@ final class RemoteScreenSurfaceTests: XCTestCase {
 		await withCheckedContinuation { continuation in
 			DispatchQueue.main.async { continuation.resume() }
 		}
+	}
+
+	@MainActor func testVideoDisplayBudgetSurvivesFirstFrameZoomRotationAndDecoderChanges() async throws {
+		let surface = RemoteScreenSurface()
+		surface.frame = CGRect(x: 0, y: 0, width: 400, height: 800)
+		surface.traitOverrides.displayScale = 3
+		let video = try XCTUnwrap(surface.subviews.compactMap { $0 as? RTCMTLVideoView }.first)
+		let metal = try XCTUnwrap(video.subviews.compactMap { $0 as? MTKView }.first)
+		let renderer = RemoteVideoRenderer(sink: video)
+
+		var pixels: CVPixelBuffer?
+		let attributes: [CFString: Any] = [kCVPixelBufferMetalCompatibilityKey: true, kCVPixelBufferIOSurfacePropertiesKey: [:]]
+		XCTAssertEqual(CVPixelBufferCreate(kCFAllocatorDefault, 2560, 1600,
+			kCVPixelFormatType_420YpCbCr8BiPlanarFullRange, attributes as CFDictionary, &pixels), kCVReturnSuccess)
+		let nv12 = RTCCVPixelBuffer(pixelBuffer: try XCTUnwrap(pixels))
+
+		// Match the track's worker callbacks, including immediate playout timestamps.
+		func display(_ buffer: any RTCVideoFrameBuffer, rotation: RTCVideoRotation = ._0) async {
+			let rotated = rotation == ._90 || rotation == ._270
+			let size = CGSize(width: Int(rotated ? buffer.height : buffer.width), height: Int(rotated ? buffer.width : buffer.height))
+			await Task.detached { renderer.setSize(size) }.value
+			renderer.renderFrame(RTCVideoFrame(buffer: buffer, rotation: rotation, timeStampNs: 0))
+			await deliverVideoSize()
+			await deliverVideoSize()
+			surface.layoutIfNeeded()
+			video.layoutIfNeeded()
+			// Lazy initialization of each WebRTC pixel renderer used to restore 30 fps.
+			metal.delegate?.draw(in: metal)
+		}
+
+		await display(nv12)
+		XCTAssertEqual(metal.preferredFramesPerSecond, 60)
+		XCTAssertEqual(metal.drawableSize, CGSize(width: 1200, height: 750), "draw at the visible physical size, not the source size times Retina scale")
+
+		let pinch = PinchSample()
+		pinch.state = .began
+		surface.pinched(pinch)
+		pinch.scale = 3
+		pinch.state = .changed
+		surface.pinched(pinch)
+		video.layoutIfNeeded()
+		XCTAssertEqual(metal.drawableSize, CGSize(width: 2560, height: 1600), "zoom preserves source detail without oversampling beyond it")
+		pinch.state = .ended
+		surface.pinched(pinch)
+
+		// Turning the phone changes the viewport; turning the source changes pixel axes.
+		surface.frame = CGRect(x: 0, y: 0, width: 800, height: 400)
+		surface.layoutIfNeeded()
+		video.layoutIfNeeded()
+		XCTAssertEqual(metal.drawableSize, CGSize(width: 2560, height: 1600))
+		await display(nv12, rotation: ._90)
+		XCTAssertEqual(metal.drawableSize, CGSize(width: 750, height: 1200))
+		XCTAssertEqual(metal.preferredFramesPerSecond, 60)
+
+		// A software-decoded frame initializes a different shader, then hardware resumes.
+		await display(RTCI420Buffer(width: 1280, height: 720))
+		XCTAssertEqual(metal.drawableSize, CGSize(width: 1280, height: 720))
+		XCTAssertEqual(metal.preferredFramesPerSecond, 60)
+		await display(nv12)
+		XCTAssertEqual(metal.drawableSize, CGSize(width: 1920, height: 1200))
+		XCTAssertEqual(metal.preferredFramesPerSecond, 60)
+	}
+
+	@MainActor func testClosingVideoReleasesTheMetalDelegateAdapter() {
+		weak var released: RemoteMetalVideoView?
+		autoreleasepool {
+			let view = RemoteMetalVideoView()
+			released = view
+		}
+		XCTAssertNil(released, "the drawing delegate must not keep a closed video view alive")
 	}
 
 	@MainActor func testTwoFingerPanSendsWheelInputAndRespectsViewOnlyPermission() async throws {

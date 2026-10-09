@@ -52,7 +52,7 @@ public final class RemoteDesktopSession {
 	@ObservationIgnored private var reconnectTask: Task<Void, Never>?
 	@ObservationIgnored private var disconnectTask: Task<Void, Never>?
 	/// The running totals at the last sample, to average over the last second only.
-	@ObservationIgnored private var lastTotals: FrameTotals?
+	@ObservationIgnored private var lastTotals: RemoteStreamStats.FrameTotals?
 
 	/// How long a direct link may stay disconnected before the session gives it up.
 	private static let disconnectGraceSeconds = 5.0
@@ -344,6 +344,7 @@ public final class RemoteDesktopSession {
 			while !Task.isCancelled {
 				guard let self, let peer = self.peer, self.phase == .connected else { return }
 				let report = await peer.statistics()
+				guard !Task.isCancelled, self.peer === peer, self.phase == .connected else { return }
 				self.read(report)
 				try? await Task.sleep(for: .seconds(1))
 			}
@@ -351,37 +352,19 @@ public final class RemoteDesktopSession {
 	}
 
 	private func read(_ report: RTCStatisticsReport) {
-		let all = report.statistics
-		func number(_ entry: RTCStatistics?, _ key: String) -> Double? { (entry?.values[key] as? NSNumber)?.doubleValue }
-		func text(_ entry: RTCStatistics?, _ key: String) -> String? { entry?.values[key] as? String }
-		var next = RemoteStreamStats()
-		let pairs = all.values.filter { $0.type == "candidate-pair" && ($0.values["nominated"] as? NSNumber)?.boolValue == true }
-		if let pair = pairs.first(where: { text($0, "state") == "succeeded" }) ?? pairs.first {
-			next.roundTripMs = number(pair, "currentRoundTripTime").map { $0 * 1000 }
-			next.route = RemoteStreamStats.route(
-				local: text(text(pair, "localCandidateId").flatMap { all[$0] }, "candidateType"),
-				remote: text(text(pair, "remoteCandidateId").flatMap { all[$0] }, "candidateType")
-			)
+		let entries = report.statistics.values.map { entry in
+			RemoteStreamStats.Entry(id: entry.id, type: entry.type, values: entry.values.compactMapValues { value in
+				if let text = value as? String { return JSONValue.string(text) }
+				if let number = value as? NSNumber {
+					if CFGetTypeID(number) == CFBooleanGetTypeID() { return .bool(number.boolValue) }
+					return .number(number.doubleValue)
+				}
+				return nil
+			})
 		}
-		if let video = all.values.first(where: { $0.type == "inbound-rtp" && text($0, "kind") == "video" }) {
-			next.framesPerSecond = number(video, "framesPerSecond")
-			next.frameWidth = number(video, "frameWidth").map { Int($0) }
-			next.frameHeight = number(video, "frameHeight").map { Int($0) }
-			let totals = FrameTotals(
-				jitterDelay: number(video, "jitterBufferDelay") ?? 0,
-				jitterFrames: number(video, "jitterBufferEmittedCount") ?? 0,
-				decodeTime: number(video, "totalDecodeTime") ?? 0,
-				decodedFrames: number(video, "framesDecoded") ?? 0
-			)
-			if let before = lastTotals {
-				let frames = totals.jitterFrames - before.jitterFrames
-				if frames > 0 { next.jitterBufferMs = (totals.jitterDelay - before.jitterDelay) / frames * 1000 }
-				let decoded = totals.decodedFrames - before.decodedFrames
-				if decoded > 0 { next.decodeMs = (totals.decodeTime - before.decodeTime) / decoded * 1000 }
-			}
-			lastTotals = totals
-		}
-		stats = next
+		let sample = RemoteStreamStats.read(entries, previous: lastTotals, interfaces: RemoteNetworkInterfaces.snapshot())
+		stats = sample.stats
+		lastTotals = sample.totals
 	}
 
 	private func note(_ step: String) {
@@ -462,12 +445,4 @@ private final class PeerDelegate: NSObject, RTCPeerConnectionDelegate, URLSessio
 	nonisolated func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
 		onMain { $0.signalingClosed(task, error?.localizedDescription ?? "desktop signaling closed") }
 	}
-}
-
-/// WebRTC's running totals for the received picture.
-private struct FrameTotals {
-	var jitterDelay: Double
-	var jitterFrames: Double
-	var decodeTime: Double
-	var decodedFrames: Double
 }

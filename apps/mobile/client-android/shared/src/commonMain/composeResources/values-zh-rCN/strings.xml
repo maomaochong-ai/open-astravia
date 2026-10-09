@@ -232,6 +232,8 @@
     <string name="remote_frames_per_second">%1$d fps</string>
     <string name="remote_picture_delay">画面约 %1$d ms</string>
     <string name="remote_round_trip">延迟 %1$d ms</string>
+    <string name="remote_route_direct">P2P 直连（网络待确认）</string>
+    <string name="remote_route_vpn">VPN 直连</string>
     <string name="remote_route_internet">公网直连</string>
     <string name="remote_route_lan">局域网直连</string>
     <string name="remote_route_relayed">经中转</string>

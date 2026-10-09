@@ -285,6 +285,8 @@ public enum L10n {
 		public static var routeLan: String { tr("remote.routeLan") }
 		public static var routeInternet: String { tr("remote.routeInternet") }
 		public static var routeRelayed: String { tr("remote.routeRelayed") }
+		public static var routeVpn: String { tr("remote.routeVpn") }
+		public static var routeDirect: String { tr("remote.routeDirect") }
 		public static func roundTrip(_ ms: Int) -> String { tr("remote.roundTrip \(ms)") }
 		public static func pictureDelay(_ ms: Int) -> String { tr("remote.pictureDelay \(ms)") }
 		public static func framesPerSecond(_ fps: Int) -> String { tr("remote.framesPerSecond \(fps)") }

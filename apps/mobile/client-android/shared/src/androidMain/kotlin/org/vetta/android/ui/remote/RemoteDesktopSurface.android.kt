@@ -92,6 +92,8 @@ import org.vetta.android.resources.remote_details
 import org.vetta.android.resources.remote_frames_per_second
 import org.vetta.android.resources.remote_picture_delay
 import org.vetta.android.resources.remote_round_trip
+import org.vetta.android.resources.remote_route_direct
+import org.vetta.android.resources.remote_route_vpn
 import org.vetta.android.resources.remote_route_internet
 import org.vetta.android.resources.remote_route_lan
 import org.vetta.android.resources.remote_route_relayed
@@ -294,6 +296,8 @@ private fun StatsLine(stats: RemoteStreamStats, modifier: Modifier = Modifier) {
                 RemoteStreamStats.Route.Lan -> stringResource(Res.string.remote_route_lan)
                 RemoteStreamStats.Route.Internet -> stringResource(Res.string.remote_route_internet)
                 RemoteStreamStats.Route.Relayed -> stringResource(Res.string.remote_route_relayed)
+                RemoteStreamStats.Route.Vpn -> stringResource(Res.string.remote_route_vpn)
+                RemoteStreamStats.Route.Direct -> stringResource(Res.string.remote_route_direct)
                 null -> null
             },
             stats.roundTripMs?.let { stringResource(Res.string.remote_round_trip, it.roundToInt()) },
