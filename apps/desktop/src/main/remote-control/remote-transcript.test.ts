@@ -1,7 +1,8 @@
+import type { RemoteTranscriptEntry } from "@vetta/remote-control";
 import { REMOTE_MAX_TOOL_RESULT_CHARS } from "@vetta/remote-control";
 import type { HistoryEntry } from "@vetta/runtime-core";
 import { describe, expect, it } from "vitest";
-import { findToolResult, keyForPath, toTranscript } from "./remote-transcript.js";
+import { findToolResult, keyForPath, pageTranscript, toTranscript } from "./remote-transcript.js";
 
 describe("remote transcript conversion", () => {
 	it("derives a stable opaque key that never leaks the path", () => {
@@ -137,6 +138,86 @@ describe("remote transcript conversion", () => {
 		it("refuses a result that would not fit a sealed frame", () => {
 			const history = [result("t1", "x".repeat(REMOTE_MAX_TOOL_RESULT_CHARS + 1))] as unknown as HistoryEntry[];
 			expect(() => findToolResult(history, "t1")).toThrow(expect.objectContaining({ code: "too_large" }));
+		});
+	});
+
+	describe("history pages", () => {
+		const turns = (count: number): RemoteTranscriptEntry[] =>
+			Array.from({ length: count }, (_, turn): RemoteTranscriptEntry[] => [
+				{ kind: "user", id: `u${turn}`, text: `question ${turn}` },
+				{ kind: "assistant", id: `a${turn}-0`, text: "step", toolCalls: [] },
+				{ kind: "assistant", id: `a${turn}-1`, text: "answer", toolCalls: [] },
+			]).flat();
+
+		it("sends the newest 240 entries to a phone that asks for no page", () => {
+			const page = pageTranscript(turns(100), {});
+			expect(page.entries).toHaveLength(240);
+			expect(page.entries.at(-1)?.id).toBe("a99-1");
+			expect(page.hasMore).toBe(true);
+		});
+
+		it("pages back from an entry, starting each page at a user message", () => {
+			const entries = turns(10);
+			const newest = pageTranscript(entries, { limit: 7 });
+			// Seven would start mid-turn; the partial turn waits for the older page.
+			expect(newest.entries.map((entry) => entry.id)).toEqual(["u8", "a8-0", "a8-1", "u9", "a9-0", "a9-1"]);
+			expect(newest.hasMore).toBe(true);
+			const older = pageTranscript(entries, { limit: 7, before: "u8" });
+			expect(older.entries[0]?.id).toBe("u6");
+			expect(older.entries.at(-1)?.id).toBe("a7-1");
+			const oldest = pageTranscript(entries, { limit: 7, before: "u2" });
+			expect(oldest.entries.map((entry) => entry.id)).toEqual(["u0", "a0-0", "a0-1", "u1", "a1-0", "a1-1"]);
+			expect(oldest.hasMore).toBe(false);
+		});
+
+		it("splits a turn longer than half a page instead of sending a page of almost nothing", () => {
+			const entries: RemoteTranscriptEntry[] = [
+				{ kind: "user", id: "u0", text: "q" },
+				...Array.from(
+					{ length: 6 },
+					(_, step): RemoteTranscriptEntry => ({ kind: "assistant", id: `a0-${step}`, text: "s", toolCalls: [] }),
+				),
+				{ kind: "user", id: "u1", text: "q" },
+				{ kind: "assistant", id: "a1", text: "s", toolCalls: [] },
+			];
+			const page = pageTranscript(entries, { limit: 5 });
+			expect(page.entries.map((entry) => entry.id)).toEqual(["a0-3", "a0-4", "a0-5", "u1", "a1"]);
+			expect(pageTranscript(entries, { limit: 5, before: "a0-3" }).entries[0]?.id).toBe("u0");
+		});
+
+		it("answers an unknown cursor with an empty last page", () => {
+			expect(pageTranscript(turns(3), { limit: 5, before: "gone" })).toEqual({ entries: [], hasMore: false });
+		});
+
+		it("fits a page into one frame however many entries it may hold", () => {
+			const long = "长".repeat(50_000);
+			const entries = Array.from(
+				{ length: 20 },
+				(_, index): RemoteTranscriptEntry => ({
+					kind: "assistant",
+					id: `a${index}`,
+					text: long,
+					toolCalls: [],
+				}),
+			);
+			const page = pageTranscript(entries, { limit: 20 });
+			expect(Buffer.byteLength(JSON.stringify(page.entries))).toBeLessThanOrEqual(400 * 1024);
+			expect(page.entries.length).toBeGreaterThan(0);
+			expect(page.entries.at(-1)?.id).toBe("a19");
+			expect(page.hasMore).toBe(true);
+		});
+
+		it("cuts an entry too big for a page of its own", () => {
+			const huge: RemoteTranscriptEntry = {
+				kind: "assistant",
+				id: "a",
+				text: "x".repeat(600_000),
+				thinking: "t".repeat(600_000),
+				toolCalls: [],
+			};
+			const [entry] = pageTranscript([huge], { limit: 10 }).entries;
+			expect(entry?.kind === "assistant" && entry.text.length).toBe(100_001);
+			expect(entry?.kind === "assistant" && entry.thinking?.length).toBe(20_001);
 		});
 	});
 });

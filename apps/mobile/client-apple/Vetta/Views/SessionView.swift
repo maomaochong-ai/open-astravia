@@ -21,10 +21,23 @@ struct SessionView: View {
 	@State private var viewport: CGFloat = 0
 	/// Far enough from the end to offer a jump there.
 	@State private var farFromEnd = false
+	/// The row at the top of the screen, which stays put while an older page goes in above it.
+	@State private var topRow: String?
+	/// Older history waits for the user to scroll: the list lays its top out once as the
+	/// chat opens, and a page fetched then went in before the chat had settled at its end.
+	@State private var userScrolled = false
+	/// The chat is being dragged or still gliding; an older page then waits for it to stop.
+	@State private var scrolling = false
+	/// An older page that came while the chat was scrolling.
+	@State private var heldPage: OlderPage?
 	/// The panel the More menu opened.
 	@State private var panel: SessionPanel?
-	/// A desktop file a reply linked to, being previewed.
-	@State private var linkedFile: LinkedFile?
+	/// A desktop file a reply linked to, being previewed, and the link action that opens it.
+	@State private var links = ReplyLinks()
+	/// Reads each reply aloud as it is written.
+	@AppStorage(ReadAloud.autoReadKey) private var autoRead = true
+	/// How much of the latest reply has gone to the reader.
+	@State private var speechFeed = SpeechFeed()
 
 	/// The desktop's id; a chat opened by New Session starts on a local one.
 	private var id: String { model.resolve(sessionId) }
@@ -43,18 +56,32 @@ struct SessionView: View {
 		let latestUser = latest < rows.endIndex ? rows[latest].id : nil
 		// Only an exchange sent from here is laid out as one piece; any other stays lazy row by row.
 		let split = pinned && latestUser != pinnedAfter ? latest : rows.endIndex
+		// The chat's opening time waits for the chat's start. Above an older page it would
+		// also hold the scroll to the top, where each page pulled in the next at once.
+		let first = transcript.hasOlder && rows.first.map { if case .timestamp = $0 { true } else { false } } == true ? 1 : 0
+		// The next page is fetched a few rows before the top, so it is in by the time the user gets there.
+		let prefetch = transcript.hasOlder && first + Self.prefetchDepth < split ? rows[first + Self.prefetchDepth].id : nil
 		ScrollViewReader { proxy in
 			ScrollView {
 				LazyVStack(alignment: .leading, spacing: 0) {
-					ForEach(rows[..<split]) { row in
-						rowView(row)
+					// Older history comes a page at a time as this scrolls into view, like a
+					// messenger's; a long chat fetched and laid out whole took long or failed.
+					if transcript.hasOlder {
+						OlderHistoryRow(failed: model.olderFailed.contains(id)) { loadOlder() }
+							.task(id: "\(transcript.items.first?.id ?? "") \(userScrolled)") { if userScrolled { loadOlder() } }
+					}
+					ForEach(rows[first..<split]) { row in
+						chatRow(row)
+							.onAppear {
+								if row.id == prefetch, userScrolled { loadOlder() }
+							}
 					}
 					// An exchange sent from here takes at least a screen, so its
 					// message can sit at the top while the reply is still short.
 					if split < rows.endIndex {
 						VStack(alignment: .leading, spacing: 0) {
 							ForEach(rows[split...]) { row in
-								rowView(row)
+								chatRow(row)
 							}
 						}
 						.frame(minHeight: pinned ? max(0, viewport - 16) : nil, alignment: .top)
@@ -70,24 +97,30 @@ struct SessionView: View {
 					}
 					Color.clear.frame(height: 1).id("bottom")
 				}
+				.scrollTargetLayout()
 				.padding(.horizontal, 20)
 				.padding(.top, 8)
 				.padding(.bottom, 16)
 				// A live turn's new pieces and, once it ends, its copy button ease in instead of popping.
 				.animation(.easeOut(duration: 0.3), value: Self.liveShape(rows))
+				// A reply streaming in holds its fade-in still while the chat scrolls.
+				.environment(\.chatScrolling, scrolling)
 				// Tapping the conversation puts the keyboard away; buttons inside keep their own taps.
 				.contentShape(Rectangle())
 				.onTapGesture { dismissKeyboard() }
 			}
-			// A reply's link to a desktop file opens it here; web links still go to Safari.
-			.environment(\.openURL, OpenURLAction { url in
-				guard case let .desktopFile(href) = ReplyLink.classify(url) else { return .systemAction }
-				linkedFile = LinkedFile(href: href)
-				return .handled
-			})
 			// Opens on the newest line, but streaming never moves the conversation: following
 			// a reply that grows every frame kept the scroll view animating and stuttered.
 			.defaultScrollAnchor(.bottom, for: .initialOffset)
+			.scrollPosition(id: $topRow, anchor: .top)
+			.onScrollPhaseChange { _, phase in
+				scrolling = phase.isScrolling
+				if phase == .interacting, !userScrolled { userScrolled = true }
+				if !scrolling, let page = heldPage {
+					heldPage = nil
+					insertOlder(page)
+				}
+			}
 			.scrollDismissesKeyboard(.interactively)
 			// A geometry change, not a scroll one: that fires only on a change, which left a
 			// chat nothing had moved yet with no height to put the sent message at the top.
@@ -169,6 +202,16 @@ struct SessionView: View {
 			}
 		}
 		.animation(.snappy, value: transcript.pendingQuestion?.requestId)
+		// The feed moves on even with reading off, so turning it on does not read out a backlog.
+		.onChange(of: SpeechSource.latest(rows), initial: true) { _, source in
+			guard let source else { return }
+			let lines = speechFeed.next(source)
+			if autoRead { ReadAloud.shared.enqueue(lines, turnId: source.turnId) }
+		}
+		.onChange(of: autoRead) { _, on in
+			if !on { ReadAloud.shared.stop() }
+		}
+		.onDisappear { ReadAloud.shared.stop() }
 		.navigationBarTitleDisplayMode(.inline)
 		// The composer takes the bottom edge; a tab bar under it would stack two glass bars.
 		.toolbar {
@@ -197,6 +240,7 @@ struct SessionView: View {
 							.disabled(!available || !model.online)
 						}
 					}
+					Toggle(L10n.Chat.autoRead, systemImage: "speaker.wave.2", isOn: $autoRead)
 					Button(L10n.Chat.resync, systemImage: "arrow.clockwise") { Task { await model.resync(id) } }
 					// The desktop's own sidebar actions, so it shows the same title and pin.
 					Button(L10n.Session.rename, systemImage: "pencil") {
@@ -221,7 +265,7 @@ struct SessionView: View {
 		.sheet(item: $panel) { panel in
 			SessionPanelSheet(panel: panel, sessionId: id)
 		}
-		.sheet(item: $linkedFile) { file in
+		.sheet(item: $links.file) { file in
 			NavigationStack {
 				FilePreviewScreen(sessionId: id, path: file.href, title: file.title)
 			}
@@ -247,6 +291,42 @@ struct SessionView: View {
 	}
 
 	private static let latestExchange = "latest-exchange"
+	private static let prefetchDepth = 10
+
+	/// Fetches the page above the oldest row. It goes in at once unless the chat is
+	/// scrolling: the scroll view keeps the rows on screen in place only while still.
+	private func loadOlder() {
+		guard heldPage == nil else { return }
+		Task {
+			guard let page = await model.fetchOlder(id) else { return }
+			if scrolling { heldPage = page } else { insertOlder(page) }
+		}
+	}
+
+	/// The scroll view keeps the top row in place only if the row is still there: a turn
+	/// cut by the page boundary gets a new header once its start arrives, and losing the
+	/// row put the chat back at the top, which fetched the next page, and the next.
+	private func insertOlder(_ page: OlderPage) {
+		if let top = topRow {
+			let active = transcript.sessionState.status.isActive
+			let before = ChatLines.build(transcript.items, waiting: active).lines.map(\.id)
+			let after = Set(ChatLines.build(TranscriptReducer.reduce(transcript, .older(entries: page.entries, hasOlder: page.hasOlder)).items, waiting: active).lines.map(\.id))
+			if !after.contains(top), let index = before.firstIndex(of: top) {
+				topRow = before[index...].first(where: after.contains)
+			}
+		}
+		model.insertOlder(id, page)
+	}
+
+	/// A row that updates only when what it shows changes: streaming changes the
+	/// transcript many times a second, and every row on screen used to update with it.
+	private func chatRow(_ row: ChatLine) -> some View {
+		// A turn's header names what the agent is doing while it streams.
+		let note: String? = if case .head(_, _, true, _, _) = row { transcript.sessionState.detail ?? "" } else { nil }
+		return ChatRowBox(row: row, note: note, links: links) { rowView(row) }
+			.equatable()
+			.transition(row.isFoot ? .opacity.combined(with: .offset(y: 4)) : .identity)
+	}
 
 	@ViewBuilder
 	private func rowView(_ row: ChatLine) -> some View {
@@ -265,11 +345,15 @@ struct SessionView: View {
 			TurnPieceView(segment: segment, live: live, activity: activity)
 				.padding(.bottom, ends ? 20 : 10)
 				.frame(maxWidth: .infinity, alignment: .leading)
-		case let .foot(_, conclusion):
-			TurnCopyButton(conclusion: conclusion)
-				.padding(.bottom, 20)
-				.frame(maxWidth: .infinity, alignment: .leading)
-				.transition(.opacity.combined(with: .offset(y: 4)))
+		case let .foot(id, conclusion):
+			// The first icon lines up with the text above it.
+			HStack(spacing: 4) {
+				TurnCopyButton(conclusion: conclusion)
+				TurnReadButton(turnId: id, conclusion: conclusion)
+			}
+			.padding(.leading, -7)
+			.padding(.bottom, 20)
+			.frame(maxWidth: .infinity, alignment: .leading)
 		}
 	}
 
@@ -293,6 +377,62 @@ private enum ChatViewport {
 
 	nonisolated static func farFromEnd(_ geometry: ScrollGeometry) -> Bool {
 		ChatScroll.offersJump(below: geometry.contentSize.height - geometry.visibleRect.maxY, viewport: geometry.containerSize.height)
+	}
+}
+
+/// Where older history is fetched, at the top of the chat.
+private struct OlderHistoryRow: View {
+	var failed: Bool
+	var retry: () -> Void
+
+	var body: some View {
+		Group {
+			if failed {
+				Button(L10n.Common.retry, systemImage: "arrow.clockwise", action: retry)
+					.font(.system(size: 13))
+					.foregroundStyle(Theme.dim)
+			} else {
+				ProgressView()
+					.accessibilityLabel(L10n.Chat.loadingHistory)
+			}
+		}
+		.frame(maxWidth: .infinity, minHeight: 44)
+		.padding(.bottom, 8)
+	}
+}
+
+/// One chat row, compared by what it shows; its content is only built when that changes.
+private struct ChatRowBox<Content: View>: View, Equatable {
+	let row: ChatLine
+	let note: String?
+	let links: ReplyLinks
+	@ViewBuilder let content: () -> Content
+
+	// Set per row rather than on the chat: set there, it counted as changed on every
+	// update of the chat, and every text on screen then updated with each streamed word.
+	var body: some View { content().environment(\.openURL, links.action) }
+
+	static func == (lhs: Self, rhs: Self) -> Bool {
+		lhs.row == rhs.row && lhs.note == rhs.note
+	}
+}
+
+private extension ChatLine {
+	var isFoot: Bool { if case .foot = self { true } else { false } }
+}
+
+/// Opens a reply's link to a desktop file in the chat; web links still go to Safari.
+@Observable
+private final class ReplyLinks {
+	var file: LinkedFile?
+	@ObservationIgnored private(set) var action = OpenURLAction { _ in .systemAction }
+
+	init() {
+		action = OpenURLAction { [weak self] url in
+			guard case let .desktopFile(href) = ReplyLink.classify(url) else { return .systemAction }
+			self?.file = LinkedFile(href: href)
+			return .handled
+		}
 	}
 }
 

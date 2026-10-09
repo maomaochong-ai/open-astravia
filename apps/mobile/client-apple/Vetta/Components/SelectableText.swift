@@ -30,7 +30,11 @@ struct SelectableText: UIViewRepresentable {
 
 	func updateUIView(_ view: UITextView, context: Context) {
 		context.coordinator.openURL = openURL
-		view.tintColor = tint
+		// SwiftUI updates every text on screen whenever anything above changes, which
+		// while a reply streams is many times a second: only touch what really changed.
+		if view.tintColor != tint { view.tintColor = tint }
+		guard context.coordinator.shown !== text else { return }
+		context.coordinator.shown = text
 		if !view.attributedText.isEqual(to: text) { view.attributedText = text }
 	}
 
@@ -41,6 +45,8 @@ struct SelectableText: UIViewRepresentable {
 
 	final class Coordinator: NSObject, UITextViewDelegate {
 		var openURL: OpenURLAction?
+		/// The text last handed to the view, by identity.
+		var shown: NSAttributedString?
 		/// Held here: the layout manager keeps its delegate weakly.
 		let chips = ChipLayoutDelegate()
 		let measure = TextMeasure()
@@ -77,12 +83,25 @@ final class TextMeasure {
 		storage.addTextLayoutManager(layout)
 	}
 
+	/// The last answer per width: a lazy list asks again for every row it re-measures,
+	/// which while a reply streams is on every update, and the text has not changed.
+	private var sizes: [CGFloat: CGSize] = [:]
+	private var measured: NSAttributedString?
+
 	func size(of text: NSAttributedString, width: CGFloat) -> CGSize {
-		if storage.attributedString?.isEqual(to: text) != true { storage.attributedString = text }
+		if text !== measured, storage.attributedString?.isEqual(to: text) != true {
+			storage.attributedString = text
+			sizes.removeAll()
+		}
+		measured = text
+		if let size = sizes[width] { return size }
 		container.size = CGSize(width: width, height: .greatestFiniteMagnitude)
 		layout.ensureLayout(for: layout.documentRange)
 		let used = layout.usageBoundsForTextContainer
-		return CGSize(width: ceil(min(used.width, width)), height: ceil(used.height))
+		let size = CGSize(width: ceil(min(used.width, width)), height: ceil(used.height))
+		if sizes.count > 8 { sizes.removeAll() }
+		sizes[width] = size
+		return size
 	}
 }
 

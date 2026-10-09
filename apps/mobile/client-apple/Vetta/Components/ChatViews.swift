@@ -309,13 +309,49 @@ struct TurnCopyButton: View {
 				withAnimation { copied = false }
 			}
 		} label: {
-			Label(copied ? L10n.Chat.copied : L10n.Chat.copy, systemImage: copied ? "checkmark" : "doc.on.doc")
-				.font(.caption)
-				.foregroundStyle(.secondary)
-				.contentTransition(.symbolEffect(.replace))
+			Image(systemName: copied ? "checkmark" : "doc.on.doc")
+				.modifier(TurnActionIcon())
 		}
 		.buttonStyle(.plain)
+		.accessibilityLabel(copied ? L10n.Chat.copied : L10n.Chat.copy)
 		.accessibilityIdentifier("turn.copy")
+	}
+}
+
+/// Reads a finished turn's closing answer aloud; tapped again while it reads, stops.
+struct TurnReadButton: View {
+	var turnId: String
+	var conclusion: String
+	private var reader = ReadAloud.shared
+
+	init(turnId: String, conclusion: String) {
+		self.turnId = turnId
+		self.conclusion = conclusion
+	}
+
+	var body: some View {
+		let reading = reader.turnId == turnId
+		Button {
+			reader.toggle(turnId: turnId, markdown: conclusion)
+		} label: {
+			Image(systemName: reading ? "stop.circle" : "speaker.wave.2")
+				.modifier(TurnActionIcon())
+		}
+		.buttonStyle(.plain)
+		.accessibilityLabel(reading ? L10n.Chat.stopReading : L10n.Chat.readAloud)
+		.accessibilityIdentifier("turn.read")
+	}
+}
+
+/// The icons under a finished turn: small, quiet, with room enough to tap.
+private struct TurnActionIcon: ViewModifier {
+	func body(content: Content) -> some View {
+		content
+			.font(.footnote)
+			.foregroundStyle(.secondary)
+			.contentTransition(.symbolEffect(.replace))
+			.frame(width: 28, height: 28)
+			.contentShape(.rect)
 	}
 }
 
@@ -399,13 +435,16 @@ struct StreamingMarkdown: View {
 	var live: Bool
 	@State private var clock = RevealClock()
 	@Environment(\.accessibilityReduceMotion) private var reduceMotion
+	@Environment(\.chatScrolling) private var scrolling
 
 	var body: some View {
 		let target = text.count
 		if reduceMotion || !clock.started && !live {
 			MarkdownView(text: text)
 		} else {
-			TimelineView(.animation(minimumInterval: 1.0 / 60, paused: clock.idle && !clock.behind(target))) { context in
+			// Holds still while the chat scrolls: laying the reply out again every frame took
+			// the main thread from the scroll, which stuttered. It catches up once it stops.
+			TimelineView(.animation(minimumInterval: 1.0 / 60, paused: scrolling || clock.idle && !clock.behind(target))) { context in
 				let reveal = clock.advance(to: context.date.timeIntervalSinceReferenceDate, target: target)
 				// Once the reply is over and every character has faded in, it becomes selectable.
 				let settled = !live && !reveal.animating(toward: target)
@@ -417,6 +456,11 @@ struct StreamingMarkdown: View {
 			}
 		}
 	}
+}
+
+extension EnvironmentValues {
+	/// The chat is being dragged or still gliding.
+	@Entry var chatScrolling = false
 }
 
 /// Holds a `StreamReveal` across frames. Advancing is not observed, so frames

@@ -35,6 +35,7 @@ const { DesktopRemoteLanServer } = await import(resolve(root, "apps/desktop/src/
 const { createDesktopWebSocketFactory } = await import(resolve(root, "apps/desktop/src/main/remote-control/desktop-websocket.ts"));
 await import(resolve(root, "packages/remote-control/scripts/fake-relay-server.ts"));
 const { RemoteFiles } = await import(resolve(root, "apps/desktop/src/main/remote-control/remote-files.ts"));
+const { pageTranscript } = await import(resolve(root, "apps/desktop/src/main/remote-control/remote-transcript.ts"));
 
 type Connection = InstanceType<typeof rc.RemoteConnection>;
 
@@ -94,8 +95,8 @@ const histories = new Map<string, unknown[]>([
 	["s-build", [{ kind: "user", id: "u2", text: "看看为什么打包签名失败", at: Date.now() - 120_000 }]],
 ]);
 // `VETTA_INTEROP_LONG=<turns>` adds a long chat, for timing how fast a big history opens;
-// `VETTA_INTEROP_STEPS=<n>` gives each turn that many tool-calling steps. Like the desktop,
-// history is capped at the last 240 entries and tool text at 1200 characters.
+// `VETTA_INTEROP_STEPS=<n>` gives each turn that many tool-calling steps. History is paged by
+// the desktop's own `pageTranscript`; tool text is cut at 1200 characters like the desktop's.
 const longTurns = Number(process.env.VETTA_INTEROP_LONG ?? 0);
 const longSteps = Math.max(1, Number(process.env.VETTA_INTEROP_STEPS ?? 1));
 if (longTurns > 0) {
@@ -129,7 +130,7 @@ if (longTurns > 0) {
 		];
 	}).flat();
 	sessions.unshift({ id: "s-long", projectCwd: "/Users/dev/vetta", projectName: "vetta", title: "超长会话", preview: "打包流程逐步排查", updatedAt: Date.now(), status: "completed", live: false });
-	histories.set("s-long", entries.slice(-240));
+	histories.set("s-long", entries);
 }
 
 // ---- Files (ADR-0139) ------------------------------------------------------------------
@@ -269,8 +270,10 @@ async function streamReply(deviceId: string, sessionId: string, text: string, no
 	}
 	// `VETTA_INTEROP_LONG_REPLY=1` follows up with a long answer in uneven bursts, as a real
 	// model over a real network sends it, to watch how the phone paces and fades it in.
-	if (process.env.VETTA_INTEROP_LONG_REPLY === "1") {
-		let rest = longReply;
+	// `VETTA_INTEROP_LONG_REPLY=<n>` repeats it n times, for a reply that streams for a while.
+	const replyRepeats = Number(process.env.VETTA_INTEROP_LONG_REPLY ?? 0);
+	if (replyRepeats > 0) {
+		let rest = longReply.repeat(replyRepeats);
 		while (rest.length > 0) {
 			await delay(40 + Math.random() * 360);
 			const chunk = rest.slice(0, 4 + Math.floor(Math.random() * 90));
@@ -294,6 +297,8 @@ async function streamReply(deviceId: string, sessionId: string, text: string, no
 	await delay(40);
 	emitAll(deviceId, "session.state", { status: "running", contextPercent: 40, ...modelState(sessionId) }, sessionId);
 }
+
+let streamedOnOpen = false;
 
 function handleRequest(deviceId: string, connection: Connection, request: { requestId: string; method: string; sessionId?: string; payload?: any }): void {
 	const ok = (payload: unknown) => void connection.respond(request.requestId, { success: true, payload }).catch(() => undefined);
@@ -323,10 +328,20 @@ function handleRequest(deviceId: string, connection: Connection, request: { requ
 		}
 		case "session.open":
 			ok({ session: sessions.find((entry) => entry.id === sessionId), state: { status: "idle" } });
+			// `VETTA_INTEROP_STREAM_ON_OPEN=<session>` starts a reply there a moment after the phone
+			// opens it, for timing how the chat scrolls while it streams.
+			if (sessionId === process.env.VETTA_INTEROP_STREAM_ON_OPEN && !streamedOnOpen) {
+				streamedOnOpen = true;
+				setTimeout(() => void streamReply(deviceId, sessionId, "继续排查"), 2_000);
+			}
 			return;
 		case "session.history": {
 			const session = sessions.find((entry) => entry.id === sessionId);
-			ok({ entries: histories.get(sessionId) ?? [], state: { status: session?.status ?? "idle", ...modelState(sessionId), pendingQuestion: pendingQuestions.get(sessionId) } });
+			const page = pageTranscript(histories.get(sessionId) ?? [], request.payload ?? {});
+			console.info(`[interop] history ${sessionId} before=${request.payload?.before ?? "-"} → ${page.entries.length}${page.hasMore ? " +more" : ""}`);
+			// `VETTA_INTEROP_OLDER_DELAY=<ms>` answers older pages late, like a slow link would.
+			const lag = request.payload?.before ? Number(process.env.VETTA_INTEROP_OLDER_DELAY ?? 0) : 0;
+			setTimeout(() => ok({ entries: page.entries, hasMore: page.hasMore, state: { status: session?.status ?? "idle", ...modelState(sessionId), pendingQuestion: pendingQuestions.get(sessionId) } }), lag);
 			return;
 		}
 		case "session.prompt": {

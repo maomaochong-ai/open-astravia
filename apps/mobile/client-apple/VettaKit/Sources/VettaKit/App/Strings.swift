@@ -196,6 +196,9 @@ public enum L10n {
 		public static func thinkingActivity(_ text: String) -> String { tr("chat.thinkingActivity \(text)") }
 		public static var copy: String { tr("chat.copy") }
 		public static var copied: String { tr("chat.copied") }
+		public static var readAloud: String { tr("chat.readAloud") }
+		public static var stopReading: String { tr("chat.stopReading") }
+		public static var autoRead: String { tr("chat.autoRead") }
 		public static var questionTitle: String { tr("chat.questionTitle") }
 		public static var attach: String { tr("chat.attach") }
 		public static var scrollToBottom: String { tr("chat.scrollToBottom") }

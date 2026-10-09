@@ -145,7 +145,6 @@
     <string name="invalid_pairing_invite">Invalid pairing code</string>
     <string name="invalid_pairing_invite_hint">Create a new pairing code on Desktop and try again</string>
     <string name="just_now">Just now</string>
-    <string name="latency">Latency</string>
     <string name="link_connected">Connected</string>
     <string name="link_connecting">Connecting…</string>
     <string name="link_latency">%1$d ms</string>
@@ -313,12 +312,6 @@
     <string name="work_kind_project">Projects</string>
     <string name="work_settings_haptics">Vibrate when tasks finish</string>
     <string name="work_settings_live_thinking">Watch the computer think live</string>
-    <string name="work_settings_load">Computer load</string>
-    <string name="work_settings_load_idle">Idle</string>
-    <plurals name="work_settings_load_value">
-        <item quantity="one">%1$d task running</item>
-        <item quantity="other">%1$d tasks running</item>
-    </plurals>
     <string name="work_settings_online">Securely connected</string>
     <string name="work_settings_rescan">Scan Again</string>
     <string name="work_settings_scan">Scan to Connect a Computer</string>

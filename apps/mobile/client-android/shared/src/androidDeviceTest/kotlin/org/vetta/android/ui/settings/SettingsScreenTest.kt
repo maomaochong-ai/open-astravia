@@ -30,15 +30,13 @@ import org.vetta.android.domain.remote.pairing.StoredDesktop
 import org.vetta.android.domain.work.MirrorState
 import org.vetta.android.domain.work.UnlinkReason
 import org.vetta.android.resources.Res
-import org.vetta.android.resources.latency
 import org.vetta.android.resources.link_connected
 import org.vetta.android.resources.link_connecting
 import org.vetta.android.resources.link_latency
+import org.vetta.android.resources.link_via_relay
 import org.vetta.android.resources.settings_link_phone
 import org.vetta.android.resources.unlinked_description
 import org.vetta.android.resources.unlinked_pill
-import org.vetta.android.resources.work_settings_load
-import org.vetta.android.resources.work_settings_load_value
 import org.vetta.android.resources.work_settings_unpair
 import org.vetta.android.resources.work_unpaired_description
 import org.vetta.android.ui.str
@@ -73,14 +71,12 @@ class SettingsScreenTest {
             }
         }
         composeRule.onNodeWithText("MacBook Pro").assertIsDisplayed()
-        composeRule.onNodeWithText(phoneModel()).assertIsDisplayed()
+        composeRule.onNodeWithText(phoneModel()).assertDoesNotExist()
         composeRule.onNodeWithText(str(Res.string.settings_link_phone)).assertDoesNotExist()
         composeRule.onNodeWithText(str(Res.string.link_connected)).assertDoesNotExist()
         composeRule.onAllNodesWithTag("settings.computer").assertCountEquals(0)
-        composeRule.onNodeWithText(str(Res.string.latency)).assertIsDisplayed()
-        composeRule.onNodeWithText(str(Res.string.link_latency, 42)).assertIsDisplayed()
-        composeRule.onNodeWithText(str(Res.string.work_settings_load)).assertIsDisplayed()
-        composeRule.onNodeWithText(str(Res.plurals.work_settings_load_value, 2)).assertIsDisplayed()
+        composeRule.onNodeWithText("${str(Res.string.link_via_relay)} · ${str(Res.string.link_latency, 42)}").assertIsDisplayed()
+        composeRule.onNodeWithText("—").assertDoesNotExist()
 
         // The desktop asks for no confirmations yet: no choice is offered that would change nothing.
         composeRule.onAllNodesWithTag("settings.policy.auto").assertCountEquals(0)
@@ -136,7 +132,7 @@ class SettingsScreenTest {
         composeRule.onNodeWithText(str(Res.string.unlinked_pill)).assertIsDisplayed()
         composeRule.onNodeWithText(str(Res.string.unlinked_description)).assertIsDisplayed()
         composeRule.onNodeWithText(str(Res.string.link_connecting)).assertDoesNotExist()
-        composeRule.onNodeWithText(str(Res.string.latency)).assertDoesNotExist()
+        composeRule.onNodeWithText(str(Res.string.link_via_relay)).assertDoesNotExist()
         composeRule.onAllNodesWithTag("settings.unpair").assertCountEquals(0)
         composeRule.onAllNodesWithTag("settings.rescan").assertCountEquals(0)
         composeRule.onNodeWithTag("settings.scan").performClick()
@@ -152,9 +148,23 @@ class SettingsScreenTest {
             }
         }
         composeRule.onNodeWithText(str(Res.string.link_connecting)).assertIsDisplayed()
+        composeRule.onNodeWithText(str(Res.string.link_via_relay)).assertDoesNotExist()
         composeRule.onAllNodesWithTag("settings.scan").assertCountEquals(0)
         composeRule.onNodeWithTag("settings.rescan").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithTag("settings.unpair").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun aConnectedComputerWithoutALatencySampleShowsOnlyTheRoute() {
+        val quiet = paired.copy(link = paired.link.copy(rttMs = null))
+        composeRule.setContent {
+            VettaTheme(ThemeMode.Light) {
+                SettingsScreen(quiet, ThemeMode.Light, {}, {}, onUnpair = {}, onPair = {}, onBack = {})
+            }
+        }
+        composeRule.onNodeWithText(str(Res.string.link_via_relay)).assertIsDisplayed()
+        composeRule.onNodeWithText(str(Res.string.link_latency, 42)).assertDoesNotExist()
+        composeRule.onNodeWithText("—").assertDoesNotExist()
     }
 
     @Test
