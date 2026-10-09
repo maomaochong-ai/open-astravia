@@ -41,6 +41,7 @@ import {
 	getAstraviaHomePath,
 	getExportTemplateDir,
 	getKnowledgeDir,
+	getProjectMemoryPath,
 	getUserMemoryPath,
 	VERSION,
 } from "../node-config.js";
@@ -257,7 +258,7 @@ async function createCodingAgentSdkSessionComposition(
 			knowledgeRuntime:
 				process.env.ASTRAVIA_KNOWLEDGE_DISABLED === "1" ? undefined : createNodeKnowledgeRuntime(getKnowledgeDir()),
 			createMemoryRolloverRuntime: (memoryOptions) => {
-				const memoryFile = memoryOptions.memoryFile ?? join(memoryOptions.cwd, "MEMORY.md");
+				const memoryFile = memoryOptions.memoryFile ?? getProjectMemoryPath(memoryOptions.cwd);
 				const userMemoryFile = getUserMemoryPath();
 				return createCodingAgentMemoryRolloverRuntime({
 					cwd: memoryOptions.cwd,

@@ -144,6 +144,7 @@ export const SETTINGS_SECTIONS = [
 	{ tab: "context", id: "agent-images", title: "图片", titleKey: "section_agent-images" },
 	{ tab: "context", id: "agent-experimental", title: "扩展功能", titleKey: "section_agent-experimental" },
 	{ tab: "context", id: "agent-runtime", title: "运行时", titleKey: "section_agent-runtime" },
+	{ tab: "context", id: "agent-memory", title: "记忆", titleKey: "section_agent-memory" },
 	{ tab: "knowledge", id: "knowledge-processing", title: "后台加工", titleKey: "section_knowledge-processing" },
 	{ tab: "knowledge", id: "knowledge-actions", title: "手动操作", titleKey: "section_knowledge-actions" },
 	{ tab: "pet", id: "pet-display", title: "显示与窗口", titleKey: "section_pet-display" },
