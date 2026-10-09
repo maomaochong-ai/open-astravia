@@ -10,6 +10,10 @@ public struct RemoteStreamStats: Equatable, Sendable {
 		case internet
 		/// Through a relay server.
 		case relayed
+		/// Direct over a VPN interface.
+		case vpn
+		/// Direct, but the available evidence does not establish network scope.
+		case direct
 	}
 
 	public var route: Route?
@@ -33,14 +37,6 @@ public struct RemoteStreamStats: Equatable, Sendable {
 		self.decodeMs = decodeMs
 	}
 
-	/// From the two ends' ICE candidate types ("host", "srflx", "prflx", "relay").
-	public static func route(local: String?, remote: String?) -> Route? {
-		guard let local, let remote else { return nil }
-		if local == "relay" || remote == "relay" { return .relayed }
-		if local == "host", remote == "host" { return .lan }
-		return .internet
-	}
-
 	/// About how old the picture is when shown, beyond the desktop's own capture and
 	/// encoding, which the phone cannot see: half the round trip, the wait, the decode.
 	public var pictureDelayMs: Double? {
@@ -55,6 +51,8 @@ public struct RemoteStreamStats: Equatable, Sendable {
 		case .lan: parts.append(L10n.Remote.routeLan)
 		case .internet: parts.append(L10n.Remote.routeInternet)
 		case .relayed: parts.append(L10n.Remote.routeRelayed)
+		case .vpn: parts.append(L10n.Remote.routeVpn)
+		case .direct: parts.append(L10n.Remote.routeDirect)
 		case nil: break
 		}
 		if let roundTripMs { parts.append(L10n.Remote.roundTrip(Int(roundTripMs.rounded()))) }

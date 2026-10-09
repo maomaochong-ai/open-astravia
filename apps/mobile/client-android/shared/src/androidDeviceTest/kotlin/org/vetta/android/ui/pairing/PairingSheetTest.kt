@@ -7,6 +7,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -27,6 +28,7 @@ import org.vetta.android.resources.pair_connecting
 import org.vetta.android.resources.pair_failed_rejected
 import org.vetta.android.resources.pair_invite_not_found
 import org.vetta.android.resources.pair_manual_invalid
+import org.vetta.android.resources.pair_scan_hint
 import org.vetta.android.ui.AppViewModel
 import org.vetta.android.ui.PairingError
 import org.vetta.android.ui.str
@@ -36,6 +38,25 @@ import org.vetta.android.ui.theme.VettaTheme
 class PairingSheetTest {
     @get:Rule
     val composeRule = createAndroidComposeRule<ComponentActivity>()
+
+    @Test
+    fun theFrameIsTheScannerAndThereIsNoSeparateScanButton() {
+        composeRule.setContent {
+            VettaTheme(themeMode = ThemeMode.Light) {
+                PairingSheet(PairingPhase.Idle, connecting = false, error = null, onScanned = {}, onManual = {}, onCancelPairing = {}, onDismiss = {})
+            }
+        }
+        composeRule.onNodeWithTag("pair.frame").assertIsDisplayed()
+        composeRule.onNodeWithTag("pair.scan").assertDoesNotExist()
+        composeRule.onNodeWithText(str(Res.string.pair_scan_hint)).assertIsDisplayed()
+        composeRule.onNodeWithTag("pair.invite").assertIsDisplayed()
+        composeRule.onNodeWithTag("pair.manual").assertIsDisplayed()
+        composeRule.waitUntil(5_000) {
+            listOf("pair.camera.preview", "pair.camera.grant", "pair.camera.unavailable").any { tag ->
+                composeRule.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty()
+            }
+        }
+    }
 
     @Test
     fun aTypedAddressIsCheckedBeforeItConnects() {

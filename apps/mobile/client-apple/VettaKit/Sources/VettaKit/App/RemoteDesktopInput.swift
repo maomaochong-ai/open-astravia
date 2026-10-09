@@ -52,6 +52,14 @@ public struct RemoteViewport: Equatable, Sendable {
 		return max(-limit, min(limit, value)) + 0
 	}
 
+	/// Whether two video sizes are the same screen, only sent at another scale: the desktop
+	/// sends the picture smaller or larger as the phone zooms, which must not reset the zoom.
+	public static func sameShape(_ a: (width: Double, height: Double), _ b: (width: Double, height: Double)) -> Bool {
+		guard a.width > 0, a.height > 0, b.width > 0, b.height > 0 else { return false }
+		let ratio = a.width / a.height
+		return abs(ratio - b.width / b.height) <= ratio * 0.01
+	}
+
 	/// The largest rectangle of the video's shape that fits `container`, centred: where
 	/// the picture actually is, so touches on the bars around it land nowhere.
 	public static func fitted(videoWidth: Double, videoHeight: Double, containerWidth: Double, containerHeight: Double) -> (x: Double, y: Double, width: Double, height: Double) {

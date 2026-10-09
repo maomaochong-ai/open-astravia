@@ -3752,6 +3752,40 @@
         }
       }
     },
+    "remote.routeVpn": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Direct over VPN"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "VPN 直连"
+          }
+        }
+      }
+    },
+    "remote.routeDirect": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Peer-to-peer (network undetermined)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "P2P 直连（网络待确认）"
+          }
+        }
+      }
+    },
     "remote.routeInternet": {
       "extractionState": "manual",
       "localizations": {

@@ -1,6 +1,13 @@
 import type { RemoteDesktopPeerOptions } from "./peer-types.js";
 import { NOOP_REMOTE_DESKTOP_LOGGER } from "./peer-types.js";
-import { decodeRemoteDesktopSignal, encodeRemoteInputMessage, parseRemoteInputMessage } from "./protocol.js";
+import {
+	decodeRemoteDesktopSignal,
+	encodeRemoteInputMessage,
+	parseRemoteInputMessage,
+	parseRemoteViewMessage,
+} from "./protocol.js";
+import { ScreenSender } from "./screen-sender.js";
+import type { ScreenStreamSample } from "./screen-stats.js";
 import type { RemoteDesktopSignal, RemoteInputCommand, RemoteInputMessage } from "./types.js";
 import { REMOTE_DESKTOP_PROTOCOL_VERSION } from "./types.js";
 
@@ -37,6 +44,11 @@ export interface RemoteDesktopTextChannelHandlers {
 }
 
 export const REMOTE_DESKTOP_CONTROL_CHANNEL = "vetta-control-v2";
+/**
+ * The phone says how large it shows the screen (`RemoteViewMessage`). The desktop opens it,
+ * so a phone only sends where a desktop listens; older phones close it.
+ */
+export const REMOTE_DESKTOP_VIEW_CHANNEL = "vetta-view-v1";
 const MAX_CONTROL_MESSAGE_CHARS = 1_500_000;
 /** How long a rejoined viewer may stay disconnected before it counts as replaced; the phone gives up after as long. */
 const VIEWER_DISCONNECT_GRACE_MS = 5_000;
@@ -50,6 +62,7 @@ export class RemoteDesktopHost {
 	private controlClosed = false;
 	/** Set when started without a stream: the screen comes and goes through `replaceScreen`. */
 	private screenSender: RTCRtpSender | undefined;
+	private screen: ScreenSender | undefined;
 	private lastInputSequence = 0;
 	private closed = false;
 	private started = false;
@@ -62,6 +75,7 @@ export class RemoteDesktopHost {
 	/** A viewer came online while connected: it rejoined, unless the connection drops after all. */
 	private viewerRejoined = false;
 	private rejoinGrace: ReturnType<typeof setTimeout> | undefined;
+	private viewChannel: RTCDataChannel | undefined;
 
 	constructor(
 		private readonly options: RemoteDesktopPeerOptions,
@@ -114,14 +128,15 @@ export class RemoteDesktopHost {
 		if (stream) {
 			if (stream.getVideoTracks().length === 0) throw new Error("screen stream must contain a video track");
 			for (const track of stream.getTracks()) {
-				if (track.kind === "video") track.contentHint = "detail";
-				this.peer.addTrack(track, stream);
+				const sender = this.peer.addTrack(track, stream);
+				if (track.kind === "video") this.screen = new ScreenSender(sender, this.logger);
 			}
 			for (const transceiver of this.peer.getTransceivers?.() ?? []) preferHardwareCodec(transceiver);
 		} else {
 			const transceiver = this.peer.addTransceiver("video", { direction: "sendonly" });
 			preferHardwareCodec(transceiver);
 			this.screenSender = transceiver.sender;
+			this.screen = new ScreenSender(transceiver.sender, this.logger);
 		}
 		this.inputChannel = this.peer.createDataChannel("vetta-input-v1", { ordered: true });
 		this.configureInputChannel(this.inputChannel);
@@ -129,6 +144,8 @@ export class RemoteDesktopHost {
 			this.controlChannel = this.peer.createDataChannel(REMOTE_DESKTOP_CONTROL_CHANNEL, { ordered: true });
 			this.configureControlChannel(this.controlChannel);
 		}
+		this.viewChannel = this.peer.createDataChannel(REMOTE_DESKTOP_VIEW_CHANNEL, { ordered: true });
+		this.configureViewChannel(this.viewChannel);
 		this.started = true;
 		this.onViewerReplaced = startOptions.onViewerReplaced;
 		this.onConnectionStateChange = startOptions.onConnectionStateChange;
@@ -155,13 +172,14 @@ export class RemoteDesktopHost {
 		}
 		if (frame.sessionId !== this.options.sessionId) throw new Error("remote desktop signal session mismatch");
 		if (frame.type === "answer") {
-			await this.peer.setRemoteDescription({ type: "answer", sdp: answerForHardwareEncoding(frame.sdp) });
+			await this.peer.setRemoteDescription({
+				type: "answer",
+				sdp: answerWithStartBitrate(answerForHardwareEncoding(frame.sdp)),
+			});
 			await this.flushPendingIce();
 			this.logger.info("remote desktop answer applied", { sessionId: this.options.sessionId });
 			// Encodings exist only once negotiated: a screen shared for the whole session is tuned here.
-			for (const sender of this.peer.getSenders?.() ?? []) {
-				if (sender.track?.kind === "video") await tuneScreenSender(sender);
-			}
+			await this.screen?.update();
 			return;
 		}
 		if (frame.type === "ice") {
@@ -191,6 +209,8 @@ export class RemoteDesktopHost {
 		this.clearRejoinGrace();
 		this.inputChannel?.close();
 		this.controlChannel?.close();
+		this.viewChannel?.close();
+		this.screen?.close();
 		for (const sender of this.peer.getSenders()) sender.track?.stop();
 		this.peer.close();
 		void this.sendSignal({
@@ -210,6 +230,11 @@ export class RemoteDesktopHost {
 		return this.peer.getStats();
 	}
 
+	/** Samples the active screen and applies bounded adaptation without touching the connection. */
+	sampleScreen(): Promise<ScreenStreamSample | undefined> {
+		return this.screen?.sample(() => this.peer.getStats()) ?? Promise.resolve(undefined);
+	}
+
 	/** Puts a new screen track in the video slot, or empties it with null; the previous track is stopped. */
 	async replaceScreen(track: MediaStreamTrack | null): Promise<void> {
 		if (this.closed) {
@@ -217,11 +242,30 @@ export class RemoteDesktopHost {
 			return;
 		}
 		if (!this.screenSender) throw new Error("remote desktop host shares a fixed screen stream");
-		const previous = this.screenSender.track;
-		if (track) track.contentHint = "detail";
-		await this.screenSender.replaceTrack(track);
-		if (previous && previous !== track) previous.stop();
-		if (track) await tuneScreenSender(this.screenSender);
+		await this.screen?.replace(track);
+	}
+
+	/**
+	 * Which encoder the screen goes through, from the stats. Chromium can drop from the
+	 * hardware encoder to its software one partway through a session; the picture is then
+	 * sent smaller until the hardware one is back. WebRTC sets the encoder up again when
+	 * the size changes, trying the hardware one first, so that can also bring it back.
+	 */
+	async noteEncoder(implementation: string): Promise<void> {
+		await this.screen?.noteEncoder(implementation);
+	}
+
+	private configureViewChannel(channel: RTCDataChannel): void {
+		channel.onmessage = (event) => {
+			if (this.closed) return;
+			try {
+				if (typeof event.data !== "string") throw new Error("binary view message");
+				void this.screen?.view(parseRemoteViewMessage(event.data));
+			} catch {
+				this.logger.warn("remote desktop invalid view rejected", { sessionId: this.options.sessionId });
+				return;
+			}
+		};
 	}
 
 	sendControl(message: string): void {
@@ -470,25 +514,22 @@ function answerForHardwareEncoding(sdp: string): string {
 	return sdp.replace(/(profile-level-id=)42e0([0-9a-f]{2})/gi, "$14200$2");
 }
 
-/** The most the screen may spend: sharp text at a large capture, still well within a LAN. */
-const SCREEN_MAX_BITRATE = 12_000_000;
-
 /**
- * A phone zooms in to read the screen and drags things across it, so text should stay
- * sharp and motion smooth. "balanced" trades a little of each under load instead of
- * dropping frames to hold full resolution, which made dragging stutter (ADR-0140).
- * Best effort; a browser without these parameters keeps its defaults.
+ * Where the bandwidth estimate starts. WebRTC starts at 300 kbps and climbs over seconds,
+ * while one frame of a large screen is hundreds of KB, so on every new connection the
+ * first frames queued for one to two seconds. The estimate still backs off on a slower link.
  */
-async function tuneScreenSender(sender: RTCRtpSender): Promise<void> {
-	if (typeof sender.getParameters !== "function") return;
-	try {
-		const parameters = sender.getParameters();
-		parameters.degradationPreference = "balanced";
-		for (const encoding of parameters.encodings ?? []) encoding.maxBitrate = SCREEN_MAX_BITRATE;
-		await sender.setParameters(parameters);
-	} catch {
-		// Unsupported here: the defaults still work.
-	}
+const SCREEN_START_BITRATE_KBPS = 4_000;
+
+/** Sets the start on each video codec of the answer: the sending side reads it from there. */
+function answerWithStartBitrate(sdp: string): string {
+	const video = new Set<string>();
+	for (const match of sdp.matchAll(/^a=rtpmap:(\d+) (?:H264|H265|VP8|VP9|AV1)\//gim)) video.add(match[1] ?? "");
+	return sdp.replace(/^a=fmtp:(\d+) [^\r\n]*/gm, (line, payload: string) =>
+		video.has(payload) && !line.includes("x-google-start-bitrate")
+			? `${line};x-google-start-bitrate=${SCREEN_START_BITRATE_KBPS}`
+			: line,
+	);
 }
 
 function createPeer(options: RemoteDesktopPeerOptions): RTCPeerConnection {

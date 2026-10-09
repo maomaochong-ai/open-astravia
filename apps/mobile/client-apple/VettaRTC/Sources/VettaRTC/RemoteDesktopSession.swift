@@ -44,6 +44,10 @@ public final class RemoteDesktopSession {
 	@ObservationIgnored private var inputChannel: RTCDataChannel?
 	@ObservationIgnored private var controlChannel: RTCDataChannel?
 	@ObservationIgnored private var controlTransport: P2PControlTransport?
+	@ObservationIgnored private var viewChannel: RTCDataChannel?
+	@ObservationIgnored private var viewObserver: ViewChannelObserver?
+	/// How large the whole desktop is shown, in pixels with zoom applied; sent again once the channel opens.
+	@ObservationIgnored private var shown: (width: Int, height: Int)?
 	@ObservationIgnored private var pendingCandidates: [RTCIceCandidate] = []
 	@ObservationIgnored private var remoteDescriptionSet = false
 	@ObservationIgnored private var nextSequence = 1
@@ -52,7 +56,7 @@ public final class RemoteDesktopSession {
 	@ObservationIgnored private var reconnectTask: Task<Void, Never>?
 	@ObservationIgnored private var disconnectTask: Task<Void, Never>?
 	/// The running totals at the last sample, to average over the last second only.
-	@ObservationIgnored private var lastTotals: FrameTotals?
+	@ObservationIgnored private var lastTotals: RemoteStreamStats.FrameTotals?
 
 	/// How long a direct link may stay disconnected before the session gives it up.
 	private static let disconnectGraceSeconds = 5.0
@@ -125,6 +129,7 @@ public final class RemoteDesktopSession {
 		}
 		inputChannel?.close()
 		controlChannel?.close()
+		viewChannel?.close()
 		peer?.close()
 		peer = nil
 		videoTrack = nil
@@ -171,6 +176,23 @@ public final class RemoteDesktopSession {
 
 	public func send(_ commands: [RemoteInputCommand]) {
 		for command in commands { send(command) }
+	}
+
+	/// Tells the desktop how large the whole picture is shown, zoom included, so it sends no
+	/// more detail than that. Desktops that do not open the view channel keep the full size.
+	public func showView(width: Int, height: Int) {
+		shown = (width, height)
+		sendView()
+	}
+
+	fileprivate func sendView() {
+		guard let shown, let channel = viewChannel, channel.readyState == .open else { return }
+		do {
+			let text = try RemoteDesktopProtocol.encodeView(width: shown.width, height: shown.height)
+			channel.sendData(RTCDataBuffer(data: Data(text.utf8), isBinary: false))
+		} catch {
+			log.warning("remote desktop view refused: \(String(describing: error), privacy: .public)")
+		}
 	}
 
 	// MARK: Signaling
@@ -314,6 +336,12 @@ public final class RemoteDesktopSession {
 		case RemoteDesktopProtocol.controlChannel:
 			controlChannel = channel
 			controlTransport?.bind(channel)
+		case RemoteDesktopProtocol.viewChannel:
+			viewChannel = channel
+			let observer = ViewChannelObserver(session: self)
+			viewObserver = observer
+			channel.delegate = observer
+			sendView()
 		default:
 			channel.close()
 		}
@@ -344,6 +372,7 @@ public final class RemoteDesktopSession {
 			while !Task.isCancelled {
 				guard let self, let peer = self.peer, self.phase == .connected else { return }
 				let report = await peer.statistics()
+				guard !Task.isCancelled, self.peer === peer, self.phase == .connected else { return }
 				self.read(report)
 				try? await Task.sleep(for: .seconds(1))
 			}
@@ -351,37 +380,19 @@ public final class RemoteDesktopSession {
 	}
 
 	private func read(_ report: RTCStatisticsReport) {
-		let all = report.statistics
-		func number(_ entry: RTCStatistics?, _ key: String) -> Double? { (entry?.values[key] as? NSNumber)?.doubleValue }
-		func text(_ entry: RTCStatistics?, _ key: String) -> String? { entry?.values[key] as? String }
-		var next = RemoteStreamStats()
-		let pairs = all.values.filter { $0.type == "candidate-pair" && ($0.values["nominated"] as? NSNumber)?.boolValue == true }
-		if let pair = pairs.first(where: { text($0, "state") == "succeeded" }) ?? pairs.first {
-			next.roundTripMs = number(pair, "currentRoundTripTime").map { $0 * 1000 }
-			next.route = RemoteStreamStats.route(
-				local: text(text(pair, "localCandidateId").flatMap { all[$0] }, "candidateType"),
-				remote: text(text(pair, "remoteCandidateId").flatMap { all[$0] }, "candidateType")
-			)
+		let entries = report.statistics.values.map { entry in
+			RemoteStreamStats.Entry(id: entry.id, type: entry.type, values: entry.values.compactMapValues { value in
+				if let text = value as? String { return JSONValue.string(text) }
+				if let number = value as? NSNumber {
+					if CFGetTypeID(number) == CFBooleanGetTypeID() { return .bool(number.boolValue) }
+					return .number(number.doubleValue)
+				}
+				return nil
+			})
 		}
-		if let video = all.values.first(where: { $0.type == "inbound-rtp" && text($0, "kind") == "video" }) {
-			next.framesPerSecond = number(video, "framesPerSecond")
-			next.frameWidth = number(video, "frameWidth").map { Int($0) }
-			next.frameHeight = number(video, "frameHeight").map { Int($0) }
-			let totals = FrameTotals(
-				jitterDelay: number(video, "jitterBufferDelay") ?? 0,
-				jitterFrames: number(video, "jitterBufferEmittedCount") ?? 0,
-				decodeTime: number(video, "totalDecodeTime") ?? 0,
-				decodedFrames: number(video, "framesDecoded") ?? 0
-			)
-			if let before = lastTotals {
-				let frames = totals.jitterFrames - before.jitterFrames
-				if frames > 0 { next.jitterBufferMs = (totals.jitterDelay - before.jitterDelay) / frames * 1000 }
-				let decoded = totals.decodedFrames - before.decodedFrames
-				if decoded > 0 { next.decodeMs = (totals.decodeTime - before.decodeTime) / decoded * 1000 }
-			}
-			lastTotals = totals
-		}
-		stats = next
+		let sample = RemoteStreamStats.read(entries, previous: lastTotals, interfaces: RemoteNetworkInterfaces.snapshot())
+		stats = sample.stats
+		lastTotals = sample.totals
 	}
 
 	private func note(_ step: String) {
@@ -464,10 +475,17 @@ private final class PeerDelegate: NSObject, RTCPeerConnectionDelegate, URLSessio
 	}
 }
 
-/// WebRTC's running totals for the received picture.
-private struct FrameTotals {
-	var jitterDelay: Double
-	var jitterFrames: Double
-	var decodeTime: Double
-	var decodedFrames: Double
+/// The view channel opening, moved onto the main actor; the desktop sends nothing on it.
+private final class ViewChannelObserver: NSObject, RTCDataChannelDelegate, @unchecked Sendable {
+	/// Read only on the main queue, where every callback hops before touching it.
+	nonisolated(unsafe) private weak var session: RemoteDesktopSession?
+
+	init(session: RemoteDesktopSession) { self.session = session }
+
+	nonisolated func dataChannelDidChangeState(_ dataChannel: RTCDataChannel) {
+		guard dataChannel.readyState == .open else { return }
+		DispatchQueue.main.async { MainActor.assumeIsolated { self.session?.sendView() } }
+	}
+
+	nonisolated func dataChannel(_ dataChannel: RTCDataChannel, didReceiveMessageWith buffer: RTCDataBuffer) {}
 }

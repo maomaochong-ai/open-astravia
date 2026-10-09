@@ -518,6 +518,17 @@ describe("affected package selection", () => {
 		]);
 	});
 
+	it("selects the remote screen renderer bridge flow without dropping its entrypoint coverage", () => {
+		const plan = createImpactTestPlan([
+			"apps/desktop/src/renderer/remote-desktop-host.ts",
+			"apps/desktop/src/renderer/remote-desktop-host.test.ts",
+		]);
+		expect(plan.selectionErrors).toEqual([]);
+		expect(plan.targets).toMatchObject([
+			{ key: "desktop", directTests: ["src/renderer/remote-desktop-host.test.ts"], relatedSources: [] },
+		]);
+	});
+
 	it("selects Google and goal contracts without unrelated provider or SDK tests", () => {
 		const files = [
 			"packages/ai/src/providers/google-stream/request.ts",

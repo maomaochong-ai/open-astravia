@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { decodeRemoteDesktopSignal, decodeRemoteInputMessage, RemoteDesktopProtocolError } from "../src/index.js";
+import {
+	decodeRemoteDesktopSignal,
+	decodeRemoteInputMessage,
+	parseRemoteViewMessage,
+	RemoteDesktopProtocolError,
+} from "../src/index.js";
 
 describe("remote desktop protocol", () => {
 	it("accepts the relay peer-ready event without peer-controlled fields", () => {
@@ -22,6 +27,13 @@ describe("remote desktop protocol", () => {
 		expect(() => decodeRemoteInputMessage({ type: "pointer.move", sequence: 1, x: 1.1, y: 0 })).toThrow(
 			RemoteDesktopProtocolError,
 		);
+	});
+
+	it("reads how large the phone shows the screen, and nothing else", () => {
+		expect(parseRemoteViewMessage('{"width":1440,"height":900}')).toEqual({ width: 1440, height: 900 });
+		expect(() => parseRemoteViewMessage('{"width":0,"height":900}')).toThrow(RemoteDesktopProtocolError);
+		expect(() => parseRemoteViewMessage('{"width":1.5,"height":900}')).toThrow(RemoteDesktopProtocolError);
+		expect(() => parseRemoteViewMessage('{"width":1440,"height":900,"x":1}')).toThrow("unsupported field: x");
 	});
 
 	it("rejects authority-expanding unknown input fields", () => {

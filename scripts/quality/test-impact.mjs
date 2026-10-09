@@ -63,6 +63,7 @@ const goalTests = {
 	],
 };
 const EXPLICIT_SOURCE_TESTS = new Map([
+	["apps/desktop/src/renderer/remote-desktop-host.ts", desktopTests("src/renderer/remote-desktop-host.test.ts")],
 	[
 		"packages/ai/src/providers/google-stream/request.ts",
 		{ workspaceKey: "ai", tests: ["test/google-native-adapters.test.ts"] },

@@ -28,11 +28,15 @@ import org.vetta.android.domain.remote.link.LinkSnapshot
 import org.vetta.android.domain.remote.link.LinkStatus
 import org.vetta.android.domain.remote.pairing.StoredDesktop
 import org.vetta.android.domain.work.MirrorState
+import org.vetta.android.domain.work.UnlinkReason
 import org.vetta.android.resources.Res
 import org.vetta.android.resources.latency
 import org.vetta.android.resources.link_connected
+import org.vetta.android.resources.link_connecting
 import org.vetta.android.resources.link_latency
 import org.vetta.android.resources.settings_link_phone
+import org.vetta.android.resources.unlinked_description
+import org.vetta.android.resources.unlinked_pill
 import org.vetta.android.resources.work_settings_load
 import org.vetta.android.resources.work_settings_load_value
 import org.vetta.android.resources.work_settings_unpair
@@ -112,6 +116,45 @@ class SettingsScreenTest {
         // The dialog's title and its confirm button read the same; the button comes last.
         composeRule.onAllNodesWithText(str(Res.string.work_settings_unpair)).onLast().performClick()
         assertEquals(1, unpaired)
+    }
+
+    @Test
+    fun afterUnpairingOffersAFreshScanAndDoesNotSayItIsConnecting() {
+        var pairing = 0
+        val unlinked =
+            paired.copy(
+                paired = false,
+                unlinked = UnlinkReason.UnpairedHere,
+                link = LinkSnapshot.Offline,
+            )
+        composeRule.setContent {
+            VettaTheme(ThemeMode.Light) {
+                SettingsScreen(unlinked, ThemeMode.Light, {}, {}, onUnpair = {}, onPair = { pairing += 1 }, onBack = {})
+            }
+        }
+        composeRule.onNodeWithText("MacBook Pro").assertIsDisplayed()
+        composeRule.onNodeWithText(str(Res.string.unlinked_pill)).assertIsDisplayed()
+        composeRule.onNodeWithText(str(Res.string.unlinked_description)).assertIsDisplayed()
+        composeRule.onNodeWithText(str(Res.string.link_connecting)).assertDoesNotExist()
+        composeRule.onNodeWithText(str(Res.string.latency)).assertDoesNotExist()
+        composeRule.onAllNodesWithTag("settings.unpair").assertCountEquals(0)
+        composeRule.onAllNodesWithTag("settings.rescan").assertCountEquals(0)
+        composeRule.onNodeWithTag("settings.scan").performClick()
+        assertEquals(1, pairing)
+    }
+
+    @Test
+    fun aPairedComputerThatIsStillConnectingSaysSo() {
+        val connecting = paired.copy(link = LinkSnapshot(LinkStatus.Connecting))
+        composeRule.setContent {
+            VettaTheme(ThemeMode.Light) {
+                SettingsScreen(connecting, ThemeMode.Light, {}, {}, onUnpair = {}, onPair = {}, onBack = {})
+            }
+        }
+        composeRule.onNodeWithText(str(Res.string.link_connecting)).assertIsDisplayed()
+        composeRule.onAllNodesWithTag("settings.scan").assertCountEquals(0)
+        composeRule.onNodeWithTag("settings.rescan").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag("settings.unpair").performScrollTo().assertIsDisplayed()
     }
 
     @Test

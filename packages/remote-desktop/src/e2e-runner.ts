@@ -3,7 +3,16 @@ import type { RemoteDesktopSignal, RemoteInputMessage } from "./types.js";
 
 const resultPrefix = "VETTA_E2E_RESULT:";
 
-void (async () => ({ ...(await run()), ...(await runOnDemand()) }))().then(
+void (async () => {
+	// Hardware implementation names are exposed only while capture permission is active.
+	// The harness supplies a fake camera, never a physical camera.
+	const permission = await navigator.mediaDevices.getUserMedia({ video: true });
+	try {
+		return { ...(await run()), ...(await runOnDemand()) };
+	} finally {
+		for (const track of permission.getTracks()) track.stop();
+	}
+})().then(
 	(result) => {
 		document.title = `${resultPrefix}${JSON.stringify({ ok: true, ...result })}`;
 	},
@@ -84,20 +93,22 @@ async function run(): Promise<Record<string, number | string | boolean>> {
 /** ADR-0140: the session opens without a screen; frames flow only between two `replaceScreen` calls. */
 async function runOnDemand(): Promise<Record<string, number | string | boolean>> {
 	const sessionId = `webrtc-e2e-demand-${crypto.randomUUID()}`;
-	const canvas = createAnimatedCanvas();
+	const canvas = createAnimatedCanvas(1920, 1200, 30);
+	const sendingPeer = new RTCPeerConnection();
+	const receivingPeer = new RTCPeerConnection();
 	let viewerStream: MediaStream | undefined;
 	let host: RemoteDesktopHost | undefined;
 	let viewer: RemoteDesktopViewer | undefined;
 	const hostQueue: RemoteDesktopSignal[] = [];
 	host = new RemoteDesktopHost(
-		{ sessionId },
+		{ sessionId, createPeerConnection: () => sendingPeer },
 		async (signal) => {
 			await viewer?.acceptSignal(signal);
 		},
 		() => undefined,
 	);
 	viewer = new RemoteDesktopViewer(
-		{ sessionId },
+		{ sessionId, createPeerConnection: () => receivingPeer },
 		async (signal) => {
 			if (host) await host.acceptSignal(signal);
 			else hostQueue.push(signal);
@@ -120,7 +131,7 @@ async function runOnDemand(): Promise<Record<string, number | string | boolean>>
 	await delay(300);
 	if (video.videoWidth > 0) throw new Error("video arrived before the screen was subscribed");
 
-	const firstTrack = canvas.captureStream(20).getVideoTracks()[0];
+	const firstTrack = canvas.captureStream(30).getVideoTracks()[0];
 	if (!firstTrack) throw new Error("canvas capture produced no track");
 	await host.replaceScreen(firstTrack);
 	await waitFor(() => video.videoWidth > 0 && video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA, 5_000);
@@ -133,12 +144,96 @@ async function runOnDemand(): Promise<Record<string, number | string | boolean>>
 	const paused = await motion(video);
 	if (paused >= 10_000) throw new Error(`frames kept arriving after unsubscribing (delta=${paused})`);
 
-	const secondTrack = canvas.captureStream(20).getVideoTracks()[0];
+	const secondTrack = canvas.captureStream(30).getVideoTracks()[0];
 	if (!secondTrack) throw new Error("canvas capture produced no track");
 	await host.replaceScreen(secondTrack);
 	await delay(300);
 	const resumed = await motion(video);
 	if (resumed < 10_000) throw new Error(`resubscribed screen is not moving (delta=${resumed})`);
+
+	// Inject only the external performance signal. Native setParameters, encoding,
+	// transport and decoding still run, so a parameter-only fake cannot hide a broken resize.
+	const nativeStats = sendingPeer.getStats.bind(sendingPeer);
+	const encoderName = async (): Promise<string | undefined> => {
+		let name: string | undefined;
+		(await nativeStats()).forEach((entry: Record<string, unknown>) => {
+			if (entry.type === "outbound-rtp" && entry.kind === "video" && typeof entry.encoderImplementation === "string")
+				name = entry.encoderImplementation;
+		});
+		return name;
+	};
+	const initialEncoder = await encoderName();
+	const startedInHardware = initialEncoder !== undefined && !/openh264|libvpx|libaom/i.test(initialEncoder);
+	const assertHardware = async (): Promise<void> => {
+		const current = await encoderName();
+		if (startedInHardware && current && /openh264|libvpx|libaom/i.test(current))
+			throw new Error(`resizing switched from ${initialEncoder} to ${current}`);
+	};
+	let testTime = 0;
+	let testFrames = 0;
+	let testEncodeTime = 0;
+	let pressure = true;
+	sendingPeer.getStats = async () => {
+		testFrames += pressure ? 4 : 30;
+		testEncodeTime += pressure ? 0.12 : 0.3;
+		return new Map<string, Record<string, unknown>>([
+			[
+				"screen",
+				{
+					id: "screen",
+					type: "outbound-rtp",
+					kind: "video",
+					timestamp: testTime,
+					framesEncoded: testFrames,
+					framesPerSecond: pressure ? 4 : 30,
+					totalEncodeTime: testEncodeTime,
+					mediaSourceId: "source",
+					qualityLimitationReason: pressure ? "bandwidth" : "none",
+				},
+			],
+			["source", { id: "source", framesPerSecond: 30 }],
+		]) as unknown as RTCStatsReport;
+	};
+	try {
+		let previousWidth = video.videoWidth;
+		for (let step = 0; step < 3; step++) {
+			for (; testTime <= step * 3000 + 2000; testTime += 1000) await host.sampleScreen();
+			await waitFor(
+				() => video.videoWidth > 0 && video.videoWidth < previousWidth,
+				5000,
+				() => `downscale ${step}: still ${video.videoWidth}x${video.videoHeight}, before ${previousWidth}`,
+			);
+			if (video.videoWidth % 2 !== 0 || video.videoHeight % 2 !== 0)
+				throw new Error("scaled H.264 picture has odd dimensions");
+			await assertHardware();
+			previousWidth = video.videoWidth;
+		}
+		pressure = false;
+		// Each successful recovery starts the next healthy streak with the following sample.
+		for (testTime = 9000; testTime <= 41_000; testTime += 1000) await host.sampleScreen();
+		await waitFor(
+			() => video.videoWidth === 1920,
+			5000,
+			() => `recovery: still ${video.videoWidth}x${video.videoHeight}`,
+		);
+		await assertHardware();
+	} finally {
+		sendingPeer.getStats = nativeStats;
+	}
+	const decoded = async (): Promise<number> => {
+		let frames = 0;
+		(await receivingPeer.getStats()).forEach((entry: Record<string, unknown>) => {
+			if (entry.type === "inbound-rtp" && entry.kind === "video" && typeof entry.framesDecoded === "number")
+				frames = entry.framesDecoded;
+		});
+		return frames;
+	};
+	const beforeFrames = await decoded();
+	const beforeTime = performance.now();
+	await delay(2000);
+	const receivedFps = (((await decoded()) - beforeFrames) * 1000) / (performance.now() - beforeTime);
+	if (receivedFps < 24)
+		throw new Error(`large moving screen did not recover to 30 fps budget (received=${receivedFps.toFixed(1)})`);
 
 	const codec = await sentCodec(host);
 	if (codec !== "video/H264")
@@ -150,7 +245,14 @@ async function runOnDemand(): Promise<Record<string, number | string | boolean>>
 
 	viewer.close();
 	host.close();
-	return { onDemandMoving: moving, onDemandPaused: paused, onDemandResumed: resumed, onDemandCodec: codec };
+	return {
+		onDemandMoving: moving,
+		onDemandPaused: paused,
+		onDemandResumed: resumed,
+		onDemandCodec: codec,
+		largeScreenReceivedFps: receivedFps,
+		hardwareResizeVerified: startedInHardware,
+	};
 }
 
 async function sentCodec(host: RemoteDesktopHost): Promise<string | undefined> {
@@ -173,23 +275,24 @@ async function motion(video: HTMLVideoElement): Promise<number> {
 	return absolutePixelDelta(first, samplePixels(video));
 }
 
-function createAnimatedCanvas(): HTMLCanvasElement {
+function createAnimatedCanvas(width = 320, height = 180, fps = 20): HTMLCanvasElement {
 	const canvas = document.createElement("canvas");
-	canvas.width = 320;
-	canvas.height = 180;
+	canvas.width = width;
+	canvas.height = height;
 	document.body.append(canvas);
 	const context = canvas.getContext("2d", { willReadFrequently: true });
 	if (!context) throw new Error("2D canvas context is unavailable");
 	let frame = 0;
 	const draw = (): void => {
-		context.fillStyle = frame % 2 === 0 ? "#e53935" : "#43a047";
+		context.fillStyle = "#304050";
 		context.fillRect(0, 0, canvas.width, canvas.height);
 		context.fillStyle = "#ffffff";
-		context.fillRect((frame * 17) % 260, 45, 60, 60);
+		context.fillRect((frame * 17) % (width - 60), height / 4, width / 5, height / 2);
 		frame += 1;
 	};
 	draw();
-	setInterval(draw, 50);
+	const timer = setInterval(draw, 1000 / fps);
+	window.addEventListener("beforeunload", () => clearInterval(timer), { once: true });
 	return canvas;
 }
 
@@ -209,10 +312,10 @@ function absolutePixelDelta(left: Uint8ClampedArray, right: Uint8ClampedArray): 
 	return total;
 }
 
-async function waitFor(predicate: () => boolean, timeoutMs: number): Promise<void> {
+async function waitFor(predicate: () => boolean, timeoutMs: number, failure?: () => string): Promise<void> {
 	const deadline = performance.now() + timeoutMs;
 	while (!predicate()) {
-		if (performance.now() >= deadline) throw new Error("WebRTC E2E condition timed out");
+		if (performance.now() >= deadline) throw new Error(failure?.() ?? "WebRTC E2E condition timed out");
 		await delay(20);
 	}
 }

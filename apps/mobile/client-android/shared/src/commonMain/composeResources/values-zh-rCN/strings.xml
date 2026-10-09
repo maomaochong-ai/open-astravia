@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="align_pairing_qr">将二维码置于取景框内</string>
     <string name="app_name">Vetta</string>
     <string name="appearance">外观</string>
     <string name="back">返回</string>
@@ -111,7 +110,6 @@
     <string name="chat_waiting_model">等待模型响应</string>
     <string name="chat_working">正在处理…</string>
     <string name="close">关闭</string>
-    <string name="close_scanner">关闭扫码</string>
     <string name="code">代码</string>
     <string name="common_done">完成</string>
     <string name="confirm">确定</string>
@@ -217,8 +215,8 @@
     <string name="pair_manual_hint">输入电脑端显示的 IP 和端口，例如 192.168.1.20:43117</string>
     <string name="pair_manual_invalid">请输入形如 192.168.1.20:43117 的地址</string>
     <string name="pair_manual_placeholder">IP:端口</string>
+    <string name="pair_grant_camera">允许使用相机</string>
     <string name="pair_manual_title">手动连接</string>
-    <string name="pair_scan">扫描二维码</string>
     <string name="pair_scan_hint">扫描电脑上的二维码</string>
     <string name="pair_title">连接电脑</string>
     <string name="pair_troubleshoot">扫码无法识别？查看排查指引</string>
@@ -234,6 +232,8 @@
     <string name="remote_frames_per_second">%1$d fps</string>
     <string name="remote_picture_delay">画面约 %1$d ms</string>
     <string name="remote_round_trip">延迟 %1$d ms</string>
+    <string name="remote_route_direct">P2P 直连（网络待确认）</string>
+    <string name="remote_route_vpn">VPN 直连</string>
     <string name="remote_route_internet">公网直连</string>
     <string name="remote_route_lan">局域网直连</string>
     <string name="remote_route_relayed">经中转</string>
