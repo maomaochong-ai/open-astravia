@@ -139,7 +139,6 @@
     <string name="invalid_pairing_invite">配对码无效</string>
     <string name="invalid_pairing_invite_hint">请在 Desktop 重新生成配对码后再试</string>
     <string name="just_now">刚刚</string>
-    <string name="latency">延迟</string>
     <string name="link_connected">已连接</string>
     <string name="link_connecting">正在连接…</string>
     <string name="link_latency">%1$d ms</string>
@@ -303,11 +302,6 @@
     <string name="work_kind_project">项目</string>
     <string name="work_settings_haptics">任务做完震动提醒</string>
     <string name="work_settings_live_thinking">实时看到电脑思考</string>
-    <string name="work_settings_load">电脑负荷</string>
-    <string name="work_settings_load_idle">空闲</string>
-    <plurals name="work_settings_load_value">
-        <item quantity="other">%1$d 个任务处理中</item>
-    </plurals>
     <string name="work_settings_online">已安全连接</string>
     <string name="work_settings_rescan">重新扫码</string>
     <string name="work_settings_scan">扫码连接电脑</string>
