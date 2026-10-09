@@ -41,6 +41,11 @@ scripts/quality/
   test-impact.mjs              按任务文件选择直接测试与 Vitest 相关测试
   lockfile-impact.mjs          按 workspace 依赖闭包比较 bun.lock
   test-changed.mjs             按 git 变更和依赖图选包
+  ci-gate.mjs                   PR 门禁必需检查名单与检查结果判定
+  github-rest.mjs               GitHub REST 客户端（幂等评论、标签同步）
+  pr-quality.mjs                贡献者 PR 的约定检查、标签与评论同步
+  pr-auto-merge.mjs             受信任作者且门禁全绿的 PR 自动合并
+  promote-dev-to-main.mjs       dev 验证通过后推进 main
   quality-gates.test.mjs       质量脚本定向测试
   plugin-manifests.test.mjs    仓库插件清单 Schema 合同测试
 knip.config.ts                 Knip（可选）
@@ -179,6 +184,8 @@ workspace 包声明解析。因此，上游源码修改但 `dist/*.d.ts` 尚未�
 非 Bun workspace 由独立的 path-filtered workflow 覆盖：`.github/workflows/im-gateway.yml` 对 Go Gateway 执行 tidy、vet、build、test、接口纪律和 golangci-lint；`.github/workflows/kotlin.yml` 对 `apps/mobile/client-android` 执行 Android host tests 和 debug APK 构建；`.github/workflows/mobile-apple.yml` 对 `apps/mobile/client-apple` 执行 AstraviaKit 单元测试、与桌面端真实 LAN 服务器的 interop 测试和 iOS 模拟器构建，协议包 `packages/remote-control` 变化时同样触发。这些 path-filtered workflow 只在分支 push 或 PR 中对应目录或 workflow 自身变化时运行，不响应 tag push。
 
 Desktop 仓库布局合同由通用 `test:quality` 检查一次；独立的 `.github/workflows/desktop-packaged.yml` 运行打包 helper 测试，并在变更涉及 Desktop 主进程、preload、打包脚本、原生依赖、远程控制或锁文件时启动 Windows、macOS、Linux runners，构建 unpacked packaged 应用并运行 Electron 启动与 updater E2E。无关变更不会构建 Desktop。
+
+贡献者 PR 另由三个 workflow 处理，依据是仓库约定而不是 AI 结论：`.github/workflows/pr-quality.yml` 以只读权限检出 PR **base** 并作为必需检查 `PR conventions` 运行 `node scripts/quality/pr-quality.mjs --check`；`.github/workflows/pr-automation.yml` 同步标签/置顶评论并在检查全绿时合并；`.github/workflows/promote-dev-to-main.yml` 把已验证的 `dev` 推进到 `main`。三者只用 Node 内置模块与 GitHub REST API，不需要 Bun，也不检出 PR 代码。约定、标签、开关、PAT 与排障见 [贡献者 PR 的自动审查与合并](./pr-automation.md)。
 
 Desktop 打包合同可在本地快速运行：
 

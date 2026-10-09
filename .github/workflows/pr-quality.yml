@@ -1,0 +1,42 @@
+name: pr-quality
+
+# Runs against the pull request through the REST API only. The checkout is the
+# base revision (pull_request_target), never the contributor's head, so nothing
+# from a fork is executed with a repository token.
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - edited
+      - reopened
+      - synchronize
+      - ready_for_review
+      - converted_to_draft
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  conventions:
+    name: PR conventions
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    permissions:
+      contents: read
+      pull-requests: read
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+
+      - name: Check pull request conventions
+        env:
+          GITHUB_TOKEN: ${{ secrets.ASTRAVIA_AUTOMATION_TOKEN || secrets.GITHUB_TOKEN }}
+        run: node scripts/quality/pr-quality.mjs --check
