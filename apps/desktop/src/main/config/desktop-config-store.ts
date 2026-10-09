@@ -79,8 +79,12 @@ export interface DesktopConfig {
 }
 
 export interface RemoteControlDeviceRecord {
-	/** 配对 id，也是中继房间名与局域网路径段。 */
+	/** 稳定设备 id，重新配对后保留。 */
 	id: string;
+	/** 当前配对 id；旧配置缺省时沿用 id。 */
+	pairingId?: string;
+	/** 当前凭据建立时间，与设备首次加入时间区分。 */
+	pairedAt?: number;
 	name: string;
 	/** 用户在电脑上改过名字；此后不再用手机报上的名称覆盖。 */
 	renamed?: boolean;
@@ -93,10 +97,18 @@ export interface RemoteControlDeviceRecord {
 	screenOnDemand?: boolean;
 	/** 手机长期凭据的 SHA-256 hex；明文只在首次绑定前留在凭据库里。 */
 	mobileSecretHash: string;
-	/** 首次成功握手后钉住的手机身份公钥（base64url）；未钉住表示邀请尚未被领取。 */
+	/** 认证后钉住的手机身份公钥；旧配置缺省时是待清理的未领取邀请。 */
 	mobileIdentityKey?: string;
 	createdAt: number;
 	lastSeenAt?: number;
+}
+
+export interface RemoteControlPendingPairing {
+	pairingId: string;
+	mobileSecretHash: string;
+	expiresAt: number;
+	/** 手动配对经用户批准后固定的身份。 */
+	mobileIdentityKey?: string;
 }
 
 export interface RemoteControlConfig {
@@ -105,6 +117,9 @@ export interface RemoteControlConfig {
 	cloudEnabled: boolean;
 	lanPort?: number;
 	devices: RemoteControlDeviceRecord[];
+	pendingPairings?: RemoteControlPendingPairing[];
+	/** 已撤销但尚未完成凭据库清理的配对，供崩溃后重试。 */
+	retiredPairingIds?: string[];
 }
 
 export type AppshotGesture = "both-shift" | "both-mod" | "both-alt";
@@ -375,6 +390,13 @@ export function normalizeRemoteControl(value: unknown): DesktopConfig["remoteCon
 				return [
 					{
 						id: record.id,
+						pairingId: typeof record.pairingId === "string" && record.pairingId ? record.pairingId : record.id,
+						pairedAt:
+							typeof record.pairedAt === "number"
+								? record.pairedAt
+								: typeof record.createdAt === "number"
+									? record.createdAt
+									: 0,
 						name: typeof record.name === "string" && record.name ? record.name : record.id,
 						...(record.renamed === true ? { renamed: true } : {}),
 						...(record.desktopControl === false ? { desktopControl: false } : {}),
@@ -384,6 +406,31 @@ export function normalizeRemoteControl(value: unknown): DesktopConfig["remoteCon
 							typeof record.mobileIdentityKey === "string" ? record.mobileIdentityKey : undefined,
 						createdAt: typeof record.createdAt === "number" ? record.createdAt : 0,
 						lastSeenAt: typeof record.lastSeenAt === "number" ? record.lastSeenAt : undefined,
+					},
+				];
+			})
+		: [];
+	const pendingPairings = Array.isArray(input.pendingPairings)
+		? input.pendingPairings.flatMap((entry): RemoteControlPendingPairing[] => {
+				if (typeof entry !== "object" || entry === null) return [];
+				const pending = entry as Record<string, unknown>;
+				if (
+					typeof pending.pairingId !== "string" ||
+					!pending.pairingId ||
+					typeof pending.mobileSecretHash !== "string" ||
+					typeof pending.expiresAt !== "number" ||
+					!Number.isFinite(pending.expiresAt) ||
+					(pending.mobileIdentityKey !== undefined && typeof pending.mobileIdentityKey !== "string")
+				)
+					return [];
+				return [
+					{
+						pairingId: pending.pairingId,
+						mobileSecretHash: pending.mobileSecretHash,
+						expiresAt: pending.expiresAt,
+						...(typeof pending.mobileIdentityKey === "string"
+							? { mobileIdentityKey: pending.mobileIdentityKey }
+							: {}),
 					},
 				];
 			})
@@ -401,6 +448,14 @@ export function normalizeRemoteControl(value: unknown): DesktopConfig["remoteCon
 		cloudEnabled: input.cloudEnabled !== false,
 		lanPort,
 		devices,
+		...(pendingPairings.length ? { pendingPairings } : {}),
+		...(Array.isArray(input.retiredPairingIds)
+			? {
+					retiredPairingIds: input.retiredPairingIds.filter(
+						(id): id is string => typeof id === "string" && id.length > 0,
+					),
+				}
+			: {}),
 	};
 }
 

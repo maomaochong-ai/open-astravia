@@ -21,6 +21,11 @@ rejects pending requests and discards its session keys while keeping the relay t
 Only a new validated handshake restores `online`; a presence notice alone cannot do so.
 Desktop aggregates live channels per device and retains its five-second offline grace period.
 
+The local `peer-authenticated` connection event is emitted once per handshake after successfully
+opening the first sealed session frame. A plaintext handshake alone does not prove possession of
+the claimed identity. Hosts can then call `adoptEventJournal` to join an authorized device's journal;
+unclaimed invitation connections must use isolated journals. This does not change the v2 wire format.
+
 ## Does not own
 
 - Android or Electron UI

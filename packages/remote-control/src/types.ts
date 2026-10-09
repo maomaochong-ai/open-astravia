@@ -279,6 +279,8 @@ export interface RemoteConnectionSnapshot extends RemoteDiagnostics {
 }
 
 export type RemoteConnectionEvent =
+	/** Emitted once per handshake after successfully decrypting the peer's first session frame. */
+	| { readonly type: "peer-authenticated" }
 	| { readonly type: "state"; readonly state: RemoteConnectionState }
 	| { readonly type: "remote-request"; readonly request: RemoteRequest }
 	| { readonly type: "remote-event"; readonly event: RemoteEvent }

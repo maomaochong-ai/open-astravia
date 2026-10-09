@@ -1,4 +1,9 @@
-import type { RemoteInviteEnvelope, RemoteTransportHandlers } from "@vetta/remote-control";
+import type {
+	RemoteDevicePaired,
+	RemoteInviteEnvelope,
+	RemoteSealed,
+	RemoteTransportHandlers,
+} from "@vetta/remote-control";
 import {
 	FakeRelay,
 	FakeTransport,
@@ -10,6 +15,7 @@ import {
 	parsePairingUri,
 	RemoteConnection,
 	type RemoteHello,
+	readDevicePaired,
 	toBase64Url,
 } from "@vetta/remote-control";
 import { describe, expect, it, vi } from "vitest";
@@ -37,6 +43,7 @@ function harness(
 	} as unknown as DesktopConfig;
 	const vault = new Map<string, string>();
 	let writesFail = false;
+	let removalsFail = false;
 	let writeCount = 0;
 	const store = new RemoteDeviceStore({
 		readConfig: async () => structuredClone(config),
@@ -51,7 +58,10 @@ function harness(
 			isAvailable: () => true,
 			get: (ref) => vault.get(key(ref)),
 			put: (ref, value) => void vault.set(key(ref), value),
-			remove: (ref) => void vault.delete(key(ref)),
+			remove: (ref) => {
+				if (removalsFail) throw new Error("credential store temporarily unavailable");
+				vault.delete(key(ref));
+			},
 		},
 		defaultRelayBaseUrl: "wss://relay.example",
 	});
@@ -188,10 +198,64 @@ function harness(
 		readConfig: () => config,
 		writeCount: () => writeCount,
 		/** Makes saving the desktop config fail, as a locked file on Windows does. */
+		failSecretRemoval: (fail: boolean) => {
+			removalsFail = fail;
+		},
 		failWrites: (fail: boolean) => {
 			writesFail = fail;
 		},
 	};
+}
+
+async function connectPhone(
+	h: ReturnType<typeof harness>,
+	pairingId: string,
+	identity = generateIdentityKeyPair(),
+	name = "iPhone",
+	holdEncrypted = false,
+) {
+	const options = h.lanServers[0]!.options;
+	const credential = options.lookupDevice(pairingId);
+	if (!credential) throw new Error("unknown pairing");
+	const phoneTransport = new FakeTransport();
+	const desktopTransport = new FakeTransport();
+	phoneTransport.connectPeer(desktopTransport);
+	const held: RemoteSealed[] = [];
+	const send = phoneTransport.send.bind(phoneTransport);
+	if (holdEncrypted)
+		phoneTransport.send = async (frame) => {
+			if (frame.type === "sealed") held.push(frame);
+			else await send(frame);
+		};
+	const release = async () => {
+		phoneTransport.send = send;
+		for (const frame of held) await send(frame);
+	};
+	const connection = new RemoteConnection(desktopTransport, {
+		role: "desktop",
+		handshake: "accept",
+		deviceId: "desktop",
+		deviceName: "MacBook",
+		identity: options.identity,
+		capabilities: { chat: true, sessionRead: true },
+		journal: options.journalFor(pairingId),
+		onHello: (frame) => options.onDeviceHello(credential, frame),
+	});
+	const phone = new RemoteConnection(phoneTransport, {
+		role: "mobile",
+		deviceId: "phone",
+		deviceName: name,
+		identity,
+		capabilities: { chat: true, sessionRead: true },
+		expectedPeerIdentityKey: options.identity.publicKey,
+	});
+	options.onAccepted(
+		{ type: "device", id: pairingId },
+		{ connection, peerIdentityKey: () => connection.getSnapshot().peerIdentityKey },
+	);
+	await connection.connect();
+	await phone.connect();
+	return { phone, connection, release };
 }
 
 function hello(identityKey: string, deviceName = "iPhone"): RemoteHello {
@@ -292,45 +356,39 @@ describe("DesktopRemoteAccessManager", () => {
 		expect(manager.getState()).toMatchObject({ devices: [], approvals: [], lanEndpoints: [], cloudEnabled: true });
 	});
 
-	it("creates an invite that opens the LAN server and parks a relay link, then claims the first phone", async () => {
-		const { manager, lanServers, relayLinks, readConfig, store, writeCount } = harness();
+	it("creates an invitation separate from devices and claims only an authenticated phone", async () => {
+		const h = harness();
+		const { manager, lanServers, relayLinks, readConfig, store } = h;
 		const state = await manager.createInvite();
-		expect(state.invite).toBeDefined();
-		const invite = parsePairingUri(state.invite?.inviteUri ?? "");
+		const invite = parsePairingUri(state.invite!.inviteUri);
+		expect(state.devices).toEqual([]);
 		expect(invite.lanEndpoints).toEqual(["192.168.1.20:43117"]);
-		expect(invite.relayBaseUrl).toBe("wss://relay.example");
-		expect(invite.desktopName).toBe("MacBook");
-		expect(lanServers).toHaveLength(1);
-		expect(relayLinks).toHaveLength(1);
-		expect(relayLinks[0]?.options.pairingId).toBe(invite.pairingId);
-		expect(relayLinks[0]?.options.mobileSecretHash).toBe(readConfig().remoteControl?.devices[0]?.mobileSecretHash);
+		expect(relayLinks[0]?.options.mobileSecretHash).toBe(
+			readConfig().remoteControl?.pendingPairings?.[0]?.mobileSecretHash,
+		);
+		const identity = generateIdentityKeyPair();
+		const phoneKey = toBase64Url(identity.publicKey);
+		const credential = lanServers[0]!.options.lookupDevice(invite.pairingId)!;
+		expect(lanServers[0]!.options.onDeviceHello(credential, hello(phoneKey))).toEqual({ kind: "approve" });
+		expect(manager.getState().devices).toEqual([]);
 		expect(store.mobileSecret(invite.pairingId)).toBe(invite.mobileSecret);
-		expect(state.devices[0]).toMatchObject({ claimed: false });
-
-		const phoneKey = toBase64Url(generateIdentityKeyPair().publicKey);
-		const writesBeforeClaim = writeCount();
-		const decision = lanServers[0]?.options.onDeviceHello(
-			{ id: invite.pairingId, mobileSecretHash: readConfig().remoteControl?.devices[0]?.mobileSecretHash ?? "" },
-			hello(phoneKey),
-		);
-		lanServers[0]?.options.onDeviceHello(
-			{ id: invite.pairingId, mobileSecretHash: readConfig().remoteControl?.devices[0]?.mobileSecretHash ?? "" },
-			hello(phoneKey),
-		);
-		expect(decision).toEqual({ kind: "approve" });
-		await new Promise((resolve) => setTimeout(resolve, 0));
-		expect(writeCount()).toBe(writesBeforeClaim + 1);
-		const device = readConfig().remoteControl?.devices[0];
-		expect(device).toMatchObject({ mobileIdentityKey: phoneKey, name: "iPhone" });
+		await connectPhone(h, invite.pairingId, identity);
+		await vi.waitFor(() => expect(manager.getState().devices).toHaveLength(1));
+		expect(readConfig().remoteControl?.devices[0]).toMatchObject({
+			pairingId: invite.pairingId,
+			mobileIdentityKey: phoneKey,
+			name: "iPhone",
+		});
 		expect(store.mobileSecret(invite.pairingId)).toBeUndefined();
 		expect(manager.getState().invite).toBeUndefined();
-		// The relay link restarts with the pinned key so nobody else can take the room.
 		expect(relayLinks[0]?.stopped).toBe(true);
 		expect(relayLinks[1]?.options.mobileIdentityKey).toBe(phoneKey);
+		await manager.shutdown();
 	});
 
 	it("offers the invite as a connection code and password that open it from the relay", async () => {
-		const { manager, lanServers, readConfig, mailbox } = harness();
+		const h = harness();
+		const { manager, mailbox } = h;
 		const created = await manager.createInvite();
 		await vi.waitFor(() => expect(manager.getState().invite?.code?.status).toBe("ready"));
 		const view = manager.getState().invite?.code;
@@ -352,10 +410,7 @@ describe("DesktopRemoteAccessManager", () => {
 
 		// Claimed by the first phone: the mailbox is emptied.
 		const invite = parsePairingUri(created.invite?.inviteUri ?? "");
-		lanServers[0]?.options.onDeviceHello(
-			{ id: invite.pairingId, mobileSecretHash: readConfig().remoteControl?.devices[0]?.mobileSecretHash ?? "" },
-			hello(toBase64Url(generateIdentityKeyPair().publicKey)),
-		);
+		await connectPhone(h, invite.pairingId);
 		await vi.waitFor(() => expect(mailbox.withdrawn).toEqual([published?.boxUrl]));
 		await manager.shutdown();
 	});
@@ -412,36 +467,57 @@ describe("DesktopRemoteAccessManager", () => {
 		await manager.shutdown();
 	});
 
-	it("a phone that scans again replaces its earlier pairing instead of adding another", async () => {
-		const phoneKey = toBase64Url(generateIdentityKeyPair().publicKey);
+	it("a phone that scans again keeps its device identity and settings while retiring its old pairing", async () => {
+		const identity = generateIdentityKeyPair();
+		const phoneKey = toBase64Url(identity.publicKey);
 		const oldId = "o".repeat(24);
-		const { manager, lanServers, readConfig, store, vault } = harness({
+		const h = harness({
 			cloudEnabled: true,
-			devices: [{ id: oldId, name: "Pixel", mobileSecretHash: "h", mobileIdentityKey: phoneKey, createdAt: 1 }],
+			devices: [
+				{
+					id: oldId,
+					name: "Work phone",
+					renamed: true,
+					desktopControl: false,
+					mobileSecretHash: "h",
+					mobileIdentityKey: phoneKey,
+					createdAt: 1,
+				},
+			],
 		});
+		const { manager, store, readConfig, vault, lanServers } = h;
 		store.putRelaySecret(oldId, "old-relay-secret");
 		await manager.restore();
+		const old = await connectPhone(h, oldId, identity);
+		await vi.waitFor(() => expect(manager.getState().devices[0]?.online).toBe(true));
 		const state = await manager.createInvite();
-		const invite = parsePairingUri(state.invite?.inviteUri ?? "");
-		const fresh = readConfig().remoteControl?.devices.find((device) => device.id === invite.pairingId);
-		lanServers[0]?.options.onDeviceHello(
-			{ id: invite.pairingId, mobileSecretHash: fresh?.mobileSecretHash ?? "" },
-			hello(phoneKey, "Pixel"),
-		);
-		await vi.waitFor(() =>
-			expect(readConfig().remoteControl?.devices.map((device) => device.id)).toEqual([invite.pairingId]),
-		);
+		const invite = parsePairingUri(state.invite!.inviteUri);
+		expect(manager.getState().devices).toHaveLength(1);
+		const fresh = await connectPhone(h, invite.pairingId, identity);
+		await vi.waitFor(() => expect(readConfig().remoteControl?.devices[0]?.pairingId).toBe(invite.pairingId));
+		expect(manager.getState().devices).toEqual([
+			expect.objectContaining({ id: oldId, name: "Work phone", desktopControl: false, createdAt: 1 }),
+		]);
+		await vi.waitFor(() => expect(old.connection.getSnapshot().state).toBe("closed"));
+		expect(lanServers[0]!.options.lookupDevice(oldId)).toBeUndefined();
 		expect([...vault.keys()].filter((name) => name.includes(oldId))).toEqual([]);
-
-		// Another phone keeps its own pairing.
+		await expect(fresh.phone.request("screen.subscribe", { active: true })).rejects.toThrow(/does not share/);
+		// Public device actions still address the stable device after the pairing changed.
+		await manager.renameDevice(oldId, "Renamed");
+		await manager.setDesktopControl(oldId, true);
+		expect(readConfig().remoteControl?.devices[0]).toMatchObject({
+			id: oldId,
+			pairingId: invite.pairingId,
+			name: "Renamed",
+			desktopControl: true,
+		});
 		const other = await manager.createInvite();
-		const otherInvite = parsePairingUri(other.invite?.inviteUri ?? "");
-		const otherRecord = readConfig().remoteControl?.devices.find((device) => device.id === otherInvite.pairingId);
-		lanServers[0]?.options.onDeviceHello(
-			{ id: otherInvite.pairingId, mobileSecretHash: otherRecord?.mobileSecretHash ?? "" },
-			hello(toBase64Url(generateIdentityKeyPair().publicKey), "iPhone"),
-		);
-		await vi.waitFor(() => expect(readConfig().remoteControl?.devices).toHaveLength(2));
+		await connectPhone(h, other.invite!.pairingId, generateIdentityKeyPair(), "Renamed");
+		await vi.waitFor(() => expect(manager.getState().devices).toHaveLength(2));
+		await manager.revokeDevice(oldId);
+		expect(lanServers[0]!.options.lookupDevice(invite.pairingId)).toBeUndefined();
+		expect(manager.getState().devices).toHaveLength(1);
+		await manager.shutdown();
 	});
 
 	it("tells the settings page what changed instead of being asked", async () => {
@@ -533,8 +609,8 @@ describe("DesktopRemoteAccessManager", () => {
 	it("revoking the last phone tears every transport down again", async () => {
 		const { manager, lanServers, relayLinks, vault, readConfig } = harness();
 		const state = await manager.createInvite();
-		const id = state.devices[0]?.id ?? "";
-		await manager.revokeDevice(id);
+		const id = state.invite!.pairingId;
+		await manager.cancelInvite();
 		expect(readConfig().remoteControl?.devices).toEqual([]);
 		expect(lanServers[0]?.stopped).toBe(true);
 		expect(relayLinks.every((link) => link.stopped)).toBe(true);
@@ -1049,5 +1125,297 @@ describe("DesktopRemoteAccessManager", () => {
 			});
 			await manager.shutdown();
 		});
+	});
+});
+
+describe("device identity survives pairing replacement", () => {
+	function pairedPhone() {
+		const identity = generateIdentityKeyPair();
+		const h = harness({
+			cloudEnabled: false,
+			devices: [
+				{
+					id: "stable-phone",
+					pairingId: "old-pairing",
+					name: "My phone",
+					renamed: true,
+					desktopControl: false,
+					mobileSecretHash: "old-hash",
+					mobileIdentityKey: toBase64Url(identity.publicKey),
+					createdAt: 1,
+				},
+			],
+		});
+		h.store.putRelaySecret("old-pairing", "old-relay");
+		return { h, identity };
+	}
+
+	it("re-pairing the same identity keeps the device and permissions across restart", async () => {
+		const { h, identity } = pairedPhone();
+		await h.manager.restore();
+		const old = await connectPhone(h, "old-pairing", identity);
+		const revoked: string[] = [];
+		old.phone.onEvent((event) => {
+			if (event.type === "remote-event") revoked.push(event.event.name);
+		});
+		const state = await h.manager.createInvite();
+		expect(h.lanServers[0]!.options.lookupDevice("old-pairing")).toBeDefined();
+		const freshIdentity = identity;
+		const fresh = await connectPhone(h, state.invite!.pairingId, freshIdentity);
+		await vi.waitFor(() => expect(h.readConfig().remoteControl?.devices[0]?.pairingId).toBe(state.invite!.pairingId));
+		expect(h.manager.getState().devices).toEqual([
+			expect.objectContaining({ id: "stable-phone", name: "My phone", desktopControl: false, createdAt: 1 }),
+		]);
+		await vi.waitFor(() => expect(old.connection.getSnapshot().state).toBe("closed"));
+		expect(revoked).not.toContain("device.revoked");
+		expect(h.store.relaySecret("old-pairing")).toBeUndefined();
+		await expect(
+			h.store.patchDevice("stable-phone", { name: "Stale name", screenOnDemand: true }, "old-pairing"),
+		).resolves.toBeUndefined();
+		expect(h.manager.getState().devices[0]?.name).toBe("My phone");
+		await expect(fresh.phone.request("screen.subscribe", { active: true })).rejects.toThrow(/does not share/);
+		await h.manager.shutdown();
+		const restarted = harness(h.readConfig().remoteControl);
+		for (const [key, value] of h.vault) restarted.vault.set(key, value);
+		await restarted.manager.restore();
+		expect(restarted.manager.getState().devices[0]?.id).toBe("stable-phone");
+		expect(restarted.lanServers[0]!.options.lookupDevice("old-pairing")).toBeUndefined();
+		expect(restarted.lanServers[0]!.options.lookupDevice(state.invite!.pairingId)?.mobileIdentityKey).toBe(
+			toBase64Url(freshIdentity.publicKey),
+		);
+		await restarted.manager.shutdown();
+	});
+
+	it("cancellation, expiration and failed saving leave the original pairing usable", async () => {
+		const { h, identity } = pairedPhone();
+		await h.manager.restore();
+		const old = await connectPhone(h, "old-pairing", identity);
+		await vi.waitFor(() => expect(h.manager.getState().devices[0]?.online).toBe(true));
+		const pending = await h.manager.createInvite();
+		const unproven = await connectPhone(h, pending.invite!.pairingId, generateIdentityKeyPair(), "Pending", true);
+		await h.manager.cancelInvite();
+		expect(unproven.connection.getSnapshot().state).toBe("closed");
+		expect(h.lanServers[0]!.options.lookupDevice(pending.invite!.pairingId)).toBeUndefined();
+		expect(h.store.mobileSecret(pending.invite!.pairingId)).toBeUndefined();
+		const failed = await h.manager.createInvite();
+		h.failWrites(true);
+		const newcomer = await connectPhone(h, failed.invite!.pairingId, identity);
+		await vi.waitFor(() => expect(newcomer.connection.getSnapshot().state).toBe("closed"));
+		h.failWrites(false);
+		expect(h.readConfig().remoteControl?.devices[0]?.pairingId).toBe("old-pairing");
+		expect(old.connection.getSnapshot().state).toBe("online");
+		expect(h.store.relaySecret("old-pairing")).toBe("old-relay");
+		await expect(old.phone.request("screen.subscribe", { active: true })).rejects.toThrow(/does not share/);
+		await h.manager.cancelInvite();
+		vi.useFakeTimers();
+		try {
+			const expiring = await h.manager.createInvite();
+			await vi.advanceTimersByTimeAsync(60_001);
+			expect(h.manager.getState().invite).toBeUndefined();
+			expect(h.lanServers[0]!.options.lookupDevice(expiring.invite!.pairingId)).toBeUndefined();
+			expect(h.readConfig().remoteControl?.devices[0]?.pairingId).toBe("old-pairing");
+		} finally {
+			vi.useRealTimers();
+			await h.manager.shutdown();
+		}
+	});
+
+	it("a different identity with the same phone name stays separate and does not inherit permissions", async () => {
+		const { h, identity } = pairedPhone();
+		await h.manager.restore();
+		const old = await connectPhone(h, "old-pairing", identity);
+		const invite = await h.manager.createInvite();
+		const newIdentity = generateIdentityKeyPair();
+		await connectPhone(h, invite.invite!.pairingId, newIdentity, "My phone");
+		await vi.waitFor(() => expect(h.manager.getState().devices).toHaveLength(2));
+		expect(h.manager.getState().devices.find((device) => device.id === "stable-phone")).toMatchObject({
+			desktopControl: false,
+		});
+		expect(h.manager.getState().devices.find((device) => device.id === invite.invite!.pairingId)).toMatchObject({
+			name: "My phone",
+			desktopControl: true,
+		});
+		expect(old.connection.getSnapshot().state).toBe("online");
+		await h.manager.revokeDevice("stable-phone");
+		expect(h.manager.getState().devices.map((device) => device.id)).toEqual([invite.invite!.pairingId]);
+		await h.manager.shutdown();
+	});
+
+	it("restores one device per verified identity, keeps newest credentials and discards abandoned invitations", async () => {
+		const identityKey = toBase64Url(generateIdentityKeyPair().publicKey);
+		const otherKey = toBase64Url(generateIdentityKeyPair().publicKey);
+		const h = harness({
+			cloudEnabled: false,
+			devices: [
+				{
+					id: "oldest",
+					name: "Custom name",
+					renamed: true,
+					desktopControl: false,
+					mobileSecretHash: "old",
+					mobileIdentityKey: identityKey,
+					createdAt: 1,
+					lastSeenAt: 9,
+				},
+				{
+					id: "newest",
+					name: "Same name",
+					mobileSecretHash: "new",
+					mobileIdentityKey: identityKey,
+					createdAt: 2,
+					lastSeenAt: 3,
+				},
+				{ id: "other", name: "Same name", mobileSecretHash: "other", mobileIdentityKey: otherKey, createdAt: 3 },
+				{ id: "abandoned-legacy", name: "", mobileSecretHash: "pending", createdAt: 4 },
+			],
+			retiredPairingIds: ["crash-before-cleanup"],
+			pendingPairings: [
+				{
+					pairingId: "abandoned-new",
+					mobileSecretHash: "pending",
+					expiresAt: Date.now() + 60_000,
+				},
+			],
+		});
+		for (const id of ["oldest", "newest", "other", "abandoned-legacy", "abandoned-new", "crash-before-cleanup"])
+			h.store.putRelaySecret(id, "relay");
+		await h.manager.restore();
+		expect(h.manager.getState().devices).toEqual([
+			expect.objectContaining({ id: "oldest", name: "Custom name", desktopControl: false, createdAt: 1 }),
+			expect.objectContaining({ id: "other" }),
+		]);
+		expect(h.readConfig().remoteControl?.devices[0]?.pairingId).toBe("newest");
+		for (const id of ["oldest", "abandoned-legacy", "abandoned-new", "crash-before-cleanup"]) {
+			expect(h.store.relaySecret(id)).toBeUndefined();
+			expect(h.lanServers[0]!.options.lookupDevice(id)).toBeUndefined();
+		}
+		expect(h.store.relaySecret("newest")).toBe("relay");
+		await h.manager.shutdown();
+	});
+
+	it("manual pairing keeps the old device until the phone receives and uses its new credential", async () => {
+		const { h, identity } = pairedPhone();
+		await h.manager.restore();
+		const options = h.lanServers[0]!.options;
+		const phoneTransport = new FakeTransport();
+		const desktopTransport = new FakeTransport();
+		phoneTransport.connectPeer(desktopTransport);
+		const connection: RemoteConnection = new RemoteConnection(desktopTransport, {
+			role: "desktop",
+			handshake: "accept",
+			deviceId: "desktop",
+			deviceName: "MacBook",
+			identity: options.identity,
+			capabilities: { chat: true, sessionRead: true },
+			onHello: (hello) => ({
+				kind: "pending",
+				approval: options.onManualHello(hello, connection.getSnapshot().verificationCode!, "manual"),
+			}),
+		});
+		const phone = new RemoteConnection(phoneTransport, {
+			role: "mobile",
+			deviceId: "phone",
+			deviceName: "iPhone",
+			identity,
+			capabilities: { chat: true, sessionRead: true },
+		});
+		let received: RemoteDevicePaired | undefined;
+		phone.onEvent((event) => {
+			if (event.type === "remote-event" && event.event.name === "device.paired")
+				received = readDevicePaired(event.event.payload);
+		});
+		options.onAccepted(
+			{ type: "manual" },
+			{ connection, peerIdentityKey: () => connection.getSnapshot().peerIdentityKey },
+		);
+		await connection.connect();
+		await phone.connect();
+		await vi.waitFor(() => expect(h.manager.getState().approvals).toHaveLength(1));
+		await h.manager.approvePairing("manual", true);
+		await vi.waitFor(() => expect(received).toBeDefined());
+		expect(h.readConfig().remoteControl?.devices[0]?.pairingId).toBe("old-pairing");
+		expect(options.lookupDevice("old-pairing")).toBeDefined();
+		await connectPhone(h, received!.pairingId, identity);
+		await vi.waitFor(() => expect(h.readConfig().remoteControl?.devices[0]?.pairingId).toBe(received!.pairingId));
+		expect(h.manager.getState().devices[0]).toMatchObject({
+			id: "stable-phone",
+			name: "My phone",
+			desktopControl: false,
+		});
+		expect(options.lookupDevice("old-pairing")).toBeUndefined();
+		await connection.close();
+		await phone.close();
+		await h.manager.shutdown();
+	});
+
+	it("a delayed competing claimant cannot receive or replay the paired phone's events", async () => {
+		const h = harness({ cloudEnabled: false, devices: [] });
+		const pending = await h.manager.createInvite();
+		const intruder = await connectPhone(h, pending.invite!.pairingId, generateIdentityKeyPair(), "Intruder", true);
+		const received: string[] = [];
+		intruder.phone.onEvent((event) => {
+			if (event.type === "remote-event") received.push(event.event.name);
+		});
+		await connectPhone(h, pending.invite!.pairingId);
+		await vi.waitFor(() => expect(h.manager.getState().devices[0]?.online).toBe(true));
+		expect(h.manager.getState().devices[0]?.channels).toEqual(["lan"]);
+		await intruder.release();
+		await vi.waitFor(() => expect(intruder.connection.getSnapshot().state).toBe("closed"));
+		expect(received).toEqual([]);
+		await h.manager.shutdown();
+	});
+
+	it("a permission change concurrent with re-pairing applies to the stable device", async () => {
+		const { h, identity } = pairedPhone();
+		await h.manager.restore();
+		await h.manager.setDesktopControl("stable-phone", true);
+		const pending = await h.manager.createInvite();
+		const [fresh] = await Promise.all([
+			connectPhone(h, pending.invite!.pairingId, identity),
+			h.manager.setDesktopControl("stable-phone", false),
+		]);
+		await vi.waitFor(() =>
+			expect(h.readConfig().remoteControl?.devices[0]?.pairingId).toBe(pending.invite!.pairingId),
+		);
+		expect(h.manager.getState().devices[0]?.desktopControl).toBe(false);
+		await expect(fresh.phone.request("screen.subscribe", { active: true })).rejects.toThrow(/does not share/);
+		await h.manager.shutdown();
+	});
+
+	it("revokes old connections even when credential cleanup fails and retries cleanup after restart", async () => {
+		const { h, identity } = pairedPhone();
+		await h.manager.restore();
+		const old = await connectPhone(h, "old-pairing", identity);
+		const pending = await h.manager.createInvite();
+		h.failSecretRemoval(true);
+		await connectPhone(h, pending.invite!.pairingId, identity);
+		await vi.waitFor(() => expect(old.connection.getSnapshot().state).toBe("closed"));
+		await vi.waitFor(() => expect(h.manager.getState().devices[0]?.online).toBe(true));
+		expect(h.readConfig().remoteControl?.retiredPairingIds).toContain("old-pairing");
+		expect(h.lanServers[0]!.options.lookupDevice("old-pairing")).toBeUndefined();
+		await h.manager.shutdown();
+		const restarted = harness(h.readConfig().remoteControl);
+		for (const [key, value] of h.vault) restarted.vault.set(key, value);
+		await restarted.manager.restore();
+		expect(restarted.store.relaySecret("old-pairing")).toBeUndefined();
+		expect(restarted.store.mobileSecret(pending.invite!.pairingId)).toBeUndefined();
+		expect(restarted.store.relaySecret(pending.invite!.pairingId)).toBeDefined();
+		expect(restarted.readConfig().remoteControl?.retiredPairingIds).not.toContain("old-pairing");
+		await restarted.manager.shutdown();
+	});
+
+	it("two phones claiming one invitation cannot overwrite the winner", async () => {
+		const h = harness({ cloudEnabled: false, devices: [] });
+		const pending = await h.manager.createInvite();
+		const firstIdentity = generateIdentityKeyPair();
+		const [first, second] = await Promise.all([
+			connectPhone(h, pending.invite!.pairingId, firstIdentity),
+			connectPhone(h, pending.invite!.pairingId, generateIdentityKeyPair()),
+		]);
+		await vi.waitFor(() => expect(h.manager.getState().devices).toHaveLength(1));
+		expect(h.readConfig().remoteControl?.devices[0]?.mobileIdentityKey).toBe(toBase64Url(firstIdentity.publicKey));
+		await vi.waitFor(() => expect(second.connection.getSnapshot().state).toBe("closed"));
+		expect(first.connection.getSnapshot().state).toBe("online");
+		await h.manager.shutdown();
 	});
 });

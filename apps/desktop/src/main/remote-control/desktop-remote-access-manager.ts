@@ -1,4 +1,4 @@
-import type { RemoteScreenCursor } from "@vetta/remote-control";
+import type { RemoteRequest, RemoteScreenCursor } from "@vetta/remote-control";
 import {
 	buildInviteQr,
 	buildPairingUri,
@@ -12,6 +12,7 @@ import {
 	RemoteConnection,
 	type RemoteDevicePaired,
 	type RemoteDeviceStatus,
+	RemoteEventJournal,
 	type RemoteHello,
 	type RemoteHelloDecision,
 	type RemoteIdentityKeyPair,
@@ -29,6 +30,7 @@ import { DesktopRemoteDeviceHub } from "./desktop-remote-device-hub.js";
 import { DesktopRemoteLanServer, type LanAcceptedLink, type LanDeviceCredential } from "./desktop-remote-lan-server.js";
 import type { DesktopRemoteMirror } from "./desktop-remote-mirror.js";
 import { DesktopRemoteRelayLink } from "./desktop-remote-relay-link.js";
+import { pairingIdOf } from "./remote-device-pairings.js";
 import type { RemoteDeviceStore } from "./remote-device-store.js";
 import { RemoteOperationError, toRemoteError } from "./remote-error-mapping.js";
 import { createRemoteInviteMailbox, type RemoteInviteMailbox } from "./remote-invite-mailbox.js";
@@ -176,6 +178,7 @@ const MANUAL_LINK_LINGER_MS = 3_000;
  * mirror comes up only while a phone is actually online.
  */
 export class DesktopRemoteAccessManager {
+	/** Runtime resources follow pairing IDs; public device IDs survive credential rotation. */
 	private readonly hub: DesktopRemoteDeviceHub;
 	private mirror: DesktopRemoteMirror | undefined;
 	private currentConfig: RemoteControlConfig = { cloudEnabled: true, devices: [] };
@@ -191,6 +194,9 @@ export class DesktopRemoteAccessManager {
 	private readonly hostOnDemand = new Map<string, boolean>();
 	private readonly screenShare: RemoteScreenShare;
 	private readonly approvals = new Map<string, PendingApproval>();
+	private pairingMutation: Promise<unknown> = Promise.resolve();
+	private readonly pendingLinks = new Map<string, Set<RemoteConnection>>();
+	private readonly pendingTimers = new Map<string, ReturnType<typeof setTimeout>>();
 	private readonly deviceClaims = new Map<string, Promise<void>>();
 	private readonly lanLinks = new Map<string, Set<() => void>>();
 	private currentInvite:
@@ -215,10 +221,7 @@ export class DesktopRemoteAccessManager {
 		this.inviteMailbox = options.inviteMailbox ?? createRemoteInviteMailbox();
 		this.hub = new DesktopRemoteDeviceHub(
 			{
-				handleRequest: (deviceId, request) =>
-					request.method === "screen.subscribe"
-						? this.subscribeScreen(deviceId, request.payload)
-						: this.requireMirror().handleRequest(request),
+				handleRequest: (pairingId, request, link) => this.handleRequest(pairingId, request, link),
 				toRemoteError,
 				onLinkOnline: (deviceId, link) =>
 					void this.handleLinkOnline(deviceId, link).catch((error: unknown) =>
@@ -242,7 +245,7 @@ export class DesktopRemoteAccessManager {
 			emit: (deviceId, status) => void this.hub.emit(deviceId, "screen.status", status).catch(() => undefined),
 			notifyMissing: (deviceId, missing) =>
 				this.options.notifications.screenPermissionMissing?.({
-					deviceName: this.config.devices.find((entry) => entry.id === deviceId)?.name || "手机",
+					deviceName: this.deviceForPairing(deviceId)?.name || "手机",
 					...missing,
 				}),
 			pollMs: options.screenPermissionPollMs,
@@ -319,8 +322,8 @@ export class DesktopRemoteAccessManager {
 				id: device.id,
 				name: device.name,
 				claimed: device.mobileIdentityKey !== undefined,
-				online: this.hub.isOnline(device.id),
-				channels: this.hub.onlineChannels(device.id),
+				online: this.hub.isOnline(pairingIdOf(device)),
+				channels: this.hub.onlineChannels(pairingIdOf(device)),
 				desktopControl: device.desktopControl !== false,
 				createdAt: device.createdAt,
 				lastSeenAt: device.lastSeenAt,
@@ -346,12 +349,20 @@ export class DesktopRemoteAccessManager {
 
 	/** Loads persisted devices and brings up transports only if any exist. */
 	async restore(): Promise<void> {
-		this.config = await this.options.store.read();
+		this.config = await this.options.store.restorePairings();
+		await this.cleanupRetiredPairings();
 		if (this.config.devices.length === 0) return;
 		await this.reconcile();
 	}
 
 	async shutdown(): Promise<void> {
+		await this.pairingMutation;
+		for (const timer of this.pendingTimers.values()) clearTimeout(timer);
+		this.pendingTimers.clear();
+		for (const connections of this.pendingLinks.values()) {
+			for (const connection of connections) await connection.close().catch(() => undefined);
+		}
+		this.pendingLinks.clear();
 		if (this.invite) clearTimeout(this.invite.timer);
 		this.invite = undefined;
 		for (const approval of this.approvals.values()) approval.resolve(false);
@@ -371,30 +382,44 @@ export class DesktopRemoteAccessManager {
 
 	// ---- invites & devices ----
 
-	async createInvite(): Promise<RemoteAccessState> {
-		if (!this.options.store.vaultAvailable()) throw new Error("当前系统无法使用安全凭据存储");
-		await this.cancelInvite();
-		const pairingId = randomToken(24);
-		const mobileSecret = randomToken(32);
-		const relaySecret = randomToken(32);
-		const record: RemoteControlDeviceRecord = {
-			id: pairingId,
-			name: "",
-			mobileSecretHash: sha256Hex(mobileSecret),
-			createdAt: this.now(),
-		};
-		this.options.store.putMobileSecret(pairingId, mobileSecret);
-		this.options.store.putRelaySecret(pairingId, relaySecret);
-		await this.options.store.upsertDevice(record);
-		this.config = await this.options.store.read();
-		const expiresAt = this.now() + this.inviteTtlMs;
-		const timer = setTimeout(() => void this.expireInvite(pairingId), this.inviteTtlMs);
-		timer.unref?.();
-		this.invite = { pairingId, expiresAt, timer };
-		await this.reconcile();
-		void this.publishInviteCode(pairingId);
-		log.info("remote invite created", { pairingId: pairingId.slice(0, 6) });
-		return this.getState();
+	createInvite(): Promise<RemoteAccessState> {
+		return this.mutatePairings(async () => {
+			if (!this.options.store.vaultAvailable()) throw new Error("remote credential storage unavailable");
+			await this.discardInvite();
+			const pairingId = randomToken(24);
+			const expiresAt = this.now() + this.inviteTtlMs;
+			const mobileSecret = randomToken(32);
+			try {
+				this.options.store.putMobileSecret(pairingId, mobileSecret);
+				this.options.store.putRelaySecret(pairingId, randomToken(32));
+				this.config = await this.options.store.update((current) => ({
+					...current,
+					pendingPairings: [
+						...(current.pendingPairings ?? []),
+						{
+							pairingId,
+							expiresAt,
+							mobileSecretHash: sha256Hex(mobileSecret),
+						},
+					],
+				}));
+			} catch (error) {
+				this.options.store.clearPairingSecrets(pairingId);
+				throw error;
+			}
+			const timer = setTimeout(
+				() =>
+					void this.expireInvite(pairingId).catch((error: unknown) =>
+						log.warn("remote invite expiry failed", { error: describe(error) }),
+					),
+				this.inviteTtlMs,
+			);
+			timer.unref?.();
+			this.invite = { pairingId, expiresAt, timer };
+			await this.reconcile();
+			void this.publishInviteCode(pairingId);
+			return this.getState();
+		});
 	}
 
 	/**
@@ -441,43 +466,84 @@ export class DesktopRemoteAccessManager {
 		}
 	}
 
-	async cancelInvite(): Promise<RemoteAccessState> {
+	cancelInvite(): Promise<RemoteAccessState> {
+		return this.mutatePairings(async () => {
+			await this.discardInvite();
+			return this.getState();
+		});
+	}
+
+	private async discardInvite(): Promise<void> {
 		const invite = this.invite;
-		if (!invite) return this.getState();
+		if (!invite) return;
+		this.config = await this.options.store.update((current) => ({
+			...current,
+			pendingPairings: current.pendingPairings?.filter((pending) => pending.pairingId !== invite.pairingId),
+			retiredPairingIds: [...(current.retiredPairingIds ?? []), invite.pairingId],
+		}));
 		clearTimeout(invite.timer);
 		this.invite = undefined;
-		const device = this.config.devices.find((entry) => entry.id === invite.pairingId);
-		if (device && device.mobileIdentityKey === undefined) await this.revokeDevice(invite.pairingId);
-		return this.getState();
+		await this.disposePairing(invite.pairingId);
+		await this.reconcile();
 	}
 
-	async revokeDevice(id: string): Promise<RemoteAccessState> {
-		if (this.invite?.pairingId === id) {
-			clearTimeout(this.invite.timer);
-			this.invite = undefined;
-		}
-		// A phone that is connected hears it at once and clears what it cached; one that is
-		// not finds out when this desktop's local server no longer knows its pairing.
-		if (this.hub.isOnline(id)) await this.hub.emit(id, "device.revoked").catch(() => undefined);
-		this.screenShare.forget(id);
-		this.screenOnDemand.delete(id);
-		await this.hub.drop(id);
+	revokeDevice(id: string): Promise<RemoteAccessState> {
+		return this.mutatePairings(async () => {
+			const device = this.config.devices.find((entry) => entry.id === id);
+			if (!device) return this.getState();
+			this.config = await this.options.store.update((current) => ({
+				...current,
+				devices: current.devices.filter((entry) => entry.id !== id),
+				retiredPairingIds: [...(current.retiredPairingIds ?? []), pairingIdOf(device)],
+			}));
+			const pairingId = pairingIdOf(device);
+			if (this.hub.isOnline(pairingId)) await this.hub.emit(pairingId, "device.revoked").catch(() => undefined);
+			await this.disposePairing(pairingId);
+			await this.reconcile();
+			return this.getState();
+		});
+	}
+
+	private async disposePairing(pairingId: string): Promise<void> {
+		clearTimeout(this.pendingTimers.get(pairingId));
+		this.pendingTimers.delete(pairingId);
+		for (const connection of this.pendingLinks.get(pairingId) ?? []) await connection.close().catch(() => undefined);
+		this.pendingLinks.delete(pairingId);
+		this.screenShare.forget(pairingId);
+		this.screenOnDemand.delete(pairingId);
+		this.hostOnDemand.delete(pairingId);
+		await this.hub.drop(pairingId);
 		await this.desktopHosts
-			.get(id)
+			.get(pairingId)
 			?.stop()
 			.catch(() => undefined);
-		this.desktopHosts.delete(id);
-		this.desktopHostStarts.delete(id);
-		await this.relayLinks.get(id)?.stop();
-		this.relayLinks.delete(id);
-		await this.options.store.removeDevice(id);
-		this.config = await this.options.store.read();
-		await this.reconcile();
-		log.info("remote device revoked", { pairingId: id.slice(0, 6) });
-		return this.getState();
+		this.desktopHosts.delete(pairingId);
+		this.desktopHostStarts.delete(pairingId);
+		await this.relayLinks.get(pairingId)?.stop();
+		this.relayLinks.delete(pairingId);
+		this.lanLinks.delete(pairingId);
+		await this.cleanupRetiredPairings();
 	}
 
-	async renameDevice(id: string, name: string): Promise<RemoteAccessState> {
+	private async cleanupRetiredPairings(): Promise<void> {
+		try {
+			this.config = await this.options.store.cleanupRetiredPairings();
+		} catch (error) {
+			log.warn("retired pairing credential cleanup will retry on restart", { error: describe(error) });
+		}
+	}
+
+	private mutatePairings<T>(action: () => Promise<T>): Promise<T> {
+		const result = this.pairingMutation.then(action);
+		this.pairingMutation = result.catch(() => undefined);
+		return result;
+	}
+
+	renameDevice(id: string, name: string): Promise<RemoteAccessState> {
+		return this.mutatePairings(() => this.updateRenameDevice(id, name));
+	}
+
+	private async updateRenameDevice(id: string, name: string): Promise<RemoteAccessState> {
 		const trimmed = name.trim().slice(0, 64);
 		if (trimmed) {
 			await this.options.store.patchDevice(id, { name: trimmed, renamed: true });
@@ -490,22 +556,29 @@ export class DesktopRemoteAccessManager {
 	 * Lets one phone view and operate this desktop's screen, or takes that back. The phone
 	 * hears it at once, so its remote control shows why the screen is not there.
 	 */
-	async setDesktopControl(id: string, enabled: boolean): Promise<RemoteAccessState> {
-		if (!this.config.devices.some((device) => device.id === id)) return this.getState();
+	setDesktopControl(id: string, enabled: boolean): Promise<RemoteAccessState> {
+		return this.mutatePairings(() => this.updateSetDesktopControl(id, enabled));
+	}
+
+	private async updateSetDesktopControl(id: string, enabled: boolean): Promise<RemoteAccessState> {
+		const device = this.config.devices.find((entry) => entry.id === id);
+		if (!device) return this.getState();
+		const pairingId = pairingIdOf(device);
 		await this.options.store.patchDevice(id, { desktopControl: enabled });
 		this.config = await this.options.store.read();
 		this.stateChanged();
 		if (enabled) {
-			if (this.hub.isOnline(id)) void this.startDesktopHost(id);
+			if (this.hub.isOnline(pairingId)) void this.startDesktopHost(pairingId);
 		} else {
-			this.screenShare.forget(id);
+			this.screenShare.forget(pairingId);
 			await this.desktopHosts
-				.get(id)
+				.get(pairingId)
 				?.stop()
 				.catch(() => undefined);
-			this.desktopHosts.delete(id);
+			this.desktopHosts.delete(pairingId);
 		}
-		if (this.hub.isOnline(id)) await this.hub.emit(id, "device.status", this.deviceStatus(id)).catch(() => undefined);
+		if (this.hub.isOnline(pairingId))
+			await this.hub.emit(pairingId, "device.status", this.deviceStatus(pairingId)).catch(() => undefined);
 		log.info("remote desktop control changed", { pairingId: id.slice(0, 6), enabled });
 		return this.getState();
 	}
@@ -515,7 +588,11 @@ export class DesktopRemoteAccessManager {
 	 * (`undefined`). Connected phones hear the new address first, so they follow instead
 	 * of losing the relay; the current QR code, made for the old relay, is replaced.
 	 */
-	async setRelayBaseUrl(value: string | undefined): Promise<RemoteAccessState> {
+	setRelayBaseUrl(value: string | undefined): Promise<RemoteAccessState> {
+		return this.mutatePairings(() => this.updateSetRelayBaseUrl(value));
+	}
+
+	private async updateSetRelayBaseUrl(value: string | undefined): Promise<RemoteAccessState> {
 		const typed = value?.trim();
 		const normalized = typed ? normalizeRelayBaseUrl(typed) : undefined;
 		if (typed && !normalized) throw new Error("invalid relay address");
@@ -524,9 +601,12 @@ export class DesktopRemoteAccessManager {
 		const next = stored ?? fallback;
 		if (next === this.config.relayBaseUrl) return this.getState();
 		for (const device of this.config.devices) {
-			if (!this.hub.isOnline(device.id)) continue;
+			if (!this.hub.isOnline(pairingIdOf(device))) continue;
 			await this.hub
-				.emit(device.id, "device.status", { ...this.deviceStatus(device.id), relayBaseUrl: next })
+				.emit(pairingIdOf(device), "device.status", {
+					...this.deviceStatus(pairingIdOf(device)),
+					relayBaseUrl: next,
+				})
 				.catch(() => undefined);
 		}
 		this.config = await this.options.store.update((current) => ({ ...current, relayBaseUrl: stored }));
@@ -534,10 +614,10 @@ export class DesktopRemoteAccessManager {
 		this.relayLinks.clear();
 		for (const host of this.desktopHosts.values()) await host.stop().catch(() => undefined);
 		this.desktopHosts.clear();
-		await this.cancelInvite();
+		await this.discardInvite();
 		await this.reconcile();
 		for (const device of this.config.devices) {
-			if (this.hub.isOnline(device.id)) void this.startDesktopHost(device.id);
+			if (this.hub.isOnline(pairingIdOf(device))) void this.startDesktopHost(pairingIdOf(device));
 		}
 		log.info("remote relay changed", { custom: stored !== undefined });
 		return this.getState();
@@ -550,7 +630,11 @@ export class DesktopRemoteAccessManager {
 		return (this.options.probeRelay ?? probeRemoteRelay)(normalized);
 	}
 
-	async setCloudEnabled(enabled: boolean): Promise<RemoteAccessState> {
+	setCloudEnabled(enabled: boolean): Promise<RemoteAccessState> {
+		return this.mutatePairings(() => this.updateSetCloudEnabled(enabled));
+	}
+
+	private async updateSetCloudEnabled(enabled: boolean): Promise<RemoteAccessState> {
 		this.config = await this.options.store.update((current) => ({ ...current, cloudEnabled: enabled }));
 		this.config = await this.options.store.read();
 		await this.reconcile();
@@ -570,7 +654,8 @@ export class DesktopRemoteAccessManager {
 	// ---- transports ----
 
 	private async reconcile(): Promise<void> {
-		const needed = this.config.devices.length > 0;
+		const pairings = this.pairings();
+		const needed = pairings.length > 0;
 		if (!needed) {
 			for (const link of this.relayLinks.values()) await link.stop();
 			this.relayLinks.clear();
@@ -587,7 +672,7 @@ export class DesktopRemoteAccessManager {
 				onDeviceHello: (device, hello) => this.decideDeviceHello(device, hello),
 				onManualHello: (hello, code, connectionId) => this.requestApproval(hello, code, connectionId),
 				onAccepted: (kind, link) => this.handleLanAccepted(kind, link),
-				journalFor: (deviceId) => this.hub.journalFor(deviceId),
+				journalFor: (pairingId) => this.journalForPairing(pairingId),
 			});
 			this.lanServer = server;
 			try {
@@ -603,7 +688,7 @@ export class DesktopRemoteAccessManager {
 			}
 		}
 		const wantRelay = this.config.cloudEnabled && Boolean(this.config.relayBaseUrl);
-		const activeIds = new Set(this.config.devices.map((device) => device.id));
+		const activeIds = new Set(pairings.map((device) => device.id));
 		for (const [id, link] of [...this.relayLinks]) {
 			if (!wantRelay || !activeIds.has(id)) {
 				await link.stop();
@@ -611,7 +696,7 @@ export class DesktopRemoteAccessManager {
 			}
 		}
 		if (!wantRelay || !this.config.relayBaseUrl) return;
-		for (const device of this.config.devices) {
+		for (const device of pairings) {
 			if (this.relayLinks.has(device.id)) continue;
 			const desktopSecret = this.options.store.relaySecret(device.id);
 			if (!desktopSecret) continue;
@@ -624,9 +709,9 @@ export class DesktopRemoteAccessManager {
 				deviceId: this.options.deviceId,
 				deviceName: this.options.deviceName,
 				mobileIdentityKey: device.mobileIdentityKey,
-				journal: this.hub.journalFor(device.id),
+				journal: this.journalForPairing(device.id),
 				onConnection: (connection) => {
-					this.hub.attach(device.id, { channel: "relay", connection });
+					this.attachConnection(device.id, { channel: "relay", connection });
 				},
 			});
 			this.relayLinks.set(device.id, link);
@@ -634,72 +719,146 @@ export class DesktopRemoteAccessManager {
 		}
 	}
 
+	private journalForPairing(pairingId: string) {
+		// A competing invitation claimant must never replay the winner's device history.
+		return this.deviceForPairing(pairingId) ? this.hub.journalFor(pairingId) : new RemoteEventJournal();
+	}
+
+	private deviceForPairing(pairingId: string): RemoteControlDeviceRecord | undefined {
+		return this.config.devices.find((device) => pairingIdOf(device) === pairingId);
+	}
+
+	private pairings(): LanDeviceCredential[] {
+		return [
+			...this.config.devices.map((device) => ({
+				id: pairingIdOf(device),
+				mobileSecretHash: device.mobileSecretHash,
+				mobileIdentityKey: device.mobileIdentityKey,
+			})),
+			...(this.config.pendingPairings ?? [])
+				.filter((pending) => pending.expiresAt > this.now())
+				.map((pending) => ({
+					id: pending.pairingId,
+					mobileSecretHash: pending.mobileSecretHash,
+					mobileIdentityKey: pending.mobileIdentityKey,
+				})),
+		];
+	}
+
 	private credentialFor(pairingId: string): LanDeviceCredential | undefined {
-		const device = this.config.devices.find((entry) => entry.id === pairingId);
-		if (!device) return undefined;
-		return { id: device.id, mobileSecretHash: device.mobileSecretHash, mobileIdentityKey: device.mobileIdentityKey };
+		return this.pairings().find((pairing) => pairing.id === pairingId);
 	}
 
 	private decideDeviceHello(device: LanDeviceCredential, hello: RemoteHello): RemoteHelloDecision {
-		if (device.mobileIdentityKey) {
-			// The connection already compared the pinned key; a mismatch never reaches here.
-			return { kind: "approve" };
-		}
-		void this.claim(device.id, hello.identityKey, hello.deviceName).catch((error: unknown) =>
-			log.warn("remote device claim failed", { pairingId: device.id.slice(0, 6), error: describe(error) }),
-		);
+		const current = this.credentialFor(device.id);
+		if (!current || (current.mobileIdentityKey && current.mobileIdentityKey !== hello.identityKey))
+			return { kind: "reject", reason: "pairing is no longer available" };
 		return { kind: "approve" };
 	}
 
-	/** First phone to present an invite's secret becomes its owner; the invite cannot be reused afterwards. */
-	private claim(deviceId: string, identityKey: string, deviceName: string | undefined): Promise<void> {
-		const active = this.deviceClaims.get(deviceId);
-		if (active) return active;
-		const claim = this.claimDevice(deviceId, identityKey, deviceName).finally(() => {
-			if (this.deviceClaims.get(deviceId) === claim) this.deviceClaims.delete(deviceId);
+	private attachConnection(pairingId: string, link: RemoteDeviceLink): () => void {
+		if (this.deviceForPairing(pairingId)) return this.hub.attach(pairingId, link);
+		// Pending invitations must not join the device hub: another claimant could otherwise
+		// receive the winner's traffic while its own unpinned handshake is still outstanding.
+		const pending = this.pendingLinks.get(pairingId) ?? new Set<RemoteConnection>();
+		pending.add(link.connection);
+		this.pendingLinks.set(pairingId, pending);
+		const removePending = () => {
+			pending.delete(link.connection);
+			if (!pending.size) this.pendingLinks.delete(pairingId);
+		};
+		const requests: RemoteRequest[] = [];
+		let admitting = false;
+		let detach: (() => void) | undefined;
+		const stop = link.connection.onEvent((event) => {
+			if (
+				event.type === "state" &&
+				(event.state === "closed" || event.state === "failed" || event.state === "reconnecting")
+			) {
+				removePending();
+				stop();
+				return;
+			}
+			if (event.type === "remote-request") {
+				if (requests.length >= 32) void link.connection.close();
+				else requests.push(event.request);
+			}
+			if (event.type !== "peer-authenticated" || admitting) return;
+			const snapshot = link.connection.getSnapshot();
+			if (!snapshot.peerIdentityKey) return;
+			admitting = true;
+			void this.claim(pairingId, snapshot.peerIdentityKey, snapshot.peerDeviceName)
+				.then(async () => {
+					const device = this.deviceForPairing(pairingId);
+					const current = link.connection.getSnapshot();
+					if (
+						device?.mobileIdentityKey !== snapshot.peerIdentityKey ||
+						current.peerIdentityKey !== snapshot.peerIdentityKey
+					)
+						throw new Error("pairing identity changed");
+					if (current.state !== "online") return;
+					stop();
+					removePending();
+					link.connection.adoptEventJournal(this.hub.journalFor(pairingId));
+					detach = this.hub.attach(pairingId, link);
+					for (const request of requests) {
+						try {
+							const payload = await this.handleRequest(pairingId, request, link);
+							await link.connection.respond(request.requestId, { success: true, payload });
+						} catch (error) {
+							await link.connection
+								.respond(request.requestId, { success: false, error: toRemoteError(error) })
+								.catch(() => undefined);
+						}
+					}
+				})
+				.catch((error: unknown) => {
+					log.warn("remote pairing admission failed", { error: describe(error) });
+					removePending();
+					stop();
+					void link.connection.close();
+				});
 		});
-		this.deviceClaims.set(deviceId, claim);
-		return claim;
+		return () => {
+			removePending();
+			stop();
+			detach?.();
+		};
 	}
 
-	private async claimDevice(deviceId: string, identityKey: string, deviceName: string | undefined): Promise<void> {
-		const current = this.config.devices.find((device) => device.id === deviceId);
-		if (!current || current.mobileIdentityKey) return;
-		const name = deviceName?.trim() || current.name || "手机";
-		await this.options.store.patchDevice(deviceId, { mobileIdentityKey: identityKey, name, lastSeenAt: this.now() });
-		this.options.store.clearMobileSecret(deviceId);
-		this.config = await this.options.store.read();
-		if (this.invite?.pairingId === deviceId) {
-			clearTimeout(this.invite.timer);
-			this.invite = undefined;
-		}
-		// The relay link for this device pinned nothing so far; restart it so
-		// it rejects any other identity from now on.
-		const link = this.relayLinks.get(deviceId);
-		if (link) {
-			await link.stop();
-			this.relayLinks.delete(deviceId);
+	private async handleRequest(pairingId: string, request: RemoteRequest, link: RemoteDeviceLink): Promise<unknown> {
+		const device = this.deviceForPairing(pairingId);
+		if (!device?.mobileIdentityKey || device.mobileIdentityKey !== link.connection.getSnapshot().peerIdentityKey)
+			throw new RemoteOperationError("unauthorized", "pairing is no longer available");
+		return request.method === "screen.subscribe"
+			? this.subscribeScreen(pairingId, request.payload)
+			: this.requireMirror().handleRequest(request);
+	}
+
+	private claim(pairingId: string, identityKey: string, name: string | undefined): Promise<void> {
+		const active = this.deviceClaims.get(pairingId);
+		if (active) return active;
+		const claim = this.mutatePairings(async () => {
+			if (this.deviceForPairing(pairingId)) return;
+			const result = await this.options.store.completePairing(pairingId, identityKey, name, this.now());
+			this.config = result.config;
+			clearTimeout(this.pendingTimers.get(pairingId));
+			this.pendingTimers.delete(pairingId);
+			if (this.invite?.pairingId === pairingId) {
+				clearTimeout(this.invite.timer);
+				this.invite = undefined;
+			}
+			// Replacement retires the old connection without telling the same phone to erase its new pairing.
+			for (const retired of result.retired) await this.disposePairing(retired);
+			await this.relayLinks.get(pairingId)?.stop();
+			this.relayLinks.delete(pairingId);
 			await this.reconcile();
-		}
-		log.info("remote device claimed", { pairingId: deviceId.slice(0, 6) });
-		await this.forgetEarlierPairings(deviceId, identityKey);
-	}
-
-	/**
-	 * A phone that pairs again (scanning a new code, or pairing by address) replaces the
-	 * pairing it had: without this each scan left another record that never came online
-	 * again but kept its credentials. Phones are told apart by their pinned identity key.
-	 */
-	private async forgetEarlierPairings(keepId: string, identityKey: string): Promise<void> {
-		const earlier = this.config.devices.filter(
-			(device) => device.id !== keepId && device.mobileIdentityKey === identityKey,
-		);
-		for (const device of earlier) await this.revokeDevice(device.id);
-		if (earlier.length > 0)
-			log.info("remote device replaced earlier pairings", {
-				pairingId: keepId.slice(0, 6),
-				replaced: earlier.length,
-			});
+			await this.cleanupRetiredPairings();
+		}).finally(() => {
+			if (this.deviceClaims.get(pairingId) === claim) this.deviceClaims.delete(pairingId);
+		});
+		this.deviceClaims.set(pairingId, claim);
+		return claim;
 	}
 
 	private requestApproval(hello: RemoteHello, code: string, connectionId: string): Promise<boolean> {
@@ -724,7 +883,7 @@ export class DesktopRemoteAccessManager {
 		link: LanAcceptedLink,
 	): void {
 		if (kind.type === "device") {
-			const detach = this.hub.attach(kind.id, { channel: "lan", connection: link.connection });
+			const detach = this.attachConnection(kind.id, { channel: "lan", connection: link.connection });
 			const set = this.lanLinks.get(kind.id) ?? new Set();
 			set.add(detach);
 			this.lanLinks.set(kind.id, set);
@@ -734,11 +893,13 @@ export class DesktopRemoteAccessManager {
 		// mint the device and hand the phone its long-lived credential over the
 		// encrypted link. The phone then reconnects on the normal path.
 		const unsubscribe = link.connection.onEvent((event) => {
-			if (event.type !== "state") return;
-			if (event.state === "online") {
+			if (event.type === "peer-authenticated") {
 				unsubscribe();
-				void this.finishManualPairing(link.connection, link.peerIdentityKey());
-			} else if (event.state === "failed" || event.state === "closed") {
+				void this.finishManualPairing(link.connection, link.peerIdentityKey()).catch((error: unknown) => {
+					log.warn("remote manual pairing failed", { error: describe(error) });
+					void link.connection.close();
+				});
+			} else if (event.type === "state" && (event.state === "failed" || event.state === "closed")) {
 				unsubscribe();
 			}
 		});
@@ -749,23 +910,42 @@ export class DesktopRemoteAccessManager {
 			await connection.close();
 			return;
 		}
-		const snapshot = connection.getSnapshot();
 		const pairingId = randomToken(24);
 		const mobileSecret = randomToken(32);
 		const relaySecret = randomToken(32);
 		this.options.store.putRelaySecret(pairingId, relaySecret);
-		await this.options.store.upsertDevice({
-			id: pairingId,
-			name: snapshot.peerDeviceName?.trim() || "手机",
-			mobileSecretHash: sha256Hex(mobileSecret),
-			mobileIdentityKey: peerIdentityKey,
-			createdAt: this.now(),
-			lastSeenAt: this.now(),
+		await this.mutatePairings(async () => {
+			this.config = await this.options.store.update((current) => ({
+				...current,
+				pendingPairings: [
+					...(current.pendingPairings ?? []),
+					{
+						pairingId,
+						mobileSecretHash: sha256Hex(mobileSecret),
+						mobileIdentityKey: peerIdentityKey,
+						expiresAt: this.now() + this.inviteTtlMs,
+					},
+				],
+			}));
+			await this.reconcile();
 		});
-		this.config = await this.options.store.read();
-		await this.forgetEarlierPairings(pairingId, peerIdentityKey);
-		await this.reconcile();
 		const port = this.lanServer?.listeningPort;
+		const expiry = setTimeout(
+			() =>
+				void this.mutatePairings(async () => {
+					if (this.deviceForPairing(pairingId)) return;
+					this.config = await this.options.store.update((current) => ({
+						...current,
+						pendingPairings: current.pendingPairings?.filter((pending) => pending.pairingId !== pairingId),
+						retiredPairingIds: [...(current.retiredPairingIds ?? []), pairingId],
+					}));
+					await this.disposePairing(pairingId);
+					await this.reconcile();
+				}).catch((error: unknown) => log.warn("remote manual pairing expiry failed", { error: describe(error) })),
+			this.inviteTtlMs,
+		);
+		expiry.unref?.();
+		this.pendingTimers.set(pairingId, expiry);
 		const paired: RemoteDevicePaired = {
 			pairingId,
 			mobileSecret,
@@ -787,28 +967,39 @@ export class DesktopRemoteAccessManager {
 
 	private async handleLinkOnline(deviceId: string, link: RemoteDeviceLink): Promise<void> {
 		const { channel, connection } = link;
-		const device = this.config.devices.find((entry) => entry.id === deviceId);
+		const device = this.deviceForPairing(deviceId);
 		if (!device) return;
 		const snapshot = connection.getSnapshot();
+		if (snapshot.peerIdentityKey !== device.mobileIdentityKey) {
+			await connection.close();
+			return;
+		}
 		// Before any await: the screen host started for this phone right after reads it.
 		if (snapshot.peerCapabilities) this.screenOnDemand.set(deviceId, snapshot.peerCapabilities.screen === true);
 		if (snapshot.peerCapabilities?.screen === true && device.screenOnDemand !== true) {
 			void this.rememberScreenOnDemand(deviceId);
 		}
-		const peerKey = snapshot.peerIdentityKey;
-		if (!device.mobileIdentityKey && peerKey) await this.claim(deviceId, peerKey, snapshot.peerDeviceName);
+
 		// A phone renamed since pairing (or paired before its name was kept) shows its current name,
 		// unless the name was chosen on this desktop.
 		const name = device.renamed ? undefined : snapshot.peerDeviceName?.trim();
 		// Only a "last seen" time and the name: failing to save them must not keep the phone from being served.
 		try {
-			await this.options.store.patchDevice(deviceId, {
-				lastSeenAt: this.now(),
-				...(name && name !== device.name ? { name } : {}),
-			});
+			await this.options.store.patchDevice(
+				device.id,
+				{
+					lastSeenAt: this.now(),
+					...(name && name !== device.name ? { name } : {}),
+				},
+				deviceId,
+			);
 			this.config = await this.options.store.read();
 		} catch (error) {
 			log.warn("remote device last-seen save failed", { pairingId: deviceId.slice(0, 6), error: describe(error) });
+		}
+		if (!this.deviceForPairing(deviceId)) {
+			await connection.close();
+			return;
 		}
 		await this.hub.emitToLink(deviceId, link, "device.status", this.deviceStatus(deviceId)).catch(() => undefined);
 		log.info("remote link online", { pairingId: deviceId.slice(0, 6), channel });
@@ -818,8 +1009,9 @@ export class DesktopRemoteAccessManager {
 	}
 
 	private async handleDeviceOnline(deviceId: string, channel: RemoteChannel): Promise<void> {
-		const device = this.config.devices.find((entry) => entry.id === deviceId);
-		this.options.notifications.deviceConnected({ id: deviceId, name: device?.name || "手机", channel });
+		const device = this.deviceForPairing(deviceId);
+		if (!device) return;
+		this.options.notifications.deviceConnected({ id: device.id, name: device?.name || "手机", channel });
 		if (!this.mirror) {
 			this.mirror = this.options.createMirror(
 				(name, payload, sessionId) => this.hub.broadcast(name, payload, sessionId),
@@ -850,7 +1042,7 @@ export class DesktopRemoteAccessManager {
 		const desktopSecret = this.options.store.relaySecret(deviceId);
 		if (!controller || !this.config.cloudEnabled || !relayBaseUrl || !desktopSecret) return;
 		// The screen is shared only with a phone the person allowed it for.
-		if (this.config.devices.find((entry) => entry.id === deviceId)?.desktopControl === false) return;
+		if (this.deviceForPairing(deviceId)?.desktopControl === false) return;
 		if (this.desktopHosts.has(deviceId) || this.desktopHostStarts.has(deviceId)) return;
 		this.desktopHostStarts.add(deviceId);
 		try {
@@ -867,7 +1059,7 @@ export class DesktopRemoteAccessManager {
 				await host.stop();
 				return;
 			}
-			const device = this.config.devices.find((entry) => entry.id === deviceId);
+			const device = this.deviceForPairing(deviceId);
 			// Turned off, or never claimed, while the host was starting.
 			if (!device?.mobileIdentityKey || device.desktopControl === false) {
 				await host.stop();
@@ -939,7 +1131,7 @@ export class DesktopRemoteAccessManager {
 			typeof payload === "object" && payload !== null ? (payload as { active?: unknown; cursor?: unknown }) : {};
 		const active = fields.active;
 		if (typeof active !== "boolean") throw new RemoteOperationError("invalid_frame", "screen.subscribe needs active");
-		const device = this.config.devices.find((entry) => entry.id === deviceId);
+		const device = this.deviceForPairing(deviceId);
 		if (active && device?.desktopControl === false) {
 			throw new RemoteOperationError("forbidden", "This desktop does not share its screen with this phone");
 		}
@@ -961,15 +1153,14 @@ export class DesktopRemoteAccessManager {
 
 	/** Said in this phone's handshake, or learnt earlier and kept with its pairing. */
 	private capturesOnDemand(deviceId: string): boolean {
-		return (
-			this.screenOnDemand.get(deviceId) ??
-			this.config.devices.find((entry) => entry.id === deviceId)?.screenOnDemand === true
-		);
+		return this.screenOnDemand.get(deviceId) ?? this.deviceForPairing(deviceId)?.screenOnDemand === true;
 	}
 
 	private async rememberScreenOnDemand(deviceId: string): Promise<void> {
+		const device = this.deviceForPairing(deviceId);
+		if (!device) return;
 		try {
-			await this.options.store.patchDevice(deviceId, { screenOnDemand: true });
+			await this.options.store.patchDevice(device.id, { screenOnDemand: true }, deviceId);
 			this.config = await this.options.store.read();
 		} catch (error) {
 			log.warn("remote device screen mode save failed", { pairingId: deviceId.slice(0, 6), error: describe(error) });
@@ -997,7 +1188,7 @@ export class DesktopRemoteAccessManager {
 	/** With `deviceId`, also says whether that phone may use the desktop's screen. */
 	private deviceStatus(deviceId?: string): RemoteDeviceStatus {
 		const port = this.lanServer?.listeningPort;
-		const device = deviceId ? this.config.devices.find((entry) => entry.id === deviceId) : undefined;
+		const device = deviceId ? this.deviceForPairing(deviceId) : undefined;
 		return {
 			deviceName: this.options.deviceName,
 			osLabel: this.options.osLabel,
@@ -1053,13 +1244,9 @@ export class DesktopRemoteAccessManager {
 	}
 
 	private async expireInvite(pairingId: string): Promise<void> {
-		if (this.invite?.pairingId !== pairingId) return;
-		this.invite = undefined;
-		const device = this.config.devices.find((entry) => entry.id === pairingId);
-		if (device && device.mobileIdentityKey === undefined) {
-			await this.revokeDevice(pairingId);
-			log.info("remote invite expired", { pairingId: pairingId.slice(0, 6) });
-		}
+		await this.mutatePairings(async () => {
+			if (this.invite?.pairingId === pairingId) await this.discardInvite();
+		});
 	}
 }
 

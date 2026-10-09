@@ -11,7 +11,7 @@ export interface RemoteDeviceLink {
 
 export interface RemoteDeviceHubHandlers {
 	/** Serves a request that arrived from any link of the device. */
-	readonly handleRequest: (deviceId: string, request: RemoteRequest) => Promise<unknown>;
+	readonly handleRequest: (deviceId: string, request: RemoteRequest, link: RemoteDeviceLink) => Promise<unknown>;
 	readonly toRemoteError: (error: unknown) => RemoteError;
 	/** The first link of a device came online. */
 	readonly onDeviceOnline?: (deviceId: string, link: RemoteDeviceLink) => void;
@@ -180,7 +180,7 @@ export class DesktopRemoteDeviceHub {
 
 	private async serve(deviceId: string, link: RemoteDeviceLink, request: RemoteRequest): Promise<void> {
 		try {
-			const payload = await this.handlers.handleRequest(deviceId, request);
+			const payload = await this.handlers.handleRequest(deviceId, request, link);
 			await link.connection.respond(request.requestId, { success: true, payload });
 		} catch (error) {
 			const remoteError = this.handlers.toRemoteError(error);

@@ -251,3 +251,46 @@ describe("SSH 主机单独存放，旧版本整份覆盖 desktop-config 也抹�
 		expect((await store.readDesktopConfig()).sshHosts).toEqual([moved]);
 	});
 });
+
+describe("remote device and pairing persistence", () => {
+	it("reads legacy IDs and keeps a stable device separate from current and pending pairings", async () => {
+		const store = await loadStoreWithConfig({
+			projects: [],
+			remoteControl: {
+				cloudEnabled: false,
+				devices: [
+					{ id: "legacy", name: "Phone", mobileSecretHash: "h", mobileIdentityKey: "key", createdAt: 1 },
+					{
+						id: "stable",
+						pairingId: "current-pairing",
+						pairedAt: 9,
+						name: "Custom",
+						renamed: true,
+						desktopControl: false,
+						mobileSecretHash: "h2",
+						mobileIdentityKey: "key2",
+						createdAt: 2,
+					},
+				],
+				pendingPairings: [
+					{ pairingId: "pending", mobileSecretHash: "h3", expiresAt: 123 },
+					{ pairingId: "invalid-identity", mobileSecretHash: "h", expiresAt: 123, mobileIdentityKey: 42 },
+					{ pairingId: "invalid-expiry", mobileSecretHash: "h", expiresAt: "tomorrow" },
+				],
+			},
+		});
+		const remote = (await store.readDesktopConfig()).remoteControl!;
+		expect(remote.devices[0]).toMatchObject({ id: "legacy", pairingId: "legacy", pairedAt: 1 });
+		expect(remote.devices[1]).toMatchObject({
+			id: "stable",
+			pairingId: "current-pairing",
+			pairedAt: 9,
+			renamed: true,
+			desktopControl: false,
+			createdAt: 2,
+		});
+		expect(remote.pendingPairings).toEqual([{ pairingId: "pending", mobileSecretHash: "h3", expiresAt: 123 }]);
+		await store.updateDesktopConfig((config) => ({ ...config, remoteControl: remote }));
+		expect((await store.readDesktopConfig()).remoteControl).toEqual(remote);
+	});
+});

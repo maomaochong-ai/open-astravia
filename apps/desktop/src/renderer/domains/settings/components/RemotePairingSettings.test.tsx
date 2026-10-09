@@ -362,3 +362,23 @@ describe("远程连接设置", () => {
 		await waitFor(() => expect(screen.queryByPlaceholderText("wss://relay.example.test")).toBeNull());
 	});
 });
+
+
+it("设备行不再提供重新配对按钮，仍可通过页面二维码完成普通配对", async () => {
+	const device = { id: "phone-1", name: "My phone", claimed: true, online: true, channels: ["lan" as const], desktopControl: true, createdAt: 1 };
+	const initial = { ...inviteState(), devices: [device] };
+	const { createInvite } = installRemotePairing({ initial,
+		cancelInvite: async () => ({ ...BASE_STATE, devices: [device] }),
+		createInvite: async () => ({ ...inviteState("vetta://pair/refreshed"), devices: [device] }),
+	});
+	const user = userEvent.setup();
+	render(<RemotePairingSettings />);
+	await screen.findByRole("img", { name: "remote.pairing.qrAlt" });
+	expect(screen.queryByRole("button", { name: /remote\.devices\.repair/ })).toBeNull();
+	expect(screen.getByRole("button", { name: "My phone · remote.devices.desktop" })).toBeTruthy();
+	expect(screen.getByRole("button", { name: "My phone · remote.devices.revoke" })).toBeTruthy();
+	await user.click(screen.getByRole("button", { name: "remote.pairing.cancel" }));
+	await waitFor(() => expect(createInvite).toHaveBeenCalledWith());
+	await screen.findByRole("img", { name: "remote.pairing.qrAlt" });
+	expect(screen.getByText("My phone")).toBeTruthy();
+});
