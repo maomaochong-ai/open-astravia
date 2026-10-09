@@ -163,6 +163,14 @@ export function getUserMemoryPath(): string {
 	return join(getAgentDir(), "MEMORY.md");
 }
 
+/**
+ * 项目级 MEMORY.md：固定落在会话 cwd 下，因此同一规则只在此处定义，
+ * 宿主默认值、桌面端设置面板与运行时装配共享它（issue #8）。
+ */
+export function getProjectMemoryPath(cwd: string): string {
+	return join(cwd, "MEMORY.md");
+}
+
 export function getCustomThemesDir(): string {
 	return join(getAgentDir(), "themes");
 }

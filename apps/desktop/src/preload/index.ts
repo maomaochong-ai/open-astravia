@@ -13,6 +13,7 @@ import { createConversationTagsApi } from "./apis/conversation-tags.js";
 import { createDownloadsApi } from "./apis/downloads.js";
 import { createI18nApi } from "./apis/i18n.js";
 import { createImApi } from "./apis/im.js";
+import { createMemoryApi } from "./apis/memory.js";
 import { createMessageAnnotationsApi } from "./apis/message-annotations.js";
 import { createNotificationApi } from "./apis/notification.js";
 import { createPetApi } from "./apis/pet.js";
@@ -52,6 +53,7 @@ const rawApi: Omit<DesktopApi, "hostAccess"> = {
 	...createSpeechInputApi(ipcRenderer),
 	...createImApi(ipcRenderer),
 	...createDownloadsApi(ipcRenderer),
+	...createMemoryApi(ipcRenderer),
 	...createBatchTasksApi(ipcRenderer),
 	...createSchedulerApi(ipcRenderer),
 	...createWebhookApi(ipcRenderer),
