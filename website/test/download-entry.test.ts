@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { initDownloadLinks, initDownloadPlatformHighlight } from "../src/download-links";
 
-const VERSION = "0.5.60";
+const VERSION = "0.5.61";
 const BASE = `https://dl.astravia.dev/app/v${VERSION}`;
 
 /** Apple Silicon 上的 Chrome / Safari 同样上报 "Intel Mac OS X"。 */
