@@ -44,6 +44,10 @@ public final class RemoteDesktopSession {
 	@ObservationIgnored private var inputChannel: RTCDataChannel?
 	@ObservationIgnored private var controlChannel: RTCDataChannel?
 	@ObservationIgnored private var controlTransport: P2PControlTransport?
+	@ObservationIgnored private var viewChannel: RTCDataChannel?
+	@ObservationIgnored private var viewObserver: ViewChannelObserver?
+	/// How large the whole desktop is shown, in pixels with zoom applied; sent again once the channel opens.
+	@ObservationIgnored private var shown: (width: Int, height: Int)?
 	@ObservationIgnored private var pendingCandidates: [RTCIceCandidate] = []
 	@ObservationIgnored private var remoteDescriptionSet = false
 	@ObservationIgnored private var nextSequence = 1
@@ -125,6 +129,7 @@ public final class RemoteDesktopSession {
 		}
 		inputChannel?.close()
 		controlChannel?.close()
+		viewChannel?.close()
 		peer?.close()
 		peer = nil
 		videoTrack = nil
@@ -171,6 +176,23 @@ public final class RemoteDesktopSession {
 
 	public func send(_ commands: [RemoteInputCommand]) {
 		for command in commands { send(command) }
+	}
+
+	/// Tells the desktop how large the whole picture is shown, zoom included, so it sends no
+	/// more detail than that. Desktops that do not open the view channel keep the full size.
+	public func showView(width: Int, height: Int) {
+		shown = (width, height)
+		sendView()
+	}
+
+	fileprivate func sendView() {
+		guard let shown, let channel = viewChannel, channel.readyState == .open else { return }
+		do {
+			let text = try RemoteDesktopProtocol.encodeView(width: shown.width, height: shown.height)
+			channel.sendData(RTCDataBuffer(data: Data(text.utf8), isBinary: false))
+		} catch {
+			log.warning("remote desktop view refused: \(String(describing: error), privacy: .public)")
+		}
 	}
 
 	// MARK: Signaling
@@ -314,6 +336,12 @@ public final class RemoteDesktopSession {
 		case RemoteDesktopProtocol.controlChannel:
 			controlChannel = channel
 			controlTransport?.bind(channel)
+		case RemoteDesktopProtocol.viewChannel:
+			viewChannel = channel
+			let observer = ViewChannelObserver(session: self)
+			viewObserver = observer
+			channel.delegate = observer
+			sendView()
 		default:
 			channel.close()
 		}
@@ -445,4 +473,19 @@ private final class PeerDelegate: NSObject, RTCPeerConnectionDelegate, URLSessio
 	nonisolated func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
 		onMain { $0.signalingClosed(task, error?.localizedDescription ?? "desktop signaling closed") }
 	}
+}
+
+/// The view channel opening, moved onto the main actor; the desktop sends nothing on it.
+private final class ViewChannelObserver: NSObject, RTCDataChannelDelegate, @unchecked Sendable {
+	/// Read only on the main queue, where every callback hops before touching it.
+	nonisolated(unsafe) private weak var session: RemoteDesktopSession?
+
+	init(session: RemoteDesktopSession) { self.session = session }
+
+	nonisolated func dataChannelDidChangeState(_ dataChannel: RTCDataChannel) {
+		guard dataChannel.readyState == .open else { return }
+		DispatchQueue.main.async { MainActor.assumeIsolated { self.session?.sendView() } }
+	}
+
+	nonisolated func dataChannel(_ dataChannel: RTCDataChannel, didReceiveMessageWith buffer: RTCDataBuffer) {}
 }

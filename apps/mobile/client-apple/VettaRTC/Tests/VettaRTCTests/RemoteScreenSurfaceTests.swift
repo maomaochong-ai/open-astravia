@@ -118,6 +118,15 @@ final class RemoteScreenSurfaceTests: XCTestCase {
 		pinch.state = .ended
 		surface.pinched(pinch)
 
+		// The host can adapt resolution while the user stays zoomed in. Keep the
+		// viewport, but bound GPU work by the pixels the current frame really has.
+		await display(RTCI420Buffer(width: 1280, height: 800))
+		XCTAssertEqual(video.frame.width, 1200)
+		XCTAssertEqual(metal.drawableSize, CGSize(width: 1280, height: 800))
+		await display(nv12)
+		XCTAssertEqual(video.frame.width, 1200)
+		XCTAssertEqual(metal.drawableSize, CGSize(width: 2560, height: 1600))
+
 		// Turning the phone changes the viewport; turning the source changes pixel axes.
 		surface.frame = CGRect(x: 0, y: 0, width: 800, height: 400)
 		surface.layoutIfNeeded()

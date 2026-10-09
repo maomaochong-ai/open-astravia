@@ -18,7 +18,8 @@ class RemoteStreamStatsTest {
         RemoteStreamStats.Entry("P", "candidate-pair", mapOf("nominated" to true, "state" to "succeeded", "currentRoundTripTime" to 0.008, "localCandidateId" to "L", "remoteCandidateId" to "R")),
         RemoteStreamStats.Entry("T", "transport", mapOf("selectedCandidatePairId" to "P", "iceState" to "connected")),
         RemoteStreamStats.Entry("V", "inbound-rtp", mapOf("kind" to "video", "transportId" to "T", "framesPerSecond" to 60.0, "frameWidth" to 1920L, "frameHeight" to 1080L,
-            "jitterBufferDelay" to jitterDelay, "jitterBufferEmittedCount" to jitterFrames, "totalDecodeTime" to decodeTime, "framesDecoded" to jitterFrames)),
+            "jitterBufferDelay" to jitterDelay, "jitterBufferEmittedCount" to jitterFrames, "totalDecodeTime" to decodeTime, "framesDecoded" to jitterFrames, "framesReceived" to jitterFrames + 2,
+            "framesDropped" to 2L, "freezeCount" to 1L, "decoderImplementation" to "test-hardware-decoder")),
     )
 
     private data class RouteCase(val network: String, val local: String, val remote: String, val interfaceAddress: String, val prefix: Int, val route: RemoteStreamStats.Route)
@@ -88,6 +89,11 @@ class RemoteStreamStatsTest {
         assertEquals(8.0, first.roundTripMs!!, 0.001)
         assertEquals(60.0, first.framesPerSecond)
         assertEquals(1920 to 1080, first.frameWidth to first.frameHeight)
+        assertEquals("test-hardware-decoder", first.decoder)
+        assertEquals(102.0, first.framesReceived)
+        assertEquals(100.0, first.framesDecoded)
+        assertEquals(2.0, first.framesDropped)
+        assertEquals(1.0, first.freezeCount)
         assertNull(first.jitterBufferMs)
         val (second, nextTotals) = RemoteStreamStats.read(sample(2.2, 160.0, 0.8), totals, wifi)
         assertEquals(20.0, second.jitterBufferMs!!, 0.001)

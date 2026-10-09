@@ -79,6 +79,7 @@ import {
 	startDesktopRemoteDesktopHost,
 	stopDesktopRemoteDesktopHost,
 } from "./remote-control/desktop-remote-desktop-host.js";
+import { configureRemoteVideoEncoding } from "./remote-control/remote-video-encoding.js";
 import { startRendererAfterSessionPreparation } from "./renderer-startup.js";
 import { beginSharedRuntimeShutdown, disposeSharedRuntime, getSharedRuntime } from "./runtime.js";
 import { getRuntimeManager } from "./runtimes/manager.js";
@@ -105,6 +106,8 @@ import {
 	setMainWindow,
 	showMainWindow,
 } from "./window-manager.js";
+
+configureRemoteVideoEncoding(app.commandLine, process.platform, process.versions.chrome ?? "");
 
 // 启动早期修复 GUI 进程的 PATH(补回 homebrew 等登录 shell 路径),必须先于
 // RuntimeManager.applyEnv() 与 coding-agent 的 bash 执行。详见 fix-path.ts。

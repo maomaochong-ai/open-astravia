@@ -32,6 +32,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -67,6 +68,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
 import androidx.compose.ui.viewinterop.AndroidView
@@ -76,6 +78,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import org.vetta.android.domain.remote.RemoteKeyStroke
@@ -152,6 +155,14 @@ actual fun RemoteDesktopSurface(
     // The unzoomed picture inside the whole touch area, which may be larger.
     var picture by remember { mutableStateOf(Rect.Zero) }
     val density = LocalDensity.current
+    // How large the whole desktop is shown, once a pinch settles: the desktop sends no more than that.
+    LaunchedEffect(session) {
+        snapshotFlow { IntSize((picture.width * viewport.zoom).roundToInt(), (picture.height * viewport.zoom).roundToInt()) }
+            .collectLatest { size ->
+                delay(VIEW_SETTLE_MS)
+                session.showView(size)
+            }
+    }
 
     fun send(commands: List<RemotePointerCommand>) = commands.forEach { session.sendPointer(it.type, it.x, it.y, it.button, it.action) }
 
@@ -328,6 +339,9 @@ private const val HOLD_SLOP_DP = 10f
 
 /** Two fingers lifted this soon without moving are a right-click. */
 private const val TWO_FINGER_TAP_MS = 300L
+
+/** The zoom holds this long before the desktop hears of it, so a pinch is one change, not dozens. */
+private const val VIEW_SETTLE_MS = 300L
 
 /**
  * The desktop's pointer, drawn by the phone where the trackpad put it: in the shape the

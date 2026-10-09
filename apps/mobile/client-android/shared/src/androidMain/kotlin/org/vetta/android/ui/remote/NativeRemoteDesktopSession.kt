@@ -60,6 +60,9 @@ import org.webrtc.VideoTrack
 private const val PROTOCOL_VERSION = 1
 private const val INPUT_CHANNEL = "vetta-input-v1"
 private const val CONTROL_CHANNEL = "vetta-control-v2"
+
+/** Opened by desktops that send the picture no larger than this phone shows it. */
+private const val VIEW_CHANNEL = "vetta-view-v1"
 private const val MAX_CONTROL_MESSAGE_BYTES = 1_500_000
 private const val TRACE_STEPS = 8
 
@@ -77,6 +80,7 @@ private val ICE_SERVERS = listOf(
  * Shows each frame as soon as it is decoded. WebRTC's default jitter buffer smooths
  * playback for video calls, and a desktop's bursty frames (tiny while still, hundreds
  * of KB when a window moves) made it hold frames 100 to 300 ms on a 1 ms network.
+ * The factory reads its own trials: set only through `initialize`, this one was ignored.
  */
 private const val FIELD_TRIALS = "WebRTC-ForcePlayoutDelay/min_ms:0,max_ms:0/"
 
@@ -97,6 +101,10 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
     private var inputChannel: DataChannel? = null
     private var controlChannel: DataChannel? = null
     private var controlTransport: NativeRemoteControlTransport? = null
+    private var viewChannel: DataChannel? = null
+
+    /** How large the whole desktop is shown, in pixels with zoom applied; sent again once the channel opens. */
+    @Volatile private var shown: IntSize? = null
     private var sequence = 1L
     private var renderer: SurfaceViewRenderer? = null
     private var remoteVideoTrack: VideoTrack? = null
@@ -186,6 +194,7 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
         _stats.value = null
         inputChannel?.dispose()
         controlChannel?.dispose()
+        viewChannel?.dispose()
         peerConnection?.dispose()
         factory?.dispose()
         signaling?.cancel()
@@ -252,6 +261,27 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
         })
     }
 
+    /**
+     * Tells the desktop how large the whole picture is shown, zoom included, so it sends no
+     * more detail than that. Desktops that do not open the view channel keep the full size.
+     */
+    fun showView(size: IntSize) {
+        if (size.width <= 0 || size.height <= 0) return
+        shown = size
+        sendView()
+    }
+
+    private fun sendView() {
+        val size = shown ?: return
+        val channel = viewChannel ?: return
+        if (channel.state() != DataChannel.State.OPEN) return
+        val payload = buildJsonObject {
+            put("width", size.width)
+            put("height", size.height)
+        }
+        channel.send(DataChannel.Buffer(java.nio.ByteBuffer.wrap(payload.toString().toByteArray()), false))
+    }
+
     private fun sendInput(payload: JsonObject) {
         val channel = inputChannel ?: return
         if (channel.state() != DataChannel.State.OPEN) return
@@ -264,6 +294,7 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
                 PeerConnectionFactory.InitializationOptions.builder(context).setFieldTrials(FIELD_TRIALS).createInitializationOptions(),
             )
             factory = PeerConnectionFactory.builder()
+                .setFieldTrials(FIELD_TRIALS)
                 .setVideoDecoderFactory(org.webrtc.DefaultVideoDecoderFactory(eglBase.eglBaseContext))
                 .setVideoEncoderFactory(org.webrtc.DefaultVideoEncoderFactory(eglBase.eglBaseContext, true, true))
                 .createPeerConnectionFactory()
@@ -344,6 +375,17 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
                         controlChannel = channel
                         controlTransport?.bind(channel)
                     }
+                    VIEW_CHANNEL -> {
+                        viewChannel = channel
+                        channel.registerObserver(object : DataChannel.Observer {
+                            override fun onBufferedAmountChange(previousAmount: Long) = Unit
+                            override fun onStateChange() {
+                                if (channel.state() == DataChannel.State.OPEN) sendView()
+                            }
+                            override fun onMessage(buffer: DataChannel.Buffer) = Unit
+                        })
+                        sendView()
+                    }
                     else -> channel.close()
                 }
             }
@@ -368,6 +410,7 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
         if (statsJob?.isActive == true) return
         statsJob =
             scope.launch {
+                var sampleCount = 0
                 while (!stopped) {
                     val peer = peerConnection ?: break
                     val entries = CompletableDeferred<List<RemoteStreamStats.Entry>>()
@@ -377,6 +420,22 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
                     val (next, totals) = RemoteStreamStats.read(entries.await(), lastTotals, remoteNetworkInterfaces())
                     lastTotals = totals
                     _stats.value = next
+                    // Correlate with the desktop's five-second stream log and WebRTC's EglRenderer log.
+                    if (next.framesDecoded != null && sampleCount++ % 5 == 0) {
+                        PlatformRemoteLogger.info("native WebRTC stream", mapOf(
+                            "framesPerSecond" to next.framesPerSecond,
+                            "width" to next.frameWidth,
+                            "height" to next.frameHeight,
+                            "decoder" to next.decoder,
+                            "framesReceived" to next.framesReceived,
+                            "framesDecoded" to next.framesDecoded,
+                            "framesDropped" to next.framesDropped,
+                            "freezeCount" to next.freezeCount,
+                            "decodeMs" to next.decodeMs,
+                            "jitterBufferMs" to next.jitterBufferMs,
+                            "roundTripMs" to next.roundTripMs,
+                        ))
+                    }
                     delay(1_000)
                 }
             }

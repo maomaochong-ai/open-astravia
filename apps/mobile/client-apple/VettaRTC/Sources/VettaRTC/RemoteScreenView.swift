@@ -17,13 +17,19 @@ public struct RemoteScreenView: UIViewRepresentable {
 	let insets: UIEdgeInsets
 	/// The desktop's pointer shape; nil draws a plain arrow.
 	let cursor: RemoteScreenCursor?
+	/// How large the whole desktop is shown, in pixels with zoom applied, once a pinch settles.
+	let onView: (Int, Int) -> Void
 	let onInput: ([RemoteInputCommand]) -> Void
 
-	public init(track: RTCVideoTrack?, interactive: Bool, insets: UIEdgeInsets, cursor: RemoteScreenCursor?, onInput: @escaping ([RemoteInputCommand]) -> Void) {
+	public init(
+		track: RTCVideoTrack?, interactive: Bool, insets: UIEdgeInsets, cursor: RemoteScreenCursor?,
+		onView: @escaping (Int, Int) -> Void, onInput: @escaping ([RemoteInputCommand]) -> Void
+	) {
 		self.track = track
 		self.interactive = interactive
 		self.insets = insets
 		self.cursor = cursor
+		self.onView = onView
 		self.onInput = onInput
 	}
 
@@ -33,6 +39,7 @@ public struct RemoteScreenView: UIViewRepresentable {
 
 	public func updateUIView(_ view: RemoteScreenSurface, context: Context) {
 		view.onInput = onInput
+		view.onView = onView
 		view.interactive = interactive
 		view.pictureInsets = insets
 		view.cursorShape = cursor
@@ -46,6 +53,7 @@ public struct RemoteScreenView: UIViewRepresentable {
 
 public final class RemoteScreenSurface: UIView, UIGestureRecognizerDelegate, RTCVideoViewDelegate {
 	var onInput: ([RemoteInputCommand]) -> Void = { _ in }
+	var onView: (Int, Int) -> Void = { _, _ in }
 	var interactive = true
 	var pictureInsets: UIEdgeInsets = .zero {
 		didSet { if pictureInsets != oldValue { setNeedsLayout() } }
@@ -61,6 +69,8 @@ public final class RemoteScreenSurface: UIView, UIGestureRecognizerDelegate, RTC
 
 	/// A finger has to travel this far before it moves the pointer, so a tap does not nudge it.
 	private static let moveThreshold: CGFloat = 3
+	/// The zoom holds this long before the desktop hears of it, so a pinch is one change, not dozens.
+	private static let viewSettleSeconds = 0.3
 
 	private let video = RemoteMetalVideoView()
 	private lazy var renderer = RemoteVideoRenderer(sink: video)
@@ -76,6 +86,9 @@ public final class RemoteScreenSurface: UIView, UIGestureRecognizerDelegate, RTC
 	private var twoFingerGesture = RemoteTwoFingerGesture()
 	private var lastPinchScale: CGFloat = 1
 	private var lastTwoFingerTranslation: CGPoint = .zero
+	/// The size last passed on, or about to be once the zoom settles.
+	private var pendingView: CGSize = .zero
+	private var viewReport: DispatchWorkItem?
 	private let tapFeel = UIImpactFeedbackGenerator(style: .light)
 	private let rightFeel = UIImpactFeedbackGenerator(style: .medium)
 	private let dragFeel = UIImpactFeedbackGenerator(style: .rigid)
@@ -125,6 +138,9 @@ public final class RemoteScreenSurface: UIView, UIGestureRecognizerDelegate, RTC
 		track?.remove(renderer)
 		track = next
 		next?.add(renderer)
+		// A new track is a new session, which has not been told the size yet.
+		pendingView = .zero
+		setNeedsLayout()
 	}
 
 	// MARK: Layout
@@ -155,6 +171,20 @@ public final class RemoteScreenSurface: UIView, UIGestureRecognizerDelegate, RTC
 			height: rect.height * viewport.zoom
 		)
 		placeCursor()
+		reportView()
+	}
+
+	/// Passes on how large the whole desktop is shown, in pixels, once it stops changing.
+	private func reportView() {
+		let rect = pictureRect
+		let scale = traitCollection.displayScale
+		let size = CGSize(width: (rect.width * viewport.zoom * scale).rounded(), height: (rect.height * viewport.zoom * scale).rounded())
+		guard videoSize != .zero, size.width >= 1, size.height >= 1, size != pendingView else { return }
+		pendingView = size
+		viewReport?.cancel()
+		let report = DispatchWorkItem { [weak self] in self?.onView(Int(size.width), Int(size.height)) }
+		viewReport = report
+		DispatchQueue.main.asyncAfter(deadline: .now() + Self.viewSettleSeconds, execute: report)
 	}
 
 	/// Puts the pointer's hot spot on the pointer's position, at a readable size.
@@ -188,8 +218,12 @@ public final class RemoteScreenSurface: UIView, UIGestureRecognizerDelegate, RTC
 		DispatchQueue.main.async {
 			MainActor.assumeIsolated {
 				guard size.width > 0, size.height > 0, size != self.videoSize else { return }
+				// The same screen sent at another scale (the desktop follows the zoom) keeps the zoom.
+				let reshaped = !RemoteViewport.sameShape(
+					(Double(self.videoSize.width), Double(self.videoSize.height)), (Double(size.width), Double(size.height))
+				)
 				self.videoSize = size
-				self.viewport = RemoteViewport()
+				if reshaped { self.viewport = RemoteViewport() }
 				self.setNeedsLayout()
 			}
 		}
