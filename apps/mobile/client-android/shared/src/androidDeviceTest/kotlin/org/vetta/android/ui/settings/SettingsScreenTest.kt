@@ -32,6 +32,7 @@ import org.vetta.android.domain.work.UnlinkReason
 import org.vetta.android.resources.Res
 import org.vetta.android.resources.link_connected
 import org.vetta.android.resources.link_connecting
+import org.vetta.android.resources.link_live
 import org.vetta.android.resources.link_latency
 import org.vetta.android.resources.link_via_relay
 import org.vetta.android.resources.settings_link_phone
@@ -74,6 +75,7 @@ class SettingsScreenTest {
         composeRule.onNodeWithText(phoneModel()).assertDoesNotExist()
         composeRule.onNodeWithText(str(Res.string.settings_link_phone)).assertDoesNotExist()
         composeRule.onNodeWithText(str(Res.string.link_connected)).assertDoesNotExist()
+        composeRule.onNodeWithText(str(Res.string.link_live)).assertIsDisplayed()
         composeRule.onAllNodesWithTag("settings.computer").assertCountEquals(0)
         composeRule.onNodeWithText("${str(Res.string.link_via_relay)} · ${str(Res.string.link_latency, 42)}").assertIsDisplayed()
         composeRule.onNodeWithText("—").assertDoesNotExist()
@@ -148,6 +150,7 @@ class SettingsScreenTest {
             }
         }
         composeRule.onNodeWithText(str(Res.string.link_connecting)).assertIsDisplayed()
+        composeRule.onNodeWithText(str(Res.string.link_live)).assertDoesNotExist()
         composeRule.onNodeWithText(str(Res.string.link_via_relay)).assertDoesNotExist()
         composeRule.onAllNodesWithTag("settings.scan").assertCountEquals(0)
         composeRule.onNodeWithTag("settings.rescan").performScrollTo().assertIsDisplayed()
@@ -176,6 +179,7 @@ class SettingsScreenTest {
             }
         }
         composeRule.onNodeWithText(str(Res.string.work_unpaired_description)).assertIsDisplayed()
+        composeRule.onNodeWithText(str(Res.string.link_live)).assertDoesNotExist()
         composeRule.onNodeWithTag("settings.scan").performClick()
         assertEquals(1, pairing)
         composeRule.onAllNodesWithTag("settings.unpair").assertCountEquals(0)

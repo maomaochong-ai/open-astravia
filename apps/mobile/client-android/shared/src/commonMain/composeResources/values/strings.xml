@@ -148,6 +148,7 @@
     <string name="link_connected">Connected</string>
     <string name="link_connecting">Connecting…</string>
     <string name="link_latency">%1$d ms</string>
+    <string name="link_live">Online</string>
     <string name="link_offline">Computer offline</string>
     <string name="link_reconnect">Reconnect</string>
     <plurals name="link_reconnecting">
