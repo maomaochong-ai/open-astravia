@@ -58,7 +58,6 @@ function cacheFeedState(
 	const existing = feedStateCache.get(key);
 	if (existing !== undefined && existing.itemCount > itemCount) return;
 	feedStateCache.delete(key);
-	feedStateCache.delete(key);
 	feedStateCache.set(key, {
 		itemIdentity,
 		itemCount,
@@ -194,9 +193,8 @@ export function useMessageFeedScrollModel<T>({
 	const lastUserScrollDirectionRef = useRef<"up" | "down" | null>(null);
 	const activeRef = useRef(active);
 	activeRef.current = active;
-	const skipNextLerpRef = useRef(false);
 	const scrollSettleTimerRef = useRef<number | null>(null);
-	const lastScrollLogAtRef = useRef(0);
+	const skipNextLerpRef = useRef(false);
 	const interactionResetKeyRef = useRef(resetKey);
 	if (interactionResetKeyRef.current !== resetKey) {
 		interactionResetKeyRef.current = resetKey;
@@ -232,9 +230,7 @@ export function useMessageFeedScrollModel<T>({
 		}
 		const handle = virtuosoRef.current;
 		if (!handle || typeof handle.getState !== "function") return;
-		handle.getState((snap) => {
-			cacheFeedState(key, itemCount, identity, snap);
-		});
+		handle.getState((snapshot) => cacheFeedState(key, itemCount, identity, snapshot));
 	}, []);
 	const updateScrollToBottomVisibility = useCallback(() => {
 		visibilityAnimationFrameRef.current = null;
