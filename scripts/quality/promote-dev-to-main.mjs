@@ -132,7 +132,7 @@ async function openReviewPullRequest(client, { owner, repo, sourceSha, compare, 
 	}
 	const total = compare?.total_commits ?? 0;
 	const { data } = await client.post(`/repos/${owner}/${repo}/pulls`, {
-		body: {
+		json: {
 			title: `${PROMOTION_PR_TITLE_PREFIX}（${total} 个提交）`,
 			head: PROMOTION_SOURCE_BRANCH,
 			base: PROMOTION_TARGET_BRANCH,
@@ -178,7 +178,7 @@ export async function runPromotion({ env = process.env, fetchImpl, log = console
 
 	if (decision.action === "fast-forward") {
 		const { status, data } = await client.patch(`/repos/${owner}/${repo}/git/refs/heads/${PROMOTION_TARGET_BRANCH}`, {
-			body: { sha: sourceSha, force: false },
+			json: { sha: sourceSha, force: false },
 			tolerate: [409, 422],
 		});
 		if (status < 400) {

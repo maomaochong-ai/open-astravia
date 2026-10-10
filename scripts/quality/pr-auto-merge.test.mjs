@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { AUTOMERGE_LABEL, DO_NOT_MERGE_LABEL, gateCheckNames, PATH_SCOPED_CHECKS } from "./ci-gate.mjs";
+import { createGitHubClient } from "./github-rest.mjs";
 import { repoRoot } from "./lib.mjs";
 import {
 	AUTOMATION_COMMENT_MARKER,
@@ -189,7 +190,7 @@ describe("auto-merge actions", () => {
 		const { fetchImpl, calls } = createTransport({
 			[`PUT /repos/${SLUG}/pulls/7/merge`]: { body: { sha: "squash33", merged: true } },
 		});
-		const client = { put: (path, options) => fetchVia(fetchImpl, "PUT", path, options) };
+		const client = createGitHubClient({ token: "test-token", fetchImpl });
 		const result = await mergePullRequest(client, { owner: OWNER, repo: REPO, pullRequest: pullRequest() });
 		expect(result).toEqual({ merged: true, sha: "squash33" });
 		expect(calls[0].body).toEqual({
@@ -203,7 +204,7 @@ describe("auto-merge actions", () => {
 		const { fetchImpl } = createTransport({
 			[`PUT /repos/${SLUG}/pulls/7/merge`]: { status: 405, body: { message: "Pull request is not mergeable" } },
 		});
-		const client = { put: (path, options) => fetchVia(fetchImpl, "PUT", path, options) };
+		const client = createGitHubClient({ token: "test-token", fetchImpl });
 		const result = await mergePullRequest(client, { owner: OWNER, repo: REPO, pullRequest: pullRequest() });
 		expect(result).toEqual({ merged: false, reason: "Pull request is not mergeable" });
 	});
@@ -213,7 +214,7 @@ describe("auto-merge actions", () => {
 			[`DELETE /repos/${SLUG}/git/refs/heads/fix/reader`]: { status: 204 },
 		};
 		const { fetchImpl, calls } = createTransport(routes);
-		const client = { del: (path, options) => fetchVia(fetchImpl, "DELETE", path, options) };
+		const client = createGitHubClient({ token: "test-token", fetchImpl });
 
 		expect(await deleteHeadBranch(client, { owner: OWNER, repo: REPO, pullRequest: pullRequest() })).toEqual({
 			deleted: true,
@@ -237,26 +238,12 @@ describe("auto-merge actions", () => {
 			[`GET /repos/${SLUG}`]: { body: { default_branch: "main" } },
 			[`POST /repos/${SLUG}/actions/workflows/${PROMOTION_WORKFLOW_FILE}/dispatches`]: { status: 204 },
 		});
-		const client = {
-			get: (path, options) => fetchVia(fetchImpl, "GET", path, options),
-			post: (path, options) => fetchVia(fetchImpl, "POST", path, options),
-		};
+		const client = createGitHubClient({ token: "test-token", fetchImpl });
 		expect(await requestPromotion(client, { owner: OWNER, repo: REPO })).toEqual({ dispatched: true });
 		expect(calls[1].key).toBe(`POST /repos/${SLUG}/actions/workflows/${PROMOTION_WORKFLOW_FILE}/dispatches`);
 		expect(calls[1].body).toEqual({ ref: "main", inputs: { dry_run: "false" } });
 	});
 });
-
-async function fetchVia(fetchImpl, method, path, options = {}) {
-	const url = new URL(`https://api.github.com${path}`);
-	for (const [key, value] of Object.entries(options.query ?? {})) url.searchParams.set(key, String(value));
-	const response = await fetchImpl(url.toString(), {
-		method,
-		body: options.body === undefined ? undefined : JSON.stringify(options.body),
-	});
-	const text = await response.text();
-	return { status: response.status, data: text.length > 0 ? JSON.parse(text) : undefined, ok: response.ok };
-}
 
 describe("auto-merge run", () => {
 	function happyRoutes(pr = pullRequest()) {
@@ -282,9 +269,9 @@ describe("auto-merge run", () => {
 		});
 		expect(result).toEqual({ merged: [{ number: 7, sha: "squash33" }], skipped: [] });
 		const comment = calls.find((call) => call.key === `POST /repos/${SLUG}/issues/7/comments`);
-		expect(comment.body).toContain(AUTOMATION_COMMENT_MARKER);
-		expect(comment.body).toContain("Merged into `dev`");
-		expect(comment.body).toContain("promoted to `main`");
+		expect(comment.body.body).toContain(AUTOMATION_COMMENT_MARKER);
+		expect(comment.body.body).toContain("Merged into `dev`");
+		expect(comment.body.body).toContain("promoted to `main`");
 		expect(calls.map((call) => call.key)).toContain(
 			`POST /repos/${SLUG}/actions/workflows/${PROMOTION_WORKFLOW_FILE}/dispatches`,
 		);
@@ -322,8 +309,8 @@ describe("auto-merge run", () => {
 		expect(result.merged).toEqual([]);
 		expect(result.skipped).toHaveLength(1);
 		const comment = calls.find((call) => call.key === `POST /repos/${SLUG}/issues/7/comments`);
-		expect(comment.body).toContain("Auto-merge is on hold");
-		expect(comment.body).toContain("check + quality tests (failure)");
+		expect(comment.body.body).toContain("Auto-merge is on hold");
+		expect(comment.body.body).toContain("check + quality tests (failure)");
 	});
 
 	it("comments the refusal when GitHub rejects the merge itself", async () => {
@@ -337,7 +324,7 @@ describe("auto-merge run", () => {
 		});
 		expect(result.merged).toEqual([]);
 		const comment = calls.find((call) => call.key === `POST /repos/${SLUG}/issues/7/comments`);
-		expect(comment.body).toContain("Pull request is not mergeable");
+		expect(comment.body.body).toContain("Pull request is not mergeable");
 	});
 
 	it("stays silent for a pull request that did not opt in", async () => {
