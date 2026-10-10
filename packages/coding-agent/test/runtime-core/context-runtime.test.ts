@@ -778,12 +778,17 @@ describe("DefaultCodingAgentContextRuntime", () => {
 			new AbortController().signal,
 		);
 
-		expect(record.summary).toContain("<runtime-work-state>");
-		expect(record.summary).toContain('"nextTodoId":1');
-		expect(record.summary).toContain('"id":"task-1"');
-		expect(messageText(record.summaryMessage)).toBe(
-			`${COMPACTION_SUMMARY_PREFIX}${record.summary}${COMPACTION_SUMMARY_SUFFIX}`,
-		);
+		// 工作状态只进模型可见投影。持久化的 summary 保持人读叙述（UI 压缩卡与下次压缩的
+		// previousSummary 都读它，不该看到 JSON）；在飞 todo / 后台任务经 summaryMessage 恢复。
+		expect(record.summary).toBe("summary");
+		expect(record.summary).not.toContain("<runtime-work-state>");
+
+		const projected = messageText(record.summaryMessage);
+		expect(projected.startsWith(COMPACTION_SUMMARY_PREFIX)).toBe(true);
+		expect(projected.endsWith(COMPACTION_SUMMARY_SUFFIX)).toBe(true);
+		expect(projected).toContain("<runtime-work-state>");
+		expect(projected).toContain('"nextTodoId":1');
+		expect(projected).toContain('"id":"task-1"');
 	});
 
 	it("does not generate or persist a compaction when the pre-compact hook blocks", async () => {

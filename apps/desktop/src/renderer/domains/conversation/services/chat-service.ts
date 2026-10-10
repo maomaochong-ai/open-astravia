@@ -22,6 +22,7 @@ import type {
 	ToolImagePreview,
 } from "@shared/store/atoms";
 import { classifyChatError } from "./classifyChatError";
+import { toCompactionDisplaySummary } from "./compaction-display-summary";
 import { conversationAssistantMessageId } from "./conversation-message-identity";
 
 export function toChatErrorDetails(
@@ -609,7 +610,11 @@ export function fullHistoryToChat(entries: HistoryEntry[]): ChatConversationItem
 				kind: "event",
 				id: entry.entryId ?? `hist-compact-${messages.length}`,
 				entryId: entry.entryId,
-				event: { kind: "compaction", summary: entry.summary, tokensBefore: entry.tokensBefore },
+				event: {
+					kind: "compaction",
+					summary: toCompactionDisplaySummary(entry.summary),
+					tokensBefore: entry.tokensBefore,
+				},
 				timestamp: new Date(entry.timestamp).getTime(),
 			});
 			continue;
