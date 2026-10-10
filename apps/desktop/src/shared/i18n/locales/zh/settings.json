@@ -1332,6 +1332,7 @@
   "section_agent-images": "图片",
   "section_agent-experimental": "扩展功能",
   "section_agent-runtime": "运行时",
+  "section_agent-memory": "记忆",
   "section_knowledge-processing": "后台加工",
   "section_knowledge-actions": "手动操作",
   "section_pet-display": "显示与窗口",
