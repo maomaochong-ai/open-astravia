@@ -12,6 +12,7 @@ import type {
 import type { InputSegment } from "@shared/lib/input-tokens";
 import { atom } from "jotai";
 import { selectAtom } from "jotai/utils";
+import type { CompactionLedgerView } from "../domains/conversation/services/compaction-ledger";
 import { runningSessionPathsAtom } from "./running-sessions-atoms";
 
 export type TeamMemberSummaryEventViewModel = {
@@ -36,6 +37,8 @@ export type ChatTimelineEventViewModel =
 			readonly summary: string;
 			/** 压缩前的上下文 token 数（历史投影可得；账目行展示用）。 */
 			readonly tokensBefore?: number;
+			/** 机械账本（确定性事实层）：被读过/改过的文件、消息与 token 计数。 */
+			readonly ledger?: CompactionLedgerView;
 	  }
 	| { readonly kind: "delegation"; readonly label: string; readonly requestId: string; readonly timestamp: number }
 	| TeamMemberSummaryEventViewModel;

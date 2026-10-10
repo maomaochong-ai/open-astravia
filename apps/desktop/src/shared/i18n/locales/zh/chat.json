@@ -774,7 +774,11 @@
 			"tokens": "已压缩 {{tokens}} tokens",
 			"compacting": "正在压缩…",
 			"viewSummary": "查看摘要",
-			"hideSummary": "收起摘要"
+			"hideSummary": "收起摘要",
+			"ledgerRead": "读过",
+			"ledgerModified": "改过",
+			"ledgerMessages": "{{count}} 条消息",
+			"ledgerTokens": "约 {{tokens}} tokens"
 		},
 		"modelSwitched": "模型已从 {{from}} 切换为 {{to}}",
 		"compactionIndicator": "正在压缩上下文...",

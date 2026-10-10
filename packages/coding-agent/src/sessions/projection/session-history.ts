@@ -240,6 +240,7 @@ export function entriesToHistory(branch: CodingSessionEntry[], options?: Entries
 				summary: entry.summary,
 				tokensBefore: entry.tokensBefore,
 				timestamp: entry.timestamp,
+				...(entry.details === undefined ? {} : { details: entry.details }),
 			});
 		} else if (entry.type === "custom" && entry.customType === ASSISTANT_TURN_TIMING_TYPE) {
 			const timing = parseAssistantTurnTiming(entry);

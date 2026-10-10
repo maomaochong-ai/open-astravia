@@ -22,6 +22,7 @@ import type {
 	ToolImagePreview,
 } from "@shared/store/atoms";
 import { classifyChatError } from "./classifyChatError";
+import { extractCompactionLedger } from "./compaction-ledger";
 import { conversationAssistantMessageId } from "./conversation-message-identity";
 
 export function toChatErrorDetails(
@@ -605,11 +606,17 @@ export function fullHistoryToChat(entries: HistoryEntry[]): ChatConversationItem
 			pendingSettingsAssistTabId = undefined;
 			pendingPromptRef = undefined;
 			pendingAttachments = undefined;
+			const ledger = extractCompactionLedger(entry.details);
 			messages.push({
 				kind: "event",
 				id: entry.entryId ?? `hist-compact-${messages.length}`,
 				entryId: entry.entryId,
-				event: { kind: "compaction", summary: entry.summary, tokensBefore: entry.tokensBefore },
+				event: {
+					kind: "compaction",
+					summary: entry.summary,
+					tokensBefore: entry.tokensBefore,
+					...(ledger === undefined ? {} : { ledger }),
+				},
 				timestamp: new Date(entry.timestamp).getTime(),
 			});
 			continue;

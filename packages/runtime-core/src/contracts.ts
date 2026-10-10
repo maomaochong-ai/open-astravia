@@ -516,6 +516,11 @@ export type HistoryEntry =
 			summary: string;
 			tokensBefore: number;
 			timestamp: string;
+			/**
+			 * Compaction details carried verbatim from the document entry. Holds the mechanical
+			 * ledger (`ledger`) so hosts can surface deterministic facts beside the summary.
+			 */
+			details?: unknown;
 	  }
 	| { type: "assistant_turn_timing"; timing: AssistantTurnTiming; timestamp: string }
 	| {

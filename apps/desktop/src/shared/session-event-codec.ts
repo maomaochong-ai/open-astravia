@@ -23,6 +23,7 @@ const SESSION_EVENT_TYPES = new Set([
 	"session.extension",
 	"active_tools_update",
 	"compaction.start",
+	"compaction.delta",
 	"compaction.end",
 	"retry.start",
 	"retry.end",
@@ -144,6 +145,9 @@ export function decodeSessionEvent(value: unknown): SessionEvent {
 		if (!usage || !compaction || typeof compaction.status !== "string" || !record(compaction.eligibility)) {
 			fail("invalid session context state payload");
 		}
+	}
+	if (event.type === "compaction.delta" && (typeof event.text !== "string" || event.text.length === 0)) {
+		fail("compaction delta text is invalid");
 	}
 	return event as unknown as SessionEvent;
 }

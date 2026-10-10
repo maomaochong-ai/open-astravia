@@ -14,6 +14,17 @@ export function onIpcVoidEvent(ipc: IpcRenderer, channel: string, handler: () =>
 	return () => ipc.removeListener(channel, listener);
 }
 
+/**
+ * Runs one decoded event, isolating decode/handler failures so a single bad payload
+ * cannot escape the IPC listener and tear down the whole subscription.
+ */
+function deliver<T>(run: () => T): void {
+	try {
+		run();
+	} catch (error) {
+		console.error("[ipc] event delivery failed", error);
+	}
+}
 export async function subscribeById<T>(
 	ipc: IpcRenderer,
 	subscribeChannel: string,
@@ -30,7 +41,7 @@ export async function subscribeById<T>(
 			buffered.push({ incomingId, data });
 			return;
 		}
-		if (incomingId === subscriptionId) handler(decode(data));
+		if (incomingId === subscriptionId) deliver(() => handler(decode(data)));
 	};
 	ipc.on(eventChannel, listener);
 	let initial: T | undefined;
@@ -45,9 +56,9 @@ export async function subscribeById<T>(
 		ipc.removeListener(eventChannel, listener);
 		throw error;
 	}
-	if (initial !== undefined) handler(decode(initial));
+	if (initial !== undefined) deliver(() => handler(decode(initial)));
 	for (const event of buffered) {
-		if (event.incomingId === subscriptionId) handler(decode(event.data));
+		if (event.incomingId === subscriptionId) deliver(() => handler(decode(event.data)));
 	}
 	buffered.length = 0;
 	return () => {

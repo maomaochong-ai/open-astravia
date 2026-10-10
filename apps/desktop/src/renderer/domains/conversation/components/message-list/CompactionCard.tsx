@@ -6,6 +6,7 @@ import { memo } from "react";
 import { useTranslation } from "react-i18next";
 import { compactionLiveSummaryAtom, isCompactingAtom } from "@shared/store/atoms";
 import { useExpansion } from "./expansionStore";
+import type { CompactionLedgerView } from "../../services/compaction-ledger";
 
 /**
  * 压缩消息卡：把上下文压缩从「一条静态细线」升级为可折叠卡片。
@@ -24,9 +25,11 @@ export interface CompactionCardProps {
 	/** 历史投影的摘要（event.kind === "compaction" 的 summary）。 */
 	readonly summary?: string;
 	readonly tokensBefore?: number;
+	/** 机械账本（确定性事实层）：展开态在摘要之后展示。 */
+	readonly ledger?: CompactionLedgerView;
 }
 
-export const CompactionCard = memo(function CompactionCard({ summary, tokensBefore }: CompactionCardProps) {
+export const CompactionCard = memo(function CompactionCard({ summary, tokensBefore, ledger }: CompactionCardProps) {
 	const { t } = useTranslation("chat");
 	const isCompacting = useAtomValue(isCompactingAtom);
 	const liveSummary = useAtomValue(compactionLiveSummaryAtom);
@@ -75,8 +78,73 @@ export const CompactionCard = memo(function CompactionCard({ summary, tokensBefo
 						onOpenFile={(): void => {}}
 						onOpenUrl={(): void => {}}
 					/>
+					{ledger === undefined ? null : (
+						<div className="mt-2 border-t border-border/30 pt-2">
+							<CompactionLedgerSection ledger={ledger} />
+						</div>
+					)}
 				</div>
 			) : null}
 		</div>
 	);
 });
+
+/**
+ * 机械账本区：压缩区间内**确定性**发生的事——读过/改过的文件、消息与 token 计数。
+ *
+ * 与摘要的分工：摘要说模型选择提及什么，账本说实际发生了什么（零 LLM、零幻觉，
+ * 可对照原文逐条验证）。文件清单已在上游窄化时有界，这里不再二次截断。
+ */
+function CompactionLedgerSection({ ledger }: { readonly ledger: CompactionLedgerView }) {
+	const { t } = useTranslation("chat");
+	const facts: string[] = [];
+	if (ledger.messageCount > 0) facts.push(t("messageList.compactionCard.ledgerMessages", { count: ledger.messageCount }));
+	if (ledger.estimatedTokens > 0) {
+		facts.push(t("messageList.compactionCard.ledgerTokens", { tokens: ledger.estimatedTokens.toLocaleString() }));
+	}
+
+	return (
+		<div className="space-y-1.5 text-[11px] text-muted-foreground/70">
+			{facts.length > 0 ? <div className="flex flex-wrap gap-x-3">{facts.join(" · ")}</div> : null}
+			<CompactionLedgerFileList
+				label={t("messageList.compactionCard.ledgerRead")}
+				files={ledger.readFiles}
+				icon="icon-[mdi--file-eye-outline]"
+			/>
+			<CompactionLedgerFileList
+				label={t("messageList.compactionCard.ledgerModified")}
+				files={ledger.modifiedFiles}
+				icon="icon-[mdi--file-edit-outline]"
+			/>
+		</div>
+	);
+}
+
+function CompactionLedgerFileList({
+	label,
+	files,
+	icon,
+}: {
+	readonly label: string;
+	readonly files: readonly string[];
+	readonly icon: string;
+}) {
+	if (files.length === 0) return null;
+	return (
+		<div>
+			<div className="flex items-center gap-1">
+				<span className={`${icon} h-3 w-3 shrink-0`} aria-hidden="true" />
+				<span>
+					{label} · {files.length}
+				</span>
+			</div>
+			<ul className="mt-0.5 ml-4 space-y-0.5">
+				{files.map((file) => (
+					<li key={file} className="truncate font-mono text-[10px]" title={file}>
+						{file}
+					</li>
+				))}
+			</ul>
+		</div>
+	);
+}
