@@ -74,7 +74,7 @@ gh api -X DELETE repos/maomaochong-ai/open-astravia/branches/main/protection
 
 `automerge` 由脚本添加后**永远不会被脚本移除**（`--sync` 只增不减），所以想叫停已经拿到该标签的 PR，正确做法是加上 `do-not-merge`。移除 `automerge` 标签不会有持久效果：下一次 `--sync` 会把受信任作者的 `automerge` 重新加回来。
 
-作者角色按 GitHub 的 `author_association` 判定：`OWNER`、`MEMBER`、`COLLABORATOR` 与 `TRUSTED_BOT_LOGINS` 视为受信任。外部贡献者的 PR 只有在维护者显式加上 `automerge` 后才会进入自动合并。
+作者角色按 GitHub 的 `author_association` 判定：`OWNER`、`MEMBER`、`COLLABORATOR`、`CONTRIBUTOR` 与 `TRUSTED_BOT_LOGINS` 视为受信任；首次提交的外部贡献者（`FIRST_TIME_CONTRIBUTOR`）不算受信任。不受信任的 PR 只有在维护者显式加上 `automerge` 后才会进入自动合并。
 
 ## 自动合并（`Auto-merge`）
 
@@ -130,7 +130,7 @@ gh api -X DELETE repos/maomaochong-ai/open-astravia/branches/main/protection
 
 - **PR 一直不合并**：看置顶评论里的原因；`waiting for required checks` 表示还有必需检查没报告，`failing required checks` 会点名具体检查与结论。
 - **PR 卡在 `Expected — Waiting for status to be reported`**：某个必需检查从未上报过。检查对应 workflow 是否被停用（例如 `pr-quality.yml` 被禁用），或分支保护里写了脚本不认识的检查名。
-- **fork PR 拿不到 `automerge`**：符合预期，需要维护者手动加标签。
+- **fork PR 没拿到 `automerge`**：首次提交的外部贡献者（`FIRST_TIME_CONTRIBUTOR`）属于预期，需要维护者手动加标签；已经贡献过的作者（`CONTRIBUTOR`）会自动拿到。
 - **`dev` 推进 PR 长期存在**：说明 `main` 有 `dev` 之外的提交（热修）。按 PR 正文提示用 merge commit 合并，或把热修回合到 `dev`。
 - **本地试跑**：`node scripts/quality/pr-quality.mjs --check|--sync`、`node scripts/quality/pr-auto-merge.mjs --dry-run`、`node scripts/quality/promote-dev-to-main.mjs --dry-run`。脚本只依赖 Node 内置模块与 `GITHUB_TOKEN`/`ASTRAVIA_AUTOMATION_TOKEN`，不需要 Bun，也不需要 `gh` CLI。
 

@@ -149,6 +149,18 @@ describe("pull request conventions", () => {
 		expect(result.labels.add).not.toContain("automerge");
 	});
 
+	it("labels a returning fork contributor for auto-merge", () => {
+		const result = report({ pullRequest: { user: { login: "fork-author" }, author_association: "CONTRIBUTOR" } });
+		expect(result.trusted).toBe(true);
+		expect(result.labels.add).toContain("automerge");
+	});
+
+	it("judges an unknown author association on a case-insensitive match", () => {
+		expect(isTrustedAuthor({ author_association: "contributor" })).toBe(true);
+		expect(isTrustedAuthor({ author_association: "NONE" })).toBe(false);
+		expect(isTrustedAuthor({ author_association: undefined })).toBe(false);
+	});
+
 	it("judges a dependency bot on its size and release notes, not on the template", () => {
 		const bot = { user: { login: TRUSTED_BOT_LOGINS[0] }, author_association: "NONE", body: "" };
 		const result = report({ pullRequest: bot });

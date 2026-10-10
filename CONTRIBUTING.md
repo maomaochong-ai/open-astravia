@@ -62,7 +62,7 @@ We do not require a CLA. Contributions are licensed under [Apache-2.0](LICENSE),
 Review is mechanical first: a required `PR conventions` check reads this repository's own rules, and the unit-test / packaging checks are the merge gate. There is no hidden AI gate.
 
 - The automation posts **one sticky comment** on the PR and updates it in place; it never opens a new thread per push.
-- Repository members, collaborators and trusted bots get the `automerge` label automatically once their PR passes the conventions check. Everyone else opts in when a maintainer adds the label.
+- Repository members, collaborators, returning contributors and trusted bots get the `automerge` label automatically once their PR passes the conventions check. First-time contributors and everyone else opt in when a maintainer adds the label.
 - Auto-merge is squash-only and merges into the PR's base branch (`dev` for contributions). It waits for every required check, and never merges a draft or a conflicted branch.
 - `do-not-merge` is the sticky stop switch. Removing `automerge` does **not** stop the PR — the next sync adds it back to an eligible PR.
 - Green `dev` is promoted to `main` automatically; a diverged history becomes a pull request that asks for a merge commit instead.

@@ -44,7 +44,7 @@ export const UI_OPTION = "UI";
 export const LARGE_PR_FILE_THRESHOLD = 40;
 export const LARGE_PR_LINE_THRESHOLD = 1200;
 
-export const TRUSTED_AUTHOR_ASSOCIATIONS = ["OWNER", "MEMBER", "COLLABORATOR"];
+export const TRUSTED_AUTHOR_ASSOCIATIONS = ["OWNER", "MEMBER", "COLLABORATOR", "CONTRIBUTOR"];
 export const TRUSTED_BOT_LOGINS = ["dependabot[bot]", "github-actions[bot]", "renovate[bot]"];
 
 export const LINKED_ISSUE_PATTERN = /\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\b[^\n#]*#(\d+)/i;
