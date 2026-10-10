@@ -183,6 +183,7 @@ export async function createCodingAgentSessionPeripheralAssembly(
 			}),
 			createCodingAgentAskUserQuestionSessionExtension({ scenario: options.scenario }),
 			createCodingAgentGoalSessionExtension({
+				activation: options.activation,
 				scenario: options.scenario,
 				reportUpdate: (state) =>
 					options.resourceContext.reportObservation({

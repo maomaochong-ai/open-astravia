@@ -1,12 +1,15 @@
 import type { AgentFeatureDefinition, ModelCallContributionProvider } from "@astravia/runtime-core/kernel";
+import type { CodingAgentRuntimeToolRegistration } from "../../runtime-contracts/index.js";
 import { GOAL_INSTRUCTION_ID, renderGoalInstructions } from "./goal-instructions.js";
 import type { CodingAgentGoalRuntime } from "./goal-runtime.js";
-import { createGoalTools } from "./tools.js";
 
 const GOAL_INSTRUCTION_PRIORITY = 950;
 
-export function createCodingAgentGoalFeature(runtime: CodingAgentGoalRuntime): AgentFeatureDefinition {
-	const tools = createGoalTools(runtime);
+export function createCodingAgentGoalFeature(
+	runtime: CodingAgentGoalRuntime,
+	registrations: readonly CodingAgentRuntimeToolRegistration[],
+): AgentFeatureDefinition {
+	const tools = registrations.map(({ tool }) => tool);
 	const provider = (): ModelCallContributionProvider => ({
 		id: "coding-agent.goal",
 		bindForTurn: () => provider(),
