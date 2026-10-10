@@ -1332,6 +1332,7 @@
   "section_agent-images": "Images",
   "section_agent-experimental": "Experimental",
   "section_agent-runtime": "Runtime",
+  "section_agent-memory": "Memory",
   "section_knowledge-processing": "Background Processing",
   "section_knowledge-actions": "Manual Actions",
   "section_pet-display": "Display & Window",
