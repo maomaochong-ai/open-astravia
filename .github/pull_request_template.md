@@ -2,6 +2,8 @@
   Target branch: `dev` (not `main`).
   Use Fixes / Closes / Resolves so the linked issue closes on merge.
   Delete the Fixes line only if this PR genuinely does not close an issue.
+  CI posts one sticky conventions comment and keeps the `PR conventions` check current.
+  Maintainers opt a pull request into auto-merge with the `automerge` label; `do-not-merge` stops it.
 -->
 
 Fixes #
