@@ -15,6 +15,7 @@ import {
 	createCodingAgentGoalSessionExtension,
 	readCodingAgentGoalObservation,
 } from "../../../src/features/goal/index.js";
+import type { CodingAgentToolActivation } from "../../../src/runtime-contracts/index.js";
 
 const signal = new AbortController().signal;
 
@@ -25,11 +26,14 @@ describe("Coding Agent goal session extension", () => {
 		for (const dispose of disposals.splice(0).reverse()) await dispose();
 	});
 
-	async function createSession(scenario: "conversation" | "batch" = "conversation") {
+	async function createSession(
+		scenario: "conversation" | "batch" = "conversation",
+		activation: CodingAgentToolActivation = { mode: "scope", scope: scenario },
+	) {
 		let id = 0;
 		const composition = await SessionExtensionComposition.create({
 			createId: () => `id-${++id}`,
-			definitions: [createCodingAgentGoalSessionExtension({ scenario })],
+			definitions: [createCodingAgentGoalSessionExtension({ activation, scenario })],
 		});
 		disposals.push(() => composition.dispose());
 		const prepared = await composition.features[0]?.prepare({ signal });
@@ -124,6 +128,12 @@ describe("Coding Agent goal session extension", () => {
 		expect(() => composition.invokeSync(CODING_AGENT_GOAL_CREATE, { objective: "A" })).toThrow(
 			"unavailable in the batch scenario",
 		);
+	});
+
+	it("keeps the goal tools out of the surface when explicit activation does not list them", async () => {
+		const { composition } = await createSession("conversation", { mode: "explicit", toolNames: ["read"] });
+		expect(composition.features).toHaveLength(0);
+		expect(composition.continuationSources).toHaveLength(1);
 	});
 });
 

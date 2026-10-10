@@ -360,7 +360,8 @@ describe("Coding Agent continuation orchestration", () => {
 			modelRegistry: modelRegistry(),
 			initialModel: MODEL,
 			initialThinkingLevel: "off",
-			activation: { mode: "explicit", toolNames: [] },
+			// Goal 工具走激活判定，显式激活下必须列出它们才会装入 Goal 特性。
+			activation: { mode: "explicit", toolNames: ["get_goal", "create_goal", "update_goal"] },
 			streamFn: (_model, context) => {
 				calls.push(structuredClone(context));
 				if (responseIndex === 2) {
