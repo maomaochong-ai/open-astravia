@@ -56,11 +56,13 @@ describe("记忆文件读写", () => {
 	it("写入后两个作用域各自读回自己的内容", () => {
 		const root = createTempDir();
 		const paths = resolveMemoryFilePaths(join(root, "agent", "MEMORY.md"), join(root, "project"));
-		mkdirSync(dirname(paths.user), { recursive: true });
-		mkdirSync(dirname(paths.project), { recursive: true });
+		const userPath = resolveMemoryScopePath(paths, "user");
+		const projectPath = resolveMemoryScopePath(paths, "project");
+		mkdirSync(dirname(userPath), { recursive: true });
+		mkdirSync(dirname(projectPath), { recursive: true });
 
-		writeMemoryFile(resolveMemoryScopePath(paths, "user"), "用户级记忆");
-		writeMemoryFile(resolveMemoryScopePath(paths, "project"), "项目级记忆");
+		writeMemoryFile(userPath, "用户级记忆");
+		writeMemoryFile(projectPath, "项目级记忆");
 
 		const snapshot = readMemoryFiles(paths);
 		expect(snapshot.user).toEqual({ path: paths.user, content: "用户级记忆", exists: true });
