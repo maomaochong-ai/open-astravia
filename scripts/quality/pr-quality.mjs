@@ -370,6 +370,16 @@ export async function collectPullRequestFacts(client, { owner, repo, number, rep
 }
 
 export async function applyPullRequestFeedback(client, { owner, repo, pullRequest, report, log = () => {} }) {
+	// The comment is the contributor-facing part of the feedback, so it goes out first: a label
+	// failure must not leave a red check with no explanation of what has to change.
+	await upsertPullRequestComment(client, {
+		owner,
+		repo,
+		number: report.number,
+		marker: CONVENTIONS_COMMENT_MARKER,
+		body: renderConventionsMarkdown(report),
+		log,
+	});
 	await ensureLabels(client, { owner, repo, labels: MANAGED_LABELS, log });
 	const current = (pullRequest.labels ?? [])
 		.map((label) => (typeof label === "string" ? label : label?.name))
@@ -381,14 +391,6 @@ export async function applyPullRequestFeedback(client, { owner, repo, pullReques
 		current,
 		add: report.labels.add,
 		remove: report.labels.remove,
-		log,
-	});
-	await upsertPullRequestComment(client, {
-		owner,
-		repo,
-		number: report.number,
-		marker: CONVENTIONS_COMMENT_MARKER,
-		body: renderConventionsMarkdown(report),
 		log,
 	});
 }

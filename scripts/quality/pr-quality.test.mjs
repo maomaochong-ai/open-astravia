@@ -5,8 +5,10 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { BRANCH_GATE_CHECKS, PULL_REQUEST_GATE_CHECKS } from "./ci-gate.mjs";
+import { createGitHubClient } from "./github-rest.mjs";
 import { repoRoot } from "./lib.mjs";
 import {
+	applyPullRequestFeedback,
 	buildConventionsReport,
 	CONVENTIONS_COMMENT_MARKER,
 	extractSection,
@@ -266,5 +268,36 @@ describe("gate check names", () => {
 			...jobNames("pr-quality.yml"),
 		]);
 		for (const check of BRANCH_GATE_CHECKS) expect(published).toContain(check);
+	});
+});
+
+// The comment is what tells a contributor what to change, so it has to survive a label API
+// failure instead of dying behind it.
+describe("conventions feedback", () => {
+	it("posts the comment even when label management fails", async () => {
+		const calls = [];
+		const fetchImpl = async (url, init = {}) => {
+			const parsed = new URL(String(url));
+			const key = `${(init.method ?? "GET").toUpperCase()} ${parsed.pathname}`;
+			calls.push(key);
+			if (key === "GET /repos/o/r/issues/42/comments") return { status: 200, ok: true, text: async () => "[]" };
+			if (key === "POST /repos/o/r/issues/42/comments") {
+				return { status: 201, ok: true, text: async () => JSON.stringify({ id: 1 }) };
+			}
+			return { status: 422, ok: false, text: async () => JSON.stringify({ message: "Invalid request." }) };
+		};
+		const client = createGitHubClient({ token: "t", fetchImpl });
+
+		await expect(
+			applyPullRequestFeedback(client, {
+				owner: "o",
+				repo: "r",
+				pullRequest: {},
+				report: report({ pullRequest: { body: "" } }),
+			}),
+		).rejects.toThrow(/HTTP 422/u);
+
+		expect(calls).toContain("POST /repos/o/r/issues/42/comments");
+		expect(calls).not.toContain("POST /repos/o/r/issues/42/labels");
 	});
 });

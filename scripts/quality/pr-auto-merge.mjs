@@ -129,7 +129,7 @@ export function renderAutomationComment({ pullRequest, report, merged, sha }) {
 
 export async function mergePullRequest(client, { owner, repo, pullRequest, log = () => {} }) {
 	const { status, data } = await client.put(`/repos/${owner}/${repo}/pulls/${pullRequest.number}/merge`, {
-		body: {
+		json: {
 			merge_method: MERGE_METHOD,
 			sha: pullRequest.head.sha,
 			commit_title: `${pullRequest.title} (#${pullRequest.number})`,
@@ -171,7 +171,7 @@ export async function requestPromotion(client, { owner, repo, log = () => {} }) 
 	const { status } = await client.post(
 		`/repos/${owner}/${repo}/actions/workflows/${PROMOTION_WORKFLOW_FILE}/dispatches`,
 		{
-			body: { ref, inputs: { dry_run: "false" } },
+			json: { ref, inputs: { dry_run: "false" } },
 			tolerate: [404, 422],
 		},
 	);

@@ -30,7 +30,7 @@ export function createGitHubClient({
 	const base = apiUrl.replace(/\/+$/, "");
 	const tolerated = new Set(tolerate);
 
-	async function request(method, path, { body, query, tolerate: extra } = {}) {
+	async function request(method, path, { json, query, tolerate: extra } = {}) {
 		const url = new URL(path.startsWith("http") ? path : `${base}${path}`);
 		for (const [key, value] of Object.entries(query ?? {})) {
 			if (value === undefined || value === null) continue;
@@ -44,7 +44,7 @@ export function createGitHubClient({
 		};
 		if (token) headers.authorization = `Bearer ${token}`;
 		const init = { method, headers };
-		if (body !== undefined) init.body = JSON.stringify(body);
+		if (json !== undefined) init.body = JSON.stringify(json);
 		const response = await fetchImpl(url.toString(), init);
 		const text = await response.text();
 		let data;
@@ -125,11 +125,11 @@ export async function upsertPullRequestComment(client, { owner, repo, number, ma
 			log?.(`comment #${existing.id} is already up to date`);
 			return { action: "unchanged", id: existing.id };
 		}
-		await client.patch(`/repos/${owner}/${repo}/issues/comments/${existing.id}`, { body: text });
+		await client.patch(`/repos/${owner}/${repo}/issues/comments/${existing.id}`, { json: { body: text } });
 		log?.(`updated comment #${existing.id}`);
 		return { action: "updated", id: existing.id };
 	}
-	const { data } = await client.post(`/repos/${owner}/${repo}/issues/${number}/comments`, { body: text });
+	const { data } = await client.post(`/repos/${owner}/${repo}/issues/${number}/comments`, { json: { body: text } });
 	log?.(`created comment #${data?.id ?? "?"}`);
 	return { action: "created", id: data?.id };
 }
@@ -141,9 +141,7 @@ export async function ensureLabels(client, { owner, repo, labels, log }) {
 		});
 		if (status !== 404) continue;
 		await client.post(`/repos/${owner}/${repo}/labels`, {
-			name: label.name,
-			color: label.color,
-			description: label.description,
+			json: { name: label.name, color: label.color, description: label.description },
 		});
 		log?.(`created label ${label.name}`);
 	}
@@ -153,7 +151,7 @@ export async function syncLabels(client, { owner, repo, number, current, add, re
 	const present = new Set(current);
 	const missing = add.filter((name) => !present.has(name));
 	if (missing.length > 0) {
-		await client.post(`/repos/${owner}/${repo}/issues/${number}/labels`, { labels: missing });
+		await client.post(`/repos/${owner}/${repo}/issues/${number}/labels`, { json: { labels: missing } });
 		log?.(`added labels ${missing.join(", ")}`);
 	}
 	const stale = remove.filter((name) => present.has(name));
