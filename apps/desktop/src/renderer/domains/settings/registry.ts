@@ -112,6 +112,7 @@ export const SETTINGS_SECTIONS = [
 	{ tab: "team", id: "team-detail-info", title: "团队详情", titleKey: "section_team-detail-info" },
 	{ tab: "team", id: "team-members", title: "成员列表", titleKey: "section_team-members" },
 	{ tab: "models", id: "models-thinking", title: "思考模式", titleKey: "section_models-thinking" },
+	{ tab: "models", id: "models-transport", title: "传输方式", titleKey: "section_models-transport" },
 	{ tab: "models", id: "models-preset-providers", title: "预设服务商", titleKey: "section_models-preset-providers" },
 	{ tab: "models", id: "models-providers", title: "服务商", titleKey: "section_models-providers" },
 	{ tab: "mcp", id: "mcp-remote-list", title: "远程 MCP", titleKey: "section_mcp-remote-list" },

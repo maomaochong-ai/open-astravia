@@ -570,6 +570,19 @@
   "pipIndexDesc": "Mirror for installing Python packages, auto-injected",
   "modelSettings": {
     "title": "Model Configuration",
+    "transportTitle": "Model transport",
+    "transportDescription": "Choose the streaming transport for OpenAI Responses and Codex requests. Other providers ignore this setting.",
+    "transportLabel": "Preferred transport",
+    "transportSse": "SSE",
+    "transportWebSocket": "WebSocket",
+    "transportAuto": "Automatic",
+    "transportDescriptions": {
+      "sse": "Always use HTTP streaming for maximum compatibility.",
+      "websocket": "Require WebSocket and fail if the provider or gateway does not support it.",
+      "auto": "Prefer WebSocket and fall back to SSE only when the handshake fails before the request starts."
+    },
+    "transportLoadFailed": "Could not load the model transport setting",
+    "transportSaveFailed": "Could not save the model transport setting",
     "loading": "Loading…",
     "noProvidersAdded": "No providers configured yet. Add one below.",
     "models": "models",
@@ -1305,6 +1318,7 @@
   "section_team-detail-info": "Team Details",
   "section_team-members": "Members",
   "section_models-thinking": "Thinking Mode",
+  "section_models-transport": "Transport",
   "section_models-preset-providers": "Preset Providers",
   "section_models-providers": "Providers",
   "section_models-remote-providers": "Remote Providers",

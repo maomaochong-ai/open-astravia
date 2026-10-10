@@ -570,6 +570,19 @@
   "pipIndexDesc": "安装 Python 包时使用的镜像，自动注入",
   "modelSettings": {
     "title": "模型配置",
+    "transportTitle": "模型传输方式",
+    "transportDescription": "选择 OpenAI Responses 与 Codex 请求使用的流式传输。其他服务商会忽略此设置。",
+    "transportLabel": "首选传输",
+    "transportSse": "SSE",
+    "transportWebSocket": "WebSocket",
+    "transportAuto": "自动选择",
+    "transportDescriptions": {
+      "sse": "始终使用 HTTP 流式传输，兼容性最好。",
+      "websocket": "强制使用 WebSocket；服务商或中转网关不支持时直接报错。",
+      "auto": "优先使用 WebSocket；握手失败且请求尚未开始时自动回退 SSE。"
+    },
+    "transportLoadFailed": "无法读取模型传输设置",
+    "transportSaveFailed": "无法保存模型传输设置",
     "loading": "加载中…",
     "noProvidersAdded": "尚未配置任何服务商，点击下方按钮添加",
     "models": "个模型",
@@ -1305,6 +1318,7 @@
   "section_team-detail-info": "团队详情",
   "section_team-members": "成员列表",
   "section_models-thinking": "思考模式",
+  "section_models-transport": "传输方式",
   "section_models-preset-providers": "预设服务商",
   "section_models-providers": "服务商",
   "section_models-remote-providers": "远程服务商",

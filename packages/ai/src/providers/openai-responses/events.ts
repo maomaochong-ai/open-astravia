@@ -29,6 +29,17 @@ export interface ResponsesEventSink {
 	push(event: LanguageModelStreamEvent): void;
 }
 
+/** 流内 response.failed 中表示瞬时上游故障的 provider code（网关 5xx 转发、服务端错误、过载、限流、超时）。 */
+const TRANSIENT_FAILED_CODES = new Set([
+	"upstream_error",
+	"server_error",
+	"internal_error",
+	"overloaded_error",
+	"rate_limit_error",
+	"service_unavailable",
+	"timeout",
+]);
+
 interface ReasoningItemState {
 	readonly kind: "reasoning";
 	readonly blockIndex: number;
@@ -165,6 +176,9 @@ export async function processResponsesStream<TApi extends Api>(
 			throw Object.assign(new Error(providerError?.message || "OpenAI Responses request failed"), {
 				...(providerError?.code ? { code: providerError.code } : {}),
 				...(providerError ? { responseBody: { error: providerError } } : {}),
+				// 流内 response.failed 不携带 HTTP 状态码；瞬时上游错误（网关 5xx、过载、限流等）
+				// 必须显式标记 retryable，否则 normalizeProviderError 无法识别，自动重试会被跳过。
+				...(providerError?.code && TRANSIENT_FAILED_CODES.has(providerError.code) ? { retryable: true } : {}),
 			});
 		}
 	}

@@ -1,4 +1,5 @@
 import { ipcMain } from "electron";
+import { getModelTransport, setModelTransport } from "../agent-settings/model-transport-settings.js";
 import { readAgentSettingsDocument, updateAgentSettingsDocument } from "../agent-settings/settings-document-store.js";
 import { DEFAULT_SERVER_URL, DEFAULT_SITE_URL } from "../constants.js";
 import {
@@ -44,6 +45,10 @@ export function registerSettingsIpc(): () => void {
 		return DEFAULT_SITE_URL;
 	});
 
+	ipcMain.handle("vetta:settings:get-model-transport", () => getModelTransport());
+
+	ipcMain.handle("vetta:settings:set-model-transport", (_event, value: unknown) => setModelTransport(value));
+
 	// 预设服务商目录内置在客户端(见 ADR-0050);模型清单取自 models.dev 公共目录,免 key 可见。
 	ipcMain.handle("vetta:models:list-presets", async () => {
 		return listPresetProviders();
@@ -72,5 +77,7 @@ export function registerSettingsIpc(): () => void {
 		ipcMain.removeHandler("vetta:models:list-presets");
 		ipcMain.removeHandler("vetta:models:refresh-preset-catalog");
 		ipcMain.removeHandler("vetta:models:refresh-preset-models");
+		ipcMain.removeHandler("vetta:settings:get-model-transport");
+		ipcMain.removeHandler("vetta:settings:set-model-transport");
 	};
 }
