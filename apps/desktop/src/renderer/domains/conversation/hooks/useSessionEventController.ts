@@ -607,6 +607,8 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 				if (event.success) {
 					const sessionPath = activeSessionRef.current?.sessionPath;
 					if (sessionPath) clearCachedContextComposition(sessionPath);
+					// withDynamicState 已用 stateSource.read() 注入压缩后的 token 数，
+					// 直接刷新 atom 确保环形指示器立即更新。
 					if (event.contextWindow !== undefined) {
 						setContextUsage({
 							percent: event.contextPercent ?? null,

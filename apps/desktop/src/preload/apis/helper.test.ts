@@ -45,6 +45,27 @@ describe("subscribeById", () => {
 		expect(harness.invoke).toHaveBeenCalledWith("unsubscribe", "subscription-b");
 		expect(harness.listenerCount("event")).toBe(0);
 	});
+
+	it("keeps the subscription alive when one event fails to decode", async () => {
+		// 回归：decode 抛错曾直接从 IPC listener 逃逸（未捕获异常，渲染进程报错），
+		// 且该事件之后的所有事件都丢在同一个 listener 里。白名单漏一个类型就够演一遍。
+		const harness = createIpcHarness(["subscription"]);
+		const handler = vi.fn();
+		const decode = (data: unknown) => {
+			const candidate = data as { type?: string };
+			if (candidate.type !== "known") throw new TypeError("Invalid SessionEvent IPC payload: unknown event type");
+			return data;
+		};
+		await subscribeById(harness.ipc, "subscribe", "event", "unsubscribe", handler, ["session"], decode);
+
+		harness.emit("event", "subscription", { type: "known", payload: 1 });
+		harness.emit("event", "subscription", { type: "compaction.delta-without-whitelist" });
+		harness.emit("event", "subscription", { type: "known", payload: 2 });
+
+		// 坏事件被隔离，订阅不断，后续事件照旧送达。
+		expect(handler.mock.calls).toEqual([[{ type: "known", payload: 1 }], [{ type: "known", payload: 2 }]]);
+		expect(harness.listenerCount("event")).toBe(1);
+	});
 });
 
 function createIpcHarness(

@@ -128,6 +128,8 @@ export function createCodingAgentSessionContextAssembly(
 		resolveApiKey: (model) => modelRuntime.resolveApiKey(model),
 		resolveSettings: profile.resolveCompactionSettings,
 		generateCompaction: profile.generateCompaction,
+		// G4：本会话是否注入了 recallReader → recall 工具可用 → 压缩摘要追加召回指针。
+		recallAvailable: Boolean(sessionOptions.recallReader),
 		extensionRuntime: profile.createCompactionExtensionRuntime?.(sessionOptions),
 		memoryRollover: peripherals.memoryRuntime,
 		transformAgentContext: (messages) => options.extensionEvents.transformContext(messages),
