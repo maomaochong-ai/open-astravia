@@ -1,5 +1,7 @@
 import type { RuntimeToolDefinition } from "@astravia/runtime-core/kernel";
 import { type Static, Type } from "@sinclair/typebox";
+import type { ConversationScenario } from "../../profiles/index.js";
+import type { CodingAgentRuntimeToolRegistration } from "../../runtime-contracts/index.js";
 import { CODING_AGENT_MODEL_TOOL_ORDER } from "../../tool-policy/model-tool-order.js";
 import type { CodingAgentGoalStatus } from "./contracts.js";
 import type { CodingAgentGoalRuntime } from "./goal-runtime.js";
@@ -23,7 +25,16 @@ const UpdateGoalInputSchema = Type.Object(
 type CreateGoalInput = Static<typeof CreateGoalInputSchema>;
 type UpdateGoalInput = Static<typeof UpdateGoalInputSchema>;
 
-export function createGoalTools(runtime: CodingAgentGoalRuntime): readonly RuntimeToolDefinition[] {
+/** 仅在支持 Goal 模式的场景可见；显式激活仍由 `selectCodingAgentToolRegistrations` 决定。 */
+export const GOAL_TOOL_SCOPES = ["conversation", "project", "cli"] as const satisfies readonly ConversationScenario[];
+export const GOAL_TOOL_CATEGORY = "agent-control" as const;
+/**
+ * Goal 工具的产品策略元数据。激活判定必须走 Registration，
+ * 否则显式激活会把工具注入到只允许部分工具的会话里。
+ */
+export function createGoalToolRegistrations(
+	runtime: CodingAgentGoalRuntime,
+): readonly CodingAgentRuntimeToolRegistration[] {
 	const getGoal: RuntimeToolDefinition<Static<typeof GetGoalInputSchema>> = {
 		name: "get_goal",
 		label: "get_goal",
@@ -56,7 +67,12 @@ export function createGoalTools(runtime: CodingAgentGoalRuntime): readonly Runti
 			return textResult(runtime.update(input.goal_id, input.status as CodingAgentGoalStatus, input.detail));
 		},
 	};
-	return [getGoal, createGoal, updateGoal];
+	return [getGoal, createGoal, updateGoal].map((tool) => ({
+		tool,
+		scopeUse: GOAL_TOOL_SCOPES,
+		modelOrder: tool.modelOrder,
+		category: GOAL_TOOL_CATEGORY,
+	}));
 }
 
 function textResult(value: unknown) {

@@ -1176,35 +1176,56 @@ interface PersistedEntryReference {
 	readonly role?: string;
 }
 
+/**
+ * 会话文档会把非消息节点（assistant_turn_timing、goal_snapshot 等）串进同一条父链，
+ * 而 `custom.append` 只在 `command.entryId` 里留下节点 id、父节点是当时的活动叶子。
+ * 因此这里按文件顺序重放，才能复原完整父链。
+ */
 function describeContinuedConversation(content: string): Readonly<Record<string, unknown>> {
 	const records = content
 		.trim()
 		.split(/\r?\n/u)
 		.map((line) => JSON.parse(line) as unknown);
 	const entries: PersistedEntryReference[] = [];
+	const parents = new Map<string, string | null>();
+	let allParentsResolved = true;
+	let activeLeafId: string | null = null;
+	const recordEntry = (reference: PersistedEntryReference) => {
+		if (reference.parentId !== null && !parents.has(reference.parentId)) allParentsResolved = false;
+		parents.set(reference.id, reference.parentId);
+		entries.push(reference);
+		activeLeafId = reference.id;
+	};
 	for (const record of records) {
 		if (!isRecord(record)) continue;
-		if (record.recordType === "conversation.import.seed" && Array.isArray(record.entries)) {
-			for (const entry of record.entries) {
-				const reference = readPersistedEntryReference(entry);
-				if (reference) entries.push(reference);
+		if (record.recordType === "conversation.import.seed") {
+			if (Array.isArray(record.entries)) {
+				for (const entry of record.entries) {
+					const reference = readPersistedEntryReference(entry);
+					if (reference) recordEntry(reference);
+				}
+			}
+			if (typeof record.activeLeafId === "string") activeLeafId = record.activeLeafId;
+			continue;
+		}
+		if (record.recordType === "conversation.document.operation" && isRecord(record.command)) {
+			const command = record.command;
+			if (command.type === "custom.append" && typeof command.entryId === "string") {
+				recordEntry({ id: command.entryId, parentId: activeLeafId });
+			} else if (command.type === "active_leaf.set" && typeof command.entryId === "string") {
+				activeLeafId = command.entryId;
 			}
 			continue;
 		}
 		if (isRecord(record.documentEntry)) {
 			const reference = readPersistedEntryReference(record.documentEntry, readStoredEventRole(record.event));
-			if (reference) entries.push(reference);
+			if (reference) recordEntry(reference);
 			continue;
 		}
 		const reference = readPersistedEntryReference(record);
-		if (reference) entries.push(reference);
+		if (reference) recordEntry(reference);
 	}
-	const knownIds = new Set<string>();
-	let allParentsResolved = true;
-	for (const entry of entries) {
-		if (entry.parentId !== null && !knownIds.has(entry.parentId)) allParentsResolved = false;
-		knownIds.add(entry.id);
-	}
+
 	const messageEntries = entries.filter(
 		(entry): entry is PersistedEntryReference & { readonly role: string } => entry.role !== undefined,
 	);
@@ -1214,8 +1235,23 @@ function describeContinuedConversation(content: string): Readonly<Record<string,
 		allParentsResolved,
 		activeTailLinked:
 			activeTail.length === 4 &&
-			activeTail.slice(1).every((entry, index) => entry.parentId === activeTail[index]?.id),
+			activeTail.slice(1).every((entry, index) => reachesAncestor(parents, entry, activeTail[index]?.id)),
 	};
+}
+
+/** 相邻消息可以隔着非消息节点相连，只要父链能把后一个消息追到前一个消息。 */
+function reachesAncestor(
+	parents: ReadonlyMap<string, string | null>,
+	entry: PersistedEntryReference,
+	ancestorId: string | undefined,
+): boolean {
+	if (ancestorId === undefined) return false;
+	let cursor = entry.parentId;
+	while (cursor !== null) {
+		if (cursor === ancestorId) return true;
+		cursor = parents.get(cursor) ?? null;
+	}
+	return false;
 }
 
 function readPersistedEntryReference(value: unknown, role?: string): PersistedEntryReference | undefined {

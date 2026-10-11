@@ -810,6 +810,15 @@ describe("Runtime composition contract", () => {
 			},
 			{ type: "message", message: { role: "user" } },
 			{ type: "message", message: { role: "assistant" } },
+			// 回合耗时的 document participant 会在回合结束时追加一个非消息节点。
+			{
+				type: "assistant_turn_timing",
+				timing: {
+					startedAt: expect.any(Number),
+					endedAt: expect.any(Number),
+					durationMs: expect.any(Number),
+				},
+			},
 		]);
 		await session.dispose();
 
