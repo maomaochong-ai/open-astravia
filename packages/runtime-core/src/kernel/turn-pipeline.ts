@@ -789,6 +789,15 @@ export class TurnPipeline {
 				signal,
 			});
 			state.version = result.version;
+			if (record.reason !== "manual") {
+				await this.publishObservation(state.sessionId, turnId, {
+					type: "compaction.end",
+					success: true,
+					reason: record.reason,
+					tokensBefore: record.tokensBefore,
+					source: "runtime-core",
+				});
+			}
 			return result.document;
 		} catch (error) {
 			if (record.reason !== "manual") {

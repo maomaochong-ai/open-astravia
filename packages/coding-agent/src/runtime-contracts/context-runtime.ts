@@ -73,6 +73,11 @@ export interface CodingAgentContextRuntimeOptions {
 	 */
 	readonly resolveSummaryModel?: (primary: Model<Api>) => Model<Api> | undefined | Promise<Model<Api> | undefined>;
 	readonly resolveSettings?: () => CompactionSettings;
+	/**
+	 * G4 召回指针：本会话是否注入了 recallReader（recall 工具可用）。true 时压缩摘要尾部
+	 * 追加 RECALL_POINTER。由 composition 按 sessionOptions.recallReader 是否存在决定。
+	 */
+	readonly recallAvailable?: boolean;
 	readonly generateCompaction?: (
 		preparation: CompactionPreparation,
 		model: Model<Api>,
