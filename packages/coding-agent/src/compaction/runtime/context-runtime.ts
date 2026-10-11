@@ -82,10 +82,24 @@ export class DefaultCodingAgentContextRuntime
 		this.resolveSettings = options.resolveSettings ?? (() => DEFAULT_COMPACTION_SETTINGS);
 		this.extensionRuntime = options.extensionRuntime;
 		this.now = options.now ?? Date.now;
-		const generateCompaction =
+		const baseGenerateCompaction: NonNullable<CodingAgentContextRuntimeOptions["generateCompaction"]> =
 			options.generateCompaction ??
 			((preparation, model, apiKey, customInstructions, signal, generationOptions) =>
 				compact(preparation, model, apiKey, customInstructions, signal, generationOptions));
+		// G4：把「本会话 recall 工具是否可用」注入每次压缩摘要的 generationOptions，让 compact()
+		// 决定是否追加 RECALL_POINTER。统一在入口包装，自动/手动/预燃三个策略一次覆盖。
+		const generateCompaction: NonNullable<CodingAgentContextRuntimeOptions["generateCompaction"]> = (
+			preparation,
+			model,
+			apiKey,
+			customInstructions,
+			signal,
+			generationOptions,
+		) =>
+			baseGenerateCompaction(preparation, model, apiKey, customInstructions, signal, {
+				...generationOptions,
+				recallAvailable: options.recallAvailable,
+			});
 		const circuitBreaker = new ConsecutiveFailureCircuitBreaker({ now: this.now });
 		this.usage = new RuntimeContextUsageTracker({
 			estimateDocumentTokens: (document) =>

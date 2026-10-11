@@ -18,6 +18,9 @@ import type { Usage } from "@astravia/ai/protocol";
 import { conversationItemRenderKey } from "@shared/conversation";
 import { MessageRow } from "./MessageRendering";
 import { MessageItem, ModelSwitchBoundary, ExportMessageList } from "./MessageItem";
+import { CompactionCard } from "./CompactionCard";
+import { isCompactingAtom } from "@shared/store/atoms";
+import { useAtomValue } from "jotai";
 import { collectAgentUsages } from "./message-list-derived";
 import { MessageTimeline } from "./MessageTimeline";
 import {
@@ -85,6 +88,7 @@ export function MessageListView({
 	pendingLabel?: MessageListProps["pendingLabel"];
 }): JSX.Element {
 	const { t } = useTranslation("chat");
+	const isCompacting = useAtomValue(isCompactingAtom);
 	const {
 		isStreaming,
 		messages,
@@ -230,6 +234,7 @@ export function MessageListView({
 							</PerfMessageScrollProfiler>
 						</MessageFeedLayout.Viewport>
 						<MessageFeed.Footer>
+							{isCompacting ? <CompactionCard /> : null}
 							<div className="pb-16">{children}</div>
 						</MessageFeed.Footer>
 						{/* 悬浮在会话区域左缘，不占消息列宽度；窄于 52rem 时消息列铺满整个会话区，

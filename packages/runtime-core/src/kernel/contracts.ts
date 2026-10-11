@@ -298,6 +298,8 @@ export interface ManualContextCompactionInput {
 	readonly document: ConversationDocument;
 	readonly modelBinding?: RuntimeTurnModelBinding;
 	readonly customInstructions?: string;
+	/** 摘要生成期间的流式增量通道；由调用方注入，缺省时不流式。 */
+	readonly reportObservation?: (observation: RuntimeSessionObservationEvent) => Promise<void>;
 }
 
 export interface ContextSummaryInput {

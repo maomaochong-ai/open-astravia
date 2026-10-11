@@ -234,6 +234,8 @@ export interface RuntimeSessionConfigurationController {
 
 export interface RuntimeContextCompactionRequest {
 	readonly customInstructions?: string;
+	/** 手动压缩摘要生成期间的流式增量通道；由调用方注入，缺省时不流式。 */
+	readonly reportObservation?: (observation: RuntimeSessionObservationEvent) => Promise<void>;
 }
 
 export interface RuntimeContextCompactionResult {

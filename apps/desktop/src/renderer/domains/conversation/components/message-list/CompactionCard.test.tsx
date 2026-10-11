@@ -59,4 +59,30 @@ describe("CompactionCard", () => {
 		await user.click(screen.getByRole("button"));
 		expect(screen.getByText("摘要正文")).toBeTruthy();
 	});
+
+	it("剥离摘要里冗余的 <read-files>/<modified-files> 标签（T-400 显示侧根治）", async () => {
+		const user = userEvent.setup();
+		const summary = [
+			"## 摘要",
+			"完成了配置层迁移。",
+			"",
+			"<read-files>",
+			"/a/b.ts",
+			"</read-files>",
+			"",
+			"<modified-files>",
+			"/c/d.ts",
+			"</modified-files>",
+		].join("\n");
+		const { container } = render(<CompactionCard summary={summary} tokensBefore={1000} />);
+		await user.click(screen.getByRole("button"));
+		// 叙述保留
+		expect(container.textContent).toContain("完成了配置层迁移");
+		// 裸标签不出现
+		expect(container.textContent).not.toContain("<read-files>");
+		expect(container.textContent).not.toContain("<modified-files>");
+		// 文件路径不裸露（机械账本已单独承载）
+		expect(container.textContent).not.toContain("/a/b.ts");
+		expect(container.textContent).not.toContain("/c/d.ts");
+	});
 });

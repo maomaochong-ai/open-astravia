@@ -418,6 +418,12 @@ export interface CompactionSummaryGenerationOptions extends CompactionSummaryGen
 	 * 每段 text_delta 到达即回调；拼接即全量摘要。UI 的「实时压缩渲染」由此驱动。
 	 */
 	onSummaryDelta?: (delta: string) => void | Promise<void>;
+	/**
+	 * G4 召回指针开关：true 时压缩摘要尾部追加 RECALL_POINTER（告诉模型可用 recall 工具读回
+	 * 被压缩的细节）。由宿主按「本会话是否注入了 recallReader」决定；未注入则不追加，
+	 * 避免模型引用不存在的工具。
+	 */
+	readonly recallAvailable?: boolean;
 }
 
 /**
@@ -621,6 +627,13 @@ Summarize the prefix to provide context for the retained suffix:
 Be concise. Focus on what's needed to understand the kept suffix.`;
 
 /**
+ * G4 召回指针：压缩摘要尾部追加，告诉模型「被压缩掉的细节仍在盘上，用 recall 工具读回」。
+ * 仅在 recall 工具可用（宿主注入了 recallReader）时追加。用 markdown 引用块而非 XML 标签：
+ * 既对模型清晰，也在压缩卡里作为可读注记（不会被标签剥离误删）。
+ */
+const RECALL_POINTER = `\n\n> **Recall available:** The full pre-compaction history (file contents, command outputs, earlier decisions) is preserved on disk. If you need a detail not covered above, use the \`recall\` tool to search and read it back verbatim — do not guess.`;
+
+/**
  * Generate summaries for compaction using prepared data.
  * Returns CompactionResult - SessionManager adds uuid/parentUuid when saving.
  *
@@ -694,6 +707,8 @@ export async function compact(
 	// Compute file lists and append to summary
 	const { readFiles, modifiedFiles } = computeFileLists(fileOps);
 	summary += formatFileOperations(readFiles, modifiedFiles);
+	// G4：召回指针——仅当本会话 recall 工具可用时追加（见 CompactionSummaryGenerationOptions.recallAvailable）。
+	if (generationOptions.recallAvailable === true) summary += RECALL_POINTER;
 
 	if (!firstKeptEntryId) {
 		throw new Error("First kept entry has no UUID - session may need migration");
