@@ -6,6 +6,7 @@ import {
 	sessionExtensionObservation,
 } from "@astravia/runtime-core/session-extensions";
 import type { ConversationScenario } from "../../profiles/index.js";
+import { type CodingAgentToolActivation, selectCodingAgentToolRegistrations } from "../../runtime-contracts/index.js";
 import type { CodingAgentGoalSnapshot } from "./contracts.js";
 import { CODING_AGENT_GOAL_EXTENSION_ID, isCodingAgentGoalStatus } from "./contracts.js";
 import { CodingAgentGoalContinuationSource } from "./goal-continuation-source.js";
@@ -18,6 +19,7 @@ import {
 	CODING_AGENT_GOAL_STATE_READ,
 	CODING_AGENT_GOAL_UPDATE,
 } from "./goal-session-extension-contract.js";
+import { createGoalToolRegistrations, GOAL_TOOL_SCOPES } from "./tools.js";
 
 export const CODING_AGENT_GOAL_RUNTIME = defineSessionExtensionService<CodingAgentGoalRuntime>(
 	CODING_AGENT_GOAL_EXTENSION_ID,
@@ -26,6 +28,7 @@ export const CODING_AGENT_GOAL_RUNTIME = defineSessionExtensionService<CodingAge
 
 export interface CodingAgentGoalSessionExtensionOptions {
 	readonly scenario: ConversationScenario;
+	readonly activation: CodingAgentToolActivation;
 	readonly reportUpdate?: (state: CodingAgentGoalSnapshot) => void | Promise<void>;
 }
 
@@ -43,6 +46,9 @@ export function createCodingAgentGoalSessionExtension(
 			});
 			const supported = supportsGoalMode(options.scenario);
 			const continuation = new CodingAgentGoalContinuationSource(runtime, () => context.clock.now());
+			const registrations = createGoalToolRegistrations(runtime);
+			const toolsEnabled =
+				supported && selectCodingAgentToolRegistrations(registrations, options.activation).length > 0;
 			return {
 				contributions: [
 					{ kind: "service", token: CODING_AGENT_GOAL_RUNTIME, value: runtime },
@@ -79,9 +85,16 @@ export function createCodingAgentGoalSessionExtension(
 						},
 					},
 					{ kind: "document-participant", participant: withoutDisposal(runtime) },
+					...(toolsEnabled
+						? [
+								{
+									kind: "agent-feature" as const,
+									feature: createCodingAgentGoalFeature(runtime, registrations),
+								},
+							]
+						: []),
 					...(supported
 						? [
-								{ kind: "agent-feature" as const, feature: createCodingAgentGoalFeature(runtime) },
 								{
 									kind: "continuation-source" as const,
 									source: {
@@ -103,7 +116,7 @@ export function createCodingAgentGoalSessionExtension(
 }
 
 function supportsGoalMode(scenario: ConversationScenario): boolean {
-	return scenario === "conversation" || scenario === "project" || scenario === "cli";
+	return (GOAL_TOOL_SCOPES as readonly ConversationScenario[]).includes(scenario);
 }
 
 function withoutDisposal(runtime: CodingAgentGoalRuntime): RuntimeDocumentParticipant {

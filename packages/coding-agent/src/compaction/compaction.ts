@@ -383,20 +383,28 @@ Keep each section concise. Preserve exact file paths, function names, error mess
  * Extract the <summary> content from an LLM response, discarding the <analysis> scratchpad.
  * Falls back to the full text if no tags are found (backward compatibility).
  */
-function extractSummaryFromResponse(text: string): string {
+export function extractSummaryFromResponse(text: string): string {
 	// Strip <analysis> block (drafting scratchpad — improves summary quality
 	// but has no value once the summary is written)
-	let result = text.replace(/<analysis>[\s\S]*?<\/analysis>/g, "");
+	const withoutAnalysis = text.replace(/<analysis>[\s\S]*?<\/analysis>/g, "");
 
-	// Extract <summary> content
-	const match = result.match(/<summary>([\s\S]*?)<\/summary>/);
-	if (match) {
-		result = match[1].trim();
-	}
+	// Extract <summary> content. When no complete pair is present the model may still echo a
+	// stray marker — usually the closing tag copied from the projected previous summary. Leaving
+	// it in makes the persisted summary end with `</summary>`, and the projection appends another
+	// one, so the model sees `</summary>\n</summary>` and the UI renders a dangling tag.
+	// Strip the markers on both paths; the fallback must not reintroduce them.
+	const hasMarkers = /<\/?summary>/.test(withoutAnalysis);
+	const body = (
+		withoutAnalysis.match(/<summary>([\s\S]*?)<\/summary>/)?.[1] ?? withoutAnalysis.replace(/<\/?summary>/g, "")
+	)
+		.replace(/\n{3,}/g, "\n\n")
+		.trim();
 
-	// Clean up extra whitespace between sections
-	result = result.replace(/\n{3,}/g, "\n\n");
-	return result.trim() || text;
+	// Only a marker-free response may fall back to the raw text. A response that carried markers
+	// must never be returned verbatim, or a stray `</summary>` survives into the persisted summary
+	// and the projection appends a second one. Degenerate marker-only output yields an empty
+	// summary, which the downstream quality gate already handles.
+	return body || (hasMarkers ? "" : text);
 }
 
 /**
