@@ -64,6 +64,7 @@ export function projectConversationDocumentHistory(document: ConversationDocumen
 				summary: entry.summary,
 				tokensBefore: entry.tokensBefore,
 				timestamp: entry.timestamp,
+				...(entry.details === undefined ? {} : { details: entry.details }),
 			});
 			continue;
 		}

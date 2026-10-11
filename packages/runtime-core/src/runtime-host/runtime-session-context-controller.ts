@@ -83,6 +83,7 @@ export class KernelRuntimeSessionContextController implements RuntimeSessionCont
 				document,
 				modelBinding: lease.modelBinding,
 				customInstructions: request.customInstructions,
+				...(request.reportObservation === undefined ? {} : { reportObservation: request.reportObservation }),
 			};
 			// Static legacy capabilities need no lease. Dynamic owners must be part of this snapshot.
 			const strategy =

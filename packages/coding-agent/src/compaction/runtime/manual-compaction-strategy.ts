@@ -61,7 +61,9 @@ export class CodingAgentManualCompactionStrategy {
 		if (extensionResult?.cancel) throw new Error("Compaction cancelled");
 		const result =
 			extensionResult?.compaction ??
-			(await this.options.generateCompaction(preparation, model, apiKey, input.customInstructions, signal));
+			(await this.options.generateCompaction(preparation, model, apiKey, input.customInstructions, signal, {
+				onSummaryDelta: (text) => input.reportObservation?.({ type: "compaction.delta", text, source: "agent" }),
+			}));
 		if (signal.aborted) throw new Error("Compaction cancelled");
 		return createCodingAgentCompactionRecord(
 			result,

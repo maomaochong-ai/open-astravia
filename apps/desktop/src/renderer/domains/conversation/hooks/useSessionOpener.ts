@@ -20,6 +20,7 @@ import {
 	claimExistingSessionInputDraft,
 	claimNewSessionInputDraft,
 	conversationBucketCwd,
+	contextCompactionEligibilityAtom,
 	currentScenarioAtom,
 	defaultConversationCwdAtom,
 	inlineFilePreviewAtom,
@@ -121,6 +122,7 @@ export function useSessionOpener(): SessionOpenerController {
 	const setCurrentScenario = useSetAtom(currentScenarioAtom);
 	const applySessionHydrationState = useSetAtom(applySessionHydrationStateAtom);
 	const setIsCompacting = useSetAtom(isCompactingAtom);
+	const setCompactionEligibility = useSetAtom(contextCompactionEligibilityAtom);
 	const setRetryProgress = useSetAtom(retryProgressAtom);
 	const setInlineFilePreview = useSetAtom(inlineFilePreviewAtom);
 	// 用于判断当前 session 是否归属一个 paused 的 batch-task 子任务。命中时
@@ -241,6 +243,10 @@ export function useSessionOpener(): SessionOpenerController {
 			// 分支 + runningSessionPathsAtom 派生兜底会把 TypingIndicator 重新拉回来。
 			setActiveSessionStreaming(false);
 			setIsCompacting(false);
+			// 压缩资格是全局 atom，切换会话时必须重置为 unknown，否则旧会话的
+			// already_compacted 会残留到新会话，直到 finishInitialization 推送 state
+			// 快照才更新——期间压缩命令消失。fail-open：unknown 时命令可见，触发后由后端守卫拦截。
+			setCompactionEligibility({ status: "unknown" });
 			setRetryProgress(null);
 			// Clear messages immediately so the user sees the switch take effect
 			// instead of staring at the old session while history loads.

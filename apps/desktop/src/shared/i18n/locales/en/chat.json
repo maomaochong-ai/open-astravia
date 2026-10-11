@@ -774,7 +774,11 @@
 			"tokens": "Compacted {{tokens}} tokens",
 			"compacting": "Compacting…",
 			"viewSummary": "View summary",
-			"hideSummary": "Hide summary"
+			"hideSummary": "Hide summary",
+			"ledgerRead": "Read",
+			"ledgerModified": "Modified",
+			"ledgerMessages": "{{count}} messages",
+			"ledgerTokens": "~{{tokens}} tokens"
 		},
 		"modelSwitched": "Switched model from {{from}} to {{to}}",
 		"compactionIndicator": "Compacting context...",

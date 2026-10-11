@@ -98,4 +98,50 @@ describe("decodeSessionEvent", () => {
 			}),
 		).toThrow("unknown event type");
 	});
+
+	it("lets compaction summary deltas through so the live card can stream", () => {
+		// 回归：白名单曾缺 compaction.delta，decodeSessionEvent 抛 "unknown event type"，
+		// 整条流式压缩卡链路（运行时发布 → IPC → compactionLiveSummaryAtom → 卡片）在此断开。
+		const delta = {
+			schemaVersion: 1,
+			channel: "runtime",
+			sessionId: "session-1",
+			eventId: "delta-1",
+			timestamp: 10,
+			source: "agent",
+			type: "compaction.delta",
+			text: "## Primary Goal\n做某事",
+		};
+		expect(decodeSessionEvent(delta)).toBe(delta);
+		for (const invalid of [{ text: undefined }, { text: 42 }, { text: "" }]) {
+			expect(() => decodeSessionEvent({ ...delta, ...invalid })).toThrow("compaction delta text is invalid");
+		}
+	});
+
+	it("keeps the remaining compaction lifecycle events decodable", () => {
+		const start = {
+			schemaVersion: 1,
+			channel: "runtime",
+			sessionId: "session-1",
+			eventId: "start-1",
+			timestamp: 10,
+			source: "agent",
+			type: "compaction.start",
+			reason: "threshold",
+			tokensBefore: 419967,
+		};
+		const end = {
+			schemaVersion: 1,
+			channel: "runtime",
+			sessionId: "session-1",
+			eventId: "end-1",
+			timestamp: 20,
+			source: "agent",
+			type: "compaction.end",
+			success: true,
+			reason: "threshold",
+		};
+		expect(decodeSessionEvent(start)).toBe(start);
+		expect(decodeSessionEvent(end)).toBe(end);
+	});
 });

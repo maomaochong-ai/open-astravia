@@ -36,6 +36,7 @@ import {
 } from "./coding-agent-tool-environment.js";
 import { resolveProjectExecutionMode } from "./remote-execution-mode.js";
 import { renderRemoteWorkspaceFacts } from "./remote-workspace-facts.js";
+import { projectRecallEntries } from "./recall-projection.js";
 
 type CompositionFixedOption =
 	| "agentDir"
@@ -429,6 +430,17 @@ function toCodingAgentRuntimeSessionRequest(
 		sandboxHostPath: request.sandboxHostPath,
 		linuxBubblewrapPath: request.linuxBubblewrapPath,
 		macosSandboxExecPath: request.macosSandboxExecPath,
+		// G3/G4 召回闭环：注入会话历史读取通道，recall 工具据此把被压缩掉的原文读回给模型。
+		// 惰性创建只读持久化（仅在 recall 真正被调用时落盘读取），读完即释放。
+		recallReader: async (sessionId) => {
+			const persistence = createFileConversationPersistence(scope.conversationDir);
+			try {
+				const document = await persistence.documentStore.readDocument(sessionId);
+				return projectRecallEntries(document);
+			} finally {
+				await persistence.dispose();
+			}
+		},
 	};
 	return {
 		...request,

@@ -274,12 +274,19 @@ export class ComposedRuntimeFactory<TCreateOptions> implements KernelRuntimeFact
 				}
 				await reportObservation({ type: "compaction.start", reason: "manual", source: "runtime-core" });
 				try {
-					await contextController.compactQueued(
+					const compactionResult = await contextController.compactQueued(
 						queuedOperation.customInstructions === undefined
-							? {}
-							: { customInstructions: queuedOperation.customInstructions },
+							? { reportObservation }
+							: { customInstructions: queuedOperation.customInstructions, reportObservation },
 						signal,
 					);
+					await reportObservation({
+						type: "compaction.end",
+						success: true,
+						reason: "manual",
+						tokensBefore: compactionResult.tokensBefore,
+						source: "runtime-core",
+					});
 				} catch (error) {
 					await reportObservation({
 						type: "compaction.end",
