@@ -26,6 +26,7 @@ import { WebsiteIcon } from "./WebsiteIcon";
 import { useRenderSnapshot } from "./use-render-snapshot";
 import { chatUrlTransform, classifyMarkdownLink, normalizeLocalFileLinksInMarkdown } from "./markdown-link";
 import { useStreamingDisplayText, rehypeStreamingChunks } from "./streaming";
+import { rehypeKeepPairedPunctuation } from "./em-dash";
 import {
 	INLINE_TOKEN_TAG,
 	rehypeInlineTokens,
@@ -97,7 +98,7 @@ const MarkdownDocument = memo(function MarkdownDocument({
 }: MarkdownDocumentProps): JSX.Element {
 	const hasStructuredAnnotations = inlineTokens?.annotations !== undefined;
 	const rehypePlugins = useMemo(() => {
-		const plugins: NonNullable<Options["rehypePlugins"]> = [...(definition.rehypePlugins ?? [])];
+		const plugins: NonNullable<Options["rehypePlugins"]> = [rehypeKeepPairedPunctuation, ...(definition.rehypePlugins ?? [])];
 		if (animateChunks) plugins.push(rehypeStreamingChunks);
 		if (inlineTokens && !hasStructuredAnnotations) plugins.push(() => rehypeInlineTokens(inlineTokens.parse));
 		return plugins.length > 0 ? plugins : undefined;

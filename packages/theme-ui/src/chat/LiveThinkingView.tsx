@@ -1,4 +1,5 @@
 import type { CSSProperties, JSX } from "react";
+import { keepPairedPunctuation } from "../markdown/em-dash";
 import { useCallback, useEffect, useState } from "react";
 
 /** 卡片内滚动窗口高度（px），约 3 行正文。 */
@@ -107,7 +108,7 @@ export function LiveThinkingView({ text }: LiveThinkingViewProps): JSX.Element {
 					style={viewportStyle}
 				>
 					<div className="whitespace-pre-wrap break-words text-[12px] leading-[1.6] text-muted-foreground/55">
-						{text}
+						{keepPairedPunctuation(text)}
 					</div>
 				</div>
 			</div>
