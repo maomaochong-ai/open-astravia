@@ -50,6 +50,10 @@ public enum RemoteDesktopProtocol {
 	public static let webSocketProtocol = "vetta.desktop.v1"
 	public static let inputChannel = "vetta-input-v1"
 	public static let controlChannel = "vetta-control-v2"
+	/// Opened by desktops that send the picture no larger than the phone shows it.
+	public static let viewChannel = "vetta-view-v1"
+	/// The largest picture side the desktop takes, zoom included.
+	public static let maxViewSide = 65_536
 	/// The most text one input message carries.
 	public static let maxTypedText = 256
 	public static let maxScrollDelta = 4_096.0
@@ -182,6 +186,15 @@ public enum RemoteDesktopProtocol {
 			fields["sentAt"] = .number(Double(sentAt))
 		}
 		return JSONValue.object(fields).serialized()
+	}
+
+	/// How large the phone shows the whole screen, in its pixels with zoom applied, for
+	/// `viewChannel`. Validated like the desktop does.
+	public static func encodeView(width: Int, height: Int) throws -> String {
+		guard (1...maxViewSide).contains(width), (1...maxViewSide).contains(height) else {
+			throw RemoteProtocolError("view size must be between 1 and \(maxViewSide)")
+		}
+		return JSONValue.object(["width": .number(Double(width)), "height": .number(Double(height))]).serialized()
 	}
 
 	/// Pasted or typed text as the messages that carry it: printable runs as `text`,

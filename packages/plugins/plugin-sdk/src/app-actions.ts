@@ -81,6 +81,11 @@ export interface PluginAppActionRegistration<TInput = unknown> {
 	inputSchema: PluginJsonSchema;
 	examples?: PluginAppActionExample<TInput>[];
 	timeoutMs?: number;
+	/**
+	 * 已配对的手机可经远程控制（`action.run`）调用。仅限 `effect: "read"`；
+	 * 旧宿主忽略此字段，手机端只在桌面声明 `actions` 能力时才会调用。
+	 */
+	remote?: boolean;
 	/** 审批前业务就绪校验；失败时不会向用户弹出审批。 */
 	assertReady?: PluginAppActionReadyHandler<TInput>;
 	handler: PluginAppActionHandler<TInput>;

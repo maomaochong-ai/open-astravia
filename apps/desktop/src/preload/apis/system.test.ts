@@ -84,3 +84,11 @@ describe("createSystemApi MCP setup login contract", () => {
 		expect(invoke).toHaveBeenNthCalledWith(3, "vetta:mcp:clear-setup-login", "xiaohongshu-mcp");
 	});
 });
+
+it("returns the MCP tool discovery result through the preload boundary", async () => {
+	const tools = [{ name: "search", description: "Search documents" }];
+	const invoke = vi.fn(async () => tools);
+	const api = createSystemApi({ invoke } as unknown as IpcRenderer, {} as WebUtils);
+	await expect(api.mcp.listTools("remote")).resolves.toEqual(tools);
+	expect(invoke).toHaveBeenCalledWith("vetta:mcp:list-tools", "remote");
+});

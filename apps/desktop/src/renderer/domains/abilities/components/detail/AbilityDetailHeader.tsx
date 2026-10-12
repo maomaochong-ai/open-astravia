@@ -41,12 +41,19 @@ export function AbilityDetailHeader({
 	const hasVersionUpdate = Boolean(item.localVersion && item.localVersion !== item.version);
 
 	return (
-		<div className="flex flex-col gap-4">
+		<div
+			className={cn(
+				"flex flex-col gap-4",
+				item.type === "mcp" && "rounded-xl border border-border/50 bg-card/40 p-4",
+			)}
+		>
 			<div className="flex items-start gap-4">
 				<AbilityIcon icon={item.icon} type={item.type} className="h-14 w-14 rounded-2xl" iconClassName="h-7 w-7" />
 				<div className="min-w-0 flex-1">
 					<div className="flex flex-wrap items-center gap-2">
-						<h1 className="truncate text-[20px] font-semibold leading-snug tracking-tight text-foreground">{title}</h1>
+						<h1 className="truncate text-[20px] font-semibold leading-snug tracking-tight text-foreground">
+							{title}
+						</h1>
 						<AbilityTypeBadge item={item} />
 						<span
 							className={cn(

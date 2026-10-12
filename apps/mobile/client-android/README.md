@@ -30,6 +30,8 @@ Use the run button in your IDE's editor gutter, or run tests using Gradle tasks:
 
 Run the Cloudflare relay and Desktop locally, then scan the v2 pairing QR code shown in Desktop settings. The Remote Control page (from Home or Settings) renders the peer-to-peer desktop stream full screen; pointer, wheel, hardware keyboard, chat, status, and diagnostics use WebRTC DataChannels after bootstrap.
 
+The network label follows the video transport's selected ICE pair. Native WebRTC interface/VPN metadata and the selected interface's real IP prefix distinguish LAN, internet, VPN, and TURN-relayed connections. Hidden addresses, missing interface evidence, and ambiguous routed private networks are explicitly shown as undetermined P2P connections. Interface addresses are used in memory only, never logged or persisted.
+
 ---
 
 Learn more about [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatform-dev/get-started.html)…

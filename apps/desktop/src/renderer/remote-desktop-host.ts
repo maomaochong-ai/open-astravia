@@ -1,5 +1,11 @@
 import type { RemoteDesktopSignal } from "@vetta/remote-desktop";
-import { REMOTE_DESKTOP_ICE_SERVERS, RemoteDesktopHost, WebSocketRemoteDesktopSignaling } from "@vetta/remote-desktop";
+import {
+	REMOTE_DESKTOP_ICE_SERVERS,
+	RemoteDesktopHost,
+	SCREEN_TARGET_FPS,
+	WebSocketRemoteDesktopSignaling,
+	watchScreenStream,
+} from "@vetta/remote-desktop";
 
 declare global {
 	interface Window {
@@ -25,42 +31,26 @@ const onDemand = params.get("screen") === "demand";
 // Sharp enough to read zoomed-in text, small enough for the hardware encoder to keep up at
 // full frame rate, so dragging stays smooth.
 const SCREEN_CAPTURE: DisplayMediaStreamOptions = {
-	video: { width: { max: 2560 }, height: { max: 1600 }, frameRate: { max: 60 } },
+	video: { width: { max: 2560 }, height: { max: 1600 }, frameRate: { max: SCREEN_TARGET_FPS } },
 	audio: false,
 };
 
-// While the screen is shared, how it is being sent: codec, encoder, frame rate, size and
-// what holds it back. Counts and names only (packages/remote-desktop/AGENTS.md).
-let statsTimer: ReturnType<typeof setInterval> | undefined;
-const logStats = async (): Promise<void> => {
-	const current = host;
-	if (!current) return;
-	const reports = new Map<string, Record<string, unknown>>();
-	(await current.getStats()).forEach((report: Record<string, unknown>) => {
-		reports.set(String(report.id), report);
-	});
-	for (const report of reports.values()) {
-		if (report.type !== "outbound-rtp" || report.kind !== "video") continue;
-		const pair = [...reports.values()].find((entry) => entry.type === "candidate-pair" && entry.nominated === true);
-		console.info(
-			line("remote desktop stream", {
-				codec: typeof report.codecId === "string" ? reports.get(report.codecId)?.mimeType : undefined,
-				encoder: report.encoderImplementation,
-				framesPerSecond: report.framesPerSecond,
-				width: report.frameWidth,
-				height: report.frameHeight,
-				limitedBy: report.qualityLimitationReason,
-				roundTripMs:
-					typeof pair?.currentRoundTripTime === "number"
-						? Math.round(pair.currentRoundTripTime * 1000)
-						: undefined,
-			}),
-		);
-	}
-};
+// While the screen is shared, how it is being sent: codec, encoder, frame rate, size, what
+// holds it back, how long each frame takes to encode and what the phone asked to be resent.
+// Counts and timing only (packages/remote-desktop/AGENTS.md).
+let stopStats: (() => void) | undefined;
 const watchStats = (streaming: boolean): void => {
-	if (statsTimer) clearInterval(statsTimer);
-	statsTimer = streaming ? setInterval(() => void logStats().catch(() => undefined), 5_000) : undefined;
+	stopStats?.();
+	stopStats = streaming
+		? watchScreenStream(
+				() => host?.sampleScreen() ?? Promise.resolve(undefined),
+				(sample) => console.info(line("remote desktop stream", { ...sample, framesPerSecond: sample.encodedFps })),
+				(error) =>
+					console.warn(
+						line("remote desktop stats failed", { error: error instanceof Error ? error.name : "unknown" }),
+					),
+			)
+		: undefined;
 };
 
 const signaling = new WebSocketRemoteDesktopSignaling(target);
@@ -208,6 +198,7 @@ const removeScreenListener = onDemand
 window.addEventListener(
 	"beforeunload",
 	() => {
+		stopStats?.();
 		removeControlListener?.();
 		removeScreenListener?.();
 	},

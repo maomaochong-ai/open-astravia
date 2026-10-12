@@ -62,11 +62,12 @@ export class RemoteConnection {
 	private readonly randomBytes;
 	private readonly requestTimeoutMs: number;
 	private readonly handshake: "initiate" | "accept";
-	private readonly journal: RemoteEventJournalPort;
+	private journal: RemoteEventJournalPort;
 	private readonly pending = new Map<string, PendingRequest>();
 	private readonly listeners = new Set<(event: RemoteConnectionEvent) => void>();
 	private ephemeral: RemoteIdentityKeyPair | undefined;
 	private keys: RemoteSessionKeys | undefined;
+	private peerAuthenticated = false;
 	private peerDeviceId: string | undefined;
 	private peerDeviceName: string | undefined;
 	private peerCapabilities: RemoteCapabilities | undefined;
@@ -131,6 +132,7 @@ export class RemoteConnection {
 		this.setState(this.state === "idle" ? "connecting" : "reconnecting");
 		this.ephemeral = generateIdentityKeyPair(this.randomBytes);
 		this.keys = undefined;
+		this.peerAuthenticated = false;
 		this.earlySealed.length = 0;
 		try {
 			await this.transport.connect({
@@ -154,7 +156,14 @@ export class RemoteConnection {
 		this.rejectPending("remote connection closed");
 		this.setState("closed");
 		this.keys = undefined;
+		this.peerAuthenticated = false;
 		await this.transport.close();
+	}
+
+	/** After host authorization, join the device's shared journal before delivering business events. */
+	adoptEventJournal(journal: RemoteEventJournalPort): void {
+		if (this.state !== "online" || !this.peerAuthenticated) throw new Error("peer is not authenticated");
+		this.journal = journal;
 	}
 
 	async request(method: RemoteRequest["method"], payload?: unknown, sessionId?: string): Promise<unknown> {
@@ -262,6 +271,7 @@ export class RemoteConnection {
 					this.rejectPending("remote peer is offline");
 					if (this.state === "online" || this.state === "recovering") {
 						this.keys = undefined;
+						this.peerAuthenticated = false;
 						this.earlySealed.length = 0;
 						// The relay socket stays parked; only a fresh handshake can make its peer online again.
 						this.setState("connecting");
@@ -308,6 +318,7 @@ export class RemoteConnection {
 		this.rejectPending("remote peer reconnected");
 		this.reconnectCount += 1;
 		this.keys = undefined;
+		this.peerAuthenticated = false;
 		this.ephemeral = generateIdentityKeyPair(this.randomBytes);
 		void this.handleInboundHello(hello);
 	}
@@ -380,6 +391,8 @@ export class RemoteConnection {
 			this.protocolViolation(describe(error));
 			return;
 		}
+		// The peer may send a corrupt frame or close while hello_ack is being delivered.
+		if (!this.keys) return;
 		this.goOnline();
 	}
 
@@ -455,6 +468,10 @@ export class RemoteConnection {
 		} catch (error) {
 			this.protocolViolation(error instanceof Error ? error.message : "sealed frame rejected");
 			return;
+		}
+		if (!this.peerAuthenticated) {
+			this.peerAuthenticated = true;
+			this.emit({ type: "peer-authenticated" });
 		}
 		this.handleSessionFrame(inner);
 	}
@@ -592,6 +609,7 @@ export class RemoteConnection {
 		this.emit({ type: "error", error: { code, message, retryable: code === "invalid_frame" } });
 		this.rejectPending(message);
 		this.keys = undefined;
+		this.peerAuthenticated = false;
 		this.setState("failed");
 		void this.transport.close(message).catch(() => undefined);
 	}
@@ -600,6 +618,7 @@ export class RemoteConnection {
 		if (this.state === "closed") return;
 		this.reconnectCount += 1;
 		this.keys = undefined;
+		this.peerAuthenticated = false;
 		this.rejectPending("remote transport closed");
 		this.logger.warn("remote transport closed", {
 			deviceId: this.options.deviceId,

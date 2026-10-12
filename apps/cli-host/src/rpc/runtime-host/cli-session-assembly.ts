@@ -146,6 +146,7 @@ export async function createCliSessionAssembly(options: CliSessionAssemblyOption
 			initialModel: options.initialModel,
 			initialThinkingLevel: options.initialThinkingLevel,
 			streamFn: createLoopbackSessionAffinityStream(),
+			runtimeHostModelSettings: bootstrap.settingsManager,
 			ocrMaxConcurrent: resolvePositiveInteger(process.env.VETTA_KB_OCR_CONCURRENCY),
 			cwd: bootstrap.cwd,
 			workspaceFacts: detectWorkspaceFacts(bootstrap.cwd, (cwd) =>

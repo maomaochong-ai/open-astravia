@@ -250,6 +250,17 @@
 			"confirmClearLogin": "确认清除登录状态",
 			"clearing": "正在清除…",
 			"checkedAt": "最近验证：{{time}}"
+		},
+		"tools": {
+			"title": "可用工具",
+			"loading": "正在读取工具清单…",
+			"error": "工具清单读取失败，请检查连接配置后重试。",
+			"retry": "重试",
+			"empty": "此 MCP 未提供可用工具。",
+			"noDescription": "暂无描述",
+			"installFirst": "安装并启用后，可查看此 MCP 的工具清单。",
+			"enableFirst": "启用此 MCP 后，可查看工具清单。",
+			"setupFirst": "完成授权或登录后，可查看工具清单。"
 		}
 	},
 	"bundle": {

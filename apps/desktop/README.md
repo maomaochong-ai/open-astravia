@@ -218,3 +218,15 @@ When a user explicitly requests agent-driven UI verification, use repo-root `ver
 Current `e2e/smoke.e2e.ts` batch-1 covers boot only: main-process ready/version, main window `index.html`, config/userData isolation, and a `dialog` mock probe. It does not cover login, chat, or other product flows.
 
 Packaged E2E permits one immediate spec-file retry. WebdriverIO creates a fresh browser instance for the retry, which recovers the upstream CDP bridge when its initialization promise is transiently collected during a packaged process. Unpackaged E2E does not retry; assertions are unchanged and a second failure remains fatal.
+
+### MCP connections in Abilities
+
+The custom MCP add/edit dialogs show the transport selector first. HTTP connections offer an optional
+Authorization key field that edits the same `Authorization` header as the advanced request-header
+editor. Enter the complete header value (including `Bearer ` when required); no prefix is added.
+Clearing the key removes that header while retaining other request headers.
+
+An installed, enabled MCP's detail panel lists all discovered tool names and full descriptions.
+Discovery starts after the panel is displayed, follows pagination, and releases its connection when
+finished. It does not call tools. Uninstalled, disabled, or unauthenticated connections show a setup
+hint; failed discovery shows its error message directly in the panel and can be retried after checking the configuration.

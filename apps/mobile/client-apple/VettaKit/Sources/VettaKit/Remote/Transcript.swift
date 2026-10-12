@@ -66,12 +66,24 @@ public struct TranscriptState: Equatable, Sendable {
 	/// Set after `session.resync`; the owner must refetch history before trusting `items`.
 	public var stale: Bool
 	public var loaded: Bool
+	/// The desktop holds entries older than `items`; the chat fetches them a page at a time as it scrolls up.
+	public var hasOlder = false
 
 	public static let empty = TranscriptState(items: [], sessionState: RemoteSessionState(status: .idle), pendingQuestion: nil, stale: false, loaded: false)
 }
 
+/// Older history fetched for a chat, the entries before `before`.
+public struct OlderPage: Equatable, Sendable {
+	public var before: String
+	public var entries: [RemoteTranscriptEntry]
+	public var hasOlder: Bool
+}
+
 public enum TranscriptAction: Equatable, Sendable {
-	case history(entries: [RemoteTranscriptEntry], state: RemoteSessionState)
+	/// The newest page of the history; `hasOlder` when the desktop holds more before it.
+	case history(entries: [RemoteTranscriptEntry], state: RemoteSessionState, hasOlder: Bool = false)
+	/// A page from before the oldest item shown.
+	case older(entries: [RemoteTranscriptEntry], hasOlder: Bool)
 	case message(RemoteMessageEvent)
 	case tool(RemoteToolEvent)
 	case state(RemoteSessionState)
@@ -94,7 +106,7 @@ public enum TranscriptReducer {
 	public static func reduce(_ state: TranscriptState, _ action: TranscriptAction) -> TranscriptState {
 		var next = state
 		switch action {
-		case let .history(entries, sessionState):
+		case let .history(entries, sessionState, hasOlder):
 			var items = keepingAttachments(entries.map(fromHistoryEntry), from: state.items)
 			// A snapshot taken mid-turn ends in the partial reply; later deltas must
 			// continue that bubble instead of opening a second one below it.
@@ -107,8 +119,15 @@ public enum TranscriptReducer {
 				sessionState: sessionState,
 				pendingQuestion: sessionState.pendingQuestion,
 				stale: false,
-				loaded: true
+				loaded: true,
+				hasOlder: hasOlder
 			)
+		case let .older(entries, hasOlder):
+			// A refetch since the request went out may already hold some of them.
+			let known = Set(state.items.map(\.id))
+			next.items = entries.map(fromHistoryEntry).filter { !known.contains($0.id) } + state.items
+			next.hasOlder = hasOlder
+			return next
 		case let .localUser(text, at, attachments):
 			next.items.append(.user(id: nextLocalId("local-user"), text: text, at: at, attachments: attachments))
 			return next

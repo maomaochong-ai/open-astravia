@@ -32,6 +32,7 @@ import org.vetta.android.domain.remote.RemoteSessionStatus
 import org.vetta.android.domain.remote.TranscriptAttachment
 import org.vetta.android.domain.remote.TranscriptItem
 import org.vetta.android.domain.remote.link.DesktopLink
+import org.vetta.android.domain.remote.link.LinkStatus
 import org.vetta.android.domain.remote.pairing.PairingStore
 import org.vetta.android.domain.remote.pairing.SettingsSecretStore
 import org.vetta.android.domain.remote.protocol.RemoteCrypto
@@ -286,7 +287,11 @@ class DesktopMirrorTest {
             assertFalse(mirror.state.value.paired)
             assertEquals(UnlinkReason.UnpairedHere, mirror.state.value.unlinked)
             assertTrue(mirror.state.value.sessions.isNotEmpty(), "unpairing takes nothing off the phone")
-            assertFalse(mirror.state.value.link.isUsable)
+            assertEquals(LinkStatus.Offline, mirror.state.value.link.status, "unpairing is not a new connection attempt")
+            assertTrue(
+                eventually { mirror.state.value.link.status == LinkStatus.Offline && !mirror.state.value.paired },
+                "a late frame from the closed link must not look like connecting",
+            )
             assertTrue(eventually { desktop.openSockets == 0 }, "unpairing closes the link")
         }
 

@@ -640,6 +640,38 @@ describe("DesktopRemoteMirror", () => {
 		await expect(request("file.list", {}, "unknown")).rejects.toMatchObject({ code: "not_found" });
 	});
 
+	it("answers tool.result with the whole result that history only previews", async () => {
+		const { mirror, request, runtime } = harness();
+		await mirror.start();
+		await request("session.list");
+		const key = keyForPath(CONVERSATION_PATH);
+		await request("session.open", undefined, key);
+		const text = JSON.stringify({ results: Array.from({ length: 100 }, (_, id) => ({ id, name: `小区 ${id}` })) });
+		runtime.messages.set("rt-chat", [
+			{
+				role: "toolResult",
+				toolCallId: "t1",
+				toolName: "jsk_focus_parcels",
+				content: [{ type: "text", text }],
+				isError: false,
+				timestamp: 5,
+			} as Message,
+		]);
+
+		expect(await request("tool.result", { toolCallId: "t1" }, key)).toEqual({
+			toolCallId: "t1",
+			toolName: "jsk_focus_parcels",
+			result: text,
+			isError: false,
+		});
+		await expect(request("tool.result", { toolCallId: "t9" }, key)).rejects.toMatchObject({ code: "not_found" });
+		await expect(request("tool.result", {}, key)).rejects.toMatchObject({ code: "invalid_frame" });
+		await expect(request("tool.result", { toolCallId: "t1" }, "unknown")).rejects.toMatchObject({
+			code: "not_found",
+		});
+		mirror.stop();
+	});
+
 	it("creates a session in the conversation root by default and returns its summary", async () => {
 		const { mirror, request } = harness();
 		await mirror.start();

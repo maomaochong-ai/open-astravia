@@ -448,6 +448,9 @@ class DesktopMirror(
             listOf(
                 scope.launch {
                     next.snapshot.collect { snapshot ->
+                        // Unpair nulls [link] before the socket stops. A late "connecting"
+                        // frame from that stop must not put the page back into connecting.
+                        if (link !== next) return@collect
                         val wasOnline = _state.value.link.isUsable
                         mutate { it.copy(link = snapshot) }
                         if (!wasOnline && snapshot.isUsable) scope.launch { refreshSessions() }
@@ -490,8 +493,9 @@ class DesktopMirror(
         saveProgress()
         linkJobs.forEach(Job::cancel)
         linkJobs = emptyList()
-        link?.stop()
+        val stopping = link
         link = null
+        stopping?.stop()
     }
 
     /**

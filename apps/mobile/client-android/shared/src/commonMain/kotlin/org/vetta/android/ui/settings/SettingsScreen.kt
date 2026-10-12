@@ -1,11 +1,5 @@
 package org.vetta.android.ui.settings
 
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -13,22 +7,25 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Laptop
 import androidx.compose.material.icons.outlined.DesktopWindows
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.QrCodeScanner
-import androidx.compose.material.icons.filled.Smartphone
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -39,17 +36,23 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import org.jetbrains.compose.resources.pluralStringResource
+import androidx.compose.ui.unit.sp
+import kotlin.math.PI
+import kotlin.math.sin
 import org.jetbrains.compose.resources.stringResource
 import org.vetta.android.app.APP_VERSION
 import org.vetta.android.app.ThemeMode
@@ -59,8 +62,7 @@ import org.vetta.android.domain.work.MirrorState
 import org.vetta.android.resources.Res
 import org.vetta.android.resources.appearance
 import org.vetta.android.resources.back
-import org.vetta.android.resources.latency
-import org.vetta.android.resources.link_latency
+import org.vetta.android.resources.link_live
 import org.vetta.android.resources.remote_control
 import org.vetta.android.resources.settings_background_link
 import org.vetta.android.resources.settings_background_link_denied
@@ -71,20 +73,20 @@ import org.vetta.android.resources.settings_title
 import org.vetta.android.resources.theme_dark
 import org.vetta.android.resources.theme_light
 import org.vetta.android.resources.theme_system
+import org.vetta.android.resources.unlinked_description
+import org.vetta.android.resources.unlinked_pill
 import org.vetta.android.resources.version_number
 import org.vetta.android.resources.work_settings_haptics
 import org.vetta.android.resources.work_settings_live_thinking
-import org.vetta.android.resources.work_settings_load
-import org.vetta.android.resources.work_settings_load_idle
-import org.vetta.android.resources.work_settings_load_value
 import org.vetta.android.resources.work_settings_rescan
 import org.vetta.android.resources.work_settings_scan
 import org.vetta.android.resources.work_settings_unpair
 import org.vetta.android.resources.work_settings_unpair_confirm
 import org.vetta.android.resources.work_unpaired_description
+import org.vetta.android.resources.work_unpaired_title
 import org.vetta.android.ui.components.VettaConfirmDialog
-import org.vetta.android.ui.design.GlassCapsuleButton
 import org.vetta.android.ui.design.GlassCircleButton
+import org.vetta.android.ui.design.springClickable
 import org.vetta.android.ui.design.form.ButtonRole
 import org.vetta.android.ui.design.form.FormMetrics
 import org.vetta.android.ui.design.form.Section
@@ -97,16 +99,14 @@ import org.vetta.android.ui.theme.vettaExtra
 import org.vetta.android.ui.work.describe
 import org.vetta.android.ui.work.linkDetail
 import org.vetta.android.ui.work.workColors
-import kotlin.math.PI
-import kotlin.math.sin
 
 /**
  * The paired computer and how the phone works with it.
  *
- * The link is the page's picture: the phone and the computer, and whether data is
- * moving between them. Latency, load, and the switches sit in the open under that
- * picture. The rows below are [Section]s, so titles, separators and the destructive
- * action stay on the same grouped-list metrics.
+ * The computer is one card in the same grouped list as the rest of the page. A line
+ * drawing of the computer sits in the centre, with its name and the link under it.
+ * Remote control and scanning are separate buttons beneath that. Phone preferences
+ * sit in the next card.
  */
 @Composable
 fun SettingsScreen(
@@ -144,7 +144,7 @@ fun SettingsScreen(
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp).semantics { heading() },
         )
         Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(FormMetrics.SectionGap)) {
-            LinkCard(state, preferences, onPreferences, onPair, onOpenRemote)
+            LinkCard(state, onPair, onOpenRemote)
 
             // Notifications need the permission first; turning it on asks for it.
             var denied by remember { mutableStateOf(false) }
@@ -154,6 +154,18 @@ fun SettingsScreen(
                     if (granted) onBackgroundLink(true)
                 }
             Section {
+                toggle(
+                    stringResource(Res.string.work_settings_live_thinking),
+                    preferences.liveThinking,
+                    onCheckedChange = { on -> onPreferences { it.copy(liveThinking = on) } },
+                    tag = "settings.liveThinking",
+                )
+                toggle(
+                    stringResource(Res.string.work_settings_haptics),
+                    preferences.haptics,
+                    onCheckedChange = { on -> onPreferences { it.copy(haptics = on) } },
+                    tag = "settings.haptics",
+                )
                 toggle(
                     stringResource(Res.string.settings_background_link),
                     backgroundLink && access.granted,
@@ -221,200 +233,326 @@ fun SettingsScreen(
 }
 
 /**
- * Phone and computer as one picture. Details stay open. While the link is up, one dot
- * drifts from the computer to the phone; that motion is the connected mark.
+ * The computer, then what can be done with the link.
+ *
+ * [MirrorState.desktop] stays after an unpairing so earlier sessions keep their name.
+ * Only [MirrorState.paired] means the link still exists. A stored computer with
+ * [MirrorState.unlinked] set is not "connecting".
  */
 @Composable
 private fun LinkCard(
     state: MirrorState,
-    preferences: MirrorPreferences,
-    onPreferences: ((MirrorPreferences) -> MirrorPreferences) -> Unit,
     onPair: () -> Unit,
     onOpenRemote: (() -> Unit)?,
 ) {
     val desktop = state.desktop
-    val paired = desktop != null
+    val linked = state.paired
+    val unlinked = state.unlinked != null
     val indicator = LinkIndicator.of(state.link)
-    val up = paired && indicator == LinkIndicator.Online
-    val statusColor =
-        if (indicator == LinkIndicator.Offline && paired) {
-            MaterialTheme.workColors.red
+    val up = linked && indicator == LinkIndicator.Online
+    val colors = MaterialTheme.workColors
+    val offline = indicator == LinkIndicator.Offline && linked
+    val joining = indicator == LinkIndicator.Connecting || indicator is LinkIndicator.Reconnecting
+    val fallbackName = stringResource(Res.string.settings_link_computer)
+    val name = desktop?.desktopName?.takeIf { it.isNotBlank() } ?: fallbackName
+    // Resolved on every frame so a link change does not reshuffle composition.
+    val live = stringResource(Res.string.link_live)
+    val words = describe(indicator)
+    val route = linkDetail(state.link)
+    val unpairedTitle = stringResource(Res.string.work_unpaired_title)
+    val unpairedBody = stringResource(Res.string.work_unpaired_description)
+    val unlinkedPill = stringResource(Res.string.unlinked_pill)
+    val unlinkedBody = stringResource(Res.string.unlinked_description)
+    val remoteLabel = stringResource(Res.string.remote_control)
+    val rescanLabel = stringResource(Res.string.work_settings_rescan)
+    val scanLabel = stringResource(Res.string.work_settings_scan)
+    val actions =
+        if (linked) {
+            buildList {
+                if (onOpenRemote != null) {
+                    add(CardAction(remoteLabel, Icons.Outlined.DesktopWindows, "settings.remote", onOpenRemote))
+                }
+                add(CardAction(rescanLabel, Icons.Outlined.QrCodeScanner, "settings.rescan", onPair))
+            }
         } else {
-            MaterialTheme.workColors.ink2
+            listOf(CardAction(scanLabel, Icons.Outlined.QrCodeScanner, "settings.scan", onPair))
+        }
+    val header =
+        when {
+            unlinked ->
+                DeviceCopy(
+                    title = name,
+                    status = unlinkedPill,
+                    statusColor = colors.ink2,
+                    detail = null,
+                    note = unlinkedBody,
+                    showComputer = true,
+                    breathing = false,
+                )
+            up ->
+                DeviceCopy(
+                    title = name,
+                    status = live,
+                    statusColor = colors.green,
+                    detail = route,
+                    note = null,
+                    showComputer = true,
+                    breathing = false,
+                )
+            linked && joining ->
+                DeviceCopy(
+                    title = name,
+                    status = words,
+                    statusColor = colors.ink2,
+                    detail = null,
+                    note = null,
+                    showComputer = true,
+                    breathing = true,
+                )
+            linked ->
+                DeviceCopy(
+                    title = name,
+                    status = words,
+                    statusColor = if (offline) colors.red else colors.ink2,
+                    detail = null,
+                    note = null,
+                    showComputer = true,
+                    breathing = false,
+                )
+            else ->
+                DeviceCopy(
+                    title = unpairedTitle,
+                    status = null,
+                    statusColor = colors.ink2,
+                    detail = unpairedBody,
+                    note = null,
+                    showComputer = false,
+                    breathing = false,
+                )
         }
     Section {
         custom {
-            Column(
-                Modifier.fillMaxWidth().padding(bottom = if (paired) 8.dp else 0.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Row(
-                    Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, top = 20.dp),
-                    verticalAlignment = Alignment.Top,
-                ) {
-                    Box(Modifier.weight(1f), contentAlignment = Alignment.TopCenter) {
-                        DeviceNode(
-                            icon = Icons.Filled.Laptop,
-                            name = desktop?.desktopName ?: stringResource(Res.string.settings_link_computer),
-                            present = paired,
-                        )
-                    }
-                    // The bridge sits on the icon, not on the name underneath it.
-                    LinkBridge(up = up, modifier = Modifier.padding(top = 10.dp))
-                    Box(Modifier.weight(1f), contentAlignment = Alignment.TopCenter) {
-                        DeviceNode(
-                            icon = Icons.Filled.Smartphone,
-                            name = phoneModel(),
-                            present = true,
-                        )
-                    }
-                }
-                if (!paired) {
-                    Text(
-                        stringResource(Res.string.work_unpaired_description),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(top = 12.dp, bottom = 4.dp),
-                    )
-                    Box(
-                        Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, bottom = 18.dp, top = 4.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        GlassCapsuleButton(
-                            text = stringResource(Res.string.work_settings_scan),
-                            onClick = onPair,
-                            icon = Icons.Outlined.QrCodeScanner,
-                            height = 44.dp,
-                            tag = "settings.scan",
-                        )
-                    }
-                } else if (!up) {
-                    Text(
-                        describe(indicator),
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium,
-                        color = statusColor,
-                        modifier = Modifier.padding(top = 14.dp, bottom = 8.dp),
-                    )
-                }
+            Column(Modifier.fillMaxWidth()) {
+                DeviceHeader(header)
+                ActionWell(actions)
             }
         }
-        if (paired) {
-            if (state.online) {
-                custom {
-                    val running = state.link.desktop?.runningSessionCount ?: 0
-                    val latency = state.link.rttMs?.takeIf { it > 0 }?.let { stringResource(Res.string.link_latency, it.toInt()) } ?: "—"
-                    val load = if (running > 0) pluralStringResource(Res.plurals.work_settings_load_value, running, running) else stringResource(Res.string.work_settings_load_idle)
-                    linkDetail(state.link.copy(rttMs = null))?.let { channel ->
-                        Text(
-                            channel,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.workColors.ink2,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 14.dp),
-                        )
-                    }
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Fact(stringResource(Res.string.latency), latency, Modifier.weight(1f))
-                        Box(Modifier.width(0.5.dp).height(36.dp).background(MaterialTheme.vettaExtra.border))
-                        Fact(stringResource(Res.string.work_settings_load), load, Modifier.weight(1f))
-                    }
-                }
-            }
-            if (onOpenRemote != null) {
-                button(
-                    stringResource(Res.string.remote_control),
-                    onClick = onOpenRemote,
-                    icon = Icons.Outlined.DesktopWindows,
-                    role = ButtonRole.Disclosure,
-                    tag = "settings.remote",
-                )
-            }
-            button(
-                stringResource(Res.string.work_settings_rescan),
-                onClick = onPair,
-                icon = Icons.Outlined.QrCodeScanner,
-                tag = "settings.rescan",
-            )
-            toggle(
-                stringResource(Res.string.work_settings_live_thinking),
-                preferences.liveThinking,
-                onCheckedChange = { on -> onPreferences { it.copy(liveThinking = on) } },
-                tag = "settings.liveThinking",
-            )
-            toggle(
-                stringResource(Res.string.work_settings_haptics),
-                preferences.haptics,
-                onCheckedChange = { on -> onPreferences { it.copy(haptics = on) } },
-                tag = "settings.haptics",
+    }
+}
+
+/** What the centred header says. [detail] stays its own line of text, apart from [status]. */
+private data class DeviceCopy(
+    val title: String,
+    val status: String?,
+    val statusColor: Color,
+    val detail: String?,
+    val note: String?,
+    val showComputer: Boolean,
+    val breathing: Boolean,
+)
+
+/** One thing the computer card can do. Each action is its own button, with an icon. */
+private data class CardAction(val label: String, val icon: ImageVector, val tag: String, val onClick: () -> Unit)
+
+/**
+ * The computer, centred, then its name and the link. [DeviceCopy.detail] is a separate
+ * text node from the status word, so the route stays exactly the string the home pill uses.
+ */
+@Composable
+private fun DeviceHeader(copy: DeviceCopy) {
+    Column(
+        Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(top = if (copy.showComputer) 28.dp else 22.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        if (copy.showComputer) ComputerMark(copy.breathing)
+        Text(
+            copy.title,
+            style = MaterialTheme.typography.titleLarge.copy(fontSize = 20.sp, lineHeight = 26.sp, fontWeight = FontWeight.SemiBold),
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(top = if (copy.showComputer) 16.dp else 0.dp),
+        )
+        if (copy.status != null || copy.detail != null) {
+            LinkSentence(copy)
+        }
+        if (copy.note != null) {
+            Text(
+                copy.note,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.workColors.ink2,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 6.dp),
             )
         }
     }
 }
 
+/**
+ * Status and route on one centred line. The route is its own text, with the dot beside
+ * it, so a reader of the route does not also receive the status word.
+ */
 @Composable
-private fun DeviceNode(icon: ImageVector, name: String, present: Boolean) {
-    val ink = if (present) MaterialTheme.colorScheme.onSurface else MaterialTheme.workColors.faint
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
-    ) {
-        Icon(icon, contentDescription = null, tint = ink, modifier = Modifier.size(44.dp))
+private fun LinkSentence(copy: DeviceCopy) {
+    val ink2 = MaterialTheme.workColors.ink2
+    if (copy.status != null && copy.detail == null) {
         Text(
-            name,
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Medium,
-            color = ink,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
+            copy.status,
+            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+            color = copy.statusColor,
             textAlign = TextAlign.Center,
+            modifier = Modifier.padding(top = 6.dp),
+        )
+        return
+    }
+    if (copy.status == null && copy.detail != null) {
+        Text(
+            copy.detail,
+            style = MaterialTheme.typography.bodyMedium,
+            color = ink2,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(top = 6.dp),
+        )
+        return
+    }
+    Row(
+        Modifier.fillMaxWidth().padding(top = 6.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            copy.status.orEmpty(),
+            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+            color = copy.statusColor,
+            maxLines = 1,
+            softWrap = false,
+        )
+        Text(" · ", style = MaterialTheme.typography.bodyMedium, color = ink2, maxLines = 1, softWrap = false)
+        Text(
+            copy.detail.orEmpty(),
+            style = MaterialTheme.typography.bodyMedium,
+            color = ink2,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f, fill = false),
         )
     }
 }
 
 /**
- * The line between the two devices. Solid while the link is up, with one ink dot
- * drifting from the computer toward the phone. Dashed otherwise. No second color.
+ * A line drawing of the computer. The screen is filled so the deck behind it stays hidden,
+ * and that fill breathes only while the link is still being made.
  */
 @Composable
-private fun LinkBridge(up: Boolean, modifier: Modifier = Modifier) {
-    val transition = rememberInfiniteTransition(label = "link flow")
-    val travel by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(durationMillis = 3200, easing = LinearEasing), RepeatMode.Restart),
-        label = "link packet",
-    )
+private fun ComputerMark(breathing: Boolean) {
     val ink = MaterialTheme.colorScheme.onSurface
-    val line = if (up) ink.copy(alpha = 0.55f) else MaterialTheme.vettaExtra.border
-    Canvas(modifier.width(96.dp).height(24.dp)) {
-        val y = size.height / 2f
-        drawLine(
-            line,
-            Offset(0f, y),
-            Offset(size.width, y),
-            strokeWidth = 1.dp.toPx(),
-            cap = StrokeCap.Round,
-            pathEffect = if (up) null else PathEffect.dashPathEffect(floatArrayOf(2.5.dp.toPx(), 4.dp.toPx())),
+    val card = MaterialTheme.colorScheme.surface
+    val phase = screenPhase()
+    val wave = ((sin(phase * PI) + 1.0) / 2.0).toFloat()
+    val glass = if (breathing) 0.05f + 0.14f * wave else 0.07f
+    Canvas(Modifier.size(width = 148.dp, height = 96.dp)) {
+        val stroke = 1.6.dp.toPx()
+        val screenW = 88.dp.toPx()
+        val screenH = 54.dp.toPx()
+        val screenLeft = (size.width - screenW) / 2f
+        val screenTop = 8.dp.toPx()
+        val screenCorner = CornerRadius(6.dp.toPx())
+        val inset = 5.dp.toPx()
+        val deckW = 116.dp.toPx()
+        val deckH = 13.dp.toPx()
+        val deckLeft = (size.width - deckW) / 2f
+        val deckTop = screenTop + screenH - stroke
+        drawRoundRect(
+            color = ink,
+            topLeft = Offset(deckLeft, deckTop),
+            size = Size(deckW, deckH),
+            cornerRadius = CornerRadius(6.5.dp.toPx()),
+            style = Stroke(width = stroke),
         )
-        if (up) {
-            val presence = sin(travel * PI).toFloat().coerceIn(0f, 1f)
-            drawCircle(ink.copy(alpha = presence), radius = 2.5.dp.toPx(), center = Offset(size.width * travel, y))
-        }
+        drawRoundRect(
+            color = card,
+            topLeft = Offset(screenLeft, screenTop),
+            size = Size(screenW, screenH),
+            cornerRadius = screenCorner,
+        )
+        drawRoundRect(
+            color = ink.copy(alpha = glass),
+            topLeft = Offset(screenLeft + inset, screenTop + inset),
+            size = Size(screenW - inset * 2, screenH - inset * 2),
+            cornerRadius = CornerRadius(3.dp.toPx()),
+        )
+        drawRoundRect(
+            color = ink,
+            topLeft = Offset(screenLeft, screenTop),
+            size = Size(screenW, screenH),
+            cornerRadius = screenCorner,
+            style = Stroke(width = stroke),
+        )
     }
 }
 
+/** One breath, from dim to bright and back. Kept running so the drawing does not restart. */
 @Composable
-private fun Fact(label: String, value: String, modifier: Modifier = Modifier) {
-    Column(
-        modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(2.dp),
+private fun screenPhase(): Float {
+    val transition = rememberInfiniteTransition()
+    val phase by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(durationMillis = 2200, easing = LinearEasing)),
+        label = "screen-breath",
+    )
+    return phase
+}
+
+/**
+ * Remote control and scanning as separate buttons. A shared track would read as a
+ * slider, so each action keeps its own fill and a gap of the card shows between them.
+ * One action still uses the full row.
+ */
+@Composable
+private fun ActionWell(actions: List<CardAction>) {
+    val shape = RoundedCornerShape(12.dp)
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .padding(top = 18.dp, bottom = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
-        Text(value, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, maxLines = 2, textAlign = TextAlign.Center)
+        actions.forEach { action ->
+            Box(
+                Modifier
+                    .weight(1f)
+                    .height(44.dp)
+                    .springClickable(pressedScale = 0.98f, highlight = shape, onClick = action.onClick)
+                    .testTag(action.tag)
+                    .clip(shape)
+                    .background(MaterialTheme.workColors.card2),
+                contentAlignment = Alignment.Center,
+            ) {
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+                ) {
+                    Icon(
+                        action.icon,
+                        contentDescription = null,
+                        tint = MaterialTheme.workColors.ink2,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Text(
+                        action.label,
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                }
+            }
+        }
     }
 }
 

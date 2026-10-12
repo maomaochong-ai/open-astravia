@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="align_pairing_qr">Fit the QR code inside the frame</string>
     <string name="app_name">Vetta</string>
     <string name="appearance">Appearance</string>
     <string name="back">Back</string>
@@ -114,7 +113,6 @@
     <string name="chat_waiting_model">Waiting for model response</string>
     <string name="chat_working">Working on it…</string>
     <string name="close">Close</string>
-    <string name="close_scanner">Close scanner</string>
     <string name="code">Code</string>
     <string name="common_done">Done</string>
     <string name="confirm">OK</string>
@@ -147,10 +145,10 @@
     <string name="invalid_pairing_invite">Invalid pairing code</string>
     <string name="invalid_pairing_invite_hint">Create a new pairing code on Desktop and try again</string>
     <string name="just_now">Just now</string>
-    <string name="latency">Latency</string>
     <string name="link_connected">Connected</string>
     <string name="link_connecting">Connecting…</string>
     <string name="link_latency">%1$d ms</string>
+    <string name="link_live">Online</string>
     <string name="link_offline">Computer offline</string>
     <string name="link_reconnect">Reconnect</string>
     <plurals name="link_reconnecting">
@@ -226,8 +224,8 @@
     <string name="pair_manual_hint">Enter the IP and port shown on your computer, e.g. 192.168.1.20:43117</string>
     <string name="pair_manual_invalid">Enter an address like 192.168.1.20:43117</string>
     <string name="pair_manual_placeholder">IP:port</string>
+    <string name="pair_grant_camera">Allow Camera</string>
     <string name="pair_manual_title">Manual Connection</string>
-    <string name="pair_scan">Scan QR Code</string>
     <string name="pair_scan_hint">Scan the QR code on your computer</string>
     <string name="pair_title">Connect Computer</string>
     <string name="pair_troubleshoot">QR code not working? See troubleshooting</string>
@@ -243,6 +241,8 @@
     <string name="remote_frames_per_second">%1$d fps</string>
     <string name="remote_picture_delay">Picture ≈%1$d ms</string>
     <string name="remote_round_trip">Latency %1$d ms</string>
+    <string name="remote_route_direct">Peer-to-peer (network undetermined)</string>
+    <string name="remote_route_vpn">Direct over VPN</string>
     <string name="remote_route_internet">Direct over the internet</string>
     <string name="remote_route_lan">Direct on LAN</string>
     <string name="remote_route_relayed">Relayed</string>
@@ -313,12 +313,6 @@
     <string name="work_kind_project">Projects</string>
     <string name="work_settings_haptics">Vibrate when tasks finish</string>
     <string name="work_settings_live_thinking">Watch the computer think live</string>
-    <string name="work_settings_load">Computer load</string>
-    <string name="work_settings_load_idle">Idle</string>
-    <plurals name="work_settings_load_value">
-        <item quantity="one">%1$d task running</item>
-        <item quantity="other">%1$d tasks running</item>
-    </plurals>
     <string name="work_settings_online">Securely connected</string>
     <string name="work_settings_rescan">Scan Again</string>
     <string name="work_settings_scan">Scan to Connect a Computer</string>

@@ -215,6 +215,7 @@ export function createSystemApi(
 			onChanged: (handler) => onIpcEvent(ipc, "vetta:models:changed", handler),
 		},
 		mcp: {
+			listTools: (serverName) => ipc.invoke("vetta:mcp:list-tools", serverName),
 			get: () => ipc.invoke("vetta:mcp:get"),
 			set: (config) => ipc.invoke("vetta:mcp:set", config),
 			login: (serverName, options) => ipc.invoke("vetta:mcp:login", serverName, options),
@@ -243,6 +244,8 @@ export function createSystemApi(
 			setServerToken: (token) => ipc.invoke("vetta:settings:set-server-token", token),
 			getServerRefreshToken: () => ipc.invoke("vetta:settings:get-server-refresh-token"),
 			setServerRefreshToken: (token) => ipc.invoke("vetta:settings:set-server-refresh-token", token),
+			getModelTransport: () => ipc.invoke("vetta:settings:get-model-transport"),
+			setModelTransport: (transport) => ipc.invoke("vetta:settings:set-model-transport", transport),
 		},
 		subscription: {
 			getStatus: () => ipc.invoke("vetta:subscription:status"),

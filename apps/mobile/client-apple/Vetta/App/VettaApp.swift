@@ -93,8 +93,7 @@ struct VettaApp: App {
 		// Once on the LAN or relay, the link moves to the WebRTC control channel through the
 		// relay's viewer signaling; the same session carries the screen (ADR-0140).
 		platform.configureManager = { options in
-			guard let relay = options.desktop.relayBaseUrl, !relay.isEmpty else { return }
-			options.p2pTarget = PairingURI.desktopViewerUrl(relayBaseUrl: relay, pairingId: options.desktop.pairingId, mobileSecret: options.desktop.mobileSecret)
+			guard options.p2pTarget != nil else { return }
 			options.createP2pTransport = { RemoteDesktopSessions.shared.transport(for: $0) }
 		}
 		platform.signals = signals

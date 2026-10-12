@@ -1,4 +1,5 @@
 import type { Context, FetchFunction, Model } from "../../types.js";
+import { toWebSocketUrl } from "../openai-responses/websocket.js";
 import { convertResponsesMessages, convertResponsesTools } from "../openai-responses-shared.js";
 import { resolveProviderMaxRetries } from "../retry-policy.js";
 import type { CodexRequestBody, OpenAICodexResponsesOptions } from "./options.js";
@@ -104,10 +105,7 @@ export function resolveCodexUrl(baseUrl?: string): string {
 }
 
 export function resolveCodexWebSocketUrl(baseUrl?: string): string {
-	const url = new URL(resolveCodexUrl(baseUrl));
-	if (url.protocol === "https:") url.protocol = "wss:";
-	if (url.protocol === "http:") url.protocol = "ws:";
-	return url.toString();
+	return toWebSocketUrl(resolveCodexUrl(baseUrl));
 }
 
 export async function fetchCodexResponse(

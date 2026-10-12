@@ -93,6 +93,7 @@ afterEach(() => {
 	} else {
 		globals.WebSocket = originalWebSocket;
 	}
+	FakeWebSocket.connectError = undefined;
 	FakeWebSocket.onSend = undefined;
 	FakeWebSocket.instances = [];
 });
@@ -193,6 +194,27 @@ for (const fixture of fixtures) {
 				code: "AI_TRANSPORT_FAILED",
 				message: "provider failed",
 				providerCode: "provider_failed",
+				retryable: false,
+			});
+		});
+
+		it("marks transient upstream response.failed as retryable so the caller can auto-retry", async () => {
+			const transport = createProviderTestTransport([
+				responsesSse([failedEvent("upstream_error", "Upstream request failed")]),
+			]);
+			const response = await fixture.stream(transport.fetch);
+			const settled = await settleResponse(response);
+
+			expect(settled.eventError).toMatchObject({
+				code: "AI_TRANSPORT_FAILED",
+				message: "Upstream request failed",
+				providerCode: "upstream_error",
+				retryable: true,
+			});
+			expect(settled.resultError).toMatchObject({
+				code: "AI_TRANSPORT_FAILED",
+				providerCode: "upstream_error",
+				retryable: true,
 			});
 		});
 
@@ -449,6 +471,99 @@ describe("Responses family request mapping", () => {
 	});
 });
 
+describe("OpenAI Responses WebSocket transport", () => {
+	it("streams successful frames with the Responses URL, auth headers, and one lifecycle start", async () => {
+		installFakeWebSocket((socket) => {
+			queueMicrotask(() => {
+				for (const event of textEvents()) socket.emit("message", { data: JSON.stringify(event) });
+			});
+		});
+		const response = await openAIResponsesAdapter.stream({
+			model: openAIModel,
+			context,
+			options: { apiKey: "test-key", transport: "websocket", headers: { "X-Custom": "value" } },
+		});
+		const events = await collectEvents(response.events);
+		const result = await response.result;
+
+		expect(textOf(result)).toBe("hello");
+		expect(events.filter((event) => event.type === "start")).toHaveLength(1);
+		expect(FakeWebSocket.instances[0]).toMatchObject({
+			url: "wss://provider.test/v1/responses",
+			options: {
+				headers: {
+					Authorization: "Bearer test-key",
+					"OpenAI-Beta": "responses_websockets=2026-02-06",
+					"X-Custom": "value",
+				},
+			},
+		});
+		expect(JSON.parse(FakeWebSocket.instances[0]?.sent[0] ?? "{}")).toMatchObject({
+			type: "response.create",
+			model: "test-model",
+			stream: true,
+		});
+	});
+
+	it("settles response.incomplete as a successful length terminal", async () => {
+		installFakeWebSocket((socket) => {
+			queueMicrotask(() => {
+				for (const event of incompleteEvents()) socket.emit("message", { data: JSON.stringify(event) });
+			});
+		});
+		const response = await openAIResponsesAdapter.stream({
+			model: openAIModel,
+			context,
+			options: { apiKey: "test", transport: "websocket" },
+		});
+
+		expect((await response.result).stopReason).toBe("length");
+	});
+
+	it("rejects malformed JSON frames", async () => {
+		installFakeWebSocket((socket) => {
+			queueMicrotask(() => socket.emit("message", { data: "{not-json" }));
+		});
+		const response = await openAIResponsesAdapter.stream({
+			model: openAIModel,
+			context,
+			options: { apiKey: "test", transport: "websocket" },
+		});
+		const settled = await settleResponse(response);
+
+		expect(settled.eventError).toMatchObject({ code: "AI_RESPONSE_VALIDATION_FAILED" });
+		expect(settled.resultError).toMatchObject({ code: "AI_RESPONSE_VALIDATION_FAILED" });
+	});
+
+	it("rejects a socket that closes before a terminal response", async () => {
+		installFakeWebSocket((socket) => {
+			queueMicrotask(() => socket.emit("close", { code: 1006, reason: "lost" }));
+		});
+		const response = await openAIResponsesAdapter.stream({
+			model: openAIModel,
+			context,
+			options: { apiKey: "test", transport: "websocket" },
+		});
+		const settled = await settleResponse(response);
+
+		expect(settled.eventError).toMatchObject({ code: "AI_TRANSPORT_FAILED" });
+		expect(settled.resultError).toMatchObject({ code: "AI_TRANSPORT_FAILED" });
+	});
+
+	it("falls back to SSE when auto WebSocket setup fails before the request starts", async () => {
+		installFailingFakeWebSocket("upgrade rejected");
+		const transport = createProviderTestTransport([responsesSse(textEvents())]);
+		const response = await openAIResponsesAdapter.stream({
+			model: openAIModel,
+			context,
+			options: { apiKey: "test", transport: "auto", fetch: transport.fetch },
+		});
+
+		expect(textOf(await response.result)).toBe("hello");
+		expect(transport.requests).toHaveLength(1);
+	});
+});
+
 describe("Codex Responses WebSocket transport", () => {
 	it("streams successful frames through the native adapter", async () => {
 		installFakeWebSocket((socket) => {
@@ -461,9 +576,11 @@ describe("Codex Responses WebSocket transport", () => {
 			context,
 			options: { apiKey: codexToken, transport: "websocket" },
 		});
+		const events = await collectEvents(response.events);
 		const result = await response.result;
 
 		expect(textOf(result)).toBe("hello");
+		expect(events.filter((event) => event.type === "start")).toHaveLength(1);
 		expect(FakeWebSocket.instances[0]?.url).toBe("wss://chatgpt.test/backend-api/codex/responses");
 		expect(JSON.parse(FakeWebSocket.instances[0]?.sent[0] ?? "{}")).toMatchObject({
 			type: "response.create",
@@ -705,7 +822,7 @@ function incompleteEvents(): unknown[] {
 	];
 }
 
-function failedEvent(): unknown {
+function failedEvent(code = "provider_failed", message = "provider failed"): unknown {
 	return {
 		type: "response.failed",
 		response: {
@@ -713,7 +830,7 @@ function failedEvent(): unknown {
 			object: "response",
 			status: "failed",
 			output: [],
-			error: { code: "provider_failed", message: "provider failed" },
+			error: { code, message },
 		},
 	};
 }
@@ -753,17 +870,24 @@ type FakeWebSocketListener = (event: unknown) => void;
 
 class FakeWebSocket {
 	static instances: FakeWebSocket[] = [];
+	static connectError: string | undefined;
 	static onSend: ((socket: FakeWebSocket, data: string) => void) | undefined;
 
 	readonly url: string;
+	readonly options: unknown;
 	readonly sent: string[] = [];
 	readyState = 0;
 	readonly #listeners = new Map<FakeWebSocketEventType, Set<FakeWebSocketListener>>();
 
-	constructor(url: string) {
+	constructor(url: string, options?: unknown) {
 		this.url = url;
+		this.options = options;
 		FakeWebSocket.instances.push(this);
 		queueMicrotask(() => {
+			if (FakeWebSocket.connectError) {
+				this.emit("error", { message: FakeWebSocket.connectError });
+				return;
+			}
 			this.readyState = 1;
 			this.emit("open", {});
 		});
@@ -796,5 +920,11 @@ class FakeWebSocket {
 
 function installFakeWebSocket(onSend: (socket: FakeWebSocket, data: string) => void): void {
 	FakeWebSocket.onSend = onSend;
+	(globalThis as { WebSocket?: unknown }).WebSocket = FakeWebSocket;
+}
+
+function installFailingFakeWebSocket(message: string): void {
+	FakeWebSocket.connectError = message;
+	FakeWebSocket.onSend = undefined;
 	(globalThis as { WebSocket?: unknown }).WebSocket = FakeWebSocket;
 }

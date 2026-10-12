@@ -23,7 +23,9 @@ public struct ChannelManagerOptions {
 	public var keepaliveIntervalMs: Double = 25_000
 	public var requestTimeoutMs: Double = 30_000
 	public var maxBackoffMs: Double = 30_000
-	public var rttSampleIntervalMs: Double = 30_000
+	/// In the foreground, how often the round trip is measured: often enough that the figure
+	/// is current whenever someone looks, for a request of under a kilobyte.
+	public var rttSampleIntervalMs: Double = 2_000
 	/// How long a request waits for a recovering connection to catch up.
 	public var recoveryWaitMs: Double = 3_000
 	public var now: () -> Double = WallClock.nowMs
@@ -32,6 +34,9 @@ public struct ChannelManagerOptions {
 		self.desktop = desktop
 		self.link = link
 		self.createTransport = createTransport
+		if let relay = desktop.relayBaseUrl, !relay.isEmpty {
+			p2pTarget = PairingURI.desktopViewerUrl(relayBaseUrl: relay, pairingId: desktop.pairingId, mobileSecret: desktop.mobileSecret)
+		}
 	}
 }
 
@@ -50,6 +55,9 @@ public final class ChannelManager {
 		var unsubscribe: (() -> Void)?
 		/// Listens while this candidate is the active link, or the standby behind P2P.
 		var watch: (() -> Void)?
+		/// A latency probe is waiting on this connection; its answer no longer matters once
+		/// the candidate is replaced.
+		var probing = false
 		init(channel: LinkChannel, connection: RemoteConnection) {
 			self.channel = channel
 			self.connection = connection
@@ -88,6 +96,7 @@ public final class ChannelManager {
 	private var p2pFailures = 0
 	private var standbyTimer: Task<Void, Never>?
 	private var rttTimer: Task<Void, Never>?
+	private var rttWindow = RttWindow()
 	private var backoffMs: Double = 1_000
 	private var reconnectAttempt = 0
 
@@ -212,11 +221,9 @@ public final class ChannelManager {
 		if active.connection.state == .recovering {
 			_ = await waitForState(active.connection, .online, timeoutMs: options.recoveryWaitMs)
 		}
-		let result = try await active.connection.request(method, payload: payload, sessionId: sessionId)
-		var next = snapshot
-		next.rttMs = active.connection.snapshot.lastRttMs
-		publish(next)
-		return result
+		// Not taken as the latency: a request's round trip includes the desktop's work on it,
+		// hundreds of milliseconds for a session list, which made the figure jump.
+		return try await active.connection.request(method, payload: payload, sessionId: sessionId)
 	}
 
 	private func attempt() async {
@@ -315,7 +322,9 @@ public final class ChannelManager {
 		candidate.dispose()
 		Task {
 			let deadline = options.now() + 10_000
-			while candidate.connection.snapshot.pendingRequestCount > 0, options.now() < deadline {
+			// A latency probe is not waited for: only its round trip mattered, and a desktop
+			// slow to answer it would hold the old channel open for the full deadline.
+			while candidate.connection.snapshot.pendingRequestCount > (candidate.probing ? 1 : 0), options.now() < deadline {
 				try? await Task.sleep(nanoseconds: 50_000_000)
 			}
 			candidate.connection.close()
@@ -659,21 +668,33 @@ public final class ChannelManager {
 		probeTimer = nil
 	}
 
+	/// Measures every interval. A new channel starts a new window: its route, and so its
+	/// latency, differs.
 	private func startRttSampling() {
 		stopRttSampling()
+		rttWindow.clear()
 		rttTimer = Task { [weak self] in
 			while !Task.isCancelled {
-				let interval = self?.options.rttSampleIntervalMs ?? 30_000
+				guard let interval = self?.options.rttSampleIntervalMs else { return }
 				try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000))
 				guard !Task.isCancelled, let self else { return }
-				guard let active = self.active, self.snapshot.isUsable, self.foreground else { continue }
-				if (try? await active.connection.request(.diagnosticsSnapshot)) != nil {
-					var next = self.snapshot
-					next.rttMs = active.connection.snapshot.lastRttMs
-					self.publish(next)
-				}
+				await self.sampleRtt()
 			}
 		}
+	}
+
+	/// One `diagnostics.snapshot`, which the desktop answers from memory, so its round trip
+	/// is the link's own.
+	private func sampleRtt() async {
+		guard let active, snapshot.isUsable, foreground else { return }
+		let startedAt = options.now()
+		active.probing = true
+		defer { active.probing = false }
+		guard (try? await active.connection.request(.diagnosticsSnapshot)) != nil,
+		      !Task.isCancelled, self.active === active else { return }
+		var next = snapshot
+		next.rttMs = rttWindow.add(max(0, options.now() - startedAt))
+		publish(next)
 	}
 
 	private func stopRttSampling() {

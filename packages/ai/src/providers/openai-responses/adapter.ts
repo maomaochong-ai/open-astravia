@@ -15,12 +15,18 @@ import {
 	type ModelStreamResponse,
 } from "../../runtime/language-model-adapter.js";
 import { createModelCallMetadataFromMessage } from "../../runtime/model-call-result.js";
-import type { Model, StreamOptions } from "../../types.js";
+import type { Context, Model, StreamOptions } from "../../types.js";
 import { normalizeOpenAISdkError } from "../sdk-connection-errors.js";
 import type { ResponsesEventSink } from "./events.js";
 import { processResponsesStream } from "./events.js";
 import type { OpenAIResponsesOptions } from "./options.js";
-import { applyServiceTierPricing, buildOpenAIResponsesParams, createOpenAIResponsesClient } from "./request.js";
+import {
+	applyServiceTierPricing,
+	buildOpenAIResponsesParams,
+	createOpenAIResponsesClient,
+	resolveOpenAIResponsesHeaders,
+} from "./request.js";
+import { acquireResponsesWebSocket, readResponsesWebSocketEvents, resolveResponsesWebSocketUrl } from "./websocket.js";
 
 export interface ResponsesAdapterExecutionContext<
 	TApi extends Api = Api,
@@ -31,6 +37,15 @@ export interface ResponsesAdapterExecutionContext<
 	readonly stream: ResponsesEventSink;
 	readonly signal: AbortSignal | undefined;
 	start(): void;
+}
+
+function buildWebSocketHeaders(
+	model: Model<"openai-responses">,
+	context: Context,
+	apiKey: string,
+	options?: OpenAIResponsesOptions,
+): Record<string, string> {
+	return { ...resolveOpenAIResponsesHeaders(model, context, options), Authorization: `Bearer ${apiKey}` };
 }
 
 export type ResponsesAdapterExecutor<TApi extends Api, TOptions extends StreamOptions> = (
@@ -46,15 +61,53 @@ export const openAIResponsesAdapter = createResponsesAdapter<"openai-responses",
 			options?.apiKey || getEnvApiKey(model.provider),
 			"OpenAI API key is required. Set OPENAI_API_KEY environment variable or pass it as an argument.",
 		);
-		const client = createOpenAIResponsesClient(model, context, apiKey, options);
 		const params = buildOpenAIResponsesParams(model, context, options);
 		options?.onPayload?.(params);
-		const providerStream = await client.responses.create(params, signal ? { signal } : undefined);
-		start();
-		await processResponsesStream(providerStream, output, stream, model, {
+		const streamOptions = {
 			serviceTier: options?.serviceTier,
 			applyServiceTierPricing,
-		});
+		};
+
+		const transport = options?.transport ?? "sse";
+		if (transport !== "sse") {
+			let webSocketStarted = false;
+			try {
+				const { socket, release } = await acquireResponsesWebSocket(
+					resolveResponsesWebSocketUrl(model.gatewayUrl || model.baseUrl),
+					buildWebSocketHeaders(model, context, apiKey, options),
+					options?.sessionId,
+					signal,
+				);
+				let keepConnection = true;
+				try {
+					socket.send(JSON.stringify({ type: "response.create", ...params }));
+					webSocketStarted = true;
+					start();
+					await processResponsesStream(
+						readResponsesWebSocketEvents(socket, model.provider, signal),
+						output,
+						stream,
+						model,
+						streamOptions,
+					);
+					if (signal?.aborted) keepConnection = false;
+				} catch (error) {
+					keepConnection = false;
+					throw error;
+				} finally {
+					release({ keep: keepConnection });
+				}
+				return;
+			} catch (error) {
+				// auto：WS 未开始产出前失败则回退 SSE；已开始或显式 websocket 时如实抛出。
+				if (transport === "websocket" || webSocketStarted) throw error;
+			}
+		}
+
+		const client = createOpenAIResponsesClient(model, context, apiKey, options);
+		const providerStream = await client.responses.create(params, signal ? { signal } : undefined);
+		start();
+		await processResponsesStream(providerStream, output, stream, model, streamOptions);
 	},
 	normalizeOpenAISdkError,
 );

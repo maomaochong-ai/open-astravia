@@ -1,7 +1,7 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { type Api, type AssistantMessage, AssistantMessageEventStream, type Model } from "@vetta/ai";
+import { type Api, type AssistantMessage, AssistantMessageEventStream, type Model, type Transport } from "@vetta/ai";
 import { RuntimeAgentRuntime } from "@vetta/runtime-core";
 import type { RuntimeSnapshotLease } from "@vetta/runtime-core/kernel";
 import { afterEach, describe, expect, it } from "vitest";
@@ -102,6 +102,43 @@ describe("Coding Agent Runtime Agent production composition", () => {
 			await expect(second.prompt({ text: "still-running" })).resolves.toMatchObject({ status: "completed" });
 			await second.dispose();
 			expect(runtime.snapshot().instances).toEqual([]);
+		} finally {
+			await composition.dispose();
+		}
+	});
+
+	it("reads the configured provider transport for every model call", async () => {
+		const runtime = new RuntimeAgentRuntime();
+		runtimes.push(runtime);
+		publishCodingAgentExecutionRuntimeDefinition(runtime);
+		const conversationDir = await mkdtemp(join(tmpdir(), "coding-agent-runtime-transport-"));
+		directories.push(conversationDir);
+		let transport: Transport = "sse";
+		const observed: Array<Transport | undefined> = [];
+		const composition = await createCodingAgentRuntimeComposition({
+			conversationDir,
+			modelRegistry: modelRegistry(),
+			initialModel: MODEL,
+			initialThinkingLevel: "off",
+			enableSubagents: false,
+			activation: { mode: "explicit", toolNames: [] },
+			agentRuntime: { runtime },
+			runtimeHostModelSettings: { getTransport: () => transport },
+			streamFn: (_model, _context, options) => {
+				observed.push(options?.transport);
+				return recordedResponse();
+			},
+		});
+		try {
+			const session = await composition.createSession({ sessionId: "transport-session" });
+			try {
+				await session.prompt({ text: "first" });
+				transport = "websocket";
+				await session.prompt({ text: "second" });
+				expect(observed).toEqual(["sse", "websocket"]);
+			} finally {
+				await session.dispose();
+			}
 		} finally {
 			await composition.dispose();
 		}
