@@ -16,24 +16,15 @@ export function McpEditDialog({ model }: { model: McpSettingsModel }): JSX.Eleme
 				if (!next) model.onCancelEditServer();
 			}}
 		>
-			<DialogContent className="max-h-[min(90vh,760px)] overflow-y-auto sm:max-w-[600px] rounded-2xl sm:rounded-[26px] p-6 sm:p-8 gap-6 border-border/30 bg-popover/95 backdrop-blur-xl shadow-2xl">
-				<DialogHeader className="gap-3 pr-8 text-left">
-					<div className="flex items-start gap-3.5">
-						<div
-							className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[18px] bg-primary/10 text-primary shadow-xs ring-1 ring-primary/15 transition-transform duration-200"
-							aria-hidden="true"
-						>
-							<span className="icon-[solar--server-2-linear] h-5 w-5" />
-						</div>
-						<div className="space-y-1 min-w-0">
-							<DialogTitle className="text-lg font-semibold tracking-tight text-foreground">
-								{t("editingServer")}
-							</DialogTitle>
-							<DialogDescription className="text-[13px] leading-relaxed text-muted-foreground/80 truncate">
-								{name ? t("mcpStore.editServerHint", { name }) : t("mcpStore.editServerFallback")}
-							</DialogDescription>
-						</div>
-					</div>
+			<DialogContent className="max-h-[min(90vh,720px)] overflow-y-auto sm:max-w-[500px] rounded-2xl p-6 gap-5 border border-border/60 bg-popover shadow-2xl">
+				<DialogHeader className="gap-1 pr-0 text-left">
+					<DialogTitle className="flex items-center gap-2 text-base font-semibold tracking-tight text-foreground">
+						<span className="icon-[solar--server-2-linear] h-4.5 w-4.5 text-primary shrink-0" aria-hidden="true" />
+						<span>{t("editingServer")}</span>
+					</DialogTitle>
+					<DialogDescription className="text-xs text-muted-foreground leading-normal truncate">
+						{name ? t("mcpStore.editServerHint", { name }) : t("mcpStore.editServerFallback")}
+					</DialogDescription>
 				</DialogHeader>
 				<div className="min-w-0">
 					{name ? (
