@@ -16,9 +16,17 @@ export function McpEditDialog({ model }: { model: McpSettingsModel }): JSX.Eleme
 				if (!next) model.onCancelEditServer();
 			}}
 		>
-			<DialogContent className="max-h-[min(90vh,720px)] overflow-y-auto sm:max-w-[520px]">
-				<DialogHeader>
-					<DialogTitle>{t("editingServer")}</DialogTitle>
+			<DialogContent className="max-h-[min(90vh,720px)] overflow-y-auto sm:max-w-[560px]">
+				<DialogHeader className="border-b border-border/50 pb-4 pr-6">
+					<DialogTitle className="flex items-center gap-2.5">
+						<span
+							className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary"
+							aria-hidden="true"
+						>
+							<span className="icon-[solar--server-linear] h-4 w-4" />
+						</span>
+						{t("editingServer")}
+					</DialogTitle>
 					<DialogDescription className="truncate">
 						{name ? t("mcpStore.editServerHint", { name }) : t("mcpStore.editServerFallback")}
 					</DialogDescription>

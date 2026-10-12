@@ -46,7 +46,14 @@ export interface McpConfigData {
 	mcpServers: Record<string, McpServerConfigData>;
 }
 
+export interface McpAvailableTool {
+	name: string;
+	description?: string;
+}
+
 export interface DesktopMcpApi {
+	/** Discover all tools without calling them; releases the connection after discovery. */
+	listTools(serverName: string): Promise<McpAvailableTool[]>;
 	get(): Promise<McpConfigData>;
 	set(config: McpConfigData): Promise<void>;
 	/**

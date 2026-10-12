@@ -2,13 +2,10 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@vetta-org/ui";
 import { SegmentedControl } from "@shared/components/ui/segmented-control";
+import { getMcpAuthorization, setMcpAuthorization } from "./mcp-authorization-header";
 import { cn } from "@shared/lib/utils";
 import { CheckboxField, InputField, TextareaField } from "@vetta-org/theme-ui/settings";
-import {
-	isMcpFormValid,
-	type McpServerFormState,
-	type McpTransportType,
-} from "./useMcpSettingsModel";
+import { isMcpFormValid, type McpServerFormState, type McpTransportType } from "./useMcpSettingsModel";
 
 export function McpServerForm({
 	form,
@@ -31,7 +28,7 @@ export function McpServerForm({
 		<>
 			<McpServerFields form={form} setForm={setForm} />
 
-			<div className="mt-3 flex justify-end gap-2">
+			<div className="mt-5 flex justify-end gap-2 border-t border-border/50 pt-4">
 				<Button variant="ghost" size="sm" onClick={onCancel}>
 					{t("cancel")}
 				</Button>
@@ -56,13 +53,25 @@ export function McpServerFields({
 
 	return (
 		<>
-			<div className="grid grid-cols-2 gap-3">
+			<div className="rounded-xl border border-border/50 bg-muted/30 p-4">
+				<label className="mb-1 block text-[11px] text-muted-foreground">{t("transportType")}</label>
+				<SegmentedControl
+					items={[
+						{ key: "stdio" as McpTransportType, label: t("stdio") },
+						{ key: "http" as McpTransportType, label: "HTTP" },
+					]}
+					value={form.transport}
+					onChange={(transport) => setForm((current) => ({ ...current, transport }))}
+				/>
+			</div>
+			<div className="mt-4 grid grid-cols-2 gap-4">
 				<div className={form.transport === "http" ? "col-span-2" : undefined}>
 					<label className="mb-1 block text-[11px] text-muted-foreground">{t("serverName")} *</label>
 					<InputField
+						aria-label={t("serverName")}
 						value={form.name}
 						onChange={(value) => setForm((current) => ({ ...current, name: value }))}
-						placeholder="e.g. playwright"
+						placeholder={t("mcpStore.namePlaceholder")}
 					/>
 				</div>
 				{form.transport === "stdio" ? (
@@ -72,15 +81,16 @@ export function McpServerFields({
 				)}
 			</div>
 
-			<div className="mt-3">
+			<div className="mt-5 border-t border-border/50 pt-4">
 				<button
 					type="button"
+					aria-expanded={advancedOpen}
 					onClick={() => setAdvancedOpen((open) => !open)}
 					className="flex items-center gap-1 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
 				>
 					<span
 						className={cn(
-							"icon-[mdi--chevron-right] h-3.5 w-3.5 transition-transform",
+							"icon-[solar--alt-arrow-right-linear] h-3.5 w-3.5 transition-transform",
 							advancedOpen && "rotate-90",
 						)}
 					/>
@@ -89,17 +99,6 @@ export function McpServerFields({
 
 				{advancedOpen && (
 					<div className="mt-3 grid grid-cols-2 gap-3 border-t border-border/50 pt-3">
-						<div className="col-span-2">
-							<label className="mb-1 block text-[11px] text-muted-foreground">{t("transportType")}</label>
-							<SegmentedControl
-								items={[
-									{ key: "stdio" as McpTransportType, label: t("stdio") },
-									{ key: "http" as McpTransportType, label: "HTTP" },
-								]}
-								value={form.transport}
-								onChange={(transport) => setForm((current) => ({ ...current, transport }))}
-							/>
-						</div>
 						{form.transport === "stdio" ? (
 							<StdioAdvancedFields form={form} setForm={setForm} />
 						) : (
@@ -118,7 +117,7 @@ export function McpServerFields({
 							<InputField
 								value={form.autoApprove}
 								onChange={(value) => setForm((current) => ({ ...current, autoApprove: value }))}
-								placeholder="e.g. read_file, list_directory"
+								placeholder={t("mcpStore.autoApprovePlaceholder")}
 							/>
 						</div>
 						<div className="col-span-2 flex items-center gap-6">
@@ -136,15 +135,13 @@ export function McpServerFields({
 					</div>
 				)}
 			</div>
-
 		</>
 	);
 }
 
 function hasAdvancedValues(form: McpServerFormState): boolean {
 	return Boolean(
-		form.transport === "http" ||
-			form.env.trim() ||
+		form.env.trim() ||
 			form.cwd.trim() ||
 			form.headers.trim() ||
 			form.autoApprove.trim() ||
@@ -167,17 +164,19 @@ function StdioBasicFields({
 			<div>
 				<label className="mb-1 block text-[11px] text-muted-foreground">{t("command")} *</label>
 				<InputField
+					aria-label={t("command")}
 					value={form.command}
 					onChange={(value) => setForm((current) => ({ ...current, command: value }))}
-					placeholder="e.g. npx, node, uvx"
+					placeholder={t("mcpStore.commandPlaceholder")}
 				/>
 			</div>
 			<div className="col-span-2">
 				<label className="mb-1 block text-[11px] text-muted-foreground">{t("arguments")}</label>
 				<InputField
+					aria-label={t("arguments")}
 					value={form.args}
 					onChange={(value) => setForm((current) => ({ ...current, args: value }))}
-					placeholder="e.g. -y, @playwright/mcp@latest"
+					placeholder={t("mcpStore.argsPlaceholder")}
 				/>
 			</div>
 		</>
@@ -208,7 +207,7 @@ function StdioAdvancedFields({
 				<InputField
 					value={form.cwd}
 					onChange={(value) => setForm((current) => ({ ...current, cwd: value }))}
-					placeholder="e.g. ${PROJECT_ROOT}"
+					placeholder="${PROJECT_ROOT}"
 				/>
 			</div>
 		</>
@@ -224,14 +223,35 @@ function HttpBasicFields({
 }): JSX.Element {
 	const { t } = useTranslation("settings");
 	return (
-		<div className="col-span-2">
-			<label className="mb-1 block text-[11px] text-muted-foreground">{t("sseUrl")} *</label>
-			<InputField
-				value={form.url}
-				onChange={(value) => setForm((current) => ({ ...current, url: value }))}
-				placeholder="e.g. https://mcp.exa.ai/mcp"
-			/>
-		</div>
+		<>
+			<div className="col-span-2">
+				<label className="mb-1 block text-[11px] text-muted-foreground">{t("sseUrl")} *</label>
+				<InputField
+					aria-label={t("sseUrl")}
+					value={form.url}
+					onChange={(value) => setForm((current) => ({ ...current, url: value }))}
+					placeholder={t("mcpStore.urlPlaceholder")}
+				/>
+			</div>
+			<label className="col-span-2 block">
+				<span className="mb-1.5 flex items-center gap-2 text-[11px] text-muted-foreground">
+					<span className="icon-[solar--key-minimalistic-square-linear] h-3.5 w-3.5" aria-hidden="true" />
+					{t("mcpStore.authorizationKey")}
+				</span>
+				<InputField
+					type="password"
+					aria-label={t("mcpStore.authorizationKey")}
+					value={getMcpAuthorization(form.headers)}
+					onChange={(value) =>
+						setForm((current) => ({ ...current, headers: setMcpAuthorization(current.headers, value) }))
+					}
+					placeholder={t("mcpStore.authorizationPlaceholder")}
+				/>
+				<span className="mt-1.5 block text-[11px] leading-relaxed text-muted-foreground/70">
+					{t("mcpStore.authorizationHint")}
+				</span>
+			</label>
+		</>
 	);
 }
 
@@ -245,13 +265,15 @@ function HttpAdvancedFields({
 	const { t } = useTranslation("settings");
 	return (
 		<div className="col-span-2">
-			<label className="mb-1 block text-[11px] text-muted-foreground">{t("requestHeaders")}</label>
-			<TextareaField
-				value={form.headers}
-				onChange={(value) => setForm((current) => ({ ...current, headers: value }))}
-				placeholder={"Authorization=Bearer ${EXA_TOKEN}"}
-				rows={2}
-			/>
+			<label className="block">
+				<span className="mb-1 block text-[11px] text-muted-foreground">{t("requestHeaders")}</span>
+				<TextareaField
+					value={form.headers}
+					onChange={(value) => setForm((current) => ({ ...current, headers: value }))}
+					placeholder={"Authorization=Bearer ${EXA_TOKEN}"}
+					rows={2}
+				/>
+			</label>
 		</div>
 	);
 }

@@ -215,6 +215,7 @@ export function createSystemApi(
 			onChanged: (handler) => onIpcEvent(ipc, "vetta:models:changed", handler),
 		},
 		mcp: {
+			listTools: (serverName) => ipc.invoke("vetta:mcp:list-tools", serverName),
 			get: () => ipc.invoke("vetta:mcp:get"),
 			set: (config) => ipc.invoke("vetta:mcp:set", config),
 			login: (serverName, options) => ipc.invoke("vetta:mcp:login", serverName, options),

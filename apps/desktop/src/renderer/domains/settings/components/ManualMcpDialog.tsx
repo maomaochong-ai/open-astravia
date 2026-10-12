@@ -40,16 +40,22 @@ export function ManualMcpDialog({ model }: { model: McpSettingsModel }): JSX.Ele
 			}}
 		>
 			<DialogContent
-				className="max-h-[min(90vh,720px)] overflow-y-auto sm:max-w-[520px]"
+				className="max-h-[min(90vh,720px)] overflow-y-auto sm:max-w-[560px]"
 				id={section.id}
 				data-setting-section-id={section.id}
 				data-setting-section-highlight-target={section.id}
 			>
-				<DialogHeader>
-					<DialogTitle>{t("mcpStore.customConnectorTitle")}</DialogTitle>
-					<DialogDescription>
-						{usingJson ? t("mcpStore.jsonHint") : t("mcpStore.manualHint")}
-					</DialogDescription>
+				<DialogHeader className="border-b border-border/50 pb-4 pr-6">
+					<DialogTitle className="flex items-center gap-2.5">
+						<span
+							className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary"
+							aria-hidden="true"
+						>
+							<span className="icon-[solar--server-linear] h-4 w-4" />
+						</span>
+						{t("mcpStore.customConnectorTitle")}
+					</DialogTitle>
+					<DialogDescription>{usingJson ? t("mcpStore.jsonHint") : t("mcpStore.manualHint")}</DialogDescription>
 				</DialogHeader>
 				<div className="mt-2">
 					{usingJson ? (
@@ -74,7 +80,10 @@ export function ManualMcpDialog({ model }: { model: McpSettingsModel }): JSX.Ele
 									className="flex items-center gap-1.5 text-[11px] text-destructive"
 									role="alert"
 								>
-									<span className="icon-[solar--danger-triangle-linear] h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+									<span
+										className="icon-[solar--danger-triangle-linear] h-3.5 w-3.5 shrink-0"
+										aria-hidden="true"
+									/>
 									{model.jsonError}
 								</span>
 							) : null}
@@ -83,12 +92,8 @@ export function ManualMcpDialog({ model }: { model: McpSettingsModel }): JSX.Ele
 						<McpServerFields form={model.serverForm} setForm={model.setServerForm} />
 					)}
 				</div>
-				<DialogFooter className="gap-2 sm:justify-between">
-					<Button
-						variant="ghost"
-						size="sm"
-						onClick={() => model.onModeSwitch(usingJson ? "visual" : "json")}
-					>
+				<DialogFooter className="mt-2 border-t border-border/50 pt-4 gap-2 sm:justify-between">
+					<Button variant="ghost" size="sm" onClick={() => model.onModeSwitch(usingJson ? "visual" : "json")}>
 						<span
 							className={usingJson ? "icon-[solar--settings-linear]" : "icon-[solar--code-linear]"}
 							aria-hidden="true"

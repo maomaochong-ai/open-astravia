@@ -72,6 +72,7 @@ import { watchRemoteDirectory } from "../filesystem/remote-directory-watch.js";
 import { getDesktopMcpOAuthService } from "../mcp/mcp-oauth-service.js";
 import { getDesktopMcpSettingsService, readMcpConfig, writeMcpConfig } from "../mcp/mcp-settings-service.js";
 import { getDesktopMcpSetupLoginService } from "../mcp/mcp-setup-login-service.js";
+import { getDesktopMcpToolsService } from "../mcp/mcp-tools-service.js";
 import { fetchProviderModels } from "../models/fetch-models.js";
 import { getDesktopModelSettingsService, onDesktopModelSettingsChanged } from "../models/model-settings-host.js";
 import type { ModelsConfig } from "../models/model-settings-service.js";
@@ -157,6 +158,7 @@ const CHANNELS = {
 	MODELS_COPY_API_KEY: "vetta:models:copy-api-key",
 	MODELS_PROBE: "vetta:models:probe",
 	MODELS_FETCH_PROVIDER_MODELS: "vetta:models:fetch-provider-models",
+	MCP_LIST_TOOLS: "vetta:mcp:list-tools",
 	MCP_GET: "vetta:mcp:get",
 	MCP_SET: "vetta:mcp:set",
 	MCP_LOGIN: "vetta:mcp:login",
@@ -533,6 +535,11 @@ export function registerFsIpc(): () => void {
 		return fetchProviderModels(providerName.trim());
 	});
 
+	ipcMain.handle(CHANNELS.MCP_LIST_TOOLS, async (_event, serverName: unknown) => {
+		if (typeof serverName !== "string" || !serverName.trim()) throw new Error("Invalid server name");
+		return getDesktopMcpToolsService().list(serverName.trim());
+	});
+
 	ipcMain.handle(CHANNELS.MCP_GET, async (): Promise<McpConfig> => {
 		return mcp.getConfig();
 	});
@@ -670,6 +677,7 @@ export function registerFsIpc(): () => void {
 		ipcMain.removeHandler(CHANNELS.MODELS_COPY_API_KEY);
 		ipcMain.removeHandler(CHANNELS.MODELS_PROBE);
 		ipcMain.removeHandler(CHANNELS.MODELS_FETCH_PROVIDER_MODELS);
+		ipcMain.removeHandler(CHANNELS.MCP_LIST_TOOLS);
 		ipcMain.removeHandler(CHANNELS.MCP_GET);
 		ipcMain.removeHandler(CHANNELS.MCP_SET);
 		ipcMain.removeHandler(CHANNELS.MCP_LOGIN);
