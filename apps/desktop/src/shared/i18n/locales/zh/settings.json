@@ -572,7 +572,7 @@
     "title": "模型配置",
     "transportTitle": "OpenAI Responses 传输方式",
     "transportDescription": "选择 OpenAI Responses 与 Codex 请求使用的流式传输。其他服务商会忽略此设置。",
-    "transportLabel": "首选传输",
+    "transportLabel": "OpenAI Responses 传输方式",
     "transportSse": "SSE",
     "transportWebSocket": "WebSocket",
     "transportAuto": "自动选择",

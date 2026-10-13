@@ -32,9 +32,9 @@ export function ModelsSettingsView({
 		>
 			{model.config && (
 				<>
-					<ModelTransportSettingsSection model={transport} />
 					<PresetProvidersSection config={model.config} saveConfig={model.saveConfig} />
 					<ModelsProvidersSection model={model} />
+					<ModelTransportSettingsSection model={transport} />
 				</>
 			)}
 		</SettingsPageShellView>

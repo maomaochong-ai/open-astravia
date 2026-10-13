@@ -572,7 +572,7 @@
     "title": "Model Configuration",
     "transportTitle": "OpenAI Responses transport",
     "transportDescription": "Choose the streaming transport for OpenAI Responses and Codex requests. Other providers ignore this setting.",
-    "transportLabel": "Preferred transport",
+    "transportLabel": "OpenAI Responses transport",
     "transportSse": "SSE",
     "transportWebSocket": "WebSocket",
     "transportAuto": "Automatic",
