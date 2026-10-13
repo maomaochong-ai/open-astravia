@@ -27,9 +27,10 @@ vi.mock("../model-settings-host.js", () => ({
 }));
 vi.mock("./models-dev-snapshot.generated.js", () => ({
 	MODELS_DEV_SNAPSHOT: {
-		version: 7,
+		version: 8,
 		fetchedAt: "2020-01-01T00:00:00.000Z",
 		providers: {},
+		lookup: {},
 	},
 }));
 

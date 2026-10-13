@@ -1,7 +1,3 @@
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
-import { getVettaHomePath } from "@vetta/action-rpc";
-import { atomicWriteJSON } from "@vetta/toolkit/atomic-write";
 import { BrowserWindow, net } from "electron";
 import { getAppLogger } from "../../logger.js";
 import { getDesktopModelSettingsService } from "../model-settings-host.js";
@@ -12,16 +8,17 @@ import { fetchPresetModels, type PresetModelsResult } from "./fetch.js";
 import {
 	enrichModelsFromCatalog,
 	fetchModelsDevCatalog,
+	getCachedModelsDevCatalog,
 	isCatalogFresh,
-	isCatalogUsable,
 	type ModelsDevCatalog,
+	rememberModelsDevCatalog,
+	writeModelsDevCatalogCache,
 } from "./models-dev.js";
 import { MODELS_DEV_SNAPSHOT } from "./models-dev-snapshot.generated.js";
 
 const presetLog = getAppLogger("preset-providers");
 
 const FETCH_TIMEOUT_MS = 15_000;
-const CATALOG_PATH = join(getVettaHomePath(), "agent", "models-dev-cache.json");
 /** 后台同步间隔:12 小时。上游模型目录变动没那么快,再密就是白烧流量。 */
 const AUTO_SYNC_INTERVAL_MS = 12 * 60 * 60 * 1000;
 
@@ -54,7 +51,7 @@ export interface PresetProvidersResult {
  * (目录不可达时还要等满超时)是不可接受的。缓存过期时在后台刷新,拉到了广播给渲染层。
  */
 export async function listPresetProviders(): Promise<PresetProvidersResult> {
-	const catalog = await getCachedCatalog();
+	const catalog = await getCachedModelsDevCatalog();
 	if (!isCatalogFresh(catalog, Date.now())) void refreshCatalogInBackground();
 	const snapshot = isSnapshot(catalog);
 	return {
@@ -115,7 +112,7 @@ export async function refreshPresetCatalog(): Promise<{
 async function refreshCatalogInBackground(): Promise<void> {
 	// 比较用户当前实际看到的目录，而不是只比较内存/磁盘缓存槽。无缓存时可见值是随包快照，
 	// 若在线刷新失败仍返回同一快照，就不该把它广播成“目录已更新”并触发设置页重新加载。
-	const before = await getCachedCatalog();
+	const before = await getCachedModelsDevCatalog();
 	const catalog = await ensureCatalog();
 	if (!catalog || catalog === before) return;
 	for (const win of BrowserWindow.getAllWindows()) {
@@ -123,8 +120,6 @@ async function refreshCatalogInBackground(): Promise<void> {
 	}
 }
 
-/** 进程内缓存,避免同一次同步里六家各拉一遍 3MB 的目录。 */
-let catalogMemo: ModelsDevCatalog | null = null;
 /** 单飞:并发调用共用同一次网络请求。 */
 let catalogInFlight: Promise<ModelsDevCatalog | null> | null = null;
 /** 失败退避的截止时刻。目录不可达时反复重试只会让每次开设置页都卡满超时。 */
@@ -133,27 +128,6 @@ let catalogLastError: PresetError | null = null;
 
 /** 拉取失败后的冷却时间。 */
 const CATALOG_RETRY_COOLDOWN_MS = 10 * 60 * 1000;
-
-async function readCatalogCache(): Promise<ModelsDevCatalog | null> {
-	try {
-		const cached = JSON.parse(await readFile(CATALOG_PATH, "utf8")) as ModelsDevCatalog;
-		// 旧版本客户端写的缓存形状对不上,读进来会让后续解析炸在缺失字段上——直接丢弃重拉。
-		return isCatalogUsable(cached) ? cached : null;
-	} catch {
-		return null;
-	}
-}
-
-/**
- * 只读本地目录(内存 → 磁盘缓存 → 随包快照),不碰网络。过期的也照用——过期目录远好过没有目录。
- *
- * 快照是最后一道兜底:国内网络下 models.dev 常在 TLS 阶段被直接掐断(net::ERR_CONNECTION_CLOSED),
- * 新装用户既没缓存也拉不到,没有快照就只能对着 0 个模型干瞪眼。
- */
-async function getCachedCatalog(): Promise<ModelsDevCatalog | null> {
-	catalogMemo ??= await readCatalogCache();
-	return catalogMemo ?? MODELS_DEV_SNAPSHOT;
-}
 
 /**
  * 取 models.dev 目录,必要时走网络。缓存还新鲜就直接用;过期或没有才拉,
@@ -164,7 +138,7 @@ async function getCachedCatalog(): Promise<ModelsDevCatalog | null> {
  */
 async function ensureCatalog(force = false): Promise<ModelsDevCatalog | null> {
 	const now = Date.now();
-	const cached = await getCachedCatalog();
+	const cached = await getCachedModelsDevCatalog();
 	if (!force && isCatalogFresh(cached, now)) return cached;
 	if (!force && now < catalogRetryAfter) return cached;
 	if (catalogInFlight) return catalogInFlight;
@@ -174,9 +148,9 @@ async function ensureCatalog(force = false): Promise<ModelsDevCatalog | null> {
 		const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 		try {
 			const fresh = await fetchModelsDevCatalog(net.fetch, now, controller.signal);
-			catalogMemo = fresh;
+			rememberModelsDevCatalog(fresh);
 			catalogLastError = null;
-			atomicWriteJSON(CATALOG_PATH, fresh);
+			writeModelsDevCatalogCache(fresh);
 		} catch (err) {
 			catalogRetryAfter = Date.now() + CATALOG_RETRY_COOLDOWN_MS;
 			catalogLastError = toPresetError(err, FETCH_TIMEOUT_MS);
@@ -186,7 +160,7 @@ async function ensureCatalog(force = false): Promise<ModelsDevCatalog | null> {
 			catalogInFlight = null;
 		}
 		// 拉失败时同样退到快照,别让下游拿着 null 去补元数据(那会连价格都没有)。
-		return catalogMemo ?? MODELS_DEV_SNAPSHOT;
+		return getCachedModelsDevCatalog();
 	})();
 	return catalogInFlight;
 }

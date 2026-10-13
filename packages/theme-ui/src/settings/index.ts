@@ -103,6 +103,13 @@ export { McpDefaultIcon } from "./McpDefaultIcon";
 export type { McpJsonEditorViewProps } from "./McpJsonEditorView";
 export { McpJsonEditorView } from "./McpJsonEditorView";
 export type {
+	FetchedModelRowView,
+	FetchedModelTestView,
+	ModelsFetchedModelsDrawerViewLabels,
+	ModelsFetchedModelsDrawerViewProps,
+} from "./ModelsFetchedModelsDrawerView";
+export { ModelsFetchedModelsDrawerView } from "./ModelsFetchedModelsDrawerView";
+export type {
 	ModelsProviderFormStateView,
 	ModelsProviderFormViewLabels,
 	ModelsProviderFormViewProps,

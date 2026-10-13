@@ -1,7 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { ModelsProviderFormView } from "@vetta-org/theme-ui/settings";
 import { Button, cn } from "@vetta-org/ui";
-import { ModelsFetchedModelsPanel } from "./ModelsFetchedModelsPanel";
 import { ModelsModelForm } from "./ModelsModelForm";
 import { ModelsProviderForm } from "./ModelsProviderForm";
 import type { ModelsSettingsModel } from "./useModelsSettingsModel";
@@ -190,8 +189,6 @@ export function ModelsProviderRow({
 						);
 					})}
 
-					<ModelsFetchedModelsPanel name={name} model={model} />
-
 					{model.addingModelFor === name ? (
 						<div className="border-t border-border/50 px-5 py-3">
 							<ModelsModelForm
@@ -212,7 +209,7 @@ export function ModelsProviderRow({
 							<Button
 								variant="ghost"
 								size="sm"
-								onClick={() => void model.onFetchProviderModels(name)}
+								onClick={() => model.onStartFetchProviderModels(name)}
 								disabled={!provider.baseUrl || model.fetchingModelsFor === name}
 								title={provider.baseUrl ? undefined : t("fetchModelsNeedsBaseUrl")}
 							>

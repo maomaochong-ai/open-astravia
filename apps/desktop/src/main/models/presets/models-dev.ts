@@ -1,7 +1,12 @@
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
+import { getVettaHomePath } from "@vetta/action-rpc";
+import { atomicWriteJSON } from "@vetta/toolkit/atomic-write";
 import type { ModelDefinition } from "../model-settings-service.js";
 import { getPresetProvider } from "./catalog.js";
 import type { FetchImpl } from "./fetch.js";
 import { parseReleaseDate, selectCurrentModelIds } from "./model-tiers.js";
+import { MODELS_DEV_SNAPSHOT } from "./models-dev-snapshot.generated.js";
 
 /**
  * models.dev 目录:补齐各家 `/models` 不返回的元数据(价格、上下文长度、视觉/思考能力)。
@@ -12,11 +17,12 @@ import { parseReleaseDate, selectCurrentModelIds } from "./model-tiers.js";
  */
 
 const CATALOG_URL = "https://models.dev/api.json";
-/** 目录变动按天计,12 小时一拉,与预设模型列表同步节奏一致。 */
-export const CATALOG_TTL_MS = 12 * 60 * 60 * 1000;
+const CATALOG_PATH = join(getVettaHomePath(), "agent", "models-dev-cache.json");
+
 /**
- * 缓存结构版本。**改动 CatalogEntry / providers 的形状、目录过滤口径、或往 PROVIDER_KEYS 里加家,
- * 都必须 +1**——
+ * 缓存结构版本。**改动 CatalogEntry / providers / lookup 的形状、目录过滤口径、或往
+ * PROVIDER_KEYS / LOOKUP_PROVIDER_KEYS 里加家, 都必须 +1**——
+ *
  * 磁盘缓存写在用户机器上,老版本客户端写的文件会被新代码原样读进来;
  * 没有这个版本号时,一次结构调整就让旧缓存在 TTL 内被当成有效数据,
  * 读到的条目缺字段,目录列表与后台同步一起静默失败。
@@ -25,7 +31,51 @@ export const CATALOG_TTL_MS = 12 * 60 * 60 * 1000;
  * 新加的预设服务商就会一直显示 0 个模型(最长 12 小时)。+1 让老缓存整份作废,
  * 先退到随包快照(已含新家)再后台重拉。
  */
-const CATALOG_VERSION = 7;
+const CATALOG_VERSION = 8;
+
+/** 目录只读缓存：内存 → 磁盘 → 随包快照。进程内只读一次盘。 */
+let catalogMemo: ModelsDevCatalog | null = null;
+let catalogMemoLoaded = false;
+
+/**
+ * 只读目录（内存 → 磁盘缓存 → 随包快照），不碰网络。过期的也照用——过期目录远好过没有目录。
+ *
+ * 快照是最后一道兜底：国内网络下 models.dev 常在 TLS 阶段被直接掐断（net::ERR_CONNECTION_CLOSED），
+ * 新装用户既没缓存也拉不到，没有快照就只能对着 0 个模型干瞪眼。
+ */
+export async function getCachedModelsDevCatalog(): Promise<ModelsDevCatalog> {
+	if (!catalogMemoLoaded) {
+		catalogMemo = await readCatalogCache();
+		catalogMemoLoaded = true;
+	}
+	return catalogMemo ?? MODELS_DEV_SNAPSHOT;
+}
+
+/** 拉取成功后写回内存，避免同一次会话里再读一次盘。 */
+export function rememberModelsDevCatalog(catalog: ModelsDevCatalog): void {
+	catalogMemo = catalog;
+	catalogMemoLoaded = true;
+}
+
+/** 拉取成功后落盘，供下次启动直接读。 */
+export function writeModelsDevCatalogCache(catalog: ModelsDevCatalog): void {
+	atomicWriteJSON(CATALOG_PATH, catalog);
+}
+
+async function readCatalogCache(): Promise<ModelsDevCatalog | null> {
+	try {
+		const cached = JSON.parse(await readFile(CATALOG_PATH, "utf8")) as ModelsDevCatalog;
+		// 旧版本客户端写的缓存形状对不上,读进来会让后续解析炸在缺失字段上——直接丢弃重拉。
+		return isCatalogUsable(cached) ? cached : null;
+	} catch {
+		return null;
+	}
+}
+/** 目录变动按天计,12 小时一拉,与预设模型列表同步节奏一致。 */
+export const CATALOG_TTL_MS = 12 * 60 * 60 * 1000;
+/**
+ * 缓存结构版本。**改动 CatalogEntry / providers / lookup 的形状、目录过滤口径、或往
+ * PROVIDER_KEYS / LOOKUP_PROVIDER_KEYS 里加家, 都必须 +1**——
 
 /** 预设标识 → models.dev 的 provider key。 */
 const PROVIDER_KEYS: Record<string, string> = {
@@ -39,6 +89,46 @@ const PROVIDER_KEYS: Record<string, string> = {
 	// 千问走国际站 endpoint,目录也取国际站那份(国内站是 alibaba-cn,模型清单不同)。
 	qwen: "alibaba",
 };
+
+/**
+ * 元数据查找投影覆盖的 models.dev provider。
+ *
+ * 与 `PROVIDER_KEYS` 不同，这些家**不用于展示**，只在网关没报参数时按 id 查元数据：
+ * 各家的官方目录（与上面同一份，但按 models.dev 的 key 取），加上覆盖面最广的两个
+ * 聚合家——openrouter 的 model key 是 `<厂商>/<型号>` 形状，正好对上网关给
+ * `deepseek/deepseek-v4.1-flash` 这类路由 id；cline-pass 是同一形状且用户量大的家。
+ *
+ * 每加一家都会成比例地撑大缓存与随包快照（openrouter 一家 380 个模型、约 +35KB），
+ * 加家只针对“能对上网关命名空间”的家，不要为了覆盖率把几百家全收进来。
+ */
+const LOOKUP_PROVIDER_KEYS: readonly string[] = [
+	"anthropic",
+	"openai",
+	"deepseek",
+	"zai",
+	"moonshotai",
+	"google",
+	"xai",
+	"alibaba",
+	"openrouter",
+	"cline-pass",
+];
+
+/** 查找投影里排在前面就被优先采用的家（同 id 多家命中时保证结果不随遍历顺序漂移）。 */
+const LOOKUP_PROVIDER_RANK: readonly string[] = LOOKUP_PROVIDER_KEYS;
+
+/**
+ * 单个模型的元数据投影。只收“填得进模型配置”的四个字段：思考、上下文、最大输出、图片输入。
+ * 价格不在这里——价格由预设那条展示口径负责。
+ */
+export interface CatalogLookupEntry {
+	name?: string;
+	reasoning?: boolean;
+	reasoningLevels?: string[];
+	contextWindow?: number;
+	maxTokens?: number;
+	vision?: boolean;
+}
 
 interface RawModel {
 	name?: string;
@@ -61,12 +151,14 @@ export interface CatalogEntry {
 	releaseDate?: string;
 }
 
-/** 只保留预设那几家、只保留用得上的字段——原始 api.json 有 170+ 家、3MB 出头。 */
+/** 只保留用得上的那几家与字段——原始 api.json 有 200+ 家、5MB 出头。 */
 export interface ModelsDevCatalog {
 	version: number;
 	fetchedAt: string;
-	/** 预设标识 → 模型 id → 目录条目。 */
+	/** 预设标识 → 模型 id → 目录条目。展示口径：已过滤非对话模型并做代际收敛。 */
 	providers: Record<string, Record<string, CatalogEntry>>;
+	/** 元数据查找投影（见 `buildLookup`）。不收敛、按各家原始 model key 存，只服务 id→元数据。 */
+	lookup: Record<string, Record<string, CatalogLookupEntry>>;
 }
 
 /** 版本不符(旧客户端写的缓存)一律视为不可用,重新拉取。 */
@@ -100,7 +192,12 @@ export function buildCatalog(
 	body: Record<string, { models?: Record<string, RawModel> }>,
 	now: number,
 ): ModelsDevCatalog {
-	return { version: CATALOG_VERSION, fetchedAt: new Date(now).toISOString(), providers: shrink(body) };
+	return {
+		version: CATALOG_VERSION,
+		fetchedAt: new Date(now).toISOString(),
+		providers: shrink(body),
+		lookup: buildLookup(body),
+	};
 }
 
 function shrink(body: Record<string, { models?: Record<string, RawModel> }>): ModelsDevCatalog["providers"] {
@@ -165,6 +262,107 @@ function toModelDefinition(id: string, raw: RawModel): ModelDefinition {
 					},
 				}),
 	};
+}
+
+/**
+ * 元数据查找投影。与展示口径刻意分开：
+ *
+ * - **不做过滤与代际收敛**。收敛是给免 Key 展示列表用的（`deepseek-v4-flash` 就被收敛掉过），
+ *   而这里要的是“查得到”——网关报一个已被新一代取代的模型，也得能拿到它的上下文与档位。
+ * - **保留各家原始的 model key**，所以 `openrouter` 下能看到 `deepseek/deepseek-v4.1-flash`
+ *   这种带命名空间的键，正好对上网关的路由 id。
+ * - 只收四个可回填字段，价格不在这里。
+ */
+function buildLookup(body: Record<string, { models?: Record<string, RawModel> }>): ModelsDevCatalog["lookup"] {
+	const lookup: ModelsDevCatalog["lookup"] = {};
+	for (const providerKey of LOOKUP_PROVIDER_KEYS) {
+		const models = body[providerKey]?.models;
+		if (!models) continue;
+		const entries: Record<string, CatalogLookupEntry> = {};
+		for (const [modelKey, raw] of Object.entries(models)) {
+			const entry = toLookupEntry(raw);
+			if (Object.keys(entry).length > 0) entries[modelKey] = entry;
+		}
+		lookup[providerKey] = entries;
+	}
+	return lookup;
+}
+
+function toLookupEntry(raw: RawModel): CatalogLookupEntry {
+	const levels = raw.reasoning_options?.find((option) => option.type === "effort")?.values;
+	const entry: CatalogLookupEntry = {};
+	if (raw.name) entry.name = raw.name;
+	if (raw.reasoning) entry.reasoning = true;
+	if (levels?.length) entry.reasoningLevels = levels;
+	if (raw.limit?.context) entry.contextWindow = raw.limit.context;
+	if (raw.limit?.output) entry.maxTokens = raw.limit.output;
+	if (raw.modalities?.input?.includes("image")) entry.vision = true;
+	return entry;
+}
+
+/** 命中结果：哪个家、哪个 model key、以及它的元数据。 */
+export interface CatalogLookupHit {
+	provider: string;
+	modelId: string;
+	entry: CatalogLookupEntry;
+}
+
+/**
+ * 把网关上报的模型 id 折算到元数据查找表里的某个条目。
+ *
+ * 聚合网关会在上游模型名前再叠一层自己的命名空间，层级和名字都不固定：
+ * `cline-pass/deepseek-v4.1-flash`、`clinepass/cline-pass/deepseek-v4.1-flash`、
+ * `xxx/cline-pass/deepseek-v4.1-flash` 指的可能都是同一个模型。所以按下面顺序找：
+ *
+ * 1. **原样**：先当 `<家>/<model key>` 拆（只切第一个斜杠），再把整串当某一家的 model key；
+ * 2. **逐层剥掉最前面的段落**，每剥一层重复第 1 步；
+ * 3. 都不中时，只在 `openrouter` 里按“model key 以 `/<后缀>` 结尾”找——网关只给裸模型名
+ *    （`deepseek-v4.1-flash`）时，目录里对应的是 `deepseek/deepseek-v4.1-flash`。
+ *
+ * 第 1、2 步命中多家时按 `LOOKUP_PROVIDER_RANK` 取第一个，保证结果稳定。**找不到就返回 undefined**：
+ * 档位会原样当作 effort 发给上游，兜底到一家随便挑的目录可能给出上游不认的档位，
+ * 留空反而有 API 类型内置预设接力（见 `getModelReasoningPreset`）。
+ */
+export function resolveCatalogLookup(catalog: ModelsDevCatalog | null, routeId: string): CatalogLookupHit | undefined {
+	if (!catalog) return undefined;
+	const candidates = strippedCandidates(routeId);
+
+	for (const candidate of candidates) {
+		const slash = candidate.indexOf("/");
+		if (slash > 0) {
+			const provider = candidate.slice(0, slash);
+			const modelId = candidate.slice(slash + 1);
+			const entry = catalog.lookup[provider]?.[modelId];
+			if (entry) return { provider, modelId, entry };
+		}
+		for (const provider of LOOKUP_PROVIDER_RANK) {
+			const entry = catalog.lookup[provider]?.[candidate];
+			if (entry) return { provider, modelId: candidate, entry };
+		}
+	}
+
+	const openrouter = catalog.lookup.openrouter;
+	if (!openrouter) return undefined;
+	for (const candidate of candidates) {
+		const tail = `/${candidate}`;
+		for (const [modelId, entry] of Object.entries(openrouter)) {
+			if (modelId.endsWith(tail)) return { provider: "openrouter", modelId, entry };
+		}
+	}
+	return undefined;
+}
+
+/** 原 id 与逐层剥掉首段后的所有后缀（长的在前，短的在后）。 */
+function strippedCandidates(routeId: string): string[] {
+	const candidates: string[] = [];
+	let current = routeId;
+	while (current) {
+		candidates.push(current);
+		const slash = current.indexOf("/");
+		if (slash < 0) break;
+		current = current.slice(slash + 1);
+	}
+	return candidates;
 }
 
 /**
