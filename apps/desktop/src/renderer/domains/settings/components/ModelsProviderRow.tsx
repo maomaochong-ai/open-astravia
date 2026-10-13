@@ -2,7 +2,8 @@ import { ProviderIcon } from "@vetta-org/theme-ui/shared";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button, cn } from "@vetta-org/ui";
-import { ModelsProviderForm } from "./ModelsProviderForm";
+import { confirmDialogAtom } from "@shared/store/atoms";
+import { useSetAtom } from "jotai";
 import type { ModelsSettingsModel } from "./useModelsSettingsModel";
 
 /** 展开面板每次展示的模型数量；超出部分收进「查看更多」。 */
@@ -22,11 +23,11 @@ export function ModelsProviderRow({
 	model: ModelsSettingsModel;
 }): JSX.Element | null {
 	const { t } = useTranslation("settings");
+	const setConfirm = useSetAtom(confirmDialogAtom);
 	const provider = model.config?.providers[name];
 	if (!provider) return null;
 
 	const isExpanded = model.expandedProvider === name;
-	const isEditing = model.editingProvider === name;
 	const models = provider.models || [];
 	const host = displayHost(provider.baseUrl);
 	const [visibleCount, setVisibleCount] = useState(MODEL_PAGE_SIZE);
@@ -94,10 +95,9 @@ export function ModelsProviderRow({
 						onClick={(e) => {
 							e.stopPropagation();
 							model.onStartEditProvider(name);
-							if (!isExpanded) model.onToggleProvider(name);
 						}}
-						title={t("edit")}
-						aria-label={t("edit")}
+						title={t("editProvider")}
+						aria-label={t("editProvider")}
 						className="text-muted-foreground/80 hover:text-foreground"
 					>
 						<span className="icon-[mdi--pencil-outline] h-3.5 w-3.5" />
@@ -118,22 +118,7 @@ export function ModelsProviderRow({
 				</div>
 			</div>
 
-			{isExpanded && isEditing && (
-				<div className="border-t border-border/50 bg-secondary/20 px-4 py-4">
-					<ModelsProviderForm
-						form={model.providerForm}
-						setForm={model.setProviderForm}
-						onSave={() => void model.onUpdateProvider(name)}
-						onCancel={model.onCancelEditProvider}
-						saving={model.saving}
-						saveLabel={t("save")}
-						replacingApiKey={Boolean(provider.apiKey)}
-						onCopyApiKey={provider.apiKey ? () => void model.onCopyProviderApiKey(name) : undefined}
-					/>
-				</div>
-			)}
-
-			{isExpanded && !isEditing && (
+			{isExpanded && (
 				<div className="px-4 pb-3.5">
 					<div className="rounded-lg border border-border/40 bg-secondary/40 p-1">
 						{models.length === 0 && (
@@ -267,7 +252,25 @@ export function ModelsProviderRow({
 											: "icon-[mdi--cloud-download-outline]",
 									)}
 								/>
-								{t("fetchModels")}
+									{t("fetchModels")}
+							</Button>
+							<Button
+								variant="ghost"
+								size="sm"
+								onClick={() => {
+									// 二次确认在这里组装：弹层是全局根组件，确认后才真正清空。
+									setConfirm({
+										title: t("clearModels"),
+										message: t("clearModelsConfirmMessage", { name, n: models.length }),
+										variant: "danger",
+										onConfirm: () => model.onClearProviderModels(name),
+									});
+								}}
+								title={t("clearModels")}
+								className="h-7 gap-1.5 px-2 text-[11.5px] text-muted-foreground hover:text-destructive"
+							>
+								<span className="icon-[mdi--delete-sweep-outline] h-3.5 w-3.5" />
+								{t("clearModels")}
 							</Button>
 						</div>
 					</div>

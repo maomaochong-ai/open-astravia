@@ -104,6 +104,8 @@ export interface ModelsSettingsModel {
 	onTestFetchedModel: (modelId: string) => void;
 	onCancelFetchedModels: () => void;
 	onApplyFetchedModels: (providerName: string) => Promise<void>;
+	/** 清空该服务商下全部模型（默认模型若属于它一并取消）；二次确认由 UI 层负责。 */
+	onClearProviderModels: (providerName: string) => void;
 }
 
 export const API_OPTIONS = [
@@ -268,6 +270,26 @@ export function useModelsSettingsModel(): ModelsSettingsModel {
 		[config, expandedProvider, saveConfig],
 	);
 
+	/** 清空某服务商的全部模型；二次确认由「清空模型」按钮所在行负责，这里只执行。 */
+	const clearProviderModels = useCallback(
+		(name: string) => {
+			if (!config) return;
+			const current = config.providers[name];
+			if (!current || (current.models || []).length === 0) return;
+			void (async () => {
+				await saveConfig({
+					...config,
+					defaultModel: config.defaultModel?.startsWith(`${name}/`) ? undefined : config.defaultModel,
+					providers: {
+						...config.providers,
+						[name]: { ...current, models: [] },
+					},
+				});
+				recordSettingsUsage({ tab: "models", action: "deleted", target: "model", value: "cleared" });
+			})();
+		},
+		[config, saveConfig],
+	);
 	const startEditProvider = useCallback(
 		(name: string) => {
 			if (!config) return;
@@ -534,6 +556,7 @@ export function useModelsSettingsModel(): ModelsSettingsModel {
 		},
 		onUpdateProvider: handleUpdateProvider,
 		onDeleteProvider: handleDeleteProvider,
+		onClearProviderModels: clearProviderModels,
 		onCopyProviderApiKey: handleCopyProviderApiKey,
 		onToggleProvider: (name: string) => setExpandedProvider(expandedProvider === name ? null : name),
 		onStartAddModel: (providerName: string) => {

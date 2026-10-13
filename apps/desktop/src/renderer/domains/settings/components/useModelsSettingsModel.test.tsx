@@ -143,3 +143,27 @@ describe("useModelsSettingsModel fetched models", () => {
 		expect(result.current.fetchedModels).toBeNull();
 	});
 });
+
+describe("useModelsSettingsModel clear provider models", () => {
+	it("clears the provider's models and drops its default model", async () => {
+		const { set } = mockModelsApi();
+
+		const { result } = renderHook(() => useModelsSettingsModel());
+		act(() => result.current.onClearProviderModels("local"));
+
+		await waitFor(() => expect(set).toHaveBeenCalledTimes(1));
+		expect(set).toHaveBeenCalledWith({
+			providers: { local: { baseUrl: "http://localhost:11434/v1", models: [] } },
+		});
+	});
+
+	it("does nothing when the provider has no models", () => {
+		mockModelsApi();
+
+		const { result } = renderHook(() => useModelsSettingsModel());
+		act(() => result.current.onClearProviderModels("empty"));
+
+		// 没有模型可清时不应发起保存。
+		expect(window.vetta.models.set).not.toHaveBeenCalled();
+	});
+});
