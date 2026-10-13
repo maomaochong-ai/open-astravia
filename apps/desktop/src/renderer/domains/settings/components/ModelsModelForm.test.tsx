@@ -10,14 +10,7 @@ vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (key: string) => k
 function Harness({ initial }: { initial: ModelFormState }): JSX.Element {
 	const [form, setForm] = useState(initial);
 	return (
-		<ModelsModelForm
-			form={form}
-			setForm={setForm}
-			onSave={vi.fn()}
-			onCancel={vi.fn()}
-			saving={false}
-			saveLabel="save"
-		/>
+		<ModelsModelForm form={form} setForm={setForm} />
 	);
 }
 

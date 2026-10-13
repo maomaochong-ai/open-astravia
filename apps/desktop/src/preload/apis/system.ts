@@ -212,6 +212,7 @@ export function createSystemApi(
 			onPresetsUpdated: (handler) => onIpcVoidEvent(ipc, "vetta:models:presets-updated", handler),
 			probe: (ref) => ipc.invoke("vetta:models:probe", ref),
 			fetchProviderModels: (providerName) => ipc.invoke("vetta:models:fetch-provider-models", providerName),
+			lookupModelMetadata: (modelId) => ipc.invoke("vetta:models:lookup-model-metadata", modelId),
 			onChanged: (handler) => onIpcEvent(ipc, "vetta:models:changed", handler),
 		},
 		mcp: {

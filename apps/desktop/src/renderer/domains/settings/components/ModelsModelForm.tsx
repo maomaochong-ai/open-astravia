@@ -14,20 +14,13 @@ import {
 	type ModelFormState,
 } from "./useModelsSettingsModel";
 
+/** 模型表单体：仅字段编辑，不含底部按钮——取消 / 保存由外层对话框统一渲染。 */
 export function ModelsModelForm({
 	form,
 	setForm,
-	onSave,
-	onCancel,
-	saving,
-	saveLabel,
 }: {
 	form: ModelFormState;
 	setForm: React.Dispatch<React.SetStateAction<ModelFormState>>;
-	onSave: () => void;
-	onCancel: () => void;
-	saving: boolean;
-	saveLabel: string;
 }): JSX.Element {
 	const { t } = useTranslation("settings");
 	const inheritLabel = t("inheritedFromProvider");
@@ -41,100 +34,90 @@ export function ModelsModelForm({
 	};
 
 	return (
-		<>
-			<div className="grid grid-cols-2 gap-3">
-				<div>
-					<label className="mb-1 block text-[11px] text-muted-foreground">{t("modelId")}</label>
-					<InputField
-						value={form.id}
-						onChange={(value) => setForm((current) => ({ ...current, id: value }))}
-						placeholder={t("modelIdPlaceholder")}
-					/>
-				</div>
-				<div>
-					<label className="mb-1 block text-[11px] text-muted-foreground">{t("displayName")}</label>
-					<InputField
-						value={form.name}
-						onChange={(value) => setForm((current) => ({ ...current, name: value }))}
-						placeholder={t("optional")}
-					/>
-				</div>
-				<div>
-					<label className="mb-1 block text-[11px] text-muted-foreground">{t("apiType")}</label>
-					<SelectField
-						value={form.api}
-						onChange={(value) => setForm((current) => ({ ...current, api: value }))}
-						options={apiOptions}
-					/>
-				</div>
-				<div>
-					<label className="mb-1 block text-[11px] text-muted-foreground">{t("inputCapability")}</label>
-					<div className="flex h-8 items-center gap-3">
-						{INPUT_OPTIONS.map((option) => (
-							<label key={option.value} className="flex cursor-pointer select-none items-center gap-1.5">
-								<button
-									type="button"
-									onClick={() => toggleInput(option.value)}
-									className={cn(
-										"flex h-4 w-4 items-center justify-center rounded border transition-colors",
-										form.input.includes(option.value)
-											? "border-primary bg-primary"
-											: "border-input bg-secondary hover:bg-accent",
-									)}
-								>
-									{form.input.includes(option.value) && (
-										<span className="icon-[mdi--check] h-3 w-3 text-primary-foreground" />
-									)}
-								</button>
-								<span className="text-[12px] text-foreground">{option.label}</span>
-							</label>
-						))}
-					</div>
-				</div>
-				<div>
-					<label className="mb-1 block text-[11px] text-muted-foreground">{t("contextWindow")}</label>
-					<InputField
-						value={form.contextWindow}
-						onChange={(value) => setForm((current) => ({ ...current, contextWindow: value }))}
-						placeholder={t("contextWindowPlaceholder")}
-					/>
-					<NumberQuickPicks
-						picks={CONTEXT_WINDOW_PICKS}
-						current={form.contextWindow}
-						onPick={(value) => setForm((current) => ({ ...current, contextWindow: value }))}
-					/>
-				</div>
-				<div>
-					<label className="mb-1 block text-[11px] text-muted-foreground">{t("maxOutputTokens")}</label>
-					<InputField
-						value={form.maxTokens}
-						onChange={(value) => setForm((current) => ({ ...current, maxTokens: value }))}
-						placeholder={t("maxOutputTokensPlaceholder")}
-					/>
-					<NumberQuickPicks
-						picks={MAX_OUTPUT_PICKS}
-						current={form.maxTokens}
-						onPick={(value) => setForm((current) => ({ ...current, maxTokens: value }))}
-					/>
-				</div>
-				<div className="col-span-2">
-					<CheckboxField
-						checked={form.reasoning}
-						onChange={(value) => setForm((current) => ({ ...current, reasoning: value }))}
-						label={t("supportsReasoning")}
-					/>
-				</div>
-				{form.reasoning && <ReasoningLevelsEditor form={form} setForm={setForm} />}
+		<div className="grid grid-cols-2 gap-3">
+			<div>
+				<label className="mb-1 block text-[11px] text-muted-foreground">{t("modelId")}</label>
+				<InputField
+					value={form.id}
+					onChange={(value) => setForm((current) => ({ ...current, id: value }))}
+					placeholder={t("modelIdPlaceholder")}
+				/>
 			</div>
-			<div className="mt-3 flex justify-end gap-2">
-				<Button variant="ghost" size="sm" onClick={onCancel}>
-					{t("cancel")}
-				</Button>
-				<Button variant="primary" size="sm" onClick={onSave} disabled={!form.id.trim() || saving}>
-					{saveLabel}
-				</Button>
+			<div>
+				<label className="mb-1 block text-[11px] text-muted-foreground">{t("displayName")}</label>
+				<InputField
+					value={form.name}
+					onChange={(value) => setForm((current) => ({ ...current, name: value }))}
+					placeholder={t("optional")}
+				/>
 			</div>
-		</>
+			<div>
+				<label className="mb-1 block text-[11px] text-muted-foreground">{t("apiType")}</label>
+				<SelectField
+					value={form.api}
+					onChange={(value) => setForm((current) => ({ ...current, api: value }))}
+					options={apiOptions}
+				/>
+			</div>
+			<div>
+				<label className="mb-1 block text-[11px] text-muted-foreground">{t("inputCapability")}</label>
+				<div className="flex h-8 items-center gap-3">
+					{INPUT_OPTIONS.map((option) => (
+						<label key={option.value} className="flex cursor-pointer select-none items-center gap-1.5">
+							<button
+								type="button"
+								onClick={() => toggleInput(option.value)}
+								className={cn(
+									"flex h-4 w-4 items-center justify-center rounded border transition-colors",
+									form.input.includes(option.value)
+										? "border-primary bg-primary"
+										: "border-input bg-secondary hover:bg-accent",
+								)}
+							>
+								{form.input.includes(option.value) && (
+									<span className="icon-[mdi--check] h-3 w-3 text-primary-foreground" />
+								)}
+							</button>
+							<span className="text-[12px] text-foreground">{option.label}</span>
+						</label>
+					))}
+				</div>
+			</div>
+			<div>
+				<label className="mb-1 block text-[11px] text-muted-foreground">{t("contextWindow")}</label>
+				<InputField
+					value={form.contextWindow}
+					onChange={(value) => setForm((current) => ({ ...current, contextWindow: value }))}
+					placeholder={t("contextWindowPlaceholder")}
+				/>
+				<NumberQuickPicks
+					picks={CONTEXT_WINDOW_PICKS}
+					current={form.contextWindow}
+					onPick={(value) => setForm((current) => ({ ...current, contextWindow: value }))}
+				/>
+			</div>
+			<div>
+				<label className="mb-1 block text-[11px] text-muted-foreground">{t("maxOutputTokens")}</label>
+				<InputField
+					value={form.maxTokens}
+					onChange={(value) => setForm((current) => ({ ...current, maxTokens: value }))}
+					placeholder={t("maxOutputTokensPlaceholder")}
+				/>
+				<NumberQuickPicks
+					picks={MAX_OUTPUT_PICKS}
+					current={form.maxTokens}
+					onPick={(value) => setForm((current) => ({ ...current, maxTokens: value }))}
+				/>
+			</div>
+			<div className="col-span-2">
+				<CheckboxField
+					checked={form.reasoning}
+					onChange={(value) => setForm((current) => ({ ...current, reasoning: value }))}
+					label={t("supportsReasoning")}
+				/>
+			</div>
+			{form.reasoning && <ReasoningLevelsEditor form={form} setForm={setForm} />}
+		</div>
 	);
 }
 

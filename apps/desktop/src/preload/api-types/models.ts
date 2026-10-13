@@ -64,6 +64,20 @@ export interface FetchedProviderModel {
 	ownedBy?: string;
 }
 
+/** 按 model id 在 models.dev 目录里查到的元数据（"添加模型"一键同步参数用）。 */
+export interface ModelCatalogMeta {
+	/** 命中的目录 provider key（如 "openrouter"），便于排查匹配来源。 */
+	provider: string;
+	/** 命中的目录 model key（可能与传入 id 不同：去命名空间、前缀匹配等）。 */
+	modelId: string;
+	name?: string;
+	reasoning?: boolean;
+	reasoningLevels?: string[];
+	contextWindow?: number;
+	maxTokens?: number;
+	vision?: boolean;
+}
+
 export interface RemoteProvidersResult {
 	providers: Record<string, unknown>;
 	error?: string;
@@ -135,5 +149,7 @@ export interface DesktopModelsApi {
 	 * 网关没报的上下文/思考档位等参数由 models.dev 目录补齐；两边都拿不到的字段留空。
 	 */
 	fetchProviderModels(providerName: string): Promise<{ models: FetchedProviderModel[]; error?: string }>;
+	/** 按 model id 查 models.dev 目录元数据；查不到返回 null。只读缓存，不碰网络。 */
+	lookupModelMetadata(modelId: string): Promise<ModelCatalogMeta | null>;
 	onChanged(handler: (event: { providerIds: string[] }) => void): () => void;
 }
