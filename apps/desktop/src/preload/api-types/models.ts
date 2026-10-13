@@ -44,6 +44,40 @@ export interface ModelsConfigData {
 	>;
 }
 
+/**
+ * `GET {baseUrl}/models` 返回的单个模型。接口只保证 id；上下文窗口、能力等字段
+ * 各家网关的键名与丰富程度不同，拿不到时留空。
+ */
+export interface FetchedProviderModel {
+	id: string;
+	/** 上游给的显示名；与 id 相同时省略。 */
+	name?: string;
+	/** 上下文窗口（tokens）。 */
+	contextWindow?: number;
+	/** 最大输出（tokens）。 */
+	maxTokens?: number;
+	vision?: boolean;
+	reasoning?: boolean;
+	/** 上游声明的思考档位；拿不到时由 API 类型内置预设兜底。 */
+	reasoningLevels?: string[];
+	/** 上游模型归属方，网关列出上百个模型时用于区分厂商。 */
+	ownedBy?: string;
+}
+
+/** 按 model id 在 models.dev 目录里查到的元数据（"添加模型"一键同步参数用）。 */
+export interface ModelCatalogMeta {
+	/** 命中的目录 provider key（如 "openrouter"），便于排查匹配来源。 */
+	provider: string;
+	/** 命中的目录 model key（可能与传入 id 不同：去命名空间、前缀匹配等）。 */
+	modelId: string;
+	name?: string;
+	reasoning?: boolean;
+	reasoningLevels?: string[];
+	contextWindow?: number;
+	maxTokens?: number;
+	vision?: boolean;
+}
+
 export interface RemoteProvidersResult {
 	providers: Record<string, unknown>;
 	error?: string;
@@ -110,7 +144,12 @@ export interface DesktopModelsApi {
 	onPresetsUpdated(handler: () => void): () => void;
 	/** 探测某 (provider, model) 的 baseUrl 是否可达(本地 models.json 优先,回退云端目录)。仅判可达性,任何 HTTP 响应都算通。 */
 	probe(ref: { provider: string; model: string }): Promise<{ ok: boolean; message?: string; error?: string }>;
-	/** 拉取本地自定义 provider 的 `GET {baseUrl}/models`,返回上游模型 id 列表,用于快速填写模型配置。 */
-	fetchProviderModels(providerName: string): Promise<{ models: string[]; error?: string }>;
+	/**
+	 * 拉取本地自定义 provider 的 `GET {baseUrl}/models`,返回上游模型及其参数,用于快速填写模型配置。
+	 * 网关没报的上下文/思考档位等参数由 models.dev 目录补齐；两边都拿不到的字段留空。
+	 */
+	fetchProviderModels(providerName: string): Promise<{ models: FetchedProviderModel[]; error?: string }>;
+	/** 按 model id 查 models.dev 目录元数据；查不到返回 null。只读缓存，不碰网络。 */
+	lookupModelMetadata(modelId: string): Promise<ModelCatalogMeta | null>;
 	onChanged(handler: (event: { providerIds: string[] }) => void): () => void;
 }

@@ -19,6 +19,18 @@ Use the run configurations provided by the run widget in your IDE's toolbar. You
 
 - Android app: `./gradlew :androidApp:assembleDebug`
 
+### Release APK
+
+正式桌面发版时，GitHub CI 从同一提交自动构建固定密钥签名的 Android APK，
+只提供 arm64-v8a 架构，并上传到对应 GitHub Release 的 `Vetta-arm64-v8a.apk`；
+文件名不附桌面版本或 `android`。应用自己的版本独立维护在 `gradle.properties` 的
+`vettaAndroidVersionName` 与 `vettaAndroidVersionCode` 中，不跟随桌面版本。签名配置与失败重跑见
+[桌面发版说明](../../../docs/desktop/release-ci.md#同期-android-apk)。
+
+本地 Release 构建需设置 `VETTA_ANDROID_KEYSTORE_PATH`、`VETTA_ANDROID_KEYSTORE_PASSWORD`、`VETTA_ANDROID_KEY_ALIAS`、
+`VETTA_ANDROID_KEY_PASSWORD`，再运行 `./gradlew -PvettaSplitApks=true :androidApp:assembleRelease`；缺少配置会明确失败。
+Debug 构建与测试不需要这些凭据。
+
 ### Running tests
 
 Use the run button in your IDE's editor gutter, or run tests using Gradle tasks:

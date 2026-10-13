@@ -2,6 +2,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import settingsZh from "../../../../shared/i18n/locales/zh/settings.json";
 import { ModelTransportSettingsSection } from "./ModelTransportSettingsSection";
 import { useModelTransportSettingsModel } from "./useModelTransportSettingsModel";
 
@@ -50,6 +51,10 @@ function Subject(): JSX.Element {
 describe("model transport settings", () => {
 	beforeEach(() => {
 		vi.restoreAllMocks();
+	});
+
+	it("uses the explicit OpenAI Responses transport title", () => {
+		expect(settingsZh.modelSettings.transportLabel).toBe("OpenAI Responses 传输方式");
 	});
 
 	it("loads the persisted transport and saves a user selection", async () => {

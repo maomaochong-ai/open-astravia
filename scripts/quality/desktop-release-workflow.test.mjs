@@ -37,7 +37,7 @@ describe("Desktop release workflow contracts", () => {
 
 	it("publishes each platform's installers as soon as it is built", () => {
 		expect(jobs.build.strategy["fail-fast"]).toBe(false);
-		expect(Object.keys(jobs)).toEqual(["prepare", "quality", "build", "promote"]);
+		expect(Object.keys(jobs)).toEqual(["prepare", "quality", "build", "android", "promote"]);
 		expect(workflow).not.toContain("release-build-");
 		expect(workflow).not.toContain("test:e2e:packaged");
 		expect(workflow).not.toContain("download-artifact");
@@ -68,7 +68,7 @@ describe("Desktop release workflow contracts", () => {
 		expect(r2.run).toBe("node scripts/publish-update-artifacts-r2.mjs --stage-metadata");
 		expect(workflow).not.toContain("publish:updates:r2");
 		const github = buildSteps.find((step) => step.name === "Add installers to GitHub Release");
-		expect(github.run).toContain("gh release upload");
+		expect(github.run).toContain("publish-github-installers.mjs --platform desktop");
 		expect(github.run).not.toContain(".yml");
 		expect(github.run).not.toContain("--draft");
 		expect(workflow).not.toContain("verify-update-feed");
@@ -227,7 +227,8 @@ describe("Desktop release workflow contracts", () => {
 		expect(workflow).toContain("OUTPUT_BUILD_VERSION");
 		expect(workflow).toContain("REQUIRE_RELEASE_SIGNATURE");
 		expect(workflow).toContain("needs.prepare.outputs.should-publish == 'true'");
-		expect(workflow).toContain('--target "' + "$" + '{GITHUB_SHA}"');
+		const github = jobs.build.steps.find((step) => step.name === "Add installers to GitHub Release");
+		expect(github.env.RELEASE_VERSION).toBe("$" + "{{ needs.prepare.outputs.release-version }}");
 	});
 
 	// im-gateway 的 sidecar 由 prepare-pack.js 交叉编译进发布包，但它的 Go 测试
@@ -263,11 +264,62 @@ describe("Desktop release workflow contracts", () => {
 
 	it("uses the versioned release note as the GitHub Release body", () => {
 		expect(workflow).toContain("node scripts/release/release-notes.mjs --check");
-		expect(workflow).toContain('--notes-file "' + "$" + '{NOTES_FILE}"');
+		expect(workflow).toContain("node scripts/release/publish-github-installers.mjs");
 		expect(workflow).not.toContain("--generate-notes");
 		// 正文缺失要在质量阶段就失败，而不是等平台矩阵签名公证跑完。
 		const qualityJob = workflow.slice(workflow.indexOf("\n  quality:"), workflow.indexOf("\n  build:"));
 		expect(qualityJob).toContain("node scripts/release/release-notes.mjs --check");
+	});
+
+	it("builds Android with its own version and publishes the APK to the matching desktop release", () => {
+		const android = jobs.android;
+		expect(android.needs).toEqual(["prepare", "quality"]);
+		expect(android.if).toBe(
+			"needs.prepare.outputs.should-publish == 'true' && needs.prepare.outputs.channel != 'test'",
+		);
+		expect(android.environment).toBe("desktop-production");
+		expect(android.permissions).toEqual({ contents: "write" });
+		const steps = android.steps;
+		const index = (name) => steps.findIndex((step) => step.name === name);
+		const prepare = steps[index("Prepare Android release signing")];
+		expect(prepare.env).not.toHaveProperty("RELEASE_VERSION");
+		for (const name of [
+			"VETTA_ANDROID_KEYSTORE_BASE64",
+			"VETTA_ANDROID_KEYSTORE_PASSWORD",
+			"VETTA_ANDROID_KEY_ALIAS",
+			"VETTA_ANDROID_KEY_PASSWORD",
+		]) {
+			expect(prepare.env[name]).toBe(`${"$"}{{ secrets.${name} }}`);
+		}
+		expect(steps.find((step) => step.uses === "gradle/actions/setup-gradle@v4").with["cache-disabled"]).toBe(true);
+		expect(steps[index("Test Android host logic")].run).toContain(":shared:testAndroidHostTest");
+		expect(steps[index("Build signed Android release APK")].run).toContain(
+			"-PvettaSplitApks=true :androidApp:assembleRelease",
+		);
+		expect(steps[index("Verify and name signed Android APK")].run).toContain('apksigner" verify');
+		expect(steps[index("Upload signed Android APK")].with.path).toBe("$" + "{{ env.VETTA_ANDROID_APK_PATH }}");
+		const publish = steps[index("Add Android APK to GitHub Release")];
+		expect(publish.env.RELEASE_VERSION).toBe("$" + "{{ needs.prepare.outputs.release-version }}");
+		expect(publish.run).toContain("publish-github-installers.mjs --platform android");
+		expect(index("Test Android host logic")).toBeLessThan(index("Build signed Android release APK"));
+		expect(index("Build signed Android release APK")).toBeLessThan(index("Verify and name signed Android APK"));
+		expect(index("Verify and name signed Android APK")).toBeLessThan(index("Add Android APK to GitHub Release"));
+		expect(steps[index("Clean Android signing key")].if).toBe("always()");
+		const gradle = readFileSync(
+			join(import.meta.dirname, "../../apps/mobile/client-android/androidApp/build.gradle.kts"),
+			"utf8",
+		);
+		expect(gradle).toContain('signingConfig = signingConfigs.getByName("release")');
+		expect(gradle).toContain('it.name == "preReleaseBuild"');
+		expect(gradle).toContain("dependsOn(validateVettaReleaseSigning)");
+		expect(gradle).toContain('providers.gradleProperty("vettaAndroidVersionName")');
+		expect(gradle).toContain('providers.gradleProperty("vettaAndroidVersionCode")');
+		expect(gradle).toContain('include(providers.gradleProperty("vettaAndroidAbi").get())');
+		expect(
+			readFileSync(join(import.meta.dirname, "../../apps/mobile/client-android/gradle.properties"), "utf8"),
+		).toMatch(/^vettaAndroidAbi=arm64-v8a\r?$/m);
+		expect(gradle).toContain('providers.gradleProperty("vettaSplitApks").orElse("false")');
+		expect(gradle).not.toContain("VETTA_ANDROID_VERSION_NAME");
 	});
 
 	it("provides an isolated test-channel workflow for real install and restart upgrades", () => {

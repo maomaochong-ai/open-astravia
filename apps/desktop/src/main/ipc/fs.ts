@@ -74,6 +74,7 @@ import { getDesktopMcpSettingsService, readMcpConfig, writeMcpConfig } from "../
 import { getDesktopMcpSetupLoginService } from "../mcp/mcp-setup-login-service.js";
 import { getDesktopMcpToolsService } from "../mcp/mcp-tools-service.js";
 import { fetchProviderModels } from "../models/fetch-models.js";
+import { lookupModelMetadata } from "../models/lookup-model-metadata.js";
 import { getDesktopModelSettingsService, onDesktopModelSettingsChanged } from "../models/model-settings-host.js";
 import type { ModelsConfig } from "../models/model-settings-service.js";
 import { probeModelProvider } from "../models/probe.js";
@@ -158,6 +159,7 @@ const CHANNELS = {
 	MODELS_COPY_API_KEY: "vetta:models:copy-api-key",
 	MODELS_PROBE: "vetta:models:probe",
 	MODELS_FETCH_PROVIDER_MODELS: "vetta:models:fetch-provider-models",
+	MODELS_LOOKUP_MODEL_METADATA: "vetta:models:lookup-model-metadata",
 	MCP_LIST_TOOLS: "vetta:mcp:list-tools",
 	MCP_GET: "vetta:mcp:get",
 	MCP_SET: "vetta:mcp:set",
@@ -535,6 +537,11 @@ export function registerFsIpc(): () => void {
 		return fetchProviderModels(providerName.trim());
 	});
 
+	ipcMain.handle(CHANNELS.MODELS_LOOKUP_MODEL_METADATA, async (_event, modelId: unknown) => {
+		if (typeof modelId !== "string" || !modelId.trim()) throw new Error("Invalid model id");
+		return lookupModelMetadata(modelId.trim());
+	});
+
 	ipcMain.handle(CHANNELS.MCP_LIST_TOOLS, async (_event, serverName: unknown) => {
 		if (typeof serverName !== "string" || !serverName.trim()) throw new Error("Invalid server name");
 		return getDesktopMcpToolsService().list(serverName.trim());
@@ -677,6 +684,7 @@ export function registerFsIpc(): () => void {
 		ipcMain.removeHandler(CHANNELS.MODELS_COPY_API_KEY);
 		ipcMain.removeHandler(CHANNELS.MODELS_PROBE);
 		ipcMain.removeHandler(CHANNELS.MODELS_FETCH_PROVIDER_MODELS);
+		ipcMain.removeHandler(CHANNELS.MODELS_LOOKUP_MODEL_METADATA);
 		ipcMain.removeHandler(CHANNELS.MCP_LIST_TOOLS);
 		ipcMain.removeHandler(CHANNELS.MCP_GET);
 		ipcMain.removeHandler(CHANNELS.MCP_SET);

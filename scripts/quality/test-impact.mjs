@@ -84,6 +84,15 @@ const EXPLICIT_SOURCE_TESTS = new Map([
 	["packages/theme-ui/src/chat/ModelConfiguration.tsx", desktopTests(TEAM_MODEL_SELECTOR_TEST)],
 	["packages/theme-ui/src/chat/InlineModelPicker.tsx", desktopTests(TEAM_MODEL_SELECTOR_TEST)],
 	["packages/theme-ui/src/chat/ReasoningStepSlider.tsx", desktopTests(TEAM_MODEL_SELECTOR_TEST)],
+	[
+		"packages/theme-ui/src/settings/ModelsFetchedModelsDrawerView.tsx",
+		desktopTests("src/renderer/domains/settings/components/ModelsFetchedModelsDrawer.test.tsx"),
+	],
+	// 设置包 barrel 新增的导出由这个桌面测试从 `@vetta-org/theme-ui/settings` 消费。
+	[
+		"packages/theme-ui/src/settings/index.ts",
+		desktopTests("src/renderer/domains/settings/components/ModelsFetchedModelsDrawer.test.tsx"),
+	],
 ]);
 
 function workspaceForFile(file) {

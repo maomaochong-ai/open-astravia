@@ -32,6 +32,9 @@ deploy/data/
 deploy/logs/
 *.pem
 *.key
+*.jks
+*.keystore
+/.local/android-signing/
 
 # Editor files
 .vscode/

@@ -41,3 +41,17 @@ CI 不再让任何客户端看到新版本，漏做手动上线步骤时用户�
 `promote` 任务，在全部平台构建成功后以 reusable workflow 调用 `desktop-promote`；任一平台失败则不上线，
 线上保持旧版本。手动发版可关闭 `auto_promote` 回到手动上线；GitHub Release 更新源仍需手动处理清单。
 上文「CI 不再让任何客户端看到新版本」相应改为「只有全部平台成功后才让客户端看到新版本」。
+
+## 修订：正式桌面发版同时分发 Android APK（0.5.62）
+
+Android 客户端需要与桌面发版提交对应的可安装包。正式桌面发版增加独立的 Android 任务，
+与桌面平台矩阵并行测试、构建签名 Release APK，并通过共享的 GitHub 安装包发布脚本追加到同版本 Release。
+APK 只提供 arm64-v8a，以 `Vetta-arm64-v8a.apk` 发布；文件名不附桌面版本或 `android`，
+应用自己的版本名和版本代码独立维护在 Android 的 `gradle.properties` 中；
+签名密钥固定保存在 GitHub Secrets，不在 CI 生成或回退到 Debug 签名。
+
+沿用按平台完成即发布的策略；Android 可先完成并创建 Release。Android 失败可独立重跑，
+不阻塞桌面更新清单上线，也不将 APK 写入桌面清单或 R2；test 渠道不分发 Android。
+发布时通过 `vettaSplitApks=true` 启用 ABI 分包，本地 Debug 仍默认构建通用包。
+备选的单独 tag/工作流容易让移动端提交与桌面错位，集中等待全部平台则重新引入慢平台阻塞，因此不采用。
+此前安装的 Debug APK 首次换装正式签名包需卸载并重新配对；固定签名建立后，后续版本支持覆盖升级。

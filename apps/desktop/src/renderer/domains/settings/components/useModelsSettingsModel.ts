@@ -1,9 +1,11 @@
-import type { ModelsConfigData } from "@preload/api.js";
+import type { FetchedProviderModel, ModelsConfigData } from "@preload/api.js";
+import { waitForCommittedPaint } from "@shared/lib/committed-paint";
 import { localModelsConfigAtom, modelCatalog } from "@shared/store/model-catalog";
 import { showToast } from "@shared/store/toast-atoms";
 import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { deselectModels, filterFetchedModels, selectModels, toggleModelSelection } from "./fetched-models";
 import { recordSettingsUsage } from "./recordSettingsUsage";
 
 export type ProviderEntry = ModelsConfigData["providers"][string];
@@ -35,11 +37,26 @@ export interface EditingModelState {
 	modelId: string;
 }
 
-/** 「从 /models 接口拉取」面板状态：某个 provider 拉到的模型 id 与勾选情况。 */
+/** 单个候选模型的连通性测试结果。 */
+export interface FetchedModelTestState {
+	status: "testing" | "ok" | "fail";
+	/** 成功时是主进程给的说明，失败时是原因，用于行内提示。 */
+	message?: string;
+}
+
+/**
+ * 「从 /models 接口拉取」抽屉状态。
+ *
+ * `models` 是接口返回的全部候选，`selected` 是用户勾选的 id，`search` 只影响可见列表——
+ * 全选/全不选按可见范围生效，被搜索筛掉的勾选状态原样保留。
+ */
 export interface FetchedModelsState {
 	provider: string;
-	models: string[];
+	status: "loading" | "ready" | "error";
+	models: FetchedProviderModel[];
 	selected: string[];
+	search: string;
+	tests: Record<string, FetchedModelTestState>;
 	error?: string;
 }
 
@@ -54,6 +71,7 @@ export interface ModelsSettingsModel {
 	editingModel: EditingModelState | null;
 	modelForm: ModelFormState;
 	saving: boolean;
+	/** 正在拉取的 provider，供服务商行显示 loading 并禁用按钮。 */
 	fetchingModelsFor: string | null;
 	fetchedModels: FetchedModelsState | null;
 	setProviderForm: React.Dispatch<React.SetStateAction<ProviderFormState>>;
@@ -76,12 +94,18 @@ export interface ModelsSettingsModel {
 	onUpdateModel: (providerName: string, oldModelId: string) => Promise<void>;
 	onDeleteModel: (providerName: string, modelId: string) => Promise<void>;
 	onSetDefaultModel: (providerName: string, modelId: string) => Promise<void>;
-	onFetchProviderModels: (providerName: string) => Promise<void>;
+	/** 点击「从接口拉取」：先同步打开抽屉，再拉取，不在点击处等待网络。 */
+	onStartFetchProviderModels: (providerName: string) => void;
+	onRetryFetchProviderModels: () => void;
+	onFetchedModelsSearchChange: (query: string) => void;
 	onToggleFetchedModel: (modelId: string) => void;
 	onSelectAllFetchedModels: () => void;
 	onDeselectAllFetchedModels: () => void;
+	onTestFetchedModel: (modelId: string) => void;
 	onCancelFetchedModels: () => void;
 	onApplyFetchedModels: (providerName: string) => Promise<void>;
+	/** 清空该服务商下全部模型（默认模型若属于它一并取消）；二次确认由 UI 层负责。 */
+	onClearProviderModels: (providerName: string) => void;
 }
 
 export const API_OPTIONS = [
@@ -156,7 +180,6 @@ export function useModelsSettingsModel(): ModelsSettingsModel {
 	const [editingModel, setEditingModel] = useState<EditingModelState | null>(null);
 	const [modelForm, setModelForm] = useState<ModelFormState>({ ...emptyModel });
 	const [saving, setSaving] = useState(false);
-	const [fetchingModelsFor, setFetchingModelsFor] = useState<string | null>(null);
 	const [fetchedModels, setFetchedModels] = useState<FetchedModelsState | null>(null);
 
 	useEffect(() => {
@@ -247,6 +270,26 @@ export function useModelsSettingsModel(): ModelsSettingsModel {
 		[config, expandedProvider, saveConfig],
 	);
 
+	/** 清空某服务商的全部模型；二次确认由「清空模型」按钮所在行负责，这里只执行。 */
+	const clearProviderModels = useCallback(
+		(name: string) => {
+			if (!config) return;
+			const current = config.providers[name];
+			if (!current || (current.models || []).length === 0) return;
+			void (async () => {
+				await saveConfig({
+					...config,
+					defaultModel: config.defaultModel?.startsWith(`${name}/`) ? undefined : config.defaultModel,
+					providers: {
+						...config.providers,
+						[name]: { ...current, models: [] },
+					},
+				});
+				recordSettingsUsage({ tab: "models", action: "deleted", target: "model", value: "cleared" });
+			})();
+		},
+		[config, saveConfig],
+	);
 	const startEditProvider = useCallback(
 		(name: string) => {
 			if (!config) return;
@@ -388,21 +431,63 @@ export function useModelsSettingsModel(): ModelsSettingsModel {
 		[config],
 	);
 
-	const handleFetchProviderModels = useCallback(async (providerName: string) => {
-		setFetchingModelsFor(providerName);
+	// 「从接口拉取」抽屉：先同步挂上 loading 状态让抽屉立即出现，等抽屉与加载态绘制完
+	// 再去读接口，点击处不等待网络（见 docs/ui-first-async-work.md）。
+	const loadFetchedModels = useCallback(async (providerName: string) => {
+		await waitForCommittedPaint();
+		const patch = (next: Partial<FetchedModelsState>): void =>
+			setFetchedModels((prev) => (prev?.provider === providerName ? { ...prev, ...next } : prev));
 		try {
 			const result = await window.vetta.models.fetchProviderModels(providerName);
-			// 接口常返回上百个模型，默认不勾选，由用户挑选或一键全选。
-			setFetchedModels({
-				provider: providerName,
-				models: result.models,
-				selected: [],
-				error: result.error,
-			});
-		} finally {
-			setFetchingModelsFor(null);
+			patch({ status: result.error ? "error" : "ready", models: result.models, error: result.error });
+		} catch (err) {
+			patch({ status: "error", models: [], error: err instanceof Error ? err.message : String(err) });
 		}
 	}, []);
+
+	const handleStartFetchProviderModels = useCallback(
+		(providerName: string) => {
+			setFetchedModels({
+				provider: providerName,
+				status: "loading",
+				models: [],
+				selected: [],
+				search: "",
+				tests: {},
+			});
+			void loadFetchedModels(providerName);
+		},
+		[loadFetchedModels],
+	);
+
+	const handleRetryFetchProviderModels = useCallback(() => {
+		const providerName = fetchedModels?.provider;
+		if (!providerName) return;
+		setFetchedModels((prev) => (prev ? { ...prev, status: "loading", error: undefined } : prev));
+		void loadFetchedModels(providerName);
+	}, [fetchedModels?.provider, loadFetchedModels]);
+
+	const handleTestFetchedModel = useCallback(
+		async (modelId: string) => {
+			const state = fetchedModels;
+			if (!state || state.tests[modelId]?.status === "testing") return;
+			const { provider } = state;
+			const patchTest = (test: FetchedModelTestState): void =>
+				setFetchedModels((prev) =>
+					prev?.provider === provider ? { ...prev, tests: { ...prev.tests, [modelId]: test } } : prev,
+				);
+
+			patchTest({ status: "testing" });
+			try {
+				// 复用既有的「测试连通」语义：只判 baseUrl 可达，不发真实推理请求。
+				const result = await window.vetta.models.probe({ provider, model: modelId });
+				patchTest({ status: result.ok ? "ok" : "fail", message: result.ok ? result.message : result.error });
+			} catch (err) {
+				patchTest({ status: "fail", message: err instanceof Error ? err.message : String(err) });
+			}
+		},
+		[fetchedModels],
+	);
 
 	const handleApplyFetchedModels = useCallback(
 		async (providerName: string) => {
@@ -410,7 +495,11 @@ export function useModelsSettingsModel(): ModelsSettingsModel {
 			const provider = config.providers[providerName];
 			if (!provider) return;
 			const existing = new Set((provider.models || []).map((item) => item.id));
-			const added = fetchedModels.selected.filter((id) => !existing.has(id)).map((id) => ({ id }));
+			// 接口返回的参数（上下文、最大输出、输入能力、是否支持思考）随模型一起落盘。
+			const fetchedById = new Map(fetchedModels.models.map((item) => [item.id, item]));
+			const added = fetchedModels.selected
+				.filter((id) => !existing.has(id))
+				.map((id) => fetchedModelToDefinition(fetchedById.get(id) ?? { id }));
 			if (added.length === 0) {
 				setFetchedModels(null);
 				return;
@@ -445,7 +534,7 @@ export function useModelsSettingsModel(): ModelsSettingsModel {
 		editingModel,
 		modelForm,
 		saving,
-		fetchingModelsFor,
+		fetchingModelsFor: fetchedModels?.status === "loading" ? fetchedModels.provider : null,
 		fetchedModels,
 		setProviderForm,
 		setModelForm,
@@ -467,6 +556,7 @@ export function useModelsSettingsModel(): ModelsSettingsModel {
 		},
 		onUpdateProvider: handleUpdateProvider,
 		onDeleteProvider: handleDeleteProvider,
+		onClearProviderModels: clearProviderModels,
 		onCopyProviderApiKey: handleCopyProviderApiKey,
 		onToggleProvider: (name: string) => setExpandedProvider(expandedProvider === name ? null : name),
 		onStartAddModel: (providerName: string) => {
@@ -487,26 +577,37 @@ export function useModelsSettingsModel(): ModelsSettingsModel {
 		onUpdateModel: handleUpdateModel,
 		onDeleteModel: handleDeleteModel,
 		onSetDefaultModel: handleSetDefaultModel,
-		onFetchProviderModels: handleFetchProviderModels,
+		onStartFetchProviderModels: handleStartFetchProviderModels,
+		onRetryFetchProviderModels: handleRetryFetchProviderModels,
+		onFetchedModelsSearchChange: (query: string) =>
+			setFetchedModels((prev) => (prev ? { ...prev, search: query } : prev)),
 		onToggleFetchedModel: (modelId: string) =>
 			setFetchedModels((prev) =>
-				prev
-					? {
-							...prev,
-							selected: prev.selected.includes(modelId)
-								? prev.selected.filter((id) => id !== modelId)
-								: [...prev.selected, modelId],
-						}
-					: prev,
+				prev ? { ...prev, selected: toggleModelSelection(prev.selected, modelId) } : prev,
 			),
 		onSelectAllFetchedModels: () =>
 			setFetchedModels((prev) => {
 				if (!prev) return prev;
-				// 已添加的模型勾选了也不会重复写入，全选只覆盖尚未添加的，计数才准确。
+				// 已添加的模型勾选了也不会重复写入，全选只覆盖尚未添加的可见项，计数才准确。
 				const existing = new Set((config?.providers[prev.provider]?.models || []).map((item) => item.id));
-				return { ...prev, selected: prev.models.filter((id) => !existing.has(id)) };
+				const selectable = filterFetchedModels(prev.models, prev.search)
+					.filter((model) => !existing.has(model.id))
+					.map((model) => model.id);
+				return { ...prev, selected: selectModels(prev.selected, selectable) };
 			}),
-		onDeselectAllFetchedModels: () => setFetchedModels((prev) => (prev ? { ...prev, selected: [] } : prev)),
+		onDeselectAllFetchedModels: () =>
+			setFetchedModels((prev) =>
+				prev
+					? {
+							...prev,
+							selected: deselectModels(
+								prev.selected,
+								filterFetchedModels(prev.models, prev.search).map((model) => model.id),
+							),
+						}
+					: prev,
+			),
+		onTestFetchedModel: (modelId: string) => void handleTestFetchedModel(modelId),
 		onCancelFetchedModels: () => setFetchedModels(null),
 		onApplyFetchedModels: handleApplyFetchedModels,
 	};
@@ -567,4 +668,22 @@ function formToModelDef(form: ModelFormState): ModelEntry {
 	const maxTokens = Number(form.maxTokens.trim());
 	if (maxTokens > 0) model.maxTokens = maxTokens;
 	return model;
+}
+
+/**
+ * 「从接口拉取」勾中的候选转成模型配置，与「预设服务商」同步同一个口径：
+ * 上游明确说了的参数才写，没说的一律不猜；思考档位写模型自己声明的，默认档位不写，
+ * 交给运行时按声明顺序取首个（与目录同步的处理一致）。
+ */
+function fetchedModelToDefinition(model: FetchedProviderModel): ModelEntry {
+	const definition: ModelEntry = {
+		id: model.id,
+		input: model.vision ? ["text", "image"] : ["text"],
+	};
+	if (model.name) definition.name = model.name;
+	if (model.reasoning || model.reasoningLevels?.length) definition.reasoning = true;
+	if (model.reasoningLevels?.length) definition.reasoningLevels = [...model.reasoningLevels];
+	if (model.contextWindow) definition.contextWindow = model.contextWindow;
+	if (model.maxTokens) definition.maxTokens = model.maxTokens;
+	return definition;
 }
