@@ -27,16 +27,34 @@ android {
         applicationId = "org.vetta.android"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = providers.gradleProperty("vettaAndroidVersionCode").get().toInt()
+        versionName = providers.gradleProperty("vettaAndroidVersionName").get()
     }
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+    signingConfigs {
+        create("release") {
+            storeFile = providers.environmentVariable("VETTA_ANDROID_KEYSTORE_PATH").orNull?.let { file(it) }
+            storePassword = providers.environmentVariable("VETTA_ANDROID_KEYSTORE_PASSWORD").orNull
+            keyAlias = providers.environmentVariable("VETTA_ANDROID_KEY_ALIAS").orNull
+            keyPassword = providers.environmentVariable("VETTA_ANDROID_KEY_PASSWORD").orNull
+        }
+    }
+    splits {
+        abi {
+            // CI produces the arm64 installer; local Debug builds stay universal.
+            isEnable = providers.gradleProperty("vettaSplitApks").orElse("false").get().toBooleanStrict()
+            reset()
+            include(providers.gradleProperty("vettaAndroidAbi").get())
+            isUniversalApk = false
+        }
+    }
     buildTypes {
         release {
+            signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -51,4 +69,19 @@ android {
     buildFeatures {
         compose = true
     }
+}
+
+// Fail before packaging; an unsigned or freshly debug-signed APK cannot update the published app.
+val releaseConfiguration = listOf(
+    "VETTA_ANDROID_KEYSTORE_PATH",
+    "VETTA_ANDROID_KEYSTORE_PASSWORD", "VETTA_ANDROID_KEY_ALIAS", "VETTA_ANDROID_KEY_PASSWORD"
+).associateWith { providers.environmentVariable(it).orNull }
+val validateVettaReleaseSigning = tasks.register("validateVettaReleaseSigning") {
+    doLast {
+        val missing = releaseConfiguration.filterValues { it.isNullOrEmpty() }.keys
+        require(missing.isEmpty()) { "Missing Android release configuration: ${missing.joinToString()}" }
+    }
+}
+tasks.matching { it.name == "preReleaseBuild" }.configureEach {
+    dependsOn(validateVettaReleaseSigning)
 }

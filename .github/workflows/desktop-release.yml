@@ -229,6 +229,9 @@ jobs:
       - name: Test quality and release configuration
         run: bun run test:quality
 
+      - name: Test Android release and GitHub installer publishing
+        run: bun scripts/quality/run-vitest.mjs --run scripts/release/prepare-android-release.test.mjs scripts/release/publish-github-installers.test.mjs
+
       - name: Verify Desktop packaging contract
         run: bun run verify:desktop:contracts
 
@@ -465,21 +468,87 @@ jobs:
         if: needs.prepare.outputs.should-publish == 'true' && needs.prepare.outputs.channel != 'test'
         env:
           GH_TOKEN: ${{ github.token }}
-          BUILD_VERSION: ${{ needs.prepare.outputs.build-version }}
+          RELEASE_VERSION: ${{ needs.prepare.outputs.release-version }}
+        run: node scripts/release/publish-github-installers.mjs --platform desktop --directory apps/desktop/release
+
+  android:
+    name: build and publish signed arm64 APK
+    needs: [prepare, quality]
+    if: needs.prepare.outputs.should-publish == 'true' && needs.prepare.outputs.channel != 'test'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: desktop-production
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Prepare Android release signing
+        env:
+          VETTA_ANDROID_KEYSTORE_BASE64: ${{ secrets.VETTA_ANDROID_KEYSTORE_BASE64 }}
+          VETTA_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.VETTA_ANDROID_KEYSTORE_PASSWORD }}
+          VETTA_ANDROID_KEY_ALIAS: ${{ secrets.VETTA_ANDROID_KEY_ALIAS }}
+          VETTA_ANDROID_KEY_PASSWORD: ${{ secrets.VETTA_ANDROID_KEY_PASSWORD }}
+        run: node scripts/release/prepare-android-release.mjs
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: platform-tools platforms;android-36 build-tools;36.0.0
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-disabled: true
+
+      - name: Test Android host logic
+        working-directory: apps/mobile/client-android
+        run: bash ./gradlew --no-daemon :shared:testAndroidHostTest
+
+      - name: Build signed Android release APK
+        working-directory: apps/mobile/client-android
+        env:
+          VETTA_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.VETTA_ANDROID_KEYSTORE_PASSWORD }}
+          VETTA_ANDROID_KEY_ALIAS: ${{ secrets.VETTA_ANDROID_KEY_ALIAS }}
+          VETTA_ANDROID_KEY_PASSWORD: ${{ secrets.VETTA_ANDROID_KEY_PASSWORD }}
+        run: bash ./gradlew --no-daemon -PvettaSplitApks=true :androidApp:assembleRelease
+
+      - name: Verify and name signed Android APK
         shell: bash
         run: |
-          VERSION="${BUILD_VERSION:-$(node -p "require('./apps/desktop/package.json').version")}"
-          TAG="v${VERSION}"
-          if ! gh release view "${TAG}" >/dev/null 2>&1; then
-            NOTES_FILE="$(node scripts/release/release-notes.mjs --version "${VERSION}")"
-            # 另一个平台可能同时创建了同一个 Release；创建失败时以它已存在为准。
-            gh release create "${TAG}" --notes-file "${NOTES_FILE}" --title "Vetta ${VERSION}" --target "${GITHUB_SHA}" \
-              || gh release view "${TAG}" >/dev/null
+          node scripts/release/prepare-android-release.mjs --stage-apk apps/mobile/client-android/androidApp/build/outputs/apk/release
+          "${ANDROID_HOME}/build-tools/36.0.0/apksigner" verify --verbose "${VETTA_ANDROID_APK_PATH}"
+
+      - name: Upload signed Android APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: apk
+          path: ${{ env.VETTA_ANDROID_APK_PATH }}
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
+          overwrite: true
+
+      - name: Add Android APK to GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ needs.prepare.outputs.release-version }}
+        run: node scripts/release/publish-github-installers.mjs --platform android --directory "${{ runner.temp }}/android-release"
+
+      - name: Clean Android signing key
+        if: always()
+        shell: bash
+        run: |
+          if [[ -n "${VETTA_ANDROID_KEYSTORE_PATH:-}" ]]; then
+            rm -f -- "${VETTA_ANDROID_KEYSTORE_PATH}"
           fi
-          find apps/desktop/release -maxdepth 1 -type f \( \
-            -name "*.AppImage" -o -name "*.blockmap" -o -name "*.deb" -o -name "*.dmg" \
-            -o -name "*.exe" -o -name "*.msi" -o -name "*.rpm" -o -name "*.zip" \) -print0 \
-            | xargs -0 gh release upload "${TAG}" --clobber
 
   # 全部平台构建成功后自动上线更新清单；任一平台失败时跳过，修好后重跑失败的平台会一并重跑本任务。
   # 以 GitHub Release 为更新源的构建没有 R2 暂存目录，仍需手动处理清单。

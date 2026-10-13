@@ -4,7 +4,8 @@
 
 ## 各平台构建完即发布安装包，全部成功后自动上线更新清单
 
-流水线分 `prepare` → `quality` → `build <platform>` → `promote` 四段。每个平台构建成功后在同一个任务里：
+流水线先执行 `prepare` → `quality`，再并行构建 `build <platform>` 与正式渠道的 `android`。
+桌面全部平台成功后执行 `promote`；Android 独立发布，不参与桌面更新清单上线的门禁。每个桌面平台构建成功后在同一个任务里：
 
 1. 校验更新清单与安装包（`verify-update-artifacts`，macOS 含签名与公证）；Windows 的校验会真实安装一遍，发版跳过。
 2. 上传 Actions 制品 `desktop-<platform>`（安装包、blockmap 与 `latest*.yml`，保留 30 天）。
@@ -48,6 +49,41 @@ R2 目标在**全部平台构建成功后**由 `promote` 任务自动调用 desk
 以 GitHub Release 为更新源的构建（开源版）没有 R2 暂存目录，需从 Actions 制品取回清单、
 用 `merge:updates:mac` 合并后手动上传到 Release。
 
+## 同期 Android APK
+
+正式桌面发版（匹配桌面版本的 `v*` tag，或会发布的非 test 手动发版）会从同一提交构建 Android Release APK。
+运行 Android host tests 后，核对 APK 的应用 ID、Release 构建类型及 Android 自己的版本名与版本代码，并使用 `apksigner` 验证签名。
+只构建 `gradle.properties` 中 `vettaAndroidAbi=arm64-v8a` 指定的 64 位 ARM APK，
+以 `Vetta-arm64-v8a.apk` 上传到同一个 GitHub Release，文件名不附桌面版本或 `android`。
+APK 只包含 arm64-v8a 原生库，同时保留 30 天的 Actions 制品 `apk`。本地 Debug 构建保持原有通用 APK；
+本地需复现发布构建时使用 `./gradlew --no-daemon -PvettaSplitApks=true :androidApp:assembleRelease`。
+R2 桌面发布也会上传 APK 到 GitHub；APK 不进入桌面更新清单或 R2 安装包目录。test 渠道与不发布的手动构建不运行此任务。
+
+### 首次配置固定签名
+
+在 GitHub 的 `desktop-production` Environment 中配置以下 Secrets（也可使用同名仓库 Secrets）：
+
+| Secret | 内容 |
+| --- | --- |
+| `VETTA_ANDROID_KEYSTORE_BASE64` | 固定 JKS 密钥库文件的 Base64 内容 |
+| `VETTA_ANDROID_KEYSTORE_PASSWORD` | 密钥库密码 |
+| `VETTA_ANDROID_KEY_ALIAS` | 签名私钥的 alias |
+| `VETTA_ANDROID_KEY_PASSWORD` | 签名私钥密码 |
+
+密钥只生成一次。例如使用 JDK 的 `keytool -genkeypair -storetype JKS -keyalg RSA -keysize 4096 -validity 10000 -alias vetta-android -keystore vetta-android.jks`，
+按提示输入密码并生成密钥库；不要把文件或密码提交到仓库。配置 Secrets 后离线备份密钥库和密码，以后每次发版复用它们。
+上传已有密钥之前检查这四个 Secrets，避免替换已经用于分发的签名。CI 不生成新密钥，也不回退到 debug 签名；缺少任一配置时 Android 任务直接失败。
+密钥只在 runner 的临时目录解码，任务结束时删除，Gradle 的 Actions 缓存关闭，Actions 制品只含 APK。
+
+Android 的 `versionName` 与 `versionCode` 独立维护在
+[`gradle.properties`](../../apps/mobile/client-android/gradle.properties) 的 `vettaAndroidVersionName` 与 `vettaAndroidVersionCode` 中，
+桌面发版不改写它们。发布新的 Android 应用版本时调整版本名并递增版本代码；代码为 1–2,100,000,000 的整数。
+应用 ID 保持 `org.vetta.android`。先前安装的本地 Debug APK 使用另一把签名密钥，第一次换装正式包需要先卸载 Debug 版，
+会清除手机本地的配对和缓存；此后的正式版本可直接覆盖升级。
+
+Android 任务失败不影响已成功的桌面平台发布或桌面更新清单上线。补齐配置后在原运行中重跑失败任务即可，
+同一桌面 Release 中的 APK 会覆盖同名附件；Android 也可能先完成并创建 Release，页面会随着桌面平台完成继续补齐。
+
 ## 哪一步失败，就重跑哪一步
 
 在原来的 Actions 运行页面选择 **Re-run jobs → Re-run failed jobs**，不要重新 Run workflow，
@@ -57,6 +93,7 @@ R2 目标在**全部平台构建成功后**由 `promote` 任务自动调用 desk
 | --- | --- |
 | `quality` | 重新检查；通过后开始构建 |
 | `build <platform>` | 重做该平台的构建与上传；已经成功的平台不重打 |
+| `android` | 重跑 Android 测试、签名构建与 APK 上传；已成功的桌面平台不重打 |
 
 构建矩阵关闭 fail-fast，一个平台失败不影响其他平台发布。重跑时 R2 上内容相同的安装包会跳过，
 内容不同则拒绝覆盖；pending 清单与 GitHub Release 的同名文件直接覆盖。
