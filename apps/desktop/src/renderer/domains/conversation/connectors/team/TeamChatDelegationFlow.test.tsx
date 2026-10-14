@@ -232,6 +232,11 @@ function assistantRows(): HTMLElement[] {
 	);
 }
 
+// A finished reply folds its process area away; the folded rows stay reachable by expanding it.
+function expandFoldedProcess(): void {
+	fireEvent.click(within(screen.getByTestId("message-list")).getByRole("button", { expanded: false }));
+}
+
 function visibleConversationSignature(): readonly { readonly entryId: string | null; readonly text: string }[] {
 	return Array.from(screen.getByTestId("message-list").querySelectorAll<HTMLElement>("[data-entry-id]")).map(
 		(row) => ({ entryId: row.getAttribute("data-entry-id"), text: row.textContent ?? "" }),
@@ -531,6 +536,7 @@ describe("Team delegation message-to-UI flow", () => {
 
 		await waitFor(() => expect(screen.getByText(finalText)).toBeTruthy());
 		expect(assistantRows()).toHaveLength(1);
+		expandFoldedProcess();
 		expect(screen.getAllByText("委派架构设计")).toHaveLength(1);
 		expect(screen.getAllByTestId("team-member-reply-card")).toHaveLength(1);
 		expect(within(screen.getByTestId("team-member-reply-card")).getByText("已完成")).toBeTruthy();
@@ -573,6 +579,8 @@ describe("Team delegation message-to-UI flow", () => {
 		view.unmount();
 		render(<TeamFlow />);
 		await waitFor(() => expect(screen.getByText(finalText)).toBeTruthy());
+		expandFoldedProcess();
+		// Compare the two timelines in the same fold state.
 
 		expect(visibleConversationSignature()).toEqual(completedSignature);
 		expect(screen.queryByText("正在探索实现路径")).toBeNull();

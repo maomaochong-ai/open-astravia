@@ -71,7 +71,10 @@ describe("Goal execution through the Google provider", () => {
 			initialModel: MODEL,
 			initialThinkingLevel: "off",
 			enableSubagents: false,
-			activation: { mode: "explicit", toolNames: ["todo"] },
+			// Explicit activation disables the Goal tools unless they are listed in this
+			// fork (see goal-session-extension.test.ts), so they are activated here to
+			// exercise the real Goal execution path.
+			activation: { mode: "explicit", toolNames: ["todo", "get_goal", "create_goal", "update_goal"] },
 			streamFn: createRegistrySimpleStream(registry),
 		});
 		disposals.push(() => composition.dispose());
