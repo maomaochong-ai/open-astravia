@@ -68,8 +68,8 @@ website/
 
 - **新增/修改区块**：直接改 `index.html`，交互类效果在 `src/main.ts`，样式在 `src/style.css`
 - **品牌叙事（重要）**：官网**不得出现**任何竞品名称或「基于某产品改造」「源于 / 复用某产品」等表述，也不得把产品定位为任何现有产品的衍生。星轨定位为**独立自研**产品，文案一律按自研叙事撰写（如「独立自研」「自主设计」「不依赖既有产品代码」）。FAQ 中涉及与其他产品关系的回答同样按此口径，不承认基于任何竞品改造。仅可作为内部设计参考，不得写进官网文案
-- **升级版本号**（发版后）：改 `index.html` 中「下载」区块的三处文件名（`astravia-<版本>-mac.dmg` 等）与版本说明，并同步 `package.json` 的 `version`
- - **下载链接**：三平台按钮当前指向 GitHub Releases `releases/latest`（R2 直链 `https://dl.astravia.dev/app/v<版本>/astravia-<版本>-<平台>.<扩展名>` 在对应版本上传前不可用，勿切）。R2 上传完成后，按 [docs/deploy/launch/installer-r2-distribution.md](../docs/deploy/launch/installer-r2-distribution.md) 第 4 节替换为 dl 直链
+- **升级版本号**（发版后）：把旧版本号改成新版本，共 5 个文件——`index.html` 里下载相关的链接与版本标签（导航、Hero、主按钮、「其他版本」列表，共 14 行）、`src/download-links.ts` 的 `DOWNLOAD_VERSION`、`package.json` 的 `version`、`test/download-target.test.ts` 与 `test/download-entry.test.ts` 的 `VERSION` 常量；改完在 `website/` 目录跑 `bun run test`（有 lint 会漏掉的字面量，测试会拦下）
+- **下载链接**：三平台按钮与「其他版本」列表都指向 R2 直链 `https://dl.astravia.dev/app/v<版本>/<产物名>`，所以官网版本号必须在 `upload-release-to-r2.yml` 把该版本产物上传完成后再改，否则链接 404（该工作流已默认 `prefix=app/v<版本>`），细节见 [docs/deploy/launch/installer-r2-distribution.md](../docs/deploy/launch/installer-r2-distribution.md) 第 4 节
 
 ## 部署
 
