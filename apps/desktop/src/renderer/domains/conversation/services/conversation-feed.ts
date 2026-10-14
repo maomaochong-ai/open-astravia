@@ -495,9 +495,16 @@ function attachFeed(
 	runningTurnId: string | undefined,
 ): ConversationFeedState {
 	if (revision < state.historyRevision) return state;
-	const durable = runningTurnId
-		? items.filter((item) => !(item.kind === "agent" && item.turnId === runningTurnId))
-		: items;
+	const inRunningTurn = (item: ChatConversationItem): boolean =>
+		runningTurnId !== undefined && (item.kind === "agent" || item.kind === "user") && item.turnId === runningTurnId;
+	const durable = runningTurnId ? items.filter((item) => !inRunningTurn(item)) : items;
+	// The replay appends the running Turn's user messages again, follow-ups promoted from the
+	// queue included, and each opens its own reply segment. Shown up front, they would all
+	// precede the replayed replies. Their history metadata waits for that append instead.
+	const queuedIds = new Set(state.queuedUsers.map((user) => user.id));
+	const awaitingAppend = items.filter(
+		(item): item is UserItem => item.kind === "user" && inRunningTurn(item) && !queuedIds.has(item.id),
+	);
 	// A new subscription restarts everything derived from Runtime events: agent messages
 	// that history does not hold yet belong either to the replayed Turn or to a finished
 	// Turn now in history. The running Turn's copy from a preview goes the same way.
@@ -509,7 +516,11 @@ function attachFeed(
 	});
 	const kept = filtered.length === state.items.length ? state.items : filtered;
 	const merged = mergeHistorySnapshot({ ...state, items: kept, activeTurnId: null }, durable, revision);
-	return { ...merged, sequence: 0 };
+	return {
+		...merged,
+		sequence: 0,
+		queuedUsers: awaitingAppend.length > 0 ? [...merged.queuedUsers, ...awaitingAppend] : merged.queuedUsers,
+	};
 }
 
 function appendFeedError(

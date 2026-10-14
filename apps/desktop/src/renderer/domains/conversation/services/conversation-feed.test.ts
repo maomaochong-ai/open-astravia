@@ -405,6 +405,54 @@ describe("conversation feed", () => {
 		}
 	});
 
+	it("rejoining a running Turn keeps queued follow-ups after the reply they followed", () => {
+		const turn = [
+			turnStarted("t1", 10),
+			userAppended("t1", "u1", "go", 11),
+			textDelta("t1", 0, "working", 12),
+			userAppended("t1", "u2", "also this", 20),
+			textDelta("t1", 1, "sure", 21),
+			userAppended("t1", "u3", "and that", 30),
+			textDelta("t1", 2, "ok", 31),
+		];
+		const stayed = reduce(freshFeed(), { type: "user.sent", message: optimisticUser("u1", "go") }, events(...turn));
+		const userEntry = (entryId: string, messageId: string, text: string, timestamp: number) => ({
+			type: "message",
+			entryId,
+			messageId,
+			turnId: "t1",
+			message: { role: "user", content: text, timestamp },
+		});
+		const history = fullHistoryToChat([
+			userEntry("e1", "u1", "go", 11),
+			{
+				type: "message",
+				entryId: "e2",
+				turnId: "t1",
+				message: assistant([{ type: "text", text: "working" }], "stop"),
+			},
+			userEntry("e3", "u2", "also this", 20),
+			{ type: "message", entryId: "e4", turnId: "t1", message: assistant([{ type: "text", text: "sure" }], "stop") },
+			userEntry("e5", "u3", "and that", 30),
+		] as HistoryEntry[]);
+
+		const rejoined = reduce(
+			freshFeed(),
+			{ type: "feed.attached", runtimeId: RUNTIME, items: history, revision: 1, runningTurnId: "t1" },
+			events(...turn),
+		);
+
+		expect(visible(rejoined.items)).toEqual(visible(stayed.items));
+		expect(visible(rejoined.items).map((item) => item.id)).toEqual([
+			"u1",
+			"assistant:t1:1",
+			"u2",
+			"assistant:t1:2",
+			"u3",
+			"assistant:t1:3",
+		]);
+	});
+
 	it("rebuilds a continuation Turn on its own message, never on the previous Turn's", () => {
 		const history = fullHistoryToChat([
 			{
@@ -452,8 +500,13 @@ describe("conversation feed", () => {
 			revision: 2,
 			runningTurnId: "t1",
 		});
-		expect(attached.items.map((item) => item.id)).toEqual(["u1"]);
+		// The running Turn's user message waits for its replayed append, keeping history metadata.
+		expect(attached.items.map((item) => item.id)).toEqual([]);
+		expect(attached.queuedUsers.map((user) => user.id)).toEqual(["u1"]);
 		expect(attached.sequence).toBe(0);
+		const replayed = reduce(attached, events(turnStarted("t1", 1), userAppended("t1", "u1", "go", 1)));
+		expect(replayed.items.map((item) => item.id)).toEqual(["u1", "assistant:t1:1"]);
+		expect(replayed.queuedUsers).toEqual([]);
 		expect(reduce(attached, { type: "feed.attached", items: [], revision: 1 })).toBe(attached);
 	});
 
