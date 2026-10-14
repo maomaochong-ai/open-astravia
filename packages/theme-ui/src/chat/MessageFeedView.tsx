@@ -131,7 +131,9 @@ export function MessageFeedVirtualList<T>({
 
 function MessageFeedVirtualFooterSlot(): JSX.Element {
 	const { setFooterHost } = useMessageFeedContext("MessageFeed.VirtualFooter");
-	return <div ref={setFooterHost} />;
+	// 与 List（MessageFeedLayoutList）同宽：mx-auto max-w-3xl px-5。
+	// 裸 div 无宽度约束时，portaled 内容（CompactionCard live 摘要）铺满 scroller 全宽。
+	return <div ref={setFooterHost} className="mx-auto w-full max-w-3xl px-5" />;
 }
 
 const VIRTUAL_COMPONENTS = { List: MessageFeedLayoutList, Footer: MessageFeedVirtualFooterSlot };
