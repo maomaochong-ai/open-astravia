@@ -773,6 +773,12 @@
 		"compactionBoundary": "Context compacted",
 		"modelSwitched": "Switched model from {{from}} to {{to}}",
 		"compactionIndicator": "Compacting context...",
+		"compactionStep": {
+			"running": "Compacting context…",
+			"done": "Context compacted",
+			"failed": "Context compaction failed",
+			"tokensBefore": "{{tokens}} tokens before"
+		},
 		"retryIndicator": "Reconnecting ({{attempt}}/{{maxAttempts}})",
 		"retryReason": "Last request failed: {{reason}}",
 		"streamingPhrases": [

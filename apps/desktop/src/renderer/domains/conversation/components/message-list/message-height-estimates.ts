@@ -89,6 +89,9 @@ function estimateAgentBlockHeight(block: ContentBlock, persistentToolCallIds: Re
 			return 0;
 		case "error":
 			return 56 + Math.min(320, estimateTextHeight(block.text));
+		case "compaction":
+			// The summary stays folded until the user opens the step.
+			return COLLAPSED_TOOL_CALL_HEIGHT;
 	}
 }
 
@@ -171,6 +174,8 @@ function blockRevision(block: ContentBlock): string {
 			return `${block.type}:${block.toolCallId}:${textRevision(block.content)}`;
 		case "error":
 			return `${block.type}:${block.id}:${textRevision(block.text)}`;
+		case "compaction":
+			return `${block.type}:${block.id}:${block.status}`;
 	}
 }
 

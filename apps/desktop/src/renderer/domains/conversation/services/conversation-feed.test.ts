@@ -122,6 +122,28 @@ const toolEnd = (toolCallId: string, timestamp: number): SessionEvent => ({
 	phases: [],
 });
 
+const compactionStart = (timestamp: number, reason: "threshold" | "manual" = "threshold"): SessionEvent => ({
+	...base(timestamp),
+	channel: "runtime",
+	source: "runtime-core",
+	type: "compaction.start",
+	reason,
+});
+
+const compactionEnd = (
+	timestamp: number,
+	outcome: { readonly success?: boolean; readonly cancelled?: boolean; readonly reason?: "threshold" | "manual" } = {},
+): SessionEvent => ({
+	...base(timestamp),
+	channel: "runtime",
+	source: "runtime-core",
+	type: "compaction.end",
+	reason: outcome.reason ?? "threshold",
+	success: outcome.success ?? true,
+	...(outcome.cancelled ? { cancelled: true } : {}),
+	tokensBefore: 120_000,
+});
+
 function reduce(state: ConversationFeedState, ...actions: ConversationFeedAction[]): ConversationFeedState {
 	return actions.reduce(reduceConversationFeed, state);
 }
@@ -146,7 +168,9 @@ function visible(items: readonly ChatConversationItem[]) {
 				blocks: item.blocks.map((block) =>
 					block.type === "tool_call"
 						? `${block.type}:${block.toolCallId}:${block.status}`
-						: `${block.type}:${"text" in block ? block.text : ""}`,
+						: block.type === "compaction"
+							? `${block.type}:${block.status}`
+							: `${block.type}:${"text" in block ? block.text : ""}`,
 				),
 			};
 		}
@@ -792,5 +816,139 @@ describe("conversation feed", () => {
 
 		expect(state.items[0]).toMatchObject({ entryId: "e1", deliveryPhase: "completed", inputSegments: segments });
 		expect(conversationFeedOutbox(state).visible).toEqual([]);
+	});
+
+	describe("automatic context compaction", () => {
+		const userEntry = {
+			type: "message",
+			entryId: "e1",
+			messageId: "u1",
+			turnId: "t1",
+			message: { role: "user", content: "go", timestamp: 11 },
+		};
+		const firstReply = {
+			type: "message",
+			entryId: "e2",
+			turnId: "t1",
+			message: assistant([{ type: "text", text: "first" }]),
+		};
+		const compactionEntry = {
+			type: "compaction",
+			entryId: "c1",
+			summary: "earlier work",
+			tokensBefore: 120_000,
+			turnId: "t1",
+			timestamp: new Date(20).toISOString(),
+		};
+
+		it("keeps the running reply at the tail when history with a mid-Turn compaction arrives", () => {
+			const live = reduce(
+				freshFeed(),
+				events(
+					turnStarted("t1", 10),
+					userAppended("t1", "u1", "go", 11),
+					textDelta("t1", 0, "first", 12),
+					compactionStart(20),
+					compactionEnd(21),
+				),
+			);
+			const state = reduce(live, {
+				type: "history.loaded",
+				items: fullHistoryToChat([userEntry, firstReply, compactionEntry] as HistoryEntry[]),
+				revision: 1,
+			});
+
+			expect(visible(state.items)).toEqual([
+				{ id: "u1", kind: "user", text: "go" },
+				{
+					id: "assistant:t1:1",
+					kind: "agent",
+					phase: "streaming",
+					blocks: ["text:first", "compaction:success"],
+				},
+			]);
+			const reply = state.items.at(-1);
+			expect(reply?.kind === "agent" && reply.blocks[1]).toMatchObject({
+				summary: "earlier work",
+				tokensBefore: 120_000,
+			});
+		});
+
+		it("shows compaction as a running step of the reply until it ends", () => {
+			const running = reduce(
+				freshFeed(),
+				events(turnStarted("t1", 10), userAppended("t1", "u1", "go", 11), textDelta("t1", 0, "first", 12)),
+				events(compactionStart(20)),
+			);
+			expect(visible(running.items).at(-1)).toMatchObject({ blocks: ["text:first", "compaction:running"] });
+
+			const done = reduce(running, events(compactionEnd(21), textDelta("t1", 1, "second", 22)));
+			expect(visible(done.items).at(-1)).toMatchObject({
+				blocks: ["text:first", "compaction:success", "text:second"],
+			});
+
+			const failed = reduce(running, events(compactionEnd(21, { success: false })));
+			expect(visible(failed.items).at(-1)).toMatchObject({ blocks: ["text:first", "compaction:error"] });
+
+			const cancelled = reduce(running, events(compactionEnd(21, { success: false, cancelled: true })));
+			expect(visible(cancelled.items).at(-1)).toMatchObject({ blocks: ["text:first"] });
+		});
+
+		it("opens the reply with Turn-start compaction, below the user message", () => {
+			const state = reduce(
+				freshFeed(),
+				{ type: "user.sent", message: optimisticUser("u1", "go") },
+				{ type: "turn.pending", startedAt: 9 },
+				events(
+					turnStarted("t1", 10),
+					compactionStart(11),
+					compactionEnd(12),
+					userAppended("t1", "u1", "go", 13),
+					textDelta("t1", 0, "answer", 14),
+				),
+			);
+
+			expect(visible(state.items)).toEqual([
+				{ id: "u1", kind: "user", text: "go" },
+				{ id: "assistant:t1:1", kind: "agent", phase: "streaming", blocks: ["compaction:success", "text:answer"] },
+			]);
+		});
+
+		it("leaves manual compaction and compaction outside a Turn to the history boundary", () => {
+			const idle = reduce(freshFeed(), events(compactionStart(1, "manual"), compactionEnd(2, { reason: "manual" })));
+			expect(idle.items).toEqual([]);
+
+			const betweenTurns = reduce(freshFeed(), events(compactionStart(1), compactionEnd(2)));
+			expect(betweenTurns.items).toEqual([]);
+		});
+
+		it("rejoining a running Turn shows the compaction step where staying would have shown it", () => {
+			const turn = [
+				turnStarted("t1", 10),
+				userAppended("t1", "u1", "go", 11),
+				textDelta("t1", 0, "first", 12),
+				compactionStart(20),
+				compactionEnd(21),
+			];
+			const stayed = reduce(
+				freshFeed(),
+				{ type: "user.sent", message: optimisticUser("u1", "go") },
+				events(...turn),
+			);
+			const rejoined = reduce(
+				freshFeed(),
+				{
+					type: "feed.attached",
+					runtimeId: RUNTIME,
+					items: fullHistoryToChat([userEntry, firstReply, compactionEntry] as HistoryEntry[]),
+					revision: 1,
+					runningTurnId: "t1",
+				},
+				events(...turn),
+			);
+
+			expect(visible(rejoined.items)).toEqual(visible(stayed.items));
+			expect(rejoined.items.at(-1)?.kind).toBe("agent");
+		});
 	});
 });

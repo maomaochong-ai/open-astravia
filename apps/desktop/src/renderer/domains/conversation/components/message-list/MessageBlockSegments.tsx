@@ -2,6 +2,7 @@ import { LiveThinkingView } from "@vetta-org/theme-ui/chat/LiveThinkingView";
 import { SegmentShell, ToolCallGroupView } from "@vetta-org/theme-ui/chat/MessageBlockSegmentsView";
 import { memo } from "react";
 import { useTranslation } from "react-i18next";
+import { CompactionBlockView } from "../blocks/CompactionBlock";
 import { ErrorBlockView } from "../blocks/ErrorBlock";
 import { TextBlockView } from "../blocks/TextBlock";
 import { ThinkingBlockView } from "../blocks/ThinkingBlock";
@@ -171,6 +172,9 @@ export const SegmentRenderer = memo(function SegmentRenderer({
 				break;
 			case "error":
 				content = <ErrorBlockView block={segment.block} exportMode={exportMode} />;
+				break;
+			case "compaction":
+				content = <CompactionBlockView block={segment.block} exportMode={exportMode} />;
 				break;
 			default:
 				content = null;

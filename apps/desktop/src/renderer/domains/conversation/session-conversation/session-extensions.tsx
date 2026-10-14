@@ -112,9 +112,13 @@ export function SessionWaitingFooter() {
 	const items = useAtomValue(feed.items);
 	const isStreaming = useAtomValue(feed.streaming);
 	const isCompacting = useAtomValue(isCompactingAtom);
+	const tail = items.at(-1);
+	// Automatic compaction already shows as a running step of the reply.
+	const compactingInReply =
+		tail?.kind === "agent" && tail.blocks.some((block) => block.type === "compaction" && block.status === "running");
 	return (
 		<MessageListFooter
-			isCompacting={isCompacting}
+			isCompacting={isCompacting && !compactingInReply}
 			waiting={isStreaming && items.at(-1)?.kind !== "agent"}
 			sessionId={feed.key ?? undefined}
 			pendingLabel={feed.pendingLabel}

@@ -16,4 +16,9 @@ describe("routeSessionEvent", () => {
 		expect(routeSessionEvent(event({ type: "usage.update" }))).toBe("session-state");
 		expect(routeSessionEvent(event({ type: "session.lifecycle" }))).toBe("ignored");
 	});
+
+	it("sends automatic compaction to both the feed and session state", () => {
+		expect(routeSessionEvent(event({ type: "compaction.start" }))).toBe("both");
+		expect(routeSessionEvent(event({ type: "compaction.end" }))).toBe("both");
+	});
 });
