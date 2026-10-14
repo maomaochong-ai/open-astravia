@@ -422,6 +422,10 @@
 			"types": "./src/chat/MessageBlockSegmentsView.tsx",
 			"import": "./src/chat/MessageBlockSegmentsView.tsx"
 		},
+		"./chat/CompactionStepView": {
+			"types": "./src/chat/CompactionStepView.tsx",
+			"import": "./src/chat/CompactionStepView.tsx"
+		},
 		"./chat/MessageBoundaryViews": {
 			"types": "./src/chat/MessageBoundaryViews.tsx",
 			"import": "./src/chat/MessageBoundaryViews.tsx"

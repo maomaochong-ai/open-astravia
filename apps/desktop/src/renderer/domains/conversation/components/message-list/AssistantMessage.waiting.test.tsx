@@ -69,7 +69,7 @@ describe("AssistantMessage first-response waiting state", () => {
 		expect(screen.getByText("messageList.assistantMessage.preparing")).toBeTruthy();
 		expect(screen.getByText("waited 12s")).toBeTruthy();
 		expect(screen.queryByText("…")).toBeNull();
-		expect(useExpansionMock).toHaveBeenCalledWith("fold:assistant-waiting", true);
+		expect(useExpansionMock).toHaveBeenCalledWith("fold:assistant-waiting", false);
 		vi.useRealTimers();
 	});
 

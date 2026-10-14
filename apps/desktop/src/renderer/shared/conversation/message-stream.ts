@@ -153,12 +153,13 @@ function mergeTerminalMessage(
 	phase: "completed" | "failed" | "aborted",
 ): ConversationAgentMessageViewModel {
 	let next = message;
-	if (next.blocks.length === 0) {
+	// Compaction steps are not model output: a reply that only shows them still takes the terminal content.
+	if (next.blocks.every((block) => block.type === "compaction")) {
 		const blocks = projectAssistantMessageBlocks(terminal, messageId, phase === "aborted" ? "cancelled" : "pending");
 		next = {
 			...next,
 			text: blocks.flatMap((block) => (block.type === "text" ? [block.text] : [])).join(""),
-			blocks,
+			blocks: [...next.blocks, ...blocks],
 		};
 	} else {
 		for (let index = 0; index < terminal.content.length; index += 1) {

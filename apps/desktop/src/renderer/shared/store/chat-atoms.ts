@@ -55,6 +55,7 @@ export type ChatConversationItem =
 export type {
 	AskUserQuestionResolution,
 	ChatErrorDetails,
+	CompactionBlock,
 	ContentBlock,
 	ErrorBlock,
 	KnowledgeToolUiDetails,

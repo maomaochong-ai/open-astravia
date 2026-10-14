@@ -204,6 +204,8 @@ describe("RuntimeHostSessionEventRelay", () => {
 			messageId: "user-1",
 			message: { role: "user", content: "go", timestamp: 1 },
 		});
+		stream.emit({ ...base, type: "compaction.start", reason: "threshold" });
+		stream.emit({ ...base, type: "compaction.end", reason: "threshold", success: true, tokensBefore: 10 });
 		stream.emit(assistantEvent({ type: "text_delta", contentIndex: 0, delta: "hel", partial }));
 		stream.emit(assistantEvent({ type: "text_delta", contentIndex: 0, delta: "lo", partial }));
 		// A persisted model call ends the per-call buffer but not the Turn replay.
@@ -220,14 +222,19 @@ describe("RuntimeHostSessionEventRelay", () => {
 		const replayed: SessionEvent[] = [];
 		const unsubscribe = relay.subscribe("session-key", handle, (event) => replayed.push(event), { replay: "turn" });
 		const turnEvents = replayed.filter(
-			(event) => event.channel === "assistant" || event.type.startsWith("conversation."),
+			(event) =>
+				event.channel === "assistant" ||
+				event.type.startsWith("conversation.") ||
+				event.type.startsWith("compaction."),
 		);
 		expect(turnEvents.map((event) => event.type)).toEqual([
 			"conversation.turn.started",
 			"conversation.message.appended",
+			"compaction.start",
+			"compaction.end",
 			"text_delta",
 		]);
-		expect(turnEvents[2]).toMatchObject({ delta: "hello" });
+		expect(turnEvents[4]).toMatchObject({ delta: "hello" });
 		const perCall: SessionEvent[] = [];
 		relay.subscribe("session-key", handle, (event) => perCall.push(event))();
 		expect(perCall.some((event) => event.channel === "assistant")).toBe(false);

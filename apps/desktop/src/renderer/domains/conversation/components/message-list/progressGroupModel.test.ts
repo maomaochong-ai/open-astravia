@@ -152,3 +152,19 @@ describe("groupBlocksForWork", () => {
 		expect(segments.map((segment) => segment.type)).toEqual(["progress_group", "single"]);
 	});
 });
+
+describe("groupBlocksForWork 的上下文压缩步骤", () => {
+	it("独立成行，不并进阶段组，也不结束当前阶段", () => {
+		const compaction: ContentBlock = { type: "compaction", id: "c1", status: "running" };
+		const segments = groupBlocksForWork(
+			[progress({ label: "修改页面" }), tool("edit"), compaction, tool("edit")],
+			new Set(),
+			true,
+		);
+
+		expect(segments.map((segment) => segment.type)).toEqual(["progress_group", "single", "progress_group"]);
+		expect(segments[1]).toEqual({ type: "single", block: compaction });
+		const groups = segments.filter((segment): segment is ProgressGroupSegment => segment.type === "progress_group");
+		expect(new Set(groups.map((group) => group.stageId)).size).toBe(1);
+	});
+});

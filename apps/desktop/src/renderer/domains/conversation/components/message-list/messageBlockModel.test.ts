@@ -140,3 +140,12 @@ describe("selectLiveThinkingId 选出仍在追加的思考", () => {
 		expect(selectLiveThinkingId([thinking("")], true)).toBeNull();
 	});
 });
+
+describe("上下文压缩步骤", () => {
+	it("属于执行过程：回复结束后与工具调用一起折叠", () => {
+		const compaction: ContentBlock = { type: "compaction", id: "c1", status: "success", summary: "earlier" };
+		const fold = getAssistantFoldData([tool("read"), compaction, text("结论如下")], ARTIFACT);
+		expect(fold?.processBlocks).toEqual([expect.anything(), compaction]);
+		expect(fold?.answerBlocks).toEqual([expect.objectContaining({ text: "结论如下" })]);
+	});
+});

@@ -9,6 +9,7 @@ import type {
 	AskUserQuestionResolution,
 	ChatConversationItem,
 	ChatErrorDetails,
+	CompactionBlock,
 	ContentBlock,
 	KnowledgeToolUiDetails,
 	PlanReviewResolution,
@@ -587,15 +588,20 @@ export function fullHistoryToChat(entries: HistoryEntry[]): ChatConversationItem
 	const historyErrors = createDeferredHistoryErrors();
 	const turnSegments = new Map<string, number>();
 
+	/** Automatic compaction recorded before its Turn's reply exists (Turn start), keyed by Turn. */
+	const pendingCompactions = new Map<string, CompactionBlock[]>();
+
 	function currentAssistant(turnId?: string): ConversationAgentMessageViewModel {
 		const last = messages.at(-1);
 		const stableId = turnId ? conversationAssistantMessageId(turnId, turnSegments.get(turnId) ?? 0) : undefined;
 		if (last?.kind === "agent" && (!stableId || last.id === stableId)) return last;
+		const pending = turnId ? pendingCompactions.get(turnId) : undefined;
+		if (turnId) pendingCompactions.delete(turnId);
 		const msg = createConversationAgentMessage({
 			id: stableId ?? `hist-asst-${messages.length}`,
 			...(turnId ? { turnId } : {}),
 			text: "",
-			blocks: [],
+			blocks: pending ?? [],
 		});
 		messages.push(msg);
 		return msg;
@@ -623,6 +629,25 @@ export function fullHistoryToChat(entries: HistoryEntry[]): ChatConversationItem
 	let pendingAttachments: PromptAttachmentRef[] | undefined;
 
 	for (const entry of entries) {
+		if (entry.type === "compaction" && entry.turnId) {
+			// Automatic compaction is a step of the reply whose Turn triggered it.
+			const block: CompactionBlock = {
+				type: "compaction",
+				id: entry.entryId ?? `hist-compact-${messages.length}`,
+				status: "success",
+				summary: entry.summary,
+				tokensBefore: entry.tokensBefore,
+			};
+			const last = messages.at(-1);
+			if (last?.kind === "agent" && last.turnId === entry.turnId) {
+				last.blocks.push(block);
+			} else {
+				// Compaction at Turn start precedes the Turn's user message; the reply opens with it.
+				pendingCompactions.set(entry.turnId, [...(pendingCompactions.get(entry.turnId) ?? []), block]);
+			}
+			continue;
+		}
+
 		if (entry.type === "compaction") {
 			pendingSettingsAssistTabId = undefined;
 			pendingPromptRef = undefined;
@@ -822,6 +847,8 @@ export function fullHistoryToChat(entries: HistoryEntry[]): ChatConversationItem
 		}
 	}
 	historyErrors.flush();
+	// The running Turn may not have produced a reply yet; it opens with the compaction step.
+	for (const turnId of pendingCompactions.keys()) currentAssistant(turnId);
 	return messages;
 }
 

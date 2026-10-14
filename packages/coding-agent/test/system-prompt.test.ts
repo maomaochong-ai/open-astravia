@@ -236,6 +236,7 @@ describe("buildSystemPrompt", () => {
 			expect(prompt).toContain("Scoping rules:");
 			expect(prompt).toContain("more deeply nested files take precedence");
 			expect(prompt).toContain("## AGENTS.md");
+			expect(prompt).toContain("within the same directory AGENTS.md takes precedence over CLAUDE.md");
 		});
 
 		test("no scoping rules without context files", () => {

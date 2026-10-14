@@ -687,11 +687,12 @@
 			"expandLabel": "Expand",
 			"streaming": "Processing · {{duration}}",
 			"waiting": "Waiting · {{duration}}",
+			"done": "Done",
 			"work": {
-				"collapse": "Collapse {{count}} steps",
-				"collapseZero": "Collapse process",
-				"expand": "Expand {{count}} steps",
-				"expandZero": "Expand process"
+				"collapse": "Completed",
+				"collapseZero": "Completed",
+				"expand": "Completed",
+				"expandZero": "Completed"
 			}
 		},
 		"assistantMessage": {
@@ -772,6 +773,12 @@
 		"compactionBoundary": "Context compacted",
 		"modelSwitched": "Switched model from {{from}} to {{to}}",
 		"compactionIndicator": "Compacting context...",
+		"compactionStep": {
+			"running": "Compacting context…",
+			"done": "Context compacted",
+			"failed": "Context compaction failed",
+			"tokensBefore": "{{tokens}} tokens before"
+		},
 		"retryIndicator": "Reconnecting ({{attempt}}/{{maxAttempts}})",
 		"retryReason": "Last request failed: {{reason}}",
 		"streamingPhrases": [

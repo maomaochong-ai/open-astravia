@@ -326,6 +326,9 @@ function belongsToTurnReplay(event: SessionEvent, turnId: string): boolean {
 		case "tool.start":
 		case "tool.phase":
 		case "tool.end":
+		// Only automatic compaction runs inside a Turn; it is a step of that Turn's reply.
+		case "compaction.start":
+		case "compaction.end":
 			return true;
 		default:
 			return false;

@@ -182,6 +182,10 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 				case "session-state":
 					applySessionStateEvent(sessionId, event);
 					return;
+				case "both":
+					enqueueFeedEvent(sessionId, event);
+					applySessionStateEvent(sessionId, event);
+					return;
 				case "ignored":
 					return;
 			}

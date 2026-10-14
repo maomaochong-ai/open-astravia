@@ -6,9 +6,10 @@ type RuntimeSessionEventType = Exclude<SessionEvent, { readonly channel: "assist
  * Where a Runtime event goes in the renderer:
  * - `conversation-feed`: the message list reducer (ADR-0146);
  * - `session-state`: session-wide atoms such as context usage, queue and extensions;
+ * - `both`: a session-wide fact that is also a step of the running reply (automatic compaction);
  * - `ignored`: deliberately not consumed by the chat view.
  */
-export type SessionEventRoute = "conversation-feed" | "session-state" | "ignored";
+export type SessionEventRoute = "conversation-feed" | "session-state" | "both" | "ignored";
 
 /**
  * Exhaustive by construction: a new event type in the Runtime contract fails to
@@ -31,8 +32,8 @@ const RUNTIME_EVENT_ROUTES = {
 	"queue.changed": "session-state",
 	"retry.start": "session-state",
 	"retry.end": "session-state",
-	"compaction.start": "session-state",
-	"compaction.end": "session-state",
+	"compaction.start": "both",
+	"compaction.end": "both",
 	active_tools_update: "session-state",
 	"session.extension": "session-state",
 	// Streaming state follows conversation.turn.* facts; the lifecycle is kept for other hosts.

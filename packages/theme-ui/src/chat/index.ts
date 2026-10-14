@@ -45,6 +45,7 @@ export {
 	AssistantMessage,
 	AssistantMessageFold,
 	AssistantMessagePredictingStatus,
+	AssistantMessageProcessContainer,
 	AssistantMessageStreamingStatus,
 	StreamingIndicator,
 } from "./AssistantMessageView";
@@ -87,6 +88,8 @@ export {
 	ChatHeaderPinAction,
 	ChatHeaderTerminalAction,
 } from "./ChatHeaderActionsView";
+export type { CompactionStepViewProps } from "./CompactionStepView";
+export { CompactionStepView } from "./CompactionStepView";
 export type { ContextRingViewProps } from "./ContextRingView";
 export { CIRCUMFERENCE as CONTEXT_RING_CIRCUMFERENCE, ContextRingView } from "./ContextRingView";
 export type { CopyIconButtonLabels, CopyIconButtonProps } from "./CopyIconButton";

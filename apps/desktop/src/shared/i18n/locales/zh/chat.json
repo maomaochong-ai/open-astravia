@@ -687,11 +687,12 @@
 			"expandLabel": "展开",
 			"streaming": "正在处理 · {{duration}}",
 			"waiting": "已等待 · {{duration}}",
+			"done": "完成",
 			"work": {
-				"collapse": "收起{{count}}个步骤",
-				"collapseZero": "收起过程",
-				"expand": "展开{{count}}个步骤",
-				"expandZero": "展开过程"
+				"collapse": "已完成",
+				"collapseZero": "已完成",
+				"expand": "已完成",
+				"expandZero": "已完成"
 			}
 		},
 		"assistantMessage": {
@@ -772,6 +773,12 @@
 		"compactionBoundary": "上下文已压缩",
 		"modelSwitched": "模型已从 {{from}} 切换为 {{to}}",
 		"compactionIndicator": "正在压缩上下文...",
+		"compactionStep": {
+			"running": "正在压缩上下文…",
+			"done": "上下文已压缩",
+			"failed": "上下文压缩失败",
+			"tokensBefore": "压缩前 {{tokens}} tokens"
+		},
 		"retryIndicator": "正在重新连接（{{attempt}}/{{maxAttempts}}）",
 		"retryReason": "上次请求失败：{{reason}}",
 		"streamingPhrases": [

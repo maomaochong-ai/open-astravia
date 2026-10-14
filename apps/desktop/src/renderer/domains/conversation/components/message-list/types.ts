@@ -35,6 +35,8 @@ export interface AssistantMessageModel {
 	/** 仍在追加的 thinking block id：原位改用实时滚动卡片渲染。 */
 	liveThinkingId: string | null;
 	segments: WorkSegment[];
+	processSegments?: WorkSegment[];
+	answerSegments?: WorkSegment[];
 	/** 折叠条的计数单位是阶段数，而非原始 block 数。 */
 	workFoldCount: number;
 	durationAvailable: boolean;

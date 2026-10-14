@@ -19,22 +19,23 @@ export async function resolvePromptInput(
 	}
 }
 
-async function loadContextFileFromDir(
+async function loadContextFilesFromDir(
 	access: ResourceAccessPort,
 	dir: string,
 	signal?: AbortSignal,
-): Promise<{ path: string; content: string } | null> {
-	for (const filename of ["AGENTS.md", "CLAUDE.md"]) {
+): Promise<Array<{ path: string; content: string }>> {
+	const files: Array<{ path: string; content: string }> = [];
+	for (const filename of ["CLAUDE.md", "AGENTS.md"]) {
 		const filePath = access.paths.join(dir, filename);
 		if (!(await access.files.stat(filePath, { signal }))) continue;
 		try {
-			return { path: filePath, content: await access.files.readText(filePath, { signal }) };
+			files.push({ path: filePath, content: await access.files.readText(filePath, { signal }) });
 		} catch (error) {
 			signal?.throwIfAborted();
 			console.error(chalk.yellow(`Warning: Could not read ${filePath}: ${error}`));
 		}
 	}
-	return null;
+	return files;
 }
 
 export async function loadProjectContextFiles(
@@ -45,24 +46,22 @@ export async function loadProjectContextFiles(
 ): Promise<Array<{ path: string; content: string }>> {
 	const files: Array<{ path: string; content: string }> = [];
 	const seen = new Set<string>();
-	const globalContext = await loadContextFileFromDir(access, agentDir, signal);
-	if (globalContext) {
-		files.push(globalContext);
-		seen.add(globalContext.path);
+	const globalContext = await loadContextFilesFromDir(access, agentDir, signal);
+	for (const context of globalContext) {
+		files.push(context);
+		seen.add(context.path);
 	}
-	const ancestors: Array<{ path: string; content: string }> = [];
+	const ancestors: Array<Array<{ path: string; content: string }>> = [];
 	let currentDir = access.paths.resolve(cwd);
 	while (true) {
-		const context = await loadContextFileFromDir(access, currentDir, signal);
-		if (context && !seen.has(context.path)) {
-			ancestors.unshift(context);
-			seen.add(context.path);
-		}
+		const contexts = await loadContextFilesFromDir(access, currentDir, signal);
+		ancestors.unshift(contexts.filter((context) => !seen.has(context.path)));
+		for (const context of contexts) seen.add(context.path);
 		const parentDir = access.paths.dirname(currentDir);
 		if (parentDir === currentDir) break;
 		currentDir = parentDir;
 	}
-	files.push(...ancestors);
+	files.push(...ancestors.flat());
 	return files;
 }
 

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
 	applyStoredEventToConversationDocument,
 	createEmptyConversationDocument,
+	projectConversationDocumentHistory,
 	selectConversationDocumentMessages,
 	selectConversationDocumentModelMessages,
 } from "../../src/conversation/index.js";
@@ -53,7 +54,42 @@ describe("conversation compaction projection", () => {
 			firstKeptEntryId: "event-4",
 			tokensBefore: 120,
 			reason: "threshold",
+			turnId: "turn-1",
 		});
+		expect(projectConversationDocumentHistory(document).find((entry) => entry.type === "compaction")).toEqual({
+			type: "compaction",
+			entryId: "event-5",
+			summary: "earlier work",
+			tokensBefore: 120,
+			turnId: "turn-1",
+			timestamp: new Date(5).toISOString(),
+		});
+	});
+
+	it("keeps manual compaction a session fact without a Turn", () => {
+		const events: StoredSessionEvent[] = [
+			message(1, user("request", 1)),
+			{
+				type: "context.compacted",
+				sessionId: "session-1",
+				record: {
+					summary: "manual",
+					summaryMessage: user("<summary>manual</summary>", 2),
+					firstKeptEntryId: "event-1",
+					tokensBefore: 80,
+					reason: "manual",
+				},
+				timestamp: 2,
+			},
+		];
+		let document = createEmptyConversationDocument({ sessionId: "session-1", createdAt: 0 });
+		for (let index = 0; index < events.length; index += 1) {
+			document = applyStoredEventToConversationDocument(document, events[index] as StoredSessionEvent, index + 1);
+		}
+
+		const compaction = projectConversationDocumentHistory(document).find((entry) => entry.type === "compaction");
+		expect(compaction).toMatchObject({ type: "compaction", summary: "manual" });
+		expect(compaction).not.toHaveProperty("turnId");
 	});
 
 	it("keeps early count-only records readable without changing the document branch", () => {

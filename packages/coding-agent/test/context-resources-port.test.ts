@@ -49,19 +49,39 @@ function createMemoryResourceAccess(
 }
 
 describe("context resources host port", () => {
-	it("keeps global-to-local ordering and prefers AGENTS.md within one directory", async () => {
+	it("loads both instruction files from global and project directories, with local AGENTS.md last", async () => {
 		const access = createMemoryResourceAccess({
-			"/agent/AGENTS.md": "global",
-			"/workspace/AGENTS.md": "workspace",
-			"/workspace/project/AGENTS.md": "project",
-			"/workspace/project/CLAUDE.md": "shadowed",
+			"/agent/AGENTS.md": "global agents",
+			"/agent/CLAUDE.md": "global claude",
+			"/workspace/CLAUDE.md": "workspace claude",
+			"/workspace/project/AGENTS.md": "project agents",
+			"/workspace/project/CLAUDE.md": "project claude",
 		});
 
 		await expect(loadProjectContextFiles(access, "/workspace/project", "/agent")).resolves.toEqual([
-			{ path: "/agent/AGENTS.md", content: "global" },
-			{ path: "/workspace/AGENTS.md", content: "workspace" },
-			{ path: "/workspace/project/AGENTS.md", content: "project" },
+			{ path: "/agent/CLAUDE.md", content: "global claude" },
+			{ path: "/agent/AGENTS.md", content: "global agents" },
+			{ path: "/workspace/CLAUDE.md", content: "workspace claude" },
+			{ path: "/workspace/project/CLAUDE.md", content: "project claude" },
+			{ path: "/workspace/project/AGENTS.md", content: "project agents" },
 		]);
+	});
+
+	it("loads CLAUDE.md alone and continues after an unreadable instruction file", async () => {
+		const agentsPath = "/workspace/AGENTS.md";
+		const access = createMemoryResourceAccess(
+			{ [agentsPath]: "unavailable", "/workspace/CLAUDE.md": "usable" },
+			new Set([agentsPath]),
+		);
+		const error = vi.spyOn(console, "error").mockImplementation(() => {});
+		try {
+			await expect(loadProjectContextFiles(access, "/workspace", "/agent")).resolves.toEqual([
+				{ path: "/workspace/CLAUDE.md", content: "usable" },
+			]);
+			expect(error).toHaveBeenCalledOnce();
+		} finally {
+			error.mockRestore();
+		}
 	});
 
 	it("prefers the project prompt and resolves file or literal input through the port", async () => {

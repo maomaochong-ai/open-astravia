@@ -5,7 +5,12 @@ import {
 	createConversationUserMessage,
 	reduceConversationMessageEvent,
 } from "@shared/conversation";
-import type { ChatConversationItem, ChatErrorDetails, ConversationFeedState } from "@shared/store/atoms";
+import type {
+	ChatConversationItem,
+	ChatErrorDetails,
+	CompactionBlock,
+	ConversationFeedState,
+} from "@shared/store/atoms";
 import type { AssistantSessionEvent, SessionEvent } from "@vetta/runtime-core";
 import {
 	findToolCallMessageIndex,
@@ -269,6 +274,9 @@ function applyRuntimeEvent(state: ConversationFeedState, event: SessionEvent): C
 				),
 			);
 		}
+		case "compaction.start":
+		case "compaction.end":
+			return applyCompactionEvent(state, event);
 		case "error":
 			return appendFeedError(state, {
 				type: "error.appended",
@@ -318,10 +326,12 @@ function commitUserMessage(
 	const userIndex = messages.findIndex((item) => item.kind === "user" && item.id === event.messageId);
 	const assistantIndex = findLastIndex(messages, (item) => item.kind === "agent" && item.turnId === event.turnId);
 	const assistant = assistantIndex >= 0 ? messages[assistantIndex] : undefined;
+	// A draft that only shows Turn-start compaction still has no reply of its own: the
+	// user message goes above it and the reply continues below the compaction step.
 	const reusesEmptyDraft =
 		assistant?.kind === "agent" &&
 		assistant.endedAt === undefined &&
-		assistant.blocks.length === 0 &&
+		assistant.blocks.every((block) => block.type === "compaction") &&
 		!assistant.text;
 	const queued = state.queuedUsers.find((user) => user.id === event.messageId);
 	const existingUser = userIndex >= 0 ? messages[userIndex] : queued;
@@ -383,6 +393,49 @@ function commitUserMessage(
 		items: next,
 		queuedUsers: queued ? state.queuedUsers.filter((user) => user.id !== queued.id) : state.queuedUsers,
 	};
+}
+
+/**
+ * Automatic compaction runs inside the active Turn and shows as a step of its reply.
+ * Manual compaction is a session fact between Turns; history shows it as a boundary.
+ */
+function applyCompactionEvent(
+	state: ConversationFeedState,
+	event: Extract<SessionEvent, { readonly type: "compaction.start" | "compaction.end" }>,
+): ConversationFeedState {
+	if (event.reason === "manual" || !state.activeTurnId) return state;
+	const resolved = resolveTurnAssistant(state, state.activeTurnId, event.timestamp);
+	const item = resolved.items[resolved.index] as AgentItem;
+	const blocks = [...item.blocks];
+	if (event.type === "compaction.start") {
+		blocks.push({ type: "compaction", id: `${item.id}:compaction:${event.eventId}`, status: "running" });
+	} else {
+		let index = blocks.length - 1;
+		while (
+			index >= 0 &&
+			!(blocks[index].type === "compaction" && (blocks[index] as CompactionBlock).status === "running")
+		) {
+			index -= 1;
+		}
+		if (index < 0) return withItems(resolved.state, resolved.items);
+		const running = blocks[index] as CompactionBlock;
+		if (event.cancelled) {
+			blocks.splice(index, 1);
+		} else if (event.success) {
+			blocks[index] = {
+				...running,
+				status: "success",
+				...(event.tokensBefore === undefined ? {} : { tokensBefore: event.tokensBefore }),
+			};
+		} else {
+			blocks[index] = {
+				...running,
+				status: "error",
+				...(event.errorMessage ? { errorMessage: event.errorMessage } : {}),
+			};
+		}
+	}
+	return withItems(resolved.state, replaceAt(resolved.items, resolved.index, { ...item, blocks }));
 }
 
 /** Settle only the assistant message owned by the terminal Turn. */
@@ -495,9 +548,16 @@ function attachFeed(
 	runningTurnId: string | undefined,
 ): ConversationFeedState {
 	if (revision < state.historyRevision) return state;
-	const durable = runningTurnId
-		? items.filter((item) => !(item.kind === "agent" && item.turnId === runningTurnId))
-		: items;
+	const inRunningTurn = (item: ChatConversationItem): boolean =>
+		runningTurnId !== undefined && (item.kind === "agent" || item.kind === "user") && item.turnId === runningTurnId;
+	const durable = runningTurnId ? items.filter((item) => !inRunningTurn(item)) : items;
+	// The replay appends the running Turn's user messages again, follow-ups promoted from the
+	// queue included, and each opens its own reply segment. Shown up front, they would all
+	// precede the replayed replies. Their history metadata waits for that append instead.
+	const queuedIds = new Set(state.queuedUsers.map((user) => user.id));
+	const awaitingAppend = items.filter(
+		(item): item is UserItem => item.kind === "user" && inRunningTurn(item) && !queuedIds.has(item.id),
+	);
 	// A new subscription restarts everything derived from Runtime events: agent messages
 	// that history does not hold yet belong either to the replayed Turn or to a finished
 	// Turn now in history. The running Turn's copy from a preview goes the same way.
@@ -509,7 +569,11 @@ function attachFeed(
 	});
 	const kept = filtered.length === state.items.length ? state.items : filtered;
 	const merged = mergeHistorySnapshot({ ...state, items: kept, activeTurnId: null }, durable, revision);
-	return { ...merged, sequence: 0 };
+	return {
+		...merged,
+		sequence: 0,
+		queuedUsers: awaitingAppend.length > 0 ? [...merged.queuedUsers, ...awaitingAppend] : merged.queuedUsers,
+	};
 }
 
 function appendFeedError(

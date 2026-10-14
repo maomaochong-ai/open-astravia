@@ -64,6 +64,21 @@ export function useAssistantMessageModel({
 		[visibleBlocks, customToolNames, isCurrentlyStreaming, standaloneToolCallIds],
 	);
 	// 折叠条按「阶段数」计数，而不是原始 block 数——用户看到的单位就是阶段。
+	const processSegments = useMemo(() => {
+		if (exportMode || isCurrentlyStreaming || !foldData) return [];
+		return groupBlocksForWork(foldData.processBlocks, customToolNames, false, standaloneToolCallIds);
+	}, [exportMode, isCurrentlyStreaming, foldData, customToolNames, standaloneToolCallIds]);
+
+	const answerSegments = useMemo(() => {
+		if (exportMode || isCurrentlyStreaming || !foldData) return segments;
+		return groupBlocksForWork(
+			expanded ? foldData.answerBlocks : pinApprovedPlanBlocks(foldData.processBlocks, foldData.answerBlocks),
+			customToolNames,
+			false,
+			standaloneToolCallIds,
+		);
+	}, [exportMode, isCurrentlyStreaming, foldData, segments, expanded, customToolNames, standaloneToolCallIds]);
+
 	const workFoldCount = useMemo(() => {
 		if (!foldData) return 0;
 		const processSegments = groupBlocksForWork(
@@ -122,6 +137,8 @@ export function useAssistantMessageModel({
 		liveThinkingId,
 		workFoldCount,
 		segments,
+		processSegments,
+		answerSegments,
 		durationAvailable:
 			message.durationSeconds !== undefined &&
 			Number.isFinite(message.durationSeconds) &&

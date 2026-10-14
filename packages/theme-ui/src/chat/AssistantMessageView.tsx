@@ -1,4 +1,4 @@
-import type { JSX } from "react";
+import type { JSX, ReactNode } from "react";
 import { useEffect, useState } from "react";
 
 /**
@@ -25,6 +25,7 @@ export interface AssistantMessageFoldLabels {
 	waitingFold: (elapsed: number) => string;
 	expandFold: (count: number) => string;
 	collapseFold: (count: number) => string;
+	doneFold?: string;
 }
 
 function useElapsedSeconds(startedAt: number | undefined, active: boolean): number {
@@ -73,7 +74,7 @@ export function AssistantMessageFold({
 		);
 	}
 	return (
-		<div className="mb-3">
+		<div className={expanded ? "mb-0" : "mb-3"}>
 			<button
 				type="button"
 				onClick={onToggle}
@@ -81,16 +82,22 @@ export function AssistantMessageFold({
 				data-export-label-collapsed={labels.expandFold(count)}
 				data-export-label-expanded={labels.collapseFold(count)}
 				aria-expanded={expanded}
-				className="mb-2 inline-flex w-fit items-center gap-1.5 rounded-lg py-1 pr-1.5 text-[12px] font-medium text-muted-foreground/55 transition-colors hover:bg-muted/60 hover:text-muted-foreground"
+				className="group inline-flex w-fit items-center gap-1.5 text-[14px] font-bold text-foreground transition-colors hover:opacity-85"
 			>
 				<span
-					className={`icon-[mdi--chevron-right] h-3.5 w-3.5 shrink-0 transition-transform duration-200 ${expanded ? "rotate-90" : ""}`}
-				/>
-				<span data-export-toggle-label="">
+					data-export-toggle-label=""
+					className={
+						expanded
+							? ""
+							: "pb-0.5 [background-image:linear-gradient(to_right,color-mix(in_srgb,currentColor_40%,transparent)_6px,transparent_6px)] [background-position:bottom] [background-repeat:repeat-x] [background-size:9px_1px]"
+					}
+				>
 					{expanded ? labels.collapseFold(count) : labels.expandFold(count)}
 				</span>
+				<span
+					className={`icon-[mdi--chevron-right] h-4 w-4 shrink-0 transition-transform duration-200 ${expanded ? "rotate-90" : ""}`}
+				/>
 			</button>
-			<div className="h-px w-full rounded-full bg-border/80" />
 		</div>
 	);
 }
@@ -139,8 +146,36 @@ export function AssistantMessagePredictingStatus({ label }: { readonly label: st
 	return <span className="processing-shimmer text-[11px] font-medium">{label}</span>;
 }
 
+export function AssistantMessageProcessContainer({
+	children,
+	completedLabel = "完成",
+}: {
+	readonly children: ReactNode;
+	readonly completedLabel?: string;
+}): JSX.Element {
+	return (
+		<div className="relative mt-0.5 mb-2.5 flex flex-col gap-2">
+			<div
+				aria-hidden="true"
+				className="absolute left-2 -translate-x-1/2 -top-2 bottom-4 w-px bg-border/70"
+			/>
+			<div className="flex flex-col gap-2 pl-6">
+				{children}
+			</div>
+			<div className="relative flex items-center gap-2 text-[14px] font-bold text-foreground">
+				<span
+					aria-hidden="true"
+					className="icon-[solar--check-circle-linear] h-4 w-4 shrink-0 text-foreground"
+				/>
+				<span className="text-[14px] font-bold text-foreground">{completedLabel}</span>
+			</div>
+		</div>
+	);
+}
+
 export const AssistantMessage = {
 	Fold: AssistantMessageFold,
+	ProcessContainer: AssistantMessageProcessContainer,
 	StreamingStatus: AssistantMessageStreamingStatus,
 	PredictingStatus: AssistantMessagePredictingStatus,
 	StreamingIndicator,

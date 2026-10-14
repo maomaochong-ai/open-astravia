@@ -63,6 +63,7 @@ export function projectConversationDocumentHistory(document: ConversationDocumen
 				entryId: entry.id,
 				summary: entry.summary,
 				tokensBefore: entry.tokensBefore,
+				...(entry.turnId === undefined ? {} : { turnId: entry.turnId }),
 				timestamp: entry.timestamp,
 			});
 			continue;

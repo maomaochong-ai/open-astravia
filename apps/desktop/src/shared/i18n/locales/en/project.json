@@ -161,7 +161,17 @@
 		"saveFailed": "Save failed",
 		"save": "Save",
 		"editorPlaceholder": "Write AGENTS.md project instructions here...",
+		"editorPlaceholderFile": "Write {{file}} project instructions here...",
 		"agentsMdHint": "AGENTS.md defines project-level AI instructions; every session loads this file automatically.",
+		"claudeMdHint": "Vetta also loads CLAUDE.md. If it conflicts with AGENTS.md, AGENTS.md takes priority.",
+		"context": { "title": "Project instructions" },
+		"recentSessions": { "title": "Recent sessions", "empty": "No sessions in this project yet", "startFirst": "Start a session" },
+		"runtime": { "runningSessions": "{{count}} running sessions", "runningTasks": "{{count}} running automations" },
+		"previewMode": "Preview",
+		"editMode": "Edit",
+		"emptyFileTitle": "No {{file}} yet",
+		"emptyFileHint": "Switch to edit mode to create and save instructions.",
+		"startEditing": "Start writing",
 		"quickSave": "Quick save"
 	},
 	"exportDialog": {

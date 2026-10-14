@@ -1,4 +1,5 @@
 import { chatUrlTransform } from "../markdown/markdown-link";
+import { cn } from "@vetta-org/ui";
 import { MarkdownHostProvider } from "../markdown/host";
 import type { MarkdownHost } from "../markdown/host";
 import { MarkdownImage } from "../markdown/MarkdownImage";
@@ -30,6 +31,7 @@ export interface MarkdownPreviewViewProps {
 	/** Host opens http(s)/mailto/tel links (e.g. via shell.openExternal). */
 	onOpenExternal: (href: string) => void;
 	labels?: MarkdownLabels;
+	className?: string;
 }
 
 const FRONTMATTER_RE = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/;
@@ -104,6 +106,7 @@ export const MarkdownPreviewView = memo(function MarkdownPreviewView({
 	onOpenExternal,
 	labels = DEFAULT_LABELS,
 	host,
+	className,
 }: MarkdownPreviewViewProps): JSX.Element {
 	const definition = useMarkdownDefinition();
 	const parsed = parseFrontmatter(content);
@@ -196,7 +199,7 @@ export const MarkdownPreviewView = memo(function MarkdownPreviewView({
 	}, [theme, onOpenExternal, definition, labels]);
 
 	return (
-		<MarkdownHostProvider host={host}><div className="markdown-body break-words p-4">
+		<MarkdownHostProvider host={host}><div className={cn("markdown-body break-words p-4", className)}>
 			{parsed && parsed.entries.length > 0 && <Frontmatter entries={parsed.entries} />}
 			<ReactMarkdown
 				urlTransform={chatUrlTransform}

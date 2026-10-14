@@ -1,4 +1,9 @@
-import { conversationItemRenderKey, type ErrorBlock } from "@shared/conversation";
+import {
+	type CompactionBlock,
+	type ContentBlock,
+	conversationItemRenderKey,
+	type ErrorBlock,
+} from "@shared/conversation";
 import type { ChatConversationItem, ConversationFeedState } from "@shared/store/atoms";
 
 type AgentItem = Extract<ChatConversationItem, { readonly kind: "agent" }>;
@@ -96,6 +101,7 @@ function mergeAgentItem(current: AgentItem, durable: AgentItem, running: boolean
 	if (running || durable.blocks.length < liveContentCount) {
 		return {
 			...current,
+			blocks: withDurableCompactionSummaries(current.blocks, durable.blocks),
 			entryId: durable.entryId ?? current.entryId,
 			usages: current.usages ?? durable.usages,
 			startedAt: current.startedAt ?? durable.startedAt,
@@ -130,6 +136,22 @@ function mergeAgentItem(current: AgentItem, durable: AgentItem, running: boolean
 		modelRequestStartedAt: current.modelRequestStartedAt ?? durable.modelRequestStartedAt,
 		usages: durable.usages ?? current.usages,
 	};
+}
+
+/** Live compaction events carry no summary; history has it, in the same order. */
+function withDurableCompactionSummaries(live: ContentBlock[], durable: readonly ContentBlock[]): ContentBlock[] {
+	const summaries = durable.filter((block): block is CompactionBlock => block.type === "compaction");
+	if (summaries.length === 0) return live;
+	let next = 0;
+	let changed = false;
+	const blocks = live.map((block) => {
+		if (block.type !== "compaction" || block.status !== "success") return block;
+		const persisted = summaries[next++];
+		if (!persisted?.summary || block.summary === persisted.summary) return block;
+		changed = true;
+		return { ...block, summary: persisted.summary, tokensBefore: block.tokensBefore ?? persisted.tokensBefore };
+	});
+	return changed ? blocks : live;
 }
 
 function sameError(left: ErrorBlock, right: ErrorBlock): boolean {

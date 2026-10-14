@@ -13,6 +13,7 @@ import { CommandMenu } from "../domains/command-menu/components/CommandMenu";
 import { useActiveWorkspaceViewHeader } from "../domains/plugins/components/WorkspaceViewHeaderSlot";
 import { Sidebar } from "../domains/project/components/sidebar/Sidebar";
 import { PageHeader } from "../shared/app-shell/page-header";
+import { SessionOpenProvider } from "../shared/app-shell/session-open-context";
 import { TooltipProvider } from "../shared/components/ui/tooltip";
 import { useActiveThemePageRoute } from "../shared/theme/pages";
 import { SidebarTour } from "../shared/tour";
@@ -28,10 +29,18 @@ import type { RootLayoutModel } from "./types";
  * 内容树不需要这个状态：形态走 AppFrame 上的 data-sidebar-* 属性（CSS 自适应），需要响应
  * 的插件走 ctx.ui 的订阅，两条都不经过这里的 render。
  */
-const RouteContent = memo(function RouteContent({ routePending }: { routePending: boolean }): JSX.Element {
+const RouteContent = memo(function RouteContent({
+	routePending,
+	onOpenSession,
+}: {
+	routePending: boolean;
+	onOpenSession: RootLayoutModel["onOpenSession"];
+}): JSX.Element {
 	return (
 		<PerfSendProfiler id="RouteOutlet">
-			{routePending ? <RouteContentLoadingView /> : <Outlet />}
+			<SessionOpenProvider onOpenSession={onOpenSession}>
+				{routePending ? <RouteContentLoadingView /> : <Outlet />}
+			</SessionOpenProvider>
 		</PerfSendProfiler>
 	);
 });
@@ -115,7 +124,7 @@ export function RootLayoutView({ model }: RootLayoutViewProps): JSX.Element {
 				)}
 				{pageLayout === "app" ? (
 					<div className="app-main-frame relative flex min-h-0 min-w-[320px] flex-1 overflow-visible">
-						<RouteContent routePending={routePending} />
+						<RouteContent routePending={routePending} onOpenSession={onOpenSession} />
 					</div>
 				) : (
 					<MainContentFrame
@@ -123,7 +132,7 @@ export function RootLayoutView({ model }: RootLayoutViewProps): JSX.Element {
 						header={pageHeader}
 						headerOverlay={workspaceViewHeader?.immersive === true}
 					>
-						<RouteContent routePending={routePending} />
+						<RouteContent routePending={routePending} onOpenSession={onOpenSession} />
 					</MainContentFrame>
 				)}
 				{/* 复用 Sidebar 那条 onOpenSession：会话打开的落点逻辑只应有一处宿主实现。 */}
