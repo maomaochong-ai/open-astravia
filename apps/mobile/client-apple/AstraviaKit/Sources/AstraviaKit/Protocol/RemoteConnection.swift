@@ -196,6 +196,14 @@ public final class RemoteConnection {
 		try sendSealed(.response(RemoteResponse(requestId: requestId, success: success, payload: payload, error: error)))
 	}
 
+	/// Takes over from another connection to the same peer that got events up to `sequence`,
+	/// and asks for whatever came after: events sent on the other one may never have arrived.
+	public func resume(after sequence: Int) {
+		lastEventSequence = max(lastEventSequence, sequence)
+		guard state == .online else { return }
+		try? sendSealed(.resume(lastEventSequence: lastEventSequence))
+	}
+
 	/// Records the event in the journal and delivers it when online.
 	@discardableResult
 	public func emitEvent(_ name: RemoteEventName, payload: JSONValue? = nil, sessionId: String? = nil) throws -> RemoteEvent {

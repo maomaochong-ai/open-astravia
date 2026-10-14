@@ -1,4 +1,4 @@
-import { QueueCardView } from "@astravia-org/theme-ui/chat";
+import { QueueCardView } from "@astravia-org/theme-ui/chat/QueueCardView";
 import { useQueueCardModel } from "@domains/conversation/hooks/useQueueCardModel";
 
 interface QueueCardProps {

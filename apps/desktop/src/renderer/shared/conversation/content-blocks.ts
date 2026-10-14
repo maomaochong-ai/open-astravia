@@ -130,6 +130,16 @@ export interface ErrorBlock {
 	details?: ChatErrorDetails;
 }
 
+/** Automatic context compaction, shown as a step of the reply whose Turn triggered it. */
+export interface CompactionBlock {
+	type: "compaction";
+	id: string;
+	status: "running" | "success" | "error";
+	summary?: string;
+	tokensBefore?: number;
+	errorMessage?: string;
+}
+
 export interface ChatErrorDetails {
 	code?: string;
 	origin?: "runtime" | "provider" | "tool" | "extension";
@@ -143,4 +153,4 @@ export interface ChatErrorDetails {
 	retryAfterMs?: number;
 }
 
-export type ContentBlock = TextBlock | ThinkingBlock | ToolCallBlock | ToolResultBlock | ErrorBlock;
+export type ContentBlock = TextBlock | ThinkingBlock | ToolCallBlock | ToolResultBlock | ErrorBlock | CompactionBlock;

@@ -3,7 +3,6 @@ import type { ChatAgentMessageViewModel } from "@shared/store/atoms";
 import { pluginToolCallSlotsAtom } from "@shared/store/atoms";
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
-import { useAssistantRendering } from "../components/message-list/AssistantRendering";
 import {
 	findLastProcessBlockIndex,
 	getAssistantFoldData,
@@ -20,6 +19,8 @@ interface AssistantMessageModelInput {
 	isStreaming: boolean;
 	isTailMessage: boolean;
 	message: ChatAgentMessageViewModel;
+	/** The Runtime is predicting the next prompt; shown on the tail reply once it has finished. */
+	predicting?: boolean;
 }
 
 export function useAssistantMessageModel({
@@ -28,8 +29,8 @@ export function useAssistantMessageModel({
 	isStreaming,
 	isTailMessage,
 	message,
+	predicting = false,
 }: AssistantMessageModelInput): AssistantMessageModel {
-	const { predicting: isRuntimePredicting } = useAssistantRendering();
 	const toolCallSlots = useAtomValue(pluginToolCallSlotsAtom);
 	const customToolNames = useMemo(() => new Set(toolCallSlots.map((slot) => slot.toolName)), [toolCallSlots]);
 	const presentationToolCallIds = useMemo(
@@ -63,6 +64,21 @@ export function useAssistantMessageModel({
 		[visibleBlocks, customToolNames, isCurrentlyStreaming, standaloneToolCallIds],
 	);
 	// 折叠条按「阶段数」计数，而不是原始 block 数——用户看到的单位就是阶段。
+	const processSegments = useMemo(() => {
+		if (exportMode || isCurrentlyStreaming || !foldData) return [];
+		return groupBlocksForWork(foldData.processBlocks, customToolNames, false, standaloneToolCallIds);
+	}, [exportMode, isCurrentlyStreaming, foldData, customToolNames, standaloneToolCallIds]);
+
+	const answerSegments = useMemo(() => {
+		if (exportMode || isCurrentlyStreaming || !foldData) return segments;
+		return groupBlocksForWork(
+			expanded ? foldData.answerBlocks : pinApprovedPlanBlocks(foldData.processBlocks, foldData.answerBlocks),
+			customToolNames,
+			false,
+			standaloneToolCallIds,
+		);
+	}, [exportMode, isCurrentlyStreaming, foldData, segments, expanded, customToolNames, standaloneToolCallIds]);
+
 	const workFoldCount = useMemo(() => {
 		if (!foldData) return 0;
 		const processSegments = groupBlocksForWork(
@@ -117,10 +133,12 @@ export function useAssistantMessageModel({
 		exportProcessSegments,
 		foldData,
 		isCurrentlyStreaming,
-		isPredicting: isTailMessage && !isCurrentlyStreaming && isRuntimePredicting,
+		isPredicting: isTailMessage && !isCurrentlyStreaming && predicting,
 		liveThinkingId,
 		workFoldCount,
 		segments,
+		processSegments,
+		answerSegments,
 		durationAvailable:
 			message.durationSeconds !== undefined &&
 			Number.isFinite(message.durationSeconds) &&

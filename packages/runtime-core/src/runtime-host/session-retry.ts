@@ -182,9 +182,6 @@ export class DeferredRuntimeRetryEventStream implements RuntimeSessionEventStrea
 			this.pendingAgentEnd = event;
 			return;
 		}
-		if (event.type === "message.final" && event.message.role === "assistant") {
-			if (event.message.stopReason !== "error") this.clearPendingError();
-		}
 		if (event.channel === "assistant" && event.type === "done") {
 			this.clearPendingError();
 		}

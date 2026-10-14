@@ -37,30 +37,6 @@ export class RpcSessionEventAdapter {
 								error: "Runtime session path changed without a target path",
 							},
 						];
-			case "message.delta":
-				return [
-					{
-						type: "message_update",
-						assistantMessageEvent: {
-							type: "text_delta",
-							contentIndex: 0,
-							delta: event.delta,
-						},
-					},
-				];
-			case "thinking.delta":
-				return [
-					{
-						type: "message_update",
-						assistantMessageEvent: {
-							type: "thinking_delta",
-							contentIndex: 0,
-							delta: event.delta,
-						},
-					},
-				];
-			case "message.final":
-				return [{ type: "message_end", message: event.message }];
 			case "tool.start":
 				return [
 					{

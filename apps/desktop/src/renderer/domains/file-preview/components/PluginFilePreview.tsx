@@ -1,6 +1,6 @@
 import type { PluginFilePreviewContribution } from "@astravia-org/plugin-sdk";
 import type { FilePreviewItem } from "@astravia-org/theme-ui/file-preview";
-import { PluginFilePreviewView } from "@astravia-org/theme-ui/file-preview";
+import { PluginFilePreviewView } from "@astravia-org/theme-ui/file-preview/PluginFilePreviewView";
 import { usePluginFilePreviewModel } from "../hooks/usePluginFilePreviewModel";
 
 /**

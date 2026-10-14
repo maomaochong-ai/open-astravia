@@ -1,4 +1,4 @@
-import { KnowledgeHistoryPanelView } from "@astravia-org/theme-ui/activity";
+import { KnowledgeHistoryPanelView } from "@astravia-org/theme-ui/activity/KnowledgeHistoryPanelView";
 import { useKnowledgeHistoryPanelModel } from "../hooks/useKnowledgeHistoryPanelModel";
 
 /**

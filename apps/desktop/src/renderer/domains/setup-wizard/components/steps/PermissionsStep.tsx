@@ -1,6 +1,6 @@
 import type { PermissionKind, PermissionStatus, PermissionsSnapshot } from "@preload/api";
 import { cn } from "@shared/lib/utils";
-import { Button } from "@astravia-org/ui";
+import { Button } from "@astravia-org/ui/button";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 

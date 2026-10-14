@@ -2,8 +2,9 @@ import { teamMemberAvatarUrls, useAgentAvatarResolver } from "@shared/agent-team
 import { useLocalizedAgentTeamDocument } from "@shared/agent-teams/agent-team-localization";
 import { BotAvatar } from "@shared/components/BotAvatar";
 import { type AgentTeamDocument, listLibraryAgentProfiles } from "@astravia/agent-team";
-import { NewSessionPicker, type NewSessionPickerRootProps } from "@astravia-org/theme-ui/chat";
-import { AvatarStackView } from "@astravia-org/theme-ui/shared";
+import { NewSessionPicker } from "@astravia-org/theme-ui/chat/NewSessionPicker";
+import type { NewSessionPickerRootProps } from "@astravia-org/theme-ui/chat";
+import { AvatarStackView } from "@astravia-org/theme-ui/shared/AvatarStackView";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { loadAgentTeamDocument } from "./agent-team-directory";

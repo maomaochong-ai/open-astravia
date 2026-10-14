@@ -38,6 +38,8 @@ const requestMethods = new Set([
 	"file.stat",
 	"file.read",
 	"screen.subscribe",
+	"tool.result",
+	"action.run",
 ]);
 const eventNames = new Set([
 	"device.status",
@@ -131,6 +133,9 @@ function capabilities(value: unknown): RemoteCapabilities {
 		terminal: input.terminal === undefined ? undefined : requiredBoolean(input.terminal, "capabilities.terminal"),
 		screen: input.screen === undefined ? undefined : requiredBoolean(input.screen, "capabilities.screen"),
 		input: input.input === undefined ? undefined : requiredBoolean(input.input, "capabilities.input"),
+		toolResult:
+			input.toolResult === undefined ? undefined : requiredBoolean(input.toolResult, "capabilities.toolResult"),
+		actions: input.actions === undefined ? undefined : requiredBoolean(input.actions, "capabilities.actions"),
 	};
 }
 

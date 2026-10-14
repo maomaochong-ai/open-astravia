@@ -4,4 +4,4 @@ export type {
 	AtPanelLabels,
 	AtPanelViewProps,
 } from "@astravia-org/theme-ui/chat";
-export { AtPanelView } from "@astravia-org/theme-ui/chat";
+export { AtPanelView } from "@astravia-org/theme-ui/chat/AtPanelView";

@@ -95,7 +95,7 @@ function main() {
 
 	assertCleanWorktree();
 	const branch = assertBranch();
-	run("bun", ["run", "check:lint"]);
+	run("bun", ["run", "check:lint:full"]);
 	run("bun", ["run", "--cwd", "apps/desktop", "typecheck"]);
 	run("bun", ["run", "check:guards"]);
 	assertCleanWorktree();

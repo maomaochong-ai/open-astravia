@@ -267,6 +267,7 @@ export function asAppActionRegistration(value: unknown): PluginAppActionRegistra
 		handlerId,
 		activationId,
 		hasAssertReady: input.hasAssertReady === true,
+		remote: input.remote === true,
 		timeoutMs:
 			typeof input.timeoutMs === "number" && Number.isFinite(input.timeoutMs) && input.timeoutMs > 0
 				? Math.min(Math.floor(input.timeoutMs), 120_000)

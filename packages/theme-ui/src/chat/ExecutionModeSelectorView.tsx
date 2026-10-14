@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from "motion/react";
 import type { JSX } from "react";
-import { Popover, PopoverContent, PopoverTrigger, cn } from "@astravia-org/ui";
+import { Popover, PopoverContent, PopoverTrigger } from "@astravia-org/ui/popover";
+import { cn } from "@astravia-org/ui/utils";
 import { ThemeSurface } from "../appearance/ThemeSurface";
 
 export interface ExecutionModeOptionView {

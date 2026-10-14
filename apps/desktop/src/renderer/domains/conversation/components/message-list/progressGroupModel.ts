@@ -160,8 +160,13 @@ export function groupBlocksForWork(
 
 		if (block.type === "tool_result") continue;
 
-		if (isPersistentToolUiBlock(block, customToolNames, persistentToolCallIds) || block.type === "error") {
+		if (
+			isPersistentToolUiBlock(block, customToolNames, persistentToolCallIds) ||
+			block.type === "error" ||
+			block.type === "compaction"
+		) {
 			// 硬性例外：冒泡到组外单独渲染，阶段本身不结束（后续调用回到同一阶段）。
+			// 上下文压缩是 Runtime 的动作而非 agent 的工具调用，独立成行，不并进阶段组。
 			flushFallback();
 			flushCurrent();
 			segments.push({ type: "single", block });

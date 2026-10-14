@@ -171,6 +171,15 @@ Set `ASTRAVIA_CONFIG_DIR` on the command line, not in `.env.development`: the de
 Node and never reads `.env` files, so a value placed there would only reach the vite-inlined main
 process and would disagree with the launcher-derived Chromium profile.
 
+Renderer startup uses granular public UI entrypoints so unopened views do not expand the initial
+module graph. Vite resolves these workspace packages through their `exports` and warms the startup
+entries while Electron starts; source edits still use normal HMR. Default-theme startup defers the
+remote theme runtime, and global overlay views load after the initial route paints while approval
+requests are already being queued. Development startup prefetches the selected chat/new-session page
+in parallel with the shell, without mounting it or bypassing session restoration. Idle route prefetch
+and the main-process content-ready signal also wait for that route paint. Activity tab metadata stays available, while each built-in tab
+loads its content on demand and preserves it across floating/docked transitions. See [ADR-0148](../../docs/adr/0148-desktop-startup-granular-ui-imports.md).
+
 Main-process sourcemaps are disabled by default to keep startup builds fast. Set
 `ASTRAVIA_MAIN_SOURCEMAP=true` when source-mapped Electron stack traces are needed.
 
@@ -209,3 +218,15 @@ When a user explicitly requests agent-driven UI verification, use repo-root `ver
 Current `e2e/smoke.e2e.ts` batch-1 covers boot only: main-process ready/version, main window `index.html`, config/userData isolation, and a `dialog` mock probe. It does not cover login, chat, or other product flows.
 
 Packaged E2E permits one immediate spec-file retry. WebdriverIO creates a fresh browser instance for the retry, which recovers the upstream CDP bridge when its initialization promise is transiently collected during a packaged process. Unpackaged E2E does not retry; assertions are unchanged and a second failure remains fatal.
+
+### MCP connections in Abilities
+
+The custom MCP add/edit dialogs show the transport selector first. HTTP connections offer an optional
+Authorization key field that edits the same `Authorization` header as the advanced request-header
+editor. Enter the complete header value (including `Bearer ` when required); no prefix is added.
+Clearing the key removes that header while retaining other request headers.
+
+An installed, enabled MCP's detail panel lists all discovered tool names and full descriptions.
+Discovery starts after the panel is displayed, follows pagination, and releases its connection when
+finished. It does not call tools. Uninstalled, disabled, or unauthenticated connections show a setup
+hint; failed discovery shows its error message directly in the panel and can be retried after checking the configuration.

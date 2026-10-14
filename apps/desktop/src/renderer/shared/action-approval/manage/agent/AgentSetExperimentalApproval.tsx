@@ -1,10 +1,6 @@
 import { useMemo, useState } from "react";
-import {
-	ApprovalImpactCard,
-	ApprovalSettingGroup,
-	ApprovalSettingRow,
-} from "@astravia-org/theme-ui/action-approval";
-import { Switch } from "@astravia-org/ui";
+import { ApprovalImpactCard, ApprovalSettingGroup, ApprovalSettingRow } from "@astravia-org/theme-ui/action-approval/ApprovalParts";
+import { Switch } from "@astravia-org/ui/switch";
 import { type ActiveActionApproval, useActionApproval } from "../../useActionApproval";
 import {
 	experimentalFieldLabel,

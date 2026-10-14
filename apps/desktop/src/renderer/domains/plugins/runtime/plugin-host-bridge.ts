@@ -207,30 +207,6 @@ function translate(event: SessionEvent): void {
 			else if (event.phase === "agent_end") emit({ type: "turn-end", stopReason: "stop" });
 			else if (event.phase === "aborted") emit({ type: "turn-end", stopReason: "aborted" });
 			return;
-		case "message.delta":
-			emit({ type: "message-updated", delta: event.delta });
-			return;
-		case "message.final":
-			emit({
-				type: "message-added",
-				message: {
-					id: event.eventId,
-					role: (event.message.role === "user" ? "user" : "assistant") as ConversationMessage["role"],
-					text: messageText(event.message),
-					timestamp: event.timestamp,
-				},
-			});
-			return;
-		case "toolcall.args":
-			// 生成阶段的部分参数：让插件在工具真正落盘之前就能点亮目标。
-			// 与 tool.start 的 args 同属 agent.session.read 的可见面。
-			emit({
-				type: "tool-call-args",
-				toolCallId: event.toolCallId,
-				toolName: event.toolName,
-				args: event.args as Record<string, unknown>,
-			});
-			return;
 		case "tool.start":
 			emit({
 				type: "tool-call-start",

@@ -1,4 +1,6 @@
-import { Button, Input, Switch } from "@astravia-org/ui";
+import { Button } from "@astravia-org/ui/button";
+import { Input } from "@astravia-org/ui/input";
+import { Switch } from "@astravia-org/ui/switch";
 import type { JSX, KeyboardEvent } from "react";
 import { useEffect, useId, useRef, useState } from "react";
 import { ProviderIcon } from "../shared/provider-icon";

@@ -408,6 +408,7 @@ export function createPluginAppActionsApi({
 					activationId,
 					hasAssertReady: typeof registration.assertReady === "function",
 					timeoutMs: registration.timeoutMs,
+					remote: registration.remote === true,
 				})
 				.catch((error: Error) => {
 					handlerHandle.dispose();

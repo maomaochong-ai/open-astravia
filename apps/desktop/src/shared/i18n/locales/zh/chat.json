@@ -687,11 +687,12 @@
 			"expandLabel": "展开",
 			"streaming": "正在处理 · {{duration}}",
 			"waiting": "已等待 · {{duration}}",
+			"done": "完成",
 			"work": {
-				"collapse": "收起{{count}}个步骤",
-				"collapseZero": "收起过程",
-				"expand": "展开{{count}}个步骤",
-				"expandZero": "展开过程"
+				"collapse": "已完成",
+				"collapseZero": "已完成",
+				"expand": "已完成",
+				"expandZero": "已完成"
 			}
 		},
 		"assistantMessage": {
@@ -782,6 +783,12 @@
 		},
 		"modelSwitched": "模型已从 {{from}} 切换为 {{to}}",
 		"compactionIndicator": "正在压缩上下文...",
+		"compactionStep": {
+			"running": "正在压缩上下文…",
+			"done": "上下文已压缩",
+			"failed": "上下文压缩失败",
+			"tokensBefore": "压缩前 {{tokens}} tokens"
+		},
 		"retryIndicator": "正在重新连接（{{attempt}}/{{maxAttempts}}）",
 		"retryReason": "上次请求失败：{{reason}}",
 		"streamingPhrases": [
@@ -987,20 +994,16 @@
 		}
 	},
 	"goalMode": {
-		"dialog": {
-			"cancel": "取消",
+		"actions": {
 			"clear": "清除目标",
-			"createDescription": "Astravia 会持续迭代，直到目标完成、受阻或暂停。",
-			"manageDescription": "查看当前目标状态，或恢复和清除目标。",
-			"objectiveLabel": "目标",
-			"objectivePlaceholder": "描述一个具体、可验证的最终结果…",
-			"resume": "继续目标",
-			"start": "开始执行",
-			"statusLabel": "状态",
-			"title": "目标模式",
-			"usage": "已使用 {{used}} Token · 自动续跑 {{count}} 次"
+			"pause": "暂停目标",
+			"resume": "继续目标"
 		},
 		"operationFailed": "目标操作失败",
+		"summary": {
+			"groupLabel": "当前目标",
+			"usage": "{{tokens}} Token · {{seconds}} 秒 · 续跑 {{count}} 次"
+		},
 		"status": {
 			"active": "执行中",
 			"blocked": "受阻",

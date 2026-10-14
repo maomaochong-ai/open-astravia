@@ -1,6 +1,6 @@
 import type { ComponentPropsWithoutRef, JSX } from "react";
 import { useThemeSurface, type ThemeSurfaceSlot } from "@astravia-org/theme-sdk/appearance";
-import { cn } from "@astravia-org/ui";
+import { cn } from "@astravia-org/ui/utils";
 import { BackgroundImageDecoration } from "./BackgroundImageFrame";
 import { CornerImageDecoration } from "./CornerImageFrame";
 import { HorizontalSliceImageDecoration } from "./HorizontalSliceImageFrame";

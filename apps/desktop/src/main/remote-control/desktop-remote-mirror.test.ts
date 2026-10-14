@@ -355,8 +355,8 @@ describe("DesktopRemoteMirror", () => {
 		// The runtime now reports the turn; the user message must not be echoed twice.
 		runtime.messages.set("rt-chat", [{ role: "user", content: "继续", timestamp: 5 } as Message]);
 		runtime.emit("rt-chat", { type: "session.lifecycle", phase: "agent_start" } as never);
-		runtime.emit("rt-chat", { type: "message.delta", delta: "好" } as never);
-		runtime.emit("rt-chat", { type: "message.delta", delta: "的，" } as never);
+		runtime.emit("rt-chat", { channel: "assistant", type: "text_delta", contentIndex: 0, delta: "好" } as never);
+		runtime.emit("rt-chat", { channel: "assistant", type: "text_delta", contentIndex: 0, delta: "的，" } as never);
 		runtime.emit("rt-chat", {
 			type: "tool.start",
 			toolCallId: "t1",
@@ -371,7 +371,12 @@ describe("DesktopRemoteMirror", () => {
 			result: "ok",
 			durationMs: 12,
 		} as never);
-		runtime.emit("rt-chat", { type: "message.delta", delta: "完成了。" } as never);
+		runtime.emit("rt-chat", {
+			channel: "assistant",
+			type: "text_delta",
+			contentIndex: 0,
+			delta: "完成了。",
+		} as never);
 		runtime.emit("rt-chat", { type: "session.lifecycle", phase: "agent_end" } as never);
 		await flush();
 
@@ -635,6 +640,38 @@ describe("DesktopRemoteMirror", () => {
 		await expect(request("file.list", {}, "unknown")).rejects.toMatchObject({ code: "not_found" });
 	});
 
+	it("answers tool.result with the whole result that history only previews", async () => {
+		const { mirror, request, runtime } = harness();
+		await mirror.start();
+		await request("session.list");
+		const key = keyForPath(CONVERSATION_PATH);
+		await request("session.open", undefined, key);
+		const text = JSON.stringify({ results: Array.from({ length: 100 }, (_, id) => ({ id, name: `小区 ${id}` })) });
+		runtime.messages.set("rt-chat", [
+			{
+				role: "toolResult",
+				toolCallId: "t1",
+				toolName: "jsk_focus_parcels",
+				content: [{ type: "text", text }],
+				isError: false,
+				timestamp: 5,
+			} as Message,
+		]);
+
+		expect(await request("tool.result", { toolCallId: "t1" }, key)).toEqual({
+			toolCallId: "t1",
+			toolName: "jsk_focus_parcels",
+			result: text,
+			isError: false,
+		});
+		await expect(request("tool.result", { toolCallId: "t9" }, key)).rejects.toMatchObject({ code: "not_found" });
+		await expect(request("tool.result", {}, key)).rejects.toMatchObject({ code: "invalid_frame" });
+		await expect(request("tool.result", { toolCallId: "t1" }, "unknown")).rejects.toMatchObject({
+			code: "not_found",
+		});
+		mirror.stop();
+	});
+
 	it("creates a session in the conversation root by default and returns its summary", async () => {
 		const { mirror, request } = harness();
 		await mirror.start();
@@ -651,7 +688,7 @@ describe("DesktopRemoteMirror", () => {
 		await request("session.open", undefined, keyForPath(CONVERSATION_PATH));
 		mirror.stop();
 		emitted.length = 0;
-		runtime.emit("rt-chat", { type: "message.delta", delta: "late" } as never);
+		runtime.emit("rt-chat", { channel: "assistant", type: "text_delta", contentIndex: 0, delta: "late" } as never);
 		runtime.setRunning(PROJECT_PATH, "rt-work", true);
 		await flush();
 		expect(emitted).toEqual([]);

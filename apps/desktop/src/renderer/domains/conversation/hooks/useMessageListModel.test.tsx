@@ -3,7 +3,7 @@
 import { createConversationUserMessage } from "@shared/conversation";
 import { renderHook } from "@testing-library/react";
 import { beforeEach, expect, it, vi } from "vitest";
-import type { MessageListProps } from "../components/message-list/types";
+import type { MessageListModelInput } from "../components/message-list/types";
 import type { MessageListScrollModel } from "./useMessageListScrollModel";
 import { useMessageListModel } from "./useMessageListModel";
 
@@ -22,10 +22,9 @@ beforeEach(() => {
 
 it("keeps the message-list view model stable when its inputs did not change", () => {
 	const messages = [createConversationUserMessage({ id: "message-1", text: "hello" })];
-	const props: MessageListProps = {
+	const props: MessageListModelInput = {
 		messages,
 		isStreaming: false,
-		workspace: { id: "workspace-1", cwd: "C:/workspace", runtimeIds: [] },
 	};
 	const scroll = {} as MessageListScrollModel;
 	const { result, rerender } = renderHook(
@@ -60,10 +59,9 @@ it("includes providers when identically named models are switched", () => {
 			model: { provider: "anthropic", id: "shared" },
 		}),
 	];
-	const props: MessageListProps = {
+	const props: MessageListModelInput = {
 		messages,
 		isStreaming: false,
-		workspace: { id: "workspace-1", cwd: "C:/workspace", runtimeIds: [] },
 	};
 
 	const { result } = renderHook(() => useMessageListModel(props, {} as MessageListScrollModel, messages));

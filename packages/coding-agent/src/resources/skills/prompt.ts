@@ -17,6 +17,7 @@ export function formatSkillsForPrompt(skills: readonly ModelVisibleSkill[]): str
 		"",
 		SKILL_SELECTION_GUIDANCE,
 		"NEVER use bash commands like find, locate, or mdfind to search for skill files. Always use the invoke_skill tool.",
+		"A user message may reference a skill as `@skill:name`: invoke that skill. If no listed skill has that name, say so in one sentence, then continue with the closest fitting skill or with regular tools.",
 		"",
 		"<available_skills>",
 	];

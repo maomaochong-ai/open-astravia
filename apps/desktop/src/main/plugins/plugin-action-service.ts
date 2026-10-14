@@ -327,6 +327,12 @@ export class PluginActionService {
 				`Plugin action example is not JSON serializable: ${pluginId}/${registration.id}`,
 			),
 		}));
+		if (registration.remote && registration.effect !== "read") {
+			throw new ActionError(
+				"PLUGIN_ACTION_REMOTE_INVALID",
+				`Only read-only plugin actions can be offered to paired phones: ${pluginId}/${registration.id}`,
+			);
+		}
 		const globalActionId = buildGlobalActionId(pluginId, registration.id, registration.publicId);
 		const approval = buildApprovalMetadata(pluginId, registration);
 		let registered: RegisteredPluginAction;
@@ -342,6 +348,7 @@ export class PluginActionService {
 			permission: `plugin.${pluginId}.app-action.${registration.effect}`,
 			keywords: registration.keywords,
 			approval,
+			remote: registration.remote === true,
 			inputSchema: {
 				description: registration.description ?? registration.summary,
 				jsonSchema: inputSchema,

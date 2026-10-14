@@ -1,5 +1,8 @@
 import type { JSX, ReactNode } from "react";
-import { Button, Dialog, DialogContent, Drawer, DrawerContent, cn } from "@astravia-org/ui";
+import { Button } from "@astravia-org/ui/button";
+import { Dialog, DialogContent } from "@astravia-org/ui/dialog";
+import { Drawer, DrawerContent } from "@astravia-org/ui/drawer";
+import { cn } from "@astravia-org/ui/utils";
 import { ThemeSurface } from "../appearance/ThemeSurface";
 
 export interface BatchTasksApprovalFrameViewLabels {

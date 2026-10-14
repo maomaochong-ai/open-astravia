@@ -1,4 +1,4 @@
-import { cn } from "@astravia-org/ui";
+import { cn } from "@astravia-org/ui/utils";
 import { Slot } from "radix-ui";
 import {
 	forwardRef,

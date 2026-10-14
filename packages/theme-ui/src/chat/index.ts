@@ -45,6 +45,7 @@ export {
 	AssistantMessage,
 	AssistantMessageFold,
 	AssistantMessagePredictingStatus,
+	AssistantMessageProcessContainer,
 	AssistantMessageStreamingStatus,
 	StreamingIndicator,
 } from "./AssistantMessageView";
@@ -87,6 +88,8 @@ export {
 	ChatHeaderPinAction,
 	ChatHeaderTerminalAction,
 } from "./ChatHeaderActionsView";
+export type { CompactionStepViewProps } from "./CompactionStepView";
+export { CompactionStepView } from "./CompactionStepView";
 export type { ContextRingViewProps } from "./ContextRingView";
 export { CIRCUMFERENCE as CONTEXT_RING_CIRCUMFERENCE, ContextRingView } from "./ContextRingView";
 export type { CopyIconButtonLabels, CopyIconButtonProps } from "./CopyIconButton";
@@ -174,11 +177,13 @@ export type { SegmentShellProps, ToolCallGroupViewProps } from "./MessageBlockSe
 export { ErrorBlockView, SegmentShell, ToolCallGroupView } from "./MessageBlockSegmentsView";
 export type {
 	CompactionBoundaryViewProps,
+	DelegationNoticeViewProps,
 	ForkOriginBannerViewProps,
 	ModelSwitchBoundaryViewProps,
 } from "./MessageBoundaryViews";
 export {
 	CompactionBoundaryView,
+	DelegationNoticeView,
 	ForkOriginBannerView,
 	ModelSwitchBoundaryView,
 } from "./MessageBoundaryViews";
@@ -436,6 +441,8 @@ export type {
 export { SkillPromptAreaView } from "./SkillPromptAreaView";
 export type { SuggestionBubblesViewProps } from "./SuggestionBubblesView";
 export { SuggestionBubblesView } from "./SuggestionBubblesView";
+export type { TeamMemberReplyCardViewProps, TeamMemberReplyState } from "./TeamMemberReplyCardView";
+export { TeamMemberReplyCardView } from "./TeamMemberReplyCardView";
 export type {
 	InlineTokenAnnotation,
 	InlineTokenPiece,
@@ -510,6 +517,7 @@ export type {
 } from "./UserMessageContextMenuView";
 export { UserMessageContextMenuView } from "./UserMessageContextMenuView";
 export type {
+	UserMessageBranchSwitcherLabels,
 	UserMessageEntryState,
 	UserMessageViewLabels,
 } from "./UserMessageView";
@@ -518,6 +526,8 @@ export {
 	SkillBadgeView,
 	UserMessage,
 	UserMessageAction,
+	UserMessageActionBar,
+	UserMessageBranchSwitcher,
 	UserMessageFrame,
 	UserMessageText,
 } from "./UserMessageView";

@@ -1,4 +1,4 @@
-import { NewProjectDialogView } from "@astravia-org/theme-ui/project";
+import { NewProjectDialogView } from "@astravia-org/theme-ui/project/NewProjectDialogView";
 import { useTranslation } from "react-i18next";
 
 interface NewProjectDialogProps {

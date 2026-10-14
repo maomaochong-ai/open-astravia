@@ -13,6 +13,7 @@ import { AbilityShowcaseList } from "./AbilityShowcaseList";
 import { BundleInstallDialog } from "./BundleInstallDialog";
 import { BundleMembersSection } from "./BundleMembersSection";
 import { BundleUninstallDialog } from "./BundleUninstallDialog";
+import { McpToolsSection } from "./McpToolsSection";
 import { McpAbilitySection } from "./McpAbilitySection";
 import { McpAbilitySettingsView } from "./McpAbilitySettingsView";
 import { PluginAbilitySection } from "./PluginAbilitySection";
@@ -136,6 +137,8 @@ export function AbilityDetailView({
 
 			<PluginAbilityDetailSlotHost item={item} onOpenPermissions={() => setPage("permissions")} />
 
+			{item.type === "mcp" ? <McpToolsSection item={item} model={model} /> : null}
+
 			{detail.blocks.length > 0 ? (
 				<DetailDrawerEnter index={1}>
 					<AbilityDetailBlocks blocks={detail.blocks} abilityType={item.type} abilityIcon={item.icon} />
@@ -151,9 +154,9 @@ export function AbilityDetailView({
 					<DetailDrawerEnter index={2}>
 						{detail.content ? (
 							<AbilityMarkdownBody content={detail.content} />
-						) : (
+						) : item.type !== "mcp" ? (
 							<p className="text-[13px] leading-relaxed text-muted-foreground">{t("detail.noContent")}</p>
-						)}
+						) : null}
 					</DetailDrawerEnter>
 				</>
 			)}

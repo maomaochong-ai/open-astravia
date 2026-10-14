@@ -19,7 +19,7 @@ vi.mock("react-i18next", () => ({
 	}),
 }));
 
-vi.mock("@astravia-org/theme-ui/chat", async (importOriginal) => ({
+vi.mock("@astravia-org/theme-ui/chat/ProgressGroupView", async (importOriginal) => ({
 	...(await importOriginal<typeof ThemeChat>()),
 	ProgressGroup: {
 		Root: ({ children, done }: { children: ReactNode; done: boolean }) => (
@@ -213,3 +213,7 @@ describe("WorkSegmentRenderer live activity", () => {
 		expect(screen.getByTestId("thinking-title").textContent).toBe("思考");
 	});
 });
+
+vi.mock("@astravia-org/theme-ui/chat/LiveThinkingView", () => import("@astravia-org/theme-ui/chat/ProgressGroupView"));
+
+vi.mock("@astravia-org/theme-ui/chat/MessageBlockSegmentsView", () => import("@astravia-org/theme-ui/chat/ProgressGroupView"));

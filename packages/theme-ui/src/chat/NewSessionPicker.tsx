@@ -1,4 +1,5 @@
-import { Popover, PopoverContent, PopoverTrigger, cn } from "@astravia-org/ui";
+import { Popover, PopoverContent, PopoverTrigger } from "@astravia-org/ui/popover";
+import { cn } from "@astravia-org/ui/utils";
 import { Slot } from "radix-ui";
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
 import { createContext, forwardRef, useContext, useState } from "react";

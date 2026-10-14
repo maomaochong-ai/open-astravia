@@ -72,13 +72,7 @@ describe("DeferredRuntimeRetryEventStream", () => {
 		source.emit(lifecycle("agent_end", "end-2"));
 		stream.emitRetry({ type: "auto_retry_end", success: true, attempt: 1 });
 
-		expect(observed.map(eventName)).toEqual([
-			"retry.start",
-			"agent_start",
-			"message.final",
-			"agent_end",
-			"retry.end",
-		]);
+		expect(observed.map(eventName)).toEqual(["retry.start", "agent_start", "done", "agent_end", "retry.end"]);
 		expect(stream.flushPendingError()).toBe(false);
 	});
 });
@@ -111,7 +105,11 @@ function lifecycle(
 function assistantFinal(): SessionEvent {
 	return {
 		...base("final-2"),
-		type: "message.final",
+		channel: "assistant",
+		source: "agent",
+		modelCallIndex: 0,
+		type: "done",
+		reason: "stop",
 		message: {
 			role: "assistant",
 			content: [{ type: "text", text: "recovered" }],

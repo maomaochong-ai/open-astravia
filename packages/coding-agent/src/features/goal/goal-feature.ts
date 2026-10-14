@@ -1,4 +1,8 @@
-import type { AgentFeatureDefinition, ModelCallContributionProvider } from "@astravia/runtime-core/kernel";
+import type {
+	AgentFeatureDefinition,
+	ContextProvider,
+	ModelCallContributionProvider,
+} from "@astravia/runtime-core/kernel";
 import type { CodingAgentRuntimeToolRegistration } from "../../runtime-contracts/index.js";
 import { GOAL_INSTRUCTION_ID, renderGoalInstructions } from "./goal-instructions.js";
 import type { CodingAgentGoalRuntime } from "./goal-runtime.js";
@@ -8,8 +12,24 @@ const GOAL_INSTRUCTION_PRIORITY = 950;
 export function createCodingAgentGoalFeature(
 	runtime: CodingAgentGoalRuntime,
 	registrations: readonly CodingAgentRuntimeToolRegistration[],
+	now: () => number,
 ): AgentFeatureDefinition {
 	const tools = registrations.map(({ tool }) => tool);
+	const startupContext: ContextProvider = {
+		id: "coding-agent.goal-start",
+		async provide(input, signal) {
+			signal.throwIfAborted();
+			if (input.input || runtime.readState()?.status !== "active") return [];
+			// Continue has no user input; provide a transient trigger even when history is empty.
+			return [
+				{
+					role: "user",
+					content: "Begin working toward the active goal defined in the system instructions.",
+					timestamp: now(),
+				},
+			];
+		},
+	};
 	const provider = (): ModelCallContributionProvider => ({
 		id: "coding-agent.goal",
 		bindForTurn: () => provider(),
@@ -39,7 +59,7 @@ export function createCodingAgentGoalFeature(
 			return {
 				async contribute(contributionContext) {
 					contributionContext.signal.throwIfAborted();
-					return { modelCallProviders: [provider()] };
+					return { modelCallProviders: [provider()], contextProviders: [startupContext] };
 				},
 				async dispose() {},
 			};

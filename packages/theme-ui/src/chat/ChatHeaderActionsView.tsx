@@ -1,4 +1,4 @@
-import { Button } from "@astravia-org/ui";
+import { Button } from "@astravia-org/ui/button";
 
 export function ChatHeaderExportAction({
 	disabled,

@@ -383,9 +383,6 @@ class AppMonitorService {
 			case "session.lifecycle":
 				if (event.phase === "turn_start") this.recordSessionTurn(event.sessionId, event.timestamp);
 				break;
-			case "message.final":
-				this.recordSessionMessage(event.sessionId, event.timestamp);
-				break;
 			case "tool.start":
 				this.mutate((data) => {
 					data.tools.started += 1;

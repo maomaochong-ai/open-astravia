@@ -39,6 +39,7 @@ struct RemoteDesktopScreen: View {
 						VStack(spacing: 6) {
 							if let summary = statsLine {
 								Text(summary)
+									.accessibilityIdentifier("remote.stats")
 									.font(.caption2.monospacedDigit())
 									.foregroundStyle(.white.opacity(0.8))
 									.padding(.horizontal, 10)
@@ -121,7 +122,10 @@ struct RemoteDesktopScreen: View {
 	@ViewBuilder
 	private func screen(insets: UIEdgeInsets) -> some View {
 		if let session = liveSession, blocker == nil {
-			RemoteScreenView(track: session.videoTrack, interactive: interactive, insets: insets, cursor: model.screenCursor) { session.send($0) }
+			RemoteScreenView(
+				track: session.videoTrack, interactive: interactive, insets: insets, cursor: model.screenCursor,
+				onView: { session.showView(width: $0, height: $1) }
+			) { session.send($0) }
 				.accessibilityIdentifier("remote.screen")
 		} else {
 			VStack(spacing: 14) {
@@ -251,6 +255,7 @@ struct RemoteDesktopScreen: View {
 				.lineLimit(1)
 				.accessibilityAddTraits(.isHeader)
 			Text(statsLine ?? (model.online ? (model.link.channel?.label ?? L10n.Common.online) : L10n.Common.offline))
+				.accessibilityIdentifier("remote.stats")
 				.font(.caption.monospacedDigit())
 				.foregroundStyle(.white.opacity(0.6))
 				.lineLimit(1)

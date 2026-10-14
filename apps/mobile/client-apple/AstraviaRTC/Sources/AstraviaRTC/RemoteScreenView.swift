@@ -7,7 +7,8 @@ import AstraviaKit
 /// finger moves the pointer from where it is, anywhere on the screen, picture or not; a
 /// tap clicks and a two-finger tap right-clicks where the pointer is; holding a finger
 /// half a second presses the button, so moving then drags. Two fingers pinch to zoom
-/// the picture and move it; the picture never moves otherwise. The pointer is drawn by
+/// the picture; a two-finger pan scrolls the desktop at 1x and moves the enlarged picture.
+/// The pointer is drawn by
 /// the phone the moment the finger moves, in the shape the desktop shows.
 public struct RemoteScreenView: UIViewRepresentable {
 	let track: RTCVideoTrack?
@@ -16,13 +17,19 @@ public struct RemoteScreenView: UIViewRepresentable {
 	let insets: UIEdgeInsets
 	/// The desktop's pointer shape; nil draws a plain arrow.
 	let cursor: RemoteScreenCursor?
+	/// How large the whole desktop is shown, in pixels with zoom applied, once a pinch settles.
+	let onView: (Int, Int) -> Void
 	let onInput: ([RemoteInputCommand]) -> Void
 
-	public init(track: RTCVideoTrack?, interactive: Bool, insets: UIEdgeInsets, cursor: RemoteScreenCursor?, onInput: @escaping ([RemoteInputCommand]) -> Void) {
+	public init(
+		track: RTCVideoTrack?, interactive: Bool, insets: UIEdgeInsets, cursor: RemoteScreenCursor?,
+		onView: @escaping (Int, Int) -> Void, onInput: @escaping ([RemoteInputCommand]) -> Void
+	) {
 		self.track = track
 		self.interactive = interactive
 		self.insets = insets
 		self.cursor = cursor
+		self.onView = onView
 		self.onInput = onInput
 	}
 
@@ -32,6 +39,7 @@ public struct RemoteScreenView: UIViewRepresentable {
 
 	public func updateUIView(_ view: RemoteScreenSurface, context: Context) {
 		view.onInput = onInput
+		view.onView = onView
 		view.interactive = interactive
 		view.pictureInsets = insets
 		view.cursorShape = cursor
@@ -45,6 +53,7 @@ public struct RemoteScreenView: UIViewRepresentable {
 
 public final class RemoteScreenSurface: UIView, UIGestureRecognizerDelegate, RTCVideoViewDelegate {
 	var onInput: ([RemoteInputCommand]) -> Void = { _ in }
+	var onView: (Int, Int) -> Void = { _, _ in }
 	var interactive = true
 	var pictureInsets: UIEdgeInsets = .zero {
 		didSet { if pictureInsets != oldValue { setNeedsLayout() } }
@@ -60,8 +69,11 @@ public final class RemoteScreenSurface: UIView, UIGestureRecognizerDelegate, RTC
 
 	/// A finger has to travel this far before it moves the pointer, so a tap does not nudge it.
 	private static let moveThreshold: CGFloat = 3
+	/// The zoom holds this long before the desktop hears of it, so a pinch is one change, not dozens.
+	private static let viewSettleSeconds = 0.3
 
-	private let video = RTCMTLVideoView()
+	private let video = RemoteMetalVideoView()
+	private lazy var renderer = RemoteVideoRenderer(sink: video)
 	private let cursorArrow = makeArrow()
 	private let cursorImage = CALayer()
 	private var track: RTCVideoTrack?
@@ -71,8 +83,12 @@ public final class RemoteScreenSurface: UIView, UIGestureRecognizerDelegate, RTC
 	/// The one finger moving the pointer, while it is the only finger down.
 	private var finger: UITouch?
 	private var fingerTravel: CGFloat = 0
+	private var twoFingerGesture = RemoteTwoFingerGesture()
 	private var lastPinchScale: CGFloat = 1
 	private var lastTwoFingerTranslation: CGPoint = .zero
+	/// The size last passed on, or about to be once the zoom settles.
+	private var pendingView: CGSize = .zero
+	private var viewReport: DispatchWorkItem?
 	private let tapFeel = UIImpactFeedbackGenerator(style: .light)
 	private let rightFeel = UIImpactFeedbackGenerator(style: .medium)
 	private let dragFeel = UIImpactFeedbackGenerator(style: .rigid)
@@ -119,9 +135,12 @@ public final class RemoteScreenSurface: UIView, UIGestureRecognizerDelegate, RTC
 
 	func attach(_ next: RTCVideoTrack?) {
 		guard next !== track else { return }
-		track?.remove(video)
+		track?.remove(renderer)
 		track = next
-		next?.add(video)
+		next?.add(renderer)
+		// A new track is a new session, which has not been told the size yet.
+		pendingView = .zero
+		setNeedsLayout()
 	}
 
 	// MARK: Layout
@@ -152,6 +171,20 @@ public final class RemoteScreenSurface: UIView, UIGestureRecognizerDelegate, RTC
 			height: rect.height * viewport.zoom
 		)
 		placeCursor()
+		reportView()
+	}
+
+	/// Passes on how large the whole desktop is shown, in pixels, once it stops changing.
+	private func reportView() {
+		let rect = pictureRect
+		let scale = traitCollection.displayScale
+		let size = CGSize(width: (rect.width * viewport.zoom * scale).rounded(), height: (rect.height * viewport.zoom * scale).rounded())
+		guard videoSize != .zero, size.width >= 1, size.height >= 1, size != pendingView else { return }
+		pendingView = size
+		viewReport?.cancel()
+		let report = DispatchWorkItem { [weak self] in self?.onView(Int(size.width), Int(size.height)) }
+		viewReport = report
+		DispatchQueue.main.asyncAfter(deadline: .now() + Self.viewSettleSeconds, execute: report)
 	}
 
 	/// Puts the pointer's hot spot on the pointer's position, at a readable size.
@@ -185,8 +218,12 @@ public final class RemoteScreenSurface: UIView, UIGestureRecognizerDelegate, RTC
 		DispatchQueue.main.async {
 			MainActor.assumeIsolated {
 				guard size.width > 0, size.height > 0, size != self.videoSize else { return }
+				// The same screen sent at another scale (the desktop follows the zoom) keeps the zoom.
+				let reshaped = !RemoteViewport.sameShape(
+					(Double(self.videoSize.width), Double(self.videoSize.height)), (Double(size.width), Double(size.height))
+				)
 				self.videoSize = size
-				self.viewport = RemoteViewport()
+				if reshaped { self.viewport = RemoteViewport() }
 				self.setNeedsLayout()
 			}
 		}
@@ -288,37 +325,50 @@ public final class RemoteScreenSurface: UIView, UIGestureRecognizerDelegate, RTC
 		}
 	}
 
-	@objc private func pinched(_ recognizer: UIPinchGestureRecognizer) {
+	@objc func pinched(_ recognizer: UIPinchGestureRecognizer) {
 		switch recognizer.state {
 		case .began:
 			lastPinchScale = 1
+			twoFingerGesture.beginPinch()
 		case .changed:
+			guard twoFingerGesture.transformsPicture else { return }
 			let factor = recognizer.scale / lastPinchScale
 			lastPinchScale = recognizer.scale
 			let rect = pictureRect
 			let location = recognizer.location(in: self)
 			viewport = viewport.transformed(factor: factor, focusX: location.x - rect.minX, focusY: location.y - rect.minY, moveX: 0, moveY: 0, width: rect.width, height: rect.height)
 			applyViewport()
+		case .ended, .cancelled, .failed:
+			twoFingerGesture.endPinch()
 		default:
 			break
 		}
 	}
 
-	@objc private func twoFingersMoved(_ recognizer: UIPanGestureRecognizer) {
+	@objc func twoFingersMoved(_ recognizer: UIPanGestureRecognizer) {
 		let translation = recognizer.translation(in: self)
 		switch recognizer.state {
 		case .began:
 			lastTwoFingerTranslation = translation
+			twoFingerGesture.beginPan(zoomed: viewport.zoomed)
 		case .changed:
+			let dx = translation.x - lastTwoFingerTranslation.x
+			let dy = translation.y - lastTwoFingerTranslation.y
+			lastTwoFingerTranslation = translation
+			guard twoFingerGesture.transformsPicture else {
+				if interactive, let command = twoFingerGesture.scroll(travel: dy) { onInput([command]) }
+				return
+			}
 			let rect = pictureRect
 			let location = recognizer.location(in: self)
 			viewport = viewport.transformed(
 				factor: 1, focusX: location.x - rect.minX, focusY: location.y - rect.minY,
-				moveX: translation.x - lastTwoFingerTranslation.x, moveY: translation.y - lastTwoFingerTranslation.y,
+				moveX: dx, moveY: dy,
 				width: rect.width, height: rect.height
 			)
-			lastTwoFingerTranslation = translation
 			applyViewport()
+		case .ended, .cancelled, .failed:
+			twoFingerGesture.endPan()
 		default:
 			break
 		}

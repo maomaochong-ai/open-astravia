@@ -7,6 +7,7 @@ import { getDefaultStore } from "jotai";
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { withSessionAttach } from "./session-attach.fixture";
 
 const mocks = vi.hoisted(() => ({
 	applyLocalRename: vi.fn(),
@@ -204,7 +205,7 @@ it("切回仍在执行的会话时保留尚未进入历史快照的乐观用户�
 			batchTasks: { resumeTaskWithText: vi.fn() },
 			config: { get: vi.fn() },
 			dialog: { persistImages: vi.fn() },
-			session: sessionApi,
+			session: withSessionAttach(sessionApi),
 		},
 	});
 
@@ -305,7 +306,7 @@ it("新会话先导航并完成一帧绘制，再创建 runtime，同时保留�
 			batchTasks: { resumeTaskWithText: vi.fn() },
 			config: { get: vi.fn() },
 			dialog: { persistImages: vi.fn() },
-			session: sessionApi,
+			session: withSessionAttach(sessionApi),
 		},
 	});
 	store.set(activeSessionAtom, null);
@@ -397,7 +398,7 @@ it("已有会话先提交加载态，快速切换时只有最后一次打开可�
 			batchTasks: { resumeTaskWithText: vi.fn() },
 			config: { get: vi.fn() },
 			dialog: { persistImages: vi.fn() },
-			session: sessionApi,
+			session: withSessionAttach(sessionApi),
 		},
 	});
 	store.set(activeSessionAtom, { cwd, runtimeId: "runtime-current", sessionPath: "C:\\sessions\\current.jsonl" });
@@ -428,7 +429,7 @@ it("已有会话先提交加载态，快速切换时只有最后一次打开可�
 	expect(store.get(activeSessionAtom)).toBeNull();
 	expect(store.get(chatMessagesAtom)).toEqual([]);
 	expect(sessionApi.create).not.toHaveBeenCalled();
-	expect(sessionApi.openViewer).toHaveBeenCalledWith(firstSessionPath, { tailTurns: 2 });
+	expect(sessionApi.openViewer).toHaveBeenCalledWith(firstSessionPath);
 
 	let secondOpening: Promise<void> | undefined;
 	await act(async () => {
@@ -523,7 +524,7 @@ it("会话恢复期间立即接受发送并在订阅就绪后派发到目标 Run
 			batchTasks: { resumeTaskWithText: vi.fn() },
 			config: { get: vi.fn() },
 			dialog: { persistImages: vi.fn(async () => []) },
-			session: sessionApi,
+			session: withSessionAttach(sessionApi),
 		},
 	});
 	store.set(activeSessionAtom, { cwd, runtimeId: "runtime-current", sessionPath: firstSessionPath });
@@ -627,7 +628,6 @@ it("只读历史预览失败时回退到 Runtime 历史水合", { timeout: 10_00
 	const { activeSessionAtom, chatMessagesAtom, pendingSessionOpenAtom } = await import("@shared/store/atoms");
 	const { useSessionManager } = await import("./useSessionManager");
 	const store = getDefaultStore();
-	const fullHistory = deferred<ReturnType<typeof userHistory>>();
 	const sessionApi = {
 		autoTitle: vi.fn(),
 		create: vi.fn(async () => ({
@@ -635,7 +635,8 @@ it("只读历史预览失败时回退到 Runtime 历史水合", { timeout: 10_00
 			sessionId: "runtime-fallback",
 			sessionPath: firstCanonicalPath,
 		})),
-		getFullHistory: vi.fn(() => fullHistory.promise),
+		// The attach snapshot carries the Runtime history.
+		getFullHistory: vi.fn(async () => userHistory("runtime fallback", "fallback-user")),
 		getQueueState: vi.fn(async () => ({ paused: false, entries: [] })),
 		getSessionPath: vi.fn(async () => firstCanonicalPath),
 		getState: vi.fn(async () => ({
@@ -659,7 +660,7 @@ it("只读历史预览失败时回退到 Runtime 历史水合", { timeout: 10_00
 			batchTasks: { resumeTaskWithText: vi.fn() },
 			config: { get: vi.fn() },
 			dialog: { persistImages: vi.fn() },
-			session: sessionApi,
+			session: withSessionAttach(sessionApi),
 		},
 	});
 	store.set(activeSessionAtom, null);
@@ -680,10 +681,8 @@ it("只读历史预览失败时回退到 Runtime 历史水合", { timeout: 10_00
 
 	expect(store.get(activeSessionAtom)?.runtimeId).toBe("runtime-fallback");
 	expect(store.get(pendingSessionOpenAtom)).toBeNull();
-	expect(visibleTexts(store.get(chatMessagesAtom))).toEqual([]);
+	// The whole history is mapped when the renderer is idle.
 	await act(async () => {
-		fullHistory.resolve(userHistory("runtime fallback", "fallback-user"));
-		await Promise.resolve();
 		await new Promise((resolve) => setTimeout(resolve, 0));
 	});
 	expect(visibleTexts(store.get(chatMessagesAtom))).toEqual(["runtime fallback"]);
@@ -735,7 +734,7 @@ it("新会话首发不等整轮 prompt 跑完就回填会话状态", { timeout: 
 			batchTasks: { resumeTaskWithText: vi.fn() },
 			config: { get: vi.fn() },
 			dialog: { persistImages: vi.fn() },
-			session: sessionApi,
+			session: withSessionAttach(sessionApi),
 		},
 	});
 	store.set(activeSessionAtom, null);

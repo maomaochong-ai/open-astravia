@@ -11,13 +11,21 @@ public struct ChannelManagerOptions {
 	/// The relay's viewer signaling for this desktop (`PairingURI.desktopViewerUrl`).
 	public var p2pTarget: String?
 	public var p2pTimeoutMs: Double = 12_000
+	/// The wait after the first failed P2P attempt; it doubles with each further failure.
 	public var p2pProbeIntervalMs: Double = 20_000
+	/// The longest wait between P2P attempts while they keep failing (cellular behind a
+	/// strict NAT, say): each attempt makes the desktop reload its capture page.
+	public var p2pMaxProbeIntervalMs: Double = 300_000
 	public var lanBudgetMs: Double = 1_500
 	public var lanProbeIntervalMs: Double = 20_000
+	/// How long to wait before opening a new standby behind P2P after the last one dropped.
+	public var standbyRetryMs: Double = 5_000
 	public var keepaliveIntervalMs: Double = 25_000
 	public var requestTimeoutMs: Double = 30_000
 	public var maxBackoffMs: Double = 30_000
-	public var rttSampleIntervalMs: Double = 30_000
+	/// In the foreground, how often the round trip is measured: often enough that the figure
+	/// is current whenever someone looks, for a request of under a kilobyte.
+	public var rttSampleIntervalMs: Double = 2_000
 	/// How long a request waits for a recovering connection to catch up.
 	public var recoveryWaitMs: Double = 3_000
 	public var now: () -> Double = WallClock.nowMs
@@ -26,6 +34,9 @@ public struct ChannelManagerOptions {
 		self.desktop = desktop
 		self.link = link
 		self.createTransport = createTransport
+		if let relay = desktop.relayBaseUrl, !relay.isEmpty {
+			p2pTarget = PairingURI.desktopViewerUrl(relayBaseUrl: relay, pairingId: desktop.pairingId, mobileSecret: desktop.mobileSecret)
+		}
 	}
 }
 
@@ -34,13 +45,19 @@ public struct ChannelManagerOptions {
 /// periodically and the link switches back silently. Once either is online, the
 /// link upgrades to the WebRTC control channel in the foreground, as Android's
 /// `DesktopLink` does (ADR-0135), but only with a desktop that captures its screen
-/// on demand (ADR-0140). The event sequence lives here, so a switch never replays
-/// or drops.
+/// on demand (ADR-0140). Behind P2P the LAN or relay link stays open as a standby, so a
+/// dropped P2P link hands over without reconnecting. The event sequence lives here, so a
+/// switch never replays or drops.
 public final class ChannelManager {
 	private final class Candidate {
 		let channel: LinkChannel
 		let connection: RemoteConnection
 		var unsubscribe: (() -> Void)?
+		/// Listens while this candidate is the active link, or the standby behind P2P.
+		var watch: (() -> Void)?
+		/// A latency probe is waiting on this connection; its answer no longer matters once
+		/// the candidate is replaced.
+		var probing = false
 		init(channel: LinkChannel, connection: RemoteConnection) {
 			self.channel = channel
 			self.connection = connection
@@ -49,11 +66,20 @@ public final class ChannelManager {
 		func dispose() {
 			unsubscribe?()
 			unsubscribe = nil
+			unwatch()
+		}
+
+		func unwatch() {
+			watch?()
+			watch = nil
 		}
 	}
 
 	public private(set) var snapshot: LinkSnapshot = .offline
 	private var active: Candidate?
+	/// The LAN or relay link kept open behind P2P, so a dropped P2P link hands over at once.
+	/// The desktop sends only on the best link (P2P), so it costs no more than its keepalive.
+	private var standby: Candidate?
 	private var lanEndpoints: [String]
 	public private(set) var sequence: Int
 	private let listeners = Listeners<LinkSnapshot>()
@@ -66,7 +92,11 @@ public final class ChannelManager {
 	private var reconnectTimer: Task<Void, Never>?
 	private var probeTimer: Task<Void, Never>?
 	private var p2pTask: Task<Void, Never>?
+	/// P2P attempts failed in a row since the last success, network change or return to the foreground.
+	private var p2pFailures = 0
+	private var standbyTimer: Task<Void, Never>?
 	private var rttTimer: Task<Void, Never>?
+	private var rttWindow = RttWindow()
 	private var backoffMs: Double = 1_000
 	private var reconnectAttempt = 0
 
@@ -102,12 +132,52 @@ public final class ChannelManager {
 		if snapshot.status == .online {
 			if active?.channel == .relay { Task { await probeLan() } }
 			if active?.channel != .p2p {
+				p2pFailures = 0
 				clearP2pProbe()
 				launchP2pProbe()
 			}
 			return
 		}
 		Task { await attempt() }
+	}
+
+	/// The phone moved to another network (Wi-Fi to cellular, say). Sockets on the old one
+	/// may be dead without knowing it until a keepalive fails, so open the best link on the
+	/// new one now and switch over, keeping the old one until then. Behind P2P only the
+	/// standby is rebuilt: ICE moves or gives up the P2P link on its own.
+	public func networkChanged() {
+		guard running else { return }
+		clearReconnect()
+		backoffMs = 1_000
+		p2pFailures = 0
+		guard snapshot.status == .online, let active else {
+			Task { await attempt() }
+			return
+		}
+		if active.channel == .p2p {
+			clearStandby()
+			scheduleStandby(afterMs: 0)
+			return
+		}
+		clearP2pProbe()
+		Task {
+			await switchOver(from: active)
+			launchP2pProbe()
+		}
+	}
+
+	private func switchOver(from previous: Candidate) async {
+		let current = generation
+		var found = await raceLan(current)
+		if found == nil, current == generation { found = await connectRelay(current) }
+		guard let found else { return }
+		guard current == generation, running, active === previous else {
+			found.dispose()
+			found.connection.close()
+			return
+		}
+		adopt(found)
+		if found.channel == .relay { scheduleProbe() }
 	}
 
 	/// In the background the P2P link closes at once, so the desktop stops its capture and
@@ -121,6 +191,7 @@ public final class ChannelManager {
 			if let active, active.channel == .p2p { dropActive(active, reason: "background") }
 		} else {
 			if active?.channel == .relay { scheduleProbe() }
+			p2pFailures = 0
 			launchP2pProbe()
 		}
 	}
@@ -132,6 +203,7 @@ public final class ChannelManager {
 		clearProbe()
 		clearP2pProbe()
 		stopRttSampling()
+		clearStandby()
 		let previous = active
 		active = nil
 		if let previous {
@@ -149,11 +221,9 @@ public final class ChannelManager {
 		if active.connection.state == .recovering {
 			_ = await waitForState(active.connection, .online, timeoutMs: options.recoveryWaitMs)
 		}
-		let result = try await active.connection.request(method, payload: payload, sessionId: sessionId)
-		var next = snapshot
-		next.rttMs = active.connection.snapshot.lastRttMs
-		publish(next)
-		return result
+		// Not taken as the latency: a request's round trip includes the desktop's work on it,
+		// hundreds of milliseconds for a session list, which made the figure jump.
+		return try await active.connection.request(method, payload: payload, sessionId: sessionId)
 	}
 
 	private func attempt() async {
@@ -195,8 +265,16 @@ public final class ChannelManager {
 		reconnectAttempt = 0
 		clearReconnect()
 		if candidate.channel == .lan { clearProbe() }
-		if let previous { retire(previous) }
-		candidate.connection.onEvent { [weak self, weak candidate] event in
+		if let previous {
+			if candidate.channel == .p2p, previous.channel != .p2p {
+				keepAsStandby(previous)
+			} else {
+				retire(previous)
+			}
+		}
+		if candidate === standby { standby = nil }
+		candidate.unwatch()
+		candidate.watch = candidate.connection.onEvent { [weak self, weak candidate] event in
 			guard let self, let candidate, self.active === candidate else { return }
 			switch event {
 			case let .remoteEvent(remote):
@@ -244,7 +322,9 @@ public final class ChannelManager {
 		candidate.dispose()
 		Task {
 			let deadline = options.now() + 10_000
-			while candidate.connection.snapshot.pendingRequestCount > 0, options.now() < deadline {
+			// A latency probe is not waited for: only its round trip mattered, and a desktop
+			// slow to answer it would hold the old channel open for the full deadline.
+			while candidate.connection.snapshot.pendingRequestCount > (candidate.probing ? 1 : 0), options.now() < deadline {
 				try? await Task.sleep(nanoseconds: 50_000_000)
 			}
 			candidate.connection.close()
@@ -252,7 +332,8 @@ public final class ChannelManager {
 	}
 
 	/// Upgrades an established LAN or relay link to the WebRTC control channel, and keeps
-	/// trying every `p2pProbeIntervalMs` while it cannot. Only in the foreground, and only
+	/// trying while it cannot, waiting twice as long after each failure up to
+	/// `p2pMaxProbeIntervalMs`. Only in the foreground, and only
 	/// with a desktop that captures on demand: an older one streams its screen for as long
 	/// as the link is up (ADR-0140).
 	private func launchP2pProbe() {
@@ -266,16 +347,82 @@ public final class ChannelManager {
 			let online = await self.waitOnline(candidate, timeoutMs: self.options.p2pTimeoutMs)
 			if !Task.isCancelled, online, self.running, self.foreground, current == self.generation, self.active != nil, self.active?.channel != .p2p {
 				self.p2pTask = nil
+				self.p2pFailures = 0
 				self.adopt(candidate)
 				return
 			}
 			candidate.dispose()
 			candidate.connection.close()
 			guard !Task.isCancelled else { return }
-			try? await Task.sleep(nanoseconds: UInt64(self.options.p2pProbeIntervalMs * 1_000_000))
+			let delay = min(self.options.p2pProbeIntervalMs * pow(2, Double(self.p2pFailures)), self.options.p2pMaxProbeIntervalMs)
+			self.p2pFailures += 1
+			try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000))
 			guard !Task.isCancelled else { return }
 			self.p2pTask = nil
 			self.launchP2pProbe()
+		}
+	}
+
+	private func keepAsStandby(_ candidate: Candidate) {
+		clearStandby()
+		standby = candidate
+		candidate.unwatch()
+		candidate.watch = candidate.connection.onEvent { [weak self, weak candidate] event in
+			guard let self, let candidate, self.standby === candidate, case let .state(state) = event,
+			      state == .reconnecting || state == .failed || state == .closed else { return }
+			self.standby = nil
+			candidate.dispose()
+			candidate.connection.close()
+			self.scheduleStandby()
+		}
+	}
+
+	/// The standby, if it is still up; one that is not is closed.
+	private func takeStandby() -> Candidate? {
+		standbyTimer?.cancel()
+		standbyTimer = nil
+		guard let candidate = standby else { return nil }
+		standby = nil
+		guard candidate.connection.state == .online else {
+			candidate.dispose()
+			candidate.connection.close()
+			return nil
+		}
+		return candidate
+	}
+
+	/// Opens a new standby behind P2P a little later: the LAN if it answers, else the relay.
+	private func scheduleStandby(afterMs delay: Double? = nil) {
+		guard running, standbyTimer == nil else { return }
+		let current = generation
+		let delay = delay ?? options.standbyRetryMs
+		standbyTimer = Task { [weak self] in
+			if delay > 0 { try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000)) }
+			guard !Task.isCancelled, let self else { return }
+			var found = await self.raceLan(current)
+			if found == nil, !Task.isCancelled, current == self.generation { found = await self.connectRelay(current) }
+			self.standbyTimer = nil
+			guard let found else {
+				if !Task.isCancelled, current == self.generation, self.active?.channel == .p2p { self.scheduleStandby() }
+				return
+			}
+			guard !Task.isCancelled, current == self.generation, self.running, self.active?.channel == .p2p, self.standby == nil else {
+				found.dispose()
+				found.connection.close()
+				return
+			}
+			self.keepAsStandby(found)
+		}
+	}
+
+	private func clearStandby() {
+		standbyTimer?.cancel()
+		standbyTimer = nil
+		let previous = standby
+		standby = nil
+		if let previous {
+			previous.dispose()
+			previous.connection.close()
 		}
 	}
 
@@ -291,6 +438,24 @@ public final class ChannelManager {
 		stopRttSampling()
 		candidate.dispose()
 		candidate.connection.close()
+		// P2P is only an upgrade over a LAN or relay that most likely still works: fall back
+		// at once instead of showing the desktop offline and waiting out a backoff.
+		if candidate.channel == .p2p, let standby = takeStandby() {
+			// Events the desktop sent over P2P as it died never arrived: catch up on the standby.
+			standby.connection.resume(after: sequence)
+			adopt(standby)
+			return
+		}
+		if candidate.channel == .p2p {
+			clearStandby()
+			var next = snapshot
+			next.status = .connecting
+			next.channel = nil
+			next.peerOnline = false
+			publish(next)
+			Task { await attempt() }
+			return
+		}
 		var next = snapshot
 		next.status = .offline
 		next.channel = nil
@@ -503,21 +668,33 @@ public final class ChannelManager {
 		probeTimer = nil
 	}
 
+	/// Measures every interval. A new channel starts a new window: its route, and so its
+	/// latency, differs.
 	private func startRttSampling() {
 		stopRttSampling()
+		rttWindow.clear()
 		rttTimer = Task { [weak self] in
 			while !Task.isCancelled {
-				let interval = self?.options.rttSampleIntervalMs ?? 30_000
+				guard let interval = self?.options.rttSampleIntervalMs else { return }
 				try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000))
 				guard !Task.isCancelled, let self else { return }
-				guard let active = self.active, self.snapshot.isUsable, self.foreground else { continue }
-				if (try? await active.connection.request(.diagnosticsSnapshot)) != nil {
-					var next = self.snapshot
-					next.rttMs = active.connection.snapshot.lastRttMs
-					self.publish(next)
-				}
+				await self.sampleRtt()
 			}
 		}
+	}
+
+	/// One `diagnostics.snapshot`, which the desktop answers from memory, so its round trip
+	/// is the link's own.
+	private func sampleRtt() async {
+		guard let active, snapshot.isUsable, foreground else { return }
+		let startedAt = options.now()
+		active.probing = true
+		defer { active.probing = false }
+		guard (try? await active.connection.request(.diagnosticsSnapshot)) != nil,
+		      !Task.isCancelled, self.active === active else { return }
+		var next = snapshot
+		next.rttMs = rttWindow.add(max(0, options.now() - startedAt))
+		publish(next)
 	}
 
 	private func stopRttSampling() {

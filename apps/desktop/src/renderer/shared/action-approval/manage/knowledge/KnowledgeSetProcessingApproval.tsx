@@ -1,20 +1,10 @@
 import { ModelSelect } from "@shared/components/ModelSelect";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@astravia-org/ui";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@astravia-org/ui/select";
 import { useMemo, useState } from "react";
-import { Switch } from "@astravia-org/ui";
+import { Switch } from "@astravia-org/ui/switch";
 import { type ActiveActionApproval, useActionApproval } from "../../useActionApproval";
 import { knowledgeBaseFieldLabel } from "../../approvalCopy";
-import {
-	ApprovalImpactCard,
-	ApprovalSettingGroup,
-	ApprovalSettingRow,
-} from "@astravia-org/theme-ui/action-approval";
+import { ApprovalImpactCard, ApprovalSettingGroup, ApprovalSettingRow } from "@astravia-org/theme-ui/action-approval/ApprovalParts";
 import { ApprovalRawFallback } from "../ApprovalParts";
 import { useManageApprovalFrame } from "../useManageApprovalShell";
 

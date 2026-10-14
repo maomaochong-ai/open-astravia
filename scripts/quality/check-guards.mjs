@@ -15,6 +15,7 @@ const FULL_STEPS = Object.freeze([
 	["runtime-independence", "scripts/quality/check-runtime-coding-agent-independence.mjs"],
 	["runtime-subagents", "scripts/quality/check-runtime-subagents-boundary.mjs"],
 	["conversation-architecture", "scripts/quality/check-conversation-message-architecture.mjs"],
+	["session-event-tombstones", "scripts/quality/check-session-event-tombstones.mjs"],
 	["runtime-failure", "scripts/quality/check-runtime-failure-contract.mjs"],
 	["agent-ai-maintainability", "scripts/quality/check-agent-ai-maintainability.mjs"],
 	["standalone-cli-build", "scripts/quality/check-standalone-cli-build.mjs"],
@@ -73,6 +74,16 @@ export function createQuickGuardPlan(inputFiles) {
 	);
 	if (boundaryFiles.length > 0) {
 		steps.push(...selectedSteps("package-boundaries", "scripts/quality/check-package-boundaries.mjs", boundaryFiles));
+	}
+	const sourceFiles = files.filter((file) => /^(?:apps|packages)\/.+\.(?:[cm]?[jt]sx?|swift|kt)$/u.test(file));
+	if (sourceFiles.length > 0) {
+		steps.push(
+			...selectedSteps(
+				"session-event-tombstones",
+				"scripts/quality/check-session-event-tombstones.mjs",
+				sourceFiles,
+			),
+		);
 	}
 	if (
 		matchesAny(files, [

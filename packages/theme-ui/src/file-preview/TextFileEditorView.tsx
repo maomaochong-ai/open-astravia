@@ -1,4 +1,5 @@
-import { Button, cn } from "@astravia-org/ui";
+import { Button } from "@astravia-org/ui/button";
+import { cn } from "@astravia-org/ui/utils";
 import type { JSX, ReactNode } from "react";
 import { TextCodeEditorView } from "./TextCodeEditorView";
 

@@ -1,6 +1,6 @@
 import { memo, type ComponentPropsWithoutRef, type JSX, type ReactNode } from "react";
 import type { CornerImageFrameDecoration } from "@astravia-org/theme-sdk/appearance";
-import { cn } from "@astravia-org/ui";
+import { cn } from "@astravia-org/ui/utils";
 
 export interface CornerImageFrameProps extends ComponentPropsWithoutRef<"div"> {
 	children: ReactNode;

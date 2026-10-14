@@ -4,6 +4,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
@@ -283,6 +284,41 @@ class DesktopLinkTest {
             link.start()
             assertTrue(eventually { link.snapshot.value.channel == LinkChannel.Relay })
             assertTrue(link.snapshot.value.lastError != DesktopLink.UNKNOWN_PAIRING, "another computer may hold the old address")
+        }
+
+    @Test
+    fun measuresTheLatencyWithItsOwnProbeEveryTwoSeconds() =
+        runTest {
+            val desktop = FakeDesktop(backgroundScope)
+            var probes = 0
+            desktop.handler = { request ->
+                if (request.method == RemoteRequestMethod.DiagnosticsSnapshot) {
+                    probes += 1
+                    delay(40)
+                } else {
+                    delay(900)
+                }
+                respond(request.requestId, buildJsonObject {})
+            }
+            val link = link(desktop)
+            link.start()
+            assertTrue(eventually { link.snapshot.value.rttMs != null })
+            assertEquals(40L, link.snapshot.value.rttMs)
+
+            val slow = async { link.request(RemoteRequestMethod.SessionList) }
+            assertTrue(eventually { slow.isCompleted })
+            assertEquals(40L, link.snapshot.value.rttMs, "the desktop's work on a request is not the link's latency")
+
+            val before = probes
+            advanceTimeBy(4_100)
+            runCurrent()
+            assertEquals(before + 2, probes, "measured every 2 s in the foreground")
+
+            link.setForeground(false)
+            val background = probes
+            advanceTimeBy(10_000)
+            runCurrent()
+            assertEquals(background, probes, "not measured in the background")
         }
 
     @Test

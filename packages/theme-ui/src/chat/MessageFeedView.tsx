@@ -1,4 +1,4 @@
-import { cn } from "@astravia-org/ui";
+import { cn } from "@astravia-org/ui/utils";
 import { Slot } from "radix-ui";
 import type { ComponentPropsWithoutRef, JSX, ReactNode, Ref } from "react";
 import { forwardRef } from "react";
@@ -46,6 +46,7 @@ export const MessageFeedFooter = forwardRef<HTMLDivElement, MessageFeedPrimitive
 
 export interface MessageFeedVirtualListProps<T> extends Omit<ComponentPropsWithoutRef<"div">, "children"> {
 	readonly items: readonly T[];
+	/** Renders one item; `index` is its position in `items`. */
 	readonly children: (item: T, index: number) => ReactNode;
 	readonly getKey?: (item: T, index: number) => string | number;
 	readonly virtuosoRef?: Ref<VirtuosoHandle>;
@@ -131,9 +132,7 @@ export function MessageFeedVirtualList<T>({
 
 function MessageFeedVirtualFooterSlot(): JSX.Element {
 	const { setFooterHost } = useMessageFeedContext("MessageFeed.VirtualFooter");
-	// 与 List（MessageFeedLayoutList）同宽：mx-auto max-w-3xl px-5。
-	// 裸 div 无宽度约束时，portaled 内容（CompactionCard live 摘要）铺满 scroller 全宽。
-	return <div ref={setFooterHost} className="mx-auto w-full max-w-3xl px-5" />;
+	return <div ref={setFooterHost} />;
 }
 
 const VIRTUAL_COMPONENTS = { List: MessageFeedLayoutList, Footer: MessageFeedVirtualFooterSlot };

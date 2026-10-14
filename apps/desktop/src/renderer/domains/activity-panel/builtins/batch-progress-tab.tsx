@@ -1,8 +1,13 @@
+import { lazy } from "react";
 import { useProjectProfile } from "@shared/lib/project-profile";
 import { useTranslation } from "react-i18next";
-import { BatchProgressTabPanel } from "../components/BatchProgressTabPanel";
+
 import { useActivityPanelCwd } from "../registry/context";
 import type { ActivityTabDefinition } from "../registry/types";
+
+const BatchProgressTabPanel = lazy(() =>
+	import("../components/BatchProgressTabPanel").then((module) => ({ default: module.BatchProgressTabPanel })),
+);
 
 function BatchProgressActivityTab(): JSX.Element | null {
 	const cwd = useActivityPanelCwd();

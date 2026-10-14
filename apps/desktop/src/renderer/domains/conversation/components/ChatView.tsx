@@ -15,12 +15,11 @@ import { BackgroundTasksBadge } from "./BackgroundTasksBadge";
 import { SandboxGrantsBadge } from "./SandboxGrantsBadge";
 import { ChatHeaderNewSessionButton } from "./chat-view/ChatHeaderNewSessionButton";
 import { DefaultChatView, ChatComposer } from "./chat-view/DefaultChatView";
-import { SessionMessageList } from "./SessionMessageList";
-import { SessionAssistantRendering } from "./SessionAssistantRendering";
+import { SessionConversation } from "../session-conversation/SessionConversation";
 import { DefaultInputBarConnector } from "./input-bar/DefaultInputBarConnector";
 import type { ChatViewProps } from "./chat-view/types";
 
-const SessionFeed = memo(SessionMessageList);
+const SessionFeed = memo(SessionConversation);
 
 export const DefaultChatComposer = memo(function DefaultChatComposer({
 	onSend,
@@ -134,18 +133,14 @@ export function ChatView(props: ChatViewProps): JSX.Element {
 					: undefined
 			}
 		>
-			<SessionAssistantRendering>
-				<SessionFeed
-					messages={model.messages}
-					workspace={workspace}
-					isStreaming={model.isStreaming}
-					pendingLabel={model.pendingLabel}
-					sessionId={model.sessionId}
-					participants={participants}
-					onSend={props.onSend}
-					onAbort={onAbort}
-				/>
-			</SessionAssistantRendering>
+			<SessionFeed
+				workspace={workspace}
+				pendingLabel={model.pendingLabel}
+				sessionId={model.sessionId}
+				participants={participants}
+				onSend={props.onSend}
+				onAbort={onAbort}
+			/>
 			<DefaultChatComposer {...props} workSurface={model.workSurface} />
 		</DefaultChatView>
 	);

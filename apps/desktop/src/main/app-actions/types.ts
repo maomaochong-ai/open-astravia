@@ -55,6 +55,8 @@ export interface ActionMetadata {
 	 */
 	keywords?: string[];
 	approval?: ActionApprovalMetadata;
+	/** A paired phone may run it through remote control; read-only plugin actions only. */
+	remote?: boolean;
 	inputSchema: ActionInputSchema;
 	examples: ActionExample[];
 }
@@ -69,7 +71,7 @@ export interface ActionSearchResult {
 }
 
 export interface ActionContext {
-	source: "internal" | "local-server";
+	source: "internal" | "local-server" | "remote-control";
 	requestId?: string;
 	signal?: AbortSignal;
 }

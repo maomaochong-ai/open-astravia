@@ -3,6 +3,8 @@ export interface PluginModelDefinition {
 	name?: string;
 	api?: string;
 	reasoning?: boolean;
+	/** Chat input supported by the model. Omitted uses the host default (text). */
+	input?: ("text" | "image")[];
 	/** Provider-native choices; omitted or empty uses the host's API preset. */
 	reasoningLevels?: string[];
 	/** Used when no user choice exists; otherwise the first declared level wins. */

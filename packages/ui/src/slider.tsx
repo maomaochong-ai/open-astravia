@@ -117,11 +117,12 @@ export function Slider({
 			<div
 				data-slot="slider-thumb"
 				className={cn(
-					"pointer-events-none absolute top-1/2 block size-4 shrink-0 rounded-full border border-primary bg-popover outline-none ring-1 ring-primary/40",
+					"pointer-events-none absolute top-1/2 block w-1 shrink-0 rounded-full bg-primary outline-none ring-2 ring-background before:absolute before:-inset-x-2 before:inset-y-0 before:content-['']",
 					animateValue && !scrubbing
-						? "transition-[left,background-color,box-shadow] duration-[240ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
-						: "transition-colors",
-					dragging || focused ? "bg-primary ring-ring" : undefined,
+						? "transition-[left,box-shadow,height] duration-[240ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
+						: "transition-[box-shadow,height]",
+					dragging ? "h-5 ring-4" : "h-4",
+					focused && !dragging ? "ring-[3px]" : undefined,
 				)}
 				style={{ left: `${percent}%`, transform: "translate(-50%, -50%)" }}
 			/>

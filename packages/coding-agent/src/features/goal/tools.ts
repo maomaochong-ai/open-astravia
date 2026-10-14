@@ -38,7 +38,7 @@ export function createGoalToolRegistrations(
 	const getGoal: RuntimeToolDefinition<Static<typeof GetGoalInputSchema>> = {
 		name: "get_goal",
 		label: "get_goal",
-		description: "Read the current session goal and its status, budget, usage, and progress.",
+		description: "Read the current session goal and its status, usage, and progress.",
 		inputSchema: GetGoalInputSchema,
 		modelOrder: CODING_AGENT_MODEL_TOOL_ORDER.getGoal,
 		async execute() {

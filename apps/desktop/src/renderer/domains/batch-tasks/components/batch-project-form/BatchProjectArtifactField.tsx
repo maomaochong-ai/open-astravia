@@ -1,4 +1,4 @@
-import { BatchProjectArtifactFieldView } from "@astravia-org/theme-ui/batch-tasks";
+import { BatchProjectArtifactFieldView } from "@astravia-org/theme-ui/batch-tasks/BatchProjectArtifactFieldView";
 import { useTranslation } from "react-i18next";
 import { compactLines } from "../../utils/batchProjectFormData";
 

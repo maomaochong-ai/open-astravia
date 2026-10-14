@@ -53,8 +53,8 @@ vi.mock("../hooks/useSessionViewerPageModel", () => ({
 	}),
 }));
 vi.mock("./ChatExportHost", () => ({ ChatExportHost: () => null }));
-vi.mock("./MessageList", () => ({
-	MessageList: (props: unknown) => {
+vi.mock("./TranscriptConversation", () => ({
+	TranscriptConversation: (props: unknown) => {
 		captured.feed(props);
 		return <section />;
 	},
@@ -81,8 +81,7 @@ describe("SessionViewerPage header composition", () => {
 		expect(captured.feed).toHaveBeenCalledWith(
 			expect.objectContaining({
 				workspace: expect.objectContaining({ id: "C:/sessions", cwd: "C:/sessions" }),
-				sessionId: "C:/sessions/example.jsonl",
-				isStreaming: false,
+				feedKey: "C:/sessions/example.jsonl",
 			}),
 		);
 		const header = captured.setHeader.mock.calls.find(([value]) => value !== null)?.[0];

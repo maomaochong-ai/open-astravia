@@ -1,4 +1,4 @@
-import { ReadImageView as ThemeReadImageView } from "@astravia-org/theme-ui/chat";
+import { ReadImageView as ThemeReadImageView } from "@astravia-org/theme-ui/chat/ReadImageView";
 import {
 	useReadImageViewModel,
 	type ToolImagePreviewLike,

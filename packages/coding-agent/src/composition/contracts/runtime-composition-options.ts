@@ -40,7 +40,7 @@ import type {
 } from "../../runtime-contracts/index.js";
 import type { CodingAgentConversationPersistenceFactory } from "./conversation-persistence.js";
 import type { CodingAgentMemoryRuntimeFactoryOptions } from "./memory-runtime.js";
-import type { CodingAgentRuntimeHostRetrySettings } from "./runtime-host.js";
+import type { CodingAgentRuntimeHostModelSettings, CodingAgentRuntimeHostRetrySettings } from "./runtime-host.js";
 import type { CodingAgentRuntimeSessionOptions } from "./runtime-session-options.js";
 import type { CodingAgentSessionExecutionEnvironmentFactory } from "./session-execution-environment.js";
 import type {
@@ -235,10 +235,11 @@ export interface CodingAgentRuntimeObservabilityOptions {
 	/** Session 间共享的观测策略；Turn Engine 会覆盖真实 Session 身份。 */
 	readonly tracing?: AgentCoreTurnEngineOptions["tracing"];
 }
-
 export interface CodingAgentRuntimeHostOptions {
 	/** 可选的 Coding Agent 自动重试设置；由通用 Assembly decorator 承载状态机。 */
 	readonly runtimeHostRetrySettings?: CodingAgentRuntimeHostRetrySettings;
+	/** Provider transport 偏好；每次模型调用动态读取。 */
+	readonly runtimeHostModelSettings?: CodingAgentRuntimeHostModelSettings;
 }
 
 export interface CodingAgentObservationRoute {

@@ -1,4 +1,5 @@
-import { type FilePreviewItem, getExtension, IMAGE_EXTENSIONS } from "@astravia-org/theme-ui/file-preview";
+import type { FilePreviewItem } from "@astravia-org/theme-ui/file-preview";
+import { getExtension, IMAGE_EXTENSIONS } from "@astravia-org/theme-ui/file-preview/types";
 import { type ShortcutBinding, useShortcutScope } from "@shared/shortcuts";
 import { useMemo } from "react";
 

@@ -1,18 +1,8 @@
-import { ProviderIcon } from "@astravia-org/theme-ui/shared";
+import { ProviderIcon } from "@astravia-org/theme-ui/shared/provider-icon/index";
 import { cn } from "@shared/lib/utils";
 import { modelCatalog } from "@shared/store/model-catalog";
-import { ThemeSurface } from "@astravia-org/theme-ui/appearance";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuLabel,
-	DropdownMenuSeparator,
-	DropdownMenuSub,
-	DropdownMenuSubContent,
-	DropdownMenuSubTrigger,
-	DropdownMenuTrigger,
-} from "@astravia-org/ui";
+import { ThemeSurface } from "@astravia-org/theme-ui/appearance/ThemeSurface";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from "@astravia-org/ui/dropdown-menu";
 import { AnimatePresence, motion } from "motion/react";
 import type { ChangeEvent, KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";

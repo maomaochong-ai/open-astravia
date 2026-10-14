@@ -1,12 +1,5 @@
-import {
-	Button,
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-} from "@astravia-org/ui";
+import { Button } from "@astravia-org/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@astravia-org/ui/dialog";
 import { useTranslation } from "react-i18next";
 import { useRemoteProjectPickerModel } from "./useRemoteProjectPickerModel";
 

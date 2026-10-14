@@ -1,8 +1,6 @@
 import { useThemeComponent } from "@astravia-org/theme-sdk";
-import {
-	BatchTasksApprovalFrameView,
-	BatchTasksTaskApprovalView as ThemeBatchTasksTaskApprovalView,
-} from "@astravia-org/theme-ui/action-approval";
+import { BatchTasksApprovalFrameView } from "@astravia-org/theme-ui/action-approval/BatchTasksApprovalFrameView";
+import { BatchTasksTaskApprovalView as ThemeBatchTasksTaskApprovalView } from "@astravia-org/theme-ui/action-approval/BatchTasksTaskApprovalView";
 import type { BatchTasksTaskApprovalModel } from "./useBatchTasksTaskApprovalModel";
 
 export function BatchTasksTaskApprovalView(model: BatchTasksTaskApprovalModel): JSX.Element {

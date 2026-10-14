@@ -59,6 +59,9 @@ public final class AppModel {
 	public private(set) var ready = false
 	public private(set) var paired = false
 	public private(set) var desktop: StoredDesktop?
+	/// The same signaling target used by the current link, cleared when it detaches.
+	/// A view must not reread Keychain to locate an already authenticated session.
+	public private(set) var remoteDesktopTarget: String?
 	public private(set) var link: LinkSnapshot = .offline
 	public private(set) var sessions: [RemoteSessionSummary] = [] {
 		didSet { sessionsChanged(from: oldValue) }
@@ -81,6 +84,8 @@ public final class AppModel {
 	/// Sessions opened by `startSession`: the local id the chat opened on → the desktop's id.
 	public private(set) var startedSessions: [String: String] = [:]
 	public private(set) var startingSessions: Set<String> = []
+	/// Chats whose last attempt at an older page failed; the chat offers to try again.
+	public private(set) var olderFailed: Set<String> = []
 	public private(set) var preferences: Preferences = .defaults
 	public private(set) var pairing: PairingPhase = .idle
 	public var lastError: String?
@@ -105,6 +110,7 @@ public final class AppModel {
 	@ObservationIgnored private var newSessionModelsLoad: Task<Void, Never>?
 	/// Sessions `startSession` just sent their first prompt to; see `openSession`.
 	@ObservationIgnored private var freshSessions: Set<String> = []
+	@ObservationIgnored private var olderLoading: Set<String> = []
 	@ObservationIgnored private let fileCache = FileContentCache()
 	@ObservationIgnored private var watch = SessionWatch()
 	/// Sessions whose latest user message has no reply yet; the first output buzzes once.
@@ -283,6 +289,12 @@ public final class AppModel {
 		manager?.refresh()
 	}
 
+	/// The phone moved to another network: the link follows at once instead of waiting for a
+	/// keepalive to find the old sockets dead.
+	public func networkChanged() {
+		manager?.networkChanged()
+	}
+
 	private func attachManager(_ record: DesktopRecord) {
 		detachManager()
 		let key = record.desktopIdentityKey
@@ -302,6 +314,12 @@ public final class AppModel {
 		freshSessions = []
 		fileCache.removeAll()
 		link = .offline
+		startManager(record)
+	}
+
+	/// Rebuilds only the link; route changes must preserve the open chat and its drafts.
+	private func startManager(_ record: DesktopRecord) {
+		let key = record.desktopIdentityKey
 		var options = ChannelManagerOptions(desktop: record, link: identity, createTransport: platform.createTransport)
 		options.onSequence = { [weak self] sequence in
 			self?.pairingStore.update(key) {
@@ -313,6 +331,7 @@ public final class AppModel {
 			self?.pairingStore.update(key) { $0.lanEndpoints = endpoints }
 		}
 		platform.configureManager?(&options)
+		remoteDesktopTarget = options.p2pTarget
 		let manager = ChannelManager(options: options)
 		self.manager = manager
 		unsubscribe.append(manager.subscribe { [weak self] next in
@@ -326,22 +345,28 @@ public final class AppModel {
 		manager.start()
 	}
 
+	private func followRelay(_ relay: String?) {
+		guard let relay,
+		      let record = pairingStore.getCurrent(), record.desktopIdentityKey == desktopKey,
+		      record.relayBaseUrl != relay else { return }
+		pairingStore.update(record.desktopIdentityKey) { $0.relayBaseUrl = relay }
+		guard let moved = pairingStore.getCurrent() else { return }
+		detachManager()
+		desktop = moved.stored
+		link = .offline
+		startManager(moved)
+	}
+
 	private func detachManager() {
 		for off in unsubscribe { off() }
 		unsubscribe.removeAll()
 		manager?.stop()
 		manager = nil
+		remoteDesktopTarget = nil
 		screen = nil
 	}
 
 	// MARK: Remote desktop
-
-	/// The relay's viewer signaling for the paired desktop's screen and the P2P channel;
-	/// nil without a relay to reach it through.
-	public var remoteDesktopTarget: String? {
-		guard let record = pairingStore.getCurrent(), let relay = record.relayBaseUrl, !relay.isEmpty else { return nil }
-		return PairingURI.desktopViewerUrl(relayBaseUrl: relay, pairingId: record.pairingId, mobileSecret: record.mobileSecret)
-	}
 
 	/// The remote desktop page opened or closed: the desktop starts or stops capturing (ADR-0140).
 	public func setScreenOpen(_ open: Bool) {
@@ -364,7 +389,7 @@ public final class AppModel {
 				// `cursor`: this phone draws the pointer itself and wants its shape.
 				let result = try await manager.request(.screenSubscribe, payload: ["active": .bool(wanted), "cursor": .bool(wanted)])
 				// A later open or close has its own answer coming.
-				guard wanted == (self.screenOpen && self.active) else { return }
+				guard self.manager === manager, wanted == (self.screenOpen && self.active) else { return }
 				self.screen = wanted ? RemoteAPI.readScreenStatus(result) : nil
 			} catch {
 				log.error("screen subscription failed: \(String(describing: type(of: error)), privacy: .public)")
@@ -391,12 +416,15 @@ public final class AppModel {
 		scheduleTranscriptSave(sessionId, next)
 	}
 
+	private static let cachedItems = 160
+
 	private func scheduleTranscriptSave(_ sessionId: String, _ transcript: TranscriptState) {
 		guard let key = desktopKey, !transcript.stale, transcript.loaded else { return }
 		transcriptSave[sessionId]?.cancel()
 		transcriptSave[sessionId] = schedule(after: 400) { [weak self] in
 			self?.transcriptSave[sessionId] = nil
-			self?.platform.cache.saveTranscript(key, sessionId, transcript.items)
+			// The newest pages only: what the chat fetched scrolling back is not worth reopening on.
+			self?.platform.cache.saveTranscript(key, sessionId, Array(transcript.items.suffix(Self.cachedItems)))
 		}
 	}
 
@@ -481,6 +509,7 @@ public final class AppModel {
 			transcripts = transcripts.mapValues { TranscriptReducer.reduce($0, .resync) }
 			Task { await refreshSessions() }
 		case .deviceStatus:
+			followRelay(RemoteAPI.readDeviceStatus(event.payload)?.relayBaseUrl)
 			// Sent on every connection: a desktop that lost the phone for a moment forgot it was watching.
 			if screenOpen, active { syncScreen() }
 		case .screenStatus:
@@ -549,10 +578,11 @@ public final class AppModel {
 				patchSession(sessionId) { $0.live = true }
 				return
 			}
-			let history = try await manager.request(.sessionHistory, sessionId: sessionId)
+			let history = try await manager.request(.sessionHistory, payload: ["limit": .number(Double(Self.historyPage))], sessionId: sessionId)
 			let entries = RemoteAPI.readTranscriptEntries(history)
 			let state = RemoteAPI.readSessionState(history?["state"] ?? opened?["state"])
-			dispatch(sessionId, .history(entries: entries, state: state))
+			olderFailed.remove(sessionId)
+			dispatch(sessionId, .history(entries: entries, state: state, hasOlder: history?["hasMore"]?.boolValue == true))
 			patchSession(sessionId) {
 				$0.status = state.status
 				$0.live = true
@@ -560,6 +590,39 @@ public final class AppModel {
 		} catch {
 			if !(error is LinkOfflineError) { reportError(error) }
 		}
+	}
+
+	/// Entries per history page. A long chat sent whole could outgrow a frame and never
+	/// arrive, and laid out whole it took seconds to open.
+	static let historyPage = 40
+
+	/// Fetches the page before the oldest item the chat shows, once its history is in;
+	/// nil when there is nothing older, a fetch is under way or it failed. The chat puts
+	/// it in with `insertOlder` once its scrolling has stopped: inserted while it still
+	/// glides, the rows above moved what was on screen away.
+	public func fetchOlder(_ sessionId: String) async -> OlderPage? {
+		let transcript = transcript(sessionId)
+		guard transcript.loaded, !transcript.stale, transcript.hasOlder, !olderLoading.contains(sessionId),
+		      let before = transcript.items.first?.id
+		else { return nil }
+		olderLoading.insert(sessionId)
+		defer { olderLoading.remove(sessionId) }
+		olderFailed.remove(sessionId)
+		do {
+			let payload: JSONValue = ["limit": .number(Double(Self.historyPage)), "before": .string(before)]
+			let page = try await requireManager().request(.sessionHistory, payload: payload, sessionId: sessionId)
+			return OlderPage(before: before, entries: RemoteAPI.readTranscriptEntries(page), hasOlder: page?["hasMore"]?.boolValue == true)
+		} catch {
+			olderFailed.insert(sessionId)
+			if !(error is LinkOfflineError) { log.info("older history failed: \(String(describing: type(of: error)), privacy: .public)") }
+			return nil
+		}
+	}
+
+	/// Puts a fetched page in above the oldest item, unless a refetch has started the chat over since.
+	public func insertOlder(_ sessionId: String, _ page: OlderPage) {
+		guard transcript(sessionId).items.first?.id == page.before else { return }
+		dispatch(sessionId, .older(entries: page.entries, hasOlder: page.hasOlder))
 	}
 
 	public func loadModels(_ sessionId: String) async {

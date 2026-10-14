@@ -21,6 +21,8 @@ final class SpeechDictation {
 	@ObservationIgnored private var heardFinal = false
 
 	func start() async {
+		// Listening takes the audio session; a reply being read would talk over it.
+		ReadAloud.shared.stop()
 		transcript = ""
 		level = 0
 		failure = nil

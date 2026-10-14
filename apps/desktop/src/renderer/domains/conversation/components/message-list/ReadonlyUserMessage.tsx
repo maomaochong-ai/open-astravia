@@ -1,5 +1,6 @@
 import type { ConversationUserMessageViewModel } from "@shared/conversation";
-import { MessageLayout, UserMessageContextMenuView } from "@astravia-org/theme-ui/chat";
+import { MessageLayout } from "@astravia-org/theme-ui/chat/MessageLayoutView";
+import { UserMessageContextMenuView } from "@astravia-org/theme-ui/chat/UserMessageContextMenuView";
 import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useUserMessageContextMenu, useUserMessageCopyAction } from "../../hooks/useUserMessageActions";

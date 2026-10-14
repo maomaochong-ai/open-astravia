@@ -1,13 +1,7 @@
 import { pluginFilePreviewsAtom } from "@shared/store/atoms";
-import {
-	AUDIO_EXTENSIONS,
-	IMAGE_EXTENSIONS,
-	PreviewBodyView,
-	VIDEO_EXTENSIONS,
-	getExtension,
-	getPreviewLabel,
-	type FilePreviewItem,
-} from "@astravia-org/theme-ui/file-preview";
+import { AUDIO_EXTENSIONS, IMAGE_EXTENSIONS, VIDEO_EXTENSIONS, getExtension, getPreviewLabel } from "@astravia-org/theme-ui/file-preview/types";
+import { PreviewBodyView } from "@astravia-org/theme-ui/file-preview/PreviewBodyView";
+import type { FilePreviewItem } from "@astravia-org/theme-ui/file-preview";
 import { useAtomValue } from "jotai";
 import { usePreviewBodyModel } from "../hooks/usePreviewBodyModel";
 import { downloadItem, isPreviewSupported, isTextExtension } from "../preview-utils";

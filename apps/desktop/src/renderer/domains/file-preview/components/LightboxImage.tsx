@@ -1,5 +1,5 @@
 import type { FilePreviewItem } from "@astravia-org/theme-ui/file-preview";
-import { LightboxImageView } from "@astravia-org/theme-ui/file-preview";
+import { LightboxImageView } from "@astravia-org/theme-ui/file-preview/LightboxImageView";
 import { useImageSrc, useLightboxImageModel } from "../hooks/useLightboxImageModel";
 
 export { useImageSrc };

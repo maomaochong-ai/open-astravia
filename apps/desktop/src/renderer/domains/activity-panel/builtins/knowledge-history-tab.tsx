@@ -1,7 +1,12 @@
+import { lazy } from "react";
 import { useTranslation } from "react-i18next";
-import { KnowledgeHistoryPanel } from "../components/KnowledgeHistoryPanel";
+
 import { useActivityPanelContext, useActivityPanelCwd } from "../registry/context";
 import type { ActivityTabDefinition } from "../registry/types";
+
+const KnowledgeHistoryPanel = lazy(() =>
+	import("../components/KnowledgeHistoryPanel").then((module) => ({ default: module.KnowledgeHistoryPanel })),
+);
 
 function KnowledgeHistoryActivityTab(): JSX.Element {
 	const cwd = useActivityPanelCwd();

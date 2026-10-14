@@ -1,5 +1,6 @@
 import type { Project } from "@shared/store/atoms";
-import { ProjectGroupView, SessionRowView } from "@astravia-org/theme-ui/project";
+import { ProjectGroupView } from "@astravia-org/theme-ui/project/ProjectGroupView";
+import { SessionRowView } from "@astravia-org/theme-ui/project/SessionRowView";
 import { memo, useCallback } from "react";
 import {
 	type ProjectGroupSessionView,

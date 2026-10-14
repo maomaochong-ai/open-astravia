@@ -1,1 +1,1 @@
-export { Switch } from "@astravia-org/ui";
+export { Switch } from "@astravia-org/ui/switch";

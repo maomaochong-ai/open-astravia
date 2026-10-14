@@ -66,7 +66,13 @@ describe("RuntimeHost running-changed reason", () => {
 	function assistantFinal(stopReason: string): SessionEvent {
 		return {
 			...base(),
-			type: "message.final",
+			schemaVersion: 1,
+			eventId: "assistant-done",
+			channel: "assistant",
+			source: "agent",
+			modelCallIndex: 1,
+			type: "done",
+			reason: "stop",
 			message: { role: "assistant", stopReason } as unknown as Message,
 		} as SessionEvent;
 	}

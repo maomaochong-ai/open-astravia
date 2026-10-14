@@ -89,7 +89,7 @@ export function createCodingAgentGoalSessionExtension(
 						? [
 								{
 									kind: "agent-feature" as const,
-									feature: createCodingAgentGoalFeature(runtime, registrations),
+									feature: createCodingAgentGoalFeature(runtime, registrations, () => context.clock.now()),
 								},
 							]
 						: []),

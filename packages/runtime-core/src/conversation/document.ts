@@ -66,6 +66,8 @@ export interface ConversationDocumentCompactionEntry extends ConversationDocumen
 	/** Native records persist the exact model-visible summary message. */
 	readonly summaryMessage?: UserMessage;
 	readonly reason?: ContextCompactionRecord["reason"];
+	/** Automatic compaction belongs to the Turn that triggered it; manual compaction has none. */
+	readonly turnId?: string;
 }
 
 export interface ConversationDocumentBranchSummaryEntry extends ConversationDocumentEntryBase {
@@ -314,6 +316,7 @@ export function applyStoredEventToConversationDocument(
 					details: event.record.details,
 					fromHook: event.record.fromHook,
 					reason: event.record.reason,
+					...(event.turnId === undefined ? {} : { turnId: event.turnId }),
 				},
 			],
 			activeLeafId: entryReference.id,

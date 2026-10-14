@@ -1,5 +1,5 @@
 import { isSshProjectUri } from "@astravia/ssh-transport/project-uri";
-import { DEFAULT_VISIBLE_SESSIONS } from "@astravia-org/theme-ui/project";
+import { DEFAULT_VISIBLE_SESSIONS } from "@astravia-org/theme-ui/project/types";
 import { notifyTeamSessionsChanged } from "@shared/agent-teams/team-session-events";
 import { pathBasename } from "@shared/lib/utils";
 import type { Project, ProjectType } from "@shared/store/atoms";

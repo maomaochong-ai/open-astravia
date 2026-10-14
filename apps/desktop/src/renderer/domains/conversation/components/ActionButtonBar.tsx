@@ -1,4 +1,4 @@
-import { ActionButtonBarView } from "@astravia-org/theme-ui/chat";
+import { ActionButtonBarView } from "@astravia-org/theme-ui/chat/ActionButtonBarView";
 import { memo } from "react";
 import { useActionButtonBarModel } from "../hooks/useActionButtonBarModel";
 

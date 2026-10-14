@@ -8,10 +8,7 @@ export class SessionTurnNotificationController {
 	private aborted = false;
 
 	handle(event: SessionEvent): SessionTurnNotificationOutcome | null {
-		if (event.type === "message.final") {
-			const stopReason = (event.message as unknown as { stopReason?: unknown }).stopReason;
-			if (typeof stopReason === "string") this.lastStopReason = stopReason;
-		} else if (event.channel === "assistant" && (event.type === "done" || event.type === "error")) {
+		if (event.channel === "assistant" && (event.type === "done" || event.type === "error")) {
 			this.lastStopReason = event.type === "done" ? event.message.stopReason : "error";
 		} else if (event.channel !== "assistant" && event.type === "error") {
 			this.lastStopReason = "error";

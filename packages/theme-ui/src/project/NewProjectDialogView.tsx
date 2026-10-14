@@ -1,14 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type JSX } from "react";
-import {
-	Button,
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-	Input,
-} from "@astravia-org/ui";
+import { Button } from "@astravia-org/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@astravia-org/ui/dialog";
+import { Input } from "@astravia-org/ui/input";
 
 export interface NewProjectDialogViewLabels {
 	readonly title: string;

@@ -9,12 +9,16 @@ import {
 	subagentsBySessionAtom,
 } from "@shared/store/atoms";
 import { useAtomValue } from "jotai";
-import { useMemo } from "react";
+import { lazy, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { BackgroundTasksTabPanel } from "../components/BackgroundTasksTabPanel";
+
 import { useActivityRuntimeIds } from "../registry/context";
 import type { ActivityTabDefinition } from "../registry/types";
 import { collectRuntimeItems } from "../services/runtime-scope";
+
+const BackgroundTasksTabPanel = lazy(() =>
+	import("../components/BackgroundTasksTabPanel").then((module) => ({ default: module.BackgroundTasksTabPanel })),
+);
 
 function BackgroundTasksActivityTab(): JSX.Element {
 	return <BackgroundTasksTabPanel />;
@@ -32,10 +36,7 @@ export const backgroundTasksTabDefinition: ActivityTabDefinition = {
 		const subagentsMap = useAtomValue(subagentsBySessionAtom);
 		const mcpTasksMap = useAtomValue(mcpTasksBySessionAtom);
 		const backgroundTasks = useMemo(
-			() =>
-				collectRuntimeItems(runtimeIds, (runtimeId) =>
-					getBackgroundTasksForSession(backgroundTasksMap, runtimeId),
-				),
+			() => collectRuntimeItems(runtimeIds, (runtimeId) => getBackgroundTasksForSession(backgroundTasksMap, runtimeId)),
 			[backgroundTasksMap, runtimeIds],
 		);
 		const subagents = useMemo(
@@ -52,9 +53,7 @@ export const backgroundTasksTabDefinition: ActivityTabDefinition = {
 		if (backgroundTasks.length === 0 && subagents.length === 0 && mcpTasks.length === 0) return null;
 		const runningBash = backgroundTasks.filter((task) => task.status === "running").length;
 		const runningSub = subagents.filter((a) => isSubagentActive(a.status)).length;
-		const runningMcp = mcpTasks.filter(
-			(task) => task.status === "working" || task.status === "input_required",
-		).length;
+		const runningMcp = mcpTasks.filter((task) => task.status === "working" || task.status === "input_required").length;
 		const running = runningBash + runningSub + runningMcp;
 		return {
 			label: t("activityPanel.tabs.backgroundTasks"),

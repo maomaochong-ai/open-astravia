@@ -206,8 +206,9 @@ describe("随包内置快照", () => {
 		// o 系列早被 gpt-5 系列取代,上游却一直没标 deprecated——正是收敛要处理的那批。
 		expect(openai.o3).toBeUndefined();
 		expect(claude["claude-sonnet-4-5"]).toBeUndefined();
-		// Haiku 4.5 没有继任者,仍是该档唯一在售选项,不能被收敛掉。
-		expect(claude["claude-haiku-4-5"]).toBeDefined();
+		expect(claude["claude-haiku-4-5"]).toBeUndefined();
+		// “无继任者的档位要保留”只能对着固定输入验证，由构造数据的收敛用例覆盖；
+		// 上面几条断言的是快照内容，会随 models.dev 一起变。
 	});
 
 	it("目录中的可用模型不会再按系列折叠", () => {

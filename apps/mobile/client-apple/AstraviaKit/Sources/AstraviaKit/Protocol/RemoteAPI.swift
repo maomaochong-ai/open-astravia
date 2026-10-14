@@ -240,6 +240,8 @@ public struct RemoteDeviceStatus: Equatable, Sendable {
 	/// subscribes (ADR-0140). The phone opens no P2P link to a desktop without it: that
 	/// desktop would stream its screen for as long as the link is up.
 	public var screen: Bool = false
+	/// The relay currently announced by the desktop; absent on older versions.
+	public var relayBaseUrl: String? = nil
 }
 
 /// Why frames or taps might not reach the phone (ADR-0140).
@@ -461,7 +463,8 @@ public enum RemoteAPI {
 			runningSessionCount: value["runningSessionCount"]?.numberValue ?? 0,
 			fileRead: value["fileRead"]?.boolValue == true,
 			desktopControl: value["desktopControl"]?.boolValue,
-			screen: value["screen"]?.boolValue == true
+			screen: value["screen"]?.boolValue == true,
+			relayBaseUrl: PairingURI.normalizeRelayBaseUrl(value["relayBaseUrl"]?.stringValue)
 		)
 	}
 

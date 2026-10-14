@@ -1,7 +1,7 @@
 import type { AgentMessage } from "@astravia/agent-core";
 import type { Api, AssistantMessage, Model } from "@astravia/ai";
 import { describe, expect, it } from "vitest";
-import { compact, type CompactionPreparation } from "../src/compaction/compaction.js";
+import { type CompactionPreparation, compact } from "../src/compaction/compaction.js";
 import { DEFAULT_COMPACTION_SETTINGS } from "../src/compaction/contracts.js";
 import { createFileOps } from "../src/compaction/summary-support.js";
 

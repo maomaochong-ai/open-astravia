@@ -1,4 +1,4 @@
-import { BrowserPanelView } from "@astravia-org/theme-ui/activity";
+import { BrowserPanelView } from "@astravia-org/theme-ui/activity/BrowserPanelView";
 import { useBrowserPanelModel } from "../hooks/useBrowserPanelModel";
 
 /**

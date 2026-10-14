@@ -687,11 +687,12 @@
 			"expandLabel": "Expand",
 			"streaming": "Processing · {{duration}}",
 			"waiting": "Waiting · {{duration}}",
+			"done": "Done",
 			"work": {
-				"collapse": "Collapse {{count}} steps",
-				"collapseZero": "Collapse process",
-				"expand": "Expand {{count}} steps",
-				"expandZero": "Expand process"
+				"collapse": "Completed",
+				"collapseZero": "Completed",
+				"expand": "Completed",
+				"expandZero": "Completed"
 			}
 		},
 		"assistantMessage": {
@@ -782,6 +783,12 @@
 		},
 		"modelSwitched": "Switched model from {{from}} to {{to}}",
 		"compactionIndicator": "Compacting context...",
+		"compactionStep": {
+			"running": "Compacting context…",
+			"done": "Context compacted",
+			"failed": "Context compaction failed",
+			"tokensBefore": "{{tokens}} tokens before"
+		},
 		"retryIndicator": "Reconnecting ({{attempt}}/{{maxAttempts}})",
 		"retryReason": "Last request failed: {{reason}}",
 		"streamingPhrases": [
@@ -987,20 +994,16 @@
 		}
 	},
 	"goalMode": {
-		"dialog": {
-			"cancel": "Cancel",
+		"actions": {
 			"clear": "Clear goal",
-			"createDescription": "Astravia keeps iterating until the goal is complete, blocked, or paused.",
-			"manageDescription": "Review the current goal, resume it, or clear it.",
-			"objectiveLabel": "Goal",
-			"objectivePlaceholder": "Describe a concrete, verifiable final outcome…",
-			"resume": "Resume goal",
-			"start": "Start working",
-			"statusLabel": "Status",
-			"title": "Goal mode",
-			"usage": "{{used}} tokens used · {{count}} automatic continuations"
+			"pause": "Pause goal",
+			"resume": "Resume goal"
 		},
 		"operationFailed": "Goal operation failed",
+		"summary": {
+			"groupLabel": "Current goal",
+			"usage": "{{tokens}} tokens · {{seconds}} sec · {{count}} continuations"
+		},
 		"status": {
 			"active": "Active",
 			"blocked": "Blocked",

@@ -9,6 +9,7 @@ struct AstraviaApp: App {
 	@State private var notifier: SessionNotifier
 	@State private var model: AppModel
 	@State private var grace = BackgroundGrace()
+	@State private var network: NetworkWatcher
 	@Environment(\.scenePhase) private var scenePhase
 	/// UI tests start from a clean slate, and a permission prompt would stop them.
 	private let ephemeral: Bool
@@ -23,6 +24,7 @@ struct AstraviaApp: App {
 		_notifier = State(initialValue: notifier)
 		let model = AstraviaApp.makeModel(ephemeral: ephemeral, signals: ephemeral ? nil : notifier)
 		_model = State(initialValue: model)
+		_network = State(initialValue: NetworkWatcher { model.networkChanged() })
 		// Here rather than in the view: a tap on the Live Activity may launch the app with no window.
 		AnswerQuestionHandler.run = { sessionId, requestId, question, choice in
 			notifier.answering(sessionId, choice: choice)
@@ -91,8 +93,7 @@ struct AstraviaApp: App {
 		// Once on the LAN or relay, the link moves to the WebRTC control channel through the
 		// relay's viewer signaling; the same session carries the screen (ADR-0140).
 		platform.configureManager = { options in
-			guard let relay = options.desktop.relayBaseUrl, !relay.isEmpty else { return }
-			options.p2pTarget = PairingURI.desktopViewerUrl(relayBaseUrl: relay, pairingId: options.desktop.pairingId, mobileSecret: options.desktop.mobileSecret)
+			guard options.p2pTarget != nil else { return }
 			options.createP2pTransport = { RemoteDesktopSessions.shared.transport(for: $0) }
 		}
 		platform.signals = signals

@@ -1,4 +1,4 @@
-import { getFileIcon } from "@astravia-org/theme-ui/file-explorer";
+import { getFileIcon } from "@astravia-org/theme-ui/shared/fileIcons";
 import { useNarrowScreen } from "@shared/hooks/useNarrowScreen";
 import { resolveLocalFilePath } from "@shared/lib/resolve-local-file-path";
 import { isSubPath, pathBasename } from "@shared/lib/utils";

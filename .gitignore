@@ -33,6 +33,9 @@ deploy/logs/
 *.pem
 *.key
 dbx.db
+*.jks
+*.keystore
+/.local/android-signing/
 
 # Editor files
 .vscode/

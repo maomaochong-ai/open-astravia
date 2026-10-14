@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import type { RemoteConnectionEvent, RemoteHelloDecision } from "../src/index.js";
+import { describe, expect, it, vi } from "vitest";
+import type { RemoteConnectionEvent, RemoteHelloDecision, RemoteSealed } from "../src/index.js";
 import {
 	FakeRelay,
 	FakeTransport,
@@ -224,6 +224,7 @@ describe("RemoteConnection over a direct link (LAN)", () => {
 		expect(phone.getSnapshot().state).toBe("online");
 		expect(host.getSnapshot().state).toBe("online");
 		expect(hostEvents.some((event) => event.type === "state" && event.state !== "online")).toBe(false);
+		expect(hostEvents.filter((event) => event.type === "peer-authenticated")).toHaveLength(1);
 		await expect(phone.request("session.list")).resolves.toBe(1);
 	});
 
@@ -336,6 +337,81 @@ describe("RemoteConnection through a relay", () => {
 		expect(phone.getSnapshot().lastRttMs).toBe(25);
 	});
 
+	it.each(["mobile", "desktop"] as const)(
+		"waits for a new handshake when the relay's %s disconnects",
+		async (role) => {
+			vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+			const { phone, host } = relayPair(new FakeRelay());
+			const leaving = role === "mobile" ? phone : host;
+			const staying = role === "mobile" ? host : phone;
+			const events = collect(staying);
+			try {
+				await host.connect();
+				await phone.connect();
+				await vi.advanceTimersByTimeAsync(0);
+				const received = new Promise<void>((resolve) => {
+					const unsubscribe = leaving.onEvent((event) => {
+						if (event.type !== "remote-request") return;
+						unsubscribe();
+						resolve();
+					});
+				});
+				const pending = staying.request("session.list");
+				const rejected = expect(pending).rejects.toThrow("remote peer is offline");
+				await received;
+				await leaving.close();
+				await rejected;
+				expect(staying.getSnapshot()).toMatchObject({ state: "connecting", pendingRequestCount: 0 });
+				expect(events.slice(-2)).toEqual([
+					{ type: "state", state: "connecting" },
+					{ type: "peer-status", online: false },
+				]);
+				await expect(staying.request("session.list")).rejects.toThrow("remote connection is connecting");
+
+				// Only the departing endpoint reconnects; the parked endpoint keeps its transport.
+				await leaving.connect();
+				await vi.advanceTimersByTimeAsync(0);
+				expect(staying.getSnapshot()).toMatchObject({ state: "online", reconnectCount: 0 });
+				leaving.onEvent((event) => {
+					if (event.type === "remote-request") {
+						void leaving.respond(event.request.requestId, { success: true, payload: { resumed: true } });
+					}
+				});
+				await expect(staying.request("session.list")).resolves.toEqual({ resumed: true });
+			} finally {
+				await phone.close();
+				await host.close();
+				vi.useRealTimers();
+			}
+		},
+	);
+
+	it("ignores duplicate offline notices and does not treat a presence notice as a handshake", async () => {
+		vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+		const { mobileTransport, desktopTransport } = directPair();
+		const phoneIdentity = generateIdentityKeyPair();
+		const phone = mobile(mobileTransport, { identity: phoneIdentity });
+		const host = desktop(desktopTransport, { expectedPeerIdentityKey: phoneIdentity.publicKey });
+		const events = collect(host);
+		try {
+			await host.connect();
+			await phone.connect();
+			await vi.advanceTimersByTimeAsync(0);
+			expect(host.getSnapshot().state).toBe("online");
+			events.length = 0;
+			await mobileTransport.send({ type: "peer_status", online: false });
+			await mobileTransport.send({ type: "peer_status", online: false });
+			await mobileTransport.send({ type: "peer_status", online: true });
+			expect(events.filter((event) => event.type === "state")).toEqual([{ type: "state", state: "connecting" }]);
+			expect(host.getSnapshot().state).toBe("connecting");
+			await expect(host.request("session.list")).rejects.toThrow("remote connection is connecting");
+		} finally {
+			await phone.close();
+			await host.close();
+			vi.useRealTimers();
+		}
+	});
+
 	it("rejects pending requests when the relay reports the peer offline", async () => {
 		const relay = new FakeRelay();
 		const { phone, host } = relayPair(relay);
@@ -446,4 +522,67 @@ describe("RemoteConnection through a relay", () => {
 		expect(names).toEqual(["session.resync", "session.message"]);
 		expect(phone.getSnapshot().lastEventSequence).toBe(2);
 	});
+});
+
+describe("peer authentication before replacing a pairing", () => {
+	it("does not authenticate a plaintext handshake; the first decrypted frame proves possession once", async () => {
+		const { mobileTransport, desktopTransport } = directPair();
+		const phone = mobile(mobileTransport);
+		const host = desktop(desktopTransport, { onHello: () => ({ kind: "approve" }) });
+		const events = collect(host);
+		const held: RemoteSealed[] = [];
+		const send = mobileTransport.send.bind(mobileTransport);
+		mobileTransport.send = async (frame) => {
+			if (frame.type === "sealed") held.push(frame);
+			else await send(frame);
+		};
+		await host.connect();
+		await phone.connect();
+		await vi.waitFor(() => expect(held).toHaveLength(1));
+		expect(host.getSnapshot().state).toBe("online");
+		expect(events.some((event) => event.type === "peer-authenticated")).toBe(false);
+		await send(held[0]!);
+		await send(held[0]!);
+		expect(events.filter((event) => event.type === "peer-authenticated")).toHaveLength(1);
+		await phone.close();
+		await host.close();
+	});
+
+	it("a corrupt encrypted frame cannot authenticate or retire a device", async () => {
+		const { mobileTransport, desktopTransport } = directPair();
+		const phone = mobile(mobileTransport);
+		const host = desktop(desktopTransport, { onHello: () => ({ kind: "approve" }) });
+		const events = collect(host);
+		const send = mobileTransport.send.bind(mobileTransport);
+		mobileTransport.send = async (frame) =>
+			send(frame.type === "sealed" ? { ...frame, ciphertext: "A".repeat(80) } : frame);
+		await host.connect();
+		await phone.connect();
+		await vi.waitFor(() =>
+			expect(events.some((event) => event.type === "error" && event.error.code === "invalid_frame")).toBe(true),
+		);
+		expect(host.getSnapshot().state).not.toBe("online");
+		expect(events.some((event) => event.type === "peer-authenticated")).toBe(false);
+		await phone.close();
+		await host.close();
+	});
+});
+
+it("adopts the authorized device journal only after the peer proves its identity", async () => {
+	const { mobileTransport, desktopTransport } = directPair();
+	const phone = mobile(mobileTransport);
+	const host = desktop(desktopTransport, { onHello: () => ({ kind: "approve" }) });
+	const journal = new RemoteEventJournal();
+	expect(() => host.adoptEventJournal(journal)).toThrow("peer is not authenticated");
+	await host.connect();
+	await phone.connect();
+	const events = collect(phone);
+	await vi.waitFor(() => expect(() => host.adoptEventJournal(journal)).not.toThrow());
+	const sent = await host.emitEvent("device.status", { deviceName: "Computer" });
+	await vi.waitFor(() =>
+		expect(events.some((event) => event.type === "remote-event" && event.event.eventId === sent.eventId)).toBe(true),
+	);
+	expect(journal.lastSequence).toBe(sent.sequence);
+	await phone.close();
+	await host.close();
 });

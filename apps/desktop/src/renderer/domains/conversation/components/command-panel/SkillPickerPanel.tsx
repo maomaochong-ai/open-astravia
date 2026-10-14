@@ -1,5 +1,5 @@
 import type { SkillInfo } from "@preload/api";
-import { ThemeSurface } from "@astravia-org/theme-ui/appearance";
+import { ThemeSurface } from "@astravia-org/theme-ui/appearance/ThemeSurface";
 import { useThemeComponent } from "@astravia-org/theme-sdk";
 import { AnimatePresence, motion } from "motion/react";
 import { useSkillPickerModel } from "../../hooks/useSkillPickerModel";

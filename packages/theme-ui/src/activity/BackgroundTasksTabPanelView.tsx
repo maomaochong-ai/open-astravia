@@ -1,4 +1,4 @@
-import { Button } from "@astravia-org/ui";
+import { Button } from "@astravia-org/ui/button";
 import type { JSX, ReactNode } from "react";
 import { useEffect, useRef } from "react";
 

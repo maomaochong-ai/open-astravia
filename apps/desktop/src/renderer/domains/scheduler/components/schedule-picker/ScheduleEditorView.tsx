@@ -1,4 +1,5 @@
-import { cn, Popover, PopoverContent, PopoverTrigger } from "@astravia-org/ui";
+import { cn } from "@astravia-org/ui/utils";
+import { Popover, PopoverContent, PopoverTrigger } from "@astravia-org/ui/popover";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {

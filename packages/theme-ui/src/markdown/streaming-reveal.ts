@@ -33,6 +33,11 @@ const MIN_SOFT_BREAK_LENGTH = 16;
 
 /** 最后一个片放出后，等这么久再撤掉「最新短语略暗」的包裹类。 */
 export const STREAMING_SETTLE_MS = 150;
+/**
+ * 流还没结束、但已全部放出且这么久没有新文本时，也撤掉暗色：正文写完到回合结束事件之间常有
+ * 近一秒的空档，不能让末尾短语一直暗着。新文本到达时会重新挂上包裹类。
+ */
+export const STREAMING_IDLE_SETTLE_MS = 300;
 /** 尾部未完成的词超过这么久没有新内容，就不再等，直接放出，避免模型停顿时文字「卡住」。 */
 export const STREAMING_STALL_FLUSH_MS = 800;
 

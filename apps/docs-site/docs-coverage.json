@@ -142,7 +142,7 @@
 			"status": "beta",
 			"platforms": ["windows", "macos", "linux", "android", "ios"],
 			"pages": ["/product/remote-control/", "/reference/compatibility/", "/product/settings/"],
-			"note": "桌面三端都有远程连接。iPhone 与 Android 都能继续会话并用连接码配对；桌面画面目前只有 Android。"
+			"note": "桌面三端都有远程连接。iPhone 与 Android 都能继续会话、用连接码配对并操作桌面；同身份重新配对保留设备与权限，重装后身份丢失的旧记录可解除配对。"
 		},
 		{
 			"id": "mobile-client",

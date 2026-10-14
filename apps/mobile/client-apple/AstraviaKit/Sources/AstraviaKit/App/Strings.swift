@@ -66,6 +66,7 @@ public enum L10n {
 		public static var unpairedScan: String { tr("home.unpairedScan") }
 		public static var search: String { tr("home.search") }
 		public static var taskBoard: String { tr("home.taskBoard") }
+		public static var connectComputer: String { tr("home.connectComputer") }
 		public static var tasks: String { tr("home.tasks") }
 		public static var pickProject: String { tr("home.pickProject") }
 		public static var allSessions: String { tr("home.allSessions") }
@@ -195,6 +196,9 @@ public enum L10n {
 		public static func thinkingActivity(_ text: String) -> String { tr("chat.thinkingActivity \(text)") }
 		public static var copy: String { tr("chat.copy") }
 		public static var copied: String { tr("chat.copied") }
+		public static var readAloud: String { tr("chat.readAloud") }
+		public static var stopReading: String { tr("chat.stopReading") }
+		public static var autoRead: String { tr("chat.autoRead") }
 		public static var questionTitle: String { tr("chat.questionTitle") }
 		public static var attach: String { tr("chat.attach") }
 		public static var scrollToBottom: String { tr("chat.scrollToBottom") }
@@ -284,6 +288,8 @@ public enum L10n {
 		public static var routeLan: String { tr("remote.routeLan") }
 		public static var routeInternet: String { tr("remote.routeInternet") }
 		public static var routeRelayed: String { tr("remote.routeRelayed") }
+		public static var routeVpn: String { tr("remote.routeVpn") }
+		public static var routeDirect: String { tr("remote.routeDirect") }
 		public static func roundTrip(_ ms: Int) -> String { tr("remote.roundTrip \(ms)") }
 		public static func pictureDelay(_ ms: Int) -> String { tr("remote.pictureDelay \(ms)") }
 		public static func framesPerSecond(_ fps: Int) -> String { tr("remote.framesPerSecond \(fps)") }

@@ -14,7 +14,11 @@ vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (key: string) => k
 vi.mock("@shared/hooks/useShortcuts", () => ({ useEffectiveShortcut: () => "shift+tab" }));
 vi.mock("../../plugins/runtime/plugin-i18n", () => ({ usePluginTextResolver: () => (_id: string, text: string) => text }));
 
-const { BUILTIN_PLAN_MODE_ACTION_ID, useInputActionBarModel } = await import("./useInputActionBarModel.js");
+const {
+	BUILTIN_GOAL_MODE_ACTION_ID,
+	BUILTIN_PLAN_MODE_ACTION_ID,
+	useInputActionBarModel,
+} = await import("./useInputActionBarModel.js");
 const store = getDefaultStore();
 
 describe("plan mode as an input action", () => {
@@ -52,5 +56,35 @@ describe("plan mode as an input action", () => {
 		store.set(currentScenarioAtom, "batch");
 		const { result } = renderHook(() => useInputActionBarModel());
 		expect(planAction(result.current)).toBeUndefined();
+	});
+});
+
+describe("goal mode as an input action", () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		store.set(activeSessionAtom, { runtimeId: "runtime-1", sessionPath: "" } as ActiveSession);
+		store.set(currentScenarioAtom, "project");
+		store.set(draftPlanModeAtom, false);
+		store.set(planModeStateBySessionAtom, {});
+	});
+	afterEach(cleanup);
+
+	it("is placed directly beside plan mode and delegates its toggle", () => {
+		const onToggle = vi.fn();
+		const { result } = renderHook(() =>
+			useInputActionBarModel({ active: true, onToggle }),
+		);
+		const ids = result.current.builtins.map(({ id }) => id);
+		const planIndex = ids.indexOf(BUILTIN_PLAN_MODE_ACTION_ID);
+
+		expect(planIndex).toBeGreaterThanOrEqual(0);
+		expect(ids[planIndex + 1]).toBe(BUILTIN_GOAL_MODE_ACTION_ID);
+		expect(result.current.builtins[planIndex + 1]).toMatchObject({
+			label: "inputActionBar.goalMode.label",
+			active: true,
+		});
+
+		act(() => result.current.builtins[planIndex + 1]?.onToggle());
+		expect(onToggle).toHaveBeenCalledOnce();
 	});
 });
