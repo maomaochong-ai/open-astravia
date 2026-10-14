@@ -45,6 +45,7 @@ export {
 	AssistantMessage,
 	AssistantMessageFold,
 	AssistantMessagePredictingStatus,
+	AssistantMessageProcessContainer,
 	AssistantMessageStreamingStatus,
 	StreamingIndicator,
 } from "./AssistantMessageView";

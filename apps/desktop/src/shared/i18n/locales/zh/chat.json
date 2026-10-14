@@ -687,11 +687,12 @@
 			"expandLabel": "展开",
 			"streaming": "正在处理 · {{duration}}",
 			"waiting": "已等待 · {{duration}}",
+			"done": "完成",
 			"work": {
-				"collapse": "收起{{count}}个步骤",
-				"collapseZero": "收起过程",
-				"expand": "展开{{count}}个步骤",
-				"expandZero": "展开过程"
+				"collapse": "已完成",
+				"collapseZero": "已完成",
+				"expand": "已完成",
+				"expandZero": "已完成"
 			}
 		},
 		"assistantMessage": {

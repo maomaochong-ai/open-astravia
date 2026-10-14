@@ -687,11 +687,12 @@
 			"expandLabel": "Expand",
 			"streaming": "Processing · {{duration}}",
 			"waiting": "Waiting · {{duration}}",
+			"done": "Done",
 			"work": {
-				"collapse": "Collapse {{count}} steps",
-				"collapseZero": "Collapse process",
-				"expand": "Expand {{count}} steps",
-				"expandZero": "Expand process"
+				"collapse": "Completed",
+				"collapseZero": "Completed",
+				"expand": "Completed",
+				"expandZero": "Completed"
 			}
 		},
 		"assistantMessage": {
