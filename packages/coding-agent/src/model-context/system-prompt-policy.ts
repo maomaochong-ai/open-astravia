@@ -229,7 +229,7 @@ function renderContextFilesSection(contextFiles: Array<{ path: string; content: 
 	let content =
 		"# Project Context\n\nProject-specific instructions and guidelines:\n\n" +
 		"Scoping rules: each instruction file (AGENTS.md, CLAUDE.md, …) applies to the entire directory tree rooted at the folder that contains it. " +
-		"When instructions conflict, more deeply nested files take precedence over higher-level ones, and direct user instructions in the chat always override any instruction file.\n\n";
+		"When instructions conflict, more deeply nested files take precedence over higher-level ones; within the same directory AGENTS.md takes precedence over CLAUDE.md. Direct user instructions in the chat always override any instruction file.\n\n";
 	for (const { path: filePath, content: fileContent } of contextFiles) {
 		content += `## ${filePath}\n\n${fileContent}\n\n`;
 	}

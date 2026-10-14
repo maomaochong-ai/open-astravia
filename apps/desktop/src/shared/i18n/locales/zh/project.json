@@ -161,8 +161,49 @@
 		"saveFailed": "保存失败",
 		"save": "保存",
 		"editorPlaceholder": "在此编写 AGENTS.md 项目指令...",
+		"editorPlaceholderFile": "在此编写 {{file}} 项目指令与上下文...",
 		"agentsMdHint": "AGENTS.md 用于定义项目级别的 AI 指令，所有会话都会自动加载此文件。",
-		"quickSave": "快速保存"
+		"claudeMdHint": "CLAUDE.md 同样会被 Vetta 加载；与 AGENTS.md 冲突时，以 AGENTS.md 为准。",
+		"contextMdHint": "CONTEXT.md 用于沉淀项目的核心背景、领域模型与长期上下文说明。",
+		"quickSave": "快速保存",
+		"context": { "title": "项目指令" },
+		"previewMode": "预览",
+		"editMode": "编辑",
+		"emptyFileTitle": "尚未编写 {{file}}",
+		"emptyFileHint": "切到编辑模式即可创建并保存此指令文件。",
+		"startEditing": "开始编写",
+		"recentSessions": {
+			"title": "最近与置顶会话",
+			"empty": "该项目下还没有会话记录",
+			"startFirst": "发起第一个会话",
+			"pinned": "已置顶",
+			"pin": "置顶会话",
+			"unpin": "取消置顶",
+			"running": "运行中",
+			"scheduled": "定时会话",
+			"showMore": "展开全部（+{{count}}）",
+			"showLess": "收起"
+		},
+		"runtime": {
+			"title": "运行环境与端口",
+			"openPanel": "活动面板",
+			"openPorts": "端口管理",
+			"runningSessions": "{{count}} 个会话运行中",
+			"runningTasks": "{{count}} 个后台任务运行中",
+			"activePorts": "{{count}} 个监听端口",
+			"idleTitle": "当前无运行中的后台任务或监听端口",
+			"idleHint": "会话中启动的开发服务、后台命令与远端端口转发会实时显示在这里。",
+			"stopTask": "停止任务",
+			"previewPort": "内置预览",
+			"openExternalPort": "浏览器打开",
+			"portForwarded": "已转发 → localhost:{{port}}",
+			"portLocal": "localhost:{{port}}"
+		},
+		"schedule": {
+			"manage": "管理自动化",
+			"emptyTitle": "暂未绑定定时与自动化任务",
+			"emptyHint": "可为此项目配置定时巡检、构建检查或周期性 AI 任务。"
+		}
 	},
 	"exportDialog": {
 		"title": "导出项目",
