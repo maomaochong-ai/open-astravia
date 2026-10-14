@@ -831,6 +831,8 @@ export const ConversationDocumentEntrySchema = Type.Union([
 			reason: Type.Optional(
 				Type.Union([Type.Literal("manual"), Type.Literal("threshold"), Type.Literal("overflow")]),
 			),
+			/** Automatic compaction belongs to the Turn that triggered it; manual compaction has none. */
+			turnId: Type.Optional(Type.String({ minLength: 1 })),
 		},
 		{ additionalProperties: false },
 	),
