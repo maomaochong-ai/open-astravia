@@ -647,6 +647,11 @@ textarea:focus {
 }
 
 /* Markdown body: readable text should use text-selection cursor. */
+/* 防 vibrancy 合成层裁剪：显式声明文字容器不裁剪，优化字形渲染。 */
+.markdown-body {
+	overflow: visible;
+	text-rendering: optimizeLegibility;
+}
 .markdown-body,
 .markdown-body :where(p, li, blockquote, td, th, h1, h2, h3, h4, h5, h6, span, strong, em, code, pre),
 .code-preview,
@@ -673,24 +678,19 @@ textarea:focus {
 	margin-bottom: 0 !important;
 }
 
-/* Streaming tail: 逐短语渐亮（参照 Gemini 网页端）。TextBlockView 只放出已写完的短语，一次一个、
-   间隔 50~300ms 随积压变化；rehype 插件把流式末尾消息的文字按短语包成 .streaming-chunk，
-   并给最新的两个短语打上 -latest / -recent。
-   不用 CSS 动画：每个短语各跑一段淡入意味着流式全程连续出帧，而毛玻璃窗口每帧都要整窗重合成
-   （steps() 也只是打折）。改成「最新短语偏暗、次新略暗、再往前全亮」，亮度只在下一次放出短语时
-   随 React 重渲染一起变，出帧数与放出节奏完全一致，不多一帧。
-   只动 opacity：保持 inline 排版，不用 inline-block / transform，避免换行位置变化和上下跳动；
-   也不加 will-change，免得长回复里几百个片段被永久提升成合成层。 */
+/* Streaming tail: 短语分段保留（DOM 结构供未来扩展），但统一 currentColor 不做亮度分层。
+   之前用 color-mix 做「最新短语偏暗」，半透明文字在毛玻璃窗口上透出模糊背景，
+   与全亮文字形成视觉层差（用户反馈"分层"）。去掉压暗后流式状态由文字逐字出现本身表达。 */
 .markdown-streaming-tail .streaming-chunk-recent {
-	opacity: 0.8;
+	color: currentColor;
 }
 .markdown-streaming-tail .streaming-chunk-latest {
-	opacity: 0.55;
+	color: currentColor;
 }
 @media (prefers-reduced-motion: reduce) {
 	.markdown-streaming-tail .streaming-chunk-recent,
 	.markdown-streaming-tail .streaming-chunk-latest {
-		opacity: 1;
+		color: currentColor;
 	}
 }
 

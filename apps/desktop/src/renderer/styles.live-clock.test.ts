@@ -21,10 +21,12 @@ describe("streaming-time animations stay low-rate", () => {
 		expect(stylesCss).not.toContain("@keyframes tool-call-text-breathe");
 	});
 
-	it("streaming chunks dim the newest phrases instead of running a fade-in animation", () => {
+	it("streaming chunks use currentColor (no dimming — color-mix 半透明在毛玻璃上透出背景形成视觉层差)", () => {
 		expect(stylesCss).not.toContain("@keyframes streaming-chunk-fade");
 		expect(stylesCss).not.toMatch(/\.streaming-chunk \{[^}]*animation/);
-		expect(ruleBody(".markdown-streaming-tail .streaming-chunk-latest")).toContain("opacity: 0.55;");
-		expect(ruleBody(".markdown-streaming-tail .streaming-chunk-recent")).toContain("opacity: 0.8;");
+		expect(ruleBody(".markdown-streaming-tail .streaming-chunk-latest")).not.toContain("opacity");
+		expect(ruleBody(".markdown-streaming-tail .streaming-chunk-recent")).not.toContain("opacity");
+		expect(ruleBody(".markdown-streaming-tail .streaming-chunk-latest")).toContain("currentColor");
+		expect(ruleBody(".markdown-streaming-tail .streaming-chunk-recent")).toContain("currentColor");
 	});
 });
