@@ -467,6 +467,8 @@ export type HistoryEntry =
 			entryId?: string;
 			summary: string;
 			tokensBefore: number;
+			/** Automatic compaction belongs to the Turn that triggered it; manual compaction has none. */
+			turnId?: string;
 			timestamp: string;
 	  }
 	| { type: "assistant_turn_timing"; timing: AssistantTurnTiming; timestamp: string }
