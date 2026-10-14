@@ -7,9 +7,13 @@ import { describe, expect, it, vi } from "vitest";
  * radix 的浮层原语在 jsdom 下依赖大量布局 API，仓库既有做法是把 `@astravia-org/ui` 换成
  * 结构等价的轻量实现（见 content-creation/test/canvas-project-menu.dom.test.tsx），
  * 这里沿用同一策略：菜单树的渲染与回调路由是被测对象，定位行为交给 radix。
+ * 菜单组件按子路径导入，mock 目标必须与导入路径一致才会生效。
  */
-vi.mock("@astravia-org/ui", () => ({
+vi.mock("@astravia-org/ui/utils", () => ({
 	cn: (...classes: unknown[]) => classes.filter(Boolean).join(" "),
+}));
+
+vi.mock("@astravia-org/ui/dropdown-menu", () => ({
 	DropdownMenu: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 	DropdownMenuTrigger: () => null,
 	DropdownMenuContent: ({ children }: { children: ReactNode }) => <div role="menu">{children}</div>,
