@@ -657,13 +657,6 @@ function observeEvent(event: SessionEvent, cwd: string): RuntimeEventObservation
 			return { ...base, detail: event.phase };
 		case "active_tools_update":
 			return { ...base, detail: event.activeToolNames };
-		case "message.delta":
-		case "thinking.delta":
-			return { ...base, detail: event.delta };
-		case "message.final":
-			return { ...base, detail: observeMessages([event.message]) };
-		case "toolcall.start":
-			return { ...base, detail: { toolName: event.toolName } };
 		case "tool.start":
 			return { ...base, detail: { toolName: event.toolName, args: normalizeEventValue(event.args, cwd) } };
 		case "tool.end":

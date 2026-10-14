@@ -31,7 +31,6 @@ export interface ActiveTeamMemberTurn {
 	readonly startedAt: number;
 	seq: number;
 	text: string;
-	rawAssistantStream: boolean;
 	latestPublicPartial?: AssistantMessage;
 	toolExecutionEvents: DesktopTeamToolExecutionEvent[];
 }
@@ -171,7 +170,6 @@ export class TeamSessionEventHub {
 					this.publishTeamContextUsage(session, runtimeState.sessionId, event);
 				}
 				if (event.channel === "assistant") {
-					active.rawAssistantStream = true;
 					const projected = projectPublicAssistantEvent(event);
 					if (projected) {
 						if (!this.turnsWithFirstPublicEvent.has(active)) {
@@ -199,27 +197,6 @@ export class TeamSessionEventHub {
 						this.host.onFirstResponseBlockCompleted?.(active.teamSessionId, active.memberId);
 					}
 					return;
-				}
-				if (event.type === "message.delta" && event.delta && !active.rawAssistantStream) {
-					active.seq += 1;
-					active.text += event.delta;
-					const partial = compatibilityPublicAssistantMessage(active.text, event.timestamp);
-					active.latestPublicPartial = partial;
-					const envelope = {
-						type: "conversation.agent-message-event",
-						conversationId: active.teamSessionId,
-						messageId: active.messageId,
-						turnId: active.requestId,
-						author: active.author,
-						sequence: active.seq,
-						timestamp: event.timestamp,
-						event: { type: "text_delta", contentIndex: 0, delta: event.delta, partial },
-					} satisfies ConversationMessageStreamEvent;
-					this.publish(envelope);
-				}
-				if (event.type === "message.final" && !this.turnsWithCompletedResponseBlock.has(active)) {
-					this.turnsWithCompletedResponseBlock.add(active);
-					this.host.onFirstResponseBlockCompleted?.(active.teamSessionId, active.memberId);
 				}
 			});
 			let unsubscribeExecution = () => {};

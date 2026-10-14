@@ -1,5 +1,4 @@
-import { ThinkingBlock } from "@astravia-org/theme-ui/chat";
-import { keepPairedPunctuation } from "@astravia-org/theme-ui/markdown";
+import { ThinkingBlock } from "@astravia-org/theme-ui/chat/ThinkingBlockView";
 import { useTranslation } from "react-i18next";
 
 interface ThinkingBlockProps {
@@ -29,7 +28,7 @@ export function ThinkingBlockView({
 					</ThinkingBlock.LineCount>
 					<ThinkingBlock.Chevron />
 				</ThinkingBlock.Trigger>
-				<ThinkingBlock.Content>{keepPairedPunctuation(text)}</ThinkingBlock.Content>
+				<ThinkingBlock.Content>{text}</ThinkingBlock.Content>
 			</ThinkingBlock.Frame>
 		</ThinkingBlock.Root>
 	);
@@ -54,7 +53,7 @@ export function ConciseThinkingBlockView({
 					<ThinkingBlock.Title>{resolvedTitle}</ThinkingBlock.Title>
 					<ThinkingBlock.Chevron />
 				</ThinkingBlock.Trigger>
-				<ThinkingBlock.Content>{keepPairedPunctuation(text)}</ThinkingBlock.Content>
+				<ThinkingBlock.Content>{text}</ThinkingBlock.Content>
 			</ThinkingBlock.Frame>
 		</ThinkingBlock.Root>
 	);

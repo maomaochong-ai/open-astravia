@@ -13,13 +13,17 @@ import type {
 } from "../components/command-panel/types";
 import type { ConnectorGridItem } from "./useConnectorGrid";
 import { useConnectorGrid } from "./useConnectorGrid";
-import { useInputActionBarModel } from "../components/useInputActionBarModel";
+import {
+	type InputActionBarModel,
+	useInputActionBarModel,
+} from "../components/useInputActionBarModel";
 import { skillIconOf, useSkillIconMap } from "./useSkillIconMap";
 import { useSkillList } from "./useSkillList";
 import { useDefaultContextRingModel } from "./useContextRingModel";
 import { focusInputEditor, removeInputTrigger } from "../components/input-bar/editor/inputEditorHandle";
 
 export interface CommandPanelModelInput {
+	inputActions?: InputActionBarModel;
 	open: boolean;
 	onClose: () => void;
 	onSelect: (skill: SkillInfo, icon?: string) => void;
@@ -37,6 +41,7 @@ export interface CommandPanelModel {
 }
 
 export function useCommandPanelModel({
+	inputActions,
 	open,
 	onClose,
 	onSelect,
@@ -77,7 +82,8 @@ export function useCommandPanelModel({
 		(skill: SkillInfo) => onSelect(skill, resolveIcon(skill)),
 		[onSelect, resolveIcon],
 	);
-	const actionBar = useInputActionBarModel();
+	const fallbackActionBar = useInputActionBarModel();
+	const actionBar = inputActions ?? fallbackActionBar;
 	const [activeIndex, setActiveIndex] = useState(0);
 	const panelRef = useRef<HTMLDivElement>(null);
 	// 仅键盘导航需要把高亮滚进视口；鼠标 hover 只改高亮，不抢滚动位置。

@@ -67,6 +67,13 @@ export type {
 export type AgentMode = string;
 
 /** Desktop 在 Runtime 基础状态上组合的 Coding Agent 产品状态。 */
+/** Snapshot returned by `session.attach`: durable history plus the Turn replayed as events. */
+export interface DesktopSessionAttachmentSnapshot {
+	readonly history: HistoryEntry[];
+	/** Messages of this Turn are rebuilt from the replayed events, not from `history`. */
+	readonly runningTurnId?: string;
+}
+
 export interface DesktopSessionStateSnapshot extends SessionStateSnapshot {
 	readonly scenario: ConversationScenario;
 	readonly agentMode?: AgentMode;
@@ -168,6 +175,17 @@ export interface DesktopSessionApi {
 	/** 清空 session 的 todo 列表（被 scene 等 lock 时返回 false）。 */
 	clearTodos(sessionId: string): Promise<boolean>;
 	subscribe(sessionId: string, handler: (event: SessionEvent) => void): Promise<() => void>;
+	/**
+	 * Subscribe with a history snapshot taken in the same step (ADR-0146). `onSnapshot`
+	 * runs before any event; the running Turn arrives as events from its start.
+	 */
+	attach(
+		sessionId: string,
+		handlers: {
+			readonly onSnapshot: (snapshot: DesktopSessionAttachmentSnapshot) => void;
+			readonly onEvent: (event: SessionEvent) => void;
+		},
+	): Promise<() => void>;
 	/** ask_user_question：监听主进程发来的提问请求（携 sessionId + questions）。 */
 	onQuestionRequest(handler: (request: CodingAgentQuestionFunctionRequest) => void): () => void;
 	/** 当前仍等待回答的问题快照，供 Renderer 初始化或重载后恢复真实状态。 */
@@ -290,7 +308,7 @@ export interface DesktopSessionApi {
 	 * session-file lock, so IM-owned sessions (sidecar may be actively
 	 * writing) can be viewed live without conflict.
 	 */
-	openViewer(path: string, options?: { tailTurns?: number }): Promise<{ history: HistoryEntry[] }>;
+	openViewer(path: string): Promise<{ history: HistoryEntry[] }>;
 	/**
 	 * Subscribe to live updates for a viewer-mode session. Handler fires
 	 * whenever the underlying .jsonl is written. Returns an unsubscribe

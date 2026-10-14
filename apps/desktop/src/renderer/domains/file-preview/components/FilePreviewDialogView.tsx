@@ -1,8 +1,5 @@
 import type { FilePreviewContext, FilePreviewItem } from "@astravia-org/theme-ui/file-preview";
-import {
-	FilePreviewDialogView as ThemeFilePreviewDialogView,
-	ThumbnailView,
-} from "@astravia-org/theme-ui/file-preview";
+import { FilePreviewDialogView as ThemeFilePreviewDialogView, ThumbnailView } from "@astravia-org/theme-ui/file-preview/FilePreviewDialogView";
 import { useImageSrc } from "../hooks/useLightboxImageModel";
 import { LightboxImage } from "./LightboxImage";
 import { PreviewBody } from "./PreviewContent";

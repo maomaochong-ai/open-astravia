@@ -16,9 +16,17 @@ function makeDocument(entries: unknown[]): ConversationDocument {
 describe("projectRecallEntries", () => {
 	it("投影 user/assistant/toolResult 消息，带角色与文本", () => {
 		const doc = makeDocument([
-			{ id: "e1", type: "message", message: { role: "user", content: [{ type: "text", text: "帮我读一下 config.ts" }] } },
+			{
+				id: "e1",
+				type: "message",
+				message: { role: "user", content: [{ type: "text", text: "帮我读一下 config.ts" }] },
+			},
 			{ id: "e2", type: "message", message: { role: "assistant", content: "好的，我来读取文件。" } },
-			{ id: "e3", type: "message", message: { role: "toolResult", content: [{ type: "text", text: "export const config = {};" }] } },
+			{
+				id: "e3",
+				type: "message",
+				message: { role: "toolResult", content: [{ type: "text", text: "export const config = {};" }] },
+			},
 		]);
 		const entries = projectRecallEntries(doc);
 		expect(entries).toHaveLength(3);

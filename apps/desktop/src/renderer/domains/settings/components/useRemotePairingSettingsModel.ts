@@ -61,6 +61,7 @@ export interface RemotePairingSettingsModel {
 		readonly devices: {
 			readonly desktop: string;
 			readonly empty: string;
+			readonly emptyHint: string;
 			readonly revoke: string;
 			readonly title: string;
 		};
@@ -249,6 +250,7 @@ export function useRemotePairingSettingsModel(): RemotePairingSettingsModel {
 			devices: {
 				title: t("remote.devices.title"),
 				empty: t("remote.devices.empty"),
+				emptyHint: t("remote.devices.emptyHint"),
 				revoke: t("remote.devices.revoke"),
 				desktop: t("remote.devices.desktop"),
 			},

@@ -297,6 +297,21 @@ function SectionTitle({ children, count }: { children: string; count?: number })
 	);
 }
 
+/** Same rhythm as a paired-phone row, so the empty section is a place a phone will land. */
+function EmptyPhones({ title, hint }: { title: string; hint: string }): JSX.Element {
+	return (
+		<div className="flex items-center gap-3.5 rounded-xl bg-muted/40 px-3 py-3">
+			<span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-dashed border-border bg-background text-muted-foreground">
+				<span className="icon-[solar--smartphone-2-linear] h-4.5 w-4.5" aria-hidden="true" />
+			</span>
+			<div className="min-w-0">
+				<p className="text-[13px] font-medium text-foreground">{title}</p>
+				<p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">{hint}</p>
+			</div>
+		</div>
+	);
+}
+
 /** One borderless row: a round icon, what it is, and its control on the right. */
 function Row({
 	icon,
@@ -378,7 +393,7 @@ export function RemotePairingSettingsView({ model }: { model: RemotePairingSetti
 			<section id="remote-devices" className="mt-8">
 				<SectionTitle count={model.devices.length}>{labels.devices.title}</SectionTitle>
 				{model.devices.length === 0 ? (
-					<p className="px-3 py-3 text-[12px] text-muted-foreground">{labels.devices.empty}</p>
+					<EmptyPhones title={labels.devices.empty} hint={labels.devices.emptyHint} />
 				) : (
 					<ul className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-x-2">
 						{model.devices.map((device) => (

@@ -1,10 +1,13 @@
 import type { ThinkingBlock, ToolCallBlock } from "@shared/store/atoms";
 import type { ChatToolCallPresentationViewModel } from "@shared/store/atoms";
 import { languageAtom, pluginAgentToolLabelsAtom, pluginI18nByIdAtom } from "@shared/store/atoms";
-import { LiveThinkingView, ProgressGroup, SegmentShell } from "@astravia-org/theme-ui/chat";
+import { LiveThinkingView } from "@astravia-org/theme-ui/chat/LiveThinkingView";
+import { ProgressGroup } from "@astravia-org/theme-ui/chat/ProgressGroupView";
+import { SegmentShell } from "@astravia-org/theme-ui/chat/MessageBlockSegmentsView";
 import { useAtomValue } from "jotai";
 import { memo } from "react";
 import { useTranslation } from "react-i18next";
+import { CompactionBlockView } from "../blocks/CompactionBlock";
 import { ErrorBlockView } from "../blocks/ErrorBlock";
 import { TextBlockView } from "../blocks/TextBlock";
 import { ConciseThinkingBlockView } from "../blocks/ThinkingBlock";
@@ -271,6 +274,9 @@ export const WorkSegmentRenderer = memo(function WorkSegmentRenderer({
 				break;
 			case "error":
 				content = <ErrorBlockView block={segment.block} exportMode={exportMode} />;
+				break;
+			case "compaction":
+				content = <CompactionBlockView block={segment.block} exportMode={exportMode} />;
 				break;
 			default:
 				content = null;

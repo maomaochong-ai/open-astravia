@@ -1,4 +1,4 @@
-import { SidebarTopBar as ThemeSidebarTopBar } from "@astravia-org/theme-ui/sidebar";
+import { SidebarTopBar as ThemeSidebarTopBar } from "@astravia-org/theme-ui/sidebar/SidebarTopBar";
 import { useTranslation } from "react-i18next";
 import { SidebarCommandMenuTrigger } from "./SidebarCommandMenuTrigger";
 

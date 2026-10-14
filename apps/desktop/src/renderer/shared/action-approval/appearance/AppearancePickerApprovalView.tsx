@@ -1,5 +1,5 @@
 import { useThemeComponent } from "@astravia-org/theme-sdk";
-import { AppearancePickerApprovalView as ThemeAppearancePickerApprovalView } from "@astravia-org/theme-ui/action-approval";
+import { AppearancePickerApprovalView as ThemeAppearancePickerApprovalView } from "@astravia-org/theme-ui/action-approval/AppearancePickerApprovalView";
 import { AppearanceActionPicker } from "./AppearanceActionPicker";
 import { AppearanceApprovalDrawerView } from "./AppearanceApprovalDrawerView";
 import type { AppearancePickerApprovalModel } from "./useAppearancePickerApprovalModel";

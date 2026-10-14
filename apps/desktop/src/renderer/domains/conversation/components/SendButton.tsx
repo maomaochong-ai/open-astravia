@@ -1,4 +1,5 @@
-import { SendButton as ThemeSendButton, type SendButtonProps as ThemeSendButtonProps } from "@astravia-org/theme-ui/chat";
+import { SendButton as ThemeSendButton } from "@astravia-org/theme-ui/chat/SendButton";
+import type { SendButtonProps as ThemeSendButtonProps } from "@astravia-org/theme-ui/chat";
 import { useTranslation } from "react-i18next";
 
 export type { SendButtonLabels } from "@astravia-org/theme-ui/chat";

@@ -213,9 +213,11 @@ export function createSystemApi(
 			onPresetsUpdated: (handler) => onIpcVoidEvent(ipc, "astravia:models:presets-updated", handler),
 			probe: (ref) => ipc.invoke("astravia:models:probe", ref),
 			fetchProviderModels: (providerName) => ipc.invoke("astravia:models:fetch-provider-models", providerName),
+			lookupModelMetadata: (modelId) => ipc.invoke("astravia:models:lookup-model-metadata", modelId),
 			onChanged: (handler) => onIpcEvent(ipc, "astravia:models:changed", handler),
 		},
 		mcp: {
+			listTools: (serverName) => ipc.invoke("astravia:mcp:list-tools", serverName),
 			get: () => ipc.invoke("astravia:mcp:get"),
 			set: (config) => ipc.invoke("astravia:mcp:set", config),
 			login: (serverName, options) => ipc.invoke("astravia:mcp:login", serverName, options),
@@ -245,6 +247,8 @@ export function createSystemApi(
 			setServerToken: (token) => ipc.invoke("astravia:settings:set-server-token", token),
 			getServerRefreshToken: () => ipc.invoke("astravia:settings:get-server-refresh-token"),
 			setServerRefreshToken: (token) => ipc.invoke("astravia:settings:set-server-refresh-token", token),
+			getModelTransport: () => ipc.invoke("astravia:settings:get-model-transport"),
+			setModelTransport: (transport) => ipc.invoke("astravia:settings:set-model-transport", transport),
 		},
 		subscription: {
 			getStatus: () => ipc.invoke("astravia:subscription:status"),

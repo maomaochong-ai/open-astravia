@@ -1,4 +1,4 @@
-import type { RemoteDesktopSignal, RemoteInputMessage } from "./types.js";
+import type { RemoteDesktopSignal, RemoteInputMessage, RemoteViewMessage } from "./types.js";
 
 export class RemoteDesktopProtocolError extends Error {
 	constructor(message: string) {
@@ -116,6 +116,17 @@ export function decodeRemoteInputMessage(value: unknown): RemoteInputMessage {
 export function encodeRemoteInputMessage(message: RemoteInputMessage): string {
 	decodeRemoteInputMessage(message);
 	return JSON.stringify(message);
+}
+
+/** The largest picture side a phone may report, zoom included. */
+const MAX_VIEW_SIDE = 65_536;
+
+export function parseRemoteViewMessage(value: string): RemoteViewMessage {
+	const input = exactRecord(parseJson(value, "view message"), ["width", "height"]);
+	return {
+		width: integer(input.width, "width", 1, MAX_VIEW_SIDE),
+		height: integer(input.height, "height", 1, MAX_VIEW_SIDE),
+	};
 }
 
 function parseJson(value: string, label: string): unknown {

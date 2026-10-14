@@ -1,6 +1,6 @@
 import type { ComponentPropsWithoutRef, JSX, ReactNode } from "react";
 import { useRef } from "react";
-import { cn } from "@astravia-org/ui";
+import { cn } from "@astravia-org/ui/utils";
 
 /**
  * 展开/收起的滑动时长（毫秒）。

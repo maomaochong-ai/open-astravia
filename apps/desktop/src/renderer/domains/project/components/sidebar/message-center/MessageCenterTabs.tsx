@@ -1,7 +1,5 @@
-import {
-	MessageCenterTabs as ThemeMessageCenterTabs,
-	type MessageCenterTabId,
-} from "@astravia-org/theme-ui/sidebar";
+import { MessageCenterTabs as ThemeMessageCenterTabs } from "@astravia-org/theme-ui/sidebar/MessageCenterTabs";
+import type { MessageCenterTabId } from "@astravia-org/theme-ui/sidebar";
 import { useTranslation } from "react-i18next";
 import { MESSAGE_CENTER_SPRING, MESSAGE_CENTER_TABS, type MessageCenterTab } from "./types";
 

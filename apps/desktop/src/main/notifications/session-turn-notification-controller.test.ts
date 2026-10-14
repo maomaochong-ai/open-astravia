@@ -7,7 +7,11 @@ const event = (value: object): SessionEvent => value as SessionEvent;
 describe("SessionTurnNotificationController", () => {
 	it("emits one completed outcome at the terminal lifecycle event", () => {
 		const controller = new SessionTurnNotificationController();
-		expect(controller.handle(event({ type: "message.final", message: { stopReason: "stop" } }))).toBeNull();
+		expect(
+			controller.handle(
+				event({ channel: "assistant", type: "done", reason: "stop", message: { stopReason: "stop" } }),
+			),
+		).toBeNull();
 		expect(controller.handle(event({ type: "session.lifecycle", phase: "agent_end" }))).toBe("completed");
 	});
 

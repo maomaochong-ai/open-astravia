@@ -33,7 +33,10 @@ export type {
 	CodingAgentRuntimeSessionHookLifecycle,
 	CodingAgentRuntimeToolAccess,
 } from "./runtime-composition-result.js";
-export type { CodingAgentRuntimeHostRetrySettings } from "./runtime-host.js";
+export type {
+	CodingAgentRuntimeHostModelSettings,
+	CodingAgentRuntimeHostRetrySettings,
+} from "./runtime-host.js";
 export {
 	type CodingAgentInitialTodoLockSource,
 	type CodingAgentRuntimeSessionConfiguration,

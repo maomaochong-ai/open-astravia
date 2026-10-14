@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from "motion/react";
 import { type JSX, useState } from "react";
-import { cn, Popover, PopoverContent, PopoverTrigger } from "@astravia-org/ui";
+import { cn } from "@astravia-org/ui/utils";
+import { Popover, PopoverContent, PopoverTrigger } from "@astravia-org/ui/popover";
 import { ThemeSurface } from "../appearance/ThemeSurface";
 import {
 	selectTodoStatusSummary,

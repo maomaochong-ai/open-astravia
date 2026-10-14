@@ -43,6 +43,13 @@ import Testing
 		#expect(RemoteViewport.fitted(videoWidth: 0, videoHeight: 0, containerWidth: 10, containerHeight: 20) == (0, 0, 10, 20))
 	}
 
+	@Test func takesTheSameScreenSentSmallerAsTheSameShape() {
+		#expect(RemoteViewport.sameShape((2560, 1600), (1707, 1067)), "scaled by 1.5, rounded")
+		#expect(RemoteViewport.sameShape((2560, 1600), (1280, 800)))
+		#expect(!RemoteViewport.sameShape((2560, 1600), (1920, 1080)), "another screen")
+		#expect(!RemoteViewport.sameShape((0, 0), (1280, 800)), "no picture yet")
+	}
+
 	@Test func turnsFingerTravelIntoWheelNotchesCarryingTheRest() {
 		var wheel = WheelNotches(step: 40)
 		#expect(wheel.add(30) == 0)

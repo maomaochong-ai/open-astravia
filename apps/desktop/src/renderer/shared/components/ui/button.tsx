@@ -1,1 +1,1 @@
-export { Button, buttonVariants } from "@astravia-org/ui";
+export { Button, buttonVariants } from "@astravia-org/ui/button";

@@ -62,12 +62,57 @@ describe("注册表校验入口", () => {
 });
 
 describe("模式间只有提示词正文不同", () => {
-	// 叙事、Deliverables 文件清单、写代码底线纪律对所有模式一致；各写一遍会漂移，只能引用同一份 partial。
-	const SHARED_PARTIALS = ["narration", "deliverables-placement", "deliverables-list", "code-discipline"];
+	// 叙事、成品摆放、写代码底线纪律对所有模式一致；各写一遍会漂移，只能引用同一份 partial。
+	// 交付物文件清单归 coding-agent 核心 guidelines，模式不得再写一份。
+	const SHARED_PARTIALS = ["narration", "deliverables-placement", "code-discipline"];
+
+	it.each(modeFiles.map((mode) => mode.id))("%s 模式不重复定义核心规则或人设层的内容", (id) => {
+		const prompt = getModePrompt(id);
+		// 交付物清单格式只由核心 DELIVERABLES_GUIDANCE 定义，两处各写一份曾导致标题格式与「前文能否写链接」互相矛盾。
+		expect(prompt).not.toContain("## The Deliverables file list");
+		// 个性归 persona；模式只描述沟通方式。
+		expect(prompt).not.toContain("## Personality");
+	});
+
+	it.each(modeFiles.map((mode) => mode.id))("%s 模式点名可选工具时附带可用性前提", (id) => {
+		const prompt = getModePrompt(id);
+		if (prompt.includes("`ask_user_question`")) {
+			expect(prompt).toContain("the `ask_user_question` tool is available");
+		}
+		expect(prompt).toContain("When the `progress` tool is available");
+	});
 
 	it.each(modeFiles.map((mode) => mode.id))("%s 模式引用全部共享 partial", (id) => {
 		const raw = readFileSync(join(modesDir, `${id}.md`), "utf-8");
 		for (const name of SHARED_PARTIALS) expect(raw, `${id}.md 缺少 {{> ${name}}}`).toContain(`{{> ${name}}}`);
+	});
+});
+
+describe("与人设和项目指令的优先级衔接", () => {
+	it("coding 模式的自主执行默认值让位于要求先确认的人设", () => {
+		expect(getModePrompt("coding")).toContain(
+			"When the user's persona or custom instructions ask you to confirm before acting, follow them instead of this default.",
+		);
+	});
+
+	it("多解释时只在实质影响结果时提问，与 Autonomy 一致", () => {
+		expect(getModePrompt("coding")).toContain(
+			"If multiple interpretations would materially change the result, ask rather than silently picking one; otherwise pick the most reasonable one and state it.",
+		);
+	});
+
+	it("写代码底线允许项目指令要求的重构", () => {
+		for (const id of ALL_AGENT_MODES) {
+			expect(getModePrompt(id)).toContain("unless the project's instruction files call for it");
+		}
+	});
+
+	it("观察小节只在渲染了成品时出现，且标题跟随用户语言", () => {
+		for (const id of ALL_AGENT_MODES) {
+			const prompt = getModePrompt(id);
+			expect(prompt).toContain("Skip this section when nothing was rendered.");
+			expect(prompt).toContain("headed in the user's language");
+		}
 	});
 });
 

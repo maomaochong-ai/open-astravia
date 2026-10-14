@@ -1,1 +1,1 @@
-export { WindowControlButton } from "@astravia-org/theme-ui/app-shell";
+export { WindowControlButton } from "@astravia-org/theme-ui/app-shell/WindowControlButton";

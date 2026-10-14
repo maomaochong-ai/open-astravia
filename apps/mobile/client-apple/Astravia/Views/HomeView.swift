@@ -121,6 +121,9 @@ struct HomeView: View {
 			EntryRow(symbol: "square.stack.3d.up", title: L10n.Home.taskBoard, identifier: "home.taskBoard") {
 				router.openBoard()
 			}
+			EntryRow(symbol: "qrcode.viewfinder", title: L10n.Home.connectComputer, detail: model.desktop?.desktopName, identifier: "home.connect") {
+				router.showPairing = true
+			}
 			EntryRow(symbol: "display", title: L10n.Remote.title, identifier: "home.remote") {
 				router.openRemote()
 			}

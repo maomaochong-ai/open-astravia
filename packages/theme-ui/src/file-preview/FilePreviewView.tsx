@@ -1,4 +1,4 @@
-import { cn } from "@astravia-org/ui";
+import { cn } from "@astravia-org/ui/utils";
 import { useCallback, useState, type JSX, type ReactNode } from "react";
 import type { FilePreviewContext, FilePreviewItem } from "./types";
 

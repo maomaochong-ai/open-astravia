@@ -1,7 +1,5 @@
-import {
-	AskUserQuestionView as ThemeAskUserQuestionView,
-	type AskUserQuestionItem,
-} from "@astravia-org/theme-ui/chat";
+import { AskUserQuestionView as ThemeAskUserQuestionView } from "@astravia-org/theme-ui/chat/AskUserQuestionView";
+import type { AskUserQuestionItem } from "@astravia-org/theme-ui/chat";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 

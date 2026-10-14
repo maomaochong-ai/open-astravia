@@ -34,13 +34,16 @@ import type {
 import type { DesktopSessionCommands } from "../conversations/desktop-session-commands.js";
 import type { DesktopUserQuestionBroker } from "../conversations/user-question-broker.js";
 import { getAppLogger } from "../logger.js";
+import { type RemoteActionHost, runRemoteAction } from "./remote-actions.js";
 import { RemoteOperationError } from "./remote-error-mapping.js";
 import type { RemoteFiles } from "./remote-files.js";
 import {
 	describe,
+	findToolResult,
 	keyForPath,
 	lastUserTimestamp,
 	modelLabel,
+	pageTranscript,
 	preview,
 	previousUserTimestamp,
 	readQuestionResult,
@@ -113,6 +116,8 @@ export interface DesktopRemoteMirrorOptions {
 	/** Sessions were created, renamed or deleted on the desktop. */
 	readonly onCatalogChanged?: (listener: () => void) => () => void;
 	readonly hardware?: () => { cpu?: string; ram?: string };
+	/** Plugin actions offered to phones (`action.run`); absent where the App Action system is not up. */
+	readonly actions?: RemoteActionHost;
 	/** Streamed text is batched at this interval so a long answer costs tens of frames, not thousands. */
 	readonly coalesceMs?: number;
 	readonly listRefreshMs?: number;
@@ -135,7 +140,7 @@ interface TrackedSession {
 	assistantBuffer: string;
 	thinkingBuffer: string;
 	flushTimer?: ReturnType<typeof setTimeout>;
-	/** Text already delivered for the current turn; `message.final` only sends the remainder. */
+	/** Text already delivered for the current turn; the assistant `done` event only sends the remainder. */
 	observedText: string;
 	/** Prompt text this mirror sent itself, so `agent_start` does not echo it a second time. */
 	pendingUserText?: string;
@@ -245,7 +250,8 @@ export class DesktopRemoteMirror {
 			}
 			case "session.history": {
 				const handle = this.requireHandle(request.sessionId);
-				return { entries: this.historyFor(handle), state: this.stateFor(handle) };
+				const page = pageTranscript(this.historyFor(handle), asRecord(request.payload));
+				return { entries: page.entries, hasMore: page.hasMore, state: this.stateFor(handle) };
 			}
 			case "session.prompt": {
 				const handle = this.requireHandle(request.sessionId);
@@ -325,6 +331,17 @@ export class DesktopRemoteMirror {
 				return await this.options.files.stat(this.requireHandle(request.sessionId).cwd, request.payload);
 			case "file.read":
 				return await this.options.files.read(this.requireHandle(request.sessionId).cwd, request.payload);
+			case "tool.result": {
+				const handle = this.requireHandle(request.sessionId);
+				const toolCallId = asRecord(request.payload).toolCallId;
+				if (typeof toolCallId !== "string" || !toolCallId) {
+					throw new RemoteOperationError("invalid_frame", "toolCallId is required");
+				}
+				return findToolResult(this.readHistory(handle), toolCallId);
+			}
+			case "action.run":
+				if (!this.options.actions) throw new RemoteOperationError("not_found", "Action is not offered to phones");
+				return runRemoteAction(this.options.actions, request.payload);
 		}
 	}
 
@@ -736,36 +753,6 @@ export class DesktopRemoteMirror {
 			return;
 		}
 		switch (event.type) {
-			case "message.delta":
-				this.bufferDelta(tracked, "assistant", event.delta);
-				return;
-			case "thinking.delta":
-				this.bufferDelta(tracked, "thinking", event.delta);
-				return;
-			case "message.final": {
-				if (event.message.role !== "assistant") return;
-				const text = textOf(event.message.content);
-				const missing =
-					tracked.observedText && text.startsWith(tracked.observedText)
-						? text.slice(tracked.observedText.length)
-						: text;
-				if (missing) this.bufferDelta(tracked, "assistant", missing);
-				this.flush(tracked);
-				return;
-			}
-			case "toolcall.start":
-				this.flush(tracked);
-				void this.emitTool(key, { toolCallId: event.toolCallId, toolName: event.toolName, phase: "generating" });
-				return;
-			case "toolcall.args":
-				this.flush(tracked);
-				void this.emitTool(key, {
-					toolCallId: event.toolCallId,
-					toolName: event.toolName,
-					phase: "generating",
-					args: preview(event.args),
-				});
-				return;
 			case "tool.start":
 				this.flush(tracked);
 				void this.emitTool(key, {
@@ -1008,16 +995,18 @@ export class DesktopRemoteMirror {
 	}
 
 	private historyFor(handle: SessionHandle): RemoteTranscriptEntry[] {
-		let history: HistoryEntry[];
+		return toTranscript(this.readHistory(handle));
+	}
+
+	private readHistory(handle: SessionHandle): HistoryEntry[] {
 		try {
-			history = handle.sessionId
+			return handle.sessionId
 				? this.options.runtime.getFullHistory(handle.sessionId)
 				: this.options.runtime.readSessionHistoryFromFile(handle.path).history;
 		} catch (error) {
 			log.debug("remote history read failed", { error: describe(error) });
-			history = this.options.runtime.readSessionHistoryFromFile(handle.path).history;
+			return this.options.runtime.readSessionHistoryFromFile(handle.path).history;
 		}
-		return toTranscript(history);
 	}
 
 	private async emitMessage(key: string, payload: RemoteMessageEvent): Promise<void> {

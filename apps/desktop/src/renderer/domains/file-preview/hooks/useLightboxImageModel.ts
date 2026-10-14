@@ -1,5 +1,5 @@
-import type { FilePreviewItem } from "@astravia-org/theme-ui/file-preview";
-import { getExtension, type LightboxImageViewProps } from "@astravia-org/theme-ui/file-preview";
+import type { FilePreviewItem, LightboxImageViewProps } from "@astravia-org/theme-ui/file-preview";
+import { getExtension } from "@astravia-org/theme-ui/file-preview/types";
 import { useEffect, useState } from "react";
 
 const MIME_MAP: Record<string, string> = {

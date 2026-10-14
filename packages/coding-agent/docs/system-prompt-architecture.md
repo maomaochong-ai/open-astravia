@@ -6,14 +6,14 @@
 
 | 层级 | 负责内容 | 不应包含 |
 | --- | --- | --- |
-| Product core | 身份、回复语言、文件名保真、最终答复时序、场景渲染策略 | 具体工作模式偏好 |
+| Product core | 身份、指令优先级、回复语言、文件名保真、最终答复时序、场景渲染策略（含交付物清单） | 具体工作模式偏好 |
 | Capability | 当前实际工具及其描述、仅在工具存在时适用的调用规则 | 不可用工具的调用要求 |
 | Mode | Coding/Work 的领域偏好、质量标准、沟通方式及既有模式交互契约 | 产品身份、工具实现和 Plugin 协议 |
-| Persona | 表达风格和个性 | 工程策略、工具协议 |
+| Persona | 表达风格与协作方式（含行动前是否先确认）；用户自定义指令以 `# User custom instructions` 标题接在其后 | 身份声明、工程策略、工具协议 |
 | Project context | `AGENTS.md`、`CLAUDE.md`、`SYSTEM.md`、`APPEND_SYSTEM.md` | 产品级默认规则 |
 | Plugin/Feature | 带来源的动态 block 和工具贡献 | 伪造 `core.*` block 或重复 ID |
 
-直接用户消息优先于项目上下文；更深目录的项目指令优先于上层目录。Mode 与 Persona 相互正交。现有 Mode 提示词属于兼容性契约，调整或迁移其中规则前必须逐条验证原有行为，不能以去重为由直接删减。
+层级间冲突按 `core.guidelines` 中的 `Instruction precedence` 裁决，模型不应靠出现顺序猜测：直接用户消息优先于一切；项目指令文件裁决该项目内的做事方式，覆盖 Mode 与通用 guidelines；Persona 与自定义指令只在沟通与协作方式上覆盖 Mode 和项目文件；Mode 覆盖通用 guidelines。更深目录的项目指令优先于上层目录。Mode 与 Persona 相互正交，且同一条规则只在一个层级定义（例如交付物清单只在 core，Mode 不再复述）。现有 Mode 提示词属于兼容性契约，调整或迁移其中规则前必须逐条验证原有行为，不能以去重为由直接删减；Mode 点名可选工具时必须写明「工具可用时」。
 
 ## 编译流程
 
@@ -66,4 +66,4 @@
 3. 运行提示词策略、不变量、摘要边界和模型调用运行时测试。
 4. 行为变更完成后运行根目录 `bun run check:quick`、相关测试和 `bun run check`。
 
-根质量守卫会执行两类生成数据的 `--check`。模式策略回归位于 `test/system-prompt-policy.test.ts`，结构不变量位于 `test/system-prompt-document.test.ts`，摘要信任边界位于 `test/summary-prompt-boundary.test.ts`。
+根质量守卫会执行两类生成数据的 `--check`。提示词策略回归（优先级、交付物与文件链接一致性、按工具条件的措辞）位于 `test/system-prompt.test.ts`，Persona 与个性化块位于 `test/personalization-prompt.test.ts`，结构不变量位于 `test/system-prompt-document.test.ts`，摘要信任边界位于 `test/summary-prompt-boundary.test.ts`。Mode 正文契约位于 desktop 的 `src/main/agent-modes/agent-modes.test.ts`，Mode × Persona 组合进入真实模型调用的链路由 `src/main/agent-runtime/model-call-frame-contract.test.ts` 覆盖。

@@ -66,15 +66,18 @@ describe("slimSessionEventForIpc", () => {
 		if (toolEvent.type !== "toolcall_delta") throw new Error("expected assistant toolcall_delta");
 		expect(toolEvent.partial.content[0]).toEqual({ type: "text", text: "hello ".repeat(2_000) });
 
-		const runtimeDelta: SessionEvent = {
+		const runtimeEvent: SessionEvent = {
 			schemaVersion: 1,
 			sessionId: "session-1",
 			eventId: "event-2",
 			timestamp: 11,
-			source: "agent",
-			type: "message.delta",
-			delta: "plain",
+			source: "tool",
+			type: "tool.phase",
+			toolCallId: "call-1",
+			toolName: "bash",
+			label: "plain",
+			atMs: 1,
 		};
-		expect(slimSessionEventForIpc(runtimeDelta)).toBe(runtimeDelta);
+		expect(slimSessionEventForIpc(runtimeEvent)).toBe(runtimeEvent);
 	});
 });

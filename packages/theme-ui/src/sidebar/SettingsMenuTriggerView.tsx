@@ -1,5 +1,5 @@
 import { forwardRef, type ComponentPropsWithoutRef, type JSX, type ReactNode } from "react";
-import { cn } from "@astravia-org/ui";
+import { cn } from "@astravia-org/ui/utils";
 
 export interface SettingsMenuTriggerViewProps extends ComponentPropsWithoutRef<"button"> {
 	readonly avatar?: ReactNode;

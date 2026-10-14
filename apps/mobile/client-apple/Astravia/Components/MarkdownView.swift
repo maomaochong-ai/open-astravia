@@ -20,7 +20,10 @@ struct MarkdownView: View {
 	var body: some View {
 		VStack(alignment: .leading, spacing: 16) {
 			ForEach(Array(RenderedBlock.render(MarkdownBlock.parse(text), fade: fade).enumerated()), id: \.offset) { _, block in
-				view(for: block)
+				// While a reply fades in, only its last blocks change from frame to frame;
+				// the ones above are left alone instead of being laid out again every frame.
+				MarkdownBlockBox(block: block, selectable: fade == nil) { view(for: block) }
+					.equatable()
 			}
 		}
 		.frame(maxWidth: .infinity, alignment: .leading)
@@ -255,8 +258,8 @@ struct MarkdownView: View {
 
 /// A Markdown block with its text parsed and, near the end of a streaming
 /// reply, the fading characters made translucent.
-private enum RenderedBlock {
-	struct Item {
+private enum RenderedBlock: Equatable {
+	struct Item: Equatable {
 		var number = 0
 		var text: AttributedString
 		var markerOpacity = 1.0
@@ -275,25 +278,44 @@ private enum RenderedBlock {
 	static func render(_ blocks: [MarkdownBlock], fade: FadeTail?) -> [RenderedBlock] {
 		var distance = 0
 		func faded(_ source: AttributedString) -> AttributedString {
+			// Past the fading tail nothing changes, and counting a long reply's characters
+			// block by block on every frame was most of the cost.
+			guard let fade, distance < fade.span else {
+				// Whatever comes before sits past the tail too, list markers included.
+				distance = .max / 2
+				return source
+			}
 			var text = source
 			let count = text.characters.count
 			defer { distance += count }
-			guard let fade, distance < fade.span, count > 0 else { return text }
-			var index = text.characters.endIndex
-			var fromEnd = distance
-			while index > text.characters.startIndex, fromEnd < fade.span {
-				let previous = text.characters.index(before: index)
-				let opacity = fade.opacity(fromEnd)
-				if opacity < 1 {
-					let range = previous ..< index
-					text[range][InlineFadeKey.self] = opacity
-					let base = text[range].foregroundColor ?? Theme.ink
-					text[range].foregroundColor = base.opacity(opacity)
-					if let background = text[range].backgroundColor { text[range].backgroundColor = background.opacity(opacity) }
+			guard count > 0 else { return text }
+			// Opacity in tenths, set once per stretch of equal steps: a run of its own for each
+			// fading character made SwiftUI resolve dozens of runs on every frame.
+			func step(_ fromEnd: Int) -> Double { (fade.opacity(fromEnd) * 10).rounded(.up) / 10 }
+			func tint(_ range: Range<AttributedString.Index>, _ opacity: Double) {
+				guard opacity < 1 else { return }
+				// Runs inside the stretch keep their own colours, a link's or a chip's.
+				for run in text[range].runs {
+					text[run.range][InlineFadeKey.self] = opacity
+					text[run.range].foregroundColor = (run.foregroundColor ?? Theme.ink).opacity(opacity)
+					if let background = run.backgroundColor { text[run.range].backgroundColor = background.opacity(opacity) }
 				}
-				index = previous
+			}
+			var end = text.characters.endIndex
+			var index = end
+			var fromEnd = distance
+			var current = step(fromEnd)
+			while index > text.characters.startIndex, fromEnd < fade.span {
+				let opacity = step(fromEnd)
+				if opacity != current {
+					tint(index ..< end, current)
+					end = index
+					current = opacity
+				}
+				index = text.characters.index(before: index)
 				fromEnd += 1
 			}
+			tint(index ..< end, current)
 			return text
 		}
 		func item(_ source: String, number: Int = 0) -> Item {
@@ -318,6 +340,19 @@ private enum RenderedBlock {
 			}
 		}
 		return rendered.reversed()
+	}
+}
+
+/// One rendered block, built again only when it changes.
+private struct MarkdownBlockBox<Content: View>: View, Equatable {
+	let block: RenderedBlock
+	let selectable: Bool
+	@ViewBuilder let content: () -> Content
+
+	var body: some View { content() }
+
+	static func == (lhs: Self, rhs: Self) -> Bool {
+		lhs.selectable == rhs.selectable && lhs.block == rhs.block
 	}
 }
 

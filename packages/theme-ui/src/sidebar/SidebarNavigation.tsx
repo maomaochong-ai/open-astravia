@@ -1,7 +1,8 @@
 import { useMemo, type JSX, type RefCallback } from "react";
 import { useThemeComponent } from "@astravia-org/theme-sdk";
 import type { NavIndicatorBounds, SidebarNavItem } from "@astravia-org/theme-sdk/sidebar";
-import { cn, Popover, PopoverContent, PopoverTrigger } from "@astravia-org/ui";
+import { cn } from "@astravia-org/ui/utils";
+import { Popover, PopoverContent, PopoverTrigger } from "@astravia-org/ui/popover";
 import { ThemeSurface } from "../appearance/ThemeSurface";
 import { SidebarNavBadgeView } from "./SidebarNavBadgeView";
 import { SidebarNavIcon } from "./SidebarNavIcon";

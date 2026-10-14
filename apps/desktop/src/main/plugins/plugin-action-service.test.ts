@@ -136,4 +136,32 @@ describe("PluginActionService provider identity", () => {
 			expect.objectContaining({ code: "PLUGIN_ACTION_UNAVAILABLE" }),
 		);
 	});
+
+	it("offers only read-only actions to paired phones", () => {
+		const catalog = new AppActionCatalog();
+		const webContents = { isDestroyed: () => false, send: () => {} } as unknown as WebContents;
+		const service = new PluginActionService(webContents, catalog);
+		const base: PluginAppActionRegistration = {
+			id: "geometry",
+			title: "Geometry",
+			summary: "Shapes",
+			effect: "read",
+			inputSchema: { type: "object" },
+			examples: [],
+			handlerId: "handler",
+			activationId: "activation",
+			hasAssertReady: false,
+			remote: true,
+		};
+		service.beginLoad("action-provider", "activation");
+		expect(() => service.register("action-provider", { ...base, id: "write", effect: "write" })).toThrowError(
+			expect.objectContaining({ code: "PLUGIN_ACTION_REMOTE_INVALID" }),
+		);
+		service.register("action-provider", base);
+		service.register("action-provider", { ...base, id: "local", remote: undefined });
+		service.commit("action-provider", "activation");
+
+		expect(catalog.get("plugin.action-provider.geometry").remote).toBe(true);
+		expect(catalog.get("plugin.action-provider.local").remote).toBe(false);
+	});
 });

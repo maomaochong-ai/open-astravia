@@ -1,1 +1,1 @@
-export { PageHeaderSidebarTrigger } from "@astravia-org/theme-ui/app-shell";
+export { PageHeaderSidebarTrigger } from "@astravia-org/theme-ui/app-shell/PageHeaderSidebarTrigger";

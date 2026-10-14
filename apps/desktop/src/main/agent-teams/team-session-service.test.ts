@@ -435,7 +435,6 @@ describe("AgentTeamSessionService streaming contract", () => {
 			startedAt: 1,
 			seq: 0,
 			text: "",
-			rawAssistantStream: false,
 			toolExecutionEvents: [],
 		});
 		eventHub.attach(warmed);

@@ -1,15 +1,7 @@
-import {
-	Button,
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-	Switch,
-} from "@astravia-org/ui";
+import { Button } from "@astravia-org/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@astravia-org/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@astravia-org/ui/select";
+import { Switch } from "@astravia-org/ui/switch";
 import { useId, type JSX } from "react";
 
 export interface FileExplorerSettingsViewProps {

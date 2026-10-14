@@ -250,6 +250,17 @@
 			"confirmClearLogin": "Confirm clearing sign-in state",
 			"clearing": "Clearing…",
 			"checkedAt": "Last verified: {{time}}"
+		},
+		"tools": {
+			"title": "Available tools",
+			"loading": "Loading tools…",
+			"error": "Unable to load tools. Check the connection configuration and try again.",
+			"retry": "Retry",
+			"empty": "This MCP provides no available tools.",
+			"noDescription": "No description provided",
+			"installFirst": "Install and enable this MCP to view its tools.",
+			"enableFirst": "Enable this MCP to view its tools.",
+			"setupFirst": "Complete authorization or sign in to view tools."
 		}
 	},
 	"bundle": {

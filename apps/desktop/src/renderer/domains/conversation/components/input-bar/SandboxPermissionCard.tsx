@@ -3,4 +3,4 @@ export type {
 	SandboxPermissionCardProps,
 	SandboxPermissionRequestModel,
 } from "@astravia-org/theme-ui/chat";
-export { SandboxPermissionCard } from "@astravia-org/theme-ui/chat";
+export { SandboxPermissionCard } from "@astravia-org/theme-ui/chat/SandboxPermissionCard";

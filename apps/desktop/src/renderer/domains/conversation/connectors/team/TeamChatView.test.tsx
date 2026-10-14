@@ -16,8 +16,8 @@ vi.mock("../../components/chat-view/DefaultChatView", () => ({
 	ChatComposer: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 	ChatError: ({ children }: { children?: ReactNode }) => (children ? <div role="alert">{children}</div> : null),
 }));
-vi.mock("../../components/MessageList", () => ({
-	MessageList: (props: unknown) => {
+vi.mock("./TeamConversation", () => ({
+	TeamConversation: (props: unknown) => {
 		captured.feed(props);
 		return <div data-testid="message-list" />;
 	},
@@ -129,7 +129,7 @@ describe("TeamChatView shared conversation UI", () => {
 				messages: [expect.objectContaining({ id: "message-1", kind: "agent", authorId: "member-1" })],
 				participants: viewModel.members,
 				pendingLabel: "Loading team",
-				onTeamMemberOpen: onOpenMember,
+				onOpenMember,
 			}),
 		);
 		expect(captured.view.mock.calls[0]?.[0].messages).toBe(viewModel.feedItems);

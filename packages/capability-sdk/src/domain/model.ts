@@ -155,6 +155,9 @@ const modelProviderUpsertModelType = Type.Object(
 		reasoning: Type.Optional(Type.Boolean()),
 		reasoningLevels: modelDefinitionDetailType.properties.reasoningLevels,
 		defaultReasoningLevel: modelDefinitionDetailType.properties.defaultReasoningLevel,
+		input: Type.Optional(
+			Type.Array(Type.Union([Type.Literal("text"), Type.Literal("image")]), { minItems: 1, uniqueItems: true }),
+		),
 		contextWindow: Type.Optional(Type.Number()),
 		maxTokens: Type.Optional(Type.Number()),
 	},

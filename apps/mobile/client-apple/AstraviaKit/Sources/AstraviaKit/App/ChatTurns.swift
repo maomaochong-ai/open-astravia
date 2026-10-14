@@ -74,6 +74,9 @@ public enum ChatBlock: Equatable, Identifiable, Sendable {
 }
 
 public enum ChatTurns {
+	/// The turn shown while the session works but nothing of it has arrived yet.
+	public nonisolated static let pendingTurnId = "pending-turn"
+
 	/// Merges consecutive assistant items into one turn. A user message or a
 	/// marker (e.g. compaction) ends the turn; errors stay inside it. `waiting`
 	/// means the session is working: a turn with nothing to show yet still
@@ -104,7 +107,7 @@ public enum ChatTurns {
 				turn.streaming = true
 				blocks[blocks.count - 1] = .turn(turn)
 			} else {
-				blocks.append(.turn(AgentTurn(id: "pending-turn", segments: [], streaming: true, startedAt: nil)))
+				blocks.append(.turn(AgentTurn(id: pendingTurnId, segments: [], streaming: true, startedAt: nil)))
 			}
 		}
 		return blocks

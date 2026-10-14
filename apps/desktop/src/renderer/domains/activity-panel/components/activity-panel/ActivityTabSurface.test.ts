@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act, createElement, type ReactNode, useEffect } from "react";
+import { act, createElement, lazy, type ReactNode, useEffect } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useActivityTabActivation } from "../../registry/activation-context";
@@ -67,7 +67,7 @@ describe("ActivityTabSurface", () => {
 		vi.unstubAllGlobals();
 	});
 
-	it("keeps the content instance mounted while moving out and back", () => {
+	it("loads panel content on demand and preserves it while floating and docking", async () => {
 		let mounts = 0;
 		let unmounts = 0;
 		function Content(): ReturnType<typeof createElement> {
@@ -79,11 +79,18 @@ describe("ActivityTabSurface", () => {
 			}, []);
 			return createElement("div", { "data-content-instance": "" });
 		}
+		let resolveContent!: (module: { default: typeof Content }) => void;
+		const LazyContent = lazy(
+			() =>
+				new Promise<{ default: typeof Content }>((resolve) => {
+					resolveContent = resolve;
+				}),
+		);
 		const definition: ActivityTabDefinition = {
 			id: "file",
 			source: "builtin",
 			useMeta: () => ({ label: "A" }),
-			component: Content,
+			component: LazyContent,
 		};
 		const tab: ResolvedActivityTab = {
 			id: "file",
@@ -111,6 +118,9 @@ describe("ActivityTabSurface", () => {
 				}),
 			);
 		});
+		expect(dockedOutlet.querySelector("[data-content-instance]")).toBeNull();
+		expect(mounts).toBe(0);
+		await act(async () => resolveContent({ default: Content }));
 		const content = dockedOutlet.querySelector("[data-content-instance]");
 		expect(content).not.toBeNull();
 		expect(mounts).toBe(1);

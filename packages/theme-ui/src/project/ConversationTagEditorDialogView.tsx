@@ -1,4 +1,7 @@
-import { Button, cn, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Input } from "@astravia-org/ui";
+import { Button } from "@astravia-org/ui/button";
+import { cn } from "@astravia-org/ui/utils";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@astravia-org/ui/dialog";
+import { Input } from "@astravia-org/ui/input";
 import { useCallback, useEffect, useRef, useState, type JSX } from "react";
 
 export interface ConversationTagEditorTagView {

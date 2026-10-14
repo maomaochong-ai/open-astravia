@@ -1,4 +1,5 @@
-import { Button, Slider } from "@astravia-org/ui";
+import { Button } from "@astravia-org/ui/button";
+import { Slider } from "@astravia-org/ui/slider";
 import type { JSX } from "react";
 import { useEffect, useState } from "react";
 

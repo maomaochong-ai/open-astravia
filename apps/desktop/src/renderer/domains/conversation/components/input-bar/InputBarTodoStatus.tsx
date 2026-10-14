@@ -1,5 +1,5 @@
 import { useThemeComponent } from "@astravia-org/theme-sdk";
-import { TodoStatusBarView } from "@astravia-org/theme-ui/chat";
+import { TodoStatusBarView } from "@astravia-org/theme-ui/chat/TodoStatusBarView";
 import { useTranslation } from "react-i18next";
 import type { InputBarTodoModel } from "./types";
 

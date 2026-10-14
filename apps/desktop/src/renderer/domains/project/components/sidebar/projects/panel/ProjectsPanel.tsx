@@ -1,4 +1,5 @@
-import { ProjectsLoadingView, ProjectsPanelView } from "@astravia-org/theme-ui/project";
+import { ProjectsLoadingView } from "@astravia-org/theme-ui/project/ProjectsLoadingView";
+import { ProjectsPanelView } from "@astravia-org/theme-ui/project/ProjectsPanelView";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { DefaultConversationSection } from "./DefaultConversationSection";

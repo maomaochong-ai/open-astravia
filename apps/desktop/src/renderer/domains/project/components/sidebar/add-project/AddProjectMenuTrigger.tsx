@@ -1,4 +1,4 @@
-import { AddProjectMenuTriggerView } from "@astravia-org/theme-ui/sidebar";
+import { AddProjectMenuTriggerView } from "@astravia-org/theme-ui/sidebar/AddProjectMenuTriggerView";
 import { useTranslation } from "react-i18next";
 import type { AddProjectMenuProps } from "./types";
 

@@ -114,18 +114,16 @@ vi.mock("../../components/chat-view/DefaultChatView", () => ({
 	ChatError: ({ children }: { children: ReactNode }) => (children ? <div role="alert">{children}</div> : null),
 }));
 
-vi.mock("../../components/MessageList", async () => {
+vi.mock("./TeamConversation", async () => {
 	const { MessageItem } = await import("../../components/message-list/MessageItem");
 	return {
-		MessageList: ({
-			children,
+		TeamConversation: ({
 			messages,
 			isStreaming,
 			participants = [],
 			pendingLabel,
-			onTeamMemberOpen,
+			onOpenMember,
 		}: {
-			readonly children: ReactNode;
 			readonly messages: ChatConversationItem[];
 			readonly isStreaming: boolean;
 			readonly participants?: readonly {
@@ -136,7 +134,7 @@ vi.mock("../../components/MessageList", async () => {
 				readonly blueprintId: string;
 			}[];
 			readonly pendingLabel?: string;
-			readonly onTeamMemberOpen?: (memberId: string) => void;
+			readonly onOpenMember?: (memberId: string) => void;
 		}) => (
 			<div>
 				<div data-testid="message-list">
@@ -154,12 +152,11 @@ vi.mock("../../components/MessageList", async () => {
 								pendingLabel={
 									message.kind === "agent" && message.phase === "pending" ? pendingLabel : undefined
 								}
-								onTeamMemberOpen={onTeamMemberOpen}
+								onTeamMemberOpen={onOpenMember}
 							/>
 						</div>
 					))}
 				</div>
-				{children}
 			</div>
 		),
 	};

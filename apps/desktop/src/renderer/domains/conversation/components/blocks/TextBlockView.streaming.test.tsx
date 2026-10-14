@@ -144,6 +144,33 @@ describe("TextBlockView streaming tail", () => {
 		expect(container.querySelector(".streaming-chunk-latest")).toBe(lastChunk);
 	});
 
+	it("lifts the dimming once the text stops growing, even before the turn ends", () => {
+		// 正文已全部到达，但回合结束事件要晚一会儿才来，宿主仍把它当流式尾块。
+		const { container } = renderView("这是最后一句话。到这里就结束了。", true);
+		for (let step = 0; step < 20; step++) advance(50);
+		expect(shownText(container)).toBe("这是最后一句话。到这里就结束了。");
+		expect(container.querySelector(".markdown-streaming-tail")).toBeNull();
+	});
+
+	it("does not dim again when the turn ends after the dimming was already lifted", () => {
+		const text = "这是最后一句话。到这里就结束了。";
+		const { container, rerender } = renderView(text, true);
+		for (let step = 0; step < 20; step++) advance(50);
+		expect(container.querySelector(".markdown-streaming-tail")).toBeNull();
+
+		rerender(text, false);
+		expect(container.querySelector(".markdown-streaming-tail")).toBeNull();
+	});
+
+	it("dims newly arrived phrases again after an idle pause", () => {
+		const { container, rerender } = renderView("先说一句。", true);
+		for (let step = 0; step < 20; step++) advance(50);
+		expect(container.querySelector(".markdown-streaming-tail")).toBeNull();
+
+		rerender("先说一句。再来一句。", true);
+		expect(container.querySelector(".markdown-streaming-tail")).not.toBeNull();
+	});
+
 	it("renders non-streaming text immediately without segments", () => {
 		const { container } = renderView(FULL_TEXT, false);
 		expect(shownText(container)).toBe(FULL_TEXT);

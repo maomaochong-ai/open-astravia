@@ -1,6 +1,6 @@
 import type { ComponentPropsWithoutRef, JSX, ReactNode } from "react";
 import { useThemeComponent } from "@astravia-org/theme-sdk";
-import { cn } from "@astravia-org/ui";
+import { cn } from "@astravia-org/ui/utils";
 
 export interface MainContentFrameProps extends ComponentPropsWithoutRef<"main"> {
 	children: ReactNode;

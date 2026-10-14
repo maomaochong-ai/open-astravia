@@ -8,7 +8,7 @@ import type {
 	NewSessionSceneCarouselLabels,
 	NewSessionSceneItem,
 } from "@astravia-org/theme-ui";
-import { AgentAvatarView } from "@astravia-org/theme-ui/chat";
+import { AgentAvatarView } from "@astravia-org/theme-ui/chat/AgentAvatarView";
 import { type CSSProperties, useRef } from "react";
 import { GuideBadgeSwiper } from "../GuideBadgeSwiper";
 import { easeOut } from "./constants";

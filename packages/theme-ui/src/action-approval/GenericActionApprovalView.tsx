@@ -1,13 +1,6 @@
 import { useState, type JSX } from "react";
-import {
-	Button,
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-} from "@astravia-org/ui";
+import { Button } from "@astravia-org/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@astravia-org/ui/dialog";
 import { ThemeSurface } from "../appearance/ThemeSurface";
 
 export interface GenericActionApprovalField {

@@ -256,7 +256,6 @@ export class TeamMemberAttemptRunner {
 			startedAt,
 			seq: 0,
 			text: "",
-			rawAssistantStream: false,
 			toolExecutionEvents: [],
 		};
 		this.options.eventHub.beginTurn(runtimeState.sessionId, activeTurn);

@@ -1,5 +1,5 @@
 import { useRendererMarkdownModel } from "@shared/hooks/useRendererMarkdownModel";
-import { MarkdownContent } from "@astravia-org/theme-ui/markdown";
+import { MarkdownContent } from "@astravia-org/theme-ui/markdown/MarkdownContent";
 import type { InlineTokenSupport } from "@astravia-org/theme-ui/markdown";
 import { memo } from "react";
 import { useRendererMarkdownScope } from "./RendererMarkdownScope";

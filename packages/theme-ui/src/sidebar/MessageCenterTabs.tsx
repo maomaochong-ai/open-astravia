@@ -1,6 +1,6 @@
 import { motion } from "motion/react";
 import type { JSX } from "react";
-import { cn } from "@astravia-org/ui";
+import { cn } from "@astravia-org/ui/utils";
 
 export type MessageCenterTabId = "all" | "notifications" | "flowing" | "chat";
 

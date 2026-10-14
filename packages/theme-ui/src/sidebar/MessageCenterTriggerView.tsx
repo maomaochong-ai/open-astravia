@@ -1,6 +1,6 @@
 import type { JSX } from "react";
-import { Button } from "@astravia-org/ui";
-import { cn } from "@astravia-org/ui";
+import { Button } from "@astravia-org/ui/button";
+import { cn } from "@astravia-org/ui/utils";
 
 export interface MessageCenterTriggerViewProps {
 	readonly open: boolean;

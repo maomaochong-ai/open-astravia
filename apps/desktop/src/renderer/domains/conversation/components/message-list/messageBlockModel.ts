@@ -43,6 +43,7 @@ function blockKey(block: ContentBlock): string {
 		case "text":
 		case "thinking":
 		case "error":
+		case "compaction":
 			return `${block.type}-${block.id}`;
 	}
 }
@@ -101,6 +102,11 @@ export function groupBlocks(
 	return segments;
 }
 
+/** Steps the reply took on the way to its answer; folded away once the reply is done. */
+function isProcessBlock(block: ContentBlock): boolean {
+	return block.type === "tool_call" || block.type === "thinking" || block.type === "compaction";
+}
+
 export function findLastProcessBlockIndex(
 	blocks: ContentBlock[],
 	customToolNames: ReadonlySet<string> = new Set(),
@@ -108,7 +114,7 @@ export function findLastProcessBlockIndex(
 	for (let index = blocks.length - 1; index >= 0; index--) {
 		const block = blocks[index];
 		if (isArtifactToolUiBlock(block, customToolNames)) continue;
-		if (block.type === "tool_call" || block.type === "thinking") return index;
+		if (isProcessBlock(block)) return index;
 	}
 	return -1;
 }
@@ -136,7 +142,7 @@ function isMaintenanceToolCall(block: ContentBlock): boolean {
 function findPreviousPrimaryAnswerIndex(blocks: ContentBlock[], beforeIndex: number): number {
 	for (let index = beforeIndex - 1; index >= 0; index--) {
 		const block = blocks[index];
-		if (block.type === "tool_call" || block.type === "thinking") return -1;
+		if (isProcessBlock(block)) return -1;
 		if (block.type !== "text") continue;
 		if (block.text.trim().length >= PRIMARY_ANSWER_MIN_CHARS) return index;
 	}

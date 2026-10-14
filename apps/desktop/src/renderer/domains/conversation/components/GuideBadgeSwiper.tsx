@@ -1,4 +1,4 @@
-import { GuideBadgeSwiperView } from "@astravia-org/theme-ui/chat";
+import { GuideBadgeSwiperView } from "@astravia-org/theme-ui/chat/GuideBadgeSwiperView";
 import { useGuideBadgeSwiperModel } from "../hooks/useGuideBadgeSwiperModel";
 
 interface GuideBadgeSwiperProps {

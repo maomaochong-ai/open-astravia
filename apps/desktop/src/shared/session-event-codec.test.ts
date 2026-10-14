@@ -99,9 +99,9 @@ describe("decodeSessionEvent", () => {
 		).toThrow("unknown event type");
 	});
 
-	it("lets compaction summary deltas through so the live card can stream", () => {
+	it("lets compaction summary deltas through so the live step can stream", () => {
 		// 回归：白名单曾缺 compaction.delta，decodeSessionEvent 抛 "unknown event type"，
-		// 整条流式压缩卡链路（运行时发布 → IPC → compactionLiveSummaryAtom → 卡片）在此断开。
+		// 整条流式摘要链路（运行时发布 → IPC → 对话流中的压缩步骤）在此断开。
 		const delta = {
 			schemaVersion: 1,
 			channel: "runtime",

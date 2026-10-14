@@ -1,4 +1,4 @@
-import { cn } from "@astravia-org/ui";
+import { cn } from "@astravia-org/ui/utils";
 import { memo, type JSX } from "react";
 import { AvatarStackView } from "../shared/AvatarStackView";
 import { ConversationTagDotsView } from "./ConversationTagDotsView";

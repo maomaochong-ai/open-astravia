@@ -186,6 +186,15 @@ describe("远程连接设置", () => {
 		expect(screen.queryByText("remote.pairing.generating")).toBeNull();
 	});
 
+	it("还没有配对手机时，用和手机行一样的空位说明如何配对", async () => {
+		installRemotePairing({ initial: inviteState() });
+		render(<RemotePairingSettings />);
+
+		expect(await screen.findByText("remote.devices.empty")).toBeTruthy();
+		expect(screen.getByText("remote.devices.emptyHint")).toBeTruthy();
+		expect(screen.getByText("remote.devices.title")).toBeTruthy();
+	});
+
 	it("已有未过期二维码时直接沿用，不会因重新打开页面而作废", async () => {
 		const { createInvite } = installRemotePairing({ initial: inviteState("astravia://pair/existing") });
 
@@ -352,4 +361,24 @@ describe("远程连接设置", () => {
 		expect(setRelay).toHaveBeenCalledWith("wss://relay.mine.test");
 		await waitFor(() => expect(screen.queryByPlaceholderText("wss://relay.example.test")).toBeNull());
 	});
+});
+
+
+it("设备行不再提供重新配对按钮，仍可通过页面二维码完成普通配对", async () => {
+	const device = { id: "phone-1", name: "My phone", claimed: true, online: true, channels: ["lan" as const], desktopControl: true, createdAt: 1 };
+	const initial = { ...inviteState(), devices: [device] };
+	const { createInvite } = installRemotePairing({ initial,
+		cancelInvite: async () => ({ ...BASE_STATE, devices: [device] }),
+		createInvite: async () => ({ ...inviteState("astravia://pair/refreshed"), devices: [device] }),
+	});
+	const user = userEvent.setup();
+	render(<RemotePairingSettings />);
+	await screen.findByRole("img", { name: "remote.pairing.qrAlt" });
+	expect(screen.queryByRole("button", { name: /remote\.devices\.repair/ })).toBeNull();
+	expect(screen.getByRole("button", { name: "My phone · remote.devices.desktop" })).toBeTruthy();
+	expect(screen.getByRole("button", { name: "My phone · remote.devices.revoke" })).toBeTruthy();
+	await user.click(screen.getByRole("button", { name: "remote.pairing.cancel" }));
+	await waitFor(() => expect(createInvite).toHaveBeenCalledWith());
+	await screen.findByRole("img", { name: "remote.pairing.qrAlt" });
+	expect(screen.getByText("My phone")).toBeTruthy();
 });

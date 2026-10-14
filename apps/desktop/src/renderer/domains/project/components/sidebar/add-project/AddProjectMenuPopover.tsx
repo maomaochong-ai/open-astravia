@@ -1,4 +1,4 @@
-import { AddProjectMenuPopoverView } from "@astravia-org/theme-ui/sidebar";
+import { AddProjectMenuPopoverView } from "@astravia-org/theme-ui/sidebar/AddProjectMenuPopoverView";
 import { useTranslation } from "react-i18next";
 import type { AddProjectMenuItemModel, AddProjectMenuProps } from "./types";
 

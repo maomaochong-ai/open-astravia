@@ -1,1 +1,1 @@
-export { Input } from "@astravia-org/ui";
+export { Input } from "@astravia-org/ui/input";

@@ -1,6 +1,6 @@
 import type { JSX } from "react";
 import type { SidebarNavBadge, SidebarNavBadgeTone } from "@astravia-org/theme-sdk/sidebar";
-import { cn } from "@astravia-org/ui";
+import { cn } from "@astravia-org/ui/utils";
 import { navBadgeText } from "./nav-badge-text";
 
 /**

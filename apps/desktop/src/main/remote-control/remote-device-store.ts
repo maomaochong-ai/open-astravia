@@ -12,6 +12,7 @@ import type {
 	RemoteControlDeviceRecord,
 } from "../config/desktop-config-store.js";
 import type { CredentialRef } from "../credentials/credential-vault.js";
+import { completeDevicePairing, pairingIdOf, restoreDevicePairings } from "./remote-device-pairings.js";
 
 const CREDENTIAL_NAMESPACE = "remote-control";
 const CREDENTIAL_OWNER = "desktop";
@@ -69,22 +70,17 @@ export class RemoteDeviceStore {
 		};
 	}
 
-	async upsertDevice(record: RemoteControlDeviceRecord): Promise<void> {
-		await this.update((current) => ({
-			...current,
-			devices: [...current.devices.filter((device) => device.id !== record.id), record],
-		}));
-	}
-
 	async patchDevice(
 		id: string,
 		patch: Partial<RemoteControlDeviceRecord>,
+		expectedPairingId?: string,
 	): Promise<RemoteControlDeviceRecord | undefined> {
 		let updated: RemoteControlDeviceRecord | undefined;
 		await this.update((current) => ({
 			...current,
 			devices: current.devices.map((device) => {
-				if (device.id !== id) return device;
+				if (device.id !== id || (expectedPairingId !== undefined && pairingIdOf(device) !== expectedPairingId))
+					return device;
 				updated = { ...device, ...patch, id };
 				return updated;
 			}),
@@ -92,10 +88,47 @@ export class RemoteDeviceStore {
 		return updated;
 	}
 
-	async removeDevice(id: string): Promise<void> {
-		await this.update((current) => ({ ...current, devices: current.devices.filter((device) => device.id !== id) }));
-		this.options.vault.remove(ref(relaySecretName(id)));
-		this.options.vault.remove(ref(mobileSecretName(id)));
+	clearPairingSecrets(pairingId: string): void {
+		this.options.vault.remove(ref(relaySecretName(pairingId)));
+		this.options.vault.remove(ref(mobileSecretName(pairingId)));
+	}
+
+	async completePairing(pairingId: string, identityKey: string, name: string | undefined, now: number) {
+		let completed: ReturnType<typeof completeDevicePairing> | undefined;
+		const config = await this.update((current) => {
+			completed = completeDevicePairing(current, pairingId, identityKey, name, now);
+			return completed.config;
+		});
+		if (!completed) throw new Error("pairing was not saved");
+		return { ...completed, config };
+	}
+
+	async restorePairings(): Promise<RemoteControlConfig> {
+		const current = await this.read();
+		const restored = restoreDevicePairings(current);
+		const config =
+			JSON.stringify(restored.config) === JSON.stringify(current)
+				? current
+				: await this.update((latest) => restoreDevicePairings(latest).config);
+		return config;
+	}
+
+	async cleanupRetiredPairings(): Promise<RemoteControlConfig> {
+		const current = await this.read();
+		const retired = current.retiredPairingIds ?? [];
+		for (const device of current.devices) {
+			if (device.mobileIdentityKey) this.clearMobileSecret(pairingIdOf(device));
+		}
+		if (!retired.length) return current;
+		const active = new Set([
+			...current.devices.map(pairingIdOf),
+			...(current.pendingPairings ?? []).map((pending) => pending.pairingId),
+		]);
+		for (const pairingId of retired) if (!active.has(pairingId)) this.clearPairingSecrets(pairingId);
+		return this.update((latest) => ({
+			...latest,
+			retiredPairingIds: latest.retiredPairingIds?.filter((id) => !retired.includes(id)),
+		}));
 	}
 
 	vaultAvailable(): boolean {

@@ -1,4 +1,4 @@
-import { Popover, PopoverContent, PopoverTrigger } from "@astravia-org/ui";
+import { Popover, PopoverContent, PopoverTrigger } from "@astravia-org/ui/popover";
 import { AnimatePresence, motion } from "motion/react";
 import { useState, type ReactNode } from "react";
 

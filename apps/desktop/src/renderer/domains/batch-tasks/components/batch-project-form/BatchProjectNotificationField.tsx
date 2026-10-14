@@ -1,4 +1,4 @@
-import { BatchProjectNotificationFieldView } from "@astravia-org/theme-ui/batch-tasks";
+import { BatchProjectNotificationFieldView } from "@astravia-org/theme-ui/batch-tasks/BatchProjectNotificationFieldView";
 import { useTranslation } from "react-i18next";
 
 export function BatchProjectNotificationField({

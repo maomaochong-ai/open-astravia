@@ -1,5 +1,5 @@
 import type { ModelSelectorViewProps } from "@astravia-org/theme-ui/chat";
-import { fmtMultiplier } from "@astravia-org/theme-ui/shared";
+import { fmtMultiplier } from "@astravia-org/theme-ui/shared/MultiplierTag";
 import { resolveReasoning } from "@shared/components/ModelSelect/resolveReasoning";
 import { type ModelOption, useModelOptions } from "@shared/components/ModelSelect/useModelOptions";
 import {

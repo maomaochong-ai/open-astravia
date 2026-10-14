@@ -4,6 +4,7 @@ import {
 	DEFAULT_RATE_PER_MS,
 	planReveal,
 	REVEAL_TICK_MS,
+	STREAMING_IDLE_SETTLE_MS,
 	STREAMING_SETTLE_MS,
 	STREAMING_STALL_FLUSH_MS,
 	splitStreamingSegments,
@@ -118,6 +119,15 @@ export function useStreamingDisplayText(text: string, active: boolean): Streamin
 		}, STREAMING_SETTLE_MS);
 	}, []);
 
+	/** 已追平但流未结束：静默一会儿后只撤暗色，保留 streamedRef，新文本到达时布局效果会重新挂上。 */
+	const settleIdle = useCallback((): void => {
+		if (settleTimerRef.current !== null) return;
+		settleTimerRef.current = window.setTimeout(() => {
+			settleTimerRef.current = null;
+			setAnimateChunks(false);
+		}, STREAMING_IDLE_SETTLE_MS);
+	}, []);
+
 	const reveal = useCallback(
 		function reveal(): void {
 			clearTimeoutRef(tickTimerRef);
@@ -146,17 +156,13 @@ export function useStreamingDisplayText(text: string, active: boolean): Streamin
 			if (displayRef.current.length >= target.length) lastAdvanceAtRef.current = now;
 			if (displayRef.current.length < target.length) {
 				tickTimerRef.current = window.setTimeout(reveal, REVEAL_TICK_MS);
-			} else {
-				// 追平即进入 settle：不只等 final。任务执行中两次工具调用之间（模型已停輓、
-				// 消息仍处于流式态）的这段静默里，「最新短语略暗」不该一直挂着——它表达的是
-				// 「还在流出」，静默超过 STREAMING_SETTLE_MS 就恢复全亮。新文本到达时布局效果
-				// 里的 clearTimeoutRef(settleTimerRef) 会取消本计时，压暗随下一次放出重新出现；
-				// 因此语义从「流结束后收尾」变为「静止即全亮」，与 CSS 注释「撤掉包裹类就恢复
-				// 全亮，DOM 不动」的承诺一致，不重建 DOM、不重放淡入。
+			} else if (final) {
 				settle();
+			} else {
+				settleIdle();
 			}
 		},
-		[settle],
+		[settle, settleIdle],
 	);
 
 	useEffect(
@@ -189,7 +195,8 @@ export function useStreamingDisplayText(text: string, active: boolean): Streamin
 		}
 
 		clearTimeoutRef(settleTimerRef);
-		setAnimateChunks(true);
+		// 只在有新内容要放时挂暗色：空闲撤暗后回合才结束（文本没变）时不能再暗一下。
+		if (textChanged || shown.length < text.length) setAnimateChunks(true);
 		const now = Date.now();
 		if (textChanged || lastArrivalAtRef.current === 0) {
 			lastArrivalAtRef.current = now;

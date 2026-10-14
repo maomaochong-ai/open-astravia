@@ -377,6 +377,7 @@ describe("useMessageFeedScrollModel", () => {
 
 		act(() => result.current.scrollerRef(element));
 		act(() => {
+			element.dispatchEvent(new WheelEvent("wheel", { deltaY: -120 }));
 			element.dispatchEvent(new Event("scroll"));
 			element.dispatchEvent(new Event("scroll"));
 			element.dispatchEvent(new Event("scroll"));
@@ -470,13 +471,7 @@ describe("useMessageFeedScrollModel", () => {
 		expect(result.current.followOutput).toBe("auto");
 	});
 
-	it("lands on the newest message when a session hydrates after mounting empty", () => {
-		const frames: FrameRequestCallback[] = [];
-		vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
-			frames.push(callback);
-			return frames.length;
-		});
-		vi.stubGlobal("cancelAnimationFrame", vi.fn());
+	it("keeps one end-aligned tail location while an empty session hydrates", () => {
 		const { result, rerender } = renderHook(
 			({ items }: { items: Array<{ id: string }> }) =>
 				useMessageFeedScrollModel({
@@ -486,32 +481,12 @@ describe("useMessageFeedScrollModel", () => {
 				}),
 			{ initialProps: { items: [] as Array<{ id: string }> } },
 		);
-		const scrollToIndex = vi.fn();
-		(result.current.virtuosoRef as { current: VirtuosoHandle | null }).current = {
-			scrollToIndex,
-		} as unknown as VirtuosoHandle;
 
 		expect(result.current.initialTopMostItemIndex).toEqual({ index: "LAST", align: "end" });
-		expect(scrollToIndex).not.toHaveBeenCalled();
 
 		rerender({ items: Array.from({ length: 25 }, (_, index) => ({ id: `message-${index}` })) });
-		act(() => {
-			for (const callback of frames.splice(0)) callback(0);
-		});
 
-		// 空列表上的 initialTopMostItemIndex 不会生效，历史到位后必须主动落到最新消息。
 		expect(result.current.initialTopMostItemIndex).toEqual({ index: "LAST", align: "end" });
-		expect(scrollToIndex).toHaveBeenCalledTimes(1);
-		expect(scrollToIndex).toHaveBeenCalledWith({ index: "LAST", align: "end", behavior: "auto" });
-		expect(result.current.followOutput).toBe("auto");
-
-		rerender({ items: Array.from({ length: 26 }, (_, index) => ({ id: `message-${index}` })) });
-		act(() => {
-			for (const callback of frames.splice(0)) callback(0);
-		});
-
-		// 补位只发生一次，后续增长交给跟随循环，不再重复发起定位。
-		expect(scrollToIndex).toHaveBeenCalledTimes(1);
 	});
 
 	it("does not issue a second tail scroll when switching sessions", () => {
@@ -571,6 +546,10 @@ describe("useMessageFeedScrollModel", () => {
 		} as unknown as VirtuosoHandle;
 		const element = document.createElement("div");
 		act(() => first.result.current.scrollerRef(element));
+		// The reader scrolls up into the history: that position is worth coming back to.
+		act(() => {
+			element.dispatchEvent(new WheelEvent("wheel", { deltaY: -120 }));
+		});
 		first.unmount();
 
 		const second = renderHook(() =>
@@ -606,13 +585,7 @@ describe("useMessageFeedScrollModel", () => {
 		progressive.unmount();
 	});
 
-	it("restores the saved position when a session hydrates after mounting empty", () => {
-		const frames: FrameRequestCallback[] = [];
-		vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
-			frames.push(callback);
-			return frames.length;
-		});
-		vi.stubGlobal("cancelAnimationFrame", vi.fn());
+	it("does not remember a position while the feed follows its tail", () => {
 		vi.stubGlobal(
 			"ResizeObserver",
 			class {
@@ -620,327 +593,24 @@ describe("useMessageFeedScrollModel", () => {
 				disconnect() {}
 			},
 		);
-		const resetKey = `feed-restore-${Math.random()}`;
-		const items = Array.from({ length: 5 }, (_, index) => ({ id: `message-${index}` }));
-		const snapshot = {
-			scrollTop: 500,
-			ranges: [{ startIndex: 0, endIndex: 4, size: 200 }],
-		};
-
-		// First visit: mount with items, capture the snapshot on unmount.
-		const first = renderHook(() =>
-			useMessageFeedScrollModel({
-				active: false,
-				items,
-				resetKey,
-			}),
-		);
+		const resetKey = `feed-tail-${Math.random()}`;
+		const items = [{ id: "message-1" }, { id: "message-2" }];
+		const first = renderHook(() => useMessageFeedScrollModel({ active: false, items, resetKey }));
+		// Mid-way to the bottom while heights are still being measured.
 		(first.result.current.virtuosoRef as { current: VirtuosoHandle | null }).current = {
-			getState: (callback: (state: typeof snapshot) => void) => callback(snapshot),
+			getState: (callback: (state: { scrollTop: number; ranges: [] }) => void) =>
+				callback({ scrollTop: 120, ranges: [] }),
 		} as unknown as VirtuosoHandle;
-		const element = document.createElement("div");
-		act(() => first.result.current.scrollerRef(element));
+		act(() => first.result.current.scrollerRef(document.createElement("div")));
 		first.unmount();
 
-		// Second visit: mount empty, then hydrate with the same items.
-		const scrollToIndex = vi.fn();
-		const second = renderHook(
-			({ items: nextItems }: { items: Array<{ id: string }> }) =>
-				useMessageFeedScrollModel({
-					active: false,
-					items: nextItems,
-					resetKey,
-				}),
-			{ initialProps: { items: [] as Array<{ id: string }> } },
-		);
-		(second.result.current.virtuosoRef as { current: VirtuosoHandle | null }).current = {
-			scrollToIndex,
-		} as unknown as VirtuosoHandle;
+		const second = renderHook(() => useMessageFeedScrollModel({ active: false, items, resetKey }));
 
-		expect(second.result.current.restoreStateFrom).toBeUndefined();
-
-		second.rerender({ items });
-		act(() => {
-			for (const callback of frames.splice(0)) callback(0);
+		expect(second.result.current).toMatchObject({
+			followOutput: "auto",
+			restoreStateFrom: undefined,
+			initialTopMostItemIndex: { index: "LAST", align: "end" },
 		});
-
-		// 命中缓存快照：按 scrollTop+ranges 还原离开时的位置（第 2 条、内部 100px），而非尾部。
-		expect(scrollToIndex).toHaveBeenCalledTimes(1);
-		expect(scrollToIndex).toHaveBeenCalledWith({ index: 2, align: "start", offset: 100, behavior: "auto" });
-		expect(second.result.current.followOutput).toBe(false);
-		second.unmount();
-	});
-
-	it("falls back to the tail when the hydrated list no longer matches the cached snapshot", () => {
-		vi.useFakeTimers();
-		const frames: FrameRequestCallback[] = [];
-		vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
-			frames.push(callback);
-			return frames.length;
-		});
-		vi.stubGlobal("cancelAnimationFrame", vi.fn());
-		vi.stubGlobal(
-			"ResizeObserver",
-			class {
-				observe() {}
-				disconnect() {}
-			},
-		);
-		const resetKey = `feed-restore-mismatch-${Math.random()}`;
-		const items = Array.from({ length: 5 }, (_, index) => ({ id: `message-${index}` }));
-		const snapshot = {
-			scrollTop: 500,
-			ranges: [{ startIndex: 0, endIndex: 4, size: 200 }],
-		};
-
-		const first = renderHook(() =>
-			useMessageFeedScrollModel({
-				active: false,
-				items,
-				resetKey,
-			}),
-		);
-		(first.result.current.virtuosoRef as { current: VirtuosoHandle | null }).current = {
-			getState: (callback: (state: typeof snapshot) => void) => callback(snapshot),
-		} as unknown as VirtuosoHandle;
-		const element = document.createElement("div");
-		act(() => first.result.current.scrollerRef(element));
-		first.unmount();
-
-		const scrollToIndex = vi.fn();
-		const second = renderHook(
-			({ items: nextItems }: { items: Array<{ id: string }> }) =>
-				useMessageFeedScrollModel({
-					active: false,
-					items: nextItems,
-					resetKey,
-				}),
-			{ initialProps: { items: [] as Array<{ id: string }> } },
-		);
-		(second.result.current.virtuosoRef as { current: VirtuosoHandle | null }).current = {
-			scrollToIndex,
-		} as unknown as VirtuosoHandle;
-
-		// 列表数量变了（6 条 > 快照的 5 条），已超过快照规模且仍不匹配 → 立即尾部落地。
-		second.rerender({ items: Array.from({ length: 6 }, (_, index) => ({ id: `message-${index}` })) });
-		act(() => {
-			for (const callback of frames.splice(0)) callback(0);
-		});
-
-		expect(scrollToIndex).toHaveBeenCalledTimes(1);
-		expect(scrollToIndex).toHaveBeenCalledWith({ index: "LAST", align: "end", behavior: "auto" });
-		expect(second.result.current.followOutput).toBe("auto");
-		second.unmount();
-		vi.useRealTimers();
-	});
-
-	it("waits for the full list when the preview batch does not match the cached snapshot", () => {
-		const frames: FrameRequestCallback[] = [];
-		vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
-			frames.push(callback);
-			return frames.length;
-		});
-		vi.stubGlobal("cancelAnimationFrame", vi.fn());
-		vi.stubGlobal(
-			"ResizeObserver",
-			class {
-				observe() {}
-				disconnect() {}
-			},
-		);
-		const resetKey = `feed-two-stage-${Math.random()}`;
-		const fullItems = Array.from({ length: 82 }, (_, index) => ({ id: `message-${index}` }));
-		const previewItems = fullItems.slice(-5); // last 5 of the full list
-		const snapshot = {
-			scrollTop: 5000,
-			ranges: [{ startIndex: 0, endIndex: 81, size: 200 }],
-		};
-
-		// First visit: mount with full 82 items, capture snapshot.
-		const first = renderHook(() =>
-			useMessageFeedScrollModel({
-				active: false,
-				items: fullItems,
-				resetKey,
-			}),
-		);
-		(first.result.current.virtuosoRef as { current: VirtuosoHandle | null }).current = {
-			getState: (callback: (state: typeof snapshot) => void) => callback(snapshot),
-		} as unknown as VirtuosoHandle;
-		const element = document.createElement("div");
-		act(() => first.result.current.scrollerRef(element));
-		first.unmount();
-
-		// Second visit: mount empty → preview (5) → full (82).
-		const scrollToIndex = vi.fn();
-		const second = renderHook(
-			({ items: nextItems }: { items: Array<{ id: string }> }) =>
-				useMessageFeedScrollModel({
-					active: false,
-					items: nextItems,
-					resetKey,
-				}),
-			{ initialProps: { items: [] as Array<{ id: string }> } },
-		);
-		(second.result.current.virtuosoRef as { current: VirtuosoHandle | null }).current = {
-			scrollToIndex,
-		} as unknown as VirtuosoHandle;
-
-		// Stage 1: preview batch (5 items) — should NOT scroll (waiting for full list).
-		second.rerender({ items: previewItems });
-		act(() => {
-			for (const callback of frames.splice(0)) callback(0);
-		});
-		expect(scrollToIndex).not.toHaveBeenCalled();
-
-		// Stage 2: full list (82 items) — should restore from snapshot.
-		second.rerender({ items: fullItems });
-		act(() => {
-			for (const callback of frames.splice(0)) callback(0);
-		});
-		expect(scrollToIndex).toHaveBeenCalledTimes(1);
-		// scrollTop=5000, range size=200 → index=25, offset=0
-		expect(scrollToIndex).toHaveBeenCalledWith({ index: 25, align: "start", offset: 0, behavior: "auto" });
-		expect(second.result.current.followOutput).toBe(false);
-		second.unmount();
-	});
-
-	it("arms and waits when mounting directly on a preview batch that does not match the cache", () => {
-		const frames: FrameRequestCallback[] = [];
-		vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
-			frames.push(callback);
-			return frames.length;
-		});
-		vi.stubGlobal("cancelAnimationFrame", vi.fn());
-		vi.stubGlobal(
-			"ResizeObserver",
-			class {
-				observe() {}
-				disconnect() {}
-			},
-		);
-		const resetKey = `feed-mount-preview-${Math.random()}`;
-		const fullItems = Array.from({ length: 86 }, (_, index) => ({ id: `message-${index}` }));
-		const previewItems = fullItems.slice(-7);
-		const snapshot = {
-			scrollTop: 9300,
-			ranges: [{ startIndex: 0, endIndex: 85, size: 230 }],
-		};
-
-		const first = renderHook(() =>
-			useMessageFeedScrollModel({
-				active: false,
-				items: fullItems,
-				resetKey,
-			}),
-		);
-		(first.result.current.virtuosoRef as { current: VirtuosoHandle | null }).current = {
-			getState: (callback: (state: typeof snapshot) => void) => callback(snapshot),
-		} as unknown as VirtuosoHandle;
-		const element = document.createElement("div");
-		act(() => first.result.current.scrollerRef(element));
-		first.unmount();
-
-		// 复现生产场景：重挂载时列表已经是预览批（7 条），缓存是完整列表（86 条）。
-		const scrollToIndex = vi.fn();
-		const second = renderHook(
-			({ items: nextItems }: { items: Array<{ id: string }> }) =>
-				useMessageFeedScrollModel({
-					active: false,
-					items: nextItems,
-					resetKey,
-				}),
-			{ initialProps: { items: previewItems } },
-		);
-		(second.result.current.virtuosoRef as { current: VirtuosoHandle | null }).current = {
-			scrollToIndex,
-		} as unknown as VirtuosoHandle;
-
-		// 预览批不匹配 → 不发定位，等完整历史
-		act(() => {
-			for (const callback of frames.splice(0)) callback(0);
-		});
-		expect(scrollToIndex).not.toHaveBeenCalled();
-
-		// 完整历史到位 → 精确还原
-		second.rerender({ items: fullItems });
-		act(() => {
-			for (const callback of frames.splice(0)) callback(0);
-		});
-		expect(scrollToIndex).toHaveBeenCalledWith({ index: 40, align: "start", offset: 100, behavior: "auto" });
-		expect(second.result.current.followOutput).toBe(false);
-		second.unmount();
-	});
-
-	it("does not let a preview batch overwrite the cached full-list snapshot", () => {
-		const frames: FrameRequestCallback[] = [];
-		vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
-			frames.push(callback);
-			return frames.length;
-		});
-		vi.stubGlobal("cancelAnimationFrame", vi.fn());
-		vi.stubGlobal(
-			"ResizeObserver",
-			class {
-				observe() {}
-				disconnect() {}
-			},
-		);
-		const resetKey = `feed-no-poison-${Math.random()}`;
-		const fullItems = Array.from({ length: 86 }, (_, index) => ({ id: `message-${index}` }));
-		const previewItems = fullItems.slice(-7);
-		const snapshot = {
-			scrollTop: 9300,
-			ranges: [{ startIndex: 0, endIndex: 85, size: 230 }],
-		};
-
-		// 首次访问：完整列表 + getState → 写入好快照
-		const first = renderHook(() =>
-			useMessageFeedScrollModel({
-				active: false,
-				items: fullItems,
-				resetKey,
-			}),
-		);
-		(first.result.current.virtuosoRef as { current: VirtuosoHandle | null }).current = {
-			getState: (callback: (state: typeof snapshot) => void) => callback(snapshot),
-		} as unknown as VirtuosoHandle;
-		const element = document.createElement("div");
-		act(() => first.result.current.scrollerRef(element));
-		first.unmount();
-
-		// 第二次访问：空挂载 → 预览批。预览阶段触发 captureState 必须被守卫拦下。
-		const scrollToIndex = vi.fn();
-		const second = renderHook(
-			({ items: nextItems }: { items: Array<{ id: string }> }) =>
-				useMessageFeedScrollModel({
-					active: false,
-					items: nextItems,
-					resetKey,
-				}),
-			{ initialProps: { items: [] as Array<{ id: string }> } },
-		);
-		const previewGetState = vi.fn((callback: (state: typeof snapshot) => void) =>
-			callback({ scrollTop: 7534, ranges: [{ startIndex: 0, endIndex: 6, size: 1076 }] }),
-		);
-		(second.result.current.virtuosoRef as { current: VirtuosoHandle | null }).current = {
-			scrollToIndex,
-			getState: previewGetState,
-		} as unknown as VirtuosoHandle;
-
-		second.rerender({ items: previewItems });
-		act(() => {
-			// 预览批落地会触发 scrollend → settleScroll → captureState
-			element.dispatchEvent(new Event("scroll"));
-			for (const callback of frames.splice(0)) callback(0);
-		});
-
-		// 预览阶段不得写入缓存：完整列表到位后仍能命中原始快照
-		second.rerender({ items: fullItems });
-		act(() => {
-			for (const callback of frames.splice(0)) callback(0);
-		});
-		expect(scrollToIndex).toHaveBeenCalledWith({ index: 40, align: "start", offset: 100, behavior: "auto" });
 		second.unmount();
 	});
 });

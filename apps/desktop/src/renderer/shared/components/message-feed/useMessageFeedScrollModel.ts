@@ -9,7 +9,6 @@ const IDLE_MEASURE_EVERY_N_FRAMES = 4;
 const MAX_CACHED_FEED_STATES = 24;
 const SCROLL_SETTLE_DELAY_MS = 180;
 const SCROLL_TO_BOTTOM_VISIBILITY_THRESHOLD_PX = 500;
-const FILL_WAIT_TIMEOUT_MS = 1500;
 const INITIAL_TAIL_LOCATION: IndexLocationWithAlign = { index: "LAST", align: "end" };
 
 interface CachedFeedState {
@@ -36,15 +35,6 @@ function readCachedFeedState(
 	return cached?.itemCount === itemCount && cached.itemIdentity === itemIdentity ? cached.snapshot : undefined;
 }
 
-function readCachedFeedEntry(key: string | null | undefined): CachedFeedState | undefined {
-	if (!key) return undefined;
-	return feedStateCache.get(key);
-}
-
-function hasCachedFeedState(key: string | null | undefined): boolean {
-	return key != null && feedStateCache.has(key);
-}
-
 function cacheFeedState(
 	key: string | null | undefined,
 	itemCount: number,
@@ -52,11 +42,6 @@ function cacheFeedState(
 	snapshot: StateSnapshot,
 ): void {
 	if (!key || itemCount === 0) return;
-	// 预览批（tailTurns 切片）的条数必然小于完整历史。若缓存里已是同 key 的更大规模
-	// 快照，说明这次捕获来自预览批或列表尚未补齐 —— 不能用小规模状态覆盖完整列表的好
-	// 快照，否则切回时会在预览批上误命中并还原到错误位置（issue #7）。
-	const existing = feedStateCache.get(key);
-	if (existing !== undefined && existing.itemCount > itemCount) return;
 	feedStateCache.delete(key);
 	feedStateCache.set(key, {
 		itemIdentity,
@@ -78,26 +63,6 @@ function getItemIdentity<T>(items: readonly T[], getItemKey?: (item: T) => strin
 	const first = getItemKey(items[0]);
 	const last = getItemKey(items[items.length - 1]);
 	return `${items.length}:${first ?? ""}:${last ?? ""}`;
-}
-
-function locateFromSnapshot(snapshot: StateSnapshot, itemCount: number): { index: number; offset: number } | null {
-	if (itemCount === 0) return null;
-	const scrollTop = Math.max(0, snapshot.scrollTop);
-	let accumulated = 0;
-	for (const range of snapshot.ranges) {
-		const count = range.endIndex - range.startIndex + 1;
-		if (count <= 0) continue;
-		const rangeStart = accumulated;
-		const rangeEnd = rangeStart + count * range.size;
-		if (scrollTop < rangeEnd) {
-			const itemsBefore = Math.floor((scrollTop - rangeStart) / range.size);
-			const index = Math.min(range.startIndex + itemsBefore, itemCount - 1);
-			const offset = Math.max(0, scrollTop - (rangeStart + itemsBefore * range.size));
-			return { index, offset };
-		}
-		accumulated = rangeEnd;
-	}
-	return { index: itemCount - 1, offset: 0 };
 }
 
 function getScrollLerpRatio(diff: number, active: boolean): number {
@@ -145,9 +110,8 @@ export function useMessageFeedScrollModel<T>({
 	const virtuosoRef = useRef<VirtuosoHandle>(null);
 	const itemIdentity = getItemIdentity(items, getItemKey);
 	const initialViewportSelectionRef = useRef<InitialViewportSelection | null>(null);
-	const pendingInitialTailRef = useRef(false);
-	const fillTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	if (initialViewportSelectionRef.current === null || initialViewportSelectionRef.current.resetKey !== resetKey) {
+		// Virtuoso 的 restoreStateFrom 是初始化输入。会话先以空列表挂载、随后再补齐历史时，
 		// 不应在中途注入旧快照或改写初始索引，否则会覆盖正在进行的底部定位。
 		const snapshot = readCachedFeedState(resetKey, items.length, itemIdentity);
 		initialViewportSelectionRef.current = {
@@ -155,11 +119,6 @@ export function useMessageFeedScrollModel<T>({
 			snapshot,
 			initialTopMostItemIndex: snapshot === undefined ? INITIAL_TAIL_LOCATION : undefined,
 		};
-		// initialTopMostItemIndex 只在挂载那一刻生效，作用在空列表上时定位不到任何消息：
-		// 切换会话时列表先被清空，历史补齐后必须补一次尾部落地，否则会停在顶部（issue #7）。
-		// 非空挂载但缓存不匹配（预览批场景）同样需要武装：完整历史随后才补齐。
-		pendingInitialTailRef.current =
-			snapshot === undefined && !initialTargetKey && (items.length === 0 || hasCachedFeedState(resetKey));
 	}
 	const { initialTopMostItemIndex, snapshot: restoreStateFrom } = initialViewportSelectionRef.current;
 	const scrollerElementRef = useRef<HTMLElement | null>(null);
@@ -193,8 +152,8 @@ export function useMessageFeedScrollModel<T>({
 	const lastUserScrollDirectionRef = useRef<"up" | "down" | null>(null);
 	const activeRef = useRef(active);
 	activeRef.current = active;
-	const scrollSettleTimerRef = useRef<number | null>(null);
 	const skipNextLerpRef = useRef(false);
+	const scrollSettleTimerRef = useRef<number | null>(null);
 	const interactionResetKeyRef = useRef(resetKey);
 	if (interactionResetKeyRef.current !== resetKey) {
 		interactionResetKeyRef.current = resetKey;
@@ -217,15 +176,16 @@ export function useMessageFeedScrollModel<T>({
 				: { resetKey: currentResetKey, enabled: shouldFollow },
 		);
 	}, []);
+	// Only a position the reader chose is remembered. While the feed follows its tail the
+	// viewport may be anywhere on the way to the bottom (estimated heights, content still
+	// measuring); remembering that would bring the feed back mid-way with following off.
 	const captureState = useCallback(() => {
 		const key = stateKeyRef.current;
 		const itemCount = stateItemCountRef.current;
 		const identity = stateItemIdentityRef.current;
 		if (!key || itemCount === 0) return;
-		// 初始定位未完成（空挂载或预览批阶段）时禁止捕获：预览批只是末尾若干轮的
-		// 瞬时快照，它的滚动状态会覆盖完整列表的好快照，导致切回会话时永远还原不到
-		// 真实位置（issue #7 的真正根因）。
-		if (pendingInitialTailRef.current) {
+		if (shouldFollowBottomRef.current) {
+			feedStateCache.delete(key);
 			return;
 		}
 		const handle = virtuosoRef.current;
@@ -414,87 +374,6 @@ export function useMessageFeedScrollModel<T>({
 			virtuosoRef.current?.scrollToIndex({ index, align: "center", behavior: "smooth" });
 		});
 	}, [getItemKey, initialTargetKey, items, onInitialTargetHandled, setShouldFollowBottom]);
-
-	// 初始定位输入（initialTopMostItemIndex / restoreStateFrom）只在挂载那一刻读取。
-	// 会话切换时列表先被清空、再进预览批、最后才补齐完整历史，挂载时刻往往拿不到
-	// 可用的快照，这里在列表就位后补一次定位：
-	//   命中缓存快照      → 按快照里的 scrollTop + ranges 还原离开时的位置（位置记忆）；
-	//   快照规模 > 当前条数 → 列表还会增长，等下一轮（1500ms 超时兜底）；
-	//   其余（无快照 / 已达或超过快照规模仍不匹配）→ 尾部落地。
-	useEffect(() => {
-		if (!pendingInitialTailRef.current || initialTargetKey || items.length === 0) return;
-		const snapshot = readCachedFeedState(resetKey, items.length, itemIdentity);
-		if (snapshot === undefined) {
-			const cached = readCachedFeedEntry(resetKey);
-			if (cached !== undefined && cached.itemCount > items.length) {
-				// 快照记录的条数比当前多，说明完整历史还没到（现在是预览批）→ 等下一轮。
-				if (fillTimeoutRef.current !== null) clearTimeout(fillTimeoutRef.current);
-				fillTimeoutRef.current = setTimeout(() => {
-					fillTimeoutRef.current = null;
-					if (!pendingInitialTailRef.current) return;
-					pendingInitialTailRef.current = false;
-					browsingHistoryRef.current = false;
-					lastUserScrollDirectionRef.current = null;
-					setShouldFollowBottom(true);
-					requestAnimationFrame(() => {
-						virtuosoRef.current?.scrollToIndex({ index: "LAST", align: "end", behavior: "auto" });
-					});
-				}, FILL_WAIT_TIMEOUT_MS);
-				return;
-			}
-			// 没有可等的历史（首次进入 / 列表已达或超过快照规模）→ 尾部落地
-			if (fillTimeoutRef.current !== null) {
-				clearTimeout(fillTimeoutRef.current);
-				fillTimeoutRef.current = null;
-			}
-			pendingInitialTailRef.current = false;
-			browsingHistoryRef.current = false;
-			lastUserScrollDirectionRef.current = null;
-			setShouldFollowBottom(true);
-			requestAnimationFrame(() => {
-				virtuosoRef.current?.scrollToIndex({ index: "LAST", align: "end", behavior: "auto" });
-			});
-			return;
-		}
-		// 命中缓存快照 → 取消等待，按 scrollTop + ranges 还原离开时的位置
-		if (fillTimeoutRef.current !== null) {
-			clearTimeout(fillTimeoutRef.current);
-			fillTimeoutRef.current = null;
-		}
-		pendingInitialTailRef.current = false;
-		const located = locateFromSnapshot(snapshot, items.length);
-		if (located && located.index < items.length - 1) {
-			browsingHistoryRef.current = true;
-			lastUserScrollDirectionRef.current = null;
-			setShouldFollowBottom(false);
-			requestAnimationFrame(() => {
-				virtuosoRef.current?.scrollToIndex({
-					index: located.index,
-					align: "start",
-					offset: located.offset,
-					behavior: "auto",
-				});
-			});
-			return;
-		}
-		// 快照本身就贴在底部 → 尾部落地
-		browsingHistoryRef.current = false;
-		lastUserScrollDirectionRef.current = null;
-		setShouldFollowBottom(true);
-		requestAnimationFrame(() => {
-			virtuosoRef.current?.scrollToIndex({ index: "LAST", align: "end", behavior: "auto" });
-		});
-	}, [initialTargetKey, items.length, itemIdentity, resetKey, setShouldFollowBottom]);
-
-	// 卸载时清除超时
-	useEffect(() => {
-		return () => {
-			if (fillTimeoutRef.current !== null) {
-				clearTimeout(fillTimeoutRef.current);
-				fillTimeoutRef.current = null;
-			}
-		};
-	}, []);
 
 	useEffect(() => {
 		void items;

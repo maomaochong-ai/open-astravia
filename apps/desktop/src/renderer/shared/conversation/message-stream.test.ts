@@ -132,4 +132,31 @@ describe("reduceConversationMessageEvent", () => {
 			durationSeconds: 1,
 		});
 	});
+
+	it("keeps the message running when a model call ends to run tools", () => {
+		const initial = reduceConversationMessageEvent(
+			undefined,
+			textEvent({ conversationId: "conversation", messageId: "message", authorId: "a", sequence: 1, delta: "x" }),
+		);
+		const message = {
+			...createAssistantMessage(
+				{ api: "message-stream-test", provider: "message-stream-test", model: "fixture" },
+				{ timestamp: 1_001, stopReason: "toolUse" },
+			),
+			content: [
+				{ type: "text" as const, text: "x" },
+				{ type: "toolCall" as const, id: "call-1", name: "read", arguments: { path: "a.md" } },
+			],
+		};
+		const event: ConversationAgentMessageEvent = {
+			...textEvent({ conversationId: "conversation", messageId: "message", authorId: "a", sequence: 2, delta: "" }),
+			event: { type: "done", reason: "toolUse", message },
+		};
+
+		const running = reduceConversationMessageEvent(initial, event).message;
+		expect(running).toMatchObject({ phase: "streaming", usages: [message.usage] });
+		expect(running.endedAt).toBeUndefined();
+		expect(running.durationSeconds).toBeUndefined();
+		expect(running.blocks).toContainEqual(expect.objectContaining({ type: "tool_call", toolCallId: "call-1" }));
+	});
 });
