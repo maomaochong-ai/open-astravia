@@ -40,8 +40,47 @@ export function readAndroidReleaseConfig() {
 	);
 }
 
+export function missingAndroidSigningSecrets(env) {
+	return SIGNING_VARIABLES.filter((name) => !env[name]);
+}
+
+// 未配置签名凭据时不发布 APK：未签名的包无法安装，构建出来也没有意义。
+export function resolveAndroidSigning(env, config = readAndroidReleaseConfig()) {
+	const missing = missingAndroidSigningSecrets(env);
+	if (missing.length === SIGNING_VARIABLES.length) return { available: false };
+	return { available: true, environment: prepareAndroidRelease(env, config) };
+}
+
+function reportAndroidSigning(env, available) {
+	if (!env.GITHUB_OUTPUT) throw new Error("GITHUB_OUTPUT is required to report Android signing availability.");
+	appendFileSync(env.GITHUB_OUTPUT, `android_signing_available=${available}\n`);
+}
+
+// 返回写入日志的一行；缺少签名凭据时只声明可用性，由工作流跳过签名链路。
+export function runAndroidSigningStep(env, config = readAndroidReleaseConfig()) {
+	if (!env.GITHUB_ENV) throw new Error("GITHUB_ENV is required to prepare an Android release.");
+	const signing = resolveAndroidSigning(env, config);
+	reportAndroidSigning(env, signing.available);
+	if (!signing.available) {
+		if (env.GITHUB_STEP_SUMMARY) {
+			appendFileSync(
+				env.GITHUB_STEP_SUMMARY,
+				"### Android APK skipped\n\nNo `ASTRAVIA_ANDROID_KEYSTORE_*` signing credentials are configured, so no signed APK was built or uploaded.\n",
+			);
+		}
+		return "::warning::No Android signing credentials configured; skipping the signed Android APK build and release upload.";
+	}
+	appendFileSync(
+		env.GITHUB_ENV,
+		`${Object.entries(signing.environment)
+			.map(([key, value]) => `${key}=${value}`)
+			.join("\n")}\n`,
+	);
+	return "Android release signing prepared.";
+}
+
 export function prepareAndroidRelease(env, config = readAndroidReleaseConfig()) {
-	const missing = SIGNING_VARIABLES.filter((name) => !env[name]);
+	const missing = missingAndroidSigningSecrets(env);
 	if (missing.length > 0) throw new Error(`Missing Android signing secrets: ${missing.join(", ")}`);
 	if (!env.RUNNER_TEMP || !isAbsolute(env.RUNNER_TEMP) || /[\r\n]/.test(env.RUNNER_TEMP)) {
 		throw new Error("RUNNER_TEMP must be an absolute single-line path.");
@@ -98,15 +137,7 @@ if (isDirectRun(import.meta.url)) {
 		if (args[0] === "--stage-apk" && args.length === 2) {
 			console.log(`Android APK staged: ${stageAndroidApk(resolve(args[1]), process.env)}`);
 		} else if (args.length === 0) {
-			if (!process.env.GITHUB_ENV) throw new Error("GITHUB_ENV is required to prepare an Android release.");
-			const values = prepareAndroidRelease(process.env);
-			appendFileSync(
-				process.env.GITHUB_ENV,
-				`${Object.entries(values)
-					.map(([key, value]) => `${key}=${value}`)
-					.join("\n")}\n`,
-			);
-			console.log("Android release signing prepared.");
+			console.log(runAndroidSigningStep(process.env));
 		} else {
 			throw new Error("Usage: prepare-android-release.mjs [--stage-apk <directory>]");
 		}

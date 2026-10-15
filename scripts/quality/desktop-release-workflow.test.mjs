@@ -283,6 +283,7 @@ describe("Desktop release workflow contracts", () => {
 		const index = (name) => steps.findIndex((step) => step.name === name);
 		const prepare = steps[index("Prepare Android release signing")];
 		expect(prepare.env).not.toHaveProperty("RELEASE_VERSION");
+		expect(prepare.id).toBe("android-signing");
 		for (const name of [
 			"ASTRAVIA_ANDROID_KEYSTORE_BASE64",
 			"ASTRAVIA_ANDROID_KEYSTORE_PASSWORD",
@@ -305,6 +306,17 @@ describe("Desktop release workflow contracts", () => {
 		expect(index("Build signed Android release APK")).toBeLessThan(index("Verify and name signed Android APK"));
 		expect(index("Verify and name signed Android APK")).toBeLessThan(index("Add Android APK to GitHub Release"));
 		expect(steps[index("Clean Android signing key")].if).toBe("always()");
+		// 缺少签名凭据时整条签名链路都不跑，但主机测试仍要守住发布质量。
+		const signingGate = "steps.android-signing.outputs.android_signing_available == 'true'";
+		for (const name of [
+			"Build signed Android release APK",
+			"Verify and name signed Android APK",
+			"Upload signed Android APK",
+			"Add Android APK to GitHub Release",
+		]) {
+			expect(steps[index(name)].if).toBe(signingGate);
+		}
+		expect(steps[index("Test Android host logic")].if).toBeUndefined();
 		const gradle = readFileSync(
 			join(import.meta.dirname, "../../apps/mobile/client-android/androidApp/build.gradle.kts"),
 			"utf8",

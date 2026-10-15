@@ -6,6 +6,8 @@ import {
 	parseAndroidReleaseConfig,
 	parseAndroidVersion,
 	prepareAndroidRelease,
+	resolveAndroidSigning,
+	runAndroidSigningStep,
 	stageAndroidApk,
 } from "./prepare-android-release.mjs";
 import { publishGithubInstallers } from "./publish-github-installers.mjs";
@@ -97,6 +99,48 @@ describe("Android desktop release flow", () => {
 		const secrets = fixture();
 		delete secrets[key];
 		expect(() => prepareAndroidRelease(secrets)).toThrow(`Missing Android signing secrets: ${key}`);
+	});
+	it("skips the signed APK instead of failing when no signing credentials are configured", () => {
+		const directory = mkdtempSync(join(tmpdir(), "astravia-android-skip-test-"));
+		directories.push(directory);
+		const output = join(directory, "github-output");
+		const summary = join(directory, "github-summary");
+		const environment = join(directory, "github-env");
+		for (const file of [output, summary, environment]) writeFileSync(file, "");
+		const secretNames = Object.keys(fixture()).filter((name) => name.startsWith("ASTRAVIA_ANDROID_"));
+		const empty = Object.fromEntries(secretNames.map((name) => [name, ""]));
+		expect(resolveAndroidSigning({ RUNNER_TEMP: directory })).toEqual({ available: false });
+		expect(
+			runAndroidSigningStep({ ...empty, GITHUB_OUTPUT: output, GITHUB_STEP_SUMMARY: summary, GITHUB_ENV: environment }),
+		).toContain("::warning::");
+		expect(readFileSync(output, "utf8")).toBe("android_signing_available=false\n");
+		expect(readFileSync(environment, "utf8")).toBe("");
+		expect(readFileSync(summary, "utf8")).toContain("Android APK skipped");
+	});
+
+	it("reports signing as available and stages the keystore when every credential is configured", () => {
+		const secrets = fixture();
+		const directory = mkdtempSync(join(tmpdir(), "astravia-android-signing-test-"));
+		directories.push(directory);
+		const output = join(directory, "github-output");
+		const summary = join(directory, "github-summary");
+		const environment = join(directory, "github-env");
+		for (const file of [output, summary, environment]) writeFileSync(file, "");
+		expect(
+			runAndroidSigningStep({ ...secrets, GITHUB_OUTPUT: output, GITHUB_STEP_SUMMARY: summary, GITHUB_ENV: environment }),
+		).toBe("Android release signing prepared.");
+		expect(readFileSync(output, "utf8")).toBe("android_signing_available=true\n");
+		const written = readFileSync(environment, "utf8");
+		const keystore = written.match(/^ASTRAVIA_ANDROID_KEYSTORE_PATH=(.+)$/m)?.[1];
+		expect(readFileSync(keystore ?? "", "utf8")).toBe("test keystore");
+		expect(written).not.toContain("password");
+		expect(readFileSync(summary, "utf8")).toBe("");
+	});
+
+	it("still refuses a partially configured signing setup", () => {
+		const secrets = fixture();
+		delete secrets.ASTRAVIA_ANDROID_KEY_ALIAS;
+		expect(() => resolveAndroidSigning(secrets)).toThrow("Missing Android signing secrets: ASTRAVIA_ANDROID_KEY_ALIAS");
 	});
 	it.each(["0", "-1", "1.5", "2100000001", "invalid"])("rejects unsupported Android version code %s", (code) => {
 		expect(() => parseAndroidVersion(`astraviaAndroidVersionName=1.0\nastraviaAndroidVersionCode=${code}`)).toThrow(

@@ -485,6 +485,7 @@ jobs:
           java-version: "21"
 
       - name: Prepare Android release signing
+        id: android-signing
         env:
           ASTRAVIA_ANDROID_KEYSTORE_BASE64: ${{ secrets.ASTRAVIA_ANDROID_KEYSTORE_BASE64 }}
           ASTRAVIA_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ASTRAVIA_ANDROID_KEYSTORE_PASSWORD }}
@@ -506,7 +507,10 @@ jobs:
         working-directory: apps/mobile/client-android
         run: bash ./gradlew --no-daemon :shared:testAndroidHostTest
 
+      # 未配置签名凭据时准备步骤会声明 available=false，这里连同后续上传、发布一起跳过：
+      # 未签名的 APK 装不上，发布它没有意义。
       - name: Build signed Android release APK
+        if: steps.android-signing.outputs.android_signing_available == 'true'
         working-directory: apps/mobile/client-android
         env:
           ASTRAVIA_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ASTRAVIA_ANDROID_KEYSTORE_PASSWORD }}
@@ -515,12 +519,14 @@ jobs:
         run: bash ./gradlew --no-daemon -PastraviaSplitApks=true :androidApp:assembleRelease
 
       - name: Verify and name signed Android APK
+        if: steps.android-signing.outputs.android_signing_available == 'true'
         shell: bash
         run: |
           node scripts/release/prepare-android-release.mjs --stage-apk apps/mobile/client-android/androidApp/build/outputs/apk/release
           "${ANDROID_HOME}/build-tools/36.0.0/apksigner" verify --verbose "${ASTRAVIA_ANDROID_APK_PATH}"
 
       - name: Upload signed Android APK
+        if: steps.android-signing.outputs.android_signing_available == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: apk
@@ -531,6 +537,7 @@ jobs:
           overwrite: true
 
       - name: Add Android APK to GitHub Release
+        if: steps.android-signing.outputs.android_signing_available == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_VERSION: ${{ needs.prepare.outputs.release-version }}
