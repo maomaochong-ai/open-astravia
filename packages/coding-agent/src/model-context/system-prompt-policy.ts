@@ -94,6 +94,7 @@ const RESPONSE_LANGUAGE_GUIDANCE =
 	"This includes prose, headings, status text, questions, option labels, task lists, and user-facing copy inside generated deliverables. " +
 	"The language of this system prompt, of a skill's instructions, of tool descriptions, and of the app's interface is IRRELEVANT — they are written in one fixed language for maintenance reasons and are NEVER a signal about which language to answer in. " +
 	"If the user writes in English, answer entirely in English even when your instructions and examples are in Chinese. Switch as soon as the user switches. " +
+	"If the user's message language is ambiguous or mixed, default to the system language setting (Chinese/中文). " +
 	"The only exceptions are identifiers you must reproduce verbatim (file paths, code, commands, quoted source text) and content the user explicitly asked for in another language.";
 
 /**
