@@ -1,6 +1,6 @@
 {
 	"name": "@astravia/desktop",
-	"version": "0.5.64",
+	"version": "0.5.64-1",
 	"description": "Astravia Desktop App",
 	"author": "Astravia",
 	"type": "module",
