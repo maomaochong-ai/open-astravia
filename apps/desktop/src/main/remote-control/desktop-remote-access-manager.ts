@@ -300,9 +300,11 @@ export class DesktopRemoteAccessManager {
 		// Claimed, discarded or expired: nobody should find this invite on the relay any more.
 		if (previous?.code && previous.pairingId !== value?.pairingId) {
 			const { boxUrl, token } = previous.code;
-			void this.inviteMailbox.withdraw(boxUrl, token).catch((error: unknown) => {
-				log.warn("remote invite code withdraw failed", { error: describe(error) });
-			});
+			if (boxUrl && token) {
+				void this.inviteMailbox.withdraw(boxUrl, token).catch((error: unknown) => {
+					log.warn("remote invite code withdraw failed", { error: describe(error) });
+				});
+			}
 		}
 	}
 
