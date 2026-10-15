@@ -32,7 +32,7 @@ export const CompactionBlockView = memo(function CompactionBlockView({
 		}
 		if (block.status === "skipped" && block.skipReason) {
 			const reasonKey = `messageList.compactionSkipReason.${block.skipReason}`;
-			const reasonText = t(reasonKey);
+			const reasonText = t(reasonKey as any);
 			// 如果 key 不存在，回退到原始 skipReason
 			return reasonText === reasonKey ? `${t(LABEL_KEYS.skipped)} · ${block.skipReason}` : `${t(LABEL_KEYS.skipped)} · ${reasonText}`;
 		}

@@ -75,8 +75,8 @@ export interface RemoteAccessInviteCodeView {
 interface InviteCode {
 	readonly code: string;
 	readonly password: string;
-	readonly boxUrl: string;
-	readonly token: string;
+	readonly boxUrl?: string;
+	readonly token?: string;
 	readonly status: RemoteAccessInviteCodeView["status"];
 }
 
