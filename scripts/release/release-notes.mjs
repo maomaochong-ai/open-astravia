@@ -18,14 +18,14 @@ const RELEASE_NOTES_DIR = ".github/release-notes";
 export function desktopVersion(root = repositoryRoot) {
 	const manifest = JSON.parse(readFileSync(join(root, "apps/desktop/package.json"), "utf8"));
 	const version = manifest.version;
-	if (typeof version !== "string" || !/^\d+\.\d+\.\d+$/.test(version)) {
+	if (typeof version !== "string" || !/^\d+\.\d+\.\d+(-\d+)?$/.test(version)) {
 		throw new Error(`Invalid desktop version in apps/desktop/package.json: ${String(version)}`);
 	}
 	return version;
 }
 
 export function releaseNotesPath(version) {
-	if (!/^\d+\.\d+\.\d+$/.test(version)) throw new Error(`Invalid release version: ${version}`);
+	if (!/^\d+\.\d+\.\d+(-\d+)?$/.test(version)) throw new Error(`Invalid release version: ${version}`);
 	return `${RELEASE_NOTES_DIR}/v${version}.md`;
 }
 

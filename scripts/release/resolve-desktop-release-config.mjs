@@ -15,7 +15,7 @@ const RELEASE_TARGETS = new Set(["github", "r2"]);
 const CHANNELS = new Set(["default", "stable", "test"]);
 const FLAGS = new Set(["true", "false"]);
 const CHANNEL_SEGMENTS = new Set(["stable", "test", "beta", "prod", "production"]);
-const VERSION_PATTERN = /^\d+\.\d+\.\d+$/;
+const VERSION_PATTERN = /^\d+\.\d+\.\d+(-\d+)?$/;
 
 /**
  * @param {unknown} value
