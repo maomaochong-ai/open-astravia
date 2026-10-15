@@ -49,6 +49,6 @@ describe("release notes addressing", () => {
 	});
 
 	it("ships release notes for the version this repository is about to release", () => {
-		expect(requireReleaseNotes(desktopVersion())).toMatch(/^\.github\/release-notes\/v\d+\.\d+\.\d+\.md$/);
+		expect(requireReleaseNotes(desktopVersion())).toMatch(/^\.github\/release-notes\/v\d+\.\d+\.\d+(-\d+)?\.md$/);
 	});
 });
