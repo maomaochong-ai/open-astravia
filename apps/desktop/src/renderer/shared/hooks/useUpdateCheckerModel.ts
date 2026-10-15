@@ -17,7 +17,14 @@ export function useUpdateCheckerModel(): UpdateCheckerViewProps {
 	const statusText = (() => {
 		if (state.phase === "checking") return t("updaterChecking");
 		if (state.phase === "error") return state.error ?? "";
-		if (state.phase === "idle") return t("updaterIdle", { version: state.currentVersion });
+		if (state.phase === "idle") {
+			// 显示当前版本号和最新版本号（如果有）
+			const current = state.currentVersion || t("updaterUnknownVersion");
+			if (state.latestVersion && state.latestVersion !== state.currentVersion) {
+				return t("updaterIdleWithUpdate", { current, latest: state.latestVersion });
+			}
+			return t("updaterIdle", { version: current });
+		}
 		return "";
 	})();
 

@@ -787,7 +787,14 @@
 			"running": "Compacting context…",
 			"done": "Context compacted",
 			"failed": "Context compaction failed",
+			"skipped": "Context compaction skipped",
 			"tokensBefore": "{{tokens}} tokens before"
+		},
+		"compactionSkipReason": {
+			"noEligiblePrefix": "No eligible history prefix to compress",
+			"blockedByHook": "Blocked by ecosystem hook",
+			"cancelledByExtension": "Cancelled by extension",
+			"noApiKey": "Missing summary model API key"
 		},
 		"retryIndicator": "Reconnecting ({{attempt}}/{{maxAttempts}})",
 		"retryReason": "Last request failed: {{reason}}",

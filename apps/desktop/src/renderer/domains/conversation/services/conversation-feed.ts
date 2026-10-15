@@ -439,10 +439,15 @@ function applyCompactionEvent(
 				...(event.tokensBefore === undefined ? {} : { tokensBefore: event.tokensBefore }),
 			};
 		} else {
+			// 判断是否是"跳过"状态（errorMessage 以 compaction.skipped. 开头）
+			const isSkipped = event.errorMessage?.startsWith("compaction.skipped.") ?? false;
+			const skipReason =
+				isSkipped && event.errorMessage ? event.errorMessage.replace("compaction.skipped.", "") : undefined;
 			blocks[index] = {
 				...running,
-				status: "error",
-				...(event.errorMessage ? { errorMessage: event.errorMessage } : {}),
+				status: isSkipped ? "skipped" : "error",
+				...(event.errorMessage ? { errorMessage: isSkipped ? undefined : event.errorMessage } : {}),
+				...(skipReason ? { skipReason } : {}),
 			};
 		}
 	}

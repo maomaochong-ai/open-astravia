@@ -787,7 +787,14 @@
 			"running": "正在压缩上下文…",
 			"done": "上下文已压缩",
 			"failed": "上下文压缩失败",
+			"skipped": "上下文压缩已跳过",
 			"tokensBefore": "压缩前 {{tokens}} tokens"
+		},
+		"compactionSkipReason": {
+			"noEligiblePrefix": "没有可压缩的历史前缀",
+			"blockedByHook": "被生态钩子阻止",
+			"cancelledByExtension": "被扩展取消",
+			"noApiKey": "缺少摘要模型 API 密钥"
 		},
 		"retryIndicator": "正在重新连接（{{attempt}}/{{maxAttempts}}）",
 		"retryReason": "上次请求失败：{{reason}}",
