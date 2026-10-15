@@ -64,7 +64,7 @@ const electronVersion = JSON.parse(readFileSync(electronPkgPath, "utf8")).versio
 const packageVersion = JSON.parse(readFileSync(join(projectRoot, "package.json"), "utf8")).version;
 const buildVersionOverride = process.env.ASTRAVIA_DESKTOP_BUILD_VERSION?.trim();
 const appVersion = buildVersionOverride || packageVersion;
-if (!/^\d+\.\d+\.\d+$/.test(appVersion)) {
+if (!/^\d+\.\d+\.\d+(-\d+)?$/.test(appVersion)) {
 	throw new Error(`[prepare-pack] invalid desktop version: ${appVersion}`);
 }
 if (buildVersionOverride && buildVersionOverride !== packageVersion) {
