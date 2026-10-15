@@ -276,6 +276,8 @@ export function findCutPoint(
 
 const SUMMARIZATION_PROMPT = `Summarize the conversation in UNTRUSTED_SUMMARY_INPUT_JSON so another LLM can continue the work without losing context.
 
+**CRITICAL — Language**: Write the ENTIRE summary in the same language as the user's messages in the conversation. If the user wrote in Chinese, write the summary in Chinese. If the user wrote in English, write the summary in English. Do NOT mix languages.
+
 First, write your analysis inside <analysis> tags — this is your private scratchpad:
 1. Chronologically review each message. For each section identify:
    - The user's explicit requests and intents
@@ -325,6 +327,8 @@ Then write the final summary inside <summary> tags using this EXACT format:
 Keep each section concise. Preserve exact file paths, function names, error messages, and code snippets.`;
 
 const UPDATE_SUMMARIZATION_PROMPT = `Incorporate the new conversation from UNTRUSTED_SUMMARY_INPUT_JSON into its previousSummary field.
+
+**CRITICAL — Language**: Write the ENTIRE summary in the same language as the user's messages in the conversation. If the user wrote in Chinese, write the summary in Chinese. If the user wrote in English, write the summary in English. Do NOT mix languages. Match the language of the previousSummary field.
 
 First, write your analysis inside <analysis> tags — review the new messages and identify what changed:
 1. What new work was done? What completed? What new errors or decisions?
@@ -612,6 +616,8 @@ export function prepareCompaction(
 // ============================================================================
 
 const TURN_PREFIX_SUMMARIZATION_PROMPT = `This is the PREFIX of a turn that was too large to keep. The SUFFIX (recent work) is retained.
+
+**CRITICAL — Language**: Write the ENTIRE summary in the same language as the user's messages in the conversation. If the user wrote in Chinese, write the summary in Chinese. If the user wrote in English, write the summary in English. Do NOT mix languages.
 
 Summarize the prefix to provide context for the retained suffix:
 

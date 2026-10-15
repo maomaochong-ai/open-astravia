@@ -2,7 +2,7 @@ import { useId, useState, type JSX } from "react";
 import { CollapsePanel } from "../shared/CollapsePanel";
 
 export interface CompactionStepViewProps {
-	readonly status: "running" | "success" | "error";
+	readonly status: "running" | "success" | "error" | "skipped";
 	/** Row title, e.g. "Compacting context…" / "Context compacted". */
 	readonly label: string;
 	/** Secondary text after the title, e.g. the context size before compaction. */
@@ -18,11 +18,16 @@ const STATUS_ICON: Record<CompactionStepViewProps["status"], string> = {
 	running: "icon-[mdi--compress] animate-pulse text-sky-500/80 dark:text-sky-400/80",
 	success: "icon-[mdi--compress] text-sky-500 dark:text-sky-400",
 	error: "icon-[solar--danger-circle-linear] text-destructive/70",
+	skipped: "icon-[mdi--skip-next-circle-outline] text-muted-foreground/60",
 };
 
 /**
  * Automatic context compaction as a step of the reply: same row rhythm as a
  * tool step, set apart by its icon and accent so it never reads as agent work.
+ *
+ * During streaming (status === "running"), the summary panel auto-expands so
+ * the user can follow the summary being generated in real time at the bottom
+ * of the conversation.
  */
 export function CompactionStepView({
 	status,
@@ -38,7 +43,9 @@ export function CompactionStepView({
 	const generatedId = useId();
 	const panelId = exportMode ? `export-compaction-step-${generatedId}` : undefined;
 	const hasSummary = Boolean(summary?.trim());
-	const open = hasSummary && (expanded || exportMode);
+	// Auto-expand while streaming so the user can follow the summary in real time.
+	const autoExpand = status === "running" && hasSummary;
+	const open = hasSummary && (autoExpand || expanded || exportMode);
 	return (
 		<div className="min-w-0 w-full" data-compaction-step={status}>
 			<button
@@ -56,7 +63,9 @@ export function CompactionStepView({
 							? "tool-call-shimmer-text"
 							: status === "error"
 								? "text-destructive/80"
-								: "text-sky-600/90 dark:text-sky-300/85"
+								: status === "skipped"
+									? "text-muted-foreground/70"
+									: "text-sky-600/90 dark:text-sky-300/85"
 					}`}
 				>
 					{label}
@@ -71,7 +80,7 @@ export function CompactionStepView({
 					/>
 				) : null}
 			</button>
-			{hasSummary ? (
+			{hasSummary || status === "running" ? (
 				<CollapsePanel open={open} id={panelId} exportPanel={exportMode} hidden={exportMode && !expanded}>
 					<div className="ml-4 border-sky-500/25 border-l pb-1 pl-3">
 						<div className="max-h-72 overflow-y-auto whitespace-pre-wrap break-words py-1 text-[12px] leading-relaxed text-muted-foreground/80">

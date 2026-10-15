@@ -134,10 +134,11 @@ export interface ErrorBlock {
 export interface CompactionBlock {
 	type: "compaction";
 	id: string;
-	status: "running" | "success" | "error";
+	status: "running" | "success" | "error" | "skipped";
 	summary?: string;
 	tokensBefore?: number;
 	errorMessage?: string;
+	skipReason?: string;
 }
 
 export interface ChatErrorDetails {

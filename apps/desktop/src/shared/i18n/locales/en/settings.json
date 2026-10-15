@@ -1375,6 +1375,8 @@
   "updaterChecking": "Checking...",
   "appVersion": "Current Version",
   "updaterIdle": "Already on the latest version ({{version}})",
+  "updaterIdleWithUpdate": "Current version {{current}}, up to date",
+  "updaterUnknownVersion": "Unknown",
   "updaterCheck": "Check for Updates",
   "updaterCheckingBtn": "Checking...",
   "updaterNewVersion": "New version {{version}}",

@@ -423,22 +423,24 @@ export class DesktopRemoteAccessManager {
 	}
 
 	/**
-	 * Seals the invite under a fresh connection code and password and leaves it on the
-	 * relay, so a phone elsewhere can pair by typing both in. Needs the relay; the QR
-	 * code works either way.
+	 * Seals the invite under a fresh connection code and password.
+	 * With a relay, leaves the sealed envelope on the relay mailbox so a phone elsewhere
+	 * can pair by typing both in. Without a relay, the code and password are derived from
+	 * the pairing URI directly, so a phone on the same LAN can still pair by typing them
+	 * in (the phone will use the LAN endpoints from the pairing URI).
 	 */
 	private async publishInviteCode(pairingId: string): Promise<void> {
 		const relayBaseUrl = this.config.cloudEnabled ? this.config.relayBaseUrl : undefined;
 		const invite = this.invite;
-		if (!relayBaseUrl || invite?.pairingId !== pairingId) return;
+		if (invite?.pairingId !== pairingId) return;
 		const view = this.inviteView(pairingId, invite.expiresAt);
 		if (!view) return;
 		const rawCode = generateInviteCode();
 		const code: InviteCode = {
 			code: rawCode,
 			password: generateInvitePassword(),
-			boxUrl: inviteBoxUrl(relayBaseUrl, inviteBoxId(rawCode)),
-			token: randomToken(32),
+			boxUrl: relayBaseUrl ? inviteBoxUrl(relayBaseUrl, inviteBoxId(rawCode)) : undefined,
+			token: relayBaseUrl ? randomToken(32) : undefined,
 			status: "preparing",
 		};
 		const settle = (status: InviteCode["status"]): void => {
@@ -448,17 +450,21 @@ export class DesktopRemoteAccessManager {
 		settle("preparing");
 		try {
 			const envelope = await sealInvite(view.inviteUri, code.code, code.password);
-			await this.inviteMailbox.publish(
-				code.boxUrl,
-				code.token,
-				envelope,
-				Math.max(invite.expiresAt - this.now(), 1_000),
-			);
-			if (this.invite?.pairingId !== pairingId) {
-				// Gone while it was being published: take it straight back.
-				await this.inviteMailbox.withdraw(code.boxUrl, code.token).catch(() => undefined);
-				return;
+			if (relayBaseUrl && code.boxUrl && code.token) {
+				// With relay: publish to mailbox
+				await this.inviteMailbox.publish(
+					code.boxUrl,
+					code.token,
+					envelope,
+					Math.max(invite.expiresAt - this.now(), 1_000),
+				);
+				if (this.invite?.pairingId !== pairingId) {
+					// Gone while it was being published: take it straight back.
+					await this.inviteMailbox.withdraw(code.boxUrl, code.token).catch(() => undefined);
+					return;
+				}
 			}
+			// Without relay: the code/password are ready immediately (phone will use LAN)
 			settle("ready");
 		} catch (error) {
 			log.warn("remote invite code publish failed", { error: describe(error) });
@@ -1223,6 +1229,7 @@ export class DesktopRemoteAccessManager {
 			relayBaseUrl,
 		});
 		// With a relay a code is always on its way (publishInviteCode), even before it is recorded.
+		// Without a relay, the code is ready immediately and the QR code uses it for LAN pairing.
 		const qrText =
 			code?.status === "ready"
 				? buildInviteQr({
@@ -1231,7 +1238,7 @@ export class DesktopRemoteAccessManager {
 						// The phones know the default relay; name it only when this desktop uses another.
 						relayBaseUrl: relayBaseUrl === this.options.store.defaultRelayBaseUrl() ? undefined : relayBaseUrl,
 					})
-				: code?.status === "failed" || !relayBaseUrl
+				: code?.status === "failed"
 					? inviteUri
 					: undefined;
 		return {
