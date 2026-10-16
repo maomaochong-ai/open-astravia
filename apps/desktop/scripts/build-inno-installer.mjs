@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { stringify } from "yaml";
+import { isDesktopReleaseVersion } from "./release-version.mjs";
 
 const require = createRequire(import.meta.url);
 const { appBuilderPath } = require("app-builder-bin");
@@ -82,7 +83,7 @@ async function main() {
 	const stagePackage = JSON.parse(await readFile(join(buildStageDir, "package.json"), "utf8"));
 	const builderConfig = JSON.parse(await readFile(join(buildStageDir, "electron-builder.json"), "utf8"));
 	const version = stagePackage.version;
-	if (typeof version !== "string" || !/^\d+\.\d+\.\d+$/.test(version)) {
+	if (!isDesktopReleaseVersion(version)) {
 		throw new Error(`[build-inno] invalid staged version: ${version}`);
 	}
 	if (!existsSync(join(sourceDir, "versions", version, "Astravia.exe"))) {

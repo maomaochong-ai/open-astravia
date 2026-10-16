@@ -60,3 +60,13 @@ test("Windows package verification uses the Inno update manifest version", async
 		await rm(releaseDir, { recursive: true, force: true });
 	}
 });
+
+test("Windows package verification accepts a pre-release update manifest version", async () => {
+	const releaseDir = await mkdtemp(join(tmpdir(), "astravia-windows-packages-"));
+	try {
+		await writeFile(join(releaseDir, "latest.yml"), "version: 0.5.64-3\n");
+		assert.equal(await readExpectedWindowsVersion(releaseDir), "0.5.64-3");
+	} finally {
+		await rm(releaseDir, { recursive: true, force: true });
+	}
+});

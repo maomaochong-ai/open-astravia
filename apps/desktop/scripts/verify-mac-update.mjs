@@ -8,6 +8,7 @@ import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { pipeline } from "node:stream/promises";
 import { parse } from "yaml";
+import { isDesktopReleaseVersion } from "./release-version.mjs";
 
 const execFileAsync = promisify(execFile);
 const packageDir = resolve(import.meta.dirname, "..");
@@ -143,7 +144,7 @@ async function verifySignedZip(zipPath, expectedVersion) {
 export async function verifyMacUpdate({ releaseDir = defaultReleaseDir, requireSignature } = {}) {
 	const metadataPath = join(releaseDir, "latest-mac.yml");
 	const document = parse(await readFile(metadataPath, "utf8"));
-	if (!document || typeof document !== "object" || !/^\d+\.\d+\.\d+$/.test(document.version)) {
+	if (!document || typeof document !== "object" || !isDesktopReleaseVersion(document.version)) {
 		throw new Error("[verify-mac-update] latest-mac.yml has an invalid version");
 	}
 	if (!Array.isArray(document.files) || document.files.length === 0) {

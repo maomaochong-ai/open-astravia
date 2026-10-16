@@ -50,6 +50,40 @@ test("verifyLinuxUpdates verifies AppImage size, hash, and embedded block map me
 	}
 });
 
+test("verifyLinuxUpdates accepts a pre-release version like the updater metadata publishes", async () => {
+	const releaseDir = await mkdtemp(join(tmpdir(), "astravia-linux-update-"));
+	try {
+		const { artifact, blockMap } = createAppImage();
+		const sha512 = createHash("sha512").update(artifact).digest("base64");
+		await Promise.all([
+			writeFile(join(releaseDir, "Astravia-1.2.3-4.AppImage"), artifact),
+			writeFile(
+				join(releaseDir, "latest-linux.yml"),
+				stringify({
+					version: "1.2.3-4",
+					files: [
+						{
+							url: "Astravia-1.2.3-4.AppImage",
+							sha512,
+							size: artifact.length,
+							blockMapSize: blockMap.length,
+						},
+					],
+					path: "Astravia-1.2.3-4.AppImage",
+					sha512,
+				}),
+			),
+		]);
+
+		assert.deepEqual(await verifyLinuxUpdates({ releaseDir }), {
+			version: "1.2.3-4",
+			metadataFiles: ["latest-linux.yml"],
+		});
+	} finally {
+		await rm(releaseDir, { recursive: true, force: true });
+	}
+});
+
 test("verifyLinuxUpdates requires every Linux release format from one update manifest", async () => {
 	const releaseDir = await mkdtemp(join(tmpdir(), "astravia-linux-update-"));
 	try {

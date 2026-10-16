@@ -7,6 +7,7 @@ import { pipeline } from "node:stream/promises";
 import { inflateRawSync } from "node:zlib";
 import { parse } from "yaml";
 import { LINUX_RELEASE_EXTENSIONS } from "./linux-packaging-contract.mjs";
+import { isDesktopReleaseVersion } from "./release-version.mjs";
 
 const defaultReleaseDir = resolve(import.meta.dirname, "../release");
 const metadataPattern = /^latest-linux(?:-[a-z0-9_-]+)?\.ya?ml$/i;
@@ -105,7 +106,7 @@ async function verifyArtifact(releaseDir, file) {
 
 async function verifyMetadata(releaseDir, metadataFile, requiredExtensions) {
 	const document = parse(await readFile(join(releaseDir, metadataFile), "utf8"));
-	if (!document || typeof document !== "object" || !/^\d+\.\d+\.\d+$/.test(document.version)) {
+	if (!document || typeof document !== "object" || !isDesktopReleaseVersion(document.version)) {
 		throw new Error(`[verify-linux-update] ${metadataFile} has an invalid version`);
 	}
 	if (!Array.isArray(document.files) || document.files.length === 0) {

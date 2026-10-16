@@ -3,6 +3,7 @@ import { mkdtemp, readFile, readdir, rm, stat } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { parse } from "yaml";
+import { isDesktopReleaseVersion } from "./release-version.mjs";
 
 const projectRoot = join(import.meta.dirname, "..");
 const releaseDir = join(projectRoot, "release");
@@ -118,7 +119,7 @@ function referencedInstaller(document) {
 
 export async function main() {
 	const document = parse(await readFile(join(releaseDir, "latest.yml"), "utf8"));
-	if (typeof document?.version !== "string" || !/^\d+\.\d+\.\d+$/.test(document.version)) {
+	if (!isDesktopReleaseVersion(document?.version)) {
 		throw new Error("[verify-inno-update] latest.yml has an invalid version");
 	}
 	const installerFileName = referencedInstaller(document);

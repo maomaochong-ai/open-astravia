@@ -6,6 +6,7 @@ import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { parse } from "yaml";
 import { windowsSupplementalArtifactNames } from "./windows-packaging-contract.mjs";
+import { isDesktopReleaseVersion } from "./release-version.mjs";
 
 const execFileAsync = promisify(execFile);
 const packageDir = resolve(import.meta.dirname, "..");
@@ -63,7 +64,7 @@ export async function verifyExtractedWindowsLayout(root, expectedVersion) {
 
 export async function readExpectedWindowsVersion(releaseDir) {
 	const document = parse(await readFile(join(releaseDir, "latest.yml"), "utf8"));
-	if (typeof document?.version !== "string" || !/^\d+\.\d+\.\d+$/.test(document.version)) {
+	if (!isDesktopReleaseVersion(document?.version)) {
 		throw new Error("[verify-windows-packages] latest.yml has an invalid version");
 	}
 	return document.version;

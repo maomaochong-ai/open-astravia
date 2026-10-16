@@ -77,3 +77,13 @@ test("native package verification uses the release manifest version", async () =
 		await rm(releaseDir, { recursive: true, force: true });
 	}
 });
+
+test("native package verification accepts a pre-release manifest version", async () => {
+	const releaseDir = await mkdtemp(join(tmpdir(), "astravia-linux-packages-"));
+	try {
+		await writeFile(join(releaseDir, "latest-linux.yml"), "version: 0.5.64-3\n");
+		assert.equal(await readExpectedVersion(releaseDir), "0.5.64-3");
+	} finally {
+		await rm(releaseDir, { recursive: true, force: true });
+	}
+});
