@@ -4,19 +4,23 @@ import type { RuntimeMessageEnvelope } from "@astravia/runtime-core";
 import type { ModelCallContextTransformationInput } from "@astravia/runtime-core/kernel";
 import { convertToLlm, createCustomMessage } from "../../model-context/index.js";
 import type { CodingAgentContextRuntimeOptions, CodingAgentPinnedModelContext } from "../../runtime-contracts/index.js";
-import { estimateContextTokens, microcompact, reduceContextByPressure } from "../index.js";
+import { estimateContextTokens, microcompact, reduceContextByPressure, resolveContextPressure } from "../index.js";
 import { projectPinnedMessageEnvelopes } from "./pinned-conversation-projection.js";
 import { applyPinnedModelContext } from "./pinned-model-context-projection.js";
 
 export interface ProjectedModelCallContext {
 	readonly messages: readonly Message[];
 	readonly estimatedTokens: number;
+	/** Monotone pressure floor the next model call of the same compaction epoch inherits. */
+	readonly pressureFloor: number;
 }
 
 export interface ModelCallContextProjectionOptions {
 	/** Fixed time boundary shared by every model call admitted for a Turn. */
 	readonly timeBoundary?: number;
 	readonly pinnedContext?: CodingAgentPinnedModelContext;
+	/** Pressure floor of the current compaction epoch; see ContextPressureReductionOptions. */
+	readonly pressureFloor?: number;
 }
 
 export async function projectModelCallContext(
@@ -47,17 +51,28 @@ export async function projectModelCallContext(
 		now: options.timeBoundary,
 	});
 	const visibleMessages = projectedMessages.filter((message) => !consumeIdentity(invisibleIdentities, message));
+	// The floor is measured on the pristine messages, before the reduction that it gates: reading the
+	// reduction's own output back would let a shrunken request reopen a band this epoch already
+	// committed to, and that in-place revert rewrites an emitted prefix on the next model call.
+	const contextWindow = input.modelBinding.model.contextWindow;
+	const pristineTokens = estimateContextTokens(visibleMessages).tokens;
+	const pressureFloor = resolveContextPressure({
+		contextWindow,
+		estimatedTokens: pristineTokens,
+		pressureFloor: options.pressureFloor,
+	});
 	const messages = applyPinnedModelContext(
 		convertToLlm(
 			reduceContextByPressure(visibleMessages, {
-				contextWindow: input.modelBinding.model.contextWindow,
-				estimatedTokens: estimateContextTokens(visibleMessages).tokens,
+				contextWindow,
+				estimatedTokens: pristineTokens,
+				pressureFloor,
 				isRealUserTurn: (message) => message.role === "user" && !continuationMessages.has(message),
 			}),
 		),
 		options.pinnedContext,
 	);
-	return { messages, estimatedTokens: estimateContextTokens(messages).tokens };
+	return { messages, estimatedTokens: estimateContextTokens(messages).tokens, pressureFloor };
 }
 
 function toAgentMessages(envelope: RuntimeMessageEnvelope): AgentMessage[] {

@@ -1,7 +1,7 @@
 import type { AgentMessage } from "@astravia/agent-core";
 import type { ToolResultMessage, UserMessage } from "@astravia/ai";
 import { describe, expect, it } from "vitest";
-import { reduceContextByPressure } from "../src/compaction/context-pressure-reduction.js";
+import { reduceContextByPressure, resolveContextPressure } from "../src/compaction/context-pressure-reduction.js";
 
 describe("context pressure reduction", () => {
 	it("does not prune ToolResult below the soft pressure threshold", () => {
@@ -82,6 +82,48 @@ describe("context pressure reduction", () => {
 
 		expect(text(projected[1])).toContain("shortened by context pressure");
 		expect(text(projected[4])).toBe("one-result");
+	});
+
+	it("keeps the reduction once a lower pressure is re-observed in the same compaction epoch", () => {
+		const messages = conversation(5, "0123456789abcdefghijklmnopqrstuvwxyz");
+		const options = { contextWindow: 100, softToolResultBytes: 20 };
+
+		const emitted = reduceContextByPressure(messages, { ...options, estimatedTokens: 50 });
+		// 下一次请求回报的是已截断请求的用量，压力看起来更小：
+		// 没有下限时会退回原文，已经发出的前缀随之失效。
+		const naive = reduceContextByPressure(messages, { ...options, estimatedTokens: 40 });
+		const ratcheted = reduceContextByPressure(messages, {
+			...options,
+			estimatedTokens: 40,
+			pressureFloor: 0.5,
+		});
+
+		expect(text(emitted[1])).toContain("shortened by context pressure");
+		expect(text(naive[1])).toBe("0123456789abcdefghijklmnopqrstuvwxyz-0");
+		expect(ratcheted).toEqual(emitted);
+	});
+
+	it("resolves pressure against the epoch floor instead of the latest estimate", () => {
+		expect(resolveContextPressure({ contextWindow: 100, estimatedTokens: 40 })).toBeCloseTo(0.4);
+		expect(resolveContextPressure({ contextWindow: 100, estimatedTokens: 40, pressureFloor: 0.5 })).toBe(0.5);
+		expect(resolveContextPressure({ contextWindow: 100, estimatedTokens: 90, pressureFloor: 0.5 })).toBeCloseTo(0.9);
+		expect(resolveContextPressure({ contextWindow: 0, estimatedTokens: 40, pressureFloor: 0.5 })).toBe(0.5);
+		expect(
+			resolveContextPressure({ contextWindow: 100, estimatedTokens: 40, pressureFloor: Number.NaN }),
+		).toBeCloseTo(0.4);
+		expect(resolveContextPressure({ contextWindow: 100, estimatedTokens: 40, pressureFloor: -1 })).toBeCloseTo(0.4);
+	});
+
+	it("treats a floor above hard pressure as hard and clears the oldest results", () => {
+		const messages = conversation(12, "result");
+
+		const projected = reduceContextByPressure(messages, {
+			contextWindow: 100,
+			estimatedTokens: 40,
+			pressureFloor: 0.75,
+		});
+
+		expect(text(projected[1])).toBe("[tool result cleared — context pressure]");
 	});
 });
 

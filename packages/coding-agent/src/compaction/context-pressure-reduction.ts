@@ -15,6 +15,13 @@ const CLEARED_MESSAGE = "[tool result cleared — context pressure]";
 export interface ContextPressureReductionOptions {
 	readonly contextWindow: number;
 	readonly estimatedTokens: number;
+	/**
+	 * Monotone floor for the observed pressure, carried across the model calls of one compaction
+	 * epoch. Within an epoch the pristine context only grows, so the reduction may only strengthen:
+	 * letting the pressure fall back below a band restores the pristine form of messages that were
+	 * already sent in reduced form, which rewrites a prefix the provider has already cached.
+	 */
+	readonly pressureFloor?: number;
 	readonly softPressure?: number;
 	readonly hardPressure?: number;
 	readonly protectedUserTurns?: number;
@@ -23,12 +30,29 @@ export interface ContextPressureReductionOptions {
 	readonly isRealUserTurn?: (message: AgentMessage, index: number) => boolean;
 }
 
+export interface ContextPressureObservation {
+	readonly contextWindow: number;
+	readonly estimatedTokens: number;
+	readonly pressureFloor?: number;
+}
+
+/**
+ * Pressure of a pristine context estimate, never below the floor the current compaction epoch has
+ * already reached. Callers use the result as the next floor, so the ratchet is non-decreasing by
+ * construction until a committed compaction resets it.
+ */
+export function resolveContextPressure(options: ContextPressureObservation): number {
+	const observed = options.contextWindow > 0 ? options.estimatedTokens / options.contextWindow : 0;
+	const floor = options.pressureFloor;
+	return Math.max(observed, floor !== undefined && Number.isFinite(floor) && floor > 0 ? floor : 0);
+}
+
 /** Transient ToolResult projection. It never mutates the persisted message objects. */
 export function reduceContextByPressure(
 	messages: readonly AgentMessage[],
 	options: ContextPressureReductionOptions,
 ): AgentMessage[] {
-	const pressure = options.contextWindow > 0 ? options.estimatedTokens / options.contextWindow : 0;
+	const pressure = resolveContextPressure(options);
 	const softPressure = ratio(options.softPressure, DEFAULT_CONTEXT_REDUCTION_SOFT_PRESSURE);
 	const hardPressure = ratio(options.hardPressure, DEFAULT_CONTEXT_REDUCTION_HARD_PRESSURE);
 	if (pressure < softPressure) return [...messages];

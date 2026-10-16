@@ -76,6 +76,7 @@ export class DefaultCodingAgentContextRuntime
 	private readonly manualCompaction: CodingAgentManualCompactionStrategy;
 	private readonly contextSummary: CodingAgentContextSummaryStrategy;
 	private readonly commitLifecycle: CodingAgentCompactionCommitLifecycle;
+	private pressureFloor = 0;
 	private autoCompactionEnabledOverride: boolean | undefined;
 
 	constructor(private readonly options: CodingAgentContextRuntimeOptions) {
@@ -202,14 +203,20 @@ export class DefaultCodingAgentContextRuntime
 			summarizeContext: (input, signal) => this.contextSummary.summarize(input, signal, settings),
 			compactManual: (input, signal) =>
 				this.manualCompaction.compact(input, signal, extensionRuntime, pinnedContext, settings),
-			onManualCompactionCommitted: (record, _input, signal, document) =>
-				this.commitLifecycle.onManualCommitted(record, signal, document, extensionRuntime),
+			onManualCompactionCommitted: (record, _input, signal, document) => {
+				this.beginContextEpoch();
+				return this.commitLifecycle.onManualCommitted(record, signal, document, extensionRuntime);
+			},
 			prepare: (input, signal) =>
 				this.automaticCompaction.prepare(input, signal, settings, extensionRuntime, pinnedContext),
-			onCompactionCommitted: async (record, _input, signal, document) =>
-				await this.commitLifecycle.onAutomaticCommitted(record, signal, document, extensionRuntime),
-			onCompactionContinuationCommitted: (record, _input, result, signal) =>
-				this.commitLifecycle.onContinuationCommitted(record, signal, result.seedDocument, extensionRuntime),
+			onCompactionCommitted: async (record, _input, signal, document) => {
+				this.beginContextEpoch();
+				return this.commitLifecycle.onAutomaticCommitted(record, signal, document, extensionRuntime);
+			},
+			onCompactionContinuationCommitted: (record, _input, result, signal) => {
+				this.beginContextEpoch();
+				return this.commitLifecycle.onContinuationCommitted(record, signal, result.seedDocument, extensionRuntime);
+			},
 			onCompactionContinuationFailed: async () => this.commitLifecycle.onContinuationFailed(),
 			transform: (input, signal) =>
 				this.transformWith(
@@ -237,6 +244,7 @@ export class DefaultCodingAgentContextRuntime
 		signal: AbortSignal,
 		document?: ConversationDocument,
 	) {
+		this.beginContextEpoch();
 		return this.commitLifecycle.onAutomaticCommitted(record, signal, document, this.extensionRuntime);
 	}
 
@@ -246,6 +254,7 @@ export class DefaultCodingAgentContextRuntime
 		result: ConversationContinuationResult,
 		signal: AbortSignal,
 	) {
+		this.beginContextEpoch();
 		return this.commitLifecycle.onContinuationCommitted(record, signal, result.seedDocument, this.extensionRuntime);
 	}
 
@@ -263,6 +272,7 @@ export class DefaultCodingAgentContextRuntime
 		signal: AbortSignal,
 		document?: ConversationDocument,
 	): Promise<void> {
+		this.beginContextEpoch();
 		await this.commitLifecycle.onManualCommitted(record, signal, document, this.extensionRuntime);
 	}
 
@@ -317,9 +327,22 @@ export class DefaultCodingAgentContextRuntime
 		const projected = await projectModelCallContext(input, transformAgentContext, signal, {
 			timeBoundary,
 			pinnedContext,
+			pressureFloor: this.pressureFloor,
 		});
+		this.pressureFloor = projected.pressureFloor;
 		this.usage.recordEstimatedTokens(projected.estimatedTokens);
 		return projected.messages;
+	}
+
+	/**
+	 * A committed compaction rewrites the prefix, so the next model call must re-observe pressure
+	 * instead of inheriting the floor of the epoch it just replaced. Resetting at the commit rather
+	 * than after observing a smaller context keeps the floor latched across the first
+	 * post-compaction call, which is the call that would otherwise revert the reduction and break
+	 * the prefix once more.
+	 */
+	private beginContextEpoch(): void {
+		this.pressureFloor = 0;
 	}
 
 	private readSettings(): CompactionSettings {

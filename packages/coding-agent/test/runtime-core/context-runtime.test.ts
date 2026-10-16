@@ -19,7 +19,14 @@ import type {
 	StoredSessionEvent,
 } from "@astravia/runtime-core/kernel";
 import { describe, expect, it, vi } from "vitest";
-import type { CompactionPreparation, CompactionResult, CompactionSettings } from "../../src/compaction/index.js";
+import {
+	type CompactionPreparation,
+	type CompactionResult,
+	type CompactionSettings,
+	DEFAULT_COMPACTION_SETTINGS,
+	estimateContextTokens,
+	shouldCompact,
+} from "../../src/compaction/index.js";
 import { toActiveCompactionSessionEntries } from "../../src/compaction/runtime/conversation-compaction-projection.js";
 import {
 	DefaultCodingAgentContextRuntime as CodingAgentContextRuntime,
@@ -653,7 +660,7 @@ describe("DefaultCodingAgentContextRuntime", () => {
 				type: "compaction.end",
 				success: false,
 				reason: "threshold",
-				errorMessage: "No eligible history prefix remained after applying the compaction keep-tail policy",
+				errorMessage: "compaction.skipped.noEligiblePrefix",
 			},
 		]);
 	});
@@ -828,7 +835,7 @@ describe("DefaultCodingAgentContextRuntime", () => {
 				type: "compaction.end",
 				success: false,
 				reason: "threshold",
-				errorMessage: "blocked by test",
+				errorMessage: "compaction.skipped.blockedByHook",
 				source: "agent",
 			},
 		]);
@@ -875,6 +882,188 @@ describe("DefaultCodingAgentContextRuntime", () => {
 			"result-1",
 		]);
 		expect(observations).toMatchObject([{ type: "compaction.start", reason: "threshold", source: "agent" }]);
+	});
+
+	it("skips a repeated same-turn compaction when the previous one made no progress", async () => {
+		const messages = [
+			userMessage("x".repeat(480), 1),
+			assistantMessage("reply", 90, 2),
+			userMessage("kept request", 3),
+			toolResultMessage(1),
+		] satisfies Message[];
+		const generateCompaction = vi.fn(async (preparation: CompactionPreparation) => ({
+			summary: "summary",
+			firstKeptEntryId: preparation.firstKeptEntryId,
+			tokensBefore: preparation.tokensBefore,
+		}));
+		const runtime = new CodingAgentContextRuntime({
+			hookRuntime: createHookRuntime(),
+			resolveApiKey: () => "key",
+			// 保留段自带 usage 锚点，压缩后仍在阈值之上：这正是同一轮里重复压缩出现的条件。
+			resolveSettings: () => ({ ...compactingSettings(), keepRecentTokens: 6 }),
+			generateCompaction,
+			now: () => 42,
+		});
+		const document = documentFromMessages(messages);
+		const observations: RuntimeSessionObservationEvent[] = [];
+		const checkpoint = (current: readonly Message[]): ContextPreparationInput => ({
+			...preparationInput(document, current, current, observations),
+			reason: "model_call",
+		});
+
+		const first = await runtime.prepare(checkpoint(messages), new AbortController().signal);
+		expect(first.compaction?.reason).toBe("threshold");
+		expect(estimateContextTokens(first.messages).tokens).toBeGreaterThanOrEqual(80);
+
+		const second = await runtime.prepare(checkpoint(first.messages), new AbortController().signal);
+
+		expect(second.compaction).toBeUndefined();
+		expect(second.messages).toEqual(first.messages);
+		expect(generateCompaction).toHaveBeenCalledTimes(1);
+		expect(observations).toMatchObject([
+			{ type: "compaction.start", reason: "threshold", source: "agent" },
+			{
+				type: "compaction.end",
+				success: false,
+				reason: "threshold",
+				errorMessage: "compaction.skipped.noProgress",
+				source: "agent",
+			},
+		]);
+	});
+
+	it("compacts again in the same turn once the context grows past the no-progress allowance", async () => {
+		const messages = [
+			userMessage("x".repeat(480), 1),
+			assistantMessage("reply", 90, 2),
+			userMessage("kept request", 3),
+			toolResultMessage(1),
+		] satisfies Message[];
+		const generateCompaction = vi.fn(async (preparation: CompactionPreparation) => ({
+			summary: "summary",
+			firstKeptEntryId: preparation.firstKeptEntryId,
+			tokensBefore: preparation.tokensBefore,
+		}));
+		const runtime = new CodingAgentContextRuntime({
+			hookRuntime: createHookRuntime(),
+			resolveApiKey: () => "key",
+			resolveSettings: () => ({ ...compactingSettings(), keepRecentTokens: 6 }),
+			generateCompaction,
+			now: () => 42,
+		});
+		const document = documentFromMessages(messages);
+		const observations: RuntimeSessionObservationEvent[] = [];
+		const checkpoint = (current: readonly Message[]): ContextPreparationInput => ({
+			...preparationInput(document, current, current, observations),
+			reason: "model_call",
+		});
+
+		const first = await runtime.prepare(checkpoint(messages), new AbortController().signal);
+		expect(first.compaction?.reason).toBe("threshold");
+
+		// 同轮里又读回一段实质内容（超过窗口 5%）：抑制应当让位，允许再次压缩。
+		const grown = [...first.messages, userMessage("z".repeat(200), 4)];
+		const second = await runtime.prepare(checkpoint(grown), new AbortController().signal);
+
+		expect(second.compaction?.reason).toBe("threshold");
+		expect(generateCompaction).toHaveBeenCalledTimes(2);
+	});
+
+	/**
+	 * 真实会话回归：deepseek-flash（128K 窗口、默认压缩设置）跑一个工具结果密集的长回合。
+	 * 线上面板看到的是缓存命中率 71.8%、平均每 1-2 次模型调用就压缩一次。
+	 *
+	 * provider 的 usage 已经包含系统提示词、技能说明与 41 个工具 schema（合计约 4 万 token），
+	 * 逐字口径只看得见消息文本。把两者差额当成喂给模型的「固定开销」再补一次，估算就会长期
+	 * 高出真实输入，80k 的真实请求会被判成 130k+，于是刚压缩完又立刻达到压缩线。
+	 */
+	it("does not compact a large-window model call whose visible text is far below the usage anchor", async () => {
+		const history = largeWindowHistory();
+		const inFlight = toolResultText(20_000, 42);
+		const generateCompaction = compactionSpy();
+		const runtime = new CodingAgentContextRuntime({
+			hookRuntime: createHookRuntime(),
+			resolveApiKey: () => "key",
+			resolveSettings: largeWindowSettings,
+			generateCompaction,
+			now: () => 42,
+		});
+		const observations: RuntimeSessionObservationEvent[] = [];
+
+		const prepared = await runtime.prepare(
+			largeWindowInput(history, [...history, inFlight], observations),
+			new AbortController().signal,
+		);
+
+		// 最后一条 assistant 的 usage（80_885）就是 provider 看到的完整输入，只有其后的在途消息需要逐字补算。
+		expect(prepared.estimatedTokens).toBeGreaterThanOrEqual(80_885);
+		expect(shouldCompact(prepared.estimatedTokens, BIG_MODEL.contextWindow, largeWindowSettings())).toBe(false);
+		expect(prepared.compaction).toBeUndefined();
+		expect(prepared.messages).toEqual([...history, inFlight]);
+		expect(generateCompaction).not.toHaveBeenCalled();
+		expect(observations).toEqual([]);
+	});
+
+	it("keeps every model call of one long turn below the threshold and append-only", async () => {
+		const history = largeWindowHistory();
+		const generateCompaction = compactionSpy();
+		const runtime = new CodingAgentContextRuntime({
+			hookRuntime: createHookRuntime(),
+			resolveApiKey: () => "key",
+			resolveSettings: largeWindowSettings,
+			generateCompaction,
+			now: () => 42,
+		});
+		const observations: RuntimeSessionObservationEvent[] = [];
+		const appended: Message[] = [];
+		let previous: readonly Message[] = history;
+
+		for (let call = 0; call < 5; call += 1) {
+			appended.push(toolResultText(10_000, 100 + call));
+
+			const prepared = await runtime.prepare(
+				largeWindowInput(history, [...history, ...appended], observations),
+				new AbortController().signal,
+			);
+
+			expect(prepared.compaction).toBeUndefined();
+			expect(shouldCompact(prepared.estimatedTokens, BIG_MODEL.contextWindow, largeWindowSettings())).toBe(false);
+			// 前缀只追加：已经出现过的位置在后续每一次模型调用里都逐字不变。
+			expect(prepared.messages.slice(0, previous.length)).toEqual(previous);
+			previous = prepared.messages;
+
+			appended.push(
+				anchoredAssistantMessage(
+					"继续执行",
+					{ input: 3_000, cacheRead: 77_885 + 2_500 * call, output: 40 },
+					200 + call,
+				),
+			);
+		}
+
+		expect(generateCompaction).not.toHaveBeenCalled();
+		expect(observations).toEqual([]);
+	});
+
+	it("still compacts when the usage anchor itself is over the threshold", async () => {
+		const history = [
+			...largeWindowHistory(),
+			anchoredAssistantMessage("接近上限", { input: 60_000, cacheRead: 50_000, output: 400 }, 20),
+			userMessage("继续", 21),
+		];
+		const generateCompaction = compactionSpy();
+		const runtime = new CodingAgentContextRuntime({
+			hookRuntime: createHookRuntime(),
+			resolveApiKey: () => "key",
+			resolveSettings: largeWindowSettings,
+			generateCompaction,
+			now: () => 42,
+		});
+
+		const prepared = await runtime.prepare(largeWindowInput(history, history, []), new AbortController().signal);
+
+		expect(prepared.compaction?.reason).toBe("threshold");
+		expect(generateCompaction).toHaveBeenCalledTimes(1);
 	});
 
 	it("compacts and retries only the first matching-model overflow without retaining the error message", async () => {
@@ -1200,6 +1389,100 @@ describe("DefaultCodingAgentContextRuntime", () => {
 		expect(first).not.toBe(second);
 	});
 
+	it("keeps an already reduced model-call prefix stable when the pressure drops within one epoch", async () => {
+		const runtime = new CodingAgentContextRuntime({
+			hookRuntime: createHookRuntime(),
+			resolveApiKey: () => "key",
+		});
+		// 最近的三个真实用户轮受保护，更早的 ToolResult 在软压力下被截断。
+		const messages: Message[] = [
+			userMessage("goal", 1),
+			toolResultText(20_000, 2),
+			userMessage("one", 3),
+			userMessage("two", 4),
+			userMessage("three", 5),
+			anchoredAssistantMessage("done", { input: 60, cacheRead: 0, output: 0 }, 6),
+		];
+		const input = {
+			sessionId: "session-1",
+			turnId: "turn-1",
+			messages,
+			modelBinding: { model: MODEL },
+		};
+
+		const first = await runtime.transform(input, new AbortController().signal);
+		expect(messageText(first[1])).toContain("shortened by context pressure");
+
+		// 下一次调用回报的是已被截断请求的用量，观察到的压力跌破软阈值。若按最新估算重新
+		// 决策，这里就会把原文放回去，使刚刚发出的整个前缀失效。
+		const grown: Message[] = [
+			...messages,
+			anchoredAssistantMessage("ack", { input: 30, cacheRead: 0, output: 0 }, 7),
+		];
+		const second = await runtime.transform({ ...input, messages: grown }, new AbortController().signal);
+
+		expect(second.slice(0, first.length)).toEqual(first);
+		expect(messageText(second[1])).toBe(messageText(first[1]));
+	});
+
+	it("restarts pressure observation once a compaction is committed", async () => {
+		const observations: RuntimeSessionObservationEvent[] = [];
+		const generateCompaction = vi.fn(
+			async (preparation: CompactionPreparation): Promise<CompactionResult> => ({
+				summary: "summary",
+				firstKeptEntryId: preparation.firstKeptEntryId,
+				tokensBefore: preparation.tokensBefore,
+				details: { source: "test" },
+			}),
+		);
+		const runtime = new CodingAgentContextRuntime({
+			hookRuntime: createHookRuntime(),
+			resolveApiKey: () => "key",
+			resolveSettings: compactingSettings,
+			generateCompaction,
+			now: () => 42,
+		});
+		// 最近的三个真实用户轮受保护，更早的 ToolResult 在高压力下被截断。
+		const messages: Message[] = [
+			userMessage("goal", 1),
+			toolResultText(20_000, 2),
+			userMessage("one", 3),
+			userMessage("two", 4),
+			userMessage("three", 5),
+			anchoredAssistantMessage("done", { input: 90, cacheRead: 0, output: 0 }, 6),
+		];
+		const input = {
+			sessionId: "session-1",
+			turnId: "turn-1",
+			messages,
+			modelBinding: { model: MODEL },
+		};
+
+		const beforeCommit = await runtime.transform(input, new AbortController().signal);
+		expect(messageText(beforeCommit[1])).toContain("shortened by context pressure");
+
+		const commitInput: ContextPreparationInput = {
+			...preparationInput(documentFromMessages(messages), messages, messages, observations),
+			reason: "model_call",
+		};
+		const prepared = await runtime.prepare(commitInput, new AbortController().signal);
+		await runtime.onCompactionCommitted(prepared.compaction!, commitInput, new AbortController().signal);
+
+		// 压缩提交后压力重新观测：新的小上下文不得继续沿用压缩前那一次的高水位，否则同一份
+		// 历史工具结果会被永久截短。
+		const fresh: Message[] = [
+			userMessage("goal", 1),
+			toolResultText(20_000, 2),
+			userMessage("one", 3),
+			userMessage("two", 4),
+			userMessage("three", 5),
+			anchoredAssistantMessage("done", { input: 40, cacheRead: 0, output: 0 }, 6),
+		];
+		const afterCommit = await runtime.transform({ ...input, messages: fresh }, new AbortController().signal);
+
+		expect(messageText(afterCommit[1])).not.toContain("shortened by context pressure");
+	});
+
 	it("runs Extension context once with opaque identities and keeps model-invisible messages out of the call", async () => {
 		const customMessage = {
 			role: "custom" as const,
@@ -1393,6 +1676,87 @@ function toolResultMessage(index: number): Extract<Message, { role: "toolResult"
 	};
 }
 
+/**
+ * 真实会话的形状：可见文本约 3 万 token，其余 5 万 token 落在逐字口径看不见的固定前缀上
+ * （系统提示词 68430 字符 + 技能说明 + 41 个工具 schema），最后一条 assistant 的 usage
+ * 就是 provider 在该次请求上回报的真实总量。
+ */
+function largeWindowHistory(): Message[] {
+	const history: Message[] = [
+		userMessage("帮我梳理这个仓库的上下文压缩逻辑", 1),
+		anchoredAssistantMessage("先看目录", { input: 12_000, cacheRead: 20_000, output: 300 }, 2),
+	];
+	for (let index = 0; index < 6; index += 1) history.push(toolResultText(20_000, 100 + index));
+	history.push(
+		anchoredAssistantMessage("读完了", { input: 25_112, cacheRead: 55_680, output: 93 }, 3),
+		userMessage("继续", 4),
+	);
+	return history;
+}
+
+function largeWindowInput(
+	history: readonly Message[],
+	messages: readonly Message[],
+	observations: RuntimeSessionObservationEvent[],
+): ContextPreparationInput {
+	return {
+		...preparationInput(documentFromMessages(history), history, messages, observations),
+		reason: "model_call",
+		modelBinding: { model: BIG_MODEL },
+		tokenBudget: BIG_MODEL.contextWindow,
+		reservedOutputTokens: BIG_MODEL.maxTokens ?? 0,
+	};
+}
+
+function largeWindowSettings(): CompactionSettings {
+	return { ...DEFAULT_COMPACTION_SETTINGS, keepRecentTokens: 5_000 };
+}
+
+function compactionSpy() {
+	return vi.fn(
+		async (preparation: CompactionPreparation): Promise<CompactionResult> => ({
+			summary: "summary",
+			firstKeptEntryId: preparation.firstKeptEntryId,
+			tokensBefore: preparation.tokensBefore,
+		}),
+	);
+}
+
+function anchoredAssistantMessage(
+	text: string,
+	usage: { input: number; cacheRead: number; output: number },
+	timestamp: number,
+): AssistantMessage {
+	return {
+		role: "assistant",
+		content: [{ type: "text", text }],
+		api: BIG_MODEL.api,
+		provider: BIG_MODEL.provider,
+		model: BIG_MODEL.id,
+		usage: {
+			input: usage.input,
+			output: usage.output,
+			cacheRead: usage.cacheRead,
+			cacheWrite: 0,
+			totalTokens: usage.input + usage.cacheRead + usage.output,
+			cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+		},
+		stopReason: "stop",
+		timestamp,
+	};
+}
+
+function toolResultText(charCount: number, timestamp: number): Extract<Message, { role: "toolResult" }> {
+	return {
+		role: "toolResult",
+		toolCallId: `call-${timestamp}`,
+		toolName: "read",
+		content: [{ type: "text", text: "r".repeat(charCount) }],
+		isError: false,
+		timestamp,
+	};
+}
+
 function messageText(message: Message | undefined): string {
 	if (!message) return "";
 	if (typeof message.content === "string") return message.content;
@@ -1413,4 +1777,16 @@ const MODEL: Model<Api> = {
 	cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
 	contextWindow: 100,
 	maxTokens: 20,
+};
+
+/** 与线上一致的窗口：本地声明的 deepseek-flash 没有覆盖 contextWindow，默认 128_000。 */
+const BIG_MODEL: Model<Api> = {
+	...MODEL,
+	id: "deepseek-flash",
+	name: "DeepSeek Flash",
+	api: "openai-completions",
+	provider: "deepseek",
+	baseUrl: "https://api.deepseek.com/v1",
+	contextWindow: 128_000,
+	maxTokens: 8_192,
 };
