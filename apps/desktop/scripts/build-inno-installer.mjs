@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { stringify } from "yaml";
-import { isDesktopReleaseVersion } from "./release-version.mjs";
+import { desktopVersionInfoVersion, isDesktopReleaseVersion } from "./release-version.mjs";
 
 const require = createRequire(import.meta.url);
 const { appBuilderPath } = require("app-builder-bin");
@@ -77,6 +77,18 @@ export async function writeInnoVerificationManifest(sourceVersionDir, manifestPa
 	await writeFile(manifestPath, `${JSON.stringify({ version, files }, null, 2)}\n`, "utf8");
 }
 
+export function innoCompilerArguments({ version, versionInfoVersion, shortSourceDir, releaseDir, arch, installerScript }) {
+	return [
+		"/Qp",
+		`/DAppVersion=${version}`,
+		`/DVersionInfoVersion=${versionInfoVersion}`,
+		`/DSourceDir=${shortSourceDir}`,
+		`/DOutputDir=${releaseDir}`,
+		`/DArch=${arch}`,
+		installerScript,
+	];
+}
+
 async function main() {
 	const arch = readOption("--arch");
 	const sourceDir = unpackedDirectory(arch);
@@ -86,6 +98,7 @@ async function main() {
 	if (!isDesktopReleaseVersion(version)) {
 		throw new Error(`[build-inno] invalid staged version: ${version}`);
 	}
+	const versionInfoVersion = desktopVersionInfoVersion(version);
 	if (!existsSync(join(sourceDir, "versions", version, "Astravia.exe"))) {
 		throw new Error(`[build-inno] versioned Electron output not found: ${sourceDir}`);
 	}
@@ -106,14 +119,14 @@ async function main() {
 	try {
 		execFileSync(
 			compiler,
-			[
-				"/Qp",
-				`/DAppVersion=${version}`,
-				`/DSourceDir=${shortSourceDir}`,
-				`/DOutputDir=${releaseDir}`,
-				`/DArch=${arch}`,
+			innoCompilerArguments({
+				version,
+				versionInfoVersion,
+				shortSourceDir,
+				releaseDir,
+				arch,
 				installerScript,
-			],
+			}),
 			{ stdio: "inherit" },
 		);
 	} finally {

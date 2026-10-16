@@ -3,7 +3,11 @@ import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { writeAppUpdateConfig, writeInnoVerificationManifest } from "./build-inno-installer.mjs";
+import {
+	innoCompilerArguments,
+	writeAppUpdateConfig,
+	writeInnoVerificationManifest,
+} from "./build-inno-installer.mjs";
 import { resolveUpdatePublishConfig } from "./resolve-update-publish-config.mjs";
 
 test("writes updater config into the version directory installed by Inno", async () => {
@@ -52,4 +56,19 @@ test("writes a stable versioned file manifest for pre-publish verification", asy
 	} finally {
 		await rm(sourceDir, { recursive: true, force: true });
 	}
+});
+
+test("passes Inno Setup a four part numeric VersionInfoVersion", () => {
+	const args = innoCompilerArguments({
+		version: "0.5.64-3",
+		versionInfoVersion: "0.5.64.3",
+		shortSourceDir: "C:\\vi\\src",
+		releaseDir: "C:\\release",
+		arch: "x64",
+		installerScript: "C:\\build\\installer.iss",
+	});
+	assert.ok(args.includes("/DAppVersion=0.5.64-3"));
+	assert.ok(args.includes("/DVersionInfoVersion=0.5.64.3"));
+	assert.ok(args.includes("/DArch=x64"));
+	assert.equal(args.at(-1), "C:\\build\\installer.iss");
 });

@@ -1,6 +1,9 @@
 #ifndef AppVersion
   #error AppVersion is required
 #endif
+#ifndef VersionInfoVersion
+  #error VersionInfoVersion is required
+#endif
 #ifndef SourceDir
   #error SourceDir is required
 #endif
@@ -32,7 +35,7 @@ WizardStyle=modern
 CloseApplications=force
 RestartApplications=no
 MinVersion=10.0
-VersionInfoVersion={#AppVersion}
+VersionInfoVersion={#VersionInfoVersion}
 Uninstallable=not IsBackgroundUpdate
 CreateUninstallRegKey=not IsBackgroundUpdate
 
