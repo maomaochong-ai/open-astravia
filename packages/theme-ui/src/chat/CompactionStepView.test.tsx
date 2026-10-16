@@ -26,6 +26,17 @@ describe("CompactionStepView", () => {
 		expect(markup).toContain("tool-call-shimmer-text");
 	});
 
+	it("auto-expands summary panel while streaming so user can follow in real time", () => {
+		const markup = renderToStaticMarkup(
+			<CompactionStepView status="running" label="Compacting context…" summary="Partial summary so far…" />,
+		);
+		expect(markup).toContain('data-compaction-step="running"');
+		expect(markup).not.toContain("disabled");
+		expect(markup).toContain('aria-expanded="true"');
+		expect(markup).toContain("Partial summary so far…");
+		expect(markup).toContain("tool-call-shimmer-text");
+	});
+
 	it("keeps a failed compaction visibly distinct", () => {
 		const markup = renderToStaticMarkup(<CompactionStepView status="error" label="Context compaction failed" />);
 		expect(markup).toContain("icon-[solar--danger-circle-linear]");

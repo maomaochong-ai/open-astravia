@@ -24,7 +24,7 @@ function readDesktopPackage() {
 }
 
 export function bumpVersion(version, bumpType) {
-	const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(version);
+	const match = /^(\d+)\.(\d+)\.(\d+)(?:-\d+)?$/.exec(version);
 	if (!match) throw new Error(`Invalid desktop version: ${version}`);
 
 	const major = Number(match[1]);

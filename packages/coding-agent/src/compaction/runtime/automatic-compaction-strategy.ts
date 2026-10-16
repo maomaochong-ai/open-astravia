@@ -164,7 +164,7 @@ export class CodingAgentAutomaticCompactionStrategy {
 					type: "compaction.end",
 					success: false,
 					reason: compactionReason,
-					errorMessage: `No API key for ${summaryModel.model.provider}`,
+					errorMessage: "compaction.skipped.noApiKey",
 					failure: runtimeFailureFromError(
 						providerAuthenticationError(
 							summaryModel.model,
@@ -184,7 +184,7 @@ export class CodingAgentAutomaticCompactionStrategy {
 					type: "compaction.end",
 					success: false,
 					reason: compactionReason,
-					errorMessage: "No eligible history prefix remained after applying the compaction keep-tail policy",
+					errorMessage: "compaction.skipped.noEligiblePrefix",
 					source: "agent",
 				});
 				return unchanged(callMessages, assembledTokens);
@@ -195,8 +195,7 @@ export class CodingAgentAutomaticCompactionStrategy {
 					type: "compaction.end",
 					success: false,
 					reason: compactionReason,
-					errorMessage:
-						preHookOutcome.stopReason ?? preHookOutcome.blockReason ?? "Compaction blocked by ecosystem hook",
+					errorMessage: "compaction.skipped.blockedByHook",
 					source: "agent",
 				});
 				return unchanged(callMessages, assembledTokens);
@@ -213,7 +212,7 @@ export class CodingAgentAutomaticCompactionStrategy {
 					type: "compaction.end",
 					success: false,
 					reason: compactionReason,
-					errorMessage: "Compaction cancelled by extension",
+					errorMessage: "compaction.skipped.cancelledByExtension",
 					source: "agent",
 				});
 				return unchanged(callMessages, assembledTokens);
