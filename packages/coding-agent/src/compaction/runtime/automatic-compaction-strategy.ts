@@ -48,10 +48,20 @@ export interface CodingAgentAutomaticCompactionStrategyOptions {
 	readonly recordEstimatedTokens: (tokens: number) => void;
 }
 
+/**
+ * 同一轮内已经压缩过、上下文又没有实质增长时，不再重复压缩。
+ *
+ * 一次压缩就是一次完整的摘要模型调用；当保留段本身就超过阈值时，再压一次也降不下来，
+ * 只会让这一轮反复变慢。增长口径与 prefire 的自适应预热保持一致。
+ */
+const NO_PROGRESS_GROWTH_PERCENT = 5;
+
 /** Coding-specific automatic compaction policy used behind Runtime Core's ContextStrategy contract. */
 export class CodingAgentAutomaticCompactionStrategy {
 	/** 会话级：上一次模型调用的上下文估算（增速记忆，见调用处注释）。 */
 	private lastEstimateTokens: number | undefined;
+	/** 本轮最近一次自动压缩的轮次与压缩后的估算，用于抑制同轮无进展的重复压缩。 */
+	private lastAutoCompaction: { readonly turnId: string; readonly estimateAfter: number } | undefined;
 	constructor(private readonly options: CodingAgentAutomaticCompactionStrategyOptions) {}
 
 	async prepare(
@@ -132,6 +142,22 @@ export class CodingAgentAutomaticCompactionStrategy {
 			return unchanged(callMessages, assembledTokens);
 		}
 		const compactionReason = overflow ? "overflow" : "threshold";
+		// 上一轮压缩没有把上下文压到阈值以下（保留段本身就很长）时，同轮内再压一次毫无收益。
+		// overflow 不参与抑制：那是 provider 报出的硬上限，必须走压缩 + 重试恢复。
+		if (
+			!overflow &&
+			this.lastAutoCompaction?.turnId === input.turnId &&
+			estimate.tokens < this.lastAutoCompaction.estimateAfter + (contextWindow * NO_PROGRESS_GROWTH_PERCENT) / 100
+		) {
+			await input.reportObservation({
+				type: "compaction.end",
+				success: false,
+				reason: compactionReason,
+				errorMessage: "compaction.skipped.noProgress",
+				source: "agent",
+			});
+			return unchanged(callMessages, assembledTokens);
+		}
 		await input.reportObservation({
 			type: "compaction.start",
 			reason: compactionReason,
@@ -251,6 +277,7 @@ export class CodingAgentAutomaticCompactionStrategy {
 			);
 			const compactedEstimate = estimateContextTokens(messages).tokens;
 			this.options.recordEstimatedTokens(compactedEstimate);
+			this.lastAutoCompaction = { turnId: input.turnId, estimateAfter: compactedEstimate };
 			return { messages, estimatedTokens: compactedEstimate, compaction: record };
 		} catch (error) {
 			this.options.circuitBreaker.recordFailure();

@@ -10,6 +10,7 @@ import {
 	compact,
 	DEFAULT_COMPACTION_SETTINGS,
 	estimateContextTokens,
+	estimateTextTokens,
 	estimateTokens,
 	findCutPoint,
 	getLastAssistantUsage,
@@ -175,6 +176,77 @@ describe("Token calculation", () => {
 		const tokens = estimateContextTokens(messages).tokens;
 		expect(tokens).toBeGreaterThan(183_616);
 		expect(shouldCompact(tokens, 200_000, DEFAULT_COMPACTION_SETTINGS)).toBe(true);
+	});
+});
+
+/**
+ * usage 锚定估算的消费面回归。
+ *
+ * 真实会话实测：provider 的 usage 总量已经包含系统提示词、工具 schema 与缓存读写，
+ * 逐字口径只看得见消息文本。曾把两者差额当作「固定开销」再加一次，估算长期高出真实输入
+ * 约 1.6 倍，长会话因此每一轮都越过压缩阈值。
+ */
+describe("Token calculation / usage anchor", () => {
+	it("does not count the fixed prefix twice when usage already includes it", () => {
+		const messages: AgentMessage[] = [
+			createUserMessage("x".repeat(40 * 1024)), // 逐字 10240
+			createAssistantMessage("回复", createMockUsage(20_000, 0)),
+			createUserMessage("y".repeat(4 * 1024)), // trailing 1024
+		];
+
+		const estimate = estimateContextTokens(messages);
+
+		expect(estimate.usageTokens).toBe(20_000);
+		// usage 总量就是 provider 看到的完整输入，逐字口径只在没有锚点时兜底。
+		expect(estimate.tokens).toBe(21_024);
+	});
+
+	it("keeps a long session below the threshold when usage is below it", () => {
+		// 实测样本：input 25112 + cacheRead 55680 + output 93 = 80885，
+		// 其中约 31k 是系统提示词与工具 schema（逐字口径看不见），可见消息约 50k。
+		const messages: AgentMessage[] = [
+			createUserMessage("x".repeat(200_000)), // 逐字 50000
+			createAssistantMessage("回复", createMockUsage(25_112, 93, 55_680)),
+			createUserMessage("y".repeat(4 * 1024)), // trailing 1024
+		];
+
+		const estimate = estimateContextTokens(messages);
+
+		expect(estimate.usageTokens).toBe(80_885);
+		expect(estimate.tokens).toBe(81_909);
+		expect(shouldCompact(estimate.tokens, 128_000, DEFAULT_COMPACTION_SETTINGS)).toBe(false);
+	});
+
+	it("matches the pre-anchor total when the literal estimate already agrees", () => {
+		const messages: AgentMessage[] = [
+			createUserMessage("x".repeat(40 * 1024)), // 10240
+			createAssistantMessage("回复", createMockUsage(10_240, 0)),
+			createUserMessage("y".repeat(4 * 1024)), // trailing 1024
+		];
+
+		expect(estimateContextTokens(messages).tokens).toBe(11_264);
+	});
+
+	it("trusts usage below the literal estimate instead of inflating it", () => {
+		const messages: AgentMessage[] = [
+			createUserMessage("x".repeat(40 * 1024)), // 10240
+			createAssistantMessage("回复", createMockUsage(1_000, 0)),
+			createUserMessage("y".repeat(4 * 1024)), // trailing 1024
+		];
+
+		expect(estimateContextTokens(messages).tokens).toBe(2_024);
+	});
+
+	it("estimates the whole context literally when there is no usage anchor", () => {
+		const estimate = estimateContextTokens([createUserMessage("x".repeat(4 * 1024))]);
+
+		expect(estimate).toMatchObject({ tokens: 1_024, usageTokens: 0, trailingTokens: 1_024, lastUsageIndex: null });
+	});
+
+	it("estimates CJK text far above chars/4", () => {
+		const text = "这是一段用来校准上下文估算的中文段落，每个汉字按一个 token 计，长度是真实文本而非常数。".repeat(40);
+
+		expect(estimateTextTokens(text)).toBeGreaterThan((text.length / 4) * 3);
 	});
 });
 

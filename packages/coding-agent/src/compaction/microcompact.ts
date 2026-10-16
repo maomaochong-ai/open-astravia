@@ -17,7 +17,14 @@ export interface MicrocompactOptions {
 	maxAgeMs: number;
 	/** Disable count-based ToolResult pruning when a pressure-aware policy owns that responsibility. */
 	pruneToolResults?: boolean;
-	/** Fixed evaluation time used to keep every model call in one Turn deterministic. */
+	/**
+	 * Fixed evaluation time used to keep every model call in one Turn deterministic.
+	 *
+	 * Messages stamped at or after this boundary belong to the in-flight Turn and stay out of
+	 * the prune window for the whole Turn: a model call observes more of them as the Turn
+	 * advances, so a tail-relative window over them would clear one further historical message
+	 * on every call and shift the request prefix instead of only appending to it.
+	 */
 	now?: number;
 }
 
@@ -35,15 +42,17 @@ const COMPACTABLE_ROLES = new Set(["toolResult", "bashExecution"]);
  * Microcompact: prune old tool results, bash outputs, and thinking blocks.
  *
  * Algorithm:
+ * 0. Collect prune candidates only from messages stamped before the Turn boundary
+ *    (`now`). Messages from the in-flight Turn are never candidates, so a Turn that
+ *    keeps appending messages cannot move the pruned positions of its own earlier
+ *    model calls.
  * 1. Prune tool results / bash outputs:
- *    a. Collect indices of compactable messages (toolResult / bashExecution).
- *    b. The last `keepRecent` are always protected.
- *    c. For unprotected messages, if `maxAgeMs > 0`, only clear those older
+ *    a. The last `keepRecent` candidates are always protected.
+ *    b. For unprotected messages, if `maxAgeMs > 0`, only clear those older
  *       than `now - maxAgeMs`. If `maxAgeMs === 0`, clear all unprotected.
  * 2. Prune thinking blocks from old assistant messages:
- *    a. Collect indices of assistant messages that contain thinking blocks.
- *    b. The last `keepRecent` are protected (same parameter).
- *    c. For unprotected: if thinking has a signature, keep signature but clear
+ *    a. The last `keepRecent` candidates are protected (same parameter).
+ *    b. For unprotected: if thinking has a signature, keep signature but clear
  *       text (Anthropic can reconstruct from signature). Otherwise remove the
  *       thinking block entirely.
  * 3. Return a new array with cleared messages (shallow copy; only touched
@@ -65,7 +74,7 @@ export function microcompact(
 function pruneToolResults(messages: AgentMessage[], options: MicrocompactOptions): AgentMessage[] {
 	const compactableIndices: number[] = [];
 	for (let i = 0; i < messages.length; i++) {
-		if (COMPACTABLE_ROLES.has(messages[i].role)) {
+		if (COMPACTABLE_ROLES.has(messages[i].role) && !isFromInFlightTurn(messages[i], options)) {
 			compactableIndices.push(i);
 		}
 	}
@@ -137,7 +146,7 @@ function pruneThinkingBlocks(messages: AgentMessage[], options: MicrocompactOpti
 	const thinkingIndices: number[] = [];
 	for (let i = 0; i < messages.length; i++) {
 		const msg = messages[i];
-		if (msg.role === "assistant") {
+		if (msg.role === "assistant" && !isFromInFlightTurn(msg, options)) {
 			const asst = msg as AssistantMessage;
 			if (asst.content.some((b) => b.type === "thinking")) {
 				thinkingIndices.push(i);
@@ -192,4 +201,13 @@ function pruneThinkingBlocks(messages: AgentMessage[], options: MicrocompactOpti
 		result[i] = { ...asst, content: newContent };
 	}
 	return result;
+}
+
+/**
+ * Messages stamped at or after the Turn boundary are still being produced by the in-flight
+ * Turn. Their positions stay outside the prune window so every model call in the Turn
+ * projects the same prefix and only appends to it.
+ */
+function isFromInFlightTurn(message: AgentMessage, options: MicrocompactOptions): boolean {
+	return options.now !== undefined && message.timestamp >= options.now;
 }
