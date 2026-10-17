@@ -90,6 +90,14 @@ export interface StreamOptions {
 	 */
 	maxRetries?: number;
 	/**
+	 * Provider stream inactivity watchdog, in milliseconds. Once the response
+	 * stream is open, going this long without receiving any chunk (including
+	 * keep-alive events) fails the call with a retryable `AI_TIMEOUT` instead of
+	 * hanging until the transport dies. Set to 0 to disable.
+	 * Default: 300000 (5 minutes).
+	 */
+	streamIdleTimeoutMs?: number;
+	/**
 	 * Optional metadata to include in API requests.
 	 * Providers extract the fields they understand and ignore the rest.
 	 * For example, Anthropic uses `user_id` for abuse tracking and rate limiting.

@@ -42,7 +42,8 @@ describe("Astravia Desktop packaged updater", () => {
 		);
 
 		const currentVersion = await browser.electron.execute((electron) => electron.app.getVersion());
-		expect(currentVersion).toMatch(/^\d+\.\d+\.\d+$/);
+		// 发版号带 -N 尾缀（如 0.5.64-4），这里只校验拿到的是个真版本号。
+		expect(currentVersion).toMatch(/^\d+\.\d+\.\d+(-\d+)?$/);
 
 		await focusMainRenderer();
 		await browser.execute(() => {

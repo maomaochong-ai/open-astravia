@@ -3,6 +3,7 @@ import { getEnvApiKey } from "../../env-api-keys.js";
 import { calculateCost } from "../../models.js";
 import {
 	AIAbortedError,
+	AIError,
 	type Api,
 	createAssistantMessage as createProtocolAssistantMessage,
 } from "../../protocol/index.js";
@@ -32,6 +33,71 @@ import { type ThinkingTagSegment, ThinkingTagSplitter } from "../thinking-tag-sp
 import type { OpenAICompletionsOptions } from "./options.js";
 import { buildOpenAICompletionsParams, createOpenAICompletionsClient } from "./request.js";
 import { openAIChatCompletionChunkSchema } from "./response-schema.js";
+
+/**
+ * 默认流空闲看门狗：连接已打开但连续 5 分钟没有任何 chunk（含 keep-alive）时，
+ * 判定该流已死。长思考模型的 chunk 间隔远低于此值；超限意味着传输层或服务端
+ * 挂起，继续等待只会让 UI 停在「正在回复…」永远收不到终态。
+ */
+const DEFAULT_STREAM_IDLE_TIMEOUT_MS = 5 * 60 * 1000;
+
+class StreamIdleTimeoutError extends AIError {
+	constructor(idleMs: number) {
+		super("AI_TIMEOUT", `Provider stream produced no events for ${Math.round(idleMs / 1000)}s`, {
+			retryable: true,
+			metadata: { reason: "stream_idle_timeout" },
+		});
+		this.name = "StreamIdleTimeoutError";
+	}
+}
+
+/**
+ * 逐 chunk 重置的空闲看门狗。返回 [迭代器, 解除]；解除必须在流结束后调用，
+ * 否则最后一个 chunk 之后仍会挂一个定时器直到超时。
+ */
+function createStreamIdleWatchdog(
+	source: AsyncIterable<ChatCompletionChunk>,
+	idleMs: number,
+	onTimeout: () => void,
+): [AsyncIterable<ChatCompletionChunk>, () => void] {
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	const arm = (): void => {
+		clearTimeout(timer);
+		timer = setTimeout(onTimeout, idleMs);
+	};
+	const disarm = (): void => {
+		clearTimeout(timer);
+		timer = undefined;
+	};
+	const innerIterator = source[Symbol.asyncIterator]();
+	return [
+		{
+			[Symbol.asyncIterator]() {
+				return {
+					next: async () => {
+						arm();
+						try {
+							return await innerIterator.next();
+						} catch (error) {
+							disarm();
+							throw error;
+						}
+					},
+					return: async (value?: unknown) => {
+						disarm();
+						return innerIterator.return?.(value as never) ?? { done: true, value: undefined };
+					},
+					throw: async (error?: unknown) => {
+						disarm();
+						if (innerIterator.throw) return innerIterator.throw(error as never);
+						throw error;
+					},
+				};
+			},
+		},
+		disarm,
+	];
+}
 
 type PartialToolCall = ToolCall & { partialArgs?: string };
 type CompatibleDelta = ChatCompletionChunk.Choice.Delta & {
@@ -100,9 +166,17 @@ async function produceOpenAICompletions(
 	const { model, context, options } = request;
 	const output = createAssistantMessage(model);
 	const requestAbort = createLinkedAbortSignal(options?.signal);
+	// 看门狗必须能独立 abort 传输：createLinkedAbortSignal 只从父向子传播，
+	// 且没有用户 signal 时 requestAbort.signal 是 undefined，超时将无处可打。
+	const watchdogAbort = new AbortController();
+	let idleTimedOut = false;
 	let rawFinishReason: string | undefined;
 	let responseId: string | undefined;
 	let systemFingerprint: string | undefined;
+	// catch/finally 要读这些变量，声明必须与 try/catch/finally 同级。
+	let disarmWatchdog: (() => void) | undefined;
+	const idleTimeoutMs =
+		options?.streamIdleTimeoutMs === 0 ? undefined : (options?.streamIdleTimeoutMs ?? DEFAULT_STREAM_IDLE_TIMEOUT_MS);
 	try {
 		const apiKey = requireProviderCredential(model, options?.apiKey || getEnvApiKey(model.provider));
 		const client = createOpenAICompletionsClient(
@@ -115,7 +189,12 @@ async function produceOpenAICompletions(
 		);
 		const params = buildOpenAICompletionsParams(model, context, options);
 		options?.onPayload?.(params);
-		const response = await client.chat.completions.create(params, { signal: requestAbort.signal });
+		// AbortSignal.any 在 Node 20+/主流浏览器可用；退化环境（旧 Node）跳过 watchdog。
+		const requestSignal =
+			requestAbort.signal && typeof AbortSignal.any === "function"
+				? AbortSignal.any([requestAbort.signal, watchdogAbort.signal])
+				: (requestAbort.signal ?? watchdogAbort.signal);
+		const response = await client.chat.completions.create(params, { signal: requestSignal });
 		stream.push({ type: "start", partial: output });
 
 		let currentBlock: TextContent | ThinkingContent | PartialToolCall | null = null;
@@ -161,7 +240,17 @@ async function produceOpenAICompletions(
 		};
 
 		let receivedProviderChunk = false;
-		for await (const chunk of response) {
+		let streamSource: AsyncIterable<ChatCompletionChunk> = response;
+		if (idleTimeoutMs !== undefined) {
+			const watchdog = createStreamIdleWatchdog(response, idleTimeoutMs, () => {
+				// 超时后 abort 传输（让底层 socket 快速失败），让 for-await 尽快出循环。
+				idleTimedOut = true;
+				watchdogAbort.abort(new StreamIdleTimeoutError(idleTimeoutMs));
+			});
+			streamSource = watchdog[0];
+			disarmWatchdog = watchdog[1];
+		}
+		for await (const chunk of streamSource) {
 			receivedProviderChunk = true;
 			responseId ??= chunk.id;
 			systemFingerprint ??= chunk.system_fingerprint ?? undefined;
@@ -275,9 +364,15 @@ async function produceOpenAICompletions(
 		stream.push({ type: "done", reason: output.stopReason, message: output });
 	} catch (error) {
 		for (const block of output.content) Reflect.deleteProperty(block, "index");
-		const normalized = options?.signal?.aborted
-			? new AIAbortedError(undefined, { cause: error })
-			: normalizeOpenAISdkError(error, model);
+		// 空闲看门狗超时：SDK 会把内部 abort 包成 APIUserAbortError 抹掉 reason，
+		// 因此以 idleTimedOut 标记为准；不能走 signal.aborted 的归类把它当「用户中止」，
+		// 否则永远不可重试且 UI 不提示。
+		const idleTimeout = idleTimedOut ? new StreamIdleTimeoutError(idleTimeoutMs ?? 0) : undefined;
+		const normalized = idleTimeout
+			? idleTimeout
+			: options?.signal?.aborted
+				? new AIAbortedError(undefined, { cause: error })
+				: normalizeOpenAISdkError(error, model);
 		resolveMetadata({
 			finishReason: { unified: normalized.code === "AI_ABORTED" ? "aborted" : "error" },
 			response: responseId ? { responseId } : undefined,
@@ -288,6 +383,7 @@ async function produceOpenAICompletions(
 			errorMessage: normalized instanceof Error ? normalized.message : String(normalized),
 		});
 	} finally {
+		disarmWatchdog?.();
 		requestAbort.dispose();
 	}
 }

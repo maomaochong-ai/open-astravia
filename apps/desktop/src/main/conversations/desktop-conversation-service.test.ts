@@ -143,6 +143,60 @@ describe("DesktopConversationService session access", () => {
 		expect(runtime.invokeSessionExtension).not.toHaveBeenCalled();
 	});
 
+	it("falls back to a text-derived title when title generation returns null", async () => {
+		let sessionEventHandler: ((event: { type: "session.lifecycle"; phase: string }) => void) | undefined;
+		const runtime = {
+			getMessages: vi.fn(() => []),
+			getSessionPath: vi.fn(() => "C:/sessions/session-1.conversation.jsonl"),
+			subscribe: vi.fn((_sessionId: string, handler: (event: never) => void) => {
+				sessionEventHandler = handler as typeof sessionEventHandler;
+				return vi.fn();
+			}),
+			prompt: vi.fn(async () => ({ status: "completed" as const })),
+			invokeSessionExtension: vi.fn(async () => null),
+			renameSessionById: vi.fn(async () => {}),
+		} as unknown as RuntimeHost;
+		const service = new DesktopConversationService(runtime);
+
+		await service.promptInteractiveSession(
+			"session-1",
+			{ text: "新建会话后发送了很长的一段文字任务" },
+			"C:/workspace",
+		);
+		sessionEventHandler?.({ type: "session.lifecycle", phase: "agent_start" });
+
+		await vi.waitFor(() => {
+			expect(runtime.renameSessionById).toHaveBeenCalledWith(
+				"session-1",
+				"新建会话后发送了很长的一段文字任务".slice(0, 30),
+			);
+		});
+	});
+
+	it("falls back to a text-derived title when the turn ends before agent_start", async () => {
+		let sessionEventHandler: ((event: { type: "session.lifecycle"; phase: string }) => void) | undefined;
+		const runtime = {
+			getMessages: vi.fn(() => []),
+			getSessionPath: vi.fn(() => "C:/sessions/session-1.conversation.jsonl"),
+			subscribe: vi.fn((_sessionId: string, handler: (event: never) => void) => {
+				sessionEventHandler = handler as typeof sessionEventHandler;
+				return vi.fn();
+			}),
+			prompt: vi.fn(async () => ({ status: "failed" as const })),
+			invokeSessionExtension: vi.fn(),
+			renameSessionById: vi.fn(async () => {}),
+		} as unknown as RuntimeHost;
+		const service = new DesktopConversationService(runtime);
+
+		// turn 直接终止（未到达 agent_start，如流挂死被 abort）。
+		await service.promptInteractiveSession("session-1", { text: "修复停止按钮" }, "C:/workspace");
+		sessionEventHandler?.({ type: "session.lifecycle", phase: "aborted" });
+
+		await vi.waitFor(() => {
+			expect(runtime.renameSessionById).toHaveBeenCalledWith("session-1", "修复停止按钮");
+		});
+	});
+
 	it("adds host capabilities to listed sessions", async () => {
 		const cwd = await createTemporaryRoot();
 		const sessionPath = join(cwd, "session.jsonl");

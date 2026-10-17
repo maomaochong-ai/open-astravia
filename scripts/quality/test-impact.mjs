@@ -96,6 +96,11 @@ const EXPLICIT_SOURCE_TESTS = new Map([
 		"packages/theme-ui/src/settings/index.ts",
 		desktopTests("src/renderer/domains/settings/components/ModelsFetchedModelsDrawer.test.tsx"),
 	],
+	// E2E 规格不是单元测试，改动它时由更新模块的单测顶上，不落空选。
+	[
+		"apps/desktop/e2e/updater.e2e.ts",
+		desktopTests("src/main/updater-service.test.ts", "src/main/updater-engine.test.ts"),
+	],
 ]);
 
 function workspaceForFile(file) {

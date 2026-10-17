@@ -59,6 +59,13 @@ export type DesktopConversationErrorCode =
 	/** 新建会话时指定的 Agent 已不存在（列表过期或并发删除）；恢复既有会话不会报这个，见 createSession。 */
 	| "AGENT_PROFILE_UNAVAILABLE";
 
+/** 兜底标题：首条用户文本压成单行、截到 30 字符，与语言无关。 */
+function fallbackSessionTitle(text: string): string {
+	const normalized = text.trim().replace(/\s+/g, " ");
+	if (!normalized) return "New session";
+	return Array.from(normalized).slice(0, 30).join("");
+}
+
 export class DesktopConversationError extends Error {
 	constructor(
 		readonly code: DesktopConversationErrorCode,
@@ -441,25 +448,48 @@ export class DesktopConversationService {
 
 		if (shouldSchedule) {
 			this.autoTitleScheduledSessions.add(session.sessionId);
+			const applySessionName = async (name: string): Promise<void> => {
+				if (!session.sessionPath || !session.listCwd) return;
+				await this.runtime.renameSessionById(session.sessionId, name);
+				emitConversationListChanged({
+					cwd: session.listCwd,
+					sessionPath: session.sessionPath,
+				});
+			};
+			const fallbackTitle = (): string => fallbackSessionTitle(prompt.text);
 			unsubscribe = this.runtime.subscribe(session.sessionId, (event) => {
-				if (event.type !== "session.lifecycle" || event.phase !== "agent_start") return;
-				autoTitleStarted = true;
-				unsubscribe?.();
-				unsubscribe = undefined;
-				void this.runtime
-					.invokeSessionExtension(session.sessionId, CODING_AGENT_SESSION_TITLE_GENERATE, {
-						userText: prompt.text,
-						assistantText: "",
-					})
-					.then(async (name) => {
-						if (!name || !session.sessionPath || !session.listCwd) return;
-						await this.runtime.renameSessionById(session.sessionId, name);
-						emitConversationListChanged({
-							cwd: session.listCwd,
-							sessionPath: session.sessionPath,
-						});
-					})
-					.catch((error) => log.warn("conversation auto-title failed", error));
+				if (event.type !== "session.lifecycle") return;
+				if (event.phase === "agent_start") {
+					autoTitleStarted = true;
+					unsubscribe?.();
+					unsubscribe = undefined;
+					void this.runtime
+						.invokeSessionExtension(session.sessionId, CODING_AGENT_SESSION_TITLE_GENERATE, {
+							userText: prompt.text,
+							assistantText: "",
+						})
+						.then((name) => (name ? applySessionName(name) : applySessionName(fallbackTitle())))
+						.catch((error) => {
+							log.warn("conversation auto-title failed", error);
+							// 生成失败不等于会话该一直叫「未命名会话」：用首条用户文本兜一个确定性名字。
+							void applySessionName(fallbackTitle()).catch((fallbackError) =>
+								log.warn("conversation fallback title failed", fallbackError),
+							);
+						})
+						.finally(() => this.autoTitleScheduledSessions.delete(session.sessionId));
+					return;
+				}
+				// turn 没到 agent_start 就终止（prompt 被拒、流挂死、用户中止）：
+				// 同样兜个兜底名字，避免侧栏永远「未命名会话」。
+				if (event.phase === "aborted" || event.phase === "agent_end") {
+					if (autoTitleStarted) return;
+					autoTitleStarted = true;
+					unsubscribe?.();
+					unsubscribe = undefined;
+					void applySessionName(fallbackTitle())
+						.catch((error) => log.warn("conversation fallback title failed", error))
+						.finally(() => this.autoTitleScheduledSessions.delete(session.sessionId));
+				}
 			});
 		}
 

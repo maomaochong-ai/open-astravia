@@ -332,7 +332,8 @@ describe("Astravia CLI Desktop Runtime canary", { timeout: INTEGRATION_TEST_TIME
 			type: "compaction.end",
 			success: false,
 			reason: "threshold",
-			errorMessage: "No eligible history prefix remained after applying the compaction keep-tail policy",
+			// 压缩策略改为上报机器码、由 UI 按语言翻译，断言跟随源码契约。
+			errorMessage: "compaction.skipped.noEligiblePrefix",
 		});
 
 		const automaticContinuationResponse = completedCliResponseSchema.parse(
