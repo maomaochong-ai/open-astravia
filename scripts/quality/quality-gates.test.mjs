@@ -366,6 +366,13 @@ describe("affected package selection", () => {
 		]);
 	});
 
+	it("treats a fully removed dependency as nothing left to test instead of a selection gap", () => {
+		const plan = createChangedTestPlan(["bun.lock"], [{ key: "desktop", dependencies: ["zh-chess"] }]);
+
+		expect(plan.selectionErrors).toEqual([]);
+		expect(plan.targets).toEqual([]);
+	});
+
 	it("finds only workspaces whose resolved lockfile dependency closure changed", () => {
 		const before = `{
 			"lockfileVersion": 1,
