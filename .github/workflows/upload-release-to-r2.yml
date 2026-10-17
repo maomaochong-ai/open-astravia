@@ -6,13 +6,22 @@ description: |
   bucket `astravia-downloads` under `app/v{version}/`.  The website
   download page links to these R2 objects.
 
-  Triggers automatically when a draft release is promoted to published
-  (desktop-release's publish-github job does this at the end).  It can
-  also be run manually via workflow_dispatch for any existing tag.
-
+  `desktop-release` 在四个平台构建完成、GitHub Release 落地后以 workflow_call 调用它，
+  这样一次 tag 推送就能把产物送上 CDN；也可以对任意 tag 手动 workflow_dispatch。
 on:
   release:
     types: [published]
+  workflow_call:
+    inputs:
+      version:
+        description: "Release version to upload, for example 0.5.66."
+        type: string
+        required: true
+      prefix:
+        description: "R2 object prefix (default: app/v{version})"
+        type: string
+        required: false
+        default: ""
   workflow_dispatch:
     inputs:
       version:

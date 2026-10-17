@@ -37,7 +37,16 @@ describe("Desktop release workflow contracts", () => {
 
 	it("publishes each platform's installers as soon as it is built", () => {
 		expect(jobs.build.strategy["fail-fast"]).toBe(false);
-		expect(Object.keys(jobs)).toEqual(["prepare", "quality", "build", "android", "promote"]);
+		expect(Object.keys(jobs)).toEqual([
+			"prepare",
+			"quality",
+			"build",
+			"android",
+			"publish-r2",
+			"publish-website",
+			"deploy-website",
+			"promote",
+		]);
 		expect(workflow).not.toContain("release-build-");
 		expect(workflow).not.toContain("test:e2e:packaged");
 		expect(workflow).not.toContain("download-artifact");
@@ -100,6 +109,59 @@ describe("Desktop release workflow contracts", () => {
 		expect(JSON.stringify(promote)).not.toContain("github.event.inputs");
 	});
 
+	// 官网下载按钮指向 R2 直链，上传、改版本号、部署必须由流水线自己按顺序完成；
+	// 任何一步重新变成人工接力，就会重新出现「页面指向上一版」或「点下去 404」。
+	it("carries a release from R2 through the website version to the deployed site", () => {
+		const r2 = jobs["publish-r2"];
+		expect(r2.needs).toEqual(["prepare", "build"]);
+		expect(r2.uses).toBe("./.github/workflows/upload-release-to-r2.yml");
+		expect(r2.with.version).toBe("$" + "{{ needs.prepare.outputs.release-version }}");
+		expect(r2.secrets).toBe("inherit");
+		// 不依赖 android（APK 失败不能挡住安装包上 CDN），也不在测试渠道里跑。
+		for (const name of ["publish-r2", "publish-website", "deploy-website"]) {
+			expect(jobs[name].if).toContain("needs.prepare.outputs.should-publish == 'true'");
+			expect(jobs[name].if).toContain("needs.prepare.outputs.release_target == 'github'");
+			expect(jobs[name].if).toContain("needs.prepare.outputs.channel != 'test'");
+			expect(jobs[name].if).not.toContain("always()");
+		}
+
+		const website = jobs["publish-website"];
+		expect(website.needs).toEqual(["prepare", "publish-r2"]);
+		expect(website.permissions).toEqual({ contents: "write", "pull-requests": "write" });
+		expect(website.outputs.ref).toBe("$" + "{{ steps.publish.outputs.ref }}");
+		const bump = website.steps.find(
+			(step) => step.name === "Bump website version and open the follow-up pull request",
+		);
+		expect(bump.run).toContain("node scripts/release/bump-website-version.mjs --version");
+		expect(bump.run).toContain("git push --force origin");
+		expect(bump.run).toContain("refs/heads/");
+		expect(bump.run).toContain("gh pr create --base dev");
+		// 无人值守时不做自动合并：main 的版本号跟进必须由人看过 diff 再结合。
+		expect(bump.run).not.toContain("--auto");
+
+		const deploy = jobs["deploy-website"];
+		expect(deploy.needs).toEqual(["prepare", "publish-website"]);
+		expect(deploy.uses).toBe("./.github/workflows/deploy-website.yml");
+		expect(deploy.with.ref).toBe("$" + "{{ needs.publish-website.outputs.ref }}");
+		expect(deploy.secrets).toBe("inherit");
+		// workflow_call 只能降不能升：被调 workflow 声明的 scope 必须在这里先授出来，
+		// 否则运行一开始就失败。
+		expect(deploy.permissions).toEqual({ contents: "read", pages: "write", "id-token": "write" });
+	});
+
+	it("exposes the R2 and website workflows as reusable workflows", () => {
+		const r2 = parse(
+			readFileSync(join(import.meta.dirname, "../../.github/workflows/upload-release-to-r2.yml"), "utf8"),
+		);
+		expect(r2.on.workflow_call.inputs.version.required).toBe(true);
+		expect(r2.on.workflow_call.inputs.prefix.default).toBe("");
+		expect(r2.jobs.upload.steps.some((step) => step.name === "Upload assets to R2")).toBe(true);
+
+		const site = parse(readFileSync(join(import.meta.dirname, "../../.github/workflows/deploy-website.yml"), "utf8"));
+		expect(site.on.workflow_call.inputs.ref.default).toBe("");
+		const checkout = site.jobs.deploy.steps.find((step) => step.uses?.startsWith("actions/checkout"));
+		expect(checkout.with.ref).toBe("$" + "{{ inputs.ref || github.ref }}");
+	});
 	it("promotes automatically only after every platform build succeeds", () => {
 		expect(jobs.promote.needs).toEqual(["prepare", "build"]);
 		expect(jobs.promote.uses).toBe("./.github/workflows/desktop-promote.yml");

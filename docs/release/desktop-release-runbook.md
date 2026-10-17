@@ -171,6 +171,20 @@ APPLE_TEAM_ID
 
 GitHub target 的手动发布会以当前 workflow SHA 创建对应版本 Release；R2 target 不要求先有 tag，但仍应保留 commit、workflow run 和版本号之间的发布记录。
 
+### GitHub target 的发布链路：R2 → 官网 → 部署
+
+`release_target=github` 的正式发布（tag 或 `channel=stable`）在四个平台构建完成后自己把剩下三步跑完，不需要再手动 dispatch：
+
+1. `publish-r2`（`needs: [prepare, build]`）调用 [upload-release-to-r2.yml](../../.github/workflows/upload-release-to-r2.yml)，把 GitHub Release 上的安装包传到 `app/v<version>`。它不依赖 `android`：APK 失败不能挡住桌面安装包上 CDN。
+2. `publish-website`（`needs: [prepare, publish-r2]`）在 `dev` 上跑 [bump-website-version.mjs](../../scripts/release/bump-website-version.mjs)，把官网 5 个文件的版本号对齐到新版本，推 `release/website-v<version>` 分支并向 `dev` 开 PR。版本号已经是新版本时不提交，直接部署 `dev`。
+3. `deploy-website`（`needs: [prepare, publish-website]`）调用 [deploy-website.yml](../../.github/workflows/deploy-website.yml)，`ref` 指向上一步的分支，站点立刻换成用户点得到的版本。
+
+两个必须记住的约束：
+
+- **顺序不能换**。官网下载按钮指向 `https://dl.astravia.dev/app/v<version>/`，先改版本号再传产物就会出现 404 窗口。
+- **PR 需要人工合并**。`dev` 和 `main` 都要求 6 项 required check，而 workflow 用 `GITHUB_TOKEN` 推的分支不会再触发 `pull_request` 事件，check 永远不上报。可以由人看过 diff 后 bypass 合并，或关掉再重开 PR 让 check 重跑。站点不依赖这次合并，已经在第 3 步上线了。
+
+`release_target=r2`（商业版）和 `channel=test` 不走这三步：前者的产物不进 GitHub 下载目录，后者不该动官网。
 ## Test 升级验收操作
 
 真实安装升级使用独立的 `desktop-upgrade-e2e` workflow，不覆盖 stable，也不把“下载了一个伪造更新文件”当成升级成功。
