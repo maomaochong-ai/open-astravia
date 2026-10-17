@@ -32,23 +32,19 @@ It is more than a chat interface: Astravia can inspect a workspace, use tools wi
 
 ## Why Astravia
 
-| | What it means |
-|---|---|
-| **Local-first workspace** | Projects, sessions, files, and execution live in the environment you choose. |
-| **Bring your own models** | Connect supported providers, OpenAI-compatible endpoints, or local inference through BYOK. |
-| **Real tools and artifacts** | Work with code, documents, spreadsheets, media, commands, and generated files in one task flow. |
-| **Reviewable execution** | Tool calls, plans, permissions, progress, results, and recovery paths remain visible. |
-| **Reusable workflows** | Extend the agent with skills, MCP servers, plugins, themes, knowledge, batch tasks, and automation. |
-| **Open client stack** | The desktop app, CLI, SDK, plugin system, themes, mobile client, and IM gateway are developed in this repository. |
+- **Local-first workspace** — Projects, sessions, files, and execution live in the environment you choose.
+- **Bring your own models** — Connect supported providers, OpenAI-compatible endpoints, or local inference through BYOK.
+- **Real tools and artifacts** — Work with code, documents, spreadsheets, media, commands, and generated files in one task flow.
+- **Reviewable execution** — Tool calls, plans, permissions, progress, results, and recovery paths remain visible.
+- **Reusable workflows** — Extend the agent with skills, MCP servers, plugins, themes, knowledge, batch tasks, and automation.
+- **Open client stack** — The desktop app, CLI, SDK, plugin system, themes, mobile client, and IM gateway are developed in this repository.
 
 ## Start here
 
-| I want to… | Start with |
-|---|---|
-| Use the desktop app | [Download for macOS, Windows, or Linux](https://www.astravia.dev/#download), then follow the in-app setup. |
-| Understand the product | Explore the core capabilities below. |
-| Build an extension | Choose between [skills, MCP, plugins, themes, SDK, RPC, and CLI](#plugin-development). |
-| Contribute code | Read [`QUICKSTART.md`](QUICKSTART.md) and [`CONTRIBUTING.md`](CONTRIBUTING.md). |
+- **Use the desktop app** — [Download for macOS, Windows, or Linux](https://www.astravia.dev/#download), then follow the in-app setup.
+- **Understand the product** — Explore the core capabilities below.
+- **Build an extension** — Choose between [skills, MCP, plugins, themes, SDK, RPC, and CLI](#plugin-development).
+- **Contribute code** — Read [`QUICKSTART.md`](QUICKSTART.md) and [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ### Run from source
 
