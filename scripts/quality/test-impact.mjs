@@ -253,8 +253,12 @@ export function createImpactTestPlan(
 		}
 		const importers = dependencyImporterFiles(workspace, impact.dependencies);
 		if (importers.length === 0) {
+			// 依赖被整体删掉时源码里当然没有任何 import——这正是删除该达成的结果，不需要再选测试。
+			// 只有仍然声明在 package.json 里却找不到使用点的依赖，才说明这里漏了影响面。
+			const stillDeclared = impact.dependencies.filter((dependency) => dependency in workspace.dependencies);
+			if (stillDeclared.length === 0) continue;
 			selectionErrors.push(
-				`bun.lock changed ${impact.key} dependencies ${impact.dependencies.join(", ")} without importing source files`,
+				`bun.lock changed ${impact.key} dependencies ${stillDeclared.join(", ")} without importing source files`,
 			);
 			continue;
 		}
