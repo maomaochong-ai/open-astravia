@@ -136,7 +136,7 @@
 					<h1 class="hero__title">
 						你的 AI 助手，<br /><em class="hl">住在你的电脑里。</em>
 					</h1>
-					<p class="hero__sub">本地优先的开源 AI 桌面助手——编码、文档、数据、自动化，一个应用全包。数据与密钥始终留在本机。</p>
+					<p class="hero__sub">本地优先的开源 AI 桌面助手——免注册、双击即用，编码、文档、数据、自动化全搞定。密钥存本地，数据不离开你的电脑。</p>
 					<div class="hero__cta">
 					<a class="btn btn--primary btn--lg" href="https://dl.astravia.dev/app/v0.5.64-4/Astravia-0.5.64-4-arm64.dmg" target="_blank" rel="noopener">
 							下载星轨
@@ -170,10 +170,10 @@
 		<div class="marquee" aria-hidden="true">
 			<div class="marquee__track">
 				<ul class="marquee__list">
-					<li>编码</li><li>文档</li><li>数据</li><li>自动化</li><li>批量任务</li><li>定时任务</li><li>SQL 工作台</li><li>插件</li><li>MCP</li><li>知识库</li><li>UI 设计</li><li>本地优先</li>
+					<li>编码</li><li>文档</li><li>数据</li><li>自动化</li><li>批量任务</li><li>定时任务</li><li>SQL 工作台</li><li>MCP</li><li>知识库</li><li>设计画布</li><li>本地优先</li>
 				</ul>
 				<ul class="marquee__list">
-					<li>编码</li><li>文档</li><li>数据</li><li>自动化</li><li>批量任务</li><li>定时任务</li><li>SQL 工作台</li><li>插件</li><li>MCP</li><li>知识库</li><li>UI 设计</li><li>本地优先</li>
+					<li>编码</li><li>文档</li><li>数据</li><li>自动化</li><li>批量任务</li><li>定时任务</li><li>SQL 工作台</li><li>MCP</li><li>知识库</li><li>设计画布</li><li>本地优先</li>
 				</ul>
 			</div>
 		</div>
@@ -434,7 +434,7 @@
 				<header class="section__head reveal">
 					<p class="section__kicker">核心能力</p>
 					<h2 class="section__title">一个应用，八项能力。</h2>
-					<p class="section__lead">对话、数据库、批量任务与扩展能力，在同一窗口协作——无需额外客户端，不依赖外部服务。</p>
+					<p class="section__lead">对话、数据库、自动化——全在同一桌面端，无需额外客户端，不依赖任何云服务。</p>
 				</header>
 
 				<div class="cards">
@@ -773,15 +773,15 @@
 						</div>
 					</details>
 					<details class="faq__item">
-						<summary>支持哪些模型？</summary>
+					<summary>必须联网才能用吗？</summary>
 						<div class="faq__body">
-							<p>内置 Claude、OpenAI、DeepSeek、Kimi、Gemini、Grok、Qwen、Z.ai 等预设，也支持任何 OpenAI 兼容端点——包括 Ollama、vLLM、LM Studio 等本地推理。只需要你自己的 Key。</p>
+								<p>不需要。联网只发生在你配置的范围内：不配置服务商 Key 就不会有推理请求；使用本地推理端点可以完全离线。</p>
 						</div>
 					</details>
 					<details class="faq__item">
-						<summary>必须联网才能用吗？</summary>
+					<summary>数据安全有保障吗？</summary>
 						<div class="faq__body">
-							<p>不需要。联网只发生在你配置的范围内：不配置服务商 Key 就不会有推理请求；使用本地推理端点可以完全离线。</p>
+								<p>有保障。所有数据默认存储在本机 <code>~/.astravia</code>，密钥存系统钥匙串；无登录、无遥测、无崩溃上报，网络请求仅限你主动配置的服务商推理和插件。</p>
 						</div>
 					</details>
 					<details class="faq__item">
@@ -791,9 +791,9 @@
 						</div>
 					</details>
 					<details class="faq__item">
-						<summary>星轨的独立自研是指什么？</summary>
+					<summary>支持本地推理吗？</summary>
 						<div class="faq__body">
-							<p>星轨是完全独立自研的开源项目，不依赖任何既有产品代码。Agent 内核与桌面宿主均由我们自主设计与维护，并持续独立演进。</p>
+								<p>支持。Ollama、vLLM、LM Studio 等本地推理服务均可通过 OpenAI 兼容端点接入——只要模型支持 chat 接口即可，配好地址和 Key 即可完全离线使用。</p>
 						</div>
 					</details>
 				</div>
@@ -807,7 +807,7 @@
 			<header class="section__head reveal">
 				<p class="section__kicker">下载</p>
 				<h2 class="section__title">获取星轨。</h2>
-				<p class="section__lead">macOS / Windows / Linux 免费下载，双击即用，无需注册。</p>
+					<p class="section__lead">免费 · 开源 · Apache-2.0 · 双击即装，无需注册账号。</p>
 			</header>
 			<div class="download-embed" id="downloadEmbed">
 				<div class="download-theater">
@@ -835,7 +835,7 @@
 					</svg>
 					<div class="dl-content">
 						<h2 class="dl__title" id="dlTitle">下载</h2>
-						<p class="dl__desc" id="dlDesc">我们会检测你的设备并推荐合适的版本。点击即可下载，或通过下方选择其他平台。</p>
+						<p class="dl__desc" id="dlDesc">自动检测你的设备，点一下直接下载。macOS / Windows / Linux 均免费，无需注册。</p>
 						<div class="dl__primary-wrap">
 							<a class="dl__primary" id="dlPrimary" href="https://dl.astravia.dev/app/v0.5.64-4/Astravia-0.5.64-4-arm64.dmg" target="_blank" rel="noopener"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><span id="dlPrimaryText">macOS Apple 芯片版</span></a>
 							<p class="dl__version" id="dlPrimaryVersion">v0.5.64-4 · DMG</p>
