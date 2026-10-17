@@ -3,9 +3,11 @@ name: Deploy Website to Cloudflare Pages
 description: |
   构建官网（Vite + TypeScript 静态站），用 wrangler 部署到 Cloudflare Pages。
   触发时机：
-  1. release.published 事件 → upload-release-to-r2 完成后，自动部署官网
+  1. push 到 main 分支（任何 main 变更都重建官网）
   2. workflow_dispatch 手动触发
-  3. push 到 main 分支（任何 main 变更都重建官网）
+  3. release.published 事件
+  4. desktop-release 在 R2 上传成功后以 workflow_call 调用，`ref` 指向它刚推的
+     版本号分支——先把官网换成用户点得到的版本，合并留给人工
 
 on:
   push:
@@ -15,6 +17,13 @@ on:
       - ".github/workflows/deploy-website.yml"
   release:
     types: [published]
+  workflow_call:
+    inputs:
+      ref:
+        description: "Git ref to build (default: the ref that triggered the caller)"
+        type: string
+        required: false
+        default: ""
   workflow_dispatch:
 
 permissions:
@@ -34,6 +43,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
 
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
