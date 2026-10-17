@@ -1,10 +1,9 @@
-import { CanvasAddon } from "@xterm/addon-canvas";
 import { FitAddon } from "@xterm/addon-fit";
 import { SerializeAddon } from "@xterm/addon-serialize";
 import { Unicode11Addon } from "@xterm/addon-unicode11";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import { WebglAddon } from "@xterm/addon-webgl";
-import { Terminal } from "@xterm/xterm";
+import { type IDisposable, Terminal } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
 import { pathBasename } from "@shared/lib/utils";
 import { useAtom } from "jotai";
@@ -16,6 +15,7 @@ import { useBottomPanelInstance } from "../registry/instance-context";
 import { detectWebgl2Support, selectTerminalRenderer } from "./select-terminal-renderer";
 import { claimTerminalLaunch, readTerminalLaunchPayload } from "./terminal-launch";
 import { buildTerminalTheme, createDocumentCssVariableReader } from "./terminal-theme";
+import { teardownTerminal } from "./terminal-teardown";
 
 /** xterm 自己的回滚历史；主进程那份尾部缓冲只负责补断连期间的输出，不是历史。 */
 const SCROLLBACK = 5000;
@@ -67,6 +67,7 @@ export function TerminalSurface(): JSX.Element {
 		let disposed = false;
 		let terminalId: string | null = null;
 		let contextLost = false;
+		let rendererAddon: IDisposable | null = null;
 		const cleanups: Array<() => void> = [];
 
 		const terminal = new Terminal({
@@ -100,17 +101,16 @@ export function TerminalSurface(): JSX.Element {
 			isActiveLeaf: activeRef.current,
 			contextLost,
 		});
+		// 非活动格保持 xterm 内置的 DOM 渲染器，不再加载 canvas addon。
 		if (renderer === "webgl") {
 			const webgl = new WebglAddon();
-			// 丢上下文不处理的话整个终端永久黑屏，必须当场降级。
+			rendererAddon = webgl;
+			// 丢上下文不处理的话整个终端永久黑屏：丢掉 addon 后 xterm 会自动退回内置渲染器。
 			webgl.onContextLoss(() => {
 				contextLost = true;
 				webgl.dispose();
-				if (!disposed) terminal.loadAddon(new CanvasAddon());
 			});
 			terminal.loadAddon(webgl);
-		} else {
-			terminal.loadAddon(new CanvasAddon());
 		}
 
 		/** 只有容器有真实尺寸时才 fit：折叠时容器高度是 0，fit 会算出 0 行并抛。 */
@@ -243,7 +243,7 @@ export function TerminalSurface(): JSX.Element {
 			disposed = true;
 			for (const cleanup of cleanups) cleanup();
 			if (terminalId) void window.astravia.terminal.close(terminalId);
-			terminal.dispose();
+			teardownTerminal(terminal, rendererAddon);
 		};
 	}, [cwd, tabId, t]);
 

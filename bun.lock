@@ -100,7 +100,6 @@
         "@silvia-odwyer/photon-node": "^0.3.4",
         "@tanstack/react-router": "^1.130.15",
         "@types/adm-zip": "^0.5.8",
-        "@xterm/addon-canvas": "^0.7.0",
         "@xterm/addon-fit": "^0.11.0",
         "@xterm/addon-serialize": "^0.14.0",
         "@xterm/addon-unicode11": "^0.9.0",
@@ -2980,8 +2979,6 @@
     "@wdio/xvfb": ["@wdio/xvfb@9.32.0", "https://registry.npmmirror.com/@wdio/xvfb/-/xvfb-9.32.0.tgz", { "dependencies": { "@wdio/logger": "9.29.1" } }, "sha512-K1DL05PngTMKY8mkzMNYpKNqZNPTrdJheuvTeWwwYlm4Yn9hLc8V3hw6EDsuEYw4cyEyiVeukLbLOEW+AhvqVw=="],
 
     "@xmldom/xmldom": ["@xmldom/xmldom@0.8.15", "https://registry.npmmirror.com/@xmldom/xmldom/-/xmldom-0.8.15.tgz", {}, "sha512-/5NV/vDALVFDXgLmfsy9TRCBlKwO2LNBFzpzvb9iIj+jR+eSc6DLYYvVOdivT/jm7MtU6TebYuRmzEOI7w40UA=="],
-
-    "@xterm/addon-canvas": ["@xterm/addon-canvas@0.7.0", "https://registry.npmmirror.com/@xterm/addon-canvas/-/addon-canvas-0.7.0.tgz", { "peerDependencies": { "@xterm/xterm": "^5.0.0" } }, "sha512-LF5LYcfvefJuJ7QotNRdRSPc9YASAVDeoT5uyXS/nZshZXjYplGXRECBGiznwvhNL2I8bq1Lf5MzRwstsYQ2Iw=="],
 
     "@xterm/addon-fit": ["@xterm/addon-fit@0.11.0", "https://registry.npmmirror.com/@xterm/addon-fit/-/addon-fit-0.11.0.tgz", {}, "sha512-jYcgT6xtVYhnhgxh3QgYDnnNMYTcf8ElbxxFzX0IZo+vabQqSPAjC3c1wJrKB5E19VwQei89QCiZZP86DCPF7g=="],
 

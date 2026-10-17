@@ -70,21 +70,18 @@ describe("selectTerminalRenderer", () => {
 		const base = { hasWebgl2: true, hardwareAccelerated: true };
 
 		expect(selectTerminalRenderer({ ...base, isActiveLeaf: true })).toBe("webgl");
-		expect(selectTerminalRenderer({ ...base, isActiveLeaf: false })).toBe("canvas");
+		// 非活动格交给 xterm 内置的 DOM 渲染器：canvas addon 只有面向 xterm 5 的版本，会在释放时崩溃。
+		expect(selectTerminalRenderer({ ...base, isActiveLeaf: false })).toBe("dom");
 	});
 
-	it("拿不到 webgl2 或关了硬件加速时一律 canvas", () => {
-		expect(selectTerminalRenderer({ hasWebgl2: false, hardwareAccelerated: true, isActiveLeaf: true })).toBe(
-			"canvas",
-		);
-		expect(selectTerminalRenderer({ hasWebgl2: true, hardwareAccelerated: false, isActiveLeaf: true })).toBe(
-			"canvas",
-		);
+	it("拿不到 webgl2 或关了硬件加速时一律内置渲染器", () => {
+		expect(selectTerminalRenderer({ hasWebgl2: false, hardwareAccelerated: true, isActiveLeaf: true })).toBe("dom");
+		expect(selectTerminalRenderer({ hasWebgl2: true, hardwareAccelerated: false, isActiveLeaf: true })).toBe("dom");
 	});
 
 	it("丢过一次上下文就不再回 WebGL", () => {
 		expect(
 			selectTerminalRenderer({ hasWebgl2: true, hardwareAccelerated: true, isActiveLeaf: true, contextLost: true }),
-		).toBe("canvas");
+		).toBe("dom");
 	});
 });
