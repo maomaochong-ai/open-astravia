@@ -10,7 +10,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FRAME_READY_EXPRESSION, framePrepareScript } from "../src/canvas/offscreen-raster";
 
-type PageWindow = Window & { __astraviaDesignPainted?: string | null };
+type PageWindow = Window & { __astraviaDesignPainted?: string | null; __astraviaDesignBuildFailed?: string | null };
 
 let posted: unknown[];
 let frames: FrameRequestCallback[];
@@ -45,6 +45,7 @@ beforeEach(() => {
 afterEach(() => {
 	vi.restoreAllMocks();
 	(window as PageWindow).__astraviaDesignPainted = undefined;
+	(window as PageWindow).__astraviaDesignBuildFailed = undefined;
 	(window as Window & { __astraviaDesignNavFrom?: string }).__astraviaDesignNavFrom = undefined;
 });
 
@@ -147,5 +148,25 @@ describe("frame ready expression", () => {
 		document.body.appendChild(image);
 		expect(ready()).toBe(false);
 		image.remove();
+	});
+
+	it("gives up waiting on a frame that reported a build failure", () => {
+		// 抛错的帧永远不会提交，绘制信号也就永远不来；旧行为会耗满宿主超时，
+		// 画布上留的是「无预览」而不是「构建失败」。
+		showing("/detail", null);
+		(window as PageWindow).__astraviaDesignBuildFailed = "detail";
+		expect(ready()).toBe(true);
+
+		// 上一帧的失败不能被当成这一帧的。
+		showing("/cart", null);
+		expect(ready()).toBe(false);
+	});
+
+	it("does not accept a failure recorded before the frame switch landed", () => {
+		window.history.replaceState({ key: "k-cart" }, "", "/cart");
+		(window as PageWindow).__astraviaDesignBuildFailed = "detail";
+		run(framePrepareScript("detail"));
+		window.history.replaceState({ key: "k-cart" }, "", "/detail");
+		expect(ready()).toBe(false);
 	});
 });
