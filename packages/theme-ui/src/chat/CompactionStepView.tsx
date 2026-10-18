@@ -20,8 +20,8 @@ export interface CompactionStepViewProps {
 }
 
 const STATUS_ICON: Record<CompactionStepViewProps["status"], string> = {
-	running: "icon-[mdi--compress] animate-pulse text-sky-500/80 dark:text-sky-400/80",
-	success: "icon-[mdi--compress] text-sky-500 dark:text-sky-400",
+	running: "icon-[mdi--compress] animate-pulse text-primary/80",
+	success: "icon-[mdi--compress] text-primary",
 	error: "icon-[solar--danger-circle-linear] text-destructive/70",
 	skipped: "icon-[mdi--skip-next-circle-outline] text-muted-foreground/60",
 };
@@ -53,31 +53,31 @@ export function CompactionStepView({
 	const autoExpand = status === "running" && hasSummary;
 	const open = hasSummary && (autoExpand || expanded || exportMode);
 	return (
-		<div className="min-w-0 w-full" data-compaction-step={status}>
+		<div className="compaction-step min-w-0 w-full" data-compaction-step={status}>
 			<button
 				type="button"
 				disabled={!hasSummary}
 				aria-expanded={open}
 				data-export-toggle={hasSummary ? panelId : undefined}
 				onClick={() => (onToggle ? onToggle() : setUncontrolled((value) => !value))}
-				className="inline-flex max-w-full min-w-0 items-center gap-1.5 rounded-lg px-1.5 py-1 text-left transition-colors enabled:hover:bg-sky-500/10"
+				className="inline-flex max-w-full min-w-0 items-center gap-1.5 rounded-lg px-1.5 py-1 text-left transition-colors enabled:hover:bg-primary/10"
 			>
 				<span className={`h-3.5 w-3.5 shrink-0 ${STATUS_ICON[status]}`} aria-hidden="true" />
 				<span
-					className={`min-w-0 truncate text-[13px] ${
+					className={`min-w-0 truncate text-[0.8125rem] ${
 						status === "running"
 							? "tool-call-shimmer-text"
 							: status === "error"
 								? "text-destructive/80"
 								: status === "skipped"
 									? "text-muted-foreground/70"
-									: "text-sky-600/90 dark:text-sky-300/85"
+									: "text-primary"
 					}`}
 				>
 					{label}
 				</span>
 				{detail ? (
-					<span className="shrink-0 text-[12px] text-muted-foreground/50 tabular-nums">{detail}</span>
+					<span className="shrink-0 text-[0.75rem] text-muted-foreground/50 tabular-nums">{detail}</span>
 				) : null}
 				{hasSummary ? (
 					<span
@@ -88,8 +88,8 @@ export function CompactionStepView({
 			</button>
 			{hasSummary || status === "running" ? (
 				<CollapsePanel open={open} id={panelId} exportPanel={exportMode} hidden={exportMode && !expanded}>
-					<div className="ml-4 border-sky-500/25 border-l pb-1 pl-3">
-						<div className="max-h-72 overflow-y-auto break-words py-1 text-[12px] leading-relaxed text-muted-foreground/80">
+					<div className="ml-4 border-primary/25 border-l pb-1 pl-3">
+						<div className="compaction-summary max-h-72 overflow-y-auto break-words py-1 text-muted-foreground/80">
 							{summary === undefined ? null : renderSummary ? (
 								renderSummary(summary)
 							) : (

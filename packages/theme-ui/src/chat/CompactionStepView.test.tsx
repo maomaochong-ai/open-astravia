@@ -58,4 +58,21 @@ describe("CompactionStepView", () => {
 		expect(markup).toContain("**BOLD** SUMMARY");
 		expect(markup).not.toContain("whitespace-pre-wrap");
 	});
+
+	it("marks the summary panel so the host can rescale it to the panel rhythm", () => {
+		// 摘要里的 Markdown 元素各自带绝对 text-[Npx]（特异性 0,1,0），父级字号进不去；
+		// 所以宿主要靠这两个类名挂容器查询与 0,1,1 的后代字号规则。
+		const markup = renderToStaticMarkup(
+			<CompactionStepView
+				status="success"
+				label="Context compacted"
+				summary="## earlier work"
+				expanded
+				renderSummary={(summary) => <div>{summary}</div>}
+			/>,
+		);
+		expect(markup).toContain("compaction-step");
+		expect(markup).toContain("compaction-summary");
+		expect(markup).not.toContain("text-[12px]");
+	});
 });
