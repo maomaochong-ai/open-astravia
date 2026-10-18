@@ -74,6 +74,27 @@ export function emptySessionInputDraft(): SessionInputDraft {
 	return { text: "", segments: [], appshot: null };
 }
 
+/** 把一段文本接回当前输入草稿：队列消息「撤回编辑」用。
+ *
+ * 草稿非空时另起一行追加，不覆盖用户正在写的内容；写入后同时落盘到当前作用域，
+ * 保证切走再回来文本还在。
+ */
+export function appendToSessionInputDraft(text: string): void {
+	if (!text) return;
+	const store = getDefaultStore();
+	const current = store.get(inputValueAtom);
+	const trimmed = current.trimEnd();
+	const next = trimmed.length === 0 ? text : `${trimmed}\n${text}`;
+	const draft: SessionInputDraft = {
+		text: next,
+		segments: parseInputSegments(next).segments,
+		appshot: store.get(appshotAttachmentAtom),
+	};
+	applySessionInputDraft(draft);
+	const key = store.get(activeInputDraftKeyAtom);
+	if (key) persistSessionInputDraft(key, draft);
+}
+
 export function captureSessionInputDraft(): SessionInputDraft {
 	const store = getDefaultStore();
 	return {

@@ -98,7 +98,8 @@
 			"progress": "{{done}} of {{total}} done",
 			"statusDone": "Done",
 			"statusInProgress": "In progress",
-			"statusPending": "Pending"
+			"statusPending": "Pending",
+			"clear": "Clear list"
 		},
 		"ports": {
 			"heading": "Remote services",
@@ -452,7 +453,8 @@
 		"tooltip": {
 			"compacting": "Compacting context...",
 			"unknown": "Context window {{window}} (usage unknown)",
-			"usage": "Context {{tokens}} tokens used ({{percent}}%, {{window}} window)"
+			"usage": "Context {{tokens}} tokens used ({{percent}}%, {{window}} window)",
+			"usageWithThreshold": "Context {{tokens}} tokens used ({{percent}}%, {{window}} window); auto-compacts at {{threshold}}%"
 		},
 		"details": {
 			"title": "Context composition (latest call)",
@@ -585,6 +587,7 @@
 			"queueLabel": "Queued",
 			"queuePaused": "Last turn was interrupted — queued messages are on hold",
 			"queuePausedDesc": "Paused · {{count}} queued",
+			"queueRecall": "Edit in composer",
 			"queueResume": "Resume sending",
 			"queueSendNow": "Send now"
 		},

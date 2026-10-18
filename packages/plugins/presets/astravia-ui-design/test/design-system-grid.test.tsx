@@ -162,3 +162,64 @@ describe("目录拿不到时的状态", () => {
 		expect(document.body.textContent).not.toContain("gallery.styles.offline.title");
 	});
 });
+
+/**
+ * 布局宽度与滚动位置都得自己造：happy-dom 没有排版，不造就永远是「宽度 0、全量渲染」，
+ * 窗口化写得再对也测不出来。
+ */
+function stubWallLayout(top: number): void {
+	vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(1072);
+	vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
+		top,
+		bottom: top + 1000,
+		left: 0,
+		right: 1072,
+		width: 1072,
+		height: 1000,
+		x: 0,
+		y: top,
+		toJSON: () => ({}),
+	} as DOMRect);
+}
+
+describe("风格墙窗口化", () => {
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it("只铺视口附近的行，不把整墙八十多套全挂上", () => {
+		setDesignSystems(Array.from({ length: 40 }, (_, index) => system(`s${index}`, `S${index}`)));
+		stubWallLayout(0);
+		render(<DesignSystemGrid busy={false} onPick={() => {}} />);
+		const mounted = tiles();
+		// 1072px 宽做三列 → 行高 276px；视口 800px 加下上各一行 ≈ 5 行 15 张。
+		expect(mounted.length).toBeGreaterThan(0);
+		expect(mounted.length).toBeLessThanOrEqual(21);
+		expect(mounted[0].getAttribute("aria-label")).toBe("gallery.styles.view:S0");
+	});
+
+	it("向下滚后换成后面的行，首行不再挂载", async () => {
+		setDesignSystems(Array.from({ length: 40 }, (_, index) => system(`s${index}`, `S${index}`)));
+		stubWallLayout(0);
+		render(<DesignSystemGrid busy={false} onPick={() => {}} />);
+		expect(tiles()[0].getAttribute("aria-label")).toBe("gallery.styles.view:S0");
+
+		// 滚过 10 行：宫格顶已经在视口上方 2760px。
+		vi.mocked(HTMLElement.prototype.getBoundingClientRect).mockReturnValue({
+			top: -2760,
+			bottom: -1760,
+		} as DOMRect);
+		await act(async () => {
+			window.dispatchEvent(new Event("scroll"));
+			// 滚动回调合到下一帧（rAF），等它落地再断言。
+			await new Promise((resolve) => setTimeout(resolve, 80));
+		});
+
+		const mounted = tiles();
+		// 首行早就没挂载了，而且窗口仍然只有几行：不是把整份换成另一堆。
+		const firstIndex = Number(mounted[0].getAttribute("aria-label")?.replace("gallery.styles.view:S", ""));
+		expect(firstIndex).toBeGreaterThan(6);
+		expect(firstIndex).toBeLessThanOrEqual(30);
+		expect(mounted.length).toBeLessThanOrEqual(21);
+	});
+});

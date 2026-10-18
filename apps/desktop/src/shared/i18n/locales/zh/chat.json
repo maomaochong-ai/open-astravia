@@ -98,7 +98,8 @@
 			"progress": "已完成 {{done}} / {{total}}",
 			"statusDone": "已完成",
 			"statusInProgress": "进行中",
-			"statusPending": "待办"
+			"statusPending": "待办",
+			"clear": "清空清单"
 		},
 		"ports": {
 			"heading": "远端服务",
@@ -452,7 +453,8 @@
 		"tooltip": {
 			"compacting": "正在压缩上下文...",
 			"unknown": "上下文窗口 {{window}}（使用量未知）",
-			"usage": "上下文已使用 {{tokens}} tokens（{{percent}}%，{{window}} 窗口）"
+			"usage": "上下文已使用 {{tokens}} tokens（{{percent}}%，{{window}} 窗口）",
+			"usageWithThreshold": "上下文已使用 {{tokens}} tokens（{{percent}}%，{{window}} 窗口），达到 {{threshold}}% 自动压缩"
 		},
 		"details": {
 			"title": "上下文构成（最近一次调用）",
@@ -585,6 +587,7 @@
 			"queueLabel": "队列",
 			"queuePaused": "上一轮已中断，排队消息暂停发送",
 			"queuePausedDesc": "已暂停 · {{count}} 条待发",
+			"queueRecall": "撤回到输入框",
 			"queueResume": "继续发送",
 			"queueSendNow": "立即发送"
 		},

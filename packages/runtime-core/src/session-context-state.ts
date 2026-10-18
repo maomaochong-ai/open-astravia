@@ -18,6 +18,8 @@ export interface SessionContextState {
 		readonly percent: number | null;
 		readonly tokens: number | null;
 		readonly contextWindow: number;
+		/** 自动压缩触发线（token）；宿主据此判断「是否该压缩了」，与策略同一个口径。 */
+		readonly thresholdTokens?: number;
 		readonly composition?: ContextCompositionReport;
 	};
 	readonly compaction: {

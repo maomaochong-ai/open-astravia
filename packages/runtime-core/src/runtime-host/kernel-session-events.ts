@@ -75,6 +75,7 @@ export function mapKernelEventToSessionEvents(event: KernelEvent): SessionEvent[
 					success: true,
 					reason,
 					...("tokensBefore" in record ? { tokensBefore: record.tokensBefore } : {}),
+					...(typeof record.summary === "string" ? { summary: record.summary } : {}),
 					source: "agent",
 				},
 				event.timestamp,

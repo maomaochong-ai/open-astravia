@@ -104,6 +104,11 @@ const EXPLICIT_SOURCE_TESTS = new Map([
 		"apps/desktop/e2e/updater.e2e.ts",
 		desktopTests("src/main/updater-service.test.ts", "src/main/updater-engine.test.ts"),
 	],
+	// 待办活动页是纯展示组件，行为由桌面侧的 builtin tab 测试驱动（含清空入口）。
+	[
+		"packages/theme-ui/src/activity/TodoTabPanelView.tsx",
+		desktopTests("src/renderer/domains/activity-panel/builtins/todo-tab.test.tsx"),
+	],
 ]);
 
 function workspaceForFile(file) {

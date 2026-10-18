@@ -68,10 +68,11 @@ describe("CommandPanelView built-in operation", () => {
 		render(
 			<QueueCardView
 				items={[{ id: "compact-1", kind: "context_compaction", displayText: "压缩上下文" }]}
-				labels={{ empty: "空", sendNow: "立即发送", delete: "删除" }}
+				labels={{ empty: "空", sendNow: "立即发送", delete: "删除", recall: "撤回到输入框" }}
 				onReorder={vi.fn()}
 				onSendNow={onSendNow}
 				onRemove={onRemove}
+				onRecall={vi.fn()}
 			/>,
 		);
 
@@ -90,15 +91,38 @@ describe("CommandPanelView built-in operation", () => {
 					{ id: "compact", kind: "context_compaction", displayText: "压缩上下文", canSendNow: false },
 					{ id: "after", kind: "message", displayText: "屏障后", canSendNow: false },
 				]}
-				labels={{ empty: "空", sendNow: "立即发送", delete: "删除" }}
+				labels={{ empty: "空", sendNow: "立即发送", delete: "删除", recall: "撤回到输入框" }}
 				onReorder={vi.fn()}
 				onSendNow={onSendNow}
 				onRemove={vi.fn()}
+				onRecall={vi.fn()}
 			/>,
 		);
 
 		expect(screen.getByText("屏障后").closest("button")).toBeNull();
 		fireEvent.click(screen.getByRole("button", { name: "屏障前" }));
 		expect(onSendNow).toHaveBeenCalledWith("before");
+	});
+
+	it("普通消息提供撤回入口，压缩屏障不在撤回范围内", () => {
+		const onRecall = vi.fn();
+		const { container } = render(
+			<QueueCardView
+				items={[
+					{ id: "m1", kind: "message", displayText: "改一下这段", canSendNow: false },
+					{ id: "compact", kind: "context_compaction", displayText: "压缩上下文", canSendNow: false },
+				]}
+				labels={{ empty: "空", sendNow: "立即发送", delete: "删除", recall: "撤回到输入框" }}
+				onReorder={vi.fn()}
+				onSendNow={vi.fn()}
+				onRemove={vi.fn()}
+				onRecall={onRecall}
+			/>,
+		);
+
+		const recallButtons = container.querySelectorAll('button[title="撤回到输入框"]');
+		expect(recallButtons).toHaveLength(1);
+		fireEvent.click(recallButtons[0]);
+		expect(onRecall).toHaveBeenCalledWith("m1");
 	});
 });

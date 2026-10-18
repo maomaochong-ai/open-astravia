@@ -11,6 +11,8 @@ export interface TodoTabPanelModel {
 	items: TodoItem[];
 	emptyLabel: string;
 	labels: TodoTabPanelViewLabels;
+	/** 清空当前工作区里持有清单的 Runtime；空清单时面板不展示入口。 */
+	clearTodos: () => Promise<void>;
 }
 
 export function useTodoTabPanelModel(): TodoTabPanelModel {
@@ -21,6 +23,10 @@ export function useTodoTabPanelModel(): TodoTabPanelModel {
 		() => collectRuntimeItems(runtimeIds, (runtimeId) => getTodoItemsForSession(todoMap, runtimeId)),
 		[todoMap, runtimeIds],
 	);
+	const owners = useMemo(
+		() => runtimeIds.filter((runtimeId) => getTodoItemsForSession(todoMap, runtimeId).length > 0),
+		[runtimeIds, todoMap],
+	);
 
 	const labels = useMemo(
 		(): TodoTabPanelViewLabels => ({
@@ -30,13 +36,26 @@ export function useTodoTabPanelModel(): TodoTabPanelModel {
 			statusDone: t("activityPanel.todo.statusDone"),
 			statusInProgress: t("activityPanel.todo.statusInProgress"),
 			statusPending: t("activityPanel.todo.statusPending"),
+			clear: t("activityPanel.todo.clear"),
 		}),
 		[t],
 	);
+
+	// 面板状态由 session.extension 观察推回，不需要本地乐观更新。
+	const clearTodos = async (): Promise<void> => {
+		for (const runtimeId of owners) {
+			try {
+				await window.astravia.session.clearTodos(runtimeId);
+			} catch (err) {
+				console.error("[TodoTabPanel] clearTodos failed:", err);
+			}
+		}
+	};
 
 	return {
 		items,
 		emptyLabel: t("activityPanel.todo.empty"),
 		labels,
+		clearTodos,
 	};
 }

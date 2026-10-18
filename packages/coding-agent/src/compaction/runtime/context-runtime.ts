@@ -40,6 +40,7 @@ import {
 	compact,
 	DEFAULT_COMPACTION_SETTINGS,
 	estimateContextTokens,
+	getCompactThreshold,
 	prepareCompaction,
 } from "../index.js";
 import { CodingAgentAutomaticCompactionStrategy } from "./automatic-compaction-strategy.js";
@@ -306,7 +307,10 @@ export class DefaultCodingAgentContextRuntime
 	}
 
 	readUsage(contextWindow: number): CodingAgentContextUsage {
-		return this.usage.readUsage(contextWindow);
+		return {
+			...this.usage.readUsage(contextWindow),
+			thresholdTokens: getCompactThreshold(contextWindow, this.readSettings()),
+		};
 	}
 
 	publishContextComposition(report: ContextCompositionReport): void {

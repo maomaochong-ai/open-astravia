@@ -7,15 +7,19 @@ import {
 	messageQueuePausedBySessionAtom,
 	setQueueForSessionAtom,
 } from "@shared/store/message-queue-atoms";
+import { appendToSessionInputDraft } from "@shared/store/session-input-draft";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { focusInputEditor } from "../components/input-bar/editor/inputEditorHandle";
 
 export interface QueueCardModel {
 	items: QueueCardItem[];
 	labels: QueueCardViewLabels;
 	onReorder: (orderedIds: readonly string[]) => void;
 	onRemove: (id: string) => void;
+	/** 撤回输入框：条目出队 + 文本回到草稿，可再次编辑后重发。 */
+	onRecall: (id: string) => void;
 	paused: QueueCardPausedBanner | undefined;
 }
 
@@ -62,11 +66,30 @@ export function useQueueCardModel(runtimeId: string): QueueCardModel {
 		[fullItems, runtimeId, setQueue],
 	);
 
+	const onRecall = useCallback(
+		(id: string) => {
+			const target = fullItems.find((item) => item.id === id);
+			// 压缩屏障不是用户写的文本，撤回没东西可编辑，直接当删除处理。
+			if (!target || target.kind === "context_compaction") return;
+			setQueue({ runtimeId, items: fullItems.filter((item) => item.id !== id) });
+			void window.astravia.session.removeQueuedMessage(runtimeId, id).catch((err) => {
+				// 出队失败就不要再改草稿，否则同一句话会同时出现在队列与输入框。
+				console.warn("[useQueueCardModel] recall failed", err);
+				return;
+			});
+			appendToSessionInputDraft(target.displayText);
+			// 撤回的目的是继续改，落字后直接把焦点送回编辑器，省掉一次点击。
+			focusInputEditor();
+		},
+		[fullItems, runtimeId, setQueue],
+	);
+
 	const labels = useMemo<QueueCardViewLabels>(
 		() => ({
 			empty: t("inputBar.drawer.queueEmpty"),
 			sendNow: t("inputBar.drawer.queueSendNow"),
 			delete: t("inputBar.drawer.queueDelete"),
+			recall: t("inputBar.drawer.queueRecall"),
 		}),
 		[t],
 	);
@@ -89,5 +112,5 @@ export function useQueueCardModel(runtimeId: string): QueueCardModel {
 		[isPaused, runtimeId, t],
 	);
 
-	return { items, labels, onReorder, onRemove, paused };
+	return { items, labels, onRecall, onReorder, onRemove, paused };
 }

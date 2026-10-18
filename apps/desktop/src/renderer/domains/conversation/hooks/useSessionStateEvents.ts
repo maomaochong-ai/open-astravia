@@ -125,6 +125,9 @@ export function useSessionStateEvents({ activeSessionRef, syncDurableHistory }: 
 						percent: event.state.usage.percent,
 						contextTokens: event.state.usage.tokens,
 						contextWindow: event.state.usage.contextWindow,
+						...(event.state.usage.thresholdTokens === undefined
+							? {}
+							: { compactionThresholdTokens: event.state.usage.thresholdTokens }),
 						...(event.state.usage.composition ? { composition: event.state.usage.composition } : {}),
 					});
 					setIsCompacting(event.state.compaction.status === "running");
@@ -168,12 +171,15 @@ export function useSessionStateEvents({ activeSessionRef, syncDurableHistory }: 
 					if (sessionPath && event.contextComposition) {
 						writeCachedContextComposition(sessionPath, event.contextComposition);
 					}
-					setContextUsage({
+					setContextUsage((previous) => ({
 						percent: event.contextPercent ?? null,
 						contextTokens: event.contextTokens ?? null,
 						contextWindow: event.contextWindow ?? 0,
 						...(event.contextComposition ? { composition: event.contextComposition } : {}),
-					});
+						...(previous?.compactionThresholdTokens === undefined
+							? {}
+							: { compactionThresholdTokens: previous.compactionThresholdTokens }),
+					}));
 					return;
 				}
 				case "compaction.start":
@@ -185,11 +191,14 @@ export function useSessionStateEvents({ activeSessionRef, syncDurableHistory }: 
 						const sessionPath = activeSessionRef.current?.sessionPath;
 						if (sessionPath) clearCachedContextComposition(sessionPath);
 						if (event.contextWindow !== undefined) {
-							setContextUsage({
+							setContextUsage((previous) => ({
 								percent: event.contextPercent ?? null,
 								contextTokens: event.contextTokens ?? null,
-								contextWindow: event.contextWindow,
-							});
+								contextWindow: event.contextWindow ?? 0,
+								...(previous?.compactionThresholdTokens === undefined
+									? {}
+									: { compactionThresholdTokens: previous.compactionThresholdTokens }),
+							}));
 						}
 						if (
 							event.reason === "manual" &&

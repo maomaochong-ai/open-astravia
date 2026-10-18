@@ -19,6 +19,7 @@ export function OnboardingApp(): JSX.Element {
 	const [permissions, setPermissions] = useState<HelperPermissions | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [dragError, setDragError] = useState(false);
+	const [requesting, setRequesting] = useState(false);
 	const autoCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
 	const refresh = useCallback(async () => {
@@ -78,6 +79,21 @@ export function OnboardingApp(): JSX.Element {
 		void window.astraviaOnboarding?.openPane(kind);
 	}, []);
 
+	// requestPermissions 走 helper 自己的 --request-permissions：只有 helper 这个独立 TCC
+	// 主体能触发系统授权框并把自己的条目注册进列表，主进程代劳没有这个效果。
+	const handleRequest = useCallback(async () => {
+		const bridge = window.astraviaOnboarding;
+		if (!bridge) return;
+		setDragError(false);
+		setRequesting(true);
+		try {
+			setPermissions(await bridge.requestPermissions());
+		} finally {
+			setRequesting(false);
+			setLoading(false);
+		}
+	}, []);
+
 	const handleDragStart = useCallback(() => {
 		setDragError(false);
 		window.astraviaOnboarding?.startDrag();
@@ -124,6 +140,29 @@ export function OnboardingApp(): JSX.Element {
 					onOpenPane={() => handleOpenPane("screen-recording")}
 				/>
 			</div>
+
+			{!allGranted && (
+				<>
+					<button
+						type="button"
+						onClick={() => void handleRequest()}
+						disabled={requesting || loading}
+						className="mt-4 flex w-full shrink-0 items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-[13px] font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-60"
+					>
+						<span
+							className={
+								requesting
+									? "icon-[mdi--loading] h-4 w-4 animate-spin"
+									: "icon-[mdi--shield-key-outline] h-4 w-4"
+							}
+						/>
+						{requesting ? t("onboardingRequesting") : t("onboardingRequest")}
+					</button>
+					<p className="mt-2 shrink-0 text-center text-[11px] text-muted-foreground">
+						{t("onboardingRequestHint")}
+					</p>
+				</>
+			)}
 
 			<DragTarget iconUrl="./icon.png" hint={t("onboardingDragHint")} onDragStart={handleDragStart} />
 

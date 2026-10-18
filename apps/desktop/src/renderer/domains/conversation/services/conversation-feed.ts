@@ -21,6 +21,7 @@ import {
 	withToolCallStarted,
 } from "./chat-service";
 import { classifyChatError } from "./classifyChatError";
+import { toCompactionDisplaySummary } from "./compaction-display-summary";
 import { mergeHistorySnapshot, withStableRenderKey } from "./conversation-feed-history";
 import { conversationAssistantMessageId } from "./conversation-message-identity";
 
@@ -433,9 +434,13 @@ function applyCompactionEvent(
 		if (event.cancelled) {
 			blocks.splice(index, 1);
 		} else if (event.success) {
+			// 结束事件自带完整摘要（prefire 命中时全程没有 delta）——有它就以它为准，
+			// 没有才沿用流式拼起来的部分，否则已完成的那一行永远是空的、展不开。
+			const settled = event.summary === undefined ? running.summary : toCompactionDisplaySummary(event.summary);
 			blocks[index] = {
 				...running,
 				status: "success",
+				...(settled ? { summary: settled } : {}),
 				...(event.tokensBefore === undefined ? {} : { tokensBefore: event.tokensBefore }),
 			};
 		} else {

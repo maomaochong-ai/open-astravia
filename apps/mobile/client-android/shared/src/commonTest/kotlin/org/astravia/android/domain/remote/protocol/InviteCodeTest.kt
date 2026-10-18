@@ -14,9 +14,9 @@ class InviteCodeTest {
     @Test
     fun matchesTheDesktopsVector() {
         // Pinned in packages/remote-control/test/invite-code.test.ts.
-        assertEquals("oe8sfyla3JaUnRAk_OqKI8DJvl48e8IfsfQ1SK6dMS4", InviteCode.boxId("K7Q29MXD"))
+        assertEquals("AIzYpE6hEuxglZ5qrcI7j4hNYxnoJ7k8wuS_7Xkw2fI", InviteCode.boxId("K7Q29MXD"))
         val envelope = InviteCode.seal("astravia://pair?v=2", "K7Q29MXD", "482913", nonce)
-        assertEquals(InviteCode.Envelope("AAECAwQFBgcICQoLDA0ODxAREhMUFRYX", "7v0nMbc3Dzwj2xiCL-L0UvCWmf7PDe03MwwUW09QZzU"), envelope)
+        assertEquals(InviteCode.Envelope("AAECAwQFBgcICQoLDA0ODxAREhMUFRYX", "9oG5xQFb_HDcxQ5WOoC6vB6_5Qaoo9_BiFnmcwAEnRG8b9U"), envelope)
         assertEquals("astravia://pair?v=2", InviteCode.open(envelope, "K7Q29MXD", "482913"))
         assertFailsWith<RemoteProtocolException> { InviteCode.open(envelope, "K7Q29MXD", "482914") }
     }

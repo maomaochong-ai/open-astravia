@@ -17,7 +17,8 @@ const devServerUrl = process.env.ASTRAVIA_DESKTOP_DEV_URL;
 const onboardingPreloadPath = join(resDir, "preload/onboarding.js");
 
 const ONBOARDING_WIDTH = 440;
-const ONBOARDING_HEIGHT = 480;
+// 高度包含新增的「立即请求授权」按钮与其说明，避免 440×N 下内容被裁。
+const ONBOARDING_HEIGHT = 540;
 
 let onboardingWindow: BrowserWindow | null = null;
 

@@ -49,6 +49,9 @@ export class SessionContextStateProjection {
 				percent: dynamic.contextPercent,
 				tokens: dynamic.contextTokens ?? null,
 				contextWindow: dynamic.contextWindow,
+				...(dynamic.compactionThresholdTokens === undefined
+					? {}
+					: { thresholdTokens: dynamic.compactionThresholdTokens }),
 				...(dynamic.contextComposition ? { composition: dynamic.contextComposition } : {}),
 			},
 			compaction: {

@@ -220,6 +220,11 @@ export interface CompactionEndEvent extends SessionEventBase {
 	contextTokens?: number | null;
 	contextWindow?: number;
 	errorMessage?: string;
+	/**
+	 * 成功压缩生成的摘要。`compaction.delta` 只在实时生成摘要时才有增量（prefire 命中或扩展
+	 * 接管时没有），结束事件必须自带摘要，否则「已完成」的那一行拿不到内容、也展不开。
+	 */
+	summary?: string;
 	failure?: RuntimeFailure;
 }
 
@@ -328,6 +333,11 @@ export interface SessionStateSnapshot {
 	contextTokens?: number | null;
 	/** Total context window size in tokens */
 	contextWindow: number;
+	/**
+	 * 自动压缩的触发线（token）。由 Coding Agent 的压缩策略给出，Runtime 只透传；
+	 * 宿主用它与 `contextTokens` 比对，让「环形变红」和「真的会压缩」是同一件事。
+	 */
+	compactionThresholdTokens?: number;
 	/** Latest model-call context composition, when a call has been prepared. */
 	contextComposition?: ContextCompositionReport;
 	/** 当前激活（模型可见）的工具名集合。renderer 据此让输入栏 badge 跟随工具 scope。 */

@@ -795,6 +795,7 @@ export class TurnPipeline {
 					success: true,
 					reason: record.reason,
 					tokensBefore: record.tokensBefore,
+					summary: record.summary,
 					source: "runtime-core",
 				});
 			}

@@ -173,6 +173,11 @@ export interface ContextUsageData {
 	contextTokens?: number | null;
 	/** Context window size in tokens */
 	contextWindow: number;
+	/**
+	 * 自动压缩触发线（token），由 Runtime 的压缩策略下发。环形指示用它判断「是不是该压缩了」，
+	 * 不再用一个写死的百分比，否则大窗口模型会在红色区间里长期什么也不做。
+	 */
+	compactionThresholdTokens?: number;
 	/** Latest privacy-safe model-call composition report. */
 	composition?: ContextCompositionReport;
 }

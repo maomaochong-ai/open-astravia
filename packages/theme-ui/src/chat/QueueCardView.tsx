@@ -13,6 +13,8 @@ export interface QueueCardViewLabels {
 	empty: string;
 	sendNow: string;
 	delete: string;
+	/** 把这条消息撤回输入框再编辑。 */
+	recall: string;
 }
 
 /** abort/error 后队列暂停时的提示条：说明原因并提供「继续发送」入口。 */
@@ -28,6 +30,8 @@ export interface QueueCardViewProps {
 	onReorder: (orderedIds: readonly string[]) => void;
 	onSendNow: (id: string) => void;
 	onRemove: (id: string) => void;
+	/** 撤回输入框：队列条目出队，文本回到编辑器里可继续改。 */
+	onRecall: (id: string) => void;
 	paused?: QueueCardPausedBanner;
 }
 
@@ -37,6 +41,7 @@ export function QueueCardView({
 	onReorder,
 	onSendNow,
 	onRemove,
+	onRecall,
 	paused,
 }: QueueCardViewProps): JSX.Element {
 	// Reorder.Group needs a mutable array of the same value identities.
@@ -78,8 +83,10 @@ export function QueueCardView({
 						item={item}
 						sendNowTitle={labels.sendNow}
 						deleteTitle={labels.delete}
+						recallTitle={labels.recall}
 						onSendNow={onSendNow}
 						onRemove={onRemove}
+						onRecall={onRecall}
 					/>
 				))}
 			</Reorder.Group>
@@ -91,14 +98,18 @@ function QueueItemRow({
 	item,
 	sendNowTitle,
 	deleteTitle,
+	recallTitle,
 	onSendNow,
 	onRemove,
+	onRecall,
 }: {
 	item: QueueCardItem;
 	sendNowTitle: string;
 	deleteTitle: string;
+	recallTitle: string;
 	onSendNow: (id: string) => void;
 	onRemove: (id: string) => void;
+	onRecall: (id: string) => void;
 }): JSX.Element {
 	const dragControls = useDragControls();
 
@@ -135,6 +146,17 @@ function QueueItemRow({
 					className="min-w-0 flex-1 truncate text-left text-[12px] leading-snug text-foreground"
 				>
 					{item.displayText}
+				</button>
+			)}
+			{item.kind === "context_compaction" ? null : (
+				<button
+					type="button"
+					onClick={() => onRecall(item.id)}
+					title={recallTitle}
+					aria-label={recallTitle}
+					className="flex shrink-0 items-center text-muted-foreground/50 opacity-0 transition-all hover:text-foreground group-hover:opacity-100"
+				>
+					<span className="icon-[solar--pen-2-linear] text-sm" />
 				</button>
 			)}
 			<button

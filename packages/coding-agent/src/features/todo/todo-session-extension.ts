@@ -111,7 +111,7 @@ export function createCodingAgentTodoSessionExtension(
 							? [
 									{
 										kind: "agent-feature" as const,
-										feature: createCodingAgentTodoRuntimeFeature(toolRegistration),
+										feature: createCodingAgentTodoRuntimeFeature(runtime, toolRegistration),
 									},
 								]
 							: []),

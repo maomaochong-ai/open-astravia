@@ -647,10 +647,12 @@ textarea:focus {
 }
 
 /* Markdown body: readable text should use text-selection cursor. */
-/* 防 vibrancy 合成层裁剪：显式声明文字容器不裁剪，优化字形渲染。 */
+/* 防 vibrancy 合成层裁剪：显式声明文字容器不裁剪。
+ * 这里曾同时写着 `text-rendering: optimizeLegibility`。它在 Chromium 上会打开字距微调与
+ * 合字重算，而流式输出每来一个 token 都要重排一次整段——长回答期间滚动发滞的主要来源
+ * 就在这儿。渲染质量上的差别肉眼难辨，稳定性上差别很大，所以只保留不裁剪。 */
 .markdown-body {
 	overflow: visible;
-	text-rendering: optimizeLegibility;
 }
 .markdown-body,
 .markdown-body :where(p, li, blockquote, td, th, h1, h2, h3, h4, h5, h6, span, strong, em, code, pre),

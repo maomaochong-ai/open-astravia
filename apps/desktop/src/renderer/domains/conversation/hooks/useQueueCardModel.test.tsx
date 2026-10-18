@@ -3,10 +3,16 @@
 import { act, renderHook } from "@testing-library/react";
 import { initI18n } from "@shared/i18n";
 import { isCompactingAtom } from "@shared/store/atoms";
-import { messageQueueBySessionAtom } from "@shared/store/message-queue-atoms";
-import { createStore, Provider } from "jotai";
+import { inputValueAtom } from "@shared/store/chat-atoms";
+import {
+	getQueueForSession,
+	messageQueueBySessionAtom,
+	setQueueForSessionAtom,
+} from "@shared/store/message-queue-atoms";
+import { appendToSessionInputDraft } from "@shared/store/session-input-draft";
+import { createStore, getDefaultStore, Provider } from "jotai";
 import type { ReactNode } from "react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { useQueueCardModel } from "./useQueueCardModel";
 
 initI18n();
@@ -44,5 +50,42 @@ describe("useQueueCardModel compaction barrier", () => {
 
 		act(() => store.set(isCompactingAtom, true));
 		expect(result.current.items.find((item) => item.id === "before")?.canSendNow).toBe(false);
+	});
+
+	it("撤回把消息移出队列并把原文写回输入草稿", () => {
+		const removeQueuedMessage = vi.fn(async () => true);
+		vi.stubGlobal("astravia", { session: { removeQueuedMessage } });
+
+		// 生产环境没有 jotai Provider，草稿工具直接写默认 store，测试必须跟着用同一份。
+		const store = getDefaultStore();
+		store.set(
+			messageQueueBySessionAtom,
+			new Map([
+				[
+					"session-1",
+					[
+						{ id: "keep", behavior: "followUp", kind: "message", displayText: "留下" },
+						{ id: "m1", behavior: "followUp", kind: "message", displayText: "把这句话改一下" },
+					],
+				],
+			]),
+		);
+		const { result } = renderHook(() => useQueueCardModel("session-1"));
+
+		act(() => result.current.onRecall("m1"));
+
+		expect(removeQueuedMessage).toHaveBeenCalledWith("session-1", "m1");
+		expect(getQueueForSession(store.get(messageQueueBySessionAtom), "session-1").map((item) => item.id)).toEqual(["keep"]);
+		expect(store.get(inputValueAtom)).toBe("把这句话改一下");
+	});
+
+	it("撤回时草稿已有内容则另起一行追加，不覆盖正在写的内容", () => {
+		vi.stubGlobal("astravia", { session: { removeQueuedMessage: vi.fn(async () => true) } });
+		const store = getDefaultStore();
+		store.set(inputValueAtom, "我正在写");
+
+		act(() => appendToSessionInputDraft("排队那句"));
+
+		expect(store.get(inputValueAtom)).toBe("我正在写\n排队那句");
 	});
 });

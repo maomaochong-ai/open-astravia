@@ -1533,7 +1533,12 @@ describe("DefaultCodingAgentContextRuntime", () => {
 			resolveApiKey: () => "key",
 		});
 		runtime.initialize(documentFromMessages([userMessage("request", 1), assistantMessage("old", 125, 2)]));
-		expect(runtime.readUsage(1_000)).toEqual({ tokens: 125, contextWindow: 1_000, percent: 12.5 });
+		expect(runtime.readUsage(1_000)).toEqual({
+			tokens: 125,
+			contextWindow: 1_000,
+			percent: 12.5,
+			thresholdTokens: 800,
+		});
 
 		const message = assistantMessage("response", 250, 1);
 		const event: StoredSessionEvent = {
@@ -1546,7 +1551,12 @@ describe("DefaultCodingAgentContextRuntime", () => {
 
 		await runtime.observe(event, new AbortController().signal);
 
-		expect(runtime.readUsage(1_000)).toEqual({ tokens: 250, contextWindow: 1_000, percent: 25 });
+		expect(runtime.readUsage(1_000)).toEqual({
+			tokens: 250,
+			contextWindow: 1_000,
+			percent: 25,
+			thresholdTokens: 800,
+		});
 	});
 });
 
