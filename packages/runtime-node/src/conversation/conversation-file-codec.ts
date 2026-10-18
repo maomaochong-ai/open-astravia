@@ -92,7 +92,9 @@ export function appendConversationFileText(
 	sessionId: string,
 ): void {
 	if (text.length === 0) return;
-	const parsed = parseRecords(text, sessionId);
+	// 没有文件头时本段从第 1 行开始；有头时已经消费过“头 + bodyCount 条记录”。
+	const startLine = accumulator.header === undefined ? 1 : accumulator.bodyCount + 2;
+	const parsed = parseRecords(text, sessionId, startLine);
 	let body = parsed;
 	if (!accumulator.header) {
 		const [header, ...rest] = parsed;
@@ -251,8 +253,11 @@ export function conversationFileFromAccumulator(
 	};
 }
 
+const validatedSeedGraphs = new WeakSet<object>();
+
 /**
- * 种子图只由首个种子记录决定，校验一次即可；重复校验会让每次读取都白跑一遍。
+ * 种子图只由首个种子记录决定。记录对象在一次解析内恒定，按对象记住校验结果就能做到
+ * “校验一次”，而不是每次投影都重跑一遍 O(entries) 的图校验。
  */
 function withInitialSeed(
 	seed: ConversationSeedRecord | undefined,
@@ -265,7 +270,7 @@ function withInitialSeed(
 	importSeed?: ConversationImportSeedRecord;
 } {
 	const initialSeed = seed ?? continuationSeed ?? importSeed;
-	if (initialSeed) {
+	if (initialSeed && !validatedSeedGraphs.has(initialSeed)) {
 		try {
 			assertConversationDocumentGraph(
 				initialSeed.entries as readonly ConversationDocumentEntry[],
@@ -274,6 +279,7 @@ function withInitialSeed(
 		} catch (error) {
 			throw corruptConversation(sessionId, "invalid conversation seed graph", error);
 		}
+		validatedSeedGraphs.add(initialSeed);
 	}
 	return {
 		...(seed === undefined ? {} : { seed }),
@@ -427,20 +433,22 @@ export function createDocumentEntryReference(
 	};
 }
 
-function parseRecords(text: string, sessionId: string): unknown[] {
+function parseRecords(text: string, sessionId: string, startLine: number): unknown[] {
 	if (!text.endsWith("\n")) {
 		throw corruptConversation(sessionId, "file does not end with a complete record");
 	}
 	const lines = text.slice(0, -1).split(/\r?\n/);
-	if (lines.some((line) => line.length === 0)) {
-		throw corruptConversation(sessionId, "file contains an empty record");
+	const empty = lines.findIndex((line) => line.length === 0);
+	if (empty >= 0) {
+		throw corruptConversation(sessionId, `file contains an empty record at line ${startLine + empty}`);
 	}
 	return lines.map((line, index) => {
 		try {
 			const parsed: unknown = JSON.parse(line);
 			return parsed;
 		} catch (error) {
-			throw corruptConversation(sessionId, `invalid JSON at line ${index + 1}`, error);
+			// 行号必须是文件里的绝对行号：增量解析每次只看新增的一段，局部行号会把用户引错位置。
+			throw corruptConversation(sessionId, `invalid JSON at line ${startLine + index}`, error);
 		}
 	});
 }

@@ -609,7 +609,9 @@ export class FileConversationRepository
 		const chunk = buffer.subarray(0, filled).toString("utf8");
 		// 读取区间总是从记录边界开始；尾部不完整时由解析器报既有错误，不静默截断。
 		appendConversationFileText(accumulator, chunk, sessionId);
-		return offset + Buffer.byteLength(chunk, "utf8");
+		// 偏移按实际读到的字节推进：重编码后的字节数在尾部多字节字符被截断时会多算 1–2 字节，
+		// 下次就会从记录中间开始解析，把截断伪装成文件损坏。
+		return offset + filled;
 	}
 
 	/**

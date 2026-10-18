@@ -166,4 +166,21 @@ describe("FileConversationRepository incremental reads", () => {
 		await writeFile(path, intact, "utf8");
 		expect((await repository.load(sessionId)).version).toBe(4);
 	});
+
+	it("reports corruption at absolute file lines, not offsets inside the appended chunk", async () => {
+		const { repository } = await createRepository();
+		const sessionId = "absolute-line-session";
+		await repository.create({ sessionId, createdAt: 100 });
+		await repository.append(sessionId, 0, turn(sessionId, "turn-1", "first"));
+		// 先把缓存推到文件末尾，后面新增的那一段才是“增量”。
+		expect((await repository.load(sessionId)).version).toBe(4);
+
+		// 文件里已有 1 行文件头 + 4 行记录，下面这行损坏内容是第 6 行。
+		const path = repository.resolveConversationPath(sessionId);
+		await appendFile(path, "not-json\n", "utf8");
+
+		await expect(repository.load(sessionId)).rejects.toThrow(/invalid JSON at line 6/);
+
+		await repository.close();
+	});
 });
