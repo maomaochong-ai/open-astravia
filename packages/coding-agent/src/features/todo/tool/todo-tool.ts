@@ -1,6 +1,7 @@
 import type { RuntimeToolDefinition } from "@astravia/runtime-core/kernel";
 import { ToolCallDescriptionSchema } from "@astravia/runtime-tools/coding";
 import { type Static, Type } from "@sinclair/typebox";
+import { formatTodoItems } from "../todo-format.js";
 import { TODO_TOOL_DESCRIPTION } from "./description.js";
 
 export const TodoToolInputSchema = Type.Object({
@@ -123,12 +124,7 @@ export function createTodoTool(options: TodoToolOptions): RuntimeToolDefinition<
 }
 
 function formatItems(store: TodoToolStore): string {
-	const items = store.getAll();
-	if (items.length === 0) return "No todo items.";
-	const statusIcon: Record<TodoToolStatus, string> = { pending: "[ ]", in_progress: "[~]", done: "[x]" };
-	const lines = items.map((item) => `${statusIcon[item.status]} #${item.id} ${item.content}`);
-	lines.push("", `Progress: ${items.filter((item) => item.status === "done").length}/${items.length} completed`);
-	return lines.join("\n");
+	return formatTodoItems(store.getAll());
 }
 
 function result(action: string, text: string) {

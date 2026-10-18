@@ -39,7 +39,6 @@ import {
 	pendingSessionOpenAtom,
 	pendingSessionSendAtom,
 	pluginInputActionsAtom,
-	projectsAtom,
 	promptAttachmentAtom,
 	promptSuggestionsAtom,
 	pushSessionInputHistory,
@@ -49,7 +48,6 @@ import {
 	type SendMessageOptions,
 	type SendMessageResult,
 	selectedModelAtom,
-	todoItemsBySessionAtom,
 } from "@shared/store/atoms";
 import { getDefaultStore, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useRef } from "react";
@@ -81,17 +79,12 @@ function modelKeyToParts(key: string | null | undefined): { provider: string; id
 	return { provider: key.slice(0, separator), id: key.slice(separator + 1) };
 }
 
-function getProjects() {
-	return getDefaultStore().get(projectsAtom);
-}
-
 export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageSenderOptions): SessionMessageSender {
 	const activeSession = useAtomValue(activeSessionAtom);
 	const [attachedImages, setAttachedImages] = useAtom(attachedImagesAtom);
 	const [mentionedFiles, setMentionedFiles] = useAtom(mentionedFilesAtom);
 	const appshotAttachment = useAtomValue(appshotAttachmentAtom);
 	const [selectedModel] = useAtom(selectedModelAtom);
-	const todoItemsMap = useAtomValue(todoItemsBySessionAtom);
 	const batchProjects = useAtomValue(batchProjectsAtom);
 	const defaultConversationCwd = useAtomValue(defaultConversationCwdAtom);
 	const setActiveSessionStreaming = useSetAtom(activeSessionStreamingAtom);
@@ -107,8 +100,6 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 	appshotRef.current = appshotAttachment;
 	const selectedModelRef = useRef(selectedModel);
 	selectedModelRef.current = selectedModel;
-	const todoItemsMapRef = useRef(todoItemsMap);
-	todoItemsMapRef.current = todoItemsMap;
 	const batchProjectsRef = useRef(batchProjects);
 	batchProjectsRef.current = batchProjects;
 	const defaultConversationCwdRef = useRef(defaultConversationCwd);
@@ -460,23 +451,9 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 				return;
 			}
 
-			// 非批量任务项目：若该 session 已有 todo 且全部 done，在发起下一个
-			// prompt 前先清空 todo 列表，让用户开启新一轮工作时面板回到干净状态。
-			// 批量任务依赖严格 todo 机制，不在此清空；scene 等 lock 状态后端会自行拒绝。
-			// streaming 入队时不清：当前正在跑的回合仍拥有这些 todo。
-			if (!streaming) {
-				const projectType = getProjects().find((p) => p.cwd === session.cwd)?.type;
-				if (projectType !== "batch") {
-					const items = todoItemsMapRef.current.get(session.runtimeId) ?? [];
-					if (items.length > 0 && items.every((i) => i.status === "done")) {
-						try {
-							await window.astravia.session.clearTodos(session.runtimeId);
-						} catch (err) {
-							console.error("[useSessionManager.sendMessage] clearTodos failed:", err);
-						}
-					}
-				}
-			}
+			// 「全部完成就清空」在 Todo Runtime 于新回合开始时统一处理，见
+			// packages/coding-agent/src/features/todo/todo-tool-feature.ts。放在这里只能覆盖
+			// 本入口，排队入队、编辑重发与插件路径都会漏掉。
 
 			// 新会话页上选的计划模式要赶在第一条消息之前落到 Runtime；落不上就不发，
 			// 不能把「先出计划」静默降级成直接执行。
