@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { appendFile, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { appendFile, type FileHandle, mkdir, open, rename, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import {
 	applyConversationDocumentCommand,
@@ -45,12 +45,17 @@ import {
 	isConversationSnapshot,
 } from "@astravia/runtime-storage/conversation";
 import {
+	appendConversationFileText,
+	applyConversationRecords,
+	type ConversationFileParseAccumulator,
+	conversationFileFromAccumulator,
 	conversationFromFile,
+	createConversationFileParseAccumulator,
 	createDocumentEntryReference,
 	documentFromFile,
 	encodeConversationSessionId,
+	initialConversationDocument,
 	type ParsedConversationFile,
-	parseConversationFile,
 	serializeConversationLine,
 	validateConversationEvent,
 } from "./conversation-file-codec.js";
@@ -58,8 +63,28 @@ import { acquireConversationFileLock } from "./conversation-file-lock.js";
 import { publishConversationFileExclusive } from "./conversation-file-publisher.js";
 import { nodeErrorCode } from "./node-error-code.js";
 
+/**
+ * 缓存的源文件字节上限。长会话（数十 MB）每解析一次就要秒级，
+ * 但也不能无上限驻留，因此超出后按访问顺序淘汰。
+ */
+const MAX_CACHED_CONVERSATION_BYTES = 64 * 1024 * 1024;
+
 export interface FileConversationRepositoryOptions {
 	readonly rootDir: string;
+}
+
+interface CachedConversationFile {
+	readonly ino: number;
+	readonly mtimeMs: number;
+	/** 已解析到的文件字节偏移；总是落在完整记录边界上。 */
+	readonly offset: number;
+	readonly accumulator: ConversationFileParseAccumulator;
+	file: ParsedConversationFile;
+	document: ConversationDocument | undefined;
+	/** document 已折叠到的 records 数量。 */
+	documentRecords: number;
+	conversation: StoredConversation | undefined;
+	conversationRecords: number;
 }
 
 export class FileConversationRepository
@@ -67,6 +92,12 @@ export class FileConversationRepository
 {
 	private readonly rootDir: string;
 	private readonly queues = new Map<string, Promise<void>>();
+	/**
+	 * 会话文件只追加，但每次文档命令都要读全文。长会话下这份重复解析会吃满单核，
+	 * 因此按会话缓存解析累加器与已折叠的文档，只处理新增字节。
+	 */
+	private readonly parsedFiles = new Map<string, CachedConversationFile>();
+	private cachedBytes = 0;
 	private closed = false;
 
 	constructor(options: FileConversationRepositoryOptions) {
@@ -124,9 +155,10 @@ export class FileConversationRepository
 	async readDocument(sessionId: string): Promise<ConversationDocument> {
 		this.assertOpen();
 		return this.exclusive(sessionId, () =>
-			this.withFileLock(sessionId, async () =>
-				documentFromFile(sessionId, await this.readConversationFile(sessionId)),
-			),
+			this.withFileLock(sessionId, async () => {
+				const file = await this.readConversationFile(sessionId);
+				return this.documentFor(sessionId, file);
+			}),
 		);
 	}
 
@@ -162,7 +194,7 @@ export class FileConversationRepository
 						`Conversation ${sessionId} uses read-only schema version ${file.header.schemaVersion}`,
 					);
 				}
-				const document = documentFromFile(sessionId, file);
+				const document = this.documentFor(sessionId, file);
 				if (expectedRevision !== null && document.revision !== expectedRevision) {
 					throw new ConversationStorageError(
 						CONVERSATION_STORAGE_ERROR_CODES.DOCUMENT_VERSION_CONFLICT,
@@ -225,7 +257,7 @@ export class FileConversationRepository
 					);
 				}
 
-				const sourceDocument = documentFromFile(input.sourceSessionId, sourceFile);
+				const sourceDocument = this.documentFor(input.sourceSessionId, sourceFile);
 				const carried = buildContinuationEntries(sourceDocument);
 				if (!carried) {
 					throw new ConversationStorageError(
@@ -372,7 +404,7 @@ export class FileConversationRepository
 				for (const event of events) validateConversationEvent(sessionId, event);
 				if (events.length === 0) return { version: expectedVersion };
 
-				let document = documentFromFile(sessionId, file);
+				let document = this.documentFor(sessionId, file);
 				const records = events.map((event, index) => {
 					const sequence = expectedVersion + index + 1;
 					if (file.header.schemaVersion !== CONVERSATION_SCHEMA_VERSION) {
@@ -451,18 +483,60 @@ export class FileConversationRepository
 		if (this.closed) return;
 		this.closed = true;
 		await Promise.all(this.queues.values());
+		this.parsedFiles.clear();
+		this.cachedBytes = 0;
 	}
 
 	private async readConversation(sessionId: string): Promise<StoredConversation> {
-		return conversationFromFile(sessionId, await this.readConversationFile(sessionId));
+		const file = await this.readConversationFile(sessionId);
+		const cached = this.parsedFiles.get(sessionId);
+		if (cached && cached.file === file && cached.conversation && cached.conversationRecords === file.records.length) {
+			return cached.conversation;
+		}
+		const conversation = conversationFromFile(sessionId, file, this.documentFor(sessionId, file));
+		if (cached && cached.file === file) {
+			cached.conversation = conversation;
+			cached.conversationRecords = file.records.length;
+		}
+		return conversation;
 	}
 
+	/**
+	 * 缓存按源文件字节数封顶，超出后按访问顺序淘汰，避免长会话把内存吃光。
+	 */
+	private rememberParsedFile(sessionId: string, entry: CachedConversationFile): void {
+		const previous = this.parsedFiles.get(sessionId);
+		if (previous) this.cachedBytes -= previous.offset;
+		this.parsedFiles.delete(sessionId);
+		this.parsedFiles.set(sessionId, entry);
+		this.cachedBytes += entry.offset;
+		while (this.parsedFiles.size > 1 && this.cachedBytes > MAX_CACHED_CONVERSATION_BYTES) {
+			const oldest = this.parsedFiles.keys().next();
+			if (oldest.done) break;
+			this.forgetParsedFile(oldest.value);
+		}
+	}
+
+	private forgetParsedFile(sessionId: string): void {
+		const entry = this.parsedFiles.get(sessionId);
+		if (!entry) return;
+		this.parsedFiles.delete(sessionId);
+		this.cachedBytes -= entry.offset;
+	}
+
+	/**
+	 * 按会话缓存解析结果，只读取上次偏移之后的新增字节。
+	 *
+	 * 会话文件是只追加的：同 inode 且长度只增、mtime 未变时可直接复用；
+	 * 长度增长时只解析新增的完整行；长度回退或 inode 变化（重写/迁移）时重新全量解析。
+	 */
 	private async readConversationFile(sessionId: string): Promise<ParsedConversationFile> {
-		let text: string;
+		let handle: FileHandle;
 		try {
-			text = await readFile(this.conversationPath(sessionId), "utf8");
+			handle = await open(this.conversationPath(sessionId), "r");
 		} catch (error) {
 			if (nodeErrorCode(error) === "ENOENT") {
+				this.forgetParsedFile(sessionId);
 				throw new ConversationStorageError(
 					CONVERSATION_STORAGE_ERROR_CODES.NOT_FOUND,
 					`Conversation not found: ${sessionId}`,
@@ -472,7 +546,85 @@ export class FileConversationRepository
 			throw error;
 		}
 
-		return parseConversationFile(text, sessionId);
+		try {
+			const stats = await handle.stat();
+			const cached = this.parsedFiles.get(sessionId);
+			// 只在文件确实增长时才复用累加器：同尺寸但 mtime 变了意味着内容被原地重写。
+			const appendOnly =
+				cached !== undefined &&
+				cached.ino === stats.ino &&
+				stats.size >= cached.offset &&
+				(stats.size > cached.offset || stats.mtimeMs === cached.mtimeMs);
+			if (appendOnly && stats.size === cached.offset) {
+				this.rememberParsedFile(sessionId, cached);
+				return cached.file;
+			}
+			const accumulator = appendOnly ? cached.accumulator : createConversationFileParseAccumulator();
+			const offset = appendOnly ? cached.offset : 0;
+			try {
+				const nextOffset = await this.consumeConversationBytes(handle, accumulator, offset, stats.size, sessionId);
+				const file = conversationFileFromAccumulator(accumulator, sessionId);
+				this.rememberParsedFile(sessionId, {
+					ino: stats.ino,
+					mtimeMs: stats.mtimeMs,
+					offset: nextOffset,
+					accumulator,
+					file,
+					document: appendOnly ? cached.document : undefined,
+					documentRecords: appendOnly ? cached.documentRecords : 0,
+					conversation: appendOnly ? cached.conversation : undefined,
+					conversationRecords: appendOnly ? cached.conversationRecords : -1,
+				});
+				return file;
+			} catch (error) {
+				// 累加器可能已在失败前部分推进，不能留下半成品给下一次读取。
+				this.forgetParsedFile(sessionId);
+				throw error;
+			}
+		} finally {
+			await handle.close();
+		}
+	}
+
+	/**
+	 * 逐块读取新增字节并追加到累加器；每块都落在记录边界上，不完整尾行交由解析器报错。
+	 */
+	private async consumeConversationBytes(
+		handle: FileHandle,
+		accumulator: ConversationFileParseAccumulator,
+		offset: number,
+		size: number,
+		sessionId: string,
+	): Promise<number> {
+		if (size <= offset) return offset;
+		const buffer = Buffer.allocUnsafe(size - offset);
+		let filled = 0;
+		while (filled < buffer.length) {
+			const { bytesRead } = await handle.read(buffer, filled, buffer.length - filled, offset + filled);
+			if (bytesRead === 0) break;
+			filled += bytesRead;
+		}
+		if (filled === 0) return offset;
+		const chunk = buffer.subarray(0, filled).toString("utf8");
+		// 读取区间总是从记录边界开始；尾部不完整时由解析器报既有错误，不静默截断。
+		appendConversationFileText(accumulator, chunk, sessionId);
+		return offset + Buffer.byteLength(chunk, "utf8");
+	}
+
+	/**
+	 * 文档投影是记录上的纯折叠，只补算新增记录，避免每次读取都重放全量历史。
+	 */
+	private documentFor(sessionId: string, file: ParsedConversationFile): ConversationDocument {
+		const cached = this.parsedFiles.get(sessionId);
+		if (!cached || cached.file !== file) {
+			// 缓存没有对应本次解析结果时退化为整份折叠。
+			return documentFromFile(sessionId, file);
+		}
+		if (cached.document && cached.documentRecords === file.records.length) return cached.document;
+		const base = cached.document ?? initialConversationDocument(sessionId, file);
+		cached.document = applyConversationRecords(sessionId, base, file.records.slice(cached.documentRecords));
+		cached.documentRecords = file.records.length;
+		return cached.document;
 	}
 
 	private async writeFork(
@@ -480,7 +632,7 @@ export class FileConversationRepository
 		entryId: string,
 		file: ParsedConversationFile,
 	): Promise<ConversationDocumentForkResult> {
-		const document = documentFromFile(sessionId, file);
+		const document = this.documentFor(sessionId, file);
 		const selectedEntry = conversationDocumentEntry(document, entryId);
 		const text = extractConversationEntryText(selectedEntry);
 		if (

@@ -45,38 +45,93 @@ export interface ParsedConversationFile {
 	readonly eventRecords: readonly NormalizedReadConversationEventRecord[];
 }
 
-export function parseConversationFile(text: string, sessionId: string): ParsedConversationFile {
-	const records = parseRecords(text, sessionId);
-	const [header, ...body] = records;
-	if (!isConversationFileHeader(header) || header.sessionId !== sessionId) {
-		throw corruptConversation(sessionId, "missing or mismatched header");
-	}
+/**
+ * 会话文件的增量解析状态。
+ *
+ * 会话文件是只追加的 JSONL：桌面端长会话可达数十 MB，而每次文档命令都要读取全文。
+ * 累加器让调用方只在文件增长时解析新增的行，一次落盘后无需重新解析整份历史。
+ */
+export interface ConversationFileParseAccumulator {
+	header: ReadConversationFileHeader | undefined;
+	seed: ConversationSeedRecord | undefined;
+	continuationSeed: ConversationContinuationSeedRecord | undefined;
+	importSeed: ConversationImportSeedRecord | undefined;
+	readonly records: ConversationBodyRecord[];
+	readonly eventRecords: NormalizedReadConversationEventRecord[];
+	readonly documentEntryIds: Set<string>;
+	expectedEventSequence: number;
+	bodyCount: number;
+}
 
-	const eventRecords: NormalizedReadConversationEventRecord[] = [];
-	const conversationRecords: ConversationBodyRecord[] = [];
-	const documentEntryIds = new Set<string>();
-	let seed: ConversationSeedRecord | undefined;
-	let continuationSeed: ConversationContinuationSeedRecord | undefined;
-	let importSeed: ConversationImportSeedRecord | undefined;
-	let expectedEventSequence = 1;
-	for (let index = 0; index < body.length; index += 1) {
-		const record = body[index];
+export function createConversationFileParseAccumulator(): ConversationFileParseAccumulator {
+	return {
+		header: undefined,
+		seed: undefined,
+		continuationSeed: undefined,
+		importSeed: undefined,
+		records: [],
+		eventRecords: [],
+		documentEntryIds: new Set<string>(),
+		expectedEventSequence: 1,
+		bodyCount: 0,
+	};
+}
+
+export function parseConversationFile(text: string, sessionId: string): ParsedConversationFile {
+	const accumulator = createConversationFileParseAccumulator();
+	appendConversationFileText(accumulator, text, sessionId);
+	return conversationFileFromAccumulator(accumulator, sessionId);
+}
+
+/**
+ * 把一段以换行结尾的完整记录追加进累加器；跨行不变量（序号、重复 id）沿用原有校验。
+ */
+export function appendConversationFileText(
+	accumulator: ConversationFileParseAccumulator,
+	text: string,
+	sessionId: string,
+): void {
+	if (text.length === 0) return;
+	const parsed = parseRecords(text, sessionId);
+	let body = parsed;
+	if (!accumulator.header) {
+		const [header, ...rest] = parsed;
+		if (!isConversationFileHeader(header) || header.sessionId !== sessionId) {
+			throw corruptConversation(sessionId, "missing or mismatched header");
+		}
+		accumulator.header = header;
+		body = rest;
+	}
+	appendConversationFileRecords(accumulator, body, sessionId);
+}
+
+function appendConversationFileRecords(
+	accumulator: ConversationFileParseAccumulator,
+	body: readonly unknown[],
+	sessionId: string,
+): void {
+	const header = accumulator.header;
+	if (!header) throw corruptConversation(sessionId, "missing or mismatched header");
+	const base = accumulator.bodyCount;
+	for (let local = 0; local < body.length; local += 1) {
+		const index = base + local;
+		const record = body[local];
 		if (isConversationSeedRecord(record)) {
 			if (
 				header.schemaVersion !== CONVERSATION_SCHEMA_VERSION ||
 				index !== 0 ||
-				seed ||
-				continuationSeed ||
-				importSeed
+				accumulator.seed ||
+				accumulator.continuationSeed ||
+				accumulator.importSeed
 			) {
 				throw corruptConversation(sessionId, `invalid seed at line ${index + 2}`);
 			}
-			seed = record;
+			accumulator.seed = record;
 			for (const entry of record.entries) {
-				if (documentEntryIds.has(entry.id)) {
+				if (accumulator.documentEntryIds.has(entry.id)) {
 					throw corruptConversation(sessionId, `duplicate seed entry at line ${index + 2}`);
 				}
-				documentEntryIds.add(entry.id);
+				accumulator.documentEntryIds.add(entry.id);
 			}
 			continue;
 		}
@@ -84,20 +139,20 @@ export function parseConversationFile(text: string, sessionId: string): ParsedCo
 			if (
 				header.schemaVersion !== CONVERSATION_SCHEMA_VERSION ||
 				index !== 0 ||
-				seed ||
-				continuationSeed ||
-				importSeed ||
+				accumulator.seed ||
+				accumulator.continuationSeed ||
+				accumulator.importSeed ||
 				header.parentSessionPath !== record.sourceSessionPath ||
 				header.parentEntryId !== record.sourceEntryId
 			) {
 				throw corruptConversation(sessionId, `invalid continuation seed at line ${index + 2}`);
 			}
-			continuationSeed = record;
+			accumulator.continuationSeed = record;
 			for (const entry of record.entries) {
-				if (documentEntryIds.has(entry.id)) {
+				if (accumulator.documentEntryIds.has(entry.id)) {
 					throw corruptConversation(sessionId, `duplicate continuation entry at line ${index + 2}`);
 				}
-				documentEntryIds.add(entry.id);
+				accumulator.documentEntryIds.add(entry.id);
 			}
 			continue;
 		}
@@ -105,18 +160,18 @@ export function parseConversationFile(text: string, sessionId: string): ParsedCo
 			if (
 				header.schemaVersion !== CONVERSATION_SCHEMA_VERSION ||
 				index !== 0 ||
-				seed ||
-				continuationSeed ||
-				importSeed
+				accumulator.seed ||
+				accumulator.continuationSeed ||
+				accumulator.importSeed
 			) {
 				throw corruptConversation(sessionId, `invalid import seed at line ${index + 2}`);
 			}
-			importSeed = record;
+			accumulator.importSeed = record;
 			for (const entry of record.entries) {
-				if (documentEntryIds.has(entry.id)) {
+				if (accumulator.documentEntryIds.has(entry.id)) {
 					throw corruptConversation(sessionId, `duplicate import entry at line ${index + 2}`);
 				}
-				documentEntryIds.add(entry.id);
+				accumulator.documentEntryIds.add(entry.id);
 			}
 			continue;
 		}
@@ -126,12 +181,12 @@ export function parseConversationFile(text: string, sessionId: string): ParsedCo
 			}
 			const entryId = documentOperationEntryId(record);
 			if (entryId) {
-				if (documentEntryIds.has(entryId)) {
+				if (accumulator.documentEntryIds.has(entryId)) {
 					throw corruptConversation(sessionId, `duplicate document entry at line ${index + 2}`);
 				}
-				documentEntryIds.add(entryId);
+				accumulator.documentEntryIds.add(entryId);
 			}
-			conversationRecords.push(record);
+			accumulator.records.push(record);
 			continue;
 		}
 		const eventRecord = readConversationEventRecord(record);
@@ -141,13 +196,13 @@ export function parseConversationFile(text: string, sessionId: string): ParsedCo
 		if (eventRecord.schemaVersion !== header.schemaVersion) {
 			throw corruptConversation(sessionId, `event schema version does not match header at line ${index + 2}`);
 		}
-		if (eventRecord.sequence !== expectedEventSequence) {
+		if (eventRecord.sequence !== accumulator.expectedEventSequence) {
 			throw corruptConversation(
 				sessionId,
-				`event sequence ${eventRecord.sequence} does not match expected ${expectedEventSequence}`,
+				`event sequence ${eventRecord.sequence} does not match expected ${accumulator.expectedEventSequence}`,
 			);
 		}
-		expectedEventSequence += 1;
+		accumulator.expectedEventSequence += 1;
 		validateConversationEvent(sessionId, eventRecord.event);
 		if (eventRecord.schemaVersion === CONVERSATION_SCHEMA_VERSION) {
 			const persistence = conversationDocumentEntryPersistence(eventRecord.event);
@@ -155,26 +210,60 @@ export function parseConversationFile(text: string, sessionId: string): ParsedCo
 				throw corruptConversation(sessionId, `event has inconsistent document entry at line ${index + 2}`);
 			}
 			if (eventRecord.documentEntry) {
-				if (documentEntryIds.has(eventRecord.documentEntry.id)) {
+				if (accumulator.documentEntryIds.has(eventRecord.documentEntry.id)) {
 					throw corruptConversation(sessionId, `duplicate document entry at line ${index + 2}`);
 				}
-				if (eventRecord.documentEntry.parentId && !documentEntryIds.has(eventRecord.documentEntry.parentId)) {
+				if (
+					eventRecord.documentEntry.parentId &&
+					!accumulator.documentEntryIds.has(eventRecord.documentEntry.parentId)
+				) {
 					throw corruptConversation(sessionId, `unknown document parent at line ${index + 2}`);
 				}
-				documentEntryIds.add(eventRecord.documentEntry.id);
+				accumulator.documentEntryIds.add(eventRecord.documentEntry.id);
 			}
 			// 隐式节点的 id 不落盘，但同样会成为后续事件的父节点，必须一并登记。
 			if (persistence === "implicit") {
 				const implicitId = nativeConversationEntryId(eventRecord.sequence);
-				if (documentEntryIds.has(implicitId)) {
+				if (accumulator.documentEntryIds.has(implicitId)) {
 					throw corruptConversation(sessionId, `duplicate document entry at line ${index + 2}`);
 				}
-				documentEntryIds.add(implicitId);
+				accumulator.documentEntryIds.add(implicitId);
 			}
 		}
-		eventRecords.push(eventRecord);
-		conversationRecords.push(eventRecord);
+		accumulator.eventRecords.push(eventRecord);
+		accumulator.records.push(eventRecord);
 	}
+	accumulator.bodyCount = base + body.length;
+}
+
+export function conversationFileFromAccumulator(
+	accumulator: ConversationFileParseAccumulator,
+	sessionId: string,
+): ParsedConversationFile {
+	const header = accumulator.header;
+	if (!header) throw corruptConversation(sessionId, "missing or mismatched header");
+	const { seed, continuationSeed, importSeed } = accumulator;
+	return {
+		header,
+		...withInitialSeed(seed, continuationSeed, importSeed, sessionId),
+		records: accumulator.records,
+		eventRecords: accumulator.eventRecords,
+	};
+}
+
+/**
+ * 种子图只由首个种子记录决定，校验一次即可；重复校验会让每次读取都白跑一遍。
+ */
+function withInitialSeed(
+	seed: ConversationSeedRecord | undefined,
+	continuationSeed: ConversationContinuationSeedRecord | undefined,
+	importSeed: ConversationImportSeedRecord | undefined,
+	sessionId: string,
+): {
+	seed?: ConversationSeedRecord;
+	continuationSeed?: ConversationContinuationSeedRecord;
+	importSeed?: ConversationImportSeedRecord;
+} {
 	const initialSeed = seed ?? continuationSeed ?? importSeed;
 	if (initialSeed) {
 		try {
@@ -186,8 +275,11 @@ export function parseConversationFile(text: string, sessionId: string): ParsedCo
 			throw corruptConversation(sessionId, "invalid conversation seed graph", error);
 		}
 	}
-
-	return { header, seed, continuationSeed, importSeed, records: conversationRecords, eventRecords };
+	return {
+		...(seed === undefined ? {} : { seed }),
+		...(continuationSeed === undefined ? {} : { continuationSeed }),
+		...(importSeed === undefined ? {} : { importSeed }),
+	};
 }
 
 function documentOperationEntryId(record: ConversationDocumentOperationRecord): string | undefined {
@@ -236,19 +328,33 @@ export function serializeConversationLine(
 	return `${JSON.stringify(value)}\n`;
 }
 
-export function conversationFromFile(sessionId: string, file: ParsedConversationFile): StoredConversation {
+export function conversationFromFile(
+	sessionId: string,
+	file: ParsedConversationFile,
+	document?: ConversationDocument,
+): StoredConversation {
 	const events = file.eventRecords.map((record) => record.event);
-	const document = documentFromFile(sessionId, file);
+	const projected = document ?? documentFromFile(sessionId, file);
 	return {
 		sessionId,
 		createdAt: file.header.createdAt,
 		version: events.length,
-		messages: selectConversationDocumentModelMessages(document),
+		messages: selectConversationDocumentModelMessages(projected),
 		events,
 	};
 }
 
 export function documentFromFile(sessionId: string, file: ParsedConversationFile): ConversationDocument {
+	return applyConversationRecords(sessionId, initialConversationDocument(sessionId, file), file.records);
+}
+
+/**
+ * 只由文件头与种子决定文档初始状态；后续记录通过 applyConversationRecords 叠加。
+ */
+export function initialConversationDocument(
+	sessionId: string,
+	file: Pick<ParsedConversationFile, "header" | "seed" | "continuationSeed" | "importSeed">,
+): ConversationDocument {
 	const identity = {
 		sessionId,
 		createdAt: file.header.createdAt,
@@ -261,35 +367,48 @@ export function documentFromFile(sessionId: string, file: ParsedConversationFile
 				}
 			: {}),
 	};
+	const initialSeed = file.seed ?? file.continuationSeed ?? file.importSeed;
+	let document = initialSeed
+		? createSeededConversationDocument(
+				identity,
+				initialSeed.entries as readonly ConversationDocumentEntry[],
+				initialSeed.activeLeafId,
+			)
+		: createEmptyConversationDocument(identity);
+	const seedName = file.seed?.name ?? file.importSeed?.name;
+	if (seedName !== undefined) {
+		document = { ...document, name: seedName };
+	}
+	return document;
+}
+
+/**
+ * 文档投影是记录上的纯折叠，因此可以从已有投影只叠加新记录。
+ */
+export function applyConversationRecords(
+	sessionId: string,
+	document: ConversationDocument,
+	records: readonly ConversationBodyRecord[],
+): ConversationDocument {
+	if (records.length === 0) return document;
 	try {
-		const initialSeed = file.seed ?? file.continuationSeed ?? file.importSeed;
-		let document = initialSeed
-			? createSeededConversationDocument(
-					identity,
-					initialSeed.entries as readonly ConversationDocumentEntry[],
-					initialSeed.activeLeafId,
-				)
-			: createEmptyConversationDocument(identity);
-		const seedName = file.seed?.name ?? file.importSeed?.name;
-		if (seedName !== undefined) {
-			document = { ...document, name: seedName };
-		}
-		for (const record of file.records) {
+		let projected = document;
+		for (const record of records) {
 			if (record.recordType === "conversation.event") {
 				const reference = record.schemaVersion === CONVERSATION_SCHEMA_VERSION ? record.documentEntry : undefined;
-				document = applyStoredEventToConversationDocument(
-					document,
+				projected = applyStoredEventToConversationDocument(
+					projected,
 					record.event,
 					record.sequence,
 					reference ?? undefined,
 				);
 				continue;
 			}
-			const result = applyConversationDocumentCommand(document, record.command, record.revision);
+			const result = applyConversationDocumentCommand(projected, record.command, record.revision);
 			if (!result.changed) throw new Error(`Document operation ${record.revision} is a persisted no-op`);
-			document = result.document;
+			projected = result.document;
 		}
-		return document;
+		return projected;
 	} catch (error) {
 		throw corruptConversation(sessionId, "invalid conversation document projection", error);
 	}
