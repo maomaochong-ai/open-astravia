@@ -68,7 +68,8 @@ describe("activity panel todo tab", () => {
 			{ wrapper: wrapperFor(["runtime-1"]) },
 		);
 
-		expect(await screen.findByText("Write the fix")).toBeTruthy();
+		// 面板是 Suspense 包裹的懒加载组件，并发跑测试时 1 秒默认超时会在挂载完成前到点。
+		expect(await screen.findByText("Write the fix", undefined, { timeout: 5_000 })).toBeTruthy();
 		expect(screen.getByText("Verify it")).toBeTruthy();
 		expect(screen.getByText("activityPanel.todo.progress")).toBeTruthy();
 
@@ -91,7 +92,7 @@ describe("activity panel todo tab", () => {
 			{ wrapper: wrapperFor(["runtime-1", "runtime-2"]) },
 		);
 
-		fireEvent.click(await screen.findByRole("button", { name: "activityPanel.todo.clear" }));
+		fireEvent.click(await screen.findByRole("button", { name: "activityPanel.todo.clear" }, { timeout: 5_000 }));
 
 		expect(CLEAR_TODOS.mock.calls).toEqual([["runtime-1"]]);
 	});
