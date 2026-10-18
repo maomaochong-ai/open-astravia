@@ -64,15 +64,17 @@ export function createModelCatalogSync<TLocal, TRemote>(deps: ModelCatalogSyncDe
 		remote: createSourceState(),
 	};
 
-	async function pull(source: ModelCatalogSource): Promise<void> {
+	/** 返回是否真的写入了目录：null 分支不能算一次成功拉取。 */
+	async function pull(source: ModelCatalogSource): Promise<boolean> {
 		if (source === "local") {
 			deps.applyLocal(await deps.loadLocal());
-			return;
+			return true;
 		}
 		const providers = await deps.loadRemote();
 		// null = 未登录：保持现状，由调用方（登出流程）负责清空。
-		if (providers === null) return;
+		if (providers === null) return false;
 		deps.applyRemote(providers);
+		return true;
 	}
 
 	function shouldSkip(state: SourceState, force: boolean, now: number): boolean {
@@ -90,7 +92,9 @@ export function createModelCatalogSync<TLocal, TRemote>(deps: ModelCatalogSyncDe
 		if (shouldSkip(state, force, deps.now())) return Promise.resolve();
 
 		const task = pull(source)
-			.then(() => {
+			.then((written) => {
+				// 没写入就不算新鲜：否则 TTL 会为一个空结果计时，过期前都不再试。
+				if (!written) return;
 				state.freshAt = deps.now();
 				state.failedAt = null;
 			})

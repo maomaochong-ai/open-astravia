@@ -121,6 +121,11 @@ describe("createModelCatalogSync", () => {
 		h.loadRemote.mockResolvedValueOnce(null);
 		await h.sync.revalidate({ sources: ["remote"] });
 		expect(h.applyRemote).not.toHaveBeenCalled();
+
+		// 没写入就没新鲜度：下一次非 force 校验会再试，而不是被 TTL 挡住。
+		h.setNow(1_000);
+		await h.sync.revalidate({ sources: ["remote"] });
+		expect(h.loadRemote).toHaveBeenCalledTimes(2);
 	});
 
 	it("invalidate 后下一次 revalidate 必定重新拉取", async () => {
