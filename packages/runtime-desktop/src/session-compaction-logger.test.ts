@@ -63,6 +63,29 @@ describe("runtime session compaction logger", () => {
 			}),
 		);
 	});
+
+	it("records policy skips as info instead of failures", () => {
+		const info = vi.fn();
+		const warn = vi.fn();
+		const observe = createRuntimeSessionCompactionLogger({ info, warn });
+		observe(
+			compactionEvent("compaction.end", 300, {
+				success: false,
+				reason: "threshold",
+				errorMessage: "compaction.skipped.noProgress",
+			}),
+		);
+
+		expect(info).toHaveBeenCalledWith(
+			"[agent-runtime] context compaction skipped",
+			expect.objectContaining({
+				reason: "threshold",
+				success: false,
+				errorMessage: "compaction.skipped.noProgress",
+			}),
+		);
+		expect(warn).not.toHaveBeenCalled();
+	});
 });
 
 function compactionEvent<TType extends "compaction.start" | "compaction.end">(
