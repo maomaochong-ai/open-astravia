@@ -1,3 +1,4 @@
+import { Button } from "@astravia-org/ui/button";
 import type { JSX } from "react";
 import {
 	selectTodoStatusSummary,
@@ -14,13 +15,16 @@ export interface TodoTabPanelViewLabels extends TodoTimelineLabels {
 	readonly headline: string;
 	/** 全部完成时的头部文案。 */
 	readonly allDone: string;
-	/** 形如「已完成 2 / 5」。 */
+	/** 清空清单按钮的文案与可访问名。 */
+	readonly clear: string;
 	readonly progress: (done: number, total: number) => string;
 }
 
 export interface TodoTabPanelViewProps {
 	readonly items: readonly TodoStatusItem[];
 	readonly emptyLabel: string;
+	/** 清空当前清单；调用方负责路由到拥有它的 Runtime。 */
+	readonly onClear?: () => void;
 	readonly labels: TodoTabPanelViewLabels;
 }
 
@@ -28,7 +32,7 @@ export interface TodoTabPanelViewProps {
  * 活动面板待办页：顶部是状态点 + 百分比 + 进度条的概览，
  * 下面是与输入栏 popover 同一套视觉的时间线清单。
  */
-export function TodoTabPanelView({ items, emptyLabel, labels }: TodoTabPanelViewProps): JSX.Element {
+export function TodoTabPanelView({ items, emptyLabel, onClear, labels }: TodoTabPanelViewProps): JSX.Element {
 	if (items.length === 0) {
 		return (
 			<div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center">
@@ -52,6 +56,19 @@ export function TodoTabPanelView({ items, emptyLabel, labels }: TodoTabPanelView
 						{Math.round(summary.percent)}
 						<span className="ml-0.5 text-[11px] font-normal text-muted-foreground">%</span>
 					</span>
+					{onClear && (
+						<Button
+							type="button"
+							variant="ghost"
+							size="icon-sm"
+							onClick={onClear}
+							aria-label={labels.clear}
+							title={labels.clear}
+							className="-mr-1.5 shrink-0 text-muted-foreground"
+						>
+							<span aria-hidden className="icon-[solar--trash-bin-minimalistic-linear] h-3.5 w-3.5" />
+						</Button>
+					)}
 				</div>
 				<TodoProgressBar percent={summary.percent} className="h-1.5" />
 				<div className="mt-1.5 text-[11px] tabular-nums text-muted-foreground">

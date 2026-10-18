@@ -98,7 +98,8 @@
 			"progress": "{{done}} of {{total}} done",
 			"statusDone": "Done",
 			"statusInProgress": "In progress",
-			"statusPending": "Pending"
+			"statusPending": "Pending",
+			"clear": "Clear list"
 		},
 		"ports": {
 			"heading": "Remote services",

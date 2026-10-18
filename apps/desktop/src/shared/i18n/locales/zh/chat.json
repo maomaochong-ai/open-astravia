@@ -98,7 +98,8 @@
 			"progress": "已完成 {{done}} / {{total}}",
 			"statusDone": "已完成",
 			"statusInProgress": "进行中",
-			"statusPending": "待办"
+			"statusPending": "待办",
+			"clear": "清空清单"
 		},
 		"ports": {
 			"heading": "远端服务",
