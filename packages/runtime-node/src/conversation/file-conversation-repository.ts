@@ -242,7 +242,9 @@ export class FileConversationRepository
 						`Conversation ${input.sourceSessionId} uses read-only schema version ${sourceFile.header.schemaVersion}`,
 					);
 				}
-				const sourceConversation = conversationFromFile(input.sourceSessionId, sourceFile);
+				// 先取得增量投影的文档，再一次性投影会话：否则 conversationFromFile 会自己再折叠一遍全量记录。
+				const sourceDocument = this.documentFor(input.sourceSessionId, sourceFile);
+				const sourceConversation = conversationFromFile(input.sourceSessionId, sourceFile, sourceDocument);
 				if (sourceConversation.version !== input.expectedVersion) {
 					throw new ConversationStorageError(
 						CONVERSATION_STORAGE_ERROR_CODES.VERSION_CONFLICT,
@@ -256,8 +258,6 @@ export class FileConversationRepository
 						`Conversation ${sourceConversation.sessionId} cannot continue inactive turn ${input.turnId}`,
 					);
 				}
-
-				const sourceDocument = this.documentFor(input.sourceSessionId, sourceFile);
 				const carried = buildContinuationEntries(sourceDocument);
 				if (!carried) {
 					throw new ConversationStorageError(
@@ -394,11 +394,12 @@ export class FileConversationRepository
 		return this.exclusive(sessionId, () =>
 			this.withFileLock(sessionId, async () => {
 				const file = await this.readConversationFile(sessionId);
-				const conversation = conversationFromFile(sessionId, file);
-				if (conversation.version !== expectedVersion) {
+				// 会话版本就是事件条数；为了拿它投影一整份 conversation（含消息数组）会在每次落盘时白跑一遍全量折叠。
+				const version = file.eventRecords.length;
+				if (version !== expectedVersion) {
 					throw new ConversationStorageError(
 						CONVERSATION_STORAGE_ERROR_CODES.VERSION_CONFLICT,
-						`Conversation ${sessionId} is at version ${conversation.version}, expected ${expectedVersion}`,
+						`Conversation ${sessionId} is at version ${version}, expected ${expectedVersion}`,
 					);
 				}
 				for (const event of events) validateConversationEvent(sessionId, event);
