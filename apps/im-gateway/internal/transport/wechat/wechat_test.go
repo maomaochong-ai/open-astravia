@@ -365,12 +365,24 @@ func TestTransport_VoiceWithSTTFallback(t *testing.T) {
 
 	h := newCaptureHandler()
 	ctx, cancel := context.WithCancel(t.Context())
-	defer cancel()
-	go tr.Start(ctx, h) //nolint:errcheck
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		tr.Start(ctx, h) //nolint:errcheck
+	}()
 
 	h.wait(t, 1)
 	if got := h.snapshot()[0].Text; got != "transcribed audio" {
 		t.Errorf("text = %q", got)
+	}
+
+	// 停稳再让测试结束：TempDir 清理与传输层还在写的文件会撞车，
+	// 上一轮发版就因此报过 "directory not empty"。
+	cancel()
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("transport did not stop after cancel")
 	}
 }
 
