@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import type { OnboardingBridge } from "@shared/onboarding-ipc";
+import type { OnboardingBridge } from "../../shared/onboarding-ipc";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
