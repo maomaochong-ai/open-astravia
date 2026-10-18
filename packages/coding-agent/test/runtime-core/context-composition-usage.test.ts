@@ -1,5 +1,6 @@
 import type { ContextCompositionReport } from "@astravia/runtime-core";
 import { describe, expect, it } from "vitest";
+import { DEFAULT_COMPACTION_SETTINGS } from "../../src/compaction/contracts.js";
 import { DefaultCodingAgentContextRuntime } from "../../src/compaction/runtime/context-runtime.js";
 import type { CodingAgentContextRuntime } from "../../src/runtime-contracts/index.js";
 
@@ -20,6 +21,8 @@ describe("CodingAgentContextRuntime context composition", () => {
 			tokens: 125,
 			contextWindow: 1_000,
 			percent: 12.5,
+			// 默认设置：max(1000 - 36000, 1000 × 80%) = 800。
+			thresholdTokens: 800,
 			composition: completed,
 		});
 		runtime.dispose();
@@ -33,6 +36,33 @@ describe("CodingAgentContextRuntime context composition", () => {
 		});
 
 		expect(runtime.readUsage(1_000).tokens).toBe(0);
+		runtime.dispose();
+	});
+
+	it("reports the automatic compaction trigger line alongside usage", () => {
+		// 环形的「变红」要与压缩决策同源：默认设置下 1M 窗口的触发线是 964000（96.4%），
+		// 而不是 90%。宿主把这个数透传给 UI，才能在它之前保持常态、之后才报警。
+		const runtime = createRuntime();
+		expect(runtime.readUsage(1_000_000).thresholdTokens).toBe(964_000);
+		runtime.dispose();
+	});
+
+	it("follows the configured compaction policy instead of a fixed percentage", () => {
+		const runtime = new DefaultCodingAgentContextRuntime({
+			hookRuntime: {
+				markSessionStart() {},
+				async runPreCompact() {
+					return emptyHookOutcome();
+				},
+				async runPostCompact() {
+					return emptyHookOutcome();
+				},
+			},
+			resolveApiKey: () => "test-key",
+			resolveSettings: () => ({ ...DEFAULT_COMPACTION_SETTINGS, reserveTokens: 1_000, minFreePercent: 10 }),
+		});
+
+		expect(runtime.readUsage(100_000).thresholdTokens).toBe(99_000);
 		runtime.dispose();
 	});
 });

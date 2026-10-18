@@ -453,7 +453,8 @@
 		"tooltip": {
 			"compacting": "Compacting context...",
 			"unknown": "Context window {{window}} (usage unknown)",
-			"usage": "Context {{tokens}} tokens used ({{percent}}%, {{window}} window)"
+			"usage": "Context {{tokens}} tokens used ({{percent}}%, {{window}} window)",
+			"usageWithThreshold": "Context {{tokens}} tokens used ({{percent}}%, {{window}} window); auto-compacts at {{threshold}}%"
 		},
 		"details": {
 			"title": "Context composition (latest call)",

@@ -115,6 +115,11 @@ export type RuntimeSessionObservationEvent = RuntimeSessionObservationBase &
 				readonly success: boolean;
 				readonly reason?: "threshold" | "overflow" | "manual";
 				readonly tokensBefore?: number;
+				/**
+				 * 摘要正文。自动压缩命中预燃时全程不会发 `compaction.delta`，只有结束事件自带全文，
+				 * UI 才能把已完成的那一行展开。安全投影（observation bridge）仍会把它剔除。
+				 */
+				readonly summary?: string;
 				readonly contextPercent?: number | null;
 				readonly contextTokens?: number | null;
 				readonly contextWindow?: number;

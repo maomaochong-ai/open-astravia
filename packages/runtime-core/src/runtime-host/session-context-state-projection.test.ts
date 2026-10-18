@@ -74,4 +74,11 @@ describe("SessionContextStateProjection", () => {
 		expect(next?.revision).toBe(1);
 		expect(next?.compaction.status).toBe("idle");
 	});
+
+	it("carries the compaction trigger line through to the published state", () => {
+		// UI 靠这个数决定「红不红」；漏透传就会退回写死的百分比。
+		const projection = new SessionContextStateProjection();
+		const state = projection.update("s1", { ...dynamic, compactionThresholdTokens: 80 }, { status: "eligible" });
+		expect(state?.usage.thresholdTokens).toBe(80);
+	});
 });

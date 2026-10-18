@@ -155,6 +155,7 @@ export function mapRuntimeSessionObservationEvent(
 				success: event.success,
 				reason: event.reason,
 				tokensBefore: event.tokensBefore,
+				...(event.summary === undefined ? {} : { summary: event.summary }),
 				...(event.contextPercent !== undefined ? { contextPercent: event.contextPercent } : {}),
 				...(event.contextTokens !== undefined ? { contextTokens: event.contextTokens } : {}),
 				...(event.contextWindow !== undefined ? { contextWindow: event.contextWindow } : {}),

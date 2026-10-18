@@ -127,7 +127,8 @@ function contextRingDetailLabels(t: Translate) {
 	} as const;
 }
 
-function buildContextRingModel(
+/** 纯函数，公开给测试：颜色/提示直接由用量与压缩阈值决定。 */
+export function buildContextRingModel(
 	binding: ContextRingBinding,
 	t: Translate,
 	details: ContextRingDetailsModel | null,
@@ -148,16 +149,33 @@ function buildContextRingModel(
 	const clamped = Math.min(100, Math.max(0, percent));
 	const offset = CONTEXT_RING_CIRCUMFERENCE - (clamped / 100) * CONTEXT_RING_CIRCUMFERENCE;
 
-	const color = percent > 90 ? "var(--destructive)" : "var(--primary)";
+	// 红色必须代表「已经到了或过了自动压缩的触发线」，而不是一个写死的百分比：压缩策略的
+	// 触发线是 max(窗口 - 预留, 窗口 × (1 - 最小空闲比例))，1M 窗口上就是 96.4%，而写死的 90%
+	// 会让环先变红，然后久等不见压缩。拿不到阈值时才退回 90%。
+	const thresholdPercent =
+		ctx.compactionThresholdTokens !== undefined && ctx.contextWindow > 0
+			? (ctx.compactionThresholdTokens / ctx.contextWindow) * 100
+			: 90;
+	const willCompact =
+		ctx.compactionThresholdTokens !== undefined
+			? contextTokens >= ctx.compactionThresholdTokens
+			: percent > thresholdPercent;
+	const color = isCompacting || willCompact ? "var(--destructive)" : "var(--primary)";
 
 	const tooltip = isCompacting
 		? t("contextRing.tooltip.compacting")
 		: hasActualTokens || ctx.percent !== null
-			? t("contextRing.tooltip.usage", {
-					percent: percent.toFixed(1),
-					window: formatTokens(ctx.contextWindow),
-					tokens: formatTokens(contextTokens),
-				})
+			? t(
+					ctx.compactionThresholdTokens === undefined
+						? "contextRing.tooltip.usage"
+						: "contextRing.tooltip.usageWithThreshold",
+					{
+						percent: percent.toFixed(1),
+						window: formatTokens(ctx.contextWindow),
+						tokens: formatTokens(contextTokens),
+						threshold: thresholdPercent.toFixed(0),
+					},
+				)
 			: t("contextRing.tooltip.unknown", { window: formatTokens(ctx.contextWindow) });
 
 	return {

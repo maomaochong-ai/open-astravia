@@ -108,6 +108,12 @@ export interface CodingAgentContextUsage {
 	readonly tokens: number;
 	readonly contextWindow: number;
 	readonly percent: number;
+	/**
+	 * 自动压缩的触发线（token）。它取 `max(窗口 - 预留, 窗口 × (1 - 最小空闲比例))`，与
+	 * `shouldCompact` 同一个口径；宿主用它让环形指示的「变红」与真正压缩的时刻一致，
+	 * 否则大窗口模型会在红色区间里停留很久却什么都不发生。
+	 */
+	readonly thresholdTokens: number;
 	readonly composition?: ContextCompositionReport;
 }
 

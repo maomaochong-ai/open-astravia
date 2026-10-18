@@ -6,7 +6,7 @@ import type { ContextCompositionReport } from "@astravia/runtime-core";
 import { createStore, Provider } from "jotai";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { useContextRingScopeModels, useDefaultContextRingModel } from "./useContextRingModel";
+import { buildContextRingModel, useContextRingScopeModels, useDefaultContextRingModel } from "./useContextRingModel";
 
 const contextRingModelCapture = vi.hoisted(() => ({
 	buildDetails: vi.fn(() => null),
@@ -111,5 +111,40 @@ describe("useContextRingModel", () => {
 		expect(result.current[0]?.model.percent).toBe(20);
 		expect(result.current[1]?.model.percent).toBe(50);
 		expect(result.current[1]?.model.isCompacting).toBe(true);
+	});
+
+	it("turns red only at the real compaction threshold, not at a hardcoded 90%", () => {
+		// 1M 窗口、默认设置下压缩线是 max(1000000 - 36000, 80%) = 964000（96.4%）。
+		// 943k = 94.3%：写死 90% 的旧规则会在这里就变红，而实际上距压缩还差 2 万 token。
+		const belowThreshold = buildContextRingModel(
+			{
+				usage: { percent: 94.3, contextTokens: 943_000, contextWindow: 1_000_000, compactionThresholdTokens: 964_000 },
+				isCompacting: false,
+			},
+			contextRingModelCapture.t,
+			null,
+		);
+		expect(belowThreshold?.color).toBe("var(--primary)");
+		expect(belowThreshold?.tooltip).toBe("contextRing.tooltip.usageWithThreshold");
+
+		const atThreshold = buildContextRingModel(
+			{
+				usage: { percent: 96.4, contextTokens: 964_000, contextWindow: 1_000_000, compactionThresholdTokens: 964_000 },
+				isCompacting: false,
+			},
+			contextRingModelCapture.t,
+			null,
+		);
+		expect(atThreshold?.color).toBe("var(--destructive)");
+	});
+
+	it("falls back to the old 90% rule when the runtime reports no threshold", () => {
+		const unknownThreshold = buildContextRingModel(
+			{ usage: { percent: 95, contextTokens: 95_000, contextWindow: 100_000 }, isCompacting: false },
+			contextRingModelCapture.t,
+			null,
+		);
+		expect(unknownThreshold?.color).toBe("var(--destructive)");
+		expect(unknownThreshold?.tooltip).toBe("contextRing.tooltip.usage");
 	});
 });

@@ -453,7 +453,8 @@
 		"tooltip": {
 			"compacting": "正在压缩上下文...",
 			"unknown": "上下文窗口 {{window}}（使用量未知）",
-			"usage": "上下文已使用 {{tokens}} tokens（{{percent}}%，{{window}} 窗口）"
+			"usage": "上下文已使用 {{tokens}} tokens（{{percent}}%，{{window}} 窗口）",
+			"usageWithThreshold": "上下文已使用 {{tokens}} tokens（{{percent}}%，{{window}} 窗口），达到 {{threshold}}% 自动压缩"
 		},
 		"details": {
 			"title": "上下文构成（最近一次调用）",

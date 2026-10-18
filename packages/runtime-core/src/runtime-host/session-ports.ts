@@ -81,6 +81,7 @@ export type RuntimeSessionState = Pick<
 	| "contextPercent"
 	| "contextTokens"
 	| "contextWindow"
+	| "compactionThresholdTokens"
 	| "contextComposition"
 	| "contextState"
 	| "activeToolNames"

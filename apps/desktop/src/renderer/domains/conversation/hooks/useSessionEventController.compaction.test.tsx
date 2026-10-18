@@ -60,6 +60,8 @@ describe("useSessionEventController compaction events", () => {
 			percent: 91,
 			contextTokens: 91_000,
 			contextWindow: 100_000,
+			// 压缩线跟着会话走，不能被一次压缩结束清掉；清掉后环形就退回写死的百分比。
+			compactionThresholdTokens: 96_400,
 			composition: composition(),
 		});
 		const activeSessionRef = {
@@ -90,6 +92,7 @@ describe("useSessionEventController compaction events", () => {
 			percent: 24,
 			contextTokens: 24_000,
 			contextWindow: 100_000,
+			compactionThresholdTokens: 96_400,
 		});
 	});
 

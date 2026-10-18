@@ -140,7 +140,12 @@ const compactionDelta = (timestamp: number, text: string): SessionEvent => ({
 
 const compactionEnd = (
 	timestamp: number,
-	outcome: { readonly success?: boolean; readonly cancelled?: boolean; readonly reason?: "threshold" | "manual" } = {},
+	outcome: {
+		readonly success?: boolean;
+		readonly cancelled?: boolean;
+		readonly reason?: "threshold" | "manual";
+		readonly summary?: string;
+	} = {},
 ): SessionEvent => ({
 	...base(timestamp),
 	channel: "runtime",
@@ -150,6 +155,7 @@ const compactionEnd = (
 	success: outcome.success ?? true,
 	...(outcome.cancelled ? { cancelled: true } : {}),
 	tokensBefore: 120_000,
+	...(outcome.summary === undefined ? {} : { summary: outcome.summary }),
 });
 
 function reduce(state: ConversationFeedState, ...actions: ConversationFeedAction[]): ConversationFeedState {
@@ -923,6 +929,23 @@ describe("conversation feed", () => {
 				status: "success",
 				summary: "summary so far",
 				tokensBefore: 120_000,
+			});
+		});
+
+		it("settles with the summary the end event carries when no delta ever streamed", () => {
+			// 自动压缩命中预燃（prefire）时全程不发 delta，只有结束事件带着全文；
+			// 没有这条合并，已完成的那一行就是空的，既没内容也展不开。
+			const running = reduce(
+				freshFeed(),
+				events(turnStarted("t1", 10), userAppended("t1", "u1", "go", 11), compactionStart(20)),
+			);
+
+			const settled = reduce(running, events(compactionEnd(23, { summary: "## Earlier work\n\n- captured" })));
+			const block = settled.items.at(-1);
+			expect(block?.kind === "agent" && block.blocks.at(-1)).toMatchObject({
+				type: "compaction",
+				status: "success",
+				summary: "## Earlier work\n\n- captured",
 			});
 		});
 

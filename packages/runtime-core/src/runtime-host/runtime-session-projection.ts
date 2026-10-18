@@ -21,7 +21,7 @@ export interface RuntimeSessionIdentity {
 
 export type RuntimeDynamicState = Pick<
 	RuntimeSessionState,
-	"contextPercent" | "contextWindow" | "contextTokens" | "activeToolNames"
+	"contextPercent" | "contextWindow" | "contextTokens" | "compactionThresholdTokens" | "activeToolNames"
 > & {
 	readonly contextComposition?: ContextCompositionReport;
 };

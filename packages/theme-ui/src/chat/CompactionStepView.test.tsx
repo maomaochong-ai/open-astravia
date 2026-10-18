@@ -42,4 +42,20 @@ describe("CompactionStepView", () => {
 		expect(markup).toContain("icon-[solar--danger-circle-linear]");
 		expect(markup).toContain("text-destructive/80");
 	});
+
+	it("renders the summary through the host-supplied renderer when given one", () => {
+		// 摘要是模型写的叙述，宿主注入的渲染器负责把它变成 Markdown 预览；
+		// 注入时不能再退化成 whitespace-pre-wrap 的原文墙。
+		const markup = renderToStaticMarkup(
+			<CompactionStepView
+				status="success"
+				label="Context compacted"
+				summary="**bold** summary"
+				expanded
+				renderSummary={(summary) => <strong data-testid="rendered-summary">{summary.toUpperCase()}</strong>}
+			/>,
+		);
+		expect(markup).toContain("**BOLD** SUMMARY");
+		expect(markup).not.toContain("whitespace-pre-wrap");
+	});
 });

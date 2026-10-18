@@ -1,4 +1,4 @@
-import { useId, useState, type JSX } from "react";
+import { useId, useState, type JSX, type ReactNode } from "react";
 import { CollapsePanel } from "../shared/CollapsePanel";
 
 export interface CompactionStepViewProps {
@@ -9,6 +9,11 @@ export interface CompactionStepViewProps {
 	readonly detail?: string;
 	/** The summary that replaced the earlier conversation; the row opens to show it. */
 	readonly summary?: string;
+	/**
+	 * 摘要正文的渲染器。宿主传入时用 Markdown 等富文本渲染，缺省按纯文本展示——
+	 * 主题包不认识宿主的 Markdown 管线，只提供注入点。
+	 */
+	readonly renderSummary?: (summary: string) => ReactNode;
 	readonly expanded?: boolean;
 	readonly onToggle?: () => void;
 	readonly exportMode?: boolean;
@@ -37,6 +42,7 @@ export function CompactionStepView({
 	expanded: expandedProp,
 	onToggle,
 	exportMode = false,
+	renderSummary,
 }: CompactionStepViewProps): JSX.Element {
 	const [uncontrolled, setUncontrolled] = useState(false);
 	const expanded = expandedProp ?? uncontrolled;
@@ -83,8 +89,12 @@ export function CompactionStepView({
 			{hasSummary || status === "running" ? (
 				<CollapsePanel open={open} id={panelId} exportPanel={exportMode} hidden={exportMode && !expanded}>
 					<div className="ml-4 border-sky-500/25 border-l pb-1 pl-3">
-						<div className="max-h-72 overflow-y-auto whitespace-pre-wrap break-words py-1 text-[12px] leading-relaxed text-muted-foreground/80">
-							{summary}
+						<div className="max-h-72 overflow-y-auto break-words py-1 text-[12px] leading-relaxed text-muted-foreground/80">
+							{summary === undefined ? null : renderSummary ? (
+								renderSummary(summary)
+							) : (
+								<div className="whitespace-pre-wrap">{summary}</div>
+							)}
 						</div>
 					</div>
 				</CollapsePanel>
