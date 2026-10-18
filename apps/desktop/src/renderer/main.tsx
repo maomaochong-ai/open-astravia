@@ -32,6 +32,8 @@ if (!rootElement) {
 const root = createRoot(rootElement, {
 	onCaughtError: captureReactError,
 	onRecoverableError: captureReactError,
+	// 没有任何错误边界接住的异常会走这里；不挂它，整棵子树崩掉时拿不到组件栈。
+	onUncaughtError: captureReactError,
 });
 const appReadyPromise = window.astravia.appLifecycle.whenReady();
 
