@@ -109,6 +109,16 @@ const EXPLICIT_SOURCE_TESTS = new Map([
 		"packages/theme-ui/src/activity/TodoTabPanelView.tsx",
 		desktopTests("src/renderer/domains/activity-panel/builtins/todo-tab.test.tsx"),
 	],
+	// 压缩摘要与队列卡片都是纯展示组件，排版、撤回入口由桌面侧消费方测试驱动；
+	// 它们自身没有可单独装载的测试，不映射的话相关测试选择会落空。
+	[
+		"packages/theme-ui/src/chat/CompactionStepView.tsx",
+		desktopTests("src/renderer/domains/conversation/components/blocks/CompactionBlock.test.tsx"),
+	],
+	[
+		"packages/theme-ui/src/chat/QueueCardView.tsx",
+		desktopTests("src/renderer/domains/conversation/components/command-panel/CommandPanelView.test.tsx"),
+	],
 ]);
 
 function workspaceForFile(file) {
