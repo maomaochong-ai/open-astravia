@@ -142,7 +142,11 @@ export class CodingAgentAutomaticCompactionStrategy {
 				void resolveCompactionSummaryModel(model, this.options.resolveSummaryModel).then((resolved) => {
 					// 换绑后主模型 credential 不跨 provider；prefire 内部按需 resolveApiKey 兜底。
 					const credential = resolved.swapped ? undefined : input.modelBinding?.credential;
-					this.options.prefire.start(entries(), settings, resolved.model, credential);
+					try {
+						this.options.prefire.start(entries(), settings, resolved.model, credential);
+					} catch {
+						// 预热只是提前干活，失败不影响本轮结果；不接住会变成 unhandledRejection。
+					}
 				});
 			}
 			return unchanged(callMessages, assembledTokens);
