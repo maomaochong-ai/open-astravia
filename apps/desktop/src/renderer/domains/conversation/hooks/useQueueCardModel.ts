@@ -72,14 +72,19 @@ export function useQueueCardModel(runtimeId: string): QueueCardModel {
 			// 压缩屏障不是用户写的文本，撤回没东西可编辑，直接当删除处理。
 			if (!target || target.kind === "context_compaction") return;
 			setQueue({ runtimeId, items: fullItems.filter((item) => item.id !== id) });
-			void window.astravia.session.removeQueuedMessage(runtimeId, id).catch((err) => {
-				// 出队失败就不要再改草稿，否则同一句话会同时出现在队列与输入框。
-				console.warn("[useQueueCardModel] recall failed", err);
-				return;
-			});
-			appendToSessionInputDraft(target.displayText);
-			// 撤回的目的是继续改，落字后直接把焦点送回编辑器，省掉一次点击。
-			focusInputEditor();
+			void window.astravia.session.removeQueuedMessage(runtimeId, id).then(
+				() => {
+					// 只有出队真的成功才写草稿，否则同一句话会同时留在队列与输入框里。
+					appendToSessionInputDraft(target.displayText);
+					// 撤回的目的是继续改，落字后直接把焦点送回编辑器，省掉一次点击。
+					focusInputEditor();
+				},
+				(error: unknown) => {
+					// 出队失败就把乐观移除退回去，别让这条消息在界面上凭空消失、却仍留在队列里。
+					console.warn("[useQueueCardModel] recall failed", error);
+					setQueue({ runtimeId, items: fullItems });
+				},
+			);
 		},
 		[fullItems, runtimeId, setQueue],
 	);
