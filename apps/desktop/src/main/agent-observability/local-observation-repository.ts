@@ -179,6 +179,7 @@ export class LocalAgentObservationRepository {
 				this.records.delete(record.id);
 				this.dirty = true;
 			}
+		if (this.records.size <= this.maxRecords) return;
 		const excess = [...this.records.values()].sort(newestFirst).slice(this.maxRecords);
 		for (const record of excess) {
 			this.records.delete(record.id);
