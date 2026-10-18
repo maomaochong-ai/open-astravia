@@ -320,6 +320,25 @@ describe("DesktopConversationService session access", () => {
 		expect(runtime.createSession).not.toHaveBeenCalled();
 	});
 
+	it("fails fast when the session file behind sessionPath is gone", async () => {
+		const root = await createTemporaryRoot();
+		const sessionPath = join(root, "deleted.conversation.jsonl");
+		const runtime = { createSession: vi.fn() } as unknown as RuntimeHost;
+		const service = new DesktopConversationService(runtime);
+
+		const error = await service
+			.createSession({ cwd: root, sessionPath }, "other", "interactive")
+			.catch((reason: unknown) => reason);
+
+		// 引导运行时之前就要拦下：为一个已不存在的会话起 MCP 与 agent 实例要十几秒，
+		// 用户只会看到一段长时间的空白再收到一句看不懂的存储层错误。
+		expect(error).toMatchObject<Partial<DesktopConversationError>>({
+			code: "SESSION_NOT_FOUND",
+			details: { sessionPath },
+		});
+		expect(runtime.createSession).not.toHaveBeenCalled();
+	});
+
 	it("rejects history-only sessions before handing them to the interactive backend", async () => {
 		const root = await createTemporaryRoot();
 		const sessionPath = join(root, "readonly.conversation.jsonl");

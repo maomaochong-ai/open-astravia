@@ -207,6 +207,9 @@ export class DesktopConversationService {
 						teamSessionId: owner.teamSessionId,
 					});
 				}
+				// 文件已不在就到此为止。再往下会先起 MCP 服务器与 agent 实例（实测 10–17 秒），
+				// 然后才在读会话时报一个存储层的英文错，用户看到的是长时间空白加天书。
+				await this.assertSessionFileExists(absolutePath);
 			}
 			// 远程项目没有沙箱可言，先把模式定下来：否则默认开着沙箱的用户会在这里被
 			// 「本机沙箱不可用」挡住，或者带着一套不存在的沙箱工具集进入会话。
@@ -280,7 +283,22 @@ export class DesktopConversationService {
 			throw error;
 		}
 	}
-
+	/** 恢复路径的共用前提：会话文件必须真的在盘上，否则不值得再起运行时。 */
+	private async assertSessionFileExists(absolutePath: string): Promise<void> {
+		try {
+			const file = await stat(absolutePath);
+			if (!file.isFile()) {
+				throw new DesktopConversationError("SESSION_NOT_FOUND", "Session path is not a file.", {
+					sessionPath: absolutePath,
+				});
+			}
+		} catch (error) {
+			if (error instanceof DesktopConversationError) throw error;
+			throw new DesktopConversationError("SESSION_NOT_FOUND", "Session file does not exist.", {
+				sessionPath: absolutePath,
+			});
+		}
+	}
 	/**
 	 * 打开（或复用）一个已有会话。`executionMode` 传 `undefined` 表示"不要改动"：
 	 * 会话已在运行时活着就沿用它现在的模式，否则按默认模式打开——手机端镜像
@@ -304,19 +322,7 @@ export class DesktopConversationService {
 				teamSessionId: owner.teamSessionId,
 			});
 		}
-		try {
-			const file = await stat(absolutePath);
-			if (!file.isFile()) {
-				throw new DesktopConversationError("SESSION_NOT_FOUND", "Session path is not a file.", {
-					sessionPath: absolutePath,
-				});
-			}
-		} catch (error) {
-			if (error instanceof DesktopConversationError) throw error;
-			throw new DesktopConversationError("SESSION_NOT_FOUND", "Session file does not exist.", {
-				sessionPath: absolutePath,
-			});
-		}
+		await this.assertSessionFileExists(absolutePath);
 		const access = await this.runtime.resolveSessionAccess(absolutePath);
 		if (!access) {
 			throw new DesktopConversationError("INVALID_SESSION_PATH", "Session path is not owned by this runtime.", {
