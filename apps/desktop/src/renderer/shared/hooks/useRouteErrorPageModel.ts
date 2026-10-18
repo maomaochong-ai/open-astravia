@@ -8,10 +8,9 @@ import { describeRouteError, type RouteErrorKind } from "../lib/route-error-desc
 /**
  * TanStack 的 `CatchBoundary` 在渲染 `errorComponent` 时只传 `{ error, reset }`，
  * `componentDidCatch` 收到的 `ErrorInfo` 不会进入 props —— 组件栈只能从根节点
- * `createRoot({ onCaughtError })` 那条路拿到，见 `shared/lib/react-error-details`。
- * 这里仍保留对 `info` 的读取，是为了兼容将来把 `errorInfo` 透传下来的 Router 版本。
+ * `createRoot({ onCaughtError | onUncaughtError })` 那条路拿到，
+ * 见 `shared/lib/react-error-details`。
  */
-type ErrorComponentInfo = { componentStack?: string };
 
 /** 组件栈可能很长，错误页只展示开头这段，足够指认循环所在的组件链。 */
 const DETAILS_STACK_LIMIT = 4000;
@@ -24,7 +23,7 @@ interface RouteErrorCopy {
 	readonly suggestion: string;
 }
 
-type Translate = (key: string) => string;
+type Translate = ReturnType<typeof useTranslation<"common">>["t"];
 
 function copyFor(kind: RouteErrorKind, rawMessage: string, t: Translate): RouteErrorCopy {
 	if (kind === "updateDepth") {
@@ -54,11 +53,9 @@ function copyFor(kind: RouteErrorKind, rawMessage: string, t: Translate): RouteE
 export function useRouteErrorPageModel(props: ErrorComponentProps): Omit<RouteErrorPageViewProps, "homeAction"> {
 	const { error, reset } = props;
 	const { t } = useTranslation("common");
-	const translate = useCallback<Translate>((key) => String((t as unknown as (key: string) => unknown)(key)), [t]);
 	const message = error instanceof Error ? error.message : String(error);
 	const description = useMemo(() => describeRouteError(message), [message]);
-	const forwardedStack = (props as ErrorComponentProps & { info?: ErrorComponentInfo }).info?.componentStack;
-	const initialStack = useMemo(() => reactComponentStack(error) ?? forwardedStack ?? null, [error, forwardedStack]);
+	const initialStack = reactComponentStack(error);
 	// React 先渲染这棵兜底树、再在 commit 阶段回调 `onCaughtError`，所以第一条渲染里
 	// 旁路缓存还是空的。等一个宏任务再取一次，错误详情才不会在首次崩溃时是空的。
 	const [lateStack, setLateStack] = useState<string | null>(null);
@@ -78,14 +75,14 @@ export function useRouteErrorPageModel(props: ErrorComponentProps): Omit<RouteEr
 		}
 	}, [error, componentStack]);
 
-	const copy = useMemo(() => copyFor(description.kind, message, translate), [description.kind, message, translate]);
+	const copy = useMemo(() => copyFor(description.kind, message, t), [description.kind, message, t]);
 
 	const details = useMemo(() => {
 		const stack = componentStack?.trim();
 		if (!stack) return description.kind === "unknown" ? null : message;
 		const clipped = stack.length > DETAILS_STACK_LIMIT ? `${stack.slice(0, DETAILS_STACK_LIMIT)}…` : stack;
-		return `${message}\n\n${translate("routeError.detailsComponentStack")}\n${clipped}`;
-	}, [componentStack, description.kind, message, translate]);
+		return `${message}\n\n${t("routeError.detailsComponentStack")}\n${clipped}`;
+	}, [componentStack, description.kind, message, t]);
 
 	const onReloadWindow = useCallback(() => {
 		window.location.reload();
@@ -95,21 +92,21 @@ export function useRouteErrorPageModel(props: ErrorComponentProps): Omit<RouteEr
 		() => ({
 			labels: {
 				bannerTitle: copy.bannerTitle,
-				detailsToggle: translate("routeError.detailsToggle"),
-				home: translate("routeError.home"),
+				detailsToggle: t("routeError.detailsToggle"),
+				home: t("routeError.home"),
 				pageTitle: copy.pageTitle,
-				reloadWindow: translate("routeError.reloadWindow"),
-				retry: translate("routeError.retry"),
-				retryPage: translate("routeError.retryPage"),
+				reloadWindow: t("routeError.reloadWindow"),
+				retry: t("routeError.retry"),
+				retryPage: t("routeError.retryPage"),
 				suggestion: copy.suggestion,
 			},
 			details,
-			// 更新死循环下重试只会再撞一次同样的循环，主按钮应该是重载。
-			preferredAction: description.kind === "updateDepth" ? "reload" : "retry",
+			// 死循环下重试只会再撞一次同样的循环；Hooks 顺序乱了也一样，只有重载能恢复。
+			preferredAction: description.kind === "unknown" ? "retry" : "reload",
 			message: copy.message,
 			onReloadWindow,
 			onRetry: reset,
 		}),
-		[copy, description.kind, details, onReloadWindow, reset, translate],
+		[copy, description.kind, details, onReloadWindow, reset, t],
 	);
 }

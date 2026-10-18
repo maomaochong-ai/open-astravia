@@ -44,6 +44,14 @@ describe("RouteErrorPageView", () => {
 		expect(retryFirst.indexOf("Retry this page")).toBeLessThan(retryFirst.indexOf("Reload window"));
 	});
 
+	it("offers the reload action in the banner when retrying cannot work", () => {
+		const reload = render({ preferredAction: "reload" });
+		expect(reload).not.toContain(">Retry<");
+
+		const retry = render({ preferredAction: "retry" });
+		expect(retry).toContain(">Retry<");
+	});
+
 	it("folds the technical details behind a disclosure", () => {
 		const withoutDetails = render();
 		expect(withoutDetails).not.toContain("<details");

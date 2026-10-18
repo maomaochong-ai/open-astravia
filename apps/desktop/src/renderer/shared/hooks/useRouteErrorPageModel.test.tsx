@@ -19,16 +19,20 @@ afterEach(() => {
 describe("useRouteErrorPageModel", () => {
 	it("logs the component stack so an update-depth loop names the culprit", () => {
 		const spy = vi.spyOn(console, "error").mockImplementation(() => {});
-		renderHook(() =>
-			useRouteErrorPageModel(
-				propsWith(new Error("Minified React error #185"), {
-					info: { componentStack: "\n    at DesignSystemGrid\n    at Gallery" },
-				}),
-			),
-		);
+		const error = new Error("Minified React error #185");
+		rememberReactComponentStack(error, "\n    at DesignSystemGrid\n    at Gallery");
+		renderHook(() => useRouteErrorPageModel(propsWith(error)));
 		const logged = spy.mock.calls.map((call) => call.join(" ")).join("\n");
 		expect(logged).toContain("[router error] component stack");
 		expect(logged).toContain("at DesignSystemGrid");
+	});
+
+	it("prefers reload when hook order broke, since retry cannot restore it", () => {
+		vi.spyOn(console, "error").mockImplementation(() => {});
+		const { result } = renderHook(() =>
+			useRouteErrorPageModel(propsWith(new Error("Minified React error #310"))),
+		);
+		expect(result.current.preferredAction).toBe("reload");
 	});
 
 	it("shows a readable explanation and prefers reload for an update-depth loop", async () => {

@@ -3,6 +3,7 @@ import type { JSX, ReactNode } from "react";
 export interface RouteErrorPageViewLabels {
 	readonly bannerTitle: string;
 	readonly detailsToggle: string;
+	/** 「返回首页」的文案。视图不直接渲染它，由调用方拼进 homeAction。 */
 	readonly home: string;
 	readonly pageTitle: string;
 	readonly reloadWindow: string;
@@ -11,7 +12,7 @@ export interface RouteErrorPageViewLabels {
 	readonly suggestion: string;
 }
 
-/** 主按钮放哪个动作：重试（默认）还是重新加载窗口。update-depth 这类错误重试无效。 */
+/** 主按钮放哪个动作：重试（默认）还是重新加载窗口。update-depth 与 hooks 顺序错乱时重试无效。 */
 export type RouteErrorPagePreferredAction = "reload" | "retry";
 
 export interface RouteErrorPageViewProps {
@@ -73,13 +74,23 @@ export function RouteErrorPageView({
 						<p className="font-medium text-foreground">{labels.bannerTitle}</p>
 						<p className="mt-1 break-words text-[12px] leading-5 text-muted-foreground">{message}</p>
 					</div>
-					<button
-						type="button"
-						onClick={onRetry}
-						className={`${buttonBase} h-6 gap-1 rounded-md px-2 text-[0.75rem] hover:bg-muted hover:text-foreground`}
-					>
-						{labels.retry}
-					</button>
+					{preferredAction === "reload" ? (
+						<button
+							type="button"
+							onClick={onReloadWindow}
+							className={`${buttonBase} h-6 gap-1 rounded-md px-2 text-[0.75rem] hover:bg-muted hover:text-foreground`}
+						>
+							{labels.reloadWindow}
+						</button>
+					) : (
+						<button
+							type="button"
+							onClick={onRetry}
+							className={`${buttonBase} h-6 gap-1 rounded-md px-2 text-[0.75rem] hover:bg-muted hover:text-foreground`}
+						>
+							{labels.retry}
+						</button>
+					)}
 				</div>
 			</div>
 
