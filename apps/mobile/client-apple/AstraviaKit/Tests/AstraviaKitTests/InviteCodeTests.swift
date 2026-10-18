@@ -7,9 +7,9 @@ struct InviteCodeTests {
 
 	@Test func matchesTheDesktopsVector() async throws {
 		// Pinned in packages/remote-control/test/invite-code.test.ts.
-		#expect(InviteCode.boxId("K7Q29MXD") == "oe8sfyla3JaUnRAk_OqKI8DJvl48e8IfsfQ1SK6dMS4")
+		#expect(InviteCode.boxId("K7Q29MXD") == "AIzYpE6hEuxglZ5qrcI7j4hNYxnoJ7k8wuS_7Xkw2fI")
 		let envelope = try InviteCode.seal("astravia://pair?v=2", code: "K7Q29MXD", password: "482913", nonce: nonce)
-		#expect(envelope == InviteCode.Envelope(nonce: "AAECAwQFBgcICQoLDA0ODxAREhMUFRYX", ciphertext: "7v0nMbc3Dzwj2xiCL-L0UvCWmf7PDe03MwwUW09QZzU"))
+		#expect(envelope == InviteCode.Envelope(nonce: "AAECAwQFBgcICQoLDA0ODxAREhMUFRYX", ciphertext: "9oG5xQFb_HDcxQ5WOoC6vB6_5Qaoo9_BiFnmcwAEnRG8b9U"))
 		#expect(try await InviteCode.open(envelope, code: "K7Q29MXD", password: "482913") == "astravia://pair?v=2")
 		await #expect(throws: RemoteProtocolError.self) { try await InviteCode.open(envelope, code: "K7Q29MXD", password: "482914") }
 	}
