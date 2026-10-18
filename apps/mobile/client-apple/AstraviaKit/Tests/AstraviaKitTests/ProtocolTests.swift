@@ -12,11 +12,11 @@ enum Vectors {
 	static let desktopIdentitySecret = "XWRrcnmAh46VnKOqsbi_xs3U2-Lp8Pf-BQwTGiEoLzY"
 	static let desktopIdentityPublic = "V-U_7B2yLhcIrcj6dteUYQTZpeC-YvqqG-h-d--vWyI"
 	static let desktopEphemeralSecret = "fIOKkZifpq20u8LJ0Nfe5ezz-gEIDxYdJCsyOUBHTlU"
-	static let mobileSend = "FlqK4Ma7JMspbHxbahkRqv1gaHD6ht4cHEk46qjdI4w"
-	static let mobileReceive = "ZVa6cVHRj3-7Nrhc7_sxUHnW6LYxx7JzejWaT_P4tFY"
+	static let mobileSend = "dGYkKFi2STqrvEpT5DzUL7_wU3mm7zm_s0a2UPf90NA"
+	static let mobileReceive = "ybUfYTrTvsiRnl2pQr_z07WfJMJFzD2zoJOk-yd5PAU"
 	static let sealedNonce = "ZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXp7"
-	static let sealedCiphertext = "OLWYn41kNHag8Ra9OiXptS39Y94ycZZ-lePe669kR4P6qgYv0lvvcEuI-FeV257_R2i-0ZXj2vISjJzRKjgnZcxw3IQxTL4Y-nFAlC1QamGizQoxS1aKqpd2DTYk_ZoTZK8RU8XdhpT8FJ8YTWifWDbPi1ka9VKcMtVqaHHqE2cycgWsiOHl0lmC4xkx3gIHZhH6GAroYcdWJNQg9kvhwyoS"
-	static let code = "362234"
+	static let sealedCiphertext = "hV2gsN6iRFnvvhCNjvVx7njLJ1k6K2dq686WdbmJSQnupJXQdmkhyM7nY7VuZ2Arp7dLg31e149hBN8dTKZlkoS3EqjhaYV-t1RQ35ZPM0nDvrkb6rA3_hh3kDut7ErnWDKBB0G2oBp8xWQNWmHeYmzZBsXRuvzUTC3ghw7JaY_kn36OcJo4gy-kNbEubFOVESpmDB0RwwiZ4AMepaJBaQwD"
+	static let code = "461504"
 	static let sha = "7609e696580e3b7b6bc52c2c60df9e03f2419358ddf17e60e1013177129b6620"
 
 	static func pair(_ secret: String) throws -> RemoteIdentityKeyPair {
