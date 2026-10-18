@@ -86,6 +86,33 @@ describe("runtime session compaction logger", () => {
 		);
 		expect(warn).not.toHaveBeenCalled();
 	});
+
+	it("keeps skips that carry a failure reported as failures", () => {
+		const info = vi.fn();
+		const warn = vi.fn();
+		const observe = createRuntimeSessionCompactionLogger({ info, warn });
+		// noApiKey 的文案带 skipped 前缀，但它确实是一次故障，降到 info 会让人以为本轮
+		// 只是“不需要压”。
+		observe(
+			compactionEvent("compaction.end", 400, {
+				success: false,
+				reason: "threshold",
+				errorMessage: "compaction.skipped.noApiKey",
+				failure: {
+					code: "PROVIDER_AUTHENTICATION_FAILED",
+					message: "no credentials",
+					retryable: false,
+					origin: "provider",
+				},
+			}),
+		);
+
+		expect(warn).toHaveBeenCalledWith(
+			"[agent-runtime] context compaction failed",
+			expect.objectContaining({ failureCode: "PROVIDER_AUTHENTICATION_FAILED" }),
+		);
+		expect(info).not.toHaveBeenCalledWith("[agent-runtime] context compaction skipped", expect.anything());
+	});
 });
 
 function compactionEvent<TType extends "compaction.start" | "compaction.end">(

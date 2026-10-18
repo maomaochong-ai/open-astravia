@@ -66,8 +66,9 @@ export function createRuntimeSessionCompactionLogger(
 			return;
 		}
 		// 跳过不是故障：压不下去、前缀不可压、钩子拦截都属于策略决定，记为失败会
-		// 把真正需要排查的压缩错误淹没在每秒一条的 warn 里。
-		if (event.errorMessage?.startsWith(COMPACTION_SKIP_PREFIX)) {
+		// 把真正需要排查的压缩错误淹没在每秒一条的 warn 里。但带结构化 failure 的
+		// 事件（例如 noApiKey）确实是故障，不能只因文案前缀就被降级。
+		if (event.failure === undefined && event.errorMessage?.startsWith(COMPACTION_SKIP_PREFIX)) {
 			logger.info("[agent-runtime] context compaction skipped", fields);
 			return;
 		}
