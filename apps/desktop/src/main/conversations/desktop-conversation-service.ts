@@ -294,9 +294,15 @@ export class DesktopConversationService {
 			}
 		} catch (error) {
 			if (error instanceof DesktopConversationError) throw error;
-			throw new DesktopConversationError("SESSION_NOT_FOUND", "Session file does not exist.", {
-				sessionPath: absolutePath,
-			});
+			// 只有 ENOENT 才是“会话没了”。权限、IO、符号链接环是另一个问题，
+			// 压成 SESSION_NOT_FOUND 会让用户去重建会话，真实原因连 cause 都不剩。
+			if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+				throw new DesktopConversationError("SESSION_NOT_FOUND", "Session file does not exist.", {
+					sessionPath: absolutePath,
+					cause: error,
+				});
+			}
+			throw error;
 		}
 	}
 	/**
