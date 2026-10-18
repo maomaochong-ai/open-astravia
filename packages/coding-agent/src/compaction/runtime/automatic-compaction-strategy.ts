@@ -119,9 +119,15 @@ export class CodingAgentAutomaticCompactionStrategy {
 			return unchanged(callMessages, assembledTokens);
 		}
 
-		const entries = toActiveCompactionSessionEntries(
-			projectPinnedConversationDocument(input.compactionSourceDocument ?? input.document, pinnedContext),
-		);
+		// 投影是 O(entries) 的拷贝；没到压缩阈值时不用白做一次。
+		const document = input.document;
+		let projectedEntries: ReturnType<typeof toActiveCompactionSessionEntries> | undefined;
+		const entries = () => {
+			projectedEntries ??= toActiveCompactionSessionEntries(
+				projectPinnedConversationDocument(input.compactionSourceDocument ?? document, pinnedContext),
+			);
+			return projectedEntries;
+		};
 
 		if (reason === "assistant_error" && !overflow) return unchanged(callMessages, assembledTokens);
 		if (!overflow && !shouldCompact(estimate.tokens, contextWindow, settings)) {
@@ -136,7 +142,7 @@ export class CodingAgentAutomaticCompactionStrategy {
 				void resolveCompactionSummaryModel(model, this.options.resolveSummaryModel).then((resolved) => {
 					// 换绑后主模型 credential 不跨 provider；prefire 内部按需 resolveApiKey 兜底。
 					const credential = resolved.swapped ? undefined : input.modelBinding?.credential;
-					this.options.prefire.start(entries, settings, resolved.model, credential);
+					this.options.prefire.start(entries(), settings, resolved.model, credential);
 				});
 			}
 			return unchanged(callMessages, assembledTokens);
@@ -201,7 +207,7 @@ export class CodingAgentAutomaticCompactionStrategy {
 				});
 				return unchanged(callMessages, assembledTokens);
 			}
-			const preparation = prepareCompaction(entries, settings);
+			const preparation = prepareCompaction(entries(), settings);
 			if (
 				!preparation ||
 				(preparation.messagesToSummarize.length === 0 && preparation.turnPrefixMessages.length === 0)
@@ -230,7 +236,7 @@ export class CodingAgentAutomaticCompactionStrategy {
 
 			const extensionResult = await extensionRuntime?.beforeCompaction({
 				preparation,
-				branchEntries: entries,
+				branchEntries: entries(),
 				signal,
 			});
 			if (extensionResult?.cancel) {
@@ -243,7 +249,7 @@ export class CodingAgentAutomaticCompactionStrategy {
 				});
 				return unchanged(callMessages, assembledTokens);
 			}
-			const prefired = extensionResult?.compaction ? undefined : this.options.prefire.take(entries);
+			const prefired = extensionResult?.compaction ? undefined : this.options.prefire.take(entries());
 			// 摘要生成期间的流式增量：prefire 命中或扩展接管时无增量（后台预热不重发）。
 			const result =
 				extensionResult?.compaction ??
