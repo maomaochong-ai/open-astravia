@@ -47,6 +47,23 @@ describe("useRouteErrorPageModel", () => {
 		expect(result.current.details).toContain("组件调用栈");
 	});
 
+	it("reloads the window from the primary recovery action", async () => {
+		vi.spyOn(console, "error").mockImplementation(() => {});
+		await i18n.changeLanguage("en");
+		const reload = vi.fn();
+		const original = window.location;
+		Object.defineProperty(window, "location", { configurable: true, value: { reload } });
+		try {
+			const { result } = renderHook(() =>
+				useRouteErrorPageModel(propsWith(new Error("Minified React error #185"))),
+			);
+			result.current.onReloadWindow();
+			expect(reload).toHaveBeenCalledTimes(1);
+		} finally {
+			Object.defineProperty(window, "location", { configurable: true, value: original });
+		}
+	});
+
 	it("keeps the raw message and retry-first for unknown errors", async () => {
 		vi.spyOn(console, "error").mockImplementation(() => {});
 		await i18n.changeLanguage("en");
