@@ -53,6 +53,27 @@ export const SHORTCUT_ACTIONS = [
 		scope: "app",
 	},
 	{
+		id: "zoom-in",
+		labelKey: "shortcutZoomInLabel",
+		descriptionKey: "shortcutZoomInDesc",
+		defaultShortcut: "mod+=",
+		scope: "app",
+	},
+	{
+		id: "zoom-out",
+		labelKey: "shortcutZoomOutLabel",
+		descriptionKey: "shortcutZoomOutDesc",
+		defaultShortcut: "mod+-",
+		scope: "app",
+	},
+	{
+		id: "zoom-reset",
+		labelKey: "shortcutZoomResetLabel",
+		descriptionKey: "shortcutZoomResetDesc",
+		defaultShortcut: "mod+0",
+		scope: "app",
+	},
+	{
 		id: "steer-message",
 		labelKey: "shortcutSteerMessageLabel",
 		descriptionKey: "shortcutSteerMessageDesc",

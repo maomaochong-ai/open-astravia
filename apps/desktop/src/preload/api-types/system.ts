@@ -37,6 +37,11 @@ export interface DesktopWindowApi {
 		rect: { x: number; y: number; width: number; height: number },
 		defaultFileName: string,
 	): Promise<string | null>;
+	/**
+	 * 调整界面缩放一档（or reset），返回调整后的级别；0 为 100%。
+	 * 非 mac 平台没有菜单栏，缩放快捷键只能走这里。
+	 */
+	zoom(direction: "in" | "out" | "reset"): Promise<number>;
 }
 
 export interface DesktopSettingsApi {

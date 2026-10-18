@@ -106,6 +106,7 @@ import {
 	setMainWindow,
 	showMainWindow,
 } from "./window-manager.js";
+import { isZoomDirection, nextZoomLevel } from "./window-zoom.js";
 
 configureRemoteVideoEncoding(app.commandLine, process.platform, process.versions.chrome ?? "");
 
@@ -595,6 +596,17 @@ if (!gotSingleLock) {
 
 		ipcMain.handle("astravia:window:is-always-on-top", () => {
 			return getMainWindow()?.isAlwaysOnTop() ?? false;
+		});
+
+		// 界面缩放：Windows/Linux 没有菜单栏（`app-menu.ts` 在非 mac 上不建菜单），
+		// 所以缩放只能由渲染端的可配置快捷键发起；级别由 Electron 按 origin 记住，
+		// 这里只算下一级并写回，不在应用侧另行持久化。
+		ipcMain.handle("astravia:window:zoom", (event, direction: unknown) => {
+			const contents = event.sender;
+			if (!isZoomDirection(direction)) return contents.getZoomLevel();
+			const level = nextZoomLevel(contents.getZoomLevel(), direction);
+			contents.setZoomLevel(level);
+			return level;
 		});
 
 		// 截取窗口内指定区域（DIP 坐标）为 PNG 并经保存对话框落盘。
