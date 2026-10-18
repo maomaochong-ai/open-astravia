@@ -95,5 +95,5 @@ describe("invite codes", () => {
 
 const QR = "ASTRAVIA://PAIR/K7Q29MXD/482913";
 const QR_WITH_RELAY = "ASTRAVIA://PAIR/K7Q29MXD/482913?relay=wss%3A%2F%2Frelay.mine.test";
-const BOX_ID = "oe8sfyla3JaUnRAk_OqKI8DJvl48e8IfsfQ1SK6dMS4";
-const CIPHERTEXT = "7v0nMbc3Dzwj2xiCL-L0UvCWmf7PDe03MwwUW09QZzU";
+const BOX_ID = "AIzYpE6hEuxglZ5qrcI7j4hNYxnoJ7k8wuS_7Xkw2fI";
+const CIPHERTEXT = "9oG5xQFb_HDcxQ5WOoC6vB6_5Qaoo9_BiFnmcwAEnRG8b9U";

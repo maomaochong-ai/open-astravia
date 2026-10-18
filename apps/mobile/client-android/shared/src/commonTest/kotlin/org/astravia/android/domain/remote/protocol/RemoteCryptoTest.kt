@@ -61,8 +61,8 @@ class RemoteCryptoTest {
     fun matchesVerificationCodeHashAndHchachaVector() {
         val mobile = RemoteCrypto.fromBase64Url(MOBILE_IDENTITY_PUBLIC)
         val desktop = RemoteCrypto.fromBase64Url(DESKTOP_IDENTITY_PUBLIC)
-        assertEquals("362234", RemoteCrypto.verificationCode(mobile, desktop))
-        assertEquals("362234", RemoteCrypto.verificationCode(desktop, mobile))
+        assertEquals("461504", RemoteCrypto.verificationCode(mobile, desktop))
+        assertEquals("461504", RemoteCrypto.verificationCode(desktop, mobile))
         assertEquals(
             "7609e696580e3b7b6bc52c2c60df9e03f2419358ddf17e60e1013177129b6620",
             RemoteCrypto.sha256Hex("secret-1234567890abcdef"),
@@ -86,10 +86,10 @@ class RemoteCryptoTest {
         const val DESKTOP_IDENTITY_SECRET = "XWRrcnmAh46VnKOqsbi_xs3U2-Lp8Pf-BQwTGiEoLzY"
         const val DESKTOP_IDENTITY_PUBLIC = "V-U_7B2yLhcIrcj6dteUYQTZpeC-YvqqG-h-d--vWyI"
         const val DESKTOP_EPHEMERAL_SECRET = "fIOKkZifpq20u8LJ0Nfe5ezz-gEIDxYdJCsyOUBHTlU"
-        const val MOBILE_SEND = "FlqK4Ma7JMspbHxbahkRqv1gaHD6ht4cHEk46qjdI4w"
-        const val MOBILE_RECEIVE = "ZVa6cVHRj3-7Nrhc7_sxUHnW6LYxx7JzejWaT_P4tFY"
+        const val MOBILE_SEND = "dGYkKFi2STqrvEpT5DzUL7_wU3mm7zm_s0a2UPf90NA"
+        const val MOBILE_RECEIVE = "ybUfYTrTvsiRnl2pQr_z07WfJMJFzD2zoJOk-yd5PAU"
         const val SEALED_NONCE = "ZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXp7"
         const val SEALED_CIPHERTEXT =
-            "OLWYn41kNHag8Ra9OiXptS39Y94ycZZ-lePe669kR4P6qgYv0lvvcEuI-FeV257_R2i-0ZXj2vISjJzRKjgnZcxw3IQxTL4Y-nFAlC1QamGizQoxS1aKqpd2DTYk_ZoTZK8RU8XdhpT8FJ8YTWifWDbPi1ka9VKcMtVqaHHqE2cycgWsiOHl0lmC4xkx3gIHZhH6GAroYcdWJNQg9kvhwyoS"
+            "hV2gsN6iRFnvvhCNjvVx7njLJ1k6K2dq686WdbmJSQnupJXQdmkhyM7nY7VuZ2Arp7dLg31e149hBN8dTKZlkoS3EqjhaYV-t1RQ35ZPM0nDvrkb6rA3_hh3kDut7ErnWDKBB0G2oBp8xWQNWmHeYmzZBsXRuvzUTC3ghw7JaY_kn36OcJo4gy-kNbEubFOVESpmDB0RwwiZ4AMepaJBaQwD"
     }
 }
