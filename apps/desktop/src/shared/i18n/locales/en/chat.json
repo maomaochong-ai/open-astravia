@@ -586,6 +586,7 @@
 			"queueLabel": "Queued",
 			"queuePaused": "Last turn was interrupted — queued messages are on hold",
 			"queuePausedDesc": "Paused · {{count}} queued",
+			"queueRecall": "Edit in composer",
 			"queueResume": "Resume sending",
 			"queueSendNow": "Send now"
 		},
