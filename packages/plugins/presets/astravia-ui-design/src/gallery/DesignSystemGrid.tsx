@@ -1,6 +1,7 @@
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import { useState } from "react";
 import { DesignSystemTileContent } from "../cards/DesignSystemTileContent";
+import { useStyleWallWindow } from "../cards/use-style-wall-window";
 import { refreshDesignCatalog, useCatalogState } from "../design-systems/index";
 import type { DesignSystem } from "../design-systems/types";
 import { getPluginCtx } from "../plugin-context";
@@ -14,6 +15,10 @@ import { SectionHeader } from "./SectionHeader";
  *
  * 内容全部来自远端资源仓库，所以「一套都没有」是真实状态：还在拉时给骨架，拉不到时
  * 给解释和重试，绝不留一块没有说明的空白。
+ *
+ * 远端目录现在有八十多套，整份铺开就是八十多个 iframe 监听器加八十多段骨架动画。所以
+ * 和会话页的风格库共用同一套按行窗口化与「只给悬停的那张挂 demo」的取舍，见
+ * `use-style-wall-window` 与 `DesignSystemTileContent` 的 `demo` 约定。
  */
 export interface DesignSystemGridProps {
 	/** 上方还有别的内容时画一条分隔线，避免和项目宫格糊成一片。 */
@@ -23,8 +28,10 @@ export interface DesignSystemGridProps {
 	onPick: (system: DesignSystem) => void;
 }
 
-/** 固定三列：预览是缩小的整页网页，卡片给得大一些才看得出风格。 */
-const GRID_CLASS = "grid grid-cols-3 gap-4";
+/** 宫格本身：`gap-4` 与行高换算共用同一个 16px，列数固定三列。 */
+const GRID_CLASS = "grid gap-4";
+const GRID_GAP = 16;
+const GRID_COLUMNS = 3;
 /** 骨架格数：填满一两行即可，不必假装有多少套。 */
 const SKELETON_COUNT = 6;
 
@@ -33,14 +40,24 @@ export function DesignSystemGrid({ divided = false, busy, onPick }: DesignSystem
 	const { systems, status } = useCatalogState();
 	/** 悬停中的条目：只让它的 demo 滚动，其余保持静止。 */
 	const [hovered, setHovered] = useState<string | null>(null);
+	// 固定三列的版式，卡片随面板变窄是既定视觉，所以不按最小卡宽降列。
+	const wall = useStyleWallWindow({ total: systems.length, gap: GRID_GAP, maxColumns: GRID_COLUMNS, minCardWidth: 0 });
 
 	return (
 		<section className={divided ? "mt-8 border-t border-border/60 pt-6" : ""}>
 			<SectionHeader title={t("gallery.styles.title")} hint={t("gallery.styles.hint")} />
 
 			{systems.length > 0 ? (
-				<div className={GRID_CLASS}>
-					{systems.map((system) => (
+				<div
+					ref={wall.ref}
+					className={GRID_CLASS}
+					style={{
+						gridTemplateColumns: `repeat(${GRID_COLUMNS}, minmax(0, 1fr))`,
+						paddingTop: wall.paddingTop,
+						paddingBottom: wall.paddingBottom,
+					}}
+				>
+					{systems.slice(wall.start, wall.end).map((system) => (
 						<button
 							key={system.id}
 							type="button"
@@ -53,7 +70,11 @@ export function DesignSystemGrid({ divided = false, busy, onPick }: DesignSystem
 							aria-label={t("gallery.styles.view", { name: system.name })}
 							className="flex aspect-[4/3] min-w-0 flex-col gap-2 overflow-hidden rounded-xl border border-border bg-card p-2.5 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/60 hover:shadow-lg disabled:opacity-40"
 						>
-							<DesignSystemTileContent system={system} demoActive={hovered === system.id} />
+							<DesignSystemTileContent
+								system={system}
+								demo={hovered === system.id}
+								demoActive={hovered === system.id}
+							/>
 						</button>
 					))}
 				</div>

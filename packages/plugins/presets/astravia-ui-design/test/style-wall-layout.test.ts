@@ -4,7 +4,7 @@ import {
 	STYLE_GRID_MAX_COLUMNS,
 	styleGridMetrics,
 	styleGridWindow,
-} from "../src/new-session/style-grid-layout";
+} from "../src/cards/style-wall-layout";
 
 describe("style grid metrics", () => {
 	it("drops to fewer columns on narrow viewports", () => {
@@ -27,6 +27,19 @@ describe("style grid metrics", () => {
 	it("reports no row height before the first measurement", () => {
 		// 宽度未知时调用方要能认出「还算不出窗口」，退回全量渲染而不是留白一屏。
 		expect(styleGridMetrics(0).rowHeight).toBe(0);
+	});
+
+	it("honours the per-wall gap and column cap", () => {
+		// 设计页的宫格是 gap-4 / 固定三列，与会话页的 gap-3 自适应列数不同。
+		const { columns, rowHeight } = styleGridMetrics(1072, { gap: 16, maxColumns: 3, minCardWidth: 0 });
+		expect(columns).toBe(3);
+		const card = (1072 - 16 * 2) / 3;
+		expect(rowHeight).toBeCloseTo((card * 3) / 4 + 16);
+	});
+
+	it("keeps the column count when the minimum card width is disabled", () => {
+		// 设计页的卡片随面板变窄是既定视觉，不该因为窄就掉成两列。
+		expect(styleGridMetrics(300, { gap: 16, maxColumns: 3, minCardWidth: 0 }).columns).toBe(3);
 	});
 });
 
