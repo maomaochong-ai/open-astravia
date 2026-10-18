@@ -1029,6 +1029,29 @@
 			}
 		}
 	},
+	"routeError": {
+		"bannerTitle": "当前页面遇到问题",
+		"pageTitle": "页面内容没有正常加载",
+		"suggestion": "这通常是临时状态。你可以重试当前页面，或先回到首页继续其他操作。",
+		"retry": "重试",
+		"retryPage": "重试当前页面",
+		"reloadWindow": "重新加载窗口",
+		"home": "返回首页",
+		"detailsToggle": "错误详情",
+		"detailsComponentStack": "组件调用栈",
+		"updateDepth": {
+			"bannerTitle": "页面在反复重渲染，已被中止",
+			"bannerMessage": "组件之间连续互相触发更新，React 已经停止渲染这一页（#185）。",
+			"pageTitle": "这一页陷入了自我刷新",
+			"suggestion": "重试多半还是同样的结果：重新加载窗口才能把页面恢复干净。如果重载后再次出现，请展开下面的错误详情，把组件栈一起发给开发者。"
+		},
+		"hooksOrder": {
+			"bannerTitle": "页面状态对不上",
+			"bannerMessage": "同一次渲染里 Hooks 数量变了，React 无法继续（#310）。",
+			"pageTitle": "这一页的 Hooks 顺序被打乱了",
+			"suggestion": "重新加载窗口可以让页面恢复。如果重载后还是这样，通常是某个插件或页面在条件分支里调用了 Hooks，请把下面的错误详情发给开发者。"
+		}
+	},
 	"commandMenu": {
 		"placeholder": "搜索项目、会话、能力、设置…",
 		"empty": "没有匹配结果",

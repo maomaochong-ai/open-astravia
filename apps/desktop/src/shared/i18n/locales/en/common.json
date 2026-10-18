@@ -1029,6 +1029,29 @@
 			}
 		}
 	},
+	"routeError": {
+		"bannerTitle": "This page ran into a problem",
+		"pageTitle": "Page content didn't load properly",
+		"suggestion": "This is usually temporary. Retry this page, or head back home and keep working.",
+		"retry": "Retry",
+		"retryPage": "Retry this page",
+		"reloadWindow": "Reload window",
+		"home": "Back home",
+		"detailsToggle": "Error details",
+		"detailsComponentStack": "Component stack",
+		"updateDepth": {
+			"bannerTitle": "This page kept re-rendering and was stopped",
+			"bannerMessage": "Components kept triggering each other's updates, so React stopped rendering this page (#185).",
+			"pageTitle": "This page got stuck refreshing itself",
+			"suggestion": "Retrying usually lands in the same loop — reloading the window is what actually recovers the page. If it comes back, expand the error details below and send the component stack to the developer."
+		},
+		"hooksOrder": {
+			"bannerTitle": "This page's state is inconsistent",
+			"bannerMessage": "The number of hooks changed between renders, so React can't continue (#310).",
+			"pageTitle": "Hook order broke on this page",
+			"suggestion": "Reloading the window restores the page. If it keeps happening, some plugin or page is calling hooks conditionally — expand the error details below and send them to the developer."
+		}
+	},
 	"commandMenu": {
 		"placeholder": "Search projects, sessions, abilities, settings…",
 		"empty": "No matches",
