@@ -38,6 +38,9 @@ describe("createOfficialShortcutsApi", () => {
 			{ id: "open-settings", defaultShortcut: "mod+," },
 			{ id: "open-command-menu", defaultShortcut: "mod+k" },
 			{ id: "save-file", defaultShortcut: "mod+s" },
+			{ id: "zoom-in", defaultShortcut: "mod+=" },
+			{ id: "zoom-out", defaultShortcut: "mod+-" },
+			{ id: "zoom-reset", defaultShortcut: "mod+0" },
 			{ id: "steer-message", defaultShortcut: "mod+enter" },
 			{ id: "toggle-plan-mode", defaultShortcut: "shift+tab" },
 		]);
