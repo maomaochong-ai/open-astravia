@@ -74,8 +74,12 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
+          # 这个作业经常从发布分支或 tag 检出，wrangler 会把检出点当成分支名，于是只生成
+          # 预览部署，生产域名和 pages.dev 继续挂着上一版。站点内容与分支无关，统一钉到
+          # 生产分支上，否则发版成功但用户下到的还是旧包。
           npx wrangler pages deploy website/dist \
-            --project-name=astravia-website
+            --project-name=astravia-website \
+            --branch main
 
       - name: Bind custom domains via Cloudflare API
         shell: bash
