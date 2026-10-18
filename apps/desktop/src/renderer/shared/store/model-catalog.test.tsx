@@ -24,6 +24,8 @@ const models = {
 beforeEach(() => {
 	vi.useFakeTimers({ shouldAdvanceTime: true });
 	vi.setSystemTime(new Date("2026-08-20T00:00:00Z"));
+	// 下面这些用例描述的是带云服务的构建：远程 catalog 是该构建才有的能力。
+	vi.stubEnv("ASTRAVIA_CLOUD_ENABLED", "true");
 	models.get.mockClear();
 	models.fetchRemote.mockClear();
 	models.fetchRemote.mockResolvedValue({ providers: remoteCatalog("gpt-old") });
@@ -37,6 +39,7 @@ beforeEach(() => {
 
 afterEach(() => {
 	vi.useRealTimers();
+	vi.unstubAllEnvs();
 });
 
 describe("模型目录与选择器的同步", () => {
@@ -94,6 +97,15 @@ describe("模型目录与选择器的同步", () => {
 		models.fetchRemote.mockResolvedValue({ providers: {} });
 		const { result } = renderHook(() => useModelOptions());
 		await waitFor(() => expect(models.fetchRemote).toHaveBeenCalled());
+		expect(result.current.options).toEqual([]);
+	});
+
+	it("lite 构建没有云服务时不打远程目录通道", async () => {
+		vi.stubEnv("ASTRAVIA_CLOUD_ENABLED", "");
+		const { result } = renderHook(() => useModelOptions());
+		await waitFor(() => expect(models.get).toHaveBeenCalled());
+		// 该构建里主进程没注册这个通道，调一次就报一次错，还会按 TTL 反复重来。
+		expect(models.fetchRemote).not.toHaveBeenCalled();
 		expect(result.current.options).toEqual([]);
 	});
 });

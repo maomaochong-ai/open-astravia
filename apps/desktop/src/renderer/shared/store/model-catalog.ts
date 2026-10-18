@@ -1,5 +1,6 @@
 import type { ModelsConfigData } from "@preload/api";
 import { getDefaultStore } from "jotai";
+import { isCloudBuildEnabled } from "@/shared/feature-flags";
 import { localModelsConfigAtom, remoteProvidersAtom } from "./model-catalog-atoms";
 import { createModelCatalogSync, type ModelCatalogSync } from "./model-catalog-sync";
 
@@ -16,6 +17,9 @@ export const modelCatalog: ModelCatalogSync = createModelCatalogSync<ModelsConfi
 	loadLocal: () => window.astravia.models.get(),
 	applyLocal: (config) => getDefaultStore().set(localModelsConfigAtom, config),
 	loadRemote: async () => {
+		// lite 构建（默认形态）里云服务被常量折叠掉了，主进程根本没有这个通道：
+		// 调一次就是一条 "No handler registered" 错误，且每轮 TTL 过期都会重来。
+		if (!isCloudBuildEnabled()) return null;
 		// 未登录时主进程直接返回空目录（不发网络请求），写回空表正好与登出行为一致。
 		const result = await window.astravia.models.fetchRemote();
 		return (result.providers ?? {}) as Record<string, unknown>;
