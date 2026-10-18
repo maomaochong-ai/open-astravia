@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { i18n, initI18n } from "@shared/i18n";
-import { renderHook } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { rememberReactComponentStack } from "../lib/react-error-details";
 import { useRouteErrorPageModel } from "./useRouteErrorPageModel";
@@ -74,5 +74,24 @@ describe("useRouteErrorPageModel", () => {
 				}
 			}
 		}
+	});
+
+	it("picks up a component stack that arrives after the fallback first rendered", async () => {
+		vi.spyOn(console, "error").mockImplementation(() => {});
+		vi.useFakeTimers();
+		await i18n.changeLanguage("zh");
+		const error = new Error("Minified React error #185");
+		const { result } = renderHook(() => useRouteErrorPageModel(propsWith(error)));
+
+		// React 在 commit 阶段才回调 onCaughtError：第一帧没有栈，错误详情只有原始报错。
+		expect(result.current.details).not.toContain("at LateBoundary");
+
+		rememberReactComponentStack(error, "\n    at LateBoundary");
+		act(() => {
+			vi.advanceTimersByTime(0);
+		});
+
+		expect(result.current.details).toContain("at LateBoundary");
+		vi.useRealTimers();
 	});
 });

@@ -1,6 +1,6 @@
 import type { RouteErrorPageViewProps } from "@astravia-org/theme-ui/overlays";
 import type { ErrorComponentProps } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { reactComponentStack } from "../lib/react-error-details";
 import { describeRouteError, type RouteErrorKind } from "../lib/route-error-description";
@@ -58,11 +58,16 @@ export function useRouteErrorPageModel(props: ErrorComponentProps): Omit<RouteEr
 	const message = error instanceof Error ? error.message : String(error);
 	const description = useMemo(() => describeRouteError(message), [message]);
 	const forwardedStack = (props as ErrorComponentProps & { info?: ErrorComponentInfo }).info?.componentStack;
-	const componentStack = useMemo(() => {
-		const captured = reactComponentStack(error);
-		return captured ?? forwardedStack ?? null;
-	}, [error, forwardedStack]);
-
+	const initialStack = useMemo(() => reactComponentStack(error) ?? forwardedStack ?? null, [error, forwardedStack]);
+	// React 先渲染这棵兜底树、再在 commit 阶段回调 `onCaughtError`，所以第一条渲染里
+	// 旁路缓存还是空的。等一个宏任务再取一次，错误详情才不会在首次崩溃时是空的。
+	const [lateStack, setLateStack] = useState<string | null>(null);
+	useEffect(() => {
+		if (initialStack !== null) return;
+		const timer = setTimeout(() => setLateStack(reactComponentStack(error)), 0);
+		return () => clearTimeout(timer);
+	}, [error, initialStack]);
+	const componentStack = initialStack ?? lateStack;
 	useEffect(() => {
 		// 生产构建里 React 只留编号，真正有用的是发起更新的组件栈；它由根节点的
 		// onCaughtError 记下并写进 [react error] 日志，这里单独标出「整页失败」这件事，
