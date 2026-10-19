@@ -159,6 +159,7 @@ export function createSystemApi(
 			createDirectory: (dirPath) => ipc.invoke("astravia:fs:create-directory", dirPath),
 			listSubDirs: (dirPath) => ipc.invoke("astravia:fs:list-sub-dirs", dirPath),
 			listFilesRecursive: (rootPath) => ipc.invoke("astravia:fs:list-files-recursive", rootPath),
+			gitStatus: (rootPath) => ipc.invoke("astravia:fs:git-status", rootPath),
 			watchDir: (dirPath) => ipc.invoke("astravia:fs:watch-dir", dirPath),
 			unwatchDir: (dirPath) => ipc.invoke("astravia:fs:unwatch-dir", dirPath),
 			onDirChanged: (handler) => onIpcEvent(ipc, "astravia:fs:dir-changed", handler),
@@ -257,6 +258,9 @@ export function createSystemApi(
 			showInFolder: (fullPath) => ipc.invoke("astravia:shell:show-in-folder", fullPath),
 			showItemInFolder: (fullPath) => ipc.invoke("astravia:shell:show-item-in-folder", fullPath),
 			openExternal: (url) => ipc.invoke("astravia:shell:open-external", url),
+			listExternalApplications: (targetPath) => ipc.invoke("astravia:shell:list-external-applications", targetPath),
+			openPathWithApplication: (targetPath, appId) =>
+				ipc.invoke("astravia:shell:open-path-with-app", targetPath, appId),
 		},
 		clipboard: {
 			writeImage: (dataUrl) => ipc.invoke("astravia:clipboard:write-image", dataUrl),
