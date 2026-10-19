@@ -1025,3 +1025,61 @@ a {
 [data-inactive-paused]::after {
 	animation-play-state: paused !important;
 }
+
+
+/* ── 主题专属侧栏配色 ──────────────────────────────────────────────
+   forest / bee / mint / parchment 四套主题的侧栏底色与主画布不同
+   （复刻原应用的侧栏色调）。open-astravia 的侧栏面板使用 bg-muted，
+   这里按 data-theme 在侧栏子树内覆盖 --muted，使侧栏呈现独立色调。
+   data-mode 区分明暗，覆盖侧栏底色使其与主画布拉开层次。 */
+:root[data-theme="forest"][data-mode="dark"] .sidebar-surface {
+	--muted: #14261c;
+	--border: #2a4a38;
+}
+	--muted: #14261c;
+}
+:root[data-theme="forest"][data-mode="light"] .sidebar-surface {
+	--muted: #e6f0e9;
+	--border: #c2d4c9;
+}
+	--muted: #f2f4f2;
+}
+
+:root[data-theme="bee"][data-mode="dark"] .sidebar-surface {
+	--muted: #2e2916;
+	--border: #5a4f28;
+}
+	--muted: #2e2916;
+}
+:root[data-theme="bee"][data-mode="light"] .sidebar-surface {
+	--muted: #f3efe0;
+	--border: #d6cfb8;
+}
+	--muted: #f2f4f2;
+}
+
+:root[data-theme="mint"][data-mode="dark"] .sidebar-surface {
+	--muted: #122a24;
+	--border: #2a5a4a;
+}
+	--muted: #122a24;
+}
+:root[data-theme="mint"][data-mode="light"] .sidebar-surface {
+	--muted: #dcefe6;
+	--border: #a8d4c4;
+}
+	--muted: #e6f5f0;
+}
+
+:root[data-theme="parchment"][data-mode="dark"] .sidebar-surface {
+	--muted: #321f19;
+	--border: #5a3a2e;
+}
+	--muted: #321f19;
+}
+:root[data-theme="parchment"][data-mode="light"] .sidebar-surface {
+	--muted: #ede6db;
+	--border: #d4c8b4;
+}
+	--muted: #f1f0ed;
+}

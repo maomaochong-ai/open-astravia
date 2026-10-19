@@ -1206,7 +1206,11 @@
   "colorThemes": {
     "mono": "Default",
     "default": "Classic",
-    "sand": "Coral"
+    "sand": "Coral",
+    "forest": "Forest",
+    "bee": "Bee",
+    "mint": "Mint",
+    "parchment": "Parchment"
   },
   "personas": {
     "default": {
