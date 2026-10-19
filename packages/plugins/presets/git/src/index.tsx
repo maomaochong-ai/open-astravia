@@ -42,8 +42,9 @@ export default definePlugin({
 		// 在已经身处该标签卡里时用它拉宽，等于每次点文件都重新打开一次自己。
 		setPanelResizer((width) => ctx.ui.setActivityPanelWidth(width));
 		// 会话里的 turn 卡要的是「把 Git 面板拿到眼前」，不是改宽度：不覆盖用户拖出来的
-		// 宽度，也不会把聊天区挤没。
-		setPanelOpener(() => ctx.ui.openActivityTab(CHANGES_TAB_ID));
+		// 宽度，也不会把聊天区挤没。cwd 必须带上——不传时宿主回落到「前台工作区」，
+		// turn 卡所在的会话不是前台时，打开动作会被丢弃或落到别人身上。
+		setPanelOpener((options) => ctx.ui.openActivityTab(CHANGES_TAB_ID, options?.cwd ? { cwd: options.cwd } : undefined));
 
 		// Refresh the panel after each agent turn (it may have edited files), and
 		// surface turn start/end phases for the turn card's per-turn baseline diff.

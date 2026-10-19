@@ -9,8 +9,20 @@ import type { ChangeCode, TurnChangeDelta } from "./types";
 /** Resize the activity panel that hosts the Git tab (px or "max"). */
 export type PanelResizer = (width: number | "max") => void;
 
-/** Bring the Git tab to the front, opening the activity panel if it is closed. */
-export type PanelOpener = () => void;
+/** One-shot "show this file's diff": the panel may not be mounted when the click happens. */
+export interface PanelFocusRequest {
+	root: string;
+	path: string;
+}
+
+/**
+ * Bring the Git tab to the front, opening the activity panel if it is closed.
+ *
+ * `cwd` is the conversation's workspace, not the repo root: the host keys tab
+ * records by workspace, and without it a conversation that is not the foreground
+ * one opens the tab on somebody else's workspace.
+ */
+export type PanelOpener = (options?: { cwd?: string }) => void;
 
 /** Agent turn lifecycle phase, surfaced from `ctx.conversation.on` to plugin components. */
 export type TurnPhase = "start" | "end";
@@ -35,6 +47,9 @@ interface GitRuntime {
 	ui: PluginUiApi | null;
 	resizePanel: PanelResizer | null;
 	openPanel: PanelOpener | null;
+	/** Pending focus request, kept here so a not-yet-mounted panel still picks it up. */
+	panelFocus: PanelFocusRequest | null;
+	panelFocusListeners: Set<(request: PanelFocusRequest) => void>;
 	refreshListeners: Set<() => void>;
 	turnPhaseListeners: Set<(phase: TurnPhase) => void>;
 	turnCardStates: Map<string, TurnCardState>;
@@ -64,6 +79,8 @@ function runtime(): GitRuntime {
 			ui: null,
 			resizePanel: null,
 			openPanel: null,
+			panelFocus: null,
+			panelFocusListeners: new Set<(request: PanelFocusRequest) => void>(),
 			refreshListeners: new Set<() => void>(),
 			turnPhaseListeners: new Set<(phase: TurnPhase) => void>(),
 			turnCardStates: new Map<string, TurnCardState>(),
@@ -237,8 +254,37 @@ export function setPanelOpener(open: PanelOpener): void {
  * rather than {@link resizePanel}: widening a panel that is showing some other
  * tab — or is closed — leaves the user staring at the wrong thing.
  */
-export function openPanel(): void {
-	runtime().openPanel?.();
+export function openPanel(options?: { cwd?: string }): void {
+	runtime().openPanel?.(options);
+}
+
+/**
+ * Ask the panel to select `path` and show its diff once it is mounted.
+ *
+ * A pending request survives until a panel for that root actually consumes it:
+ * the tab may mount with `git status` still in flight, and the entry the user
+ * clicked must not be dropped just because the tree was empty at that moment.
+ */
+export function requestPanelFocus(request: PanelFocusRequest): void {
+	runtime().panelFocus = request;
+	for (const listener of runtime().panelFocusListeners) listener(request);
+}
+
+/** The pending focus path for a panel showing `root`, or null. Does not consume it. */
+export function peekPanelFocus(root: string): string | null {
+	const pending = runtime().panelFocus;
+	return pending && pending.root === root ? pending.path : null;
+}
+
+/** Drop the pending request once a panel has actually selected it. */
+export function clearPanelFocus(path: string): void {
+	if (runtime().panelFocus?.path === path) runtime().panelFocus = null;
+}
+
+export function onPanelFocus(listener: (request: PanelFocusRequest) => void): () => void {
+	const set = runtime().panelFocusListeners;
+	set.add(listener);
+	return () => set.delete(listener);
 }
 
 /** Subscribe a panel to global refresh signals (turn-end, etc). Returns unsubscribe. */
