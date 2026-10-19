@@ -21,6 +21,7 @@ export { shouldCloseDetailDrawer } from "./detail-drawer-guard";
 export type { KnowledgeDropOverlayViewProps } from "./KnowledgeDropOverlayView";
 export { KnowledgeDropOverlayView } from "./KnowledgeDropOverlayView";
 export type {
+	RouteErrorPagePreferredAction,
 	RouteErrorPageViewLabels,
 	RouteErrorPageViewProps,
 } from "./RouteErrorPageView";

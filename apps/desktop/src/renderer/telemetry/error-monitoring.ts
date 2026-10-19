@@ -2,6 +2,7 @@ import * as Sentry from "@sentry/electron/renderer";
 import type { ErrorInfo } from "react";
 import { redactSensitiveText, redactUrl } from "../../shared/sentry-privacy";
 import type { TelemetryContext } from "../../shared/telemetry";
+import { rememberReactComponentStack } from "../shared/lib/react-error-details";
 
 let initialized = false;
 
@@ -65,6 +66,10 @@ export function setRendererTelemetryContext(context: TelemetryContext): void {
 }
 
 export function captureReactError(error: unknown, errorInfo: ErrorInfo): void {
+	// Sentry 默认关闭（ASTRAVIA_SENTRY_ENABLED），而组件栈是 React #185 这类错误唯一能指认
+	// 循环组件的信息。先记住它给错误页用，再落到渲染日志（renderer console 会被主进程落盘）。
+	rememberReactComponentStack(error, errorInfo.componentStack);
+	logReactError(error, errorInfo.componentStack);
 	try {
 		Sentry.withScope((scope) => {
 			scope.setContext("react", { component_stack: errorInfo.componentStack });
@@ -72,6 +77,21 @@ export function captureReactError(error: unknown, errorInfo: ErrorInfo): void {
 		});
 	} catch {
 		// Error reporting must not replace the original React error flow.
+	}
+}
+
+/**
+ * 把 React 捕获到的错误连同组件栈写进 console —— 渲染进程 console 由主进程落盘到
+ * `desktop-app/logs/render/*.log`。生产构建的 React 只给编号（#185 之类），组件栈是唯一能
+ * 指出「哪个组件在循环」的信息，不能只送给默认关闭的 Sentry。
+ */
+function logReactError(error: unknown, componentStack: string | null | undefined): void {
+	try {
+		const reason = error instanceof Error ? error.message : String(error);
+		const stack = componentStack?.trim();
+		console.error("[react error]", reason, stack ? `\ncomponent stack:${stack}` : "");
+	} catch {
+		// Logging must never change the error path.
 	}
 }
 

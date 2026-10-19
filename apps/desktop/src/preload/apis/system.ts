@@ -272,6 +272,7 @@ export function createSystemApi(
 			toggleAlwaysOnTop: () => ipc.invoke("astravia:window:toggle-always-on-top"),
 			isAlwaysOnTop: () => ipc.invoke("astravia:window:is-always-on-top"),
 			captureRegion: (rect, defaultFileName) => ipc.invoke("astravia:window:capture-region", rect, defaultFileName),
+			zoom: (direction) => ipc.invoke("astravia:window:zoom", direction),
 		},
 		auth: {
 			openExternal: (url) => ipc.invoke("astravia:shell:open-external", url),

@@ -124,14 +124,29 @@ export const FRAME_PAINTED_EXPRESSION = `(function () {
 	return painted === ${SHOWN_FRAME_EXPRESSION};
 })()`;
 
-/** 截图就绪：帧画完，且图片都已解码。 */
-export const FRAME_READY_EXPRESSION = `${FRAME_PAINTED_EXPRESSION} && Array.from(document.querySelectorAll("img")).every((img) => img.complete)`;
+/**
+ * 帧构建失败时引擎写下的标记（见 engine/src/main.tsx 的 FrameBoundary）。
+ *
+ * 抛错的帧永远不会提交，绘制信号也就永远不会出现。只等绘制的话，每张坏帧都要
+ * 耗满宿主超时，画布上留下的是「无预览 / 正在截图…」而不是「构建失败」。同样要求
+ * 切帧已经发生，避免把上一帧迟到的失败当成这一帧的。
+ */
+export const FRAME_BUILD_FAILED_EXPRESSION = `(function () {
+	var failed = window.__astraviaDesignBuildFailed;
+	if (typeof failed !== "string") return false;
+	if (window.__astraviaDesignNavFrom && ${HISTORY_KEY_EXPRESSION} === window.__astraviaDesignNavFrom) return false;
+	return failed === ${SHOWN_FRAME_EXPRESSION};
+})()`;
+
+/** 截图就绪：帧画完（或已确定构建失败），且图片都已解码。 */
+export const FRAME_READY_EXPRESSION = `((${FRAME_PAINTED_EXPRESSION}) || (${FRAME_BUILD_FAILED_EXPRESSION})) && Array.from(document.querySelectorAll("img")).every((img) => img.complete)`;
 
 /**
  * 页面里切到目标帧的语句片段（供切帧与分块翻页脚本共用，调用处需先定义变量 `ID`）。
  * 记下出发时的历史 key，让 {@link FRAME_PAINTED_EXPRESSION} 能认出切帧是否已经发生。
  */
 export const NAVIGATE_TO_FRAME_STATEMENTS = `window.__astraviaDesignPainted = null;
+	window.__astraviaDesignBuildFailed = null;
 	window.__astraviaDesignNavFrom = ${HISTORY_KEY_EXPRESSION};
 	window.postMessage({ astraviaDesign: true, type: "show-frame", id: ID }, "*");`;
 

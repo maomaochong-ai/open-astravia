@@ -62,7 +62,7 @@
     },
     "apps/desktop": {
       "name": "@astravia/desktop",
-      "version": "0.5.66",
+      "version": "0.5.68",
       "dependencies": {
         "@astravia-org/capability-sdk": "workspace:*",
         "@astravia-org/plugin-sdk": "workspace:*",

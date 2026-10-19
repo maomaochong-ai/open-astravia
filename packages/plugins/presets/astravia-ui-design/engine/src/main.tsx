@@ -193,6 +193,10 @@ class FrameBoundary extends Component<BoundaryProps, { failed: boolean }> {
 
 	private report(message: string): void {
 		this.message = message;
+		// 供宿主离屏截图轮询的「这一帧已经确定画不出来」标记。抛错的帧永远不会提交，
+		// 绘制信号也就永远不来；不留这个标记，每张坏帧都要耗满宿主超时，画布上
+		// 停的是「无预览 / 正在截图…」，而不是「构建失败」。
+		(window as { __astraviaDesignBuildFailed?: string | null }).__astraviaDesignBuildFailed = this.props.frameId;
 		notifyFrameError(this.props.frameId, message);
 	}
 

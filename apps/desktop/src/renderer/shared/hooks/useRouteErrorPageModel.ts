@@ -1,30 +1,112 @@
 import type { RouteErrorPageViewProps } from "@astravia-org/theme-ui/overlays";
 import type { ErrorComponentProps } from "@tanstack/react-router";
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { reactComponentStack } from "../lib/react-error-details";
+import { describeRouteError, type RouteErrorKind } from "../lib/route-error-description";
 
-export function useRouteErrorPageModel({
-	error,
-	reset,
-}: ErrorComponentProps): Omit<RouteErrorPageViewProps, "homeAction"> {
+/**
+ * TanStack 的 `CatchBoundary` 在渲染 `errorComponent` 时只传 `{ error, reset }`，
+ * `componentDidCatch` 收到的 `ErrorInfo` 不会进入 props —— 组件栈只能从根节点
+ * `createRoot({ onCaughtError | onUncaughtError })` 那条路拿到，
+ * 见 `shared/lib/react-error-details`。
+ */
+
+/** 组件栈可能很长，错误页只展示开头这段，足够指认循环所在的组件链。 */
+const DETAILS_STACK_LIMIT = 4000;
+
+interface RouteErrorCopy {
+	readonly bannerTitle: string;
+	/** 横幅下的一句话：已知错误给归类解释，未知错误给原始 message。 */
+	readonly message: string;
+	readonly pageTitle: string;
+	readonly suggestion: string;
+}
+
+type Translate = ReturnType<typeof useTranslation<"common">>["t"];
+
+function copyFor(kind: RouteErrorKind, rawMessage: string, t: Translate): RouteErrorCopy {
+	if (kind === "updateDepth") {
+		return {
+			bannerTitle: t("routeError.updateDepth.bannerTitle"),
+			message: t("routeError.updateDepth.bannerMessage"),
+			pageTitle: t("routeError.updateDepth.pageTitle"),
+			suggestion: t("routeError.updateDepth.suggestion"),
+		};
+	}
+	if (kind === "hooksOrder") {
+		return {
+			bannerTitle: t("routeError.hooksOrder.bannerTitle"),
+			message: t("routeError.hooksOrder.bannerMessage"),
+			pageTitle: t("routeError.hooksOrder.pageTitle"),
+			suggestion: t("routeError.hooksOrder.suggestion"),
+		};
+	}
+	return {
+		bannerTitle: t("routeError.bannerTitle"),
+		message: rawMessage,
+		pageTitle: t("routeError.pageTitle"),
+		suggestion: t("routeError.suggestion"),
+	};
+}
+
+export function useRouteErrorPageModel(props: ErrorComponentProps): Omit<RouteErrorPageViewProps, "homeAction"> {
+	const { error, reset } = props;
+	const { t } = useTranslation("common");
 	const message = error instanceof Error ? error.message : String(error);
-
+	const description = useMemo(() => describeRouteError(message), [message]);
+	const initialStack = reactComponentStack(error);
+	// React 先渲染这棵兜底树、再在 commit 阶段回调 `onCaughtError`，所以第一条渲染里
+	// 旁路缓存还是空的。等一个宏任务再取一次，错误详情才不会在首次崩溃时是空的。
+	const [lateStack, setLateStack] = useState<string | null>(null);
 	useEffect(() => {
+		if (initialStack !== null) return;
+		const timer = setTimeout(() => setLateStack(reactComponentStack(error)), 0);
+		return () => clearTimeout(timer);
+	}, [error, initialStack]);
+	const componentStack = initialStack ?? lateStack;
+	useEffect(() => {
+		// 生产构建里 React 只留编号，真正有用的是发起更新的组件栈；它由根节点的
+		// onCaughtError 记下并写进 [react error] 日志，这里单独标出「整页失败」这件事，
+		// 方便在日志里和组件级错误区分。
 		console.error("[router error]", error);
-	}, [error]);
+		if (componentStack) {
+			console.error("[router error] component stack", componentStack);
+		}
+	}, [error, componentStack]);
+
+	const copy = useMemo(() => copyFor(description.kind, message, t), [description.kind, message, t]);
+
+	const details = useMemo(() => {
+		const stack = componentStack?.trim();
+		if (!stack) return description.kind === "unknown" ? null : message;
+		const clipped = stack.length > DETAILS_STACK_LIMIT ? `${stack.slice(0, DETAILS_STACK_LIMIT)}…` : stack;
+		return `${message}\n\n${t("routeError.detailsComponentStack")}\n${clipped}`;
+	}, [componentStack, description.kind, message, t]);
+
+	const onReloadWindow = useCallback(() => {
+		window.location.reload();
+	}, []);
 
 	return useMemo(
 		() => ({
 			labels: {
-				bannerTitle: "当前页面遇到问题",
-				home: "返回首页",
-				pageTitle: "页面内容没有正常加载",
-				retry: "重试",
-				retryPage: "重试当前页面",
-				suggestion: "这通常是临时状态。你可以重试当前页面，或先回到首页继续其他操作。",
+				bannerTitle: copy.bannerTitle,
+				detailsToggle: t("routeError.detailsToggle"),
+				home: t("routeError.home"),
+				pageTitle: copy.pageTitle,
+				reloadWindow: t("routeError.reloadWindow"),
+				retry: t("routeError.retry"),
+				retryPage: t("routeError.retryPage"),
+				suggestion: copy.suggestion,
 			},
-			message,
+			details,
+			// 死循环下重试只会再撞一次同样的循环；Hooks 顺序乱了也一样，只有重载能恢复。
+			preferredAction: description.kind === "unknown" ? "retry" : "reload",
+			message: copy.message,
+			onReloadWindow,
 			onRetry: reset,
 		}),
-		[message, reset],
+		[copy, description.kind, details, onReloadWindow, reset, t],
 	);
 }

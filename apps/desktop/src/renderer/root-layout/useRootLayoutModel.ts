@@ -479,6 +479,14 @@ export function useRootLayoutModel(): RootLayoutModel {
 						window.dispatchEvent(new Event(FILE_EDITOR_SAVE_EVENT));
 						break;
 					}
+					case "zoom-in":
+					case "zoom-out":
+					case "zoom-reset": {
+						// 非 mac 平台没有菜单栏，缩放只能由快捷键发起；级别由主进程算并写回 webContents。
+						const direction = actionId === "zoom-in" ? "in" : actionId === "zoom-out" ? "out" : "reset";
+						void window.astravia.window.zoom(direction);
+						break;
+					}
 				}
 			},
 			[openProject, navigate, setCommandMenuOpen],
