@@ -153,5 +153,11 @@
 	"commit.reset.mixed.description": "将当前分支（分离时为 HEAD）移到所选提交，暂存区恢复为该提交，工作区内容保留。原有暂存选择将被清除；不会推送远端。",
 	"commit.reset.hard.description": "将当前分支（分离时为 HEAD）、暂存区和工作区重置到所选提交。未提交的受跟踪修改会丢失，妨碍检出的未跟踪文件或目录也可能被删除。此操作不会推送远端。",
 	"commit.reset.current": "当前：{{branch}}（{{hash}}）",
-	"commit.execute": "执行"
+	"commit.execute": "执行",
+	"badge.modified": "已修改",
+	"badge.added": "新增",
+	"badge.deleted": "已删除",
+	"badge.renamed": "已重命名",
+	"badge.untracked": "未跟踪",
+	"badge.conflict": "存在冲突，需先解决"
 }

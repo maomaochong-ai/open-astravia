@@ -3,7 +3,7 @@ import { useTranslation } from "@astravia-org/plugin-sdk";
 import { Button } from "@astravia-org/ui";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { findEntry } from "../git/gitStatus";
-import { resizePanel } from "../git/runtime";
+import { clearPanelFocus, onPanelFocus, peekPanelFocus, resizePanel } from "../git/runtime";
 import type { ChangeRef, ChangeSection, StatusGroups } from "../git/types";
 import type { MenuPoint } from "./ChangeMenu";
 import { FloatingChangeMenu } from "./ChangeMenu";
@@ -118,6 +118,44 @@ export function GitChanges({ root, groups, onOpenGraph }: { root: string; groups
 		},
 		[wide],
 	);
+
+	/**
+	 * Land a「只看这个文件」request from outside the panel (the turn card).
+	 *
+	 * Returns false while `groups` does not contain the path yet: the click may
+	 * arrive before `git status` resolves, and the pending request must survive
+	 * that so the file the user picked is still selected once the list arrives.
+	 */
+	const applyExternalFocus = useCallback(
+		(path: string): boolean => {
+			for (const section of SECTION_ORDER) {
+				const entry = findEntry(groups[section], path);
+				if (!entry) continue;
+				setSelection({ section, paths: [entry.path] });
+				setActive({ section, path: entry.path });
+				setCollapsed((prev) => (prev[section] ? { ...prev, [section]: false } : prev));
+				return true;
+			}
+			return false;
+		},
+		[groups],
+	);
+
+	// 已在面板内时：订阅新请求（面板已挂载，组件不会因此重渲）。
+	useEffect(
+		() =>
+			onPanelFocus((request) => {
+				if (request.root !== root) return;
+				if (applyExternalFocus(request.path)) clearPanelFocus(request.path);
+			}),
+		[root, applyExternalFocus],
+	);
+
+	// 面板后于点击挂载（标签卡刚打开）时，补上还挂着的请求；列表晚到时随 groups 重试。
+	useEffect(() => {
+		const pending = peekPanelFocus(root);
+		if (pending && applyExternalFocus(pending)) clearPanelFocus(pending);
+	}, [root, applyExternalFocus]);
 
 	const onSplitDrag = useCallback(
 		(deltaX: number) => {

@@ -10,6 +10,7 @@ import {
 	onTurnPhase,
 	requestCommit,
 	openPanel,
+	requestPanelFocus,
 	setTurnBaseline,
 	setTurnDelta,
 } from "../git/runtime";
@@ -134,13 +135,13 @@ export function GitTurnCard(): JSX.Element | null {
 				if (resetIndexFirst) await unstageAll(root);
 				await stagePaths(root, paths);
 				emitRefreshSignal();
-				openPanel();
+				openPanel({ cwd: cwd ?? undefined });
 				requestCommit(root);
 			} finally {
 				setBusy(false);
 			}
 		},
-		[],
+		[cwd],
 	);
 
 	const commitThisTurn = useCallback((): void => {
@@ -165,14 +166,29 @@ export function GitTurnCard(): JSX.Element | null {
 	const overflow = sorted.length > MAX_ITEMS;
 	const shown = overflow ? sorted.slice(0, MAX_ITEMS - 1) : sorted;
 	const remaining = sorted.length - shown.length;
-	const open = (): void => openPanel();
+	/**
+	 * Open the Git tab, optionally landing on one file's diff.
+	 *
+	 * The focus goes through the runtime instead of a prop because the tab is often
+	 * not mounted yet (closed panel, other tab in front) and the path has to
+	 * survive until it is; `openPanel` alone only ever brings the list into view,
+	 * which reads as "nothing happened" when the panel already shows it.
+	 */
+	const open = (path?: string): void => {
+		if (!cwd) return;
+		openPanel({ cwd });
+		if (!path) return;
+		void resolveRepoRoot(cwd).then((root) => {
+			if (root) requestPanelFocus({ root, path });
+		});
+	};
 
 	return (
 		// 去线留白：卡片只保留一层淡边与内边距，内部各区靠间距分隔，不再用分隔线切块。
 		<div className="rounded-lg border border-border/60 bg-card/60 p-2 text-[12px]">
 			<div className="flex items-center gap-2 px-1 py-0.5">
 				<GitIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-				<button type="button" onClick={open} title={t("turnCard.open")} className="min-w-0 truncate text-left font-medium text-foreground hover:underline">
+				<button type="button" onClick={() => open()} title={t("turnCard.open")} className="min-w-0 truncate text-left font-medium text-foreground hover:underline">
 					{t("turnCard.summary", { count: sorted.length })}
 				</button>
 				<span className="ml-auto flex shrink-0 items-center gap-1.5 font-medium tabular-nums">
@@ -190,7 +206,7 @@ export function GitTurnCard(): JSX.Element | null {
 						<button
 							type="button"
 							key={entry.path}
-							onClick={open}
+							onClick={() => open(entry.path)}
 							title={entry.origPath ? `${entry.origPath} → ${entry.path}` : entry.path}
 							className="flex items-center gap-2 rounded-md px-1 py-1 text-left text-foreground transition-colors hover:bg-accent/40"
 						>
@@ -206,7 +222,7 @@ export function GitTurnCard(): JSX.Element | null {
 				{overflow && (
 					<button
 						type="button"
-						onClick={open}
+						onClick={() => open()}
 						className="rounded-md px-1 py-1 text-left text-muted-foreground transition-colors hover:bg-accent/40 hover:text-foreground"
 					>
 						{t("turnCard.viewAll", { count: remaining })}

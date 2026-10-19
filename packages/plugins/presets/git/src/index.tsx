@@ -1,4 +1,4 @@
-import { definePlugin } from "@astravia-org/plugin-sdk";
+import { type PluginContext, definePlugin } from "@astravia-org/plugin-sdk";
 import "./style.css";
 import { GitPanel } from "./components/GitPanel";
 import { GitSettingsView } from "./components/GitSettingsView";
@@ -8,6 +8,7 @@ import {
 	claimTabAttach,
 	emitRefreshSignal,
 	emitTurnPhase,
+	onRefreshSignal,
 	setAiApi,
 	setFsApi,
 	setGitCommand,
@@ -17,7 +18,51 @@ import {
 	setStorageApi,
 	setUiApi,
 } from "./git/runtime";
+import { parseStatus } from "./git/parseStatus";
+import { resolveRepoAnchor, statusPorcelain } from "./git/run";
+import { FileStatusBadges } from "./git/statusBadges";
+import { createStatusRefresher, type StatusRefresher } from "./git/statusRefresher";
 import { CHANGES_TAB_ID, probeGitTab } from "./git/tab-visibility";
+
+/**
+ * 文件树右侧的一字状态标记（M/A/D/R/U）。宿主已有的插件装饰管线就能画：这里只维护
+ * 「工作区根 → 仓库相对状态」的内存索引，行渲染时查表，不跑命令。
+ */
+function startStatusBadges(ctx: PluginContext): StatusBadgeRuntime | null {
+	// 清单升级过但权限还没授予时，别让这一块把整个 Git 面板一起带下去。
+	if (!ctx.permissions.has("ui.file-explorer.decorations") || !ctx.permissions.has("workspace.read")) return null;
+
+	const badges = new FileStatusBadges();
+	const refresher: StatusRefresher = createStatusRefresher({
+		listRoots: () => ctx.fileExplorer.getWorkspaceRoots(),
+		resolveRepo: resolveRepoAnchor,
+		readStatus: async (root) => parseStatus(await statusPorcelain(root)),
+		applySlices: (slices) => badges.replace(slices),
+	});
+	ctx.fileExplorer.registerDecorationProvider(badges.provider());
+	// 保存、还原、重命名都会改工作区；面板里的暂存/提交/丢弃不改文件但会改索引，
+	// 所以除了文件事件，还要跟面板自己的刷新信号。
+	const fileWatcher = ctx.fileExplorer.onDidChangeFiles(() => refresher.schedule());
+	const refreshSignal = onRefreshSignal(() => refresher.schedule());
+	void refresher.refresh();
+	return {
+		// 工作区根换了之后要按新根重算，文件树不会为此发事件。
+		schedule: () => refresher.schedule(),
+		dispose: () => {
+			fileWatcher.dispose();
+			refreshSignal();
+			refresher.dispose();
+		},
+	};
+}
+
+interface StatusBadgeRuntime {
+	schedule(): void;
+	dispose(): void;
+}
+
+/** 反注册 activate 里手工订阅的东西；contributions 由宿主按插件生命周期回收。 */
+let statusBadges: StatusBadgeRuntime | null = null;
 
 export default definePlugin({
 	activate(ctx) {
@@ -34,6 +79,8 @@ export default definePlugin({
 		// 失败统一走宿主 toast（自带「复制堆栈」），不在面板里长期占位。
 		setUiApi(ctx.ui);
 
+		statusBadges = startStatusBadges(ctx);
+
 		/** 最近一次 conversation-changed 的 cwd，用于丢弃过期的仓库探测结果。 */
 		let latestCwd: string | null = null;
 
@@ -42,8 +89,9 @@ export default definePlugin({
 		// 在已经身处该标签卡里时用它拉宽，等于每次点文件都重新打开一次自己。
 		setPanelResizer((width) => ctx.ui.setActivityPanelWidth(width));
 		// 会话里的 turn 卡要的是「把 Git 面板拿到眼前」，不是改宽度：不覆盖用户拖出来的
-		// 宽度，也不会把聊天区挤没。
-		setPanelOpener(() => ctx.ui.openActivityTab(CHANGES_TAB_ID));
+		// 宽度，也不会把聊天区挤没。cwd 必须带上——不传时宿主回落到「前台工作区」，
+		// turn 卡所在的会话不是前台时，打开动作会被丢弃或落到别人身上。
+		setPanelOpener((options) => ctx.ui.openActivityTab(CHANGES_TAB_ID, options?.cwd ? { cwd: options.cwd } : undefined));
 
 		// Refresh the panel after each agent turn (it may have edited files), and
 		// surface turn start/end phases for the turn card's per-turn baseline diff.
@@ -56,6 +104,7 @@ export default definePlugin({
 				emitTurnPhase("end");
 				emitRefreshSignal();
 			} else if (event.type === "conversation-changed") {
+				statusBadges?.schedule();
 				const { cwd } = event.conversation;
 				if (!cwd) return;
 				latestCwd = cwd;
@@ -105,5 +154,9 @@ export default definePlugin({
 			component: GitTurnCard,
 			scope_use: ["project"],
 		});
+	},
+	deactivate() {
+		statusBadges?.dispose();
+		statusBadges = null;
 	},
 });
