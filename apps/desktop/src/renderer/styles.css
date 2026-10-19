@@ -683,36 +683,36 @@ textarea:focus {
 /* Compaction summary: 摘要是模型写的长篇叙述，但它是消息流里的一个步骤，不是独立文章。
    MarkdownContent 给每个元素都写了绝对的 text-[Npx]（特异性 0,1,0），父级 font-size
    传不进去，所以只能用 0,1,1 的后代选择器按面板 12px 基准重排；尺寸再用 clamp+cqi
-   跟栏宽走，窗口/侧栏变窄时摘要跟着收回基准，而不是硬撑 14px 正文加 20px 标题。 */
+   跟栏宽走，窗口/侧栏变窄时摘要跟着收回基准。
+
+   基准取 12px，与对话里的待办卡片同档（TodoCard 正文 12px）：展开的摘要和待办一样是
+   「步骤的展开正文」，字号不该比周围的步骤行更大。标题只做层级提示、不再靠字号跳级——
+   原来的 1.35em 在 12px 上是 16px，比消息正文（14px）还高，展开后整块显得突兀。 */
 .compaction-step {
 	container-type: inline-size;
 }
 
 .compaction-summary {
-	font-size: clamp(11.5px, 1.8cqi, 13px);
+	font-size: clamp(11px, 1.6cqi, 12px);
 	line-height: 1.6;
 }
 
 .compaction-summary h1 {
-	font-size: 1.35em;
+	font-size: 1.08em;
 }
 
 .compaction-summary h2 {
-	font-size: 1.22em;
+	font-size: 1.04em;
 }
 
-.compaction-summary h3 {
-	font-size: 1.1em;
-}
-
-.compaction-summary :is(h4, h5, h6),
+.compaction-summary :is(h3, h4, h5, h6),
 .compaction-summary :is(p, li, blockquote) {
 	font-size: 1em;
 }
 
 .compaction-summary :is(pre, code),
 .compaction-summary table {
-	font-size: 0.94em;
+	font-size: 1em;
 }
 
 /* Streaming tail: 短语分段保留（DOM 结构供未来扩展），但统一 currentColor 不做亮度分层。
