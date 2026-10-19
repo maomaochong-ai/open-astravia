@@ -123,6 +123,8 @@ export interface DesktopFsApi {
 	listSubDirs(dirPath: string): Promise<FsEntry[]>;
 	/** 递归列出 rootPath 下所有文件（跳过隐藏/重型目录，有数量上限），用于 @ 引用的全局模糊匹配。 */
 	listFilesRecursive(rootPath: string): Promise<FsFileRef[]>;
+	/** 查询工作区的 git 状态（路径→两字符状态码）。非 git 仓库返回空 Map。 */
+	gitStatus(rootPath: string): Promise<Record<string, string>>;
 	watchDir(dirPath: string): Promise<void>;
 	unwatchDir(dirPath: string): Promise<void>;
 	onDirChanged(handler: (dirPath: string) => void): () => void;

@@ -2,10 +2,21 @@ import type { Transport } from "@astravia/ai";
 import type { GitToolStatus, RuntimeStatus, RuntimesStatus, RuntimeType } from "../../main/runtimes/types.js";
 import type { UserMessageClipboardPasteResult, UserMessageClipboardWriteRequest } from "../../shared/clipboard.js";
 
+export interface ExternalApplication {
+	id: string;
+	name: string;
+	applicationPath: string;
+	isDefault: boolean;
+}
+
 export interface DesktopShellApi {
 	showInFolder(fullPath: string): Promise<void>;
 	showItemInFolder(fullPath: string): Promise<void>;
 	openExternal(url: string): Promise<void>;
+	/** 列出能打开指定路径的外部应用（macOS / Windows / Linux 三平台均支持）。 */
+	listExternalApplications(targetPath: string): Promise<ExternalApplication[]>;
+	/** 用指定应用打开路径。 */
+	openPathWithApplication(targetPath: string, appId: string): Promise<void>;
 }
 
 export interface DesktopClipboardApi {

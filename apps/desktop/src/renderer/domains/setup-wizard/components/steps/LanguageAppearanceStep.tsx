@@ -43,6 +43,10 @@ const COLOR_THEME_LABEL_KEYS = {
 	mono: "colorThemes.mono",
 	default: "colorThemes.default",
 	sand: "colorThemes.sand",
+	forest: "colorThemes.forest",
+	bee: "colorThemes.bee",
+	mint: "colorThemes.mint",
+	parchment: "colorThemes.parchment",
 } as const;
 
 function CompactThemeCard({

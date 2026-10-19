@@ -1206,7 +1206,11 @@
   "colorThemes": {
     "mono": "默认",
     "default": "经典",
-    "sand": "珊瑚"
+    "sand": "珊瑚",
+    "forest": "森林",
+    "bee": "蜜蜂",
+    "mint": "薄荷",
+    "parchment": "羊皮纸"
   },
   "personas": {
     "default": {

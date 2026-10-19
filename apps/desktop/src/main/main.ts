@@ -34,6 +34,7 @@ import {
 	installMainDiagnostics,
 	registerLocalNetworkAccess,
 } from "./diagnostics.js";
+import { listExternalApplications, openPathWithApplication } from "./external-apps.js";
 import { FILE_PROTOCOL_PRIVILEGE, registerFileProtocolHandler } from "./file-protocol.js";
 import { fixPath } from "./fix-path.js";
 import { initAppLanguage } from "./i18n/index.js";
@@ -563,6 +564,14 @@ if (!gotSingleLock) {
 
 		ipcMain.handle("astravia:shell:open-external", async (_event, url: string) => {
 			await openExternalUrl(url);
+		});
+
+		ipcMain.handle("astravia:shell:list-external-applications", async (_event, targetPath: string) => {
+			return listExternalApplications(targetPath);
+		});
+
+		ipcMain.handle("astravia:shell:open-path-with-app", async (_event, targetPath: string, appId: string) => {
+			await openPathWithApplication(targetPath, appId);
 		});
 
 		ipcMain.handle("astravia:window:minimize", () => {
