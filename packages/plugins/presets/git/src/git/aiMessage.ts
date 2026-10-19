@@ -63,14 +63,86 @@ async function readProjectRules(root: string): Promise<string> {
 	return parts.join("\n\n");
 }
 
-/** The diff to describe, degraded to a summary when it blows the budget. */
-async function readDiff(root: string, scope: DiffScope): Promise<string> {
-	const full = await git(root, diffArgsForScope(scope, false));
-	if (full.ok && diffFitsBudget(full.stdout)) return full.stdout;
+/**
+ * Diff of the files git already tracks.
+ *
+ * `diff HEAD` is the one range that covers index and worktree together, but a
+ * repository without any commit has no HEAD to resolve and the command fails
+ * outright. There the two ranges have to be read separately, otherwise a brand
+ * new project reports "nothing to describe" while its first files sit unstaged.
+ */
+async function readTrackedDiff(root: string, scope: DiffScope, summary: boolean): Promise<string> {
+	const primary = await git(root, diffArgsForScope(scope, summary));
+	if (primary.ok) return primary.stdout;
+	if (scope !== "worktree") return "";
 
-	const summary = await git(root, diffArgsForScope(scope, true));
-	const head = full.ok ? full.stdout.slice(0, AI_CONTEXT_LIMITS.DIFF_BUDGET) : "";
-	return [summary.stdout, head].filter((part) => part.trim().length > 0).join("\n\n");
+	const [cached, worktree] = await Promise.all([
+		git(root, summary ? ["diff", "--cached", "--stat"] : ["diff", "--cached"]),
+		git(root, summary ? ["diff", "--stat"] : ["diff"]),
+	]);
+	return [cached.stdout, worktree.stdout].filter((part) => part.trim().length > 0).join("\n\n");
+}
+
+interface NewFiles {
+	/** Hunks synthesized for the files whose body fits the per-file budget. */
+	body: string;
+	paths: string[];
+}
+
+/**
+ * Files git has never seen appear in no `git diff`, yet pressing the commit
+ * button stages every one of them — so a message built from the diff alone
+ * describes a change set that is missing its new files. Their content is
+ * synthesized here rather than read through `diff --no-index`: that needs a
+ * platform-specific null device, while the host fs API gives the same bytes
+ * everywhere.
+ *
+ * Only meaningful for the worktree scope; a non-empty index means the commit
+ * records the index alone.
+ */
+async function readNewFiles(root: string): Promise<NewFiles> {
+	const listing = await git(root, ["ls-files", "--others", "--exclude-standard", "-z"]);
+	if (!listing.ok) return { body: "", paths: [] };
+
+	const paths = listing.stdout.split("\0").filter(Boolean).sort();
+	const blocks: string[] = [];
+	let used = 0;
+	for (const path of paths.slice(0, AI_CONTEXT_LIMITS.NEW_FILE_LIMIT)) {
+		if (used >= AI_CONTEXT_LIMITS.DIFF_BUDGET) break;
+		let content: string;
+		try {
+			const file = await getFsApi().readFile(`${root}/${path}`);
+			content = file.encoding === "utf8" ? file.content : `[binary file: ${file.encoding}]`;
+		} catch {
+			// Unreadable (permissions, a dangling symlink): the path list still tells
+			// the model the file is part of the change.
+			continue;
+		}
+		const clipped = content.slice(0, AI_CONTEXT_LIMITS.NEW_FILE_BUDGET);
+		const lines = clipped.split("\n").map((line) => `+${line}`);
+		if (content.length > clipped.length) lines.push("+… (truncated)");
+		const block = ["--- /dev/null", `+++ b/${path}`, ...lines].join("\n");
+		blocks.push(block);
+		used += block.length;
+	}
+	return { body: blocks.join("\n\n"), paths };
+}
+
+/** The diff to describe, degraded to a summary when it blows the budget. */
+export async function readDiff(root: string, scope: DiffScope): Promise<string> {
+	const [tracked, newFiles] = await Promise.all([
+		readTrackedDiff(root, scope, false),
+		scope === "worktree" ? readNewFiles(root) : Promise.resolve<NewFiles>({ body: "", paths: [] }),
+	]);
+	const full = [tracked, newFiles.body].filter((part) => part.trim().length > 0).join("\n\n");
+	if (diffFitsBudget(full)) return full;
+
+	const summary = await readTrackedDiff(root, scope, true);
+	// The new-file bodies are what got cut; their paths still have to survive.
+	const newPathList = newFiles.paths.length > 0 ? `new files:\n${newFiles.paths.map((path) => `  ${path}`).join("\n")}` : "";
+	return [summary, tracked.slice(0, AI_CONTEXT_LIMITS.DIFF_BUDGET), newPathList]
+		.filter((part) => part.trim().length > 0)
+		.join("\n\n");
 }
 
 /** Recent subjects, so generated messages match the repository's existing style. */

@@ -12,6 +12,10 @@ const DIFF_BUDGET = 60_000;
 const RULES_CONTEXT_LINES = 2;
 /** Commits shown to align with the repository's existing subject style. */
 const LOG_COUNT = 8;
+/** Characters of a single never-committed file kept inside the synthesized hunk. */
+const NEW_FILE_BUDGET = 8_000;
+/** Never-committed files described by content before the rest fall back to a path list. */
+const NEW_FILE_LIMIT = 24;
 
 /** Which diff a generated message must describe. */
 export type DiffScope = "index" | "worktree";
@@ -76,4 +80,4 @@ export function diffFitsBudget(diff: string): boolean {
 	return diff.length <= DIFF_BUDGET;
 }
 
-export const AI_CONTEXT_LIMITS = { RULES_BUDGET, DIFF_BUDGET, LOG_COUNT } as const;
+export const AI_CONTEXT_LIMITS = { RULES_BUDGET, DIFF_BUDGET, LOG_COUNT, NEW_FILE_BUDGET, NEW_FILE_LIMIT } as const;
