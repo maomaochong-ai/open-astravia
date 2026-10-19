@@ -45,6 +45,23 @@ export async function resolveRepoRoot(cwd: string): Promise<string | null> {
 	}
 }
 
+/**
+ * 仓库根 + 该目录在仓库内的相对前缀。文件树的标记要按「工作区根」拼路径，而 git 只给
+ * 仓库相对路径，两者未必是同一个目录。`--show-prefix` 由 git 自己算，因此软链接、
+ * Windows 短名这类两边写法不同的情况也不会错位。
+ */
+export async function resolveRepoAnchor(cwd: string): Promise<{ root: string; prefix: string } | null> {
+	try {
+		const res = await git(cwd, ["rev-parse", "--show-toplevel", "--show-prefix"]);
+		if (res.exitCode !== 0) return null;
+		const [root = "", prefix = ""] = res.stdout.split("\n");
+		if (root.trim().length === 0) return null;
+		return { root: rebaseOntoWorkspace(cwd, root.trim()), prefix: prefix.trim() };
+	} catch {
+		return null;
+	}
+}
+
 /** Raw `git status --porcelain=v2 -z` output (working tree + index + untracked). */
 export async function statusPorcelain(root: string): Promise<string> {
 	const res = await git(root, ["status", "--porcelain=v2", "-z", "--untracked-files=all"]);

@@ -153,5 +153,11 @@
 	"commit.reset.mixed.description": "Move the current branch (or detached HEAD) to this commit and reset the index, keeping working files. Clears existing staging choices; does not push to a remote.",
 	"commit.reset.hard.description": "Reset the current branch (or detached HEAD), index and working tree to this commit. Uncommitted tracked changes are lost; untracked files or directories obstructing checkout may also be deleted. Does not push to a remote.",
 	"commit.reset.current": "Current: {{branch}} ({{hash}})",
-	"commit.execute": "Execute"
+	"commit.execute": "Execute",
+	"badge.modified": "Modified",
+	"badge.added": "Added",
+	"badge.deleted": "Deleted",
+	"badge.renamed": "Renamed",
+	"badge.untracked": "Untracked",
+	"badge.conflict": "Merge conflict"
 }
