@@ -6,7 +6,33 @@ import { markdown } from "@codemirror/lang-markdown";
 import { python } from "@codemirror/lang-python";
 import { xml } from "@codemirror/lang-xml";
 import { yaml } from "@codemirror/lang-yaml";
+import { type StreamParser as LanguageStreamParser, StreamLanguage } from "@codemirror/language";
+import { c, clike, cpp, csharp, dart, java, kotlin } from "@codemirror/legacy-modes/mode/clike";
+import { dockerFile } from "@codemirror/legacy-modes/mode/dockerfile";
+import { go } from "@codemirror/legacy-modes/mode/go";
+import { lua } from "@codemirror/legacy-modes/mode/lua";
+import { properties } from "@codemirror/legacy-modes/mode/properties";
+import { r } from "@codemirror/legacy-modes/mode/r";
+import { ruby } from "@codemirror/legacy-modes/mode/ruby";
+import { rust } from "@codemirror/legacy-modes/mode/rust";
+import { sass } from "@codemirror/legacy-modes/mode/sass";
+import { shell } from "@codemirror/legacy-modes/mode/shell";
+import { standardSQL } from "@codemirror/legacy-modes/mode/sql";
+import { swift } from "@codemirror/legacy-modes/mode/swift";
+import { toml } from "@codemirror/legacy-modes/mode/toml";
 import type { Extension } from "@codemirror/state";
+
+/**
+ * legacy-modes 的 StreamParser 来自 @codemirror/streamparser，
+ * 与 @codemirror/language 中 StreamLanguage.define 期望的 StreamParser
+ * 是两份独立声明（私有字段 tabSize 导致名义不兼容）。
+ * 集中在此做一次收窄转换，避免在每个调用点重复断言。
+ */
+function legacyLang(parser: unknown): Extension {
+	// legacy-modes 的解析器来自 @codemirror/streamparser，与 @codemirror/language
+	// 中的 StreamParser 是两份独立声明（私有字段 tabSize 导致名义不兼容），集中在此转换。
+	return StreamLanguage.define(parser as LanguageStreamParser<unknown>);
+}
 
 /**
  * Normalize a bare extension or filename/path to a lowercase extension without a leading dot.
@@ -167,15 +193,60 @@ export function getTextEditorLanguageExtension(extension: string): Extension {
 		case "xml":
 			return xml();
 		case "css":
+			return css();
 		case "scss":
 		case "less":
-			return css();
+			return legacyLang(sass);
 		case "markdown":
 			return markdown();
 		case "python":
 			return python();
 		case "yaml":
 			return yaml();
+		case "toml":
+			return legacyLang(toml);
+		case "go":
+			return legacyLang(go);
+		case "rust":
+			return legacyLang(rust);
+		case "java":
+			return legacyLang(java);
+		case "kotlin":
+			return legacyLang(kotlin);
+		case "swift":
+			return legacyLang(swift);
+		case "ruby":
+			return legacyLang(ruby);
+		case "php":
+			// legacy-modes 没有 php 专用解析器，clike 可覆盖其主要语法结构
+			return legacyLang(clike({ name: "php" }));
+		case "c":
+			return legacyLang(c);
+		case "cpp":
+			return legacyLang(cpp);
+		case "c#":
+			return legacyLang(csharp);
+		case "bash":
+			return legacyLang(shell);
+		case "sql":
+			return legacyLang(standardSQL);
+		case "graphql":
+			// legacy-modes 没有 graphql，用 clike 近似高亮关键字与字符串
+			return legacyLang(clike({ name: "graphql" }));
+		case "lua":
+			return legacyLang(lua);
+		case "r":
+			return legacyLang(r);
+		case "dart":
+			return legacyLang(dart);
+		case "dockerfile":
+			return legacyLang(dockerFile);
+		case "makefile":
+			// legacy-modes 没有 makefile，用 shell 近似（变量、目标、命令行）
+			return legacyLang(shell);
+		case "dotenv":
+		case "ini":
+			return legacyLang(properties);
 		default:
 			return [];
 	}
