@@ -82,6 +82,7 @@ import { refreshDesktopProxy } from "../proxy/proxy-host.js";
 import { type DesktopProxyConfigSnapshot, mergeProxyConfigPatch, redactProxyConfig } from "../proxy/proxy-settings.js";
 import { getLinuxSandboxCapability, getSandboxCapability, type SandboxCapability } from "../sandbox/capability.js";
 import { getDesktopShortcutService } from "../shortcuts/shortcut-service.js";
+import { getGitStatus } from "./git-status.js";
 
 export interface LinuxSandboxConfigState {
 	status: "unknown" | "available" | "unavailable";
@@ -165,6 +166,7 @@ const CHANNELS = {
 	MCP_SET: "astravia:mcp:set",
 	MCP_LOGIN: "astravia:mcp:login",
 	MCP_LOGOUT: "astravia:mcp:logout",
+	GIT_STATUS: "astravia:fs:git-status",
 	MCP_HAS_AUTH: "astravia:mcp:has-auth",
 	MCP_AUTH_STATUS: "astravia:mcp:auth-status",
 	MCP_GET_SETUP_LOGIN_STATUS: "astravia:mcp:get-setup-login-status",
@@ -650,6 +652,13 @@ export function registerFsIpc(): () => void {
 		return getDesktopMcpSetupLoginService().clear(serverName.trim());
 	});
 
+	ipcMain.handle(CHANNELS.GIT_STATUS, async (_event, rootPath: unknown) => {
+		assertNonEmptyString(rootPath, "rootPath");
+		const statusMap = await getGitStatus(rootPath);
+		const result: Record<string, string> = {};
+		for (const [path, entry] of statusMap) result[path] = entry.status;
+		return result;
+	});
 	return () => {
 		void getDesktopMcpSetupLoginService().cancelAll();
 		// Close all directory watchers
@@ -671,7 +680,6 @@ export function registerFsIpc(): () => void {
 		ipcMain.removeHandler(CHANNELS.DELETE);
 		ipcMain.removeHandler(CHANNELS.MOVE);
 		ipcMain.removeHandler(CHANNELS.CREATE_ENTRY);
-		ipcMain.removeHandler(CHANNELS.READ_DIR);
 		ipcMain.removeHandler(CHANNELS.CREATE_DIRECTORY);
 		ipcMain.removeHandler(CHANNELS.LIST_SUB_DIRS);
 		ipcMain.removeHandler(CHANNELS.LIST_FILES_RECURSIVE);
@@ -696,6 +704,7 @@ export function registerFsIpc(): () => void {
 		ipcMain.removeHandler(CHANNELS.MCP_START_SETUP_LOGIN);
 		ipcMain.removeHandler(CHANNELS.MCP_CANCEL_SETUP_LOGIN);
 		ipcMain.removeHandler(CHANNELS.MCP_CLEAR_SETUP_LOGIN);
+		ipcMain.removeHandler(CHANNELS.GIT_STATUS);
 		disposeModelChanged();
 	};
 }
