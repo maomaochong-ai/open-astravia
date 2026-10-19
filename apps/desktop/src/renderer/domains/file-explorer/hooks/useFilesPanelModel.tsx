@@ -19,6 +19,7 @@ import {
 	defaultConversationCwdAtom,
 	defaultImConversationCwdAtom,
 	fileContextMenuAtom,
+	fileExplorerRevealRequestAtom,
 	fileTreeCacheAtom,
 	filePreviewAtom,
 	getProjectDisplayName,
@@ -85,6 +86,8 @@ export function useFilesPanelModel(cwd?: string | null): FilesPanelViewProps {
 
 	const [contextMenu, setContextMenu] = useAtom(fileContextMenuAtom);
 	const setPreview = useSetAtom(inlineFilePreviewAtom);
+	const revealRequest = useAtomValue(fileExplorerRevealRequestAtom);
+	const setRevealRequest = useSetAtom(fileExplorerRevealRequestAtom);
 	const openInlinePreview = useSetAtom(openInlineFilePreviewAtom);
 	const setGlobalPreview = useSetAtom(filePreviewAtom);
 	const narrow = useNarrowScreen();
@@ -259,30 +262,36 @@ export function useFilesPanelModel(cwd?: string | null): FilesPanelViewProps {
 		[creatingEntry, getCreateNameError, refreshDir, selection, t],
 	);
 
+	/** 展开到目标文件并把它选中/聚焦：树自己会跟着 focusedPath 滚动进视野。 */
+	const revealEntry = useCallback(
+		async (path: string, options?: { select?: boolean; focus?: boolean }) => {
+			if (!rootDir) throw new Error("File explorer has no active workspace");
+			await revealPath(path);
+			const entries = [...getDefaultStore().get(fileTreeCacheAtom).values()].flat();
+			const entry = entries.find((candidate) => candidate.path === path);
+			if (!entry) throw new Error(`Path is not visible in the active workspace: ${path}`);
+			if (options?.select !== false) {
+				selection.replaceWith(entry);
+			} else if (options?.focus) {
+				selection.focusEntry(entry);
+			}
+			if (options?.focus) {
+				// Rows are virtualized and not focusable: focus the tree container, which keeps
+				// the focused row as aria-activedescendant and scrolls it into view on focus.
+				requestAnimationFrame(() => {
+					findFileTreeElement(rootDir)?.focus({ preventScroll: true });
+				});
+			}
+		},
+		[rootDir, revealPath, selection],
+	);
+
 	useEffect(() => {
 		const handle = bindPluginFileExplorerHost({
 			getWorkspaceRoot: () =>
 				rootDir ? { name: getProjectDisplayName(rootDir, defaultCwd), path: rootDir } : null,
 			getSelection: () => selection.selectedEntries.map((entry) => ({ ...entry })),
-			reveal: async (path, options) => {
-				if (!rootDir) throw new Error("File explorer has no active workspace");
-				await revealPath(path);
-				const entries = [...getDefaultStore().get(fileTreeCacheAtom).values()].flat();
-				const entry = entries.find((candidate) => candidate.path === path);
-				if (!entry) throw new Error(`Path is not visible in the active workspace: ${path}`);
-				if (options?.select !== false) {
-					selection.replaceWith(entry);
-				} else if (options?.focus) {
-					selection.focusEntry(entry);
-				}
-				if (options?.focus) {
-					// Rows are virtualized and not focusable: focus the tree container, which keeps
-					// the focused row as aria-activedescendant and scrolls it into view on focus.
-					requestAnimationFrame(() => {
-						findFileTreeElement(rootDir)?.focus({ preventScroll: true });
-					});
-				}
-			},
+			reveal: revealEntry,
 			refresh: async (path) => {
 				const target = path ?? rootDir;
 				if (!target) throw new Error("File explorer has no active workspace");
@@ -293,7 +302,33 @@ export function useFilesPanelModel(cwd?: string | null): FilesPanelViewProps {
 			},
 		});
 		return () => handle.dispose();
-	}, [defaultCwd, refreshDir, revealPath, rootDir, selection]);
+	}, [defaultCwd, refreshDir, revealEntry, rootDir, selection]);
+
+	const handledRevealRef = useRef<string | null>(null);
+	// 聊天里的文件链接在文件 tab 挂载前就写好了预览，树这边只能靠这条一次性请求补位：
+	// 展开祖先目录 → 选中并聚焦，虚拟列表随后自己滚动到该行。路径不在本面板工作区
+	// 根下时留着不动，交给真正的宿主面板消费。
+	useEffect(() => {
+		if (!revealRequest) {
+			handledRevealRef.current = null;
+			return;
+		}
+		// 选中动作本身会重建 selection，effect 依赖跟着变，同一条请求只处理一次。
+		if (handledRevealRef.current === revealRequest || !rootDir || !isSubPath(revealRequest, rootDir)) return;
+		handledRevealRef.current = revealRequest;
+		let cancelled = false;
+		void revealEntry(revealRequest, { select: true })
+			.catch((error: unknown) => {
+				// 被排除规则藏起来的文件（.git 内部等）没有对应的树行，静默跳过即可。
+				console.warn("[file-explorer] reveal requested path failed", error);
+			})
+			.finally(() => {
+				if (!cancelled) setRevealRequest(null);
+			});
+		return () => {
+			cancelled = true;
+		};
+	}, [revealRequest, rootDir, revealEntry, setRevealRequest]);
 
 	useEffect(() => {
 		if (narrow || previewCtx != null || !rootDir) return;

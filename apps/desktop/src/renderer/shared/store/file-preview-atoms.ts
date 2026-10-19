@@ -1,10 +1,14 @@
 import { atom } from "jotai";
+import { pathBasename } from "../lib/utils";
 import {
 	ACTIVITY_PANEL_DEFAULT_WIDTH,
 	ACTIVITY_PANEL_PREVIEW_MIN_WIDTH,
+	activityPanelOpenAtom,
+	activityPanelTabByProjectAtom,
 	activityPanelWidthAtom,
 	setActivityPanelWidthAtom,
 } from "./activity-atoms";
+import { fileExplorerRevealRequestAtom } from "./file-atoms";
 
 export type FilePreviewKind = "image" | "file";
 
@@ -110,6 +114,19 @@ export const openInlineFilePreviewAtom = atom(null, (get, set, value: FilePrevie
 	}
 	set(setActivityPanelWidthAtom, "max");
 	set(inlineFilePreviewAtom, value);
+});
+
+/**
+ * 在活动面板的文件 tab 打开某个文件，并让树跟着定位到它。
+ *
+ * 与 `openUrlInActivityWorkspaceAtom` 同一套打开语义：展开面板、切 tab、写入预览。
+ * 额外的 reveal 请求交给文件树自己消费——树可能还没挂载，也可能正开着别的目录。
+ */
+export const openFileInActivityWorkspaceAtom = atom(null, (_get, set, input: { workspaceId: string; path: string }) => {
+	set(activityPanelOpenAtom, true);
+	set(activityPanelTabByProjectAtom, (prev) => new Map(prev).set(input.workspaceId, "file"));
+	set(openInlineFilePreviewAtom, { name: pathBasename(input.path), path: input.path });
+	set(fileExplorerRevealRequestAtom, input.path);
 });
 
 /**

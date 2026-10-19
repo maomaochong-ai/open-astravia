@@ -5,10 +5,8 @@ import { isSubPath, pathBasename } from "@shared/lib/utils";
 import type { RendererMarkdownModel } from "@shared/models/renderer-markdown-model";
 import {
 	activeSessionAtom,
-	activityPanelOpenAtom,
-	activityPanelTabByProjectAtom,
 	filePreviewAtom,
-	openInlineFilePreviewAtom,
+	openFileInActivityWorkspaceAtom,
 	openUrlInActivityWorkspaceAtom,
 	resolvedThemeAtom,
 } from "@shared/store/atoms";
@@ -31,9 +29,7 @@ export function useRendererMarkdownModel(
 	const theme = useAtomValue(resolvedThemeAtom);
 	const activeCwd = useAtomValue(cwdOverride === undefined ? activeCwdAtom : noActiveCwdAtom);
 	const setFilePreview = useSetAtom(filePreviewAtom);
-	const openInlineFilePreview = useSetAtom(openInlineFilePreviewAtom);
-	const setActivityPanelOpen = useSetAtom(activityPanelOpenAtom);
-	const setActivityTabByProject = useSetAtom(activityPanelTabByProjectAtom);
+	const openFileInWorkspace = useSetAtom(openFileInActivityWorkspaceAtom);
 	const openUrlInWorkspace = useSetAtom(openUrlInActivityWorkspaceAtom);
 	const narrow = useNarrowScreen();
 	const cwd = cwdOverride === undefined ? activeCwd : cwdOverride;
@@ -45,25 +41,14 @@ export function useRendererMarkdownModel(
 			const resolved = resolveLocalFilePath(path, cwd);
 			const name = pathBasename(resolved);
 			if (preferInlinePreview && !narrow && cwd && isSubPath(resolved, cwd)) {
-				setActivityPanelOpen(true);
-				if (workspaceId) {
-					setActivityTabByProject((previous) => new Map(previous).set(workspaceId, "file"));
-				}
-				openInlineFilePreview({ name, path: resolved });
+				// 打开预览的同时让文件树定位到这份文件：交付物是代码时，用户点进来要能顺着
+				// 目录把它放到项目里的位置，而不是停在上一次浏览的目录。
+				if (workspaceId) openFileInWorkspace({ workspaceId, path: resolved });
 				return;
 			}
 			setFilePreview({ name, path: resolved });
 		},
-		[
-			preferInlinePreview,
-			narrow,
-			cwd,
-			workspaceId,
-			setFilePreview,
-			openInlineFilePreview,
-			setActivityPanelOpen,
-			setActivityTabByProject,
-		],
+		[preferInlinePreview, narrow, cwd, workspaceId, setFilePreview, openFileInWorkspace],
 	);
 	const onOpenUrl = useCallback(
 		(url: string) => {

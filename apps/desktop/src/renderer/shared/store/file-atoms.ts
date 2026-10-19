@@ -46,6 +46,16 @@ export const expandedDirsAtom = atom<Set<string>>(new Set<string>());
 export const loadingDirsAtom = atom<Set<string>>(new Set<string>());
 export const fileContextMenuAtom = atom<{ x: number; y: number; entry: FsEntry; isRoot?: boolean } | null>(null);
 export const renamingPathAtom = atom<string | null>(null);
+
+/**
+ * 待处理请求：让文件树展开祖先目录、选中并滚动到某个文件。
+ *
+ * 聊天里的文件链接和文件树属于两个域，而且点开时文件 tab 往往还没挂载——
+ * 此刻树那边没有可用的 reveal 句柄。这里用一条一次性请求跨过这次挂载边界：
+ * 树挂载后自己消费并清空，路径不在自己的工作区根下就不动它。
+ */
+export const fileExplorerRevealRequestAtom = atom<string | null>(null);
+
 export const fileEditorDocumentsAtom = atom<Map<string, FileEditorDocumentState>>(new Map());
 export const fileEditorHasUnsavedChangesAtom = atom((get) => {
 	for (const document of get(fileEditorDocumentsAtom).values()) {
