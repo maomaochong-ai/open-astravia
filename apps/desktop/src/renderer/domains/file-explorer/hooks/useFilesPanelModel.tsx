@@ -26,6 +26,7 @@ import {
 	inlineFilePreviewAtom,
 	inlineFilePreviewContextReadonlyAtom,
 	openInlineFilePreviewAtom,
+	pageHeaderRightSlotAtom,
 	type FilePreviewItem,
 	type FsEntry,
 	pluginFileExplorerToolbarActionsAtom,
@@ -51,6 +52,7 @@ import { FileContextMenu } from "../components/FileContextMenu";
 import { FileTransferDialog } from "../components/FileTransferDialog";
 import { FileTree } from "../components/FileTree";
 import { FileExplorerSettings } from "../components/FileExplorerSettings";
+import { OpenWorkspaceWithAppButton } from "../components/OpenWorkspaceWithAppButton";
 import { type FileExplorerClipboard, resolvePasteDirectory } from "../services/clipboard";
 import { resolveCreateParentDirectory } from "../services/create-entry";
 import { isProjectInternalDrop } from "../services/file-drop";
@@ -186,6 +188,15 @@ export function useFilesPanelModel(cwd?: string | null): FilesPanelViewProps {
 		selection.clear();
 	}, [selection, setContextMenu]);
 
+	// 把「在外部应用中打开工作区」按钮注入全局顶栏右槽，方便从顶栏直接调起。
+	// 仅在文件树面板挂载且存在工作区目录时显示；卸载或切换工作区时还原。
+	const setPageHeaderRightSlot = useSetAtom(pageHeaderRightSlotAtom);
+	useEffect(() => {
+		if (!rootDir) return;
+		setPageHeaderRightSlot(<OpenWorkspaceWithAppButton rootDir={rootDir} />);
+		return () => setPageHeaderRightSlot(null);
+	}, [rootDir, setPageHeaderRightSlot]);
+
 	useEffect(() => {
 		setCreatingEntry(null);
 		setContextMenu(null);
@@ -317,7 +328,7 @@ export function useFilesPanelModel(cwd?: string | null): FilesPanelViewProps {
 		if (handledRevealRef.current === revealRequest || !rootDir || !isSubPath(revealRequest, rootDir)) return;
 		handledRevealRef.current = revealRequest;
 		let cancelled = false;
-		void revealEntry(revealRequest, { select: true })
+		void revealEntry(revealRequest, { select: true, focus: true })
 			.catch((error: unknown) => {
 				// 被排除规则藏起来的文件（.git 内部等）没有对应的树行，静默跳过即可。
 				console.warn("[file-explorer] reveal requested path failed", error);
@@ -726,7 +737,7 @@ export function useFilesPanelModel(cwd?: string | null): FilesPanelViewProps {
 				<span className="icon-[solar--minimize-square-linear] h-3.5 w-3.5" />
 			</Button>
 			{pluginToolbarActionNodes}
-			<FileExplorerSettings />
+			{rootDir && <OpenWorkspaceWithAppButton rootDir={rootDir} />}
 		</>
 	);
 
