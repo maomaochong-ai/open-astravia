@@ -13,6 +13,7 @@ import { useOpenTerminal } from "@domains/bottom-panel/hooks/useOpenTerminal";
 import { ChatHeaderActions } from "@astravia-org/theme-ui/chat";
 import { BackgroundTasksBadge } from "./BackgroundTasksBadge";
 import { SandboxGrantsBadge } from "./SandboxGrantsBadge";
+import { OpenWorkspaceWithAppButton } from "@domains/file-explorer/components/OpenWorkspaceWithAppButton";
 import { ChatHeaderNewSessionButton } from "./chat-view/ChatHeaderNewSessionButton";
 import { DefaultChatView, ChatComposer } from "./chat-view/DefaultChatView";
 import { SessionConversation } from "../session-conversation/SessionConversation";
@@ -64,6 +65,7 @@ export function ChatView(props: ChatViewProps): JSX.Element {
 	const headerActions = useMemo(
 		() => (
 			<>
+				{model.cwd && <OpenWorkspaceWithAppButton rootDir={model.cwd} />}
 				<BackgroundTasksBadge runtimeIds={runtimeIds} activityWorkspaceId={workspace.id} />
 				<SandboxGrantsBadge runtimeIds={runtimeIds} />
 				<ChatHeaderActions.Export
@@ -105,7 +107,7 @@ export function ChatView(props: ChatViewProps): JSX.Element {
 				/>
 			</>
 		),
-		[actions, bottomPanel, model.header, pin, runtimeIds, t, terminal, workspace.id],
+		[actions, bottomPanel, model.cwd, model.header, pin, runtimeIds, t, terminal, workspace.id],
 	);
 	const onAbort = useCallback(() => {
 		void props.onAbort();
