@@ -26,7 +26,7 @@ import {
 	inlineFilePreviewAtom,
 	inlineFilePreviewContextReadonlyAtom,
 	openInlineFilePreviewAtom,
-	pageHeaderRightSlotAtom,
+	pageHeaderUtilitySlotAtom,
 	type FilePreviewItem,
 	type FsEntry,
 	pluginFileExplorerToolbarActionsAtom,
@@ -188,14 +188,15 @@ export function useFilesPanelModel(cwd?: string | null): FilesPanelViewProps {
 		selection.clear();
 	}, [selection, setContextMenu]);
 
-	// 把「在外部应用中打开工作区」按钮注入全局顶栏右槽，方便从顶栏直接调起。
+	// 把「在外部应用中打开工作区」按钮注入顶栏工具位，独立于页面自身动作，
+	// 避免与对话页的导出/置顶等按钮互相覆盖。
 	// 仅在文件树面板挂载且存在工作区目录时显示；卸载或切换工作区时还原。
-	const setPageHeaderRightSlot = useSetAtom(pageHeaderRightSlotAtom);
+	const setPageHeaderUtilitySlot = useSetAtom(pageHeaderUtilitySlotAtom);
 	useEffect(() => {
 		if (!rootDir) return;
-		setPageHeaderRightSlot(<OpenWorkspaceWithAppButton rootDir={rootDir} />);
-		return () => setPageHeaderRightSlot(null);
-	}, [rootDir, setPageHeaderRightSlot]);
+		setPageHeaderUtilitySlot(<OpenWorkspaceWithAppButton rootDir={rootDir} />);
+		return () => setPageHeaderUtilitySlot(null);
+	}, [rootDir, setPageHeaderUtilitySlot]);
 
 	useEffect(() => {
 		setCreatingEntry(null);

@@ -39,6 +39,8 @@ export const languageAtom = atom<AppLanguage>(initialResolved);
 // custom right-side action buttons into the global PageHeader.
 export const pageHeaderTitleAtom = atom<string | null>(null);
 export const pageHeaderRightSlotAtom = atom<ReactNode | null>(null);
+/** 顶栏右侧的工具插槽，渲染在页面自身动作（rightSlot）之前，例如「在外部应用中打开工作区」。 */
+export const pageHeaderUtilitySlotAtom = atom<ReactNode | null>(null);
 /** 顶栏左侧（侧边栏触发按钮之后、标题之前）的自定义插槽，如设置页的返回按钮。 */
 export const pageHeaderLeftSlotAtom = atom<ReactNode | null>(null);
 /** 紧贴顶栏标题 label 右侧的徽标插槽（如知识库「正在建立索引…」）。 */

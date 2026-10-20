@@ -38,6 +38,8 @@ export interface PageHeaderModel {
 	readonly path: string;
 	readonly rightSlot: ReactNode;
 	readonly sidebarTriggerTitle: string;
+	/** 渲染在 rightSlot 之前的通用工具动作，供跨页面常驻的宿主级按钮使用。 */
+	readonly utilitySlot?: ReactNode;
 	readonly title: string;
 	readonly titleBadge: ReactNode;
 	readonly titleHidden: boolean;
