@@ -247,6 +247,8 @@
 		"newFolderInputLabel": "Enter a new folder name",
 		"createAlreadyExists": "A file or folder with this name already exists",
 		"createFailed": "Failed to create item",
+		"renameAlreadyExists": "A file or folder with that name already exists",
+		"renameFailed": "Rename failed",
 		"invalidName": {
 			"empty": "Name cannot be empty",
 			"dotPath": "Name cannot be . or ..",

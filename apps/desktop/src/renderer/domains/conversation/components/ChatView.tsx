@@ -1,7 +1,8 @@
 import { useSetAtom } from "jotai";
 import { memo, useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { pageHeaderLeftSlotAtom, pageHeaderRightSlotAtom, pageHeaderUtilitySlotAtom } from "@shared/store/atoms";
+import { pageHeaderLeftSlotAtom, pageHeaderRightSlotAtom } from "@shared/store/atoms";
+import { usePageHeaderUtilitySlot } from "@shared/app-shell/page-header/usePageHeaderUtilitySlot";
 import { useActiveSessionRuntimeIds } from "@shared/workspace/active-session-runtime";
 import { createActivityWorkspace } from "@shared/workspace/activity-workspace";
 import type { WorkSurfaceScope } from "@shared/workspace/work-surface";
@@ -118,12 +119,12 @@ export function ChatView(props: ChatViewProps): JSX.Element {
 	}, [headerActions, setHeaderRightSlot]);
 
 	// 「在外部应用中打开工作区」占顶栏工具位，渲染在页面自身动作（导出、置顶等）的左侧。
-	const setHeaderUtilitySlot = useSetAtom(pageHeaderUtilitySlotAtom);
-	useEffect(() => {
-		if (!model.cwd) return;
-		setHeaderUtilitySlot(<OpenWorkspaceWithAppButton rootDir={model.cwd} />);
-		return () => setHeaderUtilitySlot(null);
-	}, [model.cwd, setHeaderUtilitySlot]);
+	const workspaceAppButton = useMemo(
+		() => (model.cwd ? <OpenWorkspaceWithAppButton rootDir={model.cwd} /> : null),
+		[model.cwd],
+	);
+	// 优先级 0：对话页自己的工作区最相关；活动面板的文件标签作为低优先级备选。
+	usePageHeaderUtilitySlot("conversation", 0, workspaceAppButton);
 
 	useEffect(() => {
 		setHeaderLeftSlot(<ChatHeaderNewSessionButton />);

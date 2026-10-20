@@ -247,6 +247,8 @@
 		"newFolderInputLabel": "输入新文件夹名称",
 		"createAlreadyExists": "同名文件或文件夹已存在",
 		"createFailed": "创建失败",
+		"renameAlreadyExists": "同名文件或文件夹已存在",
+		"renameFailed": "重命名失败",
 		"invalidName": {
 			"empty": "名称不能为空",
 			"dotPath": "名称不能是 . 或 ..",

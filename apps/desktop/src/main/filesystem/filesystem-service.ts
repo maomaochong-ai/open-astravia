@@ -386,7 +386,34 @@ export async function renameFilesystemPath(oldPath: string, newPath: string): Pr
 	if (isSshProjectUri(oldPath) || isSshProjectUri(newPath)) return renameRemotePath(oldPath, newPath);
 	assertFilesystemPathWithinProject(oldPath);
 	assertFilesystemPathWithinProject(newPath);
-	await rename(resolve(oldPath), resolve(newPath));
+	const source = resolve(oldPath);
+	const target = resolve(newPath);
+	if (source === target) return;
+	// POSIX rename 会静默覆盖同名目标，Windows 则报 EEXIST：重命名前必须确认目标不存在，
+	// 否则用户一个回车就能把另一个文件直接盖掉。大小写不敏感的文件系统上「换大小写」
+	// 指向同一个 inode，那种情况要放行。
+	if (await pathTargetExists(target)) {
+		if (!(await isSameFile(source, target))) throw new Error(FILE_EXPLORER_ENTRY_EXISTS_ERROR);
+	}
+	await rename(source, target);
+}
+
+async function pathTargetExists(target: string): Promise<boolean> {
+	try {
+		await lstat(target);
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+async function isSameFile(source: string, target: string): Promise<boolean> {
+	try {
+		const [a, b] = await Promise.all([stat(source), stat(target)]);
+		return a.ino !== 0 && a.dev === b.dev && a.ino === b.ino;
+	} catch {
+		return false;
+	}
 }
 
 export async function deleteFilesystemPath(targetPath: string): Promise<void> {

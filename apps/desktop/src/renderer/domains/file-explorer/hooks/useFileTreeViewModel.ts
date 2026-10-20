@@ -53,6 +53,7 @@ export function useFileTreeViewModel(input: {
 	onSelectPaths: (paths: readonly string[]) => void;
 	onBackgroundClick: () => void;
 	onRename: (oldPath: string, newName: string) => Promise<void>;
+	validateRenameName?: (oldPath: string, newName: string) => string | null;
 	onFileMove: (srcPaths: readonly string[], destDir: string) => void;
 	onExternalDrop: (files: readonly File[], destDir: string) => void;
 	onNativeDragStart: (paths: readonly string[]) => void;
@@ -80,6 +81,7 @@ export function useFileTreeViewModel(input: {
 
 	const onRenameSubmit = useCallback(
 		(oldPath: string, newName: string) => {
+			// 失败由 onRename 自己冒泡（toast + 重读目录），这里只负责关掉输入框。
 			void input.onRename(oldPath, newName);
 			setRenamingPath(null);
 		},
@@ -142,6 +144,7 @@ export function useFileTreeViewModel(input: {
 		onContextMenu: input.onContextMenu,
 		onRootContextMenu: input.onRootContextMenu,
 		onRenameSubmit,
+		validateRenameName: input.validateRenameName,
 		onRenameCancel,
 		onCreateSubmit: input.onCreateSubmit,
 		onCreateCancel: input.onCreateCancel,

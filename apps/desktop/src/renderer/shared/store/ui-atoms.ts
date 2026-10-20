@@ -39,8 +39,30 @@ export const languageAtom = atom<AppLanguage>(initialResolved);
 // custom right-side action buttons into the global PageHeader.
 export const pageHeaderTitleAtom = atom<string | null>(null);
 export const pageHeaderRightSlotAtom = atom<ReactNode | null>(null);
-/** 顶栏右侧的工具插槽，渲染在页面自身动作（rightSlot）之前，例如「在外部应用中打开工作区」。 */
-export const pageHeaderUtilitySlotAtom = atom<ReactNode | null>(null);
+/**
+ * 顶栏工具位的「申请人」登记表，渲染在页面自身动作（rightSlot）之前，
+ * 例如「在外部应用中打开工作区」。
+ *
+ * 只存一个节点是不够的：对话页与活动面板的文件标签会同时存在，后写入的一方
+ * 会把对方整个顶掉，先卸载的一方又会把对方的按钮清空。按 owner 分槽登记，
+ * 由 {@link pageHeaderUtilitySlotAtom} 按优先级选一个渲染。
+ */
+export const pageHeaderUtilityEntriesAtom = atom<ReadonlyMap<string, PageHeaderUtilityEntry>>(new Map());
+
+export interface PageHeaderUtilityEntry {
+	/** 数字越小越优先。 */
+	readonly priority: number;
+	readonly node: ReactNode;
+}
+
+/** 顶栏工具位当前该渲染的节点（优先级最高的一条）。 */
+export const pageHeaderUtilitySlotAtom = atom<ReactNode | null>((get) => {
+	let best: PageHeaderUtilityEntry | null = null;
+	for (const entry of get(pageHeaderUtilityEntriesAtom).values()) {
+		if (!best || entry.priority < best.priority) best = entry;
+	}
+	return best?.node ?? null;
+});
 /** 顶栏左侧（侧边栏触发按钮之后、标题之前）的自定义插槽，如设置页的返回按钮。 */
 export const pageHeaderLeftSlotAtom = atom<ReactNode | null>(null);
 /** 紧贴顶栏标题 label 右侧的徽标插槽（如知识库「正在建立索引…」）。 */

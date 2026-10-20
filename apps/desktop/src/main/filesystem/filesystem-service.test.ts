@@ -12,6 +12,7 @@ import {
 	readEditableTextFile,
 	readFilesystemBinaryFile,
 	readTextPreviewFile,
+	renameFilesystemPath,
 	saveEditableTextFile,
 } from "./filesystem-service";
 
@@ -35,6 +36,64 @@ describe("deleteFilesystemPath", () => {
 		await expect(deleteFilesystemPath(child)).resolves.toBeUndefined();
 		await expect(stat(projectRoot)).resolves.toBeDefined();
 		await expect(stat(child)).rejects.toMatchObject({ code: "ENOENT" });
+	});
+});
+
+describe("renameFilesystemPath", () => {
+	let projectRoot = "";
+
+	beforeEach(async () => {
+		projectRoot = await mkdtemp(join(tmpdir(), "astravia-rename-path-"));
+		allowProjectRoot(projectRoot);
+	});
+
+	afterEach(async () => {
+		if (projectRoot) await rm(projectRoot, { recursive: true, force: true });
+	});
+
+	it("renames a file and keeps its content", async () => {
+		const from = join(projectRoot, "draft.ts");
+		const to = join(projectRoot, "final.ts");
+		await writeFile(from, "export const a = 1;", "utf8");
+
+		await renameFilesystemPath(from, to);
+
+		await expect(readFile(to, "utf8")).resolves.toBe("export const a = 1;");
+		await expect(stat(from)).rejects.toMatchObject({ code: "ENOENT" });
+	});
+
+	it("refuses to overwrite an existing file instead of silently replacing it", async () => {
+		const from = join(projectRoot, "a.ts");
+		const to = join(projectRoot, "b.ts");
+		await writeFile(from, "a", "utf8");
+		await writeFile(to, "b", "utf8");
+
+		await expect(renameFilesystemPath(from, to)).rejects.toThrow(FILE_EXPLORER_ENTRY_EXISTS_ERROR);
+
+		// 两者都不能被动过：源文件还在，目标内容还是自己的。
+		await expect(readFile(from, "utf8")).resolves.toBe("a");
+		await expect(readFile(to, "utf8")).resolves.toBe("b");
+	});
+
+	it("allows a case-only rename on a case-insensitive filesystem", async () => {
+		const from = join(projectRoot, "readme.md");
+		const to = join(projectRoot, "README.md");
+		await writeFile(from, "content", "utf8");
+
+		// 大小写不敏感的文件系统上两者是同一个 inode，属于改名而不是覆盖；
+		// 大小写敏感的文件系统上目标不存在，正常改名。两种情况都应成功。
+		await renameFilesystemPath(from, to);
+
+		await expect(readFile(to, "utf8")).resolves.toBe("content");
+	});
+
+	it("is a no-op when the paths are identical", async () => {
+		const file = join(projectRoot, "same.ts");
+		await writeFile(file, "keep", "utf8");
+
+		await renameFilesystemPath(file, file);
+
+		await expect(readFile(file, "utf8")).resolves.toBe("keep");
 	});
 });
 

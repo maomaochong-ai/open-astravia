@@ -21,6 +21,8 @@ interface FileTreeProps {
 	onSelectPaths: (paths: readonly string[]) => void;
 	onBackgroundClick: () => void;
 	onRename: (oldPath: string, newName: string) => Promise<void>;
+	/** Inline rename validation (platform rules + name collision); null means acceptable. */
+	validateRenameName?: (oldPath: string, newName: string) => string | null;
 	onFileMove: (srcPaths: readonly string[], destDir: string) => void;
 	onExternalDrop: (files: readonly File[], destDir: string) => void;
 	onNativeDragStart: (paths: readonly string[]) => void;
