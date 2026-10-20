@@ -2,7 +2,7 @@
 import { act, cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GitChanges } from "../src/components/GitChanges";
-import { peekPanelFocus, requestPanelFocus, setGitCommand } from "../src/git/runtime";
+import { clearPanelShowAll, peekPanelFocus, peekPanelShowAll, requestPanelFocus, requestPanelShowAll, setGitCommand } from "../src/git/runtime";
 import type { ChangeEntry, StatusGroups } from "../src/git/types";
 
 vi.mock("@astravia-org/plugin-sdk", () => ({
@@ -17,7 +17,7 @@ vi.mock("../src/components/DiffPane", () => ({
 vi.mock("../src/components/CommitBox", () => ({ CommitBox: () => null }));
 
 const WIDE = 900;
-const groups = (unstaged: ChangeEntry[]): StatusGroups => ({ conflict: [], staged: [], unstaged });
+const groups = (unstaged: ChangeEntry[], staged: ChangeEntry[] = []): StatusGroups => ({ conflict: [], staged, unstaged });
 
 beforeEach(() => {
 	setGitCommand({ run: vi.fn(async () => ({ exitCode: 0, stdout: "", stderr: "" })) });
@@ -72,5 +72,39 @@ describe("Git panel external focus", () => {
 		act(() => requestPanelFocus({ root: "/elsewhere", path: "src/other.ts" }));
 
 		expect(peekPanelFocus("/elsewhere")).toBe("src/other.ts");
+	});
+
+	it("follows the focused file into another section after it is staged", async () => {
+		const target: ChangeEntry = { path: "src/target.ts", code: "M" };
+		const other: ChangeEntry = { path: "src/aaa.ts", code: "M" };
+		const view = render(<GitChanges root="/repo" groups={groups([other, target])} onOpenGraph={() => undefined} />);
+
+		act(() => requestPanelFocus({ root: "/repo", path: target.path }));
+		expect((await screen.findByTestId("diff-pane")).textContent).toBe(target.path);
+
+		// 暂存后文件从 unstaged 摸到 staged；排序上第一个文件变成了 src/aaa.ts。
+		view.rerender(<GitChanges root="/repo" groups={groups([other], [target])} onOpenGraph={() => undefined} />);
+
+		expect((await screen.findByTestId("diff-pane")).textContent).toBe(target.path);
+	});
+
+	it("shows the whole list without selecting a file when asked (view-all)", async () => {
+		const view = render(<GitChanges root="/repo" groups={groups([{ path: "src/other.ts", code: "M" }])} onOpenGraph={() => undefined} />);
+
+		// 面板已挂载且已自动选中第一个文件时，「查看所有变更」仍要有可见效果。
+		expect((await screen.findByTestId("diff-pane")).textContent).toBe("src/other.ts");
+
+		act(() => requestPanelShowAll({ root: "/repo" }));
+
+		expect(screen.queryByTestId("diff-pane")).toBeNull();
+		expect(screen.getByText("diff.selectPrompt")).toBeTruthy();
+		expect(peekPanelShowAll("/repo")).toBe(false);
+
+		// 抑制态不能永久生效：用户再点文件（这里用外部 focus 模拟）仍要显示 diff。
+		act(() => requestPanelFocus({ root: "/repo", path: "src/other.ts" }));
+		expect((await screen.findByTestId("diff-pane")).textContent).toBe("src/other.ts");
+
+		view.rerender(<GitChanges root="/repo" groups={groups([{ path: "src/other.ts", code: "M" }])} onOpenGraph={() => undefined} />);
+		expect((await screen.findByTestId("diff-pane")).textContent).toBe("src/other.ts");
 	});
 });

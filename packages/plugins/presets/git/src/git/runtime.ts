@@ -16,6 +16,15 @@ export interface PanelFocusRequest {
 }
 
 /**
+ * One-shot "show me every change" request (the turn card title / "view all").
+ * Separate from {@link PanelFocusRequest} because "no path" must not be confused
+ * with "no request": a focus request always carries a path.
+ */
+export interface PanelShowAllRequest {
+	root: string;
+}
+
+/**
  * Bring the Git tab to the front, opening the activity panel if it is closed.
  *
  * `cwd` is the conversation's workspace, not the repo root: the host keys tab
@@ -50,6 +59,9 @@ interface GitRuntime {
 	/** Pending focus request, kept here so a not-yet-mounted panel still picks it up. */
 	panelFocus: PanelFocusRequest | null;
 	panelFocusListeners: Set<(request: PanelFocusRequest) => void>;
+	/** Pending "show all changes" request, kept for a panel that is not mounted yet. */
+	panelShowAll: PanelShowAllRequest | null;
+	panelShowAllListeners: Set<(request: PanelShowAllRequest) => void>;
 	refreshListeners: Set<() => void>;
 	turnPhaseListeners: Set<(phase: TurnPhase) => void>;
 	turnCardStates: Map<string, TurnCardState>;
@@ -81,6 +93,8 @@ function runtime(): GitRuntime {
 			openPanel: null,
 			panelFocus: null,
 			panelFocusListeners: new Set<(request: PanelFocusRequest) => void>(),
+			panelShowAll: null,
+			panelShowAllListeners: new Set<(request: PanelShowAllRequest) => void>(),
 			refreshListeners: new Set<() => void>(),
 			turnPhaseListeners: new Set<(phase: TurnPhase) => void>(),
 			turnCardStates: new Map<string, TurnCardState>(),
@@ -283,6 +297,31 @@ export function clearPanelFocus(path: string): void {
 
 export function onPanelFocus(listener: (request: PanelFocusRequest) => void): () => void {
 	const set = runtime().panelFocusListeners;
+	set.add(listener);
+	return () => set.delete(listener);
+}
+
+/**
+ * Ask the panel to show the whole change list (no file selected), e.g. after a single-file
+ * stage moved that file to another section and the diff pane lost its target.
+ */
+export function requestPanelShowAll(request: PanelShowAllRequest): void {
+	runtime().panelShowAll = request;
+	for (const listener of runtime().panelShowAllListeners) listener(request);
+}
+
+/** Pending "show all" request for a panel showing `root`, or null. Does not consume it. */
+export function peekPanelShowAll(root: string): boolean {
+	return runtime().panelShowAll?.root === root;
+}
+
+/** Drop the pending request once a panel has actually shown the full list. */
+export function clearPanelShowAll(root: string): void {
+	if (runtime().panelShowAll?.root === root) runtime().panelShowAll = null;
+}
+
+export function onPanelShowAll(listener: (request: PanelShowAllRequest) => void): () => void {
+	const set = runtime().panelShowAllListeners;
 	set.add(listener);
 	return () => set.delete(listener);
 }

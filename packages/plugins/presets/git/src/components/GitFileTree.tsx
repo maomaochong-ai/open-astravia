@@ -103,8 +103,12 @@ export function GitFileTree({
 		} as React.CSSProperties;
 	}, [mode]);
 
-	// 右键作用于「右键那一行」：它已在多选内就对整个多选生效，否则只针对它自己。
-	const menuTarget = (path: string): string[] => (selectedPaths.includes(path) ? [...selectedPaths] : [path]);
+	const menuPathsForFile = (path: string): string[] => (selectedPaths.includes(path) ? [...selectedPaths] : [path]);
+	// 右键作用于「右键那一行」：文件行已在多选内就对整个多选生效，否则只针对它自己；
+	// 目录行作用于它下面列出的所有变更文件——git 只跟踪文件，树上的目录是聚合行，
+	// 不展开成路径列表的话目录级的「暂存 / 丢弃」就只能一个个点。
+	const menuTarget = (path: string, kind: "file" | "directory"): string[] =>
+		kind === "file" ? menuPathsForFile(path) : menuPathsBelow(path, entries);
 
 	return (
 		<FileTree
@@ -112,16 +116,28 @@ export function GitFileTree({
 			style={style}
 			renderContextMenu={
 				renderMenu
-					? (item, context) =>
-							item.kind === "file"
-								? // 锚在行的左下角：菜单自己会做视口夹取，面板贴着窗口右缘时也不会被裁掉。
-									renderMenu(menuTarget(item.path), () => context.close(), {
-										x: context.anchorRect.left,
-										y: context.anchorRect.bottom,
-									})
-								: null
+					? (item, context) => {
+						const paths = menuTarget(item.path, item.kind);
+						// 目录下没有任何已列出的变更（理论上不可能，防御性保留）就不弹菜单。
+						if (paths.length === 0) return null;
+						// 锚在行的左下角：菜单自己会做视口夹取，面板贴着窗口右缘时也不会被裁掉。
+						return renderMenu(paths, () => context.close(), {
+							x: context.anchorRect.left,
+							y: context.anchorRect.bottom,
+						});
+					}
 					: undefined
 			}
 		/>
 	);
+}
+
+/**
+ * 目录行右键时的作用对象：它下面列出的全部变更路径。
+ *
+ * 树里的目录是聚合行，`git` 只跟踪文件，因此只能靠路径前缀反推出后代。
+ */
+export function menuPathsBelow(directoryPath: string, entries: readonly ChangeEntry[]): string[] {
+	const prefix = directoryPath.endsWith("/") ? directoryPath : `${directoryPath}/`;
+	return entries.filter((entry) => entry.path.startsWith(prefix)).map((entry) => entry.path);
 }
