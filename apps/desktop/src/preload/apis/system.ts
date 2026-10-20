@@ -259,8 +259,10 @@ export function createSystemApi(
 			showItemInFolder: (fullPath) => ipc.invoke("astravia:shell:show-item-in-folder", fullPath),
 			openExternal: (url) => ipc.invoke("astravia:shell:open-external", url),
 			listExternalApplications: (targetPath) => ipc.invoke("astravia:shell:list-external-applications", targetPath),
-			openPathWithApplication: (targetPath, appId) =>
-				ipc.invoke("astravia:shell:open-path-with-app", targetPath, appId),
+			openPathWithApplication: (targetPath, appId, kind) =>
+				ipc.invoke("astravia:shell:open-path-with-app", targetPath, appId, kind),
+			openPathWithDefaultApplication: (targetPath) =>
+				ipc.invoke("astravia:shell:open-path-with-default-app", targetPath),
 		},
 		clipboard: {
 			writeImage: (dataUrl) => ipc.invoke("astravia:clipboard:write-image", dataUrl),

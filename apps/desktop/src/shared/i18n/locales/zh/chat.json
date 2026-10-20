@@ -293,7 +293,11 @@
 			"prepareFailed": "无法读取拖入的文件",
 			"commitFailed": "文件传输失败",
 			"failedCount": "有 {{count}} 项传输失败"
-		}
+		},
+		"openWorkspaceWithAppNoWorkspace": "在外部应用中打开（当前会话未绑定工作区）",
+		"loadingApplications": "正在识别本机应用…",
+		"openWithDefaultApp": "用系统默认应用打开",
+		"openWorkspaceWithAppFailed": "无法用所选应用打开"
 	},
 	"fileEditor": {
 		"loading": "正在打开文件…",

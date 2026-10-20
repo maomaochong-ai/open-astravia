@@ -192,10 +192,7 @@ export function useFilesPanelModel(cwd?: string | null): FilesPanelViewProps {
 
 	// 把「在外部应用中打开工作区」按钮登记到顶栏工具位：多个入口共存时由优先级
 	// 决定画哪一个，而不是互相覆盖；卸载只回收自己那份。
-	const workspaceAppButton = useMemo(
-		() => (rootDir ? <OpenWorkspaceWithAppButton rootDir={rootDir} /> : null),
-		[rootDir],
-	);
+	const workspaceAppButton = useMemo(() => <OpenWorkspaceWithAppButton rootDir={rootDir} />, [rootDir]);
 	// 优先级 10：对话页自己有工作区时由对话页占位，这里只在其它页面兜底。
 	usePageHeaderUtilitySlot("file-explorer", 10, workspaceAppButton);
 
@@ -776,7 +773,7 @@ export function useFilesPanelModel(cwd?: string | null): FilesPanelViewProps {
 				<span className="icon-[solar--minimize-square-linear] h-3.5 w-3.5" />
 			</Button>
 			{pluginToolbarActionNodes}
-			{rootDir && <OpenWorkspaceWithAppButton rootDir={rootDir} />}
+			<OpenWorkspaceWithAppButton rootDir={rootDir} />
 		</>
 	);
 

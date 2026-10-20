@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { URL } from "node:url";
 import { ASTRAVIA_HOME_ENV, getAstraviaHomePath } from "@astravia/action-rpc";
 import { app, type BrowserWindow, dialog, ipcMain, nativeImage, nativeTheme, protocol, session, shell } from "electron";
+import type { ExternalApplicationKind } from "../preload/api-types/system.js";
 import { APP_RUNTIME_NAME } from "../shared/app-identity.js";
 import { isCloudBuildEnabled } from "../shared/feature-flags.js";
 import { stopAllOpenMarketplaceMcpRuntimes } from "./abilities/open-marketplace/open-marketplace-mcp-runtime-host.js";
@@ -34,7 +35,7 @@ import {
 	installMainDiagnostics,
 	registerLocalNetworkAccess,
 } from "./diagnostics.js";
-import { listExternalApplications, openPathWithApplication } from "./external-apps.js";
+import { listExternalApplications, openPathWithApplication, openPathWithDefaultApplication } from "./external-apps.js";
 import { FILE_PROTOCOL_PRIVILEGE, registerFileProtocolHandler } from "./file-protocol.js";
 import { fixPath } from "./fix-path.js";
 import { initAppLanguage } from "./i18n/index.js";
@@ -566,12 +567,19 @@ if (!gotSingleLock) {
 			await openExternalUrl(url);
 		});
 
-		ipcMain.handle("astravia:shell:list-external-applications", async (_event, targetPath: string) => {
+		ipcMain.handle("astravia:shell:list-external-applications", async (_event, targetPath: string | null) => {
 			return listExternalApplications(targetPath);
 		});
 
-		ipcMain.handle("astravia:shell:open-path-with-app", async (_event, targetPath: string, appId: string) => {
-			await openPathWithApplication(targetPath, appId);
+		ipcMain.handle(
+			"astravia:shell:open-path-with-app",
+			async (_event, targetPath: string | null, appId: string, kind: ExternalApplicationKind) => {
+				await openPathWithApplication(targetPath, appId, kind);
+			},
+		);
+
+		ipcMain.handle("astravia:shell:open-path-with-default-app", async (_event, targetPath: string) => {
+			await openPathWithDefaultApplication(targetPath);
 		});
 
 		ipcMain.handle("astravia:window:minimize", () => {
