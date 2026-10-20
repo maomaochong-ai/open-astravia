@@ -11,6 +11,8 @@ import {
 	requestCommit,
 	openPanel,
 	requestPanelFocus,
+	requestPanelShowAll,
+	resizePanel,
 	setTurnBaseline,
 	setTurnDelta,
 } from "../git/runtime";
@@ -173,13 +175,22 @@ export function GitTurnCard(): JSX.Element | null {
 	 * not mounted yet (closed panel, other tab in front) and the path has to
 	 * survive until it is; `openPanel` alone only ever brings the list into view,
 	 * which reads as "nothing happened" when the panel already shows it.
+	 *
+	 * 无 path（卡片标题 / 「查看所有变更」）请求的是整份列表：这与「选中这个文件」
+	 * 是两种意图，而旧实现下 Git tab 已在前台时它就是个空操作。
 	 */
 	const open = (path?: string): void => {
 		if (!cwd) return;
 		openPanel({ cwd });
-		if (!path) return;
 		void resolveRepoRoot(cwd).then((root) => {
-			if (root) requestPanelFocus({ root, path });
+			if (!root) return;
+			if (path) {
+				// 窄面板里 DiffPane 根本不渲染（低于 DIFF_MIN_WIDTH），先把面板拓到最宽。
+				resizePanel("max");
+				requestPanelFocus({ root, path });
+				return;
+			}
+			requestPanelShowAll({ root });
 		});
 	};
 

@@ -11,7 +11,7 @@ import type {
 	FileTransferPlan,
 } from "@preload/fs-types";
 import { useNarrowScreen } from "@shared/hooks/useNarrowScreen";
-import { isWindows } from "@shared/lib/platform";
+import { isMac, isWindows } from "@shared/lib/platform";
 import { isSubPath, pathBasename, pathDirname } from "@shared/lib/utils";
 import {
 	activityPanelPreviewAvailableAtom,
@@ -19,6 +19,7 @@ import {
 	defaultConversationCwdAtom,
 	defaultImConversationCwdAtom,
 	fileContextMenuAtom,
+	clearFileExplorerRevealRequestAtom,
 	fileExplorerRevealRequestAtom,
 	fileTreeCacheAtom,
 	filePreviewAtom,
@@ -26,7 +27,6 @@ import {
 	inlineFilePreviewAtom,
 	inlineFilePreviewContextReadonlyAtom,
 	openInlineFilePreviewAtom,
-	pageHeaderRightSlotAtom,
 	type FilePreviewItem,
 	type FsEntry,
 	pluginFileExplorerToolbarActionsAtom,
@@ -40,8 +40,9 @@ import type {
 } from "@astravia-org/theme-ui/file-explorer";
 import { findFileTreeElement } from "@astravia-org/theme-ui/file-explorer/file-tree-dom";
 import { getDefaultStore, useAtom, useAtomValue, useSetAtom } from "jotai";
-import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { usePageHeaderUtilitySlot } from "@shared/app-shell/page-header/usePageHeaderUtilitySlot";
 import {
 	bindPluginFileExplorerHost,
 	emitPluginFileExplorerFilesChanged,
@@ -58,6 +59,7 @@ import { resolveCreateParentDirectory } from "../services/create-entry";
 import { isProjectInternalDrop } from "../services/file-drop";
 import { sortFileExplorerActions } from "../services/plugin-contributions";
 import { cacheAppFileDragIcons } from "../services/rasterize-app-file-icon";
+import { getRenameNameProblem } from "../services/rename-name";
 import { useFileExplorerSelection } from "./useFileExplorerSelection";
 import { useFileTree } from "./useFileTree";
 
@@ -89,7 +91,7 @@ export function useFilesPanelModel(cwd?: string | null): FilesPanelViewProps {
 	const [contextMenu, setContextMenu] = useAtom(fileContextMenuAtom);
 	const setPreview = useSetAtom(inlineFilePreviewAtom);
 	const revealRequest = useAtomValue(fileExplorerRevealRequestAtom);
-	const setRevealRequest = useSetAtom(fileExplorerRevealRequestAtom);
+	const clearRevealRequest = useSetAtom(clearFileExplorerRevealRequestAtom);
 	const openInlinePreview = useSetAtom(openInlineFilePreviewAtom);
 	const setGlobalPreview = useSetAtom(filePreviewAtom);
 	const narrow = useNarrowScreen();
@@ -188,14 +190,14 @@ export function useFilesPanelModel(cwd?: string | null): FilesPanelViewProps {
 		selection.clear();
 	}, [selection, setContextMenu]);
 
-	// 把「在外部应用中打开工作区」按钮注入全局顶栏右槽，方便从顶栏直接调起。
-	// 仅在文件树面板挂载且存在工作区目录时显示；卸载或切换工作区时还原。
-	const setPageHeaderRightSlot = useSetAtom(pageHeaderRightSlotAtom);
-	useEffect(() => {
-		if (!rootDir) return;
-		setPageHeaderRightSlot(<OpenWorkspaceWithAppButton rootDir={rootDir} />);
-		return () => setPageHeaderRightSlot(null);
-	}, [rootDir, setPageHeaderRightSlot]);
+	// 把「在外部应用中打开工作区」按钮登记到顶栏工具位：多个入口共存时由优先级
+	// 决定画哪一个，而不是互相覆盖；卸载只回收自己那份。
+	const workspaceAppButton = useMemo(
+		() => (rootDir ? <OpenWorkspaceWithAppButton rootDir={rootDir} /> : null),
+		[rootDir],
+	);
+	// 优先级 10：对话页自己有工作区时由对话页占位，这里只在其它页面兜底。
+	usePageHeaderUtilitySlot("file-explorer", 10, workspaceAppButton);
 
 	useEffect(() => {
 		setCreatingEntry(null);
@@ -240,6 +242,41 @@ export function useFilesPanelModel(cwd?: string | null): FilesPanelViewProps {
 		[expandDir, rootDir, selection.focusedEntry, selection.selectedEntries, setContextMenu, setRenamingPath],
 	);
 
+	/**
+	 * 重命名提交前的行内校验：平台不允许的名字、同名冲突都在这里拦下，
+	 * 让用户直接改名字，而不是提交后什么都没发生。
+	 */
+	const validateRenameName = useCallback(
+		(oldPath: string, newName: string): string | null => {
+			const problem = getRenameNameProblem({
+				caseInsensitive: isWindows || isMac,
+				newName,
+				oldPath,
+				siblings: cache.get(pathDirname(oldPath)),
+				windows: isWindows,
+			});
+			if (!problem) return null;
+			return problem.kind === "exists" ? t("fileExplorer.renameAlreadyExists") : getCreateNameError(problem.issue);
+		},
+		[cache, getCreateNameError, t],
+	);
+
+	const handleRename = useCallback(
+		async (oldPath: string, newName: string) => {
+			try {
+				await renameEntry(oldPath, newName);
+			} catch (error) {
+				const message = String(error).includes(FILE_EXPLORER_ENTRY_EXISTS_ERROR)
+					? t("fileExplorer.renameAlreadyExists")
+					: t("fileExplorer.renameFailed");
+				setErrorToast(message);
+				// 磁盘上可能已经是另一种状态，重读目录让树回到真实内容。
+				await refreshDir(pathDirname(oldPath)).catch(() => {});
+			}
+		},
+		[refreshDir, renameEntry, t],
+	);
+
 	const handleCreateSubmit = useCallback(
 		(name: string) => {
 			if (!creatingEntry) return;
@@ -257,6 +294,8 @@ export function useFilesPanelModel(cwd?: string | null): FilesPanelViewProps {
 					await refreshDir(pending.parentPath);
 					emitPluginFileExplorerFilesChanged([{ type: "created", path: entry.path }]);
 					selection.replaceWith(entry);
+					// 新建后直接打开：否则用户还要再找到这一行点一次才能开始写。
+					if (!entry.isDirectory) openPreviewForEntry(entry);
 					setCreatingEntry(null);
 				})
 				.catch((error: unknown) => {
@@ -270,7 +309,7 @@ export function useFilesPanelModel(cwd?: string | null): FilesPanelViewProps {
 					);
 				});
 		},
-		[creatingEntry, getCreateNameError, refreshDir, selection, t],
+		[creatingEntry, getCreateNameError, openPreviewForEntry, refreshDir, selection, t],
 	);
 
 	/** 展开到目标文件并把它选中/聚焦：树自己会跟着 focusedPath 滚动进视野。 */
@@ -315,31 +354,31 @@ export function useFilesPanelModel(cwd?: string | null): FilesPanelViewProps {
 		return () => handle.dispose();
 	}, [defaultCwd, refreshDir, revealEntry, rootDir, selection]);
 
-	const handledRevealRef = useRef<string | null>(null);
+	const handledRevealIdRef = useRef<number | null>(null);
 	// 聊天里的文件链接在文件 tab 挂载前就写好了预览，树这边只能靠这条一次性请求补位：
 	// 展开祖先目录 → 选中并聚焦，虚拟列表随后自己滚动到该行。路径不在本面板工作区
 	// 根下时留着不动，交给真正的宿主面板消费。
+	//
+	// 去重与清空都按请求 id 而不是路径：reveal 过程中选中态变化会让本 effect 重跑，
+	// 若把「清空」也挂在这次重跑上就会漏清；漏清会让同一路径的下一次点击变成 no-op。
 	useEffect(() => {
 		if (!revealRequest) {
-			handledRevealRef.current = null;
+			handledRevealIdRef.current = null;
 			return;
 		}
-		// 选中动作本身会重建 selection，effect 依赖跟着变，同一条请求只处理一次。
-		if (handledRevealRef.current === revealRequest || !rootDir || !isSubPath(revealRequest, rootDir)) return;
-		handledRevealRef.current = revealRequest;
-		let cancelled = false;
-		void revealEntry(revealRequest, { select: true, focus: true })
+		const { id, path } = revealRequest;
+		if (handledRevealIdRef.current === id || !rootDir || !isSubPath(path, rootDir)) return;
+		handledRevealIdRef.current = id;
+		void revealEntry(path, { select: true, focus: true })
 			.catch((error: unknown) => {
 				// 被排除规则藏起来的文件（.git 内部等）没有对应的树行，静默跳过即可。
 				console.warn("[file-explorer] reveal requested path failed", error);
 			})
 			.finally(() => {
-				if (!cancelled) setRevealRequest(null);
+				// 无条件按 id 清空：期间来了新请求时，清空 action 自己会保留新那条。
+				clearRevealRequest(id);
 			});
-		return () => {
-			cancelled = true;
-		};
-	}, [revealRequest, rootDir, revealEntry, setRevealRequest]);
+	}, [revealRequest, rootDir, revealEntry, clearRevealRequest]);
 
 	useEffect(() => {
 		if (narrow || previewCtx != null || !rootDir) return;
@@ -754,7 +793,8 @@ export function useFilesPanelModel(cwd?: string | null): FilesPanelViewProps {
 			onSelectEntry={handleSelectEntry}
 			onSelectPaths={selection.selectPaths}
 			onBackgroundClick={handleBackgroundClick}
-			onRename={renameEntry}
+			onRename={handleRename}
+			validateRenameName={validateRenameName}
 			onFileMove={onFileMove}
 			onExternalDrop={onExternalDrop}
 			onNativeDragStart={onNativeDragStart}

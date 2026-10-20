@@ -53,8 +53,31 @@ export const renamingPathAtom = atom<string | null>(null);
  * 聊天里的文件链接和文件树属于两个域，而且点开时文件 tab 往往还没挂载——
  * 此刻树那边没有可用的 reveal 句柄。这里用一条一次性请求跨过这次挂载边界：
  * 树挂载后自己消费并清空，路径不在自己的工作区根下就不动它。
+ *
+ * 请求带自增 `id` 而非只比较路径：同一条路径再点一次也是新请求，消费方按 id
+ * 去重与清空，不会因为上一笔请求没清干净而永久失效。
  */
-export const fileExplorerRevealRequestAtom = atom<string | null>(null);
+export interface FileExplorerRevealRequest {
+	path: string;
+	id: number;
+}
+
+const fileExplorerRevealRequestStateAtom = atom<FileExplorerRevealRequest | null>(null);
+const fileExplorerRevealSequenceAtom = atom(0);
+
+export const fileExplorerRevealRequestAtom = atom((get) => get(fileExplorerRevealRequestStateAtom));
+
+/** 发起一次 reveal 请求；同一路径重复发起也会得到新的 id。 */
+export const requestFileExplorerRevealAtom = atom(null, (get, set, path: string) => {
+	const id = get(fileExplorerRevealSequenceAtom) + 1;
+	set(fileExplorerRevealSequenceAtom, id);
+	set(fileExplorerRevealRequestStateAtom, { path, id });
+});
+
+/** 按 id 清空：期间若已经换成新请求，保留新的那条。 */
+export const clearFileExplorerRevealRequestAtom = atom(null, (get, set, id: number) => {
+	if (get(fileExplorerRevealRequestStateAtom)?.id === id) set(fileExplorerRevealRequestStateAtom, null);
+});
 
 export const fileEditorDocumentsAtom = atom<Map<string, FileEditorDocumentState>>(new Map());
 export const fileEditorHasUnsavedChangesAtom = atom((get) => {

@@ -55,6 +55,11 @@ export interface FileTreeViewProps {
 	/** Right-click empty area / tree chrome — host should clear selection + open root menu. */
 	onRootContextMenu: (x: number, y: number) => void;
 	onRenameSubmit: (oldPath: string, newName: string) => void;
+	/**
+	 * Validate a rename before the host runs it. A non-null message is shown inline and the
+	 * editor stays open so the user can fix the name instead of losing silently.
+	 */
+	validateRenameName?: (oldPath: string, newName: string) => string | null;
 	onRenameCancel: () => void;
 	onCreateSubmit: (name: string) => void;
 	onCreateCancel: () => void;
@@ -120,6 +125,7 @@ export function FileTreeView({
 	onContextMenu,
 	onRootContextMenu,
 	onRenameSubmit,
+	validateRenameName,
 	onRenameCancel,
 	onCreateSubmit,
 	onCreateCancel,
@@ -167,7 +173,9 @@ export function FileTreeView({
 	// The rename draft lives here, not in the row: Virtuoso recycles rows that scroll out of
 	// the overscan window, and a row-local draft would be lost (or committed) on that unmount.
 	const [renameDraft, setRenameDraft] = useState<{ path: string; value: string } | null>(null);
+	const [renameError, setRenameError] = useState<{ path: string; message: string } | null>(null);
 	useEffect(() => {
+		setRenameError(null);
 		if (!renamingPath) {
 			setRenameDraft(null);
 			return;
@@ -179,18 +187,28 @@ export function FileTreeView({
 	const handleRenameValueChange = useCallback(
 		(value: string) => {
 			if (!renamingPath) return;
+			setRenameError(null);
 			setRenameDraft({ path: renamingPath, value });
 		},
 		[renamingPath],
 	);
 	const handleRenameSubmit = useCallback(
 		(oldPath: string, newName: string) => {
+			const message = validateRenameName?.(oldPath, newName) ?? null;
+			if (message) {
+				// 保留输入框与草稿，把错误留在行内，用户改完可直接再次提交。
+				setRenameError({ path: oldPath, message });
+				setRenameDraft({ path: oldPath, value: newName });
+				return;
+			}
+			setRenameError(null);
 			setRenameDraft(null);
 			onRenameSubmit(oldPath, newName);
 		},
-		[onRenameSubmit],
+		[onRenameSubmit, validateRenameName],
 	);
 	const handleRenameCancel = useCallback(() => {
+		setRenameError(null);
 		setRenameDraft(null);
 		onRenameCancel();
 	}, [onRenameCancel]);
@@ -317,6 +335,7 @@ export function FileTreeView({
 				isFocused={focusedPath === row.entry.path}
 				isRenaming={renamingPath === row.entry.path}
 				renameValue={renameDraft?.path === row.entry.path ? renameDraft.value : undefined}
+				renameError={renameError?.path === row.entry.path ? renameError.message : null}
 				onRenameValueChange={handleRenameValueChange}
 				decoration={getDecoration?.(row.entry)}
 				dragEntries={dragEntries}

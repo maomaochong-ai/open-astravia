@@ -8,7 +8,7 @@ import {
 	activityPanelWidthAtom,
 	setActivityPanelWidthAtom,
 } from "./activity-atoms";
-import { fileExplorerRevealRequestAtom } from "./file-atoms";
+import { requestFileExplorerRevealAtom } from "./file-atoms";
 
 export type FilePreviewKind = "image" | "file";
 
@@ -126,7 +126,7 @@ export const openFileInActivityWorkspaceAtom = atom(null, (_get, set, input: { w
 	set(activityPanelOpenAtom, true);
 	set(activityPanelTabByProjectAtom, (prev) => new Map(prev).set(input.workspaceId, "file"));
 	set(openInlineFilePreviewAtom, { name: pathBasename(input.path), path: input.path });
-	set(fileExplorerRevealRequestAtom, input.path);
+	set(requestFileExplorerRevealAtom, input.path);
 });
 
 /**

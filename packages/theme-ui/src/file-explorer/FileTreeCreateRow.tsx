@@ -28,11 +28,23 @@ export function FileTreeCreateRow({
 	const icon = getFileIcon(value, isDirectory, false);
 
 	useEffect(() => {
-		if (!busy) inputRef.current?.focus();
+		// 提交中焦点会被 disabled 抽走；只有在用户没把焦点放到别处时才抢回来，
+		// 否则校验失败后点其他位置光标会被莫名其妙拉回输入框。
+		if (busy) return;
+		const active = document.activeElement;
+		if (active && active !== document.body) return;
+		inputRef.current?.focus();
 	}, [busy]);
 
 	function submit(): void {
-		if (!busy) onSubmit(value.trim());
+		if (busy) return;
+		const trimmed = value.trim();
+		// 空名不发请求，直接放弃。
+		if (!trimmed) {
+			onCancel();
+			return;
+		}
+		onSubmit(trimmed);
 	}
 
 	return (
@@ -54,7 +66,14 @@ export function FileTreeCreateRow({
 					aria-label={inputLabel}
 					onChange={(event) => setValue(event.target.value)}
 					onBlur={() => {
-						if (!busy) onCancel();
+						// 提交中（busy）行会被 disabled，此时失焦不是用户意图；
+						// 已有错误说明用户刚被拒过，点到别处就当作放弃。
+						if (busy) return;
+						if (error) {
+							onCancel();
+							return;
+						}
+						submit();
 					}}
 					onKeyDown={(event) => {
 						if (event.key === "Enter") {

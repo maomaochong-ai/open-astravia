@@ -35,6 +35,8 @@ export interface FileTreeNodeViewProps {
 	 * (virtual list recycling) restores the draft instead of resetting to `entry.name`.
 	 */
 	renameValue?: string;
+	/** Inline validation message for the open rename input; non-null keeps the input open. */
+	renameError?: string | null;
 	onRenameValueChange?: (value: string) => void;
 	decoration?: FileExplorerNodeDecoration | null;
 	/** Entries included in the active multi-select when dragging this row. */
@@ -109,6 +111,7 @@ export function FileTreeNodeView({
 	isFocused = false,
 	isRenaming,
 	renameValue: draftValue,
+	renameError,
 	onRenameValueChange,
 	decoration,
 	dragEntries,
@@ -177,6 +180,18 @@ export function FileTreeNodeView({
 		}
 	}
 
+	/**
+	 * 失焦提交；但已经提示过错误时改为放弃——否则用户点到别处会反复重提同一个非法名，
+	 * 输入框又会抢回焦点。
+	 */
+	function handleRenameBlur() {
+		if (renameError) {
+			onRenameCancel();
+			return;
+		}
+		handleRenameSubmit();
+	}
+
 	function handleRenameKeyDown(e: React.KeyboardEvent) {
 		if (e.key === "Enter") {
 			e.preventDefault();
@@ -239,77 +254,92 @@ export function FileTreeNodeView({
 	}
 
 	return (
-		<div
-			id={rowId}
-			role="treeitem"
-			aria-selected={isSelected}
-			data-file-path={entry.path}
-			draggable={!isRenaming}
-			onClick={handleClick}
-			onContextMenu={handleContextMenu}
-			onPointerDown={handlePointerDown}
-			onDragStart={handleDragStart}
-			onDragOver={handleDragOver}
-			onDragLeave={handleDragLeave}
-			onDrop={handleDrop}
-			className={cn(
-				"flex items-center gap-1.5 rounded-md px-1.5 py-[3px] text-[12px] cursor-default select-none transition-colors",
-				isSelected && !isRenaming ? "bg-accent text-foreground" : "text-foreground hover:bg-accent/50",
-				isFocused && !isRenaming ? "ring-1 ring-inset ring-primary/40" : null,
-				dragOver && FILE_TREE_NODE_DROP_CLASS,
-			)}
-			style={{ paddingLeft: `${depth * 16 + 6}px` }}
-			title={decoration?.tooltip}
-			aria-description={decoration?.tooltip}
-		>
-			{entry.isDirectory ? (
-				<span
-					className={cn(
-						"h-3 w-3 shrink-0 transition-transform",
-						isLoading
-							? "icon-[solar--refresh-linear] animate-spin text-muted-foreground"
-							: isExpanded
-								? "icon-[solar--alt-arrow-down-linear]"
-								: "icon-[solar--alt-arrow-right-linear]",
-					)}
-				/>
-			) : (
-				<span className="h-3 w-3 shrink-0" />
-			)}
+		<>
+			<div
+				id={rowId}
+				role="treeitem"
+				aria-selected={isSelected}
+				data-file-path={entry.path}
+				draggable={!isRenaming}
+				onClick={handleClick}
+				onContextMenu={handleContextMenu}
+				onPointerDown={handlePointerDown}
+				onDragStart={handleDragStart}
+				onDragOver={handleDragOver}
+				onDragLeave={handleDragLeave}
+				onDrop={handleDrop}
+				className={cn(
+					"flex items-center gap-1.5 rounded-md px-1.5 py-[3px] text-[12px] cursor-default select-none transition-colors",
+					isSelected && !isRenaming ? "bg-accent text-foreground" : "text-foreground hover:bg-accent/50",
+					isFocused && !isRenaming ? "ring-1 ring-inset ring-primary/40" : null,
+					dragOver && FILE_TREE_NODE_DROP_CLASS,
+				)}
+				style={{ paddingLeft: `${depth * 16 + 6}px` }}
+				title={decoration?.tooltip}
+				aria-description={decoration?.tooltip}
+			>
+				{entry.isDirectory ? (
+					<span
+						className={cn(
+							"h-3 w-3 shrink-0 transition-transform",
+							isLoading
+								? "icon-[solar--refresh-linear] animate-spin text-muted-foreground"
+								: isExpanded
+									? "icon-[solar--alt-arrow-down-linear]"
+									: "icon-[solar--alt-arrow-right-linear]",
+						)}
+					/>
+				) : (
+					<span className="h-3 w-3 shrink-0" />
+				)}
 
-			{decoration?.icon ? (
-				<span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center">{decoration.icon}</span>
-			) : (
-				<span
-					className={cn(
-						icon,
-						"h-3.5 w-3.5 shrink-0",
-						entry.isDirectory ? "text-primary" : "text-muted-foreground",
-					)}
-				/>
-			)}
+				{decoration?.icon ? (
+					<span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center">{decoration.icon}</span>
+				) : (
+					<span
+						className={cn(
+							icon,
+							"h-3.5 w-3.5 shrink-0",
+							entry.isDirectory ? "text-primary" : "text-muted-foreground",
+						)}
+					/>
+				)}
 
-			{isRenaming ? (
-				<input
-					ref={inputRef}
-					type="text"
-					value={renameValue}
-					onChange={(e) => setRenameValue(e.target.value)}
-					onBlur={handleRenameSubmit}
-					onKeyDown={handleRenameKeyDown}
-					className="min-w-0 flex-1 rounded border border-primary bg-background px-1 py-0 text-[12px] text-foreground outline-none"
-					onClick={(e) => e.stopPropagation()}
-				/>
-			) : (
-				<>
-					<span className={cn("min-w-0 flex-1 truncate", decoration?.color && DECORATION_COLORS[decoration.color], decoration?.faded && "opacity-60", decoration?.strikethrough && "line-through")}>{entry.name}</span>
-					{decoration?.badge ? (
-						<span className={cn("max-w-8 shrink-0 truncate rounded-full bg-accent px-1.5 text-[10px]", decoration?.color ? DECORATION_COLORS[decoration.color] : "text-muted-foreground")}>
-							{decoration.badge}
-						</span>
-					) : null}
-				</>
-			)}
-		</div>
+				{isRenaming ? (
+					<input
+						ref={inputRef}
+						type="text"
+						value={renameValue}
+						onChange={(e) => setRenameValue(e.target.value)}
+						onBlur={handleRenameBlur}
+						onKeyDown={handleRenameKeyDown}
+						aria-invalid={renameError ? true : undefined}
+						className={cn(
+							"min-w-0 flex-1 rounded border bg-background px-1 py-0 text-[12px] text-foreground outline-none",
+							renameError ? "border-destructive" : "border-primary",
+						)}
+						onClick={(e) => e.stopPropagation()}
+					/>
+				) : (
+					<>
+						<span className={cn("min-w-0 flex-1 truncate", decoration?.color && DECORATION_COLORS[decoration.color], decoration?.faded && "opacity-60", decoration?.strikethrough && "line-through")}>{entry.name}</span>
+						{decoration?.badge ? (
+							<span className={cn("max-w-8 shrink-0 truncate rounded-full bg-accent px-1.5 text-[10px]", decoration?.color ? DECORATION_COLORS[decoration.color] : "text-muted-foreground")}>
+								{decoration.badge}
+							</span>
+						) : null}
+					</>
+				)}
+			</div>
+			{isRenaming && renameError ? (
+				<p
+					className="truncate text-[10px] text-destructive"
+					title={renameError}
+					style={{ paddingLeft: `${depth * 16 + 24}px` }}
+				>
+					{renameError}
+				</p>
+			) : null}
+		</>
 	);
 }

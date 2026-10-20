@@ -1,5 +1,12 @@
 // @vitest-environment jsdom
-import { type FsEntry, expandedDirsAtom, fileExplorerRevealRequestAtom, fileTreeCacheAtom } from "@shared/store/atoms";
+import {
+	type FsEntry,
+	clearFileExplorerRevealRequestAtom,
+	expandedDirsAtom,
+	fileExplorerRevealRequestAtom,
+	fileTreeCacheAtom,
+	requestFileExplorerRevealAtom,
+} from "@shared/store/atoms";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { getDefaultStore } from "jotai";
 import { type ReactElement, isValidElement } from "react";
@@ -42,7 +49,8 @@ describe("useFilesPanelModel 消费文件树定位请求", () => {
 		const store = getDefaultStore();
 		store.set(fileTreeCacheAtom, new Map());
 		store.set(expandedDirsAtom, new Set());
-		store.set(fileExplorerRevealRequestAtom, null);
+		const pending = store.get(fileExplorerRevealRequestAtom);
+		if (pending) store.set(clearFileExplorerRevealRequestAtom, pending.id);
 		window.astravia = {
 			fs: {
 				readDir: vi.fn(async (path: string) => DIRECTORIES[path] ?? []),
@@ -58,7 +66,7 @@ describe("useFilesPanelModel 消费文件树定位请求", () => {
 		const { result } = renderHook(() => useFilesPanelModel(ROOT));
 		await waitFor(() => expect(treeProps(result.current.tree).expandedDirs.size).toBe(0));
 
-		act(() => store.set(fileExplorerRevealRequestAtom, `${ROOT}/src/main.ts`));
+		act(() => store.set(requestFileExplorerRevealAtom, `${ROOT}/src/main.ts`));
 
 		await waitFor(() => expect(treeProps(result.current.tree).focusedPath).toBe(`${ROOT}/src/main.ts`));
 		expect(treeProps(result.current.tree).expandedDirs.has(`${ROOT}/src`)).toBe(true);
@@ -67,19 +75,34 @@ describe("useFilesPanelModel 消费文件树定位请求", () => {
 		expect(store.get(fileExplorerRevealRequestAtom)).toBeNull();
 	});
 
-	it("同一路径再次点开时仍会重新处理", async () => {
+	it("同一路径连续点开两次都会重新处理", async () => {
 		const store = getDefaultStore();
 		const { result } = renderHook(() => useFilesPanelModel(ROOT));
 		await waitFor(() => expect(treeProps(result.current.tree).expandedDirs.size).toBe(0));
 
 		const readDir = window.astravia.fs.readDir as unknown as ReturnType<typeof vi.fn>;
-		act(() => store.set(fileExplorerRevealRequestAtom, `${ROOT}/src/main.ts`));
+		act(() => store.set(requestFileExplorerRevealAtom, `${ROOT}/src/main.ts`));
 		await waitFor(() => expect(store.get(fileExplorerRevealRequestAtom)).toBeNull());
 		const callsAfterFirstReveal = readDir.mock.calls.length;
 
-		act(() => store.set(fileExplorerRevealRequestAtom, `${ROOT}/src/main.ts`));
+		act(() => store.set(requestFileExplorerRevealAtom, `${ROOT}/src/main.ts`));
 
 		await waitFor(() => expect(readDir.mock.calls.length).toBeGreaterThan(callsAfterFirstReveal));
+		await waitFor(() => expect(store.get(fileExplorerRevealRequestAtom)).toBeNull());
+	});
+
+	it("别的面板留下的挂起请求不会挡住本面板的新请求", async () => {
+		const store = getDefaultStore();
+		const { result } = renderHook(() => useFilesPanelModel(ROOT));
+		await waitFor(() => expect(treeProps(result.current.tree).expandedDirs.size).toBe(0));
+
+		// 该路径不属于本面板：请求必须原地保留，不能被本面板吞掉。
+		act(() => store.set(requestFileExplorerRevealAtom, "/elsewhere/app.ts"));
+		await waitFor(() => expect(store.get(fileExplorerRevealRequestAtom)?.path).toBe("/elsewhere/app.ts"));
+
+		act(() => store.set(requestFileExplorerRevealAtom, `${ROOT}/src/main.ts`));
+
+		await waitFor(() => expect(treeProps(result.current.tree).focusedPath).toBe(`${ROOT}/src/main.ts`));
 		expect(store.get(fileExplorerRevealRequestAtom)).toBeNull();
 	});
 
@@ -88,9 +111,9 @@ describe("useFilesPanelModel 消费文件树定位请求", () => {
 		const { result } = renderHook(() => useFilesPanelModel(ROOT));
 		await waitFor(() => expect(treeProps(result.current.tree).expandedDirs.size).toBe(0));
 
-		act(() => store.set(fileExplorerRevealRequestAtom, "/elsewhere/app.ts"));
+		act(() => store.set(requestFileExplorerRevealAtom, "/elsewhere/app.ts"));
 
 		await waitFor(() => expect(treeProps(result.current.tree).focusedPath).toBeNull());
-		expect(store.get(fileExplorerRevealRequestAtom)).toBe("/elsewhere/app.ts");
+		expect(store.get(fileExplorerRevealRequestAtom)?.path).toBe("/elsewhere/app.ts");
 	});
 });

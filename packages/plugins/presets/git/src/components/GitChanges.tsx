@@ -3,7 +3,15 @@ import { useTranslation } from "@astravia-org/plugin-sdk";
 import { Button } from "@astravia-org/ui";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { findEntry } from "../git/gitStatus";
-import { clearPanelFocus, onPanelFocus, peekPanelFocus, resizePanel } from "../git/runtime";
+import {
+	clearPanelFocus,
+	clearPanelShowAll,
+	onPanelFocus,
+	onPanelShowAll,
+	peekPanelFocus,
+	peekPanelShowAll,
+	resizePanel,
+} from "../git/runtime";
 import type { ChangeRef, ChangeSection, StatusGroups } from "../git/types";
 import type { MenuPoint } from "./ChangeMenu";
 import { FloatingChangeMenu } from "./ChangeMenu";
@@ -86,20 +94,40 @@ export function GitChanges({ root, groups, onOpenGraph }: { root: string; groups
 	const total = groups.conflict.length + groups.staged.length + groups.unstaged.length;
 	const wide = containerWidth >= DIFF_MIN_WIDTH;
 	const activeEntry = active ? findEntry(groups[active.section], active.path) : null;
+	/**
+	 * 「查看所有变更」要求不选中任何文件：抑制自动落到第一个文件的回落，
+	 * 直到用户自己点了一行。
+	 */
+	const suppressAutoSelectRef = useRef(false);
 	const showTree = !wide || !treeCollapsed;
 
-	// 拉宽且无有效选择时，默认选中第一个变更文件（仿文件活动面板）。
-	// 选中文件被移除（刷新后失效）时也回落到第一个。
+	// 宽屏下总要有个 diff 目标：先跟住已选文件（哪怕它被暂存搬到了另一个分区），
+	// 真的消失（提交 / 丢弃 / 撤销）才回落到第一个变更文件（仿文件活动面板）。
 	useEffect(() => {
-		if (!wide || activeEntry) return;
+		if (!wide || suppressAutoSelectRef.current) return;
+		// 仍在原分区：不动（避免每次刷新把选中对象换成新对象）。
+		if (active && findEntry(groups[active.section], active.path)) return;
+		if (active) {
+			// 暂存 / 取消暂存会把文件搬去另一个分区：跟上它，而不是把 diff 甩回第一个文件。
+			for (const section of SECTION_ORDER) {
+				if (section === active.section) continue;
+				if (!findEntry(groups[section], active.path)) continue;
+				setActive({ section, path: active.path });
+				setSelection({ section, paths: [active.path] });
+				return;
+			}
+		}
+		// 真的没了（提交 / 丢弃 / 撤销）：回落到第一个变更文件。
 		for (const section of SECTION_ORDER) {
 			const first = groups[section][0];
 			if (first) {
 				setActive({ section, path: first.path });
+				setSelection((prev) => (prev.paths.length > 0 ? { section: prev.section, paths: [] } : prev));
 				return;
 			}
 		}
-	}, [wide, activeEntry, groups]);
+		setActive(null);
+	}, [wide, active, groups]);
 
 	// 收起 diff（窄屏或无选择）时复位树折叠态，避免残留隐藏。
 	useEffect(() => {
@@ -110,6 +138,7 @@ export function GitChanges({ root, groups, onOpenGraph }: { root: string; groups
 	// 窄屏点文件时把面板拉到最大并打开 diff（仿文件面板）。
 	const handleSelection = useCallback(
 		(section: ChangeSection, paths: string[], added: string | null) => {
+			suppressAutoSelectRef.current = false;
 			setSelection({ section, paths });
 			if (added) {
 				setActive({ section, path: added });
@@ -145,6 +174,8 @@ export function GitChanges({ root, groups, onOpenGraph }: { root: string; groups
 	useEffect(
 		() =>
 			onPanelFocus((request) => {
+				// 明确要看某个文件时，show-all 的抑制态必须退出，否则点文件不显示 diff。
+				suppressAutoSelectRef.current = false;
 				if (request.root !== root) return;
 				if (applyExternalFocus(request.path)) clearPanelFocus(request.path);
 			}),
@@ -156,6 +187,35 @@ export function GitChanges({ root, groups, onOpenGraph }: { root: string; groups
 		const pending = peekPanelFocus(root);
 		if (pending && applyExternalFocus(pending)) clearPanelFocus(pending);
 	}, [root, applyExternalFocus]);
+
+	/**
+	 * 「查看所有变更」：展开全部分区、不选中任何文件，让用户从完整列表自己挑。
+	 *
+	 * 这是面板已在前台时唯一能看见的反馈——旧实现只 `openPanel`，什么都没发生。
+	 */
+	const applyShowAll = useCallback(() => {
+		suppressAutoSelectRef.current = true;
+		setCollapsed({ conflict: false, staged: false, unstaged: false });
+		setActive(null);
+		setSelection((prev) => (prev.paths.length > 0 ? { section: prev.section, paths: [] } : prev));
+	}, []);
+
+	useEffect(
+		() =>
+			onPanelShowAll((request) => {
+				if (request.root !== root) return;
+				applyShowAll();
+				clearPanelShowAll(request.root);
+			}),
+		[root, applyShowAll],
+	);
+
+	// 面板后于点击挂载（标签卡刚打开），或列表晚到：补上还挂着的 show-all 请求。
+	useEffect(() => {
+		if (!peekPanelShowAll(root)) return;
+		applyShowAll();
+		clearPanelShowAll(root);
+	}, [root, applyShowAll]);
 
 	const onSplitDrag = useCallback(
 		(deltaX: number) => {
