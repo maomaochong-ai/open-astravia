@@ -13,8 +13,8 @@ vi.mock("@astravia-org/plugin-sdk", () => ({
 const sendPrompt = vi.fn(() => new Promise<void>(() => {}));
 /** 建完会话即广播 conversation-changed，与宿主 openSession 的行为一致。 */
 const createSession = vi.fn((cwd: string) => {
-	emit?.({ type: "conversation-changed", conversation: { cwd, isStreaming: false } });
-	return Promise.resolve({ cwd, isStreaming: false });
+	emit?.({ type: "conversation-changed", conversation: { id: "s-new", cwd, isStreaming: false } });
+	return Promise.resolve({ id: "s-new", cwd, isStreaming: false });
 });
 /** 插件订阅会话事件的那个回调，测试用它推 turn-start / turn-end。 */
 let emit: ((event: unknown) => void) | null = null;
@@ -59,12 +59,19 @@ function Harness({ cwd, tick }: { cwd: string | null; tick?: number }) {
 }
 
 /** 挂上派活器，并把会话推到「在这个 workspace、空闲」。 */
-function mount(cwd: string | null = "/w"): void {
+function mount(cwd: string | null = "/w", sessionId = "s1"): void {
 	act(() => {
 		root.render(<Harness cwd={cwd} />);
 	});
 	act(() => {
-		emit?.({ type: "conversation-changed", conversation: { cwd: "/w", isStreaming: false } });
+		emit?.({ type: "conversation-changed", conversation: { id: sessionId, cwd: "/w", isStreaming: false } });
+	});
+}
+
+/** 切到同项目下的另一个会话。画布是项目级的，切会话不会把它卸载。 */
+function switchSession(sessionId: string, cwd = "/w"): void {
+	act(() => {
+		emit?.({ type: "conversation-changed", conversation: { id: sessionId, cwd, isStreaming: false } });
 	});
 }
 
@@ -342,4 +349,40 @@ it("画布连 cwd 都没有时不凭空建会话", async () => {
 
 	expect(createSession).not.toHaveBeenCalled();
 	expect(sendPrompt).not.toHaveBeenCalled();
+});
+
+/**
+ * 串会话事故：画布挂在项目级面板上，同一个项目的多个会话共用它。只按 cwd 判断
+ * 「可以派」，在会话 A 贴的备注会在切到会话 B 后照派，B 里正在聊的正事被凭空插进
+ * 一条设计稿派活消息。
+ */
+it("在会话 A 贴的备注不会被派进同项目的会话 B", () => {
+	mount("/w", "s1");
+	act(() => {
+		store.addNote(anchor, "这条是给 s1 的");
+	});
+	// 用户还没等防抖窗口过去就切到了同项目的另一个会话。
+	switchSession("s2");
+	elapse();
+	expect(sendPrompt).not.toHaveBeenCalled();
+
+	// 回到 s1，它仍然该派出去——备注没有丢，只是不能串门。
+	switchSession("s1");
+	elapse();
+	expect(sendPrompt).toHaveBeenCalledTimes(1);
+});
+
+it("在别的 workspace 贴的备注，进入本项目后派给当场这个会话", () => {
+	// 贴备注时活跃会话在别的项目上，无从绑定，沿用旧行为：谁进来这个项目就跟谁说。
+	mount("/w", "s1");
+	switchSession("other-project-session", "/other");
+	act(() => {
+		store.addNote(anchor, "在别的项目上贴的");
+	});
+	elapse();
+	expect(sendPrompt).not.toHaveBeenCalled();
+
+	switchSession("s9");
+	elapse();
+	expect(sendPrompt).toHaveBeenCalledTimes(1);
 });

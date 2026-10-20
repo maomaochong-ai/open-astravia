@@ -20,7 +20,7 @@ export function notesFilePath(dirPath: string): string {
 }
 
 /** 派活身份：同一条备注追了新消息就是一件新的事。 */
-function dispatchKey(note: DesignNote): string {
+export function noteDispatchKey(note: DesignNote): string {
 	return `${note.id}:${note.messages.length}`;
 }
 
@@ -90,12 +90,12 @@ export class NotesStore {
 
 	/** 这条备注（当前这个版本）是否已经交给 agent 了。 */
 	isDispatched(note: DesignNote): boolean {
-		return this.dispatched.has(dispatchKey(note));
+		return this.dispatched.has(noteDispatchKey(note));
 	}
 
 	/** 记下「已经交给 agent」。自动派活、徽标直发、抽屉里的手动按钮都要报备。 */
 	markDispatched(notes: readonly DesignNote[]): void {
-		for (const note of notes) this.dispatched.add(dispatchKey(note));
+		for (const note of notes) this.dispatched.add(noteDispatchKey(note));
 	}
 
 	on(listener: () => void): Disposable {
