@@ -1,4 +1,4 @@
-import type { ConversationBodyRecord, ConversationDocument } from "@astravia/runtime-core/conversation";
+import type { ConversationDocument } from "@astravia/runtime-core/conversation";
 import {
 	applyConversationDocumentCommand,
 	applyStoredEventToConversationDocument,
@@ -7,8 +7,12 @@ import { describe, expect, it } from "vitest";
 import {
 	applyConversationRecords,
 	initialConversationDocument,
+	type ParsedConversationFile,
 	parseConversationFile,
 } from "../../src/conversation/conversation-file-codec.js";
+
+/** 解析结果里的原始记录：v1 消息记录没有 documentEntry，只有当前版本才带。 */
+type ConversationBodyRecord = ParsedConversationFile["records"][number];
 
 const SESSION_ID = "11111111-2222-4333-8444-555555555555";
 
@@ -62,12 +66,8 @@ function stepwise(records: readonly ConversationBodyRecord[], document: Conversa
 	let projected = document;
 	for (const record of records) {
 		if (record.recordType === "conversation.event") {
-			projected = applyStoredEventToConversationDocument(
-				projected,
-				record.event,
-				record.sequence,
-				record.documentEntry ?? undefined,
-			);
+			const documentEntry = "documentEntry" in record ? (record.documentEntry ?? undefined) : undefined;
+			projected = applyStoredEventToConversationDocument(projected, record.event, record.sequence, documentEntry);
 			continue;
 		}
 		projected = applyConversationDocumentCommand(projected, record.command, record.revision).document;
