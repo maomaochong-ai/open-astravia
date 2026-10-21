@@ -11,6 +11,7 @@ import {
 import { useAtom, useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { emitPluginFileExplorerFilesChanged } from "../../plugins/runtime/plugin-file-explorer-host";
+import { createFileTreeVisibleCache, type FileTreeVisibleCache } from "./file-tree-visible-cache";
 import { createDirectoryReloadScheduler } from "./file-tree-watch-coalesce";
 
 /**
@@ -25,14 +26,11 @@ export function useFileTree(cwdOverride?: string | null) {
 	const rootCwd = cwdOverride ?? activeSession?.cwd ?? null;
 	const prevCwdRef = useRef<string | null>(null);
 	const preferences = useAtomValue(fileExplorerPreferencesAtom);
+	const visibleCacheFactoryRef = useRef<FileTreeVisibleCache | null>(null);
 	const visibleCache = useMemo(() => {
 		if (!rootCwd) return cache;
-		const visible = createFileExplorerVisibility(rootCwd, preferences);
-		return new Map(
-			[...cache]
-				.filter(([directory]) => directory === rootCwd || visible(directory))
-				.map(([directory, entries]) => [directory, entries.filter((entry) => visible(entry.path))]),
-		);
+		visibleCacheFactoryRef.current ??= createFileTreeVisibleCache();
+		return visibleCacheFactoryRef.current.compute(rootCwd, cache, preferences);
 	}, [cache, rootCwd, preferences]);
 
 	const loadDir = useCallback(
