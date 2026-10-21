@@ -11,6 +11,8 @@ import {
 import { describe, expect, it } from "vitest";
 import { estimateContextTokens } from "../src/compaction/index.js";
 import { projectModelCallContext } from "../src/compaction/runtime/model-call-context-projection.js";
+import { renderGoalInstructions } from "../src/features/goal/goal-instructions.js";
+import type { CodingAgentGoalState } from "../src/features/goal/index.js";
 import { buildSystemPromptDraft, compileSystemPromptDraft } from "../src/model-context/index.js";
 
 describe("prompt cache verification", () => {
@@ -106,6 +108,44 @@ describe("prompt cache verification", () => {
 		expect(compiled.promptCacheBlocks.find(({ id }) => id === "core.volatile-addon")).toMatchObject({
 			cacheability: "volatile",
 		});
+	});
+
+	it("keeps the MCP tool index out of the cached system prefix", () => {
+		// MCP 目录会随服务器连接、断开与刷新而变；它若落在稳定段中部，任一变动都会作废其后的项目指令缓存。
+		const before = compileSystemPromptDraft(
+			buildSystemPromptDraft({ cwd: "/workspace", mcpDeferred: true, mcpTools: [], selectedTools: [] }),
+		);
+		const after = compileSystemPromptDraft(
+			buildSystemPromptDraft({
+				cwd: "/workspace",
+				mcpDeferred: true,
+				mcpTools: [{ name: "mcp_docs_search", description: "search the documentation" }],
+				selectedTools: [],
+			}),
+		);
+
+		expect(after.stableLength).toBe(before.stableLength);
+		expect(after.content.slice(0, after.stableLength)).toBe(before.content.slice(0, before.stableLength));
+		expect(after.content.slice(after.stableLength)).toContain("mcp_docs_search");
+		expect(after.promptCacheBlocks.find(({ id }) => id === "core.mcp")).toMatchObject({ cacheability: "volatile" });
+	});
+
+	it("keeps the goal instruction free of per-turn counters", () => {
+		// tokensUsed 每轮都增长；写进系统提示词会让整个历史消息缓存每轮失效，而它不影响任何模型判断。
+		const goal: CodingAgentGoalState = {
+			goalId: "goal-1",
+			objective: "ship the release",
+			status: "active",
+			tokensUsed: 1_000,
+			timeUsedSeconds: 60,
+			continuationCount: 2,
+			createdAt: "2026-01-01T00:00:00.000Z",
+			updatedAt: "2026-01-01T00:01:00.000Z",
+		};
+
+		expect(renderGoalInstructions({ ...goal, tokensUsed: 1_000 })).toBe(
+			renderGoalInstructions({ ...goal, tokensUsed: 987_654 }),
+		);
 	});
 });
 

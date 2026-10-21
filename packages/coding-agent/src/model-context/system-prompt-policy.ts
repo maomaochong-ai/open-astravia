@@ -415,7 +415,9 @@ export function buildSystemPromptDraft(options: BuildSystemPromptOptions = {}): 
 	});
 	// 不再渲染 `core.tools` 工具清单：其 `- name: description` 与 params.tools 中每个 tool 的
 	// description 是同一份字符串，模型会读到两遍。增量信息只有下面的 guidelines。
-	blocks.push(coreBlock("core.mcp", "mcp", renderMcpToolsSection(mcpTools, false, mcpDeferred), 250));
+	// MCP 工具索引会随服务器连接、断开与工具目录刷新而变化；留在稳定段（原 priority 250）时，
+	// 任一次变动都会从该块起作废后面数万字符的项目指令缓存，而它本就排在稳定段中部。
+	blocks.push(coreBlock("core.mcp", "mcp", renderMcpToolsSection(mcpTools, false, mcpDeferred), 810));
 	blocks.push(coreBlock("core.guidelines", "guidelines", `Guidelines:\n${buildGuidelines(tools, scenario)}\n`, 300));
 	blocks.push(coreBlock("core.append", "append", appendSystemPrompt ?? "", 400));
 	blocks.push(coreBlock("core.context", "context", renderContextSection(workspaceFacts, contextFiles), 500));

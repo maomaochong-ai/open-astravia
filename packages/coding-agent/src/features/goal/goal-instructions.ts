@@ -12,7 +12,8 @@ export function renderGoalInstructions(goal: CodingAgentGoalState): string {
 		goal.objective,
 		"</goal_objective>",
 		"",
-		`Progress: ${goal.continuationCount} automatic continuations; ${goal.tokensUsed} tokens used.`,
+		// 只保留续跑次数：`tokensUsed` 每轮都在增长，写进系统提示词会让整个历史消息缓存每轮失效。
+		`Progress: ${goal.continuationCount} automatic continuations.`,
 		"",
 		'Before stopping, audit the actual observable result against the objective. If complete, call update_goal with status="complete". If the same external blocker prevents progress for three consecutive goal continuations, call update_goal with status="blocked" and explain it. Do not mark complete merely because the current step finished.',
 	].join("\n");
