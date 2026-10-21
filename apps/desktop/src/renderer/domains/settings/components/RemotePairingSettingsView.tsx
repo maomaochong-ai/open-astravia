@@ -244,8 +244,13 @@ function PairingPanel({ model }: { model: RemotePairingSettingsModel }): JSX.Ele
 						) : code?.status === "preparing" ? (
 							<PreparingCodes codeLabel={labels.pairing.code} passwordLabel={labels.pairing.password} />
 						) : (
-							<div className="flex h-[144px] items-center justify-center rounded-xl border border-border bg-card px-4 text-center text-[12px] text-muted-foreground">
-								{codeStatus}
+							<div className="flex h-[144px] flex-col items-center justify-center gap-3 rounded-xl border border-border bg-card px-4 text-center text-[12px] leading-relaxed text-muted-foreground">
+								<p>{codeStatus}</p>
+								{pairing.canCreate ? (
+									<Button size="sm" variant="outline" disabled={model.busy} onClick={model.actions.createInvite}>
+										{labels.pairing.create}
+									</Button>
+								) : null}
 							</div>
 						)}
 					</PairingAside>

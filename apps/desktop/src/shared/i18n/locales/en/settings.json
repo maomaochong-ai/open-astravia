@@ -163,7 +163,7 @@
       "password": "Password",
       "codeHint": "Can’t scan? Choose “Connect with a Code” on the phone:",
       "codePreparing": "Preparing a connection code…",
-      "codeFailed": "Connection code unavailable. Please scan instead.",
+      "codeFailed": "Relay unreachable — no connection code. You can still pair by scanning on the same Wi-Fi.",
       "manualTitle": "Enter an address on the same Wi-Fi"
     },
     "cloud": {

@@ -163,7 +163,7 @@
       "password": "密码",
       "codeHint": "不方便扫码？在手机上选「用连接码连接」：",
       "codePreparing": "正在生成连接码…",
-      "codeFailed": "连接码暂不可用，请扫码。",
+      "codeFailed": "中继不可达，连接码暂不可用；同一 Wi-Fi 下仍可扫码配对。",
       "manualTitle": "同一 Wi-Fi 下手动输入地址"
     },
     "cloud": {
