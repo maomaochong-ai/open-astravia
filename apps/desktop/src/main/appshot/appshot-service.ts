@@ -17,7 +17,7 @@ import type { HelperPermissions } from "../../shared/onboarding-ipc.js";
 import { readDesktopConfig } from "../ipc/fs.js";
 import { getAppLogger } from "../logger.js";
 import { getMainWindow, showMainWindow } from "../window-manager.js";
-import { clearHelperQuarantine, resolveAppshotHelperBinary } from "./helper-resolver.js";
+import { APPSHOT_HELPER_BUNDLE_ID, clearHelperQuarantine, resolveAppshotHelperBinary } from "./helper-resolver.js";
 
 export type { HelperPermissions };
 
@@ -234,6 +234,29 @@ export function requestHelperPermissions(): Promise<HelperPermissions> {
 		});
 	requestPermissionsInFlight = task;
 	return task;
+}
+
+/**
+ * 清掉 helper 在当前用户 TCC 数据库里的授权记录（不需要 root）。
+ *
+ * helper 以 ad-hoc 签名发布时，TCC 用 cdhash 作为身份，每次重新构建都换一个 cdhash，
+ * 系统设置里那条旧勾选就永远匹配不上新二进制，表现是「已勾选但仍显示未授权」。
+ * 重置后把 helper 重新拖进列表，新记录才对得上当前二进制。
+ */
+export function resetHelperPermissions(): Promise<void> {
+	if (process.platform !== "darwin") return Promise.resolve();
+	const services = ["Accessibility", "ScreenCapture"];
+	return Promise.all(
+		services.map(
+			(service) =>
+				new Promise<void>((resolvePromise) => {
+					execFile("/usr/bin/tccutil", ["reset", service, APPSHOT_HELPER_BUNDLE_ID], (err) => {
+						if (err) log.warn(`tccutil reset ${service} failed`, err.message);
+						resolvePromise();
+					});
+				}),
+		),
+	).then(() => undefined);
 }
 
 // ----- 捕获主流程 -------------------------------------------------------------

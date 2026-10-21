@@ -6,6 +6,7 @@ import type { HelperPermissions, OnboardingBridge, OnboardingPaneKind } from "..
 // 的 Rollup chunk，见 preload/quickpanel.ts 的坑）。与 src/shared/onboarding-ipc.ts 保持一致。
 const CHECK_PERMISSIONS = "astravia:onboarding:check-permissions";
 const REQUEST_PERMISSIONS = "astravia:onboarding:request-permissions";
+const RESET_PERMISSIONS = "astravia:onboarding:reset-permissions";
 const OPEN_PANE = "astravia:permissions:open-pane";
 const START_DRAG = "astravia:onboarding:start-drag";
 const CLOSE = "astravia:onboarding:close";
@@ -46,6 +47,9 @@ const api: OnboardingBridge = {
 	},
 	requestPermissions(): Promise<HelperPermissions> {
 		return ipcRenderer.invoke(REQUEST_PERMISSIONS);
+	},
+	resetPermissions(): Promise<void> {
+		return ipcRenderer.invoke(RESET_PERMISSIONS);
 	},
 	openPane(kind: OnboardingPaneKind): Promise<void> {
 		return ipcRenderer.invoke(OPEN_PANE, kind);

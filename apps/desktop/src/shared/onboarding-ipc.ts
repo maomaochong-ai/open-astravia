@@ -6,6 +6,7 @@ export const ONBOARDING_CHANNELS = {
 	// onboarding renderer → main invoke
 	CHECK_PERMISSIONS: "astravia:onboarding:check-permissions", // 查 helper 权限 → {accessibility, screenRecording}
 	REQUEST_PERMISSIONS: "astravia:onboarding:request-permissions", // 弹系统授权 → 同上
+	RESET_PERMISSIONS: "astravia:onboarding:reset-permissions", // 清掉失效的 TCC 记录（tccutil reset）
 	OPEN_PANE: "astravia:permissions:open-pane", // 复用现成，传 "accessibility"|"screen-recording"
 	START_DRAG: "astravia:onboarding:start-drag", // 拖 helper.app 到系统设置；main 侧 event.sender.startDrag({file, icon})
 	CLOSE: "astravia:onboarding:close",
@@ -28,6 +29,7 @@ export interface OnboardingBridge {
 	initialLanguage: string;
 	checkPermissions(): Promise<HelperPermissions>;
 	requestPermissions(): Promise<HelperPermissions>;
+	resetPermissions(): Promise<void>;
 	openPane(kind: OnboardingPaneKind): Promise<void>;
 	startDrag(): void;
 	close(): Promise<void>;

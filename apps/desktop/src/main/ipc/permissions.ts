@@ -2,8 +2,8 @@ import { access } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { ipcMain, Notification, shell } from "electron";
-import { checkHelperPermissions } from "../appshot/appshot-service.js";
-import { PANE_URLS, type PermissionKind } from "./permission-panes.js";
+import { checkHelperPermissions, requestHelperPermissions } from "../appshot/appshot-service.js";
+import { HELPER_REGISTERED_PANES, PANE_URLS, type PermissionKind } from "./permission-panes.js";
 
 export type PermissionStatus = "granted" | "denied" | "unknown";
 
@@ -89,7 +89,13 @@ export function registerPermissionsIpc(): () => void {
 		if (typeof kind !== "string" || !(kind in PANE_URLS)) {
 			throw new Error(`Invalid permission kind: ${String(kind)}`);
 		}
-		await shell.openExternal(PANE_URLS[kind as PermissionKind]);
+		const permissionKind = kind as PermissionKind;
+		// helper 从没请求过时，系统设置对应列表里不会有 Astravia Computer Use 这一条，
+		// 用户就找不到可以勾选的地方。先让 helper 发起一次请求（已授权时不会弹框），再打开面板。
+		if (HELPER_REGISTERED_PANES.has(permissionKind)) {
+			await requestHelperPermissions();
+		}
+		await shell.openExternal(PANE_URLS[permissionKind]);
 	});
 
 	return () => {

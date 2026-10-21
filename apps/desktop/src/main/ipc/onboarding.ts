@@ -5,7 +5,11 @@
 import { existsSync } from "node:fs";
 import { ipcMain, nativeImage } from "electron";
 import { type HelperPermissions, ONBOARDING_CHANNELS } from "../../shared/onboarding-ipc.js";
-import { checkHelperPermissions, requestHelperPermissions } from "../appshot/appshot-service.js";
+import {
+	checkHelperPermissions,
+	requestHelperPermissions,
+	resetHelperPermissions,
+} from "../appshot/appshot-service.js";
 import { resolveHelperAppBundlePath } from "../appshot/helper-resolver.js";
 import { getAppLogger } from "../logger.js";
 import { closeOnboardingWindow, getOnboardingWindow, showOnboardingWindow } from "../onboarding-window.js";
@@ -36,6 +40,11 @@ export function registerOnboardingIpc(): () => void {
 		return perms;
 	});
 
+	ipcMain.handle(ONBOARDING_CHANNELS.RESET_PERMISSIONS, async (): Promise<void> => {
+		await resetHelperPermissions();
+		sendPermissionsUpdated(await checkHelperPermissions());
+	});
+
 	// startDrag 须在 dragstart 事件的同一轮同步调用，走 send/on 而非 invoke/handle。
 	ipcMain.on(ONBOARDING_CHANNELS.START_DRAG, (event) => {
 		const file = resolveHelperAppBundlePath();
@@ -64,6 +73,7 @@ export function registerOnboardingIpc(): () => void {
 	return () => {
 		ipcMain.removeHandler(ONBOARDING_CHANNELS.CHECK_PERMISSIONS);
 		ipcMain.removeHandler(ONBOARDING_CHANNELS.REQUEST_PERMISSIONS);
+		ipcMain.removeHandler(ONBOARDING_CHANNELS.RESET_PERMISSIONS);
 		ipcMain.removeAllListeners(ONBOARDING_CHANNELS.START_DRAG);
 		ipcMain.removeHandler(ONBOARDING_CHANNELS.CLOSE);
 		ipcMain.removeHandler(SHOW_ONBOARDING_CHANNEL);

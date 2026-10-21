@@ -6,6 +6,9 @@ import { app } from "electron";
 const APP_BUNDLE_NAME = "Astravia Computer Use.app";
 const EXECUTABLE_NAME = "Astravia Computer Use";
 
+/** helper 的 CFBundleIdentifier，必须与 scripts/build-appshot-helper.js 的 BUNDLE_ID 一致。 */
+export const APPSHOT_HELPER_BUNDLE_ID = "com.astravia.desktop.computer-use";
+
 /**
  * Resolve the absolute path to the `Astravia Computer Use.app` bundle (macOS only).
  *

@@ -2349,5 +2349,6 @@
   "sshPromptAccept": "Confirm and connect",
   "sshPromptReject": "Cancel connection",
   "section_remote-devices": "Paired phones",
-  "section_remote-cloud": "Away from home"
+  "section_remote-cloud": "Away from home",
+  "onboardingResetPermissions": "Already granted in System Settings but still shows unauthorized? Reset the permission records, then drag the icon below in again"
 }

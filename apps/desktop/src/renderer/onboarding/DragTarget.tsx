@@ -7,7 +7,7 @@ interface DragTargetProps {
 /** 拖拽授权区：显示主 app 图标，拖拽发起时通知 main 用 helper.app 走原生 startDrag。 */
 export function DragTarget({ iconUrl, hint, onDragStart }: DragTargetProps): JSX.Element {
 	return (
-		<div className="mt-4 flex flex-col items-center gap-3 rounded-xl border border-dashed border-border/70 bg-secondary/40 px-4 py-5">
+		<div className="mt-4 flex flex-col items-center gap-3 rounded-xl border border-dashed border-border/70 bg-secondary/40 px-4 py-5 [-webkit-app-region:no-drag]">
 			<img
 				src={iconUrl}
 				alt=""

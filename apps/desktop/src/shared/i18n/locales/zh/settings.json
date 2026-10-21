@@ -2349,5 +2349,6 @@
   "sshPromptAccept": "确认并连接",
   "sshPromptReject": "取消连接",
   "section_remote-devices": "已配对的手机",
-  "section_remote-cloud": "外网访问"
+  "section_remote-cloud": "外网访问",
+  "onboardingResetPermissions": "系统设置里已勾选却仍显示未授权？重置授权记录后重新拖入下方图标"
 }

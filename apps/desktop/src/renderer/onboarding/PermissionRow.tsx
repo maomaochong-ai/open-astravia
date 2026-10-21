@@ -43,7 +43,7 @@ export function PermissionRow({
 				<button
 					type="button"
 					onClick={onOpenPane}
-					className="flex shrink-0 items-center gap-1.5 rounded-lg border border-input bg-secondary px-3 py-1.5 text-[12px] text-foreground transition-colors hover:bg-accent"
+					className="flex shrink-0 items-center gap-1.5 rounded-lg border border-input bg-secondary px-3 py-1.5 text-[12px] text-foreground transition-colors hover:bg-accent [-webkit-app-region:no-drag]"
 				>
 					<span className="icon-[mdi--open-in-new] h-3.5 w-3.5 text-muted-foreground" />
 					{buttonLabel}

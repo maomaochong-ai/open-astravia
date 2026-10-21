@@ -17,7 +17,7 @@ function createBridge(initial: Permissions, requested: Permissions): OnboardingB
 		requestPermissions: vi.fn(async () => requested),
 		openPane: vi.fn(async () => {}),
 		startDrag: vi.fn(),
-		close: vi.fn(async () => {}),
+		resetPermissions: vi.fn(async () => {}),
 		onPermissionsUpdated: vi.fn(() => () => {}),
 		onDragError: vi.fn(() => () => {}),
 		onLanguageChanged: vi.fn(() => () => {}),
@@ -69,5 +69,22 @@ describe("authorization guide", () => {
 		await waitFor(() => expect(screen.queryByText("onboardingAllGranted")).not.toBeNull());
 		expect(screen.queryByText("onboardingRequest")).toBeNull();
 		expect(bridge.requestPermissions).not.toHaveBeenCalled();
+	});
+
+	it("resetting permissions clears stale grants and reopens the pane", async () => {
+		const bridge = createBridge(
+			{ accessibility: false, screenRecording: false },
+			{ accessibility: false, screenRecording: false },
+		);
+		window.astraviaOnboarding = bridge;
+
+		render(<OnboardingApp />);
+		await waitFor(() => expect(bridge.checkPermissions).toHaveBeenCalledTimes(1));
+
+		fireEvent.click(screen.getByText("onboardingResetPermissions"));
+
+		await waitFor(() => expect(bridge.resetPermissions).toHaveBeenCalledTimes(1));
+		await waitFor(() => expect(bridge.checkPermissions).toHaveBeenCalledTimes(2));
+		await waitFor(() => expect(bridge.openPane).toHaveBeenCalledWith("accessibility"));
 	});
 });
