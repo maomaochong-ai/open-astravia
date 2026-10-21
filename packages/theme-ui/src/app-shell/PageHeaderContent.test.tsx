@@ -41,6 +41,14 @@ describe("PageHeaderContent", () => {
 		expect(utilityIndex).toBeLessThan(pageActionIndex);
 		expect(pageActionIndex).toBeLessThan(windowControlsIndex);
 	});
+	// 页面动作用户能看到的只有一份；同一插槽渲染两次在顶栏就是一排重复图标。
+	it("renders the page action slot exactly once", () => {
+		const markup = renderToStaticMarkup(
+			<PageHeaderContent actions={actions} model={createModel({ rightSlot: <span data-testid="page-action" /> })} narrow={false} />,
+		);
+
+		expect(markup.match(/data-testid="page-action"/g) ?? []).toHaveLength(1);
+	});
 
 	it("keeps page actions working when no utility slot is registered", () => {
 		const markup = renderToStaticMarkup(

@@ -65,7 +65,6 @@ export function PageHeaderContent({
 			<ThemePageHeaderWindowActions className={classNames?.actions} trailing={windowControls}>
 				{model.utilitySlot}
 				{model.rightSlot}
-				{model.rightSlot}
 			</ThemePageHeaderWindowActions>
 		</>
 	);
