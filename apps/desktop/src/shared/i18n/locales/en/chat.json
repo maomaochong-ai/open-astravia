@@ -802,6 +802,20 @@
 			"skipped": "Context compaction skipped",
 			"tokensBefore": "{{tokens}} tokens before"
 		},
+		"compactionHeading": {
+			"primaryGoal": "Primary Goal",
+			"keyConstraints": "Key Constraints & Preferences",
+			"currentState": "Current State of Work",
+			"completed": "Completed",
+			"inProgress": "In Progress",
+			"blocked": "Blocked",
+			"keyDecisions": "Key Technical Decisions",
+			"filesAndCode": "Files and Code Context",
+			"errorsAndFixes": "Errors and Fixes",
+			"userIntent": "User Intent History",
+			"pendingTasks": "Pending Tasks",
+			"nextSteps": "Next Steps"
+		},
 		"compactionSkipReason": {
 			"noEligiblePrefix": "No eligible history prefix to compress",
 			"blockedByHook": "Blocked by ecosystem hook",

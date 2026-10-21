@@ -32,10 +32,16 @@ export const CompactionBlockView = memo(function CompactionBlockView({
 	const { t } = useTranslation("chat");
 	const [expanded, toggle] = useExpansion(`compaction:${block.id}`);
 	// 摘要可长达数万字符，清洗与 Markdown 重渲都只在文本变化时做一次。
-	const summary = useMemo(
-		() => (block.summary === undefined ? undefined : toCompactionDisplaySummary(block.summary)),
-		[block.summary],
-	);
+	const summary = useMemo(() => {
+		if (block.summary === undefined) return undefined;
+		// 标题映射放在读端：提示词只能约束新摘要，历史记录里的英文模板标题已经落盘了。
+		return toCompactionDisplaySummary(block.summary, (key) => {
+			const path = `messageList.compactionHeading.${key}`;
+			// i18n 的键是字面量联合类型，这里按语义拼出键名，缺键时回头拿到键本身。
+			const text: unknown = t(path as never);
+			return typeof text === "string" && text !== path ? text : undefined;
+		});
+	}, [block.summary, t]);
 	const detail =
 		block.status === "success" && block.tokensBefore
 			? t("messageList.compactionStep.tokensBefore", { tokens: formatTokens(block.tokensBefore) })

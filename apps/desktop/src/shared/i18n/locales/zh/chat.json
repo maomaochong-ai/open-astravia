@@ -802,6 +802,20 @@
 			"skipped": "上下文压缩已跳过",
 			"tokensBefore": "压缩前 {{tokens}} tokens"
 		},
+		"compactionHeading": {
+			"primaryGoal": "主要目标",
+			"keyConstraints": "关键约束与偏好",
+			"currentState": "工作当前状态",
+			"completed": "已完成",
+			"inProgress": "进行中",
+			"blocked": "受阻",
+			"keyDecisions": "关键技术决策",
+			"filesAndCode": "文件与代码上下文",
+			"errorsAndFixes": "错误与修复",
+			"userIntent": "用户意图历史",
+			"pendingTasks": "待办任务",
+			"nextSteps": "后续步骤"
+		},
 		"compactionSkipReason": {
 			"noEligiblePrefix": "没有可压缩的历史前缀",
 			"blockedByHook": "被生态钩子阻止",

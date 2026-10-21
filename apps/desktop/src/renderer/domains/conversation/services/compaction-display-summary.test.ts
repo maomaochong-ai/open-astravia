@@ -74,3 +74,60 @@ describe("toCompactionDisplaySummary", () => {
 		expect(toCompactionDisplaySummary("<runtime-work-state>\n{}\n</runtime-work-state>")).toBe("");
 	});
 });
+
+/**
+ * 摘要小节标题的语言。
+ *
+ * 背景：模板给模型的是 `## Primary Goal` 这类英文字面量，模型照抄 → 中文摘要顶着英文标题。
+ * 提示词只能约束新摘要，历史记录里已经落盘的是英文标题，所以读端按当前界面语言再映射一次。
+ */
+describe("localizeCompactionHeadings", () => {
+	const zh: Record<string, string> = {
+		primaryGoal: "主要目标",
+		keyConstraints: "关键约束与偏好",
+		currentState: "工作当前状态",
+		completed: "已完成",
+		filesAndCode: "文件与代码上下文",
+		pendingTasks: "待办任务",
+		nextSteps: "后续步骤",
+	};
+	const resolveZh = (key: string) => zh[key];
+
+	it("模板标题跟随界面语言，正文不动", () => {
+		const display = toCompactionDisplaySummary(POLLUTED, resolveZh);
+
+		expect(display).toContain("## 主要目标");
+		expect(display).toContain("## 文件与代码上下文");
+		expect(display).toContain("Fix Astravia desktop app's conversation-switching scroll behavior (#7)");
+		expect(display).not.toContain("## Primary Goal");
+	});
+
+	it("三级标题同样映射，层级不变", () => {
+		const display = toCompactionDisplaySummary("## Current State of Work\n### Completed\n- 做完了", resolveZh);
+
+		expect(display).toBe("## 工作当前状态\n### 已完成\n- 做完了");
+	});
+
+	it("英文界面取到原文时保持不变", () => {
+		const clean = "## Primary Goal\n- 保留原有目标";
+		expect(toCompactionDisplaySummary(clean, () => undefined)).toBe(clean);
+	});
+
+	it("模型自己写的中文标题不被二次改写", () => {
+		const clean = "## 主要目标\n- 保留原有目标";
+		expect(toCompactionDisplaySummary(clean, resolveZh)).toBe(clean);
+	});
+
+	it("代码围栏里的同名标题不当成小节标题", () => {
+		const text = ["## 待办任务", "```md", "## Primary Goal", "```", "## Next Steps", "1. 收尾"].join("\n");
+		const display = toCompactionDisplaySummary(text, resolveZh);
+
+		expect(display).toContain("```md\n## Primary Goal\n```");
+		expect(display).toContain("## 后续步骤");
+	});
+
+	it("正文行里的同名词不作替换", () => {
+		const clean = "## 主要目标\n把 `Completed` 搬到下一节";
+		expect(toCompactionDisplaySummary(clean, resolveZh)).toBe(clean);
+	});
+});

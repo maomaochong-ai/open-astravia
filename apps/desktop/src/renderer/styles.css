@@ -754,6 +754,44 @@ textarea:focus {
 	margin-top: 1em;
 }
 
+/* 配色同样对齐「完成了 N 步操作」那一行的 text-muted-foreground（见 ProgressGroupTitle）：
+   摘要和它一样是步骤的展开正文，不该比折叠着的标题行更重。MarkdownContent 给每个元素都
+   写死了 text-foreground（特异性 0,1,0），父级的文字颜色传不进去，只能靠后代选择器压回来。
+   链接、行内代码和代码块各自有语义色，不在这里覆盖。 */
+.compaction-summary
+	:is(
+		h1,
+		h2,
+		h3,
+		h4,
+		h5,
+		h6,
+		p,
+		li,
+		ul,
+		ol,
+		dl,
+		dt,
+		dd,
+		blockquote,
+		figure,
+		figcaption,
+		table,
+		thead,
+		tbody,
+		tr,
+		th,
+		td,
+		strong,
+		b,
+		em,
+		i,
+		label,
+		summary
+	) {
+	color: var(--muted-foreground);
+}
+
 /* Streaming tail: 短语分段保留（DOM 结构供未来扩展），但统一 currentColor 不做亮度分层。
    之前用 color-mix 做「最新短语偏暗」，半透明文字在毛玻璃窗口上透出模糊背景，
    与全亮文字形成视觉层差（用户反馈"分层"）。去掉压暗后流式状态由文字逐字出现本身表达。 */
