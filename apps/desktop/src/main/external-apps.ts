@@ -1,7 +1,7 @@
 import { execFile, spawn } from "node:child_process";
 import { access, readdir, readFile } from "node:fs/promises";
 import { homedir } from "node:os";
-import { basename, join } from "node:path";
+import { join } from "node:path";
 import { promisify } from "node:util";
 import type { ExternalApplication, ExternalApplicationKind } from "../preload/api-types/system.js";
 
@@ -68,7 +68,7 @@ export async function openPathWithApplication(
 		return;
 	}
 	if (process.platform === "win32") {
-		await openWithWindows(targetPath, appId);
+		await openWithWindows(targetPath, appId, kind);
 		return;
 	}
 	await openWithLinux(targetPath, appId);
@@ -81,10 +81,8 @@ export async function openPathWithDefaultApplication(targetPath: string): Promis
 		return;
 	}
 	if (process.platform === "win32") {
-		// explorer.exe 打开成功也返回非零退出码（这是它的既有行为，不是失败），
-		// 用 execFile 会被当成异常，于是选「用系统默认应用打开」几乎每次都会
-		// 弹一次「打开失败」。这里只关心进程有没有起来。
-		await runWindowsShellCommand([targetPath]);
+		// explorer.exe 成功也返回非零，且不需要控制台：只关心进程有没有起来。
+		await launchDetached({ command: "explorer.exe", args: [targetPath], hideWindow: true });
 		return;
 	}
 	await execFileAsync("xdg-open", [targetPath]);
@@ -96,7 +94,11 @@ export async function openPathWithDefaultApplication(targetPath: string): Promis
  */
 export function inferApplicationKind(name: string): ExternalApplicationKind {
 	const lower = name.toLowerCase();
-	if (/(iterm|terminal|warp|ghostty|alacritty|kitty|wezterm|konsole|tilix|xterm|hyper)/.test(lower)) {
+	if (
+		/(iterm|terminal|warp|ghostty|alacritty|kitty|wezterm|konsole|tilix|xterm|hyper|powershell|pwsh|git bash|command prompt|\bcmd\b)/.test(
+			lower,
+		)
+	) {
 		return "terminal";
 	}
 	if (
@@ -283,14 +285,26 @@ async function listApplicationsMacOS(targetPath: string): Promise<ExternalApplic
 	}
 }
 
-async function openWithMacOS(targetPath: string | null, appPath: string, kind: ExternalApplicationKind): Promise<void> {
+/**
+ * macOS 侧传给 `open` 的参数。
+ *
+ * `open` 自己会很快退出，所以仍然用 execFile：应用没了的时候它的报错要能落到用户眼前。
+ * `-a` 必须给应用路径——给 bundle id 在部分机器上会直接失败。
+ */
+export function macosLaunchPlan(
+	targetPath: string | null,
+	appPath: string,
+	kind: ExternalApplicationKind,
+): { command: "open"; args: string[] } {
 	// 文件管理器交给系统默认的目录处理程序（macOS 上是访达），
 	// 免得 `open -a` 把 Finder 当成可启动的应用再判一次。
-	if (kind === "file-manager" && targetPath !== null) {
-		await execFileAsync("open", [targetPath]);
-		return;
-	}
-	await execFileAsync("open", targetPath === null ? ["-a", appPath] : ["-a", appPath, targetPath]);
+	if (kind === "file-manager" && targetPath !== null) return { command: "open", args: [targetPath] };
+	return { command: "open", args: targetPath === null ? ["-a", appPath] : ["-a", appPath, targetPath] };
+}
+
+async function openWithMacOS(targetPath: string | null, appPath: string, kind: ExternalApplicationKind): Promise<void> {
+	const plan = macosLaunchPlan(targetPath, appPath, kind);
+	await execFileAsync(plan.command, plan.args);
 }
 
 // ─── Windows 实现 ───────────────────────────────────────────────────
@@ -450,15 +464,36 @@ function prettifyWindowsAppName(registryKey: string): string {
 	return cleaned || registryKey;
 }
 
+/** 怎么把一个程序交给 Windows：命令、参数、起始目录。 */
+export interface LaunchPlan {
+	command: string;
+	args: string[];
+	/** 仅终端有意义：控制台窗口直接开在这个目录里。 */
+	cwd?: string;
+	/** explorer 这类宿主不需要控制台，别让黑框闪一下。 */
+	hideWindow?: boolean;
+	/**
+	 * 默认交给系统独立处理（窗口活过本进程）。控制台程序必须关掉：Windows 上的 detached
+	 * 等于不给子进程分配 console，cmd / powershell 会变成一个看不见的隐形窗口。
+	 */
+	detach?: boolean;
+}
+
 /**
- * 起一个 Windows 程序，且不把它的退出码当失败。
+ * 把进程交出去就算成功，不等它退出。
  *
- * explorer.exe 与部分 shell 宿主在成功完成时也返回非零，用 execFileAsync 会 reject；
- * 但我们只关心「有没有把手上的活交出去」，所以只听 spawn 失败（ENOENT 之类）。
+ * 编辑器/终端这类 GUI 程序的进程会一直活到窗口关闭，用 execFile 等它退出等于让
+ * 「打开中」一直转圈；explorer.exe 这类宿主更是成功也返回非零。我们只关心进程有
+ * 没有起来（ENOENT / EACCES 能报出来），剩下的交给窗口自己。
  */
-function runWindowsShellCommand(args: string[], command = "explorer.exe"): Promise<void> {
+export function launchDetached(plan: LaunchPlan): Promise<void> {
 	return new Promise((resolve, reject) => {
-		const child = spawn(command, args, { detached: true, stdio: "ignore", windowsHide: true });
+		const child = spawn(plan.command, plan.args, {
+			cwd: plan.cwd,
+			detached: plan.detach ?? true,
+			stdio: "ignore",
+			windowsHide: plan.hideWindow ?? false,
+		});
 		child.once("error", reject);
 		child.once("spawn", () => {
 			child.unref();
@@ -467,24 +502,40 @@ function runWindowsShellCommand(args: string[], command = "explorer.exe"): Promi
 	});
 }
 
-async function openWithWindows(targetPath: string | null, appPath: string): Promise<void> {
-	// 直接起可执行文件，不经 powershell：参数由 execFile 处理，不必再拼一段
-	// 带单引号转义的命令行。
-	if (targetPath === null) {
-		await execFileAsync(appPath, []);
-		return;
+/**
+ * 决定怎么启动这个应用。
+ *
+ * 几个由系统语义决定的特殊处理：
+ * - `explorer.exe` 成功也返回非零，且不需要控制台；
+ * - `wt.exe` 用 `-d` 指定起始目录，把路径当参数丢给它只会被当成待执行命令；
+ * - `cmd.exe` / `powershell.exe` 把第一个参数当成要执行的命令，把目录拼进参数只会
+ *   得到一句「不是内部或外部命令」——终端不给参数，用 `cwd` 落地。
+ */
+export function windowsLaunchPlan(
+	targetPath: string | null,
+	appPath: string,
+	kind: ExternalApplicationKind,
+): LaunchPlan {
+	// 不能依赖 basename：它认的是当前平台的分隔符，而这里判断的是 Windows 路径。
+	const exe = appPath.split(/[\\/]/).pop()?.toLowerCase() ?? "";
+	if (exe === "wt.exe") return { command: appPath, args: targetPath === null ? [] : ["-d", targetPath] };
+	if (exe === "explorer.exe" && targetPath !== null) {
+		return { command: appPath, args: [targetPath], hideWindow: true };
 	}
-	// Windows Terminal 用 -d 指定起始目录，把路径当参数丢给它只会被当成待执行命令。
-	if (basename(appPath).toLowerCase() === "wt.exe") {
-		await execFileAsync(appPath, ["-d", targetPath]);
-		return;
+	if (kind === "terminal") {
+		return { command: appPath, args: [], cwd: targetPath ?? undefined, detach: false };
 	}
-	// 文件管理器条目（explorer.exe）同样会返回非零退出码，不能按失败处理。
-	if (basename(appPath).toLowerCase() === "explorer.exe") {
-		await runWindowsShellCommand([targetPath], appPath);
-		return;
-	}
-	await execFileAsync(appPath, [targetPath]);
+	if (targetPath === null) return { command: appPath, args: [] };
+	return { command: appPath, args: [targetPath] };
+}
+
+async function openWithWindows(
+	targetPath: string | null,
+	appPath: string,
+	kind: ExternalApplicationKind,
+): Promise<void> {
+	// 直接起可执行文件，不经 powershell：参数由 spawn 逐个传递，不必再拼命令行。
+	await launchDetached(windowsLaunchPlan(targetPath, appPath, kind));
 }
 
 // ─── Linux 实现 ─────────────────────────────────────────────────────
