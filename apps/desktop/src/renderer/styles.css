@@ -682,37 +682,76 @@ textarea:focus {
 
 /* Compaction summary: 摘要是模型写的长篇叙述，但它是消息流里的一个步骤，不是独立文章。
    MarkdownContent 给每个元素都写了绝对的 text-[Npx]（特异性 0,1,0），父级 font-size
-   传不进去，所以只能用 0,1,1 的后代选择器按面板 12px 基准重排；尺寸再用 clamp+cqi
-   跟栏宽走，窗口/侧栏变窄时摘要跟着收回基准。
+   传不进去，所以只能用后代选择器把整块正文压回「步骤展开正文」这一档。
 
-   基准取 12px，与对话里的待办卡片同档（TodoCard 正文 12px）：展开的摘要和待办一样是
-   「步骤的展开正文」，字号不该比周围的步骤行更大。标题只做层级提示、不再靠字号跳级——
-   原来的 1.35em 在 12px 上是 16px，比消息正文（14px）还高，展开后整块显得突兀。 */
-.compaction-step {
-	container-type: inline-size;
-}
+   基准取 12px，与展开的步骤行同档（ProgressGroupRowText 也是 12px）：摘要和它们一样是
+   「步骤的展开正文」，字号不该比周围的步骤行大。
 
+   这里曾经是 clamp(11px, 1.6cqi, 12px) + container-type，两个问题：
+   1. cqi 跟容器宽度走。宿主 Ctrl± 缩放改的是 CSS 像素宽度，缩放后容器变窄，摘要字号就
+      跟着往下漂（用户反馈「快捷键操作后字体不正常」）。字号必须只由宿主的整体缩放决定。
+   2. 标题各自 1.08em / 1.04em，12px 基准上舍入成 13px / 12.5px，「有的标题大有的小」。
+
+   所以：固定 rem 基准，所有文本元素一律继承它；层级改用字重和间距区分。 */
 .compaction-summary {
-	font-size: clamp(11px, 1.6cqi, 12px);
+	font-size: 0.75rem;
 	line-height: 1.6;
 }
 
-.compaction-summary h1 {
-	font-size: 1.08em;
+/* 面板内每一类文本都回到基准字号。必须用 0,1,1（类 + 元素）压过 MarkdownContent 写死的
+   text-[Npx]（0,1,0），否则表格头、行内代码、链接徽标会各自保留绝对字号，整块又花掉。 */
+.compaction-summary
+	:is(
+		h1,
+		h2,
+		h3,
+		h4,
+		h5,
+		h6,
+		p,
+		li,
+		ul,
+		ol,
+		dl,
+		dt,
+		dd,
+		blockquote,
+		figure,
+		figcaption,
+		table,
+		thead,
+		tbody,
+		tr,
+		th,
+		td,
+		pre,
+		code,
+		kbd,
+		samp,
+		span,
+		strong,
+		b,
+		em,
+		i,
+		a,
+		button,
+		label,
+		summary,
+		details,
+		input,
+		textarea
+	) {
+	font-size: inherit;
 }
 
-.compaction-summary h2 {
-	font-size: 1.04em;
+/* 同字号下 bold 与 semibold 看不出区别，标题统一 600，只用间距和字重分层。 */
+.compaction-summary :is(h1, h2, h3, h4, h5, h6) {
+	font-weight: 600;
+	margin: 0.75em 0 0.2em;
 }
 
-.compaction-summary :is(h3, h4, h5, h6),
-.compaction-summary :is(p, li, blockquote) {
-	font-size: 1em;
-}
-
-.compaction-summary :is(pre, code),
-.compaction-summary table {
-	font-size: 1em;
+.compaction-summary :is(h1, h2) {
+	margin-top: 1em;
 }
 
 /* Streaming tail: 短语分段保留（DOM 结构供未来扩展），但统一 currentColor 不做亮度分层。
