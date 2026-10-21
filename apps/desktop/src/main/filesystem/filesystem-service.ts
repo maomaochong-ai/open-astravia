@@ -183,25 +183,30 @@ export async function readFilesystemDirectory(dirPath: string): Promise<FsEntry[
 	assertFilesystemPathWithinProject(dirPath);
 	const resolved = resolve(dirPath);
 	const entries = await readdir(resolved, { withFileTypes: true });
-	const results: FsEntry[] = [];
-	for (const entry of entries) {
-		// Presentation filters belong to the file explorer; dotfiles are ordinary project files.
-		// 「对话」根下的会话工作区目录是内部状态，不进入 UI 列举（ADR-0007 修订）。
-		if (entry.isDirectory() && isConversationWorkspaceDirEntry(resolved, entry.name)) continue;
-		const fullPath = join(resolved, entry.name);
-		try {
-			const stats = await stat(fullPath);
-			results.push({
-				name: entry.name,
-				path: fullPath,
-				isDirectory: entry.isDirectory(),
-				size: stats.size,
-				modifiedAt: stats.mtimeMs,
-			});
-		} catch {
-			// Skip entries we cannot stat.
-		}
-	}
+	// 每个 entry 的 size/mtime 都得单独 stat，逐条 await 会让一次目录列举变成 N 次串行
+	// syscall：几千个条目的目录（例如依赖目录）在冷缓存或 Windows 上要等好几秒。
+	const settled = await Promise.all(
+		entries.map(async (entry): Promise<FsEntry | null> => {
+			// Presentation filters belong to the file explorer; dotfiles are ordinary project files.
+			// 「对话」根下的会话工作区目录是内部状态，不进入 UI 列举（ADR-0007 修订）。
+			if (entry.isDirectory() && isConversationWorkspaceDirEntry(resolved, entry.name)) return null;
+			const fullPath = join(resolved, entry.name);
+			try {
+				const stats = await stat(fullPath);
+				return {
+					name: entry.name,
+					path: fullPath,
+					isDirectory: entry.isDirectory(),
+					size: stats.size,
+					modifiedAt: stats.mtimeMs,
+				};
+			} catch {
+				// Skip entries we cannot stat.
+				return null;
+			}
+		}),
+	);
+	const results = settled.filter((entry): entry is FsEntry => entry !== null);
 	results.sort((a, b) => {
 		if (a.isDirectory !== b.isDirectory) return a.isDirectory ? -1 : 1;
 		return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
