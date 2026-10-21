@@ -29,6 +29,12 @@ test("common packages only the production plugin set", () => {
 	assert.deepEqual([...tenant.pluginIds], productionPluginIds);
 });
 
+// 生产漏项会让用户在打包版里找不到对应入口，而开发环境一切正常，排查成本很高。
+// 需要长期的 profile 差异时，先把期望的差异写进这个测试，而不是只在 tenants.json 里删一行。
+test("production ships the same built-in plugins as development", () => {
+	assert.deepEqual(productionPluginIds, developmentPluginIds);
+});
+
 test("rejects an unknown tenant", () => {
 	assert.throws(
 		() => resolveSystemPluginSelection("nope", "production"),
@@ -77,7 +83,8 @@ test("development and packaging scripts pin their system plugin profiles without
 	const productionWorkspaceBuild = packageJson.scripts["prepare:workspace"];
 	const developmentWorkspaceBuild = packageJson.scripts["prepare:workspace:dev"];
 	for (const script of [productionWorkspaceBuild, developmentWorkspaceBuild]) {
-		assert.match(script, /^turbo run build /);
+		// 开发入口允许先跑一次依赖安装，但构建命令本身必须仍以 turbo run build 开头。
+		assert.match(script, /^(?:bun scripts\/ensure-workspace-install\.mjs && )?turbo run build /);
 		assert.match(script, /--cwd \.\.\/\.\./);
 		assert.match(script, /--filter=@astravia\/desktop\.\.\./);
 		assert.match(script, /--filter=@astravia-org\/plugin-vite\.\.\./);
