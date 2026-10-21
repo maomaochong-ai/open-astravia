@@ -278,6 +278,8 @@ const SUMMARIZATION_PROMPT = `Summarize the conversation in UNTRUSTED_SUMMARY_IN
 
 **CRITICAL — Language**: Write the ENTIRE summary in the same language as the user's messages in the conversation. If the user wrote in Chinese, write the summary in Chinese. If the user wrote in English, write the summary in English. Do NOT mix languages.
 
+**Headings follow the same language.** The section headings in the required format below show structure, not literal text: translate them into that language (e.g. "## Primary Goal" → "## 主要目标"), keeping their order, nesting and bracketed guidance unchanged. Writing an English heading over a Chinese body is a mixed-language summary.
+
 First, write your analysis inside <analysis> tags — this is your private scratchpad:
 1. Chronologically review each message. For each section identify:
    - The user's explicit requests and intents
@@ -328,7 +330,9 @@ Keep each section concise. Preserve exact file paths, function names, error mess
 
 const UPDATE_SUMMARIZATION_PROMPT = `Incorporate the new conversation from UNTRUSTED_SUMMARY_INPUT_JSON into its previousSummary field.
 
-**CRITICAL — Language**: Write the ENTIRE summary in the same language as the user's messages in the conversation. If the user wrote in Chinese, write the summary in Chinese. If the user wrote in English, write the summary in English. Do NOT mix languages. Match the language of the previousSummary field.
+**CRITICAL — Language**: Write the ENTIRE summary in the same language as the user's messages in the conversation. If the user wrote in Chinese, write the summary in Chinese. If the user wrote in English, write the summary in English. Do NOT mix languages. Match the language of the previousSummary field, including its section headings.
+
+**Headings follow the same language.** The section headings in the required format below show structure, not literal text: translate them into that language (e.g. "## Primary Goal" → "## 主要目标"), keeping their order, nesting and bracketed guidance unchanged. Rewrite a heading that the previousSummary left in another language.
 
 First, write your analysis inside <analysis> tags — review the new messages and identify what changed:
 1. What new work was done? What completed? What new errors or decisions?
@@ -618,6 +622,8 @@ export function prepareCompaction(
 const TURN_PREFIX_SUMMARIZATION_PROMPT = `This is the PREFIX of a turn that was too large to keep. The SUFFIX (recent work) is retained.
 
 **CRITICAL — Language**: Write the ENTIRE summary in the same language as the user's messages in the conversation. If the user wrote in Chinese, write the summary in Chinese. If the user wrote in English, write the summary in English. Do NOT mix languages.
+
+**Headings follow the same language.** The section headings in the required format below show structure, not literal text: translate them into that language (e.g. "## Original Request" → "## 原始请求"), keeping their order, nesting and bracketed guidance unchanged.
 
 Summarize the prefix to provide context for the retained suffix:
 
